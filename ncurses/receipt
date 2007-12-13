@@ -1,0 +1,66 @@
+# SliTaz package receipt.
+
+PACKAGE="ncurses"
+VERSION="5.6"
+CATEGORY="base-apps"
+SHORT_DESC="Library of functions to manage display on teminals."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://invisible-island.net/ncurses/"
+WGET_URL="ftp://invisible-island.net/ncurses/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $PACKAGE-$VERSION
+    ./configure --prefix=/usr \
+    --libdir=/lib --sysconfdir=/etc \
+    --infodir=/usr/share/info --mandir=/usr/share/man \
+    --with-shared --without-debug --without-ada \
+    $CONFIGURE_ARGS
+    make
+    make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/lib $fs/usr/bin
+    
+    # Libs.
+    cp -a $_pkg/lib/libncurses.so* $fs/lib
+    strip --strip-unneeded $fs/lib/*.so*
+    
+    # Base progs.
+    cp $_pkg/usr/bin/clear $fs/usr/bin
+    cp $_pkg/usr/bin/tset $fs/usr/bin
+    cp $_pkg/usr/bin/reset $fs/usr/bin
+    
+    # Terminfo.
+    mkdir -p $fs/usr/share/terminfo
+    for dir in a l r v x
+    do
+        mkdir $fs/usr/share/terminfo/$dir
+    done
+    cp $_pkg/usr/share/terminfo/a/ansi \
+    $fs/usr/share/terminfo/a
+    cp $_pkg/usr/share/terminfo/l/linux \
+    $fs/usr/share/terminfo/l
+    cp $_pkg/usr/share/terminfo/r/rxvt \
+    $fs/usr/share/terminfo/r
+    cp $_pkg/usr/share/terminfo/x/xterm \
+    $fs/usr/share/terminfo/x
+    cp $_pkg/usr/share/terminfo/x/xterm-color \
+    $fs/usr/share/terminfo/x
+    cp $_pkg/usr/share/terminfo/x/xterm-new \
+    $fs/usr/share/terminfo/x
+    cp $_pkg/usr/share/terminfo/x/xterm-vt220 \
+    $fs/usr/share/terminfo/x
+    cp $_pkg/usr/share/terminfo/v/vt100 \
+    $fs/usr/share/terminfo/v
+    cp $_pkg/usr/share/terminfo/v/vt102* \
+    $fs/usr/share/terminfo/v
+    
+    # Tabset.
+    cp -a $_pkg/usr/share/tabset $fs/usr/share
+}
