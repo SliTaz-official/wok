@@ -1,0 +1,53 @@
+# SliTaz package receipt.
+
+PACKAGE="linux"
+VERSION="2.6.22.9"
+CATEGORY="base-system"
+SHORT_DESC="The Linux kernel and modules."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.kernel.org/"
+WGET_URL="http://www.eu.kernel.org/pub/linux/kernel/v2.6/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    # lzma and boot patch from pascal
+    patch -p1 < ../stuff/boot-kernel.u
+    patch -p1 < ../stuff/$PACKAGE-lzma-$VERSION.u
+    patch -p1 < ../stuff/decompress_unlzma.u
+    make mrproper
+    cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
+    make oldconfig
+    make bzImage
+    make modules
+    make INSTALL_MOD_PATH=$PWD/_pkg modules_install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir $fs/boot
+    cp -a $src/arch/i386/boot/bzImage $fs/boot/vmlinuz-$VERSION-slitaz
+    cp -a $_pkg/* $fs
+    # Compress all modules.
+    # Package module-init-tools is compiled with zlib support.
+    #
+    ./stuff/gztazmod.sh $fs/lib/modules/$VERSION-slitaz
+}
+
+# Pre and post install commands for Tazpkg.
+# GRUB stuf.
+post_install()
+{
+  echo "Processing post-install commands..."
+  echo "----"
+  echo "If you have GRUB installed, you can add tree lines to boot SliTaz."
+  echo "Example /boot/grub/menu.lst"
+  echo -e "
+title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
+       root(hd0,0)
+       kernel /boot/vmlinuz-$VERSION-slitaz root=/dev/hda1 vga=771\n"
+  echo "----"
+}
