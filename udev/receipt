@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="udev"
+VERSION="116"
+CATEGORY="base-apps"
+SHORT_DESC="Udev creat automaticly right devices in /dev."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.kernel.org/pub/linux/utils/kernel/hotplug/udev.html"
+WGET_URL="http://www.us.kernel.org/pub/linux/utils/kernel/hotplug/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/sbin $fs/usr/bin $fs/usr/sbin $fs/etc/udev
+	
+	# /sbin
+	cp -a $src/udevd $fs/sbin
+	cp -a $src/udevcontrol $fs/sbin
+	cp -a $src/udevstart $fs/sbin
+	cp -a $src/udevsettle $fs/sbin
+	
+	# /usr/{sbin,bin}
+	cp -a $src/udevd $fs/usr/sbin
+	cp -a $src/udevmonitor $fs/usr/sbin
+	cp -a $src/udevinfo $fs/usr/bin
+	cp -a $src/udevtest $fs/usr/bin
+	
+	# Config files.
+	cp stuff/udev.conf $fs/etc/udev
+	cp -a $src/etc/udev/rules.d $fs/etc/udev
+	cp stuff/90-permissions.rules $fs/etc/udev/rules.d
+	cp -a $src/etc/udev/packages/40-alsa.rules $fs/etc/udev/rules.d
+	
+	
+	# Strip all binaries.
+	strip -s $fs/sbin/*
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/sbin/*
+}
+

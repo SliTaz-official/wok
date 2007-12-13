@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="module-init-tools"
+VERSION="3.2"
+CATEGORY="base-apps"
+SHORT_DESC="Kernel modules manipulation tools."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="zlib"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://ftp.kernel.org/pub/linux/utils/kernel/module-init-tools/"
+WGET_URL="${WEB_SITE}$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --enable-zlib --prefix=/usr \
+	--sbindir=/sbin --bindir=/bin --sysconfdir=/etc \
+	--infodir=/usr/share/info --mandir=/usr/share/man \
+	$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/sbin $fs/etc
+	cp $_pkg/sbin/depmod $fs/sbin
+	cp $_pkg/sbin/insmod $fs/sbin
+	cp $_pkg/sbin/modinfo $fs/sbin
+	cp $_pkg/sbin/modprobe $fs/sbin
+	cp $_pkg/sbin/rmmod $fs/sbin
+	# lsmod goes in /bin.
+	cp -a $_pkg/bin $fs
+	strip -s $fs/sbin/*
+	strip -s $fs/bin/*
+	# Empty modprobe.conf
+	echo "# /etc/modprobe.conf: Modprobe config file." > $fs/etc/modprobe.conf
+	echo "#" >> $fs/etc/modprobe.conf
+}

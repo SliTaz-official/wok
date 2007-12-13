@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="e2fsprogs"
+VERSION="1.39"
+CATEGORY="base-apps"
+SHORT_DESC="Filesystem utilities for use with ext2 and ext3 (without fsck*)."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://e2fsprogs.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --with-root-prefix="" \
+	--enable-elf-shlibs --disable-evms --sysconfdir=/etc \
+	--infodir=/usr/share/info --mandir=/usr/share/man \
+	$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share/locale
+	cp -a $_pkg/sbin $fs
+	cp -a $_pkg/lib $fs
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -ad $_pkg/usr/lib/*.so $fs/usr/lib
+	# Remove unused libss and fsck provided by Busybox.
+	rm -rf $fs/lib/libss*
+	rm -rf $fs/usr/lib/libss*
+	rm -rf $fs/sbin/fsck*
+	# Locale fr.
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	# Strip all stuff.
+	strip -s $fs/sbin/*
+	strip -s $fs/lib/*
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/sbin/*
+	strip -s $fs/usr/lib/*
+}
