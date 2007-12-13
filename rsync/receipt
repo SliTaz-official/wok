@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="rsync"
+VERSION="2.6.9"
+CATEGORY="base-apps"
+SHORT_DESC="Utility that provides fast incremental."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://rsync.samba.org/"
+WGET_URL="http://rsync.samba.org/ftp/rsync/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --mandir=/usr/share/man \
+	$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	strip -s $fs/usr/bin/*
+	# Config file is /etc/rsyncd.conf.
+	# User and passwd in /etc/rsyncd.secrets, syntax : user:passwd
+	#
+	cp -a stuff/etc $fs
+	chmod 0644 $fs/etc/rsyncd.conf
+}
