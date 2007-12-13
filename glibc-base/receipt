@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="glibc-base"
+VERSION="2.3.6"
+CATEGORY="base-system"
+SHORT_DESC="GNU libc minimal libraries for SliTaz based system."
+WANTED="glibc"
+MAINTAINER="pankso@slitaz.org"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+#
+# Full glibc is very long to compile (see package glibc for more
+# informations). You can use the precompiled package available on
+# SliTaz mirror to build a distro without recompiling glibc.
+#
+genpkg_rules()
+{
+	# Mkdir's.
+	for dir in `cat stuff/mkdir.list`
+	do
+		mkdir -p ${fs}$dir
+	done
+    # Copy all files specified in stuff/files.list. We get the files
+    # from glibc package.
+    for file in `cat stuff/wanted-files.list`
+    do
+    	cp -a ${_pkg}$file ${fs}$file
+    done
+    # Strip files.
+    strip --strip-unneeded $fs/lib/*.so*
+    strip --strip-unneeded $fs/usr/bin/* 2>/dev/null
+    strip --strip-unneeded $fs/usr/lib/*.so* 2>/dev/null
+    strip --strip-unneeded $fs/usr/lib/gconv/*.so*
+    # Locale archive. Just a silly copy (idea ?).
+    cp stuff/locale-archive $fs/usr/lib/locale
+}
