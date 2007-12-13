@@ -1,0 +1,73 @@
+# SliTaz package receipt.
+
+PACKAGE="slitaz-base-files"
+VERSION="1.0"
+CATEGORY="base-system"
+SHORT_DESC="Linux tree and the necessary files for the base system."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.slitaz.org/"
+WGET_URL="http://download.tuxfamily.org/slitaz/sources/base-files/$TARBALL"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    # Copy all rootfs from the stuff and set permissions.
+    cp -a $src/rootfs/* $fs
+    
+	chown -R root.root $fs/*
+	chmod 1777 $fs/tmp
+	chmod 640 $fs/etc/shadow
+	chmod 640 $fs/etc/gshadow
+	
+	# Populate /dev with /$fs/sbin/mktazdevs.sh.
+	./$fs/sbin/mktazdevs.sh $fs/dev
+	
+	# Creat /etc/mtab symlink.
+	cd $fs/etc
+	ln -s /proc/mounts mtab
+}
+
+# Pre and post install to backup all /etc/settings
+#
+pre_install()
+{
+	local root
+	root=$1
+	echo -n "Creating backup of all files in /etc..."
+	cp -a $root/etc $root/tmp/etc.bak
+	status
+}
+
+post_install()
+{
+	local root
+	root=$1
+	echo -n "Restoring files from /etc/etc.bak..."
+	cp -a $root/tmp/etc.bak/* $root/etc
+	rm -rf $root/tmp/etc.bak
+	status
+	
+	# Remove old base-file pkg info
+	rm -rf $root/var/lib/tazpkg/installed/base-files
+	
+	# Reset permission.
+	chmod 640 $root/etc/shadow
+	chmod 640 $root/etc/gshadow
+	
+	if ! grep -q audio $root/etc/group; then
+		if [ -n "$root" ]; then
+			cp /etc/group $root/etc/group
+		else
+			addgroup -g 20 audio
+		fi
+	fi
+	
+	# Add crond to daemons confi file
+	if ! grep -q CROND_OPTIONS $root/etc/daemons.conf; then
+		echo '# Cron daemon options.' >> $root/etc/daemons.conf
+		echo 'CROND_OPTIONS="-b"' >> $root/etc/daemons.conf
+		echo '' >> $root/etc/daemons.conf
+	fi
+}
+SELF_INSTALL=1
