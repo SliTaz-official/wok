@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="busybox"
+VERSION="1.7.3"
+CATEGORY="base-system"
+SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="base-files"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.busybox.net/"
+WGET_URL="http://www.busybox.net/downloads/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cp stuff/$PACKAGE-$VERSION.config $PACKAGE-$VERSION/.config
+    cd $PACKAGE-$VERSION
+    make oldconfig
+    make && make install
+    echo "Chmod 4755 on busybox binary..."
+    chmod 4755 _install/bin/busybox
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    cp -a $src/_install/* $fs
+    mkdir $fs/etc
+    # Busybox config file.
+    cp stuff/busybox.conf $fs/etc
+    chmod 600 $fs/etc/busybox.conf
+    cd $fs
+    rm linuxrc
+    ln -s bin/busybox init
+    cd $WOK/$PACKAGE
+    # Udhcpc stuff.
+    mkdir -p $fs/usr/share/udhcpc
+    cp $src/examples/udhcp/simple.script \
+    $fs/usr/share/udhcpc/default.script
+    chmod +x $fs/usr/share/udhcpc/default.script
+}
