@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="iptables"
+VERSION="1.3.7"
+CATEGORY="base-apps"
+SHORT_DESC="Packet filtering framework (Firewall)."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="linux"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.netfilter.org/"
+WGET_URL="http://www.netfilter.org/projects/iptables/files/$TARBALL"
+
+# Set the right Kernel path to compile.
+KERNEL_PATH="$WOK/linux/linux-2.6.22.9"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make KERNEL_DIR=$KERNEL_PATH BINDIR=/sbin \
+	LIBDIR=/lib MANDIR=/usr/share/man
+	# Install in $PWD_pkg dir.
+	make KERNEL_DIR=$KERNEL_PATH BINDIR=/sbin \
+	LIBDIR=/lib MANDIR=/usr/share/man \
+	DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/sbin $fs/lib/iptables
+	# Sbin.
+	cp -a $_pkg/sbin/iptables* $fs/sbin
+	# Libs.
+	cp -a $_pkg/lib/iptables/libipt_standard.so $fs/lib/iptables
+	cp -a $_pkg/lib/iptables/libipt_conntrack.so $fs/lib/iptables
+	cp -a $_pkg/lib/iptables/libipt_tcp.so $fs/lib/iptables
+	cp -a $_pkg/lib/iptables/libipt_udp.so $fs/lib/iptables
+	# Strip.
+	strip -s $_fs/sbin/*
+	strip -s $_fs/lib/iptables/*
+}

@@ -1,0 +1,30 @@
+# SliTaz package receipt.
+
+PACKAGE="sqlite"
+VERSION="3.5.3"
+CATEGORY="base-apps"
+SHORT_DESC="Small SQL database engine."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.sqlite.org/"
+WGET_URL="http://www.sqlite.org/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --disable-tcl \
+	$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	strip -s $fs/usr/lib/*.so*
+	strip -s $fs/usr/bin/*
+}
