@@ -1,0 +1,59 @@
+# SliTaz package receipt.
+
+PACKAGE="gcc"
+VERSION="4.2.2"
+CATEGORY="extra"
+SHORT_DESC="The the GNU Compiler Collection."
+MAINTAINER="pankso@slitaz.org"
+BUILD_DEPENDS="gawk"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://gcc.gnu.org/"
+WGET_URL="ftp://ftp.irisa.fr/pub/mirrors/gcc.gnu.org/gcc/releases/$PACKAGE-$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    mkdir gcc-build 
+    cd gcc-build
+    ../$PACKAGE-$VERSION/configure --prefix=/usr --libexecdir=/usr/lib \
+    --infodir=/usr/share/info --mandir=/usr/share/man --enable-nls \
+    --enable-languages=c,c++ --enable-shared --with-system-zlib \
+    --enable-clocale=gnu --enable-objc-gc --enable-__cxa_atexit \
+    --enable-threads=posix --with-tune=i486 i486-pc-linux-gnu
+    make bootstrap
+    # Make install in the source tree to help creating derivated pkgs
+    # and keep $_pkg variable set for genpkg.
+    make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p  $fs/usr/share
+    cp -a $_pkg/usr/bin $fs/usr
+    # Copy all libs. Remove libgcc_s.so and libstdc++.so
+    # they goes in gcc-lib-base-$VERSION package.
+    cp -a $_pkg/usr/lib $fs/usr
+    rm $fs/usr/lib/libgcc_s.so*
+    rm $fs/usr/lib/libstdc++.so*
+    # Include files.
+    cp -a $_pkg/usr/include $fs/usr
+    # Strip.
+    strip --strip-debug $fs/usr/bin/* 2>/dev/null
+    strip --strip-debug $fs/usr/lib/*.so*
+    strip --strip-debug $fs/usr/lib/gcc/*/$VERSION/cc*
+}
+
+# Post install commands for Tazpkg.
+post_install()
+{
+  local root
+  root=$1
+  echo "Processing post-install commands..."
+  if [ ! -f "$root/lib/cpp" ]; then
+  	ln -s ../usr/bin/cpp $root/lib
+  fi
+  if [ ! -f "$root/usr/bin/cc" ]; then
+  	ln -s gcc $root/usr/bin/cc
+  fi
+}

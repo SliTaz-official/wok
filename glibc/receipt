@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="glibc"
+VERSION="2.3.6"
+CATEGORY="extra"
+SHORT_DESC="The GNU C libraries. This package is used to compile the libc."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="glibc-base glibc-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/libc/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir glibc-build
+	cd glibc-build
+	../$PACKAGE-$VERSION/configure --prefix=/usr \
+	--infodir=/usr/share/info --disable-profile \
+	--enable-add-ons --enable-kernel=2.6.0 \
+	--libexecdir=/usr/lib/glibc $CONFIGURE_ARGS
+	make
+	# Install in the build tree and then move all files
+	# to the source tree to keep $src and $_pkg for genpkg.
+	mkdir -p _pkg/etc
+	touch _pkg/etc/ld.so.conf
+	make install_root=$PWD/_pkg install
+	mv _pkg ../$PACKAGE-$VERSION
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+#
+# Just a dir for the meta-package.
+#
+genpkg_rules()
+{
+	mkdir -p $fs/var
+}

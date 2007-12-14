@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="binutils"
+VERSION="2.17"
+CATEGORY="extra"
+SHORT_DESC="GNU assembler, linker and binary utilities."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/binutils/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir binutils-build && cd binutils-build
+	../$PACKAGE-$VERSION/configure --prefix=/usr \
+	--infodir=/usr/share/info --mandir=/usr/share/man \
+	--enable-shared $CONFIGURE_ARGS
+	make tooldir=/usr
+	# Install in binutils-build/ and then move the files to
+	# to the source tree. Can't install directly... This is done
+	# to keep the $src and $_pkg working for genpkg.
+	make tooldir=/usr DESTDIR=$PWD/_pkg install
+	mv _pkg ../$PACKAGE-$VERSION/
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/include $fs/usr
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	# libiberty.h
+	cp -a $src/include/libiberty.h $fs/usr/include
+	# Remove libiberty.a (use the one from GCC) and 'strings' (Busybox).
+	rm $fs/usr/lib/libiberty.a
+	rm $fs/usr/bin/strings
+	# Da strip...
+	strip --strip-debug $fs/usr/bin/*
+	strip --strip-debug $fs/usr/lib/*.so*
+}
