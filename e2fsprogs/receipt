@@ -13,12 +13,18 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --with-root-prefix="" \
-	--enable-elf-shlibs --disable-evms --sysconfdir=/etc \
-	--infodir=/usr/share/info --mandir=/usr/share/man \
-	$CONFIGURE_ARGS
+	./configure \
+		--prefix=/usr \
+		--with-root-prefix="" \
+		--enable-elf-shlibs \
+		--disable-evms \
+		--sysconfdir=/etc \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
 	make
 	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$PWD/_pkg install-libs
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -31,12 +37,13 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
 	cp -ad $_pkg/usr/lib/*.so $fs/usr/lib
-	# Remove unused libss and fsck provided by Busybox.
-	rm -rf $fs/lib/libss*
-	rm -rf $fs/usr/lib/libss*
+	
+	# Remove fsck provided by Busybox.
 	rm -rf $fs/sbin/fsck*
+	
 	# Locale fr.
 	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	
 	# Strip all stuff.
 	strip -s $fs/sbin/*
 	strip -s $fs/lib/*
