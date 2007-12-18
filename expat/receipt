@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="expat"
+VERSION="2.0.1"
+CATEGORY="x-window"
+SHORT_DESC="XML parsing library."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://expat.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    ./configure --sysconfdir=/etc --prefix=/usr \
+    --mandir=/usr/share/man $CONFIGURE_ARGS
+    make
+    make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/bin
+    cp -a $_pkg/usr/bin/* $fs/usr/bin
+    cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+    strip -s $fs/usr/bin/*
+    strip -s $fs/usr/lib/*
+    # expat so.0 symbolic link.
+    cd $fs/usr/lib
+    ln -s libexpat.so.1.5.2 libexpat.so.0
+}
