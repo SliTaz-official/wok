@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="pidgin"
+VERSION="2.3.0"
+CATEGORY="extra"
+SHORT_DESC="Instant messaging client using GTK+."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.pidgin.im/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man --disable-perl $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share/locale $fs/usr/share/pixmaps
+    cp -a $_pkg/usr/bin $fs/usr
+    cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+    cp -a $_pkg/usr/lib/pidgin $fs/usr/lib
+    cp -a $_pkg/usr/lib/purple-2 $fs/usr/lib
+    rm $fs/usr/lib/pidgin/*.la
+    rm $fs/usr/lib/purple-2/*.la
+    cp -a $_pkg/usr/share/purple $fs/usr/share
+    cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+    strip -s $fs/usr/bin/*
+    strip --strip-unneeded $fs/usr/lib/*.so*
+    strip --strip-unneeded $fs/usr/lib/pidgin/*
+    strip --strip-unneeded $fs/usr/lib/purple-2/*
+    cp -a $_pkg/usr/share/pixmaps/pidgin $fs/usr/share/pixmaps
+    cp -a $_pkg/usr/share/icons/hicolor/24x24/apps/* $fs/usr/share/pixmaps
+}
+

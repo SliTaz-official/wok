@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="transmission"
+VERSION="0.82"
+CATEGORY="extra"
+SHORT_DESC="Light and easy to use BitTorrent client."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://transmission.m0k.org/"
+WGET_URL="http://download.m0k.org/transmission/files/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Upstream did a funny tarball...
+	mkdir -p $PACKAGE-$VERSION
+	tar xzf $SOURCES_REPOSITORY/$TARBALL -C $PACKAGE-$VERSION
+	
+	# For 0.92 (need openssl lib).
+	#bzip2 -d -c "$SOURCES_REPOSITORY/$TARBALL" | tar -xf -
+	
+	cd $src
+	./configure --prefix=/usr  --disable-openssl \
+	$CONFIGURE_ARGS
+	make
+	strip gtk/transmission-gtk
+	strip cli/transmissioncli
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/locale/fr/LC_MESSAGES \
+	$fs/usr/share/pixmaps
+	cp -a $src/gtk/transmission-gtk $fs/usr/bin
+	# Resized pixmap and French locale.
+	cp -a stuff/transmission.png $fs/usr/share/pixmaps
+	cp -a $src/gtk/po/fr.mo $fs/usr/share/locale/fr/LC_MESSAGES/transmission-gtk.mo
+}
