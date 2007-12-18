@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="ttf-bitstream-vera"
+VERSION="1.10"
+CATEGORY="x-window"
+SHORT_DESC="The ttf bitstream vera fonts."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnome.org/fonts/"
+WGET_URL="http://ftp.gnome.org/pub/GNOME/sources/ttf-bitstream-vera/$VERSION/$TARBALL"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/fonts/truetype/ttf-bitstream-vera	
+    cp -a $src/*.ttf $fs/usr/share/fonts/truetype/ttf-bitstream-vera
+    rm $fs/usr/share/fonts/truetype/ttf-bitstream-vera/VeraMoB*
+    rm $fs/usr/share/fonts/truetype/ttf-bitstream-vera/VeraMoIt*
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+  local root
+  root=$1
+  echo "Processing post-install commands..."
+  if [ -n "$root" ]; then
+    rm -Rf $root/var/cache/fontconfig
+    cp -a /var/cache/fontconfig $root/var/cache
+  else
+    fc-cache
+  fi
+}
+SELF_INSTALL=1

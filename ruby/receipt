@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="ruby"
+VERSION="1.8.6-p110"
+CATEGORY="devel"
+SHORT_DESC="Dynamic programming language focused on simplicity and productivity."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.ruby-lang.org/"
+WGET_URL="ftp://ftp.ruby-lang.org/pub/ruby/1.8/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/ruby $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	
+	# Remove devel files and strip bin/lib
+	rm $fs/usr/lib/ruby/1.8/i486-linux/*.h
+	strip --strip-unneeded $fs/usr/lib/ruby/1.8/i486-linux/*.so
+	strip --strip-unneeded $fs/usr/lib/ruby/1.8/i486-linux/*/*.so
+	strip -s $fs/usr/bin/ruby
+}
