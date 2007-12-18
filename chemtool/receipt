@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="chemtool"
+VERSION="1.6.11"
+CATEGORY="extra"
+SHORT_DESC="Small program for drawing chemical structures."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://ruby.chemie.uni-freiburg.de/~martin/chemtool/"
+WGET_URL="http://ruby.chemie.uni-freiburg.de/~martin/chemtool/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	# Needed directories.
+	mkdir -p $fs/usr/share/locale $fs/usr/share/pixmaps \
+	$fs/usr/share/examples/chemtool
+	
+	# Binary file.
+	cp -a $_pkg/usr/bin $fs/usr
+	strip -s $fs/usr/bin/*
+	
+	# French locale and pixmap.
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $src/chemtool.xpm $fs/usr/share/pixmaps
+	
+	# Examples.
+	cp -a $src/examples/a*.cht $fs/usr/share/examples/chemtool
+	cp -a $src/examples/c*.cht $fs/usr/share/examples/chemtool
+	cp -a $src/examples/p*.cht $fs/usr/share/examples/chemtool
+	cp -a $src/examples/t*.cht $fs/usr/share/examples/chemtool
+}
