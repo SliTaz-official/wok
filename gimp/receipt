@@ -1,0 +1,51 @@
+# SliTaz package receipt.
+
+PACKAGE="gimp"
+VERSION="2.2.17"
+CATEGORY="extra"
+SHORT_DESC="Gnu Image Manipulation Program or GIMP!"
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+ libart_lgpl"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gimp.org/"
+WGET_URL="ftp://ftp.gimp.org/pub/gimp/v2.2/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr --infodir=/usr/share/info \
+		--mandir=/usr/share/man --sysconfdir=/etc \
+		--with-html-dir=/usr/share/doc \
+		$CONFIGURE_ARGS \
+		--disable-print
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/usr/lib $fs/usr/share/locale $fs/usr/share/pixmaps
+	
+	cp -a $_pkg/etc $fs
+	cp $src/data/images/wilber-icon.png $fs/usr/share/pixmaps/gimp.png
+	
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/gimp $fs/usr/lib
+	cp -a $_pkg/usr/share/gimp $fs/usr/share
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	
+	rm $fs/usr/lib/gimp/*/*/*.la
+	strip --strip-unneeded $fs/usr/lib/*.so*
+	strip --strip-unneeded $fs/usr/lib/gimp/*/modules/*.so
+	strip -s $fs/usr/lib/gimp/*/plug-ins/*
+	strip -s $fs/usr/bin/* 2>/dev/null
+	
+	# Put a nice splash with a spider
+	cp -a stuff/gimp-splash.png $fs/usr/share/gimp/2.0/images/
+	
+}
+

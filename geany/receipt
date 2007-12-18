@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="geany"
+VERSION="0.12"
+CATEGORY="extra"
+SHORT_DESC="Small and fast IDE using GTK+ toolkit."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://geany.uvena.de/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --mandir=/usr/share/man \
+    --disable-vte $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale $fs/usr/lib/geany
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/geany/*.so $fs/usr/lib/geany
+	cp -a $_pkg/usr/share/geany $fs/usr/share
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	rm -f $fs/usr/share/pixmaps/*.ico
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/lib/geany/*
+}
