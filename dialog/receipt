@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="dialog"
+VERSION="1.1-20070930"
+CATEGORY="base-apps"
+SHORT_DESC="Script-interpreter which provides a set of curses widgets."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="ncurses"
+TARBALL="$PACKAGE.tar.gz"
+WEB_SITE="http://invisible-island.net/dialog/"
+WGET_URL="ftp://invisible-island.net/dialog/dialog.tar.gz"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --enable-nls --prefix=/usr \
+	--sysconfdir=/etc --mandir=/usr/share/man \
+	$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	strip -s $fs/usr/bin/*
+	# Config file.
+	cp stuff/dialogrc $fs/etc
+}
