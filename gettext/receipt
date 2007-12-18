@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="gettext"
+VERSION="0.16.1"
+CATEGORY="extra"
+SHORT_DESC="Utilities for the GNU Translation Project."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/gettext/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/include $fs/usr
+	strip -s $fs/usr/bin/* 2>/dev/null
+	strip -s $fs/usr/lib/*.so*
+	cp -a $_pkg/usr/share/aclocal $fs/usr/share
+	cp -a $_pkg/usr/share/gettext $fs/usr/share
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+}

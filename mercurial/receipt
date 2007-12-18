@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="mercurial"
+VERSION="0.9.5"
+CATEGORY="extra"
+SHORT_DESC="Revision tools system."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="python patch openssl"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.selenic.com/mercurial/wiki/"
+WGET_URL="http://www.selenic.com/mercurial/release/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make install PREFIX=$PWD/_pkg/usr
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/examples/mercurial
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	
+	# Examples
+	cp -a $src/hgweb.cgi $fs/usr/share/examples/mercurial
+	cp -a stuff/hgwebdir.cgi $fs/usr/share/examples/mercurial
+	cp -a stuff/lighttpd-hg-vhost.conf $fs/usr/share/examples/mercurial
+	
+	# Config file for hgweb
+	mkdir -p $fs/etc/mercurial
+	cp -a stuff/hgweb.config $fs/etc/mercurial
+	
+	chown -R root.root $fs
+}

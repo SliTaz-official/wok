@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="grub"
+VERSION="0.97"
+CATEGORY="base-apps"
+SHORT_DESC="GRUB boot loader."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/grub/"
+WGET_URL="ftp://alpha.gnu.org/gnu/grub/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/boot/grub $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	
+	# Permissions
+	chmod 755 $fs/usr/sbin/grub-*
+	chmod 655 $fs/usr/lib/grub/i386-pc/*
+	
+	# Strip.
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/sbin/grub
+	# Example config file (menu.lst).
+	cp stuff/example-menu.lst $fs/boot/grub
+}
+
