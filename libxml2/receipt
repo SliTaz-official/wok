@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="libxml2"
+VERSION="2.6.30"
+CATEGORY="extra"
+SHORT_DESC="Libxml2 is the XML C parser and toolkit."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://xmlsoft.org/"
+WGET_URL="ftp://xmlsoft.org/libxml2/$TARBALL"
+
+# Rules to configure and make the package.
+#
+# Note: libxml2 can be build using option --with-minimum
+#
+compile_rules()
+{
+	cd $src
+	./configure \
+	--prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man --with-html-dir=/usr/share/doc
+	$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	strip -s $fs/usr/lib/*
+	strip -s $fs/usr/bin/* 2>/dev/null
+}

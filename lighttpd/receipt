@@ -1,0 +1,80 @@
+# SliTaz package receipt.
+
+PACKAGE="lighttpd"
+VERSION="1.4.18"
+CATEGORY="base-apps"
+SHORT_DESC="Fast and light HTTP Web server."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="php"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.lighttpd.net/"
+WGET_URL="http://www.lighttpd.net/download/$TARBALL"
+BASE_MODULES="
+access
+accesslog
+alias
+cgi
+fastcgi
+compress
+dirlisting
+indexfile
+staticfile
+rewrite
+status
+userdir"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure -enable-shared --disable-ipv6 --prefix=/usr \
+    --libdir=/usr/lib/lighttpd --mandir=/usr/share/man \
+    $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+# On SliTaz Lighttpd runs as user/group : www/www or 80/80.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	
+	# Modules.
+	mkdir -p $fs/usr/lib/lighttpd
+	for module in $BASE_MODULES
+	do
+		cp $_pkg/usr/lib/lighttpd/mod_${module}.so $fs/usr/lib/lighttpd
+		echo -n "Copying : mod_${module}.so" && status
+	done
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/sbin/*
+	strip -s $fs/usr/lib/lighttpd/*
+	
+	# Server root and config file.
+	cp -a stuff/var $fs
+	cp -a stuff/etc $fs
+	
+	# Logs directory.
+	mkdir -p $fs/var/log/lighttpd
+	chown 80.80 $fs/var/log/lighttpd
+}
+
+# Pre and post install commands for Tazpkg.
+# We stop the server by default in case of upgarde.
+pre_install()
+{
+	echo "Processing pre-install commands..."
+	/etc/init.d/$PACKAGE stop
+}
+post_install()
+{
+        local root
+        root=$1
+	echo "Processing post-install commands..."
+	# Just in case.
+	chown www.www $root/var/log/$PACKAGE
+	/etc/init.d/$PACKAGE start
+}
