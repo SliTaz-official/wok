@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="openssl"
+VERSION="0.9.8g"
+CATEGORY="extra"
+SHORT_DESC="Open source Secure Sockets Layer."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.openssl.org/"
+WGET_URL="http://www.openssl.org/source/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./config --prefix=/usr --openssldir=/etc/ssl shared
+	$CONFIGURE_ARGS
+	make
+	make INSTALL_PREFIX=$PWD/_pkg MANDIR=$PWD/_pkg/usr/share/man install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	strip -s $fs/usr/bin/* 2>/dev/null
+}
+
