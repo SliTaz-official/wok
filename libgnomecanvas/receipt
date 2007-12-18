@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="libgnomecanvas"
+VERSION="2.14.0"
+CATEGORY="extra"
+SHORT_DESC="GNOME canvas library"
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+ libglade"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gnome.org/"
+WGET_URL=" http://ftp.gnome.org/pub/gnome/sources/$PACKAGE/2.14/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--with-html-dir=/usr/share/doc \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share/locale
+	
+	# Copy shared libs
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/libglade $fs/usr/lib
+	
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	
+	# Remove static libs
+	rm $fs/usr/lib/libglade/*/*.*a
+
+	strip -s $fs/usr/lib/* 2>/dev/null
+	strip $fs/usr/lib/libglade/*/*.so
+}
+
