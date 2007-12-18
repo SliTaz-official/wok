@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="libvorbis"
+VERSION="1.2.0"
+CATEGORY="extra"
+SHORT_DESC="Vorbis base library."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.xiph.org/"
+WGET_URL="http://downloads.xiph.org/releases/vorbis/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	
+	# The libvorbisenc files should go in libvorbis-enc
+	#cp -a $_pkg/usr/lib/libvorbis.so* $fs/usr/lib
+	#cp -a $_pkg/usr/lib/libvorbisfile.so* $fs/usr/lib
+	
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	strip --strip-unneeded $fs/usr/lib/*
+}
+

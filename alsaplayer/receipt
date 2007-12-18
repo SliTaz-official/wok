@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="alsaplayer"
+VERSION="0.99.80"
+CATEGORY="extra"
+SHORT_DESC="Alsa GTK+ PCM player."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+ alsa-lib libmad"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.alsaplayer.org/"
+WGET_URL="http://www.alsaplayer.org/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--enable-nls \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	# Chmod install-sh to avoid install error.
+	chmod 755 install-sh
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share/locale $fs/usr/share/pixmaps
+	
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/alsaplayer $fs/usr/lib
+	
+	# Remove devel file and strip all.
+	rm $fs/usr/lib/alsaplayer/*/*.*a
+	strip --strip-unneeded $fs/usr/lib/alsaplayer/*/*
+	strip --strip-unneeded $fs/usr/lib/*.so*
+	strip -s $fs/usr/bin/*
+	
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	cp stuff/alsaplayer.png $fs/usr/share/pixmaps
+}
+
