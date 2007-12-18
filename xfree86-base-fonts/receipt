@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="xfree86-base-fonts"
+VERSION="4.6.0"
+CATEGORY="x-window"
+SHORT_DESC="X window base fonts from the XFree86 project."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.xfree86.org/"
+WGET_URL="http://download.tuxfamily.org/slitaz/sources/fonts/$TARBALL"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/X11R6/lib/X11/fonts/
+	cp -a $src/fonts/* $fs/usr/X11R6/lib/X11/fonts/
+}
+
+# Execute fc-cache when the package finish ti install.
+post_install()
+{
+	local root
+	root=$1
+	if [ -n "$root" ]; then
+		rm -Rf $root/var/cache/fontconfig
+		cp -a /var/cache/fontconfig $root/var/cache
+	else
+		fc-cache
+	fi
+}
+SELF_INSTALL=1
