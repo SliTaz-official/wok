@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="bison"
+VERSION="2.3"
+CATEGORY="devel"
+SHORT_DESC="GNU parser generator."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/bison/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	echo '#define YYENABLE_NLS 1' >> config.h
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale
+	cp -a $_pkg/usr/bin $fs/usr
+	strip -s $fs/usr/bin/*
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/aclocal $fs/usr/share
+	cp -a $_pkg/usr/share/bison $fs/usr/share
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+}

@@ -1,0 +1,60 @@
+# SliTaz package receipt.
+
+PACKAGE="coreutils"
+VERSION="6.9"
+CATEGORY="extra"
+SHORT_DESC="Utilities for using and setting the basic system."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/coreutils/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+#
+# This is a special package for installed system or developer. We only take
+# a fiew things, Busybox provide all the basic utilitie, but not for compiling.
+# But DO NOT ecrase a Busybox applet, remove it before with pre_install rules.
+#
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/locale
+	# Utils...
+	cp -a $_pkg/usr/bin/base64 $fs/usr/bin
+	cp -a $_pkg/usr/bin/csplit $fs/usr/bin
+	cp -a $_pkg/usr/bin/factor $fs/usr/bin
+	cp -a $_pkg/usr/bin/fmt $fs/usr/bin
+	cp -a $_pkg/usr/bin/join $fs/usr/bin
+	cp -a $_pkg/usr/bin/od $fs/usr/bin
+	cp -a $_pkg/usr/bin/paste $fs/usr/bin
+	cp -a $_pkg/usr/bin/ptx $fs/usr/bin
+	cp -a $_pkg/usr/bin/shred $fs/usr/bin
+	cp -a $_pkg/usr/bin/shuf $fs/usr/bin
+	cp -a $_pkg/usr/bin/split $fs/usr/bin
+	cp -a $_pkg/usr/bin/users $fs/usr/bin
+	strip -s $fs/usr/bin/* 2>/dev/null
+	# Locale
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+}
+
+# Pre and post install commands for Tazpkg.
+# We must remove all Busybox symlink before installing.
+#
+pre_install()
+{
+	local root
+	root=$1
+	echo "Processing pre-install commands..."
+	echo -n "Removing all Busybox reploaced utils... "
+	rm -f $root/usr/bin/od $root/usr/bin/split
+	status
+}
