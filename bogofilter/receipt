@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="bogofilter"
+VERSION="1.1.6"
+CATEGORY="extra"
+SHORT_DESC="Mail filter that classifies mail as spam or ham."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="sqlite"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://bogofilter.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --with-database=sqlite3 \
+	--prefix=/usr --sysconfdir=/etc/bogofilter \
+	--infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/etc $fs
+	strip -s $fs/usr/bin/* 2>/dev/null
+}
