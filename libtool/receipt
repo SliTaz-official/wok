@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="libtool"
+VERSION="1.5.24"
+CATEGORY="extra"
+SHORT_DESC="The GNU Portable Library Tool."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/libtool/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/include $fs/usr
+	cp -a $_pkg/usr/share/aclocal $fs/usr/share
+	cp -a $_pkg/usr/share/libtool $fs/usr/share
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/lib/*.so*
+}
