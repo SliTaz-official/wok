@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="xine-lib"
+VERSION="1.1.8"
+CATEGORY="extra"
+SHORT_DESC="Xine video library."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="xorg"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.xinehq.de/"
+WGET_URL="http://switch.dl.sourceforge.net/sourceforge/xine/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share/locale
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/xine $fs/usr/lib
+	
+	strip --strip-unneeded $fs/usr/lib/* 2>/dev/null
+	strip --strip-unneeded $fs/usr/lib/xine/plugins/$VERSION/*.so
+	strip --strip-unneeded $fs/usr/lib/xine/plugins/$VERSION/post/*.so
+	strip --strip-unneeded $fs/usr/lib/xine/plugins/$VERSION/vidix/*.so
+	
+	# Fonts and French locale.
+	cp -a $_pkg/usr/share/xine $fs/usr/share
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+}
+
