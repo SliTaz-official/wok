@@ -1,0 +1,64 @@
+# SliTaz package receipt.
+
+PACKAGE="bash"
+VERSION="3.2"
+CATEGORY="extra"
+SHORT_DESC="The GNU bourne SHell."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="ncurses"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/bash/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Patch and then build.
+	cd $src
+	patch -p1 -i ../stuff/bash32-025.patch
+	./configure --prefix=/usr --bindir=/bin \
+	--enable-history --enable-alias  \
+	--disable-nls --without-bash-malloc \
+	--disable-select --disable-help-builtin \
+	--infodir=/usr/share/info --mandir=/usr/share/man \
+	$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/bin $fs
+	strip -s $fs/bin/bash
+	# Config files.
+	#
+	mkdir $fs/etc
+	cp stuff/example.bashrc $fs/etc/bashrc
+}
+
+# Post install commands for Tazpkg.
+# Check /bin/sh stat.
+#
+post_install()
+{
+	local root
+	root=$1
+	echo "Processing post-install commands..."
+	sh=`readlink $root/bin/sh`
+	if [ ! "$sh" = "/bin/bash" ]; then
+		echo ""
+		echo "**** Actual SH link : $sh"
+		echo ""
+		echo -n "Do you want Bash for /bin/sh (y/N) ? : "; read anser
+		if [ "$anser" == "y" ]; then
+			echo ""
+			echo -n "Removin sh link to make a new one pointing on /bin/bash..."
+			rm $root/bin/sh && ln -s /bin/bash $root/bin/sh
+			status
+		else
+			echo ""
+			echo "Leaving /bin/sh to : $sh"
+		fi
+	fi
+}
