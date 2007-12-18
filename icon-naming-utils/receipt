@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="icon-naming-utils"
+VERSION="0.8.2"
+CATEGORY="extra"
+SHORT_DESC="Perl script used for desktop icon compatibility"
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="perl perl-xml-simple"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://tango.freedesktop.org/"
+WGET_URL=" http://tango.freedesktop.org/releases/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/icon-naming-utils \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/dtds $fs/usr/share
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	
+	chmod +x $fs/usr/lib/$PACKAGE/*
+	
+	# For one file we are not going to build a -dev pkg
+	cp -a $_pkg/usr/share/pkgconfig $fs/usr/lib
+}
+
