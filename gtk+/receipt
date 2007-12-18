@@ -1,0 +1,59 @@
+# SliTaz package receipt.
+
+PACKAGE="gtk+"
+VERSION="2.8.20"
+CATEGORY="x-window"
+SHORT_DESC="The GIMP Toolkit."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="cairo glib pango atk"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gtk.org/"
+WGET_URL="ftp://ftp.gtk.org/pub/gtk/v2.8/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    ./configure --prefix=/usr --sysconfdir=/etc \
+    --mandir=/usr/share/man --with-html-dir=/usr/share/doc \
+    $CONFIGURE_ARGS
+    make
+    make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/gtk-2.0 $fs/usr/share/locale $fs/usr/bin
+	# Libs.
+    cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+    cp -a $_pkg/usr/lib/gtk-2.0/2.4.0 $fs/usr/lib/gtk-2.0
+    rm -rf $fs/usr/lib/gtk-2.0/2.4.0/*/*.la
+    # Locale.
+    cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+    cp -a $_pkg/usr/share/themes $fs/usr/share
+    # Apps.
+    cp  $_pkg/usr/bin/gtk-query-immodules-2.0 $fs/usr/bin
+    cp  $_pkg/usr/bin/gtk-update-icon-cache $fs/usr/bin
+    cp  $_pkg/usr/bin/gdk-pixbuf-csource $fs/usr/bin
+    cp  $_pkg/usr/bin/gdk-pixbuf-query-loaders $fs/usr/bin
+    # Config files.
+    mkdir -p $fs/etc/gtk-2.0
+    gtk-query-immodules-2.0 > $fs/etc/gtk-2.0/gtk.immodules
+    gdk-pixbuf-query-loaders > $fs/etc/gtk-2.0/gdk-pixbuf.loaders
+    # Strip all files.
+    strip --strip-all $fs/usr/bin/*
+    strip --strip-unneeded $fs/usr/lib/*.so*
+    strip --strip-unneeded $fs/usr/lib/gtk-2.0/2.4.0/*/*
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+    local root
+    root=$1
+    echo "Processing post-install commands..."
+    /usr/bin/gtk-query-immodules-2.0 > $root/etc/gtk-2.0/gtk.immodules
+    /usr/bin/gdk-pixbuf-query-loaders > $root/etc/gtk-2.0/gdk-pixbuf.loaders
+}
+SELF_INSTALL=1

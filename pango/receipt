@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="pango"
+VERSION="1.14.8"
+CATEGORY="x-window"
+SHORT_DESC="Library for layout and rendering of text."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.pango.org/"
+WGET_URL="ftp://ftp.gtk.org/pub/pango/1.14/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    ./configure --prefix=/usr --sysconfdir=/etc \
+    --mandir=/usr/share/man --with-html-dir=/usr/share/doc \
+    $CONFIGURE_ARGS
+    make
+    make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/lib
+    cp -a $_pkg/usr/bin/* $fs/usr/bin
+    cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+    cp -a $_pkg/usr/lib/pango $fs/usr/lib
+    rm -rf $fs/usr/lib/pango/1.5.0/modules/*.la
+    cp -a $_pkg/etc $fs
+    pango-querymodules > $fs/etc/pango/pango.modules
+    # Strip.
+    strip --strip-unneeded $fs/usr/bin/*
+    strip --strip-unneeded $fs/usr/lib/*.so*
+    strip --strip-unneeded $fs/usr/lib/pango/1.5.0/modules/*
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+    local root
+    root=$1
+    echo "Processing post-install commands..."
+    # Rebuils pango.modules when installed.
+    pango-querymodules > $root/etc/pango/pango.modules
+}
+SELF_INSTALL=1
