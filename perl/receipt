@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="perl"
+VERSION="5.8.8"
+CATEGORY="extra"
+SHORT_DESC="Full Perl interpreter and modules."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.perl.org/"
+WGET_URL="http://ftp.funet.fi/pub/CPAN/src/$TARBALL"
+
+# Rules to configure and make the package.
+#
+compile_rules()
+{
+	cd $src
+	./configure.gnu --prefix=/usr
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	strip -s $fs/usr/bin/a2p
+	strip -s $fs/usr/bin/perl
+	strip -s $fs/usr/bin/perl5.8.8
+}
+
+# Pre install commands for Tazpkg.
+# Remove perl link to microperl if any.
+#
+pre_install()
+{
+	echo "Processing pre-install commands..."
+	rm -f $1/usr/bin/perl
+}

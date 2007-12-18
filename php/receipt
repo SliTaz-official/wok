@@ -1,0 +1,77 @@
+# SliTaz package receipt.
+
+PACKAGE="php"
+VERSION="5.2.4"
+CATEGORY="extra"
+SHORT_DESC="PHP web programming language."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="lighttpd"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.php.net/"
+WGET_URL="http://us2.php.net/distributions/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --sysconfdir=/etc \
+	--infodir=/usr/share/info --mandir=/usr/share/man \
+	$CONFIGURE_ARGS \
+	--enable-fastcgi \
+	--enable-discard-path \
+	--enable-force-cgi-redirect \
+	--enable-mbstring \
+	--with-config-file-path=/etc \
+	--with-zlib \
+	--disable-cli
+	# to get a 2 Mb php-cgi binary.
+	#
+	#--disable-libxml \
+	#--disable-all
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/etc $fs/usr/share
+	cp -a $src/sapi/cgi/php-cgi $fs/usr/bin
+	strip -s $fs/usr/bin/*
+	# Recommended config file, phpinfo and pixmaps.
+	cp $src/php.ini-recommended $fs/etc/php.ini
+	cp -a stuff/phpinfo $fs/usr/share
+	cp -a stuff/pixmaps $fs/usr/share
+}
+
+# Post and pre install commans to stop
+# and restart Web server if needed.
+pre_install()
+{
+	local root
+	root=$1
+	if [ -f "$1/var/run/lighttpd.pid" ]; then
+		/etc/init.d/lighttpd stop
+	fi
+	# Backup existing php.ini
+	if [ -f "$1/etc/php.ini" ]; then
+		echo -n "Creating php.ini backup..."
+		cp $1/etc/php.ini $1/etc/php.ini.bak
+		status
+	fi
+}
+post_install()
+{
+	local root
+	root=$1
+	# Restore original php.ini
+	if [ -f "$1/etc/php.ini.bak" ]; then
+		echo -n "Restoring php.ini backup..."
+		mv -f $1/etc/php.ini.bak $1/etc/php.ini 
+		status
+	fi
+	# Start Web server.
+	if [ ! -f "/var/run/lighttpd.pid" ]; then
+		/etc/init.d/lighttpd start
+	fi
+}
+

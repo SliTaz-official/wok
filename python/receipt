@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="python"
+VERSION="2.5.1"
+CATEGORY="extra"
+SHORT_DESC="The Python programming language."
+MAINTAINER="pankso@slitaz.org"
+SOURCE="Python"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.python.org/"
+WGET_URL="http://www.python.org/ftp/python/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --enable-shared --with-ncurses \
+	--prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	rm -f $fs/usr/bin/*-config
+	strip -s $fs/usr/bin/* 2>/dev/null
+	strip -s $fs/usr/lib/*.so* 2>/dev/null
+	
+	# Python can be symlink to python2.5 ???
+	#cd $fs/usr/bin
+	#rm python && ln -s python2.5 python
+}
+
