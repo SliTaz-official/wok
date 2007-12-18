@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="nano"
+VERSION="2.0.6"
+CATEGORY="base-apps"
+SHORT_DESC="GNU Nano Text Editor."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="ncurses"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.nano-editor.org/"
+WGET_URL="http://www.nano-editor.org/dist/v2.0/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    ./configure --enable-all --enable-extra --prefix=/usr \
+    --infodir=/usr/share/info --mandir=/usr/share/man \
+    --sysconfdir=/etc $CONFIGURE_ARGS
+    make
+    make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale/fr $fs/etc $fs/usr/share/pixmaps
+    cp -a $_pkg/usr/bin $fs/usr
+    cp -a $_pkg/usr/share/nano $fs/usr/share
+    strip -s $fs/usr/bin/*
+    cp -a $_pkg/usr/share/locale/fr/LC_MESSAGES $fs/usr/share/locale/fr
+    # Config file.
+    cp stuff/nanorc $fs/etc
+    # Pixmap.
+    cp stuff/nano.png $fs/usr/share/pixmaps
+}
