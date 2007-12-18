@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="pcmciautils"
+VERSION="014"
+CATEGORY="extra"
+SHORT_DESC="Utils to use with PCMCIA cards"
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="linux sysfs udev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.kernel.org/pub/linux/utils/kernel/pcmcia/pcmcia.html"
+WGET_URL="http://www.kernel.org/pub/linux/utils/kernel/pcmcia/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# We need lex...
+	cd $src
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/sbin $fs/etc/udev/rules.d $fs/etc/pcmcia
+	cp -a $src/pccardctl $fs/sbin
+	cp -a $src/pcmcia-check-broken-cis $fs/sbin
+	cp -a $src/pcmcia-socket-startup $fs/sbin
+	strip -s $fs/sbin/*
+	# Udev rules and config.
+	cp -a $src/udev/60-pcmcia.rules $fs/etc/udev/rules.d
+	cp -a $src/config/config.opts $fs/etc/pcmcia
+}
