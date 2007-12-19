@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="ntfs-3g"
+VERSION="1.1120"
+CATEGORY="extra"
+SHORT_DESC="The free ntfs driver."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="fuse"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WEB_SITE="http://www.ntfs-3g.org/"
+WGET_URL="$WEB_SITE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/lib
+	cp -a $_pkg/bin $fs/
+	cp -a $_pkg/sbin $fs/
+	cp -a $_pkg/lib/*.so* $fs/lib
+	
+	strip -s $fs/bin/*
+	strip -s $fs/lib/*
+}

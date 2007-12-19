@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="ntfsprogs"
+VERSION="2.0.0"
+CATEGORY="extra"
+SHORT_DESC="Utilities for ntfs manipulations with FUSE module."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="fuse ntfs-3g"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.linux-ntfs.org/"
+WGET_URL="$SF_MIRROR/linux-ntfs/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		--enable-fuse-module
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/sbin $fs
+	
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/sbin/*
+	strip -s $fs/usr/lib/*
+}
+
