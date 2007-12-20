@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="freeradius"
+VERSION="1.1.7"
+CATEGORY="security"
+SHORT_DESC="radius server"
+MAINTAINER="Serge Daigle sdaigl@lacitec.on.ca"
+DEPENDS="libtool, openssl"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="www.freeradius.org"
+WGET_URL="http://freeradius.portal-to-web.de/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		$CONFIGURE_ARGS
+	make
+	make R=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/share/freeradius $fs/usr/share
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/var $fs
+	
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/sbin/*
+	strip -s $fs/usr/lib/*
+}
