@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="asunder"
+VERSION="1.0"
+CATEGORY="extra"
+SHORT_DESC="GTK light CD ripper."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+ libcddb cdparanoia"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://littlesvr.ca/asunder/"
+WGET_URL="http://littlesvr.ca/asunder/releases/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	strip -s $fs/usr/bin/*
+}
+
+# Set permission on cdrom device to alown all users ripping
+post_install()
+{
+	local root
+	root=$1
+	DRIVE_NAME=`cat /proc/sys/dev/cdrom/info | grep "drive name" | cut -f 3`
+	echo -n "Chmoding cdrom device..."
+	chmod 0666 $root/dev/$DRIVE_NAME
+	status
+}
