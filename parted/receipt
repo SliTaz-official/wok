@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="parted"
+VERSION="1.8.8"
+CATEGORY="extra"
+SHORT_DESC="GNU parted partition editor."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/parted/index.shtml"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--disable-debug \
+		--disable-Werror \
+		--without-readline \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share/locale
+	
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	
+	strip -s $fs/usr/lib/* 2>/dev/null
+	strip -s $fs/usr/sbin/* 2>/dev/null
+}
