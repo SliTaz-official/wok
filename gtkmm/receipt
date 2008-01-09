@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="gtkmm"
+VERSION="2.8.12"
+CATEGORY="extra"
+SHORT_DESC="C++ interface for the popular GUI library GTK+."
+MAINTAINER="pankso@slitaz.org"
+BUILD_DEPENDS="gtk+-dev glibmm-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gtkmm.org/"
+WGET_URL="http://ftp.gnome.org/pub/GNOME/sources/gtkmm/2.8/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	strip -s $fs/usr/lib/*
+	# clean wok
+	rm $WOK/$PACKAGE/classGtk_*
+}
