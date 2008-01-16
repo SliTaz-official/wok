@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="gnome-menus"
+VERSION="2.18.3"
+CATEGORY="extra"
+SHORT_DESC="GNOME menu used by e17."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="python"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnome.org/"
+WGET_URL="http://ftp.gnome.org/pub/GNOME/desktop/2.18/$VERSION/sources/$TARBALL"
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share/locale $fs/usr/share/applications
+	
+	# gmenu-simple-editor dep on pyGTK.
+	#cp -a $_pkg/usr/bin $fs/usr
+	#cp -a $_pkg/usr/share/applications $fs/usr/share
+	#cp -a $_pkg/usr/share/gnome-menus $fs/usr/share
+	
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/python2.5 $fs/usr/lib
+	rm $fs/usr/lib/python2.5/site-packages/*.*a
+	
+	cp -a $_pkg/usr/share/desktop-directories $fs/usr/share
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $_pkg/etc $fs
+	
+	strip -s $fs/usr/lib/*.so*
+}
+
