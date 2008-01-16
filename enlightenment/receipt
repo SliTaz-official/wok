@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="enlightenment"
+VERSION="0.16.999.041"
+CATEGORY="extra"
+SHORT_DESC="Enlightenment windoe manager (E17)."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="eet evas ecore embryo edje efreet"
+BUILD_DEPENDS="eet-dev evas-dev ecore-dev embryo-dev edje-dev efreet-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.enlightenment.org/"
+WGET_URL="http://download.enlightenment.org/snapshots/2007-08-26/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/enlightenment $fs/usr/share
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	
+	# Remove devel files *.a/*.la and strip
+	rm -rf $fs/usr/lib/$PACKAGE/preload/*.*a
+	rm -rf $fs/usr/lib/$PACKAGE/modules/*/linux-gnu-i486/*.*a
+	strip -s $fs/usr/bin/* 2>/dev/null
+	strip --strip-unneeded $fs/usr/lib/$PACKAGE/preload/*
+	strip --strip-unneeded $fs/usr/lib/$PACKAGE/modules/*/linux-gnu-i486/*
+	
+	# Rm backgrouds (1,6 Mb).
+	rm -rf $fs/usr/share/enlightenment/data/backgrounds/*
+}
+
