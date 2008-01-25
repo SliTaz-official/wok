@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="inkscape"
+VERSION="0.45.1"
+CATEGORY="extra"
+SHORT_DESC="Vector drawing application."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gc gtk+ libxslt libsigc++ glibmm gtkmm libxml2 libpng popt"
+BUILD_DEPENDS="gc-dev gtk+-dev libxslt-dev libsigc++-dev glibmm-dev gtkmm-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.inkscape.org/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		--disable-lcms \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	
+	# Copy all Inkscape files and remove tutorials (19,2 Mb), 
+	# examples + screens
+	cp -a $_pkg/usr/share/inkscape $fs/usr/share
+	rm -rf $fs/usr/share/inkscape/tutorials
+	rm -rf $fs/usr/share/inkscape/examples
+	rm -rf $fs/usr/share/inkscape/screens/keys.de.svg
+	rm -rf $fs/usr/share/inkscape/screens/keys.sl.svg
+	
+	strip -s $fs/usr/bin/* 2>/dev/null
+}
+
