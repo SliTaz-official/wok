@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="sudo"
+VERSION="1.6.9p12"
+CATEGORY="extra"
+SHORT_DESC="Sudo (su "do") allows a system administrator to delegate authority."
+MAINTAINER="Erjo <erjo@slitaz.org>"
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gratisoft.us/sudo/"
+WGET_URL="http://www.gratisoft.us/sudo/dist/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+	--sysconfdir=/etc \
+	--without-pam \
+	--with-editor=/bin/vi \
+	--libexecdir=/usr/lib
+	
+	# Build everything
+	make
+	# Install everything
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/libi/*.so $fs/usr/lib
+	cp -a stuff/sudoers $fs/etc
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/sbin/*
+	strip -s $fs/usr/lib/sudo_noexec.so
+	
+}
+
+
+post_install()
+{
+        local root
+        root=$1
+        echo "Processing post-install commands..."
+        chown root.root $root/etc/sudoers
+        chmod 0440 $root/etc/sudoers
+}                        
