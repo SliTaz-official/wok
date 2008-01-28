@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="tsclient"
+VERSION="0.150"
+CATEGORY="extra"
+SHORT_DESC="GTK frontend to rdesktop and other remote desktop tools."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+ rdesktop"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://sourceforge.net/projects/tsclient/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/$PACKAGE \
+		--mandir=/usr/share/man \
+		--disable-gnome \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/$PACKAGE $fs/usr/lib
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/lib/$PACKAGE/*
+}
