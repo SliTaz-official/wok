@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="file"
+VERSION="4.21"
+CATEGORY="extra"
+SHORT_DESC="Retrieve file type."
+MAINTAINER="Erjo <erjo@slitaz.org>"
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="ftp://ftp.gw.com/mirrors/pub/unix/file/"
+WGET_URL="ftp://ftp.gw.com/mirrors/pub/unix/file/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/share/file $fs/usr/share
+	
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/lib/*
+}
