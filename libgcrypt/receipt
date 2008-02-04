@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="libgcrypt"
+VERSION="1.4.0"
+CATEGORY="security"
+SHORT_DESC="Cryptographic library based on GnuPG"
+MAINTAINER="Erjo <erjo@slitaz.org>"
+DEPENDS="libgpg-error"
+BUILD_DEPENDS="libgpg-error-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gnupg.org/"
+WGET_URL="ftp://ftp.gnupg.org/gcrypt/libgcrypt/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/lib 	
+	cp -a $_pkg/usr/bin/dumpsexp $fs/usr/bin
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/lib/*
+}
+

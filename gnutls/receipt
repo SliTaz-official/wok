@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="gnutls"
+VERSION="2.3.0"
+CATEGORY="security"
+SHORT_DESC="GNU Transport Layer Security Library"
+MAINTAINER="Erjo <erjo@slitaz.com>"
+DEPENDS="libgcrypt libgpg-error"
+BUILD_DEPENDS="libgcrypt-dev libgpg-error-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gnu.org/software/gnutls/"
+WGET_URL="http://www.gnu.org/software/gnutls/releases/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/usr/lib
+	
+	# Copy all bin and remove devel stuff.
+	cp -a $_pkg/usr/bin $fs/usr
+	rm $fs/usr/bin/libgnutls-*config
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/lib/*
+}
+
