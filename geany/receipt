@@ -1,11 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="geany"
-VERSION="0.12"
-CATEGORY="extra"
+VERSION="0.13"
+CATEGORY="development"
 SHORT_DESC="Small and fast IDE using GTK+ toolkit."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+"
+DEPENDS="gtk+ libxml2"
+BUILD_DEPENDS="gtk+-dev libxml2-dev perl-xml-parser"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://geany.uvena.de/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
@@ -15,8 +16,11 @@ JWM_MENU='Development:<Program icon="geany.png" label="Geany IDE">geany</Program
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --mandir=/usr/share/man \
-    --disable-vte $CONFIGURE_ARGS
+	./configure \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+    	--disable-vte \
+    	$CONFIGURE_ARGS
 	make
 	make DESTDIR=$PWD/_pkg install
 }
@@ -24,13 +28,9 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/locale $fs/usr/lib/geany
+	mkdir -p $fs/usr/share $fs/usr/lib/geany
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/geany/*.so $fs/usr/lib/geany
 	cp -a $_pkg/usr/share/geany $fs/usr/share
-	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
-	rm -f $fs/usr/share/pixmaps/*.ico
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
-	strip -s $fs/usr/bin/*
-	strip -s $fs/usr/lib/geany/*
+	cp -a stuff/filetype_extensions.conf $fs/usr/share/geany
 }
