@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="vte"
+VERSION="0.15.6"
+CATEGORY="extra"
+SHORT_DESC=""
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnome.org/"
+WGET_URL="ftp://ftp.gnome.org/pub/GNOME/sources/vte/0.15/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/vte \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--with-html-dir=/usr/share/doc \
+		--with-pcre \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/bin $fs/usr/share/locale
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/vte $fs/usr/lib
+	cp -a $_pkg/usr/bin/vte $fs/usr/bin
+	cp -a $_pkg/usr/share/vte $fs/usr/share
+	strip -s $fs/usr/lib/vte/* 2>/dev/null
+}
