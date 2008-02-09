@@ -9,5 +9,5 @@
  * For more information, see http://www.mozilla.org/unix/customizing.html#prefs
  */
 
-user_pref("general.useragent.extra.firefox", "BonEcho/2.0.0.11 (SliTaz GNU/Linux)");
+user_pref("general.useragent.extra.firefox", "BonEcho/2.0.0.12 (SliTaz GNU/Linux)");
 user_pref("intl.charsetmenu.browser.cache", "ISO-8859-1, UTF-8");
