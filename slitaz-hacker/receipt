@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="slitaz-hacker"
+VERSION="1.0"
+CATEGORY="base-system"
+SHORT_DESC="SliTaz user hacker."
+MAINTAINER="pankso@slitaz.org"
+WEB_SITE="http://www.slitaz.org/"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	# /home/hacker directories.
+	#
+	mkdir -p $fs/home/hacker/Documents \
+		$fs/home/hacker/Downloads \
+		$fs/home/hacker/Templates \
+		$fs/home/hacker/.local/bin \
+		$fs/home/hacker/.local/share
+	cp -a stuff/ash_history $fs/home/hacke/.ash_history
+	cp -a stuff/profile $fs/home/hacke/.profile
+}
+
+pre_install()
+{
+	local root
+	root=$1
+	# Go for echoing on configuration files if any hacker was found.
+	#
+	if ! grep -q hacker $root/etc/passwd; then
+		echo -n "Configuring $root/etc..."
+		echo 'hacker:x:500:500:Linux User,,,:/home/hacker:/bin/ash' >> $root/etc/passwd
+		echo 'hacker::13646:0:99999:7:::' >> $root/etc/shadow
+		echo 'hacker:x:500:' >> $root/etc/group
+		echo 'hacker:!::' >> $root/etc/gshadow
+		status
+	else
+		echo "Hacker is already in : $root/etc/passwd"
+	fi
+	# Hacker can listen to music
+	#
+	if grep -q audio $root/etc/group; then
+		if ! grep -q "audio:x:20:hacker" $root/etc/group; then
+			sed -i s/'audio:x:20:'/'audio:x:20:hacker'/ $root/etc/group
+		fi
+	fi
+	# Change permissions.
+	#
+	echo -n "Chmodig all files in /home/hacker..."
+	chown -R 500.500 $root/home/hacker
+	status
+}
