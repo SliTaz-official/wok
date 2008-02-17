@@ -1,0 +1,78 @@
+# SliTaz package receipt.
+
+PACKAGE="squashfs"
+WANTED="linux"
+VERSION="3.3"
+CATEGORY="base-system"
+SHORT_DESC="Linux squashfs module and userland tools."
+MAINTAINER="pascal.bellard@slitaz.org"
+WEB_SITE="http://$PACKAGE.sourceforge.net/"
+TARBALL="squashfs$VERSION.tgz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="zlib"
+BUILD_DEPENDS="zlib-dev perl"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	local kver
+	local patch_dir
+
+	# get kernel version
+	kver=$(grep "kernel version" ../linux/linux-*/.config)
+	kver=${kver##* }
+
+	# Select patch according to kernel version
+	patch_dir=${PACKAGE}${VERSION}/kernel-patches/linux-${kver%.*}
+	if [ -f ${PACKAGE}${VERSION}/kernel-patches/linux-$kver ]; then
+	    patch_dir=${PACKAGE}${VERSION}/kernel-patches/linux-$kver
+	fi
+        [ -d $patch_dir ] || return 1
+	[ -d _kernel ] && rm -rf _kernel
+	mkdir _kernel
+	cd _kernel
+	ln -s ../../linux/linux-$kver* src
+
+	# Copy files to be patched in local aera
+	# Do not alter kernel sources !!
+	for i in $(grep ^--- ../$patch_dir/${PACKAGE}${VERSION}-patch | \
+    		awk '{ if ($3 != "1970-01-01") print $2 } '); do
+		( cd src ; tar cf - ${i#*/}) | tar xf -
+	done
+
+	# Apply squashfs patches in local aera
+	patch -Np1 < ../$patch_dir/${PACKAGE}${VERSION}-patch
+
+	# Move every files in fs/squashfs directory
+	find include -type f -exec cp {} fs/squashfs \;
+
+	# Hardcoded options
+	perl -pi -e 's/CONFIG_SQUASHFS_FRAGMENT_CACHE_SIZE/3/g' fs/squashfs/*
+	
+	# Build kernel module
+	make -C src/. SUBDIRS=$(pwd)/fs/squashfs/ modules
+	cd ..
+	[ -d _pkg ] && rm -rf _pkg
+	mkdir -p _pkg/lib/modules/$kver-slitaz/kernel/fs/squashfs _pkg/usr/sbin
+	cp _kernel/fs/squashfs/squashfs.ko \
+        	_pkg/lib/modules/$kver-slitaz/kernel/fs/squashfs/squashfs.ko
+	gzip -9 _pkg/lib/modules/$kver-slitaz/kernel/fs/squashfs/squashfs.ko
+
+	# Build user land tools
+	cd ${PACKAGE}${VERSION}/squashfs-tools
+	make
+	cp mksquashfs unsquashfs ../../_pkg/usr/sbin
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a _pkg/* $fs
+	strip  -s $fs/usr/sbin/*
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	depmod -a
+}
