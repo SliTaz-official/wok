@@ -1,7 +1,6 @@
 # SliTaz package receipt.
 
 PACKAGE="squashfs"
-WANTED="linux"
 VERSION="3.3"
 CATEGORY="base-system"
 SHORT_DESC="Linux squashfs module and userland tools."
@@ -10,7 +9,7 @@ WEB_SITE="http://$PACKAGE.sourceforge.net/"
 TARBALL="squashfs$VERSION.tgz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 DEPENDS="zlib"
-BUILD_DEPENDS="zlib-dev perl"
+BUILD_DEPENDS="zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -25,9 +24,12 @@ compile_rules()
 	# Select patch according to kernel version
 	patch_dir=${PACKAGE}${VERSION}/kernel-patches/linux-${kver%.*}
 	if [ -f ${PACKAGE}${VERSION}/kernel-patches/linux-$kver ]; then
-	    patch_dir=${PACKAGE}${VERSION}/kernel-patches/linux-$kver
+		patch_dir=${PACKAGE}${VERSION}/kernel-patches/linux-$kver
 	fi
-        [ -d $patch_dir ] || return 1
+	if [ ! -d $patch_dir ]; then
+		echo "No squashfs patchset for kernel $ker. Abort."
+		return 1
+	fi
 	[ -d _kernel ] && rm -rf _kernel
 	mkdir _kernel
 	cd _kernel
@@ -44,13 +46,15 @@ compile_rules()
 	patch -Np1 < ../$patch_dir/${PACKAGE}${VERSION}-patch
 
 	# Move every files in fs/squashfs directory
-	find include -type f -exec cp {} fs/squashfs \;
-
-	# Hardcoded options
-	perl -pi -e 's/CONFIG_SQUASHFS_FRAGMENT_CACHE_SIZE/3/g' fs/squashfs/*
+	mv include/linux/* fs/squashfs
+	ln -s . fs/squashfs/linux
+	for i in fs/squashfs/*.c fs/squashfs/*.h ; do
+		sed -e 's/#include <\(linux\/squashfs.*\)>.*/#include "\1"/g' > $i.$$ < $i
+		sed -e 's/CONFIG_SQUASHFS_FRAGMENT_CACHE_SIZE/3/g' > $i < $i.$$
+	done
 	
 	# Build kernel module
-	make -C src/. SUBDIRS=$(pwd)/fs/squashfs/ modules
+	make -C src/. SUBDIRS=$(pwd)/fs/squashfs/ CONFIG_SQUASHFS=m modules
 	cd ..
 	[ -d _pkg ] && rm -rf _pkg
 	mkdir -p _pkg/lib/modules/$kver-slitaz/kernel/fs/squashfs _pkg/usr/sbin
