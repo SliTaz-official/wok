@@ -1,0 +1,437 @@
+--- shfs/Linux-2.6/dcache.c
++++ shfs/Linux-2.6/dcache.c
+@@ -68,7 +68,7 @@ shfs_invalidate_dircache_entries(struct 
+ 	spin_lock(&dcache_lock);
+ 	next = parent->d_subdirs.next;
+ 	while (next != &parent->d_subdirs) {
+-		dentry = list_entry(next, struct dentry, d_child);
++		dentry = list_entry(next, struct dentry, d_u.d_child);
+ 		dentry->d_fsdata = NULL;
+ 		shfs_age_dentry(info, dentry);
+ 		next = next->next;
+@@ -101,7 +101,7 @@ shfs_dget_fpos(struct dentry *dentry, st
+ 	spin_lock(&dcache_lock);
+ 	next = parent->d_subdirs.next;
+ 	while (next != &parent->d_subdirs) {
+-		dent = list_entry(next, struct dentry, d_child);
++		dent = list_entry(next, struct dentry, d_u.d_child);
+ 		if ((unsigned long)dent->d_fsdata == fpos) {
+ 			if (dent->d_inode)
+ 				dget_locked(dent);
+--- shfs/Linux-2.6/dir.c
++++ shfs/Linux-2.6/dir.c
+@@ -300,8 +300,8 @@ shfs_create(struct inode* dir, struct de
+ 	
+ 	shfs_invalid_dir_cache(dir);
+ 	result = shfs_instantiate(dentry);
+-	if (forced_write && dentry->d_inode && dentry->d_inode->u.generic_ip)
+-		((struct shfs_inode_info *)dentry->d_inode->u.generic_ip)->unset_write_on_close = 1;
++	if (forced_write && dentry->d_inode && dentry->d_inode->i_private)
++		((struct shfs_inode_info *)dentry->d_inode->i_private)->unset_write_on_close = 1;
+ 	return result;
+ }
+ 
+@@ -488,7 +488,7 @@ shfs_d_delete(struct dentry *dentry)
+ 	return 0;
+ }
+ 
+-static struct dentry_operations shfs_dentry_operations = {
++struct dentry_operations shfs_dentry_operations = {
+ 	.d_revalidate	= shfs_d_revalidate,
+ 	.d_delete 	= shfs_d_delete,
+ };
+--- shfs/Linux-2.6/fcache.c
++++ shfs/Linux-2.6/fcache.c
+@@ -29,12 +29,12 @@ struct shfs_file {
+ 	char          	*data;
+ };
+ 
+-kmem_cache_t	*file_cache = NULL;
++struct kmem_cache	*file_cache = NULL;
+ 
+ void
+ fcache_init(void)
+ {
+-	file_cache = kmem_cache_create("shfs_file", sizeof(struct shfs_file), 0, 0, NULL, NULL);
++	file_cache = kmem_cache_create("shfs_file", sizeof(struct shfs_file), 0, 0, NULL);
+ 	DEBUG("file_cache: %p\n", file_cache);
+ }
+ 
+@@ -100,7 +100,7 @@ fcache_file_open(struct file *f)
+ 		VERBOSE("dir in file cache?\n");
+ 		return -EINVAL;
+ 	}
+-	p = (struct shfs_inode_info *)inode->u.generic_ip;
++	p = (struct shfs_inode_info *)inode->i_private;
+ 	if (!p) {
+ 		VERBOSE("inode without info\n");
+ 		return -EINVAL;
+@@ -127,7 +127,7 @@ fcache_file_sync(struct file *f)
+ 		VERBOSE("dir in file cache?\n");
+ 		return -EINVAL;
+ 	}
+-	p = (struct shfs_inode_info *)inode->u.generic_ip;
++	p = (struct shfs_inode_info *)inode->i_private;
+ 	if (!p) {
+ 		VERBOSE("inode without info\n");
+ 		return -EINVAL;
+@@ -160,7 +160,7 @@ fcache_file_close(struct file *f)
+ 	if (result == 0) {
+ 		struct shfs_inode_info *p;
+ 
+-		p = (struct shfs_inode_info *)f->f_dentry->d_inode->u.generic_ip;
++		p = (struct shfs_inode_info *)f->f_dentry->d_inode->i_private;
+ 		if (!p) {
+ 			VERBOSE("inode without info\n");
+ 			return -EINVAL;
+@@ -184,7 +184,7 @@ fcache_file_clear(struct inode *inode)
+ 		return -EINVAL;
+ 	}
+ 	DEBUG("ino: %lu\n", inode->i_ino);
+-	p = (struct shfs_inode_info *)inode->u.generic_ip;
++	p = (struct shfs_inode_info *)inode->i_private;
+ 	if (!p) {
+ 		VERBOSE("inode without info\n");
+ 		return -EINVAL;
+@@ -226,7 +226,7 @@ fcache_file_read(struct file *f, unsigne
+ 		VERBOSE("dir in file cache?\n");
+ 		return -EINVAL;
+ 	}
+-	p = (struct shfs_inode_info *)inode->u.generic_ip;
++	p = (struct shfs_inode_info *)inode->i_private;
+ 	if (!p) {
+ 		VERBOSE("inode without info\n");
+ 		return -EINVAL;
+@@ -327,7 +327,7 @@ fcache_file_write(struct file *f, unsign
+ 		VERBOSE("dir in file cache?\n");
+ 		return -EINVAL;
+ 	}
+-	p = (struct shfs_inode_info *)inode->u.generic_ip;
++	p = (struct shfs_inode_info *)inode->i_private;
+ 	if (!p) {
+ 		VERBOSE("inode without info\n");
+ 		return -EINVAL;
+--- shfs/Linux-2.6/file.c
++++ shfs/Linux-2.6/file.c
+@@ -90,7 +90,7 @@ shfs_file_commitwrite(struct file *f, st
+ 	struct dentry *dentry = f->f_dentry;
+ 	struct shfs_sb_info *info = info_from_dentry(dentry);
+ 	struct inode *inode = p->mapping->host;
+-	struct shfs_inode_info *i = (struct shfs_inode_info *)inode->u.generic_ip;
++	struct shfs_inode_info *i = (struct shfs_inode_info *)inode->i_private;
+ 	char *buffer = kmap(p) + offset;
+ 	int written = 0, result;
+ 	unsigned count = to - offset;
+@@ -199,7 +199,7 @@ shfs_file_open(struct inode *inode, stru
+ }
+ 
+ static int
+-shfs_file_flush(struct file *f)
++shfs_file_flush(struct file *f, fl_owner_t id)
+ {
+ 	struct dentry *dentry = f->f_dentry;
+ 	struct shfs_sb_info *info = info_from_dentry(dentry);
+@@ -242,8 +242,8 @@ shfs_file_release(struct inode *inode, s
+ 		}
+ 	}
+ 	/* if file was forced to be writeable, change attrs back on close */
+-	if (dentry->d_inode && dentry->d_inode->u.generic_ip) {
+-		if  (((struct shfs_inode_info *)dentry->d_inode->u.generic_ip)->unset_write_on_close) {
++	if (dentry->d_inode && dentry->d_inode->i_private) {
++		if  (((struct shfs_inode_info *)dentry->d_inode->i_private)->unset_write_on_close) {
+ 			char name[SHFS_PATH_MAX];
+ 
+ 			if (get_name(dentry, name) < 0)
+@@ -292,7 +292,9 @@ shfs_slow_read(struct file *f, char *buf
+ 		goto error;
+ 	}
+ 	if (result != 0) {
+-		copy_to_user(buf, (char *)page, result);
++		if (copy_to_user(buf, (char *)page, result)) {
++			goto error;
++		}
+ 		*ppos += result;
+ 	}
+ error:
+@@ -309,9 +311,9 @@ shfs_slow_write(struct file *f, const ch
+ 	int result;
+ 	
+ 	DEBUG("\n");
+-	written = generic_file_write(f, buf, count, offset);
++	written = do_sync_write(f, buf, count, offset);
+ 	if (written > 0) {
+-		result = shfs_file_flush(f);
++		result = shfs_file_flush(f, 0);
+ 		written = result < 0 ? result: written;
+ 	}
+ 	
+@@ -320,8 +322,8 @@ shfs_slow_write(struct file *f, const ch
+ 
+ struct file_operations shfs_file_operations = {
+ 	.llseek		= generic_file_llseek,
+-	.read		= generic_file_read,
+-	.write		= generic_file_write,
++	.read		= do_sync_read,
++	.write		= do_sync_write,
+ 	.ioctl		= shfs_ioctl,
+ 	.mmap		= generic_file_mmap,
+ 	.open		= shfs_file_open,
+--- shfs/Linux-2.6/inode.c
++++ shfs/Linux-2.6/inode.c
+@@ -29,13 +29,13 @@ int debug_level;
+ 	unsigned long alloc;
+ #endif
+ 
+-kmem_cache_t	*inode_cache = NULL;
++struct kmem_cache	*inode_cache = NULL;
+ 
+ void 
+ shfs_set_inode_attr(struct inode *inode, struct shfs_fattr *fattr)
+ {
+ 	struct shfs_sb_info *info = info_from_inode(inode);
+-	struct shfs_inode_info *i = inode->u.generic_ip;
++	struct shfs_inode_info *i = inode->i_private;
+ 	struct timespec last_time = inode->i_mtime;
+ 	loff_t last_size = inode->i_size;
+ 
+@@ -52,7 +52,8 @@ shfs_set_inode_attr(struct inode *inode,
+ 	inode->i_ctime	= fattr->f_ctime;
+ 	inode->i_atime	= fattr->f_atime;
+ 	inode->i_mtime	= fattr->f_mtime;
+-	inode->i_blksize= fattr->f_blksize;
++	//inode->i_blksize= fattr->f_blksize;
++	inode->i_blkbits= 12; // 4K
+ 	inode->i_blocks	= fattr->f_blocks;
+ 	inode->i_size	= fattr->f_size;
+ 
+@@ -60,7 +61,7 @@ shfs_set_inode_attr(struct inode *inode,
+ 
+ 	if (!timespec_equal(&inode->i_mtime, &last_time) || inode->i_size != last_size) {
+ 		DEBUG("inode changed (%ld/%ld, %lu/%lu)\n", inode->i_mtime.tv_sec, last_time.tv_sec, (unsigned long)inode->i_size, (unsigned long)last_size);
+-		invalidate_inode_pages(inode->i_mapping);
++		invalidate_mapping_pages(inode->i_mapping, 0, ~0UL);
+ 		fcache_file_clear(inode);
+ 	}
+ }
+@@ -75,7 +76,7 @@ shfs_iget(struct super_block *sb, struct
+ 	if (!inode)
+ 		return NULL;
+ 	inode->i_ino = fattr->f_ino;
+-	i = inode->u.generic_ip = (struct shfs_inode_info *)KMEM_ALLOC("inode", inode_cache, GFP_KERNEL);
++	i = inode->i_private = (struct shfs_inode_info *)KMEM_ALLOC("inode", inode_cache, GFP_KERNEL);
+ 	if (!i)
+ 		return NULL;
+ 	i->cache = NULL;
+@@ -107,7 +108,7 @@ shfs_delete_inode(struct inode *inode)
+ 	struct shfs_inode_info *i;
+ 
+ 	DEBUG("ino: %lu\n", inode->i_ino);
+-	i = (struct shfs_inode_info *)inode->u.generic_ip;
++	i = (struct shfs_inode_info *)inode->i_private;
+ 	if (!i) {
+ 		VERBOSE("invalid inode\n");
+ 		goto out;
+@@ -158,7 +159,7 @@ shfs_refresh_inode(struct dentry *dentry
+ 		 * But we do want to invalidate the caches ...
+ 		 */
+ 		if (!S_ISDIR(inode->i_mode))
+-			invalidate_inode_pages(inode->i_mapping);
++			invalidate_mapping_pages(inode->i_mapping, 0, ~0UL);
+ 		else
+ 			shfs_invalid_dir_cache(inode);
+ 		result = -EIO;
+@@ -172,7 +173,7 @@ shfs_revalidate_inode(struct dentry *den
+ {
+ 	struct shfs_sb_info *info = info_from_dentry(dentry);
+ 	struct inode *inode = dentry->d_inode;
+-	struct shfs_inode_info *i = (struct shfs_inode_info *)inode->u.generic_ip;
++	struct shfs_inode_info *i = (struct shfs_inode_info *)inode->i_private;
+ 	int result;
+ 
+         DEBUG("%s\n", dentry->d_name.name);
+@@ -337,11 +338,11 @@ out:
+ 	return -EINVAL;
+ }
+ 
+-static struct super_block *
++static int
+ shfs_get_sb(struct file_system_type *fs_type,
+-	    int flags, const char *dev_name, void *data)
++	    int flags, const char *dev_name, void *data, struct vfsmount *mnt)
+ {
+-	return get_sb_nodev(fs_type, flags, data, shfs_read_super);
++	return get_sb_nodev(fs_type, flags, data, shfs_read_super, mnt);
+ }
+ 
+ static struct file_system_type sh_fs_type = {
+@@ -356,7 +357,7 @@ init_shfs(void)
+ {
+ 	printk(KERN_NOTICE "SHell File System, (c) 2002-2004 Miroslav Spousta\n");
+ 	fcache_init();
+-	inode_cache = kmem_cache_create("shfs_inode", sizeof(struct shfs_inode_info), 0, 0, NULL, NULL);
++	inode_cache = kmem_cache_create("shfs_inode", sizeof(struct shfs_inode_info), 0, 0, NULL);
+ 	
+ 	debug_level = 0;
+ #ifdef ENABLE_DEBUG
+--- shfs/Linux-2.6/proc.c
++++ shfs/Linux-2.6/proc.c
+@@ -148,6 +148,7 @@ int
+ sock_write(struct shfs_sb_info *info, const void *buffer, int count)
+ {
+ 	struct file *f = info->sock;
++	struct kiocb kiocb;
+ 	mm_segment_t fs;
+ 	int c, result = 0;
+ 	unsigned long flags, sigpipe;
+@@ -173,12 +174,13 @@ sock_write(struct shfs_sb_info *info, co
+ 	SIGRECALC;
+ 	SIGUNLOCK(flags);
+ 
++	init_sync_kiocb(&kiocb, f);
+ 	do {
+ 		struct iovec vec[1];
+ 
+ 		vec[0].iov_base = (void *)buffer;
+ 		vec[0].iov_len = c;
+-		result = f->f_op->writev(f, (const struct iovec *) &vec, 1, &f->f_pos);
++		result = f->f_op->aio_write(&kiocb, (const struct iovec *) &vec, 1, f->f_pos);
+ 		if (result < 0) {
+ 			DEBUG("error: %d\n", result);
+ 			if (result == -EAGAIN)
+@@ -218,6 +220,7 @@ int
+ sock_read(struct shfs_sb_info *info, void *buffer, int count)
+ {
+ 	struct file *f = info->sock;
++	struct kiocb kiocb;
+ 	mm_segment_t fs;
+ 	int c, result = 0;
+ 	unsigned long flags, sigpipe;
+@@ -256,12 +259,13 @@ sock_read(struct shfs_sb_info *info, voi
+ 	fs = get_fs();
+ 	set_fs(get_ds());
+ 
++	init_sync_kiocb(&kiocb, f);
+ 	do {
+ 		struct iovec vec[1];
+ 
+ 		vec[0].iov_base = buffer;
+ 		vec[0].iov_len = c;
+-		result = f->f_op->readv(f, (const struct iovec *)&vec, 1, &f->f_pos);
++		result = f->f_op->aio_read(&kiocb, (const struct iovec *) &vec, 1, f->f_pos);
+ 		if (!result) {
+ 			/*  peer has closed socket */
+ 			result = -EIO;
+@@ -302,6 +306,7 @@ int 
+ sock_readln(struct shfs_sb_info *info, char *buffer, int count)
+ {
+ 	struct file *f = info->sock;
++	struct kiocb kiocb;
+ 	mm_segment_t fs;
+ 	int c, l = 0, result;
+ 	char *nl;
+@@ -315,6 +320,7 @@ sock_readln(struct shfs_sb_info *info, c
+ 		if (result < 0)
+ 			return result;
+ 	}
++	init_sync_kiocb(&kiocb, f);
+ 	while (1) {
+ 		struct iovec vec[1];
+ 
+@@ -350,7 +356,7 @@ sock_readln(struct shfs_sb_info *info, c
+ 
+ 		vec[0].iov_base = BUFFER+LEN;
+ 		vec[0].iov_len = c;
+-		result = f->f_op->readv(f, (const struct iovec *)&vec, 1, &f->f_pos);
++		result = f->f_op->aio_read(&kiocb, (const struct iovec *) &vec, 1, f->f_pos);
+ 		SIGLOCK(flags);
+ 		if (result == -EPIPE && !sigpipe) {
+ 			sigdelset(&current->pending.signal, SIGPIPE);
+@@ -571,9 +577,9 @@ error:
+ }
+ 
+ int
+-shfs_statfs(struct super_block *sb, struct kstatfs *attr)
++shfs_statfs(struct dentry *dentry, struct kstatfs *attr)
+ {
+-	struct shfs_sb_info *info = info_from_sb(sb);
++	struct shfs_sb_info *info = info_from_sb(dentry->d_sb);
+ 
+ 	DEBUG("\n");
+ 	return info->fops.statfs(info, attr);
+--- shfs/Linux-2.6/shfs_debug.h
++++ shfs/Linux-2.6/shfs_debug.h
+@@ -19,7 +19,7 @@ extern int debug_level;
+ extern unsigned long alloc;
+ 
+ static inline void *
+-__kmem_malloc_debug(char *s, kmem_cache_t *cache, int flags)
++__kmem_malloc_debug(char *s, struct kmem_cache *cache, int flags)
+ {
+ 	if (debug_level >= SHFS_ALLOC) {
+ 		void *x = kmem_cache_alloc(cache, flags);
+@@ -32,7 +32,7 @@ __kmem_malloc_debug(char *s, kmem_cache_
+ }
+ 
+ static inline void
+-__kmem_free_debug(char *s, kmem_cache_t *cache, void *p)
++__kmem_free_debug(char *s, struct kmem_cache *cache, void *p)
+ {
+ 	if (debug_level >= SHFS_ALLOC) {
+ 		VERBOSE("free (%s): %p\n", s, p);
+--- shfs/Linux-2.6/shfs_fs.h
++++ shfs/Linux-2.6/shfs_fs.h
+@@ -74,10 +74,10 @@ int shfs_fill_cache(struct file*, void*,
+ 
+ /* shfs/fcache.c */
+ #include <linux/slab.h>
+-extern kmem_cache_t *file_cache;
+-extern kmem_cache_t *dir_head_cache;
+-extern kmem_cache_t *dir_entry_cache;
+-extern kmem_cache_t *dir_name_cache;
++extern struct kmem_cache *file_cache;
++extern struct kmem_cache *dir_head_cache;
++extern struct kmem_cache *dir_entry_cache;
++extern struct kmem_cache *dir_name_cache;
+ void fcache_init(void);
+ void fcache_finish(void);
+ int fcache_file_open(struct file*);
+@@ -101,7 +101,7 @@ int reply(char *s);
+ void set_garbage(struct shfs_sb_info *info, int write, int count);
+ int get_name(struct dentry *d, char *name);
+ int shfs_notify_change(struct dentry *dentry, struct iattr *attr);
+-int shfs_statfs(struct super_block *sb, struct kstatfs *attr);
++int shfs_statfs(struct dentry *dentry, struct kstatfs *attr);
+ 	
+ /* shfs/inode.c */
+ void shfs_set_inode_attr(struct inode *inode, struct shfs_fattr *fattr);
+--- shfs/Linux-2.6/symlink.c
++++ shfs/Linux-2.6/symlink.c
+@@ -41,7 +41,7 @@ error:
+ 	return result;
+ }
+ 
+-static int
++static void *
+ shfs_follow_link(struct dentry *dentry, struct nameidata *nd)
+ {
+ 	struct shfs_sb_info *info = info_from_dentry(dentry);
+@@ -51,7 +51,6 @@ shfs_follow_link(struct dentry *dentry, 
+ 	
+ 	DEBUG("%s\n", dentry->d_name.name);
+ 
+-	result = -ENAMETOOLONG;
+ 	if (get_name(dentry, name) < 0)
+ 		goto error;
+ 
+@@ -59,9 +58,9 @@ shfs_follow_link(struct dentry *dentry, 
+ 	if (result < 0)
+ 		goto error;
+ 	DEBUG("%s\n", real_name);
+-	result = vfs_follow_link(nd, real_name);
++	nd_set_link(nd, real_name);
+ error:
+-	return result;
++	return NULL;
+ }
+ 
+ struct inode_operations shfs_symlink_inode_operations = {

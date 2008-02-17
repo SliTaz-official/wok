@@ -1,0 +1,49 @@
+# SliTaz package receipt.
+
+PACKAGE="shfs"
+VERSION="0.35"
+CATEGORY="network"
+SHORT_DESC="(secure) SHell FileSystem Linux kernel module and userland tool."
+MAINTAINER="pascal.bellard@ads-lu.com"
+TARBALL="shfs-$VERSION.tar.gz"
+WEB_SITE="http://$PACKAGE.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WANTED="linux"
+DEPENDS="dropbear"
+BUILD_DEPENDS="perl"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	local kver
+	kver=$(grep "kernel version" ../linux/linux-*/.config)
+	kver=${kver##* }
+	cd $PACKAGE-$VERSION
+	patch -p0 < ../stuff/$PACKAGE-$VERSION-$kver.u
+	while read subs ; do
+		perl -pi -e "$subs" Makefile
+	done << EOF
+s,^KERNEL=.*,KERNEL=$kver,
+s,^KERNEL_SOURCES=.*,KERNEL_SOURCES=$(cd ../../linux/linux-$kver* ; pwd),
+s,^ROOT=.*,ROOT=$(pwd)/_pkg,
+EOF
+	make 
+	mkdir -p _pkg/lib/modules/$kver-slitaz/kernel/fs/shfs/ _pkg/usr/bin
+	cp shfs/Linux-2.6/shfs.ko _pkg/lib/modules/$kver-slitaz/kernel/fs/shfs/
+	cp shfsmount/shfsmount _pkg/usr/bin
+}
+
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $PACKAGE-$VERSION/_pkg/* $fs
+	strip -s $fs/usr/bin/*
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	depmod -a
+}
+
