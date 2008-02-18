@@ -18,6 +18,9 @@ compile_rules()
 	local patch_dir
 
 	# get kernel version
+	if [ ! -d ../linux/taz ]; then
+		tazwok cook linux
+	fi
 	kver=$(grep "kernel version" ../linux/linux-*/.config)
 	kver=${kver##* }
 
@@ -75,8 +78,13 @@ genpkg_rules()
 	strip  -s $fs/usr/sbin/*
 }
 
-# Pre and post install commands for Tazpkg.
+# Post install/remove commands for Tazpkg.
 post_install()
+{
+	depmod -a
+}
+
+post_remove()
 {
 	depmod -a
 }

@@ -15,10 +15,13 @@ BUILD_DEPENDS="perl"
 compile_rules()
 {
 	local kver
+	if [ ! -d ../linux/taz ]; then
+		tazwok cook linux
+	fi
 	kver=$(grep "kernel version" ../linux/linux-*/.config)
 	kver=${kver##* }
 	cd $PACKAGE-$VERSION
-	patch -p0 < ../stuff/$PACKAGE-$VERSION-$kver.u
+	patch -Np0 < ../stuff/$PACKAGE-$VERSION-$kver.u
 	while read subs ; do
 		perl -pi -e "$subs" Makefile
 	done << EOF
@@ -40,8 +43,13 @@ genpkg_rules()
 	strip -s $fs/usr/bin/*
 }
 
-# Pre and post install commands for Tazpkg.
+# Post install/remove commands for Tazpkg.
 post_install()
+{
+	depmod -a
+}
+
+post_remove()
 {
 	depmod -a
 }
