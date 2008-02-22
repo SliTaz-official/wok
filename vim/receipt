@@ -1,0 +1,73 @@
+# SliTaz package receipt.
+
+PACKAGE="vim"
+VERSION="7.1"
+CATEGORY="extra"
+SHORT_DESC="Advanced text editor"
+MAINTAINER="Erjo <erjo@slita.org>"
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.vim.org/"
+WGET_URL="ftp://ftp.vim.org/pub/vim/unix/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	src="vim71"
+	cd $src
+	
+	./configure --prefix=/usr \
+	 --cache-file=$PWD/config.cache \
+	 --infodir=/usr/share/info \
+	 --with-features=normal \
+	 --enable-gui=no \
+	 --without-x 
+	 --mandir=/usr/share/man $CONFIGURE_ARGS
+	 
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	_pkg="$PWD/vim71/_pkg"
+	mkdir -p $fs/usr $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/vim $fs/usr/share
+
+	rm -f $fs/usr/bin/vimtutor
+
+	strip -s $fs/usr/bin/*
+}
+
+
+# Rules to clean extras dirs or files
+clean_wok()
+{
+	rm -rf $PWD/vim71 2>/dev/null
+}
+
+post_install()
+{
+    local root
+    root=$1
+    echo "Processing post-install commands..."
+    cmd=`readlink $root/bin/vi`
+    if [ ! "$cmd" = "/usr/bin/vim" ]; then
+        echo ""
+        echo "**** Actual VI link : $cmd"
+        echo ""
+        echo -n "Do you want vim  for /bin/vi (y/N) ? : "; read anser
+        if [ "$anser" == "y" ]; then
+            echo ""
+            echo -n "Removing vi link to make a new one pointing on /usr/bin/vim..."
+            rm $root/bin/vi && ln -s $root/usr/bin/vim $root/bin/vi
+            status
+        else
+            echo ""
+            echo "Leaving /bin/vi to : $cmd"
+        fi
+    fi
+}
+
