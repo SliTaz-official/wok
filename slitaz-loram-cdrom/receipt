@@ -1,0 +1,91 @@
+# SliTaz package receipt.
+
+PACKAGE="slitaz-loram-cdrom"
+VERSION="1.0"
+CATEGORY="misc"
+SHORT_DESC="Rules to build low ram system using cdrom."
+MAINTAINER="pascal.bellard@slitaz.org"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/etc/tazlito
+    cat > $fs/etc/tazlito/loram.rootfs << EOF
+echo "\$(du -hs /usr | cut -f1) were used by /usr"
+for ii in /sbin /lib /bin; do
+  mkdir -p ./usr/.moved\$ii
+  for j in e2fsprogs pcmciautils cpio syslinux-extra isapnptools ncurses; do
+    for k in \$(grep ^\$ii /var/lib/tazpkg/installed/\$j/files.list) ; do
+      [ -f .\$k ] || continue
+      mv .\$k ./usr/.moved\$k
+      ln -s /usr/.moved\$k .\$k 
+    done
+  done
+done
+for ii in /var/lib/tazpkg/installed ; do
+  j=\$(dirname /usr/.moved\$ii)
+  mkdir -p .\$j
+  mv .\$ii .\$j
+  ln -s /usr/.moved\$ii .\$ii
+done
+echo "\$(du -hs /usr/.moved | cut -f1) have been moved into /usr"
+if [ -x usr/sbin/mksquashfs ]; then
+  usr/sbin/mksquashfs usr ../rootcd/usr.sqfs
+  rm -rf usr
+  mkdir usr
+else
+  mv usr ../rootcd
+  ln -s /cdrom/usr usr
+  ln -s /bin ../rootcd/bin
+fi
+mkdir cdrom
+COMPRESSION="gzip"
+EOF
+}
+
+get_patch()
+{
+    cat <<EOF
+--- /etc/init.d/rcS
++++ /etc/init.d/rcS
+@@ -54,4 +54,4 @@
+ #
+-DRIVE_NAME=`cat /proc/sys/dev/cdrom/info | grep "drive name" | cut -f 3`
+-if [ ! "`readlink /dev/cdrom`" ]; then
++DRIVE_NAME=`cat /proc/sys/dev/cdrom/info | grep "drive name" | busybox cut -f 3`
++if [ ! "`busybox readlink /dev/cdrom`" ]; then
+ 	echo -n "Creating symlink : /dev/cdrom..."
+@@ -69,2 +69,12 @@
+ 
++# Mount /usr
++if [ -d /cdrom ]; then
++	echo -n "Mounting /usr read-only from /cdrom... "
++	/bin/mount -o ro -t iso9660 /dev/cdrom /cdrom
++	if [ -f /cdrom/usr.sqfs ]; then
++		/bin/mount -o loop,ro -t squashfs /cdrom/usr.sqfs /usr
++	fi
++	status 
++fi
++
+ # Handle kernel cmdline parameter modprobe=<module_list> 
+EOF
+}
+
+# Pre and post install commands for Tazpkg.
+pre_install()
+{
+    local $loram
+    loram=$(cd /var/lib/tazpkg/installed ; ls -d slitaz-loram* 2> /dev/null)
+    [ -n "$loram" ] && yes y | tazpkg remove $loram
+}
+
+post_install()
+{
+    get_patch | patch -p0
+}
+
+# Pre remove commands for Tazpkg.
+pre_remove()
+{
+    get_patch | patch -R -p0
+}

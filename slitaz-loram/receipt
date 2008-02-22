@@ -31,7 +31,7 @@ for ii in /var/lib/tazpkg/installed ; do
 done
 echo "\$(du -hs ./usr/.moved | cut -f1) have been moved into /usr"
 echo "\$(du -hs ./usr | cut -f1) were used by /usr before compression"
-mksquashfs usr .usr.sqfs
+usr/sbin/mksquashfs usr .usr.sqfs
 rm -rf usr
 mkdir usr
 COMPRESSION="none"
@@ -58,6 +58,13 @@ EOF
 }
 
 # Pre and post install commands for Tazpkg.
+pre_install()
+{
+    local $loram
+    loram=$(cd /var/lib/tazpkg/installed ; ls -d slitaz-loram* 2> /dev/null)
+    [ -n "$loram" ] && yes y | tazpkg remove $loram
+}
+
 post_install()
 {
     get_patch | patch -p0
