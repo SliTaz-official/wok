@@ -1,16 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="portmap"
-VERSION="5beta"
+VERSION="6.0"
 CATEGORY="network"
 SHORT_DESC="RPC portmapper"
 MAINTAINER="Erjo <erjo@slitaz.org>"
 DEPENDS=""
-TARBALL="${PACKAGE}_${VERSION}.tar.gz"
-WEB_SITE="http://www.linuxfromscratch.org/blfs/view/stable/basicnet/portmap.html"
-WGET_URL="ftp://ftp.porcupine.org/pub/security/${TARBALL}"
+TARBALL="${PACKAGE}-${VERSION}.tgz"
+WEB_SITE="http://neil.brown.name/portmap/"
+WGET_URL="http://neil.brown.name/portmap/$TARBALL"
 
-src=${PACKAGE}_${VERSION}	
 
 # rules to configure and make the package.
 compile_rules()
@@ -20,14 +19,9 @@ compile_rules()
 	src=${PACKAGE}_${VERSION}	
 	cd $src
 	
-	# Applying some patches 
-	# see Beyond Linux From Scratch for details.
-	patch -Np1 -i ../stuff/portmap-5beta-compilation_fixes-3.patch
-	patch -Np1 -i ../stuff/portmap-5beta-glibc_errno_fix-1.patch
-	patch -Np1 -i ../stuff/portmap-5beta-disable-tcp_wrapper.patch
-	
 	# Build 
-	make
+	# Disabling TCP_WRAPPER with NO_TCP_WRAPPER variable
+	NO_TCP_WRAPPER=1  make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -41,22 +35,18 @@ genpkg_rules()
 	cp -a $src/pmap_dump $fs/usr/sbin
 	cp -a $src/pmap_set $fs/usr/sbin
 	cp -a $src/portmap $fs/usr/sbin
+
 	strip -s $fs/usr/sbin/*
 	
-	mkdir -p $fs/etc
-	cp -a stuff/init.d $fs/etc
+	mkdir -p $fs/etc/init.d
+	install -g root -o root -m 0755 stuff/init.d/portmap $fs/etc/init.d
+	
+	
 }
 
 
 post_install()
 {
-	local root
-	root=$1
-	echo "Processing some post-install commands..."
-	
-	chown root.root $root/etc/init.d/portmap
-	chmod 0755 $root/etc/init.d/portmap
-	
 	# Post message when installing.
 	echo -e "\nTo starts $PACKAGE server you can run :\n"
         echo "/etc/init.d/$PACKAGE start"
