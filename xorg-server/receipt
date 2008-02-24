@@ -3,14 +3,15 @@
 PACKAGE="xorg-server"
 VERSION="1.2.0"
 CATEGORY="x-window"
-SHORT_DESC="Xorg server."
+SHORT_DESC="Xorg core server."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="xorg"
-BUILD_DEPENDS="xorg-dev-proto xorg-libXfont-dev"
+BUILD_DEPENDS="xorg-dev-proto xorg-libXfont-dev xorg-xtrans"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.x.org/"
 WGET_URL="http://xorg.freedesktop.org/releases/individual/xserver/$TARBALL"
-KDRIVE="Xchips
+KDRIVE="
+Xchips
 Xvesa
 Xephyr
 Xi810
@@ -21,9 +22,13 @@ Xr128
 Xvia
 Xpm2
 Xati
+Xfake
+Xneomagic
 Xmach64
 Xfbdev
-Xmga"
+Xmga
+Xvfb
+Xnest"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -53,15 +58,12 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/var $fs/usr/share $fs/etc/X11
+	mkdir -p $fs/usr/lib $fs/var $fs/etc/X11
 	
 	cp -a $_pkg/usr/lib/X11 $fs/usr/lib
 	cp -a $_pkg/usr/lib/xserver $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/var/lib $fs/var
-	
-	# For xorgcfg
-	#cp -a $_pkg/usr/share/X11 $fs/usr/share
 	
 	# Remove static libs and all krive
 	rm $fs/usr/lib/X11/*/*.*a
@@ -70,8 +72,4 @@ genpkg_rules()
 	do
 		rm $fs/usr/bin/$i
 	done
-	
-	strip -s $fs/usr/lib/X11/*/* 2>/dev/null
-	strip -s $fs/usr/lib/X11/*/*/*
-	strip -s $fs/usr/bin/*
 }
