@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="emotion"
+VERSION="0.1.0.042"
+CATEGORY="extra"
+SHORT_DESC="E17 emotion libs."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="enlightenment xine-lib"
+BUILD_DEPENDS="eet-dev evas-dev ecore-dev embryo-dev edje-dev xine-lib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.enlightenment.org/"
+WGET_URL="http://download.enlightenment.org/snapshots/2008-01-25/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/emotion
+	cp -a $_pkg/usr/share $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/emotion/*.so $fs/usr/lib/emotion
+	strip -s $fs/usr/bin/*
+	strip --strip-unneeded $fs/usr/lib/* 2>/dev/null
+	strip --strip-unneeded $fs/usr/lib/emotion/*
+}
+
