@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="pcmanfm"
+VERSION="0.3.6"
+CATEGORY="system-tools"
+SHORT_DESC="Light and easy to use file manager."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+ xorg gamin startup-notification"
+BUILD_DEPENDS="gtk+-dev gamin-dev startup-notification-dev shared-mime-info"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://pcmanfm.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		--disable-hal \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+	# Avoid update-mime-database or update-desktop-database error in 0.3.5*
+	echo "Avoid errors..."
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/mime $fs/usr/share
+	cp -a $_pkg/usr/share/pcmanfm $fs/usr/share
+}
+
