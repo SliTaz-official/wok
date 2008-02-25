@@ -26,11 +26,30 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
-	mkdir -p $fs/etc/jwm
-    cp -a $src/src/jwm $fs/usr/bin
-    strip -s $fs/usr/bin/*
-    # Simple config file.
-    cp stuff/simple.jwmrc $fs/etc/jwm/system.jwmrc
-    cp stuff/simple.jwmrc $fs/etc/jwm/simple.jwmrc
+	mkdir -p $fs/usr/bin $fs/etc/jwm
+	cp -a $src/src/jwm $fs/usr/bin
+	# Simple config file.
+	cp stuff/simple.jwmrc $fs/etc/jwm/system.jwmrc
+	cp stuff/simple.jwmrc $fs/etc/jwm/simple.jwmrc
+}
+
+# Pre and post install to backup all /etc/settings
+#
+pre_install()
+{
+	local root
+	root=$1
+	echo ""
+	echo "Creating backup of JWM system configuration..."
+	cp -a $root/etc/jwm/system.jwmrc cp -a $root/etc/jwm/system.jwmrc.bak 2>/dev/null
+	echo ""
+}
+post_install()
+{
+	local root
+	root=$1
+	echo ""
+	echo "Restoring backup of JWM system configuration..."
+	cp -a $root/etc/jwm/system.jwmrc.bak $root/etc/jwm/system.jwmrc 2>/dev/null
+	echo ""
 }
