@@ -1,0 +1,77 @@
+--- busybox-1.7.3/util-linux/hexdump.c
++++ busybox-1.7.3/util-linux/hexdump.c
+@@ -45,7 +45,7 @@
+ 
+ static const char add_first[] ALIGN1 = "\"%07.7_Ax\n\"";
+ 
+-static const char hexdump_opts[] ALIGN1 = "bcdoxCe:f:n:s:v";
++static const char hexdump_opts[] ALIGN1 = "bcdoxCe:f:n:s:vR";
+ 
+ static const struct suffix_mult suffixes[] = {
+ 	{ "b", 512 },
+@@ -59,6 +59,8 @@
+ {
+ 	const char *p;
+ 	int ch;
++	FILE *fp;
++	smallint rdump = 0;
+ 
+ 	bb_dump_vflag = FIRST;
+ 	bb_dump_length = -1;
+@@ -70,7 +72,7 @@
+ 		if ((p - hexdump_opts) < 5) {
+ 			bb_dump_add(add_first);
+ 			bb_dump_add(add_strings[(int)(p - hexdump_opts)]);
+-		} else if (ch == 'C') {
++		} if (ch == 'C') {
+ 			bb_dump_add("\"%08.8_Ax\n\"");
+ 			bb_dump_add("\"%08.8_ax  \" 8/1 \"%02x \" \"  \" 8/1 \"%02x \" ");
+ 			bb_dump_add("\"  |\" 16/1 \"%_p\" \"|\\n\"");
+@@ -90,6 +92,9 @@
+ 			} /* else */
+ 			if (ch == 'v') {
+ 				bb_dump_vflag = ALL;
++			} /* else */
++			if (ch == 'R') {
++				rdump = 1;
+ 			}
+ 		}
+ 	}
+@@ -101,5 +106,36 @@
+ 
+ 	argv += optind;
+ 
+-	return bb_dump_dump(argv);
++	if (!rdump) {
++		return bb_dump_dump(argv);
++	}
++
++	/* -R: reverse of 'hexdump -Cv' */
++	fp = stdin;
++	if (!*argv) {
++		argv--;
++		goto jump_in;
++	}
++
++	do {
++		char *buf;
++		fp = xfopen(*argv, "r");
++ jump_in:
++		while ((buf = xmalloc_getline(fp)) != NULL) {
++			p = buf;
++			while (1) {
++				/* skip address or previous byte */
++				while (isxdigit(*p)) p++;
++				while (*p == ' ') p++;
++				/* '|' char will break the line */
++				if (!isxdigit(*p) || sscanf(p, "%x ", &ch) != 1)
++					break;
++				putchar(ch);
++			}
++			free(buf);
++		}
++		fclose(fp);
++	} while (*++argv);
++
++	fflush_stdout_and_exit(EXIT_SUCCESS);
+ }
