@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="gtkballs"
+VERSION="3.1.5"
+CATEGORY="games"
+SHORT_DESC="Clone of DOS Lines."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+"
+BUILD_DEPENDS="gtk+-dev"
+SUGGESTED="gtkballs-themes"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://gtkballs.antex.ru/"
+WGET_URL="http://gtkballs.antex.ru/dist/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--bindir=/usr/games \
+		--localstatedir=/var/games \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/gtkballs/themes $fs/usr/share/pixmaps
+	cp -a $_pkg/usr/games $fs/usr
+	# Themes
+	#cp -a $_pkg/usr/share/gtkballs/themes/Default \
+	#	$fs/usr/share/gtkballs/themes
+	cp -a $_pkg/usr/share/gtkballs/themes/klines \
+		$fs/usr/share/gtkballs/themes/Default
+	cp -a stuff/cell.xpm $fs/usr/share/gtkballs/themes/Default
+	# Pixmaps
+	cp -a $_pkg/usr/share/gtkballs/gtkballs_16x16.png \
+		$fs/usr/share/pixmaps/gtkballs.png
+	cp -a $_pkg/var $fs
+	chmod 666 $fs/var/games/gtkballs-scores
+}
+
