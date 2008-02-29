@@ -1,0 +1,52 @@
+#!/bin/sh -e
+
+# Download tarball
+WEB_SITE="http://www.skype.com/"
+wget ${WEB_SITE}go/getskype-linux-static
+
+# Extract
+TARBALL=$(ls getskype-linux-static skype*.tar.bz2 2> /dev/null || true)
+tar xjf $TARBALL
+VERSION=$(ls -d skype_static-*/)
+VERSION=${VERSION%/}
+VERSION=${VERSION#skype_static-}
+cd skype_static-$VERSION
+
+# Install files
+mkdir -p /usr/share/skype
+mv */ LICENSE /usr/share/skype
+mv skype /usr/bin
+mv skype.conf /etc
+mv skype.desktop /usr/share/applications
+
+# Create pseudo package
+mkdir -p fs/usr/share/skype
+mv README fs/usr/share/skype
+find fs | cpio -o -H newc | gzip -9 > fs.cpio.gz
+cat > files.list <<EOT
+/usr/bin/skype
+/etc/skype.conf
+/usr/share/applications/skype.desktop
+$(find /usr/share/skype)
+/usr/share/skype/README
+EOT
+cat > receipt <<EOT
+PACKAGE="skype"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="Skype Internet Telephony."
+WEB_SITE="$WEB_SITE"
+DEPENDS="libsigc++"
+EOT
+cpio -o -H newc > skype-$VERSION.tazpkg <<EOT
+receipt
+files.list
+fs.cpio.gz
+EOT
+
+# Install pseudo package
+tazpkg install skype-$VERSION.tazpkg
+cd ..
+
+# Clean
+rm -rf skype_static-$VERSION* $TARBALL
