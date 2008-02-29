@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="imagemagick"
+VERSION="6.3.9"
+CATEGORY="graphics"
+SHORT_DESC="Images manipulation programs."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="xorg jpeg libpng tiff libxml2 freetype"
+BUILD_DEPENDS="jpeg-dev libpng-dev tiff-dev libxml2-dev"
+SOURCE="ImageMagick"
+TARBALL="$SOURCE-$VERSION-0.tar.bz2"
+WEB_SITE="http://www.imagemagick.org/"
+WGET_URL="ftp://ftp.imagemagick.org/pub/ImageMagick/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--without-perl
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/$SOURCE-$VERSION $fs/usr/lib
+	cp -a $_pkg/usr/share/$SOURCE-$VERSION $fs/usr/share
+}
+
