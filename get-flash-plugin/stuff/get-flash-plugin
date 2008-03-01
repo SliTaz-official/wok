@@ -1,0 +1,49 @@
+#!/bin/sh -e
+
+DIR=install_flash_player_9_linux
+TARBALL=$DIR.tar.gz
+WEB_SITE="http://www.adobe.com/products/flash/"
+
+# Download tarball
+wget http://fpdownload.macromedia.com/get/flashplayer/current/$TARBALL
+
+# Extract
+tar xzf $TARBALL
+
+cd $DIR
+VERSION=""
+for i in MAJ MIN REV ; do
+  n=$(grep ^FPVERSION$i flashplayer-installer | cut -d= -f2)
+  [ -n "$VERSION" ] && VERSION=$VERSION.
+  VERSION=$VERSION$n
+done
+
+# Install files
+cp libflashplayer.so /usr/lib/firefox*/plugins
+chmod 755 /usr/lib/firefox*/plugins/libflashplayer.so
+
+# Create pseudo package
+mkdir -p fs/usr/bin
+cp /usr/bin/get-flash-plugin fs/usr/bin
+find fs | cpio -o -H newc | gzip -9 > fs.cpio.gz
+ls /usr/lib/firefox*/plugins/libflashplayer.so > files.list
+cat > receipt <<EOT
+PACKAGE="flash-plugin"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="Adobe Flash Player."
+WEB_SITE="$WEB_SITE"
+EOT
+cpio -o -H newc > flash-plugin-$VERSION.tazpkg <<EOT
+receipt
+files.list
+fs.cpio.gz
+EOT
+
+# Install pseudo package
+tazpkg install flash-plugin-$VERSION.tazpkg
+cd ..
+
+# Clean
+rm -rf $DIR $TARBALL
+
