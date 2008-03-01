@@ -11,32 +11,7 @@ DEPENDS="squashfs"
 genpkg_rules()
 {
     mkdir -p $fs/etc/tazlito
-    cat > $fs/etc/tazlito/loram.rootfs << EOF
-echo "\$(du -hs ./usr | cut -f1) were used by /usr"
-for ii in /sbin /lib /bin; do
-  mkdir -p ./usr/.moved\$ii
-  for j in e2fsprogs pcmciautils cpio syslinux-extra isapnptools ncurses; do
-    for k in \$(grep ^\$ii ./var/lib/tazpkg/installed/\$j/files.list) ; do
-      [ -f .\$k ] || continue
-      mv .\$k ./usr/.moved\$k
-      ln -s /usr/.moved\$k .\$k 
-    done
-  done
-done
-for ii in /var/lib/tazpkg/installed ; do
-  j=\$(dirname /usr/.moved\$ii)
-  mkdir -p .\$j
-  mv .\$ii .\$j
-  ln -s /usr/.moved\$ii .\$ii
-done
-echo "\$(du -hs ./usr/.moved | cut -f1) have been moved into /usr"
-echo "\$(du -hs ./usr | cut -f1) were used by /usr before compression"
-usr/sbin/mksquashfs usr .usr.sqfs
-rm -rf usr
-mkdir usr
-COMPRESSION="none"
-echo "\$(du -hs ./.usr.sqfs | cut -f1) are used by /usr after compression"
-EOF
+    cp stuff/loram.rootfs $fs/etc/tazlito
 }
 
 get_patch()
@@ -44,7 +19,7 @@ get_patch()
     cat <<EOF
 --- /etc/init.d/rcS
 +++ /etc/init.d/rcS
-@@ -68,2 +68,9 @@
+@@ -58,2 +58,9 @@
  
 +# Mount compressed /usr
 +if [ -f /.usr.sqfs ]; then
@@ -73,5 +48,5 @@ post_install()
 # Pre remove commands for Tazpkg.
 pre_remove()
 {
-    get_patch | patch -R -p0
+    [ -L /usr/bin/patch ] || get_patch | patch -R -p0
 }

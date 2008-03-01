@@ -1,0 +1,29 @@
+echo "$(du -hs /usr | cut -f1) were used by /usr"
+for ii in /sbin /lib /bin; do
+  mkdir -p ./usr/.moved$ii
+  for j in e2fsprogs pcmciautils cpio syslinux-extra isapnptools ncurses; do
+    for k in $(grep ^$ii /var/lib/tazpkg/installed/$j/files.list) ; do
+      [ -f .$k ] || continue
+      mv .$k ./usr/.moved$k
+      ln -s /usr/.moved$k .$k 
+    done
+  done
+done
+for ii in /var/lib/tazpkg/installed ; do
+  j=$(dirname /usr/.moved$ii)
+  mkdir -p .$j
+  mv .$ii .$j
+  ln -s /usr/.moved$ii .$ii
+done
+echo "$(du -hs /usr/.moved | cut -f1) have been moved into /usr"
+if [ -x usr/sbin/mksquashfs ]; then
+  usr/sbin/mksquashfs usr ../rootcd/usr.sqfs
+  rm -rf usr
+  mkdir usr
+else
+  mv usr ../rootcd
+  ln -s /cdrom/usr usr
+  ln -s /bin ../rootcd/bin
+fi
+mkdir cdrom
+COMPRESSION="gzip"
