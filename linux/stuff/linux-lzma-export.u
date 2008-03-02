@@ -1,6 +1,18 @@
 --- linux-2.6.24.2/lib/decompress_unlzma.c
 +++ linux-2.6.24.2/lib/decompress_unlzma.c
-@@ -321,7 +321,7 @@ typedef struct {
+@@ -52,11 +52,6 @@ static void __init large_free(void *wher
+ }
+ 
+ #ifndef TEST
+-static void __init *malloc(size_t size)
+-{
+-	return kmalloc(size, GFP_KERNEL);
+-}
+-
+ static void __init free(void *where)
+ {
+ 	kfree(where);
+@@ -321,7 +316,7 @@ typedef struct {
  #define LZMA_LITERAL (LZMA_REP_LEN_CODER + LZMA_NUM_LEN_PROBS)
  
  
@@ -9,7 +21,7 @@
  		   int(*fill)(void*,unsigned int),
  		   int(*writebb)(char*,unsigned int),
  		   int *posp)
-@@ -348,10 +348,21 @@ STATIC int unlzma(char *inbuf, int in_le
+@@ -348,10 +343,21 @@ STATIC int unlzma(char *inbuf, int in_le
  
  	rc_init(&rc, fill, inbuf, in_len);
  
@@ -19,7 +31,7 @@
 -		((unsigned char *)&header)[i] = *rc.ptr++;
 +	header.dict_size = header.dst_size = in_len;
 +	if (inbuf && inbuf[0] == 0) {
-+		const LZMA_LC = 3, LZMA_LP = 0, LZMA_PB = 2;
++		const int LZMA_LC = 3, LZMA_LP = 0, LZMA_PB = 2;
 +		header.pos = (LZMA_PB * 45) + (LZMA_LP * 5) + LZMA_LC;
 +		rc.ptr++;
 +	}
