@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="openbox"
+VERSION="3.4.6.1"
+CATEGORY="x-window"
+SHORT_DESC="Small-footprint and standard compliant Window Manager."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="startup-notification pango glib xorg-libX11"
+SUGGESTED="obconf hsetroot"
+BUILD_DEPENDS="xorg-dev pango-dev glib-dev startup-notification-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://icculus.org/openbox/"
+WGET_URL="http://icculus.org/openbox/releases/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	chmod +x install-sh
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/share/themes $fs/usr/share
+	# We dont have GNOME or KDE
+	rm $fs/usr/bin/openbox-gnome-session
+	rm $fs/usr/bin/openbox-kde-session
+	rm $fs/usr/bin/gnome-panel-control
+	chmod 0755 $fs/usr/bin/openbox-session
+	# Menu config and autostart script.
+	mkdir -p $fs/etc/xdg
+	cp -a stuff/openbox $fs/etc/xdg
+	chown -R root.root $fs
+}
