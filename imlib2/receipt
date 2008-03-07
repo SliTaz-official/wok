@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="imlib2"
+VERSION="1.4.0"
+CATEGORY="graphics"
+SHORT_DESC="Imlib graphic library."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="libpng tiff jpeg xorg-libXpm"
+BUILD_DEPENDS="libpng-dev tiff-dev jpeg-dev xorg-libXpm-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://sourceforge.net/projects/enlightenment/"
+WGET_URL="$SF_MIRROR/enlightenment/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/imlib2 $fs/usr/bin
+	
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	mkdir -p $fs/usr/lib/imlib2/filters
+	cp -a $_pkg/usr/lib/imlib2/filters/*.so* $fs/usr/lib/imlib2/filters
+	mkdir -p $fs/usr/lib/imlib2/loaders
+	cp -a $_pkg/usr/lib/imlib2/loaders/*.so* $fs/usr/lib/imlib2/loaders
+	
+	cp -a $_pkg/usr/bin/imlib2_* $fs/usr/bin
+}
+
