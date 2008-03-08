@@ -14,7 +14,7 @@ genpkg_rules()
     cp stuff/loram.* $fs/etc/tazlito
 }
 
-get_patch()
+set_patch()
 {
     local tag
     local line
@@ -31,7 +31,7 @@ get_patch()
     	line="-$i,2 +$i,15"
 	i="+"
     fi
-    cat <<EOF
+    patch -p0 <<EOF
 --- $1/etc/init.d/rcS
 +++ $1/etc/init.d/rcS
 @@ $line @@
@@ -66,7 +66,7 @@ post_install()
 {
     local root
     root=$1
-    get_patch "$root" | patch -p0
+    set_patch "$root"
     if [ ! -x /bin/funionfs ]; then
         cat <<EOF
 You will build a live CD with /usr mounted read-only.
@@ -79,5 +79,5 @@ EOF
 # Pre remove commands for Tazpkg.
 pre_remove()
 {
-    get_patch '' -R | patch -p0
+    set_patch '' -R
 }
