@@ -16,14 +16,32 @@ for ii in /var/lib/tazpkg/installed ; do
   ln -s /usr/.moved$ii .$ii
 done
 echo "$(du -hs /usr/.moved | cut -f1) have been moved into /usr"
-if [ -x usr/sbin/mksquashfs ]; then
+usr=usr
+if [ -x bin/funionfs ]; then
+  usr=.usr.ro
+  mkdir .usr.ro .usr.rw
+  ln -s /.usr.ro/lib/$(cd usr/lib ; ls libfuse.so.2.*) lib/libfuse.so.2
+fi
+if [ -x usr/bin/mkcromfs ]; then
+  usr/bin/mkcromfs -qq -f 262144 -b 16384 usr ../rootcd/usr.cromfs
+  rm -rf usr
+  mkdir usr
+  for ii in unmkcromfs cromfs-driver ; do
+    mv bin/$ii ../rootcd
+    ln -s /cdrom/$ii bin/$ii
+  done
+elif [ -x usr/sbin/mksquashfs ]; then
   usr/sbin/mksquashfs usr ../rootcd/usr.sqfs
   rm -rf usr
   mkdir usr
 else
   mv usr ../rootcd
-  ln -s /cdrom/usr usr
+  [ "$usr" = "usr" ] || rmdir $usr
+  ln -s /cdrom/usr $usr
   ln -s /bin ../rootcd/bin
 fi
+for ii in bin/vcsa2txt bin/script bin/cut bin/readlink ; do
+  ln -s busybox $ii
+done
 mkdir cdrom
 COMPRESSION="gzip"

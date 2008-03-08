@@ -11,29 +11,44 @@ DEPENDS="cromfs"
 genpkg_rules()
 {
     mkdir -p $fs/etc/tazlito
-    cp stuff/loram.rootfs $fs/etc/tazlito
+    cp stuff/loram.* $fs/etc/tazlito
 }
 
 get_patch()
 {
+    local tag
+    local line
+    local i
+    tag="Creat /dev/cdrom if needed"
+    i=$(grep -n "$tag" /etc/init.d/rcS | cut -d: -f1)
+    i=$(($i-1))
+    tag=$(grep "$tag" /etc/init.d/rcS)
+    if [ "$1" = "-R" ]; then
+    	line="-$(($i-13)),15 +$(($i-13)),2"
+	i="-"
+    else
+    	line="-$i,2 +$i,15"
+	i="+"
+    fi
     cat <<EOF
 --- /etc/init.d/rcS
 +++ /etc/init.d/rcS
-@@ -58,2 +58,14 @@
+@@ $line @@
  
-+# Mount compressed /usr
-+if [ -f /.usr.cromfs ]; then
-+	echo -n "Mounting compressed /usr read-only... "
-+	if [ -d /.usr.rw ]; then
-+		/bin/cromfs-driver /.usr.cromfs /.usr.ro
-+		/bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other NONE /usr
-+	else
-+		/bin/cromfs /.usr.cromfs /usr
-+	fi
-+	status
-+fi
-+
- # Creat /dev/cdrom if needed (symlink does not exist on LiveCD). Chmod
+$i# Mount compressed /usr
+$i if [ -f /.usr.cromfs ]; then
+$i	if [ -d /.usr.rw ]; then
+$i		echo -n "Mounting compressed /usr read-write... "
+$i		/bin/cromfs-driver /.usr.cromfs /.usr.ro
+$i		/bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other NONE /usr
+$i	else
+$i		echo -n "Mounting compressed /usr read-only... "
+$i		/bin/cromfs /.usr.cromfs /usr
+$i	fi
+$i	status
+$i fi
+$i
+ $tag
 EOF
 }
 
@@ -53,5 +68,5 @@ post_install()
 # Pre remove commands for Tazpkg.
 pre_remove()
 {
-    [ -L /usr/bin/patch ] || get_patch | patch -R -p0
+    get_patch -R | patch -p0
 }
