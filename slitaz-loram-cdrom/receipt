@@ -19,19 +19,20 @@ get_patch()
     local line
     local i
     tag="Handle kernel cmdline parameter config"
-    i=$(grep -n "$tag" /etc/init.d/rcS | cut -d: -f1)
+    i=$(grep -n "$tag" $1/etc/init.d/rcS | cut -d: -f1)
     i=$(($i-1))
-    tag=$(grep "$tag" /etc/init.d/rcS)
-    if [ "$1" = "-R" ]; then
+    tag=$(grep "$tag" $1/etc/init.d/rcS)
+    if [ "$2" = "-R" ]; then
     	line="-$(($i-24)),26 +$(($i-24)),2"
 	i="-"
     else
+        grep -q 'if [ -d /cdrom ]; then' $1/etc/init.d/rcS && return
     	line="-$i,2 +$i,26"
 	i="+"
     fi
     cat <<EOF
---- /etc/init.d/rcS
-+++ /etc/init.d/rcS
+--- $1/etc/init.d/rcS
++++ $1/etc/init.d/rcS
 @@ $line @@
  
 $i# Mount /usr
@@ -60,6 +61,7 @@ $i fi
 $i
  $tag
 EOF
+    chmod 0755 $1/etc/init.d/rcS
 }
 
 # Pre and post install commands for Tazpkg.
@@ -67,12 +69,14 @@ pre_install()
 {
     local $loram
     loram=$(cd /var/lib/tazpkg/installed ; ls -d slitaz-loram* 2> /dev/null)
-    [ -n "$loram" ] && yes y | tazpkg remove $loram
+    [ -n "$loram" -a "$loram" != "$PACKAGE" ] && yes y | tazpkg remove $loram
 }
 
 post_install()
 {
-    get_patch | patch -p0
+    local root
+    root=$1
+    get_patch "$root" | patch -p0
     if [ ! -x /bin/funionfs ]; then
         cat <<EOF
 You will build a live CD with /usr mounted read-only.
@@ -85,5 +89,5 @@ EOF
 # Pre remove commands for Tazpkg.
 pre_remove()
 {
-    get_patch -R | patch -p0
+    get_patch '' -R | patch -p0
 }
