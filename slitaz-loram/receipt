@@ -1,11 +1,11 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-loram"
-VERSION="1.1"
+VERSION="1.2"
 CATEGORY="misc"
 SHORT_DESC="Rules to build low ram rootfs.gz."
 MAINTAINER="pascal.bellard@slitaz.org"
-DEPENDS="squashfs"
+DEPENDS="cromfs"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -19,12 +19,17 @@ get_patch()
     cat <<EOF
 --- /etc/init.d/rcS
 +++ /etc/init.d/rcS
-@@ -58,2 +58,9 @@
+@@ -58,2 +58,14 @@
  
 +# Mount compressed /usr
-+if [ -f /.usr.sqfs ]; then
++if [ -f /.usr.cromfs ]; then
 +	echo -n "Mounting compressed /usr read-only... "
-+	/bin/mount -o loop,ro -t squashfs /.usr.sqfs /usr
++	if [ -d /.usr.rw ]; then
++		/bin/cromfs-driver /.usr.cromfs /.usr.ro
++		/bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other NONE /usr
++	else
++		/bin/cromfs /.usr.cromfs /usr
++	fi
 +	status
 +fi
 +
