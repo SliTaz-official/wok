@@ -26,7 +26,7 @@ set_patch()
     	line="-$(($i-24)),26 +$(($i-24)),2"
 	i="-"
     else
-        grep -q 'if [ -d /cdrom ]; then' $1/etc/init.d/rcS && return
+        grep -q 'from slitaz-loram-cdrom package' $1/etc/init.d/rcS && return
     	line="-$i,2 +$i,26"
 	i="+"
     fi
@@ -35,7 +35,7 @@ set_patch()
 +++ $1/etc/init.d/rcS
 @@ $line @@
  
-$i# Mount /usr
+$i# Mount /usr (from slitaz-loram-cdrom package)
 $i if [ -d /cdrom ]; then
 $i	mount -o ro -t iso9660 /dev/cdrom /cdrom
 $i	if [ -d /.usr.rw -a -x /bin/funionfs ]; then
@@ -68,9 +68,11 @@ EOF
 pre_install()
 {
     local i
+    . /etc/tazlito/tazlito.conf
     for i in $(cd /var/lib/tazpkg/installed ; ls -d slitaz-loram* 2> /dev/null); do
         [ "$i" = "$PACKAGE" ] && continue
         yes y | tazpkg remove $i
+	rm -f $PACKAGES_REPOSITORY/slitaz-boot-scripts-*.tazpkg 2> /dev/null
     done
 }
 
@@ -79,9 +81,12 @@ post_install()
     set_patch "$1"
     if [ ! -x /bin/funionfs ]; then
         cat <<EOF
+----
 You will build a live CD with /usr mounted read-only.
-You can install funionfs to have read-write access to /usr with:
+You can install funionfs to have read-write access into /usr with:
+
 # tazpkg get-install funionfs
+
 EOF
     fi
 }

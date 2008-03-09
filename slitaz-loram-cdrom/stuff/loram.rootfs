@@ -1,7 +1,8 @@
 echo "$(du -hs /usr | cut -f1) were used by /usr"
 for ii in /sbin /lib /bin; do
   mkdir -p ./usr/.moved$ii
-  for j in e2fsprogs pcmciautils cpio syslinux-extra isapnptools ncurses; do
+  for j in e2fsprogs pcmciautils cpio syslinux-extra isapnptools ncurses \
+	   libcap; do
     for k in $(grep ^$ii /var/lib/tazpkg/installed/$j/files.list) ; do
       [ -f .$k ] || continue
       mv .$k ./usr/.moved$k
@@ -9,13 +10,18 @@ for ii in /sbin /lib /bin; do
     done
   done
 done
-for ii in /var/lib/tazpkg/installed ; do
+k="$(ls /lib/lib[rp]*.so)"
+[ -x /bin/funionfs ] && k="$(ls /lib/libresolv*.so)"
+for ii in /var/lib/tazpkg/installed /lib/modules/*/kernel/drivers/net \
+	  /lib/modules/*/kernel/sound /sbin/depmod /sbin/modinfo /bin/lsmod \
+	  /lib/libns*.so $k; do
+  [ -L .$ii ] && continue
   j=$(dirname /usr/.moved$ii)
   mkdir -p .$j
   mv .$ii .$j
   ln -s /usr/.moved$ii .$ii
 done
-echo "$(du -hs /usr/.moved | cut -f1) have been moved into /usr"
+echo "$(du -hs ./usr/.moved | cut -f1) have been moved into /usr"
 usr=usr
 if [ -x bin/funionfs ]; then
   usr=.usr.ro
@@ -36,7 +42,7 @@ elif [ -x usr/sbin/mksquashfs ]; then
   mkdir usr
 else
   mv usr ../rootcd
-  [ "$usr" = "usr" ] || rmdir $usr
+  [ "$usr" = "usr" ] || mv $usr usr
   ln -s /cdrom/usr $usr
   ln -s /bin ../rootcd/bin
 fi
@@ -44,4 +50,5 @@ for ii in bin/vcsa2txt bin/script bin/cut bin/readlink ; do
   ln -s busybox $ii
 done
 mkdir cdrom
+#rm -rf var/cache/fontconfig/* home/*/.ash* 
 COMPRESSION="gzip"
