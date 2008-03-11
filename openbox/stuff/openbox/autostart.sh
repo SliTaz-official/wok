@@ -14,7 +14,11 @@ else
 fi
 
 # Login sound.
-alsaplayer -i text /usr/share/sounds/login.ogg || continue &
+if which alsaplayer >/dev/null; then
+	alsaplayer -i text /usr/share/sounds/login.ogg &
+fi
 
 # Start the panel.
-lxpanel || continue &
+if which lxpanel >/dev/null; then
+	lxpanel --profile openbox &
+fi
