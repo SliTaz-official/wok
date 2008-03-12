@@ -1,0 +1,63 @@
+--- jwm-2.0.1/src/icon.c
++++ jwm-2.0.1/src/icon.c
+@@ -55,3 +55,3 @@
+ 
+-static ScaledIconNode *GetScaledIcon(IconNode *icon, int width, int height);
++static ScaledIconNode *_GetScaledIcon(IconNode *icon, int width, int height);
+ 
+@@ -194,8 +194,26 @@
+    int ix, iy;
++   int nwidth = width, nheight = height;
+ 
+    Assert(icon);
++   Assert(icon->image);
+ 
+-   /* Scale the icon. */
+-   node = GetScaledIcon(icon, width, height);
++   if(nwidth == 0) {
++      nwidth = icon->image->width;
++   }
++   if(nheight == 0) {
++      nheight = icon->image->height;
++   }
+ 
++   /* respect ratio if not background */
++   if (x || y) { 
++      double ratio;
++
++      ratio = (double)icon->image->width / icon->image->height;
++      nwidth = Min(nwidth, nheight * ratio);
++      nheight = Min(nheight, nwidth / ratio);
++      nwidth = nheight * ratio;
++   }
++   
++   node = _GetScaledIcon(icon, nwidth, nheight);
++
+    if(node) {
+@@ -450,3 +468,3 @@
+ /** Get a scaled icon. */
+-ScaledIconNode *GetScaledIcon(IconNode *icon, int rwidth, int rheight) {
++ScaledIconNode *_GetScaledIcon(IconNode *icon, int nwidth, int nheight) {
+ 
+@@ -460,4 +478,2 @@
+    double srcx, srcy;
+-   double ratio;
+-   int nwidth, nheight;
+    int usesMask;
+@@ -465,16 +481,2 @@
+ 
+-   Assert(icon);
+-   Assert(icon->image);
+-
+-   if(rwidth == 0) {
+-      rwidth = icon->image->width;
+-   }
+-   if(rheight == 0) {
+-      rheight = icon->image->height;
+-   }
+-
+-   ratio = (double)icon->image->width / icon->image->height;
+-   nwidth = Min(rwidth, rheight * ratio);
+-   nheight = Min(rheight, nwidth / ratio);
+-   nwidth = nheight * ratio;
+    if(nwidth < 1) {
