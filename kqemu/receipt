@@ -1,0 +1,49 @@
+# SliTaz package receipt.
+
+PACKAGE="kqemu"
+VERSION="1.3.0pre11"
+CATEGORY="misc"
+SHORT_DESC="QEMU Accelerator Module."
+MAINTAINER="pascal.bellard@ads-lu.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://fabrice.bellard.free.fr/qemu"
+WGET_URL="$WEB_SITE/$TARBALL"
+BUILD_DEPENDS="gcc3"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	local dir
+	if [ ! -d ../linux/taz ]; then
+		tazwok cook linux
+	fi
+	dir=$(cd ../linux/taz/linux*/fs ; ls -d lib/modules/*)/misc
+	cd $src
+	./configure --prefix=/usr --kernel-path=$(ls -d ../../linux/linux-*) \
+		    --host-cc=gcc-3 --cc=gcc-3
+	make
+	mkdir -p _pkg/$dir _pkg/dev
+	cp kqemu.ko _pkg/$dir
+	gzip -9 _pkg/$dir/kqemu.ko
+	mknod _pkg/dev/kqemu c 250 0
+	chmod 666 _pkg/dev/kqemu
+}
+
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/* $fs
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	depmod -a
+}
+
+post_remove()
+{
+	depmod -a
+}
+
