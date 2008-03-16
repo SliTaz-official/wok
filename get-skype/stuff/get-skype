@@ -6,6 +6,12 @@ if test $(id -u) != 0 ; then
 	exit 0
 fi
 
+if [ -d /var/lib/tazpkg/installed/skype ]; then
+  tazpkg remove skype
+  [ -d /var/lib/tazpkg/installed/skype ] && exit 1
+fi
+[ -d /usr/share/skype ] && rm -rf /usr/share/skype
+
 # Download tarball
 WEB_SITE="http://www.skype.com/"
 wget ${WEB_SITE}go/getskype-linux-static
@@ -20,15 +26,15 @@ cd skype_static-$VERSION
 
 # Install files
 mkdir -p /usr/share/skype
-mv */ LICENSE /usr/share/skype
+mv */ LICENSE README /usr/share/skype
 mv skype /usr/bin
 mv skype.conf /etc
 mv skype.desktop /usr/share/applications
 ln /usr/share/skype/icons/*16.png /usr/share/pixmaps/skype.png
 
 # Create pseudo package
-mkdir -p fs/usr/share/skype
-mv README fs/usr/share/skype
+mkdir -p fs/usr/bin
+cp /usr/bin/get-skype fs/usr/bin
 find fs | cpio -o -H newc | gzip -9 > fs.cpio.gz
 cat > files.list <<EOT
 /usr/bin/skype
@@ -36,7 +42,6 @@ cat > files.list <<EOT
 /usr/share/applications/skype.desktop
 /usr/share/pixmaps/skype.png
 $(find /usr/share/skype)
-/usr/share/skype/README
 EOT
 cat > receipt <<EOT
 PACKAGE="skype"
