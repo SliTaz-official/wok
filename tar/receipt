@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="tar"
+VERSION="1.19"
+CATEGORY="utilities"
+SHORT_DESC="GNU tar archiving tools."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE=""
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/$PACKAGE \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/usr
+    cp -a $_pkg/usr/bin $fs/usr
+}
+
+# Prevent erasing busybox...
+pre_install()
+{
+	local root
+	root=$1
+	rm -f $root/usr/bin/tar
+}
+
+post_remove()
+{
+	ln -s /bin/busybox /usr/bin/tar
+}
