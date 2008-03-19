@@ -6,6 +6,7 @@ CATEGORY="utilities"
 SHORT_DESC="GTK simple text editor."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+"
+BUILD_DEPENDS="gtk+-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://tarot.freeshell.org/leafpad/"
 WGET_URL="http://savannah.nongnu.org/download/$PACKAGE/$TARBALL"
@@ -22,19 +23,13 @@ compile_rules()
     	$CONFIGURE_ARGS
     make
     make DESTDIR=$PWD/_pkg install
+    # no xpm (5 ko)
+    rm _pkg/usr/share/pixmaps/*.xpm
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p \
-    	$fs/usr/share/applications \
-    	$fs/usr/share/pixmaps \
-    	$fs/usr/share/locale
+    mkdir -p $fs/usr
     cp -a $_pkg/usr/bin $fs/usr
-    cp -a $_pkg/usr/share/pixmaps/leafpad.png $fs/usr/share/pixmaps
-    cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
-    strip -s $fs/usr/bin/*
-    # Freedesktop entry
-	cp -a stuff/$PACKAGE.desktop $fs/usr/share/applications
 }
