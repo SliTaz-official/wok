@@ -14,9 +14,9 @@ else
 fi
 
 # Login sound.
-if which alsaplayer >/dev/null; then
-	alsaplayer -i text /usr/share/sounds/login.ogg &
-fi
+#if which alsaplayer >/dev/null; then
+#	alsaplayer -i text /usr/share/sounds/login.ogg &
+#fi
 
 # Start the panel.
 if which lxpanel >/dev/null; then
