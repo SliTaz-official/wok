@@ -1,7 +1,7 @@
 # This shell script is run before Openbox launches.
 # Environment variables set here are passed to the Openbox session.
 
-BG=/usr/share/images/slitaz-yellowshadow-1024x768.png
+BG=/usr/share/images/slitaz-background.png
 #BG=$HOME/Images/background.png
 
 # Set a background color usin hsetroot (depends on imlib2) or xsetroot.

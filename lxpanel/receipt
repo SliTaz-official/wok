@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="lxpanel"
-VERSION="0.2.6"
+VERSION="0.2.8"
 CATEGORY="x-window"
 SHORT_DESC="Standard compliant desktop panel."
 MAINTAINER="pankso@slitaz.org"
@@ -15,12 +15,16 @@ WGET_URL="$SF_MIRROR/lxde/$TARBALL"
 compile_rules()
 {
 	cd $src
+	# Patch the menu
 	patch -p0 < ../stuff/ptk-app-menu.u
+	patch -p0 < ../stuff/fr.u
 	./configure \
 		--prefix=/usr \
 		$CONFIGURE_ARGS
 	make
 	make DESTDIR=$PWD/_pkg install
+	# Avoid insatll error (want docbook for man)
+	echo "Please continue..."
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -42,3 +46,8 @@ genpkg_rules()
     ln -s /etc/lxpanel $fs/usr/share/lxpanel/profile
 }
 
+# Remove old config if upgrade.
+pre_install()
+{
+	rm -rf /usr/share/lxpanel/profile
+}
