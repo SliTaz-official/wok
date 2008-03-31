@@ -1,0 +1,51 @@
+# SliTaz package receipt.
+
+PACKAGE="ntpclient"
+VERSION="2000_339"
+CATEGORY="system-tools"
+SHORT_DESC="Tiny NTP Client"
+MAINTAINER="Erjo <erjo@slitaz.org>"
+DEPENDS=""
+TARBALL="${PACKAGE}_${VERSION}.tar.gz"
+WEB_SITE="http://www.busybox.net/tinyutils.html"
+WGET_URL="http://doolittle.icarus.com/ntpclient/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	src=$PACKAGE
+	cd $src
+	make 
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	src=$PACKAGE		
+	mkdir -p $fs/usr/bin
+	cp -a $src/ntpclient  $fs/usr/bin
+	strip -s $fs/usr/bin/*
+}	
+	
+
+clen_rules()
+{
+	rm -rf $PWD/$PACKAGE
+}
+
+post_install()
+{
+    local root
+    echo ""
+    echo -n "Do you want to run ntpclient in automatic mode (y/N): "; read anser
+    	if [ "$anser" == "y" ]; then
+    		srv="fr.pool.ntp.org"
+            echo ""
+            echo -n "Setting up crontab for ntpclient..."
+            echo "0 0 * * * $root/usr/bin/ntpclient -s -h $srv" | crontab -u root - 
+            status
+        else
+        	echo "Don't forget to run ntpclient -s -h <NTP Server>"
+        fi
+}
+
