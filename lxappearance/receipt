@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="lxappearance"
+VERSION="0.1"
+CATEGORY="x-window"
+SHORT_DESC="Desktop setting configuration utility from LXDE."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+"
+BUILD_DEPENDS="gtk+-dev gettext"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://lxde.sourceforge.net/"
+WGET_URL="$SF_MIRROR/lxde/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+	# Avoid install error (chmod)
+	echo "Please continue..."
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/usr/share
+    cp -a $_pkg/usr/bin $fs/usr
+    cp -a $_pkg/usr/share/lxappearance $fs/usr/share
+    
+    # Remove a few "heavy" an unseful images
+    chmod +x $fs/usr/share/lxappearance/*.sh
+}
