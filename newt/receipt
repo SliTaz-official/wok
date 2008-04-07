@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="newt"
+VERSION="0.52.2"
+CATEGORY="development"
+SHORT_DESC="Not Erik's Windowing Toolkit"
+MAINTAINER="Erjo <erjo@slitaz.org>"
+DEPENDS="slang"
+BUILD_DEPENDS="slang-dev tcl-dev popt-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://packages.debian.org/etch/libnewt0.52"
+WGET_URL="http://mirror.pimentvert.com/sources/newt/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	
+	# Fixe group/owner
+	chown -R root.root $src
+
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make instroot=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/python* $fs/usr/lib
+
+	# Bug fix
+	cd $fs/usr/lib
+	ln -s libnewt.so.0.52.1 libnewt.so.0.52
+	strip -s $fs/usr/bin/*
+}
+
