@@ -1,0 +1,46 @@
+Patch from network_boot_floppy+cd+hd_540.zip at http://sourceforge.net/projects/thinstation
+--- etherboot-5.4.3/src/Makefile.main	2007-02-24 15:44:59.000000000 +0100
++++ etherboot-5.4.3/src/Makefile.main	2008-04-08 15:06:47.000000000 +0200
+@@ -382,6 +382,27 @@
+ $(BIN)/%.zbin: $(BIN)/%.bin $(BIN)/nrv2b $(MAKEDEPS)
+ 	$(BIN)/nrv2b e $< $@
+ 
++# Rule for the multi-NIC image. (by Paolo Salvan)
++NETOBJS:=
++# Note: the 3c90x.o driver should be linked BEFORE the 3c595.o
++# otherwise 3c905b cards will be (badly) handled by the 3c595 driver as 3c900b cards
++NETOBJS+=		$(BIN)/3c90x.o
++# PCI cards...
++NETOBJS+=		$(BIN)/3c595.o $(BIN)/davicom.o $(BIN)/eepro100.o $(BIN)/ns8390.o $(BIN)/pcnet32.o $(BIN)/prism2_plx.o $(BIN)/rtl8139.o $(BIN)/sis900.o $(BIN)/tulip.o $(BIN)/via-rhine.o $(BIN)/r8169.o $(BIN)/forcedeth.o $(BIN)/ns83820.o $(BIN)/eepro.o $(BIN)/e1000.o
++# ISA cards...
++NETOBJS+=		$(BIN)/3c503.o $(BIN)/ne.o $(BIN)/wd.o $(BIN)/3c529.o $(BIN)/3c509.o
++# Exclude these drivers + the belows to create the .COM image, max 65280 byte...
++NETOBJS+=		$(BIN)/sk_g16.o $(BIN)/depca.o $(BIN)/cs89x0.o $(BIN)/prism2_pci.o $(BIN)/smc9000.o $(BIN)/natsemi.o $(BIN)/epic100.o $(BIN)/sundance.o $(BIN)/w89c840.o $(BIN)/tlan.o
++# Try excluding this big and rarely-used driver if you get "ERROR: code size exceeds limit!" at build-time
++# or system resets/hungs-up during image decompression at run-time
++# (uncompressed image could have exceeded low-memory...)
++NETOBJS+=		$(BIN)/tg3.o
++# This driver has slow autoprobing and is rarely used, so it is better to exclude it...
++#NETOBJS+=		$(BIN)/3c515.o
++
++$(BIN)/etherboot-net.o: $(NETOBJS)
++	$(LD) -r $(NETOBJS) -o $@
++
+ # Housekeeping
+ 
+ clean:
+
+--- etherboot-5.4.3/src/core/main.c	2007-02-24 15:44:59.000000000 +0100
++++ etherboot-5.4.3/src/core/main.c	2008-04-08 15:11:46.000000000 +0200
+@@ -471,6 +471,11 @@
+ #ifdef	DNS_RESOLVER
+ 	const char *resolvt;
+ #endif
++        char *name_tmp = fname;
++        while ( *name_tmp != 0 ) {
++                if ( memcmp(name_tmp, ".zpxe", 6 ) == 0 ) {*name_tmp=0;} else {++name_tmp;}
++        }
++
+ 	ip.s_addr = arptable[ARP_SERVER].ipaddr.s_addr;
+ 	name = fname;
+ 	url_port = -1;

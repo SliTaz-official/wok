@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="etherboot"
+VERSION="5.4.3"
+CATEGORY="system-tools"
+SHORT_DESC="Ethernet bootloader for PXE and NBI images."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.etherboot.org/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/src
+	patch -p2 < ../../stuff/etherboot-net.u
+	make bin/etherboot-net.zdsk
+}
+
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/boot
+	cp $src/src/bin/etherboot-net.zdsk $fs/usr/share/boot/etherboot
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	echo "----"
+	echo "You can create pxe/nbi boot floppy with:"
+	echo "# cp /usr/share/boot/etherboot /dev/fd0"
+	echo "----"
+}
