@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="glibc-base"
-VERSION="2.3.6"
+VERSION="2.7"
 CATEGORY="base-system"
 SHORT_DESC="GNU libc minimal libraries for SliTaz based system."
 WANTED="glibc"
@@ -26,6 +26,19 @@ genpkg_rules()
     do
     	cp -a ${_pkg}$file ${fs}$file
     done
-    # Locale archive. Just a silly copy (idea ?).
-    cp stuff/locale-archive $fs/usr/lib/locale
+    
+    # Gen locale files
+	mkdir -p $fs/usr/lib/locale
+	localedef -i fr_CH -c -f ISO-8859-1 $fs/usr/lib/locale/fr_CH
+    localedef -i fr_FR -c -f ISO-8859-1 $fs/usr/lib/locale/fr_FR
+}
+
+# Call ldconfig and remove old glibc-2.3.6 files.
+post_install()
+{
+	local root
+	root=$1
+	ldconfig
+	rm -f $root/lib/*2.3.6.so
+	rm -f $root/usr/lib/locale/locale-archive
 }

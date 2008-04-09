@@ -1,11 +1,11 @@
 # SliTaz package receipt.
 
 PACKAGE="glibc-dev"
-VERSION="2.3.6"
+VERSION="2.7"
 CATEGORY="development"
 SHORT_DESC="The GNU C libraries devel files (Part of SliTaz toolchain)."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="glibc-base"
+DEPENDS="glibc-base bash"
 WANTED="glibc"
 WEB_SITE="http://www.gnu.org/software/libc/"
 SOURCES="glibc"
@@ -16,15 +16,26 @@ SOURCES="glibc"
 #
 genpkg_rules()
 {
-    # Copy all and then remove all files specified in stuff/base-files.list.
-    # We get the files from glibc-base package.
+    # Mass copy and then remove all files specified in stuff/base-files.list.
+    # We get the files from glibc-base. Locale files are in: glibc-locale.
     cp -a $_pkg/* $fs
+    
+    # Rm base files.
     echo -n "Removing all base files..."
-    for file in `cat stuff/base-files.list`
+    for file in `cat $WOK/glibc-base/taz/glibc-base-$VERSION/files.list`
     do
     	rm -f ${fs}$file
     done
     rm -rf $fs/etc
-    rm -rf $fs/usr/share/info
+    rm -rf $fs/usr/share
+    status
+    
+    # Rm locale.
+    echo -n "Removing all locale files..."
+    for file in `cat $WOK/glibc-locale/taz/glibc-locale-$VERSION/files.list`
+    do
+    	rm -f ${fs}$file
+    done
+    rm -rf $fs/usr/lib/gconv
     status
 }
