@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-ieee1394"
+VERSION="2.6.24.2"
+CATEGORY="base-system"
+SHORT_DESC="The Linux kernel ieee1394 modules."
+MAINTAINER="pascal.bellard@slitaz.org"
+WANTED="linux"
+WEB_SITE="http://www.kernel.org/"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    path=lib/modules/$VERSION-slitaz/kernel
+    mkdir -p $fs/$path
+    while read module; do
+    	dir=$path/$(dirname $module)
+    	[ -d $fs/$dir ] || mkdir -p $fs/$dir
+        cp -a $_pkg/$path/$module $fs/$dir
+    done < stuff/modules-$VERSION.list
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	depmod -a -b "$1/lib/modules/$VERSION-slitaz"
+}
+
+post_remove()
+{
+	depmod -a
+}
+
