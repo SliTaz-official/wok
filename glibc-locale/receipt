@@ -1,0 +1,51 @@
+# SliTaz package receipt.
+
+PACKAGE="glibc-locale"
+VERSION="2.7"
+CATEGORY="system-tools"
+SHORT_DESC="The GNU C libraries locale files (see also locale-*)."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="glibc-base locale-cs locale-es locale-ru"
+WANTED="glibc"
+WEB_SITE="http://www.gnu.org/software/libc/"
+SOURCES="glibc"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+#
+# This package provide glibc locale files and utility.
+#
+genpkg_rules()
+{
+    mkdir -p $fs/usr/share $fs/usr/lib $fs/usr/bin
+    
+    cp -a $_pkg/usr/lib/gconv $fs/usr/lib
+    cp -a $_pkg/usr/share/locale $fs/usr/share
+    cp -a $_pkg/usr/share/i18n $fs/usr/share
+    
+    # Utilities and tools
+    cp -a $_pkg/usr/bin/localedef $fs/usr/bin
+    cp -a $_pkg/usr/bin/iconv $fs/usr/bin
+    cp -a $_pkg/usr/bin/tzselect $fs/usr/bin
+    
+    # Rm base files.
+    echo -n "Removing all base files..."
+    for file in `cat $WOK/glibc-base/taz/glibc-base-$VERSION/files.list`
+    do
+    	rm -f ${fs}$file
+    done
+    status
+    
+    # Rm files provided by locale-pack.
+    
+    # cs
+    rm -f $fs/usr/share/i18n/locales/cs_CZ
+    rm -rf $fs/usr/share/locale/cs
+    # es
+    rm -f $fs/usr/share/i18n/locales/es_ES
+    rm -rf $fs/usr/share/locale/es
+    # ru
+    rm -f $fs/usr/share/i18n/locales/ru_RU
+    rm -rf $fs/usr/share/locale/ru
+    rm -f $fs/usr/share/i18n/charmaps/KOI8-RU.gz
+    rm -f $fs/usr/lib/gconv/KOI8-RU.so
+}

@@ -1,0 +1,73 @@
+# SliTaz package receipt
+
+PACKAGE="locale-cs"
+VERSION="1.0"
+CATEGORY="system-tools"
+SHORT_DESC="Czech locale pack."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="glibc-base"
+BUILD_DEPENDS="glibc"
+WEB_SITE="http://www.slitaz.org/"
+SOURCES="glibc"
+
+LOCALE="cs"
+LOCALEDEF="cs_CZ"
+CHARMAP="ISO-8859-2"
+#CORE_PKGS="geany leafpad"
+CORE_PKGS=""
+
+GLIBC_FILES=$WOK/glibc/glibc-2.7/_pkg
+PKG_NAME="$PACKAGE"
+PKG_VERS="$VERSION"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+# Install files in /usr/lib/locale. UTF-8:
+# localedef -i $LOCALEDEF -f UTF-8 $root/usr/lib/locale/$LOCALEDEF.utf8
+#
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale/$LOCALE $fs/usr/share/i18n/locales
+	
+	# Get the core apps messages.
+	for pkg in $CORE_PKGS
+	do
+		. $WOK/$pkg/receipt
+		if [ -d $WOK/$pkg/$PACKAGE-$VERSION/_pkg/usr/share/locale/$LOCALE ]; then
+			cp -a $WOK/$pkg/$PACKAGE-$VERSION/_pkg/usr/share/locale/$LOCALE \
+				$fs/usr/share/locale
+		fi
+	done
+	
+	# Glibc locale.
+	cp -a $GLIBC_FILES/usr/share/i18n/locales/$LOCALEDEF \
+		$fs/usr/share/i18n/locales
+	cp -a $GLIBC_FILES/usr/share/locale/$LOCALE $fs/usr/share/locale
+	
+	PACKAGE="$PKG_NAME"
+	VERSION="$PKG_VERS"
+	
+	# Gen locale files.
+	mkdir -p $fs/usr/lib/locale
+	localedef -i $LOCALEDEF -c -f $CHARMAP $fs/usr/lib/locale/$LOCALEDEF
+}
+
+# Post install to configure default locale.
+post_install()
+{
+	local root
+	root=$1
+	# locale.conf
+	if [ -f $root/etc/locale.conf ]; then
+		echo "LANG=\"$LOCALEDEF\"" > $root/etc/locale.conf
+		echo "LC_ALL=\"$LOCALEDEF\"" >> $root/etc/locale.conf
+	fi
+}
+
+# Back to C if it's the last used locale.
+post_remove()
+{
+	if grep -q $LOCALEDEF /etc/locale.conf; then
+		echo "LANG=C" > /etc/locale.conf
+		echo "LC_ALL=C" >> /etc/locale.conf
+	fi
+}
