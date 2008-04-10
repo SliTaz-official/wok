@@ -1,6 +1,6 @@
 --- etherboot-5.4.3/src/arch/i386/prefix/liloprefix.S
 +++ etherboot-5.4.3/src/arch/i386/prefix/liloprefix.S
-@@ -1,92 +1,361 @@
+@@ -1,92 +1,393 @@
 -/*
 -	Copyright (C) 2000, Entity Cyber, Inc.
 -
@@ -85,15 +85,47 @@
 -	a .lilo file is dd'ed to a floppy), print an error message. 
 -*/
 +.equ	SYSSEG, 0x1000			/* system loaded at SYSSEG<<4 */
- 
--bootsector: 
--	jmp	$BOOTSEG, $go - _prefix	/* reload cs:ip to match relocation addr */
++
 +	.org	0
 +	.arch i386
 +	.text
 +	.section ".prefix", "ax", @progbits
 +	.code16
+ 
+-bootsector: 
+-	jmp	$BOOTSEG, $go - _prefix	/* reload cs:ip to match relocation addr */
++	call	here
++here:
++	pop	%ax
++	cmpw	$0x103, %ax		/* COM entry point is cs:0x100 */
++	jne	bootsector
++/* We need a real mode stack that won't be stomped on by Etherboot
++   which starts at 0x20000. Choose something that's sufficiently high,
++   but not in DOC territory. Note that we couldn't do this in a real
++   .com program since stack variables are in the same segment as the
++   code and data, but this isn't really a .com program, it just looks
++   like one to make DOS load it into memory. It still has the 64kB
++   limitation of .com files though. */
++#define STACK_SEG	0x7000
++#define STACK_SIZE	0x4000
++	/* Set up temporary stack */ 
++	movw	$STACK_SEG, %ax
++	movw	%ax, %ss
++	movw	$STACK_SIZE, %sp
 +
++	pushl	$0	/* No parameters to preserve for exit path */
++	pushw	$0	/* Dummy return address - use prefix_exit */
++
++	/* Calculate segment address of image start */
++	pushw	%cs
++	popw	%ax
++	addw	$(0x100/16), %ax
++	pushw	%ax
++	pushw	$_start
++	/* Calculated lcall to _start with %cs:0000 = image start */
++	lret
++
++bootsector:
 +	jmp	$BOOTSEG, $go		/* reload cs:ip to match relocation addr */
  go: 
 -	movw	$0x2000, %di		/*  0x2000 is arbitrary value >= length
@@ -388,8 +420,8 @@
 +	movb	$4, %cl
 +	movb	$0x0e, %ah		/* write char, tty mode */
 +	movw	$0x0007, %bx		/* page 0, attribute 7 (normal) */
-+	call	print_digit
-+	call	print_digit
++	call	print_digit2
++print_digit2: 
 +	call	print_digit
 +/* fall through */
 +print_digit: 
@@ -419,7 +451,7 @@
 +	.byte 36,18,15,9
  
 +msg1: 
-+	.ascii "Loading ROM image"
++	.ascii "Loading ROM"
 +msg1end: 
  
  	.org	497
