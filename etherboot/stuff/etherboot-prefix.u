@@ -1,6 +1,6 @@
 --- etherboot-5.4.3/src/arch/i386/prefix/liloprefix.S
 +++ etherboot-5.4.3/src/arch/i386/prefix/liloprefix.S
-@@ -1,92 +1,393 @@
+@@ -1,92 +1,377 @@
 -/*
 -	Copyright (C) 2000, Entity Cyber, Inc.
 -
@@ -39,10 +39,7 @@
 -	of setup code are contained in the image.
 -
 -*/
-+/* NOTE: this boot sector contains instructions that need at least an 80186.
-+ * Yes, as86 has a bug somewhere in the valid instruction set checks.
-+ *
-+ * SYS_SIZE is the number of clicks (16 bytes) to be loaded.  For Etherboot
++/* SYS_SIZE is the number of clicks (16 bytes) to be loaded.  For Etherboot
 + * purposes, we need to load everything but the boot sector itself, i.e. 32
 + * clicks less than the size of the entire (verbatim) image.  The image size
 + * is practically limited only by the available base memory size.
@@ -91,14 +88,13 @@
 +	.text
 +	.section ".prefix", "ax", @progbits
 +	.code16
- 
--bootsector: 
--	jmp	$BOOTSEG, $go - _prefix	/* reload cs:ip to match relocation addr */
++
 +	call	here
 +here:
 +	pop	%ax
 +	cmpw	$0x103, %ax		/* COM entry point is cs:0x100 */
 +	jne	bootsector
++
 +/* We need a real mode stack that won't be stomped on by Etherboot
 +   which starts at 0x20000. Choose something that's sufficiently high,
 +   but not in DOC territory. Note that we couldn't do this in a real
@@ -113,18 +109,14 @@
 +	movw	%ax, %ss
 +	movw	$STACK_SIZE, %sp
 +
-+	pushl	$0	/* No parameters to preserve for exit path */
-+	pushw	$0	/* Dummy return address - use prefix_exit */
-+
 +	/* Calculate segment address of image start */
 +	pushw	%cs
 +	popw	%ax
 +	addw	$(0x100/16), %ax
-+	pushw	%ax
-+	pushw	$_start
-+	/* Calculated lcall to _start with %cs:0000 = image start */
-+	lret
-+
++	jmp	go_setup_code
+ 
+-bootsector: 
+-	jmp	$BOOTSEG, $go - _prefix	/* reload cs:ip to match relocation addr */
 +bootsector:
 +	jmp	$BOOTSEG, $go		/* reload cs:ip to match relocation addr */
  go: 
@@ -197,15 +189,18 @@
 + * 36 sectors if sector 36 can be read, 18 sectors if sector 18 can be read,
 + * 15 if sector 15 can be read.	Otherwise guess 9.
 + */
-+
+ 
+-	movw	$0x0007, %bx		/* page 0, attribute 7 (normal) */
+-	movb	$0x0e, %ah		/* write char, tty mode */
+-prloop: 
 +	movw	$disksizes, %si		/* table of sizes to try */
 +
 +probe_loop: 
-+	lodsb
+ 	lodsb
++	orb	%al, %al
++	je	got_sectors		/* if all else fails, try 9 */
 +	cbtw				/* extend to word */
 +	movw	%ax, sectors
-+	cmpw	$disksizes+4, %si
-+	jae	got_sectors		/* if all else fails, try 9 */
 +	xchgw	%cx,%ax			/* cx = track and sector */
 +	xorw	%dx,%dx			/* drive 0, head 0 */
 +	movw	$0x0200, %bx		/* address after boot sector */
@@ -250,9 +245,8 @@
 +
 +/* after that (everything loaded), we call to the .ROM file loaded. */
 +
-+	pushl	$0		/* No parameters to preserve for exit path */
-+	pushw	$0		/* Use prefix exit path mechanism */
-+	ljmp	$SYSSEG, $_start
++	movw	$SYSSEG, %ax
++	jmp	go_setup_code
 +
 +/* This routine loads the system at address SYSSEG<<4, making sure no 64kB
 + * boundaries are crossed. We try to load it as fast as possible, loading whole
@@ -279,13 +273,13 @@
 +	movw	sectors, %ax
 +	subw	sread, %ax
 +	movw	%ax,%cx
-+	shlw	$9, %cx
++	shlw	$9, %cx			/* 80186 opcode */
 +	addw	%bx,%cx
 +	jnc	ok2_read
 +	je	ok2_read
 +	xorw	%ax,%ax
 +	subw	%bx,%ax
-+	shrw	$9, %ax
++	shrw	$9, %ax			/* 80186 opcode */
 +ok2_read: 
 +	call	read_track
 +	movw	%ax,%cx
@@ -301,7 +295,7 @@
 +	xorw	%ax,%ax
 +ok3_read: 
 +	movw	%ax, sread
-+	shlw	$9, %cx
++	shlw	$9, %cx			/* 80186 opcode */
 +	addw	%cx,%bx
 +	jnc	rp_read
 +	movw	%es,%ax
@@ -311,24 +305,21 @@
 +	jmp	rp_read
 +
 +read_track: 
-+	pusha
++	pusha				/* 80186 opcode */
 +	pushw	%ax
 +	pushw	%bx
 +	pushw	%bp			/* just in case the BIOS is buggy */
-+	movw	$0x0e2e, %ax		/* 0x2e = . */
-+	movw	$0x0007, %bx
-+	int	$0x10
++	movb	$0x2e, %al		/* 0x2e = . */
++	call	print_char
 +	popw	%bp
 +	popw	%bx
 +	popw	%ax
 +
-+	movw	track, %dx
 +	movw	sread, %cx
 +	incw	%cx
-+	movb	%dl,%ch
-+	movw	head, %dx
-+	movb	%dl,%dh
-+	andw	$0x0100, %dx
++	movb	track, %ch
++	movw	$0x0100, %dx
++	andb	head, %dh
 +	movb	$2, %ah
 +
 +	pushw	%dx			/* save for error dump */
@@ -339,7 +330,7 @@
 +	int	$0x13
 +	jc	bad_rt
 +	addw	$8, %sp
-+	popa
++	popa				/* 80186 opcode */
 +	ret
 +
 +bad_rt: pushw	%ax			/* save error code */
@@ -350,7 +341,7 @@
 +	int	$0x13
 +
 +	addw	$10, %sp
-+	popa
++	popa				/* 80186 opcode */
 +	jmp	read_track
 +
 +/* print_all is for debugging purposes.	It will print out all of the registers.
@@ -365,6 +356,7 @@
 +
 +print_all: 
 +	call	print_nl		/* nl for readability */
++					/* print_nl update ah and bx */
 +	movw	$5, %cx			/* error code + 4 registers */
 +	movw	%sp,%bp
 +
@@ -373,9 +365,8 @@
 +
 +	cmpb	$5, %cl
 +	jae	no_reg			/* see if register name is needed */
- 
- 	movw	$0x0007, %bx		/* page 0, attribute 7 (normal) */
-+	movw	$0xe05+0x41-1, %ax
++
++	movb	$0x5+0x41-1, %al
 +	subb	%cl,%al
 +	int	$0x10
 +
@@ -389,28 +380,23 @@
 +	addw	$2, %bp			/* next register */
 +	call	print_hex		/* print it */
 +	movb	$0x20, %al		/* print a space */
-+	int	$0x10
+ 	int	$0x10
 +	popw	%cx
 +	loop	print_loop
-+	call	print_nl		/* nl for readability */
-+	ret
++					/* nl for readability */
++print_nl: 
++	movb	$0xd, %al		/* CR */
++	call	print_char
++	movb	$0xa, %al		/* LF */
++	jmp	print_char
++
 +
 +print_str: 
-+	movw	$0x0007, %bx		/* page 0, attribute 7 (normal) */
- 	movb	$0x0e, %ah		/* write char, tty mode */
- prloop: 
- 	lodsb
- 	int	$0x10
++prloop: 
++	lodsb
++	call	print_char
  	loop	prloop
 -freeze: jmp	freeze
-+	ret
-+
-+print_nl: 
-+	movw	$0x0007, %bx		/* page 0, attribute 7 (normal) */
-+	movw	$0xe0d, %ax		/* CR */
-+	int	$0x10
-+	movb	$0xa, %al		/* LF */
-+	int	$0x10
 +	ret
 +
 +/* print_hex prints the word pointed to by ss:bp in hexadecimal. */
@@ -418,20 +404,21 @@
 +print_hex: 
 +	movw	(%bp),%dx		/* load word into dx */
 +	movb	$4, %cl
-+	movb	$0x0e, %ah		/* write char, tty mode */
-+	movw	$0x0007, %bx		/* page 0, attribute 7 (normal) */
-+	call	print_digit2
-+print_digit2: 
++	call	print_2digits
++print_2digits: 
 +	call	print_digit
 +/* fall through */
 +print_digit: 
-+	rol	%cl,%dx			/* rotate so that lowest 4 bits are used */
++	rol	%cl,%dx			/* rotate to use lowest 4 bits */
 +	movb	$0x0f, %al		/* mask for nybble */
 +	andb	%dl,%al
-+	addb	$0x90, %al		/* convert al to ascii hex (four instructions) */
-+	daa
++	addb	$0x90, %al		/* convert al to ascii hex */
++	daa				/* (four instructions) */
 +	adcb	$0x40, %al
 +	daa
++print_char:
++	movb	$0x0e, %ah		/* write char, tty mode */
++	movw	$0x0007, %bx		/* page 0, attribute 7 (normal) */
 +	int	$0x10
 +	ret
 +
@@ -448,10 +435,424 @@
 -why:	.ascii	"This image cannot be loaded from a floppy disk.\r\n"
 -why_end: 
 +disksizes: 
-+	.byte 36,18,15,9
++	.byte 36,18,15,9,0
  
 +msg1: 
-+	.ascii "Loading ROM"
++	.ascii "Loading ROM image"
++msg1end: 
+ 
+ 	.org	497
+ setup_sects: 
+@@ -117,15 +402,22 @@
+ 	whose entry point is SYSSEG:0.
+ */
+ setup_code: 
+-	pushl	$0		/* No parameters to preserve for exit path */
+-	pushw	$0		/* Use prefix exit path mechanism */
++	movw	$(SYSSEG-(PREFIXSIZE/16)), %ax
+ 	/* Etherboot expects to be contiguous in memory once loaded.
+ 	 * LILO doesn't do this, but since we don't need any
+ 	 * information that's left in the prefix, it doesn't matter:
+ 	 * we just have to ensure that %cs:0000 is where the start of
+ 	 * the Etherboot image *would* be.
+ 	 */
+-	ljmp	$(SYSSEG-(PREFIXSIZE/16)), $_start
++go_setup_code: 
++	xorw	%cx, %cx
++	pushw	%cx
++	pushw	%cx		/* No parameters to preserve for exit path */
++	pushw	%cx		/* Use prefix exit path mechanism */
++	pushw	%ax
++	pushw	$_start
++	/* Calculated lcall to _start with %cs:0000 = image start */
++	lret
+ 
+ 	.section ".text16", "ax", @progbits
+ 	.globl	prefix_exit
+
+--- etherboot-5.4.3/src/arch/i386/prefix/bImageprefix.S
++++ etherboot-5.4.3/src/arch/i386/prefix/bImageprefix.S
+@@ -82,6 +82,14 @@
+ #define SIG1	0xAA55
+ #define SIG2	0x5A5A
+ 
++/* SYS_SIZE is the number of clicks (16 bytes) to be loaded.  For Etherboot
++ * purposes, we need to load everything but the boot sector itself, i.e. 32
++ * clicks less than the size of the entire (verbatim) image.  The image size
++ * is practically limited only by the available base memory size.
++ */
++.globl	SYSSIZE
++.equ	SYSSIZE, _verbatim_size_pgh - 32
++
+ 	.text
+ 	.code16
+ 	.arch i386
+@@ -90,40 +98,349 @@
+ 	.globl	_prefix
+ _prefix:
+ 
+-/* 
+-	This is a minimal boot sector.	If anyone tries to execute it (e.g., if
+-	a .lilo file is dd'ed to a floppy), print an error message. 
+-*/
++	call	here
++here:
++	pop	%ax
++	cmpw	$0x103, %ax		/* COM entry point is cs:0x100 */
++	jne	bootsector
++
++/* We need a real mode stack that won't be stomped on by Etherboot
++   which starts at 0x20000. Choose something that's sufficiently high,
++   but not in DOC territory. Note that we couldn't do this in a real
++   .com program since stack variables are in the same segment as the
++   code and data, but this isn't really a .com program, it just looks
++   like one to make DOS load it into memory. It still has the 64kB
++   limitation of .com files though. */
++#define STACK_SEG	0x7000
++#define STACK_SIZE	0x4000
++	/* Set up temporary stack */ 
++	movw	$STACK_SEG, %ax
++	movw	%ax, %ss
++	movw	$STACK_SIZE, %sp
++
++	/* Calculate segment address of image start */
++	pushw	%cs
++	popw	%ax
++	addw	$(0x100/16), %ax
++	jmp	go_setup_code
+ 
+-bootsector: 
+-	jmp	$BOOTSEG, $go - _prefix	/* reload cs:ip to match relocation addr */
++bootsector:
++	jmp	$BOOTSEG, $go		/* reload cs:ip to match relocation addr */
+ go: 
+-	movw	$0x2000, %di		/*  0x2000 is arbitrary value >= length
+-					    of bootsect + room for stack */
++	movw	$0x2000-12, %di		/* 0x2000 is arbitrary value >= length */
++					/* of bootsect + room for stack + 12 for */
++					/* saved disk parm block */
+ 
+ 	movw	$BOOTSEG, %ax
+ 	movw	%ax,%ds
+ 	movw	%ax,%es
+-
+-	cli
+-	movw	%ax, %ss		/* put stack at BOOTSEG:0x2000. */
++	movw	%ax,%ss			/* put stack at initial position */
+ 	movw	%di,%sp
+-	sti
+ 
+-	movw	$why_end-why, %cx
+-	movw	$why - _prefix, %si
++/* Many BIOS's default disk parameter tables will not recognize multi-sector
++ * reads beyond the maximum sector number specified in the default diskette
++ * parameter tables - this may mean 7 sectors in some cases.
++ *
++ * Since single sector reads are slow and out of the question, we must take care
++ * of this by creating new parameter tables (for the first disk) in RAM.  We
++ * will set the maximum sector count to 36 - the most we will encounter on an
++ * ED 2.88.  High doesn't hurt.	Low does.
++ *
++ * Segments are as follows: ds=es=ss=cs - BOOTSEG
++ */
++
++	xorw	%cx,%cx
++	movw	%cx,%es			/* access segment 0 */
++	movw	$0x78, %bx		/* 0:bx is parameter table address */
++	pushw	%ds			/* save ds */
++/* 0:bx is parameter table address */
++	ldsw	%es:(%bx),%si		/* loads ds and si */
++
++	movw	%ax,%es			/* ax is BOOTSECT (loaded above) */
++	movb	$6, %cl			/* copy 12 bytes */
++	cld
++	pushw	%di			/* keep a copy for later */
++	rep
++	movsw				/* ds:si is source, es:di is dest */
++	popw	%di
+ 
+-	movw	$0x0007, %bx		/* page 0, attribute 7 (normal) */
+-	movb	$0x0e, %ah		/* write char, tty mode */
+-prloop: 
++	movb	$36,%es:4(%di)
++
++	movw	%cx,%ds			/* access segment 0 */
++	xchgw	%di,(%bx)
++	movw	%es,%si
++	xchgw	%si,2(%bx)
++	popw	%ds			/* restore ds */
++	movw	%di, dpoff		/* save old parameters */
++	movw	%si, dpseg		/* to restore just before finishing */
++	pushw	%ds
++	popw	%es			/* reload es */
++
++/* Note that es is already set up.  Also cx is 0 from rep movsw above. */
++
++	xorb	%ah,%ah			/* reset FDC */
++	xorb	%dl,%dl
++	int	$0x13
++
++/* Get disk drive parameters, specifically number of sectors/track.
++ *
++ * It seems that there is no BIOS call to get the number of sectors.  Guess
++ * 36 sectors if sector 36 can be read, 18 sectors if sector 18 can be read,
++ * 15 if sector 15 can be read.	Otherwise guess 9.
++ */
++
++	movw	$disksizes, %si		/* table of sizes to try */
++
++probe_loop: 
+ 	lodsb
++	orb	%al, %al
++	je	got_sectors		/* if all else fails, try 9 */
++	cbtw				/* extend to word */
++	movw	%ax, sectors
++	xchgw	%cx,%ax			/* cx = track and sector */
++	xorw	%dx,%dx			/* drive 0, head 0 */
++	movw	$0x0200, %bx		/* address after boot sector */
++					/*   (512 bytes from origin, es = cs) */
++	movw	$0x0201, %ax		/* service 2, 1 sector */
++	int	$0x13
++	jc	probe_loop		/* try next value */
++
++got_sectors: 
++	movw	$msg1end-msg1, %cx
++	movw	$msg1, %si
++	call	print_str
++
++/* ok, we've written the Loading... message, now we want to load the system */
++
++	pushw	%es			/* = ds */
++	movw	$SYSSEG, %ax
++	movw	%ax,%es			/* segment of SYSSEG<<4 */
++	pushw	%es
++	call	read_it
++
++/* This turns off the floppy drive motor, so that we enter the kernel in a
++ * known state, and don't have to worry about it later.
++ */
++	movw	$0x3f2, %dx
++	xorb	%al,%al
++	outb	%al,%dx
++
++	call	print_nl
++	pop	%es			/* = SYSSEG */
++	pop	%es			/* balance push/pop es */
++sigok: 
++
++/* Restore original disk parameters */
++	movw	$0x78, %bx
++	movw	dpoff, %di
++	movw	dpseg, %si
++	xorw	%ax,%ax
++	movw	%ax,%ds
++	movw	%di,(%bx)
++	movw	%si,2(%bx)
++
++/* after that (everything loaded), we call to the .ROM file loaded. */
++
++	movw	$SYSSEG, %ax
++go_setup_code: 
++	xorw	%cx, %cx
++	pushw	%cx
++	pushw	%cx		/* No parameters to preserve for exit path */
++	pushw	%cx		/* Use prefix exit path mechanism */
++	pushw	%ax
++	pushw	$_start
++	/* Calculated lcall to _start with %cs:0000 = image start */
++	lret
++
++/* This routine loads the system at address SYSSEG<<4, making sure no 64kB
++ * boundaries are crossed. We try to load it as fast as possible, loading whole
++ * tracks whenever we can.
++ *
++ * in:	es - starting address segment (normally SYSSEG)
++ */
++read_it: 
++	movw	$0,sread		/* read whole image incl boot sector */
++	movw	%es,%ax
++	testw	$0x0fff, %ax
++die:	jne	die			/* es must be at 64kB boundary */
++	xorw	%bx,%bx			/* bx is starting address within segment */
++rp_read: 
++	movw	%es,%ax
++	movw	%bx,%dx
++	movb	$4, %cl
++	shrw	%cl,%dx			/* bx is always divisible by 16 */
++	addw	%dx,%ax
++	cmpw	$SYSSEG+SYSSIZE, %ax	/* have we loaded all yet? */
++	jb	ok1_read
++	ret
++ok1_read: 
++	movw	sectors, %ax
++	subw	sread, %ax
++	movw	%ax,%cx
++	shlw	$9, %cx			/* 80186 opcode */
++	addw	%bx,%cx
++	jnc	ok2_read
++	je	ok2_read
++	xorw	%ax,%ax
++	subw	%bx,%ax
++	shrw	$9, %ax			/* 80186 opcode */
++ok2_read: 
++	call	read_track
++	movw	%ax,%cx
++	addw	sread, %ax
++	cmpw	sectors, %ax
++	jne	ok3_read
++	movw	$1, %ax
++	subw	head, %ax
++	jne	ok4_read
++	incw	track
++ok4_read: 
++	movw	%ax, head
++	xorw	%ax,%ax
++ok3_read: 
++	movw	%ax, sread
++	shlw	$9, %cx			/* 80186 opcode */
++	addw	%cx,%bx
++	jnc	rp_read
++	movw	%es,%ax
++	addb	$0x10, %ah
++	movw	%ax,%es
++	xorw	%bx,%bx
++	jmp	rp_read
++
++read_track: 
++	pusha				/* 80186 opcode */
++	pushw	%ax
++	pushw	%bx
++	pushw	%bp			/* just in case the BIOS is buggy */
++	movb	$0x2e, %al		/* 0x2e = . */
++	call	print_char
++	popw	%bp
++	popw	%bx
++	popw	%ax
++
++	movw	sread, %cx
++	incw	%cx
++	movb	track, %ch
++	movw	$0x0100, %dx
++	andb	head, %dh
++	movb	$2, %ah
++
++	pushw	%dx			/* save for error dump */
++	pushw	%cx
++	pushw	%bx
++	pushw	%ax
++
++	int	$0x13
++	jc	bad_rt
++	addw	$8, %sp
++	popa				/* 80186 opcode */
++	ret
++
++bad_rt: pushw	%ax			/* save error code */
++	call	print_all		/* ah = error, al = read */
++
++	xorb	%ah,%ah
++	xorb	%dl,%dl
++	int	$0x13
++
++	addw	$10, %sp
++	popa				/* 80186 opcode */
++	jmp	read_track
++
++/* print_all is for debugging purposes.	It will print out all of the registers.
++ * The assumption is that this is called from a routine, with a stack frame like
++ *	dx
++ *	cx
++ *	bx
++ *	ax
++ *	error
++ *	ret <- sp
++ */
++
++print_all: 
++	call	print_nl		/* nl for readability */
++					/* print_nl update ah and bx */
++	movw	$5, %cx			/* error code + 4 registers */
++	movw	%sp,%bp
++
++print_loop: 
++	pushw	%cx			/* save count left */
++
++	cmpb	$5, %cl
++	jae	no_reg			/* see if register name is needed */
++
++	movb	$0x5+0x41-1, %al
++	subb	%cl,%al
+ 	int	$0x10
++
++	movb	$0x58, %al		/* 'X' */
++	int	$0x10
++
++	movb	$0x3A, %al		/* ':' */
++	int	$0x10
++
++no_reg: 
++	addw	$2, %bp			/* next register */
++	call	print_hex		/* print it */
++	movb	$0x20, %al		/* print a space */
++	int	$0x10
++	popw	%cx
++	loop	print_loop
++					/* nl for readability */
++print_nl: 
++	movb	$0xd, %al		/* CR */
++	call	print_char
++	movb	$0xa, %al		/* LF */
++	jmp	print_char
++
++
++print_str: 
++prloop: 
++	lodsb
++	call	print_char
+ 	loop	prloop
+-freeze: jmp	freeze
++	ret
+ 
+-why:	.ascii	"This image cannot be loaded from a floppy disk.\r\n"
+-why_end: 
++/* print_hex prints the word pointed to by ss:bp in hexadecimal. */
++
++print_hex: 
++	movw	(%bp),%dx		/* load word into dx */
++	movb	$4, %cl
++	call	print_2digits
++print_2digits: 
++	call	print_digit
++/* fall through */
++print_digit: 
++	rol	%cl,%dx			/* rotate to use lowest 4 bits */
++	movb	$0x0f, %al		/* mask for nybble */
++	andb	%dl,%al
++	addb	$0x90, %al		/* convert al to ascii hex */
++	daa				/* (four instructions) */
++	adcb	$0x40, %al
++	daa
++print_char:
++	movb	$0x0e, %ah		/* write char, tty mode */
++	movw	$0x0007, %bx		/* page 0, attribute 7 (normal) */
++	int	$0x10
++	ret
+ 
++sread:	.word 0				/* sectors read of current track */
++head:	.word 0				/* current head */
++track:	.word 0				/* current track */
++
++sectors: 
++	.word 0
++
++dpseg:	.word 0
++dpoff:	.word 0
++
++disksizes: 
++	.byte 36,18,15,9,0
++
++msg1: 
++	.ascii "Loading ROM image"
 +msg1end: 
  
  	.org	497
