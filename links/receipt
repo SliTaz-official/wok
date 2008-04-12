@@ -1,11 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="links"
-VERSION="2.1pre32"
+VERSION="2.1pre33"
 CATEGORY="network"
 SHORT_DESC="Light and speed web browser using Ncurses or Xlib."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="ncurses"
+DEPENDS="ncurses openssl"
+BUILD_DEPENDS="ncurses-dev openssl-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://links.twibright.com/"
 WGET_URL="http://links.twibright.com/download/$TARBALL"
@@ -14,10 +15,13 @@ WGET_URL="http://links.twibright.com/download/$TARBALL"
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr \
-		--sysconfdir=/etc --mandir=/usr/share/man \
-		--without-directfb --without-ssl \
-		--enable-graphics $CONFIGURE_ARGS
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		--without-directfb \
+		--enable-graphics \
+		$CONFIGURE_ARGS
 	make
 	make DESTDIR=$PWD/_pkg install
 }
@@ -27,6 +31,5 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share/pixmaps
 	cp -a $_pkg/usr/bin $fs/usr
-	strip -s $fs/usr/bin/*
 	cp $src/graphics/links.xpm $fs/usr/share/pixmaps
 }
