@@ -1,14 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="gimp"
-VERSION="2.2.17"
+VERSION="2.4.5"
 CATEGORY="graphics"
 SHORT_DESC="Gnu Image Manipulation Program or GIMP!"
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+ libart_lgpl"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gimp.org/"
-WGET_URL="ftp://ftp.gimp.org/pub/gimp/v2.2/$TARBALL"
+WGET_URL="ftp://ftp.gimp.org/pub/gimp/v2.4/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -18,8 +18,9 @@ compile_rules()
 		--prefix=/usr --infodir=/usr/share/info \
 		--mandir=/usr/share/man --sysconfdir=/etc \
 		--with-html-dir=/usr/share/doc \
-		$CONFIGURE_ARGS \
-		--disable-print
+		--disable-print \
+		--disable-python \
+		$CONFIGURE_ARGS
 	make
 	make DESTDIR=$PWD/_pkg install
 }
@@ -27,31 +28,21 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p \
-		$fs/usr $fs/usr/lib \
-		$fs/usr/share/applications \
-		$fs/usr/share/locale \
-		$fs/usr/share/pixmaps
+	mkdir -p $fs/usr/share/pixmaps $fs/usr/lib
 	
 	cp -a $_pkg/etc $fs
-	cp $src/data/images/wilber-icon.png $fs/usr/share/pixmaps/gimp.png
+	cp $_pkg/usr/share/icons/hicolor/24x24/apps/gimp.png \
+		$fs/usr/share/pixmaps/gimp.png
 	
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/gimp $fs/usr/lib
 	cp -a $_pkg/usr/share/gimp $fs/usr/share
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $_pkg/usr/share/mime-info $fs/usr/share
 	
 	rm $fs/usr/lib/gimp/*/*/*.la
-	strip --strip-unneeded $fs/usr/lib/*.so*
-	strip --strip-unneeded $fs/usr/lib/gimp/*/modules/*.so
-	strip -s $fs/usr/lib/gimp/*/plug-ins/*
-	strip -s $fs/usr/bin/* 2>/dev/null
 	
 	# Put a nice splash with a spider
 	cp -a stuff/gimp-splash.png $fs/usr/share/gimp/2.0/images/
-	
-	# Freedesktop entry
-	cp -a stuff/$PACKAGE.desktop $fs/usr/share/applications
 }
 
