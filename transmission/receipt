@@ -21,21 +21,26 @@ compile_rules()
 	#bzip2 -d -c "$SOURCES_REPOSITORY/$TARBALL" | tar -xf -
 	
 	cd $src
-	./configure --prefix=/usr  --disable-openssl \
-	$CONFIGURE_ARGS
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS
 	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/locale/fr/LC_MESSAGES \
-	 $fs/usr/share/pixmaps $fs/usr/share/applications
+	mkdir -p $fs/usr/bin $fs/usr/share/locale/fr/LC_MESSAGES 
 	cp -a $src/gtk/transmission $fs/usr/bin
-	# Resized pixmap , French locale and desktop file.
-	cp -a $src/gtk/transmission.png $fs/usr/share/pixmaps
-	cp -a $src/gtk/transmission.desktop $fs/usr/share/applications
-	cp -a $src/po/fr.gmo $fs/usr/share/locale/fr/LC_MESSAGES/transmission.mo
+	# French locale.
+	cp -a $src/po/fr.gmo \
+		$fs/usr/share/locale/fr/LC_MESSAGES/transmission.mo
+}
+
+# Remove old packages name
+post_install()
+{
+	rm -f /usr/bin/transmission-gtk
 }
 
 # Fancy tarball...
