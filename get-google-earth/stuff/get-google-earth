@@ -1,0 +1,52 @@
+#!/bin/sh -e
+
+if test $(id -u) != 0 ; then
+	echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please type 'su' and root password to become super-user.\n"
+	exit 0
+fi
+
+if [ -d /var/lib/tazpkg/installed/google-earth ]; then
+  tazpkg remove google-earth
+  [ -d /var/lib/tazpkg/installed/google-earth ] && exit 1
+fi
+
+# Download tarball
+###wget http://dl.google.com/earth/client/current/GoogleEarthLinux.bin"
+chmod +x GoogleEarthLinux.bin
+
+VERSION=$(head GoogleEarthLinux.bin | grep ^label | sed 's/.*Linux \(.*\)"/\1/')
+
+# Extract
+./GoogleEarthLinux.bin
+
+# Create pseudo package
+mkdir -p fs/usr/bin
+cp /usr/bin/get-google-earth fs/usr/bin
+find fs | cpio -o -H newc | gzip -9 > fs.cpio.gz
+find /usr/local/google-earth > files.list
+cat >> files.list <<EOT
+/usr/share/applications/defaults.list
+/usr/share/applications/Google-googleearth.desktop
+/sbin/googleearth
+EOT
+cat > receipt <<EOT
+PACKAGE="google-earth"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="3D planet viewer."
+WEB_SITE="http://earth.google.com/"
+DEPENDS="MesaLib"
+EOT
+cpio -o -H newc > google-earth-$VERSION.tazpkg <<EOT
+receipt
+files.list
+fs.cpio.gz
+EOT
+
+# Install pseudo package
+tazpkg install google-earth-$VERSION.tazpkg
+
+# Clean
+###rm -f GoogleEarthLinux.bin
+
