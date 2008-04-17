@@ -11,6 +11,10 @@ if [ -d /var/lib/tazpkg/installed/google-earth ]; then
   [ -d /var/lib/tazpkg/installed/google-earth ] && exit 1
 fi
 
+TMP_DIR=/tmp/get-google-earth-$$-$RANDOM
+CUR_DIR=$(pwd)
+cd $TMP_DIR
+
 # Download tarball
 wget http://dl.google.com/earth/client/current/GoogleEarthLinux.bin
 chmod +x GoogleEarthLinux.bin
@@ -27,9 +31,9 @@ find fs | cpio -o -H newc | gzip -9 > fs.cpio.gz
 find /usr/local/google-earth > files.list
 cat >> files.list <<EOT
 /usr/share/applications/Google-googleearth.desktop
+/usr/share/applications/defaults.list
 /sbin/googleearth
 EOT
-#/usr/share/applications/defaults.list
 cat > receipt <<EOT
 PACKAGE="google-earth"
 VERSION="$VERSION"
@@ -48,5 +52,6 @@ EOT
 tazpkg install google-earth-$VERSION.tazpkg
 
 # Clean
-rm -f GoogleEarthLinux.bin
+cd $CUR_DIR
+rm -rf $TMP_DIR
 
