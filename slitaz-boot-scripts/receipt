@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-boot-scripts"
-VERSION="1.8.1"
+VERSION="2.0"
 CATEGORY="base-system"
 SHORT_DESC="Provide all the initialisation scripts used at boot time."
 MAINTAINER="pankso@slitaz.org"
@@ -33,10 +33,6 @@ pre_install()
 {
  	local root
  	root=$1
-
-	# Remove motd to be rebuils by /etc/init.d/i18n.sh in
-	# the right language.
-	rm -f $root/etc/motd
 	
 	# Backup file to restore with post install
 	echo "Creating backups of configs..."
@@ -55,5 +51,19 @@ post_install()
 	mv -f $root/etc/network.conf.bak $root/etc/network.conf 2>/dev/null
 	mv -f $root/etc/inittab.bak $root/etc/inittab 2>/dev/null
 	mv -f $root/etc/init.d/local.sh.bak $root/etc/init.d/local.sh 2>/dev/null
+	
+	# wifi config
+	if ! grep -q ^WIFI $root/etc/network.conf; then
+		cat >> $root/etc/network.conf << "EOT"
+# Wifi connection.
+# Enable/disable wireless connection at boot time.
+WIFI="no"
+
+# Wifi interface (iwconfig) and ESSID.
+WIFI_INTERFACE="wlan0"
+ESSID="any"
+
+EOT
+	fi
 }
 
