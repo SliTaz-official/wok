@@ -104,7 +104,6 @@ diff -purN busybox-1.10.0/archival/cpio.c busybox/archival/cpio.c
 +            else links->st.st_size = 0;        // not last link: no data
 +            free(n);
 +        }
-+
 +        bytes += printf("070701%08lx%08lx%08lx%08lx%08lx%08lx%08lx"
 +                        "%08lx%08lx%08lx%08lx%08lx%08lx%s%c",
 +                        (unsigned long) inode->st.st_ino,
@@ -121,9 +120,7 @@ diff -purN busybox-1.10.0/archival/cpio.c busybox/archival/cpio.c
 +                        strlen(name) + 1UL, 0UL, name, 0);
 +
 +        cpio_pad(&bytes, (line) ? 4-1 : 512-1);
-+
 +        if (inode->st.st_size) {
-+
 +            if (S_ISLNK(inode->st.st_mode)) {
 +                char *lpath = xmalloc_readlink_or_warn(name);
 +
@@ -146,7 +143,10 @@ diff -purN busybox-1.10.0/archival/cpio.c busybox/archival/cpio.c
 +            cpio_pad(&bytes, 4-1);
 +        }
 +
-+        if (!line) return; // was trailer
++        if (!line) {
++            fputc('\n', stderr); // GNU cpio do that...
++            return; // was trailer
++        }
 +
 +    free_and_continue:
 +        if (!inode->names) free(inode);
