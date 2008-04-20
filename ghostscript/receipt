@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="ghostscript"
+VERSION="8.62"
+CATEGORY="office"
+SHORT_DESC="Ghostscript tools and utilities."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://pages.cs.wisc.edu/~ghost/"
+WGET_URL="http://mirror.cs.wisc.edu/pub/mirrors/ghost/GPL/gs862/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	# Remove doc and examples
+	rm -rf $fs/usr/share/$PACKAGE/$VERSION/doc
+	rm -rf $fs/usr/share/$PACKAGE/$VERSION/examples
+}
