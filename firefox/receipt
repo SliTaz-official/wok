@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="firefox"
-VERSION="2.0.0.13"
+VERSION="2.0.0.14"
 CATEGORY="network"
 SHORT_DESC="User friendly, secure and fast web browser."
 MAINTAINER="pankso@slitaz.org"
@@ -32,7 +32,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share/pixmaps $fs/etc
+	mkdir -p $fs/usr/lib $fs/usr/share $fs/etc
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/$PACKAGE-$VERSION $fs/usr/lib
 
@@ -47,20 +47,23 @@ genpkg_rules()
 	cp -a stuff/userChrome.css \
 		$fs/usr/lib/$PACKAGE-$VERSION/defaults/profile/chrome
 
-	# Mozilla default pixmaps and Firefox icon from the stuff.
-	cp -a stuff/mozicon.png $fs/usr/share/pixmaps
+	# Remove Mozilla default icons.
 	rm -rf $fs/usr/lib/$PACKAGE-$VERSION/icons
 
 	# Move default config to /etc/firefox (/usr maybe read-only)
 	mv -f $fs/usr/lib/$PACKAGE-$VERSION/defaults $fs/etc/$PACKAGE
 	ln -s /etc/$PACKAGE $fs/usr/lib/$PACKAGE-$VERSION/defaults
-
-	# Strip
-	strip -s $fs/usr/lib/$PACKAGE-$VERSION/* 2>/dev/null
 	
 	# Locale fr
 	tar xjf stuff/langpack-fr@firefox.mozilla.org.tar.bz2 \
 	-C $fs/usr/lib/$PACKAGE-$VERSION/extensions
+	
+	# Search Plugin (by: oddball)
+	cp -a stuff/searchplugins $fs/usr/lib/firefox-$VERSION/
+	
+	# Home page
+	cp -a stuff/webhome $fs/usr/share
+	chown -R root.root $fs
 	
 	# Remove unnecessary files.
 	rm -f $fs/usr/lib/$PACKAGE-$VERSION/TestGtkEmbed
@@ -79,7 +82,7 @@ post_install()
 	local root
 	root=$1
 	if grep -q "fr_*" $root/etc/locale.conf; then
-	sed -i 's/en-US/fr/' \
-	$root/usr/lib/$PACKAGE-$VERSION/defaults/pref/firefox-l10n.js
+		sed -i 's/en-US/fr/' \
+		$root/usr/lib/$PACKAGE-$VERSION/defaults/pref/firefox-l10n.js
 	fi
 }
