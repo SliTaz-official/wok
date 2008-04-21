@@ -1,0 +1,63 @@
+# SliTaz package receipt.
+
+PACKAGE="cups"
+VERSION="1.3.7"
+CATEGORY="system-tools"
+SHORT_DESC="Common UNIX Printing System."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="openssl"
+BUILD_DEPENDS="openssl-dev"
+TARBALL="$PACKAGE-$VERSION-source.tar.bz2"
+WEB_SITE="http://www.cups.org/"
+WGET_URL="http://ftp.rz.tu-bs.de/pub/mirror/ftp.easysw.com/ftp/pub/cups/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=$PWD/_pkg/usr \
+		--sysconfdir=$PWD/_pkg/etc \
+		--localstatedir=$PWD/_pkg/var \
+		--mandir=$PWD/_pkg/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share
+	
+	cp -a $_pkg/etc/cups $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/cups $fs/usr/lib
+	cp -a $_pkg/usr/share/cups $fs/usr/share
+	cp -a $_pkg/var $fs
+
+	# Daemon script
+	cp -a stuff/etc $fs
+}
+
+# Start cups daemon and edit daemons.conf.
+post_install()
+{
+	/etc/init.d/cupsd start || continue
+	
+	local root
+	root=$1
+	if ! grep -q ^CUPSD_OPTIONS $root/etc/daemons.conf; then
+		echo '# Cups printing daemon options.' >> $root/etc/daemons.conf
+		echo 'CUPSD_OPTIONS=""' >> $root/etc/daemons.conf
+		echo '' >> $root/etc/daemons.conf
+	fi
+}
+
+# Stop cups daemon before rm.
+pre_remove()
+{
+	/etc/init.d/cupsd stop
+}

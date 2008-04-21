@@ -1,0 +1,40 @@
+#!/bin/sh
+# /etc/init.d/cups: Start, stop and restart Cups deamon on SliTaz, at boot
+# time or with the command line.
+#
+# To start daemon at boot time, just put the right name in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf.
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Cupsd
+DESC="cups deamon"
+DAEMON=/usr/sbin/cupsd
+OPTIONS=$CUPSD_OPTIONS
+PIDFILE=/var/run/cups/cups.sock
+
+case "$1" in
+  stop)
+    echo -n "Stopping $DESC: $NAME... "
+    killall $DAEMON 2>/dev/null
+    rm -f $PIDFILE
+    status
+    ;;
+  start|restart)
+    echo -n "Restarting $DESC: $NAME... "
+    killall $DAEMON 2>/dev/null
+    rm -f $PIDFILE
+    sleep 2
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
