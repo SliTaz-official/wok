@@ -15,26 +15,26 @@ OPTIONS=$CUPSD_OPTIONS
 PIDFILE=/var/run/cups/cups.sock
 
 case "$1" in
-  stop)
-    echo -n "Stopping $DESC: $NAME... "
-    killall $DAEMON 2>/dev/null
-    rm -f $PIDFILE
-    status
-    ;;
-  start|restart)
-    echo -n "Restarting $DESC: $NAME... "
-    killall $DAEMON 2>/dev/null
-    rm -f $PIDFILE
-    sleep 2
-    $DAEMON $OPTIONS
-    status
-    ;;
-  *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
-    exit 1
-    ;;
+	stop)
+		echo -n "Stopping $DESC: $NAME... "
+		killall -q cupsd
+		status
+		;;
+	start)
+		if ps | grep $DAEMON; then
+			echo "$NAME is already running... "
+			exit 0
+		fi
+		echo -n "Starting $DESC: $NAME... "
+		$DAEMON $OPTIONS
+		status
+		;;
+	*)
+		echo ""
+		echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop]"
+		echo ""
+		exit 1
+		;;
 esac
 
 exit 0
