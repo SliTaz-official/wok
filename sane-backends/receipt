@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="sane-backends"
+VERSION="1.0.19"
+CATEGORY="system-tools"
+SHORT_DESC="Scanner Access Now Easy."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="libusb"
+BUILD_DEPENDS="libusb-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.sane-project.org/"
+WGET_URL="ftp://ftp2.sane-project.org/pub/sane/$PACKAGE-$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share
+	
+	cp -a $_pkg/etc/sane.d $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/sane $fs/usr/lib
+	cp -a $_pkg/usr/share/sane $fs/usr/share
+}
