@@ -1,0 +1,79 @@
+#!/bin/sh
+# 
+# Gtkdialog box to change JWM backgroud.
+# - SliTaz GNU/Linux 2008.
+#
+VERSION=20080305
+
+# Get current image zype and path.
+LINE=`cat ~/.jwmrc | grep -w '^      <Background type='`
+TYPE=${LINE#*=\"}
+TYPE=${TYPE%%\"\>*}
+BG_PATH=${LINE#*\"$TYPE\">}
+export BG_PATH=${BG_PATH%</Background>}
+
+# We need an actions to be executed by another window dialog
+# to get values from the main dialog variables.
+export ACTION='
+  <vbox>
+    <text use-markup="true" width-chars="28">
+      <label>
+"
+<b>Changing JWM background</b>
+"
+      </label>
+    </text>
+    <progressbar>
+      <label>Please wait...</label>
+      <action>sed -i s#$BG_PATH#$NEW_PATH# $HOME/.jwmrc</action>
+      <input>echo 50; jwm -restart; echo 100</input>
+      <action type="closewindow">ACTION</action>
+    </progressbar>
+  </vbox>
+'
+
+# Image type, path and reload button. We use \" to be Ash compatible.
+#
+export BG_DIALOG="
+<window title=\"JWM Background\">
+  <vbox>
+    
+        <text use-markup=\"true\" width-chars=\"50\">
+      <label>
+\"
+<b>Wallpaper - JWM Background image</b>
+\"
+</label>
+    </text>
+      
+      <hbox>
+        <entry>
+          <default>$BG_PATH</default>
+          <variable>NEW_PATH</variable>
+        </entry>
+        <button>
+          <input file icon=\"image\"></input>
+          <action type=\"fileselect\">NEW_PATH</action>
+        </button>
+      </hbox>
+    
+    <hbox>
+      <button>
+        <label>Change Wallpaper</label>
+        <input file icon=\"reload\"></input>
+        <action type=\"launch\">ACTION</action>
+      </button>
+      <button>
+        <input file icon=\"exit\"></input>
+        <action type=\"exit\">Exit</action>
+      </button>
+    </hbox>
+  
+  </vbox>
+</window>
+"
+
+# Execute main dialog.
+gtkdialog --program=BG_DIALOG
+
+exit 0
