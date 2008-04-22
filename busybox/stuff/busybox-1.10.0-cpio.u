@@ -56,6 +56,7 @@ diff -purN busybox-1.10.0/archival/cpio.c busybox/archival/cpio.c
 +        char *line = xmalloc_getline(stdin);
 +        // allocate inode struct each loop to avoid struct stat copy
 +        struct inodes_s *inode = xzalloc(sizeof(*inode)); // die if fail
++        off_t size;
 +
 +        inode->st.st_nlink++; // =1
 +        if (line) {
@@ -71,7 +72,6 @@ diff -purN busybox-1.10.0/archival/cpio.c busybox/archival/cpio.c
 +            if (!S_ISLNK(inode->st.st_mode) && !S_ISREG(inode->st.st_mode))
 +                inode->st.st_size = 0;
 +        }
-+
 +        // hard links will are stored and will be processed later
 +        if (!S_ISDIR(inode->st.st_mode) && inode->st.st_nlink > 1) {
 +            struct name_s *n;
@@ -89,7 +89,7 @@ diff -purN busybox-1.10.0/archival/cpio.c busybox/archival/cpio.c
 +            l->names = n; // will not free inode if l == inode
 +            goto free_and_continue;
 +        }
-+
++        size = inode->st.st_size;
 +        // no more files ? process hard links
 +        if (!line && links) {
 +            struct name_s *n;
@@ -99,9 +99,10 @@ diff -purN busybox-1.10.0/archival/cpio.c busybox/archival/cpio.c
 +            n = links->names;
 +            name = line = xstrdup(n->name);    // line will free *name memory
 +            links->names = n->next;
-+            if (links->names == NULL)          // inode will free *links memory
++            if (links->names == NULL) {        // inode will free *links memory
++                size = links->st.st_size;
 +                links = links->next;
-+            else links->st.st_size = 0;        // not last link: no data
++            }
 +            free(n);
 +        }
 +        bytes += printf("070701%08lx%08lx%08lx%08lx%08lx%08lx%08lx"
@@ -112,15 +113,14 @@ diff -purN busybox-1.10.0/archival/cpio.c busybox/archival/cpio.c
 +                        (unsigned long) inode->st.st_gid,
 +                        (unsigned long) inode->st.st_nlink,
 +                        (unsigned long) inode->st.st_mtime,
-+                        (unsigned long) inode->st.st_size,
++                        (unsigned long) size,
 +                        (unsigned long) major(inode->st.st_dev),
 +                        (unsigned long) minor(inode->st.st_dev),
 +                        (unsigned long) major(inode->st.st_rdev), 
 +                        (unsigned long) minor(inode->st.st_rdev),
 +                        strlen(name) + 1UL, 0UL, name, 0);
-+
 +        cpio_pad(&bytes, (line) ? 4-1 : 512-1);
-+        if (inode->st.st_size) {
++        if (size) {
 +            if (S_ISLNK(inode->st.st_mode)) {
 +                char *lpath = xmalloc_readlink_or_warn(name);
 +
