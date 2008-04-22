@@ -13,7 +13,7 @@
 	#fi
 #fi
 
-# Start PCmanFM as deamon
+# Start PCmanFM as deamon.
 if which pcmanfm >/dev/null; then
 	pcmanfm -d &
 fi
@@ -21,4 +21,9 @@ fi
 # Start the panel.
 if which lxpanel >/dev/null; then
 	lxpanel &
+fi
+
+# Start Pacellite clipboard.
+if which parcellite >/dev/null; then
+	parcellite &
 fi
