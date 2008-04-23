@@ -1,5 +1,14 @@
 --- busybox-1.10.1/networking/tftp.c	
 +++ busybox-1.10.1/networking/tftp.c	
+@@ -39,7 +39,7 @@
+ #define TFTP_ERROR 5
+ #define TFTP_OACK  6
+ 
+-/* error codes sent over network (we use only 0, 3 and 8) */
++/* error codes sent over network (we use only 0, 1, 3 and 8) */
+ /* generic (error message is included in the packet) */
+ #define ERR_UNSPEC   0
+ #define ERR_NOFILE   1
 @@ -121,9 +121,8 @@
  	return blksize;
  }
@@ -27,6 +36,18 @@
  		int blksize)
  {
  #if !ENABLE_TFTP
+@@ -243,9 +242,9 @@
+ 		if (NOT_LONE_DASH(local_file))
+ 			local_fd = xopen(local_file, open_mode);
+ 	} else {
+-		local_fd = open_or_warn(local_file, open_mode);
++		local_fd = open(local_file, open_mode);
+ 		if (local_fd < 0) {
+-			/*error_pkt_reason = ERR_NOFILE/ERR_ACCESS?*/
++			error_pkt_reason = ERR_NOFILE;
+ 			strcpy(error_pkt_str, "can't open file");
+ 			goto send_err_pkt;
+ 		}
 @@ -253,7 +252,7 @@
  
  	if (!ENABLE_TFTP || our_lsa) {
@@ -44,19 +65,19 @@
 -		strcpy(cp, "blksize");
 -		cp += sizeof("blksize");
 -		cp += snprintf(cp, 6, "%d", blksize) + 1;
-+		if (blksize != TFTP_BLKSIZE_DEFAULT) {
-+			/* add "blksize", <nul>, blksize, <nul> */
-+			strcpy(cp, "blksize");
-+			cp += sizeof("blksize");
-+			cp += snprintf(cp, 6, "%d", blksize) + 1;
-+		}
 +		if (tsize) {
 +			struct stat st;
 +			/* add "tsize", <nul>, size, <nul> */
 +			strcpy(cp, "tsize");
 +			cp += sizeof("tsize");
 +			fstat(local_fd,&st);
-+			cp += snprintf(cp, 8, "%u", (int) st.st_size) + 1;
++			cp += snprintf(cp, 10, "%u", (int) st.st_size) + 1;
++		}
++		if (blksize != TFTP_BLKSIZE_DEFAULT) {
++			/* add "blksize", <nul>, blksize, <nul> */
++			strcpy(cp, "blksize");
++			cp += sizeof("blksize");
++			cp += snprintf(cp, 6, "%d", blksize) + 1;
 +		}
  #endif
  		/* First packet is built, so skip packet generation */
