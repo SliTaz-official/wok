@@ -1624,7 +1624,7 @@
 
 --- linux-2.6.24.2/lib/decompress_unlzma.c
 +++ linux-2.6.24.2/lib/decompress_unlzma.c
-@@ -0,0 +1,605 @@
+@@ -0,0 +1,601 @@
 +/* Lzma decompressor for Linux kernel. Shamelessly snarfed
 + * from busybox 1.1.1
 + *
@@ -2050,20 +2050,20 @@
 +				prob_lit = prob + mi;
 +				rc_get_bit(&rc, prob_lit, &mi);
 +			}
-+			previous_byte = (uint8_t) mi;
-+
-+			buffer[buffer_pos++] = previous_byte;
-+			if (buffer_pos == header.dict_size) {
-+				buffer_pos = 0;
-+				global_pos += header.dict_size;
-+				writebb((char*)buffer, header.dict_size);
-+			}
 +			if (state < 4)
 +				state = 0;
 +			else if (state < 10)
 +				state -= 3;
 +			else
 +				state -= 6;
++			previous_byte = (uint8_t) mi;
++		one_byte:
++			buffer[buffer_pos++] = previous_byte;
++			if (buffer_pos == header.dict_size) {
++				buffer_pos = 0;
++				global_pos += header.dict_size;
++				writebb((char*)buffer, header.dict_size);
++			}
 +		} else {
 +			int offset;
 +			uint16_t *prob_len;
@@ -2095,13 +2095,7 @@
 +							goto fail;
 +						}
 +						previous_byte = buffer[pos];
-+						buffer[buffer_pos++] = previous_byte;
-+						if (buffer_pos == header.dict_size) {
-+							buffer_pos = 0;
-+							global_pos += header.dict_size;
-+							writebb((char*)buffer, header.dict_size);
-+						}
-+						continue;
++						goto one_byte;
 +					} else {
 +						rc_update_bit_1(&rc, prob);
 +					}
@@ -2225,9 +2219,11 @@
 +		*posp = rc.ptr-rc.buffer;
 +	}
 +	large_free(buffer);
++	large_free(p);
 +	return 0;
 + fail:
 +	large_free(buffer);
++	large_free(p);
 +	return -1;
 +}
 
