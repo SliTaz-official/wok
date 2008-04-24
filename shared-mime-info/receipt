@@ -26,14 +26,19 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/locale
-	
 	cp -a $_pkg/usr/bin $fs/usr
     cp -a $_pkg/usr/share/mime $fs/usr/share
-    cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
-    strip -s $fs/usr/bin/*
     
     # Put pkgconfig *.pc file, since we are not doing 
     # a -dev pkg for one tiny file.
     mkdir -p $fs/usr/lib
     cp -a $_pkg/usr/share/pkgconfig $fs/usr/lib
+}
+
+# Update mime database.
+post_install()
+{
+	local root
+	root=$1
+	update-mime-database $root/usr/share/mime || continue
 }
