@@ -1,0 +1,20 @@
+--- arch/common/languages.h	2008-04-26 10:04:42.000000000 +0200
++++ arch/common/languages.h	2008-04-26 10:51:31.000000000 +0200
+@@ -21,6 +21,7 @@
+ {
+     FILE *locale;
+     gchar buf[512], *retval = NULL;
++    int last = 0;
+ 
+     locale = popen("locale -va", "r");
+     if (!locale)
+@@ -37,7 +38,8 @@
+ 	  *date = NULL,
+ 	  *codeset = NULL;
+ 
+-    while (fgets(buf, 512, locale)) {
++    while (fgets(buf, 512, locale) || last++ == 0) {
++	if (last) buf[0] = 0;
+ 	if (!strncmp(buf, "locale:", 7)) {
+ 	    sscanf(buf, "locale: %s", name);
+ 	    fgets(buf, 128, locale);

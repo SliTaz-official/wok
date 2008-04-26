@@ -1,0 +1,65 @@
+--- arch/linux/common/boots.h	2008-04-26 10:38:31.000000000 +0200
++++ arch/linux/common/boots.h	2008-04-26 11:15:20.000000000 +0200
+@@ -16,11 +16,17 @@
+  *    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+  */
+ 
++#include <sys/sysinfo.h>
++#include <sys/utsname.h>
++
+ void
+ scan_boots_real(void)
+ {
+-    FILE *last;
+-    char buffer[256];
++    struct sysinfo info;
++    struct utsname uname_info;
++    time_t now;
++    char date[40];
++    int i;
+ 
+     scan_os(FALSE);
+ 
+@@ -29,33 +35,13 @@
+     else
+       return;
+     
+-    last = popen("last", "r");
+-    if (last) {
+-      while (fgets(buffer, 256, last)) {
+-        if (strstr(buffer, "system boot")) {
+-          gchar **tmp, *buf = buffer;
+-          
+-          strend(buffer, '\n');
+-          
+-          while (*buf) {
+-            if (*buf == ' ' && *(buf + 1) == ' ') {
+-              strcpy(buf, buf + 1);
+-              
+-              buf--;
+-            } else {
+-              buf++;
+-            }
+-          }
+-
+-          tmp = g_strsplit(buffer, " ", 5);
+-          computer->os->boots = h_strdup_cprintf("\n%s=Kernel %s",
+-                                                computer->os->boots,
+-                                                tmp[4],
+-                                                tmp[3]);
+-          g_strfreev(tmp);
+-        }
+-      }
+-      
+-      pclose(last);
+-    }
++    time(&now);
++    sysinfo(&info);
++    uname(&uname_info);
++    now -= info.uptime;
++    strcpy(date,ctime(&now));
++    for (i = 0; date[i] >= ' '; i++);
++    date[i] = 0;
++    computer->os->boots = h_strdup_cprintf("\n%s=Kernel %s",
++		computer->os->boots, date, uname_info.release);
+ }
