@@ -1,6 +1,6 @@
 --- arch/linux/common/boots.h	2008-04-26 10:38:31.000000000 +0200
 +++ arch/linux/common/boots.h	2008-04-26 11:15:20.000000000 +0200
-@@ -16,11 +16,17 @@
+@@ -16,11 +16,19 @@
   *    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
   */
  
@@ -12,6 +12,8 @@
  {
 -    FILE *last;
 -    char buffer[256];
++    FILE *dev;
++    char buffer[2048];
 +    struct sysinfo info;
 +    struct utsname uname_info;
 +    time_t now;
@@ -20,7 +22,7 @@
  
      scan_os(FALSE);
  
-@@ -29,33 +35,13 @@
+@@ -29,33 +37,20 @@
      else
        return;
      
@@ -62,4 +64,11 @@
 +    date[i] = 0;
 +    computer->os->boots = h_strdup_cprintf("\n%s=Kernel %s",
 +		computer->os->boots, date, uname_info.release);
++    dev = fopen("/proc/cmdline", "r");
++    if (!dev)
++	return;
++    if (fgets(buffer, sizeof(buffer), dev)) 
++	computer->os->boots = h_strdup_cprintf("\nBoot options=%s",
++		computer->os->boots, buffer);
++    fclose(dev);
  }
