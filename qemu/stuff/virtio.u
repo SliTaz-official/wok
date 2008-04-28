@@ -1,0 +1,1076 @@
+Index: qemu-0.9.1/Makefile.target
+===================================================================
+--- qemu-0.9.1.orig/Makefile.target	2008-01-06 19:38:41.000000000 +0000
++++ qemu-0.9.1/Makefile.target	2008-02-07 13:36:23.000000000 +0000
+@@ -436,6 +436,9 @@
+ VL_OBJS += pcnet.o
+ VL_OBJS += rtl8139.o
+ 
++# virtio devices
++VL_OBJS += virtio.o
++
+ ifeq ($(TARGET_BASE_ARCH), i386)
+ # Hardware support
+ VL_OBJS+= ide.o pckbd.o ps2.o vga.o $(SOUND_HW) dma.o
+Index: qemu-0.9.1/hw/virtio.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ qemu-0.9.1/hw/virtio.c	2008-02-07 13:36:23.000000000 +0000
+@@ -0,0 +1,422 @@
++/*
++ * Virtio Support
++ *
++ * Copyright IBM, Corp. 2007
++ *
++ * Authors:
++ *  Anthony Liguori   <address@hidden>
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ *
++ */
++
++#include <inttypes.h>
++#include <err.h>
++
++#include "virtio.h"
++#include "sysemu.h"
++
++/* from Linux's linux/virtio_pci.h */
++
++/* A 32-bit r/o bitmask of the features supported by the host */
++#define VIRTIO_PCI_HOST_FEATURES       0
++
++/* A 32-bit r/w bitmask of features activated by the guest */
++#define VIRTIO_PCI_GUEST_FEATURES      4
++
++/* A 32-bit r/w PFN for the currently selected queue */
++#define VIRTIO_PCI_QUEUE_PFN           8
++
++/* A 16-bit r/o queue size for the currently selected queue */
++#define VIRTIO_PCI_QUEUE_NUM           12
++
++/* A 16-bit r/w queue selector */
++#define VIRTIO_PCI_QUEUE_SEL           14
++
++/* A 16-bit r/w queue notifier */
++#define VIRTIO_PCI_QUEUE_NOTIFY                16
++
++/* An 8-bit device status register.  */
++#define VIRTIO_PCI_STATUS              18
++
++/* An 8-bit r/o interrupt status register.  Reading the value will return the
++ * current contents of the ISR and will also clear it.  This is effectively
++ * a read-and-acknowledge. */
++#define VIRTIO_PCI_ISR                 19
++
++#define VIRTIO_PCI_CONFIG              20
++
++/* QEMU doesn't strictly need write barriers since everything runs in
++ * lock-step.  We'll leave the calls to wmb() in though to make it obvious for
++ * KVM or if kqemu gets SMP support.
++ */
++#define wmb() do { } while (0)
++
++/* virt queue functions */
++
++static void virtqueue_init(VirtQueue *vq, void *p)
++{
++    vq->vring.desc = p;
++    vq->vring.avail = p + vq->vring.num * sizeof(VRingDesc);
++    vq->vring.used = (void *)TARGET_PAGE_ALIGN((unsigned long)&vq->vring.avail->ring[vq->vring.num]);
++}
++
++static unsigned virtqueue_next_desc(VirtQueue *vq, unsigned int i)
++{
++    unsigned int next;
++
++    /* If this descriptor says it doesn't chain, we're done. */
++    if (!(vq->vring.desc[i].flags & VRING_DESC_F_NEXT))
++       return vq->vring.num;
++
++    /* Check they're not leading us off end of descriptors. */
++    next = vq->vring.desc[i].next;
++    /* Make sure compiler knows to grab that: we don't want it changing! */
++    wmb();
++
++    if (next >= vq->vring.num)
++       errx(1, "Desc next is %u", next);
++
++    return next;
++}
++
++void virtqueue_push(VirtQueue *vq, const VirtQueueElement *elem,
++                   unsigned int len)
++{
++    VRingUsedElem *used;
++
++    /* Get a pointer to the next entry in the used ring. */
++    used = &vq->vring.used->ring[vq->vring.used->idx % vq->vring.num];
++    used->id = elem->index;
++    used->len = len;
++    /* Make sure buffer is written before we update index. */
++    wmb();
++    vq->vring.used->idx++;
++}
++
++int virtqueue_pop(VirtQueue *vq, VirtQueueElement *elem)
++{
++    unsigned int i, head;
++    unsigned int position;
++
++    /* Check it isn't doing very strange things with descriptor numbers. */
++    if ((uint16_t)(vq->vring.avail->idx - vq->last_avail_idx) > vq->vring.num)
++       errx(1, "Guest moved used index from %u to %u",
++            vq->last_avail_idx, vq->vring.avail->idx);
++
++    /* If there's nothing new since last we looked, return invalid. */
++    if (vq->vring.avail->idx == vq->last_avail_idx)
++       return 0;
++
++    /* Grab the next descriptor number they're advertising, and increment
++     * the index we've seen. */
++    head = vq->vring.avail->ring[vq->last_avail_idx++ % vq->vring.num];
++
++    /* If their number is silly, that's a fatal mistake. */
++    if (head >= vq->vring.num)
++       errx(1, "Guest says index %u is available", head);
++
++    /* When we start there are none of either input nor output. */
++    position = elem->out_num = elem->in_num = 0;
++
++    i = head;
++    do {
++       struct iovec *sg;
++
++       if ((vq->vring.desc[i].addr + vq->vring.desc[i].len) > ram_size)
++           errx(1, "Guest sent invalid pointer");
++
++       if (vq->vring.desc[i].flags & VRING_DESC_F_WRITE)
++           sg = &elem->in_sg[elem->in_num++];
++       else
++           sg = &elem->out_sg[elem->out_num++];
++
++       /* Grab the first descriptor, and check it's OK. */
++       sg->iov_len = vq->vring.desc[i].len;
++       sg->iov_base = phys_ram_base + vq->vring.desc[i].addr;
++
++       /* If we've got too many, that implies a descriptor loop. */
++       if ((elem->in_num + elem->out_num) > vq->vring.num)
++           errx(1, "Looped descriptor");
++    } while ((i = virtqueue_next_desc(vq, i)) != vq->vring.num);
++
++    elem->index = head;
++
++    return elem->in_num + elem->out_num;
++}
++
++/* virtio device */
++
++static VirtIODevice *to_virtio_device(PCIDevice *pci_dev)
++{
++    return (VirtIODevice *)pci_dev;
++}
++
++static void virtio_update_irq(VirtIODevice *vdev)
++{
++    qemu_set_irq(vdev->pci_dev.irq[0], vdev->isr & 1);
++}
++
++static void virtio_ioport_write(void *opaque, uint32_t addr, uint32_t val)
++{
++    VirtIODevice *vdev = to_virtio_device(opaque);
++    ram_addr_t pa;
++
++    addr -= vdev->addr;
++
++    switch (addr) {
++    case VIRTIO_PCI_GUEST_FEATURES:
++       if (vdev->set_features)
++           vdev->set_features(vdev, val);
++       vdev->features = val;
++       break;
++    case VIRTIO_PCI_QUEUE_PFN:
++       pa = (ram_addr_t)val << TARGET_PAGE_BITS;
++       vdev->vq[vdev->queue_sel].pfn = val;
++       if (pa == 0) {
++           vdev->vq[vdev->queue_sel].vring.desc = NULL;
++           vdev->vq[vdev->queue_sel].vring.avail = NULL;
++           vdev->vq[vdev->queue_sel].vring.used = NULL;
++       } else if (pa < (ram_size - TARGET_PAGE_SIZE)) {
++           virtqueue_init(&vdev->vq[vdev->queue_sel], phys_ram_base + pa);
++           /* FIXME if pa == 0, deal with device tear down */
++       }
++       break;
++    case VIRTIO_PCI_QUEUE_SEL:
++       if (val < VIRTIO_PCI_QUEUE_MAX)
++           vdev->queue_sel = val;
++       break;
++    case VIRTIO_PCI_QUEUE_NOTIFY:
++       if (val < VIRTIO_PCI_QUEUE_MAX && vdev->vq[val].vring.desc)
++           vdev->vq[val].handle_output(vdev, &vdev->vq[val]);
++       break;
++    case VIRTIO_PCI_STATUS:
++       vdev->status = val & 0xFF;
++       break;
++    }
++}
++
++static uint32_t virtio_ioport_read(void *opaque, uint32_t addr)
++{
++    VirtIODevice *vdev = to_virtio_device(opaque);
++    uint32_t ret = 0xFFFFFFFF;
++
++    addr -= vdev->addr;
++
++    switch (addr) {
++    case VIRTIO_PCI_HOST_FEATURES:
++       ret = vdev->get_features(vdev);
++       break;
++    case VIRTIO_PCI_GUEST_FEATURES:
++       ret = vdev->features;
++       break;
++    case VIRTIO_PCI_QUEUE_PFN:
++       ret = vdev->vq[vdev->queue_sel].pfn;
++       break;
++    case VIRTIO_PCI_QUEUE_NUM:
++       ret = vdev->vq[vdev->queue_sel].vring.num;
++       break;
++    case VIRTIO_PCI_QUEUE_SEL:
++       ret = vdev->queue_sel;
++       break;
++    case VIRTIO_PCI_STATUS:
++       ret = vdev->status;
++       break;
++    case VIRTIO_PCI_ISR:
++       /* reading from the ISR also clears it. */
++       ret = vdev->isr;
++       vdev->isr = 0;
++       virtio_update_irq(vdev);
++       break;
++    default:
++       break;
++    }
++
++    return ret;
++}
++
++static uint32_t virtio_config_readb(void *opaque, uint32_t addr)
++{
++    VirtIODevice *vdev = opaque;
++    uint8_t val;
++
++    addr -= vdev->addr + VIRTIO_PCI_CONFIG;
++    if (addr > (vdev->config_len - sizeof(val)))
++       return (uint32_t)-1;
++
++    memcpy(&val, vdev->config + addr, sizeof(val));
++    return val;
++}
++
++static uint32_t virtio_config_readw(void *opaque, uint32_t addr)
++{
++    VirtIODevice *vdev = opaque;
++    uint16_t val;
++
++    addr -= vdev->addr + VIRTIO_PCI_CONFIG;
++    if (addr > (vdev->config_len - sizeof(val)))
++       return (uint32_t)-1;
++
++    memcpy(&val, vdev->config + addr, sizeof(val));
++    return val;
++}
++
++static uint32_t virtio_config_readl(void *opaque, uint32_t addr)
++{
++    VirtIODevice *vdev = opaque;
++    uint32_t val;
++
++    addr -= vdev->addr + VIRTIO_PCI_CONFIG;
++    if (addr > (vdev->config_len - sizeof(val)))
++       return (uint32_t)-1;
++
++    memcpy(&val, vdev->config + addr, sizeof(val));
++    return val;
++}
++
++static void virtio_config_writeb(void *opaque, uint32_t addr, uint32_t data)
++{
++    VirtIODevice *vdev = opaque;
++    uint8_t val = data;
++
++    addr -= vdev->addr + VIRTIO_PCI_CONFIG;
++    if (addr > (vdev->config_len - sizeof(val)))
++       return;
++
++    memcpy(vdev->config + addr, &val, sizeof(val));
++}
++
++static void virtio_config_writew(void *opaque, uint32_t addr, uint32_t data)
++{
++    VirtIODevice *vdev = opaque;
++    uint16_t val = data;
++
++    addr -= vdev->addr + VIRTIO_PCI_CONFIG;
++    if (addr > (vdev->config_len - sizeof(val)))
++       return;
++
++    memcpy(vdev->config + addr, &val, sizeof(val));
++}
++
++static void virtio_config_writel(void *opaque, uint32_t addr, uint32_t data)
++{
++    VirtIODevice *vdev = opaque;
++    uint32_t val = data;
++
++    addr -= vdev->addr + VIRTIO_PCI_CONFIG;
++    if (addr > (vdev->config_len - sizeof(val)))
++       return;
++
++    memcpy(vdev->config + addr, &val, sizeof(val));
++}
++
++static void virtio_map(PCIDevice *pci_dev, int region_num,
++                      uint32_t addr, uint32_t size, int type)
++{
++    VirtIODevice *vdev = to_virtio_device(pci_dev);
++    int i;
++
++    vdev->addr = addr;
++    for (i = 0; i < 3; i++) {
++       register_ioport_write(addr, 20, 1 << i, virtio_ioport_write, vdev);
++       register_ioport_read(addr, 20, 1 << i, virtio_ioport_read, vdev);
++    }
++
++    if (vdev->config_len) {
++       register_ioport_write(addr + 20, vdev->config_len, 1,
++                             virtio_config_writeb, vdev);
++       register_ioport_write(addr + 20, vdev->config_len, 2,
++                             virtio_config_writew, vdev);
++       register_ioport_write(addr + 20, vdev->config_len, 4,
++                             virtio_config_writel, vdev);
++       register_ioport_read(addr + 20, vdev->config_len, 1,
++                            virtio_config_readb, vdev);
++       register_ioport_read(addr + 20, vdev->config_len, 2,
++                            virtio_config_readw, vdev);
++       register_ioport_read(addr + 20, vdev->config_len, 4,
++                            virtio_config_readl, vdev);
++
++       vdev->update_config(vdev, vdev->config);
++    }
++}
++
++VirtQueue *virtio_add_queue(VirtIODevice *vdev, int queue_size,
++                           void (*handle_output)(VirtIODevice *, VirtQueue *))
++{
++    int i;
++
++    for (i = 0; i < VIRTIO_PCI_QUEUE_MAX; i++) {
++       if (vdev->vq[i].vring.num == 0)
++           break;
++    }
++
++    if (i == VIRTIO_PCI_QUEUE_MAX || queue_size > VIRTQUEUE_MAX_SIZE)
++       abort();
++
++    vdev->vq[i].vring.num = queue_size;
++    vdev->vq[i].handle_output = handle_output;
++    vdev->vq[i].index = i;
++
++    return &vdev->vq[i];
++}
++
++void virtio_notify(VirtIODevice *vdev, VirtQueue *vq)
++{
++    if (vq->vring.avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
++       return;
++
++    vdev->isr = 1;
++    virtio_update_irq(vdev);
++}
++
++VirtIODevice *virtio_init_pci(PCIBus *bus, const char *name,
++                             uint16_t vendor, uint16_t device,
++                             uint16_t subvendor, uint16_t subdevice,
++                             uint8_t class_code, uint8_t subclass_code,
++                             uint8_t pif, size_t config_size,
++                             size_t struct_size)
++{
++    VirtIODevice *vdev;
++    PCIDevice *pci_dev;
++    uint8_t *config;
++
++    pci_dev = pci_register_device(bus, name, struct_size,
++                                 -1, NULL, NULL);
++    vdev = to_virtio_device(pci_dev);
++
++    vdev->status = 0;
++    vdev->isr = 0;
++    vdev->queue_sel = 0;
++    memset(vdev->vq, 0, sizeof(vdev->vq));
++
++    config = pci_dev->config;
++    config[0x00] = vendor & 0xFF;
++    config[0x01] = (vendor >> 8) & 0xFF;
++    config[0x02] = device & 0xFF;
++    config[0x03] = (device >> 8) & 0xFF;
++
++    config[0x09] = pif;
++    config[0x0a] = subclass_code;
++    config[0x0b] = class_code;
++    config[0x0e] = 0x00;
++
++    config[0x2c] = subvendor & 0xFF;
++    config[0x2d] = (subvendor >> 8) & 0xFF;
++    config[0x2e] = subdevice & 0xFF;
++    config[0x2f] = (subdevice >> 8) & 0xFF;
++
++    config[0x3d] = 1;
++
++    vdev->name = name;
++    vdev->config_len = config_size;
++    if (vdev->config_len)
++       vdev->config = qemu_mallocz(config_size);
++    else
++       vdev->config = NULL;
++
++    pci_register_io_region(pci_dev, 0, 20 + config_size, PCI_ADDRESS_SPACE_IO,
++                          virtio_map);
++
++    return vdev;
++}
+Index: qemu-0.9.1/hw/virtio.h
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ qemu-0.9.1/hw/virtio.h	2008-02-07 13:36:23.000000000 +0000
+@@ -0,0 +1,143 @@
++/*
++ * Virtio Support
++ *
++ * Copyright IBM, Corp. 2007
++ *
++ * Authors:
++ *  Anthony Liguori   <address@hidden>
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ *
++ */
++
++#ifndef _QEMU_VIRTIO_H
++#define _QEMU_VIRTIO_H
++
++#include <sys/uio.h>
++#include "hw.h"
++#include "pci.h"
++
++/* from Linux's linux/virtio_config.h */
++
++/* Status byte for guest to report progress, and synchronize features. */
++/* We have seen device and processed generic fields (VIRTIO_CONFIG_F_VIRTIO) */
++#define VIRTIO_CONFIG_S_ACKNOWLEDGE    1
++/* We have found a driver for the device. */
++#define VIRTIO_CONFIG_S_DRIVER         2
++/* Driver has used its parts of the config, and is happy */
++#define VIRTIO_CONFIG_S_DRIVER_OK      4
++/* We've given up on this device. */
++#define VIRTIO_CONFIG_S_FAILED         0x80
++
++/* from Linux's linux/virtio_ring.h */
++
++/* This marks a buffer as continuing via the next field. */
++#define VRING_DESC_F_NEXT      1
++/* This marks a buffer as write-only (otherwise read-only). */
++#define VRING_DESC_F_WRITE     2
++
++/* This means don't notify other side when buffer added. */
++#define VRING_USED_F_NO_NOTIFY 1
++/* This means don't interrupt guest when buffer consumed. */
++#define VRING_AVAIL_F_NO_INTERRUPT     1
++
++typedef struct VirtQueue VirtQueue;
++typedef struct VirtIODevice VirtIODevice;
++
++typedef struct VRingDesc
++{
++    uint64_t addr;
++    uint32_t len;
++    uint16_t flags;
++    uint16_t next;
++} VRingDesc;
++
++typedef struct VRingAvail
++{
++    uint16_t flags;
++    uint16_t idx;
++    uint16_t ring[0];
++} VRingAvail;
++
++typedef struct VRingUsedElem
++{
++    uint32_t id;
++    uint32_t len;
++} VRingUsedElem;
++
++typedef struct VRingUsed
++{
++    uint16_t flags;
++    uint16_t idx;
++    VRingUsedElem ring[0];
++} VRingUsed;
++
++typedef struct VRing
++{
++    unsigned int num;
++    VRingDesc *desc;
++    VRingAvail *avail;
++    VRingUsed *used;
++} VRing;
++
++struct VirtQueue
++{
++    VRing vring;
++    uint32_t pfn;
++    uint16_t last_avail_idx;
++    void (*handle_output)(VirtIODevice *vdev, VirtQueue *vq);
++    int index;
++};
++
++#define VIRTQUEUE_MAX_SIZE 1024
++
++typedef struct VirtQueueElement
++{
++    unsigned int index;
++    unsigned int out_num;
++    unsigned int in_num;
++    struct iovec in_sg[VIRTQUEUE_MAX_SIZE];
++    struct iovec out_sg[VIRTQUEUE_MAX_SIZE];
++} VirtQueueElement;
++
++#define VIRTIO_PCI_QUEUE_MAX   16
++
++struct VirtIODevice
++{
++    PCIDevice pci_dev;
++    const char *name;
++    uint32_t addr;
++    uint16_t vendor;
++    uint16_t device;
++    uint8_t status;
++    uint8_t isr;
++    uint16_t queue_sel;
++    uint32_t features;
++    size_t config_len;
++    void *config;
++    uint32_t (*get_features)(VirtIODevice *vdev);
++    void (*set_features)(VirtIODevice *vdev, uint32_t val);
++    void (*update_config)(VirtIODevice *vdev, uint8_t *config);
++    VirtQueue vq[VIRTIO_PCI_QUEUE_MAX];
++};
++
++VirtIODevice *virtio_init_pci(PCIBus *bus, const char *name,
++                             uint16_t vendor, uint16_t device,
++                             uint16_t subvendor, uint16_t subdevice,
++                             uint8_t class_code, uint8_t subclass_code,
++                             uint8_t pif, size_t config_size,
++                             size_t struct_size);
++
++VirtQueue *virtio_add_queue(VirtIODevice *vdev, int queue_size,
++                           void (*handle_output)(VirtIODevice *,
++                                                 VirtQueue *));
++
++void virtqueue_push(VirtQueue *vq, const VirtQueueElement *elem,
++                   unsigned int len);
++
++int virtqueue_pop(VirtQueue *vq, VirtQueueElement *elem);
++
++void virtio_notify(VirtIODevice *vdev, VirtQueue *vq);
++
++#endif
+Index: qemu-0.9.1/Makefile.target
+===================================================================
+--- qemu-0.9.1.orig/Makefile.target	2008-02-07 13:36:23.000000000 +0000
++++ qemu-0.9.1/Makefile.target	2008-02-07 13:36:37.000000000 +0000
+@@ -437,7 +437,7 @@
+ VL_OBJS += rtl8139.o
+ 
+ # virtio devices
+-VL_OBJS += virtio.o
++VL_OBJS += virtio.o virtio-net.o
+ 
+ ifeq ($(TARGET_BASE_ARCH), i386)
+ # Hardware support
+Index: qemu-0.9.1/hw/pc.h
+===================================================================
+--- qemu-0.9.1.orig/hw/pc.h	2008-01-06 19:38:42.000000000 +0000
++++ qemu-0.9.1/hw/pc.h	2008-02-07 13:36:37.000000000 +0000
+@@ -142,4 +142,9 @@
+ 
+ void isa_ne2000_init(int base, qemu_irq irq, NICInfo *nd);
+ 
++/* virtio-net.c */
++
++void *virtio_net_init(PCIBus *bus, NICInfo *nd, int devfn);
++
++
+ #endif
+Index: qemu-0.9.1/hw/pci.c
+===================================================================
+--- qemu-0.9.1.orig/hw/pci.c	2008-01-06 19:38:42.000000000 +0000
++++ qemu-0.9.1/hw/pci.c	2008-02-07 13:36:37.000000000 +0000
+@@ -25,6 +25,7 @@
+ #include "pci.h"
+ #include "console.h"
+ #include "net.h"
++#include "pc.h"
+ 
+ //#define DEBUG_PCI
+ 
+@@ -638,9 +639,11 @@
+         pci_rtl8139_init(bus, nd, devfn);
+     } else if (strcmp(nd->model, "pcnet") == 0) {
+         pci_pcnet_init(bus, nd, devfn);
++    } else if (strcmp(nd->model, "virtio") == 0) {
++       virtio_net_init(bus, nd, devfn);
+     } else if (strcmp(nd->model, "?") == 0) {
+         fprintf(stderr, "qemu: Supported PCI NICs: i82551 i82557b i82559er"
+-                        " ne2k_pci pcnet rtl8139\n");
++                        " ne2k_pci pcnet rtl8139 virtio\n");
+         exit (1);
+     } else {
+         fprintf(stderr, "qemu: Unsupported NIC: %s\n", nd->model);
+Index: qemu-0.9.1/hw/virtio-net.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ qemu-0.9.1/hw/virtio-net.c	2008-02-07 13:36:37.000000000 +0000
+@@ -0,0 +1,178 @@
++/*
++ * Virtio Network Device
++ *
++ * Copyright IBM, Corp. 2007
++ *
++ * Authors:
++ *  Anthony Liguori   <address@hidden>
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ *
++ */
++
++#include "virtio.h"
++#include "net.h"
++#include "pc.h"
++
++/* from Linux's virtio_net.h */
++
++/* The ID for virtio_net */
++#define VIRTIO_ID_NET  1
++
++/* The feature bitmap for virtio net */
++#define VIRTIO_NET_F_NO_CSUM   0
++#define VIRTIO_NET_F_TSO4      1
++#define VIRTIO_NET_F_UFO       2
++#define VIRTIO_NET_F_TSO4_ECN  3
++#define VIRTIO_NET_F_TSO6      4
++#define VIRTIO_NET_F_MAC       5
++
++/* The config defining mac address (6 bytes) */
++struct virtio_net_config
++{
++    uint8_t mac[6];
++} __attribute__((packed));
++
++/* This is the first element of the scatter-gather list.  If you don't
++ * specify GSO or CSUM features, you can simply ignore the header. */
++struct virtio_net_hdr
++{
++#define VIRTIO_NET_HDR_F_NEEDS_CSUM    1       // Use csum_start, csum_offset
++    uint8_t flags;
++#define VIRTIO_NET_HDR_GSO_NONE                0       // Not a GSO frame
++#define VIRTIO_NET_HDR_GSO_TCPV4       1       // GSO frame, IPv4 TCP (TSO)
++/* FIXME: Do we need this?  If they said they can handle ECN, do they care? */
++#define VIRTIO_NET_HDR_GSO_TCPV4_ECN   2       // GSO frame, IPv4 TCP w/ ECN
++#define VIRTIO_NET_HDR_GSO_UDP         3       // GSO frame, IPv4 UDP (UFO)
++#define VIRTIO_NET_HDR_GSO_TCPV6       4       // GSO frame, IPv6 TCP
++    uint8_t gso_type;
++    uint16_t gso_size;
++    uint16_t csum_start;
++    uint16_t csum_offset;
++};
++
++typedef struct VirtIONet
++{
++    VirtIODevice vdev;
++    uint8_t mac[6];
++    VirtQueue *rx_vq;
++    VirtQueue *tx_vq;
++    VLANClientState *vc;
++    int can_receive;
++} VirtIONet;
++
++static VirtIONet *to_virtio_net(VirtIODevice *vdev)
++{
++    return (VirtIONet *)vdev;
++}
++
++static void virtio_net_update_config(VirtIODevice *vdev, uint8_t *config)
++{
++    VirtIONet *n = to_virtio_net(vdev);
++    struct virtio_net_config netcfg;
++
++    memcpy(netcfg.mac, n->mac, 6);
++    memcpy(config, &netcfg, sizeof(netcfg));
++}
++
++static uint32_t virtio_net_get_features(VirtIODevice *vdev)
++{
++    return (1 << VIRTIO_NET_F_MAC);
++}
++
++/* RX */
++
++static void virtio_net_handle_rx(VirtIODevice *vdev, VirtQueue *vq)
++{
++    VirtIONet *n = to_virtio_net(vdev);
++    n->can_receive = 1;
++}
++
++static int virtio_net_can_receive(void *opaque)
++{
++    VirtIONet *n = opaque;
++
++    return (n->vdev.status & VIRTIO_CONFIG_S_DRIVER_OK) && n->can_receive;
++}
++
++static void virtio_net_receive(void *opaque, const uint8_t *buf, int size)
++{
++    VirtIONet *n = opaque;
++    VirtQueueElement elem;
++    struct virtio_net_hdr *hdr;
++    int offset, i;
++
++    /* FIXME: the drivers really need to set their status better */
++    if (n->rx_vq->vring.avail == NULL) {
++       n->can_receive = 0;
++       return;
++    }
++
++    if (virtqueue_pop(n->rx_vq, &elem) == 0) {
++       /* wait until the guest adds some rx bufs */
++       n->can_receive = 0;
++       return;
++    }
++
++    hdr = (void *)elem.in_sg[0].iov_base;
++    hdr->flags = 0;
++    hdr->gso_type = VIRTIO_NET_HDR_GSO_NONE;
++
++    /* copy in packet.  ugh */
++    offset = 0;
++    i = 1;
++    while (offset < size && i < elem.in_num) {
++       int len = MIN(elem.in_sg[i].iov_len, size - offset);
++       memcpy(elem.in_sg[i].iov_base, buf + offset, len);
++       offset += len;
++       i++;
++    }
++
++    /* signal other side */
++    virtqueue_push(n->rx_vq, &elem, sizeof(*hdr) + offset);
++    virtio_notify(&n->vdev, n->rx_vq);
++}
++
++/* TX */
++static void virtio_net_handle_tx(VirtIODevice *vdev, VirtQueue *vq)
++{
++    VirtIONet *n = to_virtio_net(vdev);
++    VirtQueueElement elem;
++
++    while (virtqueue_pop(vq, &elem)) {
++       int i;
++       size_t len = 0;
++
++       /* ignore the header for now */
++       for (i = 1; i < elem.out_num; i++) {
++           qemu_send_packet(n->vc, elem.out_sg[i].iov_base,
++                            elem.out_sg[i].iov_len);
++           len += elem.out_sg[i].iov_len;
++       }
++
++       virtqueue_push(vq, &elem, sizeof(struct virtio_net_hdr) + len);
++       virtio_notify(&n->vdev, vq);
++    }
++}
++
++void *virtio_net_init(PCIBus *bus, NICInfo *nd, int devfn)
++{
++    VirtIONet *n;
++
++    n = (VirtIONet *)virtio_init_pci(bus, "virtio-net", 6900, 0x1000,
++                                    0, VIRTIO_ID_NET,
++                                    0x02, 0x00, 0x00,
++                                    6, sizeof(VirtIONet));
++
++    n->vdev.update_config = virtio_net_update_config;
++    n->vdev.get_features = virtio_net_get_features;
++    n->rx_vq = virtio_add_queue(&n->vdev, 512, virtio_net_handle_rx);
++    n->tx_vq = virtio_add_queue(&n->vdev, 128, virtio_net_handle_tx);
++    n->can_receive = 0;
++    memcpy(n->mac, nd->macaddr, 6);
++    n->vc = qemu_new_vlan_client(nd->vlan, virtio_net_receive,
++                                virtio_net_can_receive, n);
++
++    return &n->vdev;
++}
+Index: qemu-0.9.1/Makefile.target
+===================================================================
+--- qemu-0.9.1.orig/Makefile.target	2008-02-07 13:36:37.000000000 +0000
++++ qemu-0.9.1/Makefile.target	2008-02-07 13:38:53.000000000 +0000
+@@ -437,7 +437,7 @@
+ VL_OBJS += rtl8139.o
+ 
+ # virtio devices
+-VL_OBJS += virtio.o virtio-net.o
++VL_OBJS += virtio.o virtio-net.o virtio-blk.o
+ 
+ ifeq ($(TARGET_BASE_ARCH), i386)
+ # Hardware support
+Index: qemu-0.9.1/hw/pc.c
+===================================================================
+--- qemu-0.9.1.orig/hw/pc.c	2008-01-06 19:38:42.000000000 +0000
++++ qemu-0.9.1/hw/pc.c	2008-02-07 13:38:53.000000000 +0000
+@@ -1008,6 +1008,18 @@
+ 	    }
+         }
+     }
++
++    /* Add virtio block devices */
++    if (pci_enabled) {
++       int index;
++       int unit_id = 0;
++
++       while ((index = drive_get_index(IF_VIRTIO, 0, unit_id)) != -1) {
++           virtio_blk_init(pci_bus, 0x5002, 0x2258,
++                           drives_table[index].bdrv);
++           unit_id++;
++       }
++    }
+ }
+ 
+ static void pc_init_pci(int ram_size, int vga_ram_size,
+Index: qemu-0.9.1/hw/pc.h
+===================================================================
+--- qemu-0.9.1.orig/hw/pc.h	2008-02-07 13:36:37.000000000 +0000
++++ qemu-0.9.1/hw/pc.h	2008-02-07 13:38:53.000000000 +0000
+@@ -147,4 +147,8 @@
+ void *virtio_net_init(PCIBus *bus, NICInfo *nd, int devfn);
+ 
+ 
++/* virtio-blk.h */
++void *virtio_blk_init(PCIBus *bus, uint16_t vendor, uint16_t device,
++                     BlockDriverState *bs);
++
+ #endif
+Index: qemu-0.9.1/hw/virtio-blk.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ qemu-0.9.1/hw/virtio-blk.c	2008-02-07 13:38:53.000000000 +0000
+@@ -0,0 +1,163 @@
++/*
++ * Virtio Block Device
++ *
++ * Copyright IBM, Corp. 2007
++ *
++ * Authors:
++ *  Anthony Liguori   <address@hidden>
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ *
++ */
++
++#include "virtio.h"
++#include "block.h"
++#include "pc.h"
++
++/* from Linux's linux/virtio_blk.h */
++
++/* The ID for virtio_block */
++#define VIRTIO_ID_BLOCK        2
++
++/* Feature bits */
++#define VIRTIO_BLK_F_BARRIER   0       /* Does host support barriers? */
++#define VIRTIO_BLK_F_SIZE_MAX  1       /* Indicates maximum segment size */
++#define VIRTIO_BLK_F_SEG_MAX   2       /* Indicates maximum # of segments */
++
++struct virtio_blk_config
++{
++    uint64_t capacity;
++    uint32_t size_max;
++    uint32_t seg_max;
++};
++
++/* These two define direction. */
++#define VIRTIO_BLK_T_IN                0
++#define VIRTIO_BLK_T_OUT       1
++
++/* This bit says it's a scsi command, not an actual read or write. */
++#define VIRTIO_BLK_T_SCSI_CMD  2
++
++/* Barrier before this op. */
++#define VIRTIO_BLK_T_BARRIER   0x80000000
++
++/* This is the first element of the read scatter-gather list. */
++struct virtio_blk_outhdr
++{
++    /* VIRTIO_BLK_T* */
++    uint32_t type;
++    /* io priority. */
++    uint32_t ioprio;
++    /* Sector (ie. 512 byte offset) */
++    uint64_t sector;
++    /* Where to put reply. */
++    uint64_t id;
++};
++
++#define VIRTIO_BLK_S_OK                0
++#define VIRTIO_BLK_S_IOERR     1
++#define VIRTIO_BLK_S_UNSUPP    2
++
++/* This is the first element of the write scatter-gather list */
++struct virtio_blk_inhdr
++{
++    unsigned char status;
++};
++
++typedef struct VirtIOBlock
++{
++    VirtIODevice vdev;
++    BlockDriverState *bs;
++} VirtIOBlock;
++
++static VirtIOBlock *to_virtio_blk(VirtIODevice *vdev)
++{
++    return (VirtIOBlock *)vdev;
++}
++
++static void virtio_blk_handle_output(VirtIODevice *vdev, VirtQueue *vq)
++{
++    VirtIOBlock *s = to_virtio_blk(vdev);
++    VirtQueueElement elem;
++    unsigned int count;
++
++    while ((count = virtqueue_pop(vq, &elem)) != 0) {
++       struct virtio_blk_inhdr *in;
++       struct virtio_blk_outhdr *out;
++       unsigned int wlen;
++       off_t off;
++       int i;
++
++       out = (void *)elem.out_sg[0].iov_base;
++       in = (void *)elem.in_sg[elem.in_num - 1].iov_base;
++       off = out->sector;
++
++       if (out->type & VIRTIO_BLK_T_SCSI_CMD) {
++           wlen = sizeof(*in);
++           in->status = VIRTIO_BLK_S_UNSUPP;
++       } else if (out->type & VIRTIO_BLK_T_OUT) {
++           wlen = sizeof(*in);
++
++           for (i = 1; i < elem.out_num; i++) {
++               bdrv_write(s->bs, off,
++                          elem.out_sg[i].iov_base,
++                          elem.out_sg[i].iov_len / 512);
++               off += elem.out_sg[i].iov_len / 512;
++           }
++
++           in->status = VIRTIO_BLK_S_OK;
++       } else {
++           wlen = sizeof(*in);
++
++           for (i = 0; i < elem.in_num - 1; i++) {
++               bdrv_read(s->bs, off,
++                         elem.in_sg[i].iov_base,
++                         elem.in_sg[i].iov_len / 512);
++               off += elem.in_sg[i].iov_len / 512;
++               wlen += elem.in_sg[i].iov_len;
++           }
++
++           in->status = VIRTIO_BLK_S_OK;
++       }
++
++       virtqueue_push(vq, &elem, wlen);
++       virtio_notify(vdev, vq);
++    }
++}
++
++static void virtio_blk_update_config(VirtIODevice *vdev, uint8_t *config)
++{
++    VirtIOBlock *s = to_virtio_blk(vdev);
++    struct virtio_blk_config blkcfg;
++    int64_t capacity;
++
++    bdrv_get_geometry(s->bs, &capacity);
++    blkcfg.capacity = capacity;
++    blkcfg.seg_max = 128 - 2;
++    memcpy(config, &blkcfg, sizeof(blkcfg));
++}
++
++static uint32_t virtio_blk_get_features(VirtIODevice *vdev)
++{
++    return (1 << VIRTIO_BLK_F_SEG_MAX);
++}
++
++void *virtio_blk_init(PCIBus *bus, uint16_t vendor, uint16_t device,
++                     BlockDriverState *bs)
++{
++    VirtIOBlock *s;
++
++    s = (VirtIOBlock *)virtio_init_pci(bus, "virtio-blk", 6900, 0x1001,
++                                      0, VIRTIO_ID_BLOCK,
++                                      0x01, 0x80, 0x00,
++                                      16, sizeof(VirtIOBlock));
++
++    s->vdev.update_config = virtio_blk_update_config;
++    s->vdev.get_features = virtio_blk_get_features;
++    s->bs = bs;
++
++    virtio_add_queue(&s->vdev, 128, virtio_blk_handle_output);
++
++    return &s->vdev;
++}
+Index: qemu-0.9.1/sysemu.h
+===================================================================
+--- qemu-0.9.1.orig/sysemu.h	2008-01-06 19:38:42.000000000 +0000
++++ qemu-0.9.1/sysemu.h	2008-02-07 13:38:53.000000000 +0000
+@@ -117,7 +117,7 @@
+ #endif
+ 
+ typedef enum {
+-    IF_IDE, IF_SCSI, IF_FLOPPY, IF_PFLASH, IF_MTD, IF_SD
++    IF_IDE, IF_SCSI, IF_FLOPPY, IF_PFLASH, IF_MTD, IF_SD, IF_VIRTIO
+ } BlockInterfaceType;
+ 
+ typedef struct DriveInfo {
+Index: qemu-0.9.1/vl.c
+===================================================================
+--- qemu-0.9.1.orig/vl.c	2008-01-06 19:38:42.000000000 +0000
++++ qemu-0.9.1/vl.c	2008-02-07 13:40:52.000000000 +0000
+@@ -4953,6 +4953,9 @@
+ 	} else if (!strcmp(buf, "sd")) {
+ 	    type = IF_SD;
+             max_devs = 0;
++	} else if (!strcmp(buf, "virtio")) {
++	    type = IF_VIRTIO;
++            max_devs = 0;
+ 	} else {
+             fprintf(stderr, "qemu: '%s' unsupported bus type '%s'\n", str, buf);
+             return -1;
+@@ -5141,6 +5144,7 @@
+         break;
+     case IF_PFLASH:
+     case IF_MTD:
++    case IF_VIRTIO:
+         break;
+     }
+     if (!file[0])
