@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="x11vnc"
+VERSION="0.9.3"
+CATEGORY="network"
+SHORT_DESC="VNC server using X server"
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.karlrunge.com/x11vnc/"
+WGET_URL="$SF_MIRROR/libvncserver/$TARBALL"
+DEPENDS="xorg xorg-libXtst openssl"
+BUILD_DEPENDS="xorg-dev xorg-libXdamage-dev xorg-libXtst-dev openssl-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/etc/init.d
+	cp -a $_pkg/usr/bin/x11vnc $fs/usr/bin
+	cp -a stuff/x11vnc $fs/etc/init.d
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	grep -q "^X11VNC" /etc/daemons.conf || cat >> /etc/daemons.conf <<EOT
+# VNC server options.
+X11VNC_OPTIONS="-rfbauth /etc/vnc.secret -forever"
+
+EOT
+	[ -f /etc/vnc.secret ] || echo -en '\x70\x05\xE3\x8B\x81\xB0\xB2\1B' \
+		 > /etc/vnc.secret # root
+}
+
