@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="kbd"
+VERSION="1.12"
+CATEGORY="system-tools"
+SHORT_DESC="Keyboard maping definitions and tools."
+BUILD_DEPENDS="bison"
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.kernel.org/pub/linux/utils/kbd/"
+WGET_URL="http://www.kernel.org/pub/linux/utils/kbd/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--mandir=/usr/share/man
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	
+	# Copy all kbd files (should we split fonts ?) and remove the one 
+	# provided by: kbd-base.
+	cp -a $_pkg/usr/share/kbd $fs/usr/share
+	rm -rf $fs/usr/share/kbd/keymaps/i386
+	
+	# Tools
+	cp -a $_pkg/usr/bin $fs/usr
+}
+
