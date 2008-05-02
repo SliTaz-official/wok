@@ -1,10 +1,10 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-hacker"
-VERSION="1.4"
+VERSION="1.5"
 CATEGORY="base-system"
 SHORT_DESC="SliTaz user hacker."
-DEPENDS="slitaz-base-files lxappearance"
+DEPENDS="slitaz-base-files slitaz-configs"
 MAINTAINER="pankso@slitaz.org"
 WEB_SITE="http://www.slitaz.org/"
 
@@ -17,6 +17,7 @@ genpkg_rules()
 		$fs/home/hacker/Documents \
 		$fs/home/hacker/Downloads \
 		$fs/home/hacker/Music \
+		$fs/home/hacker/Videos \
 		$fs/home/hacker/.local/bin \
 		$fs/home/hacker/.local/share \
 		$fs/home/hacker/.mozilla/plugins
@@ -51,4 +52,22 @@ pre_install()
 			sed -i s/'audio:x:20:'/'audio:x:20:hacker'/ $root/etc/group
 		fi
 	fi
+	# Backups
+	for i in '.ash_history .profile .gtk-bookmarks'
+	do
+		if [ -f $root/home/hacker/$i ]; then
+			cp -a $root/home/hacker/$i $root/home/hacker/$i.bak
+		fi
+	done
+}
+
+# Restore backups
+pre_install()
+{
+	for i in '.ash_history .profile .gtk-bookmarks'
+	do
+		if [ -f $root/home/hacker/$i.bak ]; then
+			cp -a $root/home/hacker/$i.bak $root/home/hacker/$i
+		fi
+	done
 }
