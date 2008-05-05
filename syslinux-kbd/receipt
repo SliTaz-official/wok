@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="syslinux-kbd"
+VERSION="3.62"
+CATEGORY="system-tools"
+SHORT_DESC="Keyboard maping definitions for boot loader."
+MAINTAINER="pascal.bellard@slitaz.org"
+WANTED="syslinux"
+WEB_SITE="http://syslinux.zytor.com/"
+BUILD_DEPENDS="kbd-base perl"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/boot/ /tmp/$PACKAGE-$$
+	zcat /usr/share/kbd/keymaps/i386/qwerty/us.map.gz > /tmp/us.map
+	sed "s|\\\$DEFAULT_PATH = .*|\$DEFAULT_PATH = \"/tmp/$PACKAGE-$$\";|" \
+		> /tmp/$PACKAGE-$$/mkkbd < $src/keytab-lilo.pl
+	chmod +x /tmp/$PACKAGE-$$/mkkbd
+	for i in $(cd /usr/share/kbd/keymaps/i386 ; ls */*.map.gz); do
+		[ "$(dirname $i)" = "include" ] && continue
+		j=$(basename $i)
+		j=${j%.map.gz}
+		zcat /usr/share/kbd/keymaps/i386/$i > /tmp/$PACKAGE-$$/$j.map
+	done
+	for i in $(cd /tmp/$PACKAGE-$$ ; ls *.map); do
+		i=$(basename $i)
+		i=${i%.map}
+		/tmp/$PACKAGE-$$/mkkbd $i > $fs/usr/share/boot/$i.kbd
+	done
+	rm -rf /tmp/$PACKAGE-$$
+}
+
