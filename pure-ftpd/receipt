@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="pure-ftpd"
+VERSION="1.0.21"
+CATEGORY="networking"
+SHORT_DESC="A secure FTP daemon"
+MAINTAINER="Erjo <erjo@slitaz.org>"
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.pureftpd.org/project/pure-ftpd"
+WGET_URL="http://download.pureftpd.org/pub/pure-ftpd/releases/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr  $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/etc/init.d
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	install -g root -o root -m 0755 stuff/pure-ftpd $fs/etc/init.d
+}
+
+post_install()
+{
+	echo ""
+	echo -e "\nTo starts $PACKAGE server you can run :\n"
+    echo "/etc/init.d/$PACKAGE start"
+    echo -e "Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf\n"
+	echo ""
+	echo "You may install pure-ftpd-extras package to get pure-config.pl "
+	echo " pure-config.py facilities."
+	
+}
