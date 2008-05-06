@@ -15,15 +15,20 @@ WGET_URL="http://www.busybox.net/downloads/$TARBALL"
 compile_rules()
 {
     cd $PACKAGE-$VERSION
-    patch -p1 < ../stuff/$PACKAGE-$VERSION-patch.u
-    patch -p1 < ../stuff/$PACKAGE-$VERSION-vcsa2txt.u
-    patch -p1 < ../stuff/$PACKAGE-$VERSION-cpio.u
-    patch -p1 < ../stuff/$PACKAGE-$VERSION-dhcpc.u
-    patch -p1 < ../stuff/$PACKAGE-$VERSION-cpio-mkdir.u
-    patch -p1 < ../stuff/$PACKAGE-$VERSION-cpio-mtime.u
-    patch -p1 < ../stuff/$PACKAGE-$VERSION-unlzma.u
-    patch -p1 < ../stuff/$PACKAGE-$VERSION-tftp.u
-    patch -p1 < ../stuff/$PACKAGE-$VERSION-tar.u || exit 1
+    while read file; do
+    	patch -p1 < ../stuff/$file || return 1
+    done <<EOT
+$PACKAGE-$VERSION-patch.u
+$PACKAGE-$VERSION-vcsa2txt.u
+$PACKAGE-$VERSION-cpio.u
+$PACKAGE-$VERSION-dhcpc.u
+$PACKAGE-$VERSION-cpio-mkdir.u
+$PACKAGE-$VERSION-cpio-mtime.u
+$PACKAGE-$VERSION-unlzma.u
+$PACKAGE-$VERSION-tftp.u
+$PACKAGE-$VERSION-tar.u
+$PACKAGE-$VERSION-script.u
+EOT
     cp ../stuff/$PACKAGE-$VERSION.config .config
     make oldconfig
     make && make install
