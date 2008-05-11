@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-loram-cdrom"
-VERSION="1.1"
+VERSION="1.2"
 CATEGORY="misc"
 SHORT_DESC="Rules to build low ram system using cdrom."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -24,11 +24,11 @@ set_patch()
     i=$(($i-1))
     tag=$(grep "$tag" $1/etc/init.d/rcS)
     if [ "$2" = "-R" ]; then
-    	line="-$(($i-24)),26 +$(($i-24)),2"
+    	line="-$(($i-49)),51 +$(($i-49)),2"
 	i="-"
     else
         grep -q 'from slitaz-loram-cdrom package' $1/etc/init.d/rcS && return
-    	line="-$i,2 +$i,26"
+    	line="-$i,2 +$i,51"
 	i="+"
     fi
     patch -p0 <<EOF
@@ -36,6 +36,21 @@ set_patch()
 +++ $1/etc/init.d/rcS
 @@ $line @@
  
+$i# Try to release the cdrom (from slitaz-loram-cdrom package)
+$i release_cdrom()
+$i {
+$i	FREEMEM=\$(free | awk '{ n = \$NF } END { print n }')	
+$i	if [ \$FREEMEM -gt \$(du -s \$FS | awk '{ print \$1+40000 }') ]; then
+$i		cp -a \$FS /.usr.fs
+$i		status
+$i		echo -n "Releasing CD-ROM..."
+$i		umount /cdrom
+$i		FS=/.usr.fs
+$i		return 0
+$i	fi
+$i	return 1
+$i }
+$i
 $i# Mount /usr (from slitaz-loram-cdrom package)
 $i if [ -d /cdrom ]; then
 $i	mount -o ro -t iso9660 /dev/cdrom /cdrom
@@ -46,11 +61,21 @@ $i	else
 $i		echo -n "Mounting /usr read-only... "
 $i		usr=usr
 $i	fi
-$i	if [ -f /cdrom/usr.cromfs ]; then
-$i		/bin/cromfs-driver /cdrom/usr.cromfs /\$usr
-$i	elif [ -f /cdrom/usr.sqfs ]; then
-$i		mount -o loop,ro -t squashfs /cdrom/usr.sqfs /\$usr
-$i	elif [ ! -L /\$usr ]; then
+$i	FS=/cdrom/usr.cromfs
+$i	if [ -f \$FS ]; then
+$i		release_cdrom
+$i		/bin/cromfs-driver \$FS /\$usr
+$i	FS=/cdrom/usr.sqfs
+$i	elif [ -f \$FS ]; then
+$i		release_cdrom
+$i		mount -o loop,ro -t squashfs \$FS /\$usr
+$i	elif [ -L /\$usr ]; then
+$i		FS=/cdrom/usr
+$i		if release_cdrom; then
+$i			rm -f /\$usr
+$i			mv \$FS /usr
+$i		fi
+$i	else
 $i		umount /cdrom
 $i		false
 $i	fi
