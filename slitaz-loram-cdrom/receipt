@@ -87,6 +87,31 @@ $i fi
 $i
  $tag
 EOF
+    tag="/var/log/dmesg.log"
+    i=$(grep -n "$tag" $1/etc/init.d/rcS | cut -d: -f1)
+    i=$(($i-1))
+    tag=$(grep "$tag" $1/etc/init.d/rcS)
+    if [ "$2" = "-R" ]; then
+    	line="-$(($i-7)),9 +$(($i-7)),2"
+	i="-"
+    else
+    	line="-$i,2 +$i,9"
+	i="+"
+    fi
+    patch -p0 <<EOF
+--- $1/etc/init.d/rcS
++++ $1/etc/init.d/rcS
+@@ $line @@
+ 
+$i# Build ramdisk if root=/dev/cdrom (from slitaz-loram-cdrom package)
+$i if [ -L /root ]; then
+$i	mount -t tmpfs ramdisk /tmp
+$i	mkdir -p /tmp/log/lighttpd /tmp/run /tmp/lock
+$i	chown www.www /tmp/log/lighttpd
+$i fi
+$i
+ $tag
+EOF
     chmod 0755 $1/etc/init.d/rcS
 }
 
