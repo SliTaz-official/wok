@@ -1,6 +1,8 @@
 #!/bin/sh
 #
-# Get and install non-free Broadcom b43 firmware.
+# Get and install non-free Broadcom b43 firmware. The script wil also
+# install linux-wireless and b43-fwcutter if needed. Finaly try to
+# configure wlan0 interface.
 #
 
 DIR="broadcom-wl"
@@ -21,6 +23,16 @@ if [ -d /var/lib/tazpkg/installed/b43-firmware ]; then
 	exit 0
 fi
 
+# We need the extractor.
+if [ ! -d /var/lib/tazpkg/installed/linux-wireless ]; then
+	tazpkg get-install linux-wireless
+fi
+
+# We need the extractor.
+if [ ! -d /var/lib/tazpkg/installed/b43-fwcutter ]; then
+	tazpkg get-install b43-fwcutter
+fi
+
 # Install b43-fwcutter if needed
 if [ -d /var/lib/tazpkg/installed/b43-fwcutter ]; then
 	tazpkg get-install b43-fwcutter
@@ -33,7 +45,7 @@ tar xjf $TARBALL
 cd $DIR-$VERSION/kmod
 
 # Create pseudo package
-mkdir -p b43-firmware-$VERSION/fs/lib/firmware 
+mkdir -p b43-firmware-$VERSION/fs/lib/firmware
 b43-fwcutter -w "b43-firmware-$VERSION/fs/lib/firmware" wl_apsta.o
 
 # Creat receipt
@@ -55,3 +67,13 @@ tazpkg install b43-firmware-$VERSION.tazpkg
 # Clean
 cd /tmp
 rm -rf $TARBALL $DIR-$VERSION
+
+# Configure /etc/network.conf and start connexion
+sed -i s/'WIFI="no"'/'WIFI="yes"'/ /etc/network.conf
+. /etc/network.conf
+
+iwconfig $WIFI_INTERFACE essid $ESSID
+echo "Starting udhcpc client on: $WIFI_INTERFACE... "
+/sbin/udhcpc -b -i $WIFI_INTERFACE \
+	-p /var/run/udhcpc.$WIFI_INTERFACE.pid
+
