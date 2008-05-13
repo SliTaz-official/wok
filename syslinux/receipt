@@ -1,20 +1,45 @@
 # SliTaz package receipt.
 
 PACKAGE="syslinux"
-VERSION="3.62"
+VERSION="3.63"
 CATEGORY="base-system"
 SHORT_DESC="LiveCD ISO bootloader (isolinux)"
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://syslinux.zytor.com/"
 WGET_URL="ftp://ftp.kernel.org/pub/linux/boot/syslinux/$TARBALL"
+BUILD_DEPENDS="kbd-base perl"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+compile_rules()
+{
+	cd $src
+	sed "s|\\\$DEFAULT_PATH = .*|\$DEFAULT_PATH = \"$PWD\";|" \
+		> mkkbd < keytab-lilo.pl
+	chmod +x mkkbd
+	for i in $(cd /usr/share/kbd/keymaps/i386 ; ls */*.map.gz); do
+		[ "$(dirname $i)" = "include" ] && continue
+		j=$(basename $i)
+		zcat /usr/share/kbd/keymaps/i386/$i > ${j%.gz}
+	done
+	for i in $(ls *.map); do
+		i=$(basename $i)
+		i=${i%.map}
+		./mkkbd $i > $i.kbd
+	done
+}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
     mkdir -p $fs/boot/isolinux
-    cp -a $PACKAGE-$VERSION/isolinux.bin $fs/boot/isolinux
-    cp -a $PACKAGE-$VERSION/com32/modules/reboot.c32 $fs/boot/isolinux
+    cp -a $src/isolinux.bin $fs/boot/isolinux
+    cp -a $src/com32/modules/reboot.c32 $fs/boot/isolinux
     cp stuff/* $fs/boot/isolinux
+    rm -r $fs/boot/isolinux/slitaz.* $fs/boot/isolinux/*.kbd 2> /dev/null
+    for i in $(grep kbd$ $fs/boot/isolinux/*.cfg | cut -d' ' -f2); do
+        cp $src/$i $fs/boot/isolinux
+    done
     chown root.root $fs/boot/isolinux/*
 }
+
