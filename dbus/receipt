@@ -1,0 +1,75 @@
+# SliTaz package receipt.
+
+PACKAGE="dbus"
+VERSION="1.2.1"
+CATEGORY="x-window"
+SHORT_DESC="D-Bus is a message bus system."
+DEPENDS="expat xorg-libX11"
+BUILD_DEPENDS="xorg-libX11-dev"
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.freedesktop.org/wiki/Software/dbus"
+WGET_URL="http://dbus.freedesktop.org/releases/dbus/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/dbus \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/var $fs
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/dbus $fs/usr/lib
+	# Remove helper (600 Kb).
+	rm $fs/usr/lib/dbus/dbus-daemon-launch-helper
+	cp -a $_pkg/usr/share/dbus* $fs/usr/share
+	# Init script
+	cp -a stuff/etc $fs
+	chown -R root.root $fs
+}
+
+pre_install()
+{
+	local root
+	root=$1
+	# Go for echoing on configuration files if any messagebus user
+	# was found.
+	if ! grep -q 'messagebus' $root/etc/passwd; then
+		echo -n "Adding user: messagebus..."
+		echo 'messagebus:x:25:25:DBUS Daemon User:/dev/null:/bin/false' >> $root/etc/passwd
+		echo 'messagebus:!:14013:0:99999:7:::' >> $root/etc/shadow
+		echo 'messagebus:x:25:' >> $root/etc/group
+		echo 'messagebus:!::' >> $root/etc/gshadow
+		status
+	fi
+	if ! grep -q ^DBUS_OPTIONS $root/etc/daemons.conf; then
+		echo -n "Configuring $root/etc/daemons.conf..."
+		cat >> $root/etc/daemons.conf << "EOT"
+# DBUS daemon options.
+DBUS_OPTIONS="--system"
+
+EOT
+		status
+	fi
+}
+
+pre_remove()
+{
+	/etc/init.d/dbus stop
+	deluser messagebus
+}
