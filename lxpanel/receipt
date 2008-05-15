@@ -6,7 +6,7 @@ CATEGORY="x-window"
 SHORT_DESC="Standard compliant desktop panel."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+ slitaz-menus"
-BUILD_DEPENDS="gtk+-dev gettext"
+BUILD_DEPENDS="gtk+-dev gettext wireless_tools-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://lxde.sourceforge.net/"
 WGET_URL="$SF_MIRROR/lxde/$TARBALL"
@@ -34,20 +34,24 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib $fs/usr
 	cp -a $_pkg/usr/share/lxpanel $fs/usr/share
 
-	# Remove a few "heavy" an unseful images
+	# Remove a few "heavy" an unseful images (ns* goes in extra)
 	rm $fs/usr/share/lxpanel/images/file-manager.png
-	rm $fs/usr/share/lxpanel/images/gnome-applications.png
-	rm $fs/usr/share/lxpanel/images/gnome-devel.png
-	rm $fs/usr/share/lxpanel/images/gnome-fs*.png
-	rm $fs/usr/share/lxpanel/images/gnome-joystick.png
-	rm $fs/usr/share/lxpanel/images/gnome-multimedia.png
-	rm $fs/usr/share/lxpanel/images/gnome-s*
-	rm $fs/usr/share/lxpanel/images/gnome-g*.png
-	rm $fs/usr/share/lxpanel/images/gnome-u*.png
+	rm $fs/usr/share/lxpanel/images/stock_volume.png
+	rm $fs/usr/share/lxpanel/images/gnome-[a-k]*.png
+	rm $fs/usr/share/lxpanel/images/gnome-netstatus-[d-t]*.png
+	rm $fs/usr/share/lxpanel/images/gnome-m*.png
+	rm $fs/usr/share/lxpanel/images/gnome-[o-z]*.png
 	rm $fs/usr/share/lxpanel/images/my-*
 	rm $fs/usr/share/lxpanel/images/redhat*.png
-	rm $fs/usr/share/lxpanel/images/gnome-netstatus-[d-t]*.png
 	rm $fs/usr/share/lxpanel/images/ns-*.png
+	rm $fs/usr/share/lxpanel/images/*lock-*.png
+
+	# Netstatus 24x24 resized icons in Tango theme path.
+	cp -a stuff/icons $fs/usr/share
+
+	# Remove plugins --> lxpanel-extra
+	rm $fs/usr/lib/lxpanel/plugins/netstat.so
+	rm $fs/usr/lib/lxpanel/plugins/kbled.so
 
 	# Move profile to /etc/lxpanel (/usr maybe read-only)
 	mkdir $fs/etc
@@ -57,7 +61,7 @@ genpkg_rules()
 	# Default config
 	mv $fs/etc/lxpanel/default $fs/etc/lxpanel/original
 	cp -a stuff/default $fs/etc/lxpanel
-	
+
 	# Declare lxsession-logout in files.list
 	touch $fs/usr/bin/lxsession-logout
 }
