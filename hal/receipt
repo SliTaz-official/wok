@@ -1,0 +1,95 @@
+# SliTaz package receipt.
+
+PACKAGE="hal"
+VERSION="0.5.11"
+CATEGORY="x-window"
+SHORT_DESC="Hardware Abstraction Layer."
+DEPENDS="dbus dbus-glib"
+BUILD_DEPENDS="dbus-dev dbus-glib-dev"
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.freedesktop.org/wiki/Software/hal"
+WGET_URL="http://hal.freedesktop.org/releases/$TARBALL"
+
+EXTRA="
+hald-addon-cpufreq
+hald-addon-hid-ups
+hald-addon-imac-backlight
+hald-probe-video4linux
+hald-probe-net-bluetooth
+hald-probe-ieee1394-unit
+hald-probe-pc-floppy
+hald-probe-printer
+hal-ipw-killswitch-linux"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/hal \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--mandir=/usr/share/man \
+		--disable-usb-ids \
+		--disable-policy-kit \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/var $fs
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/hal $fs/usr/lib
+	cp -a $_pkg/usr/share/hal $fs/usr/share
+	chmod -R +x $fs/usr/lib/hal/scripts/*
+
+	# Remove a few run time lib.
+	for lib in $EXTRA
+	do
+		rm $fs/usr/lib/hal/$lib
+	done
+
+	# Init script
+	cp -a stuff/etc $fs
+	chown -R root.root $fs
+}
+
+pre_install()
+{
+	local root
+	root=$1
+	# Go for echoing on configuration files if any haldeamon user
+	# was found.
+	if ! grep -q 'messagebus' $root/etc/passwd; then
+		echo -n "Adding user: messagebus..."
+		echo 'haldaemon:x:26:26:HAL Daemon User:/dev/null:/bin/false' >> $root/etc/passwd
+		echo 'haldaemon:!:14013:0:99999:7:::' >> $root/etc/shadow
+		echo 'haldaemon:x:26:' >> $root/etc/group
+		echo 'haldaemon:!::' >> $root/etc/gshadow
+		status
+	fi
+	if ! grep -q ^HALD_OPTIONS $root/etc/daemons.conf; then
+		echo -n "Configuring $root/etc/daemons.conf..."
+		cat >> $root/etc/daemons.conf << "EOT"
+# HAL daemon options.
+HALD_OPTIONS="--daemon=yes"
+
+EOT
+		status
+	fi
+}
+
+pre_remove()
+{
+	/etc/init.d/hald stop
+	deluser haldaemon
+}
