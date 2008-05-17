@@ -13,20 +13,13 @@ BUILD_DEPENDS="kbd-base perl"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 compile_rules()
 {
-	cd $src
-	sed "s|\\\$DEFAULT_PATH = .*|\$DEFAULT_PATH = \"$PWD\";|" \
-		> mkkbd < keytab-lilo.pl
-	chmod +x mkkbd
-	for i in $(cd /usr/share/kbd/keymaps/i386 ; ls */*.map.gz); do
-		[ "$(dirname $i)" = "include" ] && continue
-		j=$(basename $i)
-		zcat /usr/share/kbd/keymaps/i386/$i > ${j%.gz}
-	done
-	for i in $(ls *.map); do
-		i=$(basename $i)
-		i=${i%.map}
-		./mkkbd $i > $i.kbd
-	done
+    cd $src
+    for i in /usr/share/kbd/keymaps/i386/*/*.map.gz; do
+        [ "$(basename $(dirname $i))" = "include" ] && continue
+        j=$(basename $i)
+        j=${j%.map.gz}.kbd
+        ./keytab-lilo.pl /usr/share/kbd/keymaps/i386/qwerty/us.map.gz $i > $j
+    done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -37,8 +30,10 @@ genpkg_rules()
     cp -a $src/com32/modules/reboot.c32 $fs/boot/isolinux
     cp stuff/* $fs/boot/isolinux
     rm -r $fs/boot/isolinux/slitaz.* $fs/boot/isolinux/*.kbd 2> /dev/null
-    for i in $(grep kbd$ $fs/boot/isolinux/*.cfg | cut -d' ' -f2); do
-        cp $src/$i $fs/boot/isolinux
+    grep kbd$ $fs/boot/isolinux/*.cfg | while read cfg kbd; do
+        cfg=$(basename ${cfg%.cfg:*})
+	sed -i "s/$kbd/$cfg.kbd/" $fs/boot/isolinux/$cfg.cfg
+        cp $src/$kbd $fs/boot/isolinux/$cfg.kbd
     done
     chown root.root $fs/boot/isolinux/*
 }

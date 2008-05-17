@@ -1,0 +1,38 @@
+display isolinux.msg
+default slitaz
+label be
+	config be.cfg
+label ca
+	config ca.cfg
+label ch
+	config fr_CH.cfg
+label de
+	config de_CH.cfg
+label en
+	config en.cfg
+label es
+	config es.cfg
+label fi
+	config fi.cfg
+label fr
+	config fr.cfg
+label hu
+	config hu.cfg
+label it
+	config it.cfg
+label reboot
+	com32 reboot.c32
+label uk
+	config en.cfg
+label us
+	config us.cfg
+
+implicit 0	
+prompt 1	
+timeout 80
+F1 help.txt
+F2 options.txt
+F3 isolinux.msg
+F4 display.txt
+F5 enhelp.txt
+F6 enopts.txt
