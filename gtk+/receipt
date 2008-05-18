@@ -1,17 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="gtk+"
-VERSION="2.12.6"
+VERSION="2.12.9"
 CATEGORY="x-window"
 SHORT_DESC="The GIMP Toolkit."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="cairo glib pango atk libpng jpeg fontconfig freetype"
-BUILD_DEPENDS="cairo-dev glib-dev pango-dev atk-dev libpng-dev jpeg-dev 
-             pkg-config xorg-dev xorg-dev-proto fontconfig-dev freetype-dev"
+BUILD_DEPENDS="cairo-dev glib-dev pango-dev atk-dev libpng-dev jpeg-dev
+             pkg-config xorg-dev xorg-dev-proto fontconfig-dev
+             freetype-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gtk.org/"
-WGET_URL="ftp://ftp.gtk.org/pub/gtk/2.12/$TARBALL"
-
+WGET_URL="http://ftp.gnome.org/pub/GNOME/sources/gtk+/2.12/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -31,21 +31,21 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/gtk-2.0 $fs/usr/share $fs/usr/bin
-	
+
 	# Libs.
     cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
     cp -a $_pkg/usr/lib/gtk-2.0/2.10.0 $fs/usr/lib/gtk-2.0
     rm -rf $fs/usr/lib/gtk-2.0/2.10.0/*/*.la
-    
+
     # Themes
     cp -a $_pkg/usr/share/themes $fs/usr/share
-    
+
     # Apps.
     cp  $_pkg/usr/bin/gtk-query-immodules-2.0 $fs/usr/bin
     cp  $_pkg/usr/bin/gtk-update-icon-cache $fs/usr/bin
     cp  $_pkg/usr/bin/gdk-pixbuf-csource $fs/usr/bin
     cp  $_pkg/usr/bin/gdk-pixbuf-query-loaders $fs/usr/bin
-    
+
     # Config files.
     mkdir -p $fs/etc/gtk-2.0
     gtk-query-immodules-2.0 > $fs/etc/gtk-2.0/gtk.immodules
@@ -60,7 +60,11 @@ post_install()
     echo "Processing post-install commands..."
     /usr/bin/gtk-query-immodules-2.0 > $root/etc/gtk-2.0/gtk.immodules
     /usr/bin/gdk-pixbuf-query-loaders > $root/etc/gtk-2.0/gdk-pixbuf.loaders
-    # Force reinstall of clearlooks them
-    tazpkg get-install clearlooks --forced
+    # Force reinstall of clearlooks theme (1.0 compatibilty until
+    # clearlooks are updated)
+    if [ -d $root/usr/lib/gtk-2.0/2.4.0 ]; then
+    	tazpkg get-install clearlooks --forced
+    	rm -rf $root/usr/lib/gtk-2.0/2.4.0
+    fi
 }
 SELF_INSTALL=1
