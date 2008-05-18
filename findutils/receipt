@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="findutils"
+VERSION="4.4.0"
+CATEGORY="utilities"
+SHORT_DESC="Utilitie and tools to find/locate."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="slitaz-base-files"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/findutils/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/findutils \
+		--localstatedir=/var \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+}
+
+# Prevent erasing busybox...
+pre_install()
+{
+	local root
+	root=$1
+	rm -f $root/usr/bin/find
+}
+
+post_remove()
+{
+	ln -s /bin/busybox /usr/bin/find
+}
