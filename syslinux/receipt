@@ -14,6 +14,7 @@ BUILD_DEPENDS="kbd-base perl"
 compile_rules()
 {
     cd $src
+    patch -p1 < ../stuff/tools/keytab-lilo.pl.u
     for i in /usr/share/kbd/keymaps/i386/*/*.map.gz; do
         [ "$(basename $(dirname $i))" = "include" ] && continue
         j=$(basename $i)
@@ -29,7 +30,7 @@ genpkg_rules()
     cp -a $src/isolinux.bin $fs/boot/isolinux
     cp -a $src/com32/modules/reboot.c32 $fs/boot/isolinux
     cp stuff/* $fs/boot/isolinux
-    rm -r $fs/boot/isolinux/slitaz.* $fs/boot/isolinux/*.kbd 2> /dev/null
+    rm -rf $fs/boot/isolinux/tools $fs/boot/isolinux/*.kbd 2> /dev/null
     grep kbd$ $fs/boot/isolinux/*.cfg | while read cfg kbd; do
         cfg=$(basename ${cfg%.cfg:*})
 	sed -i "s/$kbd/$cfg.kbd/" $fs/boot/isolinux/$cfg.cfg
