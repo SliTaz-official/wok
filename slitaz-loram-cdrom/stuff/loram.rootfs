@@ -45,39 +45,41 @@ else
   [ "$usr" = "usr" ] || mv $usr usr
   ln -s /cdrom/usr $usr
 fi
-for ii in *; do
-  case "$ii" in
-  usr|boot) continue;;
-  mnt|media|sys|proc|cdrom) mkdir ../rootcd/$ii;;
-  *) cp -a $ii ../rootcd/$ii;;
-  esac
-done
-for ii in keymap.conf locale.conf resolv.conf TZ motd; do
-  ln -s /tmp/$ii ../rootcd/etc
-done
-for ii in log run lock; do
-  mv ../rootcd/var/$ii ../rootcd/var/$ii.ORG
-  ln -s /tmp/$ii ../rootcd/var
-done
-mv ../rootcd/root ../rootcd/root.ORG
-ln -s /tmp ../rootcd/root
-ln -s / ../rootcd/media/cdrom
-mkdir ../rootcd/mnt/target
-sed -i 's/CLEAN_UP_SYSTEM="yes"/CLEAN_UP_SYSTEM="no"/' ../rootcd/etc/rcS.conf
-sed -i 's/RUN_DAEMONS=.*/RUN_DAEMONS=""/' ../rootcd/etc/rcS.conf
-for ii in ../rootcd/boot/isolinux/*.cfg; do
-  cat $ii | awk '{ print } /append/ { printf "label loram\n\tkernel /boot/bzImage\n\tappend ro sound=noconf screen=text %s %s %s\n",$5,$6,$7 }' > $ii.tmp
-  mv -f $ii.tmp $ii
-done
-cat >> ../rootcd/boot/isolinux/enopts.txt <<EOT
+if [ -d ../rootcd/usr/lib ]; then
+  for ii in *; do
+    case "$ii" in
+    usr|boot) continue;;
+    mnt|media|sys|proc|cdrom) mkdir ../rootcd/$ii;;
+    *) cp -a $ii ../rootcd/$ii;;
+    esac
+  done
+  for ii in keymap.conf locale.conf resolv.conf TZ motd; do
+    ln -s /tmp/$ii ../rootcd/etc
+  done
+  for ii in log run lock; do
+    mv ../rootcd/var/$ii ../rootcd/var/$ii.ORG
+    ln -s /tmp/$ii ../rootcd/var
+  done
+  mv ../rootcd/root ../rootcd/root.ORG
+  ln -s /tmp ../rootcd/root
+  ln -s / ../rootcd/media/cdrom
+  mkdir ../rootcd/mnt/target
+  sed -i 's/CLEAN_UP_SYSTEM="yes"/CLEAN_UP_SYSTEM="no"/' ../rootcd/etc/rcS.conf
+  sed -i 's/RUN_DAEMONS=.*/RUN_DAEMONS=""/' ../rootcd/etc/rcS.conf
+  for ii in ../rootcd/boot/isolinux/*.cfg; do
+    cat $ii | awk '{ print } /append/ { printf "label loram\n\tkernel /boot/bzImage\n\tappend ro sound=noconf screen=text %s %s %s\n",$5,$6,$7 }' > $ii.tmp
+    mv -f $ii.tmp $ii
+  done
+  cat >> ../rootcd/boot/isolinux/enopts.txt <<EOT
  With few RAM, you can use loram entry with the cdrom device; example:
  boot: loram root=/dev/hdc
 EOT
-cat >> ../rootcd/boot/isolinux/options.txt <<EOT
+  cat >> ../rootcd/boot/isolinux/options.txt <<EOT
  Avec peu de RAM, utilisez l'entrée loram en précisant le cdrom, exemple:
  boot: loram root=/dev/hdc
 EOT
-for ii in bin/vcsa2txt bin/awk bin/script bin/cut bin/readlink ; do
+fi
+for ii in bin/vcsa2txt bin/awk bin/script bin/cut bin/readlink bin/du bin/free; do
   ln -s busybox $ii
 done
 mkdir cdrom
