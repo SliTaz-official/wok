@@ -16,7 +16,7 @@ compile_rules()
 	# lzma and boot patch from pascal
 	while read patch_file; do
 		echo "Apply $patch_file"
-		patch -p1 < ../stuff/$patch_file
+		patch -p1 < ../stuff/$patch_file || return 1
 	done <<EOT
 boot-kernel.u
 $PACKAGE-lzma-$VERSION.u
@@ -26,7 +26,7 @@ EOT
 	cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
 	while read patch_file; do
 		echo "Apply $patch_file"
-		patch -p1 < ../stuff/$patch_file
+		patch -p1 < ../stuff/$patch_file || return 1
 	done <<EOT
 config-acpi-$VERSION.u
 linux-utf8-$VERSION.u
@@ -35,6 +35,7 @@ linux-lzma-export.u
 config-tun-$VERSION.u
 config-reiserfs-$VERSION.u
 config-wireless-$VERSION.u
+$PACKAGE-lzma-loram-$VERSION.u
 EOT
 	make oldconfig
 	make bzImage
@@ -48,6 +49,7 @@ genpkg_rules()
     local path
     mkdir $fs/boot
     cp -a $src/arch/x86/boot/bzImage $fs/boot/vmlinuz-$VERSION-slitaz
+    rdev $fs/boot/vmlinuz-$VERSION-slitaz /dev/ram0
     # Compress all modules.
     # Package module-init-tools is compiled with zlib support.
     #
@@ -75,7 +77,7 @@ genpkg_rules()
 post_install()
 {
     echo "Processing post-install commands..."
-    depmod -a -b /$1
+    depmod -a -b "$1/"
     echo "----"
     echo "If you have GRUB installed, you can add tree lines to boot SliTaz."
     echo "Example /boot/grub/menu.lst"
