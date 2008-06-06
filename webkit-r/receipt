@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="webkit-r"
+VERSION="34382"
+CATEGORY="netwok"
+SHORT_DESC="xHTML render library."
+DEPENDS="libxslt"
+BUILD_DEPENDS="icu-dev gperf libxslt-dev"
+MAINTAINER="pankso@slitaz.org"
+TARBALL="WebKit-r${VERSION}.tar.bz2"
+WEB_SITE="http://webkit.org/"
+WGET_URL="http://nightly.webkit.org/files/trunk/src/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mv WebKit-r${VERSION} $PACKAGE-$VERSION
+	cd $src
+	./autogen.sh \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
