@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="linux"
-VERSION="2.6.24.2"
+VERSION="2.6.25.5"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -13,34 +13,22 @@ WGET_URL="http://www.eu.kernel.org/pub/linux/kernel/v2.6/$TARBALL"
 compile_rules()
 {
 	cd $src
-	# lzma and boot patch from pascal
+	# lzma and misc patches from pascal
 	while read patch_file; do
 		echo "Apply $patch_file"
 		patch -p1 < ../stuff/$patch_file || return 1
 	done <<EOT
-boot-kernel.u
 $PACKAGE-lzma-$VERSION.u
-decompress_unlzma.u
+$PACKAGE-utf8-$VERSION.u
+$PACKAGE-diff-$VERSION.u
 EOT
 	make mrproper	
 	cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
-	while read patch_file; do
-		echo "Apply $patch_file"
-		patch -p1 < ../stuff/$patch_file || return 1
-	done <<EOT
-config-acpi-$VERSION.u
-linux-utf8-$VERSION.u
-config-ieee1394-$VERSION.u
-linux-lzma-export.u
-config-tun-$VERSION.u
-config-reiserfs-$VERSION.u
-config-wireless-$VERSION.u
-$PACKAGE-lzma-loram-$VERSION.u
-EOT
 	make oldconfig
 	make bzImage
 	make modules
 	make INSTALL_MOD_PATH=$PWD/_pkg modules_install
+	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install
 } 
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -57,18 +45,27 @@ genpkg_rules()
     path=$fs/lib/modules/$VERSION-slitaz/kernel
     mkdir -p $path
     cp -a $_pkg/lib/modules/$VERSION-slitaz/mo* $fs/lib/modules/$VERSION-slitaz
+    cp ./stuff/list_modules.sh $src
+    export src
+    export _pkg
+    $src/list_modules.sh $(cat stuff/modules-$VERSION.list) > $src/modules.list
     while read module; do
     	dir=$(dirname $module)
     	[ -d $path/$dir ] || mkdir -p $path/$dir
         cp -a $_pkg/lib/modules/$VERSION-slitaz/kernel/$module $path/$dir
-    done < stuff/modules-$VERSION.list
+    done < $src/modules.list
     # Remove unresolved links
     rm -f $fs/lib/modules/$VERSION-slitaz/build
     rm -f $fs/lib/modules/$VERSION-slitaz/source
-    # Packages all linux pkgs
-    for i in acpi ieee1394 reiserfs sound wireless
+    # Package all linux pkgs
+    for i in $(cd $WOK; ls -d linux-*)
     do
-    	tazwok genpkg linux-$i
+    	tazwok genpkg $i
+    done
+    # Cook all packages with a kernel module
+    for i in $(cd $WOK; grep -l 'tazwok cook linux$' */receipt)
+    do
+    	echo tazwok cook ${i%/receipt}
     done
 }
 
@@ -77,13 +74,15 @@ genpkg_rules()
 post_install()
 {
     echo "Processing post-install commands..."
-    depmod -a -b "$1/"
-    echo "----"
-    echo "If you have GRUB installed, you can add tree lines to boot SliTaz."
-    echo "Example /boot/grub/menu.lst"
-    echo -e "
+    depmod -a -b "$1/" $VERSION-slitaz
+    cat <<EOT
+----
+If you have GRUB installed, you can add tree lines to boot SliTaz.
+Example /boot/grub/menu.lst
+ 
 title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
        root(hd0,0)
-       kernel /boot/vmlinuz-$VERSION-slitaz root=/dev/hda1 vga=771\n"
-    echo "----"
+       kernel /boot/vmlinuz-$VERSION-slitaz root=/dev/hda1 vga=771
+----
+EOT
 }

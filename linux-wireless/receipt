@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="linux-wireless"
-VERSION="2.6.24.2"
+VERSION="2.6.25.5"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel wireless modules."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -14,21 +14,24 @@ genpkg_rules()
     local path
     path=lib/modules/$VERSION-slitaz/kernel
     mkdir -p $fs/$path
+    export src
+    export _pkg
+    $src/list_modules.sh drivers/net/wireless net/wireless net/ieee80211 | \
     while read module; do
     	dir=$path/$(dirname $module)
     	[ -d $fs/$dir ] || mkdir -p $fs/$dir
         cp -a $_pkg/$path/$module $fs/$dir
-    done < stuff/modules-$VERSION.list
+    done
 }
 
 # Post install/remove commands for Tazpkg.
 post_install()
 {
-	depmod -a -b /$1
+	depmod -a -b "$1/" $VERSION-slitaz
 }
 
 post_remove()
 {
-	depmod -a
+	depmod -a $VERSION-slitaz
 }
 
