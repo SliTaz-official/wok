@@ -39,8 +39,8 @@ echo "Starting gztazmod.sh to build compressed kernel modules... "
 echo ""
 
 # Find all modules.
-echo -n "Searching all modules to gzip them... "
-find . -name "*.ko" -exec gzip '{}' \;
+echo -n "Searching all modules to compress them... "
+find . -name "*.ko" -exec lzma e '{}''{}'.gz \;
 status
 
 # Build a new temporary modules.dep.
