@@ -8,12 +8,16 @@ MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="lzma$(echo $VERSION | sed 's/\.//').tar.bz2"
 WEB_SITE="http://sourceforge.net/projects/sevenzip/"
 WGET_URL="$SF_MIRROR/sevenzip/$TARBALL"
+DEPENDS="lzlib"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	ln -sf . $src
+	patch -p0 < stuff/lzlib.u || return 1
 	cd CPP/7zip/Compress/LZMA_Alone
-	make -f makefile.gcc
+	make -f makefile.gcc lzma
+	make -f makefile.gcc liblz.so.1.0.0
 }
 
 
@@ -21,7 +25,6 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a CPP/7zip/Compress/LZMA_Alone/lzma $fs/usr/bin
-	strip -s $fs/usr/bin/*
+	cp -a CPP/7zip/Compress/LZMA_Alone/lzma-shared $fs/usr/bin/lzma
 }
 

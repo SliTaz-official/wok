@@ -1,0 +1,202 @@
+--- CPP/7zip/Compress/LZMA_Alone/makefile.gcc
++++ CPP/7zip/Compress/LZMA_Alone/makefile.gcc
+@@ -1,6 +1,6 @@
+ PROG = lzma
+-CXX = g++ -O2 -Wall
+-CXX_C = gcc -O2 -Wall
++CXX = g++ -s -O2 -Wall
++CXX_C = gcc -s -O2 -Wall
+ LIB = -lm
+ RM = rm -f
+ CFLAGS = -c
+@@ -46,8 +46,47 @@
+   LzmaDecode.o \
+   LzmaRamDecode.o \
+ 
++LIB = liblz.so.1.0.0
++LIB_OBJS = \
++  LzmaRamDecode.o \
++  LzmaDecode.o \
++  BranchX86.o \
++  Wrapper.o \
++  
++SHARED_OBJS = \
++  LzmaAlone.o \
++  LzmaBench.o \
++  LzmaBenchCon.o \
++  LZMADecoder.o \
++  LZMAEncoder.o \
++  LzmaRam.o \
++  InBuffer.o \
++  OutBuffer.o \
++  CRC.o \
++  IntToString.o \
++  MyString.o \
++  StringConvert.o \
++  StringToInt.o \
++  MyVector.o \
++  7zCrc.o \
++  Alloc.o \
++  MatchFinder.o \
++  StreamUtils.o \
++  LZOutWindow.o \
++  RangeCoderBit.o \
++  FileStreams.o \
++  $(FILE_IO).o \
++  CommandLineParser.o \
++
++all: $(PROG) $(LIB)
++
++$(LIB): $(LIB_OBJS)
++	$(CXX) -shared -Wl,-soname -Wl,liblz.so.1 -o $(LIB) $(LIB_OBJS) -lz
++	$(CXX) $(LDFLAGS) -o lzma-shared $(SHARED_OBJS) liblz.so.1.0.0 $(LIB) $(LIB2)
++
++Wrapper.o: Wrapper.c
++	$(CXX_C) $(CFLAGS) Wrapper.c
+ 
+-all: $(PROG)
+ 
+ $(PROG): $(OBJS)
+ 	$(CXX) -o $(PROG) $(LDFLAGS) $(OBJS) $(LIB) $(LIB2)
+	
+--- CPP/7zip/Compress/LZMA_Alone/lzlib.h
++++ CPP/7zip/Compress/LZMA_Alone/lzlib.h
+@@ -0,0 +1,15 @@
++#ifndef LZLIB_H
++#define LZLIB_H
++#include <zlib.h>
++typedef struct {
++	int handlertype;
++	unsigned long lzsize;
++	int fd;
++	gzFile gzfd;
++} *lzFile;
++
++extern lzFile lzdopen(int fd, const char *mode);
++extern lzFile lzopen(const char *path, const char *mode);
++extern void *lzgrab(lzFile file, unsigned long *size);
++extern int lzclose(lzFile file);
++#endif
+
+--- CPP/7zip/Compress/LZMA_Alone/Wrapper.c
++++ CPP/7zip/Compress/LZMA_Alone/Wrapper.c
+@@ -0,0 +1,119 @@
++#include <stdlib.h>
++#include <unistd.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include "lzlib.h"
++#include "LzmaRamDecode.h"
++
++#define LZ_READ		0
++#define LZ_GZREAD	1
++#define LZ_LZREAD	2
++
++#define LZMA_PROP	0x5d
++
++static int fullread(int fd, unsigned char *buffer, size_t len)
++{
++	int i, n;
++	for (n = 0; (i = read(fd, buffer + n, len - n)) > 0; n += i);
++	return n;
++}
++
++lzFile lzdopen(int fd, const char *mode)
++{
++	unsigned char tmp[13];
++	int n;
++	lzFile lzfd;
++	
++	if (fd < 0) return NULL;
++	n = fullread(fd, tmp, sizeof(tmp));
++	lzfd = malloc(sizeof(*lzfd));
++	if (!lzfd) return NULL;
++	lzfd->handlertype = LZ_READ;
++	if (n == sizeof(tmp) && tmp[0] == LZMA_PROP && 
++	    !LzmaRamGetUncompressedSize(tmp-1, sizeof(tmp)+1, &lzfd->lzsize))
++	    	lzfd->handlertype = LZ_LZREAD;
++	else if (n > 2 && tmp[0] == 0x1F && tmp[1] == 0x8B)
++		lzfd->handlertype = LZ_GZREAD;
++	lzfd->fd = fd;
++	lseek(fd, 0, SEEK_SET);
++	if (lzfd->handlertype != LZ_LZREAD) {
++		if (lzfd->handlertype == LZ_GZREAD) {
++			lzfd->gzfd = gzdopen(fd, mode);
++			if (lzfd->gzfd == Z_NULL) {
++				free(lzfd);
++				return NULL;
++			}
++		}
++	}
++	return lzfd;
++}
++
++lzFile lzopen(const char *path, const char *mode)
++{
++	int fd = open(path, O_RDONLY);
++	return lzdopen(fd, mode);
++}
++
++static int lzread(lzFile file, void *buf, unsigned len)
++{
++	if (file->handlertype == LZ_GZREAD)
++		return gzread(file->gzfd, buf, len);
++	return read(file->fd, buf, len);
++}
++
++void *lzgrab(lzFile file, unsigned long *size)
++{
++	unsigned int n, max;
++	unsigned char *output;
++	
++	if (!file) return NULL;
++	if (file->handlertype == LZ_LZREAD) {
++		unsigned char *input;
++		size_t outsize;
++
++		output = malloc(file->lzsize + file->lzsize/20); // 105%
++		if (!output) return NULL;
++		output[0] = 0;
++		max = 1 + fullread(file->fd, output+1, file->lzsize);
++		input = realloc(output, max);
++		output = malloc(file->lzsize);
++		if (!output || LzmaRamDecompress(input, max,
++		     output, file->lzsize, &outsize, malloc, free)) {
++			if (output) free(output);
++			free(input);
++			return NULL;
++		}
++		free(input);
++		*size = outsize;
++		return output;
++	}
++	max = 16384;
++	output = malloc(max);
++	if (!output) return NULL;
++	*size = 0;
++	while ((n = lzread(file, output + *size, max - *size)) > 0) {
++		*size += n;
++		if (*size == max) {
++			output = realloc(output, max *= 2);
++			if (!output) return NULL;
++		}
++	}
++	if (n < 0) {
++		free(output);
++		return NULL;
++        }
++	return realloc(output, *size);
++}
++
++int lzclose(lzFile file)
++{
++	int status = -1;
++	if (file) {
++		if (file->handlertype == LZ_GZREAD)
++			status = gzclose(file->gzfd);
++		else	status = close(file->fd);
++		free(file);
++	}
++	return status;
++}
