@@ -40,7 +40,7 @@ echo ""
 
 # Find all modules.
 echo -n "Searching all modules to compress them... "
-find . -name "*.ko" -exec lzma e '{}''{}'.gz \;
+find . -name "*.ko" -exec lzma e '{}' '{}'.gz \;
 status
 
 # Build a new temporary modules.dep.
