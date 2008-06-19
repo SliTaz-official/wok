@@ -17,20 +17,19 @@ KERNEL_PATH="$WOK/linux/linux-2.6.25.5"
 compile_rules()
 {
 	cd $src
-	make KERNEL_DIR=$KERNEL_PATH BINDIR=/sbin \
-	LIBDIR=/lib MANDIR=/usr/share/man
-	# Install in $PWD_pkg dir.
-	make KERNEL_DIR=$KERNEL_PATH BINDIR=/sbin \
-	LIBDIR=/lib MANDIR=/usr/share/man \
-	DESTDIR=$PWD/_pkg install
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/iptables \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/sbin
-	# Sbin.
-	cp -a $_pkg/sbin/iptables* $fs/sbin
-	# Libs.
-	cp -a $_pkg/lib $fs
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/sbin $fs/sbin
+	cp -a $_pkg/usr/lib $fs/usr
 }
