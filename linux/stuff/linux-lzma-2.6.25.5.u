@@ -1444,7 +1444,7 @@
 
 --- linux-2.6.25.5/lib/decompress_unlzma.c
 +++ linux-2.6.25.5/lib/decompress_unlzma.c
-@@ -0,0 +1,607 @@
+@@ -0,0 +1,608 @@
 +/* Lzma decompressor for Linux kernel. Shamelessly snarfed
 + * from busybox 1.1.1
 + *
@@ -1778,7 +1778,8 @@
 +
 +	rc_init(&rc, fill, inbuf, in_len);
 +
-+	header.dict_size = header.dst_size = in_len;
++	header.dict_size = (uint32_t) -1L;
++	header.dst_size  = (uint64_t) -1LL;
 +	if (inbuf && in_len > 0 && inbuf[0] == 0) {
 +		const int LZMA_LC = 3, LZMA_LP = 0, LZMA_PB = 2;
 +		header.pos = (LZMA_PB * 45) + (LZMA_LP * 5) + LZMA_LC;
@@ -2034,7 +2035,7 @@
 +					writebb((char*)buffer, header.dict_size);
 +				}
 +				len--;
-+			} while (len != 0 && buffer_pos < header.dst_size);
++			} while (len != 0 && (global_pos + buffer_pos) < header.dst_size);
 +		}
 +	}
 +
