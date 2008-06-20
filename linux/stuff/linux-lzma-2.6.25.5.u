@@ -1444,7 +1444,7 @@
 
 --- linux-2.6.25.5/lib/decompress_unlzma.c
 +++ linux-2.6.25.5/lib/decompress_unlzma.c
-@@ -0,0 +1,608 @@
+@@ -0,0 +1,616 @@
 +/* Lzma decompressor for Linux kernel. Shamelessly snarfed
 + * from busybox 1.1.1
 + *
@@ -1571,11 +1571,15 @@
 +/* Called twice: once at startup and once in rc_normalize() */
 +static void rc_read(rc_t * rc)
 +{
-+	rc->buffer_size = rc->fill((char*)rc->buffer, LZMA_IOBUF_SIZE);
-+	if (rc->buffer_size <= 0)
-+		error("unexpected EOF");
-+	rc->ptr = rc->buffer;
-+	rc->buffer_end = rc->buffer + rc->buffer_size;
++	if (!rc->buffer_size) return;
++	if (rc->fill) {
++		rc->buffer_size = rc->fill((char*)rc->buffer, LZMA_IOBUF_SIZE);
++		rc->ptr = rc->buffer;
++		rc->buffer_end = rc->buffer + rc->buffer_size;
++		if (rc->buffer_size > 0) return;
++	}
++	error("unexpected EOF");
++	rc->buffer_size = 0;
 +}
 +
 +/* Called once */
@@ -1797,8 +1801,10 @@
 +		}
 +	}
 +
-+	if (header.pos >= (9 * 5 * 5))
++	if (header.pos >= (9 * 5 * 5)) {
 +		error("bad header");
++		return -1;
++	}
 +
 +	mi = header.pos / 9;
 +	lc = header.pos % 9;
@@ -1843,13 +1849,13 @@
 +				int match_byte;
 +
 +				pos = buffer_pos - rep0;
-+				if (writebb) {
-+					while (pos >= header.dict_size)
-+						pos += header.dict_size;
-+					if(pos >= bufsize) {
-+						goto fail;
-+					}
++
++				while (pos >= header.dict_size)
++					pos += header.dict_size;
++				if(pos >= bufsize) {
++					goto fail;
 +				}
++
 +				match_byte = buffer[pos];
 +				do {
 +					int bit;
@@ -1903,15 +1909,16 @@
 +
 +						state = state < LZMA_NUM_LIT_STATES ? 9 : 11;
 +						pos = buffer_pos - rep0;
-+						if (writebb) {
-+							while (pos >= header.dict_size)
-+								pos += header.dict_size;
-+							if(pos >= bufsize) {
-+								goto fail;
-+							}
++
++						while (pos >= header.dict_size)
++							pos += header.dict_size;
++						if(pos >= bufsize) {
++							goto fail;
 +						}
++
 +						previous_byte = buffer[pos];
 +					store_previous_byte:
++						if (!rc.buffer_size) goto eof;
 +						buffer[buffer_pos++] = previous_byte;
 +						if (writebb && buffer_pos == header.dict_size) {
 +							buffer_pos = 0;
@@ -2018,15 +2025,16 @@
 +
 +			len += LZMA_MATCH_MIN_LEN;
 +
++			if (!rc.buffer_size) goto eof;
 +			do {
 +				pos = buffer_pos - rep0;
-+				if (writebb) {
-+					while (pos >= header.dict_size)
-+						pos += header.dict_size;
-+					if(pos >= bufsize) {
-+						goto fail;
-+					}
++
++				while (pos >= header.dict_size)
++					pos += header.dict_size;
++				if(pos >= bufsize) {
++					goto fail;
 +				}
++
 +				previous_byte = buffer[pos];
 +				buffer[buffer_pos++] = previous_byte;
 +				if (writebb && buffer_pos == header.dict_size) {
@@ -2038,7 +2046,7 @@
 +			} while (len != 0 && (global_pos + buffer_pos) < header.dst_size);
 +		}
 +	}
-+
++ eof:
 +	if (writebb) {
 +		writebb((char*)buffer, buffer_pos);
 +		if(posp) {
