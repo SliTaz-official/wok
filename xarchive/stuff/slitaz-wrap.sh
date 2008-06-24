@@ -35,6 +35,8 @@ TAZPKG_EXTS="tazpkg"
 ISO_EXTS="iso"
 SQUASHFS_EXTS="sqfs squashfs"
 CROMFS_EXTS="cromfs"
+FS_EXTS="ext2 ext3 dos fat vfat fd fs loop"
+CLOOP_EXTS="cloop"
 
 # Setup awk program
 AWK_PROGS="mawk gawk awk"
@@ -210,6 +212,12 @@ loop_fs()
 {
     tmpfs="$(mktemp -d -t fstmp.XXXXXX)"
     umnt="umount -d"
+    case " $CLOOP_EXTS " in
+    \ $1\ ) mount -o loop=/dev/cloop,ro "$archive" $tmpfs;;
+    esac
+    case " $FS_EXTS " in 
+    \ $1\ ) mount -o loop,rw "$archive" $tmpfs;;
+    esac
     case " $ISO_EXTS " in 
     \ $1\ ) mount -o loop,ro -t iso9660 "$archive" $tmpfs;;
     esac
@@ -236,6 +244,10 @@ loop_fs()
 			shift;
 		    done
 		fi;;
+    add)	tar cf - "$@" | ( cd $tmpfs ; tar xf - );;
+    remove)	while [ -n "$3" ]; do
+    			rm -rf $tmpfs/$3
+    		done;;
     esac
     $umnt $tmpfs
     rmdir $tmpfs
@@ -246,7 +258,7 @@ case "$opt" in
     -i) # info: output supported extentions for progs that exist
         for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS \
                    $CPIO_EXTS $CPIOGZ_EXTS $ZIP_EXTS $DEB_EXTS $RPM_EXTS \
-                   $TAZPKG_EXTS $ISO_EXTS; do
+                   $TAZPKG_EXTS $ISO_EXTS $FS_EXTS; do
             printf "%s;" $ext
             if [ "$ext" = "zip" -a ! "$(which zip)" ]; then
                 echo warning: zip not found, extract only >/dev/stderr
@@ -257,6 +269,10 @@ case "$opt" in
             printf "%s;" $ext
 	done
 	[ -x /bin/cromfs-driver ] && for ext in $CROMFS_EXTS; do
+            printf "%s;" $ext
+	done
+	[ -d /lib/modules/$(uname -r)/kernel/drivers/block/cloop.ko ] && \
+	for ext in $CLOOP_EXTS; do
             printf "%s;" $ext
 	done
         printf "\n"
@@ -486,7 +502,7 @@ case "$opt" in
 	    fi
         done
 
-        for ext in $ISO_EXTS $SQUASHFS_EXTS $CROMFS_EXTS; do
+        for ext in $ISO_EXTS $SQUASHFS_EXTS $CROMFS_EXTS $CLOOP_EXTS $FS_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
 	    	loop_fs $ext stat
                 exit
@@ -497,6 +513,12 @@ case "$opt" in
 
     -a) # add to archive passed files
 	update_tar_cpio add_file "$@"
+        for ext in $FS_EXTS; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+	    	loop_fs $ext add "$@"
+                exit 0
+	    fi
+	done
         which zip >/dev/null && for ext in $ZIP_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
                 # we only want to add the file's basename, not
@@ -528,6 +550,12 @@ case "$opt" in
 
     -r) # remove: from archive passed files 
 	update_tar_cpio remove_file "$@"
+        for ext in $FS_EXTS; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+	    	loop_fs $ext remove "$@"
+                exit 0
+	    fi
+	done
         which zip >/dev/null && for ext in $ZIP_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
                 zip -d "$archive" "$@"
@@ -608,7 +636,7 @@ case "$opt" in
 		exit $status
 	    fi
 	done
-        for ext in $ISO_EXTS $SQUASHFS_EXTS $CROMFS_EXTS; do
+        for ext in $ISO_EXTS $SQUASHFS_EXTS $CROMFS_EXTS $CLOOP_EXTS $FS_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
 	    	loop_fs $ext copy "$@"
                 exit 0
