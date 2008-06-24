@@ -57,7 +57,6 @@ test -z $1 || shift 1
 lc_archive="$(echo $archive|tr [:upper:] [:lower:])"
 DECOMPRESS="cat"
 COMPRESS="cat"
-COMPRESS2=""
 TAR_COMPRESS_OPT=""
 for ext in $GZIP_EXTS $CPIOGZ_EXTS; do
     if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
@@ -76,8 +75,7 @@ done
 for ext in $LZMA_EXTS; do
     if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
         DECOMPRESS="unlzma -c" 
-        COMPRESS="lzma e"
-        COMPRESS2=" -so"
+        COMPRESS="lzma e -si -so"
         TAR_COMPRESS_OPT="a"
     fi
 done
@@ -108,7 +106,7 @@ compress_func()
 {
     if [ "$COMPRESS" ] && [ "$oldarch" ]; then
         [ -f "$oldarch" ] && rm "$oldarch"
-        if $COMPRESS "$archive" $COMPRESS2 > "$oldarch"; then
+        if $COMPRESS < "$archive" > "$oldarch"; then
             rm "$archive"
         fi
     fi
@@ -122,6 +120,94 @@ not_busybox()
     return 0
 }
 
+add_file()
+{
+	( cd $2 ; tar -cf - $1 ) | tar -xf -
+}
+
+remove_file()
+{
+	rm -rf ./$1
+}
+
+update_tar_cpio()
+{
+    action=$1
+    shift
+    tardir="$(dirname "$archive")"
+    for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS; do
+        if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+	    if [ "$action" = "new_archive" ]; then
+	        decompress_func
+		cd "$tardir"
+		tar -cf "$archive" "${1#$tardir/}"
+		status=$?
+		compress_func
+		exit $status
+	    fi
+	    if not_busybox tar; then
+	        decompress_func
+		case "$action" in
+		remove_file)
+			tar --delete -f "$archive" "$@";;
+		add_file)
+			cd "$tardir"
+			tar -rf "$archive" "${1#$tardir/}";;
+		*)	false;;
+		esac
+		status=$?
+		compress_func
+		exit $status
+	    fi
+            tmptar="$(mktemp -d -t tartmp.XXXXXX)"
+	    here="$(pwd)"
+	    cd $tmptar
+            $DECOMPRESS < "$archive" | tar -xf -
+            status=$?
+	    if [ $status -eq 0 -a -n "$1" ]; then
+                    while [ "$1" ]; do
+		    	$action "${1#$tardir/}" $here
+			shift
+		    done
+		tar -cf - $(ls -a | grep -v ^\.$  | grep -v ^\.\.$) | \
+			$COMPRESS > "$archive"
+                status=$?
+	    fi
+	    cd $here
+	    rm -rf $tmptar
+	    exit $status
+	fi
+    done
+    for ext in $CPIO_EXTS $CPIOGZ_EXTS; do
+        if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+	    if [ "$action" = "new_archive" ]; then
+	        decompress_func
+		cd "$tardir"
+		echo "${1#$tardir/}" | cpio -o -H newc > "$archive"
+		status=$?
+		compress_func
+		exit $status
+	    fi
+            tmpcpio="$(mktemp -d -t cpiotmp.XXXXXX)"
+	    here="$(pwd)"
+	    cd $tmpcpio
+            $DECOMPRESS "$archive" | cpio -id > /dev/null
+            status=$?
+	    if [ $status -eq 0 -a -n "$1" ]; then
+                    while [ "$1" ]; do
+		    	$action "${1#$tardir/}" $here
+			shift
+		    done
+		find . | cpio -o -H newc | $COMPRESS > "$archive"
+                status=$?
+	    fi
+	    cd $here
+	    rm -rf $tmpcpio
+	    exit $status
+	fi
+    done
+}
+
 # the option switches
 case "$opt" in
     -i) # info: output supported extentions for progs that exist
@@ -131,9 +217,6 @@ case "$opt" in
             printf "%s;" $ext
             if [ "$ext" = "zip" -a ! "$(which zip)" ]; then
                 echo warning: zip not found, extract only >/dev/stderr
-            fi
-            if [ "$ext" = "tar" ] && ! not_busybox tar; then
-                echo warning: gnu/tar not found, extract only >/dev/stderr
             fi
         done
         printf "\n"
@@ -366,22 +449,7 @@ case "$opt" in
         ;;
 
     -a) # add to archive passed files
-    	not_busybox tar && \
-        for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS; do
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                # we only want to add the file's basename, not
-                # the full path so...
-                decompress_func
-                while [ "$1" ]; do
-                    cd "$(dirname "$1")"
-                    tar -rf "$archive" "$(basename "$1")"
-                    wrapper_status=$?
-                    shift 1
-                done
-                compress_func
-                exit $wrapper_status
-	    fi
-	done
+	update_tar_cpio add_file "$@"
         which zip >/dev/null && for ext in $ZIP_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
                 # we only want to add the file's basename, not
@@ -399,19 +467,7 @@ case "$opt" in
         ;;
 
     -n) # new: create new archive with passed files 
-    	not_busybox tar && \
-        for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS; do
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                # create will only be passed the first file, the
-                # rest will be "added" to the new archive
-                decompress_func
-                cd "$(dirname "$1")"
-                tar -cf "$archive" "$(basename "$1")"
-                wrapper_status=$?
-                compress_func
-                exit $wrapper_status
-	    fi
-	done
+	update_tar_cpio new_archive "$@"
         which zip >/dev/null && for ext in $ZIP_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
                 # create will only be passed the first file, the
@@ -424,16 +480,7 @@ case "$opt" in
         ;;
 
     -r) # remove: from archive passed files 
-    	not_busybox tar && \
-        for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS; do
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                decompress_func
-                tar --delete -f "$archive" "$@"
-                wrapper_status=$?
-                compress_func
-                exit $wrapper_status
-	    fi
-	done
+	update_tar_cpio remove_file "$@"
         which zip >/dev/null && for ext in $ZIP_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
                 zip -d "$archive" "$@"
@@ -447,7 +494,7 @@ case "$opt" in
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
                 # xarchive will put is the right extract dir
                 # so we just have to extract.
-                tar -x${TAR_COMPRESS_OPT}f "$archive" "$@" 
+		$DECOMPRESS < "$archive" | tar -xf - "$@"
                 exit $?
 	    fi
 	done
