@@ -32,6 +32,9 @@ ZIP_EXTS="zip cbz jar"
 RPM_EXTS="rpm"
 DEB_EXTS="deb"
 TAZPKG_EXTS="tazpkg"
+ISO_EXTS="iso"
+SQUASHFS_EXTS="sqfs squashfs"
+CROMFS_EXTS="cromfs"
 
 # Setup awk program
 AWK_PROGS="mawk gawk awk"
@@ -57,33 +60,28 @@ test -z $1 || shift 1
 lc_archive="$(echo $archive|tr [:upper:] [:lower:])"
 DECOMPRESS="cat"
 COMPRESS="cat"
-TAR_COMPRESS_OPT=""
 for ext in $GZIP_EXTS $CPIOGZ_EXTS; do
     if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
         DECOMPRESS="gzip -dc"
         COMPRESS="gzip -c"
-        TAR_COMPRESS_OPT="z"
     fi
 done
 for ext in $BZIP2_EXTS; do
     if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
         DECOMPRESS="bzip2 -dc" 
         COMPRESS="bzip2 -c"
-        TAR_COMPRESS_OPT="j"
     fi
 done
 for ext in $LZMA_EXTS; do
     if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
         DECOMPRESS="unlzma -c" 
         COMPRESS="lzma e -si -so"
-        TAR_COMPRESS_OPT="a"
     fi
 done
 for ext in $COMPRESS_EXTS; do
     if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
         DECOMPRESS="uncompress -dc" 
         COMPRESS="compress -c"
-        TAR_COMPRESS_OPT="--use-compress-prog=compress"
     fi
 done
 
@@ -208,17 +206,59 @@ update_tar_cpio()
     done
 }
 
+loop_fs()
+{
+    tmpfs="$(mktemp -d -t fstmp.XXXXXX)"
+    umnt="umount -d"
+    case " $ISO_EXTS " in 
+    \ $1\ ) mount -o loop,ro -t iso9660 "$archive" $tmpfs;;
+    esac
+    case " $SQUASHFS_EXTS " in 
+    \ $1\ ) mount -o loop,ro -t squashfs "$archive" $tmpfs;;
+    esac
+    case " $CROMFS_EXTS " in 
+    \ $1\ ) cromfs-driver "$archive" $tmpfs; umnt="fusermount -u";;
+    esac
+    case "$2" in
+    stat)	find $tmpfs | while read f; do
+    		    [ "$f" = "$tmpfs" ] && continue
+		    link="-"
+		    [ -L "$f" ] && link=$(readlink "$f")
+		    date=$(stat -c "%y" $f | awk \
+		    	'{ printf "%s;%s\n",$1,substr($2,0,8)}')
+		    echo "${f#$tmpfs/};$(stat -c "%s;%A;%U;%G" $f);$date;$link"
+    		done;;
+    copy)	if [ -z "$3" ]; then
+    		    ( cd $tmpfs ; tar cf - . ) | tar xf -
+    		else
+		    while [ -n "$3" ]; do
+    			( cd $tmpfs ; tar cf - "$3" ) | tar xf -
+			shift;
+		    done
+		fi;;
+    esac
+    $umnt $tmpfs
+    rmdir $tmpfs
+}
+
 # the option switches
 case "$opt" in
     -i) # info: output supported extentions for progs that exist
         for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS \
                    $CPIO_EXTS $CPIOGZ_EXTS $ZIP_EXTS $DEB_EXTS $RPM_EXTS \
-                   $TAZPKG_EXTS ; do
+                   $TAZPKG_EXTS $ISO_EXTS; do
             printf "%s;" $ext
             if [ "$ext" = "zip" -a ! "$(which zip)" ]; then
                 echo warning: zip not found, extract only >/dev/stderr
             fi
         done
+	[ -d /lib/modules/$(uname -r)/kernel/fs/squashfs/squashfs.ko ] && \
+	for ext in $SQUASHFS_EXTS; do
+            printf "%s;" $ext
+	done
+	[ -x /bin/cromfs-driver ] && for ext in $CROMFS_EXTS; do
+            printf "%s;" $ext
+	done
         printf "\n"
         exit
         ;;
@@ -230,7 +270,7 @@ case "$opt" in
 # -rw-r--r-- USR/GRP    6622 2005-04-22 12:29:14 file 
 # 1          2          3    4          5        6
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                tar -tv${TAR_COMPRESS_OPT}f "$archive" | $AWK_PROG '
+		$DECOMPRESS "$archive" | tar -tvf - | $AWK_PROG '
         {
           attr=$1
           split($2,ids,"/") #split up the 2nd field to get uid/gid
@@ -443,6 +483,13 @@ case "$opt" in
 		cd $here
 		rm -rf $tmpcpio
                 exit
+	    fi
+        done
+
+        for ext in $ISO_EXTS $SQUASHFS_EXTS $CROMFS_EXTS; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+	    	loop_fs $ext stat
+                exit
             fi
 	done
         exit $E_UNSUPPORTED
@@ -494,7 +541,7 @@ case "$opt" in
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
                 # xarchive will put is the right extract dir
                 # so we just have to extract.
-		$DECOMPRESS < "$archive" | tar -xf - "$@"
+		$DECOMPRESS "$archive" | tar -xf - "$@"
                 exit $?
 	    fi
 	done
@@ -560,6 +607,12 @@ case "$opt" in
 		rm -rf $tmpcpio
 		exit $status
 	    fi
+	done
+        for ext in $ISO_EXTS $SQUASHFS_EXTS $CROMFS_EXTS; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+	    	loop_fs $ext copy "$@"
+                exit 0
+            fi
 	done
         exit $E_UNSUPPORTED
         ;;
