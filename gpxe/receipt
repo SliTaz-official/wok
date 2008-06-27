@@ -1,0 +1,27 @@
+# SliTaz package receipt.
+
+PACKAGE="gpxe"
+VERSION="0.9.3"
+CATEGORY="system-tools"
+SHORT_DESC="Ethernet bootloader."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.etherboot.org/"
+WGET_URL="http://kernel.org/pub/software/utils/boot/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/src
+	for i in prefix.u default_boot.u; do
+		patch -p2 < ../../stuff/$i || return 1
+	done
+	make bin/gpxe.lkrn bin/undionly.kpxe
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/boot
+	cp $src/src/bin/gpxe.lkrn $fs/usr/share/boot/gpxe
+}
