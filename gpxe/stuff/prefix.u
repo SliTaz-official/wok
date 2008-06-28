@@ -1,6 +1,14 @@
 --- gpxe-0.9.3/src/arch/i386/prefix/lkrnprefix.S
 +++ gpxe-0.9.3/src/arch/i386/prefix/lkrnprefix.S
-@@ -50,40 +50,343 @@
+@@ -3,6 +3,7 @@
+ 
+ 	Authors: Gary Byers (gb@thinguin.org)
+ 		 Marty Connor (mdc@thinguin.org)
++		 Pascal Bellard (pascal.bellard@slitaz.org)
+ 
+ 	This software may be used and distributed according to the terms
+ 	of the GNU Public License (GPL), incorporated herein by reference.
+@@ -50,40 +51,351 @@
  	.arch i386
  	.org	0
  	.section ".prefix", "ax", @progbits
@@ -37,7 +45,8 @@
 +	/* Calculate segment address of image start */
 +	pushw	%cs
 +	popw	%ax
-+	addw	$(0x100/16), %ax
++	addw	$(0x100/16), %ax	/* Adjust cs */
++	pushw	%ax
 +	jmp	go_setup_code
 +
 +bootsector:
@@ -70,10 +79,7 @@
 + *
 + * Segments are as follows: ds=es=ss=cs - BOOTSEG
 + */
- 
--	movw	$0x0007, %bx		/* page 0, attribute 7 (normal) */
--	movb	$0x0e, %ah		/* write char, tty mode */
--prloop: 
++
 +	xorw	%cx,%cx
 +	movw	%cx,%es			/* access segment 0 */
 +	movw	$0x78, %bx		/* 0:bx is parameter table address */
@@ -113,7 +119,10 @@
 + * 36 sectors if sector 36 can be read, 18 sectors if sector 18 can be read,
 + * 15 if sector 15 can be read.	Otherwise guess 9.
 + */
-+
+ 
+-	movw	$0x0007, %bx		/* page 0, attribute 7 (normal) */
+-	movb	$0x0e, %ah		/* write char, tty mode */
+-prloop: 
 +	movw	$disksizes, %si		/* table of sizes to try */
 +
 +probe_loop: 
@@ -137,7 +146,6 @@
 +
 +/* ok, we've written the Loading... message, now we want to load the system */
 +
-+	pushw	%es			/* = ds */
 +	movw	$SYSSEG, %ax
 +	movw	%ax,%es			/* segment of SYSSEG<<4 */
 +	pushw	%es
@@ -152,7 +160,6 @@
 +
 +	call	print_nl
 +	pop	%es			/* = SYSSEG */
-+	pop	%es			/* balance push/pop es */
 +sigok: 
 +
 +/* Restore original disk parameters */
@@ -164,11 +171,21 @@
 +	movw	%di,(%bx)
 +	movw	%si,2(%bx)
 +
-+/* after that (everything loaded), we call to the .ROM file loaded. */
++	/* Everything now loaded.  %es = SYSSEG, so %es:0000 points to
++	 * start of loaded image.
++	 */
 +
-+	movw	$SYSSEG, %ax
-+	jmp	go_setup_code
++	/* Jump to loaded copy */
++	ljmp	$SYSSEG, $run_etherboot
 +
++endseg:	.word SYSSEG + _load_size_pgh
++	.section ".zinfo.fixup", "a"	/* Compressor fixup information */
++	.ascii	"SUBW"
++	.long	endseg
++	.long	16
++	.long	0
++	.previous
++	
 +/* This routine loads the system at address SYSSEG<<4, making sure no 64kB
 + * boundaries are crossed. We try to load it as fast as possible, loading whole
 + * tracks whenever we can.
@@ -187,8 +204,7 @@
 +	movb	$4, %cl
 +	shrw	%cl,%dx			/* bx is always divisible by 16 */
 +	addw	%dx,%ax
-+.equ	SYSSIZE, _load_size_pgh - 32
-+	cmpw	$SYSSEG+SYSSIZE, %ax	/* have we loaded all yet? */
++	cmpw	syssize, %ax		/* have we loaded all yet? */
 +	jb	ok1_read
 +	ret
 +ok1_read: 
@@ -320,9 +336,11 @@
  	loop	prloop
 -freeze: jmp	freeze
 +	ret
-+
+ 
+-why:	.ascii	"This image cannot be loaded from a floppy disk.\r\n"
+-why_end: 
 +/* print_hex prints the word pointed to by ss:bp in hexadecimal. */
-+
+ 
 +print_hex: 
 +	movw	(%bp),%dx		/* load word into dx */
 +	movb	$4, %cl
@@ -350,12 +368,10 @@
 +
 +sectors: 
 +	.word 0
- 
--why:	.ascii	"This image cannot be loaded from a floppy disk.\r\n"
--why_end: 
++
 +dpseg:	.word 0
 +dpoff:	.word 0
- 
++
 +disksizes: 
 +	.byte 36,18,15,9,0
 +
@@ -365,13 +381,27 @@
  
  	.org	497
  setup_sects: 
-@@ -123,14 +426,23 @@
+@@ -106,13 +418,6 @@
+ 
+ 	.org	512
+ 
+-	.section ".zinfo.fixup", "a"	/* Compressor fixup information */
+-	.ascii	"SUBW"
+-	.long	syssize
+-	.long	16
+-	.long	0
+-	.previous
+-	
+ /*
+ 	We're now at the beginning of the second sector of the image -
+ 	where the setup code goes.
+@@ -123,14 +428,18 @@
  	executing the Etherboot image that's loaded at SYSSEG:0 and
  	whose entry point is SYSSEG:0.
  */
 -setup_code:
 +setup_code: 
-+	movw	$(SYSSEG-(PREFIXSIZE/16)), %ax
++	pushw	$(SYSSEG-(PREFIXSIZE/16))
  	/* Etherboot expects to be contiguous in memory once loaded.
  	 * LILO doesn't do this, but since we don't need any
  	 * information that's left in the prefix, it doesn't matter:
@@ -380,14 +410,20 @@
  	 */
 -	ljmp	$(SYSSEG-(PREFIXSIZE/16)), $run_etherboot
 +go_setup_code: 
-+	xorw	%cx, %cx
-+	pushw	%cx
-+	pushw	%cx		/* No parameters to preserve for exit path */
-+	pushw	%cx		/* Use prefix exit path mechanism */
-+	pushw	%ax
 +	pushw	$run_etherboot
 +	/* Calculated lcall to _start with %cs:0000 = image start */
 +	lret
  
  
  	.org	PREFIXSIZE
+@@ -140,6 +449,10 @@
+ run_etherboot:
+ 	call	install
+ 
++	/* Set up real-mode stack */
++	movw	%bx, %ss
++	movw	$_estack16, %sp
++
+ 	/* Jump to .text16 segment */
+ 	pushw	%ax
+ 	pushw	$1f
