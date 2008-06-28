@@ -1,4 +1,8 @@
 default slitaz
+label web
+	kernel /boot/gpxe
+label zeb
+	kernel /boot/gpxe
 label be
 	config be.cfg
 label br
