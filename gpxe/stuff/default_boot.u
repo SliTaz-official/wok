@@ -1,12 +1,110 @@
+--- gpxe-0.9.3/src/arch/i386/prefix/lkrnprefix.S
++++ gpxe-0.9.3/src/arch/i386/prefix/lkrnprefix.S
+@@ -441,6 +441,8 @@
+ 	/* Calculated lcall to _start with %cs:0000 = image start */
+ 	lret
+ 
++boot_url:
++	.space	128, 0
+ 
+ 	.org	PREFIXSIZE
+ /*
+@@ -453,6 +455,13 @@
+ 	movw	%bx, %ss
+ 	movw	$_estack16, %sp
+ 
++	/* Copy our boot_url structure to the forced_url variable */
++	movw	%bx, %es
++	movw	$forced_url, %di
++	movw	$boot_url, %si
++	movw	$128, %cx
++	rep movsb
++	
+ 	/* Jump to .text16 segment */
+ 	pushw	%ax
+ 	pushw	$1f
+
+--- gpxe-0.9.3/src/arch/i386/prefix/pxeprefix.S
++++ gpxe-0.9.3/src/arch/i386/prefix/pxeprefix.S
+@@ -19,6 +19,8 @@
+ 	.section ".prefix"
+ 	/* Set up our non-stack segment registers */
+ 	jmp	$0x7c0, $1f
++boot_url:
++	.space	128, 0
+ 1:	movw	%cs, %ax
+ 	movw	%ax, %ds
+ 	movw	$0x40, %ax		/* BIOS data segment access */
+@@ -703,16 +705,22 @@
+ 	/* Set up real-mode stack */
+ 	movw	%bx, %ss
+ 	movw	$_estack16, %sp
+-
++	movw	%bx, %es
++	
+ #ifdef PXELOADER_KEEP_UNDI
+ 	/* Copy our undi_device structure to the preloaded_undi variable */
+-	movw	%bx, %es
+ 	movw	$preloaded_undi, %di
+ 	movw	$undi_device, %si
+ 	movw	$undi_device_size, %cx
+ 	rep movsb
+ #endif
+ 
++	/* Copy our boot_url structure to the forced_url variable */
++	movw	$forced_url, %di
++	movw	$boot_url, %si
++	movw	$128, %cx
++	rep movsb
++	
+ 	/* Jump to .text16 segment with %ds pointing to .data16 */
+ 	movw	%bx, %ds
+ 	pushw	%ax
+
 --- gpxe-0.9.3/src/usr/autoboot.c
 +++ gpxe-0.9.3/src/usr/autoboot.c
-@@ -150,2 +150,3 @@
+@@ -120,6 +120,11 @@
+ 	return -ENOTSUP;
+ }
+ 
++struct _forced_url {
++	char url[128];
++};
++struct _forced_url __data16 ( forced_url );
++#define forced_url __use_data16 ( forced_url )
+ /**
+  * Boot from a network device
+  *
+@@ -139,15 +144,21 @@
+ 	if ( ( rc = dhcp ( netdev ) ) != 0 )
+ 		return rc;
+ 	route();
+-
++	
+ 	/* Try to boot an embedded image if we have one */
+ 	rc = boot_embedded_image ();
+ 	if ( rc != ENOENT )
+ 		return rc;
+ 
++    /* Try to boot a forced url if we have one */
++    strcpy ( buf, forced_url.url );
++    if ( forced_url.url[0] == 0 ) {
++
+ 	/* Try to download and boot whatever we are given as a filename */
+ 	dhcp_snprintf ( buf, sizeof ( buf ),
  			find_global_dhcp_option ( DHCP_BOOTFILE_NAME ) );
-+default_boot:
++    }
++    while (1) {
  	if ( buf[0] ) {
-@@ -164,3 +165,4 @@
+ 		printf ( "Booting from filename \"%s\"\n", buf );
+ 		return boot_filename ( buf );
+@@ -162,7 +173,8 @@
+ 	}
+ 
  	printf ( "No filename or root path specified\n" );
 -	return -ENOENT;
 +	strcpy ( buf, "http://boot.slitaz.org/gpxe" );
-+	goto default_boot;
++    }
  }
+ 
+ /**
