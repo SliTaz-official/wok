@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="syslinux"
-VERSION="3.63"
+VERSION="3.70"
 CATEGORY="base-system"
 SHORT_DESC="LiveCD ISO bootloader (isolinux)"
 MAINTAINER="pankso@slitaz.org"
@@ -15,7 +15,7 @@ DEPENDS="gpxe"
 compile_rules()
 {
     cd $src
-    patch -p1 < ../stuff/tools/keytab-lilo.pl.u
+    cp ../stuff/tools/keytab-lilo.pl .
     for i in /usr/share/kbd/keymaps/i386/*/*.map.gz; do
         [ "$(basename $(dirname $i))" = "include" ] && continue
         j=$(basename $i)
@@ -28,7 +28,7 @@ compile_rules()
 genpkg_rules()
 {
     mkdir -p $fs/boot/isolinux
-    cp -a $src/isolinux.bin $fs/boot/isolinux
+    cp -a $src/core/isolinux.bin $fs/boot/isolinux
     cp -a $src/com32/modules/reboot.c32 $fs/boot/isolinux
     cp stuff/* $fs/boot/isolinux
     rm -rf $fs/boot/isolinux/tools $fs/boot/isolinux/*.kbd 2> /dev/null
@@ -38,5 +38,10 @@ genpkg_rules()
         cp $src/$kbd $fs/boot/isolinux/$cfg.kbd
     done
     chown root.root $fs/boot/isolinux/*
+    # Package all syslinux pkgs
+    for i in $(cd $WOK; ls -d syslinux-*)
+    do
+    	tazwok genpkg $i
+    done
 }
 
