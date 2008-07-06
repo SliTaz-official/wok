@@ -1,0 +1,78 @@
+# SliTaz package receipt.
+
+PACKAGE="rox-filer"
+VERSION="2.8"
+CATEGORY="system-tools"
+SHORT_DESC="user friendly filer."
+MAINTAINER="sygne@ombres.eu"
+DEPENDS="gtk+"
+BUILD_DEPENDS="libglade-dev libxml2-dev gtk+-dev slitaz-dev-pkgs"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://roscidus.com/desktop/"
+WGET_URL="http://downloads.sourceforge.net/rox/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	echo "patch"
+	patch $src/ROX-Filer/src/menu.c stuff/menu.diff
+	echo "compile"
+	$src/ROX-Filer/AppRun --compile
+	echo "mkdir"
+	mkdir $src/_pkg
+	cp $src/ROX-Filer/ROX-Filer $src/_pkg/rox-filer
+	cp $src/ROX-Filer/.DirIcon $src/_pkg/
+
+	mkdir $src/_pkg/Messages
+	for locale in de es fr it
+		do
+		cp -r $src/ROX-Filer/Messages/$locale $src/_pkg/Messages
+		done
+		
+	cp -r $src/ROX-Filer/images $src/_pkg/
+	
+	mkdir $src/_pkg/Help
+	cp $src/ROX-Filer/Help/*.html $src/_pkg/Help/
+	cp $src/ROX-Filer/style.css $src/_pkg/
+	
+	cp $src/ROX-Filer/Options.xml $src/_pkg/
+	cp $src/ROX-Filer/Templates.glade $src/_pkg/
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/rox-filer
+	cp -r $_pkg/* $fs/usr/share/rox-filer/
+	cp $_pkg/.DirIcon $fs/usr/share/rox-filer/
+	
+	mkdir -p $fs/usr/bin
+	cp -r stuff/rox-filer $fs/usr/bin/
+	ICI=$(pwd)
+		cd $fs/usr/bin/
+		ln -s rox-filer rox
+	cd $ICI
+	
+	mkdir -p $fs/usr/lib/openbox
+	cp stuff/rox-open-folder-menu.sh $fs/usr/lib/openbox/
+	
+	strip -s $fs/usr/share/rox-filer/rox-filer
+}
+
+# Post install commands for Tazpkg.
+# Check /usr/share/icons/ROX
+post_install()
+{ 
+	. /etc/init.d/rc.functions
+
+	if [ -e /usr/share/icons/ROX ]; then
+		echo ""
+		echo "/usr/share/icons/ROX exists"
+	else
+		echo ""
+		echo "/usr/share/icons/ROX doesn't exists"
+		echo -n "linking /usr/share/icons/ROX to /usr/share/icons/Tango"
+		ln -s /usr/share/icons/Tango /usr/share/icons/ROX
+		status
+	fi
+}
