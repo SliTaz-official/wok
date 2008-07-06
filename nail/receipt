@@ -1,0 +1,68 @@
+# SliTaz package receipt.
+
+PACKAGE="nail"
+VERSION="12.3"
+CATEGORY="network"
+SHORT_DESC="Text mode mail user agent."
+MAINTAINER="sygne@ombres.eu"
+DEPENDS=""
+BUILD_DEPENDS=""
+WANTED=""
+SOURCE="mailx"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://heirloom.sourceforge.net/mailx.html"
+WGET_URL="http://prdownloads.sourceforge.net/heirloom/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	
+	make
+	make install UCBINSTALL=/usr/bin/install \
+	DESTDIR=$PWD/_pkg PREFIX=/usr
+
+	
+	
+	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -r $_pkg/usr/bin $fs/usr
+	strip -s $fs/usr/bin/*
+	mv $fs/usr/bin/mailx $fs/usr/bin/nail
+	
+	cp -r $_pkg/etc $fs
+}
+
+# Post install commands for Tazpkg.
+# Check mailx
+post_install()
+{
+	. /etc/init.d/rc.functions
+
+	if [ -e /usr/bin/mailx ]; then
+		echo ""
+		echo "/usr/bin/mailx exists"
+		echo -n "Do you want /usr/bin/nail for /usr/bin/mailx (y/N) ? : "
+		read anser
+		if [ "$anser" == "y" ]; then
+			echo ""
+			echo -n "linking /usr/bin/mailx to /usr/bin/nail"
+			rm /usr/bin/mailx
+			ln -s /usr/bin/nail /usr/bin/mailx
+			status
+		else
+			echo ""
+			echo "Doing nothing with /usr/bin/mailx"
+			echo ""
+		fi
+	else
+		echo -n "linking /usr/bin/mailx to /usr/bin/nail"
+		ln -s /usr/bin/nail /usr/bin/mailx
+		status
+	fi
+}
