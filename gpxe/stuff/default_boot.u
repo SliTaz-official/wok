@@ -27,7 +27,16 @@
 
 --- gpxe-0.9.3/src/arch/i386/prefix/lkrnprefix.S
 +++ gpxe-0.9.3/src/arch/i386/prefix/lkrnprefix.S
-@@ -441,6 +441,8 @@ 
+@@ -197,7 +197,7 @@
+ 	 */
+ 
+ 	/* Jump to loaded copy */
+-	ljmp	$SYSSEG, $run_etherboot
++	ljmp	$SYSSEG, $run_etherboot2
+ 
+ endseg:	.word SYSSEG + _load_size_pgh
+ 	.section ".zinfo.fixup", "a"	/* Compressor fixup information */
+@@ -441,11 +441,16 @@
  	/* Calculated lcall to _start with %cs:0000 = image start */
  	lret
  
@@ -36,13 +45,19 @@
  
  	.org	PREFIXSIZE
  /*
-@@ -453,6 +455,15 @@
+ 	We're now at the beginning of the kernel proper.
+  */
++run_etherboot2:
++	push	%cs
++	pop	%ds
+ run_etherboot:
+ 	call	install
+ 
+@@ -453,6 +458,13 @@
  	movw	%bx, %ss
  	movw	$_estack16, %sp
  
 +	/* Copy our boot_url structure to the forced_url variable */
-+	push	%cs
-+	pop	%ds
 +	movw	%bx, %es
 +	movw	$forced_url, %di
 +	movw	$boot_url, %si
@@ -52,7 +67,6 @@
  	/* Jump to .text16 segment */
  	pushw	%ax
  	pushw	$1f
-
 --- gpxe-0.9.3/src/arch/i386/prefix/pxeprefix.S
 +++ gpxe-0.9.3/src/arch/i386/prefix/pxeprefix.S
 @@ -19,6 +19,9 @@
