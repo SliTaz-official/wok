@@ -1,20 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="libcap"
-VERSION="1.97"
+VERSION="2.10"
 CATEGORY="system-tools"
 SHORT_DESC="Support for getting/setting POSIX.1e capabilities."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="linux"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.kernel.org/pub/linux/libs/security/linux-privs/"
-WGET_URL="http://www.kernel.org/pub/linux/libs/security/linux-privs/libcap1/$TARBALL"
+WGET_URL="http://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Temp sym link for xattr.h
+	mkdir -p /usr/include/attr
+	ln -s /usr/include/linux/xattr.h /usr/include/attr/xattr.h
 	cd $src
 	make
+	rm -rf /usr/include/attr
 	make FAKEROOT=$PWD/_pkg install
 }
 
@@ -23,6 +27,4 @@ genpkg_rules()
 {
 	cp -a $_pkg/lib $fs
 	cp -a $_pkg/sbin $fs
-	strip -s $fs/lib/*
-	strip -s $fs/sbin/*
 }
