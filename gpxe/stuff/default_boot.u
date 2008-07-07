@@ -172,7 +172,24 @@
  
  /**
   * FILE OPEN
-@@ -189,3 +189,76 @@
+@@ -148,12 +148,14 @@
+ 
+ 	buffer = real_to_user ( file_read->Buffer.segment,
+ 				file_read->Buffer.offset );
+-	if ( ( len = read_user ( file_read->FileHandle, buffer, 0,
++	while ( ( len = read_user ( file_read->FileHandle, buffer, 0,
+ 				file_read->BufferSize ) ) < 0 ) {
+ 		file_read->Status = PXENV_STATUS ( len );
++		if (len == (ssize_t) -1309286401 /* -EWOULDBLOCK */ ) {
++			continue;
++		}
+ 		return PXENV_EXIT_FAILURE;
+ 	}
+-
+ 	DBG ( " read %04zx", ( ( size_t ) len ) );
+ 
+ 	file_read->BufferSize = len;
+@@ -189,3 +191,76 @@
  	get_file_size->Status = PXENV_STATUS_SUCCESS;
  	return PXENV_EXIT_SUCCESS;
  }
@@ -249,7 +266,6 @@
 +		return PXENV_EXIT_SUCCESS;
 +	}
 +}
-
 --- gpxe-0.9.3/src/usr/autoboot.c
 +++ gpxe-0.9.3/src/usr/autoboot.c
 @@ -120,6 +120,28 @@
@@ -304,3 +320,57 @@
  }
  
  /**
+
+--- gpxe-0.9.3/src/interface/pxe/pxe_tftp.c
++++ gpxe-0.9.3/src/interface/pxe/pxe_tftp.c
+@@ -189,7 +189,7 @@
+ 	if ( blksize < TFTP_DEFAULT_BLKSIZE )
+ 		blksize = TFTP_DEFAULT_BLKSIZE;
+ 	snprintf ( uri_string, sizeof ( uri_string ),
+-		   "tftp://%s:%d%s%s?blksize=%d",
++		   "tftp://%s:%d%s%s?blksize=%zd",
+ 		   inet_ntoa ( address ), ntohs ( port ),
+ 		   ( ( filename[0] == '/' ) ? "" : "/" ), filename, blksize );
+ 	DBG ( " %s", uri_string );
+--- gpxe-0.9.3/src/core/posix_io.c
++++ gpxe-0.9.3/src/core/posix_io.c
+@@ -114,7 +114,7 @@
+ static int
+ posix_file_xfer_deliver_iob ( struct xfer_interface *xfer,
+ 			      struct io_buffer *iobuf,
+-			      struct xfer_metadata *meta __unused ) {
++			      struct xfer_metadata *meta ) {
+ 	struct posix_file *file =
+ 		container_of ( xfer, struct posix_file, xfer );
+ 
+@@ -125,7 +125,12 @@
+ 	if ( file->filesize < file->pos )
+ 		file->filesize = file->pos;
+ 
+-	list_add_tail ( &iobuf->list, &file->data );
++	if ( iob_len ( iobuf ) ) {
++		list_add_tail ( &iobuf->list, &file->data );
++	} else {
++		free_iob ( iobuf );
++	}
++
+ 	return 0;
+ }
+ 
+@@ -293,12 +298,15 @@
+ 			free_iob ( iobuf );
+ 		}
+ 		file->pos += len;
++		assert ( len != 0 );
+ 		return len;
+ 	}
+ 
+ 	/* If file has completed, return (after returning all data) */
+-	if ( file->rc != -EINPROGRESS )
++	if ( file->rc != -EINPROGRESS ) {
++		assert ( list_empty ( &file->data ) );
+ 		return file->rc;
++	}
+ 
+ 	/* No data ready and file still in progress; return -WOULDBLOCK */
+ 	return -EWOULDBLOCK;
