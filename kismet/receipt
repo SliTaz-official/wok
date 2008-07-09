@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="kismet"
+VERSION="2008-05-R1"
+CATEGORY="Network"
+SHORT_DESC="Wireless network monitoring tool"
+MAINTAINER="domcox@users.sourceforge.net"
+DEPENDS="expat gmp libpcap ncurses zlib"
+BUILD_DEPENDS="expat-dev gmp-dev ncurses-dev zlib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.kismetwireless.net"
+WGET_URL="http://www.kismetwireless.net/code/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man --sysconfdir=/etc/kismet \
+	$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	mkdir -p $fs/etc
+	cp -a $_pkg/etc/kismet $fs/etc
+	sed -e 's/your_user_here/tux/' $_pkg/etc/kismet/kismet.conf \
+		> $fs/etc/kismet/kismet.conf
+	strip -s $fs/usr/bin/*
+}
