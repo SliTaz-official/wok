@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="libdevmapper"
+VERSION="1.02.27"
+CATEGORY="system-tools"
+SHORT_DESC="Linux device mapper library."
+MAINTAINER="wcnagel"
+TARBALL="device-mapper.$VERSION.tgz"
+WEB_SITE="http://sourceware.org/dm/"
+WGET_URL="ftp://sources.redhat.com/pub/dm/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $WOK/$PACKAGE
+	mv device-mapper.$VERSION $PACKAGE-$VERSION
+	cd $src/lib
+	sed 's/(INSTALL) -D/(INSTALL)/' < Makefile.in > tmp
+	mv tmp Makefile.in
+	cd $src
+	./configure --prefix=/usr $CONFIGURE_ARGS
+	make
+	mkdir -p $src/_pkg/usr/lib
+	mkdir -p $src/_pkg/usr/include
+	cd $src/lib
+	make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	strip -s $fs/usr/lib/*
+}
