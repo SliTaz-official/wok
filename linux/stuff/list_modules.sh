@@ -13,7 +13,7 @@ EOT
   exit 1
 fi
 
-if [ -z "$(ls -d $_pkg/lib/modules/*-slitaz/kernel/$1 2>-)" ] ; then
+if [ -z "$(ls -d $_pkg/lib/modules/*-slitaz/kernel/$1 2> /dev/null)" ] ; then
   cat 1>&2 <<EOT
   
 Error : $1 does not exist.
