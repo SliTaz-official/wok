@@ -1,0 +1,33 @@
+# SliTaz package receipt
+
+PACKAGE="xpat2"
+VERSION="1.07"
+CATEGORY="games"
+SHORT_DESC="Soltaire games for X."
+MAINTAINER="wcnagel"
+DEPENDS="xorg"
+BUILD_DEPENDS="xorg-dev xorg-dev-proto"
+TARBALL="$PACKAGE-$VERSION-src.tar.gz"
+WGET_URL="http://www.ibiblio.org/pub/Linux/games/solitaires/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -p1 < ../stuff/xpat2.patch
+	cd src
+	cp ../../stuff/Makefile .
+	make
+	make DESTDIR=../_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/var/games/xpat2
+	cp -a $_pkg/usr $fs
+	mkdir -p $fs/usr/share/X11/app-defaults/
+	cp -a $src/../stuff/XPat.ad $fs/usr/share/X11/app-defaults/XPat
+	touch $fs/var/games/xpat2/xpat.log
+	chmod 666 $fs/var/games/xpat2/xpat.log
+}
