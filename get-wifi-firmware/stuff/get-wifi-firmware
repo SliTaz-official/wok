@@ -1,0 +1,120 @@
+#!/bin/sh
+# install linux-wireless, wireless_tools and b43-fwcutter if needed.
+
+MODULE=$(echo $0 | sed 's/.*get-\(.*\)-firmware/\1/')
+PKG=$MODULE-firmware
+DEPENDS=""
+case "$MODULE" in
+b43)
+	VERSION=4.80.53.0
+	SUBDIR="broadcom-wl-$VERSION"
+	SHORT_DESC="Broadcom $MODULE firmware."
+	WEB_SITE="http://downloads.openwrt.org/"
+	WGET_URL="${WEB_SITE}sources/$SUBDIR.tar.bz2"
+	DEPENDS="b43-fwcutter"
+	FWSET=wl_apsta.o
+	;;
+b43legacy)
+	VERSION=3.130.20.0
+	SHORT_DESC="Broadcom $MODULE firmware."
+	WEB_SITE="http://downloads.openwrt.org/"
+	WGET_URL="${WEB_SITE}sources/wl_apsta-$VERSION.o"
+	DEPENDS="b43-fwcutter"
+	FWSET=wl_apsta-$VERSION.o
+	;;
+ipw2100)
+	VERSION=1.3-6.0.1
+	SHORT_DESC="Intel PRO/Wireless 2100 firmware."
+	WEB_SITE="http://$MODULE.sourceforge.net/"
+	WGET_URL="http://dl.atrpms.net/all/$PKG-$VERSION.noarch.rpm"
+	;;
+ipw2200)
+	VERSION=3.0-9.0.1
+	SHORT_DESC="Intel PRO/Wireless 2200BG firmware."
+	WEB_SITE="http://$MODULE.sourceforge.net/"
+	WGET_URL="http://dl.atrpms.net/all/$PKG-$VERSION.noarch.rpm"
+	;;
+*)	echo "Unknown wifi driver. Please run one of the following commands:"
+	for i in $(cd $(dirname $0); ls get-*-firmware); do
+		[ "$i" = "get-wifi-firmware" ] && continue
+		echo "  $i"
+	done
+	exit 1;;
+esac
+
+# Check if user is root to install.
+if test $(id -u) != 0 ; then
+        echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please use 'su' and root password to become super-user.\n"
+	exit 0
+fi
+
+# Avoid reinstall
+if [ -d /var/lib/tazpkg/installed/$PKG ]; then
+	echo -e "\n$PKG package is already installed.\n"
+	exit 0
+fi
+
+# We need drivers and tools.
+for pkg in linux-wireless wireless_tools $DEPENDS
+do
+        if [ ! -d /var/lib/tazpkg/installed/$pkg ]; then
+		tazpkg get-install $pkg
+	fi
+done
+
+# Get files
+TMP=/tmp/$(basename $0)$$
+mkdir $TMP
+TOP=$PWD
+cd $TMP
+wget $WGET_URL
+case "$WGET_URL" in
+*rpm)	rpm2cpio < $(basename $WGET_URL) | cpio -id;;
+*bz2)	tar xjf $(basename $WGET_URL)
+	cd $SUBDIR/kmod;;
+*o)	;;
+esac
+	
+# Create pseudo package
+mkdir -p $PKG-$VERSION/fs/lib/firmware
+case "$MODULE" in 
+b43*)	b43-fwcutter -w "$PKG-$VERSION/fs/lib/firmware" $FWSET;;
+ipw*)	rm -f lib/firmware/*LICENSE*
+	mv lib/firmware/* $PKG-$VERSION/fs/lib/firmware;;
+esac
+
+# Creat receipt
+cat > $PKG-$VERSION/receipt <<EOT
+PACKAGE="$PKG"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="$SHORT_DESC."
+WEB_SITE="$WEB_SITE"
+EOT
+[ -n "$DEPENDS" ] echo "DEPENDS=$DEPENDS" >> $PKG-$VERSION/receipt
+
+# Pack
+tazpkg pack $PKG-$VERSION
+
+# Install pseudo package
+tazpkg install $PKG-$VERSION.tazpkg
+
+# Clean
+cd $TOP
+rm -rf $TMP
+
+# Load module
+echo "Loading module: $MODULE..."
+modprobe $MODULE
+sleep 1
+
+# Configure /etc/network.conf and start connexion
+sed -i s/'WIFI="no"'/'WIFI="yes"'/ /etc/network.conf
+. /etc/network.conf
+
+iwconfig $WIFI_INTERFACE essid $WIFI_ESSID
+echo "Starting udhcpc client on: $WIFI_INTERFACE... "
+/sbin/udhcpc -b -i $WIFI_INTERFACE \
+        -p /var/run/udhcpc.$WIFI_INTERFACE.pid
+
