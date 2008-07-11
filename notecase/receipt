@@ -1,0 +1,42 @@
+# SliTaz package receipt
+
+PACKAGE="notecase"
+VERSION="1.9.3"
+CATEGORY="office"
+SHORT_DESC="Hierarchical note manager (aka. outliner)."
+MAINTAINER="cooltaz@fastmail.fm"
+DEPENDS="gtk+"
+BUILD_DEPENDS="gtk+-dev"
+TARBALL="$PACKAGE-${VERSION}_src.tar.gz"
+WEB_SITE="http://notecase.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{	
+	cd $src
+	# Disable gnome-vfs support
+	sed -i /'AUTODETECT_GNOME_VFS=1'/d Makefile
+	sed -i /'HAVE_GNOME_VFS=1'/d Makefile
+	sed -i s/'install -D'/'install'/ Makefile
+	# Compile
+	make
+	# Locale trick (Makefile use install -D)
+	cd po
+	for i in `ls *.po | cut -f1 -d.`
+	do
+		mkdir -p $src/_pkg/usr/share/locale/$i/LC_MESSAGES
+	done
+	cd ..
+	# Install
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/mime $fs/usr/share
+}
+
