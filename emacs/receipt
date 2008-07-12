@@ -1,0 +1,86 @@
+# SliTaz package receipt.
+
+PACKAGE="emacs"
+VERSION="22.2"
+CATEGORY="development"
+SHORT_DESC="The GNU Emacs editor"
+MAINTAINER="domcox@users.sourceforge.net"
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/emacs/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	# Gzip workaround in busybox
+	sed -e 's/${GZIP_PROG} -9n/${GZIP_PROG}/g' Makefile.in > Makefile.slitaz
+	cp Makefile.slitaz Makefile.in
+	sed -e 's/${GZIP_PROG} -9n/${GZIP_PROG}/g' leim/Makefile.in > leim/Makefile.slitaz
+	cp leim/Makefile.slitaz leim/Makefile.in
+	# Configure
+	./configure $CONFIGURE_ARGS \
+	--infodir=/usr/share/info \
+	--mandir=/usr/share/man \
+	--without-pop \
+	--without-sound \
+	--without-x \
+	--with-x-toolkit=no \
+	--libexecdir=/usr/lib \
+	--localstatedir=/var \
+	--prefix=/usr
+	# make
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	echo "Copying files"
+	# Binary files
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	# emacs-22.2 = emacs
+	rm -f $fs/usr/bin/emacs-22.2
+	# Conf files
+	mkdir -p $fs/usr/share/$PACKAGE/$VERSION
+	mkdir -p $fs/usr/share/$PACKAGE/$VERSION/etc
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/etc/TUTORIAL $fs/usr/share/$PACKAGE/$VERSION/etc
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/etc/TUTORIAL.de $fs/usr/share/$PACKAGE/$VERSION/etc
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/etc/TUTORIAL.es $fs/usr/share/$PACKAGE/$VERSION/etc
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/etc/TUTORIAL.fr $fs/usr/share/$PACKAGE/$VERSION/etc
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/etc/ORDERS $fs/usr/share/$PACKAGE/$VERSION/etc
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/etc/COPYING $fs/usr/share/$PACKAGE/$VERSION/etc
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/etc/DISTRIB $fs/usr/share/$PACKAGE/$VERSION/etc
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/lisp $fs/usr/share/$PACKAGE/$VERSION
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/leim $fs/usr/share/$PACKAGE/$VERSION
+	cp -a $_pkg/usr/share/$PACKAGE/site-lisp $fs/usr/share/$PACKAGE
+	cp -a $_pkg/usr/lib $fs/usr
+	# Delete Lisp sources
+	find $fs/usr/share -name *el.gz > lisp-sources
+	cat lisp-sources | while read filename
+	do
+		rm $filename
+	done
+	# Delete Games
+	rm -rf $fs/usr/share/$PACKAGE/$VERSION/lisp/play
+	# Use linux term only
+	rm -rf $fs/usr/share/$PACKAGE/$VERSION/lisp/term/*
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/lisp/term/linux.el $fs/usr/share/$PACKAGE/$VERSION/lisp/term
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/lisp/term/rxvt.elc $fs/usr/share/$PACKAGE/$VERSION/lisp/term
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/lisp/term/tty-colors.elc $fs/usr/share/$PACKAGE/$VERSION/lisp/term
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/lisp/term/vt100.elc $fs/usr/share/$PACKAGE/$VERSION/lisp/term
+	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/lisp/term/xterm.elc $fs/usr/share/$PACKAGE/$VERSION/lisp/term
+	# Strip executable files
+	strip -s $fs/usr/bin/* > /dev/null
+	strip -s $fs/usr/lib/$PACKAGE/$VERSION/i486-pc-linux-gnu/* > /dev/null
+	# Install specific site file
+	cp -a stuff/default.el $fs/usr/share/$PACKAGE/site-lisp
+	# Add lua support
+	cp stuff/lua-mode.elc $fs/usr/share/$PACKAGE/$VERSION/lisp/progmodes
+	# Directory  workaround
+	cd $fs/usr/share/$PACKAGE/$VERSION
+	ln -s ../site-lisp site-lisp
+}
