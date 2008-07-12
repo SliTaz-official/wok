@@ -1,0 +1,42 @@
+# SliTaz package receipt
+
+PACKAGE="homebank"
+VERSION="3.8"
+CATEGORY="office"
+SHORT_DESC="Personal accounts manager."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+"
+BUILD_DEPENDS="gtk+-dev inkscape"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://homebank.free.fr/"
+WGET_URL="http://homebank.free.fr/public/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{	
+	cd $src
+	# GTK+ dont support svg
+	sed -i s/svg/png/ src/*.c
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/homebank
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/mime $fs/usr/share
+	cp -a $_pkg/usr/share/homebank/images $fs/usr/share/homebank
+	# Resize and export all SVG images to PNG.
+	cd $fs/usr/share/homebank/images
+	for img in *.svg
+	do
+		inkscape --export-width=32 --export-height=32 \
+			--export-png=${img%.svg}.png $img
+	done
+	rm *.svg
+}
