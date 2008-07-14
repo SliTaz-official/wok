@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="freeglut"
+VERSION="2.4.0"
+CATEGORY="x-windows"
+SHORT_DESC="OpenGL utility toolkit."
+MAINTAINER="wcnagel"
+TARBALL="freeglut-$VERSION.tar.gz"
+WEB_SITE="http://freeglut.sourceforge.net/"
+WGET_URL="http://internap.dl.sourceforge.net/sourceforge/$PACKAGE/$TARBALL"
+
+# DEPENDS does not include mesa because libGL
+# might already be provided by a driver, and we do
+# not want mesa to clobber libGL
+DEPENDS="xorg"
+BUILD_DEPENDS="xorg-dev xorg-dev-proto mesa-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's/-Werror//' configure
+	./configure --prefix=/usr $CONFIGURE_ARGS
+	sed -i '/XF86VMODE/d' config.status
+	make
+	make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	strip -s $fs/usr/lib/*
+}
