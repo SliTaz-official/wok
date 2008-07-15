@@ -80,3 +80,21 @@ genpkg_rules()
 	chmod -R 755 $fs/usr/bin
 	chmod -R 755 $fs/sbin
 }
+
+post_install()
+{
+	( cd ./$1 ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/TZ
+etc/motd
+etc/keymap.conf
+etc/X11/screen.conf
+etc/locale.conf
+etc/firewall.conf
+EOT
+}
+
+repack_cleanup()
+{
+	zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}

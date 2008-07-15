@@ -46,6 +46,11 @@ post_install()
 {
  	local root
  	root=$1
+	( cd ./$1 ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/rcS.conf
+etc/network.conf
+EOT
 	echo "Restoring configs backups..."
 	mv -f $root/etc/rcS.conf.bak $root/etc/rcS.conf 2>/dev/null
 	mv -f $root/etc/network.conf.bak $root/etc/network.conf 2>/dev/null
@@ -77,3 +82,7 @@ EOT
 	fi 
 }
 
+repack_cleanup()
+{
+	zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
