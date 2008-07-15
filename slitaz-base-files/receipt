@@ -71,6 +71,19 @@ post_install()
 {
 	local root
 	root=$1
+	( cd ./$1 ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/passwd
+etc/fstab
+etc/hosts
+etc/hostname
+etc/group
+etc/gshadow
+etc/shadow
+etc/daemons.conf
+etc/nsswitch.conf
+etc/networks
+EOT
 	echo "Restoring files from /etc/etc.bak..."
 	cp -a $root/tmp/etc.bak/* $root/etc 2>/dev/null
 	rm -rf $root/tmp/etc.bak
@@ -100,3 +113,8 @@ post_install()
 	fi
 }
 SELF_INSTALL=1
+
+repack_cleanup()
+{
+	zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
