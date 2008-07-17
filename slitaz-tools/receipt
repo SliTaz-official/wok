@@ -80,6 +80,21 @@ genpkg_rules()
 	chmod -R 755 $fs/sbin
 }
 
+# Pre install commands.
+pre_install()
+{
+ 	local root
+ 	root=$1
+	# Backup file to restore with post install
+	echo "Creating backups of configs..."
+	cp $root/etc/TZ $root/etc/TZ.bak 2>/dev/null
+	cp $root/etc/keymap.conf $root/etc/keymap.conf.bak 2>/dev/null
+	cp $root/etc/X11/screen.conf $root/etc/X11/screen.conf.bak 2>/dev/null
+	cp $root/etc/locale.conf $root/etc/locale.conf.bak 2>/dev/null
+	cp $root/etc/firewall.conf $root/etc/firewall.conf.bak 2>/dev/null
+}
+
+# Post install
 post_install()
 {
 	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
@@ -91,6 +106,12 @@ etc/X11/screen.conf
 etc/locale.conf
 etc/firewall.conf
 EOT
+	echo "Restoring configs backups..."
+	mv -f $root/etc/TZ.bak $root/etc/TZ 2>/dev/null
+	mv -f $root/etc/keymap.conf.bak $root/etc/keymap.conf 2>/dev/null
+	mv -f $root/etc/X11/screen.conf.bak $root/etc/X11/screen.conf 2>/dev/null
+	mv -f $root/etc/locale.conf.bak $root/etc/locale.conf 2>/dev/null
+	mv -f $root/etc/firewall.conf.bak $root/etc/firewall.conf 2>/dev/null
 }
 
 repack_cleanup()
