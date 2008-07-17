@@ -13,10 +13,15 @@ WGET_URL="http://www.eu.kernel.org/pub/linux/kernel/v2.6/$TARBALL"
 compile_rules()
 {
 	cd $src
+	mkdir slitaz
+	echo "$WGET_URL" > slitaz/url
+	cp ../stuff/gztazmod.sh ../stuff/list_modules.sh slitaz
 	# lzma and misc patches from pascal
 	while read patch_file; do
 		echo "Apply $patch_file"
 		patch -p1 < ../stuff/$patch_file || return 1
+		echo "$patch_file" >> slitaz/patches
+		cp ../stuff/$patch_file slitaz/$patch_file
 	done <<EOT
 $PACKAGE-lzma-$VERSION.u
 $PACKAGE-utf8-$VERSION.u
@@ -26,6 +31,7 @@ EOT
 	make mrproper	
 	cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
 	make oldconfig
+	ln .config slitaz/config
 	make bzImage
 	make modules
 	make INSTALL_MOD_PATH=$PWD/_pkg modules_install
