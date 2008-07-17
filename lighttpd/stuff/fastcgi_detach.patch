@@ -1,0 +1,27 @@
+--- src/mod_fastcgi.c
++++ src/mod_fastcgi.c
++@@ -937,6 +937,24 @@
++ 				close(fcgi_fd);
++ 			}
++ 
++			close(STDERR_FILENO);
++			if(srv->errorlog_mode == ERRORLOG_FILE)
++				dup2(srv->errorlog_fd, STDERR_FILENO);
++			else {
++				int fd = open("/dev/null", O_RDWR);
++				dup2(fd, STDERR_FILENO);
++				close(fd);
++			}
++
++			close(STDOUT_FILENO);
++			if(srv->errorlog_mode == ERRORLOG_FILE)
++				dup2(srv->errorlog_fd, STDOUT_FILENO);
++			else {
++				int fd = open("/dev/null", O_RDWR);
++				dup2(fd, STDOUT_FILENO);
++				close(fd);
++			}
++
++ 			/* we don't need the client socket */
++ 			for (i = 3; i < 256; i++) {
++ 				close(i);
