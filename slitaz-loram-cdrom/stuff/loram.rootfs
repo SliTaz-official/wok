@@ -52,20 +52,26 @@ fi
 if [ -d ../rootcd/usr/lib ]; then
   for ii in *; do
     case "$ii" in
-    usr|boot) continue;;
+    usr|boot|home) continue;;
     mnt|media|sys|proc|cdrom) mkdir ../rootcd/$ii;;
     *) cp -a $ii ../rootcd/$ii;;
     esac
   done
-  for ii in keymap.conf locale.conf resolv.conf TZ motd; do
-    ln -s /tmp/$ii ../rootcd/etc
+  for ii in media/*; do
+    [ "$ii" = "media/cdrom" ] || mkdir ../rootcd/$ii
   done
+  for ii in keymap.conf locale.conf resolv.conf TZ motd; do
+    rm -f ../rootcd/etc/$ii
+    ln -s /tmp/$ii ../rootcd/etc/$ii
+  done
+  ln -s /tmp/detected-modules /var/lib/detected-modules
   for ii in log run lock; do
     mv ../rootcd/var/$ii ../rootcd/var/$ii.ORG
-    ln -s /tmp/$ii ../rootcd/var
+    ln -s /tmp ../rootcd/var/$ii
   done
   mv ../rootcd/root ../rootcd/root.ORG
   ln -s /tmp ../rootcd/root
+  ln -s /tmp ../rootcd/home
   ln -s / ../rootcd/media/cdrom
   mkdir ../rootcd/mnt/target
   sed -i 's/CLEAN_UP_SYSTEM="yes"/CLEAN_UP_SYSTEM="no"/' ../rootcd/etc/rcS.conf
