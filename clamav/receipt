@@ -1,0 +1,76 @@
+# SliTaz package receipt.
+
+PACKAGE="clamav"
+VERSION="0.93.3"
+CATEGORY="security"
+SHORT_DESC="Antivirus"
+MAINTAINER="paul@slitaz.org"
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.clamav.net/"
+WGET_URL="http://downloads.sourceforge.net/clamav/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Have to create clamav user/group to be able to compile
+	adduser clamav -s /bin/false -H -D -S
+
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc/clamav \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share $fs/etc/init.d
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/etc $fs
+	# Copy only shared lib (.so)
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/share/clamav $fs/usr/share
+	# Copy daemon from /stuff
+	cp stuff/daemon-clamd $fs/etc/init.d/clamd
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	
+	# Enable freshclam update
+	echo -n "Enabling freshclam update..."
+	cd /etc/clamav
+	sed 's/^Example/#Example/' < freshclam.conf > temp.file
+	mv temp.file freshclam.conf
+	status
+
+	# Enable clamd configuration
+	echo -n "Enabling clamd daemon..."
+	cd /etc/clamav
+	sed 's/^Example/#Example/; s/^#PidFile/PidFile/' < clamd.conf > temp.file
+	mv temp.file clamd.conf
+	status
+
+	
+	# adduser clamav if needed
+	if ! grep -q clamav /etc/passwd; then
+		echo "Adding user clamav..."
+		adduser clamav -s /bin/false -H -D -S
+		status
+	fi
+}
+
+# Del user clamav when pkg is removed.
+post_remove()
+{
+	deluser clamav	
+}
+
