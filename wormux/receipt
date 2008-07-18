@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="wormux"
+VERSION="0.8"
+CATEGORY="games"
+SHORT_DESC="Wormux game."
+DEPENDS="xorg libSDL SDL_gfx SDL_image SDL_mixer SDL_net SDL_ttf curl"
+BUILD_DEPENDS="xorg-dev libSDL-dev SDL_gfx-dev SDL_image-dev
+	SDL_mixer-dev SDL_net-dev SDL_ttf-dev curl-dev"
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.wormux.org/"
+WGET_URL="http://download.gna.org/wormux/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i s:"INSTALL = /usr/bin/install -c":"INSTALL = /usr/bin/install -c -d":\
+		Makefile
+	./configure \
+		--prefix=/usr \
+		--bindir=/usr/games \
+		--with-font-path=/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/games $fs/usr
+	cp -a $_pkg/usr/share/wormux $fs/usr/share
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	# Remove unecessary files
+	rm -rf $fs/usr/share/wormux/font
+}
