@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="wireshark"
+VERSION="1.0.2"
+CATEGORY="network"
+SHORT_DESC="Wireshark is an award-winning network protocol analyzer."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gnutls libgpg-error libcap gtk+"
+BUILD_DEPENDS="gnutls-dev libgpg-error-dev libcap-dev gtk+-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.wireshark.org/"
+WGET_URL="http://www.wireshark.org/download/src/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		--enable-setuid-install \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/wireshark $fs/usr/lib
+	rm $fs/usr/lib/wireshark/plugins/$VERSION/*.la
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/wireshark $fs/usr/share
+}
