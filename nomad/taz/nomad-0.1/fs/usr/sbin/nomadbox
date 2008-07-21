@@ -1,0 +1,195 @@
+#! /bin/sh
+# nomad: configure wifi and change acces point easily -- gtkdialog version.
+
+# Copyright (C) <2008>  <Pierre-Jean Fichet> <sygnes@ombres.eu>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+. /etc/nomad.conf
+
+for line in `grep "() {" /etc/nomad.conf | sed "/#.*/d" | sed -e "s/() {//g"`
+	do
+	ITEM="<item>$line</item>"
+	ITEMS="$ITEMS$ITEM"
+	done
+
+for linessid in `iwlist $WIFI_INTERFACE scanning | grep "ESSID" | grep -v "<hidden>" | sed -n 's/ESSID:"//p' | sed -n 's/"//p'`
+	do
+	ESSID="<item>$linessid</item>"
+	ESSIDS="$ESSIDS$ESSID"
+	done
+
+export IWCONFIG='
+<window title="Wireless status" icon-name="network-wireless">
+  <vbox>
+    <text use-markup="true">
+      <label>"<b>Wireless status</b>"</label>
+    </text>
+    <frame Iwconfig>
+      <text wrap="false" width-chars="58">
+        <input>iwconfig 2>&1</input>
+      </text>
+    </frame>
+    <hbox>
+      <button>
+        <input file icon="exit"></input>
+        <action type="closewindow">IWCONFIG</action>
+      </button>
+    </hbox>
+  </vbox>
+</window>
+'
+
+export SCAN="
+<window title=\"Wireless Scan\" icon-name=\"network-wireless\">
+  <vbox>
+    <text use-markup=\"true\">
+      <label>\"<b>Scan for wifi access points</b>\"</label>
+    </text>
+    <frame iwlist scan>
+      <text use-markup=\"false\">
+      <input>iwlist $WIFI_INTERFACE scanning | grep \"ESSID\|Encryption\|Quality\" | sed -e \"s/^ *ESSID/ESSID/g\" 2>&1</input>
+      </text>
+    </frame>
+    <hbox>
+      <button>
+        <input file icon=\"exit\"></input>
+        <action type=\"closewindow\">SCAN</action>
+      </button>
+    </hbox>
+  </vbox>
+</window>
+"
+
+
+
+
+
+export NOMADBOX="
+<window title=\"NomadBox\" icon-name=\"network-wireless\">
+ 	<vbox>
+		<text use-markup=\"true\">
+			<label>\"<b>Slitaz NomadBox</b>\"</label>
+		</text>
+	    <text wrap=\"true\" width-chars=\"52\" use-markup=\"true\">
+			<label>\"Connect to a wireless station.\"</label>
+    	</text>
+
+	<notebook labels=\"Connection|Configuration\">    
+		<frame Choose where to connect>
+			<vbox>
+			<hbox>
+				<text use-markup=\"true\">
+					<label>\"<b>Interface:</b>\"</label>
+				</text>
+				<combobox>
+					<variable>INTERFACE</variable>
+					$ITEMS
+				</combobox>
+				<button>
+					<label>Start</label>
+					<input file icon=\"forward\"></input>
+					<action>nomad \$INTERFACE</action>
+				</button>
+			</hbox>
+				<hbox>
+					<button>
+						<label>Wifi On</label>
+						<input file icon=\"forward\"></input>
+						<action>iwconfig \$WIFI_INTERFACE txpower auto</action>
+					</button>
+					<button>
+						<label>Wifi Stop</label>
+						<input file icon=\"stop\"></input>
+						<action>nomad stop</action>
+					</button>
+				</hbox>
+			</vbox>
+		</frame>
+		<frame Configure a new wifi connection>
+		<vbox>
+			
+			<hbox>
+				<text><label>\"Interface	:\"</label></text>
+				<combobox>
+					<variable>NEWINTERFACE</variable>
+					<item>wlan0</item>
+					<item>eth1</item>
+					<item>eth0</item>
+					<item></item>
+				</combobox>
+			</hbox>
+			<hbox>
+				<text><label>\"ESSID :\"</label></text>
+				<combobox>
+					<variable>NEWESSID</variable>
+					<item></item>
+					$ESSIDS
+				</combobox>
+			</hbox>
+
+			<hbox>
+				<text>
+				<label>\"Key type :\"</label>
+				</text>
+				<combobox>
+					<variable>NEWKEYTYPE</variable>
+					<item>Without Key</item>
+					<item>wep</item>
+					<item>wpa</item>
+				</combobox>
+			</hbox>
+			<hbox>
+				<text>
+				<label>\"wpa-Driver :\"</label>
+				</text>
+				<combobox>
+					<variable>DRIVER</variable>
+					<item>wext</item>
+					<item></item>
+				</combobox>
+			</hbox>
+			<hbox>
+				<text><label>\"Key    :\"</label></text>
+				<entry>	
+					<variable>NEWKEY</variable>
+				</entry>
+			</hbox>
+			<hbox>
+				<button>
+					<label>Iwconfig</label>
+					<input file icon=\"computer\"></input>
+					<action type=\"launch\">IWCONFIG</action>
+				</button>
+				<button>
+					<label>Scan</label>
+					<input file icon=\"network-wireless\"></input>
+					<action type=\"launch\">SCAN</action>
+				</button>
+				<button>
+					<label>Start</label>
+					<input file icon=\"forward\"></input>
+					<action>nomad new \$NEWINTERFACE \$NEWESSID \$NEWKEYTYPE \$NEWKEY \$DRIVER</action>
+				</button>
+			</hbox>
+			</vbox>
+			</frame>
+	</notebook>
+	</vbox>
+</window>
+"
+ 
+gtkdialog --program=NOMADBOX
+
+exit 0

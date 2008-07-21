@@ -1,0 +1,131 @@
+#! /bin/sh
+# nomad: configure wifi and change acces point easily.
+
+# Copyright (C) <2008>  <Pierre-Jean Fichet> <sygnes@ombres.eu>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+CONFIG="/etc/nomad.conf"
+
+. $CONFIG
+. /etc/init.d/rc.functions
+
+
+case "$1" in
+	# we want to configure au new interface
+	new)
+		TYPE="wifi"
+		WIFI_INTERFACE="$2"
+		ESSID="$3"
+		KEYTYPE="$4"
+		KEY="$5"
+		DRIVER="$6"
+		if [ "$KEYTYPE" = "wpa" ]; then
+			WPA="
+ap_scan=1
+network={
+	ssid=\"$ESSID\"
+	scan_ssid=1
+	proto=WPA
+	key_mgmt=WPA-PSK
+	psk=\"$KEY\"
+	priority=5
+}"
+		fi
+	;;
+
+	# we want to poweroff wifi
+	stop)
+		echo -n "pidof wpa_supplicant: "
+		if pidof wpa_supplicant; then
+			echo -n "stopping wpa_supplicant..."
+			killall wpa_supplicant
+			status
+		else
+			echo "None"
+		fi
+		echo -n "power off wifi..."
+		iwconfig $WIFI_INTERFACE txpower off
+		status
+	;;
+
+
+	*)
+	# we want to join a known access point
+	if [ "$1" != "" ] && grep -q "$1() {" $CONFIG ; then
+		$1	# here we launch the function to set variables
+	# we don't know how to use nomad
+	else
+		echo -n -e "\033[01musage:\033[0m `basename $0` ["
+		for line in `grep "() {" $CONFIG | sed "/#.*/d" | sed -e "s/() {//g"`
+			do
+			echo -n "$line|"
+			done
+		echo -n "stop]"
+		echo ""
+		echo -e "\033[1mOr   :\033[0m `basename $0` new \
+WIFI_INTERFACE ESSID KEYTYPE KEY DRIVER"
+    	echo "	KEYTYPE is: wpa or wep"
+    	echo "	DRIVER is wext or another-wpa_supplicant-driver"
+		echo ""
+		echo -e "	But first, you have to edit \033[1m/etc/nomad.conf\033[0m "
+		echo ""
+		echo -e "You can also use \033[1mnomadbox\033[0m, if you want a graphical interface for nomad"
+		echo ""
+		exit 1
+	fi
+	;;
+esac
+
+
+#Si ethernet
+if [ "$TYPE" = "ethernet" ]; then
+	if [ "$DHCP" = "yes" ] ; then
+		echo "Starting udhcpc client on: $INTERFACE... "
+		/sbin/udhcpc -b -i $INTERFACE -p /var/run/udhcpc.$INTERFACE.pid
+		status
+	fi
+	# For a static IP.
+	if [ "$STATIC" = "yes" ] ; then
+		echo -n "Configuring static IP on $INTERFACE: $IP... "
+		/sbin/ifconfig $INTERFACE $IP netmask $NETMASK up
+		/sbin/route add default gateway $GATEWAY
+		status
+		# Multi-DNS server in $DNS_SERVER.
+		/bin/mv /etc/resolv.conf /tmp/resolv.conf.$$
+		for NS in $DNS_SERVER
+		do
+			echo "nameserver $NS" >> /etc/resolv.conf
+		done
+	fi
+	
+#si wifi		
+elif [ "$TYPE" = "wifi" ]; then
+	iwconfig $WIFI_INTERFACE txpower on
+	status
+	iwconfig $WIFI_INTERFACE essid $ESSID
+	if [ -n "$WPA" ]; then
+		echo "$WPA" >/tmp/wpa.conf
+		echo "starting wpa_supplicant for $INTERFACE..."
+		wpa_supplicant -B -w -c/tmp/wpa.conf -D$DRIVER -i$WIFI_INTERFACE
+		status
+		rm  /tmp/wpa.conf
+	elif [ -n "$KEY" ]; then
+		iwconfig $WIFI_INTERFACE key $KEY
+	fi
+	/sbin/udhcpc -b -i $WIFI_INTERFACE -p /var/run/udhcpc.$WIFI_INTERFACE.pid
+fi
+
+exit 0
