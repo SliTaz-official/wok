@@ -1,0 +1,183 @@
+--- gpxe-0.9.3/src/arch/i386/prefix/lkrnprefix.S
++++ gpxe-0.9.3/src/arch/i386/prefix/lkrnprefix.S
+@@ -77,7 +77,9 @@
+ 	popw	%ax
+ 	addw	$(0x100/16), %ax	/* Adjust cs */
+ 	pushw	%ax
+-	jmp	go_setup_code
++	pushw	$run_etherboot_floppy
++	/* Calculated lcall to _start with %cs:0000 = image start */
++	lret
+ 
+ bootsector:
+ 	jmp	$BOOTSEG, $go		/* reload cs:ip to match relocation addr */
+@@ -197,7 +199,7 @@
+ 	 */
+ 
+ 	/* Jump to loaded copy */
+-	ljmp	$SYSSEG, $run_etherboot2
++	ljmp	$SYSSEG, $run_etherboot_floppy
+ 
+ endseg:	.word SYSSEG + _load_size_pgh
+ 	.section ".zinfo.fixup", "a"	/* Compressor fixup information */
+@@ -436,8 +438,7 @@
+ 	 * we just have to ensure that %cs:0000 is where the start of
+ 	 * the Etherboot image *would* be.
+ 	 */
+-go_setup_code: 
+-	pushw	$run_etherboot
++	pushw	$run_etherboot_zImage
+ 	/* Calculated lcall to _start with %cs:0000 = image start */
+ 	lret
+ 
+@@ -448,7 +449,23 @@
+ /*
+ 	We're now at the beginning of the kernel proper.
+  */
+-run_etherboot2:
++run_etherboot_zImage:
++	mov	$0x0020, %si
++	lodsw
++	cmp	$0xA33F, %ax
++	jne	run_etherboot
++	lodsw
++	xchg	%ax, %si
++	push	%ds
++	pop	%es
++	movw	$boot_url, %di
++copy_cmdline:
++	lodsb
++	stosb
++	or	%al, %al
++	jne	copy_cmdline
++	jmp	run_etherboot
++run_etherboot_floppy:
+ 	push	%cs
+ 	pop	%ds
+ run_etherboot:
+
+--- gpxe-0.9.3/src/net/udp/dns.c
++++ gpxe-0.9.3/src/net/udp/dns.c
+@@ -506,6 +506,19 @@
+ 	.resolv = dns_resolv,
+ };
+ 
++int apply_nameserver(struct in_addr sin_addr)
++{
++	struct sockaddr_in *sin_nameserver;
++
++	sin_nameserver = ( struct sockaddr_in * ) &nameserver;
++	sin_nameserver->sin_family = AF_INET;
++	sin_nameserver->sin_addr = sin_addr;
++	DBG ( "DNS using nameserver %s\n",
++	      inet_ntoa ( sin_addr ) );
++
++	return 0;
++}
++
+ /**
+  * Apply DHCP nameserver option
+  *
+@@ -514,16 +527,10 @@
+  */
+ static int apply_dhcp_nameserver ( unsigned int tag __unused,
+ 				   struct dhcp_option *option ) {
+-	struct sockaddr_in *sin_nameserver;
+-
+-	sin_nameserver = ( struct sockaddr_in * ) &nameserver;
+-	sin_nameserver->sin_family = AF_INET;
+-	dhcp_ipv4_option ( option, &sin_nameserver->sin_addr );
+-
+-	DBG ( "DNS using nameserver %s\n",
+-	      inet_ntoa ( sin_nameserver->sin_addr ) );
++	struct in_addr sin_addr;
+ 
+-	return 0;
++	dhcp_ipv4_option ( option, &sin_addr );
++	return apply_nameserver(sin_addr);
+ }
+ 
+ /** DHCP nameserver applicator */
+
+--- gpxe-0.9.3/src/usr/autoboot.c
++++ gpxe-0.9.3/src/usr/autoboot.c
+@@ -23,6 +23,7 @@
+ #include <gpxe/dhcp.h>
+ #include <gpxe/image.h>
+ #include <gpxe/embedded.h>
++#include <gpxe/ip.h>
+ #include <usr/ifmgmt.h>
+ #include <usr/route.h>
+ #include <usr/dhcpmgmt.h>
+@@ -150,16 +151,68 @@
+  */
+ static int netboot ( struct net_device *netdev ) {
+ 	char buf[256];
+-	int rc;
++	int rc, nodhcp;
++	char *ip, *gw, *dns, *s;
++	extern int apply_nameserver(struct in_addr sin_addr);
+ 
+ 	/* Open device and display device status */
+ 	if ( ( rc = ifopen ( netdev ) ) != 0 )
+ 		return rc;
+ 	ifstat ( netdev );
+ 
++	ip = gw = dns = NULL;
++	nodhcp = 0;
++	for (s = forced_url.url; *s && s < forced_url.url + 256;) {
++		while (*s == ' ') s++;
++		if (!strncmp(s,"ip=",3)) ip = s + 3, *s++ = 0;
++		if (!strncmp(s,"gw=",3)) gw = s + 3, *s++ = 0;
++		if (!strncmp(s,"dns=",4)) dns = s + 4, *s++ = 0;
++		if (!strncmp(s,"nodhcp",5)) nodhcp++, *s++ = 0;
++		if (!strncmp(s,"url=",4)) {
++			char *p = forced_url.url;
++			for (s += 4; *s && *s != ' '; *p++ = *s++);
++			*p = 0;
++		}
++		while (*s && *s != ' ') s++;
++		*s++ = 0;
++	}
++	
+ 	/* Configure device via DHCP */
+-	if ( ( rc = dhcp ( netdev ) ) != 0 )
+-		return rc;
++	if (forced_url.url[0]) printf("url=%s\n",forced_url.url);
++	if ( nodhcp || ( rc = dhcp ( netdev ) ) != 0 ) {
++#define IN_CLASSA(x)	(( (x).s_addr & 0x80000000) == 0)
++#define IN_CLASSB(x)	(( (x).s_addr & 0xc0000000) == 0x80000000)
++#define IN_CLASSA_NET	0xff000000
++#define IN_CLASSB_NET	0xffff0000
++#define IN_CLASSC_NET	0xffffff00
++#define IN_CLASSLESS_NET(x)	(0xffffffff << (32 - (x)))
++		struct in_addr address, netmask, gateway, nameserver;
++		char *p;
++
++		if (!ip || !gw || !inet_aton(gw, &gateway))
++			return rc;
++		p = strchr(ip,'/');
++		if (p) *p++ = 0;
++		if (!inet_aton(ip, &address))
++			return rc;
++		if (p) {
++			int n;
++			for (n = 0; *p >= '0' && *p <= '9'; 
++			     n *= 10, n += *p++ - 10);
++			netmask.s_addr = IN_CLASSLESS_NET(n);
++		}
++		else if (IN_CLASSA(address)) netmask.s_addr = IN_CLASSA_NET;
++		else if (IN_CLASSB(address)) netmask.s_addr = IN_CLASSB_NET;
++		else netmask.s_addr = IN_CLASSC_NET;
++		del_ipv4_address ( netdev );
++		if ( ( rc = add_ipv4_address ( netdev, address, netmask,
++					       gateway ) ) != 0 ) {
++			return rc;
++		}
++		if (dns) printf("dns=%s\n",dns);
++		if (dns && inet_aton(dns, &nameserver))
++			apply_nameserver(nameserver);
++	}
+ 	route();
+ 
+ 	/* Try to boot an embedded image if we have one */
