@@ -29,7 +29,7 @@ post_install()
 	wget -c $url
 	tar xjf $(basename $url)
 	mv linux-$VERSION-slitaz/slitaz linux-$VERSION
-	rmdir linux-$VERSION-slitaz
+	rm -rf linux-$VERSION-slitaz
 	mv linux-$VERSION linux-$VERSION-slitaz
 	cd linux-$VERSION-slitaz
 	while read patch_file; do
@@ -38,11 +38,28 @@ post_install()
 	done < slitaz/patches
 	cp slitaz/config .config
 	make oldconfig && make prepare
+	cat <<EOT
+----
+To modify the kernel configuration:
+$ cd /usr/src/linux-$VERSION-slitaz
+$ make menuconfig
+
+To build the kernel and the modules:
+$ cd /usr/src/linux-$VERSION-slitaz
+$ make bzImage && make modules
+
+To install the new kernel and the modules:
+$ make modules_install
+$ cp -a arch/x86/boot/bzImage /boot/vmlinuz-$VERSION-slitaz
+
+See /usr/src/linux-$VERSION-slitaz/README
+----
+EOT
 }
 
 pre_remove()
 {
-	rm $(basename $(cat /usr/src/linux-$VERSION-slitaz/slitaz/url))
+	rm $(basename $(cat /usr/src/linux-$VERSION-slitaz/slitaz/url)) 2> /dev/null || true
 }
 
 post_remove()
