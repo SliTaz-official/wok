@@ -1,0 +1,82 @@
+# SliTaz package receipt.
+
+# Boost is a set of two types of libraries. Most of them are just
+# headers with inline functions, these are included in this package
+# named libboost-dev. Some few set of libraries require build and 
+# installation steps. These will be relocated and have their own two 
+# packages : libboost-name and libboost-name-dev.
+
+# We have to do it this way because of the underscores
+# to get a package with the slitaz version numbering
+PACKAGE="libboost-dev"
+SOURCE="boost"
+VERSION="1.35.0"
+WGET_SOURCE="boost_1_35_0"
+
+CATEGORY="development"
+SHORT_DESC="Free peer-reviewed portable C++ source libraries."
+MAINTAINER="chadi.elahmad@gmail.com"
+
+TARBALL="$WGET_SOURCE.tar.bz2"
+WEB_SITE="http://www.boost.org/"
+WGET_URL="http://garr.dl.sourceforge.net/sourceforge/boost/$TARBALL"
+
+DEPENDS=" "
+BUILD_DEPENDS="python python-dev libicu-dev "
+RELOCATE_LIBS="{ date_time filesystem graph iostreams \
+	program_options python regex serialization signal \
+	system test thread wave }"
+
+
+# Rules to configure and make the package.
+# Uses boost:build building tool for the compilation:
+#   Doesn't use DESTDIR.
+#   Doesn't recognize the $CONFIGURE_ARGS, gives an error back
+#   Have to add some params to get static libs compiled too
+compile_rules()
+{
+	cd $src/..
+	if test -d $WGET_SOURCE ; then mv -f $WGET_SOURCE $SOURCE-$VERSION ; fi
+
+	cd $src
+	TAZ_BJAM_CONF=" \
+		--build-type=single \
+		variant=release \
+		threading=multi \
+		link=shared,static "
+
+	./configure \
+		--prefix=/usr \
+		--with-libraries=all
+
+	make $TAZ_BJAM_CONF
+	make $TAZ_BJAM_CONF \
+		PREFIX=$src/_pkg/usr \
+		EPREFIX=$src/_pkg/usr/lib \
+		LIBDIR=$src/_pkg/usr/lib \
+		INCLUDEDIR=$src/_pkg/usr/include install
+
+	# move it to the standard include folder
+	cd $src/_pkg/usr/include/$SOURCE*
+	mv -f $SOURCE ..
+
+	# create the missing links to the shared libs
+	cd $src/_pkg/usr/lib
+	for i in `ls *mt.so`; do
+	   tmp=`echo $i | sed s/-gcc.*mt//g` 
+	   ln -s $i $tmp
+	done
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/include $fs/usr
+
+	for i in $RELOCATE_LIBS; do
+	   rm -f $fs/usr/lib/*$i*
+	   rm -rf $fs/usr/include/*$i*
+	done
+}
