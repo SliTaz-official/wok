@@ -1,0 +1,71 @@
+# SliTaz package receipt.
+
+PACKAGE="mysql"
+VERSION="5.0.51b"
+CATEGORY="system"
+SHORT_DESC="SQL database system."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.mysql.com/"
+WGET_URL="http://mirrors.sunsite.dk/mysql/Downloads/MySQL-5.0/$TARBALL"
+DEPENDS="libmysqlclient mysql-client zlib"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+
+	cd $src
+# --with-big-tables ?
+	./configure --prefix=/usr --infodir=/usr/share/info \
+		--datadir=/usr/share --localstatedir=/var/lib/mysql \
+		--with-unix-socket-path=/var/run/mysqld/mysqld.sock \
+		--with-mysqld-user=mysql \
+		--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+	cp ../stuff/*.files-list .
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/etc $fs/var/lib/mysql $fs/var/run/mysqld
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/libexec $fs/usr
+	cp -a $_pkg/usr/share/mysql $fs/usr/share
+	cp -a $src/support-files/my-medium.cnf $fs/etc/my.cnf
+	cp -a stuff/etc/init.d $fs/etc
+	cat $src/*.files-list | while read file; do
+		[ -f $fs$file ] && rm -f $fs$file
+	done
+	# Package all mysql pkgs
+	for i in $(cd $WOK; ls -d mysql-* libmysql*)
+	do
+		tazwok genpkg $i
+	done
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	# adduser mysql if needed
+	if ! grep -q mysql $1/etc/passwd; then
+		echo -n "Adding user mysql..."
+		chroot $1/ adduser mysql -s /bin/false -H -D -S
+		status
+	fi
+	# addgroup mysql if needed
+	if ! grep -q mysql $1/etc/group; then
+		echo -n "Adding group mysql..."
+		chroot $1/ addgroup mysql && addgroup mysql mysql
+		status
+	fi
+	chroot $1/ chown mysql.mysql $(cat $INSTALLED/$PACKAGE/files.list)
+	chroot $1/ mysql_install_db --user=mysql --datadir=/var/lib/mysql
+}
+
+post_remove()
+{
+	deluser mysql
+	delgroup mysql
+}
