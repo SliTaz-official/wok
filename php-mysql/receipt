@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="php-mysql"
+VERSION="5.2.5"
+CATEGORY="development"
+SHORT_DESC="mysql module for PHP web programming language."
+MAINTAINER="pascal.bellard@slitaz.org"
+DEPENDS="libmysqlclient php"
+WEB_SITE="http://www.php.net/"
+WANTED="php"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/php
+	cp $(find $_pkg | grep mysql.so) $fs/usr/share/php/
+}
+
+# Post and pre install commans to stop
+# and restart Web server if needed.
+pre_install()
+{
+	if [ -z "$1" -a -f "/var/run/lighttpd.pid" ]; then
+		/etc/init.d/lighttpd stop
+	fi
+}
+
+post_install()
+{
+	grep -q ^extension=msql.so $1/etc/php.ini || \
+	    sed -e 's|;.*extension=msql.so|;   extension=msql.so\nextension=mysql.so|' -i $1/etc/php.ini
+	# Start Web server.
+	if [ -z "$1" -a ! -f "/var/run/lighttpd.pid" ]; then
+		/etc/init.d/lighttpd start
+	fi
+}
+

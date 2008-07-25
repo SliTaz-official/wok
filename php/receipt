@@ -6,7 +6,7 @@ CATEGORY="development"
 SHORT_DESC="PHP web programming language."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="lighttpd zlib libxml2 sqlite"
-BUILD_DEPENDS="sqlite-dev libxml2-dev zlib-dev"
+BUILD_DEPENDS="sqlite-dev libxml2-dev zlib-dev mysql-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.php.net/"
 WGET_URL="http://us2.php.net/distributions/$TARBALL"
@@ -26,9 +26,11 @@ compile_rules()
 		--enable-mbstring \
 		--with-config-file-path=/etc \
 		--with-zlib \
+		--with-mysql=shared,usr \
 		--disable-cli \
 		$CONFIGURE_ARGS
 	make
+	make INSTALL_ROOT=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -38,15 +40,19 @@ genpkg_rules()
 	cp -a $src/sapi/cgi/php-cgi $fs/usr/bin
 	# Recommended config file and phpinfo.
 	cp $src/php.ini-recommended $fs/etc/php.ini
+	sed -e 's|extension_dir = "./"|extension_dir = "/usr/share/php/"|' \
+	    -i $fs/etc/php.ini
 	cp -a stuff/phpinfo $fs/usr/share
+	for i in $(cd $WOK; ls -d php-*)
+	do
+		tazwok cook $i
+	done
 }
 
 # Post and pre install commans to stop
 # and restart Web server if needed.
 pre_install()
 {
-	local root
-	root=$1
 	if [ -f "$1/var/run/lighttpd.pid" ]; then
 		/etc/init.d/lighttpd stop
 	fi
@@ -64,6 +70,18 @@ post_install()
 		echo -n "Restoring php.ini backup..."
 		mv -f $1/etc/php.ini.bak $1/etc/php.ini 
 		status
+	fi
+	# Enable php
+	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+	  [ -f $1/usr/lib/lighttpd/mod_fastcgi.so ] || \
+	  	tazpkg get-install lighttpd-modules --root=$1/
+	  sed -e 's|#fastcgi.server = ( ".php"|fastcgi.server = ( ".php"|' \
+	    -e 's|#"bin-path" => "/usr/bin/php-cgi"|"bin-path" => "/usr/bin/php-cgi"|' \
+	    -e 's|#"socket" => "/tmp/php.socket"|"socket" => "/tmp/php.socket"\n  )))|' \
+	    -i $1/etc/lighttpd/lighttpd.conf
+	  grep -q mod_fastcgi $1/etc/lighttpd/lighttpd.conf || \
+	  	sed -e 's|server.modules = (|server.modules = (\n  "mod_fastcgi",|' \
+	  	    -i $1/etc/lighttpd/lighttpd.conf
 	fi
 	# Start Web server.
 	if [ -z "$1" -a ! -f "/var/run/lighttpd.pid" ]; then
