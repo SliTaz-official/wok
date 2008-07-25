@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="phpmyadmin"
+VERSION="2.11.7.1"
+CATEGORY="misc"
+SHORT_DESC="Administration of MySQL over the Web."
+MAINTAINER="pankso@slitaz.org"
+PHPMYADM="phpMyAdmin-$VERSION-all-languages"
+TARBALL="$PHPMYADM.tar.bz2"
+WEB_SITE="http://www.$PACKAGE.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="php-mysql"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	ln -s $PHPMYADM $src
+	cd $src
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/phpmyadmin $fs/etc/phpmyadmin
+	cp -a $src/. $fs/usr/share/phpmyadmin
+	ln -s /etc/phpmyadmin $fs/usr/share/phpmyadmin/config
+	cp $src/config.sample.inc.php $fs/etc/phpmyadmin/config.inc.php
+	chown -R www.www $fs/usr/share/phpmyadmin $fs/etc/phpmyadmin
+	chmod 700 $fs/etc/phpmyadmin
+	chmod 600 $fs/etc/phpmyadmin/config.inc.php
+}
+
+post_install()
+{
+	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+		if ! grep -q /usr/share/phpmyadmin/ $1/etc/lighttpd/lighttpd.conf; then
+	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/phpmyadmin/" => "/usr/share/phpmyadmin/",|g' -i $1/etc/lighttpd/lighttpd.conf
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/lighttpd stop
+				/etc/init.d/lighttpd start
+			fi
+		fi
+	fi
+}
+
