@@ -1,0 +1,58 @@
+# SliTaz package receipt.
+
+PACKAGE="madwifi"
+VERSION="r3366"
+CATEGORY="system-toosl"
+SHORT_DESC="Driver for Atheros-based WLAN cards"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS=""
+SOURCE="madwifi-nr-r3366+ar5007"
+TARBALL="$SOURCE.tar.gz"
+WEB_SITE="http://madwifi.org"
+WGET_URL="http://snapshots.madwifi.org/special/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	src="madwifi-ng-r3366+ar5007"
+	cd "$src"
+	make clean 
+	make && \
+	make DESTDIR=$PWD/_pkg install
+}
+
+genpkg_rules()
+{
+	_pkg="madwifi-ng-r3366+ar5007/_pkg"
+	KVER=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g`
+	EXTRAVERSION=_$KVER
+	
+	mkdir -p $fs/lib/modules/${KVER}-slitaz/net \
+		$fs/usr	
+	# Find all modules (gztazmod.sh code).
+	echo -n "Searching all modules to compress them... "
+	find $_pkg -name "*.ko" -exec lzma e '{}' '{}'.gz \; > /dev/null 2>&1
+	status
+
+	# copy module 
+	cp -a $_pkg/lib/modules/${KVER}-slitaz/net/*.gz $fs/lib/modules/${KVER}-slitaz/net
+	cp -a $_pkg/usr/local/bin $fs/usr
+}
+
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	depmod -a  -b /$1
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	depmod -a
+}
+
+clean_wok()
+{
+	rm -rf "madwifi-ng-r3366+ar5007"
+}
