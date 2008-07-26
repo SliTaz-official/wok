@@ -34,6 +34,7 @@ genpkg_rules()
 	cp -a $_pkg/usr/libexec $fs/usr
 	cp -a $_pkg/usr/share/mysql $fs/usr/share
 	cp -a $src/support-files/my-medium.cnf $fs/etc/my.cnf
+	chmod 600 $fs/etc/my.cnf
 	cp -a stuff/etc/init.d $fs/etc
 	cat $src/*.files-list | while read file; do
 		[ -f $fs$file ] && rm -f $fs$file
@@ -61,7 +62,15 @@ post_install()
 		status
 	fi
 	chroot $1/ chown mysql.mysql $(cat $1/$INSTALLED/$PACKAGE/files.list)
-	chroot $1/ mysql_install_db --user=mysql --datadir=/var/lib/mysql
+	cat <<EOF
+----
+To start $PACKAGE server you can run :
+
+    /etc/init.d/$PACKAGE start
+
+Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
+----
+EOF
 }
 
 post_remove()
