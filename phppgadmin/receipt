@@ -24,6 +24,7 @@ genpkg_rules()
 	cp -a $src/. $fs/usr/share/phppgadmin
 	mv $fs/usr/share/phppgadmin/conf $fs/etc/phppgadmin
 	ln -s /etc/phppgadmin $fs/usr/share/phppgadmin/conf
+	sed -i -e "s/conf\['extra_login_security'\] = true/conf['extra_login_security'] = false/" $fs/etc/phppgadmin/config.inc.php
 	chown -R www.www $fs/usr/share/phppgadmin $fs/etc/phppgadmin
 	chmod 700 $fs/etc/phppgadmin
 	chmod 600 $fs/etc/phppgadmin/*
@@ -31,6 +32,10 @@ genpkg_rules()
 
 post_install()
 {
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/phppgadmin/config.inc.php
+EOT
 	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
 		if ! grep -q /usr/share/phppgadmin/ $1/etc/lighttpd/lighttpd.conf; then
 	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/phppgadmin/" => "/usr/share/phppgadmin/",|g' -i $1/etc/lighttpd/lighttpd.conf
@@ -43,3 +48,7 @@ post_install()
 	fi
 }
 
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}

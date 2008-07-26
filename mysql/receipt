@@ -49,6 +49,10 @@ genpkg_rules()
 # Pre and post install commands for Tazpkg.
 post_install()
 {
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/my.cnf
+EOT
 	# adduser mysql if needed
 	if ! grep -q mysql $1/etc/passwd; then
 		echo -n "Adding user mysql..."
@@ -77,4 +81,9 @@ post_remove()
 {
 	deluser mysql
 	delgroup mysql
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
 }

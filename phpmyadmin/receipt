@@ -31,6 +31,10 @@ genpkg_rules()
 
 post_install()
 {
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/phpmyadmin/config.inc.php
+EOT
 	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
 		if ! grep -q /usr/share/phpmyadmin/ $1/etc/lighttpd/lighttpd.conf; then
 	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/phpmyadmin/" => "/usr/share/phpmyadmin/",|g' -i $1/etc/lighttpd/lighttpd.conf
@@ -43,3 +47,7 @@ post_install()
 	fi
 }
 
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
