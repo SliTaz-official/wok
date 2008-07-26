@@ -4,6 +4,7 @@ PACKAGE="linux"
 VERSION="2.6.25.5"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
+BUILD_DEPENDS="slitaz-toolchain perl"
 MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.kernel.org/"
@@ -81,14 +82,25 @@ post_install()
 {
     echo "Processing post-install commands..."
     depmod -a -b "$1/" $VERSION-slitaz
-    cat <<EOT
+    if [ -f "$1/boot/grub/menu.lst" ]; then
+    	root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/'`
+		grub_dev=`cat $1/boot/grub/menu.lst | grep "root ("`
+		# Add new kernel entry in case of upgrade for installed system.
+    	cat >> $1/boot/grub/menu.lst << EOT
+
+title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
+$grub_dev
+       kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
+EOT
+		# Display information message.
+    	cat <<EOT
 ----
-If you have GRUB installed, you can add tree lines to boot SliTaz.
-Example /boot/grub/menu.lst
+GRUB is installed, these tree lines has been added to the menu.lst:
  
 title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
-       root(hd0,0)
-       kernel /boot/vmlinuz-$VERSION-slitaz root=/dev/hda1 vga=771
+$grub_dev
+       kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
 ----
 EOT
+	fi
 }
