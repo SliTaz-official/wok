@@ -1,0 +1,82 @@
+# SliTaz package receipt.
+
+PACKAGE="postgresql"
+VERSION="8.3.3"
+CATEGORY="system"
+SHORT_DESC="SQL database system."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.pgsql.com/"
+WGET_URL="ftp://ftp.fr.postgresql.org/v$VERSION/$TARBALL"
+DEPENDS="postgresql-client zlib"
+BUILD_DEPENDS="zlib-dev readline-dev ncurses-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	[ -d ../postgrpsql-$VERSION ] && cp -a ../postgrpsql-$VERSION/* .
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--sysconfdir=/etc --includedir=/usr/include/postgresql --with-gnu-ld \
+	--with-includes=/usr/include/readline --enable-integer-datetimes \
+	--enable-thread-safety --with-system-tzdata=/usr/share/zoneinfo \
+	--libdir=/usr/lib/postgresql --mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+	cp ../stuff/*.files-list .
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/usr/lib $fs/var/lib/pgsql \
+		 $fs/var/log/postgresql
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/postgresql $fs/usr/lib
+	rm -f $fs/usr/lib/postgresql/*a
+	cp -a $_pkg/usr/share/postgresql $fs/usr/share
+	cp -a stuff/etc $fs
+	ln -s /var/lib/pgsql/postgresql.conf $fs/etc
+	chmod 700 $fs/var/lib/pgsql
+	cat $src/*.files-list | while read file; do
+		[ -f $fs$file ] && rm -f $fs$file
+	done
+	# Package all pgsql pkgs
+	for i in $(cd $WOK; ls -d postgresql-* libpostgresql* )
+	do
+		tazwok genpkg $i
+	done
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+        # adduser postgres if needed
+	if ! grep -q postgres $1/etc/passwd; then
+		echo -n "Adding user postgres..."
+		chroot $1/ adduser postgres -D -H -h /var/lib/pgsql
+		status
+	fi
+	# addgroup postgres if needed
+	if ! grep -q postgres $1/etc/group; then
+		echo -n "Adding group postgres..."
+		chroot $1/ addgroup postgres && addgroup postgres postgres
+		status
+	fi
+	chroot $1/ chown -R postgres.postgres /var/lib/pgsql /var/log/postgresql
+	cat <<EOF
+----
+To start $PACKAGE server you can run :
+
+    /etc/init.d/$PACKAGE start
+
+Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
+----
+EOF
+}
+
+post_remove()
+{
+	deluser postgres
+	delgroup postgres
+}
