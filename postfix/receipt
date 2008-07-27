@@ -1,0 +1,105 @@
+# SliTaz package receipt.
+
+PACKAGE="postfix"
+VERSION="2.5.2"
+CATEGORY="network"
+SHORT_DESC="fast, easy to administer, and secure mailer."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.postfix.org/"
+WGET_URL="ftp://mir1.ovh.net/ftp.postfix.org/postfix-release/official/$TARBALL"
+BUILD_DEPENDS="db-dev openldap-dev pcre-dev"
+DEPENDS="libdb libldap pcre"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+
+	cd $src
+	make makefiles CCARGS="-DHAS_DB -DHAS_LDAP" AUXLIBS="-ldb -lldap -llber"
+	make
+	install_root=/home/slitaz/wok/postfix/postfix-2.5.2/_pkg \
+		sh postfix-install -non-interactive
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/licenses/
+	cp -a $_pkg/usr/libexec $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/var $fs
+	mv $fs/etc/postfix/TLS_LICENSE $fs/usr/share/licenses/POSTFIX_TLS_LICENSE
+	mv $fs/etc/postfix/LICENSE $fs/usr/share/licenses/POSTFIX_LICENSE
+	cp -a stuff/etc/init.d $fs/etc
+	chmod 2755 $fs/usr/sbin/postdrop $fs/usr/sbin/postqueue
+	rm -f $fs/etc/postfix/post-install $fs/etc/postfix/postfix-files \
+		$fs/etc/postfix/postfix-script
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/postfix/access
+etc/postfix/aliases
+etc/postfix/canonical
+etc/postfix/generic
+etc/postfix/header_checks
+etc/postfix/main.cf
+etc/postfix/master.cf
+etc/postfix/relocated
+etc/postfix/transport
+etc/postfix/virtual
+EOT
+        # adduser postfix if needed
+	if ! grep -q postfix $1/etc/passwd; then
+		echo -n "Adding user postfix..."
+		chroot $1/ adduser postfix -D -H -S
+		status
+	fi
+	# addgroup postfix if needed
+	if ! grep -q postfix $1/etc/group; then
+		echo -n "Adding group postfix..."
+		chroot $1/ addgroup postfix && addgroup postfix postfix
+		status
+	fi
+	# addgroup postdrop if needed
+	if ! grep -q postdrop $1/etc/group; then
+		echo -n "Adding group postdrop..."
+		chroot $1/ addgroup postdrop
+		status
+	fi
+	chown postfix /var/spool/postfix/* /var/lib/postfix
+	chown root /var/spool/postfix/pid
+	chgrp postdrop /var/spool/postfix/maildrop /var/spool/postfix/public \
+			/usr/sbin/postdrop /usr/sbin/postqueue
+	cat <<EOF
+----
+Warning: you still need to edit myorigin/mydestination/mynetworks
+parameter settings in /etc/postfix/main.cf.
+See also http://www.postfix.org/STANDARD_CONFIGURATION_README.html
+
+To start $PACKAGE server you can run :
+
+    /etc/init.d/$PACKAGE start
+
+Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
+----
+EOF
+}
+
+post_remove()
+{
+	deluser postfix
+	delgroup postfix
+	delgroup postdrop
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}

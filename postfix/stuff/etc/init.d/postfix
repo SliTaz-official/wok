@@ -1,0 +1,65 @@
+#!/bin/sh
+# /etc/init.d/postfix : Start, stop and restart SMTP server on SliTaz, at 
+# boot time or with the command line.
+#
+# To start SMTP server at boot time, just put postfix in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Postfix
+DESC="SMTP server"
+DAEMON=/usr/libexec/master
+OPTIONS=$POSTFIX_OPTIONS
+PIDFILE=/var/spool/postfix/pid/master.pid
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS &
+    status
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    status
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    sleep 2
+    $DAEMON $OPTIONS &
+    status
+    ;;
+  reload)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    postsuper active || exit 1
+    kill -HUP `cat $PIDFILE`
+    postsuper &
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart|reload]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
