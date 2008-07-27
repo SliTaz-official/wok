@@ -40,3 +40,18 @@ genpkg_rules()
 		tazwok genpkg $i
 	done
 }
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/openldap/ldap.conf
+etc/openldap/slapd.conf
+EOT
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
