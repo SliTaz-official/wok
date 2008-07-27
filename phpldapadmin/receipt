@@ -1,0 +1,53 @@
+# SliTaz package receipt.
+
+PACKAGE="phpldapadmin"
+VERSION="1.1.0.5"
+CATEGORY="misc"
+SHORT_DESC="Administration of LDAP over the Web."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://$PACKAGE.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="php-ldap"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	echo "$src compiled..."
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/phpldapadmin $fs/etc
+	cp -a $src/. $fs/usr/share/phpldapadmin
+	mv $fs/usr/share/phpldapadmin/config $fs/etc/phpldapadmin
+	ln -s /etc/phpldapadmin $fs/usr/share/phpldapadmin/config
+	mv $fs/etc/phpldapadmin/config.php.example $fs/etc/phpldapadmin/config.php
+	chown -R www.www $fs/usr/share/phpldapadmin $fs/etc/phpldapadmin
+	chmod 700 $fs/etc/phpldapadmin
+	chmod 600 $fs/etc/phpldapadmin/config.php
+}
+
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/phpldapadmin/config.php
+EOT
+	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+		if ! grep -q /usr/share/phpldapadmin/ $1/etc/lighttpd/lighttpd.conf; then
+	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/phpldapadmin/" => "/usr/share/phpldapadmin/",|g' -i $1/etc/lighttpd/lighttpd.conf
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/lighttpd stop
+				/etc/init.d/lighttpd start
+			fi
+		fi
+	fi
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
