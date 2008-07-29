@@ -8,6 +8,7 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://e2fsprogs.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="libcomerr"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -25,6 +26,7 @@ compile_rules()
 	make
 	make DESTDIR=$PWD/_pkg install
 	make DESTDIR=$PWD/_pkg install-libs
+	cp ../stuff/*.files-list .
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -37,6 +39,9 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
 	cp -ad $_pkg/usr/lib/*.so $fs/usr/lib
+	cat $src/*.files-list | while read file; do
+		[ -f $fs$file ] && rm -f $fs$file
+	done
 	
 	# Remove fsck provided by Busybox.
 	rm -rf $fs/sbin/fsck*
@@ -44,10 +49,9 @@ genpkg_rules()
 	# Locale fr.
 	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
 	
-	# Strip all stuff.
-	strip -s $fs/sbin/*
-	strip -s $fs/lib/*
-	strip -s $fs/usr/bin/*
-	strip -s $fs/usr/sbin/*
-	strip -s $fs/usr/lib/*
+	# Package all mysql pkgs
+	for i in $(cd $WOK; ls -d e2fsprogs-* libcomerr*)
+	do
+		tazwok genpkg $i
+	done
 }
