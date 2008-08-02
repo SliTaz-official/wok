@@ -29,26 +29,27 @@ for i in MAJ MIN REV ; do
 done
 
 # Install files
-cp libflashplayer.so /usr/lib/firefox*/plugins
-chmod 755 /usr/lib/firefox*/plugins/libflashplayer.so
+chmod 755 libflashplayer.so
+mv libflashplayer.so /usr/lib/firefox*/plugins
 
 # Create pseudo package
-mkdir -p fs/usr/bin
-cp /usr/bin/get-flash-plugin fs/usr/bin
-find fs | cpio -o -H newc | gzip -9 > fs.cpio.gz
-ls /usr/lib/firefox*/plugins/libflashplayer.so > files.list
-cat > receipt <<EOT
+while read file; do
+	dest=flash-plugin-$VERSION/fs$(dirname $file)
+	[ -d $dest ] || mkdir -p $dest
+	cp -a $file $dest
+done <<EOT
+$(ls /usr/lib/firefox*/plugins/libflashplayer.so)
+EOT
+cat > flash-plugin-$VERSION/receipt <<EOT
 PACKAGE="flash-plugin"
 VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="Adobe Flash Player."
 WEB_SITE="$WEB_SITE"
 EOT
-cpio -o -H newc > flash-plugin-$VERSION.tazpkg <<EOT
-receipt
-files.list
-fs.cpio.gz
-EOT
+
+# Pack
+tazpkg pack flash-plugin-$VERSION
 
 # Install pseudo package
 tazpkg install flash-plugin-$VERSION.tazpkg

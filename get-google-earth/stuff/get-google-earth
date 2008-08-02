@@ -26,16 +26,17 @@ VERSION=$(head GoogleEarthLinux.bin | grep ^label | sed 's/.*Linux \(.*\)"/\1/')
 ./GoogleEarthLinux.bin
 
 # Create pseudo package
-mkdir -p fs/usr/bin
-cp /usr/bin/get-google-earth fs/usr/bin
-find fs | cpio -o -H newc | gzip -9 > fs.cpio.gz
-find /usr/local/google-earth > files.list
-cat >> files.list <<EOT
+while read file; do
+	dest=google-earth-$VERSION/fs$(dirname $file)
+	[ -d $dest ] || mkdir -p $dest
+	cp -a $file $dest
+done <<EOT
+/sbin/googleearth
 /usr/share/applications/Google-googleearth.desktop
 /usr/share/applications/defaults.list
-/sbin/googleearth
+/usr/local/google-earth
 EOT
-cat > receipt <<EOT
+cat > google-earth-$VERSION/receipt <<EOT
 PACKAGE="google-earth"
 VERSION="$VERSION"
 CATEGORY="non-free"
@@ -43,11 +44,9 @@ SHORT_DESC="3D planet viewer."
 WEB_SITE="http://earth.google.com/"
 DEPENDS="mesa"
 EOT
-cpio -o -H newc > google-earth-$VERSION.tazpkg <<EOT
-receipt
-files.list
-fs.cpio.gz
-EOT
+
+# Pack
+tazpkg pack google-earth-$VERSION
 
 # Install pseudo package
 tazpkg install google-earth-$VERSION.tazpkg
