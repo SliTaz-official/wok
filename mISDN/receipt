@@ -1,0 +1,56 @@
+# SliTaz package receipt.
+
+PACKAGE="mISDN"
+VERSION="1_1_7_2"
+CATEGORY="system-tools"
+SHORT_DESC="beronet isdn drivers."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.misdn.org/"
+WGET_URL="${WEB_SITE}downloads/releases/$TARBALL"
+BUILD_DEPENDS="linux"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	if [ ! -d ../linux/taz ]; then
+		tazwok cook linux
+	fi
+	KVERS=$(grep "kernel version" ../linux/linux-*/.config)
+	KVERS=${KVERS##* }
+	KSRC=$(cd ../linux/linux-* ; pwd)
+	cd $src
+	patch -p1 < ../stuff/Makefile.u || return 1
+	patch -p1 < ../stuff/${KVERS%.*}.u || return 1
+	cp -a include/linux drivers/isdn/hardware/mISDN/
+	ln -s . drivers/isdn/hardware/mISDN/linux/linux
+	for i in $(cd include; ls linux/*); do
+		sed -i "s,.$i.,\"$i\"," drivers/isdn/hardware/mISDN/*.? \
+		drivers/isdn/hardware/mISDN/linux/*.?
+	done
+	sed -i "s,MISDNVERSION,\"$(cat VERSION)\"," drivers/isdn/hardware/mISDN/*.c
+	make KVERS=$KVERS LINUX=$KSRC KBUILD_NOPEDANTIC=1 DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	KVERS=$(grep "kernel version" ../linux/linux-*/.config)
+	EXTRAVERSION=_${KVERS##* }
+	mkdir -p $fs/usr $fs/etc
+	( cd $_pkg ; tar cf - lib/modules/*/extra ) | ( cd $fs ; tar xf - )
+	cp -a $_pkg/usr/* $fs/usr
+	cp -a $_pkg/etc/* $fs/etc
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	depmod -a -b "$1/"
+}
+
+post_remove()
+{
+	depmod -a
+}
+

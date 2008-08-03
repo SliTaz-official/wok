@@ -1,0 +1,36 @@
+--- mISDN-1_1_7_2/config/Makefile	
++++ mISDN-1_1_7_2/config/Makefile	
+@@ -3,8 +3,9 @@
+ 	@echo "Please run 'make install'."
+ 
+ install:
+-	install -D -m755 mISDN $(INSTALL_PREFIX)/usr/sbin/mISDN
+-	for file in $(shell echo *.xsl); do install -D -m644 $${file} $(INSTALL_PREFIX)/usr/lib/mISDN/$${file}; done
++	mkdir -p $(INSTALL_PREFIX)/usr/sbin $(INSTALL_PREFIX)/usr/lib/mISDN
++	cp mISDN $(INSTALL_PREFIX)/usr/sbin/mISDN
++	for file in $(shell echo *.xsl); do cp $${file} $(INSTALL_PREFIX)/usr/lib/mISDN/$${file}; done
+ 	if [ -d $(INSTALL_PREFIX)/etc/init.d ]; then \
+ 		if [ -e $(INSTALL_PREFIX)/etc/init.d/mISDN ]; then rm -rf $(INSTALL_PREFIX)/etc/init.d/mISDN; fi; \
+ 		ln -s $(INSTALL_PREFIX)/usr/sbin/mISDN $(INSTALL_PREFIX)/etc/init.d/mISDN; \
+--- mISDN-1_1_7_2/Makefile	
++++ mISDN-1_1_7_2/Makefile	
+@@ -4,7 +4,7 @@
+ MINOR=1
+ SUBMINOR=7_2
+ 
+-INSTALL_PREFIX := /
++INSTALL_PREFIX:=$(DESTDIR)
+ export INSTALL_PREFIX
+ 
+ #PATH to linux source/headers
+@@ -15,8 +15,9 @@
+ endif
+ 
+ MODS=/lib/modules/$(KVERS)
++ifndef LINUX
+ LINUX=$(MODS)/build
+-LINUX_SOURCE=$(MODS)/source
++endif
+ UPDATE_MODULES=$(shell which update-modules)
+ MODULES_UPDATE=$(shell which modules-update)
+ DEPMOD=$(shell which depmod)

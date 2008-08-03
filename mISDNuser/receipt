@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="mISDNuser"
+VERSION="1_1_7_2"
+CATEGORY="system-tools"
+SHORT_DESC="beronet isdn drivers userland tools."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.misdn.org/"
+WGET_URL="${WEB_SITE}downloads/releases/$TARBALL"
+DEPENDS="mISDN"
+BUILD_DEPENDS="mISDN"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -p1 < ../stuff/Makefile.u
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	# Package all mISDNuser pkgs
+	for i in $(cd $WOK; ls -d mISDNuser-*)
+	do
+		tazwok genpkg $i
+	done
+}
+
