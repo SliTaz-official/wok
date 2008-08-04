@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="zaptel-dev"
+VERSION=
+CATEGORY="system"
+SHORT_DESC="Zapata Telephony Interface Driver devel files."
+MAINTAINER="pascal.bellard@slitaz.org"
+WEB_SITE="http://www.digium.com/"
+WANTED="bristuff"
+
+# Extract VERSION from WANTED package source
+get_version()
+{
+        eval $(grep ^ZAP_VER= $WOK/$WANTED/$WANTED-*/download.sh)
+	VERSION=$ZAP_VER
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	if [ -d taz/$PACKAGE-/fs ]; then
+		get_version
+		sed -i "s/^VERSION=.*/VERSION=\"$VERSION\"/" receipt
+		mv taz/$PACKAGE- taz/$PACKAGE-$VERSION
+	fi
+	_pkg=$(cd $(dirname $src)/$WANTED-*/_pkg ; pwd)
+	while read file; do
+		dir=$(dirname $file)
+		[ -d $fs$dir ] || mkdir -p $fs$dir
+		eval cp -a "$_pkg$file" $fs$dir
+	done < $_pkg/../$PACKAGE.files-list
+}

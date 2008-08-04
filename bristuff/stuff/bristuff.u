@@ -1,0 +1,192 @@
+--- apply-patches.sh	
++++ apply-patches.sh	
+@@ -12,6 +12,2 @@
+ 	patch_file="$patches_dir/$patch_name"
+-	if ! patch -p1 < "$patch_file" --quiet --dry-run; then
+-		echo "Failed applying $patch_file (directory: $2).  Aborting."
+-		exit 1
+-	fi
+ 	patch -p1 < "$patch_file"
+
+--- download.sh	
++++ download.sh	
+@@ -44,3 +44,3 @@
+ 	url="$1"
+-	file=`echo $url | rev | cut -d/ -f1 | rev`
++	file=${url##*/}
+ 	wget -c $url.sha1
+@@ -51,3 +51,3 @@
+ 	# we have a file. Let's check if it is valid
+-	if sha1sum -c --status $file.sha1; then return; fi
++	if sha1sum -c -s $file.sha1; then return; fi
+ 
+--- download.sh	Tue Apr 29 09:43:48 2008
++++ download.sh	Tue Apr 29 09:48:51 2008
+@@ -36,6 +36,18 @@
+   fi
+ }
+ 
++. /etc/tazwok.conf 
++slitaz_wget()
++{
++	if [ ! -f $SOURCES_REPOSITORY/$(basename $2) ]; then
++		local here=$(pwd)
++		cd $SOURCES_REPOSITORY
++		wget $1 $2
++		cd $here
++	fi
++	cp $SOURCES_REPOSITORY/$(basename $2) .
++}
++
+ # A simple 'wget -c' won't work with Digium, as they keep providing a
+ # newer timestamp on files.
+ # 
+@@ -43,26 +54,26 @@
+ digium_download() {
+ 	url="$1"
+ 	file=${url##*/}
+-	wget -c $url.sha1
++	slitaz_wget -c $url.sha1
+ 	if [ ! -f "$file" ]; then
+-		wget -c "$url"
++		slitaz_wget -c "$url"
+ 	fi
+ 
+ 	# we have a file. Let's check if it is valid
+ 	if sha1sum -c -s $file.sha1; then return; fi
+ 
+ 	# If we're still here: bad download
+-	wget -c "$url"
++	slitaz_wget -c "$url"
+ }
+ 
+-#wget -c http://updates.xorcom.com/astribank/src/zaptel-${ZAP_VER}.tar.gz
+-#wget -c http://astimax.de/mirror/zaptel/zaptel-${ZAP_VER}.tar.gz
++#slitaz_wget -c http://updates.xorcom.com/astribank/src/zaptel-${ZAP_VER}.tar.gz
++#slitaz_wget -c http://astimax.de/mirror/zaptel/zaptel-${ZAP_VER}.tar.gz
+ digium_download http://downloads.digium.com/pub/zaptel/releases/zaptel-${ZAP_VER}.tar.gz
+-#wget -c http://astimax.de/mirror/libpri/libpri-${PRI_VER}.tar.gz
++#slitaz_wget -c http://astimax.de/mirror/libpri/libpri-${PRI_VER}.tar.gz
+ digium_download http://downloads.digium.com/pub/libpri/releases/libpri-${PRI_VER}.tar.gz
+-#wget -c http://astimax.de/mirror/asterisk-1.4/asterisk-${AST_VER}.tar.gz
++#slitaz_wget -c http://astimax.de/mirror/asterisk-1.4/asterisk-${AST_VER}.tar.gz
+ digium_download http://downloads.digium.com/pub/asterisk/releases/asterisk-${AST_VER}.tar.gz
+-wget -c http://astimax.de/mirror/asterisk-addons/asterisk-addons-${ADD_VER}.tar.gz
++slitaz_wget -c http://astimax.de/mirror/asterisk-addons/asterisk-addons-${ADD_VER}.tar.gz
+ #digium_download  http://downloads.digium.com/pub/asterisk/releases/asterisk-addons-${ADD_VER}.tar.gz
+ 
+ move_dir zaptel-${ZAP_VER}
+--- patches/zaptel/series	
++++ patches/zaptel/series	
+@@ -3,3 +3,4 @@
+ zt_alarm_notify_no_master_change
+ ztcfg-start_stop
+ ztpty
++slitaz
+--- patches/zaptel/slitaz	
++++ patches/zaptel/slitaz	
+@@ -0,0 +1,73 @@
++--- zaptel-1.4.8/zaptel-base.c	2008-04-29 11:04:40.000000000 +0200
+++++ zaptel-1.4.8/zaptel-base.c	2008-04-29 11:05:16.000000000 +0200
++@@ -4432,3 +4432,3 @@
++ 	void *rxgain=NULL;
++-	struct echo_can_state *ec;
+++	struct echo_can_state *ec, *tec;
++ 	struct zt_echocanparams ecp;
++--- zaptel-1.4.8/Makefile.org	2008-04-29 13:07:17.000000000 +0200
+++++ zaptel-1.4.8/Makefile	2008-04-29 13:08:20.000000000 +0200
++@@ -205,14 +205,14 @@
++ INITRD_DIR	:= $(firstword $(wildcard /etc/rc.d/init.d /etc/init.d))
++ ifneq (,$(INITRD_DIR))
++   INIT_TARGET	:= $(DESTDIR)$(INITRD_DIR)/zaptel
++-  COPY_INITD	:= install -D zaptel.init $(INIT_TARGET)
+++  COPY_INITD	:= cp zaptel.init $(INIT_TARGET)
++ endif
++ RCCONF_DIR	:= $(firstword $(wildcard /etc/sysconfig /etc/default))
++ 
++ NETSCR_DIR	:= $(firstword $(wildcard /etc/sysconfig/network-scripts ))
++ ifneq (,$(NETSCR_DIR))
++   NETSCR_TARGET	:= $(DESTDIR)$(NETSCR_DIR)/ifup-hdlc
++-  COPY_NETSCR	:= install -D ifup-hdlc $(NETSCR_TARGET)
+++  COPY_NETSCR	:= cp ifup-hdlc $(NETSCR_TARGET)
++ endif
++ 
++ ifneq ($(wildcard .version),)
++@@ -466,7 +466,7 @@
++ 	install -m 644 $(MAN_PAGES) $(DESTDIR)$(MAN_DIR)/
++ endif
++ ifeq (,$(wildcard $(DESTDIR)$(CONFIG_FILE)))
++-	$(INSTALL) -D -m 644 zaptel.conf.sample $(DESTDIR)$(CONFIG_FILE)
+++	cp zaptel.conf.sample $(DESTDIR)$(CONFIG_FILE)
++ endif
++ 
++ # Pushing those two to a separate target that is not used by default:
++@@ -482,8 +482,8 @@
++ endif
++ 
++ install-libs: libs
++-	$(INSTALL) -D -m 755 $(LTZ_A) $(DESTDIR)$(LIB_DIR)/$(LTZ_A)
++-	$(INSTALL) -D -m 755 $(LTZ_SO) $(DESTDIR)$(LIB_DIR)/$(LTZ_SO).$(LTZ_SO_MAJOR_VER).$(LTZ_SO_MINOR_VER)
+++	cp $(LTZ_A) $(DESTDIR)$(LIB_DIR)/$(LTZ_A)
+++	cp $(LTZ_SO) $(DESTDIR)$(LIB_DIR)/$(LTZ_SO).$(LTZ_SO_MAJOR_VER).$(LTZ_SO_MINOR_VER)
++ ifeq (,$(DESTDIR))
++ 	if [ `id -u` = 0 ]; then \
++ 		/sbin/ldconfig || : ;\
++@@ -499,7 +499,7 @@
++ 	/sbin/restorecon -v $(DESTDIR)$(LIB_DIR)/$(LTZ_SO)
++   endif
++ endif
++-	$(INSTALL) -D -m 644 tonezone.h $(DESTDIR)$(INC_DIR)/tonezone.h
+++	cp tonezone.h $(DESTDIR)$(INC_DIR)/tonezone.h
++ 
++ install-utils-subdirs:
++ 	@for dir in $(SUBDIRS_UTILS); do \
++@@ -507,7 +507,7 @@
++ 	done
++ 
++ install-include:
++-	$(INSTALL) -D -m 644 zaptel.h $(DESTDIR)$(INC_DIR)/zaptel.h
+++	cp zaptel.h $(DESTDIR)$(INC_DIR)/zaptel.h
++ 
++ devices:
++ ifndef DYNFS
++@@ -578,7 +578,7 @@
++ endif
++ ifneq (,$(RCCONF_DIR))
++   ifeq (,$(wildcard $(DESTDIR)$(RCCONF_DIR)/zaptel))
++-	$(INSTALL) -D -m 644 zaptel.sysconfig $(DESTDIR)$(RCCONF_DIR)/zaptel
+++	cp zaptel.sysconfig $(DESTDIR)$(RCCONF_DIR)/zaptel
++   endif
++ endif
++ ifneq (,$(COPY_NETSCR))
+--- patches/zaphfc/series	
++++ patches/zaphfc/series	
+@@ -1,3 +1,4 @@
+ local_zap
+ newzaptel
+ florz.diff
++slitaz
+--- /dev/null	
++++ patches/zaphfc/slitaz	
+@@ -0,0 +1,13 @@
++--- zaphfc/Makefile.org	2008-04-29 13:07:25.000000000 +0200
+++++ zaphfc/Makefile	2008-04-29 13:08:38.000000000 +0200
++@@ -111,8 +111,8 @@
++ install:	install$(BUILDVER)
++ 
++ installlinux26:
++-	install -D -m 644 zaphfc.ko $(INSTALL_PREFIX)/lib/modules/`uname -r`/misc/zaphfc.ko
+++	cp zaphfc.ko $(INSTALL_PREFIX)/lib/modules/`uname -r`/misc/
++ 
++ installlinux24:
++-	install -D -m 644 zaphfc.o $(INSTALL_PREFIX)/lib/modules/`uname -r`/misc/zaphfc.o
+++	cp zaphfc.o $(INSTALL_PREFIX)/lib/modules/*/misc/
++ 
+
+--- patches/cwain/series	
++++ patches/cwain/series	
+@@ -1,3 +1,2 @@
+-# Does not seem to apply cleanly. Testing needed:
+-#beronet.diff
++beronet.diff
+ local_zap
