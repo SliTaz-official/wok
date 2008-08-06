@@ -10,6 +10,7 @@ WEB_SITE="http://www.postfix.org/"
 WGET_URL="ftp://mir1.ovh.net/ftp.postfix.org/postfix-release/official/$TARBALL"
 BUILD_DEPENDS="db-dev openldap-dev pcre-dev openssl-dev"
 DEPENDS="libdb libldap pcre openssl"
+CONFIG_FILES="/etc/postfix"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -30,6 +31,9 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
 	cp -a $_pkg/etc $fs
+	awk 'BEGIN {n=0} /MUST/ {n++} /ALIASES/ {n++} { if (n==1) print }' \
+		< $_pkg/etc/postfix/aliases > $fs/etc/postfix/aliases
+	cp -a stuff/etc $fs
 	cp -a $_pkg/var $fs
 	mv $fs/etc/postfix/TLS_LICENSE $fs/usr/share/licenses/POSTFIX_TLS_LICENSE
 	mv $fs/etc/postfix/LICENSE $fs/usr/share/licenses/POSTFIX_LICENSE
@@ -44,21 +48,12 @@ post_install()
 {
 	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
 		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
-etc/postfix/access
-etc/postfix/aliases
-etc/postfix/canonical
-etc/postfix/generic
-etc/postfix/header_checks
-etc/postfix/main.cf
-etc/postfix/master.cf
-etc/postfix/relocated
-etc/postfix/transport
-etc/postfix/virtual
+$(cd $1/ ; find etc/postfix -type f)
 EOT
         # adduser postfix if needed
 	if ! grep -q postfix $1/etc/passwd; then
 		echo -n "Adding user postfix..."
-		chroot $1/ adduser postfix -D -H -S
+		chroot $1/ adduser postfix -D -H -S -h /dev/null
 		status
 	fi
 	# addgroup postfix if needed
@@ -74,9 +69,9 @@ EOT
 		status
 	fi
 	chown postfix /var/spool/postfix/* /var/lib/postfix
-	chown root /var/spool/postfix/pid
 	chgrp postdrop /var/spool/postfix/maildrop /var/spool/postfix/public \
 			/usr/sbin/postdrop /usr/sbin/postqueue
+	postalias /etc/postfix/aliases
 	cat <<EOF
 ----
 Warning: you still need to edit myorigin/mydestination/mynetworks
