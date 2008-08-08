@@ -18,6 +18,12 @@ genpkg_rules()
 	mv $fs/usr/share/squirrelmail/config $fs/etc/squirrelmail
 	ln -s /etc/squirrelmail $fs/usr/share/squirrelmail/config
 	mv $fs/etc/squirrelmail/config_default.* $fs/etc/squirrelmail/config.php
+	for i in demo test fortune; do
+		rm -rf $fs/usr/share/squirrelmail/plugins/$i
+	done
+	for i in $( cd $fs/usr/share/squirrelmail/plugins/ ; ls -d */ ); do
+		echo "\$plugins[] = '${i%/}';"
+	done >> $fs/etc/squirrelmail/config_local.php
 	sed -i -e "s|\$domain = 'example.com'|\$domain = 'localhost'|" \
 	       -e 's|/var/local|/var/lib|g' $fs/etc/squirrelmail/config.php
 	chown -R www.www $fs/usr/share/squirrelmail $fs/etc/squirrelmail \
