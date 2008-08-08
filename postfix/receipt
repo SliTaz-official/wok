@@ -51,9 +51,7 @@ EOF
 	mv $fs/etc/postfix/TLS_LICENSE $fs/usr/share/licenses/POSTFIX_TLS_LICENSE
 	mv $fs/etc/postfix/LICENSE $fs/usr/share/licenses/POSTFIX_LICENSE
 	cp -a stuff/etc/init.d $fs/etc
-	chmod 2755 $fs/usr/sbin/postdrop $fs/usr/sbin/postqueue
-	rm -f $fs/etc/postfix/post-install $fs/etc/postfix/postfix-files \
-		$fs/etc/postfix/postfix-script
+	rm -f $fs/etc/postfix/post*
 }
 
 # Pre and post install commands for Tazpkg.
@@ -81,10 +79,13 @@ EOT
 		chroot $1/ addgroup postdrop
 		status
 	fi
-	chown postfix /var/spool/postfix/* /var/lib/postfix
-	chgrp postdrop /var/spool/postfix/maildrop /var/spool/postfix/public \
-			/usr/sbin/postdrop /usr/sbin/postqueue
-	postalias /etc/postfix/aliases
+	chown postfix $1/var/spool/postfix/* $1/var/lib/postfix
+	chgrp postdrop $1/var/spool/postfix/maildrop $1/var/spool/postfix/public \
+			$1/usr/sbin/postdrop $1/usr/sbin/postqueue
+	chmod 2755 $1/usr/sbin/postdrop $1/usr/sbin/postqueue
+	chmod 2710 $1/var/spool/postfix/public
+	chmod 1730 $1/var/spool/postfix/maildrop
+	postalias $1/etc/postfix/aliases
 	cat <<EOF
 ----
 Warning: you still need to edit myorigin/mydestination/mynetworks
