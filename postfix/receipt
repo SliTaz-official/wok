@@ -33,6 +33,19 @@ genpkg_rules()
 	cp -a $_pkg/etc $fs
 	awk 'BEGIN {n=0} /MUST/ {n++} /ALIASES/ {n++} { if (n==1) print }' \
 		< $_pkg/etc/postfix/aliases > $fs/etc/postfix/aliases
+	while read keyword data; do
+		grep -q ^$keyword $fs/etc/postfix/main.cf && continue
+		mv $fs/etc/postfix/main.cf $fs/etc/postfix/main.cf.$$
+		awk "BEGIN { scan=1 } /^#$keyword / { if (scan) { print \"$keyword $data\" ; scan=0 } } { print }" \
+			< $fs/etc/postfix/main.cf.$$ > $fs/etc/postfix/main.cf
+		rm -f $fs/etc/postfix/main.cf.$$
+	done << EOF
+mydomain = localdomain
+myorigin = localhost
+mydestination = localhost, localhost.\$mydomain
+mynetworks = 127.0.0.0/8
+alias_maps = hash:/etc/postfix/aliases
+EOF
 	cp -a stuff/etc $fs
 	cp -a $_pkg/var $fs
 	mv $fs/etc/postfix/TLS_LICENSE $fs/usr/share/licenses/POSTFIX_TLS_LICENSE
