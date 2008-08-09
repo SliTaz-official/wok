@@ -10,6 +10,7 @@ TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.squirrelmail.org/"
 DEPENDS="squirrelmail"
 WGET_URL="${WEB_SITE}plugins/$TARBALL"
+CONFIG_FILES="/etc/squirrelmail/config-vkeyboard.php"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -17,10 +18,21 @@ genpkg_rules()
 	mkdir -p $fs/usr/share/squirrelmail/plugins
 	cp -a $SOURCE $fs/usr/share/squirrelmail/plugins
 	mv $fs/usr/share/squirrelmail/plugins/$SOURCE/config.php.sample \
+		$fs/etc/squirrelmail/config-vkeyboard.php
+	ln -s /etc/squirrelmail/config-vkeyboard.php \
 		$fs/usr/share/squirrelmail/plugins/$SOURCE/config.php
 }
 
 post_install()
 {
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/squirrelmail/config-vkeyboard.php
+EOT
 	echo "\$plugins[] = '$SOURCE';" >> $fs/etc/squirrelmail/config.php
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
 }
