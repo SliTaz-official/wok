@@ -1,0 +1,76 @@
+#!/bin/sh
+# /etc/init.d/perdition : Start, stop and restart IMAP/POP3 proxy server
+# on SliTaz, at boot time or with the command line.
+#
+# To start IMAP/POP3 proxy server at boot time, just put perdition in the
+# $RUN_DAEMONS variable of /etc/rcS.conf and configure options with
+# /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Perdition
+DESC="IMAP/POP3 proxy server"
+DAEMON=/usr/sbin/perdition
+OPTIONS=$PERDITION_OPTIONS
+PIDFILE=/var/run/perdition
+PROTOCOLS="pop3 pop3s imap4 imap4s imaps"
+[ -n "$OPTIONS" ] || OPTIONS="--group=nogroup"
+
+case "$1" in
+  start)
+    for i in $PROTOCOLS; do
+      [ -s /etc/perdition/perdition.$i.conf ] || continue
+      if [ -f $PIDFILE.$i/perdition.$i.pid ] ; then
+        echo "$NAME ($i) already running."
+        exit 1
+      fi
+      echo -n "Starting $DESC: $NAME ($i)... "
+      $DAEMON.$i -f /etc/perdition/perdition.$i.conf $OPTIONS \
+		--pid_file $PIDFILE.$i/perdition.$i.pid
+      status
+    done
+    ;;
+  stop)
+    for i in $PROTOCOLS; do
+      [ -s /etc/perdition/perdition.$i.conf ] || continue
+      if [ -f $PIDFILE.$i/perdition.$i.pid ] ; then
+        echo "$NAME ($i) is not running."
+        exit 1
+      fi
+      echo -n "Stopping $DESC: $NAME ($i)... "
+      kill `cat $PIDFILE.$i.pid`
+      status
+    done
+    ;;
+  restart)
+    for i in $PROTOCOLS; do
+      [ -s /etc/perdition/perdition.$i.conf ] || continue
+      if [ -f $PIDFILE.$i/perdition.$i.pid ] ; then
+        echo "$NAME ($i) is not running."
+        exit 1
+      fi
+      echo -n "Restarting $DESC: $NAME ($i)... "
+      kill `cat $PIDFILE.$i.pid`
+      sleep 2
+      $DAEMON.$i -f /etc/perdition/perdition.$i.conf $OPTIONS \
+		--pid_file $PIDFILE.$i/perdition.$i.pid
+      status
+    done
+    ;;
+  reload)
+    for i in $PROTOCOLS; do
+      [ -s /etc/perdition/perdition.$i.conf ] || continue
+      [ -f $PIDFILE.$i/perdition.$i.pid ] && kill -1 `cat $PIDFILE.$i.pid`
+      status
+    done
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart|reload]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0

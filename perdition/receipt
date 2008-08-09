@@ -1,0 +1,61 @@
+# SliTaz package receipt.
+
+PACKAGE="perdition"
+VERSION="1.17.1"
+CATEGORY="network"
+SHORT_DESC="IMAP/POP proxy."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.vergenet.net/linux/$PACKAGE"
+WGET_URL="$WEB_SITE/download/$VERSION/$TARBALL"
+BUILD_DEPENDS="vanessa_logger-dev vanessa_logger vanessa_adt-dev vanessa_adt vanessa_socket-dev vanessa_socket openldap-dev"
+DEPENDS="vanessa_logger vanessa_adt vanessa_socket libldap"
+CONFIG_FILES="/etc/perdition"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--enable-openldap --disable-ldap-doc --disable-nis \
+	--disable-odbc --disable-mysql --disable-pg --disable-bdb \
+	--sysconfdir=/etc --localstatedir=/var \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/etc $fs
+	rm -f $fs/etc/perdition/perdition.conf
+	cp -a stuff/etc $fs
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	for i in pop3 pop3s imap4 imap4s imaps; do
+		mkdir -p $fs/var/run/perdition.$i
+	done
+	for i in $(cd $WOK; ls -d perdition-*)
+	do
+		tazwok cook $i
+	done
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+$(cd $1/ ; find etc/perdition -type f)
+EOT
+	for i in pop3 pop3s imap4 imap4s imaps; do
+		chown nobody.nogroup $1/var/run/perdition.$i
+	done
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
