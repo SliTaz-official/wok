@@ -39,6 +39,10 @@ genpkg_rules()
 # Post install/remove commands for Tazpkg.
 post_install()
 {
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/zaptel.conf
+EOT
 	depmod -a -b "$1/"
 }
 
@@ -47,3 +51,7 @@ post_remove()
 	depmod -a
 }
 
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}

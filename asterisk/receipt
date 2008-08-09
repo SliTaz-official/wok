@@ -37,3 +37,17 @@ genpkg_rules()
 		mv $i ${i%.sample}
 	done
 }
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+$(cd $1/ ; find etc/asterisk -type f)
+EOT
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
