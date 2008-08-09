@@ -1,0 +1,66 @@
+#!/bin/sh
+# /etc/init.d/cyrus-imapd : Start, stop and restart IMAP server on SliTaz, at 
+# boot time or with the command line.
+#
+# To start IMAP server at boot time, just put cyrus-imapd in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=cyrus-imapd
+DESC="IMAP server"
+DAEMON=/usr/cyrus/bin/master
+OPTIONS=$CYRUS_OPTIONS
+PIDFILE=/var/run/cyrus.master.pid
+[ -n "$OPTIONS" ] || OPTIONS="-d -p $PIDFILE"
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    if ! pidof saslauthd > /dev/null; then
+      /etc/init.d/cyrus-sasl start
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS
+    status
+    sleep 2
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    ps x | grep -q `cat $PIDFILE` || rm -f $PIDFILE
+    status
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    if ps x | grep -q `cat $PIDFILE`; then
+    	false
+    else
+    	rm -f $PIDFILE
+    	sleep 2
+    	$DAEMON $OPTIONS
+    fi
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
