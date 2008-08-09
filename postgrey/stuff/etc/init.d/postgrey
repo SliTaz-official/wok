@@ -1,0 +1,68 @@
+#!/bin/sh
+# /etc/init.d/postgrey : Start, stop and restart Grey list server on SliTaz, at 
+# boot time or with the command line.
+#
+# To start Grey list server at boot time, just put postgrey in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Postgrey
+DESC="Grey list server"
+DAEMON=/usr/bin/postgrey
+OPTIONS=$POSTGREY_OPTIONS
+PIDFILE=/var/run/postgrey.pid
+[ -n "$OPTIONS" ] || OPTIONS="--pidfile=$PIDFILE -d --inet=127.0.0.1:60000 --user=postfix"
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    if ! grep -q ^smtpd_recipient_restrictions /etc/postfix/main.cf; then
+      echo -n "Updating /etc/postfix/main.cf"
+      cat >> /etc/postfix/main.cf <<EOF
+
+# Add by $0
+smtpd_recipient_restrictions = permit_mynetworks, reject_unauth_destination,
+	check_policy_service inet:127.0.0.1:60000,
+	permit
+
+EOF
+      /etc/init.d/postfix reload
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS
+    status
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    status
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    sleep 2
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart|reload]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
