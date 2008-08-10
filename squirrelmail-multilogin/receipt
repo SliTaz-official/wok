@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="squirrelmail-multilogin"
+VERSION="2.4-1.2.9"
+CATEGORY="network"
+SHORT_DESC="Server chooser plugin for Web mail."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="multilogin"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.squirrelmail.org/"
+DEPENDS="squirrelmail squirrelmail-compatibility-plugin"
+WGET_URL="${WEB_SITE}plugins/$TARBALL"
+CONFIG_FILES="/etc/squirrelmail/config-multilogin.php"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/squirrelmail/plugins $fs/etc/squirrelmail
+	cp -a $SOURCE $fs/usr/share/squirrelmail/plugins
+	mv $fs/usr/share/squirrelmail/plugins/$SOURCE/config.sample.php \
+		$fs/etc/squirrelmail/config-multilogin.php
+	ln -s /etc/squirrelmail/config-multilogin.php \
+		$fs/usr/share/squirrelmail/plugins/$SOURCE/config.php
+}
+
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/squirrelmail/config-multilogin.php
+EOT
+	echo "\$plugins[] = '$SOURCE';" >> $fs/etc/squirrelmail/config_local.php
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
