@@ -15,12 +15,14 @@ CONFIG_FILES="/etc/squirrelmail/config-multilogin.php"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/squirrelmail/plugins $fs/etc/squirrelmail
+	mkdir -p $fs/usr/share/squirrelmail/plugins $fs/etc/squirrelmail \
+		 $fs/var/lib/squirrelmail/slitaz.org/data
 	cp -a $SOURCE $fs/usr/share/squirrelmail/plugins
 	mv $fs/usr/share/squirrelmail/plugins/$SOURCE/config.sample.php \
 		$fs/etc/squirrelmail/config-multilogin.php
 	ln -s /etc/squirrelmail/config-multilogin.php \
 		$fs/usr/share/squirrelmail/plugins/$SOURCE/config.php
+	( cd $fs/etc/squirrelmail ; patch -p0 ) < stuff/config-multilogin.u
 }
 
 post_install()
@@ -29,6 +31,10 @@ post_install()
 		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
 etc/squirrelmail/config-multilogin.php
 EOT
+	chown www $1/var/lib/squirrelmail/slitaz.org/data
+	( cd $1/usr/share/squirrelmail/plugins/multilogin
+	  patch -p0 < patches/multilogin-squirrelmail-$(. $1/$INSTALLED/squirrelmail/receipt; echo $VERSION).diff )
+	echo "$PACKAGE" >> $1/$INSTALLED/squirrelmail/modifiers
 	echo "\$plugins[] = '$SOURCE';" >> $1/etc/squirrelmail/config_local.php
 }
 
