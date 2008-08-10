@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="squirrelmail-quota"
+VERSION="2.2-1.4.0"
+CATEGORY="network"
+SHORT_DESC="Quota plugin for Web mail."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="check_quota"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.squirrelmail.org/"
+DEPENDS="squirrelmail squirrelmail-compatibility-plugin"
+WGET_URL="${WEB_SITE}plugins/$TARBALL"
+CONFIG_FILES="/etc/squirrelmail/config-quota.php"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/squirrelmail/plugins $fs/etc/squirrelmail
+	cp -a $SOURCE $fs/usr/share/squirrelmail/plugins
+	mv $fs/usr/share/squirrelmail/plugins/$SOURCE/config.sample.php \
+		$fs/etc/squirrelmail/config-quota.php
+	sed -i "s/settings\['quota_type'\] = 0/settings['quota_type'] = 1/" \
+		$fs/etc/squirrelmail/config-quota.php
+	ln -s /etc/squirrelmail/config-quota.php \
+		$fs/usr/share/squirrelmail/plugins/$SOURCE/config.php
+}
+
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/squirrelmail/config-quota.php
+EOT
+	echo "\$plugins[] = '$SOURCE';" >> $1/etc/squirrelmail/config_local.php
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
