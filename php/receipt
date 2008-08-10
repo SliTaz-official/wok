@@ -10,6 +10,7 @@ BUILD_DEPENDS="sqlite-dev libxml2-dev zlib-dev mysql-dev postgresql postgresql-d
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.php.net/"
 WGET_URL="http://us2.php.net/distributions/$TARBALL"
+CONFIG_FILES="/etc/php.ini"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -68,6 +69,10 @@ pre_install()
 }
 post_install()
 {
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/php.ini
+EOT
 	# Restore original php.ini
 	if [ -f "$1/etc/php.ini.bak" ]; then
 		echo -n "Restoring php.ini backup..."
@@ -92,3 +97,7 @@ post_install()
 	fi
 }
 
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
