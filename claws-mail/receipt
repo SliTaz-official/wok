@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="claws-mail"
+VERSION="3.5.0"
+CATEGORY="networking"
+SHORT_DESC="The user-firendly, lightweight and fast email client"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS=""
+BUIDL_DEPENDS="libetpan"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.claws-mail.org/index.php"
+WGET_URL="http://garr.dl.sourceforge.net/sourceforge/sylpheed-claws/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+	 	--infodir=/usr/share/info \
+	 	--disable-ldap \
+	 	--disable-jpilot \
+	 	--disable-dillo-viewer-plugin \
+		--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/$PACKAGE/plugins \
+	 $fs/usr/share/locale \
+	 $fs/usr/share/
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/icons $fs/usr/share
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	strip -s $fs/usr/bin/*
+}
+
