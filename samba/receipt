@@ -1,0 +1,76 @@
+# SliTaz package receipt.
+
+PACKAGE="samba"
+VERSION="3.2.1"
+CATEGORY="system-tools"
+SHORT_DESC="File and print services with SMB/CIFS."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://samba.org/"
+WGET_URL="${WEB_SITE}$PACKAGE/ftp/stable/$TARBALL"
+BUILD_DEPENDS="libldap openldap-dev cups cups-dev"
+DEPENDS="libldap smbclient perl cups"
+CONFIG_FILES="/etc/samba"
+BUGS="Open directory needs MIT kerberos support (krb5)"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/source
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--with-piddir=/var/run/samba --with-lockdir=/var/run/samba \
+	--with-winbind --with-ldap --with-fhs --enable-cups --enable-swat \
+	--enable-shared-libs --with-libtalloc --with-libtdb \
+	--with-libsmbsharemodes --with-libsmbclient \
+	--sysconfdir=/etc --localstatedir=/var \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/../_pkg install
+	ln -s libwbclient.so $PWD/../_pkg/usr/lib/libwbclient.so.0
+	cp ../../stuff/*.files-list ..
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/var $fs
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a stuff/etc $fs
+	cat $src/*.files-list | while read file; do
+		rm -rf $fs$file
+	done
+	# Package all samba pkgs
+	for i in $(cd $WOK; grep -l '^WANTED="samba"$' */receipt)
+	do
+    		tazwok cook ${i%/receipt}
+	done
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/samba
+EOT
+	cat <<EOF
+----
+The main configuration file is /etc/samba/smb.conf
+----
+To start $PACKAGE server you can run :
+
+    /etc/init.d/$PACKAGE start
+
+Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
+----
+EOF
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}

@@ -1,0 +1,76 @@
+#!/bin/sh
+# /etc/init.d/samba : Start, stop and restart Samba server on SliTaz, at 
+# boot time or with the command line.
+#
+# To start Samba server at boot time, just put samba in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Samba
+DESC="Samba server"
+SMBD=/usr/sbin/smbd
+NMBD=/usr/sbin/nmbd
+NMBPIDFILE=/var/run/samba/nmbd.pid
+SMBPIDFILE=/var/run/samba/smbd.pid
+
+case "$1" in
+  start)
+    if [ -f $SMBPIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $SMBD... "
+    $SMBD -D
+    status
+    echo -n "Starting $DESC: $NMBD... "
+    $NMBD -D
+    status
+    ;;
+  stop)
+    if [ ! -f $SMBPIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $SMBD... "
+    kill `cat $SMBPIDFILE`
+    status
+    echo -n "Stopping $DESC: $NMBD... "
+    kill `cat $NMBPIDFILE`
+    status
+    ;;
+  restart)
+    if [ ! -f $SMBPIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $SMBD... "
+    kill `cat $SMBPIDFILE`
+    sleep 2
+    $SMBD -D
+    status
+    echo -n "Restarting $DESC: $NMBD... "
+    kill `cat $NMBPIDFILE`
+    sleep 2
+    $NMBD -D
+    status
+    ;;
+  reload)
+    if [ ! -f $SMBPIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Reloading $DESC: $SMBD... "
+    kill -HUP `cat $SMBPIDFILE`
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart!reload]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
