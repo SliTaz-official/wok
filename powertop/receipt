@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="powertop"
+VERSION="1.10"
+CATEGORY="system-tools"
+SHORT_DESC="Utility designed to measure and explain a computer's electrical power consumption"
+MAINTAINER="domcox@users.sourceforge.net"
+DEPENDS="ncurses"
+BUILD_DEPENDS="ncurses-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.lesswatts.org/projects/powertop/"
+WGET_URL="http://www.lesswatts.org/projects/powertop/download/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+#	switch from ncursesw to ncurses
+	sed -e 's/lncursesw/lncurses/g' Makefile > Makefile.slitaz
+    cp Makefile.slitaz Makefile
+
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	strip -s $fs/usr/bin/*
+	mkdir -p $fs/usr/share/locale
+	for LANG in de es it fr 
+	do
+		cp -a $_pkg/usr/share/locale/$LANG* $fs/usr/share/locale
+	done
+}
+
