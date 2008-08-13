@@ -13,6 +13,11 @@ WGET_URL="http://www.us.kernel.org/pub/linux/utils/kernel/hotplug/$TARBALL"
 compile_rules()
 {
 	cd $src
+	./configure \
+		--prefix=/usr \
+		--sbindir=/sbin \
+		--sysconfdir=/etc \
+		--libdir=/lib
 	make EXTRAS="extras/firmware extras/scsi_id extras/volume_id \
 		extras/ata_id extras/usb_id extras/cdrom_id"
 }
@@ -20,30 +25,15 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/sbin $fs/etc/udev $fs/lib/udev $fs/lib/firmware
+	mkdir -p $fs/lib/firmware $fs/etc/udev/rules.d
 
-	# /sbin
-	cp -a $src/udevd $fs/sbin
-	cp -a $src/udevadm $fs/sbin
+	cp -a $_pkg/sbin $fs
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/lib $fs
 
 	# Config files.
 	cp stuff/udev.conf $fs/etc/udev
 	cp -a $src/etc/udev/rules.d $fs/etc/udev
 	cp stuff/90-permissions.rules $fs/etc/udev/rules.d
-	cp -a $src/etc/udev/packages/40-alsa.rules $fs/etc/udev/rules.d
-
-	# Extra
-	cp -a $src/extras/firmware/firmware.sh $fs/lib/udev
-	cp -a $src/extras/volume_id/vol_id $fs/lib/udev
-	cp -a $src/extras/volume_id/lib/*.so* $fs/lib
-	#cp -a $src/extras/cdrom_id/cdrom_id $fs/lib/udev
-	#cp -a $src/extras/ata_id/ata_id $fs/lib/udev
-	#cp -a $src/extras/scsi_id/scsi_id $fs/lib/udev
-	#cp -a $src/extras/usb_id/usb_id $fs/lib/udev
-}
-
-clean_wok()
-{
-	rm -f device_*
-	rm -f whitespace_*
+	cp -a $src/rules/packages/40-alsa.rules $fs/etc/udev/rules.d
 }
