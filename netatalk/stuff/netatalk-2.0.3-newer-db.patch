@@ -1,0 +1,94 @@
+diff -urN netatalk-2.0.3.orig/bin/cnid/cnid_index.c netatalk-2.0.3/bin/cnid/cnid_index.c
+--- netatalk-2.0.3.orig/bin/cnid/cnid_index.c	2005-04-10 12:49:18.000000000 +0000
++++ netatalk-2.0.3/bin/cnid/cnid_index.c	2007-08-11 17:01:38.000000000 +0000
+@@ -1,5 +1,5 @@
+ /*
+- * $Id: cnid_index.c,v 1.1.2.4 2005/04/10 12:49:18 didg Exp $
++ * $Id: cnid_index.c,v 1.1.2.5 2005/09/13 16:57:44 didg Exp $
+  *
+  * All Rights Reserved.  See COPYING.
+  */
+@@ -274,7 +274,11 @@
+     DB_BTREE_STAT *sp;
+     DB *db = db_table[dbi].db;
+ 
++#if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3)
++    ret = db->stat(db, db_txn, &sp, 0);
++#else
+     ret = db->stat(db, &sp, 0);
++#endif
+ 
+     if (ret) {
+         LOG(log_error, logtype_cnid, "error getting stat infotmation on database: %s", db_strerror(errno));
+diff -urN netatalk-2.0.3.orig/etc/cnid_dbd/dbif.c netatalk-2.0.3/etc/cnid_dbd/dbif.c
+--- netatalk-2.0.3.orig/etc/cnid_dbd/dbif.c	2004-12-21 13:36:12.000000000 +0000
++++ netatalk-2.0.3/etc/cnid_dbd/dbif.c	2007-08-11 17:10:19.000000000 +0000
+@@ -1,5 +1,5 @@
+ /*
+- * $Id: dbif.c,v 1.1.4.15.2.1 2004/12/21 13:36:12 didg Exp $
++ * $Id: dbif.c,v 1.1.4.15.2.2 2005/09/13 16:57:45 didg Exp $
+  *
+  * Copyright (C) Joerg Lenneis 2003
+  * All Rights Reserved.  See COPYING.
+@@ -514,7 +514,11 @@
+     DB_BTREE_STAT *sp;
+     DB *db = db_table[dbi].db;
+ 
++#if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3)
++    ret = db->stat(db, db_txn, &sp, 0);
++#else
+     ret = db->stat(db, &sp, 0);
++#endif
+ 
+     if (ret) {
+         LOG(log_error, logtype_cnid, "error getting stat infotmation on database: %s", db_strerror(errno));
+diff -urN netatalk-2.0.3.orig/macros/db3-check.m4 netatalk-2.0.3/macros/db3-check.m4
+--- netatalk-2.0.3.orig/macros/db3-check.m4	2004-08-11 03:01:11.000000000 +0000
++++ netatalk-2.0.3/macros/db3-check.m4	2007-08-11 16:57:02.000000000 +0000
+@@ -1,4 +1,4 @@
+-dnl $Id: db3-check.m4,v 1.11.6.9 2004/08/11 03:01:11 bfernhomberg Exp $
++dnl $Id: db3-check.m4,v 1.11.6.9.2.2 2006/09/09 01:36:39 didg Exp $
+ dnl Autoconf macros to check for the Berkeley DB library
+ 
+ 
+@@ -111,7 +111,12 @@
+ 	CFLAGS="$savedcflags"
+ ])
+ 
+-
++dnl I don't understand this stuff below
++dnl AFAIK it works for 4.1 and 4.2 and (4.3 xor 4.4) 
++dnl you can have 4.2 and 4.3 installed
++dnl but If you have 4.3 and 4.4 it won't work with 4.3
++dnl only 4.4
++dnl didier 
+ AC_DEFUN([NETATALK_BERKELEY_LINK],
+ [
+ atalk_cv_lib_db=no
+@@ -119,6 +124,17 @@
+ NETATALK_BDB_LINK_TRY(atalk_cv_db_db42,[-ldb42])
+ NETATALK_BDB_LINK_TRY(atalk_cv_db_db_42,[-ldb-42])
+ NETATALK_BDB_LINK_TRY(atalk_cv_db_db_4_2,[-ldb-4-2])
++
++NETATALK_BDB_LINK_TRY(atalk_cv_db_db_4_dot_2,[-ldb-4.4])
++NETATALK_BDB_LINK_TRY(atalk_cv_db_db42,[-ldb44])
++NETATALK_BDB_LINK_TRY(atalk_cv_db_db_42,[-ldb-44])
++NETATALK_BDB_LINK_TRY(atalk_cv_db_db_4_2,[-ldb-4-4])
++
++NETATALK_BDB_LINK_TRY(atalk_cv_db_db_4_dot_2,[-ldb-4.3])
++NETATALK_BDB_LINK_TRY(atalk_cv_db_db42,[-ldb43])
++NETATALK_BDB_LINK_TRY(atalk_cv_db_db_42,[-ldb-43])
++NETATALK_BDB_LINK_TRY(atalk_cv_db_db_4_2,[-ldb-4-3])
++
+ NETATALK_BDB_LINK_TRY(atalk_cv_db_db_4_dot_1,[-ldb-4.1])
+ NETATALK_BDB_LINK_TRY(atalk_cv_db_db41,[-ldb41])
+ NETATALK_BDB_LINK_TRY(atalk_cv_db_db_41,[-ldb-41])
+@@ -134,7 +150,7 @@
+ 	trybdbdir=""
+ 	dobdbsearch=yes
+ 	bdb_search_dirs="/usr/local/include /usr/include"
+-	search_subdirs="/db4.2 /db42 /db4.1 /db41 /db4 /"
++	search_subdirs="/db4.2 /db42 /db4.3 /db43 /db4.4 /db44 /db4.1 /db41 /db4 /"
+ 
+ dnl required BDB version
+ 	DB_MAJOR_REQ=4
