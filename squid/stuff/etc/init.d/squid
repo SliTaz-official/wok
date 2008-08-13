@@ -1,0 +1,68 @@
+#!/bin/sh
+# /etc/init.d/squid : Start, stop and restart Squid proxy server on SliTaz, at 
+# boot time or with the command line.
+#
+# To start Squid proxy server at boot time, just put squid in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Squid
+DESC="Squid proxy server"
+DAEMON=/usr/sbin/squid
+OPTIONS=$SQUID_OPTIONS
+PIDFILE=/var/run/squid.pid
+http_port=$(grep ^http_port /etc/squid/squid.conf | awk '{ print $2 }')
+[ -n "$http_port" ] || http_port=3128
+[ -n "$OPTIONS" ] || OPTIONS="-a $http_port"
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    cache_dir=$(grep ^cache_dir /etc/squid/squid.conf | awk '{ print $3 }')
+    [ -n "$cache_dir" ] || cache_dir=/var/cache
+    if [ -d "$cache_dir" -a ! -d "$cache_dir/00" ]; then
+      echo -n "Creating squid spool directory structure"
+      $DAEMON -z
+      status
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS
+    status
+    sleep 2
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    status
+    sleep 2
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    sleep 2
+    $DAEMON $OPTIONS
+    status
+    sleep 2
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
