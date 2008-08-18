@@ -15,11 +15,12 @@ compile_rules()
 	cd $src
 	./configure \
 		--prefix=/usr \
-		--sbindir=/sbin \
+		--exec-prefix="" \
 		--sysconfdir=/etc \
-		--libdir=/lib
+		$CONFIGURE_ARGS
 	make EXTRAS="extras/firmware extras/scsi_id extras/volume_id \
 		extras/ata_id extras/usb_id extras/cdrom_id"
+	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -31,9 +32,9 @@ genpkg_rules()
 	cp -a $_pkg/etc $fs
 	cp -a $_pkg/lib $fs
 
-	# Config files.
+	# Default config files in /lib/udev/rules.d and custom on in
+	# /etc/udev/rules.d.
 	cp stuff/udev.conf $fs/etc/udev
-	cp -a $src/etc/udev/rules.d $fs/etc/udev
 	cp stuff/90-permissions.rules $fs/etc/udev/rules.d
 	cp -a $src/rules/packages/40-alsa.rules $fs/etc/udev/rules.d
 }
