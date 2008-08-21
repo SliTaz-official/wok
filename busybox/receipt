@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="busybox"
-VERSION="1.10.3"
+VERSION="1.12.0"
 CATEGORY="base-system"
 SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -17,21 +17,16 @@ compile_rules()
 {
     cd $src
     while read file; do
+    	echo "Apply $file..."
     	patch -p1 < ../stuff/$file || return 1
     done <<EOT
-$PACKAGE-$VERSION-patch.u
 $PACKAGE-$VERSION-vcsa2txt.u
-$PACKAGE-$VERSION-cpio.u
 $PACKAGE-$VERSION-dhcpc.u
 $PACKAGE-$VERSION-cpio-mkdir.u
-$PACKAGE-$VERSION-cpio-mtime.u
-$PACKAGE-$VERSION-unlzma.u
-$PACKAGE-$VERSION-tftp.u
 $PACKAGE-$VERSION-tar.u
-$PACKAGE-$VERSION-script.u
-$PACKAGE-$VERSION-header_tar.u
 $PACKAGE-$VERSION-stat.u
-$PACKAGE-$VERSION-syslogd.u
+$PACKAGE-$VERSION-zmodules.u
+$PACKAGE-$VERSION-modinfo.u
 EOT
     cp ../stuff/$PACKAGE-$VERSION.config .config
     make oldconfig
@@ -60,6 +55,7 @@ genpkg_rules()
     rm linuxrc
     ln -s bin/busybox init
     cd $WOK/$PACKAGE
+    mkdir -p $fs/etc/modprobe.d
     # Udhcpc stuff.
     mkdir -p $fs/usr/share/udhcpc
     cp $src/examples/udhcp/simple.script \

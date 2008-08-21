@@ -1,0 +1,153 @@
+--- busybox-1.12.0/include/applets.h
++++ busybox-1.12.0/include/applets.h
+@@ -251,6 +251,7 @@ USE_MKFS_MINIX(APPLET_ODDNAME(mkfs.minix
+ USE_MKNOD(APPLET(mknod, _BB_DIR_BIN, _BB_SUID_NEVER))
+ USE_MKSWAP(APPLET(mkswap, _BB_DIR_SBIN, _BB_SUID_NEVER))
+ USE_MKTEMP(APPLET(mktemp, _BB_DIR_BIN, _BB_SUID_NEVER))
++USE_MODINFO(APPLET(modinfo, _BB_DIR_SBIN, _BB_SUID_NEVER))
+ USE_MODPROBE(APPLET(modprobe, _BB_DIR_SBIN, _BB_SUID_NEVER))
+ USE_MODPROBE_SMALL(APPLET(modprobe, _BB_DIR_SBIN, _BB_SUID_NEVER))
+ USE_MORE(APPLET(more, _BB_DIR_BIN, _BB_SUID_NEVER))
+
+--- busybox-1.12.0/include/usage.h
++++ busybox-1.12.0/include/usage.h
+@@ -2629,6 +2629,20 @@
+        "   which are the default for alias 'tulip2' overridden by the options 'irq=2 io=0x210'\n\n" \
+        "   from the command line\n"
+ 
++#define modinfo_trivial_usage \
++       "[-adlp0] [-F keyword] MODULE"
++#define modinfo_full_usage "\n\n" \
++       "Options:" \
++     "\n	-a		Shortcut for '-F author'" \
++     "\n	-d		Shortcut for '-F description'" \
++     "\n	-l		Shortcut for '-F license'" \
++     "\n	-p		Shortcut for '-F parm'" \
++     "\n	-F keyword	Keyword to look for" \
++     "\n	-0		Use \\0 string separator. Not \\n" \
++
++#define modinfo_example_usage \
++       "$ modinfo -F vermagic loop\n"
++       
+ #define more_trivial_usage \
+        "[FILE...]"
+ #define more_full_usage "\n\n" \
+
+--- busybox-1.12.0/modutils/Config.in
++++ busybox-1.12.0/modutils/Config.in
+@@ -213,6 +213,12 @@ config FEATURE_MODPROBE_BLACKLIST
+ 	  hardware autodetection scripts to load modules like evdev, frame
+ 	  buffer drivers etc.
+ 
++config MODINFO
++	bool "modinfo"
++	default n
++	help
++	  Show information about a Linux Kernel module
++
+ comment "Options common to multiple modutils"
+ 	depends on INSMOD || RMMOD || MODPROBE || LSMOD || DEPMOD
+ 
+
+--- busybox-1.12.0/modutils/Kbuild
++++ busybox-1.12.0/modutils/Kbuild
+@@ -11,3 +11,4 @@ lib-$(CONFIG_LSMOD)             += lsmod
+ lib-$(CONFIG_MODPROBE)          += modprobe.o
+ lib-$(CONFIG_MODPROBE_SMALL)    += modprobe-small.o
+ lib-$(CONFIG_RMMOD)             += rmmod.o
++lib-$(CONFIG_MODINFO)           += modinfo.o
+
+--- busybox-1.12.0/modutils/modinfo.c
++++ busybox-1.12.0/modutils/modinfo.c
+@@ -0,0 +1,91 @@
++/* vi: set sw=4 ts=4: */
++/*
++ * modinfo - retrieve module info
++ * Copyright (c) 2008 Pascal Bellard
++ *
++ * Licensed under GPLv2 or later, see file LICENSE in this tarball for details.
++ */
++
++#undef _GNU_SOURCE
++#define _GNU_SOURCE
++#include <libbb.h>
++#include <sys/utsname.h> /* uname() */
++
++int modinfo_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
++int modinfo_main(int argc UNUSED_PARAM, char **argv)
++{
++	static const char *shortcuts[] = {
++		"author",
++		"description",
++		"license",
++		"parm"
++	};
++	size_t len;
++	int i, length;
++	char *field = NULL;
++	char *ptr, *the_module, *depends, *filename;
++	struct utsname un;
++	enum {
++		ARG_F = (1<<4), /* field name */
++		ARG_0 = (1<<5)  /* \0 as separator */
++	};
++	extern void *xalloc_load_module(const char filename[], size_t *len);
++
++	getopt32(argv, "adlpF:0", &field);
++	argv += optind;
++
++	for (i = 0; i < sizeof(shortcuts)/sizeof(shortcuts[0]); i++)
++		if (option_mask32 & (1 << i))
++			field = (char *) shortcuts[i];
++
++	if (!field || !*argv)
++		bb_show_usage();
++
++	/* get module path from modules.dep */
++	uname(&un); /* never fails */
++	filename = xasprintf(CONFIG_DEFAULT_MODULES_DIR"/%s/"CONFIG_DEFAULT_DEPMOD_FILE, un.release);
++	len = MAXINT(ssize_t);
++	the_module = xalloc_load_module(*argv, &len);
++	if (the_module == NULL) {
++		len = MAXINT(ssize_t);
++		ptr = depends = xmalloc_open_read_close(filename, &len);
++		depends[len-1] = 0;
++		if (ENABLE_FEATURE_CLEAN_UP)
++			free(filename);
++		do {
++			ptr = strstr(ptr,*argv);
++			length = strlen(*argv);
++			if (!ptr)
++				bb_show_usage();
++			if (ptr[length] == '.' && ptr[-1] == '/') {
++				while (ptr[++length] != ':')
++					if (ptr[length] == ' ') goto next;
++				ptr[length] = 0;
++				while (ptr > depends && ptr[-1] != '\n') ptr--;
++				break;
++			}
++		next:
++			ptr++;
++		} while (1);
++		if (ENABLE_FEATURE_CLEAN_UP)
++			free(depends);
++	
++		len = MAXINT(ssize_t);
++		the_module = xalloc_load_module(ptr, &len);
++	}
++	ptr = the_module;
++	length = strlen(field);
++	do {
++		ptr = memchr(ptr, *field, len - (ptr - (char*)the_module));
++		if (ptr == NULL) /* no occurance left, done */
++			break;
++		if (!strncmp(ptr, field, length) && ptr[length] == '=') {
++			ptr += length + 1;
++			ptr += printf("%s%c",ptr,(option_mask32 & ARG_0) ? '\0' : '\n');
++		}
++		++ptr;
++	} while (1);
++	if (ENABLE_FEATURE_CLEAN_UP)
++		free(the_module);
++	return 0;
++}
