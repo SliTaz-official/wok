@@ -1,0 +1,46 @@
+# remove link to cdrom
+[ -d cdrom ] && rmdir cdrom
+rm -f bin/vcsa2txt bin/awk bin/script bin/cut bin/readlink bin/du bin/free
+if [ -L usr ]; then
+	rm usr
+	cp -a $1/usr .
+fi
+packedfs="$1/usr.cromfs"
+if [ -f $packedfs ]; then
+	rmdir usr
+	rm -f bin/unmkcromfs
+	cp -a $1/unmkcromfs bin/unmkcromfs
+	bin/unmkcromfs $packedfs usr
+	[ "${packedfs%%/*}" = ".." ] && rm -f $packedfs
+	rm -f bin/cromfs-driver
+	cp -a $1/cromfs-driver bin/cromfs-driver
+fi
+packedfs="$1/usr.sqfs"
+if [ -f $packedfs ]; then
+	rmdir usr
+	sbin/unsquashfs -d usr $packedfs
+	[ "${packedfs%%/*}" = ".." ] && rm -f $packedfs
+fi
+if [ -d usr/.moved ]; then
+	( cd usr/.moved ; find * -print ) | \
+	while read file; do
+		[ -L "$file" ] || continue
+		rm -f "$file"
+		mv "usr/.moved/$file" "$file"
+	done
+	rm -rf usr/.moved
+fi
+for ii in lib/libz.so lib/libstdc++.so lib/libgcc_s.so; do
+	[ -e $ii ] && mv $ii* usr/lib/
+done
+if [ -L root ]; then
+	rm -f etc/keymap.conf etc/locale.conf etc/resolv.conf etc/TZ etc/motd
+	[ -d var/log.ORG  ] && mv -f var/log.ORG  var/log
+	[ -d var/run.ORG  ] && mv -f var/run.ORG  var/run
+	[ -d var/lock.ORG ] && mv -f var/lock.ORG var/lock
+	[ -d root.ORG     ] && mv -f root.ORG     root
+	rm -f media/cdrom
+	rmdir mnt/target
+	sed -i 's/CLEAN_UP_SYSTEM="no"/CLEAN_UP_SYSTEM="yes"/' etc/rcS.conf
+	sed -i 's/RUN_DAEMONS="/RUN_DAEMONS="slim /' etc/rcS.conf
+fi
