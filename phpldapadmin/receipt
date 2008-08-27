@@ -31,6 +31,7 @@ post_install()
 		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
 etc/phpldapadmin/config.php
 EOT
+	# Configure lighttpd server
 	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
 		if ! grep -q /usr/share/phpldapadmin/ $1/etc/lighttpd/lighttpd.conf; then
 	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/phpldapadmin/" => "/usr/share/phpldapadmin/",|g' -i $1/etc/lighttpd/lighttpd.conf
@@ -38,6 +39,28 @@ EOT
 				# Start Web server.
 				/etc/init.d/lighttpd stop
 				/etc/init.d/lighttpd start
+			fi
+		fi
+	fi
+	# Configure apache server
+	if [ -f $1/etc/apache/httpd.conf ]; then
+		if [ ! -f $1/etc/apache/conf.d/phpldapadmin ]; then
+			cat > $1/etc/apache/conf.d/phpldapadmin <<EOT
+<IfModule mod_alias.c>
+    Alias /phpldapadmin /usr/share/phpldapadmin
+</IfModule>
+<DirectoryMatch /usr/share/phpldapadmin/>
+    DirectoryIndex index.php
+    Options +FollowSymLinks
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</DirectoryMatch>
+EOT
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/apache stop
+				/etc/init.d/apache start
 			fi
 		fi
 	fi
