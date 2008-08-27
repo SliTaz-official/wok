@@ -20,9 +20,14 @@ genpkg_rules()
 # and restart Web server if needed.
 pre_install()
 {
-	if [ -z "$1" -a -f "/var/run/lighttpd.pid" ]; then
-		/etc/init.d/lighttpd stop
-	fi
+	while read daemon file; do
+		if [ -z "$1" -a -f "/var/run/$file" ]; then
+			/etc/init.d/$daemon stop
+		fi
+	done <<EOT
+apache apache/httpd.pid
+lighttpd lighttpd.pid
+EOT
 }
 
 post_install()
@@ -30,8 +35,14 @@ post_install()
 	grep -q ^extension=msql.so $1/etc/php.ini || \
 	    sed -e 's|;.*extension=msql.so|;   extension=msql.so\nextension=ldap.so|' -i $1/etc/php.ini
 	# Start Web server.
-	if [ -z "$1" -a ! -f "/var/run/lighttpd.pid" ]; then
-		/etc/init.d/lighttpd start
-	fi
+	while read daemon file; do
+		if [ -z "$1" -a -f /etc/init.d/$daemon \
+			     -a ! -f "/var/run/$file" ]; then
+			/etc/init.d/$daemon start
+		fi
+	done <<EOT
+apache apache/httpd.pid
+lighttpd lighttpd.pid
+EOT
 }
 

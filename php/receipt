@@ -5,36 +5,49 @@ VERSION="5.2.5"
 CATEGORY="development"
 SHORT_DESC="PHP web programming language."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="lighttpd zlib libxml2 sqlite"
-BUILD_DEPENDS="sqlite-dev libxml2-dev zlib-dev mysql-dev postgresql postgresql-dev gettext openssl-dev"
+DEPENDS="php-common lighttpd zlib libxml2 sqlite"
+BUILD_DEPENDS="sqlite-dev libxml2-dev zlib-dev mysql-dev postgresql postgresql-dev gettext openssl-dev apache-dev apache"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.php.net/"
 WGET_URL="http://us2.php.net/distributions/$TARBALL"
-CONFIG_FILES="/etc/php.ini"
+PROVIDE="php:lighttpd"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--enable-fastcgi \
-		--enable-discard-path \
-		--enable-force-cgi-redirect \
-		--enable-mbstring \
-		--with-config-file-path=/etc \
-		--with-zlib \
-		--with-gettext \
-		--with-mysql=shared,usr \
-		--with-pgsql=shared,usr \
-		--with-ldap=shared \
-		--disable-cli \
-		$CONFIGURE_ARGS
-	make
-	make INSTALL_ROOT=$PWD/_pkg install
+	COMMON_ARGS="\
+--prefix=/usr \
+--sysconfdir=/etc \
+--infodir=/usr/share/info \
+--mandir=/usr/share/man \
+--enable-fastcgi \
+--enable-discard-path \
+--enable-force-cgi-redirect \
+--enable-mbstring \
+--with-config-file-path=/etc \
+--with-zlib \
+--with-gettext \
+--with-mysql=shared,usr \
+--with-pgsql=shared,usr \
+--with-ldap=shared \
+--disable-cli"
+	./configure $COMMON_ARGS $CONFIGURE_ARGS && \
+	make && make INSTALL_ROOT=$PWD/_pkg install
+	./configure $COMMON_ARGS --with-apxs2=/usr/bin/apxs $CONFIGURE_ARGS && \
+	make && {
+		mkdir -p _pkg/etc/apache
+		cp /etc/apache/httpd.conf _pkg/etc/apache/httpd.conf
+		make INSTALL_ROOT=$PWD/_pkg install
+	}
+	# Recommended config file and phpinfo.
+	cp php.ini-recommended _pkg/etc/php.ini
+	sed -e 's|extension_dir = "./"|extension_dir = "/usr/share/php/"|' \
+	    -i _pkg/etc/php.ini
+	cp -a ../stuff/phpinfo _pkg/usr/share
+	mkdir _pkg/usr/share/applications _pkg/usr/share/pixmap
+	cp ../stuff/php.desktop _pkg/usr/share/applications
+	cp ../stuff/php.png _pkg/usr/share/pixmap
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -42,43 +55,22 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/bin $fs/etc $fs/usr/share
 	cp -a $src/sapi/cgi/php-cgi $fs/usr/bin
-	# Recommended config file and phpinfo.
-	cp $src/php.ini-recommended $fs/etc/php.ini
-	sed -e 's|extension_dir = "./"|extension_dir = "/usr/share/php/"|' \
-	    -i $fs/etc/php.ini
-	cp -a stuff/phpinfo $fs/usr/share
 	for i in $(cd $WOK; ls -d php-*)
 	do
 		tazwok cook $i
 	done
 }
 
-# Post and pre install commans to stop
+# Post and pre install commands to stop
 # and restart Web server if needed.
 pre_install()
 {
 	if [ -f "$1/var/run/lighttpd.pid" ]; then
 		/etc/init.d/lighttpd stop
 	fi
-	# Backup existing php.ini
-	if [ -f "$1/etc/php.ini" ]; then
-		echo -n "Creating php.ini backup..."
-		cp $1/etc/php.ini $1/etc/php.ini.bak
-		status
-	fi
 }
 post_install()
 {
-	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
-		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
-etc/php.ini
-EOT
-	# Restore original php.ini
-	if [ -f "$1/etc/php.ini.bak" ]; then
-		echo -n "Restoring php.ini backup..."
-		mv -f $1/etc/php.ini.bak $1/etc/php.ini 
-		status
-	fi
 	# Enable php
 	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
 	  [ -f $1/usr/lib/lighttpd/mod_fastcgi.so ] || \
@@ -95,9 +87,4 @@ EOT
 	if [ -z "$1" -a ! -f "/var/run/lighttpd.pid" ]; then
 		/etc/init.d/lighttpd start
 	fi
-}
-
-repack_cleanup()
-{
-        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
 }

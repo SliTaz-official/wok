@@ -1,0 +1,49 @@
+# SliTaz package receipt.
+
+PACKAGE="php-common"
+VERSION="5.2.5"
+CATEGORY="development"
+SHORT_DESC="Common files for PHP modules."
+MAINTAINER="pascal.bellard@slitaz.org"
+WEB_SITE="http://www.php.net/"
+WANTED="php"
+CONFIG_FILES="/etc/php.ini"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/etc
+	cp -a $_pkg/usr/share/phpinfo $fs/usr/share
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/pixmap $fs/usr/share
+	cp $_pkg/etc/php.ini $fs/etc
+}
+
+# Post and pre install commands
+pre_install()
+{
+	# Backup existing php.ini
+	if [ -f "$1/etc/php.ini" ]; then
+		echo -n "Creating php.ini backup..."
+		cp $1/etc/php.ini $1/etc/php.ini.bak
+		status
+	fi
+}
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/php.ini
+EOT
+	# Restore original php.ini
+	if [ -f "$1/etc/php.ini.bak" ]; then
+		echo -n "Restoring php.ini backup..."
+		mv -f $1/etc/php.ini.bak $1/etc/php.ini 
+		status
+	fi
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
