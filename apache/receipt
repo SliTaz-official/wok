@@ -1,0 +1,71 @@
+# SliTaz package receipt.
+
+PACKAGE="apache"
+VERSION="2.2.9"
+CATEGORY="network"
+SHORT_DESC="Secure, efficient and extensible HTTP server."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="httpd"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.apache.org/"
+WGET_URL="${WEB_SITE}dist/$SOURCE/$TARBALL"
+DEPENDS="apr-util apr"
+BUILD_DEPENDS="apr-util-dev apr-dev"
+CONFIG_FILES="/etc/apache /var/www"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	ln -s $SOURCE-$VERSION $PACKAGE-$VERSION
+	cd $src
+	grep -q Slitaz config.layout || \
+		cat ../stuff/slitaz.layout >> config.layout
+	./configure --mandir=/usr/share/man --enable-mods-shared=all \
+		--enable-layout=Slitaz $CONFIGURE_ARGS && \
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/apache $fs/etc/init.d $fs/etc/apache/conf.d
+	cp -a $_pkg/usr/share/apache/icons $fs/usr/share/apache
+	cp -a $_pkg/usr/share/apache/error $fs/usr/share/apache
+	cp -a $_pkg/usr/share/apache/modules $fs/usr/share/apache
+	cp -a $_pkg/usr/bin $fs/usr
+	rm -r $fs/usr/bin/apxs
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/var $fs
+	ln -s /usr/bin/apachectl $fs/etc/init.d/apache
+	sed -i  -e 's|User daemon|User www|' -e 's|Group daemon|Group www|' \
+		-e 's|ServerAdmin you@example.com|ServerAdmin root@localhost|' \
+		$fs/etc/apache/httpd.conf
+	echo "Include /etc/apache/conf.d" >> $fs/etc/apache/httpd.conf
+	# Cook all packages based on apache
+	for i in $(cd $WOK; ls -d apache-*)
+	do
+		tazwok genpkg $i
+	done
+}
+
+# Pre and post install commands for Tazpkg.
+# We stop the server by default in case of upgarde.
+pre_install()
+{
+	echo "Processing pre-install commands..."
+	[ -f /etc/init.d/$PACKAGE ] && /etc/init.d/$PACKAGE stop
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	# Just in case.
+	chown www.www $1/var/log/$PACKAGE
+	/etc/init.d/$PACKAGE start
+}
+
+# Rules to clean extras dirs or files
+clean_wok()
+{
+	rm -rf $WOK/$PACKAGE/${PACKAGE}.${VERSION}
+}
