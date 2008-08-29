@@ -1,0 +1,55 @@
+#!/bin/sh
+# /etc/init.d/chilli : Start, stop and restart ChilliSpot server on SliTaz, at 
+# boot time or with the command line.
+#
+# To start ChilliSpot server at boot time, just put chilli in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=ChilliSpot
+DESC="ChilliSpot server"
+DAEMON=/usr/sbin/chilli
+OPTIONS=$CHILLI_OPTIONS
+PIDFILE=/var/run/chilli.pid
+[ -n "$OPTIONS" ] || OPTIONS="--pidfile $PIDFILE --statedir /var/lib/chilli/"
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    $DAEMON $OPTIONS
+    status
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    status
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    sleep 2
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
