@@ -1,0 +1,66 @@
+# SliTaz package receipt.
+
+PACKAGE="krb5"
+VERSION="1.6.3"
+CATEGORY="security"
+SHORT_DESC="Network authentication protocol with strong authentication."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION-signed.tar"
+WEB_SITE="http://web.mit.edu/Kerberos/"
+WGET_URL="${WEB_SITE}dist/$PACKAGE/1.6/$TARBALL"
+DEPENDS="libkrb5"
+CONFIG_FILES="/etc/krb5"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -d $src ] || tar xzf $PACKAGE-$VERSION.tar.gz
+	cd $src/src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--sysconfdir=/etc --localstatedir=/var \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/../_pkg install
+	cp ../../stuff/*.files-list ..
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/etc
+	cp -a $_pkg/usr/share/examples/krb5 $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cat $src/*.files-list | while read file; do
+		rm -rf $fs$file
+	done
+	# Package all krb5 pkgs
+	for i in $(cd $WOK; grep -l '^WANTED="krb5"$' */receipt)
+	do
+    		tazwok cook ${i%/receipt}
+	done
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+$(cd $1/ ; find etc/krb5 -type f)
+EOT
+	cat <<EOF
+----
+To start $PACKAGE server you can run :
+
+    /etc/init.d/$PACKAGE start
+
+Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
+----
+EOF
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
