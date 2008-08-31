@@ -1,0 +1,77 @@
+# SliTaz package receipt.
+
+PACKAGE="mgetty"
+VERSION="1.1.35"
+CATEGORY="network"
+SHORT_DESC="reliable and proven fax send and receive solution."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE$VERSION-Feb22.tar.gz"
+WEB_SITE="http://mgetty.greenie.net/"
+WGET_URL="ftp://mgetty.greenie.net/pub/$PACKAGE/source/1.1/$TARBALL"
+CONFIG_FILES="/etc/mgetty+sendfax"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+
+	cd $src
+	[ -f Makefile.dist ] && mv -f Makefile.dist Makefile
+	cp Makefile Makefile.dist
+	cp Makefile Makefile.install
+	cp policy.h-dist policy.h
+	sed -i  -e 's|/* #define AUTO_PPP */|#define AUTO_PPP|' policy.h
+	sed -i  -e "s|^prefix=/usr/local|prefix=/usr|" \
+		-e "s|^spool=/var/spool|spool=/var/spool|" \
+		-e "s|^CONFDIR=.*|CONFDIR=/etc/mgetty+sendfax|" \
+		Makefile
+	sed -i  -e "s|^prefix=/usr/local|prefix=$PWD/_pkg/usr|" \
+		-e "s|^spool=/var/spool|spool=$PWD/_pkg/var/spool|" \
+		-e "s|^CONFDIR=.*|CONFDIR=$PWD/_pkg/etc/mgetty+sendfax|" \
+		-e 's|^INSTALL=install .*|INSTALL=install -c -o root -g root|' \
+		Makefile.install
+	make bin-all vgetty
+	mkdir -p _pkg/var/spool
+	mv -f Makefile.install Makefile
+	make -k install.bin vgetty-install || true
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/var $fs
+	chmod 755 $fs/var/spool/fax
+	for i in $(cd $WOK; ls -d mgetty-*)
+	do
+		tazwok cook $i
+	done
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+$(cd $1/ ; find etc/mgetty+sendfax -type f)
+EOT
+        # adduser fax if needed
+	if ! grep -q fax $1/etc/passwd; then
+		echo -n "Adding user fax..."
+		chroot $1/ adduser fax -D -H -S
+		status
+	fi
+	chown fax $fs/var/spool/fax
+}
+
+post_remove()
+{
+	deluser fax
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
