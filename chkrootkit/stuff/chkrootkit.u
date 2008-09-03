@@ -1,0 +1,52 @@
+--- chkrootkit-0.48/chkrootkit
++++ chkrootkit-0.48/chkrootkit
+@@ -562,8 +562,13 @@
+       if [ ! -z "${SHELL}" -a ! -z "${HOME}" ]; then
+       expertmode_output "${find} ${ROOTDIR}${HOME} ${findargs} -name .*history \
+  -size 0"
+-      expertmode_output "${find} ${ROOTDIR}${HOME} ${findargs} -name .*history \
++        if ls -l ${ROOTDIR}/usr/bin/find | ${egrep} -q 'bin/busybox$'; then
++          expertmode_output "${find} ${ROOTDIR}${HOME} ${findargs} -name .*history \
++ -type l"
++        else
++          expertmode_output "${find} ${ROOTDIR}${HOME} ${findargs} -name .*history \
+  \( -links 2 -o -type l \)"
++        fi
+       fi
+ 
+       return 5
+@@ -957,7 +962,9 @@
+    ### Suckit
+    if [ -f ${ROOTDIR}sbin/init ]; then
+       if [ "${QUIET}" != "t" ];then printn "Searching for Suckit rootkit... "; fi
+-      if [ ${SYSTEM} != "HP-UX" ] && ( ${strings} ${ROOTDIR}sbin/init | ${egrep} HOME  || \
++      if [ ${SYSTEM} != "HP-UX" ] && \
++      		((! ls -l ${ROOTDIR}sbin/init  | ${egrep} -q "bin/busybox$" && \
++      		${strings} ${ROOTDIR}sbin/init | ${egrep} HOME) || \
+ 	      cat ${ROOTDIR}/proc/1/maps | ${egrep} "init." ) >/dev/null 2>&1
+         then
+         echo "Warning: ${ROOTDIR}sbin/init INFECTED"
+@@ -1127,7 +1134,12 @@
+       files=`${find} ${ROOTDIR}${HOME} ${findargs} -name '.*history' -size 0`
+       [ ! -z "${files}" ] && \
+         echo "Warning: \`${files}' file size is zero"
+-      files1=`${find} ${ROOTDIR}${HOME} ${findargs} -name '.*history' \( -links 2 -o -type l \)`
++      if ls -l ${ROOTDIR}/usr/bin/find | ${egrep} -q 'bin/busybox$'; then
++        files1='-type l'
++      else
++        files1='\( -links 2 -o -type l \)'
++      fi
++      files1=`eval ${find} ${ROOTDIR}${HOME} ${findargs} -name '.*history' $files1`
+       [ ! -z "${files1}" ] && \
+         echo "Warning: \`${files}' is linked to another file"
+    fi
+@@ -1537,6 +1549,9 @@
+ chk_netstat () {
+     STATUS=${NOT_INFECTED}
+ NETSTAT_I_L="/dev/hdl0/dev/xdta|/dev/ttyoa|/dev/pty[pqrsx]|/dev/cui|/dev/hdn0|/dev/cui221|/dev/dszy|/dev/ddth3|/dev/caca|^/prof|/dev/tux|grep|addr\.h|__bzero"
++    if ls -l /bin/netstat | ${egrep} -q " busybox$"; then
++       return ${STATUS}
++    fi
+     CMD=`loc netstat netstat $pth`
+ 
+     if [ "${EXPERT}" = "t" ]; then
