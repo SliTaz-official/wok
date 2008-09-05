@@ -1,0 +1,68 @@
+# SliTaz package receipt.
+
+PACKAGE="freeradius-dialupadmin"
+VERSION="2.0.5"
+CATEGORY="network"
+SHORT_DESC="radius server web interface"
+MAINTAINER="Serge Daigle sdaigl@lacitec.on.ca"
+DEPENDS="php"
+WEB_SITE="http://www.freeradius.org/"
+WANTED="freeradius"
+CONFIG_FILES="/etc/dialupadmin"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	src=$(cd ../freeradius/freeradius-server-$VERSION;  pwd)
+	mkdir -p $fs/usr/share $fs/etc/dialupadmin
+	cp -a $src/dialup_admin $fs/usr/share
+	cp -a $src/dialup_admin/conf/* $fs/etc/dialupadmin
+	rm -rf $fs/usr/share/dialup_admin/conf
+	ln -s /etc/dialupadmin $fs/usr/share/dialup_admin
+}
+
+post_install()
+{
+	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
+		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
+etc/dialupadmin
+EOT
+	# Configure lighttpd server
+	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+		if ! grep -q /usr/share/dialup_admin/ $1/etc/lighttpd/lighttpd.conf; then
+	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/dialupadmin/" => "/usr/share/dialup_admin/htdocs/",|g' -i $1/etc/lighttpd/lighttpd.conf
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/lighttpd stop
+				/etc/init.d/lighttpd start
+			fi
+		fi
+	fi
+	# Configure apache server
+	if [ -f $1/etc/apache/httpd.conf ]; then
+		if [ ! -f $1/etc/apache/conf.d/phpldapadmin ]; then
+			cat > $1/etc/apache/conf.d/phpldapadmin <<EOT
+<IfModule mod_alias.c>
+    Alias /dialupadmin /usr/share/dialup_admin/htdocs
+</IfModule>
+<DirectoryMatch /usr/share/dialup_admin/htdocs/>
+    DirectoryIndex index.php
+    Options +FollowSymLinks
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</DirectoryMatch>
+EOT
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/apache stop
+				/etc/init.d/apache start
+			fi
+		fi
+	fi
+}
+
+repack_cleanup()
+{
+        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
+}
