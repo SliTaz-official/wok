@@ -1,0 +1,80 @@
+# SliTaz package receipt.
+
+PACKAGE="boxbackup-client"
+VERSION="0.10"
+CATEGORY="network"
+SHORT_DESC="Client for the BoxBackup on-line backup system"
+MAINTAINER="domcox@users.sourceforge.net"
+DEPENDS="db libedit openssl perl zlib"
+SOURCE="boxbackup"
+WANTED="boxbackup-server"
+WEB_SITE="http://www.boxbackup.org/"
+
+# Configuration variables                                                                                                    
+CONF_DIR="/etc/box"
+DATA_DIR="/var/lib/bbackupd"
+RUN_DMON=0
+
+# Rules to gen a SliTaz package suitable for Tazpkg
+genpkg_rules()
+{
+ 	_pkg=$WOK/$WANTED/${SOURCE}-$VERSION/parcels/boxbackup-${VERSION}-backup-client-linux-gnu
+	mkdir -p $fs/usr/bin
+	cp -a $_pkg/bb* $fs/usr/bin
+	mkdir -p $fs/etc/init.d
+	cp -a stuff/bbackupd $fs/etc/init.d
+}
+
+# Pre and post install commands for Tazpkg
+
+pre_install()
+{
+	# Stop daemon
+	if [ -e /var/run/bbackupd.pid ]; then
+		/etc/init.d/bbackupd stop
+		RUN_DMON=1
+	fi
+}
+
+post_install()
+{
+	# Creating conf dir
+	if [ ! -e $CONF_DIR ]; then
+	    mkdir -p $CONF_DIR && chmod 755 $CONF_DIR
+	fi
+	if [ ! -e $DATA_DIR ]; then
+	    mkdir -p $DATA_DIR && chmod 700 $DATA_DIR
+	fi
+	# Start daemon (if stopped by install)
+	if [ $RUN_DMON -eq 1 ]; then
+		/etc/init.d/bbackupd start
+	fi
+}
+
+# Pre and post remove commands for Tazpkg
+
+pre_remove()
+{
+    # Stop daemon
+	if [ -e /var/run/bbackupd.pid ]; then
+		/etc/init.d/bbackupd stop
+	fi
+}
+
+post_remove()
+{
+	# Delete DATA directory
+	rm -rf $DATA_DIR
+
+	# Delete Client config files
+	rm -rf $CONF_DIR/bbackupd*
+
+	# Delete CONF dir (if empty)
+	if [ `ls $CONF_DIR | wc -l` -eq 0 ]; then
+		echo -n "Removing $CONF_DIR..."
+		rm -rf $CONF_DIR
+		status
+	fi
+	# Delete PID, sock files
+	rm -f /var/run/bbackupd.*
+}
