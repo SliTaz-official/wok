@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="gtk-gnutella"
+VERSION="snapshot"
+CATEGORY="internet"
+SHORT_DESC="p2p client"
+MAINTAINER="allan316@gmail.com"
+DEPENDS="gnutls libgcrypt libgpg-error"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://gtk-gnutella.sourceforge.net"
+WGET_URL="http://nchc.dl.sourceforge.net/sourceforge/gtk-gnutella/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./build.sh --prefix=/usr \
+	--disable-dbus \
+	--disable-ipv6 \
+	--disable-nls 
+	make install INSTALL_PREFIX=$PWD/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/applications
+	mkdir -p $fs/usr/share/pixmaps
+	mkdir -p $fs/usr/share/gtk-gnutella/pixmaps
+	cp -a $_pkg/usr/bin/* $fs/usr/bin
+	cp -a $_pkg/usr/share/applications/* $fs/usr/share/applications/
+	cp -a $_pkg/usr/share/pixmaps/* $fs/usr/share/pixmaps
+	cp -a $_pkg/usr/share/gtk-gnutella/pixmaps/* $fs/usr/share/gtk-gnutella/pixmaps/
+	strip -s $fs/usr/bin/*
+}
+
