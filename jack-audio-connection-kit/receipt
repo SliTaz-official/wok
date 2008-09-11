@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="jack-audio-connection-kit"
+VERSION="0.109.2"
+CATEGORY="multimedia"
+SHORT_DESC="low-latency audio server"
+MAINTAINER="allan316@gmail.com"
+BUILD_DEPENDS="alsa-lib-dev"
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://jackaudio.org"
+WGET_URL="http://jackaudio.org/downloads/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --with-default-tempdir=/dev/shm \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/jack
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/jack/*.so* $fs/usr/lib/jack
+	strip -s $fs/usr/bin/*
+}
+
