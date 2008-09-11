@@ -1,0 +1,59 @@
+# SliTaz package receipt.
+
+PACKAGE="mpd"
+VERSION="0.13.2"
+CATEGORY="multimedia"
+SHORT_DESC="Music Player Daemon (MPD)."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="libid3tag libmad libogg libvorbis flac"
+BUILD_DEPENDS="alsa-lib-dev zlib-dev libid3tag-dev \
+	libmad-dev libogg-dev libvorbis-dev flac-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.musicpd.org/"
+WGET_URL="http://www.musicpd.org/uploads/files/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/sbin
+	mkdir -p $fs/etc
+	cp -a $_pkg/usr/bin/mpd $fs/usr/sbin
+	cp $_pkg/usr/share/doc/mpd/mpdconf.example $fs/etc/mpd.conf
+}
+
+post_install()
+{
+	echo "Processing post-install commands..." 
+
+	# Drop root priviledges and enable pid file
+	echo -n "Enabling mpd.conf..."
+	cd $1/etc
+	sed -i 's/#pid_file/pid_file/; \
+	s/#user/user/; s/#bind_to_address/bind_to_address/; \
+	s/"nobody"/"tux"/; s/"any"/"localhost"/' mpd.conf
+	status
+	
+	# Make mpd directories and files
+	echo -n "Enabling mpd files and directories"
+	mkdir /home/tux/music
+	mkdir -p /home/tux/.mpd/playlists
+	touch /home/tux/.mpd/mpd.log
+	touch /home/tux/.mpd/mpd.error
+
+	# And change permissions
+	chown tux:tux /home/tux/music
+	chown -R tux:tux /home/tux/.mpd
+	status
+}
+	
+
