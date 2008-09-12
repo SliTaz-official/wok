@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="acpid"
+VERSION="1.0.6"
+CATEGORY="system-tools"
+SHORT_DESC="The ACPI event daemon"
+MAINTAINER="domcox@users.sourceforge.net"
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://acpid.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make clean && make
+	make INSTPREFIX=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	mkdir -p $fs/etc/init.d
+	cp -a stuff/acpid $fs/etc/init.d
+	mkdir -p $fs/etc/acpi/events
+	cp -a stuff/power $fs/etc/acpi/events
+	touch $fs/var/log/acpid.log && chmod 700 $fs/var/log/acpid.log
+}
+
+# Pre and post remove commands for Tazpkg                                                                              
+
+pre_remove()
+{
+	/etc/init.d/acpid stop
+}
+
+post_remove()
+{
+	if [ `ls /etc/acpi/events | wc -l` -eq 0 ]; then
+		echo -n "Removing /etc/acpi..."
+		rm -rf /etc/acpi
+		status
+	fi
+}
