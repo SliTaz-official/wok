@@ -50,7 +50,7 @@
  #include <libgen.h>
  #include <sys/utsname.h>
  
-@@ -4212,6 +4213,45 @@ static const char *moderror(int err)
+@@ -4212,6 +4213,48 @@ static const char *moderror(int err)
  	}
  }
  
@@ -68,6 +68,9 @@
 +	xread(fd,head,sizeof(head));
 +	lseek(fd,0L,SEEK_SET);
 +	if (head[0] == 0x1f && head[1] == 0x8b) { /* gzip */
++#if BB_MMU
++		xread(fd,head,2); // bb wierdness...
++#endif
 +		open_transformer(fd, unpack_gz_stream, "gunzip");
 +	}
 +	else if (head[0] == 'B' && head[1] == 'Z' && 
@@ -96,7 +99,7 @@
  #if !ENABLE_FEATURE_2_4_MODULES
  int insmod_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
  int insmod_main(int argc UNUSED_PARAM, char **argv)
-@@ -4264,8 +4304,7 @@ static int insmod_ng_main(int argc UNUSE
+@@ -4264,8 +4307,7 @@ static int insmod_ng_main(int argc UNUSE
  		xread(fd, map, len);
  	}
  #else
