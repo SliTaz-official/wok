@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="wormux"
-VERSION="0.8"
+VERSION="0.8.1"
 CATEGORY="games"
 SHORT_DESC="Wormux game."
-DEPENDS="xorg libSDL libsdl-gfx libsdl-image libsdl-mixer
+DEPENDS="xorg libsdl-gfx libsdl-image libsdl-mixer
 	libsdl-net libsdl-ttf curl"
-BUILD_DEPENDS="xorg-dev libSDL-dev libsdl-gfx-dev libsdl-image-dev
-	libsdl-mixer-dev libsdl-net-dev libsdl-ttf-dev curl-dev"
+BUILD_DEPENDS="xorg-dev libsdl-gfx-dev libsdl-image-dev
+	libsdl-mixer-dev libsdl-net-dev libsdl-ttf libsdl-ttf-dev curl-dev"
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.wormux.org/"
@@ -19,12 +19,14 @@ compile_rules()
 	cd $src
 	sed -i s:"INSTALL = /usr/bin/install -c":"INSTALL = /usr/bin/install -c -d":\
 		Makefile
+	sed -i 's/test -z "$(pkgdatadir)"/test -d "$(pkgdatadir)"/'\
+		 data/Makefile.in
 	./configure \
 		--prefix=/usr \
 		--bindir=/usr/games \
 		--with-font-path=/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf \
-		$CONFIGURE_ARGS
-	make
+		$CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
