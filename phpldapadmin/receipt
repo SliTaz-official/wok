@@ -31,6 +31,11 @@ post_install()
 		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
 etc/phpldapadmin/config.php
 EOT
+	if [ -s $1/etc/openldap/slapd.conf ]; then
+		rootdn=$(awk '/^rootdn/ { print $2 }' < $1/etc/openldap/slapd.conf | sed 's/"//g')
+		sed -i "s|'login','dn','');|'login','dn','');\\n\$ldapservers->SetValue(\$i,'login','dn','$rootdn');|" $1/etc/phpldapadmin/config.php
+		chown 80.80 $1/etc/phpldapadmin/config.php
+	fi
 	# Configure lighttpd server
 	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
 		if ! grep -q /usr/share/phpldapadmin/ $1/etc/lighttpd/lighttpd.conf; then
