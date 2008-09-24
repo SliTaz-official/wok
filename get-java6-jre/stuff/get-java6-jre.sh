@@ -61,10 +61,11 @@ WEB_SITE="http://www.java.com/"
 post_install()
 {
 	echo "Processing post install commands..."
-	if [ -d /usr/lib/firefox-3.0.1 ]; then
-		cd /usr/lib/firefox-3.0.1/plugins
+	for i in /usr/lib/firefox*; do
+		[ -d $i ] || continue
+		cd $i/plugins
 		ln -s /usr/lib/java/jre\$VERSION/plugin/i386/ns7/libjavaplugin_oji.so
-	fi
+	done
 	
 	cd /usr/bin
 	ln -s /usr/lib/java/jre\$VERSION/bin/java 
@@ -72,7 +73,7 @@ post_install()
 
 post_remove()
 {
-	rm -f /usr/lib/firefox-3.0.1/plugins/libjavaplugin_oji.so
+	rm -f /usr/lib/firefox*/plugins/libjavaplugin_oji.so
 	rm -f /usr/bin/java
 }
 EOT
