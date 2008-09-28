@@ -50,6 +50,27 @@ EOT
 			fi
 		fi
 	fi
+	# Configure apache server
+	if [ -f $1/etc/apache/httpd.conf ]; then
+		if [ ! -f $1/etc/apache/conf.d/smbwebclient ]; then
+			cat > $1/etc/apache/conf.d/smbwebclient <<EOT
+<IfModule mod_alias.c>
+    Alias /smbwebclient /usr/share/samba
+</IfModule>
+<DirectoryMatch /usr/share/samba/>
+    DirectoryIndex index.php
+    Options +FollowSymLinks
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</DirectoryMatch>
+EOT
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/apache restart
+			fi
+		fi
+	fi
 	cat <<EOF
 ---
 Check \$cfgDefaultServer in configuration file /etc/samba/smbwebclient.conf 
