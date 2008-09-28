@@ -2,7 +2,7 @@
 
 PACKAGE="postgresql"
 VERSION="8.3.3"
-CATEGORY="misc"
+CATEGORY="system"
 SHORT_DESC="SQL database system."
 MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
@@ -55,6 +55,9 @@ post_install()
 	if ! grep -q postgres $1/etc/passwd; then
 		echo -n "Adding user postgres..."
 		chroot $1/ adduser postgres -D -H -h /var/lib/pgsql
+		# ensure not to overload tux user
+		sed -i 's/^postgres:x:1000:1000:/postgres:x:1001:1001:/' $1/etc/passwd
+		sed -i 's/^postgres:x:1000:/postgres:x:1001:/' $1/etc/group
 		status
 	fi
 	# addgroup postgres if needed
