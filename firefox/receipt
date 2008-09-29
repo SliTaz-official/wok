@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="firefox"
-VERSION="3.0.1"
+VERSION="3.0.3"
 CATEGORY="network"
 SHORT_DESC="User friendly, secure and fast web browser."
 MAINTAINER="pankso@slitaz.org"
@@ -10,6 +10,7 @@ BUILD_DEPENDS="xorg-dev gtk+-dev zip libIDL coreutils findutils xorg-libXft-dev"
 TARBALL="$PACKAGE-$VERSION-source.tar.bz2"
 WEB_SITE="http://www.mozilla.org/"
 WGET_URL="http://ftp.mozilla.org/pub/mozilla.org/firefox/releases/$VERSION/source/$TARBALL"
+CONFIG_FILES="/etc/firefox"
 
 # Rules to configure and make the package.
 #
@@ -48,8 +49,10 @@ genpkg_rules()
 		$fs/usr/lib/$PACKAGE-$VERSION/defaults/profile/chrome
 
 	# Move default config to /etc/firefox (/usr maybe read-only)
-	mv -f $fs/usr/lib/$PACKAGE-$VERSION/defaults $fs/etc/$PACKAGE
-	ln -s /etc/$PACKAGE $fs/usr/lib/$PACKAGE-$VERSION/defaults
+	for i in defaults browserconfig.properties ; do
+		mv -f $fs/usr/lib/$PACKAGE-$VERSION/$i $fs/etc/$PACKAGE
+		ln -s /etc/$PACKAGE $fs/usr/lib/$PACKAGE-$VERSION/$i
+	done
 	# EULA is accepted by SliTaz project.
 	sed -i s:'pref("browser.EULA.3.accepted", false);':'pref("browser.EULA.3.accepted", true);': \
 		$fs/etc/firefox/pref/firefox.js
