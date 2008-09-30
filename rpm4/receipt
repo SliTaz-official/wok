@@ -1,0 +1,89 @@
+# SliTaz package receipt.
+
+PACKAGE="rpm4"
+VERSION="4.4.2.3"
+CATEGORY="system-tools"
+SHORT_DESC="RPM Package Manager"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS=""
+BUILD_DEPENDS="beecrypt beecrypt-dev"
+SOURCE="rpm"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.rpm.org/"
+WGET_URL="http://www.rpm.org/releases/rpm-4.4.x/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr  \
+	 --infodir=/usr/share/info \
+	 --with-selinux=no \
+	 --with-lua=no \
+	 --with-dmalloc=no \
+	 --with-efence=no \
+	 --mandir=/usr/share/man $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin \
+		$fs/usr/lib \
+		$fs/var/lib/rpm \
+		$fs/usr/src/redhat/SOURCES \
+		$fs/usr/src/redhat/BUILD \
+		$fs/usr/src/redhat/RPMS \
+		$fs/usr/src/redhat/SPECS \
+		$fs/usr/src/redhat/SRPMS
+		
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/bin/* $fs/usr/bin
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/rpm $fs/usr/lib
+}
+
+post_install()
+{
+	echo "Processing post install commands..."
+	cmd=`readlink $root/bin/rpm`
+    if [ ! "$cmd" = "/usr/bin/rpm" ]; then
+        echo ""
+        echo "**** Actual RPM link : $cmd"
+        echo ""
+        echo -n "Do you want rpm  for /bin/rpm (y/N) ? : "; read anser
+        if [ "$anser" == "y" ]; then
+            echo ""
+            echo -n "Removing rpm link to make a new one pointing on /usr/bin/rpm..."
+            rm $root/bin/rpm && ln -sf $root/usr/bin/rpm $root/bin/rpm
+            status
+        else
+            echo ""
+            echo "Leaving /bin/vi to : $cmd"
+        fi
+    fi
+                
+    # Building rpm database.
+	$root/usr/bin/rpm --initdb --quiet
+}
+
+pre_remove()
+{
+	if [ -d /var/lib/rpm ]; then
+		rm -f /var/lib/rpm/*
+	fi
+}
+
+post_remove()
+{
+	echo "Processing post remove commands..."
+	cmd=`readlink $root/bin/rpm`
+    if [ ! "$cmd" = "/bin/rpm" ]; then
+    	echo -n "Restore applets from busybox..."
+        ln -sf $root/bin/busybox $root/bin/rpm
+        ln -sf $root/bin/busybox $root/usr/bin/rpm2cpio
+        status
+    fi
+}
