@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="rrdtool"
+VERSION="1.3.2"
+CATEGORY="misc"
+SHORT_DESC="Data logging and graphing system for time series data."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://oss.oetiker.ch/$PACKAGE"
+WGET_URL="$WEB_SITE/pub/$TARBALL"
+DEPENDS="zlib freetype libpng libxml2 fontconfig pixman cairo glib pango"
+BUILD_DEPENDS="perl pkg-config zlib-dev freetype-dev libpng-dev libxml2-dev fontconfig-dev pixman-dev cairo-dev glib-dev pango-dev python-dev perl"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	# Package all rrdtool pkgs
+	for i in $(cd $WOK; ls -d rrdtool-*)
+	do
+		tazwok genpkg $i
+	done
+}
+
