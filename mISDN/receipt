@@ -20,8 +20,14 @@ compile_rules()
 	KVERS=${KVERS##* }
 	KSRC=$(cd ../linux/linux-* ; pwd)
 	cd $src
-	patch -p1 < ../stuff/Makefile.u || return 1
-	patch -p1 < ../stuff/${KVERS%.*}.u || return 1
+	while read file; do
+		[ -f done.$file ] && continue
+		patch -p1 < ../stuff/$file || return 1
+		touch done.$file
+	done <<EOT
+Makefile.u
+${KVERS%.*}.u
+EOT
 	cp -a include/linux drivers/isdn/hardware/mISDN/
 	ln -s . drivers/isdn/hardware/mISDN/linux/linux
 	for i in $(cd include; ls linux/*); do

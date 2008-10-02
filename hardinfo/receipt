@@ -15,7 +15,9 @@ compile_rules()
 {
 	cd $src
 	while read file; do
+		[ -f done.$file ] && continue
 		patch -p0 < ../stuff/$file || exit 1
+		touch done.$file
 	done <<EOT
 modules.patch
 users.patch
@@ -25,8 +27,8 @@ os.patch
 EOT
 	./configure \
 		--prefix=/usr \
-		$CONFIGURE_ARGS
-	make
+		$CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
