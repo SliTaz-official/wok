@@ -19,10 +19,10 @@ compile_rules()
 
 	ln -s . $src
 	# get kernel version
-	if [ ! -d ../linux/taz ]; then
+	if [ ! -d $WOK/linux/taz ]; then
 		tazwok cook linux
 	fi
-	kver=$(grep "kernel version" ../linux/linux-*/.config)
+	kver=$(grep "kernel version" $WOK/linux/linux-*/.config)
 	kver=${kver##* }
 
 	# Select patch according to kernel version
@@ -74,10 +74,10 @@ compile_rules()
 	
 	# Apply lzma patches
 #	echo "Apply stuff/lzma.u.."
-#	patch -p0 < ../stuff/lzma.u
+#	patch -p0 < ../stuff/lzma.u || return 1
 	
 	# Build kernel module
-	make -C src/. SUBDIRS=$(pwd)/fs/squashfs/ CONFIG_SQUASHFS=m modules
+	make -C src/. SUBDIRS=$(pwd)/fs/squashfs/ CONFIG_SQUASHFS=m modules || return 1
 	cd ..
 	[ -d _pkg ] && rm -rf _pkg
 	mkdir -p _pkg/lib/modules/$kver-slitaz/kernel/fs/squashfs
@@ -88,7 +88,7 @@ compile_rules()
 
 	# Build user land tools
 	cd ${PACKAGE}${VERSION}/squashfs-tools
-	make
+	make || return 1
 	cp mksquashfs ../../_pkg/usr/sbin
 	cp unsquashfs ../../_pkg/sbin
 }
