@@ -13,9 +13,17 @@ DEPENDS="lzlib"
 # Rules to configure and make the package.
 compile_rules()
 {
-	ln -sf . $src
+	mkdir -p $src
+	cd $src
+	for i in ../* ; do
+		case "$i" in
+		../receipt*|../taz|../stuff|../process.log);;
+		../$(basename $src));;
+		*) mv $i .;;
+		esac
+	done
 	if [ ! -f done.lzlib.u ]; then
-		patch -p0 < stuff/lzlib.u || return 1
+		patch -p0 < ../stuff/lzlib.u || return 1
 		touch done.lzlib.u
 	fi
 	cd CPP/7zip/Compress/LZMA_Alone
@@ -28,6 +36,6 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a CPP/7zip/Compress/LZMA_Alone/lzma-shared $fs/usr/bin/lzma
+	cp -a $src/CPP/7zip/Compress/LZMA_Alone/lzma-shared $fs/usr/bin/lzma
 }
 
