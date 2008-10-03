@@ -13,10 +13,13 @@ WGET_URL="http://download.savannah.nongnu.org/releases/tinycc/$TARBALL"
 compile_rules()
 {
 	cd $src
-	patch < ../stuff/Makefile.u || return 1
-	./configure --prefix=/usr $CONFIGURE_ARGS
-	make
-	make test
+	if [ ! -f done.Makefile.u ]; then
+		patch < ../stuff/Makefile.u || return 1
+		touch done.Makefile.u
+	fi
+	./configure --prefix=/usr $CONFIGURE_ARGS &&
+	make &&
+	make test &&
 	make DESTDIR=$PWD/_pkg install
 }
 
