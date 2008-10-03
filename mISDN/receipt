@@ -13,12 +13,12 @@ BUILD_DEPENDS="linux"
 # Rules to configure and make the package.
 compile_rules()
 {
-	if [ ! -d ../linux/taz ]; then
+	if [ ! -d $WOK/linux/taz ]; then
 		tazwok cook linux
 	fi
-	KVERS=$(grep "kernel version" ../linux/linux-*/.config)
+	KVERS=$(grep "kernel version" $WOK/linux/linux-*/.config)
 	KVERS=${KVERS##* }
-	KSRC=$(cd ../linux/linux-* ; pwd)
+	KSRC=$(cd $WOK/linux/linux-* ; pwd)
 	cd $src
 	while read file; do
 		[ -f done.$file ] && continue
@@ -35,6 +35,7 @@ EOT
 		drivers/isdn/hardware/mISDN/linux/*.?
 	done
 	sed -i "s,MISDNVERSION,\"$(cat VERSION)\"," drivers/isdn/hardware/mISDN/*.c
+	sed -i 's/depmod/echo/' Makefile
 	make KVERS=$KVERS LINUX=$KSRC KBUILD_NOPEDANTIC=1 DESTDIR=$PWD/_pkg install
 }
 
@@ -52,7 +53,7 @@ genpkg_rules()
 # Post install/remove commands for Tazpkg.
 post_install()
 {
-	depmod -a -b "$1/" $EXTRAVERSION-slitaz
+	depmod -a -b "$1/" ${EXTRAVERSION#_}-slitaz
 }
 
 post_remove()
