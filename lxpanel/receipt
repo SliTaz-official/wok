@@ -16,13 +16,16 @@ compile_rules()
 {
 	cd $src
 	# Patch the menu
-	patch -p0 < ../stuff/ptk-app-menu.patch  || exit 1
-	patch -p0 < ../stuff/fr.patch || exit 1
+	for i in ptk-app-menu.patch fr.patch ; do
+		[ -f done.$i ] && continue
+		patch -p0 < ../stuff/$i || exit 1
+		touch done.$i
+	done
 	./configure \
 		--prefix=/usr \
 		--with-plugins=all \
-		$CONFIGURE_ARGS
-	make
+		$CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
