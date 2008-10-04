@@ -1,0 +1,62 @@
+#!/bin/sh
+# /etc/init.d/ntop : Start, stop and restart ntop daemon on SliTaz, at 
+# boot time or with the command line.
+#
+# To start SSH server at boot time, just put ntop in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+
+
+NAME=ntop
+DESC="ntop server"
+DAEMON=/usr/bin/ntop
+
+HTTP_PORT="3000"
+
+OPTIONS="-w HTTP_PORT -d"
+PIDFILE=/var/run/ntop.pid
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    # We need to set ntop admin password.
+    if [ ! -f /var/ntop/ntop_pw.db ] ; then
+		ntop -A || exit
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS
+    status
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill `cat $PIDFILE` && rm -f $PIDFILE
+    status
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    kill `cat $PIDFILE` && rm -f $PIDFILE
+    sleep 2
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0

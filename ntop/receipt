@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="ntop"
+VERSION="3.3.7"
+CATEGORY="network"
+SHORT_DESC="Network traffic probe."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.ntop.org/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="zlib openssl libpng libpcap glibc gdbm rrdtool perl"
+BUILD_DEPENDS="zlib-dev openssl-dev libpng-dev libpcap libtool glibc-dev gdbm-dev rrdtool autoconf automake rrdtool-dev"
+CONFIG_FILES="/etc/ntop"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./autogen.sh --prefix=/usr --infodir=/usr/share/info \
+	--sysconfdir=/etc --localstatedir=/var \
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install install-data-as
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/plugins $fs/usr/share
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/ntop $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/ntop $fs/usr/share
+	chown -R 80.80 $fs/usr/share/ntop
+	cp -a $_pkg/usr/bin $fs
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/var $fs
+	
+	# fix perms for /var/ntop
+	chown nobody.nogroup $fs/var/ntop
+	
+	# Copy startup script and fix perms
+	cp -a stuff/etc $fs
+	chown root.root $fs/etc/init.d/ntop
+	
+	# Package all ntop pkgs
+	for i in $(cd $WOK; ls -d ntop-*)
+	do
+		tazwok genpkg $i
+	done
+}
+
