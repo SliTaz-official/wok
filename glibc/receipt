@@ -20,6 +20,10 @@ compile_rules()
 {
 	mkdir glibc-build
 	cd glibc-build
+	# Install in the build tree and then move all files
+	# to the source tree to keep $src and $_pkg for genpkg.
+	mkdir -p _pkg/etc
+	touch _pkg/etc/ld.so.conf
 	echo "CFLAGS += -march=i486" > configparms
 	../$PACKAGE-$VERSION/configure \
 		--prefix=/usr \
@@ -28,14 +32,9 @@ compile_rules()
 		--enable-add-ons \
 		--enable-kernel=2.6.0 \
 		--libexecdir=/usr/lib/glibc \
-		$CONFIGURE_ARGS
-	make
-	# Install in the build tree and then move all files
-	# to the source tree to keep $src and $_pkg for genpkg.
-	mkdir -p _pkg/etc
-	touch _pkg/etc/ld.so.conf
-	make install_root=$PWD/_pkg install
-	mv _pkg ../$PACKAGE-$VERSION
+		$CONFIGURE_ARGS &&
+	make &&
+	make install_root=$(cd ../$PACKAGE-$VERSION ; pwd)/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
