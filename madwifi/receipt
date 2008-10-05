@@ -1,29 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="madwifi"
-VERSION="r3366"
+VERSION="r3861"
 CATEGORY="system-tools"
 SHORT_DESC="Driver for Atheros-based WLAN cards"
 MAINTAINER="erjo@slitaz.org"
 DEPENDS=""
-SOURCE="madwifi-nr-r3366+ar5007"
+SOURCE="madwifi-hal-0.10.5.6-r3861-20080903"
 TARBALL="$SOURCE.tar.gz"
 WEB_SITE="http://madwifi.org"
-WGET_URL="http://snapshots.madwifi.org/special/$TARBALL"
+WGET_URL="http://snapshots.madwifi.org/madwifi-hal-0.10.5.6/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	src="madwifi-ng-r3366+ar5007"
-	cd "$src"
-	make clean 
-	make && \
+	if [ ! -d $WOK/linux/taz ]; then
+		tazwok cook linux
+	fi
+	cd "$SOURCE"
+	export KERNELPATH=$(ls -d $WOK/linux/linux-*)
+	echo "KERNELPATH=$KERNELPATH"
+	make KERNELPATH=$KERNELPATH clean
+	make KERNELPATH=$KERNELPATH &&
 	make DESTDIR=$PWD/_pkg install
 }
 
 genpkg_rules()
 {
-	_pkg="madwifi-ng-r3366+ar5007/_pkg"
+	_pkg="$SOURCE/_pkg"
 	KVER=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	EXTRAVERSION=_$KVER
 	
