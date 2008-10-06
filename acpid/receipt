@@ -9,10 +9,27 @@ DEPENDS=""
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://acpid.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+KEY_FILE="key-constants"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Build acpi_fakekey utility
+	cp -a stuff/acpi_fakekey.c .
+	gcc -g -Wall -o acpi_fakekey acpi_fakekey.c
+	# Generate key constants file
+	INPUT_H="/usr/include/linux/input.h"
+	echo -n '# Generated from $INPUT dated ' > $KEY_FILE
+	date -r $INPUT_H >> $KEY_FILE
+   	echo "KEY_RESERVED=0" >> $KEY_FILE
+	awk '/define KEY_/{if($3 <= 255 && $3 > 0) print $2"="$3}' $INPUT_H | sort -nt'=' -k2 >> $KEY_FILE
+	echo "KEY_LOCK=\$KEY_COFFEE" >> $KEY_FILE
+	echo "KEY_LIGHT=\$KEY_F19" >> $KEY_FILE
+	echo "KEY_VIDEOOUT=\$KEY_F20" >> $KEY_FILE
+	echo "KEY_ROTATESCREEN=\$KEY_F21" >> $KEY_FILE
+	echo "KEY_VIDEOMODECYCLE=\$KEY_F22" >> $KEY_FILE
+	echo "KEY_PRESENTATION=\KEY_F23" >> $KEY_FILE
+	# Build acpid
 	cd $src
 	make clean && make
 	make INSTPREFIX=$PWD/_pkg install
@@ -22,13 +39,19 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
+	# acpid
 	cp -a $_pkg/usr/sbin $fs/usr
-	mkdir -p $fs/etc/init.d
-	cp -a stuff/acpid $fs/etc/init.d
-	mkdir -p $fs/etc/acpi/events
-	cp -a stuff/power $fs/etc/acpi/events
+	# acpi_listen
+	cp -a $_pkg/usr/bin $fs/usr
+	# acpid conf files
+	mkdir -p $fs/etc
+	cp -a stuff/init.d $fs/etc/
+	cp -a stuff/acpi $fs/etc/
+	mkdir -p $fs/var/log/
 	touch $fs/var/log/acpid.log && chmod 700 $fs/var/log/acpid.log
+	# acpi_fakekey
+	cp -a acpi_fakekey $fs/usr/bin
+	cp -a $KEY_FILE $fs/etc/acpi/
 }
 
 # Pre and post remove commands for Tazpkg                                                                              
@@ -41,7 +64,12 @@ pre_remove()
 post_remove()
 {
 	if [ `ls /etc/acpi/events | wc -l` -eq 0 ]; then
-		echo -n "Removing /etc/acpi..."
+		echo -n "Removing /etc/acpi/events"
+		rm -rf /etc/acpi/events
+		status
+	fi
+	if [ `ls /etc/acpi | wc -l` -eq 0 ]; then
+		echo -n "Removing /etc/acpi"
 		rm -rf /etc/acpi
 		status
 	fi
