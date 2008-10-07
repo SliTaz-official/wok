@@ -29,15 +29,18 @@ userdir"
 compile_rules()
 {
 	cd $src
-	patch -i ../stuff/fastcgi_detach.patch || exit 1
+	if [ ! done.fastcgi_detach.patch ]; then
+		patch -i ../stuff/fastcgi_detach.patch || exit 1
+		touch done.fastcgi_detach.patch
+	fi
 	./configure \
 		--enable-shared \
 		--disable-ipv6 \
 		--prefix=/usr \
     	--libdir=/usr/lib/lighttpd \
     	--mandir=/usr/share/man \
-    	$CONFIGURE_ARGS
-	make
+    	$CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
