@@ -1,0 +1,71 @@
+# SliTaz package receipt.
+
+PACKAGE="zsh"
+VERSION="4.3.6"
+CATEGORY="system-tools"
+DEPENDS="ncurses zlib"
+BUILD_DEPENDS="ncurses-dev zlib-dev"
+SHORT_DESC="Zsh shell incorporates many features of bash, ksh, and tcsh"
+MAINTAINER="sandys@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://zsh.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --bindir=/bin \
+	--disable-dynamic --enable-multibyte  \
+	--infodir=/usr/share/info --mandir=/usr/share/man \
+	--enable-fndir=/usr/share/zsh/functions \
+	--enable-scriptdir=/usr/share/zsh/scripts \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{	
+	cp -a $_pkg/bin $fs
+	strip -s $fs/bin/zsh
+
+	# Config files.
+	#
+	mkdir $fs/etc
+	cp stuff/example.zshrc $fs/etc/zshrc
+	
+	#no way around this... gen_package will not automatically copy these
+	mkdir -p $fs/usr/share/zsh
+	cp -r $_pkg/usr/share/zsh/functions $fs/usr/share/zsh
+
+	mkdir -p $fs/usr/share/zsh/scripts
+
+}
+
+# Post install commands for Tazpkg.
+# Check /bin/sh stat.
+#
+post_install()
+{
+	local root
+	root=$1
+	echo "Processing post-install commands..."
+	sh=`readlink $root/bin/sh`
+	if [ ! "$sh" = "/bin/zsh" ]; then
+		echo ""
+		echo "**** Actual SH link : $sh"
+		echo ""
+		echo -n "Do you want Zsh for /bin/sh (y/N) ? : "; read anser
+		if [ "$anser" == "y" ]; then
+			echo ""
+			echo -n "Removin sh link to make a new one pointing on /bin/zsh..."
+			rm $root/bin/sh && ln -s /bin/zsh $root/bin/sh
+			status
+		else
+			echo ""
+			echo "Leaving /bin/sh to : $sh"
+		fi
+	fi
+}
