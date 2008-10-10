@@ -15,12 +15,16 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 compile_rules()
 {
 	cd $src
+	grep -rl glib/gmessages . | while read file; do
+		echo "Patching $file..."
+		sed -i 's|glib/gmessages|glib|' $file
+	done
 	./configure \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
 		--disable-lcms \
-		$CONFIGURE_ARGS
-	make
+		$CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
