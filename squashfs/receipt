@@ -9,7 +9,7 @@ WEB_SITE="http://$PACKAGE.sourceforge.net/"
 TARBALL="squashfs$VERSION.tgz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 DEPENDS="zlib squashfs-module"
-BUILD_DEPENDS="zlib-dev patch"
+BUILD_DEPENDS="zlib-dev patch lzma"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -17,7 +17,9 @@ compile_rules()
 	local kver
 	local patch_dir
 
-	ln -s . $src
+	mkdir -p $src
+	cd $src
+	mv ../$PACKAGE$VERSION .
 	# get kernel version
 	if [ ! -d $WOK/linux/taz ]; then
 		tazwok cook linux
@@ -43,7 +45,7 @@ compile_rules()
 	[ -d _kernel ] && rm -rf _kernel
 	mkdir _kernel
 	cd _kernel
-	ln -fs ../../linux/linux-$kver* src
+	ln -fs $WOK/linux/linux-$kver* src
 
 	# Copy files to be patched in local aera
 	# Do not alter kernel sources !!
@@ -58,7 +60,7 @@ compile_rules()
 	awk 'BEGIN { keep=1} /^---/ { keep=(index($0,"/fs/squashfs/") || index($0,"/include/linux/"))} { if (keep) print }' < \
 		../$patch_dir/${PACKAGE}${VERSION}-patch | patch -p1
 
-	extra_patch=stuff/squashfs-patch-${kver%.*}
+	extra_patch=../stuff/squashfs-patch-${kver%.*}
 	if [ -e ../$extra_patch ]; then
 		echo "Apply $extra_patch..."
 		patch -p1 < ../$extra_patch || return 1
@@ -74,7 +76,7 @@ compile_rules()
 	
 	# Apply lzma patches
 #	echo "Apply stuff/lzma.u.."
-#	patch -p0 < ../stuff/lzma.u || return 1
+#	patch -p0 < ../../stuff/lzma.u || return 1
 	
 	# Build kernel module
 	make -C src/. SUBDIRS=$(pwd)/fs/squashfs/ CONFIG_SQUASHFS=m modules || return 1
@@ -82,9 +84,8 @@ compile_rules()
 	[ -d _pkg ] && rm -rf _pkg
 	mkdir -p _pkg/lib/modules/$kver-slitaz/kernel/fs/squashfs
 	mkdir -p _pkg/usr/sbin _pkg/sbin
-	cp _kernel/fs/squashfs/squashfs.ko \
-        	_pkg/lib/modules/$kver-slitaz/kernel/fs/squashfs/squashfs.ko
-	gzip -9 _pkg/lib/modules/$kver-slitaz/kernel/fs/squashfs/squashfs.ko
+	lzma e _kernel/fs/squashfs/squashfs.ko \
+        	_pkg/lib/modules/$kver-slitaz/kernel/fs/squashfs/squashfs.ko.gz
 
 	# Build user land tools
 	cd ${PACKAGE}${VERSION}/squashfs-tools
@@ -96,5 +97,5 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a _pkg/usr _pkg/sbin $fs
+	cp -a $_pkg/usr $_pkg/sbin $fs
 }
