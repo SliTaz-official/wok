@@ -16,12 +16,19 @@ CONFIG_FILES="/etc/imapd.conf /etc/cyrus.conf"
 compile_rules()
 {
 	cd $src
-	patch -p1 < ../stuff/50-FTBFS-gcc-4.0-fix.dpatch
-	patch -p0 < ../stuff/p1.patch
-	patch -p0 < ../stuff/p2.patch
+	while read arg file; do
+		[ -f done.$file ] && continue
+		echo "Apply $file..."
+		patch $arg < ../stuff/$file
+		touch done.$file
+	done << EOT
+-p1 50-FTBFS-gcc-4.0-fix.dpatch
+-p0 p1.patch
+-p0 p2.patch
+EOT
 	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS
-	make
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
