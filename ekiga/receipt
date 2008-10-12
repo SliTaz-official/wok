@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="ekiga"
+VERSION="3.0.0"
+CATEGORY="network"
+SHORT_DESC="SIP and H.323 compatible VoIP telephony and video conferencing."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.ekiga.org/"
+WGET_URL="$WEB_SITE/admin/downloads/latest/sources/sources/$TARBALL"
+BUILD_DEPENDS="opal-dev opal ptlib-dev ptlib gtk+-dev intltool libsigc++ libsigc++-dev openssl-dev libSDL-dev libunixODBC"
+DEPENDS="opal ptlib cyrus-sasl openssl libSDL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --sysconfdir=/etc \
+	--libexecdir=/usr/bin --mandir=/usr/share/man \
+	--disable-gnome --disable-gconf --disable-eds --disable-notify \
+	--disable-xv --disable-avahi --disable-scrollkeeper --disable-gdu \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/sounds $fs/usr/share
+	cp -a $_pkg/usr/share/icons $fs/usr/share
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	cp -a $_pkg/usr/share/dbus-1 $fs/usr/share
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+}
+
