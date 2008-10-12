@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="wget"
+VERSION="1.9"
+CATEGORY="utilities"
+SHORT_DESC="retrieve files from the web"
+MAINTAINER="sygne@ombres.eu"
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/wget/wget.html"
+WGET_URL="http://ftp.gnu.org/gnu/wget/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src	
+	./configure 
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	echo $_pkg	
+	mkdir -p $fs/usr 
+	cp -a $_pkg/usr/local/bin $fs/usr
+	strip -s $fs/usr/bin/*
+}
+
+# Post install rules.
+post_install()
+{
+	echo -e "
+wget is in conflict with the busybox wget.
+You'll have to re-install it after each busybox update.
+If you want to use the busybox wget, do (as root):
+\033[1m ln -s /bin/busybox /usr/bin/wget \033[0m
+"
+}
+
+
