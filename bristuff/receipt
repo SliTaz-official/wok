@@ -58,15 +58,24 @@ compile_rules()
 	# cd asterisk-addons
 	# patch -p0 < chan_mobile-1.4.x.patch
 	tar xjf agx-ast-addons-$ADD_VER.tar.bz2
-	patch -p0 < ../stuff/CMakeLists.u || return 1
-	patch -p0 < ../stuff/bristuff.u || return 1
+	for i in CMakeLists.u bristuff.u; do
+		[ -f done.$i ] && continue
+		patch -p0 < ../stuff/$i || return 1
+		touch done.$i
+	done
 	chmod +x apply-patches.sh
 	sh ./download.sh
-	patch -p0 < ../stuff/sounds.u || return 1
+	for i in sounds.u; do
+		[ -f done.$i ] && continue
+		patch -p0 < ../stuff/$i || return 1
+		touch done.$i
+	done
 	ln -s . zaptel/zaptel
 	ln -s . zaptel/linux
 	mkdir -p _pkg/etc/init.d _pkg/usr/include/zaptel
+	[ -f done.uname ] ||
 	grep -rsl "uname -r" . | xargs sed -i -e "s/uname -r/echo $KVERS/g"
+	touch done.uname
 	export BRISTUFF_ZAP_PARAMS="KBUILD_NOPEDANTIC=1"
 	sh ./compile.sh -d $(cd _pkg; pwd) -i
 	cp asterisk/configs/* _pkg/etc/asterisk/
