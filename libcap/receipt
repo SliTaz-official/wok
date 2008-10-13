@@ -6,19 +6,22 @@ CATEGORY="system-tools"
 SHORT_DESC="Support for getting/setting POSIX.1e capabilities."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="linux"
+BUILD_DEPENDS="gperf"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.kernel.org/pub/linux/libs/security/linux-privs/"
-WGET_URL="http://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/$TARBALL"
+WGET_URL="${WEB_SITE}libcap2/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Temp sym link for xattr.h
-	mkdir -p /usr/include/attr
-	ln -s /usr/include/linux/xattr.h /usr/include/attr/xattr.h
+	if [ ! -d $WOK/linux/taz ]; then
+		tazwok cook linux
+	fi
 	cd $src
-	make
-	rm -rf /usr/include/attr
+	sed -i -e s/'\\n'/"' -e '1i"/g -e 's/| indent -kr//' libcap/Makefile
+	mkdir libcap/include/attr
+	ln -s $WOK/linux/linux-*/include/linux/xattr.h libcap/include/attr/
+	make &&
 	make FAKEROOT=$PWD/_pkg install
 }
 
