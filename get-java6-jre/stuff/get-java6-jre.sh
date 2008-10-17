@@ -62,8 +62,8 @@ post_install()
 {
 	echo "Processing post install commands..."
 	for i in /usr/lib/firefox*; do
-		[ -d $i ] || continue
-		cd $i/plugins
+		[ -d \$i ] || continue
+		cd \$i/plugins
 		ln -s /usr/lib/java/jre\$VERSION/plugin/i386/ns7/libjavaplugin_oji.so
 	done
 	
