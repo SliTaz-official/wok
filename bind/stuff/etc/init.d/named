@@ -1,0 +1,61 @@
+#!/bin/sh
+# /etc/init.d/named: Start, stop and restart Named deamon on SliTaz, at boot
+# time or with the command line.
+#
+# To start daemon at boot time, just put the right name in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf.
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Named
+DESC="Named deamon"
+DAEMON=/usr/sbin/named
+OPTIONS=$NAMED_OPTIONS
+PIDFILE=/var/run/named.pid
+#[ -n "$OPTIONS" ] || OPTIONS="-u nobody"
+[ -f /etc/bind/rndc.key ] || rndc-confgen -r /dev/urandom -a
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS 
+    status
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    /usr/sbin/rndc stop
+    status
+    ;;
+  reload)
+    /usr/sbin/rndc reload
+    status
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    /usr/sbin/rndc stop
+    sleep 2
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|reload|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0

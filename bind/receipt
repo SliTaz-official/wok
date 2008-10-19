@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="bind"
+VERSION="9.5.0-P2"
+CATEGORY="network"
+SHORT_DESC="Domain Name System daemon."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.isc.org/products/BIND/"
+DEPENDS="libbind"
+BUILD_DEPENDS="libtool"
+WGET_URL="http://ftp.isc.org/isc/bind9/$VERSION/$TARBALL"
+CONFIG_FILES="/etc/bind"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	mkdir -p _pkg/etc/bind
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--sysconfdir=/etc/bind --localstatedir=/var --with-libtool \
+	--mandir=/usr/share/man $CONFIGURE_ARGS && \
+	make && make DESTDIR=$PWD/_pkg install && \
+	LD_LIBRARY_PATH=$src/_pkg/usr/lib \
+	_pkg/usr/bin/dig ns . @a.root-servers.net. > _pkg/etc/bind/db.root
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/var/cache/bind
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/etc $fs
+	cp -a stuff/etc $fs
+	# Package all bind pkgs
+	for i in libbind $(cd $WOK; ls -d bind-*)
+	do
+		tazwok genpkg $i
+	done
+}
+
