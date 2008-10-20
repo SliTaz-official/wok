@@ -1,0 +1,93 @@
+#!/bin/sh -e
+
+URL=http://mirrors.dedipower.com/opera/linux/
+
+if test $(id -u) != 0 ; then
+        echo -e "\nYou must be root to run `basename $0`."
+        echo -e "Please type 'su' and root password to become super-user.\n"
+        exit 0
+fi
+
+if [ -d /var/lib/tazpkg/installed/opera ]; then
+  tazpkg remove opera
+  [ -d /var/lib/tazpkg/installed/opera ] && exit 1
+fi
+
+TMP_DIR=/tmp/get-opera-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+
+# Download rpm
+N=$(wget -O - $URL 2>/dev/null | grep href= | tail -1 | sed 's|.*href="\(.*\)/".*|\1|')
+URL=$URL$N/final/en/i386/
+FILE=$(wget -O - $URL 2> /dev/null | grep rpm | sed 's|.*href="\(.*\)".*|\1|')
+URL=$URL$FILE
+wget $URL
+
+VERSION=$(rpm -qip $FILE  | awk '/^Version/ { print $3 }')
+
+mkdir -p opera-$VERSION/fs
+
+# Extract files
+cd opera-$VERSION/fs
+rpm2cpio < ../../$FILE | cpio -idm
+
+# Create menu
+mkdir -p usr/share/applications
+cat > usr/share/applications/opera.desktop <<EOT
+[Desktop Entry]
+Version=1.0
+TryExec=opera
+Encoding=UTF-8
+Name=Opera
+Name[af]=opera
+Name[eo]=Opero
+Name[zu]=I Opera
+GenericName=Web browser
+GenericName[bs]=Web preglednik
+GenericName[de]=Web-Browser
+GenericName[eo]=TTT-rigardilo
+GenericName[es]=Navegador web
+GenericName[et]=Veebibrauser
+GenericName[eu]=Web arakatzailea
+GenericName[fi]=WWW-selain
+GenericName[fr]=Un navigateur web
+GenericName[is]=Vafri
+GenericName[it]=Browser Web
+GenericName[nl]=webbrowser
+GenericName[nn]=Nettlesar
+GenericName[pt]=Navegador Web
+GenericName[pt_BR]=Navegador
+GenericName[ro]=Navigator de web
+GenericName[sl]=Spletni brskalnik
+GenericName[ven]=Buronza ya Webu
+GenericName[xh]=Umkhangeli Zincwadi Zokubhaliweyo
+GenericName[zu]=Umkhangeli zincwadi we Web
+Exec=opera %u
+Terminal=false
+Categories=Application;Qt;Network;WebBrowser;X-Ximian-Main;X-Ximian-Toplevel
+Icon=opera.png
+MimeType=text/html;text/xml;application/xhtml+xml;application/x-mimearchive;application/xml;application/rss+xml;application/rdf+xml;image/svg+xml;image/gif;image/jpeg;image/png;image/x-bmp;image/x-xbm;application/mime
+Comment=Web Browser
+Type=Application
+EOT
+cd ../..
+
+cat > opera-$VERSION/receipt <<EOT
+PACKAGE="opera"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="Opera Web browser."
+WEB_SITE="http://www.opera.com/"
+EOT
+
+# Pack
+tazpkg pack opera-$VERSION
+
+# Install pseudo package
+tazpkg install opera-$VERSION.tazpkg
+
+# Clean
+cd $CUR_DIR
+rm -rf $TMP_DIR
+
