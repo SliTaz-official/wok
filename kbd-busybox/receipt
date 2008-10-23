@@ -8,19 +8,24 @@ MAINTAINER="pascal.bellard@slitaz.org"
 BUILD_DEPENDS="kbd-base busybox"
 WEB_SITE="http://www.slitaz.org/"
 
-# Rules to gen a SliTaz package suitable for Tazpkg.
-genpkg_rules()
+# Rules to configure and make the package.
+compile_rules()
 {
-	mkdir -p $fs/usr/share/kmap
-	dumpkmap > /tmp/current.kmap
+	mkdir -p $src/_pkg/usr/share/kmap
+	cd $src
+	dumpkmap > current.kmap || return 1
 	for i in $(cd /usr/share/kbd/keymaps/i386 ; ls */*.map.gz); do
 		[ "$(dirname $i)" = "include" ] && continue
 		i=$(basename $i)
 		i=${i%.map.gz}
-		loadkeys $i
-		dumpkmap > $fs/usr/share/kmap/$i.kmap
+		loadkeys $i && dumpkmap > _pkg/usr/share/kmap/$i.kmap
 	done
-	loadkmap < /tmp/current.kmap
-	rm -f /tmp/current.kmap
+	loadkmap < current.kmap
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/usr $fs
 }
 
