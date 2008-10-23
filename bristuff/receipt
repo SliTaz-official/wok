@@ -13,8 +13,9 @@ BUILD_DEPENDS="openssl-dev ncurses-dev zlib-dev patch libogg-dev libvorbis-dev \
 curl-dev newt-dev libusb-dev sqlite-dev alsa-lib-dev fxload speex-dev \
 iksemel-dev mysql-dev glibc-dev spandsp-dev tiff-dev radiusclient-ng-dev \
 mysql libmysqlclient cmake postgresql postgresql-dev libpostgresqlclient \
-libtool unixODBC-dev libunixODBC"
-DEPENDS="asterisk asterisk-sound zaptel mISDNuser"
+libtool unixODBC-dev libunixODBC nbs nbs-dev mISDNuser-dev mISDNuser \
+gnutls-dev"
+DEPENDS="asterisk asterisk-sound zaptel nbs mISDNuser"
 
 #TODO: net-snmp(-dev) vpb-driver(-dev)
 #Asterisk: libopenh323-dev (Not so nice addon), libsnmp-dev (Asterisk 1.4)
@@ -60,16 +61,14 @@ compile_rules()
 	tar xjf agx-ast-addons-$ADD_VER.tar.bz2
 	for i in CMakeLists.u bristuff.u; do
 		[ -f done.$i ] && continue
+		echo "Apply $i..."
 		patch -p0 < ../stuff/$i || return 1
 		touch done.$i
 	done
 	chmod +x apply-patches.sh
 	sh ./download.sh
-	for i in sounds.u; do
-		[ -f done.$i ] && continue
-		patch -p0 < ../stuff/$i || return 1
-		touch done.$i
-	done
+	echo "Apply sounds.u..."
+	patch -p0 < ../stuff/sounds.u || return 1
 	ln -s . zaptel/zaptel
 	ln -s . zaptel/linux
 	mkdir -p _pkg/etc/init.d _pkg/usr/include/zaptel
@@ -77,6 +76,7 @@ compile_rules()
 	grep -rsl "uname -r" . | xargs sed -i -e "s/uname -r/echo $KVERS/g"
 	touch done.uname
 	export BRISTUFF_ZAP_PARAMS="KBUILD_NOPEDANTIC=1"
+	sed -i 's/^NO_H323=.*/NO_H323="--with-gsm=internal --without-pwlib --without-h323"/' ./compile.sh
 	sh ./compile.sh -d $(cd _pkg; pwd) -i
 	cp asterisk/configs/* _pkg/etc/asterisk/
 	cd agx-ast-addons
