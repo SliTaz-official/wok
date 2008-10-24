@@ -27,3 +27,27 @@
  	if (remove_opt) {
  		do {
  			/* (*argv) can be NULL here */
+
+--- busybox-1.12.0/modutils/modprobe.c
++++ busybox-1.12.0/modutils/modprobe.c
+@@ -921,6 +921,20 @@
+ 	return rc;
+ }
+ 
++void mod_walk(void (*action)(char *name, char *path, void *env), void *data);
++void mod_walk(void (*action)(char *name, char *path, void *env), void *data)
++{
++	struct dep_t *dt;
++
++	depend = build_dep();
++	if (!depend)
++		bb_error_msg_and_die("cannot parse "CONFIG_DEFAULT_DEPMOD_FILE);
++
++	for (dt = depend; dt && dt->m_path; dt = dt->m_next) {
++		action(dt->m_name, dt->m_path, data);
++	}
++}
++
+ int modprobe_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
+ int modprobe_main(int argc UNUSED_PARAM, char **argv)
+ {

@@ -59,7 +59,7 @@
 
 --- busybox-1.12.0/modutils/modinfo.c
 +++ busybox-1.12.0/modutils/modinfo.c
-@@ -0,0 +1,91 @@
+@@ -0,0 +1,82 @@
 +/* vi: set sw=4 ts=4: */
 +/*
 + * modinfo - retrieve module info
@@ -71,7 +71,48 @@
 +#undef _GNU_SOURCE
 +#define _GNU_SOURCE
 +#include <libbb.h>
-+#include <sys/utsname.h> /* uname() */
++#include <fnmatch.h>
++
++enum {
++	ARG_F = (1<<4), /* field name */
++	ARG_0 = (1<<5)  /* \0 as separator */
++};
++
++struct modinfo_env {
++	char **argv;
++	char *field;
++};
++
++static void modinfo(char *name, char *path, void *env)
++{
++	size_t len;
++	int i, length;
++	char *ptr, *the_module;
++	char **argv = ((struct modinfo_env *) env)->argv;
++	char *field = ((struct modinfo_env *) env)->field;
++	extern void *xalloc_load_module(const char filename[], size_t *len);
++
++	for (i = 0; argv[i]; i++) {
++		if (fnmatch(argv[i],name,0) == 0) {
++			len = MAXINT(ssize_t);
++			ptr = the_module = xalloc_load_module(path, &len);
++			length = strlen(field);
++			do {
++				ptr = memchr(ptr, *field, len - (ptr - (char*)the_module));
++				if (ptr == NULL) /* no occurance left, done */
++					break;
++				if (!strncmp(ptr, field, length) && ptr[length] == '=') {
++					ptr += length + 1;
++					ptr += printf("%s%c",ptr,
++								(option_mask32 & ARG_0) ? '\0' : '\n');
++				}
++				++ptr;
++			} while (1);
++			free(the_module);
++			break;
++		}
++	}
++}
 +
 +int modinfo_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
 +int modinfo_main(int argc UNUSED_PARAM, char **argv)
@@ -82,72 +123,22 @@
 +		"license",
 +		"parm"
 +	};
-+	size_t len;
-+	int i, length;
-+	char *field = NULL;
-+	char *ptr, *the_module, *depends, *filename;
-+	struct utsname un;
-+	enum {
-+		ARG_F = (1<<4), /* field name */
-+		ARG_0 = (1<<5)  /* \0 as separator */
-+	};
-+	extern void *xalloc_load_module(const char filename[], size_t *len);
++	int i;
++	struct modinfo_env env;
++	extern void mod_walk(void (*action)(char *name, char *path, void *env),
++						 void *data);
 +
-+	getopt32(argv, "adlpF:0", &field);
-+	argv += optind;
++	env.field = NULL;
++	getopt32(argv, "adlpF:0", &env.field);
++	env.argv = argv += optind;
 +
 +	for (i = 0; i < sizeof(shortcuts)/sizeof(shortcuts[0]); i++)
 +		if (option_mask32 & (1 << i))
-+			field = (char *) shortcuts[i];
++			env.field = (char *) shortcuts[i];
 +
-+	if (!field || !*argv)
++	if (!env.field || !*env.argv)
 +		bb_show_usage();
 +
-+	/* get module path from modules.dep */
-+	uname(&un); /* never fails */
-+	filename = xasprintf(CONFIG_DEFAULT_MODULES_DIR"/%s/"CONFIG_DEFAULT_DEPMOD_FILE, un.release);
-+	len = MAXINT(ssize_t);
-+	the_module = xalloc_load_module(*argv, &len);
-+	if (the_module == NULL) {
-+		len = MAXINT(ssize_t);
-+		ptr = depends = xmalloc_open_read_close(filename, &len);
-+		depends[len-1] = 0;
-+		if (ENABLE_FEATURE_CLEAN_UP)
-+			free(filename);
-+		do {
-+			ptr = strstr(ptr,*argv);
-+			length = strlen(*argv);
-+			if (!ptr)
-+				bb_show_usage();
-+			if (ptr[length] == '.' && ptr[-1] == '/') {
-+				while (ptr[++length] != ':')
-+					if (ptr[length] == ' ') goto next;
-+				ptr[length] = 0;
-+				while (ptr > depends && ptr[-1] != '\n') ptr--;
-+				break;
-+			}
-+		next:
-+			ptr++;
-+		} while (1);
-+		if (ENABLE_FEATURE_CLEAN_UP)
-+			free(depends);
-+	
-+		len = MAXINT(ssize_t);
-+		the_module = xalloc_load_module(ptr, &len);
-+	}
-+	ptr = the_module;
-+	length = strlen(field);
-+	do {
-+		ptr = memchr(ptr, *field, len - (ptr - (char*)the_module));
-+		if (ptr == NULL) /* no occurance left, done */
-+			break;
-+		if (!strncmp(ptr, field, length) && ptr[length] == '=') {
-+			ptr += length + 1;
-+			ptr += printf("%s%c",ptr,(option_mask32 & ARG_0) ? '\0' : '\n');
-+		}
-+		++ptr;
-+	} while (1);
-+	if (ENABLE_FEATURE_CLEAN_UP)
-+		free(the_module);
++	mod_walk(modinfo, &env);
 +	return 0;
 +}
