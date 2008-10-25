@@ -33,6 +33,9 @@ cd $TEMP_DIR
 # Doanload the file
 test -f $TARBALL || wget $URL -O $TARBALL
 
+# Do not trust 'df' free space
+sed -i 's/exit 3$//' $TARBALL
+
 # Run the install file user may agree to SUN EULA
 chmod +x  $TARBALL
 ./${TARBALL}
