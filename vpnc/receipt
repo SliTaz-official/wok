@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="vpnc"
+VERSION="0.5.1"
+CATEGORY="network"
+SHORT_DESC="VPN client compatible with Cisco's EasyVPN equipment."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.unix-ag.uni-kl.de/~massar/vpnc/"
+WGET_URL="$WEB_SITE$TARBALL"
+DEPENDS="libgcrypt libgpg-error glibc-base perl"
+BUILD_DEV="linux-headers libgcrypt-dev openssl-dev"
+CONFIG_FILES="/etc/vpnc"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/var/run/vpnc
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/local/bin $fs/usr
+	cp -a $_pkg/usr/local/sbin $fs/usr
+	sed -i 's|/usr/local/|/usr/|g' $fs/etc/vpnc/vpnc-script
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	cat <<EOT
+-------------
+You can now update /etc/vpnc/default.conf
+-------------
+EOT
+}
+
