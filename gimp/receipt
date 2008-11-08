@@ -1,15 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="gimp"
-VERSION="2.4.6"
+VERSION="2.6.1"
 CATEGORY="graphics"
 SHORT_DESC="Gnu Image Manipulation Program or GIMP!"
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ libart_lgpl"
-BUILD_DEPENDS="gettext perl-xml-parser gtk+-dev libart_lgpl"
+DEPENDS="gtk+ libart_lgpl babl gegl libgio"
+BUILD_DEPENDS="gettext perl-xml-parser gtk+-dev libart_lgpl babl-dev gegl-dev libgio libgio-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gimp.org/"
-WGET_URL="ftp://ftp.gimp.org/pub/gimp/v2.4/$TARBALL"
+WGET_URL="ftp://ftp.gimp.org/pub/gimp/v2.6/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -19,9 +19,16 @@ compile_rules()
 		--prefix=/usr --infodir=/usr/share/info \
 		--mandir=/usr/share/man --sysconfdir=/etc \
 		--with-html-dir=/usr/share/doc \
-		--disable-print \
+		--without-print \
 		--disable-python \
-		$CONFIGURE_ARGS &&
+		--without-gnomefs \
+		--without-poppler \
+  		--without-gnomevfs \
+  		--without-libcurl \
+  		--without-alsa \
+  		--without-librsvg \
+  		--without-dbus \
+  		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
 }
@@ -39,7 +46,7 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/gimp $fs/usr/lib
 	cp -a $_pkg/usr/share/gimp $fs/usr/share
-	cp -a $_pkg/usr/share/mime-info $fs/usr/share
+	# cp -a $_pkg/usr/share/mime-info $fs/usr/share
 	
 	rm $fs/usr/lib/gimp/*/*/*.la
 	
