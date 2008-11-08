@@ -11,14 +11,16 @@
 NAME=Postgresql
 DESC="PostgreSQL server"
 OPTIONS=$PGSQL_OPTIONS
+INIT_OPTIONS=$PGSQLINIT_OPTIONS
 [ -n "$OPTIONS" ] || OPTIONS="-D /var/lib/pgsql -s"
+[ -n "$INIT_OPTIONS" ] || INIT_OPTIONS="--no-locale --encoding=SQL_ASCII -D /var/lib/pgsql"
 
 case "$1" in
   start)
     if [ ! -f /var/lib/pgsql/PG_VERSION ]; then
         echo "Initializing $DESC database"
 	rm -rf /var/lib/pgsql/* 2> /dev/null
-        su -c "initdb -D /var/lib/pgsql" - postgres
+        su -c "initdb $INIT_OPTIONS" - postgres
     fi
     echo -n "Starting $DESC: $NAME... "
     su -c "pg_ctl start -w $OPTIONS -l /var/log/postgresql/postgresql.log" - postgres
