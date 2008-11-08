@@ -9,7 +9,7 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://cyrusimap.web.cmu.edu/"
 WGET_URL="ftp://ftp.andrew.cmu.edu/pub/cyrus/$TARBALL"
 BUILD_DEPENDS="libcomerr-dev cyrus-sasl cyrus-sasl-dev openssl-dev db-dev"
-DEPENDS="libcomerr cyrus-sasl openssl db postfix perl"
+DEPENDS="libcomerr cyrus-sasl openssl db perl libwrap"
 CONFIG_FILES="/etc/imapd.conf /etc/cyrus.conf"
 
 # Rules to configure and make the package.
@@ -87,8 +87,8 @@ sieve 2000/tcp
 lmtp 2003/tcp
 fud 4201/udp
 EOF
-	/etc/init.d/$PACKAGE start
-	if [ -f /etc/init.d/postfix ]; then
+	[ -z "$1" ] && /etc/init.d/$PACKAGE start
+	if [ -z "$1" -a -f /etc/init.d/postfix ]; then
 		if ! grep -v ^# /etc/postfix/main.cf | grep -q lmtp:unix; then
 			echo "Append to /etc/postfix/main.cf:"
 			echo -n "    "
@@ -98,11 +98,13 @@ EOF
 		fi
 	fi
 	msg="Creating mailbox for"
+	[ -z "$1" ] &&
 	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < /etc/passwd); do
 		echo -n "$msg $i"
 		msg=","
 	done
 	echo ""
+	[ -z "$1" ] &&
 	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < /etc/passwd); do
 		echo "createmailbox user.$i"
 	done | cyradm -u cyrus -w cyrus 127.0.0.1 >/dev/null 2>&1
