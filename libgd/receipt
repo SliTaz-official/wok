@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="libgd"
+VERSION="2.0.35"
+CATEGORY="graphics"
+SHORT_DESC="Library for the dynamic creation of images."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="gd"
+DEPENDS="zlib libpng jpeg freetype xorg-libXpm"
+BUILD_DEPENDS="libpng libpng-dev jpeg jpeg-dev freetype freetype-dev xorg-libXpm"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.libgd.org/"
+WGET_URL="${WEB_SITE}releases/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	ln -s $src $PACKAGE-$VERSION
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
+
