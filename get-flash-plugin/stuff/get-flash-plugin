@@ -1,4 +1,5 @@
 #!/bin/sh -e
+: ${DIALOG=tazdialog}
 
 if test $(id -u) != 0 ; then
 	echo -e "\nYou must be root to run `basename $0`."
@@ -10,12 +11,32 @@ if [ -d /var/lib/tazpkg/installed/flash-plugin ]; then
   tazpkg remove flash-plugin
   [ -d /var/lib/tazpkg/installed/flash-plugin ] && exit 1
 fi
-DIR=install_flash_player_9_linux
-TARBALL=$DIR.tar.gz
 WEB_SITE="http://www.adobe.com/products/flash/"
+URL="http://fpdownload.macromedia.com/get/flashplayer/current/"
 
 # Download tarball
-wget http://fpdownload.macromedia.com/get/flashplayer/current/$TARBALL
+VERSIONS=""
+for i in $(seq 20 -1 7); do
+  wget -s ${URL}install_flash_player_${i}_linux.tar.gz 2> /dev/null || continue
+  VERSIONS="$VERSIONS $i"
+done
+
+value="$(echo $VERSIONS)"
+case "$VERSIONS" in
+*[0-9]\ [1-9]*)
+	exec 3>&1
+	value=`$DIALOG --clear --colors --title " Install Flash plugin " \
+		--menu  "Which version to install" 16 70 5 \
+		$(for i in $VERSIONS; do echo $i; echo "flash-$i"; done) \
+		2>&1 1>&3`
+	retval=$?
+	exec 3>&-
+	[ -n "$value" ] || exit 0
+	[ "$retval" = "1" ] && exit 0
+esac
+DIR=install_flash_player_${value}_linux
+TARBALL=$DIR.tar.gz
+wget $URL$TARBALL
 
 # Extract
 tar xzf $TARBALL
