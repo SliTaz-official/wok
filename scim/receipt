@@ -1,0 +1,53 @@
+PACKAGE="scim"
+VERSION="1.4.7"
+CATEGORY="x-window"
+SHORT_DESC="Smart Common Input Method (SCIM)"
+MAINTAINER="slitaz@pworld.otherinbox.com"
+DEPENDS="gtk+"
+BUILD_DEPENDS="xorg-dev xorg-dev-proto gtk+-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.scim-im.org/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    ./configure --prefix=/usr --infodir=/usr/share/info \
+    --sysconfdir=/etc --with-x \
+    --with-gtk-im-module-dir=$(ls -d /usr/lib/gtk-2*/2*/immodules/) \
+    --mandir=/usr/share/man $CONFIGURE_ARGS &&
+    make &&
+    make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/usr
+    cp -a $_pkg/usr/bin $fs/usr
+    strip -s $fs/usr/bin/*
+    cp -a $_pkg/usr/lib $fs/usr
+    mkdir -p $fs/usr/share
+    cp -a $_pkg/usr/share/scim $fs/usr/share
+    find $fs/usr/lib -name '*.la' -exec rm {} \;
+    find $fs/usr/lib -name '*.a' -exec rm {} \;
+    find $fs/usr/lib -name '*.so' -exec strip -s {} \;
+    mkdir -p $fs/usr/share/pixmaps
+    cp $_pkg/usr/share/pixmaps/scim-setup.png $fs/usr/share/pixmaps
+    rm -rf $fs/usr/lib/pkgconfig
+    chmod +x $fs/usr/bin/*
+}
+
+post_install()
+{
+    echo "Processing post-install commands..."
+    echo -n "updating gtk.immodules... "
+    /usr/bin/gtk-query-immodules-2.0 > /etc/gtk-2.0/gtk.immodules
+    echo "done."
+}
+
+post_remove()
+{
+    /usr/bin/gtk-query-immodules-2.0 > /etc/gtk-2.0/gtk.immodules
+}
