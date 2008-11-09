@@ -15,10 +15,15 @@ WEB_SITE="http://www.adobe.com/products/flash/"
 URL="http://fpdownload.macromedia.com/get/flashplayer/current/"
 
 # Download tarball
-VERSIONS=""
-for i in $(seq 20 -1 7); do
-  wget -s ${URL}install_flash_player_${i}_linux.tar.gz 2> /dev/null || continue
-  VERSIONS="$VERSIONS $i"
+VERSIONS=""; i=9; while true; do
+  if wget -s ${URL}install_flash_player_${i}_linux.tar.gz 2> /dev/null; then
+    VERSIONS="$VERSIONS $i"
+  elif [ -n "$VERSIONS" ]; then
+    break
+  elif [ $i -gt 20 ]; then
+    exit 1
+  fi
+  i=$(($i + 1))
 done
 
 value="$(echo $VERSIONS)"
@@ -42,12 +47,7 @@ wget $URL$TARBALL
 tar xzf $TARBALL
 
 cd $DIR
-VERSION=""
-for i in MAJ MIN REV ; do
-  n=$(grep ^FPVERSION$i flashplayer-installer | cut -d= -f2)
-  [ -n "$VERSION" ] && VERSION=$VERSION.
-  VERSION=$VERSION$n
-done
+VERSION="$(strings libflashplayer.so | grep ^LNX | sed -e 's/LNX //' -e 's/,/./g')"
 
 # Install files
 chmod 755 libflashplayer.so
