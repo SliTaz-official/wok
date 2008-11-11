@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="epdfview-cups"
+VERSION="0.1.6"
+CATEGORY="office"
+SHORT_DESC="Lightweight PDF document viewer using Poppler and Cups."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+ poppler cups"
+BUILD_DEPENDS="gtk+-dev poppler-dev poppler cups cups-dev"
+SOURCE="epdfview"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://trac.emma-soft.com/epdfview/"
+WGET_URL="${WEB_SITE}chrome/site/releases/$TARBALL"
+PROVIDE="epdfview:cups"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--with-cups \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/pixmaps
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/epdfview $fs/usr/share
+	cd $fs/usr/share/pixmaps
+	rm ../epdfview/pixmaps/icon_epdfview-24.png
+	rm ../epdfview/pixmaps/icon_epdfview-48.png
+	ln -s ../epdfview/pixmaps/icon_epdfview-32.png epdfview.png
+}
+
+# Pre install commands for Tazpkg.
+pre_install()
+{
+	[ -x $1/usr/bin/epdfview ] && yes y | tazpkg remove epdfview
+}
