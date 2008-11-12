@@ -1,0 +1,136 @@
+#!/bin/sh
+# get-eclipse-pdt, get and install Eclipse PHP Development tool.
+#
+# (C) 2008 SliTaz - GNU General Public License v3.
+#
+# Author : Eric Joseph-Alexandre <erjo@slitaz.org>
+
+PACKAGE="eclipse-pdt"
+VERSION="1.0.3"
+URL="http://www.eclipse.org"
+TARBALL="pdt-all-in-one-linux-gtk-${VERSION}.tar.gz"
+WGET_URL="http://www.eclipse.org/downloads/download.php?file=/tools/pdt/downloads/drops/1.0.3/R200806030000/pdt-all-in-one-linux-gtk-1.0.3.tar.gz&url=http://eclipse.ialto.org/tools/pdt/downloads/drops/1.0.3/R200806030000/${TARBALL}&mirror_id=514"
+TEMP_DIR="/home/slitaz/build/$PACKAGE.$$"
+SOURCE_DIR="/home/slitaz/src"
+LOG="/tmp/$(basename $0 .sh).log"
+
+# Status function with color (supported by Ash).
+status()
+{
+	local CHECK=$?
+	echo -en "\\033[70G[ "
+	if [ $CHECK = 0 ]; then
+		echo -en "\\033[1;33mOK"
+	else
+		echo -en "\\033[1;31mFailed"
+	fi
+	echo -e "\\033[0;39m ]"
+	return $CHECK
+}
+
+# Check if user is root to install, or remove packages.
+check_root()
+{
+	if test $(id -u) != 0 ; then
+		echo -e "\nYou must be root to run `basename $0` with this option."
+		echo -e "Please use 'su' and root password to become super-user.\n"
+		exit 0
+	fi
+}
+
+check_if_installed()
+{
+	 # Avoid reinstall
+	 if [ -d /var/lib/tazpkg/installed/$PACKAGE ];then
+	 	return 1
+	 else
+	 	return 0
+	 fi
+}
+
+#We need to bee root
+check_root
+
+#check if package already installed
+if (check_if_installed $PACKAGE); then
+	echo "$PACKAGE is already installed."
+	echo -n "Would you like to remove and reinstall this package [y/n]? "
+	read answer
+	case "$answer" in
+	y|Y)
+		tazpkg remove $PACKAGE ;;
+	*)
+		exit 0 ;;
+	esac
+		
+fi
+
+
+# Check if we have the tarball before.
+if [ ! -f $SOURCE_DIR/$TARBALL ]; then
+	echo "Downloading $PACKAGE tarball (it's time to have a break)... "
+	#Check if $SOURCE_DIR exist
+	test -d $SOURCE_DIR || mkdir -p $SOURCE_DIR
+	# Get the file.
+	wget -c $WGET_URL -O $SOURCE_DIR/$TARBALL
+	status
+fi
+
+
+
+# Creates TEM_DIR and extract tarball
+mkdir -p $TEMP_DIR
+echo -n "Extract files from archive..."
+tar xvzf $SOURCE_DIR/$TARBALL -C $TEMP_DIR > $LOG 2>&1 || \
+ (echo "Failed to extract $TARBALL" ; exit 1)
+status
+
+
+cd $TEMP_DIR
+	
+# Make the package
+mkdir -p $PACKAGE-$VERSION/fs/usr/lib  \
+  $PACKAGE-$VERSION/fs/usr/share/pixmaps \
+  $PACKAGE-$VERSION/fs/usr/share/applications
+ 
+cp -a eclipse $PACKAGE-$VERSION/fs/usr/lib/
+cp -a eclipse/icon.xpm $PACKAGE-$VERSION/fs/usr/share/pixmaps/eclipse.xpm
+
+# Create .desktop file
+cat >>  $PACKAGE-$VERSION/fs/usr/share/applications/$PACKAGE.desktop <<EOF
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Eclipse
+Name[fr]=Eclipse
+GenericName=Eclipse Integrated Development Environment
+GenericName[fr]=Environnement de Développement Eclipse
+Comment=PHP Development Tools
+Comment[fr]=Outils de developpement PHP
+Exec=/usr/lib/eclipse/eclipse
+Icon=eclipse.xpm
+Terminal=false
+Categories=GTK;Development;IDE;
+StartupNotify=true
+EOF
+# Create receipt
+cat > $PACKAGE-$VERSION/receipt <<EOT
+# SliTaz package receipt.
+
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="development"
+SHORT_DESC="PHP Development Tools"
+WEB_SITE="$URL"
+
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Install pseudo package
+tazpkg install $PACKAGE-$VERSION.tazpkg
+
+# Clean
+rm -rf $TEMP_DIR
+rm -rf $PACKAGE-$VERSION
