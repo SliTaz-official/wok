@@ -76,6 +76,9 @@ pre_install()
 {
 	local root
 	root=$1
+	# Get old plugins
+	mkdir /tmp/firefox-plugins-$$
+	cp -a $root/usr/lib/firefox-*/plugins/* /tmp/firefox-plugins-$$ 2> /dev/null
 	# Remove old libs
 	rm -rf $root/usr/lib/firefox-*
 }
@@ -87,4 +90,10 @@ post_install()
 		sed -i 's/en-US/fr/' \
 		$root/etc/firefox/pref/firefox-l10n.js
 	fi
+	for i in /tmp/firefox-plugins-$$/* ; do
+		[ -e $i ] || continue
+		[ -e /usr/lib/firefox-*/plugins/$(basename $i) ] && continue
+		cp -a $i /usr/lib/firefox-*/plugins/
+	done
+	rm -rf /tmp/firefox-plugins-$$
 }
