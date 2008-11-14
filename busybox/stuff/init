@@ -1,9 +1,21 @@
 #!/bin/sh
 
-echo "switching / to tmpfs..."
-/bin/mount -t tmpfs tmpfs /mnt
-/bin/mkdir /mnt/mnt
-/bin/mv /dev /usr /var /root /etc /sys /tmp /media /proc /home /mnt
-/bin/ln -s bin/busybox mnt/init
-/bin/cp -a /sbin /bin /lib /mnt
-exec /sbin/switch_root mnt /init
+echo -n "switching / to tmpfs..."
+mount -t proc proc /proc
+size="$(grep rootfssize= < /proc/cmdline | \
+	sed 's/.*rootfssize=\([0-9]*[kmg%]\).*/-o size=\1/')"
+umount /proc
+mount -t tmpfs $size tmpfs /mnt
+for i in $(ls -a /); do
+	case "$i" in
+	.|..|init);;
+	mnt)	mkdir /mnt/mnt;;
+	*)	if ! cp -a /$i /mnt 2> /dev/null; then
+			echo -e "\\033[70G[ \\033[1;31mFailed\\033[0;39m ]"
+			umount /mnt
+			exec /sbin/init
+		fi;;
+	esac
+done
+echo -e "\\033[70G[ \\033[1;33mOK\\033[0;39m ]"
+exec /sbin/switch_root mnt /sbin/init
