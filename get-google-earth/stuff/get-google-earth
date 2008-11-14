@@ -1,5 +1,7 @@
 #!/bin/sh -e
 
+DEPENDS="mesa"
+
 if test $(id -u) != 0 ; then
 	echo -e "\nYou must be root to run `basename $0`."
 	echo -e "Please type 'su' and root password to become super-user.\n"
@@ -22,6 +24,11 @@ sed -i 's/bzip2 -d/bunzip2/g' GoogleEarthLinux.bin
 
 VERSION=$(head GoogleEarthLinux.bin | grep ^label | sed 's/.*Linux \(.*\)"/\1/')
 
+# Add depends
+for i in $DEPENDS; do
+	yes y | tazpkg get-install $i
+done
+
 # Extract
 ./GoogleEarthLinux.bin
 
@@ -31,10 +38,10 @@ while read file; do
 	[ -d $dest ] || mkdir -p $dest
 	cp -a $file $dest
 done <<EOT
-/sbin/googleearth
-/usr/share/applications/Google-googleearth.desktop
+$(ls /*bin/googleearth /usr/*bin/googleearth 2> /dev/null)
+$(ls /usr/share/applications/*googleearth*.desktop)
 /usr/share/applications/defaults.list
-/usr/local/google-earth
+$(ls -d /usr/*/google-earth)
 EOT
 cat > google-earth-$VERSION/receipt <<EOT
 PACKAGE="google-earth"
@@ -42,7 +49,7 @@ VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="3D planet viewer."
 WEB_SITE="http://earth.google.com/"
-DEPENDS="mesa"
+DEPENDS="$DEPENDS"
 EOT
 
 # Pack
