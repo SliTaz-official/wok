@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="syslinux"
-VERSION="3.70"
+VERSION="3.72"
 CATEGORY="base-system"
 SHORT_DESC="LiveCD ISO bootloader (isolinux)"
 MAINTAINER="pankso@slitaz.org"
@@ -23,20 +23,6 @@ compile_rules()
         j=${j%.map.gz}.kbd
         ./keytab-lilo.pl /usr/share/kbd/keymaps/i386/qwerty/us.map.gz $i > $j
     done
-    # patch kbdmap bug
-    while read file offset; do
-    	cp $file $file.unpatched
-    	echo "Fix $file 3.70 kbdmap bug..."
-	echo "0  90 90  |.." | hexdump -R | \
-	dd conv=notrunc bs=1 count=2 seek=$(($offset)) of=$file 2> /dev/null
-	echo "0  90 90  |.." | hexdump -R | \
-	dd conv=notrunc bs=1 count=2 seek=$(($offset+5)) of=$file 2> /dev/null
-    done <<EOT
-core/isolinux.bin 0x1AC9
-core/pxelinux.0 0x2098
-linux/syslinux-nomtools 0x3CDD
-extlinux/extlinux 0x4BBA
-EOT
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -45,7 +31,7 @@ genpkg_rules()
     mkdir -p $fs/boot/isolinux
     cp -a $src/core/isolinux.bin $fs/boot/isolinux
     cp -a $src/com32/modules/reboot.c32 $fs/boot/isolinux
-    cp stuff/* $fs/boot/isolinux
+    cp stuff/*.* $fs/boot/isolinux
     rm -rf $fs/boot/isolinux/tools $fs/boot/isolinux/*.kbd 2> /dev/null
     grep kbd$ $fs/boot/isolinux/*.cfg | while read cfg kbd; do
         cfg=$(basename ${cfg%.cfg:*})
