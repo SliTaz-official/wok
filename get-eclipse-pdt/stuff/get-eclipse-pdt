@@ -13,6 +13,7 @@ WGET_URL="http://www.eclipse.org/downloads/download.php?file=/tools/pdt/download
 TEMP_DIR="/home/slitaz/build/$PACKAGE.$$"
 SOURCE_DIR="/home/slitaz/src"
 LOG="/tmp/$(basename $0 .sh).log"
+ROOT="$1"
 
 # Status function with color (supported by Ash).
 status()
@@ -41,7 +42,7 @@ check_root()
 check_if_installed()
 {
 	 # Avoid reinstall
-	 if [ -d /var/lib/tazpkg/installed/$PACKAGE ];then
+	 if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ];then
 	 	return 1
 	 else
 	 	return 0
@@ -54,6 +55,7 @@ check_root
 #check if package already installed
 if (check_if_installed $PACKAGE); then
 	echo "$PACKAGE is already installed."
+	[ -n "$ROOT" ] && exit 0
 	echo -n "Would you like to remove and reinstall this package [y/n]? "
 	read answer
 	case "$answer" in
@@ -129,7 +131,7 @@ EOT
 tazpkg pack $PACKAGE-$VERSION
 
 # Install pseudo package
-tazpkg install $PACKAGE-$VERSION.tazpkg
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
 
 # Clean
 rm -rf $TEMP_DIR

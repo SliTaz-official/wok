@@ -8,6 +8,7 @@
 PACKAGE="OpenOffice3"
 VERSION="3.0.0"
 URL="http://www.openoffice.org"
+ROOT="$1"
 
 if [ "$LANG" = "fr_FR" ]; then
 	TARBALL="OOo_${VERSION}_LinuxIntel_install_fr.tar.gz"
@@ -49,7 +50,7 @@ check_root()
 check_if_installed()
 {
 	 # Avoid reinstall
-	 if [ -d /var/lib/tazpkg/installed/$PACKAGE ];then
+	 if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ];then
 	 	return 0
 	 else
 	 	return 1
@@ -62,6 +63,7 @@ check_root
 #check if package already installed
 if (check_if_installed $PACKAGE); then
 	echo "$PACKAGE is already installed."
+	[ -n "$ROOT" ] && exit 0
 	echo -n "Would you like to remove and reinstall this package [y/n]? "
 	read answer
 	case "$answer" in
@@ -153,7 +155,7 @@ EOT
 tazpkg pack $PACKAGE-$VERSION
 
 # Install pseudo package
-tazpkg install $PACKAGE-$VERSION.tazpkg
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
 
 # Clean
 rm -rf $TEMP_DIR

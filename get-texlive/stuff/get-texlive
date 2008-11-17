@@ -11,11 +11,7 @@ SOURCE="install-tl"
 TARBALL="$SOURCE-unx.tar.gz"
 WEB_SITE="http://www.tug.org/$PACKAGE/"
 WGET_URL="http://mirror.ctan.org/systems/$PACKAGE/tlnet/$VERSION/$TARBALL"
-
-# TexLive is a big package. We must inform user.
-PACKED_SIZE="10.7Mo"
-UNPACKED_SIZE="31.0Mo"
-
+ROOT="$1"
 
 # Check if we are root
 if test $(id -u) != 0 ; then
@@ -25,7 +21,7 @@ if test $(id -u) != 0 ; then
 fi
 
 # Avoid reinstall
-if [ -d /var/lib/tazpkg/installed/$PACKAGE ]; then
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
 	echo -e "\n$PKG package is already installed.\n"
 	exit 0
 fi
@@ -85,9 +81,6 @@ EOT
 cat > $PACKAGE-$VERSION/receipt <<EOT
 # SliTaz package receipt.
 
-PACKED_SIZE="$PACKED_SIZE"
-UNPACKED_SIZE="$UNPACKED_SIZE"
-
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="$CATEGORY"
@@ -129,12 +122,15 @@ EOT
 tazpkg pack $PACKAGE-$VERSION
 
 
-echo -n "\nPlease confirm installation of $PACKAGE-$VERSION (y/N): "
-read CONFIRM
+CONFIRM="y"
+if [ -z "$ROOT" ]; then
+	echo -n "\nPlease confirm installation of $PACKAGE-$VERSION (y/N): "
+	read CONFIRM
+fi
 if [ $CONFIRM = "y" ]
 	then
 	# Install pseudo package
-	tazpkg install $PACKAGE-$VERSION.tazpkg
+	tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
 fi
 
 # Clean

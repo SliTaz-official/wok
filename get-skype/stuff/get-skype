@@ -1,16 +1,19 @@
 #!/bin/sh -e
 
+ROOT="$1"
+
 if test $(id -u) != 0 ; then
 	echo -e "\nYou must be root to run `basename $0`."
 	echo -e "Please type 'su' and root password to become super-user.\n"
 	exit 0
 fi
 
-if [ -d /var/lib/tazpkg/installed/skype ]; then
+if [ -d $ROOT/var/lib/tazpkg/installed/skype ]; then
+  [ -n "$ROOT" ] && exit 1
   tazpkg remove skype
   [ -d /var/lib/tazpkg/installed/skype ] && exit 1
 fi
-[ -d /usr/share/skype ] && rm -rf /usr/share/skype
+[ -d $ROOT/usr/share/skype ] && rm -rf $ROOT/usr/share/skype
 
 # Download tarball
 WEB_SITE="http://www.skype.com/"
@@ -25,25 +28,16 @@ VERSION=${VERSION#skype_static-}
 cd skype_static-$VERSION
 
 # Install files
-mkdir -p /usr/share/skype
-mv */ LICENSE README /usr/share/skype
-mv skype /usr/bin
-mv skype.conf /etc
-mv skype.desktop /usr/share/applications
-ln /usr/share/skype/icons/*16.png /usr/share/pixmaps/skype.png
+mkdir -p skype-$VERSION/fs/usr/share/skype skype-$VERSION/fs/usr/bin
+mkdir -p skype-$VERSION/fs/etc skype-$VERSION/fs/usr/share/applications
+mkdir -p skype-$VERSION/fs/usr/share/pixmaps
+mv */ LICENSE README skype-$VERSION/fs/usr/share/skype
+mv skype skype-$VERSION/fs/usr/bin
+mv skype.conf skype-$VERSION/fs/etc
+mv skype.desktop skype-$VERSION/fs/usr/share/applications
+ln skype-$VERSION/fs/usr/share/skype/icons/*16.png skype-$VERSION/fs/usr/share/pixmaps/skype.png
 
 # Create pseudo package
-while read file; do
-	dest=skype-$VERSION/fs$(dirname $file)
-	[ -d $dest ] || mkdir -p $dest
-	cp -a $file $dest
-done <<EOT
-/usr/bin/skype
-/etc/skype.conf
-/usr/share/applications/skype.desktop
-/usr/share/pixmaps/skype.png
-/usr/share/skype
-EOT
 cat > skype-$VERSION/receipt <<EOT
 PACKAGE="skype"
 VERSION="$VERSION"
@@ -58,7 +52,7 @@ EOT
 tazpkg pack skype-$VERSION
 
 # Install pseudo package
-tazpkg install skype-$VERSION.tazpkg
+tazpkg install skype-$VERSION.tazpkg --root=$ROOT
 cd ..
 
 # Clean

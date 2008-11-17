@@ -2,6 +2,7 @@
 # install linux-wireless, wireless_tools and b43-fwcutter if needed.
 
 MODULE=$(echo $0 | sed 's/.*get-\(.*\)-firmware/\1/')
+ROOT="$1"
 PKG=$MODULE-firmware
 DEPENDS=""
 case "$MODULE" in
@@ -50,15 +51,15 @@ if test $(id -u) != 0 ; then
 fi
 
 # Avoid reinstall
-if [ -d /var/lib/tazpkg/installed/$PKG ]; then
+if [ -d $ROOT/var/lib/tazpkg/installed/$PKG ]; then
 	echo -e "\n$PKG package is already installed.\n"
 	exit 0
 fi
 
-# We need drivers and tools.
-for pkg in linux-wireless wireless_tools $DEPENDS
+# We need drivers, the extractor and tools.
+for pkg in linux-wireless b43-fwcutter wireless_tools
 do
-        if [ ! -d /var/lib/tazpkg/installed/$pkg ]; then
+	if [ ! -d /var/lib/tazpkg/installed/$pkg ]; then
 		tazpkg get-install $pkg
 	fi
 done
@@ -91,33 +92,35 @@ VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="$SHORT_DESC."
 WEB_SITE="$WEB_SITE"
+DEPENDS="linux-wireless wireless_tools $DEPENDS"
 EOT
-[ -n "$DEPENDS" ] echo "DEPENDS=$DEPENDS" >> $PKG-$VERSION/receipt
 
 # Pack
 tazpkg pack $PKG-$VERSION
 
 # Install pseudo package
-tazpkg install $PKG-$VERSION.tazpkg
+tazpkg install $PKG-$VERSION.tazpkg --root=$ROOT
 
 # Clean
 cd $TOP
 rm -rf $TMP
 
 # Check if we need wpa_supplicant
-. /etc/network.conf
+. $ROOT/etc/network.conf
 if [ $WIFI_KEY_TYPE = "wpa" ] || [ $WIFI_KEY_TYPE = "WPA" ]; then
-	if [ ! -d /var/lib/tazpkg/installed/wpa_supplicant ]; then
-		tazpkg get-install wpa_supplicant
+	if [ ! -d $ROOT/var/lib/tazpkg/installed/wpa_supplicant ]; then
+		tazpkg get-install wpa_supplicant --root=$ROOT
 	fi
 fi
 
 # Load module
-echo "Loading module: $MODULE..."
-modprobe $MODULE
-sleep 1
+if [ -z "$ROOT" ]; then
+	echo "Loading module: $MODULE..."
+	modprobe $MODULE
+	sleep 1
+fi
 
 # Configure /etc/network.conf and start connexion
-sed -i s/'WIFI="no"'/'WIFI="yes"'/ /etc/network.conf
-/etc/init.d/network.sh restart
+sed -i s/'WIFI="no"'/'WIFI="yes"'/ $ROOT/etc/network.conf
+[ -z "$ROOT" ] && /etc/init.d/network.sh restart
 

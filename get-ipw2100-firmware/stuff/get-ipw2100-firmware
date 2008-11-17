@@ -7,6 +7,7 @@ SHORT_DESC="Intel PRO/Wireless 2100 firmware."
 WEB_SITE="http://$MODULE.sourceforge.net/"
 RPM=$PKG-$VERSION.noarch.rpm
 WGET_URL="http://dl.atrpms.net/all/$RPM"
+ROOT="$1"
 
 # Check if user is root to install.
 if test $(id -u) != 0 ; then
@@ -16,18 +17,10 @@ if test $(id -u) != 0 ; then
 fi
 
 # Avoid reinstall
-if [ -d /var/lib/tazpkg/installed/$PKG ]; then
+if [ -d $ROOT/var/lib/tazpkg/installed/$PKG ]; then
 	echo -e "\n$PKG package is already installed.\n"
 	exit 0
 fi
-
-# We need drivers and tools.
-for pkg in linux-wireless wireless_tools
-do
-        if [ ! -d /var/lib/tazpkg/installed/$pkg ]; then
-		tazpkg get-install $pkg
-	fi
-done
 
 # Get files
 TMP=/tmp/$(basename $0)$$
@@ -49,24 +42,27 @@ VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="$SHORT_DESC."
 WEB_SITE="$WEB_SITE"
+DEPENDS="linux-wireless wireless_tools"
 EOT
 
 # Pack
 tazpkg pack $PKG-$VERSION
 
 # Install pseudo package
-tazpkg install $PKG-$VERSION.tazpkg
+tazpkg install $PKG-$VERSION.tazpkg --root=$ROOT
 
 # Clean
 cd $TOP
 rm -rf $TMP
 
 # Load module
-echo "Loading module: $MODULE..."
-modprobe $MODULE
-sleep 1
+if [ -z "$ROOT" ]; then
+	echo "Loading module: $MODULE..."
+	modprobe $MODULE
+	sleep 1
+fi
 
 # Configure /etc/network.conf and start connexion
-sed -i s/'WIFI="no"'/'WIFI="yes"'/ /etc/network.conf
-/etc/init.d/network.sh restart
+sed -i s/'WIFI="no"'/'WIFI="yes"'/ $ROOT/etc/network.conf
+[ -z "$ROOT" ] && /etc/init.d/network.sh restart
 

@@ -1,13 +1,16 @@
 #!/bin/sh -e
 : ${DIALOG=tazdialog}
 
+ROOT="$1"
+
 if test $(id -u) != 0 ; then
 	echo -e "\nYou must be root to run `basename $0`."
 	echo -e "Please type 'su' and root password to become super-user.\n"
 	exit 0
 fi
 
-if [ -d /var/lib/tazpkg/installed/flash-plugin ]; then
+if [ -d $ROOT/var/lib/tazpkg/installed/flash-plugin ]; then
+  [ -n "$ROOT" ] && exit 1
   tazpkg remove flash-plugin
   [ -d /var/lib/tazpkg/installed/flash-plugin ] && exit 1
 fi
@@ -18,6 +21,7 @@ URL="http://fpdownload.macromedia.com/get/flashplayer/current/"
 VERSIONS=""; i=9; while true; do
   if wget -s ${URL}install_flash_player_${i}_linux.tar.gz 2> /dev/null; then
     VERSIONS="$VERSIONS $i"
+    [ -n "$ROOT" ] && break
   elif [ -n "$VERSIONS" ]; then
     break
   elif [ $i -gt 20 ]; then
@@ -52,29 +56,39 @@ VERSION="$(strings libflashplayer.so | grep ^LNX | sed -e 's/LNX //' -e 's/,/./g
 # Install files
 chmod 755 libflashplayer.so
 chown root.root libflashplayer.so
-mv libflashplayer.so /usr/lib/firefox*/plugins
+dir=flash-plugin-$VERSION/fs/usr/share/flash
+mkdir -p $dir
+mv libflashplayer.so $dir
 
 # Create pseudo package
-while read file; do
-	dest=flash-plugin-$VERSION/fs$(dirname $file)
-	[ -d $dest ] || mkdir -p $dest
-	cp -a $file $dest
-done <<EOT
-$(ls /usr/lib/firefox*/plugins/libflashplayer.so)
-EOT
 cat > flash-plugin-$VERSION/receipt <<EOT
 PACKAGE="flash-plugin"
 VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="Adobe Flash Player."
 WEB_SITE="$WEB_SITE"
+DEPENDS="firefox"
+
+post_install()
+{
+	echo -n "Processing post install commands..."
+	ln -s /usr/share/flash/libflashplayer.so \$1/usr/lib/firefox*/plugins
+	status
+}
+
+post_remove()
+{
+	echo -n "Processing post remove commands..."
+	rm -f /usr/lib/firefox*/plugins/libflashplayer.so
+	status
+}
 EOT
 
 # Pack
 tazpkg pack flash-plugin-$VERSION
 
 # Install pseudo package
-tazpkg install flash-plugin-$VERSION.tazpkg
+tazpkg install flash-plugin-$VERSION.tazpkg --root=$ROOT
 cd ..
 
 # Clean

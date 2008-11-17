@@ -9,6 +9,7 @@ DIR="broadcom-wl"
 VERSION=4.80.53.0
 TARBALL=$DIR-$VERSION.tar.bz2
 WGET_URL="http://downloads.openwrt.org/sources/$TARBALL"
+ROOT="$1"
 
 # Check if user is root to install.
 if test $(id -u) != 0 ; then
@@ -18,7 +19,7 @@ if test $(id -u) != 0 ; then
 fi
 
 # Avoid reinstall
-if [ -d /var/lib/tazpkg/installed/b43-firmware ]; then
+if [ -d $ROOT/var/lib/tazpkg/installed/b43-firmware ]; then
 	echo -e "\nb43-firmware package is already installed.\n"
 	exit 0
 fi
@@ -47,7 +48,7 @@ PACKAGE="b43-firmware"
 VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="Broadcom b43 firmware."
-DEPENDS="b43-fwcutter"
+DEPENDS="linux-wireless b43-fwcutter wireless_tools"
 WEB_SITE="http://downloads.openwrt.org/"
 EOT
 
@@ -55,18 +56,20 @@ EOT
 tazpkg pack b43-firmware-$VERSION
 
 # Install pseudo package
-tazpkg install b43-firmware-$VERSION.tazpkg
+tazpkg install b43-firmware-$VERSION.tazpkg --root=$ROOT
 
 # Clean
 cd /tmp
 rm -rf $TARBALL $DIR-$VERSION
 
 # Load b43 module
-echo "Loading module: b43..."
-modprobe b43
-sleep 1
+if [ -z "$ROOT" ]; then
+	echo "Loading module: b43..."
+	modprobe b43
+	sleep 1
+fi
 
 # Configure /etc/network.conf and start connexion
-sed -i s/'WIFI="no"'/'WIFI="yes"'/ /etc/network.conf
-/etc/init.d/network.sh restart
+sed -i s/'WIFI="no"'/'WIFI="yes"'/ $ROOT/etc/network.conf
+[ -z "$ROOT" ] && /etc/init.d/network.sh restart
 
