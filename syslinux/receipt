@@ -32,12 +32,34 @@ genpkg_rules()
     cp -a $src/core/isolinux.bin $fs/boot/isolinux
     cp -a $src/com32/modules/reboot.c32 $fs/boot/isolinux
     cp stuff/*.* $fs/boot/isolinux
-    rm -rf $fs/boot/isolinux/tools $fs/boot/isolinux/*.kbd 2> /dev/null
-    grep kbd$ $fs/boot/isolinux/*.cfg | while read cfg kbd; do
-        cfg=$(basename ${cfg%.cfg:*})
-	sed -i "s/$kbd/$cfg.kbd/" $fs/boot/isolinux/$cfg.cfg
-        cp $src/$kbd $fs/boot/isolinux/$cfg.kbd
-    done
+    while read cfg kbd loc ; do
+        sed -e "s/^display/kbdmap $cfg.kbd\ndisplay/" \
+            -e "s/^label/say Now using $kbd keyboard and $loc locale.\nlabel/" \
+            -e "s/rootfs.gz/rootfs.gz lang=$loc kmap=$kbd/" \
+	        < $fs/boot/isolinux/isolinux.cfg > $fs/boot/isolinux/$cfg.cfg
+        cp $src/$kbd.kbd $fs/boot/isolinux/$cfg.kbd
+	cat >> $fs/boot/isolinux/common.inc <<EOT
+label $cfg
+	config $cfg.cfg
+EOT
+    done <<EOT
+be    be-latin1    fr_FR
+br    br-abnt2     pt_PT
+ca    cf           fr_FR
+de    de-latin1    de_DE
+de_CH de_CH-latin1 de_DE
+en    uk           C
+es    es           es_ES
+fi    fi-latin1    fi
+fr    fr-latin1    fr_FR
+fr_CH fr_CH-latin1 fr_FR
+hu    hu           hu
+it    it           it_IT
+jp    jp106        jp_JP
+pt    pt-latin1    pt_PT
+ru    ru           ru_RU
+us    us           C
+EOT
     chown root.root $fs/boot/isolinux/*
     # Package all syslinux pkgs
     for i in $(cd $WOK; ls -d syslinux-*)

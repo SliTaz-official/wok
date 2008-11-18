@@ -3,48 +3,12 @@ label web
 	kernel /boot/gpxe
 label zeb
 	kernel /boot/gpxe
-label be
-	config be.cfg
-label br
-	config br.cfg
-label ca
-	config ca.cfg
-label ch
-	config fr_CH.cfg
-label de
-	config de.cfg
-label de_CH
-	config de_CH.cfg
 label deCH
 	config de_CH.cfg
-label en
-	config en.cfg
-label es
-	config es.cfg
-label fi
-	config fi.cfg
-label fr
-	config fr.cfg
-label fr_CH
-	config fr_CH.cfg
 label frCH
 	config fr_CH.cfg
-label hu
-	config hu.cfg
-label it
-	config it.cfg
-label jp
-	config jp.cfg
-label pt
-	config pt.cfg
 label reboot
 	com32 reboot.c32
-label ru
-	config ru.cfg
-label uk
-	config en.cfg
-label us
-	config us.cfg
 
 implicit 0	
 prompt 1	
@@ -55,3 +19,4 @@ F3 isolinux.msg
 F4 display.txt
 F5 enhelp.txt
 F6 enopts.txt
+
