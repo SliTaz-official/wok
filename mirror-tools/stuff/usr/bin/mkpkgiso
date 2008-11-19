@@ -1,0 +1,204 @@
+#!/bin/sh
+# mkpkgiso, build packages ISO image.
+# (C) 2007-TODAY SliTaz - GNU General Public License v3.
+#
+# Authors : Eric Joseph-Alexandre <erjo@slitaz.org>
+#	    Pascal Bellard <pascal.bellard@slitaz.org>
+
+VERSION=0.2
+
+ROOT=/home/slitaz/iso
+TEMP_DIR=${ROOT}/_iso.$$
+PKG_VER=$1
+shift
+OPTIONS=$@
+PKG_DIR=$TEMP_DIR/packages/$PKG_VER
+REPOS=/var/www/slitaz/mirror/packages/$PKG_VER
+ISO_DIR=/var/www/slitaz/mirror/iso/$PKG_VER
+LOG=$PWD/$(basename $0).log
+
+#
+VOLUME_ID="packages-${PKG_VER}"
+PUBLISHER="SliTaz http://www.slitaz.org/"
+IMAGE="packages-${PKG_VER}.iso"
+OUTPUT="$ROOT/$IMAGE"
+
+# Check command line option.
+if [ -z $PKG_VER ]; then
+	echo "Usage: $(basename $0) <Version> [--boot|--webboot][--filter]"
+	exit 1
+fi
+
+# Check if we provide a valide version
+if [ ! -d $REPOS ]; then
+	echo "Boooh! $PKG_VER is not a valid version."
+	exit 1
+fi
+
+# Status function.
+status()
+{
+    local CHECK=$?
+    echo -en "\\033[70G[ "
+    if [ $CHECK = 0 ]; then
+        echo -en "\\033[1;33mOK"
+    else
+        echo -en "\\033[1;31mFailed"
+    fi
+    echo -e "\\033[0;39m ]"
+}
+
+# Create temp directory
+mkdir -p $TEMP_DIR/packages/$PKG_VER
+
+# Prepare evrything for ISO
+
+echo ""
+echo "Building ISO for packages  $PKG_VER"
+echo "==============================================================================="
+echo -n "Creating working dir $(basename $TEMP_DIR)"
+status 
+echo -n "Creating symlink"
+status
+
+# Link every packages to temp dir
+cd $PKG_DIR
+for i in $REPOS/*
+do
+	ln -s $i >> $LOG 2>&1
+done
+
+echo -n "Creating install script"
+# Create install script as suggested by Pascal.
+cat >$TEMP_DIR/install.sh<<EOF
+#!/bin/sh
+#
+
+DIR=\$(cd \$(dirname \$0); pwd)
+
+[ -d /var/cache/tazpkg ] || mkdir -p /var/cache/tazpkg
+ls -d \$DIR/packages/* > /var/lib/tazpkg/mirror
+ln -fs \$DIR/packages/*/*.tazpkg /var/cache/tazpkg/
+ln -fs \$DIR/packages/*/packages.* /var/lib/tazpkg
+EOF
+[ -e files.list.lzma ] && cat >>$TEMP_DIR/install.sh<<EOF
+ln -fs \$DIR/packages/*/files.list.lzma /var/lib/tazpkg
+EOF
+
+status
+chmod 755  $TEMP_DIR/install.sh
+
+case " $OPTIONS " in
+*\ --filter\ *)
+	SIZE=0
+	for i in *.tazpkg; do
+		while read f; do
+			case "$i" in
+			$f*) continue 2;;
+			esac
+		done < packages.list
+		echo -n "Filter out $i ($(du -hs $(readlink $i) | awk '{ print $1 }'))..."
+		SIZE=$(( $SIZE + $(stat -c %s $(readlink $i)) ))
+		rm $i
+		status
+	done
+	UNIT=" bytes"
+	if [ $SIZE -gt 10240 ]; then
+		SIZE=$(( $SIZE / 1024 ))
+		UNIT="K"
+	fi
+	if [ $SIZE -gt 10240 ]; then
+		SIZE=$(( $SIZE / 1024 ))
+		UNIT="M"
+	fi
+	echo "$SIZE$UNIT removed.";;
+esac
+case " $OPTIONS " in
+*\ --website\ *)
+	if [ -d /slitaz/home/slitaz/hg/website ]; then
+		echo -n "Adding web site"
+		mkdir $TEMP_DIR/website
+		cp -a /slitaz/home/slitaz/hg/website/* $TEMP_DIR/website
+		cat >>$TEMP_DIR/install.sh<<EOF
+[ -d /var/www ] || mkdir -p /var/www
+ln -s \$DIR/website /var/www
+EOF
+		status
+		echo "$(du -hs $TEMP_DIR/website | awk '{ print $1 }') used by web site."
+	fi;;
+esac
+
+# Extract boot package function
+extract_boot()
+{
+f=$(ls $REPOS/$1-[0-9]*.tazpkg 2> /dev/null)
+[ -f "$f" ] || return 1
+[ -d $TEMP_DIR/boot ] || mkdir $TEMP_DIR/boot
+( cd $TEMP_DIR/boot ; cpio -i fs.cpio.gz < $f 2> /dev/null ) 
+( cd $TEMP_DIR/boot ; zcat fs.cpio.gz | cpio -id 2> /dev/null )
+mv $TEMP_DIR/boot/fs/boot/* $TEMP_DIR/boot
+rm -rf $TEMP_DIR/boot/fs.cpio.gz $TEMP_DIR/boot/fs
+return 0
+}
+
+# Gen boot part
+BOOT_OPT=""
+iso=$ISO_DIR/slitaz-$PKG_VER.iso
+case " $OPTIONS " in
+*\ --boot\ *)
+    echo -n "Creating boot tree"
+	isoinfo -R -l -i $iso | awk '/^Directory/ { path=$4 } /^-/ { print path$12  }' | while read file; do
+		[ "$file" = "/boot/isolinux/boot.cat" ] && continue
+		[ -d "$(dirname $TEMP_DIR/$file)" ] ||
+			mkdir -p "$(dirname $TEMP_DIR/$file)"
+		isoinfo -R -x "$file" -i $iso > "$TEMP_DIR/$file"
+	done
+	status
+	BOOT_OPT="-b boot/isolinux/isolinux.bin -c boot/isolinux/boot.cat \
+-no-emul-boot -boot-load-size 4 -boot-info-table"
+	;;
+*\ --webboot\ *)
+	if extract_boot gpxe; then
+    	echo -n "Creating web boot tree"
+		mkdir $TEMP_DIR/boot/isolinux/
+		isoinfo -x "/BOOT/ISOLINUX/ISOLINUX.BIN;1" -i $iso > \
+			$TEMP_DIR/boot/isolinux/isolinux.bin
+		mv $TEMP_DIR/boot/gpxe $TEMP_DIR/boot/isolinux
+		cat > $TEMP_DIR/boot/isolinux/isolinux.cfg <<EOT
+default gpxe
+append http://mirror.slitaz.org/pxe/pxelinux.0
+EOT
+		status
+		BOOT_OPT="-b boot/isolinux/isolinux.bin -c boot/isolinux/boot.cat \
+-no-emul-boot -boot-load-size 4 -boot-info-table"
+	fi
+	;;
+esac
+
+if [ -n "$BOOT_OPT" ]; then
+	echo "$(du -hs $TEMP_DIR/boot | awk '{ print $1 }') used by boot."
+fi
+
+# Gen ISO
+echo -n "Generating iso image"
+/usr/bin/genisoimage -R -J -f -V $VOLUME_ID \
+ -P "$PUBLISHER" -md5-list $REPOS/packages.md5 \
+ -quiet -o $OUTPUT $BOOT_OPT $TEMP_DIR
+status 
+
+echo "$(du -hs $OUTPUT | awk '{ print $1 }') used by iso image."
+
+echo -n "Calculate md5sum"
+cd ${ROOT}
+/usr/bin/md5sum $IMAGE > $(basename $IMAGE .iso).md5
+status
+
+echo -n "Moving file to mirror"
+mv $IMAGE $ISO_DIR
+mv $(basename $IMAGE .iso).md5 $ISO_DIR
+status
+
+
+# Cleaning temp files
+rm -rf $TEMP_DIR
+
