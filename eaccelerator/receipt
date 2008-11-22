@@ -1,0 +1,67 @@
+# SliTaz package receipt.
+
+PACKAGE="eaccelerator"
+VERSION="0.9.5.3"
+CATEGORY="system-tools"
+SHORT_DESC="PHP accelerator, optimizer, and dynamic content cache."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://eaccelerator.net/"
+WGET_URL="http://bart.eaccelerator.net/source/$VERSION/$TARBALL"
+DEPENDS="php m4"
+BUILD_DEPENDS="php-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	export PHP_PREFIX="/usr"
+	$PHP_PREFIX/bin/phpize
+	./configure --enable-eaccelerator=shared \
+		--with-php-config=$PHP_PREFIX/bin/php-config \
+		--prefix=/usr --infodir=/usr/share/info \
+		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make INSTALL_ROOT=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/tmp/eaccelerator $fs/usr/share/php
+	cp $(find $_pkg | grep eaccelerator.so) $fs/usr/share/php/
+	chmod 0777 $fs/tmp/eaccelerator
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	grep -q ^extension=msql.so $1/etc/php.ini || \
+	    sed -e 's|;.*extension=msql.so|;   extension=msql.so\n\
+   extension=eaccelerator.so\n\
+   eaccelerator.shm_size="48"\n\
+   eaccelerator.cache_dir="/tmp/eaccelerator"\n\
+   eaccelerator.enable="1"\n\
+   eaccelerator.optimizer="1"\n\
+   eaccelerator.check_mtime="1"\n\
+   eaccelerator.debug="0"\n\
+   eaccelerator.filter=""\n\
+   eaccelerator.shm_max="0"\n\
+   eaccelerator.shm_ttl="0"\n\
+   eaccelerator.shm_prune_period="0"\n\
+   eaccelerator.shm_only="0"\n\
+   eaccelerator.compress="1"\n\
+   eaccelerator.compress_level="9"|' -i $1/etc/php.ini
+
+	# Start Web server.
+	while read daemon file; do
+		if [ -z "$1" -a -f /etc/init.d/$daemon \
+			     -a ! -f "/var/run/$file" ]; then
+			/etc/init.d/$daemon start
+		fi
+	done <<EOT
+apache apache/httpd.pid
+lighttpd lighttpd.pid
+EOT
+}
+
