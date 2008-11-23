@@ -37,21 +37,23 @@ genpkg_rules()
 post_install()
 {
 	grep -q ^extension=msql.so $1/etc/php.ini || \
-	    sed -e 's|;.*extension=msql.so|;   extension=msql.so\n\
-   extension=eaccelerator.so\n\
-   eaccelerator.shm_size="48"\n\
-   eaccelerator.cache_dir="/tmp/eaccelerator"\n\
-   eaccelerator.enable="1"\n\
-   eaccelerator.optimizer="1"\n\
-   eaccelerator.check_mtime="1"\n\
-   eaccelerator.debug="0"\n\
-   eaccelerator.filter=""\n\
-   eaccelerator.shm_max="0"\n\
-   eaccelerator.shm_ttl="0"\n\
-   eaccelerator.shm_prune_period="0"\n\
-   eaccelerator.shm_only="0"\n\
-   eaccelerator.compress="1"\n\
-   eaccelerator.compress_level="9"|' -i $1/etc/php.ini
+	    sed -e 's|;.*extension=msql.so|;   extension=msql.so\nextension=eaccelerator.so\neaccelerator.shm_size="48"\neaccelerator.cache_dir="/tmp/eaccelerator"\neaccelerator.enable="1"\neaccelerator.optimizer="1"\neaccelerator.check_mtime="1"\neaccelerator.debug="0"\neaccelerator.filter=""\neaccelerator.shm_max="0"\neaccelerator.shm_ttl="0"\neaccelerator.shm_prune_period="0"\neaccelerator.shm_only="0"\neaccelerator.compress="1"\neaccelerator.compress_level="9"|' -i $1/etc/php.ini
+
+	# Start Web server.
+	while read daemon file; do
+		if [ -f /etc/init.d/$daemon -a ! -f "/var/run/$file" ]; then
+			/etc/init.d/$daemon start
+		fi
+	done <<EOT
+apache apache/httpd.pid
+lighttpd lighttpd.pid
+EOT
+}
+
+# Pre and post remove commands for Tazpkg.
+pre_remove()
+{
+	sed -i '/.*eaccelerator.*/d' /etc/php.ini
 
 	# Start Web server.
 	while read daemon file; do
@@ -64,4 +66,3 @@ apache apache/httpd.pid
 lighttpd lighttpd.pid
 EOT
 }
-

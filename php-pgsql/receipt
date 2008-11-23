@@ -46,3 +46,18 @@ lighttpd lighttpd.pid
 EOT
 }
 
+# Pre and post remove commands for Tazpkg.
+pre_remove()
+{
+	sed -i '/.*=pgsql.so.*/d' /etc/php.ini
+
+	# Start Web server.
+	while read daemon file; do
+		if [ -f /etc/init.d/$daemon -a ! -f "/var/run/$file" ]; then
+			/etc/init.d/$daemon start
+		fi
+	done <<EOT
+apache apache/httpd.pid
+lighttpd lighttpd.pid
+EOT
+}
