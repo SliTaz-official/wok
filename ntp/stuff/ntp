@@ -1,0 +1,57 @@
+#!/bin/sh
+# /etc/init.d/ntp : Start, stop and restart ntp server on SliTaz, at 
+# boot time or with the command line.
+#
+# To start ntp server at boot time, just put ntp in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=ntp
+DESC="ntp server"
+DAEMON=/usr/bin/ntpd
+OPTIONS=$NTP_OPTIONS
+PIDFILE=/var/run/ntpd.pid
+[ -n "$OPTIONS" ] || OPTIONS="-p $PIDFILE -c /etc/ntp.conf"
+ 
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS
+    status
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    rm $PIDFILE
+    status
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
