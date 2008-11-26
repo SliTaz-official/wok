@@ -1,0 +1,55 @@
+#!/bin/sh -e
+
+ROOT="$1"
+VERSION="3.03"
+TARBALL="upx-$VERSION-i386_linux.tar.bz2"
+WEB_SITE="http://upx.sourceforge.net/"
+WGET_URL="${WEB_SITE}download/$TARBALL"
+
+if test $(id -u) != 0 ; then
+	echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please type 'su' and root password to become super-user.\n"
+	exit 0
+fi
+
+if [ -d $ROOT/var/lib/tazpkg/installed/upx ]; then
+  [ -n "$ROOT" ] && exit 1
+  tazpkg remove upx
+  [ -d /var/lib/tazpkg/installed/upx ] && exit 1
+fi
+
+BASE=$PWD
+DIR=/tmp/$0-$$
+mkdir -p $DIR
+cd $DIR
+
+# Download tarball
+wget $WGET_URL
+
+# Extract
+tar xjf $TARBALL
+
+# Install files
+dir=upx-$VERSION/fs/usr/bin
+mkdir -p $dir
+mv upx-$VERSION-i386_linux/upx $dir
+
+# Create pseudo package
+cat > upx-$VERSION/receipt <<EOT
+PACKAGE="upx"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="Executable packer for several different executable formats."
+WEB_SITE="$WEB_SITE"
+EOT
+
+# Pack
+tazpkg pack upx-$VERSION
+
+# Install pseudo package
+tazpkg install upx-$VERSION.tazpkg --root=$ROOT
+cd $BASE
+
+# Clean
+rm -rf $DIR $TARBALL
+
