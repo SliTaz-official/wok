@@ -59,7 +59,7 @@
 
 --- busybox-1.12.0/modutils/modinfo.c
 +++ busybox-1.12.0/modutils/modinfo.c
-@@ -0,0 +1,82 @@
+@@ -0,0 +1,104 @@
 +/* vi: set sw=4 ts=4: */
 +/*
 + * modinfo - retrieve module info
@@ -73,43 +73,66 @@
 +#include <libbb.h>
 +#include <fnmatch.h>
 +
++#define ALL_TAGS	0x3F
++
 +enum {
-+	ARG_F = (1<<4), /* field name */
-+	ARG_0 = (1<<5)  /* \0 as separator */
++	ARG_F = (1<<6), /* field name */
++	ARG_0 = (1<<7)  /* \0 as separator */
 +};
 +
 +struct modinfo_env {
 +	char **argv;
++	const char **literals;
 +	char *field;
++	int tags;
 +};
++
++static int display(char *data, const char *pattern, int flag)
++{
++	if (flag) {
++		int n = printf("%s:",pattern);
++		while (n++ < 16) bb_putchar(' ');
++	}
++	return printf("%s%c",data, (option_mask32 & ARG_0) ? '\0' : '\n');
++}
 +
 +static void modinfo(char *name, char *path, void *env)
 +{
 +	size_t len;
-+	int i, length;
++	int i, j, length;
 +	char *ptr, *the_module;
 +	char **argv = ((struct modinfo_env *) env)->argv;
-+	char *field = ((struct modinfo_env *) env)->field;
++	const char **literals = ((struct modinfo_env *) env)->literals;
++	const char *field = ((struct modinfo_env *) env)->field;
++	int tags = ((struct modinfo_env *) env)->tags;
 +	extern void *xalloc_load_module(const char filename[], size_t *len);
 +
 +	for (i = 0; argv[i]; i++) {
 +		if (fnmatch(argv[i],name,0) == 0) {
++			if (tags & 1) { /* filename */
++				display(path,literals[0],1 != tags);
++			}
 +			len = MAXINT(ssize_t);
-+			ptr = the_module = xalloc_load_module(path, &len);
-+			length = strlen(field);
-+			do {
-+				ptr = memchr(ptr, *field, len - (ptr - (char*)the_module));
-+				if (ptr == NULL) /* no occurance left, done */
-+					break;
-+				if (!strncmp(ptr, field, length) && ptr[length] == '=') {
-+					ptr += length + 1;
-+					ptr += printf("%s%c",ptr,
-+								(option_mask32 & ARG_0) ? '\0' : '\n');
-+				}
-+				++ptr;
-+			} while (1);
++			the_module = xalloc_load_module(path, &len);
++			if (field) tags |= ALL_TAGS+1;
++			for (j = 1; (1<<j) & (ALL_TAGS+ALL_TAGS+1); j++)	{
++				const char *pattern = field;
++				if ((1<<j) & ALL_TAGS) pattern = literals[j];
++				if (!((1<<j) & tags)) continue;
++				length = strlen(pattern);
++				ptr = the_module;
++				do {
++					ptr = memchr(ptr, *pattern, len - (ptr - (char*)the_module));
++					if (ptr == NULL) /* no occurance left, done */
++						break;
++					if (!strncmp(ptr, pattern, length) && ptr[length] == '=') {
++						ptr += length + 1;
++						ptr += display(ptr,pattern,(1<<j) != tags);
++					}
++					++ptr;
++				} while (1);
++			}
 +			free(the_module);
-+			break;
 +		}
 +	}
 +}
@@ -118,25 +141,24 @@
 +int modinfo_main(int argc UNUSED_PARAM, char **argv)
 +{
 +	static const char *shortcuts[] = {
-+		"author",
++		"filename",
 +		"description",
++		"author",
 +		"license",
-+		"parm"
++		"vermagic",
++		"parm",
 +	};
-+	int i;
 +	struct modinfo_env env;
 +	extern void mod_walk(void (*action)(char *name, char *path, void *env),
 +						 void *data);
 +
 +	env.field = NULL;
-+	getopt32(argv, "adlpF:0", &env.field);
++	env.literals = shortcuts;
++	getopt32(argv, "fdalvpF:0", &env.field);
 +	env.argv = argv += optind;
++	env.tags = (option_mask32) ? option_mask32 & ALL_TAGS : ALL_TAGS;
 +
-+	for (i = 0; i < sizeof(shortcuts)/sizeof(shortcuts[0]); i++)
-+		if (option_mask32 & (1 << i))
-+			env.field = (char *) shortcuts[i];
-+
-+	if (!env.field || !*env.argv)
++	if (!*env.argv)
 +		bb_show_usage();
 +
 +	mod_walk(modinfo, &env);
