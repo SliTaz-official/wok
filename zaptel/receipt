@@ -19,6 +19,7 @@ get_version()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	mkdir -p $fs/etc/udev/rules.d
 	get_version
 	[ -d taz/$PACKAGE-$WANTED/fs ] && \
 		mv taz/$PACKAGE-$WANTED taz/$PACKAGE-$VERSION
@@ -32,6 +33,12 @@ genpkg_rules()
 		eval cp -a "$_pkg$file" $fs$dir
 	done < $_pkg/../$PACKAGE.files-list
 	rm -f $fs/lib/modules/*/modules.*
+	src=$(dirname $_pkg)
+	cp $src/zaptel/build_tools/genudevrules $fs
+	sed -i 's/^ver/ver=99 # ver/' $fs/genudevrules
+	$fs/genudevrules | sed 's/asterisk/root/g' > $fs/etc/udev/rules.d/zaptel.rules
+	rm -f $fs/genudevrules
+	
 }
 
 # Post install/remove commands for Tazpkg.
