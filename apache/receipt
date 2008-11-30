@@ -30,6 +30,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/apache $fs/etc/init.d $fs/etc/apache/conf.d
+	mkdir -p $fs/etc/ssl/apache
 	cp -a $_pkg/usr/share/apache/icons $fs/usr/share/apache
 	cp -a $_pkg/usr/share/apache/error $fs/usr/share/apache
 	cp -a $_pkg/usr/share/apache/modules $fs/usr/share/apache
@@ -41,7 +42,11 @@ genpkg_rules()
 	ln -s /usr/bin/apachectl $fs/etc/init.d/apache
 	sed -i  -e 's|User daemon|User www|' -e 's|Group daemon|Group www|' \
 		-e 's|ServerAdmin you@example.com|ServerAdmin root@localhost|' \
-		$fs/etc/apache/httpd.conf
+		-e 's|mod_rewrite.so|mod_rewrite.so\nLoadModule ssl_module share/apache/modules/mod_ssl.so\nLoadModule proxy_module share/apache/modules/mod_proxy.so\nLoadModule proxy_http_module share/apache/modules/mod_proxy_http.so|' \
+		-e 's|#Include /etc/apache/extra/httpd-ssl.conf|Include /etc/apache/extra/httpd-ssl.conf|' \
+		-e 's|/etc/apache/server.crt|/etc/ssl/apache/apache.pem|' \
+		-e 's|/etc/apache/server.key|/etc/ssl/apache/apache.pem|' \
+		$fs/etc/apache/httpd.conf $fs/etc/apache/extra/httpd-ssl.conf
 	echo "Include /etc/apache/conf.d" >> $fs/etc/apache/httpd.conf
 	# Cook all packages based on apache
 	for i in $(cd $WOK; ls -d apache-*)
@@ -55,7 +60,7 @@ genpkg_rules()
 pre_install()
 {
 	echo "Processing pre-install commands..."
-	[ -f /etc/init.d/$PACKAGE ] && /etc/init.d/$PACKAGE stop
+	[ -z "$1" ] && [ -f /etc/init.d/$PACKAGE ] && /etc/init.d/$PACKAGE stop
 }
 
 post_install()
@@ -65,7 +70,17 @@ post_install()
 	chown www.www $1/var/log/$PACKAGE
 	ping -c 2 $(hostname) > /dev/null 2>&1 || 
 		sed -i "s/localhost/$(hostname) localhost/" /etc/hosts
-	/etc/init.d/$PACKAGE start
+	openssl req -new -x509 -keyout $1/etc/ssl/apache/apache.pem \
+		-out $1/etc/ssl/apache/apache.pem -days 3650 -nodes <<EOT
+$(. /etc/locale.conf ; echo ${LANG#*_})
+$(cat /etc/TZ)
+
+$(cat /etc/hostname)
+
+
+
+EOT
+	[ -z "$1" ] && /etc/init.d/$PACKAGE start
 }
 
 # Rules to clean extras dirs or files
