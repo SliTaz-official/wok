@@ -9,19 +9,19 @@ SOURCE="httpd"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.apache.org/"
 WGET_URL="${WEB_SITE}dist/$SOURCE/$TARBALL"
-DEPENDS="apr-util apr"
-BUILD_DEPENDS="apr-util-dev apr-dev"
+DEPENDS="apr-util apr openssl"
+BUILD_DEPENDS="apr-util-dev apr-dev openssl-dev"
 CONFIG_FILES="/etc/apache /var/www"
 PROVIDE="lighttpd"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	ln -s $SOURCE-$VERSION $PACKAGE-$VERSION
 	cd $src
 	grep -q Slitaz config.layout || \
 		cat ../stuff/slitaz.layout >> config.layout
 	./configure --mandir=/usr/share/man --enable-mods-shared=all \
+		--enable-proxy --enable-ssl \
 		--enable-layout=Slitaz $CONFIGURE_ARGS &&
 	make && make DESTDIR=$PWD/_pkg install
 }
@@ -36,6 +36,7 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	rm -r $fs/usr/bin/apxs
 	cp -a $_pkg/etc $fs
+	rm -rf $fs/etc/apache/original
 	cp -a $_pkg/var $fs
 	ln -s /usr/bin/apachectl $fs/etc/init.d/apache
 	sed -i  -e 's|User daemon|User www|' -e 's|Group daemon|Group www|' \
