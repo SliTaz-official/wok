@@ -71,6 +71,17 @@ genpkg_rules()
 	cp -a stuff/etc $fs
 	chown -R 0.0 $fs/var/www
 	chown -R 0.0 $fs/etc
+	mkdir $fs/etc/ssl/lighttpd
+	cat >> $1/etc/lighttpd/lighttpd.conf <<EOT
+
+# Enable HTTPS support
+#
+$SERVER["socket"] == ":443" {
+  protocol = "https://"
+  ssl.engine    = "enable"
+  ssl.pemfile   = "/etc/ssl/lighttpd/lighttpd.pem"
+}
+EOT
 	
 	# Logs directory.
 	mkdir -p $fs/var/log/lighttpd
@@ -89,6 +100,20 @@ post_install()
 	local root
 	root=$1
 	echo "Processing post-install commands..."
+	if [ ! -f $1/etc/ssl/lighttpd/lighttpd.pem ]; then
+		openssl req -new -x509 \
+			-keyout $1/etc/ssl/lighttpd/lighttpd.pem \
+			-out $1/etc/ssl/lighttpd/lighttpd.pem \
+			 -days 3650 -nodes <<EOT
+$(. /etc/locale.conf ; echo ${LANG#*_})
+$(cat /etc/TZ)
+
+$(cat /etc/hostname)
+
+
+
+EOT
+	fi
 	# Just in case.
 	chown www.www $root/var/log/lighttpd
 	/etc/init.d/lighttpd start
