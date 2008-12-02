@@ -1,0 +1,54 @@
+# SliTaz package receipt.
+
+PACKAGE="scim-pinyin"
+VERSION="0.5.91"
+CATEGORY="utilities"
+SHORT_DESC="Chinese PinYin input for SCIM"
+MAINTAINER="slitaz@pworld.otherinbox.com"
+DEPENDS="scim"
+BUILD_DEPENDS="scim scim-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.scim-im.org/"
+#WGET_URL="$SF_MIRROR/scim/$TARBALL"
+WGET_URL="http://kent.dl.sourceforge.net/sourceforge/scim/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+  cd $src
+  export PKG_CONFIG_PATH=/usr/pkgconfig
+  ./configure --prefix=/usr --infodir=/usr/share/info \
+  --mandir=/usr/share/man --disable-static $CONFIGURE_ARGS &&
+  make &&
+  make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+  mkdir -p $fs/usr/share
+  cp -a $_pkg/usr/lib $fs/usr
+  cp -a $_pkg/usr/share/scim $fs/usr/share
+
+  # say goodbye to .la files
+  find $fs/usr/lib -name '*.la' -exec rm {} \;
+  find $fs/usr/lib -name '*.so' -exec strip -s {} \;
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+  cat <<EOT
+------------
+In order to start scim and use chinese after boot time,
+add the following code to your ~/.profile file:
+export XMODIFIERS=@im=SCIM
+export XIM="scim"
+export XINPUT="xim"
+export XIM_PROGRAM="scim -d"
+export GTK_IM_MODULE=scim
+export QT_IM_MODULE=scim
+scim -d &
+------------
+EOT
+}
