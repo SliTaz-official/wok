@@ -36,8 +36,12 @@ post_install()
 	    sed -e 's|;.*extension=msql.so|;   extension=msql.so\nextension=mysql.so|' -i $1/etc/php.ini
 	# Start Web server.
 	while read daemon file; do
-		if [ -z "$1" -a -f /etc/init.d/$daemon \
-			     -a ! -f "/var/run/$file" ]; then
+		[ -z "$1" ] || continue
+		if [ -f "/var/run/$file" ]; then
+			/etc/init.d/$daemon stop
+			sleep 2
+		fi
+		if [ -f /etc/init.d/$daemon ]; then
 			/etc/init.d/$daemon start
 		fi
 	done <<EOT
@@ -53,7 +57,9 @@ pre_remove()
 
 	# Start Web server.
 	while read daemon file; do
-		if [ -f /etc/init.d/$daemon -a ! -f "/var/run/$file" ]; then
+		if [ -f /etc/init.d/$daemon -a -f "/var/run/$file" ]; then
+			/etc/init.d/$daemon stop
+			sleep 2
 			/etc/init.d/$daemon start
 		fi
 	done <<EOT

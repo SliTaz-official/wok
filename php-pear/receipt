@@ -19,15 +19,34 @@ genpkg_rules()
 }
 
 # Pre and post install commands for Tazpkg.
+pre_install()
+{
+	while read daemon file; do
+		if [ -z "$1" -a -f "/var/run/$file" ]; then
+			/etc/init.d/$daemon stop
+		fi
+	done <<EOT
+apache apache/httpd.pid
+lighttpd lighttpd.pid
+EOT
+}
+
 post_install()
 {
 	grep ^include_path $1/etc/php.ini
 	sed -i 's|/php/includes"|/php/includes"\ninclude_path = ".:/usr/share/php"|' $1/etc/php.ini
 	# Restart Web server.
-	for daemon in apache lighttpd ; do
-		if [ -f /etc/init.d/$daemon ]; then
+	while read daemon file; do
+		[ -z "$1" ] || continue
+		if [ -f "/var/run/$file" ]; then
 			/etc/init.d/$daemon stop
+			sleep 2
+		fi
+		if [ -f /etc/init.d/$daemon ]; then
 			/etc/init.d/$daemon start
 		fi
-	done
+	done <<EOT
+apache apache/httpd.pid
+lighttpd lighttpd.pid
+EOT
 }
