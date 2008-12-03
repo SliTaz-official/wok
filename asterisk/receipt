@@ -34,6 +34,37 @@ genpkg_rules()
 	for i in $fs/etc/asterisk/*.sample; do
 		mv $i ${i%.sample}
 	done
+	cp -a stuff/* $fs
+}
+
+# Rules to configure package
+setup_rules()
+{
+	case "$2" in
+	mysql_host)
+		sed -i "s|^hostname=.*|hostname=$3|" $1/etc/asterisk/cdr_mysql.conf
+		sed -i "s|^dbhost=.*|dbhost=$3|" $1/etc/asterisk/res_mysqlconf
+		;;
+	mysql_user)
+		sed -i "s|^user=.*|user=$3|" $1/etc/asterisk/cdr_mysql.conf
+		sed -i "s|^dbuser=.*|dbuser=$3|" $1/etc/asterisk/res_mysqlconf
+		;;
+	mysql_password)
+		sed -i "s|^password=.*|password=$3|" $1/etc/asterisk/cdr_mysql.conf
+		sed -i "s|^dbpass=.*|dbpass=$3|" $1/etc/asterisk/res_mysqlconf
+		;;
+	mysql_database)
+		sed -i "s|^dbname=.*|dbname=$3|" $1/etc/asterisk/res_mysqlconf \
+						 $1/etc/asterisk/cdr_mysql.conf
+		;;
+	*)	cat <<EOT
+mysql_host	hostname or ip of mysql server
+mysql_user	username to connect to mysql server
+mysql_password	password to connect to mysql server
+mysql_database	database used by asterisk
+EOT
+		;;
+	esac
 }
 
 # Pre and post install commands for Tazpkg.
