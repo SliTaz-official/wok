@@ -1,0 +1,57 @@
+# SliTaz package receipt.
+
+PACKAGE="aufs"
+VERSION="20081206"
+CATEGORY="base-system"
+SHORT_DESC="Stackable unification FileSystem Linux kernel module."
+MAINTAINER="pascal.bellard@ads-lu.com"
+WEB_SITE="http://$PACKAGE.sourceforge.net/"
+BUILD_DEPENDS="cvs"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cvsroot=anonymous@$PACKAGE.cvs.sourceforge.net:/cvsroot
+	if [ ! -d $src ]; then
+		cvs -z3 -d:pserver:$cvsroot/$PACKAGE co -D$VERSION $PACKAGE
+		mv $PACKAGE $src
+	fi
+	local kver
+	if [ ! -d ../linux/taz ]; then
+		tazwok cook linux
+	fi
+	kver=$(grep "kernel version" ../linux/linux-*/.config)
+	kver=${kver##* }
+	cd $src
+	ln -s $(cd ../../linux/linux-$kver* ; pwd)/include/linux/* include/linux
+	make KDIR=$(cd ../../linux/linux-$kver* ; pwd) -f local.mk
+	mkdir -p _pkg/lib/modules/$kver-slitaz/kernel/fs/aufs/ _pkg/sbin
+	mkdir -p _pkg/etc/default
+	cp $(readlink aufs.ko) _pkg/lib/modules/$kver-slitaz/kernel/fs/aufs/
+	cp util/etc_default_aufs _pkg/etc/default/aufs
+	chmod 644 _pkg/etc/default/aufs
+	echo FLUSH=ALL > _pkg/etc/default/auplink
+	for i in umount.aufs mount.aufs auplink aulchown aufind.sh auchk; do
+		cp $(readlink $i) _pkg/sbin
+		chmod 500 _pkg/sbin/$i
+	done
+}
+
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/lib $fs
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	depmod -a -b "$1/"
+}
+
+post_remove()
+{
+	depmod -a
+}
+
