@@ -1,0 +1,28 @@
+# SliTaz package receipt.
+
+PACKAGE="git"
+VERSION="1.6.0.5"
+CATEGORY="development"
+SHORT_DESC="Fast version control system"
+MAINTAINER="b1+slitaz@nagel.org"
+DEPENDS="zlib openssl curl expat"
+BUILD_DEPENDS="zlib-dev openssl-dev curl-dev expat-dev perl tar bzip2"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://git.or.cz"
+WGET_URL="http://kernel.org/pub/software/scm/git/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make prefix=/usr THREADED_DELTA_SEARCH=1 NO_TCLTK=1
+	make prefix=/usr THREADED_DELTA_SEARCH=1 NO_TCLTK=1 DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs
+	cp -a $_pkg/usr $fs/
+	strip -s $fs/usr/bin/* $fs/usr/libexec/git-core/* || true
+}
