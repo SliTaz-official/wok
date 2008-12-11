@@ -5,7 +5,7 @@ VERSION="1.40"
 CATEGORY="network"
 SHORT_DESC="Transmission web interface."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="transmission"
+DEPENDS="transmission lighttpd"
 WANTED="transmission"
 WEB_SITE="http://www.transmissionbt.com/"
 
@@ -15,4 +15,41 @@ genpkg_rules()
 	mkdir -p $fs/usr/share
 	cp -a $_pkg/usr/share/transmission $fs/usr/share
 	rm $fs/usr/share/transmission/web/LICENSE
+}
+
+post_install()
+{
+	# Configure lighttpd server
+	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+		if ! grep -q /usr/share/transmission/web/ $1/etc/lighttpd/lighttpd.conf; then
+	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/transmission/" => "/usr/share/transmission/web/",|g' -i $1/etc/lighttpd/lighttpd.conf
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/lighttpd stop
+				/etc/init.d/lighttpd start
+			fi
+		fi
+	fi
+	# Configure apache server
+	if [ -f $1/etc/apache/httpd.conf ]; then
+		if [ ! -f $1/etc/apache/conf.d/transmission ]; then
+			cat > $1/etc/apache/conf.d/transmission <<EOT
+<IfModule mod_alias.c>
+    Alias /transmission /usr/share/transmission/web
+</IfModule>
+<DirectoryMatch /usr/share/transmission/web>
+    DirectoryIndex index.html
+    Options +FollowSymLinks
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</DirectoryMatch>
+EOT
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/apache stop
+				/etc/init.d/apache start
+			fi
+		fi
+	fi
 }
