@@ -8,7 +8,7 @@ MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION-src.tar.bz2"
 WEB_SITE="http://www.webalizer.com/"
 WGET_URL="ftp://ftp.mrunix.net/pub/$PACKAGE/$TARBALL"
-DEPENDS="libgd zlib db"
+DEPENDS="libgd zlib db apache"
 BUILD_DEPENDS="libgd libgd-dev zlib-dev db db-dev"
 
 # Rules to configure and make the package.
@@ -24,8 +24,20 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc
+	mkdir -p $fs/usr $fs/etc $fs/var/www/webalizer
+	chown 80 $fs/var/www/webalizer
 	cp -a $_pkg/etc/webalizer.conf.sample $fs/etc/webalizer.conf
 	cp -a $_pkg/usr/bin $fs/usr
 }
 
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	if [ -z "$1" ]; then
+		webalizer -o /var/www/webalizer /var/log/apache/access_log 
+		crontab -l 2> /dev/null | grep -q webalizer || crontab - << EOT
+$(crontab -l 2> /dev/null)
+30 0 * * * /usr/bin/webalizer -o /var/www/webalizer /var/log/apache/access_log
+EOT
+	fi
+}
