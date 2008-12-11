@@ -7,6 +7,7 @@ SHORT_DESC="Light and easy to use BitTorrent client."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+ openssl curl libgio"
 BUILD_DEPENDS="gtk+-dev openssl-dev curl-dev"
+SUGGESTED="transmission-web"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.transmissionbt.com/"
 WGET_URL="http://download.m0k.org/transmission/files/$TARBALL"
@@ -14,42 +15,23 @@ WGET_URL="http://download.m0k.org/transmission/files/$TARBALL"
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Upstream did a funny tarball...
-	mkdir -p $PACKAGE-$VERSION
-	tar xzf $SOURCES_REPOSITORY/$TARBALL -C $PACKAGE-$VERSION
-
-	# For 0.92 (need openssl lib).
-	#bzip2 -d -c "$SOURCES_REPOSITORY/$TARBALL" | tar -xf -
-
 	cd $src
 	./configure \
 		--prefix=/usr \
 		$CONFIGURE_ARGS
 	make
+	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/locale/fr/LC_MESSAGES
-	cp -a $src/gtk/transmission $fs/usr/bin
-	# French locale.
-	cp -a $src/po/fr.gmo \
-		$fs/usr/share/locale/fr/LC_MESSAGES/transmission.mo
+	mkdir -p $fs/usr/bin
+	cp -a $_pkg/usr/bin/$PACKAGE $fs/usr/bin
 }
 
 # Remove old packages name
 post_install()
 {
 	rm -f $1/usr/bin/transmission-gtk
-}
-
-# Fancy tarball...
-clean_wok()
-{
-	mv stuff /tmp/tmp-stuff
-	mv receipt /tmp/tmp-receipt
-	rm -rf *
-	mv /tmp/tmp-stuff stuff
-	mv /tmp/tmp-receipt receipt
 }
