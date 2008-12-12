@@ -1,0 +1,62 @@
+#!/bin/sh -e
+
+ROOT="$1"
+
+if test $(id -u) != 0 ; then
+	echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please type 'su' and root password to become super-user.\n"
+	exit 0
+fi
+
+if [ -d $ROOT/var/lib/tazpkg/installed/xnviewmp ]; then
+  [ -n "$ROOT" ] && exit 1
+  tazpkg remove xnviewmp
+  [ -d /var/lib/tazpkg/installed/xnviewmp ] && exit 1
+fi
+[ -d $ROOT/usr/share/xnviewmp ] && rm -rf $ROOT/usr/share/xnviewmp
+
+# Download tarball
+WEB_SITE="http://91.121.175.160/download/"
+wget ${WEB_SITE}/XnViewMP-linux.tgz
+
+# Extract
+TARBALL=$(ls XnView*.tgz 2> /dev/null || true)
+tar xzf $TARBALL
+cd XnViewMP
+
+# Install files
+mkdir -p xnviewmp/fs/usr/bin
+mkdir -p xnviewmp/fs/usr/lib/xnviewmp/
+mkdir -p xnviewmp/fs/usr/share/xnviewmp/
+cp -a lib* xnviewmp/fs/usr/lib/xnviewmp/
+cp -a phonon_backend xnviewmp/fs/usr/lib/xnviewmp/
+cp -a language xnviewmp/fs/usr/share/xnviewmp/
+cp -a xnview xnviewmp/fs/usr/share/xnviewmp/
+cat > xnviewmp/fs/usr/bin/xnview <<EOT
+#!/bin/sh
+LD_LIBRARY_PATH=/usr/lib/xnviewmp/
+export LD_LIBRARY_PATH
+/usr/share/xnviewmp/xnview
+EOT
+chmod +x xnviewmp/fs/usr/bin/xnview
+
+# Create pseudo package
+cat > xnviewmp/receipt <<EOT
+PACKAGE="xnviewmp"
+VERSION="0.12"
+CATEGORY="non-free"
+SHORT_DESC="XnViewMP"
+WEB_SITE="http://www.xnview.com"
+DEPENDS=""
+CONFIG_FILES=""
+EOT
+
+# Pack
+tazpkg pack xnviewmp
+
+# Install pseudo package
+tazpkg install xnviewmp.tazpkg --root=$ROOT
+cd ..
+
+# Clean
+rm -rf $TARBALL
