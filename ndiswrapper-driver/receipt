@@ -1,0 +1,55 @@
+# SliTaz package receipt.
+
+PACKAGE="ndiswrapper-driver"
+VERSION="1.53"
+CATEGORY="system-tools"
+SHORT_DESC="Add Windows network drivers support to Linux kernel."
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="linux"
+BUILD_DEPENDS="slitaz-toolchain"
+SOURCE="ndiswrapper"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://ndiswrapper.sourceforge.net/joomla/"
+WGET_URL="http://dfn.dl.sourceforge.net/sourceforge/ndiswrapper/$TARBALL
+ http://puzzle.dl.sourceforge.net/sourceforge/ndiswrapper/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	if [ ! -d $WOK/linux/linux-$KERNEL_VERSION ]; then
+		tazwok cook linux
+	fi
+	cd $src
+	make  KBUILD=$WOK/linux/linux-$KERNEL_VERSION KVER=$KERNEL_VERSION 
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	EXTRAVERSION=_$KERNEL_VERSION
+	
+	mkdir -p $fs/usr/sbin $fs/sbin $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+	
+	# Install utilities	
+	install -o root -m 755 $src/utils/loadndisdriver $fs/sbin/
+	strip -s $fs/sbin/load*
+
+	# Compress and install module
+	#./stuff/gztazmod.sh $fs/lib/modules/$VERSION-slitaz
+	install -o root -m O644 $src/driver/ndiswrapper.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	depmod -a -b "$1/" ${EXTRAVERSION#_}-slitaz
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	depmod -a
+}
