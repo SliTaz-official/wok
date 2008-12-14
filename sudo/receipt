@@ -41,12 +41,24 @@ genpkg_rules()
 	strip -s $fs/usr/lib/sudo_noexec.so
 }
 
+pre_install()
+{
+	echo "Processing pre-install commands..."
+	if [ -f $root/etc/sudoers.bak ]; then
+		cp $root/etc/sudoers $root/etc/sudoers.bak
+	fi
+}
 
 post_install()
 {
 	local root
 	root=$1
 	echo "Processing post-install commands..."
-	chown root.root $root/etc/sudoers
-	chmod 0440 $root/etc/sudoers
+	if [ -f $root/etc/sudoers.bak ]; then
+		rm -f $root/etc/sudoers
+		mv $root/etc/sudoers.bak $root/etc/sudoers
+	else
+		chown root.root $root/etc/sudoers
+		chmod 0440 $root/etc/sudoers
+	fi
 }                        
