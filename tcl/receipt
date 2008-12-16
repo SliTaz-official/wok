@@ -1,12 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="tcl"
-VERSION="8.4.18"
+VERSION="8.5.5"
 CATEGORY="development"
 SHORT_DESC="The Tool Command Language"
 MAINTAINER="erjo@slitaz.org"
 DEPENDS=""
-TARBALL="${PACKAGE}${VERSION}-src.tar.gz"
+SOURCE="tcl"
+TARBALL="${SOURCE}${VERSION}-src.tar.gz"
 WEB_SITE="http://tcl.sourceforge.net/"
 WGET_URL="http://surfnet.dl.sourceforge.net/sourceforge/tcl/$TARBALL"
 
@@ -14,15 +15,15 @@ WGET_URL="http://surfnet.dl.sourceforge.net/sourceforge/tcl/$TARBALL"
 compile_rules()
 {
 	# Redefine  source path src
-	src=${PACKAGE}${VERSION}/unix
+	src=${SOURCE}${VERSION}/unix
 
 	cd $src
 	./configure --prefix=/usr \
 	 --infodir=/usr/share/info \
 	 --enable-shared \
 	 --disable-symbols \
-	 --mandir=/usr/share/man $CONFIGURE_ARGS
-	make
+	 --mandir=/usr/share/man $CONFIGURE_ARGS && \
+	make && \
 	make DESTDIR=$PWD/_pkg install
 }
 
@@ -30,16 +31,14 @@ compile_rules()
 genpkg_rules()
 {
 	
-	_pkg=${PACKAGE}${VERSION}/unix/_pkg
+	_pkg=${SOURCE}${VERSION}/unix/_pkg
 	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/lib/tcl8* $fs/usr/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
-	# Devel files (to lazy to build a -dev pkg)
-	cp -a $_pkg/usr/lib/*.*a $fs/usr/lib
-	cp -a $_pkg/usr/include $fs/usr
+	strip -s $fs/usr/bin/*
 }
 
 clean_wok(){
-	rm -rf ${PACKAGE}${VERSION}
+	test -d ${SOURCE}${VERSION} && rm -rf ${SOURCE}${VERSION}
 }
