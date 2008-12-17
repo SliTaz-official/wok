@@ -25,11 +25,11 @@ set_patch()
     i=$(($i-1))
     tag=$(grep "$tag" $1/etc/init.d/rcS)
     if [ "$2" = "-R" ]; then
-    	line="-$(($i-21)),23 +$(($i-21)),2"
+    	line="-$(($i-25)),27 +$(($i-25)),2"
 	i="-"
     else
         grep -q 'from slitaz-loram package' $1/etc/init.d/rcS && return
-    	line="-$i,2 +$i,23"
+    	line="-$i,2 +$i,27"
 	i="+"
     fi
     patch -p0 <<EOF
@@ -48,12 +48,16 @@ $i	else
 $i		echo -n "only... "
 $i	fi
 $i	if [ -f /.usr.cromfs ]; then
-$i		/bin/cromfs-driver \$FS /\$usr -o ro,dev,suid,allow_other
+$i		/bin/cromfs-driver /.usr.cromfs /\$usr -o ro,dev,suid,allow_other
 $i	else
 $i		/bin/mount -o loop,ro -t squashfs /.usr.sqfs /\$usr
 $i	fi
 $i	if [ -d /.usr.rw ]; then
-$i		/bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other -o suid,dev NONE /usr
+$i		if [ -x bin/funionfs ]; then
+$i			/bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other -o suid,dev NONE /usr
+$i		else
+$i			/bin/mount -t aufs -o br:/.usr.ro:/.usr.rw none /usr
+$i		fi
 $i	fi
 $i	status
 $i fi
@@ -78,12 +82,14 @@ pre_install()
 post_install()
 {
     set_patch "$1"
-    if [ ! -x $1/bin/funionfs ]; then
+    if [ ! -x $1/bin/funionfs -a ! -d $1/var/lib/tazpkg/installed/aufs ]; then
         cat <<EOF
 ----
 You will build a live CD with /usr mounted read-only.
-You can install funionfs to have read-write access into /usr with:
+You can install aufs or funionfs to have read-write access into /usr with:
 
+# tazpkg get-install aufs
+or
 # tazpkg get-install funionfs
 
 EOF

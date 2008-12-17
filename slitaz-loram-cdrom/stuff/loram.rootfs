@@ -27,10 +27,12 @@ for ii in /var/lib/tazpkg/installed /lib/modules/*/kernel/drivers/net \
 done
 echo "$(du -hs ./usr/.moved | cut -f1) have been moved into /usr"
 usr=usr
-if [ -x bin/funionfs -o -x usr/bin/mkcromfs ]; then
+if [ -x bin/funionfs -o -d /var/lib/tazpkg/installed/aufs ]; then
   usr=.usr.ro
   mkdir .usr.ro .usr.rw
-  ln -s /.usr.ro/lib/$(cd usr/lib ; ls libfuse.so.2.*) lib/libfuse.so.2
+fi
+if [ -x bin/funionfs -o -x usr/bin/mkcromfs ]; then
+  ln -s /$usr/lib/$(cd usr/lib ; ls libfuse.so.2.*) lib/libfuse.so.2
 fi
 if [ -x usr/bin/mkcromfs ]; then
   usr/bin/mkcromfs -qq -f 262144 -b 16384 usr ../rootcd/usr.cromfs

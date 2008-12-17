@@ -24,11 +24,11 @@ set_patch()
     i=$(($i-1))
     tag=$(grep "$tag" $1/etc/init.d/rcS)
     if [ "$2" = "-R" ]; then
-    	line="-$(($i-49)),51 +$(($i-49)),2"
+    	line="-$(($i-53)),55 +$(($i-53)),2"
 	i="-"
     else
         grep -q 'from slitaz-loram-cdrom package' $1/etc/init.d/rcS && return
-    	line="-$i,2 +$i,51"
+    	line="-$i,2 +$i,55"
 	i="+"
     fi
     patch -p0 <<EOF
@@ -54,7 +54,7 @@ $i
 $i# Mount /usr (from slitaz-loram-cdrom package)
 $i if [ -d /cdrom ]; then
 $i	mount -o ro -t iso9660 /dev/cdrom /cdrom
-$i	if [ -d /.usr.rw -a -x /bin/funionfs ]; then
+$i	if [ -d /.usr.rw ]; then
 $i		echo -n "Mounting /usr read-write... "
 $i		usr=.usr.ro
 $i	else
@@ -80,8 +80,12 @@ $i		umount /cdrom
 $i		false
 $i	fi
 $i	status 
-$i	if [ -d /.usr.rw -a -x /bin/funionfs ]; then
-$i		/bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other -o suid,dev NONE /usr
+$i	if [ -d /.usr.rw ]; then
+$i		if [ -x /bin/funionfs ]; then
+$i			/bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other -o suid,dev NONE /usr
+$i		else
+$i			/bin/mount -t aufs -o br:/.usr.ro:/.usr.rw none /usr
+$i		fi
 $i	fi
 $i fi
 $i
@@ -130,12 +134,14 @@ pre_install()
 post_install()
 {
     set_patch "$1"
-    if [ ! -x $1/bin/funionfs ]; then
+    if [ ! -x $1/bin/funionfs -a ! -d $1/var/lib/tazpkg/installed/aufs ]; then
         cat <<EOF
 ----
 You will build a live CD with /usr mounted read-only.
-You can install funionfs to have read-write access into /usr with:
+You can install aufs or funionfs to have read-write access into /usr with:
 
+# tazpkg get-install aufs
+or
 # tazpkg get-install funionfs
 
 EOF
