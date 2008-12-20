@@ -2134,3 +2134,92 @@
 +	free_init_pages(NULL, start, end);
  }
  #endif
+
+--- linux-2.6.25.5/init/initramfs.c
++++ linux-2.6.25.5/init/initramfs.c
+@@ -404,7 +404,32 @@
+ static unsigned outcnt;  /* bytes in output buffer */
+ static long bytes_out;
+ 
+-#define get_byte()  (inptr < insize ? inbuf[inptr++] : -1)
++#define INITRD_PAGE ((PAGE_SIZE > 1024*1024) ? PAGE_SIZE : 1024*1024)
++static int fill_offset, fill_total;
++#include <linux/initrd.h>
++static void release_inbuf(int count)
++{
++	if (fill_total < 0) return;
++	fill_offset += count;
++	fill_total += count;
++	if (fill_offset >= INITRD_PAGE) {
++		unsigned rem = fill_offset % INITRD_PAGE;
++		unsigned end = initrd_start + fill_offset - rem;
++		free_initrd_mem(initrd_start, end);
++		printk(".");
++		initrd_start = end;
++		fill_offset = rem;
++	}
++}
++
++static uch get_byte(void)
++{
++	uch c;
++	if (inptr > insize) return -1;
++	c = inbuf[inptr++];
++	release_inbuf(1);
++	return c;
++}
+ 		
+ /* Diagnostic functions (stubbed out) */
+ #define Assert(cond,msg)
+@@ -453,25 +478,13 @@
+ 	outcnt = 0;
+ }
+ 
+-#include <linux/initrd.h>
+ #ifdef CONFIG_RD_LZMA
+-#define INITRD_PAGE ((PAGE_SIZE > 1024*1024) ? PAGE_SIZE : 1024*1024)
+-static int fill_offset, fill_total;
+ static int fill_buffer(void *buffer, unsigned size)
+ {
+ 	int max =  initrd_end - initrd_start - fill_offset;
+ 	if (size < max) max = size;
+ 	memcpy(buffer, (void *)(initrd_start + fill_offset), max);
+-	fill_offset += max;
+-	fill_total += max;
+-	if (fill_offset >= INITRD_PAGE) {
+-		unsigned rem = fill_offset % INITRD_PAGE;
+-		unsigned end = initrd_start + fill_offset - rem;
+-		free_initrd_mem(initrd_start, end);
+-		printk(".");
+-		initrd_start = end;
+-		fill_offset = rem;
+-	}
++	release_inbuf(max);
+ 	return max;
+ }
+ #endif
+@@ -489,6 +502,8 @@
+ 	state = Start;
+ 	this_header = 0;
+ 	message = NULL;
++	fill_total = fill_offset = 0;
++	if(buf != (char *) initrd_start) fill_total = -1;
+ 	while (!message && len) {
+ #ifdef CONFIG_RD_LZMA
+ 		int status;
+@@ -497,6 +512,7 @@
+ 		if (*buf == '0' && !(this_header & 3)) {
+ 			state = Start;
+ 			written = write_buffer(buf, len);
++			release_inbuf(written);
+ 			buf += written;
+ 			len -= written;
+ 			continue;
+@@ -534,7 +550,6 @@
+ 		if(buf == (char *) initrd_start) {
+ 			char *work_buffer = malloc(LZMA_IOBUF_SIZE);
+ 			if (work_buffer) {
+-				fill_total = fill_offset = 0;
+ 				fill_buffer(work_buffer, LZMA_IOBUF_SIZE);
+ 				status = unlzma(work_buffer, LZMA_IOBUF_SIZE,
+ 					fill_buffer, flush_buffer, NULL);
