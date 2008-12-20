@@ -5,8 +5,8 @@ VERSION="2008-05-R1"
 CATEGORY="network"
 SHORT_DESC="Wireless network monitoring tool"
 MAINTAINER="domcox@users.sourceforge.net"
-DEPENDS="expat gmp libpcap ncurses zlib"
-BUILD_DEPENDS="expat-dev gmp-dev ncurses-dev zlib-dev"
+DEPENDS="dbus libpcap ncurses"
+BUILD_DEPENDS="dbus-dev ncurses-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.kismetwireless.net"
 WGET_URL="http://www.kismetwireless.net/code/$TARBALL"
@@ -15,10 +15,14 @@ WGET_URL="http://www.kismetwireless.net/code/$TARBALL"
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man --sysconfdir=/etc/kismet \
-	$CONFIGURE_ARGS
-	make
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--sysconfdir=/etc/kismet \
+		--disable-gpsmap \
+	$CONFIGURE_ARGS && \
+	make && \
 	make DESTDIR=$PWD/_pkg install
 }
 
@@ -29,7 +33,49 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	mkdir -p $fs/etc
 	cp -a $_pkg/etc/kismet $fs/etc
-	sed -e 's/your_user_here/tux/' $_pkg/etc/kismet/kismet.conf \
-		> $fs/etc/kismet/kismet.conf
-	strip -s $fs/usr/bin/*
+	# not overwrite existing configuration
+	mv $fs/etc/kismet/kismet.conf $fs/etc/kismet/kismet.conf.new
+	mv $fs/etc/kismet/kismet_ui.conf $fs/etc/kismet/kismet_ui.conf.new
+	mv $fs/etc/kismet/kismet_drone.conf $fs/etc/kismet/kismet_drone.conf.new
+	# set tux as kismet user
+	sed -i 's/your_user_here/tux/' $fs/etc/kismet/kismet.conf.new
+	# disable sound
+	sed -i 's/sound=true/sound=false/' $fs/etc/kismet/kismet_ui.conf.new
+}
+
+post_install()
+{
+	# configuration files auto overwrite
+	create=1
+	overwrite=2
+	keep=3
+	cd /etc/kismet
+	for file in "kismet" "kismet_ui" "kismet_drone"
+	do
+		# check current configuration files
+		if [ ! -e $file.conf ]; then
+			action=$create
+			else
+ 			current=`grep version= $file.conf`
+			new=`grep version= $file.conf.new`
+			if [ "$current" = "$new" ]; then
+				action=$keep
+			else
+				action=$overwrite
+			fi
+		fi
+		case $action in
+		$create)
+			mv $file.conf.new $file.conf
+		;;
+		$keep)
+			rm $file.conf.new
+		;;
+		$overwrite)
+			mv $file.conf $file.conf.bak
+			mv $file.conf.new $file.conf
+			echo "$file.conf new upstream version, please check"
+		;;
+		esac
+	done
 }
