@@ -83,10 +83,13 @@ pre_install()
 }
 post_install()
 {
-	local root
-	root=$1
 	echo "Processing post-install commands..."
 	# Just in case.
-	chown www.www $root/var/log/$PACKAGE
-	/etc/init.d/$PACKAGE start
+	chown www.www $1/var/log/$PACKAGE
+	if [ -z "$1" ]; then
+		for i in apache ; do
+			[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
+		done
+		/etc/init.d/$PACKAGE start
+	fi
 }

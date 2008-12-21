@@ -97,8 +97,6 @@ pre_install()
 }
 post_install()
 {
-	local root
-	root=$1
 	echo "Processing post-install commands..."
 	if [ ! -f $1/etc/ssl/lighttpd/lighttpd.pem ]; then
 		openssl req -new -x509 \
@@ -115,6 +113,11 @@ $(cat /etc/hostname)
 EOT
 	fi
 	# Just in case.
-	chown www.www $root/var/log/lighttpd
-	/etc/init.d/lighttpd start
+	chown www.www $1/var/log/lighttpd
+	if [ -z "$1" ]; then
+		for i in apache ; do
+			[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
+		done
+		/etc/init.d/$PACKAGE start
+	fi
 }
