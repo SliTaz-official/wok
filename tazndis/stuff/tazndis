@@ -44,6 +44,9 @@ my $re_sub_dev_conf = "$re_dev_id:$re_dev_id:$re_dev_id:$re_dev_id" .
   "\.([[:xdigit:]]+)\.conf";
 my $re_dev_conf = "$re_dev_id:$re_dev_id\.([[:xdigit:]]+)\.conf";
 
+my $rcs_config = "/etc/rcS.conf";
+$rcs_config_change = 1;
+
 # fixup list for parameters.
 my %param_fixlist = ("EnableRadio|0" => "1",
 		     "IBSSGMode|0" => "2",
@@ -99,9 +102,8 @@ sub usage() {
 #* Replaced File.pm 
 
 sub basename(@_){
-	$var = $_[0];
-	$var =~ s#.*/(.*)$#$1#;
-	return $var;
+	($a = shift) =~ s#.*/(.*)$#$1#;
+	return $a;
 }
 
 
@@ -205,6 +207,36 @@ sub check_version {
     return $res;
 }
 
+sub set_rcs_config {
+    # Add ndiswrapper to LOAD_MODULES if needed.
+    open (RCS_CONF, "< $rcs_config") or die "couldn't open $rcs_config:$!";
+    open (RCS_CONF1, "> $rcs_config.tmp") or die "couldn't open $rcs_config.tmp for writting:$!";
+    LINE: while(<RCS_CONF>){
+    	if(/^LOAD_MODULES/){
+    		if (!/^LOAD_MODULES=.*ndiswrapper/){ 
+   				print "Add ndiswrapper to module list...\n";
+    			$_ =~ s/(.*)\"$/$1 ndiswrapper\"/;
+    			$rcs_config_change = 0;
+    		}
+    	}
+		chomp;
+    	print RCS_CONF1 "$_\n";
+   	}	
+    close RCS_CONF, RCS_CONF1;
+    
+    if($rcs_config_change == 0){
+    	rename "$rcs_config.tmp","$rcs_config" or die "couldn't update $rcs_config: $!";
+    } else {
+    	unlink "$rcs_config.tmp";
+    }
+    
+}
+
+sub load_ndiswrapper {
+	open (LSMOD, " lsmod |") or die "couldn't get loaded module list: $!";
+	`modprobe ndiswrapper` unless  (/^ndiswrapper/);
+}
+
 sub install {
     my $inf = shift;
     chomp($inf);
@@ -231,8 +263,11 @@ sub install {
     parse_mfr();
     copy_file(basename($inf), basename($inf));
     create_fuzzy_conf($driver_name);
-    print "Install done. "
-    	."You may add ndiswrapper in LOAD_MODULES to launch your network driver at boot time.\n";
+    
+    #Update LOAD_MODULES and load ndiswrapper.
+    set_rcs_config();
+    load_ndiswrapper();
+    
     
     return 0;
 }
@@ -818,13 +853,12 @@ sub device_driver_alias {
 
 sub list_drivers {
     my $cards = get_cards();
-
     open(LS, "/bin/ls -1 $confdir|") or die "couldn't open $confdir: $!";
     while (my $driver = <LS>) {
-	chomp($driver);
-	if (-e "$confdir/$driver") {
-	    printf "%s : %s\n", $driver, install_status($cards, $driver);
-	}
+		chomp($driver);
+		if (-e "$confdir/$driver") {
+	    	printf "%s : %s\n", $driver, install_status($cards, $driver);
+		}
     }
     close(LS);
     return 0;
