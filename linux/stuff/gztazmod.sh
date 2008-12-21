@@ -40,12 +40,15 @@ echo ""
 
 # Find all modules.
 echo -n "Searching all modules to compress them... "
-find . -name "*.ko" -exec lzma e '{}' '{}'.gz \;
+find . -name "*.ko" -exec lzma e '{}' '{}'.gz \; 2> /dev/null
 status
+find . -name "*.ko" -exec rm '{}' \;
 
 # Build a new temporary modules.dep.
 echo -n "Building tmp.dep... "
-sed 's/\.ko/.ko.gz/g' modules.dep > tmp.dep
+sed 's/\.ko.gz/.ko/g' modules.dep > tmp.dep
+sed -i 's/\.ko.gz/.ko/g' tmp.dep
+sed -i 's/\.ko/.ko.gz/g' tmp.dep
 status
 
 # Destroy original modules.dep
