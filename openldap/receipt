@@ -50,6 +50,13 @@ post_install()
 etc/openldap/ldap.conf
 etc/openldap/slapd.conf
 EOT
+	( cd $1/$INSTALLED/ ; grep -l /etc/openldap/slapd.conf */receipt ) | \
+	while read file; do
+		pkg=$(dirname $file)
+		[ "$pkg" = "$PACKAGE" ] && continue
+		echo "Reconfiguring $pkg for $PACKAGE..."
+		tazpkg reconfigure $pkg
+	done
 }
 
 repack_cleanup()
