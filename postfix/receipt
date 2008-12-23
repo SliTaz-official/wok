@@ -57,10 +57,6 @@ EOF
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
-		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
-$(cd $1/ ; find etc/postfix -type f)
-EOT
         # adduser postfix if needed
 	if ! grep -q postfix $1/etc/passwd; then
 		echo -n "Adding user postfix..."
@@ -106,9 +102,4 @@ post_remove()
 	deluser postfix
 	delgroup postfix
 	delgroup postdrop
-}
-
-repack_cleanup()
-{
-        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
 }

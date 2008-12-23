@@ -45,11 +45,6 @@ genpkg_rules()
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
-		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
-etc/openldap/ldap.conf
-etc/openldap/slapd.conf
-EOT
 	( cd $1/$INSTALLED/ ; grep -l /etc/openldap/slapd.conf */receipt ) | \
 	while read file; do
 		pkg=$(dirname $file)
@@ -57,9 +52,4 @@ EOT
 		echo "Reconfiguring $pkg for $PACKAGE..."
 		tazpkg reconfigure $pkg
 	done
-}
-
-repack_cleanup()
-{
-        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
 }

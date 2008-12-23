@@ -27,10 +27,6 @@ genpkg_rules()
 
 post_install()
 {
-	( cd $1/ ; cpio -o -H newc | gzip -9 ) > \
-		$1/$INSTALLED/$PACKAGE/volatile.cpio.gz <<EOT
-etc/phpldapadmin/config.php
-EOT
 	if [ -s $1/etc/openldap/slapd.conf ]; then
 		rootdn=$(awk '/^rootdn/ { print $2 }' < $1/etc/openldap/slapd.conf | sed 's/"//g')
 		sed -i "s|'login','dn','');|'login','dn','');\\n\$ldapservers->SetValue(\$i,'login','dn','$rootdn');|" $1/etc/phpldapadmin/config.php
@@ -76,9 +72,4 @@ $(grep ^rootdn /etc/openldap/slapd.conf)
 $(grep ^rootpw /etc/openldap/slapd.conf)
 ------
 EOT
-}
-
-repack_cleanup()
-{
-        zcat $INSTALLED/$PACKAGE/volatile.cpio.gz | ( cd $1 ; cpio -id )
 }
