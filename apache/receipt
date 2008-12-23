@@ -80,6 +80,13 @@ $(cat /etc/hostname)
 
 
 EOT
+	( cd $1/$INSTALLED/ ; grep -l /etc/apache/conf.d/ */receipt ) | \
+	while read file; do
+		pkg=$(dirname $file)
+		[ "$pkg" = "$PACKAGE" ] && continue
+		echo "Reconfiguring $pkg for $PACKAGE..."
+		tazpkg reconfigure $pkg
+	done
 	if [ -z "$1" ]; then
 		for i in lighttpd ; do
 			[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
