@@ -35,6 +35,12 @@ ipw2200)
 	WEB_SITE="http://$MODULE.sourceforge.net/"
 	WGET_URL="http://dl.atrpms.net/all/$PKG-$VERSION.noarch.rpm"
 	;;
+rt61)
+	VERSION=1.2
+	SHORT_DESC="RT61 Wireless Lan firmware."
+	WEB_SITE="http://www.ralinktech.com/"
+	WGET_URL="http://www.ralinktech.com.tw/data/RT61_Firmware_V$VERSION.zip"
+	;;
 rt73)
 	VERSION=1.0.3.6
 	SHORT_DESC="RT73(RT2571W) Wireless Lan firmware."
@@ -81,6 +87,7 @@ case "$WGET_URL" in
 *bz2)	tar xjf $(basename $WGET_URL)
 	cd $SUBDIR/kmod;;
 *tar.gz)	tar xzf $(basename $WGET_URL);;
+*zip)	unzip $(basename $WGET_URL);;
 *o)	;;
 esac
 	
@@ -90,6 +97,7 @@ case "$MODULE" in
 b43*)	b43-fwcutter -w "$PKG-$VERSION/fs/lib/firmware" $FWSET;;
 ipw*)	rm -f lib/firmware/*LICENSE*
 	mv lib/firmware/* $PKG-$VERSION/fs/lib/firmware;;
+rt61)	mv RT61_Firmware_V$VERSION/$PKG-$VERSION/fs/lib/firmware;;
 rt73)	mv RT73_Linux_STA_Drv$VERSION/Module/rt73.bin $PKG-$VERSION/fs/lib/firmware;;
 esac
 
@@ -121,14 +129,15 @@ if [ $WIFI_KEY_TYPE = "wpa" ] || [ $WIFI_KEY_TYPE = "WPA" ]; then
 	fi
 fi
 
+# Configure /etc/network.conf and start connexion
+sed -i s/'WIFI="no"'/'WIFI="yes"'/ $ROOT/etc/network.conf
+
 # Load module
 if [ -z "$ROOT" ]; then
 	echo "Loading module: $MODULE..."
-	modprobe $MODULE
-	sleep 1
+	if modprobe $MODULE ; then
+		sleep 2
+		/etc/init.d/network.sh restart
+	fi
 fi
-
-# Configure /etc/network.conf and start connexion
-sed -i s/'WIFI="no"'/'WIFI="yes"'/ $ROOT/etc/network.conf
-[ -z "$ROOT" ] && /etc/init.d/network.sh restart
 
