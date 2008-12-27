@@ -26,6 +26,7 @@
 #*
 #*/
 
+$VERSION="1.53.1";
 $ENV{PATH} = "/sbin:/usr/sbin:/bin:/usr/bin";
 
 my $WRAP_PCI_BUS = 5;
@@ -45,7 +46,9 @@ my $re_sub_dev_conf = "$re_dev_id:$re_dev_id:$re_dev_id:$re_dev_id" .
 my $re_dev_conf = "$re_dev_id:$re_dev_id\.([[:xdigit:]]+)\.conf";
 
 my $rcs_config = "/etc/rcS.conf";
-$rcs_config_change = 1;
+my $net_config = "/etc/network.conf";
+my $config_change = 1;
+
 
 # fixup list for parameters.
 my %param_fixlist = ("EnableRadio|0" => "1",
@@ -66,6 +69,7 @@ $dbg_file = "/dev/null";
 
 # "-D" is for development/debugging only
 if ($ARGV[0] eq "-D") {
+	my $dbg = true;
     $dbg_file = "/tmp/ndiswrapper.dbg";
     $confdir = "/tmp/ndiswrapper";
 	open(DBG, "> $dbg_file") or die "couldn't open $dbg_file: $!";
@@ -194,6 +198,7 @@ sub check_version {
 	  " by driver ('%s')!\n", $utils_version, $module_utils_version;
 	$res = -1;
     }
+    printf "tazndis version: %s\n ", $VERSION;
     printf "utils version: '%s', utils version needed by module: '%s'\n",
       $utils_version, $module_utils_version;
     printf "module details:\n";
@@ -209,32 +214,60 @@ sub check_version {
 
 sub set_rcs_config {
     # Add ndiswrapper to LOAD_MODULES if needed.
-    open (RCS_CONF, "< $rcs_config") or die "couldn't open $rcs_config:$!";
-    open (RCS_CONF1, "> $rcs_config.tmp") or die "couldn't open $rcs_config.tmp for writting:$!";
-    LINE: while(<RCS_CONF>){
+    open (CONFIG, "< $rcs_config") or die "couldn't open $rcs_config:$!";
+    open (CONFIG1, "> $rcs_config.tmp") or die "couldn't open $rcs_config.tmp for writting:$!";
+    LINE: while(<CONFIG>){
     	if(/^LOAD_MODULES/){
     		if (!/^LOAD_MODULES=.*ndiswrapper/){ 
    				print "Add ndiswrapper to module list...\n";
     			$_ =~ s/(.*)\"$/$1 ndiswrapper\"/;
-    			$rcs_config_change = 0;
+    			$file_change = 0;
     		}
     	}
 		chomp;
-    	print RCS_CONF1 "$_\n";
+    	print CONFIG1 "$_\n";
    	}	
-    close RCS_CONF, RCS_CONF1;
+    close CONFIG, CONFIG1;
     
-    if($rcs_config_change == 0){
+    if($file_change == 0){
     	rename "$rcs_config.tmp","$rcs_config" or die "couldn't update $rcs_config: $!";
+    	$config_change=1;
     } else {
     	unlink "$rcs_config.tmp";
     }
+}
+
+sub set_net_config {
+    # 
+    open (CONFIG, "< $net_config") or die "couldn't open $net_config:$!";
+    open (CONFIG1, "> $net_config.tmp") or die "couldn't open $net_config.tmp for writting:$!";
+    print "Set WiFi to start at boot time...\n";
+    LINE: while(<CONFIG>){
+    	if(/^WIFI=/){
+    		if (/^WIFI="no"$/){ 
+    			$_ =~ s/^WIFI="no"$/WIFI="yes"/;
+    			$config_change = 0;
+    		}
+    	}
+		chomp;
+    	print CONFIG1 "$_\n";
+   	}	
+    close CONFIG, CONFIG1;
     
+    if($rcs_config_change == 0){
+    	rename "$net_config.tmp","$net_config" or die "couldn't update $rcs_config: $!";
+    	$config_change=1;
+    } else {
+    	unlink "$net_config.tmp";
+    }
 }
 
 sub load_ndiswrapper {
 	open (LSMOD, " lsmod |") or die "couldn't get loaded module list: $!";
-	`modprobe ndiswrapper` unless  (/^ndiswrapper/);
+	if(!/^ndiswrapper/){
+		print "Loading ndiswrapper...\n";
+		`modprobe ndiswrapper`;
+	}
 }
 
 sub install {
@@ -268,6 +301,12 @@ sub install {
     set_rcs_config();
     load_ndiswrapper();
     
+    # Ask for WiFi at boot time.
+    print "Would you to start WiFi at boot time [y/N]? ";
+    chomp(my $answer = <STDIN>);
+    if (lc($answer) eq "y") {
+    	set_net_config();
+	}
     
     return 0;
 }
