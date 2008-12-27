@@ -48,6 +48,7 @@ my $re_dev_conf = "$re_dev_id:$re_dev_id\.([[:xdigit:]]+)\.conf";
 my $rcs_config = "/etc/rcS.conf";
 my $net_config = "/etc/network.conf";
 my $config_change = 1;
+my $dbg = 1;
 
 
 # fixup list for parameters.
@@ -69,7 +70,7 @@ $dbg_file = "/dev/null";
 
 # "-D" is for development/debugging only
 if ($ARGV[0] eq "-D") {
-	my $dbg = true;
+	my $dbg = 0;
     $dbg_file = "/tmp/ndiswrapper.dbg";
     $confdir = "/tmp/ndiswrapper";
 	open(DBG, "> $dbg_file") or die "couldn't open $dbg_file: $!";
@@ -298,14 +299,17 @@ sub install {
     create_fuzzy_conf($driver_name);
     
     #Update LOAD_MODULES and load ndiswrapper.
-    set_rcs_config();
-    load_ndiswrapper();
-    
-    # Ask for WiFi at boot time.
-    print "Would you to start WiFi at boot time [y/N]? ";
-    chomp(my $answer = <STDIN>);
-    if (lc($answer) eq "y") {
-    	set_net_config();
+    # Only if we are not in debug mode.
+    if (!$dbg) {
+    	set_rcs_config();
+    	load_ndiswrapper();
+	
+		# Ask for WiFi at boot time.
+       	print "Would you to start WiFi at boot time [y/N]? ";
+    	chomp(my $answer = <STDIN>);
+    	if (lc($answer) eq "y") {
+    		set_net_config();
+		}
 	}
     
     return 0;
