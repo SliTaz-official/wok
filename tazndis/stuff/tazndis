@@ -48,7 +48,7 @@ my $re_dev_conf = "$re_dev_id:$re_dev_id\.([[:xdigit:]]+)\.conf";
 my $rcs_config = "/etc/rcS.conf";
 my $net_config = "/etc/network.conf";
 my $config_change = 1;
-my $dbg = 1;
+#my $dbg = 1;
 
 
 # fixup list for parameters.
@@ -265,12 +265,15 @@ sub set_net_config {
 
 sub load_ndiswrapper {
 	open (LSMOD, " lsmod |") or die "couldn't get loaded module list: $!";
-	if(!/^ndiswrapper/){
+	while(<LSMOD>) {
+		if(/^ndiswrapper/){$tmp = 1;}
+	}
+	if(!$tmp) {
 		print "Loading ndiswrapper...\n";
 		`modprobe ndiswrapper`;
 	}
-}
-
+}	
+	
 sub install {
     my $inf = shift;
     chomp($inf);
@@ -363,7 +366,7 @@ sub parse_section {
     my $name = shift;
     my $lines = get_section($name);
     if (!$lines) {
-	return;
+		return;
     }
     $parsed_sections{$name} = ();
     foreach my $line (@{$lines}) {
@@ -476,7 +479,7 @@ sub parse_install {
 
     printf CONF "sys_files|";
     foreach my $file (@copyfiles) {
-	parse_copy_file($file);
+		parse_copy_file($file);
     }
     printf CONF "\n";
 
@@ -501,7 +504,7 @@ sub parse_install {
       die "couldn't create file $confdir/$driver_name/$filename: $!";
 
     foreach my $reg (@addregs) {
-	parse_registry($reg);
+		parse_registry($reg);
     }
     close(CONF);
 }
