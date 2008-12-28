@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="nss_ldap"
+VERSION="264"
+CATEGORY="system-tools"
+SHORT_DESC="Get users, hosts, and groups from LDAP."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE.tgz"
+WEB_SITE="http://www.padl.com/OSS/nss_ldap.html"
+WGET_URL="http://www.padl.com/download/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--sysconfdir=/etc --mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/etc
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/etc $fs
+}
+
+post_install()
+{
+	if [ -s $1/etc/openldap/slapd.conf ]; then
+		suffix=$(awk '/^suffix/ { print $2 }' < $1/etc/openldap/slapd.conf | sed 's/"//g')
+		rootdn=$(awk '/^rootdn/ { print $2 }' < $1/etc/openldap/slapd.conf | sed 's/"//g')
+		rootpw=$(awk '/^rootpw/ { print $2 }' < $1/etc/openldap/slapd.conf)
+		sed -i "s|binddn .*|binddn $rootdn|" \
+		    -i "s|bindpw .*|bindpw $rootpw|" $1/etc/ldap.conf
+		sed -i "s|dc=padl,dc=com|$suffix|g" $1/etc/ldap.conf
+		cat <<EOT
+------
+Suffix login DN and password are found in /etc/openldap/slapd.conf with suffix, rootdn and rootpw keywords:
+$(grep ^suffix /etc/openldap/slapd.conf)
+$(grep ^rootdn /etc/openldap/slapd.conf)
+$(grep ^rootpw /etc/openldap/slapd.conf)
+------
+EOT
+	fi
+}
