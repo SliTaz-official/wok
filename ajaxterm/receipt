@@ -1,0 +1,101 @@
+# SliTaz package receipt.
+
+PACKAGE="ajaxterm"
+VERSION="0.10"
+CATEGORY="network"
+SHORT_DESC="Login terminal for the web."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="Ajaxterm"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://antony.lesuisse.org/qweb/trac/wiki/AjaxTerm"
+WGET_URL="http://antony.lesuisse.org/qweb/files/$TARBALL"
+DEPENDS="python"
+SUGGESTED="apache lighttpd-ssl lighttpd-modules"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/ajaxterm
+	cp -a $src/*.py $src/*.js $src/*.css $src/*.html $fs/usr/share/ajaxterm
+	cp -a stuff/* $fs/
+}
+
+post_install()
+{
+	grep ^RUN_DAEMONS $1/etc/rcS.conf | grep -q "ajaxterm" || sed -i \
+	  's/RUN_DAEMONS="slim/RUN_DAEMONS="slim ajaxterm/' $1/etc/rcS.conf
+	# Configure lighttpd server
+	if [ -f $1/usr/lib/lighttpd/mod_proxy.so ]; then
+#https://www.dupnet.org/dotclear/index.php/2007/10/07/11-ajaxterm-et-lighttpd
+#http://www.lighttpd.net
+			grep -q mod_proxy $1/etc/lighttpd/lighttpd.conf ||
+			cat >> $1/etc/lighttpd/lighttpd.conf <<EOT
+server.modules += ( "mod_proxy" )
+EOT
+			grep -q ajaxterm $1/etc/lighttpd/lighttpd.conf ||
+			cat >> $1/etc/lighttpd/lighttpd.conf <<EOT
+proxy.server = ( "/ajaxterm/" =>
+	( ( "host" => "127.0.0.1", "port" => 8022 ) )
+)
+EOT
+			grep -q mod_redirect $1/etc/lighttpd/lighttpd.conf ||
+			cat >> $1/etc/lighttpd/lighttpd.conf <<EOT
+server.modules += ( "mod_redirect" )
+EOT
+			grep -q https:// $1/etc/lighttpd/lighttpd.conf &&
+			cat >> $1/etc/lighttpd/lighttpd.conf <<EOT
+\$SERVER["socket"] == ":80" {
+	\$HTTP["host"] =~ "(.*)" {
+		url.redirect = ( "^/ajaxterm" => "https://%1/ajaxterm/" )
+	}
+}
+EOT
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/lighttpd stop
+				/etc/init.d/lighttpd start
+			fi
+	fi
+	# Configure apache server
+	if [ -f $1/etc/apache/httpd.conf ]; then
+#http://smhteam.info/wiki/index.linux.php5?wiki=AjaxTerm
+		if [ ! -f $1/etc/apache/conf.d/ajaxterm ]; then
+			cat > $1/etc/apache/conf.d/ajaxterm <<EOT
+<IfModule mod_proxy.c>
+    ProxyRequests Off
+    <Proxy *>
+            Order deny,allow
+            Allow from all
+    </Proxy>
+    ProxyPass /ajaxterm/ http://localhost:8022/
+    ProxyPassReverse /ajaxterm/ http://localhost:8022/
+</IfModule>
+
+<IfModule mod_rewrite.c>
+     RewriteEngine On
+     RewriteCond %{SERVER_PORT}      !^443$
+     RewriteRule ^/ajaxterm      https://%{SERVER_NAME}/ajaxterm/ [L,R=303]
+</IfModule>
+EOT
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/apache stop
+				sleep 2
+				/etc/init.d/apache start
+			fi
+		fi
+	fi
+	[ -z "$1" ] && /etc/init.d/ajaxterm start
+	[ ! -f $1/usr/lib/lighttpd/mod_proxy.so -a \
+	  ! -f $1/etc/apache/httpd.conf ] && cat <<EOT
+--------
+You should install either lighttpd
+# tazpkg get-install lighttpd-ssl ; tazpkg get-install lighttpd-modules
+or apache
+# tazpkg get-install apache
+and reconfigure
+# tazpkg reconfigure ajaxterm
+--------
+EOT
+}
+

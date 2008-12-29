@@ -1,0 +1,62 @@
+#!/bin/sh
+# /etc/init.d/ajaxterm : Start, stop and restart AjaxTerm server on SliTaz, at 
+# boot time or with the command line.
+#
+# To start AjaxTerm server at boot time, just put ajaxterm in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=AjaxTerm
+DESC="AjaxTerm server"
+DAEMON="/usr/share/ajaxterm/ajaxterm.py"
+OPTIONS=$AJAXTERM_OPTIONS
+PIDFILE=/var/run/ajaxterm.pid
+[ -n "$OPTIONS" ] || OPTIONS="--pidfile $PIDFILE --daemon --port=8022 --command=/usr/share/ajaxterm/login"
+export PYTHONPATH=/usr/share/ajaxterm
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS
+    status
+    sleep 2
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    status
+    rm -f $PIDFILE
+    sleep 2
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    rm -f $PIDFILE
+    sleep 2
+    $DAEMON $OPTIONS
+    status
+    sleep 2
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
