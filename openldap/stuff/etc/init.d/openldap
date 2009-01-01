@@ -20,9 +20,20 @@ case "$1" in
       echo "$NAME already running."
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS && sleep 2
-    status
+    if [ -f /var/openldap-data/__db.001 ]; then
+      echo -n "Starting $DESC: $NAME... "
+      $DAEMON $OPTIONS && sleep 2
+      status
+      for i in /etc/ldap.d/* ; do
+      	[ -x $i ] || continue
+      	echo "Running $i..."
+      	$i
+      done
+    else
+      echo -n "Starting $DESC: $NAME... "
+      $DAEMON $OPTIONS && sleep 2
+      status
+    fi
     ;;
   stop)
     if [ ! -f $PIDFILE ] ; then
