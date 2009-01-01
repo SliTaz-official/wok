@@ -21,10 +21,21 @@ case "$1" in
         echo "Initializing $DESC database"
 	rm -rf /var/lib/pgsql/* 2> /dev/null
         su -c "initdb $INIT_OPTIONS" - postgres
+        echo -n "Starting $DESC: $NAME... "
+        su -c "pg_ctl start -w $OPTIONS -l /var/log/postgresql/postgresql.log" - postgres
+        status
+        sleep 2
+        for i in /etc/pgsql.d/* ; do
+      	    [ -x $i ] || continue
+      	    echo "Running $i..."
+      	    $i
+        done
+    else
+        echo -n "Starting $DESC: $NAME... "
+        su -c "pg_ctl start -w $OPTIONS -l /var/log/postgresql/postgresql.log" - postgres
+        status
+        sleep 2
     fi
-    echo -n "Starting $DESC: $NAME... "
-    su -c "pg_ctl start -w $OPTIONS -l /var/log/postgresql/postgresql.log" - postgres
-    status
 # su -c "createdb test" - postgres
 # su -c "psql test" - postgres
     ;;
