@@ -1,0 +1,57 @@
+# SliTaz package receipt.
+
+PACKAGE="compcache"
+VERSION="0.4"
+CATEGORY="system-tools"
+SHORT_DESC="Compressed caching"
+MAINTAINER="fabrice.thiroux@free.fr"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://code.google.com/p/compcache/"
+WGET_URL="http://compcache.googlecode.com/files/$TARBALL"
+BUILD_DEPENDS="lzma"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    
+    KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g`
+    if [ ! -d $WOK/linux/linux-$KERNEL_VERSION ]; then
+        tazwok cook linux
+    fi
+    cd $src
+	find -name Makefile | xargs sed -i \
+		"s|/lib/modules/\$(shell uname -r)/build|$WOK/linux/linux-$KERNEL_VERSION|"
+    make  KBUILD=$WOK/linux/linux-$KERNEL_VERSION KVER=$KERNEL_VERSION 
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g`
+    EXTRAVERSION=_$KERNEL_VERSION
+    
+    mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc $fs/etc/init.d
+    
+    install -o root -m 755 $src/compcache.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+    install -o root -m 755 $src/sub-projects/allocators/tlsf-kmod/tlsf.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+    install -o root -m 755 $src/sub-projects/compression/lzo-kmod/lzo1x_compress.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+    install -o root -m 755 $src/sub-projects/compression/lzo-kmod/lzo1x_decompress.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+
+	for i in $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/*.ko ; do
+		lzma e $i $i.gz && rm -f $i
+    done
+    install -o root -m 755 ./stuff/compcache $fs/etc/init.d/
+    install -o root -m 755 ./stuff/compcache.conf $fs/etc/
+}
+
+post_install()
+{
+    echo "Processing post-install commands..."
+    depmod -a -b "$1/" ${EXTRAVERSION#_}-slitaz
+}
+
+post_remove()
+{
+    echo "Processing post-remove commands..."
+    depmod -a
+}
