@@ -35,6 +35,24 @@ ipw2200)
 	WEB_SITE="http://$MODULE.sourceforge.net/"
 	WGET_URL="http://dl.atrpms.net/all/$PKG-$VERSION.noarch.rpm"
 	;;
+iwlwifi-3945)
+	VERSION=15.28.2.8
+	SHORT_DESC="Intel PRO/Wireless 3945ABG/BG firmware."
+	WEB_SITE="http://www.intellinuxwireless.org/?n=Downloads"
+	WGET_URL="http://www.intellinuxwireless.org/iwlwifi/downloads/$MODULE-ucode-$VERSION.tgz"
+	;;
+iwlwifi-4965)
+	VERSION=228.57.2.23
+	SHORT_DESC="Intel WiFi Link 4965AGN firmware."
+	WEB_SITE="http://www.intellinuxwireless.org/?n=Downloads"
+	WGET_URL="http://www.intellinuxwireless.org/iwlwifi/downloads/$MODULE-ucode-$VERSION.tgz"
+	;;
+iwlwifi-5000)
+	VERSION=5.4.A.11
+	SHORT_DESC="Intel Wireless WiFi Link 5000AGN firmware."
+	WEB_SITE="http://www.intellinuxwireless.org/?n=Downloads"
+	WGET_URL="http://www.intellinuxwireless.org/iwlwifi/downloads/$MODULE-ucode-$VERSION.tgz"
+	;;
 rt61)
 	VERSION=1.2
 	SHORT_DESC="RT61 Wireless Lan firmware."
@@ -86,7 +104,7 @@ case "$WGET_URL" in
 *rpm)	rpm2cpio < $(basename $WGET_URL) | cpio -id;;
 *bz2)	tar xjf $(basename $WGET_URL)
 	cd $SUBDIR/kmod;;
-*tar.gz)	tar xzf $(basename $WGET_URL);;
+*tar.gz|*tgz)	tar xzf $(basename $WGET_URL);;
 *zip)	unzip $(basename $WGET_URL);;
 *o)	;;
 esac
@@ -99,6 +117,7 @@ ipw*)	rm -f lib/firmware/*LICENSE*
 	mv lib/firmware/* $PKG-$VERSION/fs/lib/firmware;;
 rt61)	mv RT61_Firmware_V$VERSION/*.bin $PKG-$VERSION/fs/lib/firmware;;
 rt73)	mv RT73_Linux_STA_Drv$VERSION/Module/rt73.bin $PKG-$VERSION/fs/lib/firmware;;
+iwlwifi*) mv iwlwifi*/iwlwifi*.ucode $PKG-$VERSION/fs/lib/firmware;;
 esac
 
 # Creat receipt
@@ -133,7 +152,7 @@ fi
 sed -i s/'WIFI="no"'/'WIFI="yes"'/ $ROOT/etc/network.conf
 
 # Load module
-if [ -z "$ROOT" ]; then
+if [ -z "$ROOT" -a -n "$(modprobe -l $MODULE)" ]; then
 	echo "Loading module: $MODULE..."
 	if modprobe $MODULE ; then
 		sleep 2
