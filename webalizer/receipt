@@ -24,20 +24,29 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc $fs/var/www/webalizer
+	mkdir -p $fs/usr $fs/etc $fs/var/www/webalizer $fs/etc/initcron.d
 	chown 80 $fs/var/www/webalizer
 	cp -a $_pkg/etc/webalizer.conf.sample $fs/etc/webalizer.conf
 	cp -a $_pkg/usr/bin $fs/usr
+	cat > $fs/etc/initcron.d/webalizer << EOT
+
+30 0 * * * /usr/bin/webalizer -o /var/www/webalizer /var/log/apache/access_log
+EOT
+	chmod +x $fs/etc/initcron.d/webalizer
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
+	grep -q webalizer $1/etc/init.d/local.sh || \
+	cat >> $1/etc/init.d/local.sh <<EOT
+/usr/bin/webalizer -o /var/www/webalizer /var/log/apache/access_log
+EOT
 	if [ -z "$1" ]; then
 		webalizer -o /var/www/webalizer /var/log/apache/access_log 
 		crontab -l 2> /dev/null | grep -q webalizer || crontab - << EOT
 $(crontab -l 2> /dev/null)
-30 0 * * * /usr/bin/webalizer -o /var/www/webalizer /var/log/apache/access_log
+$(cat /etc/initcron.d/webalizer)
 EOT
 	fi
 }
