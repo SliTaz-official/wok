@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="lftp"
+VERSION="3.7.7"
+CATEGORY="network"
+SHORT_DESC="Small but powerful ftp client"
+MAINTAINER="mimas@slitaz.org"
+DEPENDS="readline expat libiconv"
+BUILD_DEPENDS="readline-dev expat-dev libiconv-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://lftp.yar.ru/"
+WGET_URL="http://ftp.yars.free.net/pub/source/lftp/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--without-gnutls \
+		--without-openssl \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	strip -s $fs/usr/bin/*
+}
+
