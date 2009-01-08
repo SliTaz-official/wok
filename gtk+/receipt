@@ -1,17 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="gtk+"
-VERSION="2.12.10"
+VERSION="2.14.7"
 CATEGORY="x-window"
 SHORT_DESC="The GIMP Toolkit."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="cairo glib pango atk libpng jpeg fontconfig freetype pixman"
 BUILD_DEPENDS="cairo-dev glib-dev pango-dev atk-dev libpng-dev jpeg-dev
              pkg-config xorg-dev xorg-dev-proto fontconfig-dev
-             freetype-dev pixman-dev"
+             freetype-dev pixman-dev tiff-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gtk.org/"
-WGET_URL="http://ftp.gnome.org/pub/GNOME/sources/gtk+/2.12/$TARBALL"
+WGET_URL="http://ftp.gnome.org/pub/gnome/sources/gtk+/2.14/$TARBALL"
 CONFIG_FILES="/etc/gtk-2.0"
 
 # Rules to configure and make the package.
@@ -23,6 +23,7 @@ compile_rules()
     	--sysconfdir=/etc \
     	--mandir=/usr/share/man \
     	--with-html-dir=/usr/share/doc \
+    	--without-libjasper \
     	$CONFIGURE_ARGS &&
     make &&
     make DESTDIR=$PWD/_pkg install
@@ -34,40 +35,38 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib/gtk-2.0 $fs/usr/share $fs/usr/bin
 
 	# Libs.
-    cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-    cp -a $_pkg/usr/lib/gtk-2.0/2.10.0 $fs/usr/lib/gtk-2.0
-    rm -rf $fs/usr/lib/gtk-2.0/2.10.0/*/*.la
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/gtk-2.0/2.10.0 $fs/usr/lib/gtk-2.0
+	rm -rf $fs/usr/lib/gtk-2.0/2.10.0/*/*.la
 
-    # Themes
-    cp -a $_pkg/usr/share/themes $fs/usr/share
+	# Themes
+	cp -a $_pkg/usr/share/themes $fs/usr/share
 
-    # Apps.
-    cp  $_pkg/usr/bin/gtk-query-immodules-2.0 $fs/usr/bin
-    cp  $_pkg/usr/bin/gtk-update-icon-cache $fs/usr/bin
-    cp  $_pkg/usr/bin/gdk-pixbuf-csource $fs/usr/bin
-    cp  $_pkg/usr/bin/gdk-pixbuf-query-loaders $fs/usr/bin
+	# Apps.
+	cp  $_pkg/usr/bin/gtk-query-immodules-2.0 $fs/usr/bin
+	cp  $_pkg/usr/bin/gtk-update-icon-cache $fs/usr/bin
+	cp  $_pkg/usr/bin/gdk-pixbuf-csource $fs/usr/bin
+	cp  $_pkg/usr/bin/gdk-pixbuf-query-loaders $fs/usr/bin
 
-    # Config files.
-    mkdir -p $fs/etc/gtk-2.0
-    gtk-query-immodules-2.0 > $fs/etc/gtk-2.0/gtk.immodules
-    gdk-pixbuf-query-loaders > $fs/etc/gtk-2.0/gdk-pixbuf.loaders
+	# Config files.
+	mkdir -p $fs/etc/gtk-2.0
+	gtk-query-immodules-2.0 > $fs/etc/gtk-2.0/gtk.immodules
+	gdk-pixbuf-query-loaders > $fs/etc/gtk-2.0/gdk-pixbuf.loaders
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-    local root
-    root=$1
-    echo "Processing post-install commands..."
-    /usr/bin/gtk-query-immodules-2.0 > $root/etc/gtk-2.0/gtk.immodules
-    /usr/bin/gdk-pixbuf-query-loaders > $root/etc/gtk-2.0/gdk-pixbuf.loaders
-    # Force reinstall of clearlooks theme (1.0 compatibilty until
-    # clearlooks are updated)
-    if [ -d $root/usr/lib/gtk-2.0/2.4.0 ]; then
-    	tazpkg get-install clearlooks --forced
-    	rm -rf $root/usr/lib/gtk-2.0/2.4.0
-    fi
+	local root
+	root=$1
+	echo "Processing post-install commands..."
+	/usr/bin/gtk-query-immodules-2.0 > $root/etc/gtk-2.0/gtk.immodules
+	/usr/bin/gdk-pixbuf-query-loaders > $root/etc/gtk-2.0/gdk-pixbuf.loaders
+	# Force reinstall of clearlooks theme (1.0 compatibilty until
+	# clearlooks are updated)
+	if [ -d $root/usr/lib/gtk-2.0/2.4.0 ]; then
+		tazpkg get-install clearlooks --forced
+		rm -rf $root/usr/lib/gtk-2.0/2.4.0
+	fi
 }
-
-# We need this package on build host to install it in target directory
 SELF_INSTALL=1
