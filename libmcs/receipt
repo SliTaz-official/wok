@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="libmcs"
+VERSION="0.7.1"
+CATEGORY="library"
+SHORT_DESC="Library for configuration storage"
+MAINTAINER="mimas@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WEB_SITE="http://www.atheme.org/libmcs/"
+WGET_URL="http://distfiles.atheme.org/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+			--prefix=/usr \
+			--infodir=/usr/share/info \
+			--mandir=/usr/share/man \
+			$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/libmcs.so* $fs/usr/lib/
+	cp -a $_pkg/usr/lib/mcs $fs/usr/lib/
+	
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/lib/*.so*
+}
+
