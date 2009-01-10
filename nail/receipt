@@ -5,26 +5,25 @@ VERSION="12.4"
 CATEGORY="network"
 SHORT_DESC="Text mode mail user agent."
 MAINTAINER="sygne@ombres.eu"
-DEPENDS=""
-BUILD_DEPENDS=""
-WANTED=""
+DEPENDS="openssl"
+BUILD_DEPENDS="openssl-dev"
 SOURCE="mailx"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://heirloom.sourceforge.net/mailx.html"
-WGET_URL="http://prdownloads.sourceforge.net/heirloom/$TARBALL"
+WGET_URL="$SF_MIRROR/heirloom/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	
-	make
-	make install UCBINSTALL=/usr/bin/install \
-	DESTDIR=$PWD/_pkg PREFIX=/usr
 
+	# avoid compiling with kerberos authentification:	
+	make config.h
+	sed -i -e "/GSSAPI/d" config.h
+	sed -i -e "/gssapi/d" config.h
 	
-	
-	
+	make install UCBINSTALL=/usr/bin/install \
+	DESTDIR=$PWD/_pkg PREFIX=/usr	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
