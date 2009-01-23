@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="usbip"
-VERSION="0.1.6"
+VERSION="0.1.7"
 CATEGORY="system-tools"
 SHORT_DESC="general USB device sharing system over IP network."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -19,23 +19,32 @@ compile_rules()
 	if [ ! -d $WOK/linux/taz ]; then
 		tazwok cook linux
 	fi
-	kver=$(grep "kernel version" $WOK/linux/$(ls $WOK/linux/taz)/.config)
+	LINUX=$WOK/linux/$(ls $WOK/linux/taz)
+	kver=$(grep "kernel version" $LINUX/.config)
 	kver=${kver##* }
 
-	# Select patch according to kernel version
-	patch_dir=${kver%.*}
-	i=${patch_dir##*.}
-	while [ ! -e ${patch_dir%.*}.$i ]; do
-		[ "$i" = "0" ] && break
-		i=$(($i - 1))
-	done
-	patch_dir=${patch_dir%.*}.$i
-	cd $patch_dir
-	make KSOURCE=$(ls -d $WOK/linux/linux-$kver) || return 1
-	mkdir -p ../../_pkg/lib/modules/$kver-slitaz/misc
-	for i in *.ko; do
-		lzma e $i ../../_pkg/lib/modules/$kver-slitaz/misc/$i.gz
-	done
+	mkdir -p ../_pkg/lib/modules/$kver-slitaz/misc
+	if [ -d $LINUX/_pkg/lib/modules/*/kernel/drivers/staging/usbip ]; then
+		echo "Using linux-staging usbip modules."
+		cp $LINUX/_pkg/lib/modules/*/kernel/drivers/staging/usbip/* \
+			../_pkg/lib/modules/$kver-slitaz/misc
+	else
+		# Select patch according to kernel version
+		patch_dir=${kver%.*}
+		[ "$(echo $ker | sed 's/[0-9]//g')" = ".." ] && patch_dir=$kver
+		i=${patch_dir##*.}
+		while [ ! -e ${patch_dir%.*}.$i ]; do
+			[ "$i" = "0" ] && break
+			i=$(($i - 1))
+		done
+		patch_dir=${patch_dir%.*}.$i
+		cd $patch_dir
+		make KSOURCE=$(ls -d $WOK/linux/linux-$kver) || return 1
+		for i in *.ko; do
+			lzma e $i ../../_pkg/lib/modules/$kver-slitaz/misc/$i.gz
+		done
+	fi
+	
 	cd $src/src
 	./autogen.sh
 	./configure --prefix=/usr --infodir=/usr/share/info \
