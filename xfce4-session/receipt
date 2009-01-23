@@ -1,0 +1,50 @@
+# SliTaz package receipt.
+
+PACKAGE="xfce4-session"
+VERSION="4.4.3"
+CATEGORY="x-window"
+SHORT_DESC="Xfce session manager"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="xorg-libSM xfce-mcs-manager libxfce4util libxfcegui4 libxfce4mcs xfce4-panel"
+BUILD_DEPENDS="xorg-libSM-dev libxfce4util-dev xfce-mcs-manager-dev xorg-iceauth"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.xfce.org/"
+WGET_URL="http://www.p0llux.be/xfce/xfce-4.4.3/src/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+		--sysconfdir=/etc \
+		--enable-dbus \
+		--enable-final \
+		--disable-gnome \
+		--mandir=/usr/share/man $CONFIGURE_ARGS && \
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr \
+		$fs/usr/share/locale \
+		$fs/usr/lib/xfce4/mcs-plugins
+	
+	cp -a $_pkg/etc $fs/	
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/libexec $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/icons $fs/usr/share
+	cp -a $_pkg/usr/share/themes $fs/usr/share
+	cp -a $_pkg/usr/share/xfce4 $fs/usr/share
+	
+	# Remove unecessary files
+	find $fs/ -name "*.*a" -exec rm -f {} \;
+	rm -rf $fs/usr/lib/pkgconfig
+	# Remove SVG icons
+	rm -rf $fs/usr/share/icons/hicolor/scalable
+}
+

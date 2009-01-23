@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="xfce4-panel"
+VERSION="4.4.3"
+CATEGORY="x-window"
+SHORT_DESC="Xfce Panel"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="xorg-libSM xfce-mcs-manager libxfce4util libxfcegui4 libxfce4mcs"
+BUILD_DEPENDS="xorg-libSM-dev libxfce4util-dev xfce-mcs-manager-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.xfce.org/"
+WGET_URL="http://www.p0llux.be/xfce/xfce-4.4.3/src/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+	--sysconfdir=/etc \
+	--enable-startup-notification \
+	--disable-debug \
+	--mandir=/usr/share/man $CONFIGURE_ARGS && \
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr \
+		$fs/usr/share/locale \
+		$fs/usr/share/xfce4 \
+		$fs/usr/lib/xfce4/mcs-plugins \
+		$fs/usr/lib/xfce4/panel-plugins 
+	
+	cp -a $_pkg/etc $fs	
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/xfce4/mcs-plugins/*.so* $fs/usr/lib/xfce4/mcs-plugins
+	cp -a $_pkg/usr/lib/xfce4/panel-plugins/*.so* $fs/usr/lib/xfce4/panel-plugins
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/icons $fs/usr/share
+	cp -a $_pkg/usr/share/xfce4/panel-plugins $fs/usr/share/xfce4
+}
+
