@@ -26,6 +26,7 @@ GZIP_EXTS="tar.gz tgz"
 LZMA_EXTS="tar.lz tar.lzma tlz"
 BZIP2_EXTS="tar.bz tbz tar.bz2 tbz2"
 COMPRESS_EXTS="tar.z tar.Z"
+IPK_EXTS="ipk"
 CPIO_EXTS="cpio"
 CPIOGZ_EXTS="cpio.gz"
 ZIP_EXTS="zip cbz jar"
@@ -56,12 +57,22 @@ test -z $1 || shift 1
 archive="$1"
 test -z $1 || shift 1
 
+decompress_ipk()
+{
+	tar xOzf "$1" ./data.tar.gz | gzip -dc
+}
+
 # set up compression variables for our compression functions. 
 # translate archive name to lower case for pattern matching.
 # use compressor -c option to output to stdout and direct it where we want
 lc_archive="$(echo $archive|tr [:upper:] [:lower:])"
 DECOMPRESS="cat"
 COMPRESS="cat"
+for ext in $IPK_EXTS; do
+    if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+        DECOMPRESS="decompress_ipk"
+    fi
+done
 for ext in $GZIP_EXTS $CPIOGZ_EXTS; do
     if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
         DECOMPRESS="gzip -dc"
@@ -258,7 +269,7 @@ case "$opt" in
     -i) # info: output supported extentions for progs that exist
         for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS \
                    $CPIO_EXTS $CPIOGZ_EXTS $ZIP_EXTS $DEB_EXTS $RPM_EXTS \
-                   $TAZPKG_EXTS $ISO_EXTS $FS_EXTS; do
+                   $TAZPKG_EXTS $ISO_EXTS $FS_EXTS $IPK_EXTS; do
             printf "%s;" $ext
             if [ "$ext" = "zip" -a ! "$(which zip)" ]; then
                 echo warning: zip not found, extract only >/dev/stderr
@@ -280,7 +291,8 @@ case "$opt" in
         ;;
 
     -o) # open: mangle output of tar cmd for xarchive 
-        for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS; do
+        for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS \
+        	   $IPK_EXTS; do
         # format of tar output:
 # lrwxrwxrwx USR/GRP       0 2005-05-12 00:32:03 file -> /path/to/link
 # -rw-r--r-- USR/GRP    6622 2005-04-22 12:29:14 file 
@@ -565,7 +577,8 @@ case "$opt" in
         ;;
 
     -e) # extract: from archive passed files 
-        for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS; do
+        for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS \
+        	   $IPK_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
                 # xarchive will put is the right extract dir
                 # so we just have to extract.
