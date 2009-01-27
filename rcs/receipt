@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="rcs"
+VERSION="5.7"
+CATEGORY="development"
+SHORT_DESC="GNU Revision Control System."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+DEPENDS="diffutils"
+BUILD_DEPENDS="diffutils"
+WEB_SITE="http://www.gnu.org/software/rcs/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's,test -w a.d || cp /dev/null a.d 2>/dev/null,false,' \
+		src/conf.sh
+	./configure --prefix=/usr $CONFIGURE_ARGS &&
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	for p in ci co ident merge rcs rcsclean rcsdiff rcsmerge rlog; do
+		install -c $src/src/$p $fs/usr/bin
+	done
+}
