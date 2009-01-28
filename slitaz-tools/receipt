@@ -3,9 +3,10 @@
 PACKAGE="slitaz-tools"
 VERSION="2.8.1"
 CATEGORY="system-tools"
-SHORT_DESC="SliTaz tools provide installer and Tinyutils."
+SHORT_DESC="SliTaz tools provide installer and utils usable on termnial."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="slitaz-boot-scripts dialog gtkdialog"
+DEPENDS="slitaz-boot-scripts dialog"
+SUGGESTED="slitaz-tools-boxes"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.slitaz.org/"
 WGET_URL="http://mirror.slitaz.org/sources/tools/$TARBALL"
@@ -31,9 +32,7 @@ genpkg_rules()
 		$fs/usr/sbin \
 		$fs/etc/X11 \
 		$fs/var/spool/cron/crontabs \
-		$fs/usr/lib/slitaz \
 		$fs/usr/share/doc/slitaz-tools \
-		$fs/usr/share/slitaz-tools/glade \
 		$fs/usr/share/slitaz-tools/installer
 
 	# /rootfs/*. Firewall exemples, licenses, pixmaps and desktop files.
@@ -55,20 +54,6 @@ genpkg_rules()
 	# Sound config
 	cp -a $src/tinyutils/soundconf $fs/usr/sbin
 	cp -a $src/tinyutils/setmixer $fs/usr/sbin
-	
-	# Gtkdialog boxes
-	cp -a $src/tinyutils/bootfloppybox $fs/usr/bin
-	cp -a $src/tinyutils/burnbox $fs/usr/bin
-	cp -a $src/tinyutils/mountbox $fs/usr/bin
-	cp -a $src/tinyutils/netbox $fs/usr/bin
-	cp -a $src/tinyutils/scpbox $fs/usr/bin
-	cp -a $src/tinyutils/subox $fs/usr/bin
-	cp -a $src/tinyutils/desktopbox $fs/usr/bin
-	cp -a $src/tinyutils/tazctrlbox $fs/usr/sbin
-
-	# Libs and Glade XML files.
-	cp -a $src/lib/[a-z]* $fs/usr/lib/slitaz
-	cp -a $src/glade/*.glade $fs/usr/share/slitaz-tools/glade
 
 	# Installer's
 	cp -a $src/installer/slitaz-installer $fs/usr/bin
@@ -76,11 +61,6 @@ genpkg_rules()
 
 	# Tools doc in /usr/share/doc/slitaz-tools
 	cp $src/doc/* $fs/usr/share/doc/slitaz-tools
-
-	# Gksu fake for pcmanfm
-	cd $fs/usr/bin
-	ln -s subox gksu
-	cd $WOK/$PACKAGE
 
 	chown -R root.root $fs
 	chmod -R 755 $fs/usr/bin
@@ -110,4 +90,8 @@ post_install()
 	mv -f $root/etc/X11/screen.conf.bak $root/etc/X11/screen.conf 2>/dev/null
 	mv -f $root/etc/locale.conf.bak $root/etc/locale.conf 2>/dev/null
 	mv -f $root/etc/firewall.conf.bak $root/etc/firewall.conf 2>/dev/null
+	# Install boxes package if old slitaz-tools
+	if [ -f $root/usr/bin/mountbox ] && [ ! -d /var/lib/tazpkg/installed/slitaz-tools-boxes ]; then
+		tazpkg get-install slitaz-
+	fi
 }
