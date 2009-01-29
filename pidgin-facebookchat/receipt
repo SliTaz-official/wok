@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="pidgin-facebookchat"
+VERSION="1.47"
+CATEGORY="network"
+SHORT_DESC="Facebook chat plugin for Pidgin and libpurple messengers."
+MAINTAINER="mallory@skyrock.com"
+SOURCE="pidgin-facebookchat"
+DEPENDS="pidgin zip"
+BUILD_DEPENDS="libpurple-dev"
+TARBALL="$PACKAGE-source-$VERSION.tar.bz2"
+WEB_SITE="http://code.google.com/p/pidgin-facebookchat/"
+WGET_URL="http://pidgin-facebookchat.googlecode.com/files/pidgin-facebookchat-source-1.47.tar.bz2"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	src=$WOK/$PACKAGE/$PACKAGE
+	cd $src
+	mv Makefile Makefile.orig
+	sed -e 's/i686-pc-linux-gnu-gcc/gcc/' < Makefile.orig > Makefile
+	make libfacebook.so
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/purple-2
+	cp -a $PACKAGE/libfacebook.so $fs/usr/lib/purple-2
+	
+	# Pidgin icons
+	mkdir -p $fs/usr/share/pixmaps/pidgin/protocols
+	wget http://pidgin-facebookchat.googlecode.com/files/facebook_icons.zip
+	mkdir facebook_icons
+	unzip -o facebook_icons.zip -d $fs/usr/share/pixmaps/pidgin/protocols	
+}
+
+# clean commands for Tazwok.
+clean_wok()
+{
+	rm -rf $WOK/$PACKAGE/$PACKAGE
+	rm -rf $WOK/$PACKAGE/facebook_icons*
+}
+
