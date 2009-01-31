@@ -76,6 +76,7 @@ cat >$TEMP_DIR/install.sh<<EOF
 
 DIR=\$(cd \$(dirname \$0); pwd)
 
+echo "Install packages..."
 [ -d /var/cache/tazpkg ] || mkdir -p /var/cache/tazpkg
 ls -d \$DIR/packages/* > /var/lib/tazpkg/mirror
 ln -fs \$DIR/packages/*/*.tazpkg /var/cache/tazpkg/
@@ -122,8 +123,10 @@ case " $OPTIONS " in
 		mkdir $TEMP_DIR/website
 		cp -a /slitaz/home/slitaz/hg/website/* $TEMP_DIR/website
 		cat >>$TEMP_DIR/install.sh<<EOF
+echo "Install http://127.0.0.1/website ..."
 [ -d /var/www ] || mkdir -p /var/www
 ln -s \$DIR/website /var/www
+tazpkg list | grep -q ^lighttpd || yes y | tazpkg get-install lighttpd
 EOF
 		status
 		echo "$(du -hs $TEMP_DIR/website | awk '{ print $1 }') used by web site."
