@@ -5,7 +5,7 @@
 # Authors : Eric Joseph-Alexandre <erjo@slitaz.org>
 #	    Pascal Bellard <pascal.bellard@slitaz.org>
 
-VERSION=0.2
+VERSION=0.3
 
 ROOT=/home/slitaz/iso
 TEMP_DIR=${ROOT}/_iso.$$
@@ -148,6 +148,7 @@ case " $OPTIONS " in
 *\ --boot\ *)
     echo -n "Creating boot tree"
 	isoinfo -R -l -i $iso | awk '/^Directory/ { path=$4 } /^-/ { print path$12  }' | while read file; do
+		[ "$(basename $file)" == ".." ] && continue
 		[ "$file" = "/boot/isolinux/boot.cat" ] && continue
 		[ -d "$(dirname $TEMP_DIR/$file)" ] ||
 			mkdir -p "$(dirname $TEMP_DIR/$file)"
@@ -188,12 +189,12 @@ status
 
 echo "$(du -hs $OUTPUT | awk '{ print $1 }') used by iso image."
 
+cd ${ROOT}
 echo -n "Create hybrid DVD/CDROM"
-[ -x /usr/bin/isohybrid ] && /usr/bin/isohybrid $IMAGE
+[ -x /usr/bin/isohybrid ] && /usr/bin/isohybrid $IMAGE 2> /dev/null
 status
 
 echo -n "Calculate md5sum"
-cd ${ROOT}
 /usr/bin/md5sum $IMAGE > $(basename $IMAGE .iso).md5
 status
 
