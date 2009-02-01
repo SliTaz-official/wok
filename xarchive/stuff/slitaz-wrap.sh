@@ -81,7 +81,7 @@ for ext in $GZIP_EXTS $CPIOGZ_EXTS; do
 done
 for ext in $BZIP2_EXTS; do
     if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-        DECOMPRESS="bzip2 -dc" 
+        DECOMPRESS="bunzip2 -c" 
         COMPRESS="bzip2 -c"
     fi
 done
@@ -146,6 +146,7 @@ update_tar_cpio()
     action=$1
     shift
     tardir="$(dirname "$archive")"
+    [ $(expr "$lc_archive" : ".*\."$BZIP2_EXTS"$") -gt ] && ! which bzip2 && return
     for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS; do
         if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
 	    if [ "$action" = "new_archive" ]; then
