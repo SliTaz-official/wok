@@ -7,17 +7,17 @@ PKG=$MODULE-firmware
 DEPENDS=""
 case "$MODULE" in
 b43)
-	VERSION=4.80.53.0
+	VERSION=4.150.10.5
 	SUBDIR="broadcom-wl-$VERSION"
 	SHORT_DESC="Broadcom $MODULE firmware."
-	WEB_SITE="http://downloads.openwrt.org/"
-	WGET_URL="${WEB_SITE}sources/$SUBDIR.tar.bz2"
+	WEB_SITE="http://www.linuxwireless.org/en/users/Drivers/b43"
+	WGET_URL="http://mirror2.openwrt.org/sources/$SUBDIR.tar.bz2"
 	DEPENDS="b43-fwcutter"
-	FWSET=wl_apsta.o
+	FWSET=wl_apsta_mimo.o
 	;;
 b43legacy)
 	VERSION=3.130.20.0
-	SHORT_DESC="Broadcom $MODULE firmware."
+	SHORT_DESC="Broadcom $MODULE firmware (BCM4306 rev2 or 802.11b chips)."
 	WEB_SITE="http://downloads.openwrt.org/"
 	WGET_URL="${WEB_SITE}sources/wl_apsta-$VERSION.o"
 	DEPENDS="b43-fwcutter"
@@ -110,7 +110,7 @@ case "$WGET_URL" in
 *rpm)	rpm2cpio < $(basename $WGET_URL) | cpio -id;;
 *deb)	dpkg-deb -x $(basename $WGET_URL) . ;;
 *bz2)	tar xjf $(basename $WGET_URL)
-	cd $SUBDIR/kmod;;
+	cd $SUBDIR/driver;;
 *tar.gz|*tgz)	tar xzf $(basename $WGET_URL);;
 *zip)	unzip $(basename $WGET_URL);;
 *o)	;;
@@ -125,10 +125,10 @@ ipw*)	rm -f lib/firmware/*LICENSE*
 rt61)	mv RT61_Firmware_V$VERSION/*.bin $PKG-$VERSION/fs/lib/firmware;;
 rt73)	mv RT73_Linux_STA_Drv$VERSION/Module/rt73.bin $PKG-$VERSION/fs/lib/firmware;;
 iwlwifi*) mv iwlwifi*/iwlwifi*.ucode $PKG-$VERSION/fs/lib/firmware;;
-zd1211) mv lib/firmware/zd1211/* $PKG-$VERSION/fs/lib/firmware 
+zd1211) mv lib/firmware/zd1211 $PKG-$VERSION/fs/lib/firmware 
 	for i in $(cd usr/lib/hotplug/firmware; ls); do
 		target=$(readlink usr/lib/hotplug/firmware/$i)
-		ln -s $(basename $target) $PKG-$VERSION/fs/lib/firmware/$i
+		ln -s $(basename $target) $PKG-$VERSION/fs/lib/firmware/zd1211/$i
 	done;;
 esac
 
