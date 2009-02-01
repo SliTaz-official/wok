@@ -65,6 +65,12 @@ rt73)
 	WEB_SITE="http://www.ralinktech.com/"
 	WGET_URL="http://www.ralink.com.tw/data/RT73_Linux_STA_Drv$VERSION.tar.gz"
 	;;
+zd1211)
+	VERSION=2.16.0.0-0.1
+	SHORT_DESC="zd1211/zd1211rw Wireless Lan firmware."
+	WEB_SITE="http://packages.debian.org/etch/zd1211-firmware"
+	WGET_URL="http://mirrors.kernel.org/debian/pool/non-free/z/zd1211-firmware/zd1211-firmware_2.16.0.0-0.1_all.deb"
+	;;
 *)	echo "Unknown wifi driver. Please run one of the following commands:"
 	for i in $(cd $(dirname $0); ls get-*-firmware); do
 		[ "$i" = "get-wifi-firmware" ] && continue
@@ -102,6 +108,7 @@ cd $TMP
 wget $WGET_URL
 case "$WGET_URL" in
 *rpm)	rpm2cpio < $(basename $WGET_URL) | cpio -id;;
+*deb)	dpkg-deb -x $(basename $WGET_URL) . ;;
 *bz2)	tar xjf $(basename $WGET_URL)
 	cd $SUBDIR/kmod;;
 *tar.gz|*tgz)	tar xzf $(basename $WGET_URL);;
@@ -118,6 +125,11 @@ ipw*)	rm -f lib/firmware/*LICENSE*
 rt61)	mv RT61_Firmware_V$VERSION/*.bin $PKG-$VERSION/fs/lib/firmware;;
 rt73)	mv RT73_Linux_STA_Drv$VERSION/Module/rt73.bin $PKG-$VERSION/fs/lib/firmware;;
 iwlwifi*) mv iwlwifi*/iwlwifi*.ucode $PKG-$VERSION/fs/lib/firmware;;
+zd1211) mv lib/firmware/zd1211/* $PKG-$VERSION/fs/lib/firmware 
+	for i in $(cd usr/lib/hotplug/firmware; ls); do
+		target=$(readlink usr/lib/hotplug/firmware/$i)
+		ln -s $(basename $target) $PKG-$VERSION/fs/lib/firmware/$i
+	done;;
 esac
 
 # Creat receipt
