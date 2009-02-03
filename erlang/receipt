@@ -9,6 +9,7 @@ SOURCE="otp_src"
 TARBALL="${SOURCE}_$VERSION.tar.gz"
 WEB_SITE="http://$PACKAGE.org/"
 WGET_URL="${WEB_SITE}download/$TARBALL"
+DEPENDS="ncurses"
 BUILD_DEPENDS="perl ncurses-dev openssl-dev xorg-dev flex"
 
 # Rules to configure and make the package.
@@ -27,7 +28,14 @@ compile_rules()
 	./configure --prefix=/usr --infodir=/usr/share/info \
 	--sysconfdir=/etc --mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make &&
-	make INSTALL_PREFIX=$PWD/_pkg install
+	make INSTALL_PREFIX=$PWD/_pkg install || return 1
+	for i in _pkg/usr/lib/erlang/erts-*/bin/erl \
+		 _pkg/usr/lib/erlang/erts-*/bin/start ; do
+		sed -i 's|^ROOTDIR=.*$|ROOTDIR=/usr/lib/erlang|' $i
+	done
+	for i in _pkg/usr/bin/* ; do
+		ln -sf $(readlink $i | sed 's|.*/_pkg||') $i
+	done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
