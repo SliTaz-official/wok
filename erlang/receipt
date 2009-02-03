@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="erlang"
+VERSION="R12B-5"
+CATEGORY="development"
+SHORT_DESC="Erlang programming language."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="otp_src"
+TARBALL="${SOURCE}_$VERSION.tar.gz"
+WEB_SITE="http://$PACKAGE.org/"
+WGET_URL="${WEB_SITE}download/$TARBALL"
+BUILD_DEPENDS="perl ncurses-dev openssl-dev xorg-dev flex"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	patch=${SOURCE}_${VERSION}_OTP-7738.patch
+	/home/slitaz/wok/erlang/otp_src-R12B-5
+	mv ${SOURCE}_$VERSION $src
+	cd $src
+	if [ -f $patch ]; then	
+		wget http://www.erlang.org/download/patches/$patch
+		patch -p1 < $patch
+	fi
+	export LANG=C
+	sed -i 's|./Install|sh -x ./Install|' Makefile*
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--sysconfdir=/etc --mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make INSTALL_PREFIX=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/usr $fs
+}
+
