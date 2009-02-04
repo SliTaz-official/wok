@@ -1,0 +1,29 @@
+# SliTaz package receipt.
+
+PACKAGE="ez-ipupdate"
+VERSION="3.0.11b7"
+CATEGORY="network"
+SHORT_DESC="Update your host name for some dynamic DNS services."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.$PACKAGE.com/"
+WGET_URL="${WEB_SITE}dist/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	grep -q errno.h conf_file.h || echo "#include <errno.h>" >> conf_file.h
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--enable-default-service=dyndns \
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/usr $fs
+}
+
