@@ -10,19 +10,28 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.netfilter.org/"
 WGET_URL="http://www.netfilter.org/projects/iptables/files/$TARBALL"
 
-# Set the right Kernel path to compile.
-KERNEL_PATH="$WOK/linux/linux-2.6.25.5"
+# Extract EXTRAVERSION from linux package
+get_version()
+{
+	kver=$(grep "kernel version" $WOK/linux/$(ls $WOK/linux/taz)/.config)
+	EXTRAVERSION=_${kver##* }
+}
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	if [ ! -d $WOK/linux/taz ]; then
+		tazwok cook linux
+	fi
+	# Set the right Kernel path to compile.
+	KERNEL_PATH="$WOK/linux/$(ls $WOK/linux/taz)"
 	./configure \
 		--prefix=/usr \
 		--libexecdir=/usr/lib/iptables \
 		--mandir=/usr/share/man \
-		$CONFIGURE_ARGS
-	make
+		$CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
