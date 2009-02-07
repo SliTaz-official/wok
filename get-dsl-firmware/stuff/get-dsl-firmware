@@ -1,0 +1,99 @@
+#!/bin/sh
+
+MODULE=$(echo $0 | sed 's/.*get-\(.*\)-firmware/\1/')
+ROOT="$1"
+PKG=$MODULE-firmware
+DEPENDS=""
+TMP=/tmp/$(basename $0)$$
+
+case "$MODULE" in
+speedtouch|speedtouch-silver)
+	VERSION="3.012"
+	SHORT_DESC="Firmware for SpeedTouch ADSL Modem."
+	WEB_SITE="http://www.linux-usb.org/SpeedTouch/"
+	URL="http://www.speedtouch.com/download/drivers/USB"
+	URL="$URL/SpeedTouch330_firmware_$(echo $VERSION | sed 's/\.//').zip"
+	;;
+ueagle)
+	VERSION="1.1"
+	SHORT_DESC="Firmware for Fast800 USB ADSL Modem."
+	SOURCE="ueagle-data"
+	WEB_SITE="http://eagle-usb.org/"
+	URL="${WEB_SITE}ueagle-atm/non-free/ueagle-data-$VERSION.tar.gz"
+	;;
+*)	echo "Unknown dsl driver. Please run one of the following commands:"
+	cd $TOP
+	rm -rf $TMP
+	for i in $(cd $(dirname $0); ls get-*-firmware); do
+		[ "$i" = "get-dsl-firmware" ] && continue
+		echo "  $i"
+	done
+	exit 1;;
+esac
+
+# Check if user is root to install.
+if test $(id -u) != 0 ; then
+        echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please use 'su' and root password to become super-user.\n"
+	exit 0
+fi
+
+# Avoid reinstall
+if [ -d $ROOT/var/lib/tazpkg/installed/$PKG ]; then
+	echo -e "\n$PKG package is already installed.\n"
+	exit 0
+fi
+
+mkdir $TMP
+TOP=$PWD
+cd $TMP
+
+mkdir -p $PKG-$VERSION/fs/lib/firmware
+
+case "$MODULE" in
+speedtouch|speedtouch-silver)
+	wget $URL
+	unzip -n $(basename $URL)
+	wget http://www.linux-usb.org/SpeedTouch/firmware/firmware-extractor.tar.gz
+	tar xzf firmware-extractor.tar.gz
+	cd firmware-extractor/
+	gcc -o firmware-extractor firmware.c
+	FIRMWARE="ZZZL_$VERSION"
+	[ "$MODULE" = "speedtouch" ] && FIRMWARE="KQD6_$VERSION"
+	cp ../$FIRMWARE mgmt.o
+	./firmware-extractor mgmt.o
+	install -m 600 speedtch-1.bin speedtch-2.bin \
+		../$PKG-$VERSION/fs/lib/firmware
+	cd ..
+	;;
+ueagle)
+	wget $URL
+	tar xzf $(basename $URL)
+	wget $(dirname $URL)/ueagle4-data-1.0.tar.gz
+	tar xzf ueagle4-data-1.0.tar.gz
+	cp -a ueagle-*/*.fw ueagle-*/*.bin ueagle4*/*.fw ueagle4*/*.bin* \
+		$PKG-$VERSION/fs/lib/firmware
+	chown root.root $PKG-$VERSION/fs/lib/firmware/*
+	ln $PKG-$VERSION/fs/lib/firmware/CMV4p.bin.v2 \
+		$PKG-$VERSION/fs/lib/firmware/CMV4p.bin || true
+	;;
+esac
+
+# Create receipt
+cat > $PKG-$VERSION/receipt <<EOT
+PACKAGE="$PKG"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="$SHORT_DESC."
+WEB_SITE="$WEB_SITE"
+EOT
+
+# Pack
+tazpkg pack $PKG-$VERSION
+
+# Install pseudo package
+tazpkg install $PKG-$VERSION.tazpkg --root=$ROOT
+
+# Clean
+cd $TOP
+rm -rf $TMP
