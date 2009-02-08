@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="h8300-binutils"
+SOURCE="binutils"
+VERSION="2.16.1"
+CATEGORY="development"
+SHORT_DESC="binutils targeting the H8/300"
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS=""
+BUILD_DEPENDS="make gcc bison flex"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gnu.org/software/binutils/"
+WGET_URL="$GNU_MIRROR/$SOURCE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--target=h8300-hitachi-hms \
+		--prefix=/usr \
+		--disable-nls \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/h8300-hitachi-hms $fs/usr
+	# do not need to copy lib/libiberty.a
+}
