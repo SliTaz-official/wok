@@ -1,0 +1,40 @@
+#!/bin/sh
+# /etc/init.d/gpm : Start, stop and restart gpm server on SliTaz, at 
+# boot time or with the command line.
+#
+# To start gpm server at boot time, just put mysql in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=gpm
+DESC="gpm server"
+DAEMON=/usr/sbin/gpm
+OPTIONS=$GPM_OPTIONS
+[ -n "$OPTIONS" ] || OPTIONS="-m /dev/psaux -t ps2"
+
+case "$1" in
+  start)
+    $DAEMON $OPTIONS
+    status
+    ;;
+  stop)
+    $DAEMON -k
+    status
+    ;;
+  restart)
+    $DAEMON -k
+    status
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
