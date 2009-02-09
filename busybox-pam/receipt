@@ -1,16 +1,18 @@
 # SliTaz package receipt.
 
-PACKAGE="busybox"
+PACKAGE="busybox-pam"
 VERSION="1.12.0"
 CATEGORY="base-system"
 SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
 DEPENDS="slitaz-base-files glibc-base"
 BUILD_DEPENDS="bzip2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+SOURCE="busybox"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.busybox.net/"
 WGET_URL="http://www.busybox.net/downloads/$TARBALL"
 CONFIG_FILES="/etc/dnsd.conf /etc/inetd.conf /etc/udhcpd.conf /etc/resolv.conf"
+PROVIDE="busybox:pam"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -19,7 +21,7 @@ compile_rules()
     while read file; do
     	[ -f done.$file ] && continue
     	echo "Apply $file..."
-    	patch -p1 < ../stuff/$PACKAGE-$VERSION-$file || return 1
+    	patch -p1 < $WOK/busybox/stuff/$SOURCE-$VERSION-$file || return 1
 	touch done.$file
     done <<EOT
 vcsa2txt.u
@@ -32,7 +34,8 @@ modinfo.u
 modprobe.u
 paths.u
 EOT
-    cp ../stuff/$PACKAGE-$VERSION.config .config
+    cp $WOK/busybox/stuff/$SOURCE-$VERSION.config .config
+    sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
     make oldconfig
     make && make install
     echo "Chmod 4755 on busybox binary..."
@@ -45,6 +48,7 @@ genpkg_rules()
     cp -a $src/_install/* $fs
     mkdir -p $fs/etc/init.d
     # Busybox config files.
+    cd $WOK/busybox
     cp stuff/busybox.conf $fs/etc
     chmod 600 $fs/etc/busybox.conf
     cp stuff/dnsd.conf $fs/etc
