@@ -1,0 +1,67 @@
+# SliTaz package receipt.
+
+PACKAGE="sudo-pam"
+VERSION="1.6.9p17"
+CATEGORY="security"
+SHORT_DESC="Sudo (su \"do\") allows a system administrator to delegate authority using PAM."
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="pam"
+BUILD_DEPENDS="pam pam-dev"
+SOURCE="sudo"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.gratisoft.us/sudo/"
+WGET_URL="http://www.gratisoft.us/sudo/dist/$TARBALL"
+PROVIDE="sudo:pam"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+	--sysconfdir=/etc \
+	--with-pam \
+	--with-editor=/bin/vi \
+	--libexecdir=/usr/lib \
+	$CONFIGURE_ARGS &&
+	
+	# Build everything
+	make &&
+	# Install everything
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib/*.so $fs/usr/lib
+	cp -a stuff/sudoers $fs/etc
+	strip -s $fs/usr/bin/*
+	strip -s $fs/usr/sbin/*
+	strip -s $fs/usr/lib/sudo_noexec.so
+}
+
+pre_install()
+{
+	echo "Processing pre-install commands..."
+	if [ -f $root/etc/sudoers.bak ]; then
+		cp $root/etc/sudoers $root/etc/sudoers.bak
+	fi
+}
+
+post_install()
+{
+	local root
+	root=$1
+	echo "Processing post-install commands..."
+	if [ -f $root/etc/sudoers.bak ]; then
+		rm -f $root/etc/sudoers
+		mv $root/etc/sudoers.bak $root/etc/sudoers
+	else
+		chown root.root $root/etc/sudoers
+		chmod 0440 $root/etc/sudoers
+	fi
+}                        
