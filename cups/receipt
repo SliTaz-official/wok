@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="cups"
-VERSION="1.3.7"
+VERSION="1.3.9"
 CATEGORY="system-tools"
 SHORT_DESC="Common UNIX Printing System."
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="openssl slitaz-base-files gnutls cyrus-sasl"
-BUILD_DEPENDS="openssl-dev"
+DEPENDS="openssl slitaz-base-files gnutls ghostscript dbus"
+BUILD_DEPENDS="openssl-dev gnutls-dev ghostscript dbus-dev"
 TARBALL="$PACKAGE-$VERSION-source.tar.bz2"
 WEB_SITE="http://www.cups.org/"
 WGET_URL="http://ftp.rz.tu-bs.de/pub/mirror/ftp.easysw.com/ftp/pub/cups/$VERSION/$TARBALL"
@@ -20,7 +20,10 @@ compile_rules()
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		--mandir=/usr/share/man \
-		--enable-static \
+		--disable-ldap \
+		--with-cups-user=nobody \
+		--with-cups-group=nogroup \
+		--with-languages="de es fr" \
 		$CONFIGURE_ARGS &&
 	make &&
 	make BUILDROOT=$PWD/_pkg install
@@ -32,12 +35,16 @@ genpkg_rules()
 	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share
 	
 	cp -a $_pkg/etc/cups $fs/etc
+	cp -a $_pkg/etc/dbus* $fs/etc
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/cups $fs/usr/lib
 	cp -a $_pkg/usr/share/cups $fs/usr/share
 	cp -a $_pkg/var $fs
+	
+	# We need the doc for CSS, images and help in the web interface.
+	cp -a $_pkg/usr/share/doc $fs/usr/share
 
 	# Daemon script
 	cp -a stuff/etc $fs
