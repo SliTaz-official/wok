@@ -6,37 +6,27 @@
 # Author : Eric Joseph-Alexandre <erjo@slitaz.org>
 
 PACKAGE="OpenOffice3"
-VERSION="3.0.0"
 URL="http://www.openoffice.org"
 ROOT="$1"
 
 case "$LANG" in
-fr_FR)
-	WGET_URL="ftp://ftp.proxad.net/mirrors/ftp.openoffice.org/localized/fr"
-	VERSION_URL="http://openofficeorg.secsup.org/localized/fr/"
-	SUFFIX="LinuxIntel_install_fr.tar.gz";;
-de_DE)
-	WGET_URL="ftp://ftp.proxad.net/mirrors/ftp.openoffice.org/localized/de"
-	VERSION_URL="http://openofficeorg.secsup.org/localized/de/"
-	SUFFIX="LinuxIntel_install_de.tar.gz";;
-es_ES)
-	WGET_URL="ftp://ftp.proxad.net/mirrors/ftp.openoffice.org/localized/es"
-	VERSION_URL="http://openofficeorg.secsup.org/localized/es/"
-	SUFFIX="LinuxIntel_install_es.tar.gz";;
+fr_FR|de_DE|es_ES|it_IT|ru_RU)
+	LOC=${LOC%_*}
+	DIR="localized/$LOC"
+	SUFFIX="LinuxIntel_install_$LOC.tar.gz";;
 *)
-	WGET_URL="ftp://ftp.proxad.net/mirrors/ftp.openoffice.org/stable"
-	VERSION_URL="http://openofficeorg.secsup.org/stable/"
+	DIR="stable"
 	SUFFIX="LinuxIntel_install_en-US.tar.gz";;
 esac
 
-VERSION="$(basename $(wget -O - $VERSION_URL 2> /dev/null | grep href | \
-	    tail -1 | sed 's/.*href=\"\(.*\)\".*/\1/'))"
+VERSION="$(basename $(wget -O - http://openofficeorg.secsup.org/$DIR/ \
+	2> /dev/null | grep href | tail -1 | sed 's/.*href=\"\(.*\)\".*/\1/'))"
 if [ -z "$VERSION" ]; then
 	echo "Can't find VERSION. Abort."
 	exit 0
 fi
 TARBALL="OOo_${VERSION}_${SUFFIX}"
-WGET_URL=$WGET_URL/$VERSION/$TARBALL
+WGET_URL=ftp://ftp.proxad.net/mirrors/ftp.openoffice.org/$DIR/$VERSION/$TARBALL
 
 TEMP_DIR="/home/slitaz/build/$PACKAGE.$$"
 SOURCE_DIR="/home/slitaz/src"
