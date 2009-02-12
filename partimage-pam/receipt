@@ -1,0 +1,68 @@
+# SliTaz package receipt.
+
+PACKAGE="partimage-pam"
+VERSION="0.6.7"
+CATEGORY="system-tools"
+SHORT_DESC="Saves partitions in an image file."
+MAINTAINER="pascal.bellard@slitaz.org"
+DEPENDS="newt bzip2 openssl slitaz-base-files pam"
+BUILD_DEPENDS="newt newt-dev slang-dev bzip2-dev openssl-dev pam pam-dev"
+SOURCE="partimage"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.partimage.org/Index.fr.html"
+WGET_URL="http://heanet.dl.sourceforge.net/sourceforge/partimage/$TARBALL"
+PROVIDE="partimage:pam"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --enable-pam \
+	 --sysconfdir=/etc \
+	 --infodir=/usr/share/info \
+	 --mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/etc/init.d
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/etc $fs/
+	install -g root -o root -m 0600 ../$SOURCE/stuff/etc/partimaged/partimaged.* $fs/etc/partimaged
+	install -g root -o root -m 0755 ../$SOURCE/stuff/etc/init.d/partimaged $fs/etc/init.d
+	strip -s $fs/usr/sbin/*
+}
+
+post_install()
+{
+	echo "Processing post install commands..."
+	echo "Adding user/group partimag..."
+	chroot $1/ adduser -S -H -D partimag
+
+	echo "Setting permissions for config files"
+	chmod 0600 $1/etc/partimaged/*
+	chown partimag.partimag $1/etc/partimaged/*	
+	
+	echo " Creating image files directory"
+	install -g partimag -o partimag -m 0755 -d $1/var/lib/partimaged
+	
+	echo ""
+	echo -e "\nTo starts $SOURCE server you can run :\n"
+   	echo "/etc/init.d/partimaged start"
+   	echo -e "Or add partimaged to RUN_DAEMONS in /etc/rcS.conf\n"
+}
+
+post_remove()
+{
+	deluser partimag
+	delgroup partimag
+	
+	if [ -f /etc/paritimaged ]; then
+		rm -rf /etc/partimaged
+	fi
+}
+	
+	
