@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="screen-pam"
+VERSION="4.0.3"
+CATEGORY="system-tools"
+SHORT_DESC="Terminal multiplexer with PAM support."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="screen"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/screen"
+WGET_URL="$GNU_MIRROR/$SOURCE/$TARBALL"
+CONFIG_FILES="/etc/screenrc"
+DEPENDS="pam"
+BUILD_DEPENDS="ncurses-extra pam pam-dev"
+SUGGESTED="screen-terminfo"
+PROVIDE="screen:pam"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info --enable-pam \
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install || return 1
+	mkdir -p _pkg/usr/share/terminfo
+	tic -o $PWD/_pkg/usr/share/terminfo terminfo/screeninfo.src
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share $fs/etc
+	cp $src/etc/screenrc $fs/etc
+	cp -a $_pkg/usr/bin/screen-$VERSION $fs/usr/bin/screen
+	cp -a $_pkg/usr/share/screen $fs/usr/share
+	for i in $(cd $WOK; ls -d screen-*)
+	do
+		tazwok genpkg $i
+	done
+}
+
