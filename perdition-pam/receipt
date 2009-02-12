@@ -1,15 +1,16 @@
 # SliTaz package receipt.
 
-PACKAGE="perdition"
+PACKAGE="perdition-pam"
 VERSION="1.17.1"
 CATEGORY="network"
 SHORT_DESC="IMAP/POP proxy."
 MAINTAINER="pascal.bellard@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.vergenet.net/linux/$PACKAGE"
+SOURCE="perdition"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.vergenet.net/linux/$SOURCE"
 WGET_URL="$WEB_SITE/download/$VERSION/$TARBALL"
-BUILD_DEPENDS="vanessa_logger-dev vanessa_logger vanessa_adt-dev vanessa_adt vanessa_socket-dev vanessa_socket openldap-dev"
-DEPENDS="vanessa_logger vanessa_adt vanessa_socket libldap"
+BUILD_DEPENDS="vanessa_logger-dev vanessa_logger vanessa_adt-dev vanessa_adt vanessa_socket-dev vanessa_socket openldap-dev pam pam-dev"
+DEPENDS="vanessa_logger vanessa_adt vanessa_socket libldap pam"
 CONFIG_FILES="/etc/perdition"
 BUGS="Very slow: more than 10 seconds for login with squirrelmail, why ?"
 
@@ -21,8 +22,7 @@ compile_rules()
 	--enable-openldap --disable-ldap-doc --disable-nis \
 	--disable-odbc --disable-mysql --disable-pg --disable-bdb \
 	--sysconfdir=/etc --localstatedir=/var \
-	--mandir=/usr/share/man $CONFIGURE_ARGS || return 1
-	sed -i 's/#define WITH_PAM_SUPPORT 1/#undef WITH_PAM_SUPPORT/' config.h
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
 }
@@ -33,17 +33,13 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib $fs/etc/openldap/schema
 	cp -a $_pkg/etc $fs
 	rm -f $fs/etc/perdition/perdition.conf
-	cp -a stuff/etc $fs
+	cp -a ../$SOURCE/stuff/etc $fs
 	cp -a $_pkg/usr/sbin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	for i in pop3 pop3s imap4 imap4s imaps; do
 		mkdir -p $fs/var/run/perdition.$i
 	done
 	cp $src/perdition/db/ldap/perdition.schema $fs/etc/openldap/schema
-	for i in $(cd $WOK; ls -d perdition-*)
-	do
-		tazwok cook $i
-	done
 }
 
 # Pre and post install commands for Tazpkg.
@@ -57,11 +53,11 @@ post_install()
 Perdition will forward to the 127.0.0.1:50143 imap server.
 Can you change listen="imap" to listen="50143" in /etc/cyrus.conf
 and restart cyrus-imap, or modify files in /etc/perdition.
-To start $PACKAGE server you can run :
+To start $SOURCE server you can run :
 
-    /etc/init.d/$PACKAGE start
+    /etc/init.d/$SOURCE start
     
-Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
+Or add $SOURCE to RUN_DAEMONS in /etc/rcS.conf
 ----
 EOF
 }
