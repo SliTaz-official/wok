@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="ppp-pam"
+VERSION="2.4.4"
+CATEGORY="network"
+SHORT_DESC="Implements the Point-to-Point Protocol (PPP) with PAM support."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="ppp"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://ppp.samba.org/"
+WGET_URL="ftp://ftp.samba.org/pub/ppp/$TARBALL"
+DEPENDS="pam"
+BUILD_DEPENDS="pam pam-dev"
+CONFIG_FILES="/etc/ppp"
+PROVIDE="ppp:pam"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's/#USE_PAM/USE_PAM/' pppd/Makefile.linux
+	./configure --prefix=/usr --mandir=/usr/share/man \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg/usr install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	strip -s $fs/usr/sbin/*
+	strip -s $fs/usr/lib/pppd/$VERSION/*
+	# Config files.
+	mkdir -p $fs/etc/ppp/scripts
+	cp ../$SOURCE/stuff/README.scripts $fs/etc/ppp
+	cp -a $src/etc.ppp/* $fs/etc/ppp
+	# PPP scripts.
+	cp -a $src/scripts/ppp-on $fs/etc/ppp/scripts
+	cp -a $src/scripts/ppp-on-dialer $fs/etc/ppp/scripts
+	sed -i 's,ppp/ppp-on-dialer,ppp/script/ppp-on-dialer,' $fs/etc/ppp/scripts/ppp-on-dialer
+	cp -a $src/scripts/ppp-off $fs/etc/ppp/scripts
+	cp -a $src/scripts/callback $fs/etc/ppp/scripts
+	cp -a $src/scripts/redialer $fs/etc/ppp/scripts
+}
