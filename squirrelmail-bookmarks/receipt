@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="squirrelmail-bookmarks"
+VERSION="2.0.3-1.4.1"
+CATEGORY="network"
+SHORT_DESC="Store and manage favorites lists within the Squirrelmail interface."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="bookmarks"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.squirrelmail.org/"
+DEPENDS="squirrelmail"
+WGET_URL="${WEB_SITE}plugins/$TARBALL"
+CONFIG_FILES="/etc/squirrelmail/bookmarks_data.php"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/squirrelmail/plugins $fs/etc/squirrelmail
+	cp -a $SOURCE $fs/usr/share/squirrelmail/plugins
+	rm -f $fs/usr/share/squirrelmail/plugins/$SOURCE/bookmarks_data.php
+	ln -s /usr/share/squirrelmail/plugins/$SOURCE/bookmarks_data_text.php \
+		$fs/etc/squirrelmail/bookmarks_data.php
+	ln -s /etc/squirrelmail/bookmarks_data.php \
+		$fs/usr/share/squirrelmail/plugins/$SOURCE/bookmarks_data.php
+}
+
+post_install()
+{
+	echo "\$plugins[] = '$SOURCE';" >> $1/etc/squirrelmail/config_local.php
+}
+
+post_remove()
+{
+	sed -i "/\$plugins.. = '$SOURCE';/d" /etc/squirrelmail/config_local.php
+}
