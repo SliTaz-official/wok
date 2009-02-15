@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="squirrelmail-html_mail"
+VERSION="2.3-1.4"
+CATEGORY="network"
+SHORT_DESC="Vacation and forwarding plugin for Web mail."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="html_mail"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.squirrelmail.org/"
+DEPENDS="squirrelmail perl-html-entities perl-html-parser perl-text-aspell"
+WGET_URL="${WEB_SITE}plugins/$TARBALL"
+CONFIG_FILES="/etc/squirrelmail/config-$SOURCE.php /etc/apache/conf.d"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/squirrelmail/plugins $fs/etc/squirrelmail \
+		 $fs/etc/apache/conf.d
+	cp -a $SOURCE $fs/usr/share/squirrelmail/plugins
+	mv $fs/usr/share/squirrelmail/plugins/$SOURCE/config.php.sample \
+		$fs/etc/squirrelmail/config-$SOURCE.php
+	ln -s /etc/squirrelmail/config-$SOURCE.php \
+		$fs/usr/share/squirrelmail/plugins/$SOURCE/config.php
+	cat > $fs/etc/apache/conf.d/$SOURCE <<EOT
+<Directory /usr/share/squirrelmail/plugins/html_mail/htmlarea/plugins/SpellChecker
+>
+  Options +ExecCGI
+  AddHandler cgi-script cgi
+</Directory>
+EOT
+}
+
+post_install()
+{
+	echo "\$plugins[] = '$SOURCE';" >> $1/etc/squirrelmail/config_local.php
+}
+
+post_remove()
+{
+	sed -i "/\$plugins.. = '$SOURCE';/d" /etc/squirrelmail/config_local.php
+	rm /etc/apache/conf.d/$SOURCE
+}
