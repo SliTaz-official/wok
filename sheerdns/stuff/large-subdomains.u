@@ -1,0 +1,34 @@
+--- dir.c
++++ dir.c
+@@ -77,16 +77,17 @@
+     while (!get_file_name (buf, sizeof (buf), qtype, (unsigned char *) q)
+ 	   && (fd = open (buf, O_RDONLY)) == -1 && (q = strchr (q, '.')) && q++ && (qtype == REQ_SOA
+ 										    || qtype == REQ_NS));
+-    if (fd == -1) {
+-/* try lookup "*.example.com" where asking for "nonexistant.example.com": */
++    for (i = 0; fd == -1; i++) {
++/* try lookup "*.example.com" where asking for "nonexistant.example.com" or "any.where.example.com": */
+ 	char *t;
+ 	if (qtype == REQ_SOA || qtype == REQ_NS)	/* probably a bad idea to wildcard these, so return */
+ 	    return NULL;
+ 	q = t = (char *) strdup (s);
+-	while (*t && *t != '.')
++	for (c = i; *t && *t != '.' || --c >= 0;)
+ 	    t++;
+-	if (!*t || t == q || !(*--t = '*') || get_file_name (buf, sizeof (buf), qtype, (unsigned char *) t)
+-	    || (fd = open (buf, O_RDONLY)) == -1) {
++	t == q || !(*--t = '*') || get_file_name (buf, sizeof (buf), qtype, (unsigned char *) t)
++	    || (fd = open (buf, O_RDONLY));
++	if (fd == -1 && !*++t ) {
+ 	    free (q);
+ 	    return NULL; }
+ 	free (q); }
+
+--- dir.h
++++ dir.h
+@@ -11,4 +11,4 @@
+ char **directory_lookup (int qtype, unsigned char *s);
+ time_t get_mtime (int qtype, unsigned char *s);
+ 
+-#define SHEERDNS_DIR	"/var/sheerdns"
++#define SHEERDNS_DIR	"/var/sheerdns"
