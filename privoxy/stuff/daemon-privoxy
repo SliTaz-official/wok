@@ -1,0 +1,59 @@
+#!/bin/sh
+# /etc/init.d/daemon-name: Start, stop and restart daemon 
+# on SliTaz, at boot time or with the command line.
+#
+# To start daemon at boot time, just put the right name in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf.
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Privoxy
+DESC="Web proxy daemon"
+DAEMON=/usr/sbin/privoxy
+OPTIONS="--pidfile /var/run/privoxy.pid"
+USER="--user privoxy"
+CONFIG=/etc/privoxy/config
+PIDFILE=/var/run/privoxy.pid
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS $USER $CONFIG 2> /dev/null
+    status
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    rm $PIDFILE
+    status
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    kill `cat $PIDFILE`
+    rm $PIDFILE
+    sleep 2
+    echo -n "Restarting $DESC: $NAME... "
+    $DAEMON $OPTIONS $USER $CONFIG 2> /dev/null
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
