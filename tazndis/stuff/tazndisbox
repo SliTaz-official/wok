@@ -1,0 +1,158 @@
+#!/bin/sh
+#
+# GTKdialog interface to tazndis: let users manage easly Windows drivers.
+# Use tabs to indent, split commands from the GUI and use functions.
+#
+# (c) 2009 SliTaz GNU/Linux - GNU gpl v3
+#
+
+# Languages messages translations
+
+case $LANG in
+	fr*)
+		REMOVE_DRIVER_MSG="Double clique sur un driver pour le supprimer."
+		FILE_ENTRY_MSG="Fichier (.inf):"
+		BUTTON_MSG="Installer"
+		MODULE_STATUS_MSG="Module noyau ndiswrapper"
+		LOADED_STATUS_MSG="chargé"
+		UNLOADED_STATUS_MSG="déchargé"
+		LOAD_BUTTON="Charger"
+		UNLOAD_BUTTON="Décharger"
+		EXIT_BUTTON="Quitter" ;;
+	*)
+		REMOVE_DRIVER_MSG="Please double clic on a driver to remove it."
+		FILE_ENTRY_MSG="File (.inf):"
+		BUTTON_MSG="Install"
+		MODULE_STATUS_MSG="Ndiswrapper Kernel module"
+		LOADED_STATUS_MSG="loaded"
+		UNLOADED_STATUS_MSG="unloaded"
+		LOAD_BUTTON="Load"
+		UNLOAD_BUTTON="Unload"
+		EXIT_BUTTON="Exit" ;;
+esac
+
+# Tazndisbox is only for root.
+if test $(id -u) != 0 ; then
+	exec subox tazndisbox
+	exit 0
+fi
+
+# Functions
+
+list_drivers()
+{
+	tazndis -l | sed 's/:/|/'
+}
+
+install_driver()
+{
+	xterm -bg gray93 -fg black -geometry 60x12 -title "Tazndis install" \
+		-e "echo N | tazndis -i $NEW_DRIVER"	
+}
+
+remove_driver()
+{
+	tazndis -r $DRIVER
+}
+
+module_status()
+{
+	if lsmod | grep -q ndiswrapper; then
+		STATUS="$LOADED_STATUS_MSG"
+	else
+		STATUS="$UNLOADED_STATUS_MSG"
+	fi
+	echo -n "$MODULE_STATUS_MSG ($STATUS)"
+}
+
+load_module()
+{
+	if ! lsmod | grep -q ^ndiswrapper; then
+		modprobe ndiswrapper
+	fi
+}
+
+unload_module()
+{
+	if lsmod | grep -q ^ndiswrapper; then
+		rmmod ndiswrapper
+	fi
+}
+
+# GUI
+
+export MAIN_DIALOG="
+<window title=\"Tazndisbox\" icon-name=\"system-installer\">
+<vbox>
+	
+	<tree>
+		<width>510</width><height>140</height>
+		<variable>DRIVER</variable>
+		<label>Driver|Info</label>
+		<input>$0 list_drivers</input>
+		<action>$0 remove_driver</action>
+		<action>refresh:DRIVER</action>
+	</tree>
+	
+	<hbox>
+		<text width-chars=\"56\">
+			<label>\"$REMOVE_DRIVER_MSG\"</label>
+		</text>
+	</hbox>
+
+	<hbox>
+		<text>
+			<label>$FILE_ENTRY_MSG</label>
+		</text>
+		<entry accept=\"filename\">
+			<label>Select a driver</label>
+			<variable>NEW_DRIVER</variable>
+		</entry>
+		<button>
+			<input file stock=\"gtk-open\"></input>
+			<action type=\"fileselect\">NEW_DRIVER</action>
+		</button>
+		<button>
+			<label>$BUTTON_MSG</label>
+			<input file icon=\"forward\"></input>
+			<action>$0 install_driver</action>
+			<action>refresh:DRIVER</action>
+			<action>refresh:MODULE</action>
+			<action>clear:NEW_DRIVER</action>
+		</button>
+	</hbox>
+	
+	<hbox>
+		<text>
+			<variable>MODULE</variable>
+			<input>$0 module_status</input>
+		</text>
+		<button>
+			<label>$LOAD_BUTTON</label>
+			<input file icon=\"forward\"></input>
+			<action>$0 load_module</action>
+			<action>refresh:MODULE</action>
+		</button>
+		<button>
+			<label>$UNLOAD_BUTTON</label>
+			<input file icon=\"undo\"></input>
+			<action>$0 unload_module</action>
+			<action>refresh:MODULE</action>
+		</button>
+		<button>
+			<label>$EXIT_BUTTON</label>
+			<input file icon=\"exit\"></input>
+			<action type=\"exit\">Exit</action>
+		</button>
+	</hbox>
+	
+</vbox>
+</window>"
+
+if [ -n "$1" ]; then
+	$1
+else
+	gtkdialog --center --program=MAIN_DIALOG #>/dev/null
+fi
+
+exit 0
