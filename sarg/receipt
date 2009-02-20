@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="sarg"
+VERSION="2.2.5"
+CATEGORY="network"
+SHORT_DESC="Squid Analysis Report Generator."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://$PACKAGE.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--enable-sysconfdir=/etc/sarg --enable-htmldir=/var/www \
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make || return 1
+	sed -e "s|/usr/bin|$PWD/_pkg/usr/bin|" \
+	    -e "s|/etc/sarg|$PWD/_pkg/etc/sarg|" \
+	    -e "s|/var/www|$PWD/_pkg/var/www|" \
+	    -e "s|/usr/local/man/man1|$PWD/_pkg/usr/man/man1|" \
+	    < Makefile > Makefile.install
+	mkdir -p $PWD/_pkg/usr/bin $PWD/_pkg/etc/sarg $PWD/_pkg/var/www \
+		 $PWD/_pkg/usr/man/man1
+	make -f Makefile.install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/var $fs
+	cp -a $_pkg/etc $fs
+	rm -rf $fs/etc/sarg/sarg-php
+	cp -a $_pkg/usr/bin $fs/usr
+}
+
