@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="compcache"
-VERSION="0.4"
+VERSION="0.5.1"
 CATEGORY="system-tools"
 SHORT_DESC="Compressed caching"
 MAINTAINER="fabrice.thiroux@free.fr"
@@ -19,7 +19,7 @@ compile_rules()
         tazwok cook linux
     fi
     cd $src
-	find -name Makefile | xargs sed -i \
+    find -name Makefile | xargs sed -i \
 		"s|/lib/modules/\$(shell uname -r)/build|$WOK/linux/linux-$KERNEL_VERSION|"
     make  KBUILD=$WOK/linux/linux-$KERNEL_VERSION KVER=$KERNEL_VERSION 
 }
@@ -32,16 +32,16 @@ genpkg_rules()
     
     mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc $fs/etc/init.d
     
-    install -o root -m 755 $src/compcache.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
-    install -o root -m 755 $src/sub-projects/allocators/tlsf-kmod/tlsf.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
-    install -o root -m 755 $src/sub-projects/compression/lzo-kmod/lzo1x_compress.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
-    install -o root -m 755 $src/sub-projects/compression/lzo-kmod/lzo1x_decompress.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+    install -o root -m 644 $src/compcache.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+    install -o root -m 644 $src/sub-projects/allocators/xvmalloc-kmod/xvmalloc.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+    install -o root -m 644 $src/sub-projects/compression/lzo-kmod/lzo1x_compress.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+    install -o root -m 644 $src/sub-projects/compression/lzo-kmod/lzo1x_decompress.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
 
-	for i in $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/*.ko ; do
-		lzma e $i $i.gz && rm -f $i
+    for i in $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/*.ko ; do
+        lzma e $i $i.gz && rm -f $i
     done
     install -o root -m 755 ./stuff/compcache $fs/etc/init.d/
-    install -o root -m 755 ./stuff/compcache.conf $fs/etc/
+    install -o root -m 644 ./stuff/compcache.conf $fs/etc/
 }
 
 post_install()
