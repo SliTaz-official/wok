@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="mtpaint"
-VERSION="3.21"
+VERSION="3.30"
 CATEGORY="graphics"
 SHORT_DESC="Light paint programm and image manipulation."
 MAINTAINER="pankso@slitaz.org"
@@ -17,19 +17,21 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 #
 compile_rules()
 {
-	cp -a stuff/icons-tango $src/src
+	cp -a stuff/icons-tango/* $src/src/icons1
 	cd $src
-	./configure --cpu=i486 --prefix=/usr intl icons-tango &&
+	./configure --cpu=i486 --prefix=/usr intl &&
 	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin \
-		$fs/usr/share/locale/fr/LC_MESSAGES \
-		$fs/usr/share/applications \
-		$fs/usr/share/pixmaps
+	mkdir -p $fs/usr/bin
 	cp -a $src/src/mtpaint $fs/usr/bin
-	cp -a $src/po/fr.mo $fs/usr/share/locale/fr/LC_MESSAGES/mtpaint.mo
+	# Get locale from tazwok.conf
+	for i in $LOCALE
+	do
+		mkdir -p $fs/usr/share/locale/$i/LC_MESSAGES
+		cp -a $src/po/$i.mo $fs/usr/share/locale/$i/LC_MESSAGES/mtpaint.mo
+	done
 }
