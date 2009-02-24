@@ -59,9 +59,6 @@ genpkg_rules()
 		cp $_pkg/usr/lib/lighttpd/mod_${module}.so $fs/usr/lib/lighttpd
 		echo -n "Copying : mod_${module}.so" && status
 	done
-	strip -s $fs/usr/bin/*
-	strip -s $fs/usr/sbin/*
-	strip -s $fs/usr/lib/lighttpd/*
 	
 	# Server root and config file.
 	cp -a stuff/var $fs
@@ -80,10 +77,19 @@ pre_install()
 {
 	echo "Processing pre-install commands..."
 	[ -f /etc/init.d/$PACKAGE ] && /etc/init.d/$PACKAGE stop
+	# Backup config file.
+	if [ -d $1/$CONFIG_FILES ]; then
+		cp -a $1/$CONFIG_FILES $1/$CONFIG_FILES.bak
+	fi
 }
 post_install()
 {
 	echo "Processing post-install commands..."
+	# Restore original config.
+	if [ -d $1/$CONFIG_FILES.bak ]; then
+		rm -rf $1/$CONFIG_FILES
+		mv $1/$CONFIG_FILES.bak $1/$CONFIG_FILES
+	fi
 	# Just in case.
 	chown www.www $1/var/log/$PACKAGE
 	if [ -z "$1" ]; then
