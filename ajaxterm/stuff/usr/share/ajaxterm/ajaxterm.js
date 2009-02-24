@@ -12,13 +12,13 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 	var keybuf=[];
 	var sending=0;
 	var rmax=1;
-	var popupargs='width='+(25+(width*7))+
-			',height='+(45+(height*14))+',scrollbars=no';
+	var popupargs='width='+(80+(width*7))+',height='+(70+(height*14))+
+		',scrollbars=no,location=no,menubar=no,status=no,toolbar=no';
 	var debugmsg=0;
+	var closed=0;
 
 	var div=document.getElementById(id);
 	var dstat=document.createElement('pre');
-	var sled=document.createElement('span');
 	var opt_get=document.createElement('a');
 	var opt_color=document.createElement('a');
 	var opt_paste=document.createElement('a');
@@ -28,11 +28,10 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 	var dterm=document.createElement('div');
 
 	function debug(s) {
-		debugmsg=1;
+		debugmsg=(new Date).getTime();
 		sdebug.innerHTML=s;
 	}
 	function error() {
-		sled.className='off';
 //		debug("Connection lost timeout ts:"+((new Date).getTime()));
 		debug("Connection lost "+((new Date).toTimeString()));
 	}
@@ -102,14 +101,16 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 		window.open(''+self.location,'',popupargs);
 	}
 	function do_close(event) {
+		closed=1;
+		debug('Disconnected');
 		window.close();
 	}
 	function update() {
 //		debug("ts: "+((new Date).getTime())+" rmax:"+rmax);
+		if(debugmsg+5000 < (new Date).getTime()) debugmsg=0;
 		if(debugmsg==0) sdebug.innerHTML=(new Date).toString();
 		if(sending==0) {
 			sending=1;
-			sled.className='on';
 			var r=new XMLHttpRequest();
 			var send="";
 			while(keybuf.length>0) {
@@ -146,18 +147,21 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 								rmax=2000;
 						}
 						sending=0;
-						sled.className='off';
-						timeout=window.setTimeout(update,rmax);
+						if (closed==0) {
+							timeout=window.setTimeout(update,rmax);
+						}
 					} else {
 						debug("Connection error status:"+r.status);
 					}
 				}
 			}
-			error_timeout=window.setTimeout(error,5000);
-			if(opt_get.className=='on') {
-				r.send(null);
-			} else {
-				r.send(query);
+			if (closed==0) {
+				error_timeout=window.setTimeout(error,5000);
+				if(opt_get.className=='on') {
+					r.send(null);
+				} else {
+					r.send(query);
+				}
 			}
 		}
 	}
@@ -165,7 +169,9 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 		keybuf.unshift(s);
 		if(sending==0) {
 			window.clearTimeout(timeout);
-			timeout=window.setTimeout(update,1);
+			if (closed==0) {
+				timeout=window.setTimeout(update,1);
+			}
 		}
 	}
 	function keypress(ev) {
@@ -260,9 +266,6 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 		}
 	}
 	function init() {
-		sled.appendChild(document.createTextNode('\xb7'));
-		sled.className='off';
-		dstat.appendChild(sled);
 		dstat.appendChild(document.createTextNode(' '));
 		opt_add(opt_color,'Colors');
 		opt_color.className='on';

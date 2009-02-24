@@ -2,12 +2,15 @@
 
 server=""
 if [ -x /usr/bin/ssh ]; then
-	echo -n "Server: "
+	echo -n "SSH server: "
 	read -t 300 server || exit 1
 fi
 [ -n "$server" ] || exec /bin/login
 case "$server" in
-*@*);; *) echo -n "$server login: "; read user; server="$user@$server";;
+*@*)	;;
+*)	echo -n "$server login: "
+	read -t 30 user || exit 1
+	server="$user@$server";;
 esac
 sshargs="-oPreferredAuthentications=keyboard-interactive,password -oNoHostAuthenticationForLocalhost=yes -oLogLevel=FATAL -F/dev/null";
 [ -L /usr/bin/ssh ] && sshargs=""
