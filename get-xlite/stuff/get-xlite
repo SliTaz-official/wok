@@ -1,0 +1,70 @@
+#!/bin/sh -e
+: ${DIALOG=tazdialog}
+
+ROOT="$1"
+
+if test $(id -u) != 0 ; then
+	echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please type 'su' and root password to become super-user.\n"
+	exit 0
+fi
+
+if [ -d $ROOT/var/lib/tazpkg/installed/xlite ]; then
+  [ -n "$ROOT" ] && exit 1
+  tazpkg remove xlite
+  [ -d /var/lib/tazpkg/installed/xlite ] && exit 1
+fi
+
+WEB_SITE="http://www.counterpath.net/"
+URL="http://counterpath.s3.amazonaws.com/downloads/X-Lite_Install.tar.gz"
+URLLIB="http://http.us.debian.org/debian/pool/main/g/gcc-3.3/libstdc++5_3.3.6-18_i386.deb"
+
+TMP_DIR=/tmp/get-xlite-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+
+# Download tarball
+wget $URL
+wget $URLLIB
+
+# Extract
+tar xzf $(basename $URL)
+
+VERSION="$(strings xten-xlite/xtensoftphone | grep ^Version | sed 's/.*="\(.*\)"/\1/')"
+
+# Install files
+dir=xlite-$VERSION/fs
+mkdir -p $dir/usr/bin $dir/usr/share/applications
+mv xten-xlite/xtensoftphone $dir/usr/bin
+ln -s xtensoftphone $dir/usr/bin/xlite
+cat > $dir/usr/share/applications/xlite.desktop <<EOT
+[Desktop Entry]
+Encoding=UTF-8
+Name=Xlite softphone
+Comment=SIP softphone (VoIP)
+Exec=xtensoftphone
+Icon=firefox.png
+Type=Application
+Categories=Application;Network;
+EOT
+dpkg-deb -x $(basename $URLLIB) $dir
+rm -rf $dir/usr/share/doc
+
+# Create pseudo package
+cat > xlite-$VERSION/receipt <<EOT
+PACKAGE="xlite"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="Get Xlite soft phone."
+WEB_SITE="$WEB_SITE"
+EOT
+
+# Pack
+tazpkg pack xlite-$VERSION
+
+# Install pseudo package
+tazpkg install xlite-$VERSION.tazpkg --root=$ROOT
+
+# Clean
+cd $CUR_DIR
+rm -rf $TMP_DIR
