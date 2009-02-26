@@ -1,0 +1,68 @@
+#!/bin/sh -e
+
+ROOT="$1"
+
+if test $(id -u) != 0 ; then
+	echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please type 'su' and root password to become super-user.\n"
+	exit 0
+fi
+
+if [ -d $ROOT/var/lib/tazpkg/installed/sjphone ]; then
+  [ -n "$ROOT" ] && exit 1
+  tazpkg remove sjphone
+  [ -d /var/lib/tazpkg/installed/sjphone ] && exit 1
+fi
+
+WEB_SITE="http://www.sjlabs.com/"
+VERSION="1.60.299"
+URL="http://www.sjphone.org/softphone/SJphoneLnx-299a.tar.gz"
+
+TMP_DIR=/tmp/get-sjphone-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+
+# Download tarball
+wget $URL
+
+# Extract
+tar xzf $(basename $URL)
+
+# Install files
+dir=sjphone-$VERSION/fs
+mkdir -p $dir/usr/bin $dir/usr/share/applications $dir/etc/sjphone
+mv SJ*/lib $dir/usr/share/sjphone
+mv SJ*/sjphone $dir/usr/bin
+ln -s /etc/sjphone/defaults.ini $dir/usr/share/sjphone/defaults.ini
+sed -i -e 's|WD=.*|WD=/usr/share/sjphone|' -e 's|WD/lib|WD|' \
+       -e 's|ldd|#ldd|' $dir/usr/bin/sjphone
+cat > $dir/usr/share/applications/sjphone.desktop <<EOT
+[Desktop Entry]
+Encoding=UTF-8
+Name=SJphone
+Comment=SIP/H323 softphone (VoIP)
+Exec=sjphone
+Icon=/usr/share/sjphone/sjphone.png
+Type=Application
+Categories=Application;Network;
+EOT
+
+# Create pseudo package
+cat > sjphone-$VERSION/receipt <<EOT
+PACKAGE="sjphone"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="SIP/H323 soft phone."
+WEB_SITE="$WEB_SITE"
+CONFIG_FILES="/etc/sjphone"
+EOT
+
+# Pack
+tazpkg pack sjphone-$VERSION
+
+# Install pseudo package
+tazpkg install sjphone-$VERSION.tazpkg --root=$ROOT
+
+# Clean
+cd $CUR_DIR
+rm -rf $TMP_DIR
