@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="atl1e"
+VERSION="1.0.1.0"
+CATEGORY="system-tools"
+SHORT_DESC="SliTaz EeePC scripts and configurations files."
+DEPENDS="linux"
+BUILD_DEPENDS="linux-source"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+MAINTAINER="pankso@slitaz.org"
+WEB_SITE="http://asus.com/"
+WGET_URL="http://mirror.slitaz.org/sources/packages/a/$TARBALL"
+KVER=`grep  ^VERSION= $WOK/linux-source/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+EXTRAVERSION=_${KVER}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/src
+	make
+	find $src/src -name "*.ko" -exec lzma e '{}' '{}'.gz \;
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/lib/modules/${KVER}-slitaz/kernel/drivers/net/atl1e
+	cp $src/src/atl1e.ko.gz \
+		$fs/lib/modules/${KVER}-slitaz/kernel/drivers/net/atl1e
+}
+
+post_install()
+{
+	depmod -a -b "$1/" ${EXTRAVERSION#_}-slitaz
+}
