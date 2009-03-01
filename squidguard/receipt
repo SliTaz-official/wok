@@ -17,18 +17,18 @@ compile_rules()
 {
 	cd $src
 	./configure --prefix=/usr --infodir=/usr/share/info \
-	--sysconfdir=/etc --with-sg-config=/etc/squid/squidGuard.conf \
+	--sysconfdir=/etc --with-sg-config=/etc/squidGuard/squidGuard.conf \
 	--with-sg-logdir=/var/lib/squidGuard/log \
 	--with-sg-dbhome=/var/lib/squidGuard/db \
 	--mandir=/usr/share/man $CONFIGURE_ARGS
 	make
 	sed -e 's|^prefix =.*|prefix = _pkg/usr|' \
 	    -e 's|^logdir =.*|logdir = _pkg/var/lib/squidGuard/log|' \
-	    -e 's|^configfile =.*|configfile = _pkg/etc/squid/squidGuard.conf|' \
+	    -e 's|^configfile =.*|configfile = _pkg/etc/squidGuard/squidGuard.conf|' \
 	    -e 's|^dbhomedir =.*|dbhomedir = _pkg/var/lib/squidGuard/db|' \
-	    -e 's|^SQUIDUSER =.*|SQUIDUSER = root|' \
+	    -e 's|^SQUIDUSER =.*|SQUIDUSER = nobody|' \
 	    < Makefile > Makefile.slitaz-install
-	mkdir -p _pkg/etc/squid
+	mkdir -p _pkg/etc/squidGuard
 	make -f Makefile.slitaz-install install
 }
 
@@ -41,11 +41,23 @@ genpkg_rules()
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-	chown -R nobody /var/lib/squidGuard/* /usr/squidGuard
-	if ! grep ^redirect_program $1/etc/squid/squid.conf ; then
+	chown -R nobody $1/var/lib/squidGuard/* $1/usr/squidGuard
+	if ! grep -q ^redirect_program $1/etc/squid/squid.conf ; then
 		echo "Updating /etc/squid/squid.conf"
 		cat >> $1/etc/squid/squid.conf <<EOF
-redirect_program /usr/bin/squidGuard -c /etc/squid/squidGuard.conf
+redirect_program /usr/bin/squidGuard -c /etc/squidGuard/squidGuard.conf
 EOF
+		# Restart squid if running
+		$(which squid) -k reconfigure 2> /dev/null
+	fi
+}
+
+post_remove()
+{
+	if grep -q "squidGuard" 	/etc/squid/squid.conf ; then
+		echo "Updating /etc/squid/squid.conf"
+		sed -i -e "s/.*squidGuard.*//" /etc/squid/squid.conf
+		# Restart squid if running
+		$(which squid) -k reconfigure 2> /dev/null
 	fi
 }
