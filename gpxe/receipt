@@ -13,7 +13,7 @@ WGET_URL="http://kernel.org/pub/software/utils/boot/$PACKAGE/Old/$TARBALL"
 compile_rules()
 {
 	cd $src/src
-	for i in prefix.u default_boot.u cmdline.u; do
+	for i in prefix.u default_boot.u cmdline.u url_list.u; do
 		[ -f done.$i ] && continue
 		echo "Apply $i..."
 		patch -p2 < ../../stuff/$i || return 1
@@ -27,9 +27,12 @@ genpkg_rules()
 {
 	mkdir -p $fs/boot
 	cp $src/src/bin/gpxe.lkrn $fs/boot/gpxe
-	# install 127 bytes of forced url at offset 519
-	echo -n "http://boot.slitaz.org/pxe/pxelinux.0" | cat - /dev/zero | \
-		dd bs=1 seek=519 count=127 conv=notrunc of=$fs/boot/gpxe
+	# install 255 bytes of forced url at offset 519
+	echo -n "\
+http://boot.slitaz.org/pxe/pxelinux.0,\
+http://mirror.slitaz.org/pxe/pxelinux.0,\
+http://download.tuxfamily.org/slitaz/pxe/pxelinux.0" | cat - /dev/zero | \
+		dd bs=1 seek=519 count=255 conv=notrunc of=$fs/boot/gpxe
 	# Package all gpxe pkgs
 	for i in $(cd $WOK; ls -d gpxe-*)
 	do
