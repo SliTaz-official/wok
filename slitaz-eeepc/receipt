@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="slitaz-eeepc"
+VERSION="1.0"
+CATEGORY="system-tools"
+SHORT_DESC="SliTaz EeePC scripts and configurations files."
+DEPENDS="915resolution dmidecode atl2 atl1e rt2860sta"
+MAINTAINER="pankso@slitaz.org"
+WEB_SITE="http://www.slitaz.org/"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/etc/init.d \
+		$fs/etc/skel/Desktop \
+		$fs/usr/share/doc/slitaz-flavors \
+		$fs/sbin 
+	# Tool and boot script
+	cp stuff/eeepc.sh $fs/etc/init.d
+	cp stuff/tazeee $fs/sbin
+	# Images
+	cp -a stuff/images $fs/usr/share
+	cp -a stuff/pixmaps $fs/usr/share
+	# Doc
+	cp -a stuff/eeepc.html $fs/usr/share/doc/slitaz-flavors
+	# Desktop icon
+	cp -a stuff/applications/tazeee.desktop $fs/etc/skel/Desktop
+	# Config
+	touch $fs/etc/eeepc.conf
+	chown -R root.root $fs
+}
+
+pre_install()
+{
+	. $1/etc/rcS.conf
+	sed -i s/'RUN_SCRIPTS="'/'RUN_SCRIPTS="eeepc.sh '/ $1/etc/rcS.conf
+	# Load module ac and battery
+	sed -i s/"LOAD_MODULES=\"$LOAD_MODULES\""/"LOAD_MODULES=\"$LOAD_MODULES ac battery\""/ \
+		$1/etc/rcS.conf
+}
+
+pre_remove()
+{
+	sed -i s/'RUN_SCRIPTS="eeepc.sh '/'RUN_SCRIPTS="'/ /etc/rcS.conf
+}

@@ -1,0 +1,168 @@
+#!/bin/sh
+#
+# Configure SliTaz for EeePC. Tazee prodide first boot initialisation
+# to configure the EeePC model and a GTK box to have quick access to 
+# SliTaz EeePC stuff.
+#
+# 20090301 <pankso@slitaz.org> - GNU gpl v3.
+#
+: ${DIALOG=dialog}
+
+check_root()
+{
+	if test $(id -u) != 0 ; then
+		echo -e "\nYou must be root to run `basename $0` with this option."
+		echo -e "Please use 'su' and root password to become super-user.\n"
+		exit 0
+	fi
+}
+
+get_model()
+{
+	EEEPC_MODEL=`dmidecode -s system-product-name`
+	echo "EeePC model detected: $EEEPC_MODEL"
+	# Create config file used at boot time by init script.
+	cat > /etc/eeepc.conf << _EOF_
+# EeePC configuration file for SliTaz GNU/Linux.
+#
+EEEPC_MODEL="$EEEPC_MODEL"
+_EOF_
+}
+
+# Specific model settings.
+model_config()
+{
+	. /etc/eeepc.conf
+	case $EEEPC_MODEL in
+		701)
+			KERNEL_MODULES='atl2'
+			SCREEN_SIZE='800x480x24'
+			HACK_915='5c 800 480 32' ;;
+		901)
+			KERNEL_MODULES='atl1e rt2860sta'
+			SCREEN_SIZE='1024x600x24'
+			HACK_915='54 1024 600 32'
+			WIFI_INTERFACE='ra0' ;;
+		1000)
+			KERNEL_MODULES='atl1e rt2860sta'
+			WIFI_INTERFACE='ra0' ;;
+		*)
+			echo "Skipping EeePC $EEEPC_MODEL setup..." && exit 0 ;;
+	esac
+	cat >> /etc/eeepc.conf << _EOF_
+
+# Screen
+SCREEN_SIZE="$SCREEN_SIZE"
+HACK_915="$HACK_915"
+
+# Network
+KERNEL_MODULES="$KERNEL_MODULES"
+WIFI_INTERFACE="$WIFI_INTERFACE"
+_EOF_
+}
+
+# Load module now and add them to LOAD_MODULE for next boot if installed
+# With this /etc/init.d/network.sh will start the wireless interface.
+load_modules()
+{
+	for mod in $KERNEL_MODULES
+	do
+		modprobe $mod
+	done
+	# Add module to rcS.conf and avoid duplication.
+	. /etc/rcS.conf
+	sed -i s/"LOAD_MODULES=\"$LOAD_MODULES\""/"LOAD_MODULES=\"$LOAD_MODULES $KERNEL_MODULES\""/ \
+		/etc/rcS.conf
+}
+
+# Active wifi interface it will be configured by network.sh and config 
+# LXpanel.
+active_wifi()
+{
+	sed -i s/'WIFI="no"'/'WIFI="yes"'/ /etc/network.conf
+	sed -i s/'iface=eth0'/"iface=$WIFI_INTERFACE"/ \
+		/etc/lxpanel/default/panels/panel
+}
+
+# Small GTKdialog box the have quick access to slitaz-eeepc stuff.
+box()
+{
+	export EEE_BOX='
+<window title="SliTaz EeePC Box" icon-name="computer">
+<vbox>
+	<vbox>
+		<pixmap>
+			<input file>/usr/share/images/eeepc-logo.png</input>
+		</pixmap>
+		<text>
+			<label>
+"
+Small interface to access SliTaz EeePC information and tools
+"
+			</label>
+		</text>
+	</vbox>
+	<hbox>
+		<button>
+			<label>Documentation</label>
+			<input file icon="help"></input>
+			<action>firefox /usr/share/doc/slitaz-flavors/eeepc.html &</action>
+		</button>
+		<button>
+			<label>Show configuration</label>
+			<input file icon="computer"></input>
+			<action>leafpad /etc/eeepc.conf &</action>
+		</button>
+		<button>
+			<label>SSD/HDD install</label>
+			<input file icon="system-installer"></input>
+			<action>subox "xterm -e tazeee install" &</action>
+		</button>
+		<button>
+			<label>Exit</label>
+			<input file icon="exit"></input>	
+			<action type="exit">exit</action>
+		</button>
+	</hbox>
+</vbox>
+</window>'
+	gtkdialog --center --program=EEE_BOX
+}
+
+case $1 in
+	setup)
+		check_root
+		get_model
+		model_config
+		load_modules
+		[ -n $WIFI_INTERFACE ] && active_wifi
+		echo "EeePC setup completed..." ;;
+	box)
+		box ;;
+	show-config)
+		echo ""
+		cat /etc/eeepc.conf
+		echo "" ;;
+	install)
+		# EeePC havn't got a cdrom so we must fake it.
+		echo ""
+		echo "Starting SliTaz EeePC installation..."
+		echo "Please do not reboot trought the installer, just exit."
+		sleep 4
+		rmdir /media/cdrom
+		ln -s /home /media/cdrom
+		slitaz-installer
+		# Installer/GBUB see /dev/hdc1 as (hd2,0) --> we need (hd0,0)
+		mount /dev/hdc1 /mnt/target 2>/dev/null
+		if grep -q 'root=/dev/hdc1' /mnt/target/boot/grub/menu.lst 2>/dev/null; then
+			sed -i s/'(hd2,0)'/'(hd0,0)'/ /mnt/target/boot/grub/menu.lst
+		fi
+		umount /mnt/target 2>/dev/null
+		echo ""
+		echo "Installation completed. You can now reboot your EeePC"
+		echo "" ;;
+	*)
+		echo -e "\nUsage: `basename $0` [setup|box|show-config|install]\n" ;;
+esac
+
+exit 0
