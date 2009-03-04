@@ -21,15 +21,17 @@ case "$1" in
       echo "$NAME already running."
       exit 1
     fi
-    dir=$(grep configdirectory /etc/imapd.conf | awk '{ print $2 }')
+    dir=$(grep ^configdirectory /etc/imapd.conf | awk '{ print $2 }')
     if [ -f $dir/mailboxes.db ]; then
       echo -n "Initialize $DESC: "
+      /usr/cyrus/bin/mkimap
       for i in user quota ; do
         for j in a b c d e f g h i j k l m n o p q r s t u v w x y z ; do
           [ -d $dir/$i/$j ] || mkdir -p $dir/$i/$j
         done
       done
       chown -R cyrus:mail $dir
+      chmod 750 $dir
       su cyrus -c "/usr/cyrus/bin/ctl_cyrusdb -r"
       su cyrus -c "/usr/cyrus/bin/reconstruct"
       status
