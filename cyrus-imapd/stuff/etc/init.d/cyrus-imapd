@@ -17,9 +17,22 @@ PIDFILE=/var/run/cyrus.master.pid
 
 case "$1" in
   start)
-    if [ -f $PIDFILE ] ; then
+    if active_pidfile $PIDFILE master ; then
       echo "$NAME already running."
       exit 1
+    fi
+    dir=$(grep configdirectory /etc/imapd.conf | awk '{ print $2 }')
+    if [ -f $dir/mailboxes.db ]; then
+      echo -n "Initialize $DESC: "
+      for i in user quota ; do
+        for j in a b c d e f g h i j k l m n o p q r s t u v w x y z ; do
+          [ -d $dir/$i/$j ] || mkdir -p $dir/$i/$j
+        done
+      done
+      chown -R cyrus:mail $dir
+      su cyrus -c "/usr/cyrus/bin/ctl_cyrusdb -r"
+      su cyrus -c "/usr/cyrus/bin/reconstruct"
+      status
     fi
     if ! pidof saslauthd > /dev/null; then
       /etc/init.d/cyrus-sasl start
@@ -30,7 +43,7 @@ case "$1" in
     sleep 2
     ;;
   stop)
-    if [ ! -f $PIDFILE ] ; then
+    if ! active_pidfile $PIDFILE master ; then
       echo "$NAME is not running."
       exit 1
     fi
@@ -40,7 +53,7 @@ case "$1" in
     status
     ;;
   restart)
-    if [ ! -f $PIDFILE ] ; then
+    if ! active_pidfile $PIDFILE master ; then
       echo "$NAME is not running."
       exit 1
     fi
