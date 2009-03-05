@@ -24,14 +24,38 @@ case "$1" in
     dir=$(grep ^configdirectory /etc/imapd.conf | awk '{ print $2 }')
     if [ ! -f $dir/mailboxes.db ]; then
       echo -n "Initialize $DESC: "
-      /usr/cyrus/bin/mkimap
+      #/usr/cyrus/bin/mkimap
+      for i in db proc socket log msg user quota; do
+        [ -d $dir/$i ] || mkdir -p -m 700 $dir/$i
+      done
       for i in user quota ; do
         for j in a b c d e f g h i j k l m n o p q r s t u v w x y z ; do
           [ -d $dir/$i/$j ] || mkdir -p $dir/$i/$j
         done
       done
       chown -R cyrus:mail $dir
-      chmod 750 $dir
+      chmod 750 $dir $dir/socket
+      for i in $(grep ^partition /etc/imapd.conf | awk '{ print $2 }') ; do
+        [ -d $i ] || mkdir -p -m 750 $i
+        case "$(grep ^hashimapspool /etc/imapd.conf | awk '{ print $2 }')" in
+        y*|t*|1|on)
+          for j in a b c d e f g h i j k l m n o p q r s t u v w x y z ; do
+            [ -d $i/$j ] || mkdir -p $i/$j
+          done ;;
+        esac
+        [ -d $i/stage. ] || mkdir $i/stage. 
+        chown -R cyrus:mail $i
+      done
+      case "$(grep ^sieveusehomedir /etc/imapd.conf | awk '{ print $2 }')" in
+      y*|t*|1|on)
+        sieve=$(grep ^sievedir /etc/sieve | awk '{ print $2 }')
+        [ -d $sieve ] || mkdir $sieve
+        chmod 755 $sieve
+        for j in a b c d e f g h i j k l m n o p q r s t u v w x y z ; do
+          [ -d $sieve/$j ] || mkdir -p -m 755 $sieve/$j
+        done
+        chown -R cyrus:mail $sieve ;;
+      esac
       su cyrus -c "/usr/cyrus/bin/ctl_cyrusdb -r"
       su cyrus -c "/usr/cyrus/bin/reconstruct"
       status
