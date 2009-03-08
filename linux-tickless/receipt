@@ -1,0 +1,107 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-tickless"
+VERSION="2.6.25.5"
+CATEGORY="base-system"
+SHORT_DESC="The Linux kernel and modules."
+BUILD_DEPENDS="slitaz-toolchain perl"
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="linux"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.kernel.org/"
+WGET_URL="http://www.eu.kernel.org/pub/linux/kernel/v2.6/$TARBALL"
+CONFIG_FILES="/lib/modules/$VERSION-slitaz/modules.dep"
+PROVIDE="linux"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	rm -rf slitaz 2> /dev/null
+	mkdir slitaz
+	echo "$WGET_URL" > slitaz/url
+	cp $WOK/linux/stuff/gztazmod.sh $WOK/linux/stuff/list_modules.sh slitaz
+	# lzma and misc patches from pascal
+	while read patch_file; do
+		if [ -f done.$patch_file ]; then
+			echo "Skipping $patch_file"
+			continue
+		fi
+		echo "Apply $patch_file"
+		patch -p1 < $WOK/linux/stuff/$patch_file || return 1
+		echo "$patch_file" >> slitaz/patches
+		cp $WOK/linux/stuff/$patch_file slitaz/$patch_file
+		touch done.$patch_file
+	done <<EOT
+$SOURCE-lzma-$VERSION.u
+$SOURCE-utf8-$VERSION.u
+$SOURCE-diff-$VERSION.u
+$SOURCE-rootdev.u
+EOT
+	make mrproper	
+	cp $WOK/linux/stuff/$SOURCE-$VERSION-slitaz.config .config
+	sed -i  -e 's/# CONFIG_TICK_ONESHOT .*/CONFIG_TICK_ONESHOT=y/'
+		-e 's/# CONFIG_NO_HZ .*/CONFIG_NO_HZ=y/' .config 
+	make oldconfig
+	ln .config slitaz/config
+	make bzImage
+	make modules
+	make INSTALL_MOD_PATH=$PWD/_pkg modules_install
+	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install
+} 
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    mkdir $fs/boot
+    cp -a $src/arch/x86/boot/bzImage $fs/boot/vmlinuz-$VERSION-slitaz
+    # Compress all modules.
+    # Package module-init-tools is compiled with zlib support.
+    #
+    $WOK/linux/stuff/gztazmod.sh $_pkg/lib/modules/$VERSION-slitaz
+    path=$fs/lib/modules/$VERSION-slitaz/kernel
+    mkdir -p $path
+    cp -a $_pkg/lib/modules/$VERSION-slitaz/mo* $fs/lib/modules/$VERSION-slitaz
+    cp $WOK/linux/stuff/list_modules.sh $src
+    export src
+    export _pkg
+    $src/list_modules.sh $(cat $WOK/linux/stuff/modules-$VERSION.list) > $src/modules.list
+    while read module; do
+    	dir=$(dirname $module)
+    	[ -d $path/$dir ] || mkdir -p $path/$dir
+        cp -a $_pkg/lib/modules/$VERSION-slitaz/kernel/$module $path/$dir
+    done < $src/modules.list
+    # Remove unresolved links
+    rm -f $fs/lib/modules/$VERSION-slitaz/build
+    rm -f $fs/lib/modules/$VERSION-slitaz/source
+}
+
+# Pre and post install commands for Tazpkg.
+# GRUB stuf.
+post_install()
+{
+    echo "Processing post-install commands..."
+    depmod -a -b "$1/" $VERSION-slitaz
+    if [ -f "$1/boot/grub/menu.lst" ]; then
+    	root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/'`
+		grub_dev=`cat $1/boot/grub/menu.lst | grep "root ("`
+		# Add new kernel entry in case of upgrade for installed system.
+    	cat >> $1/boot/grub/menu.lst << EOT
+
+title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
+$grub_dev
+       kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
+EOT
+		# Display information message.
+    	cat <<EOT
+----
+GRUB is installed, these tree lines has been added to the menu.lst:
+ 
+title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
+$grub_dev
+       kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
+----
+EOT
+	fi
+}
