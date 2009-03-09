@@ -27,7 +27,7 @@ case "$1" in
     [ -n "$cache_dir" ] || cache_dir=/var/cache
     if [ -d "$cache_dir" -a ! -d "$cache_dir/00" ]; then
       echo -n "Creating squid spool directory structure"
-      $DAEMON -z
+      $DAEMON -z > /dev/null 2>&1
       status
     fi
     echo -n "Starting $DESC: $NAME... "
@@ -41,9 +41,19 @@ case "$1" in
       exit 1
     fi
     echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    $DAEMON -k kill
     status
+    rm -f $PIDFILE
     sleep 2
+    ;;
+  reload)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Reloading $DESC configuration... "
+    $DAEMON -k reconfigure
+    status
     ;;
   restart)
     if [ ! -f $PIDFILE ] ; then
@@ -51,15 +61,13 @@ case "$1" in
       exit 1
     fi
     echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
-    sleep 2
-    $DAEMON $OPTIONS
+	$DAEMON -k kill &&  $DAEMON $OPTIONS
     status
     sleep 2
     ;;
   *)
     echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|reload|restart]"
     echo ""
     exit 1
     ;;
