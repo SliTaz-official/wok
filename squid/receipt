@@ -10,14 +10,35 @@ WEB_SITE="http://www.squid-cache.org/"
 WGET_URL="${WEB_SITE}Versions/v3/3.0/$TARBALL"
 CONFIG_FILES="/etc/squid"
 #DEPENDS="iptables"
-BUILD_DEPENDS="perl"
+BUILD_DEPENDS="perl openssl-dev libldap openldap-dev cyrus-sasl cyrus-sasl-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--sysconfdir=/etc/squid --localstatedir=/var \
+	./configure --prefix=/usr \
+	--infodir=/usr/share/info \
+	--sysconfdir=/etc/squid \
+	--datadir=/usr/share/squid \
+	--libexecdir=/usr/libexec/squid \
+	--localstatedir=/var \
+    --disable-poll \
+    --disable-snmp \
+    --disable-icmp \
+    --disable-http-violations \
+    --disable-ident-lookups \
+    --enable-storeio="aufs,diskd,ufs" \
+    --enable-ssl \
+	--enable-underscores \
+    --enable-ntlm-fail-open \
+    --enable-removal-policies="heap,lru" \
+    --enable-delay-pools \
+    --enable-linux-netfilter \
+    --enable-basic-auth-helpers="NCSA,SMB,MSNT LDAP" \
+    --enable-ntlm-auth-helpers="SMB" \
+    --enable-useragent-log \
+    --enable-referer-log \
+    --with-pthreads ac_cv_header_linux_netfilter_ipv4_h="yes" \
 	--mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -26,7 +47,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/errors $fs/var/cache/squid $fs/var/log/squid
+	mkdir -p $fs/usr/share/squid/errors $fs/var/cache/squid $fs/var/log/squid
 	cp -a $_pkg/etc $fs
 	rm -rf $fs/etc/squid/*.default
 	cp -a stuff/etc $fs
@@ -34,10 +55,10 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
 	cp -a $_pkg/usr/libexec $fs/usr
-	cp -a $_pkg/usr/share/mib.txt $fs/usr/share
-	cp -a $_pkg/usr/share/icons $fs/usr/share
-	cp -a $_pkg/usr/share/errors/English $fs/usr/share/errors
-	cp -a $_pkg/usr/share/errors/French $fs/usr/share/errors
+	cp -a $_pkg/usr/share/squid/mib.txt $fs/usr/share/squid
+	cp -a $_pkg/usr/share/squid/icons $fs/usr/share/squid
+	cp -a $_pkg/usr/share/squid/errors/English $fs/usr/share/squid/errors
+	cp -a $_pkg/usr/share/squid/errors/French $fs/usr/share/squid/errors
 	rm -f $fs/etc/*conf*
 	sed -i -e 's/TAG: visible_hostname/TAG: visible_hostname\nvisible_hostname slitaz/' \
 		-e 's|^access_log /var/logs|access_log /var/log/squid|' \
@@ -46,6 +67,7 @@ genpkg_rules()
 		-e 's|^# cache_dir ufs /var/cache|cache_dir ufs /var/cache/squid|' \
 		-e 's|^# pid_filename /var/logs|pid_filename /var/run|' \
 		-e 's|^coredump_dir /var/logs|coredump_dir /var/cache/squid|' \
+		-e 's|^# error_directory|error_directory /usr/share/squid/errors/French|' \
 		$fs/etc/squid/squid.conf
 	# Package all squid pkgs
 	for i in $(cd $WOK; ls -d squid-*)
@@ -67,4 +89,12 @@ To start $PACKAGE server you can run :
 Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
 ----
 EOF
+}
+
+post_remove()
+{
+	echo "Removing stalled files..."
+	test -d /var/cache/squid && rm -rf /var/cache/squid
+	test -d /var/log/squid && rm -rf /var/log/squid
+	test -d /usr/share/squid && rm -rf /usr/share/squid	
 }
