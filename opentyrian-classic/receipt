@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="opentyrian-classic"
+VERSION="r886"
+CATEGORY="games"
+SHORT_DESC="OpenTyrian is a port of the DOS shoot-em-up Tyrian"
+MAINTAINER="mallory@skyrock.com"
+DEPENDS="libSDL libsdl-mixer"
+BUILD_DEPENDS="subversion libSDL-dev libsdl-mixer-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://code.google.com/p/opentyrian/"
+WGET_URL=""
+
+. /etc/tazwok.conf
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd "$WOK/$PACKAGE"
+	svn checkout -$VERSION http://opentyrian.googlecode.com/svn/trunk/classic "$PACKAGE-$VERSION"
+	cd $src
+	make
+	wget http://camanis.net/tyrian/tyrian21.zip
+	unzip tyrian21.zip
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/applications
+	mkdir -p $fs/usr/share/pixmaps
+	mkdir -p $fs/usr/share/opentyrian
+	cp $src/tyrian $fs/usr/share/opentyrian
+	cp $src/opentyrian.desktop $fs/usr/share/applications
+	cp $src/tyrian.xpm $fs/usr/share/pixmaps
+	cp $src/tyrian21/* $fs/usr/share/opentyrian
+	rm -rf $fs/usr/share/opentyrian/*exe
+	rm -rf $fs/usr/share/opentyrian/*doc
+	cat > $fs/usr/bin/tyrian <<EOF
+#!/bin/sh
+here=$(pwd)
+cd /usr/share/opentyrian
+./tyrian
+cd $here
+EOF
+	chmod +x $fs/usr/bin/tyrian
+}
+
