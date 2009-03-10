@@ -58,8 +58,10 @@ post_install()
 		echo -n "Adding user postgres..."
 		chroot $1/ adduser postgres -D -H -h /var/lib/pgsql
 		# ensure not to overload tux user
-		sed -i 's/^postgres:x:1000:1000:/postgres:x:1001:1001:/' $1/etc/passwd
-		sed -i 's/^postgres:x:1000:/postgres:x:1001:/' $1/etc/group
+		i=1100
+		while grep -q ":$i:" $1/etc/passwd ; do i=$(( $i + 1 )); done
+		sed -i "s/^postgres:x:1000:1000:/postgres:x:$i:$i:/" $1/etc/passwd
+		sed -i "s/^postgres:x:1000:/postgres:x:$i:/" $1/etc/group
 		status
 	fi
 	# addgroup postgres if needed
