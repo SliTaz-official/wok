@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="plymouth"
+VERSION="0.6.0"
+CATEGORY="system-tools"
+SHORT_DESC="Graphical boot tools and library."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.freedesktop.org/wiki/Software/Plymouth"
+WGET_URL="http://www.freedesktop.org/software/plymouth/releases/$TARBALL"
+DEPENDS="libpng"
+BUILD_DEPENDS="libpng libpng-dev"
+
+# Rules to configure and make the package.
+# --disable-gui-build dont wok properly only toolbox is not build.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--localstatedir=/var \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install &&
+	rm -rf _pkg/usr/share/applications
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/lib $fs/usr/lib/plymouth $fs/usr/share
+	cp -a $_pkg/bin $fs
+	cp -a $_pkg/sbin $fs
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/lib/*.so* $fs/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/plymouth/*.so* $fs/usr/lib/plymouth
+	cp -a $_pkg/usr/share/plymouth $fs/usr/share
+}
