@@ -1,0 +1,84 @@
+#!/bin/sh 
+
+# Get and install Dropbox for Linux
+
+PACKAGE="dropbox"
+VERSION="0.6.487"
+TARBALL="$PACKAGE-lnx.x86-$VERSION.tar.gz"
+URL="http://dl.getdropbox.com/u/17/$TARBALL"
+CUR_DIR=$(pwd)
+TEMP_DIR=/tmp/$PACKAGE-$VERSION-$$
+ROOT="$1"
+
+# Check if we are root
+if test $(id -u) != 0 ; then
+	echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please type 'su' and root password to become super-user.\n"
+	exit 1
+fi
+
+# Avoid reinstall
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+	echo -e "\n$PACKAGE package is already installed.\n"
+	exit 1
+fi
+
+# Create a TEMP_DIR
+mkdir $TEMP_DIR
+cd $TEMP_DIR
+
+# Download the file
+wget $URL 
+
+tar xzf $TARBALL
+mkdir -p $PACKAGE-$VERSION/fs/usr/lib \
+	$PACKAGE-$VERSION/fs/usr/bin \
+	$PACKAGE-$VERSION/fs/usr/share/applications 
+
+mv $TEMP_DIR/.dropbox-dist $PACKAGE-$VERSION/fs/usr/lib/dropbox
+strip $PACKAGE-$VERSION/fs/usr/lib/dropbox 2>/dev/null
+
+# Custom Dropboxd
+cat > $PACKAGE-$VERSION/fs/usr/lib/dropbox/dropboxd << "EOT"
+#!/bin/sh
+PAR=/usr/lib/dropbox
+LD_LIBRARY_PATH=$PAR:$LD_LIBRARY_PATH exec $PAR/dropbox $@
+EOT
+
+# Desktop file
+cat > $PACKAGE-$VERSION/fs/usr/share/applications/dropbox.desktop << EOT
+[Desktop Entry]
+Type=Application
+Name=Dropbox Storage
+Exec=dropboxd
+Icon=dropbox.png
+Terminal=false
+Categories=Network
+EOT
+
+# Symling to have Dropbox in PATH and fake nautilus
+cd $PACKAGE-$VERSION/fs/usr/bin
+rm -f dropboxd nautilus
+ln -s ../lib/dropbox/dropboxd .
+ln -s /usr/bin/pcmanfm nautilus
+
+cd $TEMP_DIR
+
+cat > $PACKAGE-$VERSION/receipt << EOT
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="Dropbox daemon and client fro online storage."
+DEPENDS="python"
+WEB_SITE="http://www.getdropbox.com/"
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Install pseudo package
+yes y | tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+
+# Clean
+cd $CUR_DIR
+rm -rf $TEMP_DIR
