@@ -11,6 +11,7 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 DEPENDS="zlib squashfs-module"
 BUILD_DEPENDS="zlib-dev patch lzma"
 PROVIDE="cromfs-or-squashfs"
+CONFIG_FILES="/etc/filesystems"
 
 # Download a source tarball
 . /etc/tazwok.conf
@@ -179,17 +180,19 @@ EOT
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	mkdir $fs/etc
+	touch $fs/etc/filesystems
 	cp -a $_pkg/usr $_pkg/sbin $fs
 }
 
 # Pre remove and post install commands for Tazpkg.
 pre_remove()
 {
-	sed -i '/^squashfs$/d' $1/etc/filesystems
+	sed -i '/^$PACKAGE$/d' $1/etc/filesystems
 }
 
 post_install()
 {
-	grep -qs ^squashfs$ $1/etc/filesystems || \
-		echo "squashfs" >> $1/etc/filesystems
+	grep -qs ^$PACKAGE$ $1/etc/filesystems || \
+		echo "$PACKAGE" >> $1/etc/filesystems
 }

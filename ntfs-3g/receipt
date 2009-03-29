@@ -9,6 +9,7 @@ DEPENDS="fuse"
 TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="http://www.ntfs-3g.org/"
 WGET_URL="$WEB_SITE/$TARBALL"
+CONFIG_FILES="/etc/filesystems"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -17,30 +18,31 @@ compile_rules()
 	sed -i 's/\terr = ntfs_open\(.*\);/\tntfs_log_clear_levels((u32) -1); if (err = ntfs_open\1) goto err2;/' \
 		src/ntfs-3g.c
 	./configure --prefix=/usr \
-	--mandir=/usr/share/man $CONFIGURE_ARGS
-	make
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/lib $fs/usr/lib
+	mkdir -p $fs/lib $fs/usr/lib $fs/etc
 	cp -a $_pkg/bin $fs/
 	cp -a $_pkg/sbin $fs/
 	cp -a $_pkg/lib/*.so* $fs/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
+	touch $fs/etc/filesystems
 }
 
 # Pre remove and post install commands for Tazpkg.
 pre_remove()
 {
-	sed -i '/^ntfs-3g$/d' $1/etc/filesystems
+	sed -i '/^$PACKAGE$/d' $1/etc/filesystems
 }
 
 post_install()
 {
-	grep -qs ^ntfs-3g$ $1/etc/filesystems || \
-		echo "ntfs-3g" >> $1/etc/filesystems
+	grep -qs ^$PACKAGE$ $1/etc/filesystems || \
+		echo "$PACKAGE" >> $1/etc/filesystems
 }
