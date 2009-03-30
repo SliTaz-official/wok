@@ -5,7 +5,7 @@
 # Authors : Eric Joseph-Alexandre <erjo@slitaz.org>
 #	    Pascal Bellard <pascal.bellard@slitaz.org>
 
-VERSION=0.3
+VERSION=0.4
 
 ROOT=/home/slitaz/iso
 TEMP_DIR=${ROOT}/_iso.$$
@@ -114,22 +114,33 @@ case " $OPTIONS " in
 	fi
 	echo "$SIZE$UNIT removed.";;
 esac
+
+# Copy hg subtree
+get_from_hg()
+{
+[ /slitaz/home/slitaz/hg/$1 ] || return
+echo -n "Adding $2"
+/usr/sbin/chroot /slitaz hg --repository /home/slitaz/hg/$1 pull >/dev/null
+/usr/sbin/chroot /slitaz hg --repository /home/slitaz/hg/$1 update >/dev/null
+mkdir $TEMP_DIR/$1
+cp -a /slitaz/home/slitaz/hg/$1/* $TEMP_DIR/$1
+status
+echo "$(du -hs $TEMP_DIR/$1 | awk '{ print $1 }') used by $2."
+}
+
 case " $OPTIONS " in
+*\ --wok\ *)
+	get_from_hg wok "wok (cooking)";;
+*\ --wok-stable\ *)
+	get_from_hg wok-stable "wok (stable)";;
 *\ --website\ *)
-	if [ -d /slitaz/home/slitaz/hg/website ]; then
-		echo -n "Adding web site"
-		/usr/sbin/chroot /slitaz hg --repository /home/slitaz/hg/website pull >/dev/null
-		/usr/sbin/chroot /slitaz hg --repository /home/slitaz/hg/website update >/dev/null
-		mkdir $TEMP_DIR/website
-		cp -a /slitaz/home/slitaz/hg/website/* $TEMP_DIR/website
+	if get_from_hg website "web site"; then
 		cat >>$TEMP_DIR/install.sh<<EOF
 echo "Install http://127.0.0.1/website ..."
 [ -d /var/www ] || mkdir -p /var/www
 ln -s \$DIR/website /var/www
 tazpkg list | grep -q ^lighttpd || yes y | tazpkg get-install lighttpd
 EOF
-		status
-		echo "$(du -hs $TEMP_DIR/website | awk '{ print $1 }') used by web site."
 	fi;;
 esac
 
