@@ -5,9 +5,10 @@ VERSION="0.45.1"
 CATEGORY="graphics"
 SHORT_DESC="Vector drawing application."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gc gtk+ libxslt libsigc++ glibmm gtkmm libxml2 libpng popt PyXML \
-xorg-libXdamage"
-BUILD_DEPENDS="gc-dev gtk+-dev libxslt-dev libsigc++-dev glibmm-dev gtkmm-dev popt-dev"
+DEPENDS="gc gtk+ libxslt libsigc++ glibmm gtkmm libxml2 libpng popt \
+xorg-libXdamage libgiomm"
+BUILD_DEPENDS="gc-dev gtk+-dev libxslt-dev libsigc++-dev glibmm-dev gtkmm-dev \
+popt-dev libgiomm-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.inkscape.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
@@ -20,10 +21,13 @@ compile_rules()
 		echo "Patching $file..."
 		sed -i 's|glib/gmessages|glib|' $file
 	done
+	# gtk-clist fix
+	sed -i s/gtkclist.h/gtk.h/ src/widgets/sp-xmlview-attr-list.h
 	./configure \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
 		--disable-lcms \
+		--disable-inkboard \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -32,19 +36,15 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/locale
+	mkdir -p $fs/usr/share
 	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
-	
-	# Copy all Inkscape files and remove tutorials (19,2 Mb), 
-	# examples + screens
+
+	# Copy all Inkscape files and remove tutorials (19,2 Mb) + misc files
 	cp -a $_pkg/usr/share/inkscape $fs/usr/share
+	rm -rf $fs/usr/share/inkscape/extensions
+	rm -rf $fs/usr/share/inkscape/clipart
 	rm -rf $fs/usr/share/inkscape/tutorials
 	rm -rf $fs/usr/share/inkscape/examples
-	rm -rf $fs/usr/share/inkscape/screens/keys.de.svg
-	rm -rf $fs/usr/share/inkscape/screens/keys.sl.svg
-	
-	strip -s $fs/usr/bin/* 2>/dev/null
+	rm -rf $fs/usr/share/inkscape/screens/keys*
 }
 
