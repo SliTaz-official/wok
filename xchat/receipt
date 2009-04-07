@@ -5,8 +5,8 @@ VERSION="2.8.6"
 CATEGORY="network"
 SHORT_DESC="IRC client using GTK+"
 MAINTAINER="fabrice.thiroux@free.fr"
-DEPENDS="gtk+ dbus libsexy libnotify openssl gettext dbus-glib xorg-libXdamage"
-BUILD_DEPENDS="gtk+-dev dbus-dev libsexy-dev libnotify-dev openssl shared-mime-info"
+DEPENDS="gtk+ dbus openssl gettext dbus-glib xorg-libXdamage"
+BUILD_DEPENDS="gtk+-dev dbus-dev openssl shared-mime-info"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.xchat.org/"
 WGET_URL="http://www.xchat.org/files/source/2.8/$TARBALL"
@@ -16,8 +16,15 @@ compile_rules()
 {
     cd $src
     patch -p1 -i ../stuff/xc286-smallfixes.diff
-    ./configure --prefix=/usr --infodir=/usr/share/info \
-    --mandir=/usr/share/man $CONFIGURE_ARGS &&
+	# gentoo patch for GTK > 2.12
+    patch -p1 -i ../stuff/xchat-2.8.6-gtk+-2.13.patch 
+    ./configure  --prefix=/usr \
+	  --infodir=/usr/share/info \
+	  --mandir=/usr/share/man \
+	  --disable-plugin \
+	  --disable-tcl \
+	  --enable-spell=static \
+      $CONFIGURE_ARGS &&
     make &&
     make DESTDIR=$PWD/_pkg install
 }
@@ -28,7 +35,5 @@ genpkg_rules()
     mkdir -p $fs/usr \
     	$fs/usr/share
     cp -a $_pkg/usr/bin $fs/usr
-    cp -a $_pkg/usr/share/applications $fs/usr/share
     cp -a $_pkg/usr/share/dbus-1 $fs/usr/share
-    cp -a $_pkg/usr/share/pixmaps $fs/usr/share
 }
