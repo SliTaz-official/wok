@@ -1,2 +1,2 @@
 splash.lss
-                      SliTaz GNU/Linux (2.0)
+                      SliTaz GNU/Linux (cooking-XXXXXXXX)
