@@ -58,6 +58,25 @@
  	pop	%ds
  run_etherboot:
 
+--- gpxe-0.9.3/src/arch/i386/prefix/lkrnprefix.S
++++ gpxe-0.9.3/src/arch/i386/prefix/lkrnprefix.S
+@@ -461,6 +461,15 @@
+ 	push	%ds
+ 	pop	%es
+ 	movw	$boot_url, %di
++	cmpw	$0x4F42,(%si) /* skip BOOT_IMAGE=.... */
++	jne	copy_cmdline
++skip_arg:
++	lodsb
++	testb	$0xDF, %al
++	jne	skip_arg
++	or	%al, %al
++	jne	copy_cmdline
++	decw	%si
+ copy_cmdline:
+ 	lodsb
+ 	stosb
+
 --- gpxe-0.9.3/src/net/udp/dns.c
 +++ gpxe-0.9.3/src/net/udp/dns.c
 @@ -506,6 +506,19 @@
