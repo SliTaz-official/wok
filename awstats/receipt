@@ -1,0 +1,84 @@
+# SliTaz package receipt.
+
+PACKAGE="awstats"
+VERSION="6.9"
+CATEGORY="network"
+SHORT_DESC="Log file analyzer"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="perl"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://awstats.sourceforge.net/"
+WGET_URL="http://prdownloads.sourceforge.net/awstats/$TARBALL"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/awstats/extras \
+		$fs/var/www/cgi-bin \
+		$fs/var/lib/awstats \
+		$fs/etc/awstats \
+		
+	cp -a $src/wwwroot/classes $fs/usr/share/awstats
+	cp -a $src/wwwroot/css $fs/usr/share/awstats
+	cp -a $src/wwwroot/icon $fs/usr/share/awstats
+	cp -a $src/wwwroot/js $fs/usr/share/awstats
+	cp -a $src/wwwroot/cgi-bin/lang $fs/usr/share/awstats
+	cp -a $src/wwwroot/cgi-bin/lib $fs/usr/share/awstats
+	cp -a $src/wwwroot/cgi-bin/plugins $fs/usr/share/awstats
+	
+	cp -a $src/wwwroot/cgi-bin/awstats.pl  $fs/var/www/cgi-bin
+	cp -a $src/wwwroot/cgi-bin/awstats.model.conf  $fs/etc/awstats
+	
+	cp stuff/awstats-apache.conf $fs/usr/share/awstats/extras
+	cp stuff/awstats-lighttpd.conf $fs/usr/share/awstats/extras
+}
+
+post_install()
+{
+    echo "Processing post-install commands..."
+	# Set lighttpd or apache config
+	if [ -f $1/etc/apache/httpd.conf ]; then
+		if [ ! -f $1/etc/apache/conf.d/awstats.conf ]; then
+			
+			cp /usr/share/awstats/extras/awstats-apache.conf \
+				/etc/apache/conf.d/awstats.conf
+		fi
+		if [ -z "$1" ]; then
+			# Start Web server if necessary.
+			if [ -f /var/run/apache/httpd.pid ]; then
+				/etc/init.d/apache restart
+			fi
+		fi
+	fi
+
+	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+		if [ ! -f $1/etc/lighttpd/awstats.conf ]; then
+			cp /usr/share/awstats/extras/awstats-lighttpd.conf \
+				/etc/lighttpd/awstats.conf			
+		fi
+					# Start Web server if necessary.
+		if [ -f /var/run/lighttpd.pid ]; then
+			/etc/init.d/lighttpd restart
+		fi
+	fi
+}
+
+post_remove()
+{
+		echo "Remove orphan dirctories."
+		[ -d /usr/share/awstats ] && rm -rf /usr/share/awstats
+		
+		# 
+		echo "All database and configuratoin files will be removed"
+		echo -n "Please confirm removing (y/N) : "; read answer
+		
+		case $answer in 
+		y|Y)
+			rm -rf /var/lib/awstats
+			rm -rf /etc/awstats
+			;;
+		*)
+			;;
+		esac
+		
+}
