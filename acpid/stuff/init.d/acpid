@@ -12,37 +12,36 @@ NAME=acpid
 DESC="ACPI event deamon"
 DAEMON=/usr/sbin/acpid
 OPTIONS=$ACPID_OPTIONS
-NPID=`ps ax | grep $DAEMON | wc -l`
-PID=`ps ax | grep $DAEMON | awk '{print $1}'`
+PIDFILE=/var/run/acpid.pid
 
 case "$1" in
   start)
-    if [ $NPID -ne 0  ] ; then
+    if [ -f $PIDFILE ] ; then
       echo "$NAME already running."
       exit 1
     fi
     echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS > /dev/null
+    $DAEMON $OPTIONS
     status
     ;;
   stop)
-    if [ $NPID -eq 0 ] ; then
+    if [ ! -f $PIDFILE ] ; then
       echo "$NAME is not running."
       exit 1
     fi
     echo -n "Stopping $DESC: $NAME... "
-    kill $PID
+    kill `cat $PIDFILE`
     status
     ;;
   restart)
-    if [ $NPID -eq 0 ] ; then
+    if [ ! -f $PIDFILE ] ; then
       echo "$NAME is not running."
       exit 1
     fi
     echo -n "Restarting $DESC: $NAME... "
-    kill $PID
+    kill `cat $PIDFILE`
     sleep 2
-    $DAEMON $OPTIONS > /dev/null
+    $DAEMON $OPTIONS
     status
     ;;
   *)
