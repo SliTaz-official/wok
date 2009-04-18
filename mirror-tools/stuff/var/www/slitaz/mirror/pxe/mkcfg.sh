@@ -15,46 +15,63 @@ status()
         echo -e "\\033[0;39m ]"
 }
 
-echo -n "Building cooking"
-rm -f cooking/*-*.cfg
-( cd ../boot/cooking ; ls rootfs-*.gz 2> /dev/null ) | \
+for version in cooking $(ls ../boot | grep 0$) ; do
+
+[ "$version" = "1.0" ] && continue
+echo -n "Building $version"
+if ! grep -q $version/splash.lss $version/isolinux.msg ; then
+	echo "WARNING: please update $version/isolinux.msg with $version/splash.lss"
+fi
+rm -f $version/*-*.cfg
+( cd ../boot/$version ; ls rootfs-*.gz 2> /dev/null ) | \
 sed 's/rootfs-\(.*\).gz/\1/' | while read flavor; do
-    	[ -f cooking/$flavor.cfg ] && continue
-        cp cooking/core.cfg cooking/$flavor.cfg
+	lowcased=$(echo $flavor | tr [A-Z] [a-z])
+	if [ "$lowcased" != "$flavor" ]; then
+		echo ""
+		echo "Warning : renaming ../boot/$version/rootfs-$flavor.gz to ../boot/$version/rootfs-$lowcased.gz"
+		mv ../boot/$version/rootfs-$flavor.gz ../boot/$version/rootfs-$lowcased.gz
+		flavor=$lowcased
+	fi
+    	[ -f $version/$flavor.cfg ] && continue
+        cp $version/core.cfg $version/$flavor.cfg
 	sed -i -e "s/core-common/$flavor-common/" \
-	       -e "s/rootfs.gz/rootfs-$flavor.gz/" cooking/$flavor.cfg
+	       -e "s/rootfs.gz/rootfs-$flavor.gz/" $version/$flavor.cfg
 done
-for flavor in $(cd cooking ; ls *.cfg | sed 's/.cfg//') ; do
+for flavor in $(cd $version ; ls *.cfg | sed 's/.cfg//') ; do
   echo -n " $flavor"
-  cat > cooking/$flavor-common.cfg <<EOT
+  cat > $version/$flavor-common.cfg <<EOT
 default slitaz
 label deCH
-	config cooking/$flavor-de_CH.cfg
+	config $version/$flavor-de_CH.cfg
 label frCH
-	config cooking/$flavor-fr_CH.cfg
+	config $version/$flavor-fr_CH.cfg
 label reboot
 	com32 reboot.c32
 
 implicit 0	
 prompt 1	
 timeout 80
-F1 cooking/help.txt
-F2 cooking/options.txt
-F3 cooking/isolinux.msg
-F4 cooking/display.txt
-F5 cooking/enhelp.txt
-F6 cooking/enopts.txt
+F1 $version/help.txt
+F2 $version/options.txt
+F3 $version/isolinux.msg
+F4 $version/display.txt
+F5 $version/enhelp.txt
+F6 $version/enopts.txt
 
 EOT
   while read cfg kbd loc ; do
+    if [ ! -f $version/$cfg.kbd ]; then
+    	echo ""
+	echo "Not found: $version/$cfg.kbd"
+    fi
     info="Now using $kbd keyboard and $loc locale."
-    sed -e "s/^display/kbdmap cooking\/$cfg.kbd\ndisplay/" \
+    sed -e "s/^display/kbdmap $version\/$cfg.kbd\ndisplay/" \
         -e "s/^label slitaz$/say $info\nlabel slitaz/" \
         -e "s/gz/gz lang=$loc kmap=$kbd/" \
-        < cooking/$flavor.cfg > cooking/$flavor-$cfg.cfg
-    cat >> cooking/$flavor-common.cfg <<EOT
+        < $version/$flavor.cfg > $version/$flavor-$cfg.cfg
+    cat >> $version/$flavor-common.cfg <<EOT
 label $cfg
-	config cooking/$flavor-$cfg.cfg
+	config $version/$flavor-$cfg.cfg
 EOT
   done <<EOT
 be    be-latin1    fr_FR
@@ -76,6 +93,8 @@ us    us           C
 EOT
 done
 status
+
+done
 
 echo -n "Building 1.0"
 rm -f 1.0/*-*.cfg
@@ -106,6 +125,10 @@ F3 1.0/isolinux.msg
 F4 1.0/display.txt
 EOT
   while read cfg kbd loc ; do
+    if [ ! -f 1.0/$cfg.kbd ]; then
+    	echo ""
+	echo "Not found: 1.0/$cfg.kbd"
+    fi
     sed -e "s/^display/KBDMAP 1.0\/$cfg.kbd\ndisplay/" \
         -e "s/gz/gz lang=$loc kmap=$kbd/" \
         < 1.0/$flavor.cfg > 1.0/$flavor-$cfg.cfg
