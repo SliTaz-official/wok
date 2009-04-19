@@ -1,0 +1,336 @@
+--- wvdial-1.41/Makefile	Sat Oct  3 05:40:30 1998
++++ wvdial-1.41+dom/Makefile	Thu Mar 19 20:56:27 2009
+@@ -1,10 +1,11 @@
+ TOPDIR=$(shell if [ "$$PWD" != "" ]; then echo $$PWD; else pwd; fi)
+ 
+ DEBUG=0
+-PREFIX=/usr/local
+-BINDIR=${PREFIX}/bin
+-MANDIR=${PREFIX}/man
+-PPPDIR=/etc/ppp/peers
++
++PREFIX=/usr
++BINDIR=${DESTDIR}/${PREFIX}/bin
++MANDIR=${DESTDIR]/${PREFIX}/man
++PPPDIR=${DESTDIR}/etc/ppp/peers
+ 
+ export TOPDIR DEBUG CC CXX
+ include rules.mk
+--- wvdial-1.41/configfile/wvconf.cc	Sun Nov 28 20:39:33 1999
++++ wvdial-1.41+dom/configfile/wvconf.cc	Thu Mar 19 20:56:27 2009
+@@ -130,7 +130,7 @@
+ 	    // it must be an element for the current section *sect.
+ 	    p = parse_value(from_file);
+ 	    if (!p)
+-		p = "";		// allow empty entries
++		  p = (char*)"";		// allow empty entries
+ 
+ 	    from_file = trim_string(from_file);
+ 	    if (from_file[0])	// nonblank option name
+--- wvdial-1.41/rules.mk	Thu Mar 19 21:04:33 2009
++++ wvdial-1.41+dom/rules.mk	Thu Oct 21 00:37:00 1999
+@@ -47,7 +47,7 @@
+ CFLAGS += -g -O6 -DDEBUG=0 -DNDEBUG
+ #CFLAGS += -fomit-frame-pointer  # really evil
+ #CXXFLAGS += -fno-implement-inlines  # causes trouble with egcs 1.0
+-CXXFLAGS += -fno-rtti -fno-exceptions
++CXXFLAGS += -fno-rtti -fno-exceptions -fno-strict-aliasing
+ LDFLAGS += -g
+ endif
+ 
+--- wvdial-1.41/streams/wvlog.cc	Sat Jul 10 21:36:45 1999
++++ wvdial-1.41+dom/streams/wvlog.cc	Thu Mar 19 20:56:27 2009
+@@ -14,16 +14,16 @@
+ WvLogRcvBase *WvLog::default_receiver = NULL;
+ 
+ char *WvLogRcv::loglevels[WvLog::NUM_LOGLEVELS] = {
+-    "Crit",
+-    "Err",
+-    "Warn",
+-    "Notice",
+-    "Info",
+-    "*1",
+-    "*2",
+-    "*3",
+-    "*4",
+-    "*5",
++  (char*)"Crit",
++  (char*)"Err",
++  (char*)"Warn",
++  (char*)"Notice",
++  (char*)"Info",
++  (char*)"*1",
++  (char*)"*2",
++  (char*)"*3",
++  (char*)"*4",
++  (char*)"*5",
+ };
+ 
+ 
+--- wvdial-1.41/streams/wvlog.h	Wed Mar 24 04:41:37 1999
++++ wvdial-1.41+dom/streams/wvlog.h	Thu Mar 19 20:56:27 2009
+@@ -25,7 +25,7 @@
+ // or transmits log messages.
+ class WvLogRcvBase
+ {
+-    friend WvLog;
++    friend class WvLog;
+ protected:
+     const char *appname(const WvLog *log) const;
+     virtual void log(const WvLog *source, int loglevel,
+@@ -43,7 +43,7 @@
+ // to all registered WvLogRcv's.
+ class WvLog : public WvStream
+ {
+-    friend WvLogRcvBase;
++    friend class WvLogRcvBase;
+ public:
+     enum LogLevel {
+ 	Critical = 0,
+--- wvdial-1.41/streams/wvstream.cc	Thu Oct 21 00:37:04 1999
++++ wvdial-1.41+dom/streams/wvstream.cc	Thu Mar 19 20:56:27 2009
+@@ -9,6 +9,7 @@
+  * for each stream.
+  */
+ #include "wvstream.h"
++#include <time.h>
+ #include <sys/time.h>
+ #include <sys/types.h>
+ #include <errno.h>
+--- wvdial-1.41/streams/wvtimestream.h	Wed Mar 24 04:41:37 1999
++++ wvdial-1.41+dom/streams/wvtimestream.h	Thu Mar 19 20:56:27 2009
+@@ -40,7 +40,7 @@
+     virtual bool test_set(SelectInfo &si);
+     
+     // notify timestream that we have "ticked" once
+-    void WvTimeStream::tick();
++    virtual void tick();
+     virtual void execute();
+ };
+ 
+--- wvdial-1.41/utils/base64.cc	Wed Mar 24 04:41:38 1999
++++ wvdial-1.41+dom/utils/base64.cc	Thu Mar 19 20:56:27 2009
+@@ -16,7 +16,7 @@
+ #include "base64.h"
+ #include <string.h>
+ 
+-static char * alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
++const char * alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+ 			 "0123456789+/=";
+ 
+ char * base64_encode( char * str )
+--- wvdial-1.41/utils/base64.h	Wed Mar 24 04:41:38 1999
++++ wvdial-1.41+dom/utils/base64.h	Thu Mar 19 20:56:27 2009
+@@ -12,4 +12,4 @@
+ extern char * base64_encode( char * str );
+ extern char * base64_decode( char * str );
+ 
+-#endif __BASE64_H
++#endif // __BASE64_H
+--- wvdial-1.41/utils/wvbuffer.h	Sun Jun 20 21:45:55 1999
++++ wvdial-1.41+dom/utils/wvbuffer.h	Thu Mar 19 20:56:27 2009
+@@ -10,6 +10,7 @@
+ #define __WVBUFFER_H
+ 
+ #include "wvlinklist.h"
++#include <string.h>
+ 
+ class WvMiniBuffer
+ {
+--- wvdial-1.41/utils/wvhashtable.h	Thu Oct 14 23:33:38 1999
++++ wvdial-1.41+dom/utils/wvhashtable.h	Thu Mar 19 20:56:27 2009
+@@ -139,7 +139,7 @@
+     _type_##List *sl()							\
+ 	{ return (_type_##List *)slots; }				\
+     									\
+-    ~##_classname_()							\
++    ~_classname_()							\
+         { shutdown(); delete[] sl(); }					\
+     									\
+     void add(_type_ *data, bool auto_free)				\
+--- wvdial-1.41/utils/wvlinklist.h	Thu Oct 14 23:33:38 1999
++++ wvdial-1.41+dom/utils/wvlinklist.h	Thu Mar 19 20:56:27 2009
+@@ -126,7 +126,7 @@
+     _newname_()						\
+ 	{ setup(); }					\
+ 							\
+-    ~##_newname_() 					\
++    ~_newname_() 					\
+ 	{ shutdown(); _zap(); }				\
+ 							\
+     void zap()						\
+--- wvdial-1.41/wvdial/wvdialer.cc	Fri Nov 19 06:14:46 1999
++++ wvdial-1.41+dom/wvdial/wvdialer.cc	Thu Mar 19 20:56:27 2009
+@@ -21,26 +21,26 @@
+ 
+ 
+ static char *	init_responses[] = {
+-	"ok",
+-	"error",
++  (char*)"ok",
++  (char*)"error",
+ 	NULL
+ };
+ 
+ static char *	dial_responses[] = {
+-	"connect",
+-	"no carrier",
+-	"no dialtone",
+-	"no dial tone",
+-	"busy",
+-	"error",
+-	"voice",
+-	"fclass",
++  (char*)"connect",
++  (char*)"no carrier",
++  (char*)"no dialtone",
++  (char*)"no dial tone",
++  (char*)"busy",
++  (char*)"error",
++  (char*)"voice",
++  (char*)"fclass",
+ 	NULL
+ };
+ 
+ static char *	prompt_strings[] = {
+-	"}!}",
+-	"!}!",
++  (char*)"}!}",
++  (char*)"!}!",
+ 	NULL
+ };
+ 
+@@ -51,7 +51,7 @@
+ //       WvDialer Public Functions
+ //**************************************************
+ 
+-WvDialer::WvDialer( WvConf &_cfg, WvStringList *_sect_list, bool _chat_mode = false )
++WvDialer::WvDialer( WvConf &_cfg, WvStringList *_sect_list, bool _chat_mode )
+ /********************************************************/
+ : WvStreamClone( (WvStream **)&modem ),
+     cfg(_cfg), log( "WvDial", WvLog::Debug ),
+@@ -360,40 +360,40 @@
+ {
+     OptInfo opts[] = {
+     // string options:
+-    	{ "Modem",           &options.modem,        NULL, "/dev/modem",     0 },
+-    	{ "Init1",           &options.init1,        NULL, "ATZ",            0 },
+-    	{ "Init2",           &options.init2,        NULL, "",               0 },
+-    	{ "Init3",           &options.init3,        NULL, "",               0 },
+-    	{ "Init4",           &options.init4,        NULL, "",               0 },
+-    	{ "Init5",           &options.init5,        NULL, "",               0 },
+-    	{ "Init6",           &options.init6,        NULL, "",               0 },
+-    	{ "Init7",           &options.init7,        NULL, "",               0 },
+-    	{ "Init8",           &options.init8,        NULL, "",               0 },
+-    	{ "Init9",           &options.init9,        NULL, "",               0 },
+-    	{ "Phone",           &options.phnum,        NULL, "",               0 },
+-    	{ "Dial Prefix",     &options.dial_prefix,  NULL, "",               0 },
+-    	{ "Area Code",       &options.areacode,     NULL, "",               0 },
+-    	{ "Dial Command",    &options.dial_cmd,     NULL, "ATDT",           0 },
+-    	{ "Username",        &options.login,        NULL, "",               0 },
+-    	{ "Login Prompt",    &options.login_prompt, NULL, "",               0 },
+-    	{ "Password",        &options.password,     NULL, "",               0 },
+-    	{ "Password Prompt", &options.pass_prompt,  NULL, "",               0 },
+-    	{ "PPPD Path",       &options.where_pppd,   NULL, "/usr/sbin/pppd", 0 },
+-    	{ "Force Address",   &options.force_addr,   NULL, "",               0 },
+-    	{ "Remote Name",     &options.remote,       NULL, "*",              0 },
+-    	{ "Default Reply",   &options.default_reply,NULL, "ppp",	    0 },
+-    	{ "ISDN",	     &options.isdn,	    NULL, "",		    0 },
++	  { (char*)"Modem",           &options.modem,        NULL, (char*)"/dev/modem",     0 },
++	  { (char*)"Init1",           &options.init1,        NULL, (char*)"ATZ",            0 },
++	  { (char*)"Init2",           &options.init2,        NULL, (char*)"",               0 },
++	  { (char*)"Init3",           &options.init3,        NULL, (char*)"",               0 },
++	  { (char*)"Init4",           &options.init4,        NULL, (char*)"",               0 },
++	  { (char*)"Init5",           &options.init5,        NULL, (char*)"",               0 },
++	  { (char*)"Init6",           &options.init6,        NULL, (char*)"",               0 },
++	  { (char*)"Init7",           &options.init7,        NULL, (char*)"",               0 },
++	  { (char*)"Init8",           &options.init8,        NULL, (char*)"",               0 },
++	  { (char*)"Init9",           &options.init9,        NULL, (char*)"",               0 },
++	  { (char*)"Phone",           &options.phnum,        NULL, (char*)"",               0 },
++	  { (char*)"Dial Prefix",     &options.dial_prefix,  NULL, (char*)"",               0 },
++	  { (char*)"Area Code",       &options.areacode,     NULL, (char*)"",               0 },
++	  { (char*)"Dial Command",    &options.dial_cmd,     NULL, (char*)"ATDT",           0 },
++	  { (char*)"Username",        &options.login,        NULL, (char*)"",               0 },
++	  { (char*)"Login Prompt",    &options.login_prompt, NULL, (char*)"",               0 },
++	  { (char*)"Password",        &options.password,     NULL, (char*)"",               0 },
++	  { (char*)"Password Prompt", &options.pass_prompt,  NULL, (char*)"",               0 },
++	  { (char*)"PPPD Path",       &options.where_pppd,   NULL, (char*)"/usr/sbin/pppd", 0 },
++	  { (char*)"Force Address",   &options.force_addr,   NULL, (char*)"",               0 },
++	  { (char*)"Remote Name",     &options.remote,       NULL, (char*)"*",              0 },
++	  { (char*)"Default Reply",   &options.default_reply,NULL, (char*)"ppp",	        0 },
++	  { (char*)"ISDN",	     	  &options.isdn,	     NULL, (char*)"",		        0 },
+ 
+     // int/bool options
+-    	{ "Baud",            NULL, &options.baud,          "", DEFAULT_BAUD },
+-    	{ "Carrier Check",   NULL, &options.carrier_check, "", true         },
+-    	{ "Stupid Mode",     NULL, &options.stupid_mode,   "", false        },
+-    	{ "New PPPD",	     NULL, &options.new_pppd, 	   "", true         },
+-    	{ "Auto Reconnect",  NULL, &options.auto_reconnect,"", true	    },
+-    	{ NULL,		     NULL, NULL,                   "", 0            }
++	  { (char*)"Baud",            NULL, &options.baud,          (char*)"", DEFAULT_BAUD },
++	  { (char*)"Carrier Check",   NULL, &options.carrier_check, (char*)"", true         },
++	  { (char*)"Stupid Mode",     NULL, &options.stupid_mode,   (char*)"", false        },
++	  { (char*)"New PPPD",	      NULL, &options.new_pppd, 	    (char*)"", true         },
++	  { (char*)"Auto Reconnect",  NULL, &options.auto_reconnect,(char*)"", true  	    },
++	  { NULL,		     		  NULL, NULL,                   (char*)"", 0            }
+     };
+ 
+-    char *	d = "Dialer Defaults";
++    char *	d = (char*)"Dialer Defaults";
+ 
+     for( int i=0; opts[i].name != NULL; i++ ) {
+     	if( opts[i].str_member == NULL ) {
+--- wvdial-1.41/wvdial/wvmodemscan.cc	Mon Sep 13 22:07:35 1999
++++ wvdial-1.41+dom/wvdial/wvmodemscan.cc	Thu Mar 19 20:56:27 2009
+@@ -19,9 +19,9 @@
+ // startup at atz atq0 atv1 ate1 ats0 carrier dtr fastdial
+ // baudstep reinit done
+ static char *commands[WvModemScan::NUM_STAGES] = {
+-    NULL, "Q0 V1 E1", "Z", "S0=0",
+-    "&C1", "&D2", "S11=55", "+FCLASS=0", NULL,
+-    NULL, "", NULL
++  NULL, (char*)"Q0 V1 E1", (char*)"Z", (char*)"S0=0",
++  (char*)"&C1", (char*)"&D2", (char*)"S11=55", (char*)"+FCLASS=0", NULL,
++  NULL, (char*)"", NULL
+ };
+ 
+ 
+--- wvdial-1.41/wvdial/wvpapchap.cc	Sun Jun  6 19:08:49 1999
++++ wvdial-1.41+dom/wvdial/wvpapchap.cc	Thu Mar 19 20:56:27 2009
+@@ -25,16 +25,16 @@
+ 
+     // PAP secrets:
+     nuke_contents();
+-    load_file( PAP_SECRETS );
++    load_file( (char*)PAP_SECRETS );
+     do_secret( username, password, remote );
+-    if( write_file( PAP_SECRETS ) == false )
++    if( write_file( (char*)PAP_SECRETS ) == false )
+ 	pap_success = false;
+ 
+     // CHAP secrets:
+     nuke_contents();
+-    load_file( CHAP_SECRETS );
++    load_file( (char*)CHAP_SECRETS );
+     do_secret( username, password, remote );
+-    if( write_file( CHAP_SECRETS ) == false )
++    if( write_file( (char*)CHAP_SECRETS ) == false )
+ 	chap_success = false;
+ }
+ 
+--- wvdial-1.41/wvdial/wvpapchap.h	Wed Mar 24 04:41:42 1999
++++ wvdial-1.41+dom/wvdial/wvpapchap.h	Thu Mar 19 20:56:27 2009
+@@ -43,4 +43,4 @@
+ 		    const char * remote );
+ };
+ 
+-#endif __WVPAPCHAP_H
++#endif // __WVPAPCHAP_H
+--- wvdial-1.41/wvver.h	Fri Jan  7 03:55:50 2000
++++ wvdial-1.41+dom/wvver.h	Thu Mar 19 20:56:27 2009
+@@ -28,4 +28,4 @@
+ #define TUNNELV_VER		0x00020000
+ #define TUNNELV_VER_STRING	"2.00"
+ 
+-#endif __WVDEFS_H
++#endif // __WVDEFS_H
