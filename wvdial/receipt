@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="wvdial"
+VERSION="1.41"
+CATEGORY="network"
+SHORT_DESC="makes modem-based connection to Internet"
+MAINTAINER="domcox@slitaz.org"
+DEPENDS="ppp"
+TARBALL=$PACKAGE"_"$VERSION".tar.gz"
+WEB_SITE="http://alumnit.ca/wiki/?WvDial"
+WGET_URL="http://archive.debian.org/debian/dists/potato/main/source/comm/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	! grep -q DESTDIR Makefile && patch -p1 < ../stuff/wvdial-1.41-gcc4.2.diff
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $_pkg/usr/bin/wvdial* $fs/usr/bin
+	cp -a $_pkg/etc $fs
+}
+
+post_remove()
+{
+	rm -rf /etc/ppp/peers/wvdial
+}
