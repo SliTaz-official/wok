@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="gst-plugins-good"
+VERSION="0.10.14"
+CATEGORY="multimedia"
+SHORT_DESC="GStreamer Good Plugins"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="libxml2 gst-plugins-base"
+BUILD_DEPENDS="pkg-config gst-plugins-base gst-plugins-base-dev libogg-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://gstreamer.freedesktop.org/" 
+WGET_URL="$WEB_SITE/src/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr --sysconfdir=/etc --localstatedir=/var \
+		--enable-experimental --disable-static &&
+	make &&
+	make DESTDIR=$PWD/_pkg install	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/lib/gstreamer* $fs/usr/lib
+	cp -a $_pkg/usr/share/gstreamer* $fs/usr/share
+	rm $fs/usr/lib/gstreamer*/*.*a
+
+}
