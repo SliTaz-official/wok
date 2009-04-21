@@ -6,24 +6,25 @@ CATEGORY="multimedia"
 SHORT_DESC="Record, convert and stream audio and video."
 MAINTAINER="pascal.bellard@slitaz.org"
 WEB_SITE="http://ffmpeg.org/"
-DEPENDS="bzlib freetype libSDL libiconv imlib2"
 BUILD_DEPENDS="subversion"
-
 
 
 # Référence externe extraite à la révision 27917.
 # 
-# Révision 15261 extraite. 
+# Révision 18330 extraite. 
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	mkdir $src 2> /dev/null
 	cd $src
-	[ -f ffmpeg/configure ] || svn checkout -r $VERSION \
+	[ -f ffmpeg/configure ] || svn checkout -r 'HEAD' \
 		svn://svn.ffmpeg.org/ffmpeg/trunk ffmpeg
 	cd ffmpeg
 	sed -i 's/pr -. -t/cat/' configure
+	# mktemp busybox hack patch
+	patch -p1 < ../../stuff/build.patch
+	
 	./configure --prefix=/usr --enable-gpl \
 	--arch=i486 --cpu=i486 \
 	--enable-shared --enable-small \
@@ -36,9 +37,9 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/bin
-	cp -a $_pkg/usr/lib/vhook $fs/usr/lib
+	mkdir -p $fs/usr/lib 
 	cp -a $_pkg/usr/lib/*so* $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr/		
+	cp -a $_pkg/usr/bin $fs/usr
+			
 }
 
