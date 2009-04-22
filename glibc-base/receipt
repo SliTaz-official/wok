@@ -1,10 +1,10 @@
 # SliTaz package receipt.
 
 PACKAGE="glibc-base"
-VERSION="2.7"
+VERSION="2.9"
 CATEGORY="base-system"
 SHORT_DESC="GNU libc minimal libraries for SliTaz based system."
-WEB_SITE="http://gcc.gnu.org/"
+WEB_SITE="http://www.gnu.org/software/libc/"
 WANTED="glibc"
 MAINTAINER="pankso@slitaz.org"
 
@@ -27,19 +27,21 @@ genpkg_rules()
     do
     	cp -a ${_pkg}$file ${fs}$file
     done
-    
     # Gen locale files (see also locale-pack).
-    #
 	mkdir -p $fs/usr/lib/locale
 	localedef -i fr_FR -c -f ISO-8859-1 $fs/usr/lib/locale/fr_FR
 }
 
-# Call ldconfig and remove old glibc-2.3.6 files.
+# Call ldconfig and remove old glibc-2.3.6 (slitaz 1.0) and glibc-2.7
+# files.
+pre_install()
+{
+	rm -f $1/usr/lib/locale/locale-archive
+}
+
 post_install()
 {
 	local root
-	root=$1
-	ldconfig
-	rm -f $root/lib/*2.3.6.so
-	rm -f $root/usr/lib/locale/locale-archive
+	rm -f $1/lib/*2.3.6.so
+	rm -f $1/lib/*2.7.so
 }
