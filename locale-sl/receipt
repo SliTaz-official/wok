@@ -1,7 +1,7 @@
 # SliTaz package receipt
 
 PACKAGE="locale-sl"
-VERSION="1.0"
+VERSION="1.1"
 CATEGORY="system-tools"
 SHORT_DESC="Slovenian locale pack."
 MAINTAINER="pankso@slitaz.org"
@@ -9,43 +9,42 @@ DEPENDS="glibc-base"
 BUILD_DEPENDS="glibc-locale"
 WEB_SITE="http://www.slitaz.org/"
 
-CORE_PKGS="asunder epdfview gpicview gparted glib gtk+ leafpad pcmanfm 
-	lxpanel lxtask openbox alsaplayer xpad"
+CORE_PKGS="asunder alsaplayer epdfview galculator geany gpicview gparted \
+glib gtk+ grsync leafpad lxpanel lxtask obconf openbox pcmanfm xpad"
 
 LOCALE="sl"
 LOCALEDEF="sl_SI"
 CHARMAP="UTF-8"
 
-GLIBC_FILES=$WOK/glibc/glibc-2.7/_pkg
-PKG_NAME="$PACKAGE"
-PKG_VERS="$VERSION"
-
-# Rules to gen a SliTaz package suitable for Tazpkg.
-# Install files in /usr/lib/locale.
-#
-genpkg_rules()
+# Rules to configure and make the package.
+compile_rules()
 {
-	mkdir -p $fs/usr/share/locale/$LOCALE
-	
-	# Get the core apps messages.
+	# Ensure packages are built.
 	for pkg in $CORE_PKGS
 	do
-		. $WOK/$pkg/receipt
+		[ -d $WOK/$pkg/taz ] || tazwok cook $pkg
+	done
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+# Genereted locale files are in /usr/lib/locale.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale/$LOCALE $fs/usr/lib/locale
+	PKG_NAME="$PACKAGE"
+	PKG_VERS="$VERSION"
+	# Get the core packages messages.
+	for pkg in $CORE_PKGS
+	do
+		[ -f $WOK/$pkg/receipt ] && . $WOK/$pkg/receipt
 		if [ -d $WOK/$pkg/$PACKAGE-$VERSION/_pkg/usr/share/locale/$LOCALE ]; then
 			cp -a $WOK/$pkg/$PACKAGE-$VERSION/_pkg/usr/share/locale/$LOCALE \
 				$fs/usr/share/locale
 		fi
 	done
-	
-	# Glibc locale.
-	#cp -a $GLIBC_FILES/usr/share/locale/$LOCALE $fs/usr/share/locale
-	
 	PACKAGE="$PKG_NAME"
 	VERSION="$PKG_VERS"
-	
-	# Gen locale files.
-	mkdir -p $fs/usr/lib/locale
-	localedef -i $LOCALEDEF -c -f $CHARMAP $fs/usr/lib/locale/${LOCALEDEF}.UTF-8
+	localedef -i $LOCALEDEF -c -f $CHARMAP $fs/usr/lib/locale/$LOCALEDEF
 }
 
 # Post install to configure default locale.
