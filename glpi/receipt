@@ -1,7 +1,5 @@
 # SliTaz package receipt.
 
-PACKED_SIZE="2.0M"
-UNPACKED_SIZE="11.5M"
 PACKAGE="glpi"
 VERSION="0.71.5"
 CATEGORY="network"
@@ -12,8 +10,6 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://glpi-project.org/"
 WGET_URL="http://glpi-project.org/IMG/gz/$TARBALL"
 CONFIG_FILES="/etc/glpi/config/config_db.php"
-
-
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -36,6 +32,21 @@ genpkg_rules()
 	chown -R www.www $fs/var/lib/$PACKAGE/files $fs/etc/$PACKAGE/config
 	# Copy config db as temporary file.
 	cp stuff/config_db.php $fs/etc/glpi/config/
+}
+
+post_install()
+{
+	# Configure lighttpd server
+	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+		if ! grep -q /usr/share/glpi/ $1/etc/lighttpd/lighttpd.conf; then
+	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/glpi/" => "/usr/share/glpi/",|g' -i $1/etc/lighttpd/lighttpd.conf
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/lighttpd stop
+				/etc/init.d/lighttpd start
+			fi
+		fi
+	fi
 	# Configure apache server
 	if [ -f $1/etc/apache/httpd.conf ]; then
 		if [ ! -f $1/etc/apache/conf.d/glpi ]; then
@@ -58,10 +69,7 @@ EOT
 			fi
 		fi
 	fi
-}
 
-post_install()
-{
 	# Configure every thing for glpi.
 	if [ -z $1 ]; then
 		if ( ! mysqladmin -s ping > /dev/null ); then
