@@ -1,0 +1,113 @@
+# SliTaz package receipt.
+
+PACKED_SIZE="2.0M"
+UNPACKED_SIZE="11.5M"
+PACKAGE="glpi"
+VERSION="0.71.5"
+CATEGORY="network"
+SHORT_DESC="IT and Asset Management."
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="mysql apache php-apache php-ldap php-imap php-mysql pam"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://glpi-project.org/"
+WGET_URL="http://glpi-project.org/IMG/gz/$TARBALL"
+CONFIG_FILES="/etc/glpi/config/config_db.php"
+
+
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	test -d $PACKAGE && mv $PACKAGE $PACKAGE-$VERSION
+	
+	_pkg=$src
+	
+	mkdir -p $fs/usr/share/$PACKAGE \
+		$fs/etc/$PACKAGE \
+		$fs/var/lib/$PACKAGE
+		 
+	cp -a $_pkg/* $fs/usr/share/$PACKAGE
+	[ -d $fs/usr/share/$PACKAGE/files ] &&  mv $fs/usr/share/$PACKAGE/files $fs/var/lib/$PACKAGE
+	[ -d $fs/usr/share/$PACKAGE/config ] &&  mv $fs/usr/share/$PACKAGE/config $fs/etc/$PACKAGE
+
+	cd $fs/usr/share/glpi
+	ln -s /etc/glpi/config ; ln -s /var/lib/glpi/files
+	cd -
+	chown -R www.www $fs/var/lib/$PACKAGE/files $fs/etc/$PACKAGE/config
+	# Copy config db as temporary file.
+	cp stuff/config_db.php $fs/etc/glpi/config/
+	# Configure apache server
+	if [ -f $1/etc/apache/httpd.conf ]; then
+		if [ ! -f $1/etc/apache/conf.d/glpi ]; then
+			cat > $1/etc/apache/conf.d/glpi <<EOT
+<IfModule mod_alias.c>
+    Alias /glpi /usr/share/glpi/
+</IfModule>
+<Directory "/usr/share/glpi">
+	Options Indexes FollowSymLinks
+	AllowOverride None
+	Order deny,allow
+	Allow from all
+</Directory>
+
+EOT
+			if [ -z "$1" ]; then
+				# Start Web server.
+				test -f /var/run/apache/httpd.pid && \
+					( kill -0 $(cat /var/run/apache/httpd.pid) && /etc/init.d/apache restart )
+			fi
+		fi
+	fi
+}
+
+post_install()
+{
+	# Configure every thing for glpi.
+	if [ -z $1 ]; then
+		if ( ! mysqladmin -s ping > /dev/null ); then
+			echo "Starting MySQL server"
+			( /etc/init.d/mysql start ; status  ) || exit 
+			sleep 4 #let the mysql daemon start
+		fi
+		if ( ! mysql -Be 'show databases' | grep -q glpi ); then
+			echo -n "Create Glpi database"
+			mysql -Be "create database glpi" ; status
+			# We suppose that glpi user does not exist.
+			# It may be false.
+			echo  -n "Create user glpi with password glpi"
+			mysql -Be "grant all privileges on glpi.* to 'glpi'@'localhost' 
+				identified by 'glpi'" ; status
+			# At last create the database for glpi.
+			echo -n "Create glpi database schema."
+			mysql -u glpi -pglpi -D glpi < /usr/share/glpi/install/mysql/glpi-0.71.3-empty.sql ; status
+			
+		fi
+			
+	fi
+}
+
+post_remove()
+{
+		echo -n "Would you like to remove data and database files.(y/n) "
+		read answer
+
+		case $answer in 
+		y|Y)
+			echo -n "Removing data directories..."
+			rm -rf /var/lib/glpi ; status
+			if ( ! mysql -Be 'show databases' | grep -q glpi ); then
+				echo -n "Deleting Glpi database"
+				mysql -Be "drop database glpi" ; status
+				# We suppose that glpi user does not exist.
+				# It may be false.
+				echo  -n "Delete user glpi"
+				mysql -Be "delete from mysql.db where user=glpi" ; status
+			fi
+			unset $answer
+			;;
+		*)
+			;;
+		esac
+	
+}
+
