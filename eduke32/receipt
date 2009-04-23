@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="eduke32"
+VERSION="20090313"
+CATEGORY="games"
+SHORT_DESC=""
+MAINTAINER="mallory@sweetpeople.org"
+DEPENDS="libSDL libsdl-mixer libvorbis gtk+"
+BUILD_DEPENDS="libSDL-dev libsdl-mixer-dev libvorbis-dev gtk+-dev"
+TARBALL="$PACKAGE""_src_20090131.zip"
+WEB_SITE="http://www.eduke32.com/"
+WGET_URL="http://wiki.eduke32.com/stuff/source_code/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+   	mv eduke32_src_20090131 eduke32-20090313
+	cd $src
+    	wget http://wiki.eduke32.com/stuff/source_code/eduke32_src_20090313.diff
+   	patch -p1 < eduke32_src_20090313.diff
+	make
+    	mkdir $src/_pkg
+    	cp eduke32 mapster32 $src/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	echo "Building package tree"
+	mkdir -p $fs/usr/bin \
+		$fs/usr/share/games/eduke32 \
+		$fs/usr/share/applications \
+		$fs/usr/share/pixmaps \
+
+	echo "Copying package files"
+	cp -a $src/eduke32 $src/mapster32 $fs/usr/bin
+	
+	echo "Downloading game data"
+    	wget http://people.slitaz.org/~mallory/stuff/eduke32/duke3d.grp -O $fs/usr/share/games/eduke32/duke3d.grp
+	
+	echo "Copying metadata"
+	cp stuff/eduke32.desktop $fs/usr/share/applications
+	cp stuff/eduke32.png $fs/usr/share/pixmaps
+}
+
+
