@@ -1,0 +1,69 @@
+# SliTaz package receipt
+
+PACKAGE="locale-hu"
+VERSION="1.1"
+CATEGORY="system-tools"
+SHORT_DESC="Hungry locale pack."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="glibc-base"
+BUILD_DEPENDS="glibc glibc-locale"
+WEB_SITE="http://www.slitaz.org/"
+
+CORE_PKGS="asunder alsaplayer epdfview galculator geany gpicview gparted \
+glib gtk+ grsync leafpad lxpanel lxtask obconf openbox pcmanfm xpad"
+
+LOCALE="hu"
+LOCALEDEF="hu_HU"
+CHARMAP="ISO-8859-2"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Ensure packages are built.
+	for pkg in $CORE_PKGS
+	do
+		[ -d $WOK/$pkg/taz ] || tazwok cook $pkg
+	done
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+# Genereted locale files are in /usr/lib/locale.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale/$LOCALE $fs/usr/lib/locale
+	PKG_NAME="$PACKAGE"
+	PKG_VERS="$VERSION"
+	# Get the core packages messages.
+	for pkg in $CORE_PKGS
+	do
+		[ -f $WOK/$pkg/receipt ] && . $WOK/$pkg/receipt
+		if [ -d $WOK/$pkg/$PACKAGE-$VERSION/_pkg/usr/share/locale/$LOCALE ]; then
+			cp -a $WOK/$pkg/$PACKAGE-$VERSION/_pkg/usr/share/locale/$LOCALE \
+				$fs/usr/share/locale
+		fi
+	done
+	PACKAGE="$PKG_NAME"
+	VERSION="$PKG_VERS"
+	localedef -i $LOCALEDEF -c -f $CHARMAP $fs/usr/lib/locale/$LOCALEDEF
+}
+
+# Post install to configure default locale.
+post_install()
+{
+	local root
+	root=$1
+	# locale.conf
+	if [ -s $root/etc/locale.conf ]; then
+		echo "LANG=\"$LOCALEDEF\"" > $root/etc/locale.conf
+		echo "LC_ALL=\"$LOCALEDEF\"" >> $root/etc/locale.conf
+	fi
+}
+
+# Back to C if it's the last used locale.
+post_remove()
+{
+	if grep -q $LOCALEDEF /etc/locale.conf; then
+		echo "LANG=C" > /etc/locale.conf
+		echo "LC_ALL=C" >> /etc/locale.conf
+	fi
+}
