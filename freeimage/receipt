@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="freeimage"
+VERSION="3110"
+CATEGORY="graphics"
+SHORT_DESC="library to support popular graphics image formats like PNG, BMP, JPEG, TIFF and others"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS=""
+BUILD_DEPENDS="gcc-lib-base"
+SOURCE="FreeImage"
+TARBALL="$SOURCE$VERSION.zip"
+WEB_SITE="http://freeimage.sourceforge.net/" 
+WGET_URL="http://downloads.sourceforge.net/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $SOURCE
+	pkgdir=$PWD/_pkg
+	incl=$pkgdir/usr/include
+    dest=$pkgdir/usr/lib
+	install -d $dest
+	install -d $incl
+	sed -e "s|INCDIR = /usr/include|INCDIR = $incl|g" -i Makefile.gnu 
+	sed -e "s|INSTALLDIR = /usr/lib|INSTALLDIR = $dest|g" -i Makefile.gnu  
+	sed -e "s|ldconfig||g" -i Makefile.gnu  
+	make
+	make DESTDIR=$pkgdir install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	pkgdir=$PWD/$SOURCE/_pkg
+	cp -a $pkgdir/usr/lib/*.so* $fs/usr/lib
+
+}
