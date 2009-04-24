@@ -1,0 +1,106 @@
+#!/bin/sh 
+# Get and install the SUN Java Development Kit
+#
+# (C) 2007-2008 SliTaz - GNU General Public License v3.
+# Based on get-java6-jre by Eric Joseph-Alexandre <erjo@slitaz.org>
+# Author : Kévin DA SILVA <dasilvakevin@hotmail.fr>
+
+PACKAGE="java6-jdk"
+VERSION="1.6.0_13"
+URL="http://raphaello.univ-fcomte.fr/ftp/java/Jdk"
+TARBALL="jdk-6u13-linux-i586.bin"
+TEMP_DIR="/tmp/$PACKAGE.$$"
+ROOT="$1"
+
+# Check if we are root starting anything
+if test $(id -u) != 0 ; then
+	echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please type 'su' and root password to become super-user.\n"
+	exit 1
+fi
+
+# Avoid reinstall
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+	echo -e "\n$PACKAGE package is already installed.\n"
+	exit 1
+fi
+
+# Check if java6-jre is installed 
+if [ -d $ROOT/var/lib/tazpkg/installed/java6-jre ]; then
+	echo -e "\njava6-jre must be uninstalled before install java6-jdk.\n"
+	exit 2
+fi
+
+
+# Create TEMP_DIR
+test -d $TEMP_DIR || mkdir $TEMP_DIR
+cd $TEMP_DIR
+
+# Download the file
+test -f $TARBALL || wget $URL/$TARBALL
+# Do not trust 'df' free space
+sed -i 's/exit 3$//' $TARBALL
+
+# Run the install file user may agree to SUN EULA
+chmod +x  $TARBALL
+./${TARBALL}mc
+
+
+
+# Make the package
+mkdir -p $PACKAGE-$VERSION/fs/usr/lib/java 
+cp -a jdk${VERSION} $PACKAGE-$VERSION/fs/usr/lib/java
+
+
+# Delete unecessary files
+rm -rf $PACKAGE-$VERSION/fs/usr/lib/java/jdk${VERSION}/man
+
+# Create receipt
+
+cat > $PACKAGE-$VERSION/receipt <<EOT
+# SliTaz package receipt.
+
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="SUN Java Development Kit."
+DEPENDS="xorg-libXtst"
+WEB_SITE="http://www.java.com/"
+
+post_install()
+{
+	echo -n "Processing post install commands..."
+	cd /usr/lib/firefox*/plugins
+	ln -s /usr/lib/java/jdk\$VERSION/jre/plugin/i386/ns7/libjavaplugin_oji.so
+
+	#lien mit dans red5 /usr/bin/javajdk
+	cd /usr/bin
+	ln -s /usr/lib/java/jdk\$VERSION/bin/java
+	ln -s /usr/lib/java/jdk\$VERSION/bin/javac
+	ln -s /usr/lib/java/jdk\$VERSION/bin/javadoc
+	ln -s /usr/lib/java/jdk\$VERSION/bin/javap
+	status
+}
+
+post_remove()
+{
+	rm -f /usr/lib/firefox*/plugins/libjavaplugin_oji.so
+	rm -f /usr/bin/java
+}
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Install pseudo package
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+
+# Clean
+cd /tmp
+rm -rf $TEMP_DIR
+
+
+
+
+
+
