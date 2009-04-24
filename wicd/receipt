@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="wicd"
+VERSION="1.5.9"
+CATEGORY="misc"
+SHORT_DESC="Network connection manager"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="python dbus-python ethtool"
+BUILD_DEPENDS="python-dev dbus-python-dev python"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://heanet.dl.sourceforge.net/sourceforge/wicd/"
+WGET_URL="$WEB_SITE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    python setup.py configure
+    python setup.py install --root=$PWD/_pkg
+   
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/usr
+    mkdir -p $fs/etc
+    mkdir -p $fs/var
+    cp -a $_pkg/usr/* $fs/usr
+    cp -a $_pkg/etc/* $fs/etc
+    cp -a $_pkg/var/* $fs/var
+    rm -f -r $fs/usr/share/doc
+    rm -f -r $fs/usr/share/man
+    rm -f -r $fs/usr/share/icons/hicolor/*
+    rm -f -r $fs/usr/share/locale
+    cp -a $_pkg/usr/share/icons/hicolor/scalable $fs/usr/share/icons/hicolor
+    cp -a $_pkg/usr/share/icons/hicolor/32x32 $fs/usr/share/icons/hicolor
+    mkdir -p $fs/etc/init.d
+    cp -a stuff/wicd $fs/etc/init.d
+    cp -a stuff/wpa_passphrase $fs/usr/bin        
+}
