@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="dvd+rw-tools"
+VERSION="7.1"
+CATEGORY="multimedia"
+SHORT_DESC="DVD RW tools"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="cdrkit"
+BUILD_DEPENDS="cdrkit gcc-lib-base m4"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://fy.chalmers.se/~appro/linux/DVD+RW" 
+WGET_URL="$WEB_SITE/tools/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -p1 -i ../stuff/build-7.1.patch
+	make
+	mkdir -p $PWD/_pkg/usr/bin/
+	for bin in growisofs dvd+rw-booktype dvd+rw-format dvd+rw-mediainfo dvd-ram-control; do
+		install -m755 $bin $PWD/_pkg/usr/bin/
+	done
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $_pkg/usr/bin/growisofs $fs/usr/bin
+
+}
