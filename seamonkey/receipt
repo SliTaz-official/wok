@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="seamonkey"
+VERSION="1.1.16"
+CATEGORY="network"
+SHORT_DESC="Seamonkey suite (browser, mail, news reader)."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.source.tar.bz2"
+DEPENDS="gtk+ glib jpeg xorg-libX11"
+BUILD_DEPENDS="xorg-dev gtk+-dev zip libIDL coreutils findutils xorg-libXft-dev"
+WEB_SITE="http://www.seamonkey-project.org/"
+WGET_URL="http://releases.mozilla.org/pub/mozilla.org/seamonkey/releases/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mv mozilla $PACKAGE-$VERSION 2>/dev/null
+	cp -a stuff/seamonkey.mozconfig $src/.mozconfig
+	cd $src
+	cat >> layout/build/Makefile.in << "EOF"
+ifdef MOZ_ENABLE_CANVAS
+EXTRA_DSO_LDOPTS += $(XLDFLAGS) -lX11 -lXrender
+endif
+EOF
+	make -f client.mk build
+	make -f client.mk DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/lib $fs/etc
+	cp -a $_pkg/usr/bin/seamonkey $fs/usr/bin
+	cp -a $_pkg/usr/lib/seamonkey-* $fs/usr/lib
+	# Home page, bookmarks file and branding.
+	cp -a stuff/bookmarks.html \
+		$fs/usr/lib/$PACKAGE-$VERSION/defaults/profile
+	# User preference.
+	cp -a stuff/userChrome.css \
+		$fs/usr/lib/$PACKAGE-$VERSION/defaults/profile/chrome
+	# Move default config to /etc/seamonkey (/usr maybe read-only)
+	mv -f $fs/usr/lib/$PACKAGE-$VERSION/defaults $fs/etc/$PACKAGE
+	ln -s /etc/$PACKAGE $fs/usr/lib/$PACKAGE-$VERSION/defaults
+	# Remove unecessary file and set permissions.
+	rm -rf $fs/etc/seamonkey/profile/US
+	chown -R root.root $fs/etc
+}
+
+clean_wok()
+{
+	rm -rf build
+}
