@@ -1,0 +1,70 @@
+# SliTaz package receipt.
+
+PACKAGE="hplip"
+VERSION="3.9.2" 
+CATEGORY="system-tools"
+SHORT_DESC="Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="ghostscript python cups dbus-python libusb jpeg tiff"
+BUILD_DEPENDS="ghostscript-dev dbus-python-dev sane-backends-dev sane-backends pkg-config libusb-dev jpeg-dev cups-dev dbus-dev tiff-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://hplipopensource.com"
+WGET_URL="http://downloads.sourceforge.net/sourceforge/hplip/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--disable-network-build \
+		--disable-doc-build \
+		--disable-gui-build \
+		--disable-fax-build \
+		--disable-qt3 \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share
+	
+	cp -a $_pkg/etc   $fs
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/cups $fs/usr/lib
+	cp -a $_pkg/usr/lib/python* $fs/usr/lib
+	cp -a $_pkg/usr/lib/sane $fs/usr/lib
+	cp -a $_pkg/usr/lib/*so* $fs/usr/lib
+	cp -a $_pkg/usr/share/cups \
+		   $_pkg/usr/share/hal \
+		   $_pkg/usr/share/hplip \
+		   $_pkg/usr/share/ppd \
+		   $fs/usr/share
+
+	
+	 # remove non zipped ppd files
+ rm -rf $fs/usr/share/ppd/HP/*.ppd
+ 
+  # remove autostart of hp-daemon
+  rm -rf $fs/etc/sane.d
+ # remove xdg
+ rm -rf $fs/etc/xdg
+ 
+ # move udev rules to /lib/udev/rules.d
+ mkdir -p $fs/lib/udev/rules.d
+ mv $fs/etc/udev/rules.d/* $fs/lib/udev/rules.d/
+ rm -rf $fs/etc/udev
+ # remove lp user, it's not used in slitaz
+ sed -i 's|OWNER="lp", ||g' $fs/lib/udev/rules.d/55-hpmud.rules
+
+# remove .desktop file as we compiled without pyqt3 support
+rm -rf $fs/usr/share/applications/*
+
+	
+}
+
