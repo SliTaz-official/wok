@@ -1,16 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="ghostscript"
-VERSION="8.62"
+VERSION="8.64"
 CATEGORY="office"
 SHORT_DESC="Ghostscript tools and utilities."
-MAINTAINER="pankso@slitaz.org"
+MAINTAINER="jozee@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://pages.cs.wisc.edu/~ghost/"
-WGET_URL="http://mirror.cs.wisc.edu/pub/mirrors/ghost/GPL/gs862/$TARBALL"
 DEPENDS="expat fontconfig freetype gnutls jpeg libgcrypt libgpg-error \
 libiconv libpng tiff zlib cups xorg-libICE xorg-libSM xorg-libX11 xorg-libXau \
-xorg-libXdmcp xorg-libXext xorg-libXt"
+xorg-libXdmcp xorg-libXext xorg-libXt" 
+# build depends are optional ; ghostscripts still build but dose not compile in cups support
+BUILD_DEPENDS="libiconv cairo-dev gtk+-dev"
+WEB_SITE="http://pages.cs.wisc.edu/~ghost/"
+#WGET_URL="http://mirror.cs.wisc.edu/pub/mirrors/ghost/GPL/gs862/$TARBALL"
+WGET_URL="http://ghostscript.com/releases/$TARBALL"
+
 
 # Rules to configure and make the package.
 compile_rules()
@@ -21,21 +25,44 @@ compile_rules()
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		--with-libiconv=native \
+		--disable-compile-inits \
+		--enable-dynamic \
+		--enable-cups \
+		--enable-cairo \
+		--enable-gtk \
+		--with-fontpath=/usr/share/fonts/truetype/:/usr/share/fonts \
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$PWD/_pkg install soinstall
+	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib $fs/usr
 	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	# if cups-dev installed
 	cp -a $_pkg/usr/share/cups $fs/usr/share
 	cp -a $_pkg/etc $fs
 	# Remove doc and examples
 	rm -rf $fs/usr/share/$PACKAGE/$VERSION/doc
 	rm -rf $fs/usr/share/$PACKAGE/$VERSION/examples
+	# Remove CMAPs (Non-free : not covered under GPL) : moved to non-free package get-ghostscript-CMAP
+	rm -rf $fs/usr/share/$PACKAGE/$VERSION/Resource/CMap/*
+	
+	
+	# already compiled as a shared lib; gsc is same as gs
+	rm -rf $fs/usr/bin/gs
+		
+
+		
+}
+
+post_install()
+{
+	ln -s /usr/bin/gsc /usr/bin/gs
 }
