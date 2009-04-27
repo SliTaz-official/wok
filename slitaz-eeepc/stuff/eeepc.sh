@@ -14,7 +14,7 @@ fi
 # 915resolution screen hack.
 [ -n "$HACK_915" ] && 915resolution $HACK_915
 
-# Enable Laptop mode
+# Enable Kernel Laptop mode.
 echo "5" > /proc/sys/vm/laptop_mode
 
 exit 0
