@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-boot-scripts"
-VERSION="2.8.2"
+VERSION="3.0"
 CATEGORY="base-system"
 SHORT_DESC="Provide all the initialisation scripts used at boot time."
 MAINTAINER="pankso@slitaz.org"
@@ -18,12 +18,13 @@ CONFIG_FILES="/etc/inittab /etc/init.d/local.sh /etc/rcS.conf /etc/network.conf"
 #
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/etc/X11
+	mkdir -p $fs/usr/share $fs/bin $fs/etc/X11
 	cp -a $src/etc $fs
+	cp $src/bootlog $fs/bin
 	cp -a $src/applications $fs/usr/share
 
 	# Perms
-	chown -R root.root $fs/etc/init.d
+	chown -R root.root $fs
 	chmod 755 $fs/etc/init.d/*.sh
 	chmod 755 $fs/etc/init.d/rc*
 }
@@ -53,30 +54,13 @@ post_install()
 	mv -f $root/etc/inittab.bak $root/etc/inittab 2>/dev/null
 	mv -f $root/etc/init.d/local.sh.bak $root/etc/init.d/local.sh 2>/dev/null
 
-	# wifi config
-	if ! grep -q ^WIFI $root/etc/network.conf; then
-		cat >> $root/etc/network.conf << "EOT"
-# Wifi connection.
-# Enable/disable wireless connection at boot time.
-WIFI="no"
-
-# Wifi interface (iwconfig) and ESSID.
-WIFI_INTERFACE="wlan0"
-WIFI_ESSID="any"
-WIFI_MODE="managed"
-WIFI_KEY=""
-WIFI_KEY_TYPE="none"
-WPA_DRIVER=""
-WIFI_CHANNEL=""
-WIFI_IWCONFIG_ARGS=""
+	# Fast boot X config from 3.0
+	if ! grep -q ^FAST_BOOT_X $root/etc/rcS.conf; then
+		cat >> $root/etc/rcS.conf << "EOT"
+# Fast boot into X by setting the system keymap-locale and starting 
+# the Slim login manager earlier at boot time. If fast X is enabled
+# then dbus, hald and slim can be removed from RUN_DAEMONS.
+FAST_BOOT_X="no"
 
 EOT
-	fi
-	# From 2.3 default user have uid=1000 (standard), so change hacker
-	# id/group and chown.
-	if grep -q "500:500" $root/etc/passwd; then
-		sed -i s/'500:500'/'1000:1000'/ $root/etc/passwd
-		sed -i s/'500'/'1000'/ $root/etc/group
-		chown -R 1000.1000 $root/home/hacker
-	fi 
 }
