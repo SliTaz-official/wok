@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="xfe"
+VERSION="1.19.2"
+CATEGORY="system-tools"
+SHORT_DESC="Xfe File manager and utility using Fox toolkit."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+DEPENDS="libpng jpeg tiff xorg-libXft fox"
+BUILD_DEPENDS="$DEPENDS libpng-dev jpeg-dev tiff-dev xorg-libXft-dev fox-dev"
+SUGGESTED="adie calculator shutterbug"
+WEB_SITE="http://roland65.free.fr/xfe/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/xfe/icons
+	cp -a $_pkg/usr/bin/$PACKAGE $fs/usr/bin
+	cp -a $_pkg/usr/share/xfe/xferc $fs/usr/share/xfe
+	sed -i 's/gnomeblue-theme/tango-theme/' $fs/usr/share/xfe/xferc
+	# Tango/Gnome icons theme only
+	cp -a $_pkg/usr/share/xfe/icons/tango-theme \
+		$fs/usr/share/xfe/icons
+	cp -a $_pkg/usr/share/xfe/icons/gnome-theme \
+		$fs/usr/share/xfe/icons
+}
