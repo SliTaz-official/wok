@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="mysql"
-VERSION="5.0.51b"
+VERSION="5.0.77"
 CATEGORY="misc"
 SHORT_DESC="SQL database system."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -17,15 +17,14 @@ compile_rules()
 {
 
 	cd $src
-# --with-big-tables ?
+	cp ../stuff/*.files-list .
 	./configure --prefix=/usr --infodir=/usr/share/info \
 		--datadir=/usr/share --localstatedir=/var/lib/mysql \
 		--with-unix-socket-path=/var/run/mysqld/mysqld.sock \
 		--with-mysqld-user=mysql \
-		--mandir=/usr/share/man $CONFIGURE_ARGS
-	make
+		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
-	cp ../stuff/*.files-list .
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -43,6 +42,7 @@ genpkg_rules()
 	cat $src/*.files-list | while read file; do
 		[ -f $fs$file ] && rm -f $fs$file
 	done
+	strip -s $fs/usr/libexec/*
 	# Package all mysql pkgs
 	for i in $(cd $WOK; ls -d mysql-* libmysql*)
 	do
