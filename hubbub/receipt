@@ -1,0 +1,27 @@
+# SliTaz package receipt.
+
+PACKAGE="hubbub"
+VERSION="7369"
+CATEGORY="system-tools"
+SHORT_DESC="Hubbub is a flexible HTML parser."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="libparserutils"
+BUILD_DEPENDS="subversion libparserutils-dev"
+WEB_SITE="http://www.netsurf-browser.org/projects/hubbub/"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
+	svn co svn://svn.netsurf-browser.org/trunk/hubbub \
+		-r $VERSION $PACKAGE-$VERSION
+	cd $src
+	make install DESTDIR=$PWD/_pkg PREFIX=/usr &&
+	make install COMPONENT_TYPE=lib-shared DESTDIR=$PWD/_pkg PREFIX=/usr 
+}
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
