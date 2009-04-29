@@ -1,0 +1,71 @@
+# SliTaz package receipt.
+
+PACKAGE="wbar"
+VERSION="1.3.3"
+CATEGORY="system-tools"
+SHORT_DESC="Quick launch bar."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tbz2"
+WEB_SITE="http://code.google.com/p/wbar/"
+WGET_URL="http://www.tecapli.com.ar/warlock/$TARBALL"
+DEPENDS="imlib2 ttf-dejavu"
+BUILD_DEPENDS="imlib2-dev imagemagick"
+CONFIG_FILES="/etc/dot.wbar"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make
+	mkdir -p _pkg/usr/share/wbar/iconpack _pkg/usr/bin
+	cp wbar _pkg/usr/bin
+	cp iconpack/wbar.osx/osxbarback.png _pkg/usr/share/wbar/iconpack
+	for i in firefox psi gimp xmms ; do
+		convert iconpack/wbar.osx/$i.png -resize 48x48 \
+			_pkg/usr/share/wbar/iconpack/$i.png
+	done
+	cp ../stuff/*.png _pkg/usr/share/wbar/iconpack
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/etc
+	cp -a $_pkg/usr $fs
+	ln -s /etc/dot.wbar $fs/usr/share/wbar/dot.wbar
+	touch $fs/etc/dot.wbar	
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	[ -s $1/etc/dot.wbar ] || rm -f $1/etc/dot.wbar
+	mv $1/etc/dot.wbar $1/etc/dot.wbar.old 2> /dev/null && cat <<EOT
+--------
+Your old wbar configuration is saved into /etc/dot.wbar.old
+--------
+EOT
+	cat > $1/etc/dot.wbar << EOT
+# The Bar && Font
+i: /usr/share/wbar/iconpack/osxbarback.png
+t: /usr/share/fonts/truetype/ttf-dejavu/DejaVuSans/12
+c:
+
+EOT
+	while read icon exe text; do
+		[ -x $exe ] || continue
+		cat >> $1/etc/dot.wbar << EOT
+i: $icon
+c: $exe
+t: $text
+
+EOT
+	done << EOT
+/usr/share/wbar/iconpack/firefox.png /usr/bin/firefox firefox
+/usr/share/wbar/iconpack/psi.png /usr/bin/pidgin pidgin
+/usr/share/wbar/iconpack/gimp.png /usr/bin/gimp gimp
+/usr/share/wbar/iconpack/xmms.png /usr/bin/audacious audacious
+/usr/share/wbar/iconpack/xterm.png /usr/bin/xterm xterm
+EOT
+	[ -n "$1" ] || wbar -above-desk -pos top &
+}
