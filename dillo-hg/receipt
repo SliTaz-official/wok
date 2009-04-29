@@ -1,0 +1,58 @@
+# SliTaz package receipt.
+
+PACKAGE="dillo-hg"
+VERSION="1058"
+CATEGORY="network"
+SHORT_DESC="Light and fast web browse using FLTK (Hg version)."
+MAINTAINER="pankso@slitaz.org"
+WEB_SITE="http://www.dillo.org/"
+DEPENDS="fltk-2.0.x libpng jpeg zlib"
+BUILD_DEPENDS="$DEPENDS fltk-2.0.x-dev libpng-dev jpeg-dev zlib-dev \
+python mercurial"
+CONFLICTS="dillo"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
+	echo "Cloning revision $VERSIN from Dillo repository..."
+	hg clone --rev $VERSION \
+		http://hg.dillo.org/dillo $PACKAGE-$VERSION || exit 0
+	cd $src
+	./autogen.sh &&
+	./configure \
+		--sysconfdir=/etc/dillo \
+		--prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib \
+		$fs/usr/share/webhome \
+		$fs/usr/share/applications \
+		$fs/usr/share/pixmaps
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/dillo $fs/usr/lib
+	strip -s $fs/usr/lib/dillo/dpi/*/*
+	chmod +x $fs/usr/bin/*
+	# Config files with custom dillorc and webhome page.
+	cp -a $_pkg/etc $fs
+	cp stuff/dillorc $fs/etc/dillo
+	cp stuff/dillo-index.html $fs/usr/share/webhome
+	cp stuff/dillo.css $fs/usr/share/webhome
+	cp -a stuff/pics $fs/usr/share/webhome
+	cp -a stuff/dillo.desktop $fs/usr/share/applications
+	cp -a stuff/dillo.png $fs/usr/share/pixmaps
+	chown -R root.root $fs
+}
+
+pre_install()
+{
+	if [ -d $1/var/lib/tazpkg/installed/$CONFLICTS ]; then
+		echo "y" | tazpkg remove $CONFLICTS
+	fi
+}
