@@ -15,7 +15,23 @@ WGET_URL="ftp://get.qtsoftware.com/qt/source/$TARBALL"
 compile_rules()
 {
 	cd $src
-	yes yes | ./configure --prefix=/usr &&
+	./configure \
+             -prefix /usr \
+			-confirm-license \
+			-silent \
+			-sysconfdir /etc \
+			-plugindir /usr/lib/qt/plugins \
+			-translationdir /usr/share/qt/translations \
+			-datadir /usr/share/qt \
+			-docdir /usr/share/doc/qt \
+			-examplesdir /usr/share/doc/qt/examples \
+			-demosdir /usr/share/doc/qt/demos \
+			-no-separate-debug-info \
+			-nomake demos \
+			-nomake examples \
+			-nomake docs \
+			-no-phonon \
+			-optimized-qmake &&
 	make &&
 	make INSTALL_ROOT=$PWD/_pkg install
 }
@@ -25,5 +41,9 @@ genpkg_rules()
 {
 	# dummy tree to avoid 'tazwok cmp --cook' building loop
 	mkdir $fs/etc
+	# pkgconfig path fixes
+	sed -i -e "s|-L$src/_pkg/usr/lib||g" $_pkg/usr/lib/pkgconfig/*.pc
+	sed -i -e "s|$src/_pkg/usr/bin/moc|/usr/bin/moc|g" $_pkg/usr/lib/pkgconfig/*.pc
+	sed -i -e "s|$src/_pkg/usr/bin/uic|/usr/bin/uic|g" $_pkg/usr/lib/pkgconfig/*.pc
 }
 
