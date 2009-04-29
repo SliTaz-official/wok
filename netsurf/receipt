@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="netsurf"
+VERSION="2.0"
+CATEGORY="network"
+SHORT_DESC="A simple, fast and light web browser using GTK."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+ openssl libpng jpeg lcms libparserutils hubbub libnsgif"
+BUILD_DEPENDS="gtk+-dev openssl-dev libpng-dev jpeg-dev lcms-dev re2c lemon \
+libparserutils-dev hubbub-dev libnsgif-dev"
+TARBALL="$PACKAGE-$VERSION-src.tar.gz"
+WEB_SITE="http://www.netsurf-browser.org/"
+WGET_URL="http://www.netsurf-browser.org/downloads/releases/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	cp -a ../stuff/Makefile.defaults .
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/usr/bin $fs/usr/lib/netsurf
+	cp -RL $src/gtk/res $fs/usr/share/netsurf
+	cp $src/nsgtk $fs/usr/lib/netsurf
+	cp $src/netsurf $fs/usr/bin
+	sed -i -e 's|NETSURFRES=`dirname $0`/gtk/res/|NETSURFRES=/usr/share/netsurf/res/|' \
+		$fs/usr/bin/netsurf
+	sed -i -e 's|exec `dirname $0`/nsgtk "$@" 2>$LOG|exec /usr/lib/netsurf/nsgtk "$@" 2>$LOG|' \
+		$fs/usr/bin/netsurf
+	# Remove files to save some space
+	rm -rf $fs/usr/share/netsurf/docs
+	rm -rf $fs/usr/share/netsurf/*.xpm
+	rm -rf $fs/usr/share/netsurf/license
+}
