@@ -5,12 +5,13 @@ VERSION="12.4"
 CATEGORY="network"
 SHORT_DESC="Text mode mail user agent."
 MAINTAINER="sygne@ombres.eu"
-DEPENDS="openssl libkrb5"
+DEPENDS="openssl"
 BUILD_DEPENDS="openssl-dev"
 SOURCE="mailx"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://heirloom.sourceforge.net/mailx.html"
 WGET_URL="$SF_MIRROR/heirloom/$TARBALL"
+CONFIG_FILES="/etc/nailrc"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -21,6 +22,7 @@ compile_rules()
 	make config.h
 	sed -i -e "/GSSAPI/d" config.h
 	sed -i -e "/gssapi/d" config.h
+	sed -i -e "s/-lgssapi_krb5//g" LIBS
 	
 	make install UCBINSTALL=/usr/bin/install \
 	DESTDIR=$PWD/_pkg PREFIX=/usr	
@@ -35,17 +37,6 @@ genpkg_rules()
 	mv $fs/usr/bin/mailx $fs/usr/bin/nail
 	
 	cp -r $_pkg/etc $fs
-}
-
-# Pre and post install commands for Tazpkg.
-pre_install()
-{
-	echo ""
-	echo "Processing pre_install commands"
-	echo ""
-	echo "Moving $1/etc/nail.rc to $1/etc/nail.rc.old"
-	echo ""
-	mv $1/etc/nail.rc $1/etc/nail.rc.old
 }
 
 # Post install commands for Tazpkg.
