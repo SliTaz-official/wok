@@ -5,7 +5,7 @@ VERSION="1.5.9"
 CATEGORY="misc"
 SHORT_DESC="Network connection manager"
 MAINTAINER="jozee@slitaz.org"
-DEPENDS="python dbus-python ethtool"
+DEPENDS="python dbus-python ethtool wpa_supplicant"
 BUILD_DEPENDS="python-dev dbus-python-dev python"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://heanet.dl.sourceforge.net/sourceforge/wicd/"
@@ -37,5 +37,21 @@ genpkg_rules()
     cp -a $_pkg/usr/share/icons/hicolor/32x32 $fs/usr/share/icons/hicolor
     mkdir -p $fs/etc/init.d
     cp -a stuff/wicd $fs/etc/init.d
-    cp -a stuff/wpa_passphrase $fs/usr/bin        
+	# dhclient as fake udhcpc wrapper
+  	cp -a stuff/dhclient $fs/usr/bin 
+	# set permissions
+	chmod +x $fs/usr/bin/dhclient
+	
+}
+
+# edit daemons.conf.
+post_install()
+{
+	local root
+	root=$1
+	if ! grep -q ^WICD_OPTIONS $root/etc/daemons.conf; then
+		echo '# wicd options.' >> $root/etc/daemons.conf
+		echo 'WICD_OPTIONS=""' >> $root/etc/daemons.conf
+		echo '' >> $root/etc/daemons.conf
+	fi
 }
