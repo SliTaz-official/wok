@@ -8,20 +8,24 @@ MAINTAINER="paul@slitaz.org"
 WANTED="libid3tag"
 WEB_SITE="http://www.underbit.com/products/mad"
 
-
-# Rules to configure and make the package.
-compile_rules()
-{
-	cd $src
-	./configure --prefix=/usr $CONFIGURE_ARGS
-	make
-	make DESTDIR=$PWD/_pkg install
-}
-
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/lib/pkgconfig
 	cp -a $_pkg/usr/include $fs/usr
 	cp -a $_pkg/usr/lib/*.*a $fs/usr/lib
+	# libid3tag.pc
+	cat > $fs/usr/lib/pkgconfig/libid3tag.pc << _EOT_
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: id3tag
+Description: ID3 tag manipulation library
+Requires:
+Version: $VERSION
+Libs: -L${libdir} -lid3tag -lz
+Cflags: -I${includedir}
+_EOT_
 }
