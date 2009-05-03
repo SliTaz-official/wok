@@ -1,0 +1,69 @@
+# SliTaz package receipt.
+
+PACKAGE="pekwm"
+VERSION="0.1.10"
+CATEGORY="x-window"
+SHORT_DESC="Window manager"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="xorg-libX11 xorg-libXinerama xorg-libXft xorg-libXrandr xorg-libXpm"
+BUILD_DEPENDS="xorg-dev xorg-dev-proto zlib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.pekwm.org/projects/3/files"
+WGET_URL="$WEB_SITE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --sysconfdir=/etc $CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/pekwm $fs/usr/share
+	cp -a $_pkg/etc $fs
+	#cp -a stuff/etc/* $fs/etc/pekwm
+	
+	# Set perms.
+	chown -R root.root $fs
+	chmod 0755 $fs/usr/bin/pekwm
+	
+
+	
+	
+}
+
+post_install()
+{
+	#pekwm searches for default font path (100dpi folder) for xsever to render menus; either manually set it in .xinitrc or
+	#fake 100dpi folder fonts by linking to ttf-dejavu
+	mkdir -p /usr/share/fonts/X11/100dpi
+	ln -s /usr/share/fonts/truetype/ttf-dejavu/* /usr/share/fonts/X11/100dpi/
+	
+	# add pekwm /etc/slim.conf 
+	res=`cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//`
+	# Adding WM to SLIM available sessions.
+	if ! echo "$res" | grep -q $PACKAGE; then
+		echo -n "Adding $PACKAGE to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},pekwm/" /etc/slim.conf
+		status
+	fi
+
+	# add pekwm to tazx
+	
+}
+
+post_remove()
+{
+	# Remove pekwm from SLIM available sessions.
+	if grep -q pekwm $1/etc/slim.conf; then
+		sed -i s/,pekwm// $1/etc/slim.conf
+	fi
+}
