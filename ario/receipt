@@ -1,0 +1,51 @@
+# SliTaz package receipt.
+
+PACKAGE="ario"
+VERSION="1.2.2"
+CATEGORY="multimedia"
+SHORT_DESC="GTK clien for MPD"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="libgcrypt"
+BUILD_DEPENDS="libgcrypt-dev libglade-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://ario-player.sourceforge.net/index.php?en"
+WGET_URL="http://freefr.dl.sourceforge.net/sourceforge/ario-player/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--disable-dbus \
+		--disable-notify \
+		--disable-audioscrobbler \
+		--disable-avahi \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale/
+	
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/icons $fs/usr/share
+	cp -a $_pkg/usr/share/ario $fs/usr/share
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	
+	strip -s $fs/usr/lib/ario/plugins/*.so
+	
+	# Cleanup
+	rm -f $fs/usr/lib/ario/plugins/*.?a
+
+	strip -s $fs/usr/lib/ario/plugins/*.so
+	
+	
+}
+
