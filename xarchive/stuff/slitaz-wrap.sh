@@ -1,7 +1,7 @@
 #!/bin/sh
 # slitaz-wrap.sh - sh slitaz core wrapper for xarchive frontend
 # Copyright (C) 2005 Lee Bigelow <ligelowbee@yahoo.com> 
-# Copyright (C) 2008 Pascal Bellard <pascal.bellard@slitaz.org> 
+# Copyright (C) 2009 Pascal Bellard <pascal.bellard@slitaz.org> 
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,6 +38,8 @@ SQUASHFS_EXTS="sqfs squashfs"
 CROMFS_EXTS="cromfs"
 FS_EXTS="ext2 ext3 dos fat vfat fd fs loop"
 CLOOP_EXTS="cloop"
+RAR_EXTS="rar cbr"
+LHA_EXTS="lha lzh lzs"
 
 # Setup awk program
 AWK_PROGS="mawk gawk awk"
@@ -49,6 +51,16 @@ for awkprog in $AWK_PROGS; do
     fi
 done
 
+# Setup xterm program to use
+XTERM_PROGS="xterm rxvt xvt wterm aterm Eterm"
+XTERM_PROG=""
+for xtermprog in $XTERM_PROGS; do
+    if [ "$(which $xtermprog)" ]; then
+        XTERM_PROG="$xtermprog"
+        break
+    fi
+done
+
 # setup variables opt and archive.
 # the shifting will leave the files passed as
 # all the remaining args "$@"
@@ -56,6 +68,16 @@ opt="$1"
 test -z $1 || shift 1
 archive="$1"
 test -z $1 || shift 1
+
+tazpkg2cpio()
+{
+	tmpcpio="$(mktemp -d -t tmpcpio.XXXXXX)"
+	cd $tmpcpio
+	cpio -i fs.cpio.gz > /dev/null < "$1"
+	zcat fs.cpio.gz
+	cd -
+	rm -rf $tmpcpio
+}
 
 decompress_ipk()
 {
@@ -98,10 +120,15 @@ for ext in $COMPRESS_EXTS; do
     fi
 done
 
+do_decompress()
+{
+	$DECOMPRESS "$1"
+}
+
 # Compression functions
 decompress_func()
 {
-    if [ "$DECOMPRESS" ]; then 
+    if [ "$DECOMPRESS" != "cat" ]; then 
         tmpname="$(mktemp -t tartmp.XXXXXX)"
         if [ -f "$archive" ]; then 
             $DECOMPRESS "$archive" > "$tmpname" 
@@ -115,7 +142,7 @@ decompress_func()
 
 compress_func()
 {
-    if [ "$COMPRESS" ] && [ "$oldarch" ]; then
+    if [ "$COMPRESS" != "cat" ] && [ "$oldarch" ]; then
         [ -f "$oldarch" ] && rm "$oldarch"
         if $COMPRESS < "$archive" > "$oldarch"; then
             rm "$archive"
@@ -129,6 +156,26 @@ not_busybox()
     *busybox*) return 1;;
     esac
     return 0
+}
+
+addtar()
+{
+	tar -cf - $@
+}
+
+extracttar()
+{
+	tar -xf -
+}
+
+addcpio()
+{
+	find $@ | cpio -o -H newc
+}
+
+extractcpio()
+{
+	cpio -id > /dev/null
 }
 
 add_file()
@@ -146,27 +193,35 @@ update_tar_cpio()
     action=$1
     shift
     tardir="$(dirname "$archive")"
-    [ $(expr "$lc_archive" : ".*\."$BZIP2_EXTS"$") -gt 0 ] && ! which bzip2 && return
-    for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS; do
-        if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-	    if [ "$action" = "new_archive" ]; then
-	        decompress_func
-		cd "$tardir"
-		tar -cf "$archive" "${1#$tardir/}"
-		status=$?
-		compress_func
-		exit $status
-	    fi
-	    if not_busybox tar; then
+    if [ $(expr "$lc_archive" : ".*\."$BZIP2_EXTS"$") -gt 0 ]; then
+         [ "$(which bzip2)" ] || return
+    fi
+    if not_busybox tar && [ "$action" != "new_archive" ]; then
+	for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
 	        decompress_func
 		case "$action" in
 		remove_file)
 			tar --delete -f "$archive" "$@";;
 		add_file)
 			cd "$tardir"
-			tar -rf "$archive" "${1#$tardir/}";;
-		*)	false;;
+			while [ -n "$1" ]; do
+			    tar -rf "$archive" "${1#$tardir/}"
+			done;;
 		esac
+		status=$?
+		compress_func
+		exit $status
+            fi
+	done
+    fi
+    while read add extract exts; do
+      for ext in $exts; do
+        if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+	    if [ "$action" = "new_archive" ]; then
+	        decompress_func
+		cd "$tardir"
+		$add "${1#$tardir/}" > "$archive"
 		status=$?
 		compress_func
 		exit $status
@@ -174,14 +229,14 @@ update_tar_cpio()
             tmptar="$(mktemp -d -t tartmp.XXXXXX)"
 	    here="$(pwd)"
 	    cd $tmptar
-            $DECOMPRESS < "$archive" | tar -xf -
+            $DECOMPRESS "$archive" | $extract
             status=$?
 	    if [ $status -eq 0 -a -n "$1" ]; then
-                    while [ "$1" ]; do
+                while [ "$1" ]; do
 		    	$action "${1#$tardir/}" $here
 			shift
-		    done
-		tar -cf - $(ls -a | grep -v ^\.$  | grep -v ^\.\.$) | \
+		done
+		$add $(ls -a | grep -v ^\.$  | grep -v ^\.\.$) | \
 			$COMPRESS > "$archive"
                 status=$?
 	    fi
@@ -189,57 +244,35 @@ update_tar_cpio()
 	    rm -rf $tmptar
 	    exit $status
 	fi
-    done
-    for ext in $CPIO_EXTS $CPIOGZ_EXTS; do
-        if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-	    if [ "$action" = "new_archive" ]; then
-	        decompress_func
-		cd "$tardir"
-		echo "${1#$tardir/}" | cpio -o -H newc > "$archive"
-		status=$?
-		compress_func
-		exit $status
-	    fi
-            tmpcpio="$(mktemp -d -t cpiotmp.XXXXXX)"
-	    here="$(pwd)"
-	    cd $tmpcpio
-            $DECOMPRESS "$archive" | cpio -id > /dev/null
-            status=$?
-	    if [ $status -eq 0 -a -n "$1" ]; then
-                    while [ "$1" ]; do
-		    	$action "${1#$tardir/}" $here
-			shift
-		    done
-		find . | cpio -o -H newc | $COMPRESS > "$archive"
-                status=$?
-	    fi
-	    cd $here
-	    rm -rf $tmpcpio
-	    exit $status
-	fi
-    done
+      done
+    done <<EOT
+addtar	extracttar   $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS
+addcpio	extractcpio  $CPIO_EXTS $CPIOGZ_EXTS
+EOT
 }
 
 loop_fs()
 {
     tmpfs="$(mktemp -d -t fstmp.XXXXXX)"
     umnt="umount -d"
+    ext=${lc_archive##*.}
+    case " $CROMFS_EXTS " in 
+    *\ $ext\ *) umnt="fusermount -u"
+    		cromfs-driver "$archive" $tmpfs;;
+    esac
     case " $CLOOP_EXTS " in
-    \ $1\ ) mount -o loop=/dev/cloop,ro "$archive" $tmpfs;;
+    *\ $ext\ *) mount -o loop=/dev/cloop,ro "$archive" $tmpfs;;
     esac
     case " $FS_EXTS " in 
-    \ $1\ ) mount -o loop,rw "$archive" $tmpfs;;
+    *\ $ext\ *) mount -o loop,rw "$archive" $tmpfs;;
     esac
-    case " $ISO_EXTS " in 
-    \ $1\ ) mount -o loop,ro -t iso9660 "$archive" $tmpfs;;
+    case " $ISO_EXTS $SQUASHFS_EXTS " in 
+    *\ $ext\ *) mount -o loop,ro "$archive" $tmpfs;;
     esac
-    case " $SQUASHFS_EXTS " in 
-    \ $1\ ) mount -o loop,ro -t squashfs "$archive" $tmpfs;;
-    esac
-    case " $CROMFS_EXTS " in 
-    \ $1\ ) cromfs-driver "$archive" $tmpfs; umnt="fusermount -u";;
-    esac
-    case "$2" in
+    rmdir $tmpfs 2> /dev/null && exit $E_UNSUPPORTED
+    cmd=$1
+    shift
+    case "$cmd" in
     stat)	find $tmpfs | while read f; do
     		    [ "$f" = "$tmpfs" ] && continue
 		    link="-"
@@ -248,21 +281,22 @@ loop_fs()
 		    	'{ printf "%s;%s\n",$1,substr($2,0,8)}')
 		    echo "${f#$tmpfs/};$(stat -c "%s;%A;%U;%G" $f);$date;$link"
     		done;;
-    copy)	if [ -z "$3" ]; then
+    copy)	if [ -z "$1" ]; then
     		    ( cd $tmpfs ; tar cf - . ) | tar xf -
     		else
-		    while [ -n "$3" ]; do
-    			( cd $tmpfs ; tar cf - "$3" ) | tar xf -
+		    while [ -n "$1" ]; do
+    			( cd $tmpfs ; tar cf - "$1" ) | tar xf -
 			shift;
 		    done
 		fi;;
     add)	tar cf - "$@" | ( cd $tmpfs ; tar xf - );;
-    remove)	while [ -n "$3" ]; do
-    			rm -rf $tmpfs/$3
+    remove)	while [ -n "$1" ]; do
+    			rm -rf $tmpfs/$1
     		done;;
     esac
     $umnt $tmpfs
     rmdir $tmpfs
+    exit 0
 }
 
 # the option switches
@@ -276,63 +310,41 @@ case "$opt" in
                 echo warning: zip not found, extract only >/dev/stderr
             fi
         done
-	[ -d /lib/modules/$(uname -r)/kernel/fs/squashfs/squashfs.ko ] && \
-	for ext in $SQUASHFS_EXTS; do
-            printf "%s;" $ext
-	done
-	[ -x /bin/cromfs-driver ] && for ext in $CROMFS_EXTS; do
-            printf "%s;" $ext
-	done
-	[ -d /lib/modules/$(uname -r)/kernel/drivers/block/cloop.ko ] && \
-	for ext in $CLOOP_EXTS; do
-            printf "%s;" $ext
-	done
+	while read mod exts; do
+	    [ -f /lib/modules/$(uname -r)/kernel/$mod ] || continue
+	    for ext in $exts; do
+                printf "%s;" $ext
+	    done
+	done <<EOT
+fs/squashfs/squashfs.ko	$SQUASHFS_EXTS
+drivers/block/cloop.ko	$CLOOP_EXTS
+EOT
+	while read exe exts; do
+            [ "$(which $exe)" ] || continue
+	    for ext in $exts; do
+                printf "%s;" $ext
+	    done
+	done <<EOT
+cromfs-driver	$CROMFS_EXTS
+rar		$RAR_EXTS
+unace		ace
+arj		arj
+7za		7z
+lha		$LHA_EXTS
+EOT
         printf "\n"
         exit
         ;;
 
     -o) # open: mangle output of tar cmd for xarchive 
-        for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS \
-        	   $IPK_EXTS; do
-        # format of tar output:
-# lrwxrwxrwx USR/GRP       0 2005-05-12 00:32:03 file -> /path/to/link
-# -rw-r--r-- USR/GRP    6622 2005-04-22 12:29:14 file 
-# 1          2          3    4          5        6
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-		$DECOMPRESS "$archive" | tar -tvf - | $AWK_PROG '
-        {
-          attr=$1
-          split($2,ids,"/") #split up the 2nd field to get uid/gid
-          uid=ids[1]
-          gid=ids[2]
-          size=$3
-          date=$4
-          time=$5
-          
-          #this method works with filenames that start with a space (evil!)
-          #split line a time and a space
-          split($0,linesplit, $5 " ")
-          #then split the second item (name&link) at the space arrow space
-          split(linesplit[2], nlsplit, " -> ")
-
-          name=nlsplit[1]
-          link=nlsplit[2]
-
-          if (! link) {link="-"} #if there was no link set it to a dash
-
-          printf "%s;%s;%s;%s;%s;%s;%s;%s\n",name,size,attr,uid,gid,date,time,link
-        }'
-                exit
-	    fi
-        done
-
-        for ext in $CPIO_EXTS $CPIOGZ_EXTS; do
+	while read cmd filter exts; do
+            for ext in $exts; do
         # format of cpio output:
 # lrwxrwxrwx USR/GRP       0 2005-05-12 00:32:03 file -> /path/to/link
 # -rw-r--r-- USR/GRP    6622 2005-04-22 12:29:14 file 
 # 1          2          3    4          5        6
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                $DECOMPRESS "$archive" | cpio -tv | $AWK_PROG '
+                $cmd "$archive" | $filter | $AWK_PROG '
         {
           attr=$1
           split($2,ids,"/") #split up the 2nd field to get uid/gid
@@ -355,13 +367,18 @@ case "$opt" in
 
           if (name != "" && uid != "blocks") printf "%s;%s;%s;%s;%s;%s;%s;%s\n",name,size,attr,uid,gid,date,time,link
         }'
-                exit
+                exit 0
 	    fi
         done
-
+        done <<EOT
+do_decompress	cpio\ -tv	$CPIO_EXTS $CPIOGZ_EXTS
+do_decompress	tar\ -tvf\ -	$TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS $IPK_EXTS
+rpm2cpio	cpio\ -tv	$RPM_EXTS
+tazpkg2cpio	cpio\ -tv	$TAZPKG_EXTS
+EOT
         for ext in $ZIP_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-	        if which zipinfo; then
+		if [ "$(which zipinfo)" ]; then
                     # format of zipinfo -T -s-h- output:
                     # -rw-r--r--  2.3 unx    11512 tx defN YYYYMMDD.HHMMSS file 
                     # 1           2   3      4     5  6    7               8
@@ -385,7 +402,7 @@ case "$opt" in
           name=linesplit[2]
           printf "%s;%s;%s;%s;%s;%s;%s;%s\n",name,size,attr,uid,gid,date,time,link
         }'            
-                    exit
+                    exit 0
 		else
                     # format of unzip -l output:
                     # 6622 2005-04-22 12:29:14 file 
@@ -413,113 +430,197 @@ case "$opt" in
 
           if (name != "" && n > 3) printf "%s;%s;%s;%s;%s;%s;%s;%s\n",name,size,attr,uid,gid,date,time,link
         }'
-                    exit
+                    exit 0
 		fi
-	    fi
-        done
-
-        for ext in $RPM_EXTS; do
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                rpm2cpio "$archive" | cpio -tv | $AWK_PROG '
-        {
-          attr=$1
-          split($2,ids,"/") #split up the 2nd field to get uid/gid
-          uid=ids[1]
-          gid=ids[2]
-          size=$3
-          date=$4
-          time=$5
-          
-          #this method works with filenames that start with a space (evil!)
-          #split line a time and a space
-          split($0,linesplit, $5 " ")
-          #then split the second item (name&link) at the space arrow space
-          split(linesplit[2], nlsplit, " -> ")
-
-          name=substr(nlsplit[1],2)
-          link=nlsplit[2]
-
-          if (! link) {link="-"} #if there was no link set it to a dash
-
-          if (name != "" && uid != "blocks") printf "%s;%s;%s;%s;%s;%s;%s;%s\n",name,size,attr,uid,gid,date,time,link
-        }'
-                exit
-	    fi
-        done
-
-        for ext in $DEB_EXTS; do
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                dpkg-deb -c "$archive" | $AWK_PROG '
-        {
-          attr=$1
-          split($2,ids,"/") #split up the 2nd field to get uid/gid
-          uid=ids[1]
-          gid=ids[2]
-          size=$3
-          date=$4
-          time=$5
-          
-          #this method works with filenames that start with a space (evil!)
-          #split line a time and a space
-          split($0,linesplit, $5 " ")
-          #then split the second item (name&link) at the space arrow space
-          split(linesplit[2], nlsplit, " -> ")
-
-          name=substr(nlsplit[1],2)
-          link=nlsplit[2]
-
-          if (! link) {link="-"} #if there was no link set it to a dash
-
-          printf "%s;%s;%s;%s;%s;%s;%s;%s\n",name,size,attr,uid,gid,date,time,link
-        }'
-                exit
-	    fi
-        done
-
-        for ext in $TAZPKG_EXTS; do
-        # format of cpio output:
-# lrwxrwxrwx USR/GRP       0 2005-05-12 00:32:03 file -> /path/to/link
-# -rw-r--r-- USR/GRP    6622 2005-04-22 12:29:14 file 
-# 1          2          3    4          5        6
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                tmpcpio="$(mktemp -d -t cpiotmp.XXXXXX)"
-		here="$(pwd)"
-		cd $tmpcpio
-		cpio -i fs.cpio.gz > /dev/null < "$archive"
-                zcat fs.cpio.gz | cpio -tv | $AWK_PROG '
-        {
-          attr=$1
-          split($2,ids,"/") #split up the 2nd field to get uid/gid
-          uid=ids[1]
-          gid=ids[2]
-          size=$3
-          date=$4
-          time=$5
-          
-          #this method works with filenames that start with a space (evil!)
-          #split line a time and a space
-          split($0,linesplit, $5 " ")
-          #then split the second item (name&link) at the space arrow space
-          split(linesplit[2], nlsplit, " -> ")
-
-          name=substr(nlsplit[1],3)
-          link=nlsplit[2]
-
-          if (! link) {link="-"} #if there was no link set it to a dash
-
-          if (name != "" && uid != "blocks") printf "%s;%s;%s;%s;%s;%s;%s;%s\n",name,size,attr,uid,gid,date,time,link
-        }'
-		cd $here
-		rm -rf $tmpcpio
-                exit
 	    fi
         done
 
         for ext in $ISO_EXTS $SQUASHFS_EXTS $CROMFS_EXTS $CLOOP_EXTS $FS_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-	    	loop_fs $ext stat
-                exit
+	    	loop_fs stat
             fi
+	done
+        for ext in $RAR_EXTS; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+        # format of rar output:
+#-------------------------------------
+# bookmarks/mozilla_bookmarks.html
+#            11512     5231  45% 28-02-05 16:19 -rw-r--r-- F3F3477F m3b 2.9
+#       (or  11512     5231  45% 28-02-05 16:19 .D....     00000000 m3b 2.9)
+#       (or  11512     5231  45% 28-02-05 16:19 .....S     F3F3477F m3b 2.9)
+#            1         2     3   4        5     6          7        8   9
+#-------------------------------------
+        
+        rar v -c- "$archive" | $AWK_PROG -v uuid=$(id -u -n) '
+        # The body of info we wish to process starts with a dashed line 
+        # so set a flag to signal when to start and stop processing.
+        # The name is on one line with the info on the next so toggle
+        # a line flag letting us know what kinda info to get.  
+        BEGIN { flag=0; line=0 }
+        /^------/ { flag++; if (flag > 1) exit 0; next} #line starts with dashs
+        {
+          if (flag == 0) next #not in the body yet so grab the next line
+          if (line == 0) #this line contains the name
+          { 
+            name=substr($0,2) #strip the single space from start of name
+            line++  #next line will contain the info so increase the flag
+            next
+          }
+          else #we got here so this line contains the info
+          {
+            size=$1
+            date=$4
+            time=$5
+            
+            #modify attributes to read more unix like if they are not
+            if (index($6, "D") != 0) {attr="drwxr-xr-x"}
+            else if (index($6, ".") != 0) {attr="-rw-r--r--"}
+            else {attr=$6}
+
+            uid=uuid
+            gid=uuid
+            link="-"
+
+            printf "%s;%s;%s;%s;%s;%s;%s;%s\n",name,size,attr,uid,gid,date,time,link
+            line=0 #next line will be a name so reset the flag
+          }
+        }'
+                exit 0
+	    fi
+	done
+        for ext in ace; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+        # format of ace output:
+        # Date    ³Time ³Packed     ³Size     ³Ratio³File
+        # 17.09.02³00:32³     394116³   414817³  95%³ OggDS0993.exe 
+	# 1                   2         3        4    5
+	unace v -c- "$archive" | $AWK_PROG -v uuid=$(id -u -n) '
+        #only process lines starting with two numbers and a dot
+        /^[0-9][0-9]\./ {
+          date=substr($1,1,8)
+          time=substr($1,10,5)
+          #need to strip the funky little 3 off the end of size
+          size=substr($3,1,(length($3)-1))
+          
+          #split line at ratio and a space, second item is our name
+          split($0, linesplit, ($4 " "))
+          name=linesplit[2]
+          
+          uid=uuid; gid=uuid; link="-"; attr="-"
+          printf "%s;%s;%s;%s;%s;%s;%s;%s\n",name,size,attr,uid,gid,date,time,link
+        }'
+                exit 0
+	    fi
+	done
+        for ext in arj; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+        # format of arj output:
+        # 001) ANKETA.FRG
+        #   3 MS-DOS          356        121 0.340 92-04-12 11:39:46                  1  
+        
+	arj v "$archive" | $AWK_PROG -v uuid=$(id -u -n) '{ 
+		if (($0 ~ /^[0-9]+\) .*/)||($0 ~ /^------------ ---------- ---------- -----/)){
+			if (filestr ~ /^[0-9]+\) .*/) {
+				printf "%s;%d;%s;%d;%d;%02d-%02d-%02d;%02d:%02d;%s\n", file, size, perm, uid, gid, date[1], date[3], date[2], time[1], time[2], symfile
+				perm=""
+				file=""
+				symfile=""
+				filestr=""
+			}
+		}
+
+		if ($0 ~ /^[0-9]+\) .*/) {
+			filestr=$0
+			sub(/^[0-9]*\) /, "")
+			file=$0
+			uid=uuid
+			gid=0
+		}
+
+		if ($0 ~ /^.* [0-9]+[\t ]+[0-9]+ [0-9]\.[0-9][0-9][0-9] [0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9].*/) {
+			size=$3
+			split($6, date, "-")
+			split($7, time, ":")
+			if ($8 ~ /^[rwx-]/) {perm=$8;} else {perm="-rw-r--r--"}
+		}
+
+		if ($0 ~ /^[\t ]+SymLink -> .*/) {
+			symfile = $3
+			perm="l"substr(perm, 2)
+		} else {symfile="-"}
+
+		if ($0 ~ /^[\t ]+Owner: UID [0-9]+\, GID [0-9]+/) {
+			uid=$3
+			gid=$5
+			owner=1
+		}
+	}'
+                exit 0
+	    fi
+	done
+        for ext in 7z; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+        # format of 7za output:
+	# ------------------- ----- ------------ ------------  ------------
+	# 1992-04-12 11:39:46 ....A          356               ANKETA.FRG
+        
+	7za l "$archive" | $AWK_PROG -v uuid=$(id -u -n) '
+	BEGIN { flag=0; }
+	/^-------/ { flag++; if (flag > 1) exit 0; next }
+	{
+		if (flag == 0) next
+
+		year=substr($1, 1, 4)
+		month=substr($1, 6, 2)
+		day=substr($1, 9, 2)
+		time=substr($2, 1, 5)
+
+		if (index($3, "D") != 0) {attr="drwxr-xr-x"}
+		else if (index($3, ".") != 0) {attr="-rw-r--r--"}
+
+		size=$4
+
+		$0=substr($0, 54)
+		if (NF > 1) {name=$0}
+		else {name=$1}
+		gsub(/\\/, "/", name)
+
+		printf "%s;%d;%s;%d;%d;%d-%02d-%02d;%s;-\n", name, size, attr, uid, 0, year, month, day, time
+	}'
+                exit 0
+	    fi
+	done
+        for ext in $LHA_EXTS; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+        # format of lha output:
+	# Desktop/up -> ..
+	# lrwxrwxrwx     0/0           0       0 ****** -lhd- 0000 2009-05-03 16:59:03 [2]
+
+	lha v -q -v  "$archive" | $AWK_PROG '
+	{
+		if ($4 == "") {
+          		split($0, nlsplit, " -> ")
+          		name=nlsplit[1]
+         		link=nlsplit[2]
+       			if (! link) {link="-"}
+			next
+		}
+		attr=$1
+		ids=$2
+		split($2,ids,"/") #split up the 2nd field to get uid/gid
+		uid=ids[1]
+		gid=ids[2]
+		size=$4
+
+		year=substr($8, 1, 4)
+		month=substr($8, 6, 2)
+		day=substr($8, 9, 2)
+		time=substr($9, 1, 5)
+
+		printf "%s;%d;%s;%d;%d;%d-%02d-%02d;%s;-\n", name, size, attr, uid, gid, year, month, day, time
+	}'
+                exit 0
+	    fi
 	done
         exit $E_UNSUPPORTED
         ;;
@@ -528,51 +629,84 @@ case "$opt" in
 	update_tar_cpio add_file "$@"
         for ext in $FS_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-	    	loop_fs $ext add "$@"
-                exit 0
+	    	loop_fs add "$@"
 	    fi
 	done
-        which zip >/dev/null && for ext in $ZIP_EXTS; do
+	while read exe args exts; do
+	    [ "$(which $exe)" ] || continue
+	    for ext in $exts; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
                 # we only want to add the file's basename, not
                 # the full path so...
                 while [ "$1" ]; do
                     cd "$(dirname "$1")"
-                    zip -g -r "$archive" "$(basename "$1")"
+                    $exe $args "$archive" "$(basename "$1")"
                     wrapper_status=$?
                     shift 1
                 done
                 exit $wrapper_status
 	    fi
-	done
+	    done
+	done <<EOT
+zip	-g\ -r		$ZIP_EXTS
+rar	a		$RAR_EXTS
+arj	a		arj
+7za	a\ -ms=off	7z
+lha	a		$LHA_EXTS
+EOT
         exit $E_UNSUPPORTED
         ;;
 
     -n) # new: create new archive with passed files 
 	update_tar_cpio new_archive "$@"
-        which zip >/dev/null && for ext in $ZIP_EXTS; do
+	while read exe args exts; do
+	    [ "$(which $exe)" ] || continue
+	    for ext in $exts; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
                 # create will only be passed the first file, the
                 # rest will be "added" to the new archive
                 cd "$(dirname "$1")"
-                zip -r "$archive" "$(basename "$1")"
+                $exe $args "$archive" "$(basename "$1")"
 	    fi
-	done
+	    done
+	done <<EOT
+zip	-r		$ZIP_EXTS
+rar	a		$RAR_EXTS
+arj	a		arj
+7za	a\ -ms=off	7z
+lha	a		$LHA_EXTS
+EOT
         exit $E_UNSUPPORTED
         ;;
 
     -r) # remove: from archive passed files 
 	update_tar_cpio remove_file "$@"
-        for ext in $FS_EXTS; do
+	while read exe args exts; do
+	    [ "$(which $exe)" ] || continue
+	    for ext in $exts; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-	    	loop_fs $ext remove "$@"
-                exit 0
+                $exe $args "$archive" "$@"
+                exit $?
 	    fi
-	done
-        which zip >/dev/null && for ext in $ZIP_EXTS; do
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                zip -d "$archive" "$@"
-	    fi
+	    done
+	done <<EOT
+loop_fs	remove	$FS_EXTS
+zip	-d	$ZIP_EXTS
+rar	d	$RAR_EXTS
+arj	d	arj
+lha	d	$LHA_EXTS
+EOT
+    	wrapper_status=0
+	[ "$(which 7za)" ] && [ $(expr "$lc_archive" : ".*\.7z$") -gt 0 ] && 
+	while [ "$1" ]; do
+		7za l "$archive" 2>/dev/null | grep -q "[.][/]" >&/dev/null \
+			&& EXFNAME=*./"$1" || EXFNAME="$1"
+		7za d "$archive" "$EXFNAME" 2>&1 \
+		| grep -q E_NOTIMPL &> /dev/null && {
+			echo -e "Function not implemented: 7z cannot delete files from solid archive." >&2
+			wrapper_status=$E_UNSUPPORTED
+		}
+		shift 1;
 	done
         exit $E_UNSUPPORTED
         ;;
@@ -587,75 +721,61 @@ case "$opt" in
                 exit $?
 	    fi
 	done
-        for ext in $CPIO_EXTS $CPIOGZ_EXTS; do
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-	        if [ -n "$1" ]; then
-                    while [ "$1" ]; do
-                       $DECOMPRESS "$archive" | cpio -idv "$1"
-                       shift 1
-                    done
-		else
-                    $DECOMPRESS "$archive" | cpio -idv
-		fi
-                exit $?
-	    fi
-        done
-        for ext in $ZIP_EXTS; do
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                # xarchive will put is the right extract dir
-                # so we just have to extract.
-                unzip -n "$archive" "$@"
-                exit $?
-	    fi
-	done
-        for ext in $RPM_EXTS; do
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-	        if [ -n "$1" ]; then
-                    while [ "$1" ]; do
-                       rpm2cpio "$archive" | cpio -idv "$1"
-                       shift 1
-                    done
-		else
-                    rpm2cpio "$archive" | cpio -idv
-		fi
-                exit $?
-	    fi
-        done
 
-        for ext in $DEB_EXTS; do
+	while read exe exts; do
+	    [ "$(which $exe)" ] || continue
+	    for ext in $exts; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                dpkg-deb -X "$archive" "$@"
+	        if [ -n "$1" ]; then
+                    while [ "$1" ]; do
+                       $exe "$archive" | cpio -idv "$1"
+                       shift 1
+                    done
+		else
+                    $exe "$archive" | cpio -idv
+		fi
+                exit $?
+	    fi
+            done
+	done <<EOT
+rpm2cpio	$RPM_EXTS
+do_decompress	$CPIO_EXTS $CPIOGZ_EXTS
+tazpkg2cpio	$TAZPKG_EXTS
+EOT
+
+	while read exe args exts; do
+	    [ "$(which $exe)" ] || continue
+	    for ext in $exts; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+                $exe $args "$archive" "$@"
                 exit $?
 	    fi
 	done
-        for ext in $TAZPKG_EXTS; do
+	done <<EOT
+loop_fs		copy	$ISO_EXTS $SQUASHFS_EXTS $CROMFS_EXTS $CLOOP_EXTS $FS_EXTS
+unzip		-n	$ZIP_EXTS
+dpkg-deb	-X	$DEB_EXTS
+lha		x	$LHA_EXTS
+EOT
+	while read exe args argpass exts; do
+	    [ "$(which $exe)" ] || continue
+	    for ext in $exts; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-                tmpcpio="$(mktemp -d -t cpiotmp.XXXXXX)"
-		here="$(pwd)"
-		cd $tmpcpio
-		cpio -i < "$archive" > /dev/null
-		zcat fs.cpio.gz | cpio -id > /dev/null
-                status=$?
-	        if [ -n "$1" ]; then
-                    while [ "$1" ]; do
-		        dir=$(dirname "$here/$1")
-			mkdir -p "$dir" 2> /dev/null
-		        mv "fs/$1" "$dir" 2> /dev/null
-		    done
-		else
-		    mv fs/* fs/.* $here 2> /dev/null
-		fi
-		cd $here
-		rm -rf $tmpcpio
-		exit $status
-	    fi
-	done
-        for ext in $ISO_EXTS $SQUASHFS_EXTS $CROMFS_EXTS $CLOOP_EXTS $FS_EXTS; do
-            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-	    	loop_fs $ext copy "$@"
+	        [ $exe != unace ] && $exe $args "$archive" "$@"
+	        if [ "$?" -ne "0" ] && [ "$XTERM_PROG" ]; then
+	            echo Probably password protected,
+	            echo Opening an x-terminal...
+	            $XTERM_PROG -e $exe $argpass "$archive" "$@"
+	        fi
                 exit 0
-            fi
-	done
+	    fi
+	    done
+	done <<EOT
+rar	x\ -o-\ -p-	x\ -o-		$RAR_EXTS
+arj	x\ -y		x\ -y\ -g?	arj
+7za	x\ -y\ -p-	x\ -y		7z
+unace	-UNUSED-	x\ -o\ -y	ace
+EOT
         exit $E_UNSUPPORTED
         ;;
 
