@@ -3,10 +3,11 @@
 PACKAGE="pekwm"
 VERSION="0.1.10"
 CATEGORY="x-window"
-SHORT_DESC="Window manager"
+SHORT_DESC="Very light, configurable and themable window manager for X."
 MAINTAINER="jozee@slitaz.org"
 DEPENDS="xorg-libX11 xorg-libXinerama xorg-libXft xorg-libXrandr xorg-libXpm"
 BUILD_DEPENDS="xorg-dev xorg-dev-proto zlib-dev"
+SUGGESTED="hsetroot tint2 lxpanel wbar"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.pekwm.org/projects/3/files"
 WGET_URL="$WEB_SITE/$TARBALL"
@@ -15,8 +16,8 @@ WGET_URL="$WEB_SITE/$TARBALL"
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --sysconfdir=/etc $CONFIGURE_ARGS
-	make
+	./configure --prefix=/usr --sysconfdir=/etc $CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
@@ -29,41 +30,40 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/share/pekwm $fs/usr/share
 	cp -a $_pkg/etc $fs
-	#cp -a stuff/etc/* $fs/etc/pekwm
-	
+	# Custom configuration files
+	cp -a stuff/etc $fs
+	echo '$TERM="xterm"' > $fs/etc/pekwm/vars
 	# Set perms.
 	chown -R root.root $fs
+	chmod +x $fs/etc/pekwm/start
+	chmod +x $fs/usr/share/pekwm/scripts/*
 	chmod 0755 $fs/usr/bin/pekwm
-	
-
-	
-	
 }
 
 post_install()
 {
-	#pekwm searches for default font path (100dpi folder) for xsever to render menus; either manually set it in .xinitrc or
-	#fake 100dpi folder fonts by linking to ttf-dejavu
-	mkdir -p /usr/share/fonts/X11/100dpi
-	ln -s /usr/share/fonts/truetype/ttf-dejavu/* /usr/share/fonts/X11/100dpi/
+	# Pekwm searches for default font path (100dpi folder) for xsever to render 
+	# menus; either manually set it in .xinitrc or fake 100dpi folder fonts 
+	# by linking to ttf-dejavu
+	if [ ! -d $1/usr/share/fonts/X11/100dpi/ ]; then
+		mkdir -p $1/usr/share/fonts/X11/100dpi
+		cd $1/usr/share/fonts/X11/100dpi
+		ln -s ../../truetype/ttf-dejavu/* .
+	fi
 	
-	# add pekwm /etc/slim.conf 
 	res=`cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//`
 	# Adding WM to SLIM available sessions.
 	if ! echo "$res" | grep -q $PACKAGE; then
 		echo -n "Adding $PACKAGE to /etc/slim.conf..."
-		sed -i "s/^sessions.*/sessions            ${res},pekwm/" /etc/slim.conf
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" /etc/slim.conf
 		status
 	fi
-
-	# add pekwm to tazx
-	
 }
 
 post_remove()
 {
-	# Remove pekwm from SLIM available sessions.
-	if grep -q pekwm $1/etc/slim.conf; then
-		sed -i s/,pekwm// $1/etc/slim.conf
+	# Remove WM from SLIM available sessions.
+	if grep -q $PACKAGE $1/etc/slim.conf; then
+		sed -i s/,$PACKAGE// $1/etc/slim.conf
 	fi
 }
