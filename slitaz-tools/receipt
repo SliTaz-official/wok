@@ -16,7 +16,8 @@ CONFIG_FILES="
 /etc/keymap.conf
 /etc/X11/screen.conf
 /etc/locale.conf
-/etc/firewall.conf"
+/etc/firewall.conf
+/etc/slitaz/applications.conf"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 #
@@ -32,13 +33,12 @@ genpkg_rules()
 		$fs/usr/sbin \
 		$fs/etc/X11 \
 		$fs/var/spool/cron/crontabs \
-		$fs/usr/share/doc/slitaz-tools \
-		$fs/usr/share/slitaz-tools/installer
+		$fs/usr/share/slitaz/messages/en
 
 	# /rootfs/*. Firewall exemples, licenses, pixmaps and desktop files.
 	cp -a $src/rootfs/* $fs
 
-	# Tinyutils.
+	# Tinyutils and declare all config files.
 	cp -a $src/tinyutils/tazlocale $fs/sbin
 	touch $fs/etc/locale.conf
 	touch $fs/etc/motd
@@ -48,20 +48,18 @@ genpkg_rules()
 	cp -a $src/tinyutils/gztazmod.sh $fs/sbin
 	cp -a $src/tinyutils/tazx $fs/usr/bin
 	touch $fs/etc/X11/screen.conf
-	cp -a $src/tinyutils/startx $fs/usr/bin
-	cp -a $src/tinyutils/history $fs/usr/bin
-	cp -a $src/tinyutils/tazdialog $fs/usr/bin
 	cp -a $src/tinyutils/tazhw $fs/sbin
+	for app in startx history tazdialog editor browser terminal file-manager
+	do
+		cp -a $src/tinyutils/$app $fs/usr/bin
+	done
 	# Sound config
 	cp -a $src/tinyutils/soundconf $fs/usr/sbin
 	cp -a $src/tinyutils/setmixer $fs/usr/sbin
 
 	# Installer's
 	cp -a $src/installer/slitaz-installer $fs/usr/bin
-	cp -a $src/installer/*.msg $fs/usr/share/slitaz-tools/installer
-
-	# Tools doc in /usr/share/doc/slitaz-tools
-	cp $src/doc/* $fs/usr/share/doc/slitaz-tools
+	cp -a $src/installer/installer.msg $fs/usr/share/slitaz/messages/en
 
 	chown -R root.root $fs
 	chmod -R 755 $fs/usr/bin
@@ -95,4 +93,7 @@ post_install()
 	if [ -f $root/usr/bin/mountbox ] && [ ! -d /var/lib/tazpkg/installed/slitaz-tools-boxes ]; then
 		tazpkg get-install slitaz-tools-boxes
 	fi
+	# Remove old files
+	rm -rf $root/usr/share/slitaz-tools
+	rm -rf /usr/share/doc/slitaz-tools
 }
