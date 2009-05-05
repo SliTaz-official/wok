@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="dillo-hg"
-VERSION="1058"
+VERSION="1071"
 CATEGORY="network"
 SHORT_DESC="Light and fast web browse using FLTK (Hg version)."
 MAINTAINER="pankso@slitaz.org"
@@ -9,6 +9,7 @@ WEB_SITE="http://www.dillo.org/"
 DEPENDS="fltk-2.0.x libpng jpeg zlib"
 BUILD_DEPENDS="$DEPENDS fltk-2.0.x-dev libpng-dev jpeg-dev zlib-dev \
 python mercurial"
+SUGGESTED="openssl"
 CONFLICTS="dillo"
 
 # Rules to configure and make the package.
@@ -23,6 +24,7 @@ compile_rules()
 	./configure \
 		--sysconfdir=/etc/dillo \
 		--prefix=/usr \
+		--enable-ssl \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -32,19 +34,15 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib \
-		$fs/usr/share/webhome \
 		$fs/usr/share/applications \
 		$fs/usr/share/pixmaps
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/dillo $fs/usr/lib
 	strip -s $fs/usr/lib/dillo/dpi/*/*
 	chmod +x $fs/usr/bin/*
-	# Config files with custom dillorc and webhome page.
+	# Config files with custom dillorc and desktop file.
 	cp -a $_pkg/etc $fs
 	cp stuff/dillorc $fs/etc/dillo
-	cp stuff/dillo-index.html $fs/usr/share/webhome
-	cp stuff/dillo.css $fs/usr/share/webhome
-	cp -a stuff/pics $fs/usr/share/webhome
 	cp -a stuff/dillo.desktop $fs/usr/share/applications
 	cp -a stuff/dillo.png $fs/usr/share/pixmaps
 	# Webhome
