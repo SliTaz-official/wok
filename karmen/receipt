@@ -1,0 +1,53 @@
+# SliTaz package receipt.
+
+PACKAGE="karmen"
+VERSION="0.15"
+CATEGORY="x-window"
+SHORT_DESC="Very light and minimalistic window manager for X."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://karmen.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="xorg-libX11 xorg-xsetroot wbar"
+BUILD_DEPENDS="xorg-libX11-dev"
+TAGS="wm window-manager"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	# Custom configuration and scripts.
+	cp -a stuff/karmen-session $fs/usr/bin
+	cp -a stuff/karmen-conf $fs/usr/bin
+	cp -a stuff/etc $fs
+	chown 0.0 $fs/usr/bin/*
+}
+
+post_install()
+{
+	res=`cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//`
+	# Adding WM to SLIM available sessions.
+	if ! echo "$res" | grep -q $PACKAGE; then
+		echo -n "Adding $PACKAGE to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" /etc/slim.conf
+		status
+	fi
+}
+
+post_remove()
+{
+	# Remove WM from SLIM available sessions.
+	if grep -q $PACKAGE $1/etc/slim.conf; then
+		sed -i s/,$PACKAGE// $1/etc/slim.conf
+	fi
+}

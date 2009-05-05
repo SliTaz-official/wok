@@ -1,0 +1,46 @@
+#!/bin/sh
+#
+# 
+: ${DIALOG=dialog}
+
+CONFIG_DIR="$HOME/.config/karmen"
+
+# Dialog menu.
+exec 3>&1
+value=`$DIALOG  --clear \
+--title " Karmen settings " \
+--menu "" 15 70 5 \
+"autostart" "Autostarted applications" \
+"wbar" "Wbat icons panel configuration" \
+"quit" "Exit Karmen configuration" \
+2>&1 1>&3`
+retval=$?
+exec 3>&-
+case $retval in
+	0)
+		continue ;;
+	1)
+		echo "Cancel pressed."
+		exit 0 ;;
+	255)
+		if test -n "$value"; then
+			echo "$value"
+		else
+			echo "ESC pressed."
+			exit 0
+		fi ;;
+esac
+
+case $value in
+	autostart)
+		nano $CONFIG_DIR/autostart.sh 
+		exec $PWD/karmen-dialog ;;
+	wbar)
+		nano $CONFIG_DIR/wbar
+		exec $PWD/karmen-dialog ;;
+	quit)
+		continue ;;
+esac
+
+exit 0
+
