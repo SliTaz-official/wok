@@ -1,21 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="rage"
-VERSION="0.3.0.042"
+VERSION="40505"
 CATEGORY="multimedia"
 SHORT_DESC="E17 rage media center."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="enlightenment emotion"
-BUILD_DEPENDS="eet-dev evas-dev ecore-dev embryo-dev edje-dev emotion-dev emotion"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+DEPENDS="eet evas ecore embryo edje emotion eina libcurl openssl"
+BUILD_DEPENDS="eet-dev evas-dev ecore-dev embryo-dev edje-dev emotion-dev \
+eina-dev curl-dev openssl-dev"
 WEB_SITE="http://www.enlightenment.org/"
-WGET_URL="http://download.enlightenment.org/snapshots/2008-01-25/$TARBALL"
+TAGS="mp3 ogg video e17"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
+	svn co http://svn.enlightenment.org/svn/e/trunk/$PACKAGE \
+		-r $VERSION $PACKAGE-$VERSION
 	cd $src
-	./configure \
+	./autogen.sh \
 		--prefix=/usr \
 		$CONFIGURE_ARGS &&
 	make &&
@@ -25,7 +28,13 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr/share/doc/rage
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/share $fs/usr
+	cp $src/README $fs/usr/share/doc/rage
+	cat > $fs/usr/share/rage/example.volumes << EOT
+/home/user/Images
+/home/user/Music
+/home/user/Videos
+EOT
 }
