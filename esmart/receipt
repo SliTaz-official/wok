@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="esmart"
+VERSION="40510"
+CATEGORY="x-window"
+SHORT_DESC="A collection of evas smart objects."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="cairo evas"
+BUILD_DEPENDS="cairo-dev evas-dev"
+WEB_SITE="http://www.enlightenment.org/"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
+	svn co http://svn.enlightenment.org/svn/e/trunk/$PACKAGE \
+		-r $VERSION $PACKAGE-$VERSION
+	cd $src
+	./autogen.sh \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/esmart $fs/usr/lib
+	rm -rf $fs/usr/lib/esmart/*/*.*a
+}
+
