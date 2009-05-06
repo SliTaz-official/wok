@@ -1,22 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="etk"
-VERSION="0.1.0.042"
+VERSION="40505"
 CATEGORY="x-window"
-SHORT_DESC="E17 Tool Kit."
+SHORT_DESC="E17 Toolkit."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="evas ecore edje libcurl openssl"
-BUILD_DEPENDS="evas-dev ecore-dev edje-dev"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+DEPENDS="xorg-libX11 ecore evas"
+BUILD_DEPENDS="xorg-libX11-dev ecore-dev evas-dev subversion cvs"
 WEB_SITE="http://www.enlightenment.org/"
-WGET_URL="http://download.enlightenment.org/snapshots/2008-01-25/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
+	svn co http://svn.enlightenment.org/svn/e/trunk/$PACKAGE \
+		-r $VERSION $PACKAGE-$VERSION
 	cd $src
-	./configure \
+	./autogen.sh \
 		--prefix=/usr \
+		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -25,11 +27,10 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
+	mkdir -p $fs/usr/lib/etk/engines
 	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/etk $fs/usr/lib
-	rm $fs/usr/lib/etk/engines/*.*a
-	cp -a $_pkg/usr/share/etk $fs/usr/share
+	cp -a $_pkg/usr/lib/etk/engines/*.so* $fs/usr/lib/etk/engines
 }
 

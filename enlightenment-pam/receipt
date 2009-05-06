@@ -6,14 +6,14 @@ VERSION="0.16.999.050"
 CATEGORY="x-window"
 SHORT_DESC="Enlightenment window manager (E17)."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="pam eet evas ecore embryo edje efreet slitaz-menus curl \
+DEPENDS="pam eet evas ecore embryo edje efreet edbus slitaz-menus curl \
 xorg-libXcomposite libcrypto openssl alsa-lib xorg-libX11 xorg-libXau \
 xorg-libXdmcp xorg-libXext"
 BUILD_DEPENDS="eet-dev evas-dev ecore-dev embryo-dev edje-dev efreet-dev \
-efreet curl-dev libcrypto-dev openssl-dev pam-dev"
+edbus-dev curl-dev libcrypto-dev openssl-dev pam-dev"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.enlightenment.org/"
-WGET_URL="http://download.enlightenment.org/snapshots/2008-09-25/$TARBALL"
+WGET_URL="http://download.enlightenment.org/snapshots/2009-04-22/$TARBALL"
 PROVIDE="enlightenment:pam"
 
 # Rules to configure and make the package.
@@ -33,19 +33,38 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/lib $fs/usr/share
 	# Use a modified sysactions.conf
 	cp -a ../$SOURCE/stuff/etc $fs
 
 	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/lib/enlightenment $fs/usr/lib
 	cp -a $_pkg/usr/share/enlightenment $fs/usr/share
 
 	# Remove devel files *.a/*.la
 	rm -rf $fs/usr/lib/$SOURCE/preload/*.*a
-	rm -rf $fs/usr/lib/$SOURCE/modules/*/linux-gnu-i486/*.*a
+	rm -rf $fs/usr/lib/$SOURCE/modules/*/*/*.*a
 
-	# Rm backgrouds (1,6 Mb).
+	# Rm backgrouds (1,6 Mb) and desktop file already provides by other.
 	rm -rf $fs/usr/share/enlightenment/data/backgrounds/*
+	rm $fs/usr/share/enlightenment/data/other/desktop_files*
 }
 
+post_install()
+{
+	res=`cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//`
+	# Adding WM to SLIM available sessions.
+	if ! echo "$res" | grep -q e17; then
+		echo -n "Adding e17 to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},e17/" /etc/slim.conf
+		status
+	fi
+}
+
+post_remove()
+{
+	# Remove WM from SLIM available sessions.
+	if grep -q e17 $1/etc/slim.conf; then
+		sed -i s/,e17// $1/etc/slim.conf
+	fi
+}

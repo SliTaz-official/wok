@@ -1,18 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="enlightenment"
-VERSION="0.16.999.050"
+VERSION="0.16.999.060"
 CATEGORY="x-window"
 SHORT_DESC="Enlightenment window manager (E17)."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="eet evas ecore embryo edje efreet slitaz-menus curl \
+DEPENDS="eet evas ecore embryo edje efreet edbus slitaz-menus curl \
 xorg-libXcomposite libcrypto openssl alsa-lib xorg-libX11 xorg-libXau \
 xorg-libXdmcp xorg-libXext"
 BUILD_DEPENDS="eet-dev evas-dev ecore-dev embryo-dev edje-dev efreet-dev \
-efreet curl-dev libcrypto-dev openssl-dev"
+edbus-dev curl-dev libcrypto-dev openssl-dev "
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.enlightenment.org/"
-WGET_URL="http://download.enlightenment.org/snapshots/2008-09-25/$TARBALL"
+WGET_URL="http://download.enlightenment.org/snapshots/2009-04-22/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -42,9 +42,27 @@ genpkg_rules()
 
 	# Remove devel files *.a/*.la
 	rm -rf $fs/usr/lib/$PACKAGE/preload/*.*a
-	rm -rf $fs/usr/lib/$PACKAGE/modules/*/linux-gnu-i486/*.*a
+	rm -rf $fs/usr/lib/$PACKAGE/modules/*/*/*.*a
 
 	# Rm backgrouds (1,6 Mb).
 	rm -rf $fs/usr/share/enlightenment/data/backgrounds/*
 }
 
+post_install()
+{
+	res=`cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//`
+	# Adding WM to SLIM available sessions.
+	if ! echo "$res" | grep -q e17; then
+		echo -n "Adding e17 to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},e17/" /etc/slim.conf
+		status
+	fi
+}
+
+post_remove()
+{
+	# Remove WM from SLIM available sessions.
+	if grep -q e17 $1/etc/slim.conf; then
+		sed -i s/,e17// $1/etc/slim.conf
+	fi
+}
