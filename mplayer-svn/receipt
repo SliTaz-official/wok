@@ -1,0 +1,74 @@
+# SliTaz package receipt.
+
+PACKAGE="mplayer-svn"
+VERSION="29268"
+CATEGORY="multimedia"
+SHORT_DESC="Mplayer SVN version"
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+ cdparanoia-III libmad xorg-libXv libtheora ffmpeg"
+BUILD_DEPENDS="gtk+-dev cdparanoia-III-dev libmad-dev xorg-libXv-dev
+	libtheora-dev ffmpeg-dev subversion"
+WEB_SITE="http://www.mplayerhq.hu/design7/news.html"
+PROVIDES="mplayer"
+TAGS="player movie audio video"
+
+# Rules to configure and make the package.
+# This package is compiled against shared ffmpeg. Compiling with shared ffmpeg on svn version is always challenging.
+# Tip: Try to use the same day ffmpeg and mplayer versions (use: svn info), very likely to succeed
+# To compile with in-built ffmpeg (and double the size of pkg), remove from compile options:
+#  --disable-libavcodec_a --disable-libavformat_a --disable-libpostproc_a --disable-libswscale_a 
+
+compile_rules()
+{
+	
+   mkdir $src 2> /dev/null
+	cd $src
+	[ -f mplayer/configure ] || svn checkout -r $VERSION \
+		svn://svn.mplayerhq.hu/mplayer/trunk mplayer 
+	cd mplayer
+	./configure \
+		--prefix=/usr \
+		--confdir=/etc/mplayer \
+		--libdir=/usr/lib/mplayer \
+		--disable-largefiles \
+		--disable-mmx --disable-mmxext \
+		--disable-3dnow --disable-3dnowext \
+		--disable-sse --disable-sse2 --disable-ssse3 \
+		--disable-fastmemcpy \
+		--language="en de es fr" \
+		--disable-gl \
+		--disable-sdl \
+		--disable-jack \
+		--disable-liblzo \
+		--disable-libdv \
+		 --disable-libavcodec_a \
+		--disable-libavformat_a \
+		--disable-libpostproc_a \
+		--disable-libswscale_a \
+		--disable-fribidi --target=i386-linux --disable-libavutil_a \
+		--disable-tv --disable-tv-teletext --disable-radio-v4l2 --disable-v4l2 \
+		--disable-musepack --disable-dvdnav --disable-esd --disable-mga \
+		--disable-libamr_nb --disable-lirc --disable-nas --enable-gui &&
+	make &&
+	make DESTDIR=$PWD/../_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	# Mencoder goes in a splited package.
+	rm $fs/usr/bin/mencoder
+	cp -a $_pkg/usr/share/mplayer $fs/usr/share
+	cp -a $_pkg/etc $fs
+	cp $src/mplayer/etc/example.conf $fs/etc/mplayer
+	# Config to use Xv by default.
+	cp stuff/mplayer.conf $fs/etc/mplayer
+	# default skin
+	tar xjf stuff/productive-1.0.tar.bz2 -C $fs/usr/share/mplayer/skins
+	cd $fs/usr/share/mplayer/skins && ln -s productive default
+	# Font
+	cd .. && ln -s ../fonts/truetype/ttf-dejavu/DejaVuSans.ttf subfont.ttf
+}
+
