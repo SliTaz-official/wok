@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="smplayer"
+VERSION="0.6.7"
+CATEGORY="multimedia"
+SHORT_DESC="QT-based front-end for MPlayer"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="mplayer-svn libQtCore libQtGui"
+BUILD_DEPENDS="mplayer-svn Qt4-dev qmake libQtCore libQtGui libQtXml libQtNetwork"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://smplayer.sourceforge.net/" 
+WGET_URL="http://downloads.sourceforge.net/sourceforge/$PACKAGE/$TARBALL"
+TAGS="player audio video movie"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src	
+	make PREFIX=/usr 
+	make PREFIX=/usr DESTDIR=$PWD/_pkg install
+	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/usr/share/applications
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share	
+	
+	# Remove extra translations  or locales
+	rm $fs/usr/share/$PACKAGE/translations/*
+	cp -a $_pkg/usr/share/$PACKAGE/translations/smplayer_en_US.qm \
+		  $_pkg/usr/share/$PACKAGE/translations/smplayer_fr.qm \
+		  $fs/usr/share/$PACKAGE/translations/
+		  
+	# copy .desktop files
+	cp -a stuff/smplayer.desktop $fs/usr/share/applications/
+	cp -a stuff/smplayer_enqueue.desktop $fs/usr/share/applications/
+}
