@@ -1,0 +1,57 @@
+# SliTaz package receipt.
+
+PACKAGE="vlc"
+VERSION="0.9.9a"
+CATEGORY="multimedia"
+SHORT_DESC="MPEG, VCD/DVD, and DivX player"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="libmad libxml2 ffmpeg libdvdread libcddb libproxy taglib libQtCore libQtGui alsa-lib hal dbus \
+taglib fribidi speex libraw1394 libmodplug flac"
+BUILD_DEPENDS="libmad-dev libxml2-dev ffmpeg-dev libdvdread-dev libcddb-dev taglib-dev libproxy-dev Qt4-dev \
+libiconv-dev libiconv hal-dev dbus-dev alsa-lib-dev libgcrypt-dev libproxy expat-dev xorg-dev-proto zlib-dev \
+taglib fribidi fribidi-dev speex speex-dev libraw1394 libraw1394-dev libmodplug libmodplug-dev flac flac-dev \
+libmpeg2 libmpeg2-dev libogg-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.videolan.org/vlc/" 
+WGET_URL="http://download.videolan.org/pub/videolan/$PACKAGE/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	 sed -i -e 's:/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf:/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans-Bold.ttf:' modules/misc/freetype.c
+	./configure --prefix=/usr --enable-hal --enable-dbus --enable-dbus-control --disable-rpath --enable-release \
+				--enable-shared \
+	            --enable-dvdread \
+				--enable-qt4  \
+				--enable-alsa --enable-taglib --enable-ogg --enable-ffmpeg \
+				--disable-lua --disable-live555   --disable-shout  \
+				--disable-dvdnav --disable-fluidsynth --disable-a52 \
+				--disable-smb --disable-gnomevfs --disable-glx \
+				$CONFIGURE_ARGS &&								
+	make &&
+	make DESTDIR=$PWD/_pkg install
+	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share $fs/usr/share/pixmaps
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*so* $fs/usr/lib/
+	cp -a $_pkg/usr/lib/$PACKAGE $fs/usr/lib/
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	#Remove extra icons	
+	rm $fs/usr/share/$PACKAGE/*.png
+	rm $fs/usr/share/$PACKAGE/*.xpm
+	rm $fs/usr/share/$PACKAGE/*.ico
+	#copy vlc icon
+	cp -a $_pkg/usr/share/$PACKAGE/vlc16x16.png $fs/usr/share/pixmaps
+	mv $fs/usr/share/pixmaps/vlc16x16.png $fs/usr/share/pixmaps/vlc.png
+	# Remove libtool archives
+	rm $fs/usr/lib/$PACKAGE/*/*.la
+	#Remove unnecessary fonts
+	rm $fs/usr/share/$PACKAGE/skins2/fonts/*
+
+}
