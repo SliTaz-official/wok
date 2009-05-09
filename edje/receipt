@@ -33,5 +33,13 @@ genpkg_rules()
 	cp -a $_pkg/usr/share $fs/usr
 	chmod 755 $fs/usr/bin/*
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	for i in $fs/usr/lib/*.so ; do
+		[ -L $i ] || continue
+		[ -e $i.0 ] && continue
+		target=$(readlink $i)
+		case "$target" in
+		*.so.0.*) ln -s $target $i.0;;
+		esac
+	done
 }
 

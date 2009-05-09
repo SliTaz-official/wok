@@ -32,5 +32,13 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/evas $fs/usr/lib
 	rm -rf $fs/usr/lib/evas/modules/*/*/*/*.*a
+	for i in $fs/usr/lib/*.so ; do
+		[ -L $i ] || continue
+		[ -e $i.0 ] && continue
+		target=$(readlink $i)
+		case "$target" in
+		*.so.0.*) ln -s $target $i.0;;
+		esac
+	done
 }
 
