@@ -1,37 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="xorg-server"
-VERSION="1.2.0"
+VERSION="1.5.2"
 CATEGORY="x-window"
 SHORT_DESC="Xorg core server."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="xorg xorg-libxkbfile xorg-xf86-input-mouse xorg-xf86-input-keyboard
-    xorg-xf86-video-vesa xorg-xkeyboard-config xorg-xkbcomp freetype libSDL
-    libiconv zlib"
-BUILD_DEPENDS="xorg-dev-proto xorg-libXfont-dev xorg-xtrans xorg-libxkbfile-dev
-    xorg-libfontenc-dev xorg-libxkbfile"
+DEPENDS="xorg xorg-libxkbfile xorg-xf86-input-mouse xorg-xf86-input-keyboard \
+xorg-xf86-video-vesa xorg-xkeyboard-config xorg-xkbcomp xorg-libpciaccess \
+xorg-libXxf86vm openssl mesa"
+BUILD_DEPENDS="xorg-dev-proto xorg-libXfont-dev xorg-xtrans xorg-libxkbfile-dev \
+xorg-libfontenc-dev xorg-libpciaccess-dev xorg-libXxf86vm-dev openssl-dev \
+dbus-dev hal-dev mesa-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.x.org/"
 WGET_URL="http://xorg.freedesktop.org/releases/individual/xserver/$TARBALL"
-KDRIVE="
-Xchips
-Xvesa
-Xephyr
-Xi810
-Xnvidia
-Xepson
-Xsmi
-Xr128
-Xvia
-Xpm2
-Xati
-Xfake
-Xneomagic
-Xmach64
-Xfbdev
-Xmga
-Xvfb
-Xnest"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -47,12 +29,11 @@ compile_rules()
 		--with-serverconfig-path=/etc/X11 \
 		--with-fontdir=/usr/share/fonts/X11 \
 		--enable-install-setuid \
-		--enable-kdrive \
-		--enable-kdrive-vesa \
+		--enable-xorg \
+		--enable-config-hal \
+		--enable-config-dbus \
 		--with-os-name="SliTaz GNU/Linux" \
 		--with-builder-addr=$MAINTAINER \
-		--disable-dri \
-		--disable-xorgcfg \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -61,37 +42,20 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/var $fs/etc/X11
-	
+	mkdir -p $fs/usr/lib $fs/var
 	cp -a $_pkg/usr/lib/X11 $fs/usr/lib
-	cp -a $_pkg/usr/lib/xserver $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/var/lib $fs/var
-	
-	# Remove static libs and all krive
+	cp -a $_pkg/etc $fs
+	# Remove static libs and split Xnest
 	rm $fs/usr/lib/X11/*/*.*a
 	rm $fs/usr/lib/X11/*/*/*.*a
-	for i in $KDRIVE
-	do
-		rm $fs/usr/bin/$i
-	done
+	rm $fs/usr/bin/Xnest
+	rm $fs/usr/bin/Xvfb
 }
 
 # We need /var/tmp rw to let xkbcomp builr XKB definition.
 post_install()
 {
-	local root
-	root=$1
-	chmod 1777 $root/var/tmp
-	# Reinstall libX11 if needed...
-	if [ ! -f $1/usr/share/X11/XKeysymDB ]; then
-		echo "Missing file: /usr/share/X11/XKeysymDB"
-		tazpkg get-install xorg-libX11 --forced --root=$1/
-	fi
-}
-
-# Kdrive Xvesa don't like /var/lib/xkb
-post_remove()
-{
-	rm -rf /var/lib/xkb
+	chmod 1777 $1/var/tmp
 }
