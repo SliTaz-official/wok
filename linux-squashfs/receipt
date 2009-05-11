@@ -1,39 +1,43 @@
 # SliTaz package receipt.
 
-PACKAGE="linux-joystick"
+PACKAGE="linux-squashfs"
 VERSION="2.6.29.3"
 CATEGORY="base-system"
-SHORT_DESC="The Linux kernel joystick modules."
+SHORT_DESC="The Linux kernel squashfs module."
 MAINTAINER="pascal.bellard@slitaz.org"
 DEPENDS="linux"
 WANTED="linux"
 WEB_SITE="http://www.kernel.org/"
+PROVIDE="squashfs-module"
+CONFIG_FILES="/etc/filesystems"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
     local path
     path=lib/modules/$VERSION-slitaz/kernel
-    mkdir -p $fs/$path
+    mkdir -p $fs/$path $fs/etc
     export src
     export _pkg
-    $src/list_modules.sh drivers/input/joystick drivers/input/gameport \
-	drivers/input/input-polldev.ko.gz drivers/hid/hid-dummy.ko.gz | \
-	while read module; do
+    $src/list_modules.sh fs/squashfs | while read module; do
     	dir=$path/$(dirname $module)
     	[ -d $fs/$dir ] || mkdir -p $fs/$dir
         cp -a $_pkg/$path/$module $fs/$dir
     done
+    touch $fs/etc/filesystems
 }
 
 # Post install/remove commands for Tazpkg.
 post_install()
 {
+	grep -qs ^${PACKAGE#*-}$ $1/etc/filesystems || \
+		echo "${PACKAGE#*-}" >> $1/etc/filesystems
 	chroot "$1/" depmod -a $VERSION-slitaz
 }
 
 post_remove()
 {
+	sed -i "/^${PACKAGE#*-}\$/d" $1/etc/filesystems
 	depmod -a $VERSION-slitaz
 }
 

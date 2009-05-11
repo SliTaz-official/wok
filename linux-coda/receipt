@@ -1,20 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="linux-coda"
-VERSION="2.6.25.5"
+VERSION="2.6.29.3"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel coda module."
 MAINTAINER="pascal.bellard@slitaz.org"
 DEPENDS="linux"
 WANTED="linux"
 WEB_SITE="http://www.kernel.org/"
+CONFIG_FILES="/etc/filesystems"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
     local path
     path=lib/modules/$VERSION-slitaz/kernel
-    mkdir -p $fs/$path
+    mkdir -p $fs/$path $fs/etc
     export src
     export _pkg
     $src/list_modules.sh fs/coda | while read module; do
@@ -22,16 +23,20 @@ genpkg_rules()
     	[ -d $fs/$dir ] || mkdir -p $fs/$dir
         cp -a $_pkg/$path/$module $fs/$dir
     done
+    touch $fs/etc/filesystems
 }
 
 # Post install/remove commands for Tazpkg.
 post_install()
 {
- 	chroot "$1/" depmod -a $VERSION-slitaz
+	grep -qs ^${PACKAGE#*-}$ $1/etc/filesystems || \
+		echo "${PACKAGE#*-}" >> $1/etc/filesystems
+	chroot "$1/" depmod -a $VERSION-slitaz
 }
 
 post_remove()
 {
+	sed -i "/^${PACKAGE#*-}\$/d" $1/etc/filesystems
 	depmod -a $VERSION-slitaz
 }
 

@@ -1,18 +1,19 @@
---- linux-2.6.22.9/arch/i386/boot/compressed/Makefile
-+++ linux-2.6.22.9/arch/i386/boot/compressed/Makefile
+--- linux-2.6.29.3/arch/x86/boot/compressed/Makefile
++++ linux-2.6.29.3/arch/x86/boot/compressed/Makefile
 @@ -4,7 +4,7 @@
  # create a compressed vmlinux image from the original vmlinux
  #
  
--targets		:= vmlinux vmlinux.bin vmlinux.bin.gz head.o misc.o piggy.o \
-+targets		:= vmlinux vmlinux.bin vmlinux.bin.gz vmlinux.bin.bz2 vmlinux.bin.lzma head.o misc.o piggy.o \
- 			vmlinux.bin.all vmlinux.relocs
- EXTRA_AFLAGS	:= -traditional
+-targets := vmlinux vmlinux.bin vmlinux.bin.gz head_$(BITS).o misc.o piggy.o
++targets := vmlinux vmlinux.bin vmlinux.bin.gz vmlinux.bin.bz2 vmlinux.bin.lzma head_$(BITS).o misc.o piggy.o
  
-@@ -39,7 +39,27 @@ $(obj)/vmlinux.bin.gz: $(obj)/vmlinux.bi
+ KBUILD_CFLAGS := -m$(BITS) -D__KERNEL__ $(LINUX_INCLUDE) -O2
+ KBUILD_CFLAGS += -fno-strict-aliasing -fPIC
+@@ -51,14 +51,41 @@
+ $(obj)/vmlinux.bin.gz: $(obj)/vmlinux.bin FORCE
  	$(call if_changed,gzip)
  endif
- 
++
 +ifdef CONFIG_RELOCATABLE
 +$(obj)/vmlinux.bin.bz2: $(obj)/vmlinux.bin.all FORCE
 +	$(call if_changed,bzip2)
@@ -31,7 +32,20 @@
 +
  LDFLAGS_piggy.o := -r --format binary --oformat elf32-i386 -T
  
--$(obj)/piggy.o: $(src)/vmlinux.scr $(obj)/vmlinux.bin.gz FORCE
+ else
+ $(obj)/vmlinux.bin.gz: $(obj)/vmlinux.bin FORCE
+ 	$(call if_changed,gzip)
+ 
++$(obj)/vmlinux.bin.bz2: $(obj)/vmlinux.bin FORCE
++	$(call if_changed,bzip2)
++
++$(obj)/vmlinux.bin.lzma: $(obj)/vmlinux.bin FORCE
++	$(call if_changed,lzma)
++
+ LDFLAGS_piggy.o := -r --format binary --oformat elf64-x86-64 -T
+ endif
+ 
+-$(obj)/piggy.o: $(obj)/vmlinux.scr $(obj)/vmlinux.bin.gz FORCE
 +suffix_$(CONFIG_KERNEL_GZIP)  = gz
 +suffix_$(CONFIG_KERNEL_BZIP2) = bz2
 +suffix_$(CONFIG_KERNEL_LZMA)  = lzma
@@ -39,62 +53,86 @@
 +$(obj)/piggy.o: $(src)/vmlinux.scr $(obj)/vmlinux.bin.$(suffix_y) FORCE
  	$(call if_changed,ld)
 
---- linux-2.6.22.9/arch/i386/boot/compressed/misc.c
-+++ linux-2.6.22.9/arch/i386/boot/compressed/misc.c
-@@ -121,9 +121,12 @@
- 				 * always be larger than our output buffer.
- 				 */
+--- linux-2.6.29.3/arch/x86/boot/compressed/misc.c
++++ linux-2.6.29.3/arch/x86/boot/compressed/misc.c
+@@ -136,12 +136,15 @@
+  */
+ #define WSIZE		0x80000000
  
 +#ifdef CONFIG_KERNEL_GZIP
- static uch *inbuf;	/* input buffer */
+ /* Input buffer: */
+ static unsigned char	*inbuf;
 +#endif
- static uch *window;	/* Sliding window buffer, (and final output buffer) */
+ 
+ /* Sliding window buffer (and final output buffer): */
+ static unsigned char	*window;
  
 +#ifdef CONFIG_KERNEL_GZIP
- static unsigned insize;  /* valid bytes in inbuf */
- static unsigned inptr;   /* index of next byte to be processed in inbuf */
- static unsigned outcnt;  /* bytes in output buffer */
-@@ -158,9 +161,14 @@ static unsigned outcnt;  /* bytes in out
+ /* Valid bytes in inbuf: */
+ static unsigned		insize;
+ 
+@@ -181,6 +184,7 @@
  
  static int  fill_inbuf(void);
  static void flush_window(void);
 +#endif
-+
  static void error(char *m);
-+
-+#ifdef CONFIG_KERNEL_GZIP
- static void gzip_mark(void **);
- static void gzip_release(void **);
-+#endif
-   
- /*
-  * This is set up by the setup-routine at boot-time
-@@ -181,7 +189,9 @@ static long bytes_out = 0;
- static void *malloc(int size);
- static void free(void *where);
  
+ /*
+@@ -192,9 +196,9 @@
+ extern unsigned char input_data[];
+ extern int input_len;
+ 
+-static long bytes_out;
+-
 +#if (defined CONFIG_KERNEL_GZIP || defined CONFIG_KERNEL_BZIP2)
  static void *memset(void *s, int c, unsigned n);
 +#endif
  static void *memcpy(void *dest, const void *src, unsigned n);
  
- static void putstr(const char *);
-@@ -189,7 +199,11 @@ static void putstr(const char *);
- static unsigned long free_mem_ptr;
- static unsigned long free_mem_end_ptr;
+ static void __putstr(int, const char *);
+@@ -209,12 +213,68 @@
+ static memptr free_mem_ptr;
+ static memptr free_mem_end_ptr;
+ 
++static void *malloc(int size)
++{
++	void *p;
++
++	if (size <0) error("Malloc error");
++	if (free_mem_ptr <= 0) error("Memory error");
++
++	free_mem_ptr = (free_mem_ptr + 3) & ~3; /* Align */
++
++	p = (void *)free_mem_ptr;
++	free_mem_ptr += size;
++
++	if (free_mem_ptr >= free_mem_end_ptr)
++		error("Out of memory");
++
++	return p;
++}
++
++static void free(void *where)
++{       /* Don't care */
++}
++
+ static char *vidmem;
+ static int vidport;
+ static int lines, cols;
  
 +#if (defined CONFIG_KERNEL_BZIP2 || defined CONFIG_KERNEL_LZMA)
-+#define HEAP_SIZE             0x400000
-+#else
- #define HEAP_SIZE             0x4000
++
++#define large_malloc malloc
++#define large_free free
++
++#ifdef current
++#undef current
 +#endif
- 
- static char *vidmem = (char *)0xb8000;
- static int vidport;
-@@ -199,7 +213,29 @@ static int lines, cols;
- void *xquad_portio;
- #endif
- 
++
++#define INCLUDED
++#endif
++
 +#if (defined CONFIG_KERNEL_BZIP2 || defined CONFIG_KERNEL_LZMA)
 +
 +#define large_malloc malloc
@@ -110,7 +148,7 @@
 +#ifdef CONFIG_KERNEL_GZIP
  #include "../../../../lib/inflate.c"
 +#endif
-+
+ 
 +#ifdef CONFIG_KERNEL_BZIP2
 +#include "../../../../lib/decompress_bunzip2.c"
 +#endif
@@ -118,48 +156,33 @@
 +#ifdef CONFIG_KERNEL_LZMA
 +#include "../../../../lib/decompress_unlzma.c"
 +#endif
- 
- static void *malloc(int size)
- {
-@@ -223,6 +259,7 @@ static void free(void *where)
- {	/* Don't care */
- }
- 
-+#ifdef CONFIG_KERNEL_GZIP
- static void gzip_mark(void **ptr)
- {
- 	*ptr = (void *) free_mem_ptr;
-@@ -232,6 +269,7 @@ static void gzip_release(void **ptr)
- {
- 	free_mem_ptr = (unsigned long) *ptr;
- }
-+#endif
-  
++
  static void scroll(void)
  {
-@@ -279,6 +317,7 @@ static void putstr(const char *s)
- 	outb_p(0xff & (pos >> 1), vidport+1);
+ 	int i;
+@@ -272,6 +332,7 @@
+ 	outb(0xff & (pos >> 1), vidport+1);
  }
  
 +#if (defined CONFIG_KERNEL_GZIP || defined CONFIG_KERNEL_BZIP2)
- static void* memset(void* s, int c, unsigned n)
+ static void *memset(void *s, int c, unsigned n)
  {
  	int i;
-@@ -287,6 +326,7 @@ static void* memset(void* s, int c, unsi
- 	for (i=0;i<n;i++) ss[i] = c;
+@@ -281,6 +342,7 @@
+ 		ss[i] = c;
  	return s;
  }
 +#endif
  
- static void* memcpy(void* dest, const void* src, unsigned n)
+ static void *memcpy(void *dest, const void *src, unsigned n)
  {
-@@ -297,6 +337,26 @@ static void* memcpy(void* dest, const vo
+@@ -293,7 +355,27 @@
  	return dest;
  }
  
-+#ifndef CONFIG_KERNEL_GZIP
-+/* ===========================================================================
-+ * Write the output window window[0..outcnt-1] and update bytes_out.
++#ifdef CONFIG_KERNEL_BZIP2
+ /* ===========================================================================
++ * Write the output window window[0..outcnt-1].
 + * (Used for the decompressed data only.)
 + */
 +static int compr_flush(char *data, unsigned int len)
@@ -171,63 +194,99 @@
 +    for (n = 0; n < len; n++) {
 +	    *out++ = *data++;
 +    }
-+    bytes_out += (ulg)len;
 +    window += (ulg)len;
 +    return len;
 +}
 +
-+#else
- /* ===========================================================================
++#endif
++#ifdef CONFIG_KERNEL_GZIP
++/* ===========================================================================
   * Fill the input buffer. This is called only when the buffer is empty
   * and at least one byte is really needed.
-@@ -329,6 +389,7 @@ static void flush_window(void)
- 	bytes_out += (ulg)outcnt;
+  */
+@@ -304,7 +386,7 @@
+ }
+ 
+ /* ===========================================================================
+- * Write the output window window[0..outcnt-1] and update crc and bytes_out.
++ * Write the output window window[0..outcnt-1] and update crc.
+  * (Used for the decompressed data only.)
+  */
+ static void flush_window(void)
+@@ -322,9 +404,9 @@
+ 		c = crc_32_tab[((int)c ^ ch) & 0xff] ^ (c >> 8);
+ 	}
+ 	crc = c;
+-	bytes_out += (unsigned long)outcnt;
  	outcnt = 0;
  }
 +#endif
  
  static void error(char *x)
  {
-@@ -358,9 +419,11 @@ asmlinkage void decompress_kernel(void *
- 	window = output;  	/* Output buffer (Normally at 1M) */
- 	free_mem_ptr     = end;	/* Heap  */
- 	free_mem_end_ptr = end + HEAP_SIZE;
+@@ -410,9 +492,11 @@
+ 	window = output;		/* Output buffer (Normally at 1M) */
+ 	free_mem_ptr     = heap;	/* Heap */
+ 	free_mem_end_ptr = heap + BOOT_HEAP_SIZE;
 +#ifdef CONFIG_KERNEL_GZIP
- 	inbuf  = input_data;	/* Input buffer */
+ 	inbuf  = input_data;		/* Input buffer */
  	insize = input_len;
  	inptr  = 0;
 +#endif
  
- 	if ((u32)output & (CONFIG_PHYSICAL_ALIGN -1))
- 		error("Destination address not CONFIG_PHYSICAL_ALIGN aligned");
-@@ -371,9 +434,21 @@ asmlinkage void decompress_kernel(void *
- 		error("Wrong destination address");
+ #ifdef CONFIG_X86_64
+ 	if ((unsigned long)output & (__KERNEL_ALIGN - 1))
+@@ -430,10 +514,22 @@
+ #endif
  #endif
  
 +#ifdef CONFIG_KERNEL_BZIP2
-+	putstr("Bunzipping Linux... ");
++	putstr("\nBunzipping Linux... ");
 +	bunzip2(input_data, input_len-4, NULL, compr_flush, NULL);
 +#endif
 +
 +#ifdef CONFIG_KERNEL_LZMA
-+	putstr("Unlzmaing Linux... ");
-+	unlzma(input_data, input_len-4, NULL, compr_flush, NULL);
++	putstr("\nUnlzmaing Linux... ");
++	unlzma(input_data, input_len-4, NULL, NULL, window);
 +#endif
 +
 +#ifdef CONFIG_KERNEL_GZIP
  	makecrc();
- 	putstr("Uncompressing Linux... ");
+ 	if (!quiet)
+ 		putstr("\nDecompressing Linux... ");
  	gunzip();
 +#endif
- 	putstr("Ok, booting the kernel.\n");
- 	return;
- }
+ 	parse_elf(output);
+ 	if (!quiet)
+ 		putstr("done.\nBooting the kernel.\n");
 
---- linux-2.6.22.9/drivers/block/Kconfig
-+++ linux-2.6.22.9/drivers/block/Kconfig
-@@ -406,6 +406,30 @@
- 	  setups function - apparently needed by the rd_load_image routine
- 	  that supposes the filesystem in the image uses a 1024 blocksize.
+--- linux-2.6.29.3/arch/x86/mm/init_32.c
++++ linux-2.6.29.3/arch/x86/mm/init_32.c
+@@ -1221,7 +1221,8 @@
+ 		free_page(addr);
+ 		totalram_pages++;
+ 	}
+-	printk(KERN_INFO "Freeing %s: %luk freed\n", what, (end - begin) >> 10);
++	if (what)
++		printk(KERN_INFO "Freeing %s: %luk freed\n", what, (end - begin) >> 10);
+ #endif
+ }
+ 
+@@ -1235,7 +1236,7 @@
+ #ifdef CONFIG_BLK_DEV_INITRD
+ void free_initrd_mem(unsigned long start, unsigned long end)
+ {
+-	free_init_pages("initrd memory", start, end);
++	free_init_pages(NULL, start, end);
+ }
+ #endif
+ 
+
+--- linux-2.6.29.3/drivers/block/Kconfig
++++ linux-2.6.29.3/drivers/block/Kconfig
+@@ -358,6 +358,30 @@
+ 	  will prevent RAM block device backing store memory from being
+ 	  allocated from highmem (only a problem for highmem systems).
  
 +config RD_BZIP2
 +	bool "Initial ramdisk compressed using bzip2"
@@ -257,8 +316,8 @@
  	tristate "Packet writing on CD/DVD media"
  	depends on !UML
 
---- linux-2.6.22.9/include/linux/decompress_bunzip2.h
-+++ linux-2.6.22.9/include/linux/decompress_bunzip2.h
+--- linux-2.6.29.3/include/linux/decompress_bunzip2.h
++++ linux-2.6.29.3/include/linux/decompress_bunzip2.h
 @@ -0,0 +1,16 @@
 +#ifndef DECOMPRESS_BUNZIP2_H
 +#define DECOMPRESS_BUNZIP2_H
@@ -277,8 +336,8 @@
 +
 +#endif
 
---- linux-2.6.22.9/include/linux/decompress_generic.h
-+++ linux-2.6.22.9/include/linux/decompress_generic.h
+--- linux-2.6.29.3/include/linux/decompress_generic.h
++++ linux-2.6.29.3/include/linux/decompress_generic.h
 @@ -0,0 +1,28 @@
 +#ifndef DECOMPRESS_GENERIC_H
 +#define DECOMPRESS_GENERIC_H
@@ -309,8 +368,8 @@
 +
 +#endif
 
---- linux-2.6.22.9/include/linux/decompress_unlzma.h
-+++ linux-2.6.22.9/include/linux/decompress_unlzma.h
+--- linux-2.6.29.3/include/linux/decompress_unlzma.h
++++ linux-2.6.29.3/include/linux/decompress_unlzma.h
 @@ -0,0 +1,15 @@
 +#ifndef DECOMPRESS_UNLZMA_H
 +#define DECOMPRESS_UNLZMA_H
@@ -328,402 +387,9 @@
 +
 +#endif
 
---- linux-2.6.22.9/init/do_mounts_rd.c
-+++ linux-2.6.22.9/init/do_mounts_rd.c
-@@ -8,6 +8,16 @@
- #include <linux/initrd.h>
- #include <linux/string.h>
- 
-+#ifdef CONFIG_RD_BZIP2
-+#include <linux/decompress_bunzip2.h>
-+#undef STATIC
-+#endif
-+
-+#ifdef CONFIG_RD_LZMA
-+#include <linux/decompress_unlzma.h>
-+#undef STATIC
-+#endif
-+
- #include "do_mounts.h"
- 
- #define BUILD_CRAMDISK
-@@ -30,7 +40,15 @@ static int __init ramdisk_start_setup(ch
- }
- __setup("ramdisk_start=", ramdisk_start_setup);
- 
-+#ifdef CONFIG_RD_GZIP
- static int __init crd_load(int in_fd, int out_fd);
-+#endif
-+#ifdef CONFIG_RD_BZIP2
-+static int __init crd_load_bzip2(int in_fd, int out_fd);
-+#endif
-+#ifdef CONFIG_RD_LZMA
-+static int __init crd_load_lzma(int in_fd, int out_fd);
-+#endif
- 
- /*
-  * This routine tries to find a RAM disk image to load, and returns the
-@@ -46,7 +64,7 @@ static int __init crd_load(int in_fd, in
-  * 	gzip
-  */
- static int __init 
--identify_ramdisk_image(int fd, int start_block)
-+identify_ramdisk_image(int fd, int start_block, int *ztype)
- {
- 	const int size = 512;
- 	struct minix_super_block *minixsb;
-@@ -72,6 +90,7 @@ identify_ramdisk_image(int fd, int start
- 	sys_lseek(fd, start_block * BLOCK_SIZE, 0);
- 	sys_read(fd, buf, size);
- 
-+#ifdef CONFIG_RD_GZIP
- 	/*
- 	 * If it matches the gzip magic numbers, return -1
- 	 */
-@@ -79,9 +98,40 @@ identify_ramdisk_image(int fd, int start
- 		printk(KERN_NOTICE
- 		       "RAMDISK: Compressed image found at block %d\n",
- 		       start_block);
-+		*ztype = 0;
-+		nblocks = 0;
-+		goto done;
-+	}
-+#endif
-+
-+#ifdef CONFIG_RD_BZIP2
-+	/*
-+	 * If it matches the bzip magic numbers, return -1
-+	 */
-+	if (buf[0] == 0x42 && (buf[1] == 0x5a)) {
-+		printk(KERN_NOTICE
-+		       "RAMDISK: Bzipped image found at block %d\n",
-+		       start_block);
-+		*ztype = 1;
- 		nblocks = 0;
- 		goto done;
- 	}
-+#endif
-+
-+#ifdef CONFIG_RD_LZMA
-+	/*
-+	 * If it matches the bzip magic numbers, return -1
-+	 */
-+	if (buf[0] == 0x5d && (buf[1] == 0x00)) {
-+		printk(KERN_NOTICE
-+		       "RAMDISK: Lzma image found at block %d\n",
-+		       start_block);
-+		*ztype = 2;
-+		nblocks = 0;
-+		goto done;
-+	}
-+#endif
-+
- 
- 	/* romfs is at block zero too */
- 	if (romfsb->word0 == ROMSB_WORD0 &&
-@@ -145,6 +195,7 @@ int __init rd_load_image(char *from)
- 	int nblocks, i, disk;
- 	char *buf = NULL;
- 	unsigned short rotate = 0;
-+	int ztype=-1;
- #if !defined(CONFIG_S390) && !defined(CONFIG_PPC_ISERIES)
- 	char rotator[4] = { '|' , '/' , '-' , '\\' };
- #endif
-@@ -157,14 +208,38 @@ int __init rd_load_image(char *from)
- 	if (in_fd < 0)
- 		goto noclose_input;
- 
--	nblocks = identify_ramdisk_image(in_fd, rd_image_start);
-+	nblocks = identify_ramdisk_image(in_fd, rd_image_start, &ztype);
- 	if (nblocks < 0)
- 		goto done;
- 
- 	if (nblocks == 0) {
- #ifdef BUILD_CRAMDISK
--		if (crd_load(in_fd, out_fd) == 0)
--			goto successful_load;
-+		switch(ztype) {
-+
-+#ifdef CONFIG_RD_GZIP
-+			case 0:
-+				if (crd_load(in_fd, out_fd) == 0)
-+					goto successful_load;
-+				break;
-+#endif
-+
-+#ifdef CONFIG_RD_BZIP2
-+			case 1:
-+				if (crd_load_bzip2(in_fd, out_fd) == 0)
-+					goto successful_load;
-+				break;
-+#endif
-+
-+#ifdef CONFIG_RD_LZMA
-+			case 2:
-+				if (crd_load_lzma(in_fd, out_fd) == 0)
-+					goto successful_load;
-+				break;
-+#endif
-+
-+			default:
-+				break;
-+		}
- #else
- 		printk(KERN_NOTICE
- 		       "RAMDISK: Kernel does not support compressed "
-@@ -269,6 +344,7 @@ int __init rd_load_disk(int n)
- 
- #ifdef BUILD_CRAMDISK
- 
-+#ifdef CONFIG_RD_GZIP
- /*
-  * gzip declarations
-  */
-@@ -296,8 +372,11 @@ static unsigned outcnt;  /* bytes in out
- static int exit_code;
- static int unzip_error;
- static long bytes_out;
-+#endif
-+
- static int crd_infd, crd_outfd;
- 
-+#ifdef CONFIG_RD_GZIP
- #define get_byte()  (inptr < insize ? inbuf[inptr++] : fill_inbuf())
- 		
- /* Diagnostic functions (stubbed out) */
-@@ -359,7 +438,22 @@ static int __init fill_inbuf(void)
- 
- 	return inbuf[0];
- }
-+#endif
- 
-+#if (defined CONFIG_RD_BZIP2 || defined CONFIG_RD_LZMA)
-+static int __init compr_fill(void *buf, unsigned int len)
-+{
-+	int r = sys_read(crd_infd, buf, len);
-+	if(r < 0) {
-+		printk(KERN_ERR "RAMDISK: error while reading compressed data");
-+	} else if(r == 0) {
-+		printk(KERN_ERR "RAMDISK: EOF while reading compressed data");
-+	}
-+	return r;
-+}
-+#endif
-+
-+#ifdef CONFIG_RD_GZIP
- /* ===========================================================================
-  * Write the output window window[0..outcnt-1] and update crc and bytes_out.
-  * (Used for the decompressed data only.)
-@@ -385,7 +479,24 @@ static void __init flush_window(void)
-     bytes_out += (ulg)outcnt;
-     outcnt = 0;
- }
-+#endif
- 
-+#if (defined CONFIG_RD_BZIP2 || defined CONFIG_RD_LZMA)
-+static int __init compr_flush(void *window, unsigned int outcnt) {
-+	static int progressDots=0;
-+	int written = sys_write(crd_outfd, window, outcnt);
-+	if (written != outcnt) {
-+		printk(KERN_ERR "RAMDISK: incomplete write (%d != %d)\n",
-+		       written, outcnt);
-+	}
-+	progressDots = (progressDots+1)%10;
-+	if(!progressDots)
-+		printk(".");
-+	return outcnt;
-+}
-+#endif
-+
-+#ifdef CONFIG_RD_GZIP
- static void __init error(char *x)
- {
- 	printk(KERN_ERR "%s\n", x);
-@@ -425,5 +536,43 @@ static int __init crd_load(int in_fd, in
- 	kfree(window);
- 	return result;
- }
-+#endif
-+
-+#if (defined CONFIG_RD_BZIP2 || defined CONFIG_RD_LZMA)
-+static int __init crd_load_compr(int in_fd, int out_fd, int size,
-+				 int (*deco)(char *,int,
-+					     int(*fill)(void*,unsigned int),
-+					     int(*flush)(void*,unsigned int),
-+					     int *))
-+{
-+	int result;
-+	char *inbuf = kmalloc(size, GFP_KERNEL);
-+	crd_infd = in_fd;
-+	crd_outfd = out_fd;
-+	if (inbuf == 0) {
-+		printk(KERN_ERR "RAMDISK: Couldn't allocate decompression buffer\n");
-+		return -1;
-+	}
-+	result=deco(inbuf, 0, compr_fill, compr_flush, NULL);
-+	kfree(inbuf);
-+	printk("\n");
-+	return result;
-+}
-+#endif
-+
-+#ifdef CONFIG_RD_BZIP2
-+static int __init crd_load_bzip2(int in_fd, int out_fd)
-+{
-+	return crd_load_compr(in_fd, out_fd, BZIP2_IOBUF_SIZE, bunzip2);
-+}
-+#endif
-+
-+#ifdef CONFIG_RD_LZMA
-+static int __init crd_load_lzma(int in_fd, int out_fd)
-+{
-+	return crd_load_compr(in_fd, out_fd, LZMA_IOBUF_SIZE, unlzma);
-+}
-+
-+#endif
- 
- #endif  /* BUILD_CRAMDISK */
-
---- linux-2.6.22.9/init/initramfs.c
-+++ linux-2.6.22.9/init/initramfs.c
-@@ -7,6 +7,15 @@
- #include <linux/string.h>
- #include <linux/syscalls.h>
- 
-+/* We need to enable RD_GZIP unconditionnally, as the built-in
-+ * initramfs is gzip-compressed, alas!
-+ * We can only wonder why, though, as the whole kernel (which contains
-+ * built-in initramfs) is gzip (or bzip) compressed anyways afterwards...
-+ */
-+#ifndef CONFIG_RD_GZIP
-+#define CONFIG_RD_GZIP
-+#endif
-+
- static __initdata char *message;
- static void __init error(char *x)
- {
-@@ -347,11 +356,13 @@ static int __init write_buffer(char *buf
- 	return len - count;
- }
- 
--static void __init flush_buffer(char *buf, unsigned len)
-+
-+static int __init flush_buffer(char *buf, unsigned len)
- {
- 	int written;
-+	int origLen = len;
- 	if (message)
--		return;
-+		return -1;
- 	while ((written = write_buffer(buf, len)) < len && !message) {
- 		char c = buf[written];
- 		if (c == '0') {
-@@ -365,8 +376,24 @@ static void __init flush_buffer(char *bu
- 		} else
- 			error("junk in compressed archive");
- 	}
-+	return origLen;
- }
- 
-+#ifdef CONFIG_RD_BZIP2
-+#include <linux/decompress_bunzip2.h>
-+#undef STATIC
-+
-+#endif
-+
-+#ifdef CONFIG_RD_LZMA
-+#include <linux/decompress_unlzma.h>
-+#undef STATIC
-+
-+#endif
-+
-+static unsigned inptr;   /* index of next byte to be processed in inbuf */
-+
-+#ifdef CONFIG_RD_GZIP
- /*
-  * gzip declarations
-  */
-@@ -388,7 +415,6 @@ static uch *inbuf;
- static uch *window;
- 
- static unsigned insize;  /* valid bytes in inbuf */
--static unsigned inptr;   /* index of next byte to be processed in inbuf */
- static unsigned outcnt;  /* bytes in output buffer */
- static long bytes_out;
- 
-@@ -440,6 +466,7 @@ static void __init flush_window(void)
- 	bytes_out += (ulg)outcnt;
- 	outcnt = 0;
- }
-+#endif
- 
- static char * __init unpack_to_rootfs(char *buf, unsigned len, int check_only)
- {
-@@ -448,9 +475,11 @@ static char * __init unpack_to_rootfs(ch
- 	header_buf = malloc(110);
- 	symlink_buf = malloc(PATH_MAX + N_ALIGN(PATH_MAX) + 1);
- 	name_buf = malloc(N_ALIGN(PATH_MAX));
-+#ifdef CONFIG_RD_GZIP
- 	window = malloc(WSIZE);
- 	if (!window || !header_buf || !symlink_buf || !name_buf)
- 		panic("can't allocate buffers");
-+#endif
- 	state = Start;
- 	this_header = 0;
- 	message = NULL;
-@@ -470,6 +499,7 @@ static char * __init unpack_to_rootfs(ch
- 			continue;
- 		}
- 		this_header = 0;
-+#ifdef CONFIG_RD_GZIP
- 		insize = len;
- 		inbuf = buf;
- 		inptr = 0;
-@@ -477,14 +507,38 @@ static char * __init unpack_to_rootfs(ch
- 		bytes_out = 0;
- 		crc = (ulg)0xffffffffL; /* shift register contents */
- 		makecrc();
--		gunzip();
-+		if(!gunzip() && message == NULL)
-+			goto ok;
-+#endif
-+
-+#ifdef CONFIG_RD_BZIP2
-+		message = NULL; /* Zero out message, or else cpio will
-+				   think an error has already occured */
-+		if(!bunzip2(buf, len, NULL, flush_buffer, &inptr) < 0 &&
-+		   message == NULL) {
-+			goto ok;
-+		}
-+#endif
-+
-+#ifdef CONFIG_RD_LZMA
-+		message = NULL; /* Zero out message, or else cpio will
-+				   think an error has already occured */
-+		if(!unlzma(buf, len, NULL, flush_buffer, &inptr) < 0 &&
-+		   message == NULL) {
-+			goto ok;
-+		}
-+#endif
-+    ok:
-+
- 		if (state != Reset)
--			error("junk in gzipped archive");
-+			error("junk in compressed archive");
- 		this_header = saved_offset + inptr;
- 		buf += inptr;
- 		len -= inptr;
- 	}
-+#ifdef CONFIG_RD_GZIP
- 	free(window);
-+#endif
- 	free(name_buf);
- 	free(symlink_buf);
- 	free(header_buf);
-
---- linux-2.6.22.9/init/Kconfig
-+++ linux-2.6.22.9/init/Kconfig
-@@ -95,6 +95,56 @@
+--- linux-2.6.29.3/init/Kconfig
++++ linux-2.6.29.3/init/Kconfig
+@@ -101,6 +101,56 @@
  
  	  which is done within the script "scripts/setlocalversion".)
  
@@ -781,8 +447,423 @@
  	bool "Support for paging of anonymous memory (swap)"
  	depends on MMU && BLOCK
 
---- linux-2.6.22.9/lib/decompress_bunzip2.c
-+++ linux-2.6.22.9/lib/decompress_bunzip2.c
+--- linux-2.6.29.3/init/do_mounts_rd.c
++++ linux-2.6.29.3/init/do_mounts_rd.c
+@@ -8,6 +8,16 @@
+ #include <linux/initrd.h>
+ #include <linux/string.h>
+ 
++#ifdef CONFIG_RD_BZIP2
++#include <linux/decompress_bunzip2.h>
++#undef STATIC
++#endif
++
++#ifdef CONFIG_RD_LZMA
++#include <linux/decompress_unlzma.h>
++#undef STATIC
++#endif
++
+ #include "do_mounts.h"
+ #include "../fs/squashfs/squashfs_fs.h"
+ 
+@@ -29,7 +39,15 @@
+ }
+ __setup("ramdisk_start=", ramdisk_start_setup);
+ 
++#ifdef CONFIG_RD_GZIP
+ static int __init crd_load(int in_fd, int out_fd);
++#endif
++#ifdef CONFIG_RD_BZIP2
++static int __init crd_load_bzip2(int in_fd, int out_fd);
++#endif
++#ifdef CONFIG_RD_LZMA
++static int __init crd_load_lzma(int in_fd, int out_fd);
++#endif
+ 
+ /*
+  * This routine tries to find a RAM disk image to load, and returns the
+@@ -46,7 +64,7 @@
+  * 	gzip
+  */
+ static int __init 
+-identify_ramdisk_image(int fd, int start_block)
++identify_ramdisk_image(int fd, int start_block, int *ztype)
+ {
+ 	const int size = 512;
+ 	struct minix_super_block *minixsb;
+@@ -74,6 +92,7 @@
+ 	sys_lseek(fd, start_block * BLOCK_SIZE, 0);
+ 	sys_read(fd, buf, size);
+ 
++#ifdef CONFIG_RD_GZIP
+ 	/*
+ 	 * If it matches the gzip magic numbers, return 0
+ 	 */
+@@ -81,10 +100,41 @@
+ 		printk(KERN_NOTICE
+ 		       "RAMDISK: Compressed image found at block %d\n",
+ 		       start_block);
++		*ztype = 0;
+ 		nblocks = 0;
+ 		goto done;
+ 	}
++#endif
+ 
++#ifdef CONFIG_RD_BZIP2
++	/*
++	 * If it matches the bzip magic numbers, return -1
++	 */
++	if (buf[0] == 0x42 && (buf[1] == 0x5a)) {
++		printk(KERN_NOTICE
++		       "RAMDISK: Bzipped image found at block %d\n",
++		       start_block);
++		*ztype = 1;
++		nblocks = 0;
++		goto done;
++	}
++#endif
++
++#ifdef CONFIG_RD_LZMA
++	/*
++	 * If it matches the bzip magic numbers, return -1
++	 */
++	if (buf[0] == 0x5d && (buf[1] == 0x00)) {
++		printk(KERN_NOTICE
++		       "RAMDISK: Lzma image found at block %d\n",
++		       start_block);
++		*ztype = 2;
++		nblocks = 0;
++		goto done;
++	}
++#endif
++
++
+ 	/* romfs is at block zero too */
+ 	if (romfsb->word0 == ROMSB_WORD0 &&
+ 	    romfsb->word1 == ROMSB_WORD1) {
+@@ -157,6 +207,7 @@
+ 	int nblocks, i, disk;
+ 	char *buf = NULL;
+ 	unsigned short rotate = 0;
++	int ztype=-1;
+ #if !defined(CONFIG_S390) && !defined(CONFIG_PPC_ISERIES)
+ 	char rotator[4] = { '|' , '/' , '-' , '\\' };
+ #endif
+@@ -169,13 +220,37 @@
+ 	if (in_fd < 0)
+ 		goto noclose_input;
+ 
+-	nblocks = identify_ramdisk_image(in_fd, rd_image_start);
++	nblocks = identify_ramdisk_image(in_fd, rd_image_start, &ztype);
+ 	if (nblocks < 0)
+ 		goto done;
+ 
+ 	if (nblocks == 0) {
+-		if (crd_load(in_fd, out_fd) == 0)
+-			goto successful_load;
++		switch(ztype) {
++
++#ifdef CONFIG_RD_GZIP
++			case 0:
++				if (crd_load(in_fd, out_fd) == 0)
++					goto successful_load;
++				break;
++#endif
++
++#ifdef CONFIG_RD_BZIP2
++			case 1:
++				if (crd_load_bzip2(in_fd, out_fd) == 0)
++					goto successful_load;
++				break;
++#endif
++
++#ifdef CONFIG_RD_LZMA
++			case 2:
++				if (crd_load_lzma(in_fd, out_fd) == 0)
++					goto successful_load;
++				break;
++#endif
++
++			default:
++				break;
++		}
+ 		goto done;
+ 	}
+ 
+@@ -273,6 +348,7 @@
+ 	return rd_load_image("/dev/root");
+ }
+ 
++#ifdef CONFIG_RD_GZIP
+ /*
+  * gzip declarations
+  */
+@@ -300,8 +376,11 @@
+ static int exit_code;
+ static int unzip_error;
+ static long bytes_out;
++#endif
++
+ static int crd_infd, crd_outfd;
+ 
++#ifdef CONFIG_RD_GZIP
+ #define get_byte()  (inptr < insize ? inbuf[inptr++] : fill_inbuf())
+ 		
+ /* Diagnostic functions (stubbed out) */
+@@ -342,7 +421,22 @@
+ 
+ 	return inbuf[0];
+ }
++#endif
+ 
++#if (defined CONFIG_RD_BZIP2 || defined CONFIG_RD_LZMA)
++static int __init compr_fill(void *buf, unsigned int len)
++{
++	int r = sys_read(crd_infd, buf, len);
++	if(r < 0) {
++		printk(KERN_ERR "RAMDISK: error while reading compressed data");
++	} else if(r == 0) {
++		printk(KERN_ERR "RAMDISK: EOF while reading compressed data");
++	}
++	return r;
++}
++#endif
++
++#ifdef CONFIG_RD_GZIP
+ /* ===========================================================================
+  * Write the output window window[0..outcnt-1] and update crc and bytes_out.
+  * (Used for the decompressed data only.)
+@@ -368,13 +462,68 @@
+     bytes_out += (ulg)outcnt;
+     outcnt = 0;
+ }
++#endif
+ 
++#if (defined CONFIG_RD_BZIP2 || defined CONFIG_RD_LZMA)
++static int __init compr_flush(void *window, unsigned int outcnt) {
++	static int progressDots=0;
++	int written = sys_write(crd_outfd, window, outcnt);
++	if (written != outcnt) {
++		printk(KERN_ERR "RAMDISK: incomplete write (%d != %d)\n",
++		       written, outcnt);
++	}
++	progressDots = (progressDots+1)%10;
++	if(!progressDots)
++		printk(".");
++	return outcnt;
++}
++#endif
++
++#ifdef CONFIG_RD_GZIP
+ static void __init error(char *x)
+ {
+ 	printk(KERN_ERR "%s\n", x);
+ 	exit_code = 1;
+ 	unzip_error = 1;
+ }
++#endif
++
++#if (defined CONFIG_RD_BZIP2 || defined CONFIG_RD_LZMA)
++static int __init crd_load_compr(int in_fd, int out_fd, int size,
++				 int (*deco)(char *,int,
++					     int(*fill)(void*,unsigned int),
++					     int(*flush)(void*,unsigned int),
++					     int *))
++{
++	int result;
++	char *inbuf = kmalloc(size, GFP_KERNEL);
++	crd_infd = in_fd;
++	crd_outfd = out_fd;
++	if (inbuf == 0) {
++		printk(KERN_ERR "RAMDISK: Couldn't allocate decompression buffer\n");
++		return -1;
++	}
++	result=deco(inbuf, 0, compr_fill, compr_flush, NULL);
++	kfree(inbuf);
++	printk("\n");
++	return result;
++}
++#endif
++
++#ifdef CONFIG_RD_BZIP2
++static int __init crd_load_bzip2(int in_fd, int out_fd)
++{
++	return crd_load_compr(in_fd, out_fd, BZIP2_IOBUF_SIZE, bunzip2);
++}
++#endif
++
++#ifdef CONFIG_RD_LZMA
++static int __init crd_load_lzma(int in_fd, int out_fd)
++{
++	return crd_load_compr(in_fd, out_fd, LZMA_IOBUF_SIZE, unlzma);
++}
++
++#endif
+ 
+ static int __init crd_load(int in_fd, int out_fd)
+ {
+
+--- linux-2.6.29.3/init/initramfs.c
++++ linux-2.6.29.3/init/initramfs.c
+@@ -410,6 +410,18 @@
+ 	}
+ }
+ 
++#ifdef CONFIG_RD_BZIP2
++#include <linux/decompress_bunzip2.h>
++#undef STATIC
++
++#endif
++
++#ifdef CONFIG_RD_LZMA
++#include <linux/decompress_unlzma.h>
++#undef STATIC
++
++#endif
++
+ /*
+  * gzip declarations
+  */
+@@ -435,7 +447,32 @@
+ static unsigned outcnt;  /* bytes in output buffer */
+ static long bytes_out;
+ 
+-#define get_byte()  (inptr < insize ? inbuf[inptr++] : -1)
++#define INITRD_PAGE ((PAGE_SIZE > 1024*1024) ? PAGE_SIZE : 1024*1024)
++static int fill_offset, fill_total;
++#include <linux/initrd.h>
++static void release_inbuf(int count)
++{
++	if (fill_total < 0) return;
++	fill_offset += count;
++	fill_total += count;
++	if (fill_offset >= INITRD_PAGE) {
++		unsigned rem = fill_offset % INITRD_PAGE;
++		unsigned end = initrd_start + fill_offset - rem;
++		free_initrd_mem(initrd_start, end);
++		printk(".");
++		initrd_start = end;
++		fill_offset = rem;
++	}
++}
++
++static uch get_byte(void)
++{
++	uch c;
++	if (inptr >= insize) return -1;
++	c = inbuf[inptr++];
++	release_inbuf(1);
++	return c;
++}
+ 		
+ /* Diagnostic functions (stubbed out) */
+ #define Assert(cond,msg)
+@@ -476,6 +513,17 @@
+ 	outcnt = 0;
+ }
+ 
++#ifdef CONFIG_RD_LZMA
++static int fill_buffer(void *buffer, unsigned size)
++{
++	int max =  initrd_end - initrd_start - fill_offset;
++	if (size < max) max = size;
++	memcpy(buffer, (void *)(initrd_start + fill_offset), max);
++	release_inbuf(max);
++	return max;
++}
++#endif
++
+ static char * __init unpack_to_rootfs(char *buf, unsigned len, int check_only)
+ {
+ 	int written;
+@@ -489,11 +537,17 @@
+ 	state = Start;
+ 	this_header = 0;
+ 	message = NULL;
++	fill_total = fill_offset = 0;
++	if(buf != (char *) initrd_start) fill_total = -1;
+ 	while (!message && len) {
++#ifdef CONFIG_RD_LZMA
++		int status;
++#endif
+ 		loff_t saved_offset = this_header;
+ 		if (*buf == '0' && !(this_header & 3)) {
+ 			state = Start;
+ 			written = write_buffer(buf, len);
++			release_inbuf(written);
+ 			buf += written;
+ 			len -= written;
+ 			continue;
+@@ -512,9 +566,42 @@
+ 		bytes_out = 0;
+ 		crc = (ulg)0xffffffffL; /* shift register contents */
+ 		makecrc();
+-		gunzip();
++		if(!gunzip() && message == NULL)
++			goto ok;
++
++#ifdef CONFIG_RD_BZIP2
++		message = NULL; /* Zero out message, or else cpio will
++				   think an error has already occured */
++		if(!bunzip2(buf, len, NULL, flush_buffer, &inptr) < 0 &&
++		   message == NULL) {
++			goto ok;
++		}
++#endif
++
++#ifdef CONFIG_RD_LZMA
++		message = NULL; /* Zero out message, or else cpio will
++				   think an error has already occured */
++		status = -1;
++		if(buf == (char *) initrd_start) {
++			char *work_buffer = malloc(LZMA_IOBUF_SIZE);
++			if (work_buffer) {
++				fill_total = fill_offset = 0;
++				fill_buffer(work_buffer, LZMA_IOBUF_SIZE);
++				status = unlzma(work_buffer, LZMA_IOBUF_SIZE,
++					fill_buffer, flush_buffer, NULL);
++				inptr = fill_total;
++				free(work_buffer);
++			}
++		}
++		else status = unlzma(buf,len, NULL, flush_buffer, &inptr);
++		if (status == 0 && message == NULL) {
++			goto ok;
++		}
++#endif
++    ok:
++
+ 		if (state != Reset)
+-			error("junk in gzipped archive");
++			error("junk in compressed archive");
+ 		this_header = saved_offset + inptr;
+ 		buf += inptr;
+ 		len -= inptr;
+@@ -581,7 +668,7 @@
+ 	if (err)
+ 		panic(err);
+ 	if (initrd_start) {
+-#ifdef CONFIG_BLK_DEV_RAM
++#ifdef NOT_IN_SLITAZ_CONFIG_BLK_DEV_RAM
+ 		int fd;
+ 		printk(KERN_INFO "checking if image is initramfs...");
+ 		err = unpack_to_rootfs((char *)initrd_start,
+
+--- linux-2.6.29.3/lib/Makefile
++++ linux-2.6.29.3/lib/Makefile
+@@ -59,6 +59,9 @@
+ obj-$(CONFIG_LIBCRC32C)	+= libcrc32c.o
+ obj-$(CONFIG_GENERIC_ALLOCATOR) += genalloc.o
+ 
++obj-$(CONFIG_RD_BZIP2)	+= decompress_bunzip2.o
++obj-$(CONFIG_RD_LZMA)	+= decompress_unlzma.o unlzma_syms.o
++
+ obj-$(CONFIG_ZLIB_INFLATE) += zlib_inflate/
+ obj-$(CONFIG_ZLIB_DEFLATE) += zlib_deflate/
+ obj-$(CONFIG_REED_SOLOMON) += reed_solomon/
+
+--- linux-2.6.29.3/lib/decompress_bunzip2.c
++++ linux-2.6.29.3/lib/decompress_bunzip2.c
 @@ -0,0 +1,645 @@
 +/* vi: set sw=4 ts=4: */
 +/*	Small bzip2 deflate implementation, by Rob Landley (rob@landley.net).
@@ -1430,9 +1511,9 @@
 +}
 +
 
---- linux-2.6.22.9/lib/decompress_unlzma.c
-+++ linux-2.6.22.9/lib/decompress_unlzma.c
-@@ -0,0 +1,605 @@
+--- linux-2.6.29.3/lib/decompress_unlzma.c
++++ linux-2.6.29.3/lib/decompress_unlzma.c
+@@ -0,0 +1,577 @@
 +/* Lzma decompressor for Linux kernel. Shamelessly snarfed
 + * from busybox 1.1.1
 + *
@@ -1487,16 +1568,6 @@
 +}
 +
 +#ifndef TEST
-+static void __init *malloc(size_t size)
-+{
-+	return kmalloc(size, GFP_KERNEL);
-+}
-+
-+static void __init free(void *where)
-+{
-+	kfree(where);
-+}
-+
 +static void __init error(char *x)
 +{
 +	printk(KERN_ERR "%s\n", x);
@@ -1508,6 +1579,7 @@
 +
 +#endif
 +
++#define CONFIG_FEATURE_LZMA_FAST
 +#include <linux/decompress_unlzma.h>
 +
 +#define	MIN(a,b) (((a)<(b))?(a):(b))
@@ -1543,8 +1615,10 @@
 +
 +#ifdef CONFIG_FEATURE_LZMA_FAST
 +#  define speed_inline always_inline
++#  define size_inline
 +#else
 +#  define speed_inline
++#  define size_inline always_inline
 +#endif
 +
 +
@@ -1556,7 +1630,6 @@
 +	int buffer_size;
 +	uint32_t code;
 +	uint32_t range;
-+	uint32_t bound;
 +} rc_t;
 +
 +
@@ -1566,13 +1639,17 @@
 +
 +
 +/* Called twice: once at startup and once in rc_normalize() */
-+static void rc_read(rc_t * rc)
++static size_inline void rc_read(rc_t * rc)
 +{
-+	rc->buffer_size = rc->fill((char*)rc->buffer, LZMA_IOBUF_SIZE);
-+	if (rc->buffer_size <= 0)
-+		error("unexpected EOF");
-+	rc->ptr = rc->buffer;
-+	rc->buffer_end = rc->buffer + rc->buffer_size;
++	if (!rc->buffer_size) return;
++	if (rc->fill) {
++		rc->buffer_size = rc->fill((char*)rc->buffer, LZMA_IOBUF_SIZE);
++		rc->ptr = rc->buffer;
++		rc->buffer_end = rc->buffer + rc->buffer_size;
++		if (rc->buffer_size > 0) return;
++	}
++	error("unexpected EOF");
++	rc->buffer_size = 0;
 +}
 +
 +/* Called once */
@@ -1600,15 +1677,8 @@
 +	}
 +}
 +
-+
-+/* Called once. TODO: bb_maybe_free() */
-+static always_inline void rc_free(rc_t * rc)
-+{
-+	free(rc->buffer);
-+}
-+
-+/* Called twice, but one callsite is in speed_inline'd rc_is_bit_0_helper() */
-+static void rc_do_normalize(rc_t * rc)
++/* Called twice, but one callsite is in speed_inline'd rc_is_bit_1() */
++static speed_inline void rc_do_normalize(rc_t * rc)
 +{
 +	if (rc->ptr >= rc->buffer_end)
 +		rc_read(rc);
@@ -1623,46 +1693,30 @@
 +}
 +
 +/* Called 9 times */
-+/* Why rc_is_bit_0_helper exists?
-+ * Because we want to always expose (rc->code < rc->bound) to optimizer
-+ */
-+static speed_inline uint32_t rc_is_bit_0_helper(rc_t * rc, uint16_t * p)
++static speed_inline int rc_is_bit_1(rc_t * rc, uint16_t * p)
 +{
++	uint32_t bound;
 +	rc_normalize(rc);
-+	rc->bound = *p * (rc->range >> RC_MODEL_TOTAL_BITS);
-+	return rc->bound;
-+}
-+static always_inline int rc_is_bit_0(rc_t * rc, uint16_t * p)
-+{
-+	uint32_t t = rc_is_bit_0_helper(rc, p);
-+	return rc->code < t;
-+}
-+
-+/* Called ~10 times, but very small, thus inlined */
-+static speed_inline void rc_update_bit_0(rc_t * rc, uint16_t * p)
-+{
-+	rc->range = rc->bound;
-+	*p += ((1 << RC_MODEL_TOTAL_BITS) - *p) >> RC_MOVE_BITS;
-+}
-+static speed_inline void rc_update_bit_1(rc_t * rc, uint16_t * p)
-+{
-+	rc->range -= rc->bound;
-+	rc->code -= rc->bound;
-+	*p -= *p >> RC_MOVE_BITS;
++	bound = *p * (rc->range >> RC_MODEL_TOTAL_BITS);
++	if (rc->code < bound) {
++		rc->range = bound;
++		*p += ((1 << RC_MODEL_TOTAL_BITS) - *p) >> RC_MOVE_BITS;
++		return 0;
++	}
++	else {
++		rc->code -= bound;
++		rc->range -= bound;
++		*p -= *p >> RC_MOVE_BITS;
++		return 1;
++	}
 +}
 +
 +/* Called 4 times in unlzma loop */
-+static int rc_get_bit(rc_t * rc, uint16_t * p, int *symbol)
++static speed_inline int rc_get_bit(rc_t * rc, uint16_t * p, int *symbol)
 +{
-+	if (rc_is_bit_0(rc, p)) {
-+		rc_update_bit_0(rc, p);
-+		*symbol *= 2;
-+		return 0;
-+	} else {
-+		rc_update_bit_1(rc, p);
-+		*symbol = *symbol * 2 + 1;
-+		return 1;
-+	}
++	int ret  = rc_is_bit_1(rc, p);
++	*symbol = *symbol * 2 + ret;
++	return ret;
 +}
 +
 +/* Called once */
@@ -1782,14 +1836,29 @@
 +
 +	rc_init(&rc, fill, inbuf, in_len);
 +
-+	for (i = 0; i < sizeof(header); i++) {
-+		if (rc.ptr >= rc.buffer_end)
-+			rc_read(&rc);
-+		((unsigned char *)&header)[i] = *rc.ptr++;
++	header.dict_size = (uint32_t) -1L;
++	header.dst_size  = (uint64_t) -1LL;
++	if (inbuf && in_len > 0 && inbuf[0] == 0) {
++		const int LZMA_LC = 3, LZMA_LP = 0, LZMA_PB = 2;
++		header.pos = (LZMA_PB * 45) + (LZMA_LP * 5) + LZMA_LC;
++		rc.ptr++;
++	}
++	else {
++		int hdrsize = sizeof(header);
++		if (inbuf && in_len > 12 &&
++		    (1 + * (unsigned long *) &inbuf[9]) > 1U)
++			hdrsize = 5;
++		for (i = 0; i < hdrsize; i++) {
++			if (rc.ptr >= rc.buffer_end)
++				rc_read(&rc);
++			((unsigned char *)&header)[i] = *rc.ptr++;
++		}
 +	}
 +
-+	if (header.pos >= (9 * 5 * 5))
++	if (header.pos >= (9 * 5 * 5)) {
 +		error("bad header");
++		return -1;
++	}
 +
 +	mi = header.pos / 9;
 +	lc = header.pos % 9;
@@ -1805,7 +1874,8 @@
 +		header.dict_size = 1;
 +
 +	bufsize = MIN(header.dst_size, header.dict_size);
-+	buffer = large_malloc(bufsize);
++	buffer = (uint8_t *) posp;
++	if (writebb) buffer = large_malloc(bufsize);
 +	if(buffer == NULL)
 +		return -1;
 +
@@ -1822,9 +1892,8 @@
 +
 +		prob =
 +			p + LZMA_IS_MATCH + (state << LZMA_NUM_POS_BITS_MAX) + pos_state;
-+		if (rc_is_bit_0(&rc, prob)) {
++		if (!rc_is_bit_1(&rc, prob)) {
 +			mi = 1;
-+			rc_update_bit_0(&rc, prob);
 +			prob = (p + LZMA_LITERAL + (LZMA_LIT_SIZE
 +					* ((((buffer_pos + global_pos) & literal_pos_mask) << lc)
 +					+ (previous_byte >> (8 - lc)))));
@@ -1833,11 +1902,13 @@
 +				int match_byte;
 +
 +				pos = buffer_pos - rep0;
++
 +				while (pos >= header.dict_size)
 +					pos += header.dict_size;
 +				if(pos >= bufsize) {
 +					goto fail;
 +				}
++
 +				match_byte = buffer[pos];
 +				do {
 +					int bit;
@@ -1845,90 +1916,70 @@
 +					match_byte <<= 1;
 +					bit = match_byte & 0x100;
 +					prob_lit = prob + 0x100 + bit + mi;
-+					if (rc_get_bit(&rc, prob_lit, &mi)) {
-+						if (!bit)
-+							break;
-+					} else {
-+						if (bit)
-+							break;
-+					}
++					bit ^= (rc_get_bit(&rc, prob_lit, &mi) << 8);
++					if (bit)
++						break;
 +				} while (mi < 0x100);
 +			}
 +			while (mi < 0x100) {
 +				prob_lit = prob + mi;
 +				rc_get_bit(&rc, prob_lit, &mi);
 +			}
-+			previous_byte = (uint8_t) mi;
-+
-+			buffer[buffer_pos++] = previous_byte;
-+			if (buffer_pos == header.dict_size) {
-+				buffer_pos = 0;
-+				global_pos += header.dict_size;
-+				writebb((char*)buffer, header.dict_size);
-+			}
-+			if (state < 4)
++			state -= 3;
++			if (state < 4 - 3)
 +				state = 0;
-+			else if (state < 10)
-+				state -= 3;
-+			else
-+				state -= 6;
++			if (state >= 10-3)
++				state -= 6-3;
++			previous_byte = (uint8_t) mi;
++			goto store_previous_byte;
 +		} else {
 +			int offset;
 +			uint16_t *prob_len;
 +
-+			rc_update_bit_1(&rc, prob);
 +			prob = p + LZMA_IS_REP + state;
-+			if (rc_is_bit_0(&rc, prob)) {
-+				rc_update_bit_0(&rc, prob);
++			if (!rc_is_bit_1(&rc, prob)) {
 +				rep3 = rep2;
 +				rep2 = rep1;
 +				rep1 = rep0;
 +				state = state < LZMA_NUM_LIT_STATES ? 0 : 3;
 +				prob = p + LZMA_LEN_CODER;
 +			} else {
-+				rc_update_bit_1(&rc, prob);
-+				prob = p + LZMA_IS_REP_G0 + state;
-+				if (rc_is_bit_0(&rc, prob)) {
-+					rc_update_bit_0(&rc, prob);
++				prob += LZMA_IS_REP_G0 - LZMA_IS_REP;
++				if (!rc_is_bit_1(&rc, prob)) {
 +					prob = (p + LZMA_IS_REP_0_LONG
-+							+ (state << LZMA_NUM_POS_BITS_MAX) + pos_state);
-+					if (rc_is_bit_0(&rc, prob)) {
-+						rc_update_bit_0(&rc, prob);
++						+ (state << LZMA_NUM_POS_BITS_MAX)
++						+ pos_state);
++					if (!rc_is_bit_1(&rc, prob)) {
 +
 +						state = state < LZMA_NUM_LIT_STATES ? 9 : 11;
 +						pos = buffer_pos - rep0;
++
 +						while (pos >= header.dict_size)
 +							pos += header.dict_size;
 +						if(pos >= bufsize) {
 +							goto fail;
 +						}
++
 +						previous_byte = buffer[pos];
++					store_previous_byte:
++						if (!rc.buffer_size) goto eof;
 +						buffer[buffer_pos++] = previous_byte;
-+						if (buffer_pos == header.dict_size) {
++						if (writebb && buffer_pos == header.dict_size) {
 +							buffer_pos = 0;
 +							global_pos += header.dict_size;
 +							writebb((char*)buffer, header.dict_size);
 +						}
 +						continue;
-+					} else {
-+						rc_update_bit_1(&rc, prob);
 +					}
 +				} else {
 +					uint32_t distance;
 +
-+					rc_update_bit_1(&rc, prob);
-+					prob = p + LZMA_IS_REP_G1 + state;
-+					if (rc_is_bit_0(&rc, prob)) {
-+						rc_update_bit_0(&rc, prob);
-+						distance = rep1;
-+					} else {
-+						rc_update_bit_1(&rc, prob);
-+						prob = p + LZMA_IS_REP_G2 + state;
-+						if (rc_is_bit_0(&rc, prob)) {
-+							rc_update_bit_0(&rc, prob);
-+							distance = rep2;
-+						} else {
-+							rc_update_bit_1(&rc, prob);
++					prob += LZMA_IS_REP_G1 - LZMA_IS_REP_G0;
++					distance = rep1;
++					if (rc_is_bit_1(&rc, prob)) {
++						prob += LZMA_IS_REP_G2 - LZMA_IS_REP_G1;
++						distance = rep2;
++						if (rc_is_bit_1(&rc, prob)) {
 +							distance = rep3;
 +							rep3 = rep2;
 +						}
@@ -1942,26 +1993,22 @@
 +			}
 +
 +			prob_len = prob + LZMA_LEN_CHOICE;
-+			if (rc_is_bit_0(&rc, prob_len)) {
-+				rc_update_bit_0(&rc, prob_len);
-+				prob_len = (prob + LZMA_LEN_LOW
-+							+ (pos_state << LZMA_LEN_NUM_LOW_BITS));
++			if (!rc_is_bit_1(&rc, prob_len)) {
++				prob_len += LZMA_LEN_LOW - LZMA_LEN_CHOICE
++					    + (pos_state << LZMA_LEN_NUM_LOW_BITS);
 +				offset = 0;
 +				num_bits = LZMA_LEN_NUM_LOW_BITS;
 +			} else {
-+				rc_update_bit_1(&rc, prob_len);
-+				prob_len = prob + LZMA_LEN_CHOICE_2;
-+				if (rc_is_bit_0(&rc, prob_len)) {
-+					rc_update_bit_0(&rc, prob_len);
-+					prob_len = (prob + LZMA_LEN_MID
-+								+ (pos_state << LZMA_LEN_NUM_MID_BITS));
++				prob_len += LZMA_LEN_CHOICE_2 - LZMA_LEN_CHOICE;
++				if (!rc_is_bit_1(&rc, prob_len)) {
++					prob_len += LZMA_LEN_MID - LZMA_LEN_CHOICE_2
++						    + (pos_state << LZMA_LEN_NUM_MID_BITS);
 +					offset = 1 << LZMA_LEN_NUM_LOW_BITS;
 +					num_bits = LZMA_LEN_NUM_MID_BITS;
 +				} else {
-+					rc_update_bit_1(&rc, prob_len);
-+					prob_len = prob + LZMA_LEN_HIGH;
++					prob_len += LZMA_LEN_HIGH - LZMA_LEN_CHOICE_2;
 +					offset = ((1 << LZMA_LEN_NUM_LOW_BITS)
-+							  + (1 << LZMA_LEN_NUM_MID_BITS));
++						 + (1 << LZMA_LEN_NUM_MID_BITS));
 +					num_bits = LZMA_LEN_NUM_HIGH_BITS;
 +				}
 +			}
@@ -1972,25 +2019,25 @@
 +				int pos_slot;
 +
 +				state += LZMA_NUM_LIT_STATES;
-+				prob =
-+					p + LZMA_POS_SLOT +
++				prob = p + LZMA_POS_SLOT +
 +					((len <
 +					  LZMA_NUM_LEN_TO_POS_STATES ? len :
 +					  LZMA_NUM_LEN_TO_POS_STATES - 1)
 +					 << LZMA_NUM_POS_SLOT_BITS);
 +				rc_bit_tree_decode(&rc, prob, LZMA_NUM_POS_SLOT_BITS,
 +								   &pos_slot);
++				rep0 = pos_slot;
 +				if (pos_slot >= LZMA_START_POS_MODEL_INDEX) {
 +					num_bits = (pos_slot >> 1) - 1;
 +					rep0 = 2 | (pos_slot & 1);
++					prob = p + LZMA_ALIGN;
 +					if (pos_slot < LZMA_END_POS_MODEL_INDEX) {
 +						rep0 <<= num_bits;
-+						prob = p + LZMA_SPEC_POS + rep0 - pos_slot - 1;
++						prob += LZMA_SPEC_POS - LZMA_ALIGN - 1 + rep0 - pos_slot;
 +					} else {
 +						num_bits -= LZMA_NUM_ALIGN_BITS;
 +						while (num_bits--)
 +							rep0 = (rep0 << 1) | rc_direct_bit(&rc);
-+						prob = p + LZMA_ALIGN;
 +						rep0 <<= LZMA_NUM_ALIGN_BITS;
 +						num_bits = LZMA_NUM_ALIGN_BITS;
 +					}
@@ -2001,61 +2048,71 @@
 +							rep0 |= i;
 +						i <<= 1;
 +					}
-+				} else
-+					rep0 = pos_slot;
++				}
 +				if (++rep0 == 0)
 +					break;
 +			}
 +
 +			len += LZMA_MATCH_MIN_LEN;
 +
++			if (!rc.buffer_size) goto eof;
 +			do {
 +				pos = buffer_pos - rep0;
++
 +				while (pos >= header.dict_size)
 +					pos += header.dict_size;
 +				if(pos >= bufsize) {
 +					goto fail;
 +				}
++
 +				previous_byte = buffer[pos];
 +				buffer[buffer_pos++] = previous_byte;
-+				if (buffer_pos == header.dict_size) {
++				if (writebb && buffer_pos == header.dict_size) {
 +					buffer_pos = 0;
 +					global_pos += header.dict_size;
 +					writebb((char*)buffer, header.dict_size);
 +				}
 +				len--;
-+			} while (len != 0 && buffer_pos < header.dst_size);
++			} while (len != 0 && (global_pos + buffer_pos) < header.dst_size);
 +		}
 +	}
-+
-+	writebb((char*)buffer, buffer_pos);
-+	if(posp) {
-+		*posp = rc.ptr-rc.buffer;
++ eof:
++	if (writebb) {
++		writebb((char*)buffer, buffer_pos);
++		if(posp) {
++			*posp = rc.ptr-rc.buffer;
++		}
++		large_free(buffer);
 +	}
-+	large_free(buffer);
++	large_free(p);
 +	return 0;
 + fail:
-+	large_free(buffer);
++	if (writebb) large_free(buffer);
++	large_free(p);
 +	return -1;
 +}
 
---- linux-2.6.22.9/lib/Makefile
-+++ linux-2.6.22.9/lib/Makefile
-@@ -46,6 +46,10 @@
- obj-$(CONFIG_LIBCRC32C)	+= libcrc32c.o
- obj-$(CONFIG_GENERIC_ALLOCATOR) += genalloc.o
- 
-+obj-$(CONFIG_RD_BZIP2)	+= decompress_bunzip2.o
-+obj-$(CONFIG_RD_LZMA)	+= decompress_unlzma.o
+--- linux-2.6.29.3/lib/unlzma_syms.c
++++ linux-2.6.29.3/lib/unlzma_syms.c
+@@ -0,0 +1,14 @@
++/*
++ * linux/lib/unlzma_syms.c
++ *
++ * Exported symbols for the unlzma functionality.
++ *
++ */
 +
++#include <linux/module.h>
++#include <linux/init.h>
 +
- obj-$(CONFIG_ZLIB_INFLATE) += zlib_inflate/
- obj-$(CONFIG_ZLIB_DEFLATE) += zlib_deflate/
- obj-$(CONFIG_REED_SOLOMON) += reed_solomon/
++#include <linux/decompress_unlzma.h>
++
++EXPORT_SYMBOL(unlzma);
++MODULE_LICENSE("GPL");
 
---- linux-2.6.22.9/scripts/Makefile.lib
-+++ linux-2.6.22.9/scripts/Makefile.lib
-@@ -162,4 +162,17 @@
+--- linux-2.6.29.3/scripts/Makefile.lib
++++ linux-2.6.29.3/scripts/Makefile.lib
+@@ -185,4 +185,17 @@
  quiet_cmd_gzip = GZIP    $@
  cmd_gzip = gzip -f -9 < $< > $@
  
