@@ -1,198 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="squashfs"
-VERSION="3.3"
+VERSION="4.0"
 CATEGORY="base-system"
 SHORT_DESC="Linux squashfs userland tools."
 MAINTAINER="pascal.bellard@slitaz.org"
 WEB_SITE="http://$PACKAGE.sourceforge.net/"
-TARBALL="squashfs$VERSION.tgz"
+TARBALL="squashfs$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-DEPENDS="zlib squashfs-module"
-BUILD_DEPENDS="zlib-dev patch lzma"
+DEPENDS="zlib"
+BUILD_DEPENDS="zlib-dev"
 PROVIDE="cromfs-or-squashfs"
-CONFIG_FILES="/etc/filesystems"
-
-# Download a source tarball
-. /etc/tazwok.conf
-slitaz_wget()
-{
-	if [ ! -f $SOURCES_REPOSITORY/$(basename $2) ]; then
-		local here=$(pwd)
-		cd $SOURCES_REPOSITORY
-		wget $1 $2
-		cd $here
-	fi
-	cp $SOURCES_REPOSITORY/$(basename $2) .
-}
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	local kver
-	local patch_dir
+	mv ${PACKAGE}${VERSION} $src 2> /dev/null
 
-	if [ -L $(which patch) ]; then
-		echo "Please reinstall patch !"
-		return 1
-	fi
-	mkdir -p $src
-	cd $src
-	mv ../$PACKAGE$VERSION . 2> /dev/null
-	# get kernel version
-	if [ ! -d $WOK/linux/taz ]; then
-		tazwok cook linux
-	fi
-	kver=$(grep "kernel version" $WOK/linux/$(ls $WOK/linux/taz)/.config)
-	kver=${kver##* }
-
-	# Select patch according to kernel version
-	patch_dir=${PACKAGE}${VERSION}/kernel-patches/linux-${kver%.*}
-	i=${patch_dir##*.}
-	while [ ! -d ${patch_dir%.*}.$i ]; do
-		[ "$i" = "0" ] && break
-		i=$(($i - 1))
-	done
-	patch_dir=${patch_dir%.*}.$i
-	if [ -d ${PACKAGE}${VERSION}/kernel-patches/linux-$kver ]; then
-		patch_dir=${PACKAGE}${VERSION}/kernel-patches/linux-$kver
-	fi
-	if [ ! -d $patch_dir ]; then
-		echo "No squashfs patchset for kernel $ker. Abort."
-		return 1
-	fi
-	[ -d _kernel ] && rm -rf _kernel
-	mkdir _kernel
-	cd _kernel
-	ln -fs $WOK/linux/linux-$kver* src
-
-	# Copy files to be patched in local aera
-	# Do not alter kernel sources !!
-	for i in $(grep ^--- ../$patch_dir/${PACKAGE}${VERSION}-patch | \
-    		awk '{ if ($3 != "1970-01-01") print $2 } '); do
-		( cd src ; tar cf - ${i#*/}) | tar xf -
-	done
-
-	# Apply squashfs patches in local aera
-	#patch -p1 < ../$patch_dir/${PACKAGE}${VERSION}-patch
-	echo "Apply $patch_dir..."
-	awk 'BEGIN { keep=1} /^---/ { keep=(index($0,"/fs/squashfs/") || index($0,"/include/linux/"))} { if (keep) print }' < \
-		../$patch_dir/${PACKAGE}${VERSION}-patch | patch -p1
-
-	extra_patch=../stuff/squashfs-patch-${kver%.*}
-	if [ -e ../$extra_patch ]; then
-		echo "Apply $extra_patch..."
-		patch -p1 < ../$extra_patch || return 1
-	fi
-
-	# Move every files in fs/squashfs directory
-	mv include/linux/* fs/squashfs
-	rmdir include/linux
-	ln -s ../fs/squashfs include/linux
-	ln -s . fs/squashfs/linux
-	for i in fs/squashfs/*.c fs/squashfs/*.h ; do
-		sed -i 's/#include <\(linux\/squashfs.*\)>.*/#include "\1"/g' $i
-		sed -i 's/CONFIG_SQUASHFS_FRAGMENT_CACHE_SIZE/3/g' $i
-	done
-	
-	# Apply lzma patches
-	cd ..
-	slitaz_wget -c $SF_MIRROR/sevenzip/lzma457.tar.bz2
-	tar xjf lzma457.tar.bz2
-	SQLZMA=ftp://ftp.slax.org/source/slax/sqlzma/old-versions-unsupported
-	slitaz_wget -c $SQLZMA/sqlzma457-1/sqlzma3.3-457.tar.bz2
-	tar xjf sqlzma3.3-457.tar.bz2
-	rm -f $(grep ^+++ sqlzma1-449.patch | awk '{ print $2 }' | \
-		sed 's|[^/]*/||') 2> /dev/null
-	patch -p1 < sqlzma1-449.patch || return 1
-	patch -p0 << EOT
---- _kernel/fs/squashfs/inode.c
-+++ _kernel/fs/squashfs/inode.c
-@@ -2153 +2153 @@
--	printk(KERN_INFO "squashfs: version 3.3-CVS (2008/04/04) "
-+	printk(KERN_INFO "squashfs: version 3.3 (2007/10/31) "
-@@ -2216 +2216 @@
--MODULE_DESCRIPTION("squashfs 3.3, a compressed read-only filesystem");
-+MODULE_DESCRIPTION("squashfs 3.2-r2-CVS, a compressed read-only filesystem");
-
---- _kernel/fs/squashfs/squashfs_fs_sb.h
-+++ _kernel/fs/squashfs/squashfs_fs_sb.h
-@@ -26 +26 @@
--#include "linux/squashfs_fs.h"
-+#include <linux/squashfs_fs.h>
-EOT
-	( cd _kernel ; patch -p1 ) < sqlzma2k-3.3.patch || return 1
-	patch -p0 << EOT
---- _kernel/fs/squashfs/squashfs_fs_sb.h
-+++ _kernel/fs/squashfs/squashfs_fs_sb.h
-@@ -26 +26 @@
--#include <linux/squashfs_fs.h>
-+#include "linux/squashfs_fs.h"
-EOT
-	cp sq*.h _kernel/fs/squashfs
-	grep -q "sqlzma.h" squashfs3.3/squashfs-tools/mksquashfs.c ||
-	patch -p0 << EOT
---- squashfs3.3/squashfs-tools/unsquashfs.c
-+++ squashfs3.3/squashfs-tools/unsquashfs.c
-@@ -326,2 +326,3 @@
--		if((res = uncompress((unsigned char *) block, &bytes,
--		(const unsigned char *) buffer, c_byte)) != Z_OK) {
-+		res = uncompress((unsigned char *) block, &bytes, (const unsigned char *) buffer, c_byte);
-+
-+		if(res != Z_OK) {
-@@ -365,2 +366,3 @@
--		if((res = uncompress((unsigned char *) block, &bytes,
--		(const unsigned char *) data, c_byte)) != Z_OK) {
-+		res = uncompress((unsigned char *) block, &bytes, (const unsigned char *) data, c_byte);
-+
-+		if(res != Z_OK) {
-EOT
-	grep -q "sqlzma.h" squashfs3.3/squashfs-tools/mksquashfs.c ||
-	patch -p0 < sqlzma2u-3.3.patch || return 1
-	export LzmaC=$PWD/C/Compress/Lzma
-	export LzmaAlone=$PWD/CPP/7zip/Compress/LZMA_Alone
-	export Sqlzma=$PWD/_kernel/fs/squashfs
-	for i in $LzmaC $LzmaAlone ; do
-		make -C $i -f sqlzma.mk || return 1
-	done
-	rm -f $LzmaC/kmod/uncomp.c 2> /dev/null
-	make -C $LzmaC KDir=$PWD/_kernel/src/. -f kmod.mk || return 1
-	cp $LzmaC/kmod/Module.symvers $Sqlzma
-	
-	# Build kernel squashfs module
-	cd _kernel
-	make -C src/. SUBDIRS=$(pwd)/fs/squashfs/ CONFIG_SQUASHFS=m modules || return 1
-	cd ..
-	[ -d _pkg ] && rm -rf _pkg
-	mkdir -p _pkg/lib/modules/$kver-slitaz/kernel/fs/squashfs
-	mkdir -p _pkg/usr/sbin _pkg/sbin
-	find . -name "*.ko" | while read module; do
-		lzma e $module _pkg/lib/modules/$kver-slitaz/kernel/fs/squashfs/$(basename $module).gz
-	done
-
-	# Build user land tools
-	cd ${PACKAGE}${VERSION}/squashfs-tools
+	cd $src/squashfs-tools
+	mkdir -p ../_pkg/usr/sbin ../_pkg/sbin
 	make || return 1
-	cp mksquashfs ../../_pkg/usr/sbin
-	cp unsquashfs ../../_pkg/sbin
+	cp mksquashfs ../_pkg/usr/sbin
+	cp unsquashfs ../_pkg/sbin
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir $fs/etc
-	touch $fs/etc/filesystems
 	cp -a $_pkg/usr $_pkg/sbin $fs
-}
-
-# Pre remove and post install commands for Tazpkg.
-pre_remove()
-{
-	sed -i '/^$PACKAGE$/d' $1/etc/filesystems
-}
-
-post_install()
-{
-	grep -qs ^$PACKAGE$ $1/etc/filesystems || \
-		echo "$PACKAGE" >> $1/etc/filesystems
 }
