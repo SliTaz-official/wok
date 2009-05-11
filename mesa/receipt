@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="mesa"
-VERSION="7.0.3"
+VERSION="7.4.1"
 CATEGORY="misc"
 SHORT_DESC="3D Graphics Library."
 MAINTAINER="pascal.bellard@slitaz.org"
-DEPENDS="xorg"
-BUILD_DEPENDS="xorg-dev xorg-xextproto"
+DEPENDS="xorg libdrm xorg-libXxf86vm"
+BUILD_DEPENDS="xorg-dev xorg-xextproto libdrm-dev xorg-libXxf86vm-dev"
 SOURCE="Mesa"
 TARBALL="${SOURCE}Lib-$VERSION.tar.bz2"
 WEB_SITE="http://www.mesa3d.org/"
@@ -16,17 +16,23 @@ PROVIDE="libgl libglu"
 # Rules to configure and make the package.
 compile_rules()
 { 
-	ln -s $src $PACKAGE-$VERSION
+	ln -s $src $PACKAGE-$VERSION 2>/dev/null
 	cd $src
-	#make realclean
-	make linux-x86 &&
+	sed 's@FLAGS=\"-g@FLAGS=\"@' -i configure &&
+	./configure --prefix=/usr $CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $_pkg/usr/local/lib $fs/usr
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/dri $fs/usr/lib
+	# Have all dri modules in splited packages : mesa-dri-i915, etc ?
+	for mod in i810 mach64 swrast tdfx
+	do
+		rm $fs/usr/lib/dri/${mod}_dri.so
+	done
 }
-
