@@ -1,0 +1,57 @@
+# SliTaz package receipt.
+
+PACKAGE="wesnoth"
+VERSION="1.6.2"
+CATEGORY="games"
+SHORT_DESC="Turn based strategy game"
+MAINTAINER="mimas@slitaz.org"
+DEPENDS="libSDL libsdl-mixer libsdl-ttf libsdl-net libsdl-image zlib pango cairo fontconfig libboost-regex libboost-iostreams libpng"
+BUILD_DEPENDS="cairo-dev pango-dev libboost-regex-dev libboost-iostreams-dev libSDL-dev libsdl-mixer-dev libsdl-ttf-dev libsdl-image-dev libsdl-net-dev libpng-dev freetype-dev fontconfig-dev findutils"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.wesnoth.org/"
+WGET_URL="$SF_MIRROR/wesnoth/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr $CONFIGURE_ARGS && \
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	# programs
+	mkdir -p $fs/usr/bin
+	cp $_pkg/usr/bin/wesnoth $fs/usr/bin/
+
+	# data
+	mkdir -p $fs/usr/share/wesnoth/
+	cp -a $_pkg/usr/share/wesnoth/data $fs/usr/share/wesnoth/
+	cp -a $_pkg/usr/share/wesnoth/fonts $fs/usr/share/wesnoth/
+	cp -a $_pkg/usr/share/wesnoth/icons $fs/usr/share/wesnoth/
+	cp -a $_pkg/usr/share/wesnoth/images $fs/usr/share/wesnoth/
+	cp -a $_pkg/usr/share/wesnoth/sounds $fs/usr/share/wesnoth/
+
+	mkdir $fs/usr/share/wesnoth/translations
+	if [ ! "$LOCALE" = "" ]; then
+		for i in $LOCALE
+		do
+			cp -a $_pkg/usr/share/wesnoth/translations/$i \
+				$fs/usr/share/wesnoth/translations
+		done		
+	else
+		cp -a $_pkg/usr/share/wesnoth/translations \
+			$fs/usr/share/wesnoth/
+	fi
+	
+	# Remove music
+	rm $fs/usr/share/wesnoth/data/core/music/*.ogg
+
+	# finalize
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/icons $fs/usr/share
+
+}
+
