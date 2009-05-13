@@ -1,28 +1,29 @@
 # SliTaz package receipt.
 
-PACKAGE="linux-usbip"
+PACKAGE="linux-hfs"
 VERSION="2.6.29.3"
 CATEGORY="base-system"
-SHORT_DESC="The Linux kernel usbip module."
+SHORT_DESC="The Linux kernel hfs module."
 MAINTAINER="pascal.bellard@slitaz.org"
 DEPENDS="linux"
 WANTED="linux"
 WEB_SITE="http://www.kernel.org/"
-PROVIDE="usbip-module"
+CONFIG_FILES="/etc/filesystems"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
     local path
     path=lib/modules/$VERSION-slitaz/kernel
-    mkdir -p $fs/$path
+    mkdir -p $fs/$path $fs/etc
     export src
     export _pkg
-    $src/list_modules.sh drivers/staging/usbip | while read module; do
+    $src/list_modules.sh fs/${PACKAGE#*-} | while read module; do
     	dir=$path/$(dirname $module)
     	[ -d $fs/$dir ] || mkdir -p $fs/$dir
         cp -a $_pkg/$path/$module $fs/$dir
     done
+    touch $fs/etc/filesystems
 }
 
 # Post install/remove commands for Tazpkg.
