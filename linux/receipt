@@ -64,10 +64,15 @@ genpkg_rules()
     export src
     export _pkg
     $src/list_modules.sh $(cat stuff/modules-$VERSION.list) > $src/modules.list
-    while read module; do
+    while read module firmwares; do
     	dir=$(dirname $module)
     	[ -d $path/$dir ] || mkdir -p $path/$dir
         cp -a $_pkg/lib/modules/$VERSION-slitaz/kernel/$module $path/$dir
+	for i in $firmwares; do
+    	    dir=$(dirname $i)
+    	    [ -d $fs/lib/firmware/$dir ] || mkdir -p $fs/lib/firmware/$dir
+	    cp -a $_pkg/lib/firmware/$i $fs/lib/firmware/$i
+	done
     done < $src/modules.list
     # Remove unresolved links
     rm -f $fs/lib/modules/$VERSION-slitaz/build
