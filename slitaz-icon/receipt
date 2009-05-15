@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="slitaz-icon"
+VERSION="1.0"
+CATEGORY="misc"
+SHORT_DESC="SliTaz icons in size 16x16 and 32x32 (minimum)."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.slitaz.org/"
+WGET_URL="http://mirror.slitaz.org/sources/artwok/$TARBALL"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/icons
+	cp -a $src/SliTaz $fs/usr/share/icons
+	cp -a $src/themes/redyello/* $fs/usr/share/icons/SliTaz
+	chown -R root.root $fs
+}
+
+post_install()
+{
+	# Some desktop files anf boxes have hardcore path to some Tango
+	# icons, so fake.
+	if [ ! -d $1/usr/share/icons/Tango/16x16 ]; then
+		cd $1/usr/share/icons && rm -rf Tango
+		ln -s SliTaz Tango
+	fi
+	# Default icon theme to SliTaz.
+	sed -i s/Tango/SliTaz/ $1/etc/skel/.gtkrc-2.0
+}
