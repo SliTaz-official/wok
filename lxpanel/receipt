@@ -5,7 +5,7 @@ VERSION="0.3.8.1"
 CATEGORY="x-window"
 SHORT_DESC="Standard compliant desktop panel."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ slitaz-menus alsa-lib xorg-libXdamage"
+DEPENDS="gtk+ slitaz-menus alsa-lib xorg-libXdamage slitaz-icon"
 BUILD_DEPENDS="gtk+-dev gettext wireless_tools-dev wireless_tools"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://lxde.sourceforge.net/"
@@ -37,39 +37,26 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib $fs/usr
 	cp -a $_pkg/usr/share/lxpanel $fs/usr/share
-
 	# Remove a few "heavy" an unseful images (ns* goes in extra)
-	rm $fs/usr/share/lxpanel/images/file-manager.png
-	rm $fs/usr/share/lxpanel/images/stock_volume.png
-	rm $fs/usr/share/lxpanel/images/gnome-[a-k]*.png
-	rm $fs/usr/share/lxpanel/images/gnome-netstatus-[d-t]*.png
-	rm $fs/usr/share/lxpanel/images/gnome-m*.png
-	rm $fs/usr/share/lxpanel/images/gnome-[o-z]*.png
-	rm $fs/usr/share/lxpanel/images/my-*
-	rm $fs/usr/share/lxpanel/images/redhat*.png
-	rm $fs/usr/share/lxpanel/images/ns-*.png
-	rm $fs/usr/share/lxpanel/images/*lock-*.png
-
-	# Netstatus 24x24 resized icons in Tango theme path.
-	cp -a stuff/icons $fs/usr/share
-
+	for i in file-manager* stock_volume* gnome-[a-k]*.png gnome-m*.png \
+		gnome-netstatus-[d-t]*.png gnome-[o-z]*.png my-* redhat*.png \
+		ns-*.png *lock-*.png gnome-logout.png
+	do
+		rm $fs/usr/share/lxpanel/images/$i
+	done
+	# Custom images to match SliTaz theme.
+	cp -a stuff/images/* $fs/usr/share/lxpanel/images
 	# Remove plugins --> lxpanel-extra
 	rm $fs/usr/lib/lxpanel/plugins/netstat.so
 	rm $fs/usr/lib/lxpanel/plugins/kbled.so
-
-	# Move profile to /etc/lxpanel (/usr maybe read-only)
+	# Move profile to /etc/lxpanel (/usr maybe read-only) and default config
 	mkdir $fs/etc
 	mv -f $fs/usr/share/lxpanel/profile $fs/etc/lxpanel
 	ln -s /etc/lxpanel $fs/usr/share/lxpanel/profile
-
-	# Default config
 	mv $fs/etc/lxpanel/default $fs/etc/lxpanel/original
 	cp -a stuff/default $fs/etc/lxpanel
-
-	# Declare lxsession-logout in files.list
-	touch $fs/usr/bin/lxsession-logout
-	if [ ! -s $fs/usr/bin/lxsession-logout ]; then
-		cat > $fs/usr/bin/lxsession-logout << "EOT"
+	# lxsession-logout fake
+	cat > $fs/usr/bin/lxsession-logout << "EOT"
 #!/bin/sh
 # lxsession-logout fake.
 #
@@ -78,6 +65,5 @@ desktopbox logout &
 exit 0
 
 EOT
-	fi
 	chmod +x $fs/usr/bin/lxsession-logout
 }
