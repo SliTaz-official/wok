@@ -9,43 +9,40 @@ TARBALL="$PACKAGE-$VERSION.tbz2"
 WEB_SITE="http://code.google.com/p/wbar/"
 WGET_URL="http://www.tecapli.com.ar/warlock/$TARBALL"
 DEPENDS="imlib2 ttf-dejavu"
-BUILD_DEPENDS="imlib2-dev imagemagick"
-CONFIG_FILES="/etc/dot.wbar"
+BUILD_DEPENDS="imlib2-dev"
+CONFIG_FILES="/etc/wbar/dot.wbar"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	make
-	mkdir -p _pkg/usr/share/wbar/iconpack _pkg/usr/bin
-	cp wbar _pkg/usr/bin
+	patch -p0 < ../stuff/gcc43_fixes.diff || exit 1
+	make &&
+	mkdir -p _pkg/usr/share/wbar/iconpack _pkg/usr/bin &&
+	cp wbar _pkg/usr/bin &&
 	cp iconpack/wbar.osx/osxbarback.png _pkg/usr/share/wbar/iconpack
-	for i in firefox psi gimp xmms ; do
-		convert iconpack/wbar.osx/$i.png -resize 48x48 \
-			_pkg/usr/share/wbar/iconpack/$i.png
-	done
-	cp ../stuff/*.png _pkg/usr/share/wbar/iconpack
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc
+	mkdir -p $fs/etc/wbar
 	cp -a $_pkg/usr $fs
-	ln -s /etc/dot.wbar $fs/usr/share/wbar/dot.wbar
-	touch $fs/etc/dot.wbar	
+	ln -s /etc/wbar/dot.wbar $fs/usr/share/wbar/dot.wbar
+	touch $fs/etc/wbar/dot.wbar
 }
 
 # Post install/remove commands for Tazpkg.
 post_install()
 {
-	[ -s $1/etc/dot.wbar ] || rm -f $1/etc/dot.wbar
-	mv $1/etc/dot.wbar $1/etc/dot.wbar.old 2> /dev/null && cat <<EOT
+	rm -f $1/etc/dot.wbar
+	[ -s $1/etc/wbar/dot.wbar ] || rm -f $1/etc/wbar/dot.wbar
+	mv $1/etc/wbar/dot.wbar $1/etc/wbar/dot.wbar.old 2> /dev/null && cat <<EOT
 --------
-Your old wbar configuration is saved into /etc/dot.wbar.old
+Your old wbar configuration is saved into /etc/wbar/dot.wbar.old
 --------
 EOT
-	cat > $1/etc/dot.wbar << EOT
+	cat > $1/etc/wbar/dot.wbar << EOT
 # The Bar && Font
 i: /usr/share/wbar/iconpack/osxbarback.png
 t: /usr/share/fonts/truetype/ttf-dejavu/DejaVuSans/12
@@ -54,18 +51,30 @@ c:
 EOT
 	while read icon exe text; do
 		[ -x $exe ] || continue
-		cat >> $1/etc/dot.wbar << EOT
+		cat >> $1/etc/wbar/dot.wbar << EOT
 i: $icon
 c: $exe
 t: $text
 
 EOT
 	done << EOT
-/usr/share/wbar/iconpack/firefox.png /usr/bin/firefox firefox
-/usr/share/wbar/iconpack/psi.png /usr/bin/pidgin pidgin
-/usr/share/wbar/iconpack/gimp.png /usr/bin/gimp gimp
-/usr/share/wbar/iconpack/xmms.png /usr/bin/audacious audacious
-/usr/share/wbar/iconpack/xterm.png /usr/bin/xterm xterm
+/usr/share/pixmaps/firefox.png /usr/bin/firefox firefox
+/usr/share/pixmaps/pidgin.png /usr/bin/pidgin pidgin
+/usr/share/pixmaps/gimp.png /usr/bin/gimp gimp
+/usr/share/pixmaps/alsaplayer.png /usr/bin/alsaplayer alsaplayer
+/usr/share/pixmaps/xterm.png /usr/bin/xterm xterm
+/usr/share/pixmaps/leafpad.png /usr/bin/leafpad leafpad
 EOT
-	[ -n "$1" ] || wbar -above-desk -pos top &
+	grep -q 'wbar' $1/etc/xdg/openbox/autostart.sh ||
+	cat >> $1/etc/xdg/openbox/autostart.sh << EOT
+
+# Wbar icons panel.
+(sleep 2 && wbar -above-desk -pos top center -jumpf 0 -zoomf 1.5 -bpress -balfa 0) &
+EOT
+}
+
+post_remove()
+{
+	sed -i '/Wbar/ d' $1/etc/xdg/openbox/autostart.sh
+	sed -i '/wbar/ d' $1/etc/xdg/openbox/autostart.sh
 }
