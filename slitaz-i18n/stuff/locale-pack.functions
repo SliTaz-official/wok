@@ -1,0 +1,44 @@
+#!/bin/sh
+
+# Standars directoris having translated files.
+mk_locale_dir()
+{
+	mkdir -p \
+		$fs/usr/share/locale/$LOCALE \
+		$fs/usr/share/slitaz/messages \
+		$fs/usr/share/doc/slitaz \
+		$fs/usr/lib/locale \
+		$fs/etc/xdg/openbox
+}
+
+# Get translated files from SliTaz sub projects: configs, doc, tools.
+get_slitaz_messages()
+{
+	. $WOK/slitaz-configs/receipt
+	[ -f $WOK/slitaz-configs/slitaz-configs-$VERSION/rootfs/etc/xdg/openbox/menu.${LOCALE}.xml ] && \
+		cp $WOK/slitaz-configs/slitaz-configs-$VERSION/rootfs/etc/xdg/openbox/menu.${LOCALE}.xml \
+		$fs/etc/xdg/openbox
+
+	. $WOK/slitaz-doc/receipt
+	[ -f $WOK/slitaz-doc/slitaz-doc-$VERSION/slitaz/index.${LOCALE}.html ] && \
+		cp $WOK/slitaz-doc/slitaz-doc-$VERSION/slitaz/index.${LOCALE}.html \
+		$fs/usr/share/doc/slitaz
+
+	. $WOK/slitaz-tools/receipt
+	[ -d $WOK/slitaz-tools/slitaz-tools-$VERSION/messages/$LOCALE ] && \
+		cp -a $WOK/slitaz-tools/slitaz-tools-$VERSION/messages/$LOCALE \
+		$fs/usr/share/slitaz/messages
+}
+
+# Get the core packages messages.
+get_core_messages()
+{
+	for pkg in $CORE_PKGS
+	do
+		[ -f $WOK/$pkg/receipt ] && . $WOK/$pkg/receipt
+		if [ -d $WOK/$pkg/$PACKAGE-$VERSION/_pkg/usr/share/locale/$LOCALE ]; then
+			cp -a $WOK/$pkg/$PACKAGE-$VERSION/_pkg/usr/share/locale/$LOCALE \
+				$fs/usr/share/locale
+		fi
+	done
+}

@@ -6,11 +6,12 @@ CATEGORY="system-tools"
 SHORT_DESC="Czech locale pack."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="glibc-base"
-BUILD_DEPENDS="glibc glibc-locale"
+BUILD_DEPENDS="glibc glibc-locale slitaz-i18n"
 WEB_SITE="http://www.slitaz.org/"
 
-CORE_PKGS="asunder alsaplayer epdfview galculator geany gpicview gparted \
-glib gtk+ grsync leafpad lxpanel lxtask obconf openbox pcmanfm xpad"
+# Source slitaz-i18n files from the wok.
+. $WOK/slitaz-i18n/stuff/locale-pack.functions
+. $WOK/slitaz-i18n/stuff/locale-pack.conf
 
 LOCALE="cs"
 LOCALEDEF="cs_CZ"
@@ -27,24 +28,13 @@ compile_rules()
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
-# Genereted locale files are in /usr/lib/locale.
 genpkg_rules()
-{
-	mkdir -p $fs/usr/share/locale/$LOCALE \
-		$fs/usr/lib/locale \
-		$fs/usr/share/slitaz/messages
-	cp -a stuff/messages $fs/usr/share/slitaz/messages/$LOCALE
+{	
 	PKG_NAME="$PACKAGE"
 	PKG_VERS="$VERSION"
-	# Get the core packages messages.
-	for pkg in $CORE_PKGS
-	do
-		[ -f $WOK/$pkg/receipt ] && . $WOK/$pkg/receipt
-		if [ -d $WOK/$pkg/$PACKAGE-$VERSION/_pkg/usr/share/locale/$LOCALE ]; then
-			cp -a $WOK/$pkg/$PACKAGE-$VERSION/_pkg/usr/share/locale/$LOCALE \
-				$fs/usr/share/locale
-		fi
-	done
+	mk_locale_dir
+	get_slitaz_messages
+	get_core_messages
 	PACKAGE="$PKG_NAME"
 	VERSION="$PKG_VERS"
 	localedef -i $LOCALEDEF -c -f $CHARMAP $fs/usr/lib/locale/$LOCALEDEF
