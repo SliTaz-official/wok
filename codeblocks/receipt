@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="codeblocks"
+VERSION="8.02"
+CATEGORY="development"
+SHORT_DESC="An open source, cross platform, free C++ IDE."
+MAINTAINER="stefanossofroniou542@gmail.com"
+TARBALL="$PACKAGE-$VERSION-src.tar.bz2"
+DEPENDS="wxWidgets"
+BUILD_DEPENDS="wxWidgets-dev expat-dev autoconf automake libtool zip gnome-icon-theme"
+WEB_SITE="http://www.codeblocks.org/"
+WGET_URL="http://download.berlios.de/codeblocks/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--with-contrib-plugins="all, -help" \
+		--prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/share/codeblocks $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+}
