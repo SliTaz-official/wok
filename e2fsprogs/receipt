@@ -8,7 +8,7 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://e2fsprogs.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-DEPENDS="libcomerr libuuid"
+DEPENDS="libcomerr libuuid util-linux-ng-blkid"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -18,7 +18,6 @@ compile_rules()
 		--prefix=/usr \
 		--with-root-prefix="" \
 		--enable-elf-shlibs \
-		--disable-evms \
 		--sysconfdir=/etc \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
@@ -42,13 +41,9 @@ genpkg_rules()
 	cat $src/*.files-list | while read file; do
 		rm -f $fs$file
 	done
-	
-	# Remove fsck provided by Busybox.
-	rm -rf $fs/sbin/fsck*
-	
-	# Locale fr.
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
-	
+	# Remove fsck provided by Busybox and blkid by util-linux-ng.
+	rm $fs/sbin/fsck* $fs/sbin/blkid
+	rm $fs/lib/libblkid* $fs/usr/lib/libblkid*
 	# Package all mysql pkgs
 	for i in $(cd $WOK; ls -d e2fsprogs-* libcomerr* libuuid*)
 	do
