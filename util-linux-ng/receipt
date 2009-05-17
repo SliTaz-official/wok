@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="util-linux-ng"
+VERSION="2.15"
+CATEGORY="development"
+SHORT_DESC="Util linux new generation (Meta package to build utility ans libs)."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+DEPENDS="glibc-base"
+BUILD_DEPENDS="slitaz-toolchain ncurses-dev"
+WEB_SITE="http://kernel.org/~kzak/util-linux-ng/"
+WGET_URL="ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.15/$TARBALL"
+LOCALE=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	if ! grep 'tty:x:4:' /etc/group; then
+		addgroup -g 4 tty
+	fi
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--with-fsprobe=builtin \
+		--enable-partx \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+}
