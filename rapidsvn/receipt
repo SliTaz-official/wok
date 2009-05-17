@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="rapidsvn"
+VERSION="0.9.8"
+CATEGORY="development"
+SHORT_DESC="A cross-platform GUI front-end for the Subversion revision system."
+MAINTAINER="stefanossofroniou542@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+DEPENDS="wxWidgets subversion apr apr-util libtool cyrus-sasl neon"
+BUILD_DEPENDS="wxWidgets-dev subversion-dev apr-dev apr-util-dev cyrus-sasl-dev"
+WEB_SITE="http://rapidsvn.tigris.org/"
+WGET_URL="http://www.rapidsvn.org/download/release/$VERSION/$PACKAGE-$VERSION.tar.gz"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+		--with-apr-config=apr-1-config \
+		--with-apu-config=apu-1-config \
+		--with-neon-config=neon-config \
+		--with-wx-config=wx-config \
+		--with-svn-include=/usr/include \
+		--with-svn-lib=/usr/lib \
+		$CONFIGURE_ARGS
+	make
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib \
+		 $fs/usr/share \
+		 $fs/usr/share/applications \
+		 $fs/usr/share/pixmaps
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a stuff/rapidsvn.desktop $fs/usr/share/applications
+	cp -a stuff/rapidsvn.png $fs/usr/share/pixmaps
+}
