@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="gxine"
+VERSION="0.5.904"
+CATEGORY="multimedia"
+SHORT_DESC="GTK+ Xine media player user interface."
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="xine-lib libvorbis gtk+"
+BUILD_DEPENDS="firefox-dev xine-lib xine-lib-dev xorg-dev gtk+-dev hal dbus 
+xorg-libXinerama xorg-libXext xorg-libX11 libiconv-dev libiconv"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.xine-project.org"
+WGET_URL="http://switch.dl.sourceforge.net/sourceforge/xine/$TARBALL"
+
+# Rules to configure and make the package.
+
+compile_rules()
+{
+	cd $src
+	export NSPR_LIBS="/usr/include/firefox"
+        ./configure --prefix=/usr \
+		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
+		--with-spidermonkey=/usr/include/js \
+		--without-browser-plugin \
+		--disable-lirc \
+		--disable-integration-wizard \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/etc $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+        cp -a $_pkg/usr/lib/$PACKAGE $fs/usr/lib
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+        cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	cp -a $_pkg/etc $fs
+}
+
