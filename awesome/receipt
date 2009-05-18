@@ -31,3 +31,22 @@ genpkg_rules()
 	cp -a $_pkg/usr/share $fs/usr
 }
 
+post_install()
+{
+	res=`cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//`
+	# Adding WM to SLIM available sessions.
+	if ! echo "$res" | grep -q $PACKAGE; then
+		echo -n "Adding $PACKAGE to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" /etc/slim.conf
+		status
+	fi
+}
+
+post_remove()
+{
+	# Remove WM from SLIM available sessions.
+	if grep -q $PACKAGE $1/etc/slim.conf; then
+		sed -i s/,$PACKAGE// $1/etc/slim.conf
+	fi
+}
+
