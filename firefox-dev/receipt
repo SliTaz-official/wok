@@ -4,19 +4,29 @@ PACKAGE="firefox-dev"
 VERSION="3.0.10"
 CATEGORY="development"
 SHORT_DESC="firefox devel files"
-MAINTAINER="pankso@slitaz.org"
+MAINTAINER="jozee@slitaz.org"
 WANTED="firefox"
 WEB_SITE="http://www.mozilla.org/"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib 
+	mkdir -p $fs/usr/lib/pkgconfig
 	cp -a $_pkg/usr/lib/firefox-devel-$VERSION $fs/usr/lib
 	cp -a $_pkg/usr/include $fs/usr
 	
-	# for some reason /usr/share/idl folder is missing in firefox
-	# so copying it in firefox-dev
+	# /usr/share/idl folder should also be in firefox-dev
 	cp -a $_pkg/usr/share $fs/usr
+	
+	# copy missing *.pc files
+	cp -a stuff/*.pc $fs/usr/lib/pkgconfig
+	
+	# copy missing xpidl files
+	dist=$WOK/$WANTED/$WANTED-$VERSION/xpcom/typelib
+	cp -a $dist/xpidl/xpidl $fs/usr/lib/firefox-devel-$VERSION/sdk/lib
+	cp -a $dist/xpt/tools/xpt_dump $fs/usr/lib/firefox-devel-$VERSION/sdk/lib
+	cp -a $dist/xpt/tools/xpt_link $fs/usr/lib/firefox-devel-$VERSION/sdk/lib
+
+	
 }
 
