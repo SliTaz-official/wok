@@ -33,8 +33,14 @@ compile_rules()
     mv "NVIDIA-Linux-x86-$VERSION-pkg0" "$PACKAGE-$VERSION"
   fi
   cd $src/usr/src/nv
+  if [ ! -d $WOK/linux/taz ]; then
+	tazwok cook linux
+  fi
+  kver=$(ls $WOK/linux/taz); kver=${kver#*-}
+  sed -i "s/uname -r/echo $kver/g" ?akefile* conftest.sh
+  sed -i "s| /lib/modules| $WOK/linux/linux-$kver/lib/modules|" ?akefile*
   [ ! -f Makefile ] && ln -s Makefile.kbuild Makefile
-  make SYSSRC=$(ls -d $WOK/linux/linux-*/) module
+  make SYSSRC=$(ls -d $WOK/linux/linux-$kver/) module
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
