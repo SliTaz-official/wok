@@ -1,10 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="udev"
-VERSION="141"
+VERSION="142"
 BUILD_WARNING="Install new udev package and rebuild hal"
 CATEGORY="base-system"
 SHORT_DESC="Udev creat automaticly right devices in /dev."
+DEPENDS="util-linux-ng-blkid"
+BUILD_DEPENDS="$DEPENDS util-linux-ng-blkid-dev"
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.kernel.org/pub/linux/utils/kernel/hotplug/udev.html"
@@ -20,37 +22,36 @@ compile_rules()
 		--sysconfdir=/etc \
 		--enable-static \
 		$CONFIGURE_ARGS &&
-	make EXTRAS="extras/firmware extras/scsi_id extras/volume_id \
-		extras/ata_id extras/usb_id extras/cdrom_id" &&
 	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/lib/firmware $fs/etc/udev
-
-	cp -a $_pkg/sbin $fs
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/lib $fs
-	for i in libudev.so libvolume_id.so; do
-		[ -f $fs/lib/$i ] || ( cd $fs/lib ; ln -s $i.*.* $i)
+	mkdir -p $fs/lib/firmware $fs/etc/udev $fs/usr/lib
+	for dir in sbin etc lib
+	do
+		cp -a $_pkg/$dir $fs
 	done
+	cp -a $_pkg/usr/lib/*.so $fs/usr/lib
 
 	# Copy rules files to udev conf dir
 	mv $fs/lib/udev/rules.d $fs/etc/udev
 	cp stuff/udev.conf $fs/etc/udev
 	cp stuff/90-permissions.rules $fs/etc/udev/rules.d
-	cp -a $src/rules/packages/40-alsa.rules $fs/etc/udev/rules.d
-	
+	cp $src/rules/packages/40-alsa.rules $fs/etc/udev/rules.d
+	cp $src/rules/packages/40-zaptel.rules $fs/etc/udev/rules.d
 	# Fix permissions
-	chmod +x $fs/lib/udev/write*
+	chmod +x $fs/lib/udev/*
+	chown -R root.root $fs
 }
 
-post_install()
+pre_install()
 {
-	local root
-	root=$1
-	# Remove old rules
-	rm -rf $1/lib/udev/rules.d 2>/dev/null
+	# Remove old rules and libs
+	rm -rf $1/lib/udev/rules.d
+	rm -rf $1/lib/udev/vol_id
+	rm -f $1/lib/libvolume_id*
+	rm -f $1/lib/libudev.so.1.0
+	rm -f $1/lib/libudev.so.2.0
 }
