@@ -1,27 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="qemu"
-VERSION="0.9.1"
+VERSION="0.10.5"
 CATEGORY="misc"
 SHORT_DESC="General-purpose full virtualizer for x86 hardware."
 MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://bellard.org/$PACKAGE/"
-WGET_URL="$WEB_SITE$TARBALL"
-BUILD_DEPENDS="alsa-lib-dev gcc3 gettext libSDL-dev"
-DEPENDS="alsa-lib gnutls libSDL libiconv zlib"
+WEB_SITE="http://www.nongnu.org/qemu/"
+WGET_URL="http://download.savannah.gnu.org/releases/qemu/$TARBALL"
+BUILD_DEPENDS="alsa-lib-dev gettext libSDL-dev"
+DEPENDS="alsa-lib gnutls libSDL zlib"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	[ -f done.virtio.u ] || patch -p1 < ../stuff/virtio.u
-	touch done.virtio.u
-	#./configure --prefix=/usr --enable-alsa --disable-gfx-check \
-
-	./configure --prefix=/usr --enable-alsa \
-		    --host-cc=gcc-3 --cc=gcc-3 \
-		    --target-list="i386-softmmu,x86_64-softmmu" &&
+	
+	# From 0.10.0 VirtIO paravirtual device are supported.
+	#[ -f done.virtio.u ] || patch -p1 < ../stuff/virtio.u
+	#touch done.virtio.u
+	
+	#./configure --prefix=/usr --enable-alsa --disable-gfx-check
+	
+	./configure \
+		--prefix=/usr \
+		--target-list="i386-softmmu,x86_64-softmmu" &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
 }
@@ -31,4 +34,3 @@ genpkg_rules()
 {
 	cp -a $_pkg/usr $fs
 }
-
