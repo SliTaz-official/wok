@@ -55,3 +55,22 @@ pre_install()
 	rm -f $1/lib/libudev.so.1.0
 	rm -f $1/lib/libudev.so.2.0
 }
+
+list_udev_group()
+{
+    object=$1
+    [ -n "$object" ] || object=GROUP
+    grep $object /etc/udev/rules.d/* | \
+        sed "s/.*GROUP=\"\\([a-zA-Z0-9]*\\)\".*/\1/" | sort | uniq
+}
+
+post_install()
+{
+    # Sanity check for udev+ldap boot
+    list_udev_group GROUP | while read x ; do
+        grep -q ^$x: $/etc/group || chroot $1/ addgroup $x
+    done
+    list_udev_group OWNER | while read x ; do
+        grep -q ^$x: $/etc/passwd || chroot $1/ adduser -S -D -H $x
+    done
+}
