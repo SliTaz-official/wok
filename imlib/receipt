@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="imlib"
+VERSION="1.9.15"
+CATEGORY="graphics"
+SHORT_DESC="An advanced replacement imaging library for libraries like libXpm."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="glibc-base xorg-libICE xorg-libSM xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext giflib jpeg libpng tiff zlib libuuid"
+BUILD_DEPENDS="slitaz-toolchain xorg-dev xorg-xextproto giflib giflib-dev jpeg jpeg-dev libpng libpng-dev tiff tiff-dev zlib zlib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://freshmeat.net/projects/imlib/"
+WGET_URL="ftp://ftp.gnome.org/pub/GNOME/sources/$PACKAGE/1.9/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	mkdir -p $fs/etc
+	cp -a $_pkg/etc $fs
+}
