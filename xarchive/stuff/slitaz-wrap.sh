@@ -40,6 +40,7 @@ FS_EXTS="ext2 ext3 dos fat vfat fd fs loop"
 CLOOP_EXTS="cloop"
 RAR_EXTS="rar cbr"
 LHA_EXTS="lha lzh lzs"
+LZO_EXTS="lzo"
 
 # Setup awk program
 AWK_PROGS="mawk gawk awk"
@@ -331,6 +332,7 @@ unace		ace
 arj		arj
 7za		7z
 lha		$LHA_EXTS
+lzop		$LZO_EXTS
 EOT
         printf "\n"
         exit
@@ -622,6 +624,40 @@ EOT
                 exit 0
 	    fi
 	done
+        for ext in $LZO_EXTS; do
+            if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+        # format of lzo output:
+# Method         Length    Packed  Ratio     Date    Time   Name
+# ------         ------    ------  -----     ----    ----   ----
+# LZO1X-1           626       526  84.0%  2009-05-27 09:52  file
+# LZO1X-1         10057      5675  56.4%  2005-07-25 16:26  path/file
+#               -------   -------  -----                    ----
+# 1               2          3     4      5          6      7
+                lzop -Plv "$archive" | $AWK_PROG -v uuid=$(id -u -n) '
+	BEGIN { show = 0}
+        {
+          if ($5 == "----" || $4 == "----") {
+          	show = 1 - show
+          	next
+          }
+	  attr="-rw-r--r--"
+          uid=uuid; gid=uuid
+          size=$2
+          date=$5
+          time=$6
+          
+          #this method works with filenames that start with a space (evil!)
+          #split line a time and a space
+          split($0,linesplit, $6 "  ")
+
+          name=linesplit[2]
+          link="-"	# links are not supported
+
+          if (show == 1) printf "%s;%s;%s;%s;%s;%s;%s;%s\n",name,size,attr,uid,gid,date,time,link
+        }'
+                exit 0
+	    fi
+	done
         exit $E_UNSUPPORTED
         ;;
 
@@ -756,6 +792,7 @@ loop_fs		copy	$ISO_EXTS $SQUASHFS_EXTS $CROMFS_EXTS $CLOOP_EXTS $FS_EXTS
 unzip		-n	$ZIP_EXTS
 dpkg-deb	-X	$DEB_EXTS
 lha		x	$LHA_EXTS
+lzop		-x	$LZO_EXTS
 EOT
 	while read exe args argpass exts; do
 	    [ "$(which $exe)" ] || continue
