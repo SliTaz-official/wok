@@ -1,0 +1,54 @@
+# SliTaz package receipt.
+
+PACKAGE="bootchart"
+VERSION="0.9"
+CATEGORY="misc"
+SHORT_DESC="boot process performance analyzer (add init=/sbin/bootchartd to boot options)"
+MAINTAINER="jozee@slitaz.org"
+SUGGESTED="pybootchartgui"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.bootchart.org/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/sbin $fs/etc 
+	cp -a $src/script/bootchartd $fs/sbin/bootchartd
+	cp -a $src/script/bootchartd.conf $fs/etc  
+	sed -i "s/SAMPLE_PERIOD=0.2/SAMPLE_PERIOD=1/" $fs/etc/bootchartd.conf
+	sed -i "s/kdm_greet/kdm_greet slim /" $fs/sbin/bootchartd
+	sed -i "s|\/usr\/bin\/bootchart|\/usr\/bin\/pybootchartgui|g" $fs/sbin/bootchartd
+	
+}
+
+post_install()
+{
+	  if [ -f "$1/boot/grub/menu.lst" ]; then
+		if ! grep -q "vmlinuz-$VERSION-slitaz" $1/boot/grub/menu.lst; then
+    		root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`
+			grub_dev=`cat $1/boot/grub/menu.lst | grep "root.* (" | head -n 1`
+			# Add new kernel entry in case of upgrade for installed system.
+    		cat >> $1/boot/grub/menu.lst << EOT
+
+title  SliTaz GNU/Linux (Kernel $VERSION-slitaz) with bootchart
+$grub_dev
+       kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev init=/sbin/bootchartd
+EOT
+			# Display information message.
+    		cat <<EOT
+----
+GRUB is installed, these tree lines has been added to the menu.lst:
+ 
+title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
+$grub_dev
+       kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev init=/sbin/bootchartd
+----
+EOT
+		else
+			echo "Grub menu.lst seems already configured to boot new Kernel..."
+		fi
+	fi
+}
