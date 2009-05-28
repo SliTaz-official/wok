@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="pybootchartgui"
+VERSION="r124"
+CATEGORY="misc"
+SHORT_DESC="bootchart GUI in python"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="python pygtk bootchart"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://pybootchartgui.googlecode.com/"
+WGET_URL="$WEB_SITE/files/$TARBALL"
+
+
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    PY_VERSION=`cat /var/lib/tazpkg/installed/python/receipt | grep "VERSION="|cut -d \" -f 2 | cut -d . -f 1,2`
+	mkdir -p $fs/usr/lib/python$PY_VERSION $fs/usr/bin
+    cp -a $src/pybootchartgui.py $fs/usr/lib/python$PY_VERSION
+	cp -a $src/pybootchartgui $fs/usr/lib/python$PY_VERSION
+	
+	
+}
+
+post_install()
+{
+	local root
+	root=$1
+	PY_VERSION=`cat /var/lib/tazpkg/installed/python/receipt | grep "VERSION="|cut -d \" -f 2 | cut -d . -f 1,2`
+	if [ -f  $root/usr/bin/pybootchartgui ] ; then rm $root/usr/bin/pybootchartgui ; fi
+	ln -s $root/usr/lib/python$PY_VERSION/pybootchartgui.py $root/usr/bin/pybootchartgui
+}
+
+post_remove()
+{
+	local root
+	root=$1
+    rm $root/usr/bin/pybootchartgui
+}
