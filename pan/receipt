@@ -15,6 +15,18 @@ WGET_URL="$WEB_SITE/download/releases/$VERSION/source/$TARBALL"
 compile_rules()
 {
 	cd $src
+	# apply debian fix for gcc 4.4.0
+	# http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=504900
+	while read file last; do
+		grep -q 'include <cstdio>' pan/$file ||
+		sed -i "s/<$last>/<$last>\n#include <cstdio>/" pan/$file
+	done <<EOT
+general/log.cc		cstdarg
+general/progress.cc	cstdarg
+tasks/nntp.cc		cstdarg
+tasks/nntp-pool.cc	config.h
+usenet-utils/numbers.cc	cctype
+EOT
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
