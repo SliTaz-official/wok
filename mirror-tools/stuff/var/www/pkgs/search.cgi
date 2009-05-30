@@ -63,6 +63,16 @@ esac
 # unescape query
 SEARCH="$(echo $SEARCH | sed 's/%2B/+/g' | sed 's/%3A/:/g' | sed 's|%2F|/|g')"
 
+if [ -z "$LANG" ]; then
+	for i in $(echo $HTTP_ACCEPT_LANGUAGE | sed 's/[,;]/ /g'); do
+		case "$i" in
+		fr|de|pt|cn)
+			LANG=$i
+			break;;
+		esac
+	done
+fi
+
 package="Package"
 file="File"
 desc="Description"
@@ -89,6 +99,7 @@ fr)	package="Paquet"
 	file="Fichier";;
 de)	package="Paket"
 	depends="Abhängigkeiten"
+	desc="Beschreibung"
 	search="Suche"
 	cooking="Cooking"
 	stable="Stable"
@@ -107,6 +118,7 @@ pt)	package="Pacote"
     deptree="Árvore de dependências para: $SEARCH"
     rdeptree="Árvore de dependências reversa para: $SEARCH"
 	depends="Dependências"
+	desc="Descrição"
 	file_list="Arquivo lista"
 	file="Arquivo";;
 cn)	package="è½¯ä»¶åŒ…ï¼š"
@@ -166,7 +178,7 @@ xhtml_header()
 	<meta name="revisit-after" content="7 days" />
 	<meta name="expires" content="never" />
 	<meta name="modified" content="$DATE" />
-	<meta name="author" content="ash, grep, sed and cat"/>
+	<meta name="author" content="ash, awk, grep, sed and cat"/>
 	<meta name="publisher" content="www.slitaz.org" />
 	<link rel="shortcut icon" href="http://pkgs.slitaz.org/favicon.ico" />
 	<link rel="stylesheet"  type="text/css" href="http://pkgs.slitaz.org/slitaz.css" />
