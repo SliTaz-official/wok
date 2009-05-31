@@ -87,7 +87,9 @@ noresult="No package $SEARCH"
 deptree="Dependency tree for : $SEARCH"
 rdeptree="Reverse dependency tree for : $SEARCH"
 charset="ISO-8859-1"
+
 case "$LANG" in
+
 fr)	package="Paquet"
 	depends="Dépendances"
 	search="Recherche"
@@ -97,6 +99,7 @@ fr)	package="Paquet"
 	rdeptree="Arbre inversé des dépendances de $SEARCH"
 	file_list="Liste des fichiers"
 	file="Fichier";;
+
 de)	package="Paket"
 	depends="Abhängigkeiten"
 	desc="Beschreibung"
@@ -109,26 +112,40 @@ de)	package="Paket"
 	rdeptree="Abhängigkeit für: $SEARCH"
 	file_list="Datei liste"
 	file="Datei";;
+
 pt)	package="Pacote"
-    search="Buscar"
-    cooking="cooking"
-    stable="stable"
-    result="Resultado para : $SEARCH"
-    noresult="Sem resultado: $SEARCH"
-    deptree="Árvore de dependências para: $SEARCH"
-    rdeptree="Árvore de dependências reversa para: $SEARCH"
+	search="Buscar"
+	cooking="cooking"
+	stable="stable"
+	result="Resultado para : $SEARCH"
+	noresult="Sem resultado: $SEARCH"
+	deptree="Árvore de dependências para: $SEARCH"
+	rdeptree="Árvore de dependências reversa para: $SEARCH"
 	depends="Dependências"
 	desc="Descrição"
 	file_list="Arquivo lista"
 	file="Arquivo";;
+
 cn)	package="è½¯ä»¶åŒ…ï¼š"
 	cooking="å¼€å‘ç‰ˆ"
 	stable="ç¨³å®šç‰ˆ"
+	desc="æè¿°"
+	tags="æ ‡ç­¾"
+	depends="ä¾èµ–"
+	file="æ–‡ä»¶"
+	file_list="æ–‡ä»¶åˆ—è¡¨"
+	search="Search"
+	result="Result for : $SEARCH"
+	noresult="No package $SEARCH"
+	deptree="Dependency tree for : $SEARCH"
+	rdeptree="Reverse dependency tree for : $SEARCH"
 	charset="UTF-8";;
-*)  LANG="en";;
-esac
-WOK=/home/slitaz/$SLITAZ_VERSION/wok
 
+*)	LANG="en";;
+
+esac
+
+WOK=/home/slitaz/$SLITAZ_VERSION/wok
 
 echo Content-type: text/html
 echo
