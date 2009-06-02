@@ -1,27 +1,27 @@
 # SliTaz package receipt.
 
 PACKAGE="osmo"
-VERSION="0.2.0"
+VERSION="0.2.6"
 CATEGORY="office"
 SHORT_DESC="A handy personal organizer using GTK+."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+ libxml2 xorg-libXdamage"
 BUILD_DEPENDS="gtk+ gtk+-dev libxml2-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://clay.ll.pl/osmo/"
+WEB_SITE="http://clayo.org/osmo/"
 WGET_URL="$SF_MIRROR/$PACKAGE-pim/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	patch -p0 -i ../stuff/notes_items.patch || exit 1
 	./configure \
 		--prefix=/usr \
+		--enable-printing=no \
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install &&
-	# UTF-8 fr.po = pango segfault if the system is not unicode.
-	rm -rf _pkg/usr/share/locale/fr
+	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -30,4 +30,3 @@ genpkg_rules()
 	mkdir -p $fs/usr
 	cp -a $_pkg/usr/bin $fs/usr
 }
-
