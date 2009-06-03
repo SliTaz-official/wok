@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="h8300-gcc"
+SOURCE="gcc"
+VERSION="4.4.0"
+CATEGORY="development"
+SHORT_DESC="gcc targeting the H8/300"
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="h8300-binutils glibc-base gmp mpfr"
+BUILD_DEPENDS="slitaz-toolchain gawk flex gmp gmp-dev mpfr mpfr-dev h8300-binutils"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gnu.org/software/gcc/"
+WGET_URL="$GNU_MIRROR/$SOURCE/$SOURCE-$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	rm -f -r $src/libssp $src/libstdc++-v3 $src/binutils
+	mkdir -p $SOURCE-$VERSION-build
+	cd $SOURCE-$VERSION-build
+	$src/configure \
+		--target=h8300-hitachi-hms \
+		--enable-languages=c,c++,java \
+		--disable-nls \
+		--enable-target-optspace \
+		--enable-obsolete \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/h8300-hitachi-hms $fs/usr
+	cp -a $_pkg/usr/include $fs/usr
+	# do not need to copy lib/libiberty.a
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/gcc $fs/usr/lib
+	cp -a $_pkg/usr/libexec $fs/usr
+}
+
+# Rules to clean the package
+clean_wok()
+{
+	rm -r $SOURCE-$VERSION-build
+}
