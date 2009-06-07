@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="tuxtype"
+SOURCE="tuxtype_w_fonts"
+VERSION="1.7.4"
+CATEGORY="games"
+SHORT_DESC="Educational typing tutor for kids."
+MAINTAINER="claudinei@slitaz.org"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://tux4kids.alioth.debian.org"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="libSDL libsdl-image libsdl-mixer libsdl-ttf"
+BUILD_DEPENDS="libSDL libSDL-dev libsdl-image libsdl-image-dev \
+libsdl-mixer libsdl-mixer-dev libsdl-ttf libsdl-ttf-dev"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--without-sdlpango \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/tuxtype $fs/usr/share
+
+	for lang in de es fr pt; do
+		mkdir -p $fs/usr/share/locale/$lang/LC_MESSAGES
+		cp -a $_pkg/usr/share/locale/$lang/LC_MESSAGES/tuxtype.mo \
+			$fs/usr/share/locale/$lang/LC_MESSAGES
+	done
+}
+
