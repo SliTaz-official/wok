@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="tuxmath"
+SOURCE="tuxmath_w_fonts"
+VERSION="1.7.2"
+CATEGORY="games"
+SHORT_DESC="Arcade game that helps kids practice their math facts."
+MAINTAINER="claudinei@slitaz.org"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://tux4kids.alioth.debian.org"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="libSDL libsdl-image libsdl-mixer libsdl-ttf"
+BUILD_DEPENDS="libSDL libSDL-dev libsdl-image libsdl-image-dev \
+libsdl-mixer libsdl-mixer-dev libsdl-ttf libsdl-ttf-dev"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -p1 -i ../stuff/SDL_extras.c.patch	
+	./configure \
+		--prefix=/usr \
+		--without-sdlpango \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/tuxmath $fs/usr/share
+
+	for lang in de es fr pt_BR zh_CN; do
+		mkdir -p $fs/usr/share/locale/$lang/LC_MESSAGES
+		cp -a $_pkg/usr/share/locale/$lang/LC_MESSAGES/tuxmath.mo \
+		        $fs/usr/share/locale/$lang/LC_MESSAGES
+	done
+}
+
