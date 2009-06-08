@@ -22,6 +22,7 @@ compile_rules()
 		--datadir=/usr/share --localstatedir=/var/lib/mysql \
 		--with-unix-socket-path=/var/run/mysqld/mysqld.sock \
 		--with-mysqld-user=mysql \
+		--enable-thread-safe-client \
 		--mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -44,9 +45,9 @@ genpkg_rules()
 	done
 	strip -s $fs/usr/libexec/*
 	# Package all mysql pkgs
-	for i in $(cd $WOK; ls -d mysql-* libmysql*)
+	for i in $(cd $WOK; ls -d *bmysql*)
 	do
-		tazwok genpkg $i
+		grep -q 'WANTED="mysql"' $WOK/$i/receipt && tazwok genpkg $i
 	done
 }
 
