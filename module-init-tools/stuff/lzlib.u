@@ -1,47 +1,45 @@
---- module-init-tools-3.2/zlibsupport.c
-+++ module-init-tools-3.2/zlibsupport.c
-@@ -16,58 +16,33 @@
+--- module-init-tools-3.9/zlibsupport.c
++++ module-init-tools-3.9/zlibsupport.c
+@@ -18,60 +18,40 @@
  #include "testing.h"
  
  #ifdef CONFIG_USE_ZLIB
 -#include <zlib.h>
-+#include <lzlib.h>
- 
+-
 -void *grab_contents(gzFile *gzfd, unsigned long *size)
 -{
 -	unsigned int max = 16384;
--	void *buffer = malloc(max);
+-	void *buffer = NOFAIL(malloc(max));
 -	int ret;
--
--	if (!buffer)
--		return NULL;
 -
 -	*size = 0;
 -	while ((ret = gzread(gzfd, buffer + *size, max - *size)) > 0) {
 -		*size += ret;
--		if (*size == max) {
--			buffer = realloc(buffer, max *= 2);
--			if (!buffer)
--				return NULL;
--		}
+-		if (*size == max)
+-			buffer = NOFAIL(realloc(buffer, max *= 2));
 -	}
 -	if (ret < 0) {
 -		free(buffer);
 -		buffer = NULL;
 -	}
+-
 -	return buffer;
 -}
--
++#include <lzlib.h>
+ 
  void *grab_fd(int fd, unsigned long *size)
  {
 -	gzFile gzfd;
 +	lzFile lzfd;
  
 -	gzfd = gzdopen(fd, "rb");
--	if (!gzfd)
+-	if (!gzfd) {
 +	lzfd = lzdopen(fd, "rb");
-+	if (!lzfd)
++	if (!lzfd) {
+ 		if (errno == ENOMEM)
+ 			fatal("Memory allocation failure in gzdopen\n");
  		return NULL;
+ 	}
  
 -	/* gzclose(gzfd) would close fd, which would drop locks.
 +	/* lzclose(lzfd) would close fd, which would drop locks.
@@ -58,11 +56,15 @@
 +	lzFile lzfd;
  	void *buffer;
  
+ 	errno = 0;
 -	gzfd = gzopen(filename, "rb");
--	if (!gzfd)
+-	if (!gzfd) {
 +	lzfd = lzopen(filename, "rb");
-+	if (!lzfd)
++	if (!lzfd) {
+ 		if (errno == ENOMEM)
+ 			fatal("Memory allocation failure in gzopen\n");
  		return NULL;
+ 	}
 -	buffer = grab_contents(gzfd, size);
 -	gzclose(gzfd);
 +	buffer = lzgrab(lzfd, size);
@@ -70,14 +72,24 @@
  	return buffer;
  }
  
---- module-init-tools-3.2/configure
-+++ module-init-tools-3.2/configure
-@@ -1741,7 +1741,7 @@
+
+--- module-init-tools-3.9/configure
++++ module-init-tools-3.9/configure
+@@ -2590,7 +2590,7 @@
  #define CONFIG_USE_ZLIB 1
  _ACEOF
  
 -  zlib_flags="-Wl,-Bstatic -lz -Wl,-Bdynamic"
 +  zlib_flags="-Wl,-Bdynamic -lz -llz"
  fi
- fi;
+ fi
+ 
+@@ -2602,7 +2602,7 @@
+ #define CONFIG_USE_ZLIB 1
+ _ACEOF
+ 
+-  zlib_flags="-lz"
++  zlib_flags="-lz -llz"
+ fi
+ fi
  
