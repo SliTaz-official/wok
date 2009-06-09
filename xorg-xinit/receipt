@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="xorg-xinit"
+VERSION="1.1.1"
+CATEGORY="x-window"
+SHORT_DESC="X.org initialization program"
+MAINTAINER="jozee@slitaz.org"
+SOURCE="xinit"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+DEPENDS="xorg-libX11 xorg-xauth"
+BUILD_DEPENDS="xorg-dev"
+WEB_SITE="http://xorg.freedesktop.org/"
+WGET_URL="$WEB_SITE/releases/individual/app/$TARBALL"
+TAGS="utility xorg"
+
+# Rules to configure and make the package.ls sr	
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make XINITDIR=/etc/X11/xinit &&
+	make XINITDIR=/etc/X11/xinit DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr	
+}
+
+pre_install()
+{
+	cp -a /usr/bin/startx /usr/bin/startx.bak
+}
