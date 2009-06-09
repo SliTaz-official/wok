@@ -1,0 +1,104 @@
+# SliTaz package receipt.
+
+PACKAGE="gcc+gcj"
+SOURCE="gcc"
+VERSION="4.4.0"
+CATEGORY="development"
+SHORT_DESC="The GNU Compiler Collection, including the gcj Compiler for Java."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="glibc-base glib gcc-lib-base libuuid zlib libgomp gmp mpfr python \
+gtk+ atk cairo expat fontconfig freetype libgio pango pixman libpng \
+xorg-libICE xorg-libSM xorg-libX11 xorg-libXau xorg-libXcomposite \
+xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes \
+xorg-libXinerama xorg-libXrandr xorg-libXrender xorg-libXtst"
+BUILD_DEPENDS="glibc-dev gawk flex python gmp gmp-dev mpfr mpfr-dev \
+zlib-dev zip gtk+-dev libart_lgpl-dev xorg-dev xorg-inputproto xorg-randrproto xorg-xextproto"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://gcc.gnu.org/"
+WGET_URL="$GNU_MIRROR/$SOURCE/$SOURCE-$VERSION/$TARBALL"
+PROVIDE="$SOURCE"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Get ecj.jar needed to build gcj
+	# (See http://gcc.gnu.org/install/configure.html --with-ecj-jar)
+	ECJ_PRE_PATH=`pwd`
+	ECJ_JAR="ecj-latest.jar"
+	ECJ_URL="ftp://sourceware.org/pub/java/$ECJ_JAR"
+	if [ ! -f "$SOURCES_REPOSITORY/$ECJ_JAR" ] ; then
+		cd $SOURCES_REPOSITORY
+		download $ECJ_URL
+		# Exit if download failed to avoid errors.
+		if [ ! -f "$SOURCES_REPOSITORY/$ECJ_JAR" ] ; then
+			echo -e "\nECJ jar download failed, exiting. Please check ECJ_URL variable.\n"
+			exit 1
+		fi
+	else
+		echo -n "ECJ jar exit... "
+		status
+	fi
+	
+	# Copy the ecj jar to the root of the gcc source directory
+	# The file name isn't versioned, so we have to remove it from the
+	# sources repository to ensure that we receive updated files
+	mv -f $SOURCES_REPOSITORY/$ECJ_JAR  $src/ecj.jar
+	
+	# Pop back to the pre-download directory
+	cd $ECJ_PRE_PATH
+
+	# Use libiberty.a from binutils.
+	sed -i 's/install_to_$(INSTALL_DEST) //' \
+		$SOURCE-$VERSION/libiberty/Makefile.in || exit 1
+    mkdir -p $SOURCE-$VERSION-build
+    cd $SOURCE-$VERSION-build
+    ../$SOURCE-$VERSION/configure --prefix=/usr --libexecdir=/usr/lib \
+		--infodir=/usr/share/info --mandir=/usr/share/man --enable-nls \
+		--enable-languages=c,c++,java --enable-shared --with-system-zlib \
+		--enable-clocale=gnu --enable-objc-gc --enable-__cxa_atexit \
+		--enable-threads=posix --with-tune=i486 i486-pc-linux-gnu \
+		--enable-java-home --with-arch-directory=i386 \
+		--with-python-dir=/lib/python2.5/site-packages \
+		--with-x --enable-java-awt=gtk \
+		$CONFIGURE_ARGS  &&
+    make bootstrap &&
+    # Make install in the source tree to help creating derivated pkgs
+    # and keep $_pkg variable set for genpkg.
+    make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p  $fs/usr/share
+	cp -a $_pkg/usr/share/java $fs/usr/share
+    cp -a $_pkg/usr/bin $fs/usr
+    # Copy all libs. Remove libgcc_s.so and libstdc++.so
+    # they goes in gcc-lib-base-$VERSION package.
+    cp -a $_pkg/usr/lib $fs/usr
+    rm $fs/usr/lib/libgcc_s.so*
+    rm $fs/usr/lib/libstdc++.so*
+    rm $fs/usr/lib/libgomp.so*
+    # Include files.
+    cp -a $_pkg/usr/include $fs/usr
+}
+
+# Post install commands for Tazpkg.
+post_install()
+{
+	local root
+	root=$1
+	echo "Processing post-install commands..."
+	if [ ! -f "$root/lib/cpp" ] ; then
+		ln -s ../usr/bin/cpp $root/lib
+	fi
+	if [ ! -f "$root/usr/bin/cc" ] ; then
+		ln -s gcc $root/usr/bin/cc
+	fi
+}
+
+# Rules to clean the package
+clean_wok()
+{
+	rm -r $SOURCE-$VERSION-build
+}
