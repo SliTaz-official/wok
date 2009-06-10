@@ -26,6 +26,18 @@ compile_rules()
 	[ -f mplayer/configure ] || svn checkout -r $VERSION \
 		svn://svn.mplayerhq.hu/mplayer/trunk mplayer 
 	cd mplayer
+	
+	   while read file; do
+    	[ -f done.$file ] && continue
+    	echo "Apply $file..."
+		cp ../../stuff/$PACKAGE-$VERSION-$file .
+    	patch -p0 < $PACKAGE-$VERSION-$file || return 1
+	touch done.$file
+    done <<EOT
+liba52-gcc44.u
+EOT
+	#patch -Np0 < $PACKAGE-$VERSION-liba52_gcc44.u || return 1 
+	
 	./configure \
 		--prefix=/usr \
 		--confdir=/etc/mplayer \
@@ -48,7 +60,8 @@ compile_rules()
 		--disable-fribidi --target=i386-linux --disable-libavutil_a \
 		--disable-tv --disable-tv-teletext --disable-radio-v4l2 --disable-v4l2 \
 		--disable-musepack --disable-dvdnav --disable-esd --disable-mga \
-		--disable-libamr_nb --disable-lirc --disable-nas --enable-gui &&
+		--disable-libamr_nb --disable-lirc --disable-nas --disable-vdpau \
+		--enable-gui --enable-freetype &&
 	make &&
 	make DESTDIR=$PWD/../_pkg install
 }
@@ -71,4 +84,6 @@ genpkg_rules()
 	# Font
 	cd .. && ln -s ../fonts/truetype/ttf-dejavu/DejaVuSans.ttf subfont.ttf
 }
+
+
 
