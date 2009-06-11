@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="openerp-client"
+VERSION="5.0.1-0"
+CATEGORY="office"
+SHORT_DESC="Open source ERP client files."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://openerp.com/"
+WGET_URL="$WEB_SITE/download/stable/source/$TARBALL"
+DEPENDS="postgresql-client python pygtk pygobject pycairo pyxml egenix-mx-base"
+BUILD_DEPENDS="python python-dev pygtk"
+SUGGESTED="epdfview"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed 's/^#.*//' < setup.py > setup2.py
+	python setup2.py build
+	python setup2.py install --root=$PWD/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/applications
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	cp -a $_pkg/usr/share/openerp-client $fs/usr/share
+	cp -a $_pkg/usr/share/locale $fs/usr/share
+	cp stuff/openerp-client.desktop $fs/usr/share/applications
+	sed -i 's|cd .*_pkg|cd |' $fs/usr/bin/openerp-client
+	mkdir -p $fs/usr/share/openerp-client/pixmaps/
+	ln -s /usr/share/pixmaps/openerp-client/openerp_logo.png \
+		$fs/usr/share/openerp-client/pixmaps
+}
