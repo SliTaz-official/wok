@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="childsplay"
+VERSION="0.90.2"
+CATEGORY="games"
+SHORT_DESC="Python educational game."
+MAINTAINER="claudinei@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WEB_SITE="http://www.childschool.org"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="python pygame"
+BUILD_DEPENDS="python python-dev pygame libSDL libSDL-dev libsdl-image \
+libsdl-image-dev libsdl-mixer libsdl-mixer-dev libsdl-ttf libsdl-ttf-dev \
+libsmpeg libsmpeg-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -p1 -i ../stuff/INSTALL.sh.patch	
+	sh INSTALL.sh
+	sed -i "s/\/usr\/local/\/usr/" $src/_pkg/usr/bin/childsplay
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/usr/share $fs/var
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/assetml $fs/usr/share
+	cp -a $_pkg/usr/share/childsplay $fs/usr/share
+	cp -a $_pkg/var/games $fs/var
+
+	for lang in de es fr pt; do
+		mkdir -p $fs/usr/share/locale/$lang/LC_MESSAGES
+		cp -a $_pkg/usr/share/locale/$lang/LC_MESSAGES/childsplay.mo \
+			$fs/usr/share/locale/$lang/LC_MESSAGES
+	done
+}
