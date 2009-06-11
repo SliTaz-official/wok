@@ -1,0 +1,49 @@
+# SliTaz package receipt.
+
+PACKAGE="ddd"
+VERSION="3.3.12"
+CATEGORY="development"
+SHORT_DESC="GNU Data Display Debugger."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="lesstif"
+BUILD_DEPENDS="slitaz-toolchain gawk lesstif-dev lesstif xorg-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/ddd/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	
+	# Need to include an additional header in a file to build with gcc 4.4.0
+	DDD_FILE_TO_PATCH="ddd/strclass.C"
+	cp -f $DDD_FILE_TO_PATCH $DDD_FILE_TO_PATCH.orig  &&
+	echo "#include <stdio.h>" > $DDD_FILE_TO_PATCH  &&
+	cat $DDD_FILE_TO_PATCH.orig >> $DDD_FILE_TO_PATCH  &&
+	
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--includedir=/usr/share/include \
+		$CONFIGURE_ARGS  &&
+	make  &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/$PACKAGE-$VERSION
+	cp -a $_pkg/usr/share/$PACKAGE-$VERSION/$PACKAGE $fs/usr/share/$PACKAGE-$VERSION
+	cp -a $_pkg/usr/share/$PACKAGE-$VERSION/themes $fs/usr/share/$PACKAGE-$VERSION
+	cp -a $_pkg/usr/share/$PACKAGE-$VERSION/vsllib $fs/usr/share/$PACKAGE-$VERSION
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	
+	mkdir -p $fs/usr/share/pixmaps
+	cp -a $src/icons/ddd.xpm $fs/usr/share/pixmaps
+
+	cp -a $_pkg/usr/bin $fs/usr
+}
+
