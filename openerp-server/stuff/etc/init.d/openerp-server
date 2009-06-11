@@ -1,0 +1,70 @@
+#!/bin/sh
+# /etc/init.d/openerp-server : Start, stop and restart OpenERP server on SliTaz, at 
+# boot time or with the command line.
+#
+# To start OpenERP server at boot time, just put openerp-server in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=OpenERP
+DESC="OpenERP server"
+DAEMON=/usr/bin/openerp-server
+OPTIONS=$OPENERP_OPTIONS
+PIDFILE=/var/run/openerp/openerp-server.pid
+LOGFILE=/var/log/openerp/openerp-server.log
+CONFIGFILE=/etc/openerp/openerp-server.cfg
+
+if [ -z "$OPTIONS" ]; then
+	OPTIONS="--pidfile=$PIDFILE --logfile=$LOGFILE -c $CONFIGFILE"
+	LANG=$(. /etc/locale.conf; echo $LANG)
+	[ -f /usr/lib/python*/site-packages/tinyerp-server/i18n/$LANG.csv ] && \
+		OPTIONS="$OPTIONS -l $LANG"
+fi
+
+case "$1" in
+	start)
+		if [ -f "$PIDFILE" ]; then
+			echo "$NAME already running (PID: `cat $PIDFILE`)."
+			exit 1
+		fi
+		echo -n "Starting $DESC: $NAME... "
+		$DAEMON $OPTIONS &
+		status
+		sleep 4
+		# At boot OpenERP dont start correctly if we start it in background.
+		if [ ! -f "$PIDFILE" ]; then
+			sleep 6
+			$DAEMON $OPTIONS > $LOGFILE
+		fi ;;
+	stop)
+		if [ ! -f "$PIDFILE" ]; then
+			echo "$NAME is not running."
+			exit 1
+		fi
+		echo -n "Stopping $DESC: $NAME... "
+		kill `cat $PIDFILE`
+		rm -f $PIDFILE
+		status
+		sleep 2 ;;
+	restart)
+		if ! active_pidfile $PIDFILE python ; then
+			echo "$NAME is not running."
+			exit 1
+		fi
+		echo -n "Restarting $DESC: $NAME... "
+		kill `cat $PIDFILE`
+		rm -f $PIDFILE 2> /dev/null
+		sleep 2
+		$DAEMON $OPTIONS &
+		status
+		sleep 2 ;;
+	*)
+		echo ""
+		echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+		echo ""
+		exit 1 ;;
+esac
+
+exit 0
