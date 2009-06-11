@@ -1,0 +1,186 @@
+--- childsplay_plugins-0.90/install.sh.orig	Sat Aug 25 07:53:40 2007
++++ childsplay_plugins-0.90/install.sh	Thu Jun 11 18:19:32 2009
+@@ -8,8 +8,18 @@
+ # However, you can change the "prefix" to "/usr" and childsplay will still
+ # work. Set it to anything else and your on your own.
+   
+-PREFIX=/usr/local
+ 
++PKG_PREFIX=$PWD/_pkg/usr
++PREFIX=/usr
++
++# Create directories to install the package
++mkdir -p $PKG_PREFIX/bin
++mkdir -p $PKG_PREFIX/lib/games/childsplay/lib
++mkdir -p $PKG_PREFIX/share/assetml
++mkdir -p $PKG_PREFIX/share/childsplay/Data/icons
++mkdir -p $PKG_PREFIX/share/childsplay/lib
++
++
+ #################################################################
+ # DON'T EDIT BEHIND THIS POINT 
+ #################################################################
+@@ -20,7 +30,7 @@
+ 
+ LOCALEDIR=$PREFIX/share/locale
+ MTDIR=$PREFIX/bin
+-ASSETMLDIR=/usr/share/assetml
++ASSETMLDIR=$PREFIX/share/assetml
+ PYTHON=`which python`
+ SCOREDIR=/var/games
+ DOCDIR=$PREFIX/share/doc/childsplay
+@@ -31,10 +41,22 @@
+ SHARELIBDATADIR=$SHAREDIR/lib
+ SHAREDATADIR=$SHAREDIR/Data
+ 
++# package directories
++PKG_MTDIR=$PKG_PREFIX/bin
++PKG_LOCALEDIR=$PKG_PREFIX/share/locale
++PKG_ASSETMLDIR=$PKG_PREFIX/share/assetml
++PKG_CPDIR=$PKG_PREFIX/lib/games/childsplay
++PKG_SHAREDIR=$PKG_PREFIX/share/childsplay
++PKG_SHARELIBDATADIR=$PKG_SHAREDIR/lib
++PKG_SHAREDATADIR=$PKG_SHAREDIR/Data
++
++# copy the score file to the PKG_SHAREDATADIR
++cp $SHAREDATADIR/childsplay.score $PKG_SHAREDATADIR
++
+ ##################################################
+ #  Package text to be displayed as last step
+ # 0 = no readmes to display, 1 = there are readmes
+-README=1
++README=0
+ # if README=1 then READMES=names of readmes in CWD
+ # like this READMES="README README2 README3"
+ READMES="README README-PACKID README.MT_users2csv"
+@@ -55,8 +77,8 @@
+ echo -e "\n>>>>>>>>>>> Install childsplay plugins >>>>>>>>>>>>>>>>>>>>"
+ echo -e "\n This release depends on childsplay version >= $DEPEN"
+ echo -n " Checking, version = "
+-#CP=`which childsplay`
+-CP=$BINDIR/childsplay
++CP=`which childsplay`
++#CP=$BINDIR/childsplay
+ VERSION=$($CP --version)
+ echo $VERSION
+ 
+@@ -76,22 +98,22 @@
+ 
+ set -e
+ 
+-echo -e "\n The path to install the plugins in is $CPDIR."
+-echo " If you have installed childsplay in a other place, you can"
+-echo " give the full path to childsplay, otherwise just hit enter"
+-echo " Hit enter to install in $CPDIR, or give the full path"
+-read path
+-if [ $path ];then
+-    if [ -e $path/install.py ];then
+-        CPDIR=path
+-    else
+-        echo "*********** WARNING *************"
+-        echo " $path does not exists or is not the childsplay directory"
+-        echo " exit"
+-        exit 1
+-    fi
+-fi
+-echo " Installing in $CPDIR"
++# echo -e "\n The path to install the plugins in is $CPDIR."
++# echo " If you have installed childsplay in a other place, you can"
++# echo " give the full path to childsplay, otherwise just hit enter"
++# echo " Hit enter to install in $CPDIR, or give the full path"
++# read path
++# if [ $path ];then
++#     if [ -e $path/install.py ];then
++#         CPDIR=path
++#     else
++#         echo "*********** WARNING *************"
++#         echo " $path does not exists or is not the childsplay directory"
++#         echo " exit"
++#         exit 1
++#     fi
++# fi
++# echo " Installing in $CPDIR"
+ 
+ echo "Compiling modules to bytecode..."
+ $PYTHON $CPDIR/install.py --compile $CWD/lib
+@@ -100,33 +122,33 @@
+ for DIR in `ls $CWD/lib`
+ do 
+     if [ -d $CWD/lib/$DIR ]
+-	 then cp -rf $CWD/lib/$DIR $SHARELIBDATADIR
+-	 else cp -f $CWD/lib/$DIR $CPDIR/lib
++	 then cp -rf $CWD/lib/$DIR $PKG_SHARELIBDATADIR
++	 else cp -f $CWD/lib/$DIR $PKG_CPDIR/lib
+     fi
+ done
+ 
+ echo " Copy misc. data files"
+-cp -rf $CWD/Data/*.icon.png $SHAREDATADIR/icons/
+-cp -rf $CWD/Data/AlphabetSounds $SHAREDATADIR/
++cp -rf $CWD/Data/*.icon.png $PKG_SHAREDATADIR/icons/
++cp -rf $CWD/Data/AlphabetSounds $PKG_SHAREDATADIR/
+ 
+ echo " Copy assetml files"
+-cp -rf $CWD/assetml/* $ASSETMLDIR
++cp -rf $CWD/assetml/* $PKG_ASSETMLDIR
+ 
+-echo " Copy README's to the childsplay doc directory"
+-for name in $READMES;do
+-    cp -f $CWD/$name $DOCDIR/$name
+-done
++# echo " Copy README's to the childsplay doc directory"
++# for name in $READMES;do
++#     cp -f $CWD/$name $DOCDIR/$name
++# done
+ 
+ echo -e "\n Trying to add $SCORE to the childsplay score sheet"
+ echo " Start add-score.py"
+-$PYTHON $CWD/add-score.py $SHAREDATADIR $SCORE
++$PYTHON $CWD/add-score.py $PKG_SHAREDATADIR $SCORE
+ 
+ echo -e "\n Installing MT_users2cvs.py"
+ echo " Look at the file called README.MT_users2csv for info on how"
+ echo " to use it. It usage is intended for teachers who want to an"
+ echo " users resume of the multiplication tables users."
+-cp -f $CWD/MT_users2csv.py $MTDIR/MT_users2csv.py 
+-chmod a+x $MTDIR/MT_users2csv.py
++cp -f $CWD/MT_users2csv.py $PKG_MTDIR/MT_users2csv.py 
++chmod a+x $PKG_MTDIR/MT_users2csv.py
+ 
+ echo -e "\n Everything installed, enjoy\n"
+ echo -e "\n***************** IMPORTANT *************************"
+@@ -135,20 +157,20 @@
+ echo "BUG REPORTS ARE THE MOST IMPORTANT THINGS YOU CAN DO"
+ echo ""
+ 
+-if [ $README == 1 ];then
+-    echo " Read the README's (if any) that came with these packages,"
+-    echo " they contains directions on how to translate some"
+-    echo " text files used by the games in your own language"
+-    echo -e "\nHit any key to read the readme(s), enter to quit"
+-    read key
+-    if [ $key ];then
+-        for name in $READMES;do
+-            cat $name >> chplREADMEScat
+-        done
+-        `which more` chplREADMEScat
+-        rm chplREADMEScat
+-    fi
+-fi
++# if [ $README == 1 ];then
++#     echo " Read the README's (if any) that came with these packages,"
++#     echo " they contains directions on how to translate some"
++#     echo " text files used by the games in your own language"
++#     echo -e "\nHit any key to read the readme(s), enter to quit"
++#     read key
++#     if [ $key ];then
++#         for name in $READMES;do
++#             cat $name >> chplREADMEScat
++#         done
++#         `which more` chplREADMEScat
++#         rm chplREADMEScat
++#     fi
++# fi
+ 
+ echo ""
+ echo "***********************************************************************"
