@@ -6,18 +6,30 @@ VERSION="3.55"
 CATEGORY="multimedia"
 SHORT_DESC="a browser plugin that uses mplayer to play videos from websites"
 MAINTAINER="jozee@slitaz.org"
-DEPENDS="mplayer xorg-libXpm gtk+"
-BUILD_DEPENDS="mplayer gtk+-dev xorg-libXpm-dev firefox-dev"
+DEPENDS="mplayer-svn xorg-libXpm gtk+"
+BUILD_DEPENDS="mplayer-svn gtk+-dev xorg-libXpm-dev firefox-dev libIDL gettext"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://mplayerplug-in.sourceforge.net/" 
 WGET_URL="http://downloads.sourceforge.net/mplayerplug-in/$TARBALL"
-FIREFOX_VER="3.0.10"
+TAGS="player audio video browser"
+FIREFOX_VER=`cat /var/lib/tazpkg/installed/firefox/receipt | grep VERSION= | cut -d \" -f 2`
+
 
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	 while read file; do
+    	[ -f done.$file ] && continue
+    	echo "Apply $file..."
+    	patch -p1 < ../stuff/$PACKAGE-$VERSION-$file || return 1
+	touch done.$file
+    done <<EOT
+glibc210.u
+EOT
+    make distclean
+	touch install.sh
 	./configure --prefix=/usr --sysconfdir=/etc \
 		--enable-gtk2 \
 		--enable-wmp \
@@ -32,8 +44,29 @@ compile_rules()
 
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib 
+	mkdir -p $fs/usr/lib
     cp -a $_pkg/etc $fs
-    cp -a $_pkg/usr/lib/mozilla $fs/usr/lib
-       
+    cp -a $_pkg/usr/lib/mozilla $fs/usr/lib		
+	# change the default video output to xv,x11
+	sed -i "s/#vo=xv,x11/vo=xv,x11/" $fs/etc/$PACKAGE.conf
+	      
 }
+
+post_install()
+{
+	echo -n "Processing post install commands..."
+	local root
+	root=$1
+	for i in $root/usr/lib/mozilla/plugins/$PACKAGE*.so ; do
+		ln -s $i $root/usr/lib/firefox-$FIREFOX_VER/plugins
+	done 
+	status
+}
+
+post_remove()
+{
+	echo -n "Processing post remove commands..."
+	rm -f /usr/lib/firefox*/plugins/$PACKAGE*.so
+	status
+}
+
