@@ -38,7 +38,10 @@ post_install()
 {
 	grep -q ^WPA_OPTIONS= $1/etc/daemons.conf || cat >> $1/etc/daemons.conf <<EOT
 # wpa_supplicant daemon options
-WPA_OPTIONS="-Bw -P/var/run/wpa_supplicant.pid -c/etc/wpa_supplicant.conf -i\$(. /etc/network.conf ; echo \$WIFI_INTERFACE)"
+WPA_OPTIONS="-B -P/var/run/wpa_supplicant.pid -c/etc/wpa_supplicant.conf -i\$(. /etc/network.conf ; echo \$WIFI_INTERFACE)"
 
 EOT
+	# 'w' option dont exist anymore with < 0.6.9
+	sed -i s/'-Bw'/'-B'/ $1/etc/daemons.conf
+	sed -i s/'-B -w'/'-B'/g $i/etc/init.d/network.sh
 }
