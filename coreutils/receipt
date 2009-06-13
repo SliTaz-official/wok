@@ -8,15 +8,35 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.gnu.org/software/coreutils/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="libcap"
+BUILD_DEPENDS="libcap-dev gmp-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS
-	make
-	make DESTDIR=$PWD/_pkg install
+	
+	# Hack to fix ls: expected specifier-qualifier-list before '__u64'
+	# We are not patching the original file, just fake to compile
+	# coreutils.
+	rm -f /usr/include/asm/sigcontext.h.bak
+	mv /usr/include/asm/sigcontext.h /usr/include/asm/sigcontext.h.bak || exit 1
+	cp ../stuff/sigcontext.h /usr/include/asm
+	
+	sed -i 's/1.10a/1.10.2/' configure.ac || exit 1
+	sed -i 's/dist-xz/dist-lzma/' configure.ac || exit 1
+	
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--enable-no-install-program=kill,uptime,ls \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install &&
+	
+	# Restore original sigcontext.h
+	mv -f /usr/include/asm/sigcontext.h.bak /usr/include/asm/sigcontext.h
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -27,7 +47,7 @@ compile_rules()
 #
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/locale
+	mkdir -p $fs/usr/bin
 	# Utils...
 	cp -a $_pkg/usr/bin/base64 $fs/usr/bin
 	cp -a $_pkg/usr/bin/csplit $fs/usr/bin
@@ -42,9 +62,6 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin/split $fs/usr/bin
 	cp -a $_pkg/usr/bin/users $fs/usr/bin
 	cp -a $_pkg/usr/bin/groups $fs/usr/bin
-	strip -s $fs/usr/bin/* 2>/dev/null
-	# Locale
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
 }
 
 # Pre and post install commands for Tazpkg.
@@ -55,7 +72,13 @@ pre_install()
 	local root
 	root=$1
 	echo "Processing pre-install commands..."
-	echo -n "Removing all Busybox reploaced utils... "
+	echo -n "Removing all Busybox replaced utils... "
 	rm -f $root/usr/bin/od $root/usr/bin/split
 	status
+}
+
+post_remove()
+{
+	ln -s /bin/busybox /usr/bin/od
+	ln -s /bin/busybox /usr/bin/split
 }
