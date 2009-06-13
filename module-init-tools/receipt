@@ -15,8 +15,15 @@ BUILD_DEPENDS="zlib-dev lzlib-dev lzlib"
 compile_rules()
 {
 	cd $src
-	[ -f done.lzlib.u ] || patch -p1 < ../stuff/lzlib.u
-	touch done.lzlib.u
+	for patch_file in lzlib depmod; do
+		if [ -f done.$patch_file ]; then
+			echo "Skipping $patch_file"
+			continue
+		fi
+		echo "Apply $patch_file.u"
+		patch -p1 < ../stuff/$patch_file.u || return 1
+		touch done.$patch_file
+	done
 	./configure --enable-zlib --prefix=/usr \
 	--sbindir=/sbin --bindir=/bin --sysconfdir=/etc \
 	--infodir=/usr/share/info --mandir=/usr/share/man \
