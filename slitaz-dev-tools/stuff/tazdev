@@ -1,0 +1,133 @@
+#!/bin/sh
+# Tazdev - SliTaz developers and build host tool.
+# System wide config file: /etc/slitaz/tazdev.conf
+#
+# (c) 2009 SliTaz GNU/Linux - GNU gpl v3
+#
+# Authors : Christophe Lincoln (Pankso) <pankso@slitaz.org>
+#
+
+if [ -f /etc/slitaz/tazdev.conf ]; then
+	. /etc/slitaz/tazdev.conf
+elif [ -f $PWD/tazdev.conf ]; then
+	. $PWD/tazdev.conf
+else
+	echo -e "\nNo config file found in /etc/slitaz or the current dir...\n"
+	exit 0
+fi
+
+usage()
+{
+	echo -e "\nSliTaz developers and build host tool\n
+\033[1mUsage: \033[0m `basename $0` [command] [user] [stable|cooking]
+\033[1mCommands: \033[0m\n
+  usage      Print this short usage and command list.
+  cmplog     Log 'tazwok cmp' result.
+  update-wok Update Hg wok and copy it to the chroot wok.
+  chroot     Mount virtual fs if needed and chroot into the build env.
+  push       Upload new packages to the mirror.
+  dry-push   Show what will be uploaded to the mirror. Do nothing.
+  pull       Download new packages from the mirror.
+  dry-pull   Show what will be downloaded from the mirror. Do nothing.\n"
+}
+
+# Exit if user is not root.
+check_root()
+{
+	if test $(id -u) != 0 ; then
+	   echo -e "\nThis program requires being run as root.\n"
+	   exit 0
+	fi
+}
+
+check_mirror()
+{
+	# ping -c 1 $MIRROR
+	if [ -n "$2" ]; then
+		USER=$2
+	else
+		echo -e "\nPlease specify a user.\n" && exit 0
+	fi
+	if [ "$3" = "stable" ]; then
+		REMOTE_DIR=$MIRROR_DIR/stable/
+		LOCAL_DIR=$STABLE/packages/
+	else
+		REMOTE_DIR=$MIRROR_DIR/cooking/
+		LOCAL_DIR=$COOKING/packages/
+	fi	
+}
+
+case "$1" in
+	cmplog)
+		# Log 'tazwok cmp' for the web interface (can be used via a cron job).
+		check_root
+		tazwok cmp | grep ^[A-Z] | tee $CMP_LOG
+		echo "Date: `date`" >> $CMP_LOG ;;
+	update-wok)
+		# Update the Hg wok and copy it to the chroot env. Hg wok id 
+		# copied to the chroot wok to avoid messing with build result
+		# file and so we can aslo modify receipt directly with affecting
+		# the main Hg.
+		check_root
+		if [ "$2" = "stable" ]; then
+			HG_WOK=$STABLE/wok
+			CHROOT=$STABLE/chroot
+		else
+			HG_WOK=$COOKING/wok
+			CHROOT_WOK=$COOKING/chroot/home/slitaz
+		fi
+		cd $HG_WOK
+		hg pull && hg update
+		echo -n "Copying Hg wok to the chroot... "
+		cp -a $HG_WOK $CHROOT_WOK
+		echo "Done" ;;
+	chroot)
+		# Chroot into a build env. Default to cookind configured in 
+		# tazdev.conf
+		check_root
+		if [ "$1" = "stable" ]; then
+			ROOTFS=$STABLE/chroot
+		else
+			ROOTFS=$COOKING/chroot
+			[ -n "$1" ] && ROOTFS=$1
+		fi
+		# Mount virtual Kernel file systems and chroot but check that 
+		# nobody else has done mounts
+		if [ ! -d $ROOTFS/proc/1 ]; then
+			mount -t proc proc $ROOTFS/proc
+			mount -t sysfs sysfs $ROOTFS/sys
+			mount -t devpts devpts $ROOTFS/dev/pts
+			mount -t tmpfs shm $ROOTFS/dev/shm
+		fi
+		echo "Chrooting in $ROOTFS... "
+		chroot $ROOTFS /bin/sh --login
+		# Unmount virtual Kernel file systems on exit. and ensure we are the 
+		# last user before unmounting !
+		if [ "$(ps | grep $(basename $0) | grep -v grep | wc -l)" == "1" ]; then
+			umount $ROOTFS/dev/shm
+			umount $ROOTFS/dev/pts
+			umount $ROOTFS/sys
+			umount $ROOTFS/proc
+		fi
+		echo "Exiting of $ROOTFS chroot environment... " ;;
+	push)
+		check_mirror
+		rsync -r -t -l -v -z --delete \
+			$LOCAL_DIR -e ssh $USER@$HOST:$REMOTE_DIR ;;
+	dry-push)
+		check_mirror
+		rsync -r -t -l -v -z --delete --dry-run \
+			$LOCAL_DIR -e ssh $USER@$HOST:$REMOTE_DIR ;;
+	pull)
+		check_mirror
+		rsync -r -t -l -v -z --delete \
+			-e ssh $USER@$HOST:$REMOTE_DIR $LOCAL_DIR ;;
+	dry-pull)
+		check_mirror
+		rsync -r -t -l -v -z --delete --dry-run \
+			-e ssh $USER@$HOST:$REMOTE_DIR $LOCAL_DIR ;;
+	usage|*)
+		usage ;;
+esac
+
+exit 0
