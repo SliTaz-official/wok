@@ -9,8 +9,9 @@
 
 if [ -f /etc/slitaz/tazdev.conf ]; then
 	. /etc/slitaz/tazdev.conf
-elif [ -f $PWD/tazdev.conf ]; then
-	. $PWD/tazdev.conf
+	if [ -f $PWD/tazdev.conf ]; then
+		. $PWD/tazdev.conf
+	fi
 else
 	echo -e "\nNo config file found in /etc/slitaz or the current dir...\n"
 	exit 0
@@ -62,6 +63,7 @@ case "$1" in
 	cmplog)
 		# Log 'tazwok cmp' for the web interface (can be used via a cron job).
 		check_root
+		echo -e "Starting 'tazwok cmp' (can be long)...\n"
 		tazwok cmp | grep ^[A-Z] | tee $CMP_LOG
 		echo "Date: `date`" >> $CMP_LOG ;;
 	update-wok)
@@ -77,11 +79,14 @@ case "$1" in
 			HG_WOK=$COOKING/wok
 			CHROOT_WOK=$COOKING/chroot/home/slitaz
 		fi
+		echo ""
+		echo "Hg wok     : $HG_WOK"
+		echo "Chroot wok : $CHROOT_WOK"
 		cd $HG_WOK
 		hg pull && hg update
 		echo -n "Copying Hg wok to the chroot... "
 		cp -a $HG_WOK $CHROOT_WOK
-		echo "Done" ;;
+		echo -e "Done\n" ;;
 	update-www)
 		# Update website from repo.
 		echo ""
