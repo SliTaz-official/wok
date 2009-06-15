@@ -1,0 +1,205 @@
+--- hsfmodem-7.80.02.03full/scripts/cnxtconfig.in	Fri Feb 20 22:30:17 2009
++++ hsfmodem-7.80.02.03full-slitaz/scripts/cnxtconfig.in	Fri Jun 12 16:20:59 2009
+@@ -74,7 +74,7 @@
+ 				answer="${region}"
+ 				;;
+ 			*)
+-				answer="`echo \"${answer}\" | tr '[a-z ]' '[A-Z_]'`"
++				answer="`echo \"${answer}\" | tr '[a-z]' '[A-Z]' | sed 's/\s/_/g'`"
+ 				;;
+ 			esac
+ 		fi
+@@ -109,15 +109,25 @@
+ {
+ 	# Try to guess what region we're in, using the timezone settings
+ 
+-	localtime_size="`/bin/ls -lL /etc/localtime 2>/dev/null | ${AWK} '{print $5}'`"
++#	localtime_size="`/bin/ls -lL /etc/localtime 2>/dev/null | ${AWK} '{print $5}'`"
++#
++#	if ! [ ${localtime_size} -gt 0 ]; then
++#		return 1
++#	fi
+ 
+-	if ! [ ${localtime_size} -gt 0 ]; then
++#	zoneinfo_dir=/usr/share/zoneinfo
++#
++#	if [ ! -d ${zoneinfo_dir} -o ! -f ${zoneinfo_dir}/zone.tab ]; then
++#		return 1
++#
++#	fi
++	if [ ! -e /etc/TZ ]; then
+ 		return 1
+ 	fi
+ 
+-	zoneinfo_dir=/usr/share/zoneinfo
++	zoneinfo_dir=/usr/share/softmodem
+ 
+-	if [ ! -d ${zoneinfo_dir} -o ! -f ${zoneinfo_dir}/zone.tab ]; then
++	if [ ! -f ${zoneinfo_dir}/hsfzone.tab ]; then
+ 		return 1
+ 	fi
+ 
+@@ -206,18 +216,25 @@
+ 	iso_VN=00BC # VIETNAM
+ 
+ 	(
+-		cd ${zoneinfo_dir} 2>/dev/null || return 1
+-		find . -type f -size "${localtime_size}"c -print | sed 's@^\./@@' | \
+-			while read file; do
+-				cmp -s /etc/localtime $file || continue
++#		cd ${zoneinfo_dir} 2>/dev/null || return 1
++#		find . -type f -size "${localtime_size}"c -print | sed 's@^\./@@' | \
++#			while read file; do
++#				cmp -s /etc/localtime $file || continue
+ # in the egrep and sed regular expressions below, it is very important to
+ # have tabs, not spaces
+-				egrep "	$file(	.*|\$)" ${zoneinfo_dir}/zone.tab
+-			done | sed -n '/^[^#]/s/	.*//p' | sort | uniq | \
+-				while read code; do
+-					eval "echo \${iso_${code}}"
+-				done | sort | uniq
+-		return 0
++#				egrep "	$file(	.*|\$)" ${zoneinfo_dir}/zone.tab
++#			done | sed -n '/^[^#]/s/	.*//p' | sort | uniq | \
++#				while read code; do
++#					eval "echo \${iso_${code}}"
++#				done | sort | uniq
++#		return 0
++	zone=`cat /etc/TZ`
++	egrep $zone ${zoneinfo_dir}/zone.tab | sed -n '/^[^#]/s/    .*//p' | sort | uniq | \ 
++		while read code; do
++			eval "echo \${iso_${code}}"
++		done | sort | uniq 
++	return 0
++		
+ 	)
+ }
+ 
+@@ -1636,7 +1653,7 @@
+ 		update-modules
+ 	else
+ 		if ("$@" "${modulesconf}" | "${filter}"; cat ${f}) > ${modulesconf}.$$; then
+-			if ! cmp --silent ${modulesconf}.$$ ${modulesconf}; then
++			if ! cmp -s ${modulesconf}.$$ ${modulesconf}; then
+ 				if ! cp ${modulesconf}.$$ ${modulesconf}; then
+ 					rm -f ${modulesconf}.$$ ${f}
+ 					exit 1
+@@ -1662,7 +1679,7 @@
+ 	fi
+ 
+ 	if ("$@" "${modprobeconf}" | "${filter}"; cat ${f}) > ${modprobeconf}.$$; then
+-		if ! cmp --silent ${modprobeconf}.$$ ${modprobeconf}; then
++		if ! cmp -s ${modprobeconf}.$$ ${modprobeconf}; then
+ 			if ! cp ${modprobeconf}.$$ ${modprobeconf}; then
+ 				rm -f ${modprobeconf}.$$ ${f}
+ 				exit 1
+@@ -1710,7 +1727,7 @@
+ 	fi
+ 
+ 	if [ -h /dev/modem ] && /bin/ls -l /dev/modem 2>/dev/null | ${AWK} '{print $11}' | egrep -q '(ttyS|cua)@CNXTSERDEV@[0-9][0-9]*'; then
+-		rm -f /dev/modem
++		echo
+ 	fi
+ 
+ 	rm -f /etc/udev/rules.d/00-@CNXTTARGET@.rules
+@@ -1734,7 +1751,7 @@
+ 	fi
+ 
+ 	echo "alias /dev/ttyS@CNXTSERDEV@[0-9]* /dev/ttyS@CNXTSERDEV@"
+-	echo "alias /dev/modem /dev/ttyS@CNXTSERDEV@"
++	echo "alias /dev/modem none"
+ 	echo "alias char-major-${cnxttty_major} /dev/ttyS@CNXTSERDEV@"
+ 	if [ "$1" = modulesconf ]; then
+ 		echo "alias /dev/cua@CNXTSERDEV@[0-9]* /dev/ttyS@CNXTSERDEV@"
+@@ -1908,7 +1925,7 @@
+ REGISTER	^ttyS@CNXTSERDEV@0$ CFUNCTION GLOBAL symlink $devname modem
+ UNREGISTER	^ttyS@CNXTSERDEV@0$ CFUNCTION GLOBAL unlink modem' \
+ 			> /etc/devfs/conf.d/@CNXTTARGET@.conf
+-		rm -f /dev/modem
++		echo
+ 		which update-devfsd >/dev/null 2>&1 && update-devfsd
+ 		killall -HUP devfsd 2>/dev/null
+ 	else
+@@ -1922,7 +1939,7 @@
+ 				cp /etc/devfsd.conf.$$ /etc/devfsd.conf
+ 			fi
+ 			rm -f /etc/devfsd.conf.$$
+-			rm -f /dev/modem
++			echo
+ 			killall -HUP devfsd 2>/dev/null
+ 		fi
+ 	fi
+@@ -1971,13 +1988,13 @@
+ 		done
+ 
+ 		if [ -h /dev/modem ] && /bin/ls -l /dev/modem 2>/dev/null | ${AWK} '{print $11}' | egrep -q '(ttyS|cua)@CNXTSERDEV@[0-9][0-9]*'; then
+-			rm -f /dev/modem
++			echo
+ 		fi
+ 
+ 		if [ -e /dev/modem ]; then
+ 			if ! fuser /dev/modem >/dev/null 2>&1; then
+-				rm -f /dev/modem.old
+-				mv /dev/modem /dev/modem.old
++				echo
++				echo
+ 
+ 				echo "WARNING: renamed existing /dev/modem to /dev/modem.old:"
+ 				echo ""
+@@ -1986,7 +2003,7 @@
+ 		fi
+ 
+ 		if [ ! -e /dev/modem ]; then
+-			ln -sf /dev/ttyS@CNXTSERDEV@0 /dev/modem
++			echo
+ 		fi
+ 	fi
+   fi
+@@ -2195,6 +2212,10 @@
+ 	elif [ -d /var/lib/LST ]; then
+ 		OSDISTNAME=Caldera
+ 		OSDISTIDNT=caldera
++	elif [ -f /etc/slitaz-release ]; then
++		OSDISTNAME=SliTaz
++		OSDISTIDNT=slitaz
++		OSDISTVERS="`cat /etc/slitaz-release`"
+ 	fi
+ 
+ 	OSKERNNAME="`uname -s | tr '[A-Z]' '[a-z]'`"
+@@ -2249,7 +2270,7 @@
+ 
+ dump_file()
+ {
+-	dump_cmd cat -v $@
++	dump_cmd cat $@
+ }
+ 
+ dump_diagnostics()
+@@ -2568,7 +2589,7 @@
+ 	fi
+ 	units="${specificunit}"
+ 	if [ -z "${units}" ]; then
+-		units=`ls --ignore=flush_nvm ${procdrvdir}`
++		units=`ls ${procdrvdir} | grep -v flush_nvm`
+ 
+ 		if [ -z "${units}" ]; then
+ 			echo ""
+@@ -2865,7 +2886,7 @@
+ 			explicitopt=true
+ 			do_cfgregion=true
+ 			if [ -n "$2" ]; then
+-				setregion="`echo \"$2\" | tr '[a-z ]' '[A-Z_]'`"
++				setregion="`echo \"$2\" | tr '[a-z]' '[A-Z]' | sed 's/\s/_/g'`"
+ 			fi
+ 			shift 2
+ 			;;
+@@ -2935,7 +2956,7 @@
+ 
+ # Accept --region <name> as equivalent to --region=<name>
+ if ${do_cfgregion} && [ $# -ge 1 -a -z "${setregion}" ]; then
+-	setregion="`echo \"$1\" | tr '[a-z ]' '[A-Z_]'`"
++	setregion="`echo \"$1\" | tr '[a-z]' '[A-Z]' | sed 's/\s/_/s'`"
+ 	shift
+ fi
+
+ 

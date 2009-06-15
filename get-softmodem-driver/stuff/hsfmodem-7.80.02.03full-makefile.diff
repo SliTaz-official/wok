@@ -1,0 +1,39 @@
+--- hsfmodem-7.80.02.03full/config.mak	Fri Feb 20 22:30:12 2009
++++ hsfmodem-7.80.02.03full-slitaz/config.mak	Sat May  9 22:38:51 2009
+@@ -55,7 +55,7 @@
+ # maximum number of modem units
+ CNXTMAXMDM=8
+ 
+-ROOT=
++ROOT=$(DESTDIR)
+ PREFIX=$(ROOT)/usr
+ 
+ ETCDIR=$(ROOT)/etc
+@@ -131,4 +131,4 @@
+ 		-e "s!@SCR_SUPPORT@!`test ! \"$(IMPORTED_SCR_SUPPORT)\" = yes; echo $$?`!g" \
+ 		-e "s!@DMP_SUPPORT@!`test -z \"$(IMPORTED_DMP_SUPPORT)\"; echo $$?`!g" \
+ 		< $< > $@
+-	chmod --reference=$< $@
++	chmod 755 $@
+--- hsfmodem-7.80.02.03full/makefile	Mon Feb 23 22:51:37 2009
++++ hsfmodem-7.80.02.03full-slitaz/makefile	Sat May  9 22:38:51 2009
+@@ -149,7 +149,7 @@
+ ifeq ($(RPMOPTEVAL),yes)
+ RPMTARGETCPU=$(shell rpm --eval '%_target_cpu')
+ else
+-RPMTARGETCPU=$(shell uname -i)
++RPMTARGETCPU=$(shell uname -m)
+ endif
+ 
+ ifneq ($(RPMOPTDEFINE),yes)
+--- hsfmodem-7.80.02.03full/modules/Makefile	Fri Feb 20 22:30:12 2009
++++ hsfmodem-7.80.02.03full-slitaz/modules/Makefile	Sat May  9 22:38:51 2009
+@@ -20,7 +20,7 @@
+ include $(TOP)/config.mak
+ 
+ IMPORTED = $(TOP)/modules/imported
+-MACHINE_ARCH := $(shell if uname --hardware-platform >/dev/null 2>&1 && ! uname --hardware-platform | grep -q "unknown"; then uname --hardware-platform; else uname --machine | sed 's/^i.86$$/i386/'; fi)
++MACHINE_ARCH := $(shell if uname -p >/dev/null 2>&1 && ! uname -p | grep -q "unknown"; then uname -p; else uname -m | sed 's/^i.86$$/i386/'; fi)
+ ifneq ($(subst powerpc,ppc,$(IMPORTED_ARCH)),$(MACHINE_ARCH))
+ $(warning *** WARNING: Trying to compile kernel modules on a $(MACHINE_ARCH) system while the installed $(CNXTTARGET) driver package is for $(IMPORTED_ARCH), this is likely to fail... ***)
+ endif

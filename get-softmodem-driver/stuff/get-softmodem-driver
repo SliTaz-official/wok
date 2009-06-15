@@ -1,18 +1,18 @@
 #!/bin/sh
 # install softmodems drivers if needed.
 
-MODULE=$(echo $0 | sed 's/.*get-\(.*\)-driver/\1/')
+PACKAGE=$(echo $0 | sed 's/.*get-\(.*\)-driver/\1/')
 ROOT="$1"
 DEPENDS=""
 
-case "$MODULE" in
+case "$PACKAGE" in
 hsfmodem)
 	VERSION="7.80.02.03full"
-	TARBALL="$MODULE-$VERSION.tar.gz"
+	TARBALL="$PACKAGE-$VERSION.tar.gz"
 	SHORT_DESC="Modem driver for Conexant HSF chipsets"
 	WEB_SITE="http://www.linuxant.com/drivers"
-	WGET_URL="http://www.linuxant.com/drivers/hsf/full/archive/$MODULE-$VERSION/$TARBALL"
-	DEPENDS="linux-source module-init-tools"
+	WGET_URL="http://www.linuxant.com/drivers/hsf/full/archive/$PACKAGE-$VERSION/$TARBALL"
+	DEPENDS="module-init-tools linux-source"
 	;;
 *)	echo "Unknown modem driver. Please run one of the following commands:"
 	for i in $(cd $(dirname $0); ls get-*-driver); do
@@ -31,8 +31,8 @@ if test $(id -u) != 0 ; then
 fi
 
 # Avoid reinstall
-if [ -d $ROOT/var/lib/tazpkg/installed/$MODULE ]; then
-	echo -e "\n$MODULE-$VERSION package is already installed.\n"
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+	echo -e "\n$PACKAGE-$VERSION package is already installed.\n"
 	exit 0
 fi
 
@@ -41,11 +41,11 @@ cp /proc/config.gz . && gunzip config.gz
 DIFF=$(diff /usr/src/linux/.config config | awk 'BEGIN{i=0}/^[-+]/{ i++} END{print i}')
 rm -f config config.gz
 if [ $DIFF -gt 2 ]; then
-	echo "Warning: Linux source .config and currently installed .config don't match."
-	echo "Please rebuild and install kernel with the proper .config file."
-	sleep 3
+	echo "Warning: Linux source .config file and currently installed kernel don't match."
+	echo "Please rebuild Linux source with the proper .config file."
+	echo "Otherwise you may not be able to load the generated drivers."
+	sleep 2
 fi
-
 
 # Get files
 cd /usr/src
@@ -69,58 +69,42 @@ case "$WGET_URL" in
 esac
 
 # Set dirs
-src=/usr/src/$MODULE-$VERSION
+src=/usr/src/$PACKAGE-$VERSION
 _pkg=$src/_pkg
 taz=/tmp/sm$RANDOM$RANDOM$RANDOM.$$
-fs=$taz/$MODULE-$VERSION/fs
+fs=$taz/$PACKAGE-$VERSION/fs
 mkdir -p $fs
 
 # Create pseudo package
-case "$MODULE" in 
+case "$PACKAGE" in 
 hsfmodem)
 	# Rules to configure and make the package.
 	cd $src
-	# set DESTDIR
-    sed -i 's/ROOT=.*/ROOT=$(DESTDIR)/' config.mak
-	# Make Makefile busybox compliant
-	sed -i 's/chmod --reference=\$</chmod 755/' config.mak
-	sed -i 's/uname -i/uname -m/' makefile # 7.80
-	sed -i 's/uname --machine/uname -m/' modules/Makefile
-	sed -i 's/uname --hardware-platform/uname -p/g' modules/Makefile
-	# Make utilities busybox compliant
-	sed -i 's/cmp --silent/cmp -s/g' scripts/cnxtconfig.in
-	sed -i 's/ls --ignore=flush_nvm ${procdrvdir}/ls ${procdrvdir} | grep -v flush_nvm/' scripts/cnxtconfig.in
-	sed -i 's/cat -v/cat/g' scripts/cnxtconfig.in
-	sed -i 's/a-z /a-z/g' scripts/cnxtconfig.in
-	sed -i 's/A-Z_/A-Z/g' scripts/cnxtconfig.in
-	# Remove link to /dev/modem
-	sed -i 's/rm -f \/dev\/modem.*/echo/g' scripts/cnxtconfig.in
-	sed -i 's/alias \/dev\/modem \/dev\/ttyS@CNXTSERDEV@/alias \/dev\/modem none/' scripts/cnxtconfig.in
-	sed -i 's/mv \/dev\/modem.*/echo/' scripts/cnxtconfig.in
-	sed -i 's/ln -sf \/dev\/ttyS.*/echo/' scripts/cnxtconfig.in
-	# Set SliTaz as dist name
-	sed -i 's/OSDISTNAME=unknown/OSDISTNAME=SliTaz/' scripts/cnxtconfig.in
-	sed -i 's/OSDISTIDNT=unknown/OSDISTIDNT=slitaz/' scripts/cnxtconfig.in
-	sed -i 's/OSDISTVERS=unknown/OSDISTVERS=\$(cat \/etc\/slitaz-release)/' scripts/cnxtconfig.in
+	while read file; do
+		echo "Apply $file..."
+		patch -p1 < /usr/share/softmodem/$PACKAGE-$VERSION-$file || return 1
+	done <<EOT
+makefile.diff
+cnxtconfig.diff
+EOT
 	# Build
 	make DESTDIR=$_pkg install
 	cd $_pkg/usr/lib/hsfmodem/modules
 	make
-
 	# Rules to gen a SliTaz package suitable for Tazpkg.
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr/share/softmodem
 	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a /usr/share/softmodem/zone.tab $fs/usr/share/softmodem/hsfzone.tab
 	MODS_DIR=$fs/lib/modules/`uname -r`/extra
 	mkdir -p $MODS_DIR
 	cp -a $_pkg/usr/lib/hsfmodem/modules/*.ko $MODS_DIR
 	;;
 esac
 
-
 # Create receipt
 cd $taz
-cat > $MODULE-$VERSION/receipt <<EOT
-PACKAGE="$MODULE"
+cat > $PACKAGE-$VERSION/receipt <<EOT
+PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="$SHORT_DESC."
@@ -129,11 +113,10 @@ DEPENDS="$DEPENDS"
 EOT
 
 # Pack
-# tazpkg pack $MODULE-$VERSION-$VERSION
-tazpkg pack $MODULE-$VERSION
+tazpkg pack $PACKAGE-$VERSION
 
 # Install pseudo package
-tazpkg install $MODULE-$VERSION.tazpkg --root=$ROOT
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
 
 # Clean
 rm -rf $taz
