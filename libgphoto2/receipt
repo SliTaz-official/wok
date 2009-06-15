@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libgphoto2"
-VERSION="2.4.5"
+VERSION="2.4.6"
 CATEGORY="graphics"
 SHORT_DESC="core library of gphoto2 to access photos from digital camera"
 MAINTAINER="jozee@slitaz.org"
@@ -17,7 +17,8 @@ TAGS="camera photo"
 compile_rules()
 {
    	cd $src
-	./configure --prefix=/usr --with-exif --disable-static &&
+	./configure --prefix=/usr udevscriptdir=/lib/udev \
+			--with-exif --disable-static &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
 	
@@ -26,12 +27,54 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr/lib/$PACKAGE $fs/usr/share
+    mkdir -p $fs/usr/lib/$PACKAGE $fs/usr/share \
+	          $fs/lib \
+			  $fs/usr/share/hal/fdi/information/20thirdparty \
+			  $fs/etc/udev/rules.d
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/$PACKAGE $fs/usr/lib
 	cp -a $_pkg/usr/lib/${PACKAGE}_port $fs/usr/lib
 	cp -a $_pkg/usr/lib/udev $fs/usr/lib
 	cp -a $_pkg/usr/lib/*so* $fs/usr/lib
 	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	cp -a $_pkg/lib/udev $fs/lib
+		
+	# rm archive files
+	rm -f $fs/usr/lib/libgphoto2/$VERSION/*.a
 	
+	# fix permissions
+	chmod +x $fs/lib/udev/check*
+	chmod +x $fs/usr/bin/gphoto2*
+	
+	HAL_FDI="usr/share/hal/fdi/information/20thirdparty/10-camera-libgphoto2.fdi"
+	UDEV_RULE="etc/udev/rules.d/70-libgphoto2.rules"
+	CAM_LIST="usr/lib/libgphoto2/print-camera-list"
+
+   # Let print-camera-list find libgphoto2.so
+    export LD_LIBRARY_PATH="$fs/usr/lib"
+   # Let libgphoto2 find its camera-modules before running print-camera-list
+	export CAMLIBS="$fs/usr/lib/libgphoto2/$VERSION"
+
+  # HAL file
+   "$fs/$CAM_LIST" hal-fdi > "$fs/$HAL_FDI" || return 1
+  
+    #udev rule
+   "$fs/$CAM_LIST" udev-rules version 0.98 group camera mode 0660 > "$fs/$UDEV_RULE" || return 1
+
+}
+
+post_install()
+{
+	local root
+	root=$1
+	
+	# add group camera or plugdev
+	getent group camera >/dev/null || addgroup -g 97 camera
+	
+	echo "Don't forget to add yourself to group camera to use libgphoto2: addgroup tux camera"
+}
+
+post_remove()
+{
+	delgroup camera & >/dev/null
 }
