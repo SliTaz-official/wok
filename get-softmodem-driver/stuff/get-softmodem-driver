@@ -7,12 +7,7 @@ DEPENDS=""
 
 case "$PACKAGE" in
 hsfmodem)
-	VERSION="7.80.02.03full"
-	TARBALL="$PACKAGE-$VERSION.tar.gz"
-	SHORT_DESC="Modem driver for Conexant HSF chipsets"
-	WEB_SITE="http://www.linuxant.com/drivers"
-	WGET_URL="http://www.linuxant.com/drivers/hsf/full/archive/$PACKAGE-$VERSION/$TARBALL"
-	DEPENDS="module-init-tools linux-source"
+	. /usr/share/softmodem/hsfmodem.receipt
 	;;
 *)	echo "Unknown modem driver. Please run one of the following commands:"
 	for i in $(cd $(dirname $0); ls get-*-driver); do
@@ -80,13 +75,8 @@ case "$PACKAGE" in
 hsfmodem)
 	# Rules to configure and make the package.
 	cd $src
-	while read file; do
-		echo "Apply $file..."
-		patch -p1 < /usr/share/softmodem/$PACKAGE-$VERSION-$file || return 1
-	done <<EOT
-makefile.diff
-cnxtconfig.diff
-EOT
+	echo "Apply $file..."
+	patch -p1 < /usr/share/softmodem/$PACKAGE-$VERSION.diff || return 1
 	# Build
 	make DESTDIR=$_pkg install
 	cd $_pkg/usr/lib/hsfmodem/modules
@@ -98,19 +88,17 @@ EOT
 	MODS_DIR=$fs/lib/modules/`uname -r`/extra
 	mkdir -p $MODS_DIR
 	cp -a $_pkg/usr/lib/hsfmodem/modules/*.ko $MODS_DIR
+	cd $src
+	make clean
+	cd $taz
+	mkdir -p $fs/usr/src
+	mv $src $fs/usr/src
 	;;
 esac
 
 # Create receipt
 cd $taz
-cat > $PACKAGE-$VERSION/receipt <<EOT
-PACKAGE="$PACKAGE"
-VERSION="$VERSION"
-CATEGORY="non-free"
-SHORT_DESC="$SHORT_DESC."
-WEB_SITE="$WEB_SITE"
-DEPENDS="$DEPENDS"
-EOT
+cat /usr/share/softmodem/hsfmodem.receipt> $PACKAGE-$VERSION/receipt
 
 # Pack
 tazpkg pack $PACKAGE-$VERSION
@@ -120,5 +108,3 @@ tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
 
 # Clean
 rm -rf $taz
-cd $src
-make clean

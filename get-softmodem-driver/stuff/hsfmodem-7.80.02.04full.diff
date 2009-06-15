@@ -1,5 +1,49 @@
---- hsfmodem-7.80.02.03full/scripts/cnxtconfig.in	Fri Feb 20 22:30:17 2009
-+++ hsfmodem-7.80.02.03full-slitaz/scripts/cnxtconfig.in	Fri Jun 12 16:20:59 2009
+diff -ru hsfmodem-7.80.02.04full/config.mak hsfmodem-7.80.02.04full-slitaz/config.mak
+--- hsfmodem-7.80.02.04full/config.mak	2009-02-20 22:30:12.000000000 +0100
++++ hsfmodem-7.80.02.04full-slitaz/config.mak	2009-06-15 11:49:13.000000000 +0200
+@@ -55,7 +55,7 @@
+ # maximum number of modem units
+ CNXTMAXMDM=8
+ 
+-ROOT=
++ROOT=$(DESTDIR)
+ PREFIX=$(ROOT)/usr
+ 
+ ETCDIR=$(ROOT)/etc
+@@ -131,4 +131,4 @@
+ 		-e "s!@SCR_SUPPORT@!`test ! \"$(IMPORTED_SCR_SUPPORT)\" = yes; echo $$?`!g" \
+ 		-e "s!@DMP_SUPPORT@!`test -z \"$(IMPORTED_DMP_SUPPORT)\"; echo $$?`!g" \
+ 		< $< > $@
+-	chmod --reference=$< $@
++	chmod 755 $@
+diff -ru hsfmodem-7.80.02.04full/makefile hsfmodem-7.80.02.04full-slitaz/makefile
+--- hsfmodem-7.80.02.04full/makefile	2009-02-23 22:51:37.000000000 +0100
++++ hsfmodem-7.80.02.04full-slitaz/makefile	2009-06-15 11:49:13.000000000 +0200
+@@ -149,7 +149,7 @@
+ ifeq ($(RPMOPTEVAL),yes)
+ RPMTARGETCPU=$(shell rpm --eval '%_target_cpu')
+ else
+-RPMTARGETCPU=$(shell uname -i)
++RPMTARGETCPU=$(shell uname -m)
+ endif
+ 
+ ifneq ($(RPMOPTDEFINE),yes)
+diff -ru hsfmodem-7.80.02.04full/modules/Makefile hsfmodem-7.80.02.04full-slitaz/modules/Makefile
+--- hsfmodem-7.80.02.04full/modules/Makefile	2009-04-24 03:03:57.000000000 +0200
++++ hsfmodem-7.80.02.04full-slitaz/modules/Makefile	2009-06-15 11:49:13.000000000 +0200
+@@ -20,7 +20,7 @@
+ include $(TOP)/config.mak
+ 
+ IMPORTED = $(TOP)/modules/imported
+-MACHINE_ARCH := $(shell if uname --hardware-platform >/dev/null 2>&1 && ! uname --hardware-platform | grep -q "unknown"; then uname --hardware-platform; else uname --machine | sed 's/^i.86$$/i386/'; fi)
++MACHINE_ARCH := $(shell if uname -p >/dev/null 2>&1 && ! uname -p | grep -q "unknown"; then uname -p; else uname -m | sed 's/^i.86$$/i386/'; fi)
+ ifneq ($(subst powerpc,ppc,$(IMPORTED_ARCH)),$(MACHINE_ARCH))
+ $(warning *** WARNING: Trying to compile kernel modules on a $(MACHINE_ARCH) system while the installed $(CNXTTARGET) driver package is for $(IMPORTED_ARCH), this is likely to fail... ***)
+ endif
+
+diff -ru hsfmodem-7.80.02.04full/scripts/cnxtconfig.in hsfmodem-7.80.02.04full-slitaz/scripts/cnxtconfig.in
+--- hsfmodem-7.80.02.04full/scripts/cnxtconfig.in	2009-04-23 17:32:18.000000000 +0200
++++ hsfmodem-7.80.02.04full-slitaz/scripts/cnxtconfig.in	2009-06-15 14:08:02.000000000 +0200
 @@ -74,7 +74,7 @@
  				answer="${region}"
  				;;
@@ -9,24 +53,13 @@
  				;;
  			esac
  		fi
-@@ -109,15 +109,25 @@
+@@ -109,15 +109,13 @@
  {
  	# Try to guess what region we're in, using the timezone settings
  
 -	localtime_size="`/bin/ls -lL /etc/localtime 2>/dev/null | ${AWK} '{print $5}'`"
-+#	localtime_size="`/bin/ls -lL /etc/localtime 2>/dev/null | ${AWK} '{print $5}'`"
-+#
-+#	if ! [ ${localtime_size} -gt 0 ]; then
-+#		return 1
-+#	fi
- 
+-
 -	if ! [ ${localtime_size} -gt 0 ]; then
-+#	zoneinfo_dir=/usr/share/zoneinfo
-+#
-+#	if [ ! -d ${zoneinfo_dir} -o ! -f ${zoneinfo_dir}/zone.tab ]; then
-+#		return 1
-+#
-+#	fi
 +	if [ ! -e /etc/TZ ]; then
  		return 1
  	fi
@@ -39,7 +72,7 @@
  		return 1
  	fi
  
-@@ -206,18 +216,25 @@
+@@ -206,18 +204,11 @@
  	iso_VN=00BC # VIETNAM
  
  	(
@@ -47,35 +80,22 @@
 -		find . -type f -size "${localtime_size}"c -print | sed 's@^\./@@' | \
 -			while read file; do
 -				cmp -s /etc/localtime $file || continue
-+#		cd ${zoneinfo_dir} 2>/dev/null || return 1
-+#		find . -type f -size "${localtime_size}"c -print | sed 's@^\./@@' | \
-+#			while read file; do
-+#				cmp -s /etc/localtime $file || continue
- # in the egrep and sed regular expressions below, it is very important to
- # have tabs, not spaces
+-# in the egrep and sed regular expressions below, it is very important to
+-# have tabs, not spaces
 -				egrep "	$file(	.*|\$)" ${zoneinfo_dir}/zone.tab
 -			done | sed -n '/^[^#]/s/	.*//p' | sort | uniq | \
 -				while read code; do
 -					eval "echo \${iso_${code}}"
 -				done | sort | uniq
--		return 0
-+#				egrep "	$file(	.*|\$)" ${zoneinfo_dir}/zone.tab
-+#			done | sed -n '/^[^#]/s/	.*//p' | sort | uniq | \
-+#				while read code; do
-+#					eval "echo \${iso_${code}}"
-+#				done | sort | uniq
-+#		return 0
-+	zone=`cat /etc/TZ`
-+	egrep $zone ${zoneinfo_dir}/zone.tab | sed -n '/^[^#]/s/    .*//p' | sort | uniq | \ 
-+		while read code; do
-+			eval "echo \${iso_${code}}"
-+		done | sort | uniq 
-+	return 0
++		zone=`cat /etc/TZ`
++		code=`grep $zone ${zoneinfo_dir}/hsfzone.tab | awk '{print $1}' | sort | uniq`
++		eval "echo \${iso_${code}}"
+ 		return 0
 +		
  	)
  }
  
-@@ -1636,7 +1653,7 @@
+@@ -1655,7 +1646,7 @@
  		update-modules
  	else
  		if ("$@" "${modulesconf}" | "${filter}"; cat ${f}) > ${modulesconf}.$$; then
@@ -84,7 +104,7 @@
  				if ! cp ${modulesconf}.$$ ${modulesconf}; then
  					rm -f ${modulesconf}.$$ ${f}
  					exit 1
-@@ -1662,7 +1679,7 @@
+@@ -1681,7 +1672,7 @@
  	fi
  
  	if ("$@" "${modprobeconf}" | "${filter}"; cat ${f}) > ${modprobeconf}.$$; then
@@ -93,7 +113,7 @@
  			if ! cp ${modprobeconf}.$$ ${modprobeconf}; then
  				rm -f ${modprobeconf}.$$ ${f}
  				exit 1
-@@ -1710,7 +1727,7 @@
+@@ -1729,7 +1720,7 @@
  	fi
  
  	if [ -h /dev/modem ] && /bin/ls -l /dev/modem 2>/dev/null | ${AWK} '{print $11}' | egrep -q '(ttyS|cua)@CNXTSERDEV@[0-9][0-9]*'; then
@@ -102,7 +122,7 @@
  	fi
  
  	rm -f /etc/udev/rules.d/00-@CNXTTARGET@.rules
-@@ -1734,7 +1751,7 @@
+@@ -1753,7 +1744,7 @@
  	fi
  
  	echo "alias /dev/ttyS@CNXTSERDEV@[0-9]* /dev/ttyS@CNXTSERDEV@"
@@ -111,7 +131,7 @@
  	echo "alias char-major-${cnxttty_major} /dev/ttyS@CNXTSERDEV@"
  	if [ "$1" = modulesconf ]; then
  		echo "alias /dev/cua@CNXTSERDEV@[0-9]* /dev/ttyS@CNXTSERDEV@"
-@@ -1908,7 +1925,7 @@
+@@ -1927,7 +1918,7 @@
  REGISTER	^ttyS@CNXTSERDEV@0$ CFUNCTION GLOBAL symlink $devname modem
  UNREGISTER	^ttyS@CNXTSERDEV@0$ CFUNCTION GLOBAL unlink modem' \
  			> /etc/devfs/conf.d/@CNXTTARGET@.conf
@@ -120,7 +140,7 @@
  		which update-devfsd >/dev/null 2>&1 && update-devfsd
  		killall -HUP devfsd 2>/dev/null
  	else
-@@ -1922,7 +1939,7 @@
+@@ -1941,7 +1932,7 @@
  				cp /etc/devfsd.conf.$$ /etc/devfsd.conf
  			fi
  			rm -f /etc/devfsd.conf.$$
@@ -129,7 +149,7 @@
  			killall -HUP devfsd 2>/dev/null
  		fi
  	fi
-@@ -1971,13 +1988,13 @@
+@@ -1990,13 +1981,13 @@
  		done
  
  		if [ -h /dev/modem ] && /bin/ls -l /dev/modem 2>/dev/null | ${AWK} '{print $11}' | egrep -q '(ttyS|cua)@CNXTSERDEV@[0-9][0-9]*'; then
@@ -146,7 +166,7 @@
  
  				echo "WARNING: renamed existing /dev/modem to /dev/modem.old:"
  				echo ""
-@@ -1986,7 +2003,7 @@
+@@ -2005,7 +1996,7 @@
  		fi
  
  		if [ ! -e /dev/modem ]; then
@@ -155,7 +175,7 @@
  		fi
  	fi
    fi
-@@ -2195,6 +2212,10 @@
+@@ -2214,6 +2205,10 @@
  	elif [ -d /var/lib/LST ]; then
  		OSDISTNAME=Caldera
  		OSDISTIDNT=caldera
@@ -166,7 +186,7 @@
  	fi
  
  	OSKERNNAME="`uname -s | tr '[A-Z]' '[a-z]'`"
-@@ -2249,7 +2270,7 @@
+@@ -2268,7 +2263,7 @@
  
  dump_file()
  {
@@ -175,7 +195,7 @@
  }
  
  dump_diagnostics()
-@@ -2568,7 +2589,7 @@
+@@ -2587,7 +2582,7 @@
  	fi
  	units="${specificunit}"
  	if [ -z "${units}" ]; then
@@ -184,7 +204,7 @@
  
  		if [ -z "${units}" ]; then
  			echo ""
-@@ -2865,7 +2886,7 @@
+@@ -2884,7 +2879,7 @@
  			explicitopt=true
  			do_cfgregion=true
  			if [ -n "$2" ]; then
@@ -193,7 +213,7 @@
  			fi
  			shift 2
  			;;
-@@ -2935,7 +2956,7 @@
+@@ -2954,7 +2949,7 @@
  
  # Accept --region <name> as equivalent to --region=<name>
  if ${do_cfgregion} && [ $# -ge 1 -a -z "${setregion}" ]; then
@@ -202,4 +222,3 @@
  	shift
  fi
 
- 
