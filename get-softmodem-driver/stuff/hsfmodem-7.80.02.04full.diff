@@ -1,15 +1,6 @@
 diff -ru hsfmodem-7.80.02.04full/config.mak hsfmodem-7.80.02.04full-slitaz/config.mak
 --- hsfmodem-7.80.02.04full/config.mak	2009-02-20 22:30:12.000000000 +0100
 +++ hsfmodem-7.80.02.04full-slitaz/config.mak	2009-06-15 11:49:13.000000000 +0200
-@@ -55,7 +55,7 @@
- # maximum number of modem units
- CNXTMAXMDM=8
- 
--ROOT=
-+ROOT=$(DESTDIR)
- PREFIX=$(ROOT)/usr
- 
- ETCDIR=$(ROOT)/etc
 @@ -131,4 +131,4 @@
  		-e "s!@SCR_SUPPORT@!`test ! \"$(IMPORTED_SCR_SUPPORT)\" = yes; echo $$?`!g" \
  		-e "s!@DMP_SUPPORT@!`test -z \"$(IMPORTED_DMP_SUPPORT)\"; echo $$?`!g" \
@@ -40,10 +31,9 @@ diff -ru hsfmodem-7.80.02.04full/modules/Makefile hsfmodem-7.80.02.04full-slitaz
  ifneq ($(subst powerpc,ppc,$(IMPORTED_ARCH)),$(MACHINE_ARCH))
  $(warning *** WARNING: Trying to compile kernel modules on a $(MACHINE_ARCH) system while the installed $(CNXTTARGET) driver package is for $(IMPORTED_ARCH), this is likely to fail... ***)
  endif
-
 diff -ru hsfmodem-7.80.02.04full/scripts/cnxtconfig.in hsfmodem-7.80.02.04full-slitaz/scripts/cnxtconfig.in
 --- hsfmodem-7.80.02.04full/scripts/cnxtconfig.in	2009-04-23 17:32:18.000000000 +0200
-+++ hsfmodem-7.80.02.04full-slitaz/scripts/cnxtconfig.in	2009-06-15 14:08:02.000000000 +0200
++++ hsfmodem-7.80.02.04full-slitaz/scripts/cnxtconfig.in	2009-06-15 21:29:49.000000000 +0200
 @@ -74,7 +74,7 @@
  				answer="${region}"
  				;;
@@ -95,6 +85,15 @@ diff -ru hsfmodem-7.80.02.04full/scripts/cnxtconfig.in hsfmodem-7.80.02.04full-s
  	)
  }
  
+@@ -271,7 +262,7 @@
+ # The md5sum is used for input verification.
+ disptokey()
+ {
+-	k="`echo \"$1\" | tr '[a-z]' '[A-Z]' | sed 's/FREE/00000000/' | tr -d -c '[0-9A-F\012]'`"
++	k="`echo \"$1\" | tr '[a-z]' '[A-Z]' | sed 's/FREE/00000000/' | tr -d -c '[0-9][A-F][\012]'`"
+ 	case $k in
+ 	00000000)
+ 		echo "$k"
 @@ -1655,7 +1646,7 @@
  		update-modules
  	else
@@ -113,68 +112,6 @@ diff -ru hsfmodem-7.80.02.04full/scripts/cnxtconfig.in hsfmodem-7.80.02.04full-s
  			if ! cp ${modprobeconf}.$$ ${modprobeconf}; then
  				rm -f ${modprobeconf}.$$ ${f}
  				exit 1
-@@ -1729,7 +1720,7 @@
- 	fi
- 
- 	if [ -h /dev/modem ] && /bin/ls -l /dev/modem 2>/dev/null | ${AWK} '{print $11}' | egrep -q '(ttyS|cua)@CNXTSERDEV@[0-9][0-9]*'; then
--		rm -f /dev/modem
-+		echo
- 	fi
- 
- 	rm -f /etc/udev/rules.d/00-@CNXTTARGET@.rules
-@@ -1753,7 +1744,7 @@
- 	fi
- 
- 	echo "alias /dev/ttyS@CNXTSERDEV@[0-9]* /dev/ttyS@CNXTSERDEV@"
--	echo "alias /dev/modem /dev/ttyS@CNXTSERDEV@"
-+	echo "alias /dev/modem none"
- 	echo "alias char-major-${cnxttty_major} /dev/ttyS@CNXTSERDEV@"
- 	if [ "$1" = modulesconf ]; then
- 		echo "alias /dev/cua@CNXTSERDEV@[0-9]* /dev/ttyS@CNXTSERDEV@"
-@@ -1927,7 +1918,7 @@
- REGISTER	^ttyS@CNXTSERDEV@0$ CFUNCTION GLOBAL symlink $devname modem
- UNREGISTER	^ttyS@CNXTSERDEV@0$ CFUNCTION GLOBAL unlink modem' \
- 			> /etc/devfs/conf.d/@CNXTTARGET@.conf
--		rm -f /dev/modem
-+		echo
- 		which update-devfsd >/dev/null 2>&1 && update-devfsd
- 		killall -HUP devfsd 2>/dev/null
- 	else
-@@ -1941,7 +1932,7 @@
- 				cp /etc/devfsd.conf.$$ /etc/devfsd.conf
- 			fi
- 			rm -f /etc/devfsd.conf.$$
--			rm -f /dev/modem
-+			echo
- 			killall -HUP devfsd 2>/dev/null
- 		fi
- 	fi
-@@ -1990,13 +1981,13 @@
- 		done
- 
- 		if [ -h /dev/modem ] && /bin/ls -l /dev/modem 2>/dev/null | ${AWK} '{print $11}' | egrep -q '(ttyS|cua)@CNXTSERDEV@[0-9][0-9]*'; then
--			rm -f /dev/modem
-+			echo
- 		fi
- 
- 		if [ -e /dev/modem ]; then
- 			if ! fuser /dev/modem >/dev/null 2>&1; then
--				rm -f /dev/modem.old
--				mv /dev/modem /dev/modem.old
-+				echo
-+				echo
- 
- 				echo "WARNING: renamed existing /dev/modem to /dev/modem.old:"
- 				echo ""
-@@ -2005,7 +1996,7 @@
- 		fi
- 
- 		if [ ! -e /dev/modem ]; then
--			ln -sf /dev/ttyS@CNXTSERDEV@0 /dev/modem
-+			echo
- 		fi
- 	fi
-   fi
 @@ -2214,6 +2205,10 @@
  	elif [ -d /var/lib/LST ]; then
  		OSDISTNAME=Caldera
@@ -213,7 +150,7 @@ diff -ru hsfmodem-7.80.02.04full/scripts/cnxtconfig.in hsfmodem-7.80.02.04full-s
  			fi
  			shift 2
  			;;
-@@ -2954,7 +2949,7 @@
+@@ -2954,6 +2949,6 @@
  
  # Accept --region <name> as equivalent to --region=<name>
  if ${do_cfgregion} && [ $# -ge 1 -a -z "${setregion}" ]; then
