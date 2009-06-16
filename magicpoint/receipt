@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="magicpoint"
+VERSION="1.13a"
+CATEGORY="x-window"
+SHORT_DESC="An X11-based presentation tool."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="glibc-base expat zlib libuuid fontconfig freetype1 freetype \
+giflib jpeg libpng tiff imlib xorg-libICE xorg-libSM xorg-libX11 \
+xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXft xorg-libXmu \
+xorg-libXrender xorg-libXt"
+BUILD_DEPENDS="slitaz-toolchain bison flex m4 gettext fontconfig-dev \
+freetype1 freetype1-dev freetype-dev giflib-dev imlib-dev xorg-imake \
+xorg-cf-files xorg-libX11-dev xorg-libXft-dev xorg-libXmu-dev \
+xorg-libXrender-dev xorg-xproto xorg-xextproto"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://member.wide.ad.jp/wg/mgp/"
+WGET_URL="ftp://sh.wide.ad.jp/WIDE/free-ware/mgp/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	xmkmf &&
+	make Makefiles &&
+	make &&
+	make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/X11/mgp
+	cp -f $_pkg/usr/lib/X11/mgp/default.mgp $fs/usr/lib/X11/mgp
+	
+	cp -a $_pkg/usr/bin $fs/usr
+}
