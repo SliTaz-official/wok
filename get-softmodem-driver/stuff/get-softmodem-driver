@@ -9,6 +9,9 @@ case "$PACKAGE" in
 hsfmodem)
 	. /usr/share/softmodem/hsfmodem.receipt
 	;;
+hcfpcimodem)
+	. /usr/share/softmodem/hcfpcimodem.receipt
+	;;
 *)	echo "Unknown modem driver. Please run one of the following commands:"
 	for i in $(cd $(dirname $0); ls get-*-driver); do
 		[ -L $i ] || continue
@@ -58,7 +61,7 @@ case "$WGET_URL" in
 *rpm)	rpm2cpio < $(basename $WGET_URL) | cpio -id;;
 *deb)	dpkg-deb -x $(basename $WGET_URL) . ;;
 *bz2)	tar xjf $(basename $WGET_URL) ;;
-*tar.gz|*tgz)	tar xzf $(basename $WGET_URL) ;;
+*tar.gz|*tgz)	tar xzf $(basename $WGET_URL) || exit 1 ;;
 *zip)	unzip $(basename $WGET_URL);;
 *o)	;;
 esac
@@ -88,11 +91,28 @@ hsfmodem)
 	mkdir -p $fs/usr/src
 	mv $src $fs/usr/src
 	;;
+hcfpcimodem)
+	# Rules to configure and make the package.
+	cd $src
+	echo "Apply $file..."
+	patch -p1 < /usr/share/softmodem/$PACKAGE-$VERSION.diff || exit 1
+	# Build
+	make all
+	make ROOT=$fs install
+	make clean
+	# Data for automatic region setting
+	mkdir -p $fs/usr/share/softmodem
+	cp -a /usr/share/softmodem/zone.tab $fs/usr/share/softmodem/hcfpcizone.tab
+	# src is needed
+	cd $taz
+	mkdir -p $fs/usr/src
+	mv $src $fs/usr/src
+	;;
 esac
 
 # Create receipt
 cd $taz
-cat /usr/share/softmodem/hsfmodem.receipt> $PACKAGE-$VERSION/receipt
+cat /usr/share/softmodem/$PACKAGE.receipt> $PACKAGE-$VERSION/receipt
 
 # Pack
 tazpkg pack $PACKAGE-$VERSION
