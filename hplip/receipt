@@ -1,21 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="hplip"
-VERSION="3.9.2" 
+VERSION="3.9.4b" 
 CATEGORY="system-tools"
 SHORT_DESC="Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet"
 MAINTAINER="jozee@slitaz.org"
 DEPENDS="ghostscript python cups dbus-python libusb jpeg tiff sane-backends"
-BUILD_DEPENDS="ghostscript-dev dbus-python-dev sane-backends-dev sane-backends pkg-config libusb-dev jpeg-dev cups-dev dbus-dev tiff-dev"
+BUILD_DEPENDS="ghostscript-dev dbus-python-dev sane-backends-dev sane-backends pkg-config libusb-dev jpeg-dev cups-dev dbus-dev tiff-dev python python-dev dbus-python"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://hplipopensource.com"
 WGET_URL="http://downloads.sourceforge.net/sourceforge/hplip/$TARBALL"
 
-# Rules to configure and make the package.
+# Rules to configure and make the package. --prefix=/usr \
 compile_rules()
 {
 	cd $src
-	./configure \
+	while read file; do
+    	[ -f done.$file ] && continue
+    	echo "Apply $file..."
+    	patch -p0 < ../stuff/$PACKAGE-$VERSION-$file || return 1
+	touch done.$file
+    done <<EOT
+	glibc210.u
+EOT
+	./configure  \
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--disable-network-build \
@@ -46,9 +54,8 @@ genpkg_rules()
 		   $_pkg/usr/share/ppd \
 		   $fs/usr/share
 
-	
-	 # remove non zipped ppd files
- rm -rf $fs/usr/share/ppd/HP/*.ppd
+ # compress snon zipped ppd files
+    find $fs/usr/share/ppd/HP -name "*.ppd" | xargs gzip -n9
  
   # remove autostart of hp-daemon
   rm -rf $fs/etc/sane.d
