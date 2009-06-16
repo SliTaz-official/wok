@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="xalan-c"
+VERSION="1.10.0-r705082"
+CATEGORY="development"
+SHORT_DESC="An XSLT processor for transforming XML documents into HTML, text, or other XML document types."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="glibc-base gcc-lib-base xerces-c"
+BUILD_DEPENDS="slitaz-toolchain xerces-c xerces-c-dev"
+TARBALL="Xalan-C_r705082-src.tar.gz"
+WEB_SITE="http://xalan.apache.org/"
+# Need to use the patched r705082 version on Gentoo's mirrors
+# Normal WGET_URL would be "http://www.apache.org/dist/xml/$PACKAGE/source/$TARBALL"
+WGET_URL="http://www.gtlib.gatech.edu/pub/gentoo/distfiles/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Determine if BUILD_HOST has been defined in tazwok.conf as it should
+	if [ -z "$BUILD_HOST" ] ; then
+		# Provide a default TOOLPREFIX value
+		BUILD_HOST=i486-pc-linux-gnu
+	fi
+
+	mv xml-xalan/c $src
+	rm -r xml-xalan
+
+	cd $src
+	
+	export XERCESCROOT=/usr
+	export XALANCROOT=$src
+	
+	./runConfigure -p linux -c gcc -x g++ -P /usr \
+		-C --build=$BUILD_HOST -C --host=$BUILD_HOST &&
+	make &&
+	make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	
+	cp -a $_pkg/usr/bin $fs/usr
+}
