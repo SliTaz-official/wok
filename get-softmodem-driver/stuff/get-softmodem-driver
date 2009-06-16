@@ -25,6 +25,9 @@ hcfpcimodem)
 martian)
 	. /usr/share/softmodem/martian.receipt
 	echo "Support for the Agere Systems PCI Modem built on DSP 164x (Mars) series." ;;
+slmodem)
+	. /usr/share/softmodem/slmodem.receipt
+	echo "Support for the SmartLink Softmodem" ;;
 *)
 	echo "Unknown modem driver. Please run one of the following commands:"
 	for i in $(cd $(dirname $0); ls get-*-driver); do
@@ -61,7 +64,7 @@ fi
 
 # Get files
 cd /usr/src
-echo "Checking for source tarball... "
+echo "Checking for source tarball... $WGET_URL"
 if [ ! -f "$TARBALL" ]; then 
 	wget $WGET_URL
 	# Exit if download failed to avoid errors.
@@ -106,6 +109,7 @@ hsfmodem)
 	mv $src $fs/usr/src
 	;;
 hcfpcimodem)
+	untested
 	# Rules to configure and make the package.
 	cd $src
 	echo "Apply $file..."
@@ -138,6 +142,28 @@ martian)
 	cp -a kmodule/martian_dev.ko $fs/lib/modules/`uname -r`/martian
 	mkdir -p $fs/etc/init.d
 	cp -a /usr/share/softmodem/martian.init $fs/etc/init.d/martian
+	rm -rf $src
+	;;
+slmodem)
+	untested
+	# build modules
+	cd $src
+	make clean
+	make drivers
+	# Build slmodemd with ALSA support
+	cd modem
+	make clean
+	make SUPPORT_ALSA=1
+	# install
+	cd $src
+	mkdir -p $fs/lib/modules/`uname -r`/slamr
+	cp -a drivers/*ko $fs/lib/modules/`uname -r`/slamr
+	mkdir -p $fs/usr/sbin
+	cp -a modem/slmodemd $fs/usr/sbin
+	mkdir -p $fs/etc/init.d
+	cp -a /usr/share/softmodem/slmodem.init $fs/etc/init.d/slmodem
+	rm -rf $src
+	;;
 esac
 
 # Create receipt
