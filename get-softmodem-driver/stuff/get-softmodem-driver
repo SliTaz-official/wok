@@ -5,14 +5,28 @@ PACKAGE=$(echo $0 | sed 's/.*get-\(.*\)-driver/\1/')
 ROOT="$1"
 DEPENDS=""
 
+untested()
+{
+echo "--------------------------------------------------------"
+echo "Due to a lack of compatible hardware for troubleshooting,"
+echo "this $PACKAGE package has not been tested."
+echo "Please report any bug to help us make a reliable package."
+echo "--------------------------------------------------------"
+sleep 1
+}
+
 case "$PACKAGE" in
 hsfmodem)
 	. /usr/share/softmodem/hsfmodem.receipt
-	;;
+	echo "Support for the Conexant (formerly Rockwell) HSF Softmodem family." ;;
 hcfpcimodem)
 	. /usr/share/softmodem/hcfpcimodem.receipt
-	;;
-*)	echo "Unknown modem driver. Please run one of the following commands:"
+	echo "Support for the Conexant HCF (controllerless) modem family." ;;
+martian)
+	. /usr/share/softmodem/martian.receipt
+	echo "Support for the Agere Systems PCI Modem built on DSP 164x (Mars) series." ;;
+*)
+	echo "Unknown modem driver. Please run one of the following commands:"
 	for i in $(cd $(dirname $0); ls get-*-driver); do
 		[ -L $i ] || continue
 		[ "$(readlink $i)" = "get-modem-driver" ] || continue
@@ -108,6 +122,22 @@ hcfpcimodem)
 	mkdir -p $fs/usr/src
 	mv $src $fs/usr/src
 	;;
+martian)
+	untested
+	# Build
+	src=/usr/src/$PACKAGE
+	cd $src
+	sed -i 's/uname -i/uname -m/' modem/Makefile
+	sed -i 's/asm\/page.h/\/usr\/src\/linux\/include\/asm\/page.h/' modem/mport.c
+	sed -i 's/asm\/page.h/\/usr\/src\/linux\/include\/asm\/page.h/' modem/tweakrelocsdynamic.c
+	make all
+	# Install
+	mkdir -p $fs/usr/sbin
+	cp -a modem/martian_modem $fs/usr/sbin
+	mkdir -p $fs/lib/modules/`uname -r`/martian
+	cp -a kmodule/martian_dev.ko $fs/lib/modules/`uname -r`/martian
+	mkdir -p $fs/etc/init.d
+	cp -a /usr/share/softmodem/martian.init $fs/etc/init.d/martian
 esac
 
 # Create receipt
