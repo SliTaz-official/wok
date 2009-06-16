@@ -29,6 +29,9 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
 		tags=*)
 			SEARCH=${i#*=}
 			OBJECT=Tags;;
+		receipt=*)
+			SEARCH=${i#*=}
+			OBJECT=Receipt;;
 		filelist=*)
 			SEARCH=${i#*=}
 			OBJECT=File_list;;
@@ -51,6 +54,7 @@ case "$OBJECT" in
 File)	 	selected_file="selected";;
 Desc)	 	selected_desc="selected";;
 Tags)	 	selected_tags="selected";;
+Receipt) 	selected_receipt="selected";;
 File_list) 	selected_file_list="selected";;
 Depends)	selected_depends="selected";;
 esac
@@ -77,6 +81,7 @@ package="Package"
 file="File"
 desc="Description"
 tags="Tags"
+receipt="Receipt"
 file_list="File list"
 depends="Depends"
 search="Search"
@@ -91,6 +96,7 @@ charset="ISO-8859-1"
 case "$LANG" in
 
 fr)	package="Paquet"
+	receipt="Recette"
 	depends="Dépendances"
 	search="Recherche"
 	result="Recherche de : $SEARCH"
@@ -156,24 +162,25 @@ search_form()
 	cat << _EOT_
 
 <div style="text-align: center; padding: 20px;">
-<form method="POST" action="search.cgi">
-	<input type="hidden" name="lang" value="$LANG">
+<form method="post" action="search.cgi">
+	<input type="hidden" name="lang" value="$LANG" />
 	<select name="object">
 		<option value="Package">$package</option>
 		<option $selected_desc value="Desc">$desc</option>
 		<option $selected_tags value="Tags">$tags</option>
+		<option $selected_receipt value="Receipt">$receipt</option>
 		<option $selected_depends value="Depends">$depends</option>
 		<option $selected_file value="File">$file</option>
 		<option $selected_file_list value="File_list">$file_list</option>
 	</select>
 	<strong>:</strong>
-	<input type="text" name="query" size="32" value="$SEARCH">
+	<input type="text" name="query" size="32" value="$SEARCH" />
 	<select name="version">
 		<option value="cooking">$cooking</option>
 		<option $selected_stable value="stable">$stable</option>
 		<option $selected_1 value="1.0">1.0</option>
 	</select>
-	<input type="submit" name="search" value="$search">
+	<input type="submit" name="search" value="$search" />
 </form>
 </div>
 _EOT_
@@ -329,6 +336,18 @@ _EOT_
 done
 }
 
+# Check package exists
+package_exist()
+{
+	[ -f $WOK/$1/receipt ] && return 0
+	cat << _EOT_
+
+<h3>$noresult</h3>
+<pre class="package">
+_EOT_
+	return 1
+}
+
 # Display search form and result if requested.
 if [ "$REQUEST_METHOD" != "POST" ]; then
 	xhtml_header
@@ -368,7 +387,7 @@ else
 _EOT_
 	search_form
 	if [ "$OBJECT" = "Depends" ]; then
-		if [ -f $WOK/$SEARCH/receipt ]; then
+		if package_exist $SEARCH ; then
 			cat << _EOT_
 
 <h3>$deptree</h3>
@@ -396,12 +415,6 @@ _EOT_
 _EOT_
 			ALL_DEPS=""
 			rdep_scan $SEARCH
-		else
-			cat << _EOT_
-
-<h3>$noresult</h3>
-<pre class="package">
-_EOT_
 		fi
 	elif [ "$OBJECT" = "File" ]; then
 		cat << _EOT_
@@ -426,7 +439,7 @@ _EOT_
 			echo "    $file"
 		done
 	elif [ "$OBJECT" = "File_list" ]; then
-		cat << _EOT_
+		package_exist $SEARCH && cat << _EOT_
 
 <h3>$result</h3>
 <pre class="package">
@@ -462,6 +475,19 @@ _EOT_
 <a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> : $SHORT_DESC
 _EOT_
 			done
+	elif [ "$OBJECT" = "Receipt" ]; then
+		package_exist $SEARCH && cat << _EOT_
+
+<h3>$result</h3>
+<pre class="package">
+<pre>
+$(if [ -f  $WOK/$SEARCH/taz/*/receipt ]; then
+	cat $WOK/$SEARCH/taz/*/receipt
+  else
+    cat $WOK/$SEARCH//receipt
+  fi | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+</pre>
+_EOT_
 	else
 		cat << _EOT_
 
