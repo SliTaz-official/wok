@@ -1,15 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="sane-backends"
-VERSION="1.0.19"
+VERSION="1.0.20"
 CATEGORY="system-tools"
 SHORT_DESC="Scanner Access Now Easy."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="libusb jpeg tiff zlib"
-BUILD_DEPENDS="libusb-dev libusb"
+DEPENDS="libusb jpeg tiff zlib libgphoto2"
+BUILD_DEPENDS="libusb-dev libusb libgphoto2-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.sane-project.org/"
-WGET_URL="ftp://ftp2.sane-project.org/pub/sane/$PACKAGE-$VERSION/$TARBALL"
+WGET_URL="ftp://ftp.sane-project.org/pub/sane/$PACKAGE-$VERSION/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -27,7 +27,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share
+	mkdir -p $fs/etc/udev/rules.d  $fs/usr/lib $fs/usr/share \
+	         $fs/var/lock/sane
 	
 	cp -a $_pkg/etc/sane.d $fs/etc
 	cp -a $_pkg/usr/bin $fs/usr
@@ -35,4 +36,28 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/sane $fs/usr/lib
 	cp -a $_pkg/usr/share/sane $fs/usr/share
+	
+	# copy the missing udev rule
+	cp -a $src/tools/udev/libsane.rules $fs/etc/udev/rules.d/55-sane.rules
+	
+	# fix groups/permissions on /var/lock/sane ; add it to scanner group
+   chmod 775 "$fs/var/lock/sane"
+   chgrp 96 "$fs/var/lock/sane"
+
+}
+
+post_install()
+{
+	local root
+	root=$1
+	
+	# add group scanner
+	getent group scanner >/dev/null || addgroup -g 96 scanner
+	
+	echo " ADD yourself to group scanner to use sane: addgroup tux scanner"
+}
+
+post_remove()
+{
+	delgroup scanner & >/dev/null
 }
