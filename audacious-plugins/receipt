@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="audacious-plugins"
-VERSION="1.5.1"
+VERSION="2.0.1"
 CATEGORY="multimedia"
 SHORT_DESC="Plugins for audacious music player"
 MAINTAINER="mimas@slitaz.org"
-DEPENDS="audacious neon libogg libvorbis alsa-lib lame flac dbus-glib"
-BUILD_DEPENDS="audacious-dev audacious neon flac-dev libogg-dev libvorbis-dev alsa-lib-dev lame-dev"
-TARBALL="$PACKAGE-$VERSION.tbz2"
+DEPENDS="audacious curl libxml2 libogg libvorbis alsa-lib lame flac dbus-glib taglib libsndfile libcdio libmad"
+BUILD_DEPENDS="audacious-dev audacious neon flac-dev libogg-dev libvorbis-dev alsa-lib-dev lame-dev libmad-dev libmad"
+TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="http://audacious-media-player.org/"
 WGET_URL="http://distfiles.atheme.org/$TARBALL"
 
@@ -15,11 +15,18 @@ WGET_URL="http://distfiles.atheme.org/$TARBALL"
 compile_rules()
 {
 	cd $src
+	sed -i "s/touch -t 0001010000 /touch /g" configure
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		--disable-sse2 \
+		--enable-chardet \
+		--disable-esd --disable-pulse --disable-icecast \
+		--disable-jack --disable-timidity --disable-evdevplug \
+		--disable-rocklight  --disable-lirc  \
+		--disable-bluetooth --disable-paranormal \
+		--disable-projectm --disable-projectm-1.0 \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
