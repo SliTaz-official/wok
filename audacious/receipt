@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="audacious"
-VERSION="1.5.1"
+VERSION="2.0.1"
 CATEGORY="multimedia"
 SHORT_DESC="Music player like xmms"
 MAINTAINER="mimas@slitaz.org"
-DEPENDS="gtk+ libmowgli libmcs dbus xorg-libXdamage"
-BUILD_DEPENDS="gtk+-dev libmowgli-dev libmcs-dev dbus-dev"
-TARBALL="$PACKAGE-$VERSION.tbz2"
+DEPENDS="gtk+ libmowgli libmcs dbus xorg-libXdamage libxml2 libsamplerate"
+BUILD_DEPENDS="gtk+-dev libmowgli-dev libmowgli libmcs libmcs-dev dbus-dev libxml2-dev libsamplerate-dev"
+TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="http://audacious-media-player.org/"
 WGET_URL="http://distfiles.atheme.org/$TARBALL"
 
@@ -15,11 +15,13 @@ WGET_URL="http://distfiles.atheme.org/$TARBALL"
 compile_rules()
 {
 	cd $src
+	sed -i "s/touch -t 0001010000 /touch /g" configure
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		--disable-sse2 \
+		--enable-samplerate \
 		$CONFIGURE_ARGS
 	make
 	make DESTDIR=$PWD/_pkg install
@@ -32,5 +34,6 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib/
 	cp -a $_pkg/usr/share/audacious $fs/usr/share
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
 }
 
