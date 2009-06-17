@@ -8,17 +8,11 @@
 . /etc/init.d/rc.functions
 . /etc/daemons.conf
 
-NAME=Smartlink modem
+NAME="Smartlink modem"
 DESC="Smart Link Modem deamon"
 DAEMON=/usr/sbin/slmodemd
 OPTIONS=$SLMODEM_OPTIONS
 PIDFILE=/var/run/slmodemd.pid
-MODULE="slamr"
-
-if [ `/sbin/lsmod | grep -c ${MODULE}` -lt "1" ]; then
-	echo "kernel module is not loaded!"
-	exit 1
-fi
 
 case "$1" in
   start)
@@ -27,9 +21,8 @@ case "$1" in
       exit 1
     fi
     echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS
+    $DAEMON $OPTIONS &&  echo `/bin/pidof $DAEMON` > $PIDFILE
     status
-	echo `/sbin/pidof $DAEMON` > $PIDFILE
     ;;
   stop)
     if [ ! -f $PIDFILE ] ; then
@@ -48,9 +41,8 @@ case "$1" in
     echo -n "Restarting $DESC: $NAME... "
     kill `cat $PIDFILE`
     sleep 2
-    $DAEMON $OPTIONS
+    $DAEMON $OPTIONS &&  echo `/bin/pidof $DAEMON` > $PIDFILE
     status
-	echo `/sbin/pidof $DAEMON` > $PIDFILE
     ;;
   *)
     echo ""
