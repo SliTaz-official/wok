@@ -14,6 +14,23 @@ WGET_URL="http://www.barrelsoutofbond.org/downloads/$PACKAGE/$TARBALL"
 
 post_install()
 {
+	# Country settings
+	if [ -e /etc/TZ ]; then
+		ZONE=`cat /etc/TZ`
+		CODE=`grep $ZONE /usr/share/softmodem/marszone.tab | cut -f1'`
+		if [ -n $CODE ]; then
+			COUNTRY=`grep ^$CODE /usr/share/softmodem/martian.country | cut -f2`
+		fi
+	fi
+	if [ -z $COUNTRY ]; then
+		COUNTRY="USA"
+	fi
+	cat >> $root/etc/daemons.conf << "EOT"
+# martian daemon options.
+MARTIAN_OPTIONS="--country=$COUNTRY"
+
+EOT
+	# Load module
 	/sbin/depmod -a
 	/sbin/modprobe martian_dev && \
 	/etc/init.d/martian start
