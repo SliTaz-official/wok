@@ -17,21 +17,33 @@ post_install()
 	# Country settings
 	if [ -e /etc/TZ ]; then
 		ZONE=`cat /etc/TZ`
-		CODE=`grep $ZONE /usr/share/softmodem/marszone.tab | cut -f1'`
+		CODE=`grep $ZONE /usr/share/martian/zone.tab | cut -f1'`
 		if [ -n $CODE ]; then
-			COUNTRY=`grep ^$CODE /usr/share/softmodem/martian.country | cut -f2`
+			COUNTRY=`grep ^$CODE /usr/share/martian/martian.country | cut -f2`
+			COUNTRY_NAME=`grep ^$CODE /usr/share/martian/martian.country | cut -f3`
 		fi
 	fi
 	if [ -z $COUNTRY ]; then
-		COUNTRY="USA"
+		COUNTRY="us"
+		COUNTRY_NAME="USA"
 	fi
-	cat >> $root/etc/daemons.conf << "EOT"
-# martian daemon options.
-MARTIAN_OPTIONS="--country=$COUNTRY"
-
-EOT
+	echo "Automatic country setting: $COUNTRY_NAME"
+	# Save options
+	if [ `grep -c MARTIAN_OPTIONS /etc/daemons.conf` -gt 0 ]; then
+		sed -i 's/MARTIAN_OPTIONS=.*/MARTIAN_OPTIONS="--country='"$COUNTRY"' \/dev\/ttySM0"/' /etc/daemons.conf
+	else
+	echo "# slmodemd daemon options." >> $root/etc/daemons.conf
+		echo "MARTIAN_OPTIONS=\"--country=$COUNTRY /dev/ttySM0\"" >> $root/etc/daemons.conf
+		echo  >> $root/etc/daemons.conf
+	fi
 	# Load module
 	/sbin/depmod -a
 	/sbin/modprobe martian_dev && \
 	/etc/init.d/martian start
+}
+
+post_remove()
+{
+	/etc/init.d/martian stop
+	rm -rf /usr/share/martian
 }

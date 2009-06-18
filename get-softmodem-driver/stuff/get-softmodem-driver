@@ -9,25 +9,21 @@ untested()
 {
 echo "--------------------------------------------------------"
 echo "Due to a lack of compatible hardware for troubleshooting,"
-echo "this $PACKAGE package has not been tested."
-echo "Please report any bug to SliTaz Labs or SliTaz Forum."
+echo "this $PACKAGE package has not been tested. Please report"
+echo "any success, failure, bug to SliTaz Labs or SliTaz Forum."
 echo "--------------------------------------------------------"
 sleep 1
 }
 
 case "$PACKAGE" in
 hsfmodem)
-	. /usr/share/softmodem/hsfmodem.receipt
-	echo $SHORT_DESC;;
+	. /usr/share/softmodem/hsfmodem.receipt ;;
 hcfpcimodem)
-	. /usr/share/softmodem/hcfpcimodem.receipt
-	echo $SHORT_DESC;;
+	. /usr/share/softmodem/hcfpcimodem.receipt ;;
 martian)
-	. /usr/share/softmodem/martian.receipt
-	echo $SHORT_DESC;;
+	. /usr/share/softmodem/martian.receipt ;;
 slmodem)
-	. /usr/share/softmodem/slmodem.receipt
-	echo $SHORT_DESC;;
+	. /usr/share/softmodem/slmodem.receipt ;;
 *)
 	echo "Unknown modem driver. Please run one of the following commands:"
 	for i in $(cd $(dirname $0); ls get-*-driver); do
@@ -37,6 +33,9 @@ slmodem)
 	done
 	exit 1;;
 esac
+
+# Report
+echo "Installing $SHORT_DESC.."
 
 # Check if user is root to install.
 if test $(id -u) != 0 ; then
@@ -142,6 +141,11 @@ martian)
 	cp -a kmodule/martian_dev.ko $fs/lib/modules/`uname -r`/martian
 	mkdir -p $fs/etc/init.d
 	cp -a /usr/share/softmodem/martian.init $fs/etc/init.d/martian
+	chmod +x $fs/etc/init.d/martian
+	# Data for automatic region setting
+	mkdir -p $fs/usr/share/martian
+	cp -a /usr/share/softmodem/zone.tab $fs/usr/share/martian
+	cp -a /usr/share/softmodem/martian.country $fs/usr/share/martian
 	rm -rf $src
 	;;
 slmodem)
