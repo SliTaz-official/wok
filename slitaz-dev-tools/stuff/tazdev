@@ -20,17 +20,19 @@ fi
 usage()
 {
 	echo -e "\nSliTaz developers and build host tool\n
-\033[1mUsage: \033[0m `basename $0` [command] [user] [stable|cooking]
+\033[1mUsage: \033[0m `basename $0` [command] [user] [stable|cooking|path]
 \033[1mCommands: \033[0m\n
-  usage        Print this short usage and command list.
-  cmplog       Log 'tazwok cmp' result.
-  update-wok   Update Hg wok and copy it to the chroot wok.
-  update-www   Update SliTaz Website repo.
-  chroot       Mount virtual fs if needed and chroot into the build env.
-  push         Upload new packages to the mirror.
-  dry-push     Show what will be uploaded to the mirror. Does nothing.
-  pull         Download new packages from the mirror.
-  dry-pull     Show what will be downloaded from the mirror. Does nothing.\n"
+  usage         Print this short usage and command list.
+  cmplog        Log 'tazwok cmp' result (or use tazbb).
+  update-wok    Update Hg wok and copy it to the chroot wok.
+  update-www    Update SliTaz Website repo from Hg.
+  chroot        Mount virtual fs if needed and chroot into the build env.
+  gen-chroot    Generate a chroot environment using the last cooking base rootf.
+  clean-chroot  Clean a chroot environment (skip root/ and home/)
+  push          Upload new packages to the main mirror.
+  dry-push      Show what will be uploaded to the mirror. Does nothing.
+  pull          Download new packages from the main mirror.
+  dry-pull      Show what will be downloaded from the mirror. Does nothing.\n"
 }
 
 # Exit if user is not root.
@@ -39,6 +41,30 @@ check_root()
 	if test $(id -u) != 0 ; then
 	   echo -e "\nThis program requires being run as root.\n"
 	   exit 0
+	fi
+}
+
+status()
+{
+	local CHECK=$?
+	if [ $CHECK = 0 ]; then
+		echo " Done"
+	else
+		echo " Failed"
+	fi
+	return $CHECK
+}
+
+get_version()
+{
+	if [ "$2" = "stable" ]; then
+		VERSION=stable
+		ROOTFS=$STABLE/chroot
+	elif [ -n "$2" ]; then
+		ROOTFS=$2
+	else
+		VERSION=cooking
+		ROOTFS=$COOKING/chroot
 	fi
 }
 
@@ -59,6 +85,59 @@ check_mirror()
 	fi	
 }
 
+# Mount virtual Kernel file systems and chroot but check that nobody 
+# else has done mounts
+mount_chroot()
+{
+	if [ ! -d $ROOTFS/proc/1 ]; then
+		echo -n "Mounting virtual filesystem..."
+		mount -t proc proc $ROOTFS/proc
+		mount -t sysfs sysfs $ROOTFS/sys
+		mount -t devpts devpts $ROOTFS/dev/pts
+		mount -t tmpfs shm $ROOTFS/dev/shm
+		status
+	fi
+}
+
+# Unmount virtual Kernel file systems on exit and ensure we are the last 
+# user before unmounting !
+umount_chroot()
+{
+	# Not working. Buggy ps ?
+	#sleep 6
+	ps=$(ps | grep `basename $0` | grep -v grep | wc -l)
+	if [ "$ps" == "1" ]; then
+		echo -ne "\Unmounting virtual filesystem..."
+		umount $ROOTFS/dev/shm
+		umount $ROOTFS/dev/pts
+		umount $ROOTFS/sys
+		umount $ROOTFS/proc
+		status
+	else
+		echo -e "\nProcess: $ps\n"
+		ps | grep `basename $0` | grep -v grep
+		echo -e "\nLeaving virtual filesystem unmounted (`pidof tazdev`)...\n"
+	fi
+}
+
+# Get the last cooking base rootfs, extract and configure.
+gen_new_chroot()
+{
+	echo -e "\nGenerating new chroot in : $ROOTFS"
+	echo "================================================================================"
+	mkdir -p $ROOTFS && cd $ROOTFS
+	wget $DL_URL/boot/cooking/rootfs-base.gz
+	echo -n "Extracting the rootfs..."
+	lzma d rootfs-base.gz -so | cpio -id
+	rm rootfs-base.gz
+	echo -n "Creating resolv.conf..."
+	cat /etc/resolv.conf > etc/resolv.conf
+	status
+	echo "================================================================================"
+	echo -e "Ready to chroot. Use 'tazdev chroot [version|path]'"
+	echo -e "Example: tazdev chroot $ROOTFS\n"
+}
+
 case "$1" in
 	cmplog)
 		# Log 'tazwok cmp' for the web interface (can be used via a cron job).
@@ -67,10 +146,10 @@ case "$1" in
 		tazwok cmp | grep ^[A-Z] | tee $CMP_LOG
 		echo "Date: `date`" >> $CMP_LOG ;;
 	update-wok)
-		# Update the Hg wok and copy it to the chroot env. Hg wok id 
+		# Update the Hg wok and copy it to the chroot env. Hg wok is
 		# copied to the chroot wok to avoid messing with build result
 		# file and so we can also modify receipt directly without affecting
-		# the main Hg.
+		# the Hg wok.
 		check_root
 		if [ "$2" = "stable" ]; then
 			HG_WOK=$STABLE/wok
@@ -86,7 +165,8 @@ case "$1" in
 		hg pull && hg update
 		echo -n "Copying Hg wok to the build wok... "
 		cp -a $HG_WOK/* $BUILD_WOK
-		echo -e "Done\n" ;;
+		cp -a $HG_WOK/.hg $BUILD_WOK
+		status && echo "" ;;
 	update-www)
 		# Update website from repo.
 		echo ""
@@ -96,47 +176,65 @@ case "$1" in
 		# Chroot into a build env. Default to cooking configured in 
 		# tazdev.conf
 		check_root
-		if [ "$1" = "stable" ]; then
-			ROOTFS=$STABLE/chroot
-		else
-			ROOTFS=$COOKING/chroot
-			[ -n "$1" ] && ROOTFS=$1
-		fi
-		# Mount virtual Kernel file systems and chroot but check that 
-		# nobody else has done mounts
-		if [ ! -d $ROOTFS/proc/1 ]; then
-			mount -t proc proc $ROOTFS/proc
-			mount -t sysfs sysfs $ROOTFS/sys
-			mount -t devpts devpts $ROOTFS/dev/pts
-			mount -t tmpfs shm $ROOTFS/dev/shm
-		fi
-		echo "Chrooting in $ROOTFS... "
+		get_version
+		mount_chroot
+		echo -e "\nChrooting in $ROOTFS...\n"
 		chroot $ROOTFS /bin/sh --login
-		# Unmount virtual Kernel file systems on exit and ensure we are the 
-		# last user before unmounting !
-		if [ "$(ps | grep $(basename $0) | grep -v grep | wc -l)" == "1" ]; then
-			umount $ROOTFS/dev/shm
-			umount $ROOTFS/dev/pts
-			umount $ROOTFS/sys
-			umount $ROOTFS/proc
+		umount_chroot
+		echo -e "Exiting $ROOTFS chroot environment...\n" ;;
+	gen-chroot)
+		check_root
+		get_version
+		# Dont break another env.
+		if [ -d $ROOTFS/bin ]; then
+			echo -e "\nA chroot environment already exist in : $ROOTFS\n"
+			exit 1
 		fi
-		echo "Exiting $ROOTFS chroot environment... " ;;
+		gen_new_chroot ;;
+	clean-chroot)
+		# Keep root/ and /home they may have a build wok, custom scripts, etc.
+		check_root
+		if [ -z "$2" ]; then
+			echo -e "\nPlease specify the path to the chroot environment to clean.\n"
+			exit 0
+		else
+			ROOTFS=$2
+			if [ ! -d "$ROOTFS" ]; then
+				echo -e "\nWarning : $ROOTFS dont exit!\n"
+				exit 1
+			fi
+		fi
+		if [ -d $ROOTFS/proc/1 ]; then
+			echo -e "\nWarning : $ROOTFS/proc mounted!\n"
+			exit 1
+		fi
+		cd $ROOTFS || exit 1
+		echo -e "\nCleaning chroot in: $ROOTFS"
+		echo "================================================================================"
+		for i in bin dev etc init lib media mnt proc sbin sys tmp usr var
+		do
+			echo -n "Removing: $i (`du -sh $i | awk '{ print $1 }'`)... "
+			rm -rf $i
+			status
+		done
+		echo "================================================================================"
+		echo "" ;;
 	push)
 		check_mirror
 		rsync -r -t -l -v -z --delete \
-			$LOCAL_DIR -e ssh $USER@$HOST:$REMOTE_DIR ;;
+			$LOCAL_DIR -e ssh $USER@$MIRROR:$REMOTE_DIR ;;
 	dry-push)
 		check_mirror
 		rsync -r -t -l -v -z --delete --dry-run \
-			$LOCAL_DIR -e ssh $USER@$HOST:$REMOTE_DIR ;;
+			$LOCAL_DIR -e ssh $USER@$MIRROR:$REMOTE_DIR ;;
 	pull)
 		check_mirror
 		rsync -r -t -l -v -z --delete \
-			-e ssh $USER@$HOST:$REMOTE_DIR $LOCAL_DIR ;;
+			-e ssh $USER@$MIRROR:$REMOTE_DIR $LOCAL_DIR ;;
 	dry-pull)
 		check_mirror
 		rsync -r -t -l -v -z --delete --dry-run \
-			-e ssh $USER@$HOST:$REMOTE_DIR $LOCAL_DIR ;;
+			-e ssh $USER@$MIRROR:$REMOTE_DIR $LOCAL_DIR ;;
 	usage|*)
 		usage ;;
 esac
