@@ -1,0 +1,53 @@
+# SliTaz package receipt.
+
+PACKAGE="tazbb"
+VERSION="1.0"
+CATEGORY="development"
+SHORT_DESC="SliTaz Build bot."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="tazpkg tazwok mercurial slitaz-toolchain"
+WEB_SITE="http://labs.slitaz.org/wiki/distro/Bb"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/usr/bin \
+		$fs/etc/slitaz \
+		$fs/var/lib/tazbb \
+		$fs/var/lib/tazbb
+	cp stuff/tazbb $fs/usr/bin
+	cp stuff/tazbb.conf $fs/etc/slitaz
+	cp -a stuff/web $fs/var/lib/tazbb
+	chmod 755 $fs/usr/bin/*
+	chown -R root.root $fs
+}
+
+post_install()
+{
+	# On Tank we have bb.slitaz.org virtual host in: /home/slitaz/www
+	if [ -d $1/home/slitaz/www/bb ]; then
+		cp -a $1/var/lib/tazbb/web $1/home/slitaz/www
+		chown www.www $1/home/slitaz/www
+	else
+	mkdir -p $1/var/www/vhosts
+	ln -s $1/var/lib/tazbb/web $1/var/www/vhosts/bb
+cat << _EOT_
+
+To have Tazbb web interface on your local system you can add a vhost
+to Lighttp (or Apache) and the hostname to /etc/hosts. Example for Lighty:
+
+$HTTP["host"] =~ "bb" {
+  server.document-root = "/var/www/vhost/bb"
+}
+
+Or run: browser http://localhost/vhosts/bb
+
+_EOT_
+	fi
+}
+
+post_remove()
+{
+	rm -rf /var/www/vhost/bb
+}
