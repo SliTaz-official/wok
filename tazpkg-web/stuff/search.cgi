@@ -299,8 +299,8 @@ rdep_scan()
 SEARCH=$1
 case "$SEARCH" in
 glibc-base|gcc-lib-base) cat <<EOT
-	glibc-base and gcc-lib-base are implicit dependencies
-	<b>every</b> packages are supposed to depend on them.
+	glibc-base and gcc-lib-base are implicit dependencies,
+	<b>every</b> package is supposed to depend on them.
 EOT
 	return;;
 esac
