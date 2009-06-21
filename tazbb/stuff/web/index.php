@@ -96,7 +96,7 @@ include("$db_dir/cooklist");
 <h3>Unbuilt</h3>
 <pre class="package">
 <?php
-include("$db_dir/unbuilt.urls");
+include("$db_dir/unbuilt");
 ?>
 </pre>
 
