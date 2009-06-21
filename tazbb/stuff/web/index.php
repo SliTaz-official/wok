@@ -45,13 +45,13 @@ include("conf.php");
 <h2><font color="#DF8F06">/usr/bin/tazbb</font></h2>
 
 <p>
-Tazbb is <a href="http://www.slitaz.org/">SliTaz GNU/Linux</a> Build Bot,
-it automaticaly cook and test packages commited in the wok. SliTaz
+Tazbb is a <a href="http://www.slitaz.org/">SliTaz GNU/Linux</a> Build Bot,
+it automatically cooks and tests packages commited in the wok. SliTaz
 <a href="http://pkgs.slitaz.org/">packages</a> are cooked on the project
 main server: code name <a href="http://tank.slitaz.org">Tank</a>. This
-web interface give the current status of the build bot and the last report
-about all packages modified by SliTaz contributors in the Mercurial
-repository, aka <a href="http://hg.slitaz.org/">Hg repos</a>.
+web interface gives the current status of the build bot and the last report
+about any packages modified by the SliTaz contributors in the Mercurial
+<a href="http://hg.slitaz.org/">Hg repos</a>.
 </p>
 
 <p>
