@@ -61,13 +61,18 @@ get_version()
 {
 	if [ "$2" = "stable" ]; then
 		VERSION=stable
-		ROOTFS=$STABLE/chroot
+		SLITAZ=$STABLE
 	elif [ -n "$2" ]; then
-		ROOTFS=$2
+		# Undigest - custom ?
+		VERSION=$2
+		SLITAZ=/home/slitaz/$2
 	else
 		VERSION=cooking
-		ROOTFS=$COOKING/chroot
+		SLITAZ=$COOKING
 	fi
+	ROOTFS=$SLITAZ/chroot
+	HG_WOK=$SLITAZ/wok
+	BUILD_WOK=$SLITAZ/chroot/home/slitaz/wok
 }
 
 check_mirror()
@@ -84,10 +89,10 @@ check_mirror()
 	else
 		REMOTE_DIR=$MIRROR_DIR/cooking/
 		LOCAL_DIR=$COOKING/packages/
-	fi	
+	fi
 }
 
-# Mount virtual Kernel file systems and chroot but check that nobody 
+# Mount virtual Kernel file systems and chroot but check that nobody
 # else has done mounts
 mount_chroot()
 {
@@ -101,7 +106,7 @@ mount_chroot()
 	fi
 }
 
-# Unmount virtual Kernel file systems on exit and ensure we are the last 
+# Unmount virtual Kernel file systems on exit and ensure we are the last
 # user before unmounting !
 umount_chroot()
 {
@@ -177,13 +182,7 @@ case "$1" in
 		# file and so we can also modify receipt directly without affecting
 		# the Hg wok.
 		check_root
-		if [ "$2" = "stable" ]; then
-			HG_WOK=$STABLE/wok
-			BUILD_WOK=$STABLE/chroot/home/slitaz
-		else
-			HG_WOK=$COOKING/wok
-			BUILD_WOK=$COOKING/chroot/home/slitaz
-		fi
+		get_version
 		echo ""
 		echo "Hg wok    : $HG_WOK"
 		echo "Build wok : $BUILD_WOK"
@@ -199,7 +198,7 @@ case "$1" in
 		cd $WEBSITE && hg pull && hg update
 		echo "" ;;
 	chroot)
-		# Chroot into a build env. Default to cooking configured in 
+		# Chroot into a build env. Default to cooking configured in
 		# tazdev.conf
 		check_root
 		get_version
