@@ -1,0 +1,53 @@
+# SliTaz package receipt.
+
+PACKAGE="tazpkg-web"
+VERSION="1.0"
+CATEGORY="network"
+SHORT_DESC="SliTaz packages Web interfaces (http://pkgs.slitaz.org/)."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="lighttpd"
+WEB_SITE="http://www.slitaz.org/"
+CONFIGS="/etc/slitaz/tazpkg-web.conf"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/usr/bin \
+		$fs/etc/slitaz \
+		$fs/var/lib/tazpkg-web
+	# Page generator and config file.
+	cp stuff/tazpkg-web $fs/usr/bin
+	cp stuff/tazpkg-web.conf $fs/etc/slitaz
+	# Var libs
+	for i in html style xml search.cgi
+	do
+		cp -a stuff/$i $fs/var/lib/tazpkg-web
+	done
+	chmod 755 $fs/usr/bin/*
+	chown -R root.root $fs
+}
+
+post_install()
+{
+	# On Tank we have pkgs.slitaz.org virtual host in: /home/slitaz/www
+	if [ -d $1/home/slitaz/www/pkgs ]; then
+		# Overwrite existing files.
+		cp -a $1/var/lib/tazpkg-web/style/* $1/home/slitaz/www/pkgs
+		cp -a $1/var/lib/tazpkg-web/search.cgi $1/home/slitaz/www/pkgs
+		sed -i 's|/var/www/vhosts/pkgs|/home/slitaz/www/pkgs|' \
+			$1/etc/slitaz/tazpkg-web.conf
+	else
+		cat << _EOT_
+
+To have Tazpkg-web interface on your local system you can add a vhost
+to Lighttp (or Apache) and the hostname to /etc/hosts. And must copy
+files from: /var/lib/tazpkg-web. Example:
+
+ # mkdir -p /var/www/vhosts/pkgs && cd /var/lib/tazpkg-web
+ # cp -a search.cgi style/* /var/www/vhosts/pkgs
+ # tazpkg-web cooking
+
+_EOT_
+	fi
+}

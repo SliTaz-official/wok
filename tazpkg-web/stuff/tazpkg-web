@@ -1,0 +1,299 @@
+#!/bin/sh
+# SliTaz Packages Web interface generator: http://pkgs.slitaz.org/
+#
+# (C) 2009 SliTaz project - GNU General Public License v3.
+# Christophe Lincoln <pankso@slitaz.org>
+#
+
+. /etc/slitaz/tazpkg-web.conf
+
+RELEASE="$1"
+PAGES_DIR=$WEB_INTERFACE/$RELEASE
+DATE=`date +%Y-%m-%d\ \%H:%M:%S`
+
+status()
+{
+	local CHECK=$?
+	echo -en "\033[70G"
+	if [ $CHECK = 0 ]; then
+		echo "Done"
+	else
+		echo "Failed"
+	fi
+	return $CHECK
+}
+
+# Search from option with current version in first so users dont have
+# to select the correct one.
+search_form_option()
+{
+	if [ "$RELEASE" == "stable" ]; then
+		cat << _EOT_
+		<option>stable</option>
+		<option>cooking</option>
+		<option>1.0</option>
+_EOT_
+	else
+		cat << _EOT_
+		<option>cooking</option>
+		<option>stable</option>
+		<option>1.0</option>
+_EOT_
+	fi
+}
+
+content_top()
+{
+	cat >> $PAGES_DIR/$page.html << _EOF_
+
+<!-- Content top. -->
+<div id="content_top">
+<div class="top_left"></div>
+<div class="top_right"></div>
+</div>
+
+<!-- Content -->
+<div id="content">
+<a name="content"></a>
+
+<h1><font color="#3E1220">Packages $RELEASE</font></h1>
+<h2><font color="#DF8F06">$h2</font></h2>
+_EOF_
+}
+
+# xHTML Header.
+xhtml_header()
+{
+	cat $LIB_DIR/html/header.html > $PAGES_DIR/$page.html
+	sed -i s/"_RELEASE_"/"$RELEASE"/ $PAGES_DIR/$page.html
+	sed -i s/"_PAGE_"/"$page"/ $PAGES_DIR/$page.html
+	sed -i s/"_DATE_"/"$DATE"/ $PAGES_DIR/$page.html
+}
+
+# xHTML Footer.
+xhtml_footer()
+{
+	cat $LIB_DIR/html/footer.html >> $PAGES_DIR/$page.html
+	sed -i s/"_DATE_"/"$DATE"/ $PAGES_DIR/$page.html
+}
+
+# Index pages with categories and search form.
+gen_index_content()
+{
+	cat >> $PAGES_DIR/$page.html << _EOT_
+
+<div style="text-align: center; padding: 20px;">
+<form method="post" action="http://pkgs.slitaz.org/search.cgi">
+	<select name="object">
+		<option>Package</option>
+		<option>Desc</option>
+		<option>Tags</option>
+		<option>Receipt</option>
+		<option>Depends</option>
+		<option>File</option>
+		<option>File_list</option>
+	</select>
+	<strong>:</strong>
+	<input type="text" name="query" size="32" />
+	<select name="version">
+`search_form_option`
+	</select>
+	<input type="submit" name="search" value="Search" />
+</form>
+<p>
+$packages packages - Database generated on: $DATE
+</p>
+</div>
+_EOT_
+	cat $LIB_DIR/html/catlist.html >> $PAGES_DIR/$page.html
+}
+
+# Packages <h3> and infos in <pre>. Some packages use EXTRAVERSION in
+# the receipt so keep the value or set it to the kernel version.
+pkgs_pages_content()
+{
+	for pkg in $WOK/*
+	do
+		DEPENDS=""
+		DEPENDS_LINKS=""
+		EXTRAVERSION=""
+		. $pkg/receipt
+		[ -z "$EXTRAVERSION" ] && EXTRAVERSION="_$KERNEL"
+		packages=$(($packages+1))
+		cat >> $PAGES_DIR/$CATEGORY.html << _EOT_
+
+<a name="$PACKAGE"></a>
+<h3>$PACKAGE</h3>
+<pre class="package">
+Version    : $VERSION
+Short desc : $SHORT_DESC
+Web site   : <a href="$WEB_SITE">$WEB_SITE</a>
+_EOT_
+		# Extraversion string or not
+		if [ -f "$PACKAGES_REPOSITORY/$PACKAGE-${VERSION}$EXTRAVERSION.tazpkg" ]; then
+			cat >> $PAGES_DIR/$CATEGORY.html << _EOT_
+Download   : <a href="http://mirror.slitaz.org/packages/$RELEASE/$PACKAGE-${VERSION}$EXTRAVERSION.tazpkg">$PACKAGE-${VERSION}$EXTRAVERSION.tazpkg</a>
+_EOT_
+			echo '</pre>' >> $PAGES_DIR/$CATEGORY.html
+		else
+			# Check if package exist, could be virtual
+			[ -f "$PACKAGES_REPOSITORY/$PACKAGE-$VERSION.tazpkg" ] &&
+			cat >> $PAGES_DIR/$CATEGORY.html << _EOT_
+Download   : <a href="http://mirror.slitaz.org/packages/$RELEASE/$PACKAGE-$VERSION.tazpkg">$PACKAGE-$VERSION.tazpkg</a>
+_EOT_
+			echo '</pre>' >> $PAGES_DIR/$CATEGORY.html
+			# Dependencies with link to the package information using
+			# category.html#anchor
+			if [ -n "$DEPENDS" ]; then
+				for dep in $DEPENDS
+				do
+					receipt=$WOK/$dep/receipt
+					if [ -f "$receipt" ]; then
+						cat=`grep CATEGORY $receipt | sed s/CATEGORY=\"// | sed s/\"//`
+						DEPENDS_LINKS=${DEPENDS_LINKS}"<a href=\"$cat.html#$dep\">$dep</a> "
+					fi
+				done
+				cat >> $PAGES_DIR/$CATEGORY.html << _EOT_
+<p>Depends : $DEPENDS_LINKS</p>
+_EOT_
+			fi
+		fi
+	done
+}
+
+# Pages footer
+pages_footer()
+{
+	for page in $CATEGORIES
+	do
+		# Gen categories menu/links
+		echo '' >> $PAGES_DIR/$page.html
+		echo '<p class="pkg_nav">' >> $PAGES_DIR/$page.html
+		echo 'Categories' >> $PAGES_DIR/$page.html
+		for i in $CATEGORIES
+		do
+			cat >> $PAGES_DIR/$page.html << _EOF_
+| <a href="$i.html">$i</a>
+_EOF_
+		done
+		echo '</p>' >> $PAGES_DIR/$page.html
+		xhtml_footer
+	done
+}
+
+# Home page with search form and tag cloud.
+home_page()
+{
+	PAGES_DIR=$WEB_INTERFACE
+	page="index"
+	h2="Web interface"
+	RELEASE=""
+	xhtml_header
+	content_top
+	cat $LIB_DIR/html/home.html >> $PAGES_DIR/$page.html
+	xhtml_footer
+}
+
+# Generate all categories pages and release index.
+gen_all_pages()
+{
+	# Clean previews files.
+	rm -rf $PAGES_DIR
+	mkdir -p $PAGES_DIR
+	echo -e "\nStarting to build the $RELEASE Web interface... "
+	echo "================================================================================"
+	# Packages pages header, menu and content top at first.
+	echo -n "Generating all pages header..."
+	for page in $CATEGORIES
+	do
+		h2=$page
+		xhtml_header
+		cat $LIB_DIR/html/menu.html >> $PAGES_DIR/$page.html
+		content_top
+	done
+	status
+	# Scan the wok and classify packages by category.
+	echo -n "Scanning the wok and generating page content..."
+	pkgs_pages_content
+	status
+	# Gen all packages pages footer.
+	echo -n "Generating all pages footer..."
+	pages_footer
+	status
+	# Stable or Cooking index with categories and home page.
+	echo -n "Generating the main index..."
+	page="index"
+	h2="Categories"
+	xhtml_header
+	cat $LIB_DIR/html/menu.html >> $PAGES_DIR/$page.html
+	content_top
+	gen_index_content
+	xhtml_footer
+	home_page
+	status
+	echo "================================================================================"
+	echo -e "Pages generated: $WEB_INTERFACE\n"
+}
+
+# Prefer the Hg wok in the chroot. On host running Tazbb the wok's
+# are updated and copied automaticaly and it conflict with Tazdev
+# designed to maintain a local chroot environment without a build bot.
+
+case "$1" in
+	stats)
+		size=`du -sh $WEB_INTERFACE | awk '{ print $1 }'`
+		pages=`find $WEB_INTERFACE -name *.html | wc -l`
+		stable=`find $WEB_INTERFACE/stable -name *.html | wc -l`
+		cooking=`find $WEB_INTERFACE/cooking -name *.html | wc -l`
+		cat << _EOT_
+
+Tazpkg-web statistics
+================================================================================
+Web interface : $WEB_INTERFACE ($size)
+xHTML pages   : $pages (Stable $stable - Cooking $cooking)
+Library path  : $LIB_DIR
+Stable path   : $STABLE
+Cooking path  : $COOKING
+================================================================================
+
+_EOT_
+		;;
+	check)
+		RELEASE=$2
+		[ -z "$RELEASE" ] && RELEASE=cooking
+		echo -e "\nChecking: $WEB_INTERFACE/$RELEASE\n"
+		for page in `cd $WEB_INTERFACE/$RELEASE && ls *.html`
+		do
+			if ! echo "$CATEGORIES index" | grep -qw ${page%.html}; then
+				echo "Wrong category: ${page%.html}"
+			fi
+		done && echo "" ;;
+	stable)
+		PACKAGES_REPOSITORY=$STABLE/packages
+		if [ -d $STABLE/chroot/home/slitaz/hg/wok ]; then
+			WOK=$STABLE/chroot/home/slitaz/hg/wok
+		else
+			WOK=$STABLE/wok
+		fi
+		KERNEL=`cat $WOK/linux/receipt | grep ^VERSION= | cut -d '"' -f 2`
+		gen_all_pages ;;
+	cooking)
+		PACKAGES_REPOSITORY=$COOKING/packages
+		if [ -d $COOKING/chroot/home/slitaz/hg/wok ]; then
+			WOK=$COOKING/chroot/home/slitaz/hg/wok
+		else
+			WOK=$COOKING/wok
+		fi
+		KERNEL=`cat $WOK/linux/receipt | grep ^VERSION= | cut -d '"' -f 2`
+		gen_all_pages ;;
+	*|usage)
+		cat << _EOT_
+
+Tazpkg-web - SliTaz Packages Web interface generator.
+Usage: `basename $0` [slitaz-release|stats|check]
+
+_EOT_
+		;;
+esac
+
+exit 0
