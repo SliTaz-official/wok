@@ -57,6 +57,7 @@ if ($_GET['package']) {
 		echo '<a href="' . "log/$pkg.log" . '">Raw log</a> ' . "\n";
 		echo '</form></p>';
 		echo '<pre class="log">' . "\n";
+		echo date ("F d Y H:i:s", filemtime("log/$pkg.log"))."\n";
 		include("$log_dir/$pkg.log");
 		echo '</pre>';
 	}
