@@ -28,7 +28,7 @@ for tree in $@; do
         grep /$module: $_pkg/lib/modules/*-slitaz/modules.dep ||
         find $_pkg/lib/modules/*-slitaz/kernel/$tree -name $module
     done | awk '{ for (i = 1; i <= NF; i++)  print $i; }'
-done | sort | uniq | sed -e 's,.*slitaz/kernel/,,' -e 's/:$//' | \
+done | sort | uniq | sed -e 's,.*slitaz/,,' -e 's,kernel/,,' -e 's/:$//' | \
 while read module; do
     grep -qs ^$module$ $src/modules.list && continue
     echo $module
