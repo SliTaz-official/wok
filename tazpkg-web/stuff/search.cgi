@@ -231,7 +231,7 @@ xhtml_footer()
 {
 	cat << _EOT_
 <center>
-<i>$(ls /home/slitaz/$SLITAZ_VERSION/wok | wc -l) packages and $(unlzma -c /home/slitaz/$SLITAZ_VERSION/packages/files.list.lzma | wc -l) files in $SLITAZ_VERSION database</i>
+<i>$(ls /home/slitaz/$SLITAZ_VERSION/wok/ | wc -l) packages and $(unlzma -c /home/slitaz/$SLITAZ_VERSION/packages/files.list.lzma | wc -l) files in $SLITAZ_VERSION database</i>
 </center>
 
 <!-- End of content with round corner -->
