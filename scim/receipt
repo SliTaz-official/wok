@@ -1,22 +1,27 @@
 PACKAGE="scim"
-VERSION="1.4.7"
-CATEGORY="x-window"
-SHORT_DESC="Smart Common Input Method (SCIM)"
-MAINTAINER="slitaz@pworld.otherinbox.com"
-DEPENDS="gtk+ xorg-libXdamage"
-BUILD_DEPENDS="xorg-dev xorg-dev-proto gtk+-dev"
+VERSION="1.4.9"
+CATEGORY="utilities"
+SHORT_DESC="Smart Common Input Method (SCIM)."
+MAINTAINER="rocky@slitaz.org"
+DEPENDS="gtk+"
+BUILD_DEPENDS="gtk+-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.scim-im.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+CONFIG_FILES="/etc/scim/config /etc/scim/global"
 
 # Rules to configure and make the package.
 compile_rules()
 {
     cd $src
-    ./configure --prefix=/usr --infodir=/usr/share/info \
-    --sysconfdir=/etc --with-x \
-    --with-gtk-im-module-dir=$(ls -d /usr/lib/gtk-2*/2*/immodules/) \
-    --mandir=/usr/share/man $CONFIGURE_ARGS &&
+    patch -p1 < ../stuff/scim-glibc-2.10.patch &&
+    ./configure --prefix=/usr \
+        --sysconfdir=/etc \
+        --with-x \
+        --with-gtk-im-module-dir=$(ls -d /usr/lib/gtk-2*/2*/immodules/) \
+        --mandir=/usr/share/man \
+        --infodir=/usr/share/info \
+        $CONFIGURE_ARGS &&
     make &&
     make DESTDIR=$PWD/_pkg install
 }
@@ -24,27 +29,37 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr
+    mkdir -p $fs/usr/share/pixmaps
+    cp -a $_pkg/etc $fs/
     cp -a $_pkg/usr/bin $fs/usr
-    strip -s $fs/usr/bin/*
     cp -a $_pkg/usr/lib $fs/usr
-    mkdir -p $fs/usr/share
     cp -a $_pkg/usr/share/scim $fs/usr/share
+    cp $_pkg/usr/share/pixmaps/scim-setup.png $fs/usr/share/pixmaps
     find $fs/usr/lib -name '*.la' -exec rm {} \;
     find $fs/usr/lib -name '*.a' -exec rm {} \;
-    find $fs/usr/lib -name '*.so' -exec strip -s {} \;
-    mkdir -p $fs/usr/share/pixmaps
-    cp $_pkg/usr/share/pixmaps/scim-setup.png $fs/usr/share/pixmaps
     rm -rf $fs/usr/lib/pkgconfig
-    chmod +x $fs/usr/bin/*
+    chmod +x $fs/usr/bin/scim-setup
 }
 
 post_install()
 {
     echo "Processing post-install commands..."
-    echo -n "updating gtk.immodules... "
+    echo -n "Updating gtk.immodules... "
     /usr/bin/gtk-query-immodules-2.0 > /etc/gtk-2.0/gtk.immodules
     echo "done."
+cat <<EOT
+In order to start scim and use chinese after boot time,
+add the following code to your ~/.profile file:
+------------
+export XMODIFIERS=@im=SCIM
+export XIM="scim"
+export XINPUT="xim"
+export XIM_PROGRAM="scim -d"
+export GTK_IM_MODULE=scim
+export QT_IM_MODULE=scim
+scim -d &
+------------
+EOT
 }
 
 post_remove()
