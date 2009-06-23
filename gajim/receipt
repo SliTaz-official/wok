@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="gajim"
+VERSION="0.12.3"
+CATEGORY="network"
+SHORT_DESC="Gtk Jabber client."
+MAINTAINER="rocky@slitaz.org"
+DEPENDS="gtkspell python dbus-python pygtk pygobject pyopenssl pysqlite xorg-libXss bindutils"
+BUILD_DEPENDS="gettext gtkspell gtkspell-dev python-dev pygtk-dev pygobject-dev dbus-dev xorg-libXss xorg-libXss-dev xcb-util-dev enchant-dev xorg-scrnsaverproto xorg-xextproto"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gajim.org/"
+WGET_URL="http://www.gajim.org/downloads/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    patch -p1 < ../stuff/host_srv.patch &&
+    ./configure --prefix=/usr \
+        --mandir=/usr/share/man \
+        $CONFIGURE_ARGS &&
+    make &&
+    make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/usr/share
+    cp -a $_pkg/usr/bin $fs/usr
+    cp -a $_pkg/usr/lib $fs/usr
+    cp -a $_pkg/usr/share/gajim $fs/usr/share
+    cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+    cp -a $_pkg/usr/share/applications $fs/usr/share
+    find $fs/usr/lib -name *.la -delete
+    chmod +x $fs/usr/bin/*
+}
