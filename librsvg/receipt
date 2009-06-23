@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="librsvg"
+VERSION="2.13.93"
+CATEGORY="misc"
+SHORT_DESC="SVG Rendering Library"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="cairo freetype libxml pango fontconfig"
+BUILD_DEPNDS="cairo-dev freetype-dev libxml-dev pango-dev fontconfig-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://librsvg.sourceforge.net/"
+WGET_URL="http://ftp.gnome.org/pub/GNOME/sources/librsvg/2.13/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/gtk-2.0 $fs/usr/lib
+	
+	# remove *.*a files
+	find $fs/usr/lib/gtk-2.0 -name "*.*a" -exec rm -f {} \;
+	
+	# strip libs
+	find $fs/usr/lib/gtk-2.0 -name "*.so" -exec strip -s {} \;
+	
+}
+
