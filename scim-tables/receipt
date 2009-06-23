@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="scim-tables"
+VERSION="0.5.9"
+CATEGORY="meta"
+SHORT_DESC="SCIM Generic Table Input Method module meta package."
+MAINTAINER="rocky@slitaz.org"
+DEPENDS="scim scim-tables-base scim-tables-ja scim-tables-ko scim-tables-zh scim-tables-additional"
+BUILD_DEPENDS="scim-dev expat-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.scim-im.org/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+LOCALE=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    ./configure --prefix=/usr \
+        --mandir=/usr/share/man \
+        --disable-static \
+        $CONFIGURE_ARGS &&
+    make &&
+    make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/var
+    for i in base ja ko zh additional
+    do
+        tazwok genpkg $PACKAGE-$i
+    done
+}
+
+clean_wok()
+{
+    for i in base ja ko zh additional
+    do
+        tazwok clean $PACKAGE-$i
+    done
+}
