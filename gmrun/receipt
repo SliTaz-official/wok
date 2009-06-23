@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="gmrun"
+VERSION="0.9.2"
+CATEGORY="utilities"
+SHORT_DESC="Program launcher with autocompletion."
+MAINTAINER="rocky@slitaz.org"
+DEPENDS="gtk+"
+BUILD_DEPENDS="gtk+-dev popt-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://sourceforge.net/projects/gmrun"
+WGET_URL="$SF_MIRROR/gmrun/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    patch -p1 -i ../stuff/gmrun-0.9.2-gcc43.patch &&
+    ./configure --prefix=/usr \
+        $CONFIGURE_ARGS &&
+    make &&
+    make install DESTDIR=$PWD/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/usr
+    cp -a $_pkg/usr/bin $fs/usr
+    cp -a $_pkg/usr/share $fs/usr
+    cp $PWD/stuff/gmrunrc $fs/usr/share/gmrun
+}
