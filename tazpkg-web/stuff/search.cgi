@@ -152,6 +152,7 @@ cn)	package="软件包："
 esac
 
 WOK=/home/slitaz/$SLITAZ_VERSION/wok
+PACKAGES_REPOSITORY=/home/slitaz/$SLITAZ_VERSION/packages
 
 echo Content-type: text/html
 echo
@@ -231,7 +232,7 @@ xhtml_footer()
 {
 	cat << _EOT_
 <center>
-<i>$(ls /home/slitaz/$SLITAZ_VERSION/wok/ | wc -l) packages and $(unlzma -c /home/slitaz/$SLITAZ_VERSION/packages/files.list.lzma | wc -l) files in $SLITAZ_VERSION database</i>
+<i>$(ls $WOK/ | wc -l) packages and $(unlzma -c $PACKAGES_REPOSITORY/files.list.lzma | wc -l) files in $SLITAZ_VERSION database</i>
 </center>
 
 <!-- End of content with round corner -->
@@ -423,7 +424,7 @@ _EOT_
 <pre class="package">
 _EOT_
 		last=""
-		unlzma -c /home/slitaz/$SLITAZ_VERSION/packages/files.list.lzma \
+		unlzma -c $PACKAGES_REPOSITORY/files.list.lzma \
 		| grep $SEARCH | while read pkg file; do
 			echo "$file" | grep -q $SEARCH || continue
 			if [ "$last" != "${pkg%:}" ]; then
@@ -445,7 +446,7 @@ _EOT_
 <pre class="package">
 _EOT_
 		last=""
-		unlzma -c /home/slitaz/$SLITAZ_VERSION/packages/files.list.lzma \
+		unlzma -c $PACKAGES_REPOSITORY/files.list.lzma \
 		| grep ^$SEARCH: |  sed 's/.*: /    /' | sort
 	elif [ "$OBJECT" = "Desc" ]; then
 		cat << _EOT_
@@ -454,7 +455,7 @@ _EOT_
 <pre class="package">
 _EOT_
 		last=""
-		grep -i $SEARCH /home/slitaz/$SLITAZ_VERSION/packages/packages.desc | \
+		grep -i $SEARCH $PACKAGES_REPOSITORY/packages.desc | \
 		sort | while read pkg extras ; do
 				. $WOK/$pkg/receipt
 				cat << _EOT_
@@ -501,7 +502,7 @@ _EOT_
 <a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> : $SHORT_DESC
 _EOT_
 		done
-		equiv=/home/slitaz/$SLITAZ_VERSION/packages/packages.equiv
+		equiv=$PACKAGES_REPOSITORY/packages.equiv
 		vpkgs="$(cat $equiv | cut -d= -f1 | grep $SEARCH)"
 		for vpkg in $vpkgs ; do
 	cat << _EOT_
