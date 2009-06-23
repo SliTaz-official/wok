@@ -1,0 +1,56 @@
+#!/bin/sh 
+
+# Get and install Tencent QQ for Linux
+
+PACKAGE="linuxqq"
+VERSION="v1.0.2-beta1"
+RPMPKG="$PACKAGE-$VERSION.i386.rpm"
+URL="http://dl_dir.qq.com/linuxqq/$RPMPKG"
+CUR_DIR=$(pwd)
+TEMP_DIR=/tmp/$PACKAGE-$VERSION-$$
+ROOT="$1"
+
+# Check if we are root
+if test $(id -u) != 0 ; then
+    echo -e "\nYou must be root to run `basename $0`."
+    echo -e "Please type 'su' and root password to become super-user.\n"
+    exit 1
+fi
+
+# Avoid reinstall
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+    echo -e "\n$PACKAGE package is already installed.\n"
+    exit 1
+fi
+
+# Create a TEMP_DIR
+mkdir $TEMP_DIR
+cd $TEMP_DIR
+
+# Download the file
+wget $URL 
+
+rpm2cpio $RPMPKG | cpio -dium
+mkdir -p $PACKAGE-$VERSION/fs
+mv $TEMP_DIR/usr $PACKAGE-$VERSION/fs
+
+cd $TEMP_DIR
+
+cat > $PACKAGE-$VERSION/receipt << EOT
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="QQ for Linux $VERSION."
+DEPENDS="gtk+"
+WEB_SITE="http://im.qq.com/"
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Install pseudo package
+yes y | tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+
+# Clean
+cd $CUR_DIR
+rm -rf $TEMP_DIR
