@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="mingw32-binutils"
+SOURCE="binutils"
+VERSION="2.19.1"
+CATEGORY="development"
+SHORT_DESC="MinGW32 binutils."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="glibc-base zlib"
+BUILD_DEPENDS="slitaz-toolchain bison flex"
+TARBALL="$SOURCE-$VERSION-src.tar.gz"
+WEB_SITE="http://www.mingw.org/"
+WGET_URL="$SF_MIRROR/mingw/$TARBALL"
+MINGW32_TARGET="i586-pc-mingw32"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--with-sysroot=/usr/$MINGW32_TARGET \
+		--disable-shared \
+		--disable-debug \
+		--target=$MINGW32_TARGET \
+		$CONFIGURE_ARGS &&
+	make CFLAGS="-O2 -fno-exceptions" LDFLAGS="-s" &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/$MINGW32_TARGET $fs/usr
+	# do not need to copy lib/libiberty.a
+	
+	#Create a symlink for --with-sysroot
+	( cd $fs/usr/$MINGW32_TARGET && ln -s . usr )
+}

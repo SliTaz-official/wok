@@ -1,0 +1,59 @@
+# SliTaz package receipt.
+
+PACKAGE="mingw32-runtime"
+SOURCE="mingwrt"
+VERSION="3.15.2-mingw32"
+CATEGORY="development"
+SHORT_DESC="MinGW32 runtime."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="mingw32-w32api"
+BUILD_DEPENDS="slitaz-toolchain mingw32-binutils mingw32-runtime-headers mingw32-w32api-headers mingw32-gcc-c mingw32-w32api"
+TARBALL="$SOURCE-$VERSION-src.tar.gz"
+WEB_SITE="http://www.mingw.org/"
+WGET_URL="$SF_MIRROR/mingw/$TARBALL"
+MINGW32_TARGET="i586-pc-mingw32"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Set a default value for BUILD_HOST if it is not defined in tazwok.conf as it should be
+	if [ -z "$BUILD_HOST" ] ; then
+		BUILD_HOST=i486-pc-linux-gnu
+	fi
+
+	rm -f -r $src/binutils
+	mkdir -p $SOURCE-$VERSION-build
+	cd $SOURCE-$VERSION-build
+	
+	# NOTE: DESTDIR not handled correctly; have to fudge --prefix
+	$src/configure \
+		--prefix=$src/_pkg/usr \
+		--host=$MINGW32_TARGET \
+		--build=$BUILD_HOST &&
+	make CFLAGS="-O2 -mms-bitfields -march=${TARGET_CPU-i386} -I/usr/$MINGW32_TARGET/include" LDFLAGS="-s" &&
+	make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/$MINGW32_TARGET
+	cp -a $_pkg/usr/bin $fs/usr/$MINGW32_TARGET
+	cp -a $_pkg/usr/include $fs/usr/$MINGW32_TARGET
+	cp -a $_pkg/usr/lib $fs/usr/$MINGW32_TARGET
+}
+
+# Rules to setup after installation
+post_install()
+{
+	# Archives get stripped during packaging; need to run ranlib
+	local root
+	root=$1
+	find $root/usr/$MINGW32_TARGET/lib/ -name *.a -exec $MINGW32_TARGET-ranlib {} \;
+}
+
+# Rules to clean the package
+clean_wok()
+{
+	rm -r $SOURCE-$VERSION-build
+}

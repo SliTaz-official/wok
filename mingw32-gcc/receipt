@@ -1,0 +1,92 @@
+# SliTaz package receipt.
+
+PACKAGE="mingw32-gcc"
+SOURCE="gcc"
+VERSION="3.4.5-20060117-2"
+CATEGORY="development"
+SHORT_DESC="MinGW32 gcc, for C, C++, and Ada."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="glibc-base mingw32-binutils mingw32-w32api-headers mingw32-runtime-headers mingw32-w32api mingw32-runtime"
+BUILD_DEPENDS="slitaz-toolchain bison flex mingw32-binutils mingw32-runtime-headers mingw32-w32api-headers mingw32-gcc-c mingw32-w32api mingw32-runtime"
+PROVIDE="mingw32-gcc-c"
+TARBALL="$SOURCE-core-$VERSION-src.tar.gz"
+WEB_SITE="http://www.mingw.org/"
+MINGW32_URL="$SF_MIRROR/mingw"
+WGET_URL="$MINGW32_URL/$TARBALL"
+MINGW32_TARGET="i586-pc-mingw32"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	MINGW32_DIR="$PWD"
+	MINGW32_CPP_TARBALL="$SOURCE-g++-$VERSION-src.tar.gz"
+	MINGW32_ADA_TARBALL="$SOURCE-ada-$VERSION-src.tar.gz"
+	
+	for gcc_tgz in $MINGW32_CPP_TARBALL $MINGW32_ADA_TARBALL ; do
+		# Download the additional language tarballs
+		if [ ! -f "$SOURCES_REPOSITORY/$gcc_tgz" ] ; then
+			cd $SOURCES_REPOSITORY
+			download $MINGW32_URL/$gcc_tgz
+		fi
+		
+		# Extract the additional language tarballs
+		if [ -f "$SOURCES_REPOSITORY/$gcc_tgz" ] ; then
+			cd $MINGW32_DIR
+			echo "Extracting $gcc_tgz ..."
+			tar xzf "$SOURCES_REPOSITORY/$gcc_tgz"
+		else
+			# Exit if file not found to avoid errors.
+			echo -e "\nDownload of $gcc_tgz failed, exiting. Please check the URL.\n"
+			exit 1
+		fi
+	done
+	
+	cd $MINGW32_DIR
+
+	rm -f -r $src/binutils
+	mkdir -p $SOURCE-$VERSION-build
+	cd $SOURCE-$VERSION-build
+	$src/configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--with-sysroot=/usr/$MINGW32_TARGET \
+		--disable-shared \
+		--disable-debug \
+		--target=$MINGW32_TARGET \
+		--enable-languages=c,c++,ada \
+		--enable-threads=win32 \
+		--disable-win32-registry \
+		--enable-sjlj-exceptions \
+		$CONFIGURE_ARGS &&
+	make CFLAGS="-O2 -fomit-frame-pointer" LDFLAGS="-s"  &&
+	make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/$MINGW32_TARGET $fs/usr
+	cp -a $_pkg/usr/include $fs/usr
+	# do not need to copy lib/libiberty.a
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/gcc $fs/usr/lib
+	cp -a $_pkg/usr/libexec $fs/usr
+}
+
+# Rules to setup after installation
+post_install()
+{
+	# Archives get stripped during packaging; need to run ranlib
+	local root
+	root=$1
+	find $root/usr/lib/gcc/$MINGW32_TARGET/ -name *.a -exec $MINGW32_TARGET-ranlib {} \;
+}
+
+# Rules to clean the package
+clean_wok()
+{
+	rm -r $SOURCE-$VERSION-build
+}
