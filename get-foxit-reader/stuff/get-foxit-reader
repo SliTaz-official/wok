@@ -1,11 +1,11 @@
 #!/bin/sh 
 
-# Get and install Tencent QQ for Linux
+# Get and install FoxitReader for Linux
 
 PACKAGE="FoxitReader"
 VERSION="1.0-1"
-TARBALL="$PACKAGE-$VERSION.i386.tar.bz2"
-URL="http://mirrors.foxitsoftware.com/pub/foxit/reader/desktop/linux/1.x/1.0/enu/$TARBALL"
+RPMPKG="$PACKAGE-$VERSION.i386.rpm"
+URL="http://mirrors.foxitsoftware.com/pub/foxit/reader/desktop/linux/1.x/1.0/enu/$RPMPKG"
 CUR_DIR=$(pwd)
 TEMP_DIR=/tmp/$PACKAGE-$VERSION-$$
 ROOT="$1"
@@ -30,18 +30,9 @@ cd $TEMP_DIR
 # Download the file
 wget $URL 
 
-tar xjf $TARBALL
-mkdir -p $PACKAGE-$VERSION/fs/usr/share/FoxitReader $PACKAGE-$VERSION/fs/usr/bin
-mv FoxitReader Readme.txt fum.fhd fpdfcjk.bin $PACKAGE-$VERSION/fs/usr/share/FoxitReader
-
-# Custom FoxitReader
-cat > $PACKAGE-$VERSION/fs/usr/bin/FoxitReader << "EOT"
-#!/bin/sh
-PAR=/usr/share/FoxitReader
-exec $PAR/FoxitReader $@
-EOT
-
-chmod +x $PACKAGE-$VERSION/fs/usr/bin/FoxitReader
+rpm2cpio $RPMPKG | cpio -dium
+mkdir -p $PACKAGE-$VERSION/fs
+mv $TEMP_DIR/usr $PACKAGE-$VERSION/fs
 
 cd $TEMP_DIR
 
