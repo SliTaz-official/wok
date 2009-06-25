@@ -8,20 +8,22 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.gnu.org/software/coreutils/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
-DEPENDS="libcap"
-BUILD_DEPENDS="libcap-dev gmp-dev"
+DEPENDS="glibc-base gmp libcap"
+BUILD_DEPENDS="slitaz-toolchain libcap-dev gmp-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	
+	# NOTE: There does not seem to be a problem with sigcontext.h in Linux 2.6.29.3
+
 	# Hack to fix ls: expected specifier-qualifier-list before '__u64'
 	# We are not patching the original file, just fake to compile
 	# coreutils.
-	rm -f /usr/include/asm/sigcontext.h.bak
-	mv /usr/include/asm/sigcontext.h /usr/include/asm/sigcontext.h.bak || exit 1
-	cp ../stuff/sigcontext.h /usr/include/asm
+	# rm -f /usr/include/asm/sigcontext.h.bak
+	# mv /usr/include/asm/sigcontext.h /usr/include/asm/sigcontext.h.bak || exit 1
+	# cp ../stuff/sigcontext.h /usr/include/asm
 	
 	sed -i 's/1.10a/1.10.2/' configure.ac || exit 1
 	sed -i 's/dist-xz/dist-lzma/' configure.ac || exit 1
@@ -30,13 +32,12 @@ compile_rules()
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
-		--enable-no-install-program=kill,uptime,ls \
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install &&
+	make DESTDIR=$PWD/_pkg install
 	
 	# Restore original sigcontext.h
-	mv -f /usr/include/asm/sigcontext.h.bak /usr/include/asm/sigcontext.h
+	# mv -f /usr/include/asm/sigcontext.h.bak /usr/include/asm/sigcontext.h
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
