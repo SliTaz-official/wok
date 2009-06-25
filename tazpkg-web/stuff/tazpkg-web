@@ -118,17 +118,19 @@ pkgs_pages_content()
 		DEPENDS_LINKS=""
 		EXTRAVERSION=""
 		. $pkg/receipt
-		[ -z "$EXTRAVERSION" ] && EXTRAVERSION="_$KERNEL"
 		packages=$(($packages+1))
 		cat >> $PAGES_DIR/$CATEGORY.html << _EOT_
 
 <a name="$PACKAGE"></a>
-<h3>$PACKAGE</h3>
+<h3>
+<a href="tazpkg://mirror.slitaz.org/packages/$RELEASE/$PACKAGE-${VERSION}$EXTRAVERSION.tazpkg"><img src="/pics/tazpkg.png" title="install" alt="install" /></a>
+$PACKAGE</h3>
 <pre class="package">
 Version    : $VERSION
 Short desc : $SHORT_DESC
 Web site   : <a href="$WEB_SITE">$WEB_SITE</a>
 _EOT_
+		[ -z "$EXTRAVERSION" ] && EXTRAVERSION="_$KERNEL"
 		# Extraversion string or not
 		if [ -f "$PACKAGES_REPOSITORY/$PACKAGE-${VERSION}$EXTRAVERSION.tazpkg" ]; then
 			cat >> $PAGES_DIR/$CATEGORY.html << _EOT_
@@ -142,21 +144,21 @@ _EOT_
 Download   : <a href="http://mirror.slitaz.org/packages/$RELEASE/$PACKAGE-$VERSION.tazpkg">$PACKAGE-$VERSION.tazpkg</a>
 _EOT_
 			echo '</pre>' >> $PAGES_DIR/$CATEGORY.html
-			# Dependencies with link to the package information using
-			# category.html#anchor
-			if [ -n "$DEPENDS" ]; then
-				for dep in $DEPENDS
-				do
-					receipt=$WOK/$dep/receipt
-					if [ -f "$receipt" ]; then
-						cat=`grep CATEGORY $receipt | sed s/CATEGORY=\"// | sed s/\"//`
-						DEPENDS_LINKS=${DEPENDS_LINKS}"<a href=\"$cat.html#$dep\">$dep</a> "
-					fi
-				done
-				cat >> $PAGES_DIR/$CATEGORY.html << _EOT_
+		fi
+		# Dependencies with link to the package information using
+		# category.html#anchor
+		if [ -n "$DEPENDS" ]; then
+			for dep in $DEPENDS
+			do
+				receipt=$WOK/$dep/receipt
+				if [ -f "$receipt" ]; then
+					cat=`grep CATEGORY $receipt | sed s/CATEGORY=\"// | sed s/\"//`
+					DEPENDS_LINKS=${DEPENDS_LINKS}"<a href=\"$cat.html#$dep\">$dep</a> "
+				fi
+			done
+			cat >> $PAGES_DIR/$CATEGORY.html << _EOT_
 <p>Depends : $DEPENDS_LINKS</p>
 _EOT_
-			fi
 		fi
 	done
 }
