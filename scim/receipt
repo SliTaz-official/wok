@@ -14,7 +14,14 @@ CONFIG_FILES="/etc/scim/config /etc/scim/global"
 compile_rules()
 {
     cd $src
-    patch -p1 < ../stuff/scim-glibc-2.10.patch &&
+    while read file; do
+        [ -f done.$file ] && continue
+        echo "Apply $file..."
+        patch -p1 < ../stuff/$file || return 1
+        touch done.$file
+    done <<EOT
+scim-glibc-2.10.patch
+EOT
     ./configure --prefix=/usr \
         --sysconfdir=/etc \
         --with-x \
@@ -45,7 +52,7 @@ post_install()
 {
     echo "Processing post-install commands..."
     echo -n "Updating gtk.immodules... "
-    /usr/bin/gtk-query-immodules-2.0 > /etc/gtk-2.0/gtk.immodules
+    chroot "$1/" /usr/bin/gtk-query-immodules-2.0 > /etc/gtk-2.0/gtk.immodules
     echo "done."
 cat <<EOT
 In order to start scim and use chinese after boot time,

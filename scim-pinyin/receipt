@@ -16,7 +16,14 @@ WGET_URL="$SF_MIRROR/scim/$TARBALL"
 compile_rules()
 {
     cd $src
-    patch -p1 < ../stuff/cstring-gcc43.patch &&
+    while read file; do
+        [ -f done.$file ] && continue
+        echo "Apply $file..."
+        patch -p1 < ../stuff/$file || return 1
+        touch done.$file
+    done <<EOT
+cstring-gcc43.patch
+EOT
     ./configure --prefix=/usr \
         --mandir=/usr/share/man \
         --infodir=/usr/share/info \

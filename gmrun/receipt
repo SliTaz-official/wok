@@ -15,7 +15,14 @@ WGET_URL="$SF_MIRROR/gmrun/$TARBALL"
 compile_rules()
 {
     cd $src
-    patch -p1 -i ../stuff/gmrun-0.9.2-gcc43.patch &&
+    while read file; do
+        [ -f done.$file ] && continue
+        echo "Apply $file..."
+        patch -p1 < ../stuff/$file || return 1
+        touch done.$file
+    done <<EOT
+gmrun-0.9.2-gcc43.patch
+EOT
     ./configure --prefix=/usr \
         $CONFIGURE_ARGS &&
     make &&
