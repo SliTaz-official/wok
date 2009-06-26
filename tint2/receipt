@@ -1,30 +1,34 @@
 # SliTaz package receipt.
 
 PACKAGE="tint2"
-VERSION="0.7-beta1"
+VERSION="0.7_beta3"
 CATEGORY="misc"
 SHORT_DESC="taskbar and panel"
 MAINTAINER="jozee@slitaz.org"
 DEPENDS="cairo pango glib imlib2 xorg-libXinerama"
-BUILD_DEPENDS="cairo-dev pango-dev imlib2-dev xorg-libXinerama-dev xorg-dev-proto"
+BUILD_DEPENDS="cairo-dev pango-dev imlib2-dev xorg-xineramaproto xorg-xextproto"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://tint2.googlecode.com/files/"
 WGET_URL="$WEB_SITE/$TARBALL"
+CONFIG_FILES="/etc/xdg/tint2/tint2rc"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $WOK/$PACKAGE/$PACKAGE-$VERSION/src
-	make &&
-	make DESTDIR=../_pkg install
+    cd $src
+    ./configure --prefix=/usr \
+        --sysconfdir=/etc \
+        --disable-static \
+        --mandir=/usr/share/man \
+        $CONFIGURE_ARGS &&
+    make &&
+    make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc/xdg $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/etc/xdg/$PACKAGE $fs/etc/xdg
-		
+    mkdir -p $fs/usr
+    cp -a $_pkg/etc $fs
+    cp -a $_pkg/usr/bin $fs/usr
 }
-
