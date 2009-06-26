@@ -1,5 +1,7 @@
 # SliTaz package receipt.
 
+PACKED_SIZE="8.0k"
+UNPACKED_SIZE="4.0k"
 PACKAGE="pcmanfm"
 VERSION="0.5"
 CATEGORY="system-tools"
@@ -16,6 +18,15 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 compile_rules()
 {
 	cd $src
+		for i in  ../stuff/*.patch
+	do
+		if [ -f done.$(basename $i) ]; then
+			continue 
+		else 
+			patch -p1 -i $i && touch done.$(basename $i)
+		fi
+	done
+		
 	./configure \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
@@ -33,4 +44,15 @@ genpkg_rules()
 	cp -a $_pkg/usr/share/mime $fs/usr/share
 	cp -a $_pkg/usr/share/pcmanfm $fs/usr/share
 	rm -rf $fs/usr/share/pcmanfm/icons
+	
+	cp -a stuff/icons $fs/usr/share
+	cp -a stuff/mime $fs/usr/share
+}
+
+
+post_install()
+{
+	# update mime-cache
+	echo "Updating mime-types database"
+	update-mime-database $1/usr/share/mime
 }
