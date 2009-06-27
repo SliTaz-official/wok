@@ -99,6 +99,12 @@ post_install()
 {
     echo "Processing post-install commands..."
     chroot "$1/" depmod -a $VERSION-slitaz
+
+    # Update in-kernel module list
+    for module in ohci-hcd vfat msdos nls_utf8 fat ; do
+	sed -i "s/$module//" $1/etc/rcS.conf
+    done
+
     if [ -f "$1/boot/grub/menu.lst" ]; then
 		if ! grep -q "vmlinuz-$VERSION-slitaz" $1/boot/grub/menu.lst; then
     		root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`
