@@ -5,7 +5,8 @@ VERSION="1.3.10"
 CATEGORY="system-tools"
 SHORT_DESC="Common UNIX Printing System."
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="openssl slitaz-base-files gnutls ghostscript dbus jpeg libpng tiff zlib libcomerr libkrb5"
+DEPENDS="openssl slitaz-base-files gnutls dbus jpeg libpng tiff zlib \
+libcomerr libkrb5"
 BUILD_DEPENDS="openssl-dev gnutls-dev dbus-dev gnutls"
 TARBALL="$PACKAGE-$VERSION-source.tar.bz2"
 WEB_SITE="http://www.cups.org/"
@@ -30,14 +31,14 @@ compile_rules()
 		$CONFIGURE_ARGS &&
 	make &&
 	make BUILDROOT=$PWD/_pkg install
-	
+
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share/pixmaps
-	
+
 	cp -a $_pkg/etc/cups $fs/etc
 	cp -a $_pkg/etc/dbus* $fs/etc
 	cp -a $_pkg/usr/bin $fs/usr
@@ -46,23 +47,23 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib/cups $fs/usr/lib
 	cp -a $_pkg/usr/share/cups $fs/usr/share
 	cp -a $_pkg/usr/share/icons/hicolor/32x32/apps/cups.png $fs/usr/share/pixmaps
-	cp -a $_pkg/var $fs	
-	
+	cp -a $_pkg/var $fs
+
 	# We need the doc for CSS, images and help in the web interface.
 	cp -a $_pkg/usr/share/doc $fs/usr/share
-	
+
 	# tazwok does not strip files other than .so in usr/lib
-		
+
 	for dir in $fs/usr/lib/cups
 	do
 		if [ -d "$dir" ]; then
 			find $dir -type f -exec strip -s '{}' 2>/dev/null \;
 		fi
 	done
-	
+
 	# Daemon script
 	cp -a stuff/etc $fs
-	
+
 	# compress some driver files, adopted from arch and fedora
     find $fs/usr/share/cups/model -name "*.ppd" | xargs gzip -n9
 
