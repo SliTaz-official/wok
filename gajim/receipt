@@ -15,6 +15,14 @@ WGET_URL="http://www.gajim.org/downloads/$TARBALL"
 compile_rules()
 {
     cd $src
+    while read file; do
+        [ -f done.$file ] && continue
+        echo "Apply $file..."
+        patch -p1 < ../stuff/$file || return 1
+        touch done.$file
+    done <<EOT
+host_srv.patch
+EOT
     ./configure --prefix=/usr \
         --mandir=/usr/share/man \
         $CONFIGURE_ARGS &&
