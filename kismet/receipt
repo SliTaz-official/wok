@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="kismet"
-VERSION="2009-05-RC2"
+VERSION="2009-06-R1"
 CATEGORY="network"
 SHORT_DESC="Wireless network monitoring tool"
 MAINTAINER="domcox@users.sourceforge.net"
-DEPENDS="dbus libnl libpcap ncurses"
-BUILD_DEPENDS="dbus-dev libnl-dev ncurses-dev"
+DEPENDS="dbus libnl libpcap ncurses pcre"
+BUILD_DEPENDS="dbus-dev libnl-dev libpcap linux-headers ncurses-dev pcre-dev pkg-config"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.kismetwireless.net"
 WGET_URL="http://www.kismetwireless.net/code/$TARBALL"
@@ -20,9 +20,10 @@ compile_rules()
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		--sysconfdir=/etc/kismet \
+		--with-suidgroup=tux \
 	$CONFIGURE_ARGS && \
 	make && \
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$PWD/_pkg suidinstall
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -32,12 +33,9 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	mkdir -p $fs/etc
 	cp -a $_pkg/etc/kismet $fs/etc
-	# not overwrite existing configuration
+	# do not overwrite existing configuration
 	mv $fs/etc/kismet/kismet.conf $fs/etc/kismet/kismet.conf.new
-	mv $fs/etc/kismet/kismet_ui.conf $fs/etc/kismet/kismet_ui.conf.new
 	mv $fs/etc/kismet/kismet_drone.conf $fs/etc/kismet/kismet_drone.conf.new
-	# disable sound
-	sed -i 's/sound=true/sound=false/' $fs/etc/kismet/kismet_ui.conf.new
 }
 
 post_install()
@@ -60,7 +58,11 @@ post_install()
 	overwrite=2
 	keep=3
 	cd $1/etc/kismet
-	for file in "kismet" "kismet_ui" "kismet_drone"
+	# kismet_ui.conf doesn't exists anymore
+	if [ -e kismet_ui.conf ]; then
+		mv kismet_ui.conf kismet_ui.oldpkg
+	fi
+	for file in "kismet" "kismet_drone"
 	do
 		# check current files version
 		if [ ! -e $file.conf ]; then
