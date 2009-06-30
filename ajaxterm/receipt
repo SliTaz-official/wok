@@ -72,11 +72,13 @@ EOT
     ProxyPassReverse /ajaxterm/ http://localhost:8022/
 </IfModule>
 
-<IfModule mod_rewrite.c>
-     RewriteEngine On
-     RewriteCond %{SERVER_PORT}      !^443$
-     RewriteRule ^/ajaxterm      https://%{SERVER_NAME}/ajaxterm/ [L,R=303]
-</IfModule>
+<LocationMatch ^/ajaxterm>
+     <IfModule mod_rewrite.c>
+         RewriteEngine On
+         RewriteCond   %{HTTPS}  off
+         RewriteRule   ^.*$      https://%{SERVER_NAME}/ajaxterm/ [L,R=303]
+     </IfModule>
+</LocationMatch>
 EOT
 			if [ -z "$1" ]; then
 				# Start Web server.
