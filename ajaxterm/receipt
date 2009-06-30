@@ -27,8 +27,6 @@ post_install()
 	  's/RUN_DAEMONS="/RUN_DAEMONS="ajaxterm /' $1/etc/rcS.conf
 	# Configure lighttpd server
 	if [ -f $1/usr/lib/lighttpd/mod_proxy.so ]; then
-#https://www.dupnet.org/dotclear/index.php/2007/10/07/11-ajaxterm-et-lighttpd
-#http://www.lighttpd.net
 			grep -q mod_proxy $1/etc/lighttpd/lighttpd.conf ||
 			cat >> $1/etc/lighttpd/lighttpd.conf <<EOT
 server.modules += ( "mod_proxy" )
@@ -39,18 +37,6 @@ proxy.server = ( "/ajaxterm/" =>
 	( ( "host" => "127.0.0.1", "port" => 8022 ) )
 )
 EOT
-			grep -q mod_redirect $1/etc/lighttpd/lighttpd.conf ||
-			cat >> $1/etc/lighttpd/lighttpd.conf <<EOT
-server.modules += ( "mod_redirect" )
-EOT
-			grep -q https:// $1/etc/lighttpd/lighttpd.conf &&
-			cat >> $1/etc/lighttpd/lighttpd.conf <<EOT
-\$SERVER["socket"] == ":80" {
-	\$HTTP["host"] =~ "(.*)" {
-		url.redirect = ( "^/ajaxterm" => "https://%1/ajaxterm/" )
-	}
-}
-EOT
 			if [ -z "$1" ]; then
 				# Start Web server.
 				/etc/init.d/lighttpd stop
@@ -59,7 +45,6 @@ EOT
 	fi
 	# Configure apache server
 	if [ -f $1/etc/apache/httpd.conf ]; then
-#http://smhteam.info/wiki/index.linux.php5?wiki=AjaxTerm
 		if [ ! -f $1/etc/apache/conf.d/ajaxterm ]; then
 			cat > $1/etc/apache/conf.d/ajaxterm <<EOT
 <IfModule mod_proxy.c>
@@ -71,14 +56,6 @@ EOT
     ProxyPass /ajaxterm/ http://localhost:8022/
     ProxyPassReverse /ajaxterm/ http://localhost:8022/
 </IfModule>
-
-<LocationMatch ^/ajaxterm>
-     <IfModule mod_rewrite.c>
-         RewriteEngine On
-         RewriteCond   %{HTTPS}  off
-         RewriteRule   ^.*$      https://%{SERVER_NAME}/ajaxterm/ [L,R=303]
-     </IfModule>
-</LocationMatch>
 EOT
 			if [ -z "$1" ]; then
 				# Start Web server.
