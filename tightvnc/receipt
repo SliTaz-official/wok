@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="tightvnc"
+VERSION="1.3.10"
+CATEGORY="x-window"
+SHORT_DESC="VNC server (graphical remote control)."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-${VERSION}_unixsrc.tar.bz2"
+WEB_SITE="http://www.tightvnc.com/"
+WGET_URL="$SF_MIRROR/vnc-tight/$TARBALL"
+DEPENDS="xfree86-base-fonts jpeg zlib"
+BUILD_DEPENDS="xorg-imake xorg-gccmakedep xorg-cf-files xorg-libXp"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -d vnc_unixsrc ] && mv vnc_unixsrc $src
+	cd $src
+	xmkmf &&
+	make World &&
+	cd Xvnc &&
+	./configure --prefix=/usr $CONFIGURE_ARGS || return 1
+	find -name Makefile | xargs sed -i 's|/usr/X11R6/bin|/usr/bin|g'
+	make &&
+	make DESTDIR=$PWD/../_pkg install
+	cd .. &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $_pkg/usr/bin/Xvnc $fs/usr/bin
+}
