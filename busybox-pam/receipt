@@ -21,7 +21,7 @@ compile_rules()
     while read file; do
     	[ -f done.$file ] && continue
     	echo "Apply $file..."
-    	patch -p1 < $WOK/busybox/stuff/$SOURCE-$VERSION-$file || return 1
+    	patch -p1 < $WOK/$SOURCE/stuff/$SOURCE-$VERSION-$file || return 1
 	touch done.$file
     done <<EOT
 vcsa2txt.u
@@ -41,8 +41,9 @@ replay.u
 ris.u
 dpkg_deb.u
 ionice.u
+syslogd.u
 EOT
-    cp $WOK/busybox/stuff/$SOURCE-$VERSION.config .config
+    cp $WOK/$SOURCE/stuff/$SOURCE-$VERSION.config .config
     sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
     make oldconfig
     make && make install
@@ -58,7 +59,7 @@ genpkg_rules()
     cp -a stuff/etc $fs
     mkdir -p $fs/etc/init.d
     # Busybox config files.
-    cd $WOK/busybox
+    cd $WOK/$SOURCE
     fs=$WOK/$PACKAGE/taz/$PACKAGE-$VERSION/fs
     cp stuff/busybox.conf $fs/etc
     chmod 600 $fs/etc/busybox.conf
