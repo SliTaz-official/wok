@@ -19,11 +19,17 @@ compile_rules()
 	# NOTE: There does not seem to be a problem with sigcontext.h in Linux 2.6.29.3
 
 	# Hack to fix ls: expected specifier-qualifier-list before '__u64'
-	# We are not patching the original file, just fake to compile
-	# coreutils.
-	# rm -f /usr/include/asm/sigcontext.h.bak
-	# mv /usr/include/asm/sigcontext.h /usr/include/asm/sigcontext.h.bak || exit 1
-	# cp ../stuff/sigcontext.h /usr/include/asm
+	while read patch_file; do
+		if [ -f done.$patch_file ]; then
+			echo "Skipping $patch_file"
+			continue
+		fi
+		echo "Apply $patch_file"
+		patch -p1 < ../stuff/$patch_file || return 1
+		touch done.$patch_file
+	done <<EOT
+ls.u
+EOT
 	
 	sed -i 's/1.10a/1.10.2/' configure.ac || exit 1
 	sed -i 's/dist-xz/dist-lzma/' configure.ac || exit 1
