@@ -1,0 +1,53 @@
+# SliTaz package receipt.
+
+PACKAGE="coreutils-operations"
+VERSION="7.4"
+CATEGORY="system-tools"
+SHORT_DESC="GNU utilities that perform basic operations."
+MAINTAINER="rcx@zoominternet.net"
+WEB_SITE="http://www.gnu.org/software/coreutils/"
+DEPENDS="glibc-base"
+WANTED="coreutils"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+#
+# This is a special package for installed system or developer. We only take
+# a few things, as Busybox provides all the basic utilities, but not for compiling.
+# But DO NOT erase a Busybox applet, remove it before with pre_install rules.
+#
+genpkg_rules()
+{
+	mkdir -p $fs/bin
+	cp -a $_pkg/usr/bin/cp $fs/bin
+	cp -a $_pkg/usr/bin/dd $fs/bin
+	cp -a $_pkg/usr/bin/mv $fs/bin
+	cp -a $_pkg/usr/bin/rm $fs/bin
+
+	mkdir -p $fs/usr/bin
+	cp -a $_pkg/usr/bin/install $fs/usr/bin
+	cp -a $_pkg/usr/bin/shred $fs/usr/bin
+}
+
+# Pre and post install commands for Tazpkg.
+# We must remove all Busybox symlink before installing.
+#
+pre_install()
+{
+	local root
+	root=$1
+	echo "Processing pre-install commands..."
+	echo -n "Removing all Busybox replaced utils... "
+	rm -f $root/bin/cp $root/bin/dd $root/bin/mv $root/bin/rm
+	rm -f $root/usr/bin/install $root/usr/bin/shred
+	status
+}
+
+post_remove()
+{
+	ln -s /bin/busybox /bin/cp
+	ln -s /bin/busybox /bin/dd
+	ln -s /bin/busybox /bin/mv
+	ln -s /bin/busybox /bin/rm
+	ln -s /bin/busybox /usr/bin/install
+	ln -s /bin/busybox /usr/bin/shred
+}

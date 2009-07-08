@@ -1,0 +1,57 @@
+# SliTaz package receipt.
+
+PACKAGE="coreutils-command"
+VERSION="7.4"
+CATEGORY="system-tools"
+SHORT_DESC="GNU command utilities."
+MAINTAINER="rcx@zoominternet.net"
+WEB_SITE="http://www.gnu.org/software/coreutils/"
+DEPENDS="glibc-base"
+WANTED="coreutils"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+#
+# This is a special package for installed system or developer. We only take
+# a few things, as Busybox provides all the basic utilities, but not for compiling.
+# But DO NOT erase a Busybox applet, remove it before with pre_install rules.
+#
+genpkg_rules()
+{
+	mkdir -p $fs/bin
+	cp -a $_pkg/usr/bin/nice $fs/bin
+	cp -a $_pkg/usr/bin/kill $fs/bin
+	cp -a $_pkg/usr/bin/sleep $fs/bin
+
+	mkdir -p $fs/usr/bin
+	cp -a $_pkg/usr/bin/env $fs/usr/bin
+	cp -a $_pkg/usr/bin/nohup $fs/usr/bin
+	cp -a $_pkg/usr/bin/timeout $fs/usr/bin
+
+	mkdir -p $fs/usr/sbin
+	cp -a $_pkg/usr/bin/chroot $fs/usr/sbin
+}
+
+# Pre and post install commands for Tazpkg.
+# We must remove all Busybox symlink before installing.
+#
+pre_install()
+{
+	local root
+	root=$1
+	echo "Processing pre-install commands..."
+	echo -n "Removing all Busybox replaced utils... "
+	rm -f $root/bin/nice $root/bin/kill $root/bin/sleep
+	rm -f $root/usr/bin/env $root/usr/bin/nohup
+	rm -f $root/usr/sbin/chroot
+	status
+}
+
+post_remove()
+{
+	ln -s /bin/busybox /bin/nice
+	ln -s /bin/busybox /bin/kill
+	ln -s /bin/busybox /bin/sleep
+	ln -s /bin/busybox /usr/bin/env
+	ln -s /bin/busybox /usr/bin/nohup
+	ln -s /bin/busybox /usr/sbin/chroot
+}

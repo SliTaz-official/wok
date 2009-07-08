@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="coreutils-character"
+VERSION="7.4"
+CATEGORY="system-tools"
+SHORT_DESC="GNU utilities that operate on characters."
+MAINTAINER="rcx@zoominternet.net"
+WEB_SITE="http://www.gnu.org/software/coreutils/"
+DEPENDS="glibc-base"
+WANTED="coreutils"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+#
+# This is a special package for installed system or developer. We only take
+# a few things, as Busybox provides all the basic utilities, but not for compiling.
+# But DO NOT erase a Busybox applet, remove it before with pre_install rules.
+#
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $_pkg/usr/bin/tr $fs/usr/bin
+	cp -a $_pkg/usr/bin/expand $fs/usr/bin
+	cp -a $_pkg/usr/bin/unexpand $fs/usr/bin
+}
+
+# Pre and post install commands for Tazpkg.
+# We must remove all Busybox symlink before installing.
+#
+pre_install()
+{
+	local root
+	root=$1
+	echo "Processing pre-install commands..."
+	echo -n "Removing all Busybox replaced utils... "
+	rm -f $root/usr/bin/tr $root/usr/bin/expand $root/usr/bin/unexpand
+	status
+}
+
+post_remove()
+{
+	ln -s /bin/busybox /usr/bin/tr
+	ln -s /bin/busybox /usr/bin/expand
+	ln -s /bin/busybox /usr/bin/unexpand
+}

@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="coreutils-file-output-part"
+VERSION="7.4"
+CATEGORY="system-tools"
+SHORT_DESC="GNU utilities that output file parts."
+MAINTAINER="rcx@zoominternet.net"
+WEB_SITE="http://www.gnu.org/software/coreutils/"
+DEPENDS="glibc-base"
+WANTED="coreutils"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+#
+# This is a special package for installed system or developer. We only take
+# a few things, as Busybox provides all the basic utilities, but not for compiling.
+# But DO NOT erase a Busybox applet, remove it before with pre_install rules.
+#
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $_pkg/usr/bin/head $fs/usr/bin
+	cp -a $_pkg/usr/bin/tail $fs/usr/bin
+	cp -a $_pkg/usr/bin/split $fs/usr/bin
+	cp -a $_pkg/usr/bin/csplit $fs/usr/bin
+}
+
+# Pre and post install commands for Tazpkg.
+# We must remove all Busybox symlink before installing.
+#
+pre_install()
+{
+	local root
+	root=$1
+	echo "Processing pre-install commands..."
+	echo -n "Removing all Busybox replaced utils... "
+	rm -f $root/usr/bin/head $root/usr/bin/tail $root/usr/bin/split
+	status
+}
+
+post_remove()
+{
+	ln -s /bin/busybox /usr/bin/head
+	ln -s /bin/busybox /usr/bin/tail
+	ln -s /bin/busybox /usr/bin/split
+}
