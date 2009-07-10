@@ -1,10 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="cpio"
-VERSION="2.9"
+VERSION="2.10"
 CATEGORY="base-system"
 SHORT_DESC="GNU cpio archiver."
 MAINTAINER="pankso@slitaz.org"
+DEPENDS="glibc-base"
+BUILD_DEPENDS="slitaz-toolchain"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.gnu.org/software/cpio/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
@@ -13,10 +15,13 @@ WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --bindir=/bin \
-	--libexecdir=/usr/bin --mandir=/usr/share/man \
-	--infodir=/usr/share/info $CONFIGURE_ARGS
-	make
+	./configure --prefix=/usr \
+		--bindir=/bin \
+		--libexecdir=/usr/bin \
+		--mandir=/usr/share/man \
+		--infodir=/usr/share/info \
+		$CONFIGURE_ARGS  &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
@@ -26,9 +31,15 @@ genpkg_rules()
 	mkdir -p $fs/usr/share/locale
 	cp -a $_pkg/bin $fs
 	cp -a $_pkg/usr/bin $fs/usr
-	# Locale fr.
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
-	# Strip package.
-	strip -s $fs/bin/*
-	strip -s $fs/usr/bin/*
+}
+
+# Remove Busybox symlink before installing
+pre_install()
+{
+	rm -f $1/bin/cpio
+}
+
+post_remove()
+{
+	ln -s /bin/busybox /bin/cpio
 }
