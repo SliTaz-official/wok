@@ -5,15 +5,17 @@
 # Authors : Eric Joseph-Alexandre <erjo@slitaz.org>
 #	    Pascal Bellard <pascal.bellard@slitaz.org>
 
-VERSION=0.4
+VERSION=0.5
 
 ROOT=/home/slitaz/iso
 TEMP_DIR=${ROOT}/_iso.$$
+SORT_FILE=${ROOT}/_sort.$$
 PKG_VER=$1
 shift
 OPTIONS=$@
 PKG_DIR=$TEMP_DIR/packages/$PKG_VER
 REPOS=/var/www/slitaz/mirror/packages/$PKG_VER
+PXE_DIR=/var/www/slitaz/mirror/pxe
 ISO_DIR=/var/www/slitaz/mirror/iso/$PKG_VER
 LOG=$PWD/$(basename $0).log
 
@@ -25,7 +27,11 @@ OUTPUT="$ROOT/$IMAGE"
 
 # Check command line option.
 if [ -z $PKG_VER ]; then
-	echo "Usage: $(basename $0) <Version> [--boot|--webboot][--filter]"
+	cat <<EOT
+Usage: $(basename $0) <Version> 
+	[--boot [--auto-install] [--loram-detect]]|--webboot] [--filter]
+	[--wok] [--wok-stable] [--website][--dry-run]
+EOT
 	exit 1
 fi
 
@@ -74,19 +80,63 @@ cat >$TEMP_DIR/install.sh<<EOF
 #!/bin/sh
 #
 
-DIR=\$(cd \$(dirname \$0); pwd)
+DIR=\$(cd \$(busybox dirname \$0); pwd)
+
+# Handle --auto-install case
+if [ "\$DIR" == "/etc/init.d" ]; then
+  DIR=/mnt
+
+  # Handle loram on hybrid hard disk / usb key case
+  if [ ! -d /usr/bin ]; then
+    if [ -d /.usr.rw ]; then
+      echo -n "Mounting /usr read-write... "
+      usr=.usr.ro
+    else
+      echo -n "Mounting /usr read-only... "
+      usr=usr
+    fi
+    FS=\$DIR/usr.cromfs
+    if [ -f \$FS ]; then
+      /bin/cromfs-driver \$FS /\$usr -o ro,dev,suid,allow_other
+    elif [ -f \$DIR/usr.sqfs ]; then
+      FS=\$DIR/usr.sqfs
+      mount -o loop,ro -t squashfs \$FS /\$usr
+    elif [ -L /\$usr ]; then
+      FS=\$DIR/usr
+    fi
+    status
+    if [ -d /.usr.rw ]; then
+      if [ -x /bin/funionfs ]; then
+        /bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other -o suid,dev NONE /usr
+      else
+        /bin/mount -t aufs -o br:/.usr.rw:/.usr.ro none /usr
+      fi
+    fi
+  fi
+fi
 
 echo "Install packages..."
 [ -d /var/cache/tazpkg ] || mkdir -p /var/cache/tazpkg
 ls -d \$DIR/packages/* > /var/lib/tazpkg/mirror
 ln -fs \$DIR/packages/*/*.tazpkg /var/cache/tazpkg/
 ln -fs \$DIR/packages/*/packages.* /var/lib/tazpkg
+echo "=> all $PKG_VER package are available for tazpkg/tazpkgbox"
 EOF
 [ -e files.list.lzma ] && cat >>$TEMP_DIR/install.sh<<EOF
 ln -fs \$DIR/packages/*/files.list.lzma /var/lib/tazpkg
 EOF
 
 status
+cat > $SORT_FILE <<EOT
+install.sh 8
+README 8
+index.html 8
+md5sum 8
+style.css 8
+images/header.png 8
+EOT
+( cd $TEMP_DIR ; ls packages/*/packages* packages/*/files.list.lzma ) | \
+		awk '{ printf "%s 4\n",$0 }' >> $SORT_FILE
 chmod 755  $TEMP_DIR/install.sh
 
 case " $OPTIONS " in
@@ -131,16 +181,31 @@ echo "$(du -hs $TEMP_DIR/$1 | awk '{ print $1 }') used by $2."
 for i in $OPTIONS ; do
 case "$i" in
 --wok)
-	get_from_hg wok "wok (cooking)";;
+	cat >>$TEMP_DIR/install.sh<<EOF
+echo "=> Wok (cooking) is in \$DIR/wok"
+EOF
+	if get_from_hg wok "wok (cooking)"; then
+		( cd $TEMP_DIR ; find wok -not -type d ) | \
+			awk '{ printf "%s 2\n",$0 }' >> $SORT_FILE
+	fi;;
 --wok-stable)
-	get_from_hg wok-stable "wok (stable)";;
+	cat >>$TEMP_DIR/install.sh<<EOF
+echo "=> Wok (stable) is in \$DIR/wok"
+EOF
+	if get_from_hg wok-stable "wok (stable)"; then
+		mv $TEMP_DIR/wok-stable $TEMP_DIR/wok
+		( cd $TEMP_DIR ; find wok -not -type d ) | \
+			awk '{ printf "%s 2\n",$0 }' >> $SORT_FILE
+	fi;;
 --website)
 	if get_from_hg website "web site"; then
+		( cd $TEMP_DIR ; find website -not -type d ) | \
+			awk '{ printf "%s 5\n",$0 }' >> $SORT_FILE
 		cat >>$TEMP_DIR/install.sh<<EOF
-echo "Install http://127.0.0.1/website ..."
 [ -d /var/www ] || mkdir -p /var/www
 ln -s \$DIR/website /var/www
-tazpkg list | grep -q ^lighttpd || yes y | tazpkg get-install lighttpd
+tazpkg list | grep -q ^lighttpd || yes y | tazpkg get-install lighttpd > /dev/null 2>&1
+echo "=> slitaz web site installed in http://localhost/website"
 EOF
 	fi;;
 esac
@@ -162,6 +227,7 @@ return 0
 # Gen boot part
 BOOT_OPT=""
 iso=$ISO_DIR/slitaz-$PKG_VER.iso
+isoloram=$ISO_DIR/flavors/slitaz-loram-cdrom-sqfs.iso
 case " $OPTIONS " in
 *\ --boot\ *)
     echo -n "Creating boot tree"
@@ -174,7 +240,34 @@ case " $OPTIONS " in
 	done
 	status
 	BOOT_OPT="-b boot/isolinux/isolinux.bin -c boot/isolinux/boot.cat \
--no-emul-boot -boot-load-size 4 -boot-info-table"
+-no-emul-boot -boot-load-size 4 -boot-info-table -sort $SORT_FILE"
+    case " $OPTIONS " in
+	*\ --auto-install\ *)
+    	echo -n "Enable auto install"
+		cat >>$TEMP_DIR/install.sh<<EOF
+echo "mount -o ro -t iso9660 LABEL=packages-$PKG_VER /mnt" >> /etc/init.d/local.sh
+EOF
+		sed -i "s/rw root/rw config=LABEL=packages-$PKG_VER,install.sh root/" \
+			$TEMP_DIR/boot/isolinux/*.cfg
+		status
+		;;
+	esac
+    [ -f $PXE_DIR/ifmem.c32 -a -f $isoloram ] && case " $OPTIONS " in
+	*\ --loram-detect\ *)
+    	echo -n "Enable loram autodetection"
+		cp $PXE_DIR/ifmem.c32 "$TEMP_DIR/boot/isolinux"
+		isoinfo -R -x "/usr.sqfs" -i $isoloram > "$TEMP_DIR/usr.sqfs"
+		echo 'usr.sqfs 8' >> $SORT_FILE
+		isoinfo -R -x "/boot/rootfs.gz" -i $isoloram > \
+			"$TEMP_DIR/boot/loram.gz"
+		sed -i -e 's|kernel /boot/bzImage|kernel /boot/isolinux/ifmem.c32\n\tappend 160768 core loram\n|' \
+			-e 's|\(.*/\)rootfs\(.gz .*\)$|label core\n\tkernel /boot/bzImage\n\1rootfs\2\n\nlabel loram\n\tkernel /boot/bzImage\n\1loram\2|' \
+			$TEMP_DIR/boot/isolinux/*.cfg
+		status
+		;;
+	esac
+	( cd $TEMP_DIR ; find boot -not -type d ) | \
+		awk '{ printf "%s 9\n",$0 }' >> $SORT_FILE
 	;;
 *\ --webboot\ *)
 	if extract_boot gpxe; then
@@ -183,22 +276,30 @@ case " $OPTIONS " in
 		isoinfo -x "/BOOT/ISOLINUX/ISOLINUX.BIN;1" -i $iso > \
 			$TEMP_DIR/boot/isolinux/isolinux.bin
 		mv $TEMP_DIR/boot/gpxe $TEMP_DIR/boot/isolinux
+		( cd $TEMP_DIR ; find boot -not -type d ) | \
+			awk '{ printf "%s 9\n",$0 }' >> $SORT_FILE
 		cat > $TEMP_DIR/boot/isolinux/isolinux.cfg <<EOT
 default gpxe
 append http://mirror.slitaz.org/pxe/pxelinux.0
 EOT
 		status
 		BOOT_OPT="-b boot/isolinux/isolinux.bin -c boot/isolinux/boot.cat \
--no-emul-boot -boot-load-size 4 -boot-info-table"
+-no-emul-boot -boot-load-size 4 -boot-info-table -sort $SORT_FILE"
 	fi
 	;;
 esac
 
 if [ -n "$BOOT_OPT" ]; then
-	sed -i 's/vga=/mount-packages vga=/' $TEMP_DIR/boot/isolinux/*.cfg 
-	echo "$(du -hs $TEMP_DIR/boot | awk '{ print $1 }') used by boot."
+	echo "$(du -chs $TEMP_DIR/boot $TEMP_DIR/usr.sqfs 2> /dev/null | \
+		    tail -1 | awk '{ print $1 }') used by boot."
 fi
 
+case " $OPTIONS " in
+*\ --dry-run\ *)
+	echo "Please check and remove $TEMP_DIR and $SORT_FILE"
+	exit
+	;;
+esac
 # Gen ISO
 echo -n "Generating iso image"
 /usr/bin/genisoimage -R -J -f -V $VOLUME_ID \
@@ -222,7 +323,6 @@ mv $IMAGE $ISO_DIR
 mv $(basename $IMAGE .iso).md5 $ISO_DIR
 status
 
-
 # Cleaning temp files
-rm -rf $TEMP_DIR
+rm -rf $TEMP_DIR $SORT_FILE
 
