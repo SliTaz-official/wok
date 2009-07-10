@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="syslinux"
-VERSION="3.73"
+VERSION="3.82"
 CATEGORY="base-system"
 SHORT_DESC="LiveCD ISO bootloader (isolinux)"
 MAINTAINER="pankso@slitaz.org"
@@ -17,6 +17,10 @@ compile_rules()
 {
     cd $src
     cp ../stuff/tools/keytab-lilo.pl .
+    cp ../stuff/extra/ifmem.c com32/modules
+    grep -q ifmem.c32 com32/modules/Makefile ||
+	sed -i 's/ifcpu64.c32/ifcpu64.c32 ifmem.c32/' com32/modules/Makefile
+    make -C com32
     for i in /usr/share/kbd/keymaps/i386/*/*.map.gz; do
         [ "$(basename $(dirname $i))" = "include" ] && continue
         j=$(basename $i)
@@ -31,6 +35,8 @@ genpkg_rules()
     mkdir -p $fs/boot/isolinux
     cp -a $src/core/isolinux.bin $fs/boot/isolinux
     cp -a $src/com32/modules/reboot.c32 $fs/boot/isolinux
+    cp -a $src/com32/modules/ifmem.c32 $fs/boot/isolinux
+    cp -a $src/modules/poweroff.com $fs/boot/isolinux
     cp stuff/*.* $fs/boot/isolinux
     while read cfg kbd loc ; do
         sed -e "s/^display/kbdmap $cfg.kbd\ndisplay/" \

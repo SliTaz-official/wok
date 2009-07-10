@@ -1,9 +1,9 @@
 # SliTaz package receipt.
 
 PACKAGE="syslinux-modules"
-VERSION="3.73"
+VERSION="3.82"
 CATEGORY="system-tools"
-SHORT_DESC="C32 modules for syslinux"
+SHORT_DESC="modules for syslinux"
 MAINTAINER="pankso@slitaz.org"
 WANTED="syslinux"
 WEB_SITE="http://syslinux.zytor.com/"
@@ -13,7 +13,16 @@ BUILD_DEPENDS="lzma"
 genpkg_rules()
 {
     mkdir -p $fs/usr/share/boot
-    for i in mboot sanboot chain elf reboot ifcpu64 linux sdi menu vesamenu; do
-    	lzma e $src/com32/*/$i.c32 $fs/usr/share/boot/$i.c32.lzma 2> /dev/null
+    for i in $src/com32/*/*.c32 ; do
+	case "$i" in
+	*/reboot.c32|*/ifmem.c32) continue;;
+	esac
+	lzma e $i $fs/usr/share/boot/$(basename $i).lzma 2> /dev/null
+    done
+    for i in $src/modules/*.com ; do
+	case "$i" in
+	*/poweroff.com) continue;;
+	esac
+	cp $i $fs/usr/share/boot/$(basename $i) 2> /dev/null
     done
 }
