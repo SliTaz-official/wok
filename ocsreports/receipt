@@ -1,0 +1,109 @@
+# SliTaz package receipt.
+
+PACKAGE="ocsreports"
+VERSION="1.02.1"
+CATEGORY="network"
+SHORT_DESC="Inventory and package deployement system"
+MAINTAINER="pascal.bellard@slitaz.org"
+DEPENDS="php-apache php-mysql mysql"
+WANTED="ocsinventory"
+SOURCE="OCSNG_UNIX_SERVER"
+TARBALL="${SOURCE}_${VERSION}.tar.gz"
+WEB_SITE="http://www.ocsinventory-ng.org/"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	src=$WOK/$WANTED/$SOURCE-$VERSION
+	
+	mkdir -p $fs/usr/share \
+		$fs/etc/ocsreports
+		
+	cp -a $WOK/$WANTED/${SOURCE}-${VERSION}/${PACKAGE} $fs/usr/share/
+	cat > $fs/etc/ocsreports/dbconfig.inc.php <<EOT
+<?php 
+	\$_SESSION["SERVEUR_SQL"]="localhost";
+	\$_SESSION["COMPTE_BASE"]="ocs";
+	\$_SESSION["PSWD_BASE"]="ocs";
+?>
+EOT
+
+	install -o root -g www -m 0755 $src/Apache/binutils/ipdiscover-util.pl \
+		$fs/usr/share/ocsreports/ipdiscover-util.pl
+
+	rm -f $fs/usr/share/${PACKAGE}/dbconfig.inc.php
+	cd $fs/usr/share/${PACKAGE} ; ln -s /etc/ocsreports/dbconfig.inc.php ; cd -
+
+	# Remove doc file.
+	rm -f  $fs/usr/share/ocsreports/files/*.pdf
+}
+
+post_install()
+{
+	# Configure apache server
+	if [ -f $1/etc/apache/httpd.conf ]; then
+		if [ ! -f $1/etc/apache/conf.d/$PACKAGE ]; then
+			cat > $1/etc/apache/conf.d/$PACKAGE <<EOT
+<IfModule mod_alias.c>
+    Alias /$PACKAGE /usr/share/$PACKAGE/
+</IfModule>
+<Directory "/usr/share/$PACKAGE">
+	Options Indexes FollowSymLinks
+	AllowOverride None
+	Order deny,allow
+	Allow from all
+</Directory>
+
+EOT
+			if [ -z "$1" ]; then
+				# Start Web server.
+				test -f /var/run/apache/httpd.pid && \
+					( kill -0 $(cat /var/run/apache/httpd.pid) && /etc/init.d/apache restart )
+			fi
+		fi
+	fi
+
+	# Configure every thing for ocsweb.
+	if [ -z $1 ]; then
+		if ( ! mysqladmin -s ping > /dev/null ); then
+			echo "Starting MySQL server"
+			( /etc/init.d/mysql start ; status  ) || exit 
+			sleep 4 #let the mysql daemon start
+		fi
+		if ( ! mysql -Be 'show databases' | grep -q ocsweb ); then
+			echo -n "Create $PACKAGE database and schema"
+		#	mysql -Be "create database ocsweb" ; status
+			mysql -f -s -u root < /usr/share/$PACKAGE/files/ocsbase.sql > /dev/null 2>&1
+			# We suppose that ocs user does not exist.
+			# It may be false.
+			echo  -n "Create user ocs with password ocs"
+			mysql -Be "grant all privileges on ocsweb.* to 'ocs'@'localhost' 
+				identified by 'ocs'" ; status
+		fi
+			
+	fi
+}
+
+post_remove()
+{
+		echo -n "Would you like to remove data and database files.(y/n) "
+		read answer
+
+		case $answer in 
+		y|Y)
+			echo -n "Removing data directories..."
+			rm -rf /usr/share/ocsreports
+			if ( mysql -Be 'show databases' | grep -q ocsweb ); then
+				echo -n "Deleting ocsreports database;"
+				mysql -u root -Be "drop database ocsweb;" ; status
+				echo  -n "Delete user ocs"
+				mysql -u root -Be "delete from mysql.db where user=ocs;" ; status
+			fi
+			unset $answer
+			;;
+		*)
+			;;
+		esac
+	
+}
+
