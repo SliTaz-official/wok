@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="pgadmin"
+VERSION="1.10.0"
+CATEGOR="utilities"
+SHORT_DESC="PostgreSQL administratio an management tools"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="postgresql wxWidgets gtk+"
+BUILD_DEPENDS="postgresql postgrsql-dev libxslt-dev libxml2-dev wxWidgets-dev"
+SOURCE="pgadmin3"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.pgadmin.org"
+WGET_URL="ftp://ftp.ch.postgresql.org/mirror/postgresql/pgadmin3/release/v$VERSION/src/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+        cd $src
+        ./configure \
+                --prefix=/usr \
+                --infodir=/usr/share/info \
+                --mandir=/usr/share/man \
+                $CONFIGURE_ARGS &&
+        make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+        mkdir -p $fs/usr/share/pgadmin3/i18n
+		
+        cp -a $_pkg/usr/bin $fs/usr
+		cp -a $_pkg/usr/share/pgadmin3/*.ini $fs/usr/share/pgadmin3
+		cp -a $_pkg/usr/share/pgadmin3/branding $fs/usr/share/pgadmin3	
+		cp -a $_pkg/usr/share/pgadmin3/i18n/fr_FR $fs/usr/share/pgadmin3/i18n	
+		cp -a $_pkg/usr/share/pgadmin3/i18n/*.lng $fs/usr/share/pgadmin3/i18n	
+		
+		cp -a stuff/applications $fs/usr/share
+		cp -a stuff/icons $fs/usr/share
+}
