@@ -1,0 +1,59 @@
+# SliTaz package receipt.
+
+PACKAGE="ocsinventory-agent"
+VERSION="1.02"
+CATEGORY="network"
+SHORT_DESC="OCS Inventory NG agent for Linux."
+MAINTAINER="erjo@slitaz.org"
+SOURCE="OCSNG_UNIX_AGENT"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+DEPENDS="perl perl-lwp-useragent perl-uri-url dmidecode"
+SUGGESTED="nmap perl-ssleay"
+BUILD_DEPENDS="perl"
+WEB_SITE="http://www.ocsinventory-ng.org/"
+WGET_URL="http://downloads.sourceforge.net/sourceforge/ocsinventory/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	  
+	src=$WOK/$PACKAGE/Ocsinventory-Agent-1.0.1
+
+	cp stuff/Slitaz.pm $src/lib/Ocsinventory/Agent/Backend/OS/Linux/Distro/NonLSB
+	cd $src
+	
+	# don't run postinstall script
+	rm -f run-postinst
+	patch -p1 -i ../stuff/manifest.u || exit
+	perl Makefile.PL 
+	rm -f run-postinst
+	 make && \
+	 make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	_pkg=$WOK/$PACKAGE/Ocsinventory-Agent-1.0.1/_pkg
+		
+	mkdir -p $fs/usr \
+		$fs/etc/ocsinventory-agent \
+		$fs/var/lib/ocsinventory-agent
+		
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+}
+
+post_install(){
+	echo "postinstall commands"
+	cat > $1/etc/ocsinventory-agent/ocsinventory-agent.cfg <<EOT
+basevardir=/var/lib/ocsinventory-agent
+server=http://$(hostname)/ocsinventory
+EOT
+}	
+
+clean_wok()
+{
+	[ -d Ocsinventory-Agent-1.0.1 ] && rm -rf Ocsinventory-Agent-1.0.1
+}
+
