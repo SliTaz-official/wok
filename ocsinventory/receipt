@@ -1,0 +1,37 @@
+
+# SliTaz package receipt.
+
+PACKAGE="ocsinventory"
+VERSION="1.02.1"
+CATEGORY="meta"
+SHORT_DESC="Automated inventory and deployement system."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="OCSNG_UNIX_SERVER"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.ocsinventory-ng.org/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="ocsinventory-server ocsinventory-agent ocsreports"
+BUILD_DEPENDS="perl perl-dbd-mysql perl-apache-dbi perl-net-ip"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mv ${SOURCE}_${VERSION} $src 2> /dev/null
+	cd $src/Apache
+	perl Makefile.PL &&
+	make &&
+	make DESTDIR=$PWD/../_pkg install
+}
+
+genpkg_rules() {
+	mkdir $fs/usr
+	
+#	cd $WOK 
+	for i in $DEPENDS
+	do
+		 tazwok cook $i
+	done
+}
+
+
