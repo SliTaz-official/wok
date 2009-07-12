@@ -1,0 +1,47 @@
+--- Ocsinventory-Agent-1.0.1.ori/lib/Ocsinventory/Agent/Backend/OS/Linux/Drives.pm	Fri Mar  6 19:02:57 2009
++++ Ocsinventory-Agent-1.0.1/lib/Ocsinventory/Agent/Backend/OS/Linux/Drives.pm	Sun Jul 12 22:29:32 2009
+@@ -1,9 +1,11 @@
+ package Ocsinventory::Agent::Backend::OS::Linux::Drives;
++# Modified bye Erjo <erjo@slitaz.org>
++# Busybox df applet as no -T -P options.
+ 
+ use strict;
+ sub check {
+   return unless can_run ("df");
+-  my $df = `df -TP`;
++  my $df = `df -k`;
+   return 1 if $df =~ /\w+/;
+   0
+ }
+@@ -19,14 +21,14 @@
+   my $volumn;
+ 
+ 
+-  foreach(`df -TP`) { # TODO retrive error
+-    if(/^(\S+)\s+(\S+)\s+(\S+)\s+(?:\S+)\s+(\S+)\s+(?:\S+)\s+(\S+)\n/){
++  foreach(`df -k`) { # TODO retrive error
++    if(/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\n/){
+       $free = sprintf("%i",($4/1024)); 
+-      $filesystem = $2;
+-      $total = sprintf("%i",($3/1024));
+-      $type = $1;
+-      $volumn = $5;
+-
++      $filesystem = $1;
++      $total = sprintf("%i",($2/1024));
++      $type = `grep ^$1 /etc/mtab | cut -d " " -f 3`;;
++      $volumn = $6;
++	  
+ # no virtual FS
+       next if ($type =~ /^(tmpfs|usbfs|proc|devpts|devshm|udev)$/);
+       next if ($filesystem =~ /^(tmpfs)$/);
+@@ -36,8 +38,7 @@
+ 	  FILESYSTEM => $filesystem,
+ 	  TOTAL => $total,
+ 	  TYPE => $type,
+-	  VOLUMN =>
+-	  $volumn
++	  VOLUMN => $volumn
+ 	})
+     }
+   }

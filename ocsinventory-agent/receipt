@@ -8,7 +8,7 @@ MAINTAINER="erjo@slitaz.org"
 SOURCE="OCSNG_UNIX_AGENT"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 DEPENDS="perl perl-lwp-useragent perl-uri-url dmidecode"
-SUGGESTED="nmap perl-ssleay"
+SUGGESTED="nmap perl-net-ssleay"
 BUILD_DEPENDS="perl"
 WEB_SITE="http://www.ocsinventory-ng.org/"
 WGET_URL="http://downloads.sourceforge.net/sourceforge/ocsinventory/$TARBALL"
@@ -16,19 +16,24 @@ WGET_URL="http://downloads.sourceforge.net/sourceforge/ocsinventory/$TARBALL"
 # Rules to configure and make the package.
 compile_rules()
 {
-	  
 	src=$WOK/$PACKAGE/Ocsinventory-Agent-1.0.1
 
 	cp stuff/Slitaz.pm $src/lib/Ocsinventory/Agent/Backend/OS/Linux/Distro/NonLSB
+	cp stuff/Tazpkg.pm $src/lib/Ocsinventory/Agent/Backend/OS/Generic/Packaging
+	
 	cd $src
 	
 	# don't run postinstall script
 	rm -f run-postinst
-	patch -p1 -i ../stuff/manifest.u || exit
+	for p in ../stuff/*.u
+	do
+		[ -f done.$(basename $p) ] && continue
+		patch -p1 -i $p || exit
+		touch done.$(basename $p)
+	done
 	perl Makefile.PL 
 	rm -f run-postinst
-	 make && \
-	 make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -45,11 +50,17 @@ genpkg_rules()
 }
 
 post_install(){
-	echo "postinstall commands"
+	echo "Processing post-install commands..."
 	cat > $1/etc/ocsinventory-agent/ocsinventory-agent.cfg <<EOT
 basevardir=/var/lib/ocsinventory-agent
 server=http://$(hostname)/ocsinventory
 EOT
+	# We need fix missing status for dpkg
+	# So we can Ocs agent can run Tazpkg.pm
+	if [ ! -d $1/var/lib/dpkg ]; then
+		install -o root -g root -m 0755 -d $1/var/lib/dpkg
+		touch $1/var/lib/dpkg/status
+	fi
 }	
 
 clean_wok()
