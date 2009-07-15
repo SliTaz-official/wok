@@ -6,13 +6,14 @@ VERSION="4.4.0"
 CATEGORY="development"
 SHORT_DESC="The GNU Compiler Collection, including the gcj Compiler for Java."
 MAINTAINER="rcx@zoominternet.net"
-DEPENDS="glibc-base glib gcc-lib-base libuuid zlib libgomp gmp mpfr python \
-gtk+ atk cairo expat fontconfig freetype libgio pango pixman libpng \
+DEPENDS="glibc-base glib gcc-lib-base libgio libuuid zlib libgomp gmp mpfr python \
+gtk+ atk cairo expat fontconfig freetype pango pixman libpng libxcb xcb-util \
 xorg-libICE xorg-libSM xorg-libX11 xorg-libXau xorg-libXcomposite \
 xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes \
 xorg-libXinerama xorg-libXrandr xorg-libXrender xorg-libXtst"
-BUILD_DEPENDS="glibc-dev gawk flex python gmp gmp-dev mpfr mpfr-dev expat-dev \
-zlib-dev zip gtk+-dev libart_lgpl-dev xorg-dev xorg-inputproto xorg-randrproto xorg-xextproto"
+BUILD_DEPENDS="glibc-dev gawk flex python perl gmp gmp-dev mpfr mpfr-dev \
+expat-dev zlib-dev zip gtk+-dev libart_lgpl-dev xorg-dev xorg-inputproto \
+xorg-kbproto xorg-randrproto xorg-renderproto xorg-xextproto xorg-xproto"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://gcc.gnu.org/"
 WGET_URL="$GNU_MIRROR/$SOURCE/$SOURCE-$VERSION/$TARBALL"
@@ -21,6 +22,12 @@ PROVIDE="$SOURCE"
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Set BUILD_HOST if not defined in tazwok.conf as it should be
+	if [ -z "$BUILD_HOST" ] ; then
+		BUILD_HOST="i486-pc-linux-gnu"
+	fi
+	GCC_TARGET=$BUILD_HOST
+
 	# Get ecj.jar needed to build gcj
 	# (See http://gcc.gnu.org/install/configure.html --with-ecj-jar)
 	ECJ_PRE_PATH=`pwd`
@@ -52,17 +59,21 @@ compile_rules()
 		$SOURCE-$VERSION/libiberty/Makefile.in || exit 1
     mkdir -p $SOURCE-$VERSION-build
     cd $SOURCE-$VERSION-build
+	
     ../$SOURCE-$VERSION/configure --prefix=/usr --libexecdir=/usr/lib \
 		--infodir=/usr/share/info --mandir=/usr/share/man --enable-nls \
 		--enable-languages=c,c++,java --enable-shared --with-system-zlib \
 		--enable-clocale=gnu --enable-objc-gc --enable-__cxa_atexit \
-		--enable-threads=posix --with-tune=i486 i486-pc-linux-gnu \
+		--enable-threads=posix --with-tune=i486 \
 		--enable-java-home --with-arch-directory=i386 \
+		--with-jvm-root-dir=/usr/lib/jvm/java-gcj \
+		--with-jvm-jar-dir=/usr/lib/jvm-exports/java-gcj \
 		--with-python-dir=/lib/python2.5/site-packages \
 		--with-x --enable-java-awt=gtk \
-		$CONFIGURE_ARGS  &&
+		--enable-gtk-cairo \
+		$CONFIGURE_ARGS  $GCC_TARGET  &&
     make bootstrap &&
-    # Make install in the source tree to help creating derivated pkgs
+    # Make install in the source tree to help creating derived pkgs
     # and keep $_pkg variable set for genpkg.
     make DESTDIR=$src/_pkg install
 }
