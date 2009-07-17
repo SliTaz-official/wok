@@ -10,8 +10,8 @@
 # to get a package with the slitaz version numbering
 PACKAGE="libboost-dev"
 SOURCE="boost"
-VERSION="1.35.0"
-WGET_SOURCE="boost_1_35_0"
+VERSION="1.39.0"
+WGET_SOURCE="boost_1_39_0"
 
 CATEGORY="development"
 SHORT_DESC="Free peer-reviewed portable C++ source libraries."
@@ -19,13 +19,13 @@ MAINTAINER="chadi.elahmad@gmail.com"
 
 TARBALL="$WGET_SOURCE.tar.bz2"
 WEB_SITE="http://www.boost.org/"
-WGET_URL="http://garr.dl.sourceforge.net/sourceforge/boost/$TARBALL"
+WGET_URL="$SF_MIRROR/$SOURCE/$TARBALL"
 
-DEPENDS=" "
-BUILD_DEPENDS="python python-dev icu-dev "
+DEPENDS=""
+BUILD_DEPENDS="python python-dev expat-dev expat"
 RELOCATE_LIBS="{ date_time filesystem graph iostreams \
-	program_options python regex serialization signal \
-	system test thread wave }"
+	math program_options python regex serialization \
+	signal system test thread tr1 wave }"
 
 
 # Rules to configure and make the package.
@@ -35,36 +35,50 @@ RELOCATE_LIBS="{ date_time filesystem graph iostreams \
 #   Have to add some params to get static libs compiled too
 compile_rules()
 {
-	cd $src/..
-	if test -d $WGET_SOURCE ; then mv -f $WGET_SOURCE $SOURCE-$VERSION ; fi
+	# Determine if TOOLPREFIX has been defined in tazwok.conf as it should
+	if [ -z "$TOOLPREFIX" ] ; then
+		# Provide a default TOOLPREFIX value
+		TOOLPREFIX=i486-pc-linux-gnu-
+	fi
+
+	if [ -d $WGET_SOURCE ] ; then
+		mv -f $WGET_SOURCE $src
+	else
+		rm -r -f $src/_pkg
+	fi
 
 	cd $src
-	TAZ_BJAM_CONF=" \
-		build-type=single \
-		variant=release \
-		threading=multi \
-		link=shared,static "
-
-	./configure \
-		--prefix=/usr \
-		--with-libraries=all
-
-	make $TAZ_BJAM_CONF
-	make $TAZ_BJAM_CONF \
-		PREFIX=$src/_pkg/usr \
-		EPREFIX=$src/_pkg/usr/lib \
-		LIBDIR=$src/_pkg/usr/lib \
-		INCLUDEDIR=$src/_pkg/usr/include install
-
-	# move it to the standard include folder
-	cd $src/_pkg/usr/include/$SOURCE*
-	mv -f $SOURCE ..
-
+	./bootstrap.sh \
+		--prefix=$src/_pkg/usr \
+		--exec-prefix=$src/_pkg/usr \
+		--libdir=$src/_pkg/usr/lib \
+		--includedir=$src/_pkg/usr/include \
+		--without-icu &&
+	EXPAT_INCLUDE=/usr/include \
+	EXPAT_LIBPATH=/usr/lib \
+	./bjam \
+		--prefix=$src/_pkg/usr \
+		--exec-prefix=$src/_pkg/usr \
+		--libdir=$src/_pkg/usr/lib \
+		--includedir=$src/_pkg/usr/include \
+		--build-type=minimal \
+		install
+	mv $src/_pkg/usr/include/boost-1_39/boost $src/_pkg/usr/include &&
+	rm -r -f $src/_pkg/usr/include/boost-1_39
+	
 	# create the missing links to the shared libs
 	cd $src/_pkg/usr/lib
-	for i in `ls *mt.so`; do
-	   tmp=`echo $i | sed s/-gcc.*mt//g` 
-	   ln -s $i $tmp
+	for i in `ls *-mt.so`; do
+	   boost_tmp=`echo $i | sed s/-gcc.*-mt//g`
+	   boost_tmp_mt=`echo $i | sed s/-gcc.*-mt/-mt/g`
+	   ln -s $i $boost_tmp
+	   ln -s $i $boost_tmp_mt
+	done
+	for i in `ls *-mt.a`; do
+	   boost_tmp=`echo $i | sed s/-gcc.*-mt//g`
+	   boost_tmp_mt=`echo $i | sed s/-gcc.*-mt/-mt/g`
+	   ln -s $i $boost_tmp
+	   ln -s $i $boost_tmp_mt
 	done
 }
 
@@ -77,6 +91,6 @@ genpkg_rules()
 
 	for i in $RELOCATE_LIBS; do
 	   rm -f $fs/usr/lib/*$i*
-	   rm -rf $fs/usr/include/*$i*
+	   rm -r -f $fs/usr/include/boost/*$i*
 	done
 }
