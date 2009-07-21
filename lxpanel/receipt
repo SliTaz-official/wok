@@ -1,14 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="lxpanel"
-VERSION="0.3.8.1"
+VERSION="0.4.1"
 CATEGORY="x-window"
 SHORT_DESC="Standard compliant desktop panel."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ slitaz-menus alsa-lib xorg-libXdamage slitaz-icon"
-BUILD_DEPENDS="gtk+-dev gettext wireless_tools-dev wireless_tools"
+DEPENDS="glibc-base glib libgio expat zlib menu-cache lxmenu-data slitaz-icon \
+gtk+ atk cairo fontconfig freetype pango pixman libpng alsa-lib \
+xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXrender"
+BUILD_DEPENDS="gtk+-dev gettext expat-dev intltool menu-cache-dev menu-cache \
+alsa-lib-dev wireless_tools-dev wireless_tools"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://lxde.sourceforge.net/"
+WEB_SITE="http://www.lxde.org/"
 WGET_URL="$SF_MIRROR/lxde/$TARBALL"
 CONFIG_FILES="/etc/lxpanel/default"
 
@@ -16,14 +19,10 @@ CONFIG_FILES="/etc/lxpanel/default"
 compile_rules()
 {
 	cd $src
-	# Patch the menu
-	for i in ptk-app-menu.patch fr.patch ; do
-		[ -f done.$i ] && continue
-		patch -p0 < ../stuff/$i || exit 1
-		touch done.$i
-	done
 	./configure \
 		--prefix=/usr \
+		--sysconfdir=/etc \
+		--enable-libiw \
 		--with-plugins=all \
 		$CONFIGURE_ARGS &&
 	make &&
@@ -38,10 +37,10 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib $fs/usr
 	cp -a $_pkg/usr/share/lxpanel $fs/usr/share
 	
-	# Remove a few "heavy" an unseful images (ns* goes in extra)
-	for i in file-manager* stock_volume* gnome-[a-k]*.png gnome-m*.png \
-		gnome-netstatus-[d-t]*.png gnome-[o-z]*.png my-* redhat*.png \
-		ns-*.png *lock-*.png gnome-logout.png
+	# Remove a few "heavy" and unuseful images (ns* goes in extra)
+	for i in file-manager* stock_volume* gnome-[a-m]*.png \
+		gnome-netstatus-[d-t]*.png gnome-[o-z]*.png my-* \
+		ns-*.png *lock-*.png
 	do
 		rm $fs/usr/share/lxpanel/images/$i
 	done
