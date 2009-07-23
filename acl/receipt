@@ -36,21 +36,19 @@ compile_rules()
 	rm -r -f man
 	rm -r -f doc
 
-	./configure \
-		--prefix=/usr \
-		$CONFIGURE_ARGS &&
-	make &&
+	# Configure is included in Makefile
+	make LOCAL_CONFIGURE_OPTIONS="$CONFIGURE_ARGS" &&
 	make DESTDIR=$src/_pkg install install-lib install-dev
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	mkdir -p $fs/lib
+	cp -a $_pkg/lib/*.so* $fs/lib
+
 	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	
-	mkdir -p $fs/usr/libexec
-	cp -a $_pkg/usr/libexec/*.so* $fs/usr/libexec
-	
+
 	cp -a $_pkg/usr/bin $fs/usr
 }
