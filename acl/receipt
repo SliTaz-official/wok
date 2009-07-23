@@ -1,0 +1,56 @@
+# SliTaz package receipt.
+
+PACKAGE="acl"
+VERSION="2.2.47-1"
+CATEGORY="system-tools"
+SHORT_DESC="Commands for Manipulating POSIX Access Control Lists."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="glibc-base attr"
+BUILD_DEPENDS="slitaz-toolchain autoconf automake m4 libtool gettext"
+TARBALL="${PACKAGE}_${VERSION}.tar.gz"
+WEB_SITE="http://savannah.nongnu.org/projects/acl/"
+WGET_URL="ftp://oss.sgi.com/projects/xfs/cmd_tars/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mv $PACKAGE-2.2.47 $PACKAGE-$VERSION
+
+	cd $src
+
+	# Patch commands are from http://minimalinux.org/forum/viewtopic.php?pid=1446#p1446
+
+	# these sed lines replace the patch "attr.destdir.diff" from the Slackware source files
+	sed -i s%"@bindir@"%"\$\(DESTDIR\)@bindir@"% include/builddefs.in
+	sed -i s%"@sbindir@"%"\$\(DESTDIR\)@sbindir@"% include/builddefs.in
+	sed -i s%"@libdir@@libdirsuffix@"%"\$\(DESTDIR\)@libdir@@libdirsuffix@"% include/builddefs.in
+	sed -i s%"@libexecdir@@libdirsuffix@"%"\$\(DESTDIR\)@libexecdir@@libdirsuffix@"% include/builddefs.in
+	sed -i s%"@includedir@/attr"%"\$\(DESTDIR\)@includedir@/attr"% include/builddefs.in
+	sed -i s%"@mandir@"%"\$\(DESTDIR\)@mandir@"% include/builddefs.in
+	
+	# force docdir conformance to Slack default
+	sed -i s%"@datadir@/doc/@pkg_name@"%"\$\(DESTDIR\)/usr/doc/@pkg_name@-\$\(VERSION\)"% include/builddefs.in
+	sed -i s%"@datadir@/locale"%"\$\(DESTDIR\)@datadir@/locale"% include/builddefs.in
+
+	# Don't need to build man and doc
+	rm -r -f man
+	rm -r -f doc
+
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$src/_pkg install install-lib install-dev
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	
+	mkdir -p $fs/usr/libexec
+	cp -a $_pkg/usr/libexec/*.so* $fs/usr/libexec
+	
+	cp -a $_pkg/usr/bin $fs/usr
+}
