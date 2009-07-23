@@ -17,11 +17,6 @@ compile_rules()
 	mv $PACKAGE-2.4.43 $PACKAGE-$VERSION
 
 	cd $src
-	
-	# Patch commands are from http://minimalinux.org/forum/viewtopic.php?pid=1446#p1446
-	
-	# Backup install script
-	cp -f install-sh install-sh.orig
 
 	# these sed lines replace the patch "attr.destdir.diff" from the Slackware source files
 	sed -i s%"@bindir@"%"\$\(DESTDIR\)@bindir@"% include/builddefs.in
@@ -32,27 +27,28 @@ compile_rules()
 	sed -i s%"@mandir@"%"\$\(DESTDIR\)@mandir@"% include/builddefs.in
 	
 	# force docdir conformance to Slack default
-	#sed -i s%"@datadir@/doc/@pkg_name@"%"\$\(DESTDIR\)/usr/doc/@pkg_name@-\$\(VERSION\)"% include/builddefs.in
+	sed -i s%"@datadir@/doc/@pkg_name@"%"\$\(DESTDIR\)/usr/doc/@pkg_name@-\$\(VERSION\)"% include/builddefs.in
 	sed -i s%"@datadir@/locale"%"\$\(DESTDIR\)@datadir@/locale"% include/builddefs.in
-	
-	# Restore install script
-	cp -f install-sh.orig install.sh
-	
+
 	# Don't need to build man and doc
 	rm -r -f man
 	rm -r -f doc
-	
-	make LOCAL_CONFIGURE_OPTIONS="$CONFIGURE_ARGS" &&
+
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$src/_pkg install install-lib install-dev
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/lib
 	mkdir -p $fs/usr/lib
-	cp -a $_pkg/lib/*.so* $fs/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	
+	mkdir -p $fs/usr/libexec
+	cp -a $_pkg/usr/libexec/*.so* $fs/usr/libexec
 	
 	cp -a $_pkg/usr/bin $fs/usr
 }
