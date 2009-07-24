@@ -8,8 +8,8 @@
 VERSION=0.5
 
 ROOT=/home/slitaz/iso
-SORT_DIR=_iso.$$
-TEMP_DIR=${ROOT}/$SORT_DIR
+SORT_DIR=${ROOT}/_iso.$$
+TEMP_DIR=${ROOT}/_iso.$$
 SORT_FILE=${ROOT}/_sort.$$
 PKG_VER=$1
 shift
@@ -53,15 +53,6 @@ status()
         echo -en "\\033[1;31mFailed"
     fi
     echo -e "\\033[0;39m ]"
-}
-
-add_sort()
-{
-	if true; then
-		echo "$1 $2"
-	else
-		( cd $ROOT ; find $1 | awk "{ printf \"%s $2\\n\",\$0 }" )
-	fi
 }
 
 # Create temp directory
@@ -198,7 +189,7 @@ case "$i" in
 echo "=> Wok (cooking) is in \$DIR/wok"
 EOF
 	if get_from_hg wok "wok (cooking)"; then
-		add_sort $SORT_DIR/wok -8000 >> $SORT_FILE
+		echo "$SORT_DIR/wok -8000" >> $SORT_FILE
 	fi;;
 --wok-stable)
 	cat >>$TEMP_DIR/install.sh<<EOF
@@ -206,11 +197,11 @@ echo "=> Wok (stable) is in \$DIR/wok"
 EOF
 	if get_from_hg wok-stable "wok (stable)"; then
 		mv $TEMP_DIR/wok-stable $TEMP_DIR/wok
-		add_sort $SORT_DIR/wok -8000 >> $SORT_FILE
+		echo "$SORT_DIR/wok -8000" >> $SORT_FILE
 	fi;;
 --website)
 	if get_from_hg website "web site"; then
-		add_sort $SORT_DIR/website -6000 >> $SORT_FILE
+		echo "$SORT_DIR/website -6000" >> $SORT_FILE
 		cat >>$TEMP_DIR/install.sh<<EOF
 [ -d /var/www ] || mkdir -p /var/www
 ln -s \$DIR/website /var/www
@@ -271,16 +262,37 @@ EOF
     	echo -n "Enable loram autodetection"
 		cp $PXE_DIR/ifmem.c32 "$TEMP_DIR/boot/isolinux"
 		isoinfo -R -x "/usr.sqfs" -i $isoloram > "$TEMP_DIR/usr.sqfs"
-		add_sort $SORT_DIR/usr.sqfs -5000 >> $SORT_FILE
+		echo "$SORT_DIR/usr.sqfs -5000" >> $SORT_FILE
 		isoinfo -R -x "/boot/rootfs.gz" -i $isoloram > \
 			"$TEMP_DIR/boot/loram.gz"
-		sed -i -e 's|kernel /boot/bzImage|kernel /boot/isolinux/ifmem.c32\n\tappend 160768 core loram\n|' \
+		cat >> $TEMP_DIR/boot/isolinux/common.cfg <<EOT
+label noram
+        config noram.cfg
+EOT
+		cat >> $TEMP_DIR/boot/isolinux/noram.cfg <<EOT
+display isolinux.msg
+say Not enough RAM to boot slitaz.
+default reboot
+label reboot
+        com32 reboot.c32
+
+implicit 0
+prompt 1
+timeout 80
+F1 help.txt
+F2 options.txt
+F3 isolinux.msg
+F4 display.txt
+F5 enhelp.txt
+F6 enopts.txt
+EOT
+		sed -i -e 's|kernel /boot/bzImage|kernel /boot/isolinux/ifmem.c32\n\tappend 160768 core 29696 loram noram\n|' \
 			-e 's|\(.*/\)rootfs\(.gz .*\)$|label core\n\tkernel /boot/bzImage\n\1rootfs\2\n\nlabel loram\n\tkernel /boot/bzImage\n\1loram\2|' \
 			$TEMP_DIR/boot/isolinux/*.cfg
 		status
 		;;
 	esac
-	add_sort $SORT_DIR/boot 0 >> $SORT_FILE
+	echo "$SORT_DIR/boot 0" >> $SORT_FILE
 	;;
 *\ --webboot\ *)
 	if extract_boot gpxe; then
@@ -289,7 +301,7 @@ EOF
 		isoinfo -x "/BOOT/ISOLINUX/ISOLINUX.BIN;1" -i $iso > \
 			$TEMP_DIR/boot/isolinux/isolinux.bin
 		mv $TEMP_DIR/boot/gpxe $TEMP_DIR/boot/isolinux
-		add_sort $SORT_DIR/boot 0 >> $SORT_FILE
+		echo "$SORT_DIR/boot 0" >> $SORT_FILE
 		cat > $TEMP_DIR/boot/isolinux/isolinux.cfg <<EOT
 default gpxe
 append http://mirror.slitaz.org/pxe/pxelinux.0
@@ -306,8 +318,6 @@ if [ -n "$BOOT_OPT" ]; then
 		    tail -1 | awk '{ print $1 }') used by boot."
 fi
 
-sort -r -k 2 $SORT_FILE > $SORT_FILE.$$
-mv $SORT_FILE.$$ $SORT_FILE
 case " $OPTIONS " in
 *\ --dry-run\ *)
 	echo "Please check and remove $TEMP_DIR and $SORT_FILE"
