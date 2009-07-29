@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="commoncpp2"
+VERSION="1.7.3"
+CATEGORY="development"
+SHORT_DESC="A very portable and highly optimized class framework for writing C++ applications."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS=""
+BUILD_DEPENDS="slitaz-toolchain"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/commoncpp/"
+WGET_URL="http://www.gnutelephony.org/dist/tarballs/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Apply patch from http://bugs.gentoo.org/show_bug.cgi?id=279505
+	local commoncpp2_diff
+	commoncpp2_diff=$PWD/stuff/1.7.3-gcc4.4.diff
+
+	cd $src
+	# Only apply the patch once
+	if [ ! -e $src/1.7.3-gcc4.4.diff ] ; then
+		patch -p1 < $commoncpp2_diff
+		cp $commoncpp2_diff $src/1.7.3-gcc4.4.diff
+	fi
+
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
