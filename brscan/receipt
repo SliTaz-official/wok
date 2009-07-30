@@ -1,0 +1,71 @@
+# SliTaz package receipt.
+
+PACKAGE="brscan"
+VERSION="0.2.4"
+CATEGORY="office"
+SHORT_DESC="Brother Scanner driver for SANE."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="$PACKAGE-src"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://solutions.brother.com/linux/sol/printer/linux/sane_drivers.html"
+WGET_URL="http://solutions.brother.com/Library/sol/printer/linux/rpmfiles/sane_source/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/brscan
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--sysconfdir=/etc --localstatedir=/var \
+	--mandir=/usr/share/man \
+	$CONFIGURE_ARGS || return 1
+	sed -i '/mk_package/d' Makefile
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/lib/sane
+	for i in BHL BHL2 BHL2FB BHLFB BHMFB BHminiFB YL4 YL4FB \
+		 ZL2 ZL2FB ZLe ZLeFB ; do
+		mkdir -p $fs/usr/local/Brother/sane/GrayCmData/$i
+		cp -a $src/brscan/libbrcolm/GrayCmData/$i/* \
+			$fs/usr/local/Brother/sane/GrayCmData/$i
+		chmod 644 $fs/usr/local/Brother/sane/GrayCmData/$i/*
+	done
+	cp $src/brscan/backend_brscan/.libs/libsane-brother.so.1.0.7 \
+		$fs/usr/lib/sane/libsane-brother.so.1.0.7
+	ln -s libsane-brother.so.1.0.7 $fs/usr/lib/sane/libsane-brother.so.1
+	ln -s libsane-brother.so.1 $fs/usr/lib/sane/libsane-brother.so
+	cp $src/brscan/libbrscandec/libbrscandec.so.1.0.0 \
+		$fs/usr/lib/libbrscandec.so.1.0.0
+	chmod 755 $fs/usr/lib/libbrscandec.so.1.0.0
+	ln -s libbrscandec.so.1.0.0 $fs/usr/lib/libbrscandec.so.1
+	ln -s libbrscandec.so.1 $fs/usr/lib/libbrscandec.so
+	cp $src/brscan/libbrcolm/libbrcolm.so.1.0.0 \
+		$fs/usr/lib/libbrcolm.so.1.0.0
+	ln -s libbrcolm.so.1.0.0 $fs/usr/lib/libbrcolm.so.1
+	ln -s libbrcolm.so.1 $fs/usr/lib/libbrcolm.so
+	cp $src/brscan/mk_package/Brsane.ini \
+		$fs/usr/local/Brother/sane/Brsane.ini
+	cp $src/brscan/mk_package/brsanenetdevice.cfg \
+		$fs/usr/local/Brother/sane/brsanenetdevice.cfg
+	chmod 666 $fs/usr/local/Brother/sane/brsanenetdevice.cfg
+	cp $src/brscan/netconfig/brsaneconfig \
+		$fs/usr/local/Brother/sane/brsaneconfig
+	ln -s /usr/local/Brother/sane/brsaneconfig $fs/usr/bin/brsaneconfig
+	cp $src/brscan/mk_package/setupSaneScan \
+		$fs/usr/local/Brother/sane/setupSaneScan
+	chmod 755 $fs/usr/local/Brother/sane/setupSaneScan
+}
+
+# Pre and post install and remove commands for Tazpkg.
+post_install()
+{
+	chroot $1/ /usr/local/Brother/sane/setupSaneScan -i
+}
+
+pre_remove()
+{
+	chroot $1/ /usr/local/Brother/sane/setupSaneScan -e
+}
