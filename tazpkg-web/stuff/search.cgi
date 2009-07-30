@@ -270,9 +270,9 @@ Copyright &copy; 2009 <a href="http://www.slitaz.org/">SliTaz</a> -
 _EOT_
 }
 
-# recursive dependencies scan                                       
-dep_scan()                                                       
-{                                                                    
+# recursive dependencies scan
+dep_scan()
+{
 for i in $1; do
 	case " $ALL_DEPS " in
 	*\ $i\ *) continue;;
@@ -294,9 +294,9 @@ _EOT_
 done
 }
 
-# recursive reverse dependencies scan                       
-rdep_scan()                                                           
-{                                                                            
+# recursive reverse dependencies scan
+rdep_scan()
+{
 SEARCH=$1
 case "$SEARCH" in
 glibc-base|gcc-lib-base) cat <<EOT
@@ -347,6 +347,12 @@ package_exist()
 <pre class="package">
 _EOT_
 	return 1
+}
+
+# Display < > &
+htmlize()
+{
+	sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
 }
 
 # Display search form and result if requested.
@@ -449,19 +455,30 @@ _EOT_
 		unlzma -c $PACKAGES_REPOSITORY/files.list.lzma \
 		| grep ^$SEARCH: |  sed 's/.*: /    /' | sort
 	elif [ "$OBJECT" = "Desc" ]; then
-		cat << _EOT_
+		if [ -f $WOK/$SEARCH/description.txt ]; then
+			cat << _EOT_
+
+<h3>$result</h3>
+<pre class="package">
+<pre>
+$(htmlize < $WOK/$SEARCH/description.txt)
+</pre>
+_EOT_
+		else
+			cat << _EOT_
 
 <h3>$result</h3>
 <pre class="package">
 _EOT_
-		last=""
-		grep -i $SEARCH $PACKAGES_REPOSITORY/packages.desc | \
-		sort | while read pkg extras ; do
+			last=""
+			grep -i $SEARCH $PACKAGES_REPOSITORY/packages.desc | \
+			sort | while read pkg extras ; do
 				. $WOK/$pkg/receipt
 				cat << _EOT_
 <a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> : $SHORT_DESC
 _EOT_
 			done
+		fi
 	elif [ "$OBJECT" = "Tags" ]; then
 		cat << _EOT_
 
@@ -485,8 +502,8 @@ _EOT_
 $(if [ -f  $WOK/$SEARCH/taz/*/receipt ]; then
 	cat $WOK/$SEARCH/taz/*/receipt
   else
-    cat $WOK/$SEARCH//receipt
-  fi | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+    cat $WOK/$SEARCH/receipt
+  fi | htmlize)
 </pre>
 _EOT_
 	else
@@ -498,8 +515,10 @@ _EOT_
 		for pkg in `ls $WOK | grep $SEARCH`
 		do
 			. $WOK/$pkg/receipt
+			DESC=" <a href=\"?desc=$pkg\">description</a>"
+			[ -f $WOK/$pkg/description.txt ] || DESC=""
 			cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> : $SHORT_DESC
+<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> : $SHORT_DESC$DESC
 _EOT_
 		done
 		equiv=$PACKAGES_REPOSITORY/packages.equiv
