@@ -5,8 +5,9 @@ VERSION="143"
 BUILD_WARNING="Install new udev package and rebuild hal"
 CATEGORY="base-system"
 SHORT_DESC="Udev creat automaticly right devices in /dev."
-DEPENDS="util-linux-ng-blkid glib"
-BUILD_DEPENDS="$DEPENDS util-linux-ng-blkid-dev gperf pkg-config glib-dev"
+DEPENDS="glibc-base util-linux-ng-blkid glib acl attr libusb libusb-compat"
+BUILD_DEPENDS="$DEPENDS util-linux-ng-blkid-dev gperf pkg-config glib-dev \
+libusb-dev usbutils-dev pciutils"
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.kernel.org/pub/linux/utils/kernel/hotplug/udev.html"
@@ -30,14 +31,18 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/lib/firmware $fs/etc/udev $fs/usr/lib
-	for dir in sbin etc lib
+	for dir in sbin etc lib libexec
 	do
 		cp -a $_pkg/$dir $fs
 	done
 	ln -s /lib/libudev.so.0.3.0 $fs/usr/lib/libudev.so
 
+	# Remove -dev files
+	rm -rf $fs/lib/*.*a
+	rm -rf $fs/lib/pkgconfig
+
 	# Copy rules files to udev conf dir
-	mv $fs/lib/udev/rules.d $fs/etc/udev
+	mv $fs/libexec/rules.d $fs/etc/udev
 	cp stuff/udev.conf $fs/etc/udev
 	cp stuff/90-permissions.rules $fs/etc/udev/rules.d
 	cp $src/rules/packages/40-alsa.rules $fs/etc/udev/rules.d
