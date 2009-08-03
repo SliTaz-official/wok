@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="ecj"
+VERSION="3.5"
+CATEGORY="development"
+SHORT_DESC="The Eclipse standalone batch Java compiler and Ant compiler adapter."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="jre"
+BUILD_DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.jar"
+WEB_SITE="http://www.eclipse.org/jdt/core/"
+# 3.4.2: WGET_URL="http://download.eclipse.org/eclipse/downloads/drops/R-$VERSION-200902111700/$TARBALL"
+# 3.5:
+WGET_URL="http://download.eclipse.org/eclipse/downloads/drops/R-$VERSION-200906111540/$TARBALL"
+PROVIDE="jdk"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Please see the link below for a feature request addressing jar untar errors
+	# http://labs.slitaz.org/issues/show/133
+	echo " ** IGNORING ANY UNTAR ERRORS - UNTAR NOT NEEDED **"
+
+	# Build the ecj shell script to use the current version
+	mkdir -p $src/_pkg/usr/bin && 
+	echo "#!/bin/sh" > $src/_pkg/usr/bin/ecj &&
+	echo "ECJ_VERSION=$VERSION" >> $src/_pkg/usr/bin/ecj &&
+	cat stuff/ecj.sh.part >> $src/_pkg/usr/bin/ecj &&
+	chmod +x $src/_pkg/usr/bin/ecj &&
+
+	mkdir -p $src/_pkg/usr/share/java &&
+	cp -a $SOURCES_REPOSITORY/$TARBALL $src/_pkg/usr/share/java &&
+	echo " ** BUILD SUCCEEDED **"
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs
+	cp -a $_pkg/usr $fs
+}
