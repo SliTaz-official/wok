@@ -1,0 +1,90 @@
+# SliTaz package receipt.
+
+PACKAGE="icedtea6-jdk"
+SOURCE="icedtea6"
+VERSION="1.5"
+CATEGORY="development"
+SHORT_DESC="A Free Software harness for OpenJDK."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="icedtea6-jre glibc-base zlib xorg-libX11 xorg-libXau xorg-libXdmcp"
+BUILD_DEPENDS="gcc+gcj slitaz-toolchain autoconf automake m4 \
+coreutils-file-special coreutils-file-summarize alsa-lib-dev cups-dev \
+gawk file patch findutils perl zip unzip bzip2 tar cpio glib-dev zlib-dev \
+fastjar rhino ecj apache-ant xerces-xalan-j \
+freetype-dev gtk+-dev giflib-dev jpeg-dev libpng-dev \
+xorg-inputproto xorg-kbproto xorg-libXi-dev xorg-libXinerama-dev \
+xorg-libXp-dev xorg-libXt-dev xorg-libXtst-dev xorg-printproto \
+xorg-recordproto xorg-renderproto xorg-xextproto xorg-xineramaproto xorg-xproto"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.iced-tea.org/"
+WGET_URL="http://icedtea.classpath.org/download/source/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	local JVM_PREFIX
+	JVM_PREFIX=/usr/lib/jvm/java-icedtea
+
+	# NOTE: This build does not seem to work with ECJ 3.5
+
+	cd $src
+	autoreconf &&
+	./configure \
+		--prefix=/usr \
+		--disable-plugin \
+		--disable-docs \
+		--with-ecj \
+		--with-ecj-jar=/usr/share/java/ecj-3.4.2.jar \
+		--with-gcj \
+		--with-gcj-home=/usr/lib/jvm/java-gcj \
+		--with-xalan2-jar=/usr/share/java/xalan.jar \
+		--with-xalan2-serializer-jar=/usr/share/java/serializer.jar \
+		--with-xerces2-jar=/usr/share/java/xercesImpl.jar \
+		--with-rhino=/usr/share/java/js.jar \
+		--with-abs-install-dir=$JVM_PREFIX \
+		$CONFIGURE_ARGS &&
+	make ARCH_PREFIX=  || exit 1
+
+	# NOTE: IcedTea6 does not define an "install" target
+	
+	rm -r -f $src/_pkg
+
+	local JVM_BUILDDIR
+	JVM_BUILDDIR=$src/openjdk/build/linux-i586/j2sdk-image
+	local JVM_DESTDIR
+	JVM_DESTDIR=$src/_pkg$JVM_PREFIX
+
+	mkdir -p $JVM_DESTDIR
+	cp -a $JVM_BUILDDIR/bin $JVM_DESTDIR
+	cp -a $JVM_BUILDDIR/lib $JVM_DESTDIR
+	
+	mkdir -p $JVM_DESTDIR/jre
+	cp -a $JVM_BUILDDIR/jre/bin $JVM_DESTDIR/jre
+	cp -a $JVM_BUILDDIR/jre/lib $JVM_DESTDIR/jre
+	
+	# Delete duplicated executables from the JDK bin
+	for jbin in $(ls -1 $JVM_DESTDIR/jre/bin) ; do
+		rm -f $JVM_DESTDIR/bin/$jbin
+	done
+
+	# Create symlinks for JDK binaries
+	mkdir -p $src/_pkg/usr/jdk-bin
+	for jbin in $(ls -1 $JVM_DESTDIR/bin) ; do
+		ln -s $JVM_PREFIX/bin/$jbin $src/_pkg/usr/jdk-bin/$jbin
+	done
+	
+	# Create symlinks for JRE binaries
+	mkdir -p $src/_pkg/usr/jre-bin
+	for jbin in $(ls -1 $JVM_DESTDIR/jre/bin) ; do
+		ln -s $JVM_PREFIX/jre/bin/$jbin $JVM_DESTDIR/bin/$jbin
+		ln -s $JVM_PREFIX/jre/bin/$jbin $src/_pkg/usr/jre-bin
+	done
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/jvm/java-icedtea
+	cp -a $_pkg/usr/lib/jvm/java-icedtea/bin $fs/usr/lib/jvm/java-icedtea
+	cp -a $_pkg/usr/lib/jvm/java-icedtea/lib $fs/usr/lib/jvm/java-icedtea
+}
