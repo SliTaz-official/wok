@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="python-restclient"
+SOURCE="py-restclient"
+VERSION="1.3.2"
+CATEGORY="development"
+SHORT_DESC="A simple REST client for python"
+MAINTAINER="claudinei@slitaz.org"
+DEPENDS="python python-httplib2"
+BUILD_DEPENDS="python python-dev setuptools"
+TARBALL="$VERSION.gz"
+WEB_SITE="http://bitbucket.org/benoitc/$SOURCE"
+WGET_URL="$WEB_SITE/get/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	src="$SOURCE"
+	cd $src
+	python setup.py install --root=$PWD/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	_pkg="$SOURCE/_pkg"
+	for file in `find $_pkg | grep 'pyc$'`; do
+		rm $file
+	done
+	mkdir -p $fs/usr
+	rm -f $_pkg/usr/lib/python2.5/site-packages/tests/*
+	rmdir $_pkg/usr/lib/python2.5/site-packages/tests
+	cp -a $_pkg/usr $fs
+}
+
