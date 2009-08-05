@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="python-couchdbkit"
+SOURCE="couchdbkit"
+VERSION="0.1.8"
+CATEGORY="development"
+SHORT_DESC="A framework for python applications to access and manage CouchDB"
+MAINTAINER="claudinei@slitaz.org"
+DEPENDS="python couchdb python-simplejson python-restclient"
+BUILD_DEPENDS="python python-dev setuptools"
+TARBALL="$VERSION.gz"
+WEB_SITE="http://www.couchdbkit.org"
+WGET_URL="http://bitbucket.org/benoitc/$SOURCE/get/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	src="$SOURCE"
+	cd $src
+	python setup.py install --root=$PWD/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	_pkg="$SOURCE/_pkg"
+	for file in `find $_pkg | grep 'pyc$'`; do
+		rm $file
+	done
+	mkdir -p $fs/usr
+	rm -f $_pkg/usr/lib/python2.5/site-packages/tests/*
+	rmdir $_pkg/usr/lib/python2.5/site-packages/tests
+	cp -a $_pkg/usr $fs
+}
+
