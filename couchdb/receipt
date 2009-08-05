@@ -1,0 +1,75 @@
+# SliTaz package receipt.
+
+PACKAGE="couchdb"
+VERSION="0.9.1"
+SOURCE="apache-couchdb"
+CATEGORY="development"
+SHORT_DESC="Apache CouchDB is document-oriented database."
+MAINTAINER="claudinei@slitaz.org"
+DEPENDS="erlang icu icu-dev openssl spidermonkey curl"
+BUILD_DEPENDS="$DEPENDS openssl-dev spidermonkey-dev curl-dev"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.couchdb.apache.org"
+APACHE_MIRROR="http://mirrors.dedipower.com/ftp.apache.org/"
+WGET_URL="$APACHE_MIRROR/$PACKAGE/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/couchdb $fs/usr/share
+	cp -a $_pkg/var $fs
+	cp -a $_pkg/etc/couchdb $fs/etc
+	cp -a $_pkg/etc/default/couchdb $fs/etc/couchdb
+	cp -a $_pkg/etc/init.d $fs/etc
+	cp -a $_pkg/etc/logrotate.d $fs/etc
+	sed -i "s|/etc/default/couchdb|/etc/couchdb/couchdb|" \
+		$fs/etc/init.d/couchdb
+}
+
+# Pre install commands for tazpkg
+# See if couchdb is already installed and, just in case, stop it
+pre_install()
+{
+	INIT_FILE="/etc/init.d/$PACKAGE"
+	echo "Processing pre-install commands..."
+	[ -f $INIT_FILE ] && $INIT_FILE stop
+	echo "Done..."
+}
+
+# Post install commands for tazpkg
+# Create couchdb user and group
+post_install()
+{
+	LIBDIR="/var/lib/$PACKAGE"
+	ETCDIR="/etc/$PACKAGE"
+	LOGDIR="/var/log/$PACKAGE"
+	RUNDIR="/var/run/$PACKAGE"
+
+	echo "Processing post-install commands..."
+
+	grep -q "$PACKAGE" /etc/passwd || adduser -S -D -h $LIBDIR \
+		-H -s /bin/sh -g "CouchDB Administrator" $PACKAGE
+
+	for DIR in $LIBDIR $ETCDIR $LOGDIR $RUNDIR; do
+		chown -R $PACKAGE:$PACKAGE $DIR && chmod -R 0770 $DIR
+	done
+
+	echo "Done..."
+}
