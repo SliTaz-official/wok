@@ -1,0 +1,29 @@
+# SliTaz package receipt.
+
+PACKAGE="a2ps"
+VERSION="4.14"
+CATEGORY="office"
+SHORT_DESC="Any to PostScript filter."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.infres.enst.fr/~demaille/"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+BUILD_DEPENDS="gperf"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--sysconfdir=/etc --mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/* $fs
+	rm -rf $fs/usr/lib $fs/usr/include $fs/usr/share/man $fs/usr/share/info
+	sed -i 's/^FileCommand/#FileCommand/' $fs/etc/a2ps.cfg
+}
