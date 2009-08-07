@@ -1,15 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="inkscape"
-VERSION="0.45.1"
+VERSION="0.47pre1"
 CATEGORY="graphics"
 SHORT_DESC="Vector drawing application."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gc gtk+ libxslt libsigc++ glibmm gtkmm libxml2 libpng popt \
-xorg-libXdamage libgiomm"
+xorg-libXdamage libgiomm lcms gtkspell"
 BUILD_DEPENDS="gc-dev gtk+-dev libxslt-dev libsigc++-dev glibmm-dev gtkmm-dev \
-popt-dev libgiomm-dev"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+popt-dev libgiomm-dev gsl gsl-dev lcms-dev gtkspell-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.inkscape.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
@@ -17,16 +17,10 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 compile_rules()
 {
 	cd $src
-	grep -rl glib/gmessages . | while read file; do
-		echo "Patching $file..."
-		sed -i 's|glib/gmessages|glib|' $file
-	done
-	# gtk-clist fix
-	sed -i s/gtkclist.h/gtk.h/ src/widgets/sp-xmlview-attr-list.h
+	sed -i -e '\|^packaging/autopackage/default\.apspec$|d' configure.ac
 	./configure \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
-		--disable-lcms \
 		--disable-inkboard \
 		$CONFIGURE_ARGS &&
 	make &&
@@ -47,4 +41,3 @@ genpkg_rules()
 	rm -rf $fs/usr/share/inkscape/examples
 	rm -rf $fs/usr/share/inkscape/screens/keys*
 }
-
