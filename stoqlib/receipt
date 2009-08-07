@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="stoqlib"
+VERSION="0.9.10"
+CATEGORY="development"
+SHORT_DESC="A powerful retail system library"
+MAINTAINER="claudinei@slitaz.org"
+DEPENDS="python pygtk postgresql psycopg2 zopeinterface python-pil \
+python-reportlab python-kiwi python-gazpacho stoqdrivers python-dateutil"
+BUILD_DEPENDS="python python-dev zopeinterface python-kiwi python-gazpacho \
+psycopg2 stoqdrivers python-pil python-reportlab python-dateutil"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.stoq.com.br"
+WGET_URL="http://download.stoq.com.br/sources/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	python setup.py install --root=$PWD/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	LOCALEDIR="$WOK/$PACKAGE/$PACKAGE-$VERSION/locale"
+	for file in `find $_pkg | grep 'pyc$'`; do
+		rm $file
+	done
+	mkdir -p $fs/usr/share/locale/pt
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share $fs/usr
+	cp -a $LOCALEDIR/pt_BR/LC_MESSAGES $fs/usr/share/locale/pt
+}
+
