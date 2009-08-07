@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="lvm2"
+SOURCE="LVM2"
+VERSION="2.02.51"
+CATEGORY="system-tools"
+SHORT_DESC="Linux Logical Volume Manager."
+MAINTAINER="guillaume.michon@laposte.net"
+DEPENDS="readline linux-md libdevmapper"
+BUILD_DEPENDS="readline-dev"
+TARBALL="$SOURCE.$VERSION.tgz"
+WEB_SITE="http://sourceware.org/lvm2/"
+WGET_URL="ftp://sources.redhat.com/pub/lvm2/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	old_src=$(echo "$src" | sed "s/-$VERSION/.$VERSION/")
+	mv $old_src $src
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--enable-cmdlib \
+		--enable-dmeventd \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib/* $fs/usr/lib
+	rm $fs/usr/lib/libdevmapper.so*
+}
+
+
