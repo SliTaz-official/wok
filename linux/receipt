@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="linux"
-VERSION="2.6.29.3"
+VERSION="2.6.30.4"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 DEPENDS="depmod"
 BUILD_DEPENDS="slitaz-toolchain perl"
-MAINTAINER="pascal.bellard@slitaz.org"
+MAINTAINER="devel@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.kernel.org/"
 WGET_URL="http://www.eu.kernel.org/pub/linux/kernel/v${VERSION:0:3}/$TARBALL"
@@ -32,12 +32,10 @@ compile_rules()
 		cp ../stuff/$patch_file slitaz/$patch_file
 		touch done.$patch_file
 	done <<EOT
-$PACKAGE-lzma-$VERSION.u
 $PACKAGE-utf8-$VERSION.u
 $PACKAGE-diff-$VERSION.u
-$PACKAGE-rootdev.u
 EOT
-	make mrproper	
+	make mrproper
 	cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
 	make oldconfig
 	ln .config slitaz/config
@@ -45,7 +43,7 @@ EOT
 	make modules
 	make INSTALL_MOD_PATH=$PWD/_pkg modules_install
 	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install
-} 
+}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -64,16 +62,11 @@ genpkg_rules()
     export src
     export _pkg
     $src/list_modules.sh $(cat stuff/modules-$VERSION.list) > $src/modules.list
-    while read module firmwares; do
+    while read module; do
     	dir=$(dirname $module)
     	[ -d $path/$dir ] || mkdir -p $path/$dir
         cp -a $_pkg/lib/modules/$VERSION-slitaz/kernel/$module $path/$dir
     done < $src/modules.list
-    for i in $(cat stuff/firmwares-$VERSION.list) ; do
-    	dir=$(dirname $i)
-    	[ -d $fs/lib/firmware/$dir ] || mkdir -p $fs/lib/firmware/$dir
-	cp -a $_pkg/lib/firmware/$i $fs/lib/firmware/$i
-    done
     # Remove unresolved links
     rm -f $fs/lib/modules/$VERSION-slitaz/build
     rm -f $fs/lib/modules/$VERSION-slitaz/source
@@ -87,10 +80,6 @@ genpkg_rules()
     do
     	echo tazwok cook ${i%/receipt}
     done
-	# check and echo modules
-	 cp ./stuff/check_modules.sh $src
-	 $src/check_modules.sh "$VERSION" "$WOK"
-	
 }
 
 # Pre and post install commands for Tazpkg.
@@ -99,35 +88,25 @@ post_install()
 {
     echo "Processing post-install commands..."
     chroot "$1/" depmod -a $VERSION-slitaz
-
-    # Update in-kernel module list
-    for module in ohci_hcd vfat msdos nls_utf8 fat snd_hda_intel ; do
-	sed -i "s/$module//" $1/etc/rcS.conf
-    done
-
     if [ -f "$1/boot/grub/menu.lst" ]; then
-		if ! grep -q "vmlinuz-$VERSION-slitaz" $1/boot/grub/menu.lst; then
-    		root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`
-			grub_dev=`cat $1/boot/grub/menu.lst | grep "root.* (" | head -n 1`
-			# Add new kernel entry in case of upgrade for installed system.
-    		cat >> $1/boot/grub/menu.lst << EOT
+    	root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/'`
+		grub_dev=`cat $1/boot/grub/menu.lst | grep "root ("`
+		# Add new kernel entry in case of upgrade for installed system.
+    	cat >> $1/boot/grub/menu.lst << EOT
 
 title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
 $grub_dev
        kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
 EOT
-			# Display information message.
-    		cat <<EOT
+		# Display information message.
+    	cat <<EOT
 ----
 GRUB is installed, these tree lines has been added to the menu.lst:
- 
+
 title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
 $grub_dev
        kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
 ----
 EOT
-		else
-			echo "Grub menu.lst seems already configured to boot new Kernel..."
-		fi
 	fi
 }
