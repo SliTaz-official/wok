@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="stoqdrivers"
+VERSION="0.9.8"
+CATEGORY="development"
+SHORT_DESC="Useful drivers for Stoq and retail systems"
+MAINTAINER="claudinei@slitaz.org"
+DEPENDS="python python-kiwi python-serial zopeinterface"
+BUILD_DEPENDS="python python-dev python-kiwi python-serial zopeinterface"
+SUGGESTED="stoq"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.stoq.com.br"
+WGET_URL="http://download.stoq.com.br/sources/0.9.10/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	python setup.py install --root=$PWD/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	LOCALEDIR="$WOK/$PACKAGE/$PACKAGE-$VERSION/locale"
+	for file in `find $_pkg | grep 'pyc$'`; do
+		rm $file
+	done
+	mkdir -p $fs/usr/share/locale/pt
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share $fs/usr
+	cp -a $LOCALEDIR/pt_BR/LC_MESSAGES $fs/usr/share/locale/pt
+}
+
