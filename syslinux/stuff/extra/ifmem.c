@@ -54,7 +54,7 @@ static unsigned long memory_size(void)
 int main(int argc, char *argv[])
 {
   char *s;
-  int i;
+  int i, j;
 
   for (s = argv[1]; *s && (*s < '0' || *s > '9'); s++);
 
@@ -66,15 +66,17 @@ int main(int argc, char *argv[])
 
   // find target according to ram size
   for (i = 1; i + 2 < argc; ) { 
-    i++; // size
+    j = i++; // size
     if (memory_size() >= strtoul(s, NULL, 0)) break;
     s = argv[++i];
   }
 
   // find and copy extra parameters to command line
-  // assume last parameter is "noram"
-  for (s = argv[i]; i < argc; i++) { 
-	if (!strcmp(argv[i],"noram") && ++i < argc) {
+  // assume the command line ends with two words (not number)
+  for (s = argv[i++]; i < argc; i++) { 
+	char c = argv[i];
+	if (c >= '0' && c <= '9') j = i;
+	if (i - j > 2 && ++i < argc) {
 #define SZ 512
 		static char cmdline[SZ];
 		char *p = cmdline, *q = s;
