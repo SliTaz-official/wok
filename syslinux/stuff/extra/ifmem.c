@@ -54,7 +54,7 @@ static unsigned long memory_size(void)
 int main(int argc, char *argv[])
 {
   char *s;
-  int i, j;
+  int i, j = 1;
 
   for (s = argv[1]; *s && (*s < '0' || *s > '9'); s++);
 
@@ -74,9 +74,9 @@ int main(int argc, char *argv[])
   // find and copy extra parameters to command line
   // assume the command line ends with two words (not number)
   for (s = argv[i++]; i < argc; i++) { 
-	char c = argv[i];
+	char c = *argv[i];
 	if (c >= '0' && c <= '9') j = i;
-	if (i - j > 2 && ++i < argc) {
+	if (i - j > 2 && i < argc) {
 #define SZ 512
 		static char cmdline[SZ];
 		char *p = cmdline, *q = s;
