@@ -39,7 +39,7 @@
 #include <stdlib.h>
 #include <syslinux/boot.h>
 
-static long memory_size(void)
+static unsigned long memory_size(void)
 {
   com32sys_t ireg, oreg;
 
@@ -64,14 +64,32 @@ int main(int argc, char *argv[])
     return 1;
   }
 
+  # find target according to ram size
   for (i = 1; i + 2 < argc; ) { 
     i++; // size
     if (memory_size() >= strtoul(s, NULL, 0)) break;
     s = argv[++i];
   }
-  if (argv[i])
-    syslinux_run_command(argv[i]);
-  else
-    syslinux_run_default();
+
+  # find and copy extra parameters to command line
+  # assume last parameter is "noram"
+  for (s = argv[i]; i < argc; i++) { 
+	if (!strcmp(argv[i],"noram") && ++i < argc) {
+#define SZ 512
+		static char cmdline[SZ];
+		char *p = cmdline, *q = s;
+		int j;
+		for (j = i; j <= argc; j++) {
+			while (*q && p < cmdline + SZ -1) *p++ = *q++;
+			if (p < cmdline + SZ -1) *p++ = ' ';
+			q = argv[j];
+		}
+		*p++ = 0;
+		s = cmdline;
+	}
+  }
+
+  if (s) syslinux_run_command(s);
+  else   syslinux_run_default();
   return -1;
 }
