@@ -64,15 +64,15 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  # find target according to ram size
+  // find target according to ram size
   for (i = 1; i + 2 < argc; ) { 
     i++; // size
     if (memory_size() >= strtoul(s, NULL, 0)) break;
     s = argv[++i];
   }
 
-  # find and copy extra parameters to command line
-  # assume last parameter is "noram"
+  // find and copy extra parameters to command line
+  // assume last parameter is "noram"
   for (s = argv[i]; i < argc; i++) { 
 	if (!strcmp(argv[i],"noram") && ++i < argc) {
 #define SZ 512
