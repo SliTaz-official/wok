@@ -7,16 +7,18 @@
 #
 . /etc/init.d/rc.functions
 . /etc/daemons.conf
+. /etc/network.conf
 
 NAME=Zcip
 DESC="ZeroConf deamon"
 DAEMON=/sbin/zcip
 OPTIONS=$ZCIP_OPTIONS
 PIDFILE=/var/run/zcip.pid
+[ -n "$OPTIONS" ] || OPTIONS="$INTERFACE /etc/zcip.script"
 
 case "$1" in
   start)
-    if [ -f $PIDFILE ] ; then
+    if active_pidfile $PIDFILE zcip ; then
       echo "$NAME already running."
       exit 1
     fi
@@ -25,7 +27,7 @@ case "$1" in
     status
     ;;
   stop)
-    if [ ! -f $PIDFILE ] ; then
+    if ! active_pidfile $PIDFILE zcip ; then
       echo "$NAME is not running."
       exit 1
     fi
@@ -35,7 +37,7 @@ case "$1" in
     status
     ;;
   restart)
-    if [ ! -f $PIDFILE ] ; then
+    if ! active_pidfile $PIDFILE zcip ; then
       echo "$NAME is not running."
       exit 1
     fi
