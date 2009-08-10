@@ -39,7 +39,15 @@ genpkg_rules()
 	cp -a $_pkg/etc $fs
 	rm -rf $fs/etc/apache/original
 	cp -a $_pkg/var $fs
-	ln -s /usr/bin/apachectl $fs/etc/init.d/apache
+	cat > $fs/etc/init.d/apache <<EOT
+#!/bin/sh
+ 
+. /etc/init.d/rc.functions
+active_pidfile /var/run/apache/httpd.pid httpd
+ 
+exec /usr/bin/apachectl "\$@"
+EOT
+	chmod +x $fs/etc/init.d/apache
 	sed -i  -e 's|User daemon|User www|' -e 's|Group daemon|Group www|' \
 		-e 's|ServerAdmin you@example.com|ServerAdmin root@localhost|' \
 		-e 's|#Include /etc/apache/extra/httpd-ssl.conf|Include /etc/apache/extra/httpd-ssl.conf|' \
