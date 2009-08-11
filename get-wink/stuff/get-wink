@@ -1,0 +1,73 @@
+#!/bin/sh -e
+
+ROOT="$1"
+PACKAGE=${0#*get-}
+
+if test $(id -u) != 0 ; then
+	echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please type 'su' and root password to become super-user.\n"
+	exit 0
+fi
+
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+  [ -n "$ROOT" ] && exit 1
+  tazpkg remove $PACKAGE
+  [ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
+fi
+[ -d $ROOT/usr/share/$PACKAGE ] && rm -rf $ROOT/usr/share/$PACKAGE
+
+dl_urls()
+{
+   wget -O - http://www.debugmode.com/wink/download.php 2> /dev/null | \
+   	grep gz | sed 's/.*<a href=\(.*\)gz>.*/\1gz/'
+}
+
+WEB_SITE="http://www.debugmode.com/wink/"
+
+TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+
+# Download tarball
+for i in $(dl_urls); do
+	TARBALL=$(basename $i)
+	wget $i && break
+done
+
+VERSION=${TARBALL%.*}
+VERSION=${VERSION%.tar}
+VERSION=${VERSION#wink}
+
+# Extract
+tar xzf $TARBALL
+
+# Install files
+mkdir -p $PACKAGE-$VERSION/fs/usr/share/$PACKAGE $PACKAGE-$VERSION/fs/usr/bin
+tar xzf installdata.tar.gz -C $PACKAGE-$VERSION/fs/usr/share/$PACKAGE
+cat > $PACKAGE-$VERSION/fs/usr/bin/$PACKAGE <<EOT
+#!/bin/sh
+exec $PACKAGE-$VERSION/fs/usr/share/$PACKAGE/$PACKAGE "$@"
+EOT
+chmod +x $PACKAGE-$VERSION/fs/usr/bin/$PACKAGE
+
+# Create pseudo package
+cat > $PACKAGE-$VERSION/receipt <<EOT
+# SliTaz package receipt.
+
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="Tutorial and Presentation creation software."
+WEB_SITE="$WEB_SITE"
+DEPENDS="gtk+ atk pango glib xorg-libXi xorg-libXext xorg-libX11 libstdc++5"
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Install pseudo package
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+
+# Clean
+cd $CUR_DIR
+rm -rf $TMP_DIR
