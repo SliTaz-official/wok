@@ -21,7 +21,7 @@ case "$1" in
   start)
     for i in $PROTOCOLS; do
       [ -s /etc/perdition/perdition.$i.conf ] || continue
-      if [ -f $PIDFILE.$i/perdition.$i.pid ] ; then
+      if active_pidfile $PIDFILE.$i/perdition.$i.pid perdition.$i ; then
         echo "$NAME ($i) already running."
 	continue
       fi
@@ -34,7 +34,7 @@ case "$1" in
   stop)
     for i in $PROTOCOLS; do
       [ -s /etc/perdition/perdition.$i.conf ] || continue
-      if [ ! -f $PIDFILE.$i/perdition.$i.pid ] ; then
+      if ! active_pidfile $PIDFILE.$i/perdition.$i.pid perdition.$i ; then
         echo "$NAME ($i) is not running."
 	continue
       fi
@@ -46,7 +46,7 @@ case "$1" in
   restart)
     for i in $PROTOCOLS; do
       [ -s /etc/perdition/perdition.$i.conf ] || continue
-      if [ ! -f $PIDFILE.$i/perdition.$i.pid ] ; then
+      if ! active_pidfile $PIDFILE.$i/perdition.$i.pid perdition.$i ; then
         echo "$NAME ($i) is not running."
 	continue
       fi
@@ -61,7 +61,7 @@ case "$1" in
   reload)
     for i in $PROTOCOLS; do
       [ -s /etc/perdition/perdition.$i.conf ] || continue
-      [ -f $PIDFILE.$i/perdition.$i.pid ] && \
+      active_pidfile $PIDFILE.$i/perdition.$i.pid perdition.$i && \
 		kill -1 `cat $PIDFILE.$i/perdition.$i.pid`
       status
     done
