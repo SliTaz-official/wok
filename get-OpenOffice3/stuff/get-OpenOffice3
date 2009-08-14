@@ -29,7 +29,7 @@ TARBALL="OOo_${VERSION}_${SUFFIX}"
 WGET_URL=ftp://ftp.proxad.net/mirrors/ftp.openoffice.org/$DIR/$VERSION/$TARBALL
 
 TEMP_DIR="/tmp/$PACKAGE.$$"
-SOURCE_DIR="/tmp/src"
+SOURCE_DIR="/tmp/src.$$"
 EXCLUDE="kde|gnome|test"
 LOG="/tmp/$(basename $0 .sh).log"
 
@@ -94,6 +94,11 @@ if [ ! -f $SOURCE_DIR/$TARBALL ]; then
 	# Get the file.
 	wget -c $WGET_URL -O $SOURCE_DIR/$TARBALL
 	status
+fi
+if [ ! -f $SOURCE_DIR/$TARBALL ]; then
+	rm -rf $SOURCE_DIR
+	echo "Could not download $TARBALL. Exiting."
+	exit 1
 fi
 
 # Creates TEMP_DIR and extract tarball
@@ -166,5 +171,6 @@ tazpkg pack $PACKAGE-$VERSION
 tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
 
 # Clean
+rm -rf $SOURCE_DIR
 rm -rf $TEMP_DIR
 rm -rf $PACKAGE-$VERSION

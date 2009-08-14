@@ -9,17 +9,18 @@ TMP=/tmp/$(basename $0)$$
 case "$MODULE" in
 speedtouch|speedtouch-silver|speedtch)
 	VERSION="3.012"
+	TARBALL="SpeedTouch330_firmware_$(echo $VERSION | sed 's/\.//').zip"
 	SHORT_DESC="Firmware for SpeedTouch ADSL Modem."
 	WEB_SITE="http://www.linux-usb.org/SpeedTouch/"
-	URL="http://www.speedtouch.com/download/drivers/USB"
-	URL="$URL/SpeedTouch330_firmware_$(echo $VERSION | sed 's/\.//').zip"
+	URL="http://www.speedtouch.com/download/drivers/USB/$TARBALL"
 	;;
 ueagle|ueagle-atm)
 	VERSION="1.1"
+	TARBALL="ueagle-data-$VERSION.tar.gz"
 	SHORT_DESC="Firmware for Fast800 USB ADSL Modem."
 	SOURCE="ueagle-data"
 	WEB_SITE="http://eagle-usb.org/"
-	URL="${WEB_SITE}ueagle-atm/non-free/ueagle-data-$VERSION.tar.gz"
+	URL="${WEB_SITE}ueagle-atm/non-free/$TARBALL"
 	;;
 *)	echo "Unknown dsl driver. Please run one of the following commands:"
 	for i in $(cd $(dirname $0); ls get-*-firmware); do
@@ -78,6 +79,13 @@ ueagle|ueagle-atm)
 		$PKG-$VERSION/fs/lib/firmware/ueagle-atm/CMV4p.bin || true
 	;;
 esac
+
+if [ ! -f $TARBALL ]; then
+	echo "Could not download $TARBALL. Exiting."
+	cd $TOP
+	rm -rf $TMP
+	exit 1
+fi
 
 # Create receipt
 cat > $PKG-$VERSION/receipt <<EOT

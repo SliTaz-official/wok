@@ -113,13 +113,21 @@ mkdir $TMP
 TOP=$PWD
 cd $TMP
 wget $WGET_URL
+TARBALL="$(basename $WGET_URL)"
+if [ ! -f $TARBALL ]; then
+	cd $TOP
+	rm -rf $DIR
+	echo "Could not download $TARBALL. Exiting."
+	exit 1
+fi
+
 case "$WGET_URL" in
-*rpm)	rpm2cpio < $(basename $WGET_URL) | cpio -id;;
-*deb)	dpkg-deb -x $(basename $WGET_URL) . ;;
-*bz2)	tar xjf $(basename $WGET_URL)
+*rpm)	rpm2cpio < $TARBALL | cpio -id;;
+*deb)	dpkg-deb -x $TARBALL . ;;
+*bz2)	tar xjf TARBALL
 	cd $SUBDIR/driver;;
-*tar.gz|*tgz)	tar xzf $(basename $WGET_URL);;
-*zip)	unzip $(basename $WGET_URL);;
+*tar.gz|*tgz)	tar xzf $TARBALL;;
+*zip)	unzip $TARBALL;;
 *o)	;;
 esac
 	
