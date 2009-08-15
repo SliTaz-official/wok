@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="moc"
+VERSION="2.4.4"
+CATEGORY="multimedia"
+SHORT_DESC="Music on console."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="alsa-lib libvorbis libogg libmad libid3tag flac \
+	 curl libsamplerate libsndfile"
+BUILD_DEPENDS="libvorbis-dev libogg-dev libmad-dev libid3tag-dev flac-dev \
+	       curl-dev libsamplerate-dev alsa-lib-dev libcurl ncurses-dev \
+               libsndfile-dev libsndfile libid3tag pkg-config libsamplerate" 
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://moc.daper.net/"
+WGET_URL="ftp://ftp.daper.net/pub/soft/moc/stable/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/moc $fs/usr/share/doc $fs/usr/share/moc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/moc/* $fs/usr/lib/moc
+	cp -a $_pkg/usr/share/doc/* $fs/usr/share/doc
+	cp -a $_pkg/usr/share/moc/* $fs/usr/share/moc
+
+	# strip unneeded libraries
+	rm $fs/usr/lib/moc/decoder_plugins/*.*a
+}
