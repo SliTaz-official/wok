@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="podofo"
+VERSION="0.7.0"
+CATEGORY="office"
+SHORT_DESC="PDF library."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://podofo.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="fontconfig freetype zlib jpeg tiff"
+BUILD_DEPENDS="cmake fontconfig-dev freetype-dev zlib-dev jpeg-dev tiff-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RELEASE \
+	      -DPODOFO_BUILD_SHARED:BOOL=TRUE . &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
+
