@@ -1,0 +1,61 @@
+# SliTaz package receipt.
+
+PACKAGE="xtrkcad"
+VERSION="4.0.3a"
+CATEGORY="games"
+SHORT_DESC="A CAD program for designing model railroad layouts."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="menu-railroad glibc-base glib libgio zlib expat libxml2 gtk+ \
+libgtkhtml fontconfig freetype atk cairo libpng pango pixman libxcb \
+xcb-util xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor \
+xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes \
+xorg-libXinerama xorg-libXrender"
+BUILD_DEPENDS="slitaz-toolchain cmake pkg-config gettext zlib-dev \
+gtk+-dev libxml2-dev libgtkhtml-dev libgtkhtml doxygen xorg-xproto \
+xorg-renderproto xorg-libX11-dev xorg-kbproto xorg-libXau-dev \
+xorg-libXdmcp-dev"
+TARBALL="$PACKAGE-source-$VERSION.tar.gz"
+WEB_SITE="http://www.xtrkcad.org/"
+WGET_URL="$SF_MIRROR/$PACKAGE-fork/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Determine if TOOLPREFIX has been defined in tazwok.conf as it should
+	if [ -z "$TOOLPREFIX" ] ; then
+		# Provide a default TOOLPREFIX value
+		TOOLPREFIX=i486-pc-linux-gnu-
+	fi
+
+	XTRKCAD_STUFF=$PWD/stuff
+	
+	mv $PACKAGE-source-$VERSION $PACKAGE-$VERSION
+	cd $src
+	cmake -D CMAKE_C_COMPILER:FILEPATH=${TOOLPREFIX}gcc \
+		-D CMAKE_CXX_COMPILER:FILEPATH=${TOOLPREFIX}c++ \
+		-D CMAKE_INSTALL_PREFIX=/usr \
+		-D XTRKCAD_USE_GTK=ON -D XTRKCAD_USE_GTK_CAIRO=ON . &&
+	make PREFIX=/usr &&
+	make DESTDIR=$src/_pkg install &&
+	mkdir -p $src/_pkg/usr/share/pixmaps &&
+	# cp -f $XTRKCAD_STUFF/$PACKAGE.png $src/_pkg/usr/share/pixmaps &&
+	cp -f $src/app/bin/xtrkcad.ico $src/_pkg/usr/share/pixmaps
+	mkdir -p $src/_pkg/usr/share/applications &&
+	cp -f $XTRKCAD_STUFF/$PACKAGE.desktop $src/_pkg/usr/share/applications &&
+	sed -e 's|^Categories=[^$]*$|Categories=Application;Railroad;|g' -i $src/_pkg/usr/share/applications/xtrkcad.desktop
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/$PACKAGE
+	cp -f $_pkg/usr/share/$PACKAGE/$PACKAGE.tip $fs/usr/share/$PACKAGE
+	cp -f $_pkg/usr/share/$PACKAGE/$PACKAGE.xtq $fs/usr/share/$PACKAGE
+	cp -f $_pkg/usr/share/$PACKAGE/logo.bmp $fs/usr/share/$PACKAGE
+	cp -a $_pkg/usr/share/$PACKAGE/params $fs/usr/share/$PACKAGE
+	
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+
+	cp -a $_pkg/usr/bin $fs/usr
+}
