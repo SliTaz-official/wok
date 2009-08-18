@@ -207,8 +207,10 @@ EOF
 		cat >>$TEMP_DIR/install.sh<<EOF
 [ -d /var/www ] || mkdir -p /var/www
 ln -s \$DIR/website /var/www
-tazpkg list | grep -q ^lighttpd || yes y | tazpkg get-install lighttpd > /dev/null 2>&1
-echo "=> slitaz web site installed in http://localhost/website"
+if [ -d /.usr.rw -o ! -d /usr/.moved ]; then
+  tazpkg list | grep -q ^lighttpd || yes y | tazpkg get-install lighttpd > /dev/null 2>&1
+  echo "=> slitaz web site installed in http://localhost/website"
+fi
 EOF
 	fi;;
 esac
@@ -252,7 +254,7 @@ case " $OPTIONS " in
 	*\ --auto-install\ *)
     	echo -n "Enable auto install"
 		cat >>$TEMP_DIR/install.sh<<EOF
-echo "mount -o ro -t iso9660 LABEL=packages-$PKG_VER /mnt" >> /etc/init.d/local.sh
+echo "[ -f /mnt/install.sh ] || mount -o ro -t iso9660 LABEL=packages-$PKG_VER /mnt" >> /etc/init.d/local.sh
 EOF
 		sed -i "s/rw root/rw config=LABEL=packages-$PKG_VER,install.sh root/" \
 			$TEMP_DIR/boot/isolinux/*.cfg
