@@ -49,7 +49,7 @@ struct e820_data {
 // Get memory size in Kb
 static unsigned long memory_size(void)
 {
-  unsigned long bytes = 0;
+  uint64_t bytes = 0;
   com32sys_t ireg, oreg;
   struct e820_data ed;
 
@@ -94,19 +94,22 @@ int main(int argc, char *argv[])
 {
   char *s;
   int i, j = 1;
+  unsigned long ram_size;
 
   for (s = argv[1]; *s && (*s < '0' || *s > '9'); s++);
 
+  openconsole(&dev_null_r, &dev_stdcon_w);
   if (argc < 4 || !*s) {
-    openconsole(&dev_null_r, &dev_stdcon_w);
     perror("\nUsage: ifmem.c32 size_KB boot_large_memory boot_small_memory\n");
     return 1;
   }
 
   // find target according to ram size
+  ram_size = memory_size();
+  printf("Total memory found %luK.\n",ram_size);
   for (i = 1; i + 2 < argc; ) { 
     j = i++; // size
-    if (memory_size() >= strtoul(s, NULL, 0)) break;
+    if (ram_size >= strtoul(s, NULL, 0)) break;
     s = argv[++i];
   }
 
