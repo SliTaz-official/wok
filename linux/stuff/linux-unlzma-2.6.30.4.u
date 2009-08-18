@@ -39,42 +39,72 @@
  	if (!wr->flush) {
  		int32_t pos;
  		while (offs > wr->header->dict_size)
-@@ -311,6 +323,34 @@
+@@ -309,8 +321,41 @@
  
+ }
+ 
++static inline void INIT write_byte_if_cpio(struct writer *wr, uint8_t byte)
++{
++	if (wr->buffer_pos % LZMA_IOBUF_SIZE == 0) {
++		// if the following large_malloc fails, the initramfs
++		// whould not be load with is_cpio_flush forced 0 too.
++		// Remember we do not allocate historic buffer.
++		// Let's assume it will never fail !
++		if (wr->next_index >= wr->max_index) {
++			// realloc wr->buffer_index
++			uint8_t **p = wr->buffer_index;
++			wr->buffer_index = (uint8_t **) 
++				large_malloc(LZMA_IOBUF_SIZE + 
++					    sizeof(*p) * wr->max_index);
++			if (wr->max_index) {
++				memcpy(wr->buffer_index, p,
++				       sizeof(*p) * wr->max_index);
++				free(p);
++			}
++			wr->max_index += LZMA_IOBUF_SIZE / sizeof(*p);
++		}
++		wr->buffer_index[wr->next_index++] =
++			(uint8_t *) large_malloc(LZMA_IOBUF_SIZE);
++	}
++	wr->buffer_index[wr->buffer_pos / LZMA_IOBUF_SIZE]
++			[wr->buffer_pos % LZMA_IOBUF_SIZE] =
++		wr->previous_byte = byte;
++	wr->buffer_pos++;
++}
++
  static inline void INIT write_byte(struct writer *wr, uint8_t byte)
  {
 +	if (wr->is_cpio_flush) {
-+		if (wr->buffer_pos % LZMA_IOBUF_SIZE == 0) {
-+			// if the following large_malloc fails, the initramfs
-+			// whould not be load with is_cpio_flush forced 0 too.
-+			// Remember we do not allocate historic buffer.
-+			// Let's assume it will never fail !
-+			if (wr->next_index >= wr->max_index) {
-+				// realloc wr->buffer_index
-+				uint8_t **p = wr->buffer_index;
-+				wr->buffer_index = (uint8_t **) 
-+					large_malloc(LZMA_IOBUF_SIZE + 
-+						    sizeof(*p) * wr->max_index);
-+				if (wr->max_index) {
-+					memcpy(wr->buffer_index, p,
-+					       sizeof(*p) * wr->max_index);
-+					free(p);
-+				}
-+				wr->max_index += LZMA_IOBUF_SIZE / sizeof(*p);
-+			}
-+			wr->buffer_index[wr->next_index++] =
-+				(uint8_t *) large_malloc(LZMA_IOBUF_SIZE);
-+		}
-+		wr->buffer_index[wr->buffer_pos / LZMA_IOBUF_SIZE]
-+				[wr->buffer_pos % LZMA_IOBUF_SIZE] =
-+			wr->previous_byte = byte;
-+		wr->buffer_pos++;
++		write_byte_if_cpio(wr, byte);
 +		return;
 +	}
  	wr->buffer[wr->buffer_pos++] = wr->previous_byte = byte;
  	if (wr->flush && wr->buffer_pos == wr->header->dict_size) {
  		wr->buffer_pos = 0;
-@@ -339,6 +379,9 @@
+@@ -328,7 +373,21 @@
+ static inline void INIT copy_bytes(struct writer *wr,
+ 					 uint32_t rep0, int len)
+ {
+-	do {
++	if (wr->is_cpio_flush) {
++		int32_t pos;
++		uint32_t offs = rep0;
++		while (offs > wr->header->dict_size)
++			offs -= wr->header->dict_size;
++		pos = wr->buffer_pos - offs;
++		do {
++			write_byte_if_cpio(wr, 
++				wr->buffer_index[pos / LZMA_IOBUF_SIZE]
++						[pos % LZMA_IOBUF_SIZE]);
++			pos++;
++			len--;
++		} while (len != 0 && wr->buffer_pos < wr->header->dst_size);
++	}
++	else do {
+ 		copy_byte(wr, rep0);
+ 		len--;
+ 	} while (len != 0 && wr->buffer_pos < wr->header->dst_size);
+@@ -339,6 +398,9 @@
  				     int pos_state, uint16_t *prob,
  				     int lc, uint32_t literal_pos_mask) {
  	int mi = 1;
@@ -84,7 +114,7 @@
  	rc_update_bit_0(rc, prob);
  	prob = (p + LZMA_LITERAL +
  		(LZMA_LIT_SIZE
-@@ -369,18 +412,13 @@
+@@ -369,18 +431,13 @@
  		rc_get_bit(rc, prob_lit, &mi);
  	}
  	write_byte(wr, mi);
@@ -105,7 +135,7 @@
  	uint16_t *prob_len;
  	int num_bits;
  	int len;
-@@ -396,7 +434,7 @@
+@@ -396,7 +453,7 @@
  		prob = p + LZMA_LEN_CODER;
  	} else {
  		rc_update_bit_1(rc, prob);
@@ -114,7 +144,7 @@
  		if (rc_is_bit_0(rc, prob)) {
  			rc_update_bit_0(rc, prob);
  			prob = (p + LZMA_IS_REP_0_LONG
-@@ -417,13 +455,13 @@
+@@ -417,13 +474,13 @@
  			uint32_t distance;
  
  			rc_update_bit_1(rc, prob);
@@ -130,14 +160,15 @@
  				if (rc_is_bit_0(rc, prob)) {
  					rc_update_bit_0(rc, prob);
  					distance = cst->rep2;
-@@ -444,24 +482,24 @@
+@@ -444,24 +501,24 @@
  	prob_len = prob + LZMA_LEN_CHOICE;
  	if (rc_is_bit_0(rc, prob_len)) {
  		rc_update_bit_0(rc, prob_len);
 -		prob_len = (prob + LZMA_LEN_LOW
 +		prob_len += LZMA_LEN_LOW - LZMA_LEN_CHOICE
  			    + (pos_state <<
- 			       LZMA_LEN_NUM_LOW_BITS));
+-			       LZMA_LEN_NUM_LOW_BITS));
++			       LZMA_LEN_NUM_LOW_BITS);
  		offset = 0;
  		num_bits = LZMA_LEN_NUM_LOW_BITS;
  	} else {
@@ -149,7 +180,8 @@
 -			prob_len = (prob + LZMA_LEN_MID
 +			prob_len += LZMA_LEN_MID - LZMA_LEN_CHOICE_2
  				    + (pos_state <<
- 				       LZMA_LEN_NUM_MID_BITS));
+-				       LZMA_LEN_NUM_MID_BITS));
++				       LZMA_LEN_NUM_MID_BITS);
  			offset = 1 << LZMA_LEN_NUM_LOW_BITS;
  			num_bits = LZMA_LEN_NUM_MID_BITS;
  		} else {
@@ -159,7 +191,7 @@
  			offset = ((1 << LZMA_LEN_NUM_LOW_BITS)
  				  + (1 << LZMA_LEN_NUM_MID_BITS));
  			num_bits = LZMA_LEN_NUM_HIGH_BITS;
-@@ -529,6 +567,7 @@
+@@ -529,6 +586,7 @@
  			      void(*error_fn)(char *x)
  	)
  {
@@ -167,7 +199,7 @@
  	struct lzma_header header;
  	int lc, pb, lp;
  	uint32_t pos_state_mask;
-@@ -563,6 +602,10 @@
+@@ -563,6 +621,10 @@
  	wr.global_pos = 0;
  	wr.previous_byte = 0;
  	wr.buffer_pos = 0;
@@ -178,7 +210,7 @@
  
  	rc_init(&rc, fill, inbuf, in_len);
  
-@@ -596,23 +639,23 @@
+@@ -596,23 +658,23 @@
  	if (header.dict_size == 0)
  		header.dict_size = 1;
  
@@ -206,7 +238,7 @@
  	rc_init_code(&rc);
  
  	while (get_pos(&wr) < header.dst_size) {
-@@ -631,12 +674,25 @@
+@@ -631,12 +693,25 @@
  
  	if (posp)
  		*posp = rc.ptr-rc.buffer;
