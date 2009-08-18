@@ -25,11 +25,11 @@ set_patch()
     i=$(($i-1))
     tag=$(grep "$tag" $1/etc/init.d/rcS)
     if [ "$2" = "-R" ]; then
-    	line="-$(($i-60)),62 +$(($i-60)),2"
+    	line="-$(($i-61)),63 +$(($i-61)),2"
 	i="-"
     else
         grep -q 'from slitaz-loram-cdrom package' $1/etc/init.d/rcS && return
-    	line="-$i,2 +$i,62"
+    	line="-$i,2 +$i,63"
 	i="+"
     fi
     patch -p0 <<EOF
@@ -61,38 +61,39 @@ $i		DIR=\`cat /proc/cmdline | sed 's/.* loram=\([^ ]*\).*/\1/'\`
 $i		DEVICE=\${DIR%,*}
 $i		DIR=/\${DIR#*,}
 $i	fi
-$i	mount -o ro \$DEVICE /cdrom
-$i	if [ -d /.usr.rw ]; then
-$i		echo -n "Mounting /usr read-write... "
-$i		usr=.usr.ro
-$i	else
-$i		echo -n "Mounting /usr read-only... "
-$i		usr=usr
-$i	fi
-$i	FS=/cdrom\$DIR/usr.cromfs
-$i	if [ -f \$FS ]; then
-$i		release_cdrom
-$i		/bin/cromfs-driver \$FS /\$usr -o ro,dev,suid,allow_other
-$i	elif [ -f /cdrom\$DIR/usr.sqfs ]; then
-$i		FS=/cdrom\$DIR/usr.sqfs
-$i		release_cdrom
-$i		mount -o loop,ro -t squashfs \$FS /\$usr
-$i	elif [ -L /\$usr ]; then
-$i		FS=/cdrom\$DIR/usr
-$i		if release_cdrom; then
-$i			rm -f /\$usr
-$i			mv \$FS /usr
-$i		fi
-$i	else
-$i		umount /cdrom
-$i		false
-$i	fi
-$i	status 
-$i	if [ -d /.usr.rw ]; then
-$i		if [ -x /bin/funionfs ]; then
-$i			/bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other -o suid,dev NONE /usr
+$i	if mount -o ro \$DEVICE /cdrom 2> /dev/null ; then
+$i		if [ -d /.usr.rw ]; then
+$i			echo -n "Mounting /usr read-write... "
+$i			usr=.usr.ro
 $i		else
-$i			/bin/mount -t aufs -o br:/.usr.rw:/.usr.ro none /usr
+$i			echo -n "Mounting /usr read-only... "
+$i			usr=usr
+$i		fi
+$i		FS=/cdrom\$DIR/usr.cromfs
+$i		if [ -f \$FS ]; then
+$i			release_cdrom
+$i			/bin/cromfs-driver \$FS /\$usr -o ro,dev,suid,allow_other
+$i		elif [ -f /cdrom\$DIR/usr.sqfs ]; then
+$i			FS=/cdrom\$DIR/usr.sqfs
+$i			release_cdrom
+$i			mount -o loop,ro -t squashfs \$FS /\$usr
+$i		elif [ -L /\$usr ]; then
+$i			FS=/cdrom\$DIR/usr
+$i			if release_cdrom; then
+$i				rm -f /\$usr
+$i				mv \$FS /usr
+$i			fi
+$i		else
+$i			umount /cdrom
+$i			false
+$i		fi
+$i		status 
+$i		if [ -d /.usr.rw ]; then
+$i			if [ -x /bin/funionfs ]; then
+$i				/bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other -o suid,dev NONE /usr
+$i			else
+$i				/bin/mount -t aufs -o br:/.usr.rw:/.usr.ro none /usr
+$i			fi
 $i		fi
 $i	fi
 $i fi
