@@ -41,6 +41,7 @@
 
 static unsigned long memory_size(void)
 {
+  unsigned long res;
   com32sys_t ireg, oreg;
 
   memset(&ireg, 0, sizeof ireg);
@@ -48,7 +49,14 @@ static unsigned long memory_size(void)
   ireg.eax.w[0] = 0xe801;
   __intcall(0x15, &ireg, &oreg);
 
-  return  oreg.ecx.w[0] + ( oreg.edx.w[0] << 6);
+  res = oreg.ecx.w[0] + ( oreg.edx.w[0] << 6);
+  if (!res) {
+  	memset(&ireg, 0, sizeof ireg);
+  	ireg.eax.w[0] = 0x8800;
+  	__intcall(0x15, &ireg, &oreg);
+	res = ireg.eax.w[0];
+  }
+  return res;
 }
 
 int main(int argc, char *argv[])
