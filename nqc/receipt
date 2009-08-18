@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="nqc"
+VERSION="3.1.r6-4"
+CATEGORY="development"
+SHORT_DESC="Compiler for the Not Quite C programming language"
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="glibc-base gcc-lib-base"
+BUILD_DEPENDS="slitaz-toolchain bison flex m4"
+TARBALL="$PACKAGE-$VERSION.bz2"
+WEB_SITE="http://bricxcc.sourceforge.net/nqc/"
+#WGET_URL="http://bricxcc.sourceforge.net/nqc/release/$TARBALL"
+WGET_URL="http://users.zoominternet.net/~rcx/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Determine if TOOLPREFIX has been defined in tazwok.conf as it should
+	if [ -z "$TOOLPREFIX" ] ; then
+		# Provide a default TOOLPREFIX value
+		TOOLPREFIX=i486-pc-linux-gnu-
+	fi
+
+	cd $src
+	make TOOLPREFIX="$(TOOLPREFIX)" \
+		DEFAULT_SERIAL_NAME='"/dev/ttyS0"' \
+		DEFAULT_USB_NAME='"/dev/usb/legousbtower0"' \
+		DEFAULT_PORT_NAME='"usb"' &&
+	make DESTDIR=$src/_pkg PREFIX=/usr install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+}
