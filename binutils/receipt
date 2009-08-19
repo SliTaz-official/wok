@@ -16,8 +16,15 @@ WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 #
 compile_rules()
 {
+	# Determine if TOOLPREFIX has been defined in tazwok.conf
+	if [ -z "$TOOLPREFIX" ] ; then
+		# Provide a default value
+		TOOLPREFIX=i486-pc-linux-gnu-
+	fi
+
 	mkdir binutils-build && cd binutils-build
 	../$PACKAGE-$VERSION/configure \
+		--program-prefix=$TOOLPREFIX \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
@@ -28,7 +35,17 @@ compile_rules()
 	# to the source tree. Can't install directly... This is done
 	# to keep the $src and $_pkg working for genpkg.
 	make tooldir=/usr DESTDIR=$PWD/_pkg install &&
-	mv _pkg ../$PACKAGE-$VERSION/
+	mv _pkg ../$PACKAGE-$VERSION/ &&
+	# This is the default binutils, so create symlinks
+	# to the target platform binutil binaries.
+	# Delete duplicate binaries to save space.
+	for binutil in $(ls -1 $src/_pkg/usr/bin/ | grep "${TOOLPREFIX}") ; do
+		genericBinutilPath="$src/_pkg/usr/bin/$(echo "$binutil" | sed "s:$TOOLPREFIX::g")"
+		if [ -e $genericBinutilPath ] ; then
+			rm -f $genericBinutilPath
+		fi
+		ln -s $binutil $genericBinutilPath
+	done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -44,5 +61,5 @@ genpkg_rules()
 	
 	# Remove 'strings' (Busybox).
 	#rm $fs/usr/lib/libiberty.a
-	rm $fs/usr/bin/strings
+	rm $fs/usr/bin/strings $fs/usr/bin/*-strings
 }
