@@ -1,0 +1,49 @@
+# SliTaz package receipt.
+
+PACKAGE="rocrail"
+VERSION="1.2.6"
+CATEGORY="games"
+SHORT_DESC="A model railroad control system."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="menu-railroad glibc-base gcc-lib-base libuuid zlib expat \
+glib libgio wxWidgets gtk+ fontconfig freetype atk jpeg tiff libpng \
+cairo pango pixman libxcb xcb-util \
+xorg-libICE xorg-libSM xorg-libX11 xorg-libXau xorg-libXcomposite \
+xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext \
+xorg-libXfixes xorg-libXinerama xorg-libXrender xorg-libXxf86vm"
+BUILD_DEPENDS="slitaz-toolchain wxWidgets-dev"
+TARBALL="Rocrail-Act-$VERSION.tar.gz"
+WEB_SITE="http://rocrail.net/"
+WGET_URL="http://launchpad.net/$PACKAGE/$PACKAGE-act/1.2/+download/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Determine if TOOLPREFIX has been defined in tazwok.conf as it should
+	if [ -z "$TOOLPREFIX" ] ; then
+		# Provide a default TOOLPREFIX value
+		TOOLPREFIX=i486-pc-linux-gnu-
+	fi
+
+	mv Rocrail-Act-1.2 $src
+	rm -r -f $src/.bzr $src/.settings
+
+	# Apply the make updates v9 backported to rocrail 1.2.6
+	tar xzf stuff/rocrail-make-v9bp.tgz
+	cp -a rocrail/* $src
+	rm -r -f rocrail
+
+	cd $src
+	make &&
+	make DESTDIR=$src/_pkg PREFIX=/usr install &&
+	sed -e 's|^Categories=[^$]*$|Categories=Application;Railroad;|g' -i $src/_pkg/usr/share/applications/*.desktop
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs
+	cp -a $_pkg/usr $fs
+	rm -r -f $fs/usr/share/desktop-directories
+	rm -r -f $fs/usr/share/info
+}
