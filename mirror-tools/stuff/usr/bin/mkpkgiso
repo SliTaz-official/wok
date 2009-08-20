@@ -5,7 +5,7 @@
 # Authors : Eric Joseph-Alexandre <erjo@slitaz.org>
 #	    Pascal Bellard <pascal.bellard@slitaz.org>
 
-VERSION=0.5
+VERSION=0.6
 
 ROOT=/home/slitaz/iso
 SORT_DIR=${ROOT}/_iso.$$
@@ -86,7 +86,10 @@ DIR=\$(cd \$(busybox dirname \$0); pwd)
 # Handle --auto-install case
 if [ "\$DIR" == "/etc/init.d" ]; then
   DIR=/cdrom
-
+  if [ ! -f /cdrom/install.sh ]; then
+    mkdir /cdrom 2> /dev/null
+    mount --bind /mnt /cdrom
+  fi
   # Handle loram on hybrid hard disk / usb key case
   if [ ! -d /usr/bin ]; then
     echo ""
@@ -121,7 +124,8 @@ fi
 ls -d \$DIR/packages/* > /var/lib/tazpkg/mirror
 ln -fs \$DIR/packages/*/*.tazpkg /var/cache/tazpkg/
 ln -fs \$DIR/packages/*/packages.* /var/lib/tazpkg
-echo "=> all $PKG_VER package are available for tazpkg/tazpkgbox"
+echo ""
+echo "=> all $PKG_VER packages are available for tazpkg/tazpkgbox"
 EOF
 [ -e files.list.lzma ] && cat >>$TEMP_DIR/install.sh<<EOF
 ln -fs \$DIR/packages/*/files.list.lzma /var/lib/tazpkg
@@ -209,7 +213,7 @@ EOF
 		echo "$(echo $SORT_DIR/packages/*/lighttpd-[0-9]*) -7100" >> $SORT_FILE
 		echo "$(echo $SORT_DIR/packages/*/pcre-[0-9]*) -7100" >> $SORT_FILE
 		cat >>$TEMP_DIR/install.sh<<EOF
-echo "=> slitaz web site installed in file:///\$DIR/website"
+echo "=> slitaz web site installed in file://\$DIR/website/index.html"
 EOF
 	fi;;
 esac
@@ -252,9 +256,6 @@ case " $OPTIONS " in
     case " $OPTIONS " in
 	*\ --auto-install\ *)
     	echo -n "Enable auto install"
-		cat >>$TEMP_DIR/install.sh<<EOF
-echo "[ -f /\$DIR/install.sh ] || mount -o ro -t iso9660 LABEL=packages-$PKG_VER /\$DIR" >> /etc/init.d/local.sh
-EOF
 		sed -i "s/rw root/rw config=LABEL=packages-$PKG_VER,install.sh root/" \
 			$TEMP_DIR/boot/isolinux/*.cfg
 		status
