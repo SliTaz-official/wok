@@ -1,27 +1,21 @@
 ;; SilTaz Emacs site file
 ;;
-;; Last update: 2008-06-28
+;; Last update: 2009-08-15
 ;;
-;; SliTaz receipt files
-;; Force emacs in shell-script-mode                                 
+;; Add support for SliTaz receipt files
+;; force emacs in shell-script-mode                                 
 (setq auto-mode-alist (cons '("receipt" . shell-script-mode) auto-mode-alist))
 
-;; LUA programming Language
-;; add major-mode for editing Lua scripts                                    
-(setq auto-mode-alist (cons '("\\.lua$" . lua-mode) auto-mode-alist))
-    (autoload 'lua-mode "lua-mode" "Lua editing mode." t)
-
-
 ;; Force emacs to use tabs
-;;  From Scott Hurring's HOWTO
-;;  Turn on tabs
+;;  from Scott Hurring's HOWTO
+;;  turn on tabs
 (setq indent-tabs-mode t)
 (setq-default indent-tabs-mode t)
 
-;;  Bind the TAB key 
+;;  bind the TAB key 
 (global-set-key (kbd "TAB") 'self-insert-command)
 
-;;  Set the tab width
+;;  set the tab width
 (setq default-tab-width 4)
 (setq tab-width 4)
 (setq c-basic-indent 4)
