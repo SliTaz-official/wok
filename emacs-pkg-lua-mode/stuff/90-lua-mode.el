@@ -1,6 +1,5 @@
 ;; lua-mode start file for SliTaz
-;;
-;; (C) GNU gpl v3 - SliTaz GNU/Linux 2009.
+;; Last update: 2009-08-22
 ;;
 ;; To set up Emacs to automatically edit files ending in .lua using Lua-mode 
 
@@ -14,3 +13,6 @@
 ;; If you want to use hideshow, turn on hs-minor-mode or add this:
 
 (add-hook 'lua-mode-hook 'hs-minor-mode)
+
+;;
+

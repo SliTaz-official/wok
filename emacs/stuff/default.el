@@ -1,6 +1,6 @@
-;; SilTaz Emacs site file
-;;
-;; Last update: 2009-08-15
+;; Emacs default file for SliTaz
+;; (C) GNU gpl v3 - SliTaz GNU/Linux 2009
+;; Last update: 2009-08-22
 ;;
 ;; Add support for SliTaz receipt files
 ;; force emacs in shell-script-mode                                 

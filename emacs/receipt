@@ -1,7 +1,5 @@
 # SliTaz package receipt.
 
-PACKED_SIZE="16.0M"
-UNPACKED_SIZE="57.6M"
 PACKAGE="emacs"
 VERSION="23.1"
 CATEGORY="development"
@@ -112,7 +110,7 @@ genpkg_rules()
 	XPM_DIR="	images images/custom images/ezimage images/gnus images/gud images/mail images/smilies \
 				images/smilies/grayscale images/smilies/medium images/tree-widget/default images/tree-widget/folder"
 	for dir in $XPM_DIR; do
-		echo -n "Copying $dir files"
+		echo -n "Copying $dir xpm files"
 		mkdir -p $fs/usr/share/$PACKAGE/$VERSION/etc/$dir && \
 		cp $_pkg/usr/share/$PACKAGE/$VERSION/etc/$dir/*.xpm $fs/usr/share/$PACKAGE/$VERSION/etc/$dir && \
 		for file in COPYING README TODO; do
@@ -120,6 +118,12 @@ genpkg_rules()
 				cp $_pkg/usr/share/$PACKAGE/$VERSION/$dir/$file $fs/usr/share/$PACKAGE/$VERSION/$dir
 			fi
 		done
+		status
+	done
+	PNG_DIR="	images images/gnus images/tree-widget/default images/tree-widget/folder"
+	for dir in $PNG_DIR; do
+		echo -n "Copying $dir png files"
+		cp $_pkg/usr/share/$PACKAGE/$VERSION/etc/$dir/*.png $fs/usr/share/$PACKAGE/$VERSION/etc/$dir && \
 		status
 	done
 	# Licence
@@ -133,7 +137,8 @@ genpkg_rules()
 	echo -n "Installing specific SliTaz file"
 	mkdir -p $fs/usr/share/$PACKAGE/site-lisp/site-start.d && \
 	cp -a $_pkg/usr/share/$PACKAGE/site-lisp $fs/usr/share/$PACKAGE && \
-	cp -a stuff/slitaz.el $fs/usr/share/$PACKAGE/site-lisp/site-start.d && \
+	cp -a stuff/default.el $fs/usr/share/$PACKAGE/site-lisp && \
+	cp -a stuff/90-slitaz.el $fs/usr/share/$PACKAGE/site-lisp/site-start.d
 	status
 	# Install desktop files for emacs
 	echo -n "Installing emacs menu"
@@ -150,6 +155,25 @@ genpkg_rules()
 	# Directory  workaround
 	cd $fs/usr/share/$PACKAGE/$VERSION
 	ln -s ../site-lisp site-lisp
+}
+
+post_install()
+{
+	cd /usr/share/emacs/site-lisp
+	cat <<-EOF >site-start.el
+	;; site-start.el for SliTaz			-*- no-byte-compile: t -*-
+	;;
+	;; (C) GNU gpl v3 - SliTaz GNU/Linux 2009.
+	;;
+	;; This default site startup file for Emacs was created by tazpkg
+	;; reconfigure emacs. You may modify this file, replace it by your
+	;; own site initialisation, or even remove it completely.
+	;;
+	EOF
+	START_FILES=`ls site-start.d/ | sort`
+	for file in $START_FILES; do
+	    cat site-start.d/$file >> site-start.el
+	done
 }
 
 post_remove()
