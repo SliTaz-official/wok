@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="tazpkg"
-VERSION="3.0"
+VERSION="3.1"
 CATEGORY="base-system"
 SHORT_DESC="SliTaz packages manager."
 MAINTAINER="pankso@slitaz.org"
@@ -23,7 +23,21 @@ genpkg_rules()
 	cp -a $src/lib/* $fs/usr/lib/slitaz
 	cp -a $src/applications $fs/usr/share
 	cp -a $src/pixmaps $fs/usr/share
+	cp -a $src/mime $fs/usr/share
 	cp -a $src/doc/$PACKAGE.html $fs/usr/share/doc/$PACKAGE
 	chmod 755 $fs/usr/bin/$PACKAGE
 	chown -R root.root $fs
+	# Default icon for mimetype (freedesktop standard compliant file
+	# manager will diplay a tazpkg icon for SliTaz packages).
+	mkdir -p $fs/usr/share/icons/hicolor/32x32/mimetypes
+	cd $fs/usr/share/icons/hicolor/32x32/mimetypes
+	ln -s /usr/share/pixmaps/tazpkg.png package-x-tazpkg.png
+	ln -s /usr/share/pixmaps/tazpkg.png gnome-mime-application-x-tazpkg.png
+}
+
+post_install()
+{
+	# update mime-cache
+	echo "Updating mime-types database..."
+	update-mime-database $1/usr/share/mime
 }
