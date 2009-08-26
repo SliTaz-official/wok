@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="davfs2"
+VERSION="1.4.1"
+CATEGORY="network"
+SHORT_DESC="Remote collaborative authoring of Web resources."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://savannah.nongnu.org/projects/$PACKAGE"
+WGET_URL="http://mirrors.linhub.com/savannah/$PACKAGE/$TARBALL"
+DEPENDS="neon"
+BUILD_DEPENDS="neon-dev"
+CONFIG_FILES="/etc/davfs2"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--sysconfdir=/etc --mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/etc $fs
+	sed -i -e 's/# dav_user/dav_user/' \
+	       -e 's/# dav_group/dav_group/' \
+	       -e 's/ davfs2 / www /' \
+	       $fs/etc/davfs2/davfs2.conf
+}
