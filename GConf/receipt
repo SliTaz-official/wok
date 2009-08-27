@@ -19,7 +19,10 @@ WGET_URL="ftp://ftp.gnome.org/pub/GNOME/sources/$PACKAGE/2.26/$TARBALL"
 compile_rules()
 {
 	cd $src
-    ./configure --prefix=/usr \
+    ./configure \
+    	--prefix=/usr \
+    	--sysconfdir=/etc \
+    	--libexecdir=/usr/lib/GConf \
 		$CONFIGURE_ARGS  &&
     make &&
     make DESTDIR=$src/_pkg install
@@ -28,15 +31,12 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p  $fs/usr/lib/GConf/2/
-	cp -a $_pkg/usr/lib/GConf/2/*.so* $fs/usr/lib/GConf/2/
+	mkdir -p  $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/lib/GConf $fs/usr/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	
+	rm $fs/usr/lib/GConf/2/*.*a
 	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/etc $fs/usr
-	cp -a $_pkg/usr/libexec $fs/usr
-	
-	mkdir -p $fs/usr/share
+	cp -a $_pkg/etc $fs
 	cp -a $_pkg/usr/share/dbus-1 $fs/usr/share
 	cp -a $_pkg/usr/share/PolicyKit $fs/usr/share
 }
