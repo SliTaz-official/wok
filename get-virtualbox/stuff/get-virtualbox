@@ -1,0 +1,93 @@
+#!/bin/sh -e
+
+ROOT="$1"
+PACKAGE=${0#*get-}
+
+if test $(id -u) != 0 ; then
+	echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please type 'su' and root password to become super-user.\n"
+	exit 0
+fi
+
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+  [ -n "$ROOT" ] && exit 1
+  tazpkg remove $PACKAGE
+  [ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
+fi
+[ -d $ROOT/usr/share/$PACKAGE ] && rm -rf $ROOT/usr/share/$PACKAGE
+
+WEB_SITE=http://www.virtualbox.org/
+SHORT_DESC="x86 virtualization."
+dl_url()
+{
+   wget -O - ${WEB_SITE}wiki/Linux_Downloads 2> /dev/null | \
+   	 grep Linux_x86.run | sed 's|.*href="\(.*Linux_x86.run\).*|\1|'
+}
+
+TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+
+url=$(dl_url)
+TARBALL=$(basename $url)
+wget $url
+
+if [ ! -f "$TARBALL" ]; then
+	cd $CUR_DIR
+	rm -rf $TMP_DIR
+	echo "Could not download $TARBALL. Exiting."
+	exit 1
+fi
+
+VERSION=${TARBALL%-Linux_x86.run*}
+VERSION=${VERSION#VirtualBox-}
+
+sed -i 's/df -kP/df -k/' $TARBALL
+
+# Extract
+sh $TARBALL --noexec --keep
+
+BUILD_DEPENDS="slitaz-toolchain bzip2 linux-source python python-dev"
+for i in $BUILD_DEPENDS; do
+	[ -d /var/lib/tazpkg/installed/$i ] && continue
+	yes y | tazpkg get-install $i
+done
+
+# Install files
+cd install 
+[ -d /usr/share/VirtualBox ] && ./uninstall.sh
+find /usr /etc > ../before
+./install.sh install /usr/share/VirtualBox 
+cd ..
+find /usr /etc > after
+mkdir -p $PACKAGE-$VERSION/fs
+diff -U0 before after | grep ^+/ | sed 's|^\+/||' | \
+( cd / ; cpio -o -H newc ) | ( cd $PACKAGE-$VERSION/fs ; cpio -idm )
+
+# Create pseudo package
+cat > $PACKAGE-$VERSION/receipt <<EOT
+# SliTaz package receipt.
+
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+EXTRAVERSION=_$(uname -r | sed 's/-slitaz//')
+CATEGORY="non-free"
+SHORT_DESC="$SHORT_DESC"
+WEB_SITE="$WEB_SITE"
+DEPENDS="libsdl fontconfig gcc-lib-base glib libpng python udev"
+
+post_install()
+{
+$(grep '  udev[atp]' install/install.sh)
+}
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Install pseudo package
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+
+# Clean
+cd $CUR_DIR
+rm -rf $TMP_DIR
