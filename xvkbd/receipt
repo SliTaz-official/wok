@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="xvkbd"
+VERSION="3.0"
+CATEGORY="x-window"
+SHORT_DESC="virtual (graphical) keyboard program for X Window System."
+MAINTAINER="paul@slitaz.org"
+DEPENDS=""
+BUILD_DEPENDS="xorg-imake xorg-cf-files xorg-libXt-dev xorg-libX11-dev \
+xorg-xproto xorg-libSM-dev xorg-libXaw-dev xorg-libICE-dev xorg-libXp-dev \
+xorg-libXtst-dev xorg-xextproto xorg-inputproto xorg-libXmu-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://homepage3.nifty.com/tsato/xvkbd/"
+WGET_URL="${WEB_SITE}$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+
+	# remove Xaw3d
+	sed -i '/#define XAW3D/d' Imakefile
+	xmkmf &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/etc/X11
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/* $fs/usr/lib
+	cp -a $_pkg/etc/X11/* $fs/etc/X11
+	# Add .desktop file
+	cp -a stuff/* $fs
+}
+
+post_install()
+{ 
+	# .Xdefaults file
+	cat >> /home/tux/.Xdefaults << EOT
+
+! xvkbd settings
+!
+xvkbd*Font: -misc-fixed-medium-r-semicondensed--0-0-75-75-c-0-iso8859-1
+EOT
+}
+
