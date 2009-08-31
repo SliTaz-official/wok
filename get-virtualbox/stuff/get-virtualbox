@@ -56,10 +56,12 @@ done
 # Install files
 cd install 
 [ -d /usr/share/VirtualBox ] && ./uninstall.sh
-find /usr /etc > ../before
+find /usr /etc /lib > ../before
 ./install.sh install /usr/share/VirtualBox 
 cd ..
-find /usr /etc > after
+find /usr /etc /lib > after
+sed -i 's/ps -U/ps | grep/' /usr/share/VirtualBox/VBox.sh
+echo 'lsmod | grep -q vboxdrv || modprobe vboxdrv' >> /etc/vbox/vbox.cfg
 mkdir -p $PACKAGE-$VERSION/fs
 diff -U0 before after | grep ^+/ | sed 's|^\+/||' | \
 ( cd / ; cpio -o -H newc ) | ( cd $PACKAGE-$VERSION/fs ; cpio -idm )
@@ -79,6 +81,7 @@ DEPENDS="libsdl fontconfig gcc-lib-base glib libpng python udev"
 post_install()
 {
 $(grep '  udev[atp]' install/install.sh)
+    chroot "\$1/" depmod -a $(uname -r)
 }
 EOT
 
