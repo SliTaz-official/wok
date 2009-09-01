@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="ntlmaps"
+VERSION="0.9.9.0.1"
+CATEGORY="network"
+SHORT_DESC="NTLM Authorization Proxy Server to authenticate via an MS Proxy."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://ntlmaps.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="python"
+CONFIG_FILES="/etc/ntlmaps.conf"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/ntlmaps $fs/usr/bin $fs/etc
+	cp -a $src/* $fs/usr/share/ntlmaps
+	mv $fs/usr/share/ntlmaps/server.cfg $fs/etc/ntlmaps.conf
+	ln -s /etc/ntlmaps.conf $fs/usr/share/ntlmaps/server.cfg
+	cat > $fs/usr/bin/ntlmaps <<EOT
+#!/bin/sh
+exec python /usr/share/ntlmaps/main.py
+EOT
+	chmod +x $fs/usr/bin/ntlmaps
+}
+
