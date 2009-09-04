@@ -1,0 +1,36 @@
+#!/bin/sh
+
+grub_part=0
+[ -n "$1" ] && case "$1" in
+[0-9]*) grub_part=$1;;
+*) cat 1>&2 <<EOT
+Usage: $0 [partition]
+Install grub on dmraid device. Default partition is 0.
+EOT
+  exit 2;;
+esac
+
+# Get raid parameters
+dev=/dev/mapper/$(dmraid -s 2> /dev/null | grep ^name | awk '{ print $3 }')
+if [ "$dev" == "/dev/mapper/" ]; then
+	echo "No dmraid device found." 1>&2
+	exit 1
+fi
+
+geometry="$(fdisk -l $dev | grep heads | sed \
+'s|\(.*\) heads, \(.*\) sectors/track, \(.*\) cylinders|\3 \1 \2|')"
+
+# Grub bug workaround
+for i in ${dev}p* ; do
+  n=${i#${dev}p}
+  [ -e $i -a ! -e ${dev}$n ] && ln -s $(basename $dev)p$n ${dev}$n 
+done
+
+# Let's go
+grub --device-map=/dev/null --batch <<EOT
+device (hd0) $dev
+geometry (hd0) $geometry
+root (hd0,$grub_part)
+setup (hd0)
+quit
+EOT
