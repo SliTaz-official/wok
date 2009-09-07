@@ -4,7 +4,7 @@ PACKAGE="h8300-binutils"
 SOURCE="binutils"
 VERSION="2.16.1"
 CATEGORY="development"
-SHORT_DESC="binutils targeting the H8/300"
+SHORT_DESC="binutils targeting the H8/300."
 MAINTAINER="rcx@zoominternet.net"
 DEPENDS=""
 BUILD_DEPENDS="slitaz-toolchain bison flex"
@@ -12,29 +12,33 @@ TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gnu.org/software/binutils/"
 WGET_URL="$GNU_MIRROR/$SOURCE/$TARBALL"
 
+# Configuration only needs included if we're in the build/wok environment
+if [ -e $WOK/h8300-toolchain/stuff/h8300.conf ] ; then
+	. $WOK/h8300-toolchain/stuff/h8300.conf
+fi
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	./configure \
-		--target=h8300-hitachi-hms \
+		--target=$H8300_TARGET \
 		--prefix=/usr \
 		--disable-nls \
-		--exec-prefix=/usr \
-		--libexecdir=/usr/lib \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$src/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr $fs$H8300_ROOT
 	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/$H8300_TARGET/* $fs$H8300_ROOT
 	# do not need to copy lib/libiberty.a
-	rm -f $fs/usr/lib/libiberty.a
+	
+	strip -s $fs$H8300_ROOT/bin/*
 }

@@ -12,13 +12,19 @@ TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.gnu.org/software/gdb/"
 WGET_URL="$GNU_MIRROR/$SOURCE/$TARBALL"
 
+# Configuration only needs included if we're in the build/wok environment
+if [ -e $WOK/h8300-toolchain/stuff/h8300.conf ] ; then
+	. $WOK/h8300-toolchain/stuff/h8300.conf
+fi
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir -p $src-build
-	cd $src-build
+	mkdir -p $SOURCE-$VERSION-build
+	cd $SOURCE-$VERSION-build
 	$src/configure \
-		--target=h8300-hitachi-hms \
+		--disable-werror \
+		--target=$H8300_TARGET \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
@@ -32,4 +38,10 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr
 	cp -a $_pkg/usr/bin $fs/usr
+}
+
+# Rules to clean the package
+clean_wok()
+{
+	rm -r -f $SOURCE-$VERSION-build
 }

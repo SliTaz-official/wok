@@ -13,6 +13,11 @@ WEB_SITE="http://www.gnu.org/software/gcc/"
 WGET_URL="$GNU_MIRROR/$SOURCE/$SOURCE-$VERSION/$TARBALL"
 PROVIDE="h8300-gcc"
 
+# Configuration only needs included if we're in the build/wok environment
+if [ -e $WOK/h8300-toolchain/stuff/h8300.conf ] ; then
+	. $WOK/h8300-toolchain/stuff/h8300.conf
+fi
+
 # Rules to configure and make the package.
 compile_rules()
 {
@@ -20,12 +25,11 @@ compile_rules()
 	mkdir -p $SOURCE-$VERSION-build
 	cd $SOURCE-$VERSION-build
 	$src/configure \
-		--target=h8300-hitachi-hms \
+		--target=$H8300_TARGET \
 		--enable-languages=c,c++,ada \
 		--disable-nls \
 		--enable-target-optspace \
 		--prefix=/usr \
-		--exec-prefix=/usr \
 		--libexecdir=/usr/lib \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
@@ -40,9 +44,12 @@ genpkg_rules()
 	mkdir -p $fs/usr
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/include $fs/usr
-	# do not need to copy lib/libiberty.a
+	# Do not need to copy lib/libiberty.a
 	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/lib/gcc $fs/usr/lib
+	# Do not include the h8300* variant folders; create separate packages if they are needed
+	rm -r -f $fs/usr/lib/gcc/$H8300_TARGET/$VERSION/h8300h
+	rm -r -f $fs/usr/lib/gcc/$H8300_TARGET/$VERSION/h8300s
 }
 
 # Rules to clean the package
