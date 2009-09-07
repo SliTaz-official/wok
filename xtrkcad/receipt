@@ -21,16 +21,11 @@ WGET_URL="$SF_MIRROR/$PACKAGE-fork/$TARBALL"
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Determine if TOOLPREFIX has been defined in tazwok.conf as it should
-	if [ -z "$TOOLPREFIX" ] ; then
-		# Provide a default TOOLPREFIX value
-		TOOLPREFIX=i486-pc-linux-gnu-
-	fi
-
 	XTRKCAD_STUFF=$PWD/stuff
 	
 	mv $PACKAGE-source-$VERSION $PACKAGE-$VERSION
 	cd $src
+	sed -e 's|share/xtrkcad/locale|share/locale|g' -i CMakeLists.txt &&
 	cmake -D CMAKE_C_COMPILER:FILEPATH=${TOOLPREFIX}gcc \
 		-D CMAKE_CXX_COMPILER:FILEPATH=${TOOLPREFIX}c++ \
 		-D CMAKE_INSTALL_PREFIX=/usr \
@@ -38,8 +33,7 @@ compile_rules()
 	make PREFIX=/usr &&
 	make DESTDIR=$src/_pkg install &&
 	mkdir -p $src/_pkg/usr/share/pixmaps &&
-	# cp -f $XTRKCAD_STUFF/$PACKAGE.png $src/_pkg/usr/share/pixmaps &&
-	cp -f $src/app/bin/xtrkcad.ico $src/_pkg/usr/share/pixmaps
+	cp -f $XTRKCAD_STUFF/$PACKAGE.png $src/_pkg/usr/share/pixmaps &&
 	mkdir -p $src/_pkg/usr/share/applications &&
 	cp -f $XTRKCAD_STUFF/$PACKAGE.desktop $src/_pkg/usr/share/applications &&
 	sed -e 's|^Categories=[^$]*$|Categories=Application;Railroad;|g' -i $src/_pkg/usr/share/applications/*.desktop
