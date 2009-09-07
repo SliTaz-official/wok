@@ -11,14 +11,19 @@ BUILD_DEPENDS="slitaz-toolchain mingw32-binutils mingw32-runtime-headers mingw32
 TARBALL="$SOURCE-$VERSION-src.tar.gz"
 WEB_SITE="http://www.mingw.org/"
 WGET_URL="$SF_MIRROR/mingw/$TARBALL"
-MINGW32_TARGET="i586-pc-mingw32"
+MINGW32_ID="i586-pc-mingw32"
+
+# Configuration only needs included if we're in the build/wok environment
+if [ -e $WOK/mingw32-toolchain/stuff/mingw32.conf ] ; then
+	. $WOK/mingw32-toolchain/stuff/mingw32.conf
+fi
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Set a default value for BUILD_HOST if it is not defined in tazwok.conf as it should be
-	if [ -z "$BUILD_HOST" ] ; then
-		BUILD_HOST=i486-pc-linux-gnu
+	if [ "$MINGW32_ID" != "$MINGW32_TARGET" ] ; then
+		echo "ERROR: Conf 'TARGET' string differs from Receipt 'ID' string"
+		exit 1
 	fi
 
 	rm -f -r $src/binutils
@@ -30,17 +35,16 @@ compile_rules()
 		--prefix=$src/_pkg/usr \
 		--host=$MINGW32_TARGET \
 		--build=$BUILD_HOST &&
-	make CFLAGS="-O2 -mms-bitfields -march=${TARGET_CPU-i386} -I/usr/$MINGW32_TARGET/include" LDFLAGS="-s" &&
+	make CFLAGS="-O2 -mms-bitfields -march=${TARGET_CPU-i386} -I$MINGW32_ROOT/include" LDFLAGS="-s" &&
 	make DESTDIR=$src/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/$MINGW32_TARGET
-	cp -a $_pkg/usr/bin $fs/usr/lib/$MINGW32_TARGET
-	cp -a $_pkg/usr/include $fs/usr/lib/$MINGW32_TARGET
-	cp -a $_pkg/usr/lib $fs/usr/lib/$MINGW32_TARGET
+	mkdir -p $fs$MINGW32_ROOT
+	cp -a $_pkg/usr/bin $fs$MINGW32_ROOT
+	cp -a $_pkg/usr/lib $fs$MINGW32_ROOT
 }
 
 # Rules to setup after installation
@@ -49,7 +53,7 @@ post_install()
 	# Archives get stripped during packaging; need to run ranlib
 	local root
 	root=$1
-	find $root/usr/lib/$MINGW32_TARGET/lib/ -name *.a -exec $MINGW32_TARGET-ranlib {} \;
+	find $root/usr/$MINGW32_ID/lib/ -name *.a -exec $MINGW32_ID-ranlib {} \;
 }
 
 # Rules to clean the package

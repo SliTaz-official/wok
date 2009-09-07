@@ -13,11 +13,21 @@ TARBALL="$SOURCE-core-$VERSION-src.tar.gz"
 WEB_SITE="http://www.mingw.org/"
 MINGW32_URL="$SF_MIRROR/mingw"
 WGET_URL="$MINGW32_URL/$TARBALL"
-MINGW32_TARGET="i586-pc-mingw32"
+MINGW32_ID="i586-pc-mingw32"
+
+# Configuration only needs included if we're in the build/wok environment
+if [ -e $WOK/mingw32-toolchain/stuff/mingw32.conf ] ; then
+	. $WOK/mingw32-toolchain/stuff/mingw32.conf
+fi
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	if [ "$MINGW32_ID" != "$MINGW32_TARGET" ] ; then
+		echo "ERROR: Conf 'TARGET' string differs from Receipt 'ID' string"
+		exit 1
+	fi
+
 	MINGW32_DIR="$PWD"
 	MINGW32_CPP_TARBALL="$SOURCE-g++-$VERSION-src.tar.gz"
 	MINGW32_ADA_TARBALL="$SOURCE-ada-$VERSION-src.tar.gz"
@@ -51,7 +61,7 @@ compile_rules()
 		--libexecdir=/usr/lib \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
-		--with-sysroot=/usr/lib/$MINGW32_TARGET \
+		--with-sysroot=$MINGW32_ROOT \
 		--disable-shared \
 		--disable-debug \
 		--target=$MINGW32_TARGET \
@@ -67,9 +77,9 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/lib $fs$MINGW32_ROOT
+	cp -a $_pkg$MINGW32_ROOT/* $fs$MINGW32_ROOT
 	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/$MINGW32_TARGET $fs/usr/lib
 	cp -a $_pkg/usr/include $fs/usr
 	# do not need to copy lib/libiberty.a
 	mkdir -p $fs/usr/lib
@@ -82,8 +92,8 @@ post_install()
 	# Archives get stripped during packaging; need to run ranlib
 	local root
 	root=$1
-	find $root/usr/lib/gcc/$MINGW32_TARGET/ -name *.a -exec $MINGW32_TARGET-ranlib {} \;
-	find $root/usr/lib/$MINGW32_TARGET/lib/ -name *.a -exec $MINGW32_TARGET-ranlib {} \;
+	find $root/usr/lib/gcc/$MINGW32_ID/ -name *.a -exec $MINGW32_ID-ranlib {} \;
+	find $root/usr/$MINGW32_ID/lib/ -name *.a -exec $MINGW32_ID-ranlib {} \;
 }
 
 # Rules to clean the package

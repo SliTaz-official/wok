@@ -12,11 +12,21 @@ TARBALL="$SOURCE-core-$VERSION-src.tar.gz"
 WEB_SITE="http://www.mingw.org/"
 MINGW32_URL="$SF_MIRROR/mingw"
 WGET_URL="$MINGW32_URL/$TARBALL"
-MINGW32_TARGET="i586-pc-mingw32"
+MINGW32_ID="i586-pc-mingw32"
+
+# Configuration only needs included if we're in the build/wok environment
+if [ -e $WOK/mingw32-toolchain/stuff/mingw32.conf ] ; then
+	. $WOK/mingw32-toolchain/stuff/mingw32.conf
+fi
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	if [ "$MINGW32_ID" != "$MINGW32_TARGET" ] ; then
+		echo "ERROR: Conf 'TARGET' string differs from Receipt 'ID' string"
+		exit 1
+	fi
+
 	rm -f -r $src/binutils
 	mkdir -p $SOURCE-$VERSION-build
 	cd $SOURCE-$VERSION-build
@@ -25,7 +35,7 @@ compile_rules()
 		--libexecdir=/usr/lib \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
-		--with-sysroot=/usr/lib/$MINGW32_TARGET \
+		--with-sysroot=$MINGW32_ROOT \
 		--disable-shared \
 		--disable-debug \
 		--target=$MINGW32_TARGET \
@@ -35,7 +45,6 @@ compile_rules()
 		--enable-sjlj-exceptions \
 		$CONFIGURE_ARGS &&
 	make CFLAGS="-O2 -fomit-frame-pointer" LDFLAGS="-s"  &&
-	$MINGW32_TARGET-ranlib gcc/*.a &&
 	make DESTDIR=$src/_pkg install
 }
 
@@ -55,7 +64,7 @@ post_install()
 	# Archives get stripped during packaging; need to run ranlib
 	local root
 	root=$1
-	find $root/usr/lib/gcc/$MINGW32_TARGET/ -name *.a -exec $MINGW32_TARGET-ranlib {} \;
+	find $root/usr/lib/gcc/$MINGW32_ID/ -name *.a -exec $MINGW32_ID-ranlib {} \;
 }
 
 # Rules to clean the package
