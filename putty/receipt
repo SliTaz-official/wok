@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="putty"
+VERSION="0.60-2009-09-06"
+CATEGORY="utilities"
+SHORT_DESC="A free telnet/SSH client."
+MAINTAINER="rcx@zoominternet.net"
+DEPENDS="glibc-base expat zlib gtk+ atk cairo freetype fontconfig glib \
+libgio pango pixman libpng libxcb xcb-util xorg-libX11 xorg-libXau \
+xorg-libXcomposite xorg-libXcursor xorg-libXdamage xorg-libXdmcp \
+xorg-libXext xorg-libXfixes xorg-libXinerama xorg-libXrender"
+BUILD_DEPENDS="slitaz-toolchain gtk+-dev imagemagick"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://putty.linux-mirror.org/"
+#WGET_URL="http://putty.linux-mirror.org/latest/$TARBALL"
+WGET_URL="http://tartarus.org/~simon/putty-snapshots/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $src/_pkg/usr/share/pixmaps
+	cp -a stuff/applications $src/_pkg/usr/share
+
+	cd $src/icons &&
+	make &&
+	make install &&
+	
+	cd $src/unix &&
+
+	sed -e 's/-Werror//g' -i configure &&
+	./configure \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make XFLAGS=-DTELNET_DEFAULT &&
+	make DESTDIR=$src/_pkg install &&
+	cp $src/icons/pterm-48.png $src/_pkg/usr/share/pixmaps/pterm.png &&
+	cp $src/icons/putty-48.png $src/_pkg/usr/share/pixmaps/putty.png
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+}
