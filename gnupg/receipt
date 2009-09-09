@@ -1,11 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="gnupg"
-VERSION="1.4.9"
+VERSION="2.0.13"
 CATEGORY="security"
 SHORT_DESC="Free implementation of the OpenPGP."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="libusb bzlib cyrus-sasl libcurl libldap openssl readline zlib"
+DEPENDS="libusb bzlib libcurl openssl readline zlib libgpg-error pth libksba"
+BUILD_DEPENDS="libusb-dev openssl-dev readline-dev zlib-dev libgpg-error-dev
+pth-dev libassuan libksba-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gnupg.org/"
 WGET_URL="ftp://ftp.gnupg.org/gcrypt/gnupg/$TARBALL"
@@ -14,9 +16,13 @@ WGET_URL="ftp://ftp.gnupg.org/gcrypt/gnupg/$TARBALL"
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --libexecdir=/usr/lib \
-	--infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--disable-ldap \
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
 }
@@ -24,14 +30,10 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/locale
+	mkdir -p $fs/usr/share
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib $fs/usr
 	cp -a $_pkg/usr/share/gnupg $fs/usr/share
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
-	
-	# Strip and chmod for gnup-zip.
-	strip -s $fs/usr/bin/* 2>/dev/null
+	# Chmod for gnup-zip
 	chmod 755 $fs/usr/bin/*
 }
-
