@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="linux"
-VERSION="2.6.30.4"
+VERSION="2.6.30.6"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 DEPENDS="depmod"
@@ -36,7 +36,6 @@ $PACKAGE-utf8-$VERSION.u
 $PACKAGE-diff-$VERSION.u
 $PACKAGE-freeinitrd-$VERSION.u
 $PACKAGE-unlzma-$VERSION.u
-$PACKAGE-hotfix-$VERSION.u
 EOT
 	make mrproper
 	cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
@@ -93,23 +92,25 @@ post_install()
     echo "Processing post-install commands..."
     chroot "$1/" depmod -a $VERSION-slitaz
     if [ -f "$1/boot/grub/menu.lst" ]; then
-    	root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/'`
-		grub_dev=`cat $1/boot/grub/menu.lst | grep "root ("`
+    	root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`
+		grub_dev=`cat $1/boot/grub/menu.lst | grep "root (" | head -n 1`
 		# Add new kernel entry in case of upgrade for installed system.
-    	cat >> $1/boot/grub/menu.lst << EOT
+		if ! grep -q $PACKAGE-$VERSION-slitaz $1/boot/grub/menu.lst; then
+    		cat >> $1/boot/grub/menu.lst << EOT
 
-title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
+title SliTaz GNU/Linux (Kernel $VERSION-slitaz)
 $grub_dev
-       kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
+kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
 EOT
+		fi
 		# Display information message.
     	cat <<EOT
 ----
-GRUB is installed, these tree lines has been added to the menu.lst:
+GRUB is installed, these tree lines must be in your /boot/grub/menu.lst:
 
 title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
 $grub_dev
-       kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
+kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
 ----
 EOT
 	fi
