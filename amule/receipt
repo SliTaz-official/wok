@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="amule"
+VERSION="2.2.5"
+CATEGORY="network"
+SHORT_DESC="An eMule-like client for the eD2k and Kademlia networks."
+MAINTAINER="pankso@slitaz.org"
+SOURCE="aMule"
+DEPENDS="wxWidgets libupnp"
+BUILD_DEPENDS="wxWidgets-dev libupnp-dev cryptopp"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.amule.org/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/amule $fs/usr/share
+	# Remove unused files in this base package.
+	rm $fs/usr/bin/autostart-xas
+	rm $fs/usr/share/amule/skins/kde4.zip
+	rm $fs/usr/share/amule/skins/gnome.zip
+}
