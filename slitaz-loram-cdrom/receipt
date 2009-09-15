@@ -25,11 +25,11 @@ set_patch()
     i=$(($i-1))
     tag=$(grep "$tag" $1/etc/init.d/rcS)
     if [ "$2" = "-R" ]; then
-    	line="-$(($i-61)),63 +$(($i-61)),2"
+    	line="-$(($i-72)),74 +$(($i-72)),2"
 	i="-"
     else
         grep -q 'from slitaz-loram-cdrom package' $1/etc/init.d/rcS && return
-    	line="-$i,2 +$i,63"
+    	line="-$i,2 +$i,74"
 	i="+"
     fi
     patch -p0 <<EOF
@@ -61,7 +61,18 @@ $i		DIR=\`cat /proc/cmdline | sed 's/.* loram=\([^ ]*\).*/\1/'\`
 $i		DEVICE=\${DIR%,*}
 $i		DIR=/\${DIR#*,}
 $i	fi
-$i	if mount -o ro \$DEVICE /cdrom 2> /dev/null ; then
+$i	if ! /bin/mount -r \$DEVICE /cdrom; then
+$i		if echo \$DEVICE | grep -Eq "/dev/sd|UUID=|LABEL="; then
+$i			USBDELAY=\`cat /sys/module/usb_storage/parameters/delay_use\`
+$i			USBDELAY=\$((1+\$USBDELAY))
+$i			echo "\$DEVICE is potentially a USB device: sleep for \$USBDELAY seconds"
+$i			sleep \$USBDELAY
+$i		fi
+$i		if ! /bin/mount -r \$DEVICE /cdrom; then
+$i			DEVICE=""
+$i		fi
+$i	fi
+$i	if [ -n "\$DEVICE" ]; then
 $i		if [ -d /.usr.rw ]; then
 $i			echo -n "Mounting /usr read-write... "
 $i			usr=.usr.ro
