@@ -4,7 +4,7 @@ PACKAGE="PolicyKit0"
 SOURCE="POLICY_KIT"
 VERSION="0_9"
 CATEGORY="system-tools"
-SHORT_DESC="An application-level toolkit for defining and handling the policy that allows unprivileged processes to speak to privileged processes."
+SHORT_DESC="Application development toolkit for controlling system-wide privileges."
 MAINTAINER="rcx@zoominternet.net"
 DEPENDS="glibc-base glib dbus dbus-glib expat"
 BUILD_DEPENDS="slitaz-toolchain m4 autoconf automake libtool glib-dev intltool \
@@ -18,7 +18,7 @@ compile_rules()
 {
 	mv ${SOURCE}_${VERSION} $SOURCE-$VERSION
 	cd $src
-	
+
 	# autogen.sh forces some unnecessary options; remove them
 	sed -i 's/gtkdocize /echo /' $src/autogen.sh || exit 1
 	sed -i 's/--enable-gtk-doc//' $src/autogen.sh || exit 1
@@ -29,9 +29,12 @@ compile_rules()
 	sed -i 's|doc/man/Makefile||' $src/configure.in || exit 1
 	sed -i 's|GTK_DOC_CHECK(\[1.3\])||' $src/configure.in || exit 1
 	rm -r -f $src/docs
-		
-    ./autogen.sh --prefix=/usr \
-		--enable-gtk-doc=no \
+
+    ./autogen.sh \
+    	--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--libexecdir=/usr/lib/PolicyKit0 \
 		$CONFIGURE_ARGS  &&
     make &&
     make DESTDIR=$src/_pkg install
@@ -42,11 +45,11 @@ genpkg_rules()
 {
 	mkdir -p  $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/etc $fs/usr
+	cp -a $_pkg/etc $fs
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/libexec $fs/usr
-	cp -a $_pkg/usr/var $fs
-	
+	cp -a $_pkg/usr/lib/PolicyKit0 $fs/usr
+	cp -a $_pkg/var $fs
+
 	mkdir -p $fs/usr/share
 	cp -a $_pkg/usr/share/dbus-1 $fs/usr/share
 	cp -a $_pkg/usr/share/PolicyKit $fs/usr/share
