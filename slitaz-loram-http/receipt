@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-loram-http"
-VERSION="1.1"
+VERSION="1.5"
 CATEGORY="misc"
 SHORT_DESC="Rules to build low ram system using http."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -19,17 +19,19 @@ set_patch()
 {
     local tag
     local line
+    local len
     local i
     tag="Handle kernel cmdline parameter config"
     i=$(grep -n "$tag" $1/etc/init.d/rcS | cut -d: -f1)
     i=$(($i-1))
+    len=71
     tag=$(grep "$tag" $1/etc/init.d/rcS)
     if [ "$2" = "-R" ]; then
-    	line="-$(($i-52)),54 +$(($i-52)),2"
+    	line="-$(($i-$len+2)),$len +$(($i-$len+2)),2"
 	i="-"
     else
         grep -q 'from slitaz-loram-http package' $1/etc/init.d/rcS && return
-    	line="-$i,2 +$i,54"
+    	line="-$i,2 +$i,$len"
 	i="+"
     fi
     patch -p0 <<EOF
@@ -43,19 +45,34 @@ $i {
 $i	FREEMEM=\$(busybox free | busybox awk '{ n = \$NF } END { print n }')	
 $i	if [ \$FREEMEM -gt \$(busybox du -s \$FS | busybox awk '{ print \$1+40000 }') ]; then
 $i		status
+$i		if grep -q " extract-loram" /proc/cmdline &&
+$i		    [ -d \$FS -o \$FREEMEM -gt \$(busybox du -s \$FS | \\
+$i			busybox awk '{ print (\$1*4)+40000 }') ]; then
+$i			echo -n "Extracting loram..."
+$i			. /etc/tazlito/loram.extract /cdrom
+$i			if status; then
+$i				umount /cdrom && umount /cdrom
+$i				rmdir /cdrom
+$i				yes y | tazpkg remove slitaz-loram-http > /dev/null
+$i				return 0
+$i			fi
+$i		fi
 $i		echo -n "Loading /usr in memory..."
 $i		cp -a \$FS /.usr.fs
 $i		status
 $i		echo -n "Releasing HTTP link..."
 $i		umount /cdrom && umount /cdrom
 $i		FS=/.usr.fs
-$i		return 0
+$i		if [ -d \$FS ]; then
+$i			rm -f /\$usr
+$i			mv \$FS /usr
+$i		fi
 $i	fi
 $i	return 1
 $i }
 $i
 $i# Mount /usr (from slitaz-loram-http package)
-$i if [ -d /cdrom ]; then
+$i while [ -d /cdrom ]; do
 $i	/etc/init.d/network.sh
 $i	RUN_SCRIPTS="\$(echo \$RUN_SCRIPTS | sed 's/network.sh//')"
 $i	URLISO=http://mirror.slitaz.org/iso/\$(cat /etc/slitaz-release)/flavors/slitaz-loram-cdrom.iso
@@ -71,15 +88,16 @@ $i		usr=usr
 $i	fi
 $i	FS=/cdrom/usr.cromfs
 $i	if [ -f \$FS ]; then
-$i		release_http
 $i		mkdir /\$usr
+$i		release_http && break
 $i		/bin/cromfs-driver \$FS /\$usr -o ro,dev,suid,allow_other
 $i	elif [ -f /cdrom/usr.sqfs ]; then
 $i		FS=/cdrom/usr.sqfs
-$i		release_http
 $i		mkdir /\$usr
+$i		release_http && break
 $i		mount -o loop,ro -t squashfs \$FS /\$usr
 $i	else
+$i		release_http && break
 $i		FS=/cdrom/usr
 $i		ln -s \$FS /\$usr
 $i	fi
@@ -87,7 +105,8 @@ $i	status
 $i	if [ -d /.usr.rw -a -x /bin/funionfs ]; then
 $i		/bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other,nonempty -o suid,dev NONE /usr
 $i	fi
-$i fi
+$i	break
+$i done
 $i
  $tag
 EOF

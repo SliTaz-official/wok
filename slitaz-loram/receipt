@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-loram"
-VERSION="1.4"
+VERSION="1.5"
 CATEGORY="misc"
 SHORT_DESC="Rules to build low ram rootfs.gz."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -19,17 +19,19 @@ set_patch()
 {
     local tag
     local line
+    local len
     local i
     tag="/dev/cdrom if need"
     i=$(grep -n "$tag" $1/etc/init.d/rcS | cut -d: -f1)
     i=$(($i-1))
+    len=38
     tag=$(grep "$tag" $1/etc/init.d/rcS)
     if [ "$2" = "-R" ]; then
-    	line="-$(($i-25)),27 +$(($i-25)),2"
+    	line="-$(($i-$len+2)),$len +$(($i-$len+2)),2"
 	i="-"
     else
         grep -q 'from slitaz-loram package' $1/etc/init.d/rcS && return
-    	line="-$i,2 +$i,27"
+    	line="-$i,2 +$i,$len"
 	i="+"
     fi
     patch -p0 <<EOF
@@ -38,7 +40,7 @@ set_patch()
 @@ $line @@
  
 $i# Mount compressed /usr (from slitaz-loram package)
-$i if [ -f /.usr.cromfs -o -f /.usr.sqfs ]; then
+$i while [ -f /.usr.cromfs -o -f /.usr.sqfs ]; do
 $i	usr=usr
 $i	echo -n "Mounting /usr read-"
 $i	if [ -d /.usr.rw ]; then
@@ -46,6 +48,16 @@ $i		usr=.usr.ro
 $i		echo -n "write... "
 $i	else
 $i		echo -n "only... "
+$i	fi
+$i	FREEMEM=\$(busybox free | busybox awk '{ n = \$NF } END { print n }')
+$i	if grep -q " extract-loram" /proc/cmdline && [ \$FREEMEM -gt \\
+$i	\$(busybox du -s \$FS | busybox awk '{ print (\$1*4)+40000 }') ]; then
+$i		echo -n "Extracting loram..."
+$i		. /etc/tazlito/loram.extract
+$i		if status; then
+$i			yes y | tazpkg remove slitaz-loram > /dev/null
+$i			break
+$i		fi
 $i	fi
 $i	if [ -f /.usr.cromfs ]; then
 $i		/bin/cromfs-driver /.usr.cromfs /\$usr -o ro,dev,suid,allow_other
@@ -60,7 +72,8 @@ $i			/bin/mount -t aufs -o br:/.usr.rw:/.usr.ro none /usr
 $i		fi
 $i	fi
 $i	status
-$i fi
+$i	break
+$i done
 $i
  $tag
 EOF
