@@ -44,6 +44,7 @@ usage()
   usage        Print this short usage and command list.
   list-pkgs    List last cooked packages with date.
   report       Run in report mode and dont cook anything [--verbose].
+  cook         Cook, install and log a single package build.
   cook-all     Cook all missing, modified or unbuilt packages.
   cook-commit  Cook all packages affected by a commit in the last update.
   test-pkgs    Execute a test suite on all packages [--verbose].
@@ -419,6 +420,27 @@ case "$1" in
 		check_wok $@
 		test_packages $@
 		show_report ;;
+	cook)
+		# Cook, install and log a single package build.
+		if [ -z $2 ]; then
+			echo "Please specify a package on the command line."
+			rm -f $LOCK_FILE && exit 0
+		fi
+		pkg=$2
+		echo "Starting to cook and install: $pkg"
+		echo "(cooking <a href=\"log.php?package=$pkg\">$pkg</a>)" > $DB_DIR/running
+		tazwok clean $pkg
+		script -c "echo 'install' | tazwok cook $pkg" $LOG_DIR/$pkg.log
+		if [ -f $BUILD_WOK/$pkg/taz/*/receipt ]; then
+			. $BUILD_WOK/$pkg/taz/*/receipt
+			echo "(installing $PACKAGE-${VERSION}$EXTRAVERSION.tazpkg)" \
+				> $DB_DIR/running
+			yes | tazpkg install \
+				$PACKAGES_REPOSITORY/$PACKAGE-${VERSION}$EXTRAVERSION.tazpkg \
+				--forced
+		else
+			echo "Unable to install: $pkg"
+		fi ;;
 	cook-all)
 		# Update wok, gen report (with cooklist), cook all packages, test,
 		# clean, gen new report and lists.
