@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="dahdi-linux"
+VERSION="2.2.0.2"
+CATEGORY="network"
+SHORT_DESC="Digium Asterisk Hardware Device Interface: kernel modules."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.asterisk.org/"
+WGET_URL="http://downloads.asterisk.org/pub/telephony/$PACKAGE/releases/$TARBALL"
+DEPENDS="linux"
+#PROVIDE="linux-misdn"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+compile_rules()
+{
+	cd $src
+	[ -d $WOK/linux/taz ] || tazwok cook linux
+	make KSRC=$WOK/linux/$(ls $WOK/linux/taz) &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/dev $fs
+	cp -a $_pkg/lib $fs
+	cp -a $_pkg/usr/share $fs/usr
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" depmod -a
+}
+
+post_remove()
+{
+	depmod -a
+}
