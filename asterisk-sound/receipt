@@ -1,32 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="asterisk-sound"
-VERSION="bristuff"
+VERSION="1.4.16"
 CATEGORY="misc"
 SHORT_DESC="Open Source PBX and telephony toolkit sound files (en)."
 MAINTAINER="pascal.bellard@slitaz.org"
-WEB_SITE="http://www.digium.com/"
-WANTED="bristuff"
+WEB_SITE="http://www.asterisk.org/"
+TARBALL="asterisk-core-sounds-en-gsm-$VERSION.tar.gz"
+WGET_URL="http://downloads.asterisk.org/pub/telephony/sounds/releases/$TARBALL"
 DEPENDS="asterisk"
 
-# Extract VERSION from WANTED package source
-get_version()
+# Rules to configure and make the package.
+compile_rules()
 {
-	eval $(grep ^AST_VER= $WOK/$WANTED/$WANTED-*/download.sh)
-	VERSION=$WANTED-$AST_VER
+	if [ ! -d $src ]; then
+		mkdir -p $src/_pkg/var/lib/asterisk/sounds
+		for i in *; do
+			case "$i" in
+			$PACKAGE-$VERSION|taz|receipt|process.log);;
+			*) mv $i $src/_pkg/var/lib/asterisk/sounds;;
+			esac
+		done
+	fi
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	get_version
-	[ -d taz/$PACKAGE-$WANTED/fs ] && \
-		mv taz/$PACKAGE-$WANTED taz/$PACKAGE-$VERSION
-	_pkg=$(cd $(dirname $src)/$WANTED-*/_pkg ; pwd)
-	while read file; do
-		dir=$(dirname $file)
-		[ -d $fs$dir ] || mkdir -p $fs$dir
-		eval cp -a "$_pkg$file" $fs$dir
-	done < $_pkg/../$PACKAGE.files-list
-	rm -rf $fs/var/lib/asterisk/sounds/??/
+	cp -a $_pkg/* $fs
 }
