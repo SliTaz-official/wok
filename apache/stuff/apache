@@ -1,0 +1,61 @@
+#!/bin/sh
+# /etc/init.d/apache: Start, stop and restart Apache web server on SliTaz, 
+# at boot time or with the command line. Daemons options are configured
+# with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Apache
+DESC="Apache Web Server"
+DAEMON=/usr/bin/httpd
+OPTIONS=
+PIDFILE=/var/run/apache/httpd.pid
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS -k start 
+    status
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    $DAEMON $OPTION -k stop
+    rm $PIDFILE
+    status
+    ;;
+  reload)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    $DAEMON $OPTION -k graceful
+    status
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    $DAEMON $OPTIONS -k restart
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|reload|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
