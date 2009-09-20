@@ -1,28 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="libexo"
-VERSION="0.3.4"
+VERSION="0.3.101"
 CATEGORY="x-window"
 SHORT_DESC="Xfce extension library"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="libxfce4util xfce-mcs-manager perl-uri-url perl-uri-escape perl-uri-file
-startup-notification hal xorg-libXdamage"
-BUILD_DEPENDS="libxfce4util-dev perl-uri-url perl-uri-escape perl-uri-file xfce-mcs-manager-dev
- startup-notification-dev hal-dev"
+DEPENDS="libxfce4util perl-uri-url perl-uri-escape perl-uri-file
+startup-notification hal"
+BUILD_DEPENDS="libxfce4util-dev perl-uri-url perl-uri-escape perl-uri-file startup-notification-dev hal-dev"
 SOURCE="exo"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.xfce.org"
-WGET_URL="http://www.p0llux.be/xfce/xfce-4.4.3/src/$TARBALL"
+WGET_URL="http://www.tx-us.xfce.org/archive/xfce-4.6.1/src/$TARBALL
+ http://www.p0llux.be/xfce/xfce-$VERSION/src/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {	
+	patch _p0 -i stuff/helpers.rc.u
+	
 	cd $src
 	./configure --prefix=/usr \
 		--sysconfdir=/etc \
-		--enable-mcs-plugin \
 		--enable-notifications \
 		--enable-hal \
+		--disable-debug \
 		--mandir=/usr/share/man $CONFIGURE_ARGS && \
 	make && make DESTDIR=$PWD/_pkg install
 }
@@ -30,14 +32,14 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr \
-		$fs/usr/lib/xfce4/mcs-plugins \
+	mkdir -p $fs/usr/lib \
 		$fs/usr/share/locale \
-		$fs/usr/share/xfce4
+		$fs/usr/share/xfce4 \
+		$fs/etc/xdg/xfce4
 		
+	cp -a $_pkg/etc $fs/
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/xfce4/mcs-plugins/*.so* $fs/usr/lib/xfce4/mcs-plugins
 	cp -a $_pkg/usr/libexec $fs/usr
 	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
 	cp -a $_pkg/usr/share/applications $fs/usr/share
@@ -45,7 +47,9 @@ genpkg_rules()
 	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
 	cp -a $_pkg/usr/share/xfce4/helpers $fs/usr/share/xfce4
 
-	# Fix perms
+	# Fix perms & helpers
 	chmod +x $fs/usr/bin/exo-preferred-applications
+	
+	
 }
 
