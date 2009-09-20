@@ -1,15 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="xfdesktop"
-VERSION="4.4.3"
+VERSION="4.6.1"
 CATEGORY="x-window"
-SHORT_DESC="Xfce panel"
+SHORT_DESC="Xfce Desktop"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="xorg-libSM xfce-mcs-manager libxfce4util libxfcegui4 libxfce4mcs Thunar libexo"
-BUILD_DEPENDS="xorg-libSM-dev libxfce4util-dev xfce-mcs-manager-dev Thunar-dev libexo-dev"
+DEPENDS="libxfce4util libxfcegui4 thunar libexo"
+BUILD_DEPENDS="libxfce4util-dev thunar-dev libexo-dev libxfcegui4-dev libwnck-dev xfconf-dev
+ libglade-dev gamin-dev hal-dev libxfce4menu-dev xfce4-panel-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.xfce.org/"
-WGET_URL="http://www.p0llux.be/xfce/xfce-4.4.3/src/$TARBALL"
+WGET_URL="http://www.p0llux.be/xfce/xfce-$VERSION/src/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -19,6 +20,7 @@ compile_rules()
 	--sysconfdir=/etc \
 	--enable-exo \
 	--enable-thunarx \
+	--disable-static \
 	--mandir=/usr/share/man $CONFIGURE_ARGS && \
 	make && make DESTDIR=$PWD/_pkg install
 }
@@ -28,24 +30,18 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr \
 		$fs/usr/share/locale \
-		$fs/usr/share/xfce4 \
-		$fs/usr/lib/xfce4/mcs-plugins \
-		$fs/usr/lib/xfce4/panel-plugins 
-	
-	cp -a $_pkg/etc $fs/	
+		$fs/usr/share/xfce4
+
 	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/etc $fs/
 	cp -a $_pkg/usr/libexec $fs/usr
 	cp -a $_pkg/usr/lib $fs/usr
 	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
 	cp -a $_pkg/usr/share/applications $fs/usr/share
-	cp -a $_pkg/usr/share/icons $fs/usr/share
-	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
-	cp -a $_pkg/usr/share/xfce4-* $fs/usr/share
-	cp -a $_pkg/usr/share/xfce4/panel-plugins $fs/usr/share
-	cp -a $_pkg/usr/share/xfce4/backdrops $fs/usr/share
+	cp -a $_pkg/usr/share/desktop-directories $fs/usr/share
+	cp -a $_pkg/usr/share/xfce4/panel-plugins $fs/usr/share/xfce4
 	
-	# Remove unnessecarry files
-	find  $fs/usr/lib -name "*.*a" -exec rm -f {} \;
-	
+	strip -s $fs/usr/libexec/xfce4/panel-plugins/*
+
 }
 
