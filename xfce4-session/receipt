@@ -1,16 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="xfce4-session"
-VERSION="4.4.3"
+VERSION="4.6.1"
 CATEGORY="x-window"
 SHORT_DESC="Xfce session manager"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="xorg-libSM xfce-mcs-manager libxfce4util libxfcegui4 libxfce4mcs \
-xfce4-panel dbus xorg-libXdamage"
-BUILD_DEPENDS="xorg-libSM-dev libxfce4util-dev xfce-mcs-manager-dev xorg-iceauth"
+DEPENDS="libxfce4util libxfcegui4 libwnck perl-xml-parser xorg-iceauth"
+BUILD_DEPENDS="libxfce4util-dev libxfcegui4-dev libwnck-dev xorg-iceauth libiconv"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.xfce.org/"
-WGET_URL="http://www.p0llux.be/xfce/xfce-4.4.3/src/$TARBALL"
+WGET_URL="http://www.p0llux.be/xfce/xfce-$VERSION/src/$TARBALL
+  http://www.p0llux.be/xfce/xfce-$VERSION/src/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -21,6 +21,7 @@ compile_rules()
 		--enable-dbus \
 		--enable-final \
 		--disable-gnome \
+		--disable-debug \
 		--mandir=/usr/share/man $CONFIGURE_ARGS && \
 	make && make DESTDIR=$PWD/_pkg install
 }
@@ -41,6 +42,12 @@ genpkg_rules()
 	cp -a $_pkg/usr/share/icons $fs/usr/share
 	cp -a $_pkg/usr/share/themes $fs/usr/share
 	cp -a $_pkg/usr/share/xfce4 $fs/usr/share
+
+	# strip all files
+	strip -s $fs/usr/libexec/xf*
+	
+	# remove autostartfile
+	rm -f $fs/etc/xdg/autostart/*
 	
 	# Remove unecessary files
 	find $fs/ -name "*.*a" -exec rm -f {} \;
