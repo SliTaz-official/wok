@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="git"
-VERSION="1.6.0.5"
+VERSION="1.6.4.4"
 CATEGORY="development"
 SHORT_DESC="Fast version control system"
 MAINTAINER="b1+slitaz@nagel.org"
@@ -15,8 +15,13 @@ WGET_URL="http://kernel.org/pub/software/scm/git/$TARBALL"
 compile_rules()
 {
 	cd $src
-	make prefix=/usr THREADED_DELTA_SEARCH=1 NO_TCLTK=1
-	make prefix=/usr THREADED_DELTA_SEARCH=1 NO_TCLTK=1 DESTDIR=$PWD/_pkg install
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/git \
+		--without-tcltk \
+		$CONFIGURE_ARGS &&
+	make THREADED_DELTA_SEARCH=1
+	make THREADED_DELTA_SEARCH=1 DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -24,5 +29,5 @@ genpkg_rules()
 {
 	mkdir -p $fs
 	cp -a $_pkg/usr $fs/
-	strip -s $fs/usr/bin/* $fs/usr/libexec/git-core/* || true
+	strip -s $fs/usr/lib/git/git-core/*
 }
