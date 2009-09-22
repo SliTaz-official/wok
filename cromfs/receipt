@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="cromfs"
-VERSION="1.5.4"
+VERSION="1.5.8.9"
 CATEGORY="system-tools"
 SHORT_DESC="Compressed read only filesystem implemented with FUSE."
 MAINTAINER="pascal.bellard@slitaz.org"
-BUILD_DEPENDS="fuse-dev"
-DEPENDS="fuse lzma"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+DEPENDS="fuse lzma lzo"
+BUILD_DEPENDS="$DEPENDS fuse-dev lzo-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://bisqwit.iki.fi/source/cromfs.html"
 WGET_URL="http://bisqwit.iki.fi/src/arch/$TARBALL"
 PROVIDE="cromfs-or-squashfs"
@@ -16,21 +16,22 @@ PROVIDE="cromfs-or-squashfs"
 compile_rules()
 {
 	cd $src
-	for i in FBLOCK_CACHE_MAX_SIZE.u openmp.u ; do
-		[ -f done.$i ] && continue
-		patch -p1 < ../stuff/$i
-		touch done.$i
-	done
-	chmod +x configure
-	./configure --prefix=/usr $CONFIGURE_ARGS &&
-	make install
+	sed -i s'/FBLOCK_CACHE_MAX_SIZE = 10/FBLOCK_CACHE_MAX_SIZE = 4/' \
+		cromfs.cc
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin $fs/bin
-	cp $src/install/progs/mkcromfs $fs/usr/bin
-	cp $src/install/progs/cromfs-driver-static $fs/bin/cromfs-driver
-	cp $src/install/progs/unmkcromfs $fs/bin
+	cp $src/cromfs-driver $fs/bin
+	# Maybe have a plited packages (cromfs-static)
+	#cp $src/cromfs-driver-static $fs/bin/cromfs-driver
+	cp $src/util/cvcromfs $fs/usr/bin
+	cp $src/util/mkcromfs $fs/usr/bin
+	cp $src/util/unmkcromfs $fs/bin
 }
