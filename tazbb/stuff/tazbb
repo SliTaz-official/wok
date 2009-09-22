@@ -247,31 +247,74 @@ check_commit()
 	packages_summary
 }
 
+# Cook one package
+cook_package()
+{
+	EXTRAVERSION=""
+	DEPENDS=""
+	BUILD_DEPENDS=""
+	SOURCE=""
+	WANTED=""
+	echo "(cooking <a href=\"log.php?package=$(escape $pkg)\">$pkg</a>)" > $DB_DIR/running
+	tazwok clean $pkg
+	script -c "echo 'install' | tazwok cook $pkg" $LOG_DIR/$pkg.log
+	# Install new package (important for new shared libs). Note
+	# that tests are done separatly with 'test_packages' and should
+	# be done by tazwok.
+	if [ -f $BUILD_WOK/$pkg/taz/*/receipt ]; then
+		. $BUILD_WOK/$pkg/taz/*/receipt
+		echo "(installing $PACKAGE-${VERSION}$EXTRAVERSION.tazpkg)" \
+			> $DB_DIR/running
+		yes | tazpkg install \
+			$PACKAGES_REPOSITORY/$PACKAGE-${VERSION}$EXTRAVERSION.tazpkg \
+			--forced
+		return 0
+	fi
+	return 1
+}
+
+# Sort list according WANTED and BUILD_DEPENDS
+sort_cook_list()
+{
+	sort | while read pkg; do
+		echo -n "$pkg"
+		WANTED=""
+		BUILD_DEPENDS=""
+		. $BUILD_WOK/$pkg/receipt
+		for i in $WANTED $BUILD_DEPENDS ; do
+			if [ ! -f $BUILD_WOK/$i/taz/*/receipt ]; then
+				echo -n " $i"
+			fi
+		done
+		echo ""
+	done | awk '{
+		if ($2 == "") print;
+		else {
+			depcnt[$1] = NF - 1;
+			unres = unres " " $1;
+			for (i = 2; i <= NF; i++) {
+				revdepcnt[$i]++;
+				revdep[$i] = revdep[$i] " " $1;
+			}
+		}
+		if (revdepcnt[$1] > 0)
+			for (i = split(revdep[$1], pkg, " "); i > 0; i--)
+				if (--depcnt[pkg[i]] == 0) print pkg[i];
+	}
+	END {
+		for (i = split(unres, pkg, " "); i > 0; i--)
+			if (depcnt[pkg[i]] > 0) print pkg[i];
+	}
+'
+}
+
 # Here we cook all packages found in the cooklist.
 cook_install()
 {
 	echo "" > $DB_DIR/unbuilt
-	for pkg in `cat $DB_DIR/cooklist | sort`
+	for pkg in `cat $DB_DIR/cooklist | sort_cook_list`
 	do
-		EXTRAVERSION=""
-		DEPENDS=""
-		BUILD_DEPENDS=""
-		SOURCE=""
-		WANTED=""
-		echo "(cooking <a href=\"log.php?package=$(escape $pkg)\">$pkg</a>)" > $DB_DIR/running
-		tazwok clean $pkg
-		script -c "echo 'install' | tazwok cook $pkg" $LOG_DIR/$pkg.log
-		# Install new package (important for new shared libs). Note
-		# that tests are done separatly with 'test_packages' and should
-		# be done by tazwok.
-		if [ -f $BUILD_WOK/$pkg/taz/*/receipt ]; then
-			. $BUILD_WOK/$pkg/taz/*/receipt
-			echo "(installing $PACKAGE-${VERSION}$EXTRAVERSION.tazpkg)" \
-				> $DB_DIR/running
-			yes | tazpkg install \
-				$PACKAGES_REPOSITORY/$PACKAGE-${VERSION}$EXTRAVERSION.tazpkg \
-				--forced
-		else
+		if ! cook_package $pkg; then
 			# Link to build log.
 			echo "<a href=\"log.php?package=$(escape $pkg)\">$pkg</a>" >> \
 				$DB_DIR/unbuilt
@@ -434,17 +477,7 @@ case "$1" in
 		fi
 		pkg=$2
 		echo "Starting to cook and install: $pkg"
-		echo "(cooking <a href=\"log.php?package=$(escape $pkg)\">$pkg</a>)" > $DB_DIR/running
-		tazwok clean $pkg
-		script -c "echo 'install' | tazwok cook $pkg" $LOG_DIR/$pkg.log
-		if [ -f $BUILD_WOK/$pkg/taz/*/receipt ]; then
-			. $BUILD_WOK/$pkg/taz/*/receipt
-			echo "(installing $PACKAGE-${VERSION}$EXTRAVERSION.tazpkg)" \
-				> $DB_DIR/running
-			yes | tazpkg install \
-				$PACKAGES_REPOSITORY/$PACKAGE-${VERSION}$EXTRAVERSION.tazpkg \
-				--forced
-		else
+		if ! cook_package $pkg; then
 			echo "Unable to install: $pkg"
 		fi ;;
 	cook-all)
