@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="fcron"
+VERSION="3.0.4"
+CATEGORY="network"
+SHORT_DESC="Periodical command scheduler"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.src.tar.gz"
+WEB_SITE="http://fcron.free.fr/"
+WGET_URL="http://fcron.free.fr/archives/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--without-sendmail \
+		--with-username=nobody \
+		--with-groupname=nogroup \
+		--with-pam=no \
+		--with-selinux=no \
+		--with-answer-all=no \
+		--with-boot-install=no \
+		--with-editor=/bin/vi \
+		--with-sysfcrontab=yes \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/var $fs/
+	cp -a $_pkg/etc $fs/
+	cp -a $src/fcron $fs/usr/bin
+	
+	cp -a stuff/fcron $fs/etc/init.d
+}
+
