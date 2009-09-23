@@ -23,6 +23,7 @@ compile_rules()
 	sed -i  -e 's/pam =/pam_x =/' -e 's/USE_PAM, 1,/USE_PAM, 0,/' \
 		-e 's/pam_so =/pam_so_x =/' configure.in
 	./configure --without-pam --prefix=/usr --sysconfdir=/etc \
+	--libexecdir=/usr/lib/netatalk \
 	--mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -31,17 +32,12 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/share $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/usr/libexec $fs/usr
+	cp -a $_pkg/usr/lib/netatalk $fs/usr/lib
 	cp -a $_pkg/etc $fs
 	rm -f $fs/etc/netatalk/uams/*a
-	# Package all netatalk pkgs
-	for i in $(cd $WOK; ls -d netatalk-*)
-	do
-		tazwok genpkg $i
-	done
 }
 
 # Pre and post install commands for Tazpkg.
