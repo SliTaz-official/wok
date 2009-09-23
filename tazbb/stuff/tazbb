@@ -281,30 +281,43 @@ sort_cook_list()
 		WANTED=""
 		BUILD_DEPENDS=""
 		. $BUILD_WOK/$pkg/receipt
+		MISSING=""
 		for i in $WANTED $BUILD_DEPENDS ; do
 			if [ ! -f $BUILD_WOK/$i/taz/*/receipt ]; then
-				echo -n " $i"
+				case " $MISSING " in
+				*\ $i\ *);;
+				*) echo -n " $i";;
+				esac
+				MISSING="$MISSING $i"
 			fi
 		done
 		echo ""
-	done | awk '{
-		if ($2 == "") print;
-		else {
-			depcnt[$1] = NF - 1;
-			unres = unres " " $1;
-			for (i = 2; i <= NF; i++) {
-				revdepcnt[$i]++;
-				revdep[$i] = revdep[$i] " " $1;
-			}
+	done | awk '
+function show(name)
+{
+	print name;
+	got[name]++;
+	if (revdepcnt[name] > 0)
+		for (i = split(revdep[name], pkg, " "); i > 0; i--)
+			if (--depcnt[pkg[i]] == 0) show(pkg[i]);
+}
+
+{
+	if ($2 == "") show($1);
+	else {
+		depcnt[$1] = NF - 1;
+		unres = unres " " $1;
+		for (i = 2; i <= NF; i++) {
+			if (got[$i] > 0) continue;
+			revdepcnt[$i]++;
+			revdep[$i] = revdep[$i] " " $1;
 		}
-		if (revdepcnt[$1] > 0)
-			for (i = split(revdep[$1], pkg, " "); i > 0; i--)
-				if (--depcnt[pkg[i]] == 0) print pkg[i];
 	}
-	END {
-		for (i = split(unres, pkg, " "); i > 0; i--)
-			if (depcnt[pkg[i]] > 0) print pkg[i];
-	}
+}
+END {
+	for (i = split(unres, pkg, " "); i > 0; i--)
+		if (depcnt[pkg[i]] > 0) print pkg[i];
+}
 '
 }
 
