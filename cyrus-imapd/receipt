@@ -27,6 +27,7 @@ compile_rules()
 -p0 p2.patch
 EOT
 	./configure --prefix=/usr --infodir=/usr/share/info \
+	--with-service-path=/usr/lib/cyrus \
 	--mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -37,10 +38,10 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/var/imap $fs/var/spool/imap/stage.
 	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/cyrus $fs/usr
+	cp -a $_pkg/usr/lib/cyrus $fs/usr/lib
 	cp -a $_pkg/usr/lib/perl5 $fs/usr/lib
-	strip -s $fs/usr/cyrus/bin/*
-	cp $src/tools/mkimap $fs/usr/cyrus/bin
+	strip -s $fs/usr/lib/cyrus/bin/*
+	cp $src/tools/mkimap $fs/usr/lib/cyrus/bin
 	cp -a stuff/etc $fs
 	cp $src/master/conf/small.conf $fs/etc/cyrus.conf
 	for i in proc db socket log msg ptclient; do
@@ -103,7 +104,7 @@ EOF
 	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < $1/etc/passwd); do
 		echo "createmailbox user.$i"
 	done | chroot $1/ cyradm -u cyrus -w cyrus 127.0.0.1 >/dev/null 2>&1
-	chroot $1/ su -c "/usr/cyrus/bin/reconstruct" cyrus >/dev/null 2>&1
+	chroot $1/ su -c "/usr/lib/cyrus/bin/reconstruct" cyrus >/dev/null 2>&1
 	cat <<EOF
 ----
 Users must have a password to access the mailbox.
