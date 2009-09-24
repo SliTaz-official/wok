@@ -5,10 +5,10 @@ VERSION="0.0.22"
 CATEGORY="system-tools"
 SHORT_DESC="Generic Graphics Library"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="babl expat gtk+ jpeg libsdl xorg-libX11 xorg-libXau \
-xorg-libXcomposite xorg-libXcursor xorg-libXdmcp xorg-libXext xorg-libXfixes \
-xorg-libXinerama xorg-libXrandr xorg-libXrender xorg-libXdamage bzlib ffmpeg"
-BUILD_DEPENDS="babl-dev libsdl-dev"
+DEPENDS="babl expat gtk+ jpeg xorg-libX11 xorg-libXau xorg-libXcomposite \
+xorg-libXcursor xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXinerama \
+xorg-libXrandr xorg-libXrender xorg-libXdamage bzlib"
+BUILD_DEPENDS="babl-dev jpeg-dev expat-dev xorg-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://gegl.org/"
 WGET_URL="ftp://ftp.gimp.org/pub/gegl/0.0/$TARBALL"
@@ -17,8 +17,16 @@ WGET_URL="ftp://ftp.gimp.org/pub/gegl/0.0/$TARBALL"
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr \
+	# Keep gegl light so we can make smaller gimp LiveCD flavors
+	./configure \
+		--prefix=/usr \
 		--disable-docs \
+		--without-sdl \
+		--without-librsvg \
+		--without-graphviz \
+		--without-lua \
+		--without-libavformat \
+		--without-libv4l \
 		$CONFIGURE_ARGS &&
 	make && make DESTDIR=$PWD/_pkg install
 }
@@ -31,4 +39,3 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/gegl-0.0/*.so* $fs/usr/lib/gegl
 }
-
