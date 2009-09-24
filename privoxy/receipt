@@ -28,6 +28,7 @@ compile_rules()
 		--sysconfdir=/etc/privoxy \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
+		--localstatedir=/var \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -36,10 +37,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/var $fs/etc/init.d
-	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/usr/var/* $fs/usr/var
-	cp -a $_pkg/etc $fs
+	mkdir -p $fs/etc/init.d
+	cp -a $_pkg/* $fs/usr
 
 	# Copy daemon from /stuff
 	cp stuff/daemon-privoxy $fs/etc/init.d/privoxy
@@ -58,7 +57,7 @@ post_install()
 	echo -n "Changing file permissions..."
 	chown -R root.privoxy /etc/privoxy
 	chown -R root.root /etc/privoxy/templates
-	chown -R root.privoxy /usr/var/log/privoxy
+	chown -R root.privoxy /var/log/privoxy
 	status
 }
 
