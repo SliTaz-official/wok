@@ -6,9 +6,9 @@ CATEGORY="graphics"
 SHORT_DESC="Gnu Image Manipulation Program or GIMP!"
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+ libart_lgpl babl gegl libgio tiff xorg-libXdamage"
-SUGGESTED="libcurl libexif libxslt icu webkit-r"
-BUILD_DEPENDS="gettext perl-xml-parser gtk+-dev libart_lgpl babl-dev \
-gegl-dev libgio libgio-dev intltool expat-dev zlib-dev lcms icu webkit-r"
+SUGGESTED="libexif libxslt"
+BUILD_DEPENDS="$DEPENDS gettext perl-xml-parser gtk+-dev babl-dev \
+gegl-dev libgio-dev intltool expat-dev zlib-dev libart_lgpl-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gimp.org/"
 WGET_URL="ftp://ftp.gimp.org/pub/gimp/v2.6/$TARBALL"
@@ -18,8 +18,10 @@ compile_rules()
 {
 	cd $src
 	./configure \
-		--prefix=/usr --infodir=/usr/share/info \
-		--mandir=/usr/share/man --sysconfdir=/etc \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
 		--with-html-dir=/usr/share/doc \
 		--without-print \
 		--disable-python \
@@ -30,6 +32,8 @@ compile_rules()
   		--without-alsa \
   		--without-librsvg \
   		--without-dbus \
+  		--without-hal \
+  		--without-webkit \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -52,7 +56,7 @@ genpkg_rules()
 
 	rm $fs/usr/lib/gimp/*/*/*.la
 	#strip plugins
-	strip --strip-unneeded $fs/usr/lib/gimp/*/plug-ins/*
+	strip -s $fs/usr/lib/gimp/*/plug-ins/*
 
 	# Put a nice splash with a spider
 	cp -a stuff/gimp-splash.png $fs/usr/share/gimp/2.0/images/
