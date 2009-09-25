@@ -3,6 +3,11 @@
 # 2008/06/07 <pascal.bellard@slitaz.org> - GNU General Public License.
 #
 
+find_modules()
+{
+find $_pkg/lib/modules/*-slitaz/kernel/$1 -type f -exec basename {} \;
+}
+
 if [ -z "$1" ] ; then
   cat 1>&2 <<EOT
   
@@ -23,8 +28,7 @@ EOT
 fi
 
 for tree in $@; do
-    for module in $(find $_pkg/lib/modules/*-slitaz/kernel/$tree \
-                         -type f -exec basename {} \;) ; do
+    for module in $(find_modules $tree) ; do
         grep /$module: $_pkg/lib/modules/*-slitaz/modules.dep ||
         find $_pkg/lib/modules/*-slitaz/kernel/$tree -name $module
     done | awk '{ for (i = 1; i <= NF; i++)  print $i; }'
