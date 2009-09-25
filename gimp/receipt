@@ -6,9 +6,10 @@ CATEGORY="graphics"
 SHORT_DESC="Gnu Image Manipulation Program or GIMP!"
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+ libart_lgpl babl gegl libgio tiff xorg-libXdamage"
-SUGGESTED="libexif libxslt"
+SUGGESTED="gimp-plug-ins gimp-console"
 BUILD_DEPENDS="$DEPENDS gettext perl-xml-parser gtk+-dev babl-dev \
-gegl-dev libgio-dev intltool expat-dev zlib-dev libart_lgpl-dev"
+gegl-dev libgio-dev intltool expat-dev zlib-dev libart_lgpl-dev lcms \
+lcms-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gimp.org/"
 WGET_URL="ftp://ftp.gimp.org/pub/gimp/v2.6/$TARBALL"
@@ -25,7 +26,6 @@ compile_rules()
 		--with-html-dir=/usr/share/doc \
 		--without-print \
 		--disable-python \
-		--without-gnomefs \
 		--without-poppler \
   		--without-gnomevfs \
   		--without-libcurl \
@@ -42,23 +42,30 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/pixmaps $fs/usr/lib
+	mkdir -p $fs/usr/lib $fs/usr/share/pixmaps
 
 	cp -a $_pkg/etc $fs
-	cp $_pkg/usr/share/icons/hicolor/24x24/apps/gimp.png \
-		$fs/usr/share/pixmaps/gimp.png
-
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/gimp $fs/usr/lib
 	cp -a $_pkg/usr/share/gimp $fs/usr/share
-	# cp -a $_pkg/usr/share/mime-info $fs/usr/share
+	cp $_pkg/usr/share/icons/hicolor/24x24/apps/gimp.png \
+		$fs/usr/share/pixmaps/gimp.png
 
-	rm $fs/usr/lib/gimp/*/*/*.la
-	#strip plugins
+	# The gimp-console goes in a separate package
+	rm $fs/usr/bin/gimp-console*
+
+	# Most plug-ins goes in a separate package
+	rm -rf $fs/usr/lib/gimp/2.0/plug-ins/*
+	for i in file-jpeg file-png pixelize screenshot
+	do
+		cp $_pkg/usr/lib/gimp/2.0/plug-ins/$i $fs/usr/lib/gimp/2.0/plug-ins
+	done
+
+	# Strip plug-ins and remove devel files
 	strip -s $fs/usr/lib/gimp/*/plug-ins/*
+	rm $fs/usr/lib/gimp/*/modules/*.*a
 
 	# Put a nice splash with a spider
 	cp -a stuff/gimp-splash.png $fs/usr/share/gimp/2.0/images/
 }
-
