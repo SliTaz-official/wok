@@ -35,5 +35,9 @@ for tree in $@; do
 done | sort | uniq | sed -e 's,.*slitaz/,,' -e 's,^kernel/,,' -e 's/:$//' | \
 while read module; do
     grep -qs ^$module$ $src/modules.list && continue
-    echo $module
+    if [ ! -f $_pkg/lib/modules/*-slitaz/kernel/$module ]; then
+	(cd $_pkg/lib/modules/*-slitaz/kernel; find -name $(basename $module) )
+    else
+        echo $module
+    fi
 done
