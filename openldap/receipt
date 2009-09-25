@@ -20,6 +20,7 @@ compile_rules()
 	cd $src
 	./configure --prefix=/usr --infodir=/usr/share/info \
 		--sysconfdir=/etc --localstatedir=/var \
+		--libexecdir=/usr/lib/$PACKAGE \
 		--mandir=/usr/share/man $CONFIGURE_ARGS
 	which soelim || find -name Makefile | xargs sed -i 's/soelim/cat/'
 	make CPPFLAGS=-D_GNU_SOURCE &&
@@ -29,12 +30,12 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/ldap.d
+	mkdir -p $fs/usr/lib $fs/etc/ldap.d
 	cp -a $_pkg/etc $fs
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/usr/libexec $fs/usr
-	strip -s $fs/usr/libexec/*
+	cp -a $_pkg/usr/lib/$PACKAGE $fs/usr/lib
+	strip -s $fs/usr/lib/$PACKAGE/*
 	cp -a $_pkg/var $fs
 	cp -a stuff/etc/init.d $fs/etc
 	chmod 700 $fs/var/openldap-data $fs/etc/openldap
