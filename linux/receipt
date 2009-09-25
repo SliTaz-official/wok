@@ -5,7 +5,7 @@ VERSION="2.6.30.6"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 DEPENDS="depmod"
-BUILD_DEPENDS="slitaz-toolchain perl"
+BUILD_DEPENDS="slitaz-toolchain perl git"
 MAINTAINER="devel@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.kernel.org/"
@@ -15,12 +15,19 @@ CONFIG_FILES="/lib/modules/$VERSION-slitaz/modules.dep"
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Aufs2 from git repository
+	if [ ! -d aufs2 ]; then
+		git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-standalone.git aufs2
+		cd aufs2 && git checkout origin/aufs2-30
+		cp -a Documentation fs include $src
+	fi
 	cd $src
+	# SliTaz db
 	rm -rf slitaz 2> /dev/null
 	mkdir slitaz
 	echo "$WGET_URL" > slitaz/url
 	cp ../stuff/gztazmod.sh ../stuff/list_modules.sh slitaz
-	# lzma and misc patches from pascal
+	# Misc patches from pascal
 	while read patch_file; do
 		echo "$patch_file" >> slitaz/patches
 		cp ../stuff/$patch_file slitaz/$patch_file
@@ -29,13 +36,16 @@ compile_rules()
 			continue
 		fi
 		echo "Apply $patch_file"
-		patch -p1 < ../stuff/$patch_file || return 1
+		patch -p1 < $patch_file || exit 1
 		touch done.$patch_file
 	done <<EOT
-$PACKAGE-utf8-$VERSION.u
-$PACKAGE-diff-$VERSION.u
-$PACKAGE-freeinitrd-$VERSION.u
-$PACKAGE-unlzma-$VERSION.u
+../stuff/$PACKAGE-utf8-$VERSION.u
+../stuff/$PACKAGE-diff-$VERSION.u
+../stuff/$PACKAGE-freeinitrd-$VERSION.u
+../stuff/$PACKAGE-unlzma-$VERSION.u
+../aufs2/aufs2-base.patch
+../aufs2/aufs2-kbuild.patch
+../aufs2/aufs2-standalone.patch
 EOT
 	make mrproper
 	cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
@@ -114,4 +124,9 @@ kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
 ----
 EOT
 	fi
+}
+
+clean_wok()
+{
+	rm -rf aufs2
 }
