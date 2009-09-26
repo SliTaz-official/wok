@@ -6,8 +6,8 @@ CATEGORY="games"
 SHORT_DESC="OpenTyrian is a port of the DOS shoot-em-up Tyrian"
 MAINTAINER="mallory@skyrock.com"
 DEPENDS="libsdl libsdl-mixer  libsdl-net"
-BUILD_DEPENDS="subversion libsdl-dev libsdl-mixer-dev"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+BUILD_DEPENDS="libsdl-dev libsdl-mixer-dev libsdl-net-dev mercurial"
+SOURCE="opentyrian"
 WEB_SITE="http://code.google.com/p/opentyrian/"
 WGET_URL=""
 
@@ -15,10 +15,9 @@ WGET_URL=""
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd "$WOK/$PACKAGE"
-	svn checkout -$VERSION http://opentyrian.googlecode.com/svn/trunk/classic "$PACKAGE-$VERSION"
-	cd $src
-	make || return 1
+	hg clone https://opentyrian.googlecode.com/hg/ opentyrian  
+	cd $SOURCE
+	make release
 	wget http://camanis.net/tyrian/tyrian21.zip
 	unzip tyrian21.zip
 }
@@ -30,10 +29,10 @@ genpkg_rules()
 	mkdir -p $fs/usr/share/applications
 	mkdir -p $fs/usr/share/pixmaps
 	mkdir -p $fs/usr/share/opentyrian
-	cp $src/tyrian $fs/usr/share/opentyrian
-	cp $src/opentyrian.desktop $fs/usr/share/applications
-	cp $src/tyrian.xpm $fs/usr/share/pixmaps
-	cp $src/tyrian21/* $fs/usr/share/opentyrian
+	cp $SOURCE/tyrian $fs/usr/share/opentyrian
+	cp $SOURCE/opentyrian.desktop $fs/usr/share/applications
+	cp $SOURCE/tyrian.xpm $fs/usr/share/pixmaps
+	cp $SOURCE/tyrian21/* $fs/usr/share/opentyrian
 	rm -rf $fs/usr/share/opentyrian/*exe
 	rm -rf $fs/usr/share/opentyrian/*doc
 	cat > $fs/usr/bin/tyrian <<EOF
