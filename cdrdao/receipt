@@ -15,8 +15,15 @@ WGET_URL="$WEB_SITE/$TARBALL"
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --with-lame
-	make
+	for i in trackdb/*.cc ; do
+		grep -q string.h $i && continue
+		grep -q util.h $i || continue
+		sed -i 's/"util.h"/&\n#include <string.h>/' $i
+	done
+	find -name '*.c' | xargs sed -i -e 's/getline/get_line/' \
+		-e 's/fexecve/fexec_ve/' scsilib/include/schily.h
+	./configure --prefix=/usr --with-lame &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
