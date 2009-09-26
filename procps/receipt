@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="procps"
+VERSION="3.2.8"
+CATEGORY="utilities"
+SHORT_DESC="The proc filesystem utilities."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="ncurses"
+BUILD_DEPENDS="ncurses-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://procps.sourceforge.net/"
+WGET_URL="http://procps.sourceforge.net/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/lib/* $fs/lib
+
+	# Remove utils already supplied by Busybox
+	for i in free top uptime watch
+	do
+		rm -f $fs/usr/bin/$i
+	done
+}
+
