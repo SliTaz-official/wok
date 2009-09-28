@@ -14,8 +14,12 @@ compile_rules()
 	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
 	git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-util.git \
 		$PACKAGE-$VERSION
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	if [ ! -d $WOK/linux/linux-$KERNEL_VERSION ]; then
+        	tazwok cook linux
+	fi
 	cd $src
-	make && make DESTDIR=$PWD/_pkg install
+	make KDIR=$WOK/linux/linux-$KERNEL_VERSION && make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
