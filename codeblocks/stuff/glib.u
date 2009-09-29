@@ -1,0 +1,78 @@
+Both glib and wx define GSocket, see http://trac.wxwidgets.org/ticket/10883
+
+--- codeblocks-8.02/src/src/prefix.cpp
++++ codeblocks-8.02/src/src/prefix.cpp
+@@ -393,7 +393,7 @@
+ 
+ 	br_return_val_if_fail (path != (char *) NULL, (char *) NULL);
+ 
+-	end = strrchr (path, '/');
++	end = strrchr ((char *) path, '/');
+ 	if (!end) return strdup (".");
+ 
+ 	while (end > path && *end == '/')
+@@ -429,7 +429,7 @@
+ 	br_return_val_if_fail (path != (char *) NULL, (char *) NULL);
+ 
+ 	if (!*path) return strdup ("/");
+-	end = strrchr (path, '/');
++	end = strrchr ((char *) path, '/');
+ 	if (!end) return strdup (path);
+ 
+ 	tmp = br_strndup ((char *) path, end - path);
+
+--- codeblocks-8.02/src/plugins/contrib/codesnippets/codesnippets.cpp
++++ codeblocks-8.02/src/plugins/contrib/codesnippets/codesnippets.cpp
+@@ -21,6 +21,13 @@
+ 
+ #include <cstring>
+ #include "sdk.h"
++#if defined(__WXGTK__)
++#define GSocket GlibGSocket
++    #include "wx/gtk/win_gtk.h"
++#undef GSocket
++    #include <gdk/gdkx.h>
++#endif
++
+ #ifndef CB_PRECOMP
+ 	#include <wx/event.h>
+ 	#include <wx/frame.h> // Manager::Get()->GetAppWindow()
+@@ -51,11 +58,6 @@
+ #include <wx/wxFlatNotebook/wxFlatNotebook.h>
+ #include "memorymappedfile.h"
+ 
+-#if defined(__WXGTK__)
+-    #include "wx/gtk/win_gtk.h"
+-    #include <gdk/gdkx.h>
+-#endif
+-
+ // The plugin needs a flag ON to enable some code for the plugin
+ #if !defined(BUILDING_PLUGIN)
+     #error preprocessor BUILDING_PLUGIN flag required for this target
+
+--- codeblocks-8.02/src/plugins/contrib/codesnippets/codesnippetstreectrl.cpp
++++ codeblocks-8.02/src/plugins/contrib/codesnippets/codesnippetstreectrl.cpp
+@@ -19,6 +19,12 @@
+ */
+ // RCS-ID: $Id: codesnippetstreectrl.cpp 112 2008-01-07 17:03:31Z Pecan $
+ 
++#if defined(__WXGTK__)
++#define GSocket GlibGSocket
++    #include "wx/gtk/win_gtk.h"
++#undef GSocket
++    #include <gdk/gdkx.h>
++#endif
+ #ifdef WX_PRECOMP
+     #include "wx_pch.h"
+ #else
+@@ -48,10 +54,6 @@
+ #include "messagebox.h"
+ #include "menuidentifiers.h"
+ #include "editsnippetframe.h"
+-#if defined(__WXGTK__)
+-    #include "wx/gtk/win_gtk.h"
+-    #include <gdk/gdkx.h>
+-#endif
+ 
+ IMPLEMENT_DYNAMIC_CLASS(CodeSnippetsTreeCtrl, wxTreeCtrl)
+ 
