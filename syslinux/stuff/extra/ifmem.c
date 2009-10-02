@@ -108,8 +108,17 @@ int main(int argc, char *argv[])
   ram_size = memory_size();
   printf("Total memory found %luK.\n",ram_size);
   for (i = 1; i + 2 < argc; ) { 
+    char *p = s;
+    unsigned long scale = 1;
+    
+    if (*p) while (p[1]) p++;
+    switch (*p | 0x20) {
+    case 'g': scale = 1024*1024; *p = 0; break;
+    case 'm': scale = 1024;
+    case 'k': *p = 0; break;
+    }
     j = i++; // size
-    if (ram_size >= strtoul(s, NULL, 0)) break;
+    if (ram_size >= scale * strtoul(s, NULL, 0)) break;
     s = argv[++i];
   }
 
@@ -119,7 +128,7 @@ int main(int argc, char *argv[])
 	char c = *argv[i];
 	if (c >= '0' && c <= '9') j = i;
 	if (i - j > 2 && i < argc) {
-#define SZ 512
+#define SZ 4096
 		static char cmdline[SZ];
 		char *p = cmdline, *q = s;
 		int j;
