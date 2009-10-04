@@ -25,10 +25,12 @@ TAR_EXTS="tar"
 GZIP_EXTS="tar.gz tgz"
 LZMA_EXTS="tar.lz tar.lzma tlz"
 BZIP2_EXTS="tar.bz tbz tar.bz2 tbz2"
+XZ_EXTS="tar.xz txz"
 COMPRESS_EXTS="tar.z tar.Z"
 IPK_EXTS="ipk"
 CPIO_EXTS="cpio"
 CPIOGZ_EXTS="cpio.gz"
+CPIOXZ_EXTS="cpio.xz"
 ZIP_EXTS="zip cbz jar"
 RPM_EXTS="rpm"
 DEB_EXTS="deb"
@@ -36,7 +38,7 @@ TAZPKG_EXTS="tazpkg spkg"
 ISO_EXTS="iso"
 SQUASHFS_EXTS="sqfs squashfs"
 CROMFS_EXTS="cromfs"
-FS_EXTS="ext2 ext3 dos fat vfat fd fs loop"
+FS_EXTS="ext2 ext3 dos fat vfat xfs fd fs loop"
 CLOOP_EXTS="cloop"
 RAR_EXTS="rar cbr"
 LHA_EXTS="lha lzh lzs"
@@ -112,6 +114,13 @@ for ext in $LZMA_EXTS; do
     if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
         DECOMPRESS="unlzma -c" 
         COMPRESS="lzma e -si -so"
+    fi
+done
+for ext in $XZ_EXTS $CPIOXZ_EXTS; do
+    if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
+        [ -x /usr/bin/rx ] || exit $E_UNSUPPORTED
+        DECOMPRESS="xz -dc"
+        COMPRESS="xz -c"
     fi
 done
 for ext in $COMPRESS_EXTS; do
@@ -198,7 +207,8 @@ update_tar_cpio()
          [ "$(which bzip2)" ] || return
     fi
     if not_busybox tar && [ "$action" != "new_archive" ]; then
-	for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS; do
+	for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $XZ_EXTS \
+		   $COMPRESS_EXTS $LZMA_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
 	        decompress_func
 		case "$action" in
@@ -247,8 +257,8 @@ update_tar_cpio()
 	fi
       done
     done <<EOT
-addtar	extracttar   $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS
-addcpio	extractcpio  $CPIO_EXTS $CPIOGZ_EXTS
+addtar	extracttar   $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $XZ_EXTS $COMPRESS_EXTS $LZMA_EXTS
+addcpio	extractcpio  $CPIO_EXTS $CPIOGZ_EXTS $CPIOXZ_EXTS
 EOT
 }
 
@@ -310,6 +320,9 @@ case "$opt" in
             if [ "$ext" = "zip" -a ! "$(which zip)" ]; then
                 echo warning: zip not found, extract only >/dev/stderr
             fi
+        done
+        [ -x /usr/bin/xz ] && for ext in $XZ_EXTS $CPIOXZ_EXTS; do
+            printf "%s;" $ext
         done
 	while read mod exts; do
 	    [ -f /lib/modules/$(uname -r)/kernel/$mod ] || continue
@@ -373,8 +386,8 @@ EOT
 	    fi
         done
         done <<EOT
-do_decompress	cpio\ -tv	$CPIO_EXTS $CPIOGZ_EXTS
-do_decompress	tar\ -tvf\ -	$TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS $IPK_EXTS
+do_decompress	cpio\ -tv	$CPIO_EXTS $CPIOGZ_EXTS $CPIOXZ_EXTS
+do_decompress	tar\ -tvf\ -	$TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $XZ_EXTS $COMPRESS_EXTS $LZMA_EXTS $IPK_EXTS
 rpm2cpio	cpio\ -tv	$RPM_EXTS
 tazpkg2cpio	cpio\ -tv	$TAZPKG_EXTS
 EOT
@@ -749,7 +762,7 @@ EOT
 
     -e) # extract: from archive passed files 
         for ext in $TAR_EXTS $GZIP_EXTS $BZIP2_EXTS $COMPRESS_EXTS $LZMA_EXTS \
-        	   $IPK_EXTS; do
+        	   $IPK_EXTS $XZ_EXTS; do
             if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
                 # xarchive will put is the right extract dir
                 # so we just have to extract.
@@ -775,7 +788,7 @@ EOT
             done
 	done <<EOT
 rpm2cpio	$RPM_EXTS
-do_decompress	$CPIO_EXTS $CPIOGZ_EXTS
+do_decompress	$CPIO_EXTS $CPIOGZ_EXTS $CPIOXZ_EXTS
 tazpkg2cpio	$TAZPKG_EXTS
 EOT
 
