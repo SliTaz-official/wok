@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="p2c"
+VERSION="1.21alpha2"
+CATEGORY="development"
+SHORT_DESC="A Pascal to C translator."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="${PACKAGE}_$VERSION.orig.tar.gz"
+WEB_SITE="http://www.ccrnp.ncifcrf.gov/~toms/p2c/daves.index.html"
+WGET_URL="http://ftp.de.debian.org/debian/pool/main/p/p2c/$TARBALL"
+DEPENDS="perl"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/src
+	sed -i  -e 's|^HOMEDIR.*|HOMEDIR=/usr/lib/p2c|' \
+		-e 's|^INCDIR.*|INCDIR=/usr/include/p2c|' \
+		-e 's|^BINDIR.*|BINDIR=/usr/bin|' \
+		-e 's|^LIBDIR.*|LIBDIR=/usr/lib|' \
+		-e 's|^ABSHOMEDIR.*|ABSHOMEDIR=/usr/lib/p2c|' \
+		-e 's|^ABSINCDIR.*|ABSINCDIR=/usr/include/p2c|' \
+		-e 's|^ABSLIBDIR.*|ABSLIBDIR=/usr/lib|' \
+	    Makefile
+	grep -q getlinep2c lex.c || sed -i 's/getline/getlinep2c/' *
+	make all p2cc
+	mkdir -p ../_pkg/usr/lib/p2c ../_pkg/usr/include/p2c ../_pkg/usr/bin
+	cp p2c p2cc ../_pkg/usr/bin
+	cp libp2c.a ../_pkg/usr/lib
+	ranlib ../_pkg/usr/lib/libp2c.a
+	cp p2c.h ../_pkg/usr/include/p2c
+	cp sys.p2crc loc.p2crc system.imp system.m2 turbo.imp string.pas \
+		../_pkg/usr/lib/p2c
+	mv ../_pkg/usr/lib/p2c/sys.p2crc ../_pkg/usr/lib/p2c/p2crc
+	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/* $fs
+}
+
