@@ -24,7 +24,7 @@ set_patch()
     tag="Handle kernel cmdline parameter config"
     i=$(grep -n "$tag" $1/etc/init.d/rcS | cut -d: -f1)
     i=$(($i-1))
-    len=71
+    len=73
     tag=$(grep "$tag" $1/etc/init.d/rcS)
     if [ "$2" = "-R" ]; then
     	line="-$(($i-$len+2)),$len +$(($i-$len+2)),2"
@@ -75,9 +75,11 @@ $i# Mount /usr (from slitaz-loram-http package)
 $i while [ -d /cdrom ]; do
 $i	/etc/init.d/network.sh
 $i	RUN_SCRIPTS="\$(echo \$RUN_SCRIPTS | sed 's/network.sh//')"
-$i	URLISO=http://mirror.slitaz.org/iso/\$(cat /etc/slitaz-release)/flavors/slitaz-loram-cdrom.iso
-$i	grep -q " urliso=" /proc/cmdline && URLISO=\$(cat /proc/cmdline | sed 's/.* urliso=\([^ ]*\).*/\1/')
-$i	/bin/httpfs \$URLISO /cdrom
+$i	URLISO=http://mirror.slitaz.org/iso/\$(cat /etc/slitaz-release)/flavors/slitaz-loram-cdrom.iso,http://download.tuxfamily.org/slitaz/iso/\$(cat /etc/slitaz-release)/flavors/slitaz-loram-cdrom.iso,http://slitaz.c3sl.ufpr.br/iso/\$(cat /etc/slitaz-release)/flavors/slitaz-loram-cdrom.iso
+$i	grep -q " urliso=" /proc/cmdline && URLISO=\$(cat /proc/cmdline | sed 's/.* urliso=\([^ ]*\).*/\1/'),\$URLISO
+$i	for i in \$(echo \$URLISO | sed 's/,/ /g'); do
+$i		/bin/httpfs \$URLISO /cdrom && break
+$i	done
 $i	mount -o loop,ro /cdrom/*.iso /cdrom
 $i	if [ -d /.usr.rw -a -x /bin/funionfs ]; then
 $i		echo -n "Mounting /usr read-write... "
