@@ -76,8 +76,11 @@ tazpkg2cpio()
 {
 	tmpcpio="$(mktemp -d -t tmpcpio.XXXXXX)"
 	cd $tmpcpio
-	cpio -i fs.cpio.gz > /dev/null < "$1"
-	zcat fs.cpio.gz
+	cpio -i > /dev/null < "$1"
+	case "$(ls fs.cpio* 2> /dev/null)" in
+	fs.cpio.lzma) unlzma -c fs.cpio.lzma;;
+	fs.cpio.gz)   zcat fs.cpio.gz;;
+	esac
 	cd -
 	rm -rf $tmpcpio
 }
