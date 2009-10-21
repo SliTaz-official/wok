@@ -121,7 +121,7 @@ for ext in $LZMA_EXTS; do
 done
 for ext in $XZ_EXTS $CPIOXZ_EXTS; do
     if [ $(expr "$lc_archive" : ".*\."$ext"$") -gt 0 ]; then
-        [ -x /usr/bin/rx ] || exit $E_UNSUPPORTED
+        [ -x /usr/bin/xz ] || exit $E_UNSUPPORTED
         DECOMPRESS="xz -dc"
         COMPRESS="xz -c"
     fi
