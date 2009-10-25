@@ -1,0 +1,26 @@
+# SliTaz package receipt.
+
+PACKAGE="mesa-dri"
+VERSION="7.4.4"
+CATEGORY="x-window"
+SHORT_DESC="Mesa DRI drivers."
+MAINTAINER="pascal.bellard@slitaz.org"
+WEB_SITE="http://www.mesa3d.org/"
+WANTED="mesa"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	# Copy everything, remove file while generating splited packages.
+	cp -a $_pkg/usr/lib/dri $fs/usr/lib
+	cd $WOK
+	for pkg in mesa-dri-*
+	do
+		tazwok genpkg $pkg
+		for file in `ls $pkg/taz/*/fs/usr/lib/dri`
+		do
+			rm $WOK/$PACKAGE/taz/*/fs/usr/lib/dri/$file
+		done
+	done
+}
