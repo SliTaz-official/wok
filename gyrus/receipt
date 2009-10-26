@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="gyrus"
+VERSION="0.3.8"
+CATEGORY="network"
+SHORT_DESC="Small tool for the administration of mailboxes in IMAP/Cyrus servers."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+ dbus ORBit2 gnet libglade"
+BUILD_DEPENDS="gtk+-dev dbus ORBit2-dev gnet-dev libglade-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://projects.gnome.org/gyrus/"
+WGET_URL="http://ftp.gnome.org/pub/gnome/sources/gyrus/0.3/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	if ! grep ^Icon= $_pkg/usr/share/applications/gyrus.desktop; then
+		echo 'Icon=web-browser' >> $_pkg/usr/share/applications/gyrus.desktop
+	fi
+}
