@@ -118,6 +118,9 @@ show_report()
 	echo "Cooklist"
 	echo "================================================================================"
 	cat $DB_DIR/cooklist && echo ""
+	echo "Packlist"
+	echo "================================================================================"
+	cat $DB_DIR/packlist && echo ""
 	echo "Blocked"
 	echo "================================================================================"
 	cat $DB_DIR/blocked && echo ""
@@ -132,7 +135,22 @@ escape()
 
 update_wok()
 {
+	local forced
+	forced=""
 	echo ""
+	echo "(updating flavors)" > $DB_DIR/running
+	cd $HG_FLAVORS
+	LAST_REV=`hg head --template '{rev}\n'`
+	hg pull && hg update
+	NEW_REV=`hg head --template '{rev}\n'`
+	if [ "$NEW_REV" != "$LAST_REV" ]; then
+		size=`du -sh $HG_FLAVORS | awk '{ print $1 }'`
+		echo -n "Copying Hg flavors to the build flavors ($size)... "
+		cp -a $HG_FLAVORS/* $BUILD_FLAVORS
+		cp -a $HG_FLAVORS/.hg $BUILD_FLAVORS
+		echo -e "Done\n"
+		forced="yes"
+	fi
 	echo "(updating wok)" > $DB_DIR/running
 	cd $HG_WOK
 	LAST_REV=`hg head --template '{rev}\n'`
@@ -153,13 +171,69 @@ update_wok()
 		echo -e "Done\n"
 	else
 		if [ "$1" = "cook-all" ] || [ "$1" = "cook-commit" ]; then
-			if [ "$2" != "--forced" ]; then
+			if [ "$2" != "--forced" -a -z "$forced" ]; then
 				echo -e "Nothing to cook...\n"
 				packages_summary
 				rm -f $LOCK_FILE && exit 0
 			fi
 		fi
 	fi
+}
+
+# Running 'tazbb report' should not pack anything and --verbose option
+# can be used to display more messages.
+check_flavors()
+{
+	# Clean up last results.
+	rm -f $DB_DIR/packlist && touch $DB_DIR/packlist
+	echo ""
+	echo "Checking all files in: $HG_FLAVORS"
+	echo "================================================================================"
+	echo "(checking flavors)" > $DB_DIR/running
+	for flavor in $(cd $HG_FLAVORS ; ls)
+	do
+		[ "$2" = "--verbose" ] && echo "Flavor : $flavor"
+		if [ ! -s $PACKAGES_REPOSITORY/$flavor.flavor ]; then
+			echo $flavor >> $DB_DIR/packlist
+			[ "$1" = "report" ] && echo "Missing : $flavor"
+			echo "Missing flavor : $flavor" >> $DB_DIR/report
+			continue
+		fi
+		for i in $(find $HG_FLAVORS -type f); do
+			[ $PACKAGES_REPOSITORY/$flavor.flavor -nt \
+			  $i ] && continue
+			echo $flavor >> $DB_DIR/packlist
+			[ "$1" = "report" ] && echo "Refresh : $flavor"
+			echo "Refresh flavor : $flavor" >> $DB_DIR/report
+			continue 2
+		done
+		[ -s $HG_FLAVORS/$flavor/packages.list ] &&
+		for i in $(cat $HG_FLAVORS/$flavor/packages.list); do
+			[ $PACKAGES_REPOSITORY/$flavor.flavor -nt \
+			  $BUILD_WOK/$i/taz ] && continue
+			echo $flavor >> $DB_DIR/packlist
+			[ "$1" = "report" ] && echo "Repack : $flavor"
+			echo "Repack flavor : $flavor" >> $DB_DIR/report
+			continue 2
+		done
+	done
+}
+
+# Here we pack all flavors found in the packlist.
+pack_flavors()
+{
+	[ -s $DB_DIR/packlist ] || return
+	[ $PACKAGES_REPOSITORY/packages.list -nt /var/lib/tazpkg/packages.list ] &&
+	cp -a $PACKAGES_REPOSITORY/packages.list /var/lib/tazpkg/packages.list
+	cd $PACKAGES_REPOSITORY
+	for flavor in $(cat $DB_DIR/packlist)
+	do
+		tazlito pack-flavor $flavor
+		# Remove flavor from the packlist and empty lines for HTML <pre>.
+		sed -i /"^$flavor$"/d $DB_DIR/packlist
+		sed -i '/^$/d' $DB_DIR/packlist
+	done
+	cd - > /dev/null
 }
 
 # Running 'tazbb report' should not cook anything and --verbose option
@@ -184,9 +258,8 @@ check_wok()
 			echo "Blocked : $PACKAGE ($VERSION)" && continue
 		fi
 
-		# Bristuff hack until the receipt are improved...
-		#[ "$VERSION" = "bristuff" ] && VERSION=`get_version`
-		if [ "$VERSION" = "bristuff" ]; then
+		# Some packages may compute VERSION at cook time (bristuff)
+		if grep -q ^get_version $pkg/receipt; then
 			. $BUILD_WOK/$PACKAGE/taz/*/receipt
 		fi
 
@@ -477,6 +550,18 @@ test_packages()
 	echo ""
 }
 
+# Generate flavor list
+gen_flavor_list()
+{
+	cd $PACKAGES_REPOSITORY
+	noheader=""
+	for i in *.flavor; do
+		tazlito show-flavor $i --brief $noheader
+		noheader="--noheader"
+	done > flavors.list
+	cd - > /dev/null
+}
+
 case "$1" in
 	list-pkgs)
 		# List last cooked packages.
@@ -486,6 +571,7 @@ case "$1" in
 		# rebuild all updated packages.
 		[ "$2" == "--update" ] && update_wok $@ || echo ""
 		check_wok $@
+		check_flavors $@
 		test_packages $@
 		show_report ;;
 	cook)
@@ -510,6 +596,9 @@ case "$1" in
 		check_wok $@
 		echo "(generating lists)" > $DB_DIR/running
 		tazwok gen-list --text
+		check_flavors $@
+		pack_flavors
+		gen_flavor_list
 		echo "" ;;
 	cook-commit)
 		# Cook all packages affected by the last commits in the wok.
@@ -522,6 +611,9 @@ case "$1" in
 		check_wok $@
 		echo "(generating lists)" > $DB_DIR/running
 		tazwok gen-list --text
+		check_flavors $@
+		pack_flavors
+		gen_flavor_list
 		echo "" ;;
 	block)
 		# Add a pkg name to the list of blocked packages.

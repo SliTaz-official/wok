@@ -129,6 +129,14 @@ include("$db_dir/removed");
 ?>
 </pre>
 
+<h3>Last cooked flavors</h3>
+<pre class="package">
+<?php
+system("cd $packages && ls -1t *.flavor | head -20 | \
+	while read file; do echo -n \$(stat -c '%y' $packages/\$file | \
+	cut -d. -f1); echo '   '\$file; done"); ?>
+</pre>
+
 <!-- End of content with round corner -->
 </div>
 <div id="content_bottom">
