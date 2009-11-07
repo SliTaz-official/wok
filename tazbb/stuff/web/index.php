@@ -51,7 +51,7 @@ it automatically cooks and tests packages commited in the wok. SliTaz
 main server: code name <a href="http://tank.slitaz.org">Tank</a>. This
 web interface gives the current status of the build bot and the last report
 about any packages modified by the SliTaz contributors in the Mercurial
-<a href="http://hg.slitaz.org/">Hg repos</a>.
+repositories, aka <a href="http://hg.slitaz.org/">Hg repos</a>.
 </p>
 
 <p>
