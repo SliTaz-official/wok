@@ -1,7 +1,52 @@
 #!/bin/sh
 
-echo -n "Switching / to tmpfs..."
+mount_mapper()
+{
+	mount $root /mnt
+	if [ -d /mnt/etc ]; then
+		umount /sys
+		for i in /dev/mapper $@ ; do
+			cp -a $i /mnt$i
+		done
+		umount /proc
+		echo -e "\\033[70G[ \\033[1;33mOK\\033[0;39m ]"
+		exec /sbin/switch_root mnt /sbin/init
+	fi
+	echo -e "\\033[70G[ \\033[1;31mFailed\\033[0;39m ]"
+}
+
 mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+if grep -q dmraid= /proc/cmdline; then
+	root="$(sed 's/.*dmraid=\([^ ]*\).*/\1/' < /proc/cmdline)"
+	echo -n "Switching / to dmraid $root..."
+	case "$(dmraid -s | grep ^type | awk '{ print $3 }')" in
+	mirror)		modprobe dm-mirror;;
+	raid[456]*)	modprobe raid456;;
+	esac
+	name=$(dmraid -s | grep ^name | awk '{ print $3 }')
+	case "$root" in
+	/dev/*);;
+	p*) root=/dev/mapper/${name}$root ;;
+	*)  root=/dev/mapper/${name}p$root ;;
+	esac
+	dmraid -ay
+	mount_mapper
+elif grep -q softraid= /proc/cmdline; then
+	root="$(sed 's/.*softraid=\([^ ]*\).*/\1/' < /proc/cmdline)"
+	echo -n "Switching / to softraid $root..."
+	mdadm --examine --scan --config=partitions > /etc/mdadm.conf
+	grep level=raid /etc/mdadm.conf | while read line; do
+		case "$line" in
+		*=raid1\ *)	modprobe dm-mirror ;;
+		*=raid[456]\ *)	modprobe raid456 ;;
+		esac
+	done
+	mdadm --assemble --scan
+	mount_mapper /etc/mdadm.conf
+fi
+umount /sys
+echo -n "Switching / to tmpfs..."
 size="$(grep rootfssize= < /proc/cmdline | \
 	sed 's/.*rootfssize=\([0-9]*[kmg%]\).*/-o size=\1/')"
 free=$(busybox free | busybox awk '/Mem:/ { print int(($4*100)/$3) }')

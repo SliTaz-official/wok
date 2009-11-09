@@ -5,19 +5,23 @@
 # Authors : Eric Joseph-Alexandre <erjo@slitaz.org>
 #	    Pascal Bellard <pascal.bellard@slitaz.org>
 
-VERSION=0.6
+VERSION=0.7
 
+PKG_VER=$1
 ROOT=/home/slitaz/iso
+REPOS=/var/www/slitaz/mirror/packages/$PKG_VER
+IFMEM_C32=/var/www/slitaz/mirror/pxe/ifmem.c32
+ISO_DIR=/var/www/slitaz/mirror/iso/$PKG_VER
+
+[ -s /etc/slitaz/mkpkgiso.conf ] && . /etc/slitaz/mkpkgiso.conf
+[ -s ./mkpkgiso.conf ] && . ./mkpkgiso.conf
+
 SORT_DIR=${ROOT}/_iso.$$
 TEMP_DIR=${ROOT}/_iso.$$
 SORT_FILE=${ROOT}/_sort.$$
-PKG_VER=$1
 shift
 OPTIONS=$@
 PKG_DIR=$TEMP_DIR/packages/$PKG_VER
-REPOS=/var/www/slitaz/mirror/packages/$PKG_VER
-PXE_DIR=/var/www/slitaz/mirror/pxe
-ISO_DIR=/var/www/slitaz/mirror/iso/$PKG_VER
 LOG=$PWD/$(basename $0).log
 
 #
@@ -32,6 +36,8 @@ if [ -z $PKG_VER ]; then
 Usage: $(basename $0) <Version> 
 	[--boot [--auto-install] [--loram-detect]]|--webboot] [--filter]
 	[--wok] [--wok-stable] [--website][--dry-run]
+Example:
+$(basename $0) cooking --boot --auto-install --loram-detect --filter --wok --website
 EOT
 	exit 1
 fi
@@ -45,18 +51,33 @@ fi
 # Status function.
 status()
 {
-    local CHECK=$?
-    echo -en "\\033[70G[ "
-    if [ $CHECK = 0 ]; then
-        echo -en "\\033[1;33mOK"
-    else
-        echo -en "\\033[1;31mFailed"
-    fi
-    echo -e "\\033[0;39m ]"
+	local CHECK=$?
+	echo -en "\\033[70G[ "
+	if [ $CHECK = 0 ]; then
+		echo -en "\\033[1;33mOK"
+	else
+		echo -en "\\033[1;31mFailed"
+	fi
+	echo -e "\\033[0;39m ]"
+}
+
+need()
+{
+	found=1
+	for i in $@ ; do
+		[ -s $i ] && continue
+		echo "Missing: $i "
+		found=0
+	done
+	[ $found -ne 0 ] && return
+	status
+	rm -rf $TEMP_DIR $SORT_FILE
+	exit 1
 }
 
 # Create temp directory
 mkdir -p $TEMP_DIR/packages/$PKG_VER
+which genisoimage > /dev/null || need /usr/bin/genisoimage
 
 # Prepare evrything for ISO
 
@@ -176,12 +197,9 @@ esac
 # Copy hg subtree
 get_from_hg()
 {
-[ /slitaz/home/slitaz/hg/$1 ] || return
 echo -n "Adding $2"
-/usr/sbin/chroot /slitaz hg --repository /home/slitaz/hg/$1 pull >/dev/null
-/usr/sbin/chroot /slitaz hg --repository /home/slitaz/hg/$1 update >/dev/null
-mkdir $TEMP_DIR/$1
-cp -a /slitaz/home/slitaz/hg/$1/* $TEMP_DIR/$1
+wget -q -O - http://hg.slitaz.org/$1/archive/tip.tar.bz2 | tar xjf - -C $TEMP_DIR
+mv $TEMP_DIR/$1-* $TEMP_DIR/$1
 status
 echo "$(du -hs $TEMP_DIR/$1 | awk '{ print $1 }') used by $2."
 }
@@ -210,8 +228,6 @@ EOF
 --website)
 	if get_from_hg website "web site"; then
 		echo "$SORT_DIR/website -6000" >> $SORT_FILE
-		echo "$(echo $SORT_DIR/packages/*/lighttpd-[0-9]*) -7100" >> $SORT_FILE
-		echo "$(echo $SORT_DIR/packages/*/pcre-[0-9]*) -7100" >> $SORT_FILE
 		cat >>$TEMP_DIR/install.sh<<EOF
 echo "=> slitaz web site installed in file://\$DIR/website/index.html"
 EOF
@@ -238,7 +254,9 @@ iso=$ISO_DIR/slitaz-$PKG_VER.iso
 isoloram=$ISO_DIR/flavors/slitaz-loram-cdrom-sqfs.iso
 case " $OPTIONS " in
 *\ --boot\ *)
-    echo -n "Creating boot tree"
+	echo -n "Creating boot tree"
+	need $iso
+	which isoinfo > /dev/null || need /usr/bin/isoinfo
 	isoinfo -R -l -i $iso | awk '/^Directory/ { path=$4 } /^-/ { print path$12  }' | while read file; do
 		[ "$(basename $file)" == ".." ] && continue
 		[ "$file" = "/boot/isolinux/boot.cat" ] && continue
@@ -249,22 +267,24 @@ case " $OPTIONS " in
 	if [ -f "$(echo $TEMP_DIR/boot/vmlinuz*)" ]; then
 		rm -f $TEMP_DIR/boot/bzImage
 		ln $TEMP_DIR/boot/vmlinuz* $TEMP_DIR/boot/bzImage
-    fi
+	fi
 	status
 	BOOT_OPT="-sort $SORT_FILE -b boot/isolinux/isolinux.bin \
 -c boot/isolinux/boot.cat  -no-emul-boot -boot-load-size 4 -boot-info-table"
-    case " $OPTIONS " in
+	case " $OPTIONS " in
 	*\ --auto-install\ *)
-    	echo -n "Enable auto install"
+		echo -n "Enable auto install"
 		sed -i "s/rw root/rw config=LABEL=packages-$PKG_VER,install.sh root/" \
 			$TEMP_DIR/boot/isolinux/*.cfg
 		status
 		;;
 	esac
-    [ -f $PXE_DIR/ifmem.c32 -a -f $isoloram ] && case " $OPTIONS " in
+	case " $OPTIONS " in
 	*\ --loram-detect\ *)
-    	echo -n "Enable loram autodetection"
-		cp $PXE_DIR/ifmem.c32 "$TEMP_DIR/boot/isolinux"
+		echo -n "Enable loram autodetection"
+		need $IFMEM_C32 $isoloram
+		which isoinfo > /dev/null || need /usr/bin/isoinfo
+		cp $IFMEM_C32 "$TEMP_DIR/boot/isolinux"
 		isoinfo -R -x "/usr.sqfs" -i $isoloram > "$TEMP_DIR/usr.sqfs"
 		echo "$SORT_DIR/usr.sqfs -5000" >> $SORT_FILE
 		isoinfo -R -x "/boot/rootfs.gz" -i $isoloram > \
@@ -300,18 +320,19 @@ EOT
 	;;
 *\ --webboot\ *)
 	if extract_boot gpxe; then
-    	echo -n "Creating web boot tree"
-		mkdir $TEMP_DIR/boot/isolinux/
-		isoinfo -x "/BOOT/ISOLINUX/ISOLINUX.BIN;1" -i $iso > \
-			$TEMP_DIR/boot/isolinux/isolinux.bin
-		mv $TEMP_DIR/boot/gpxe $TEMP_DIR/boot/isolinux
-		echo "$SORT_DIR/boot 0" >> $SORT_FILE
-		cat > $TEMP_DIR/boot/isolinux/isolinux.cfg <<EOT
+	echo -n "Creating web boot tree"
+	which isoinfo > /dev/null || need /usr/bin/isoinfo
+	mkdir $TEMP_DIR/boot/isolinux/
+	isoinfo -R -x "/boot/isolinux/isolinux.bin" -i $iso > \
+		$TEMP_DIR/boot/isolinux/isolinux.bin
+	mv $TEMP_DIR/boot/gpxe $TEMP_DIR/boot/isolinux
+	echo "$SORT_DIR/boot 0" >> $SORT_FILE
+	cat > $TEMP_DIR/boot/isolinux/isolinux.cfg <<EOT
 default gpxe
 append http://mirror.slitaz.org/pxe/pxelinux.0
 EOT
-		status
-		BOOT_OPT="-sort $SORT_FILE -b boot/isolinux/isolinux.bin \
+	status
+	BOOT_OPT="-sort $SORT_FILE -b boot/isolinux/isolinux.bin \
 -c boot/isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table"
 	fi
 	;;
@@ -319,7 +340,7 @@ esac
 
 if [ -n "$BOOT_OPT" ]; then
 	echo "$(du -chs $TEMP_DIR/boot $TEMP_DIR/usr.sqfs 2> /dev/null | \
-		    tail -1 | awk '{ print $1 }') used by boot."
+		    awk 'END { print $1 }') used by boot."
 fi
 
 case " $OPTIONS " in
@@ -330,7 +351,7 @@ case " $OPTIONS " in
 esac
 # Gen ISO
 echo -n "Generating iso image"
-/usr/bin/genisoimage -R -J -f -V $VOLUME_ID \
+genisoimage -R -J -f -V $VOLUME_ID \
  -P "$PUBLISHER" -md5-list $REPOS/packages.md5 \
  -quiet -o $OUTPUT $BOOT_OPT $TEMP_DIR
 status 
@@ -339,11 +360,11 @@ echo "$(du -hs $OUTPUT | awk '{ print $1 }') used by iso image."
 
 cd ${ROOT}
 echo -n "Create hybrid DVD/CDROM"
-[ -x /usr/bin/isohybrid ] && /usr/bin/isohybrid $IMAGE 2> /dev/null
+which isohybrid > /dev/null && isohybrid $IMAGE 2> /dev/null
 status
 
 echo -n "Calculate md5sum"
-/usr/bin/md5sum $IMAGE > $(basename $IMAGE .iso).md5
+md5sum $IMAGE > $(basename $IMAGE .iso).md5
 status
 
 echo -n "Moving file to mirror"
