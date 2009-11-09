@@ -20,6 +20,7 @@ compile_rules()
 		git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-standalone.git aufs2
 		cd aufs2 && git checkout origin/aufs2-30
 		cp -a Documentation fs include $src
+		cp -a *.patch ../stuff
 	fi
 	cd $src
 	# SliTaz db
@@ -30,22 +31,23 @@ compile_rules()
 	# Misc patches from pascal
 	while read patch_file; do
 		echo "$patch_file" >> slitaz/patches
-		cp ../stuff/$patch_file slitaz/$patch_file
+		#cp ../stuff/$patch_file slitaz/$patch_file
+		cp ../stuff/$patch_file slitaz
 		if [ -f done.$patch_file ]; then
 			echo "Skipping $patch_file"
 			continue
 		fi
 		echo "Apply $patch_file"
-		patch -p1 < $patch_file || exit 1
+		patch -p1 < slitaz/$patch_file || exit 1
 		touch done.$patch_file
 	done <<EOT
-../stuff/$PACKAGE-utf8-$VERSION.u
-../stuff/$PACKAGE-diff-$VERSION.u
-../stuff/$PACKAGE-freeinitrd-$VERSION.u
-../stuff/$PACKAGE-unlzma-$VERSION.u
-../aufs2/aufs2-base.patch
-../aufs2/aufs2-kbuild.patch
-../aufs2/aufs2-standalone.patch
+$PACKAGE-utf8-$VERSION.u
+$PACKAGE-diff-$VERSION.u
+$PACKAGE-freeinitrd-$VERSION.u
+$PACKAGE-unlzma-$VERSION.u
+aufs2-base.patch
+aufs2-kbuild.patch
+aufs2-standalone.patch
 EOT
 	make mrproper
 	cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
@@ -93,6 +95,8 @@ genpkg_rules()
     do
     	echo tazwok cook ${i%/receipt}
     done
+    # check and echo any module in kernel .config that's not added to one of linux-* pkgs
+	./stuff/check_modules.sh 
 }
 
 # Pre and post install commands for Tazpkg.

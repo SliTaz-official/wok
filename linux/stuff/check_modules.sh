@@ -2,10 +2,11 @@
 # Echo any module in kernel .config that's not added to one of linux-* pkgs
 # 2009/06/18 <jozee@slitaz.org> - GNU General Public License.
 #
-    
-	VERSION=$1
-	WOK=$2
-	src=$WOK/linux/linux-$VERSION
+    . /etc/tazwok.conf
+	
+	VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	src="$WOK/linux/linux-$VERSION"
+	
 	cd $src
 	mkdir -p ../stuff/tmp
 	rm -f ../stuff/tmp/* # clean up
@@ -35,9 +36,11 @@
 	done
 	if [ -f ../stuff/tmp/unpackaged-modules-"$VERSION".list ]; then
 		echo "======================================================================"
-		echo " Some modules selected in .config were not categorized in linux-* pkgs"
-		echo "Check linux/stuff/tmp/unpackaged-modules-$VERSION.list to see"
+		echo " These modules selected in .config were not categorized in linux-* pkgs:"
 		cat ../stuff/tmp/unpackaged-modules-$VERSION.list 
+		#echo "Check linux/stuff/tmp/unpackaged-modules-$VERSION.list to see"
+		echo "======================================================================"
 	else
 		rm -r ../stuff/tmp
 	fi
+    
