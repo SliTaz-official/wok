@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="broadcom-wl"
+VERSION="5.10.91.9.3"
+CATEGORY="network"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="Broadcom 802.11abg Linux STA Networking Drivers"
+DEPENDS="linux"
+WEB_SITE="http://www.broadcom.com/support/802.11/linux_sta.php"
+TARBALL="hybrid-portsrc-x86_32-v${VERSION}.tar.gz"
+WGET_URL="http://www.broadcom.com/docs/linux_sta/$TARBALL"
+TAGS=""
+
+# Rules to configure and make the package.
+
+compile_rules() {
+ 
+	cd $WOK/$PACKAGE
+	mkdir -p $PACKAGE-$VERSION
+	mv lib src Makefile $PACKAGE-$VERSION
+	cd $src
+	[ -d $WOK/linux/taz ] || tazwok cook linux
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	KBUILD_NOPEDANTIC=1 make -C $WOK/linux/linux-$KERNEL_VERSION M=`pwd`
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	EXTRAVERSION=_$KERNEL_VERSION
+	
+	mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/wireless
+	
+	# Compress and install module
+	lzma e $src/wl.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/wireless/wl.ko.gz
+	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/wireless/wl.ko.gz
+	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/wireless/wl.ko.gz
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	depmod -a
+}
