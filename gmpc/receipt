@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="gmpc"
+VERSION="0.19.1"
+CATEGORY="multimedia"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="A GTK2 client for MPD"
+WEB_SITE="http://gmpc.wikia.com/wiki/Gnome_Music_Player_Client"
+DEPENDS="libglade libmpd curl xorg-libSM libsoup libsexy mpd"
+BUILD_DEPENDS="gob2 intltool libglade-dev libmpd libmpd-dev curl-dev  xorg-libSM-dev  libsoup-dev  libsexy-dev xcb-util-dev util-linux-ng-uuid-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://download.sarine.nl/Programs/${PACKAGE}/${VERSION}/$TARBALL"
+TAGS=""
+
+# Rules to configure and make the package.
+
+compile_rules() {
+  cd $src
+  ./configure \
+		--prefix=/usr \
+		--enable-system-libsexy \
+		--disable-mmkeys \
+		--disbale-shave
+  make 
+  sed -i 's|GNOME;Application;AudioVideo;|GTK;Application;AudioVideo;Player;|'  data/${PACKAGE}.desktop
+  make DESTDIR=$PWD/_pkg install
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/icons/hicolor
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	cp -a $_pkg/usr/share/icons/hicolor/16x16 $fs/usr/share/icons/hicolor
+	
+}
