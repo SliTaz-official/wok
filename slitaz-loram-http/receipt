@@ -45,7 +45,7 @@ $i {
 $i	FREEMEM=\$(free | awk '{ n = \$NF } END { print n }')	
 $i	if [ \$FREEMEM -gt \$(du -s \$FS | awk '{ print \$1+40000 }') ]; then
 $i		status
-$i		if grep -q " extract-loram" /proc/cmdline &&
+$i		if ! grep -q " keep-loram" /proc/cmdline &&
 $i		    [ -d \$FS -o \$FREEMEM -gt \$(du -s \$FS | \\
 $i			awk '{ print (\$1*4)+40000 }') ]; then
 $i			echo -n "Extracting loram..."
@@ -130,6 +130,11 @@ pre_install()
 post_install()
 {
     set_patch "$1"
+    cat <<EOF
+----
+'tazlito gen-distro' will create a loram-http flavor 
+while this package is installed.
+EOF
     if [ ! -x $1/bin/funionfs ]; then
         cat <<EOF
 ----
@@ -146,4 +151,8 @@ EOF
 pre_remove()
 {
     set_patch '' -R 
+    cat <<EOF
+----
+'tazlito gen-distro' will work as expected now.
+EOF
 }

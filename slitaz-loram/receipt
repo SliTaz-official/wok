@@ -50,7 +50,7 @@ $i	else
 $i		echo -n "only... "
 $i	fi
 $i	FREEMEM=\$(free | awk '{ n = \$NF } END { print n }')
-$i	if grep -q " extract-loram" /proc/cmdline && [ \$FREEMEM -gt \\
+$i	if ! grep -q " keep-loram" /proc/cmdline && [ \$FREEMEM -gt \\
 $i	\$(du -s \$FS | awk '{ print (\$1*4)+40000 }') ]; then
 $i		echo -n "Extracting loram..."
 $i		. /etc/tazlito/loram.extract
@@ -95,6 +95,10 @@ pre_install()
 post_install()
 {
     set_patch "$1"
+    cat <<EOF
+----
+'tazlito gen-distro' will create a loram flavor while this package is installed.
+EOF
     if [ ! -x $1/bin/funionfs -a ! -d $1/var/lib/tazpkg/installed/aufs ]; then
         cat <<EOF
 ----
@@ -113,4 +117,8 @@ EOF
 pre_remove()
 {
     set_patch '' -R
+    cat <<EOF
+----
+'tazlito gen-distro' will work as expected now.
+EOF
 }
