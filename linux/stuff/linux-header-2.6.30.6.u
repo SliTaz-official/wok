@@ -18,7 +18,7 @@
  
  #ifndef SVGA_MODE
  #define SVGA_MODE ASK_VGA
-@@ -39,53 +41,392 @@
+@@ -39,53 +41,391 @@
  #define ROOT_RDONLY 1
  #endif
  
@@ -107,7 +107,6 @@
 +	xchg	%ax, %di		# sector count
 +	cbw				# limits = 0
 +	incw	%cx			# cylinder 0, sector 1
-+	xorb	%dh, %dh		# head 0, current drive
 +	xorw	%bx, %bx
 +	call	read_first_sectors	# read setup
 +
@@ -137,7 +136,7 @@
 +	call	puts
 +cmdlp:
 +	movb	$32, %al		# clear end of line
-+	call	putc			#  with Space
++	int	$0x10			#  with Space
 +	movb	$8, %al			#   and BackSpace
  	int	$0x10
 -	jmp	msg_loop
@@ -149,14 +148,14 @@
 +	je	cmdbs
 +	cbw
 +	movw	%ax, (%si)		# store end of string too
-+	incw	%si
-+	incw	%si
++	lodsw				# %si += 2
 +cmdbs:
 +	cmpw	(%di), %si		# lower limit is checked
 +	je	cmdget			#   but upper limit not
-+	call	putc
++	call	putc			# set %ah and %bx
 +	cmpb	$10, %al		# Enter ?
 +	jne	cmdlp
++	movb	%bh,-2(%si)		# remove CR
 +endcmdline:
 +	
 +nocmdline:
@@ -374,9 +373,10 @@
 +        cmpb    %cl,%dh			# reach head limit ?
 +        je	bdendlp
 +#endif
-+        movb    $0,%dh			# first head
 +# NOTE : support 256 cylinders max
 +        incb    %ch			# next cylinder
++read_first_sectors:
++        movb    $0,%dh			# first head
 +#ifndef FLOPPY_1440K_ONLY
 +	cmpb	$FLOPPY_SECTORS+1,%al	# 1.44M floppy ?
 +        jne	bdendlp
@@ -393,7 +393,6 @@
 -	int	$0x19
 +	popaw
 +bdendlp:
-+read_first_sectors:
 +#ifndef FLOPPY_1440K_ONLY
 +	movw	%ax, limits
 +#endif
@@ -405,15 +404,16 @@
 +        jne	read_sectorslp
 +	pushw	%ss
 +	popw	%es			# restore es
-+	movb	$0x2e, %al 		# loading... message 2e = .
++	movb	$0x2e+3, %al 		# 2e = .
++putclf:
++	subb	$3, %al
 +putc:
 +	movb	$0xe, %ah
 +	movw	$7, %bx			#   one dot each 64k
 + 	int	$0x10
 +	cmp	$0xd, %al		# CR ?
-+	jne	return
-+	movb	$0xa, %al		# LF
-+	jmp	putc
++	je	putclf
++	ret
  
 -	# int 0x19 should never return.  In case it does anyway,
 -	# invoke the BIOS reset code...
@@ -425,7 +425,6 @@
 +	lodsb
 +	orb	%al,%al			# end of string is \0
 +	jnz	putcs
-+return:
 +	ret
  
 -	.section ".bsdata", "a"
