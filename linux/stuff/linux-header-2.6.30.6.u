@@ -18,7 +18,7 @@
  
  #ifndef SVGA_MODE
  #define SVGA_MODE ASK_VGA
-@@ -39,53 +41,391 @@
+@@ -39,53 +41,394 @@
  #define ROOT_RDONLY 1
  #endif
  
@@ -104,10 +104,15 @@
 +
 +	cli
 +
++	movb	$24, %bl		# allocate 48 bytes in stack
++init_gdt:
++	pushw	%cx			#   initialized with 0
++	decw	%bx
++	jnz	init_gdt
++
 +	xchg	%ax, %di		# sector count
 +	cbw				# limits = 0
 +	incw	%cx			# cylinder 0, sector 1
-+	xorw	%bx, %bx
 +	call	read_first_sectors	# read setup
 +
 +#define version_offset		0xE
@@ -146,8 +151,7 @@
 +	int	$0x16
 +	cmpb	$8, %al			# BackSpace ?
 +	je	cmdbs
-+	cbw
-+	movw	%ax, (%si)		# store end of string too
++	movb	%al, (%si)		# store char
 +	lodsw				# %si += 2
 +cmdbs:
 +	cmpw	(%di), %si		# lower limit is checked
@@ -155,7 +159,7 @@
 +	call	putc			# set %ah and %bx
 +	cmpb	$10, %al		# Enter ?
 +	jne	cmdlp
-+	movb	%bh,-2(%si)		# remove CR
++	movb	%bh,-2(%si)		# set end of line, remove CR
 +endcmdline:
 +	
 +nocmdline:
@@ -168,10 +172,6 @@
 +# no 64kB boundaries are crossed. We try to load it as fast as
 +# possible, loading whole tracks whenever we can.
 +
-+	movw	$24, %cx		# allocate 48 bytes in stack
-+init_gdt:
-+	push	$0			#   initialized with 0
-+	loop	init_gdt
 +	movw	%sp, %si		# for bootsect_gdt
 +	movb	$0x0F, %al		# destination = 0x100000
 +	movw	$syssize, %di
@@ -272,6 +272,8 @@
 +#endif
 +	pushaw
 +#ifdef SHOW_REGS
++	cmpw	$0x600,%bp		# disk changed ?
++	je	reset_floppy
 +	pushw	%es			# print %es (named EX)
 +	pushw	%dx			# print %dx
 +	pushw	%cx			# print %cx
@@ -299,6 +301,7 @@
 +	int	$0x10
 +	popw	%cx
 +	loop	print_loop
++reset_floppy:
 +#endif
 +	cbw				# %ah = 0
 +        int     $0x13			# reset controler
