@@ -1,28 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="hplip"
-VERSION="3.9.4b" 
+VERSION="3.9.10" 
 CATEGORY="system-tools"
 SHORT_DESC="Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet"
 MAINTAINER="jozee@slitaz.org"
-DEPENDS="ghostscript python cups dbus-python libusb jpeg tiff sane-backends"
-BUILD_DEPENDS="ghostscript-dev dbus-python-dev sane-backends-dev sane-backends pkg-config libusb-dev jpeg-dev cups-dev dbus-dev tiff-dev python python-dev dbus-python"
+DEPENDS="ghostscript python cups dbus-python libusb jpeg tiff sane-backends libgphoto2 libexif"
+BUILD_DEPENDS="ghostscript-dev dbus-python-dev sane-backends-dev sane-backends libexif-dev libgphoto2-dev libgphoto2 pkg-config libusb-dev jpeg-dev cups-dev dbus-dev tiff-dev python python-dev dbus-python"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://hplipopensource.com"
 WGET_URL="http://downloads.sourceforge.net/sourceforge/hplip/$TARBALL"
 
-# Rules to configure and make the package. --prefix=/usr \
+# Rules to configure and make the package. --prefix=/usr 
 compile_rules()
 {
 	cd $src
-	while read file; do
-    	[ -f done.$file ] && continue
-    	echo "Apply $file..."
-    	patch -p0 < ../stuff/$PACKAGE-$VERSION-$file || return 1
-	touch done.$file
-    done <<EOT
-	glibc210.u
-EOT
 	./configure  \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -62,12 +54,6 @@ genpkg_rules()
  # remove xdg
  rm -rf $fs/etc/xdg
  
- # move udev rules to /lib/udev/rules.d
- mkdir -p $fs/lib/udev/rules.d
- mv $fs/etc/udev/rules.d/* $fs/lib/udev/rules.d/
- rm -rf $fs/etc/udev
- # remove lp user, it's not used in slitaz
- sed -i 's|OWNER="lp", ||g' $fs/lib/udev/rules.d/55-hpmud.rules
 
 # remove .desktop file as we compiled without pyqt3 support
 rm -rf $fs/usr/share/applications/*
