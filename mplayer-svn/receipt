@@ -1,44 +1,34 @@
 # SliTaz package receipt.
 
 PACKAGE="mplayer-svn"
-VERSION="29843"
+VERSION="29969"
 CATEGORY="multimedia"
 SHORT_DESC="Mplayer SVN version"
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+ cdparanoia-III libmad xorg-libXv libtheora ffmpeg lame libv4l"
 BUILD_DEPENDS="gtk+-dev cdparanoia-III-dev libmad-dev xorg-libXv-dev
-	libtheora-dev ffmpeg-dev subversion"
+libtheora-dev ffmpeg-dev subversion"
 WEB_SITE="http://www.mplayerhq.hu/design7/news.html"
 PROVIDES="mplayer"
 TAGS="player movie audio video"
 
 # Rules to configure and make the package.
-# This package is compiled against shared ffmpeg. Compiling with shared ffmpeg on svn version is always challenging.
-# Tip: Try to use the same day ffmpeg and mplayer versions (use: svn info), very likely to succeed
-# To compile with in-built ffmpeg (and double the size of pkg), remove from compile options:
-#  --disable-libavutil_a --disable-libavcodec_a --disable-libavformat_a --disable-libpostproc_a --disable-libswscale_a 
-# --disable-tv --disable-radio-v4l2 --disable-v4l2
+#
+# This package is compiled against shared ffmpeg. Compiling with shared ffmpeg
+# on svn version is always challenging. Tip: Try to use the same day ffmpeg and
+# mplayer versions (use: svn info), very likely to succeed.
+#
+# To compile with in-built ffmpeg (and double the size of pkg), remove from
+# compile options:
+#	--disable-libavutil_a --disable-libavcodec_a --disable-libavformat_a
+#	--disable-libpostproc_a --disable-libswscale_a
+# 	--disable-tv --disable-radio-v4l2 --disable-v4l2
 
 compile_rules()
 {
-	
-   mkdir $src 2> /dev/null
+	[ -d $PACKAGE-$VERSION ] || svn checkout -r $VERSION \
+		svn://svn.mplayerhq.hu/mplayer/trunk $PACKAGE-$VERSION
 	cd $src
-	[ -f mplayer/configure ] || svn checkout -r $VERSION \
-		svn://svn.mplayerhq.hu/mplayer/trunk mplayer 
-	cd mplayer
-	
-	   while read file; do
-    	[ -f done.$file ] && continue
-    	echo "Apply $file..."
-		cp ../../stuff/$PACKAGE-$VERSION-$file .
-    	patch -p0 < $PACKAGE-$VERSION-$file || return 1
-	touch done.$file
-    done <<EOT
-liba52-gcc44.u
-EOT
-	#patch -Np0 < $PACKAGE-$VERSION-liba52_gcc44.u || return 1 
-	
 	./configure \
 		--prefix=/usr \
 		--confdir=/etc/mplayer \
@@ -58,13 +48,16 @@ EOT
 		--disable-openal \
 		--disable-faad \
 		--disable-libavcodec_mpegaudio_hp \
-		--disable-fribidi --target=i386-linux  \
-		--disable-tv-teletext \
-		--disable-musepack --disable-dvdnav --disable-esd --disable-mga \
-		--disable-lirc --disable-lircc --disable-smb --disable-nemesi --disable-nas --disable-vdpau \
+		--disable-fribidi \
+		--target=i386-linux \
+		--disable-dvdnav \
+		--disable-esd --disable-mga \
+		--disable-lirc --disable-lircc \
+		--disable-smb --disable-nemesi \
+		--disable-nas --disable-vdpau \
 		--enable-gui --enable-freetype &&
 	make &&
-	make DESTDIR=$PWD/../_pkg install
+	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -76,7 +69,7 @@ genpkg_rules()
 	rm $fs/usr/bin/mencoder
 	cp -a $_pkg/usr/share/mplayer $fs/usr/share
 	cp -a $_pkg/etc $fs
-	cp $src/mplayer/etc/example.conf $fs/etc/mplayer
+	cp $src/etc/example.conf $fs/etc/mplayer
 	# Config to use Xv by default.
 	cp stuff/mplayer.conf $fs/etc/mplayer
 	# default skin
@@ -85,6 +78,3 @@ genpkg_rules()
 	# Font
 	cd .. && ln -s ../fonts/truetype/ttf-dejavu/DejaVuSans.ttf subfont.ttf
 }
-
-
-
