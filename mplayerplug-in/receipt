@@ -20,15 +20,19 @@ FIREFOX_VER=`cat /var/lib/tazpkg/installed/firefox/receipt | grep VERSION= | cut
 compile_rules()
 {
 	cd $src
-	 while read file; do
-    	[ -f done.$file ] && continue
-    	echo "Apply $file..."
-    	patch -p1 < ../stuff/$PACKAGE-$VERSION-$file || return 1
-	touch done.$file
-    done <<EOT
+	cp ../stuff/slitaz-hack.h include
+	grep -q slitaz-hack include/npplat.h || sed -i \
+		's/ne _NPPLAT_H_/ne _NPPLAT_H_\n#include "slitaz-hack.h"/' \
+		include/npplat.h
+	while read file; do
+		[ -f done.$file ] && continue
+		echo "Apply $file..."
+		patch -p1 < ../stuff/$PACKAGE-$VERSION-$file || return 1
+		touch done.$file
+	done <<EOT
 glibc210.u
 EOT
-    make distclean
+	make distclean
 	touch install.sh
 	./configure --prefix=/usr --sysconfdir=/etc \
 		--enable-gtk2 \
@@ -37,16 +41,16 @@ EOT
 		--enable-rm \
 		--enable-dvx \
 		MOZILLA_HOME="/usr/lib/firefox-$FIREFOX_VER" \
-		GECKO_IDLDIR="/usr/share/idl/firefox-$FIREFOX_VER/stable" &&		
-	make
+		GECKO_IDLDIR="/usr/share/idl/firefox-$FIREFOX_VER/stable" &&
+	make &&
 	make DESTDIR=$PWD/_pkg install
 }
 
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-    cp -a $_pkg/etc $fs
-    cp -a $_pkg/usr/lib/mozilla $fs/usr/lib		
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/lib/mozilla $fs/usr/lib		
 	# change the default video output to xv,x11
 	sed -i "s/#vo=xv,x11/vo=xv,x11/" $fs/etc/$PACKAGE.conf
 	      
