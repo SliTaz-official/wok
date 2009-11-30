@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="iproute2"
+VERSION="2.6.29"
+CATEGORY="networking"
+SHORT_DESC="utilites for networking and traffic control"
+MAINTAINER="allan316@gmail.com"
+DEPENDS="iptables db"
+BUILD_DEPENDS="db-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.linuxfoundation.org/collaborate/workgroups/networking/iproute2"
+WGET_URL="http://devresources.linux-foundation.org/dev/$PACKAGE/download/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's/<net\/if.h>/<net\/if.h>\n#include <linux\/ip.h>/' ip/link_gre.c
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs
+	cp -a $_pkg/usr $fs/
+	cp -a $_pkg/etc $fs/
+	cp -a $_pkg/lib $fs/
+	cp -a $_pkg/sbin $fs/
+}
+
