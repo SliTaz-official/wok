@@ -1,18 +1,46 @@
 #!/bin/sh
 
-mount_mapper()
+launch_init()
 {
-	mount $root /mnt
+	echo -e "\\033[70G[ \\033[1;33mOK\\033[0;39m ]"
+	exec /sbin/switch_root mnt /sbin/init
+}
+
+try_init()
+{
+	if [ ! -d /mnt/etc ] && grep -q cryptoroot= /proc/cmdline; then
+		modprobe dm-mod
+		modprobe dm-crypt
+		modprobe aes-i586
+		root="$(sed 's/.*cryptoroot=\([^ ]*\).*/\1/' < /proc/cmdline)"
+		dev=${root#/dev/}
+		dmlabel=crypto-$dev
+		if cryptsetup isLuks $root 2> /dev/null; then
+			cryptsetup luksOpen $root $dmlabel
+		else
+			read -s -t 60 -p "Pass phrase : " passphrase
+			key=$(echo $passphrase | hashalot -x -n 32 sha512)
+			blocks=$(cat $(find /sys/block | grep /$dev/size))
+			echo 0 $blocks crypt aes-plain $key 0 $root 0 | \
+				dmsetup create $dmlabel
+		fi
+		mount /dev/mapper/$dmlabel /mnt
+	fi
 	if [ -d /mnt/etc ]; then
 		umount /sys
-		for i in /dev/mapper $@ ; do
+		[ -n "$1" ] && for i in $@ ; do
 			cp -a $i /mnt$i
 		done
 		umount /proc
-		echo -e "\\033[70G[ \\033[1;33mOK\\033[0;39m ]"
-		exec /sbin/switch_root mnt /sbin/init
+		launch_init
 	fi
 	echo -e "\\033[70G[ \\033[1;31mFailed\\033[0;39m ]"
+}
+
+mount_mapper()
+{
+	mount $root /mnt
+	try_init /dev/mapper $@
 }
 
 mount -t proc proc /proc
@@ -32,7 +60,8 @@ if grep -q dmraid= /proc/cmdline; then
 	esac
 	dmraid -ay
 	mount_mapper
-elif grep -q softraid= /proc/cmdline; then
+fi
+if grep -q softraid= /proc/cmdline; then
 	root="$(sed 's/.*softraid=\([^ ]*\).*/\1/' < /proc/cmdline)"
 	echo -n "Switching / to softraid $root..."
 	mdadm --examine --scan --config=partitions > /etc/mdadm.conf
@@ -45,6 +74,27 @@ elif grep -q softraid= /proc/cmdline; then
 	mdadm --assemble --scan
 	mount_mapper /etc/mdadm.conf
 fi
+if grep -q loopfs= /proc/cmdline; then
+	loopfs="$(sed 's/.*loopfs=\([^ ]*\).*/\1/' < /proc/cmdline)"
+	dev=${loopfs%,*}
+	loopfs=${loopfs#*,}
+	echo -n "Switching / to loop $loopfs on $dev..."
+	if ! mount $dev /mnt; then
+		if echo $dev | grep -q "/dev/sd"; then
+			delay=`cat /sys/module/usb_storage/parameters/delay_use`
+			delay=$((1+$delay))
+			echo -n "sleep for $delay seconds..."
+			sleep $delay
+		fi
+		mount $dev /mnt || loopfs=""
+	fi
+	if [ -n "$loopfs" ]; then
+		losetup /dev/loop0 /mnt/$loopfs
+		mount /dev/loop0 /mnt 2> /dev/null
+	fi
+	try_init
+fi
+grep -q cryptoroot= /proc/cmdline && try_init
 umount /sys
 echo -n "Switching / to tmpfs..."
 size="$(grep rootfssize= < /proc/cmdline | \
@@ -67,5 +117,4 @@ for i in $(ls -a /); do
 		fi;;
 	esac
 done
-echo -e "\\033[70G[ \\033[1;33mOK\\033[0;39m ]"
-exec /sbin/switch_root mnt /sbin/init
+launch_init
