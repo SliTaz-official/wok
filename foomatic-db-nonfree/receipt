@@ -1,0 +1,73 @@
+# SliTaz package receipt.
+
+PACKAGE="foomatic-db-nonfree"
+VERSION="current" 
+CATEGORY="system-tools"
+SHORT_DESC="database engine generates PPD files from the data in Foomatic's XML database"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="perl libxml2 foomatic-db"
+BUILD_DEPENDS="ghostscript-dev cups-dev perl libxml2-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.linuxprinting.org/foomatic.html"
+WGET_URL="http://www.openprinting.org/download/foomatic/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mv $WOK/$PACKAGE/$PACKAGE* $WOK/$PACKAGE/$PACKAGE-$VERSION
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg  install
+	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/licenses/$PACKAGE/
+	cp -a $_pkg/usr/share/foomatic $fs/usr/share
+	
+	# gzip all ppd files
+	find $fs/usr/share/foomatic/db/source -name "*.ppd" | xargs gzip -n9
+	
+	# include non-free license
+	cp -a $src/COPYING $fs/usr/share/licenses/$PACKAGE/
+	
+}
+
+pre_install()
+{
+	echo ""
+	echo -e "\033[1m PROPRIETARY LICENSE:\033[0m $2"
+	echo "================================================================================"
+	echo "You are installing a package with proprietary license."
+	echo "You must accept the license."
+    echo "================================================================================"
+    echo ""
+	
+}
+
+post_install()
+{
+	echo ""
+	echo -e "\033[1m FOOMATIC NON-FREE PRINTING LICENSE INFORMATION:\033[0m $2"
+	echo "================================================================================"
+	echo "For installing this package, you have to accept the $PACKAGE license."
+    echo "The license is stored in /usr/share/licenses/$PACKAGE "    
+    echo -n "Would you like to read the license (y/N) : "; read anser
+    if [ "$anser" = "y" ]; then
+		cat /usr/share/licenses/"$PACKAGE"/COPYING | more	
+		echo "" 		
+	fi
+	echo "================================================================================"
+	 echo -n "Do you accept the license (y/N) : "; read anser
+    if [ "$anser" = "N" ]; then
+		echo "You did not accept the license, Removing the pkg."	
+		tazpkg remove "$PACKAGE"		
+	fi
+
+}
