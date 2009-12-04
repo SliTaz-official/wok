@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="graveman"
+VERSION="0.3.12-5"
+CATEGORY="utilities"
+SHORT_DESC="frontend for cd-burning tools"
+MAINTAINER="allan316@gmail.com"
+DEPENDS="libid3tag libmad lame libvorbis libogg flac libglade libmng"
+BUILD_DEPENDS="libid3tag-dev libmad-dev lame-dev libvorbis-dev libogg-dev flac-dev libglade-dev libmng-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://graveman.tuxfamily.org"
+WGET_URL="$WEB_SITE/sources/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/locale
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	cp -a $_pkg/usr/share/graveman $fs/usr/share
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	strip -s $fs/usr/bin/*
+}
+
