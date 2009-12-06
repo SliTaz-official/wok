@@ -1,0 +1,56 @@
+#!/bin/sh
+# /etc/init.d/ddclient: Start, stop and restart Slim deamon on SliTaz, at boot
+# time or with the command line.
+#
+# To start daemon at boot time, just put the right name in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/ddclient.conf.
+#
+. /etc/init.d/rc.functions
+
+NAME=DDclient
+DESC="ddclient dynamic IP manager"
+DAEMON=/usr/sbin/ddclient
+PID_FILE=/var/run/ddclient.pid
+OPTION="-pid $PID_FILE"
+
+case "$1" in
+  start)
+    if active_pidfile $PID_FILE ddclient ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTION
+    status
+    ;;
+  stop)
+    if ! active_pidfile $PID_FILE ddclient ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    killall ddclient
+    rm $PID_FILE
+    status
+    ;;
+  restart)
+    if ! active_pidfile $PID_FILE ddclient ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    killall ddclient
+    rm $PID_FILE
+    sleep 2
+    $DAEMON $OPTION
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
