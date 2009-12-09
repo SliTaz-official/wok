@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="libffcall"
+VERSION="20091209"
+CATEGORY="development"
+SHORT_DESC="Foreign function call libraries."
+MAINTAINER="paul@slitaz.org"
+DEPENDS=""
+BUILD_DEPENDS="cvs"
+WEB_SITE="http://www.gnu.org/software/libffcall/"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# No official tarball - so we have to use cvs.
+	cvs -d:pserver:anonymous@cvs.sv.gnu.org:/sources/libffcall co ffcall
+
+	# $src = $PACKAGE-$VERSION
+	mv ffcall $PACKAGE-$VERSION 2>/dev/null
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/include $fs/usr
+}
+
