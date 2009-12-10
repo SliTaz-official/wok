@@ -1,0 +1,61 @@
+# SliTaz package receipt.
+
+PACKAGE="linmodem-intel-537"
+VERSION="2.60.80.0"
+CATEGORY="network"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="Intel Modem Drivers for 537 chipsets"
+BUILD_DEPENDS="linux lzma"
+WEB_SITE="http://linmodems.technion.ac.il/packages/Intel/"
+TARBALL="intel-536EP-537EP_2009_07_04.tar.bz2"
+WGET_URL="$WEB_SITE/Philippe.Vouters/$TARBALL"
+TAGS=""
+
+# Rules to configure and make the package.
+
+compile_rules() {
+	 
+ KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+ [ -d $WOK/linux/taz ] || tazwok cook linux
+ cd $WOK/$PACKAGE/intel-536-537
+
+  while read file; do
+    	[ -f done.$file ] && continue
+    	echo "Apply $file..."
+    	patch -p1 < ../stuff/$PACKAGE-$file || return 1
+	touch done.$file
+    done <<EOT
+kernel-2.6.30.patch
+EOT
+   # Bypass linux source package check
+  sed -i 's/@bash config_check/#@bash config_check/' makefile
+  make KERNEL_SOURCE_PATH=$WOK/linux/linux-$KERNEL_VERSION KDIR=$WOK/linux/linux-$KERNEL_VERSION MODEM_TYPE=537 537
+  
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{	
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	EXTRAVERSION=_$KERNEL_VERSION
+	
+	mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net
+	
+	# Compress and install module
+	lzma e $WOK/$PACKAGE/intel-536-537/Intel537.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/intel537.ko.gz
+	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/intel537.ko.gz
+	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/intel537.ko.gz			
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	depmod -a
+}
+
