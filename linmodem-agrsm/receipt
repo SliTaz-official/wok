@@ -1,0 +1,54 @@
+# SliTaz package receipt.
+
+PACKAGE="linmodem-agrsm"
+SOURCE="agrsm"
+VERSION="2.1.80-7mdv2009.0"
+CATEGORY="network"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="Agere Modem Drivers for 11c11040 chipsets"
+BUILD_DEPENDS="linux lzma"
+WEB_SITE="http://linmodems.technion.ac.il/packages/ltmodem/11c11040"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/$TARBALL"
+TAGS=""
+
+# Rules to configure and make the package.
+
+compile_rules() {
+	 
+ KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+ [ -d $WOK/linux/taz ] || tazwok cook linux
+ cd $src
+ make KERNEL_DIR=$WOK/linux/linux-$KERNEL_VERSION KRELEASE=$KERNEL_VERSION
+  
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{	
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	EXTRAVERSION=_$KERNEL_VERSION
+	
+	mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net
+	
+	# Compress and install module
+	lzma e $src/agrmodem.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrmodem.ko.gz
+	lzma e $src/agrserial.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrserial.ko.gz
+	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrmodem.ko.gz
+	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrmodem.ko.gz		
+	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrserial.ko.gz
+	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrserial.ko.gz			
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	depmod -a
+}
+
