@@ -1,0 +1,103 @@
+# SliTaz package receipt.
+
+PACKAGE="nvidia"
+VERSION="190.42"
+CATEGORY="network"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="NVIDIA drivers (non-free)"
+DEPENDS="linux xorg-server"
+BUILD_DEPENDS="$DEPENDS"
+WEB_SITE="http://www.nvidia.com/"
+SOURCE="NVIDIA-Linux-x86-${VERSION}-pkg0"
+TARBALL="${SOURCE}.run"
+TAGS="drivers graphic video"
+
+# Rules to configure and make the package.
+
+compile_rules() {
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	 WGET_URL="http://download.nvidia.com/XFree86/Linux-x86/$VERSION/$TARBALL"
+	 
+    [ -d $WOK/linux/taz ] || tazwok cook linux
+   
+    cd $WOK/$PACKAGE
+    [ -f $TARBALL ] || wget $WGET_URL
+    
+	chmod +x $TARBALL
+	sh $TARBALL --extract-only
+	
+	cd $SOURCE/usr/src/nv/
+	make SYSSRC="$WOK/linux/linux-$KERNEL_VERSION" module 
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{	
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	EXTRAVERSION=_$KERNEL_VERSION
+	_pkg="$WOK/$PACKAGE/$SOURCE"
+	
+	mkdir -p $fs/usr/share $fs/usr/lib/X11 $fs/usr/share/licenses/$PACKAGE \
+				 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video
+	
+	# Compress and install module
+	lzma e $_pkg/usr/src/nv/nvidia.ko \
+			$fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/nvidia.ko.gz
+	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/nvidia.ko.gz
+	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/nvidia.ko.gz	
+	
+	cp -a $_pkg/LICENSE $fs/usr/share/licenses/$PACKAGE
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/nvidia-installer $fs/usr/bin
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib/
+	cp -a $_pkg/usr/lib/tls $fs/usr/lib/
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	cp -a $_pkg/usr/share/doc $fs/usr/share
+	cp -a $_pkg/usr/X11R6/lib/* $fs/usr/lib/X11
+	
+		
+}
+
+pre_install()
+{
+	echo ""
+	echo -e "\033[1m PROPRIETARY LICENSE:\033[0m $2"
+	echo "================================================================================"
+	echo "You are installing a package with proprietary license."
+	echo "You must accept the license."
+    echo "================================================================================"
+    echo ""
+	
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+	
+	echo ""
+	echo -e "\033[1m NVIDIA LICENSE INFORMATION:\033[0m $2"
+	echo "================================================================================"
+	echo "For installing this package, you have to accept the $PACKAGE license."
+    echo "The license is stored in /usr/share/licenses/$PACKAGE "    
+    echo -n "Would you like to read the license (y/N) : "; read anser
+    if [ "$anser" = "y" ]; then
+		cat /usr/share/licenses/"$PACKAGE"/LICENSE | more	
+		echo "" 		
+	fi
+	echo "================================================================================"
+	 echo -n "Do you accept the license (y/N) : "; read anser
+    if [ "$anser" = "N" ]; then
+		echo "You did not accept the license, Removing the pkg."	
+		tazpkg remove "$PACKAGE"		
+	fi
+
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	depmod -a
+}
+
+
