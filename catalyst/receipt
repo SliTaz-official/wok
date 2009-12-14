@@ -1,0 +1,127 @@
+# SliTaz package receipt.
+
+PACKAGE="catalyst"
+VERSION="9-11"
+CATEGORY="network"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="AMD/ATI beta drivers (non-free) for Radeon brand cards "
+WEB_SITE="http://www.ati.amd.com"
+DEPENDS="xorg-server mesa"
+BUILD_DEPENDS="linux xorg-server"
+TARBALL="ati-driver-installer-$VERSION-x86.x86_64.run"
+TAGS="drivers graphic video"
+
+# Rules to configure and make the package.
+
+compile_rules() {
+
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	WGET_URL="http://www2.ati.com/drivers/linux/$TARBALL"
+	
+	[ -d $WOK/linux/taz ] || tazwok cook linux
+   
+    cd $WOK/$PACKAGE
+    [ -f $TARBALL ] || wget $WGET_URL
+    
+	chmod +x $TARBALL
+	[ -d $PACKAGE-$VERSION ]  || sh $TARBALL --extract $PACKAGE-$VERSION
+	
+	cd $src/common/lib/modules/fglrx/build_mod
+	cp $src/arch/x86/lib/modules/fglrx/build_mod/libfglrx_ip.a.GCC4 . 
+	cp 2.6.x/Makefile .
+	make -C $WOK/linux/linux-$KERNEL_VERSION SUBDIRS="`pwd`" modules 
+}	
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	EXTRAVERSION=_$KERNEL_VERSION
+
+	mkdir -p  $fs/usr/share/pixmaps \
+			  $fs/usr/bin \
+			  $fs/usr/lib/xorg/modules \
+			  $fs/usr/share/licenses/$PACKAGE \
+			  $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video \
+			  $fs/etc
+	
+	# Compress and install module
+	lzma e $src/common/lib/modules/fglrx/build_mod/fglrx.ko \
+			$fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/fglrx.ko.gz
+	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/fglrx.ko.gz
+	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/fglrx.ko.gz	
+	
+	cp -a $src/ATI_LICENSE.TXT $fs/usr/share/licenses/$PACKAGE
+		
+	cp -a $src/x740/usr/X11R6/lib/modules $fs/usr/lib/xorg
+	
+	cp -a $src/arch/x86/usr/lib/*.so $fs/usr/lib/
+	cp -a $src/arch/x86/usr/sbin $fs/usr
+	cp -a $src/arch/x86/usr/X11R6/bin/* $fs/usr/bin/
+	
+	cp -a $src/arch/x86/usr/X11R6/lib/*.so* $fs/usr/lib
+	cp -a $src/arch/x86/usr/X11R6/lib/modules $fs/usr/lib/xorg	
+	
+	cp -a $src/common/etc $fs
+	chmod 755 $fs/etc/ati/authatieventsd.sh 	
+	cp -a $src/common/usr/sbin $fs/usr
+	
+	cp -a $src/common/usr/share/icons/* $fs/usr/share/pixmaps
+	cp -a $src/common/usr/share/applications $fs/usr/share
+	cp -a $src/common/usr/share/doc $fs/usr/share
+	cp -a $src/common/usr/share/ati $fs/usr/share
+	cp -a $src/common/usr/X11R6/bin/* $fs/usr/bin		
+	
+
+}
+
+pre_install()
+{
+	echo ""
+	echo -e "\033[1m PROPRIETARY LICENSE:\033[0m $2"
+	echo "================================================================================"
+	echo "You are installing a package with proprietary license."
+	echo "You must accept the license."
+    echo "================================================================================"
+    echo ""
+	
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+	
+	ln -sf $1/usr/lib/xorg/modules/dri $1/usr/lib/dri
+	ln -sf $1/usr/lib/libfglrx_dm.so.1.0 $1/usr/lib/libfglrx_dm.so.1
+	ln -sf $1/usr/lib/libfglrx_pp.so.1.0 $1/usr/lib/libfglrx_pp.so.1
+	ln -sf $1/usr/lib/libfglrx_tvout.so.1.0 $1/usr/lib/libfglrx_tvout.so.1
+	ln -sf $1/usr/lib/libfglrx_gamma.so.1.0 $1/usr/lib/libfglrx_gamma.so.1
+	ln -sf $1/usr/lib/libGL.so.1.2 $1/usr/lib/libGL.so.1
+	ln -sf $1/usr/lib/libGL.so.1.2 $1/usr/lib/libGL.so
+	
+	echo ""
+	echo -e "\033[1m ATI LICENSE INFORMATION:\033[0m $2"
+	echo "================================================================================"
+	echo "For installing this package, you have to accept the $PACKAGE license."
+    echo "The license is stored in /usr/share/licenses/$PACKAGE "    
+    echo -n "Would you like to read the license (y/N) : "; read anser
+    if [ "$anser" = "y" ]; then
+		cat /usr/share/licenses/"$PACKAGE"/ATI_LICENSE.txt | more	
+		echo "" 		
+	fi
+	echo "================================================================================"
+	 echo -n "Do you accept the license (y/N) : "; read anser
+    if [ "$anser" = "N" ]; then
+		echo "You did not accept the license, Removing the pkg."	
+		tazpkg remove "$PACKAGE"		
+	fi
+
+  
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	depmod -a
+}
