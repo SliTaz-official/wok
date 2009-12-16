@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="v4l-dvb"
+VERSION="development"
+CATEGORY="multimedia"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="v4l-dvb development repository"
+DEPENDS=""
+BUILD_DEPENDS="python mercurial coreutils-operations"
+WEB_SITE="http://linuxtv.org/hg/v4l-dvb/"
+TAGS="webcam"
+
+# Rules to configure and make the package.
+compile_rules() {
+  [ -d $PACKAGE-$VERSION ] || hg clone $WEB_SITE $PACKAGE-$VERSION
+  cd $src
+  KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+  make SRCDIR="$WOK/linux/linux-$KERNEL_VERSION" CONFIG_MEDIA_TUNER_CUSTOMISE=n CONFIG_RADIO_ADAPTERS=n CONFIG_RADIO_MIROPCM20=n CONFIG_MANTIS_CORE=n
+  make DESTDIR="$PWD/_pkg" install
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	EXTRAVERSION=_$KERNEL_VERSION
+	 
+	mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/ 
+	
+	find $_pkg/lib/modules/$KERNEL_VERSION-slitaz -name "*.ko" -exec lzma e '{}' '{}'.gz \; 2> /dev/null
+	find $_pkg/lib/modules/$KERNEL_VERSION-slitaz -name "*.ko" -exec rm '{}' \;	
+	cp -a $_pkg/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	depmod -a
+}
