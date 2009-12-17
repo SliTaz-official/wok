@@ -6,6 +6,10 @@ if [ -x /usr/bin/ssh ]; then
 	read -t 300 server || exit 1
 fi
 [ -n "$server" ] || exec /bin/login
+sshport=""
+case "$server" in
+*:*)	sshport="-p ${server#*:}"; server=${server%:*};;
+esac
 case "$server" in
 *@*)	;;
 *)	echo -n "$server login: "
@@ -14,4 +18,4 @@ case "$server" in
 esac
 sshargs="-oPreferredAuthentications=keyboard-interactive,password -oNoHostAuthenticationForLocalhost=yes -oLogLevel=FATAL -F/dev/null";
 [ -L /usr/bin/ssh ] && sshargs=""
-exec ssh $sshargs $server
+exec ssh $sshport $sshargs $server
