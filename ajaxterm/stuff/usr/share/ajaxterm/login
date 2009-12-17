@@ -8,8 +8,16 @@ fi
 [ -n "$server" ] || exec /bin/login
 sshport=""
 case "$server" in
-*:*)	sshport="-p ${server#*:}"; server=${server%:*};;
+*:*)	sshport="-p ${server#*:}"
+	server=${server%:*};;
 esac
+if [ -x /usr/bin/knock ]; then
+	case "$server" in
+	!*)	server=${server#*!}"
+		echo -n "Knock sequence (port[:proto]...): "
+		read -t 30 sequence && knock ${server#*@} $sequence
+	esac
+fi
 case "$server" in
 *@*)	;;
 *)	echo -n "$server login: "
