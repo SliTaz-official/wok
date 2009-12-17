@@ -13,7 +13,9 @@ speex iksemel spandsp tiff radiusclient-ng nbs freetds libpostgresqlclient \
 libmysqlclient libunixODBC popt dahdi libpri lua"
 BUILD_DEPENDS="libvorbis-dev curl-dev speex-dev alsa-lib-dev popt-dev \
 libpri-dev spandsp-dev lua-dev dahdi-dev postgresql-dev net-snmp-dev \
-libsdl-dev"
+libsdl-dev nbs-dev libogg-dev libogg speex spandsp iksemel iksemel-dev \
+gmime gmime-dev openssl-dev openssl unixODBC-dev unixODBC \
+openldap-dev openldap portaudio-dev portaudio"
 CONFIG_FILES="/etc/asterisk"
 
 # Rules to configure and make the package.
@@ -23,7 +25,11 @@ CONFIG_FILES="/etc/asterisk"
 compile_rules()
 {
 	cd $src
+	sed -i '/LOG_ERROR, "The file/ {nd}' main/config.c
+	sed -i 's/LOG_ERROR, "The file/LOG_WARNING, "The file/' main/config.c
 	sed -i 's|lua5.1/||' pbx/pbx_lua.c
+	echo '' | contrib/scripts/get_ilbc_source.sh
+	sed -i '/codec_ilbc/{ns/no/yes/}' menuselect-tree
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
