@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="icmptx"
+VERSION="0.01"
+CATEGORY="network"
+SHORT_DESC="Tunnel IP connections using ICMP echo request."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://thomer.com/icmptx"
+WGET_URL="$WEB_SITE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp $src/$PACKAGE $fs/usr/bin
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	cat << EOT
+Server side example (on icmp-gateway) :
+# icmptx -d 10.0.1.1 &
+# ifconfig tun0 mtu 65535 up 10.0.1.1 netmask 255.255.255.0
+# echo 1 > /proc/sys/net/ipv4/icmp_echo_ignore_all
+# echo 1 > /proc/sys/net/ipv4/ip_forward
+# iptables -t nat -A POSTROUTING -s 10.0.0.0/8 -j MASQUERADE
+
+client side example (assume 192.168.1.1 as default gw for wlan interface) :
+# icmptx -c icmp-gateway &
+# ifconfig tun0 mtu 65535 up 10.0.1.2 netmask 255.255.255.0
+# route add -host icmp-gateway gw 192.168.1.1 dev wlan0
+# route add default gw 10.0.1.1 tun0
+
+EOT
+}
+
