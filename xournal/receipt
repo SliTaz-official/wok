@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="xournal"
+VERSION="0.4.5"
+CATEGORY="utilities"
+SHORT_DESC="Notetaking application."
+MAINTAINER="remy.carel@free.fr"
+DEPENDS="gtk+ libgnomecanvas poppler poppler-apps"
+BUILD_DEPENDS="autoconf automake gtk+-dev libgnomecanvas libgnomecanvas-dev \
+poppler poppler-dev zlib-dev libart_lgpl-dev"
+SUGGESTED="ghostscript"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://xournal.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$PWD/_pkg desktop-install	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share $fs/usr
+}
+
+post_install()
+{
+	echo -n "Updating databases..."
+	cp /usr/share/xournal/pixmaps/xournal.png /usr/share/pixmaps
+	sed -i 's/Icon=xournal/Icon=xournal.png/' /usr/share/applications/xournal.desktop
+	update-desktop-database
+	update-mime-database /usr/share/mime
+	gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null	
+	status
+}
+
