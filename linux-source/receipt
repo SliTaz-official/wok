@@ -12,11 +12,22 @@ DEPENDS="linux slitaz-toolchain ncurses-dev perl"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr/src/linux-$VERSION-slitaz $fs/lib/modules/$VERSION-slitaz/
-    ln -s linux-$VERSION-slitaz $fs/usr/src/linux
-    cp -a $src/slitaz $fs/usr/src/linux-$VERSION-slitaz
-    ln -s /usr/src/linux-$VERSION-slitaz $fs/lib/modules/$VERSION-slitaz/source
-    ln -s /usr/src/linux-$VERSION-slitaz $fs/lib/modules/$VERSION-slitaz/build
+	mkdir -p $fs/usr/src/linux-$VERSION-slitaz \
+		$fs/lib/modules/$VERSION-slitaz/
+	ln -s linux-$VERSION-slitaz $fs/usr/src/linux
+	cp -a $src/slitaz $fs/usr/src/linux-$VERSION-slitaz
+
+	# Copy Aufs2 source files
+	if [ -d $WOK/$WANTED/aufs2 ]; then
+		mkdir $fs/usr/src/linux-$VERSION-slitaz/slitaz/aufs2
+		cp -a $WOK/$WANTED/aufs2/Documentation \
+			$WOK/$WANTED/aufs2/fs $WOK/$WANTED/aufs2/include \
+			$fs/usr/src/linux-$VERSION-slitaz/slitaz/aufs2
+	fi
+	ln -s /usr/src/linux-$VERSION-slitaz \
+		$fs/lib/modules/$VERSION-slitaz/source
+	ln -s /usr/src/linux-$VERSION-slitaz \
+		$fs/lib/modules/$VERSION-slitaz/build
 }
 
 # Post install/remove commands for Tazpkg.
@@ -32,12 +43,13 @@ post_install()
 	rm -rf linux-$VERSION-slitaz
 	mv linux-$VERSION linux-$VERSION-slitaz
 	cd linux-$VERSION-slitaz
+	cp -pa slitaz/aufs2/* .
 	while read patch_file; do
 		echo "Apply $patch_file"
 		patch -p1 < slitaz/$patch_file
 	done < slitaz/patches
 	[ ! -f System.map ] && cp slitaz/config .config &&
-	make oldconfig && make bzImage && make modules
+	make oldconfig && make modules_prepare
 	cat <<EOT
 ----
 To modify the kernel configuration:
