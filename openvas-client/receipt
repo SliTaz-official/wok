@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="openvas-client"
+VERSION="3.0.0"
+CATEGORY="network"
+SHORT_DESC="Network security scanner (client)."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.openvas.org/"
+WGET_URL="http://wald.intevation.org/frs/download.php/685/$TARBALL"
+DEPENDS="openvas-libraries gtk+"
+BUILD_DEPENDS="openvas-libraries openvas-libraries-dev \
+libgd-dev libpng-dev pkg-config gtk+-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --sysconfdir=/etc \
+	--mandir=/usr/share/man \
+	$CONFIGURE_ARGS || return 1
+	find -name Makefile | xargs sed -i 's|uname -o|echo GNU/Linux|'
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/etc $fs
+}
