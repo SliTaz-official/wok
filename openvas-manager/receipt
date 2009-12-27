@@ -1,0 +1,30 @@
+# SliTaz package receipt.
+
+PACKAGE="openvas-manager"
+VERSION="0.9.8"
+CATEGORY="network"
+SHORT_DESC="Network security scanner (manager)."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.openvas.org/"
+WGET_URL="http://wald.intevation.org/frs/download.php/687/$TARBALL"
+DEPENDS="openvas-libraries sqlite util-linux-ng-uuid"
+BUILD_DEPENDS="openvas-libraries openvas-libraries-dev pkg-config \
+util-linux-ng-uuid-dev doxygen cmake gnutls sqlite sqlite-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	cmake -DCMAKE_INSTALL_PREFIX=/usr -DSYSCONF_INSTALL_DIR=/etc
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/bin $fs/usr
+}
