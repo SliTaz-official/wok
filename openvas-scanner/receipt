@@ -8,8 +8,9 @@ MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.openvas.org/"
 WGET_URL="http://wald.intevation.org/frs/download.php/684/$TARBALL"
-DEPENDS="openvas-libraries"
+DEPENDS="openvas-libraries openssl"
 BUILD_DEPENDS="openvas-libraries openvas-libraries-dev pkg-config"
+CONFIG_FILES="/var/lib/openvas /etc/openvas"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -32,3 +33,18 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
 }
+
+post_install()
+{
+	[ -s $1/var/lib/openvas/CA/cacert.pem ] || openvas-mkcert <<EOT
+
+
+$(. /etc/locale.conf ; echo ${LANG#*_})
+$(cat /etc/TZ)
+
+$(cat /etc/hostname)
+
+EOT
+}
+
+SELF_INSTALL=1
