@@ -16,11 +16,22 @@ BUILD_DEPENDS="db-dev"
 compile_rules()
 {
 	cd $src
+	
+	# Security patches 
+	while read patch_file; do
+		echo "Apply $patch_file"
+		tar xvzf  ../stuff/$patch_file || exit 1
+		cp -a $(basename $patch_file .tar.gz)/* src
+	done <<EOT
+squidGuard-1.4-patch-20091015.tar.gz
+squidGuard-1.4-patch-20091019.tar.gz
+EOT
 	./configure --prefix=/usr --infodir=/usr/share/info \
 	--sysconfdir=/etc --with-sg-config=/etc/squidGuard/squidGuard.conf \
 	--with-sg-logdir=/var/lib/squidGuard/log \
 	--with-sg-dbhome=/var/lib/squidGuard/db \
 	--mandir=/usr/share/man $CONFIGURE_ARGS
+	
 	make
 	sed -e 's|^prefix =.*|prefix = _pkg/usr|' \
 	    -e 's|^logdir =.*|logdir = _pkg/var/lib/squidGuard/log|' \
