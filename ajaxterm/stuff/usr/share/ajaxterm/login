@@ -1,16 +1,38 @@
 #!/bin/sh
 
+# Optional: check user with a random question
+file=/usr/share/ajaxterm/questions
+if [ -s $file -a -r $file ]; then
+	line=1
+	while read md5 question; do
+		[ $(( $(date +%s) % $line )) -ne 0 ] && continue
+		ask_question="$question"
+		ask_md5="$md5"
+		line=$(($line+1))
+	done < $file
+	echo -n "$ask_question "
+	read -t 30 answer
+	[ $ask_md5 == $(echo $answer | md5sum | cut -d\  -f1) ] || exit 1
+fi
+
+# Get SSH server
 server=""
 if [ -x /usr/bin/ssh ]; then
 	echo -n "SSH server: "
 	read -t 300 server || exit 1
 fi
+
+# No SSH server given ? Try login
 [ -n "$server" ] || exec /bin/login
+
+# Allow non default SSH port with format server:port
 sshport=""
 case "$server" in
 *:*)	sshport="-p ${server#*:}"
 	server=${server%:*};;
 esac
+
+# heading ! in server name means open remote ssh port with a knock sequence
 if [ -x /usr/bin/knock ]; then
 	case "$server" in
 	!*)	server=${server#*!}
@@ -18,12 +40,16 @@ if [ -x /usr/bin/knock ]; then
 		read -t 30 sequence && knock ${server#*@} $sequence
 	esac
 fi
+
+# Get SSH user if missing
 case "$server" in
 *@*)	;;
 *)	echo -n "$server login: "
 	read -t 30 user || exit 1
 	server="$user@$server";;
 esac
+
+# Launch OpenSSH or Dropbear
 sshargs="-oPreferredAuthentications=keyboard-interactive,password -oNoHostAuthenticationForLocalhost=yes -oLogLevel=FATAL -F/dev/null";
 [ -L /usr/bin/ssh ] && sshargs=""
 exec ssh $sshport $sshargs $server
