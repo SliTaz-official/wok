@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="lives"
+VERSION="1.1.8"
+CATEGORY="multimedia"
+SHORT_DESC="Simple to use, yet powerful video editor and VJ tool."
+MAINTAINER="pankso@slitaz.org"
+SOURCE="LiVES"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://lives.sourceforge.net/"
+WGET_URL="http://www.xs4all.nl/%7Esalsaman/lives/current/$TARBALL"
+DEPENDS="alsa-lib libpng gtk+ sox"
+BUILD_DEPENDS="alsa-lib-dev libpng-dev gtk+-dev"
+
+# Rules to configure and make the package.
+#
+compile_rules()
+{
+	cd $PACKAGE-$VERSION
+	./configure \
+		--prefix=/usr \
+		--disable-jack \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	_pkg=$WOK/$PACKAGE/$PACKAGE-$VERSION/_pkg
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/lives $fs/usr/lib
+	cp -a $_pkg/usr/share/lives $fs/usr/share
+	find $fs/usr/lib/lives -name "*.la" -exec rm '{}' \;
+}
