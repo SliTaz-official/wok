@@ -274,10 +274,10 @@ check_wok()
 			fi
 		else
 			# Check if package is up-to-date.
-			PKG_DATE=`date -u -r $PACKAGES_REPOSITORY/$PACKAGE-${VERSION}${EXTRAVERSION}.tazpkg '+%m%d%H%M%Y'`
+			PKG_DATE=`date -u -r $PACKAGES_REPOSITORY/$PACKAGE-${VERSION}${EXTRAVERSION}.tazpkg '+%Y%m%d%H%M'`
 			for file in `find $pkg -type f`
 			do
-				FILE_DATE=`date -u -r $file '+%m%d%H%M%Y'`
+				FILE_DATE=`date -u -r $file '+%Y%m%d%H%M'`
 				[ "$2" = "--verbose" ] && echo " -> Checking: $file"
 				if [ "$FILE_DATE" -gt "$PKG_DATE" ] && ! grep -q $PACKAGE $DB_DIR/cooklist; then
 					[ "$1" = "report" ] && echo "Refresh : $PACKAGE ($VERSION)"
@@ -514,11 +514,11 @@ test_packages()
 		CATEGORY=""
 		if du $pkg | grep -qw '^4' && ! echo `basename $pkg` | grep -q '^get-'; then
 			mkdir -p $tmp && cd $tmp
-			cpio -i receipt 2>/dev/null < $pkg
+			cpio -i receipt >/dev/null 2>&1 < $pkg
 			. ./receipt
 			if [ "$CATEGORY" != "meta" ]; then
 				[ "$2" = "--verbose" ] && echo "Testing: $PACKAGE"
-				cpio -i fs.cpio.gz 2>/dev/null < $pkg
+				cpio -i fs.cpio.gz >/dev/null 2>&1 < $pkg
 				if [ ! -f fs.cpio.gz ]; then
 					echo "Missing filesystem    `basename $pkg`"
 					if [ -f $LOG_DIR/$PACKAGE.log ];then
@@ -529,7 +529,7 @@ test_packages()
 							>> $DB_DIR/corrupted
 					fi
 				else
-					zcat fs.cpio.gz | cpio -id 2>/dev/null
+					zcat fs.cpio.gz | cpio -id >/dev/null 2>&1
 					files=`find fs -type f -o -type l`
 					if [ -z "$files" ]; then
 						echo "Empty filesystem      `basename $pkg`"
