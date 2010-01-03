@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="gutenpy"
+VERSION="0.3.0"
+CATEGORY="office"
+SHORT_DESC="A text reader and catalog browser for project Gutenburg."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="python pygtk"
+BUILD_DEPENDS="python python-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://gutenpy.sourceforge.net/"
+WGET_URL="http://prdownloads.sourceforge.net/gutenpy/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	
+	# Fix missing .desktop file
+	sed -i '/share\/applications/d' setup.py
+	sed -i '/gutenpy.desktop/d' setup.py
+	python setup.py install --root=$PWD/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/usr $fs
+	# Add gutenpy.desktop file
+	cp -a stuff/* $fs
+}
+
+post_install()
+{
+	# link old libraries
+	echo -n "Linking libs..."
+	cd $1/usr/lib
+	ln -s libffi.so.5.0.9 libffi.so.4
+	status
+}
+
+post_remove()
+{
+	# remove old libraries
+	echo -n "Removing libs..."
+	rm -f /usr/lib/libffi.so.4
+	status
+}
