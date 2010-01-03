@@ -2233,3 +2233,43 @@
  #include <sys/mman.h>
  #include <utime.h>
  #include <pwd.h>
+
+--- squashfs-4.0/squashfs-tools/squashfs_fs.h
++++ squashfs-4.0/squashfs-tools/squashfs_fs.h
+@@ -28,6 +28,8 @@
+ #define SQUASHFS_MINOR			0
+ #define SQUASHFS_MAGIC			0x73717368
+ #define SQUASHFS_MAGIC_SWAP		0x68737173
++#define SQUASHFS_MAGIC_OLD_LZMA		0x71736873
++#define SQUASHFS_MAGIC_OLD_LZMA_SWAP	0x73687371
+ #define SQUASHFS_START			0
+ 
+ /* size of metadata (inode and directory) blocks */
+
+--- squashfs-4.0/squashfs-tools/unsquashfs.c
++++ squashfs-4.0/squashfs-tools/unsquashfs.c
+@@ -1473,8 +1473,10 @@
+ 	 * Check it is a SQUASHFS superblock
+ 	 */
+ 	swap = 0;
+-	if(sBlk_3.s_magic != SQUASHFS_MAGIC) {
+-		if(sBlk_3.s_magic == SQUASHFS_MAGIC_SWAP) {
++	if(sBlk_3.s_magic != SQUASHFS_MAGIC  &&
++	   sBlk_3.s_magic != SQUASHFS_MAGIC_OLD_LZMA) {
++		if(sBlk_3.s_magic == SQUASHFS_MAGIC_SWAP ||
++		   sBlk_3.s_magic == SQUASHFS_MAGIC_OLD_LZMA_SWAP) {
+ 			squashfs_super_block_3 sblk;
+ 			ERROR("Reading a different endian SQUASHFS filesystem "
+ 				"on %s\n", source);
+@@ -1552,7 +1554,10 @@
+ 	 * 1.x, 2.x and 3.x filesystems use gzip compression.  Gzip is always
+ 	 * suppported.
+ 	 */
+-	comp = lookup_compressor("gzip");
++	if (sBlk_3.s_magic == SQUASHFS_MAGIC_OLD_LZMA ||
++	    sBlk_3.s_magic == SQUASHFS_MAGIC_OLD_LZMA_SWAP)
++		comp = lookup_compressor("lzma");
++	else	comp = lookup_compressor("gzip");
+ 	return TRUE;
+ 
+ failed_mount:
