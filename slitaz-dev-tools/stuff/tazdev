@@ -31,6 +31,7 @@ usage()
  gen-chroot     Generate a chroot using the last cooking base rootfs.
  clean-chroot   Clean a chroot environment (skip root/ and home/).
  purge          Remove obsolate packages and obsolate source tarballs.
+ dry-purge      Show obsolate packages and obsolate source tarballs.
  push           Upload new packages to the main mirror (-p).
  dry-push       Show what will be uploaded to the mirror. Does nothing (-dp).
  pull           Download new packages from the main mirror.
@@ -149,6 +150,7 @@ gen_new_chroot()
 # Remove obsolate slitaz packages
 purge_packages()
 {
+	arg=$1
 	TMP_FILE=/tmp/tazdev.$$
 	ls $BUILD_WOK | while read pkg; do
 		[ -f $BUILD_WOK/$pkg/taz/*/receipt ] || continue
@@ -161,6 +163,7 @@ purge_packages()
 		*.tazpkg)
 			grep -q ^$pkg$ $TMP_FILE && continue
 			echo Remove $pkg
+			[ "$arg" == "purge" ] &&
 			rm -f $SLITAZ/chroot/home/slitaz/packages/$pkg ;;
 		esac
 	done
@@ -170,6 +173,7 @@ purge_packages()
 # Remove obsolate source tarballs
 purge_sources()
 {
+	arg=$1
 	TMP_FILE=/tmp/tazdev.$$
 	ls $BUILD_WOK | while read pkg; do
 		[ -f $BUILD_WOK/$pkg/taz/*/receipt ] || continue
@@ -180,6 +184,7 @@ purge_sources()
 	ls $SLITAZ/chroot/home/slitaz/src | while read pkg; do
 		grep -q ^$pkg$ $TMP_FILE && continue
 		echo Remove $pkg
+		[ "$arg" == "purge" ] &&
 		rm -f $SLITAZ/chroot/home/slitaz/src/$pkg
 	done
 	rm -f $TMP_FILE
@@ -300,11 +305,11 @@ case "$1" in
 		check_mirror $@
 		rsync -r -t -l -v -z --delete --dry-run \
 			-e ssh $USER@$MIRROR:$REMOTE_DIR $LOCAL_DIR ;;
-	purge)
+	purge|dry-purge)
 		check_root
 		get_version $@
-		purge_packages
-		purge_sources
+		purge_packages $1
+		purge_sources $1
 		;;
 	usage|*)
 		usage ;;
