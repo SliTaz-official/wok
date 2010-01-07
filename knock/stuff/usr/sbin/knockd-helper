@@ -23,7 +23,7 @@ on)
 	iptables -t nat -I PREROUTING -s $IP -p $PROT --dport $PORT -j RETURN
 	iptables -I INPUT -s $IP -p $PROT --dport $PORT -j ACCEPT
 	shift 3
-	logger "Ensable $PROT:$PORT for $IP $@"
+	logger "Enable $PROT:$PORT for $IP $@"
 	;;
 off)
 	[ -f /var/lib/knockd/$IP ] && disable /var/lib/knockd/$IP
@@ -58,5 +58,30 @@ EOT
 		/etc/init.d/crond stop
 		/etc/init.d/crond start
 	}
+	;;
+*)
+	PROG=$(basename $0)
+	cat <<EOT
+Usage: $PROG [on|off|check|purge|cron] [args...]
+
+$PROG on ip_address protocol port	enable access
+$PROG off ip_address			disable access
+$PROG check				verify timeouts
+$PROG purge				disable all accesses
+$PROG cron				install auto disable access
+	
+Example for /etc/knockd.conf file :
+
+[options]
+	PidFile = /var/run/knockd.pid
+	logfile = /var/log/knockd.log
+
+[openSSH]
+	sequence    = 7000,8000,9000
+	seq_timeout = 5
+	command     = /usr/sbin/knockd-helper on %IP% tcp 22
+	tcpflags    = syn
+EOT
+	exit 1
 	;;
 esac
