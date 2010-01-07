@@ -1,0 +1,62 @@
+#!/bin/sh
+
+IP=$2
+PROT=$3
+PORT=$4
+
+[ -d /var/lib/knockd ] || mkdir -p /var/lib/knockd
+
+disable()
+{
+while read IP PROT PORT MSG; do
+	iptables -t nat -D PREROUTING -s $IP -p $PROT --dport $PORT -j RETURN
+	iptables -D INPUT -s $IP -p $PROT --dport $PORT -j ACCEPT
+	logger "Disable $PROT:$PORT for $IP $MSG"
+done < $1
+rm -rf $1
+}
+
+case "$1" in
+on)
+	shift
+	echo "$@" >> /var/lib/knockd/$IP
+	iptables -t nat -I PREROUTING -s $IP -p $PROT --dport $PORT -j RETURN
+	iptables -I INPUT -s $IP -p $PROT --dport $PORT -j ACCEPT
+	shift 3
+	logger "Ensable $PROT:$PORT for $IP $@"
+	;;
+off)
+	[ -f /var/lib/knockd/$IP ] && disable /var/lib/knockd/$IP
+	;;
+check)
+	TIMEOUT=$(( 6 * 60 ))
+	for i in /var/lib/knockd/*.*.*.*; do
+		[ -f "$i" ] || continue
+		while read ip prot port msg; do
+			if grep -qe "^$prot.* src=$ip .* dport=$port" /proc/net/ip_conntrack ; then
+				touch $i
+				break
+			fi
+		done < $i
+		[ $(date "+%s") -gt $(( $(date -r $i "+%s") + $TIMEOUT )) ] &&
+			disable $i
+	done
+	;;
+purge)
+	for i in /var/lib/knockd/*.*.*.*; do
+		[ -f "$i" ] && disable $i
+	done
+	;;
+cron)
+	crontab -l 2> /dev/null | grep -q $0 || {
+		crontab - <<EOT
+$(crontab -l)
+
+# Close old connections opened by knockd
+*/5  * * * * $0 check > /dev/null 2>&1
+EOT
+		/etc/init.d/crond stop
+		/etc/init.d/crond start
+	}
+	;;
+esac
