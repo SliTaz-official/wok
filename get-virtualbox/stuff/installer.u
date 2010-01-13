@@ -1,0 +1,192 @@
+--- stuff/get-virtualbox	Fri Jan  8 00:18:30 2010
++++ get-virtualbox	Tue Jan 12 23:08:29 2010
+@@ -24,13 +24,14 @@
+    	 grep Linux_x86.run | sed 's|.*href="\(.*Linux_x86.run\).*|\1|'
+ }
+ 
+-TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
++#TMP_DIR=/home/slitaz/src/get-$PACKAGE-$$-$RANDOM
++TMP_DIR=/home/slitaz/src/get-$PACKAGE.tmp
+ CUR_DIR=$(pwd)
+ mkdir -p $TMP_DIR && cd $TMP_DIR
+ 
+ url=$(dl_url)
+ TARBALL=$(basename $url)
+-wget $url
++#wget $url
+ 
+ if [ ! -f "$TARBALL" ]; then
+ 	cd $CUR_DIR
+@@ -55,6 +56,145 @@
+ 
+ # Install files
+ cd install 
++
++# Add Slitaz support to VirtualBox installer.
++patch -p1 <<'EOT'
++--- install-ori/routines.sh	Thu Dec 17 14:37:35 2009
+++++ install/routines.sh	Thu Dec 24 00:17:33 2009
++@@ -207,6 +207,10 @@
++         ro_SYS_TYPE=unknown
++         ro_INIT_TYPE=bsd
++         ro_RC_LOCAL=/etc/rc.local
+++	elif [ -f /etc/slitaz-release ]; then
+++        ro_SYS_TYPE=slitaz
+++        ro_INIT_TYPE=slitaz
+++        ro_RC_LOCAL=/etc/rcS.conf
++     elif [ -d /etc/init.d ]; then
++         ro_SYS_TYPE=unknown
++         ro_INIT_TYPE=sysv
++@@ -252,6 +256,9 @@
++         cp "$script" "/usr/sbin/$name" 2> /dev/null
++         chmod 755 "/usr/sbin/$name" 2> /dev/null
++         hav register $name System.Service $pardus_script
+++    elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
+++        cp "$script" "/etc/rc.d/init.d/$name" 2> /dev/null
+++        chmod 755 "/etc/rc.d/init.d/$name" 2> /dev/null
++     else
++         log "install_init_script: error: unknown init type"
++         return 1
++@@ -279,6 +286,8 @@
++     elif [ "$ro_INIT_TYPE" = "pardus" ]; then
++         hav remove $name
++         rm -f "/usr/sbin/$name" > /dev/null 2>&1
+++	elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
+++        rm -f "/etc/rc.d/init.d/$name" > /dev/null 2>&1
++     else
++         log "remove_init_script: error: unknown init type"
++         return 1
++@@ -303,6 +312,8 @@
++         "/etc/rc.d/rc.$name" start >> $ro_LOG_FILE  2>&1
++     elif [ "$ro_INIT_TYPE" = "lfs" ]; then
++         "/etc/rc.d/init.d/$name" start >> $ro_LOG_FILE 2>&1
+++    elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
+++        "/etc/rc.d/init.d/$name" start >> $ro_LOG_FILE 2>&1
++     elif [ "$ro_INIT_TYPE" = "pardus" ]; then
++         service $name on
++     else
++@@ -328,6 +339,8 @@
++         "/etc/rc.d/rc.$name" stop >> $ro_LOG_FILE 2>&1
++     elif [ "$ro_INIT_TYPE" = "lfs" ]; then
++         "/etc/rc.d/init.d/$name" stop >> $ro_LOG_FILE 2>&1
+++    elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
+++        "/etc/rc.d/init.d/$name" stop >> $ro_LOG_FILE 2>&1
++     elif [ "$ro_INIT_TYPE" = "pardus" ]; then
++         service $name off
++     else
++@@ -425,6 +438,12 @@
++             echo "fi" >> $ro_RC_LOCAL
++             echo "" >> $ro_RC_LOCAL
++         fi
+++    # Slitaz GNU/Linux use /etc/rcS.conf to start services.
+++    elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
+++        if ! grep $1 $ro_RC_LOCAL
+++        then
+++			sed -i -e "s/RUN_DAEMONS=\"\(.*\)\"/RUN_DAEMONS=\"\1 $1\"/" $ro_RC_LOCAL
+++        fi
++     # Probably most unknown Linux systems will be sysv type ones.  These can theoretically
++     # be handled automatically if people give us information about them.
++     elif [ "$ro_INIT_TYPE" = "sysv" ]; then
++@@ -484,6 +503,12 @@
++         rm "/etc/rc4.d/S??$1" > /dev/null 2>&1
++         rm "/etc/rc5.d/S??$1" > /dev/null 2>&1
++         rm "/etc/rc6.d/K??$1" > /dev/null 2>&1
+++    # Slitaz GNU/Linux
+++    elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
+++        if grep $1 $ro_RC_LOCAL
+++        then
+++			sed -i -e "s/$1//" $ro_RC_LOCAL
+++        fi
++     # Unknown sysv-type system
++     elif [ "$ro_INIT_TYPE" = "sysv" ]; then
++         echo 1>&2 "Please remove remove references to the initialization script"
++@@ -515,6 +540,8 @@
++         scriptname="/etc/rc.d/init.d/$name"
++     elif [ "$ro_INIT_TYPE" = "pardus" ]; then
++         scriptname="/usr/sbin/$name"
+++    elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
+++        scriptname="/etc/init.d/$name"
++     else
++         log "$self: error: unknown init type"
++         return 1
++@@ -563,6 +590,8 @@
++         scriptname="/etc/rc.d/init.d/$name"
++     elif [ "$ro_INIT_TYPE" = "pardus" ]; then
++         scriptname="/usr/sbin/$name"
+++    elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
+++        scriptname="/etc/rc.d/init.d/$name"
++     else
++         log "$self: error: unknown init type"
++         return 1
++--- install-ori/vboxdrv.sh	Thu Dec 17 14:37:35 2009
+++++ install/vboxdrv.sh	Wed Dec 23 23:01:14 2009
++@@ -63,6 +63,8 @@
++         system=suse
++     elif [ -f /etc/gentoo-release ]; then
++         system=gentoo
+++    elif [ -f /etc/slitaz-release ]; then
+++        system=slitaz
++     fi
++ fi
++ 
++@@ -123,6 +125,19 @@
++         if [ "`which $0`" = "/sbin/rc" ]; then
++             shift
++         fi
+++		elif [ "$system" = "slitaz" ]; then
+++		if [ -f /etc/init.d/rc.functions ]; then
+++            . /etc/init.d/rc.functions
+++        fi
+++        fail_msg() {
+++            status 
+++        }
+++        succ_msg() {
+++            status "$?"
+++        }
+++        begin_msg() {
+++            echo  "$1"
+++        }
++     else
++         fail_msg() {
++             echo " ...failed!"
++@@ -132,6 +147,7 @@
++             echo " ...done."
++         }
++     fi
+++    
++     if [ "$system" != "gentoo" ]; then
++         begin_msg() {
++             [ -z "${1:-}" ] && return 1
++EOT
++
++
+ [ -d /usr/share/VirtualBox ] && ./uninstall.sh
+ find /usr /etc /lib > ../before
+ ./install.sh install /usr/share/VirtualBox 
+@@ -76,13 +216,19 @@
+ CATEGORY="non-free"
+ SHORT_DESC="$SHORT_DESC"
+ WEB_SITE="$WEB_SITE"
+-DEPENDS="libsdl fontconfig gcc-lib-base glib libpng python udev"
++DEPENDS="libsdl fontconfig gcc-lib-base glib libpng python udev libglu-mesa"
+ 
+ post_install()
+ {
+ $(grep '  udev[atp]' install/install.sh)
+     chroot "\$1/" depmod -a $(uname -r)
+ }
++
++post_remove()
++{
++		/etc/init.d/vboxdrv stop
++		sed -i 's/vboxdrv//' /etc/rcS.conf
++}
+ EOT
+ 
+ # Pack
+@@ -93,4 +239,4 @@
+ 
+ # Clean
+ cd $CUR_DIR
+-rm -rf $TMP_DIR
++#rm -rf $TMP_DIR
