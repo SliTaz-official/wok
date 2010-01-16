@@ -1,24 +1,15 @@
 --- stuff/get-virtualbox	Thu Jan  7 14:12:34 2010
-+++ get-virtualbox	Wed Jan 13 14:50:44 2010
-@@ -24,7 +24,8 @@
-    	 grep Linux_x86.run | sed 's|.*href="\(.*Linux_x86.run\).*|\1|'
- }
- 
--TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
-+TMP_DIR=/home/slitaz/src/get-$PACKAGE-$$-$RANDOM
-+
- CUR_DIR=$(pwd)
- mkdir -p $TMP_DIR && cd $TMP_DIR
- 
-@@ -55,6 +56,145 @@
- 
- # Install files
++++ get-virtualbox	Fri Jan 15 11:39:10 2010
+@@ -57,6 +57,159 @@
  cd install 
+ [ -d /usr/share/VirtualBox ] && ./uninstall.sh
+ find /usr /etc /lib > ../before
++
 +
 +# Add Slitaz support to VirtualBox installer.
-+patch -p1 <<'EOT'
+++patch -p1 <<'EOT'
 +--- install-ori/routines.sh	Thu Dec 17 14:37:35 2009
-++++ install/routines.sh	Thu Dec 24 00:17:33 2009
+++++ install/routines.sh	Thu Dec 24 13:33:02 2009
 +@@ -207,6 +207,10 @@
 +         ro_SYS_TYPE=unknown
 +         ro_INIT_TYPE=bsd
@@ -35,8 +26,8 @@
 +         chmod 755 "/usr/sbin/$name" 2> /dev/null
 +         hav register $name System.Service $pardus_script
 ++    elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
-++        cp "$script" "/etc/rc.d/init.d/$name" 2> /dev/null
-++        chmod 755 "/etc/rc.d/init.d/$name" 2> /dev/null
+++        cp "$script" "/etc/init.d/$name" 2> /dev/null
+++        chmod 755 "/etc/init.d/$name" 2> /dev/null
 +     else
 +         log "install_init_script: error: unknown init type"
 +         return 1
@@ -45,7 +36,7 @@
 +         hav remove $name
 +         rm -f "/usr/sbin/$name" > /dev/null 2>&1
 ++	elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
-++        rm -f "/etc/rc.d/init.d/$name" > /dev/null 2>&1
+++        rm -f "/etc/init.d/$name" > /dev/null 2>&1
 +     else
 +         log "remove_init_script: error: unknown init type"
 +         return 1
@@ -54,7 +45,7 @@
 +     elif [ "$ro_INIT_TYPE" = "lfs" ]; then
 +         "/etc/rc.d/init.d/$name" start >> $ro_LOG_FILE 2>&1
 ++    elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
-++        "/etc/rc.d/init.d/$name" start >> $ro_LOG_FILE 2>&1
+++        "/etc/init.d/$name" start >> $ro_LOG_FILE 2>&1
 +     elif [ "$ro_INIT_TYPE" = "pardus" ]; then
 +         service $name on
 +     else
@@ -63,7 +54,7 @@
 +     elif [ "$ro_INIT_TYPE" = "lfs" ]; then
 +         "/etc/rc.d/init.d/$name" stop >> $ro_LOG_FILE 2>&1
 ++    elif [ "$ro_INIT_TYPE" = "slitaz" ]; then
-++        "/etc/rc.d/init.d/$name" stop >> $ro_LOG_FILE 2>&1
+++        "/etc/init.d/$name" stop >> $ro_LOG_FILE 2>&1
 +     elif [ "$ro_INIT_TYPE" = "pardus" ]; then
 +         service $name off
 +     else
@@ -112,7 +103,7 @@
 +         log "$self: error: unknown init type"
 +         return 1
 +--- install-ori/vboxdrv.sh	Thu Dec 17 14:37:35 2009
-++++ install/vboxdrv.sh	Wed Dec 23 23:01:14 2009
+++++ install/vboxdrv.sh	Thu Dec 24 11:49:30 2009
 +@@ -63,6 +63,8 @@
 +         system=suse
 +     elif [ -f /etc/gentoo-release ]; then
@@ -150,29 +141,34 @@
 +     if [ "$system" != "gentoo" ]; then
 +         begin_msg() {
 +             [ -z "${1:-}" ] && return 1
++@@ -169,7 +185,11 @@
++         if ! modprobe vboxdrv > /dev/null 2>&1; then
++             failure "modprobe vboxdrv failed. Please use 'dmesg' to find out why"
++         fi
++-        sleep .2
+++        if [ "$system" = "slitaz" ]; then
+++			sleep 1
+++		else
+++			sleep .2
+++		fi
++     fi
++     # ensure the character special exists
++     if [ ! -c $DEVICE ]; then
++
 +EOT
 +
-+
- [ -d /usr/share/VirtualBox ] && ./uninstall.sh
- find /usr /etc /lib > ../before
  ./install.sh install /usr/share/VirtualBox 
-@@ -76,12 +216,18 @@
- CATEGORY="non-free"
- SHORT_DESC="$SHORT_DESC"
- WEB_SITE="$WEB_SITE"
--DEPENDS="libsdl fontconfig gcc-lib-base glib libpng python udev"
-+DEPENDS="libsdl fontconfig gcc-lib-base glib libpng python udev libglu-mesa"
- 
- post_install()
+ cd ..
+ find /usr /etc /lib > after
+@@ -82,6 +235,11 @@
  {
  $(grep '  udev[atp]' install/install.sh)
      chroot "\$1/" depmod -a $(uname -r)
-+}
-+
-+post_remove()
-+{
-+		/etc/init.d/vboxdrv stop
-+		sed -i 's/vboxdrv//' /etc/rcS.conf
++    
++	# Add vboxusers group
++	if (! grep -q ^vboxusers /etc/group); then
++		addgroup vboxusers
++	fi
  }
  EOT
  

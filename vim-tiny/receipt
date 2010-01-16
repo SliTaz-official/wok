@@ -1,0 +1,86 @@
+# SliTaz package receipt.
+
+PACKAGE="vim-tiny"
+VERSION="7.2"
+CATEGORY="development"
+SHORT_DESC="Advanced text editor with no GUI"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="ncurses"
+SOURCE="vim"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.vim.org/"
+WGET_URL="ftp://ftp.vim.org/pub/vim/unix/$TARBALL"
+CONFIG_FILES="/etc/vimrc.tiny"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	src=vim72
+	#test -d $PACKAGE-$VERSION || mv vim72 $PACKAGE-$VERSION
+	cd $src
+	
+	./configure --prefix=/usr \
+	 --cache-file=$PWD/config.cache \
+	 --infodir=/usr/share/info \
+	 --with-features=tiny \
+	 --enable-gui=no \
+	 --with-vim-name=$PACKAGE \
+	 --disable-acl \
+	 --disable-motif-check \
+	 --disable-athena-check \
+	 --mandir=/usr/share/man $CONFIGURE_ARGS && 
+	 
+	make VIMRCLOC=/etc/vim VIMRUNTIMEDIR=/usr/share/vim/$src MAKE="make -e" &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	_pkg="$PWD/vim72/_pkg"
+	
+	mkdir -p $fs/usr $fs/usr/share $fs/etc/vim
+	
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/vim $fs/usr/share
+	cp -a $WOK/$PACKAGE/vim72/runtime/vimrc_example.vim $fs/etc/vim/vimrc
+	rm -f $fs/usr/bin/*tutor
+}
+
+
+
+# Rules to clean extras dirs or files
+clean_wok()
+{
+	rm -rf $PWD/vim72 2>/dev/null
+}
+
+post_install()
+{
+    local root
+    root=$1
+    echo "Processing post-install commands..."
+    cmd=`readlink $root/bin/vi`
+    if [ ! "$cmd" = "/usr/bin/vim" ]; then
+        echo ""
+        echo "**** Actual VI link : $cmd"
+        echo ""
+        echo -n "Do you want vim  for /bin/vi (y/N) ? : "; read anser
+        if [ "$anser" == "y" ]; then
+            echo ""
+            echo -n "Removing vi link to make a new one pointing on /usr/bin/vim..."
+            rm $root/bin/vi && ln -sf $root/usr/bin/vim-tiny $root/bin/vi
+            status
+        else
+            echo ""
+            echo "Leaving /bin/vi to : $cmd"
+        fi
+    fi
+}
+
+post_remove()
+{
+	# restore previous symlink
+	echo "Processing post-remove commands..."
+	ln -sf /bin/busybox /bin/vi
+}
