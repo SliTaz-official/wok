@@ -5,10 +5,10 @@ VERSION="0.15.7"
 CATEGORY="multimedia"
 SHORT_DESC="Music Player Daemon (MPD)."
 MAINTAINER="paul@slitaz.org"
-DEPENDS="libid3tag libmad libogg libvorbis libsamplerate flac alsa-lib audiofile faad2"
+DEPENDS="libid3tag libmad libogg libvorbis libsamplerate flac alsa-lib audiofile faad2 lame"
 BUILD_DEPENDS="alsa-lib-dev zlib-dev libid3tag-dev libsamplerate-dev \
 libmad-dev libogg-dev libvorbis-dev flac-dev libsamplerate \
-libid3tag audiofile audiofile-dev faad2 faad2-dev pkg-config"
+libid3tag audiofile audiofile-dev faad2 faad2-dev pkg-config glib-dev lame-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.musicpd.org/"
 WGET_URL="$SF_MIRROR/musicpd/$TARBALL"
@@ -43,17 +43,20 @@ post_install()
 	# Drop root priviledges and enable pid file
 	echo -n "Enabling mpd.conf..."
 	cd $1/etc
-	sed -i 's/#pid_file/pid_file/; \
-	s/#user/user/; s/#bind_to_address/bind_to_address/; \
-	s/"nobody"/"tux"/; s/"any"/"localhost"/' mpd.conf
+	sed -i 's/#music_directory/music_directory/; \
+	s/#playlist_directory/playlist_directory/; \
+	s/#db_file/db_file/; \
+	s/#pid_file/pid_file/; \
+	s/#user				"nobody"/user				"tux"/; \
+	s/#bind_to_address		"any"/bind_to_address			"localhost"/' mpd.conf 
 	status
 	
 	# Make mpd directories and files
-	echo -n "Enabling mpd files and directories"
+	echo -n "Enabling mpd files and directories..."
 	mkdir /home/tux/music
 	mkdir -p /home/tux/.mpd/playlists
 	touch /home/tux/.mpd/mpd.log
-	touch /home/tux/.mpd/mpd.error
+	#touch /home/tux/.mpd/mpd.error
 
 	# And change permissions
 	chown tux:tux /home/tux/music
