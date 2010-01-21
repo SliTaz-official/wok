@@ -1,31 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="beaver"
-VERSION="0.3.0.1"
+# Stable: VERSION="0.3.0.1"
+VERSION="0.4.0rc1"
 CATEGORY="development"
 SHORT_DESC="Simple and very light advanced text editor."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+ xorg-libXdamage"
 BUILD_DEPENDS="gtk+-dev xorg-xproto"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.nongnu.org/beaver/"
-WGET_URL="http://mirror.slitaz.org/sources/packages/b/$TARBALL"
+WGET_URL="http://www.nongnu.org/beaver/dloads/tarballs/$TARBALL"
 TAGS="text-editor"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	mv beaver0.4.0 $src 2>/dev/null
 	cd $src
-	make
+	./autogen.sh &&
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p \
-		$fs/usr/bin \
-		$fs/usr/share/pixmaps \
-		$fs/usr/share/applications
-	cp $src/src/beaver $fs/usr/bin
-	cp $src/pixmaps/beaver.png $fs/usr/share/pixmaps
+		$fs/usr/share/beaver \
+		$fs/usr/share/pixmaps
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/beaver/resource $fs/usr/share/beaver
+	cp $src/pixmaps/icons/32x32/* $fs/usr/share/pixmaps
+	# Custom default configuration
+	cp -a stuff/beaver.conf.default $fs/usr/share/beaver/resource
 }
