@@ -15,9 +15,12 @@ DATE=`date +%Y-%m-%d\ \%H:%M:%S`
 VERSION=cooking
 if [ "$REQUEST_METHOD" = "GET" ]; then
 	SEARCH=""
+	VERBOSE=0
 	for i in $(echo $REQUEST_URI | sed 's/[?&]/ /g'); do
 		SLITAZ_VERSION=cooking
 		case "$i" in
+		verbose=*)
+			VERBOSE=${i#*=};;
 		lang=*)
 			LANG=${i#*=};;
 		file=*)
@@ -41,6 +44,12 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
 		depends=*)
 			SEARCH=${i#*=}
 			OBJECT=Depends;;
+		BuildDepends=*)
+			SEARCH=${i#*=}
+			OBJECT=BuildDepends;;
+		FileOverlap=*)
+			SEARCH=${i#*=}
+			OBJECT=FileOverlap;;
 		version=s*|version=2*)
 			SLITAZ_VERSION=stable;;
 		version=1*)
@@ -57,6 +66,8 @@ Tags)	 	selected_tags="selected";;
 Receipt) 	selected_receipt="selected";;
 File_list) 	selected_file_list="selected";;
 Depends)	selected_depends="selected";;
+BuildDepends)	selected_build_depends="selected";;
+FileOverlap)	selected_overlap="selected";;
 esac
 
 case "$SLITAZ_VERSION" in
@@ -84,6 +95,7 @@ tags="Tags"
 receipt="Receipt"
 file_list="File list"
 depends="Depends"
+bdepends="Build depends"
 search="Search"
 cooking="cooking"
 stable="stable"
@@ -91,6 +103,10 @@ result="Result for : $SEARCH"
 noresult="No package $SEARCH"
 deptree="Dependency tree for : $SEARCH"
 rdeptree="Reverse dependency tree for : $SEARCH"
+bdeplist="$SEARCH needs these packages to be built"
+rbdeplist="Packages who need $SEARCH to be built"
+overloading="Theses packages may overload files of "
+overlap="common files"
 charset="ISO-8859-1"
 
 case "$LANG" in
@@ -98,11 +114,16 @@ case "$LANG" in
 fr)	package="Paquet"
 	receipt="Recette"
 	depends="Dépendances"
+	bdepends="Fabrication"
 	search="Recherche"
 	result="Recherche de : $SEARCH"
 	noresult="Paquet $SEARCH introuvable"
 	deptree="Arbre des dépendances de $SEARCH"
 	rdeptree="Arbre inversé des dépendances de $SEARCH"
+	bdeplist="$SEARCH a besion de ces paquets pour être fabriqué"
+	rbdeplist="Paquets ayant besion de $SEARCH pour être fabriqués"
+	overloading="Paquets pouvant écraser des fichiers de "
+	overlap="Fichiers communs"
 	file_list="Liste des fichiers"
 	file="Fichier";;
 
@@ -171,11 +192,13 @@ search_form()
 		<option $selected_tags value="Tags">$tags</option>
 		<option $selected_receipt value="Receipt">$receipt</option>
 		<option $selected_depends value="Depends">$depends</option>
+		<option $selected_build_depends value="BuildDepends">$bdepends</option>
 		<option $selected_file value="File">$file</option>
 		<option $selected_file_list value="File_list">$file_list</option>
+		<option $selected_overlap value="FileOverlap">$overlap</option>
 	</select>
 	<strong>:</strong>
-	<input type="text" name="query" size="32" value="$SEARCH" />
+	<input type="text" name="query" size="20" value="$SEARCH" />
 	<select name="version">
 		<option value="cooking">$cooking</option>
 		<option $selected_stable value="stable">$stable</option>
@@ -270,6 +293,13 @@ Copyright &copy; 2009 <a href="http://www.slitaz.org/">SliTaz</a> -
 _EOT_
 }
 
+installed_size()
+{
+[ $VERBOSE -gt 0 ] &&
+grep -A 3 "^$1\$" /home/slitaz/$SLITAZ_VERSION/packages/packages.txt | \
+       grep installed | sed 's/.*(\(.*\) installed.*/(\1) /'
+}
+
 # recursive dependencies scan
 dep_scan()
 {
@@ -283,7 +313,7 @@ for i in $1; do
 		(
 		. $WOK/$i/receipt
 		cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> : $SHORT_DESC
+<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
 _EOT_
 		)
 	fi
@@ -332,7 +362,7 @@ END {
 ' | while read pkg; do
 		. $WOK/${pkg##*/}/receipt
 		cat << _EOT_
-$(echo ${pkg%/*} | sed 's|/| |g') <a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> : $SHORT_DESC
+$(echo ${pkg%/*} | sed 's|/| |g') <a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
 _EOT_
 done
 }
@@ -353,6 +383,23 @@ _EOT_
 htmlize()
 {
 	sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
+display_packages_and_files()
+{
+last=""
+while read pkg file; do
+	pkg=${pkg%:}
+	if [ "$pkg" != "$last" ]; then
+		. $WOK/$pkg/receipt
+		cat << _EOT_
+
+<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
+_EOT_
+		last=$pkg
+	fi
+	echo "    $file"
+done
 }
 
 # Display search form and result if requested.
@@ -422,6 +469,68 @@ _EOT_
 _EOT_
 			ALL_DEPS=""
 			rdep_scan $SEARCH
+			cat << _EOT_
+</pre>
+_EOT_
+		fi
+	elif [ "$OBJECT" = "BuildDepends" ]; then
+		if package_exist $SEARCH ; then
+			cat << _EOT_
+
+<h3>$bdeplist</h3>
+<pre class="package">
+_EOT_
+			BUILD_DEPENDS=""
+			. $WOK/$SEARCH/receipt
+			[ -n "$BUILD_DEPENDS" ] && for dep in $BUILD_DEPENDS ; do
+				if [ ! -s $WOK/$dep/receipt ]; then
+					cat << _EOT_
+$dep: not found !
+_EOT_
+					continue
+				fi
+				. $WOK/$dep/receipt
+				cat << _EOT_
+<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
+_EOT_
+			done
+			cat << _EOT_
+</pre>
+
+<h3>$rbdeplist</h3>
+<pre class="package">
+_EOT_
+			for dep in $(grep -l $SEARCH $WOK/*/receipt); do
+				BUILD_DEPENDS=""
+				. $dep
+				echo " $BUILD_DEPENDS " | grep -q " $SEARCH " &&
+				cat << _EOT_
+<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
+_EOT_
+			done
+			cat << _EOT_
+</pre>
+_EOT_
+		fi
+	elif [ "$OBJECT" = "FileOverlap" ]; then
+		if package_exist $SEARCH ; then
+			cat << _EOT_
+
+<h3>$overloading $SEARCH</h3>
+<pre class="package">
+_EOT_
+			( unlzma -c $PACKAGES_REPOSITORY/files.list.lzma | grep ^$SEARCH: ;
+			  unlzma -c $PACKAGES_REPOSITORY/files.list.lzma | grep -v ^$SEARCH: ) | awk '
+BEGIN { pkg="" }
+{
+	if (pkg == "") pkg=$1
+	if ($1 == pkg) file[$2]=$1
+	else if (file[$2] == pkg) print
+}
+' | display_packages_and_files
+			cat << _EOT_
+</pre>
+_EOT_
 		fi
 	elif [ "$OBJECT" = "File" ]; then
 		cat << _EOT_
@@ -475,7 +584,7 @@ _EOT_
 			sort | while read pkg extras ; do
 				. $WOK/$pkg/receipt
 				cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> : $SHORT_DESC
+<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
 _EOT_
 			done
 		fi
@@ -490,7 +599,7 @@ _EOT_
 		sed "s|$WOK/\(.*\)/receipt:.*|\1|" | sort | while read pkg ; do
 				. $WOK/$pkg/receipt
 				cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> : $SHORT_DESC
+<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
 _EOT_
 			done
 	elif [ "$OBJECT" = "Receipt" ]; then
@@ -512,13 +621,13 @@ _EOT_
 <h3>$result</h3>
 <pre class="package">
 _EOT_
-		for pkg in `ls $WOK | grep $SEARCH`
+		for pkg in `ls $WOK/ | grep $SEARCH`
 		do
 			. $WOK/$pkg/receipt
 			DESC=" <a href=\"?desc=$pkg\">description</a>"
 			[ -f $WOK/$pkg/description.txt ] || DESC=""
 			cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> : $SHORT_DESC$DESC
+<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC$DESC
 _EOT_
 		done
 		equiv=$PACKAGES_REPOSITORY/packages.equiv
@@ -533,7 +642,7 @@ _EOT_
 			for pkg in $(grep $vpkg= $equiv | sed "s/$vpkg=//"); do
 				. $WOK/${pkg#*:}/receipt
 				cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> : $SHORT_DESC
+<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
 _EOT_
 			done
 		done
