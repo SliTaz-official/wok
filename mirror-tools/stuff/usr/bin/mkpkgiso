@@ -5,11 +5,12 @@
 # Authors : Eric Joseph-Alexandre <erjo@slitaz.org>
 #	    Pascal Bellard <pascal.bellard@slitaz.org>
 
-VERSION=0.7
+VERSION=0.8
 
 PKG_VER=$1
 ROOT=/home/slitaz/iso
 REPOS=/var/www/slitaz/mirror/packages/$PKG_VER
+SOURCES=/var/www/slitaz/mirror/sources/packages
 IFMEM_C32=/var/www/slitaz/mirror/pxe/ifmem.c32
 ISO_DIR=/var/www/slitaz/mirror/iso/$PKG_VER
 
@@ -22,12 +23,17 @@ SORT_FILE=${ROOT}/_sort.$$
 shift
 OPTIONS=$@
 PKG_DIR=$TEMP_DIR/packages/$PKG_VER
+SRC_DIR=$TEMP_DIR/src
 LOG=$PWD/$(basename $0).log
 
 #
 VOLUME_ID="packages-${PKG_VER}"
 PUBLISHER="SliTaz http://www.slitaz.org/"
 IMAGE="packages-${PKG_VER}.iso"
+case " $@ " in
+*\ --sources\ *)
+	IMAGE="sources-${PKG_VER}.iso" ;;
+esac
 OUTPUT="$ROOT/$IMAGE"
 
 # Check command line option.
@@ -35,9 +41,9 @@ if [ -z $PKG_VER ]; then
 	cat <<EOT
 Usage: $(basename $0) <Version> 
 	[--boot [--auto-install] [--loram-detect]]|--webboot] [--filter]
-	[--wok] [--wok-stable] [--website][--dry-run]
+	[--wok] [--wok-stable] [--website] [--sources] [--dry-run]
 Example:
-$(basename $0) cooking --boot --auto-install --loram-detect --filter --wok --website
+$(basename $0) cooking --boot --auto-install --loram-detect --filter --wok --website --sources
 EOT
 	exit 1
 fi
@@ -232,6 +238,23 @@ EOF
 echo "=> slitaz web site installed in file://\$DIR/website/index.html"
 EOF
 	fi;;
+--sources)
+	cat >>$TEMP_DIR/install.sh<<EOF
+mkdir -p /home/slitaz
+ln -s \$DIR/src /home/slitaz
+echo "=> sources are in /home/slitaz/src"
+EOF
+	mkdir -p $SRC_DIR
+	cd $SRC_DIR
+	for i in $SOURCES/*/*
+	do
+		case "$i" in
+		*/md5sum) continue;;
+		esac
+		ln -s $i >> $LOG 2>&1
+	done
+	find * -not -type d | grep -v md5sum | xargs md5sum > md5sum
+	echo "$(du -hs $SOURCES | awk '{ print $1 }') used by sources." ;;
 esac
 done
 
