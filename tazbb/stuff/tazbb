@@ -518,8 +518,8 @@ test_packages()
 			. ./receipt
 			if [ "$CATEGORY" != "meta" ]; then
 				[ "$2" = "--verbose" ] && echo "Testing: $PACKAGE"
-				cpio -i fs.cpio.gz >/dev/null 2>&1 < $pkg
-				if [ ! -f fs.cpio.gz ]; then
+				cpio -i fs.cpio.gz fs.cpio.lzma >/dev/null 2>&1 < $pkg
+				if [ ! -f fs.cpio.gz -a ! -f fs.cpio.lzma ]; then
 					echo "Missing filesystem    `basename $pkg`"
 					if [ -f $LOG_DIR/$PACKAGE.log ];then
 						echo "Missing filesystem    `basename $pkg` <a href=\"log.php?package=$(escape $PACKAGE)\">Log</a>" \
@@ -529,7 +529,9 @@ test_packages()
 							>> $DB_DIR/corrupted
 					fi
 				else
-					zcat fs.cpio.gz | cpio -id >/dev/null 2>&1
+					( zcat fs.cpio.gz 2> /dev/null || \
+					  unlzma -c fs.cpio.lzma ) | \
+					cpio -id >/dev/null 2>&1
 					files=`find fs -type f -o -type l`
 					if [ -z "$files" ]; then
 						echo "Empty filesystem      `basename $pkg`"
