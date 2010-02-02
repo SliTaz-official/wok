@@ -5,14 +5,11 @@ VERSION="2.10.1"
 CATEGORY="system-tools"
 SHORT_DESC="The GNU C libraries locale files and utilities (see also locale-*)."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="glibc-base glibc-extra-samba"
+DEPENDS="glibc-base glibc-extra-samba slitaz-i18n"
 WANTED="glibc"
 WEB_SITE="http://www.gnu.org/software/libc/"
 
-LOCALE_PACK="de cs es fr ru id it pt hu"
-
-# When we will switch to UTF-8 some change must be done here, localdef
-# must be include in glibc-base as well has some files in /usr/share/i18n.
+LOCALE_PACK="cs de es fr hu id it pt ru sl zh_CN zh_TW"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -25,10 +22,18 @@ genpkg_rules()
 	cp -a $_pkg/usr/share/zoneinfo $fs/usr/share
 
 	# Utilities and tools
-	cp -a $_pkg/usr/bin/localedef $fs/usr/bin
 	cp -a $_pkg/usr/bin/iconv $fs/usr/bin
 	cp -a $_pkg/usr/bin/tzselect $fs/usr/bin
 
+	# Rm slitaz-i18n files.
+	ver=`grep ^VERSION $WOK/slitaz-i18n/receipt | cut -d "\"" -f 2`
+	echo -n "Removing all slitaz-i18n files..."
+	for file in `cat $WOK/slitaz-i18n/taz/slitaz-i18n-$ver/files.list`
+	do
+		rm -f ${fs}$file
+	done
+	status
+	
 	# Rm base files.
 	echo -n "Removing all base files..."
 	for file in `cat $WOK/glibc-base/taz/glibc-base-$VERSION/files.list`
