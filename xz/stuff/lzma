@@ -1,0 +1,104 @@
+#!/bin/sh
+#
+# Wrapper to accept lzma_alone or lzma_utils arguments
+#
+
+usage()
+{
+	cat 1>&2 <<EOT
+Usage:  LZMA <e|d> inputFile outputFile [<switches>...]
+  e: encode file
+  d: decode file
+<Switches>
+  -a{N}:  set compression mode - [0, 2], default: 1 (max)
+  -d{N}:  set dictionary - [12,30], default: 23 (8MB)
+  -fb{N}: set number of fast bytes - [2, 273], default: 64
+  -mc{N}: set number of cycles for match finder
+  -lc{N}: set number of literal context bits - [0, 3], default: 3
+  -lp{N}: set number of literal pos bits - [0, 4], default: 0
+  -pb{N}: set number of pos bits - [0, 4], default: 2
+  -mf{MF_ID}: set Match Finder: [bt2, bt3, bt4, hc3, hc4], default: bt4
+  -eos:   write End Of Stream marker
+  -si:    read data from stdin
+  -so:    write data to stdout
+EOT
+	exit 1
+}
+
+# Get lzma_alone arg
+getarg()
+{
+	case "$1" in
+	-a0)  mode="lzma1=mode=fast";;
+	-a1)  mode="lzma1=mode=normal";;
+	-a2)  mode="lzma2=mode=normal";;
+	-d*)  extra="$extra,dict=$((2 ** ${1#-d}))";;
+	-fb*) extra="$extra,fb=${1#-fb}";;
+	-mc*) extra="$extra,depth=${1#-mc}";;
+	-lc*) extra="$extra,lc=${1#-lc}";;
+	-lp*) extra="$extra,lp=${1#-lp}";;
+	-pb*) extra="$extra,pb=${1#-pb}";;
+	-mf*) extra="$extra,mf=${1#-mf}";;
+	-eos|-mt*) ;;
+	-si)  output="> ${input#< }"; input="";;
+	-so)  output="";;
+	*) return 1;;
+	esac
+	return 0
+}
+
+lzma_utils()
+{
+	args="--format=lzma"
+	files=""
+	suffix=lzma
+	while [ -n "$1" ]; do
+		case "$1" in
+		-e) args="$args -z";;
+		-d|-k|-[0-9]) args="$args $1";;
+		--fast) args="$args -1";;
+		--best) args="$args -9";;
+		-c|--stdout|--to-stdout) args="$args -c";;
+		-S) suffix=${2#.}; shift;;
+		-*);;
+		*) files="$files $1";;
+		esac
+		shift
+	done
+	for i in $files; do
+		xz $args $i || break
+		[ "lzma" == "$suffix" ] || mv ${i%.*}.lzma ${i%.*}.$suffix
+	done
+	exit
+}
+
+# lzma_utils or lzma_alone ?
+[ -n "$3" ] || lzma_utils $@
+case "$1" in
+d) args="-d";;
+e) args="-z";;
+--help|-h|-\?|'') usage;;
+*) lzma_utils $@;;
+esac
+
+# it's lzma_alone
+# get filenames
+input="< $2"
+output="> $2"
+shift
+if ! getarg "$1"; then
+	output="> $2"
+	getarg "$2"
+	shift
+fi
+
+# get arguments
+extra=""
+mode="lzma1=mode=normal"
+while [ -n "$2" ]; do
+	getarg "$2" || usage
+	shift
+done
+
+# fake lzma_alone (-eos -mt1)
+eval exec xz $args --format=lzma --$mode$extra --stdout $input $output
