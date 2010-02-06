@@ -1,0 +1,56 @@
+# SliTaz package receipt.
+
+PACKAGE="speech-dispatcher"
+VERSION="0.6.7"
+CATEGORY="utilities"
+SHORT_DESC="Common interface to speech synthesis."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="glib alsa-lib espeak dotconf python"
+BUILD_DEPENDS="glib-dev pkg-config alsa-lib-dev dotconf-dev python
+python-dev espeak-dev sed espeak dotconf"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.freebsoft.org/speechd"
+WGET_URL="http://www.freebsoft.org/pub/projects/speechd/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+
+	# tiny patches and fixes
+	cd $src/src/python/speechd_config
+	sed -i 's/wavfile = paths.SPD_SOUND_DATA_PATH + "test.wav"/wavfile = os.path.join(paths.SPD_SOUND_DATA_PATH,"test.wav")/' config.py
+	sed -i 's/6561/6560/g' config.py
+	cd ../
+	sed -i '/speechd_config\/test.wav/d' Makefile.in
+	sed -i 's|--prefix=${prefix}|--root=`pwd`/_pkg|' Makefile.in
+	cd ../../
+	
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
+		--with-espeak \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/sounds/speech-dispatcher
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share $fs/usr
+
+	# copy python stuff
+	cp -a $src/src/python/_pkg/usr $fs
+	cp $src/src/python/speechd_config/test.wav $fs/usr/share/sounds/speech-dispatcher
+
+	# remove unneeded libs
+	rm -rf $fs/usr/share/info
+	rm -rf $fs/usr/lib/*.*a
+	rm -rf $fs/usr/lib/speech-dispatcher/*.*a
+}
+
