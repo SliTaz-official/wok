@@ -3,7 +3,7 @@
 PACKAGE="espeak"
 VERSION="1.42.04"
 CATEGORY="misc"
-SHORT_DESC="Speech synthesizer"
+SHORT_DESC="Speech synthesizer."
 MAINTAINER="erjo@slitaz.org"
 DEPENDS="portaudio"
 BUILD_DEPENDS="portaudio-dev"
@@ -13,31 +13,26 @@ WGET_URL="http://sourceforge.net/projects/espeak/files/espeak/$TARBALL"
 # Rules to configure and make the package.
 compile_rules()
 {
-	#unzip  $TARBALL
-	cd  $src-source/src
+	mv  $src-source $PACKAGE-$VERSION 2>/dev/null
+	cd $src/src
 	
 	# Using portaudio v19
 	cp portaudio19.h portaudio.h
 	
-	make 
+	make && make DESTDIR=$src/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	
-	mkdir -p $fs/usr/bin $fs/usr/lib $fs/usr/share
-	cp -a $src-source/src/espeak $fs/usr/bin
-	cp -a $src-source/src/speak $fs/usr/bin
-	cp -a $src-source/src/*.so* $fs/usr/lib
-	cp -a $src-source/espeak-data $fs/usr/share
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/share $fs/usr
 	
 	# Make symlink
 	cd $fs/usr/lib
 	ln -s libespeak.so.1.1.42 libespeak.so.1
 }
 
-clean_wok()
-{
-	rm -rf $WOK/$PACKAGE/$PACKAGE*
-}
