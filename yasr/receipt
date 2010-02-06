@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="yasr"
+VERSION="0.6.9"
+CATEGORY="utilities"
+SHORT_DESC="General purpose console screen reader."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="speech-dispatcher espeak"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://yasr.sourceforge.net/"
+WGET_URL="http://prdownloads.sourceforge.net/yasr/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/yasr
+	patch -p0 < ../../stuff/yasr.patch || exit 1
+	cd ../
+	./configure \
+		--prefix=/usr 
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/yasr $fs/usr/share
+
+	# enable speech-synthesizer in config file
+	cd $fs/usr/share/yasr
+	sed -i 's/synthesizer=emacspeak/#synthesizer=emacspeak/; \
+	s/#synthesizer=speech/synthesizer=speech/; \
+	s/synthesizer port=|/#synthesizer port=|/; \
+	s/#synthesizer port=127./synthesizer port=127./' yasr.conf	
+}
+
