@@ -151,7 +151,7 @@ loop_fs()
 cmd=$1
 shift
 tmp="$(mktemp -d -t fstmp.XXXXXX)"
-while read command exts umnt; do
+while read command umnt exts; do
 	case " $exts " in *\ $lc_ext\ *)
 		$command "$archive" $tmp
 		break
