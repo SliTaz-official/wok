@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="rp-l2tp"
+VERSION="0.4"
+CATEGORY="network"
+SHORT_DESC="L2TP tunnel (vpn)."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://rp-l2tp.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/usr/lib/l2tp/plugins
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $src/handlers/l2tp-control $fs/usr/sbin
+	cp -a $src/handlers/*.so $fs/usr/lib/l2tp/plugins
+}
+
