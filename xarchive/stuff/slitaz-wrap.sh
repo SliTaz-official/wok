@@ -26,9 +26,11 @@ BZIP2_EXTS="tar.bz tbz tar.bz2 tbz2"
 COMPRESS_EXTS="tar.z tar.Z"
 TAR_EXTS="tar tar.gz tgz $LZMA_EXTS $BZIP2_EXTS $COMPRESS_EXTS"
 XZ_EXTS="tar.xz txz"
+LRZIP_EXTS="tar.lzr tlzr"
 IPK_EXTS="ipk"
 CPIO_EXTS="cpio cpio.gz"
 CPIOXZ_EXTS="cpio.xz"
+CPIOLRZIP_EXTS="cpio.lzr"
 ZIP_EXTS="zip cbz jar"
 RPM_EXTS="rpm"
 DEB_EXTS="deb udeb"
@@ -93,6 +95,7 @@ unlzma\ -c		lzma\ e\ -si\ -so	$LZMA_EXTS
 bunzip2\ -c		bzip2\ -c		$BZIP2_EXTS
 gzip\ -dc		gzip\ -c		$GZIP_EXTS
 xz\ -dc			xz\ -c			$XZ_EXTS $CPIOXZ_EXTS
+lrzip\ -d		lrzip			$LRZIP_EXTS $CPIOLRZIP_EXTS
 uncompress\ -dc		compress\ -c		$COMPRESS_EXTS
 rpm2cpio		false			$RPM_EXTS
 tazpkg2cpio		false			$TAZPKG_EXTS
@@ -189,7 +192,7 @@ action=$1
 shift
 tardir="$(dirname "$archive")"
 if not_busybox tar && [ "$action" != "-n" ]; then
-	case " $TAR_EXTS $XZ_EXTS " in *\ $lc_ext\ *)
+	case " $TAR_EXTS $XZ_EXTS $LRZIP_EXTS " in *\ $lc_ext\ *)
 		decompress_func
 		case "$action" in
 		-r)	tar --delete -f "$archive" "$@";;
@@ -227,8 +230,8 @@ while read add extract exts; do
 		exit $status
 	esac
 done <<EOT
-tar\ -cf\ -	tar\ -xf\ -			$TAR_EXTS $XZ_EXTS
-addcpio		cpio\ -id\ >\ /dev/null		$CPIO_EXTS $CPIOXZ_EXTS
+tar\ -cf\ -	tar\ -xf\ -			$TAR_EXTS $XZ_EXTS $LRZIP_EXTS
+addcpio		cpio\ -id\ >\ /dev/null		$CPIO_EXTS $CPIOXZ_EXTS $CPIOLRZIP_EXTS
 EOT
 }
 
@@ -246,6 +249,7 @@ dpkg-deb	$DEB_EXTS
 rpm2cpio	$RPM_EXTS
 mount		$ISO_EXTS $FS_EXTS
 xz		$XZ_EXTS $CPIOXZ_EXTS
+lrzip		$LRZIP_EXTS $CPIOLRZIP_EXTS
 rar		$RAR_EXTS
 unace		ace
 arj		$ARJ_EXTS
@@ -324,8 +328,8 @@ function show(arg)
 }'
 		esac
 	done <<EOT
-cpio\ -tv	$CPIO_EXTS $CPIOXZ_EXTS $RPM_EXTS $TAZPKG_EXTS
-tar\ -tvf\ -	$TAR_EXTS $XZ_EXTS $IPK_EXTS
+cpio\ -tv	$CPIO_EXTS $CPIOXZ_EXTS $CPIOLRZIP_EXTS $RPM_EXTS $TAZPKG_EXTS
+tar\ -tvf\ -	$TAR_EXTS $XZ_EXTS $LRZIP_EXTS $IPK_EXTS
 dpkg_c		$DEB_EXTS
 EOT
 	loop_fs $opt
@@ -502,8 +506,8 @@ EOT
 			exit $?
 		esac
 	done <<EOT
-tar\ -xf\ -	$TAR_EXTS $IPK_EXTS $XZ_EXTS
-cpio\ -idm	$CPIO_EXTS $CPIOXZ_EXTS $RPM_EXTS $TAZPKG_EXTS
+tar\ -xf\ -	$TAR_EXTS $IPK_EXTS $XZ_EXTS $LRZIP_EXTS
+cpio\ -idm	$CPIO_EXTS $CPIOXZ_EXTS $CPIOLRZIP_EXTS $RPM_EXTS $TAZPKG_EXTS
 EOT
 	while read exe x p exts; do
 		[ "$(which $exe)" ] || continue
