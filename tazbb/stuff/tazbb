@@ -223,6 +223,27 @@ check_flavors()
 			continue 2
 		done
 	done
+
+	# Check for meta flavors
+	for flavor in $(cd $HG_FLAVORS ; ls)
+	do
+		grep -q ^ROOTFS_SELECTION $HG_FLAVORS/$flavor/receipt || continue
+		. $HG_FLAVORS/$flavor/receipt
+		set -- $ROOTFS_SELECTION
+		if [ $PACKAGES_REPOSITORY/$2.flavor -nt \
+		     $PACKAGES_REPOSITORY/$flavor.flavor ]; then
+			echo $flavor >> $DB_DIR/packlist
+			[ "$1" = "report" ] && echo "Refresh : $flavor for $2"
+			echo "Refresh meta flavor : $flavor" >> $DB_DIR/report
+			continue
+		fi
+		if grep -q ^$2$ $DB_DIR/packlist ; then
+			echo $flavor >> $DB_DIR/packlist
+			[ "$1" = "report" ] && echo "Repack : $flavor for $2"
+			echo "Repack meta flavor : $flavor" >> $DB_DIR/report
+			continue
+		fi
+	done
 }
 
 # Here we pack all flavors found in the packlist.
