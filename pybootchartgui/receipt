@@ -30,6 +30,9 @@ post_install()
 	PY_VERSION=`cat /var/lib/tazpkg/installed/python/receipt | grep "VERSION="|cut -d \" -f 2 | cut -d . -f 1,2`
 	if [ -f  $root/usr/bin/pybootchartgui ] ; then rm $root/usr/bin/pybootchartgui ; fi
 	ln -s $root/usr/lib/python$PY_VERSION/pybootchartgui.py $root/usr/bin/pybootchartgui
+	if [ -f $root/etc/bootchartd.conf ] ; then
+		sed -i s/'AUTO_RENDER="no"'/'AUTO_RENDER="yes"'/ $root/etc/bootchartd.conf
+	fi
 }
 
 post_remove()
@@ -37,4 +40,7 @@ post_remove()
 	local root
 	root=$1
     rm $root/usr/bin/pybootchartgui
+    if [ -f $root/etc/bootchartd.conf ] ; then 
+    	sed -i s/'AUTO_RENDER="yes"'/'AUTO_RENDER="no"'/ $root/etc/bootchartd.conf
+    fi
 }
