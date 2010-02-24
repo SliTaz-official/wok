@@ -28,7 +28,7 @@ for RELEASE in final beta4 beta3 beta2 beta1 ; do
   wget -s $URL$N/$RELEASE/en/i386/ 2> /dev/null && break 
 done
 URL=$URL$N/$RELEASE/en/i386/
-FILE=$(wget -O - $URL 2> /dev/null | grep rpm | sed 's|.*href="\(.*\)".*|\1|')
+FILE=$(wget -O - $URL 2> /dev/null | grep "gcc4.qt4.i386.rpm" | sed 's|.*href="\(.*\)".*|\1|')
 URL=$URL$FILE
 wget $URL
 if [ ! -f $FILE ]; then
@@ -45,6 +45,8 @@ mkdir -p opera-$VERSION/fs
 # Extract files
 cd opera-$VERSION/fs
 rpm2cpio < ../../$FILE | cpio -idm
+# extracted pkg can be removed: Save RAM
+rm -f ../../$FILE
 
 # Create menu
 mkdir -p usr/share/applications
@@ -96,8 +98,24 @@ DEPENDS="libQtGui"
 WEB_SITE="http://www.opera.com/"
 EOT
 
+# Remove unwanted locale
+mv opera-$VERSION/fs/usr/share/opera/locale opera-$VERSION/fs/usr/share/opera/locale-full
+mkdir -p opera-$VERSION/fs/usr/share/opera/locale 
+cp -a opera-$VERSION/fs/usr/share/opera/locale-full/en \
+	  opera-$VERSION/fs/usr/share/opera/locale-full/fr \
+	  opera-$VERSION/fs/usr/share/opera/locale-full/pt \
+	  opera-$VERSION/fs/usr/share/opera/locale-full/de \
+	  opera-$VERSION/fs/usr/share/opera/locale-full/zh-cn \
+	  opera-$VERSION/fs/usr/share/opera/locale
+rm -rf opera-$VERSION/fs/usr/share/opera/locale-full
+rm -rf opera-$VERSION/fs/usr/share/pixmaps
+
+
 # Pack
 tazpkg pack opera-$VERSION
+
+# Clean to save RAM memory
+rm -rf opera-$VERSION
 
 # Install pseudo package
 tazpkg install opera-$VERSION.tazpkg --root=$ROOT
