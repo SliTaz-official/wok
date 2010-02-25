@@ -37,6 +37,10 @@ if [ ! -f $RPMPKG ]; then
 fi
 
 rpm2cpio $RPMPKG | cpio -dium
+
+# extracted pkg can be removed: Save RAM
+rm -rf $RPMPKG
+
 mkdir -p $PACKAGE-$VERSION/fs
 mv $TEMP_DIR/usr $PACKAGE-$VERSION/fs
 cd $PACKAGE-$VERSION/fs/usr/share/applications/ && mv fedora-Foxit-Reader.desktop Foxit-Reader.desktop
@@ -54,6 +58,9 @@ EOT
 
 # Pack
 tazpkg pack $PACKAGE-$VERSION
+
+# Clean to save RAM memory
+rm -rf $PACKAGE-$VERSION
 
 # Install pseudo package
 yes y | tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
