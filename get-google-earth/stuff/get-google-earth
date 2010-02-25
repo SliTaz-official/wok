@@ -2,6 +2,7 @@
 
 DEPENDS="mesa"
 ROOT="$1"
+PACKAGE="google-earth"
 
 if test $(id -u) != 0 ; then
 	echo -e "\nYou must be root to run `basename $0`."
@@ -41,6 +42,9 @@ done
 # Extract
 ./GoogleEarthLinux.bin
 
+# extracted pkg can be removed: Save RAM
+rm -rf GoogleEarthLinux.bin
+
 # Create pseudo package
 while read file; do
 	dest=google-earth-$VERSION/fs$(dirname $file)
@@ -62,7 +66,10 @@ DEPENDS="$DEPENDS"
 EOT
 
 # Pack
-tazpkg pack google-earth-$VERSION
+tazpkg pack $PACKAGE-$VERSION
+
+# Clean to save RAM memory
+rm -rf $PACKAGE-$VERSION
 
 # Install pseudo package
 tazpkg install google-earth-$VERSION.tazpkg --root=$ROOT
