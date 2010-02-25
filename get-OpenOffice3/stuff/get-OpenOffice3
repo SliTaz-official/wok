@@ -93,7 +93,7 @@ if [ ! -f $SOURCE_DIR/$TARBALL ]; then
 	test -d $SOURCE_DIR || mkdir -p $SOURCE_DIR
 	# Get the file.
 	wget -c $WGET_URL -O $SOURCE_DIR/$TARBALL
-	status
+	#status
 fi
 if [ ! -f $SOURCE_DIR/$TARBALL ]; then
 	rm -rf $SOURCE_DIR
@@ -119,6 +119,10 @@ do
 done
 rpm2cpio desktop-integration/*freedesktop*.rpm | cpio -id >> $LOG 2>&1
 	
+# extracted pkg can be removed: Save RAM
+rm -f desktop-integration/*freedesktop*.rpm
+rm -rf $SOURCE_DIR
+
 # Make the package
 mkdir -p $PACKAGE-$VERSION/fs/usr/lib/openoffice  \
   $PACKAGE-$VERSION/fs/usr/share
@@ -167,10 +171,12 @@ EOT
 # Pack
 tazpkg pack $PACKAGE-$VERSION
 
+# Clean to save RAM memory
+rm -rf $PACKAGE-$VERSION
+
 # Install pseudo package
 tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
 
 # Clean
-rm -rf $SOURCE_DIR
 rm -rf $TEMP_DIR
-rm -rf $PACKAGE-$VERSION
+
