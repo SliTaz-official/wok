@@ -47,17 +47,18 @@ usage()
 	echo -e "\nSliTaz developers and build host tool\n
 \033[1mUsage: \033[0m `basename $0` [command] [--option]
 \033[1mCommands: \033[0m\n
-  usage        Print this short usage and command list.
-  list-pkgs    List last cooked packages with date.
-  report       Run in report mode and dont cook anything [--verbose].
-  cook         Cook, install and log a single package build.
-  cook-all     Cook all missing, modified or unbuilt packages.
-  cook-commit  Cook all packages affected by a commit in the last update.
-  test-pkgs    Execute a test suite on all packages [--verbose].
-  [un]block    Block or unblock a package to skip or enable building.
-  mail         Send mail to package maintainer with tazbbmail.
-  clean-up     Remove old packages [--verbose|--dry-run].
-  clean-log    Remove all generated build log files.\n"
+  usage           Print this short usage and command list.
+  list-pkgs       List last cooked packages with date.
+  report          Run in report mode and dont cook anything [--verbose].
+  cook            Cook, install and log a single package build.
+  cook-all        Cook all missing, modified or unbuilt packages.
+  cook-commit     Cook all packages affected by a commit in the last update.
+  test-pkgs       Execute a test suite on all packages [--verbose].
+  [un]block       Block or unblock a package to skip or enable building.
+  mail            Send mail to package maintainer with tazbbmail.
+  check-depends   Verify DEPENDS value with library needs [--verbose].
+  clean-up        Remove old packages [--verbose|--dry-run].
+  clean-log       Remove all generated build log files.\n"
 }
 
 status()
@@ -89,6 +90,8 @@ Packages : `ls $BUILD_WOK | wc -l` in the wok, `cat $DB_DIR/cooklist | wc -l` to
 _EOT_
 	fi
 }
+
+VERBOSE=""
 
 packages_summary_update()
 {
@@ -438,11 +441,170 @@ cook_install()
 			echo "<a href=\"log.php?package=$(escape $pkg)\">$pkg</a>" >> \
 				$DB_DIR/unbuilt
 		fi
+		missing_depends="$(check_depends_pkg $pkg)"
+		if [ -n "$missing_depends" ]; then
+			cat >> $LOG_DIR/$pkg.log <<EOT
+
+Update $pkg receipt for DEPENDS :
+The package $pkg depends on packages $missing_depends
+
+EOT
+			# Unbuild package
+			rm -rf $BUILD_WOK/$pkg/taz
+			# Link to build log.
+			echo "<a href=\"log.php?package=$(escape $pkg)\">$pkg</a>" >> \
+				$DB_DIR/unbuilt
+		fi
 		# Remove package from the cooklist and empty lines for HTML <pre>.
 		sed -i /"^$pkg$"/d $DB_DIR/cooklist
 		sed -i '/^$/d' $DB_DIR/cooklist
 		packages_summary_update
 	done
+}
+
+# Build depends_to_skip list with packages to remove from depends_to_add list
+# These packages are already present in depends_to_add trees
+scan_depends_to_skip()
+{
+	local i
+	case " $depends_to_skip " in
+	*\ $1\ *) return;;
+	esac
+	[ -d $BUILD_WOK/$1 ] || return
+	DEPENDS=""
+	. $BUILD_WOK/$1/receipt
+	for i in $DEPENDS ; do
+		case " $depends_to_add " in
+		*\ $i\ *) depends_to_skip="$depends_to_skip $i";;
+		esac
+	done
+	for i in $DEPENDS ; do
+		scan_depends_to_skip $i
+	done
+}
+
+# Reduce depends list by scanning nested depends
+show_missing_depends()
+{
+	local i
+	depends_to_add=""
+	depends_to_skip="$2"
+	for i in $1 ; do
+		case " $depends_to_add " in
+		*\ $i\ *) continue;;
+		esac
+		depends_to_add="$depends_to_add$i "
+	done
+	for i in $depends_to_add ; do
+		scan_depends_to_skip $i
+	done
+	for i in $depends_to_add ; do
+		case " $depends_to_skip " in
+		*\ $i\ *) continue;;
+		esac
+		echo -n "$i "
+	done
+}
+
+# Build all_depends variable
+scan_dep()
+{
+	local i
+	all_depends="$all_depends$PACKAGE "
+	for i in $DEPENDS $SUGGESTED ; do
+		case " $all_depends " in
+		*\ $i\ *) continue;;
+		esac
+		[ -d $BUILD_WOK/$i ] || {
+			all_depends="$all_depends$i "
+			continue
+		}
+		DEPENDS=""
+		SUGGESTED=""
+		. $BUILD_WOK/$i/receipt
+		scan_dep
+	done
+}
+
+# Check for ELF file
+is_elf()
+{
+	[ "$(dd if=$1 bs=1 skip=1 count=3 2> /dev/null)" = "ELF" ]
+}
+
+# Print shared library dependencies
+ldd()
+{
+	LD_PRELOAD="" LD_TRACE_LOADED_OBJECTS=1 /lib/ld*.so $1 2> /dev/null
+}
+
+# scan a file for shared libraries and display according package names
+check_depends_file()
+{
+	file=$1
+	is_elf $file || continue
+	case "$file" in
+	*.o|*.ko|*.ko.gz) continue;;
+	esac
+	[ -s /tmp/files.list.tazbb$$ ] ||
+	unlzma -c $PACKAGES_REPOSITORY/files.list.lzma >/tmp/files.list.tazbb$$
+	ldd $file | while read lib rem; do
+		case "$lib" in
+		statically|linux-gate.so*|ld-*.so|*/ld-*.so)
+			continue;;
+		esac
+		for dep in $(grep $lib /tmp/files.list.tazbb$$ | cut -d: -f1); do
+			case " $all_depends " in
+			*\ $dep\ *) continue 2;;
+			esac
+			for vdep in $(grep $dep $PACKAGES_REPOSITORY/packages.equiv | cut -d= -f1); do
+				case " $all_depends " in
+				*\ $vdep\ *) continue 3;;
+				esac
+			done
+		done
+		[ -n "$dep" ] || dep="UNKNOWN"
+		all_depends="$all_depends $dep"
+		if [ -n "$VERBOSE" ]; then
+			echo "${file#*fs} depends on package $dep for the shared library $lib" 1>&2
+		fi
+		echo -n "$dep "
+	done
+}
+
+DEFAULT_DEPENDS="glibc-base"
+
+# scan a package for shared libraries and display missing package in DEPENDS
+check_depends_pkg()
+{
+	pkg=$1
+	echo "(checking depends for $pkg)" > $DB_DIR/running
+	tmp=/tmp/tazbb$$
+	mkdir $tmp
+	package=$(basename $pkg)
+	if ! cd ${package%%-*}*/taz/${package%.tazpkg}/.. 2> /dev/null; then
+		cd $tmp
+		tazpkg extract $pkg > /dev/null 2>&1
+	fi
+	. */receipt
+	all_depends="$DEFAULT_DEPENDS "
+	scan_dep
+	toadd=$(find */fs -type f | while read file ; do
+		check_depends_file $file
+	done)
+	. */receipt
+	rm -rf */
+	cd - > /dev/null
+	rm -rf $tmp
+	show_missing_depends "$toadd" "$DEPENDS $SUGGESTED"
+}
+
+check_depends_this_file()
+{
+	file=$1
+	all_depends="$DEFAULT_DEPENDS "
+	scan_dep
+	check_depends_file $file
 }
 
 # Remove old packages in the build wok and clean pkgs repository. The
@@ -702,11 +864,40 @@ case "$1" in
 		echo -n "Cleaning: $LOG_DIR... "
 		rm -rf $LOG_DIR/*
 		echo "$logs log removed" ;;
+	check-depends)
+		case "$2" in
+		wok)
+			for pkg in $PACKAGES_REPOSITORY/*.tazpkg ; do
+				missing_depends="$(check_depends_pkg $pkg)"
+				[ -n "$missing_depends" ] && 
+				echo "The package $pkg depends on $missing_depends."
+			done ;;
+		package)
+			pkg=$3
+			VERBOSE=$4
+			missing_depends="$(check_depends_pkg $pkg)"
+			[ -n "$missing_depends" ] && 
+			echo "The package $pkg depends on $missing_depends."
+			;;
+		file)
+			file=3
+			VERBOSE=$4
+			missing_depends="$(check_depends_this_file $file)"
+			[ -n "$missing_depends" ] && 
+			echo "The file $file depends on $missing_depends."
+			;;
+		*)	cat <<EOT
+check-depends wok		check every package in wok.
+check-depends package <pkg>     check one package.
+check-depends file <filename>   check one file only.
+EOT
+			;;
+		esac ;;
 	*)
 		usage ;;
 esac
 
 echo "" > $DB_DIR/running
-rm -f $LOCK_FILE
+rm -f $LOCK_FILE /tmp/files.list.tazbb$$
 
 exit 0
