@@ -108,6 +108,9 @@ tar xvzf $SOURCE_DIR/$TARBALL -C $TEMP_DIR > $LOG 2>&1 || \
  (echo "Failed to extract $TARBALL" ; exit 1)
 status
 
+# extracted pkg can be removed: Save RAM
+rm -rf $SOURCE_DIR
+
 cd $TEMP_DIR/*/RPMS
 
 # Extract everything from RPMS
@@ -121,16 +124,17 @@ rpm2cpio desktop-integration/*freedesktop*.rpm | cpio -id >> $LOG 2>&1
 	
 # extracted pkg can be removed: Save RAM
 rm -f desktop-integration/*freedesktop*.rpm
-rm -rf $SOURCE_DIR
+
 
 # Make the package
 mkdir -p $PACKAGE-$VERSION/fs/usr/lib/openoffice  \
   $PACKAGE-$VERSION/fs/usr/share
- 
-cp -a opt/openoffice* $PACKAGE-$VERSION/fs/usr/lib/openoffice
-cp -a usr/share/mime $PACKAGE-$VERSION/fs/usr/share
-cp -a usr/share/icons $PACKAGE-$VERSION/fs/usr/share
-cp -a usr/bin $PACKAGE-$VERSION/fs/usr
+
+# use mv instead of 'cp -a' to save RAM
+mv opt/openoffice* $PACKAGE-$VERSION/fs/usr/lib/openoffice
+mv usr/share/mime $PACKAGE-$VERSION/fs/usr/share
+mv usr/share/icons $PACKAGE-$VERSION/fs/usr/share
+mv usr/bin $PACKAGE-$VERSION/fs/usr
 
 # relocalized OOo libexec directory
 sed -i 's#/opt/#/usr/lib/openoffice/#'  $PACKAGE-$VERSION/fs/usr/bin/openoffice*
