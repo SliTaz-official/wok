@@ -5,15 +5,22 @@ VERSION="1.1.16.3"
 CATEGORY="multimedia"
 SHORT_DESC="Xine video library."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="xorg zlib xorg-libXv xorg-libXvMC alsa-lib glib gtk+ libsdl \
-libgio libogg libvorbis ffmpeg"
-BUILD_DEPENDS="xorg-dev zlib-dev ffmpeg-dev ffmpeg xorg-libXvMC-dev \
-xorg-libXvMC xorg-libXv xorg-libXv-dev libtheora"
+DEPENDS="xorg zlib xorg-libXv xorg-libXvMC alsa-lib libogg libvorbis \
+libtheora xorg-libXvMC xorg-libXv freetype vcdimager-xmltools \
+ libmodplug gtk+"
+BUILD_DEPENDS="$DEPENDS xorg-dev zlib-dev xorg-libXvMC-dev \
+xorg-libXv-dev xorg-xextproto xorg-videoproto alsa-lib-dev libogg-dev \
+libvorbis-dev libtheora-dev freetype-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.xine-project.org/"
 WGET_URL="http://switch.dl.sourceforge.net/sourceforge/xine/$TARBALL"
 
 # Rules to configure and make the package.
+#
+# Using --with-external-ffmpeg will make package smaller, but it dont seems
+# to work properly. Last try with external ffmpeg make xine unable to read avi
+# and other video files.
+#
 compile_rules()
 {
 	cd $src
@@ -21,9 +28,18 @@ compile_rules()
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
-		--with-external-ffmpeg \
-		--disable-gnome-vfs \
 		--with-freetype \
+		--without-jack \
+		--without-imagemagick \
+		--without-sdl \
+		--disable-gnomevfs \
+		--disable-samba \
+		--disable-glu \
+		--disable-opengl \
+		--disable-faad \
+		--disable-fb \
+		--disable-syncfb \
+		 --without-esound \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -35,10 +51,10 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib $fs/usr/share
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/xine $fs/usr/lib
-	
+
 	# Do we need extra Fonts for subtitle support? \
-	compiled with freetype for using ttf fonts, xine fonts are only an alternative solution \
-	should we just ln DejavuSans as in mplayer?
+	# compiled with freetype for using ttf fonts, xine fonts are only an alternative solution \
+	# should we just ln DejavuSans as in mplayer?
 	# lets keep sans font for extra support
 	mkdir -p  $fs/usr/share/xine/libxine1/fonts/
 	cp -a $_pkg/usr/share/xine/libxine1/fonts/sa* $fs/usr/share/xine/libxine1/fonts/
