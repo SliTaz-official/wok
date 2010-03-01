@@ -94,13 +94,32 @@ WANTED="busybox"
 # Force glibc-2.7 reinstall if 2.3.6 still in use.
 pre_install()
 {
+	local i
 	cp -a /etc/resolv.conf /etc/resolv.conf-busybox-install
 	if grep -q 'VERSION="2.3.6"' /var/lib/tazpkg/installed/glibc-base/receipt; then
 		tazpkg get-install glibc-base --forced
 	fi
+	answer=""
+	while read i ; do
+		[ -e $ROOT$i ] || continue
+		if [ -z "$answer" ]; then
+			echo -n "Keep installed GNU utilities ? "
+			read answer
+			case "$answer" in
+			y*|Y*|o*|O*);;
+			*) break;;
+			esac
+		fi
+		mv $ROOT$i $ROOT$i-busybox-install
+	done < $1$INSTALLED/$PACKAGE/files.list
 }
 
 post_install()
 {
+	local i
 	mv -f /etc/resolv.conf-busybox-install /etc/resolv.conf
+	while read i ; do
+		[ -e $ROOT$i-busybox-install ] || continue
+		mv $ROOT$i-busybox-install $ROOT$i
+	done < $1$INSTALLED/$PACKAGE/files.list
 }
