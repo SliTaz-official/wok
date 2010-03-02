@@ -15,29 +15,28 @@ WGET_URL="http://archive.xfce.org/src/apps/$PACKAGE/0.2/$TARBALL"
 compile_rules()
 {
 	cd $src
-    #patch -p 0 < ../stuff/midori-websettings.patch || exit 1
-	#./waf configure --prefix=/usr
-	#./waf build
-	./configure --prefix=/usr \
-				--enable-sqlite \
-				--enable-addons \
-				--enable-nls \
-				--disable-hildon &&
+	./configure \
+		--prefix=/usr \
+		--enable-sqlite \
+		--enable-addons \
+		--disable-hildon &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
-				
+	make DESTDIR=$PWD/_pkg install		
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/pixmaps \
-			 $fs/usr/share/icons
+	mkdir -p \
+		$fs/usr/share/pixmaps \
+		$fs/usr/share/icons
 	cp -a $_pkg/etc $fs
+	cp stuff/config $fs/etc/xdg/midori
+	cp stuff/bookmarks.xbel $fs/etc/xdg/midori
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib $fs/usr
 	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
 	cp -a $_pkg/usr/share/icons/hicolor $fs/usr/share/icons
-	cp $_pkg/usr/share/icons/hicolor/22x22/apps/midori.png $fs/usr/share/pixmaps	
-
+	cd $fs/usr/share/pixmaps
+	ln -s ../icons/hicolor/22x22/apps/midori.png  .
 }
