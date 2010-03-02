@@ -6,10 +6,8 @@ CATEGORY="x-window"
 SHORT_DESC="Light Web Browse using GTK+/WebKit."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-DEPENDS="libsexy libwebkit libsoup icu curl libssl sqlite xorg-libXdamage \
-gnutls libnotify gcc-lib-base"
-BUILD_DEPENDS="python libsexy-dev libsexy libwebkit-dev libwebkit libsoup-dev \
-icu-dev icu curl-dev sqlite-dev"
+DEPENDS="libsexy libwebkit libsoup sqlite xorg-libXdamage libnotify gcc-lib-base libgnutls"
+BUILD_DEPENDS="python libsexy-dev libsexy libwebkit-dev libwebkit libsoup-dev sqlite-dev"
 WEB_SITE="http://software.twotoasts.de/?page=midori"
 WGET_URL="http://archive.xfce.org/src/apps/$PACKAGE/0.2/$TARBALL"
 
@@ -18,30 +16,28 @@ compile_rules()
 {
 	cd $src
     #patch -p 0 < ../stuff/midori-websettings.patch || exit 1
-	./waf configure --prefix=/usr
-	./waf build
+	#./waf configure --prefix=/usr
+	#./waf build
+	./configure --prefix=/usr \
+				--enable-sqlite \
+				--enable-addons \
+				--enable-nls \
+				--disable-hildon &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+				
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p \
-		$fs/usr/bin \
-		$fs/usr/lib/midori \
-		$fs/usr/share/pixmaps \
-		$fs/usr/share/applications \
-		$fs/usr/share/icons/hicolor/22x22/categories \
-		$fs/usr/share/icons/hicolor/22x22/status
-	cp -a $src/_build_/default/midori/midori $fs/usr/bin
-	cp -a $src/_build_/default/extensions/*.so $fs/usr/lib/midori
+	mkdir -p $fs/usr/share/pixmaps \
+			 $fs/usr/share/icons
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	cp -a $_pkg/usr/share/icons/hicolor $fs/usr/share/icons
+	cp $_pkg/usr/share/icons/hicolor/22x22/apps/midori.png $fs/usr/share/pixmaps	
 
-	for i in de es fr
-	do
-		mkdir -p $fs/usr/share/locale/$i/LC_MESSAGES
-		cp -a $src/_build_/default/po/$i.mo \
-			$fs/usr/share/locale/$i/LC_MESSAGES/midori.mo
-	done
-	cp $src/icons/22x22/midori.png $fs/usr/share/pixmaps
-	cp $src/icons/22x22/extension.png $fs/usr/share/icons/hicolor/22x22/categories
-	cp $src/icons/22x22/news-feed.png $fs/usr/share/icons/hicolor/22x22/status
 }
