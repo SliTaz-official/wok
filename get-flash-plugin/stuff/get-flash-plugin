@@ -67,13 +67,6 @@ dir=flash-plugin-$VERSION/fs/usr/share/flash
 mkdir -p $dir
 mv libflashplayer.so $dir
 
-# Export firefox libraries
-dir=flash-plugin-$VERSION/fs/usr/lib
-mkdir -p $dir
-for i in /usr/lib/firefox*/*.so ; do
-	[ -f $i ] && ln -s $i $dir
-done
-
 # Create pseudo package
 cat > flash-plugin-$VERSION/receipt <<EOT
 PACKAGE="flash-plugin"
@@ -81,7 +74,7 @@ VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="Adobe Flash Player."
 WEB_SITE="$WEB_SITE"
-DEPENDS="firefox curl atk cairo expat fontconfig freetype glib gtk+ libpng \
+DEPENDS="libfirefox curl atk cairo expat fontconfig freetype glib gtk+ libpng \
 pango pixman xorg-libICE xorg-libSM xorg-libX11 xorg-libXau xorg-libXcomposite \
 xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes \
 xorg-libXinerama xorg-libXrandr xorg-libXrender xorg-libXt zlib"
@@ -89,15 +82,21 @@ xorg-libXinerama xorg-libXrandr xorg-libXrender xorg-libXt zlib"
 post_install()
 {
 	echo -n "Processing post install commands..."
-	ln -s /usr/share/flash/libflashplayer.so \$1/usr/lib/firefox*/plugins
-	[ -d \$1/usr/lib/mozilla/plugins ] || ln -s /usr/share/flash/libflashplayer.so \$1/usr/lib/mozilla/plugins
+	if [ -d /var/lib/tazpkg/installed/firefox ] ; then
+		ln -s /usr/share/flash/libflashplayer.so \$1/usr/lib/firefox*/plugins
+	fi	 
+	mkdir -p \$1/usr/lib/mozilla/plugins
+	ln -s /usr/share/flash/libflashplayer.so \$1/usr/lib/mozilla/plugins
 	status
 }
 
 post_remove()
 {
 	echo -n "Processing post remove commands..."
-	rm -f /usr/lib/firefox*/plugins/libflashplayer.so
+	if [ -d /var/lib/tazpkg/installed/firefox ] ; then
+		rm -f /usr/lib/firefox*/plugins/libflashplayer.so
+	fi
+	rm -f /usr/lib/mozilla/plugins/libflashplayer.so
 	status
 }
 EOT
