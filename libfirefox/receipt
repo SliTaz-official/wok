@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="libfirefox"
+VERSION="3.5.7"
+CATEGORY="network"
+SHORT_DESC="firefox lib files"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="gtk+ sqlite dbus dbus-glib glib jpeg xorg-libX11 xorg-libXdamage alsa-lib xorg-libXt"
+WANTED="firefox"
+WEB_SITE="http://www.mozilla.org/"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	
+	mkdir -p $fs/usr/lib/$WANTED-$VERSION
+	cp -a $_pkg/usr/lib/$WANTED-$VERSION/*.so $fs/usr/lib/$WANTED-$VERSION
+	
+	# remove some firefox libs (in firefox receipts)
+	rm -rf $fs/usr/lib/firefox-$VERSION/libxul.so
+	rm -rf $fs/usr/lib/firefox-$VERSION/libmozjs.so
+	
+	# Remove unnecessary files (copied from firefox receipt)
+	rm -rf $fs/usr/lib/firefox-$VERSION/libsqlite3.so
+	
+
+}
+
+post_install()
+{
+# Export firefox libraries
+	for i in /usr/lib/firefox*/*.so ; do
+		[ -f $i ] && ln -sf $i /usr/lib
+	done	
+}

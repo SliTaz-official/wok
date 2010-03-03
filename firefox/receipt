@@ -5,7 +5,7 @@ VERSION="3.5.7"
 CATEGORY="network"
 SHORT_DESC="User friendly, secure and fast web browser."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ sqlite dbus dbus-glib glib jpeg xorg-libX11 xorg-libXdamage alsa-lib xorg-libXt"
+DEPENDS="gtk+ sqlite dbus dbus-glib glib jpeg xorg-libX11 xorg-libXdamage alsa-lib xorg-libXt libfirefox"
 BUILD_DEPENDS="xorg-dev gtk+-dev zip libIDL coreutils findutils xorg-libXft-dev \
 dbus-dev dbus-glib-dev alsa-lib-dev"
 TARBALL="$PACKAGE-$VERSION.source.tar.bz2"
@@ -35,7 +35,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share $fs/etc
+	mkdir -p $fs/usr/lib/$PACKAGE-$VERSION $fs/usr/share $fs/etc 
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/$PACKAGE-$VERSION $fs/usr/lib
 
@@ -75,7 +75,13 @@ genpkg_rules()
 	# Remove unnecessary files.
 	rm -rf $fs/usr/lib/$PACKAGE-$VERSION/dictionaries/*
 	rm -rf $fs/usr/lib/$PACKAGE-$VERSION/icons
-	rm -rf $fs/usr/lib/$PACKAGE-$VERSION/libsqlite3.so
+	# split firefox libs
+	rm -rf $fs/usr/lib/$PACKAGE-$VERSION/*.so
+	#retain big firefox libs
+	cp 	$_pkg/usr/lib/$PACKAGE-$VERSION/libxul.so \
+		$_pkg/usr/lib/$PACKAGE-$VERSION/libmozjs.so \
+		$fs/usr/lib/$PACKAGE-$VERSION
+	
 }
 
 # Pre - Post install command to set default locale.
@@ -87,7 +93,8 @@ pre_install()
 	mkdir /tmp/firefox-plugins-$$
 	cp -a $root/usr/lib/firefox-*/plugins/* /tmp/firefox-plugins-$$ 2> /dev/null
 	# Remove old libs and configs
-	rm -rf $root/usr/lib/firefox-*
+	rm -rf $root/usr/lib/firefox-*/plugins
+	rm -rf $root/usr/lib/firefox-*/dictionaries
 	rm -rf $root/etc/firefox
 }
 post_install()
@@ -105,3 +112,4 @@ post_install()
 	done
 	rm -rf /tmp/firefox-plugins-$$
 }
+
