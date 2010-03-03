@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="mplayer-svn"
-VERSION="30605"
+VERSION="30817"
 CATEGORY="multimedia"
 SHORT_DESC="Mplayer SVN version"
-MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ cdparanoia-III libmad xorg-libXv libtheora lame libv4l giflib \
-xorg-libXss xorg-libXxf86vm enca faac libmng alsa-lib bzlib"
-BUILD_DEPENDS="gtk+-dev cdparanoia-III-dev libmad-dev xorg-libXv-dev libtheora-dev ffmpeg-dev subversion"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="gtk+ cdparanoia-III libmad xorg-libXv libtheora lame giflib \
+xorg-libXss xorg-libXxf86vm alsa-lib bzlib"
+SUGGESTED="libv4l"
+BUILD_DEPENDS="gtk+-dev cdparanoia-III-dev libmad-dev xorg-libXv-dev libtheora-dev subversion"
 SUGGESTED=""
 WEB_SITE="http://www.mplayerhq.hu/design7/news.html"
 PROVIDES="mplayer"
@@ -22,41 +23,33 @@ TAGS="player movie audio video"
 # To compile with in-built ffmpeg (and double the size of pkg), remove from
 # compile options:
 #	--disable-libavutil_a --disable-libavcodec_a --disable-libavformat_a
-#	--disable-libpostproc_a --disable-libswscale_a
-# 	--disable-tv --disable-radio-v4l2 --disable-v4l2
+#	--disable-libpostproc_a --disable-libswscale_a --disable-libavcodec_mpegaudio_hp
 
 compile_rules()
 {
 	[ -d $PACKAGE-$VERSION ] || svn checkout -r $VERSION \
 		svn://svn.mplayerhq.hu/mplayer/trunk $PACKAGE-$VERSION
 	cd $src
+	# disable unwanted features, remote control, streaming, networking, unwanted codecs, 
+	# disable video outputs, audio outputs, some advanced options
 	./configure \
 		--prefix=/usr \
 		--confdir=/etc/mplayer \
 		--libdir=/usr/lib/mplayer \
-		--disable-largefiles \
-		--disable-mmx --disable-mmxext \
-		--disable-3dnow --disable-3dnowext \
-		--disable-sse --disable-sse2 --disable-ssse3 \
-		--disable-fastmemcpy \
+		--enable-gui --enable-freetype \
 		--language="en de es fr" \
-		--disable-gl \
-		--disable-sdl \
-		--disable-jack \
-		--disable-liblzo \
-		--disable-libdv \
-		--disable-speex \
-		--disable-openal \
-		--disable-faad \
-		--disable-libavcodec_mpegaudio_hp \
-		--disable-fribidi \
 		--target=i386-linux \
-		--disable-dvdnav \
-		--disable-esd --disable-mga \
+		--disable-largefiles --disable-dvdnav --disable-pvr --disable-enca --disable-fribidi --disable-maemo \
 		--disable-lirc --disable-lircc \
-		--disable-smb --disable-nemesi \
-		--disable-nas --disable-vdpau \
-		--enable-gui --enable-freetype &&
+		--disable-nemesi --disable-vstream \
+		--disable-smb --disable-network --disable-live \
+		--disable-speex --disable-mng --disable-liblzo --disable-faad --disable-faad-internal \
+		--disable-libdv --disable-faac --disable-faac-lavc  --disable-ladspa --disable-libbs2b  \
+		--disable-libdca  --disable-musepack \
+		--disable-gl --disable-vdpau --disable-directfb --disable-sdl --disable-mga  \
+		--disable-jack --disable-pulse --disable-ossaudio  --disable-openal --disable-nas --disable-esd  \
+		--disable-mmx --disable-mmxext --disable-3dnow --disable-3dnowext \
+		--disable-sse --disable-sse2 --disable-ssse3 --disable-fastmemcpy  &&		
 	make &&
 	make DESTDIR=$PWD/_pkg install
 }
@@ -69,6 +62,7 @@ genpkg_rules()
 	# Mencoder goes in a splited package.
 	rm $fs/usr/bin/mencoder
 	cp -a $_pkg/usr/share/mplayer $fs/usr/share
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
 	cp -a $_pkg/etc $fs
 	cp $src/etc/example.conf $fs/etc/mplayer
 	# Config to use Xv by default.
