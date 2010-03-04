@@ -27,25 +27,26 @@ genpkg_rules()
 
 post_install()
 {
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	  if [ -f "$1/boot/grub/menu.lst" ]; then
-		if ! grep -q "vmlinuz-$VERSION-slitaz" $1/boot/grub/menu.lst; then
+		if ! grep -q "vmlinuz-$KERNEL_VERSION-slitaz" $1/boot/grub/menu.lst; then
     		root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`
 			grub_dev=`cat $1/boot/grub/menu.lst | grep "root.* (" | head -n 1`
 			# Add new kernel entry in case of upgrade for installed system.
     		cat >> $1/boot/grub/menu.lst << EOT
 
-title  SliTaz GNU/Linux (Kernel $VERSION-slitaz) with bootchart
+title  SliTaz GNU/Linux (Kernel $KERNEL_VERSION-slitaz) with bootchart
 $grub_dev
-       kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev init=/sbin/bootchartd
+       kernel /boot/vmlinuz-$KERNEL_VERSION-slitaz root=$root_dev init=/sbin/bootchartd
 EOT
 			# Display information message.
     		cat <<EOT
 ----
 GRUB is installed, these tree lines has been added to the menu.lst:
  
-title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
+title  SliTaz GNU/Linux (Kernel $KERNEL_VERSION-slitaz)
 $grub_dev
-       kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev init=/sbin/bootchartd
+       kernel /boot/vmlinuz-$KERNEL_VERSION-slitaz root=$root_dev init=/sbin/bootchartd
 ----
 EOT
 		else
