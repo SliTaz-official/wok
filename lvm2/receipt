@@ -2,11 +2,11 @@
 
 PACKAGE="lvm2"
 SOURCE="LVM2"
-VERSION="2.02.51"
+VERSION="2.02.61"
 CATEGORY="system-tools"
 SHORT_DESC="Linux Logical Volume Manager."
 MAINTAINER="guillaume.michon@laposte.net"
-DEPENDS="readline linux-md libdevmapper ncurses"
+DEPENDS="readline linux-md libdevmapper"
 BUILD_DEPENDS="readline-dev"
 TARBALL="$SOURCE.$VERSION.tgz"
 WEB_SITE="http://sourceware.org/lvm2/"
@@ -24,18 +24,24 @@ compile_rules()
 		--mandir=/usr/share/man \
 		--enable-cmdlib \
 		--enable-dmeventd \
+		--with-udevdir=/etc/udev/rules.d \
 		$CONFIGURE_ARGS &&
 	make && make DESTDIR=$PWD/_pkg install
+	cd $src/udev
+	make DESTDIR=$src/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $_pkg/etc $fs
+	mkdir -p $fs/usr/lib $fs/etc
+	cp -a $_pkg/etc/udev $fs/etc
 	cp -a $_pkg/usr/sbin $fs/usr
 	cp -a $_pkg/usr/lib/* $fs/usr/lib
-	rm $fs/usr/lib/libdevmapper.so*
+	# split libdevmapper
+	rm -f $fs/usr/lib/libdevmapper*.so*
+	rm -f $fs/usr/sbin/dmsetup
+
 }
 
 

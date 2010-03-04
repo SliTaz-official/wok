@@ -1,35 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="libdevmapper"
-VERSION="1.02.27"
+VERSION="1.02.44"
 CATEGORY="system-tools"
 SHORT_DESC="Linux device mapper library."
 MAINTAINER="b1+slitaz@nagel.org"
 TARBALL="device-mapper.$VERSION.tgz"
 WEB_SITE="http://sourceware.org/dm/"
-WGET_URL="ftp://sources.redhat.com/pub/dm/$TARBALL"
-
-# Rules to configure and make the package.
-compile_rules()
-{
-	cd $WOK/$PACKAGE
-	mv device-mapper.$VERSION $PACKAGE-$VERSION
-	cd $src/lib
-	sed 's/(INSTALL) -D/(INSTALL)/' < Makefile.in > tmp
-	mv tmp Makefile.in
-	cd $src
-	./configure --prefix=/usr $CONFIGURE_ARGS
-	make
-	mkdir -p $src/_pkg/usr/lib
-	mkdir -p $src/_pkg/usr/include
-	cd $src/lib
-	make DESTDIR=$src/_pkg install
-}
+WANTED="lvm2"
+WANTED_VERSION="2.02.61"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	strip -s $fs/usr/lib/*
+	mkdir -p $fs/usr/lib $fs/usr/sbin $fs/etc 
+	_pkg="$WOK/$WANTED/LVM2-$WANTED_VERSION/_pkg"
+	cp -a $_pkg/usr/lib/libdevmapper*.so* $fs/usr/lib
+	cp -a $_pkg/usr/sbin/dmsetup $fs/usr/sbin
+	cp -a $_pkg/etc/udev $fs/etc	
+	
 }
