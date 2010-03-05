@@ -27,12 +27,13 @@ genpkg_rules()
 
 post_install()
 {
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	   KERNEL_VERSION=`uname -a | cut -d ' ' -f3 | cut -d '-' -f1`
 	  if [ -f "$1/boot/grub/menu.lst" ]; then
-		if ! grep -q "vmlinuz-$KERNEL_VERSION-slitaz" $1/boot/grub/menu.lst; then
+	   # add an entry only if slitaz is installed and bootchart is not configured
+		if ! grep -q "vmlinuz-$KERNEL_VERSION-slitaz.*sbin/bootchartd.*" $1/boot/grub/menu.lst; then
     		root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`
 			grub_dev=`cat $1/boot/grub/menu.lst | grep "root.* (" | head -n 1`
-			# Add new kernel entry in case of upgrade for installed system.
+			# Add new kernel entry for bootchart
     		cat >> $1/boot/grub/menu.lst << EOT
 
 title  SliTaz GNU/Linux (Kernel $KERNEL_VERSION-slitaz) with bootchart
