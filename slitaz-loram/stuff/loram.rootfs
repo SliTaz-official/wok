@@ -30,7 +30,7 @@ if [ -x usr/bin/mkcromfs ]; then
 else
   usr/sbin/mksquashfs usr .usr.sqfs -comp lzma
 fi
-if [ -x bin/funionfs -o -d /var/lib/tazpkg/installed/aufs ]; then
+if [ -x bin/funionfs -o -d /var/lib/tazpkg/installed/aufs-utils ]; then
   mkdir .usr.rw .usr.ro
   usr=.usr.ro
 fi
@@ -39,9 +39,10 @@ if [ -x bin/funionfs -o -x usr/bin/mkcromfs ]; then
 fi
 rm -rf usr
 mkdir usr
-COMPRESSION="gzip"
 echo "$(du -hs ./.usr.*fs | cut -f1) are used by /usr after compression"
 for ii in bin/vcsa2txt bin/awk bin/script bin/cut bin/readlink bin/du bin/free \
 	  bin/killall5 bin/seq bin/find bin/xargs bin/patch; do
   [ -e $ii ] || ln -s busybox $ii
 done
+echo .usr.*fs | cpio -o -H newc > $1/rootfs.gz2
+rm -f .usr.*fs
