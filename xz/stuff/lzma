@@ -66,7 +66,7 @@ lzma_utils()
 		shift
 	done
 	for i in $files; do
-		xz $args $i || break
+		xz $args $i || exit
 		[ "lzma" == "$suffix" ] || mv ${i%.*}.lzma ${i%.*}.$suffix
 	done
 	exit
@@ -101,4 +101,16 @@ while [ -n "$2" ]; do
 done
 
 # fake lzma_alone (-eos -mt1)
-eval exec xz $args --format=lzma --$mode$extra --stdout $input $output
+eval xz $args --format=lzma --$mode$extra --stdout $input $output
+status=$?
+if [ -n "$input" -a -n "$output" ]; then
+	size=$(stat -c "%s" ${input#< })
+	ascii="00000 "
+	for i in 1 2 3 4 5 6 7 8; do
+		ascii="$ascii $(printf "%02x" $((size % 256)) )"
+		size=$(( $size / 256 ))
+	done
+	echo "$ascii | .." | hexdump -R | \
+	dd of=${output#> } seek=5 bs=1 conv=notrunc 2> /dev/null
+fi
+exit $status
