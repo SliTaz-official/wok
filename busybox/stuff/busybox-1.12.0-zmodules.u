@@ -50,7 +50,7 @@
  #include <libgen.h>
  #include <sys/utsname.h>
  
-@@ -4212,6 +4213,48 @@ static const char *moderror(int err)
+@@ -4212,6 +4213,60 @@ static const char *moderror(int err)
  	}
  }
  
@@ -67,22 +67,34 @@
 +	if (fd < 0) return NULL;
 +	xread(fd,head,sizeof(head));
 +	lseek(fd,0L,SEEK_SET);
++#if ENABLE_FEATURE_SEAMLESS_GZ
 +	if (head[0] == 0x1f && head[1] == 0x8b) { /* gzip */
 +#if BB_MMU
 +		xread(fd,head,2); // bb wierdness...
 +#endif
 +		open_transformer(fd, unpack_gz_stream, "gunzip");
 +	}
-+	else if (head[0] == 'B' && head[1] == 'Z' && 
++#endif
++#if ENABLE_FEATURE_SEAMLESS_BZ2
++#if ENABLE_FEATURE_SEAMLESS_GZ
++	else
++#endif
++	if (head[0] == 'B' && head[1] == 'Z' && 
 +			 head[2] == 'h' && isdigit(head[3])) { /* bzip2 */
 +		open_transformer(fd, unpack_bz2_stream, "bunzip2");
 +	}
-+	else if (head[1] != 'E' || head[2] != 'L' || head[3] != 'F') {
++#endif
++#if ENABLE_FEATURE_SEAMLESS_LZMA
++#if ENABLE_FEATURE_SEAMLESS_GZ || ENABLE_FEATURE_SEAMLESS_BZ2
++	else
++#endif
++	if (head[1] != 'E' || head[2] != 'L' || head[3] != 'F') {
 +		open_transformer(fd, unpack_lzma_stream, "unlzma");
 +		if (* (unsigned *) (head + 9) == 0)
 +			max = 1 + head[5] + (head[6]<<8) 
 +				+ (head[7]<<16) + (head[8]<<24);
 +	}
++#endif
 +	l = 0;
 +	map = xmalloc(max);
 +	while (1) {
@@ -99,7 +111,7 @@
  #if !ENABLE_FEATURE_2_4_MODULES
  int insmod_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
  int insmod_main(int argc UNUSED_PARAM, char **argv)
-@@ -4264,8 +4307,7 @@ static int insmod_ng_main(int argc UNUSE
+@@ -4276,8 +4319,7 @@ static int insmod_ng_main(int argc UNUSE
  		xread(fd, map, len);
  	}
  #else
