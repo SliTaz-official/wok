@@ -6,7 +6,7 @@ if [ "$1" == "$build" ]; then
 $(uuencode -m mbr/isohdpfx.bin -)
 EOT
 EOM
-	sed -i "/$build/{NNNNNNNNNd}" $0
+	busybox sed -i "/$build/{NNNNNNNNNd}" $0
 	exit
 fi
 
