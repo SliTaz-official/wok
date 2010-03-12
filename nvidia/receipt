@@ -5,7 +5,7 @@ VERSION="190.42"
 CATEGORY="network"
 MAINTAINER="jozee@slitaz.org"
 SHORT_DESC="NVIDIA drivers (non-free)"
-DEPENDS="linux xorg-server gtk+ cairo-xcb"
+DEPENDS="linux xorg-server gtk+ cairo-xcb linux-agp"
 BUILD_DEPENDS="$DEPENDS"
 WEB_SITE="http://www.nvidia.com/"
 SOURCE="NVIDIA-Linux-x86-${VERSION}-pkg0"
@@ -38,7 +38,9 @@ genpkg_rules()
 	_pkg="$WOK/$PACKAGE/$SOURCE"
 	
 	mkdir -p $fs/usr/share $fs/usr/lib/X11 $fs/usr/share/licenses/$PACKAGE \
-				 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video
+				 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video \
+				 $fs/usr/share/doc/$PACKAGE \
+				 $fs/usr/share/applications
 	
 	# Compress and install module
 	lzma e $_pkg/usr/src/nv/nvidia.ko \
@@ -52,9 +54,8 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib/
 	cp -a $_pkg/usr/lib/tls $fs/usr/lib/
 	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
-	cp -a $_pkg/usr/share/doc $fs/usr/share
-	cp -a $_pkg/usr/X11R6/lib/* $fs/usr/lib/X11
-	
+	cp -a $_pkg/usr/share/doc/* $fs/usr/share/doc/$PACKAGE/
+	cp -a $_pkg/usr/X11R6/lib/* $fs/usr/lib/X11	
 		
 }
 
@@ -74,6 +75,10 @@ post_install()
 {
 	echo "Processing post-install commands..."
 	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+	
+	# correct .desktop file file
+	sed -i 's:__UTILS_PATH__/::' $1/usr/share/applications/nvidia-settings.desktop
+	sed -i 's:__PIXMAP_PATH__/::' $1/usr/share/applications/nvidia-settings.desktop
 	
 	echo ""
 	echo -e "\033[1m NVIDIA LICENSE INFORMATION:\033[0m $2"
