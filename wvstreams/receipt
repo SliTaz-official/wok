@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="wvstreams"
+VERSION="4.6.1"
+CATEGORY="network"
+SHORT_DESC="makes modem-based connection to Internet"
+MAINTAINER="jozee@slitaz.org"
+DEPENDS="ppp gcc-lib-base openssl zlib "
+BUILD_DEPENDS="openssl-dev zlib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://wvstreams.googlecode.com"
+WGET_URL="http://wvstreams.googlecode.com/files/$TARBALL"
+TAGS="network 3g"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	 ./configure --prefix=/usr \
+	 --without-dbus \
+	 --without-tcl \
+	 --without-qt \
+	 --without-pam \
+	 --without-valgrind &&
+
+	make && 
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/etc $fs/var			
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/valgrind $fs/usr/lib
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/etc/* $fs/etc
+	cp -a $_pkg/usr/var/* $fs/var
+}
+
+post_remove()
+{
+	rm -rf /etc/ppp/peers/wvdial
+}
