@@ -17,19 +17,40 @@ include("conf.php");
 <!-- Header -->
 <div id="header">
     <a name="top"></a>
-<!-- Access -->
-<div id="access">
-	<a href="http://forum.slitaz.org/">Forum</a>
-	<a href="http://wiki.slitaz.org/">Wiki</a>
-	<a href="http://art.slitaz.org/">Art</a>
-	<a href="http://labs.slitaz.org/">Labs</a>
-	<a href="http://pkgs.slitaz.org/">Packages</a>
-	<a href="http://hg.slitaz.org/">Hg</a>
-</div>
     <a href="http://bb.slitaz.org/"><img id="logo"
     src="pics/website/logo.png" title="bb.slitaz.org" alt="bb.slitaz.org"
     style="border: 0px solid ; width: 200px; height: 74px;" /></a>
     <p id="titre">#!/bb/packages</p>
+</div>
+
+<!-- Navigation menu -->
+<div id="nav">
+
+<div class="nav_box">
+<h4>SliTaz Network</h4>
+<ul>
+	<li><a href="http://www.slitaz.org/">Main Website</a></li>
+	<li><a href="http://doc.slitaz.org/">Documentation</a></li>
+	<li><a href="http://forum.slitaz.org/">Community Forum</a></li>
+	<li><a href="http://labs.slitaz.org/">SliTaz Labs</a></li>
+	<li><a href="http://pkgs.slitaz.org/">Packages Database</a></li>
+	<li><a href="http://twitter.com/slitaz">SliTaz on Twitter</a></li>
+	<li><a href="http://www.distrowatch.com/slitaz">SliTaz on DistroWatch</a></li>
+</ul>
+</div>
+
+<div class="nav_box">
+<h4>SliTaz Developers</h4>
+<ul>
+	<li><a href="http://hg.slitaz.org/">Hg Repositories</a></li>
+	<li><a href="http://tank.slitaz.org/">Tank Server</a></li>
+	<li><a href="http://people.slitaz.org/">People Stuff</a></li>
+	<li><a href="http://labs.slitaz.org/wiki/distro">Distro Wiki</a></li>
+	
+</ul>
+</div>
+
+<!-- End navigation menu -->
 </div>
 
 <!-- Content top. -->
@@ -139,15 +160,11 @@ system("cd $packages && ls -1t *.flavor | head -20 | \
 
 <!-- End of content with round corner -->
 </div>
-<div id="content_bottom">
-<div class="bottom_left"></div>
-<div class="bottom_right"></div>
-</div>
 
 <!-- Start of footer and copy notice -->
 <div id="copy">
 <p>
-Copyright &copy; 2009 <a href="http://www.slitaz.org/">SliTaz</a> -
+Copyright &copy; 2010 <a href="http://www.slitaz.org/">SliTaz</a> -
 <a href="http://www.gnu.org/licenses/gpl.html">GNU General Public License</a>
 </p>
 <!-- End of copy -->
