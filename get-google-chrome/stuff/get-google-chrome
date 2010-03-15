@@ -54,9 +54,6 @@ rm -rf $DEBPKG
 
 mkdir -p $PACKAGE-$VERSION/fs
 mv usr opt $PACKAGE-$VERSION/fs
-mkdir -p $PACKAGE-$VERSION/fs/usr/share/applications/
-mv $PACKAGE-$VERSION/fs/opt/google/chrome/google-chrome.desktop \
-    $PACKAGE-$VERSION/fs/usr/share/applications/
 
 cd $TEMP_DIR
 
@@ -65,7 +62,7 @@ PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="The web browser from Google."
-DEPENDS="gtk+ GConf lzma flash-plugin"
+DEPENDS="gtk+ GConf lzma flash-plugin bash xdg-utils"
 WEB_SITE="http://www.google.com/chrome/"
 
 post_install()
@@ -80,6 +77,30 @@ post_install()
     ln -s /usr/lib/libsmime3.so $root/usr/lib/libsmime3.so.1d 2> /dev/null
     ln -s /usr/lib/libssl3.so $root/usr/lib/libssl3.so.1d 2> /dev/nul
     sed -i 's/exec -a "$0"/exec /' $root/usr/bin/google-chrome 2> /dev/null
+
+    # Add icons to the system icons
+    XDG_ICON_RESOURCE="\`which xdg-icon-resource 2> /dev/null\`"
+    if [ ! -x "\$XDG_ICON_RESOURCE" ]; then
+        echo "Error: Could not find xdg-icon-resource" >&2
+        return 1
+    fi
+    for icon in "/opt/google/chrome/product_logo_"*.png; do
+        size="\${icon##*/product_logo_}"
+        "\$XDG_ICON_RESOURCE" install --size "\${size%.png}" "\$icon" "google-chrome"
+    done
+
+    # Add an entry to the system menu
+    XDG_DESKTOP_MENU="\`which xdg-desktop-menu 2> /dev/null\`"
+    UPDATE_MENUS="\`which update-menus 2> /dev/null\`"
+    if [ ! -x "\$XDG_DESKTOP_MENU" ]; then
+        echo "Error: Could not find xdg-desktop-menu" >&2
+        return 1
+    fi
+    "\$XDG_DESKTOP_MENU" install /opt/google/chrome/google-chrome.desktop
+
+    if [ -x "\$UPDATE_MENUS" ]; then
+        update-menus
+    fi
 }
 pre_remove()
 {
@@ -90,6 +111,30 @@ pre_remove()
         /usr/lib/libplds4.so.0d \
         /usr/lib/libsmime3.so.1d \
         /usr/lib/libssl3.so.1d 2> /dev/nul
+
+    # Remove icons from the system icons
+    XDG_ICON_RESOURCE="\`which xdg-icon-resource 2> /dev/null\`"
+    if [ ! -x "\$XDG_ICON_RESOURCE" ]; then
+        echo "Error: Could not find xdg-icon-resource" >&2
+        return 1
+    fi
+    for icon in "/opt/google/chrome/product_logo_"*.png; do
+        size="\${icon##*/product_logo_}"
+        "\$XDG_ICON_RESOURCE" uninstall --size "\${size%.png}" "google-chrome"
+    done
+
+    # Remove the entry from the system menu
+    XDG_DESKTOP_MENU="\`which xdg-desktop-menu 2> /dev/null\`"
+    UPDATE_MENUS="\`which update-menus 2> /dev/null\`"
+    if [ ! -x "\$XDG_DESKTOP_MENU" ]; then
+        echo "Error: Could not find xdg-desktop-menu" >&2
+        return 1
+    fi
+    "\$XDG_DESKTOP_MENU" uninstall /opt/google/chrome/google-chrome.desktop
+
+    if [ -x "\$UPDATE_MENUS" ]; then
+        update-menus
+    fi
 }
 EOT
 
