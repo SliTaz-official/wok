@@ -15,20 +15,41 @@ compile_rules()
 {
 	cd $src/src
 	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man \
-	$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/../_pkg install
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr/sbin
+	cp -a $src/src/pppoe $fs/usr/sbin
+	cp -a $src/src/pppoe-server $fs/usr/sbin
+	cp -a $src/src/pppoe-relay $fs/usr/sbin
+	cp -a $src/src/pppoe-sniff $fs/usr/sbin
 	
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/usr/sbin $fs/usr	
-
+	#
+	# BUG
+	#cp $src/scripts/pppoe-setup $fs/usr/sbin
+	cp stuff/pppoe-setup $fs/usr/sbin
+	
+	# Scripts to /usr/sbin.
+	#
+	cp $src/scripts/pppoe-connect $fs/usr/sbin
+	cp $src/scripts/pppoe-start $fs/usr/sbin
+	cp $src/scripts/pppoe-status $fs/usr/sbin
+	cp $src/scripts/pppoe-stop $fs/usr/sbin
+	sed -i 's|/usr/bin/id|id|' $fs/usr/sbin/pppoe-connect \
+		$fs/usr/sbin/pppoe-setup $fs/usr/sbin/pppoe-start
+	# Config
+	mkdir -p $fs/etc/ppp/plugins
+	cp $src/configs/pppoe.conf $fs/etc/ppp
+	cp $src/configs/firewall-standalone $fs/etc/ppp
+	cp $src/configs/firewall-masq $fs/etc/ppp
+	cp $src/configs/pppoe-server-options $fs/etc/ppp
+	echo "# Directory created by rp-pppoe for kernel-mode plugin" > \
+		$fs/etc/ppp/plugins/README
+	
 	# Fix permissions on all scripts
 	chmod -R 755 $fs/usr/sbin/*
 }
