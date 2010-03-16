@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="xplc"
+VERSION="0.3.13"
+CATEGORY="network"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="Cross-Platform Lightweight Components"
+BUILD_DEPENDS=""
+WEB_SITE="http://xplc.sourceforge.net"
+DEPENDS="gcc-lib-base"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/xplc/$TARBALL"
+TAGS=""
+
+# Rules to configure and make the package.
+
+compile_rules() {
+  cd $src
+  ./configure --prefix=/usr --mandir=/usr/share/man \
+			  --without-libuuid  &&
+  make &&
+  make DESTDIR=$PWD/_pkg install 
+
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/$PACKAGE-$VERSION
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*so* $fs/usr/lib/
+	cp -a $_pkg/usr/lib/$PACKAGE-$VERSION/*so* $fs/usr/lib/$PACKAGE-$VERSION
+	rm -f $fs/usr/bin/uuidgen		
+}
