@@ -24,16 +24,16 @@ b43legacy)
 	FWSET=wl_apsta-$VERSION.o
 	;;
 ipw2100)
-	VERSION=1.3-6.0.1
+	VERSION=1.3
 	SHORT_DESC="Intel PRO/Wireless 2100 firmware."
 	WEB_SITE="http://$MODULE.sourceforge.net/"
-	WGET_URL="http://dl.atrpms.net/all/$PKG-$VERSION.noarch.rpm"
+	WGET_URL="http://bughost.org/firmware/${MODULE}-fw-${VERSION}.tgz"
 	;;
 ipw2200)
-	VERSION=3.0-9.0.1
+	VERSION=3.1
 	SHORT_DESC="Intel PRO/Wireless 2200BG firmware."
 	WEB_SITE="http://$MODULE.sourceforge.net/"
-	WGET_URL="http://dl.atrpms.net/all/$PKG-$VERSION.noarch.rpm"
+	WGET_URL="http://bughost.org/firmware/${MODULE}-fw-${VERSION}.tgz"
 	;;
 iwlwifi-3945)
 	VERSION=15.32.2.9
@@ -82,6 +82,12 @@ rt73|rt73usb)
 	SHORT_DESC="new RT2x00 RT73(RT2571W) Wireless Lan firmware."
 	WEB_SITE="http://www.ralinktech.com/"
 	WGET_URL="ftp://ftp.archlinux.org/other/rt2x00-rt71w-fw/RT71W_Firmware_V${VERSION}.zip"
+	;;
+rt2870usb)
+	VERSION=8
+	SHORT_DESC="RaLink RT2870USB (RT2870/RT2770) WiFi adapter."
+	WEB_SITE="http://www.ralinktech.com/"
+	WGET_URL="ftp://ftp.archlinux.org/other/${MODULE}-fw/RT2870_Firmware_V${VERSION}.zip"
 	;;
 zd1211|zd1211rw)
 	VERSION=2.16.0.0-0.1
@@ -144,16 +150,18 @@ case "$WGET_URL" in
 esac
 	
 # Create pseudo package
-mkdir -p $PKG-$VERSION/fs/lib/firmware
+mkdir -p $PKG-$VERSION/fs/lib/firmware $PKG-$VERSION/fs/usr/share/licenses
 case "$MODULE" in 
 b43*)	b43-fwcutter -w "$PKG-$VERSION/fs/lib/firmware" $FWSET;;
-ipw*)	rm -f lib/firmware/*LICENSE*
-	mv lib/firmware/* $PKG-$VERSION/fs/lib/firmware;;
-rt61|rt61pci|rt2860)
-	mv RT*_Firmware_V$VERSION/*.bin $PKG-$VERSION/fs/lib/firmware;;
-rt73|rt73usb)
-	mv RT73_Linux_STA_Drv$VERSION/Module/rt73.bin $PKG-$VERSION/fs/lib/firmware;;
-iwlwifi*) mv iwlwifi*/iwlwifi*.ucode $PKG-$VERSION/fs/lib/firmware;;
+ipw2200)	cp ${MODULE}-fw-$VERSION/*LICENSE* $PKG-$VERSION/fs/usr/share/licenses/intel-$MODULE-LICENSE.txt
+			mv ${MODULE}-fw-$VERSION/* $PKG-$VERSION/fs/lib/firmware;;
+ipw2100)	cp *LICENSE* $PKG-$VERSION/fs/usr/share/licenses/intel-$MODULE-LICENSE.txt
+			mv *.fw* *LICENSE* $PKG-$VERSION/fs/lib/firmware;;
+rt*)
+	mv RT*_Firmware_V$VERSION/*.bin $PKG-$VERSION/fs/lib/firmware
+	mv RT*_Firmware_V$VERSION/*LICENSE* $PKG-$VERSION/fs/usr/share/licenses/ralink-rt61-LICENSE.txt;;
+iwlwifi*) mv iwlwifi*/iwlwifi*.ucode $PKG-$VERSION/fs/lib/firmware
+		  mv iwlwifi*/*LICENSE* $PKG-$VERSION/fs/usr/share/licenses/intel-iwlwifi-LICENSE.txt	;;
 zd1211|zd1211rw)
 	mv lib/firmware/zd1211 $PKG-$VERSION/fs/lib/firmware 
 	for i in $(cd usr/lib/hotplug/firmware; ls); do
@@ -182,23 +190,31 @@ tazpkg install $PKG-$VERSION.tazpkg --root=$ROOT
 cd $TOP
 rm -rf $TMP
 
-# Check if we need wpa_supplicant
-. $ROOT/etc/network.conf
-if [ $WIFI_KEY_TYPE = "wpa" ] || [ $WIFI_KEY_TYPE = "WPA" ]; then
-	if [ ! -d $ROOT/var/lib/tazpkg/installed/wpa_supplicant ]; then
-		tazpkg get-install wpa_supplicant --root=$ROOT
-	fi
+if [ "$1" == "--firmware" ] ; then 
+    echo "just install firmare: yes"
+    JUST_INSTALL_FIRMWARE="yes"
 fi
 
-# Configure /etc/network.conf and start connexion
-sed -i s/'WIFI="no"'/'WIFI="yes"'/ $ROOT/etc/network.conf
+if [ ! "$JUST_INSTALL_FIRMWARE" == "yes" ]; then
+	echo "configuring and loading module ..."
+	# Check if we need wpa_supplicant
+	. $ROOT/etc/network.conf
+	if [ $WIFI_KEY_TYPE = "wpa" ] || [ $WIFI_KEY_TYPE = "WPA" ]; then
+		if [ ! -d $ROOT/var/lib/tazpkg/installed/wpa_supplicant ]; then
+			tazpkg get-install wpa_supplicant --root=$ROOT
+		fi
+	fi
 
-# Load module
-if [ -z "$ROOT" -a -n "$(modprobe -l $MODULE)" ]; then
-	echo "Loading module: $MODULE..."
-	if modprobe $MODULE ; then
-		sleep 2
-		/etc/init.d/network.sh restart
+	# Configure /etc/network.conf and start connexion
+	sed -i s/'WIFI="no"'/'WIFI="yes"'/ $ROOT/etc/network.conf
+
+	# Load module
+	if [ -z "$ROOT" -a -n "$(modprobe -l $MODULE)" ]; then
+		echo "Loading module: $MODULE..."
+		if modprobe $MODULE ; then
+			sleep 2
+			/etc/init.d/network.sh restart
+		fi
 	fi
 fi
 
