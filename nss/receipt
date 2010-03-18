@@ -1,0 +1,73 @@
+# SliTaz package receipt.
+
+PACKAGE="nss"
+VERSION="3.12.4"
+CATEGORY="utilities"
+SHORT_DESC="Mozilla Network Security Services (NSS)."
+MAINTAINER="rocky@slitaz.org"
+DEPENDS="libfirefox"
+BUILD_DEPENDS="firefox-dev sqlite-dev zlib-dev perl"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.mozilla.org/projects/security/pki/nss/"
+WGET_URL="ftp://ftp.mozilla.org/pub/security/nss/releases/NSS_${VERSION//./_}_RTM/src/${TARBALL}"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    export NSPR_INCLUDE_DIR=$(ls -d /usr/include/firefox-*/stable)
+    export NSPR_LIB_DIR=$(ls -d /usr/lib/firefox-*/lib)
+    export NSS_USE_SYSTEM_SQLITE=1
+    export BUILD_OPT=1
+
+    make -j1 -C mozilla/security/nss build_coreconf build_dbm all
+
+    mkdir -p $PWD/_pkg/usr/bin
+    mkdir -p $PWD/_pkg/usr/lib/pkgconfig
+    mkdir -p $PWD/_pkg/usr/include/nss
+
+    NSS_VMAJOR=`grep "#define.*NSS_VMAJOR" mozilla/security/nss/lib/nss/nss.h | awk '{print $3}'`
+    NSS_VMINOR=`grep "#define.*NSS_VMINOR" mozilla/security/nss/lib/nss/nss.h | awk '{print $3}'`
+    NSS_VPATCH=`grep "#define.*NSS_VPATCH" mozilla/security/nss/lib/nss/nss.h | awk '{print $3}'`
+
+    sed ../stuff/nss.pc.in -e "s,%libdir%,/usr/lib,g" \
+                             -e "s,%prefix%,/usr,g" \
+                             -e "s,%exec_prefix%,/usr/bin,g" \
+                             -e "s,%includedir%,/usr/include/nss,g" \
+                             -e "s,%NSPR_VERSION%,${VERSION},g" \
+                             -e "s,%NSS_VERSION%,${VERSION},g" \
+                    > $PWD/_pkg/usr/lib/pkgconfig/nss.pc || return 1
+
+    sed ../stuff/nss-config.in -e "s,@libdir@,/usr/lib,g" \
+                                 -e "s,@prefix@,/usr/bin,g" \
+                                 -e "s,@exec_prefix@,/usr/bin,g" \
+                                 -e "s,@includedir@,/usr/include/nss,g" \
+                                 -e "s,@MOD_MAJOR_VERSION@,${NSS_VMAJOR},g" \
+                                 -e "s,@MOD_MINOR_VERSION@,${NSS_VMINOR},g" \
+                                 -e "s,@MOD_PATCH_VERSION@,${NSS_VPATCH},g" \
+                            > $PWD/_pkg/usr/bin/nss-config || return 1
+    chmod 755 $PWD/_pkg/usr/bin/nss-config || return 1
+
+    for file in libsoftokn3.so libfreebl3.so libnss3.so libnssutil3.so \
+              libssl3.so libsmime3.so libnssckbi.so libnssdbm3.so
+    do
+      cp mozilla/dist/*.OBJ/lib/${file} $PWD/_pkg/usr/lib/ || return 1
+    done
+    for file in libcrmf.a libnssb.a libnssckfw.a; do
+      cp mozilla/dist/*.OBJ/lib/${file} $PWD/_pkg/usr/lib/ || return 1
+    done
+
+    for file in certutil cmsutil crlutil modutil pk12util signtool signver ssltap; do
+      cp mozilla/dist/*.OBJ/bin/${file} $PWD/_pkg/usr/bin/ || return 1
+    done
+
+    cp mozilla/dist/public/nss/*.h $PWD/_pkg/usr/include/nss || return 1
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/usr
+    cp -a $_pkg/usr/bin $fs/usr
+    rm $fs/usr/bin/nss-config
+}
