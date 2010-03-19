@@ -6,7 +6,17 @@ DEBPKG="${PACKAGE}_current_i386.deb"
 URL="http://dl.google.com/linux/direct/$DEBPKG"
 CUR_DIR=$(pwd)
 TEMP_DIR=/tmp/$PACKAGE-$$
-ROOT="$1"
+ROOT=
+FORCED=
+
+while getopts "hfr:" option; do
+    case $option in
+        h) echo -e "Usage: $(basename $0) [-f|-r path]\n    -f: force install.\n    -r path: root directory."; exit 1 ;;
+        f) FORCED="--forced" ;;
+        r) ROOT=$OPTARG ;;
+        \?) echo "Wrong argument, Exit ...."; exit 1 ;;
+    esac
+done
 
 # Check if we are root
 if test $(id -u) != 0 ; then
@@ -16,8 +26,8 @@ if test $(id -u) != 0 ; then
 fi
 
 # Avoid reinstall
-if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
-    echo -e "\n$PACKAGE package is already installed.\n"
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ] && [ -z $FORCED ]; then
+    echo -e "\n$PACKAGE package is already installed, add '-f' option to force install.\n"
     exit 1
 fi
 
@@ -145,7 +155,7 @@ tazpkg pack $PACKAGE-$VERSION
 rm -rf $PACKAGE-$VERSION
 
 # Install pseudo package
-yes y | tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+yes y | tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT $FORCED
 
 # Clean
 cd $CUR_DIR
