@@ -63,16 +63,16 @@ genpkg_rules()
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-	local root
-	root=$1
+	local arg
 	echo "Processing post-install commands..."
-	/usr/bin/gtk-query-immodules-2.0 > $root/etc/gtk-2.0/gtk.immodules
-	/usr/bin/gdk-pixbuf-query-loaders > $root/etc/gtk-2.0/gdk-pixbuf.loaders
+	chroot $1/ /usr/bin/gtk-query-immodules-2.0 > $1/etc/gtk-2.0/gtk.immodules
+	chroot $1/ /usr/bin/gdk-pixbuf-query-loaders > $1/etc/gtk-2.0/gdk-pixbuf.loaders
 	# Force reinstall of clearlooks theme (1.0 compatibilty until
 	# clearlooks are updated)
-	if [ -d $root/usr/lib/gtk-2.0/2.4.0 ]; then
-		tazpkg get-install clearlooks --forced
-		rm -rf $root/usr/lib/gtk-2.0/2.4.0
+	if [ -d $1/usr/lib/gtk-2.0/2.4.0 ]; then
+		arg="--forced"
+		[ -n "$1" ] && arg="--forced --root=$1/"
+		tazpkg get-install clearlooks $arg
+		rm -rf $1/usr/lib/gtk-2.0/2.4.0
 	fi
 }
-SELF_INSTALL=1
