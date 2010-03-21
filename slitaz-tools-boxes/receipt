@@ -1,11 +1,11 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-tools-boxes"
-VERSION="3.5"
+VERSION="3.6"
 CATEGORY="system-tools"
 SHORT_DESC="All SliTaz GTKdialog boxes to command line tools."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="slitaz-tools gtkdialog"
+DEPENDS="slitaz-tools gtkdialog gettext-base"
 WANTED="slitaz-tools"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.slitaz.org/"
@@ -19,13 +19,13 @@ genpkg_rules()
 		$fs/usr/bin \
 		$fs/usr/sbin \
 		$fs/usr/lib/slitaz \
-		$fs/usr/share/slitaz/glade \
+		$fs/usr/share/locale \
 		$fs/usr/share/slitaz/messages/en \
 		$fs/usr/share/doc/slitaz-tools
 	# Desktop files, icons and doc.
 	cp -a $src/rootfs/usr/share/applications $fs/usr/share
 	cp -a $src/rootfs/usr/share/pixmaps $fs/usr/share
-	cp -a $src/doc/burnbox.html $fs/usr/share/doc/slitaz-tools
+	cp -a $src/doc/*.html $fs/usr/share/doc/slitaz-tools
 	# Gtkdialog boxes.
 	cp -a $src/tinyutils/bootfloppybox $fs/usr/bin
 	cp -a $src/tinyutils/burnbox $fs/usr/bin
@@ -37,11 +37,16 @@ genpkg_rules()
 	cp -a $src/tinyutils/desktopbox $fs/usr/bin
 	cp -a $src/tinyutils/sshbox $fs/usr/bin
 	cp -a $src/tinyutils/tazctrlbox $fs/usr/sbin
-	# Libs and Glade XML files.
+	# Libs.
 	cp -a $src/lib/[a-z]* $fs/usr/lib/slitaz
-	cp -a $src/glade/*.glade $fs/usr/share/slitaz/glade
-	# Default English messages
+	# Default English messages (will move to po)
 	cp -a $src/messages/en/desktopbox.msg $fs/usr/share/slitaz/messages/en
+	# i18n
+	for l in `ls $src/po/mo`
+	do
+		mkdir -p $fs/usr/share/locale/$l/LC_MESSAGES
+		cp -a $src/po/mo/$l/* $fs/usr/share/locale/$l/LC_MESSAGES
+	done
 	# Gksu fake for pcmanfm.
 	cd $fs/usr/bin
 	ln -s subox gksu
