@@ -1,0 +1,36 @@
+#!/bin/sh
+
+APP="$1"
+
+# Auto Install DEPENDS and/or SUGGESTED
+install()
+{
+	TMPFILE="/tmp/installlist-$$"
+	#echo "pkgs to install: $1"
+	for pkg in $1 ; do
+	  	if [ ! -d /var/lib/tazpkg/installed/${pkg} ]; then
+			echo "$pkg" >> $TMPFILE
+		fi	
+	done 
+	
+	if [ -f $TMPFILE ] ; then
+		xterm -geometry 80x16 -title "Installing Packages (Press ENTER to close and proceed)" \
+				-e "echo -n \"Installing packages as root. This option depends on \
+				 `cat $TMPFILE`\"; 
+				   echo \" \"
+				    subox tazpkg get-install-list $TMPFILE --forced;
+				    echo -e \"----\nPress ENTER to close and proceed further when done...\"; read i; exit 0;
+				"
+		rm -f $TMPFILE
+	fi	
+	
+}
+
+if [ "$2" == "--install" ] ; then
+	SUGGESTED="$3"
+	install "$SUGGESTED"
+fi
+
+$APP &
+
+exit 0
