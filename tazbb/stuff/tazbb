@@ -676,6 +676,21 @@ clean_up()
 	# Keep the 20 last removed packages list.
 	cat $DB_DIR/removed | tail -n 20 > /tmp/removed.tail
 	mv -f /tmp/removed.tail $DB_DIR/removed
+	# Clean packages stuff/ directory
+	echo -e "\nCleaning the build wok stuff/ directories...\n"
+	for pkg in `ls $BUILD_WOK`
+	do
+		if [ -d "$BUILD_WOK/$pkg/stuff" ]; then
+			cd $BUILD_WOK/$pkg
+			for file in `find stuff -type f`
+			do
+				if [ ! -f "$HG_WOK/$pkg/$file" ]; then
+					echo "Removing: $pkg/$file"
+					rm $file
+				fi
+			done
+		fi
+	done
 }
 
 blocked_urls()
