@@ -86,10 +86,10 @@ check_mirror()
 		USER=$USER
 	fi
 	if [ "$2" = "stable" ] || [ "$3" = "stable" ]; then
-		REMOTE_DIR=$MIRROR_DIR/stable/
+		REMOTE_DIR=$MIRROR_PKGS/stable/
 		LOCAL_DIR=$STABLE/packages/
 	else
-		REMOTE_DIR=$MIRROR_DIR/cooking/
+		REMOTE_DIR=$MIRROR_PKGS/cooking/
 		LOCAL_DIR=$COOKING/packages/
 	fi
 }
@@ -309,8 +309,36 @@ case "$1" in
 		check_root
 		get_version $@
 		purge_packages $1
-		purge_sources $1
-		;;
+		purge_sources $1 ;;
+	relpkg)
+		[ -z "$MIRROR_SOURCES" ] && MIRROR_SOURCES="/var/www/slitaz/mirror/sources"
+		if [ -z $2 ] || [ -z $3 ]; then
+			echo -e "\nUsage: $0 relpkg package version\n"
+			exit 0
+		fi
+		PACKAGE=$2
+		VERSION=$3
+		echo ""
+		cd $PROJECTS/$PACKAGE
+		# Sanity check
+		if ! grep -q $VERSION$ .hgtags; then
+			echo "Missing Hg tag for version: $VERSION"
+			echo -e "You may want to: hg tag $VERSION && hg push\n"
+			exit 0
+		fi
+		# Archive
+		echo -n "Creating tarball and md5sum for: $PACKAGE-$VERSION... "
+		hg archive -t tgz $PACKAGE-$VERSION.tar.gz
+		md5sum $PACKAGE-$VERSION.tar.gz > $PACKAGE-$VERSION.md5
+		echo "Done"
+		# Upload
+		echo -n "Do you wish to upload tarball to the mirror [N/y] ? "
+		read upload
+		if [ "$upload" = "y" ]; then
+			echo "Uploading to: $MIRROR/sources/${PACKAGE#slitaz-}"
+			scp $PACKAGE-$VERSION.tar.gz $PACKAGE-$VERSION.md5 \
+				$USER@$MIRROR:$MIRROR_SOURCES/${PACKAGE#slitaz-}
+		fi ;;
 	usage|*)
 		usage ;;
 esac
