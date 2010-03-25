@@ -33,13 +33,13 @@
 +	char *max;
 +} fill;
 +
-+static void release_inbuf(void)
++static void release_inbuf(unsigned n)
 +{
-+	if (fill.offset >= INITRD_PAGE) {
-+		unsigned rem = fill.offset % INITRD_PAGE;
-+		unsigned end = initrd_start + fill.offset - rem;
++	if (n >= INITRD_PAGE) {
++		unsigned rem = n % INITRD_PAGE;
++		unsigned end = initrd_start + n - rem;
 +		_free_initrd(initrd_start, end, free_rootfs_mem);
-+		fill.freed += fill.offset - rem;
++		fill.freed += n - rem;
 +		if (fill.freed >= INITRD_DOT) {
 +			fill.freed -= INITRD_DOT;
 +			printk(".");
@@ -55,7 +55,7 @@
 +	if (max > size) max = size;
 +	if (max > INITRD_PAGE) max = INITRD_PAGE;
 +	memcpy(buffer, (void *)(initrd_start + fill.offset), max);
-+	release_inbuf();
++	release_inbuf(fill.offset);
 +	fill.offset += max;
 +	fill.inptr += fill.last;
 +	fill.last = max;
@@ -65,7 +65,7 @@
  static int __init write_buffer(char *buf, unsigned len)
  {
  	count = len;
-@@ -418,6 +464,7 @@
+@@ -418,6 +463,7 @@
  	decompress_fn decompress;
  	const char *compress_name;
  	static __initdata char msg_buf[64];
@@ -73,7 +73,7 @@
  
  	header_buf = kmalloc(110, GFP_KERNEL);
  	symlink_buf = kmalloc(PATH_MAX + N_ALIGN(PATH_MAX) + 1, GFP_KERNEL);
-@@ -431,8 +478,31 @@
+@@ -431,11 +478,16 @@
  	message = NULL;
  	while (!message && len) {
  		loff_t saved_offset = this_header;
@@ -82,30 +82,15 @@
 +		fill.inptr = fill.last = fill.freed = 0;
  		if (*buf == '0' && !(this_header & 3)) {
  			state = Start;
-+			if (early_free_initrd) {
-+				while (len) {
-+					unsigned n = len, tofree;
-+					if (n > INITRD_PAGE)
-+						n = INITRD_PAGE;
-+					flush_buffer(buf, n);
-+					buf += n;
-+					len -= n;
-+					n = buf - (char *) initrd_start;
-+					tofree = n - (n % INITRD_PAGE);
-+					if (!tofree)
-+						continue;
-+					_free_initrd(initrd_start,
-+						     initrd_start + tofree,
-+						     free_rootfs_mem);
-+					initrd_start += tofree;
-+					printk(".");
-+				}
-+				continue;
-+			}
  			written = write_buffer(buf, len);
  			buf += written;
  			len -= written;
-@@ -446,9 +516,15 @@
++			if (early_free_initrd)
++				release_inbuf(buf - (char *) initrd_start);
+ 			continue;
+ 		}
+ 		if (!*buf) {
+@@ -446,9 +497,15 @@
  		}
  		this_header = 0;
  		decompress = decompress_method(buf, len, &compress_name);
@@ -123,7 +108,7 @@
  		else if (compress_name) {
  			if (!message) {
  				snprintf(msg_buf, sizeof msg_buf,
-@@ -485,7 +561,8 @@
+@@ -485,7 +543,8 @@
  #include <linux/initrd.h>
  #include <linux/kexec.h>
  
@@ -133,7 +118,7 @@
  {
  #ifdef CONFIG_KEXEC
  	unsigned long crashk_start = (unsigned long)__va(crashk_res.start);
-@@ -513,6 +590,12 @@
+@@ -513,6 +571,12 @@
  #endif
  		free_initrd_mem(initrd_start, initrd_end);
  skip:
