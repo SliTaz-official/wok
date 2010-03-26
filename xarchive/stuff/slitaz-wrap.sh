@@ -68,8 +68,8 @@ tazpkg2cpio()
 {
 tmp="$(mktemp -d -t tmpcpio.XXXXXX)"
 case "$(cd $tmp; cpio -iv < "$1")" in
-*lzma) unlzma -c $tmp/fs.cpio.lzma;;
-*gz)   zcat $tmp/fs.cpio.gz
+*lzma*) unlzma -c $tmp/fs.cpio.lzma;;
+*gz*)   zcat $tmp/fs.cpio.gz
 esac
 rm -rf $tmp
 }
@@ -235,37 +235,7 @@ addcpio		cpio\ -id\ >\ /dev/null		$CPIO_EXTS $CPIOXZ_EXTS $CPIOLRZIP_EXTS
 EOT
 }
 
-# main: option switches
-case "$opt" in
-    -i) # info: output supported extentions for progs that exist
-	while read exe exts; do
-		[ "$(which $exe)" -o -f /lib/modules/$(uname -r)/kernel/$exe.ko ] &&
-		echo -n "$exts " | sed 's/ /;/g'
-	done <<EOT
-tar		$TAR_EXTS $IPK_EXTS
-cpio		$CPIO_EXTS $TAZPKG_EXTS
-unzip		$ZIP_EXTS
-dpkg-deb	$DEB_EXTS
-rpm2cpio	$RPM_EXTS
-mount		$ISO_EXTS $FS_EXTS
-xz		$XZ_EXTS $CPIOXZ_EXTS
-lrzip		$LRZIP_EXTS $CPIOLRZIP_EXTS
-rar		$RAR_EXTS
-unace		ace
-arj		$ARJ_EXTS
-7zr		$_7Z_EXTS
-lha		$LHA_EXTS
-lzop		$LZO_EXTS
-cabextract	cab
-cromfs-driver	$CROMFS_EXTS
-fs/squashfs/squashfs	$SQUASHFS_EXTS
-drivers/block/cloop	$CLOOP_EXTS
-EOT
-	echo ""
-	exit
-	;;
-    -o) # open: mangle output for xarchive
-	AWK_MISC='
+AWK_MISC='
 BEGIN {
 	attr="-"
 	link="-"
@@ -313,12 +283,52 @@ function show(arg)
 	getname(arg)
 	if (uid != "blocks") display()
 }'
-	AWKU="$AWK_PROG -v uuid=$(id -u -n) $AWK_MISC"
-	AWK="$AWK_PROG $AWK_MISC"
+	
+awk0()
+{
+	$AWK_PROG "$AWK_MISC $1"
+}
+
+awku()
+{
+	$AWK_PROG -v uuid=$(id -u -n) "$AWK_MISC $1"
+}
+
+
+# main: option switches
+case "$opt" in
+    -i) # info: output supported extentions for progs that exist
+	while read exe exts; do
+		[ "$(which $exe)" -o -f /lib/modules/$(uname -r)/kernel/$exe.ko ] &&
+		echo -n "$exts " | sed 's/ /;/g'
+	done <<EOT
+tar		$TAR_EXTS $IPK_EXTS
+cpio		$CPIO_EXTS $TAZPKG_EXTS
+unzip		$ZIP_EXTS
+dpkg-deb	$DEB_EXTS
+rpm2cpio	$RPM_EXTS
+mount		$ISO_EXTS $FS_EXTS
+xz		$XZ_EXTS $CPIOXZ_EXTS
+lrzip		$LRZIP_EXTS $CPIOLRZIP_EXTS
+rar		$RAR_EXTS
+unace		ace
+arj		$ARJ_EXTS
+7zr		$_7Z_EXTS
+lha		$LHA_EXTS
+lzop		$LZO_EXTS
+cabextract	cab
+cromfs-driver	$CROMFS_EXTS
+fs/squashfs/squashfs	$SQUASHFS_EXTS
+drivers/block/cloop	$CLOOP_EXTS
+EOT
+	echo ""
+	exit
+	;;
+    -o) # open: mangle output for xarchive
 	while read filter exts; do
 # lrwxrwxrwx USR/GRP       0 2005-05-12 00:32:03 file -> /path/to/link
 		case " $exts " in *\ $lc_ext\ *)
-			$DECOMPRESS "$archive" | $filter | $AWK'
+			$DECOMPRESS "$archive" | $filter | awk0 '
 {
 	attr=$1
 	size=$3
@@ -336,7 +346,7 @@ EOT
 	case " $ZIP_EXTS " in *\ $lc_ext\ *)
 		if [ "$(which zipinfo)" ]; then
 # -rw-r--r--  2.3 unx    11512 tx defN YYYYMMDD.HHMMSS file
-			zipinfo -T -s-h-t "$archive" | $AWKU'
+			zipinfo -T -s-h-t "$archive" | awku '
 {
 	attr=$1
 	size=$4
@@ -346,7 +356,7 @@ EOT
 }'
 		else
 # 6622 2005-04-22 12:29:14 file
-			unzip -l "$archive" | $AWKU'
+			unzip -l "$archive" | awku '
 /-[0-9]+-/ {
 	size=$1
 	date=$2
@@ -357,7 +367,7 @@ EOT
 	esac
 # -----------+---------------------+-------
 #       6622 | 22.04.2005 12:29:14 | file
-	[ "$lc_ext" == "cab" ] && cabextract -q -l "$archive" | $AWKU'
+	[ "$lc_ext" == "cab" ] && cabextract -q -l "$archive" | awku '
 /[0-9]+ |/ {
 	size=$1
 	date=$3
@@ -369,7 +379,7 @@ EOT
 # bookmarks/mozilla_bookmarks.html
 #            11512     5231  45% 28-02-05 16:19 -rw-r--r-- F3F3477F m3b 2.9
 #       (or  11512     5231  45% 28-02-05 16:19 .D....     00000000 m3b 2.9)
-		rar v -c- "$archive" | $AWKU'
+		rar v -c- "$archive" | awku '
 /-[0-9]+-/ {
 	getattr($6)
 	size=$1
@@ -385,7 +395,7 @@ EOT
 	ace)
 # Date    ³Time ³Packed     ³Size     ³Ratio³File
 # 17.09.02³00:32³     394116³   414817³  95%³ OggDS0993.exe
-		unace v -c- "$archive" | $AWKU'
+		unace v -c- "$archive" | awku '
 /^[0-9][0-9]\./ {
 	# strip the funky little 3 off the end of size
 	size=substr($3,1,(length($3)-1))
@@ -397,7 +407,7 @@ EOT
 	7z|bcj|bcj2)
 # ------------------- ----- ------------ ------------  ------------
 # 1992-04-12 11:39:46 ....A          356               ANKETA.FRG
-		7zr l "$archive" | $AWKU'
+		7zr l "$archive" | awku '
 /^[0-9]+-/ {
 	date=$1
 	time=$2
@@ -413,7 +423,7 @@ EOT
 	case " $ARJ_EXTS " in *\ $lc_ext\ *)
 # 001) ANKETA.FRG
 #   3 MS-DOS          356        121 0.340 92-04-12 11:39:46                  1
-		arj v "$archive" | $AWKU'
+		arj v "$archive" | awku '
 BEGIN { name="" }
 /^[0-9]+\) / {
 	display()
@@ -433,7 +443,7 @@ BEGIN { name="" }
 	case " $LHA_EXTS " in *\ $lc_ext\ *)
 # Desktop/up -> ..
 # lrwxrwxrwx     0/0           0       0 ****** -lhd- 0000 2009-05-03 16:59:03 [2]
-		lha v -q -v  "$archive" | $AWK'
+		lha v -q -v  "$archive" | awk0 '
 {
 	if ($4 == "") { getlink($0); next }
 	attr=$1
@@ -447,7 +457,7 @@ BEGIN { name="" }
 	case " $LZO_EXTS " in *\ $lc_ext\ *)
 # ------         ------    ------  -----     ----    ----   ----
 # LZO1X-1         10057      5675  56.4%  2005-07-25 16:26  path/file
-		lzop -Plv "$archive" | $AWKU'
+		lzop -Plv "$archive" | awku '
 /-[0-9]+-/ {
 	size=$2
 	date=$5
