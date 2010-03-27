@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="vym"
+VERSION="1.12.7"
+CATEGORY="utilities"
+SHORT_DESC="A mindmapping tool"
+MAINTAINER="rocky@slitaz.org"
+DEPENDS="libQtCore libQtNetwork libQtXml libQtSql libQtGui libQt3Support"
+BUILD_DEPENDS="qmake Qt4-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.insilmaril.de/vym/"
+WGET_URL="$SF_MIRROR/vym/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	echo $src
+	qmake PREFIX=/usr &&
+	make &&
+	make INSTALL_ROOT=$PWD/_pkg install
+	mkdir -p $PWD/_pkg/usr/share/applications
+	cp -f ../stuff/vym.desktop $PWD/_pkg/usr/share/applications
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/icons/hicolor/48x48/apps
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share $fs/usr
+	cp $_pkg/usr/share/vym/icons/vym.png $fs/usr/share/icons/hicolor/48x48/apps/
+	rm -rf $fs/usr/share/vym/lang
+}
