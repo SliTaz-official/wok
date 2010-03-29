@@ -274,7 +274,10 @@ return 0
 # Gen boot part
 BOOT_OPT=""
 iso=$ISO_DIR/slitaz-$PKG_VER.iso
-isoloram=$ISO_DIR/flavors/slitaz-loram-cdrom-sqfs.iso
+for i in slitaz-loram-cdrom-sqfs slitaz-$PKG_VER-loram-cdrom ; do
+	isoloram=$ISO_DIR/flavors/$i.iso
+	[ -s $isoloram ] && break
+done
 case " $OPTIONS " in
 *\ --boot\ *)
 	echo -n "Creating boot tree"
@@ -308,8 +311,16 @@ case " $OPTIONS " in
 		need $IFMEM_C32 $isoloram
 		which isoinfo > /dev/null || need /usr/bin/isoinfo
 		cp $IFMEM_C32 "$TEMP_DIR/boot/isolinux"
-		isoinfo -R -x "/usr.sqfs" -i $isoloram > "$TEMP_DIR/usr.sqfs"
-		echo "$SORT_DIR/usr.sqfs -5000" >> $SORT_FILE
+		isoinfo -R -x "/usr.sqfs" -i $isoloram \
+			> "$TEMP_DIR/usr.sqfs" 2> /dev/null
+		if [ -s "$TEMP_DIR/usr.sqfs" ]; then
+			echo "$SORT_DIR/usr.sqfs -5000" >> $SORT_FILE
+		else
+			rm -f "$TEMP_DIR/usr.sqfs"
+			isoinfo -R -x "/rootfs.gz" -i $isoloram \
+				> "$TEMP_DIR/rootfs.gz" 2> /dev/null
+			echo "$SORT_DIR/rootfs.gz -5000" >> $SORT_FILE
+		fi
 		isoinfo -R -x "/boot/rootfs.gz" -i $isoloram > \
 			"$TEMP_DIR/boot/loram.gz"
 		cat >> $TEMP_DIR/boot/isolinux/common.cfg <<EOT
