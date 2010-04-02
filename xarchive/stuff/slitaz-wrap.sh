@@ -61,8 +61,15 @@ EOT
 # the shifting will leave the files passed as all the remaining args "$@"
 opt="$1"
 archive="$2"
-lc_ext="$(echo ${2##*.} |tr [:upper:] [:lower:])"
+lc="$(echo $2|tr [:upper:] [:lower:])"
 shift 2
+
+in_exts()
+{
+for i in $@; do
+	[ $(expr "$lc" : ".*\."$i"$") -gt 0 ] && break
+done
+}
 
 tazpkg2cpio()
 {
@@ -83,13 +90,12 @@ tar xOzf "$1" ./data.tar.gz | gzip -dc
 DECOMPRESS="cat"
 COMPRESS="cat"
 while read d c exts; do
-	case " $exts " in *\ $lc_ext\ *)
-		[ "$d" == "${d% *}" -o "$(which ${d% *})" ] || exit $UNSUPPORTED
-		DECOMPRESS="$d"
-		COMPRESS="$c"
-		[ "$(which ${c% *})" ] || COMPRESS="false"
-		break
-	esac
+	in_exts $exts || continue
+	[ "$d" == "${d% *}" -o "$(which ${d% *})" ] || exit $UNSUPPORTED
+	DECOMPRESS="$d"
+	COMPRESS="$c"
+	[ "$(which ${c% *})" ] || COMPRESS="false"
+	break
 done <<EOT
 unlzma\ -c		lzma\ e\ -si\ -so	$LZMA_EXTS
 bunzip2\ -c		bzip2\ -c		$BZIP2_EXTS
@@ -123,11 +129,6 @@ fi
 exit $status
 }
 
-not_busybox()
-{
-[ "$(basename $(readlink $(which $1)))" != "busybox" ]
-}
-
 addcpio()
 {
 find $@ | cpio -o -H newc
@@ -155,10 +156,9 @@ cmd=$1
 shift
 tmp="$(mktemp -d -t fstmp.XXXXXX)"
 while read command umnt exts; do
-	case " $exts " in *\ $lc_ext\ *)
-		$command "$archive" $tmp
-		break
-	esac
+	in_exts $exts || continue
+	$command "$archive" $tmp
+	break
 done <<EOT
 cromfs-driver			fusermount\ -u	$CROMFS_EXTS
 mount\ -o\ loop=/dev/cloop,ro	umount\ -d	$CLOOP_EXTS
@@ -191,44 +191,42 @@ loop_fs "$@"
 action=$1
 shift
 tardir="$(dirname "$archive")"
-if not_busybox tar && [ "$action" != "-n" ]; then
-	case " $TAR_EXTS $XZ_EXTS $LRZIP_EXTS " in *\ $lc_ext\ *)
-		decompress_func
-		case "$action" in
-		-r)	tar --delete -f "$archive" "$@";;
-		-a)	cd "$tardir"
-			while [ -n "$1" ]; do
-				tar -rf "$archive" "${1#$tardir/}"
-			done
-		esac
-		compress_func
+if [ "$(readlink /bin/tar)" != "busybox" ] && [ "$action" != "-n" ] && 
+   in_exts $TAR_EXTS $XZ_EXTS $LRZIP_EXTS ; then
+	decompress_func
+	case "$action" in
+	-r)	tar --delete -f "$archive" "$@";;
+	-a)	cd "$tardir"
+		while [ -n "$1" ]; do
+			tar -rf "$archive" "${1#$tardir/}"
+		done
 	esac
+	compress_func
 fi
 while read add extract exts; do
-	case " $exts " in *\ $lc_ext\ *)
-		if [ "$action" = "-n" ]; then
-			decompress_func
-			cd "$tardir"
-			$add "${1#$tardir/}" > "$archive"
-			compress_func
-		fi
-		tmp="$(mktemp -d -t tartmp.XXXXXX)"
-		cd $tmp
-		$DECOMPRESS "$archive" | $extract
+	in_exts $exts || continue
+	if [ "$action" = "-n" ]; then
+		decompress_func
+		cd "$tardir"
+		$add "${1#$tardir/}" > "$archive"
+		compress_func
+	fi
+	tmp="$(mktemp -d -t tartmp.XXXXXX)"
+	cd $tmp
+	$DECOMPRESS "$archive" | $extract
+	status=$?
+	if [ $status -eq 0 -a -n "$1" ]; then
+		while [ "$1" ]; do
+			${action#-}_file "${1#$tardir/}" $here
+			shift
+		done
+		$add $(ls -a | grep -v ^\.$  | grep -v ^\.\.$) | \
+			$COMPRESS > "$archive"
 		status=$?
-		if [ $status -eq 0 -a -n "$1" ]; then
-			while [ "$1" ]; do
-				${action#-}_file "${1#$tardir/}" $here
-				shift
-			done
-			$add $(ls -a | grep -v ^\.$  | grep -v ^\.\.$) | \
-				$COMPRESS > "$archive"
-			status=$?
-		fi
-		cd - >/dev/null
-		rm -rf $tmp
-		exit $status
-	esac
+	fi
+	cd - >/dev/null
+	rm -rf $tmp
+	exit $status
 done <<EOT
 tar\ -cf\ -	tar\ -xf\ -			$TAR_EXTS $XZ_EXTS $LRZIP_EXTS
 addcpio		cpio\ -id\ >\ /dev/null		$CPIO_EXTS $CPIOXZ_EXTS $CPIOLRZIP_EXTS
@@ -294,7 +292,6 @@ awku()
 	$AWK_PROG -v uuid=$(id -u -n) "$AWK_MISC $1"
 }
 
-
 # main: option switches
 case "$opt" in
     -i) # info: output supported extentions for progs that exist
@@ -327,8 +324,7 @@ EOT
     -o) # open: mangle output for xarchive
 	while read filter exts; do
 # lrwxrwxrwx USR/GRP       0 2005-05-12 00:32:03 file -> /path/to/link
-		case " $exts " in *\ $lc_ext\ *)
-			$DECOMPRESS "$archive" | $filter | awk0 '
+		in_exts $exts && $DECOMPRESS "$archive" | $filter | awk0 '
 {
 	attr=$1
 	size=$3
@@ -336,14 +332,13 @@ EOT
 	time=$5
 	show($5 " ")
 }'
-		esac
 	done <<EOT
 cpio\ -tv	$CPIO_EXTS $CPIOXZ_EXTS $CPIOLRZIP_EXTS $RPM_EXTS $TAZPKG_EXTS
 tar\ -tvf\ -	$TAR_EXTS $XZ_EXTS $LRZIP_EXTS $IPK_EXTS
 dpkg_c		$DEB_EXTS
 EOT
 	loop_fs $opt
-	case " $ZIP_EXTS " in *\ $lc_ext\ *)
+	if in_exts $ZIP_EXTS; then
 		if [ "$(which zipinfo)" ]; then
 # -rw-r--r--  2.3 unx    11512 tx defN YYYYMMDD.HHMMSS file
 			zipinfo -T -s-h-t "$archive" | awku '
@@ -364,22 +359,21 @@ EOT
 	show($3 "   ")
 }'
 		fi
-	esac
+	fi
 # -----------+---------------------+-------
 #       6622 | 22.04.2005 12:29:14 | file
-	[ "$lc_ext" == "cab" ] && cabextract -q -l "$archive" | awku '
+	in_exts cab && cabextract -q -l "$archive" | awku '
 /[0-9]+ |/ {
 	size=$1
 	date=$3
 	time=$4
 	show($4 " | ")
 }'
-	case " $RAR_EXTS " in *\ $lc_ext\ *)
 #-------------------------------------
 # bookmarks/mozilla_bookmarks.html
 #            11512     5231  45% 28-02-05 16:19 -rw-r--r-- F3F3477F m3b 2.9
 #       (or  11512     5231  45% 28-02-05 16:19 .D....     00000000 m3b 2.9)
-		rar v -c- "$archive" | awku '
+	in_exts $RAR_EXTS && rar v -c- "$archive" | awku '
 /-[0-9]+-/ {
 	getattr($6)
 	size=$1
@@ -390,12 +384,9 @@ EOT
 {
 	name=substr($0,2)
 }'
-	esac
-	case "$lc_ext" in
-	ace)
 # Date    ³Time ³Packed     ³Size     ³Ratio³File
 # 17.09.02³00:32³     394116³   414817³  95%³ OggDS0993.exe
-		unace v -c- "$archive" | awku '
+	in_exts ace && unace v -c- "$archive" | awku '
 /^[0-9][0-9]\./ {
 	# strip the funky little 3 off the end of size
 	size=substr($3,1,(length($3)-1))
@@ -403,11 +394,9 @@ EOT
 	time=substr($1,10,5)
 	show($4 " ")
 }'
-		;;
-	7z|bcj|bcj2)
 # ------------------- ----- ------------ ------------  ------------
 # 1992-04-12 11:39:46 ....A          356               ANKETA.FRG
-		7zr l "$archive" | awku '
+	in_exts 7z bcj bcj2 && 7zr l "$archive" | awku '
 /^[0-9]+-/ {
 	date=$1
 	time=$2
@@ -419,11 +408,9 @@ EOT
 	gsub(/\\/, "/", name)
 	display()
 }'
-	esac
-	case " $ARJ_EXTS " in *\ $lc_ext\ *)
 # 001) ANKETA.FRG
 #   3 MS-DOS          356        121 0.340 92-04-12 11:39:46                  1
-		arj v "$archive" | awku '
+	in_exts $ARJ_EXTS && arj v "$archive" | awku '
 BEGIN { name="" }
 /^[0-9]+\) / {
 	display()
@@ -439,11 +426,9 @@ BEGIN { name="" }
 /^[\t ]+SymLink -> / { link=$3; attr="l"substr(attr, 2) }
 /^---/ { display() }
 '
-	esac
-	case " $LHA_EXTS " in *\ $lc_ext\ *)
 # Desktop/up -> ..
 # lrwxrwxrwx     0/0           0       0 ****** -lhd- 0000 2009-05-03 16:59:03 [2]
-		lha v -q -v  "$archive" | awk0 '
+	in_exts $LHA_EXTS && lha v -q -v  "$archive" | awk0 '
 {
 	if ($4 == "") { getlink($0); next }
 	attr=$1
@@ -453,35 +438,30 @@ BEGIN { name="" }
 	time=$9
 	display()
 }'
-	esac
-	case " $LZO_EXTS " in *\ $lc_ext\ *)
 # ------         ------    ------  -----     ----    ----   ----
 # LZO1X-1         10057      5675  56.4%  2005-07-25 16:26  path/file
-		lzop -Plv "$archive" | awku '
+	in_exts $LZO_EXTS && lzop -Plv "$archive" | awku '
 /-[0-9]+-/ {
 	size=$2
 	date=$5
 	time=$6
 	show($6 "  ")
 }'
-	esac
 	exit 0
 	;;
     -a|-n) # add to archive / new: create new archive
 	update $opt "$@"
 	while read exe args exts; do
-		[ "$(which $exe)" ] || continue
+		in_exts $exts && [ "$(which $exe)" ] || continue
 		[ "$opt$exe" = "-nzip" ] && args="-r"
-		case " $exts " in *\ $lc_ext\ *)
-			# only add the file's basename, not the full path
-			while [ "$1" ]; do
-				cd "$(dirname "$1")"
-				$exe $args "$archive" "$(basename "$1")"
-				status=$?
-				shift
-			done
-			exit $status
-		esac
+		# only add the file's basename, not the full path
+		while [ "$1" ]; do
+			cd "$(dirname "$1")"
+			$exe $args "$archive" "$(basename "$1")"
+			status=$?
+			shift
+		done
+		exit $status
 	done <<EOT
 zip	-g\ -r		$ZIP_EXTS
 rar	a		$RAR_EXTS
@@ -493,14 +473,12 @@ EOT
     -r) # remove from archive passed files
 	update $opt "$@"
 	while read exe args exts; do
-		[ "$(which $exe)" ] || continue
-		case " $exts " in *\ $lc_ext\ *)
-			$exe $args "$archive" "$@" | grep -q E_NOTIMPL && {
-				echo -e "7z cannot delete files from solid archive." >&2
-				exit $UNSUPPORTED
-			}
-			exit 0
-		esac
+		in_exts $exts && [ "$(which $exe)" ] || continue
+		$exe $args "$archive" "$@" | grep -q E_NOTIMPL && {
+			echo -e "7z cannot delete files from solid archive." >&2
+			exit $UNSUPPORTED
+		}
+		exit 0
 	done <<EOT
 zip	-d	$ZIP_EXTS
 rar	d	$RAR_EXTS
@@ -511,26 +489,23 @@ EOT
 	;;
     -e) # extract from archive passed files
 	while read arch exts; do
-		case " $exts " in *\ $lc_ext\ *)
-			$DECOMPRESS "$archive" | $arch "$@"
-			exit $?
-		esac
+		in_exts $exts || continue
+		$DECOMPRESS "$archive" | $arch "$@"
+		exit $?
 	done <<EOT
 tar\ -xf\ -	$TAR_EXTS $IPK_EXTS $XZ_EXTS $LRZIP_EXTS
 cpio\ -idm	$CPIO_EXTS $CPIOXZ_EXTS $CPIOLRZIP_EXTS $RPM_EXTS $TAZPKG_EXTS
 EOT
 	while read exe x p exts; do
-		[ "$(which $exe)" ] || continue
-		case " $exts " in *\ $lc_ext\ *)
-			[ "$x" != "N/A" ] && $exe $x "$archive" "$@"
-			status=$?
-			if [ "$p" != "N/A" -a $status -ne 0 ]; then
-				echo Password protected, opening an x-term...
-				$XTERM_PROG -e $exe $p "$archive" "$@"
-				exit $?
-			fi
-			exit $status
-		esac
+		in_exts $exts && [ "$(which $exe)" ] || continue
+		[ "$x" != "N/A" ] && $exe $x "$archive" "$@"
+		status=$?
+		if [ "$p" != "N/A" -a $status -ne 0 ]; then
+			echo Password protected, opening an x-term...
+			$XTERM_PROG -e $exe $p "$archive" "$@"
+			exit $?
+		fi
+		exit $status
 	done <<EOT
 unzip		-n		N/A		$ZIP_EXTS
 dpkg-deb	-X		N/A		$DEB_EXTS
