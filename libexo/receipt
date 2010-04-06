@@ -5,53 +5,24 @@ VERSION="0.3.101"
 CATEGORY="x-window"
 SHORT_DESC="Xfce extension library"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="libxfce4util perl-uri startup-notification hal libnotify"
+DEPENDS="libxfce4util startup-notification hal libnotify"
 BUILD_DEPENDS="libxfce4util-dev perl-uri startup-notification-dev hal-dev"
-SOURCE="exo"
+WANTED="exo"
+SUGGESTED="exo-tools"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.xfce.org"
-WGET_URL="http://www.tx-us.xfce.org/archive/xfce-4.6.1/src/$TARBALL
- http://www.p0llux.be/xfce/xfce-$VERSION/src/$TARBALL"
 
-# Rules to configure and make the package.
-compile_rules()
-{
-	patch -p0 -i stuff/helpers.rc.u
-
-	cd $src
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--libexecdir=/usr/lib/libexo \
-		--enable-notifications \
-		--enable-hal \
-		--disable-debug \
-		--mandir=/usr/share/man \
-		$CONFIGURE_ARGS && \
-	make && make DESTDIR=$PWD/_pkg install
-}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib \
-		$fs/usr/share/locale \
-		$fs/usr/share/xfce4 \
-		$fs/etc/xdg/xfce4
+	mkdir -p $fs/usr/lib 
 
 	cp -a $_pkg/etc $fs/
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/libexo $fs/usr/lib
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
-	cp -a $_pkg/usr/share/applications $fs/usr/share
-	cp -a $_pkg/usr/share/icons $fs/usr/share
-	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
-	cp -a $_pkg/usr/share/xfce4/helpers $fs/usr/share/xfce4
 
-	# Fix perms & helpers
-	chmod +x $fs/usr/bin/exo-preferred-applications
-	
 	# Strip files
 	strip -s $fs/usr/lib/libexo/* 2> /dev/null
 }
