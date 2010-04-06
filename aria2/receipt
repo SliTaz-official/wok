@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="aria2"
+VERSION="1.9.0"
+CATEGORY="utilities"
+SHORT_DESC="A download utility with resuming and segmented downloading with HTTP/HTTPS/FTP support"
+MAINTAINER="devl547@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://aria2.sourceforge.net/"
+WGET_URL="http://downloads.sourceforge.net/project/aria2/stable/latest/$TARBALL"
+BUILD_DEPENDS="zlib-dev gettext"
+DEPENDS="zlib"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS \
+	--enable-epoll --enable-threads=posix --with-libz \
+	--without-sqlite3 --without-openssl &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+}
