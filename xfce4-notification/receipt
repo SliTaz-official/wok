@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="xfce4-notification"
+VERSION="0.3.7"
+CATEGORY="x-window"
+SHORT_DESC="Notification daemon fro Xfce"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="libxfce4util libxfcegui4 dbus-glib libsexy"
+BUILD_DEPENDS="libxfce4util-dev libxfcegui4-dev dbus-dev libsexy-dev dbus-glib-dev startup-notification-dev 
+ util-linux-ng-uuid-dev"
+SOURCE="notification-daemon-xfce"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://goodies.xfce.org/projects/applications/notification-daemon-xfce"
+WGET_URL="http://goodies.xfce.org/releases/notification-daemon-xfce/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+		--disable-close-button \
+		--libexecdir=/usr/lib/$PACKAGE \
+		$CONFIGURE_ARGS \
+		&&	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/icons $fs/usr/share
+	cp -a $_pkg/usr/share/dbus* $fs/usr/share
+
+	# Clean & strip
+	find $fs/usr/lib -name "*.*a" -exec rm -f {} \;
+	find $fs/usr/lib -name "*.so" -exec strip -s {} 2> /dev/null \;
+}
+
