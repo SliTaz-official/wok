@@ -16,16 +16,17 @@ PIDFILE=/var/run/udhcpd.pid
 
 case "$1" in
   start)
-    if active_pidfile $PIDFILE udhcpc ; then
+    if active_pidfile $PIDFILE udhcpd ; then
       echo "$NAME already running."
       exit 1
     fi
     echo -n "Starting $DESC: $NAME... "
     $DAEMON $OPTIONS 
     status
+    pidof udhcpd > $PIDFILE
     ;;
   stop)
-    if ! active_pidfile $PIDFILE udhcpc ; then
+    if ! active_pidfile $PIDFILE udhcpd ; then
       echo "$NAME is not running."
       exit 1
     fi
@@ -34,7 +35,7 @@ case "$1" in
     status
     ;;
   restart)
-    if ! active_pidfile $PIDFILE udhcpc ; then
+    if ! active_pidfile $PIDFILE udhcpd ; then
       echo "$NAME is not running."
       exit 1
     fi
@@ -43,6 +44,7 @@ case "$1" in
     sleep 2
     $DAEMON $OPTIONS
     status
+    pidof udhcpd > $PIDFILE
     ;;
   *)
     echo ""
