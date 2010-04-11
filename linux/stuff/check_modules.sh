@@ -3,7 +3,7 @@
 # 2009/06/18 <jozee@slitaz.org> - GNU General Public License.
 #
     . /etc/tazwok.conf
-	
+	WOK=/home/slitaz/undigest/wok
 	VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	src="$WOK/linux/linux-$VERSION"
 	
