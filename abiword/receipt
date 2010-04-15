@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="abiword"
-VERSION="2.6.8"
+VERSION="2.8.4"
 CATEGORY="office"
 SHORT_DESC="Light and speed word processing application."
 MAINTAINER="pankso@slitaz.org"
@@ -9,14 +9,14 @@ DEPENDS="gtk+ libgnomeprint libgnomeprintui libgnomecanvas fribidi libglade \
 popt libxml2 libart_lgpl libgsf libgio enchant wv xorg-libXdamage gcc-lib-base"
 BUILD_DEPENDS="$DEPENDS gtk+-dev libgnomeprint-dev libgnomeprintui-dev \
 fribidi-dev libglade-dev popt-dev libxml2-dev libart_lgpl-dev libgsf-dev \
-enchant-dev wv-dev libgnomecanvas-dev"
+enchant-dev wv-dev libgnomecanvas-dev libcroco-dev libboost-dev"
 SUGGESTED="abiword-extras"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.abisource.com/"
 WGET_URL="http://www.abisource.com/downloads/abiword/$VERSION/source/$TARBALL"
 TAGS="word doc office"
 
-# Rules to configure and make the package.
+# Rules to configure and make the package. 	--enable-extra-optimization \
 compile_rules()
 {
 	cd $src
@@ -24,18 +24,26 @@ compile_rules()
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
-		--enable-extra-optimization \
-		--enable-printing \
+		--enable-plugins \
+		--enable-clipart \
+		--enable-templates \
+		--disable-collab-backend-sugar \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
+	
+	cd plugins
+	make DESTDIR=$src/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/pixmaps
+	mkdir -p $fs/usr/share/pixmaps $fs/usr/lib/abiword-2.8/plugins
+	
 	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so $fs/usr/lib
+	
 	cp -a $_pkg/usr/share/abiword-* $fs/usr/share
 	# Non standard pixmap
 	cp $_pkg/usr/share/icons/abiword_48.png \
