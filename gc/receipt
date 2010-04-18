@@ -13,18 +13,28 @@ WGET_URL="http://www.hpl.hp.com/personal/Hans_Boehm/gc/gc_source/$TARBALL"
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS
-	make
-	make DESTDIR=$PWD/_pkg install
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install &&
+	# libatomic_ops
+	cd $src/libatomic_ops-* &&
+	./configure \
+		--prefix=/usr \
+		--disable-static \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$src/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/share $fs/usr
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/share/gc $fs/usr/share
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	strip --strip-unneeded $fs/usr/lib/*
 }
 
