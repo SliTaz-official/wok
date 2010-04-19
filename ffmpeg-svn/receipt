@@ -1,0 +1,49 @@
+# SliTaz package receipt.
+
+PACKAGE="ffmpeg-svn"
+VERSION="22914"
+CATEGORY="multimedia"
+SHORT_DESC="Record, convert and stream audio and video."
+MAINTAINER="jozee@slitaz.org"
+WEB_SITE="http://ffmpeg.org/"
+DEPENDS="bzlib freetype imlib2 alsa-lib jack-audio-connection-kit zlib"
+BUILD_DEPENDS="subversion imlib2-dev freetype-dev libsdl-dev zlib-dev coreutils-file-format coreutils-file-special"
+PROVIDE="ffmpeg"
+SUGGESTED="ffplay"
+TAGS="audio video convert stream"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $src 2> /dev/null
+	cd $src
+	[ -f ffmpeg/configure ] || svn checkout -r 'HEAD' \
+		svn://svn.ffmpeg.org/ffmpeg/trunk ffmpeg
+
+	cd ffmpeg
+	
+	./configure \
+		--prefix=/usr \
+		--enable-gpl \
+		--arch=i486 \
+		--cpu=i486 \
+		--enable-shared \
+		--enable-small \
+		--enable-pthreads \
+		--enable-postproc \
+		--disable-mmx \
+		--disable-mmx2 \
+		--disable-ssse3 &&
+	make &&
+	make DESTDIR=$PWD/../_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*so* $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	# ffplay with it SDL dep go in a splited package
+	rm $fs/usr/bin/ffplay
+}
