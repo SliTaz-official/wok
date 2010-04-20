@@ -1,0 +1,88 @@
+# SliTaz package receipt.
+
+PACKAGE="linmodem-hsfmodem"
+SOURCE="hsfmodem"
+VERSION="7.80.02.05full"
+CATEGORY="non-free"
+SHORT_DESC="Driver for the Conexant (formerly Rockwell) HSF Softmodem family."
+MAINTAINER="orphaned@sliatz.org"
+DEPENDS="module-init-tools perl usbutils"
+BUILD_DEPENDS="cpio linux lzma"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.linuxant.com/drivers"
+WGET_URL="http://www.linuxant.com/drivers/hsf/full/archive/$SOURCE-$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	[ -d $WOK/linux/taz ] || tazwok cook linux
+	cd $src
+	echo "Apply $file..."
+	patch -p1 < ../stuff/$SOURCE-$VERSION.diff || exit 1
+	# set /usr/src/linux
+	echo "Set fake /usr/src/linux dir..Ã"
+	[ -e /usr/src ] && SRCDIR=yes || mkdir -p /usr/src
+	ln -s $WOK/linux/linux-$(uname -r | sed s/-slitaz//) /usr/src/linux
+	# build driver
+	echo "Build driver"
+	make ROOT=$PWD/_pkg install
+	# build kernel modules
+	echo "Running $PWD/_pkg/usr/sbin/hsfconfig -ka"
+	$PWD/_pkg/usr/sbin/hsfconfig -ka
+	# reset /usr/src/linux
+	echo "Clean files"
+	rm /usr/src/linux
+	[ "$SRCDIR" = "yes" ] && rmdir /usr/src
+	echo "done."
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	# kernel modules
+	mkdir -p $fs/lib/modules/$(uname -r)
+	cp -a /lib/modules/$(uname -r)/extra $fs/lib/modules/$(uname -r)
+	# cleaning up
+	rm -r /lib/modules/$(uname -r)/extra
+	# command files
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	# config files
+	mkdir -p $fs/etc
+	cp -a $_pkg/etc/hsfmodem $fs/etc
+	cp -a stuff/zone.tab $fs/etc/hsfmodem
+}
+
+post_install()
+{
+	depmod -a
+	echo -n "Install serial port devices"
+	hsfconfig -s > /dev/null
+	status
+	echo -n "Install kernel modules"
+	modprobe -v /dev/ttySHSF > /dev/null
+	status
+	echo -n "Set region"
+	hsfconfig -c AUTO
+	echo "-----------------------------------------------------------------------------"
+	echo "To enable your modem's full functionality (high-speed 56k data and FAX),"
+	echo "a license registration key must be obtained from Linuxant and entered with"
+	echo "hsfconfig --license."
+	echo ""
+	echo "Without a proper license key, the modem can only operate in FREE mode,"
+	echo "limited to a maximum speed of 14.4Kbps (V.32bis) and the FAX"
+	echo "functionality will not be available."
+}
+
+pre_remove()
+{
+	hsfstop
+}
+
+post_remove()
+{
+	depmod -a
+	rm -r /etc/hsfmodem
+}
