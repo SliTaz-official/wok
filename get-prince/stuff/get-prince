@@ -34,26 +34,13 @@ if [ ! -f $DEBPKG ]; then
 	exit 1
 fi
 
-# Install binutils(ar) pkg
-if [ ! -d /var/lib/tazpkg/installed/binutils ]; then
-    tazpkg get-install binutils
-fi
-if [ ! -f /usr/bin/ar ]; then
-    cd $CUR_DIR
-    rm -rf $TEMP_DIR
-    echo "Could not extract $DEBPKG. Exiting."
-    exit 1
-fi
+mkdir $PACKAGE-$VERSION
 
-ar x $DEBPKG data.tar.gz && tar xzf data.tar.gz
+dpkg-deb -x $DEBPKG $PACKAGE-$VERSION/fs
+rm -rf $PACKAGE-$VERSION/fs/usr/share
 
 # extracted pkg can be removed: Save RAM
 rm -rf $DEBPKG
-
-mkdir -p $PACKAGE-$VERSION/fs/usr/
-mv usr/bin usr/lib $PACKAGE-$VERSION/fs/usr/
-
-cd $TEMP_DIR
 
 cat > $PACKAGE-$VERSION/receipt << EOT
 PACKAGE="$PACKAGE"
