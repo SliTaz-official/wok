@@ -44,31 +44,17 @@ if [ ! -f $DEBPKG ]; then
 	exit 1
 fi
 
-# Install binutils(ar) pkg
-if [ ! -d /var/lib/tazpkg/installed/binutils ]; then
-    tazpkg get-install binutils
-fi
-if [ ! -f /usr/bin/ar ]; then
-    cd $CUR_DIR
-    rm -rf $TEMP_DIR
-    echo "Could not extract $DEBPKG. Exiting."
-    exit 1
-fi
-
-ar x $DEBPKG control.tar.gz data.tar.lzma && lzma d data.tar.lzma -so | tar xf -
-tar xzf control.tar.gz ./control
+dpkg-deb -e $DEBPKG .
 VERSION=`sed -n 's/Version:\ *//p' control`
+
+mkdir $PACKAGE-$VERSION
+
+dpkg-deb -x $DEBPKG $PACKAGE-$VERSION/fs
+rm -rf $PACKAGE-$VERSION/fs/usr/share
+rm -rf $PACKAGE-$VERSION/fs/etc
 
 # extracted pkg can be removed: Save RAM
 rm -rf $DEBPKG
-
-mkdir -p $PACKAGE-$VERSION/fs
-mv usr opt $PACKAGE-$VERSION/fs
-
-# delete man page
-rm -rf $PACKAGE-$VERSION/fs/usr/share/man/
-
-cd $TEMP_DIR
 
 cat > $PACKAGE-$VERSION/receipt << EOT
 PACKAGE="$PACKAGE"
