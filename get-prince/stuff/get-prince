@@ -1,0 +1,78 @@
+#!/bin/sh 
+
+PACKAGE="prince"
+VERSION="7.0"
+DEBPKG="${PACKAGE}_${VERSION}-1_i386.deb"
+URL="http://www.princexml.com/download/$DEBPKG"
+CUR_DIR=$(pwd)
+TEMP_DIR=/tmp/$PACKAGE-$VERSION-$$
+ROOT=
+
+# Check if we are root
+if test $(id -u) != 0 ; then
+    echo -e "\nYou must be root to run `basename $0`."
+    echo -e "Please type 'su' and root password to become super-user.\n"
+    exit 1
+fi
+
+# Avoid reinstall
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+    echo -e "\n$PACKAGE package is already installed.\n"
+    exit 1
+fi
+
+# Create a TEMP_DIR
+mkdir $TEMP_DIR
+cd $TEMP_DIR
+
+# Download the file
+wget $URL 
+if [ ! -f $DEBPKG ]; then
+	cd $CUR_DIR
+	rm -rf $TEMP_DIR
+	echo "Could not download $DEBPKG. Exiting."
+	exit 1
+fi
+
+# Install binutils(ar) pkg
+if [ ! -d /var/lib/tazpkg/installed/binutils ]; then
+    tazpkg get-install binutils
+fi
+if [ ! -f /usr/bin/ar ]; then
+    cd $CUR_DIR
+    rm -rf $TEMP_DIR
+    echo "Could not extract $DEBPKG. Exiting."
+    exit 1
+fi
+
+ar x $DEBPKG data.tar.gz && tar xzf data.tar.gz
+
+# extracted pkg can be removed: Save RAM
+rm -rf $DEBPKG
+
+mkdir -p $PACKAGE-$VERSION/fs/usr/
+mv usr/bin usr/lib $PACKAGE-$VERSION/fs/usr/
+
+cd $TEMP_DIR
+
+cat > $PACKAGE-$VERSION/receipt << EOT
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="A great way of getting web content onto paper."
+DEPENDS=""
+WEB_SITE="http://www.princexml.com/"
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Clean to save RAM memory
+rm -rf $PACKAGE-$VERSION
+
+# Install pseudo package
+yes y | tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT $FORCED
+
+# Clean
+cd $CUR_DIR
+rm -rf $TEMP_DIR
