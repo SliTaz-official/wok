@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="audacious"
-VERSION="2.2"
+VERSION="2.3"
 CATEGORY="multimedia"
 SHORT_DESC="Music player like xmms"
 MAINTAINER="mimas@slitaz.org"
-DEPENDS="gtk+ libmowgli libmcs dbus xorg-libXdamage libxml2 libsamplerate audacious-plugins"
-BUILD_DEPENDS="gtk+-dev libmowgli-dev libmowgli libmcs libmcs-dev dbus-dev libxml2-dev libsamplerate-dev"
+DEPENDS="gtk+ libmowgli libmcs dbus-glib xorg-libXdamage libxml2 libsamplerate audacious-plugins"
+BUILD_DEPENDS="gtk+-dev libmowgli-dev libmowgli libmcs libmcs-dev dbus-dev dbus-glib-dev libxml2-dev libsamplerate-dev"
 TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="http://audacious-media-player.org/"
 WGET_URL="http://distfiles.atheme.org/$TARBALL"
@@ -22,16 +22,17 @@ compile_rules()
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		--disable-sse2 \
-		--enable-samplerate \
-		$CONFIGURE_ARGS
-	make
+		$CONFIGURE_ARGS &&
+	make &&
+	mkdir -p $PWD/_pkg/usr/bin
+	cp -a $src/src/audacious/audacious2 $PWD/_pkg/usr/bin
 	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/usr/lib
+	mkdir -p $fs/usr/share $fs/usr/lib $fs/usr/bin
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib/
 	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
