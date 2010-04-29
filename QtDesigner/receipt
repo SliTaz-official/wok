@@ -5,22 +5,34 @@ VERSION="4.6.2"
 CATEGORY="development"
 SHORT_DESC="Qt Designer"
 MAINTAINER="allan316@gmail.com"
-DEPENDS="libQtCore libQtGui libQtNetwork libQtSvg libQtXml libQtScript \
+DEPENDS="libQtCore libQtGui libQtNetwork libQtSvg libQtXml libQtDesigner libQtScript \
 expat fontconfig freetype glib xorg-libICE xorg-libSM xorg-libX11 xorg-libXau \
 xorg-libXdmcp xorg-libXext xorg-libXi xorg-libXrandr xorg-libXrender zlib \
 libpng gcc-lib-base"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://qt.nokia.com/"
-WANTED="qt-everywhere-opensource-src"
+WANTED="qt4"
+SOURCE="qt-everywhere-opensource-src"
 TAGS="qt"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
-	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/bin \
+			 $fs/usr/share/pixmaps \
+			 $fs/usr/share/applications
+	src="$WOK/$WANTED/$SOURCE-$VERSION"
+	_pkg="$src/_pkg"
 	cp -a $_pkg/usr/bin/designer* $fs/usr/bin
-	cp -a $_pkg/usr/lib/libQtDesigner*.so* $fs/usr/lib
-	strip -s $fs/usr/bin/*
+	cp -a $_pkg/usr/bin/linguist* $fs/usr/bin
+	cp -a $_pkg/usr/bin/assistant* $fs/usr/bin
+		
+	# add missing icons
+	cp -a $src/tools/assistant/tools/assistant/images/assistant.png $fs/usr/share/pixmaps
+	cp -a $src/tools/designer/src/designer/images/designer.png $fs/usr/share/pixmaps
+	cp -a $src/tools/linguist/linguist/images/icons/linguist-16-32.png  $fs/usr/share/pixmaps
+	
+	# add .desktop files
+	cp -a stuff/*  $fs/usr/share/applications
 }
 
