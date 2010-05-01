@@ -9,7 +9,7 @@
   *
   * BIG FAT NOTE: We're in real mode using 64k segments.  Therefore segment
   * addresses must be multiplied by 16 to obtain their respective linear
-@@ -26,6 +26,8 @@
+@@ -27,6 +27,8 @@
  
  BOOTSEG		= 0x07C0		/* original address of boot-sector */
  SYSSEG		= 0x1000		/* historical load address >> 4 */
@@ -18,7 +18,7 @@
  
  #ifndef SVGA_MODE
  #define SVGA_MODE ASK_VGA
-@@ -39,53 +41,412 @@
+@@ -40,53 +42,412 @@
  #define ROOT_RDONLY 1
  #endif
  
@@ -40,21 +40,11 @@
 +					# 12 is disk parm size.
 +	pushw	$INITSEG
 +	popw	%es			# %es = INITSEG
- 
--	# Normalize the start address
--	ljmp	$BOOTSEG, $start2
++
 +	pushw	%es
 +	popw	%ss			# %ss and %es already contain INITSEG
 +	movw	%di, %sp		# put stack at INITSEG:stacktop-...
- 
--start2:
--	movw	%cs, %ax
--	movw	%ax, %ds
--	movw	%ax, %es
--	movw	%ax, %ss
--	xorw	%sp, %sp
--	sti
--	cld
++
 +# Many BIOS's default disk parameter tables will not recognize
 +# multi-sector reads beyond the maximum sector number specified
 +# in the default diskette parameter tables - this may mean 7
@@ -68,8 +58,7 @@
 +# High doesn't hurt.  Low does.  Let's use the max: 63
 +#
 +# Segments are as follows: %es = %ss = INITSEG,
- 
--	movw	$bugger_off_msg, %si
++
 +	xorw	%ax, %ax		# %ax = 0
 +	movw	$zeroed/2, %cx		# clear gdt + offset, %ds, limits
 +	rep				# don't worry about cld
@@ -77,13 +66,7 @@
 +	popw	%bx			# offset = 0
 +	popw	%ds			# %ds = 0
 +	popw	%gs			# %gs = 0
- 
--msg_loop:
--	lodsb
--	andb	%al, %al
--	jz	bs_die
--	movb	$0xe, %ah
--	movw	$7, %bx
++
 +	movb	setup_sects+0x7C00, %al	# read bootsector + setup (%ds = 0)
 +	incw	%ax
 +
@@ -107,7 +90,7 @@
 +offset_version	= 0xE
 +	movw	$0x200,%si
 +	addw	offset_version(%si),%si	# starting protocol 2.00, Kernel 1.3.73
-+	call	puts			# show which kernel we are loading
++	call	putstr			# show which kernel we are loading
 +
 +# The cmdline can be entered and modifed at boot time.
 +# Only characters before the cursor are passed to the kernel.
@@ -115,16 +98,16 @@
 +	orw	cmd_line_ptr, %bx
 +	jz	nocmdline
 +	pushw	%bx
-+	call	read_one_sector
++	incw	%di
++	call	read_sectors
 +	popw	%si
-+	call	puts
++	call	putstr
 +#ifdef	EDIT_CMDLINE
 +cmdlp:
 +	movb	$0x20, %al		# clear end of line
 +	int	$0x10			#  with Space
 +	movb	$8, %al			#   and BackSpace
- 	int	$0x10
--	jmp	msg_loop
++	int	$0x10
 +	decw	%si
 +cmdget:
 +	call	wait4key
@@ -145,18 +128,23 @@
 +#endif
 +nocmdline:
  
--bs_die:
--	# Allow the user to press a key, then reboot
--	xorw	%ax, %ax
--	int	$0x16
--	int	$0x19
+-	# Normalize the start address
+-	ljmp	$BOOTSEG, $start2
+-
+-start2:
+-	movw	%cs, %ax
+-	movw	%ax, %ds
+-	movw	%ax, %es
+-	movw	%ax, %ss
+-	xorw	%sp, %sp
+-	sti
+-	cld
+-
+-	movw	$bugger_off_msg, %si
 +# This routine loads the system at address SYSSEG, making sure
 +# no 64kB boundaries are crossed. We try to load it as fast as
 +# possible, loading whole tracks whenever we can.
- 
--	# int 0x19 should never return.  In case it does anyway,
--	# invoke the BIOS reset code...
--	ljmp	$0xf000,$0xfff0
++
 +ramdisk_image	=	0x0218
 +ramdisk_size	=	0x021C
 +	movw	%sp, %si		# for bootsect_gdt
@@ -213,18 +201,11 @@
 +	movb	$9, %cl
 +	cmpb	%al,28(%si)
 +	jb	initrdlp
- 
--	.section ".bsdata", "a"
--bugger_off_msg:
--	.ascii	"Direct booting from floppy is no longer supported.\r\n"
--	.ascii	"Please use a boot loader program instead.\r\n"
--	.ascii	"\n"
--	.ascii	"Remove disk and press any key to reboot . . .\r\n"
--	.byte	0
++
 +# This procedure turns off the floppy drive motor, so
 +# that we enter the kernel in a known state, and
 +# don't have to worry about it later.
- 
++
 +#if 1
 +kill_motor:
 +	xchgw	%ax, %bx		# reset FDC
@@ -235,7 +216,13 @@
 +	xchgw	%ax, %bx
 +	outb	%al, %dx
 +#endif
-+
+ 
+-msg_loop:
+-	lodsb
+-	andb	%al, %al
+-	jz	bs_die
+-	movb	$0xe, %ah
+-	movw	$7, %bx
 +# After that (everything loaded), we jump to the setup-routine
 +# loaded directly after the bootblock:
 +# Segments are as follows: %ds = %ss = INITSEG
@@ -258,7 +245,7 @@
 +	movb	$0x6 + 'A' - 1, %al
 +	subb	%cl, %al
 +	movw	$regs, %si		# caller %si is saved
-+	call	putcs			# putc(%al) + puts(%si)
++	call	putcs			# putc(%al) + putstr(%si)
 +# it will print out all of the registers.
 +	popw	%bp			# load word into %si
 +	jmp	print_all		# print %bp (status)
@@ -303,7 +290,12 @@
 +	decb	%ch
 +	jnz	print_digit
 +	movb	$0x20, %al		# SPACE
-+	int	$0x10
+ 	int	$0x10
+-	jmp	msg_loop
+-
+-bs_die:
+-	# Allow the user to press a key, then reboot
+-	xorw	%ax, %ax
 +	loop	print_loop
 +	call	wait
 +	cbw				# %ah = 0
@@ -340,20 +332,27 @@
 +        popw    %ax			# limits
 +# endif
 +	jc	check_limits
++	xchgw	%ax, %bp
 +# ifdef SHOW_REGS
 +update_regs:
-+	decw	%di			# update sector counter
 +	incw	%cx			# next sector
++	movw	%cx, %fs
 +	addb	$2,%bh			# next location
++	decw	%di			# update sector counter
++	jz	putcdot
 +	decw	%si
 +	jnz	update_regs
 +# else
-+	subw	%dx,%di			# update sector counter
 +	addw	%dx,%cx			# next sector
-+	addw	%dx,%dx
++	addb	%dl,%bh
 +	addb	%dl,%bh			# next location
++	subw	%dx,%di			# update sector counter
 +	popw	%dx
++	jz	putcdot
 +# endif
++read_sectors:
++	movw	%fs, %cx
++	xchgw	%ax, %bp
 +        cmpb    %al,%cl			# reach sector limit ?
 +        jne     bdendlp
 +next_head:
@@ -369,9 +368,9 @@
 +read_first_sectors:
 +        movb    $0,%dh			# first head
 +cylinder_count	= 496
-+	cmpb	cylinder_count, %ch
-+        jb	bdendlp
 +        cmpb    $FLOPPY_CYLINDERS,%ch	# reach cylinder limit ?
++        jb	bdendlp
++	cmpb	cylinder_count, %ch
 +        jb	bdendlp
 +next_floppy:
 +	movb	$0,%ch			# first cylinder
@@ -379,7 +378,7 @@
 +	movw	$swap_floppy,%si
 +	incb	12(%si)
 +	pushw	%bx
-+	call	puts
++	call	putstr
 +	popw	%bx
 +waitfloppy:
 +	call	wait
@@ -401,17 +400,9 @@
 +waitfloppydone:
 +	popaw
 +bdendlp:
-+	xchgw	%ax, %bp
-+	movw	%cx, %fs
-+read_sectors:
-+	decw	%di
-+read_one_sector:
-+	movw	%fs, %cx
-+#   al is last sector+1
-+#   ah is last cylinder+1
-+	movw	%bp, %ax
-+	incw	%di
-+        jnz	read_sectorslp
++        jmp	read_sectorslp
++
++putcdot:
 +	pushw	%ss
 +	popw	%es			# restore es
 +	movb	$0x2e+3, %al 		# loading... message 2e = .
@@ -425,7 +416,7 @@
 +	je	putclf
 +	ret
 +
-+puts:
++putstr:
 +	movb	$0xd, %al		# CR
 +putcs:
 +	call	putc
@@ -445,7 +436,8 @@
 +	movw	$0x10D, %ax		# test keyboard, timeout => CR
 +	cmpb	%gs:(%di),%cl
 +	je	waitdone
-+	int	$0x16
+ 	int	$0x16
+-	int	$0x19
 +	jz	waitkbd
 +	cbw
 +	int	$0x16			# eat char
@@ -453,11 +445,22 @@
 +	incw	%di			# clear Z
 +waitdone:
 +	ret
-+
+ 
+-	# int 0x19 should never return.  In case it does anyway,
+-	# invoke the BIOS reset code...
+-	ljmp	$0xf000,$0xfff0
+-
+-	.section ".bsdata", "a"
+-bugger_off_msg:
+-	.ascii	"Direct booting from floppy is no longer supported.\r\n"
+-	.ascii	"Please use a boot loader program instead.\r\n"
+-	.ascii	"\n"
+-	.ascii	"Remove disk and press any key to reboot . . .\r\n"
+-	.byte	0
 +#ifdef SHOW_REGS
-+regs:	.asciz	"X:"
++regs:		.asciz	"X:"
 +#endif
-+
+ 
 +swap_floppy:	.ascii	"Insert disk 1"
 +		.ascii	"."
 +		.byte	7,13,0
