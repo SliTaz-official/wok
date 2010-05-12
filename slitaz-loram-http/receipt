@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-loram-http"
-VERSION="1.5"
+VERSION="1.6"
 CATEGORY="misc"
 SHORT_DESC="Rules to build low ram system using http."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -24,7 +24,7 @@ set_patch()
     tag="Handle kernel cmdline parameter config"
     i=$(grep -n "$tag" $1/etc/init.d/rcS | cut -d: -f1)
     i=$(($i-1))
-    len=72
+    len=89
     tag=$(grep "$tag" $1/etc/init.d/rcS)
     if [ "$2" = "-R" ]; then
     	line="-$(($i-$len+2)),$len +$(($i-$len+2)),2"
@@ -75,7 +75,10 @@ $i# Mount /usr (from slitaz-loram-http package)
 $i while [ -d /cdrom ]; do
 $i	/etc/init.d/network.sh
 $i	RUN_SCRIPTS="\$(echo \$RUN_SCRIPTS | sed 's/network.sh//')"
-$i	URLISO=http://mirror.slitaz.org/iso/\$(cat /etc/slitaz-release)/flavors/slitaz-loram-cdrom.iso,http://download.tuxfamily.org/slitaz/iso/\$(cat /etc/slitaz-release)/flavors/slitaz-loram-cdrom.iso,http://slitaz.c3sl.ufpr.br/iso/\$(cat /etc/slitaz-release)/flavors/slitaz-loram-cdrom.iso
+$i	release=\$(cat /etc/slitaz-release)
+$i	iso1=iso/\$release/flavors/slitaz-\$release-loram-cdrom.iso
+$i	iso2=iso/\$release/flavors/slitaz-loram-cdrom.iso
+$i	URLISO=http://mirror.slitaz.org/\$iso1,http://mirror.slitaz.org/\$iso2,http://download.tuxfamily.org/slitaz/\$iso1,http://download.tuxfamily.org/slitaz/\$iso2,http://slitaz.c3sl.ufpr.br/\$iso1,http://slitaz.c3sl.ufpr.br/\$iso2
 $i	grep -q " urliso=" /proc/cmdline && URLISO=\$(cat /proc/cmdline | sed 's/.* urliso=\([^ ]*\).*/\1/'),\$URLISO
 $i	for i in \$(echo \$URLISO | sed 's/,/ /g'); do
 $i		/bin/httpfs \$i /cdrom && break
@@ -91,16 +94,30 @@ $i	fi
 $i	FS=/cdrom/usr.cromfs
 $i	if [ -f \$FS ]; then
 $i		mkdir /\$usr
+$i		ln -s /usr/.moved /.moved
 $i		release_http && break
 $i		/bin/cromfs-driver \$FS /\$usr -o ro,dev,suid,allow_other
-$i	elif [ -f /cdrom/usr.sqfs ]; then
+$i	elif grep -q squashfs /etc/filesystems && [ -f /cdrom/usr.sqfs ]; then
 $i		FS=/cdrom/usr.sqfs
+$i		ln -s /usr/.moved /.moved
 $i		mkdir /\$usr
 $i		release_http && break
 $i		mount -o loop,ro -t squashfs \$FS /\$usr
-$i	else
+$i	elif grep -q squashfs /etc/filesystems && [ -f /cdrom/rootfs.gz ]; then
+$i		FS=/cdrom/rootfs.gz
+$i		ln -s /.rootfs /.moved
+$i		mkdir /.rootfs
+$i		release_http && break
+$i		mount -o loop,ro -t squashfs \$FS /.rootfs
+$i		ln -s /.rootfs/usr /\$usr
+$i	elif [ -d /cdrom/usr ]; then
 $i		FS=/cdrom/usr
-$i		ln -s \$FS /\$usr
+$i		ln -s /usr/.moved /.moved
+$i		rm -rf /\$usr && ln -s \$FS /\$usr
+$i	else
+$i		FS=/cdrom/fs/usr
+$i		ln -s /cdrom/fs /.moved
+$i		rm -rf /\$usr && ln -s \$FS /\$usr
 $i	fi
 $i	status 
 $i	if [ -d /.usr.rw -a -x /bin/funionfs ]; then
