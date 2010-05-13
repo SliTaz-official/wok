@@ -9,18 +9,15 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.ruby-lang.org/"
 WGET_URL="ftp://ftp.ruby-lang.org/pub/ruby/${VERSION%.*}/$TARBALL"
 DEPENDS="libdb ncurses openssl readline zlib tk xorg-libXss gdbm"
+BUILD_DEPENDS=" coreutils-file-output-full"
 TAGS="ruby language programming"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	patch -p1 < ../stuff/openssl-1.0.patch || return 1
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		$CONFIGURE_ARGS &&
+	patch -Np1 < ../stuff/openssl-1.0.patch 
+	./configure --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man $CONFIGURE_ARGS && 		 
 	make &&
 	make DESTDIR=$PWD/_pkg install
 }
@@ -30,8 +27,6 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/lib/ruby $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr	
 	
-	# Remove devel files --> ruby-dev
-	rm $fs/usr/lib/ruby/1.9.1/i486-linux/*.h
 }
