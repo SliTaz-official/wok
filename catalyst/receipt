@@ -20,12 +20,19 @@ compile_rules() {
 	
 	[ -d $WOK/linux/taz ] || tazwok cook linux
    
-    cd $WOK/$PACKAGE
-    [ -f $TARBALL ] || wget $WGET_URL
+	cd $WOK/$PACKAGE
+	[ -f $SOURCES_REPOSITORY/$TARBALL ] && cp $SOURCES_REPOSITORY/$TARBALL .
+	if [ ! -f $TARBALL ]; then
+		wget $WGET_URL
+		cp $TARBALL $SOURCES_REPOSITORY
+	fi
     
 	chmod +x $TARBALL
 	[ -d $PACKAGE-$VERSION ]  || sh $TARBALL --extract $PACKAGE-$VERSION
 	
+	for i in autoconf.h utsrelease.h ; do
+		grep -rl linux/$i * | xargs sed -i "s|linux/$i|generated/$i|"
+	done
 	cd $src/common/lib/modules/fglrx/build_mod
 	cp $src/arch/x86/lib/modules/fglrx/build_mod/libfglrx_ip.a.GCC4 . 
 	cp 2.6.x/Makefile .
