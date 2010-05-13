@@ -13,12 +13,18 @@ compile_rules()
 {
 	mkdir $src
 	cd $src
+	TARBALL=$PACKAGE-$VERSION.tar.gz
+	[ -f $SOURCES_REPOSITORY/$TARBALL ] && 
+		tar xzf $SOURCES_REPOSITORY/$TARBALL
 	for i in Makefile nbs.h nbscat.c nbscat8k nbsclient.c nbsd.c; do
 		[ -f $i ] && continue
 		wget http://svn.digium.com/view/nbs/trunk/$i?view=co || return 1
 		mv $i\?view=co $i
 		[ -f ../stuff/$i.u ] && patch -p0 <  ../stuff/$i.u
 	done
+	[ -f $SOURCES_REPOSITORY/$TARBALL ] ||
+		tar cvzf $SOURCES_REPOSITORY/$TARBALL \
+			Makefile nbs.h nbscat.c nbscat8k nbsclient.c nbsd.c
 	make &&
 	make DESTDIR=$PWD/_pkg install
 }
