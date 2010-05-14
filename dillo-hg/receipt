@@ -16,9 +16,15 @@ CONFLICTS="dillo"
 compile_rules()
 {
 	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
-	echo "Cloning revision $VERSIN from Dillo repository..."
-	hg clone --rev $VERSION \
-		http://hg.dillo.org/dillo $PACKAGE-$VERSION || exit 0
+	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.gz
+	if [ -f $TARBALL ]; then
+		tar xzf $TARBALL
+	else
+		echo "Cloning revision $VERSION from Dillo repository..."
+		hg clone --rev $VERSION \
+			http://hg.dillo.org/dillo $PACKAGE-$VERSION || exit 0
+		tar czf $TARBALL $PACKAGE-$VERSION
+	fi
 	cd $src
 	./autogen.sh &&
 	./configure \

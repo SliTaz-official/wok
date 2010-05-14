@@ -12,7 +12,15 @@ TAGS="webcam"
 
 # Rules to configure and make the package.
 compile_rules() {
-  [ -d $PACKAGE-$VERSION ] || hg clone $WEB_SITE $PACKAGE-$VERSION
+  TARBALL=$SOURCES_REPOSITORY/$PACKAGE-hg-$VERSION.tar.gz
+  if [ -d $PACKAGE-$VERSION ]; then
+	true
+  elif [ -f $TARBALL ]; then
+	tar xzf $TARBALL
+  else
+	hg clone $WEB_SITE $PACKAGE-$VERSION
+	tar czf $TARBALL $PACKAGE-$VERSION
+  fi
   cd $src
   KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
   IFS="." ; set -- $KERNEL_VERSION ; unset IFS
