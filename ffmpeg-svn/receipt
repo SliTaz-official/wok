@@ -17,8 +17,15 @@ compile_rules()
 {
 	mkdir -p $src 2> /dev/null
 	cd $src
-	[ -f ffmpeg/configure ] || svn checkout -r 'HEAD' \
-		svn://svn.ffmpeg.org/ffmpeg/trunk ffmpeg
+	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.gz
+	if [ -f ffmpeg/configure ]; then
+		true
+	elif [ -f $TARBALL ]; then
+		tar xzf $TARBALL
+	else
+		svn checkout -r 'HEAD' svn://svn.ffmpeg.org/ffmpeg/trunk ffmpeg
+		tar czf $TARBALL ffmpeg
+	fi
 
 	cd ffmpeg
 	
