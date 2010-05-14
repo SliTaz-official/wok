@@ -15,8 +15,14 @@ BUILD_DEPENDS="libsdl libsdl-dev gtk+-dev autoconf automake m4 subversion"
 compile_rules()
 {
 	[ -d "$SOURCE-$VERSION" ] && rm -rf $SOURCE-$VERSION
-	svn co svn://svn.icculus.org/$SOURCE/trunk \
-		-r $VERSION $SOURCE-$VERSION
+	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-svn-$VERSION.tar.gz
+	if [ -f $TARBALL ]; then
+		tar xzf $TARBALL
+	else
+		svn co svn://svn.icculus.org/$SOURCE/trunk \
+			-r $VERSION $SOURCE-$VERSION
+		tar czf $TARBALL $SOURCE-$VERSION
+	fi
 	cd $src
 	chmod +x install-sh
 	./autogen.sh
