@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="ffmpeg-svn"
-VERSION="22914"
+VERSION="23117"
 CATEGORY="multimedia"
 SHORT_DESC="Record, convert and stream audio and video."
 MAINTAINER="jozee@slitaz.org"
 WEB_SITE="http://ffmpeg.org/"
 DEPENDS="bzlib freetype imlib2 alsa-lib jack-audio-connection-kit zlib"
-BUILD_DEPENDS="subversion imlib2-dev freetype-dev libsdl-dev zlib-dev coreutils-file-format coreutils-file-special"
+BUILD_DEPENDS="subversion imlib2-dev freetype-dev libsdl-dev zlib-dev "
 PROVIDE="ffmpeg"
 SUGGESTED="ffplay"
 TAGS="audio video convert stream"
@@ -23,13 +23,14 @@ compile_rules()
 	elif [ -f $TARBALL ]; then
 		tar xzf $TARBALL
 	else
-		svn checkout -r 'HEAD' svn://svn.ffmpeg.org/ffmpeg/trunk ffmpeg &&
+		svn checkout -r "$VERSION" svn://svn.ffmpeg.org/ffmpeg/trunk ffmpeg &&
 		tar czf $TARBALL ffmpeg
 	fi
 
-	cd ffmpeg
-	sed -i 's/mktemp -u/mktemp/' configure
-	
+	cd ffmpeg	
+	# make busybox compatible or add  coreutils-file-format coreutils-file-special in BUILD_DEPENDS if patch/configure fails
+	patch -Np1 -i ../../stuff/$PACKAGE-$VERSION-mktemp.patch
+
 	./configure \
 		--prefix=/usr \
 		--enable-gpl \
