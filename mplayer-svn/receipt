@@ -27,8 +27,16 @@ TAGS="player movie audio video"
 
 compile_rules()
 {
-	[ -d $PACKAGE-$VERSION ] || svn checkout -r $VERSION \
-		svn://svn.mplayerhq.hu/mplayer/trunk $PACKAGE-$VERSION
+	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.gz
+	if [ -d $PACKAGE-$VERSION ]; then
+		true
+	elif [ -f $TARBALL ]; then
+		tar xzf $TARBALL
+	else
+		svn checkout -r $VERSION \
+			svn://svn.mplayerhq.hu/mplayer/trunk $PACKAGE-$VERSION
+		tar czf $TARBALL $PACKAGE-$VERSION
+	fi
 	cd $src
 	# disable unwanted features, remote control, streaming, networking, unwanted codecs, 
 	# disable video outputs, audio outputs, some advanced options
