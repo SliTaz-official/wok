@@ -16,9 +16,10 @@ case "$1" in
       exit 1
     fi
     echo -n "Loading module"
-    modprobe compcache compcache_size_kbytes=$SIZE_KB
+    modprobe ramzswap disksize_kb=$SIZE_KB
     status
     echo -n "Starting $NAME..."
+    rzscontrol /dev/ramzswap0 --init
     swapon /dev/ramzswap0 -p 100
     status
     ;;
@@ -29,9 +30,10 @@ case "$1" in
     fi
     echo -n "Stopping $NAME... "
     swapoff /dev/ramzswap0    
+    rzscontrol /dev/ramzswap0 --reset
     status
     echo -n "Unloding modules"
-    rmmod compcache lzo1x_compress lzo1x_decompress xvmalloc
+    rmmod ramzswap 
     status
     ;;
   *)
