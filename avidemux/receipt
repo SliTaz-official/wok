@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="avidemux"
-VERSION="2.5.2"
+VERSION="2.5.3"
 CATEGORY="multimedia"
 SHORT_DESC="free video editor"
 MAINTAINER="allan316@gmail.com"
@@ -19,12 +19,15 @@ compile_rules()
 	mkdir $WOK/$PACKAGE/avidemux-$VERSION
 	mv $WOK/$PACKAGE/avidemux_$VERSION $WOK/$PACKAGE/avidemux-$VERSION/src
 	cd $src
+	grep -q ADM_CPU_X86_64 src/avidemux/ADM*/src/ADM_vidField[sA]*.cpp ||
+	sed -i 's/ADM_CPU_X86/ADM_CPU_X86_64/' \
+		src/avidemux/ADM_coreImage/src/ADM_vidField[sA]*.cpp 
 	mkdir built
 	cd built
 	cmake -DCMAKE_INSTALL_PREFIX=/usr ../src
 	sed -i 's/\(find .*\) | xargs ln -sft/ln -sf $(\1)/' \
 		avidemux/CMakeFiles/ffmpeg.dir/build.make
-	make && make DESTDIR=$PWD/../_pkg install
+	make -j 4  && make DESTDIR=$PWD/../_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
