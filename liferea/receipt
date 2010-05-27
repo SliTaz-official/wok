@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="liferea"
+VERSION="1.7.4"
+CATEGORY="utilities"
+SHORT_DESC="A download utility with resuming and segmented downloading with HTTP/HTTPS/FTP support"
+MAINTAINER="devl547@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://liferea.sourceforge.net/"
+WGET_URL="http://downloads.sourceforge.net/project/liferea/Liferea%20Unstable/$VERSION/$TARBALL"
+BUILD_DEPENDS="gtk+-dev glib-dev pango-dev GConf GConf-dev ORBit2-dev libunique-dev libxml2-dev libxslt-dev sqlite-dev libsoup-dev libwebkit-dev libnotify-dev gnutls-dev"
+DEPENDS="gtk+-dev glib pango GConf libunique libxml2 libxslt sqlite libsoup libwebkit libnotify intltool gnutls"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS \
+	--enable-sm --disable-schemas-install --enable-libnotify &&
+	make -j4 &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/applications
+	mkdir $fs/usr/share/liferea
+	mkdir -p $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/etc $fs/etc
+	cp -a $_pkg/usr/share/applications $fs/usr/share/
+	cp -a $_pkg/usr/share/icons $fs/usr/share/
+	cp -a $_pkg/usr/share/liferea $fs/usr/share/
+}
