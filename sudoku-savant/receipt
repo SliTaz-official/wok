@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="sudoku-savant"
-VERSION="1.2.1"
+VERSION="1.3"
 CATEGORY="games"
 SHORT_DESC="Sudoku games/generator using GTK."
-DEPENDS="expat gtk+ xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor \
-xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXinerama xorg-libXrandr \
-xorg-libXrender xorg-libXdamage gcc-lib-base"
-BUILD_DEPENDS="gtk+-dev"
+DEPENDS="expat gtk+ xorg-libX11 xorg-libXau xorg-libXcomposite \
+xorg-libXcursor xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXrandr \
+xorg-libXrender xorg-libXinerama xorg-libXdamage gcc-lib-base"
+BUILD_DEPENDS="gtk+-dev libpthread-stubs"
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://sourceforge.net/projects/sudoku-savant/"
@@ -19,22 +19,21 @@ compile_rules()
 	cd $src
 	./configure \
 		--prefix=/usr \
+		--bindir=/usr/games \
 		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
-	# No desktop-file-utils
-	echo "Continue..."
+	# desktop-file-install workaround
+	[ -x _pkg/usr/games/sudoku-savant ] && \
+		echo "Continue: desktop-file-install dont support busybox install..."
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
-	# Temporary copy translation (sended to author, will propably 
-	# be include in the next release).
-	mkdir -p $fs/usr/share/locale/fr/LC_MESSAGES
-	cp stuff/*.mo $fs/usr/share/locale/fr/LC_MESSAGES
+	mkdir -p $fs/usr/share/pixmaps $fs/usr/share/applications
+	cp -a $_pkg/usr/games $fs/usr
+	cp $src/$PACKAGE.png $fs/usr/share/pixmaps
+	cp $src/$PACKAGE.desktop $fs/usr/share/applications
 }
-
