@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="linux"
-VERSION="2.6.33.4"
+VERSION="2.6.34"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 DEPENDS="depmod"
@@ -18,13 +18,12 @@ compile_rules()
 	# Aufs2 from git repository
 	if [ ! -d aufs2 ]; then
 		git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-standalone.git aufs2
-		cd aufs2 && git checkout origin/aufs2-33
-		#Use a well known version rather than the last one...
-		#cd aufs2 && git checkout ee5557abdf9bb6fda673c19d239bb85869418045
+		cd aufs2 && git checkout origin/aufs2-34
 	fi
 	cd aufs2
 	cp -a Documentation fs include $src
 	cp -a *.patch ../stuff
+	# We need the real GNU patch
 	[ -L /usr/bin/patch ] && tazpkg get-install patch --forced
 	cd $src
 	# SliTaz db
@@ -33,10 +32,9 @@ compile_rules()
 	echo "$WGET_URL" > slitaz/url
 	cp ../stuff/gztazmod.sh ../stuff/list_modules.sh slitaz
 	cp ../stuff/bootloader.sh slitaz
-	# Misc patches from pascal
+	# Apply patches
 	while read patch_file; do
 		echo "$patch_file" >> slitaz/patches
-		#cp ../stuff/$patch_file slitaz/$patch_file
 		cp ../stuff/$patch_file slitaz
 		if [ -f done.$patch_file ]; then
 			echo "Skipping $patch_file"
@@ -74,14 +72,15 @@ genpkg_rules()
 {
     local path
     mkdir $fs/boot
-    cp -a $src/arch/x86/boot/bzImage $fs/boot/vmlinuz-$VERSION-slitaz
+    cp -a $src/arch/x86/boot/bzImage \
+		$fs/boot/vmlinuz-$VERSION-slitaz
     # Compress all modules.
-    # Package module-init-tools is compiled with zlib support.
-    #
     ./stuff/gztazmod.sh $_pkg/lib/modules/$VERSION-slitaz
     path=$fs/lib/modules/$VERSION-slitaz/kernel
     mkdir -p $path
-    cp -a $_pkg/lib/modules/$VERSION-slitaz/mo* $fs/lib/modules/$VERSION-slitaz
+    cp -a $_pkg/lib/modules/$VERSION-slitaz/mo* \
+		$fs/lib/modules/$VERSION-slitaz
+    # Get the base modules
     export src
     export _pkg
     $src/slitaz/list_modules.sh \
@@ -104,16 +103,17 @@ genpkg_rules()
     do
     	echo tazwok cook ${i%/receipt}
     done
-    # check and echo any module in kernel .config that's not added to one of linux-* pkgs
+    # Check and echo any module in kernel .config that's not added to 
+    # one of linux-* pkgs
 	./stuff/check_modules.sh 
 }
 
 # Pre and post install commands for Tazpkg.
-# GRUB stuf.
 post_install()
 {
     echo "Processing post-install commands..."
     chroot "$1/" depmod -a $VERSION-slitaz
+    # GRUB stuff.
     if [ -f "$1/boot/grub/menu.lst" ]; then
     	root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`
 		grub_dev=`cat $1/boot/grub/menu.lst | grep "root (" | head -n 1`
@@ -142,4 +142,6 @@ EOT
 clean_wok()
 {
 	rm -rf aufs2
+	rm stuff/aufs2-*
+	rm -rf stuff/tmp
 }
