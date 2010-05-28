@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="deadbeef"
+VERSION="0.4.0"
+CATEGORY="multimedia"
+SHORT_DESC="Simple to use GTK+ audio player with systray support."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="gtk+ alsa-lib libogg libvorbis libsamplerate libmad"
+BUILD_DEPENDS="$DEPENDS gtk+-dev alsa-lib-dev libogg-dev libvorbis-dev \
+libmad-dev libsndfile libsndfile-dev libsamplerate-dev flac-dev ibcurl \
+curl-dev ffmpeg-dev"
+SUGGESTED="deadbeef-plugins"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://deadbeef.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+TAGS="music audio player mp3 ogg"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--disable-pulse \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/$PACKAGE $fs/usr/share/pixmaps
+	cp -a $_pkg/usr/bin $fs/usr
+	for l in alsa gtkui hotkeys vorbis mpgmad
+	do
+		cp -a $_pkg/usr/lib/$PACKAGE/$l.so* $fs/usr/lib/$PACKAGE
+	done
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	cp -a $_pkg/usr/share/icons/hicolor/32x32/apps/*.png \
+		$fs/usr/share/pixmaps
+}
