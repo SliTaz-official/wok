@@ -5,7 +5,7 @@
 # Authors : Eric Joseph-Alexandre <erjo@slitaz.org>
 #	    Pascal Bellard <pascal.bellard@slitaz.org>
 
-VERSION=0.8
+VERSION=0.9
 
 PKG_VER=$1
 ROOT=/home/slitaz/iso
@@ -42,9 +42,22 @@ if [ -z $PKG_VER ]; then
 Usage: $(basename $0) <Version> 
 	[--boot [--auto-install] [--loram-detect]]|--webboot] [--filter]
 	[--wok] [--wok-stable] [--website] [--sources] [--dry-run]
+       $(basename $0) update-hg <dir>
 Example:
 $(basename $0) cooking --boot --auto-install --loram-detect --filter --wok --website --sources
 EOT
+	exit 1
+fi
+
+# Update hg repos
+if [ "$PKG_VER" == "update-hg" ]; then
+	for i in $1/* ; do
+		[ -s $i/.hg/hgrc ] || continue
+		cd $i
+		hg pull
+		hg update
+		cd - > /dev/null
+	done
 	exit 1
 fi
 
@@ -204,8 +217,12 @@ esac
 get_from_hg()
 {
 echo -n "Adding $2"
-wget -q -O - http://hg.slitaz.org/$1/archive/tip.tar.bz2 | tar xjf - -C $TEMP_DIR
-mv $TEMP_DIR/$1-* $TEMP_DIR/$1
+if [ -s /home/slitaz/$1/.hg/hgrc ]; then
+	cp -a /home/slitaz/$1 $TEMP_DIR
+else
+	wget -q -O - http://hg.slitaz.org/$1/archive/tip.tar.bz2 | tar xjf - -C $TEMP_DIR
+	mv $TEMP_DIR/$1-* $TEMP_DIR/$1
+fi
 status
 echo "$(du -hs $TEMP_DIR/$1 | awk '{ print $1 }') used by $2."
 }
