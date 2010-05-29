@@ -9,21 +9,23 @@ DEPENDS="linux"
 WANTED="linux"
 WEB_SITE="http://www.kernel.org/"
 
+# Modules paths and list
+MOD_PATH="/lib/modules/$VERSION-slitaz/kernel"
+MODULES="drivers/video/output.ko.gz
+drivers/video/backlight/lcd.ko.gz
+drivers/video/backlight/generic_bl.ko.gz
+drivers/gpio/bt8xxgpio.ko.gz"
+
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    local path
-    path=lib/modules/$VERSION-slitaz/kernel
-    mkdir -p $fs/$path
-    export src
-    export _pkg
-    $src/slitaz/list_modules.sh drivers/video/output.ko.gz \
-	drivers/gpio/bt8xxgpio.ko.gz | \
-    while read module; do
-    	dir=$path/$(dirname $module)
-    	[ -d $fs/$dir ] || mkdir -p $fs/$dir
-        cp -a $_pkg/$path/$module $fs/$dir
-    done
+	mkdir -p ${fs}${MOD_PATH}
+	for module in $MODULES
+	do
+		dir=$MOD_PATH/$(dirname $module)
+		[ -d $fs/$dir ] || mkdir -p $fs/$dir
+		cp -a $_pkg/$MOD_PATH/$module $fs/$dir
+	done
 }
 
 # Post install/remove commands for Tazpkg.
