@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-eeepc-wmi"
+VERSION="2.6.34"
+CATEGORY="base-system"
+SHORT_DESC="The Linux kernel eeepc-wmi module."
+MAINTAINER="devel@slitaz.org"
+DEPENDS="linux"
+WANTED="linux"
+WEB_SITE="http://www.kernel.org/"
+
+MODULES="drivers/platform/x86/eeepc-wmi.ko.gz"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	path=lib/modules/$VERSION-slitaz/kernel
+	mkdir -p $fs/$path
+	for module in $MODULES
+	do
+		dir=$path/$(dirname $module)
+		[ -d $fs/$dir ] || mkdir -p $fs/$dir
+		cp -a $_pkg/$path/$module $fs/$dir
+	done
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
+post_remove()
+{
+	depmod -a $VERSION-slitaz
+}
