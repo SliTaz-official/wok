@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="gammu"
+VERSION="1.27.0"
+CATEGORY="system-tools"
+SHORT_DESC="Library and utility to control cell phone"
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="bluez sqlite libusb libcurl"
+BUILD_DEPENDS="$DEPENDS cmake bluez-dev sqlite-dev libusb-dev curl-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://wammu.eu/gammu/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	mkdir -p build && cd build
+	cmake \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DBUILD_SHARED_LIBS=ON .. &&
+	make &&
+	make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	rm $fs/usr/bin/gammu-config
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
