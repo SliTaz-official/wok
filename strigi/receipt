@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="strigi"
+VERSION="0.7.2"
+CATEGORY="system-tools"
+SHORT_DESC="Strigi is a fast and light desktop search engine."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="libxml2"
+BUILD_DEPENDS="libxml2-dev cmake Qt4-dev"
+SUGGESTED="strigi-client"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.vandenoever.info/software/strigi/"
+WGET_URL="http://www.vandenoever.info/software/strigi/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	mkdir -p build && cd build
+	cmake \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		.. &&
+	make &&
+	make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/$PACKAGE
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/$PACKAGE/*.so* $fs/usr/lib/$PACKAGE
+	cp -a $_pkg/usr/share $fs/usr
+	# QT GUI split into strigi-client
+	cp -a $_pkg/usr/bin $fs/usr
+	rm $fs/usr/bin/strigiclient
+}
