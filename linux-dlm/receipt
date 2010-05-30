@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-dlm"
+VERSION="2.6.34"
+CATEGORY="base-system"
+SHORT_DESC="The Linux kernel dlmfs module."
+MAINTAINER="devel@slitaz.org"
+DEPENDS="linux"
+WANTED="linux"
+WEB_SITE="http://www.kernel.org/"
+CONFIG_FILES="/etc/filesystems"
+
+# Modules paths and list
+MOD_PATH="/lib/modules/$VERSION-slitaz/kernel"
+MODULES="fs/dlm/dlm.ko.gz"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p ${fs}${MOD_PATH} $fs/etc
+	for module in $MODULES
+	do
+		dir=$MOD_PATH/$(dirname $module)
+		[ -d $fs/$dir ] || mkdir -p $fs/$dir
+		cp -a $_pkg/$MOD_PATH/$module $fs/$dir
+	done
+    touch $fs/etc/filesystems
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	grep -qs ^${PACKAGE#*-}$ $1/etc/filesystems || \
+		echo "${PACKAGE#*-}" >> $1/etc/filesystems
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
+post_remove()
+{
+	sed -i "/^${PACKAGE#*-}\$/d" $1/etc/filesystems
+	depmod -a $VERSION-slitaz
+}
+
