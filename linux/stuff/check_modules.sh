@@ -1,6 +1,8 @@
 #!/bin/sh
 # Echo any module in kernel .config that's not added to one of linux-* pkgs
-# 2009/06/18 <jozee@slitaz.org> - GNU General Public License.
+# (c) SliTaz - GNU General Public License.
+# 20090618 <jozee@slitaz.org> 
+# 20100528 <pankso@slitaz.org>
 #
 . /etc/tazwok.conf
 VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
@@ -9,6 +11,9 @@ src="$WOK/linux/linux-$VERSION"
 cd $src
 mkdir -p ../stuff/tmp
 rm -f ../stuff/tmp/*
+
+echo -e "\nChecking for modules selected in .config but not in linux-* pkgs"
+echo "======================================================================"
 
 # create a packaged modules list
 cat ../stuff/modules-"$VERSION".list >> ../stuff/tmp/pkgs-modules-"$VERSION".list 
@@ -31,17 +36,16 @@ for i in $(cat ../stuff/tmp/originial-$VERSION.list)
 do		
 	if ! grep -qs "$i" ../stuff/tmp/pkgs-modules-"$VERSION".list ; then 
 		modpath=`find $_pkg -iname "$i"`
-		echo "$i" >> ../stuff/tmp/unpackaged-modules-"$VERSION".list
-		echo "$i : $modpath" >> ../stuff/tmp/unpackaged-modules-"$VERSION"-full.list
+		echo "Orphan module: $i"
+		echo "$i : $modpath" >> ../stuff/tmp/unpackaged-modules-"$VERSION".list
 	fi
 done
 if [ -f ../stuff/tmp/unpackaged-modules-"$VERSION".list ]; then
-	echo -e "\nThese modules selected in .config were not categorized in linux-* pkgs:"
 	echo "======================================================================"
-	cat ../stuff/tmp/unpackaged-modules-$VERSION.list 
-	echo "======================================================================"
-	echo -e "Check linux/stuff/tmp/unpackaged-modules-$VERSION-full.list to see\n"
+	echo -e "Check linux/stuff/tmp/unpackaged-modules-$VERSION.list for mod path\n"
 else
 	echo -e "\nAll modules are packaged\n"
+	echo "======================================================================"
+	echo ""
 	rm -rf ../stuff/tmp
 fi
