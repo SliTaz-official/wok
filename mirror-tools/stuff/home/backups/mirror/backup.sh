@@ -8,14 +8,15 @@ REMOTE_USER=bellard
 backup_data()
 {
 while read file dirs; do
-	find $dirs  | cpio -o -H newc | rgzip -9 > $file.cpio.gz 2> /dev/null
+	( cd / ; find $dirs  | cpio -o -H newc ) | \
+		rgzip -9 > $file.cpio.gz 2> /dev/null
 done <<EOT
-etc		/etc /home/$BACKUP_USER/.ssh
-www		/var/www/mirror-info /var/www/pizza
-packages	/var/lib/tazpkg/installed
-rrd		/var/spool/rrd
-crontabs	/var/spool/cron/crontabs
-awstats		/var/lib/awstats
+etc		etc home/$BACKUP_USER/.ssh
+www		var/www/mirror-info var/www/pizza
+packages	var/lib/tazpkg/installed
+rrd		var/spool/rrd
+crontabs	var/spool/cron/crontabs
+awstats		var/lib/awstats
 EOT
 }
 
@@ -34,7 +35,9 @@ rotate()
 	local i
 	local j
 	for j in $(seq $(($1 - 1)) -1 1); do
-		for i in *.$2.$(($j - 1)) ; do mv -f $i ${i%.$2.*}.$2.$j; done
+		for i in *.$2.$(($j - 1)) ; do
+			[ -e $i ] && mv -f $i ${i%.$2.*}.$2.$j; done
+		done
 	done
 }
 
@@ -44,6 +47,7 @@ rotate()
 	days=$2
 	keep=$3
 	for i in *.gz ; do
+		[ -e $i ] || continue
 		mtime=$(( $(stat -c %Y $i) - ($days * 24 * 3600) ))
 		j=$i.$suffix.0
 		[ -e $j ] && [ $(stat -c %Y $j) -gt $mtime ] && continue
@@ -53,7 +57,9 @@ rotate()
 done
 if [ 0$KEEP -gt 0 ]; then
 	[ $KEEP -gt 1 ] && rotate $KEEP gz
-	for i in *.gz ; do mv -f $i $i.0; done
+	for i in *.gz ; do
+		[ -e $i ] && mv -f $i $i.0
+	done
 fi
 
 backup_data
@@ -61,7 +67,7 @@ backup_data
 chown $BACKUP_USER *
 chmod 700 *
 
-for i in $(cd .. ; ls); do
+[ -n "$REMOTE_USER" ] && for i in $(cd .. ; ls); do
 	[ $i == $(hostname) ] && continue
 	rsync -aH -e "$SSH" --bwlimit=50 $REMOTE_USER@$i.slitaz.org:/home/backups/$i/. ../$i/.
 done
