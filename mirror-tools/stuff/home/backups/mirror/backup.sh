@@ -36,7 +36,7 @@ rotate()
 	local j
 	for j in $(seq $(($1 - 1)) -1 1); do
 		for i in *.$2.$(($j - 1)) ; do
-			[ -e $i ] && mv -f $i ${i%.$2.*}.$2.$j; done
+			[ -e $i ] && mv -f $i ${i%.$2.*}.$2.$j
 		done
 	done
 }
