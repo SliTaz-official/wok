@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="busybox"
-VERSION="1.12.0"
+VERSION="1.16.1"
 CATEGORY="base-system"
 SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -23,28 +23,19 @@ compile_rules()
 	touch done.$file
     done <<EOT
 vcsa2txt.u
-dhcpc.u
+ftpd.u
 cpio-mkdir.u
 tar.u
 stat.u
-zmodules.u
-modinfo.u
-modprobe.u
-paths.u
-mkswap.u
-install.u
-basename.u
-unlzma.u
-replay.u
 ris.u
 dpkg_deb.u
-ionice.u
 syslogd.u
-iptunnel.u
-rpm2cpio.u
+modinfo.u
+zmodules.u
 EOT
     cp ../stuff/$PACKAGE-$VERSION.config .config
     make oldconfig
+    # "CFLAGS=-O0" is a workaround for GCC 4.5.0
     make "CFLAGS=-O0" && make "CFLAGS=-O0" install
     echo "Chmod 4755 on busybox binary..."
     chmod 4755 _install/bin/busybox
@@ -64,19 +55,23 @@ genpkg_rules()
     touch $fs/etc/resolv.conf
     cp stuff/inetd.conf $fs/etc
     cp stuff/daemon $fs/etc/init.d
-    for i in dnsd inetd udhcpd zcip crond ; do
-        ln -s daemon $fs/etc/init.d/$i 
+    for i in crond dnsd ftpd httpd inetd klogd ntpd syslogd telnetd tftpd \
+	     udhcpd zcip ; do
+	grep -qi config_$i=y $src/.config &&
+	ln -s daemon $fs/etc/init.d/$i
     done
     cp stuff/init $fs
     rm $fs/linuxrc
     mkdir -p $fs/etc/modprobe.d
     # Udhcpc stuff.
     mkdir -p $fs/usr/share/udhcpc
-    cp stuff/udhcp.script \
-    $fs/usr/share/udhcpc/default.script
+    cp stuff/udhcp.script  $fs/usr/share/udhcpc/default.script
     chmod +x $fs/usr/share/udhcpc/default.script
     # ZeroConf stuff.
     cp stuff/zcip.script $fs/etc
+    # Httpd stuff.
+    cp stuff/httpd_helper.sh $fs/usr/bin
+    chmod +x $fs/usr/bin/httpd_helper.sh
 }
 
 # Force glibc-2.7 reinstall if 2.3.6 still in use.
@@ -110,4 +105,3 @@ post_install()
 		[ -e $ROOT$i-busybox-install ] || continue
 		mv $ROOT$i-busybox-install $ROOT$i
 	done < $1$INSTALLED/$PACKAGE/files.list
-}

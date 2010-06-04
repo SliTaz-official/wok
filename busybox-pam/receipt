@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="busybox-pam"
-VERSION="1.12.0"
+VERSION="1.16.1"
 CATEGORY="base-system"
 SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -25,30 +25,21 @@ compile_rules()
 	touch done.$file
     done <<EOT
 vcsa2txt.u
-dhcpc.u
+ftpd.u
 cpio-mkdir.u
 tar.u
 stat.u
-zmodules.u
-modinfo.u
-modprobe.u
-paths.u
-mkswap.u
-install.u
-basename.u
-unlzma.u
-replay.u
 ris.u
 dpkg_deb.u
-ionice.u
 syslogd.u
-iptunnel.u
-rpm2cpio.u
+modinfo.u
+zmodules.u
 EOT
     cp $WOK/$SOURCE/stuff/$SOURCE-$VERSION.config .config
     sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
     make oldconfig
-    make && make install
+    # "CFLAGS=-O0" is a workaround for GCC 4.5.0
+    make "CFLAGS=-O0" && make "CFLAGS=-O0" install
     echo "Chmod 4755 on busybox binary..."
     chmod 4755 _install/bin/busybox
 }
@@ -72,20 +63,24 @@ WANTED="busybox"
     cp stuff/udhcpd.conf $fs/etc
     touch $fs/etc/resolv.conf
     cp stuff/inetd.conf $fs/etc
-    cp stuff/dnsd $fs/etc/init.d
-    cp stuff/udhcpd $fs/etc/init.d
-    cp stuff/inetd $fs/etc/init.d
-    cp stuff/zcip $fs/etc/init.d
+    cp stuff/daemon $fs/etc/init.d
+    for i in crond dnsd ftpd httpd inetd klogd ntpd syslogd telnetd tftpd \
+    	     udhcpd zcip ; do
+	grep -qi config_$i=y $src/.config &&
+	ln -s daemon $fs/etc/init.d/$i
+    done
     cp stuff/init $fs
     rm $fs/linuxrc
     mkdir -p $fs/etc/modprobe.d
     # Udhcpc stuff.
     mkdir -p $fs/usr/share/udhcpc
-    cp stuff/udhcp.script \
-    $fs/usr/share/udhcpc/default.script
+    cp stuff/udhcp.script $fs/usr/share/udhcpc/default.script
     chmod +x $fs/usr/share/udhcpc/default.script
     # ZeroConf stuff.
     cp stuff/zcip.script $fs/etc
+    # Httpd stuff.
+    cp stuff/httpd_helper.sh $fs/usr/bin
+    chmod +x $fs/usr/bin/httpd_helper.sh
     # .desktop stuff
     mkdir -p $fs/usr/share
     cp -a stuff/applications $fs/usr/share

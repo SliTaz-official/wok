@@ -1,0 +1,134 @@
+--- busybox-1.16.1/include/applets.h
++++ busybox-1.16.1/include/applets.h
+@@ -420,6 +420,7 @@
+ IF_UUDECODE(APPLET(uudecode, _BB_DIR_USR_BIN, _BB_SUID_DROP))
+ IF_UUENCODE(APPLET(uuencode, _BB_DIR_USR_BIN, _BB_SUID_DROP))
+ IF_VCONFIG(APPLET(vconfig, _BB_DIR_SBIN, _BB_SUID_DROP))
++IF_VCSA2TXT(APPLET(vcsa2txt, _BB_DIR_USR_BIN, _BB_SUID_DROP))
+ IF_VI(APPLET(vi, _BB_DIR_BIN, _BB_SUID_DROP))
+ IF_VLOCK(APPLET(vlock, _BB_DIR_USR_BIN, _BB_SUID_REQUIRE))
+ IF_VOLNAME(APPLET(volname, _BB_DIR_USR_BIN, _BB_SUID_DROP))
+
+--- busybox-1.16.1/include/usage.h
++++ busybox-1.16.1/include/usage.h
+@@ -5011,6 +5011,13 @@
+      "\n	set_ingress_map	[vlan-name] [skb_priority] [vlan_qos]" \
+      "\n	set_name_type	[name-type]" \
+ 
++#define vcsa2txt_trivial_usage \
++       "stdin"
++#define vcsa2txt_full_usage \
++       "Filter /dev/vcsa* to ansi escape sequences"
++#define vcsa2txt_example_usage \
++       "# vcsa2txt < /dev/vcsa1\n"
++
+ #define vi_trivial_usage \
+        "[OPTIONS] [FILE]..."
+ #define vi_full_usage "\n\n" \
+
+--- busybox-1.16.1/miscutils/Config.in
++++ busybox-1.16.1/miscutils/Config.in
+@@ -625,6 +625,12 @@
+ 	help
+ 	  Write a message to all users that are logged in.
+ 
++config VCSA2TXT
++	bool "vcsa2txt"
++	default n
++	help
++	  Filter /dev/vcsa* output to ansi escape sequences.
++
+ config WATCHDOG
+ 	bool "watchdog"
+ 	default n
+
+--- busybox-1.16.1/util-linux/Kbuild
++++ busybox-1.16.1/util-linux/Kbuild
+@@ -43,3 +43,4 @@
+ lib-$(CONFIG_SWITCH_ROOT)       += switch_root.o
+ lib-$(CONFIG_MKFS_EXT2)         += tune2fs.o
+ lib-$(CONFIG_UMOUNT)            += umount.o
++lib-$(CONFIG_VCSA2TXT)          += vcsa2txt.o
+
+--- busybox-1.16.1/util-linux/vcsa2txt.c
++++ busybox-1.16.1/util-linux/vcsa2txt.c
+@@ -0,0 +1,79 @@
++/* vi: set sw=4 ts=4: */
++/*
++ * /dev/vcsa* filter for busybox
++ *
++ * pascal.bellard@ads-lu.com
++ *
++ * Licensed under GPLv2 or later, see file License in this tarball for details.
++ */
++ 
++#include "libbb.h"
++
++int vcsa2txt_main(int argc) MAIN_EXTERNALLY_VISIBLE;
++int vcsa2txt_main(int argc)
++{
++    struct {
++	unsigned char l, c, x, y; // man 4 console_codes
++    } scrn;
++    unsigned char last = 0, ch[2];                     // BLGCRMOW
++    static  unsigned char end[5] = "\e[0m\n", color[8] = "04261537";
++    int sp, lf, x;
++    
++    if (safe_read(0, &scrn, 4) < 0) return 1;
++    for (lf = 0; scrn.l; lf++, scrn.l--) {
++	for (sp = x = 0; ++x <= scrn.c;) {
++	    if (safe_read(0, &ch[0], 2) < 0) return 1;
++	    if (argc > 1) ch[1] = 0;
++	    sp++;
++	    if (last == ch[1] && ch[0] == ' ') continue;
++	    for (lf++; --lf;) bb_putchar('\n');
++	    while (--sp) bb_putchar(' ');
++#define ENABLE_VCSA_PACKED 1
++#if ENABLE_VCSA_PACKED
++	    if (last ^= ch[1]) {
++		char esc[16],*s;
++		struct offsets {
++		    char mask, type, shr;
++		} *p;
++		static struct offsets offset[3] = {
++		    {8,0,1}, {0x70,'4',4}, {7,'3',0}
++		};
++		static char init = 0x7F;
++		
++		s = esc+2;
++		*(short *)esc = ntohs(256*'\e'+'[');
++		p = offset;
++		do {
++		    if ((init|last) & p->mask) {
++			int c = (ch[1] & p->mask) >> p->shr;
++		    
++			if ((*s = p->type) != 0) s++;
++			else if (c == 0) {
++			    c = 2;
++			    *s++ = '2'; /* normal */
++			}
++			*s++ = color[c];
++			*s++ = ';'; 
++		    }
++		} while (p++->shr);
++		s[-1] = 'm';
++		init = 0;
++		fwrite(esc,s-esc,1,stdout);
++	    }
++	    last = ch[1];
++#else
++	    if (last != ch[1]) {
++		static char esc[10] = "\e[0;47;37m";
++		
++		esc[2] = ((last = ch[1]) & 8) ? '1' /* bold */ : '0' /* defaults */;
++		esc[sizeof(esc)-5] = color[(ch[1] >> 4) & 7];
++		esc[sizeof(esc)-2] = color[ch[1] & 7];
++		fwrite(esc,sizeof(esc),1,stdout);
++	    }
++#endif
++	    bb_putchar(ch[0]);
++	}
++    }
++    fwrite(end,sizeof(end),1,stdout);
++    return 0;
++}

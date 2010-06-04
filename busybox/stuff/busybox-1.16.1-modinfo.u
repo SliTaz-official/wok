@@ -1,0 +1,183 @@
+--- busybox-1.16.1/include/applets.h
++++ busybox-1.16.1/include/applets.h
+@@ -272,6 +272,7 @@
+ IF_CRYPTPW(APPLET_ODDNAME(mkpasswd, cryptpw, _BB_DIR_USR_BIN, _BB_SUID_DROP, mkpasswd))
+ IF_MKSWAP(APPLET(mkswap, _BB_DIR_SBIN, _BB_SUID_DROP))
+ IF_MKTEMP(APPLET(mktemp, _BB_DIR_BIN, _BB_SUID_DROP))
++IF_MODINFO(APPLET(modinfo, _BB_DIR_SBIN, _BB_SUID_DROP))
+ IF_MODPROBE(APPLET(modprobe, _BB_DIR_SBIN, _BB_SUID_DROP))
+ IF_MODPROBE_SMALL(APPLET(modprobe, _BB_DIR_SBIN, _BB_SUID_DROP))
+ IF_MORE(APPLET(more, _BB_DIR_BIN, _BB_SUID_DROP))
+
+--- busybox-1.16.1/include/usage.h
++++ busybox-1.16.1/include/usage.h
+@@ -2967,6 +2967,20 @@
+        "   which are the default for alias 'tulip2' overridden by the options 'irq=2 io=0x210'\n\n" \
+        "   from the command line\n"
+ 
++#define modinfo_trivial_usage \
++       "[-adlp0] [-F keyword] MODULE"
++#define modinfo_full_usage "\n\n" \
++       "Options:" \
++     "\n	-a		Shortcut for '-F author'" \
++     "\n	-d		Shortcut for '-F description'" \
++     "\n	-l		Shortcut for '-F license'" \
++     "\n	-p		Shortcut for '-F parm'" \
++     "\n	-F keyword	Keyword to look for" \
++     "\n	-0		Use \\0 string separator. Not \\n" \
++
++#define modinfo_example_usage \
++       "$ modinfo -F vermagic loop\n"
++       
+ #define more_trivial_usage \
+        "[FILE]..."
+ #define more_full_usage "\n\n" \
+
+--- busybox-1.16.0/modutils/Config.in
++++ busybox-1.16.0/modutils/Config.in
+@@ -110,6 +110,12 @@
+ 	  and modules.symbols) that contain dependency information
+ 	  for modprobe.
+ 
++config MODINFO
++	bool "modinfo"
++	default n
++	help
++	  Show information about a Linux Kernel module
++
+ comment "Options common to multiple modutils"
+ 
+ config FEATURE_2_4_MODULES
+
+--- busybox-1.16.1/modutils/Kbuild
++++ busybox-1.16.1/modutils/Kbuild
+@@ -12,3 +12,4 @@
+ lib-$(CONFIG_MODPROBE)            += modprobe.o modutils.o
+ lib-$(CONFIG_RMMOD)               += rmmod.o modutils.o
+ lib-$(CONFIG_FEATURE_2_4_MODULES) += modutils-24.o
++lib-$(CONFIG_MODINFO)             += modinfo.o
+
+--- busybox-1.16.1/modutils/modinfo.c
++++ busybox-1.16.1/modutils/modinfo.c
+@@ -0,0 +1,121 @@
++/* vi: set sw=4 ts=4: */
++/*
++ * modinfo - retrieve module info
++ * Copyright (c) 2008 Pascal Bellard
++ *
++ * Licensed under GPLv2 or later, see file LICENSE in this tarball for details.
++ */
++
++#undef _GNU_SOURCE
++#define _GNU_SOURCE
++#include <libbb.h>
++#include <fnmatch.h>
++#include "modutils.h"
++#include <sys/utsname.h> /* uname() */
++
++#define ALL_TAGS	0x3F
++
++enum {
++	ARG_F = (1<<6), /* field name */
++	ARG_0 = (1<<7)  /* \0 as separator */
++};
++
++struct modinfo_env {
++	char *field;
++	int tags;
++};
++
++static int display(char *data, const char *pattern, int flag)
++{
++	if (flag) {
++		int n = printf("%s:",pattern);
++		while (n++ < 16) bb_putchar(' ');
++	}
++	return printf("%s%c",data, (option_mask32 & ARG_0) ? '\0' : '\n');
++}
++
++static void modinfo(char *path, struct modinfo_env *env)
++{
++	static const char *shortcuts[] = {
++		"filename",
++		"description",
++		"author",
++		"license",
++		"vermagic",
++		"parm",
++	};
++	size_t len;
++	int j, length;
++	char *ptr, *the_module;
++	const char *field = env->field;
++	int tags = env->tags;
++
++	if (tags & 1) { /* filename */
++		display(path,shortcuts[0],1 != tags);
++	}
++	len = MAXINT(ssize_t);
++	the_module = xmalloc_open_zipped_read_close(path, &len);
++	if (!the_module) return;
++	if (field) tags |= ALL_TAGS+1;
++	for (j = 1; (1<<j) & (ALL_TAGS+ALL_TAGS+1); j++)	{
++		const char *pattern = field;
++		if ((1<<j) & ALL_TAGS) pattern = shortcuts[j];
++		if (!((1<<j) & tags)) continue;
++		length = strlen(pattern);
++		ptr = the_module;
++		do {
++			ptr = memchr(ptr, *pattern, len - (ptr - (char*)the_module));
++			if (ptr == NULL) /* no occurance left, done */
++				break;
++			if (!strncmp(ptr, pattern, length) && ptr[length] == '=') {
++				ptr += length + 1;
++				ptr += display(ptr,pattern,(1<<j) != tags);
++			}
++			++ptr;
++		} while (1);
++	}
++	free(the_module);
++}
++
++int modinfo_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
++int modinfo_main(int argc, char **argv)
++{
++	struct modinfo_env env;
++	char name[MODULE_NAME_LEN];
++	struct utsname uts;
++	parser_t *p;
++	char *colon, *tokens[2];
++	int i;
++
++	env.field = NULL;
++	getopt32(argv, "fdalvpF:0", &env.field);
++	env.tags = (option_mask32) ? option_mask32 & ALL_TAGS : ALL_TAGS;
++
++	if (optind >= argc)
++		bb_show_usage();
++		
++	uname(&uts);
++	p = config_open2(concat_path_file(concat_path_file(
++		CONFIG_DEFAULT_MODULES_DIR, uts.release),
++		CONFIG_DEFAULT_DEPMOD_FILE), xfopen_for_read);
++	
++	while (config_read(p, tokens, 2, 1, "# \t", PARSE_NORMAL)) {
++		colon = last_char_is(tokens[0], ':');
++		if (colon == NULL)
++			continue;
++		*colon = 0;
++		filename2modname(tokens[0], name);
++		for (i = optind; i < argc; i++) {
++			if (fnmatch(argv[i],name,0) == 0) {
++				modinfo(tokens[0], &env);
++				argv[i] = (char *) "";
++			}
++		}
++	}
++	for (i = optind; i < argc; i++) {
++		if (*argv[i]) {
++			modinfo(argv[i], &env);
++		}		
++	}
++	return 0;
++}
