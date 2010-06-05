@@ -1,6 +1,6 @@
 --- linux-2.6.30.4/arch/x86/mm/init.c
 +++ linux-2.6.30.4/arch/x86/mm/init.c
-@@ -381,7 +381,7 @@
+@@ -366,7 +366,7 @@
  	 */
  	set_memory_rw(begin, (end - begin) >> PAGE_SHIFT);
  
@@ -90,25 +90,21 @@
  			continue;
  		}
  		if (!*buf) {
-@@ -446,9 +497,15 @@
- 		}
+@@ -447,7 +497,12 @@
  		this_header = 0;
  		decompress = decompress_method(buf, len, &compress_name);
--		if (decompress)
--			decompress(buf, len, NULL, flush_buffer, NULL,
-+		if (decompress) {
+ 		if (decompress) {
+-			res = decompress(buf, len, NULL, flush_buffer, NULL,
 +			if (early_free_initrd) {
-+				decompress(NULL, 0, fill_buffer, flush_buffer,
-+					   NULL, &my_inptr, error);
++				res = decompress(NULL, 0, fill_buffer,
++					   flush_buffer, NULL, &my_inptr, error);
 +				my_inptr += fill.inptr;
 +			}
-+			else decompress(buf, len, NULL, flush_buffer, NULL,
++			else res = decompress(buf, len, NULL, flush_buffer, NULL,
  				   &my_inptr, error);
-+		}
- 		else if (compress_name) {
- 			if (!message) {
- 				snprintf(msg_buf, sizeof msg_buf,
-@@ -485,7 +543,8 @@
+ 			if (res)
+ 				error("decompressor failed");
+@@ -488,7 +546,8 @@
  #include <linux/initrd.h>
  #include <linux/kexec.h>
  
@@ -118,7 +114,7 @@
  {
  #ifdef CONFIG_KEXEC
  	unsigned long crashk_start = (unsigned long)__va(crashk_res.start);
-@@ -513,6 +571,12 @@
+@@ -516,6 +574,12 @@
  #endif
  		free_initrd_mem(initrd_start, initrd_end);
  skip:
