@@ -36,8 +36,13 @@ modprobe.u
 EOT
     cp ../stuff/$PACKAGE-$VERSION.config .config
     make oldconfig
-    # "CFLAGS=-O0" is a workaround for GCC 4.5.0
-    make -j 4 "CFLAGS=-O0" && make "CFLAGS=-O0" install
+    if [ "$(gcc --version | awk '{ print $3; exit }')" == "4.5.0" ]; then
+	# "CFLAGS=-O0" is a workaround for GCC 4.5.0 (sed crach)
+	# "CFLAGS=-fno-tree-pta" may be a workaround for GCC 4.5.0 (sed garbage)
+	make -j 4 "CFLAGS=-O0" && make "CFLAGS=-O0" install
+    else
+	make -j 4 && make install
+    fi
     echo "Chmod 4755 on busybox binary..."
     chmod 4755 _install/bin/busybox
 }
@@ -88,10 +93,10 @@ pre_install()
 		[ -e $ROOT$i ] || continue
 		if [ -z "$answer" ]; then
 			echo -n "Keep installed GNU utilities ? "
-			read answer
+			read -t 30 answer	# by default: keep
 			case "$answer" in
-			y*|Y*|o*|O*);;
-			*) break;;
+			n*|N*) break;;
+			*) ;;
 			esac
 		fi
 		mv $ROOT$i $ROOT$i-busybox-install
