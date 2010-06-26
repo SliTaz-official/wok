@@ -18,6 +18,8 @@ compile_rules()
 {
 
 	cd $src
+	grep -q skip_do_abi_check Makefile.am ||
+	sed -i 's/^do_abi_check/&:\n\techo "Skipping &"\n\nreally_&/' Makefile.*
 	./configure --prefix=/usr --infodir=/usr/share/info \
 		--datadir=/usr/share --localstatedir=/var/lib/mysql \
 		--sysconfdir=/etc/mysql --libexecdir=/usr/sbin \
@@ -25,7 +27,7 @@ compile_rules()
 		--with-mysqld-user=mysql \
 		--enable-thread-safe-client \
 		--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make &&
+	make -j 4 &&
 	make DESTDIR=$PWD/_pkg install
 }
 
