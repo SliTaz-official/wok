@@ -1,0 +1,74 @@
+# SliTaz package receipt.
+PACKAGE="git-gui"
+VERSION="0.12.0.66"
+CATEGORY="development"
+SHORT_DESC="Graphical interface for the Git dRCS."
+MAINTAINER="ben@seawolfsanctuary.com"
+DEPENDS="tk git"
+BUILD_DEPENDS="$DEPENDS"
+TARBALL="master.tar.gz"
+WEB_SITE="http://www.kernel.org/pub/software/scm/git/docs/git-gui.html"
+WGET_URL="http://repo.or.cz/w/git-gui.git/snapshot/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $PACKAGE
+	make clean
+	make && make DESTDIR=$PWD/_pkg install
+	cd ..
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	# Need to create a shortcut; change with each release :-(
+	ln -s $PACKAGE $PACKAGE-$VERSION
+	
+	mkdir -p $fs
+	cp -a $_pkg/usr $fs/
+	
+	# Extra icons, .desktop file etc.:
+	cp -a $WOK/$PACKAGE/stuff/* $fs/usr
+
+	# We do not need to strip anything!
+}
+
+# Commands to executed before/after package is installed.
+post_install()
+{
+	echo "Processing post-install commands..."
+	echo "  - creating links... "
+		ln -sf /usr/lib/git/git-core/git-gui /usr/bin/
+		ln -sf /usr/lib/git/git-core/git-citool /usr/bin/
+		ln -sf /usr/lib/git/git-core/git-gui--askpass /usr/bin/
+	echo "  - installing icons... "
+		# Loop through each icon directory, except 'default'
+		for DIR in `ls -d1 /usr/share/icons/*/ | grep -v default`
+		do
+			cp -f /usr/share/icons/SliTaz/16x16/apps/git-gui.png \
+						$DIR/16x16/apps/git-gui.png 2> /dev/null
+			cp -f /usr/share/icons/SliTaz/32x32/apps/git-gui.png \
+						$DIR/32x32/apps/git-gui.png 2> /dev/null
+		done
+	echo -n "Finished post-install commands."
+	status
+}
+
+pre_remove()
+{
+	echo "Processing pre-remove commands..."
+	echo -n "  - removing icons... "
+	for ICON in `find /usr/share/icons/ -iname git-gui.png`
+	do
+		rm $ICON
+	done
+	status
+	echo -n "  - removing links... "
+		rm /usr/bin/git-gui
+		rm /usr/bin/git-citool
+		rm /usr/bin/git-gui--askpass
+	status
+	echo -n "Finished pre-remove commands."
+	status
+}
