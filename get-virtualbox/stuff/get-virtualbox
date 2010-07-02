@@ -76,12 +76,25 @@ EXTRAVERSION=_$(uname -r | sed 's/-slitaz//')
 CATEGORY="non-free"
 SHORT_DESC="$SHORT_DESC"
 WEB_SITE="$WEB_SITE"
-DEPENDS="libsdl fontconfig gcc-lib-base glib libpng python udev libglu-mesa"
+DEPENDS="libsdl fontconfig gcc-lib-base glib libpng python udev mesa libglu-mesa"
+
+pre_remove()
+{
+    sed -i 's//vboxdrv /' \$1/etc/rcS.conf
+    chroot "\$1/" delgroup vboxusers
+}
 
 post_install()
 {
 $(grep '  udev[atp]' install/install.sh)
     chroot "\$1/" depmod -a $(uname -r)
+    [ -n "\$1" ] || modprobe vboxdrv
+    grep -qs vboxdrv \$1/etc/rcS.conf ||
+    sed -i 's/LOAD_MODULES="/&vboxdrv /' \$1/etc/rcS.conf
+    
+    # Add vboxusers group
+    grep -qs ^vboxusers \$1/etc/group ||
+    chroot "\$1/" addgroup vboxusers
 }
 EOT
 
