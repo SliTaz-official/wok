@@ -19,18 +19,21 @@ TMP_DIR=/tmp/get-opera-$$-$RANDOM
 CUR_DIR=$(pwd)
 mkdir -p $TMP_DIR && cd $TMP_DIR
 
+get_releases()
+{
+	wget -O - "$URL?C=M;O=D" 2>/dev/null | awk '/folder/ { print $5 }' | \
+	sed -e 's/href="\(.*\)">.*/\1/' -e 's|/||'
+}
+
 # Download rpm
-set -- $(wget -O - $URL 2>/dev/null | grep -E 'href="[0-9]*/"' | tail -1 | sed 's|.*href="\(.*\)/".*|\1|')
-for RELEASE in final beta4 beta3 beta2 beta1 ; do
-  N=$2
-  wget -s $URL$N/$RELEASE/en/i386/ 2> /dev/null && break 
-  N=$1
-  wget -s $URL$N/$RELEASE/en/i386/ 2> /dev/null && break 
+for RELEASE in $(get_releases); do
+  [ -n "$RELEASE" ] || continue
+  FILE=$(wget -O - "$URL$RELEASE/" 2> /dev/null | grep i386.rpm | sed 's/.*href="\(.*\)">.*/\1/')
+  [ -n "$FILE" ] || continue
+  wget $URL$RELEASE/$FILE
+  [ -s $FILE ] && break
 done
-URL=$URL$N/$RELEASE/en/i386/
-FILE=$(wget -O - $URL 2> /dev/null | grep "gcc4.qt4.i386.rpm" | sed 's|.*href="\(.*\)".*|\1|')
-URL=$URL$FILE
-wget $URL
+
 if [ ! -f $FILE ]; then
 	cd $CUR_DIR
 	rm -rf $TMP_DIR
