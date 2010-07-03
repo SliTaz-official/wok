@@ -28,7 +28,7 @@ get_releases()
 # Download rpm
 for RELEASE in $(get_releases); do
   [ -n "$RELEASE" ] || continue
-  FILE=$(wget -O - "$URL$RELEASE/" 2> /dev/null | grep i386.rpm | sed 's/.*href="\(.*\)">.*/\1/')
+  FILE=$(wget -O - "$URL$RELEASE/" 2> /dev/null | grep i386.rpm | sed 's/.*href="\(.*\)">.*/\1/' | head -n 1)
   [ -n "$FILE" ] || continue
   wget $URL$RELEASE/$FILE
   [ -s $FILE ] && break
@@ -41,6 +41,7 @@ if [ ! -f $FILE ]; then
 	exit 1
 fi
 
+RELEASE=$(rpm -qip $FILE  | awk '/^Release/ { print $3 }')
 VERSION=$(rpm -qip $FILE  | awk '/^Version/ { print $3 }')-$RELEASE
 
 mkdir -p opera-$VERSION/fs
