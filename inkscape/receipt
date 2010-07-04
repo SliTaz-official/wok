@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="inkscape"
-VERSION="0.47pre2"
+VERSION="0.47"
 CATEGORY="graphics"
 SHORT_DESC="Vector drawing application."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gc gtk+ libxslt libsigc++ glibmm gtkmm libxml2 libpng popt \
 xorg-libXdamage gsl aspell libgiomm lcms gtkspell libgomp poppler gcc-lib-base"
 BUILD_DEPENDS="gc-dev gtk+-dev libxslt-dev libsigc++-dev glibmm-dev \
-gtkmm-dev popt-dev libgiomm-dev gsl gsl-dev lcms-dev gtkspell-dev"
+gtkmm-dev popt-dev libgiomm-dev gsl gsl-dev lcms-dev gtkspell-dev \
+cairomm-dev libboost-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.inkscape.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
@@ -19,10 +20,10 @@ compile_rules()
 {
 	cd $src
 	sed -i -e '\|^packaging/autopackage/default\.apspec$|d' configure.ac
+#	InkBoard is now disabled by default, --enable-inkboard now exists
 	./configure \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
-		--disable-inkboard \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -36,7 +37,6 @@ genpkg_rules()
 
 	# Copy all Inkscape files and remove tutorials (19,2 Mb) + misc files
 	cp -a $_pkg/usr/share/inkscape $fs/usr/share
-	rm -rf $fs/usr/share/inkscape/extensions
 	rm -rf $fs/usr/share/inkscape/clipart
 	rm -rf $fs/usr/share/inkscape/tutorials
 	rm -rf $fs/usr/share/inkscape/examples
