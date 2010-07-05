@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="linphone"
+VERSION="3.2.0"
+CATEGORY="network"
+SHORT_DESC="SIP soft phone."
+MAINTAINER="pascal.bellard@slitaz.org"
+DEPENDS="osip exosip speex"
+BUILD_DEPENDS="osip-dev exosip-dev speex-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.linphone.org/"
+WGET_URL="http://www.very-clever.com/download/nongnu/linphone/${VERSION%.*}.x/sources/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	LIBS="-lavutil -lz" ./configure --prefix=/usr --libexecdir=/usr/bin \
+	--infodir=/usr/share/info --mandir=/usr/share/man $CONFIGURE_ARGS
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	cp -a $_pkg/usr/share/sounds $fs/usr/share
+	cp -a $_pkg/usr/share/locale $fs/usr/share
+	cp -a $_pkg/usr/share/images $fs/usr/share
+	cp -a $_pkg/usr/share/linphone $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
