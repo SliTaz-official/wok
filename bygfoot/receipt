@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="bygfoot"
+VERSION="2.2.1"
+CATEGORY="games"
+SHORT_DESC="Manage your own football (soccer) team in a league season"
+MAINTAINER="ben@seawolfsanctuary.com"
+TARBALL="$PACKAGE-$VERSION-source.zip"
+WEB_SITE="http://www.bygfoot.com/"
+WGET_URL="http://downloads.sourceforge.net/project/$PACKAGE/$PACKAGE/$PACKAGE-$VERSION/$TARBALL"
+BUILD_DEPENDS="gtk+-dev glib-dev pango pango-dev atk-dev freetype-dev"
+DEPENDS="gtk+ glib pango atk freetype"
+
+compile_rules()
+{
+	mv $src-source $src
+	cd $src
+
+	chmod +x configure
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS
+	make -j4 && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/
+	cp -a $_pkg/usr $fs/
+
+	# Copy .desktop file:
+	cp -a $WOK/$PACKAGE/stuff/* $fs/usr
+}
