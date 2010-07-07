@@ -1,45 +1,41 @@
---- busybox-1.17.0/modutils/depmod.c
-+++ busybox-1.17.0/modutils/depmod.c
-@@ -35,7 +35,10 @@
- 	ARG_e = (1<<3), /* with -F, print unresolved symbols */
- 	ARG_F = (1<<4), /* System.map that contains the symbols */
- 	ARG_n = (1<<5), /* dry-run, print to stdout only */
--	ARG_r = (1<<6)  /* Compat dummy. Linux Makefile uses it */
-+	ARG_r = (1<<6), /* Compat dummy. Linux Makefile uses it */
-+	ARG_u = (1<<7), /* unresolved-error: ignored */
-+	ARG_q = (1<<8), /* quiet: ignored */
-+	ARG_C = (1<<9)  /* config: ignored */
- };
- 
- static int FAST_FUNC parse_module(const char *fname, struct stat *sb UNUSED_PARAM,
-@@ -143,7 +146,7 @@
- 	struct utsname uts;
- 	int tmp;
- 
--	getopt32(argv, "aAb:eF:nr", &moddir_base, NULL);
-+	getopt32(argv, "aAb:eF:nruqC:", &moddir_base, NULL);
- 	argv += optind;
- 
- 	/* goto modules location */
+Add LZMA_DEFAULT_MAGIC support
+--- busybox-1.17.0/include/unarchive.h
++++ busybox-1.17.0/include/unarchive.h
+@@ -9,6 +9,8 @@
+ 	COMPRESS_MAGIC = 0x1f9d,
+ 	GZIP_MAGIC  = 0x1f8b,
+ 	BZIP2_MAGIC = 'B' * 256 + 'Z',
++	/* lzma default options: lc=3 lp=0 pb=2, historic % 256 == 0 */
++	LZMA_DEFAULT_MAGIC = 0x5d00,
+ 	/* .xz signature: 0xfd, '7', 'z', 'X', 'Z', 0x00 */
+ 	/* More info at: http://tukaani.org/xz/xz-file-format.txt */
+ 	XZ_MAGIC1   = 0xfd * 256 + '7',
+@@ -20,6 +22,8 @@
+ 	COMPRESS_MAGIC = 0x9d1f,
+ 	GZIP_MAGIC  = 0x8b1f,
+ 	BZIP2_MAGIC = 'Z' * 256 + 'B',
++	/* lzma default options: lc=3 lp=0 pb=2, historic % 256 == 0 */
++	LZMA_DEFAULT_MAGIC = 0x5d,
+ 	XZ_MAGIC1   = '7' * 256 + 0xfd,
+ 	XZ_MAGIC2   = ((0 * 256 + 'Z') * 256 + 'X') * 256 + 'z',
+ 	XZ_MAGIC1a  = (('X' * 256 + 'z') * 256 + '7') * 256 + 0xfd,
 
 --- busybox-1.17.0/libbb/read_printf.c
 +++ busybox-1.17.0/libbb/read_printf.c
-@@ -337,10 +337,16 @@
- 
- 	sfx = strrchr(fname, '.');
- 	if (sfx) {
-+		char magic[2];
-+
- 		sfx++;
--		if (ENABLE_FEATURE_SEAMLESS_LZMA && strcmp(sfx, "lzma") == 0)
--			/* .lzma has no header/signature, just trust it */
-+		xread(fd, &magic, 2);
-+		xlseek(fd, 0, SEEK_SET);
-+		if (ENABLE_FEATURE_SEAMLESS_LZMA
-+		 && ((magic[0] == 0x5d && magic[1] == 0)
-+		  || strcmp(sfx, ".lzma") == 0)) {
- 			open_transformer(fd, unpack_lzma_stream, "unlzma");
-+		}
- 		else
- 		if ((ENABLE_FEATURE_SEAMLESS_GZ && strcmp(sfx, "gz") == 0)
- 		 || (ENABLE_FEATURE_SEAMLESS_BZ2 && strcmp(sfx, "bz2") == 0)
+@@ -286,6 +286,16 @@
+ # endif
+ 		goto found_magic;
+ 	}
++	if (ENABLE_FEATURE_SEAMLESS_LZMA
++	 && magic.b16[0] == LZMA_DEFAULT_MAGIC
++	) {
++# if BB_MMU
++		xformer = unpack_lzma_stream;
++# else
++		xformer_prog = "unlzma";
++# endif
++		goto found_magic;
++	}
+ 	if (ENABLE_FEATURE_SEAMLESS_XZ
+ 	 && magic.b16[0] == XZ_MAGIC1
+ 	) {
