@@ -17,13 +17,11 @@ compile_rules()
 {
    	mv eduke32_src_20090131 eduke32-20090313
 	cd $src
-	[ -f $SOURCES_REPOSITORY/eduke32_src_20090313.diff ] &&
-	cp $SOURCES_REPOSITORY/eduke32_src_20090313.diff .
-	if [ ! -f eduke32_src_20090313.diff ]; then
-    		wget http://wiki.eduke32.com/stuff/source_code/eduke32_src_20090313.diff
-		cp eduke32_src_20090313.diff $SOURCES_REPOSITORY
-	fi
-   	patch -p1 < eduke32_src_20090313.diff
+	[ -s $SOURCES_REPOSITORY/duke3d.grp ] ||
+    	wget http://people.slitaz.org/~mallory/stuff/eduke32/duke3d.grp -P $SOURCES_REPOSITORY
+	[ -s $SOURCES_REPOSITORY/eduke32_src_20090313.diff ] ||
+    	wget http://wiki.eduke32.com/stuff/source_code/eduke32_src_20090313.diff -P $SOURCES_REPOSITORY
+   	patch -p1 < $SOURCES_REPOSITORY/eduke32_src_20090313.diff
 	make -j 4 || return 1
     	mkdir $src/_pkg
     	cp eduke32 mapster32 $src/_pkg
@@ -42,7 +40,7 @@ genpkg_rules()
 	cp -a $src/eduke32 $src/mapster32 $fs/usr/bin
 	
 	echo "Downloading game data"
-    	wget http://people.slitaz.org/~mallory/stuff/eduke32/duke3d.grp -O $fs/usr/share/games/eduke32/duke3d.grp
+	cp $SOURCES_REPOSITORY/duke3d.grp $fs/usr/share/games/eduke32/duke3d.grp
 	
 	echo "Copying metadata"
 	cp stuff/eduke32.desktop $fs/usr/share/applications
