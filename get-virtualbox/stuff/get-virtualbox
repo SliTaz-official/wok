@@ -66,6 +66,7 @@ mkdir -p $PACKAGE-$VERSION/fs
 diff -U0 before after | grep ^+/ | sed 's|^\+/||' | \
 ( cd / ; cpio -o -H newc ) | ( cd $PACKAGE-$VERSION/fs ; cpio -idm )
 
+MODULE_LIST="vboxdrv vboxnetadp vboxnetflt"
 # Create pseudo package
 cat > $PACKAGE-$VERSION/receipt <<EOT
 # SliTaz package receipt.
@@ -80,7 +81,7 @@ DEPENDS="libsdl fontconfig gcc-lib-base glib libpng python udev mesa libglu-mesa
 
 pre_remove()
 {
-    sed -i 's//vboxdrv /' \$1/etc/rcS.conf
+    sed -i 's/$MODULE_LIST //' \$1/etc/rcS.conf
     chroot "\$1/" delgroup vboxusers
 }
 
@@ -88,9 +89,9 @@ post_install()
 {
 $(grep '  udev[atp]' install/install.sh)
     chroot "\$1/" depmod -a $(uname -r)
-    [ -n "\$1" ] || modprobe vboxdrv
+    [ -n "\$1" ] || for i in $MODULE_LIST; do modprobe \$i ; done
     grep -qs vboxdrv \$1/etc/rcS.conf ||
-    sed -i 's/LOAD_MODULES="/&vboxdrv /' \$1/etc/rcS.conf
+    sed -i 's/LOAD_MODULES="/&$MODULE_LIST /' \$1/etc/rcS.conf
     
     # Add vboxusers group
     grep -qs ^vboxusers \$1/etc/group ||
