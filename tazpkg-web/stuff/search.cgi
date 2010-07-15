@@ -50,8 +50,10 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
 		FileOverlap=*)
 			SEARCH=${i#*=}
 			OBJECT=FileOverlap;;
-		version=s*|version=2*)
+		version=s*|version=3*)
 			SLITAZ_VERSION=stable;;
+		version=2*)
+			SLITAZ_VERSION=2.0;;
 		version=1*)
 			SLITAZ_VERSION=1.0;;
 		esac
@@ -72,6 +74,7 @@ esac
 
 case "$SLITAZ_VERSION" in
 1.0)	 	selected_1="selected";;
+2.0)	 	selected_2="selected";;
 stable)		selected_stable="selected";;
 esac
 
@@ -203,6 +206,7 @@ search_form()
 		<option value="cooking">$cooking</option>
 		<option $selected_stable value="stable">$stable</option>
 		<option $selected_1 value="1.0">1.0</option>
+		<option $selected_2 value="2.0">2.0</option>
 	</select>
 	<input type="submit" name="search" value="$search" />
 </form>
@@ -272,7 +276,7 @@ Dernière modification : $DATE -
 <a href="#top">Top of the page</a>
 </p>
 <p>
-Copyright &copy; 2009 <a href="http://www.slitaz.org/">SliTaz</a> -
+Copyright &copy; $(date +%Y) <a href="http://www.slitaz.org/">SliTaz</a> -
 <a href="http://www.gnu.org/licenses/gpl.html">GNU General Public License</a>
 </p>
 <!-- End of copy -->
