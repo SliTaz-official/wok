@@ -92,7 +92,10 @@ repositories, aka <a href="http://hg.slitaz.org/">Hg repos</a>.
 
 <p>
 <form action="log.php" method="get">
-	Show cooklog: <input type="text" name="package" />
+<?php
+	if ($version == 'stable')
+		echo '<input type="hidden" name="stable" value="1" />';
+?>	Show cooklog: <input type="text" name="package" />
 	<!-- <input type="submit" value="Show" /> -->
 </form>
 </p>
