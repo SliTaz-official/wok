@@ -1,8 +1,10 @@
 <?php
 $version='cooking';
+$notversion='stable';
 $wok='wok';
 if (isset($_GET['stable'])) {
 	$version='stable';
+	$notversion='cooking';
 	$wok='wok-stable';
 }
 include("conf.php");
@@ -27,7 +29,7 @@ include("conf.php");
 <div id="access">
     <a href="/<?php if ($version != 'stable')
 echo "?stable"; ?>" title="Slitaz <?php
-echo $version ?> packages"><?php echo $version ?></a>                          
+echo $notversion ?> packages"><?php echo $notversion ?></a>                          
 </div>                                                                         
     <?php } ?>
     <a href="http://bb.slitaz.org/"><img id="logo"
