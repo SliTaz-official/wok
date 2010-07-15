@@ -1,4 +1,10 @@
 <?php
+$version='cooking';
+$wok='wok';
+if (isset($_GET['stable'])) {
+	$version='stable';
+	$wok='wok-stable';
+}
 include("conf.php");
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
@@ -16,11 +22,18 @@ include("conf.php");
 <body bgcolor="#ffffff">
 <!-- Header -->
 <div id="header">
-    <a name="top"></a>
+    <a name="top"></a></a><?php if ($version == 'stable') { ?>
+<!-- Access -->                                                                 
+<div id="access">
+    <a href="/<?php if ($version != 'stable')
+echo "?stable"; ?>" title="Slitaz <?php
+echo $version ?> packages"><?php echo $version ?></a>                          
+</div>                                                                         
+    <?php } ?>
     <a href="http://bb.slitaz.org/"><img id="logo"
     src="pics/website/logo.png" title="bb.slitaz.org" alt="bb.slitaz.org"
     style="border: 0px solid ; width: 200px; height: 74px;" /></a>
-    <p id="titre">#!/bb/packages</p>
+    <p id="titre">#!/bb/packages<?php if ($version == 'stable') echo '/stable'; ?></p>
 </div>
 
 <!-- Navigation menu -->
