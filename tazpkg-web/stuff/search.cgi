@@ -232,8 +232,8 @@ xhtml_header()
 	<meta name="modified" content="$DATE" />
 	<meta name="author" content="ash, awk, grep, sed and cat"/>
 	<meta name="publisher" content="www.slitaz.org" />
-	<link rel="shortcut icon" href="http://pkgs.slitaz.org/favicon.ico" />
-	<link rel="stylesheet"  type="text/css" href="http://pkgs.slitaz.org/slitaz.css" />
+	<link rel="shortcut icon" href="/favicon.ico" />
+	<link rel="stylesheet"  type="text/css" href="/slitaz.css" />
 </head>
 <body bgcolor="#ffffff">
 
@@ -247,7 +247,7 @@ xhtml_header()
 	<a href="http://labs.slitaz.org/" title="SliTaz laboratories">Labs</a>
 </div>
 	<a href="http://pkgs.slitaz.org/"><img id="logo"
-	src="http://pkgs.slitaz.org/pics/website/logo.png" title="pkgs.slitaz.org" alt="pkgs.slitaz.org"
+	src="/pics/website/logo.png" title="pkgs.slitaz.org" alt="pkgs.slitaz.org"
 	style="border: 0px solid ; width: 200px; height: 74px;" /></a>
 	<p id="titre">#!/tazpkg/packages</p>
 </div>
@@ -286,7 +286,7 @@ Copyright &copy; $(date +%Y) <a href="http://www.slitaz.org/">SliTaz</a> -
 <div id="bottom">
 <p>
 <a href="http://validator.w3.org/check?uri=referer"><img
-	src="http://pkgs.slitaz.org/pics/website/xhtml10.png" alt="Valid XHTML 1.0"
+	src="/pics/website/xhtml10.png" alt="Valid XHTML 1.0"
 	title="Code validé XHTML 1.0"
 	style="width: 80px; height: 15px;" /></a>
 </p>
@@ -304,6 +304,19 @@ grep -A 3 "^$1\$" /home/slitaz/$SLITAZ_VERSION/packages/packages.txt | \
        grep installed | sed 's/.*(\(.*\) installed.*/(\1) /'
 }
 
+package_entry()
+{
+if [ -s "$(dirname $0)/$SLITAZ_VERSION/$CATEGORY.html" ]; then
+	cat << _EOT_
+<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
+_EOT_
+else
+	cat << _EOT_
+<a href="http://mirror.slitaz.org/packages/$SLITAZ_VERSION/$PACKAGE-$VERSION$EXTRA_VERSION.tazpkg">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
+_EOT_
+fi
+}
+
 # recursive dependencies scan
 dep_scan()
 {
@@ -316,9 +329,7 @@ for i in $1; do
 		echo -n "$2"
 		(
 		. $WOK/$i/receipt
-		cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
-_EOT_
+		package_entry
 		)
 	fi
 	[ -f $WOK/$i/receipt ] || continue
@@ -365,8 +376,9 @@ END {
 }
 ' | while read pkg; do
 		. $WOK/${pkg##*/}/receipt
+		package_entry
 		cat << _EOT_
-$(echo ${pkg%/*} | sed 's|/| |g') <a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
+$(echo ${pkg%/*} | sed 's|/| |g') $(package_entry) 
 _EOT_
 done
 }
@@ -396,10 +408,8 @@ while read pkg file; do
 	pkg=${pkg%:}
 	if [ "$pkg" != "$last" ]; then
 		. $WOK/$pkg/receipt
-		cat << _EOT_
-
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
-_EOT_
+		
+		package_entry
 		last=$pkg
 	fi
 	echo "    $file"
@@ -494,9 +504,7 @@ _EOT_
 					continue
 				fi
 				. $WOK/$dep/receipt
-				cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
-_EOT_
+				package_entry
 			done
 			cat << _EOT_
 </pre>
@@ -508,9 +516,7 @@ _EOT_
 				BUILD_DEPENDS=""
 				. $dep
 				echo " $BUILD_DEPENDS " | grep -q " $SEARCH " &&
-				cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
-_EOT_
+				package_entry
 			done
 			cat << _EOT_
 </pre>
@@ -552,7 +558,7 @@ _EOT_
 				. $WOK/$last/receipt
 				cat << _EOT_
 
-<i><b><a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a></b> $SHORT_DESC</i>
+<i>$(package_entry)</i>
 _EOT_
 				)
 			fi
@@ -587,9 +593,7 @@ _EOT_
 			grep -i $SEARCH $PACKAGES_REPOSITORY/packages.desc | \
 			sort | while read pkg extras ; do
 				. $WOK/$pkg/receipt
-				cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
-_EOT_
+				package_entry
 			done
 		fi
 	elif [ "$OBJECT" = "Tags" ]; then
@@ -602,9 +606,7 @@ _EOT_
 		grep ^TAGS= $WOK/*/receipt |  grep -i $SEARCH | \
 		sed "s|$WOK/\(.*\)/receipt:.*|\1|" | sort | while read pkg ; do
 				. $WOK/$pkg/receipt
-				cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
-_EOT_
+				package_entry
 			done
 	elif [ "$OBJECT" = "Receipt" ]; then
 		package_exist $SEARCH && cat << _EOT_
@@ -631,7 +633,7 @@ _EOT_
 			DESC=" <a href=\"?desc=$pkg\">description</a>"
 			[ -f $WOK/$pkg/description.txt ] || DESC=""
 			cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC$DESC
+$(package_entry)$DESC
 _EOT_
 		done
 		equiv=$PACKAGES_REPOSITORY/packages.equiv
@@ -645,9 +647,7 @@ _EOT_
 _EOT_
 			for pkg in $(grep $vpkg= $equiv | sed "s/$vpkg=//"); do
 				. $WOK/${pkg#*:}/receipt
-				cat << _EOT_
-<a href="$SLITAZ_VERSION/$CATEGORY.html#$PACKAGE">$PACKAGE</a> $(installed_size $PACKAGE): $SHORT_DESC
-_EOT_
+				package_entry
 			done
 		done
 	fi
