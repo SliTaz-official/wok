@@ -1,0 +1,53 @@
+#!/bin/sh
+# /etc/init.d/dbus: Start, stop and restart DBUS daemon on SliTaz,
+# at boot time or with the command line. Daemons options are configured
+# with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=hostapd
+DESC="daemon for wireless software access points"
+DAEMON=/usr/bin/hostapd
+PIDFILE=/var/run/hostapd.pid
+OPTIONS="-B -P $PIDFILE /etc/hostapd/hostapd.conf"
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS
+    status
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    status
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    sleep 2
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0

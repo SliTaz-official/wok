@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="hostapd"
+VERSION="0.6.10"
+CATEGORY="network"
+SHORT_DESC="Daemon for wireless software access points."
+MAINTAINER="gokhlayeh@mailoo.org"
+DEPENDS="openssl libnl"
+BUILD_DEPENDS="openssl-dev libnl-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://hostap.epitest.fi/hostapd/"
+WGET_URL="http://hostap.epitest.fi/releases/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cp -a stuff/config $src/hostapd/.config
+	mkdir -p $src/_pkg/usr/bin
+
+	cd $src/hostapd
+
+	sed -i "s|/usr/local/bin|$src/_pkg/usr/bin|" Makefile
+	
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/etc/hostapd $fs/etc/init.d
+
+	cp -a $_pkg/usr/bin $fs/usr
+
+	cp -a $src/hostapd/hostapd.accept $src/hostapd/hostapd.conf \
+		$src/hostapd/hostapd.deny $src/hostapd/hostapd.eap_user \
+		$src/hostapd/hostapd.radius_clients $src/hostapd/hostapd.sim_db \
+		$src/hostapd/hostapd.vlan $src/hostapd/hostapd.wpa_psk \
+		$src/hostapd/wired.conf $src/src/hlr_auc_gw/hlr_auc_gw.milenage_db \
+		$fs/etc/hostapd
+
+	cp -a stuff/hostapd $fs/etc/init.d
+}
