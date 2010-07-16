@@ -24,18 +24,17 @@ include("conf.php");
 <body bgcolor="#ffffff">
 <!-- Header -->
 <div id="header">
-    <a name="top"></a></a><?php if ($version == 'stable') { ?>
+    <a name="top"></a>
 <!-- Access -->                                                                 
 <div id="access">
     <a href="/<?php if ($version != 'stable')
 echo "?stable"; ?>" title="Slitaz <?php
 echo $notversion ?> packages"><?php echo $notversion ?></a>                          
 </div>                                                                         
-    <?php } ?>
     <a href="http://bb.slitaz.org/"><img id="logo"
     src="pics/website/logo.png" title="bb.slitaz.org" alt="bb.slitaz.org"
     style="border: 0px solid ; width: 200px; height: 74px;" /></a>
-    <p id="titre">#!/bb/packages<?php if ($version == 'stable') echo '/stable'; ?></p>
+    <p id="titre">#!/bb/packages/<?php echo $version; ?></p>
 </div>
 
 <!-- Navigation menu -->
