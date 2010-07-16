@@ -376,7 +376,6 @@ END {
 }
 ' | while read pkg; do
 		. $WOK/${pkg##*/}/receipt
-		package_entry
 		cat << _EOT_
 $(echo ${pkg%/*} | sed 's|/| |g') $(package_entry) 
 _EOT_
