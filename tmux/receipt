@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="tmux"
+VERSION="1.2"
+CATEGORY="utilities"
+SHORT_DESC="Terminal multiplexer."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="ncurses libevent"
+BUILD_DEPENDS="ncurses-dev libevent libevent-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://tmux.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+
+	# hack GNUmakefile
+	sed -i 's/install -g bin/install -g root/g' GNUmakefile
+
+	./configure \
+		--prefix=/usr # not working?
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/tmux
+	cp -a $_pkg/usr/local/bin $fs/usr
+
+	# copy sample configs
+	cp -a $src/examples $fs/usr/share/tmux
+}
+
