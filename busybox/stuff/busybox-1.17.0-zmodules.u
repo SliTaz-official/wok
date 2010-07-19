@@ -22,7 +22,7 @@ Add LZMA_DEFAULT_MAGIC support
 
 --- busybox-1.17.0/libbb/read_printf.c
 +++ busybox-1.17.0/libbb/read_printf.c
-@@ -286,6 +286,16 @@
+@@ -286,6 +286,17 @@
  # endif
  		goto found_magic;
  	}
@@ -31,6 +31,7 @@ Add LZMA_DEFAULT_MAGIC support
 +	) {
 +# if BB_MMU
 +		xformer = unpack_lzma_stream;
++		xlseek(fd, offset, SEEK_CUR);
 +# else
 +		xformer_prog = "unlzma";
 +# endif
@@ -39,3 +40,13 @@ Add LZMA_DEFAULT_MAGIC support
  	if (ENABLE_FEATURE_SEAMLESS_XZ
  	 && magic.b16[0] == XZ_MAGIC1
  	) {
+@@ -342,7 +353,8 @@
+ 			/* .lzma has no header/signature, just trust it */
+ 			open_transformer(fd, unpack_lzma_stream, "unlzma");
+ 		else
+-		if ((ENABLE_FEATURE_SEAMLESS_GZ && strcmp(sfx, "gz") == 0)
++		if (((ENABLE_FEATURE_SEAMLESS_GZ|ENABLE_FEATURE_SEAMLESS_LZMA)
++		  && strcmp(sfx, "gz") == 0)
+ 		 || (ENABLE_FEATURE_SEAMLESS_BZ2 && strcmp(sfx, "bz2") == 0)
+ 		 || (ENABLE_FEATURE_SEAMLESS_XZ && strcmp(sfx, "xz") == 0)
+ 		) {
