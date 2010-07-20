@@ -1,26 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="zim"
-VERSION="0.29"
+VERSION="0.47"
 CATEGORY="utilities"
 SHORT_DESC="A desktop wiki."
-MAINTAINER="paul@slitaz.org"
-DEPENDS="perl perl-gtk2 perl-file-basedir perl-file-desktopentry \
-perl-file-mimeinfo desktop-file-utils xdg-utils"
-BUILD_DEPENDS="perl perl-gtk2 perl-file-basedir perl-file-desktopentry \
-perl-file-mimeinfo desktop-file-utils xdg-utils"
-SOURCE="Zim"
-TARBALL="$SOURCE-$VERSION.tar.gz"
+MAINTAINER="gokhlayeh@mailoo.org"
+DEPENDS="python pygtk pygobject python-simplejson python-xdg desktop-file-utils shared-mime-info xdg-utils"
+BUILD_DEPENDS="$DEPENDS pycairo-dev pygobject-dev pygtk-dev python-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://zim-wiki.org/"
-WGET_URL="http://www.zim-wiki.org/downloads/$TARBALL"
-TAGS="wiki"
+WGET_URL="http://zim-wiki.org/downloads/$TARBALL"
+TAGS="wiki notebook"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure
-	make && make DESTDIR=$PWD/_pkg install
+	./setup.py install --root=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -35,6 +31,8 @@ post_install()
 	echo -n "Processing post-install commands..." 
 	# Create mimeinfo.cache in /usr/share/applications
 	update-desktop-database
+	update-mime-database /usr/share/mime
+	xdg-icon-resource install --context mimetypes \
+--size 64 /usr/share/pixmaps/zim.png application-x-zim-notebook
 	status
 }
-
