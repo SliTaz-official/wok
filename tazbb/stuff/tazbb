@@ -308,12 +308,14 @@ check_wok()
 			fi
 		else
 			# Check if package is up-to-date.
-			PKG_DATE=`date -u -r $PACKAGES_REPOSITORY/$PACKAGE-${VERSION}${EXTRAVERSION}.tazpkg '+%Y%m%d%H%M'`
+			PKG_YEAR=`date -u -r $PACKAGES_REPOSITORY/$PACKAGE-${VERSION}${EXTRAVERSION}.tazpkg '+%Y'`
+			PKG_DATE=`date -u -r $PACKAGES_REPOSITORY/$PACKAGE-${VERSION}${EXTRAVERSION}.tazpkg '+%m%d%H%M'`
 			for file in `find $pkg -type f`
 			do
-				FILE_DATE=`date -u -r $file '+%Y%m%d%H%M'`
+				FILE_YEAR=`date -u -r $file '+%Y'`
+				FILE_DATE=`date -u -r $file '+%m%d%H%M'`
 				[ "$2" = "--verbose" ] && echo " -> Checking: $file"
-				if [ "$FILE_DATE" -gt "$PKG_DATE" ] && ! grep -q $PACKAGE $DB_DIR/cooklist; then
+				if [ "$FILE_YEAR" -ge "$PKG_YEAR" -a "$FILE_DATE" -gt "$PKG_DATE" ] && ! grep -q $PACKAGE $DB_DIR/cooklist; then
 					[ "$1" = "report" ] && echo "Refresh : $PACKAGE ($VERSION)"
 					echo "Refresh : $PACKAGE ($VERSION)" >> $DB_DIR/report
 					echo "$PACKAGE" >> $DB_DIR/cooklist
