@@ -7,7 +7,7 @@ CATEGORY="development"
 SHORT_DESC="A Free Software harness for OpenJDK."
 MAINTAINER="rcx@zoominternet.net"
 DEPENDS="icedtea6-jre glibc-base zlib xorg-libX11 xorg-libXau xorg-libXdmcp"
-BUILD_DEPENDS="gcc+gcj slitaz-toolchain autoconf automake m4 \
+BUILD_DEPENDS="gcc+gcj slitaz-toolchain autoconf automake m4 diffutils gawk \
 coreutils-file-special coreutils-file-summarize alsa-lib-dev cups-dev \
 gawk file patch findutils perl zip unzip bzip2 tar cpio glib-dev zlib-dev \
 fastjar rhino ecj apache-ant xalan-xerces-j \
@@ -28,10 +28,13 @@ compile_rules()
 	# NOTE: This build does not seem to work with ECJ 3.5
 
 	cd $src
+	[ -L /usr/bin/diff ] && tazpkg get-install diffutils --forced
+	[ -L /usr/bin/awk ] && tazpkg get-install gawk --forced
+	mem=$(free | awk '/Mem:/ { printf "%d\n",$2/1024 }')
 	cat > slitaz.sh <<EOT
 # Busybox compatibility
 find -name Sanity.gmk | xargs sed -i 's/--sync -kP/-k/' Makefile 
-find -name Platform.gmk | xargs sed -i 's@MB_OF_MEMORY :=.*@MB_OF_MEMORY := \$(shell free | awk '"'"'/Mem:/ { printf "%d\\\\n",\\\$2/1024 }'"'"')@' Makefile
+find -name Platform.gmk | xargs sed -i "s@MB_OF_MEMORY :=.*@MB_OF_MEMORY := $mem@" Makefile
 EOT
 	sed -i  -e 's|touch stamps/extract.stamp|&\n\tsh slitaz.sh|' \
 		-e 's|touch stamps/download.stamp|&\n\tsh slitaz.sh|' \
