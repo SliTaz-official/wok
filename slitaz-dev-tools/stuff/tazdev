@@ -177,10 +177,16 @@ purge_sources()
 	arg=$1
 	TMP_FILE=/tmp/tazdev.$$
 	ls $BUILD_WOK | while read pkg; do
-		[ -f $BUILD_WOK/$pkg/taz/*/receipt ] || continue
+		[ -f $BUILD_WOK/$pkg/receipt ] || continue
 		TARBALL=""
-		. $BUILD_WOK/$pkg/taz/*/receipt
+		. $BUILD_WOK/$pkg/receipt
 		[ -n "$TARBALL" ] && echo $TARBALL
+		grep SOURCES_REPOSITORY/ $BUILD_WOK/$pkg/receipt | sed \
+		-e 's|.*SOURCES_REPOSITORY/\([^ ]*\)\( .*\)$|\1|' \
+		-e 's|.*SOURCES_REPOSITORY/\([^ ]*\)$|\1|' | sort | uniq | \
+		sed "s|['\"/]||g" | while read file ; do
+			eval echo $file 2> /dev/null
+		done
 	done > $TMP_FILE
 	ls $SLITAZ/chroot/home/slitaz/src | while read pkg; do
 		grep -q ^$pkg$ $TMP_FILE && continue
