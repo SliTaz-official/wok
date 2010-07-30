@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="netsurf"
-VERSION="2.1"
+VERSION="2.5"
 CATEGORY="network"
 SHORT_DESC="A simple, fast and light web browser using GTK."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+ libssl libpng jpeg lcms libparserutils hubbub libnsgif \
-libcurl libglade librsvg libgsf"
+libcurl libglade librsvg libgsf libcss libmng"
 BUILD_DEPENDS="$DEPENDS gtk+-dev openssl-dev libpng-dev jpeg-dev lcms-dev \
-re2c lemon libparserutils-dev hubbub-dev libnsgif-dev librsvg-dev"
+re2c lemon libparserutils-dev hubbub-dev libnsgif-dev librsvg-dev curl-dev pango-dev \
+libcss-dev libwapcaplet-dev libmng-dev"
 TARBALL="$PACKAGE-$VERSION-src.tar.gz"
 WEB_SITE="http://www.netsurf-browser.org/"
 WGET_URL="http://www.netsurf-browser.org/downloads/releases/$TARBALL"
@@ -19,21 +20,26 @@ compile_rules()
 {
 	mv netsurf $PACKAGE-$VERSION 2>/dev/null
 	cd $src
-	cp -a ../stuff/Makefile.defaults .
-	make
+	cp -a ../stuff/Makefile.config .
+	
+	# Fix install target
+	sed -i 's/cp -vRL/cp -RL/' Makefile
+	sed -i 's/cp -v/cp /' Makefile
+	sed -i 's|/usr/local|/usr|' Makefile.defaults
+	
+	make && make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/usr/bin $fs/usr/lib/netsurf
-	cp -RL $src/gtk/res $fs/usr/share/netsurf
-	cp $src/nsgtk $fs/usr/lib/netsurf
-	cp $src/netsurf $fs/usr/bin
-	sed -i -e 's|NETSURFRES=`dirname $0`/gtk/res/|NETSURFRES=/usr/share/netsurf/res/|' \
-		$fs/usr/bin/netsurf
-	sed -i -e 's|exec `dirname $0`/nsgtk "$@" 2>$LOG|exec /usr/lib/netsurf/nsgtk "$@" 2>$LOG|' \
-		$fs/usr/bin/netsurf
+	mkdir -p $fs/usr/share \
+		$fs/usr/lib/netsurf
+	
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/netsurf $fs/usr/share
+
+	
 	# Remove files to save some space
 	rm -rf $fs/usr/share/netsurf/docs
 	rm -rf $fs/usr/share/netsurf/*.xpm
