@@ -70,7 +70,7 @@ floppyset()
 	bs=/tmp/bs$$
 
 	# Get and patch boot sector
-	# See http://hg.slitaz.org/wok/raw-file/tip/linux/stuff/linux-header-2.6.30.6.u
+	# See  http://hg.slitaz.org/wok/raw-file/711d076b277c/linux/stuff/linux-header-2.6.34.u
 	dd if=$KERNEL bs=512 count=1 of=$bs 2> /dev/null
 	uudecode <<EOT | dd of=$bs conv=notrunc 2> /dev/null
 begin-base64 644 -
