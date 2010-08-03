@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="lxterminal"
+VERSION="0.1.8"
+CATEGORY="utilities"
+SHORT_DESC="LXDE X Terminal emulator."
+MAINTAINER="gokhlayeh@mailoo.org"
+DEPENDS="vte gtk+"
+BUILD_DEPENDS="intltool vte-dev vte-terminal gtk+-dev"
+SUGGESTED="lxterminal-locales"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://lxde.org"
+WGET_URL="http://downloads.sourceforge.net/project/lxde/LXTerminal%20%28terminal%20emulator%29/LXTerminal%20$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share $fs/usr
+
+	# Remove man & locales
+	rm -rf $fs/usr/share/man
+	rm -rf $fs/usr/share/locale	
+}
+
