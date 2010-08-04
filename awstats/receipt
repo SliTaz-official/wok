@@ -31,12 +31,23 @@ genpkg_rules()
 	cp -a $src/wwwroot/cgi-bin/awstats.pl  $fs/var/www/cgi-bin
 	cp -a $src/wwwroot/cgi-bin/awstats.model.conf  $fs/etc/awstats
 	
-	cp stuff/awstats-apache.conf $fs/usr/share/awstats/extras
-	cp stuff/awstats-lighttpd.conf $fs/usr/share/awstats/extras
+	cp stuff/* $fs/usr/share/awstats/extras
 
 	# Add a link using google map
 	sed -i 's|Full Whois Field"|Full Whois Field <a href=\\"http://en.utrace.de/?query=".$HostResolved."\\">?</a>"|' \
 		$fs/usr/share/awstats/plugins/hostinfo.pm
+
+	# Avoid alias conflits
+	for i in classes css icon ; do
+		sed -i "s| /$i| /awstats$i|" \
+			$fs/usr/share/awstats/extras/awstats-apache.conf
+		sed -i "s|\"/$i|\"/awstats$i|" \
+			$fs/usr/share/awstats/extras/awstats-lighttpd.conf
+	done
+	sed -i -e '/\/css\//d' -e 's|DirIcons="/icon"|DirIcons="/awstatsicon"|' \
+		$fs/etc/awstats/awstats.model.conf
+	sed -i 's/classes/awstatsclasses/' \
+		$fs/usr/share/awstats/plugins/graphapplet.pm
 }
 
 post_install()
@@ -67,6 +78,11 @@ post_install()
 			/etc/init.d/lighttpd restart
 		fi
 	fi
+	cat <<EOT
+You should add in your crontab something like;
+
+0 0 * * * /usr/share/awstats/extras/update
+EOT
 }
 
 post_remove()

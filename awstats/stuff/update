@@ -1,0 +1,44 @@
+#!/bin/sh
+
+list_vhosts()
+{
+[ -d /etc/apache ] && cat /etc/apache/conf.d/* | awk ' \
+/ServerName/ { name=$2 }
+/CustomLog/  { file=$2 }
+{
+    if ( name != "" && file != "" ) {
+    	printf "%s %s\n",name,file
+       	name=""
+    	file=""
+    }
+}
+' | sed '/localhost/d;/\//!d'
+[ -d /etc/lighttpd ] && grep -v '^ *#' /etc/lighttpd/vhosts.conf | awk ' \
+/HTTP."host"/ { name=$3 ; file="" }
+/accesslog.filename/  { file=$3 }
+{
+    if ( name != "" && file != "" ) {
+    	printf "%s %s\n",name,file
+       	name=""
+    }
+}
+' | sed 's/\$//;s/\^//;s/\\//g;s/"//g;/(/d'
+}
+
+cd /etc/awstats
+
+list_vhosts | while read name logfile; do
+	[ -s $logfile ] || continue
+	[ -s /etc/awstats/awstats.$name.conf ] && continue
+	mkdir -p /var/lib/awstats/$name
+	sed -e "s|LogFile=.*|LogFile=\"$logfile\"|" \
+	    -e "s|SiteDomain=.*|SiteDomain=\"$name\"|" \
+	    -e "s|DirData=.*|DirData=\"/var/lib/awstats/$name\"|" \
+	    -e "s|LogoLink=.*|LogoLink=\"http://$name/\"|" \
+	    < /etc/awstats/awstats.model.conf > /etc/awstats/awstats.$name.conf
+done
+
+for i in $(grep -l '^DirData="/var/lib/awstats' *.conf); do
+	/var/www/cgi-bin/awstats.pl \
+		config=$(echo $i | sed 's/awstats\.\(.*\)\.conf/\1/') -update
+done
