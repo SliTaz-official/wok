@@ -1,0 +1,59 @@
+#!/bin/sh
+
+usage()
+{
+	cat << EOT
+resize2fs
+usage: 
+$0 grow <guest> <size>[MG]
+$0 fixmbr <guest>
+EOT
+	exit 1
+}
+
+grow()
+{
+	case "$2" in
+	*M)	dd if=/dev/zero bs=1M count=${2%M} >> /boot/guests/$1 ;;
+	*G)	dd if=/dev/zero bs=1G count=${2%G} >> /boot/guests/$1 ;;
+	esac
+}
+
+# write a 32 bits data
+# usage: storelong offset data32 file
+storelong()
+{
+	printf "00000  %02X %02X %02X %02X \n" \
+		$(( $2 & 255 )) $(( ($2>>8) & 255 )) \
+		$(( ($2>>16) & 255 )) $(( ($2>>24) & 255 )) | \
+	hexdump -R | dd bs=1 conv=notrunc of=$3 seek=$(( $1 )) 2> /dev/null
+}
+
+# read a 32 bits data
+# usage: getlong offset file
+getlong()
+{
+	dd if=$2 bs=1 skip=$(( $1 )) count=4 2> /dev/null | \
+		hexdump -e '"" 1/4 "%d" "\n"'
+}
+
+fixmbr()
+{
+	if [ $(getlong 0x1ea $1) -ne 0 -a $(getlong 0x1fa $1) -ne 0 ]; then
+		echo "Parttion 3 & 4 non empty. Abort"
+		exit 1
+	fi
+	if [ $(getlong 0x1da $1) -eq 0 ]; then
+		echo "Parttion 2 empty. Abort"
+		exit 1
+	fi
+	size=$(stat -c %s $1)
+	new=$(( $size/512 - 32 - $(getlong 0x1ca $1) ))
+	storelong 0x1da $new $1
+}
+
+case "$1" in
+grow)	shift; grow $@ ; fixmbr $1 ;;
+fixmbr) shift; fixmbr $1 ;;
+*)	usage ;;
+esac

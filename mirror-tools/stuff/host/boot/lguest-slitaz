@@ -1,0 +1,21 @@
+#!/bin/sh
+
+tty=tty; [ -n "$1" ] && tty=$1
+export TERM=$tty
+shift
+
+rootfs="--initrd=/boot/rootfs-lguest.gz"
+[ -n "$1" ] && rootfs="--block=$1 root=/dev/vda2"
+shift
+
+net="--tunnet=192.168.0.1"
+case "$1" in
+192*) net="--tunnet=$1"; shift;;
+esac
+
+args="screen=text lang=fr_FR kmap=fr-latin1 sound=noconf"
+[ -n "$1" ] && args=$@
+
+/sbin/modprobe lg
+/usr/bin/lguest 512 /boot/vmlinuz-2.6.25.5-lguest \
+	$net $rootfs $args > /dev/$tty < /dev/$tty 2>&1

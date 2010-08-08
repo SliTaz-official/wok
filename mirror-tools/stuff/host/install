@@ -1,0 +1,25 @@
+#!/bin/sh
+
+grep -qs lguest-slitaz /etc/inittab || {
+sed -i 's|^tty1::|tty16::respawn:/boot/lguest-slitaz tty16 /boot/guests/mirror.slitaz.org 192.168.0.1\n&|' /etc/inittab
+cat >> /etc/init.d/local.sh <<EOT
+. /etc/network.conf
+iptables -t nat -A POSTROUTING -o $INTERFACE -j MASQUERADE
+for port in 22 873 ; do
+	iptables -t nat -A PREROUTING -i $INTERFACE --dport $port \
+			-j DNAT --to-destination 192.168.0.6:$port
+done
+for port in 80 443 ; do
+	iptables -A INPUT -p tcp -m tcp --dport $port -j ACCEPT
+done
+for iface in tap+ ; do
+	iptables -A INPUT  -i $iface -j ACCEPT
+	iptables -A OUTPUT -o $iface -j ACCEPT
+	iptables -A FORWARD -i $iface -m state \
+			--state NEW,RELATED,ESTABLISHED,UNTRACKED -j ACCEPT
+	iptables -A FORWARD -o $iface -m state \
+			--state NEW,RELATED,ESTABLISHED,UNTRACKED -j ACCEPT
+done
+echo "1" > /proc/sys/net/ipv4/ip_forward
+EOT
+}
