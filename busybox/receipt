@@ -67,13 +67,16 @@ genpkg_rules()
     mkdir -p $fs/etc/modprobe.d
     # Udhcpc stuff.
     mkdir -p $fs/usr/share/udhcpc
-    cp stuff/udhcp.script  $fs/usr/share/udhcpc/default.script
+    cp stuff/udhcp.script $fs/usr/share/udhcpc/default.script
     chmod +x $fs/usr/share/udhcpc/default.script
     # ZeroConf stuff.
     cp stuff/zcip.script $fs/etc
     # Httpd stuff.
     cp stuff/httpd_helper.sh $fs/usr/bin
     chmod +x $fs/usr/bin/httpd_helper.sh
+    # .desktop stuff
+    mkdir -p $fs/usr/share
+    cp -a stuff/applications $fs/usr/share
 }
 
 # Force glibc-2.7 reinstall if 2.3.6 still in use.
@@ -97,7 +100,7 @@ pre_install()
 			read -t 30 answer	# by default: keep
 			case "$answer" in
 			n*|N*) break;;
-			*) ;;
+			*) answer="Y";;
 			esac
 		fi
 		cp -a $1$i $1$i-busybox-install
@@ -114,4 +117,5 @@ post_install()
 		mv $1$i-busybox-install $1$i
 	done < $1$INSTALLED/$PACKAGE/files.list
 	chmod 4755 $1/bin/busybox
+	sed -i "s@vcsa2txt.*\$@busybox conspy -d | sed 's/ *\$//;/^\$/d;/^Processi\|^.witchi/,\$!d' > /var/log/boot.log@" $1/etc/init.d/rcS
 }

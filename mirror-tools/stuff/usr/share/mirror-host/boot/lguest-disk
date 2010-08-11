@@ -23,10 +23,9 @@ grow()
 # usage: storelong offset data32 file
 storelong()
 {
-	printf "00000  %02X %02X %02X %02X \n" \
-		$(( $2 & 255 )) $(( ($2>>8) & 255 )) \
-		$(( ($2>>16) & 255 )) $(( ($2>>24) & 255 )) | \
-	hexdump -R | dd bs=1 conv=notrunc of=$3 seek=$(( $1 )) 2> /dev/null
+	echo $2 | awk '{ printf "%c%c%c%c",
+	  $1%256,($1/256)%256,($1/256/256)%256,($1/256/256/256)%256 }' | \
+	dd bs=1 conv=notrunc of=$3 seek=$(( $1 )) 2> /dev/null
 }
 
 # read a 32 bits data

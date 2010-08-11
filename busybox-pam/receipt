@@ -35,6 +35,7 @@ usage.u
 EOT
     cp $WOK/$SOURCE/stuff/$SOURCE-$VERSION.config .config
     sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
+    make oldconfig
     if [ "$(gcc --version | awk '{ print $3; exit }')" == "4.5.0" ]; then
 	# "CFLAGS=-O0" is a workaround for GCC 4.5.0 (sed crash)
 	# "CFLAGS=-fno-tree-pta" may be a workaround for GCC 4.5.0 (sed garbage)
@@ -67,7 +68,7 @@ WANTED="busybox"
     cp stuff/inetd.conf $fs/etc
     cp stuff/daemon $fs/etc/init.d
     for i in crond dnsd ftpd httpd inetd klogd ntpd syslogd telnetd tftpd \
-    	     udhcpd zcip ; do
+	     udhcpd zcip ; do
 	grep -qi config_$i=y $src/.config &&
 	ln -s daemon $fs/etc/init.d/$i
     done
@@ -106,10 +107,10 @@ pre_install()
 		esac
 		if [ -z "$answer" ]; then
 			echo -n "Keep installed GNU utilities ? "
-			read answer
+			read -t 30 answer	# by default: keep
 			case "$answer" in
-			y*|Y*|o*|O*);;
-			*) break;;
+			n*|N*) break;;
+			*) answer="Y";;
 			esac
 		fi
 		cp -a $1$i $1$i-busybox-install
@@ -126,4 +127,5 @@ post_install()
 		mv $1$i-busybox-install $1$i
 	done < $1$INSTALLED/$PACKAGE/files.list
 	chmod 4755 $1/bin/busybox
+	sed -i "s@vcsa2txt.*\$@busybox conspy -d | sed 's/ *\$//;/^\$/d;/^Processi\|^.witchi/,\$!d' > /var/log/boot.log@" $1/etc/init.d/rcS
 }
