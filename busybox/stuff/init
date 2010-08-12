@@ -6,6 +6,11 @@ launch_init()
 	exec /sbin/switch_root mnt /sbin/init
 }
 
+failed()
+{
+	echo -e "\\033[70G[ \\033[1;31mFailed\\033[0;39m ]"
+}
+
 try_init()
 {
 	if [ ! -d /mnt/etc ] && grep -q cryptoroot= /proc/cmdline; then
@@ -34,7 +39,7 @@ try_init()
 		umount /proc
 		launch_init
 	fi
-	echo -e "\\033[70G[ \\033[1;31mFailed\\033[0;39m ]"
+	failed
 }
 
 mount_mapper()
@@ -43,36 +48,54 @@ mount_mapper()
 	try_init /dev/mapper $@
 }
 
+lvmsetup()
+{
+if grep -q lvmroot= /proc/cmdline; then
+	modprobe dm-mod
+	vgscan --ignorelockingfailure
+	vgchange -ay --ignorelockingfailure
+	root="/dev/mapper/$(sed 's/.*lvmroot=\([^ ]*\).*/\1/' < /proc/cmdline)"
+	return 0
+fi
+return 1
+}
+
+load_raid()
+{
+while read line; do
+	case "$line" in
+	*raid1*)	modprobe dm-mirror ;;
+	*raid[456]*)	modprobe raid456 ;;
+	esac
+done
+}
+
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 if grep -q dmraid= /proc/cmdline; then
 	root="$(sed 's/.*dmraid=\([^ ]*\).*/\1/' < /proc/cmdline)"
 	echo -n "Switching / to dmraid $root..."
-	case "$(dmraid -s | grep ^type | awk '{ print $3 }')" in
-	mirror)		modprobe dm-mirror;;
-	raid[456]*)	modprobe raid456;;
-	esac
-	name=$(dmraid -s | grep ^name | awk '{ print $3 }')
+	dmraid -s | grep ^type | awk '{ print $3 }' | load_raid
 	case "$root" in
 	/dev/*);;
-	p*) root=/dev/mapper/${name}$root ;;
-	*)  root=/dev/mapper/${name}p$root ;;
+	*) root=/dev/mapper/$(dmraid -s|grep ^name|awk '{print $3}')p${root#p};;
 	esac
 	dmraid -ay
+	lvmsetup 
 	mount_mapper
 fi
 if grep -q softraid= /proc/cmdline; then
 	root="$(sed 's/.*softraid=\([^ ]*\).*/\1/' < /proc/cmdline)"
 	echo -n "Switching / to softraid $root..."
 	mdadm --examine --scan --config=partitions > /etc/mdadm.conf
-	grep level=raid /etc/mdadm.conf | while read line; do
-		case "$line" in
-		*=raid1\ *)	modprobe dm-mirror ;;
-		*=raid[456]\ *)	modprobe raid456 ;;
-		esac
-	done
+	grep level=raid /etc/mdadm.conf | load_raid
 	mdadm --assemble --scan
+	lvmsetup 
 	mount_mapper /etc/mdadm.conf
+fi
+if lvmsetup; then
+	echo -n "Switching / to lvm $root..."
+	mount_mapper
 fi
 if grep -q loopfs= /proc/cmdline; then
 	loopfs="$(sed 's/.*loopfs=\([^ ]*\).*/\1/' < /proc/cmdline)"
@@ -111,7 +134,7 @@ for i in $(ls -a /); do
 	.|..)	;;
 	mnt)	mkdir /mnt/mnt;;
 	*)	if ! cp -a /$i /mnt 2> /dev/null; then
-			echo -e "\\033[70G[ \\033[1;31mFailed\\033[0;39m ]"
+			failed
 			umount /mnt
 			exec /sbin/init
 		fi;;
