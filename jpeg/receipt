@@ -1,12 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="jpeg"
-VERSION="6b"
+VERSION="8b"
 CATEGORY="x-window"
-SHORT_DESC="JPEG images libs."
+SHORT_DESC="JPEG image programs."
 MAINTAINER="pankso@slitaz.org"
+DEPENDS="libjpeg"
 WEB_SITE="http://www.ijg.org/"
-TARBALL="jpegsrc.v6b.tar.gz"
+TARBALL="jpegsrc.v${VERSION}.tar.gz"
 WGET_URL="http://www.ijg.org/files/$TARBALL"
 TAGS="jpeg jpg"
 
@@ -15,17 +16,15 @@ compile_rules()
 {
     cd $src
     ./configure --enable-shared --prefix=/usr \
-    --mandir=/usr/share/man $CONFIGURE_ARGS
-    make
+		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+    make &&
+	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/bin
-    cp -a $src/.libs/*.so* $fs/usr/lib
-    cp $src/.libs/cjpeg $fs/usr/bin
-    cp $src/.libs/djpeg $fs/usr/bin
-    cp $src/.libs/jpegtran $fs/usr/bin
-    strip -s $fs/usr/*/*
+	mkdir -p  $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
 }
