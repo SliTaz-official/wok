@@ -1,0 +1,36 @@
+# SliTaz package receipt."
+
+PACKAGE="h8300-gdb-dev"
+VERSION="7.1"
+CATEGORY="development"
+SHORT_DESC="The GNU Project Debugger dev files targeting the H8/300."
+MAINTAINER="rcx@slitaz.org"
+DEPENDS="h8300-gdb"
+WANTED="h8300-gdb"
+SOURCE="gdb"
+WEB_SITE="http://www.gnu.org/software/gdb/"
+
+genpkg_rules()
+{
+	# tazwok does not define _pkg correctly when both WANTED and SOURCE are set
+	_pkg=$WOK/$WANTED/$SOURCE-$VERSION/_pkg
+
+	mkdir -p $fs/usr
+	
+	# Copying include dir if exists
+	if [ -d "$_pkg/usr/include" ]; then
+		cp -a $_pkg/usr/include $fs/usr
+	fi
+	
+	# Copying pkgconfig dir if exists
+	if [ -d "$_pkg/usr/lib/pkgconfig" ]; then
+		test -d $fs/usr/lib/ || mkdir -p $fs/usr/lib/
+		cp -a $_pkg/usr/lib/pkgconfig $fs/usr/lib
+	fi
+	
+	# Copying static h8300 libs only if exists
+	if ( find $_pkg/usr/lib -name "*h8300-*.*a" > /dev/null ); then
+		test -d $fs/usr/lib || mkdir -p $fs/usr/lib
+		cp -a $_pkg/usr/lib/*h8300-*.*a $fs/usr/lib
+	fi
+}
