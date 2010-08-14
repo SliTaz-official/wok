@@ -26,3 +26,23 @@ genpkg_rules()
 		ln -s ../share/$PACKAGE/bin/$file $fs/usr/bin/uclibc-$file
 	done
 }
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	for i in $(cd $1/ ; ls usr/share/$PACKAGE/lib/ld-uClibc.so*); do
+		[ -e $1/lib/$(basename $i) ] || ln -s /$i $1/lib
+	done
+	cat <<EOT
+Add /usr/share/$PACKAGE/lib in your LD_LIBRARY_PATH to enable the shared libraries
+EOT
+}
+
+pre_remove()
+{
+	for i in /lib/ld-uClibc.so*; do
+		case "$(readlink $i)" in
+		*usr/share/$PACKAGE/lib/*) rm -f $i ;;
+		esac
+	done
+}
