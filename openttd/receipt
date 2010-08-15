@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="openttd"
+VERSION="1.0.3"
+CATEGORY="games"
+SHORT_DESC="OpenTTD is a clone of Transport Tycoon Deluxe."
+DEPENDS="libsdl lzo zlib libpng"
+BUILD_DEPENDS="libsdl libsdl-dev lzo-dev zlib-dev libpng-dev"
+MAINTAINER="devl547@gmail.com"
+TARBALL="$PACKAGE-$VERSION-source.tar.bz2"
+WEB_SITE="http://www.openttd.org"
+WGET_URL="http://us.binaries.openttd.org/binaries/releases/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix-dir=/usr \
+		--binary-dir=/usr/games \
+		--man-dir=/usr/share/man \
+		--enable-strip \
+		--with-zlib \
+		--with-liblzo2 \
+		--with-png \
+		--with-sdl \
+		--without-freetype \
+		$CONFIGURE_ARGS &&
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/pixmaps $fs/usr/share/applications $fs/usr/share/games/openttd $fs/usr/games
+	cp -a $src/bin/openttd $fs/usr/games
+	cp -a $src/bin/ai $fs/usr/share/games/openttd
+	cp -a $src/bin/data $fs/usr/share/games/openttd
+	cp -a $src/bin/gm $fs/usr/share/games/openttd
+	cp -a $src/bin/lang $fs/usr/share/games/openttd
+	cp -a $src/bin/scripts $fs/usr/share/games/openttd
+	cp $src/media/$PACKAGE.32.png $fs/usr/share/pixmaps
+	cp $src/media/$PACKAGE.desktop $fs/usr/share/applications
+}
