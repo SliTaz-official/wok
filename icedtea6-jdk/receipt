@@ -33,6 +33,18 @@ compile_rules()
 	ECJ_VERSION="3.6"
 
 	cd $src
+	mkdir drops
+	sed -i 's/mkdir -p drops/true/' Makefile*
+	for i in jdk6-jaxws-2009_10_27.zip jdk6-jaxp-2009_10_13.zip \
+		  jdk6-jaf-2009_10_27.zip ; do
+		[ -s $SOURCES_REPOSITORY/$i ] &&
+		cp $SOURCES_REPOSITORY/$i drops
+	done
+	for i in openjdk-6-src-b18-16_feb_2010.tar.gz ; do
+		[ -s $SOURCES_REPOSITORY/$i ] &&
+		cp $SOURCES_REPOSITORY/$i .
+	done
+	[ -L /usr/bin/find ] && tazpkg get-install findutils --forced
 	[ -L /usr/bin/diff ] && tazpkg get-install diffutils --forced
 	[ "$(readlink /usr/bin/awk)" == "gawk" ] ||
 	tazpkg get-install gawk --forced
@@ -40,10 +52,9 @@ compile_rules()
 	cat > slitaz.sh <<EOT
 # Busybox compatibility
 find -name Sanity.gmk | xargs sed -i 's/--sync -kP/-k/' Makefile 
-find -name Platform.gmk | xargs sed -i "s@MB_OF_MEMORY :=.*@MB_OF_MEMORY := $mem@" Makefile
+find -name Platform.gmk | xargs sed -i "s@MB_OF_MEMORY *:=.*free.*@MB_OF_MEMORY := $mem@" Makefile
 EOT
-	sed -i  -e 's|touch stamps/extract.stamp|&\n\tsh slitaz.sh|' \
-		-e 's|touch stamps/download.stamp|&\n\tsh slitaz.sh|' \
+	sed -i  -e 's|touch .*|&\n\tsh slitaz.sh|' \
 		-e 's/--check/-c/' \
 		-e 's/ln -sfv/ln -sf/' Makefile*
 	autoreconf &&
