@@ -243,7 +243,7 @@ xhtml_header()
 <!-- Access -->
 <div id="access">
 	<a href="http://www.slitaz.org/" title="SliTaz Web site">Website</a> |
-	<a href="http://wiki.slitaz.org/" title="SliTaz Community Wiki">Wiki</a> |
+	<a href="http://doc.slitaz.org/" title="SliTaz Community Documentation">Doc</a> |
 	<a href="http://labs.slitaz.org/" title="SliTaz laboratories">Labs</a>
 </div>
 	<a href="http://pkgs.slitaz.org/"><img id="logo"
