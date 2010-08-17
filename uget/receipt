@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="uget"
+VERSION="1.6.0"
+CATEGORY="internet"
+SHORT_DESC="Download manager using gtk+ and libcurl"
+DEPENDS="pcre glib curl gtk+"
+BUILD_DEPENDS="pcre-dev glib-dev curl-dev gtk+-dev intltool"
+MAINTAINER="devl547@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://urlget.sourceforge.net/"
+WGET_URL="$SF_MIRROR/urlget/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--disable-gstreamer \
+		--disable-notify \
+		$CONFIGURE_ARGS \
+		LDFLAGS='-Wl,-O1 -Wl,--as-needed' &&
+	make -j2 -s &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr/
+	cp -a $_pkg/usr/share/applications/ $fs/usr/share
+	cp -a $_pkg/usr/share/icons/ $fs/usr/share
+	cp -a $_pkg/usr/share/sounds/ $fs/usr/share
+	strip -s $fs/usr/bin/*
+}
