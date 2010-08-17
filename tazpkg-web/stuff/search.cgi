@@ -18,7 +18,11 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
 	VERBOSE=0
 	for i in $(echo $REQUEST_URI | sed 's/[?&]/ /g'); do
 		SLITAZ_VERSION=cooking
-		case "$i" in
+		case "$(echo $i | tr [A-Z] [a-z])" in
+		search=*)
+			SEARCH=${i#*=};;
+		object=*)
+			OBJECT=${i#*=};;
 		verbose=*)
 			VERBOSE=${i#*=};;
 		lang=*)
@@ -44,18 +48,17 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
 		depends=*)
 			SEARCH=${i#*=}
 			OBJECT=Depends;;
-		BuildDepends=*)
+		builddepends=*)
 			SEARCH=${i#*=}
 			OBJECT=BuildDepends;;
-		FileOverlap=*)
+		fileoverlap=*)
 			SEARCH=${i#*=}
 			OBJECT=FileOverlap;;
 		version=s*|version=3*)
 			SLITAZ_VERSION=stable;;
-		version=2*)
-			SLITAZ_VERSION=2.0;;
-		version=1*)
-			SLITAZ_VERSION=1.0;;
+		version=[1-9]*)
+			i=${version%%.*}
+			SLITAZ_VERSION=${i#*=}.0;;
 		esac
 	done
 	[ -n "$SEARCH" ] && REQUEST_METHOD="POST"
