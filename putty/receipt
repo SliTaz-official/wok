@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="putty"
-VERSION="0.60-2010-02-05"
+VERSION="0.60-2010-08-03"
 CATEGORY="utilities"
 SHORT_DESC="A free telnet/SSH client."
 MAINTAINER="rcx@zoominternet.net"
@@ -11,7 +11,6 @@ xorg-libXcomposite xorg-libXcursor xorg-libXdamage xorg-libXdmcp \
 xorg-libXext xorg-libXfixes xorg-libXinerama xorg-libXrender krb5 libcomerr3"
 BUILD_DEPENDS="slitaz-toolchain gtk+-dev imagemagick python perl krb5-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-#WEB_SITE="http://putty.linux-mirror.org/"
 WEB_SITE="http://www.chiark.greenend.org.uk/~sgtatham/putty/"
 #WGET_URL="http://putty.linux-mirror.org/latest/$TARBALL"
 WGET_URL="http://tartarus.org/~simon/putty-snapshots/$TARBALL"
@@ -23,12 +22,11 @@ compile_rules()
 	cd $src/icons &&
 	make &&
 	make install &&
+	mkdir -p $src/_pkg/usr/share/pixmaps &&
+	cp $src/icons/pterm-48.png $src/_pkg/usr/share/pixmaps/pterm.png &&
+	cp $src/icons/putty-48.png $src/_pkg/usr/share/pixmaps/putty.png &&
 	
 	cd $src/unix &&
-
-	sed -i 's/AM_PATH_GTK(.*//' configure.ac &&
-	autoheader &&
-	autoconf &&
 
 	sed -e 's/-Werror//g' -i configure &&
 	./configure \
@@ -37,9 +35,6 @@ compile_rules()
 		$CONFIGURE_ARGS &&
 	make XFLAGS=-DTELNET_DEFAULT &&
 	make DESTDIR=$src/_pkg install
-	# &&
-	#cp $src/icons/pterm-48.png $src/_pkg/usr/share/pixmaps/pterm.png &&
-	#cp $src/icons/putty-48.png $src/_pkg/usr/share/pixmaps/putty.png
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -51,6 +46,4 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/share/applications $fs/usr/share
 	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
-	cp -a $src/icons/pterm-48.png $fs/usr/share/pixmaps/pterm.png
-	cp -a $src/icons/putty-48.png $fs/usr/share/pixmaps/putty.png
 }
