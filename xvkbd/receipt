@@ -40,10 +40,18 @@ genpkg_rules()
 post_install()
 { 
 	# .Xdefaults file
-	cat >> /home/tux/.Xdefaults << EOT
+	lang=$(echo $LANG | awk '{FS="_"} {print $1}')
+	find /home -maxdepth 2 -name ".Xdefaults" > /tmp/listeXdefaults
+	while read line
+	do
+	if ! grep -q "Xvkbd settings" $line; then
+	cat >> $line << EOT
 
 ! Xvkbd settings
 !
 xvkbd*Font: -misc-fixed-medium-r-semicondensed--0-0-75-75-c-0-iso8859-1
 EOT
+echo "xvkbd.Layout : $lang" >> $line	
+	fi
+	done </tmp/listeXdefaults
 }
