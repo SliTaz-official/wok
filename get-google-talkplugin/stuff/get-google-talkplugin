@@ -1,0 +1,87 @@
+#!/bin/sh -e
+
+ROOT="$1"
+PACKAGE="google-talkplugin"
+TARBALL="google-talkplugin_current_i386.deb"
+WGET_URL="http://dl.google.com/linux/direct/$TARBALL"
+SHORT_DESC="Google Talk Plugin."
+WEB_SITE="http://www.google.com/chat/video"
+DEPENDS="firefox gcc-lib-base libssl pango gtk+ atk mesa glew \
+xorg-libICE xorg-libSM xorg-libXfixes xorg-libXt xorg-libXcomposite \
+xorg-libXext xorg-libXinerama xorg-libXrandr xorg-libXcursor"
+
+if test $(id -u) != 0 ; then
+	echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please type 'su' and root password to become super-user.\n"
+	exit 0
+fi
+
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+  [ -n "$ROOT" ] && exit 1
+  tazpkg remove $PACKAGE
+  [ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
+fi
+
+TMP_DIR=/tmp/$(basename $0)-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+
+# Download tarball
+wget $WGET_URL
+if [ ! -f $TARBALL ]; then
+	cd $CUR_DIR
+	rm -rf $TMP_DIR
+	echo "Could not download $TARBALL. Exiting."
+	exit 1
+fi
+
+# Extract package
+dpkg-deb -e $TARBALL e
+dpkg-deb -x $TARBALL x
+
+VERSION="$(awk '/Version:/ { print $2 }' < e/control | sed 's/-/./g')"
+
+# Create pseudo package
+mkdir -p $PACKAGE-$VERSION/usr/share/$PACKAGE
+mv x/opt/google/talkplugin/* $PACKAGE-$VERSION/usr/share/$PACKAGE
+mv $PACKAGE-$VERSION/usr/share/$PACKAGE/lib $PACKAGE-$VERSION/usr
+
+# No auto updates...
+rm -rf $PACKAGE-$VERSION/usr/share/$PACKAGE/cron
+
+cat > $PACKAGE-$VERSION/receipt <<EOT
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="$SHORT_DESC"
+WEB_SITE="$WEB_SITE"
+DEPENDS="$DEPENDS"
+
+post_install()
+{
+	chroot $1/ ln -s /usr/share/$PACKAGE/*.so /usr/lib/firefox*/plugins
+}
+
+post_remove()
+{
+	for i in /usr/lib/firefox*/plugins/*.so ; do
+		case "$(readlink $i)" in
+		/usr/share/$PACKAGE/*) rm -f $i ;;
+		esac
+	done
+}
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Clean to save RAM memory
+rm -rf $PACKAGE-$VERSION
+
+# Install pseudo package
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+
+# Clean
+cd $CUR_DIR
+rm -rf $TMP_DIR
+
