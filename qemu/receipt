@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="qemu"
-VERSION="0.10.5"
+VERSION="0.12.5"
 CATEGORY="misc"
 SHORT_DESC="General-purpose full virtualizer for x86 hardware."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -16,16 +16,20 @@ TAGS="virtualization"
 compile_rules()
 {
 	cd $src
+
+	TARGET="i386-softmmu,i386-linux-user, \
+	x86_64-softmmu,x86_64-linux-user, \
+	arm-softmmu,arm-linux-user, \
+	ppc-softmmu,ppc-linux-user, \
+	mips-softmmu,mips-linux-user"
 	
-	# From 0.10.0 VirtIO paravirtual device are supported.
-	#[ -f done.virtio.u ] || patch -p1 < ../stuff/virtio.u
-	#touch done.virtio.u
-	
-	#./configure --prefix=/usr --enable-alsa --disable-gfx-check
-	
-	./configure \
+		./configure \
 		--prefix=/usr \
-		--target-list="i386-softmmu,x86_64-softmmu" &&
+		--disable-curl \
+		--enable-system \
+		--enable-user \
+		--enable-linux-user \
+		--target-list="$TARGET"&&
 	make &&
 	make DESTDIR=$PWD/_pkg install
 }
@@ -33,5 +37,19 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $_pkg/usr $fs
+	mkdir -p $fs/usr/bin $fs/usr/share
+	
+	cp -a $_pkg/usr/bin/qemu $fs/usr/bin
+	cp -a $_pkg/usr/bin/qemu-io $fs/usr/bin
+	cp -a $_pkg/usr/bin/qemu-img $fs/usr/bin
+	cp -a $_pkg/usr/bin/qemu-nbd $fs/usr/bin
+	
+	cp -a $_pkg/usr/share/qemu $fs/usr/share
+	
+	# move softmmu to separate packages.
+	rm -f $fs/usr/bin/qemu-system*
+	
+	# Remove unneeded bios binaries
+	rm -f $fs/usr/share/qemu/*ppc*
+	rm -f $fs/usr/share/qemu/*sparc*
 }
