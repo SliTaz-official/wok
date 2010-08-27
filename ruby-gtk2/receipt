@@ -1,0 +1,51 @@
+# SliTaz package receipt.
+
+# Note: uses the full Ruby/GNOME2 package but compiles only the selected
+# GTK+ & Glade parts. Select parts to compile on the following line.
+# Any unwanted extras (i.e. GNOME stuff) will be ignored.
+
+SELECTED_LIBS="glib pango atk gdkpixbuf gtk libglade"
+
+PACKAGE="ruby-gtk2"
+VERSION="0.19.4"
+CATEGORY="development"
+SHORT_DESC="GTK+ bindings for Ruby."
+MAINTAINER="ben@seawolfsanctuary.com"
+
+TARBALL="ruby-gnome2-all-$VERSION.tar.gz"
+WEB_SITE="http://ruby-gnome2.sourceforge.jp/"
+WGET_URL="http://download.sourceforge.net/project/ruby-gnome2/ruby-gnome2/ruby-gnome2-$VERSION/$TARBALL"
+
+DEPENDS="ruby gtk+ GConf startup-notification libpthread-stubs libwnck xorg-libXp xorg-libXxf86vm"
+BUILD_DEPENDS="ruby ruby-dev gtk+-dev libglade-dev GConf GConf-dev startup-notification-dev \
+		libpthread-stubs libwnck-dev xorg-libXp-dev xorg-libXxf86vm-dev"
+
+TAGS="ruby programming gtk development"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	echo "Creating link... " && \
+		ln -s ruby-gnome2-all-$VERSION $PACKAGE-$VERSION
+		status
+
+	cd $src
+	ruby extconf.rb && \
+	make -j4 && \
+	make DESTDIR=$PWD/_pkg install
+
+	# Select the parts to compile here:
+	for LIB in $SELECTED_LIBS; do
+		ruby extconf.rb $LIB && \
+		make -j4 && \
+		make DESTDIR=$PWD/_pkg install
+	done
+
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr $fs/
+}
