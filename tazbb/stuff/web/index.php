@@ -89,7 +89,6 @@ about any packages modified by the SliTaz contributors in the Mercurial
 repositories, aka <a href="http://hg.slitaz.org/">Hg repos</a>.
 </p>
 
-<p>
 <form action="log.php" method="get">
 <?php
 	if ($version == 'stable')
@@ -97,7 +96,6 @@ repositories, aka <a href="http://hg.slitaz.org/">Hg repos</a>.
 ?>	Show cooklog: <input type="text" name="package" />
 	<!-- <input type="submit" value="Show" /> -->
 </form>
-</p>
 
 <h3>Summary</h3>
 <pre class="package">
