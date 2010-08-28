@@ -159,51 +159,50 @@ system("top -n1 -b");
 	These mirrors are updated using the url: <b>rsync://mirror.slitaz.org/slitaz/</b>
 	(<a href="http://mirror.slitaz.org/awstats.pl?config=rsync">stats</a>)
 <ul>
-    </a>
 	<li><a href="http://en.utrace.de/?query=mirror.switch.ch">
-		<img title="map" src="pics/website/ch.png" alt="map" />
+		<img title="map" src="pics/website/ch.png" alt="map" /></a>
 		<a href="http://mirror.switch.ch/ftp/mirror/slitaz/">
 		http://mirror.switch.ch/ftp/mirror/slitaz/</a> or
 		<a href="ftp://mirror.switch.ch/mirror/slitaz/">
 		ftp://mirror.switch.ch/mirror/slitaz/</a></li>
 	<li><a href="http://en.utrace.de/?query=www.gtlib.gatech.edu">
-		<img title="map" src="pics/website/us.png" alt="map" />
+		<img title="map" src="pics/website/us.png" alt="map" /></a>
 		<a href="http://www.gtlib.gatech.edu/pub/slitaz/">
 		http://www.gtlib.gatech.edu/pub/slitaz/</a> or
 		<a href="ftp://ftp.gtlib.gatech.edu/pub/slitaz/">
 		ftp://ftp.gtlib.gatech.edu/pub/slitaz/</a></li>
 	<li><a href="http://en.utrace.de/?query=download.tuxfamily.org">
-		<img title="map" src="pics/website/fr.png" alt="map" />
+		<img title="map" src="pics/website/fr.png" alt="map" /></a>
 		<a href="http://download.tuxfamily.org/slitaz/">
 		http://download.tuxfamily.org/slitaz/</a></li>
 	<!-- li><a href="http://www.linuxembarque.com/slitaz/mirror/">
 		http://www.linuxembarque.com/slitaz/mirror/</a></li -->
 	<li><a href="http://en.utrace.de/?query=mirror.lupaworld.com">
-		<img title="map" src="pics/website/cn.png" alt="map" />
+		<img title="map" src="pics/website/cn.png" alt="map" /></a>
 		<a href="http://mirror.lupaworld.com/slitaz/">
 		http://mirror.lupaworld.com/slitaz/</a></li>
-	<li <a href="http://en.utrace.de/?query=slitaz.c3sl.ufpr.br">
-		<img title="map" src="pics/website/br.png" alt="map" />
+	<li><a href="http://en.utrace.de/?query=slitaz.c3sl.ufpr.br">
+		<img title="map" src="pics/website/br.png" alt="map" /></a>
 		<a href="http://slitaz.c3sl.ufpr.br/">
 		http://slitaz.c3sl.ufpr.br/</a> or
 		<a href="ftp://slitaz.c3sl.ufpr.br/slitaz/">
 		ftp://slitaz.c3sl.ufpr.br/slitaz/</a></li>
 	<li><a href="http://en.utrace.de/?query=slitaz.mirror.garr.it">
-		<img title="map" src="pics/website/it.png" alt="map" />
+		<img title="map" src="pics/website/it.png" alt="map" /></a>
 		<a href="http://slitaz.mirror.garr.it/mirrors/slitaz/">
 		http://slitaz.mirror.garr.it/mirrors/slitaz/</a></li>
 	<!-- li><a href="http://mirror.drustvo-dns.si/slitaz/">
 		http://mirror.drustvo-dns.si/slitaz/</a></li -->
 	<li><a href="http://en.utrace.de/?query=ftp.pina.si">
-		<img title="map" src="pics/website/si.png" alt="map" />
+		<img title="map" src="pics/website/si.png" alt="map" /></a>
 		<a href="ftp://ftp.pina.si/slitaz/">
 		ftp://ftp.pina.si/slitaz/</a></li>
-	<li><a href="http://en.utrace.de/?query=distro.ibiblio.org²">
-		<img title="map" src="pics/website/us.png" alt="map" />
+	<li><a href="http://en.utrace.de/?query=distro.ibiblio.org">
+		<img title="map" src="pics/website/us.png" alt="map" /></a>
 		<a href="http://distro.ibiblio.org/pub/linux/distributions/slitaz/">
 		http://distro.ibiblio.org/pub/linux/distributions/slitaz/</a></li>
 	<li><a href="http://en.utrace.de/?query=ftp.vim.org">
-		<img title="map" src="pics/website/nl.png" alt="map" />
+		<img title="map" src="pics/website/nl.png" alt="map" /></a>
 		<a href="http://ftp.vim.org/ftp/os/Linux/distr/slitaz/">
 		http://ftp.vim.org/ftp/os/Linux/distr/slitaz/</a></li>
 </ul>
