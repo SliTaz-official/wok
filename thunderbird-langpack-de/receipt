@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="thunderbird-langpack-fr"
+VERSION="3.1.2"
+CATEGORY="network"
+SHORT_DESC="locale for mozilla thunderbird"
+MAINTAINER="domcox@slitaz.org"
+DEPENDS="thunderbird"
+SOURCE="thunderbird"
+WEB_SITE="www.mozillamessaging.com"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $WOK/$PACKAGE
+	LANG=`echo $PACKAGE | cut -d'-' -f3`
+	# Get xpi
+	WGET_URL="ftp://ftp.mozilla.org/pub/mozilla.org/thunderbird/releases/$VERSION/linux-i686/xpi/$LANG.xpi"
+	if [ -e $LANG.xpi ]; then
+		echo "Using current langpack ($LANG.xpi)"
+	else
+		echo "Downloading langpack ($LANG.xpi)"
+		wget $WGET_URL
+	fi
+	# Uncompress
+	echo -n "Uncompressing langpack ($LANG.xpi)"
+	LANG_DIR="langpack-$LANG@thunderbird.mozilla.org"
+	mkdir -p $LANG_DIR && unzip -oq $LANG.xpi -d $LANG_DIR
+	status
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	EXTDIR="$fs/usr/lib/$SOURCE-$VERSION/extensions"
+	mkdir -p $EXTDIR
+	cp -a $LANG_DIR $EXTDIR
+}
