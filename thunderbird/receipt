@@ -1,0 +1,60 @@
+# SliTaz package receipt.
+
+PACKAGE="thunderbird"
+VERSION="3.1.2"
+CATEGORY="network"
+SHORT_DESC="Mozilla's Thunderbird email application."
+MAINTAINER="domcox@slitaz.org"
+DEPENDS="alsa-lib gtk+ dbus dbus-glib glib jpeg nss sqlite xorg-libX11 xorg-libXdamage xorg-libXt"
+BUILD_DEPENDS="alsa-lib-dev bzip2 dbus-dev dbus-glib-dev freetype fontconfig gtk+-dev libIDL libnotify-dev make nss-dev perl pkg-config python sqlite-dev tar wireless_tools-dev xorg-dev xorg-libXt-dev zip"
+TARBALL="$PACKAGE-$VERSION.source.tar.bz2"
+WEB_SITE="www.mozillamessaging.com"
+WGET_URL="ftp://ftp.mozilla.org/pub/mozilla.org/thunderbird/releases/$VERSION/source/$TARBALL"
+LANG="de es fr en_GB pt_PT pt_BR ru"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# WARNING:  long compile time.
+	# Requirements: 
+	# - 512MB RAM with lots of available swap space. Additional RAM will 
+	#   significantly decrease build time. 
+	# - At least 2.5 GB of disk space.
+
+    # Move the mozilla source tree to $PACKAGE-$VERSION to keep variables
+    # and to have a nice clean.
+	cd $WOK/$PACKAGE
+	echo -n "Checking source"
+    [ -d comm-* ] && mv comm-* $PACKAGE-$VERSION 2>/dev/null
+	[ -d $PACKAGE-$VERSION ] || (echo "src not found, exiting" ; exit 1)
+	status
+	# add config
+    cp -a stuff/thunderbird.mozconfig.conf $src/.mozconfig
+	# languages
+	echo "# languages" >> $src/.mozconfig
+	echo "mk_ad_options MOZ_CO_LOCALES=\"$LANG\"" >> $src/.mozconfig
+	# for a quick build
+	echo "# build quicker" >> $src/.mozconfig
+	echo 'mk_add_options MOZ_MAKE_FLAGS="-j4"' >> $src/.mozconfig
+	# build
+	cd $src
+	./configure $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	# program
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	# adding mime-type (x-html)
+	cp stuff/mimeTypes.rdf $fs/usr/lib/$PACKAGE-$VERSION/defaults/profile
+	# icons and desktop file
+	mkdir -p $fs/usr/share/applications
+	cp -a stuff/thunderbird.desktop $fs/usr/share/applications
+	mkdir -p $fs/usr/share/pixmaps
+	cp -a stuff/thunderbird-icon.png $fs/usr/share/pixmaps
+}
