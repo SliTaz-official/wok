@@ -424,13 +424,26 @@ sort_cook_list()
 		. $BUILD_WOK/$pkg/receipt
 		MISSING=""
 		for i in $WANTED $BUILD_DEPENDS ; do
-			if [ ! -f $BUILD_WOK/$i/taz/*/receipt ]; then
-				case " $MISSING " in
-				*\ $i\ *);;
-				*) echo -n " $i";;
-				esac
-				MISSING="$MISSING $i"
+			# Verify that the dependancy exists and is older
+			if [ -f $BUILD_WOK/$i/taz/*/receipt ] &&
+			   [ $BUILD_WOK/$pkg/taz/*/receipt 
+			     -nt $BUILD_WOK/$i/taz/*/receipt ]; then
+				WANTED=""
+				. $BUILD_WOK/$i/receipt
+				[ -n "$WANTED" ] && continue
+				# This dependancy may be cooked 
+				# by another package
+				[ -f $BUILD_WOK/$WANTED/taz/*/receipt ] &&
+				[ $BUILD_WOK/$pkg/taz/*/receipt
+				  -nt $BUILD_WOK/$WANTED/taz/*/receipt ] &&
+				continue
+				i=$WANTED
 			fi
+			case " $MISSING " in
+			*\ $i\ *);;
+			*) echo -n " $i";;
+			esac
+			MISSING="$MISSING $i"
 		done
 		echo ""
 	done | awk '
