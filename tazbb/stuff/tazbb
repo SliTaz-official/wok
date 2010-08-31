@@ -441,31 +441,30 @@ sort_cook_list()
 			MISSING="$MISSING $i"
 		done
 		echo ""
-	done | awk '
-function show(name)
-{
-	print name;
-	got[name]++;
-	if (revdepcnt[name] > 0)
-		for (i = split(revdep[name], pkg, " "); i > 0; i--)
-			if (--depcnt[pkg[i]] == 0) show(pkg[i]);
-}
-
-{
-	if ($2 == "") show($1);
-	else {
-		depcnt[$1] = NF - 1;
-		unres = unres " " $1;
-		for (i = 2; i <= NF; i++) {
-			if (got[$i] > 0) continue;
-			revdepcnt[$i]++;
-			revdep[$i] = revdep[$i] " " $1;
+	done | awk '{ deps[$1] = $0; }
+END {
+	while (1) {
+		skipped = 0;
+		done = 0;
+		for (entry in deps) {
+			for (i = split(deps[entry], pkg, " "); i > 1; i--)
+				if (deps[pkg[i]] != "") break;
+			if (i == 1) {
+				print pkg[1];
+				deps[pkg[1]] = "";
+				done++;
+			}
+			else if (i > 1) skipped++;
+		}
+		if (skipped == 0) break;
+		if (done == 0) { # cross deps !!
+			for (entry in deps) {
+				if (split(deps[entry], pkg, " ") > 1)
+					print pkg[1];
+			}
+			break;
 		}
 	}
-}
-END {
-	for (i = split(unres, pkg, " "); i > 0; i--)
-		if (depcnt[pkg[i]] > 0) print pkg[i];
 }
 '
 }
