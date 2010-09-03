@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="rt-source"
+VERSION="2.6.33.7"
+RT_VERSION="rt29"
+CATEGORY="development"
+SHORT_DESC="Realtime Preemption patched low latency Linux kernel sources."
+MAINTAINER="devl547@gmail.com"
+WEB_SITE="http://www.kernel.org/pub/linux/kernel/projects/rt/"
+BUILD_DEPENDS="bzip2"
+TARBALL="linux-$VERSION.tar.bz2"
+RT_TARBALL="patch-$VERSION-$RT_VERSION.bz2"
+WGET_URL="http://www.kernel.org/pub/linux/kernel/v2.6/$TARBALL"
+RT_URL="$WEB_SITE/$RT_TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	wget $RT_URL
+	bzip2 -d $RT_TARBALL
+	mv linux-$VERSION $PACKAGE-$VERSION-$RT_VERSION
+	cd $PACKAGE-$VERSION-$RT_VERSION
+	patch -p1 < ../patch-$VERSION-$RT_VERSION
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/src/
+	mv $PACKAGE-$VERSION-$RT_VERSION $fs/usr/src/
+}
