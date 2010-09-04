@@ -396,7 +396,7 @@ cook_package()
 	WANTED=""
 	echo "(cooking <a href=\"log.php?package=$(escape $pkg)$LOG_SUFFIX\">$pkg</a>)" > $DB_DIR/running
 	tazwok clean $pkg
-	script -c "echo 'install' | tazwok cook $pkg" $LOG_DIR/$pkg.log
+	script -c "tazbb check-receipt $pkg && echo 'install' | tazwok cook $pkg" $LOG_DIR/$pkg.log
 	# Install new package (important for new shared libs). Note
 	# that tests are done separatly with 'test_packages' and should
 	# be done by tazwok.
@@ -499,6 +499,100 @@ EOT
 		sed -i '/^$/d' $DB_DIR/cooklist
 		packages_summary_update
 	done
+}
+
+# Check for misc variables
+check_variables()
+{
+	PACKAGE=""
+	VERSION=""
+	EXTRAVERSION=""
+	CATEGORY=""
+	SHORT_DESC=""
+	MAINTAINER=""
+	WEB_SITE=""
+	PACKED_SIZE=""
+	UNPACKED_SIZE=""
+	. $BUILD_WOK/$1/receipt
+	if [ "$PACKAGE" != "$1" ]; then
+		echo "The PACKAGE variable should be $1"
+		return 1
+	fi
+	if [ -z "$VERSION" ]; then
+		echo "No VERSION in $1"
+		return 1
+	fi
+	if [ -z "$SHORT_DESC" ]; then
+		echo "No SHORT_DESC in $1"
+		return 1
+	fi
+	case "$MAINTAINER" in
+	'')	echo "No MAINTAINER in $1"
+		return 1 ;;
+	*\<*|*\>*)
+		echo "Invalid MAINTAINER in $1"
+		return 1 ;;
+	*@*)	;;
+	*)	echo "No email address for MAINTAINER in $1"
+		return 1 ;;
+	esac
+	if [ -z "$WEB_SITE" ]; then
+		echo "No WEB_SITE in $1"
+		return 1
+	fi
+	if [ -n "$EXTRAVERSION" ]; then
+		echo "Hardcoded EXTRAVERSION in $1"
+		return 1
+	fi
+	if [ -n "$PACKED_SIZE" ]; then
+		echo "Hardcoded PACKED_SIZE in $1"
+		return 1
+	fi
+	if [ -n "$UNPACKED_SIZE" ]; then
+		echo "Hardcoded UNPACKED_SIZE in $1"
+		return 1
+	fi
+	case " base-system x-window utilities network graphics multimedia \
+               office development system-tools security games misc meta \
+               non-free " in
+	*\ $CATEGORY\ *);;
+	*) 	echo "Invalid CATEGORY in $1 : $CATEGORY"
+		return 1;
+	esac
+	return 0
+}
+
+# Check for WANTED version
+check_wanted_version()
+{
+	WANTED=""
+	. $BUILD_WOK/$1/receipt
+	if [ -n $WANTED ]; then
+		expected=$VERSION
+		VERSION=
+		. $BUILD_WOK/$WANTED/receipt
+		if [ "$VERSION" != "$expected" ]; then
+			return 1
+		fi
+	fi
+	return 0
+}
+
+# Check for loop in BUILD_DEPENDS/WANTED
+check_build_depends()
+{
+	local i
+	BUILD_DEPENDS=""
+	WANTED=""
+	. $BUILD_WOK/$1/receipt
+	for i in $BUILD_DEPENDS $WANTED ; do
+		case " $2 " in
+		*\ $i\ *)	echo "Loop in BUILD_DEPENDS/WANTED chain $2 $i"
+				return 1 ;;
+		*)		check_build_depends $i "$2 $1" || return 1 ;;
+		esac
+	done
+	return 0
 }
 
 # Build depends_to_skip list with packages to remove from depends_to_add list
@@ -808,6 +902,7 @@ gen_flavor_list()
 	cd - > /dev/null
 }
 
+return_status=0
 case "$1" in
 	list-pkgs)
 		# List last cooked packages.
@@ -921,6 +1016,11 @@ case "$1" in
 		echo -n "Cleaning: $LOG_DIR... "
 		rm -rf $LOG_DIR/*
 		echo "$logs log removed" ;;
+	check-receipt)
+		check_variables $2 &&
+		check_wanted_version $2 &&
+		check_build_depends $2 ""
+		return_status=$? ;;
 	check-depends)
 		case "$2" in
 		wok)
@@ -957,4 +1057,4 @@ esac
 echo "" > $DB_DIR/running
 rm -f $LOCK_FILE /tmp/files.list.tazbb$$
 
-exit 0
+exit $return_status
