@@ -16,8 +16,10 @@ WGET_URL="http://www.us.kernel.org/pub/linux/utils/kernel/hotplug/$TARBALL"
 compile_rules()
 {
 	gzip -d /usr/share/misc/pci.ids.gz
-	#sed -i s/u8/__u8/ /usr/include/scsi/scsi.h
 	cd $src
+	grep -qs 'define u8' extras/*_id/*.c ||
+	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
+		extras/scsi_id/scsi_serial.c extras/ata_id/ata_id.c
 	./configure \
 		--prefix=/usr \
 		--exec-prefix="" \
