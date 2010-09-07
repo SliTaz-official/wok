@@ -29,7 +29,7 @@ fi
 # Let tazbb finish is work and make sure needed files exist.
 if [ -f $LOCK_FILE ]; then
 	case $1 in
-		usage|list-*|*block)
+		usage|list-*|*block|check-receipt)
 			continue ;;
 		*)
 			echo -e "\nTazbb is already running and locked...\n"
@@ -567,11 +567,12 @@ check_wanted_version()
 {
 	WANTED=""
 	. $BUILD_WOK/$1/receipt
-	if [ -n $WANTED ]; then
+	if [ -n "$WANTED" ]; then
 		expected=$VERSION
 		VERSION=
 		. $BUILD_WOK/$WANTED/receipt
 		if [ "$VERSION" != "$expected" ]; then
+			echo "$1: expected wanted version $expected, found $VERSION"
 			return 1
 		fi
 	fi
@@ -902,7 +903,6 @@ gen_flavor_list()
 	cd - > /dev/null
 }
 
-return_status=0
 case "$1" in
 	list-pkgs)
 		# List last cooked packages.
@@ -1020,7 +1020,7 @@ case "$1" in
 		check_variables $2 &&
 		check_wanted_version $2 &&
 		check_build_depends $2 ""
-		return_status=$? ;;
+		exit $? ;;
 	check-depends)
 		case "$2" in
 		wok)
@@ -1057,4 +1057,4 @@ esac
 echo "" > $DB_DIR/running
 rm -f $LOCK_FILE /tmp/files.list.tazbb$$
 
-exit $return_status
+exit 0
