@@ -25,7 +25,7 @@ fi
 
 case "$1" in
 	start)
-		if [ -f "$PIDFILE" ]; then
+		if active_pidfile $PIDFILE python ; then
 			echo "$NAME already running (PID: `cat $PIDFILE`)."
 			exit 1
 		fi
@@ -34,12 +34,12 @@ case "$1" in
 		status
 		sleep 4
 		# At boot OpenERP dont start correctly if we start it in background.
-		if [ ! -f "$PIDFILE" ]; then
+		if ! active_pidfile $PIDFILE python ; then
 			sleep 6
 			$DAEMON $OPTIONS > $LOGFILE
 		fi ;;
 	stop)
-		if [ ! -f "$PIDFILE" ]; then
+		if ! active_pidfile $PIDFILE python ; then
 			echo "$NAME is not running."
 			exit 1
 		fi
