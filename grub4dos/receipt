@@ -5,18 +5,30 @@ VERSION="0.4.4"
 CATEGORY="system-tools"
 SHORT_DESC="Some enhancments of grub boot loader."
 MAINTAINER="pascal.bellard@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.zip"
+TARBALL="$PACKAGE-$VERSION-src.zip"
 WEB_SITE="http://grub4dos.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 BUILD_DEPENDS="lzma"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sh ./configure --prefix=/usr --infodir=/usr/share/info \
+	--without-curses --mandir=/usr/share/man \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/boot $fs/usr/bin
-	lzma e $src/grub.exe $fs/usr/share/boot/grub.exe.lzma
-	lzma e $src/grldr $fs/usr/share/boot/grldr.lzma
-	cp $src/bootlace.com $fs/usr/bin/bootlace
+	lzma e $_pkg/usr/lib/grub/i386-pc/grub.exe \
+		$fs/usr/share/boot/grub.exe.lzma
+	lzma e $_pkg/usr/lib/grub/i386-pc/grldr $fs/usr/share/boot/grldr.lzma
+	cp $_pkg/usr/lib/grub/i386-pc/bootlace.com $fs/usr/bin/bootlace
 	chmod +x $fs/usr/bin/bootlace
+	# Skip hmload.com badgrub.exe grldr.mbr
 }
-
