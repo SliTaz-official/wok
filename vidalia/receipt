@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="vidalia"
+VERSION="0.2.10"
+CATEGORY="network"
+SHORT_DESC="Controller GUI for the Tor software."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="tor libQtGui libQtXml libegl-mesa"
+BUILD_DEPENDS="cmake Qt4-dev wget qmake libegl-mesa"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://www.torproject.org/vidalia/"
+# WGET_URL="https://www.torproject.org/vidalia/dist/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Have to use wget for https stuff
+	wget --no-check-certificate https://www.torproject.org/vidalia/dist/$TARBALL
+	tar xvf $TARBALL
+	cd $src
+	mkdir build && cd build
+	cmake -DCMAKE_INSTALL_PREFIX=/usr .. &&
+	make && make DESTDIR=$src/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/ $fs/usr
+}
+
