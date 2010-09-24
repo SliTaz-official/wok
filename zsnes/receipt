@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="zsnes"
+VERSION="1.51"
+CATEGORY="games"
+MAINTAINER="slaxemulator@gmail.com"
+SHORT_DESC="Super Nintendo emulator"
+WEB_SITE="http://www.zsnes.com/"
+DEPENDS="gcc-lib-base libsdl libpng ncurses mesa zlib"
+BUILD_DEPENDS="$DEPENDS nasm libsdl-dev libpng-dev ncurses-dev mesa-dev automake autoconf zlib-dev patch"
+TARBALL="zsnes151src.tar.bz2"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+TAGS="snes"
+
+# Rules to configure and make the package.
+
+compile_rules() {
+  src=$WOK/$PACKAGE/${PACKAGE}_1_51/
+  cd $src
+  patch -p1 -i ../stuff/zsnes.patch 
+  cd $src/src
+  ./configure --prefix=/usr \
+    --x-libraries=/usr/lib \
+    --enable-release \
+    force_arch=i486 \
+    $CONFIGURE_ARGS &&
+   make -j 4
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	src=$WOK/$PACKAGE/${PACKAGE}_1_51
+	mkdir -p $fs/usr/share/applications \
+		$fs/usr/share/pixmaps \
+		$fs/usr/bin
+	cp -a $src/src/zsnes $fs/usr/bin
+	cp $WOK/$PACKAGE/stuff/zsnes.desktop $fs/usr/share/applications
+	cp $WOK/$PACKAGE/stuff/zsnes_icon.png $fs/usr/share/pixmaps
+}
