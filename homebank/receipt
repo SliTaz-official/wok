@@ -1,12 +1,12 @@
 # SliTaz package receipt
 
 PACKAGE="homebank"
-VERSION="4.0.2"
+VERSION="4.3"
 CATEGORY="office"
 SHORT_DESC="Personal accounts manager."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+ xorg-libXdamage"
-BUILD_DEPENDS="gtk+-dev inkscape"
+BUILD_DEPENDS="gtk+-dev intltool"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://homebank.free.fr/"
 WGET_URL="http://homebank.free.fr/public/$TARBALL"
@@ -18,8 +18,10 @@ compile_rules()
 	cd $src
 	# GTK+ dont support svg
 	sed -i s/svg/png/ src/*.c
+	chmod +x install-sh
 	./configure \
 		--prefix=/usr \
+		--without-ofx \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -35,12 +37,5 @@ genpkg_rules()
 	cp -a $_pkg/usr/share/homebank/images $fs/usr/share/homebank
 	#copying  homebank icon.
 	cp -a "$_pkg/usr/share/icons/hicolor/48x48/apps/homebank.png" $fs/usr/share/pixmaps 
-	# Resize and export all SVG images to PNG.
-	cd $fs/usr/share/homebank/images
-	for img in *.svg
-	do
-		inkscape --export-width=32 --export-height=32 \
-			--export-png=${img%.svg}.png $img
-	done
-	rm *.svg
+
 }
