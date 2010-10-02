@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="gens-gs"
+VERSION="2.15.5_gs_r7"
+CATEGORY="games"
+SHORT_DESC="An emulator for Sega Genesis, Sega CD and 32X."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="gtk+ libsdl"
+BUILD_DEPENDS="gtk+-dev libsdl libsdl-dev nasm autoconf automake"
+_VERSION=gs-r7
+TARBALL="Gens-${_VERSION}.tar.gz"
+WEB_SITE="http://info.sonicretro.org/Gens/GS"
+WGET_URL="http://segaretro.org/images/6/6d/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	ln -s $WOK/$PACKAGE/gens-${_VERSION} $WOK/$PACKAGE/$PACKAGE-$VERSION
+	cd $src
+	chmod +x install-sh
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/usr/lib/mdp
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/mdp/*.so  $fs/usr/lib/mdp
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/gens $fs/usr/share
+}
+
