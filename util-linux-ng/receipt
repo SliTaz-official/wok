@@ -1,21 +1,26 @@
 # SliTaz package receipt.
 
 PACKAGE="util-linux-ng"
-VERSION="2.16.1"
+VERSION="2.18"
 CATEGORY="meta"
 SHORT_DESC="Util linux new generation (Meta package to build utility ans libs)."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 DEPENDS="glibc-base"
-BUILD_DEPENDS="slitaz-toolchain ncurses-dev e2fsprogs-dev"
+BUILD_DEPENDS="slitaz-toolchain ncurses-dev e2fsprogs-dev zlib-dev"
 WEB_SITE="http://kernel.org/~kzak/util-linux-ng/"
-WGET_URL="ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.16/$TARBALL"
+WGET_URL="ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v${VERSION%*}/$TARBALL"
 LOCALE=""
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	# fix findmnt
+	patch -p1 -i ../stuff/fix-findmnt.patch
+	# fix cfdisk partition changing, included in next upstream release
+	patch -p1 -i ../stuff/util-linux-ng-cfdisk.patch
+
 	if ! grep 'tty:x:4:' /etc/group; then
 		addgroup -g 4 tty
 	fi
