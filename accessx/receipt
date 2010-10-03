@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="accessx"
+VERSION="0.951"
+CATEGORY="utilities"
+SHORT_DESC="Set and display Xkeyboard (XCB) Accessx features."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="tk tcl"
+BUILD_DEPENDS="xorg-libX11-dev"
+TARBALL="accessx0951.tar.gz"
+WEB_SITE="http://cita.disability.uiuc.edu/software/accessx/freewareaccessx.php"
+WGET_URL="http://cita.disability.uiuc.edu/software/accessx/files/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mv $PACKAGE $PACKAGE-$VERSION 2> /dev/null
+	cd $src
+	# Patch for deprecated <iostream.h>
+	patch -p0 < ../stuff/accessx.diff || exit 1
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $src/ax $fs/usr/bin
+	cp -a $src/accessx $fs/usr/bin
+
+	# Change owner & perms accessx
+	chown root.root $fs/usr/bin/accessx
+	chmod 0755 $fs/usr/bin/accessx
+}
+
