@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="rsnapshot"
+VERSION="1.3.1"
+CATEGORY="systemtools"
+SHORT_DESC="A remote filesystem snapshot utility"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="perl rsync"
+BUILD_DEPENDS="perl rsync"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.rsnapshot.org"
+WGET_URL="$WEB_SITE/downloads/$TARBALL"
+CONFIG_FILES="/etc/rsnapshot.conf"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/etc/rsnapshot.conf.default $fs/etc/rsnapshot.conf
+}
+
