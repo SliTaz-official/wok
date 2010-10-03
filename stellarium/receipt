@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="stellarium"
+VERSION="0.10.5"
+CATEGORY="games"
+SHORT_DESC="A stellarium with great graphics and a nice database of sky-objects"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="libpng mesa glib freetype openssl libQtScript libQtOpenGL libQtSql libQtNetwork libQtGui zlib"
+BUILD_DEPENDS="gettext perl cmake libboost-dev libboost-thread-dev mesa-dev qt4 Qt4-dev qmake zlib-dev pkg-config xorg-libX11-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://steelarium.free.fr/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	cmake . -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RELEASE || return 1
+	make || return 1
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/pixmaps $fs/usr/share/applications
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/stellarium $fs/usr/share
+	cp -a $WOK/$PACKAGE/stuff/stellarium.png $fs/usr/share/pixmaps
+	cp -a $WOK/$PACKAGE/stuff/stellarium.desktop $fs/usr/share/applications
+}
+
