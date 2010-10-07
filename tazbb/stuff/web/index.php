@@ -122,6 +122,13 @@ include("$db_dir/report");
 ?>
 </pre>
 
+<h3>Genpkglist</h3>
+<pre class="package">
+<?php
+include("$db_dir/genpkglist");
+?>
+</pre>
+
 <h3>Cooklist</h3>
 <pre class="package">
 <?php
