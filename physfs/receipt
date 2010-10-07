@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="physfs"
+VERSION="2.0.1"
+CATEGORY="development"
+SHORT_DESC="Abstraction layer for filesystem and archive access"
+MAINTAINER="devl547@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://icculus.org/physfs/"
+WGET_URL="ftp://ftp.tiscali.nl/pub/mirror/gentoo/distfiles/$TARBALL"
+BUILD_DEPENDS="cmake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	cmake $src &&
+	cmake -DCMAKE_INSTALL_PREFIX=/usr \
+	-DPHYSFS_BUILD_SHARED=ON \
+	-DPHYSFS_BUILD_TEST=OFF \
+	-DPHYSFS_BUILD_WX_TEST=OFF \
+	-DPHYSFS_INTERNAL_ZLIB=OFF .	&&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
