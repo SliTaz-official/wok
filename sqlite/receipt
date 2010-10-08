@@ -25,6 +25,15 @@ compile_rules()
   	sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
+	# compile lemon here instead of in lemon
+	if [ -f $src/lemon ]; then
+		rm $src/lemon
+	fi
+	cp $src/tool/lemon.c .
+	sed -i -e 's!lempar.c!/usr/share/lemon/lempar.c!' lemon.c
+	echo -n "Compiling lemon..."
+	gcc -o lemon lemon.c && status
+	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
