@@ -1,0 +1,30 @@
+# SliTaz package receipt.
+
+PACKAGE="ldapvi"
+VERSION="1.7"
+CATEGORY="system-tools"
+SHORT_DESC="Interactive LDAP client for Unix terminals."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.lichteblau.com/ldapvi/"
+WGET_URL="http://www.lichteblau.com/download/$TARBALL"
+DEPENDS="openldap glib popt openssl readline cyrus-sasl"
+BUILD_DEPENDS="openldap-dev glib-dev popt-dev openssl-dev ncurses-dev \
+readline-dev cyrus-sasl-dev"
+TAGS="LDAP"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	grep -qs getline_ldapvi common.h ||
+	sed -i 's/char .getline(.*/#define getline getline_ldapvi\n&/' common.h
+	./configure --prefix=/usr $CONFIGURE_ARGS && make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $src/ldapvi $fs/usr/bin
+}
