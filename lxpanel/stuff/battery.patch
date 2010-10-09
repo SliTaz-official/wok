@@ -1,0 +1,44 @@
+--- lxpanel-0.5.5/src/plugins/batt/batt_sys.c	Sat Feb  6 20:45:38 2010
++++ lxpanel-0.5.5-orig/src/plugins/batt/batt_sys.c	Sat Jul 24 18:48:20 2010
+@@ -38,6 +38,13 @@
+ battery* battery_new() {
+     static int battery_num = 1;
+     battery * b = g_new0 ( battery, 1 );
++	battery_reset(b);
++	b->battery_num = battery_num;
++	battery_num++;
++	return b;
++	}
++
++void battery_reset( battery * b) {
+     b->type_battery = TRUE;
+     b->capacity_unit = "mAh";
+     b->last_capacity_unit = -1;
+@@ -49,9 +56,6 @@
+     b->remaining_capacity = -1;
+     b->present_rate = -1;
+     b->state = NULL;
+-    b->battery_num = battery_num;
+-    battery_num++;
+-    return b;
+ }
+ 
+ 
+@@ -136,6 +140,8 @@
+     };
+     const gchar *sys_file;
+ 
++	battery_reset(b);
++
+     while ( (sys_file = sys_list[i]) != NULL ) {
+     
+ 	gchar *file_content;
+@@ -150,7 +156,7 @@
+ 		    b->state = "available";
+ 	    }
+ 	    else if ( strcmp("energy_now", sys_file ) == 0 ) {
+-		b->remaining_capacity = get_unit_value((gchar*) file_content) / 1000;
++		b->remaining_energy = get_unit_value((gchar*) file_content) / 1000;
+ 		if (!b->state)
+ 		    b->state = "available";
+ 	    }
