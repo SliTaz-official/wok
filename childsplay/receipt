@@ -16,9 +16,10 @@ BUILD_DEPENDS="python python-dev"
 compile_rules()
 {
 	cd $src
+	PYTHON_LIB=$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
 	sed -i "s|PREFIX = '/usr/local'|PREFIX = '_pkg/usr'|" $src/setup.py
 	sed -i \
-"s|get_python_lib()|'_pkg', 'usr', 'lib', 'python2.5', 'site-packages'|" \
+"s|get_python_lib()|'_pkg', 'usr', 'lib', '$PYTHON_LIB', 'site-packages'|" \
 $src/setup.py
 	sed -i "/key/s/raw_input/#raw_input/" $src/setup.py
 	python setup.py install --root=$PWD/_pkg
@@ -27,7 +28,7 @@ $src/setup.py
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	BASEPATHS="$_pkg/usr/lib/python2.5/site-packages/childsplay_sp/SPBasePaths.py"
+	BASEPATHS="$_pkg/usr/lib/$PYTHON_LIB/site-packages/childsplay_sp/SPBasePaths.py"
 
 	for file in `find $_pkg | grep 'pyc$'`; do
 		rm $file

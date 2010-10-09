@@ -17,6 +17,7 @@ BUILD_DEPENDS="$DEPENDS python-dev setuptools"
 # Rules to configure and make the package.
 compile_rules()
 {
+	PYTHON_LIB=$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
 	# Tgsetup dont build TurboGearsKid and friends if there are already
 	# installed, so remove python-turbogears before building.
 	if [ -d /var/lib/tazpkg/installed/python-turbogears ]; then
@@ -25,7 +26,7 @@ compile_rules()
 	# Use tgsetup.py to bootstrap installation with all deps. It will
 	# build: TurbuGears, TurboCheetah, TurboJson and TurboKid.
 	cd $src/tools
-	DESTDIR="../_pkg/usr/lib/python2.5/site-packages"
+	DESTDIR="../_pkg/usr/lib/$PYTHON_LIB/site-packages"
 	mkdir -p $DESTDIR
 	PYTHONPATH=$DESTDIR python tgsetup.py -U -d $DESTDIR --prefix="../_pkg/usr"
 }
@@ -33,6 +34,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	PYTHON_LIB=$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
 	cp -a $_pkg/usr $fs
-	rm $fs/usr/lib/python2.5/site-packages/site.py*
+	rm $fs/usr/lib/$PYTHON_LIB/site-packages/site.py*
 }
