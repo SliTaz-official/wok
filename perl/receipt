@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="perl"
-VERSION="5.10.0"
+VERSION="5.12.2"
 CATEGORY="development"
 SHORT_DESC="Full Perl interpreter and modules."
 MAINTAINER="pankso@slitaz.org"
@@ -19,6 +19,20 @@ compile_rules()
 	./configure.gnu --prefix=/usr &&
 	make -j 4 &&
 	make DESTDIR=$PWD/_pkg install
+
+	# make microperl here
+	# patch to fix compiling microperl
+	patch -p0 -i ../stuff/miniperlmain.patch
+	# Install in /usr (default is /usr/local).
+	sed -i s/'usr\/local'/'usr'/ uconfig.sh
+	# Sed to search mods in /usr/lib/perl5.
+	sed -i s/'perl5\/5.12'/'perl5'/ uconfig.sh
+	# Optimisation.
+	sed -i s/'unknown'/'i486-pc-linux-gnu'/ uconfig.sh
+	# Make it!
+	make -f Makefile.micro regen_uconfig &&
+	make -f Makefile.micro &&
+	strip microperl
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
