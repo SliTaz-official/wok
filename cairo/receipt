@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="cairo"
-VERSION="1.8.10"
+VERSION="1.10.0"
 CATEGORY="x-window"
 SHORT_DESC="2D graphics library."
 MAINTAINER="pankso@slitaz.org"
@@ -17,13 +17,17 @@ WGET_URL="http://cairographics.org/releases/$TARBALL"
 compile_rules()
 {
 	cd $src
+	patch -Np1 -i ../stuff/cairo-1.10.0-buggy_gradients.patch
+	# this patch is used to fix incorrect renders with QT
+	patch -Np1 -i ../stuff/cairo-respect-fontconfig.patch
 	./configure \
 		--prefix=/usr \
  		--mandir=/usr/share/man \
 		--with-html-dir=/usr/share/doc \
 		--enable-xcb \
+		--disable-static \
  		$CONFIGURE_ARGS &&
-	make &&
+	make -j 4 &&
 	make DESTDIR=$PWD/_pkg install
 }
 
