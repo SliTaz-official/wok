@@ -1,16 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="ghostscript"
-VERSION="8.71"
+VERSION="9.00"
 CATEGORY="office"
 SHORT_DESC="Ghostscript tools and utilities."
 MAINTAINER="jozee@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 DEPENDS="gtk+ expat fontconfig freetype gnutls jpeg libgcrypt libgpg-error \
 libpng tiff zlib cups xorg-libICE xorg-libSM xorg-libX11 xorg-libXau \
-xorg-libXdmcp xorg-libXext xorg-libXt gcc-lib-base" 
+xorg-libXdmcp xorg-libXext xorg-libXt gcc-lib-base jasper" 
 # build depends are optional ; ghostscripts still build but does not compile in cups support
-BUILD_DEPENDS="cairo-dev gtk+-dev xorg-dev expat-dev fontconfig-dev freetype-dev gnutls-dev jpeg-dev libgcrypt-dev libgpg-error-dev libpng-dev tiff-dev zlib-dev cups-dev"
+BUILD_DEPENDS="cairo-dev gtk+-dev xorg-dev expat-dev fontconfig-dev freetype-dev gnutls-dev jpeg-dev libgcrypt-dev libgpg-error-dev libpng-dev tiff-dev zlib-dev cups-dev jasper-dev"
 WEB_SITE="http://pages.cs.wisc.edu/~ghost/"
 #WGET_URL="http://mirror.cs.wisc.edu/pub/mirrors/ghost/GPL/gs862/$TARBALL"
 WGET_URL="http://ghostscript.com/releases/$TARBALL"
@@ -20,6 +20,14 @@ WGET_URL="http://ghostscript.com/releases/$TARBALL"
 compile_rules()
 {
 	cd $src
+	# force it to use system-libs
+	rm -rf jpeg libpng zlib jasper expat
+
+	# fix build with system jasper
+	patch -Np1 -i ../stuff/ghostscript-system-jasper.patch
+
+	# --disable-compile-inits is needed for linking with system-zlib
+
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
@@ -30,6 +38,7 @@ compile_rules()
 		--enable-cairo \
 		--enable-gtk \
 		--with-fontpath=/usr/share/fonts/truetype/:/usr/share/fonts \
+		--disable-compile-inits \
 		$CONFIGURE_ARGS &&
 	make -j 4 &&
 	make DESTDIR=$PWD/_pkg install soinstall
