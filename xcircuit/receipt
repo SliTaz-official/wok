@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="xcircuit"
+VERSION="3.6.163"
+CATEGORY="graphics"
+SHORT_DESC="A program for drawing publishable-quality electrical circuit schematic diagrams"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="tcl tk xorg-libXpm zlib"
+BUILD_DEPENDS="tk-dev tcl-dev xorg-libXpm-dev xorg-libXt-dev xorg-dev-proto zlib-dev automake"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WEB_SITE="http://opencircuitdesign.com/xcircuit"
+WGET_URL="http://opencircuitdesign.com/xcircuit/archive/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's|am__api_version="1.9"|am__api_version="1.11"|' configure
+	./configure prefix=/usr \
+		--with-tcl=/usr/lib \
+		--with-tk=/usr/lib \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/$PACKAGE-${VERSION%.*} $fs/usr/lib
+}
+
