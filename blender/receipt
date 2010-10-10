@@ -5,23 +5,58 @@ VERSION="2.49b"
 CATEGORY="graphics"
 SHORT_DESC="3D content creation suite."
 MAINTAINER="pankso@slitaz.org"
-TARBALL="$PACKAGE-$VERSION-linux-glibc236-py25-i386.tar.bz2"
-DEPENDS="python mesa libsdl libdrm jpeg libglu"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+DEPENDS="python mesa libsdl libdrm jpeg libglu-mesa openexr desktop-file-utils tiff libpng freeglut freetype openal zlib librsvg"
+BUILD_DEPENDS="$DEPENDS python-dev mesa-dev libglu-mesa libsdl-dev libdrm-dev jpeg-dev jpeg-dev librsvg-dev openexr-dev ilmbase-dev freeglut-dev tiff-dev libpng-dev freetype-dev yasm openal-dev zlib-dev pkg-config coreutils-file-format gettext"
 SUGGESTED="nvidia"
 WEB_SITE="http://www.blender.org/"
-WGET_URL="http://download.blender.org/release/Blender${VERSION}/$TARBALL"
+WGET_URL="http://download.blender.org/source/$TARBALL"
 TAGS="3D creator editor"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	mv blender-$VERSION-linux-glibc236-py25-i386 \
-		$PACKAGE-$VERSION 2>/dev/null || continue
 	cd $src
-	mkdir -p _pkg/usr/share
-	mv .blender/locale _pkg/usr/share 2>/dev/null
-	#cd plugins && make
-	rm -rf ../taz
+	rm -f user-def.mk
+	# disable static binaries and enable blenderplayer binary
+	sed -i "s|^.*\(BINTARGETS += blenderstatic\)|    #\1|g" source/Makefile
+  	sed -i "s|^#\(.*BINTARGETS += blenderplayer\)|\1|g" source/Makefile
+	# link freetype and openal dynamically
+	sed -i 's|LOPTS)|LOPTS) -lfreetype -lopenal|g' source/Makefile
+	sed -i 's|COMLIB.*libfreetype\.a|#\0|g' source/Makefile
+	sed -i 's|NAN_SND_LIBS.*libopenal\.a|#\0|g' source/Makefile
+	export NAN_PYTHON_VERSION=2.7
+	export INTERNATIONAL=true
+	export WITH_FREETYPE2=true
+	export NAN_FREETYPE=/usr
+	export WITH_ICONV=true
+
+	export NAN_NO_PLUGIN=true
+
+	export NAN_OPENAL=/usr
+	export NAN_FMOD=/usr
+	export NAN_JPEG=/usr
+	export NAN_PNG=/usr
+	export WITH_OPENEXR=true
+	export NAN_OPENEXR=/usr
+	export NAN_ODE=/usr
+	export NAN_OPENEXR_LIBS=$(pkg-config --libs-only-l OpenEXR)
+
+	export NAN_SDL=/usr
+	export NAN_ZLIB=/usr
+	export NAN_MESA=/usr
+
+	export NAN_USE_BULLET=true
+	export NAN_USE_FFMPEG_CONFIG=true
+	export WITH_BF_VERSE=true
+	export WITH_VERSE=true
+	export WITH_BF_OPENMP=true
+	# there is an issue with a file
+	export NAN_DEBUG=-O
+
+	# build
+	make -j 1
+
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -29,9 +64,8 @@ genpkg_rules()
 {
 	LOCALE="fr de pt_BR es zh_CN"
 	mkdir -p $fs/usr/bin $fs/usr/share/pixmaps
-	cp -a $src/blender $fs/usr/bin/blender-bin
+	cp -a $src/obj/linux-glibc2*/bin/blender $fs/usr/bin/blender-bin
+	cp -a $src/obj/linux-glibc2*/bin/blenderplayer $fs/usr/bin
 	cp stuff/blender $fs/usr/bin
-	cp -a $src/.blender $fs/usr/share/blender
-	cp -a $src/blenderplayer $fs/usr/bin
-	cp -a $src/icons/32x32/blender.png $fs/usr/share/pixmaps
+	cp -a $src/bin/.blender $fs/usr/share/blender
 }
