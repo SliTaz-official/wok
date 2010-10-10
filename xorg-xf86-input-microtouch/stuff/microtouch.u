@@ -1,0 +1,63 @@
+--- src/microtouch.c
++++ src/microtouch.c
+@@ -404,6 +404,10 @@
+ 	MuTPrivatePtr priv = (MuTPrivatePtr) (local->private);
+ 	unsigned char map[] =
+ 	{0, 1};
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
++	Atom btn_label;
++	Atom axis_labels[2] = { 0, 0 };
++#endif
+ 
+ 	/* 
+ 	 * these have to be here instead of in the SetupProc, because when the
+@@ -415,7 +419,11 @@
+ 	/* 
+ 	 * Device reports button press for 1 button.
+ 	 */
+-	if (InitButtonClassDeviceStruct (dev, 1, map) == FALSE)
++	if (InitButtonClassDeviceStruct (dev, 1, 
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
++					 &btn_label,
++#endif
++					 map) == FALSE)
+ 	{
+ 		ErrorF ("Unable to allocate MicroTouch touchscreen ButtonClassDeviceStruct\n");
+ 		return !Success;
+@@ -425,7 +433,13 @@
+ 	 * Device reports motions on 2 axes in absolute coordinates.
+ 	 * Axes min and max values are reported in raw coordinates.
+ 	 */
+-	if (InitValuatorClassDeviceStruct (dev, 2, xf86GetMotionEvents,
++        if (InitValuatorClassDeviceStruct (dev, 2,
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
++					  axis_labels,
++#endif
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
++                                          xf86GetMotionEvents,
++#endif
+ 									local->history_size, Absolute) == FALSE)
+ 	{
+ 		ErrorF ("Unable to allocate MicroTouch touchscreen ValuatorClassDeviceStruct\n");
+@@ -433,11 +447,19 @@
+ 	}
+ 	else
+ 	{
+-		InitValuatorAxisStruct (dev, 0, priv->min_x, priv->max_x,
++		InitValuatorAxisStruct (dev, 0,
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
++					axis_labels[0],
++#endif
++					priv->min_x, priv->max_x,
+ 								9500,
+ 								0 /* min_res */ ,
+ 								9500 /* max_res */ );
+-		InitValuatorAxisStruct (dev, 1, priv->min_y, priv->max_y,
++		InitValuatorAxisStruct (dev, 1,
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
++					axis_labels[1],
++#endif
++					priv->min_y, priv->max_y,
+ 								10500,
+ 								0 /* min_res */ ,
+ 								10500 /* max_res */ );

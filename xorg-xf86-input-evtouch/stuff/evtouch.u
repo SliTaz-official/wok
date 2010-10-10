@@ -1,0 +1,178 @@
+Remove unused variables and code just to make gcc happy
+
+Index: xserver-xorg-input-evtouch/evtouch.c
+===================================================================
+--- xserver-xorg-input-evtouch.orig/evtouch.c	2009-01-21 20:06:50.647249439 +0900
++++ xserver-xorg-input-evtouch/evtouch.c	2009-01-21 20:07:39.518253785 +0900
+@@ -352,7 +352,6 @@ void EVTouchProcessAbs(EVTouchPrivatePtr
+ void EVTouchProcessRel(EVTouchPrivatePtr priv)
+ {
+         struct input_event *ev; /* packet being/just read */
+-        int dummy;
+ 
+         ev = &priv->ev;
+         if ( ev->code == REL_X ) {
+@@ -745,17 +744,6 @@ EVTouchNewPacket (EVTouchPrivatePtr priv
+ 
+ 
+ 
+-static unsigned char
+-EVTouchRead(EVTouchPrivatePtr priv)
+-{
+-        unsigned char c;
+-        XisbBlockDuration (priv->buffer, EV_TIMEOUT);
+-        c = XisbRead(priv->buffer);
+-        return (c);
+-}
+-
+-
+-
+ static Bool
+ EVTouchGetPacket (EVTouchPrivatePtr priv)
+ {
+From: Thomas Jaeger <ThJaeger@gmail.com>
+Date: Sun, 22 Mar 2009 20:58:58 -0400
+Subject: Make calibration work on xserver-1.6
+
+Stolen from Ubuntu.
+
+Index: xserver-xorg-input-evtouch/ev_calibrate.c
+===================================================================
+--- xserver-xorg-input-evtouch.orig/ev_calibrate.c
++++ xserver-xorg-input-evtouch/ev_calibrate.c
+@@ -218,7 +218,7 @@
+         int cap_style = CapButt;        /* style of the line's edje and */
+         int join_style = JoinBevel;        /*  joined lines.                */
+ 
+-        int event_mask = ExposureMask | ButtonReleaseMask | PointerMotionMask | KeyPressMask;
++        int event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask | KeyPressMask;
+ 
+         int depth;
+         int screen_num;
+Index: xserver-xorg-input-evtouch/evtouch.c
+===================================================================
+--- xserver-xorg-input-evtouch.orig/evtouch.c
++++ xserver-xorg-input-evtouch/evtouch.c
+@@ -306,7 +306,7 @@
+ 	}
+ 
+         if (pos_changed == 1) {
+-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 2
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 2
+                 ConvertProc(priv->local, 0, 2, 
+                             priv->raw_x, priv->raw_y,
+                             0, 0, 0, 0, 
+@@ -369,7 +369,7 @@
+                         priv->raw_y = priv->min_y;
+         }
+ 
+-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 2
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 2
+         ConvertProc(priv->local, 0, 2,
+                     priv->raw_x, priv->raw_y,
+                     0, 0, 0, 0,
+Index: xserver-xorg-input-evtouch/evtouch.c
+===================================================================
+--- xserver-xorg-input-evtouch.orig/evtouch.c
++++ xserver-xorg-input-evtouch/evtouch.c
+@@ -30,10 +30,8 @@
+ 
+ #define _evdev_touch_C_
+ 
+-#include <xf86Version.h>
+-#if XF86_VERSION_CURRENT >= XF86_VERSION_NUMERIC(3,9,0,0,0)
++#include <xorgVersion.h>
+ #define XFREE86_V4
+-#endif
+ 
+ /*****************************************************************************
+  *        Standard Headers
+@@ -74,7 +72,6 @@
+ #include "xf86_OSproc.h"
+ #include "xf86Xinput.h"
+ #include "exevents.h"
+-#include "xf86OSmouse.h"
+ #include "randrstr.h"
+ 
+ #ifndef NEED_XF86_TYPES
+@@ -139,7 +136,7 @@
+         "Kenan Esau",
+         MODINFOSTRING1,
+         MODINFOSTRING2,
+-        XF86_VERSION_CURRENT,
++        XORG_VERSION_CURRENT,
+         0, 8, 8,
+         ABI_CLASS_XINPUT,
+         ABI_XINPUT_VERSION,
+@@ -590,6 +587,10 @@
+         EVTouchPrivatePtr priv = (EVTouchPrivatePtr) (local->private);
+         unsigned char map[EV_MAX_BUTTONS];
+         int i;
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
++	Atom btn_label;
++	Atom axis_labels[2] = { 0, 0 };
++#endif
+ 
+         for (i = 0; i < EV_MAX_BUTTONS; i++)
+                 map[i] = i;
+@@ -628,7 +629,11 @@
+         /* 
+          * Device reports button press for 5 buttons.
+          */
+-        if (InitButtonClassDeviceStruct (dev, EV_MAX_BUTTONS, map) == FALSE)
++        if (InitButtonClassDeviceStruct (dev, EV_MAX_BUTTONS,
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
++					 &btn_label,
++#endif
++					 map) == FALSE)
+         {
+                 ErrorF("Unable to allocate EVTouch touchscreen ButtonClassDeviceStruct\n");
+                 return BadAlloc;
+@@ -652,26 +657,43 @@
+          * Device reports motions on 2 axes in absolute coordinates.
+          * Axes min and max values are reported in raw coordinates.
+          */
+-        if (InitValuatorClassDeviceStruct(dev, 2, xf86GetMotionEvents,
++        if (InitValuatorClassDeviceStruct(dev, 2,
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
++					  axis_labels,
++#endif
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 3
++                                          xf86GetMotionEvents,
++#endif
+                                           local->history_size, Absolute) == FALSE)
+         {
+                 ErrorF ("Unable to allocate EVTouch touchscreen ValuatorClassDeviceStruct\n");
+                 return !Success;
+         }
+ 
+-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) == 2
+-        xf86InitValuatorAxisStruct(dev, 0, 0, priv->screen_width,
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 2
++        xf86InitValuatorAxisStruct(dev, 0,
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
++				   axis_labels[0],
++#endif
++				   0, priv->screen_width,
+                                    1024,
+                                    EV_AXIS_MIN_RES /* min_res */ ,
+                                    EV_AXIS_MAX_RES /* max_res */ );
+         xf86InitValuatorDefaults(dev, 0);
+-        xf86InitValuatorAxisStruct(dev, 1, 0, priv->screen_height,
++        xf86InitValuatorAxisStruct(dev, 1,
++#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
++				   axis_labels[1],
++#endif
++				   0, priv->screen_height,
+                                    1024,
+                                    EV_AXIS_MIN_RES /* min_res */ ,
+                                    EV_AXIS_MAX_RES /* max_res */ );
+         xf86InitValuatorDefaults(dev, 1);
+ #else
+ 	xf86InitValuatorAxisStruct(dev, 0, priv->min_x, priv->max_x,
++                                   1024,
++                                   EV_AXIS_MIN_RES /* min_res */ ,
++                                   EV_AXIS_MAX_RES /* max_res */ );
+         xf86InitValuatorDefaults(dev, 1);
+ #endif
+ 
