@@ -1,17 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="gtk+"
-VERSION="2.20.1"
+VERSION="2.22.0"
 CATEGORY="x-window"
 SHORT_DESC="The GIMP Toolkit."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="glibc-base expat  libxcb xcb-util zlib  \
-glib cairo pango atk libpng jpeg tiff fontconfig freetype pixman libgio \
+DEPENDS="glibc-base expat libxcb xcb-util zlib  \
+glib cairo pango atk libpng jpeg tiff gdk-pixbuf fontconfig freetype pixman libgio \
 xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor xorg-libXdamage \
 xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXinerama xorg-libXrender xorg-libXrandr"
-BUILD_DEPENDS="cairo-dev glib-dev pango-dev atk-dev libpng-dev jpeg-dev \
+BUILD_DEPENDS="gdk-pixbuf-dev cairo-dev glib-dev pango-dev atk-dev libpng-dev jpeg-dev \
 pkg-config xorg-dev xorg-dev-proto fontconfig-dev freetype-dev pixman-dev \
-tiff-dev libgio-dev xorg-libXdamage-dev xorg-libXinerama-dev zlib-dev \
+tiff-dev libgio-dev xorg-libXdamage xorg-libXdamage-dev xorg-libXinerama-dev zlib-dev \
 xorg-xextproto expat-dev cups-dev libcomerr3"
 SUGGESTED="cups gnutls libgcrypt libgpg-error"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
@@ -28,7 +28,7 @@ compile_rules()
     	--sysconfdir=/etc \
     	--mandir=/usr/share/man \
     	--with-html-dir=/usr/share/doc \
-    	--without-libjasper \
+    	--without-jasper \
     	$CONFIGURE_ARGS &&
     make -j 4 &&
     make DESTDIR=$PWD/_pkg install
@@ -50,13 +50,10 @@ genpkg_rules()
 	# Apps.
 	cp  $_pkg/usr/bin/gtk-query-immodules-2.0 $fs/usr/bin
 	cp  $_pkg/usr/bin/gtk-update-icon-cache $fs/usr/bin
-	cp  $_pkg/usr/bin/gdk-pixbuf-csource $fs/usr/bin
-	cp  $_pkg/usr/bin/gdk-pixbuf-query-loaders $fs/usr/bin
 	cp  $_pkg/usr/bin/gtk-builder-convert $fs/usr/bin
 
 	# Config files.
 	mkdir -p $fs/etc/gtk-2.0
-	gtk-query-immodules-2.0 > $fs/etc/gtk-2.0/gtk.immodules
 	gdk-pixbuf-query-loaders > $fs/etc/gtk-2.0/gdk-pixbuf.loaders
 }
 
@@ -66,7 +63,6 @@ post_install()
 	local arg
 	echo "Processing post-install commands..."
 	chroot $1/ /usr/bin/gtk-query-immodules-2.0 > $1/etc/gtk-2.0/gtk.immodules
-	chroot $1/ /usr/bin/gdk-pixbuf-query-loaders > $1/etc/gtk-2.0/gdk-pixbuf.loaders
 	# Force reinstall of clearlooks theme (1.0 compatibilty until
 	# clearlooks are updated)
 	if [ -d $1/usr/lib/gtk-2.0/2.4.0 ]; then
