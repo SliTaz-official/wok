@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-api-headers"
+VERSION="2.6.34"
+CATEGORY="development"
+SHORT_DESC="Kernel headers sanitized for use in userspace."
+MAINTAINER="devel@slitaz.org"
+SOURCE="linux"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+BUILD_DEPENDS="perl"
+WEB_SITE="http://www.kernel.org/"
+WGET_URL="http://www.eu.kernel.org/pub/linux/kernel/v${VERSION:0:3}/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+
+	# fix issues with transition of scsi.h from glibc
+	patch -Np1 -i ../stuff/scsi.patch
+
+	make mrproper
+	make headers_check
+	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/include $fs/usr
+
+	rm -f $(find ${fs} -name .install -or -name ..install.cmd)
+}
+
+# Post install commands for Tazpkg.
+post_install()
+{
+	# Removed old linux-headers
+	rm -rf $1/var/lib/tazpkg/installed/linux-headers 2>/dev/null
+}
