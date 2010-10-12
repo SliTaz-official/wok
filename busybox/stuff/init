@@ -90,6 +90,8 @@ if grep -q softraid= /proc/cmdline; then
 	root="$(sed 's/.*softraid=\([^ ]*\).*/\1/' < /proc/cmdline)"
 	echo -n "Switching / to softraid $root..."
 	mdadm --examine --scan --config=partitions > /etc/mdadm.conf
+	grep -qs " $root " /etc/mdadm.conf ||
+		root=$(awk '/dev.md/ { print $2; exit }' < /etc/mdadm.conf)
 	grep level=raid /etc/mdadm.conf | load_raid
 	mdadm --assemble --scan
 	lvmsetup 
