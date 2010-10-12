@@ -1,18 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="librsvg"
-VERSION="2.26.3"
-CATEGORY="system-tools"
+VERSION="2.32.0"
+CATEGORY="x-window"
 SHORT_DESC="SVG Rendering Library"
 MAINTAINER="erjo@slitaz.org"
 DEPENDS="cairo freetype libxml2 pango fontconfig libcroco libgsf xcb-util \
-libgio atk xorg-libXinerama xorg-libXcursor xorg-libXcomposite xorg-libXext \
+libgio atk gdk-pixbuf xorg-libXinerama xorg-libXcursor xorg-libXcomposite xorg-libXext \
 xorg-libXdamage"
 BUILD_DEPENDS="$DEPENDS pkg-config cairo-dev freetype-dev libxml2-dev pango-dev \
-fontconfig-dev libcroco-dev glib-dev libpng-dev gtk+-dev perl expat-dev"
+fontconfig-dev gdk-pixbuf-dev libcroco-dev glib-dev libpng-dev gtk+-dev perl expat-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://librsvg.sourceforge.net/"
-WGET_URL="http://ftp.gnome.org/pub/GNOME/sources/librsvg/2.26/$TARBALL"
+WGET_URL="http://ftp.gnome.org/pub/GNOME/sources/librsvg/${VERSION%.*}/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -22,7 +22,7 @@ compile_rules()
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
-		--disable-mozilla-plugin \
+		--disable-static \
 		$CONFIGURE_ARGS &&
 	make && make DESTDIR=$PWD/_pkg install
 }
@@ -33,8 +33,10 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/gtk-2.0 $fs/usr/lib
+	cp -a $_pkg/usr/lib/gdk-pixbuf-2.0 $fs/usr/lib
 
 	# remove *.*a files
 	find $fs/usr/lib/gtk-2.0 -name "*.*a" -exec rm -f {} \;
+	rind $fs/usr/lib/gdk-pixbuf-2.0 -name "*.*a" -exec rm -f {} \;
 }
 
