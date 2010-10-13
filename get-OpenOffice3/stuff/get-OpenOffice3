@@ -8,16 +8,12 @@
 PACKAGE="OpenOffice3"
 URL="http://www.openoffice.org"
 ROOT="$1"
+PATTERN="Linux_x86_install-rpm"
 
-case "$LANG" in
-fr_*|de_*|es_*|it_*|ru_*)
-	LOC=${LANG%_*}
-	DIR="localized/$LOC"
-	SUFFIX="Linux_x86_install-rpm_$LOC.tar.gz";;
-*)
-	DIR="stable"
-	SUFFIX="Linux_x86_install-rpm_en-US.tar.gz";;
-esac
+DIR="stable"
+LOC=$(wget -O - http://openofficeorg.secsup.org/localized/ 2> /dev/null 
+| grep -E ">$LANG/|>${LANG%_*}/" | tail -1 | sed 's/.*href=\"\(.*\)\/\".*/\1/')
+[ -n "$LOC" ] && DIR="localized/$LANG"
 
 VERSION="$(basename $(wget -O - http://openofficeorg.secsup.org/$DIR/ \
 	2> /dev/null | grep href=\"[0-9] | tail -1 | sed 's/.*href=\"\(.*\)\".*/\1/'))"
@@ -25,7 +21,10 @@ if [ -z "$VERSION" ]; then
 	echo "Can't find VERSION. Abort."
 	exit 0
 fi
-TARBALL="OOo_${VERSION}_${SUFFIX}"
+echo "Selecting $DIR version $VERSION ..."
+TARBALL="$(wget -O - http://openofficeorg.secsup.org/$DIR/$VERSION/ \
+	2> /dev/null | grep $PATTERN | tail -1 | sed 's/.*href=\"\(.*\)\".*/\1/')"
+echo "Archive is $TARBALL ..."
 WGET_URL=ftp://ftp.proxad.net/mirrors/ftp.openoffice.org/$DIR/$VERSION/$TARBALL
 
 TEMP_DIR="/tmp/$PACKAGE.$$"
