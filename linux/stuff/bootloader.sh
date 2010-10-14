@@ -159,7 +159,7 @@ EOT
 		Kbase=$(getlong $CodeAdrOfs $bs)
 		storelong $RamfsAdrOfs \
 			$(( (0x1000000 - $initrdlen) & 0xFFFF0000 )) $bs
-		storelong $RamfsLenOfs $initrdlen $bs
+		storelong $RamfsLenOfs $(( ($initrdlen + 3) & -4 )) $bs
 	fi
 
 	# Output boot sector + setup + cmdline
