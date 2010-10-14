@@ -15,12 +15,20 @@ CONFIG_FILES="/lib/modules/$VERSION-slitaz/modules.dep"
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Aufs2 from git repository
-	if [ ! -d aufs2 ]; then
-		git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-standalone.git aufs2
-		cd aufs2 && git checkout origin/aufs2-34
+	local _AUFSVER="20101014"
+	[ -d "aufs2-$_AUFSVER-$VERSION" ] && rm -rf aufs2-$_AUFSVER-$VERSION
+	TARBALL=$SOURCES_REPOSITORY/aufs2-$_AUFSVER-$VERSION.tar.gz
+	if [ -f $TARBALL ]; then
+		tar xzf $TARBALL
+		cd aufs2-$_AUFSVER-$VERSION && git checkout origin/aufs2-34
+	else
+		# Aufs2 from git repository
+		git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-standalone.git aufs2-$_AUFSVER-$VERSION
+		cd aufs2-$_AUFSVER-$VERSION && git checkout origin/aufs2-34
+		tar czf $TARBALL aufs2-$_AUFSVER-$VERSION
+		
 	fi
-	cd aufs2
+	#cd aufs2-$_AUFSVER-$VERSION 2>/dev/null
 	cp -a Documentation fs include $src
 	cp -a *.patch ../stuff
 	# We need the real GNU patch
@@ -65,6 +73,8 @@ EOT
 	make INSTALL_MOD_PATH=$PWD/_pkg modules_install &&
 	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install &&
 	[ -s arch/x86/boot/bzImage ]
+	# Compress all modules.
+	$WOK/$PACKAGE/stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -75,7 +85,7 @@ genpkg_rules()
     cp -a $src/arch/x86/boot/bzImage \
 		$fs/boot/vmlinuz-$VERSION-slitaz
     # Compress all modules.
-    ./stuff/gztazmod.sh $_pkg/lib/modules/$VERSION-slitaz
+    #./stuff/gztazmod.sh $_pkg/lib/modules/$VERSION-slitaz
     path=$fs/lib/modules/$VERSION-slitaz/kernel
     mkdir -p $path
     cp -a $_pkg/lib/modules/$VERSION-slitaz/mo* \
