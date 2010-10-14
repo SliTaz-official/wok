@@ -1,28 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="aufs-utils"
-VERSION="20100916"
+VERSION="20101014"
 CATEGORY="system-tools"
 SHORT_DESC="The aufs utils."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="linux-aufs"
-BUILD_DEPENDS="git"
+BUILD_DEPENDS="git linux-module-headers"
 WEB_SITE="http://aufs.sourceforge.net/"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
-	git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-util.git \
-		$PACKAGE-$VERSION
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	if [ ! -d $WOK/linux/linux-$KERNEL_VERSION ]; then
-        	tazwok cook linux
+	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.gz
+	if [ -f $TARBALL ]; then
+		tar xzf $TARBALL
+	else
+		git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-util.git $PACKAGE-$VERSION
+		tar czf $TARBALL $PACKAGE-$VERSION
 	fi
+
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	cd $src
+	patch -p1 -R < $WOK/$PACKAGE/stuff/fix-kdir.patch
 	sed -i 's/-m 644 -T/-m 644/' Makefile
-	make KDIR=$WOK/linux/linux-$KERNEL_VERSION && 
-	make KDIR=$WOK/linux/linux-$KERNEL_VERSION DESTDIR=$PWD/_pkg install
+	make && 
+	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

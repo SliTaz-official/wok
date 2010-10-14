@@ -1,0 +1,64 @@
+diff --git a/Makefile b/Makefile
+index dc1ba7a..239a21b 100644
+--- a/Makefile
++++ b/Makefile
+@@ -15,21 +15,7 @@
+ # along with this program; if not, write to the Free Software
+ # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301	 USA
+ 
+-ifndef KDIR
+-KDIR = /lib/modules/$(shell uname -r)/build
+-endif
+-ifneq "t" "$(shell test -e ${KDIR}/include/linux/stddef.h && echo t)"
+-$(error incorrect KDIR)
+-endif
+-
+-ifndef ARCH
+-ARCH := $(shell uname -m)
+-endif
+-ARCH := $(shell echo ${ARCH} | sed -e 's/_64$$//')
+-ArchDir = ${KDIR}/arch/${ARCH}/include
+-
+-CFLAGS += -I${KDIR}/include -I./libau
+-CFLAGS += $(shell test -d ${ArchDir} && echo -I${ArchDir})
++CFLAGS += -I./libau
+ CFLAGS += -O -Wall
+ 
+ Cmd = umount.aufs auchk aubrsync
+diff --git a/README b/README
+index f1240e5..a95196d 100644
+--- a/README
++++ b/README
+@@ -9,17 +9,21 @@ And these are not for aufs1 essentially, except aubrsync. See below in
+ detail.
+ 
+ Makefile in this tree has some customizable make-variables.
+-- KDIR
+-  specify your kernel source path if necessary.
+-  Note: this path should point kernel _source_ path, instead of kernel
+-  _build_ path. Don't confuse with the path in "make O=<kdir>" when you
+-  build a kernel in a different dir.
+-- CPPFLAGS or ARCH
+-  specify the include path to your aufs2-standalone tree, if necessary.
+-  the makefile finds the correct ${KDIR}/arch/${ARCH}/include dir and
+-  sets the include path to CPPFLAGS="-I...". if the logic in Makefile is
+-  poor and doesn't support your build environment, then set the
+-  variables directly.
++- CPPFLAGS
++  specify the include path if necessary.
++  Some of linux kernel header files are necessary including
++  linux/aufs_type.h. If you have installed kernel header files to
++  /usr/include, then you may not need to specify CPPFLAGS.
++  Otherwise you need to do something like this sample.
++  + run "make headers_install" in your kernel source tree, and
++    $LinuxSrc/usr/include is created and header files are installed
++    there.
++  + if you build aufs2 as module from aufs2-standalone.git, then
++    $Aufs2Stdalone/usr/include is created and header files are
++    installed there.
++  + and specify
++	CPPFLAGS="-I $LinuxSrc/usr/include -I $Aufs2Stdalone/usr/include"
++
+ - DESTDIR
+   specify your install path if necessary.
+   some commands have to be installed under /sbin.
