@@ -10,10 +10,11 @@ usage()
 {
 cat <<EOT
 Usage: $0 bzImage [--prefix image_prefix] [--cmdline 'args']
+       [--rdev device] [--video mode] [--flags rootflags] 
        [--format 1440|1680|1720|2880 ] [--initrd initrdfile]...
 
 Example:
-$0 /boot/vmlinuz-2.6.30.6 --cmdline 'rw lang=fr_FR kmap=fr-latin1 laptop autologin' --initrd /boot/rootfs.gz --initrd ./myconfig.gz
+$0 /boot/vmlinuz-2.6.30.6 --rdev /dev/ram0 --video -3 --cmdline 'rw lang=fr_FR kmap=fr-latin1 laptop autologin' --initrd /boot/rootfs.gz --initrd ./myconfig.gz
 EOT
 exit 1
 }
@@ -21,27 +22,47 @@ exit 1
 KERNEL=""
 INITRD=""
 CMDLINE=""
-PREFIX="floppy"
+PREFIX="floppy."
 FORMAT="1440"
+RDEV=""
+VIDEO=""
+FLAGS=""
+DEBUG=""
 while [ -n "$1" ]; do
 	case "$1" in
-	--cmdline) CMDLINE="$2"; shift;;
-	--initrd)  INITRD="$INITRD $2"; shift;;
-	--prefix)  PREFIX="$2"; shift;;
-	--format)  FORMAT="$2"; shift;;
+	--c*|-c*)  CMDLINE="$2"; shift;;
+	--i*|-i*)  INITRD="$INITRD $2"; shift;;
+	--p*|-p*)  PREFIX="$2"; shift;;
+	--fo*|-f*) FORMAT="$2"; shift;;
+	--fl*)     FLAGS="$2"; shift;;	# 1 read-only, 0 read-write
+	--r*|-r*)  RDEV="$2"; shift;;	# /dev/???
+	--v*|-v*)  VIDEO="$2"; shift;;	# -3 .. n
+	--debug)   DEBUG="1";;
 	*) KERNEL="$1";;
 	esac
 	shift
 done
 [ -n "$KERNEL" -a -f "$KERNEL" ] || usage
 
+# write a 16 bits data
+# usage: store16 offset data16 file
+store16()
+{
+	echo $2 | awk '{ printf "\\\\x%02X\\\\x%02X",$1%256,($1/256)%256 }' | \
+		xargs echo -en | \
+	dd bs=2 conv=notrunc of=$3 seek=$(( $1 / 2 )) 2> /dev/null
+	[ -n "$DEBUG" ] && printf "store16(%04X) = %04X\n" $1 $2 1>&2
+}
+
 # write a 32 bits data
 # usage: storelong offset data32 file
 storelong()
 {
-	echo $2 | awk '{ printf "%c%c%c%c",$1%256,($1/256)%256,($1/256/256)%256,
-					   ($1/256/256/256)%256 }' | \
-	dd bs=1 conv=notrunc of=$3 seek=$(( $1 )) 2> /dev/null
+	echo $2 | awk '{ printf "\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X",
+		 $1%256,($1/256)%256,($1/256/256)%256,($1/256/256/256)%256 }' | \
+		xargs echo -en | \
+		dd bs=4 conv=notrunc of=$3 seek=$(( $1 / 4 )) 2> /dev/null
+	[ -n "$DEBUG" ] && printf "storelong(%04X) = %08X\n" $1 $2 1>&2
 }
 
 # read a 32 bits data
@@ -56,7 +77,10 @@ floppyset()
 {
 	# bzImage offsets
 	SetupSzOfs=497
+	FlagsOfs=498
 	SyssizeOfs=500
+	VideoModeOfs=506
+	RootDevOfs=508
 	CodeAdrOfs=0x214
 	RamfsAdrOfs=0x218
 	RamfsLenOfs=0x21C
@@ -94,10 +118,26 @@ EOT
 	setupszb=$(( $setupsz & 255 ))
 	dd if=$KERNEL bs=512 skip=1 count=$setupszb 2> /dev/null >> $bs
 
+	if [ -n "$FLAGS" ]; then
+		[ -n "$DEBUG" ] && echo -n "--flags " 1>&2
+		store16 $FlagsOfs $(( $FLAGS )) $bs
+	fi
+	if [ -n "$VIDEO" ]; then
+		[ -n "$DEBUG" ] && echo -n "--video " 1>&2
+		store16 $VideoModeOfs $(( $VIDEO )) $bs
+	fi
+	if [ -n "$RDEV" ]; then
+		[ -n "$DEBUG" ] && echo -n "--rdev " 1>&2
+		n=$(stat -c '0x%02t%02T' $RDEV 2> /dev/null)
+		[ -n "$n" ] || n=$RDEV
+		store16 $RootDevOfs $(( $n )) $bs
+	fi
+
 	# Store cmdline after setup
 	if [ -n "$CMDLINE" ]; then
+		[ -n "$DEBUG" ] && echo -n "--cmdline '$CMDLINE' " 1>&2
 		echo -n "$CMDLINE" | dd bs=512 count=1 conv=sync 2> /dev/null >> $bs
-		storelong ArgPtrOfs $(( $SetupBase + $stacktop )) $bs
+		storelong $ArgPtrOfs $(( $SetupBase + $stacktop )) $bs
 	fi
 
 	# Compute initramfs size
@@ -105,6 +145,7 @@ EOT
 	padding=0
 	for i in $( echo $INITRD | sed 's/,/ /' ); do
 		[ -s "$i" ] || continue
+		[ -n "$DEBUG" ] && echo "--initrd $i " 1>&2
 		initrdlen=$(( $initrdlen + $padding ))
 		padding=$(stat -c %s $i)
 		initrdlen=$(( $initrdlen + $padding ))
@@ -114,6 +155,7 @@ EOT
 	Ksize=$(( $(getlong $SyssizeOfs $bs)*16 ))
 	Kpad=$(( (($Ksize+4095)/4096)*4096 - Ksize ))
 	if [ $initrdlen -ne 0 ]; then
+		[ -n "$DEBUG" ] && echo "initrdlen = $initrdlen " 1>&2
 		Kbase=$(getlong $CodeAdrOfs $bs)
 		storelong $RamfsAdrOfs \
 			$(( (0x1000000 - $initrdlen) & 0xFFFF0000 )) $bs
@@ -134,10 +176,10 @@ EOT
 	padding=0
 	for i in $( echo $INITRD | sed 's/,/ /' ); do
 		[ -s "$i" ] || continue
-		[ $padding -ne 0 ] && dd if=/dev/zero bs=1 count=$padding
+		[ $padding -ne 0 ] && dd if=/dev/zero bs=1 count=$padding 2> /dev/null
 		dd if=$i 2> /dev/null
-		padding=$(( 4096 - ($(stat -c %s $i) & 4095) ))
-		[ $padding -eq 4096 ] && padding=0
+		padding=$(( 4 - ($(stat -c %s $i) & 3) ))
+		[ $padding -eq 4 ] && padding=0
 	done
 
 	# Cleanup
@@ -147,7 +189,7 @@ EOT
 floppyset | split -b ${FORMAT}k /dev/stdin floppy$$
 i=1
 ls floppy$$* | while read file ; do
-	output=$PREFIX.$(printf "%03d" $i)
+	output=$PREFIX$(printf "%03d" $i)
 	cat $file /dev/zero | dd bs=1k count=$FORMAT conv=sync of=$output 2> /dev/null
 	echo $output
 	rm -f $file
