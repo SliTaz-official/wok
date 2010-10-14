@@ -10,8 +10,10 @@ usage()
 {
 cat <<EOT
 Usage: $0 bzImage [--prefix image_prefix] [--cmdline 'args']
-       [--rdev device] [--video mode] [--flags rootflags] 
-       [--format 1440|1680|1720|2880 ] [--initrd initrdfile]...
+       [--rdev device] [--video mode] [--flags rootflags] [--tracks cnt]
+       [--format 1440|1680|1920|2880 ] [--initrd initrdfile]...
+
+Default values: --format 1440 --tracks 80 --prefix floppy.
 
 Example:
 $0 /boot/vmlinuz-2.6.30.6 --rdev /dev/ram0 --video -3 --cmdline 'rw lang=fr_FR kmap=fr-latin1 laptop autologin' --initrd /boot/rootfs.gz --initrd ./myconfig.gz
@@ -27,6 +29,7 @@ FORMAT="1440"
 RDEV=""
 VIDEO=""
 FLAGS=""
+TRACKS=""
 DEBUG=""
 while [ -n "$1" ]; do
 	case "$1" in
@@ -37,18 +40,26 @@ while [ -n "$1" ]; do
 	--fl*)     FLAGS="$2"; shift;;	# 1 read-only, 0 read-write
 	--r*|-r*)  RDEV="$2"; shift;;	# /dev/???
 	--v*|-v*)  VIDEO="$2"; shift;;	# -3 .. n
+	--t*|-t*)  TRACKS="$2"; shift;; # likely 81 .. 84
 	--debug)   DEBUG="1";;
 	*) KERNEL="$1";;
 	esac
 	shift
 done
 [ -n "$KERNEL" -a -f "$KERNEL" ] || usage
+if [ -n "$TRACKS" ]; then
+	if [ $(( $FORMAT % $TRACKS )) -ne 0 ]; then
+		echo "Invalid track count for format $FORMAT."
+		usage
+	fi
+fi
 
 # write a 16 bits data
 # usage: store16 offset data16 file
 store16()
 {
-	echo $2 | awk '{ printf "\\\\x%02X\\\\x%02X",$1%256,($1/256)%256 }' | \
+	echo $(( $2 + 0x10000 )) | \
+		awk '{ printf "\\\\x%02X\\\\x%02X",$1%256,($1/256)%256 }' | \
 		xargs echo -en | \
 	dd bs=2 conv=notrunc of=$3 seek=$(( $1 / 2 )) 2> /dev/null
 	[ -n "$DEBUG" ] && printf "store16(%04X) = %04X\n" $1 $2 1>&2
@@ -76,6 +87,7 @@ getlong()
 floppyset()
 {
 	# bzImage offsets
+	CylinderCount=496
 	SetupSzOfs=497
 	FlagsOfs=498
 	SyssizeOfs=500
@@ -118,19 +130,24 @@ EOT
 	setupszb=$(( $setupsz & 255 ))
 	dd if=$KERNEL bs=512 skip=1 count=$setupszb 2> /dev/null >> $bs
 
+	if [ -n "$TRACKS" ]; then
+		[ -n "$DEBUG" ] && echo -n "--tracks " 1>&2
+		n=$(getlong $CylinderCount $bs)
+		store16 $CylinderCount $(( ($n & -256) + $TRACKS )) $bs
+	fi
 	if [ -n "$FLAGS" ]; then
 		[ -n "$DEBUG" ] && echo -n "--flags " 1>&2
-		store16 $FlagsOfs $(( $FLAGS )) $bs
+		store16 $FlagsOfs $FLAGS $bs
 	fi
 	if [ -n "$VIDEO" ]; then
 		[ -n "$DEBUG" ] && echo -n "--video " 1>&2
-		store16 $VideoModeOfs $(( $VIDEO )) $bs
+		store16 $VideoModeOfs $VIDEO $bs
 	fi
 	if [ -n "$RDEV" ]; then
 		[ -n "$DEBUG" ] && echo -n "--rdev " 1>&2
 		n=$(stat -c '0x%02t%02T' $RDEV 2> /dev/null)
 		[ -n "$n" ] || n=$RDEV
-		store16 $RootDevOfs $(( $n )) $bs
+		store16 $RootDevOfs $n $bs
 	fi
 
 	# Store cmdline after setup
@@ -186,6 +203,10 @@ EOT
 	rm -f $bs
 }
 
+if [ "$FORMAT" == "0" ]; then # unsplitted
+	floppyset > $PREFIX
+	exit
+fi
 floppyset | split -b ${FORMAT}k /dev/stdin floppy$$
 i=1
 ls floppy$$* | while read file ; do
