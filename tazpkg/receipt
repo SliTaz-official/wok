@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="tazpkg"
-VERSION="3.4"
+VERSION="4.0"
 CATEGORY="base-system"
 SHORT_DESC="SliTaz packages manager."
 MAINTAINER="pankso@slitaz.org"
@@ -16,22 +16,20 @@ TAGS="slitaz package-manager"
 # Tazpkg is SliTaz packages manager. On an other GNU/Linux install
 # can be do with : make install from the sources directory.
 #
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make DESTDIR=$PWD/_pkg install
+}
+
 genpkg_rules()
 {
-	mkdir -p \
-		$fs/etc/slitaz \
-		$fs/usr/bin \
-		$fs/usr/lib/slitaz \
-		$fs/usr/share/doc/$PACKAGE
-	cp -a $src/tazpkg $fs/usr/bin
-	cp -a $src/tazpkgbox $fs/usr/bin
-	cp -a $src/tazpkg.conf $fs/etc/slitaz
-	cp -a $src/lib/* $fs/usr/lib/slitaz
-	cp -a $src/applications $fs/usr/share
+	cp -a $_pkg/usr $fs
+	cp -a $_pkg/etc $fs
 	cp -a $src/pixmaps $fs/usr/share
 	cp -a $src/mime $fs/usr/share
-	cp -a $src/doc/*.html $fs/usr/share/doc/$PACKAGE
-	chmod 755 $fs/usr/bin/$PACKAGE
 	chown -R root.root $fs
 	# Default icon for mimetype (freedesktop standard compliant file
 	# manager will diplay a tazpkg icon for SliTaz packages).
@@ -39,11 +37,4 @@ genpkg_rules()
 	cd $fs/usr/share/icons/hicolor/32x32/mimetypes
 	ln -s /usr/share/pixmaps/tazpkg.png package-x-tazpkg.png
 	ln -s /usr/share/pixmaps/tazpkg.png gnome-mime-application-x-tazpkg.png
-}
-
-post_install()
-{
-	# update mime-cache
-	echo "Updating mime-types database..."
-	update-mime-database $1/usr/share/mime
 }
