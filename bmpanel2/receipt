@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="bmpanel2"
+VERSION="2.1pre1"
+CATEGORY="misc"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="Nice NETWM-compatible panel for X11"
+WEB_SITE="http://bmpanel2.googlecode.com/"
+DEPENDS="pango cairo xorg-libX11 xorg-libXrender"
+BUILD_DEPENDS="cmake pango-dev  cairo-dev  xorg-libX11-dev  xorg-libXrender-dev python-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/files/$TARBALL"
+TAGS="panel window-manager wm"
+
+# Rules to configure and make the package.
+
+compile_rules() {
+  cd $src
+  # fix "with" statement for python 2.5
+  sed -i "s/import sys, os/from __future__ import with_statement \nimport sys, os /" extra/py/${PACKAGE}.py
+  cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RELEASE . 
+  make 
+  make DESTDIR=$PWD/_pkg/ install
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/$PACKAGE/themes $fs/usr/bin
+	cp -a $_pkg/usr/bin/$PACKAGE $fs/usr/bin
+		# cp only native and transpy themes
+	cp -a $_pkg/usr/share/$PACKAGE/themes/transpy $fs/usr/share/$PACKAGE/themes
+	cp -a $_pkg/usr/share/$PACKAGE/themes/native $fs/usr/share/$PACKAGE/themes
+	
+	
+}

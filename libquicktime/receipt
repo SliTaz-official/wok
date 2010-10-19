@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="libquicktime"
+VERSION="1.1.5"
+CATEGORY="multimedia"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="A library for reading and writing quicktime files."
+WEB_SITE="http://libquicktime.sourceforge.net/"
+DEPENDS="gtk+  ffmpeg-svn  alsa-lib libxv libgl xorg-libXaw x264"
+BUILD_DEPENDS=" gtk+-dev  ffmpeg-svn-dev  alsa-lib-dev  xorg-libXaw-dev x264-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+
+compile_rules() {
+  cd $src
+  ./configure --prefix=/usr  \
+			  --enable-gpl \
+			  --with-ffmpeg \
+			  --with-x264 \
+			  --without-doxygen &&
+  make &&
+  make DESTDIR=$PWD/_pkg install
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/$PACKAGE
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*so* $fs/usr/lib/
+	cp -a $_pkg/usr/lib/$PACKAGE/*so* $fs/usr/lib/$PACKAGE
+	
+}

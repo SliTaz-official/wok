@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="fftw"
+VERSION="3.2.2"
+CATEGORY="multimedia"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="A library for computing the discrete Fourier transform (DFT)"
+BUILD_DEPENDS="gfortran"
+WEB_SITE="http://www.fftw.org/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/$TARBALL"
+TAGS=""
+
+# Rules to configure and make the package.
+
+compile_rules() {
+  cd $src
+  
+  # build double precision
+  ./configure F77=gfortran --prefix=/usr --enable-shared &&
+  make &&
+  make DESTDIR=$PWD/_pkg install 
+ 
+  # build long double precission
+  make clean
+  ./configure F77=gfortran --prefix=/usr --enable-long-double  --enable-shared 
+  make 
+  make DESTDIR=$PWD/_pkg install 
+  
+  # build single precision
+  make clean
+  ./configure F77=gfortran --prefix=/usr --enable-float --enable-shared 
+  make 
+  make DESTDIR=$PWD/_pkg install 
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*so* $fs/usr/lib/
+	
+}
