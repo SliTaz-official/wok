@@ -1,0 +1,49 @@
+# SliTaz package receipt.
+
+PACKAGE="pcsxr-svn"
+VERSION="58374"
+CATEGORY="games"
+SHORT_DESC="A Sony PlayStation emulator based on the PCSX-df Project"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="libcdio libglade xorg-libXtst xorg-libXv mesa libsdl"
+BUILD_DEPENDS="glib-dev libcdio libcdio-dev libglade-dev xorg-libXtst xorg-libXtst-dev xorg-libXv xorg-libXv-dev mesa-dev \
+zlib-dev libsdl libsdl-dev subversion nasm gettext"
+WEB_SITE="http://pcsxr.codeplex.com/"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
+	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.gz
+	if [ -f $TARBALL ]; then
+		tar xzf $TARBALL
+	else
+		echo "Cloning revision $VERSION from subversion repository..."
+		svn checkout -r $VERSION \
+			https://pcsxr.svn.codeplex.com/svn $PACKAGE-$VERSION
+		tar czf $TARBALL $PACKAGE-$VERSION
+	fi
+	cd $src/pcsxr
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--enable-libcdio \
+		--enable-opengl \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	_pkg=$WOK/$PACKAGE/$PACKAGE-$VERSION/pcsxr/_pkg
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	cp -a $_pkg/usr/share/psemu $fs/usr/share
+	cp -a $_pkg/usr/share/pcsx $fs/usr/share
+	find $fs/usr/lib -name "*.la" -delete
+}
+
