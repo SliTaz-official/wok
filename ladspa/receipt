@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="ladspa"
+VERSION="1.13"
+CATEGORY="multimedia"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="Linux Audio Developer's Simple Plugin API (LADSPA)"
+BUILD_DEPENDS=""
+WEB_SITE="http://www.ladspa.org/"
+DEPENDS="gcc-lib-base"
+TARBALL="${PACKAGE}_sdk_$VERSION.tgz"
+WGET_URL="$WEB_SITE/download/$TARBALL"
+TAGS="multimedia"
+
+# Rules to configure and make the package.
+
+compile_rules() {
+  [ -d $PACKAGE-$VERSION  ] || mv ${PACKAGE}_sdk $PACKAGE-$VERSION
+  cd $src/src
+  sed -i -e 's/mkdirhier/mkdir -p/' makefile 
+  make targets 
+  make INSTALL_PLUGINS_DIR=$PWD/../_pkg/usr/lib/ladspa/ \
+	   INSTALL_INCLUDE_DIR=$PWD/../_pkg/usr/include/  \
+	   INSTALL_BINARY_DIR=$PWD/../_pkg/usr/bin/ install 
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/$PACKAGE
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/$PACKAGE/*so* $fs/usr/lib/$PACKAGE	
+}
