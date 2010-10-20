@@ -14,10 +14,21 @@ fastjar rhino ecj apache-ant xalan-xerces-j \
 freetype-dev gtk+-dev giflib-dev jpeg-dev libpng-dev \
 xorg-inputproto xorg-kbproto xorg-libXi-dev xorg-libXinerama-dev \
 xorg-libXp-dev xorg-libXt-dev xorg-libXtst-dev xorg-printproto \
-xorg-recordproto xorg-renderproto xorg-xextproto xorg-xineramaproto xorg-xproto"
+xorg-recordproto xorg-renderproto xorg-xextproto xorg-xineramaproto xorg-xproto wget"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.iced-tea.org/"
 WGET_URL="http://icedtea.classpath.org/download/source/$TARBALL"
+
+openjdk_version="b20"
+openjdk_date="21_jun_2010"
+JAXWS="jdk6-jaxws-${openjdk_version}.zip"
+JAXP="jdk6-jaxp-${openjdk_version}.zip"
+JAF="jdk6-jaf-${openjdk_version}.zip"
+OPENJDK="openjdk-6-src-${openjdk_version}-${openjdk_date}.tar.gz"
+WGETJAXWS="https://jax-ws.dev.java.net/files/documents/4202/150724"
+WGETJAXP="https://jaxp.dev.java.net/files/documents/913/150648"
+WGETJAF="https://jax-ws.dev.java.net/files/documents/4202/150725"
+WGETOPENJDK="http://download.java.net/openjdk/jdk6/promoted/${openjdk_version}"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -35,14 +46,23 @@ compile_rules()
 	cd $src
 	mkdir drops
 	sed -i -e 's/mkdir -p drops/true/' -e 's/ jar xf/ fastjar xf/'  Makefile*
-	for i in jdk6-jaxws-2009_10_27.zip jdk6-jaxp-2009_10_13.zip \
-		  jdk6-jaf-2009_10_27.zip ; do
-		[ -s $SOURCES_REPOSITORY/$i ] &&
-		cp $SOURCES_REPOSITORY/$i drops
-	done
-	for i in openjdk-6-src-b18-16_feb_2010.tar.gz ; do
-		[ -s $SOURCES_REPOSITORY/$i ] &&
-		cp $SOURCES_REPOSITORY/$i .
+	for i in $JAXWS $JAXP $JAF $OPENJDK ; do
+		if [ -f $SOURCES_REPOSITORY/$i ]; then
+			cp $SOURCES_REPOSITORY/$i drops
+		elif [ "$i" == "$JAXWS" ]; then
+			wget -O $SOURCES_REPOSITORY/$JAXWS --no-check-certificate "$WGETJAXWS/$JAXWS"
+			cp $SOURCES_REPOSITORY/$JAXWS drops
+		elif [ "$i" == "$JAXP" ]; then
+			wget -O $SOURCES_REPOSITORY/$JAXP --no-check-certificate "$WGETJAXP/$JAXP"
+			cp $SOURCES_REPOSITORY/$JAXP drops
+		elif [ "$i" == "$JAF" ]; then
+			wget -O $SOURCES_REPOSITORY/$JAF --no-check-certificate "$WGETJAF/$JAF"
+			cp $SOURCES_REPOSITORY/$JAF drops
+		elif [ "$i" == "$OPENJDK" ]; then
+			wget -O $SOURCES_REPOSITORY/$OPENJDK "$WGETOPENJDK/$OPENJDK"
+			cp $SOURCES_REPOSITORY/$OPENJDK .
+		fi
+		
 	done
 	[ -L /usr/bin/find ] && tazpkg get-install findutils --forced
 	[ -L /usr/bin/diff ] && tazpkg get-install diffutils --forced
