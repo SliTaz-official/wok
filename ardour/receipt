@@ -1,0 +1,59 @@
+# SliTaz package receipt.
+
+PACKAGE="ardour"
+VERSION="2.8.7"
+CATEGORY="multimedia"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="A multichannel hard disk recorder and digital audio workstation"
+WEB_SITE="http://ardour.org"
+DEPENDS="liblrdf ladspa libgnomecanvasmm liblo libusb aubio libsndfile"
+BUILD_DEPENDS="scons libboost-dev jack-audio-connection-kit-dev jack-audio-connection-kit alsa-lib-dev liblo liblo-dev aubio-dev libsndfile-dev ladspa-dev liblrdf-dev libart_lgpl-dev libusb-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="ftp://ftp.archlinux.org/other/ardour/$TARBALL"
+TAGS="audio recorder mixer"
+
+# Rules to configure and make the package.
+
+compile_rules() {
+  cd $src
+  sed -i '/-O3/d' SConstruct 
+  mkdir -p $PWD/_pkg
+  
+  scons PREFIX=/usr 	\
+		NLS=1 \
+		FREEDESKTOP=0 \
+		SYSLIBS=0 \
+		VST=0 \
+		WIIMOTE=0 \
+		LV2=0 \
+		FREESOUND=1 \
+		LIBLO=1 \
+		AUBIO=1 \
+		TRANZPORT=1 \
+		DIST_LIBDIR=lib 
+			
+  scons PREFIX=/usr \
+		NLS=1 \
+		FREEDESKTOP=0 \
+		SYSLIBS=0 \
+		VST=0 \
+		WIIMOTE=0 \
+		LV2=0 \
+		FREESOUND=1 \
+		LIBLO=1 \
+		AUBIO=1 \
+		TRANZPORT=1 \
+		DIST_LIBDIR=lib \
+		DESTDIR=$PWD/_pkg install 
+
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/ardour2 $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/ardour2/*so* $fs/usr/lib/ardour2
+	cp -a $_pkg/usr/share/ardour2 $fs/usr/share
+	
+}
