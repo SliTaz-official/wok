@@ -9,6 +9,7 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.nongnu.org/qemu/"
 WGET_URL="${WEB_SITE}$TARBALL"
 DEPENDS="linux"
+BUILD_DEPENDS="linux-module-headers"
 SUGGESTED="qemu"
 TAG="virtualization"
 
@@ -16,13 +17,12 @@ TAG="virtualization"
 compile_rules()
 {
 	local dir
-	if [ ! -d $WOK/linux/taz ]; then
-		tazwok cook linux
-	fi
-	dir=$(cd $WOK/linux/taz/linux*/fs ; ls -d lib/modules/*)/misc
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+
+	dir=/lib/modules/${KERNEL_VERSION}-slitaz/misc
 	cd $src
 	./configure --prefix=/usr \
-		    --kernel-path=$(ls -d ../../linux/$(ls ../../linux/taz))
+		    --kernel-path=/usr/src/linux
 	make
 	mkdir -p _pkg/$dir _pkg/dev
 	cp kqemu.ko _pkg/$dir
