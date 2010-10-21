@@ -43,6 +43,9 @@ compile_rules()
 	local ECJ_VERSION
 	ECJ_VERSION="3.6"
 
+	export ALT_PARALLEL_COMPILE_JOBS="4"
+	export HOTSPOT_BUILD_JOBS="${ALT_PARALLEL_COMPILE_JOBS}"
+
 	cd $src
 	mkdir drops
 	sed -i -e 's/mkdir -p drops/true/' -e 's/ jar xf/ fastjar xf/'  Makefile*
@@ -82,6 +85,7 @@ EOT
 	autoreconf &&
 	./configure \
 		--prefix=/usr \
+		--with-parallel-jobs=${HOTSPOT_BUILD_JOBS} \
 		--disable-plugin \
 		--disable-docs \
 		--with-ecj \
@@ -94,7 +98,7 @@ EOT
 		--with-rhino=/usr/share/java/js.jar \
 		--with-abs-install-dir=$JVM_PREFIX \
 		$CONFIGURE_ARGS &&
-	make -j 1 ARCH_PREFIX=  || exit 1
+	make ARCH_PREFIX=  || exit 1
 
 	# NOTE: IcedTea6 does not define an "install" target
 	
