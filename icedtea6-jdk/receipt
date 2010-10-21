@@ -14,7 +14,7 @@ fastjar rhino ecj apache-ant xalan-xerces-j \
 freetype-dev gtk+-dev giflib-dev jpeg-dev libpng-dev \
 xorg-inputproto xorg-kbproto xorg-libXi-dev xorg-libXinerama-dev \
 xorg-libXp-dev xorg-libXt-dev xorg-libXtst-dev xorg-printproto \
-xorg-recordproto xorg-renderproto xorg-xextproto xorg-xineramaproto xorg-xproto wget"
+xorg-recordproto xorg-renderproto xorg-xextproto xorg-xineramaproto xorg-xproto"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.iced-tea.org/"
 WGET_URL="http://icedtea.classpath.org/download/source/$TARBALL"
@@ -46,6 +46,7 @@ compile_rules()
 	cd $src
 	mkdir drops
 	sed -i -e 's/mkdir -p drops/true/' -e 's/ jar xf/ fastjar xf/'  Makefile*
+	[ -L /usr/bin/wget ] && tazpkg get-install wget --forced
 	for i in $JAXWS $JAXP $JAF $OPENJDK ; do
 		if [ -f $SOURCES_REPOSITORY/$i ]; then
 			cp $SOURCES_REPOSITORY/$i drops
@@ -68,10 +69,11 @@ compile_rules()
 	[ -L /usr/bin/diff ] && tazpkg get-install diffutils --forced
 	[ "$(readlink /usr/bin/awk)" == "gawk" ] ||
 	tazpkg get-install gawk --forced
+	[ -L /usr/bin/sed ] && tazpkg get-install sed --forced
 	mem=$(free | awk '/Mem:/ { printf "%d\n",$2/1024 }')
 	cat > slitaz.sh <<EOT
 # Busybox compatibility
-find -name Sanity.gmk | xargs sed -i 's/--sync -kP/-k/' Makefile 
+#find -name Sanity.gmk | xargs sed -i 's/--sync -kP/-k/' Makefile 
 find -name Platform.gmk | xargs sed -i "s@MB_OF_MEMORY *:=.*free.*@MB_OF_MEMORY := $mem@" Makefile
 EOT
 	sed -i  -e 's|touch .*|&\n\tsh slitaz.sh|' \
