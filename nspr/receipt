@@ -1,0 +1,49 @@
+# SliTaz package receipt.
+
+PACKAGE="nspr"
+VERSION="4.8.6"
+CATEGORY="utilities"
+SHORT_DESC="Netscape Portable Runtime"
+MAINTAINER="rocky@slitaz.org"
+DEPENDS="glibc-base"
+BUILD_DEPENDS="perl"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.mozilla.org/projects/nspr/"
+WGET_URL="ftp://ftp.mozilla.org/pub/mozilla.org/nspr/releases/v${VERSION}/src/${TARBALL}"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+./mozilla/nsprpub/configure \
+      --prefix=/usr \
+      --libdir=/usr/lib \
+      --includedir=/usr/include/nspr \
+      --enable-optimize \
+      --disable-debug
+  make
+  make DESTDIR="$PWD/_pkg" install
+
+  mkdir -p $PWD/_pkg/usr/lib/pkgconfig
+  NSPR_LIBS=`./config/nspr-config --libs`
+  NSPR_CFLAGS=`./config/nspr-config --cflags`
+  NSPR_VERSION=`./config/nspr-config --version`
+  install -m755 -d "${pkgdir}/usr/lib/pkgconfig"
+  sed "../stuff/nspr.pc.in" -e "s,%libdir%,/usr/lib," \
+        -e "s,%prefix%,/usr," \
+        -e "s,%exec_prefix%,/usr/bin," \
+        -e "s,%includedir%,/usr/include/nspr," \
+        -e "s,%NSPR_VERSION%,${NSPR_VERSION}," \
+        -e "s,%FULL_NSPR_LIBS%,${NSPR_LIBS}," \
+        -e "s,%FULL_NSPR_CFLAGS%,${NSPR_CFLAGS}," > "$PWD/_pkg/usr/lib/pkgconfig/nspr.pc"
+  ln -sf nspr.pc "$PWD/_pkg/usr/lib/pkgconfig/mozilla-nspr.pc"
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/usr/lib
+    cp -a $_pkg/usr/bin $fs/usr
+    cp -a $_pkg/usr/lib/*so* $fs/usr/lib
+    rm $fs/usr/bin/nspr-config
+}

@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="nss"
-VERSION="3.12.7"
+VERSION="3.12.8"
 CATEGORY="utilities"
 SHORT_DESC="Mozilla Network Security Services (NSS)."
 MAINTAINER="rocky@slitaz.org"
-DEPENDS="libfirefox sqlite zlib"
-BUILD_DEPENDS="firefox-dev sqlite-dev zlib-dev perl"
+DEPENDS="nspr sqlite zlib"
+BUILD_DEPENDS="nspr-dev sqlite-dev zlib-dev perl pkg-config"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.mozilla.org/projects/security/pki/nss/"
 WGET_URL="ftp://ftp.mozilla.org/pub/security/nss/releases/NSS_${VERSION//./_}_RTM/src/${TARBALL}"
@@ -24,12 +24,22 @@ compile_rules()
     # Removes rpath
     patch -Np0 -i ../stuff/nss-no-rpath.patch
 
-    export NSPR_INCLUDE_DIR=$(ls -d /usr/include/firefox-*)
-    export NSPR_LIB_DIR=$(ls -d /usr/lib/firefox-*/lib)
+    cd $src/mozilla/security/nss/lib/ckfw/builtins
+    make generate
+
+    cd $src
+    unset CFLAGS
+    unset CXXFLAGS
     export NSS_USE_SYSTEM_SQLITE=1
     export BUILD_OPT=1
+    export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
+    export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
+    export NSPR_INCLUDE_DIR=`pkg-config --cflags-only-I nspr | sed 's/-I//'`
+    export NSPR_LIB_DIR=`pkg-config --libs-only-L nspr | sed 's/-L.//'`
 
-    make -j1 -C mozilla/security/nss build_coreconf build_dbm all
+    make -j 1 -C mozilla/security/coreconf
+    make -j 1 -C mozilla/security/dbm
+    make -j 1 -C mozilla/security/nss
 
     mkdir -p $PWD/_pkg/usr/bin
     mkdir -p $PWD/_pkg/usr/lib/pkgconfig
