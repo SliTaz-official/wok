@@ -50,7 +50,7 @@ compile_rules()
 	mkdir drops
 	sed -i -e 's/mkdir -p drops/true/' -e 's/ jar xf/ fastjar xf/'  Makefile*
 	[ -L /usr/bin/wget ] && tazpkg get-install wget --forced
-	for i in $JAXWS $JAXP $JAF $OPENJDK ; do
+	for i in $JAXWS $JAXP $JAF ; do
 		if [ -f $SOURCES_REPOSITORY/$i ]; then
 			cp $SOURCES_REPOSITORY/$i drops
 		elif [ "$i" == "$JAXWS" ]; then
@@ -62,11 +62,17 @@ compile_rules()
 		elif [ "$i" == "$JAF" ]; then
 			wget -O $SOURCES_REPOSITORY/$JAF --no-check-certificate "$WGETJAF/$JAF"
 			cp $SOURCES_REPOSITORY/$JAF drops
-		elif [ "$i" == "$OPENJDK" ]; then
+		fi
+		
+	done
+
+	for i in $OPENJDK ; do
+		if [ -f $SOURCES_REPOSITORY/$i ]; then
+			cp $SOURCES_REPOSITORY/$i .
+		else
 			wget -O $SOURCES_REPOSITORY/$OPENJDK "$WGETOPENJDK/$OPENJDK"
 			cp $SOURCES_REPOSITORY/$OPENJDK .
 		fi
-		
 	done
 	[ -L /usr/bin/find ] && tazpkg get-install findutils --forced
 	[ -L /usr/bin/diff ] && tazpkg get-install diffutils --forced
