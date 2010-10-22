@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="portmidi"
+VERSION="217"
+CATEGORY="multimedia"
+SHORT_DESC="Platform Independent Library for MIDI I/O"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="alsa-lib"
+BUILD_DEPENDS="alsa-lib-dev cmake"
+TARBALL="$PACKAGE-src-$VERSION.zip"
+WEB_SITE="http://portmedia.sourceforge.net/portmidi/"
+WGET_URL="$SF_MIRROR/portmedia/$PACKAGE/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	src=$WOK/$PACKAGE/$PACKAGE
+	cd $src
+	patch -Np1 -i ../stuff/portmidi-217-Makefile.patch
+
+	 # Prefix Fix
+	sed -i "s_\(/usr\)/local_\1_" \
+	*/CMakeLists.txt \
+	pm_python/setup.py
+
+	 # Installation Fix
+	#mkdir -p pm_java/Release
+
+	 # CMake configuration
+	cmake . \
+	-DCMAKE_INSTALL_PREFIX=/usr \
+	-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=Release \
+	-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=Release \
+	-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=Release
+
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	_pkg=$WOK/$PACKAGE/$PACKAGE/_pkg
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/* $fs/usr
+}
+
