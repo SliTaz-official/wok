@@ -43,9 +43,6 @@ compile_rules()
 	local ECJ_VERSION
 	ECJ_VERSION="3.6"
 
-	export ALT_PARALLEL_COMPILE_JOBS="4"
-	export HOTSPOT_BUILD_JOBS="${ALT_PARALLEL_COMPILE_JOBS}"
-
 	cd $src
 	mkdir drops
 	sed -i -e 's/mkdir -p drops/true/' -e 's/ jar xf/ fastjar xf/'  Makefile*
@@ -91,7 +88,6 @@ EOT
 	autoreconf &&
 	./configure \
 		--prefix=/usr \
-		--with-parallel-jobs=${HOTSPOT_BUILD_JOBS} \
 		--disable-plugin \
 		--disable-docs \
 		--with-ecj \
@@ -104,14 +100,15 @@ EOT
 		--with-rhino=/usr/share/java/js.jar \
 		--with-abs-install-dir=$JVM_PREFIX \
 		$CONFIGURE_ARGS &&
-	make ARCH_PREFIX=  || exit 1
+	make -j 1 ARCH_PREFIX=  || exit 1
 
+	# NOTE: don't build with -j 4. Only build with -j 1 or tank will crash
 	# NOTE: IcedTea6 does not define an "install" target
 	
 	rm -r -f $src/_pkg
 
 	local JVM_BUILDDIR
-	JVM_BUILDDIR=$src/openjdk/build/linux-i586/j2sdk-image
+	JVM_BUILDDIR=$src/openjdk.build/j2sdk-image
 	local JVM_DESTDIR
 	JVM_DESTDIR=$src/_pkg$JVM_PREFIX
 
