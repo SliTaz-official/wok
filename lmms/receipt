@@ -1,0 +1,29 @@
+# SliTaz package receipt.
+
+PACKAGE="lmms"
+VERSION="0.4.8"
+CATEGORY="multimedia"
+SHORT_DESC="The Linux MultiMedia Studio"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="libsdl glib fluidsynth libpng libvorbis xorg-libXft xorg-libXinerama libsamplerate libQtGui libQtXml"
+BUILD_DEPENDS="libsdl-dev glib-dev fluidsynth-dev libpng-dev libogg-dev libvorbis-dev alsa-lib-dev xorg-libXft-dev xorg-libXinerama-dev libsndfile-dev libsamplerate-dev Qt4-dev qt4-phonon qmake cmake pkg-config"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://lmms.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's|lib64|lib|g' cmake/modules/DetectMachine.cmake
+	cmake . -DCMAKE_INSTALL_PREFIX=/usr
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/* $fs/usr
+}
+
