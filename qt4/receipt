@@ -2,7 +2,7 @@
 
 PACKAGE="qt4"
 SOURCE="qt-everywhere-opensource-src"
-VERSION="4.6.2"
+VERSION="4.7.0"
 CATEGORY="meta"
 SHORT_DESC="qt x11 toolkit"
 MAINTAINER="allan316@gmail.com"
@@ -10,7 +10,9 @@ DEPENDS="glibc-locale libQtCore libQtGui libQtNetwork libQtSvg libQtXml \
 libQtDesigner libQtScript libQt3Support libQtClucene libQtDBus libQtHelp \
 libQtOpenGL libQtSql libQtWebkit gstreamer"
 BUILD_DEPENDS="xorg-libX11-dev dbus-dev slitaz-dev-pkgs gstreamer \
-gstreamer-dev gst-python-dev"
+gstreamer-dev gst-python-dev libmng-dev cups-dev mysql-dev unixODBC-dev \
+mesa-dev fontconfig-dev libegl-mesa libglu-mesa libglw-mesa postgresql-dev glibc-locale \
+gtk+-dev gst-plugins-base-dev"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://qt.nokia.com/"
 WGET_URL="ftp://ftp.qt.nokia.com/qt/source/$TARBALL"
@@ -21,6 +23,10 @@ TAGS="qt"
 compile_rules()
 {
 	cd $src
+	# Already fixed in 4.7.1
+	patch -Np1 -i ../stuff/fix-scroll-when-last-item-is-removed.patch
+	patch -Np1 -i ../stuff/fix-multisampling-with-ati-card.patch
+
 	./configure -v \
 		-prefix /usr \
 		-confirm-license -opensource \
@@ -36,6 +42,13 @@ compile_rules()
 		-nomake demos \
 		-nomake examples \
 		-nomake docs \
+		-system-zlib \
+		-system-libtiff \
+		-system-libpng \
+		-system-libmng \
+		-system-libjpeg \
+		-system-sqlite \
+		-glib \
 		-phonon \
 		-optimized-qmake \
 		-opengl \
