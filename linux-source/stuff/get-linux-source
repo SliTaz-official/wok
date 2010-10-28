@@ -1,0 +1,54 @@
+#!/bin/sh
+
+source /etc/tazwok.conf
+VERSION=XXX
+
+url=$(cat /usr/src/linux-$VERSION-slitaz/url)
+
+if [ -f $SOURCES_REPOSITORY/$(basename $url) ]; then
+	cd /usr/src/
+	tar xjf $(basename $url)
+else
+	wget -O $SOURCES_REPOSITORY/$(basename $url) 
+	cd /usr/src/
+	tar xjf $(basename $url)
+fi
+
+cp -a /usr/src/kernel-patches/slitaz /usr/src/linux-$VERSION
+
+cp -pa /usr/src/linux-$VERSION/slitaz/aufs2/* /usr/src/linux-$VERSION
+# Add tazpkg support
+if [ -d "/usr/src/linux-$VERSION/scripts/package" ]; then
+	cp -pa /usr/src/linux-$VERSION/slitaz/buildtaz /usr/src/linux-$VERSION/scripts/package
+	cd /usr/src/linux-$VERSION
+	patch -p1 -i slitaz/make-tazpkg.u
+fi
+
+cd /usr/src/linux-$VERSION
+while read patch_file; do
+	echo "Apply $patch_file"
+	patch -p1 < slitaz/$patch_file
+done < slitaz/patches
+[ ! -f System.map ] && cp slitaz/config .config &&
+make oldconfig && make modules_prepare
+
+	cat <<EOT
+----
+To modify the kernel configuration:
+$ cd /usr/src/linux-$VERSION
+$ make menuconfig
+
+To build the kernel and the modules:
+$ cd /usr/src/linux-$VERSION
+$ make bzImage && make modules
+
+To install the new kernel and the modules:
+$ make modules_install
+$ cp -a arch/x86/boot/bzImage /boot/vmlinuz-$VERSION-slitaz
+
+To make a Slitaz package with the new kernel and the modules:
+$ make tazpkg
+
+See /usr/src/linux-$VERSION-slitaz/README
+----
+EOT

@@ -12,82 +12,19 @@ DEPENDS="linux slitaz-toolchain ncurses-dev perl"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/src/linux-$VERSION-slitaz \
-		$fs/lib/modules/$VERSION-slitaz/
-	ln -s linux-$VERSION-slitaz $fs/usr/src/linux
-	cp -a $src/Module.symvers $fs/usr/src/linux-$VERSION-slitaz
-	cp -a $src/slitaz $fs/usr/src/linux-$VERSION-slitaz
-	cp -a stuff/buildtaz $fs/usr/src/linux-$VERSION-slitaz/slitaz
-	cp -a stuff/make-tazpkg.u $fs/usr/src/linux-$VERSION-slitaz/slitaz
+	mkdir -p $fs/usr/src/kernel-patches
+	cp -a $src/slitaz $fs/usr/src/kernel-patches
+	cp -a stuff/buildtaz $fs/usr/src/kernel-patches/slitaz
+	cp -a stuff/make-tazpkg.u $fs/usr/src/kernel-patches/slitaz
+	cp -a stuff/get-linux-source $fs/usr/bin
+	sed -i "s|=XXX|=$VERSION|g" $fs/usr/bin/get-linux-source
 	# Copy Aufs2 source files
 	if [ -d $WOK/$WANTED/aufs2 ]; then
-		mkdir $fs/usr/src/linux-$VERSION-slitaz/slitaz/aufs2
+		mkdir $fs/usr/src/kernel-patches/slitaz/aufs2
 		cp -a $WOK/$WANTED/aufs2/Documentation \
 			$WOK/$WANTED/aufs2/fs $WOK/$WANTED/aufs2/include \
-			$fs/usr/src/linux-$VERSION-slitaz/slitaz/aufs2
+			$fs/usr/src/kernel-patches/slitaz/aufs2
 	fi
 	ln -s /usr/src/linux-$VERSION-slitaz \
 		$fs/lib/modules/$VERSION-slitaz/source
-	ln -s /usr/src/linux-$VERSION-slitaz \
-		$fs/lib/modules/$VERSION-slitaz/build
 }
-
-# Post install/remove commands for Tazpkg.
-post_install()
-{
-	local url
-	local patch_file
-	cd $1/usr/src/
-	url=$(cat linux-$VERSION-slitaz/slitaz/url)
-	wget -c $url
-	tar xjf $(basename $url)
-	mv linux-$VERSION-slitaz/slitaz linux-$VERSION
-	rm -rf linux-$VERSION-slitaz
-	mv linux-$VERSION linux-$VERSION-slitaz
-	cd linux-$VERSION-slitaz
-	cp -pa slitaz/aufs2/* .
-	# Add tazpkg support
-	if [ -d "scripts/package" ]; then
-		cp -pa slitaz/buildtaz scripts/package
-		patch -p1 -i slitaz/make-tazpkg.u
-	fi
-	
-	while read patch_file; do
-		echo "Apply $patch_file"
-		patch -p1 < slitaz/$patch_file
-	done < slitaz/patches
-	[ ! -f System.map ] && cp slitaz/config .config &&
-	make oldconfig && make modules_prepare
-	cat <<EOT
-----
-To modify the kernel configuration:
-$ cd /usr/src/linux-$VERSION-slitaz
-$ make menuconfig
-
-To build the kernel and the modules:
-$ cd /usr/src/linux-$VERSION-slitaz
-$ make bzImage && make modules
-
-To install the new kernel and the modules:
-$ make modules_install
-$ cp -a arch/x86/boot/bzImage /boot/vmlinuz-$VERSION-slitaz
-
-To make a Slitaz package with the new kernel and the modules:
-$ make tazpkg
-
-See /usr/src/linux-$VERSION-slitaz/README
-----
-EOT
-}
-
-pre_remove()
-{
-	rm $(basename $(cat /usr/src/linux-$VERSION-slitaz/slitaz/url)) 2> /dev/null || true
-}
-
-post_remove()
-{
-	rm -rf /usr/src/linux-$VERSION-slitaz
-}
-
-
