@@ -1,0 +1,52 @@
+#!/bin/sh
+# /etc/init.d/tinyproxy: Start, stop and restart tinyproxy deamon on SliTaz
+
+. /etc/init.d/rc.functions
+
+NAME=Tinyproxy
+DESC="Tiny Proxy"
+DAEMON=/usr/sbin/tinyproxy
+OPTION="-c"
+PIDFILE=/var/run/tinyproxy.pid
+
+case "$1" in
+  start)
+    if active_pidfile $PIDFILE tinyproxy ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTION /etc/tinyproxy/tinyproxy.conf
+    status
+    ;;
+  stop)
+    if ! active_pidfile $PIDFILE tinyproxy ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    killall tinyproxy
+    rm $PIDFILE
+    status
+    ;;
+  restart)
+    if ! active_pidfile $PIDFILE tinyproxy ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    killall tinyproxy
+    rm $PIDFILE
+    sleep 2
+    $DAEMON $OPTION /etc/tinyproxy/tinyproxy.conf
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
