@@ -1,0 +1,56 @@
+# SliTaz package receipt.
+
+PACKAGE="docbook-xsl"
+VERSION="1.76.0"
+CATEGORY="development"
+SHORT_DESC="DocBook XSL stylesheets."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="docbook-xml libxml2-tools libxslt"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://wiki.docbook.org/topic/DocBookXslStylesheets"
+WGET_URL="$SF_MIRROR/docbook/$TARBALL"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/xml/docbook/stylesheet/$PACKAGE
+	cp -a $src/*  $fs/usr/share/xml/docbook/stylesheet/$PACKAGE
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	echo -n "Processing post-install commands..."
+
+	# Create a /etc/xml/catalog file
+	if [ ! -d $1/etc/xml ]; then install -v -m755 -d $1/etc/xml; fi &&
+	if [ ! -f $1/etc/xml/catalog ]; then
+    		xmlcatalog --noout --create $1/etc/xml/catalog
+	fi &&
+
+	xmlcatalog --noout --add "rewriteSystem" \
+		"http://docbook.sourceforge.net/release/xsl/1.76.0" \
+		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
+	$1/etc/xml/catalog &&
+
+	xmlcatalog --noout --add "rewriteURI" \
+		"http://docbook.sourceforge.net/release/xsl/1.76.0" \
+		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
+	$1/etc/xml/catalog &&
+
+	xmlcatalog --noout --add "rewriteSystem" \
+		"http://docbook.sourceforge.net/release/xsl/current" \
+		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
+	$1/etc/xml/catalog &&
+
+	xmlcatalog --noout --add "rewriteURI" \
+		"http://docbook.sourceforge.net/release/xsl/current" \
+		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
+	$1/etc/xml/catalog
+	
+	# link nwalsh dir
+	cd $1/usr/share/xml/docbook/stylesheet
+		ln -s $PACKAGE nwalsh
+	status
+}
+
