@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="mesa"
-VERSION="7.8.2"
+VERSION="7.9"
 CATEGORY="x-window"
 SHORT_DESC="3D Graphics Library that is an open-source implementaton of OpenGL."
 MAINTAINER="pascal.bellard@slitaz.org"
 DEPENDS="glibc-base expat libdrm xorg-libX11 xorg-libXau xorg-libXdamage \
-xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXxf86vm"
+xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXxf86vm libxcb libdrm"
 SUGGESTED="nvidia"
 BUILD_DEPENDS="$DEPENDS slitaz-toolchain expat-dev lesstif lesstif-dev libdrm-dev \
 xorg-dri2proto xorg-glproto xorg-damageproto xorg-xproto xorg-fixesproto xorg-xextproto \
 xorg-libX11-dev xorg-libXdamage-dev xorg-libXfixes-dev xorg-libXt-dev \
-xorg-libICE-dev xorg-libSM-dev xorg-xf86vidmodeproto xorg-libXxf86vm-dev pkg-config"
+xorg-libICE-dev xorg-libSM-dev xorg-xf86vidmodeproto xorg-libXxf86vm-dev pkg-config
+wget talloc-dev libxml2-python libxcb-dev"
 SOURCE="Mesa"
 TARBALL="${SOURCE}Lib-$VERSION.tar.bz2"
 WEB_SITE="http://www.mesa3d.org/"
@@ -23,15 +24,6 @@ compile_rules()
 {
 	ln -s $src $PACKAGE-$VERSION 2>/dev/null
 
-	# Get and untar demo files
-	if [ ! -f $SOURCES_REPOSITORY/MesaDemos-$VERSION.tar.bz2 ]; then
-		wget ftp://ftp.freedesktop.org/pub/mesa/$VERSION/MesaDemos-$VERSION.tar.bz2 \
-			-P $SOURCES_REPOSITORY
-	fi
-	echo -n "Untaring MesaDemos-$VERSION.tar.bz2"
-	tar xjf $SOURCES_REPOSITORY/MesaDemos-$VERSION.tar.bz2
-	status
-
 	cd $src
 	# --with-dri-driverdir=/usr/lib/X11/modules/dri ?
 	sed 's@FLAGS=\"-g@FLAGS=\"@' -i configure &&
@@ -40,11 +32,15 @@ compile_rules()
 		--with-x \
 		--enable-gl-osmesa \
 		--enable-motif \
-		--disable-gallium-intel \
-		--disable-gallium \
+		--enable-gallium-radeon \
+		--enable-gallium-nouveau \
+		--enable-xcb \
 		$CONFIGURE_ARGS &&
+	# Also build nouveau_vieux_dri.so.
 	make -j 4 &&
-	make DESTDIR=$PWD/_pkg install
+	make -j 4 -C src/mesa/drivers/dri/nouveau &&
+	make DESTDIR=$PWD/_pkg install &&
+	make -C src/mesa/drivers/dri/nouveau DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
