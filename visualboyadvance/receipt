@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="visualboyadvance"
+VERSION="1.7.2"
+CATEGORY="games"
+SHORT_DESC="An emulator for Gameboy and Gameboy Advance systems."
+MAINTAINER="gokhlayeh@slitaz.org"
+DEPENDS="libsdl"
+BUILD_DEPENDS="libglademm-dev libglademm libsdl-dev patch nasm gtk+-dev gtkmm-dev cairomm-dev libglade-dev libxml2-dev zlib-dev"
+SOURCE="VisualBoyAdvance"
+TARBALL="$SOURCE-src-$VERSION.tar.gz"
+CONFIG_FILES="'/etc/VisualBoyAdvance.cfg"
+WEB_SITE="http://vba.ngemu.com/"
+WGET_URL="http://downloads.sourceforge.net/sourceforge/vba/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	for i in ../stuff/$VERSION-*.patch; do
+		patch -Np0 < $i
+	done
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
+		--datadir=/usr/games \
+		--enable-gtk=2.4 \
+		$CONFIGURE_ARGS &&
+	make -j 4 && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/bin/VisualBoyAdvance $fs/usr/bin
+}
+
