@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="aiksaurus"
+VERSION="1.2.1"
+CATEGORY="system-tools"
+SHORT_DESC="A cross-platform, open-source thesaurus."
+MAINTAINER="gokhlayeh@slitaz.org"
+DEPENDS="gtk+ expat xorg-libXau glib"
+BUILD_DEPENDS="gtk+-dev patch expat-dev xorg-libXau-dev glib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://aiksaurus.sourceforge.net/"
+WGET_URL="http://downloads.sourceforge.net/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -Np0 -i ../stuff/aiksaurus-gcc44.patch
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		 --with-gtk \
+		$CONFIGURE_ARGS &&
+	make -j 4 && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $_pkg/usr/share $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr
+}
+
