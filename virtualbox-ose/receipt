@@ -1,0 +1,154 @@
+# SliTaz package receipt.
+
+PACKAGE="virtualbox-ose"
+VERSION="3.2.10"
+CATEGORY="misc"
+SHORT_DESC="Powerful x86 virtualization for enterprise as well as home use (Open Source Edition)"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="libxml2 xorg-libXcursor libIDL xorg-libXinerama libsdl xorg-libXmu curl libvncserver libpng jpeg mesa libglu-mesa qt4"
+BUILD_DEPENDS="bin86 dev86 iasl libxslt-dev libxml2-dev xorg-libXcursor-dev Qt4-dev libIDL libsdl-ttf-dev libsdl-dev alsa-lib-dev hal-dev xorg-libXtst-dev xorg-libXinerama-dev xorg-libXrandr-dev xorg-libXmu-dev curl-dev python python-dev mesa-dev libglu-mesa xalan-c xalan-c-dev xerces-c-dev openssl-dev libpng-dev jpeg-dev zlib-dev libvncserver-dev libcap-dev glib-dev pam pam-dev linux-module-headers pkg-config"
+SOURCE="VirtualBox"
+TARBALL="$SOURCE-$VERSION-OSE.tar.bz2"
+WEB_SITE="http://virtualbox.org/"
+WGET_URL="http://download.virtualbox.org/virtualbox/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	src=$WOK/$PACKAGE/$SOURCE-${VERSION}_OSE
+	cd $src
+
+	patch -Np1 -i ../stuff/VirtualBox-3.2.0-gcc-4.5-warning-workaround.patch
+	cp ../stuff/LocalConfig.kmk .
+	./configure \
+		--disable-pulse \
+		--with-linux=/usr/src/linux
+	source ./env.sh
+	kmk all
+
+	# build modules
+	cd $src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/src
+	KERN_DIR=/usr/src/linux make
+	# build guest additions modules
+	cd $src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions/src
+	KERN_DIR=/usr/src/linux make
+	cd $src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions/src/vboxvideo
+	KERN_DIR=/usr/src/linux make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	src=$WOK/$PACKAGE/$SOURCE-${VERSION}_OSE
+	fs=$WOK/$PACKAGE/taz/$PACKAGE-$VERSION/fs
+	stuff=$WOK/$PACKAGE/stuff
+
+	source $src/env.sh
+	cd $src/out/linux.$BUILD_PLATFORM_ARCH/release/bin
+	mkdir -p "$fs"/usr/{bin,lib/virtualbox/components,share/virtualbox/nls}
+	cp -a VBox.sh $fs/usr/bin/VBox
+	sed -i 's/ps -U/ps | grep/' $fs/usr/bin/VBox
+	ln -sf VBox $fs/usr/bin/VBoxHeadless
+	ln -sf VBox $fs/usr/bin/VBoxManage
+	ln -sf VBox $fs/usr/bin/VBoxSDL
+	ln -sf VBox $fs/usr/bin/VirtualBox
+
+	install -m 0755 VBoxTunctl "$fs/usr/bin"
+
+	# components
+	cp -a components/* $fs/usr/lib/virtualbox/components
+
+	# lib
+	install -m 0755 *.so "$fs/usr/lib/virtualbox"
+	install -m 0644 *.gc *.r0  VBoxEFI*.fd "$fs/usr/lib/virtualbox"
+	
+	#setuid root binaries
+	install -m 4755 VBoxHeadless VBoxSDL VBoxNetDHCP VBoxNetAdpCtl VirtualBox VBoxBFE "$fs/usr/lib/virtualbox"
+	
+	#other binaries
+	install -m 0755 VBoxManage VBoxSVC VBoxXPCOMIPCD VBoxSysInfo.sh xpidl \
+                    VBoxTestOGL EfiThunk "$fs/usr/lib/virtualbox"
+
+	#language
+	install -m 0755 nls/*.qm "$fs/usr/share/virtualbox/nls"
+
+	#icon
+	install -D -m 0644 VBox.png "$fs/usr/share/pixmaps/VBox.png"
+
+	#desktop
+	install -D -m 0644 virtualbox.desktop "$fs/usr/share/applications/virtualbox.desktop"
+
+	#install configuration
+	mkdir -p "$fs/etc/vbox"
+	echo 'lsmod | grep -q vboxdrv || modprobe vboxdrv' > "$fs/etc/vbox/vbox.cfg"
+	echo 'INSTALL_DIR=/usr/lib/virtualbox' >> "$fs/etc/vbox/vbox.cfg"
+
+	#udev
+	install -D -m 0644 "$stuff/60-virtualbox.rules" \
+	"$fs/etc/udev/rules.d/60-virtualbox.rules"
+
+	mkdir -p $fs/usr/lib/virtualbox/sdk/bindings/xpcom/python/
+	pushd sdk/installer
+	VBOX_INSTALL_PATH="/usr/lib/virtualbox" python vboxapisetup.py install --root "$fs"
+	popd
+	pushd sdk/bindings/xpcom/python
+	cp -r xpcom $fs/usr/lib/virtualbox/sdk/bindings/xpcom/python/
+	chmod 644 $fs/usr/lib/virtualbox/sdk/bindings/xpcom/python/xpcom/*.py
+	chmod 644 $fs/usr/lib/virtualbox/sdk/bindings/xpcom/python/xpcom/server/*.py
+	chmod 644 $fs/usr/lib/virtualbox/sdk/bindings/xpcom/python/xpcom/client/*.py
+	popd
+
+	# virtualbox-modules
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+
+	cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/src"
+	install -D -m644 vboxdrv.ko "$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxdrv.ko"
+	install -D -m644 vboxnetflt.ko "$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxnetflt.ko"
+	install -D -m644 vboxnetadp.ko "$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxnetadp.ko"
+
+	# virtualbox-ose-additions
+
+	cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions"
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/sbin
+	mkdir -p $fs/etc/X11/xorg.conf.d
+
+	install -m755 VBoxClient VBoxControl VBoxService "$fs/usr/bin"
+	install -m755 mount.vboxsf "$fs/sbin"
+
+	install -m644 $src/src/VBox/Additions/x11/Installer/50-vboxmouse.conf \
+		$fs/etc/X11/xorg.conf.d/50-vboxmouse.conf
+
+	install -m755 -D $src/src/VBox/Additions/x11/Installer/98vboxadd-xclient \
+		$fs/usr/bin/VBoxClient-all
+	install -m755 -D $src/src/VBox/Additions/x11/Installer/vboxclient.desktop \
+		$fs/etc/xdg/autostart/vboxclient.desktop
+
+	install -D vboxmouse_drv_19.so \
+		"$fs/usr/lib/xorg/modules/input/vboxmouse.so"
+	install -D vboxvideo_drv_19.so \
+		"$fs/usr/lib/xorg/modules/drivers/vboxvideo.so"
+	install -d "$fs/usr/lib/dri"
+	install -m755 VBoxOGL*.so "$fs/usr/lib"
+	ln -s /usr/lib/VBoxOGL.so "$fs/usr/lib/dri/vboxvideo_dri.so"
+	install -m755 -D pam_vbox.so "$fs/lib/security/pam_vbox.so"
+
+	# virtualbox-ose-additions-modules
+	cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions/src"
+
+	cd vboxguest
+	install -D -m644 vboxguest.ko \
+		"$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxguest.ko"
+
+	cd ../vboxsf
+	install -D -m644 vboxsf.ko \
+		"$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxsf.ko"
+
+	cd ../vboxvideo
+	install -D -m644 vboxvideo.ko \
+		"$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxvideo.ko"
+
+	install -D -m 0644 "$stuff/60-vboxguest.rules" \
+		"$fs/etc/udev/rules.d/60-vboxguest.rules"
+}
+
