@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="nanochess"
+VERSION="1.0"
+CATEGORY="games"
+SHORT_DESC="Chess game in javascript (need an unicode aware browser)"
+MAINTAINER="pascal.bellard@slitaz.org"
+WEB_SITE="http://nanochess.110mb.com/chess4.html"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir $src
+	cd $src
+	wget -O index.html \
+		$(dirname $WEB_SITE)/archive/toledo_javascript_chess_3.html
+	sed -i -e 's/<select/\&#9823; \&rarr; &/' \
+	  -e 's/f0f":"c0c")+"0f0/f0f":"606")+"0c0/' -e 's/e0e0f0/b0b080/' \
+	  -e 's/><option.*$/>";/' -e 's|^doc.*|for(p=18;++p<23;)a+="<option>\&#98"+p+";</option>";document.write(a);|' \
+		index.html
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+        mkdir -p $fs/var/www/chess $fs/usr/share/applications
+	cp $src/* $fs/var/www/chess
+	chown -R 80.80 $fs/var/www/chess
+	cat > $fs/usr/share/applications/chess.desktop <<EOT
+[Desktop Entry]
+Type=Application
+Name=Chess
+Exec=browser file:///var/www/chess/index.html
+Icon=other.png
+Terminal=false
+Categories=Game;
+Comment=Chess game
+EOT
+}
+
