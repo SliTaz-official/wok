@@ -1,19 +1,27 @@
 # SliTaz package receipt.
 
 PACKAGE="snort"
-VERSION="2.8.5.1"
+VERSION="2.9.0.1"
 CATEGORY="network"
 SHORT_DESC="Network intrusion prevention and detection system (IDS/IPS)."
 MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.snort.org/"
-WGET_URL="http://dl.snort.org/snort-current/$TARBALL"
-DEPENDS="pcre"
-BUILD_DEPENDS="pcre-dev libpcap"
+WGET="http://www.snort.org/downloads/308"
+DEPENDS="pcre libdnet libdaq"
+BUILD_DEPENDS="pcre-dev libpcap libdaq-dev libdnet-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	# this is needed even if tazwok support https
+	if [ -f $SOURCES_REPOSITORY/$TARBALL ]; then
+		tar xzf $SOURCES_REPOSITORY/$TARBALL
+	else
+		[ -L /usr/bin/wget ] && tazpkg get-install wget --forced
+		wget -O $SOURCES_REPOSITORY/$TARBALL --no-check-certificate "$WGET"
+		tar xjf $SOURCES_REPOSITORY/$TARBALL
+	fi
 	cd $src
 	./configure --prefix=/usr --infodir=/usr/share/info \
 	--mandir=/usr/share/man \
@@ -25,8 +33,9 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr/
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib $fs/usr
 	rm -f $fs/usr/lib/*/*a
+	rm -rf $fs/usr/lib/pkgconfig
 }
