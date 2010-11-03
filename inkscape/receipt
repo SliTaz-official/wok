@@ -1,15 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="inkscape"
-VERSION="0.47"
+VERSION="0.48.0"
 CATEGORY="graphics"
 SHORT_DESC="Vector drawing application."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gc gtk+ libxslt libsigc++ glibmm gtkmm libxml2 libpng popt \
 xorg-libXdamage gsl aspell libgiomm lcms gtkspell libgomp poppler gcc-lib-base"
 BUILD_DEPENDS="gc-dev gtk+-dev libxslt-dev libsigc++-dev glibmm-dev \
-gtkmm-dev popt-dev libgiomm-dev gsl gsl-dev lcms-dev gtkspell-dev \
-cairomm-dev libboost-dev"
+gtkmm-dev atkmm-dev popt-dev libgiomm-dev gsl gsl-dev lcms-dev gtkspell gtkspell-dev \
+cairomm-dev libboost-dev libxml2-dev zlib-dev autoconf pkg-config intltool"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.inkscape.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
@@ -21,16 +21,12 @@ compile_rules()
 	cd $src
 	sed -i -e '\|^packaging/autopackage/default\.apspec$|d' configure.ac
 #	InkBoard is now disabled by default, --enable-inkboard now exists
-
-	# Fix build with gcc45
-	# http://launchpadlibrarian.net/39366738/inkscape-0.47-gcc45.patch
-	patch -p1 < ../stuff/inkscape-0.47-gcc45.patch || exit 1
 	
 	./configure \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 4 &&
 	make DESTDIR=$PWD/_pkg install
 }
 
