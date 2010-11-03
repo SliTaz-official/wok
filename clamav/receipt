@@ -5,7 +5,7 @@ VERSION="0.96.4"
 CATEGORY="security"
 SHORT_DESC="Antivirus."
 MAINTAINER="paul@slitaz.org"
-DEPENDS="zlib gmp bzip2 slitaz-base-files ncurses"
+DEPENDS="zlib gmp bzip2 slitaz-base-files ncurses libtool"
 BUILD_DEPENDS="zlib-dev gmp gmp-dev bzip2-dev ncurses-dev bash"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.clamav.net/"
@@ -16,8 +16,7 @@ TAGS="antivirus"
 compile_rules()
 {
 	# Have to create clamav user/group to be able to compile
-	adduser clamav -s /bin/false -h /tmp -H -D -S
-	addgroup clamav
+	adduser clamav -s /bin/false -H -D
 
 	cd $src
 	./configure \
@@ -70,12 +69,12 @@ post_install()
 	# adduser clamav if needed
 	if ! grep -q clamav $1/etc/passwd; then
 		echo -n "Adding user clamav..."
-		chroot $1/ adduser clamav -s /bin/false -H -D -S
+		chroot $1/ adduser clamav -s /bin/false -H -D
 		status
 	fi
 
 	# Enable daily.cvd updates (sometimes needed for new version)
-	chown -R clamav:clamav /usr/share/clamav
+	chown -R clamav:clamav $1/usr/share/clamav
 }
 
 # Del user clamav when pkg is removed.
