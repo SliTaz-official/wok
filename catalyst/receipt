@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="catalyst"
-VERSION="10.7"
+VERSION="10.10"
 CATEGORY="x-window"
 MAINTAINER="jozee@slitaz.org"
 SHORT_DESC="AMD/ATI beta drivers (non-free) for Radeon brand cards "
 WEB_SITE="http://www.ati.amd.com"
 DEPENDS="xorg-server mesa mesa-dri libdrm linux-drm fontconfig linux-agp xorg-libSM xorg-libXi xorg-libXcursor"
-BUILD_DEPENDS="linux xorg-server"
+BUILD_DEPENDS="linux xorg-server linux-module-headers"
 TARBALL="ati-driver-installer-${VERSION/./-}-x86.x86_64.run"
 WGET_URL="http://www2.ati.com/drivers/linux/$TARBALL"
 TAGS="drivers graphic video"
@@ -17,9 +17,6 @@ TAGS="drivers graphic video"
 compile_rules() {
 
 	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	
-	
-	[ -d $WOK/linux/taz ] || tazwok cook linux
    
 	cd $WOK/$PACKAGE
 	[ -f $SOURCES_REPOSITORY/$TARBALL ] && cp $SOURCES_REPOSITORY/$TARBALL .
@@ -35,11 +32,12 @@ compile_rules() {
 		grep -rl linux/$i * | xargs sed -i "s|linux/$i|generated/$i|"
 	done
 	cd $src
+	patch -Np1 -i ../stuff/makefile_compat.patch
 	patch -Np1 -i ../stuff/$PACKAGE-${KERNEL_VERSION}.patch
 	cd $src/common/lib/modules/fglrx/build_mod
 	cp $src/arch/x86/lib/modules/fglrx/build_mod/libfglrx_ip.a.GCC4 . 
 	cp 2.6.x/Makefile .
-	make -C $WOK/linux/linux-$KERNEL_VERSION SUBDIRS="`pwd`" modules 
+	make -C /usr/src/linux SUBDIRS="`pwd`" modules 
 }	
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
