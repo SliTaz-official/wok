@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="linux"
-VERSION="2.6.34"
+VERSION="2.6.36"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 DEPENDS="depmod"
@@ -15,20 +15,28 @@ CONFIG_FILES="/lib/modules/$VERSION-slitaz/modules.dep"
 # Rules to configure and make the package.
 compile_rules()
 {
-	local _AUFSVER="20101015"
+
+	# this is code to help update the kernel version faster
+	#for i in $(grep -l 'WANTED="linux"' $WOK/*/receipt)
+	#do
+	#	sed -i 's|VERSION="OLDVERSION"|VERSION="NEWVERSION"|g' $i
+	#done
+	local _AUFSVER="20101105"
 	local AUFSDIR="aufs2-${_AUFSVER}-${VERSION}"
 	[ -d "AUFSDIR" ] && rm -rf $AUFSDIR
 	TARBALL=$SOURCES_REPOSITORY/$AUFSDIR.tar.gz
 	if [ -f $TARBALL ]; then
 		tar xzf $TARBALL
-		cd $AUFSDIR && git checkout origin/aufs2-34
+		cd $AUFSDIR && git checkout origin/aufs2
 	else
 		# Aufs2 from git repository
 		git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-standalone.git $AUFSDIR
 		tar czf $TARBALL $AUFSDIR
-		cd $AUFSDIR && git checkout origin/aufs2-34		
+		cd $AUFSDIR && git checkout origin/aufs2	
 	fi
-	#cd $AUFSDIR
+	# this is to make linux-source added aufs2
+	cp -a $AUFSDIR $WOK/$PACKAGE/aufs2
+	cd $AUFSDIR
 	cp -a Documentation fs include $src
 	cp -a *.patch ../stuff
 	# We need the real GNU patch
@@ -55,11 +63,12 @@ compile_rules()
 $PACKAGE-diff-$VERSION.u
 $PACKAGE-unlzma-$VERSION.u
 $PACKAGE-header-$VERSION.u
-aufs2-base.patch
-aufs2-kbuild.patch
-aufs2-standalone.patch
 $PACKAGE-freeinitrd-$VERSION.u
-$PACKAGE-squashfs-lzma-$VERSION.u
+aufs2-base.patch
+aufs2-standalone.patch
+aufs2-kbuild.patch
+aufs2-module-2.6.36.patch
+aufs2-2.6.36-fix.patch
 EOT
 	make mrproper
 	cd Documentation/lguest
@@ -146,7 +155,9 @@ EOT
 
 clean_wok()
 {
-	rm -rf aufs2
-	rm stuff/aufs2-*
+	#rm -rf aufs2
+	rm stuff/aufs2-base*
+	rm stuff/aufs2-standalone*
+	rm stuff/aufs2-kbuild*
 	rm -rf stuff/tmp
 }
