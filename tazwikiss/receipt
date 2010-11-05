@@ -64,16 +64,16 @@ EOT
 			cat > $1/etc/httpd.conf <<EOT
 H:/var/www
 A:0.0.0.0/0
-*.sh:/bin/sh
 EOT
 		fi
 		while read line; do
-			grep -q "$line" $1/etc/httpd.conf || continue
+			grep -q "$line" $1/etc/httpd.conf && continue
 			echo "$line" >> $1/etc/httpd.conf
 		done <<EOT
-I:index.sh
 *.sh:/bin/sh
 EOT
+		grep -q ' httpd ' $1/etc/rcS.conf ||
+		sed -i 's/ slim"/ httpd slim"/' $1/etc/rcS.conf
 		if [ -z "$1" ]; then
 			# Start Web server.
 			/etc/init.d/httpd stop
