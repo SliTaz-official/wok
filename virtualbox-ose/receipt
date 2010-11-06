@@ -11,6 +11,7 @@ SOURCE="VirtualBox"
 TARBALL="$SOURCE-$VERSION-OSE.tar.bz2"
 WEB_SITE="http://virtualbox.org/"
 WGET_URL="http://download.virtualbox.org/virtualbox/$VERSION/$TARBALL"
+MODULE_LIST="vboxdrv vboxnetadp vboxnetflt"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -152,3 +153,17 @@ genpkg_rules()
 		"$fs/etc/udev/rules.d/60-vboxguest.rules"
 }
 
+pre_remove()
+{
+    sed -i 's/$MODULE_LIST //' $1/etc/rcS.conf
+}
+
+post_install()
+{
+	KERNEL_VERSION=`grep  ^VERSION= $1/var/lib/tazpkg/installed/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+
+	chroot "$1/" depmod -a $KERNEL_VERSION
+	[ -n "$1" ] || for i in $MODULE_LIST; do modprobe $i ; done
+	grep -qs vboxdrv $1/etc/rcS.conf ||
+	sed -i 's/LOAD_MODULES="/&$MODULE_LIST /' $1/etc/rcS.conf
+}
