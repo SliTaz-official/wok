@@ -11,7 +11,12 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://mplayerplug-in.sourceforge.net/" 
 WGET_URL="http://downloads.sourceforge.net/mplayerplug-in/$TARBALL"
 TAGS="player audio video browser"
-FIREFOX_VER=`cat $WOK/firefox/receipt | grep VERSION= | cut -d \" -f 2`
+
+get_firefox_version()
+{
+	FIREFOX_VER=`cat $1/var/lib/tazpkg/installed/firefox/receipt | \
+			grep VERSION= | cut -d \" -f 2`
+}
 
 # Rules to configure and make the package.
 compile_rules()
@@ -31,6 +36,7 @@ glibc210.u
 EOT
 	make distclean
 	touch install.sh
+	get_firefox_version
 	./configure --prefix=/usr --sysconfdir=/etc \
 		--enable-gtk2 \
 		--enable-wmp \
@@ -58,6 +64,7 @@ post_install()
 	echo -n "Processing post install commands..."
 	local root
 	root=$1
+	get_firefox_version $1
 	for i in $root/usr/lib/mozilla/plugins/$PACKAGE*.so ; do
 		ln -s $i $root/usr/lib/firefox-$FIREFOX_VER/plugins
 	done 
