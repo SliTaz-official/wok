@@ -9,24 +9,21 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://code.google.com/p/compcache/"
 WGET_URL="http://compcache.googlecode.com/files/$TARBALL"
 DEPENDS="linux"
-BUILD_DEPENDS="lzma"
+BUILD_DEPENDS="lzma linux-module-headers"
 
 # Rules to configure and make the package.
 compile_rules()
 {
     
     KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-    if [ ! -d $WOK/linux/linux-$KERNEL_VERSION ]; then
-        tazwok cook linux
-    fi
     cd $src
     
     # Fix build with kernel 2.6.34
     patch -p1 < ../stuff/compcache-0.6.2-linux-2.6.34.u || exit 1
     
     find -name Makefile | xargs sed -i \
-		"s|/lib/modules/\$(shell uname -r)/build|$WOK/linux/linux-$KERNEL_VERSION|"
-    make  KBUILD=$WOK/linux/linux-$KERNEL_VERSION KVER=$KERNEL_VERSION 
+		"s|/lib/modules/\$(shell uname -r)/build|/usr/src/linux|"
+    make  KBUILD=/usr/src/linux KVER=$KERNEL_VERSION 
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
