@@ -5,7 +5,7 @@ VERSION="2.56.76.0"
 CATEGORY="network"
 MAINTAINER="jozee@slitaz.org"
 SHORT_DESC="Intel Modem Drivers for 536EP chipset"
-BUILD_DEPENDS="linux lzma"
+BUILD_DEPENDS="linux linux-module-headers lzma"
 WEB_SITE="http://linmodems.technion.ac.il/packages/Intel/"
 TARBALL="intel-536EP-537EP_2009_07_04.tar.bz2"
 WGET_URL="$WEB_SITE/Philippe.Vouters/$TARBALL"
@@ -16,7 +16,6 @@ TAGS=""
 compile_rules() {
     
   KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
- [ -d $WOK/linux/taz ] || tazwok cook linux
  cd $WOK/$PACKAGE/intel-536-537
 
   while read file; do
@@ -31,7 +30,7 @@ EOT
    # Bypass linux source package check
   sed -i 's/@bash config_check/#@bash config_check/' makefile
   grep -rl 'linux/autoconf.h' * | xargs sed -i 's|linux/autoconf.h|generated/autoconf.h|'
-  make KERNEL_SOURCE_PATH=$WOK/linux/linux-$KERNEL_VERSION KDIR=$WOK/linux/linux-$KERNEL_VERSION MODEM_TYPE=536 536
+  make KERNEL_SOURCE_PATH=/usr/src/linux KDIR=/usr/src/linux MODEM_TYPE=536 536
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
