@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="fceux"
+VERSION="2.1.4a"
+CATEGORY="games"
+SHORT_DESC="A fast and ultra-compatible NES/Famicom emulator with SDL, OpenGL and SVGALIB support"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="libsdl lua gtk+"
+BUILD_DEPENDS="scons mesa-dev libsdl-dev lua-dev gtk+-dev zlib-dev"
+TARBALL="$PACKAGE-$VERSION.src.tar.bz2"
+WEB_SITE="http://fceux.com/web/home.html"
+WGET_URL="$SF_MIRROR/fceultra/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	src=$WOK/$PACKAGE/fceu${VERSION}
+	cd $src
+	scons
+
+	sed -i "s|/usr/local|$PWD/_pkg/usr|" SConstruct
+	scons install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	_pkg=$WOK/$PACKAGE/fceu${VERSION}/_pkg
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+}
+
