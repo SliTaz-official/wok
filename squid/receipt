@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="squid"
-VERSION="3.0.STABLE25"
+VERSION="3.1.9"
 CATEGORY="network"
 SHORT_DESC="Web/ftp proxy."
 MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.squid-cache.org/"
-WGET_URL="${WEB_SITE}Versions/v3/3.0/$TARBALL"
+WGET_URL="${WEB_SITE}Versions/v3/3.1/$TARBALL"
 CONFIG_FILES="/etc/squid"
 DEPENDS="cyrus-sasl libldap openssl"
 BUILD_DEPENDS="perl openssl-dev libldap openldap-dev cyrus-sasl cyrus-sasl-dev"
@@ -35,8 +35,8 @@ compile_rules()
     --enable-removal-policies="heap,lru" \
     --enable-delay-pools \
     --enable-linux-netfilter \
-    --enable-basic-auth-helpers="NCSA,SMB,MSNT LDAP" \
-    --enable-ntlm-auth-helpers="SMB" \
+    --enable-basic-auth-helpers="NCSA,SMB,MSNT,LDAP" \
+    --enable-ntlm-auth-helpers="smb_lm,no_check,fakeauth" \
     --enable-useragent-log \
     --enable-referer-log \
     --with-pthreads ac_cv_header_linux_netfilter_ipv4_h="yes" \
@@ -61,8 +61,8 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib/squid/*.cgi $fs/usr/lib/squid
 	cp -a $_pkg/usr/share/squid/mib.txt $fs/usr/share/squid
 	cp -a $_pkg/usr/share/squid/icons $fs/usr/share/squid
-	cp -a $_pkg/usr/share/squid/errors/English $fs/usr/share/squid/errors
-	cp -a $_pkg/usr/share/squid/errors/French $fs/usr/share/squid/errors
+	cp -a $_pkg/usr/share/squid/errors/en* $fs/usr/share/squid/errors
+	cp -a $_pkg/usr/share/squid/errors/fr* $fs/usr/share/squid/errors
 	rm -f $fs/etc/*conf*
 	sed -i -e 's/TAG: visible_hostname/TAG: visible_hostname\nvisible_hostname slitaz/' \
 		-e 's|^access_log /var/logs|access_log /var/log/squid|' \
@@ -73,11 +73,6 @@ genpkg_rules()
 		-e 's|^coredump_dir /var/logs|coredump_dir /var/cache/squid|' \
 		-e 's|^# error_directory|error_directory /usr/share/squid/errors/French|' \
 		$fs/etc/squid/squid.conf
-	# Package all squid pkgs
-	for i in $(cd $WOK; ls -d squid-*)
-	do
-		tazwok genpkg $i
-	done
 }
 
 # Pre and post install commands for Tazpkg.
