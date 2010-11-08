@@ -5,7 +5,6 @@ VERSION="2.7"
 CATEGORY="development"
 SHORT_DESC="GNU Global Regular Expression Print."
 MAINTAINER="paul@slitaz.org"
-DEPENDS=""
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.gnu.org/software/grep/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
@@ -29,3 +28,20 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 }
 
+# Pre and post install commands for Tazpkg.
+# We must remove all Busybox symlink before installing.
+#
+pre_install()
+{
+	local root
+	root=$1
+	echo "Processing pre-install commands..."
+	echo -n "Removing all Busybox replaced utils... "
+	rm -f $root/usr/bin/grep
+	status
+}
+
+post_remove()
+{
+	ln -s /bin/busybox /usr/bin/grep
+}
