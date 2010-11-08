@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="airpwn"
+VERSION="1.4"
+CATEGORY="network"
+SHORT_DESC="Airpwn is a tool for generic packet injection on an 802.11 network."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="pcre libpcap libcrypto openssl lorcon wireless_tools libnet"
+BUILD_DEPENDS="pcre-dev libpcap-dev libcrypto-dev openssl-dev lorcon-dev wireless_tools-dev libnet-dev python python-dev autoconf automake"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WEB_SITE="http://airpwn.sourceforge.net"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	# Patch configure to link libcrypto
+	patch -Np1 -i ../stuff/link-libcrypto.patch
+
+	# Fix airpwn files so we can use it with a Python version other than 2.4.
+	PYTHON_VERSION1=$(python -c 'import sys; print sys.version[:3]')
+	PYTHON_VERSION2=$(echo $PYTHON_VERSION1 | tr . _)
+
+	for FILE in configure.ac conf.h config.h.in; do
+		sed -i "s|python2.4|python${PYTHON_VERSION1}|g" $FILE
+	done
+
+	autoreconf
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+}
+
