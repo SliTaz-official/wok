@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="lorcon"
+VERSION="163"
+CATEGORY="network"
+SHORT_DESC="A generic library for injecting 802.11 frames, capable of injection via multiple driver frameworks, without forcing modification of the application code."
+MAINTAINER="slaxemulator@gmail.com"
+BUILD_DEPENDS="subversion"
+WEB_SITE="http://802.11ninja.net/lorcon/"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.gz
+	if [ -d $PACKAGE-$VERSION ]; then
+		true
+	elif [ -f $TARBALL ]; then
+		tar xzf $TARBALL
+	else
+		svn checkout -r $VERSION \
+			http://802.11ninja.net/svn/lorcon/trunk $PACKAGE-$VERSION
+		tar czf $TARBALL $PACKAGE-$VERSION
+	fi
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
+
