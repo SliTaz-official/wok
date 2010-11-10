@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="xorg-xf86-video-r128"
+VERSION="6.8.1"
+CATEGORY="x-window"
+SHORT_DESC="Xorg server Rage128 driver."
+MAINTAINER="gokhlayeh@slitaz.org"
+DEPENDS="xorg xorg-server mesa-dri-ati xorg-libpciaccess"
+BUILD_DEPENDS="xorg-server xorg-xproto xorg-dev-proto xorg-fontsproto xorg-server-dev xorg-libpciaccess-dev mesa mesa-dev pkg-config pixman-dev libdrm-dev"
+SOURCE="xf86-video-r128"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.x.org/"
+WGET_URL="$XORG_MIRROR/driver/$TARBALL"
+TAGS="xorg display"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    ./configure \
+    	--prefix=/usr \
+    	--sysconfdir=/etc \
+    	--mandir=/usr/share/man \
+    	--localstatedir=/var \
+    	--with-xorg-module-dir=/usr/lib/X11/modules \
+    	--enable-dri \
+    	$CONFIGURE_ARGS &&
+    make &&
+    make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/X11/modules/drivers
+	cp -a $_pkg/usr/lib/X11/modules/drivers/*.so \
+		$fs/usr/lib/X11/modules/drivers/
+}
+
