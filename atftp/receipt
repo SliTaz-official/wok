@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="atftp"
+VERSION="0.7"
+CATEGORY="network"
+SHORT_DESC="Advanced Trivial File Transport Protocol client."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://freshmeat.net/projects/atftp/"
+WGET_URL="http://downloads.openwrt.org/sources/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	rm -rf _pkg 2> /dev/null
+	sed -i  -e 's/char \*__entry) __THROW/char *__entry))/' \
+		-e 's/^_*argz_next/__NTH(&/' argz.h
+	sed -i 's/CLK_TCK/CLOCKS_PER_SEC/' stats.c
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+}
+
