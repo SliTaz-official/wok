@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="cherokee"
+VERSION="1.0.9"
+CATEGORY="network"
+SHORT_DESC="A very fast, fiexible and easy to configure Web Server."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="pcre cyrus-sasl openssl python libmysqlclient libldap ffmpeg"
+BUILD_DEPENDS="pcre-dev cyrus-sasl-dev openssl-dev openldap-dev python-dev pam-dev libmysqlclient ffmpeg-dev gettext autoconf automake"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.cherokee-project.com/"
+WGET_URL="http://www.cherokee-project.com/download/1.0/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	# Use subdirectory for logs
+	sed -i -r 's|(%localstatedir%/log)|\1/cherokee|' cherokee.conf.sample.pre
+
+	# http://code.google.com/p/cherokee/issues/detail?id=1034
+	patch -Np3 -E -i ../stuff/r5734-get-rid-of-package-py.patch
+	autoreconf -v
+	./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
+		--with-wwwroot=/var/www/cherokee --disable-static \
+		--with-wwwuser=www --with-wwwgroup=www \
+		--enable-os-string="SliTaz" \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+	install -D -m644 pam.d_cherokee $PWD/_pkg/etc/pam.d/$PACKAGE
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/cherokee $fs/usr/share $fs/etc/init.d
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/cherokee/*.so* $fs/usr/lib/cherokee
+	cp -a $_pkg/usr/share/cherokee $fs/usr/share
+	cp -a $_pkg/var $fs
+	cp -a $_pkg/etc $fs
+	cp -a stuff/cherokee $fs/etc/init.d
+}
+
