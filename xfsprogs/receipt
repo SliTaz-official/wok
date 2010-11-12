@@ -1,37 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="xfsprogs"
-VERSION="2.10.1"
+VERSION="3.1.4"
 CATEGORY="system-tools"
 SHORT_DESC="Utilities for making, mounting, and manipulating XFS file-system"
 MAINTAINER="patel@math.uga.edu"
 DEPENDS="e2fsprogs"
-BUILD_DEPENDS="e2fsprogs-dev libtool"
-TARBALL=${PACKAGE}_${VERSION}-1.tar.gz
+BUILD_DEPENDS="e2fsprogs-dev libtool gettext util-linux-ng-uuid util-linux-ng-uuid-dev"
+TARBALL=${PACKAGE}-${VERSION}.tar.gz
 WEB_SITE="http://oss.sgi.com/projects/xfs/"
 WGET_URL="ftp://oss.sgi.com/projects/xfs/cmd_tars/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	mv $PACKAGE-2.9.8 $PACKAGE-$VERSION 2>/dev/null
 	cd $src
 	sed -i 's/--best -c/-9 -c/' include/buildmacros
 	./configure \
-		--prefix=/usr \
-		--sbindir=/sbin \
-		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS || return 1
 	sed -i 's/--best/-9/' doc/Makefile build/Makefile build/tar/Makefile
 	make &&
 	make DIST_ROOT=$PWD/_pkg install
-}
+} 
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/lib $fs
 	cp -a $_pkg/sbin $fs
 }
