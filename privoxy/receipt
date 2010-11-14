@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="privoxy"
-VERSION="3.0.16-stable"
+VERSION="3.0.17-stable"
 CATEGORY="network"
 SHORT_DESC="Non-caching web privacy proxy."
 MAINTAINER="paul@slitaz.org"
@@ -15,7 +15,7 @@ WGET_URL="http://downloads.sourceforge.net/ijbswa/$TARBALL"
 compile_rules()
 {
 	# Have to create privoxy user/group to be able to compile
-	# adduser privoxy -s /bin/false -H -D -S
+	adduser privoxy -s /bin/false -H -D
 	
 	cd $src
 
@@ -29,11 +29,8 @@ compile_rules()
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		--localstatedir=/var \
-		--with-user=nobody \
-		--with-group=nogroup \
 		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -48,12 +45,18 @@ genpkg_rules()
 	cp stuff/daemon-privoxy $fs/etc/init.d/privoxy
 }
 
-post_install()
+pre_install()
 {
-	# And change file permissions
-	echo -n "Changing file permissions..."
-	chown -R root.nogroup $1/etc/privoxy
-	chown -R root.root $1/etc/privoxy/templates
-	chown -R root.nogroup $1/var/log/privoxy
-	status
+	# adduser privoxy if needed
+	if ! grep -q privoxy $1/etc/passwd; then
+		echo -n "Adding user privoxy..."
+		chroot $1/ adduser privoxy -s /bin/false -H -D
+		status
+	fi
+}
+
+# Del user privoxy when pkg is removed.
+post_remove()
+{
+	deluser privoxy
 }
