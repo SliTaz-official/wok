@@ -5,7 +5,7 @@ VERSION="1.17.3"
 CATEGORY="base-system"
 SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
-DEPENDS="slitaz-base-files glibc-base pam"
+DEPENDS="busybox pam"
 WANTED="busybox"
 WEB_SITE="http://www.busybox.net/"
 CONFIG_FILES="/etc/dnsd.conf /etc/inetd.conf /etc/udhcpd.conf /etc/resolv.conf \
@@ -15,48 +15,7 @@ PROVIDE="busybox:pam"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    cp -a $WOK/$WANTED/taz/$WANTED-$VERSION/fs/* $fs
+    mkdir -p $fs/bin
     cp -a $src/busybox-pam $fs/bin/busybox
     cp -a stuff/* $fs
-}
-
-# Force glibc-2.7 reinstall if 2.3.6 still in use.
-pre_install()
-{
-	local i
-	cp -a /etc/resolv.conf /etc/resolv.conf-busybox-install
-	if grep -q 'VERSION="2.3.6"' /var/lib/tazpkg/installed/glibc-base/receipt; then
-		tazpkg get-install glibc-base --forced
-	fi
-	answer=""
-	for i in $(cat $1$INSTALLED/$PACKAGE/files.list); do
-		[ -f $1$i ] || continue
-		case "$i" in
-		/bin/busybox) continue ;;
-		*bin/*) ;;
-		*) continue ;;
-		esac
-		if [ -z "$answer" ]; then
-			echo -n "Keep installed GNU utilities ? "
-			read -t 30 answer	# by default: keep
-			case "$answer" in
-			n*|N*) break;;
-			*) answer="Y";;
-			esac
-		fi
-		cp -a $1$i $1$i-busybox-install
-	done
-}
-
-post_install()
-{
-	local i
-	[ -f /etc/resolv.conf-busybox-install ] &&
-	mv -f /etc/resolv.conf-busybox-install /etc/resolv.conf
-	while read i ; do
-		[ -f $1$i-busybox-install ] || continue
-		mv $1$i-busybox-install $1$i
-	done < $1$INSTALLED/$PACKAGE/files.list
-	chmod 4755 $1/bin/busybox
-	sed -i "s@vcsa2txt.*\$@busybox conspy -d | sed 's/ *\$//;/^\$/d;/^Processi\\\\|^.witchi/,\$!d' > /var/log/boot.log@" $1/etc/init.d/rcS
 }
