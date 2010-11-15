@@ -6,7 +6,7 @@ CATEGORY="base-system"
 SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
 DEPENDS="slitaz-base-files glibc-base"
-BUILD_DEPENDS="bzip2"
+BUILD_DEPENDS="bzip2 pam pam-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.busybox.net/"
 WGET_URL="http://www.busybox.net/downloads/$TARBALL"
@@ -42,6 +42,17 @@ EOT
     fi
     echo "Chmod 4755 on busybox binary..."
     chmod 4755 _install/bin/busybox
+    sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
+    make oldconfig
+    if [ "$(gcc --version | awk '{ print $3; exit }')" == "4.5.0" ]; then
+	# "CFLAGS=-O0" is a workaround for GCC 4.5.0 (sed crash)
+	# "CFLAGS=-fno-tree-pta" may be a workaround for GCC 4.5.0 (sed garbage)
+	make -j 4 "CFLAGS=-O0"
+    else
+	make -j 4
+    fi
+    mv busybox busybox-pam
+    chmod 4755 busybox-pam
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
