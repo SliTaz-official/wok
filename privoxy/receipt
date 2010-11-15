@@ -45,7 +45,7 @@ genpkg_rules()
 	cp stuff/daemon-privoxy $fs/etc/init.d/privoxy
 }
 
-pre_install()
+post_install()
 {
 	# adduser privoxy if needed
 	if ! grep -q privoxy $1/etc/passwd; then
@@ -53,6 +53,14 @@ pre_install()
 		chroot $1/ adduser privoxy -s /bin/false -H -D
 		status
 	fi
+
+	# and change file permissions
+	echo -n "Changing file permissions..."
+	chown -R root.privoxy $1/etc/privoxy
+	chown -R root.root $1/etc/privoxy/templates
+	chown root.root $1/etc/privoxy
+	chown root.privoxy $1/var/log/privoxy/logfile
+	status
 }
 
 # Del user privoxy when pkg is removed.
