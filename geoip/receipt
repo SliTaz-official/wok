@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="geoip"
+VERSION="1.4.6"
+CATEGORY="network"
+SHORT_DESC="Non-DNS IP-to-country resolver C library & utils."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="zlib"
+BUILD_DEPENDS="zlib-dev"
+SOURCE="GeoIP"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.maxmind.com/app/c"
+WGET_URL="http://www.maxmind.com/download/geoip/api/c/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--sysconfdir=/etc/geoip \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/share/GeoIP $fs/usr/share
+}
+
