@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="dhcp6"
-VERSION="4.1.1b1"
+VERSION="4.2.0-P1"
 CATEGORY="network"
 SHORT_DESC="Dynamic Host Configuration Protocol server with ipv6 support."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -10,6 +10,7 @@ TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.isc.org/products/DHCP/"
 WGET_URL="http://ftp.isc.org/isc/$SOURCE/$TARBALL"
 DEPENDS="libcrypto"
+BUILD_DEPENDS="perl"
 CONFIG_FILES="/etc/dhcpd.conf"
 PROVIDE="dhcp"
 
@@ -22,11 +23,6 @@ compile_rules()
 	sed -i "s/SEMI/MYEOL = '\\\\n',\n\tQUESTION = '?',\n\t&/" \
 		includes/dhctoken.h
 	sed -i 's/== NOERROR/== (isc_result_t) NOERROR/' server/ddns.c
-	for i in start-without-ipv6 ; do
-		[ -f $i.done ] && continue
-		patch -p1 < ../stuff/$i.u || return 1
-		touch $i.done
-	done
 	./configure --prefix=/usr --infodir=/usr/share/info \
 	--sysconfdir=/etc --mandir=/usr/share/man $CONFIGURE_ARGS && \
 	make && make DESTDIR=$PWD/_pkg install
@@ -39,10 +35,5 @@ genpkg_rules()
 	cp $_pkg/etc/dhcpd.conf $fs/etc
 	cp $_pkg/usr/sbin/dhcpd $fs/usr/sbin
 	cp $WOK/dhcp/stuff/dhcpd $fs/etc/init.d
-	# Package all dhcp pkgs
-	for i in $(cd $WOK; ls -d dhcp6-*)
-	do
-		tazwok genpkg $i
-	done
 }
 
