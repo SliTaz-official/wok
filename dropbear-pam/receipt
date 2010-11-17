@@ -62,6 +62,14 @@ genpkg_rules()
 # Post message when installing.
 post_install()
 {
+	while read dropbear openssh ; do
+		[ -s $openssh ] || continue
+		dropbearconvert openssh dropbear $1$openssh $1$dropbear
+		dropbearkey -y -f $1$dropbear | grep Fingerprint
+	done <<EOT
+/etc/dropbear/dropbear_rsa_host_key	/etc/ssh/ssh_host_rsa_key
+/etc/dropbear/dropbear_dsa_host_key	/etc/ssh/ssh_host_dss_key
+EOT
 	echo -e "\nTo starts $SOURCE server you can run :\n"
 	echo "/etc/init.d/$SOURCE start"
 	echo -e "Or add $SOURCE to RUN_DAEMONS in /etc/rcS.conf\n"
