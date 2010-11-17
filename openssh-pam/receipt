@@ -36,3 +36,16 @@ genpkg_rules()
 	sed -i 's/.*UsePAM.*/UsePAM yes/' $fs/etc/sshd/sshd_config
 }
 
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	while read dropbear openssh ; do
+		[ -s $dropbear ] || continue
+		dropbearconvert dropbear openssh $1$dropbear $1$openssh
+		dropbearkey -y -f $1$dropbear | grep ssh > $1$openssh.pub
+		dropbearkey -y -f $1$dropbear | grep Fingerprint
+	done <<EOT
+/etc/dropbear/dropbear_rsa_host_key	/etc/ssh/ssh_host_rsa_key
+/etc/dropbear/dropbear_dss_host_key	/etc/ssh/ssh_host_dsa_key
+EOT
+}
