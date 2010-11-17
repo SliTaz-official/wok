@@ -1,0 +1,75 @@
+# SliTaz package receipt.
+
+PACKAGE="aufs"
+VERSION="20101116"
+CATEGORY="base-system"
+SHORT_DESC="aufs2 kernel module"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="linux"
+BUILD_DEPENDS="linux-module-headers git"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://aufs.sf.net/"
+PROVIDE="linux-aufs"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	local AUFSDIR="$PACKAGE-$VERSION"
+	TARBALL=$SOURCES_REPOSITORY/$AUFSDIR.tar.gz
+	if [ -f $TARBALL ]; then
+		tar xzf $TARBALL
+		cd $AUFSDIR && git checkout origin/aufs2
+	else
+		# Aufs2 from git repository
+		git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-standalone.git $AUFSDIR
+		tar czf $TARBALL $AUFSDIR
+		cd $AUFSDIR && git checkout origin/aufs2	
+	fi
+	cd $src
+
+	sed -i 's|CONFIG_AUFS_BRANCH_MAX_127 =.*|CONFIG_AUFS_BRANCH_MAX_127 =|' \
+		config.mk || return 1
+	sed -i 's|CONFIG_AUFS_BRANCH_MAX_1023 =.*|CONFIG_AUFS_BRANCH_MAX_1023 = y|' \
+		config.mk || return 1
+	sed -i 's|CONFIG_AUFS_HNOTIFY =.*|CONFIG_AUFS_HNOTIFY = y|' \
+		config.mk || return 1
+	sed -i 's|CONFIG_AUFS_HFSNOTIFY =.*|CONFIG_AUFS_HFSNOTIFY = y|' \
+		config.mk || return 1
+	sed -i 's|CONFIG_AUFS_EXPORT =.*|CONFIG_AUFS_EXPORT = y|' \
+		config.mk || return 1
+	sed -i 's|CONFIG_AUFS_SHWH =.*|CONFIG_AUFS_SHWH = y|' \
+		config.mk || return 1
+	sed -i 's|CONFIG_AUFS_BDEV_LOOP =.*|CONFIG_AUFS_BDEV_LOOP = y|' \
+		config.mk || return 1
+	sed -i 's|CONFIG_AUFS_BR_RAMFS =.*|CONFIG_AUFS_BR_RAMFS = y|' \
+		config.mk || return 1
+	sed -i 's|CONFIG_AUFS_DEBUG =.*|CONFIG_AUFS_DEBUG =|' \
+		config.mk || return 1
+
+	patch -Np1 -i ../stuff/aufs2-module-2.6.36.patch
+	#make KDIR=/usr/src/linux clean
+	make KDIR=/usr/src/linux
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	EXTRAVERSION=_$KERNEL_VERSION
+	mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/fs/aufs
+	lzma e $src/fs/aufs/aufs.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/fs/aufs/aufs.ko.gz
+	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/fs/aufs/aufs.ko.gz
+	chown 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/fs/aufs/aufs.ko.gz
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	depmod -a
+}

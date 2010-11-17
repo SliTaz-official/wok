@@ -21,29 +21,30 @@ compile_rules()
 	#do
 	#	sed -i 's|VERSION="OLDVERSION"|VERSION="NEWVERSION"|g' $i
 	#done
-	local _AUFSVER="20101105"
-	local AUFSDIR="aufs2-${_AUFSVER}-${VERSION}"
-	[ -d "AUFSDIR" ] && rm -rf $AUFSDIR
+	local _AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	local AUFSDIR="aufs-${_AUFSVER}"
 	TARBALL=$SOURCES_REPOSITORY/$AUFSDIR.tar.gz
-	if [ -f $TARBALL ]; then
+	if [ -d $WOK/aufs/$AUFSDIR ]; then
+		local AUFSDIR=$WOK/aufs/$AUFSDIR
+		ln -sf $AUFSDIR aufs-${_AUFSVER}
+	elif [ -f $TARBALL ]; then
 		tar xzf $TARBALL
 		cd $AUFSDIR && git checkout origin/aufs2
+		cd $WOK/$PACKAGE
 	else
 		# Aufs2 from git repository
 		git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-standalone.git $AUFSDIR
 		tar czf $TARBALL $AUFSDIR
-		cd $AUFSDIR && git checkout origin/aufs2	
+		cd $AUFSDIR && git checkout origin/aufs2
+		cd $WOK/$PACKAGE
 	fi
-	# this is to make linux-source added aufs2
-	cp -a $AUFSDIR $WOK/$PACKAGE/aufs2
-	cd $AUFSDIR
-	cp -a Documentation fs include $src
-	cp -a *.patch ../stuff
+	cp -a $AUFSDIR/Documentation $AUFSDIR/fs $AUFSDIR/include $src
+	cp -a $AUFSDIR/*.patch $WOK/$PACKAGE/stuff
 	# We need the real GNU patch
 	[ -L /usr/bin/patch ] && tazpkg get-install patch --forced
 	cd $src
 	# SliTaz db
-	rm -rf slitaz 2> /dev/null
+	[ -d slitaz ] && rm -rf slitaz 2> /dev/null
 	mkdir slitaz
 	echo "$WGET_URL" > slitaz/url
 	cp ../stuff/gztazmod.sh ../stuff/list_modules.sh slitaz
@@ -66,7 +67,6 @@ $PACKAGE-header-$VERSION.u
 $PACKAGE-freeinitrd-$VERSION.u
 aufs2-base.patch
 aufs2-standalone.patch
-aufs2-kbuild.patch
 aufs2-module-2.6.36.patch
 aufs2-2.6.36-fix.patch
 EOT
@@ -158,6 +158,6 @@ clean_wok()
 	#rm -rf aufs2
 	rm stuff/aufs2-base*
 	rm stuff/aufs2-standalone*
-	rm stuff/aufs2-kbuild*
+	#rm stuff/aufs2-kbuild*
 	rm -rf stuff/tmp
 }
