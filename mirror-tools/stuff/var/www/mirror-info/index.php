@@ -38,6 +38,7 @@ This is the SliTaz GNU/Linux main mirror. The server runs naturally SliTaz
 <h4>SliTaz Network</h4>
 <ul>
 	<li><a href="http://www.slitaz.org/">Main Website</a></li>
+	<li><a href="http://doc.slitaz.org/">Documentation</a></li>
 	<li><a href="http://forum.slitaz.org/">Community Forum</a></li>
 	<li><a href="http://community.slitaz.org/">Community Platform</a></li>
 	<li><a href="http://labs.slitaz.org/">SliTaz Laboratories</a></li>
@@ -143,6 +144,8 @@ system("top -n1 -b");
 <ul>
 	<li><a href="http://mirror.slitaz.org/www/">www.slitaz.org</a> - SliTaz Website.
 	(<a href="http://www.slitaz.org/" target="_blank">main</a>)</li>
+	<li><a href="http://mirror.slitaz.org/doc/">doc.slitaz.org</a> - Documentation.
+	(<a href="http://doc.slitaz.org/" target="_blank">main</a>)</li>
 	<li><a href="http://mirror.slitaz.org/pkgs/">pkgs.slitaz.org</a> - Packages Web interface.
 	(<a href="http://pkgs.slitaz.org/" target="_blank">main</a>)</li>
 	<li><a href="http://mirror.slitaz.org/hg/">hg.slitaz.org</a> - Mercurial repositories (read only).
@@ -156,26 +159,29 @@ system("top -n1 -b");
 <h3><a href="http://mirror.slitaz.org/awstats.pl?config=rsync" target="_blank">
 	<img title="Secondary mirrors" src="pics/website/vhosts.png" 
 	 alt="mirrors" /></a>Mirrors</h3>
-	These mirrors are updated using the url: <b>rsync://mirror.slitaz.org/slitaz/</b>
+	Most mirrors are updated using the url: <b>rsync://mirror.slitaz.org/slitaz/</b>
 	(<a href="http://mirror.slitaz.org/awstats.pl?config=rsync">stats</a>)
 <ul>
 	<li><a href="http://en.utrace.de/?query=mirror.switch.ch">
 		<img title="map" src="pics/website/ch.png" alt="map" /></a>
 		<a href="http://mirror.switch.ch/ftp/mirror/slitaz/">
 		http://mirror.switch.ch/ftp/mirror/slitaz/</a> or
-		<a href="ftp://mirror.switch.ch/mirror/slitaz/">
-		ftp://mirror.switch.ch/mirror/slitaz/</a></li>
+		<a href="ftp://mirror.switch.ch/mirror/slitaz/">ftp</a></li>
 	<li><a href="http://en.utrace.de/?query=www.gtlib.gatech.edu">
 		<img title="map" src="pics/website/us.png" alt="map" /></a>
 		<a href="http://www.gtlib.gatech.edu/pub/slitaz/">
 		http://www.gtlib.gatech.edu/pub/slitaz/</a> or
-		<a href="ftp://ftp.gtlib.gatech.edu/pub/slitaz/">
-		ftp://ftp.gtlib.gatech.edu/pub/slitaz/</a></li>
+		<a href="ftp://ftp.gtlib.gatech.edu/pub/slitaz/">ftp</a> or
+		<a href="rsync://www.gtlib.gatech.edu/slitaz/">rsync</a></li>
 	<li><a href="http://en.utrace.de/?query=download.tuxfamily.org">
 		<img title="map" src="pics/website/fr.png" alt="map" /></a>
 		<a href="http://download.tuxfamily.org/slitaz/">
-		http://download.tuxfamily.org/slitaz/</a></li>
+		http://download.tuxfamily.org/slitaz/</a> or
+		<a href="ftp://download.tuxfamily.org/slitaz/">ftp</a> or
+		<a href="rsync://download.tuxfamily.org/pub/slitaz/">rsync</a></li>
 	<!-- li><a href="http://www.linuxembarque.com/slitaz/mirror/">
+		<img title="map" src="pics/website/fr.png" alt="map" /></a>
+		<a href="http://www.linuxembarque.com/slitaz/mirror/">
 		http://www.linuxembarque.com/slitaz/mirror/</a></li -->
 	<li><a href="http://en.utrace.de/?query=mirror.lupaworld.com">
 		<img title="map" src="pics/website/cn.png" alt="map" /></a>
@@ -185,12 +191,14 @@ system("top -n1 -b");
 		<img title="map" src="pics/website/br.png" alt="map" /></a>
 		<a href="http://slitaz.c3sl.ufpr.br/">
 		http://slitaz.c3sl.ufpr.br/</a> or
-		<a href="ftp://slitaz.c3sl.ufpr.br/slitaz/">
-		ftp://slitaz.c3sl.ufpr.br/slitaz/</a></li>
+		<a href="ftp://slitaz.c3sl.ufpr.br/slitaz/">ftp</a> or
+		<a href="rsync://slitaz.c3sl.ufpr.br/slitaz/">rsync</a></li>
 	<li><a href="http://en.utrace.de/?query=slitaz.mirror.garr.it">
 		<img title="map" src="pics/website/it.png" alt="map" /></a>
 		<a href="http://slitaz.mirror.garr.it/mirrors/slitaz/">
-		http://slitaz.mirror.garr.it/mirrors/slitaz/</a></li>
+		http://slitaz.mirror.garr.it/mirrors/slitaz/</a> or
+		<a href="ftp://slitaz.mirror.garr.it/mirrors/slitaz/">ftp</a> or
+		<a href="rsync://slitaz.mirror.garr.it/mirrors/slitaz/">rsync</a></li>
 	<!-- li><a href="http://mirror.drustvo-dns.si/slitaz/">
 		http://mirror.drustvo-dns.si/slitaz/</a></li -->
 	<li><a href="http://en.utrace.de/?query=ftp.pina.si">
@@ -200,11 +208,26 @@ system("top -n1 -b");
 	<li><a href="http://en.utrace.de/?query=distro.ibiblio.org">
 		<img title="map" src="pics/website/us.png" alt="map" /></a>
 		<a href="http://distro.ibiblio.org/pub/linux/distributions/slitaz/">
-		http://distro.ibiblio.org/pub/linux/distributions/slitaz/</a></li>
+		http://distro.ibiblio.org/pub/linux/distributions/slitaz/</a> or
+		<a href="ftp://distro.ibiblio.org/pub/linux/distributions/slitaz/">ftp</a></li>
 	<li><a href="http://en.utrace.de/?query=ftp.vim.org">
 		<img title="map" src="pics/website/nl.png" alt="map" /></a>
 		<a href="http://ftp.vim.org/ftp/os/Linux/distr/slitaz/">
-		http://ftp.vim.org/ftp/os/Linux/distr/slitaz/</a></li>
+		http://ftp.vim.org/ftp/os/Linux/distr/slitaz/</a> or
+		<a href="ftp://ftp.vim.org/mirror/os/Linux/distr/slitaz/">
+		ftp</a></li>
+	<li><a href="http://en.utrace.de/?query=ftp.nedit.org">
+		<img title="map" src="pics/website/nl.png" alt="map" /></a>
+		<a href="http://ftp.nedit.org/ftp/ftp/pub/os/Linux/distr/slitaz/">
+		http://ftp.nedit.org/ftp/ftp/pub/os/Linux/distr/slitaz/</a> or
+		<a href="ftp://ftp.nedit.org/ftp/ftp/pub/os/Linux/distr/slitaz/">
+		ftp</a></li>
+	<li><a href="http://en.utrace.de/?query=ftp.ch.xemacs.org">
+		<img title="map" src="pics/website/ch.png" alt="map" /></a>
+		<a href="http://ftp.ch.xemacs.org/ftp/pool/2/mirror/slitaz/" />
+		http://ftp.ch.xemacs.org/ftp/pool/2/mirror/slitaz/</a> or
+		<a href="ftp://ftp.ch.xemacs.org//pool/2/mirror/slitaz/" />
+		ftp</a></li>
 </ul>
 
 <a name="builds"></a>
@@ -212,10 +235,12 @@ system("top -n1 -b");
     Daily builds</h3>
 
 <?php
-function display_log($file,$anchor)
+function display_log($file,$anchor,$url)
 {
 echo '<a name="'.$anchor.'"></a>';
+echo "<a href=\"$url\">";
 system("stat -c '<h4>%y %n</h4>' ".$file." | sed -e 's/.000000000//' -e 's|/var/log/\(.*\).log|\\1.iso|'");
+echo "</a>";
 echo "<pre>";
 system("cat ".$file." | sed -e 's/.\[[0-9][^mG]*.//g' | awk '".
 '{ if (/\[/) { n=index($0,"["); printf("%s%s%s\n",substr($0,1,n-1),'.
@@ -223,9 +248,8 @@ system("cat ".$file." | sed -e 's/.\[[0-9][^mG]*.//g' | awk '".
 echo "</pre>";
 }
 
-display_log("/var/log/packages-stable.log", "buildstable" );
-display_log("/var/log/packages-cooking.log","buildcooking");
-display_log("/var/log/sources-cooking.log", "buildsources");
+display_log("/var/log/packages-stable.log", "buildstable", "/iso/stable/packages-3.0.iso");
+display_log("/var/log/packages-cooking.log","buildcooking","/iso/cooking/packages-cooking.iso");
 ?>
 <!-- End of content with round corner -->
 </div>
