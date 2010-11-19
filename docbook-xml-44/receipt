@@ -1,0 +1,95 @@
+# SliTaz package receipt.
+
+PACKAGE="docbook-xml-44"
+VERSION="4.4"
+CATEGORY="development"
+SHORT_DESC="A widely used XML scheme for writing documentation and help (version 4.4)"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="libxml2-tools libxml2"
+BUILD_DEPENDS="unzip libxml2-tools"
+WEB_SITE="http://www.oasis-open.org/docbook/"
+SOURCE="docbook-xml"
+WGET="http://www.docbook.org/xml/$VERSION/$SOURCE-$VERSION.zip"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	TARBALL=$SOURCES_REPOSITORY/$SOURCE-$VERSION.zip
+	mkdir -p $PACKAGE-$VERSION
+	pushd $PACKAGE-$VERSION
+	fs=$WOK/$PACKAGE/taz/$PACKAGE-$VERSION/fs
+	if [ -f $TARBALL ]; then
+		mkdir -p $fs/usr/share/xml/docbook/xml-dtd-$VERSION
+		unzip $TARBALL
+		  cp -dRf docbook.cat *.dtd ent/ *.mod \
+		      "$fs/usr/share/xml/docbook/xml-dtd-$VERSION/" || return 1
+	else
+		[ -L /usr/bin/wget ] && tazpkg get-install wget --forced
+		wget -O $TARBALL "$WGET"
+		mkdir -p $fs/usr/share/xml/docbook/xml-dtd-$VERSION
+		unzip $TARBALL
+		cp -dRf docbook.cat *.dtd ent/ *.mod \
+			"$fs/usr/share/xml/docbook/xml-dtd-$VERSION/" || return 1
+
+	fi
+	mkdir -p "$fs/etc/xml"
+	xmlcatalog --noout --create "$fs/etc/xml/docbook-xml" || return 1
+
+	# V4.4
+	xmlcatalog --noout --add "public" \
+		"-//OASIS//DTD DocBook XML V$VERSION//EN" \
+		"http://www.oasis-open.org/docbook/xml/$VERSION/docbookx.dtd" \
+		"$fs/etc/xml/docbook-xml"
+
+	xmlcatalog --noout --add "public" \
+		"-//OASIS//DTD DocBook XML CALS Table Model V$VERSION//EN" \
+		"http://www.oasis-open.org/docbook/xml/$VERSION/calstblx.dtd" \
+		"$fs/etc/xml/docbook-xml"
+
+	xmlcatalog --noout --add "public" \
+		"-//OASIS//DTD DocBook XML CALS Table Model V$VERSION//EN" \
+		"http://www.oasis-open.org/docbook/xml/$VERSION/calstblx.dtd" \
+		"$fs/etc/xml/docbook-xml"
+
+	xmlcatalog --noout --add "public" \
+		"-//OASIS//DTD XML Exchange Table Model 19990315//EN" \
+		"http://www.oasis-open.org/docbook/xml/$VERSION/soextblx.dtd" \
+		"$fs/etc/xml/docbook-xml"
+
+	xmlcatalog --noout --add "public" \
+		"-//OASIS//ELEMENTS DocBook XML Information Pool V$VERSION//EN" \
+		"http://www.oasis-open.org/docbook/xml/$VERSION/dbpoolx.mod" \
+		"$fs/etc/xml/docbook-xml"
+
+	xmlcatalog --noout --add "public" \
+		"-//OASIS//ELEMENTS DocBook XML Document Hierarchy V$VERSION//EN" \
+		"http://www.oasis-open.org/docbook/xml/$VERSION/dbhierx.mod" \
+		"$fs/etc/xml/docbook-xml"
+
+	xmlcatalog --noout --add "public" \
+		"-//OASIS//ENTITIES DocBook XML Additional General Entities V$VERSION//EN" \
+		"http://www.oasis-open.org/docbook/xml/$VERSION/dbgenent.mod" \
+		"$fs/etc/xml/docbook-xml"
+
+	xmlcatalog --noout --add "public" \
+		"-//OASIS//ENTITIES DocBook XML Notations V$VERSION//EN" \
+		"http://www.oasis-open.org/docbook/xml/$VERSION/dbnotnx.mod" \
+		"$fs/etc/xml/docbook-xml"
+
+	xmlcatalog --noout --add "public" \
+		"-//OASIS//ENTITIES DocBook XML Character Entities V$VERSION//EN" \
+		"http://www.oasis-open.org/docbook/xml/$VERSION/dbcentx.mod" \
+		"$fs/etc/xml/docbook-xml"
+
+	xmlcatalog --noout --add "rewriteSystem" \
+		"http://www.oasis-open.org/docbook/xml/$VERSION" \
+		"file:///usr/share/xml/docbook/xml-dtd-$VERSION" \
+		"$fs/etc/xml/docbook-xml"
+
+	xmlcatalog --noout --add "rewriteURI" \
+		"http://www.oasis-open.org/docbook/xml/$VERSION" \
+		"file:///usr/share/xml/docbook/xml-dtd-$VERSION" \
+		"$fs/etc/xml/docbook-xml"
+}
+
+
