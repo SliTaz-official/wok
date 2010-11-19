@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="secure-delete"
+VERSION="3.1"
+CATEGORY="misc"
+SHORT_DESC="Secure file, disk, swap, memory erasure utilities."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="glibc-base"
+SOURCE="secure_delete"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.thc.org/"
+WGET_URL="http://freeworld.thc.org/releases/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	chmod u+w .
+	sed -ie 's/mktemp/mkstemp/g' sfill.c
+	sed -ie "s/sswap smem sdel-mod.o/sswap smem/" Makefile
+	make &&
+	make && make INSTALL_DIR=$PWD/_pkg/usr/bin install
+	chmod a+r $PWD/_pkg/usr/bin/*
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+}
+
