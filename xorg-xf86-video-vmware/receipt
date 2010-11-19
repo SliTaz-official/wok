@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="xorg-xf86-video-vmware"
+VERSION="11.0.3"
+CATEGORY="x-window"
+SHORT_DESC="X.org vmware video driver"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="libdrm"
+BUILD_DEPENDS="pkg-config xorg-dev-proto xorg-server-dev libdrm-dev xorg-libX11-dev xorg-libXext-dev"
+SOURCE="xf86-video-vmware"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.x.org/"
+WGET_URL="$XORG_MIRROR/driver/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+    ./configure \
+    	--prefix=/usr \
+    	--sysconfdir=/etc \
+    	--mandir=/usr/share/man \
+    	--localstatedir=/var \
+    	--with-xorg-module-dir=/usr/lib/X11/modules \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/X11/modules/drivers/
+    cp -a $_pkg/usr/lib/X11/modules/drivers/*.so \
+    	$fs/usr/lib/X11/modules/drivers/
+}
+
