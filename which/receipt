@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="which"
+VERSION="2.20"
+CATEGORY="base-system"
+SHORT_DESC="A utility to show the full path of commands"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="glibc-base"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.xs4all.nl/~carlo17/which"
+WGET_URL="http://www.xs4all.nl/~carlo17/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+}
+
+# Pre and post install commands for Tazpkg.
+# We must remove all Busybox symlink before installing.
+#
+pre_install()
+{
+	local root
+	root=$1
+	echo "Processing pre-install commands..."
+	echo -n "Removing all Busybox replaced utils... "
+	rm -f $root/usr/bin/which
+	status
+}
+
+post_remove()
+{
+	ln -s /bin/busybox /usr/bin/which
+}
