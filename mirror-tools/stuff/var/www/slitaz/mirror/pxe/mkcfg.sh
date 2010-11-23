@@ -1,5 +1,10 @@
 #!/bin/sh
 
+#usage:
+# copy /boot/isolinux/* <version>
+# remove *.cfg
+# copy then update /boot/isolinux/isolinux.cfg <version>core.cfg
+
 cd $(dirname $0)
 
 # Status functions.
@@ -15,10 +20,26 @@ status()
         echo -e "\\033[0;39m ]"
 }
 
+directlinks()
+{
+	mkdir $1/$2
+	ln -s .. $1/$2/$1
+	ln -s ../$2.cfg $1/$2/default
+	ln -s ../../pxelinux.0 $1/$2/pxelinux.0
+	ln -s . $1/$2/pxelinux.cfg
+	[ -e $1/boot ] || ln -s ../../boot $1/boot
+}
 for version in cooking $(ls ../boot | grep 0$) ; do
 
 [ "$version" = "1.0" ] && continue
 echo -n "Building $version"
+for i in splash.lss isolinux.msg core.cfg ; do
+	[ -s $version/$i ] && continue
+	echo -n " $version/$i not found !"
+	false
+	status
+	continue 2
+done
 if ! grep -q $version/splash.lss $version/isolinux.msg ; then
 	echo "WARNING: please update $version/isolinux.msg with $version/splash.lss"
 fi
@@ -35,7 +56,9 @@ sed 's/rootfs-\(.*\).gz/\1/' | while read flavor; do
     	[ -f $version/$flavor.cfg ] && continue
         cp $version/core.cfg $version/$flavor.cfg
 	sed -i -e "s/core-common/$flavor-common/" \
+	       -e "s/^label slitaz$/say Using $flavor flavor.\nlabel slitaz/" \
 	       -e "s/rootfs.gz/rootfs-$flavor.gz/" $version/$flavor.cfg
+	directlinks $version $flavor
 done
 for flavor in $(cd $version ; ls *.cfg | sed 's/.cfg//') ; do
   echo -n " $flavor"
@@ -104,7 +127,9 @@ sed 's/rootfs-\(.*\).gz/\1/' | while read flavor; do
         cp 1.0/core.cfg 1.0/$flavor.cfg
 	sed -i -e "s/core-common/$flavor-common/" \
 	       -e "s/rootfs.gz/rootfs-$flavor.gz/" 1.0/$flavor.cfg
+	directlinks 1.0 $flavor
 done
+directlinks 1.0 core
 for flavor in $(cd 1.0; ls *.cfg | sed 's/.cfg//') ; do
   echo -n " $flavor"
   cat > 1.0/$flavor-common.cfg <<EOT
