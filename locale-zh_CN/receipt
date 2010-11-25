@@ -1,46 +1,45 @@
 # SliTaz package receipt
 
 PACKAGE="locale-zh_CN"
-VERSION="1.1"
+VERSION="2.0"
 CATEGORY="system-tools"
 SHORT_DESC="Chinese Simplified locale pack."
-MAINTAINER="pankso@slitaz.org"
-DEPENDS="glibc-base wqy-bitmapfont"
+MAINTAINER="lufeng369@slitaz.org"
+DEPENDS="glibc-base wqy-microhei"
 BUILD_DEPENDS="glibc glibc-locale xorg-libX11"
 WEB_SITE="http://www.slitaz.org/"
 
-CORE_PKGS="asunder alsaplayer epdfview galculator geany gpicview gparted \
-glib gtk+ grsync leafpad lxpanel lxtask obconf openbox pcmanfm xpad"
+
 
 LOCALE="zh_CN"
 LOCALEDEF="zh_CN"
 CHARMAP="UTF-8"
 
-# Rules to configure and make the package.
-compile_rules()
-{
-	# Ensure packages are built.
-	for pkg in $CORE_PKGS
-	do
-		[ -d $WOK/$pkg/taz ] || tazwok cook $pkg
-	done
-}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 # Genereted locale files are in /usr/lib/locale.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/locale/$LOCALE $fs/usr/lib/locale
-	PKG_NAME="$PACKAGE"
-	PKG_VERS="$VERSION"
-	mk_locale_dir
-	get_slitaz_messages
-	get_core_messages
-	PACKAGE="$PKG_NAME"
-	VERSION="$PKG_VERS"
 	localedef -i $LOCALEDEF -c -f $CHARMAP $fs/usr/lib/locale/$LOCALEDEF.UTF-8
-}
 
+	GCONV_MODULES="
+		BIG5.so             GBBIG5.so   GBGBK.so
+		UTF-32.so           GB18030.so	EUC-CN.so
+		GBK.so              UTF-7.so		libGB.so"
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/lib/gconv
+
+
+	cp /usr/bin/iconv $fs/usr/bin
+	for i in $GCONV_MODULES; do
+		cp /usr/lib/gconv/$i $fs/usr/lib/gconv
+	done
+}
+post_install()
+{
+	echo LANG=zh_CN.UTF-8 > /etc/locale.conf
+}
 # Back to C if it's the last used locale.
 post_remove()
 {
