@@ -21,9 +21,10 @@ compile_rules()
 	echo "Apply $file..."
 	patch -p1 < ../stuff/$SOURCE-$VERSION.diff || exit 1
 	# set /usr/src/linux
-	echo "Set fake /usr/src/linux dir..Ã"
+	echo "Set fake /usr/src/linux dir..."
 	[ -e /usr/src ] && SRCDIR=yes || mkdir -p /usr/src
 	ln -s $WOK/linux/linux-$KERNEL_VERSION /usr/src/linux
+	grep -rl 'uname -r' . | xargs sed -i "s/uname -r/echo $KERNEL_VERSION/g"
 	# build driver
 	echo "Build driver"
 	make ROOT=$PWD/_pkg install
@@ -40,11 +41,12 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	# kernel modules
-	mkdir -p $fs/lib/modules/$(uname -r)
-	cp -a /lib/modules/$(uname -r)/extra $fs/lib/modules/$(uname -r)
+	mkdir -p $fs/lib/modules/$KERNEL_VERSION
+	cp -a /lib/modules/$KERNEL_VERSION/extra $fs/lib/modules/$KERNEL_VERSION
 	# cleaning up
-	rm -r /lib/modules/$(uname -r)/extra
+	rm -r /lib/modules/$KERNEL_VERSION/extra
 	# command files
 	mkdir -p $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
