@@ -1,12 +1,14 @@
 # SliTaz package receipt
 
+PACKED_SIZE="508K"
+UNPACKED_SIZE="2.4M"
 PACKAGE="locale-zh_CN"
 VERSION="2.0"
 CATEGORY="system-tools"
 SHORT_DESC="Chinese Simplified locale pack."
 MAINTAINER="lufeng369@slitaz.org"
 DEPENDS="glibc-base wqy-microhei"
-BUILD_DEPENDS="glibc glibc-locale xorg-libX11"
+BUILD_DEPENDS="glibc-locale xorg-libX11"
 WEB_SITE="http://www.slitaz.org/"
 
 
@@ -35,16 +37,22 @@ genpkg_rules()
 	for i in $GCONV_MODULES; do
 		cp /usr/lib/gconv/$i $fs/usr/lib/gconv
 	done
+	
+	install  -D /usr/share/zoneinfo/Asia/Shanghai $fs/usr/share/zoneinfo/Asia/Shanghai -m 644
+	install  -D /usr/share/zoneinfo/posix/Asia/Shanghai $fs/usr/share/posix/zoneinfo/Asia/Shanghai -m 644
+	install  -D /usr/share/zoneinfo/right/Asia/Shanghai $fs/usr/share/right/zoneinfo/Asia/Shanghai -m 644
 }
 post_install()
 {
 	echo LANG=zh_CN.UTF-8 > /etc/locale.conf
+	echo Asia/Shanghai > /etc/TZ
+	export TZ=Asia/Shanghai
+	hwclock --hctosys
 }
 # Back to C if it's the last used locale.
 post_remove()
 {
 	if grep -q $LOCALEDEF /etc/locale.conf; then
 		echo "LANG=C" > /etc/locale.conf
-		echo "LC_ALL=C" >> /etc/locale.conf
 	fi
 }
