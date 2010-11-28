@@ -24,6 +24,17 @@ compile_rules() {
   cd $src
   sed -i 's/0 | xargs -0n 255 ln -sf --target-directory=\./ | while read file; do ln -sf $file . ; done/' v4l/Makefile
   grep -rl /sbin/depmod * | xargs sed -i 's|/sbin/depmod|/bin/echo|'
+  grep -rl i2c_new_probed_device * | xargs sed -i 's/i2c_new_probed_device([^)]*/&, NULL/'
+  sed -i 's/\.ioctl/.unlocked_ioctl/' linux/drivers/media/dvb/dvb-core/dmxdev.c \
+	linux/drivers/media/dvb/dvb-core/dvb_ca_en50221.c \
+	linux/drivers/media/dvb/dvb-core/dvb_frontend.c \
+	linux/drivers/media/dvb/dvb-core/dvb_net.c \
+	linux/drivers/media/dvb/ttpci/av7110*.c \
+	linux/drivers/media/dvb/firewire/firedtv-ci.c \
+	linux/drivers/media/video/v4l2-dev.c \
+	linux/drivers/media/IR/lirc_dev.c \
+	linux/drivers/media/IR/ir-lirc-codec.c
+  sed -i 's/>ioctl)/>unlocked_ioctl)/' linux/drivers/media/IR/lirc_dev.c
   sed -i -e 's|/sbin/lsmod|/bin/lsmod|' -e 's/print | while.*/exec ln -s {} . \\;/' v4l/Makefile
   KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
   IFS="." ; set -- $KERNEL_VERSION ; unset IFS
