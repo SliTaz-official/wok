@@ -6,7 +6,7 @@ CATEGORY="x-window"
 MAINTAINER="jozee@slitaz.org"
 SHORT_DESC="NVIDIA drivers (non-free)"
 DEPENDS="linux xorg-server gtk+ cairo linux-agp linux-drm"
-BUILD_DEPENDS="$DEPENDS"
+BUILD_DEPENDS="$DEPENDS linux-module-headers"
 WEB_SITE="http://www.nvidia.com/"
 SOURCE="NVIDIA-Linux-x86-${VERSION}-pkg0"
 TARBALL="${SOURCE}.run"
@@ -17,8 +17,6 @@ TAGS="drivers graphic video"
 compile_rules() {
 	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	 WGET_URL="http://download.nvidia.com/XFree86/Linux-x86/$VERSION/$TARBALL"
-	 
-    [ -d $WOK/linux/taz ] || tazwok cook linux
    
     cd $WOK/$PACKAGE
     [ -f $SOURCES_REPOSITORY/$TARBALL ] || wget $WGET_URL -P $SOURCES_REPOSITORY
@@ -28,7 +26,7 @@ compile_rules() {
 	
 	cd $SOURCE/usr/src/nv/
 	sed -i 's|\.ioctl|// &|' nv.c # only use .unblocked_ioctl since 2.6.36
-	make SYSSRC="$WOK/linux/linux-$KERNEL_VERSION" module 
+	make SYSSRC="/usr/src/linux" module 
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -57,23 +55,17 @@ genpkg_rules()
 	cp -a $_pkg/usr/share/doc/* $fs/usr/share/doc/$PACKAGE/
 	cp -a $_pkg/usr/X11R6/lib/* $fs/usr/lib/X11	
 	
-	cd $fs/usr/lib/X11/modules/extensions
-	ln -s libglx.so.$VERSION libglx.so
-	
-	 cd $fs/usr/lib/
-     ln -s libGL.so.$VERSION libGL.so 
-     ln -s libGL.so.$VERSION libGL.so.1 
-     ln -s libGLcore.so.$VERSION libGLcore.so.1 
-     ln -s libnvidia-cfg.so.$VERSION libnvidia-cfg.so.1 
-     ln -s libnvidia-tls.so.$VERSION libnvidia-tls.so.1 
-     ln -s libcuda.so.$VERSION libcuda.so.1 
-     ln -s libcuda.so.$VERSION libcuda.so 
-     ln -s libvdpau.so.$VERSION libvdpau.so.1 
-     ln -s libvdpau_nvidia.so.$VERSION libvdpau_nvidia.so.1
-     
-     cd $fs/usr/lib/X11
-     ln -s libXvMCNVIDIA.so.$VERSION libXvMCNVIDIA_dynamic.so.1 
-		
+	ln -s libglx.so.$VERSION $fs/usr/lib/X11/modules/extensions/libglx.so
+	ln -s libGL.so.$VERSION $fs/usr/lib/libGL.so
+	ln -s libGL.so.$VERSION $fs/usr/lib/libGL.so.1
+	ln -s libGLcore.so.$VERSION $fs/usr/lib/libGLcore.so.1
+	ln -s libnvidia-cfg.so.$VERSION $fs/usr/lib/libnvidia-cfg.so.1
+	ln -s libnvidia-tls.so.$VERSION $fs/usr/lib/libnvidia-tls.so.1
+	ln -s libcuda.so.$VERSION $fs/usr/lib/libcuda.so.1
+	ln -s libcuda.so.$VERSION $fs/usr/lib/libcuda.so
+	ln -s libvdpau.so.$VERSION $fs/usr/lib/libvdpau.so.1
+	ln -s libvdpau_nvidia.so.$VERSION $fs/usr/lib/libvdpau_nvidia.so.1
+	ln -s libXvMCNVIDIA.so.$VERSION $fs/usr/lib/X11/libXvMCNVIDIA_dynamic.so.1		
 }
 
 pre_install()
@@ -83,8 +75,8 @@ pre_install()
 	echo "================================================================================"
 	echo "You are installing a package with proprietary license."
 	echo "You must accept the license."
-    echo "================================================================================"
-    echo ""
+	echo "================================================================================"
+	echo ""
 	
 }
 
@@ -101,15 +93,15 @@ post_install()
 	echo -e "\033[1m NVIDIA LICENSE INFORMATION:\033[0m $2"
 	echo "================================================================================"
 	echo "For installing this package, you have to accept the $PACKAGE license."
-    echo "The license is stored in /usr/share/licenses/$PACKAGE "    
-    echo -n "Would you like to read the license (y/N) : "; read anser
-    if [ "$anser" = "y" ]; then
+	echo "The license is stored in /usr/share/licenses/$PACKAGE "    
+	echo -n "Would you like to read the license (y/N) : "; read anser
+	if [ "$anser" = "y" ]; then
 		cat /usr/share/licenses/"$PACKAGE"/LICENSE | more	
 		echo "" 		
 	fi
 	echo "================================================================================"
-	 echo -n "Do you accept the license (y/N) : "; read anser
-    if [ "$anser" = "N" ]; then
+	echo -n "Do you accept the license (y/N) : "; read anser
+	if [ "$anser" = "N" ]; then
 		echo "You did not accept the license, Removing the pkg."	
 		tazpkg remove "$PACKAGE"		
 	fi
