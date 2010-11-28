@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="perl-locale-gettext"
+VERSION="1.05"
+CATEGORY="development"
+SHORT_DESC="Permits access from Perl to the gettext() family of functions."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="perl gettext-base"
+BUILD_DEPENDS="$DEPENDS"
+SOURCE="gettext"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://search.cpan.org/dist/gettext/"
+WGET_URL="http://search.cpan.org/CPAN/authors/id/P/PV/PVANDRY/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -Np1 -i ../stuff/compatibility-with-POSIX-module.patch 
+	perl Makefile.PL 
+	make 
+	make DESTDIR="$PWD/_pkg" install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	find "$fs" -name perllocal.pod -delete
+	find "$fs" -name .packlist -delete
+}
+
