@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-iscsi"
+VERSION="2.6.36"
+CATEGORY="base-system"
+SHORT_DESC="The Linux kernel iscsi modules."
+MAINTAINER="devel@slitaz.org"
+DEPENDS="linux"
+WANTED="linux"
+WEB_SITE="http://www.kernel.org/"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    path=lib/modules/$VERSION-slitaz/kernel
+    mkdir -p $fs/$path
+    export src
+    export _pkg
+    $src/slitaz/list_modules.sh drivers/scsi/iscsi_tcp.ko.gz \
+		drivers/scsi/scsi_transport_iscsi.ko.gz | while read module; do
+    	dir=$path/$(dirname $module)
+    	[ -d $fs/$dir ] || mkdir -p $fs/$dir
+        cp -a $_pkg/$path/$module $fs/$dir
+    done
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
+post_remove()
+{
+	depmod -a $VERSION-slitaz
+}
+
