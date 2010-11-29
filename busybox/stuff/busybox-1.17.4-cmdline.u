@@ -1,0 +1,37 @@
+Display command line in usage output. Useful to debug scripts.
+--- busybox-1.17.4/libbb/appletlib.c
++++ busybox-1.17.4/libbb/appletlib.c
+@@ -97,9 +97,16 @@
+ 
+ #endif /* FEATURE_COMPRESS_USAGE */
+ 
+-
++static char **bb_argv;
+ void FAST_FUNC bb_show_usage(void)
+ {
++	full_write2_str("\nCommand line: ");
++	while (*bb_argv) {
++		full_write2_str(*bb_argv++);
++		full_write2_str(" ");
++	}
++	full_write2_str("\n\n");
++
+ 	if (ENABLE_SHOW_USAGE) {
+ #ifdef SINGLE_APPLET_STR
+ 		/* Imagine that this applet is "true". Dont suck in printf! */
+@@ -634,6 +641,7 @@
+ /* If we were called as "busybox..." */
+ static int busybox_main(char **argv)
+ {
++	bb_argv = argv;
+ 	if (!argv[1]) {
+ 		/* Called without arguments */
+ 		const char *a;
+@@ -783,6 +791,7 @@
+ int main(int argc UNUSED_PARAM, char **argv)
+ #endif
+ {
++	bb_argv = argv;
+ 	/* Tweak malloc for reduced memory consumption */
+ #ifndef PAGE_SIZE
+ # define PAGE_SIZE (4*1024) /* guess */
