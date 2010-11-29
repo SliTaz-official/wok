@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="aescrypt"
+VERSION="305"
+CATEGORY="security"
+SHORT_DESC="AES Crypt is a file encryption software."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="glibc-base"
+TARBALL="${PACKAGE}${VERSION}_source.tar.gz"
+WEB_SITE="http://www.aescrypt.com/"
+WGET="http://www.aescrypt.com/cgi-bin/download?file=v3/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	if [ -f $SOURCES_REPOSITORY/$TARBALL ]; then
+		tar xzf $SOURCES_REPOSITORY/$TARBALL
+	else
+		[ -L /usr/bin/wget ] && tazpkg get-install wget --forced
+		wget -O $SOURCES_REPOSITORY/$TARBALL "$WGET"
+		tar xzf $SOURCES_REPOSITORY/$TARBALL
+	fi
+	src=$WOK/$PACKAGE/${PACKAGE}${VERSION}_source
+	cd $src
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	src=$WOK/$PACKAGE/${PACKAGE}${VERSION}_source
+	mkdir -p $fs/usr/bin
+	cp -a $src/aescrypt $fs/usr/bin
+}
+
