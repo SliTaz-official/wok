@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="hydra"
-VERSION="5.8"
+VERSION="5.9"
 CATEGORY="system-tools"
 SHORT_DESC="THC password cracker for FTP, HTTP, HTTPS, SMB, etc."
 MAINTAINER="pankso@slitaz.org"
@@ -20,7 +20,9 @@ compile_rules()
 		--prefix=/usr \
 		$CONFIGURE_ARGS
 	sed -i s/'cp -v'/'cp'/ hydra-gtk/make_xhydra.sh
-	sed -i -e 's/ -DLIBPOSTGRES$//' -e 's/ -lpq / /' Makefile
+	sed -i -e "s|gcc|gcc $( /usr/bin/apr-1-config --cppflags --cflags)|" \
+		-e 's|^XLIBPATHS=|&-L/usr/lib/postgresql |' \
+		-e 's|^XIPATHS= |&-I/usr/include/apr-1 |' Makefile
 	make
 	[ -f hydra ]
 }
