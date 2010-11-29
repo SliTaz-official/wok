@@ -1,29 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="rpm4"
-VERSION="4.4.2.3"
+VERSION="4.8.1"
 CATEGORY="system-tools"
 SHORT_DESC="RPM Package Manager"
 MAINTAINER="erjo@slitaz.org"
 DEPENDS="popt beecrypt bzlib expat sqlite zlib gcc-lib-base neon libkrb5 \
-libcomerr3"
-BUILD_DEPENDS="beecrypt beecrypt-dev popt-dev gettext zlib-dev python-dev"
+libcomerr3 nss nspr db liblzma"
+BUILD_DEPENDS="beecrypt beecrypt-dev popt-dev gettext zlib-dev python-dev \
+nss-dev nspr-dev db-dev liblzma-dev"
 SOURCE="rpm"
-TARBALL="$SOURCE-$VERSION.tar.gz"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.rpm.org/"
-WGET_URL="http://www.rpm.org/releases/rpm-4.4.x/$TARBALL"
+WGET_URL="http://www.rpm.org/releases/rpm-${VERSION:0:3}.x/$TARBALL"
 TAGS="package-manager"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr  \
+	CPPFLAGS="-I/usr/include/nspr -I/usr/include/nss" ./configure \
+	--prefix=/usr  \
 	 --infodir=/usr/share/info \
 	 --with-selinux=no \
 	 --with-lua=no \
 	 --with-dmalloc=no \
 	 --with-efence=no \
+	 --with-external-db \
 	 --mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make -j 4 &&
 	make DESTDIR=$PWD/_pkg install
@@ -45,7 +48,6 @@ genpkg_rules()
 	cp -a $_pkg/bin/* $fs/usr/bin
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/rpm $fs/usr/lib
-	rm $fs/usr/lib/libpopt.so.0*
 }
 
 post_install()
