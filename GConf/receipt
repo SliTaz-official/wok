@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="GConf"
-VERSION="2.32.1"
+VERSION="2.32.0"
 CATEGORY="utilities"
 SHORT_DESC="A configuration database system."
 MAINTAINER="rcx@zoominternet.net"
@@ -20,13 +20,17 @@ WGET_URL="ftp://ftp.gnome.org/pub/GNOME/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
 compile_rules()
 {
 	cd $src
-    ./configure \
-    	--prefix=/usr \
-    	--sysconfdir=/etc \
-    	--libexecdir=/usr/lib/GConf \
+	# Patch from fedora - reloads gconf after installing schemas
+	patch -Np1 -i ../stuff/gconf-reload.patch
+	# http://bugzilla.gnome.org/show_bug.cgi?id=568845
+	patch -Np1 -i ../stuff/01_xml-gettext-domain.patch
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--libexecdir=/usr/lib/GConf \
 		$CONFIGURE_ARGS  &&
-    make &&
-    make DESTDIR=$src/_pkg install
+	make &&
+	make DESTDIR=$src/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
