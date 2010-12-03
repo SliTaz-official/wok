@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="firefox-langpack-zh_CN"
-VERSION="3.6"
+VERSION="3.6.12"
 CATEGORY="network"
 SHORT_DESC="Chinese Language Package for firefox"
 MAINTAINER="lufeng369@gmail.com"
@@ -10,23 +10,30 @@ BUILD_DEPENDS="unzip"
 WEB_SITE="http://www.mozilla.com"
 TARBALL="zh-CN.xpi"
 Path=langpack-zh-CN@firefox.mozilla.org
-URL="http://releases.mozilla.org/pub/mozilla.org/firefox/releases/latest-$VERSION/linux-i686/xpi/$TARBALL"
+URL="http://releases.mozilla.org/pub/mozilla.org/firefox/releases/$VERSION/linux-i686/xpi/$TARBALL"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 
         mkdir -p $fs/var/$Path
-        wget $URL -P /tmp
-        unzip /tmp/$TARBALL -d $fs/var/$Path
+	if [ -f $SOURCES_REPOSITORY/$PACKAGE-$VERSION.xpi ]; then
+		unzip $SOURCES_REPOSITORY/$PACKAGE-$VERSION.xpi -d $fs/var/$Path
+	else
+		[ -L /usr/bin/wget ] && tazpkg get-install wget --forced
+	        wget -O $SOURCES_REPOSITORY/$PACKAGE-$VERSION.xpi $URL
+		unzip $SOURCES_REPOSITORY/$PACKAGE-$VERSION.xpi -d $fs/var/$Path
+	fi
 }
+
 post_install()
 {
-sed -i '/pref/s/en-US/zh-CN/' /etc/firefox/pref/firefox-l10n.js
-RealPath=/usr/lib/firefox-*/extensions/    
-mv -f /var/$Path $RealPath
+	sed -i '/pref/s/en-US/zh-CN/' /etc/firefox/pref/firefox-l10n.js
+	RealPath=/usr/lib/firefox-*/extensions/    
+	mv -f /var/$Path $RealPath
 }
+
 post_remove()
 {
-sed -i '/pref/s/zh-CN/en-US/' /etc/firefox/pref/firefox-l10n.js
-rm -rf "/usr/lib/firefox-*/extensions/$Path"
+	sed -i '/pref/s/zh-CN/en-US/' /etc/firefox/pref/firefox-l10n.js
+	rm -rf "/usr/lib/firefox-*/extensions/$Path"
 }
