@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="firefox-langpack-fr"
+VERSION="3.6"
+CATEGORY="network"
+SHORT_DESC="France Language Package for firefox"
+MAINTAINER="lufeng369@gmail.com"
+DEPENDS="firefox"
+BUILD_DEPENDS="unzip"
+WEB_SITE="http://www.mozilla.com"
+TARBALL="fr.xpi"
+Path=langpack-zh-CN@firefox.mozilla.org
+URL="http://releases.mozilla.org/pub/mozilla.org/firefox/releases/latest-$VERSION/linux-i686/xpi/$TARBALL"
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+
+        mkdir -p $fs/var/$Path
+        wget $URL -P /tmp
+        unzip /tmp/$TARBALL -d $fs/var/$Path
+}
+post_install()
+{
+sed -i '/pref/s/en-US/fr/' /etc/firefox/pref/firefox-l10n.js
+RealPath=/usr/lib/firefox-*/extensions/    
+mv -f /var/$Path $RealPath
+}
+post_remove()
+{
+sed -i '/pref/s/fr/en-US/' /etc/firefox/pref/firefox-l10n.js
+rm -rf "/usr/lib/firefox-*/extensions/$Path"
+}
