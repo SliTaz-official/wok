@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="foobillard"
+VERSION="3.0a"
+CATEGORY="games"
+SHORT_DESC="An OpenGL billiard game for Linux."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="libsdl freetype libpng mesa libglu-mesa"
+BUILD_DEPENDS="libsdl-dev freetype-dev libpng-dev libglu-mesa mesa-dev zlib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://foobillard.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i -e 's/-lXaw//' -e 's/-lXi//' src/Makefile.in
+	patch -p1 < ../stuff/03_bugfixes
+	patch -p1 < ../stuff/05_foul_explanation
+	patch -p1 < ../stuff/06_show_ball_to_hit
+	patch -p0 < ../stuff/snooker_reset.patch
+	patch -p0 < ../stuff/snooker_draw.patch
+
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/foobillard $fs/usr/share
+}
+
