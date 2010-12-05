@@ -6,36 +6,45 @@ CATEGORY="network"
 SHORT_DESC="Chinese Language Package for firefox"
 MAINTAINER="lufeng369@gmail.com"
 DEPENDS="firefox"
-BUILD_DEPENDS="unzip"
 WEB_SITE="http://www.mozilla.com"
-TARBALL="zh-TW.xpi"
-Path="langpack-${TARBALL%.xpi}@firefox.mozilla.org"
+SOURCE="firefox"
+LANG=`echo $PACKAGE | cut -d'-' -f3 | tr '_' '-'`
+LANG_DIR="langpack-$LANG@thunderbird.mozilla.org"
+TARBALL="$LANG.xpi"
 URL="http://releases.mozilla.org/pub/mozilla.org/firefox/releases/$VERSION/linux-i686/xpi/$TARBALL"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+compile_rules()
+{
+	cd $WOK/$PACKAGE
+        mkdir -p $LANG_DIR
+
+	# Get xpi
+	if [ -f $SOURCES_REPOSITORY/$PACKAGE-$VERSION.xpi ]; then
+		echo "Using current langpack ($PACKAGE-$VERSION.xpi)"
+	else
+		echo "Downloading langpack ($PACKAGE-$VERSION.xpi)"
+	        wget -O $SOURCES_REPOSITORY/$PACKAGE-$VERSION.xpi $URL
+	fi
+	# Uncompress
+	echo -n "Uncompressing langpack ($PACKAGE-$VERSION.xpi)"
+	mkdir -p $LANG_DIR && unzip $SOURCES_REPOSITORY/$PACKAGE-$VERSION.xpi -d $LANG_DIR
+	status
+        
+}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-
-        mkdir -p $fs/var/$Path
-	if [ -f $SOURCES_REPOSITORY/$PACKAGE-$VERSION.xpi ]; then
-		unzip $SOURCES_REPOSITORY/$PACKAGE-$VERSION.xpi -d $fs/var/$Path
-	else
-		[ -L /usr/bin/wget ] && tazpkg get-install wget --forced
-	        wget -O $SOURCES_REPOSITORY/$PACKAGE-$VERSION.xpi $URL
-		unzip $SOURCES_REPOSITORY/$PACKAGE-$VERSION.xpi -d $fs/var/$Path
-	fi
+	EXTDIR="$fs/usr/lib/$SOURCE-$VERSION/extensions"
+	mkdir -p $EXTDIR
+	cp -a $LANG_DIR $EXTDIR
 }
 
 post_install()
 {
-	sed -i "/pref/s/en-US/${TARBALL%.xpi}/" /etc/firefox/pref/firefox-l10n.js
-	RealPath=/usr/lib/firefox-*/extensions/    
-	cp -af /var/$Path $RealPath
-	rm -rf /var/$Path
-}
-
-post_remove()
-{
-	sed -i "/pref/s/${TARBALL%.xpi}/en-US/" /etc/firefox/pref/firefox-l10n.js
-	rm -rf "/usr/lib/firefox-*/extensions/$Path"
+	echo ""
+	echo "Use the code below to change locale of firefox in shell:"
+	echo "sed -i '/pref/s/en-US/$LANG/' /etc/firefox/pref/firefox-l10n.js"
+	echo ""
 }
