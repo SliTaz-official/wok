@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="ecm"
+VERSION="100"
+CATEGORY="misc"
+SHORT_DESC="Converts CD image files into a lossless format optimized for compression tools"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="glibc-base"
+BUILD_DEPENDS="unzip"
+TARBALL="${PACKAGE}${VERSION}.zip"
+WEB_SITE="http://www.neillcorlett.com/ecm/"
+WGET="http://www.neillcorlett.com/downloads/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	src=$WOK/$PACKAGE/$PACKAGE-$VERSION
+	mkdir -p $src
+	cd $src
+	if [ -f $SOURCES_REPOSITORY/$TARBALL ]; then
+		unzip $SOURCES_REPOSITORY/$TARBALL
+	else
+		[ -L /usr/bin/wget ] && tazpkg get-install wget --forced
+	        wget -O $SOURCES_REPOSITORY/$TARBALL $WGET
+		unzip $SOURCES_REPOSITORY/$TARBALL -d $src
+	fi
+	for i in {,un}ecm; do
+		gcc $i.c -o $i 
+	done
+
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $src/ecm $fs/usr/bin
+	cp -a $src/unecm $fs/usr/bin
+}
+
