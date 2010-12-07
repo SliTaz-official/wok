@@ -10,22 +10,35 @@ URL="http://www.openoffice.org"
 ROOT="$1"
 PATTERN="Linux_x86_install-rpm"
 
+for MIRROR in \
+http://mirror.switch.ch/ftp/mirror/OpenOffice \
+http://openoffice.cict.fr \
+http://wwwftp.ciril.fr/pub/openoffice \
+http://artfiles.org/openoffice.org \
+http://vesta.informatik.rwth-aachen.de/ftp/pub/mirror/OpenOffice \
+http://ftp.ntua.gr/pub/OpenOffice \
+http://ftp.iitm.ac.in/openoffice \
+http://www.ring.gr.jp/archives/misc/openoffice \
+http://ftp.nluug.nl/pub/office/openoffice \
+
+do wget -O - $MIRROR/ 2> /dev/null | grep -q localized && break ; done
+
 DIR="stable"
-LOC=$(wget -O - http://openofficeorg.secsup.org/localized/ 2> /dev/null \
+LOC=$(wget -O - $MIRROR/localized/ 2> /dev/null \
 | grep -E ">$LANG/|>${LANG/_/-}/|>${LANG%_*}/" | head -1 | sed 's/.*href=\"\(.*\)\/\".*/\1/')
 [ -n "$LOC" ] && DIR="localized/$LOC"
 
-VERSION="$(basename $(wget -O - http://openofficeorg.secsup.org/$DIR/ \
+VERSION="$(basename $(wget -O - $MIRROR/$DIR/ \
 	2> /dev/null | grep href=\"[0-9] | tail -1 | sed 's/.*href=\"\(.*\)\".*/\1/'))"
 if [ -z "$VERSION" ]; then
 	echo "Can't find VERSION. Abort."
 	exit 0
 fi
 echo "Selecting $DIR version $VERSION ..."
-TARBALL="$(wget -O - http://openofficeorg.secsup.org/$DIR/$VERSION/ \
+TARBALL="$(wget -O - $MIRROR/$DIR/$VERSION/ \
 	2> /dev/null | grep $PATTERN | tail -1 | sed 's/.*href=\"\(.*\)\".*/\1/')"
 echo "Archive is $TARBALL ..."
-WGET_URL=ftp://ftp.proxad.net/mirrors/ftp.openoffice.org/$DIR/$VERSION/$TARBALL
+WGET_URL=$MIRROR/$DIR/$VERSION/$TARBALL
 
 TEMP_DIR="/tmp/$PACKAGE.$$"
 SOURCE_DIR="/tmp/src.$$"
