@@ -40,7 +40,7 @@ This is the SliTaz GNU/Linux main mirror. The server runs naturally SliTaz
 	<li><a href="http://www.slitaz.org/">Main Website</a></li>
 	<li><a href="http://doc.slitaz.org/">Documentation</a></li>
 	<li><a href="http://forum.slitaz.org/">Community Forum</a></li>
-	<li><a href="http://community.slitaz.org/">Community Platform</a></li>
+	<li><a href="http://scm.slitaz.org/">Community Platform</a></li>
 	<li><a href="http://labs.slitaz.org/">SliTaz Laboratories</a></li>
 	<li><a href="http://pkgs.slitaz.org/">Packages Database</a></li>
 	<li><a href="http://boot.slitaz.org/">SliTaz Web Boot</a></li>
