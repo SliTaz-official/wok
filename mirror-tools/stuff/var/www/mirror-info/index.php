@@ -18,7 +18,7 @@
 	<a href="http://mirror-info.slitaz.org/"><img id="logo"
 	src="pics/website/logo.png" title="mirror-info.slitaz.org" alt="mirror-info.slitaz.org"
 	style="border: 0px solid ; width: 200px; height: 74px;" /></a>
-	<p id="titre">#!/project/mirror</p>
+	<p id="titre">#!/project/<?php echo preg_replace('/(\w+).*/i','$1',$_SERVER["HTTP_HOST"]); ?></p>
 </div>
 
 <!-- Navigation menu -->
@@ -65,7 +65,8 @@ This is the SliTaz GNU/Linux main mirror. The server runs naturally SliTaz
 <div id="content">
 
 <h1><font color="#3E1220">Server</font></h1>
-<h2><font color="#DF8F06">Codename: mirror</font></h2>
+<h2><font color="#DF8F06">Codename:
+<?php echo preg_replace('/(\w+).*/i','$1',$_SERVER["HTTP_HOST"]); ?></font></h2>
 
 <p>
 Mirror CPU is a <?php system("sed -e '/^model name/!d;s/.*Intel(R) //;" .         
@@ -130,6 +131,8 @@ system("top -n1 -b");
 <ul>
 	<li><a href="http://mirror.slitaz.org/">mirror.slitaz.org</a> - SliTaz Mirror.
 	(<a href="http://mirror.slitaz.org/stats" target="_blank">stats</a>)</li>
+	<li><a href="http://scn.slitaz.org/">scn.slitaz.org</a> - SliTaz Community Network.
+	(<a href="http://mirror.slitaz.org/awstats.pl?config=scn.slitaz.org" target="_blank">stats</a>)</li>
 	<li><a href="http://pizza.slitaz.org/">pizza.slitaz.org</a> - SliTaz Flavor builder.
 	(<a href="http://mirror.slitaz.org/awstats.pl?config=pizza.mirror.slitaz.org" target="_blank">stats</a>)</li>
 	<li><a href="https://ajaxterm.slitaz.org/">ajaxterm.slitaz.org</a> - Slitaz Web Console.
