@@ -1,70 +1,119 @@
 # SliTaz package receipt.
 
 PACKAGE="docbook-xml"
-VERSION="5.0"
+VERSION="4.5"
 CATEGORY="development"
 SHORT_DESC="General purpose XML Document Type Definition."
 MAINTAINER="paul@slitaz.org"
 DEPENDS="libxml2-tools libxml2"
-BUILD_DEPENDS="unzip"
+BUILD_DEPENDS="$DEPENDS unzip"
 SOURCE="docbook"
-TARBALL="$SOURCE-$VERSION.zip"
+TARBALL="$PACKAGE-$VERSION.zip"
 WEB_SITE="http://www.docbook.org/"
-WGET_URL="http://www.docbook.org/xml/$VERSION/$TARBALL"
+WGET="http://www.docbook.org/xml/$VERSION/$TARBALL"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/xml/docbook/schema/5.0/dtd
-	mkdir -p $fs/usr/share/xml/docbook/schema/5.0/rng
-	mkdir -p $fs/usr/share/xml/docbook/schema/5.0/sch
-	mkdir -p $fs/usr/share/xml/docbook/schema/5.0/xsd
-	mkdir -p $fs/usr/share/xml/docbook/stylesheet/docbook5
-	mkdir -p $fs/usr/share/doc/docbook-xml-5.0/images/
+	if [ -f $SOURCES_REPOSITORY/$TARBALL ]; then
+		mkdir -p $src && unzip $SOURCES_REPOSITORY/$TARBALL -d $src
+	else
+		wget -O $SOURCES_REPOSITORY/$TARBALL $WGET
+		mkdir -p $src && unzip $SOURCES_REPOSITORY/$TARBALL -d $src
+	fi
 
-	src=$SOURCE-$VERSION
-	cp -a $src/dtd/* $fs/usr/share/xml/docbook/schema/5.0/dtd
-	cp -a $src/rng/* $fs/usr/share/xml/docbook/schema/5.0/rng
-	cp -a $src/sch/* $fs/usr/share/xml/docbook/schema/5.0/sch
-	cp -a $src/xsd/* $fs/usr/share/xml/docbook/schema/5.0/xsd
-	cp -a $src/tools/* $fs/usr/share/xml/docbook/stylesheet/docbook5
-	cp -a $src/docs/images/* $fs/usr/share/doc/docbook-xml-5.0/images
-	cp -a $src/docs/* $fs/usr/share/doc/docbook-xml-5.0
-	cp -a $src/README $fs/usr/share/doc/docbook-xml-5.0
-	cp -a $src/catalog.xml $fs/usr/share/xml/docbook/schema/5.0
-	cp -a $src/docbook.nvdl $fs/usr/share/xml/docbook/schema/5.0
+	#cd $src
+	install -v -d -m755 $fs/usr/share/xml/docbook/xml-dtd-$VERSION &&
+	install -v -d -m755 $fs/etc/xml &&
+	chown -R root:root . &&
+	cp -v -af $src/docbook.cat $src/*.dtd $src/ent/ $src/*.mod \
+		$fs/usr/share/xml/docbook/xml-dtd-$VERSION
+
+	
+	xmlcatalog --noout --create $fs/etc/xml/docbook
+	xmlcatalog --noout --create $fs/etc/xml/catalog
+
+	for DTDVERSION in 4.1.2 4.2 4.3 4.4
+	do
+	  xmlcatalog --noout --add "public" \
+	    "-//OASIS//DTD DocBook XML V$DTDVERSION//EN" \
+	    "http://www.oasis-open.org/docbook/xml/$DTDVERSION/docbookx.dtd" \
+	    $fs/etc/xml/docbook
+	  xmlcatalog --noout --add "rewriteSystem" \
+	    "http://www.oasis-open.org/docbook/xml/$DTDVERSION" \
+	    "file:///usr/share/xml/docbook/xml-dtd-$VERSION" \
+	    $fs/etc/xml/docbook
+	  xmlcatalog --noout --add "rewriteURI" \
+	    "http://www.oasis-open.org/docbook/xml/$DTDVERSION" \
+	    "file:///usr/share/xml/docbook/xml-dtd-$VERSION" \
+	    $fs/etc/xml/docbook
+	  xmlcatalog --noout --add "delegateSystem" \
+	    "http://www.oasis-open.org/docbook/xml/$DTDVERSION/" \
+	    "file:///etc/xml/docbook" \
+	    $fs/etc/xml/catalog
+	  xmlcatalog --noout --add "delegateURI" \
+	    "http://www.oasis-open.org/docbook/xml/$DTDVERSION/" \
+	    "file:///etc/xml/docbook" \
+	    $fs/etc/xml/catalog
+	done
+
 
 }
+
 # Pre and post install commands for Tazpkg.
 post_install()
 {
 	echo -n "Processing post-install commands..."
 
-	# Add /etc/xml/catalog
+	# Add /etc/xml/docbook
 	install -d -m755 $1/etc/xml
-	[ ! -f $1/etc/xml/catalog ] &&
-    		xmlcatalog --noout --create $1/etc/xml/catalog
-
-	xmlcatalog --noout --add "delegatePublic" \
-		"-//OASIS//DTD DocBook XML 5.0//EN" \
-		"file:///usr/share/xml/docbook/schema/5.0/catalog.xml" \
-	$1/etc/xml/catalog &&
-	xmlcatalog --noout --add "delegateSystem" \
-		"http://www.oasis-open.org/docbook/xml/5.0" \
-		"file:///usr/share/xml/docbook/schema/5.0/catalog.xml" \
-	$1/etc/xml/catalog &&
-	xmlcatalog --noout --add "delegateSystem" \
-		"http://docbook.org/xml/5.0" \
-		"file:///usr/share/xml/docbook/schema/5.0/catalog.xml" \
-	$1/etc/xml/catalog &&
-	xmlcatalog --noout --add "delegateURI" \
-           "http://www.oasis-open.org/docbook/xml/5.0" \
-           "file:///usr/share/xml/docbook/schema/5.0/catalog.xml" \
-           	$1/etc/xml/catalog &&
-	xmlcatalog --noout --add "delegateURI" \
-		"http://docbook.org/xml/5.0" \
-		"file:///usr/share/xml/docbook/schema/5.0/catalog.xml" \
-	$1/etc/xml/catalog
+	if [ ! -e /etc/xml/docbook ]; then
+    		xmlcatalog --noout --create $1/etc/xml/docbook
+	fi &&
+	xmlcatalog --noout --add "public" \
+	    "-//OASIS//DTD DocBook XML V4.5//EN" \
+	    "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" \
+	    $1/etc/xml/docbook &&
+	xmlcatalog --noout --add "public" \
+	    "-//OASIS//DTD DocBook XML CALS Table Model V4.5//EN" \
+	    "file:///usr/share/xml/docbook/xml-dtd-4.5/calstblx.dtd" \
+	    $1/etc/xml/docbook &&
+	xmlcatalog --noout --add "public" \
+	    "-//OASIS//DTD XML Exchange Table Model 19990315//EN" \
+	    "file:///usr/share/xml/docbook/xml-dtd-4.5/soextblx.dtd" \
+	    $1/etc/xml/docbook &&
+	xmlcatalog --noout --add "public" \
+	    "-//OASIS//ELEMENTS DocBook XML Information Pool V4.5//EN" \
+	    "file:///usr/share/xml/docbook/xml-dtd-4.5/dbpoolx.mod" \
+	    $1/etc/xml/docbook &&
+	xmlcatalog --noout --add "public" \
+	    "-//OASIS//ELEMENTS DocBook XML Document Hierarchy V4.5//EN" \
+	    "file:///usr/share/xml/docbook/xml-dtd-4.5/dbhierx.mod" \
+	    $1/etc/xml/docbook &&
+	xmlcatalog --noout --add "public" \
+	    "-//OASIS//ELEMENTS DocBook XML HTML Tables V4.5//EN" \
+	    "file:///usr/share/xml/docbook/xml-dtd-4.5/htmltblx.mod" \
+	    $1/etc/xml/docbook &&
+	xmlcatalog --noout --add "public" \
+	    "-//OASIS//ENTITIES DocBook XML Notations V4.5//EN" \
+	    "file:///usr/share/xml/docbook/xml-dtd-4.5/dbnotnx.mod" \
+	    $1/etc/xml/docbook &&
+	xmlcatalog --noout --add "public" \
+	    "-//OASIS//ENTITIES DocBook XML Character Entities V4.5//EN" \
+	    "file:///usr/share/xml/docbook/xml-dtd-4.5/dbcentx.mod" \
+	    $1/etc/xml/docbook &&
+	xmlcatalog --noout --add "public" \
+	    "-//OASIS//ENTITIES DocBook XML Additional General Entities V4.5//EN" \
+	    "file:///usr/share/xml/docbook/xml-dtd-4.5/dbgenent.mod" \
+	    $1/etc/xml/docbook &&
+	xmlcatalog --noout --add "rewriteSystem" \
+	    "http://www.oasis-open.org/docbook/xml/4.5" \
+	    "file:///usr/share/xml/docbook/xml-dtd-4.5" \
+	    $1/etc/xml/docbook &&
+	xmlcatalog --noout --add "rewriteURI" \
+	    "http://www.oasis-open.org/docbook/xml/4.5" \
+	    "file:///usr/share/xml/docbook/xml-dtd-4.5" \
+	    $1/etc/xml/docbook
 	status
 }
 
