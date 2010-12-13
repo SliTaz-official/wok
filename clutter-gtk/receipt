@@ -6,15 +6,16 @@ CATEGORY="x-window"
 SHORT_DESC="GTK+ libraries for Clutter."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+ clutter"
-BUILD_DEPENDS="gtk+-dev clutter-dev"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+BUILD_DEPENDS="gtk+-dev clutter-dev gobject-introspection-dev automake autoconf"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://clutter-project.org/"
-WGET_URL="http://www.clutter-project.org/sources/clutter-gtk/0.10/$TARBALL"
+WGET_URL="http://www.clutter-project.org/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	patch -Np1 -i ../stuff/fix-gir.patch
 	sed -i -e 's/GTK_WIDGET_REALIZED/gtk_widget_get_realized/' \
 	       -e 's/GTK_WIDGET_VISIBLE/gtk_widget_get_visible/' \
 	       clutter-gtk/gtk-clutter-embed.c
@@ -30,4 +31,5 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/girepository-1.0 $fs/usr/lib
 }
