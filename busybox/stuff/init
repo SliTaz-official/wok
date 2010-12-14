@@ -122,6 +122,10 @@ if grep -q loopfs= /proc/cmdline; then
 	try_init
 fi
 grep -q cryptoroot= /proc/cmdline && try_init
+if grep -q rootuuid= /proc/cmdline; then
+	root="$(sed 's/.*rootuuid=\([^ ]*\).*/\1/' < /proc/cmdline)"
+	mount $(blkid | grep $root | sed 's/:.*//') /mnt && try_init
+fi
 umount /sys
 echo -n "Switching / to tmpfs..."
 size="$(grep rootfssize= < /proc/cmdline | \
