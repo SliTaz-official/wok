@@ -82,6 +82,8 @@ EOT
 	make INSTALL_MOD_PATH=$PWD/_pkg modules_install &&
 	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install &&
 	[ -s arch/x86/boot/bzImage ] || return 1
+	mkdir -p $PWD/_pkg/boot 2> /dev/null
+	mv arch/x86/boot/bzImage $PWD/_pkg/boot/vmlinuz-$VERSION-slitaz
 	# Compress all modules.
 	$WOK/$PACKAGE/stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
 	mv System.map System.map-modules
@@ -98,9 +100,7 @@ EOT
 genpkg_rules()
 {
     local path
-    mkdir $fs/boot
-    cp -a $src/arch/x86/boot/bzImage \
-		$fs/boot/vmlinuz-$VERSION-slitaz
+    cp -a $_pkg/boot $fs
     # Compress all modules.
     #./stuff/gztazmod.sh $_pkg/lib/modules/$VERSION-slitaz
     path=$fs/lib/modules/$VERSION-slitaz/kernel
