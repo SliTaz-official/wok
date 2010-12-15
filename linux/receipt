@@ -81,9 +81,17 @@ EOT
 	make -j 4 modules &&
 	make INSTALL_MOD_PATH=$PWD/_pkg modules_install &&
 	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install &&
-	[ -s arch/x86/boot/bzImage ]
+	[ -s arch/x86/boot/bzImage ] || return 1
 	# Compress all modules.
 	$WOK/$PACKAGE/stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
+	mv System.map System.map-modules
+	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
+	# We can't keep every driver in staging 
+	sed -i -e 's/^CONFIG_RTL8192/#&/' \
+	       -e 's/^CONFIG_R8187SE/#&/' \
+	       -e 's/^CONFIG_RT2870/#&/' .config
+	yes '' | make oldconfig
+	make -j 4 bzImage && mv arch/x86/boot/bzImage $PWD/_pkg
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
