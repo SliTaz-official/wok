@@ -76,7 +76,7 @@ EOT
 	cd ../..
 
 	# Build bzImage without modules first
-	cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
+	cp -f ../stuff/$PACKAGE-$VERSION-slitaz.config .config
 	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
 	# We can't keep every driver in staging 
 	sed -i -e 's/^CONFIG_RTL8192/#&/' \
@@ -84,11 +84,12 @@ EOT
 	       -e 's/^CONFIG_RT2870/#&/' .config
 	yes '' | make oldconfig
 	make -j 4 bzImage || return 1
+	[-d $PWD/_pkg ] || mkdir -p $PWD/_pkg
 	mv arch/x86/boot/bzImage $PWD/_pkg
 	mv System.map System.map-without-modules
 
 	# Build bzImage with modules
-	cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
+	cp -f ../stuff/$PACKAGE-$VERSION-slitaz.config .config
 	make oldconfig
 	ln .config slitaz/config
 	make -j 4 bzImage &&
