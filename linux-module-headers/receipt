@@ -25,9 +25,6 @@ genpkg_rules()
 		$fs/$path/.config
 	mkdir -p $fs/$path/include
 
-	# Added soft link to make it easier to point to kernel folder
-	ln -s linux-$KVERSION $fs/usr/src/linux
-
 	for i in acpi asm-generic config generated linux math-emu media net pcmcia scsi sound trace video; do
 		cp -a $src/include/$i $fs/$path/include/
 	done
@@ -37,7 +34,7 @@ genpkg_rules()
 	cp -a $src/arch/x86/include $fs/$path/arch/x86/
 
 	# copy files necessary for later builds, like nvidia and vmware
-  	cp -a $src/Module.symvers $fs/$path
+  	cp -a $src/Module.symvers-modules $fs/$path/Module.symvers
   	cp -a $src/scripts $fs/$path
   	# fix permissions on scripts dir
   	chmod og-w -R $fs/$path/scripts
@@ -132,3 +129,13 @@ genpkg_rules()
 
 }	
 
+pre_remove() {
+	if [ -e $1/usr/src/linux ]; then
+		rm -rf $1/usr/src/linux
+	fi
+}
+
+post_install() {
+	# Added soft link to make it easier to point to kernel folder
+	ln -sf /usr/src/linux-$KVERSION-slitaz $1/usr/src/linux
+}
