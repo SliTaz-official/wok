@@ -74,6 +74,20 @@ EOT
 	cd Documentation/lguest
 	make lguest || return 1
 	cd ../..
+
+	# Build bzImage without modules first
+	cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
+	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
+	# We can't keep every driver in staging 
+	sed -i -e 's/^CONFIG_RTL8192/#&/' \
+	       -e 's/^CONFIG_R8187SE/#&/' \
+	       -e 's/^CONFIG_RT2870/#&/' .config
+	yes '' | make oldconfig
+	make -j 4 bzImage || return 1
+	mv arch/x86/boot/bzImage $PWD/_pkg
+	mv System.map System.map-without-modules
+
+	# Build bzImage with modules
 	cp ../stuff/$PACKAGE-$VERSION-slitaz.config .config
 	make oldconfig
 	ln .config slitaz/config
@@ -86,15 +100,8 @@ EOT
 	mv arch/x86/boot/bzImage $PWD/_pkg/boot/vmlinuz-$VERSION-slitaz
 	# Compress all modules.
 	$WOK/$PACKAGE/stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
-	mv System.map System.map-modules
-	mv Module.symvers Module.symvers-modules
-	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
-	# We can't keep every driver in staging 
-	sed -i -e 's/^CONFIG_RTL8192/#&/' \
-	       -e 's/^CONFIG_R8187SE/#&/' \
-	       -e 's/^CONFIG_RT2870/#&/' .config
-	yes '' | make oldconfig
-	make -j 4 bzImage && mv arch/x86/boot/bzImage $PWD/_pkg
+	ln System.map System.map-modules
+	ln Module.symvers Module.symvers-modules
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
