@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="pyneighborhood"
-VERSION="0.5.0"
+VERSION="0.5.3"
 CATEGORY="network"
 SHORT_DESC="GUI frontend for samba tools (smbclient, smbmount, etc)."
 MAINTAINER="paul@slitaz.org"
@@ -9,13 +9,20 @@ DEPENDS="python pygtk samba gettext libffi"
 BUILD_DEPENDS="python python-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://launchpad.net/pyneighborhood"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WGET="$WEB_SITE/${VERSION%.*}/$VERSION/+download/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	if [ -f $SOURCES_REPOSITORY/$TARBALL ]; then
+		tar xjf $SOURCES_REPOSITORY/$TARBALL
+	else
+		[ -L /usr/bin/wget ] || tazpkg get-install wget --forced
+		wget -O $SOURCES_REPOSITORY/$TARBALL --no-check-certificate "$WGET"
+		tar xjf $SOURCES_REPOSITORY/$TARBALL
+	fi
 
+	cd $src
 	# hack .desktop file
 	sed -i 's/Application;Network;System;Utility/Application;System;/' pyNeighborhood.desktop
 
