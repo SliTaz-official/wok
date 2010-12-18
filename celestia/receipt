@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="celestia"
+VERSION="1.6.0"
+CATEGORY="games"
+SHORT_DESC="Real-time 3D Space Simulation"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="gtk+ glew libtheora lua gtkglext freeglut xorg-libXmu mesa libglu-mesa libjpeg jpeg zlib"
+BUILD_DEPENDS="$DEPENDS gtk+-dev libtheora-dev lua-dev gtkglext-dev freeglut-dev xorg-libXmu-dev libglu-mesa mesa-dev libpng-dev libogg-dev jpeg-dev glew-dev zlib-dev gettext autoconf"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.shatters.net/celestia/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -p0 -i ../stuff/celestia-1.6.0-gcc45.patch
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--with-gtk \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/celestia $fs/usr/share
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+}
+
