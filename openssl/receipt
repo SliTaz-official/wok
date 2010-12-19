@@ -16,9 +16,16 @@ TAGS="ssl security"
 compile_rules()
 {
 	cd $src
+	
+	# MAKEFLAGS make openssl build fail.
+	unset MAKEFLAGS
 
-	./config --prefix=/usr --openssldir=/etc/ssl shared zlib enable-md2
-	sed -i 's/\(basename .*\)`/\1 || true `/' Makefile
+	# Add -Wa,--noexecstack here so that libcrypto's assembler modules will be
+	# marked as not requiring an executable stack (compatibility improvement).
+	./config --prefix=/usr --openssldir=/etc/ssl shared zlib enable-md2 \
+		-Wa,--noexecstack &&
+	
+	sed -i 's/\(basename .*\)`/\1 || true `/' Makefile &&
 	make &&
 	make INSTALL_PREFIX=$PWD/_pkg MANDIR=$PWD/_pkg/usr/share/man install
 }
