@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="gnome-vfs"
+VERSION="2.24.4"
+CATEGORY="x-window"
+SHORT_DESC="The GNOME Virtual File System libraries"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="dbus-glib GConf gnome-mime-data"
+BUILD_DEPENDS="gtk+-dev dbus-glib-dev GConf-dev bzip2-dev gnome-mime-data libxml2-dev zlib-dev intltool pkg-config"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gnome.org"
+WGET_URL="http://ftp.gnome.org/pub/gnome/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc/gnome \
+		--libexecdir=/usr/lib/gnome-vfs-2.0 \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/dbus* $fs/usr/share
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/gnome-vfs* $fs/usr/lib
+	
+	# Clean unwated files
+	cd $fs/usr/lib/gnome-vfs-2.0 ; find . -name "*.*a" -exec rm -f {} \;
+	
+	# Stripping all
+	find . -name "*.so" -exec strip -s {} \;
+}
