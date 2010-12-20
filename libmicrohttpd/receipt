@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="libmicrohttpd"
+VERSION="0.9.3"
+CATEGORY="network"
+SHORT_DESC="A small C library that is supposed to make it easy to run an HTTP server as part of another application."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="gnutls"
+BUILD_DEPENDS="gnutls-dev libtasn1-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnu.org/software/libmicrohttpd/"
+WGET_URL="ftp://ftp.gnu.org/gnu/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--disable-dependency-tracking \
+		--enable-largefile \
+		--enable-curl \
+		--enable-messages \
+		--with-pic \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+	cp -a src/include/platform.h $PWD/_pkg/usr/include
+	cp -a src/include/plibc/plibc.h $PWD/_pkg/usr/include
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
+
