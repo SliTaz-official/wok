@@ -25,10 +25,10 @@ get_releases()
 	sed -e 's/href="\(.*\)">.*/\1/' -e 's|/||'
 }
 
-# Download rpm
+# Download deb
 for RELEASE in $(get_releases); do
   [ -n "$RELEASE" ] || continue
-  FILE=$(wget -O - "$URL$RELEASE/" 2> /dev/null | grep i386.rpm | sed 's/.*href="\(.*\)">.*/\1/' | head -n 1)
+  FILE=$(wget -O - "$URL$RELEASE/" 2> /dev/null | grep i386.deb | sed 's/.*href="\(.*\)">.*/\1/' | head -n 1)
   [ -n "$FILE" ] || continue
   wget $URL$RELEASE/$FILE
   [ -s $FILE ] && break
@@ -41,17 +41,17 @@ if [ ! -f $FILE ]; then
 	exit 1
 fi
 
-RELEASE=$(rpm -qip $FILE  | awk '/^Release/ { print $3 }')
-VERSION=$(rpm -qip $FILE  | awk '/^Version/ { print $3 }')-$RELEASE
-
-mkdir -p opera-$VERSION/fs
-
-# Extract files
-cd opera-$VERSION/fs
-rpm -qip ../../$FILE > description.txt
-rpm2cpio < ../../$FILE | cpio -idm
+mkdir opera
+dpkg-deb -e $FILE opera/meta
+dpkg-deb -x $FILE opera/fs
 # extracted pkg can be removed: Save RAM
-rm -f ../../$FILE
+rm -f $FILE
+sed '/^Description:/,$!d;s/^Description://' \
+	< opera/meta/control > opera/description.txt
+
+VERSION=$(grep ^Version opera/meta/control | awk '{ print $2 }')
+mv opera opera-$VERSION
+cd opera-$VERSION/fs
 
 # Create menu
 mkdir -p usr/share/applications
