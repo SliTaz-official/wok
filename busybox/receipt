@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="busybox"
-VERSION="1.17.4"
+VERSION="1.18.1"
 CATEGORY="base-system"
 SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -22,13 +22,10 @@ compile_rules()
     	patch -p1 < ../stuff/$PACKAGE-$VERSION-$file || return 1
 	touch done.$file
     done <<EOT
-cpio-mkdir.u
 tar.u
 stat.u
 ris.u
-depmod.u
 zmodules.u
-usage.u
 printable.u
 cmdline.u
 EOT
@@ -41,8 +38,6 @@ EOT
     else
 	make -j 4 && make install
     fi
-    echo "Chmod 4755 on busybox binary..."
-    chmod 4755 _install/bin/busybox
     sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
     make oldconfig
     if [ "$(gcc --version | awk '{ print $3; exit }')" == "4.5.0" ]; then
@@ -53,18 +48,17 @@ EOT
 	make -j 4
     fi
     mv busybox busybox-pam
-    chmod 4755 busybox-pam
     cp ../stuff/$PACKAGE-$VERSION.config-static .config
     make oldconfig
     make -j 4
     mv busybox busybox-static
-    chmod 4755 busybox-static
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
     cp -a $src/_install/* $fs
+    rm -f $fs/bin/bbconfig $fs/usr/bin/ar
     mkdir -p $fs/etc/init.d
     # Busybox config files.
     cp stuff/busybox.conf $fs/etc
