@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="makeself"
+VERSION="2.1.5"
+CATEGORY="development"
+SHORT_DESC="Utility to create self-extraction packages."
+MAINTAINER="slaxemulator@gmail.com"
+WEB_SITE="http://megastep.org/makeself"
+WGET="http://megastep.org/makeself/makeself.run"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -f $SOURCES_REPOSITORY/$PACKAGE-$VERSION ] ||
+	wget $WGET -O $SOURCES_REPOSITORY/$PACKAGE-$VERSION
+	cd $WOK/$PACKAGE
+	/bin/sh $SOURCES_REPOSITORY/$PACKAGE-$VERSION
+	cd $src
+	mkdir -p $PWD/_pkg/usr/bin
+	mkdir -p $PWD/_pkg/usr/share/makeself
+	cp -a makeself.sh $PWD/_pkg/usr/bin/makeself
+	cp -a makeself-header.sh $PWD/_pkg/usr/share/makeself
+	sed -e 's|HEADER=`dirname $0`/makeself-header.sh|HEADER=/usr/share/makeself/makeself-header.sh|' -i $PWD/_pkg/usr/bin/makeself
+
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share $fs/usr
+}
+
