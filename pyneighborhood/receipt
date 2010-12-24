@@ -5,8 +5,8 @@ VERSION="0.5.3"
 CATEGORY="network"
 SHORT_DESC="GUI frontend for samba tools (smbclient, smbmount, etc)."
 MAINTAINER="paul@slitaz.org"
-DEPENDS="python pygtk samba gettext libffi"
-BUILD_DEPENDS="python python-dev"
+DEPENDS="python pygtk samba"
+BUILD_DEPENDS="python python-dev gettext wget"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://launchpad.net/pyneighborhood"
 WGET="$WEB_SITE/${VERSION%.*}/$VERSION/+download/$TARBALL"
@@ -17,23 +17,25 @@ compile_rules()
 	if [ -f $SOURCES_REPOSITORY/$TARBALL ]; then
 		tar xjf $SOURCES_REPOSITORY/$TARBALL
 	else
-		[ -L /usr/bin/wget ] || tazpkg get-install wget --forced
+		# [ -L /usr/bin/wget ] || tazpkg get-install wget --forced
 		wget -O $SOURCES_REPOSITORY/$TARBALL --no-check-certificate "$WGET"
 		tar xjf $SOURCES_REPOSITORY/$TARBALL
 	fi
 
 	cd $src
+	# hack Makefile
+	sed -i 's/--prefix=/--root=/' Makefile
 	# hack .desktop file
 	sed -i 's/Application;Network;System;Utility/Application;System;/' pyNeighborhood.desktop
 
-	python setup.py build &&
-	python setup.py install --root=$PWD/_pkg
+	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs
+	mkdir -p $fs/usr
 	cp -a $_pkg/usr $fs
+	cp -a $_pkg/share $fs/usr
 }
 
