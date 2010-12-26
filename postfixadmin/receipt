@@ -1,0 +1,64 @@
+# SliTaz package receipt.
+
+PACKAGE="postfixadmin"
+VERSION="2.3.2"
+CATEGORY="network"
+SHORT_DESC="Postfix web administration."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://postfixadmin.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="php postfix mysql_or_postgresql"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/postfixadmin $fs/etc/postfix
+	cp -a $src/* $fs/usr/share/postfixadmin/
+	mv $fs/usr/share/postfixadmin/config.inc.php $fs/etc/postfix/postfixadmin.php
+	ln -s /etc/postfix/postfixadmin.php $fs/usr/share/postfixadmin/config.inc.php
+	sed -i 's/false/true/' $fs/etc/postfix/postfixadmin.php
+}
+
+post_install()
+{
+	# Configure lighttpd server
+	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+		if ! grep -q /usr/share/postfixadmin/ $1/etc/lighttpd/lighttpd.conf; then
+	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/postfixadmin/" => "/usr/share/postfixadmin/",|g' -i $1/etc/lighttpd/lighttpd.conf
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/lighttpd stop
+				/etc/init.d/lighttpd start
+			fi
+		fi
+	fi
+	# Configure apache server
+	if [ -f $1/etc/apache/httpd.conf ]; then
+		if [ ! -f $1/etc/apache/conf.d/postfixadmin ]; then
+			cat > $1/etc/apache/conf.d/postfixadmin <<EOT
+<IfModule mod_alias.c>
+    Alias /postfixadmin /usr/share/postfixadmin
+</IfModule>
+<DirectoryMatch /usr/share/postfixadmin/>
+    DirectoryIndex index.php
+    Options +FollowSymLinks
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</DirectoryMatch>
+EOT
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/apache stop
+				/etc/init.d/apache start
+			fi
+		fi
+	fi
+}
