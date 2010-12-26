@@ -1,0 +1,186 @@
+#!/bin/sh
+# get-LibreOffice - install LibreOffice excl. KDE/Gnome integration & test suite.
+#
+# (C) 2010 SliTaz - GNU General Public License v3.
+# Author : Ben Arnold <ben@seawolfsanctuary.com>
+#    via : get-OpenOffice3 (Eric Joseph-Alexandre <erjo@slitaz.org>)
+#
+
+PACKAGE="LibreOffice"
+URL="http://www.libreoffice.org"
+ROOT="$1"
+
+DIR="testing"
+SUFFIX="Linux_x86_install-rpm_en-US.tar.gz"
+
+VERSION="$(basename $(wget -O - http://download.documentfoundation.org/libreoffice/$DIR/ \
+	2> /dev/null | grep href=\"[0-9] | tail -1 | sed 's/.*href=\"//;s/[/\">].*//'))"
+if [ -z "$VERSION" ]; then
+	echo "Can't detect an appropriate version. The version numbering or URL may have changed.
+  Aborted."
+	exit 0
+fi
+VER="${VERSION/\-/}" # without hyphens
+
+TARBALL="LibO_${VER}_${SUFFIX}"
+WGET_URL="http://download.documentfoundation.org/libreoffice/${DIR}/${VERSION}/rpm/x86/${TARBALL}"
+TEMP_DIR="/tmp/$PACKAGE.$$"
+SOURCE_DIR="/tmp/src.$$"
+EXCLUDE="kde|gnome|test"
+LOG="/tmp/$(basename $0 .sh).log"
+
+# Status function with color (supported by Ash).
+status()
+{
+	local CHECK=$?
+	echo -en "\\033[70G[ "
+	if [ $CHECK = 0 ]; then
+		echo -en "\\033[1;33mOK"
+	else
+		echo -en "\\033[1;31mFailed"
+	fi
+	echo -e "\\033[0;39m ]"
+	return $CHECK
+}
+
+# Check if user is root to install, or remove packages.
+check_root()
+{
+	if test $(id -u) != 0 ; then
+		echo -e "\nYou must be root to run `basename $0` with this option."
+		echo -e "Please use 'su' and root password to become super-user.\n"
+		exit 0
+	fi
+}
+
+check_if_installed()
+{
+	 # Avoid reinstall
+	 if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ];then
+	 	return 0
+	 else
+	 	return 1
+	 fi
+}
+
+#We need to bee root
+check_root
+
+#check if package already installed
+if (check_if_installed $PACKAGE); then
+	echo "$PACKAGE is already installed."
+	[ -n "$ROOT" ] && exit 0
+	echo -n "Would you like to remove and reinstall this package [y/n]? "
+	read answer
+	case "$answer" in
+	y|Y)
+		tazpkg remove $PACKAGE ;;
+	*)
+		exit 0 ;;
+	esac
+
+fi
+
+
+# Check if we have the tarball before.
+if [ ! -f $SOURCE_DIR/$TARBALL ]; then
+	echo "Downloading LibreOffice tarball (it's time to have a break)... "
+	#Check if $SOURCE_DIR exist
+	test -d $SOURCE_DIR || mkdir -p $SOURCE_DIR
+	# Get the file.
+	wget -c $WGET_URL -O $SOURCE_DIR/$TARBALL
+	status
+fi
+if [ ! -f $SOURCE_DIR/$TARBALL ]; then
+	rm -rf $SOURCE_DIR
+	echo "Could not download $TARBALL. Exiting."
+	exit 1
+fi
+
+# Creates TEMP_DIR and extract tarball
+mkdir -p $TEMP_DIR
+echo -n "Extract files from archive..."
+tar xvzf $SOURCE_DIR/$TARBALL -C $TEMP_DIR > $LOG 2>&1 || \
+ (echo "Failed to extract $TARBALL" ; exit 1)
+status
+
+# extracted pkg can be removed: Save RAM
+rm -rf $SOURCE_DIR
+
+cd $TEMP_DIR/*/RPMS
+
+# Extract everything from RPMS
+echo -n "Extracting files"
+for i in *.rpm
+do
+	if (! echo $i | egrep -qi $EXCLUDE); then
+		echo -n "."
+		(rpm2cpio $i | cpio -id >> $LOG 2>&1 ) && rm  -f $i
+	fi
+done
+rpm2cpio desktop-integration/*freedesktop*.rpm | cpio -id >> $LOG 2>&1
+
+# extracted pkg can be removed: Save RAM
+rm -f desktop-integration/*freedesktop*.rpm
+
+status
+echo -n "Preparing package... "
+
+# Make the package
+mkdir -p $PACKAGE-$VERSION/fs/usr/lib/libreoffice  \
+  $PACKAGE-$VERSION/fs/usr/share
+
+# use mv instead of 'cp -a' to save RAM
+mv opt/libreoffice* $PACKAGE-$VERSION/fs/usr/lib
+mv usr/share/mime $PACKAGE-$VERSION/fs/usr/share
+mv usr/share/icons $PACKAGE-$VERSION/fs/usr/share
+mv usr/bin $PACKAGE-$VERSION/fs/usr
+
+# relocalized OOo libexec directory
+sed -i 's#/opt/#/usr/lib/libreoffice/#'  $PACKAGE-$VERSION/fs/usr/bin/libreoffice*
+
+# Create receipt
+cat > $PACKAGE-$VERSION/receipt <<EOT
+# SliTaz package receipt.
+
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="office"
+SHORT_DESC="Productivity suite."
+DEPENDS=""
+WEB_SITE="$URL"
+
+post_install()
+{
+	cd /usr/share/applications
+	ln -s /usr/lib/libreoffice/share/xdg/base.desktop libreoffice-base.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/impress.desktop libreoffice-impress.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/writer.desktop libreoffice-writer.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/calc.desktop libreoffice-calc.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/math.desktop libreoffice-math.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/draw.desktop libreoffice-draw.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/printeradmin.desktop libreoffice-printeradmin.desktop
+
+	cd /usr/bin
+	ln -sf /usr/lib/libreoffice/program/soffice
+}
+
+post_remove()
+{
+	rm -f /usr/share/applications/libreoffice-*
+}
+
+EOT
+status
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Clean to save RAM memory
+rm -rf $PACKAGE-$VERSION
+
+# Install pseudo package
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+
+# Clean
+rm -rf $TEMP_DIR
