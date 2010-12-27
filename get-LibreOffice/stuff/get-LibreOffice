@@ -9,25 +9,43 @@
 PACKAGE="LibreOffice"
 URL="http://www.libreoffice.org"
 ROOT="$1"
-
 DIR="testing"
 SUFFIX="Linux_x86_install-rpm_en-US.tar.gz"
 
 VERSION="$(basename $(wget -O - http://download.documentfoundation.org/libreoffice/$DIR/ \
 	2> /dev/null | grep href=\"[0-9] | tail -1 | sed 's/.*href=\"//;s/[/\">].*//'))"
-if [ -z "$VERSION" ]; then
-	echo "Can't detect an appropriate version. The version numbering or URL may have changed.
-  Aborted."
-	exit 0
-fi
-VER="${VERSION/\-/}" # without hyphens
+  if [ -z "$VERSION" ]; then
+    echo "Can't detect an appropriate version. The version numbering or URL may have changed.
+    Aborted."
+    exit 0
+  fi
+  VER="${VERSION/\-/}" # without hyphens
+
 
 TARBALL="LibO_${VER}_${SUFFIX}"
 WGET_URL="http://download.documentfoundation.org/libreoffice/${DIR}/${VERSION}/rpm/x86/${TARBALL}"
+
+case "$LANG" in
+fr_FR|de_DE|es_ES|it_IT|ru_RU)
+	LOC=${LANG%_*} # strip
+	L_SUFFIX="Linux_x86_langpack-rpm_$LOC.tar.gz"
+  L_TARBALL="LibO_${VER}_${L_SUFFIX}"
+  LANG_URL="http://download.documentfoundation.org/libreoffice/${DIR}/${VERSION}/rpm/x86/${L_TARBALL}"
+  echo "Added $LANG ($LOC)." ;;
+en_GB|pt_BR)
+  LANG=${LANG/_/-} # convert
+	L_SUFFIX="Linux_x86_langpack-rpm_$LANG.tar.gz"
+  L_TARBALL="LibO_${VER}_${L_SUFFIX}"
+  LANG_URL="http://download.documentfoundation.org/libreoffice/${DIR}/${VERSION}/rpm/x86/${L_TARBALL}"
+  echo "Added $LANG." ;;
+esac
+
+
 TEMP_DIR="/tmp/$PACKAGE.$$"
 SOURCE_DIR="/tmp/src.$$"
 EXCLUDE="kde|gnome|test"
 LOG="/tmp/$(basename $0 .sh).log"
+
 
 # Status function with color (supported by Ash).
 status()
@@ -63,10 +81,10 @@ check_if_installed()
 	 fi
 }
 
-#We need to bee root
+# We need to be root
 check_root
 
-#check if package already installed
+# Check if package already installed
 if (check_if_installed $PACKAGE); then
 	echo "$PACKAGE is already installed."
 	[ -n "$ROOT" ] && exit 0
@@ -89,6 +107,9 @@ if [ ! -f $SOURCE_DIR/$TARBALL ]; then
 	test -d $SOURCE_DIR || mkdir -p $SOURCE_DIR
 	# Get the file.
 	wget -c $WGET_URL -O $SOURCE_DIR/$TARBALL
+	if [ -n $L_TARBALL ] ; then # Are we localised?
+    wget -c $LANG_URL -O $SOURCE_DIR/$L_TARBALL
+  fi
 	status
 fi
 if [ ! -f $SOURCE_DIR/$TARBALL ]; then
@@ -97,20 +118,26 @@ if [ ! -f $SOURCE_DIR/$TARBALL ]; then
 	exit 1
 fi
 
+echo -n "Extracting files "
+
 # Creates TEMP_DIR and extract tarball
 mkdir -p $TEMP_DIR
-echo -n "Extract files from archive..."
-tar xvzf $SOURCE_DIR/$TARBALL -C $TEMP_DIR > $LOG 2>&1 || \
- (echo "Failed to extract $TARBALL" ; exit 1)
+for TB in $TARBALL $L_TARBALL ; do
+  tar xvzf $SOURCE_DIR/$TB -C $TEMP_DIR > $LOG 2>&1 || \
+  (echo "Failed to extract $TB" ; exit 1)
+done
+# Consolidate localisations into main package
+if [ -n $L_TARBALL ] ; then # Are we localised?
+  mv -f $TEMP_DIR/${L_TARBALL/.tar.gz/}/RPMS/*.rpm $TEMP_DIR/${TARBALL/.tar.gz/}/RPMS/
+fi
 status
 
-# extracted pkg can be removed: Save RAM
+# Extracted pkg can be removed: Save RAM
 rm -rf $SOURCE_DIR
 
-cd $TEMP_DIR/*/RPMS
+cd $TEMP_DIR/${TARBALL/.tar.gz/}/RPMS
 
 # Extract everything from RPMS
-echo -n "Extracting files"
 for i in *.rpm
 do
 	if (! echo $i | egrep -qi $EXCLUDE); then
@@ -136,7 +163,7 @@ mv usr/share/mime $PACKAGE-$VERSION/fs/usr/share
 mv usr/share/icons $PACKAGE-$VERSION/fs/usr/share
 mv usr/bin $PACKAGE-$VERSION/fs/usr
 
-# relocalized OOo libexec directory
+# relocalized libexec directory
 sed -i 's#/opt/#/usr/lib/libreoffice/#'  $PACKAGE-$VERSION/fs/usr/bin/libreoffice*
 
 # Create receipt
@@ -161,7 +188,9 @@ post_install()
 	ln -s /usr/lib/libreoffice/share/xdg/draw.desktop libreoffice-draw.desktop
 	ln -s /usr/lib/libreoffice/share/xdg/printeradmin.desktop libreoffice-printeradmin.desktop
 
+
 	cd /usr/bin
+  ln -s /usr/lib/libreoffice /usr/lib/libreoffice/libreoffice
 	ln -sf /usr/lib/libreoffice/program/soffice
 }
 
