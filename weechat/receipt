@@ -1,0 +1,51 @@
+# SliTaz package receipt
+
+PACKAGE="weechat"
+VERSION="0.3.3"
+CATEGORY="network"
+SHORT_DESC="a fast, light and extensible chat client."
+MAINTAINER="rocky@slitaz.org"
+DEPENDS="ncursesw libgcrypt libgnutls ncursesw libtasn1 python perl"
+BUILD_DEPENDS="ncurses ncurses-dev libgcrypt-dev gnutls-dev libtasn1-dev perl python python-dev pkg-config slitaz-toolchain"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://weechat.org/"
+WGET_URL="http://weechat.org/files/src/$TARBALL"
+TAGS="irc"
+
+# Rules to configure and make the package.
+compile_rules()
+{	
+	cd $src
+	while read file; do
+		[ -f done.$file ] && continue
+		echo "Apply $file..."
+		patch -p1 < ../stuff/$file || return 1
+		touch done.$file
+	done <<EOT
+weechat-implicit-function-declaration.patch
+EOT
+	./configure \
+		--prefix=/usr \
+		--enable-ncurses \
+		--enable-gcrypt \
+		--enable-gnutls \
+		--enable-python \
+		--enable-perl \
+		--disable-ruby \
+		--disable-doc \
+		--with-debug=0 \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	rm -rf $fs/usr/lib/pkgconfig
+	rm -f $fs/usr/lib/weechat/plugins/*.a
+	rm -f $fs/usr/lib/weechat/plugins/*.la
+}
