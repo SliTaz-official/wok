@@ -3,9 +3,9 @@
 # Get and install Tencent QQ for Linux
 
 PACKAGE="linuxqq"
-VERSION="v1.0.2-beta1"
-RPMPKG="$PACKAGE-$VERSION.i386.rpm"
-URL="http://dl_dir.qq.com/linuxqq/$RPMPKG"
+VERSION="v1.0.2"
+TARGZ="${PACKAGE}_${VERSION}_i386.tar.gz"
+URL="http://dl_dir.qq.com/linuxqq/$TARGZ"
 CUR_DIR=$(pwd)
 TEMP_DIR=/tmp/$PACKAGE-$VERSION-$$
 ROOT="$1"
@@ -29,30 +29,184 @@ cd $TEMP_DIR
 
 # Download the file
 wget $URL 
-if [ ! -f $RPMPKG ]; then
+if [ ! -f $TARGZ ]; then
 	cd $CUR_DIR
 	rm -rf $TEMP_DIR
-	echo "Could not download $RPMPKG. Exiting."
+	echo "Could not download $TARGZ. Exiting."
 	exit 1
 fi
 
-rpm2cpio $RPMPKG | cpio -dium
-mkdir -p $PACKAGE-$VERSION/fs
-mv $TEMP_DIR/usr $PACKAGE-$VERSION/fs
+tar xf $TARGZ
+mkdir -p $PACKAGE-$VERSION/fs/usr/share/tencent/
+mkdir -p $PACKAGE-$VERSION/fs/usr/share/applications/
+mkdir -p $PACKAGE-$VERSION/fs/usr/bin/
+mv $TEMP_DIR/${PACKAGE}_${VERSION}_i386 $TEMP_DIR/$PACKAGE-$VERSION/fs/usr/share/tencent/qq
 
 # extracted pkg can be removed: Save RAM
-rm -rf $RPMPKG
+rm -rf $TARGZ
 
 cd $TEMP_DIR
+
+cat > $PACKAGE-$VERSION/fs/usr/bin/qq << EOT
+#!/bin/sh
+cd /usr/share/tencent/qq/
+./qq
+EOT
+chmod +x $PACKAGE-$VERSION/fs/usr/bin/qq
+
+cat > $PACKAGE-$VERSION/fs/usr/share/applications/qq.desktop << EOT
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=腾讯QQ
+Comment=腾讯QQ
+Exec=/usr/bin/qq
+Icon=/usr/share/tencent/qq/qq.png
+Terminal=false
+Type=Application
+Categories=Application;Network;Tencent Software;
+StartupNotify=true
+Name[zh_CN]=腾讯QQ
+GenericName[zh_CN]=
+Comment[zh_CN]=腾讯QQ
+EOT
 
 cat > $PACKAGE-$VERSION/receipt << EOT
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="QQ for Linux $VERSION."
-DEPENDS="gtk+"
+DEPENDS="gtk+ gdk-pixbuf"
 WEB_SITE="http://im.qq.com/"
+TAGS="chat im"
+
+post_install() {
+    chroot $1/ /usr/bin/gdk-pixbuf-query-loaders --update-cache
+}
 EOT
+
+# for qq.png
+{ uudecode <<-!
+begin-base64 664 -
+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
+====
+!
+} > $TEMP_DIR/$PACKAGE-$VERSION/fs/usr/share/tencent/qq/qq.png
 
 # Pack
 tazpkg pack $PACKAGE-$VERSION
