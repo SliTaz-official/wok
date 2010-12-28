@@ -4,7 +4,7 @@ launch_init()
 {
 	umount /proc
 	echo -e "\\033[70G[ \\033[1;33mOK\\033[0;39m ]"
-	exec /sbin/switch_root mnt$subroot /sbin/init
+	exec /sbin/switch_root mnt /sbin/init
 }
 
 failed()
@@ -15,7 +15,7 @@ failed()
 
 try_init()
 {
-	if [ ! -d /mnt$subroot/etc ] && grep -q cryptoroot= /proc/cmdline; then
+	if [ ! -d /mnt/etc ] && grep -q cryptoroot= /proc/cmdline; then
 		modprobe dm-mod
 		modprobe dm-crypt
 		modprobe aes-i586
@@ -33,10 +33,10 @@ try_init()
 		fi
 		mount /dev/mapper/$dmlabel /mnt
 	fi
-	if [ -d /mnt$subroot/etc ]; then
+	if [ -d /mnt/etc ]; then
 		umount /sys
 		[ -n "$1" ] && for i in $@ ; do
-			cp -a $i /mnt$subroot$(dirname $i)
+			cp -a $i /mnt$(dirname $i)
 		done
 		mount /mnt -o remount,ro
 		launch_init
@@ -125,9 +125,16 @@ if grep -q loopfs= /proc/cmdline; then
 fi
 grep -q cryptoroot= /proc/cmdline && try_init
 umount /sys
-grep -q subroot= /proc/cmdline &&
+if grep -q subroot= /proc/cmdline; then
 	subroot="/$(sed 's/.*subroot=\([^ ]*\).*/\1/' < /proc/cmdline)" &&
-	exec chroot /mnt$subroot /sbin/init
+	if [ -s /usr/share/boot/busybox-static ]; then
+		mv /usr/share/boot/busybox-static .
+		/busybox-static rm -rf /etc /lib /*bin /usr /var
+		exec /busybox-static chroot /mnt$subroot /sbin/init
+	else
+		exec chroot /mnt$subroot /sbin/init
+	fi
+fi
 echo -n "Switching / to tmpfs..."
 size="$(grep rootfssize= < /proc/cmdline | \
 	sed 's/.*rootfssize=\([0-9]*[kmg%]\).*/-o size=\1/')"
