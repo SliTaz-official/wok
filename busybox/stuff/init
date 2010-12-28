@@ -124,10 +124,10 @@ if grep -q loopfs= /proc/cmdline; then
 	mount /dev/loop0 /mnt 2> /dev/null
 fi
 grep -q cryptoroot= /proc/cmdline && try_init
-grep -q subroot= /proc/cmdline &&
-subroot="/$(sed 's/.*subroot=\([^ ]*\).*/\1/' < /proc/cmdline)"
-[ -d /mnt$subroot/etc ] && try_init
 umount /sys
+grep -q subroot= /proc/cmdline &&
+	subroot="/$(sed 's/.*subroot=\([^ ]*\).*/\1/' < /proc/cmdline)" &&
+	exec chroot /mnt$subroot /sbin/init
 echo -n "Switching / to tmpfs..."
 size="$(grep rootfssize= < /proc/cmdline | \
 	sed 's/.*rootfssize=\([0-9]*[kmg%]\).*/-o size=\1/')"
