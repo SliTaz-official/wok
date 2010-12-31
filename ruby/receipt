@@ -9,7 +9,7 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.ruby-lang.org/"
 WGET_URL="ftp://ftp.ruby-lang.org/pub/ruby/${VERSION%.*}/$TARBALL"
 DEPENDS="libdb ncurses openssl readline zlib tk xorg-libXss gdbm"
-BUILD_DEPENDS=" coreutils-file-output-full"
+BUILD_DEPENDS=" coreutils-file-output-full zlib-dev"
 TAGS="ruby language programming"
 
 # Rules to configure and make the package.
@@ -17,7 +17,7 @@ compile_rules()
 {
 	cd $src
 	patch -Np1 < ../stuff/openssl-1.0.patch 
-	./configure --prefix=/usr --infodir=/usr/share/info --mandir=/usr/share/man $CONFIGURE_ARGS && 		 
+	./configure --prefix=/usr --enable-shared --infodir=/usr/share/info --mandir=/usr/share/man $CONFIGURE_ARGS && 		 
 	make -j 4 &&
 	make DESTDIR=$PWD/_pkg install
 }
@@ -28,4 +28,5 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/lib/ruby $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr	
+	cp -a $_pkg/usr/lib/libruby.so* $fs/usr/lib
 }
