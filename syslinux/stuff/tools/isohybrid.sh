@@ -3,7 +3,7 @@
 if [ "$1" == "--build" ]; then
 	cat >> $0 <<EOM
 $(for i in fx fx_f fx_c px px_f px_c ; do
-     cat mbr/isohdp$i.bin /dev/zero | dd bs=512 count=1 2> /dev/null
+     cat mbr/isohdp$i.bin /dev/zero | dd bs=1 count=512 2> /dev/null
   done | gzip -9 | uuencode -m -)
 EOT
 EOM
