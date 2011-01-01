@@ -536,7 +536,8 @@ _EOT_
 BEGIN { pkg=""; last="x" }
 {
 	if ($2 == "") next
-	if (index($2,last) == 1) delete file[last]
+	if (index($2,last) == 1 && substr($2,1+length(last),1) == "/")
+		delete file[last]
 	last=$2
 	if (pkg == "") pkg=$1
 	if ($1 == pkg) file[$2]=$1
