@@ -533,8 +533,11 @@ _EOT_
 _EOT_
 			( unlzma -c $PACKAGES_REPOSITORY/files.list.lzma | grep ^$SEARCH: ;
 			  unlzma -c $PACKAGES_REPOSITORY/files.list.lzma | grep -v ^$SEARCH: ) | awk '
-BEGIN { pkg="" }
+BEGIN { pkg=""; last="x" }
 {
+	if ($2 == "") next
+	if (index($2,last) == 1) delete file[last]
+	last=$2
 	if (pkg == "") pkg=$1
 	if ($1 == pkg) file[$2]=$1
 	else if (file[$2] == pkg) print
