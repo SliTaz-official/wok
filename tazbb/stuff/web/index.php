@@ -186,7 +186,7 @@ system("cd $packages && ls -1t *.flavor | head -20 | \
 <!-- Start of footer and copy notice -->
 <div id="copy">
 <p>
-Copyright &copy; 2010 <a href="http://www.slitaz.org/">SliTaz</a> -
+Copyright &copy; <?php echo date('Y'); ?> <a href="http://www.slitaz.org/">SliTaz</a> -
 <a href="http://www.gnu.org/licenses/gpl.html">GNU General Public License</a>
 </p>
 <!-- End of copy -->
