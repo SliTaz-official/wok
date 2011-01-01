@@ -1,80 +1,108 @@
 #!/bin/sh
 
-build="--build"
-if [ "$1" == "$build" ]; then
-	cat  >> $0 <<EOM
-$(uuencode -m mbr/isohdpfx.bin -)
+if [ "$1" == "--build" ]; then
+	cat >> $0 <<EOM
+$(for i in fx fx_f fx_c px px_f px_c ; do
+     cat mbr/isohdp$i.bin /dev/zero | dd bs=512 count=1 2> /dev/null
+  done | gzip -9 | uuencode -m -)
 EOT
 EOM
-	busybox sed -i "/$build/{NNNNNNNNNd}" $0
+	sed -i '/--build/,/^fi/d' $0
 	exit
 fi
+iso=
+heads=64	# zipdrive-style geometry
+sectors=32
+partype=23	# "Windows hidden IFS"
+entry=1
+id=$(( ($RANDOM <<16) + $RANDOM))
+offset=0
+partok=0
+hd0=0
 
-if [ -z "$1" ]; then
+while [ -n "$1" ]; do
+	case "$1" in
+	-ct*)	hd0=2;;
+	-e*)	entry=$2; shift;;
+	-f*)	hd0=1;;
+	-h)	heads=$2; shift;;
+	-i*)	id=$(($2)); shift;;
+	-noh*)	hd0=0;;
+	-nop*)	partok=0;;
+	-o*)	offset=$(($2)); shift;;
+	-p*)	partok=1;;
+	-s)	sectors=$2; shift;;
+	-t*)	partype=$(($2 & 255)); shift;;
+	*)	iso=$1;;
+	esac
+	shift
+done
+
+if [ ! -f "$iso" ]; then
 	cat << EOT
 usage: $0 isoimage
 EOT
 	exit 1
 fi
-iso=$1
-heads=64	# zipdrive-style geometry
-sectors=32
-partype=23	# "Windows hidden IFS"
+
+ddq()
+{
+	dd "$@" 2> /dev/null
+}
 
 readiso()
 {
-	dd if=$iso bs=2k skip=$1 count=1 2> /dev/null | \
-	dd bs=1 skip=$2 count=$3 2> /dev/null
+	ddq bs=2k skip=$1 count=1 if=$iso | ddq bs=1 skip=$2 count=$3
 }
 
 # read a 32 bits data
-readlong()
+read32()
 {
-	readiso $1 $2 4  | hexdump -e '"" 1/4 "%d" "\n"'
+	readiso $1 $2 4 | hexdump -e '"" 1/4 "%d" "\n"'
 }
 
 # write a 32 bits data
-storelong()
+store32()
 {
-	printf "00000  %02X %02X %02X %02X \n" \
-		$(( $2 & 255 )) $(( ($2>>8) & 255 )) \
-		$(( ($2>>16) & 255 )) $(( ($2>>24) & 255 )) | \
-	hexdump -R | dd bs=1 conv=notrunc of=$iso seek=$(( $1 )) 2> /dev/null
+	echo $2 | awk '{ for(n=$1,i=4;i--;n/=256) printf "\\\\x%02X",n%256 }' |\
+	xargs echo -en | ddq bs=1 conv=notrunc of=$iso seek=$(($1))
 }
 
-setmbr()
+main()
 {
-	uudecode | dd of=$iso conv=notrunc 2> /dev/null
-	storelong 432 $(( $lba * 4 ))
-	storelong 440 $(( ($RANDOM << 16) + $RANDOM ))
-	storelong 446 $(( 0x80 + ( 1 << 16) ))
-	esect=$(( $sectors + ((($cylinders -1) & 0x300) >> 2) ))
-	ecyl=$(( ($cylinders - 1) & 0xff ))
-	storelong 450 $(( $partype + (($heads - 1) << 8) + ($esect << 16) + ($ecyl <<24) ))
-	storelong 458 $(( $cylinders * $heads * $sectors ))
-	storelong 510 $(( 0xAA55 ))
+	uudecode | gunzip | ddq bs=512 count=1 of=$iso conv=notrunc \
+	  skip=$(( (3*$partok) + $hd0))
+	store32 432 $(($lba * 4))
+	store32 440 $id
+	store32 508 $((0xAA550000))
+	e=$(( (($entry -1) % 4) *16 +446))
+	store32 $e $((0x10080))
+	esect=$(( ($sectors + ((($cylinders -1) & 0x300) >>2)) <<16))
+	ecyl=$(( (($cylinders -1) & 0xff) <<24))
+	store32 $(($e + 4)) $(($partype + (($heads - 1) <<8) +$esect +$ecyl))
+	store32 $(($e + 8)) $offset
+	store32 $(($e + 12)) $(($cylinders * $heads * $sectors))
 }
 
-if [ "$(readiso 17 7 23)" != "EL TORITO SPECIFICATION" ]; then
-	echo "$iso: no boot record found.";
+abort()
+{
+	echo "$iso: $1"
 	exit 1
-fi
-catalog=$(readlong 17 71)
-if [ "$(readiso $catalog 0 32 | md5sum | awk '{ print $1 }')" != \
-     "788e7bfdad52cc6aae525725f24a7f89" ]; then
-	echo "$iso: invalid boot catalog.";
-	exit 1
-fi
-lba=$(readlong $catalog 40)
-if [ $(readlong $lba 64) -ne 1886961915 ]; then
-	echo "$iso: bootloader does not have a isolinux.bin hybrid signature.";
-	exit 1
-fi
+}
+
+[ "$(readiso 17 7 23)" == "EL TORITO SPECIFICATION" ] ||
+	abort "no boot record found."
+cat=$(read32 17 71)
+[ $(read32 $cat 0) -eq 1 -a $(read32 $cat 30) -eq $(( 0x88AA55 )) ] ||
+	abort "invalid boot catalog."
+lba=$(read32 $cat 40)
+[ $(read32 $lba 64) -eq 1886961915 ] ||
+	abort "no isolinux.bin hybrid signature in bootloader."
 size=$(stat -c "%s" $iso)
-pad=$(( $size % (512 * $heads * $sectors) ))
-[ $pad -eq 0 ] || pad=$((  (512 * $heads * $sectors) - $pad ))
-[ $pad -eq 0 ] || dd if=/dev/zero bs=512 count=$(( $pad / 512 )) >> $iso 2> /dev/null
-cylinders=$(( ($size + $pad) / (512 * $heads * $sectors) ))
+trksz=$(( 512 * $heads * $sectors ))
+cylinders=$(( ($size + $trksz - 1) / $trksz ))
+pad=$(( (($cylinders * $trksz) - $size) / 512 ))
+[ $pad -eq 0 ] || ddq bs=512 count=$pad if=/dev/zero >> $iso
 if [ $cylinders -gt 1024 ]; then
 	cat 1>&2 <<EOT
 Warning: more than 1024 cylinders ($cylinders).
@@ -83,4 +111,4 @@ EOT
 	cylinders=1024
 fi
 
-setmbr <<EOT
+main <<EOT
