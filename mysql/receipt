@@ -68,11 +68,17 @@ genpkg_rules()
 # Pre and post install commands for Tazpkg.
 post_install()
 {
+	# addgroup mysql if needed
+	if ! grep -q mysql $1/etc/group; then
+		echo -n "Adding group MySQL..."
+		chroot $1/ /bin/addgroup mysql 
+		status
+	fi
 	# adduser mysql if needed
 	if ! grep -q mysql $1/etc/passwd; then
 		echo -n "Adding user MySQL..."
 		chroot $1/ /bin/adduser -s /bin/false -h /dev/null \
-			-g "MySQL Daemon user" -H -D -S mysql
+			-g "MySQL Daemon user" -H -D -S -G mysql mysql
 		status
 	fi
 	chroot $1/ /bin/chown mysql.mysql $(cat $1/$INSTALLED/$PACKAGE/files.list)
