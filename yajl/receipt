@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="yajl"
+VERSION="1.0.11"
+CATEGORY="development"
+SHORT_DESC="Yet Another JSON Library"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS=""
+BUILD_DEPENDS="cmake doxygen git"
+WEB_SITE="https://github.com/lloyd/yajl"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
+	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.gz
+	if [ -f $TARBALL ]; then
+		tar xzf $TARBALL
+	else
+		echo "Cloning revision $VERSION from git repository..."
+		git clone git://github.com/lloyd/yajl.git $PACKAGE-$VERSION
+		cd $PACKAGE-$VERSION && git checkout ${VERSION}
+		cd $WOK/$PACKAGE && tar czf $TARBALL $PACKAGE-$VERSION
+	fi
+
+	cd $src
+	cmake \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		.
+	make DESTDIR=$PWD/_pkg install
+	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/usr $fs
+}
+
