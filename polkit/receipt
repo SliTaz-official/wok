@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="polkit"
+VERSION="0.99"
+CATEGORY="system"
+SHORT_DESC="Application development toolkit for controlling system-wide privileges."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="glibc-base glib libgio dbus dbus-glib expat pam"
+BUILD_DEPENDS="glib-dev libgio-dev dbus-dev dbus-glib-dev expat-dev pam-dev pkg-config intltool gobject-introspection-dev "
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.freedesktop.org/wiki/Software/PolicyKit"
+WGET_URL="http://hal.freedesktop.org/releases/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+
+    ./configure \
+    	--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--libexecdir=/usr/lib/polkit-1 \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/polkit-1 $fs/usr/lib
+	cp -a $_pkg/usr/lib/girepository-1.0 $fs/usr/lib
+	cp -a $_pkg/usr/share/dbus-1 $fs/usr/share
+	cp -a $_pkg/usr/share/polkit-1 $fs/usr/share
+	cp -a $_pkg/var $fs
+}
+
