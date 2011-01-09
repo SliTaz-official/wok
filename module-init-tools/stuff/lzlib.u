@@ -1,6 +1,6 @@
 --- module-init-tools-3.10/zlibsupport.c
 +++ module-init-tools-3.10/zlibsupport.c
-@@ -18,60 +18,40 @@
+@@ -18,43 +18,23 @@
  #include "testing.h"
  
  #ifdef CONFIG_USE_ZLIB
@@ -26,28 +26,6 @@
 -	return buffer;
 -}
 +#include <lzlib.h>
- 
- void *grab_fd(int fd, unsigned long *size)
- {
--	gzFile gzfd;
-+	lzFile lzfd;
- 
--	gzfd = gzdopen(fd, "rb");
--	if (!gzfd) {
-+	lzfd = lzdopen(fd, "rb");
-+	if (!lzfd) {
- 		if (errno == ENOMEM)
- 			fatal("Memory allocation failure in gzdopen\n");
- 		return NULL;
- 	}
- 
--	/* gzclose(gzfd) would close fd, which would drop locks.
-+	/* lzclose(lzfd) would close fd, which would drop locks.
- 	   Don't blame zlib: POSIX locking semantics are so horribly
- 	   broken that they should be ripped out. */
--	return grab_contents(gzfd, size);
-+	return lzgrab(lzfd, size);
- }
  
  /* gzopen handles uncompressed files transparently. */
  void *grab_file(const char *filename, unsigned long *size)
