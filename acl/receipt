@@ -34,9 +34,16 @@ compile_rules()
 	# rm -r -f man
 	# rm -r -f doc
 
+	# Need bash sh to compile
+	mv /bin/sh /bin/sh.bak
+	ln -s /bin/bash /bin/sh
+
 	# Configure is included in Makefile
-	make LOCAL_CONFIGURE_OPTIONS="$CONFIGURE_ARGS" &&
-	make DESTDIR=$src/_pkg install install-lib install-dev
+	{ make LOCAL_CONFIGURE_OPTIONS="$CONFIGURE_ARGS" &&
+	make install install-lib install-dev
+	} || { mv -f /bin/sh.bak /bin/sh; return 1; }
+
+	mv -f /bin/sh.bak /bin/sh
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
