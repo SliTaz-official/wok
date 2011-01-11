@@ -18,55 +18,50 @@ include("conf.php");
     <link rel="shortcut icon" href="favicon.ico" />
     <link rel="stylesheet" type="text/css" href="slitaz.css" />
 </head>
+<body>
 
-<body bgcolor="#ffffff">
 <!-- Header -->
 <div id="header">
-    <a name="top"></a>
     <a href="http://bb.slitaz.org/"><img id="logo"
-    src="pics/website/logo.png" title="bb.slitaz.org" alt="bb.slitaz.org"
-    style="border: 0px solid ; width: 200px; height: 74px;" /></a>
-    <p id="titre">#!/bb/packages<?php if ($version == 'stable') echo '/stable'; ?></p>
-</div>
-
-<!-- Navigation menu -->
-<div id="nav">
-
-<div class="nav_box">
-<h4>SliTaz Network</h4>
-<ul>
-	<li><a href="http://www.slitaz.org/">Main Website</a></li>
-	<li><a href="http://doc.slitaz.org/">Documentation</a></li>
-	<li><a href="http://forum.slitaz.org/">Community Forum</a></li>
-	<li><a href="http://labs.slitaz.org/">SliTaz Labs</a></li>
-	<li><a href="http://pkgs.slitaz.org/">Packages Database</a></li>
-	<li><a href="http://twitter.com/slitaz">SliTaz on Twitter</a></li>
-	<li><a href="http://www.distrowatch.com/slitaz">SliTaz on DistroWatch</a></li>
-</ul>
-</div>
-
-<div class="nav_box">
-<h4>SliTaz Developers</h4>
-<ul>
-	<li><a href="http://hg.slitaz.org/">Hg Repositories</a></li>
-	<li><a href="http://tank.slitaz.org/">Tank Server</a></li>
-	<li><a href="http://people.slitaz.org/">People Stuff</a></li>
-	<li><a href="http://labs.slitaz.org/wiki/distro">Distro Wiki</a></li>
-</ul>
-</div>
-
-<!-- End navigation menu -->
+		src="pics/website/logo.png"
+		title="bb.slitaz.org" alt="bb.slitaz.org" /></a>
+    <p id="titre">#!/Build/Bot<?php if ($version == 'stable') echo '/stable'; ?></p>
 </div>
 
 <!-- Content -->
-<div id="content">
+<div id="content-full">
 
-<h1><font color="#3E1220">Build Bot</font></h1>
-<h2><font color="#DF8F06">Cooklog</font></h2>
+<!-- Block begin -->
+<div class="block">
+	<!-- Nav block begin -->
+	<div id="block_nav">
+		<h3><img src="pics/website/development.png" alt="devel.png" />Developers</h3>
+		<ul>
+			<li><a href="http://www.slitaz.org/en/devel/">Website/devel</a></li>
+			<li><a href="http://labs.slitaz.org/">Laboratories</a></li>
+			<li><a href="http://hg.slitaz.org/">Mercurial Repos</a></li>
+			<li><a href="http://people.slitaz.org/">People Stuff</a></li>
+			<li><a href="http://scn.slitaz.org/">Community Network</a></li>
+		</ul>
+	<!-- Nav block end -->
+	</div>
+	<!-- Top block begin -->
+	<div id="block_top">
+		<h1>Cooklog</h1>
+		<p>
+			The BuildBot generated cooklog file to help debug packages
+			and check the build process.
+		</p>
+	<!-- Top block end -->
+	</div>
+<!-- Block end -->
+</div>
+
+<h2>Search</h2>
 
 <p>
 <form action="log.php" method="get">
-	Show cooklog: <input type="text" name="package" />
+	<input type="text" name="package" />
 	<!-- <input type="submit" value="Show" /> -->
 <?php
 
@@ -92,26 +87,35 @@ else {
 
 ?>
 
-<!-- End of content with round corner -->
+<!-- End of content -->
 </div>
 
-<!-- Start of footer and copy notice -->
-<div id="copy">
-<p>
-Copyright &copy; 2010 <a href="http://www.slitaz.org/">SliTaz</a> -
-<a href="http://www.gnu.org/licenses/gpl.html">GNU General Public License</a>
-</p>
-<!-- End of copy -->
-</div>
-
-<!-- Bottom and logo's -->
-<div id="bottom">
-<p>
-<a href="http://validator.w3.org/check?uri=referer"><img
-   src="pics/website/xhtml10.png" alt="Valid XHTML 1.0"
-   title="Code validé XHTML 1.0"
-   style="width: 80px; height: 15px;" /></a>
-</p>
+<!-- Footer -->
+<div id="footer">
+	<div class="right_box">
+	<h4>SliTaz Network</h4>
+		<ul>
+			<li><a href="http://www.slitaz.org/">Main Website</a></li>
+			<li><a href="http://doc.slitaz.org/">Documentation</a></li>
+			<li><a href="http://forum.slitaz.org/">Support Forum</a></li>
+			<li><a href="http://scn.slitaz.org/">Community Network</a></li>
+			<li><a href="http://labs.slitaz.org/">Laboratories</a></li>
+			<li><a href="http://twitter.com/slitaz">SliTaz on Twitter</a></li>
+		</ul>
+	</div>
+	<h4>SliTaz Website</h4>
+	<ul>
+		<li><a href="#header">Top of the page</a></li>
+		<li>Copyright &copy; <span class="year"></span>
+			<a href="http://www.slitaz.org/">SliTaz</a></li>
+		<li><a href="http://www.slitaz.org/en/about/">About the project</a></li>
+		<li><a href="http://www.slitaz.org/netmap.php">Network Map</a></li>
+		<li>Page modified the <?php echo (date( "d M Y", getlastmod())); ?></li>
+		<li><a href="http://validator.w3.org/check?uri=referer"><img
+		src="pics/website/xhtml10.png" alt="Valid XHTML 1.0"
+		title="Code validé XHTML 1.0"
+		style="width: 80px; height: 15px; vertical-align: middle;" /></a></li>
+	</ul>
 </div>
 
 </body>
