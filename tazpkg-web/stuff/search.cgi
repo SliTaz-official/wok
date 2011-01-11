@@ -238,21 +238,15 @@ xhtml_header()
 	<link rel="shortcut icon" href="/favicon.ico" />
 	<link rel="stylesheet"  type="text/css" href="/slitaz.css" />
 </head>
-<body bgcolor="#ffffff">
+<body>
 
 <!-- Header -->
 <div id="header">
-	<a name="top"></a>
-<!-- Access -->
-<div id="access">
-	<a href="http://www.slitaz.org/" title="SliTaz Web site">Website</a> |
-	<a href="http://doc.slitaz.org/" title="SliTaz Community Documentation">Doc</a> |
-	<a href="http://labs.slitaz.org/" title="SliTaz laboratories">Labs</a>
-</div>
+    <!-- Logo -->
 	<a href="http://pkgs.slitaz.org/"><img id="logo"
-	src="/pics/website/logo.png" title="pkgs.slitaz.org" alt="pkgs.slitaz.org"
-	style="border: 0px solid ; width: 200px; height: 74px;" /></a>
-	<p id="titre">#!/tazpkg/packages</p>
+		src="/pics/website/logo.png" 
+		title="pkgs.slitaz.org" alt="pkgs.slitaz.org" /></a>
+	<p id="titre">#!/Packages</p>
 </div>
 _EOF_
 }
@@ -265,34 +259,35 @@ xhtml_footer()
 <i>$(ls $WOK/ | wc -l) packages and $(unlzma -c $PACKAGES_REPOSITORY/files.list.lzma | wc -l) files in $SLITAZ_VERSION database</i>
 </center>
 
-<!-- End of content with round corner -->
-</div>
-<div id="content_bottom">
-<div class="bottom_left"></div>
-<div class="bottom_right"></div>
+<!-- End of content -->
 </div>
 
-<!-- Start of footer and copy notice -->
-<div id="copy">
-<p>
-Dernière modification : $DATE -
-<a href="#top">Top of the page</a>
-</p>
-<p>
-Copyright &copy; $(date +%Y) <a href="http://www.slitaz.org/">SliTaz</a> -
-<a href="http://www.gnu.org/licenses/gpl.html">GNU General Public License</a>
-</p>
-<!-- End of copy -->
-</div>
-
-<!-- Bottom and logo's -->
-<div id="bottom">
-<p>
-<a href="http://validator.w3.org/check?uri=referer"><img
-	src="/pics/website/xhtml10.png" alt="Valid XHTML 1.0"
-	title="Code validé XHTML 1.0"
-	style="width: 80px; height: 15px;" /></a>
-</p>
+<!-- Footer -->
+<div id="footer">
+	<div class="right_box">
+	<h4>SliTaz Network</h4>
+		<ul>
+			<li><a href="http://www.slitaz.org/">Main Website</a></li>
+			<li><a href="http://doc.slitaz.org/">Documentation</a></li>
+			<li><a href="http://forum.slitaz.org/">Support Forum</a></li>
+			<li><a href="http://scn.slitaz.org/">Community Network</a></li>
+			<li><a href="http://twitter.com/slitaz">SliTaz on Twitter</a></li>
+			<li><a href="http://distrowatch.com/slitaz">SliTaz on DistroWatch</a></li>
+		</ul>
+	</div>
+	<h4>SliTaz Packages</h4>
+	<ul>
+		<li><a href="#header">Top of the page</a></li>
+		<li>Copyright &copy; <span class="year"></span>
+			<a href="http://www.slitaz.org/">SliTaz</a></li>
+		<li><a href="http://www.slitaz.org/en/about/">About the project</a></li>
+		<li><a href="http://pkgs.slitaz.org/search.cgi">Search packages</a></li>
+		<li>Page modified the _DATE_</li>
+		<li><a href="http://validator.w3.org/check?uri=referer"><img
+		src="http://pkgs.slitaz.org/pics/website/xhtml10.png" 
+		title="Code validé XHTML 1.0" alt="Valid XHTML 1.0"
+		style="width: 80px; height: 15px; vertical-align: middle;" /></a></li>
+	</ul>
 </div>
 
 </body>
@@ -423,18 +418,11 @@ if [ "$REQUEST_METHOD" != "POST" ]; then
 	xhtml_header
 	cat << _EOT_
 
-<!-- Content top. -->
-<div id="content_top">
-<div class="top_left"></div>
-<div class="top_right"></div>
-</div>
-
 <!-- Content -->
 <div id="content">
-<a name="content"></a>
 
-<h1><font color="#3E1220">$package</font></h1>
-<h2><font color="#DF8F06">$search</font></h2>
+<h1>$package</h1>
+<h2>$search</h2>
 _EOT_
 	search_form
 	xhtml_footer
@@ -442,18 +430,11 @@ else
 	xhtml_header
 	cat << _EOT_
 
-<!-- Content top. -->
-<div id="content_top">
-<div class="top_left"></div>
-<div class="top_right"></div>
-</div>
-
 <!-- Content -->
 <div id="content">
-<a name="content"></a>
 
-<h1><font color="#3E1220">$package</font></h1>
-<h2><font color="#DF8F06">$search</font></h2>
+<h1>$package</h1>
+<h2>$search</h2>
 _EOT_
 	search_form
 	if [ "$OBJECT" = "Depends" ]; then
