@@ -54,19 +54,14 @@ post_install()
         # adduser postgres if needed
 	if ! grep -q postgres $1/etc/passwd; then
 		echo -n "Adding user postgres..."
-		chroot $1/ adduser postgres -D -H -h /var/lib/pgsql
+		chroot $1/ adduser postgres -D -H -u 88 -h /var/lib/pgsql
 		rm -f /var/lib/pgsql/.* /var/lib/pgsql/*
-		# ensure not to overload tux user
-		i=1100
-		while grep -q ":$i:" $1/etc/passwd ; do i=$(( $i + 1 )); done
-		sed -i "s/^postgres:x:1000:1000:/postgres:x:$i:$i:/" $1/etc/passwd
-		sed -i "s/^postgres:x:1000:/postgres:x:$i:/" $1/etc/group
 		status
 	fi
 	# addgroup postgres if needed
 	if ! grep -q postgres $1/etc/group; then
 		echo -n "Adding group postgres..."
-		chroot $1/ sh -c 'addgroup postgres && addgroup postgres postgres'
+		chroot $1/ sh -c 'addgroup -g 88 postgres && addgroup postgres postgres'
 		status
 	fi
 	chroot $1/ chown -R postgres.postgres /var/lib/pgsql /var/log/postgresql
