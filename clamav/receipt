@@ -16,7 +16,7 @@ TAGS="antivirus"
 compile_rules()
 {
 	# Have to create clamav user/group to be able to compile
-	adduser clamav -s /bin/false -H -D
+	adduser -s /bin/false -H -D clamav
 
 	cd $src
 	./configure \
@@ -69,7 +69,14 @@ post_install()
 	# adduser clamav if needed
 	if ! grep -q clamav $1/etc/passwd; then
 		echo -n "Adding user clamav..."
-		chroot $1/ adduser clamav -s /bin/false -H -D
+		chroot $1/ adduser -s /bin/false -H -D -u 64 clamav
+		status
+	fi
+
+	# addgroup clamav if needed
+	if ! grep -q clamav $1/etc/group; then
+		echo -n "Adding group clamav..."
+		chroot $1/ addgroup -g 64 clamav 
 		status
 	fi
 
