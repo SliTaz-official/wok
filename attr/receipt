@@ -16,31 +16,13 @@ compile_rules()
 {
 	cd $src
 
-	# Patch commands are from http://minimalinux.org/forum/viewtopic.php?pid=1446#p1446
-
-	# these sed lines replace the patch "attr.destdir.diff" from the Slackware source files
-	sed -i s%"@bindir@"%"\$\(DESTDIR\)@bindir@"% include/builddefs.in
-	sed -i s%"@sbindir@"%"\$\(DESTDIR\)@sbindir@"% include/builddefs.in
-	sed -i s%"@libdir@@libdirsuffix@"%"\$\(DESTDIR\)@libdir@@libdirsuffix@"% include/builddefs.in
-	sed -i s%"@libexecdir@@libdirsuffix@"%"\$\(DESTDIR\)@libexecdir@@libdirsuffix@"% include/builddefs.in
-	sed -i s%"@includedir@/attr"%"\$\(DESTDIR\)@includedir@/attr"% include/builddefs.in
-	sed -i s%"@mandir@"%"\$\(DESTDIR\)@mandir@"% include/builddefs.in
-	
-	# force docdir conformance to Slack default
-	sed -i s%"@datadir@/doc/@pkg_name@"%"\$\(DESTDIR\)/usr/doc/@pkg_name@-\$\(VERSION\)"% include/builddefs.in
-	sed -i s%"@datadir@/locale"%"\$\(DESTDIR\)@datadir@/locale"% include/builddefs.in
-
-	# Don't need to build man and doc
-	# rm -r -f man
-	# rm -r -f doc
-
 	# Need bash sh to compile
 	mv /bin/sh /bin/sh.bak
 	ln -s /bin/bash /bin/sh
 
 	# Configure is included in Makefile
 	{ make LOCAL_CONFIGURE_OPTIONS="$CONFIGURE_ARGS" &&
-	make install install-lib install-dev DESTDIR=$PWD/_pkg
+	make install install-lib install-dev DIST_ROOT=$PWD/_pkg
 	} || { mv -f /bin/sh.bak /bin/sh; return 1; }
 
 	mv -f /bin/sh.bak /bin/sh
@@ -49,12 +31,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/lib
+	mkdir -p $fs/lib $fs/usr/lib
 	cp -a $_pkg/lib/*.so* $fs/lib
-
-	# Symlinks are not created correctly; create manually
-	mkdir -p $fs/usr/lib
-	ln -s /lib/libattr.so $fs/usr/lib/libattr.so
-
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
 }
