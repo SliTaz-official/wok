@@ -1,16 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="xfce4-panel"
-VERSION="4.6.4"
+VERSION="4.8.0"
 CATEGORY="x-window"
 SHORT_DESC="Xfce Panel"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="libxfce4util libxfcegui4 libexo libwnck"
-BUILD_DEPENDS="libxfce4util-dev libxfcegui4-dev libexo-dev libwnck-dev cairo-dev"
+DEPENDS="libxfce4util libxfce4ui libexo libwnck garcon util-linux-ng-uuid dbus-glib"
+BUILD_DEPENDS="libxfce4util-dev libxfce4ui-dev libexo-dev libwnck-dev cairo-dev garcon-dev
+ xorg-libXext-dev xorg-xextproto dbus-glib-dev util-linux-ng-uuid-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.xfce.org/"
-WGET_URL="$WEB_SITE/archive/xfce/4.6.2/src/$TARBALL
-http://www.p0llux.be/xfce/archive/xfce/4.6.2/src/$TARBALL"
+WGET_URL="http://archive.xfce.org/xfce/${VERSION%.*}/src/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -19,7 +19,6 @@ compile_rules()
 	cd $src
 	./configure --prefix=/usr \
 	--sysconfdir=/etc \
-	--enable-startup-notification \
 	--disable-debug \
 	--mandir=/usr/share/man $CONFIGURE_ARGS && \
 	make && make DESTDIR=$PWD/_pkg install
@@ -31,19 +30,21 @@ genpkg_rules()
 	mkdir -p $fs/usr \
 		$fs/usr/share/locale \
 		$fs/usr/share/xfce4 \
-		$fs/usr/lib/xfce4/panel-plugins 
+		$fs/usr/lib/xfce4/panel/plugins 
 	
 	cp -a $_pkg/etc $fs	
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/xfce4/panel-plugins/*.so* $fs/usr/lib/xfce4/panel-plugins
+	cp -a $_pkg/usr/lib/xfce4/panel/plugins/*.so* $fs/usr/lib/xfce4/panel/plugins
+	cp -a $_pkg/usr/lib/xfce4/panel/migrate $fs/usr/lib/xfce4/panel
+	cp -a $_pkg/usr/lib/xfce4/panel/wrapper $fs/usr/lib/xfce4/panel
 	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
 	cp -a $_pkg/usr/share/applications $fs/usr/share
 	cp -a $_pkg/usr/share/icons $fs/usr/share
-	cp -a $_pkg/usr/share/xfce4/panel-plugins $fs/usr/share/xfce4
+	cp -a $_pkg/usr/share/xfce4 $fs/usr/share
 	
-	[ -f $fs/etc/xdg/xfce4/panel/launcher-8.rc ] && \
-		sed -i 's/mousepad/leafpad/' $fs/etc/xdg/xfce4/panel/launcher-8.rc
+	#~ [ -f $fs/etc/xdg/xfce4/panel/launcher-8.rc ] && \
+		#~ sed -i 's/mousepad/leafpad/' $fs/etc/xdg/xfce4/panel/launcher-8.rc
 	
 	# Strip evrythings
 	find $fs/usr/lib/ -exec strip -s {} 2> /dev/null \;
