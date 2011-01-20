@@ -31,3 +31,22 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin/gunzip $fs/usr/bin
 }
 
+# Pre and post install commands for Tazpkg.
+# We must remove all Busybox symlink before installing.
+#
+pre_install()
+{
+	local root
+	root=$1
+	echo "Processing pre-install commands..."
+	echo -n "Removing all Busybox replaced utils... "
+	rm -f $root/bin/gzip
+	rm -f $root/bin/gunzip
+	status
+}
+
+post_remove()
+{
+	ln -s /bin/busybox /bin/gzip
+	ln -s /bin/busybox /bin/gunzip
+}
