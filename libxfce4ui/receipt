@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="libxfce4ui"
+VERSION="4.8.0"
+CATEGORY="x-window"
+SHORT_DESC="Xfce Gtk Widget library"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="gtk+ libxfce4util xfconf startup-notification dbus-glib libglade util-linux-ng-uuid"
+BUILD_DEPENDS="gtk+-dev libxfce4util-dev xfconf-dev startup-notification-dev 
+ libglade-dev xcb-util-dev util-linux-ng-uuid-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.xfce.org"
+WGET_URL="http://archive.xfce.org/xfce/${VERSION%.*}/src/$TARBALL"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+		--infodir=/usr/share/info \
+		--sysconfdir=/etc \
+		--disable-debug \
+		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	 
+	mkdir -p $fs/usr/lib \
+		$fs/usr/share/locale 
+		
+		
+	cp -a $_pkg/etc $fs/
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+#	cp -a $_pkg/usr/share/icons $fs/usr/share
+	
+	# Remove SVG icons
+#	rm -rf $fs/usr/share/icons/hicolor/scalable
+	
+}
+
