@@ -1,0 +1,102 @@
+--- vzctl-3.0.23-ori/Makefile.am	Thu Oct 30 14:24:43 2008
++++ vzctl-3.0.23/Makefile.am	Mon Nov 16 21:43:03 2009
+@@ -49,7 +49,8 @@
+ 	install-redhat \
+ 	install-gentoo \
+ 	install-suse \
+-	install-debian
++	install-debian \
++	install-slitaz
+ 
+ $(DISTRO_TARGETS):
+ 	$(MAKE) $(AM_MAKEFLAGS) -C etc $@
+--- vzctl-3.0.23-ori/Makefile.in	Thu Oct 30 14:24:52 2008
++++ vzctl-3.0.23/Makefile.in	Mon Nov 16 21:43:03 2009
+@@ -217,7 +217,8 @@
+ 	install-redhat \
+ 	install-gentoo \
+ 	install-suse \
+-	install-debian
++	install-debian \
++	install-slitaz
+ 
+ all: all-recursive
+ 
+--- vzctl-3.0.23-ori/etc/Makefile.am	Thu Oct 30 14:24:43 2008
++++ vzctl-3.0.23/etc/Makefile.am	Mon Nov 16 21:43:03 2009
+@@ -43,6 +43,9 @@
+ 
+ install-debian:
+ 	$(MAKE) $(AM_MAKEFLAGS) -C init.d $@
++	
++install-slitaz:
++	$(MAKE) $(AM_MAKEFLAGS) -C init.d $@
+ 
+ install-gentoo:
+ 	$(MAKE) $(AM_MAKEFLAGS) -C init.d $@
+--- vzctl-3.0.23-ori/etc/Makefile.in	Thu Oct 30 14:24:49 2008
++++ vzctl-3.0.23/etc/Makefile.in	Mon Nov 16 21:43:03 2009
+@@ -563,6 +563,9 @@
+ install-debian:
+ 	$(MAKE) $(AM_MAKEFLAGS) -C init.d $@
+ 
++install-slitaz:
++	$(MAKE) $(AM_MAKEFLAGS) -C init.d $@
++	
+ install-gentoo:
+ 	$(MAKE) $(AM_MAKEFLAGS) -C init.d $@
+ 	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/conf.d
+--- vzctl-3.0.23-ori/etc/init.d/Makefile.am	Thu Oct 30 14:24:43 2008
++++ vzctl-3.0.23/etc/init.d/Makefile.am	Mon Nov 16 21:46:42 2009
+@@ -31,6 +31,11 @@
+ 
+ install-debian: install-redhat
+ 
++install-slitaz: 
++	$(mkinstalldirs) $(DESTDIR)$(initddir)
++	$(INSTALL_SCRIPT) vz-redhat $(DESTDIR)$(initddir)/vz
++	sed -e 's!/subsys!!'
++
+ install-gentoo: vz-gentoo
+ 	$(mkinstalldirs) $(DESTDIR)$(initddir)
+ 	$(INSTALL_SCRIPT) vz-gentoo $(DESTDIR)$(initddir)/vz
+--- vzctl-3.0.23-ori/etc/init.d/Makefile.in	Thu Oct 30 14:24:50 2008
++++ vzctl-3.0.23/etc/init.d/Makefile.in	Mon Nov 16 22:12:15 2009
+@@ -404,6 +404,11 @@
+ 
+ install-debian: install-redhat
+ 
++install-slitaz: install-redhat
++	sed -i -e 's!/subsys!!' $(DESTDIR)$(initddir)/vz
++	sed -i -e 's/sysctl -q/sysctl -n/' $(DESTDIR)$(initddir)/vz
++	
++
+ install-gentoo: vz-gentoo
+ 	$(mkinstalldirs) $(DESTDIR)$(initddir)
+ 	$(INSTALL_SCRIPT) vz-gentoo $(DESTDIR)$(initddir)/vz
+--- vzctl-3.0.23-ori/scripts/vps-create.in	Thu Oct 30 14:24:43 2008
++++ vzctl-3.0.23/scripts/vps-create.in	Mon Nov 16 22:26:20 2009
+@@ -37,7 +37,7 @@
+ 		vzerror "Tarball does not exist: $PRIVATE_TEMPLATE" ${VZ_FS_NEW_VE_PRVT}
+ 	HEADER="$(od -A n -N 2 -t x1 -- "$PRIVATE_TEMPLATE")" ||
+ 		vzerror "Invalid tarball: $PRIVATE_TEMPLATE" ${VZ_FS_NEW_VE_PRVT}
+-	TMP="$(df -P "$VE_PRVT")" ||
++	TMP="$(df "$VE_PRVT")" ||
+ 		vzerror "Failed to calculate available disk space on $VE_PRVT" ${VZ_FS_NEW_VE_PRVT}
+ 	AVAIL="$(echo "$TMP" | awk 'END{print $4}')"
+ 	if [ "$HEADER" = ' 1f 8b' ]; then
+--- vzctl-3.0.23-ori/scripts/vps-functions.in	Thu Oct 30 14:24:43 2008
++++ vzctl-3.0.23/scripts/vps-functions.in	Mon Nov 16 22:25:52 2009
+@@ -126,10 +126,10 @@
+ 
+ 	route="$(${IP_CMD} route get "$1" |grep ' dev .* src ')"
+ 	# match: $1 ... dev $dev ...
+-	dev="$(echo "$route" |sed -ne '/ via /! s/^.* dev \+\([^ ]\+\) .*$/\1/p;Q')"
++	dev="$(echo "$route" |sed -ne '/ via /! s/^.* dev \+\([^ ]\+\) .*$/\1/p;q')"
+ 	[ -n "$dev" ] ||
+ 	# match: $1 ... via $1 ... dev $dev ...
+-	dev="$(echo "$route" |sed -ne 's/^\([^ ]\+\) \(.* \)\?via \+\1 \(.* \)\?dev \+\([^ ]\+\) .*$/\4/p;Q')"
++	dev="$(echo "$route" |sed -ne 's/^\([^ ]\+\) \(.* \)\?via \+\1 \(.* \)\?dev \+\([^ ]\+\) .*$/\4/p;q')"
+ 	[ -n "$dev" ] || return 0
+ 
+ 	for netdev in $NETDEVICES; do
