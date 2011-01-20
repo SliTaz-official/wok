@@ -6,7 +6,8 @@ BUILD_WARNING="Install new udev package and rebuild hal"
 CATEGORY="base-system"
 SHORT_DESC="Udev creat automaticly right devices in /dev."
 DEPENDS="glibc-base util-linux-ng-blkid"
-BUILD_DEPENDS="$DEPENDS util-linux-ng-blkid-dev gperf pkg-config pciutils"
+BUILD_DEPENDS="$DEPENDS util-linux-ng-blkid-dev gperf pkg-config pciutils \
+acl-dev libgio-dev libgio gobject-introspection usbutils usbutils-dev"
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.kernel.org/pub/linux/utils/kernel/hotplug/udev.html"
@@ -15,7 +16,7 @@ WGET_URL="http://www.us.kernel.org/pub/linux/utils/kernel/hotplug/$TARBALL"
 # Rules to configure and make the package.
 compile_rules()
 {
-	gzip -d /usr/share/misc/pci.ids.gz
+	gzip -d -c /usr/share/misc/pci.ids.gz > /usr/share/pci.ids
 	cd $src
 	grep -qs 'define u8' extras/*_id/*.c ||
 	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
@@ -26,28 +27,22 @@ compile_rules()
 		--sysconfdir=/etc \
 		--libexecdir=/lib/udev \
 		--with-rootlibdir=/lib \
-		--enable-static \
-		--disable-extras \
-		--disable-introspection \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install &&
-	gzip /usr/share/misc/pci.ids
+	rm /usr/share/pci.ids
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/lib/firmware $fs/etc/udev $fs/usr \
-		$fs/dev/.udev
-	for dir in sbin etc lib
-	do
-		cp -a $_pkg/$dir $fs
-	done
+	mkdir -p $fs/lib/firmware $fs/usr $fs/dev/.udev
 
-	# Remove -dev files
-	rm -rf $fs/lib/*.*a
-	rm -rf $fs/lib/pkgconfig
+	cp -a $_pkg/sbin $fs
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/lib/libudev*so* $fs/lib
+	cp -a $_pkg/lib/udev $fs/lib
+	cp -a $_pkg/usr/lib $fs/usr
 
 	# Copy rules files to udev conf dir
 	mv -f $fs/lib/udev/rules.d $fs/etc/udev
