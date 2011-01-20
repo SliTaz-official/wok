@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="thunar"
-VERSION="1.0.2"
+VERSION="1.2.0"
 CATEGORY="x-window"
 SHORT_DESC="Thnuar File Manager"
 MAINTAINER="erjo@slitaz.org"
@@ -12,7 +12,7 @@ BUILD_DEPENDS="libpng-dev jpeg-dev libxfce4util-dev dbus-dev
 SOURCE="Thunar"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.xfce.org"
-WGET_URL="http://www.tx-us.xfce.org/archive/xfce-4.6.2/src/$TARBALL"
+WGET_URL="http://archive.xfce.org/xfce/4.8/src/$TARBALL"
 TAGS="file-manager file-browser"
 
 # Rules to configure and make the package.
@@ -23,9 +23,9 @@ compile_rules()
 		--sysconfdir=/etc \
 		--enable-dbus \
 		--enable-startup-notification \
+		--enable-notifications \
+		--enable-gudev \
 		--libexecdir=/usr/lib/$PACKAGE \
-		--disable-gconf \
-		--disable-gnome-thumbnailers \
 		--enable-debug=no && \
 	make && make DESTDIR=$PWD/_pkg install
 }
@@ -36,24 +36,27 @@ genpkg_rules()
 	
 	mkdir -p $fs/usr \
 		$fs/usr/share/locale \
-		$fs/usr/lib/thunarx-1
+		$fs/usr/lib/thunarx-2
 
 	cp -a $_pkg/etc $fs/
 	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/$PACKAGE $fs/usr/lib
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	
+	cp -a $_pkg/usr/lib/Thunar $fs/usr/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/thunarx-1/*.so* $fs/usr/lib/thunarx-1
+	cp -a $_pkg/usr/lib/xfce4 $fs/usr/lib
+	cp -a $_pkg/usr/lib/thunarx-2/*.so* $fs/usr/lib/thunarx-2
+	
+	
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
 	cp -a $_pkg/usr/share/applications $fs/usr/share
 	cp -a $_pkg/usr/share/dbus-1 $fs/usr/share
 	cp -a $_pkg/usr/share/icons $fs/usr/share
 	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
 	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
-	cp -a $_pkg/usr/share/thumbnailers $fs/usr/share
 	cp -a $_pkg/usr/share/Thunar $fs/usr/share
 	cp -a $_pkg/usr/share/xfce4 $fs/usr/share
 	
 	# Strip all
-	find $fs/usr/lib/thunar -exec strip -s {} 2> /dev/null \;
+	find $fs/usr/lib -exec strip -s {} 2> /dev/null \;
 }
 
