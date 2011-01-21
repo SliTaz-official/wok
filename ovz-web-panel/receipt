@@ -1,0 +1,63 @@
+# SliTaz package receipt.
+
+PACKAGE="ovz-web-panel"
+VERSION="1.7"
+CATEGORY="networking"
+SHORT_DESC="GUI web-based frontend for OpenVZ"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="ruby rubygems sqlite3-ruby"
+TARBALL="${PACKAGE}-${VERSION}.tgz"
+WEB_SITE="http://code.google.com/p/ovz-web-panel/"
+WGET_URL="http://ovz-web-panel.googlecode.com/files/$TARBALL"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $PACKAGE
+	# Apply patches
+	while read patch_file; do
+		if [ -f done.$patch_file ]; then
+			echo "Skipping $patch_file"
+			continue
+		fi
+		echo "Apply $patch_file"
+		patch -p1 < ../stuff/$patch_file || exit 1
+		touch done.$patch_file
+	done <<EOT
+owp-${VERSION}.u
+EOT
+	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share \
+		$fs/etc 
+				
+	cp -a $PACKAGE $fs/usr/share
+	cp -a $fs/usr/share/$PACKAGE/config/owp.conf.sample $fs/etc/owp.conf
+	cp -a $fs/usr/share//$PACKAGE/utils/hw-daemon/hw-daemon.ini.sample $fs/usr/share/$PACKAGE/utils/hw-daemon/hw-daemon.ini
+	
+	# Set secret key
+	sed -i 's/secret/2918b7aafc1f5f753ee232a7e7f78175/' \
+		$fs/usr/share/$PACKAGE/utils/hw-daemon/hw-daemon.ini
+	
+	# Set program homedir
+	sed -i 's!/opt!/usr/share!' $fs/etc/owp.conf
+	
+	# Fix perms
+	chmod 755 $fs/usr/share/$PACKAGE/script/owp
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."	
+	chroot "$1/" ln -s /usr/share/$PACKAGE/script/owp /etc/init.d/owp
+}
+
+clean_wok()
+{
+	[ -d $PACKAGE ] && rm -rf $PACKAGE
+}
