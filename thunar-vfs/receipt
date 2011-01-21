@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="thunar-vfs"
+VERSION="1.2.0"
+CATEGORY="x-window"
+SHORT_DESC="Thnuar File Manager Libraries"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="libpng jpeg libxfce4util dbus startup-notification xfce4-panel \
+gamin pcre libexif"
+BUILD_DEPENDS="libpng-dev jpeg-dev libxfce4util-dev dbus-dev 
+ startup-notification-dev xfce4-panel-dev zlib-dev intltool"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.xfce.org"
+WGET_URL="http://archive.xfce.org/xfce/4.8/src/$TARBALL"
+TAGS="file-manager file-browser"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+		--sysconfdir=/etc \
+		--enable-dbus \
+		--enable-startup-notification \
+		--disable-gnome-thumbnailers \
+		--enable-debug=no && \
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	
+	mkdir -p $fs/usr \
+		$fs/usr/share/locale \
+		$fs/usr/lib/ \
+		$fs/usr/share
+
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/thunar-vfs-1 $fs/usr/lib
+	
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $_pkg/usr/share/thumbnailers $fs/usr/share
+
+	# Strip all
+	find $fs/usr/lib -exec strip -s {} 2> /dev/null \;
+}
+
