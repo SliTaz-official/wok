@@ -1,4 +1,19 @@
 <?php
+if (false) { // no php support on this mirror !
+?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xml:lang="en" xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+	<title>SliTaz Boot Floppies redirection</title>
+	<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" />
+	<meta name="description" content="slitaz boot floppies builder redirection" />
+	<meta name="robots" content="index, nofollow" />
+	<meta name="author" content="SliTaz Contributors" />
+	<meta http-equiv="Refresh" content="0;url=http://mirror.slitaz.org/floppies/builder/index.php">
+</head>
+<?php
+}
 ini_set('upload_max_filesize','16M');
 ini_set('post_max_size','16M');
 if (isset($_GET['id']) && is_file("/tmp/".$_GET['id']."/fd")) {
@@ -190,6 +205,8 @@ EOT;
 		switch ($_POST['size']) {
 		case 1763328 : 
 		case 2015232 : 
+		case 3526656 :
+		case 4030464 :
 			$cmd .= " --tracks 82"; break;
 		case 1784832 : 
 			$cmd .= " --tracks 83"; break;
@@ -203,11 +220,15 @@ EOT;
 		}
 	}
 	$sizes = array(
+		"368640" => "360 KB",   "737280" => "720 KB",
+		"1228800" => "1.20 MB",
 		"1474560" => "1.44 MB", "1638400" => "1.60 MB",
 		"1720320" => "1.68 MB", "1763328" => "1.72 MB",
 		"1784832" => "1.74 MB", "1802240" => "1.76 MB",
 		"1884160" => "1.84 MB", "1966080" => "1.92 MB", 
 		"2015232" => "1.96 MB", "2949120" => "2.88 MB",
+		"3440640" => "3.36 MB", "3526656" => "3.44 MB",
+		"3932160" => "3.84 MB", "4030464" => "3.92 MB",
 		"0"       => "no limit"
 	);
 
@@ -319,7 +340,7 @@ The last floppy image is padded with zeros.
 			$options[-3] = "Ask";
 			$options[-2] = "Ext";
 			$options[-1] = "Std";
-			for ($i = 0; $i < 32; $i++) $options[$i] = $i;
+			for ($i = 0; $i < 64; $i++) $options[$i] = $i;
 			foreach ($options as $key => $value) {
 				echo '<option value="'.$key.'"';
 				if ($key == $selected || $value == $selected)
@@ -335,7 +356,9 @@ The last floppy image is padded with zeros.
 	<td><select name="size">
 <?php
 	foreach ($sizes as $key => $value) {
-		echo "		<option value=\"$key\">$value</option>\n";
+		echo "		<option value=\"$key\"";
+		if ($key == "1474560") echo " selected='selected'";
+		echo ">$value</option>\n";
 	}
 ?>
 	</select>

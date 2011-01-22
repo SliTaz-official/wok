@@ -1,4 +1,20 @@
 <?php
+function redirect()
+{
+?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xml:lang="en" xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+	<title>SliTaz mirror redirection</title>
+	<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" />
+	<meta name="description" content="slitaz mirror redirection" />
+	<meta name="robots" content="index, nofollow" />
+	<meta name="author" content="SliTaz Contributors" />
+	<meta http-equiv="Refresh" content="0;url=http://mirror.slitaz.org/">
+</head>
+<?php
+}
 
 $VERSION = "0.2-slitaz";
 
@@ -43,7 +59,8 @@ if(strlen($path) == 0) {
 
 // Can't call the script directly since REQUEST_URI won't be a directory
 if($_SERVER['PHP_SELF'] == '/'.$path) {
-	die("Unable to call " . $path . " directly.");
+	redirect();
+//	die("Unable to call " . $path . " directly.");
 }
 
 
@@ -195,19 +212,19 @@ EOT;
 		<p><img src="/css/pics/website/network.png" 
 			alt=".png" style="vertical-align:middle;"/>Mirrors: 
 EOT;
-	$mirrors = array(
-	"switch.ch"     => "http://mirror.switch.ch/ftp/mirror/slitaz/",
-	"gatech.edu"    => "http://www.gtlib.gatech.edu/pub/slitaz/",
-	"tuxfamily.org" => "http://download.tuxfamily.org/slitaz/",
-	"lupaworld.com" => "http://mirror.lupaworld.com/slitaz/",
-	"ufpr.br"       => "http://slitaz.c3sl.ufpr.br/",
-	"pina.si"       => "ftp://ftp.pina.si/slitaz/",
-	"ibiblio.org"   => "http://distro.ibiblio.org/pub/linux/distributions/slitaz/",
-	"vim.org"       => "http://ftp.vim.org/ftp/os/Linux/distr/slitaz/",
-	"nedit.org"     => "http://ftp.nedit.org/ftp/ftp/pub/os/Linux/distr/slitaz/",
-	"xemacs.org"    => "http://ftp.ch.xemacs.org/ftp/pool/2/mirror/slitaz/",
-	"garr.it"       => "http://slitaz.mirror.garr.it/mirrors/slitaz/",
-	);
+	$mirrors = array();
+	$fp = @fopen(dirname($_SERVER["SCRIPT_FILENAME"])."/mirrors","r");
+	if ($fp) {
+		while (($line = fgets($fp)) !== false) {
+			$line = chop($line);
+			$url = parse_url($line);
+			if ($_SERVER["SERVER_NAME"] == $url['host']) continue;
+			$host = explode('.',$url['host']);
+			$mirrors[$host[count($host)-2].".".
+			         $host[count($host)-1]] = $line;
+		}
+	}
+	fclose($fp);
 	foreach($mirrors as $name => $url) {
 		echo "<a href=\"$url$vpath\" title=\"$name mirror\">$name</a>\n";
 	}
