@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="aufs"
-VERSION="20101214"
+VERSION="20110122"
 CATEGORY="base-system"
 SHORT_DESC="aufs2 kernel module"
 MAINTAINER="slaxemulator@gmail.com"
 DEPENDS="linux"
-BUILD_DEPENDS="linux-module-headers git"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+# Needed for tazdev purge to not purge source everytime
+TARBALL="$PACKAGE-$VERSION.tar.lzma"
+BUILD_DEPENDS="linux-module-headers git tar"
 WEB_SITE="http://aufs.sf.net/"
 PROVIDE="linux-aufs"
 
@@ -15,15 +16,16 @@ PROVIDE="linux-aufs"
 compile_rules()
 {
 	local AUFSDIR="$PACKAGE-$VERSION"
-	TARBALL=$SOURCES_REPOSITORY/$AUFSDIR.tar.gz
+	TARBALL=$SOURCES_REPOSITORY/$AUFSDIR.tar.lzma
+	[ -L /bin/tar ] && tazpkg get-install tar --forced 
 	if [ -f $TARBALL ]; then
-		tar xzf $TARBALL
-		cd $AUFSDIR && git checkout origin/aufs2.1-36
+		tar -x -f $TARBALL
+		cd $AUFSDIR && git checkout origin/aufs2.1-37
 	else
 		# Aufs2 from git repository
-		git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-standalone.git $AUFSDIR
-		tar czf $TARBALL $AUFSDIR
-		cd $AUFSDIR && git checkout origin/aufs2.1-36
+		git clone git://aufs.git.sourceforge.net/gitroot/aufs/aufs2-standalone.git $AUFSDIR
+		tar -c --lzma -f $TARBALL $AUFSDIR
+		cd $AUFSDIR && git checkout origin/aufs2.1-37
 	fi
 	cd $src
 
@@ -48,7 +50,7 @@ compile_rules()
 
 	#patch -Np1 -i ../stuff/aufs2-module-2.6.36.patch
 	#make KDIR=/usr/src/linux clean
-	make KDIR=/usr/src/linux
+	make -j 1 KDIR=/usr/src/linux
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
