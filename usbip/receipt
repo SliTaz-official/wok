@@ -7,7 +7,7 @@ SHORT_DESC="general USB device sharing system over IP network."
 MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 DEPENDS="sysfsutils glib libwrap"
-BUILD_DEPENDS="sysfsutils-dev lzma libtool glib libwrap libwrap-dev"
+BUILD_DEPENDS="sysfsutils-dev lzma libtool glib linux-module-headers libwrap libwrap-dev"
 WEB_SITE="http://usbip.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="usb"
@@ -21,18 +21,17 @@ compile_rules()
 		tazwok cook linux
 	fi
 	LINUX=$WOK/linux/$(ls $WOK/linux/taz)
-	kver=$(grep "kernel version" $LINUX/.config)
-	kver=${kver##* }
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 
-	mkdir -p ../_pkg/lib/modules/$kver-slitaz/misc
+	mkdir -p ../_pkg/lib/modules/$KERNEL_VERSION-slitaz/misc
 	if [ -d $LINUX/_pkg/lib/modules/*/kernel/drivers/staging/usbip ]; then
 		echo "Using linux-staging usbip modules."
 		cp $LINUX/_pkg/lib/modules/*/kernel/drivers/staging/usbip/* \
-			../_pkg/lib/modules/$kver-slitaz/misc
+			../_pkg/lib/modules/$KERNEL_VERSION-slitaz/misc
 	else
 		# Select patch according to kernel version
-		patch_dir=${kver%.*}
-		[ "$(echo $ker | sed 's/[0-9]//g')" = ".." ] && patch_dir=$kver
+		patch_dir=${KERNEL_VERSION%.*}
+		[ "$(echo $ker | sed 's/[0-9]//g')" = ".." ] && patch_dir=$KERNEL_VERSION
 		i=${patch_dir##*.}
 		while [ ! -e ${patch_dir%.*}.$i ]; do
 			[ "$i" = "0" ] && break
@@ -40,9 +39,9 @@ compile_rules()
 		done
 		patch_dir=${patch_dir%.*}.$i
 		cd $patch_dir
-		make KSOURCE=$(ls -d $WOK/linux/linux-$kver) || return 1
+		make KSOURCE=/usr/src/linux || return 1
 		for i in *.ko; do
-			lzma e $i ../../_pkg/lib/modules/$kver-slitaz/misc/$i.gz
+			lzma e $i ../../_pkg/lib/modules/${KERNEL_VERSION}-slitaz/misc/$i.gz
 		done
 	fi
 	
