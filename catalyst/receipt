@@ -9,7 +9,7 @@ WEB_SITE="http://www.ati.amd.com"
 DEPENDS="xorg-server mesa mesa-dri libdrm linux-drm fontconfig linux-agp xorg-libSM xorg-libXi xorg-libXcursor"
 BUILD_DEPENDS="linux xorg-server linux-module-headers"
 TARBALL="ati-driver-installer-${VERSION/./-}-x86.x86_64.run"
-WGET_URL="http://www2.ati.com/drivers/linux/$TARBALL"
+WGET="http://www2.ati.com/drivers/linux/$TARBALL"
 TAGS="drivers graphic video"
 
 # Rules to configure and make the package.
@@ -21,7 +21,7 @@ compile_rules() {
 	cd $WOK/$PACKAGE
 	[ -f $SOURCES_REPOSITORY/$TARBALL ] && cp $SOURCES_REPOSITORY/$TARBALL .
 	if [ ! -f $TARBALL ]; then
-		wget $WGET_URL
+		wget $WGET
 		cp $TARBALL $SOURCES_REPOSITORY
 	fi
     
@@ -34,6 +34,7 @@ compile_rules() {
 	cd $src
 	patch -Np1 -i ../stuff/makefile_compat.patch
 	patch -Np1 -i ../stuff/$PACKAGE-${KERNEL_VERSION}.patch
+	patch -Np1 -i ../stuff/sema_init.patch
 	cd $src/common/lib/modules/fglrx/build_mod
 	cp $src/arch/x86/lib/modules/fglrx/build_mod/libfglrx_ip.a.GCC4 . 
 	cp 2.6.x/Makefile .
