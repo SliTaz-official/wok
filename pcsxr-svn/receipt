@@ -7,7 +7,7 @@ SHORT_DESC="A Sony PlayStation emulator based on the PCSX-df Project"
 MAINTAINER="slaxemulator@gmail.com"
 DEPENDS="libcdio libglade xorg-libXtst xorg-libXv mesa libsdl"
 BUILD_DEPENDS="glib-dev libcdio libcdio-dev libglade-dev xorg-libXtst xorg-libXtst-dev xorg-libXv xorg-libXv-dev mesa-dev \
-zlib-dev libsdl libsdl-dev subversion nasm gettext"
+zlib-dev libsdl libsdl-dev subversion nasm gettext tar"
 WEB_SITE="http://pcsxr.codeplex.com/"
 
 # Rules to configure and make the package.
@@ -15,12 +15,13 @@ compile_rules()
 {
 	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
 	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.lzma
+	[ -L /bin/tar ] && tazpkg get-install tar --forced
 	if [ -f $TARBALL ]; then
-		busybox tar xaf $TARBALL
+		tar -xf $TARBALL
 	else
 		echo "Cloning revision $VERSION from subversion repository..."
 		echo "t" | svn co https://pcsxr.svn.codeplex.com/svn -r $VERSION $PACKAGE-$VERSION
-		busybox tar caf $TARBALL $PACKAGE-$VERSION
+		tar -c --lzma -f $TARBALL $PACKAGE-$VERSION
 	fi
 	cd $src/pcsxr
 	./configure \
