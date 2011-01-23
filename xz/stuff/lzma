@@ -5,6 +5,7 @@
 
 usage()
 {
+	status=$?
 	cat 1>&2 <<EOT
 Usage:  LZMA <e|d> inputFile outputFile [<switches>...]
   e: encode file
@@ -22,7 +23,12 @@ Usage:  LZMA <e|d> inputFile outputFile [<switches>...]
   -si:    read data from stdin
   -so:    write data to stdout
 EOT
-	exit 0
+	if [ "$1" = error ]; then
+		echo -e "\nError"
+		exit $status
+	else
+		exit 0
+	fi
 }
 
 # Get lzma_alone arg
@@ -66,7 +72,7 @@ lzma_utils()
 		shift
 	done
 	for i in $files; do
-		xz $args $i || exit
+		xz $args $i || usage error
 		[ "lzma" == "$suffix" ] || mv ${i%.*}.lzma ${i%.*}.$suffix
 	done
 	exit
@@ -77,12 +83,17 @@ case "$0" in
 *lzcat)  lzma_utils -c -d $@ ;;
 esac
 
+# First look if help is needed.
+[ "$1" ] || usage
+case "$1" in
+	--version|-V|--help|-h|-\?|'') usage;;
+esac
+
 # lzma_utils or lzma_alone ?
 [ -n "$3" ] || lzma_utils $@
 case "$1" in
 d) args="-d";;
 e) args="-z";;
---version|-V|--help|-h|-\?|'') usage;;
 *) lzma_utils $@;;
 esac
 
@@ -101,13 +112,12 @@ fi
 extra=""
 mode="lzma1=mode=normal"
 while [ -n "$2" ]; do
-	getarg "$2" || usage
+	getarg "$2" || usage error
 	shift
 done
 
 # fake lzma_alone (-eos -mt1)
-eval xz $args --format=lzma --$mode$extra --stdout $input $output
-status=$?
+eval xz $args --format=lzma --$mode$extra --stdout $input $output || usage error
 if [ -n "$input" -a -n "$output" ]; then
 	size=$(stat -c "%s" ${input#< })
 	ascii="00000 "
@@ -118,4 +128,4 @@ if [ -n "$input" -a -n "$output" ]; then
 	echo "$ascii | .." | hexdump -R | \
 	dd of=${output#> } seek=5 bs=1 conv=notrunc 2> /dev/null
 fi
-exit $status
+exit 0
