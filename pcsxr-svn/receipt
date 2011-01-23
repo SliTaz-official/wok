@@ -6,8 +6,8 @@ CATEGORY="games"
 SHORT_DESC="A Sony PlayStation emulator based on the PCSX-df Project"
 MAINTAINER="slaxemulator@gmail.com"
 DEPENDS="libcdio libglade xorg-libXtst xorg-libXv mesa libsdl"
-BUILD_DEPENDS="glib-dev libcdio libcdio-dev libglade-dev xorg-libXtst xorg-libXtst-dev xorg-libXv xorg-libXv-dev mesa-dev \
-zlib-dev libsdl libsdl-dev subversion nasm gettext tar"
+BUILD_DEPENDS="glib-dev libcdio libcdio-dev libglade-dev gtk+-dev xorg-libXtst xorg-libXtst-dev xorg-libXv xorg-libXv-dev mesa-dev \
+zlib-dev libsdl libsdl-dev subversion nasm gettext intltool sed tar"
 WEB_SITE="http://pcsxr.codeplex.com/"
 
 # Rules to configure and make the package.
@@ -15,16 +15,27 @@ compile_rules()
 {
 	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
 	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.lzma
+	#NEW_TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar
 	[ -L /bin/tar ] && tazpkg get-install tar --forced
 	if [ -f $TARBALL ]; then
-		tar -xf $TARBALL
+		#cp $TARBALL $PACKAGE-$VERSION.tar.lzma
+		#unlzma $PACKAGE-$VERSION.tar.lzma && tar xf $PACKAGE-$VERSION.tar
+		#if [ -f $PACKAGE-$VERSION.tar ]; then
+		#	rm -f $PACKAGE-$VERSION.tar
+		#fi
+		tar -x -f $TARBALL
 	else
 		echo "Cloning revision $VERSION from subversion repository..."
-		echo "t" | svn co https://pcsxr.svn.codeplex.com/svn -r $VERSION $PACKAGE-$VERSION
+		echo "t" | svn co https://pcsxr.svn.codeplex.com/svn/pcsxr -r $VERSION $PACKAGE-$VERSION
+		#tar cf $NEW_TARBALL $PACKAGE-$VERSION
+		#lzma-alone e $NEW_TARBALL $TARBALL
+		#if [ -f $NEW_TARBALL ]; then
+		#	rm -f $NEW_TARBALL
+		#fi
 		tar -c --lzma -f $TARBALL $PACKAGE-$VERSION
 	fi
-	cd $src/pcsxr
-	./configure \
+	cd $src
+	./autogen.sh \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
@@ -37,7 +48,6 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	_pkg=$WOK/$PACKAGE/$PACKAGE-$VERSION/pcsxr/_pkg
 	mkdir -p $fs/usr/share
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib $fs/usr
