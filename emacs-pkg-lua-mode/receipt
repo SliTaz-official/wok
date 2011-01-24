@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="emacs-pkg-lua-mode"
-VERSION="20100404"
+VERSION="20100617"
 CATEGORY="development"
 SHORT_DESC="An Emacs major mode for editing Lua code."
 MAINTAINER="domcox@slitaz.org"
@@ -13,21 +13,15 @@ WEB_SITE="http://lua-mode.luaforge.net"
 WGET_URL="http://luaforge.net/frs/download.php/2724/$TARBALL"
 TAGS="emacs lua"
 
-# Rules to configure and make the package.
-compile_rules()
-{
-	echo -n "Byte-compilating lua-mode.el"
-	emacs -batch -f batch-byte-compile $WOK/$PACKAGE/$SOURCE.el 2> /dev/null
-	status
-}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	echo -n "Installing lua-mode"
 	mkdir -p $fs/usr/share/emacs/site-lisp/lua-mode && \
-	cp $WOK/$PACKAGE/*.elc $fs/usr/share/emacs/site-lisp/lua-mode
+	cp $WOK/$PACKAGE/*.el $fs/usr/share/emacs/site-lisp/lua-mode
 	status
+
 	echo -n "Installing start file"
 	mkdir -p $fs/usr/share/emacs/site-lisp/site-start.d && \
 	cp stuff/*.el $fs/usr/share/emacs/site-lisp/site-start.d
@@ -36,7 +30,28 @@ genpkg_rules()
 
 post_install()
 {
+	# byte-compile files, remove src
+	cd /usr/share/emacs/site-lisp/lua-mode/
+	for file in *.el ; do
+		echo -n "Byte-compiling $file"
+		emacs -batch -f batch-byte-compile $file 2> /dev/null
+		status
+		rm -f $file
+	done
 	tazpkg reconfigure emacs
+}
+
+pre_remove()
+{
+	# remove byte-compiled files,
+	# created by post_install()
+	cd /usr/share/emacs/site-lisp/lua-mode/
+	for file in *.elc ; do
+		echo -n "Deleting byte-compiled code $file"
+		touch "$file" "`basename $file .elc`.el"
+		rm -f $file
+		status
+	done
 }
 
 post_remove()
