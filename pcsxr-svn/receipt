@@ -7,7 +7,7 @@ SHORT_DESC="A Sony PlayStation emulator based on the PCSX-df Project"
 MAINTAINER="slaxemulator@gmail.com"
 DEPENDS="libcdio libglade xorg-libXtst xorg-libXv mesa libsdl"
 BUILD_DEPENDS="glib-dev libcdio libcdio-dev libglade-dev gtk+-dev xorg-libXtst xorg-libXtst-dev xorg-libXv xorg-libXv-dev mesa-dev \
-zlib-dev libsdl libsdl-dev subversion nasm gettext intltool sed tar"
+zlib-dev libsdl libsdl-dev subversion nasm gettext intltool sed"
 WEB_SITE="http://pcsxr.codeplex.com/"
 
 # Rules to configure and make the package.
@@ -15,13 +15,20 @@ compile_rules()
 {
 	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
 	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.lzma
-	[ -L /bin/tar ] && tazpkg get-install tar --forced
 	if [ -f $TARBALL ]; then
-		tar -x -f $TARBALL
+		lzma-alone d $TARBALL $PACKAGE-$VERSION.tar 
+		tar xf $PACKAGE-$VERSION.tar
+		if [ -f $PACKAGE-$VERSION.tar ]; then
+			rm -f $PACKAGE-$VERSION.tar
+		fi
 	else
 		echo "Cloning revision $VERSION from subversion repository..."
 		echo "t" | svn co https://pcsxr.svn.codeplex.com/svn/pcsxr -r $VERSION $PACKAGE-$VERSION
-		tar -c --lzma -f $TARBALL $PACKAGE-$VERSION
+		tar cf $PACKAGE-$VERSION.tar $PACKAGE-$VERSION
+		lzma-alone e $PACKAGE-$VERSION.tar $TARBALL
+		if [ -f $PACKAGE-$VERSION.tar ]; then
+			rm -f $PACKAGE-$VERSION.tar
+		fi
 	fi
 	cd $src
 	./autogen.sh \
