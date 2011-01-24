@@ -5,7 +5,7 @@ VERSION="2.6.37"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 DEPENDS="depmod"
-BUILD_DEPENDS="slitaz-toolchain perl git"
+BUILD_DEPENDS="slitaz-toolchain perl git lzma"
 MAINTAINER="devel@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.kernel.org/"
@@ -25,21 +25,13 @@ compile_rules()
 	local AUFSDIR="aufs-${_AUFSVER}"
 	TARBALL=$SOURCES_REPOSITORY/$AUFSDIR.tar.lzma
 	if [ -f $TARBALL ]; then
-		lzma-alone d $TARBALL $AUFSDIR.tar 
-		tar xf $AUFSDIR.tar
-		if [ -f $AUFSDIR.tar ]; then
-			rm -f $AUFSDIR.tar
-		fi
+		unlzma -c $TARBALL | tar xf -
 		cd $AUFSDIR && git checkout origin/aufs2.1-37
 		cd $WOK/$PACKAGE
 	else
 		# Aufs2 from git repository
 		git clone git://aufs.git.sourceforge.net/gitroot/aufs/aufs2-standalone.git $AUFSDIR
-		tar cf $AUFSDIR.tar $AUFSDIR
-		lzma-alone e $AUFSDIR.tar $TARBALL
-		if [ -f $AUFSDIR.tar ]; then
-			rm -f $AUFSDIR.tar
-		fi
+		tar cf - $AUFSDIR | lzma e $TARBALL -si
 		cd $AUFSDIR && git checkout origin/aufs2.1-37
 		cd $WOK/$PACKAGE
 	fi
