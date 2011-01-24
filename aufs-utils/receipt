@@ -18,12 +18,13 @@ compile_rules()
 		unlzma -c $TARBALL | tar xf -
 	else
 		git clone http://git.c3sl.ufpr.br/pub/scm/aufs/aufs2-util.git $PACKAGE-$VERSION
-		tar cf - $AUFSDIR | lzma e $TARBALL -siN
+		tar cf - $PACKAGE-$VERSION | lzma e $TARBALL -si
+		cd $src && git checkout aufs2.1
 	fi
 
 	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	cd $src
-	patch -p1 -R < $WOK/$PACKAGE/stuff/fix-kdir.patch
+	#patch -p1 -R < $WOK/$PACKAGE/stuff/fix-kdir.patch
 	sed -i 's/-m 644 -T/-m 644/' Makefile
 	make KDIR=/usr/src/linux && 
 	make KDIR=/usr/src/linux DESTDIR=$PWD/_pkg install
