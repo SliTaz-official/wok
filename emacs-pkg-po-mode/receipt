@@ -1,0 +1,57 @@
+# SliTaz package receipt.
+
+PACKAGE="emacs-pkg-po-mode"
+VERSION="0.18.1.1"
+CATEGORY="development"
+SHORT_DESC="An Emacs major mode for editing or modifying PO files."
+MAINTAINER="domcox@slitaz.org"
+DEPENDS="emacs"
+WEB_SITE="http://www.gnu.org/software/hello/manual/gettext/PO-Mode.html"
+WANTED="gettext"
+
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	echo -n "Installing po-mode"
+	mkdir -p $fs/usr/share/emacs/site-lisp/po-mode && \
+	cp -a $src/gettext-tools/misc/po*.el $fs/usr/share/emacs/site-lisp/po-mode
+	status
+
+	echo -n "Installing start file"
+	mkdir -p $fs/usr/share/emacs/site-lisp/site-start.d && \
+	cp -a $src/gettext-tools/misc/start-po.el \
+		$fs/usr/share/emacs/site-lisp/site-start.d/50-start-po.el
+	status
+}
+
+post_install()
+{
+	# byte-compile files, remove src
+	cd /usr/share/emacs/site-lisp/po-mode/
+	for file in *.el ; do
+		echo -n "Byte-compiling $file"
+		emacs -batch -f batch-byte-compile $file 2> /dev/null
+		status
+		rm -f $file
+	done
+	tazpkg reconfigure emacs
+}
+
+pre_remove()
+{
+	# remove byte-compiled files,
+	# created by post_install()
+	cd /usr/share/emacs/site-lisp/po-mode/
+	for file in *.elc ; do
+		echo -n "Deleting byte-compiled code $file"
+		touch "$file" "`basename $file .elc`.el"
+		rm -f $file
+		status
+	done
+}
+
+post_remove()
+{
+	tazpkg reconfigure emacs
+}
