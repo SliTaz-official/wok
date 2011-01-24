@@ -6,7 +6,7 @@ CATEGORY="base-system"
 SHORT_DESC="aufs2 kernel module"
 MAINTAINER="slaxemulator@gmail.com"
 DEPENDS="linux"
-BUILD_DEPENDS="linux-module-headers git"
+BUILD_DEPENDS="linux-module-headers git lzma"
 WEB_SITE="http://aufs.sf.net/"
 PROVIDE="linux-aufs"
 
@@ -16,20 +16,12 @@ compile_rules()
 	local AUFSDIR="$PACKAGE-$VERSION"
 	TARBALL=$SOURCES_REPOSITORY/$AUFSDIR.tar.lzma
 	if [ -f $TARBALL ]; then
-		lzma-alone d $TARBALL $AUFSDIR.tar 
-		tar xf $AUFSDIR.tar
-		if [ -f $AUFSDIR.tar ]; then
-			rm -f $AUFSDIR.tar
-		fi
+		unlzma -c $TARBALL | tar xf -
 		cd $AUFSDIR && git checkout origin/aufs2.1-37
 	else
 		# Aufs2 from git repository
 		git clone git://aufs.git.sourceforge.net/gitroot/aufs/aufs2-standalone.git $AUFSDIR
-		tar cf $AUFSDIR.tar $AUFSDIR
-		lzma-alone e $AUFSDIR.tar $TARBALL
-		if [ -f $AUFSDIR.tar ]; then
-			rm -f $AUFSDIR.tar
-		fi
+		tar cf - $AUFSDIR | lzma e $TARBALL -si
 		cd $AUFSDIR && git checkout origin/aufs2.1-37
 	fi
 	cd $src
