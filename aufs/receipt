@@ -1,14 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="aufs"
-VERSION="20110122"
+VERSION="20110124"
 CATEGORY="base-system"
 SHORT_DESC="aufs2 kernel module"
 MAINTAINER="slaxemulator@gmail.com"
 DEPENDS="linux"
-# Needed for tazdev purge to not purge source everytime
-TARBALL="$PACKAGE-$VERSION.tar.lzma"
-BUILD_DEPENDS="linux-module-headers git tar"
+BUILD_DEPENDS="linux-module-headers git"
 WEB_SITE="http://aufs.sf.net/"
 PROVIDE="linux-aufs"
 
@@ -17,14 +15,21 @@ compile_rules()
 {
 	local AUFSDIR="$PACKAGE-$VERSION"
 	TARBALL=$SOURCES_REPOSITORY/$AUFSDIR.tar.lzma
-	[ -L /bin/tar ] && tazpkg get-install tar --forced 
 	if [ -f $TARBALL ]; then
-		tar -x -f $TARBALL
+		lzma-alone d $TARBALL $AUFSDIR.tar 
+		tar xf $AUFSDIR.tar
+		if [ -f $AUFSDIR.tar ]; then
+			rm -f $AUFSDIR.tar
+		fi
 		cd $AUFSDIR && git checkout origin/aufs2.1-37
 	else
 		# Aufs2 from git repository
 		git clone git://aufs.git.sourceforge.net/gitroot/aufs/aufs2-standalone.git $AUFSDIR
-		tar -c --lzma -f $TARBALL $AUFSDIR
+		tar cf $AUFSDIR.tar $AUFSDIR
+		lzma-alone e $AUFSDIR.tar $TARBALL
+		if [ -f $AUFSDIR.tar ]; then
+			rm -f $AUFSDIR.tar
+		fi
 		cd $AUFSDIR && git checkout origin/aufs2.1-37
 	fi
 	cd $src
