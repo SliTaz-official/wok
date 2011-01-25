@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="openmpi"
+VERSION="1.5.1"
+CATEGORY="development"
+SHORT_DESC="High performance message passing library (MPI)"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="gcc gfortran libtool openssh valgrind"
+BUILD_DEPENDS="$DEPENDS valgrind-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.open-mpi.org"
+WGET_URL="http://www.open-mpi.org/software/ompi/v1.5/downloads/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+   ./configure --prefix=/usr \
+               --sysconfdir=/etc/${PACKAGE} \
+               --mandir=/usr/share/man \
+               --enable-mpi-f90 \
+               --libdir=/usr/lib/${pkgname} \
+               --with-threads=posix \
+               --enable-mpi-threads \
+               --enable-smp-locks \
+               --with-valgrind \
+               --enable-pretty-print-stacktrace \
+               --without-slurm \
+               --with-libltdl=/usr \
+               FC=/usr/bin/gfortran \
+               LDFLAGS='-Wl,-z,noexecstack' \
+		$CONFIGURE_ARGS &&
+	make -j 4 && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/$PACKAGE/$PACKAGE
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/$PACKAGE/*.so* $fs/usr/lib/$PACKAGE
+	cp -a $_pkg/usr/lib/$PACKAGE/$PACKAGE/*.so* $fs/usr/lib/$PACKAGE/$PACKAGE
+	cp -a $_pkg/usr/lib/$PACKAGE/mpi.mod $fs/usr/lib/$PACKAGE
+}
+
