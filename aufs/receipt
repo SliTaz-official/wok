@@ -47,6 +47,9 @@ compile_rules()
 
 	#patch -Np1 -i ../stuff/aufs2-module-2.6.36.patch
 	#make KDIR=/usr/src/linux clean
+	# build, sed fixes are from gentoo portage build
+	sed -i "s:aufs.ko usr/include/linux/aufs_type.h:aufs.ko:g" Makefile
+	sed -i "s:__user::g" include/linux/aufs_type.h
 	make -j 1 KDIR=/usr/src/linux
 }
 
@@ -59,6 +62,8 @@ genpkg_rules()
 	lzma e $src/fs/aufs/aufs.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/fs/aufs/aufs.ko.gz
 	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/fs/aufs/aufs.ko.gz
 	chown 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/fs/aufs/aufs.ko.gz
+	install -D -m 644 $src/include/linux/aufs_type.h $fs/usr/include/linux/aufs_type.h 
+
 }
 
 post_install()
