@@ -6,19 +6,33 @@ CATEGORY="development"
 SHORT_DESC="Utilities for the GNU Translation Project."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-BUILD_DEPENDS="glibc-locale"
-DEPENDS="gettext-base acl libgomp ncurses glib libcroco gcc-lib-base"
+BUILD_DEPENDS="glibc-locale ncurses"
+DEPENDS="gettext-base libgomp ncurses gcc-lib-base"
 WEB_SITE="http://www.gnu.org/software/gettext/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to compile & install the temporary toolchain.
+cook_tmp_toolchain()
+{
+	cd $src/gettext-tools
+	./configure --disable-shared &&
+	make -C gnulib-lib &&
+	make -C src msgfmt &&
+	cp -a src/msgfmt /tools/bin &&
+	cd ../gettext-runtime &&
+	./configure --disable-shared &&
+	make -C gnulib-lib &&
+	make -C src envsubst &&
+	make -C src gettext &&
+	make -C src ngettext &&
+	cp -a src/envsubst src/gettext src/gettext.sh src/ngettext /tools/bin
+}
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make -j 4 &&
-	make DESTDIR=$PWD/_pkg install
+	./configure && make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
