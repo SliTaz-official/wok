@@ -12,6 +12,33 @@ WEB_SITE="http://www.busybox.net/"
 WGET_URL="http://www.busybox.net/downloads/$TARBALL"
 CONFIG_FILES="/etc/dnsd.conf /etc/inetd.conf /etc/udhcpd.conf /etc/resolv.conf"
 
+# Rules to compile & install the temporary toolchain.
+cook_tmp_toolchain()
+{
+    cd $src
+    while read file; do
+    	[ -f done.$file ] && continue
+    	echo "Apply $file..."
+    	patch -p1 < ../stuff/$PACKAGE-$VERSION-$file || return 1
+	touch done.$file
+    done <<EOT
+tar.u
+stat.u
+ris.u
+zmodules.u
+printable.u
+cmdline.u
+cpio.u
+EOT
+    cp ../stuff/$PACKAGE-$VERSION.config .config
+    { make oldconfig &&
+    make  &&
+    make CONFIG_PREFIX=/tools install
+    } || return 1
+    echo "Chmod 4755 on busybox binary..."
+    chmod 4755 /tools/bin/busybox
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
@@ -32,26 +59,15 @@ cpio.u
 EOT
     cp ../stuff/$PACKAGE-$VERSION.config .config
     make oldconfig
-    if [ "$(gcc --version | awk '{ print $3; exit }')" == "4.5.0" ]; then
-	# "CFLAGS=-O0" is a workaround for GCC 4.5.0 (sed crash)
-	# "CFLAGS=-fno-tree-pta" may be a workaround for GCC 4.5.0 (sed garbage)
-	make -j 4 "CFLAGS=-O0" && make "CFLAGS=-O0" install
-    else
-	make -j 4 && make install
-    fi
+    make || return 1
+	make install || return 1
     sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
     make oldconfig
-    if [ "$(gcc --version | awk '{ print $3; exit }')" == "4.5.0" ]; then
-	# "CFLAGS=-O0" is a workaround for GCC 4.5.0 (sed crash)
-	# "CFLAGS=-fno-tree-pta" may be a workaround for GCC 4.5.0 (sed garbage)
-	make -j 4 "CFLAGS=-O0"
-    else
-	make -j 4
-    fi
+	make || return 1
     mv busybox busybox-pam
     cp ../stuff/$PACKAGE-$VERSION.config-static .config
     make oldconfig
-    make -j 4
+    make || return 1
     mv busybox busybox-static
 }
 
