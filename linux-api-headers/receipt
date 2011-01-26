@@ -1,27 +1,34 @@
 # SliTaz package receipt.
 
 PACKAGE="linux-api-headers"
-VERSION="2.6.34"
+VERSION="2.6.37"
 CATEGORY="development"
 SHORT_DESC="Kernel headers sanitized for use in userspace."
 MAINTAINER="devel@slitaz.org"
 SOURCE="linux"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-BUILD_DEPENDS="perl"
 WEB_SITE="http://www.kernel.org/"
 WGET_URL="http://www.eu.kernel.org/pub/linux/kernel/v${VERSION:0:3}/$TARBALL"
+
+# Rules to compile & install the temporary toolchain.
+cook_tmp_toolchain()
+{
+	cd $src
+
+	make mrproper &&
+	make headers_check &&
+	make INSTALL_HDR_PATH=dest headers_install &&
+	cp -r dest/include/* /tools/include
+}
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 
-	# fix issues with transition of scsi.h from glibc
-	patch -Np1 -i ../stuff/scsi.patch
-
-	make mrproper
-	make headers_check
-	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install
+	make mrproper &&
+	make headers_check &&
+	make INSTALL_HDR_PATH=$DESTDIR/usr headers_install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
