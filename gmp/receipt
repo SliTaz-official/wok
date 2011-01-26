@@ -5,8 +5,8 @@ VERSION="5.0.1"
 CATEGORY="development"
 SHORT_DESC="GNU Multiple Precision Arithmetic Library."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="make"
-BUILD_DEPENDS="glibc-dev make m4"
+DEPENDS="glibc-base"
+BUILD_DEPENDS="binutils"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://gmplib.org/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
@@ -15,12 +15,13 @@ WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 compile_rules()
 {	
 	cd $src
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		$CONFIGURE_ARGS &&
+	# gmp try to cook for 64bits system if kernel can support when using
+	# tmp toolchain
+	export ABI=32
+	./configure &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	# -j > 1 make install fails.
+	make -j 1 install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
