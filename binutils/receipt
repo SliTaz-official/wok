@@ -1,41 +1,66 @@
 # SliTaz package receipt.
 
 PACKAGE="binutils"
-VERSION="2.20.1"
+VERSION="2.21"
 CATEGORY="development"
 SHORT_DESC="GNU assembler, linker and binary utilities."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-DEPENDS="zlib"
-BUILD_DEPENDS="zlib-dev texinfo"
+DEPENDS="glibc zlib"
+BUILD_DEPENDS="glibc zlib"
 WEB_SITE="http://www.gnu.org/software/binutils/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 PROVIDE="libbfd"
 TAGS="assembler linker"
 
+# Rules to compile & install the temporary toolchain.
+precook_tmp_toolchain()
+{
+	mkdir -p binutils-build && cd binutils-build
+	{ $src/configure \
+		--target=$BUILD_HOST --disable-nls \
+		--disable-werror &&
+	make
+	 } || return 1
+
+	#If building on x86_64, create a symlink to ensure the sanity of the toolchain.
+	[ "$ARCH" = x86_64 ] && mkdir /tools/lib && ln -s lib /tools/lib64
+
+	make install
+}
+
+cook_tmp_toolchain()
+{
+	mkdir -p binutils-build && cd binutils-build
+	{ CC="$BUILD_HOST-gcc -B/tools/lib/" \
+		AR=$BUILD_HOST-ar RANLIB=$BUILD_HOST-ranlib \
+		$src/configure \
+		--disable-nls --with-lib-path=/tools/lib &&
+	make &&
+	make install &&
+	make -C ld clean &&
+	make -C ld LIB_PATH=/usr/lib:/lib 
+	} || return 1
+	cp ld/ld-new /tools/bin
+}
+
 # Rules to configure and make the package.
-#
 compile_rules()
 {
 	mkdir -p binutils-build && cd binutils-build
-	../$PACKAGE-$VERSION/configure \
+	$src/configure \
 		--program-prefix=$TOOLPREFIX \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--enable-shared \
-		$CONFIGURE_ARGS &&
-	make -j 4 tooldir=/usr &&
+		--enable-shared &&
+	make tooldir=/usr &&
 	# Install in binutils-build/ and then move the files to
 	# to the source tree. Can't install directly... This is done
 	# to keep the $src and $_pkg working for genpkg.
-	make tooldir=/usr DESTDIR=$PWD/_pkg install &&
-	mv _pkg ../$PACKAGE-$VERSION/ &&
+	make tooldir=/usr install &&
 	# This is the default binutils, so create symlinks
 	# to the target platform binutil binaries.
 	# Delete duplicate binaries to save space.
-	for binutil in $(ls -1 $src/_pkg/usr/bin/ | grep "${TOOLPREFIX}") ; do
-		genericBinutilPath="$src/_pkg/usr/bin/$(echo "$binutil" | sed "s:$TOOLPREFIX::g")"
+	for binutil in $(ls -1 $DESTDIR/usr/bin/ | grep "${TOOLPREFIX}") ; do
+		genericBinutilPath="$DESTDIR/usr/bin/$(echo "$binutil" | sed "s:$TOOLPREFIX::g")"
 		if [ -e $genericBinutilPath ] ; then
 			rm -f $genericBinutilPath
 		fi
@@ -57,4 +82,7 @@ genpkg_rules()
 	# Remove 'strings' (Busybox).
 	#rm $fs/usr/lib/libiberty.a
 	rm $fs/usr/bin/strings $fs/usr/bin/*-strings
+	
+	# Remove build directory.
+	rm -r $WOK/$PACKAGE/$PACKAGE-build
 }
