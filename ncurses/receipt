@@ -5,29 +5,34 @@ VERSION="5.7"
 CATEGORY="base-system"
 SHORT_DESC="Library of functions to manage display on terminals."
 DEPENDS="ncurses-common"
+BUILD_DEPENDS="gcc"
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://invisible-island.net/ncurses/"
 WGET_URL="ftp://invisible-island.net/ncurses/$TARBALL"
 
+# Rules to compile & install the temporary toolchain.
+cook_tmp_toolchain()
+{
+	cd $src
+	./configure --with-shared --without-debug \
+		--without-ada --enable-overwrite &&
+	make && make install
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    sed -i 's|\tsh $(srcdir)/MKhashsize.sh|\tash $(srcdir)/MKhashsize.sh|' \
-    	include/Makefile.in
-    ./configure \
-		--prefix=/usr \
+	cd $src
+	sed -i 's|\tsh $(srcdir)/MKhashsize.sh|\tash $(srcdir)/MKhashsize.sh|' \
+		include/Makefile.in
+	./configure \
 		--libdir=/lib \
 		--sysconfdir=/etc \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
 		--with-shared \
 		--without-debug \
-		--without-ada \
-    $CONFIGURE_ARGS &&
-    make &&
-    make DESTDIR=$PWD/_pkg install
+		--without-ada &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
