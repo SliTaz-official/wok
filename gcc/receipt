@@ -1,16 +1,105 @@
 # SliTaz package receipt.
 
 PACKAGE="gcc"
-VERSION="4.5.1"
+VERSION="4.5.2"
 CATEGORY="development"
 SHORT_DESC="The the GNU Compiler Collection."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="libgomp gmp mpfr gcc-lib-base mpc-library elfutils"
-BUILD_DEPENDS="glibc-dev gawk flex gmp gmp-dev mpfr mpfr-dev mpc-library \
-elfutils elfutils-dev"
+DEPENDS="libgomp gcc-lib-base mpc-library elfutils"
+BUILD_DEPENDS="elfutils mpc-library"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://gcc.gnu.org/"
 WGET_URL="ftp://gcc.gnu.org/pub/gcc/releases/gcc-$VERSION/$TARBALL"
+
+# Rules to compile & install the temporary toolchain.
+precook_tmp_toolchain()
+{
+	report open-bloc
+	cd $src
+
+	# GCC requires the GMP, MPFR and MPC packages.
+	tazwok get-src mpfr --target=$PWD/mpfr
+	tazwok get-src gmp --target=$PWD/gmp
+	tazwok get-src mpc-library --target=$PWD/mpc
+
+	report step "Running compilation"
+
+	# Build it in a separate directory.
+	mkdir ../gcc-build
+	cd ../gcc-build	
+
+	{ $src/configure \
+		--target=$BUILD_HOST \
+		--disable-nls --disable-shared --disable-multilib \
+		--disable-decimal-float --disable-threads \
+		--disable-libmudflap --disable-libssp \
+		--disable-libgomp --enable-languages=c \
+		--with-gmp-include=$(pwd)/gmp --with-gmp-lib=$(pwd)/gmp/.libs \
+		--without-ppl --without-cloog &&
+	make &&
+	make install
+	} || return 1
+
+	# See LFS for more detais about this.
+	ln -s libgcc.a `$BUILD_HOST-gcc -print-libgcc-file-name | \
+    		sed 's/libgcc/&_eh/'`
+	report close-bloc
+}
+
+cook_tmp_toolchain()
+{
+	report open-bloc
+	cd $src
+	patch -Np1 -i ../stuff/gcc-$VERSION-startfiles_fix-1.patch
+
+	# Details about theses lines are in LFS book.
+	sed 's@\./fixinc\.sh@-c true@' -i gcc/Makefile.in
+	sed 's/^T_CFLAGS =$/& -fomit-frame-pointer/' -i gcc/Makefile.in
+	for file in \
+		$(find gcc/config -name linux64.h -o -name linux.h -o -name sysv4.h)
+	do
+		sed -e 's@/lib\(64\)\?\(32\)\?/ld@/tools&@g' \
+			-e 's@/usr@/tools@g' -i $file
+		echo '
+#undef STANDARD_INCLUDE_DIR
+#define STANDARD_INCLUDE_DIR 0
+#define STANDARD_STARTFILE_PREFIX_1 ""
+#define STANDARD_STARTFILE_PREFIX_2 ""' >> $file
+	done
+
+	if [ "$ARCH" = x86_64 ]; then
+		for file in $(find gcc/config -name t-linux64) ; do
+			sed '/MULTILIB_OSDIRNAMES/d' -i $file
+		done
+	fi
+	
+	# GCC requires the GMP, MPFR and MPC packages.
+	tazwok get-src mpfr --target=$PWD/mpfr
+	tazwok get-src gmp --target=$PWD/gmp
+	tazwok get-src mpc-library --target=$PWD/mpc
+
+	report step "Running compilation"
+
+	# Build it in a separate directory.
+	mkdir ../gcc-build
+	cd ../gcc-build
+
+	{ CC="$BUILD_HOST-gcc -B/tools/lib/" \
+		AR=$BUILD_HOST-ar RANLIB=$BUILD_HOST-ranlib \
+		$src/configure \
+		--with-local-prefix=/tools --enable-clocale=gnu \
+		--enable-shared --enable-threads=posix \
+		--enable-__cxa_atexit --enable-languages=c,c++ \
+		--disable-libstdcxx-pch --disable-multilib \
+		--disable-bootstrap --disable-libgomp \
+		--with-gmp-include=$(pwd)/gmp --with-gmp-lib=$(pwd)/gmp/.libs \
+		--without-ppl --without-cloog &&
+	make &&
+	make install
+	} || return 1
+	ln -s gcc /tools/bin/cc
+	report close-bloc
+}
 
 # Rules to configure and make the package.
 compile_rules()
@@ -18,37 +107,37 @@ compile_rules()
 	# Use libiberty.a from binutils.
 	sed -i 's/install_to_$(INSTALL_DEST) //' \
 		$PACKAGE-$VERSION/libiberty/Makefile.in || exit 1
-    mkdir -p gcc-build && cd gcc-build
-    ../$PACKAGE-$VERSION/configure --prefix=/usr --libexecdir=/usr/lib \
-    --infodir=/usr/share/info --mandir=/usr/share/man --enable-nls \
-    --enable-languages=c,c++,objc,fortran --enable-shared --with-system-zlib \
-    --enable-clocale=gnu --enable-objc-gc --enable-__cxa_atexit \
-    --enable-lto \
-    --enable-threads=posix --with-tune=i486 i486-pc-linux-gnu &&
-    make -j 4 bootstrap &&
-    # Make install in the source tree to help creating derivated pkgs
-    # and keep $_pkg variable set for genpkg.
-    make -j 4 DESTDIR=$src/_pkg install
+	mkdir -p gcc-build && cd gcc-build
+	$src/configure --enable-nls \
+	--enable-languages=c,c++,objc,fortran --enable-shared --with-system-zlib \
+	--enable-clocale=gnu --enable-objc-gc --enable-__cxa_atexit \
+	--enable-lto --disable-bootstrap libexecdir=/usr/lib \
+	--enable-threads=posix --with-tune=$ARCH $BUILD_HOST &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p  $fs/usr/share
-    cp -a $_pkg/usr/bin $fs/usr
-    # Copy all libs. Remove libgcc_s.so and libstdc++.so
-    # they goes in gcc-lib-base-$VERSION package.
-    cp -a $_pkg/usr/lib $fs/usr
-    rm $fs/usr/lib/libgcc_s.so*
-    rm $fs/usr/lib/libstdc++.so*
-    rm $fs/usr/lib/libgomp.so*
-    # Include files.
-    cp -a $_pkg/usr/include $fs/usr
-    # Gfortran goes in gfortran-$VERSION package.
-    rm -f $fs/usr/bin/*gfortran
-    rm -f $fs/usr/lib/libgfortran*
-    rm -f $fs/usr/lib/gcc/*/$VERSION/libgfortran*
-    rm -rf $fs/usr/lib/gcc/*/$VERSION/f*
+	cp -a $_pkg/usr/bin $fs/usr
+	# Copy all libs. Remove libgcc_s.so and libstdc++.so
+	# they goes in gcc-lib-base-$VERSION package.
+	cp -a $_pkg/usr/lib $fs/usr
+	rm $fs/usr/lib/libgcc_s.so*
+	rm $fs/usr/lib/libstdc++.so*
+	rm $fs/usr/lib/libgomp.so*
+	# Include files.
+	cp -a $_pkg/usr/include $fs/usr
+	# Gfortran goes in gfortran-$VERSION package.
+	rm -f $fs/usr/bin/*gfortran
+	rm -f $fs/usr/lib/libgfortran*
+	rm -f $fs/usr/lib/gcc/*/$VERSION/libgfortran*
+	rm -rf $fs/usr/lib/gcc/*/$VERSION/f*
+	
+	# Remove build directory.
+	rm -r $WOK/$PACKAGE/$PACKAGE-build
 }
 
 # Post install commands for Tazpkg.
