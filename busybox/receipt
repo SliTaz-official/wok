@@ -12,8 +12,7 @@ WEB_SITE="http://www.busybox.net/"
 WGET_URL="http://www.busybox.net/downloads/$TARBALL"
 CONFIG_FILES="/etc/dnsd.conf /etc/inetd.conf /etc/udhcpd.conf /etc/resolv.conf"
 
-# Rules to compile & install the temporary toolchain.
-cook_tmp_toolchain()
+apply_bb_patchs()
 {
     cd $src
     while read file; do
@@ -30,6 +29,12 @@ printable.u
 cmdline.u
 EOT
     cp ../stuff/$PACKAGE-$VERSION.config .config
+}
+
+# Rules to compile & install the temporary toolchain.
+cook_tmp_toolchain()
+{
+    apply_bb_patchs
     { make oldconfig &&
     make  &&
     make CONFIG_PREFIX=/tools install
@@ -41,21 +46,7 @@ EOT
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    while read file; do
-    	[ -f done.$file ] && continue
-    	echo "Apply $file..."
-    	patch -p1 < ../stuff/$PACKAGE-$VERSION-$file || return 1
-	touch done.$file
-    done <<EOT
-tar.u
-stat.u
-ris.u
-zmodules.u
-printable.u
-cmdline.u
-EOT
-    cp ../stuff/$PACKAGE-$VERSION.config .config
+    apply_bb_patchs
     make oldconfig
     make || return 1
 	make install || return 1
