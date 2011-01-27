@@ -18,7 +18,7 @@ apply_bb_patchs()
     while read file; do
     	[ -f done.$file ] && continue
     	echo "Apply $file..."
-    	patch -p1 < ../stuff/$PACKAGE-$VERSION-$file || return 1
+    	patch -p1 < ../stuff/$PACKAGE-${VERSION%.*}-$file || return 1
 	touch done.$file
     done <<EOT
 tar.u
@@ -28,15 +28,15 @@ zmodules.u
 printable.u
 cmdline.u
 EOT
-    cp ../stuff/$PACKAGE-$VERSION.config .config
+    cp ../stuff/$PACKAGE-${VERSION%.*}.config .config
 }
 
 # Rules to compile & install the temporary toolchain.
 cook_tmp_toolchain()
 {
-    apply_bb_patchs
-    { make oldconfig &&
-    make  &&
+    { apply_bb_patchs && 
+    make oldconfig &&
+    make &&
     make CONFIG_PREFIX=/tools install
     } || return 1
     echo "Chmod 4755 on busybox binary..."
@@ -46,17 +46,16 @@ cook_tmp_toolchain()
 # Rules to configure and make the package.
 compile_rules()
 {
-    apply_bb_patchs
-    make oldconfig
-    make || return 1
-	make install || return 1
+    { apply_bb_patchs && 
+    make oldconfig &&
+    make &&
+    make install
+    } || return 1
     sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
-    make oldconfig
-	make || return 1
+    { make oldconfig && make } || return 1
     mv busybox busybox-pam
-    cp ../stuff/$PACKAGE-$VERSION.config-static .config
-    make oldconfig
-    make || return 1
+    cp ../stuff/$PACKAGE-${VERSION%.*}.config-static .config
+    { make oldconfig && make } || return 1
     mv busybox busybox-static
 }
 
