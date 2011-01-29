@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="freerdp"
+VERSION="0.8.2"
+CATEGORY="network"
+SHORT_DESC="Remote Desktop Protocol (RDP) client for Windows terminal server"
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.freerdp.com/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="zlib libkrb5 libssl libcomerr cups alsa-lib libxcb xorg-libXcursor"                                         
+BUILD_DEPENDS="zlib-dev openssl-dev cups-dev alsa-lib-dev libxcb-dev xorg-dev xorg-dev-proto"
+TAGS="rdp remote-desktop"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+	--mandir=/usr/share/man \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/freerdp $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/freerdp $fs/usr/share
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/freerdp/*.so* $fs/usr/lib/freerdp
+}
