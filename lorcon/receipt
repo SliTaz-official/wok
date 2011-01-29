@@ -11,15 +11,13 @@ WEB_SITE="http://802.11ninja.net/lorcon/"
 # Rules to configure and make the package.
 compile_rules()
 {
-	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.gz
-	if [ -d $PACKAGE-$VERSION ]; then
-		true
-	elif [ -f $TARBALL ]; then
-		tar xzf $TARBALL
+	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.lzma
+	if [ -f $TARBALL ]; then
+		unlzma -c $TARBALL | tar xf -
 	else
 		svn checkout -r $VERSION \
 			http://802.11ninja.net/svn/lorcon/trunk $PACKAGE-$VERSION
-		tar czf $TARBALL $PACKAGE-$VERSION
+		tar cf - $PACKAGE-$VERSION | lzma e $TARBALL -si
 	fi
 	cd $src
 	./configure \
