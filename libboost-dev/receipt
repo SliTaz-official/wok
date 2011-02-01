@@ -41,33 +41,25 @@ compile_rules()
 		TOOLPREFIX=i486-pc-linux-gnu-
 	fi
 
-	if [ -d $WGET_SOURCE ] ; then
-		mv -f $WGET_SOURCE $src
-	else
-		rm -r -f $src/_pkg
-	fi
-
 	cd $src
 	./bootstrap.sh \
-		--prefix=$src/_pkg/usr \
-		--exec-prefix=$src/_pkg/usr \
-		--libdir=$src/_pkg/usr/lib \
-		--includedir=$src/_pkg/usr/include \
+		--prefix=$DESTDIR/usr \
+		--exec-prefix=$DESTDIR/usr \
+		--libdir=$DESTDIR/usr/lib \
+		--includedir=$DESTDIR/usr/include \
 		--without-icu &&
 	EXPAT_INCLUDE=/usr/include \
 	EXPAT_LIBPATH=/usr/lib \
 	./bjam \
-		--prefix=$src/_pkg/usr \
-		--exec-prefix=$src/_pkg/usr \
-		--libdir=$src/_pkg/usr/lib \
-		--includedir=$src/_pkg/usr/include \
+		--prefix=$DESTDIR/usr \
+		--exec-prefix=$DESTDIR/usr \
+		--libdir=$DESTDIR/usr/lib \
+		--includedir=$DESTDIR/usr/include \
 		--build-type=minimal \
 		install
-	mv $src/_pkg/usr/include/boost-1_45/boost $src/_pkg/usr/include &&
-	rm -r -f $src/_pkg/usr/include/boost-1_45
 	
 	# create the missing links to the shared libs
-	cd $src/_pkg/usr/lib
+	cd $DESTDIR/usr/lib
 	for i in `ls *-mt.so`; do
 	   boost_tmp=`echo $i | sed s/-gcc.*-mt//g`
 	   boost_tmp_mt=`echo $i | sed s/-gcc.*-mt/-mt/g`
@@ -88,9 +80,8 @@ genpkg_rules()
 	mkdir -p $fs/usr
 	cp -a $_pkg/usr/lib $fs/usr
 	cp -a $_pkg/usr/include $fs/usr
-
 	for i in $RELOCATE_LIBS; do
-	   rm -f $fs/usr/lib/*$i*
-	   rm -r -f $fs/usr/include/boost/*$i*
+		rm -f $fs/usr/lib/*$i*
+		rm -r -f $fs/usr/include/boost/*$i*
 	done
 }
