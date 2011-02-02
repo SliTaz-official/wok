@@ -1,0 +1,102 @@
+# SliTaz package receipt.
+
+PACKAGE="nagios"
+VERSION="3.2.3"
+CATEGORY="network"
+SHORT_DESC="Host and network monitoring"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="apache nagios-plugins libpng libjpeg"
+BUILD_DEPENDS="libgd-dev libpng-dev libjpeg-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.nagios.org/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+SUGGESTED="nagios-nrpe"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	while read patch_file; do
+		if [ ! -f done.$patch_file ]; then
+			patch -p1 < ../stuff/$patch_file || exit 1
+			touch done.$patch_file
+		fi
+	done <<EOT
+$PACKAGE-$VERSION-Makefiles.u
+EOT
+	#patch -p1 < ../stuff/nagios-3.2.1-Makefiles.u || exit 1
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--with-nagios-user=nagios \
+		--with-nagios-group=nagios \
+		--with-lockfile=/var/run/nagios/nagios.pid \
+		--with-checkresult-dir=/var/spool/nagios/checkresults \
+		--sysconfdir=/etc/nagios \
+		--with-httpd-conf=/etc/apache/conf.d \
+		--libexecdir=/usr/lib/nagios/plugins \
+		--sbindir=/usr/lib/nagios/cgi \
+		--datadir=/usr/share/nagios \
+		--localstatedir=/var/log/nagios \
+		$CONFIGURE_ARGS 
+		
+	make all && make DESTDIR=$PWD/_pkg fullinstall \
+	&& make DESTDIR=$PWD/_pkg install-config
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/etc/init.d \
+	  $fs/var/log/nagios/rw \
+	  $fs/var/run/nagios \
+	  $fs/var/spool/nagios/checkresults \
+	  $fs/etc/apache
+		
+	cp -a $_pkg/etc/apache $fs/etc
+	cp -a $_pkg/etc/nagios $fs/etc
+	cp -a stuff/nagios  $fs/etc/init.d
+	install -o root -g root -m 644 stuff/htpasswd.users  $fs/etc/nagios/
+	
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share $fs/usr
+	
+	# Put doc in separate package
+	rm -rf $fs/usr/share/nagios/docs
+	
+	# Fix Apache config for Nagvis
+	sed -i 's/Options None/Options FollowSymLinks/' $fs/etc/apache/conf.d/nagios.conf
+}
+
+post_install()
+{
+	if ! grep -q nagios $1/etc/passwd; then
+		echo -n "Adding user/group nagios..."
+		chroot $1/ addgroup -S nagios
+		chroot $1/ adduser -S -D -H -G nagios nagios
+		status
+	fi
+	
+	# Fix perms for files and directories
+	chroot $1/ chown -R nagios.nagios /var/log/nagios \
+	  /var/run/nagios \
+	  /var/spool/nagios \
+	  /usr/share/nagios \
+	  /etc/nagios/*
+	  
+	
+	chmod 2775 $1/var/log/nagios/rw
+	chroot $1/ addgroup www nagios
+	
+	# Start Nagios daemon if we are  on running system
+	[ -z $1 ] && /etc/init.d/nagios start
+	
+	# post_install messges
+	echo -e "\nTo starts $PACKAGE server you can run :\n"
+	echo "/etc/init.d/$PACKAGE start"
+	echo -e "Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf\n"
+	echo -e "Default login/password for the Web GUI is nagiosadmin/nagios"
+}
+
