@@ -1,15 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="glpi"
-VERSION="0.72.3"
+VERSION="0.78.2"
 CATEGORY="network"
 SHORT_DESC="IT and Asset Management."
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="mysql apache php-apache php-ldap php-imap php-mysql pam"
+DEPENDS="mysql apache php-apache php-ldap php-imap php-mysql pam logrotate"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://glpi-project.org/"
-WGET_URL="http://glpi-project.org/IMG/gz/$TARBALL"
-CONFIG_FILES="/etc/glpi/config/config_db.php"
+WGET_URL="https://forge.indepnet.net/attachments/download/772/$TARBALL"
+CONFIG_FILES="/etc/glpi/config_db.php /etc/glpi/config_db_slave.php"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -20,18 +20,45 @@ genpkg_rules()
 	
 	mkdir -p $fs/usr/share/$PACKAGE \
 		$fs/etc/$PACKAGE \
+		$fs/var/log/$PACKAGE \
 		$fs/var/lib/$PACKAGE
 		 
 	cp -a $_pkg/* $fs/usr/share/$PACKAGE
 	[ -d $fs/usr/share/$PACKAGE/files ] &&  mv $fs/usr/share/$PACKAGE/files $fs/var/lib/$PACKAGE
-	[ -d $fs/usr/share/$PACKAGE/config ] &&  mv $fs/usr/share/$PACKAGE/config $fs/etc/$PACKAGE
+	#[ -d $fs/usr/share/$PACKAGE/config ] &&  mv $fs/usr/share/$PACKAGE/config $fs/etc/$PACKAGE
 
-	cd $fs/usr/share/glpi
-	ln -s /etc/glpi/config ; ln -s /var/lib/glpi/files
-	cd -
-	chown -R www.www $fs/var/lib/$PACKAGE/files $fs/etc/$PACKAGE/config
 	# Copy config db as temporary file.
-	cp stuff/config_db.php $fs/etc/glpi/config/
+	cp stuff/config_db.php $fs/etc/glpi/
+	cp -a stuff/logrotate.d $fs/etc
+	
+	cd $fs/usr/share/glpi
+	[ -f config/config_db.php ] && rm -f config/config_db.php
+	[ -f config/config_db_slave.php ] && rm -f config/config_db_slave.php
+	ln -s /etc/glpi/config_db.php config/
+	[ -f $fs/etc/glpi/config_db_slave.php ] && ln -s /etc/glpi/config_db_slave.php config/
+	ln -s /var/lib/glpi/files
+	cd -
+	chown -R www.www $fs/var/lib/$PACKAGE/files $fs/etc/$PACKAGE/*
+
+	# Create the magic file config_path.php
+	cat <<EOF> $fs/usr/share/glpi/config/config_path.php
+<?php
+// for packaging defaults
+
+define("GLPI_CONFIG_DIR",     "/etc/glpi");
+
+define("GLPI_DOC_DIR",        "/var/lib/glpi/files");
+define("GLPI_DUMP_DIR",       "/var/lib/glpi/files/_dumps");
+define("GLPI_CACHE_DIR",      "/var/lib/glpi/files/_cache/");
+define("GLPI_CRON_DIR",       "/var/lib/glpi/files/_cron");
+define("GLPI_SESSION_DIR",    "/var/lib/glpi/files/_sessions");
+define("GLPI_PLUGIN_DOC_DIR", "/var/lib/glpi/files/_plugins");
+define("GLPI_LOCK_DIR",       "/var/lib/glpi/files/_lock/");
+
+define("GLPI_LOG_DIR",        "/var/log/glpi");
+?>
+
+EOF
 }
 
 post_install()
@@ -45,10 +72,34 @@ post_install()
 </IfModule>
 <Directory "/usr/share/glpi">
 	Options Indexes FollowSymLinks
+
+	php_value memory_limit 64M
+
 	AllowOverride None
 	Order deny,allow
 	Allow from all
 </Directory>
+
+<Directory /usr/share/glpi/config>
+    Order Allow,Deny
+    Deny from all
+</Directory>
+
+<Directory /usr/share/glpi/locales>
+    Order Allow,Deny
+    Deny from all
+</Directory>
+
+<Directory /usr/share/glpi/install/mysql>
+    Order Allow,Deny
+    Deny from all
+</Directory>
+
+<Directory /usr/share/glpi/scripts>
+    Order Allow,Deny
+    Deny from all
+</Directory>
+
 
 EOT
 			if [ -z "$1" ]; then
