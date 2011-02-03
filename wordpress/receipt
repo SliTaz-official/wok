@@ -5,7 +5,7 @@ VERSION="3.0.4"
 CATEGORY="misc"
 SHORT_DESC="Blog Tool and Publishing Platform."
 MAINTAINER="slaxemulator@gmail.com"
-DEPENDS="php mysql"
+DEPENDS="php mysql php-mysql"
 SUGGESSTED="apache cherokee"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://wordpress.org"
@@ -17,6 +17,62 @@ genpkg_rules()
 	src=$WOK/$PACKAGE/$PACKAGE
 	mkdir -p $fs/var/www/wordpress
 	cp -a $src/* $fs/var/www/wordpress
-	chown -R 80.80 $fs/var/www/wordpress
+	chown -R www.www $fs/var/www/wordpress
 }
 
+post_install()
+{
+	local db=wordpress
+	local db_user=wordpress
+	local db_password=wordpress
+	
+	# Minimal config for wordpress.
+	if [ -z $1 ]; then
+		if ( ! mysqladmin -s ping > /dev/null ); then
+			echo "Starting MySQL server"
+			( /etc/init.d/mysql start ; status  ) || exit 
+			sleep 4 #let the mysql daemon start
+		fi
+		if ( ! mysql -u root -Be 'show databases' | grep -q $db ); then
+			echo -n "Create $db database"
+			mysql -Be "create database $db" ; status
+			# We suppose that $DB_USER user does not exist.
+			# It may be false.
+			echo  -n "Create user $db_user with password $db_password"
+			mysql -Be "grant all privileges on $db.* to '"$db_user"'@'localhost' 
+				identified by '"$db_password"'" ; status
+			# At last create the database for $PACKAGE.
+			echo -n "Create $db database schema."
+			#mysql -u glpi -pglpi -D glpi < /usr/share/glpi/install/mysql/glpi-${VERSION}-empty.sql ; status
+		fi
+	fi
+	
+}
+
+post_remove()
+{
+		local db=wordpress
+		local db_user=wordpress
+		local db_password=wordpress
+	
+		echo -n "Would you like to remove data and database files.(y/n) "
+		read answer
+
+		case $answer in 
+		y|Y)
+			echo -n "Removing data directories..."
+			rm -rf /var/lib/wordpress ; status
+			if ( mysql -u root -Be 'show databases' | grep -q $db ); then
+				echo -n "Deleting $db database"
+				mysql -Be "drop database $db" ; status
+				# We suppose that glpi user does not exist.
+				# It may be false.
+				echo  -n "Delete user $db_user"
+				mysql -Be "delete from mysql.db where user='"$db_user"'" ; status
+			fi
+			unset $answer
+			;;
+		*)
+			;;
+		esac
+}
