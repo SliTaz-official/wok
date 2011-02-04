@@ -1,0 +1,49 @@
+--- Ocsinventory-Agent-1.1.2.1-ori/MANIFEST
++++ Ocsinventory-Agent-1.1.2.1/MANIFEST
+@@ -75,6 +75,7 @@
+ lib/Ocsinventory/Agent/Backend/OS/Generic/Packaging/BSDpkg.pm
+ lib/Ocsinventory/Agent/Backend/OS/Generic/Packaging/ByHand.pm
+ lib/Ocsinventory/Agent/Backend/OS/Generic/Packaging/Deb.pm
++lib/Ocsinventory/Agent/Backend/OS/Generic/Packaging/Tazpkg.pm
+ lib/Ocsinventory/Agent/Backend/OS/Generic/Packaging/Gentoo.pm
+ lib/Ocsinventory/Agent/Backend/OS/Generic/Packaging/Pacman.pm
+ lib/Ocsinventory/Agent/Backend/OS/Generic/Packaging/RPM.pm
+--- Ocsinventory-Agent-1.1.2.1-ori/lib/Ocsinventory/Agent/Backend/OS/Linux/Drives.pm
++++ Ocsinventory-Agent-1.1.2.1/lib/Ocsinventory/Agent/Backend/OS/Linux/Drives.pm
+@@ -3,7 +3,7 @@
+ use strict;
+ sub check {
+   return unless can_run ("df");
+-  my $df = `df -TP`;
++  my $df = `df -k`;
+   return 1 if $df =~ /\w+/;
+   0
+ }
+@@ -58,7 +58,7 @@
+     }
+   }
+   
+-  foreach(`df -TP`) { # TODO retrive error
++  foreach(`df -k`) { # TODO retrive error
+     my $createdate;
+     my $free;
+     my $filesystem;
+@@ -68,12 +68,12 @@
+     my $volumn;
+     my $serial;
+ 
+-    if(/^(\S+)\s+(\S+)\s+(\S+)\s+(?:\S+)\s+(\S+)\s+(?:\S+)\s+(\S+)\n/){
+-      $free = sprintf("%i",($4/1024));
+-      $filesystem = $2;
+-      $total = sprintf("%i",($3/1024));
+-      $type = $5;
+-      $volumn = $1;
++    if(/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\n/){
++		$free = sprintf("%i",($4/1024));
++		$filesystem = $1;
++		$total = sprintf("%i",($2/1024));
++      	$type = `grep ^$1 /etc/mtab | cut -d " " -f 3`;;
++      	$volumn = $6;
+ 
+ # no virtual FS
+       next if ($filesystem =~ /^(tmpfs|usbfs|proc|devpts|devshm|udev)$/);
