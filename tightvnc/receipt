@@ -12,7 +12,7 @@ DEPENDS="xfree86-base-fonts jpeg zlib"
 BUILD_DEPENDS="xorg-imake xorg-gccmakedep xorg-cf-files xorg-libXp \
 xorg-libXaw-dev xorg-libXt-dev xorg-xproto xorg-libXau-dev xorg-libXdmcp-dev \
 xorg-libXmu-dev xorg-xextproto xorg-printproto xorg-kbproto xorg-inputproto \
-xorg-scrnsaverproto"
+xorg-scrnsaverproto xorg-xauth"
 TAGS="remote-desktop"
 
 # Rules to configure and make the package.
@@ -21,14 +21,16 @@ compile_rules()
 	[ -d vnc_unixsrc ] && mv vnc_unixsrc $src
 	cd $src
 	xmkmf &&
-	make World &&
+	make -j1 World &&
 	cd Xvnc &&
 	./configure --prefix=/usr $CONFIGURE_ARGS || return 1
+	  sed 's|PROTO_DEFINES =|PROTO_DEFINES = -D_XOPEN_SOURCE=500L|' \
+  	-i programs/Xserver/os/Makefile lib/font/fc/Makefile || return 1
 	find -name Makefile | xargs sed -i 's|/usr/X11R6/bin|/usr/bin|g'
-	make &&
-	make DESTDIR=$PWD/../_pkg install
+	make -j1 &&
+	make -j1 DESTDIR=$PWD/../_pkg install
 	cd .. &&
-	make DESTDIR=$PWD/_pkg install
+	make -j1 DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
