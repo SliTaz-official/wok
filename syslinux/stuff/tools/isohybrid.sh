@@ -22,25 +22,35 @@ hd0=0
 
 while [ -n "$1" ]; do
 	case "$1" in
-	-ct*)	hd0=2;;
-	-e*)	entry=$2; shift;;
-	-f*)	hd0=1;;
-	-h)	heads=$2; shift;;
-	-i*)	id=$(($2)); shift;;
-	-noh*)	hd0=0;;
-	-nop*)	partok=0;;
-	-o*)	offset=$(($2)); shift;;
-	-p*)	partok=1;;
-	-s)	sectors=$2; shift;;
-	-t*)	partype=$(($2 & 255)); shift;;
-	*)	iso=$1;;
+	-ct*)		hd0=2;;
+	-e*|--e*)	entry=$2; shift;;
+	-f*)		hd0=1;;
+	-h)		heads=$2; shift;;
+	-i|--i**)	id=$(($2)); shift;;
+	-noh*)		hd0=0;;
+	-nop*)		partok=0;;
+	-o*|--o*)	offset=$(($2)); shift;;
+	-p*)		partok=1;;
+	-s)		sectors=$2; shift;;
+	-t*|--t*)	partype=$(($2 & 255)); shift;;
+	*)		iso=$1;;
 	esac
 	shift
 done
 
 if [ ! -f "$iso" ]; then
 	cat << EOT
-usage: $0 isoimage
+usage: $0 [options] isoimage
+options:
+	-h <X>		Number of default geometry heads
+	-s <X>		Number of default geometry sectors
+	-e --entry	Specify partition entry number (1-4)
+	-o --offset	Specify partition offset (default 0)
+	-t --type	Specify partition type (default 0x17)
+	-i --id		Specify MBR ID (default random)
+	--forcehd0	Assume we are loaded as disk ID 0
+	--ctrlhd0	Assume disk ID 0 if the Ctrl key is pressed
+	--partok	Allow booting from within a partition
 EOT
 	exit 1
 fi
