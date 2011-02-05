@@ -76,9 +76,9 @@ main()
 	  skip=$(( (3*$partok) + $hd0))
 	store32 432 $(($lba * 4))
 	store32 440 $id
-	store32 508 $((0xAA550000))
+	store32 508 0xAA550000
 	e=$(( (($entry -1) % 4) *16 +446))
-	store32 $e $((0x10080))
+	store32 $e 0x10080
 	esect=$(( ($sectors + ((($cylinders -1) & 0x300) >>2)) <<16))
 	ecyl=$(( (($cylinders -1) & 0xff) <<24))
 	store32 $(($e + 4)) $(($partype + (($heads - 1) <<8) +$esect +$ecyl))
