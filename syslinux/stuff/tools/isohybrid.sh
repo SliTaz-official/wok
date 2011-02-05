@@ -26,7 +26,7 @@ while [ -n "$1" ]; do
 	-e*|--e*)	entry=$2; shift;;
 	-f*)		hd0=1;;
 	-h)		heads=$2; shift;;
-	-i|--i**)	id=$(($2)); shift;;
+	-i|--i*)	id=$(($2)); shift;;
 	-noh*)		hd0=0;;
 	-nop*)		partok=0;;
 	-o*|--o*)	offset=$(($2)); shift;;
