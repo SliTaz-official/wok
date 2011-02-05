@@ -58,10 +58,11 @@ fi
 # usage: store16 offset data16 file
 store16()
 {
-	echo $(( $2 + 0x10000 )) | \
-		awk '{ printf "\\\\x%02X\\\\x%02X",$1%256,($1/256)%256 }' | \
-		xargs echo -en | \
-	dd bs=2 conv=notrunc of=$3 seek=$(( $1 / 2 )) 2> /dev/null
+	n=$2; i=2; while [ $i -ne 0 ]; do
+		printf '\\\\x%02X' $(($n & 255))
+		i=$(($i-1)); n=$(($n >> 8))
+	done | xargs echo -en | \
+		dd bs=2 conv=notrunc of=$3 seek=$(( $1 / 2 )) 2> /dev/null
 	[ -n "$DEBUG" ] && printf "store16(%04X) = %04X\n" $1 $2 1>&2
 }
 
@@ -69,9 +70,10 @@ store16()
 # usage: storelong offset data32 file
 storelong()
 {
-	echo $2 | awk '{ printf "\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X",
-		 $1%256,($1/256)%256,($1/256/256)%256,($1/256/256/256)%256 }' | \
-		xargs echo -en | \
+	n=$2; i=4; while [ $i -ne 0 ]; do
+		printf '\\\\x%02X' $(($n & 255))
+		i=$(($i-1)); n=$(($n >> 8))
+	done | xargs echo -en | \
 		dd bs=4 conv=notrunc of=$3 seek=$(( $1 / 4 )) 2> /dev/null
 	[ -n "$DEBUG" ] && printf "storelong(%04X) = %08X\n" $1 $2 1>&2
 }

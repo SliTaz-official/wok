@@ -64,8 +64,10 @@ read32()
 # write a 32 bits data
 store32()
 {
-	echo $2 | awk '{ for(n=$1,i=4;i--;n/=256) printf "\\\\x%02X",n%256 }' |\
-	xargs echo -en | ddq bs=1 conv=notrunc of=$iso seek=$(($1))
+	n=$2; i=4; while [ $i -ne 0 ]; do
+		printf '\\\\x%02X' $(($n & 255))
+		i=$(($i-1)); n=$(($n >> 8))
+	done | xargs echo -en | ddq bs=1 conv=notrunc of=$iso seek=$(($1))
 }
 
 main()
