@@ -25,9 +25,9 @@ compile_rules()
 	--enable-shared-libs --enable-external-libtalloc --with-libtdb --with-cifsumount \
 	--with-libsmbsharemodes --with-libsmbclient --without-pam \
 	--sysconfdir=/etc --localstatedir=/var \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make -j 4 &&
-	make DESTDIR=$PWD/../_pkg install || return 1
+	--mandir=/usr/share/man &&
+	make &&
+	make -j1 DESTDIR=$DESTDIR install || return 1
 	rm -f ../_pkg/usr/*bin/*.old
 	#ln -s libwbclient.so $PWD/../_pkg/usr/lib/libwbclient.so.0
 }
@@ -45,11 +45,6 @@ genpkg_rules()
 	cp -a stuff/etc $fs
 	cat $src/*.files-list | while read file; do
 		rm -rf $fs$file
-	done
-	# Package all samba pkgs
-	for i in $(cd $WOK; grep -l '^WANTED="samba"$' */receipt)
-	do
-    		tazwok cook ${i%/receipt}
 	done
 }
 
