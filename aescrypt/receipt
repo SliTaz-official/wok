@@ -15,12 +15,12 @@ compile_rules()
 {
 	if [ -f $SOURCES_REPOSITORY/$TARBALL ]; then
 		tar xzf $SOURCES_REPOSITORY/$TARBALL
-	else
+	elif [ ! -f $SOURCES_REPOSITORY/$PACKAGE-$VERSION.tar.lzma ]; then
 		[ -L /usr/bin/wget ] && tazpkg get-install wget --forced
 		wget -O $SOURCES_REPOSITORY/$TARBALL "$WGET"
 		tar xzf $SOURCES_REPOSITORY/$TARBALL
 	fi
-	src=$WOK/$PACKAGE/${PACKAGE}${VERSION}_source
+	[ -d $WOK/$PACKAGE/${PACKAGE}${VERSION}_source ] && src=$WOK/$PACKAGE/${PACKAGE}${VERSION}_source
 	cd $src
 	make
 }
@@ -28,7 +28,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	src=$WOK/$PACKAGE/${PACKAGE}${VERSION}_source
+	[ -d $WOK/$PACKAGE/${PACKAGE}${VERSION}_source ] && src=$WOK/$PACKAGE/${PACKAGE}${VERSION}_source
 	mkdir -p $fs/usr/bin
 	cp -a $src/aescrypt $fs/usr/bin
 }
