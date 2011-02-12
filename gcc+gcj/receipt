@@ -41,7 +41,7 @@ compile_rules()
 		# Exit if download failed to avoid errors.
 		if [ ! -f "$SOURCES_REPOSITORY/$ECJ_JAR" ] ; then
 			echo -e "\nECJ jar download failed, exiting. Please check ECJ_URL variable.\n"
-			exit 1
+			return 1
 		fi
 	else
 		echo -n "ECJ jar exit... "
@@ -58,12 +58,12 @@ compile_rules()
 
 	# Use libiberty.a from binutils.
 	sed -i 's/install_to_$(INSTALL_DEST) //' \
-		$SOURCE-$VERSION/libiberty/Makefile.in || exit 1
+		$src/libiberty/Makefile.in || return 1
     mkdir -p $SOURCE-$VERSION-build
     cd $SOURCE-$VERSION-build
 	
     PYTHON_LIB=python$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
-    ../$SOURCE-$VERSION/configure --prefix=/usr --libexecdir=/usr/lib \
+    ../${src##*/}/configure --prefix=/usr --libexecdir=/usr/lib \
 		--infodir=/usr/share/info --mandir=/usr/share/man --enable-nls \
 		--enable-languages=c,c++,objc,java --enable-shared \
 		--with-system-zlib \
@@ -77,10 +77,10 @@ compile_rules()
 		--enable-gtk-cairo \
 		--enable-lto \
 		$CONFIGURE_ARGS  $GCC_TARGET  &&
-    make -j 4 bootstrap &&
+    make bootstrap &&
     # Make install in the source tree to help creating derived pkgs
     # and keep $_pkg variable set for genpkg.
-    make -j 4 DESTDIR=$src/_pkg install
+    make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -97,6 +97,7 @@ genpkg_rules()
     rm $fs/usr/lib/libgomp.so*
     # Include files.
     cp -a $_pkg/usr/include $fs/usr
+    rm -r $WOK/$PACKAGE/$SOURCE-$VERSION-build
 }
 
 # Post install commands for Tazpkg.
@@ -111,12 +112,6 @@ post_install()
 	if [ ! -f "$root/usr/bin/cc" ] ; then
 		ln -s gcc $root/usr/bin/cc
 	fi
-}
-
-# Rules to clean the package
-clean_wok()
-{
-	rm -r $SOURCE-$VERSION-build
 }
 
 TAZBB_NO_INSTALL="because it does not support objc and gfortran (yet)"
