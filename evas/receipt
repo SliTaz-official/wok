@@ -1,30 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="evas"
-VERSION="0.9.9.063"
+VERSION="1.0.0"
 CATEGORY="x-window"
-SHORT_DESC="E17 libs."
+SHORT_DESC="Enlightenment's hardware-accelerated retained canvas API"
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="expat fontconfig freetype jpeg libpng tiff xorg-libX11 \
-xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXrender eet openssl \
-fribidi libgsf libcroco librsvg giflib"
-BUILD_DEPENDS="xorg-libX11-dev eet-dev libgsf-dev libcroco-dev"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+DEPENDS="fontconfig freetype jpeg libpng tiff xorg-libXrender \
+eet fribidi librsvg giflib"
+BUILD_DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.enlightenment.org/"
-WGET_URL="http://download.enlightenment.org/snapshots/2009-12-02/$TARBALL"
+WGET_URL="http://download.enlightenment.org/releases/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--disable-gnutls \
-		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	./configure && make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -34,13 +26,5 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/evas $fs/usr/lib
 	rm -rf $fs/usr/lib/evas/modules/*/*/*/*.*a
-	for i in $fs/usr/lib/*.so ; do
-		[ -L $i ] || continue
-		[ -e $i.0 ] && continue
-		target=$(readlink $i)
-		case "$target" in
-		*.so.0.*) ln -s $target $i.0;;
-		esac
-	done
 }
 
