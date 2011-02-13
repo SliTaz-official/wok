@@ -5,26 +5,16 @@ VERSION="2007svn"
 CATEGORY="network"
 SHORT_DESC="Network Broadcast Sound."
 MAINTAINER="pascal.bellard@slitaz.org"
+BUILD_DEPENDS="subversion"
 WEB_SITE="http://svn.digium.com/view/nbs"
+WGET_URL="subversion|http://svn.digium.com/svn/nbs/trunk"
 
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir $src
 	cd $src
-	TARBALL=$PACKAGE-$VERSION.tar.gz
-	[ -f $SOURCES_REPOSITORY/$TARBALL ] && 
-		tar xzf $SOURCES_REPOSITORY/$TARBALL
-	for i in Makefile nbs.h nbscat.c nbscat8k nbsclient.c nbsd.c; do
-		[ -f $i ] && continue
-		wget http://svn.digium.com/view/nbs/trunk/$i?view=co || return 1
-		mv $i\?view=co $i
-		[ -f ../stuff/$i.u ] && patch -p0 <  ../stuff/$i.u
-	done
-	[ -f $SOURCES_REPOSITORY/$TARBALL ] ||
-		tar cvzf $SOURCES_REPOSITORY/$TARBALL \
-			Makefile nbs.h nbscat.c nbscat8k nbsclient.c nbsd.c
+	patch -p0 <  ../stuff/Makefile.u &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
 }
