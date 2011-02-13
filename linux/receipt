@@ -23,18 +23,7 @@ compile_rules()
 	#done
 	local _AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	local AUFSDIR="aufs-${_AUFSVER}"
-	TARBALL=$SOURCES_REPOSITORY/$AUFSDIR.tar.lzma
-	if [ -f $TARBALL ]; then
-		unlzma -c $TARBALL | tar xf -
-		cd $AUFSDIR && git checkout origin/aufs2.1-37
-		cd $WOK/$PACKAGE
-	else
-		# Aufs2 from git repository
-		git clone git://aufs.git.sourceforge.net/gitroot/aufs/aufs2-standalone.git $AUFSDIR
-		tar cf - $AUFSDIR | lzma e $TARBALL -si
-		cd $AUFSDIR && git checkout origin/aufs2.1-37
-		cd $WOK/$PACKAGE
-	fi
+	tazwok get-src aufs --target=$AUFSDIR
 	cp -a $AUFSDIR/Documentation $AUFSDIR/fs $AUFSDIR/include $src
 	cp -a $AUFSDIR/*.patch $WOK/$PACKAGE/stuff
 	# We need the real GNU patch
