@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="opentyrian"
+VERSION="r886"
+CATEGORY="games"
+SHORT_DESC="OpenTyrian is a port of the DOS shoot-em-up Tyrian"
+MAINTAINER="mallory@skyrock.com"
+DEPENDS="libsdl libsdl-mixer libsdl-net tyrian"
+BUILD_DEPENDS="libsdl-dev libsdl-mixer-dev libsdl-net-dev mercurial"
+SOURCE="opentyrian"
+WEB_SITE="http://code.google.com/p/opentyrian/"
+WGET_URL="mercurial|https://opentyrian.googlecode.com/hg/"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make release
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/applications \
+		$fs/usr/share/pixmaps $fs/usr/games/opentyrian
+	cp $src/opentyrian $fs/usr/games/opentyrian
+	cp $src/linux/opentyrian.desktop $fs/usr/share/applications
+	cp $src/linux/icons/tyrian-32.png $fs/usr/share/pixmaps/opentyrian.png
+	cat > $fs/usr/bin/opentyrian <<EOF
+#!/bin/sh
+here=$(pwd)
+cd /usr/games/opentyrian
+./opentyrian
+cd $here
+EOF
+	chmod +x $fs/usr/bin/opentyrian
+}
+
