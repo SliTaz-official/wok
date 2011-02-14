@@ -5,7 +5,7 @@ VERSION="2.6.37"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 DEPENDS="depmod"
-BUILD_DEPENDS="slitaz-toolchain perl git lzma"
+BUILD_DEPENDS="slitaz-toolchain perl git lzma patch"
 MAINTAINER="devel@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.kernel.org/"
@@ -21,13 +21,13 @@ compile_rules()
 	#do
 	#	sed -i 's|VERSION="OLDVERSION"|VERSION="NEWVERSION"|g' $i
 	#done
-	local _AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	local AUFSDIR="aufs-${_AUFSVER}"
+	report open-bloc
+
+	report step "Installing aufs source"
+	AUFSDIR=$WOK/$PACKAGE/aufs
 	tazwok get-src aufs --target=$AUFSDIR
 	cp -a $AUFSDIR/Documentation $AUFSDIR/fs $AUFSDIR/include $src
 	cp -a $AUFSDIR/*.patch $WOK/$PACKAGE/stuff
-	# We need the real GNU patch
-	[ -L /usr/bin/patch ] && tazpkg get-install patch --forced
 	cd $src
 	# SliTaz db
 	[ -d slitaz ] && rm -rf slitaz 2> /dev/null
@@ -36,6 +36,7 @@ compile_rules()
 	cp ../stuff/gztazmod.sh ../stuff/list_modules.sh slitaz
 	cp ../stuff/bootloader.sh slitaz
 	# Apply patches
+	report step "Applying patches"
 	while read patch_file; do
 		echo "$patch_file" >> slitaz/patches
 		cp ../stuff/$patch_file slitaz
@@ -59,11 +60,13 @@ aufs2-standalone.patch
 004-squashfs-add-xz-compression-support.patch
 005-squashfs-add-xz-compression-configuration-option.patch
 EOT
+	report step "Make kernel proper and then build lguest"
 	make mrproper
 	cd Documentation/lguest
 	make lguest || return 1
 	cd ../..
 
+	report step "Make bzImage without modules first"
 	# Build bzImage without modules first
 	cp -f ../stuff/$PACKAGE-$VERSION-slitaz.config .config
 	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
@@ -77,6 +80,7 @@ EOT
 	mv arch/x86/boot/bzImage $PWD/_pkg
 	mv System.map System.map-without-modules
 
+	report step "Now build bzImage with modules"
 	# Build bzImage with modules
 	cp -f ../stuff/$PACKAGE-$VERSION-slitaz.config .config
 	make oldconfig
@@ -89,9 +93,11 @@ EOT
 	mkdir -p $PWD/_pkg/boot 2> /dev/null
 	mv arch/x86/boot/bzImage $PWD/_pkg/boot/vmlinuz-$VERSION-slitaz
 	# Compress all modules.
+	report step "Compressing all modules"
 	$WOK/$PACKAGE/stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
 	ln System.map System.map-modules
 	ln Module.symvers Module.symvers-modules
+	report close-bloc
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

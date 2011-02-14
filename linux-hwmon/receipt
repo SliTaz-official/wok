@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-hwmon"
+VERSION="2.6.37"
+CATEGORY="base-system"
+SHORT_DESC="The Linux kernel hwmon modules."
+MAINTAINER="devel@slitaz.org"
+DEPENDS="linux"
+WANTED="linux"
+WEB_SITE="http://www.kernel.org/"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    path=lib/modules/$VERSION-slitaz/kernel
+    mkdir -p $fs/$path
+    export src
+    export _pkg
+    $src/slitaz/list_modules.sh drivers/hwmon | while read module; do
+    	dir=$path/$(dirname $module)
+    	[ -d $fs/$dir ] || mkdir -p $fs/$dir
+        cp -a $_pkg/$path/$module $fs/$dir
+    done
+
+    for i in $(cat $WOK/$WANTED/stuff/modules-$VERSION.list); do
+        if [ $fs/lib/modules/$VERSION-slitaz/kernel/$i ]; then
+	    rm -f $fs/lib/modules/$VERSION-slitaz/kernel/$i
+	fi
+    done
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
+post_remove()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
