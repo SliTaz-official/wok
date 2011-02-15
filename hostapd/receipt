@@ -15,28 +15,30 @@ WGET_URL="http://hostap.epitest.fi/releases/$TARBALL"
 compile_rules()
 {
 	cp -a stuff/config $src/hostapd/.config
-	mkdir -p $src/_pkg/usr/bin
+	mkdir -p $DESTDIR/usr/bin
 
 	cd $src/hostapd
 
-	sed -i "s|/usr/local/bin|$src/_pkg/usr/bin|" Makefile
+	sed -i "s|/usr/local/bin|$DESTDIR/usr/bin|" Makefile
 	
-	make && make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$DESTDIR install
+
+	[ -d $DESTDIR/etc/hostapd ] || mkdir -p $DESTDIR/etc/hostapd
+	cp -a $src/hostapd/hostapd.accept $src/hostapd/hostapd.conf \
+		$src/hostapd/hostapd.deny $src/hostapd/hostapd.eap_user \
+		$src/hostapd/hostapd.radius_clients $src/hostapd/hostapd.sim_db \
+		$src/hostapd/hostapd.vlan $src/hostapd/hostapd.wpa_psk \
+		$src/hostapd/wired.conf $src/hostapd/hlr_auc_gw.milenage_db \
+		$DESTDIR/etc/hostapd
+
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/hostapd $fs/etc/init.d
+	mkdir -p $fs/usr $fs/etc/init.d
 
 	cp -a $_pkg/usr/bin $fs/usr
-
-	cp -a $src/hostapd/hostapd.accept $src/hostapd/hostapd.conf \
-		$src/hostapd/hostapd.deny $src/hostapd/hostapd.eap_user \
-		$src/hostapd/hostapd.radius_clients $src/hostapd/hostapd.sim_db \
-		$src/hostapd/hostapd.vlan $src/hostapd/hostapd.wpa_psk \
-		$src/hostapd/wired.conf $src/src/hlr_auc_gw/hlr_auc_gw.milenage_db \
-		$fs/etc/hostapd
 
 	cp -a stuff/hostapd $fs/etc/init.d
 }
