@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="tazwok-experimental"
-VERSION="0.0.5.6"
+VERSION="0.0.6.1"
 CATEGORY="base-system"
 SHORT_DESC="SliTaz sources and binaries packages cooker."
 MAINTAINER="gokhlayeh@slitaz.org"
@@ -9,24 +9,49 @@ DEPENDS="busybox libtaz"
 SUGGESTED="tazchroot"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.slitaz.org/"
-WGET_URL="http://mirror.slitaz.org/sources/tazwok-experimental/$TARBALL"
+# Use bitbucket until tank is back.
+#WGET_URL="http://mirror.slitaz.org/sources/$PACKAGE/$TARBALL"
+BUILD_DEPENDS="wget"
+WGET_URL="https://bitbucket.org/gokhlayeh/$PACKAGE/get/$VERSION.tar.bz2"
 CONFIG_FILES="/etc/slitaz/tazwok.conf"
 PROVIDE="tazwok"
 TAGS="slitaz"
+
+compile_rules()
+{
+	:
+}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin $fs/usr/share/doc/tazwok \
-		$fs/etc/slitaz
+		$fs/etc/slitaz $fs/usr/share/slitaz/web-bb
 	# Copy Tazwok, doc and examples.
 	cp -a $src/tazwok $fs/usr/bin
+	cp -a $src/update-repository $fs/usr/bin
 	chmod 755 $fs/usr/bin/tazwok
 	cp -a $src/doc/* $fs/usr/share/doc/tazwok
 	cp -a $src/applications $fs/usr/share
 	# Config file
 	cp -a $src/examples/tazwok.conf $fs/etc/slitaz
 	cp -a $src/examples/config.site $fs/etc
+	# Webserver stuff
+	cp -a $src/web/* $fs/usr/share/slitaz/web-bb
 }
 
-TAZBB_NO_INSTALL="Not ready to be used on tank yet."
+post_install()
+{
+	echo -e "\\033[1;31mWARNING WARNING WARGNING
+You should run update-repository on all repositories you used with
+tazwok-experimental until there.This script change sources names, generate sources.list and modify
+logs to make you're repository consistent with last changes.
+
+Usage is:
+update-repository LOCAL_REPOSITORY
+
+Exemple:
+update-repository /home/slitaz/experimental
+
+Sorry for this ;)\\033[0m"
+}
