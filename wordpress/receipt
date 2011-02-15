@@ -14,7 +14,6 @@ WGET_URL="$WEB_SITE/$TARBALL"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	src=$WOK/$PACKAGE/$PACKAGE
 	mkdir -p $fs/var/www/wordpress
 	cp -a $src/* $fs/var/www/wordpress
 	chown -R www.www $fs/var/www/wordpress
@@ -51,17 +50,18 @@ post_install()
 
 post_remove()
 {
-		local db=wordpress
-		local db_user=wordpress
-		local db_password=wordpress
+	local db=wordpress
+	local db_user=wordpress
+	local db_password=wordpress
 	
+	if [ -z $1 ]; then
 		echo -n "Would you like to remove data and database files.(y/n) "
 		read answer
 
 		case $answer in 
 		y|Y)
 			echo -n "Removing data directories..."
-			rm -rf /var/lib/wordpress ; status
+			[ -d /var/lib/wordpress ] && rm -rf /var/lib/wordpress ; status
 			if ( mysql -u root -Be 'show databases' | grep -q $db ); then
 				echo -n "Deleting $db database"
 				mysql -Be "drop database $db" ; status
@@ -75,4 +75,5 @@ post_remove()
 		*)
 			;;
 		esac
+	fi
 }
