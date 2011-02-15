@@ -1,15 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="mingw32-gcc"
-SOURCE="gcc"
+SOURCE="gcc-core"
 VERSION="3.4.5-20060117-2"
 CATEGORY="development"
 SHORT_DESC="MinGW32 gcc, for C, C++, and Ada."
 MAINTAINER="rcx@zoominternet.net"
-DEPENDS="glibc-base mingw32-binutils mingw32-w32api-headers mingw32-runtime-headers mingw32-w32api mingw32-runtime"
-BUILD_DEPENDS="slitaz-toolchain bison flex mingw32-binutils mingw32-runtime-headers mingw32-w32api-headers mingw32-gcc-c mingw32-w32api mingw32-runtime"
+DEPENDS="glibc-base mingw32-binutils mingw32-w32api-headers \
+mingw32-runtime-headers mingw32-w32api mingw32-runtime"
+BUILD_DEPENDS="slitaz-toolchain bison flex mingw32-binutils \
+mingw32-runtime-headers mingw32-w32api-headers mingw32-gcc-c \
+mingw32-w32api mingw32-runtime mingw32-g++ mingw32-ada"
 PROVIDE="mingw32-gcc-c"
-TARBALL="$SOURCE-core-$VERSION-src.tar.gz"
+TARBALL="$SOURCE-$VERSION-src.tar.gz"
 WEB_SITE="http://www.mingw.org/"
 MINGW32_URL="$SF_MIRROR/mingw"
 WGET_URL="$MINGW32_URL/$TARBALL"
@@ -28,34 +31,20 @@ compile_rules()
 		return 1
 	fi
 
-	MINGW32_DIR="$PWD"
-	MINGW32_CPP_TARBALL="$SOURCE-g++-$VERSION-src.tar.gz"
-	MINGW32_ADA_TARBALL="$SOURCE-ada-$VERSION-src.tar.gz"
-	
-	for gcc_tgz in $MINGW32_CPP_TARBALL $MINGW32_ADA_TARBALL ; do
-		# Download the additional language tarballs
-		if [ ! -f "$SOURCES_REPOSITORY/$gcc_tgz" ] ; then
-			cd $SOURCES_REPOSITORY
-			download $MINGW32_URL/$gcc_tgz
-		fi
-		
-		# Extract the additional language tarballs
-		if [ -f "$SOURCES_REPOSITORY/$gcc_tgz" ] ; then
-			cd $MINGW32_DIR
-			echo "Extracting $gcc_tgz ..."
-			tar xzf "$SOURCES_REPOSITORY/$gcc_tgz"
-		else
-			# Exit if file not found to avoid errors.
-			echo -e "\nDownload of $gcc_tgz failed, exiting. Please check the URL.\n"
-			return 1
-		fi
+	report open-bloc
+
+	for s in mingw32-g++ mingw32-ada; do
+		tazwok get-src $s --target=$PACKAGE-$VERSION && continue
+		report close-bloc
+		return 1
 	done
-	
-	cd $MINGW32_DIR
+
+	report step "Running compilation"
 
 	rm -f -r $src/binutils
 	mkdir -p $SOURCE-$VERSION-build
 	cd $SOURCE-$VERSION-build
+	{
 	$src/configure \
 		--prefix=/usr \
 		--libexecdir=/usr/lib \
@@ -71,7 +60,9 @@ compile_rules()
 		--enable-sjlj-exceptions \
 		$CONFIGURE_ARGS &&
 	make -j 4 CFLAGS="-O2 -fomit-frame-pointer" LDFLAGS="-s"  &&
-	make DESTDIR=$src/_pkg install
+	make DESTDIR=$src/_pkg install &&
+	report close-bloc
+	} || { report close-bloc; return 1; }
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -99,5 +90,5 @@ post_install()
 # Rules to clean the package
 clean_wok()
 {
-	rm -r $SOURCE-$VERSION-build
+	rm -rf $SOURCE-$VERSION-build
 }
