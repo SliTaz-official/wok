@@ -5,7 +5,7 @@ VERSION="2.15.5_gs_r7"
 CATEGORY="games"
 SHORT_DESC="An emulator for Sega Genesis, Sega CD and 32X."
 MAINTAINER="slaxemulator@gmail.com"
-DEPENDS="gtk+ libsdl"
+DEPENDS="gtk+ libsdl libglu-mesa"
 BUILD_DEPENDS="gtk+-dev libsdl libsdl-dev nasm autoconf automake"
 _VERSION=gs-r7
 TARBALL="Gens-${_VERSION}.tar.gz"
@@ -15,15 +15,11 @@ WGET_URL="http://segaretro.org/images/6/6d/$TARBALL"
 # Rules to configure and make the package.
 compile_rules()
 {
-	ln -s $WOK/$PACKAGE/gens-${_VERSION} $WOK/$PACKAGE/$PACKAGE-$VERSION
 	cd $src
+	patch -Np1 -i ../stuff/gens-gtk.patch || return 1
 	chmod +x install-sh
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
+	./configure &&
+	make && make -j1 DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
