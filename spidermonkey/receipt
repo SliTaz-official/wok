@@ -5,7 +5,7 @@ VERSION="1.7.0"
 CATEGORY="multimedia"
 SHORT_DESC="Mozilla C implementation of Javascript"
 MAINTAINER="jozee@slitaz.org"
-DEPENDS=""
+DEPENDS="nspr"
 BUILD_DEPENDS=""
 SOURCE="js"
 TARBALL="$SOURCE-$VERSION.tar.gz"
@@ -16,9 +16,19 @@ TAGS="javascript"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src/src	
-	make -f Makefile.ref DIST=../_pkg/usr all export
+	cd $src/src
 
+	# Fix from Archlinux
+	# http://projects.archlinux.org/svntogit/community.git/tree/spidermonkey/trunk/PKGBUILD
+	patch -p0 < $stuff/spidermonkey-Makefile.patch || return 1
+	sed -i 's|include|include/js|' rules.mk || return 1
+	# patch Makefile for threadsafe support with native nspr
+	patch -p2 -i $stuff/spidermonkey-1.7-threadsafe.patch || return 1
+	# FS#16673
+	export CFLAGS="${CFLAGS} -DJS_C_STRINGS_ARE_UTF8"
+	# build - threadsafe
+	make -j1 -f Makefile.ref BUILD_OPT=1 JS_THREADSAFE=1 \
+		DIST=$DESTDIR/usr all export
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
