@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="mk-livestatus"
+VERSION="1.1.8"
+CATEGORY="system-tools"
+SHORT_DESC="Nagios status broker module"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="nagios"
+BUILD_DEPENDS="nagios-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://mathias-kettner.de/checkmk_livestatus.html"
+WGET_URL="http://mathias-kettner.de/download/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	
+	strip -s $fs/usr/lib/*
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	# Modify nagios config
+	cat <<EOT>> $1/etc/nagios/nagios.cfg
+broker_module=/usr/lib/mk-livestatus/livestatus.o /var/lib/nagios/rw/live
+event_broker_options=-1
+EOT
+}
