@@ -79,7 +79,7 @@ include("conf.php");
 	<?php
 		if ($version == 'stable')
 			echo '<input type="hidden" name="stable" value="1" />';
-	?>	Show pkg log: <input type="text" name="package" />
+	?>	Show pkg log: <input type="text" name="package" style="width: 300px;" />
 		<!-- <input type="submit" value="Show" /> -->
 	</form>
 </p>

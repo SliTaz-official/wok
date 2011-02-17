@@ -61,7 +61,7 @@ include("conf.php");
 
 <p>
 <form action="log.php" method="get">
-	<input type="text" name="package" />
+	<input type="text" name="package" style="width: 300px;" />
 	<!-- <input type="submit" value="Show" /> -->
 <?php
 
