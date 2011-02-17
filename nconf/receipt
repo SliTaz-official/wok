@@ -1,0 +1,123 @@
+# SliTaz package receipt.
+
+PACKAGE="nconf"
+VERSION="1.2.6-0"
+CATEGORY="system-tools"
+SHORT_DESC="Enterprise Nagios configurator"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="mysql php-apache nagios perl perl-dbi perl-dbd-mysql"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WEB_SITE="http://www.nconf.org/dokuwiki/doku.php"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -d $PACKAGE-$VERSION ] || mv $PACKAGE $PACKAGE-$VERSION
+	cd $src
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/nconf \
+		$fs/var/lib/nconf \
+		$fs/etc/nconf \
+		$fs/etc/apache/conf.d \
+		$fs/etc/nagios/import
+		
+	cp  stuff/apache2-nconf.conf $fs/etc/apache/conf.d
+	
+	# Copy files
+	cp -a $src/* $fs/usr/share/nconf
+	
+	# Move config, output, static_cfg, temp tor $fs/var/lib/nconf (FHS)
+	# and link them to $fs/usr/sahre/nconf
+	cp -a  $fs/usr/share/nconf/config.orig/* $fs/etc/nconf
+	mv $fs/usr/share/nconf/output $fs/var/lib/nconf
+	mv $fs/usr/share/nconf/static_cfg $fs/var/lib/nconf
+	mv $fs/usr/share/nconf/temp $fs/var/lib/nconf
+	
+	chown -R www.www $fs/usr/share/nconf \
+		$fs/var/lib/nconf
+	
+	ln -s /etc/nconf/authentication.php $fs/usr/share/nconf/config
+	ln -s /etc/nconf/main.php $fs/usr/share/nconf/config
+	ln -s /etc/nconf/mysql.php $fs/usr/share/nconf/config
+	ln -s /etc/nconf/nconf.php $fs/usr/share/nconf/config
+	ln -s /var/lib/nconf/output $fs/usr/share/nconf/
+	ln -s /var/lib/nconf/static_cfg $fs/usr/share/nconf/
+	ln -s /var/lib/nconf/temp $fs/usr/share/nconf/
+	
+	mv $fs/usr/share/nconf/INSTALL $fs/var/lib/nconf
+	# Cleanup
+	rm -rf $fs/usr/share/nconf/UPDATE*
+	rm -f $fs/usr/share/nconf/INSTALL.php
+	
+	# Set default settings
+	sed -i -e 's/Nconf/nconf/' -e 's/link2db/nconf/' $fs/etc/nconf/mysql.php
+	sed -i -e '/NCONFDIR/ s|/var/www|/usr/share|' \
+		-e '/NAGIOS_BIN/ s|/var/www/nconf/bin|/usr/bin|' $fs/etc/nconf/mysql.php
+		
+	# Fix add-ons scripts
+	sed -i -e 's|bash|sh|' -e '/OUTPUT_DIR/ s|/var/www/html|/usr/share|' \
+		-e '/NAGIOS_DIR/ s|NAGIOS_DIR=.*|NAGIOS_DIR=\"/etc/nagios\"|' $fs/usr/share/nconf/ADD-ONS/deploy_local.sh
+	sed -i -e 's|bash|sh|' -e '/DBNAME/ s|NConf|nconf|' $fs/usr/share/nconf/ADD-ONS/history_cleanup.sh
+}
+
+post_install()
+{
+	local db=nconf
+	local db_user=nconf
+	local db_password=nconf
+	local sql_script='/var/lib/nconf/INSTALL/create_database.sql'
+	
+	# Minimal config for NConf.
+	if [ -z $1 ]; then
+		if ( ! mysqladmin -s ping > /dev/null ); then
+			echo "Starting MySQL server"
+			( /etc/init.d/mysql start ; status  ) || exit 
+			sleep 4 #let the mysql daemon start
+		fi
+		if ( ! mysql -u root -Be 'show databases' | grep -q $db ); then
+			echo -n "Create $db database"
+			mysql -Be "create database $db" ; status
+			# We suppose that $DB_USER user does not exist.
+			# It may be false.
+			echo  -n "Create user $db_user with password $db_password"
+			mysql -Be "grant all privileges on $db.* to '"$db_user"'@'localhost' 
+				identified by '"$db_password"'" ; status
+			# At last create the database for $PACKAGE.
+			echo -n "Create $db database schema."
+			mysql -u $db_user -p${db_password} -D $db < $sql_script  ; status
+		fi
+	fi
+}
+
+post_remove()
+{
+		local db=nconf
+		local db_user=nconf
+		local db_password=nconf
+	
+		echo -n "Would you like to remove data and database files.(y/n) "
+		read answer
+
+		case $answer in 
+		y|Y)
+			echo -n "Removing data directories..."
+			rm -rf /var/lib/nconf ; status
+			if ( mysql -u root -Be 'show databases' | grep -q $db ); then
+				echo -n "Deleting $db database"
+				mysql -Be "drop database $db" ; status
+				# We suppose that $db_user user does not exist.
+				# It may be false.
+				echo  -n "Delete user $db_user"
+				mysql -Be "delete from mysql.db where user='"$db_user"'" ; status
+			fi
+			unset $answer
+			;;
+		*)
+			;;
+		esac
+}
