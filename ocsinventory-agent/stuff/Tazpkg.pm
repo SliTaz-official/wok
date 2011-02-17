@@ -15,7 +15,7 @@ sub run {
 		next if (/packages installed/);
 		
 		if (/^(\S+)\[24G\s+(\S+)\[42G\s+(\S+)/) {
-		  $inventory->addSoftwares({
+		  $inventory->addSoftware({
 		  'NAME'    	=> $1,
 		  'VERSION'     => $2,
 		  'COMMENTS'	=> $3	
