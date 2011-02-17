@@ -1,0 +1,163 @@
+#!/bin/sh
+# 
+#
+# chkconfig: 345 99 01
+# description: Nagios to mysql
+#
+# Author : Gaétan Lucas
+# Realase : 07/02/08
+# Version : 0.1 b
+# File : ndo2db
+# Description: Starts and stops the Ndo2db daemon
+#              used to provide network services status in a database.
+#
+  
+status_ndo ()
+{
+	if ps -p $NdoPID > /dev/null 2>&1; then
+	        return 0
+	else
+		return 1
+	fi
+
+	return 1
+}
+
+printstatus_ndo()
+{
+	if status_ndo $1 $2; then
+		echo "ndo (pid $NdoPID) is running..."
+	else
+		echo "ndo is not running"
+	fi
+}
+
+killproc_ndo ()
+{
+	echo "kill $2 $NdoPID"
+	kill $2 $NdoPID
+}
+
+pid_ndo ()
+{
+	if test ! -f $NdoRunFile; then
+		echo "No lock file found in $NdoRunFile"
+		echo -n "         checking runing process..."
+		NdoPID=`ps -ef|grep ndo2db|cut -c0-5`
+		if [ -z "$NdoPID" ]; then
+			echo "     No ndo2db process found"
+			exit 1
+		else
+			echo "     found process pid: $NdoPID"
+			echo -n "         reinit $NdoRunFile ..."
+			touch $NdoRunFile
+			chown $NdoUser:$NdoGroup $NdoRunFile
+			echo "$NdoPID" > $NdoRunFile
+			echo "     done"
+		fi
+	fi
+
+	NdoPID=`head $NdoRunFile`
+}
+
+# Source function library
+# Solaris doesn't have an rc.d directory, so do a test first
+if [ -f /etc/rc.d/init.d/functions ]; then
+	. /etc/rc.d/init.d/functions
+elif [ -f /etc/init.d/functions ]; then
+	. /etc/init.d/functions
+fi
+
+prefix=/usr
+exec_prefix=${prefix}/bin
+NdoBin=${exec_prefix}/ndo2db
+NdoCfgFile=/etc/nagios/ndo2db.cfg
+NdoRunFile=/var/run/nagios/ndo2db.run
+NdoLockDir=/var/lock/subsys
+NdoLockFile=ndo2db.lock
+NdoUser=nagios
+NdoGroup=nagios
+          
+# Check that ndo exists.
+if [ ! -f $NdoBin ]; then
+   echo "Executable file $NdoBin not found.  Exiting."
+   exit 1
+fi
+
+# Check that ndo.cfg exists.
+if [ ! -f $NdoCfgFile ]; then
+   echo "Configuration file $NdoCfgFile not found.  Exiting."
+   exit 1
+fi
+          
+# See how we were called.
+case "$1" in
+
+	start)
+		echo -n "Starting ndo:"
+		touch $NdoRunFile
+		chown $NdoUser:$NdoGroup $NdoRunFile
+		$NdoBin -c $NdoCfgFile
+		if [ -d $NdoLockDir ]; then
+			touch $NdoLockDir/$NdoLockFile;
+	       	fi
+		ps -ef|grep ndo2db|cut -c0-5 > $NdoRunFile
+		if [ $? -eq 0 ]; then
+			echo " done."
+			exit 0
+		else
+			echo " failed."
+			$0 stop
+			exit 1
+		fi
+		;;
+
+	stop)
+		echo -n "Stopping ndo: "
+
+		pid_ndo
+		killproc_ndo
+
+		# now we have to wait for ndo to exit and remove its
+		# own NdoRunFile, otherwise a following "start" could
+		# happen, and then the exiting ndo will remove the
+		# new NdoRunFile, allowing multiple ndo daemons
+		# to (sooner or later) run
+		#echo -n 'Waiting for ndo to exit .'
+		for i in 1 2 3 4 5 6 7 8 9 10 ; do
+		    if status_ndo > /dev/null; then
+			echo -n '.'
+			sleep 1
+		    else
+			break
+		    fi
+		done
+		if status_ndo > /dev/null; then
+		    echo 
+		    echo 'Warning - ndo did not exit in a timely manner'
+		else
+		    echo 'done.'
+ 		fi
+
+		rm -f $NdoRunFile $NdoLockDir/$NdoLockFile
+		;;
+
+	status)
+		pid_ndo
+		printstatus_ndo ndo
+		;;
+
+	restart)
+		$0 stop
+		$0 start
+		;;
+
+	*)
+		echo "Usage: ndo {start|stop|restart|status}"
+		exit 1
+		;;
+
+esac
+  
+# End of this script
+
