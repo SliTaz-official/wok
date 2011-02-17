@@ -6,7 +6,7 @@ CATEGORY="multimedia"
 SHORT_DESC="free video editor"
 MAINTAINER="allan316@gmail.com"
 DEPENDS="libsdl alsa-lib libsdl-gfx libxml2 xorg-libXv gtk+ cairo libQtGui"
-BUILD_DEPENDS="gtk+-dev xorg-libXv-dev libxml2-dev alsa-lib-dev libsdl-dev libsdl-gfx-dev tar coreutils-file-special coreutils-file-format cmake yasm gettext pkg-config zlib-dev xorg-dev-proto bzip2"
+BUILD_DEPENDS="gtk+-dev xorg-libXv-dev libxml2-dev alsa-lib-dev libsdl-dev libsdl-gfx-dev tar coreutils-file-special coreutils-file-format cmake yasm gettext pkg-config zlib-dev xorg-dev-proto bzip2 patch"
 TARBALL="avidemux_$VERSION.tar.gz"
 WEB_SITE="http://fixounet.free.fr/$PACKAGE"
 WGET_URL="http://download.berlios.de/$PACKAGE/$TARBALL"
@@ -15,24 +15,25 @@ TAGS="video movie editor avi mpeg mp4"
 # Rules to configure and make the package.
 compile_rules()
 {
-	[ -L /usr/bin/patch ] && tazpkg get-install patch --forced
-	mkdir $WOK/$PACKAGE/avidemux-$VERSION
-	mv $WOK/$PACKAGE/avidemux_$VERSION $WOK/$PACKAGE/avidemux-$VERSION/src
-	cd $src/src/avidemux/ADM_libraries
-	tar xzf ffmpeg*.tar.gz
+	cd $src/avidemux/ADM_libraries
+	tar xzf ffmpeg_r25041.tar.gz
 	cd $src
 	# Fix for gcc45
 	sed -i -e 's/    "$@" >>/    $@ >>/' -e 's|mktemp -u|/usr/bin/mktemp -u|' \
-		src/avidemux/ADM_libraries/ffmpeg/configure
-	grep -q ADM_CPU_X86_64 src/avidemux/ADM*/src/ADM_vidField[sA]*.cpp ||
+		avidemux/ADM_libraries/ffmpeg/configure
+	grep -q ADM_CPU_X86_64 avidemux/ADM*/src/ADM_vidField[sA]*.cpp ||
 	sed -i 's/ADM_CPU_X86/ADM_CPU_X86_64/' \
-		src/avidemux/ADM_coreImage/src/ADM_vidField[sA]*.cpp 
+		avidemux/ADM_coreImage/src/ADM_vidField[sA]*.cpp 
 	mkdir built
 	cd built
-	cmake -DCMAKE_INSTALL_PREFIX=/usr ../src
+	cmake -DCMAKE_INSTALL_PREFIX=/usr ../
 	sed -i 's/\(find .*\) | xargs ln -sft/- ln -sf $(\1)/' \
 		avidemux/CMakeFiles/ffmpeg.dir/build.make
-	make -j 4  && make DESTDIR=$PWD/../_pkg install
+	make -j 4  && make -j1 DESTDIR=$DESTDIR install
+
+	mkdir -p $DESTDIR/usr/share/pixmaps $DESTDIR/usr/share/applications
+	cp -a $src/avidemux_icon.png $DESTDIR/usr/share/pixmaps/avidemux.png
+	cp -a $src/avidemux2.desktop $DESTDIR/usr/share/applications/avidemux2.desktop
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -42,6 +43,5 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/share/ADM_scripts $fs/usr/share
-	cp -a $src/src/avidemux_icon.png $fs/usr/share/pixmaps/avidemux.png
-	cp -a $src/src/avidemux2.desktop $fs/usr/share/applications/avidemux2.desktop
+
 }
