@@ -9,28 +9,31 @@ DEPENDS="openal libsdl-image libsdl-mixer mesa assaultcube-data"
 BUILD_DEPENDS="openal-dev libsdl-image-dev libsdl-mixer-dev mesa-dev"
 SOURCE="AssaultCube"
 TARBALL="${SOURCE}_v${VERSION}_source.tar.bz2"
+SOURCE="AssaultCube-Source"
 WEB_SITE="http://assault.cubers.net/"
 WGET_URL="$SF_MIRROR/actiongame/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
-{
-	[ -d $WOK/$PACKAGE/$VERSION ] && ln -s $WOK/$PACKAGE/$VERSION $WOK/$PACKAGE/$SOURCE-$VERSION	
+{	
 	cd $src/source/src
 	make
+	[ ! -d $DESTDIR/usr/bin ] && mkdir -p $DESTDIR/usr/bin
+	cp -a ac_client $DESTDIR/usr/bin
+	cp -a ac_server $DESTDIR/usr/bin
+	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	_src=$src/source/src
-	_stuff=$WOK/$PACKAGE/stuff
+	stuff=$WOK/$PACKAGE/stuff
 	mkdir -p $fs/usr/bin $fs/usr/share/pixmaps $fs/usr/share/applications
-	cp -a $_src/ac_client $fs/usr/bin
-	cp -a $_src/ac_server $fs/usr/bin
-	cp -a $_stuff/assaultcube $fs/usr/bin
-	cp -a $_stuff/assaultcube-server $fs/usr/bin
-	cp -a $_stuff/assaultcube.png $fs/usr/share/pixmaps
+	cp -a $_pkg/usr/bin/ac_client $fs/usr/bin
+	cp -a $_pkg/usr/bin/ac_server $fs/usr/bin
+	cp -a $stuff/assaultcube $fs/usr/bin
+	cp -a $stuff/assaultcube-server $fs/usr/bin
+	cp -a $stuff/assaultcube.png $fs/usr/share/pixmaps
 	chmod +x $fs/usr/bin/assaultcube
 	chmod +x $fs/usr/bin/assaultcube-server
 }

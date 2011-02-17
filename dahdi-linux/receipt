@@ -8,7 +8,7 @@ MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.asterisk.org/"
 WGET_URL="http://downloads.asterisk.org/pub/telephony/$PACKAGE/releases/$TARBALL"
-DEPENDS="linux"
+DEPENDS="linux udev"
 #PROVIDE="linux-misdn"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -17,13 +17,14 @@ compile_rules()
 	cd $src
 	sed -i 's/tar -xof/tar -xf/' drivers/dahdi/firmware/Makefile
 	[ -d $WOK/linux/taz ] || tazwok cook linux
-	make KSRC=$WOK/linux/$(ls $WOK/linux/taz) DESTDIR=$PWD/_pkg install
+	make KSRC=$WOK/linux/$(ls $WOK/linux/taz) install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
+	cp -a $_pkg/etc $fs
 	cp -a $_pkg/dev $fs
 	cp -a $_pkg/lib $fs
 	cp -a $_pkg/usr/share $fs/usr

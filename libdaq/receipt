@@ -6,23 +6,14 @@ CATEGORY="network"
 SHORT_DESC="Data Acquisition library for packet I/O."
 MAINTAINER="slaxemulator@gmail.com"
 DEPENDS="libpcap"
-BUILD_DEPENDS="libpcap-dev flex bison"
+BUILD_DEPENDS="libpcap-dev flex bison wget"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.snort.org/"
-WGET="http://www.snort.org/downloads/630"
+WGET_URL="http://www.snort.org/downloads/630"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	src=$WOK/$PACKAGE/daq-$VERSION
-	# this is needed even if tazwok support https
-	if [ -f $SOURCES_REPOSITORY/$TARBALL ]; then
-		tar xzf $SOURCES_REPOSITORY/$TARBALL
-	else
-		[ -L /usr/bin/wget ] && tazpkg get-install wget --forced
-		wget -O $SOURCES_REPOSITORY/$TARBALL --no-check-certificate "$WGET"
-		tar xzf $SOURCES_REPOSITORY/$TARBALL
-	fi
 	cd $src
 	./configure \
 		--prefix=/usr \
@@ -35,9 +26,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	_pkg=$WOK/$PACKAGE/daq-$VERSION/_pkg
-	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/daq $fs/usr/lib
+	mkdir -p $fs/usr/lib/daq
+	cp -a $_pkg/usr/lib/daq/*.so* $fs/usr/lib/daq
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 }
 

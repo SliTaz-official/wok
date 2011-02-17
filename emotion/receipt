@@ -1,28 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="emotion"
-VERSION="42672"
+VERSION="55225"
 CATEGORY="x-window"
 SHORT_DESC="E17 emotion libs."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="xine-lib xorg-libXp xorg-libXss fribidi edje xorg-libXdamage \
 xorg-libXtst gnutls jpeg fontconfig glib eina libtasn1"
 BUILD_DEPENDS="eet-dev evas-dev ecore-dev embryo-dev edje-dev xine-lib-dev
-xorg-libXp-dev xorg-libXss-dev fribidi-dev"
+xorg-libXp-dev xorg-libXss-dev fribidi-dev subversion"
 WEB_SITE="http://www.enlightenment.org/"
+WGET_URL="subversion|http://svn.enlightenment.org/svn/e/trunk/$PACKAGE"
+BRANCH="$VERSION"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	[ -d "$PACKAGE-$VERSION" ] && rm -rf $PACKAGE-$VERSION
-	TARBALL=$SOURCES_REPOSITORY/$PACKAGE-svn-$VERSION.tar.gz
-	if [ -f $TARBALL ]; then
-		tar xzf $TARBALL
-	else
-		svn co http://svn.enlightenment.org/svn/e/trunk/$PACKAGE \
-			-r $VERSION $PACKAGE-$VERSION &&
-		tar czf $TARBALL $PACKAGE-$VERSION
-	fi
 	cd $src
 	./autogen.sh \
 		--prefix=/usr \
@@ -36,9 +29,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/emotion
+	mkdir -p $fs/usr/lib/edje/modules/emotion/linux-gnu-i486-1.0.0
 	cp -a $_pkg/usr/share $fs/usr
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/emotion/*.so $fs/usr/lib/emotion
+	cp -a $_pkg/usr/lib/edje/modules/emotion/linux-gnu-i486-1.0.0/*.so \
+		$fs/usr/lib/edje/modules/emotion/linux-gnu-i486-1.0.0
 }

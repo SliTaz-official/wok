@@ -43,27 +43,29 @@ genpkg_rules()
 	cp -a stuff/etc $fs
 	ln -s /var/lib/pgsql/postgresql.conf $fs/etc
 	chmod 700 $fs/var/lib/pgsql
-	cat $src/*.files-list | while read file; do
+	cat $WOK/$PACKAGE/stuff/*.files-list | while read file; do
 		[ -f $fs$file ] && rm -f $fs$file
 	done
+
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
         # adduser postgres if needed
-	if ! grep -q postgres $1/etc/passwd; then
+	if ! grep -q postgres: $1/etc/passwd; then
 		echo -n "Adding user postgres..."
 		chroot $1/ adduser postgres -D -H -u 88 -h /var/lib/pgsql
-		rm -f /var/lib/pgsql/.* /var/lib/pgsql/*
+		#[ -d $1/var/lib/pgsql ] && rm -f $1/var/lib/pgsql/.* $1/var/lib/pgsql/*
 		status
 	fi
 	# addgroup postgres if needed
-	if ! grep -q postgres $1/etc/group; then
+	if ! grep -q postgres: $1/etc/group; then
 		echo -n "Adding group postgres..."
-		chroot $1/ sh -c 'addgroup -g 88 postgres && addgroup postgres postgres'
+		chroot $1/ sh -c 'addgroup -g 88 postgres'
 		status
 	fi
+	[ ! -d $1/var/lib/pgsql ] && mkdir -p $1/var/lib/pgsql
 	chroot $1/ chown -R postgres.postgres /var/lib/pgsql /var/log/postgresql
 	cat <<EOF
 ----
@@ -80,6 +82,7 @@ EOF
 
 post_remove()
 {
-	deluser postgres
-	delgroup postgres
+	# when both user and group have the same id# and name
+	# both group and user will get removed with either delusr/delgroup
+	chroot $1/ deluser postgres
 }

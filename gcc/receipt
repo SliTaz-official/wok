@@ -18,9 +18,9 @@ precook_tmp_toolchain()
 	cd $src
 
 	# GCC requires the GMP, MPFR and MPC packages.
-	tazwok get-src mpfr --target=$PWD/mpfr
-	tazwok get-src gmp --target=$PWD/gmp
-	tazwok get-src mpc-library --target=$PWD/mpc
+	tazwok get-src mpfr --target=$PWD/mpfr || { report close-bloc; return 1; }
+	tazwok get-src gmp --target=$PWD/gmp || { report close-bloc; return 1; }
+	tazwok get-src mpc-library --target=$PWD/mpc || { report close-bloc; return 1; }
 
 	report step "Running compilation"
 
@@ -38,7 +38,7 @@ precook_tmp_toolchain()
 		--without-ppl --without-cloog &&
 	make &&
 	make install
-	} || return 1
+	} || { report close-bloc; return 1; }
 
 	# See LFS for more detais about this.
 	ln -s libgcc.a `$BUILD_HOST-gcc -print-libgcc-file-name | \
@@ -50,7 +50,7 @@ cook_tmp_toolchain()
 {
 	report open-bloc
 	cd $src
-	patch -Np1 -i ../stuff/gcc-$VERSION-startfiles_fix-1.patch
+	patch -Np1 -i ../stuff/gcc-$VERSION-startfiles_fix-1.patch || { report close-bloc; return 1; }
 
 	# Details about theses lines are in LFS book.
 	sed 's@\./fixinc\.sh@-c true@' -i gcc/Makefile.in
@@ -74,9 +74,9 @@ cook_tmp_toolchain()
 	fi
 	
 	# GCC requires the GMP, MPFR and MPC packages.
-	tazwok get-src mpfr --target=$PWD/mpfr
-	tazwok get-src gmp --target=$PWD/gmp
-	tazwok get-src mpc-library --target=$PWD/mpc
+	tazwok get-src mpfr --target=$PWD/mpfr || { report close-bloc; return 1; }
+	tazwok get-src gmp --target=$PWD/gmp || { report close-bloc; return 1; }
+	tazwok get-src mpc-library --target=$PWD/mpc || { report close-bloc; return 1; }
 
 	report step "Running compilation"
 
@@ -96,7 +96,7 @@ cook_tmp_toolchain()
 		--without-ppl --without-cloog &&
 	make &&
 	make install
-	} || return 1
+	} || { report close-bloc; return 1; }
 	ln -s gcc /tools/bin/cc
 	report close-bloc
 }
@@ -106,7 +106,7 @@ compile_rules()
 {
 	# Use libiberty.a from binutils.
 	sed -i 's/install_to_$(INSTALL_DEST) //' \
-		$PACKAGE-$VERSION/libiberty/Makefile.in || exit 1
+		$PACKAGE-$VERSION/libiberty/Makefile.in || return 1
 	mkdir -p gcc-build && cd gcc-build
 	$src/configure --enable-nls \
 	--enable-languages=c,c++,objc,fortran --enable-shared --with-system-zlib \

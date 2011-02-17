@@ -5,7 +5,7 @@ VERSION="2.6.37"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 DEPENDS="depmod"
-BUILD_DEPENDS="slitaz-toolchain perl git lzma"
+BUILD_DEPENDS="slitaz-toolchain perl git lzma patch"
 MAINTAINER="devel@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.kernel.org/"
@@ -21,41 +21,32 @@ compile_rules()
 	#do
 	#	sed -i 's|VERSION="OLDVERSION"|VERSION="NEWVERSION"|g' $i
 	#done
-	local _AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	local AUFSDIR="aufs-${_AUFSVER}"
-	TARBALL=$SOURCES_REPOSITORY/$AUFSDIR.tar.lzma
-	if [ -f $TARBALL ]; then
-		unlzma -c $TARBALL | tar xf -
-		cd $AUFSDIR && git checkout origin/aufs2.1-37
-		cd $WOK/$PACKAGE
-	else
-		# Aufs2 from git repository
-		git clone git://aufs.git.sourceforge.net/gitroot/aufs/aufs2-standalone.git $AUFSDIR
-		tar cf - $AUFSDIR | lzma e $TARBALL -si
-		cd $AUFSDIR && git checkout origin/aufs2.1-37
-		cd $WOK/$PACKAGE
-	fi
+	report open-bloc
+
+	report step "Installing aufs source"
+	_AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	AUFSDIR=$WOK/$PACKAGE/aufs-${_AUFSVER}
+	tazwok get-src aufs --target=$AUFSDIR || { report close-bloc; return 1; }
 	cp -a $AUFSDIR/Documentation $AUFSDIR/fs $AUFSDIR/include $src
 	cp -a $AUFSDIR/*.patch $WOK/$PACKAGE/stuff
-	# We need the real GNU patch
-	[ -L /usr/bin/patch ] && tazpkg get-install patch --forced
 	cd $src
 	# SliTaz db
-	[ -d slitaz ] && rm -rf slitaz 2> /dev/null
-	mkdir slitaz
+	[ -d $WOK/$PACKAGE/slitaz ] && rm -rf $WOK/$PACKAGE/slitaz 2> /dev/null
+	mkdir $WOK/$PACKAGE/slitaz
 	echo "$WGET_URL" > slitaz/url
-	cp ../stuff/gztazmod.sh ../stuff/list_modules.sh slitaz
-	cp ../stuff/bootloader.sh slitaz
+	cp $stuff/gztazmod.sh $stuff/list_modules.sh $WOK/$PACKAGE/slitaz
+	cp $stuff/bootloader.sh $WOK/$PACKAGE/slitaz
 	# Apply patches
+	report step "Applying patches"
 	while read patch_file; do
-		echo "$patch_file" >> slitaz/patches
-		cp ../stuff/$patch_file slitaz
+		echo "$patch_file" >> $WOK/$PACKAGE/slitaz/patches
+		cp $stuff/$patch_file $WOK/$PACKAGE/slitaz
 		if [ -f done.$patch_file ]; then
 			echo "Skipping $patch_file"
 			continue
 		fi
 		echo "Apply $patch_file"
-		patch -p1 < slitaz/$patch_file || exit 1
+		patch -p1 < $WOK/$PACKAGE/slitaz/$patch_file || { report close-bloc; return 1; }
 		touch done.$patch_file
 	done <<EOT
 $PACKAGE-diff-$VERSION.u
@@ -70,39 +61,44 @@ aufs2-standalone.patch
 004-squashfs-add-xz-compression-support.patch
 005-squashfs-add-xz-compression-configuration-option.patch
 EOT
+	report step "Make kernel proper and then build lguest"
 	make mrproper
 	cd Documentation/lguest
-	make lguest || return 1
-	cd ../..
+	make lguest || { report close-bloc; return 1; }
+	cd $src
 
+	report step "Make bzImage without modules first"
 	# Build bzImage without modules first
-	cp -f ../stuff/$PACKAGE-$VERSION-slitaz.config .config
+	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
 	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
 	# We can't keep every driver in staging 
 	sed -i -e 's/^CONFIG_RTL8192/#&/' \
 	       -e 's/^CONFIG_R8187SE/#&/' \
 	       -e 's/^CONFIG_RT2870/#&/' .config
 	yes '' | make oldconfig
-	make -j 4 bzImage || return 1
+	make -j 4 bzImage || { report close-bloc; return 1; }
 	[ -d $PWD/_pkg ] || mkdir -p $PWD/_pkg
 	mv arch/x86/boot/bzImage $PWD/_pkg
 	mv System.map System.map-without-modules
 
+	report step "Now build bzImage with modules"
 	# Build bzImage with modules
-	cp -f ../stuff/$PACKAGE-$VERSION-slitaz.config .config
+	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
 	make oldconfig
-	ln .config slitaz/config
+	ln .config $WOK/$PACKAGE/slitaz/config
 	make -j 4 bzImage &&
 	make -j 4 modules &&
 	make INSTALL_MOD_PATH=$PWD/_pkg modules_install &&
 	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install &&
-	[ -s arch/x86/boot/bzImage ] || return 1
+	[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
 	mkdir -p $PWD/_pkg/boot 2> /dev/null
 	mv arch/x86/boot/bzImage $PWD/_pkg/boot/vmlinuz-$VERSION-slitaz
 	# Compress all modules.
-	$WOK/$PACKAGE/stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
+	report step "Compressing all modules"
+	$stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
 	ln System.map System.map-modules
 	ln Module.symvers Module.symvers-modules
+	report close-bloc
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -119,13 +115,14 @@ genpkg_rules()
     # Get the base modules
     export src
     export _pkg
-    $src/slitaz/list_modules.sh \
-	$(cat stuff/modules-$VERSION.list) > $src/modules.list
+    mkdir $WOK/tmp
+    $WOK/$PACKAGE/stuff/list_modules.sh \
+	$(cat stuff/modules-$VERSION.list) > $WOK/tmp/modules.list
     while read module; do
     	dir=$(dirname $module)
     	[ -d $path/$dir ] || mkdir -p $path/$dir
         cp -a $_pkg/lib/modules/$VERSION-slitaz/kernel/$module $path/$dir
-    done < $src/modules.list
+    done < $WOK/tmp/modules.list
     # Remove unresolved links
     rm -f $fs/lib/modules/$VERSION-slitaz/build
     rm -f $fs/lib/modules/$VERSION-slitaz/source

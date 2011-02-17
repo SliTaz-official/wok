@@ -1,14 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="fltk-2.0.x"
-VERSION="r6671"
+VERSION="r7725"
 CATEGORY="system-tools"
 SHORT_DESC="Fast Light Tool Kit (provide fluid)."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="expat fontconfig freetype jpeg xorg-libX11 xorg-libXau xorg-libXdmcp \
 xorg-libXext xorg-libXft xorg-libXrender zlib libpng xorg-libXi \
 xorg-libXinerama gcc-lib-base"
-BUILD_DEPENDS="xorg-dev xorg-libXft-dev mesa mesa-dev"
+BUILD_DEPENDS="xorg-dev xorg-libXft-dev libglu-mesa mesa mesa-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.fltk.org/"
 WGET_URL="http://ftp.easysw.com/pub/fltk/snapshots/$TARBALL"
@@ -17,7 +17,13 @@ WGET_URL="http://ftp.easysw.com/pub/fltk/snapshots/$TARBALL"
 compile_rules()
 {
 	cd $src
-	patch -p 0 < ../stuff/filename_list-dirent.patch || exit 1
+	  patch -p0 src/filename_list.cxx <<EOF
+66c66
+<   int n = scandir(d, list, 0, (int(*)(const void*,const void*))sort);
+---
+>   int n = scandir(d, list, 0, (int(*)(const dirent64**,const dirent64**))sort);
+EOF
+
 	./configure \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
