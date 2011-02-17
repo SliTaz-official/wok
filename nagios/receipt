@@ -5,8 +5,8 @@ VERSION="3.2.3"
 CATEGORY="network"
 SHORT_DESC="Host and network monitoring"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="apache nagios-plugins libpng libjpeg"
-BUILD_DEPENDS="libgd-dev libpng-dev jpeg-dev"
+DEPENDS="apache nagios-plugins libpng libjpeg libltld"
+BUILD_DEPENDS="libgd-dev libpng-dev jpeg-dev libtool-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.nagios.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
@@ -38,7 +38,7 @@ EOT
 		--libexecdir=/usr/lib/nagios/plugins \
 		--sbindir=/usr/lib/nagios/cgi \
 		--datadir=/usr/share/nagios \
-		--localstatedir=/var/log/nagios \
+		--localstatedir=/var/lib/nagios \
 		$CONFIGURE_ARGS 
 		
 	make all && make DESTDIR=$PWD/_pkg fullinstall \
@@ -49,7 +49,7 @@ EOT
 genpkg_rules()
 {
 	mkdir -p $fs/usr $fs/etc/init.d \
-	  $fs/var/log/nagios/rw \
+	  $fs/var/lib/nagios/rw \
 	  $fs/var/run/nagios \
 	  $fs/var/spool/nagios/checkresults \
 	  $fs/etc/apache
@@ -68,6 +68,9 @@ genpkg_rules()
 	
 	# Fix Apache config for Nagvis
 	sed -i 's/Options None/Options FollowSymLinks/' $fs/etc/apache/conf.d/nagios.conf
+	
+	# Fix permissions 
+	chmod 755 $fs/usr/bin/nagios*
 }
 
 post_install()
@@ -83,11 +86,12 @@ post_install()
 	chroot $1/ chown -R nagios.nagios /var/log/nagios \
 	  /var/run/nagios \
 	  /var/spool/nagios \
+	  /var/lib/nagios \
 	  /usr/share/nagios \
 	  /etc/nagios/*
 	  
 	
-	chmod 2775 $1/var/log/nagios/rw
+	chmod 2775 $1/var/lib/nagios/rw
 	chroot $1/ addgroup www nagios
 	
 	# Start Nagios daemon if we are  on running system
