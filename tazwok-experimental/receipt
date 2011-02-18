@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="tazwok-experimental"
-VERSION="0.0.6.6"
+VERSION="0.0.7"
 CATEGORY="base-system"
 SHORT_DESC="SliTaz sources and binaries packages cooker."
 MAINTAINER="gokhlayeh@slitaz.org"
@@ -21,7 +21,8 @@ TAGS="slitaz"
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin $fs/usr/share/doc/tazwok \
-		$fs/etc/slitaz $fs/usr/share/slitaz/web-bb
+		$fs/etc/slitaz $fs/usr/share/slitaz/web-bb \
+		$fs/usr/lib/slitaz/chroot-scripts
 	# Copy Tazwok, doc and examples.
 	cp -a $src/tazwok $fs/usr/bin
 	cp -a $src/update-repository $fs/usr/bin
@@ -33,14 +34,17 @@ genpkg_rules()
 	cp -a $src/examples/config.site $fs/etc
 	# Webserver stuff
 	cp -a $src/web/* $fs/usr/share/slitaz/web-bb
+	# Chroot scripts
+	cp -a $src/chroot-scripts $fs/usr/lib/slitaz/chroot-scripts/tazwok
 }
 
 post_install()
 {
 	echo -e "\\033[1;31mWARNING WARNING WARGNING
-You should run update-repository on all repositories you used with
-tazwok-experimental until there.This script change sources names, generate sources.list and modify
-logs to make you're repository consistent with last changes.
+You should run update-repository on all repositories you used with \
+tazwok-experimental until there.This script change sources names,  \
+generate sources.list and modify logs to make you're repository \
+consistent with last changes.
 
 Usage is:
 update-repository LOCAL_REPOSITORY
@@ -48,5 +52,21 @@ update-repository LOCAL_REPOSITORY
 Exemple:
 update-repository /home/slitaz/experimental
 
-Sorry for this ;)\\033[0m"
+You should also update you're tazchroot.conf as some path has changed.
+To do that use:
+
+tazwok configure-chroot
+
+You should also update you're tazwok.conf (global and local) if you \
+to use update-wok function.
+
+To find locals tazwok.conf:
+echo $SLITAZ_DIR/*/tazwok.conf
+
+Add theses variables to the configuration file (change pathes if needed):
+WOK_UPDATE_METHOD=\"hg\"
+TARBALL_WOK=\"http://hg.slitaz.org/wok/archive/tip.tar.bz2\"
+HG_WOK=\"http://hg.slitaz.org/wok\"
+
+Sorry for this ;)\\033[0m" | fold -s
 }
