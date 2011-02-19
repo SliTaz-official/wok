@@ -14,21 +14,22 @@ WGET_URL="http://releases.mozilla.org/pub/mozilla.org/seamonkey/releases/$VERSIO
 # Rules to configure and make the package.
 compile_rules()
 {
-	#mv mozilla $PACKAGE-$VERSION   2>/dev/null    || return 1
+	#mv mozilla $PACKAGE-$VERSION   2>/dev/null    || exit 1
 	mv comm-1.9.1 $PACKAGE-$VERSION   2>/dev/null 
 	cp -a stuff/seamonkey.mozconfig $src/.mozconfig
 	cd $src
-	patch -p1 -i ../stuff/google-breakpad.u || return 1
-	cat >> layout/build/Makefile.in << "EOF"
+	#patch -p1 -i ../stuff/google-breakpad.u || exit 1
+	cat >> mozilla/layout/build/Makefile.in << "EOF"
 ifdef MOZ_ENABLE_CANVAS
 EXTRA_DSO_LDOPTS += $(XLDFLAGS) -lX11 -lXrender
 endif
 EOF
-	make -j 4 -f client.mk build
-	make -f client.mk DESTDIR=$PWD/_pkg install
-	
-	# French suport
-	tar xvzf ../stuff/seamonkey-2.0.2.fr.langpack.tar.gz
+	unset CFLAGS
+	unset CXXFLAGS
+
+	export LDFLAGS="-Wl,-rpath,/usr/lib/seamonkey-$VERSION"
+	make -j1 -f client.mk build MOZ_MAKE_FLAGS="${MAKEFLAGS}"
+	make -j1 -f client.mk DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -50,10 +51,6 @@ genpkg_rules()
 	rm -rf $fs/etc/seamonkey/profile/US
 	chown -R root.root $fs/etc
 
-	# Add french langpack
-	mkdir $fs/usr/lib/$PACKAGE-$VERSION/extensions/langpack-fr@seamonkey.mozilla.org
-	cp -pa $src/seamonkey-2.0.2.fr.langpack/* \
-		$fs/usr/lib/$PACKAGE-$VERSION/extensions/langpack-fr@seamonkey.mozilla.org
 	# Create default user preference file
 	cp stuff/prefs.js $fs/etc/seamonkey/profile/prefs.js
 	
