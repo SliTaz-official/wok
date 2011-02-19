@@ -16,7 +16,6 @@ WGET_URL="http://www.sqlite.org/$TARBALL"
 # Rules to configure and make the package.
 compile_rules()
 {
-	src=$WOK/$PACKAGE/$PACKAGE-src-${_amalgamationver}
 	cd $src
 	
 	./configure \
@@ -38,14 +37,16 @@ compile_rules()
 	sed -i -e 's!lempar.c!/usr/share/lemon/lempar.c!' lemon.c
 	echo -n "Compiling lemon..."
 	gcc -o lemon lemon.c && status
-	
+	mkdir -p $PWD/_pkg/usr/share/lemon
+	cp -a $src/lemon $PWD/_pkg/usr/bin
+	cp -a $src/lempar.c $PWD/_pkg/usr/share/lemon
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	_pkg=$WOK/$PACKAGE/$PACKAGE-src-${_amalgamationver}/_pkg
 	mkdir -p $fs/usr
 	
 	cp -a $_pkg/usr/bin $fs/usr
+	[ -f $fs/usr/bin/lemon ] && rm -f $fs/usr/bin/lemon
 }
