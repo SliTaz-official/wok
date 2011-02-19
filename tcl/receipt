@@ -15,32 +15,23 @@ TAGS="language programming"
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Redefine  source path src
-	src=${SOURCE}${VERSION}/unix
-
-	cd $src
-	./configure --prefix=/usr \
-	 --infodir=/usr/share/info \
+	cd $src/unix
+	./configure \
 	 --enable-shared \
 	 --disable-symbols \
-	 --mandir=/usr/share/man $CONFIGURE_ARGS && \
+	 --mandir=/usr/share/man && \
 	make && \
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
+	cp -a $src/generic/tcl*.h $DESTDIR/usr/include
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	
-	_pkg=${SOURCE}${VERSION}/unix/_pkg
 	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/lib/tcl8* $fs/usr/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
 	strip -s $fs/usr/bin/*
 	ln -sf tclsh8.5 $fs/usr/bin/tclsh
-}
-
-clean_wok(){
-	test -d ${SOURCE}${VERSION} && rm -rf ${SOURCE}${VERSION}
 }
