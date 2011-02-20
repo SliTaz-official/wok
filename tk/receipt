@@ -17,22 +17,17 @@ TAGS="programming language"
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Redefine TK source path
-	src=${SOURCE}${VERSION}/unix
-
-	cd $src
+	cd $src/unix
 	./configure --prefix=/usr \
 	 --enable-threads \
 	 --enable-shared  $CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	_pkg=${SOURCE}${VERSION}/unix/_pkg
-	
 	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
@@ -40,9 +35,4 @@ genpkg_rules()
 	
 	cd $fs/usr/bin
 	ln -s wish${VERSION%%.[0-9]} wish
-}
-
-clean_wok()
-{
-	test -d tk* && rm -rf tk*
 }

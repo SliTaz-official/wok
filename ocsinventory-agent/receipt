@@ -16,16 +16,14 @@ WGET_URL="http://launchpad.net/ocsinventory-unix-agent/stable-1.1.2/ocsinventory
 # Rules to configure and make the package.
 compile_rules()
 {
-	src=$WOK/$PACKAGE/Ocsinventory-Agent-${VERSION}
-
-	cp stuff/Slitaz.pm $src/lib/Ocsinventory/Agent/Backend/OS/Linux/Distro/NonLSB
-	cp stuff/Tazpkg.pm $src/lib/Ocsinventory/Agent/Backend/OS/Generic/Packaging
+	cp $stuff/Slitaz.pm $src/lib/Ocsinventory/Agent/Backend/OS/Linux/Distro/NonLSB
+	cp $stuff/Tazpkg.pm $src/lib/Ocsinventory/Agent/Backend/OS/Generic/Packaging
 	
 	cd $src
 	
 	# don't run postinstall script
 	rm -f run-postinst
-	for p in ../stuff/ocsinventory-agent-1.1.2.1.u
+	for p in $stuff/ocsinventory-agent-1.1.2.1.u
 	do
 		[ -f done.$(basename $p) ] && continue
 		patch -p1 -i $p || return 1
@@ -39,8 +37,6 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	_pkg=$WOK/$PACKAGE/Ocsinventory-Agent-${VERSION}/_pkg
-		
 	mkdir -p $fs/usr \
 		$fs/etc/ocsinventory-agent \
 		$fs/var/lib/ocsinventory-agent
@@ -61,10 +57,5 @@ EOT
 		install -o root -g root -m 0755 -d $1/var/lib/dpkg
 		touch $1/var/lib/dpkg/status
 	fi
-}	
-
-clean_wok()
-{
-	[ -d Ocsinventory-Agent-${VERSION} ] && rm -rf Ocsinventory-Agent-${VERSION}
 }
 

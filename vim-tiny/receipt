@@ -16,8 +16,6 @@ TAGS="text-editor"
 # Rules to configure and make the package.
 compile_rules()
 {
-	src=vim72
-	#test -d $PACKAGE-$VERSION || mv vim72 $PACKAGE-$VERSION
 	cd $src
 	
 	./configure --prefix=/usr \
@@ -33,28 +31,19 @@ compile_rules()
 	 --mandir=/usr/share/man $CONFIGURE_ARGS && 
 	 
 	make VIMRCLOC=/etc/vim VIMRUNTIMEDIR=/usr/share/vim/$src MAKE="make -e" &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
+	mkdir -p $DESTDIR/etc/vim
+	cp -a $src/runtime/vimrc_example.vim $DESTDIR/etc/vim/vimrc
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	_pkg="$PWD/vim72/_pkg"
-	
-	mkdir -p $fs/usr $fs/usr/share $fs/etc/vim
+	mkdir -p $fs/usr $fs/usr/share
 	
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/share/vim $fs/usr/share
-	cp -a $WOK/$PACKAGE/vim72/runtime/vimrc_example.vim $fs/etc/vim/vimrc
 	rm -f $fs/usr/bin/*tutor
-}
-
-
-
-# Rules to clean extras dirs or files
-clean_wok()
-{
-	rm -rf $PWD/vim72 2>/dev/null
 }
 
 post_install()
@@ -84,5 +73,5 @@ post_remove()
 {
 	# restore previous symlink
 	echo "Processing post-remove commands..."
-	ln -sf /bin/busybox /bin/vi
+	ln -sf /bin/busybox $1/bin/vi
 }

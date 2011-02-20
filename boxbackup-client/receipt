@@ -19,7 +19,7 @@ RUN_DMON=0
 # Rules to gen a SliTaz package suitable for Tazpkg
 genpkg_rules()
 {
- 	_pkg=$WOK/$WANTED/${SOURCE}-$VERSION/parcels/boxbackup-${VERSION}-backup-client-linux-gnu
+	_pkg=$WOK/$WANTED/${SOURCE}-$VERSION/parcels/boxbackup-${VERSION}-backup-client-linux-gnu
 	mkdir -p $fs/usr/bin
 	cp -a $_pkg/bb* $fs/usr/bin
 	mkdir -p $fs/etc/init.d
@@ -40,15 +40,17 @@ pre_install()
 post_install()
 {
 	# Creating conf dir
-	if [ ! -e $CONF_DIR ]; then
-	    mkdir -p $CONF_DIR && chmod 755 $CONF_DIR
+	if [ ! -e $1/$CONF_DIR ]; then
+	    mkdir -p $1/$CONF_DIR && chmod 755 $1/$CONF_DIR
 	fi
-	if [ ! -e $DATA_DIR ]; then
-	    mkdir -p $DATA_DIR && chmod 700 $DATA_DIR
+	if [ ! -e $1/$DATA_DIR ]; then
+	    mkdir -p $1/$DATA_DIR && chmod 700 $1/$DATA_DIR
 	fi
-	# Start daemon (if stopped by install)
-	if [ $RUN_DMON -eq 1 ]; then
-		/etc/init.d/bbackupd start
+	if [ -z $1 ]; then
+		# Start daemon (if stopped by install)
+		if [ $RUN_DMON -eq 1 ]; then
+			/etc/init.d/bbackupd start
+		fi
 	fi
 }
 
@@ -57,25 +59,27 @@ post_install()
 pre_remove()
 {
     # Stop daemon
-	if [ -e /var/run/bbackupd.pid ]; then
-		/etc/init.d/bbackupd stop
+	if [ -z $1 ]; then
+		if [ -e /var/run/bbackupd.pid ]; then
+			/etc/init.d/bbackupd stop
+		fi
 	fi
 }
 
 post_remove()
 {
 	# Delete DATA directory
-	rm -rf $DATA_DIR
+	rm -rf $1/$DATA_DIR
 
 	# Delete Client config files
-	rm -rf $CONF_DIR/bbackupd*
+	rm -rf $1/$CONF_DIR/bbackupd*
 
 	# Delete CONF dir (if empty)
 	if [ `ls -lA $CONF_DIR | wc -l` -eq 0 ]; then
 		echo -n "Removing $CONF_DIR..."
-		rm -rf $CONF_DIR
+		rm -rf $1/$CONF_DIR
 		status
 	fi
 	# Delete PID, sock files
-	rm -f /var/run/bbackupd.*
+	rm -f $1/var/run/bbackupd.*
 }
