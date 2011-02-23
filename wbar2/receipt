@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="wbar2"
+VERSION="2.1.1"
+CATEGORY="system-tools"
+SHORT_DESC="Quick launch bar."
+MAINTAINER="gokhlayeh@slitaz.org"
+SOURCE="wbar"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://code.google.com/p/wbar/"
+WGET_URL="http://wbar.googlecode.com/files/$TARBALL"
+DEPENDS="ttf-dejavu imlib2 libglade gtk+"
+BUILD_DEPENDS="intltool"
+CONFIG_FILES="/etc/wbar/dot.wbar"
+TAGS="desktop launchbar"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --exec_prefix=/usr \
+		--sysconfdir=/etc &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/usr $_pkg/etc $fs
+	cp -a $stuff/wbar.cfg $_pkg/etc/default/wbar
+	rm -r $_pkg/usr/share/locale
+	for file in $_pkg/usr/share/pixmaps/wbar/*; do
+		[ "${file##*/}" = osxbarback.png ] && continue
+		rm -f $file
+	done
+}
