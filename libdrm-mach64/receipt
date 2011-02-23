@@ -1,0 +1,27 @@
+# SliTaz package receipt.
+
+PACKAGE="libdrm-mach64"
+VERSION="20110109"
+CATEGORY="x-window"
+SHORT_DESC="DRM Library for mach64 (deprecated but no alternative)."
+MAINTAINER="gokhlayeh@slitaz.org"
+DEPENDS="linux-module-headers"
+WEB_SITE="http://dri.freedesktop.org/wiki/DRM"
+TARBALL="mach64-$VERSION.tar.gz"
+WGET_URL="http://trya.alwaysdata.net/linux/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	#DESTDIR="$DESTDIR/lib/modules/`uname -r`/kernel/"
+	KERN_DIR=/usr/src/linux make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	KERNEL_VERSION=`grep ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	install -D -m644 $src/mach64.ko \
+	"$fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/gpu/drm/mach64/mach64.ko"
+}
