@@ -1,0 +1,61 @@
+#!/bin/sh
+# Tazchroot - SliTaz chroot managing tool.
+#
+# System wide config file for tazhack : /etc/slitaz/tazchroot.conf
+# Expected system wide config (for Slitaz) : /etc/slitaz/slitaz.conf
+#
+# (¢) Since end of time Anonymous - GNU gpl v3
+# Version : Alpha
+# Authors : Anonymous
+#
+
+# Get main SliTaz configuration file.
+. /usr/lib/slitaz/libtaz
+source_lib commons
+
+# Create chroot if needed
+check_chroot()
+{
+if [ ! -d $chroot_dir ]; then
+	check_root
+	echo -n "Creating chroot in $chroot_dir..."
+	create_chroot
+	status
+fi
+if [ -d "$chroot_dir/proc/1" ]; then
+	echo "The chroot $chroot_dir is already mounted." >&2
+	exit 1
+fi
+}
+
+update_scripts()
+{
+	echo -n "Updating scripts"
+	for script in $(cd "$script_dir" && echo *); do
+		if [ ! -f "$chroot_dir/usr/bin/$script" ] || \
+			[ "$script_dir/$script" -nt "$chroot_dir/usr/bin/$script" ]; then
+			cp -a "$script_dir/$script" "$chroot_dir/usr/bin/$script"
+			chmod +x "$chroot_dir/usr/bin/$script"
+		fi
+	done
+	status
+}
+
+# Run the script.
+check_root
+get_config
+command="$@"
+[ -z "$command" ] && command='/bin/sh --login'
+check_chroot
+echo -n "Updating scripts..."
+update_scripts
+status
+echo -n "Mounting chroot directories..."
+mount_chroot
+status
+echo "Command : $command"
+echo "Entering in chroot..."
+chroot $chroot_dir $command
+echo -n "Leaving chroot..."
+umount_chroot
+status
