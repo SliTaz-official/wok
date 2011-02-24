@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="gcompris"
+VERSION="9.5"
+CATEGORY="games"
+SHORT_DESC="Education games."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="pygtk libsdl-mixer librsvg libxml2 gnuchess gnet sqlite \
+libcroco"
+BUILD_DEPENDS="pygtk-dev libsdl-mixer-dev librsvg-dev libxml2-dev gnuchess \
+gnet-dev sqlite-dev libcroco-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gcompris.net/"
+WGET_URL="$SF_MIRROR/project/$PACKAGE/$PACKAGE/$VERSION/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    ./configure \
+    	--enable-sdlmixer &&
+    make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/gcompris $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/gcompris/*.so* \
+		$fs/usr/lib/gcompris
+	cp -a $_pkg/usr/share/gcompris $fs/usr/share
+	# Music and voices are splited (gcompris-music, gcompris-fr, etc)
+	rm -rf $fs/usr/share/gcompris/boards/music
+	rm -rf $fs/usr/share/gcompris/boards/voices
+}
