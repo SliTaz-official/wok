@@ -1,0 +1,173 @@
+#!/bin/sh
+#
+# Tazfbsplash - Tool to manage and configure Busybox fbsplash on SliTaz
+# (C) 2011 SliTaz - GNU General Public License.
+#
+# TODO:
+#	box - on/off with curent status 
+#	box - change/install/remove themes
+#   check GRUB settings: quiet vga=*
+#
+
+. /etc/rcS.conf
+
+# Functions
+
+. /usr/lib/slitaz/libtaz
+source_lib commons
+
+usage() {
+	echo -e "\nSliTaz graphical boot configuration tool\n
+\033[1mUsage:\033[0m `basename $0` [command] [theme]
+\033[1mCommands: \033[0m
+  on             Enable graphical boot.
+  off            Disable graphical boot.
+  list-themes    List all installed themes.
+  change-theme   Change current theme.
+  pack-theme     Pack a system theme in a tar archive.
+  install-theme  Install a fbsplash-theme-* archive.
+  test           Test a theme configuration (Must be run in text mode).
+  box            Graphical configuration box.\n"
+}
+
+separator() {
+	echo "================================================================================"
+}
+
+change_theme()
+{
+	sed -i s~FBSPLASH_THEME=.*~FBSPLASH_THEME=\"$new_theme\"~ /etc/rcS.conf
+}
+
+# GUI box (not yet ready :-)
+box() {
+	export MAIN_DIALOG='
+	<window title="Tazfbsplash Box" icon-name="preferences-desktop-wallpaper">
+	<vbox>
+		<text use-markup="true">
+			<label>"
+<b>SliTaz Fbsplash Box</b>"</label>
+		</text>
+		<text wrap="true" width-chars="50" use-markup="true">
+			<label>"SliTaz graphical boot manager
+			"</label>
+		</text>
+		<hbox>
+			<text use-markup="true">
+				<label>"<b>Theme:</b>"</label>
+			</text>
+			<entry>
+				<default>'$FBSPLASH_THEME'</default>
+				<variable>NEW_THEME</variable>
+			</entry>
+			<button>
+				<input file icon="text-editor"></input>
+				<action>editor /etc/fbsplash/$NEW_THEME/fbsplash.cfg</action>
+			</button>
+			<button>
+				<input file icon="forward"></input>
+				<action>tazfbsplash -ct $NEW_THEME</action>
+			</button>
+		</hbox>
+		<tree>
+			<width>320</width><height>120</height>
+			<variable>EDIT_THEME</variable>
+			<label>Themes list (double-click to edit config)</label>
+			<input>tazfbsplash -lt --box</input>
+			<action>editor /etc/fbsplash/$EDIT_THEME/fbsplash.cfg</action>
+		</tree>
+		<hbox>
+			<button>
+				<input file icon="exit"></input>
+				<action type="exit">exit</action>
+			</button>
+		</hbox>
+	</vbox>
+	</window>'
+	gtkdialog --center --program=MAIN_DIALOG 
+}
+
+# Commands
+
+case "$1" in
+	on)
+		# Enable graphical boot.
+		echo -en "\nEnabling SliTaz graphical boot..."
+		if [ ! `grep "rcS > /dev/null" /etc/inittab` ]; then
+			sed -i s'/rcS/rcS > \/dev\/null/' /etc/inittab
+		fi
+		sed -i s'/FBSPLASH="no"/FBSPLASH="yes"/' /etc/rcS.conf
+		status && echo "" ;;
+	off)
+		# Disable graphical boot.
+		echo -en "\nDisabling SliTaz graphical boot..."
+		sed -i s'/rcS > \/dev\/null/rcS/' /etc/inittab
+		sed -i s'/FBSPLASH="yes"/FBSPLASH="no"/' /etc/rcS.conf
+		status && echo "" ;;
+	list-themes|-lt)
+		# List all themes
+		if [ "$2" != "--box" ]; then
+			echo -en "\n\033[1mBoot splash themes\033[0m"
+			separator
+		fi
+		cd /etc/fbsplash
+		for i in *
+		do
+			[ -f "/etc/fbsplash/$i/fbsplash.cfg" ] && echo $i
+		done
+		[ "$2" != "--box" ] && echo "" ;;
+	change-theme|-ct)
+		new_theme="$2"
+		[ -z "$new_theme" ] && exit 0
+		[ ! -d "/etc/fbsplash/$new_theme" ] && exit 0
+		echo -n "Activing fbsplash theme: $new_theme"
+		change_theme && status ;;
+	pack-theme|-pt)
+		# Pack a theme into .tar.gz
+		theme="$2"
+		tmp=slitaz-fbsplash-$theme
+		if [ ! -d "/etc/fbsplash/$theme" ]; then
+			echo -e "\nNo theme found in: /etc/fbsplash/$theme\n"
+			exit 0
+		fi
+		echo -n "Creating fbsplash theme archive for: $theme"
+		mkdir -p $tmp
+		cp -r /etc/fbsplash/$theme $tmp
+		cat > $tmp/README << EOT
+SliTaz graphical boot theme
+================================================================================
+
+This is a Busybox fbsplash theme created on and for SliTaz GNU/Linux. To use it
+you can copy files manually to /etc/fbsplash or use 'tazfbsplash install-theme'
+EOT
+		busybox tar czf slitaz-fbsplash-$theme.tar.gz $tmp
+		rm -rf $tmp && status ;;
+	install-theme|-it)
+		check_root
+		file=$2
+		if [ ! -f "$file" ]; then
+			echo -e "\nNo theme archive: $file\n"
+			exit 0
+		fi
+		echo -n "Installing fbsplash theme..."
+		tar xzf $file -C /tmp
+		rm /tmp/slitaz-fbsplash-*/README
+		cp -r /tmp/slitaz-fbsplash-*/* /etc/fbsplash
+		status ;;
+	test|-t)
+		# Test suite for fbsplash on SliTaz (must be run in text mode).
+		fbsplash -c \
+			-s /etc/fbsplash/$FBSPLASH_THEME/fbsplash.ppm \
+			-i /etc/fbsplash/$FBSPLASH_THEME/fbsplash.cfg \
+			-f /etc/fbsplash/fifo &
+		for p in 0 10 20 30 40 50 60 70 80 90 100
+		do
+			echo "$p" > /etc/fbsplash/fifo && sleep 1
+		done > /dev/null
+		echo "exit" > /etc/fbsplash/fifo ;;
+	box|-b)
+		box ;;
+	*)
+		usage ;;
+esac
+exit 0

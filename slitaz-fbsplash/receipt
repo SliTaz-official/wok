@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="slitaz-fbsplash"
+VERSION="1.0"
+CATEGORY="base-system"
+SHORT_DESC="SliTaz theme and config for Busybox fbsplash (graphical boot)"
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="busybox slitaz-boot-scripts"
+WEB_SITE="http://www.slitaz.org/"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/etc/fbsplash/slitaz
+	cp $stuff/tazfbsplash $fs/usr/bin
+	cp -a $stuff/fbsplash.cfg $fs/etc/fbsplash/slitaz
+	cp -a $stuff/fbsplash.ppm $fs/etc/fbsplash/slitaz
+	mkfifo $fs/etc/fbsplash/fifo
+}
+
+post_install()
+{
+	[ ! `grep "rcS > /dev/null" $1/etc/inittab` ] && \
+		sed -i s'/rcS/rcS > \/dev\/null/' $1/etc/inittab
+	sed -i s'/FBSPLASH="no"/FBSPLASH="yes"/' $1/etc/rcS.conf
+	# Config may not yet exist.
+	if ! grep -q ^FBSPLASH $1/etc/rcS.conf; then
+		cat >> $1/etc/rcS.conf << EOT
+
+# Graphical boot with fbsplash (To configure please use: tazfbsplash)
+FBSPLASH="yes"
+FBSPLASH_THEME="slitaz"
+EOT
+	fi
+}
+
+post_remove()
+{
+	sed -i s'/rcS > \/dev\/null/rcS/' $1/etc/inittab
+	sed -i s'/FBSPLASH="yes"/FBSPLASH="no"/' $1/etc/rcS.conf
+}
