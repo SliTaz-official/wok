@@ -6,7 +6,7 @@ CATEGORY="development"
 SHORT_DESC="Widget for live display of large amounts of fluctuating data."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="gtk+"
-BUILD_DEPENDS="pkg-config gtk+-dev"
+BUILD_DEPENDS="pkg-config"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://sourceforge.net/projects/gtkdatabox/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
@@ -15,15 +15,17 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 compile_rules()
 {
 	cd $src
-	sed -i -e 's/GTK_WIDGET_REALIZED/gtk_widget_get_realized/g' \
-	       -e 's/GTK_WIDGET_STATE/gtk_widget_get_state/g' \
-	       -e 's/GTK_WIDGET_VISIBLE/gtk_widget_get_visible/g' \
-	       -e 's/GTK_WIDGET_DRAWABLE/gtk_widget_is_drawable/g' \
-	       gtk/gtkdatabox_ruler.c gtk/gtkdatabox.c
-	./configure \
-		--prefix=/usr \
-		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
+
+	# Fix from gentoo
+	# http://sources.gentoo.org/cgi-bin/viewvc.cgi/gentoo-x86/x11-libs/gtkdatabox/gtkdatabox-0.9.1.1.ebuild?view=markup
+	# Remove -D.*DISABLE_DEPRECATED cflags
+	find . -iname 'Makefile.am' -exec \
+	sed -e '/-D[A-Z_]*DISABLE_DEPRECATED/d' -i {} + && \
+	# Do Makefile.in after Makefile.am to avoid automake maintainer-mode
+	find . -iname 'Makefile.in' -exec \
+	sed -e '/-D[A-Z_]*DISABLE_DEPRECATED/d' -i {} + && \
+
+	./configure && make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
