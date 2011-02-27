@@ -6,8 +6,7 @@ CATEGORY="multimedia"
 SHORT_DESC="Xfce Media Player"
 MAINTAINER="erjo@slitaz.org"
 DEPENDS="libxfcegui4 libexo xine-lib xorg-libXss xorg-libXtst taglib"
-BUILD_DEPENDS="libxfcegui4-dev libexo-dev xine-lib-dev xorg-libXss-dev \
-xorg-scrnsaverproto xcb-util-dev util-linux-ng-uuid-dev"
+BUILD_DEPENDS="exo util-linux-ng-uuid intltool"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://spuriousinterrupt.org/projects/xfmedia"
 WGET_URL="http://spuriousinterrupt.org/files/xfmedia/xfmedia-0.9.2.tar.bz2"
@@ -16,6 +15,9 @@ WGET_URL="http://spuriousinterrupt.org/files/xfmedia/xfmedia-0.9.2.tar.bz2"
 compile_rules()
 {
 	cd $src
+	patch -Np1 -i $stuff/xfmedia-dbus-0.6-support.patch
+	patch -Np1 -i $stuff/xfmedia-empty-prev-next-fix.patch
+	patch -Np1 -i $stuff/xfmedia-exo-0.6.patch
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -23,7 +25,7 @@ compile_rules()
 		--disable-startup-notification \
 		$CONFIGURE_ARGS || return 1
 	sed -i 's/define HAVE_XSCREENSAVER_EXTENSION .*/undef HAVE_XSCREENSAVER_EXTENSION/' config.h
-	make && make DESTDIR=$PWD/_pkg install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
