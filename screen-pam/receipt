@@ -11,7 +11,7 @@ WEB_SITE="http://www.gnu.org/software/screen"
 WGET_URL="$GNU_MIRROR/$SOURCE/$TARBALL"
 CONFIG_FILES="/etc/screenrc"
 DEPENDS="pam"
-BUILD_DEPENDS="ncurses-extra pam pam-dev"
+BUILD_DEPENDS="ncursesw-extra pam pam-dev"
 SUGGESTED="screen-terminfo"
 PROVIDE="screen:pam"
 SRC_WANTED="$SOURCE"
@@ -20,19 +20,20 @@ SRC_WANTED="$SOURCE"
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info --enable-pam \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./configure --enable-pam &&
 	make &&
-	make DESTDIR=$PWD/_pkg install || return 1
-	mkdir -p _pkg/usr/share/terminfo
-	tic -o $PWD/_pkg/usr/share/terminfo terminfo/screeninfo.src
+	make -j1 DESTDIR=$DESTDIR install &&
+	mkdir -p $DESTDIR/usr/share/terminfo &&
+	tic -o $DESTDIR/usr/share/terminfo terminfo/screeninfo.src &&
+	mkdir -p $DESTDIR/etc &&
+	cp $src/etc/screenrc $DESTDIR/etc
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share $fs/etc
-	cp $src/etc/screenrc $fs/etc
+	mkdir -p $fs/usr/bin $fs/usr/share
+	cp $_pkg/etc $fs
 	cp -a $_pkg/usr/bin/screen-$VERSION $fs/usr/bin/screen
 	cp -a $_pkg/usr/share/screen $fs/usr/share
 }
