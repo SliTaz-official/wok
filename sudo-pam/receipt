@@ -1,12 +1,11 @@
 # SliTaz package receipt.
 
 PACKAGE="sudo-pam"
-VERSION="1.7.4p6"
+VERSION="1.8.0"
 CATEGORY="security"
 SHORT_DESC="Sudo (su \"do\") allows a system administrator to delegate authority using PAM."
 MAINTAINER="erjo@slitaz.org"
 DEPENDS="pam"
-BUILD_DEPENDS="pam pam-dev"
 SOURCE="sudo"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.gratisoft.us/sudo/"
@@ -18,17 +17,14 @@ SRC_WANTED="$SOURCE"
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr \
-	--sysconfdir=/etc \
+	./configure --sysconfdir=/etc \
 	--with-pam \
 	--with-editor=/bin/vi \
-	--libexecdir=/usr/lib \
-	$CONFIGURE_ARGS &&
-	
+	--libexecdir=/usr/lib &&
 	# Build everything
 	make &&
 	# Install everything
-	make DESTDIR=$PWD/_pkg install
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -47,6 +43,8 @@ genpkg_rules()
 
 pre_install()
 {
+	local root
+	root=$1
 	echo "Processing pre-install commands..."
 	if [ -f $root/etc/sudoers.bak ]; then
 		cp $root/etc/sudoers $root/etc/sudoers.bak
