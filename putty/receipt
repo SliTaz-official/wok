@@ -9,7 +9,7 @@ DEPENDS="glibc-base expat zlib gtk+ atk cairo freetype fontconfig glib \
 libgio pango pixman libpng libxcb xcb-util xorg-libX11 xorg-libXau \
 xorg-libXcomposite xorg-libXcursor xorg-libXdamage xorg-libXdmcp \
 xorg-libXext xorg-libXfixes xorg-libXinerama xorg-libXrender krb5 libcomerr3"
-BUILD_DEPENDS="slitaz-toolchain gtk+-dev imagemagick python perl krb5-dev"
+BUILD_DEPENDS="gtk+-dev imagemagick python perl krb5-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.chiark.greenend.org.uk/~sgtatham/putty/"
 #WGET_URL="http://putty.linux-mirror.org/latest/$TARBALL"
@@ -22,19 +22,16 @@ compile_rules()
 	cd $src/icons &&
 	make &&
 	make install &&
-	mkdir -p $src/_pkg/usr/share/pixmaps &&
-	cp $src/icons/pterm-48.png $src/_pkg/usr/share/pixmaps/pterm.png &&
-	cp $src/icons/putty-48.png $src/_pkg/usr/share/pixmaps/putty.png &&
+	mkdir -p $DESTDIR/usr/share/pixmaps &&
+	cp $src/icons/pterm-48.png $DESTDIR/usr/share/pixmaps/pterm.png &&
+	cp $src/icons/putty-48.png $DESTDIR/usr/share/pixmaps/putty.png &&
 	
 	cd $src/unix &&
 
 	sed -e 's/-Werror//g' -i configure &&
-	./configure \
-		--prefix=/usr \
-		--mandir=/usr/share/man \
-		$CONFIGURE_ARGS &&
+	./configure &&
 	make XFLAGS=-DTELNET_DEFAULT &&
-	make DESTDIR=$src/_pkg install
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -42,7 +39,7 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share $fs/usr/share/pixmaps
 	
-	cp -a stuff/applications $src/_pkg/usr/share
+	cp -a $stuff/applications $_pkg/usr/share
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/share/applications $fs/usr/share
 	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
