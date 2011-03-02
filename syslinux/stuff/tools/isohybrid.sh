@@ -19,21 +19,23 @@ id=$(( ($RANDOM <<16) + $RANDOM))
 offset=0
 partok=0
 hd0=0
+always=0
 
 while [ -n "$1" ]; do
-	case "$1" in
-	-ct*)		hd0=2;;
-	-e*|--e*)	entry=$2; shift;;
-	-f*)		hd0=1;;
-	-h)		heads=$2; shift;;
-	-i|--i*)	id=$(($2)); shift;;
-	-noh*)		hd0=0;;
-	-nop*)		partok=0;;
-	-o*|--o*)	offset=$(($2)); shift;;
-	-p*)		partok=1;;
-	-s)		sectors=$2; shift;;
-	-t*|--t*)	partype=$(($2 & 255)); shift;;
-	*)		iso=$1;;
+	case "${1/--/-}" in
+	-a*)	always=1;;
+	-ct*)	hd0=2;;
+	-e*)	entry=$2; shift;;
+	-f*)	hd0=1;;
+	-h)	heads=$2; shift;;
+	-i*)	id=$(($2)); shift;;
+	-noh*)	hd0=0;;
+	-nop*)	partok=0;;
+	-o*)	offset=$(($2)); shift;;
+	-p*)	partok=1;;
+	-s)	sectors=$2; shift;;
+	-t*)	partype=$(($2 & 255)); shift;;
+	*)	iso=$1;;
 	esac
 	shift
 done
@@ -51,6 +53,7 @@ options:
 	--forcehd0	Assume we are loaded as disk ID 0
 	--ctrlhd0	Assume disk ID 0 if the Ctrl key is pressed
 	--partok	Allow booting from within a partition
+	--always	Do not abort on errors
 EOT
 	exit 1
 fi
@@ -74,9 +77,9 @@ read32()
 # write a 32 bits data
 store32()
 {
-	n=$2; i=4; while [ $i -ne 0 ]; do
+	n=$2; for i in 1 2 3 4; do
 		printf '\\\\x%02X' $(($n & 255))
-		i=$(($i-1)); n=$(($n >> 8))
+		n=$(($n >> 8))
 	done | xargs echo -en | ddq bs=1 conv=notrunc of=$iso seek=$(($1))
 }
 
@@ -99,7 +102,7 @@ main()
 abort()
 {
 	echo "$iso: $1"
-	exit 1
+	[ $always -eq 0 ] && exit 1
 }
 
 [ "$(readiso 17 7 23)" == "EL TORITO SPECIFICATION" ] ||
