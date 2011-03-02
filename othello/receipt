@@ -13,16 +13,21 @@ compile_rules()
 {
 	mkdir -p $src/images 2> /dev/null
 	cd $src
-	if [ ! -s othello.js ] &&
-		wget http://mirror.slitaz.org/sources/packages/o/$TARBALL; then
-		unlzma -c $TARBALL | tar xf -
-		mv $PACKAGE-$VERSION/* .
+	if [ ! -s othello.js ]; then
+		if [ -f $SOURCES_REPOSITORY/$TARBALL ]; then
+			unlzma -c $SOURCES_REPOSITORY/$TARBALL | tar xf -
+			mv $PACKAGE-$VERSION/* .
+		else
+			wget -O $SOURCES_REPOSITORY/$TARBALL http://mirror.slitaz.org/sources/packages/o/$TARBALL &&
+			unlzma -c $SOURCES_REPOSITORY/$TARBALL | tar xf -
+			mv $PACKAGE-$VERSION/* .
+		fi
 	fi
-	for i in index.html othello.js \
-		images/blank.gif images/white.gif images/black.gif \
-		images/white-trans.gif images/black-trans.gif ; do
-		[ -s $i ] || wget -P $(dirname $i) $WEB_SITE/$i
-	done
+	#for i in index.html othello.js \
+	#	images/blank.gif images/white.gif images/black.gif \
+	#	images/white-trans.gif images/black-trans.gif ; do
+	#	[ -s $i ] || wget -P $(dirname $i) $WEB_SITE/$i
+	#done
 	sed -i 's|TITLE>.*</TITLE|TITLE>Othello</TITLE|' index.html
 }
 
