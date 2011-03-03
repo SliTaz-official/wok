@@ -17,21 +17,18 @@ WGET_URL="http://ftp.gnome.org/pub/gnome/sources/$SOURCE/0.7/$TARBALL"
 compile_rules()
 {
 	cd $src
-	python setup.py install --root=$PWD/_pkg
+	python setup.py install --root=$_pkg || return 1
+	mkdir -p $_pkg/usr/share/locale/pt
+	cp locale/fr $_pkg/usr/share/locale
+	cp locale/pt_BR/LC_MESSAGES $_pkg/usr/share/locale/pt
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	LOCALEDIR="$WOK/$PACKAGE/$SOURCE-$VERSION/locale"
-	for file in `find $_pkg | grep 'pyc$'`; do
-		rm $file
-	done
 	mkdir -p $fs/usr/share/locale/pt
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib $fs/usr
 	cp -a $_pkg/usr/share $fs/usr
-	cp -a $LOCALEDIR/fr $fs/usr/share/locale
-	cp -a $LOCALEDIR/pt_BR/LC_MESSAGES $fs/usr/share/locale/pt
 }
 
