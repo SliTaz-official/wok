@@ -15,9 +15,7 @@ WGET_URL="http://www.open-mpi.org/software/ompi/v1.5/downloads/$TARBALL"
 compile_rules()
 {
 	cd $src
-   ./configure --prefix=/usr \
-               --sysconfdir=/etc/${PACKAGE} \
-               --mandir=/usr/share/man \
+   ./configure --sysconfdir=/etc/${PACKAGE} \
                --enable-mpi-f90 \
                --libdir=/usr/lib/${pkgname} \
                --with-threads=posix \
@@ -28,19 +26,18 @@ compile_rules()
                --without-slurm \
                --with-libltdl=/usr \
                FC=/usr/bin/gfortran \
-               LDFLAGS='-Wl,-z,noexecstack' \
-		$CONFIGURE_ARGS &&
-	make -j 4 && make DESTDIR=$PWD/_pkg install
+               LDFLAGS='-Wl,-z,noexecstack' &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/$PACKAGE/$PACKAGE
+	mkdir -p $fs/usr/lib/$PACKAGE
 	cp -a $_pkg/etc $fs
 	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/$PACKAGE/*.so* $fs/usr/lib/$PACKAGE
-	cp -a $_pkg/usr/lib/$PACKAGE/$PACKAGE/*.so* $fs/usr/lib/$PACKAGE/$PACKAGE
-	cp -a $_pkg/usr/lib/$PACKAGE/mpi.mod $fs/usr/lib/$PACKAGE
+	cp -a $_pkg/usr/lib/mpi.mod $fs/usr/lib
 }
 
