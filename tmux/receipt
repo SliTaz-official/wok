@@ -1,12 +1,11 @@
 # SliTaz package receipt.
 
 PACKAGE="tmux"
-VERSION="1.3"
+VERSION="1.4"
 CATEGORY="utilities"
 SHORT_DESC="Terminal multiplexer."
 MAINTAINER="paul@slitaz.org"
-DEPENDS="ncurses libevent"
-BUILD_DEPENDS="ncurses-dev libevent libevent-dev"
+DEPENDS="ncursesw libevent"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://tmux.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
@@ -16,21 +15,26 @@ compile_rules()
 {
 	cd $src
 
-	# hack GNUmakefile
-	sed -i 's/install -g bin/install -g root/g' GNUmakefile
-
-	./configure \
-		--prefix=/usr # not working?
-	make && make DESTDIR=$PWD/_pkg install
+	./configure &&
+	make PREFIX=/usr &&
+	make PREFIX=/usr install &&
+	install -dm755 "$DESTDIR/usr/share/tmux/" &&
+	install -m644 examples/* "$DESTDIR/usr/share/tmux/"
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/tmux
-	cp -a $_pkg/usr/local/bin $fs/usr
+	mkdir -p $fs/usr/share/terminfo/s/
+	cp -a $_pkg/usr/bin $fs/usr
 
 	# copy sample configs
-	cp -a $src/examples $fs/usr/share/tmux
+	cp -a $_pkg/usr/share/tmux $fs/usr/share
+
+	# Get screen terminfo datas.
+	tazpkg get-install ncursesw-extra --root=$src/ncursesw-extra
+	cp -a $src/ncursesw-extra/usr/share/terminfo/s/screen \
+	$fs/usr/share/terminfo/s/
+	rm -r $src/ncursesw-extra
 }
 
