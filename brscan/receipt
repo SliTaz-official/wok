@@ -21,7 +21,11 @@ compile_rules()
 	--mandir=/usr/share/man \
 	$CONFIGURE_ARGS || return 1
 	sed -i '/mk_package/d' Makefile
-	make
+	make && {
+		cd ..
+		mkdir -p $DESTDIR
+		cp -a brscan $DESTDIR
+	}
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -31,32 +35,32 @@ genpkg_rules()
 	for i in BHL BHL2 BHL2FB BHLFB BHMFB BHminiFB YL4 YL4FB \
 		 ZL2 ZL2FB ZLe ZLeFB ; do
 		mkdir -p $fs/usr/local/Brother/sane/GrayCmData/$i
-		cp -a $src/brscan/libbrcolm/GrayCmData/$i/* \
+		cp -a $_pkg/brscan/libbrcolm/GrayCmData/$i/* \
 			$fs/usr/local/Brother/sane/GrayCmData/$i
 		chmod 644 $fs/usr/local/Brother/sane/GrayCmData/$i/*
 	done
-	cp $src/brscan/backend_brscan/.libs/libsane-brother.so.1.0.7 \
+	cp $_pkg/brscan/backend_brscan/.libs/libsane-brother.so.1.0.7 \
 		$fs/usr/lib/sane/libsane-brother.so.1.0.7
 	ln -s libsane-brother.so.1.0.7 $fs/usr/lib/sane/libsane-brother.so.1
 	ln -s libsane-brother.so.1 $fs/usr/lib/sane/libsane-brother.so
-	cp $src/brscan/libbrscandec/libbrscandec.so.1.0.0 \
+	cp $_pkg/brscan/libbrscandec/libbrscandec.so.1.0.0 \
 		$fs/usr/lib/libbrscandec.so.1.0.0
 	chmod 755 $fs/usr/lib/libbrscandec.so.1.0.0
 	ln -s libbrscandec.so.1.0.0 $fs/usr/lib/libbrscandec.so.1
 	ln -s libbrscandec.so.1 $fs/usr/lib/libbrscandec.so
-	cp $src/brscan/libbrcolm/libbrcolm.so.1.0.0 \
+	cp $_pkg/brscan/libbrcolm/libbrcolm.so.1.0.0 \
 		$fs/usr/lib/libbrcolm.so.1.0.0
 	ln -s libbrcolm.so.1.0.0 $fs/usr/lib/libbrcolm.so.1
 	ln -s libbrcolm.so.1 $fs/usr/lib/libbrcolm.so
-	cp $src/brscan/mk_package/Brsane.ini \
+	cp $_pkg/brscan/mk_package/Brsane.ini \
 		$fs/usr/local/Brother/sane/Brsane.ini
-	cp $src/brscan/mk_package/brsanenetdevice.cfg \
+	cp $_pkg/brscan/mk_package/brsanenetdevice.cfg \
 		$fs/usr/local/Brother/sane/brsanenetdevice.cfg
 	chmod 666 $fs/usr/local/Brother/sane/brsanenetdevice.cfg
-	cp $src/brscan/netconfig/brsaneconfig \
+	cp $_pkg/brscan/netconfig/brsaneconfig \
 		$fs/usr/local/Brother/sane/brsaneconfig
 	ln -s /usr/local/Brother/sane/brsaneconfig $fs/usr/bin/brsaneconfig
-	cp $src/brscan/mk_package/setupSaneScan \
+	cp $_pkg/brscan/mk_package/setupSaneScan \
 		$fs/usr/local/Brother/sane/setupSaneScan
 	chmod 755 $fs/usr/local/Brother/sane/setupSaneScan
 }
