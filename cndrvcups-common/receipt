@@ -17,29 +17,27 @@ TAGS="printer driver"
 
 compile_rules() {
 	
-	src="$WOK/$PACKAGE/$SOURCE/Sources"
-    cd $src
+    cd $src/Sources
    
     [ -d cndrvcups-common-$VERSION ] || tar xzf cndrvcups-common-${VERSION}-1.tar.gz
     
     cd $src/cndrvcups-common-$VERSION/buftool 
     ./autogen.sh --prefix=/usr && 
     make && 
-    make DESTDIR=$PWD/_pkg LIBDIR=/usr/lib install
+    make DESTDIR=$DESTDIR LIBDIR=/usr/lib install
    
     cd $src/cndrvcups-common-$VERSION/cpca 
     ./autogen.sh --prefix=/usr && 
     make && 
-    make DESTDIR=$PWD/_pkg LIBDIR=$PWD/_pkg/usr/lib install
+    make DESTDIR=$DESTDIR LIBDIR=$PWD/_pkg/usr/lib install
       
     cd $src/cndrvcups-common-$VERSION/cngplp 
     ./autogen.sh --prefix=/usr && 
     make && \
-    make DESTDIR=$PWD/_pkg install
+    make DESTDIR=$DESTDIR install
   
     cd $src/cndrvcups-common-$VERSION/c3plmod_ipc 
-    make     
-       
+    make && cp -a $src/Sources $DESTDIR
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -50,8 +48,6 @@ genpkg_rules()
 			 $fs/usr/share/caepcm \
 			 $fs/usr/share/licenses/$PACKAGE \
 			 $fs/etc
-	
-	_pkg="$WOK/$PACKAGE/$SOURCE/Sources"
 	
 	cp -a $_pkg/cndrvcups-common-$VERSION/libs/*.so* $fs/usr/lib
 	cp -a $_pkg/cndrvcups-common-$VERSION/libs/cnpkmodule $fs/usr/bin/
