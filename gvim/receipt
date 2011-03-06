@@ -5,25 +5,41 @@ VERSION="7.2"
 CATEGORY="development"
 SHORT_DESC="Advanced text editor"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="vim"
-WANTED="vim"
+DEPENDS="ncurses gtk+ xorg-libXt"
 WEB_SITE="http://www.vim.org/"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	
+	./configure --prefix=/usr \
+	 --cache-file=$PWD/config.cache \
+	 --infodir=/usr/share/info \
+	 --with-features=normal \
+	 --enable-gui=gtk2 \
+ 	 --enable-multibyte \
+	 --disable-motif-check \
+	 --disable-athena-check \
+	 --mandir=/usr/share/man $CONFIGURE_ARGS && 
+	 
+	make VIMRCLOC=/etc/vim VIMRUNTIMEDIR=/usr/share/vim/$src MAKE="make -e" &&
+	make DESTDIR=$DESTDIR install
+	mkdir -p $DESTDIR/etc/vim
+	cp -a $src/runtime/vimrc_example.vim $DESTDIR/etc/vim/vimrc
+}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin \
-		-p $fs/usr/share/pixmaps \
+	mkdir -p -p $fs/usr/share/pixmaps \
 		-p $fs/usr/share/applications
-	
-	for i in eview evim gview gvim gvimdiff rgvim rgview 
-	do
-		cp -a $_pkg/usr/bin/$i $fs/usr/bin
-	done
-	
+
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/vim $fs/usr/share
 	cp -a $src/runtime/vim16x16.png $fs/usr/share/pixmaps/gvim.png
-		
 	cp -a stuff/gvim.desktop $fs/usr/share/applications
+	rm -f $fs/usr/bin/*vimtutor
 }
 
 
