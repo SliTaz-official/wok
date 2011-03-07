@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="libtdb"
+VERSION="1.2.1"
+CATEGORY="misc"
+SNORT_DEST="A Trivia Database similar to GDBM but allows simultaneous commits"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS=""
+BUILD_DEPENDS="python-dev libxslt-dev docbook-xsl"
+SOURCE="tdb"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://tdb.samba.org/"
+WGET_URL="http://samba.org/ftp/$SOURCE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's#python2\.6\([^ ]*\)#python2.7\1 python2.6\1#' configure
+	# Use system docbook.xsl
+	_manstyle="/usr/share/xml/docbook/stylesheet/docbook-xsl/manpages/docbook.xsl"
+	sed -i "s#http.*xsl#$_manstyle#" tdb.mk
+
+	./configure && make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
+
