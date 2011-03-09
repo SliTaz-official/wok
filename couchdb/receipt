@@ -65,11 +65,40 @@ post_install()
 
 	echo "Processing post-install commands..."
 
-	grep -q "$PACKAGE" /etc/passwd || adduser -S -D -h $LIBDIR \
-		-H -s /bin/sh -g "CouchDB Administrator" $PACKAGE
+	grep -q "$PACKAGE" /etc/group || addgroup -S $PACKAGE
+
+	grep -q "$PACKAGE" /etc/passwd || adduser -S -D -H -h $LIBDIR \
+	        -G $PACKAGE -s /bin/sh -g "CouchDB Administrator" $PACKAGE
 
 	for DIR in $LIBDIR $ETCDIR $LOGDIR $RUNDIR; do
 		chown -R $PACKAGE:$PACKAGE $DIR && chmod -R 0770 $DIR
+	done
+
+	echo "Done..."
+}
+
+# Pre and post remove commands for Tazpkg.
+pre_remove()
+{
+	INIT_FILE="/etc/init.d/$PACKAGE"
+	echo "Processing pre-remove commands..."
+	[ -f $INIT_FILE ] && $INIT_FILE stop
+	echo "Done..."
+}
+
+post_remove()
+{
+	LIBDIR="/var/lib/$PACKAGE"
+	ETCDIR="/etc/$PACKAGE"
+	LOGDIR="/var/log/$PACKAGE"
+	RUNDIR="/var/run/$PACKAGE"
+
+	echo "Processing post-remove commands..."
+
+	deluser $PACKAGE
+
+	for DIR in $LIBDIR $ETCDIR $LOGDIR $RUNDIR; do
+		rm -rf $DIR
 	done
 
 	echo "Done..."
