@@ -1,24 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="gpa"
-VERSION="0.7.5"
+VERSION="0.9.0"
 CATEGORY="security"
 SHORT_DESC="Gnu Privacy Assistant"
 MAINTAINER="erjo@slitaz.org"
 DEPENDS="gnupg gpgme libgpg-error gtk+ xorg-libXdamage"
-BUILD_DEPENDS="gpgme-dev libgpg-error-dev gnupg"
+BUILD_DEPENDS="autoconf automake"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gnupg.org/"
-WGET_URL="ftp://ftp.gnupg.org/gcrypt/alpha/gpa/$TARBALL"
+WGET_URL="http://wald.intevation.org/frs/download.php/603/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	patch -p0 < $stuff/gpa-0.9.0-libassuan2.patch &&
+	autoreconf &&
+	./configure && make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
