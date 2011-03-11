@@ -94,18 +94,19 @@ post_install()
 	echo "================================================================================"
 	echo "For installing this package, you have to accept the $PACKAGE license."
 	echo "The license is stored in /usr/share/licenses/$PACKAGE "    
-	echo -n "Would you like to read the license (y/N) : "; read anser
-	if [ "$anser" = "y" -a "$(tty)" != "not a tty" ]; then
-		more < /usr/share/licenses/"$PACKAGE"/LICENSE
-		echo "" 		
+	if [ "$(tty)" != "not a tty" ]; then
+		echo -n "Would you like to read the license (y/N) : "; read anser
+		if [ "$anser" = "y" ]; then
+			more < /usr/share/licenses/"$PACKAGE"/LICENSE
+			echo "" 		
+		fi
+		echo "================================================================================"
+		echo -n "Do you accept the license (y/N) : "; read anser
+		if [ "$anser" = "N" ]; then
+			echo "You did not accept the license, Removing the pkg."	
+			tazpkg remove "$PACKAGE"		
+		fi
 	fi
-	echo "================================================================================"
-	echo -n "Do you accept the license (y/N) : "; read anser
-	if [ "$anser" = "N" ]; then
-		echo "You did not accept the license, Removing the pkg."	
-		tazpkg remove "$PACKAGE"		
-	fi
-
 }
 
 post_remove()
