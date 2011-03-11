@@ -7,29 +7,28 @@ CATEGORY="development"
 SHORT_DESC="A Free Software harness for OpenJDK."
 MAINTAINER="rcx@zoominternet.net"
 DEPENDS="icedtea6-jre glibc-base zlib xorg-libX11 xorg-libXau xorg-libXdmcp"
-BUILD_DEPENDS="gcc+gcj slitaz-toolchain autoconf automake m4 diffutils gawk \
+BUILD_DEPENDS="gcc+gcj autoconf automake m4 diffutils gawk \
 coreutils-file-special coreutils-file-summarize alsa-lib-dev cups-dev \
-gawk file patch findutils perl zip unzip bzip2 tar cpio glib-dev zlib-dev \
-fastjar rhino ecj apache-ant xalan-xerces-j \
+file patch findutils perl zip unzip bzip2 tar cpio glib-dev \
+fastjar rhino ecj apache-ant xalan-xerces-j wget \
 freetype-dev gtk+-dev giflib-dev jpeg-dev libpng-dev \
 xorg-inputproto xorg-kbproto xorg-libXi-dev xorg-libXinerama-dev \
 xorg-libXp-dev xorg-libXt-dev xorg-libXtst-dev xorg-printproto \
 xorg-recordproto xorg-renderproto xorg-xextproto xorg-xineramaproto xorg-xproto \
-nss"
+nss jdk6-jaws jdk6-jaxp jdk6-jaf openjdk-6-src"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.iced-tea.org/"
 WGET_URL="http://icedtea.classpath.org/download/source/$TARBALL"
 
+# Note to icedtea6 updaters,
+# You should check version into receipts:
+# * jdk6-jaxws (version: $openjdk_version)
+# * jdk6-jaxp (version: $openjdk_version)
+# * jdk6-jaf (version: $openjdk_version)
+# * openjdk-6-src (version: $openjdk_version-$openjdk_date)
+# Theses receipts allow to have source tarballs managed by tazwok.
 openjdk_version="b20"
 openjdk_date="21_jun_2010"
-JAXWS="jdk6-jaxws-${openjdk_version}.zip"
-JAXP="jdk6-jaxp-${openjdk_version}.zip"
-JAF="jdk6-jaf-${openjdk_version}.zip"
-OPENJDK="openjdk-6-src-${openjdk_version}-${openjdk_date}.tar.gz"
-WGETJAXWS="https://jax-ws.dev.java.net/files/documents/4202/150724"
-WGETJAXP="https://jaxp.dev.java.net/files/documents/913/150648"
-WGETJAF="https://jax-ws.dev.java.net/files/documents/4202/150725"
-WGETOPENJDK="http://download.java.net/openjdk/jdk6/promoted/${openjdk_version}"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -47,36 +46,25 @@ compile_rules()
 	cd $src
 	mkdir drops
 	sed -i -e 's/mkdir -p drops/true/' -e 's/ jar xf/ fastjar xf/'  Makefile*
-	[ -L /usr/bin/wget ] && tazpkg get-install wget --forced
-	for i in $JAXWS $JAXP $JAF ; do
-		if [ -f $SOURCES_REPOSITORY/$i ]; then
-			cp $SOURCES_REPOSITORY/$i drops
-		elif [ "$i" == "$JAXWS" ]; then
-			wget -O $SOURCES_REPOSITORY/$JAXWS --no-check-certificate "$WGETJAXWS/$JAXWS"
-			cp $SOURCES_REPOSITORY/$JAXWS drops
-		elif [ "$i" == "$JAXP" ]; then
-			wget -O $SOURCES_REPOSITORY/$JAXP --no-check-certificate "$WGETJAXP/$JAXP"
-			cp $SOURCES_REPOSITORY/$JAXP drops
-		elif [ "$i" == "$JAF" ]; then
-			wget -O $SOURCES_REPOSITORY/$JAF --no-check-certificate "$WGETJAF/$JAF"
-			cp $SOURCES_REPOSITORY/$JAF drops
-		fi
-		
-	done
 
-	for i in $OPENJDK ; do
-		if [ -f $SOURCES_REPOSITORY/$i ]; then
-			cp $SOURCES_REPOSITORY/$i .
-		else
-			wget -O $SOURCES_REPOSITORY/$OPENJDK "$WGETOPENJDK/$OPENJDK"
-			cp $SOURCES_REPOSITORY/$OPENJDK .
-		fi
+	report open-bloc
+	
+	# Check than all sources files are available, or exit.
+	for i in jdk6-jaxws jdk6-jaxp jdk6-jaf; do
+		tazwok get-src $i || { report close-bloc; return 1; }
+		cp $SOURCES_REPOSITORY/$i-$openjdk_version.zip drops
 	done
+	tazwok get-src openjdk-6-src || { report close-bloc; return 1; }
+	cp $SOURCES_REPOSITORY/openjdk-6-src-$openjdk_version-$openjdk_date.tar.gz .
+
+	report step "Checking that all needed tools are OK"
 	[ -L /usr/bin/find ] && tazpkg get-install findutils --forced
 	[ -L /usr/bin/diff ] && tazpkg get-install diffutils --forced
 	[ "$(readlink /usr/bin/awk)" == "gawk" ] ||
 	tazpkg get-install gawk --forced
 	[ -L /usr/bin/sed ] && tazpkg get-install sed --forced
+
+	report step "Running compilation"
 	mem=$(free | awk '/Mem:/ { printf "%d\n",$2/1024 }')
 	cat > slitaz.sh <<EOT
 # Busybox compatibility
@@ -101,17 +89,18 @@ EOT
 		--with-rhino=/usr/share/java/js.jar \
 		--with-abs-install-dir=$JVM_PREFIX \
 		$CONFIGURE_ARGS &&
-	make -j 1 ARCH_PREFIX=  || return 1
+	make -j 1 ARCH_PREFIX=  || { report close-bloc; return 1; }
 
 	# NOTE: don't build with -j 4. Only build with -j 1 or tank will crash
 	# NOTE: IcedTea6 does not define an "install" target
 	
-	rm -r -f $src/_pkg
+	report step "Copying needed files to install dir"
+	rm -rf $DESTDIR
 
 	local JVM_BUILDDIR
 	JVM_BUILDDIR=$src/openjdk.build/j2sdk-image
 	local JVM_DESTDIR
-	JVM_DESTDIR=$src/_pkg$JVM_PREFIX
+	JVM_DESTDIR=$DESTDIR$JVM_PREFIX
 
 	mkdir -p $JVM_DESTDIR
 	cp -a $JVM_BUILDDIR/bin $JVM_DESTDIR
@@ -127,17 +116,18 @@ EOT
 	done
 
 	# Create symlinks for JDK binaries
-	mkdir -p $src/_pkg/usr/jdk-bin
+	mkdir -p $DESTDIR/usr/jdk-bin
 	for jbin in $(ls -1 $JVM_DESTDIR/bin) ; do
-		ln -s $JVM_PREFIX/bin/$jbin $src/_pkg/usr/jdk-bin/$jbin
+		ln -s $JVM_PREFIX/bin/$jbin $DESTDIR/usr/jdk-bin/$jbin
 	done
 	
 	# Create symlinks for JRE binaries
-	mkdir -p $src/_pkg/usr/jre-bin
+	mkdir -p $DESTDIR/usr/jre-bin
 	for jbin in $(ls -1 $JVM_DESTDIR/jre/bin) ; do
 		ln -s $JVM_PREFIX/jre/bin/$jbin $JVM_DESTDIR/bin/$jbin
-		ln -s $JVM_PREFIX/jre/bin/$jbin $src/_pkg/usr/jre-bin
+		ln -s $JVM_PREFIX/jre/bin/$jbin $DESTDIR/usr/jre-bin
 	done
+	report close-bloc
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
