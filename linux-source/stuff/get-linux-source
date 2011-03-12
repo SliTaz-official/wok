@@ -1,6 +1,8 @@
 #!/bin/sh
 
-source /etc/tazwok.conf
+
+source /etc/slitaz/slitaz.conf
+SOURCES_REPOSITORY=$SLITAZ_DIR/$SLITAZ_VERSION/src
 VERSION=XXX
 
 url=$(cat /usr/src/kernel-patches/slitaz/url)
@@ -9,12 +11,13 @@ if [ ! -d $SOURCES_REPOSITORY ]; then
 	mkdir -p $SOURCES_REPOSITORY
 fi
 
-if [ -f $SOURCES_REPOSITORY/$(basename $url) ]; then
-	cd /usr/src/
+cd /usr/src/
+if [ -f $SOURCE_REPOSITORY/$(basename ${url//bz2/lzma}) ]; then
+	unlzma -c $SOURCES_REPOSITORY/$(basename ${url//bz2/lzma}) | tar xf - -C $PWD
+elif [ -f $SOURCES_REPOSITORY/$(basename $url) ]; then
 	tar xjf $SOURCES_REPOSITORY/$(basename $url)
 else
 	wget -O $SOURCES_REPOSITORY/$(basename $url) -c $url
-	cd /usr/src/
 	tar xjf $SOURCES_REPOSITORY/$(basename $url)
 fi
 
