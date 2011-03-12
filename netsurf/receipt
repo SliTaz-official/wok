@@ -20,6 +20,10 @@ compile_rules()
 {
 	mv netsurf $PACKAGE-$VERSION 2>/dev/null
 	cd $src
+	sed -i 's#GtkNotebookPage#GtkWidget#' gtk/gtk_tabs.c
+	sed -i 's#GTK_WIDGET_SET_FLAGS(GTK_WIDGET(g->layout), GTK_CAN_FOCUS);#gtk_widget_set_can_focus(GTK_WIDGET(g->layout), true);#' \
+            gtk/gtk_window.c
+
 	cp -a ../stuff/Makefile.config .
 	
 	# Fix install target
@@ -27,7 +31,8 @@ compile_rules()
 	sed -i 's/cp -v/cp /' Makefile
 	sed -i 's|/usr/local|/usr|' Makefile.defaults
 	
-	make && make DESTDIR=$PWD/_pkg install
+	make install DESTDIR=$PWD/_pkg PREFIX=/usr
+
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
