@@ -1,0 +1,49 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-libre-api-headers"
+VERSION="2.6.37-libre"
+CATEGORY="development"
+SHORT_DESC="Kernel headers sanitized for use in userspace."
+MAINTAINER="gokhlayeh@slitaz.org"
+PROVIDE="linux-api-headers"
+SOURCE="linux-libre"
+TARBALL="linux-$VERSION.tar.bz2"
+WEB_SITE="http://www.fsfla.org/svnwiki/selibre/linux-libre/"
+WGET_URL="http://www.fsfla.org/svnwiki/selibre/linux-libre/download/releases/$VERSION/$TARBALL"
+
+# Rules to compile & install the temporary toolchain.
+cook_tmp_toolchain()
+{
+	cd $src
+
+	make mrproper &&
+	make headers_check &&
+	make INSTALL_HDR_PATH=dest headers_install &&
+	cp -r dest/include/* /tools/include
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+
+	make mrproper &&
+	make headers_check &&
+	make INSTALL_HDR_PATH=$DESTDIR/usr headers_install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/include $fs/usr
+
+	rm -f $(find ${fs} -name .install -or -name ..install.cmd)
+}
+
+# Post install commands for Tazpkg.
+post_install()
+{
+	# Removed old linux-libre-headers
+	rm -rf $1/var/lib/tazpkg/installed/linux-libre-headers 2>/dev/null
+}

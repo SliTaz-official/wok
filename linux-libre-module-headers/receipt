@@ -1,0 +1,148 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-libre-module-headers"
+VERSION="2.6.37-libre"
+CATEGORY="development"
+SHORT_DESC="Header files and scripts for building modules for Linux Libre kernel."
+MAINTAINER="gokhlayeh@slitaz.org"
+PROVIDE="linux-module-headers"
+DEPENDS="slitaz-toolchain"
+WANTED="linux-libre"
+WEB_SITE="http://www.fsfla.org/svnwiki/selibre/linux-libre/"
+KVERSION=$VERSION-slitaz
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	local path
+	_AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	AUFSDIR="$WOK/$WANTED/aufs-${_AUFSVER}"
+	path=usr/src/linux-$KVERSION
+	mkdir -p $fs/lib/modules/$KVERSION
+	ln -sf /$path $fs/lib/modules/$KVERSION/build
+	install -D -m644 $src/Makefile \
+		$fs/$path/Makefile
+	install -D -m644 $src/kernel/Makefile \
+		$fs/$path/kernel/Makefile
+	install -D -m644 $src/.config \
+		$fs/$path/.config
+	mkdir -p $fs/$path/include
+
+	for i in acpi asm-generic config generated linux math-emu media net pcmcia scsi sound trace video xen; do
+		cp -a $src/include/$i $fs/$path/include/
+	done
+
+	# copy arch includes for external modules
+	mkdir -p $fs/$path/arch/x86
+	cp -a $src/arch/x86/include $fs/$path/arch/x86/
+
+	# copy files necessary for later builds, like nvidia and vmware
+  	cp -a $src/Module.symvers-modules $fs/$path/Module.symvers
+  	cp -a $src/scripts $fs/$path
+  	# fix permissions on scripts dir
+  	chmod og-w -R $fs/$path/scripts
+  	mkdir -p $fs/$path/.tmp_versions
+
+	mkdir -p $fs/$path/arch/x86/kernel
+	cp -a $src/arch/x86/Makefile $fs/$path/arch/x86/
+	cp -a $src/arch/x86/Makefile_32.cpu $fs/$path/arch/x86/
+	cp -a $src/arch/x86/kernel/asm-offsets.s $fs/$path/arch/x86/kernel/
+
+	# add headers for lirc package
+	mkdir -p $fs/$path/drivers/media/video
+	cp -a $src/drivers/media/video/*.h  $fs/$path/drivers/media/video/
+
+	for i in bt8xx cpia2 cx25840 cx88 em28xx et61x251 pwc saa7134 sn9c102 usbvideo ; do
+   		mkdir -p $fs/$path/drivers/media/video/$i
+   		cp -a $src/drivers/media/video/$i/*.h $fs/$path/drivers/media/video/$i
+	done
+
+	# add docbook makefile
+	install -D -m644 $src/Documentation/DocBook/Makefile \
+    		$fs/$path/Documentation/DocBook/Makefile
+
+	# add dm headers
+	mkdir -p $fs/$path/drivers/md
+	cp -a $src/drivers/md/*.h  $fs/$path/drivers/md
+
+	# add inotify.h
+	mkdir -p $fs/$path/include/linux
+	cp -a $src/include/linux/inotify.h $fs/$path/include/linux/
+
+	# add wireless headers
+	mkdir -p $fs/$path/net/mac80211/
+	cp -a $src/net/mac80211/*.h $fs/$path/net/mac80211/
+
+	# add dvb headers for external modules
+	# in reference to:
+	# http://bugs.archlinux.org/task/9912
+	mkdir -p $fs/$path/drivers/media/dvb/dvb-core
+	cp -a $src/drivers/media/dvb/dvb-core/*.h $fs/$path/drivers/media/dvb/dvb-core/
+
+	# add dvb headers for external modules
+	# in reference to:
+	# http://bugs.archlinux.org/task/11194
+	if [ -d $src/include/config/dvb/ ]; then
+		mkdir -p $fs/$path/include/config/dvb/
+		cp $src/include/config/dvb/*.h $fs/$path/include/config/dvb/
+	fi
+
+	# add dvb headers for http://mcentral.de/hg/~mrec/em28xx-new
+	# in reference to:
+	# http://bugs.archlinux.org/task/13146
+	mkdir -p $fs/$path/drivers/media/dvb/frontends/
+	cp -a $src/drivers/media/dvb/frontends/lgdt330x.h $fs/$path/drivers/media/dvb/frontends/
+	cp -a $src/drivers/media/video/msp3400-driver.h $fs/$path/drivers/media/dvb/frontends/
+
+	# add dvb headers  
+	# in reference to:
+	# http://bugs.archlinux.org/task/20402
+	mkdir -p $fs/$path/drivers/media/dvb/dvb-usb
+	cp -a $src/drivers/media/dvb/dvb-usb/*.h $fs/$path/drivers/media/dvb/dvb-usb/
+	mkdir -p $fs/$path/drivers/media/dvb/frontends
+	cp -a $src/drivers/media/dvb/frontends/*.h $fs/$path/drivers/media/dvb/frontends/
+	mkdir -p $fs/$path/drivers/media/common/tuners
+	cp -a $src/drivers/media/common/tuners/*.h $fs/$path/drivers/media/common/tuners/
+
+	# add xfs and shmem for aufs building
+	mkdir -p $fs/$path/fs/xfs
+	mkdir -p $fs/$path/mm
+	cp -a $src/fs/xfs/xfs_sb.h $fs/$path/fs/xfs/xfs_sb.h
+	
+	# add headers vor virtualbox
+	# in reference to:
+	# http://bugs.archlinux.org/task/14568
+	cp -a $src/include/drm $fs/$path/include/
+
+	# add headers for broadcom wl
+	# in reference to:
+	# http://bugs.archlinux.org/task/14568
+	cp -a $src/include/trace $fs/$path/include/
+	# add headers for crypto modules
+	# in reference to:
+	# http://bugs.archlinux.org/task/22081
+	cp -a $src/include/crypto $fs/$path/include/
+	# copy in Kconfig files
+	for i in $(find . -name "Kconfig*"); do 
+		mkdir -p $fs/$path/$(echo $i | sed 's|/Kconfig.*||')
+		cp -a $src/$i $fs/$path/$i
+	done
+
+	chown -R root.root $fs/$path
+	find $fs/$path -type d -exec chmod 755 {} \;
+	# remove unneeded architectures
+	rm -rf $fs/$path/arch/{alpha,arm,arm26,avr32,blackfin,cris,frv,h8300,ia64,m32r,m68k,m68knommu,mips,microblaze,mn10300,parisc,powerpc,ppc,s390,sh,sh64,sparc,sparc64,um,v850,xtensa}
+
+}	
+
+pre_remove() {
+	if [ -e $1/usr/src/linux ]; then
+		rm -rf $1/usr/src/linux
+	fi
+}
+
+post_install() {
+	# Added soft link to make it easier to point to kernel folder
+	[ -L $1/usr/src/linux ] && rm -f $1/usr/src/linux 
+	ln -sf /usr/src/linux-$KVERSION $1/usr/src/linux
+}

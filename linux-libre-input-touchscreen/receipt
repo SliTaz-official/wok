@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-libre-input-touchscreen"
+VERSION="2.6.37-libre"
+CATEGORY="base-system"
+SHORT_DESC="The Linux Libre kernel touchscreen input drivers."
+MAINTAINER="gokhlayeh@slitaz.org"
+PROVIDE="linux-input-touchscreen"
+WANTED="linux-libre"
+WEB_SITE="http://www.fsfla.org/svnwiki/selibre/linux-libre/"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    path=lib/modules/$VERSION-slitaz/kernel
+    mkdir -p $fs/$path
+    export src
+    export _pkg
+    $WOK/$WANTED/stuff/list_modules.sh drivers/input/touchscreen \
+	  lib/ts_bm.ko.gz lib/ts_fsm.ko.gz lib/ts_kmp.ko.gz | while read module; do
+    	dir=$path/$(dirname $module)
+    	[ -d $fs/$dir ] || mkdir -p $fs/$dir
+        cp -a $_pkg/$path/$module $fs/$dir
+    done
+
+    for i in $(cat $WOK/$WANTED/stuff/modules-$VERSION.list); do
+        if [ $fs/lib/modules/$VERSION-slitaz/kernel/$i ]; then
+	    rm -f $fs/lib/modules/$VERSION-slitaz/kernel/$i
+	fi
+    done
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
+post_remove()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+

@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-libre-video"
+VERSION="2.6.37-libre"
+CATEGORY="base-system"
+SHORT_DESC="The Linux Libre kernel video modules."
+MAINTAINER="gokhlayeh@slitaz.org"
+PROVIDE="linux-video"
+DEPENDS="linux-libre"
+WANTED="linux-libre"
+WEB_SITE="http://www.fsfla.org/svnwiki/selibre/linux-libre/"
+
+# Modules paths and list
+MOD_PATH="lib/modules/$VERSION-slitaz/kernel"
+MODULES="drivers/video/backlight/lcd.ko.gz
+drivers/video/backlight/generic_bl.ko.gz
+drivers/gpio/bt8xxgpio.ko.gz"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p ${fs}${MOD_PATH}
+	for module in $MODULES
+	do
+		dir=$MOD_PATH/$(dirname $module)
+		[ -d $fs/$dir ] || mkdir -p $fs/$dir
+		cp -a $_pkg/$MOD_PATH/$module $fs/$dir
+	done
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
+post_remove()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+

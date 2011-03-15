@@ -1,0 +1,80 @@
+#!/bin/sh
+#
+# buildtaz 1.0
+# This script generate a SliTaz package for linux kernel and modules.
+# Inspired from builddeb script.
+#
+# (C) 2009 SliTaz - GNU General Public License v3.
+#
+# Author: Eric Joseph-Alexandre <erjo@slitaz.org>
+
+set -e
+
+LOCALVERSION=$(grep ^CONFIG_LOCALVERSION $objtree/.config | sed -e "s/CONFIG_LOCALVERSION=\"\(.*\)\"/\1/")
+PACKAGE="linux${LOCALVERSION}"
+VERSION=${KERNELVERSION}
+V=$KERNELRELEASE
+DIR="$objtree/taz/$PACKAGE-$VERSION"
+fs="$DIR/fs"
+
+# Setup directories
+rm -rf "$objtree/taz"
+mkdir -p "$fs/lib" "$fs/boot"
+
+# Build and install kernel
+cp System.map "$fs/boot/System.map-$KERNELRELEASE"
+cp $KBUILD_IMAGE "$fs/boot/vmlinuz-$KERNELRELEASE"
+
+# Build and compress modules if needed
+if grep -q '^CONFIG_MODULES=y' .config ; then
+	INSTALL_MOD_PATH="$fs" make KBUILD_SRC= modules_install
+	[ -f $objtree/slitaz/gztazmod.sh ] && $objtree/slitaz/gztazmod.sh $fs/lib/modules/${VERSION}${LOCALVERSION}
+fi
+
+# Create Slitaz package
+cat > $DIR/receipt <<EOT
+# SliTaz package receipt.
+
+PACKAGE="${PACKAGE}"
+VERSION="${VERSION}"
+CATEGORY="base-system"
+SHORT_DESC="Customized Linux Kernel"
+WEB_SITE="http://www.kernel.org"
+DEPENDS="depmod"
+
+post_install()
+{
+	    echo "Processing post-install commands..."
+    chroot "\$1/" depmod -a $V
+    if [ -f "\$1/boot/grub/menu.lst" ]; then
+    	root_dev="`cat \$1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`"
+		grub_dev="`cat \$1/boot/grub/menu.lst | grep "root (" | head -n 1`"
+		# Add new kernel entry in case of upgrade for installed system.
+		if ! grep -q \$PACKAGE-\$VERSION \$1/boot/grub/menu.lst; then
+    		echo "
+    		
+title SliTaz GNU/Linux (Kernel $V)
+"\$grub_dev"
+kernel /boot/vmlinuz-$V root=\$root_dev" >> \$1/boot/grub/menu.lst
+		fi
+	
+		# Display information message.
+ echo "
+----
+GRUB is installed, these tree lines must be in your /boot/grub/menu.lst:
+
+title  SliTaz GNU/Linux (Kernel $V)
+\$grub_dev
+kernel /boot/vmlinuz-$V root=\$root_dev
+----
+"
+	fi
+}
+EOT
+
+# Pack
+cd $objtree/taz 
+tazpkg pack $PACKAGE-$VERSION
+mv *.tazpkg $objtree
+cd -
+exit 0

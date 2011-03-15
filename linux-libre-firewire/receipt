@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-libre-firewire"
+VERSION="2.6.37-libre"
+CATEGORY="base-system"
+SHORT_DESC="The Linux Libre kernel firewire modules."
+MAINTAINER="gokhlayeh@slitaz.org"
+PROVIDE="linux-firewire"
+DEPENDS="linux-libre"
+WANTED="linux-libre"
+WEB_SITE="http://www.fsfla.org/svnwiki/selibre/linux-libre/"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    path=lib/modules/$VERSION-slitaz/kernel
+    mkdir -p $fs/$path
+    export src
+    export _pkg
+    $WOK/$WANTED/stuff/list_modules.sh drivers/firewire | while read module; do
+    	dir=$path/$(dirname $module)
+    	[ -d $fs/$dir ] || mkdir -p $fs/$dir
+        cp -a $_pkg/$path/$module $fs/$dir
+    done
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
+post_remove()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+

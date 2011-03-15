@@ -1,0 +1,63 @@
+#!/bin/sh
+
+
+source /etc/slitaz/slitaz.conf
+SOURCES_REPOSITORY=$SLITAZ_DIR/$SLITAZ_VERSION/src
+VERSION=XXX
+
+url=$(cat /usr/src/kernel-patches/slitaz/url)
+
+if [ ! -d $SOURCES_REPOSITORY ]; then
+	mkdir -p $SOURCES_REPOSITORY
+fi
+
+cd /usr/src/
+if [ -f $SOURCE_REPOSITORY/$(basename ${url//bz2/lzma}) ]; then
+	unlzma -c $SOURCES_REPOSITORY/$(basename ${url//bz2/lzma}) | tar xf - -C $PWD
+elif [ -f $SOURCES_REPOSITORY/$(basename $url) ]; then
+	tar xjf $SOURCES_REPOSITORY/$(basename $url)
+else
+	wget -O $SOURCES_REPOSITORY/$(basename $url) -c $url
+	tar xjf $SOURCES_REPOSITORY/$(basename $url)
+fi
+
+cp -a /usr/src/kernel-patches/slitaz /usr/src/linux-$VERSION
+if [ -d /usr/src/linux-$VERSION/slitaz/aufs2 ]; then
+	cp -pa /usr/src/linux-$VERSION/slitaz/aufs2/* /usr/src/linux-$VERSION
+fi
+
+# Add tazpkg support
+if [ -d "/usr/src/linux-$VERSION/scripts/package" ]; then
+	cp -pa /usr/src/linux-$VERSION/slitaz/buildtaz /usr/src/linux-$VERSION/scripts/package
+	cd /usr/src/linux-$VERSION
+	patch -p1 -i slitaz/make-tazpkg.u
+fi
+
+cd /usr/src/linux-$VERSION
+while read patch_file; do
+	echo "Apply $patch_file"
+	patch -p1 < slitaz/$patch_file
+done < slitaz/patches
+[ ! -f System.map ] && cp slitaz/config .config &&
+make oldconfig && make modules_prepare
+
+	cat <<EOT
+----
+To modify the kernel configuration:
+$ cd /usr/src/linux-$VERSION
+$ make menuconfig
+
+To build the kernel and the modules:
+$ cd /usr/src/linux-$VERSION
+$ make bzImage && make modules
+
+To install the new kernel and the modules:
+$ make modules_install
+$ cp -a arch/x86/boot/bzImage /boot/vmlinuz-$VERSION-slitaz
+
+To make a Slitaz package with the new kernel and the modules:
+$ make tazpkg
+
+See /usr/src/linux-$VERSION/README
+----
+EOT

@@ -1,0 +1,51 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-libre-wireless"
+VERSION="2.6.37-libre"
+CATEGORY="base-system"
+SHORT_DESC="The Linux Libre kernel wireless modules."
+MAINTAINER="gokhlayeh@slitaz.org"
+PROVIDE="linux-wireless"
+WANTED="linux-libre"
+WEB_SITE="http://www.fsfla.org/svnwiki/selibre/linux-libre/"
+DEPENDS="linux-libre-crypto wireless_tools"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    path=lib/modules/$VERSION-slitaz/kernel
+    mkdir -p $fs/$path
+    
+    export src
+    export _pkg
+    
+    $WOK/$WANTED/stuff/list_modules.sh drivers/net/wireless drivers/staging/wlan-ng \
+    drivers/staging/rt2860 drivers/staging/rt2870 drivers/staging/echo \
+    drivers/leds net/wireless net/mac80211 drivers/staging/rtl8192e/r8192e_pci.ko.gz \
+	drivers/staging/rtl8187se/r8187se.ko.gz \
+	drivers/staging/rtl8192u/r8192u_usb.ko.gz drivers/staging/crystalhd/crystalhd.ko.gz \
+	drivers/staging/sm7xx/sm7xx.ko.gz | while read module; do
+    	dir=$path/$(dirname $module)
+    	[ -d $fs/$dir ] || mkdir -p $fs/$dir
+        cp -a $_pkg/$path/$module $fs/$dir
+    done
+
+    for i in $(cat $WOK/$WANTED/stuff/modules-$VERSION.list); do
+        if [ $fs/lib/modules/$VERSION-slitaz/kernel/$i ]; then
+	    rm -f $fs/lib/modules/$VERSION-slitaz/kernel/$i
+	fi
+    done
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
+post_remove()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+

@@ -1,0 +1,86 @@
+From: Phillip Lougher <phillip@lougher.demon.co.uk>
+Date: Thu, 9 Dec 2010 02:08:31 +0000 (+0000)
+Subject: Squashfs: Add XZ compression configuration option
+X-Git-Url: http://git.kernel.org/?p=linux%2Fkernel%2Fgit%2Fpkl%2Fsquashfs-xz.git;a=commitdiff_plain;h=e23d468968e608de27328888240de27d7582ad52
+
+Squashfs: Add XZ compression configuration option
+
+Signed-off-by: Phillip Lougher <phillip@lougher.demon.co.uk>
+---
+
+diff --git a/fs/squashfs/Kconfig b/fs/squashfs/Kconfig
+index e5f63da..e96d99a 100644
+--- a/fs/squashfs/Kconfig
++++ b/fs/squashfs/Kconfig
+@@ -53,6 +53,22 @@ config SQUASHFS_LZO
+ 
+ 	  If unsure, say N.
+ 
++config SQUASHFS_XZ
++	bool "Include support for XZ compressed file systems"
++	depends on SQUASHFS
++	default n
++	select XZ_DEC
++	help
++	  Saying Y here includes support for reading Squashfs file systems
++	  compressed with XZ compresssion.  XZ gives better compression than
++	  the default zlib compression, at the expense of greater CPU and
++	  memory overhead.
++
++	  XZ is not the standard compression used in Squashfs and so most
++	  file systems will be readable without selecting this option.
++
++	  If unsure, say N.
++
+ config SQUASHFS_EMBEDDED
+ 	bool "Additional option for memory-constrained systems"
+ 	depends on SQUASHFS
+diff --git a/fs/squashfs/Makefile b/fs/squashfs/Makefile
+index 7672bac..cecf2be 100644
+--- a/fs/squashfs/Makefile
++++ b/fs/squashfs/Makefile
+@@ -7,3 +7,4 @@ squashfs-y += block.o cache.o dir.o export.o file.o fragment.o id.o inode.o
+ squashfs-y += namei.o super.o symlink.o zlib_wrapper.o decompressor.o
+ squashfs-$(CONFIG_SQUASHFS_XATTR) += xattr.o xattr_id.o
+ squashfs-$(CONFIG_SQUASHFS_LZO) += lzo_wrapper.o
++squashfs-$(CONFIG_SQUASHFS_XZ) += xz_wrapper.o
+diff --git a/fs/squashfs/decompressor.c b/fs/squashfs/decompressor.c
+index 24af9ce..ac333b8 100644
+--- a/fs/squashfs/decompressor.c
++++ b/fs/squashfs/decompressor.c
+@@ -46,6 +46,12 @@ static const struct squashfs_decompressor squashfs_lzo_unsupported_comp_ops = {
+ };
+ #endif
+ 
++#ifndef CONFIG_SQUASHFS_XZ
++static const struct squashfs_decompressor squashfs_xz_unsupported_comp_ops = {
++	NULL, NULL, NULL, XZ_COMPRESSION, "xz", 0
++};
++#endif
++
+ static const struct squashfs_decompressor squashfs_unknown_comp_ops = {
+ 	NULL, NULL, NULL, 0, "unknown", 0
+ };
+@@ -58,6 +64,11 @@ static const struct squashfs_decompressor *decompressor[] = {
+ #else
+ 	&squashfs_lzo_unsupported_comp_ops,
+ #endif
++#ifdef CONFIG_SQUASHFS_XZ
++	&squashfs_xz_comp_ops,
++#else
++	&squashfs_xz_unsupported_comp_ops,
++#endif
+ 	&squashfs_unknown_comp_ops
+ };
+ 
+diff --git a/fs/squashfs/squashfs.h b/fs/squashfs/squashfs.h
+index 5d45569..1096e2e 100644
+--- a/fs/squashfs/squashfs.h
++++ b/fs/squashfs/squashfs.h
+@@ -107,3 +107,6 @@ extern const struct squashfs_decompressor squashfs_zlib_comp_ops;
+ 
+ /* lzo_wrapper.c */
+ extern const struct squashfs_decompressor squashfs_lzo_comp_ops;
++
++/* xz_wrapper.c */
++extern const struct squashfs_decompressor squashfs_xz_comp_ops;

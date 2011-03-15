@@ -1,0 +1,220 @@
+#!/bin/sh
+#
+# This script creates a floppy image set from a linux bzImage and can merge
+# a cmdline and/or one or more initramfs.
+# The total size can not exceed 15M because INT 15H function 87H limitations.
+#
+# (C) 2009 Pascal Bellard - GNU General Public License v3.
+
+usage()
+{
+cat <<EOT
+Usage: $0 bzImage [--prefix image_prefix] [--cmdline 'args']
+       [--rdev device] [--video mode] [--flags rootflags] [--tracks cnt]
+       [--format 1440|1680|1920|2880 ] [--initrd initrdfile]...
+
+Default values: --format 1440 --tracks 80 --prefix floppy.
+
+Example:
+$0 /boot/vmlinuz-2.6.30.6 --rdev /dev/ram0 --video -3 --cmdline 'rw lang=fr_FR kmap=fr-latin1 laptop autologin' --initrd /boot/rootfs.gz --initrd ./myconfig.gz
+EOT
+exit 1
+}
+
+KERNEL=""
+INITRD=""
+CMDLINE=""
+PREFIX="floppy."
+FORMAT="1440"
+RDEV=""
+VIDEO=""
+FLAGS=""
+TRACKS=""
+DEBUG=""
+while [ -n "$1" ]; do
+	case "$1" in
+	--c*|-c*)  CMDLINE="$2"; shift;;
+	--i*|-i*)  INITRD="$INITRD $2"; shift;;
+	--p*|-p*)  PREFIX="$2"; shift;;
+	--fo*|-f*) FORMAT="$2"; shift;;
+	--fl*)     FLAGS="$2"; shift;;	# 1 read-only, 0 read-write
+	--r*|-r*)  RDEV="$2"; shift;;	# /dev/???
+	--v*|-v*)  VIDEO="$2"; shift;;	# -3 .. n
+	--t*|-t*)  TRACKS="$2"; shift;; # likely 81 .. 84
+	--debug)   DEBUG="1";;
+	*) KERNEL="$1";;
+	esac
+	shift
+done
+[ -n "$KERNEL" -a -f "$KERNEL" ] || usage
+if [ -n "$TRACKS" ]; then
+	if [ $(( $FORMAT % $TRACKS )) -ne 0 ]; then
+		echo "Invalid track count for format $FORMAT."
+		usage
+	fi
+fi
+
+# write a 16 bits data
+# usage: store16 offset data16 file
+store16()
+{
+	n=$2; i=2; while [ $i -ne 0 ]; do
+		printf '\\\\x%02X' $(($n & 255))
+		i=$(($i-1)); n=$(($n >> 8))
+	done | xargs echo -en | \
+		dd bs=2 conv=notrunc of=$3 seek=$(( $1 / 2 )) 2> /dev/null
+	[ -n "$DEBUG" ] && printf "store16(%04X) = %04X\n" $1 $2 1>&2
+}
+
+# write a 32 bits data
+# usage: storelong offset data32 file
+storelong()
+{
+	n=$2; i=4; while [ $i -ne 0 ]; do
+		printf '\\\\x%02X' $(($n & 255))
+		i=$(($i-1)); n=$(($n >> 8))
+	done | xargs echo -en | \
+		dd bs=4 conv=notrunc of=$3 seek=$(( $1 / 4 )) 2> /dev/null
+	[ -n "$DEBUG" ] && printf "storelong(%04X) = %08X\n" $1 $2 1>&2
+}
+
+# read a 32 bits data
+# usage: getlong offset file
+getlong()
+{
+	dd if=$2 bs=1 skip=$(( $1 )) count=4 2> /dev/null | \
+		hexdump -e '"" 1/4 "%d" "\n"'
+}
+
+floppyset()
+{
+	# bzImage offsets
+	CylinderCount=496
+	SetupSzOfs=497
+	FlagsOfs=498
+	SyssizeOfs=500
+	VideoModeOfs=506
+	RootDevOfs=508
+	CodeAdrOfs=0x214
+	RamfsAdrOfs=0x218
+	RamfsLenOfs=0x21C
+	ArgPtrOfs=0x228
+
+	# boot+setup address
+	SetupBase=0x90000
+
+	stacktop=0x9E00
+
+	bs=/tmp/bs$$
+
+	# Get and patch boot sector
+	# See  http://hg.slitaz.org/wok/raw-file/711d076b277c/linux/stuff/linux-header-2.6.34.u
+	dd if=$KERNEL bs=512 count=1 of=$bs 2> /dev/null
+	uudecode <<EOT | dd of=$bs conv=notrunc 2> /dev/null
+begin-base64 644 -
+/L+6nWgAkAcGF4n8McC5HQDzq1sfD6mg8X1ABlfFd3ixBvOlZWaPR3gGH8ZF
++D/6l1hB6DQBvgACA3QO6HYBWwseKAJ0LFNH6AoBXuhmAbAgzRCwCM0QTuhl
+ATwIdAOIBK05NigCdPDoPgE8CnXgiHz+ieb/TBD/TBi/9AGBTRz/gMdFMACc
+sBCxBUi0k4lEHLABiUQUmGaY0+BIZgMFZtPoaAAQB7+AACn4nHMCAccx21BW
+6J4AXrkAgLSH/kQczRVYnXfcoRoCvxwCsQk4RBxyuJPNE+oAACCQsEYoyL7b
+AejSAF3rI4D5E3IEOMF3a4D+AnIEOOZ3bGCB/QAGdCoGUlFTlrQCULEGtQTB
+xQSwDyHoBJAnFEAn6IwA/s117LAgzRDitOiWAJjNE2FSUCjIdwKwAZg5+HIC
+ifhQtALNE5VeWFpyoJVBjuGAxwJPdFFOdfSM4ZU4wXVFiMj+xrEBOOZ1O4j0
+/sW2AID9UHIwOi7wAXIqtQBgvt4B/kQMU+gxAFvoOAB1FlKYzRO4AQLNE1rQ
+1Dpk/nXqRgjkdeVh64sWB7AxLAO0DrsHAM0QPA1088OwDejv/6wIwHX4w79s
+BLFbZQINuA0BZToNdArNFnT0mM0Wju9Hw1g6AEluc2VydCBkaXNrIDEuBw0A
+AA==
+====
+EOT
+
+	# Get setup
+	setupsz=$(getlong $SetupSzOfs $bs)
+	setupszb=$(( $setupsz & 255 ))
+	dd if=$KERNEL bs=512 skip=1 count=$setupszb 2> /dev/null >> $bs
+
+	if [ -n "$TRACKS" ]; then
+		[ -n "$DEBUG" ] && echo -n "--tracks " 1>&2
+		n=$(getlong $CylinderCount $bs)
+		store16 $CylinderCount $(( ($n & -256) + $TRACKS )) $bs
+	fi
+	if [ -n "$FLAGS" ]; then
+		[ -n "$DEBUG" ] && echo -n "--flags " 1>&2
+		store16 $FlagsOfs $FLAGS $bs
+	fi
+	if [ -n "$VIDEO" ]; then
+		[ -n "$DEBUG" ] && echo -n "--video " 1>&2
+		store16 $VideoModeOfs $VIDEO $bs
+	fi
+	if [ -n "$RDEV" ]; then
+		[ -n "$DEBUG" ] && echo -n "--rdev " 1>&2
+		n=$(stat -c '0x%02t%02T' $RDEV 2> /dev/null)
+		[ -n "$n" ] || n=$RDEV
+		store16 $RootDevOfs $n $bs
+	fi
+
+	# Store cmdline after setup
+	if [ -n "$CMDLINE" ]; then
+		[ -n "$DEBUG" ] && echo -n "--cmdline '$CMDLINE' " 1>&2
+		echo -n "$CMDLINE" | dd bs=512 count=1 conv=sync 2> /dev/null >> $bs
+		storelong $ArgPtrOfs $(( $SetupBase + $stacktop )) $bs
+	fi
+
+	# Compute initramfs size
+	initrdlen=0
+	padding=0
+	for i in $( echo $INITRD | sed 's/,/ /' ); do
+		[ -s "$i" ] || continue
+		[ -n "$DEBUG" ] && echo "--initrd $i " 1>&2
+		initrdlen=$(( $initrdlen + $padding ))
+		padding=$(stat -c %s $i)
+		initrdlen=$(( $initrdlen + $padding ))
+		padding=$(( 4096 - ($padding & 4095) ))
+		[ $padding -eq 4096 ] && padding=0
+	done
+	Ksize=$(( $(getlong $SyssizeOfs $bs)*16 ))
+	Kpad=$(( (($Ksize+4095)/4096)*4096 - Ksize ))
+	if [ $initrdlen -ne 0 ]; then
+		[ -n "$DEBUG" ] && echo "initrdlen = $initrdlen " 1>&2
+		Kbase=$(getlong $CodeAdrOfs $bs)
+		storelong $RamfsAdrOfs \
+			$(( (0x1000000 - $initrdlen) & 0xFFFF0000 )) $bs
+		storelong $RamfsLenOfs $(( ($initrdlen + 3) & -4 )) $bs
+	fi
+
+	# Output boot sector + setup + cmdline
+	dd if=$bs 2> /dev/null
+
+	# Output kernel code
+	dd if=$KERNEL bs=512 skip=$(( $setupszb + 1 )) 2> /dev/null
+
+	# Pad to next sector
+	Kpad=$(( 512 - ($(stat -c %s $KERNEL) & 511) ))
+	[ $Kpad -eq 512 ] || dd if=/dev/zero bs=1 count=$Kpad 2> /dev/null
+
+	# Output initramfs
+	padding=0
+	for i in $( echo $INITRD | sed 's/,/ /' ); do
+		[ -s "$i" ] || continue
+		[ $padding -ne 0 ] && dd if=/dev/zero bs=1 count=$padding 2> /dev/null
+		dd if=$i 2> /dev/null
+		padding=$(( 4 - ($(stat -c %s $i) & 3) ))
+		[ $padding -eq 4 ] && padding=0
+	done
+
+	# Cleanup
+	rm -f $bs
+}
+
+if [ "$FORMAT" == "0" ]; then # unsplitted
+	floppyset > $PREFIX
+	exit
+fi
+floppyset | split -b ${FORMAT}k /dev/stdin floppy$$
+i=1
+ls floppy$$* | while read file ; do
+	output=$PREFIX$(printf "%03d" $i)
+	cat $file /dev/zero | dd bs=1k count=$FORMAT conv=sync of=$output 2> /dev/null
+	echo $output
+	rm -f $file
+	i=$(( $i + 1 ))
+done
