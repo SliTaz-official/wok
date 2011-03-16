@@ -1,0 +1,30 @@
+# SliTaz package receipt.
+
+PACKAGE="par2"
+SOURCE="par2cmdline"
+VERSION="0.4"
+CATEGORY="system"
+SHORT_DESC="Utility for posting and recovery of multi-part archives."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://parchive.sourceforge.net/"
+WGET_URL="$SF_MIRROR/parchive/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	#http://sources.gentoo.org/viewcvs.py/gentoo-x86/app-arch/par2cmdline/files/par2cmdline-0.4-gcc4.patch
+	patch -p1 < ../stuff/par2cmdline-0.4-gcc4.patch || true
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/usr $fs
+}
