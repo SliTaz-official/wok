@@ -1,0 +1,64 @@
+#!/bin/sh
+# /etc/init.d/backuppc: Start, stop and restart backuppc daemon on SliTaz, at boot
+# time or with the command line.
+#
+# To start daemon at boot time, just put the right name in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf.
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=BackupPC
+DESC="backuppc deamon"
+DAEMON=/usr/bin/BackupPC
+OPTIONS=$BACKUPPC_OPTIONS
+[ -n "$OPTIONS" ] || OPTIONS="-d"
+PIDFILE=/var/run/backuppc.pid
+
+case "$1" in
+  start)
+    if active_pidfile $PIDFILE $NAME ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    su -s /bin/sh -c "$DAEMON $OPTIONS" www
+    pidof $NAME | awk '{ print $1 }' > $PIDFILE
+    status
+    ;;
+  stop)
+    if ! active_pidfile $PIDFILE $NAME ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    rm $PIDFILE
+    status
+    ;;
+  restart)
+    if ! active_pidfile $PIDFILE $NAME ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    kill `cat $PIDFILE`
+    rm $PIDFILE
+    sleep 2
+    su -c "$DAEMON $OPTIONS" www
+    pidof $NAME | awk '{ print $1 }' > $PIDFILE
+    status
+    ;;
+  reload)
+    kill -1 `cat $PIDFILE`
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0

@@ -1,0 +1,74 @@
+# SliTaz package receipt.
+
+PACKAGE="backuppc"
+SOURCE="BackupPC"
+VERSION="3.2.0"
+CATEGORY="network"
+SHORT_DESC="high-performance, enterprise-grade system for backing up Linux"
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://backuppc.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+DEPENDS="tar perl-file-rsync perl perl-compress-raw-zlib perl-archive-zip \
+rsync bzip2 apache-mod-perl perl-xml-rss perl-net-ftp \
+perl-net-ftp-retrhandle perl-net-ftp-autoreconnect smbclient samba postfix \
+bzip2 openssh perl-lwp-useragent"
+BUILD_DEPENDS="par2"
+SUGGESTED="par2"
+CONFIG_FILES="/etc/BackupPC/config.pl"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	mkdir -p $PWD/_pkg/etc/apache/conf.d
+	cp httpd/BackupPC.conf $PWD/_pkg/etc/apache/conf.d
+	perl configure.pl --batch --dest-dir=$PWD/_pkg --install-dir=/usr \
+		--data-dir=/var/lib/BackupPC --config-dir=/etc/BackupPC \
+		--log-dir=/var/log/BackupPC --backuppc-user=www \
+		--hostname=localhost --html-dir=/usr/share/BackupPC/www \
+		--html-dir-url=/BackupPC/img --cgi-dir=/usr/share/BackupPC/cgi
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/* $fs
+	cp -a stuff/* $fs
+	sed -i -e "s/''http/'http/;s/min''/min'/" \
+	       -e 's/-E -N -d/-E -d/' \
+	       -e "s/^\\\$Conf{CgiAdminUsers}.*/\$Conf{CgiAdminUsers} = 'root';/" \
+	       -e 's|sshPath -q -x|sshPath -i /etc/BackupPC/.ssh/id_rsa -q -x|' \
+		$fs/etc/BackupPC/config.pl
+	chown www.www $fs/etc/BackupPC/config.pl
+	chmod 755 $fs/etc $fs/var $fs/var/*
+}
+
+post_install()
+{
+	grep -qs backuppc $1/etc/rcS.conf ||
+	sed -i 's/^RUN_DAEMONS="/RUN_DAEMONS="backuppc /' $1/etc/rcS.conf
+	loc=$LANG
+	[ -s $1/usr/lib/BackupPC/Lang/$loc.pm ] || loc=${loc:0:2}
+	[ -s $1/usr/lib/BackupPC/Lang/$loc.pm ] &&
+	sed -i "s/'en'/'$loc'/" $1/etc/BackupPC/config.pl
+	[ -x /usr/bin/par2 ] &&
+	sed -i 's/{ArchivePar} =.*/{ArchivePar} = 5;/' $1/etc/BackupPC/config.pl
+	if [ ! -d $1/etc/BackupPC/.ssh ]; then
+		mkdir $1/etc/BackupPC/.ssh
+		ssh-keygen -t rsa -f $1/etc/BackupPC/.ssh/id_rsa -C '' -N ''
+	fi
+	if [ -z "$1" ]; then
+		/etc/init.d/apache stop
+		sleep 2
+		/etc/init.d/backuppc start
+		/etc/init.d/apache start
+	fi
+	cat <<EOT
+Now you should :
+- append $1/etc/BackupPC/.ssh/id_rsa.pub to every unix client /root/.ssh/authorized_keys file
+- update \$Conf{CgiAdminUsers} in $1/etc/BackupPC/config.pl 
+- enable web access with 'htpasswd -c root /etc/BackupPC/BackupPC.users'
+- update passwords in /etc/BackupPC/*.sh
+EOT
+}
