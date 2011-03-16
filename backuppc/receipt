@@ -22,6 +22,10 @@ compile_rules()
 {
 	cd $src
 	mkdir -p _pkg/etc/apache/conf.d
+	grep -q share/BackupPC/doc configure.pl ||
+	sed -i -e 's|/doc|/share/BackupPC/doc|' \
+		-e 's|bin doc|bin share/BackupPC/doc|' \
+		configure.pl
 	perl configure.pl --batch --dest-dir=$PWD/_pkg --install-dir=/usr \
 		--data-dir=/var/lib/BackupPC --config-dir=/etc/BackupPC \
 		--log-dir=/var/log/BackupPC --backuppc-user=www \
@@ -39,7 +43,7 @@ genpkg_rules()
 	sed -i -e "s/''http/'http/;s/min''/min'/" \
 	       -e 's/-E -N -d/-E -d/' \
 	       -e "s/^\\\$Conf{CgiAdminUsers}.*/\$Conf{CgiAdminUsers} = 'root';/" \
-	       -e 's|sshPath -q -x|sshPath -i /etc/BackupPC/.ssh/id_rsa -q -x|' \
+	       -e 's|sshPath -q -x|sshPath -o UserKnownHostsFile=/etc/BackupPC/.ssh/known_hosts -i /etc/BackupPC/.ssh/id_rsa -q -x|' \
 		$fs/etc/BackupPC/config.pl
 	chown www.www $fs/etc/BackupPC/config.pl
 	chmod 755 $fs/etc $fs/var $fs/var/*
