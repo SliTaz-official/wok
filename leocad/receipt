@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="leocad"
-VERSION="0.75-1"
+VERSION="0.75.1"
 CATEGORY="games"
 SHORT_DESC="A CAD program that uses toy bricks."
 MAINTAINER="rcx@zoominternet.net"
@@ -9,26 +9,21 @@ DEPENDS="glibc-base gcc-lib-base glib libgio expat zlib leocad-pieces \
 gtk+ atk cairo pixman pango jpeg libpng fontconfig freetype libxcb xcb-util \
 xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor xorg-libXdamage \
 xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXft xorg-libXinerama \
-xorg-libXrender"
+xorg-libXrender mesa libglu-mesa"
 BUILD_DEPENDS=""
-TARBALL="$PACKAGE-$VERSION.i386.rpm"
-WEB_SITE="http://www.leocad.org/"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WEB_SITE="http://code.google.com/p/leocad/"
 WGET_URL="http://leocad.googlecode.com/files/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	echo " ** Ignoring Extract Error **"
+	cd $src
+	make PREFIX="/usr" config &&
+	make &&
+	make install
 
 	mkdir -p $src/_pkg/usr/lib/leocad
-	cp -a stuff/share $src/_pkg/usr
-
-	cd $src
-
-	# Extract the rpm
-	rpm2cpio $SOURCES_REPOSITORY/$TARBALL | cpio -idmv
-
-	cp -a usr/local/bin/leocad _pkg/usr/lib/leocad
 
 	# Create the shell script launcher
 	mkdir -p _pkg/usr/bin
@@ -46,4 +41,5 @@ genpkg_rules()
 {
 	mkdir -p $fs
 	cp -a $_pkg/* $fs
+
 }
