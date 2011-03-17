@@ -1,0 +1,67 @@
+# SliTaz package receipt.
+
+PACKAGE="connman"
+VERSION="0.64"
+CATEGORY="network"
+SHORT_DESC="Daemon for managing internet connections"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="glib dbus iptables gnutls libnl udev wpa_supplicant"
+BUILD_DEPENDS="glib-dev dbus-dev iptables iptables-dev gnutls-dev libnl-dev udev-dev wpa_supplicant"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://connman.net/"
+WGET_URL="http://www.kernel.org/pub/linux/network/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--disable-gtk-doc \
+		--enable-ethernet \
+		--enable-wifi \
+		--enable-bluetooth \
+		--enable-hh2serial-gps \
+		--enable-ofono \
+		--disable-dhclient \
+		--enable-openconnect \
+		--disable-portal \
+		--enable-loopback \
+		--enable-dnsproxy \
+		--disable-google \
+		--disable-meego \
+	--disable-iwmx \
+		--enable-iospm \
+		--disable-ntpd \
+		--disable-polkit \
+		--enable-client \
+		--enable-tools \
+		--enable-test \
+		--disable-fake \
+		--disable-capng \
+		--enable-udev \
+		--enable-datafiles \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	# dbus conf
+	mkdir -p $fs/etc
+	cp -a $_pkg/etc/dbus-1 $fs/etc
+	# conman exec
+	mkdir -p $fs/usr/lib/connman/plugins
+	cp -a $_pkg/usr/sbin $fs/usr
+	# plugins
+	for lib in dnsproxy ethernet hh2serial-gps iospm loopback openconnect
+	do
+		cp -a $_pkg/usr/lib/connman/plugins/${lib}.so $fs/usr/lib/connman/plugins
+	done
+}
+
