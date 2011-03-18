@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="qca"
+VERSION="2.0.3"
+CATEGORY="system-tools"
+SHORT_DESC="QCA aims to provide a straightforward and cross-platform crypto API"
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="qt4"
+BUILD_DEPENDS="Qt4-dev qmake"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://delta.affinix.com/qca/"
+WGET_URL="http://delta.affinix.com/download/qca/${VERSION%.*}/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--certstore-path=/etc/ssl/certs/ca-certificates.crt \
+		--disable-tests \
+		--no-separate-debug-info \
+		--release &&
+	make && make INSTALL_ROOT=$WOK/$PACKAGE/install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
