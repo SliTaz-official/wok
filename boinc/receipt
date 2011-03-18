@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="boinc"
+VERSION="6.10.58"
+SVN_TAG="6_10_58"
+CATEGORY="network"
+SHORT_DESC="Open-source software for volunteer computing and grid computing."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="openssl libcurl wxWidgets"
+BUILD_DEPENDS="$DEPENDS subversion openssl-dev autoconf automake curl-dev \
+wxWidgets-dev"
+WEB_SITE="http://boinc.berkeley.edu/"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ ! -d $PACKAGE-$VERSION ] && svn co \
+		http://boinc.berkeley.edu/svn/tags/boinc_core_release_${SVN_TAG} \
+		$PACKAGE-$VERSION
+	cd $src
+	./_autosetup
+	./configure \
+		--disable-server \
+		--enable-unicode \
+		--enable-optimize &&
+		make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/usr/lib \
+		$fs/var/lib/boinc \
+		$fs/usr/share/pixmaps
+	cp -a $_pkg/etc $fs
+	chmod 0644 $fs/etc/boinc-client.conf
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp $_pkg/usr/share/boinc/boincmgr.48x48.png \
+		$fs/usr/share/pixmaps/boincmgr.png
+}
+
+post_install()
+{
+	adduser -g "BOINC User" -h /var/lib/boinc -s /bin/false -S -H -D boinc
+}
+
+post_remove()
+{
+	deluser boinc
+}
