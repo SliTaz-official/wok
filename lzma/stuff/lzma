@@ -2,6 +2,17 @@
 
 case "$1" in
 d|e|b) exec /usr/bin/lzma-alone $@;;
+--size) size=$(dd if=$2 bs=1 skip=5 count=8 2> /dev/null | od -t d8 | awk '{ print $2; exit }') 
+	if [ $size -eq -1 ]; then
+		size=$(unlzma -c $2 | wc -c)
+		n=$size
+		for i in $(seq 1 8); do
+			printf '\\\\x%02X' $(($n & 255))
+			n=$(($n >> 8))
+		done | xargs echo -en | dd of=$2 conv=notrunc bs=1 seek=5 2> /dev/null
+	fi
+	echo $size
+	exit ;;
 --version|-V|--help|-h|-\?) exec /usr/bin/lzma-alone;;
 esac
 
