@@ -78,6 +78,15 @@ lzma_utils()
 	exit
 }
 
+fix_size()
+{
+	n=$1
+	for i in $(seq 1 8); do
+		printf '\\\\x%02X' $(($n & 255))
+		n=$(($n >> 8))
+	done | xargs echo -en | dd of=$2 conv=notrunc bs=1 seek=5 2> /dev/null
+}
+
 case "$0" in
 *unlzma) lzma_utils -d $@ ;;
 *lzcat)  lzma_utils -c -d $@ ;;
@@ -86,14 +95,10 @@ esac
 # First look if help is needed.
 case "$1" in
 --version|-V|--help|-h|-\?|'') usage;;
---size) size=$(dd if=$2 bs=1 skip=5 count=8 2> /dev/null | od -t d8 | awk '{ print $2; exit }') 
+--size) size=$(od -t d8 -j5 -N8 < $2 | awk '{ print $2; exit }') 
 	if [ $size -eq -1 ]; then
 		size=$(unlzma -c $2 | wc -c)
-		n=$size
-		for i in $(seq 1 8); do
-			printf '\\\\x%02X' $(($n & 255))
-			n=$(($n >> 8))
-		done | xargs echo -en | dd of=$2 conv=notrunc bs=1 seek=5 2> /dev/null
+		fix_size $size $2
 	fi
 	echo $size
 	exit ;;
@@ -128,14 +133,6 @@ done
 
 # fake lzma_alone (-eos -mt1)
 eval xz $args --format=lzma --$mode$extra --stdout $input $output || usage error
-if [ -n "$input" -a -n "$output" ]; then
-	size=$(stat -c "%s" ${input#< })
-	ascii="00000 "
-	for i in 1 2 3 4 5 6 7 8; do
-		ascii="$ascii $(printf "%02x" $((size % 256)) )"
-		size=$(( $size / 256 ))
-	done
-	echo "$ascii | .." | hexdump -R | \
-	dd of=${output#> } seek=5 bs=1 conv=notrunc 2> /dev/null
-fi
+[ -n "$input" -a -n "$output" ] &&
+	fix_size $(stat -c "%s" ${input#< }) ${output#> }
 exit 0
