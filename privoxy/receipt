@@ -16,6 +16,7 @@ compile_rules()
 {
 	# Have to create privoxy user/group to be able to compile
 	adduser -s /bin/false -H -D -u 42 privoxy
+	addgroup -g 42 privoxy
 	
 	cd $src
 
@@ -54,12 +55,18 @@ post_install()
 		status
 	fi
 
+	if ! grep -q privoxy $1/etc/group; then
+		echo -n "Adding group privoxy..."
+		chroot $1/ addgroup -g 42 privoxy
+		status
+	fi
+
 	# and change file permissions
 	echo -n "Changing file permissions..."
-	chown -R root.privoxy $1/etc/privoxy
+	chown -R privoxy.privoxy $1/etc/privoxy
 	chown -R root.root $1/etc/privoxy/templates
 	chown root.root $1/etc/privoxy
-	chown root.privoxy $1/var/log/privoxy/logfile
+	chown privoxy.privoxy $1/var/log/privoxy/logfile
 	status
 }
 
@@ -67,4 +74,5 @@ post_install()
 post_remove()
 {
 	deluser privoxy
+	delgroup privoxy
 }
