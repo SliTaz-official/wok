@@ -1,14 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="firefox"
-VERSION="3.6.15"
+VERSION="4.0"
 CATEGORY="network"
 SHORT_DESC="User friendly, secure and fast web browser."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ sqlite dbus dbus-glib glib jpeg xorg-libX11 xorg-libXdamage alsa-lib xorg-libXt libfirefox libnotify"
-BUILD_DEPENDS="xorg-dev gtk+-dev zip libIDL coreutils findutils xorg-libXft-dev \
+DEPENDS="gtk+ sqlite dbus mesa libglu-mesa dbus-glib glib jpeg xorg-libX11 xorg-libXdamage alsa-lib xorg-libXt libfirefox libnotify"
+BUILD_DEPENDS="gtk+-dev zip libIDL coreutils findutils xorg-libXft-dev \
 dbus-dev dbus-glib-dev alsa-lib alsa-lib-dev libnotify-dev wireless_tools-dev perl \
-python"
+python yasm"
 TARBALL="$PACKAGE-$VERSION.source.tar.bz2"
 WEB_SITE="http://www.mozilla.org/"
 WGET_URL="http://releases.mozilla.org/pub/mozilla.org/firefox/releases/$VERSION/source/$TARBALL"
@@ -22,10 +22,7 @@ TAGS="browser"
 #
 compile_rules()
 {
-	# Move the mozilla source tree to $PACKAGE-$VERSION to keep variables
-	# and to have a nice clean.
-	mv mozilla-* $PACKAGE-$VERSION 2>/dev/null
-	cp -a stuff/firefox.mozconfig $src/.mozconfig
+	cp -a $stuff/firefox.mozconfig $src/.mozconfig
 	cd $src
 	sed -i 's/xtype/type/' toolkit/mozapps/installer/packager.mk
 	./configure $CONFIGURE_ARGS &&
@@ -37,26 +34,29 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/$PACKAGE-$VERSION $fs/usr/share $fs/etc 
+	i=$src
+	mkdir -p $fs/usr/lib/$PACKAGE-$VERSION/defaults/profile/chrome $fs/usr/share $fs/etc 
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/$PACKAGE-$VERSION $fs/usr/lib
 
 	# Home page, bookmarks file and branding.
-	cp -a stuff/browserconfig.properties $fs/usr/lib/$PACKAGE-$VERSION
-	cp -a stuff/bookmarks.html \
+	cp -a $stuff/browserconfig.properties $fs/usr/lib/$PACKAGE-$VERSION
+	cp -a $stuff/bookmarks.html \
 		$fs/usr/lib/$PACKAGE-$VERSION/defaults/profile
-	cp -a stuff/firefox-branding.js \
-		$fs/usr/lib/$PACKAGE-$VERSION/defaults/pref/
+	cp -a $stuff/firefox-branding.js \
+		$fs/usr/lib/$PACKAGE-$VERSION/defaults/pref/firefox.js
 
 	# User preference.
-	cp -a stuff/prefs.js $fs/usr/lib/$PACKAGE-$VERSION/defaults/profile
-	cp -a stuff/userChrome.css \
+	cp -a $stuff/prefs.js $fs/usr/lib/$PACKAGE-$VERSION/defaults/profile
+	cp -a $stuff/userChrome.css \
 		$fs/usr/lib/$PACKAGE-$VERSION/defaults/profile/chrome
 
 	# Move default config to /etc/firefox (/usr maybe read-only)
 	for i in defaults browserconfig.properties ; do
 		mv -f $fs/usr/lib/$PACKAGE-$VERSION/$i $fs/etc/$PACKAGE
 	done
+
+
 	ln -s /etc/$PACKAGE/browserconfig.properties $fs/usr/lib/$PACKAGE-$VERSION
 	ln -s /etc/$PACKAGE $fs/usr/lib/$PACKAGE-$VERSION/defaults
 
@@ -71,7 +71,7 @@ genpkg_rules()
 	#	$fs/usr/lib/$PACKAGE-$VERSION/extensions/langpack*/install.rdf
 
 	# Search Plugin (by: oddball)
-	cp -a stuff/searchplugins $fs/usr/lib/firefox-$VERSION/
+	cp -a $stuff/searchplugins $fs/usr/lib/firefox-$VERSION/
 	chown -R root.root $fs
 
 	# Remove unnecessary files.
@@ -80,8 +80,7 @@ genpkg_rules()
 	# split firefox libs
 	rm -rf $fs/usr/lib/$PACKAGE-$VERSION/*.so
 	#retain big firefox libs
-	cp 	$_pkg/usr/lib/$PACKAGE-$VERSION/libxul.so \
-		$_pkg/usr/lib/$PACKAGE-$VERSION/libmozjs.so \
+	cp $_pkg/usr/lib/$PACKAGE-$VERSION/libxul.so \
 		$fs/usr/lib/$PACKAGE-$VERSION
 	
 }
