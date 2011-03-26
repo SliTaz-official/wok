@@ -1,0 +1,37 @@
+
+# HG changeset patch
+# User Igor M. Liplianin <liplianin@me.by>
+# Date 1293902019 -7200
+# Node ID d64b014c5253e3699e025339619a6f7704f2fb81
+# Parent  d0a2ff731670f853f4e661e8542eacd29fd55131
+V4L/DVB: dvb: Convert "mutex" to semaphore
+
+From: Thomas Gleixner <tglx@linutronix.de>
+
+Get rid of init_MUTEX[_LOCKED]() and use sema_init() instead.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Signed-off-by: Mauro Carvalho Chehab <mchehab@redhat.com>
+---
+
+--- a/linux/drivers/media/dvb/dvb-core/dvb_frontend.c	Fri Dec 31 20:04:34 2010 +0200
++++ b/linux/drivers/media/dvb/dvb-core/dvb_frontend.c	Sat Jan 01 19:13:39 2011 +0200
+@@ -715,7 +715,7 @@
+ 
+ 	kthread_stop(fepriv->thread);
+ 
+-	init_MUTEX (&fepriv->sem);
++	sema_init(&fepriv->sem, 1);
+ 	fepriv->state = FESTATE_IDLE;
+ 
+ 	/* paranoia check in case a signal arrived */
+@@ -2074,7 +2074,7 @@
+ 	}
+ 	fepriv = fe->frontend_priv;
+ 
+-	init_MUTEX (&fepriv->sem);
++	sema_init(&fepriv->sem, 1);
+ 	init_waitqueue_head (&fepriv->wait_queue);
+ 	init_waitqueue_head (&fepriv->events.wait_queue);
+ 	mutex_init(&fepriv->events.mtx);
+

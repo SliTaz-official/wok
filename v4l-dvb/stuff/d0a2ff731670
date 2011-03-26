@@ -1,0 +1,181 @@
+
+# HG changeset patch
+# User Jean Delvare <khali@linux-fr.org>
+# Date 1293818674 -7200
+# Node ID d0a2ff731670f853f4e661e8542eacd29fd55131
+# Parent  3be76b724b85004860ba7c625a735bc8b060bac4
+[PATCH] [media] i2c: Stop using I2C_CLASS_TV_DIGITAL
+
+From: Jean Delvare <khali@linux-fr.org>
+
+Detection class I2C_CLASS_TV_DIGITAL is set by many adapters but no
+I2C device driver is setting it anymore, which means it can be
+dropped. I2C devices on digital TV adapters are instantiated
+explicitly these days, which is much better.
+
+Signed-off-by: Jean Delvare <khali@linux-fr.org>
+Signed-off-by: Mauro Carvalho Chehab <mchehab@redhat.com>
+
+--- a/linux/drivers/media/dvb/b2c2/flexcop-i2c.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/b2c2/flexcop-i2c.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -248,9 +248,6 @@
+ 	i2c_set_adapdata(&fc->fc_i2c_adap[1].i2c_adap, &fc->fc_i2c_adap[1]);
+ 	i2c_set_adapdata(&fc->fc_i2c_adap[2].i2c_adap, &fc->fc_i2c_adap[2]);
+ 
+-	fc->fc_i2c_adap[0].i2c_adap.class =
+-		fc->fc_i2c_adap[1].i2c_adap.class =
+-		fc->fc_i2c_adap[2].i2c_adap.class = I2C_CLASS_TV_DIGITAL;
+ 	fc->fc_i2c_adap[0].i2c_adap.algo =
+ 		fc->fc_i2c_adap[1].i2c_adap.algo =
+ 		fc->fc_i2c_adap[2].i2c_adap.algo = &flexcop_algo;
+--- a/linux/drivers/media/dvb/dm1105/dm1105.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/dm1105/dm1105.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -894,7 +894,6 @@
+ 	i2c_set_adapdata(&dev->i2c_adap, dev);
+ 	strcpy(dev->i2c_adap.name, DRIVER_NAME);
+ 	dev->i2c_adap.owner = THIS_MODULE;
+-	dev->i2c_adap.class = I2C_CLASS_TV_DIGITAL;
+ 	dev->i2c_adap.dev.parent = &pdev->dev;
+ 	dev->i2c_adap.algo = &dm1105_algo;
+ 	dev->i2c_adap.algo_data = dev;
+--- a/linux/drivers/media/dvb/dvb-usb/af9015.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/dvb-usb/af9015.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -1135,11 +1135,6 @@
+ 
+ 	strncpy(state->i2c_adap.name, d->desc->name,
+ 		sizeof(state->i2c_adap.name));
+-#ifdef I2C_ADAP_CLASS_TV_DIGITAL
+-	state->i2c_adap.class = I2C_ADAP_CLASS_TV_DIGITAL,
+-#else
+-	state->i2c_adap.class = I2C_CLASS_TV_DIGITAL,
+-#endif
+ 	state->i2c_adap.algo      = d->props.i2c_algo;
+ 	state->i2c_adap.algo_data = NULL;
+ 	state->i2c_adap.dev.parent = &d->udev->dev;
+--- a/linux/drivers/media/dvb/dvb-usb/dvb-usb-i2c.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/dvb-usb/dvb-usb-i2c.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -20,7 +20,6 @@
+ 	}
+ 
+ 	strlcpy(d->i2c_adap.name, d->desc->name, sizeof(d->i2c_adap.name));
+-	d->i2c_adap.class = I2C_CLASS_TV_DIGITAL,
+ 	d->i2c_adap.algo      = d->props.i2c_algo;
+ 	d->i2c_adap.algo_data = NULL;
+ 	d->i2c_adap.dev.parent = &d->udev->dev;
+--- a/linux/drivers/media/dvb/frontends/cx24123.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/frontends/cx24123.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -1111,7 +1111,6 @@
+ 
+ 	strlcpy(state->tuner_i2c_adapter.name, "CX24123 tuner I2C bus",
+ 		sizeof(state->tuner_i2c_adapter.name));
+-	state->tuner_i2c_adapter.class     = I2C_CLASS_TV_DIGITAL,
+ 	state->tuner_i2c_adapter.algo      = &cx24123_tuner_i2c_algo;
+ 	state->tuner_i2c_adapter.algo_data = NULL;
+ 	i2c_set_adapdata(&state->tuner_i2c_adapter, state);
+--- a/linux/drivers/media/dvb/frontends/dibx000_common.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/frontends/dibx000_common.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -172,7 +172,6 @@
+ 			    struct dibx000_i2c_master *mst)
+ {
+ 	strncpy(i2c_adap->name, name, sizeof(i2c_adap->name));
+-	i2c_adap->class = I2C_CLASS_TV_DIGITAL, i2c_adap->algo = algo;
+ 	i2c_adap->algo_data = NULL;
+ 	i2c_set_adapdata(i2c_adap, mst);
+ 	if (i2c_add_adapter(i2c_adap) < 0)
+--- a/linux/drivers/media/dvb/frontends/s5h1420.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/frontends/s5h1420.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -955,7 +955,6 @@
+ 	/* create tuner i2c adapter */
+ 	strlcpy(state->tuner_i2c_adapter.name, "S5H1420-PN1010 tuner I2C bus",
+ 		sizeof(state->tuner_i2c_adapter.name));
+-	state->tuner_i2c_adapter.class     = I2C_CLASS_TV_DIGITAL,
+ 	state->tuner_i2c_adapter.algo      = &s5h1420_tuner_i2c_algo;
+ 	state->tuner_i2c_adapter.algo_data = NULL;
+ 	i2c_set_adapdata(&state->tuner_i2c_adapter, state);
+--- a/linux/drivers/media/dvb/mantis/mantis_i2c.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/mantis/mantis_i2c.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -159,7 +159,6 @@
+ 	.owner			= THIS_MODULE,
+ 	.name			= "Mantis I2C",
+ 	.id			= I2C_HW_B_MANTIS,
+-	.class			= I2C_CLASS_TV_DIGITAL,
+ 	.algo			= &mantis_algo,
+ };
+ 
+--- a/linux/drivers/media/dvb/ngene/ngene-i2c.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/ngene/ngene-i2c.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -212,11 +212,6 @@
+ 	struct i2c_adapter *adap = &(dev->channel[dev_nr].i2c_adapter);
+ 
+ 	i2c_set_adapdata(adap, &(dev->channel[dev_nr]));
+-#ifdef I2C_CLASS_TV_DIGITAL
+-	adap->class = I2C_CLASS_TV_DIGITAL | I2C_CLASS_TV_ANALOG;
+-#else
+-	adap->class = I2C_CLASS_TV_ANALOG;
+-#endif
+ 
+ 	strcpy(adap->name, "nGene");
+ 
+--- a/linux/drivers/media/dvb/pluto2/pluto2.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/pluto2/pluto2.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -655,7 +655,6 @@
+ 	i2c_set_adapdata(&pluto->i2c_adap, pluto);
+ 	strcpy(pluto->i2c_adap.name, DRIVER_NAME);
+ 	pluto->i2c_adap.owner = THIS_MODULE;
+-	pluto->i2c_adap.class = I2C_CLASS_TV_DIGITAL;
+ 	pluto->i2c_adap.dev.parent = &pdev->dev;
+ 	pluto->i2c_adap.algo_data = &pluto->i2c_bit;
+ 	pluto->i2c_bit.data = pluto;
+--- a/linux/drivers/media/dvb/pt1/pt1.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/pt1/pt1.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -1087,7 +1087,6 @@
+ 	pt1_update_power(pt1);
+ 
+ 	i2c_adap = &pt1->i2c_adap;
+-	i2c_adap->class = I2C_CLASS_TV_DIGITAL;
+ 	i2c_adap->algo = &pt1_i2c_algo;
+ 	i2c_adap->algo_data = NULL;
+ 	i2c_adap->dev.parent = &pdev->dev;
+--- a/linux/drivers/media/dvb/ttpci/av7110.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/ttpci/av7110.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -2479,7 +2479,6 @@
+ 	   get recognized before the main driver is fully loaded */
+ 	saa7146_write(dev, GPIO_CTRL, 0x500000);
+ 
+-	av7110->i2c_adap.class = I2C_CLASS_TV_DIGITAL;
+ 	strlcpy(av7110->i2c_adap.name, pci_ext->ext_priv, sizeof(av7110->i2c_adap.name));
+ 
+ 	saa7146_i2c_adapter_prepare(dev, &av7110->i2c_adap, SAA7146_I2C_BUS_BIT_RATE_120); /* 275 kHz */
+--- a/linux/drivers/media/dvb/ttpci/budget-core.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/ttpci/budget-core.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -495,8 +495,6 @@
+ 	if (bi->type != BUDGET_FS_ACTIVY)
+ 		saa7146_write(dev, GPIO_CTRL, 0x500000);	/* GPIO 3 = 1 */
+ 
+-	budget->i2c_adap.class = I2C_CLASS_TV_DIGITAL;
+-
+ 	strlcpy(budget->i2c_adap.name, budget->card->name, sizeof(budget->i2c_adap.name));
+ 
+ 	saa7146_i2c_adapter_prepare(dev, &budget->i2c_adap, SAA7146_I2C_BUS_BIT_RATE_120);
+--- a/linux/drivers/media/dvb/ttusb-budget/dvb-ttusb-budget.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/dvb/ttusb-budget/dvb-ttusb-budget.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -1717,7 +1717,6 @@
+ 
+ 	i2c_set_adapdata(&ttusb->i2c_adap, ttusb);
+ 
+-	ttusb->i2c_adap.class		  = I2C_CLASS_TV_DIGITAL;
+ 	ttusb->i2c_adap.algo              = &ttusb_dec_algo;
+ 	ttusb->i2c_adap.algo_data         = NULL;
+ 	ttusb->i2c_adap.dev.parent	  = &udev->dev;
+--- a/linux/drivers/media/video/cx88/cx88-vp3054-i2c.c	Fri Dec 31 12:33:14 2010 +0100
++++ b/linux/drivers/media/video/cx88/cx88-vp3054-i2c.c	Fri Dec 31 20:04:34 2010 +0200
+@@ -121,8 +121,6 @@
+ 	memcpy(&vp3054_i2c->algo, &vp3054_i2c_algo_template,
+ 	       sizeof(vp3054_i2c->algo));
+ 
+-	vp3054_i2c->adap.class |= I2C_CLASS_TV_DIGITAL;
+-
+ 	vp3054_i2c->adap.dev.parent = &dev->pci->dev;
+ 	strlcpy(vp3054_i2c->adap.name, core->name,
+ 		sizeof(vp3054_i2c->adap.name));
+
