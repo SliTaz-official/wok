@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="fpc"
+VERSION="2.4.2"
+CATEGORY="development"
+SHORT_DESC="The Free Pascal Compiler is a Turbo Pascal 7.0 and Delphi compatible 32bit Pascal Compiler. It comes with fully TP 7.0 compatible run-time library."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="ncurses"
+BUILD_DEPENDS="fpc-bootstrap"
+SOURCE="fpcbuild"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.freepascal.org/"
+WGET_URL="ftp://ftp.freepascal.org/pub/fpc/dist/$VERSION/source/$TARBALL"
+CONFIG_FILE="/etc/fpc.cfg"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make NOGDB=1 build
+	make -j1 NOGDB=1 PREFIX=$DESTDIR/usr install
+
+	# install package license
+	install -m 755 -d $DESTDIR/usr/share/licenses/fpc
+	install -m 644 $src/fpcsrc/rtl/COPYING.FPC $DESTDIR/usr/share/licenses/fpc/
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+
+	# create symlink for compiler
+	ln -s /usr/lib/$PACKAGE/$VERSION/ppc386 $fs/usr/bin
+
+	mkdir -p $fs/etc
+	cp -a $fs/usr/lib/fpc/$VERSION/samplecfg $fs/etc/fpc.cfg
+}
+
