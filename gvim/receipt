@@ -1,11 +1,11 @@
 # SliTaz package receipt.
 
 PACKAGE="gvim"
-VERSION="7.2"
+VERSION="7.3"
 CATEGORY="development"
 SHORT_DESC="Advanced text editor, with gtk+ GUI"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="ncurses gtk+ xorg-libXt"
+DEPENDS="ncurses gtk+ xorg-libXt xorg-libXau xorg-libXdmcp"
 SOURCE="vim"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.vim.org/"
@@ -17,18 +17,25 @@ TAGS="text-editor"
 compile_rules()
 {
 	cd $src
+
+	# define the place for the global vimrc file (set to /etc/vim/vimrc)
+	# (patch from Arch Linux PKGBUILD)
+	sed -i 's|^.*\(#define SYS_VIMRC_FILE\).*$|\1 "/etc/vim/vimrc"|' $src/src/feature.h
+	# and global gvimrc file (set to /etc/vim/gvimrc)
+	sed -i 's|^.*\(#define SYS_GVIMRC_FILE\).*$|\1 "/etc/vim/gvimrc"|' $src/src/feature.h
 	
 	./configure --prefix=/usr \
 	 --cache-file=$PWD/config.cache \
 	 --infodir=/usr/share/info \
 	 --with-features=normal \
+	 --with-x=yes \
 	 --enable-gui=gtk2 \
  	 --enable-multibyte \
 	 --disable-motif-check \
 	 --disable-athena-check \
 	 --mandir=/usr/share/man $CONFIGURE_ARGS && 
 	 
-	make VIMRCLOC=/etc/vim VIMRUNTIMEDIR=/usr/share/vim/vim72 MAKE="make -e" &&
+	make VIMRCLOC=/etc/vim VIMRUNTIMEDIR=/usr/share/vim/vim73 MAKE="make -e" &&
 	make DESTDIR=$DESTDIR install
 	mkdir -p $DESTDIR/etc/vim
 	cp -a $src/runtime/vimrc_example.vim $DESTDIR/etc/vim/vimrc
@@ -37,14 +44,42 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p -p $fs/usr/share/pixmaps \
-		-p $fs/usr/share/applications
+	mkdir -p $fs/usr/share/pixmaps $fs/usr/share/applications $fs/etc
 
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/share/vim $fs/usr/share
 	cp -a $src/runtime/vim16x16.png $fs/usr/share/pixmaps/gvim.png
 	cp -a stuff/gvim.desktop $fs/usr/share/applications
-	rm -f $fs/usr/bin/*vimtutor
+	cp -a $_pkg/etc/vim $fs/etc
 }
 
+post_install()
+{
+    local root
+    root=$1
+    echo "Processing post-install commands..."
+    cmd=`readlink $root/bin/vi`
+    if [ ! "$cmd" = "/usr/bin/vim" ]; then
+        echo ""
+        echo "**** Actual VI link : $cmd"
+        echo ""
+        echo -n "Do you want vim  for /bin/vi (y/N) ? : "; read anser
+        if [ "$anser" == "y" ]; then
+            echo ""
+            echo -n "Removing vi link to make a new one pointing on /usr/bin/vim..."
+            rm $root/bin/vi && ln -sf $root/usr/bin/vim $root/bin/vi
+            status
+        else
+            echo ""
+            echo "Leaving /bin/vi to : $cmd"
+        fi
+    fi
+}
+
+post_remove()
+{
+        # restore previous symlink
+        echo "Processing post-remove commands..."
+        ln -sf /bin/busybox $1/bin/vi
+}
 
