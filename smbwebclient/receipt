@@ -5,28 +5,25 @@ VERSION="2.9"
 CATEGORY="network"
 SHORT_DESC="Samba client over the Web."
 MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.php.gz"
 WEB_SITE="http://$PACKAGE.sourceforge.net/"
 DEPENDS="php smbclient"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 CONFIG_FILES="/etc/samba/smbwebclient.conf"
-
-# Rules to configure and make the package.
-compile_rules()
-{
-	[ -f $SOURCES_REPOSITORY/$PACKAGE-$VERSION.php.gz ] ||
-		wget $SF_MIRROR/$PACKAGE/$PACKAGE-$VERSION.php.gz -P $SOURCES_REPOSITORY
-	if [ ! -d $src ]; then
-		mkdir -p $src
-		cp $SOURCES_REPOSITORY/$PACKAGE-$VERSION.php.gz $src
-		gunzip $src/$PACKAGE-$VERSION.php.gz
-	fi
-}
+COOK_OPT="!unpack !repack_src"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	if [ ! -d $src ]; then
+		mkdir -p $src
+		cp $SOURCES_REPOSITORY/$TARBALL $src
+		gunzip $src/$TARBALL
+	fi
+
 	mkdir -p $fs/usr/share/samba $fs/etc/samba
 	cp -a $src/. $fs/usr/share/samba
-	cp -a stuff/* $fs
+	cp -a $stuff/* $fs
 }
 
 post_install()
