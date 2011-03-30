@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="ruby-enterprise"
+VERSION="1.8.7-2011.03"
+CATEGORY="development"
+SHORT_DESC="Ruby Enterprise Edition"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="libdb ncurses libssl readline zlib"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.rubyenterpriseedition.com/"
+WGET_URL="http://rubyenterpriseedition.googlecode.com/files/$TARBALL"
+BUILD_DEPENDS="zlib-dev"
+SUGGESTED="tk xorg-libXss gdbm"
+PROVIDES="ruby"
+TAGS="ruby language programming"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/source
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $src/source/_pkg/usr/lib/ruby $fs/usr/lib
+	cp -a $src/source/_pkg/usr/bin $fs/usr
+	
+	# Remove devel files --> ruby-enterprise-dev
+	rm $fs/usr/lib/ruby/1.8/i486-linux/*.h
+	
+	# Remove doc --> ruby-enterprise-doc
+	rm -rf $fs/usr/lib/ruby/1.8/rdoc
+}
+
