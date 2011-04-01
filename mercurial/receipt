@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="mercurial"
-VERSION="1.8.1"
+VERSION="1.8.2"
 CATEGORY="development"
 SHORT_DESC="Revision tools system."
 MAINTAINER="pankso@slitaz.org"
@@ -16,8 +16,9 @@ CONFIG_FILES="/etc/mercurial/hgweb.config"
 compile_rules()
 {
 	cd $src
-	#make install PREFIX=$PWD/_pkg/usr
-	python setup.py install --root="$PWD/_pkg/" --optimize=1
+	python setup.py install --root="$DESTDIR" --optimize=1
+	mkdir -p $DESTDIR/usr/share/examples/mercurial
+	cp -a $src/hgweb.cgi $DESTDIR/usr/share/examples/mercurial
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -28,15 +29,12 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib $fs/usr
 
 	# Examples
-	cp -a $src/hgweb.cgi $fs/usr/share/examples/mercurial
-	cp -a stuff/hgwebdir.cgi $fs/usr/share/examples/mercurial
-	cp -a stuff/lighttpd-hg-vhost.conf $fs/usr/share/examples/mercurial
+	cp -a $stuff/hgwebdir.cgi $fs/usr/share/examples/mercurial
+	cp -a $stuff/lighttpd-hg-vhost.conf $fs/usr/share/examples/mercurial
 
 	# Config file for hgweb
 	mkdir -p $fs/etc/mercurial
-	cp -a stuff/hgweb.config $fs/etc/mercurial
+	cp -a $stuff/hgweb.config $fs/etc/mercurial
 	
-	find $fs -name "*.pyc" -delete
-	find $fs -name "*.pyo" -delete
 	chown -R root.root $fs
 }
