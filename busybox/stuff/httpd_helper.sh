@@ -14,7 +14,7 @@ header()
 
 htmlentities()
 {
-echo $1 | sed -e 's|&|\&amp;|g' -e 's|<|\&lt;|g' -e 's|>|\&gt;|g' -e 's|"|\&quot;|g'
+echo $1 | sed 's|&|\&amp;|g;s|<|\&lt;|g;s|>|\&gt;|g;s|"|\&quot;|g'
 }
 
 GET()
@@ -73,7 +73,7 @@ unset IFS
 eval ${1}__NAMES=\'${names# }\'
 }
 
-[ "$REQUEST_METHOD" == "GET" -a -z "$GET__NAMES" ] && read_query_string GET
+[ -z "$GET__NAMES" ] && read_query_string GET
 
 ddcut()
 {
@@ -94,7 +94,7 @@ tmp=$(($count / $page))
 dd bs=1 count=$(($count - ($tmp * $page) ))
 }
 
-if [ "$REQUEST_METHOD" == "POST" -a -z "$POST__NAMES" ]; then
+if [ "$REQUEST_METHOD$POST__NAMES" == "POST" ]; then
 	prefix=/tmp/httpd_post
 	mkdir $prefix$$
 	now=$(stat -c %Y $prefix$$)
