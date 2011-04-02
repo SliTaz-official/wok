@@ -106,7 +106,7 @@ if [ "$REQUEST_METHOD$POST__NAMES" == "POST" ]; then
 	cat > ${post}0
 	read delim < ${post}0
 	case "$delim" in
-	-*)	awk "/$delim/ { o+=index(\$0,\"$delim\")-1; print o }
+	-*)	awk "/${delim%?}/ { o+=index(\$0,\"$delim\")-1; print o }
 	   		  { o+=1+length() }" < ${post}0 | while read offset; do
 		    if [ $offset -ne 0 ]; then
 			ddcut $last $offset < ${post}0 > $post$n 2> /dev/null
