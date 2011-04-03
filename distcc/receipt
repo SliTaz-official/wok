@@ -26,7 +26,39 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr \
+		$fs/var/log/distccd \
+		$fs/var/run/distccd \
+		$fs/etc/init.d
+		
 	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/etc/distcc $fs/etc
+	
+	echo '127.0.0.1' >> $fs/etc/distcc/clients.allow
+	
+	install -o root -g root $stuff/distccd $fs/etc/init.d
 }
 
+post_install()
+{
+	if ! grep -q nagios $1/etc/passwd; then
+		echo -n "Adding user/group nagios..."
+		chroot $1/ addgroup -S distcc
+		chroot $1/ adduser -S -D -H -G distcc distcc
+		status
+	fi
+	
+	# Fix perms for files and directories
+	chroot $1/ chown -R distcc.distcc /var/log/distccd \
+	  /var/run/distccd 
+	  
+	cat <<EOF
+----
+Now you can:
+* Just run '/etc/init.d/$PACKAGE start' to start daemon.
+* Add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf to run $PACKAGE àat boot time.
+* Allow cliets in /etc/distcc/clients.allow
+----
+
+EOF
+}
