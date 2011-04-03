@@ -7,7 +7,6 @@ SHORT_DESC="The Python programming language."
 MAINTAINER="pankso@slitaz.org"
 SOURCE="Python"
 DEPENDS="openssl bzlib readline sqlite zlib ncursesw"
-BUILD_DEPENDS="$DEPENDS readline-dev openssl-dev ncursesw-dev"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.python.org/"
 WGET_URL="http://www.python.org/ftp/python/$VERSION/$TARBALL"
@@ -16,11 +15,9 @@ WGET_URL="http://www.python.org/ftp/python/$VERSION/$TARBALL"
 compile_rules()
 {
 	cd $src
-	./configure --enable-shared --with-ncurses \
-	--prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./configure --enable-shared --with-ncurses &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -33,8 +30,6 @@ genpkg_rules()
 	# needed for mericurial to work now
 	cp -a $_pkg/usr/include/${PACKAGE}$python_version/pyconfig.h \
 		$fs/usr/include/${PACKAGE}$python_version
-	find $fs/usr/lib/${PACKAGE}$python_version -name "*.pyc" -delete
-	find $fs/usr/lib/${PACKAGE}$python_version -name "*.pyo" -delete
 	rm -f $fs/usr/bin/*-config
 	strip -s $fs/usr/bin/* 2>/dev/null
 	strip -s $fs/usr/lib/*.so* 2>/dev/null
