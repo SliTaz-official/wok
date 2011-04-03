@@ -1,0 +1,67 @@
+#!/bin/sh
+# /etc/init.d/distccd: Start, stop and restart Distcc daemon on SliTaz, 
+# at boot time or with the command line. Daemons options are configured
+# with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+get_hosts_list()
+{
+	if [ -s /etc/distcc/hosts.allow ]; then
+		for i in $(cat /etc/distcc/clients.allow); do
+			( echo $i | grep -q '^#' ) && continue 
+			ALLOW_HOST="$ALLOW_HOST --allow $i"
+		done
+	else
+	       ALLOW_HOST="--allow 127.0.0.1"
+	fi
+	echo $ALLOW_HOST
+}
+
+NAME=Distccd
+DESC="Distcc daemon"
+DAEMON="/usr/bin/distccd"
+LOGFILE="/var/log/distccd/distccd.log"
+PIDFILE="/var/run/distccd/distccd.pid"
+ALLOW="$(get_hosts_list)"
+JOB=4
+OPTIONS="--daemon --verbose -j $JOB $ALLOW --pid-file $PIDFILE --log-file $LOGFILE"
+
+case "$1" in
+  start)
+    if [ -f $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS 
+    status
+    ;;
+  stop)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill -15 $(cat $PIDFILE)
+    status
+    ;;
+  restart)
+    if [ ! -f $PIDFILE ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    $DAEMON $OPTIONS -k restart
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
