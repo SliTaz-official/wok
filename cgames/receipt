@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="cgames"
+VERSION="2.2"
+CATEGORY="games"
+SHORT_DESC="Games for the Linux Console."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.muppetlabs.com/~breadbox/software/cgames.html"
+WGET_URL="http://www.muppetlabs.com/~breadbox/pub/software/$TARBALL"
+DEPENDS="ncurses"
+BUILD_DEPENDS="ncurses-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i	-e 's|install -.*\$|&(destdir)/$|' \
+		-e "s|^prefix|destdir = $DESTDIR\\n&|" \
+		-e 's/g games/g root/' */Makefile.in
+	sed -i 's/.* getline(.*/#define getline mygetline\n&/' */fileread.h
+	./configure --prefix=/usr \
+	--mandir=/usr/share/man \
+	--datadir=/usr/share \
+	--disable-mouse \
+	--with-ncurses \
+	$CONFIGURE_ARGS &&
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/games $fs/usr
+	cp -a $_pkg/usr/share/cblocks $fs/usr/share
+	cp -a $_pkg/usr/share/csokoban $fs/usr/share
+}
+
