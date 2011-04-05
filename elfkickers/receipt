@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="elfkickers"
+VERSION="2.0a"
+SOURCE="ELFkickers"
+CATEGORY="system-tools"
+SHORT_DESC="Misc ELF linker format tools."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.muppetlabs.com/~breadbox/software/elfkickers.html"
+WGET_URL="http://www.muppetlabs.com/~breadbox/pub/software//$TARBALL"
+#http://www.muppetlabs.com/~breadbox/pub/software/ELFkickers-2.0a.tar.gz
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's|.*asm/elf.h.*|#define ELF_DATA ELFDATA2LSB\n#define ELF_CLASS ELFCLASS32\n#define ELF_ARCH EM_386|' sstrip/sstrip.c
+	mkdir -p $DESTDIR/usr/bin
+	for i in elfls rebind elftoc sstrip ; do
+		cd $i
+		make && cp $i $DESTDIR/usr/bin
+		cd ..
+	done
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/* $fs
+}
+
