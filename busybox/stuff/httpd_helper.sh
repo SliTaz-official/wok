@@ -7,9 +7,12 @@
 
 alias urlencode='httpd -e'
 
+# Send headers, example :
+# header "Content-type: text/html" "Set-Cookie: name=value; HttpOnly"
 header()
 {
-[ -z "$1" ] && echo -e "Content-type: text/html\r\n" || echo -e "$1\r\n"
+[ -z "$1" ] && set -- "Content-type: text/html"
+for i in "$@" "" ; do echo -e "$i\r"; done
 }
 
 htmlentities()
