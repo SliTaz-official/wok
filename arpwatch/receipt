@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="arpwatch"
+VERSION="2.1a15"
+CATEGORY="network"
+SHORT_DESC="arpwatch and arpsnmp network monitoring tools"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="libpcap"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="ftp://ftp.ee.lbl.gov"
+WGET_URL="$WEB_SITE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's|ARPDIR = $(prefix)/arpwatch|ARPDIR = /var/lib/arpwatch|' Makefile.in
+	sed -i 's|-o bin -g bin||' Makefile.in
+	./configure && 
+	make SENDMAIL=/usr/sbin/sendmail &&
+	install -d -m 755 $DESTDIR/usr/sbin
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	install -d -m 0755 $fs/var/lib/arpwatch
+	touch $fs/var/lib/arpwatch/arp.dat
+}
+
