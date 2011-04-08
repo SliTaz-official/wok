@@ -27,13 +27,13 @@ compile_rules()
 	--sysconfdir=/etc --mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make -j 1 &&
 	make -j 1 INSTALL_PREFIX=$DESTDIR install || return 1
-	for i in _pkg/usr/lib/erlang/*/bin/erl _pkg/usr/lib/erlang/bin/erl \
-		 _pkg/usr/lib/erlang/*/bin/start _pkg/usr/lib/erlang/bin/start
+	for i in $DESTDIR/usr/lib/erlang/*/bin/erl $DESTDIR/usr/lib/erlang/bin/erl \
+		 $DESTDIR/usr/lib/erlang/*/bin/start $DESTDIR/usr/lib/erlang/bin/start
 	do
 		sed -i 's|^ROOTDIR=.*$|ROOTDIR=/usr/lib/erlang|' $i
 	done
-	for i in _pkg/usr/bin/* ; do
-		ln -sf $(readlink $i | sed 's|.*/_pkg||') $i
+	for file in $(ls $DESTDIR/usr/bin); do
+		ln -sf /usr/lib/erlang/bin/$file $DESTDIR/usr/bin/$file || return 1
 	done
 }
 
