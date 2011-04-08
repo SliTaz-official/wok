@@ -1,0 +1,106 @@
+This patch allows to run a script to list the directory with httpd
+
+Install /etc/httpd.conf, /var/www/cgi-bin/list.sh and try !
+
+===>8=== /etc/httpd.conf ===>8===
+H:/var/www
+*.sh:/bin/sh
+L:/cgi-bin/list.sh
+===>8=== /var/www/cgi-bin/list.sh ===>8===
+#!/bin/sh
+
+eval ${QUERY_STRING/&/;}
+path=$(dirname /$url)
+
+unix2dos <<EOT
+Content-type: text/html
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<title>Index of $path</title>
+</head>
+<body>
+	<h1>Index of $path</h1>
+	<ul>
+$(cd $home$path && { [ "$path" != "/" ] && echo "../" ; ls -p; } | \
+  sed 's|.*|		<li><a href="&">&</a></li>|')
+	</ul>
+</body>
+</html>
+EOT
+===>8======>8======>8======>8======>8===
+
+--- busybox-1.18.4/networking/Config.src
++++ busybox-1.18.4/networking/Config.src
+@@ -216,6 +216,14 @@
+ 	  This option allows scripts and executables to be invoked
+ 	  when specific URLs are requested.
+ 
++config FEATURE_HTTPD_LISTING
++	bool "Support for directory listing through a CGI script"
++	default y
++	depends on FEATURE_HTTPD_CGI
++	help
++	  This option allows to run a script to list the directory
++	  content.
++
+ config FEATURE_HTTPD_CONFIG_WITH_SCRIPT_INTERPR
+ 	bool "Support for running scripts through an interpreter"
+ 	default y
+
+--- busybox-1.18.4/networking/httpd.c
++++ busybox-1.18.4/networking/httpd.c
+@@ -42,6 +42,7 @@
+  * D:*               # Deny from other IP connections
+  * E404:/path/e404.html # /path/e404.html is the 404 (not found) error page
+  * I:index.html      # Show index.html when a directory is requested
++ * L:/path/list      # List directory file from $url and $home arguments
+  *
+  * P:/url:[http://]hostname[:port]/new/path
+  *                   # When /urlXXXXXX is requested, reverse proxy
+@@ -240,6 +241,7 @@
+ 	const char *opt_c_configFile;
+ 	const char *home_httpd;
+ 	const char *index_page;
++	const char *listing;
+ 
+ 	const char *found_mime_type;
+ 	const char *found_moved_temporarily;
+@@ -291,6 +293,7 @@
+ #define opt_c_configFile  (G.opt_c_configFile )
+ #define home_httpd        (G.home_httpd       )
+ #define index_page        (G.index_page       )
++#define listing           (G.listing          )
+ #define found_mime_type   (G.found_mime_type  )
+ #define found_moved_temporarily (G.found_moved_temporarily)
+ #define last_mod          (G.last_mod         )
+@@ -579,6 +582,13 @@
+ 			continue;
+ 		}
+ 
++#if ENABLE_FEATURE_HTTPD_LISTING
++		if (flag == FIRST_PARSE && ch == 'L') {
++			listing = xstrdup(after_colon);
++			continue;
++		}
++#endif
++
+ 		/* do not allow jumping around using H in subdir's configs */
+ 		if (flag == FIRST_PARSE && ch == 'H') {
+ 			home_httpd = xstrdup(after_colon);
+@@ -1531,6 +1541,13 @@
+ 		fd = open(url, O_RDONLY);
+ 	}
+ 	if (fd < 0) {
++#if ENABLE_FEATURE_HTTPD_LISTING
++		if (listing) {
++			char args[BUF_SIZE];
++			snprintf(g_query = args, sizeof(args), "url=%s&home=%s", url, home_httpd);
++			send_cgi_and_exit(listing, "GET", 0, NULL, NULL);
++		}
++#endif
+ 		if (DEBUG)
+ 			bb_perror_msg("can't open '%s'", url);
+ 		/* Error pages are sent by using send_file_and_exit(SEND_BODY).
+
