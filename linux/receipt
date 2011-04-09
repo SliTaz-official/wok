@@ -1,20 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="linux"
-VERSION="2.6.37.6"
-BASE_VERSION="${VERSION%.*}"
-# the one below is when your using the newer base version
-#BASE_VERSION="$VERSION"
+VERSION="2.6.37"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 DEPENDS="depmod"
-if [ "$BASE_VERSION" != "$VERSION" ]; then
-	BUILD_DEPENDS="linux-patch perl git lzma patch"
-else
-	BUILD_DEPENDS="perl git lzma patch"
-fi
+BUILD_DEPENDS="slitaz-toolchain perl git lzma patch"
 MAINTAINER="devel@slitaz.org"
-TARBALL="$PACKAGE-$BASE_VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.kernel.org/"
 WGET_URL="http://www.eu.kernel.org/pub/linux/kernel/v${VERSION:0:3}/$TARBALL"
 CONFIG_FILES="/lib/modules/$VERSION-slitaz/modules.dep"
@@ -55,10 +48,10 @@ compile_rules()
 		patch -p1 < $WOK/$PACKAGE/slitaz/$patch_file || { report close-bloc; return 1; }
 		touch done.$patch_file
 	done <<EOT
-$PACKAGE-diff-$BASE_VERSION.u
-$PACKAGE-unlzma-$BASE_VERSION.u
-$PACKAGE-header-$BASE_VERSION.u
-$PACKAGE-freeinitrd-$BASE_VERSION.u
+$PACKAGE-diff-$VERSION.u
+$PACKAGE-unlzma-$VERSION.u
+$PACKAGE-header-$VERSION.u
+$PACKAGE-freeinitrd-$VERSION.u
 aufs2-base.patch
 aufs2-standalone.patch
 001-squashfs-decompressors-add-xz-decompressor-module.patch
@@ -75,7 +68,7 @@ EOT
 
 	report step "Make bzImage without modules first"
 	# Build bzImage without modules first
-	cp -f $stuff/$PACKAGE-$BASE_VERSION-slitaz.config .config
+	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
 	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
 	# We can't keep every driver in staging 
 	sed -i -e 's/^CONFIG_RTL8192/#&/' \
@@ -89,7 +82,7 @@ EOT
 
 	report step "Now build bzImage with modules"
 	# Build bzImage with modules
-	cp -f $stuff/$PACKAGE-$BASE_VERSION-slitaz.config .config
+	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
 	make oldconfig
 	ln .config $WOK/$PACKAGE/slitaz/config
 	make -j 4 bzImage &&
@@ -123,7 +116,7 @@ genpkg_rules()
     export _pkg
     mkdir $WOK/$PACKAGE/tmp
     $WOK/$PACKAGE/stuff/list_modules.sh \
-	$(cat $stuff/modules-$BASE_VERSION.list) > $WOK/$PACKAGE/tmp/modules.list
+	$(cat stuff/modules-$VERSION.list) > $WOK/$PACKAGE/tmp/modules.list
     while read module; do
     	dir=$(dirname $module)
     	[ -d $path/$dir ] || mkdir -p $path/$dir
