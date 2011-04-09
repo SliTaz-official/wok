@@ -14,12 +14,11 @@ SUFFIX="Linux_x86_install-rpm_en-US.tar.gz"
 
 VERSION="$(basename $(wget -O - http://download.documentfoundation.org/libreoffice/$DIR/ \
 	2> /dev/null | grep href=\"[0-9] | tail -1 | sed 's/.*href=\"//;s/[/\">].*//'))"
-  if [ -z "$VERSION" ]; then
-    echo "Can't detect an appropriate version. The version numbering or URL may have changed.
-    Aborted."
-    exit 0
-  fi
-  VER="${VERSION/\-/}" # without hyphens
+if [ -z "$VERSION" ]; then
+	echo "Can't detect an appropriate version. The version numbering or URL may have changed. Aborted."
+	exit 0
+fi
+VER="${VERSION/\-/}" # without hyphens
 
 
 TARBALL="LibO_${VER}_${SUFFIX}"
@@ -29,15 +28,15 @@ case "$LANG" in
 fr_FR|de_DE|es_ES|it_IT|ru_RU)
 	LOC=${LANG%_*} # strip
 	L_SUFFIX="Linux_x86_langpack-rpm_$LOC.tar.gz"
-  L_TARBALL="LibO_${VER}_${L_SUFFIX}"
-  LANG_URL="http://download.documentfoundation.org/libreoffice/${DIR}/${VERSION}/rpm/x86/${L_TARBALL}"
-  echo "Added $LANG ($LOC)." ;;
+	L_TARBALL="LibO_${VER}_${L_SUFFIX}"
+	LANG_URL="http://download.documentfoundation.org/libreoffice/${DIR}/${VERSION}/rpm/x86/${L_TARBALL}"
+	echo "Added $LANG ($LOC)." ;;
 en_GB|pt_BR)
-  LANG=${LANG/_/-} # convert
+	LANG=${LANG/_/-} # convert
 	L_SUFFIX="Linux_x86_langpack-rpm_$LANG.tar.gz"
-  L_TARBALL="LibO_${VER}_${L_SUFFIX}"
-  LANG_URL="http://download.documentfoundation.org/libreoffice/${DIR}/${VERSION}/rpm/x86/${L_TARBALL}"
-  echo "Added $LANG." ;;
+	L_TARBALL="LibO_${VER}_${L_SUFFIX}"
+	LANG_URL="http://download.documentfoundation.org/libreoffice/${DIR}/${VERSION}/rpm/x86/${L_TARBALL}"
+	echo "Added $LANG." ;;
 esac
 
 
@@ -103,13 +102,13 @@ fi
 # Check if we have the tarball before.
 if [ ! -f $SOURCE_DIR/$TARBALL ]; then
 	echo "Downloading LibreOffice tarball (it's time to have a break)... "
-	#Check if $SOURCE_DIR exist
+	# Check if $SOURCE_DIR exist
 	test -d $SOURCE_DIR || mkdir -p $SOURCE_DIR
 	# Get the file.
 	wget -c $WGET_URL -O $SOURCE_DIR/$TARBALL
 	if [ -n $L_TARBALL ] ; then # Are we localised?
-    wget -c $LANG_URL -O $SOURCE_DIR/$L_TARBALL
-  fi
+		wget -c $LANG_URL -O $SOURCE_DIR/$L_TARBALL
+	fi
 	status
 fi
 if [ ! -f $SOURCE_DIR/$TARBALL ]; then
@@ -123,23 +122,27 @@ echo -n "Extracting files (this may take a while): "
 # Creates TEMP_DIR and extract tarball
 mkdir -p $TEMP_DIR
 for TB in $TARBALL $L_TARBALL ; do
-  tar xvzf $SOURCE_DIR/$TB -C $TEMP_DIR > $LOG 2>&1 || \
-  (echo "Failed to extract $TB" ; exit 1)
+	tar xvzf $SOURCE_DIR/$TB -C $TEMP_DIR > $LOG 2>&1 || \
+	(echo "Failed to extract $TB" ; exit 1)
 done
+
+# Get version found in archive (often directory is still RC version when final is present)
+ARCHIVED_VERSION=`find $TEMP_DIR -type d 2> /dev/null | grep LibO | head -n 1 | sed 's/_/ /g' | awk '{print $2}'`
+echo -n "(found v${ARCHIVED_VERSION})"
+
 # Consolidate localisations into main package
 if [ -n $L_TARBALL ] ; then # Are we localised?
-#  mv -f $TEMP_DIR/${L_TARBALL/.tar.gz/}/RPMS/*.rpm $TEMP_DIR/${TARBALL/.tar.gz/}/RPMS/
-  mv -f $TEMP_DIR/LibO_3.3.0rc4_Linux_x86_langpack-rpm_en-GB/RPMS/*.rpm $TEMP_DIR/LibO_3.3.0rc4_Linux_x86_install-rpm_en-US/RPMS/
+	  TARBALL_NAME="${TARBALL/.tar.gz/}"
+	L_TARBALL_NAME="${L_TARBALL/.tar.gz/}"
+	mv -f $TEMP_DIR/${L_TARBALL_NAME/$VERSION/$ARCHIVED_VERSION}/RPMS/*.rpm $TEMP_DIR/${TARBALL_NAME/$VERSION/$ARCHIVED_VERSION}/RPMS/
 fi
 status
 
 # Extracted pkg can be removed: Save RAM
 rm -rf $SOURCE_DIR
 
-# cd $TEMP_DIR/${TARBALL/.tar.gz/}/RPMS
-cd $TEMP_DIR/LibO_3.3.0rc4_Linux_x86_install-rpm_en-US/RPMS
-
 # Extract everything from RPMS
+cd $TEMP_DIR/${TARBALL_NAME/$VERSION/$ARCHIVED_VERSION}/RPMS
 for i in *.rpm
 do
 	if (! echo $i | egrep -qi $EXCLUDE); then
@@ -157,7 +160,7 @@ echo -n "Preparing package... "
 
 # Make the package
 mkdir -p $PACKAGE-$VERSION/fs/usr/lib/libreoffice  \
-  $PACKAGE-$VERSION/fs/usr/share
+         $PACKAGE-$VERSION/fs/usr/share
 
 # use mv instead of 'cp -a' to save RAM
 mv opt/libreoffice* $PACKAGE-$VERSION/fs/usr/lib
@@ -182,17 +185,16 @@ WEB_SITE="$URL"
 post_install()
 {
 	cd /usr/share/applications
-	ln -s /usr/lib/libreoffice/share/xdg/base.desktop libreoffice-base.desktop
-	ln -s /usr/lib/libreoffice/share/xdg/impress.desktop libreoffice-impress.desktop
-	ln -s /usr/lib/libreoffice/share/xdg/writer.desktop libreoffice-writer.desktop
-	ln -s /usr/lib/libreoffice/share/xdg/calc.desktop libreoffice-calc.desktop
-	ln -s /usr/lib/libreoffice/share/xdg/math.desktop libreoffice-math.desktop
-	ln -s /usr/lib/libreoffice/share/xdg/draw.desktop libreoffice-draw.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/base.desktop          libreoffice-base.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/impress.desktop       libreoffice-impress.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/writer.desktop        libreoffice-writer.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/calc.desktop          libreoffice-calc.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/math.desktop          libreoffice-math.desktop
+	ln -s /usr/lib/libreoffice/share/xdg/draw.desktop          libreoffice-draw.desktop
 	ln -s /usr/lib/libreoffice/share/xdg/printeradmin.desktop libreoffice-printeradmin.desktop
 
-
 	cd /usr/bin
-  ln -s /usr/lib/libreoffice /usr/lib/libreoffice/libreoffice
+	ln -s /usr/lib/libreoffice /usr/lib/libreoffice/libreoffice
 	ln -sf /usr/lib/libreoffice/program/soffice
 }
 
