@@ -13,8 +13,25 @@ WGET_URL="$SF_MIRROR/docbook/$TARBALL"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/xml/docbook/stylesheet/$PACKAGE
-	cp -a $src/*  $fs/usr/share/xml/docbook/stylesheet/$PACKAGE
+	cd $src
+	pkgroot=$fs/usr/share/xml/docbook/stylesheet/$PACKAGE
+	install -dm755 $pkgroot/common
+	install -dm755 $pkgroot/params
+	
+	for fn in xml xsl dtd ent; do
+		install -m644 common/*.${fn} $pkgroot/common/
+	done
+	
+	for fn in fo highlighting html roundtrip; do
+		install -dm755 ${pkgroot}/${fn}
+		install -m644 ${fn}/*.xml ${pkgroot}/${fn}/
+		install -m644 ${fn}/*.xsl ${pkgroot}/${fn}/
+	done
+
+	for fn in eclipse htmlhelp javahelp lib manpages profiling template website xhtml xhtml-1_1; do
+		install -dm755 ${pkgroot}/${fn}
+		install -m644 ${fn}/*.xsl ${pkgroot}/${fn}/
+	done
 }
 
 # Pre and post install commands for Tazpkg.
@@ -29,12 +46,12 @@ post_install()
 	fi &&
 
 	xmlcatalog --noout --add "rewriteSystem" \
-		"http://docbook.sourceforge.net/release/xsl/1.76.0" \
+		"http://docbook.sourceforge.net/release/xsl/$VERSION" \
 		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
 	$1/etc/xml/catalog &&
 
 	xmlcatalog --noout --add "rewriteURI" \
-		"http://docbook.sourceforge.net/release/xsl/1.76.0" \
+		"http://docbook.sourceforge.net/release/xsl/$VERSION" \
 		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
 	$1/etc/xml/catalog &&
 
