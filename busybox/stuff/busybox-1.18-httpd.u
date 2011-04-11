@@ -1,26 +1,20 @@
-Httpd already support directory listing:
-
-Install /etc/httpd.conf, /var/www/cgi-bin/index.cgi and try !
+Httpd already support directory listing. Install both files and try !
 
 ===>8=== /etc/httpd.conf ===>8===
 H:/var/www
 ===>8=== /var/www/cgi-bin/index.cgi ===>8===
 #!/bin/sh
 
-path=$QUERY_STRING
-
-cat <<EOT  
+[ ! -d ..$QUERY_STRING ] && echo "HTTP/1.1 404 Not Found" || cat <<EOT  
 Content-type: text/html
 
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-	<title>Index of $path</title>
-</head>
+<head> <title>Index of $QUERY_STRING</title> </head>
 <body>
-	<h1>Index of $path</h1>
+	<h1>Index of $QUERY_STRING</h1>
 	<ul>
-$(cd $PWD/..$path && { [ "$path" != "/" ] && echo "../"; ls -p; } | \
+$({ [ "$QUERY_STRING" != "/" ] && echo "../"; ls -p ..$QUERY_STRING; } | \
   sed 's|.*|		<li><a href="&">&</a></li>|')
 	</ul>
 </body>
