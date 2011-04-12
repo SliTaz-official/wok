@@ -22,17 +22,17 @@ echo $1 | sed 's|&|\&amp;|g;s|<|\&lt;|g;s|>|\&gt;|g;s|"|\&quot;|g'
 
 GET()
 {
-[ -z "$1" ] && echo $GET__NAMES || [ -n "$GET__NAMES" ] && eval echo \$GET_$1
+[ -z "$1" ] && echo $GET__NAMES || [ -n "$GET__NAMES" ] && eval httpd -d \$GET_$1
 }
 
 POST()
 {
-[ -z "$1" ] && echo $POST__NAMES || [ -n "$POST__NAMES" ] && eval echo \$POST_$1
+[ -z "$1" ] && echo $POST__NAMES || [ -n "$POST__NAMES" ] && eval httpd -d \$POST_$1
 }
 
 FILE()
 {
-[ -z "$1" ] && echo $FILE__NAMES || [ -n "$FILE__NAMES" ] && eval echo \$FILE_${1}_$2
+[ -z "$1" ] && echo $FILE__NAMES || [ -n "$FILE__NAMES" ] && eval httpd -d \$FILE_${1}_$2
 }
 
 httpinfo()
