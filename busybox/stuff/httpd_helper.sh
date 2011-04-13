@@ -1,9 +1,11 @@
 #!/bin/sh
 #
-# busybox/httpd helper for shell cgi scripts
+# busybox/httpd helper for shell cgi scripts, providing:
 #
-# GET [var] | POST [var] | FILE [var {name|tmpname|size|type}]
-# urlencode string | htmlentities string | httpinfo
+# GET [var [index]] | POST [var [index]] | COOKIE [var [index]]
+# FILE [var {name|tmpname|size|type}]
+# header [strings]... | urlencode string | htmlentities string | httpinfo
+#
 
 alias urlencode='httpd -e'
 
@@ -20,28 +22,16 @@ htmlentities()
 echo $1 | sed 's|&|\&amp;|g;s|<|\&lt;|g;s|>|\&gt;|g;s|"|\&quot;|g'
 }
 
-GET()
+_ARRAY()
 {
-local n
-n=$2
-[ -n "$n" ] || n=1
-[ -z "$1" ] && echo $GET__NAMES ||
-	[ -n "$GET__NAMES" ] && eval echo \$GET_${1}_$n
+[ -z "$2" ] && eval echo \$${1}__NAMES ||
+	[ -n "$(eval echo \$${1}__NAMES)" ] && eval echo \$${1}_${2}_${3:-1}
 }
 
-POST()
-{
-local n
-n=$2
-[ -n "$n" ] || n=1
-[ -z "$1" ] && echo $POST__NAMES ||
-	[ -n "$POST__NAMES" ] && eval echo \$POST_${1}_$n
-}
-
-FILE()
-{
-[ -z "$1" ] && echo $FILE__NAMES || [ -n "$FILE__NAMES" ] && eval echo \$FILE_${1}_$2
-}
+GET()		{ _ARRAY GET	"$1" $2; }
+POST()		{ _ARRAY POST	"$1" $2; }
+FILE()		{ _ARRAY FILE	"$1" $2; }
+COOKIE()	{ _ARRAY COOKIE	"$1" $2; }
 
 httpinfo()
 {
@@ -57,27 +47,20 @@ for i in SERVER_PROTOCOL SERVER_SOFTWARE SERVER_NAME SERVER_PORT AUTH_TYPE \
 	eval x=\$$i
 	[ -n "$x" ] && echo "$i='$x'"
 done
-for i in $GET__NAMES ; do
-	if [ $(GET $i count) -gt 1 ]; then
-		for j in $(seq 1 $(GET $i count)); do
-			echo "GET[$i][$j]='$(GET $i $j)'"
-		done
-	else
-		echo "GET[$i]='$(GET $i)'"
-	fi
+for n in GET POST COOKIE ; do
+	for i in $($n) ; do
+		if [ $($n $i count) -gt 1 ]; then
+			for j in $(seq 1 $($n $i count)); do
+				echo "$n($i,$j)='$($n $i $j)'"
+			done
+		else
+			echo "$n($i)='$($n $i)'"
+		fi
+	done
 done
-for i in $POST__NAMES ; do
-	if [ $(POST $i count) -gt 1 ]; then
-		for j in $(seq 1 $(POST $i count)); do
-			echo "POST[$i][$j]='$(POST $i $j)'"
-		done
-	else
-		echo "POST[$i]='$(POST $i)'"
-	fi
-done
-for i in $FILE__NAMES ; do
+for i in $(FILE) ; do
 	for j in name size type tmpname ; do
-		echo "FILE[$i][$j]='$(FILE $i $j)'"
+		echo "FILE($i,$j)='$(FILE $i $j)'"
 	done
 done
 }
@@ -89,14 +72,12 @@ local names
 local cnt
 names=""
 IFS="&"
-for i in $QUERY_STRING ; do
+for i in $2 ; do
 	var=${i%%=*}
 	case " $names " in
-	*\ $var\ *)
-		eval cnt=\$${1}_${var}_count ;;
-	*)	
-		cnt=0
-		names="$names $var" ;;
+	*\ $var\ *)	eval cnt=\$${1}_${var}_count ;;
+	*)		cnt=0
+			names="$names $var" ;;
 	esac
 	eval ${1}_${var}_count=$((++cnt))
 	eval ${1}_${var}_$cnt=\'$(httpd -d "${i#*=}" | sed "s/'/\'\\\\\'\'/g")\'
@@ -105,7 +86,9 @@ unset IFS
 eval ${1}__NAMES=\'${names# }\'
 }
 
-[ -z "$GET__NAMES" ] && read_query_string GET
+[ -z "$GET__NAMES" ] && read_query_string GET "$QUERY_STRING"
+[ -z "$COOKIE_NAMES" ] &&
+	read_query_string COOKIE "$(echo "$HTTP_COOKIE" | sed 's/; /\&/g')"
 
 ddcut()
 {
@@ -191,8 +174,7 @@ if [ "$REQUEST_METHOD$POST__NAMES" == "POST" ]; then
 		    rm -f $i
 		done
 		rmdir $(dirname $post) ;;
-	*)	export QUERY_STRING="$delim"
-		rm -rf $(dirname $post)
-		read_query_string POST ;;
+	*)	rm -rf $(dirname $post)
+		read_query_string POST "$delim" ;;
 	esac
 fi
