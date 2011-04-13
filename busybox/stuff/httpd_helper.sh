@@ -22,17 +22,25 @@ echo $1 | sed 's|&|\&amp;|g;s|<|\&lt;|g;s|>|\&gt;|g;s|"|\&quot;|g'
 
 GET()
 {
-[ -z "$1" ] && echo $GET__NAMES || [ -n "$GET__NAMES" ] && eval httpd -d \$GET_$1
+local n
+n=$2
+[ -n "$n" ] || n=1
+[ -z "$1" ] && echo $GET__NAMES ||
+	[ -n "$GET__NAMES" ] && eval echo \$GET_${1}_$n
 }
 
 POST()
 {
-[ -z "$1" ] && echo $POST__NAMES || [ -n "$POST__NAMES" ] && eval httpd -d \$POST_$1
+local n
+n=$2
+[ -n "$n" ] || n=1
+[ -z "$1" ] && echo $POST__NAMES ||
+	[ -n "$POST__NAMES" ] && eval echo \$POST_${1}_$n
 }
 
 FILE()
 {
-[ -z "$1" ] && echo $FILE__NAMES || [ -n "$FILE__NAMES" ] && eval httpd -d \$FILE_${1}_$2
+[ -z "$1" ] && echo $FILE__NAMES || [ -n "$FILE__NAMES" ] && eval echo \$FILE_${1}_$2
 }
 
 httpinfo()
@@ -50,10 +58,22 @@ for i in SERVER_PROTOCOL SERVER_SOFTWARE SERVER_NAME SERVER_PORT AUTH_TYPE \
 	[ -n "$x" ] && echo "$i='$x'"
 done
 for i in $GET__NAMES ; do
-	echo "GET[$i]='$(GET $i)'"
+	if [ $(GET $i count) -gt 1 ]; then
+		for j in $(seq 1 $(GET $i count)); do
+			echo "GET[$i][$j]='$(GET $i $j)'"
+		done
+	else
+		echo "GET[$i]='$(GET $i)'"
+	fi
 done
 for i in $POST__NAMES ; do
-	echo "POST[$i]='$(POST $i)'"
+	if [ $(POST $i count) -gt 1 ]; then
+		for j in $(seq 1 $(POST $i count)); do
+			echo "POST[$i][$j]='$(POST $i $j)'"
+		done
+	else
+		echo "POST[$i]='$(POST $i)'"
+	fi
 done
 for i in $FILE__NAMES ; do
 	for j in name size type tmpname ; do
@@ -66,11 +86,20 @@ read_query_string()
 {
 local i
 local names
+local cnt
 names=""
 IFS="&"
 for i in $QUERY_STRING ; do
-	names="$names ${i%%=*}"
-	eval ${1}_${i%%=*}=\'$(httpd -d "${i#*=}" | sed "s/'/\'\\\\\'\'/g")\'
+	var=${i%%=*}
+	case " $names " in
+	*\ $var\ *)
+		eval cnt=\$${1}_${var}_count ;;
+	*)	
+		cnt=0
+		names="$names $var" ;;
+	esac
+	eval ${1}_${var}_count=$((++cnt))
+	eval ${1}_${var}_$cnt=\'$(httpd -d "${i#*=}" | sed "s/'/\'\\\\\'\'/g")\'
 done
 unset IFS
 eval ${1}__NAMES=\'${names# }\'
