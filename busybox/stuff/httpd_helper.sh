@@ -36,6 +36,7 @@ COOKIE()	{ _ARRAY COOKIE	"$1" $2; }
 httpinfo()
 {
 local i
+local j
 local x
 for i in SERVER_PROTOCOL SERVER_SOFTWARE SERVER_NAME SERVER_PORT AUTH_TYPE \
 	 GATEWAY_INTERFACE REMOTE_HOST REMOTE_ADDR REMOTE_PORT \
@@ -47,14 +48,14 @@ for i in SERVER_PROTOCOL SERVER_SOFTWARE SERVER_NAME SERVER_PORT AUTH_TYPE \
 	eval x=\$$i
 	[ -n "$x" ] && echo "$i='$x'"
 done
-for n in GET POST COOKIE ; do
-	for i in $($n) ; do
-		if [ $($n $i count) -gt 1 ]; then
-			for j in $(seq 1 $($n $i count)); do
-				echo "$n($i,$j)='$($n $i $j)'"
+for x in GET POST COOKIE ; do
+	for i in $($x) ; do
+		if [ $($x $i count) -gt 1 ]; then
+			for j in $(seq 1 $($x $i count)); do
+				echo "$x($i,$j)='$($x $i $j)'"
 			done
 		else
-			echo "$n($i)='$($n $i)'"
+			echo "$x($i)='$($x $i)'"
 		fi
 	done
 done
