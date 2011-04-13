@@ -9,6 +9,6 @@
  * For more information, see http://www.mozilla.org/unix/customizing.html#prefs
  */
 
-user_pref("general.useragent.extra.firefox", "Firefox/3.5 (SliTaz GNU/Linux)");
+user_pref("general.useragent.extra.firefox", "Firefox/4.0 (SliTaz GNU/Linux)");
 user_pref("intl.charsetmenu.browser.cache", "ISO-8859-1, UTF-8");
 user_pref("font.name.serif.x-western", "DejaVu Sans");
