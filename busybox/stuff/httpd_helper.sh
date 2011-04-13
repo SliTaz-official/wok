@@ -13,6 +13,7 @@ alias urlencode='httpd -e'
 # header "Content-type: text/html" "Set-Cookie: name=value; HttpOnly"
 header()
 {
+local i
 [ -z "$1" ] && set -- "Content-type: text/html"
 for i in "$@" "" ; do echo -e "$i\r"; done
 }
