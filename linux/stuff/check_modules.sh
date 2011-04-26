@@ -24,7 +24,7 @@ cat ../stuff/modules-"$VERSION".list >> $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION
 for i in $(cd $WOK; ls -d linux-*)
 do
 	tazpath="taz/$i-$VERSION"
-	if [ -f $WOK/$i/$tazpath/files.list ]; then
+	if [ ! $(grep -l 'linux-libre' $WOK/$i/receipt) ]; then
 		for j in $(cat $WOK/$i/$tazpath/files.list | grep ".ko.gz")
 		do
 			basename $j >> $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list	
