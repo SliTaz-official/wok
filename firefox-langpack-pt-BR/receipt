@@ -1,0 +1,30 @@
+# SliTaz package receipt.
+
+PACKAGE="firefox-langpack-pt-BR"
+VERSION="4.0"
+CATEGORY="network"
+SHORT_DESC="pt-BR language pack for firefox."
+MAINTAINER="claudinei@slitaz.org"
+DEPENDS="firefox"
+LANG="${PACKAGE:17}"
+LANG_DIR="langpack-$LANG@firefox.mozilla.org"
+TARBALL="$LANG.xpi"
+WEB_SITE="http://www.mozilla.org"
+WGET_URL="http://ftp.mozilla.org/pub/mozilla.org/firefox/releases/$VERSION/linux-i686/xpi/$TARBALL"
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	DEST="$fs/usr/lib/firefox-$VERSION/extensions/$LANG_DIR"
+	mkdir -p $DEST
+	cp -a $src/* $DEST
+}
+
+# Pre and Post install commands for tazpkg
+post_install()
+{
+	local pref
+	pref="$1/etc/firefox/pref/firefox.js"
+	echo "Processing post install commands..."
+	grep "matchOS" $pref > /dev/null || echo "pref(\"intl.locale.matchOS\", true);" >> $pref
+}
