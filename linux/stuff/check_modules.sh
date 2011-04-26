@@ -24,20 +24,22 @@ cat ../stuff/modules-"$VERSION".list >> $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION
 for i in $(cd $WOK; ls -d linux-*)
 do
 	tazpath="taz/$i-$VERSION"
-	for j in $(cat $WOK/$i/$tazpath/files.list | grep ".ko.gz")
-	do
-		basename $j >> $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list	
-	done 	
+	if [ -f $WOK/$i/$tazpath/files.list ]; then
+		for j in $(cat $WOK/$i/$tazpath/files.list | grep ".ko.gz")
+		do
+			basename $j >> $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list	
+		done
+	fi
 done
 # get the original list in .config
-for i in $(find $_pkg -iname "*.ko.gz") 
+for i in $(find $_pkg -iname "*.ko.gz")
 do
 	basename $i >> $WOK/$PACKAGE/tmp/originial-"$VERSION".list
 done
 # compare original .config and pkged modules
-for i in $(cat $WOK/$PACKAGE/tmp/originial-$VERSION.list)   
-do		
-	if ! grep -qs "$i" $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list ; then 
+for i in $(cat $WOK/$PACKAGE/tmp/originial-$VERSION.list)
+do
+	if ! grep -qs "$i" $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list ; then
 		modpath=`find $_pkg -iname "$i"`
 		echo "Orphan module: $i"
 		echo "$i : $modpath" >> $WOK/$PACKAGE/tmp/unpackaged-modules-"$VERSION".list
