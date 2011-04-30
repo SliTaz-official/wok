@@ -1,7 +1,9 @@
 #!/bin/sh -e
 
+PACKAGE="opera"
 URL=http://mirrors.dedipower.com/opera/linux/
 ROOT="$1"
+[ -d "$ROOT" ] || ROOT=""
 
 if test $(id -u) != 0 ; then
         echo -e "\nYou must be root to run `basename $0`."
@@ -9,35 +11,33 @@ if test $(id -u) != 0 ; then
         exit 0
 fi
 
-if [ -d $ROOT/var/lib/tazpkg/installed/opera ]; then
-  [ -n "$ROOT" ] && exit 1
-  tazpkg remove opera
-  [ -d /var/lib/tazpkg/installed/opera ] && exit 1
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+	[ -n "$ROOT" ] && exit 1
+	tazpkg remove $PACKAGE
+	[ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
 fi
 
-TMP_DIR=/tmp/get-opera-$$-$RANDOM
+TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
 CUR_DIR=$(pwd)
 mkdir -p $TMP_DIR && cd $TMP_DIR
 
 get_releases()
 {
-	wget -O - "$URL?C=M;O=D" 2>/dev/null | awk '/folder/ { print $5 }' | \
-	sed -e 's/href="\(.*\)">.*/\1/' -e 's|/||'
+	wget -qO- "$URL?C=M;O=D" | sed 's|.*[Ff]="\([^"/]*\).*|\1|;/[^0-9b]/d'
 }
 
 # Download deb
-for RELEASE in $(get_releases); do
-  [ -n "$RELEASE" ] || continue
-  FILE=$(wget -O - "$URL$RELEASE/" 2> /dev/null | grep i386.deb | sed 's/.*href="\(.*\)">.*/\1/' | head -n 1)
-  [ -n "$FILE" ] || continue
-  wget $URL$RELEASE/$FILE
-  [ -s $FILE ] && break
+for RELEASE in $@ $(get_releases); do
+	FILE=$(wget -O- "$URL$RELEASE/" 2>/dev/null | sed 's|.*[Ff]="\(.*\)".*|\1|;/6.d/!d;q')
+	[ -n "$FILE" ] || continue
+	wget $URL$RELEASE/$FILE
+	[ -s $FILE ] && break
 done
 
 if [ ! -f $FILE ]; then
 	cd $CUR_DIR
 	rm -rf $TMP_DIR
-	echo "Could not download $FILE. Exiting."
+	echo "Could not download $FILE from $URL. Exiting."
 	exit 1
 fi
 
@@ -95,7 +95,7 @@ EOT
 cd ../..
 
 cat > opera-$VERSION/receipt <<EOT
-PACKAGE="opera"
+PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="Opera Web browser."
@@ -107,17 +107,11 @@ EOT
 mv opera-$VERSION/fs/usr/share/opera/locale opera-$VERSION/fs/usr/share/opera/locale-full
 mkdir -p opera-$VERSION/fs/usr/share/opera/locale 
 . /etc/locale.conf
-for i in $LANG $(echo $LANG | sed 's/_/-/') ${LANG:0:2} ; do
+for i in $LANG ${LANG/_/-} ${LANG:0:2} fr pt de zh-cn ; do
 	[ -d opera-$VERSION/fs/usr/share/opera/locale-full/$i ] &&
 	cp -a opera-$VERSION/fs/usr/share/opera/locale-full/$i \
 		opera-$VERSION/fs/usr/share/opera/locale
 done
-cp -a opera-$VERSION/fs/usr/share/opera/locale-full/en \
-	  opera-$VERSION/fs/usr/share/opera/locale-full/fr \
-	  opera-$VERSION/fs/usr/share/opera/locale-full/pt \
-	  opera-$VERSION/fs/usr/share/opera/locale-full/de \
-	  opera-$VERSION/fs/usr/share/opera/locale-full/zh-cn \
-	  opera-$VERSION/fs/usr/share/opera/locale
 rm -rf opera-$VERSION/fs/usr/share/opera/locale-full
 rm -rf opera-$VERSION/fs/usr/share/pixmaps
 
@@ -130,6 +124,9 @@ rm -rf opera-$VERSION
 
 # Install pseudo package
 tazpkg install opera-$VERSION.tazpkg --root=$ROOT
+case " $@ " in
+*\ --k*) mv opera-$VERSION.tazpkg $CUR_DIR ;;
+esac
 
 # Clean
 cd $CUR_DIR
