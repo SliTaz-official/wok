@@ -15,9 +15,10 @@ OPTIONS=$OPENERP_WEB_OPTIONS
 PIDFILE=/var/run/openerp-web.pid
 [ -n "$OPTIONS" ] || OPTIONS="-c /etc/openerp/openerp-web.conf"
 
+ps ww | grep $DAEMON | awk '{ if (!/grep/) print $1 }' > $PIDFILE
 case "$1" in
 	start)
-		if [ -f $PIDFILE ] ; then
+		if active_pidfile $PIDFILE $NAME ; then
 			echo "$NAME already running."
 			exit 1
 		fi
@@ -26,7 +27,7 @@ case "$1" in
 		status
 		sleep 2 ;;
 	stop)
-		if [ ! -f $PIDFILE ] ; then
+		if ! active_pidfile $PIDFILE $NAME ; then
 			echo "$NAME is not running."
 			exit 1
 		fi
@@ -35,7 +36,7 @@ case "$1" in
 		status
 		sleep 2 ;;
 	restart)
-		if [ ! -f $PIDFILE ] ; then
+		if ! active_pidfile $PIDFILE $NAME ; then
 			echo "$NAME is not running."
 			exit 1
 		fi
