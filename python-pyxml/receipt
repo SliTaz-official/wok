@@ -10,27 +10,25 @@ TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://pyxml.sourceforge.net/"
 WGET_URL="$SF_MIRROR/pyxml/$TARBALL"
 DEPENDS="python"
-BUILD_DEPENDS="python"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	patch -Np1 -i $stuff/fix-python2.6.patch
 	python setup.py build --with-xslt
-	python setup.py install --root=$PWD/_pkg
+	python setup.py install --root=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	cp -a $_pkg/usr $fs
-	# Apply https://bugs.archlinux.org/task/14782 fix
-	sed -i 's/as /asp /;s/as,/asp,' \
-	  $fs/usr/lib/python*/site-packages/_xmlplus/xpath/ParsedAbbreviated*
 }
 
 # Remove old package.
 post_install()
 {
+	[ -d $1/var/lib/tazpkg/installed/pyxml ] &&
 	rm -rf $1/var/lib/tazpkg/installed/pyxml
 }
