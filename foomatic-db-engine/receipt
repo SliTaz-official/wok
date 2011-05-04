@@ -16,6 +16,7 @@ TAGS="printer driver printing"
 compile_rules()
 {
 	mv $WOK/$PACKAGE/$PACKAGE* $WOK/$PACKAGE/$PACKAGE-$VERSION
+	PERL_VER=$(grep ^VERSION= $WOK/perl/receipt | cut -d "=" -f2 | sed -e 's/"//g')
 	cd $src
 	./configure \
 		--prefix=/usr \
@@ -24,9 +25,9 @@ compile_rules()
 	make &&
 	eval `perl -V:archname`
 	make DESTDIR=$PWD/_pkg \
-		INSTALLARCHLIB=/usr/lib/perl5/current/${archname} \
-        INSTALLSITELIB=/usr/lib/perl5/site_perl/current/ \
-        INSTALLSITEARCH=/usr/lib/perl5/site_perl/current/${archname} install
+		INSTALLARCHLIB=/usr/lib/perl5/$PERL_VER/${archname} \
+        INSTALLSITELIB=/usr/lib/perl5/site_perl/$PERL_VER/ \
+        INSTALLSITEARCH=/usr/lib/perl5/site_perl/$PERL_VER/${archname} install
 	
 }
 
@@ -44,15 +45,5 @@ genpkg_rules()
 
 pre_install()
 {
-	rm -f $1/usr/lib/perl5/site_perl/current
-}
-
-post_install()
-{
-	# Move file to the right place
-	cp -a $1/usr/lib/perl5/site_perl/current/* $1/usr/lib/perl5/site_perl/*.*
 	rm -rf $1/usr/lib/perl5/site_perl/current
-
-	# Keep path the remove the package
-	( cd /usr/lib/perl5/site_perl ; ln -s * current )
 }
