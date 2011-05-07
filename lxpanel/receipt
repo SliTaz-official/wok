@@ -5,15 +5,16 @@ VERSION="0.5.6"
 CATEGORY="x-window"
 SHORT_DESC="Standard compliant desktop panel."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="glibc-base glib libgio expat zlib menu-cache slitaz-icon \
-gtk+ atk cairo fontconfig freetype pango pixman libpng alsa-lib \
-xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXrender"
-BUILD_DEPENDS="$DEPENDS gtk+-dev gettext expat-dev intltool menu-cache-dev menu-cache \
-alsa-lib-dev wireless_tools-dev wireless_tools zlib-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.lxde.org/"
 WGET_URL="$SF_MIRROR/lxde/$TARBALL"
 CONFIG_FILES="/etc/lxpanel/default"
+
+DEPENDS="glibc-base glib libgio expat zlib menu-cache slitaz-icon \
+gtk+ atk cairo fontconfig freetype pango pixman libpng alsa-lib \
+xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXrender"
+BUILD_DEPENDS="$DEPENDS gtk+-dev gettext expat-dev intltool menu-cache-dev \
+menu-cache alsa-lib-dev wireless_tools-dev wireless_tools zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -21,25 +22,21 @@ compile_rules()
 	cd $src
 	#patch -p1 -i ../stuff/Fix-failure-to-react-to-keyboard-map-changes-initiat.patch
 	# Devnote : this patch shouldn't be necessary in next release of lxpanel (current : 0.5.6).
-	patch -p1 -i ../stuff/battery-plugin.patch
+	patch -p1 -i $stuff/battery-plugin.patch
 	# patch to fix 100% battery bug with battery plugin
-	patch -p1 -i ../stuff/battery.patch
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--with-plugins=all \
-		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	patch -p1 -i $stuff/battery.patch
+	./configure --with-plugins=all &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/lxpanel $fs/usr/lib
-	cp -a $_pkg/usr/share/lxpanel $fs/usr/share
+	
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/lxpanel $fs/usr/lib
+	cp -a $install/usr/share/lxpanel $fs/usr/share
 
 	# Remove a few "heavy" and unuseful images (ns* goes in extra)
 	for i in file-manager* stock_volume* gnome-[a-m]*.png \
