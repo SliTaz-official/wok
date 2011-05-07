@@ -8,52 +8,55 @@ MAINTAINER="fabrice.thiroux@free.fr"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://code.google.com/p/compcache/"
 WGET_URL="http://compcache.googlecode.com/files/$TARBALL"
+
 DEPENDS="linux"
 BUILD_DEPENDS="lzma linux-module-headers"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-    
-    KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-    cd $src
-    
-    # Fix build with kernel 2.6.34
-    patch -p1 < ../stuff/compcache-0.6.2-linux-2.6.34.u || return 1
-    
-    find -name Makefile | xargs sed -i \
+	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | \
+		cut -d "=" -f2 | sed -e 's/"//g'`
+	cd $src
+	
+	# Fix build with kernel 2.6.34
+	patch -p1 < $stuff/compcache-0.6.2-linux-2.6.34.u || return 1
+	
+	find -name Makefile | xargs sed -i \
 		"s|/lib/modules/\$(shell uname -r)/build|/usr/src/linux|"
-    make  KBUILD=/usr/src/linux KVER=$KERNEL_VERSION 
+	make  KBUILD=/usr/src/linux KVER=$KERNEL_VERSION 
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-    EXTRAVERSION=_$KERNEL_VERSION
-    
-    mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc \
-    		$fs/etc/init.d \
-    		$fs/usr/bin
-    
-    install -o root -m 644 $src/ramzswap.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
-    cp -a $src/sub-projects/rzscontrol/rzscontrol $fs/usr/bin
-    
-    for i in $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/*.ko ; do
-        lzma e $i $i.gz && rm -f $i
-    done
-    install -o root -m 755 ./stuff/compcache $fs/etc/init.d/
-    install -o root -m 644 ./stuff/compcache.conf $fs/etc/
+	KERNEL_VERSION=$(grep  ^VERSION= $WOK/linux/receipt | \
+		cut -d "=" -f2 | sed -e 's/"//g')
+	EXTRAVERSION=_$KERNEL_VERSION
+	
+	mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc \
+			$fs/etc/init.d \
+			$fs/usr/bin
+	
+	install -o root -m 644 $src/ramzswap.ko \
+		$fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+	cp -a $src/sub-projects/rzscontrol/rzscontrol $fs/usr/bin
+	
+	for i in $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/*.ko ; do
+		lzma e $i $i.gz && rm -f $i
+	done
+	install -o root -m 755 $stuff/compcache $fs/etc/init.d/
+	install -o root -m 644 $stuff/compcache.conf $fs/etc/
 }
 
 post_install()
 {
-    echo "Processing post-install commands..."
-    chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+	echo "Processing post-install commands..."
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
 }
 
 post_remove()
 {
-    echo "Processing post-remove commands..."
-    chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+	echo "Processing post-remove commands..."
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
 }
