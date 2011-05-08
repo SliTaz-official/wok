@@ -1,15 +1,89 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-toolchain"
-VERSION="1.0"
+VERSION="4.0"
 CATEGORY="meta"
-SHORT_DESC="SliTaz toolchain meta package for devel."
+SHORT_DESC="SliTaz meta package to rebuild or install current toolchain."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="binutils linux-api-headers glibc-dev gcc make elfkickers"
 WEB_SITE="http://www.slitaz.org/"
+
+DEPENDS="binutils linux-api-headers glibc-dev gcc make elfkickers"
+
+#
+# The goal here is to build and install SliTaz toolchain. We build the toolchain
+# from SliTaz packages, on SliTaz and for SliTaz so in case of new and important
+# toolchain upgrade we must build Binutils a first time, then GCC so it use the
+# new Binutils. After we cook Glibc and then rebuild Binutils + GCC a second
+# time so they are linked with the new main GNU libc. We usually also due a
+# bootstrap by recooking slitaz-toolchain a second time so we are sure it can
+# rebuild itself.
+#
+# SliTaz does one big toolchain by year just after the stable release, any change
+# here or in the toolchain packages version must be discuss on the mailing list.
+#
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -x /usr/bin/cook ] || exit 0
+	tmplog=$LOGS/$PACKAGE.tmplog
+	echo "Cook: $PACKAGE $VERSION" > $tmplog
+	separator >> $tmplog
+	echo "cook: started $(date '+%Y-%m-%d %H:%M')" >> $tmplog
+	
+	# 1. binutils (first pass)
+	echo "cook: binutils first pass: $(date '+%Y-%m-%d %H:%M')" >> $tmplog
+	cook binutils --install
+
+	# 2. gcc (first pass)
+	echo "cook: GCC first pass: $(date '+%Y-%m-%d %H:%M')" >> $tmplog
+	cook gcc --install --first-pass
+	
+	# 3. linux-api-headers
+	echo "cook: linux API headers: $(date '+%Y-%m-%d %H:%M')" >> $tmplog
+	cook linux-api-headers --install
+	
+	# 4. glibc
+	for i in glibc glibc-base glibc-extra-samba glibc-locale glibc-dev
+	do
+		echo "cook: $i: $(date '+%Y-%m-%d %H:%M')" >> $tmplog
+		cook $i --install
+	done
+
+	# 5. binutils (final)
+	echo "cook: binutils final: $(date '+%Y-%m-%d %H:%M')" >> $tmplog
+	cook binutils --install
+	
+	# 6. gcc (final)
+	echo "cook: GCC final: $(date '+%Y-%m-%d %H:%M')" >> $tmplog
+	cook gcc --install
+
+	# All packages cooked got ther own log so we dont keep them.
+	separator >> $tmplog && echo "" >> $tmplog
+	mv -f $tmplog $LOGS/$PACKAGE.log 
+}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/var
+	binutils=$(grep ^VERSION $WOK/binutils/receipt | cut -d '"' -f 2)
+	linux=$(grep ^VERSION $WOK/linux/receipt | cut -d '"' -f 2)
+	gcc=$(grep ^VERSION $WOK/linux/receipt | cut -d '"' -f 2)
+	glibc=$(grep ^VERSION $WOK/linux/receipt | cut -d '"' -f 2)
+	
+	mkdir -p $fs/usr/share/slitaz
+	cat >> $fs/usr/share/slitaz/toolchain.txt << EOT
+SliTaz GNU/Linux toolchain
+================================================================================
+Build date: $(date "+%Y-%m-%d")
+Packages:
+
+    * Binutils $binutils
+    * Linux API headers $linux
+    * GCC $gcc
+    * Glibc $glibc
+
+================================================================================
+
+EOT
 }
