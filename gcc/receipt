@@ -5,11 +5,16 @@ VERSION="4.5.2"
 CATEGORY="development"
 SHORT_DESC="The the GNU Compiler Collection."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="libgomp gcc-lib-base mpc-library elfutils"
-BUILD_DEPENDS="elfutils mpc-library"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://gcc.gnu.org/"
 WGET_URL="ftp://gcc.gnu.org/pub/gcc/releases/gcc-$VERSION/$TARBALL"
+
+# We need gawk since busybox awk is not sufficient. We have BUILD_DEPENDS
+# for cookutils that are not used by tazwok/cook-toolchain since it install
+# and use it's own copy.
+DEPENDS="libgomp gcc-lib-base mpc-library elfutils"
+BUILD_DEPENDS="elfutils mpc-library mpfr mpfr-dev gmp gmp-dev elfutils \
+elfutils-dev gawk"
 
 # Rules to compile & install the temporary toolchain.
 precook_tmp_toolchain()
@@ -50,7 +55,7 @@ cook_tmp_toolchain()
 {
 	report open-bloc
 	cd $src
-	patch -Np1 -i $stuff/gcc-$VERSION-startfiles_fix-1.patch || { report close-bloc; return 1; }
+	patch -Np1 -i ../stuff/gcc-$VERSION-startfiles_fix-1.patch || { report close-bloc; return 1; }
 
 	# Details about theses lines are in LFS book.
 	sed 's@\./fixinc\.sh@-c true@' -i gcc/Makefile.in
@@ -86,6 +91,8 @@ cook_tmp_toolchain()
 
 	{ CC="$BUILD_HOST-gcc -B/tools/lib/" \
 		AR=$BUILD_HOST-ar RANLIB=$BUILD_HOST-ranlib \
+		# --disable-bootstrap dont exist ???
+		# See: ./configure --help | grep bootstrap
 		$src/configure \
 		--with-local-prefix=/tools --enable-clocale=gnu \
 		--enable-shared --enable-threads=posix \
@@ -104,17 +111,38 @@ cook_tmp_toolchain()
 # Rules to configure and make the package.
 compile_rules()
 {
+	cd $src
+	
+	# Package slitaz-toolchain use 'cook --options' when rebuilding
+	# the full SliTaz toolchain. 
+	[ "$3" == "--first-pass" ] && opt=$3
+	
 	# Use libiberty.a from binutils.
 	sed -i 's/install_to_$(INSTALL_DEST) //' \
-		$PACKAGE-$VERSION/libiberty/Makefile.in || return 1
-	mkdir -p gcc-build && cd gcc-build
-	$src/configure --enable-nls \
-	--enable-languages=c,c++,objc,fortran --enable-shared --with-system-zlib \
-	--enable-clocale=gnu --enable-objc-gc --enable-__cxa_atexit \
-	--enable-lto --disable-bootstrap --libexecdir=/usr/lib \
-	--enable-threads=posix --with-tune=$ARCH $BUILD_HOST &&
-	make &&
-	make install
+		libiberty/Makefile.in || return 1
+	mkdir -p ../gcc-build && cd ../gcc-build
+	
+	case "$opt" in
+		--first-pass)
+			# Used by slitaz-toolchain when rebuilding the full toolchain.
+			echo "cook: configure GCC for: toolchain first pass"
+			$src/configure --libexecdir=/usr/lib \
+				--disable-nls --enable-shared \
+				--enable-languages=c --disable-multilib \
+				--disable-libstdcxx-pch --enable-threads=posix &&
+				make && make install ;;
+		*)
+			# Used by default to produce a full featured GCC compiler.
+			echo "cook: configure GCC for: final/full build"
+			$src/configure --libexecdir=/usr/lib --enable-nls \
+				--enable-languages=c,c++,objc,fortran \
+				--enable-shared --with-system-zlib \
+				--enable-clocale=gnu --enable-objc-gc \
+				--enable-__cxa_atexit --enable-lto \
+				--enable-threads=posix \
+				--with-tune=$ARCH $BUILD_HOST &&
+				make && make install ;;
+	esac
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -122,14 +150,17 @@ genpkg_rules()
 {
 	mkdir -p  $fs/usr/share
 	cp -a $_pkg/usr/bin $fs/usr
-	# Copy all libs. Remove libgcc_s.so and libstdc++.so
-	# they goes in gcc-lib-base-$VERSION package.
+	
+	# Copy all libs. Remove libgcc_s.so and libstdc++.so they goes in
+	# the gcc-lib-base-$VERSION package.
 	cp -a $_pkg/usr/lib $fs/usr
 	rm $fs/usr/lib/libgcc_s.so*
 	rm $fs/usr/lib/libstdc++.so*
 	rm $fs/usr/lib/libgomp.so*
+	
 	# Include files.
 	cp -a $_pkg/usr/include $fs/usr
+	
 	# Gfortran goes in gfortran-$VERSION package.
 	rm -f $fs/usr/bin/*gfortran
 	rm -f $fs/usr/lib/libgfortran*
@@ -143,13 +174,13 @@ genpkg_rules()
 # Post install commands for Tazpkg.
 post_install()
 {
-  local root
-  root=$1
-  echo "Processing post-install commands..."
-  if [ ! -f "$root/lib/cpp" ]; then
-  	ln -s ../usr/bin/cpp $root/lib
-  fi
-  if [ ! -f "$root/usr/bin/cc" ]; then
-  	ln -s gcc $root/usr/bin/cc
-  fi
+	local root
+	root=$1
+	echo "Processing post-install commands..."
+	if [ ! -f "$root/lib/cpp" ]; then
+		ln -s ../usr/bin/cpp $root/lib
+	fi
+	if [ ! -f "$root/usr/bin/cc" ]; then
+		ln -s gcc $root/usr/bin/cc
+	fi
 }
