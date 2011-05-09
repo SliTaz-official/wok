@@ -4,39 +4,60 @@ PACKAGE="linux"
 VERSION="2.6.37"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
-DEPENDS="depmod"
-BUILD_DEPENDS="slitaz-toolchain perl git lzma patch"
 MAINTAINER="devel@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.kernel.org/"
 WGET_URL="http://www.eu.kernel.org/pub/linux/kernel/v${VERSION:0:3}/$TARBALL"
 CONFIG_FILES="/lib/modules/$VERSION-slitaz/modules.dep"
 
+DEPENDS="depmod"
+BUILD_DEPENDS="slitaz-toolchain perl git lzma patch"
+
+# FIXME: tazwok specific code in functions
+
 # Rules to configure and make the package.
 compile_rules()
 {
-
+	cd $src
 	# this is code to help update the kernel version faster
 	#for i in $(grep -l 'WANTED="linux"' $WOK/*/receipt)
 	#do
 	#	sed -i 's|VERSION="OLDVERSION"|VERSION="NEWVERSION"|g' $i
 	#done
-	report open-bloc
 
+	# FIXME: tazwok specific code
+	#report open-bloc
+
+	# Check for Aufs and cook it if unbuilt.
+	echo "Checking for Aufs packages..."
 	_AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	AUFSDIR=$WOK/$PACKAGE/aufs-${_AUFSVER}
-	tazwok get-src aufs --target=$AUFSDIR || { report close-bloc; return 1; }
+	[ -d "$AUFSDIR" ] || AUFSDIR=$WOK/$PACKAGE/source/aufs-${_AUFSVER}
+	if [ ! -d "$AUFSDIR" ]; then
+		if [ -x /usr/bin/cook ]; then
+			# Give info an redirect to /dev/null since aufs got it own log.
+			echo "Cook: aufs $_AUFSVER"
+			cook aufs > /dev/null
+		else [ -x /usr/bin/tazwok ]
+			tazwok cook aufs
+		fi
+	fi
+	
+	# FIXME: tazwok specific code (if aufs is cooked you dont need to get-src)
+	#tazwok get-src aufs --target=$AUFSDIR || { report close-bloc; return 1; }
+
+	echo "Copying Aufs files and patches..."
 	cp -a $AUFSDIR/Documentation $AUFSDIR/fs $AUFSDIR/include $src
 	cp -a $AUFSDIR/*.patch $WOK/$PACKA$stuff
-	cd $src
+	
 	# SliTaz db
-	[ -d $WOK/$PACKAGE/slitaz ] && rm -rf $WOK/$PACKAGE/slitaz 2> /dev/null
-	mkdir $WOK/$PACKAGE/slitaz
+	rm -rf $WOK/$PACKAGE/slitaz && mkdir $WOK/$PACKAGE/slitaz
 	echo "$WGET_URL" > $WOK/$PACKAGE/slitaz/url
 	cp $stuff/gztazmod.sh $stuff/list_modules.sh $WOK/$PACKAGE/slitaz
 	cp $stuff/bootloader.sh $WOK/$PACKAGE/slitaz
+	
 	# Apply patches
-	report step "Applying patches"
+	echo "Applying patches..."
 	while read patch_file; do
 		echo "$patch_file" >> $WOK/$PACKAGE/slitaz/patches
 		cp $stuff/$patch_file $WOK/$PACKAGE/slitaz
@@ -60,16 +81,22 @@ aufs2-standalone.patch
 004-squashfs-add-xz-compression-support.patch
 005-squashfs-add-xz-compression-configuration-option.patch
 EOT
-	report step "Make kernel proper and then build lguest"
+
+	# FIXME: tazwok specific code
+	#report step "Make kernel proper and then build lguest"
+	
 	make mrproper
 	cd Documentation/lguest
 	make lguest || { report close-bloc; return 1; }
 	cd $src
 
-	report step "Make bzImage without modules first"
+	# FIXME: tazwok specific code
+	#report step "Make bzImage without modules first"
+
 	# Build bzImage without modules first
 	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
 	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
+	
 	# We can't keep every driver in staging 
 	sed -i -e 's/^CONFIG_RTL8192/#&/' \
 	       -e 's/^CONFIG_R8187SE/#&/' \
@@ -80,7 +107,9 @@ EOT
 	mv arch/x86/boot/bzImage $PWD/_pkg
 	mv System.map System.map-without-modules
 
-	report step "Now build bzImage with modules"
+	# FIXME: tazwok specific code
+	#report step "Now build bzImage with modules"
+	
 	# Build bzImage with modules
 	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
 	make oldconfig
@@ -92,12 +121,17 @@ EOT
 	[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
 	mkdir -p $PWD/_pkg/boot 2> /dev/null
 	mv arch/x86/boot/bzImage $PWD/_pkg/boot/vmlinuz-$VERSION-slitaz
+	
+	# FIXME: tazwok specific code
+	#report step "Compressing all modules"
+	
 	# Compress all modules.
-	report step "Compressing all modules"
 	$stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
 	ln System.map System.map-modules
 	ln Module.symvers Module.symvers-modules
-	report close-bloc
+	
+	# FIXME: tazwok specific code
+	#report close-bloc
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -132,7 +166,7 @@ genpkg_rules()
     done
     # Check and echo any module in kernel .config that's not added to 
     # one of linux-* pkgs
-$stuff/check_modules.sh 
+	$stuff/check_modules.sh 
 }
 
 # Pre and post install commands for Tazpkg.
