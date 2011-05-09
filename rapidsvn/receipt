@@ -5,13 +5,15 @@ VERSION="0.12.0"
 CATEGORY="development"
 SHORT_DESC="A cross-platform GUI front-end for the Subversion revision system."
 MAINTAINER="stefanossofroniou542@gmail.com"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-DEPENDS="wxWidgets libsvn apr libltdl xorg-libXxf86vm libproxy libsqlite libsasl"
-BUILD_DEPENDS="libtool wxWidgets-dev subversion-dev apr-dev apr-util-dev cyrus-sasl-dev neon-dev libproxy-dev sqlite-dev expat-dev python"
 WEB_SITE="http://rapidsvn.tigris.org/"
-TARBALL=$PACKAGE-$VERSION-1.tar.gz
+TARBALL="$PACKAGE-$VERSION-1.tar.gz"
 WGET_URL="http://www.rapidsvn.org/download/release/0.12/$TARBALL"
 TAGS="subversion svn version-control versioning"
+
+DEPENDS="wxWidgets libsvn apr libltdl xorg-libXxf86vm libproxy libsqlite \
+libsasl libaprutil"
+BUILD_DEPENDS="$DEPENDS libtool wxWidgets-dev subversion-dev apr-dev \
+apr-util-dev cyrus-sasl-dev neon-dev libproxy-dev sqlite-dev expat-dev python"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,21 +25,14 @@ compile_rules()
 		--with-neon-config=neon-config \
 		--with-wx-config=wx-config \
 		--with-svn-include=/usr/include \
-		--with-svn-lib=/usr/lib \
-		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+		--with-svn-lib=/usr/lib &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib \
-		 $fs/usr/share \
-		 $fs/usr/share/applications \
-		 $fs/usr/share/pixmaps
+	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
-	cp -a stuff/rapidsvn.desktop $fs/usr/share/applications
-	cp -a stuff/rapidsvn.png $fs/usr/share/pixmaps
 }
