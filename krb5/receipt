@@ -15,13 +15,17 @@ CONFIG_FILES="/etc/krb5"
 # Rules to configure and make the package.
 compile_rules()
 {
-	[ -d $src/src ] || tar xzf $src/$PACKAGE-$VERSION.tar.gz
+	srcdir=$PACKAGE-$VERSION
+	[ -d $src/src ] || tar xzf $src/$srcdir.tar.gz
+	# This is for cookutils. If more than one file was extracted it create
+	# $PACKAGE-$VERSION to move files in it. Krb5 is the only package like
+	# that so we do the trick here.
+	if [ -d "$srcdir" -a -x /usr/bin/cook ]; then
+		mv $srcdir $CACHE && cd .. && rm -rf * && mv -f $CACHE/$srcdir .
+	fi
 	cd $src/src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--sysconfdir=/etc --localstatedir=/var \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make -j 4 &&
-	make DESTDIR=$PWD/../_pkg install
+	./configure --localstatedir=/var &&
+	make -j 4 && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -33,7 +37,7 @@ genpkg_rules()
 	cp -a $_pkg/usr/sbin $fs/usr
 	cp -a $_pkg/usr/lib $fs/usr
 	cat $stuff/*.files-list | while read file; do
-		rm -rf $fs$file
+		rm -rf ${fs}$file
 	done
 }
 
