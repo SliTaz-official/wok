@@ -1,0 +1,84 @@
+# SliTaz package receipt.
+
+PACKAGE="udev-light"
+VERSION="168"
+CATEGORY="base-system"
+SHORT_DESC="Light Udev version without extras."
+MAINTAINER="pankso@slitaz.org"
+SOURCE="udev"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.kernel.org/pub/linux/utils/kernel/hotplug/udev.html"
+WGET_URL="http://www.us.kernel.org/pub/linux/utils/kernel/hotplug/$TARBALL"
+
+DEPENDS="util-linux-ng-blkid"
+BUILD_DEPENDS="util-linux-ng-blkid-dev gperf pkg-config pciutils \
+gobject-introspection-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	gzip -d -c /usr/share/misc/pci.ids.gz > /usr/share/pci.ids
+	cd $src
+	grep -qs 'define u8' extras/*_id/*.c ||
+	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
+		extras/scsi_id/scsi_serial.c extras/ata_id/ata_id.c
+	./configure \
+		--prefix=/usr \
+		--exec-prefix="" \
+		--sysconfdir=/etc \
+		--libexecdir=/lib/udev \
+		--with-rootlibdir=/lib \
+		--disable-extras &&
+	make &&
+	make install &&
+	rm /usr/share/pci.ids
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/lib/firmware $fs/dev/.udev
+
+	cp -a $_pkg/sbin $fs
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/lib/libudev*so* $fs/lib
+	cp -a $_pkg/lib/udev $fs/lib
+
+	# Copy rules files to udev conf dir
+	mv -f $fs/lib/udev/rules.d $fs/etc/udev
+	cp $wanted_stuff/udev.conf $fs/etc/udev
+	cp $wanted_stuff/*.rules $fs/etc/udev/rules.d
+	
+	# Fix permissions
+	chmod +x $fs/lib/udev/*
+	chown -R root.root $fs
+}
+
+pre_install()
+{
+	# Remove old rules and libs
+	rm -rf $1/lib/udev/rules.d
+	rm -rf $1/lib/udev/vol_id
+	rm -f $1/lib/libvolume_id*
+	rm -f $1/lib/libudev.so.1.0
+	rm -f $1/lib/libudev.so.2.0
+}
+
+list_udev_group()
+{
+    object=$1
+    [ -n "$object" ] || object=GROUP
+    grep $object /etc/udev/rules.d/* | \
+        sed "s/.*GROUP=\"\\([a-zA-Z0-9]*\\)\".*/\1/" | sort | uniq
+}
+
+post_install()
+{
+    # Sanity check for udev+ldap boot
+    list_udev_group GROUP | while read x ; do
+        grep -q ^$x: $1/etc/group || chroot $1/ addgroup -S $x
+    done
+    list_udev_group OWNER | while read x ; do
+        grep -q ^$x: $1/etc/passwd || chroot $1/ adduser -S -D -H $x
+    done
+}
