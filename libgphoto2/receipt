@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libgphoto2"
-VERSION="2.4.10.1"
+VERSION="2.4.11"
 CATEGORY="graphics"
 SHORT_DESC="core library of gphoto2 to access photos from digital camera"
 MAINTAINER="jozee@slitaz.org"
@@ -12,15 +12,14 @@ WEB_SITE="http://www.gphoto.org"
 WGET_URL="$SF_MIRROR/gphoto/$TARBALL"
 TAGS="camera photo"
 
-
 # Rules to configure and make the package.
 compile_rules()
 {
    	cd $src
 	./configure --prefix=/usr udevscriptdir=/lib/udev \
 			--with-exif --disable-static &&
-	make -j 4 &&
-	make DESTDIR=$PWD/_pkg install
+	make &&
+	make install
 	
 }
 
@@ -45,27 +44,27 @@ genpkg_rules()
 	chmod +x $fs/lib/udev/check*
 	chmod +x $fs/usr/bin/gphoto2*
 	
-	HAL_FDI="usr/share/hal/fdi/information/20thirdparty/10-camera-libgphoto2.fdi"
-	UDEV_RULE="etc/udev/rules.d/70-libgphoto2.rules"
-	CAM_LIST="usr/lib/libgphoto2/print-camera-list"
-
-   # Let print-camera-list find libgphoto2.so
-    export LD_LIBRARY_PATH="$fs/usr/lib"
-   # Let libgphoto2 find its camera-modules before running print-camera-list
-	export CAMLIBS="$fs/usr/lib/libgphoto2/$VERSION"
-
-  # HAL file
-   "$fs/$CAM_LIST" hal-fdi > "$fs/$HAL_FDI" || return 1
-  
-    #udev rule
-   "$fs/$CAM_LIST" udev-rules version 0.98 group camera mode 0660 > "$fs/$UDEV_RULE" || return 1
-
 }
 
 post_install()
 {
 	local root
 	root=$1
+	
+	HAL_FDI="$1/usr/share/hal/fdi/information/20thirdparty/10-camera-libgphoto2.fdi"
+	UDEV_RULE="$1/etc/udev/rules.d/70-libgphoto2.rules"
+	CAM_LIST="$1/usr/lib/libgphoto2/print-camera-list"
+
+	# Let print-camera-list find libgphoto2.so
+	export LD_LIBRARY_PATH="$1/usr/lib"
+	# Let libgphoto2 find its camera-modules before running print-camera-list
+	export CAMLIBS="$1/usr/lib/libgphoto2/$VERSION"
+
+	# HAL file
+	"$CAM_LIST" hal-fdi > "$HAL_FDI" || return 1
+  
+	#udev rule
+	"$CAM_LIST" udev-rules version 0.98 group camera mode 0660 > "$UDEV_RULE" || return 1
 	
 	tazpkg reconfigure udev --root=$1
 	
@@ -79,5 +78,5 @@ post_install()
 
 post_remove()
 {
-	delgroup camera & >/dev/null
+	chroot "$1/" delgroup camera & >/dev/null
 }
