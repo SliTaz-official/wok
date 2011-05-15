@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="kbd"
-VERSION="1.12"
+VERSION="1.15.3"
 CATEGORY="system-tools"
 SHORT_DESC="Keyboard maping definitions and tools."
 BUILD_DEPENDS="flex"
@@ -15,11 +15,10 @@ TAGS="keyboard"
 compile_rules()
 {
 	cd $src
-	./configure \
-		--prefix=/usr \
-		--mandir=/usr/share/man
-	make
-	make DESTDIR=$PWD/_pkg install
+	patch -Np1 -i $stuff/fix-es.po.patch
+	./configure --datadir=/usr/share/kbd && 
+	make && 
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -48,9 +47,9 @@ pre_install()
 
 post_remove()
 {
-	ln -s /bin/busybox /usr/bin/deallocvt
-	ln -s /bin/busybox /usr/bin/chvt
-	ln -s /bin/busybox /usr/bin/setkeycodes
-	ln -s /bin/busybox /usr/bin/openvt
-	ln -s /bin/busybox /usr/bin/kbd_mode
+	ln -s /bin/busybox $1/usr/bin/deallocvt
+	ln -s /bin/busybox $1/usr/bin/chvt
+	ln -s /bin/busybox $1/usr/bin/setkeycodes
+	ln -s /bin/busybox $1/usr/bin/openvt
+	ln -s /bin/busybox $1/usr/bin/kbd_mode
 }
