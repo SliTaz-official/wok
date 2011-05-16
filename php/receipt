@@ -59,37 +59,36 @@ compile_rules()
 --with-curl=shared \
 "
 	sed -i 's/pam_start/pam_nostart/' configure
-	./configure $COMMON_ARGS $CONFIGURE_ARGS && \
-	make -j 4 && make INSTALL_ROOT=$PWD/install install
-	./configure $COMMON_ARGS --with-apxs2=/usr/bin/apxs $CONFIGURE_ARGS && \
+	./configure $COMMON_ARGS && \
+	make -j 4 && make INSTALL_ROOT=$DESTDIR install
+	./configure $COMMON_ARGS --with-apxs2=/usr/bin/apxs && \
 	make -j 4 && {
 		mkdir -p $install/etc/apache
 		cp /etc/apache/httpd.conf $install/etc/apache/httpd.conf
-		make INSTALL_ROOT=$install install
+		make INSTALL_ROOT=$DESTDIR install
 	}
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/etc $fs/usr/share
+	mkdir -p $fs/usr/bin $fs/etc $fs/usr/share/php
 	cp -a $src/sapi/cgi/php-cgi $fs/usr/bin
-	
 	# Recommended config file and phpinfo.
-	cp $src/php.ini-recommended $install/etc/php.ini
+	cp $src/php.ini-recommended $fs/etc/php.ini
 	sed -e 's|extension_dir = "./"|extension_dir = "/usr/share/php/"|' \
 	    -i $fs/etc/php.ini
 	cp -a $stuff/phpinfo $install/usr/share
 }
 
-# Post and pre install commands to stop
-# and restart Web server if needed.
+# Post and pre install commands to stop and restart Web server if needed.
 pre_install()
 {
 	if [ -f "$1/var/run/lighttpd.pid" ]; then
 		/etc/init.d/lighttpd stop
 	fi
 }
+
 post_install()
 {
 	# Enable php
