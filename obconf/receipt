@@ -5,23 +5,23 @@ VERSION="2.0.3"
 CATEGORY="x-window"
 SHORT_DESC="Openbox WM configuration interface."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="openbox gtk+ libglade shared-mime-info xorg-libXdamage"
-BUILD_DEPENDS="xorg-dev gtk+-dev libglade-dev openbox-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://icculus.org/openbox/"
 WGET_URL="http://icculus.org/openbox/obconf/$TARBALL"
 TAGS="openbox"
 
+DEPENDS="openbox gtk+ libglade shared-mime-info xorg-libXdamage \
+libstartup-notification"
+BUILD_DEPENDS="xorg-dev gtk+-dev libglade-dev openbox-dev \
+libstartup-notification-dev"
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure \
-		--prefix=/usr \
-		$CONFIGURE_ARGS &&
+	./configure &&
 	sed -i 's/^mkdir_p = .*/mkdir_p = mkdir -p/' po/Makefile &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -34,13 +34,6 @@ genpkg_rules()
 	touch $fs/usr/share/mime/x-openbox-theme.xml
 	touch $fs/usr/share/mime/x-vbscript.xml
 	touch $fs/usr/share/mime/x-ms-win-installer.xml
-	# Locale
-	for i in $LOCALE
-	do
-		mkdir -p $fs/usr/share/locale/$i/LC_MESSAGES
-		cp $src/po/$i.gmo \
-			$fs/usr/share/locale/$i/LC_MESSAGES/obconf.mo
-	done
 }
 
 # Update mime database.
