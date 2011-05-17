@@ -5,11 +5,12 @@ VERSION="2.3"
 CATEGORY="system-tools"
 SHORT_DESC="GNU parted partition editor."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="util-linux-ng-uuid"
-BUILD_DEPENDS="e2fsprogs-dev util-linux-ng-uuid-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.gnu.org/software/parted/index.shtml"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="util-linux-ng-uuid util-linux-ng-blkid"
+BUILD_DEPENDS="e2fsprogs-dev util-linux-ng-uuid-dev util-linux-ng-blkid-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -19,24 +20,17 @@ compile_rules()
 	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
 		libparted/arch/linux.c
 	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
 		--disable-debug \
 		--disable-Werror \
 		--without-readline \
-		--disable-device-mapper \
-		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+		--disable-device-mapper &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share/locale
-	
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
 }
