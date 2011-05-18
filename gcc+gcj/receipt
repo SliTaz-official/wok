@@ -24,43 +24,32 @@ elfutils elfutils-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
+	cd $src
 	# Set BUILD_HOST if not defined in tazwok.conf as it should be
 	if [ -z "$BUILD_HOST" ] ; then
 		BUILD_HOST="i486-pc-linux-gnu"
 	fi
 	GCC_TARGET=$BUILD_HOST
 
-	# Get ecj.jar needed to build gcj
+	# Get ecj.jar needed to build gcj. We have to dl it each time from the
+	# sources repository to ensure that we receive the latest JAR.
 	# (See http://gcc.gnu.org/install/configure.html --with-ecj-jar)
-	ECJ_PRE_PATH=`pwd`
 	ECJ_JAR="ecj-latest.jar"
 	ECJ_URL="ftp://sourceware.org/pub/java/$ECJ_JAR"
-	if [ ! -f "$SOURCES_REPOSITORY/$ECJ_JAR" ] ; then
-		cd $SOURCES_REPOSITORY
-		wget $ECJ_URL
+	if [ ! -f "$ECJ_JAR" ] ; then
+		echo "Downloading ECJ jar to: $(pwd)"
+		wget -c $ECJ_URL
 		# Exit if download failed to avoid errors.
-		if [ ! -f "$SOURCES_REPOSITORY/$ECJ_JAR" ] ; then
+		if [ ! -f "$ECJ_JAR" ] ; then
 			echo -e "\nECJ jar download failed, exiting. Please check ECJ_URL variable.\n"
 			return 1
 		fi
-	else
-		echo -n "ECJ jar exit... "
-		status
 	fi
-	
-	# Copy the ecj jar to the root of the gcc source directory
-	# The file name isn't versioned, so we have to remove it from the
-	# sources repository to ensure that we receive updated files
-	mv -f $SOURCES_REPOSITORY/$ECJ_JAR  $src/ecj.jar
-	
-	# Pop back to the pre-download directory
-	cd $ECJ_PRE_PATH
 
 	# Use libiberty.a from binutils.
 	sed -i 's/install_to_$(INSTALL_DEST) //' \
 		$src/libiberty/Makefile.in || return 1
-    mkdir -p $SOURCE-$VERSION-build
-    cd $SOURCE-$VERSION-build
+    mkdir -p ../build && cd ../build
 	
     PYTHON_LIB=python$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
     ../${src##*/}/configure --prefix=/usr --libexecdir=/usr/lib \
@@ -76,7 +65,7 @@ compile_rules()
 		--with-x --enable-java-awt=gtk \
 		--enable-gtk-cairo \
 		--enable-lto \
-		$CONFIGURE_ARGS  $GCC_TARGET  &&
+		$CONFIGURE_ARGS $GCC_TARGET  &&
     make bootstrap &&
     # Make install in the source tree to help creating derived pkgs
     # and keep $_pkg variable set for genpkg.
@@ -99,7 +88,6 @@ genpkg_rules()
     rm $fs/usr/lib/*.la
     # Include files.
     cp -a $_pkg/usr/include $fs/usr
-    rm -r $WOK/$PACKAGE/$SOURCE-$VERSION-build
 }
 
 # Post install commands for Tazpkg.
