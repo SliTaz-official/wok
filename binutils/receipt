@@ -52,22 +52,17 @@ compile_rules()
 	$src/configure \
 		--program-prefix=$TOOLPREFIX \
 		--enable-shared \
-		--build=$BUILD_HOST \
-		--host=$BUILD_HOST &&
+		$CONFIGURE_ARGS &&
 	make tooldir=/usr &&
-	# Install in binutils-build/ and then move the files to
-	# to the source tree. Can't install directly... This is done
-	# to keep the $src and $_pkg working for genpkg.
 	make tooldir=/usr install &&
-	# This is the default binutils, so create symlinks
-	# to the target platform binutil binaries.
-	# Delete duplicate binaries to save space.
-	for binutil in $(ls -1 $DESTDIR/usr/bin/ | grep "${TOOLPREFIX}") ; do
-		genericBinutilPath="$DESTDIR/usr/bin/$(echo "$binutil" | sed "s:$TOOLPREFIX::g")"
-		if [ -e $genericBinutilPath ] ; then
-			rm -f $genericBinutilPath
+	# This is the default binutils, so create symlinks to the target platform
+	# binutil binaries. Delete duplicate binaries to save space.
+	for binutil in $(ls -1 $DESTDIR/usr/bin | grep "${TOOLPREFIX}") ; do
+		path="$DESTDIR/usr/bin/$(echo "$binutil" | sed "s:$TOOLPREFIX::g")"
+		if [ -e $path ] ; then
+			rm -f $path
 		fi
-		ln -s $binutil $genericBinutilPath
+		ln -s $binutil $path
 	done
 }
 
