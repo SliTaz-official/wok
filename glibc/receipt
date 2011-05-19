@@ -27,6 +27,7 @@ cook_tmp_toolchain()
 	mkdir ../glibc-build && cd ../glibc-build
 
 	# glibc no longer support i386, so use -march=i486 for better compatibility.
+	# If i686 ???
 	case $ARCH in
 		i?86) echo "CFLAGS += -march=i486 -mtune=native" > configparms ;;
 	esac
@@ -78,12 +79,22 @@ compile_rules()
 	# to the source tree to keep $src and $_pkg for genpkg.
 	mkdir -p $WOK/$PACKAGE/install/etc
 	touch $WOK/$PACKAGE/install/etc/ld.so.conf
-	echo "CFLAGS += $CFLAGS" > configparms
+	# Use -march=i486 for better compatibility. Also Glibc dont build with -Os.
+	unset CFLAGS
+	case $ARCH in
+		i386|i486)
+			echo "CFLAGS += -O2 -march=i486 -pipe -fomit-frame-pointer" > \
+				configparms ;;
+		*)
+			echo "CFLAGS += -O2 -march=$ARCH -pipe -fomit-frame-pointer" > \
+				configparms ;;
+	esac
 	{ $src/configure \
 		--disable-profile \
 		--enable-add-ons \
 		--enable-kernel=2.6.22.5 \
-		--libexecdir=/usr/lib/glibc &&
+		--libexecdir=/usr/lib/glibc \
+		$CONFIGURE_ARGS &&
 	make &&
 	make install_root=$DESTDIR install
 	} || return 1
