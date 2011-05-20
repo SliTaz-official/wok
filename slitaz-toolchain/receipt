@@ -9,7 +9,6 @@ WEB_SITE="http://www.slitaz.org/"
 
 DEPENDS="binutils linux-api-headers glibc-dev gcc make elfkickers"
 
-#
 # The goal here is to build and install SliTaz toolchain. We build the toolchain
 # from SliTaz packages, on SliTaz and for SliTaz so in case of new and important
 # toolchain upgrade we must build Binutils a first time, then GCC so it use the
@@ -20,7 +19,6 @@ DEPENDS="binutils linux-api-headers glibc-dev gcc make elfkickers"
 #
 # SliTaz does one big toolchain by year just after the stable release, any change
 # here or in the toolchain packages version must be discuss on the mailing list.
-#
 
 # Rules to configure and make the package.
 compile_rules()
@@ -29,7 +27,11 @@ compile_rules()
 	tmplog=$LOGS/$PACKAGE.tmplog
 	echo "Cook: $PACKAGE $VERSION" > $tmplog
 	separator >> $tmplog
-	echo "cook: started $(date '+%Y-%m-%d %H:%M')" >> $tmplog
+	cat >> $tmplog << EOT
+cook toolchain : started $(date "+%Y-%m-%d %H:%M")
+build system   : $BUILD_SYSTEM
+host  system   : $HOST_SYSTEM
+EOT
 	
 	# 1. binutils (first pass)
 	echo "cook: binutils first pass: $(date '+%Y-%m-%d %H:%M')" >> $tmplog
@@ -79,7 +81,10 @@ genpkg_rules()
 	cat > $fs/usr/share/doc/slitaz/toolchain.txt << EOT
 SliTaz GNU/Linux toolchain
 ================================================================================
-Build date: $(date "+%Y-%m-%d")
+Build date   : $(date "+%Y-%m-%d")
+Build system : $BUILD_SYSTEM
+Host  system : $HOST_SYSTEM
+
 Packages:
 
     * Binutils $binutils
