@@ -53,10 +53,9 @@ cook_tmp_toolchain()
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Some patch are needed to make things work correctly.
-	# Following patches and sed fixes comes from LFS development book :
-	# http://www.linuxfromscratch.org/lfs/view/development/chapter06/glibc.html
 	cd $src
+	# Following patches and sed fixes comes from LFS development book:
+	# http://www.linuxfromscratch.org/lfs/view/development/chapter06/glibc.html
 	DL=$(readelf -l /bin/sh | sed -n 's@.*interpret.*/tools\(.*\)]$@\1@p')
 	sed -i "s|libs -o|libs -L/usr/lib -Wl,-dynamic-linker=$DL -o|" \
 		scripts/test-installation.pl
@@ -72,35 +71,32 @@ compile_rules()
 		nptl/sysdeps/unix/sysv/linux/x86_64/pthread_rwlock_timedrdlock.S \
 		nptl/sysdeps/unix/sysv/linux/x86_64/pthread_rwlock_timedwrlock.S
 
-	mkdir ../glibc-build
-	cd ../glibc-build
-
-	# Install in the build tree and then move all files
-	# to the source tree to keep $src and $_pkg for genpkg.
+	# Glibc needs ld.so.conf in the install destdir.
 	mkdir -p $WOK/$PACKAGE/install/etc
 	touch $WOK/$PACKAGE/install/etc/ld.so.conf
-	# Use -march=i486 for better compatibility. Also Glibc dont build with -Os.
-	unset CFLAGS
-	case $ARCH in
+	mkdir ../glibc-build && cd ../glibc-build
+	
+	# Read the INSTALL file in glibc. Also Glibc dont build with -Os flag.
+	# --enale-kernel use latest SliTaz Kernel version. From Glibc INSTALL:
+	# "The higher the VERSION number is, the less compatibility code is
+	# added, and the faster the code gets."
+	unset CFLAGS CXXFLAGS
+	case "$ARCH" in
 		i386|i486)
-			echo "CFLAGS += -O2 -march=i486 -pipe -fomit-frame-pointer" > \
-				configparms ;;
+			echo "CFLAGS += -O2 -march=i486 -mtune=native" > configparms ;;
 		*)
-			echo "CFLAGS += -O2 -march=$ARCH -pipe -fomit-frame-pointer" > \
-				configparms ;;
+			echo "CFLAGS += -O2 -march=$ARCH -mtune=native" > configparms ;;
 	esac
 	{ $src/configure \
 		--disable-profile \
 		--enable-add-ons \
-		--enable-kernel=2.6.22.5 \
+		--enable-kernel=2.6.37 \
 		--libexecdir=/usr/lib/glibc \
 		$CONFIGURE_ARGS &&
-	make &&
-	make install_root=$DESTDIR install
+	make && make install_root=$DESTDIR install
 	} || return 1
 
-	# If temporary toolchain was previously used, switch to
-	# regular toolchain.
+	# If temporary toolchain was previously used, switch to regular toolchain.
 	[ -d /tools ] || return
 	mv /tools/bin/ld /tools/bin/ld-old
 	mv /tools/$(gcc -dumpmachine)/bin/ld /tools/$(gcc -dumpmachine)/bin/ld-old
