@@ -91,8 +91,6 @@ cook_tmp_toolchain()
 
 	{ CC="$BUILD_HOST-gcc -B/tools/lib/" \
 		AR=$BUILD_HOST-ar RANLIB=$BUILD_HOST-ranlib \
-		# --disable-bootstrap dont exist ???
-		# See: ./configure --help | grep bootstrap
 		$src/configure \
 		--with-local-prefix=/tools --enable-clocale=gnu \
 		--enable-shared --enable-threads=posix \
@@ -122,7 +120,9 @@ compile_rules()
 	sed -i 's/install_to_$(INSTALL_DEST) //' \
 		libiberty/Makefile.in || return 1
 	mkdir -p ../gcc-build && cd ../gcc-build
-	
+
+	# This is the default GCC and we want a native build to cross compile after.
+	# SliTaz target i486 host so we need a native i486 build for GCC.
 	case "$opt" in
 		--first-pass)
 			# Used by slitaz-toolchain when rebuilding the full toolchain.
@@ -132,15 +132,16 @@ compile_rules()
 				--disable-nls \
 				--enable-shared \
 				--enable-languages=c,c++ \
-				--disable-multilib \
 				--disable-libstdcxx-pch \
 				--enable-__cxa_atexit \
 				--enable-clocale=gnu \
 				--enable-threads=posix \
-				$CONFIGURE_ARGS &&
+				--disable-bootstrap \
+				--build=$HOST_SYSTEM \
+				--host=$HOST_SYSTEM &&
 			make && make install ;;
 		*)
-			# Used by default to produce a full featured GCC compiler.
+			# Used by default to produce a full featured X86 GCC compiler.
 			echo "cook: configure GCC for: final/full build"
 			$src/configure \
 				--libexecdir=/usr/lib \
@@ -153,8 +154,11 @@ compile_rules()
 				--enable-__cxa_atexit \
 				--enable-lto \
 				--enable-threads=posix \
+				--disable-bootstrap \
+				--with-pkgversion="SliTaz" \
 				--with-tune=$ARCH \
-				$CONFIGURE_ARGS &&
+				--build=$HOST_SYSTEM \
+				--host=$HOST_SYSTEM &&
 			make && make install ;;
 	esac
 }
@@ -166,7 +170,7 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 	
 	# Copy all libs. Remove libgcc_s.so and libstdc++.so they goes in
-	# the gcc-lib-base-$VERSION package.
+	# the gcc-lib-base package.
 	cp -a $_pkg/usr/lib $fs/usr
 	rm -f $fs/usr/lib/libgcc_s.so*
 	rm -f $fs/usr/lib/libstdc++.so*
@@ -176,7 +180,7 @@ genpkg_rules()
 	# Include files.
 	cp -a $_pkg/usr/include $fs/usr
 	
-	# Gfortran goes in gfortran-$VERSION package.
+	# Gfortran goes in gfortran package.
 	rm -f $fs/usr/bin/*gfortran
 	rm -f $fs/usr/lib/libgfortran*
 	rm -f $fs/usr/lib/gcc/*/$VERSION/libgfortran*

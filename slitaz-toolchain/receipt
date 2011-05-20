@@ -41,7 +41,6 @@ EOT
 	echo "cook: GCC first pass: $(date '+%Y-%m-%d %H:%M')" >> $tmplog
 	cook gcc --install --first-pass
 	cook gcc-lib-base --install
-	cook libobjc --install
 	
 	# 3. linux-api-headers
 	echo "cook: linux API headers: $(date '+%Y-%m-%d %H:%M')" >> $tmplog
@@ -60,9 +59,13 @@ EOT
 	
 	# 6. gcc (final)
 	echo "cook: GCC final: $(date '+%Y-%m-%d %H:%M')" >> $tmplog
-	cook gcc --install
-	cook gcc-lib-base --install
-	cook libobjc --install
+	for i in gcc gcc-lib-base libobjc
+	do
+		echo "cook: $i: $(date '+%Y-%m-%d %H:%M')" >> $tmplog
+		cook $i --install
+	done
+	cook libgfortran
+	cook gfortran
 
 	# All packages cooked got ther own log so we dont keep them.
 	separator >> $tmplog && echo "" >> $tmplog
@@ -81,6 +84,7 @@ genpkg_rules()
 	cat > $fs/usr/share/doc/slitaz/toolchain.txt << EOT
 SliTaz GNU/Linux toolchain
 ================================================================================
+
 Build date   : $(date "+%Y-%m-%d")
 Build system : $BUILD_SYSTEM
 Host  system : $HOST_SYSTEM
@@ -91,6 +95,8 @@ Packages:
     * Linux API headers $linux
     * GCC $gcc
     * Glibc $glibc
+
+Documentation: http://doc.slitaz.org/en:cookbook:toolchain
 
 ================================================================================
 
