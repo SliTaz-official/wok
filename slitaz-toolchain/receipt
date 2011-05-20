@@ -28,9 +28,10 @@ compile_rules()
 	echo "Cook: $PACKAGE $VERSION" > $tmplog
 	separator >> $tmplog
 	cat >> $tmplog << EOT
-cook toolchain : started $(date "+%Y-%m-%d %H:%M")
-build system   : $BUILD_SYSTEM
-host  system   : $HOST_SYSTEM
+Cook toolchain : started $(date "+%Y-%m-%d %H:%M")
+Architecture   : $ARCH
+Build system   : $BUILD_SYSTEM
+Host  system   : $HOST_SYSTEM
 EOT
 	
 	# 1. binutils (first pass)
@@ -66,6 +67,12 @@ EOT
 	done
 	cook libgfortran
 	cook gfortran
+	separator >> $tmplog
+
+	# GCC info in toolchain.log
+	echo -e "\nGCC compiler information" >> $tmplog
+	separator >> $tmplog
+	gcc -v >> $tmplog
 
 	# All packages cooked got ther own log so we dont keep them.
 	separator >> $tmplog && echo "" >> $tmplog
@@ -77,8 +84,8 @@ genpkg_rules()
 {
 	binutils=$(grep ^VERSION $WOK/binutils/receipt | cut -d '"' -f 2)
 	linux=$(grep ^VERSION $WOK/linux/receipt | cut -d '"' -f 2)
-	gcc=$(grep ^VERSION $WOK/linux/receipt | cut -d '"' -f 2)
-	glibc=$(grep ^VERSION $WOK/linux/receipt | cut -d '"' -f 2)
+	gcc=$(grep ^VERSION $WOK/gcc/receipt | cut -d '"' -f 2)
+	glibc=$(grep ^VERSION $WOK/glibc/receipt | cut -d '"' -f 2)
 	
 	mkdir -p $fs/usr/share/doc/slitaz
 	cat > $fs/usr/share/doc/slitaz/toolchain.txt << EOT
@@ -86,6 +93,7 @@ SliTaz GNU/Linux toolchain
 ================================================================================
 
 Build date   : $(date "+%Y-%m-%d")
+Architecture : $ARCH
 Build system : $BUILD_SYSTEM
 Host  system : $HOST_SYSTEM
 
@@ -96,7 +104,12 @@ Packages:
     * GCC $gcc
     * Glibc $glibc
 
-Documentation: http://doc.slitaz.org/en:cookbook:toolchain
+GCC compiler info
+--------------------------------------------------------------------------------
+$(gcc -v)
+--------------------------------------------------------------------------------
+
+Toolchain documentation: http://doc.slitaz.org/en:cookbook:toolchain
 
 ================================================================================
 
