@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="passenger"
+VERSION="3.0.7"
+CATEGORY="networking"
+SHORT_DESC="Rails and Rack support for Apache2."
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="ruby rake libev libcurl fastthread daemon_controller spruz file-tail rack apache"
+BUILD_DEPENDS="$DEPENDS ruby-dev curl-dev libev-dev apr-dev"
+TARBALL="$PACKAGE-$VERSION.gem"
+WEB_SITE="http://rubygems.org/gems/passenger"
+WGET_URL="http://rubygems.org/downloads/$TARBALL"
+COOK_OPT="!repack_src !unpack"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -d $PACKAGE-$VERSION ] || mkdir $PACKAGE-$VERSION
+	cd $src
+
+	gem install --no-rdoc --no-ri --ignore-dependencies \
+		--install-dir $PWD/ $SOURCES_REPOSITORY/$TARBALL
+		
+	# Build Apache module
+	cd 	gems/$PACKAGE-$VERSION/
+	rake fakeroot APXS2=/usr/bin/apxs USE_VENDORED_LIBEV=no RELEASE=yes \
+		APR_CONFIG=/usr/bin/apr-1-config APU_CONFIG=/usr/bin/apu-1-config
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/var/run/passenger $fs/etc/apache/conf.d
+	
+	cp -a $stuff/passenger.conf $fs/etc/apache/conf.d
+	cp -a $src/gems/$PACKAGE-$VERSION/pkg/fakeroot/usr/bin $fs/usr
+	cp -a $src/gems/$PACKAGE-$VERSION/pkg/fakeroot/usr/sbin $fs/usr
+	cp -a $src/gems/$PACKAGE-$VERSION/pkg/fakeroot/usr/lib $fs/usr
+	cp -a $src/gems/$PACKAGE-$VERSION/pkg/fakeroot/usr/share/phusion-passenger $fs/usr/share
+	
+	# Clean-up
+	rm -rf $fs/usr/share/phusion-passenger/source
+}
