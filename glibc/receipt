@@ -10,7 +10,7 @@ WEB_SITE="http://www.gnu.org/software/libc/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 
 DEPENDS="glibc-base glibc-locale glibc-dev"
-BUILD_DEPENDS="linux-api-headers gawk"
+BUILD_DEPENDS="linux-api-headers"
 
 # Genpkg order for tazwok.
 COOK_OPT="genpkg=glibc-base:glibc-extra-samba:glib-locale:glibc-dev"
@@ -20,6 +20,13 @@ cook_tmp_toolchain()
 {
 	cd $src
 
+	# SliTaz is a Busybox based OS, why we so small and fast. Using gawk by
+	# default to build package will not ensure package work with Busybox awk
+	# and so should NOT be use to cook.
+	if [ -x /usr/bin/cook ]; then
+		[ -d "/var/lib/tazpkg/installed/gawk" ] || tazpkg get-install gawk
+	fi
+	
 	# Fix a bug that prevents Glibc from building with GCC-4.5.2:
 	patch -Np1 -i $stuff/glibc-2.13-gcc_fix-1.patch
 
