@@ -1,0 +1,57 @@
+# SliTaz package receipt.
+
+PACKAGE="usbmuxd"
+VERSION="1.0.6"
+CATEGORY="misc"
+SHORT_DESC="USB Multiplex Daemon"
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="libusb libplist"
+BUILD_DEPENDS="cmake libusb-dev libplist-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://marcansoft.com/blog/iphonelinux/usbmuxd/"
+WGET_URL="http://marcansoft.com/uploads/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -Np1 -i $stuff/usbmuxd-udevuser.patch
+	sed -i 's|/lib/udev/rules.d/|/etc/udev/rules.d/|g' udev/CMakeLists.txt
+	mkdir build
+	cd build
+	cmake ../ -DCMAKE_INSTALL_PREFIX:PATH=/usr -DLIB_SUFFIX=""
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/etc
+	cp -a $_pkg/etc/udev $fs/etc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+}
+
+post_install()
+{
+	# adduser usbmuxd if needed
+	if ! grep -q usbmuxd $1/etc/passwd; then
+		echo -n "Adding user privoxy..."
+		chroot $1/ adduser -s /bin/false -H -D -u 140 usbmuxd
+		status
+	fi
+
+	if ! grep -q usbmuxd $1/etc/group; then
+		echo -n "Adding group privoxy..."
+		chroot $1/ addgroup -g 140 usbmuxd
+		status
+	fi
+}
+
+# Del user usbmuxd when pkg is removed.
+post_remove()
+{
+	chroot $1/ deluser usbmuxd
+	chroot $1/ delgroup usbmuxd
+}
