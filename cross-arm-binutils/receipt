@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="cross-arm-binutils"
+VERSION="2.21"
+CATEGORY="system-tools"
+SHORT_DESC="Cross compilation linker targeting ARM platform."
+MAINTAINER="pankso@slitaz.org"
+SOURCE="binutils"
+WEB_SITE="http://www.gnu.org/software/binutils/"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WGET_URL="$GNU_MIRROR/$SOURCE/$TARBALL"
+
+DEPENDS=""
+BUILD_DEPENDS="slitaz-toolchain"
+
+# The goal here is to build an ARM cross toolchain who we let build code for
+# the target arch from an i486 build/host. To build a cross toolchain we use
+# the native i486 GCC compiler so set --build and --host to HOST_SYSTEM.
+CROSS_TARGET="arm-slitaz-linux"
+CROSS_TRIPLET="--build=$HOST_SYSTEM --host=$HOST_SYSTEM --target=$CROSS_TARGET"
+
+# CFLAGS and CXXFLAGS must not be set during the building of cross-tools.
+unset CFLAGS CXXFLAGS
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	mkdir -p ../build && cd ../build
+	$src/configure \
+		--program-prefix="$CROSS_TARGET-" \
+		--disable-multilib \
+		--disable-nls \
+		$CROSS_TRIPLET &&
+	make configure-host &&
+	make tooldir=/usr &&
+	make tooldir=/usr install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/lib
+	cp -a $install/usr/bin/$CROSS_TARGET-* $fs/usr/bin
+	cp -a $install/usr/lib/ldscripts $fs/usr/lib
+}
