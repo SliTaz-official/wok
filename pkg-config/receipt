@@ -16,7 +16,10 @@ compile_rules()
 {
 	cd $src
 	patch -p1 < $stuff/autoconf-2.66.patch
-	./configure && make && make install
+	./configure \
+		--program-prefix=$TOOLPREFIX \
+		--build=$HOST_SYSTEM --host=$HOST_SYSTEM &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -25,4 +28,7 @@ genpkg_rules()
 	mkdir -p $fs/usr/share
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/share/aclocal $fs/usr/share
+	# This is the default pkg-config so make a symling for package that dont
+	# cross compile or search for /usr/bin/pkg-config.
+	cd $fs/usr/bin && ln -s ${TOOLPREFIX}pkg-config pkg-config
 }
