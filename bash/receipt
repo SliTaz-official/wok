@@ -10,7 +10,6 @@ BUILD_DEPENDS="readline bison"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.gnu.org/software/bash/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
-CROSS="bug"
 
 # Rules to compile & install the temporary toolchain.
 cook_tmp_toolchain()
@@ -25,9 +24,24 @@ compile_rules()
 {
 	# Patch and then build.
 	cd $src
+	# Skip tests that can not run while cross-compiling.
+	cat > config.cache << "EOF"
+ac_cv_func_mmap_fixed_mapped=yes
+ac_cv_func_strcoll_works=yes
+ac_cv_func_working_mktime=yes
+bash_cv_func_sigsetjmp=present
+bash_cv_getcwd_malloc=yes
+bash_cv_job_control_missing=present
+bash_cv_printf_a_format=yes
+bash_cv_sys_named_pipes=present
+bash_cv_ulimit_maxfds=yes
+bash_cv_under_sys_siglist=yes
+bash_cv_unusable_rtsigs=no
+gt_cv_int_divbyzero_sigfpe=yes
+EOF
 	./configure \
-		--build=$HOST_SYSTEM \
-		--host=$HOST_SYSTEM \
+		$CONFIGURE_ARGS \
+		--cache-file=config.cache \
 		--bindir=/bin \
 		--enable-history --enable-alias  \
 		--disable-nls --without-bash-malloc \
