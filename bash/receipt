@@ -10,6 +10,7 @@ BUILD_DEPENDS="readline bison"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.gnu.org/software/bash/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+CROSS="bug"
 
 # Rules to compile & install the temporary toolchain.
 cook_tmp_toolchain()
@@ -24,11 +25,14 @@ compile_rules()
 {
 	# Patch and then build.
 	cd $src
-	./configure --bindir=/bin \
+	./configure \
+		--build=$HOST_SYSTEM \
+		--host=$HOST_SYSTEM \
+		--bindir=/bin \
 		--enable-history --enable-alias  \
 		--disable-nls --without-bash-malloc \
-		--disable-help-builtin --with-installed-readline \ 
-		$CONFIGURE_ARGS &&
+		--disable-help-builtin \
+		--with-installed-readline &&
 	make &&
 	# Bash doesn't care about DESTDIR in environnment variable.
 	make DESTDIR=$DESTDIR install
