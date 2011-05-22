@@ -19,13 +19,6 @@ COOK_OPT="genpkg=glibc-base:glibc-extra-samba:glib-locale:glibc-dev"
 cook_tmp_toolchain()
 {
 	cd $src
-
-	# SliTaz is a Busybox based OS, why we so small and fast. Using gawk by
-	# default to build package will not ensure package work with Busybox awk
-	# and so should NOT be use to cook.
-	if [ -x /usr/bin/cook ]; then
-		[ -d "/var/lib/tazpkg/installed/gawk" ] || tazpkg get-install gawk
-	fi
 	
 	# Fix a bug that prevents Glibc from building with GCC-4.5.2:
 	patch -Np1 -i $stuff/glibc-2.13-gcc_fix-1.patch
@@ -61,6 +54,14 @@ cook_tmp_toolchain()
 compile_rules()
 {
 	cd $src
+
+	# SliTaz is a Busybox based OS, why we so small and fast. Using gawk by
+	# default to build package will not ensure package work with Busybox awk
+	# and so should NOT be use to cook.
+	if [ -x /usr/bin/cook ]; then
+		[ -d "/var/lib/tazpkg/installed/gawk" ] || tazpkg get-install gawk
+	fi
+
 	# Following patches and sed fixes comes from LFS development book:
 	# http://www.linuxfromscratch.org/lfs/view/development/chapter06/glibc.html
 	DL=$(readelf -l /bin/sh | sed -n 's@.*interpret.*/tools\(.*\)]$@\1@p')
