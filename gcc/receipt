@@ -14,7 +14,7 @@ WGET_URL="ftp://gcc.gnu.org/pub/gcc/releases/gcc-$VERSION/$TARBALL"
 # and use it's own copy.
 DEPENDS="libgomp libobjc gcc-lib-base mpc-library elfutils"
 BUILD_DEPENDS="elfutils mpc-library mpfr mpfr-dev gmp gmp-dev elfutils \
-elfutils-dev gawk"
+elfutils-dev"
 
 # Rules to compile & install the temporary toolchain.
 precook_tmp_toolchain()
@@ -110,6 +110,14 @@ cook_tmp_toolchain()
 compile_rules()
 {
 	cd $src
+
+
+	# SliTaz is a Busybox based OS, why we so small and fast. Using gawk by
+	# default to build package will not ensure package work with Busybox awk
+	# and so should NOT be use to cook.
+	if [ -x /usr/bin/cook ]; then
+		[ -d "/var/lib/tazpkg/installed/gawk" ] || tazpkg get-install gawk
+	fi
 
 	# Package slitaz-toolchain use 'cook --options' when rebuilding
 	# the full SliTaz toolchain.
