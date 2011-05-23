@@ -8,6 +8,7 @@ MAINTAINER="slaxemulator@gmail.com"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.freedesktop.org/wiki/Software/PolicyKit"
 WGET_URL="http://hal.freedesktop.org/releases/$TARBALL"
+CROSS="error: cannot check for file existence when cross compiling"
 
 DEPENDS="glib libgio dbus dbus-glib expat pam"
 BUILD_DEPENDS="gobject-introspection-dev dbus-dev dbus-glib-dev pam-dev"
@@ -23,8 +24,9 @@ compile_rules()
 		--libexecdir=/usr/lib/polkit-1 \
 		--disable-man-pages \
 		--disable-gtk-doc \
-		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
+		--build=$HOST_SYSTEM \
+		--host=$HOST_SYSTEM &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -40,4 +42,3 @@ genpkg_rules()
 	cp -a $_pkg/usr/share/polkit-1 $fs/usr/share
 	cp -a $_pkg/var $fs
 }
-
