@@ -18,22 +18,20 @@ gobject-introspection-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	gzip -d -c /usr/share/misc/pci.ids.gz > /usr/share/pci.ids
 	cd $src
 	grep -qs 'define u8' extras/*_id/*.c ||
 	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
 		extras/scsi_id/scsi_serial.c extras/ata_id/ata_id.c
-	./configure \
+	./configure $CONFIGURE_ARGS \
 		--prefix=/usr \
 		--exec-prefix="" \
 		--sysconfdir=/etc \
 		--libexecdir=/lib/udev \
 		--with-rootlibdir=/lib \
 		--disable-extras \
-		$CONFIGURE_ARGS &&
+		--with-pci-ids-path=/usr/share/misc/pci.ids.gz &&
 	make &&
 	make install &&
-	rm /usr/share/pci.ids
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
