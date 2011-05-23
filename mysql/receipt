@@ -12,6 +12,7 @@ DEPENDS="busybox libmysqlclient mysql-client zlib slitaz-base-files \
 gcc-lib-base"
 CONFIG_FILES="/etc/mysql/my.cnf"
 DATABASE_FILES="/var/lib/mysql"
+CROSS="bug: can not run test programm"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,16 +21,22 @@ compile_rules()
 	cd $src
 	grep -q skip_do_abi_check Makefile.am ||
 	sed -i 's/^do_abi_check/&:\n\techo "Skipping &"\n\nreally_&/' Makefile.*
-	./configure --prefix=/usr --infodir=/usr/share/info \
-		--datadir=/usr/share --localstatedir=/var/lib/mysql \
-		--sysconfdir=/etc/mysql --libexecdir=/usr/sbin \
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--datadir=/usr/share \
+		--localstatedir=/var/lib/mysql \
+		--sysconfdir=/etc/mysql \
+		--libexecdir=/usr/sbin \
 		--with-unix-socket-path=/var/run/mysqld/mysqld.sock \
 		--with-mysqld-user=mysql \
 		--enable-thread-safe-client \
 		--with-plugins=innobase,innodb_plugin \
-		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+		--mandir=/usr/share/man \
+		--build=$HOST_SYSTEM
+		--host=$HOST_SYSTEM &&
 	make -j 4 &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
