@@ -5,20 +5,23 @@ VERSION="2.14.19"
 CATEGORY="development"
 SHORT_DESC="A CORBA 2.4-compliant Object Request Broker (ORB)."
 MAINTAINER="rcx@zoominternet.net"
-DEPENDS="glib libIDL"
-BUILD_DEPENDS="glib-dev dbus-dev dbus-glib-dev libIDL pkg-config"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://projects.gnome.org/ORBit2/"
 WGET_URL="ftp://ftp.gnome.org/pub/GNOME/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
+CROSS="bug: Could not check for borked linking while cross-compiling"
+
+DEPENDS="glib libIDL dbus dbus-glib"
+BUILD_DEPENDS="glib-dev dbus-dev dbus-glib-dev libIDL pkg-config"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-    ./configure --prefix=/usr \
-		$CONFIGURE_ARGS  &&
-    make &&
-    make DESTDIR=$src/_pkg install
+	./configure \
+		--prefix=/usr \
+		--build=$HOST_SYSTEM \
+		--host=$HOST_SYSTEM &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -28,6 +31,5 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib/orbit-2.0/*.so* $fs/usr/lib/orbit-2.0
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
-	
 	rm -f $fs/usr/bin/orbit2-config
 }
