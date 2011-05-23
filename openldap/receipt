@@ -8,24 +8,27 @@ MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="http://www.openldap.org/"
 WGET_URL="ftp://ftp.openldap.org/pub/OpenLDAP/$PACKAGE-release/$TARBALL"
-DEPENDS="libdb openssl libkrb5 libcomerr3 util-linux-ng-uuid icu \
-gcc-lib-base libldap"
-BUILD_DEPENDS="db-dev libdb libsasl-without-ldap"
 CONFIG_FILES="/etc/openldap"
 DATABASE_FILES="/var/openldap-*"
+
+DEPENDS="libdb openssl libkrb5 libcomerr3 util-linux-ng-uuid icu libldap nspr nss"
+BUILD_DEPENDS="db-dev libdb libsasl-without-ldap util-linux-ng-uuid-dev
+nspr-dev nss-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 
 	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-		--sysconfdir=/etc --localstatedir=/var \
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
 		--libexecdir=/usr/lib/$PACKAGE \
-		--mandir=/usr/share/man $CONFIGURE_ARGS
+		$CONFIGURE_ARGS
 	which soelim || find -name Makefile | xargs sed -i 's/soelim/cat/'
 	make -j 4 CPPFLAGS=-D_GNU_SOURCE &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
