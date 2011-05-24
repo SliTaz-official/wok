@@ -5,23 +5,20 @@ VERSION="2.0.35"
 CATEGORY="graphics"
 SHORT_DESC="Library for the dynamic creation of images."
 MAINTAINER="pascal.bellard@slitaz.org"
-SOURCE="gd"
-DEPENDS="zlib libpng jpeg freetype xorg-libXpm expat fontconfig xorg-libX11 \
-xorg-libXau xorg-libXdmcp"
-BUILD_DEPENDS="libpng libpng-dev jpeg jpeg-dev freetype freetype-dev xorg-libXpm"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.libgd.org/"
-WGET_URL="${WEB_SITE}releases/$TARBALL"
+#WGET_URL="hg|https://bitbucket.org/pierrejoye/gd-libgd"
+
+DEPENDS="zlib libpng jpeg freetype expat fontconfig xorg-libX11 \
+xorg-libXau xorg-libXdmcp xorg-libXpm"
+BUILD_DEPENDS="libpng-dev jpeg-dev expat-dev freetype-dev cmake \
+xorg-libXau-dev xorg-libXdmcp-dev xorg-libXpm-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	ln -s $src $PACKAGE-$VERSION
 	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	cmake . && make && install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -32,4 +29,3 @@ genpkg_rules()
 	chmod +x $_pkg/usr/bin/gdlib-config
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 }
-
