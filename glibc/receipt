@@ -28,23 +28,27 @@ cook_tmp_toolchain()
 
 	# glibc no longer support i386, so use -march=i486 for better compatibility.
 	# If i686 ???
+	unset CFLAGS CXXFLAGS
 	case $ARCH in
-		i?86) echo "CFLAGS += -march=i486 -mtune=native" > configparms ;;
+		i386|i486)
+			echo "CFLAGS += -O2 -march=i486 -mtune=native" > configparms ;;
+		*)
+			echo "CFLAGS += -O2 -march=$ARCH -mtune=native" > configparms ;;
 	esac
 
 	{ $src/configure \
-		--host=$BUILD_HOST \
+		--host=$HOST_SYSTEM \
 		--build=$($src/scripts/config.guess) \
 		--disable-profile --enable-add-ons \
-		--enable-kernel=2.6.22.5 --with-headers=/tools/include \
+		--enable-kernel=2.6.30 --with-headers=/tools/include \
 		libc_cv_forced_unwind=yes libc_cv_c_cleanup=yes &&
 	make &&
 	make install
 	} || return 1
 
 	# Link compiler to this new glibc.
-	SPECS=`dirname $($BUILD_HOST-gcc -print-libgcc-file-name)`/specs
-	$BUILD_HOST-gcc -dumpspecs | sed \
+	SPECS=`dirname $($HOST_SYSTEM-gcc -print-libgcc-file-name)`/specs
+	$HOST_SYSTEM-gcc -dumpspecs | sed \
 		-e 's@/lib\(64\)\?/ld@/tools&@g' \
 		-e "/^\*cpp:$/{n;s,$, -isystem /tools/include,}" > $SPECS 
 	unset SPECS
