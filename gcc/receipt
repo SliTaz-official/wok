@@ -29,12 +29,16 @@ precook_tmp_toolchain()
 
 	report step "Running compilation"
 
+	# Use libiberty.a from binutils.
+	sed -i 's/install_to_$(INSTALL_DEST) //' \
+		libiberty/Makefile.in || return 1
+
 	# Build it in a separate directory.
 	mkdir ../gcc-build
-	cd ../gcc-build	
+	cd ../gcc-build
 
 	{ $src/configure \
-		--target=$BUILD_HOST \
+		--target=$HOST_SYSTEM \
 		--disable-nls --disable-shared --disable-multilib \
 		--disable-decimal-float --disable-threads \
 		--disable-libmudflap --disable-libssp \
@@ -46,7 +50,7 @@ precook_tmp_toolchain()
 	} || { report close-bloc; return 1; }
 
 	# See LFS for more detais about this.
-	ln -s libgcc.a `$BUILD_HOST-gcc -print-libgcc-file-name | \
+	ln -s libgcc.a `$HOST_SYSTEM-gcc -print-libgcc-file-name | \
     		sed 's/libgcc/&_eh/'`
 	report close-bloc
 }
@@ -85,12 +89,16 @@ cook_tmp_toolchain()
 
 	report step "Running compilation"
 
+	# Use libiberty.a from binutils.
+	sed -i 's/install_to_$(INSTALL_DEST) //' \
+		libiberty/Makefile.in || return 1
+
 	# Build it in a separate directory.
 	mkdir ../gcc-build
 	cd ../gcc-build
 
-	{ CC="$BUILD_HOST-gcc -B/tools/lib/" \
-		AR=$BUILD_HOST-ar RANLIB=$BUILD_HOST-ranlib \
+	{ CC="$HOST_SYSTEM-gcc -B/tools/lib/" \
+		AR=$HOST_SYSTEM-ar RANLIB=$HOST_SYSTEM-ranlib \
 		$src/configure \
 		--with-local-prefix=/tools --enable-clocale=gnu \
 		--enable-shared --enable-threads=posix \
