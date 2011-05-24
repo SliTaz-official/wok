@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="gnu-efi"
-VERSION="3.0i"
+VERSION="3.0k"
 CATEGORY="development"
 SHORT_DESC="Development files for EFI applications."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -9,22 +9,19 @@ TARBALL="${PACKAGE}_$VERSION.orig.tar.gz"
 WEB_SITE="http://gnu-efi.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
+BUILD_DEPENDS="linux-api-headers"
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	if [ ! -d $WOK/linux/install ]; then
-        	cook linux || tazwok cook linux
-	fi
+	KERNEL_VERSION=$(grep ^VERSION= $WOK/linux/receipt | cut -d '"' -f 2)
 	cd $src
-	sed -i "s|^INSTALLROOT.*|INSTALLROOT=$PWD/_pkg/usr|" Make.defaults
-	sed -i "s|^LINUX_HEADERS.*|LINUX_HEADERS=$WOK/linux/linux-$KERNEL_VERSION|" apps/Makefile
+	sed -i "s|^INSTALLROOT.*|INSTALLROOT=$DESTDIR|" Make.defaults
 	make -j1 && make -j1 install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $_pkg/* $fs
+	cp -a $install/* $fs
 }
-
