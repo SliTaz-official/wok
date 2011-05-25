@@ -1,0 +1,91 @@
+# SliTaz package receipt.
+
+PACKAGE="nginx"
+VERSION="0.7.65"
+CATEGORY="network"
+SHORT_DESC="Asynchronous HTTP server designed for heavy loads + mail proxy."
+MAINTAINER="pascal.bellard@slitaz.org"
+SUGGESTED="php perl python"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://nginx.org/"
+WGET_URL="${WEB_SITE}download//$TARBALL"
+DEPENDS="pcre openssl zlib"
+BUILD_DEPENDS="pcre-dev openssl-dev zlib-dev"
+CONFIG_FILES="/etc/nginx"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+
+#  --with-rtsig_module                enable rtsig module
+#  --with-select_module               enable select module
+#  --with-poll_module                 enable poll module
+#  --with-ipv6                        enable ipv6 support
+#  --with-http_realip_module          enable ngx_http_realip_module
+#  --with-http_addition_module        enable ngx_http_addition_module
+#  --with-http_xslt_module            enable ngx_http_xslt_module
+#  --with-http_image_filter_module    enable ngx_http_image_filter_module
+#  --with-http_geoip_module           enable ngx_http_geoip_module
+#  --with-http_sub_module             enable ngx_http_sub_module
+#  --with-http_random_index_module    enable ngx_http_random_index_module
+#  --with-http_secure_link_module     enable ngx_http_secure_link_module
+#  --with-http_perl_module            enable ngx_http_perl_module
+#  --with-google_perftools_module     enable ngx_google_perftools_module
+
+	./configure --prefix=/usr \
+		--conf-path=/etc/nginx/nginx.conf \
+		--pid-path=/var/run/nginx.pid \
+		--lock-path=/var/lock/nginx.lock \
+		--error-log-path=/var/log/nginx/error.log \
+		--http-log-path=/var/log/nginx/access.log \
+		--http-client-body-temp-path=/var/spool/nginx/body \
+		--http-proxy-temp-path=/var/spool/nginx/proxy \
+		--http-fastcgi-temp-path=/var/spool/nginx/fastcgi \
+		--with-http_stub_status_module \
+		--with-http_flv_module \
+		--with-http_ssl_module \
+		--with-http_dav_module \
+		--with-mail --with-mail_ssl_module \
+		--user=80 --group=80 &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+# On SliTaz Lighttpd runs as user/group : www/www or 80/80.
+genpkg_rules()
+{
+	cp -a $_pkg/* $fs/
+	rm -rf $fs/usr/html
+	cp -a stuff/* $fs
+}
+
+# Pre and post install commands for Tazpkg.
+# We stop the server by default in case of upgarde.
+pre_install()
+{
+	echo "Processing pre-install commands..."
+	[ -f /etc/init.d/$PACKAGE ] && /etc/init.d/$PACKAGE stop
+	# Backup config file.
+	if [ -d $1/$CONFIG_FILES ]; then
+		cp -a $1/$CONFIG_FILES $1/$CONFIG_FILES.bak
+	fi
+}
+post_install()
+{
+	echo "Processing post-install commands..."
+	# Restore original config.
+	if [ -d $1/$CONFIG_FILES.bak ]; then
+		rm -rf $1/$CONFIG_FILES
+		mv $1/$CONFIG_FILES.bak $1/$CONFIG_FILES
+	fi
+	# Just in case.
+	chown www.www $1/var/log/$PACKAGE
+	if [ -z "$1" ]; then
+		for i in apache lighttpd ; do
+			[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
+		done
+		/etc/init.d/$PACKAGE start
+	fi
+}
