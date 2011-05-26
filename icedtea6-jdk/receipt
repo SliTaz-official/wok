@@ -81,34 +81,41 @@ EOT
 	# NOTE: don't build with -j 4. Only build with -j 1 or tank will crash
 	# NOTE: IcedTea6 does not define an "install" target
 	
-	echo "Copying needed files to install dir"
+	echo "Copying needed files to install dir..."
 	rm -rf $DESTDIR
 
 	local JVM_BUILDDIR
 	JVM_BUILDDIR=$src/openjdk.build/j2sdk-image
 	local JVM_DESTDIR
 	JVM_DESTDIR=${DESTDIR}$JVM_PREFIX
+	echo "JVM_BUILDDIR: $JVM_BUILDDIR"
+	echo "JVM_DESTDIR: $JVM_DESTDIR"
 
+	echo "Copying files: bin/ lib/"
 	mkdir -p $JVM_DESTDIR
 	cp -a $JVM_BUILDDIR/bin $JVM_DESTDIR
 	cp -a $JVM_BUILDDIR/lib $JVM_DESTDIR
-	
+
+	echo "Copying JRE files: bin/ lib/"
 	mkdir -p $JVM_DESTDIR/jre
 	cp -a $JVM_BUILDDIR/jre/bin $JVM_DESTDIR/jre
 	cp -a $JVM_BUILDDIR/jre/lib $JVM_DESTDIR/jre
 	
 	# Delete duplicated executables from the JDK bin
+	echo "Deleting duplicated files..."
 	for jbin in $(ls -1 $JVM_DESTDIR/jre/bin) ; do
 		rm -f $JVM_DESTDIR/bin/$jbin
 	done
 
 	# Create symlinks for JDK binaries
+	echo "Creating symlinks for JDK binaries..."
 	mkdir -p $DESTDIR/usr/jdk-bin
 	for jbin in $(ls -1 $JVM_DESTDIR/bin) ; do
 		ln -s $JVM_PREFIX/bin/$jbin $DESTDIR/usr/jdk-bin/$jbin
 	done
 	
 	# Create symlinks for JRE binaries
+	echo "Creating symlinks for JRE binaries..."
 	mkdir -p $DESTDIR/usr/jre-bin
 	for jbin in $(ls -1 $JVM_DESTDIR/jre/bin) ; do
 		ln -s $JVM_PREFIX/jre/bin/$jbin $JVM_DESTDIR/bin/$jbin
