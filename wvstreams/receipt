@@ -5,11 +5,13 @@ VERSION="4.6.1"
 CATEGORY="network"
 SHORT_DESC="makes modem-based connection to Internet"
 MAINTAINER="jozee@slitaz.org"
-DEPENDS="ppp gcc-lib-base openssl zlib xplc readline"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://wvstreams.googlecode.com"
 WGET_URL="http://wvstreams.googlecode.com/files/$TARBALL"
 TAGS="network 3g"
+
+DEPENDS="ppp libssl xplc readline"
+BUILD_DEPENDS="ppp-dev openssl-dev xplc-dev readline-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -18,15 +20,14 @@ compile_rules()
 	sed -i 's/  X509V3_EXT_METHOD/  const X509V3_EXT_METHOD/' crypto/wvx509.cc
 	sed -i 's/def MACOS/ 1/' streams/wvatomicfile.cc \
 		ipstreams/wvunixdgsocket.cc
-	 ./configure --prefix=/usr \
-	 --without-dbus \
-	 --without-tcl \
-	 --without-qt \
-	 --without-pam \
-	 --without-valgrind \ 
-	$CONFIGURE_ARGS &&
-	make -j1 && 
-	make -j1 install
+	./configure $CONFIGURE_ARGS \
+		--prefix=/usr \
+		--without-dbus \
+		--without-tcl \
+		--without-qt \
+		--without-pam \
+		--without-valgrind &&
+	make -j1 && make -j1 install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
