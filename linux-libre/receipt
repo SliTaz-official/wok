@@ -23,11 +23,13 @@ compile_rules()
 	#do
 	#	sed -i 's|VERSION="OLDVERSION"|VERSION="NEWVERSION"|g' $i
 	#done
-	report open-bloc
+	[ -x /usr/bin/tazwok ] && report open-bloc
 
 	_AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	AUFSDIR=$WOK/$PACKAGE/aufs-${_AUFSVER}
-	tazwok get-src aufs --target=$AUFSDIR || { report close-bloc; return 1; }
+	if [ -x /usr/bin/tazwok ]; then
+		tazwok get-src aufs --target=$AUFSDIR || { report close-bloc; return 1; }
+	fi
 	cp -a $AUFSDIR/Documentation $AUFSDIR/fs $AUFSDIR/include $src
 	cp -a $AUFSDIR/*.patch $WOK/$PACKA$stuff
 	cd $src
@@ -38,7 +40,7 @@ compile_rules()
 	cp $stuff/gztazmod.sh $stuff/list_modules.sh $WOK/$PACKAGE/slitaz
 	cp $stuff/bootloader.sh $WOK/$PACKAGE/slitaz
 	# Apply patches
-	report step "Applying patches"
+	echo "Applying patches"
 	while read patch_file; do
 		echo "$patch_file" >> $WOK/$PACKAGE/slitaz/patches
 		cp $stuff/$patch_file $WOK/$PACKAGE/slitaz
@@ -62,13 +64,13 @@ aufs2-standalone.patch
 004-squashfs-add-xz-compression-support.patch
 005-squashfs-add-xz-compression-configuration-option.patch
 EOT
-	report step "Make kernel proper and then build lguest"
+	echo "Make kernel proper and then build lguest"
 	make mrproper
 	cd Documentation/lguest
 	make lguest || { report close-bloc; return 1; }
 	cd $src
 
-	report step "Make bzImage without modules first"
+	echo "Make bzImage without modules first"
 	# Build bzImage without modules first
 	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
 	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
@@ -82,7 +84,7 @@ EOT
 	mv arch/x86/boot/bzImage $PWD/_pkg
 	mv System.map System.map-without-modules
 
-	report step "Now build bzImage with modules"
+	echo "Now build bzImage with modules"
 	# Build bzImage with modules
 	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
 	make oldconfig
@@ -91,15 +93,15 @@ EOT
 	make -j 4 modules &&
 	make INSTALL_MOD_PATH=$PWD/_pkg modules_install &&
 	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install &&
-	[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
+	#[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
 	mkdir -p $PWD/_pkg/boot 2> /dev/null
 	mv arch/x86/boot/bzImage $PWD/_pkg/boot/vmlinuz-$VERSION-slitaz
 	# Compress all modules.
-	report step "Compressing all modules"
+	echo "Compressing all modules"
 	$stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
 	ln System.map System.map-modules
 	ln Module.symvers Module.symvers-modules
-	report close-bloc
+	[ -x /usr/bin/tazwok ] && report close-bloc
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -127,14 +129,10 @@ genpkg_rules()
     # Remove unresolved links
     rm -f $fs/lib/modules/$VERSION-slitaz/build
     rm -f $fs/lib/modules/$VERSION-slitaz/source
-    # Cook all packages with a kernel module
-    for i in $(cd $WOK; grep -l 'tazwok cook linux$' */receipt)
-    do
-    	echo tazwok cook ${i%/receipt}
-    done
+
     # Check and echo any module in kernel .config that's not added to 
     # one of linux-* pkgs
-$stuff/check_modules.sh 
+	$stuff/check_modules.sh 
 }
 
 # Pre and post install commands for Tazpkg.
