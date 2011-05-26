@@ -5,7 +5,7 @@ PACKAGE="mutt"
 VERSION="1.5.21"
 CATEGORY="network"
 SHORT_DESC="Small and powerful text-based mail client"
-MAINTAINER="taziden@slitaz.org"
+MAINTAINER="paul@slitaz.org"
 DEPENDS="openssl ncurses zlib libidn"
 BUILD_DEPENDS="libidn-dev ncurses-dev openssl-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
@@ -16,10 +16,19 @@ WGET_URL="ftp://ftp.mutt.org/mutt/devel/$TARBALL"
 compile_rules()
 {	
     cd $src
+    addgroup mail
     sed -i 's/STACK \*/STACK_OF(X509) */' mutt_ssl.c
-    ./configure --prefix=/usr --enable-imap --with-ssl=/usr --with-mailpath=/var/mail --sysconfdir=/etc --enable-pop --enable-smtp $CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+    ./configure \
+		--prefix=/usr \
+		--enable-imap \
+		--with-ssl=/usr \
+		--with-mailpath=/var/mail \
+		--sysconfdir=/etc \
+		--enable-pop \
+		--enable-smtp \
+		$CONFIGURE_ARGS &&
+	make && make install &&
+	delgroup mail
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -33,3 +42,12 @@ genpkg_rules()
 	rm -r $fs/usr/share/man
 }
 
+post_install()
+{
+	addgroup mail
+}
+
+post_remove()
+{
+	delgroup mail
+}
