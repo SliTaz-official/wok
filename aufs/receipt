@@ -38,9 +38,7 @@ compile_rules()
 	sed -i 's|CONFIG_AUFS_DEBUG =.*|CONFIG_AUFS_DEBUG =|' \
 		config.mk || return 1
 
-	#patch -Np1 -i $stuff/aufs2-module-2.6.36.patch
-	#make KDIR=/usr/src/linux clean
-	# build, sed fixes are from gentoo portage build
+	# The sed fixes are from gentoo portage build.
 	sed -i "s:aufs.ko usr/include/linux/aufs_type.h:aufs.ko:g" Makefile
 	sed -i "s:__user::g" include/linux/aufs_type.h
 	make -j 1 KDIR=/usr/src/linux
@@ -49,14 +47,14 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	EXTRAVERSION=_$KERNEL_VERSION
-	mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/fs/aufs
-	lzma e $src/fs/aufs/aufs.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/fs/aufs/aufs.ko.gz
-	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/fs/aufs/aufs.ko.gz
-	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/fs/aufs/aufs.ko.gz
-	install -D -m 644 $src/include/linux/aufs_type.h $fs/usr/include/linux/aufs_type.h 
-
+	EXTRAVERSION=_${kvers}
+	mkdir -p $fs/lib/modules/$kvers-slitaz/kernel/fs/aufs
+	lzma e $src/fs/aufs/aufs.ko \
+		$fs/lib/modules/$kvers-slitaz/kernel/fs/aufs/aufs.ko.gz
+	chown root $fs/lib/modules/$kvers-slitaz/kernel/fs/aufs/aufs.ko.gz
+	chown 0644 $fs/lib/modules/$kvers-slitaz/kernel/fs/aufs/aufs.ko.gz
+	install -D -m 644 $src/include/linux/aufs_type.h \
+		$fs/usr/include/linux/aufs_type.h 
 }
 
 post_install()
