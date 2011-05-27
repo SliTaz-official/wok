@@ -75,10 +75,7 @@ EOT
 		--with-xerces2-jar=/usr/share/java/xercesImpl.jar \
 		--with-rhino=/usr/share/java/js.jar \
 		--with-abs-install-dir=$JVM_PREFIX \
-		$CONFIGURE_ARGS &&
-	
-	# NOTE: don't build with -j 4. Only build with -j 1 or tank will crash
-	# NOTE: IcedTea6 does not define an "install" target
+		$CONFIGURE_ARGS || exit 1
 	make -j 1 ARCH_PREFIX= 2>&1 | sed s/ERROR/error/
 	
 	echo "Copying needed files to install dir..."
@@ -88,15 +85,15 @@ EOT
 	JVM_BUILDDIR=$src/openjdk.build/j2sdk-image
 	local JVM_DESTDIR
 	JVM_DESTDIR=${DESTDIR}$JVM_PREFIX
-	echo "JVM_BUILDDIR: $JVM_BUILDDIR"
-	echo "JVM_DESTDIR: $JVM_DESTDIR"
+	echo "OpenJDK build     : source/openjdk.build/j2sdk-image"
+	echo "OpenJDK install   : install/$JVM_PREFIX"
 
-	echo "Copying files: bin/ lib/"
+	echo "Copying JDK files : bin/ lib/"
 	mkdir -p $JVM_DESTDIR
 	cp -a $JVM_BUILDDIR/bin $JVM_DESTDIR
 	cp -a $JVM_BUILDDIR/lib $JVM_DESTDIR
 
-	echo "Copying JRE files: bin/ lib/"
+	echo "Copying JRE files : bin/ lib/"
 	mkdir -p $JVM_DESTDIR/jre
 	cp -a $JVM_BUILDDIR/jre/bin $JVM_DESTDIR/jre
 	cp -a $JVM_BUILDDIR/jre/lib $JVM_DESTDIR/jre
