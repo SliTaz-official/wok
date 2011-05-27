@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="qemu-light"
+VERSION="0.12.5"
+CATEGORY="misc"
+SHORT_DESC="Light Qemu i386-softmmu target (without xen, vde, bluez, blobs, tls)."
+MAINTAINER="pankso@slitaz.org"
+SOURCE="qemu"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.qemu.org/"
+WGET_URL="http://download.savannah.gnu.org/releases/qemu/$TARBALL"
+TAGS="virtualization"
+
+DEPENDS="alsa-lib libsdl util-linux-ng-uuid"
+BUILD_DEPENDS="perl alsa-lib-dev libsdl-dev util-linux-ng-uuid-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	TARGET="i386-softmmu"
+	./configure \
+		--prefix=/usr \
+		--disable-xen \
+		--disable-vnc-sasl \
+		--disable-vnc-tls \
+		--disable-curl \
+		--disable-bluez \
+		--disable-curses \
+		--disable-vde \
+		--disable-blobs \
+		--enable-io-thread \
+		--audio-drv-list=alsa \
+		--target-list="$TARGET" \
+		--cc=$BUILD_SYSTEM-gcc &&
+	make && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/qemu $fs/usr/share
+	rm -f $fs/usr/share/qemu/*ppc*
+	rm -f $fs/usr/share/qemu/*sparc*
+}

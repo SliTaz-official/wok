@@ -6,68 +6,59 @@ CATEGORY="x-window"
 MAINTAINER="jozee@slitaz.org"
 SHORT_DESC="AMD/ATI beta drivers (non-free) for Radeon brand cards "
 WEB_SITE="http://www.ati.amd.com"
-DEPENDS="xorg-server mesa mesa-dri libdrm linux-drm fontconfig linux-agp xorg-libSM xorg-libXi xorg-libXcursor"
-BUILD_DEPENDS="linux xorg-server linux-module-headers"
 TARBALL="ati-driver-installer-${VERSION/./-}-x86.x86_64.run"
 WGET="http://www2.ati.com/drivers/linux/$TARBALL"
 TAGS="drivers graphic video"
+RUN_OPTS="--extract $PACKAGE-$VERSION"
+
+DEPENDS="xorg-server mesa mesa-dri libdrm linux-drm fontconfig linux-agp \
+xorg-libSM xorg-libXi xorg-libXcursor"
+BUILD_DEPENDS="linux xorg-server-dev mesa-dev libdrm-dev linux-module-headers"
 
 # Rules to configure and make the package.
-
-compile_rules() {
-
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-   
-	cd $WOK/$PACKAGE
-	[ -f $SOURCES_REPOSITORY/$TARBALL ] && cp $SOURCES_REPOSITORY/$TARBALL .
-	if [ ! -f $TARBALL ]; then
-		wget $WGET
-		cp $TARBALL $SOURCES_REPOSITORY
-	fi
-    
-	chmod +x $TARBALL
-	[ -d $PACKAGE-$VERSION ]  || sh $TARBALL --extract $PACKAGE-$VERSION
-	
-	for i in autoconf.h utsrelease.h ; do
-		grep -rl linux/$i * | xargs sed -i "s|linux/$i|generated/$i|"
-	done
+compile_rules()
+{
 	cd $src
+	#for i in autoconf.h utsrelease.h ; do
+		#grep -rl linux/$i * | xargs sed -i "s|linux/$i|generated/$i|"
+	#done
+	echo "Applying patches..."
 	patch -Np1 -i $stuff/makefile_compat.patch
-	patch -Np1 -i $stuff/$PACKAGE-${KERNEL_VERSION}.patch
+	patch -Np1 -i $stuff/$PACKAGE-${kvers}.patch
 	patch -Np1 -i $stuff/sema_init.patch
 	cd $src/common/lib/modules/fglrx/build_mod
 	cp $src/arch/x86/lib/modules/fglrx/build_mod/libfglrx_ip.a.GCC4 . 
 	cp 2.6.x/Makefile .
-	make -C /usr/src/linux SUBDIRS="`pwd`" modules 
+	echo "Compiling the Kernel module..."
+	make -C /usr/src/linux SUBDIRS=$(pwd) modules 
 }	
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	EXTRAVERSION=_$KERNEL_VERSION
+	EXTRAVERSION=_${kvers}
 
-	mkdir -p  $fs/usr/share/pixmaps \
-			  $fs/usr/bin \
-			  $fs/usr/lib/xorg/modules \
-			  $fs/usr/share/licenses/$PACKAGE \
-			  $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video \
-			  $fs/etc
+	mkdir -p \
+		$fs/usr/share/pixmaps \
+		$fs/usr/bin \
+		$fs/usr/lib/xorg/modules \
+		$fs/usr/share/licenses/$PACKAGE \
+		$fs/lib/modules/$kvers-slitaz/kernel/drivers/video \
+		$fs/etc
 	
 	# Compress and install module
 	lzma e $src/common/lib/modules/fglrx/build_mod/fglrx.ko \
-			$fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/fglrx.ko.gz
-	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/fglrx.ko.gz
-	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/fglrx.ko.gz	
+			$fs/lib/modules/$kvers-slitaz/kernel/drivers/video/fglrx.ko.gz
+	chown root $fs/lib/modules/$kvers-slitaz/kernel/drivers/video/fglrx.ko.gz
+	chmod 0644 $fs/lib/modules/$kvers-slitaz/kernel/drivers/video/fglrx.ko.gz	
 	
 	cp -a $src/ATI_LICENSE.TXT $fs/usr/share/licenses/$PACKAGE
-		
-	cp -a $src/x740/usr/X11R6/lib/modules $fs/usr/lib/xorg
 	
 	cp -a $src/arch/x86/usr/lib/*.so $fs/usr/lib/
 	cp -a $src/arch/x86/usr/sbin $fs/usr
 	cp -a $src/arch/x86/usr/X11R6/bin/* $fs/usr/bin/
-	
+
+	cp -a $src/x740/usr/X11R6/lib/modules $fs/usr/lib/xorg
 	cp -a $src/arch/x86/usr/X11R6/lib/*.so* $fs/usr/lib
 	cp -a $src/arch/x86/usr/X11R6/lib/modules $fs/usr/lib/xorg	
 	
@@ -79,9 +70,7 @@ genpkg_rules()
 	cp -a $src/common/usr/share/applications $fs/usr/share
 	cp -a $src/common/usr/share/doc $fs/usr/share
 	cp -a $src/common/usr/share/ati $fs/usr/share
-	cp -a $src/common/usr/X11R6/bin/* $fs/usr/bin		
-	
-
+	cp -a $src/common/usr/X11R6/bin/* $fs/usr/bin
 }
 
 pre_install()
@@ -93,7 +82,6 @@ pre_install()
 	echo "You must accept the license."
     echo "================================================================================"
     echo ""
-	
 }
 
 post_install()
@@ -125,8 +113,6 @@ post_install()
 		echo "You did not accept the license, Removing the pkg."	
 		tazpkg remove "$PACKAGE"		
 	fi
-
-  
 }
 
 post_remove()
@@ -134,5 +120,3 @@ post_remove()
 	echo "Processing post-remove commands..."
 	depmod -a
 }
-
-TAZBB_NO_INSTALL="because this is not hardware neutral"
