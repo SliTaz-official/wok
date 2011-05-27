@@ -5,56 +5,53 @@ VERSION="195.36.15"
 CATEGORY="x-window"
 MAINTAINER="jozee@slitaz.org"
 SHORT_DESC="NVIDIA drivers (non-free)"
-DEPENDS="linux xorg-server gtk+ cairo linux-agp linux-drm"
-BUILD_DEPENDS="$DEPENDS linux-module-headers coreutils-file-summarize"
 WEB_SITE="http://www.nvidia.com/"
 SOURCE="NVIDIA-Linux-x86-${VERSION}-pkg0"
 TARBALL="${SOURCE}.run"
+WGET_URL="http://download.nvidia.com/XFree86/Linux-x86/$VERSION/$TARBALL"
 TAGS="drivers graphic video"
+RUN_OPTS="--extract-only"
+
+DEPENDS="linux xorg-server gtk+ cairo linux-agp linux-drm"
+BUILD_DEPENDS="linux-module-headers coreutils-file-summarize"
 
 # Rules to configure and make the package.
-
-compile_rules() {
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	 WGET_URL="http://download.nvidia.com/XFree86/Linux-x86/$VERSION/$TARBALL"
-   
-    cd $WOK/$PACKAGE
-    [ -f $SOURCES_REPOSITORY/$TARBALL ] || wget $WGET_URL -P $SOURCES_REPOSITORY
-    
-	chmod +x $SOURCES_REPOSITORY/$TARBALL
-	sh $SOURCES_REPOSITORY/$TARBALL --extract-only
-	
-	cd $SOURCE/usr/src/nv/
-	sed -i 's|\.ioctl|// &|' nv.c # only use .unblocked_ioctl since 2.6.36
-	make SYSSRC="/usr/src/linux" module 
+compile_rules()
+{
+	cd $src/usr/src/nv
+	# Only use .unblocked_ioctl since 2.6.36
+	sed -i 's|\.ioctl|// &|' nv.c
+	make SYSSRC="/usr/src/linux" module 2>&1 | sed s'/ERROR:/error:/'
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {	
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	EXTRAVERSION=_$KERNEL_VERSION
-	_pkg="$WOK/$PACKAGE/$SOURCE"
-	
-	mkdir -p $fs/usr/share $fs/usr/lib/X11 $fs/usr/share/licenses/$PACKAGE \
-				 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video \
-				 $fs/usr/share/doc/$PACKAGE 
+	EXTRAVERSION=_${kvers}
+
+	mkdir -p $fs/usr/share $fs/usr/lib/X11 \
+		$fs/usr/share/licenses/$PACKAGE \
+		$fs/lib/modules/$kvers-slitaz/kernel/drivers/video \
+		$fs/usr/share/doc/$PACKAGE 
 	
 	# Compress and install module
-	lzma e $_pkg/usr/src/nv/nvidia.ko \
-			$fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/nvidia.ko.gz
-	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/nvidia.ko.gz
-	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/video/nvidia.ko.gz	
-	
-	cp -a $_pkg/LICENSE $fs/usr/share/licenses/$PACKAGE
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/nvidia-installer $fs/usr/bin
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib/
-	cp -a $_pkg/usr/lib/tls $fs/usr/lib/
-	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
-	cp -a $_pkg/usr/share/doc/* $fs/usr/share/doc/$PACKAGE/
-	cp -a $_pkg/usr/X11R6/lib/* $fs/usr/lib/X11	
-	
+	echo "Compressing nvidia.ko module..."
+	lzma e $src/usr/src/nv/nvidia.ko \
+		$fs/lib/modules/$kvers-slitaz/kernel/drivers/video/nvidia.ko.gz
+	chown root $fs/lib/modules/$kvers-slitaz/kernel/drivers/video/*.ko.gz
+	chmod 0644 $fs/lib/modules/$kvers-slitaz/kernel/drivers/video/*.ko.gz	
+
+	echo "Installing files in pkg fs..."
+	cp -a $src/LICENSE $fs/usr/share/licenses/$PACKAGE
+	cp -a $src/usr/bin $fs/usr
+	cp -a $src/nvidia-installer $fs/usr/bin
+	cp -a $src/usr/lib/*.so* $fs/usr/lib/
+	cp -a $src/usr/lib/tls $fs/usr/lib/
+	cp -a $src/usr/share/pixmaps $fs/usr/share
+	cp -a $src/usr/share/doc/* $fs/usr/share/doc/$PACKAGE/
+	cp -a $src/usr/X11R6/lib/* $fs/usr/lib/X11	
+
+	echo "Creating libraries symlinks..."
 	ln -s libglx.so.$VERSION $fs/usr/lib/X11/modules/extensions/libglx.so
 	ln -s libGL.so.$VERSION $fs/usr/lib/libGL.so
 	ln -s libGL.so.$VERSION $fs/usr/lib/libGL.so.1
@@ -77,7 +74,6 @@ pre_install()
 	echo "You must accept the license."
 	echo "================================================================================"
 	echo ""
-	
 }
 
 post_install()
@@ -115,5 +111,3 @@ post_remove()
 	echo "Processing post-remove commands..."
 	depmod -a
 }
-
-TAZBB_NO_INSTALL="because this is not hardware neutral"
