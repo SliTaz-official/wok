@@ -5,49 +5,46 @@ VERSION="2.56.76.0"
 CATEGORY="network"
 MAINTAINER="jozee@slitaz.org"
 SHORT_DESC="Intel Modem Drivers for 536EP chipset"
-DEPENDS="linux"
-BUILD_DEPENDS="linux-module-headers lzma"
 WEB_SITE="http://linmodems.technion.ac.il/packages/Intel/"
 TARBALL="intel-536EP-537EP_2009_07_04.tar.bz2"
 WGET_URL="$WEB_SITE/Philippe.Vouters/$TARBALL"
-TAGS=""
+
+DEPENDS="linux"
+BUILD_DEPENDS="linux-module-headers lzma"
 
 # Rules to configure and make the package.
-
-compile_rules() {
-    
-  KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-  cd $src
-
-  while read file; do
-    	[ -f done.$file ] && continue
-    	echo "Apply $file..."
-    	patch -p1 < $stuff/$PACKAGE-$file || return 1
+compile_rules()
+{
+	cd $src	
+	while read file; do
+		[ -f done.$file ] && continue
+		echo "Apply $file..."
+		patch -p1 < $stuff/$PACKAGE-$file || return 1
 	touch done.$file
-    done <<EOT
+	done <<EOT
 kernel-2.6.30.patch
 kernel-2.6.33.patch
 kernel-2.6.37.patch
 EOT
-  grep -rl 'uname -r' * | xargs sed -i "s/uname -r/echo $KERNEL_VERSION/"
-   # Bypass linux source package check
-  sed -i 's/@bash config_check/#@bash config_check/' makefile
-  grep -rl 'linux/autoconf.h' * | xargs sed -i 's|linux/autoconf.h|generated/autoconf.h|'
-  make KERNEL_SOURCE_PATH=/usr/src/linux KDIR=/usr/src/linux MODEM_TYPE=536 536
+	grep -rl 'uname -r' * | xargs sed -i "s/uname -r/echo $kvers/"
+	# Bypass linux source package check
+	sed -i 's/@bash config_check/#@bash config_check/' makefile
+	grep -rl 'linux/autoconf.h' * | xargs sed -i \
+		's|linux/autoconf.h|generated/autoconf.h|'
+	make KERNEL_SOURCE_PATH=/usr/src/linux KDIR=/usr/src/linux MODEM_TYPE=536 536
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {	
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	EXTRAVERSION=_$KERNEL_VERSION
-	
-	mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net
+	EXTRAVERSION=_${kvers}
+	mkdir -p $fs/lib/modules/$kvers-slitaz/kernel/drivers/net
 	
 	# Compress and install module
-	lzma e $src/Intel536.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/intel536.ko.gz
-	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/intel536.ko.gz
-	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/intel536.ko.gz		
+	lzma e $src/Intel536.ko \
+		$fs/lib/modules/$kvers-slitaz/kernel/drivers/net/intel536.ko.gz
+	chown root $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/intel536.ko.gz
+	chmod 0644 $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/intel536.ko.gz		
 }
 
 post_install()

@@ -15,28 +15,24 @@ BUILD_DEPENDS="linux linux-module-headers lzma"
 # Rules to configure and make the package.
 compile_rules()
 {
-	KVERS=$(grep ^VERSION= $INSTALLED/linux/receipt | cut -d '"' -f 2)
 	sed -i \
 		-e 's/\([^_]\)usb_buffer_free/\1usb_free_coherent/' \
 		-e 's/\([^_]\)usb_buffer_alloc/\1usb_alloc_coherent/' \
 		agrsoftmodem.c
-	make KERNEL_DIR=/usr/src/linux-$KVERS-slitaz KRELEASE=$KVERS
+	make KERNEL_DIR=/usr/src/linux-$kvers-slitaz KRELEASE=$kvers
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
-{	
-	KVERS=$(grep ^VERSION= $INSTALLED/linux/receipt | cut -d '"' -f 2)
-	EXTRAVERSION=_$KVERS
-	echo "EXTRAVERSION: $EXTRAVERSION"
-	
-	mkdir -p $fs/lib/modules/$KVERS-slitaz/kernel/drivers/net
+{
+	EXTRAVERSION=_${kvers}
+	mkdir -p $fs/lib/modules/$kvers-slitaz/kernel/drivers/net
 	
 	# Compress and install module
-	lzma e $src/agrmodem.ko $fs/lib/modules/$KVERS-slitaz/kernel/drivers/net/agrmodem.ko.gz
-	lzma e $src/agrserial.ko $fs/lib/modules/$KVERS-slitaz/kernel/drivers/net/agrserial.ko.gz		
-	chown root $fs/lib/modules/$KVERS-slitaz/kernel/drivers/net/*.ko.gz
-	chmod 0644 $fs/lib/modules/$KVERS-slitaz/kernel/drivers/net/*.ko.gz			
+	lzma e $src/agrmodem.ko $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/agrmodem.ko.gz
+	lzma e $src/agrserial.ko $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/agrserial.ko.gz		
+	chown root $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/*.ko.gz
+	chmod 0644 $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/*.ko.gz			
 }
 
 post_install()
