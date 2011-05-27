@@ -1,79 +1,73 @@
 # SliTaz package receipt.
 
 PACKAGE="ufr2"
-VERSION="1.80"
+VERSION="2.20"
 CATEGORY="system-tools"
 MAINTAINER="jozee@slitaz.org"
 SHORT_DESC="Canon URF2 driver with support for LBP, iR and MF series printers"
+SOURCE="UFR_II_Printer_Driver_for_Linux_V220_uk_EN"
+TARBALL="${SOURCE}.tar.gz"
 WEB_SITE="http://www.canon.com.au/pps/colour/imagepress_c1_drivers.aspx"
-DEPENDS="cups cairo cndrvcups-common"
-BUILD_DEPENDS="autoconf automake cairo-dev gtk+-dev cndrvcups-common-dev"
-SOURCE="ufr2linuxv180"
-TARBALL="${SOURCE}.zip"
-WGET_URL="http://www.service.canon.com.au/drivers/files/$TARBALL"
+WGET_URL="http://gdlp01.c-wss.com/gds/8/0100002708/03/$TARBALL"
 TAGS="printing printer drivers"
 
-# Rules to configure and make the package.
+DEPENDS="cups cairo cndrvcups-common cups"
+BUILD_DEPENDS="autoconf automake cairo-dev gtk+-dev cndrvcups-common-dev cups-dev"
 
-compile_rules() {
-	
-	src="$WOK/$PACKAGE/$SOURCE/Sources"
+# Rules to configure and make the package.
+compile_rules()
+{	
+	#src="$WOK/$PACKAGE/$SOURCE/Sources"
     cd $src
    
-    [ -d cndrvcups-lb-$VERSION ] || tar xzf cndrvcups-lb-${VERSION}-1.tar.gz 
+    [ -d cndrvcups-lb-$VERSION ] || tar xzf Sources/cndrvcups-lb-${VERSION}-1.tar.gz 
     
     cd $src/cndrvcups-lb-$VERSION/ppd &&     
-    ./autogen.sh --prefix=/usr  \
-				--enable-shared  \
-				--disable-static  \
-				--program-suffix="" \
-				--program-prefix="" &&  
+    ./autogen.sh \
+		--prefix=/usr \
+		--enable-shared \
+		--disable-static \
+		--program-suffix="" \
+		--program-prefix="" &&  
     make -j 4 &&
-    make DESTDIR=$PWD/_pkg install 
+    make DESTDIR=$DESTDIR install 
     
     cd $src/cndrvcups-lb-$VERSION/pstoufr2cpca     
-	./autogen.sh --prefix=/usr   \
-				 --enable-progpath=/usr/bin \
-				 --libdir=/usr/lib \
-				 --program-suffix="" \
-				 --program-prefix="" &&  
+	./autogen.sh \
+		--prefix=/usr   \
+		--enable-progpath=/usr/bin \
+		--libdir=/usr/lib \
+		--program-suffix="" \
+		--program-prefix="" &&  
 	make -j 4 &&
-	make DESTDIR=$PWD/_pkg install 	
-       
+	make DESTDIR=$DESTDIR install 	
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib \
-			 $fs/usr/share/caepcm \
-			 $fs/usr/share/licenses/$PACKAGE \
-			 $fs/usr/lib/cups/filter
-			
+	mkdir -p \
+		$fs/usr/lib \
+		$fs/usr/share/caepcm \
+		$fs/usr/share/licenses/$PACKAGE \
+		$fs/usr/lib/cups/filter
 	
-	_pkg="$WOK/$PACKAGE/$SOURCE/Sources"
-	
-	cp -a $_pkg/cndrvcups-lb-$VERSION/libs/*.so* $fs/usr/lib	
-	cp -a $_pkg/cndrvcups-lb-$VERSION/data/C*   $fs/usr/share/caepcm
-	cp -a $_pkg/cndrvcups-lb-$VERSION/ppd/_pkg/usr/share/*  $fs/usr/share/
-	cp -a $_pkg/cndrvcups-lb-$VERSION/pstoufr2cpca/_pkg/usr/lib/cups/filter  $fs/usr/lib/cups/filter
+	cp -a $src/cndrvcups-lb-$VERSION/libs/*.so* $fs/usr/lib	
+	cp -a $src/cndrvcups-lb-$VERSION/data/C* $fs/usr/share/caepcm
+	cp -a $install/usr/share/*  $fs/usr/share/
+	cp -a $install/usr/lib/cups/filter $fs/usr/lib/cups/filter
 	
 	# gzip all ppd files
 	find $fs/usr/share/cups/model -name "*.ppd" | xargs gzip -n9
-	    
-	
-	
+
 	# non-free license
-	cp -a $_pkg/cndrvcups-lb-$VERSION/LICENSE-ufr2-1.80E.txt $fs/usr/share/licenses/$PACKAGE
-    
-   cd $fs/usr/lib
-    ln -sf libcanonufr2.so.1.0.0  liblibcanonufr2.so.1
-    ln -sf libcanonufr2.so.1.0.0  libcanonufr2.so
-    
-    ln -sf libufr2filter.so.1.0.0 libufr2filter.so.1
-    ln -sf libufr2filter.so.1.0.0  libufr2filter.so 
-  
-   
+	cp -a $src/Documents/LICENSE-ufr2drv*.txt $fs/usr/share/licenses/$PACKAGE
+	
+	cd $fs/usr/lib
+	ln -sf libcanonufr2.so.1.0.0  liblibcanonufr2.so.1
+	ln -sf libcanonufr2.so.1.0.0  libcanonufr2.so
+	ln -sf libufr2filter.so.1.0.0 libufr2filter.so.1
+	ln -sf libufr2filter.so.1.0.0  libufr2filter.so 
 }
 
 pre_install()
@@ -85,7 +79,6 @@ pre_install()
 	echo "You must accept the license."
     echo "================================================================================"
     echo ""
-	
 }
 
 post_install()
@@ -106,5 +99,4 @@ post_install()
 		echo "You did not accept the license, Removing the pkg."	
 		tazpkg remove "$PACKAGE"		
 	fi
-
 }
