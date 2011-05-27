@@ -9,24 +9,32 @@ SOURCE="otp_src"
 TARBALL="${SOURCE}_$VERSION.tar.gz"
 WEB_SITE="http://$PACKAGE.org/"
 WGET_URL="${WEB_SITE}download/$TARBALL"
-DEPENDS="ncurses libunixODBC"
-BUILD_DEPENDS="perl ncurses-dev openssl openssl-dev xorg-dev flex m4 java-jdk"
+
+DEPENDS="ncurses openssl libunixODBC"
+BUILD_DEPENDS="perl ncurses-dev openssl-dev libunixODBC-dev icedtea6-jdk"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	patch=${SOURCE}_${VERSION}_OTP-7738.patch
+	export LANG=C
+	
 	cd $src
 	if [ ! -f done.$patch ]; then
 		patch -p1 < $stuff/$patch || return 1
 		touch done.$patch
 	fi
-	export LANG=C
 	sed -i 's|./Install|sh -x Install|' Makefile*
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--sysconfdir=/etc --mandir=/usr/share/man $CONFIGURE_ARGS &&
+	
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		--infodir=/usr/share/info \
+		$CONFIGURE_ARGS &&
 	make -j 1 &&
 	make -j 1 INSTALL_PREFIX=$DESTDIR install || return 1
+	
 	for i in $DESTDIR/usr/lib/erlang/*/bin/erl $DESTDIR/usr/lib/erlang/bin/erl \
 		 $DESTDIR/usr/lib/erlang/*/bin/start $DESTDIR/usr/lib/erlang/bin/start
 	do
@@ -42,4 +50,3 @@ genpkg_rules()
 {
 	cp -a $_pkg/usr $fs
 }
-
