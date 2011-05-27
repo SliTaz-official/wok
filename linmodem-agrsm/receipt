@@ -6,40 +6,37 @@ VERSION="2.1.80~20091225"
 CATEGORY="network"
 MAINTAINER="jozee@slitaz.org"
 SHORT_DESC="Agere Modem Drivers for 11c11040 chipsets"
-BUILD_DEPENDS="linux lzma"
 WEB_SITE="http://linmodems.technion.ac.il/packages/ltmodem/11c11040"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WGET_URL="$WEB_SITE/$TARBALL"
-TAGS=""
+
+BUILD_DEPENDS="linux linux-module-headers lzma"
 
 # Rules to configure and make the package.
-
-compile_rules() {
-	 
- KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
- [ -d $WOK/linux/taz ] || tazwok cook linux
- cd $src
- sed -i -e 's/\([^_]\)usb_buffer_free/\1usb_free_coherent/' \
-	-e 's/\([^_]\)usb_buffer_alloc/\1usb_alloc_coherent/' agrsoftmodem.c
- make KERNEL_DIR=$WOK/linux/linux-$KERNEL_VERSION KRELEASE=$KERNEL_VERSION
-  
+compile_rules()
+{
+	KVERS=$(grep ^VERSION= $INSTALLED/linux/receipt | cut -d '"' -f 2)
+	sed -i \
+		-e 's/\([^_]\)usb_buffer_free/\1usb_free_coherent/' \
+		-e 's/\([^_]\)usb_buffer_alloc/\1usb_alloc_coherent/' \
+		agrsoftmodem.c
+	make KERNEL_DIR=/usr/src/linux-$KVERS-slitaz KRELEASE=$KVERS
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {	
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	EXTRAVERSION=_$KERNEL_VERSION
+	KVERS=$(grep ^VERSION= $INSTALLED/linux/receipt | cut -d '"' -f 2)
+	EXTRAVERSION=_$KVERS
+	echo "EXTRAVERSION: $EXTRAVERSION"
 	
-	mkdir -p $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net
+	mkdir -p $fs/lib/modules/$KVERS-slitaz/kernel/drivers/net
 	
 	# Compress and install module
-	lzma e $src/agrmodem.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrmodem.ko.gz
-	lzma e $src/agrserial.ko $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrserial.ko.gz
-	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrmodem.ko.gz
-	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrmodem.ko.gz		
-	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrserial.ko.gz
-	chmod 0644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/drivers/net/agrserial.ko.gz			
+	lzma e $src/agrmodem.ko $fs/lib/modules/$KVERS-slitaz/kernel/drivers/net/agrmodem.ko.gz
+	lzma e $src/agrserial.ko $fs/lib/modules/$KVERS-slitaz/kernel/drivers/net/agrserial.ko.gz		
+	chown root $fs/lib/modules/$KVERS-slitaz/kernel/drivers/net/*.ko.gz
+	chmod 0644 $fs/lib/modules/$KVERS-slitaz/kernel/drivers/net/*.ko.gz			
 }
 
 post_install()
