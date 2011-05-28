@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-boot-scripts"
-VERSION="4.3"
+VERSION="4.4"
 CATEGORY="base-system"
 SHORT_DESC="Provide all the initialisation scripts used at boot time."
 MAINTAINER="pankso@slitaz.org"
@@ -64,6 +64,20 @@ FAST_BOOT_X="no"
 
 EOT
 	fi
+	# Fbsplash gui boot
+	if ! grep -q ^FBSPLASH $root/etc/rcS.conf; then
+		cat >> $root/etc/rcS.conf << "EOT"
+# Graphical boot with fbsplash (To easily configure use: tazfbsplash)
+FBSPLASH="no"
+FBSPLASH_THEME="slitaz"
+
+EOT
+	fi
+
+	# No more hwconf.sh and i18n.sh --> system.sh
+	sed -i s'/hwconf.sh/system.sh/' $root/etc/rcS.conf
+	sed -i s'/i18n.sh//' $root/etc/rcS.conf
+	
 	# Remove old desktop file
 	rm -f /usr/share/applications/boot-log.desktop
 }
