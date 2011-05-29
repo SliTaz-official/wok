@@ -5,14 +5,16 @@ VERSION="4.0.1"
 CATEGORY="network"
 SHORT_DESC="User friendly, secure and fast web browser."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ sqlite dbus dbus-glib glib jpeg xorg-libX11 xorg-libXdamage alsa-lib xorg-libXt libfirefox libnotify"
-BUILD_DEPENDS="zip libIDL coreutils findutils libnotify-dev wireless_tools-dev perl \
-python yasm mesa-dev alsa-lib alsa-lib-dev"
 TARBALL="$PACKAGE-$VERSION.source.tar.bz2"
 WEB_SITE="http://www.mozilla.org/"
 WGET_URL="http://releases.mozilla.org/pub/mozilla.org/firefox/releases/$VERSION/source/$TARBALL"
 CONFIG_FILES="/etc/firefox"
 TAGS="browser"
+
+DEPENDS="gtk+ sqlite dbus dbus-glib glib jpeg xorg-libX11 xorg-libXdamage \
+alsa-lib xorg-libXt libfirefox libnotify"
+BUILD_DEPENDS="zip libIDL coreutils findutils libnotify-dev wireless_tools-dev \
+perl python yasm alsa-lib-dev mesa-dev"
 
 # Rules to configure and make the package.
 #
@@ -26,14 +28,15 @@ compile_rules()
 	sed -i 's/xtype/type/' toolkit/mozapps/installer/packager.mk
 	./configure $CONFIGURE_ARGS &&
 	make -j 4 &&
-	make DESTDIR=$PWD/_pkg install &&
-	cp -a xpcom/typelib $PWD/_pkg
+	make DESTDIR=$DESTDIR install &&
+	cp -a xpcom/typelib $DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/$PACKAGE-$VERSION/defaults/profile/chrome $fs/usr/share $fs/etc 
+	mkdir -p $fs/usr/lib/$PACKAGE-$VERSION/defaults/profile/chrome \
+		$fs/usr/share $fs/etc 
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/$PACKAGE-$VERSION $fs/usr/lib
 
@@ -65,12 +68,6 @@ genpkg_rules()
 	sed -i s:'pref("browser.EULA.3.accepted", false);':'pref("browser.EULA.3.accepted", true);': \
 		$fs/etc/firefox/pref/firefox.js
 
-	# Locale fr
-#	tar xjf stuff/langpack-fr@firefox.mozilla.org.tar.bz2 \
-#		-C $fs/usr/lib/$PACKAGE-$VERSION/extensions
-	#sed -i "s/maxVersion>3.0../maxVersion>$VERSION/" \
-	#	$fs/usr/lib/$PACKAGE-$VERSION/extensions/langpack*/install.rdf
-
 	# Search Plugin (by: oddball)
 	cp -a $stuff/searchplugins $fs/usr/lib/firefox-$VERSION/
 	chown -R root.root $fs
@@ -83,7 +80,6 @@ genpkg_rules()
 	#retain big firefox libs
 	cp $_pkg/usr/lib/$PACKAGE-$VERSION/libxul.so \
 		$fs/usr/lib/$PACKAGE-$VERSION
-	
 }
 
 # Pre - Post install command to set default locale.
@@ -114,4 +110,3 @@ post_install()
 	done
 	rm -rf /tmp/firefox-plugins-$$
 }
-
