@@ -10,6 +10,7 @@ TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.qemu.org/"
 WGET_URL="http://download.savannah.gnu.org/releases/qemu/$TARBALL"
 TAGS="virtualization"
+CONFLICT="qemu"
 
 DEPENDS="alsa-lib libsdl util-linux-ng-uuid"
 BUILD_DEPENDS="perl alsa-lib-dev libsdl-dev util-linux-ng-uuid-dev"
@@ -28,7 +29,6 @@ compile_rules()
 		--disable-bluez \
 		--disable-curses \
 		--disable-vde \
-		--disable-blobs \
 		--enable-io-thread \
 		--audio-drv-list=alsa \
 		--target-list="$TARGET" \
@@ -39,9 +39,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share/qemu $fs/usr/share
-	rm -f $fs/usr/share/qemu/*ppc*
-	rm -f $fs/usr/share/qemu/*sparc*
+	mkdir -p $fs/usr/share/qemu
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/qemu/keymaps $fs/usr/share/qemu
+	for bin in bios.bin vgabios-cirrus.bin pxe-e1000.bin
+	do
+		cp -a $install/usr/share/qemu/$bin $fs/usr/share/qemu
+	done
 }
