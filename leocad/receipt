@@ -5,41 +5,37 @@ VERSION="0.75.1"
 CATEGORY="games"
 SHORT_DESC="A CAD program that uses toy bricks."
 MAINTAINER="rcx@zoominternet.net"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WEB_SITE="http://code.google.com/p/leocad/"
+WGET_URL="http://leocad.googlecode.com/files/$TARBALL"
+
 DEPENDS="glibc-base gcc-lib-base glib libgio expat zlib leocad-pieces \
 gtk+ atk cairo pixman pango jpeg libpng fontconfig freetype libxcb xcb-util \
 xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor xorg-libXdamage \
 xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXft xorg-libXinerama \
 xorg-libXrender mesa libglu-mesa"
-BUILD_DEPENDS=""
-TARBALL="$PACKAGE-$VERSION.tgz"
-WEB_SITE="http://code.google.com/p/leocad/"
-WGET_URL="http://leocad.googlecode.com/files/$TARBALL"
+BUILD_DEPENDS="mesa-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	make PREFIX="/usr" config &&
-	make &&
-	make install
-
-	mkdir -p $src/_pkg/usr/lib/leocad
-
-	# Create the shell script launcher
-	mkdir -p _pkg/usr/bin
-	cat > _pkg/usr/bin/leocad << EOF
-#!/bin/sh
-
-LEOCAD_LIB=/usr/share/leocad \\
-/usr/lib/leocad/leocad
-EOF
-	chmod +x _pkg/usr/bin/leocad
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs
-	cp -a $_pkg/* $fs
+	mkdir -p $fs/usr/lib/leocad \
+		 $fs/usr/bin
 
+	# Create the shell script launcher
+	cat > $fs/usr/bin/leocad << EOF
+#!/bin/sh
+LEOCAD_LIB=/usr/share/leocad \\
+/usr/lib/leocad/leocad
+EOF
+	chmod +x $fs/usr/bin/leocad
+	cp -a $install/* $fs
 }
