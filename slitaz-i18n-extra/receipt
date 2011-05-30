@@ -1,0 +1,31 @@
+# SliTaz package receipt
+
+PACKAGE="slitaz-i18n-extra"
+VERSION="4.0"
+CATEGORY="meta"
+SHORT_DESC="SliTaz internationalization meta package to build extra locale pack."
+MAINTAINER="pankso@slitaz.org"
+WEB_SITE="http://www.slitaz.org/"
+
+# Bdeps ensure packages are built so we can get generated po files.
+BUILD_DEPENDS="gimp mplayer xine-ui"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	. $stuff/locale-pack.conf
+	for p in $EXTRA_PKGS
+	do
+		[ ! -d "$WOK/$p/install" ] && echo "Missing in wok: $p"
+	done
+	# Cook all extra locale pack.
+	for i in $LOCALE_PACK
+	do
+		if [ -x /usr/bin/cook ]; then
+			cook locale-$i
+		elif [ -x /usr/bin/tazwok ]; then
+			tazwok cook locale-$i
+		fi
+	done
+	mkdir -p $fs/usr
+}
