@@ -29,10 +29,10 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc
+	mkdir -p $fs/usr $fs/var/lib/alsa
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
-	touch $fs/etc/asound.state
+	touch $fs/var/lib/alsa/asound.state
 	chmod 755 $fs/usr/sbin/*
 	# Remove speaker-test (18 Ko and needs sounds)
 	rm $fs/usr/bin/speaker-test
@@ -41,4 +41,21 @@ genpkg_rules()
 	chmod 1777 $fs/var/tmp
 	# Remove alsaconf (use soundconf).
 	rm $fs/usr/sbin/alsaconf
+}
+
+# Main alsa config (card name, volumes, etc) have moved upstream. So backup
+# current one and reenable it after package install so user still have ther
+# sound card and settings working.
+pre_install()
+{
+	if [ -f $1/etc/asound.state ]; then
+		mv $1/etc/asound.state /tmp
+	fi
+}
+
+post_install()
+{
+	if [ -f $1/tmp/asound.state ]; then
+		mv $1/tmp/asound.state $1/var/lib/alsa
+	fi
 }
