@@ -3,14 +3,14 @@
 PACKAGE="locale-pt"
 VERSION="4.0"
 CATEGORY="system-tools"
-SHORT_DESC="Portuguese/Brazilian locale pack."
+SHORT_DESC="Portuguese locale pack."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="glibc-base"
 BUILD_DEPENDS="glibc glibc-locale slitaz-i18n"
 WEB_SITE="http://www.slitaz.org/"
 
 LOCALE="pt"
-LOCALEDEF="pt_BR"
+LOCALEDEF="pt_PT"
 CHARMAP="UTF-8"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -25,15 +25,9 @@ genpkg_rules()
 	get_core_messages
 	PACKAGE="$PKG_NAME"
 	VERSION="$PKG_VERS"
-	LOCALE="pt_BR"
-}
-
-# Post install to remove old locale-pt_BR.
-post_install()
-{
-	if [ -d /var/lib/tazpkg/installed/locale-pt_BR ]; then
-		echo "y" | tazpkg remove locale-pt_BR
-	fi
+	# Pregenerate locale file so we dont need glibc-locale as dep.
+	mkdir -p $fs/usr/lib/locale
+	localedef -i $LOCALEDEF -c -f $CHARMAP $fs/usr/lib/locale/$LOCALEDEF
 }
 
 # Back to C if it's the last used locale.
@@ -43,4 +37,5 @@ post_remove()
 		echo "LANG=C" > /etc/locale.conf
 		echo "LC_ALL=C" >> /etc/locale.conf
 	fi
+	rm -rf /usr/lib/locale/$LOCALEDEF
 }

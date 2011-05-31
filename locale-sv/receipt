@@ -10,6 +10,8 @@ BUILD_DEPENDS="glibc glibc-locale slitaz-i18n"
 WEB_SITE="http://www.slitaz.org/"
 
 LOCALE="sv"
+LOCALEDEF="sv_SE"
+CHARMAP="UTF-8"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -23,6 +25,9 @@ genpkg_rules()
 	get_core_messages
 	PACKAGE="$PKG_NAME"
 	VERSION="$PKG_VERS"
+	# Pregenerate locale file so we dont need glibc-locale as dep.
+	mkdir -p $fs/usr/lib/locale
+	localedef -i $LOCALEDEF -c -f $CHARMAP $fs/usr/lib/locale/$LOCALEDEF
 }
 
 # Back to C if it's the last used locale.
@@ -32,4 +37,5 @@ post_remove()
 		echo "LANG=C" > /etc/locale.conf
 		echo "LC_ALL=C" >> /etc/locale.conf
 	fi
+	rm -rf /usr/lib/locale/$LOCALEDEF
 }
