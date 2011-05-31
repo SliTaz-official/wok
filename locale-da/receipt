@@ -1,0 +1,41 @@
+# SliTaz package receipt
+
+PACKAGE="locale-da"
+VERSION="4.0"
+CATEGORY="system-tools"
+SHORT_DESC="Danish locale pack."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="glibc-base"
+BUILD_DEPENDS="glibc glibc-locale slitaz-i18n"
+WEB_SITE="http://www.slitaz.org/"
+
+LOCALE="da"
+LOCALEDEF="da_DK"
+CHARMAP="UTF-8"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	. $WOK/slitaz-i18n/stuff/locale-pack.functions
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+	PKG_NAME="$PACKAGE"
+	PKG_VERS="$VERSION"
+	mk_locale_dir
+	get_slitaz_messages
+	get_core_messages
+	PACKAGE="$PKG_NAME"
+	VERSION="$PKG_VERS"
+	# Pregenerate locale file so we dont need glibc-locale as dep.
+	mkdir -p $fs/usr/lib/locale
+	localedef -i $LOCALEDEF -c -f $CHARMAP $fs/usr/lib/locale/$LOCALEDEF
+}
+
+# Back to C if it's the last used locale.
+post_remove()
+{
+	if grep -q $LOCALEDEF /etc/locale.conf; then
+		echo "LANG=C" > /etc/locale.conf
+		echo "LC_ALL=C" >> /etc/locale.conf
+	fi
+	rm -rf /usr/lib/locale/$LOCALEDEF
+}
