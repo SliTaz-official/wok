@@ -9,18 +9,36 @@ mk_locale_dir()
 		$fs/etc/xdg/openbox
 }
 
-# Get translated files from SliTaz sub projects: configs, doc, tools.
+# Get translated files from SliTaz sub projects: configs & tools.
 get_slitaz_messages()
 {
-	[ -d $WOK/slitaz-configs ] && . $WOK/slitaz-configs/receipt
-	[ -f $WOK/slitaz-configs/slitaz-configs-$VERSION/rootfs/etc/xdg/openbox/menu.${LOCALE}.xml ] && \
-		cp $WOK/slitaz-configs/slitaz-configs-$VERSION/rootfs/etc/xdg/openbox/menu.${LOCALE}.xml \
-		$fs/etc/xdg/openbox
+	configs=$WOK/slitaz-configs/source
+	openbox=$configs/slitaz-configs-*/rootfs/etc/xdg/openbox
+	tools=$WOK/slitaz-tools/source
+	
+	[ ! -d $configs ] && echo "ERROR: missing source slitaz-configs" && exit 1
+	[ ! -d $tools ] && echo "ERROR: missing source slitaz-tools" && exit 1
 
-	[ -d $WOK/slitaz-tools ] && . $WOK/slitaz-tools/receipt
-	[ -d $WOK/slitaz-tools/slitaz-tools-$VERSION/messages/$LOCALE ] && \
-		cp -a $WOK/slitaz-tools/slitaz-tools-$VERSION/messages/$LOCALE \
-		$fs/usr/share/slitaz/messages
+	if [ -f $openbox/menu.${LOCALE}.xml ]; then
+		echo "* Found $LOCALE locale for: openbox menu"
+		cp $openbox/menu.${LOCALE}.xml $fs/etc/xdg/openbox
+	fi
+	
+	# Tools messages will be replace in time by POT files.
+	if [ -d $tools/slitaz-tools-*/messages/$LOCALE ]; then
+		echo "* Found $LOCALE locale for: slitaz-tools"
+		cp -a $tools/slitaz-tools-*/messages/$LOCALE \
+			$fs/usr/share/slitaz/messages
+	fi
+	
+	if [ -d $tools/slitaz-tools-*/po/mo/$LOCALE ]; then
+		for app in $(ls $tools/slitaz-tools-*/po/mo/$LOCALE)
+		do
+			echo "* Found $LOCALE locale for: ${app%.mo}"
+			cp -a $tools/slitaz-tools-*/po/mo/$LOCALE/$app \
+				$fs/usr/share/locale/$LOCALE
+		done
+	fi
 }
 
 # Get the core packages messages.
