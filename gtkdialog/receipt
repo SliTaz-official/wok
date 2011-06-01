@@ -5,11 +5,12 @@ VERSION="0.7.20"
 CATEGORY="x-window"
 SHORT_DESC="Small utility for fast and easy GUI building using GTK+."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ libglade xorg-libXdamage"
-BUILD_DEPENDS="gtk+-dev libglade-dev xorg-libXdamage-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://linux.pte.hu/~pipas/gtkdialog/"
 WGET_URL="ftp://linux.pte.hu/pub/gtkdialog/$TARBALL"
+
+DEPENDS="gtk+ libglade xorg-libXdamage"
+BUILD_DEPENDS="gtk+-dev libglade-dev xorg-libXdamage-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -19,19 +20,14 @@ compile_rules()
 	patch -p 0 < $stuff/glade_support.patch || return 1
 	./configure \
 		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/examples
-	cp -a $_pkg/usr/bin $fs/usr
-	# Fiew examples.
-	cp -a stuff/examples $fs/usr/share/examples/gtkdialog
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
 }
-
