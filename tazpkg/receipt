@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="tazpkg"
-VERSION="4.6.3"
+VERSION="4.7"
 CATEGORY="base-system"
 SHORT_DESC="SliTaz packages manager."
 MAINTAINER="pankso@slitaz.org"
@@ -22,13 +22,12 @@ TAGS="slitaz package-manager"
 compile_rules()
 {
 	cd $src
-	make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$PWD/_pkg install
 }
 
 genpkg_rules()
 {
-	cp -a $_pkg/usr $fs
-	cp -a $_pkg/etc $fs
+	cp -a $install/* $fs
 	chown -R root.root $fs
 	# Default icon for mimetype (freedesktop standard compliant file
 	# manager will diplay a tazpkg icon for SliTaz packages).
@@ -40,10 +39,10 @@ genpkg_rules()
 
 post_install()
 {
-	#Apply a fix to config file /etc/slitaz/slitaz.conf
+	# Apply a fix to config file /etc/slitaz/slitaz.conf
 	[ -f /etc/slitaz/slitaz.conf ] && sed 's/LOCAL_STATE/LOCALSTATE/'\
 		-i /etc/slitaz/slitaz.conf
-	# Make sure new confi is present
+	# Make sure new config is present
 	if ! grep -q ^NOTIFY_GEOM "$root/etc/slitaz/tazpkg.conf"; then
 		cat >> "$root/etc/slitaz/tazpkg.conf" << "EOT"
 # The geometry of the desktop notification
