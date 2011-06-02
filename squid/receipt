@@ -10,61 +10,67 @@ WEB_SITE="http://www.squid-cache.org/"
 WGET_URL="${WEB_SITE}Versions/v3/3.1/$TARBALL"
 CONFIG_FILES="/etc/squid"
 DEPENDS="libsasl libldap libssl libltdl"
-BUILD_DEPENDS="perl openssl-dev libldap openldap-dev cyrus-sasl cyrus-sasl-dev"
+BUILD_DEPENDS="perl openssl-dev openldap-dev cyrus-sasl-dev"
 SUGGESTED="iptables"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr \
-	--infodir=/usr/share/info \
-	--sysconfdir=/etc/squid \
-	--datadir=/usr/share/squid \
-	--libexecdir=/usr/lib/squid \
-	--localstatedir=/var \
-    --disable-poll \
-    --disable-snmp \
-    --disable-icmp \
-    --enable-http-violations \
-    --disable-ident-lookups \
-    --enable-storeio="aufs,diskd,ufs" \
-    --enable-ssl \
-	--enable-underscores \
-    --enable-ntlm-fail-open \
-    --enable-removal-policies="heap,lru" \
-    --enable-delay-pools \
-    --enable-linux-netfilter \
-    --enable-basic-auth-helpers="NCSA,SMB,MSNT,LDAP" \
-    --enable-ntlm-auth-helpers="smb_lm,no_check,fakeauth" \
-    --enable-useragent-log \
-    --enable-referer-log \
-    --with-pthreads ac_cv_header_linux_netfilter_ipv4_h="yes" \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make -j 4 &&
-	make DESTDIR=$PWD/_pkg install
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc/squid \
+		--datadir=/usr/share/squid \
+		--libexecdir=/usr/lib/squid \
+		--localstatedir=/var \
+		--with-logdir=/var/log/squid \
+		--disable-poll \
+		--disable-snmp \
+		--disable-icmp \
+		--enable-http-violations \
+		--disable-ident-lookups \
+		--enable-storeio="aufs,diskd,ufs" \
+		--enable-ssl \
+		--enable-underscores \
+		--enable-ntlm-fail-open \
+		--enable-removal-policies="heap,lru" \
+		--enable-delay-pools \
+		--enable-linux-netfilter \
+		--enable-basic-auth-helpers="NCSA,SMB,MSNT,LDAP" \
+		--enable-ntlm-auth-helpers="smb_lm,no_check,fakeauth" \
+		--enable-useragent-log \
+		--enable-referer-log \
+		--with-pthreads ac_cv_header_linux_netfilter_ipv4_h="yes" \
+		$CONFIGURE_ARGS &&
+	make -j 4 && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/squid/errors $fs/var/cache/squid $fs/var/log/squid \
-	 $fs/usr/lib/squid
-	 
+		$fs/usr/lib/squid
+	
+	touch $fs/var/log/squid/cache.log
+	
 	cp -a $_pkg/etc $fs
 	rm -rf $fs/etc/squid/*.default
-	cp -a stuff/etc $fs
+	cp -a $stuff/etc $fs
+	
 	cp -a $_pkg/var $fs
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
 	cp -a $_pkg/usr/lib/squid/*kd $fs/usr/lib/squid
 	cp -a $_pkg/usr/lib/squid/*.cgi $fs/usr/lib/squid
+	
 	cp -a $_pkg/usr/share/squid/mib.txt $fs/usr/share/squid
 	cp -a $_pkg/usr/share/squid/icons $fs/usr/share/squid
+	cp -a $_pkg/usr/share/squid/errors/templates $fs/usr/share/squid/errors
 	cp -a $_pkg/usr/share/squid/errors/en* $fs/usr/share/squid/errors
 	cp -a $_pkg/usr/share/squid/errors/fr* $fs/usr/share/squid/errors
-	rm -f $fs/etc/*conf*
-	sed -i -e 's/TAG: visible_hostname/TAG: visible_hostname\nvisible_hostname slitaz/' \
+	
+	sed -i \
+		-e 's/TAG: visible_hostname/TAG: visible_hostname\nvisible_hostname slitaz/' \
 		-e 's|^access_log /var/logs|access_log /var/log/squid|' \
 		-e 's|^# cache_store_log /var/logs|cache_store_log /var/cache/squid|' \
 		-e 's|^# cache_log /var/logs|cache_log /var/cache/squid|' \
@@ -80,7 +86,7 @@ post_install()
 {
 	local root
 	root=$1
-	chown nobody.nogroup $root/var/cache/squid $root/var/log/squid
+	chown -R nobody.nogroup $root/var/cache/squid $root/var/log/squid
 	cat <<EOF
 ----
 To start $PACKAGE server you can run :
