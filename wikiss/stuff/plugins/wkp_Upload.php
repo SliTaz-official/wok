@@ -44,6 +44,20 @@ class Upload
 <form method="post" enctype="multipart/form-data" action="?action=uploadfile">
 <input type="file" name="file" value="file"/>
 <input type="submit"/>
+<table>
+';
+	 if ($handle = @opendir("pages/data")) {
+		while(($item = readdir($handle)) !== false) {
+			 if ($item == '..' || $item == '.') continue;
+		         $CONTENT .= '<tr><td><input type=checkbox ';
+		         exec('grep -qs "pages/data/'.$item.'" pages/*.txt', $tmp, $ret);
+		         if ($ret == 0) $CONTENT .= 'checked=checked ';
+		         $CONTENT .= 'disabled=disabled /><a href="pages/data/'.
+		         	$item.'">'.$item.'</a></td></tr>';
+		}
+	 }
+         $CONTENT .= '
+</table>
 </form>
 ';
          break;
