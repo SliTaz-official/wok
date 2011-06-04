@@ -1,29 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="xorg-server"
-VERSION="1.9.4"
+VERSION="1.9.5"
 CATEGORY="x-window"
 SHORT_DESC="Xorg core server."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="xorg-xkeyboard-config xorg-libpciaccess xorg-libXxf86vm \
-xorg-libXfont xorg-libXau xorg-base-fonts libgcrypt pixman udev"
-BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev xorg-libXxf86vm-dev \
-xorg-libXfont-dev libgcrypt-dev pixman-dev udev-dev mesa-dev \
-pkg-config perl flex xorg-xf86driproto xorg-xcmiscproto xorg-bigreqsproto \
-xorg-randrproto xorg-dri2proto xorg-kbproto xorg-xextproto xorg-fontsproto \
-xorg-renderproto xorg-videoproto xorg-compositeproto \
-xorg-recordproto xorg-libXau-dev xorg-fontcacheproto xorg-printproto \
-xorg-scrnsaverproto xorg-resourceproto xorg-xineramaproto xorg-xf86dgaproto \
-xorg-xf86bigfontproto xorg-xf86miscproto xorg-trapproto"
 SUGGESTED="xorg-xf86-input-evdev xorg-xf86-video-vesa"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.x.org/"
 WGET_URL="http://xorg.freedesktop.org/releases/individual/xserver/$TARBALL"
 
+# Mesa build dep make also Xorg depends on libdrm.
+DEPENDS="xorg-xkeyboard-config xorg-libpciaccess xorg-libXxf86vm \
+xorg-libXfont xorg-libXau xorg-base-fonts libgcrypt pixman udev libdrm"
+BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev xorg-libXxf86vm-dev \
+xorg-libXfont-dev libgcrypt-dev pixman-dev udev-dev mesa-dev pkg-config perl \
+flex xorg-xf86driproto xorg-xcmiscproto xorg-bigreqsproto xorg-randrproto \
+xorg-dri2proto xorg-libXau-dev xorg-dev-proto libdrm-dev"
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	# Xephyr make possible to use Xorg in a chroot: --enable-xephyr
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -34,14 +33,18 @@ compile_rules()
 		--with-serverconfig-path=/etc/X11 \
 		--enable-install-setuid \
 		--enable-xorg \
+		--enable-kdrive \
+		--enable-kdrive-kbd \
+		--enable-kdrive-mouse \
+		--enable-kdrive-evdev \
+		--enable-xfbdev \
 		--enable-config-udev \
 		--disable-config-dbus \
 		--with-fontrootdir=/usr/share/fonts \
 		--with-os-name="SliTaz GNU/Linux" \
 		--with-builder-addr=$MAINTAINER \
 		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
