@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="glib-networking"
+VERSION="2.28.6"
+CATEGORY="x-window"
+SHORT_DESC="TLS support for glib."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gtk.org/"
+WGET_URL="git://git.gnome.org/glib-networking"
+BRANCH="$VERSION"
+
+DEPENDS="glib libgio libgnutls"
+BUILD_DEPENDS="glib-dev libgio-dev gnutls-dev automake autoconf git"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./autogen.sh \
+		--prefix=/usr \
+		--without-ca-certificates \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/gio/modules
+	cp -a $install/usr/lib/gio/modules/*.so* $fs/usr/lib/gio/modules
+}
