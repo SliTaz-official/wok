@@ -137,6 +137,23 @@ post_install()
 		mv $1$i-busybox-install $1$i
 	done < $1$INSTALLED/$PACKAGE/files.list
 	chmod 4755 $1/bin/busybox
+
+	# /etc/daemons.conf (tftp + dnsd + httpd may not be present)
+	if ! grep -q ^DNSD_OPTIONS $root/etc/daemons.conf; then
+		echo '# Domain name server options.' >> $root/etc/daemons.conf
+		echo 'DNSD_OPTIONS="-d"' >> $root/etc/daemons.conf
+		echo '' >> $root/etc/daemons.conf
+	fi
+	if ! grep -q ^TFTPD_OPTIONS $root/etc/daemons.conf; then
+		echo '# Tftp daemon options.' >> $root/etc/daemons.conf
+		echo 'TFTPD_OPTIONS="-r /boot"' >> $root/etc/daemons.conf
+		echo '' >> $root/etc/daemons.conf
+	fi
+	if ! grep -q ^HTTPD_OPTIONS $root/etc/daemons.conf; then
+		echo '# Busybox HTTP web server options.' >> $root/etc/daemons.conf
+		echo 'HTTPD_OPTIONS="-u www"' >> $root/etc/daemons.conf
+		echo '' >> $root/etc/daemons.conf
+	fi
 }
 
 pre_remove()
