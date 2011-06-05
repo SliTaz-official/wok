@@ -66,32 +66,37 @@ genpkg_rules()
 {
     cp -a $src/_install/* $fs
     rm -f $fs/bin/bbconfig $fs/usr/bin/ar
-    mkdir -p $fs/etc/init.d
+    mkdir -p $fs/etc/init.d $fs/var
+    
     # Busybox config files.
-    cp $stuff/busybox.conf $fs/etc
+    for f in busybox.conf dnsd.conf udhcpd.conf inetd.conf httpd.conf zcip.script
+    do
+		cp $stuff/$f $fs/etc
+    done
+    chown -R 0.0 $fs/etc
     chmod 600 $fs/etc/busybox.conf
-    cp $stuff/dnsd.conf $fs/etc
-    cp $stuff/udhcpd.conf $fs/etc
     touch $fs/etc/resolv.conf
-    cp $stuff/inetd.conf $fs/etc
+
+	# Daemon scripts and init.
     cp $stuff/daemon $fs/etc/init.d
     DAEMON="crond dnsd ftpd httpd inetd klogd ntpd syslogd telnetd tftpd udhcpd zcip"
     for i in $DAEMON; do
-	grep -qi config_$i=y $stuff/$PACKAGE-${VERSION%.*}.config && 
-	ln -s daemon $fs/etc/init.d/$i
+		grep -qi config_$i=y $stuff/$PACKAGE-${VERSION%.*}.config && 
+		ln -s daemon $fs/etc/init.d/$i
     done
     cp $stuff/init $fs
     rm $fs/linuxrc
     mkdir -p $fs/etc/modprobe.d
+    
     # Udhcpc stuff.
     mkdir -p $fs/usr/share/udhcpc
     cp $stuff/udhcp.script $fs/usr/share/udhcpc/default.script
     chmod +x $fs/usr/share/udhcpc/default.script
-    # ZeroConf stuff.
-    cp $stuff/zcip.script $fs/etc
+
     # Httpd stuff.
     cp $stuff/httpd_helper.sh $fs/usr/bin
     chmod +x $fs/usr/bin/httpd_helper.sh
+    cp -a $stuff/www $fs/var
 }
 
 # Force glibc-2.7 reinstall if 2.3.6 still in use.
