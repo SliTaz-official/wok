@@ -21,10 +21,10 @@ cat << EOT
 <div id="content">
 
 <p>
-	Welcome to SliTaz web server CGI Shell environment. Let the power of
+	Welcome to the SliTaz web server CGI Shell environment. Let the power of
 	SHell script meet the web! Here you can check HTTP info and try some
-	requests. Including /usr/bin/httpd_helper.sh in your scripts let you
-	use PHP alike syntax such as: \$(GET var)
+	requests. Including /usr/bin/httpd_helper.sh in your scripts lets you
+	use PHP-like syntax such as: \$(GET var)
 </p>
 <p>
 	QUERY_STRING test: 
