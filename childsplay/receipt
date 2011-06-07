@@ -1,50 +1,45 @@
 # SliTaz package receipt.
 
 PACKAGE="childsplay"
-VERSION="1.5.1"
+VERSION="1.6"
 CATEGORY="games"
 SHORT_DESC="Python educational game."
 MAINTAINER="claudinei@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tgz"
-WEB_SITE="http://www.schoolsplay.org"
+WEB_SITE="http://www.schoolsplay.org/"
 WGET_URL="$SF_MIRROR/schoolsplay/$TARBALL"
-DEPENDS="python pygtk python-pygame python-pysqlite python-sqlalchemy libogg"
-BUILD_DEPENDS="python python-dev"
 
+DEPENDS="python pygtk python-pygame python-pysqlite python-sqlalchemy libogg"
+BUILD_DEPENDS="python-dev pygtk-dev python-pygame-dev libogg-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	PYTHON_LIB=python$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
-	sed -i "s|PREFIX = '/usr/local'|PREFIX = '_pkg/usr'|" $src/setup.py
 	sed -i \
-"s|get_python_lib()|'_pkg', 'usr', 'lib', '$PYTHON_LIB', 'site-packages'|" \
-$src/setup.py
-	sed -i "/key/s/raw_input/#raw_input/" $src/setup.py
-	python setup.py install --root=$PWD/_pkg
+		-e "s|PREFIX = '/usr/local'|PREFIX = '$DESTDIR/usr'|" \
+		-e "s|get_python_lib()|'$DESTDIR', 'usr', 'lib', '$PYTHON_LIB', 'site-packages'|" \
+		-e "/key/s/raw_input/#raw_input/" $src/setup.py
+	python setup.py install --root=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	BASEPATHS="$_pkg/usr/lib/$PYTHON_LIB/site-packages/childsplay_sp/SPBasePaths.py"
+	PYTHON_LIB=python$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
+	BASEPATHS="$install/usr/lib/$PYTHON_LIB/site-packages/childsplay_sp/SPBasePaths.py"
 
-	for file in `find $_pkg | grep 'pyc$'`; do
-		rm $file
-	done
+	sed -i "s|$install/|/|g" $BASEPATHS
+	mkdir -p $fs/usr/share/locale
+	
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/share/childsplay_sp $fs/usr/share
+	cp -a $install/usr/share/sp_alphabetsounds $fs/usr/share
 
-	sed -i "s|_pkg/|/|g" $BASEPATHS
-
-	mkdir -p $fs/usr/share
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
-	cp -a $_pkg/usr/share/childsplay_sp $fs/usr/share
-	cp -a $_pkg/usr/share/sp_alphabetsounds $fs/usr/share
-
-	for lang in de en es fr pt; do
-		mkdir -p $fs/usr/share/locale/$lang/LC_MESSAGES
-		cp -a $_pkg/usr/share/locale/$lang/LC_MESSAGES/childsplay_sp.mo \
-			$fs/usr/share/locale/$lang/LC_MESSAGES
+	for lang in de en es fr pt_BR sv ru; do
+		cp -a $install/usr/share/locale/$lang \
+			$fs/usr/share/locale
 	done
 }
