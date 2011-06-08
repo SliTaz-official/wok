@@ -24,35 +24,23 @@ libboost-dev libboost-signals-dev "
 compile_rules()
 {
 	cd $src
-	
-	# Fix scons and gcc build bug.
-	#if [ ! -f patch.done ]; then
-	#	patch -p1 -i $stuff/pingus-0.7.2_gcc4.u && touch patch.done
-	#fi
-		
 	scons
-
-	# the script install.sh uses cp --parents which is not implemented in busybox
-	# install.sh $PWD/_pkg/usr
-	mkdir -p $PWD/_pkg/usr/bin $PWD/_pkg/usr/share/pingus
-	cp -a pingus $PWD/_pkg/usr/bin
-	cp -a data $PWD/_pkg/usr/share/pingus
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share/pingus $fs/usr/share
+	mkdir -p $fs/usr/bin $fs/usr/share/pingus
+	cp -a $src/pingus $fs/usr/bin
+	cp -a $src/data $fs/usr/share/pingus
 
 	# the tarball doesn't contain any .desktop file, nor a pixmap
 	# let's create them
-	mkdir -p $_pkg/usr/share/pixmaps
-	mkdir -p $_pkg/usr/share/applications
-	cp -a $_pkg/usr/share/pingus/data/images/core/editor/actions.png \
-		$_pkg/usr/share/pixmaps/pingus.png
-	cat > $_pkg/usr/share/applications/pingus.desktop <<EOF
+	mkdir -p $fs/usr/share/pixmaps
+	mkdir -p $fs/usr/share/applications
+	cp -a $src/data/images/core/editor/actions.png \
+		$fs/usr/share/pixmaps/pingus.png
+	cat > $fs/usr/share/applications/pingus.desktop <<EOF
 [Desktop Entry]
 Name=Pingus
 Exec=pingus -w
@@ -60,5 +48,4 @@ Type=Application
 Categories=Application;Game;
 Icon=pingus
 EOF
-
 }
