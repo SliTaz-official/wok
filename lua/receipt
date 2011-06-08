@@ -16,16 +16,17 @@ compile_rules()
 {
 	cd $src
 	sed -i "s#prefix= /usr/local#prefix= /usr#" etc/lua.pc
-	sed -i "s#INSTALL_TOP= /usr/local#INSTALL_TOP=$pkg/usr#" Makefile 
 	sed -i "s#/usr/local/#/usr/#" src/luaconf.h
-	make linux
+	sed -i s"/-O2/-Os -march=$ARCH/" src/Makefile
+	make linux &&
+	make install \
+		INSTALL_TOP=$DESTDIR/usr \
+		INSTALL_MAN=$DESTDIR/usr/share/man/man1
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $src/src/lua $fs/usr/bin
-	cp -a $src/src/luac $fs/usr/bin
+	cp -a $install/usr/bin $fs/usr
 }
-
