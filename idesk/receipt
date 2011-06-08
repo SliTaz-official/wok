@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="idesk"
+VERSION="0.7.5"
+CATEGORY="x-window"
+SHORT_DESC="IDesk gives users icons on their desktop."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://idesk.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="imlib2 xorg-libXft"
+BUILD_DEPENDS="imlib2-dev xorg-libXft-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -p 0 < $stuff/DesktopConfig.patch || exit 1
+	./configure \
+		--enable-xft \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/idesk $fs/usr/share
+	rm -f \
+		$fs/usr/share/idesk/*.xpm \
+		$fs/usr/share/idesk/*.lnk \
+		$fs/usr/share/idesk/README
+	# Custom default.lnk with Home icon
+	cp -f $stuff/default.lnk $fs/usr/share/idesk
+}
