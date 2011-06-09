@@ -42,16 +42,20 @@ genpkg_rules()
 
 post_install()
 {
-	echo LANG=zh_CN.UTF-8 > /etc/locale.conf
-	echo Asia/Shanghai > /etc/TZ
-	export TZ=Asia/Shanghai
-	hwclock --hctosys
+	if [ -z "$1" ]; then
+		echo LANG=zh_CN.UTF-8 > /etc/locale.conf
+		echo Asia/Shanghai > /etc/TZ
+		export TZ=Asia/Shanghai
+		hwclock --hctosys
+	fi
 }
 
 # Back to C if it's the last used locale.
 post_remove()
 {
-	if grep -q $LOCALEDEF /etc/locale.conf; then
-		echo "LANG=C" > /etc/locale.conf
+	if [ -z "$1" ]; then
+		if [ $(grep -q $LOCALEDEF /etc/locale.conf) ]; then
+			echo "LANG=C" > /etc/locale.conf
+		fi
 	fi
 }
