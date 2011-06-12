@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="dia"
+VERSION="0.97.1"
+CATEGORY="office"
+SHORT_DESC="GTK+ based diagram creation program."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://projects.gnome.org/dia/"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
+TAGS="office diagram creator editor visio"
+
+DEPENDS="gtk+ libxml2 freetype fontconfig glib atk pango zlib libart_lgpl \
+libxslt popt xorg-libXdamage"
+BUILD_DEPENDS="pkg-config gtk+-dev libxml2-dev freetype-dev intltool \
+fontconfig-dev glib-dev atk-dev pango-dev python-pyxml zlib-dev libxslt \
+libart_lgpl-dev libart_lgpl pygtk file libxslt-dev expat-dev python-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -Np1 -i $stuff/dia-overflow-fix.patch
+	./configure --with-python \
+		--disable-gnome \
+		$CONFIGURE_ARGS &&
+	sed -i 's# data doc tests installer# data tests installer#' Makefile &&
+	make -j 4 &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share/locale
+	cp -a $_pkg/usr/lib/dia $fs/usr/lib
+	cp -a $_pkg/usr/share/dia $fs/usr/share
+	cp -a $_pkg/usr/share/oaf $fs/usr/share
+	#cp -a $_pkg/usr/share/omf $fs/usr/share
+	cp -a $_pkg/usr/share/locale/de $fs/usr/share/locale
+	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	#cp -a $_pkg/usr/share/help $fs/usr/share
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/mime-info $fs/usr/share
+	cp -a $_pkg/usr/share/icons/hicolor/16x16/apps/dia.png $fs/usr/share/pixmaps
+	cp -a $_pkg/usr/bin $fs/usr
+}
+
