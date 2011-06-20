@@ -87,19 +87,18 @@ static unsigned long memory_size(void)
      __intcall(0x15, &ireg, &oreg);
      return ireg.eax.w[0];
   }
-  return bytes / 1024;
+  return bytes >> 10;
 }
 
 int main(int argc, char *argv[])
 {
   char *s;
-  int i, j = 1;
+  int i;
   unsigned long ram_size;
 
-  for (s = argv[1]; *s && (*s < '0' || *s > '9'); s++);
-
   openconsole(&dev_null_r, &dev_stdcon_w);
-  if (argc < 4 || !*s) {
+  
+  if (argc < 4) {
     perror("\nUsage: ifmem.c32 size_KB boot_large_memory boot_small_memory\n");
     return 1;
   }
@@ -107,43 +106,25 @@ int main(int argc, char *argv[])
   // find target according to ram size
   ram_size = memory_size();
   printf("Total memory found %luK.\n",ram_size);
-  for (i = 1; i + 2 < argc; ) { 
+  
+  i = 1;
+  s = argv[1];
+  do { 
     char *p = s;
     unsigned long scale = 1;
     
-    if (*p) while (p[1]) p++;
+    while (*p >= '0' && *p <= '9') p++;
     switch (*p | 0x20) {
-    case 'g': scale = 1024*1024; *p = 0; break;
-    case 'm': scale = 1024;
-    case 'k': *p = 0; break;
+    case 'g': scale <<= 10;
+    case 'm': scale <<= 10;
+    default : *p = 0; break;
     }
-    j = i++; // size
+    i++; // size
     if (ram_size >= scale * strtoul(s, NULL, 0)) break;
     s = argv[++i];
-  }
+  } while (i + 1 < argc);
 
-  // find and copy extra parameters to command line
-  // assume the command line ends with two words (not number)
-  for (s = argv[i++]; i < argc; i++) { 
-	char c = *argv[i];
-	if (c >= '0' && c <= '9') j = i;
-	if (i - j > 2 && i < argc) {
-#define SZ 4096
-		static char cmdline[SZ];
-		char *p = cmdline, *q = s;
-		int j;
-		for (j = i; j <= argc; j++) {
-			while (*q && p < cmdline + SZ -1) *p++ = *q++;
-			if (p < cmdline + SZ -1) *p++ = ' ';
-			q = argv[j];
-		}
-		*p++ = 0;
-		s = cmdline;
-		break;
-	}
-  }
-
-  if (s) syslinux_run_command(s);
+  if (i != argc) syslinux_run_command(argv[i]);
   else   syslinux_run_default();
   return -1;
 }
