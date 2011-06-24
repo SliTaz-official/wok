@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="luasocket"
+VERSION="2.0.2"
+CATEGORY="development"
+SHORT_DESC="Network support for the Lua language."
+MAINTAINER="rocky@slitaz.org"
+DEPENDS="lua"
+BUILD_DEPENDS="lua-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://w3.impa.br/~diego/software/luasocket/home.html"
+WGET_URL="http://luaforge.net/frs/download.php/2664/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+        echo $src
+	cd $src
+	while read file; do
+		[ -f done.$file ] && continue
+		echo "Apply $file..."
+		patch -p1 < $stuff/$file || return 1
+		touch done.$file
+	done <<EOT
+patch.diff
+EOT
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/share/lua $fs/usr/share
+}
