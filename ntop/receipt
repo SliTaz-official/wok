@@ -1,27 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="ntop"
-VERSION="3.3.7"
+VERSION="4.0.3"
 CATEGORY="network"
 SHORT_DESC="Network traffic probe."
 MAINTAINER="pascal.bellard@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="http://www.ntop.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-DEPENDS="zlib openssl libpng libpcap glibc gdbm rrdtool perl pcre"
-BUILD_DEPENDS="zlib-dev openssl-dev libpng-dev libpcap-dev libtool glibc-dev gdbm-dev rrdtool autoconf automake rrdtool-dev"
 CONFIG_FILES="/etc/ntop"
 TAGS="network"
+
+DEPENDS="zlib openssl libpng libpcap glibc gdbm rrdtool perl pcre geoip"
+BUILD_DEPENDS="zlib-dev openssl-dev libpng-dev libpcap-dev libtool glibc-dev gdbm-dev rrdtool \
+ autoconf automake rrdtool-dev wget geoip-dev "
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./autogen.sh --prefix=/usr --infodir=/usr/share/info \
-	--sysconfdir=/etc --localstatedir=/var \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./autogen.sh --prefix=/usr	\
+		--sysconfdir=/etc \
+		--localstatedir=/var $CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install install-data-as
+make DESTDIR=$PWD/_pkg install 
+#~ && make install-data-as
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -43,12 +46,37 @@ genpkg_rules()
 	# Copy startup script and fix perms
 	cp -a stuff/etc $fs
 	chown root.root $fs/etc/init.d/ntop
-	
+
 	# Package all ntop pkgs
 	for i in $(cd $WOK; ls -d ntop-*)
 	do
-		tazwok genpkg $i
+		cook $i
 	done
 }
+
+post_install()
+{
+	$user=ntop
+	$group=ntop
+	
+	if ! grep -q $user: $1/etc/passwd; then
+		echo -n "Adding user/group $user..."
+		chroot $1/ addgroup -S $user
+		chroot $1/ adduser -S -D -H -G $group $user
+		status
+	fi
+	
+	# Fix perms for files and directories
+	chroot $1/ chown -R ${user}.${group} /var/ntop 
+		
+	# Start Nagios daemon if we are  on running system
+	[ -z $1 ] && /etc/init.d/$PACKAGE start
+	
+	# post_install messges
+	echo -e "\nTo starts $PACKAGE server you can run :\n"
+	echo "/etc/init.d/$PACKAGE start"
+	echo -e "Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf\n"
+}
+
 
 
