@@ -21,7 +21,7 @@ compile_rules()
 	cd $src
 	./autogen.sh --prefix=/usr	\
 		--sysconfdir=/etc \
-		--localstatedir=/var $CONFIGURE_ARGS &&
+		--localstatedir=/var/lib $CONFIGURE_ARGS &&
 	make &&
 make DESTDIR=$PWD/_pkg install 
 #~ && make install-data-as
@@ -30,18 +30,18 @@ make DESTDIR=$PWD/_pkg install
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/plugins $fs/usr/share
+	mkdir -p $fs/usr/lib/plugins \
+		$fs/usr/share \
+		$fs/var/log/ntop
+
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/ntop $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/share/ntop $fs/usr/share
-	chown -R 80.80 $fs/usr/share/ntop
+	chown -R www.www $fs/usr/share/ntop
 	cp -a $_pkg/usr/bin $fs
 	cp -a $_pkg/etc $fs
 	cp -a $_pkg/var $fs
-	
-	# fix perms for /var/ntop
-	chown nobody.nogroup $fs/var/ntop
 	
 	# Copy startup script and fix perms
 	cp -a stuff/etc $fs
@@ -56,8 +56,8 @@ genpkg_rules()
 
 post_install()
 {
-	$user=ntop
-	$group=ntop
+	user=ntop
+	group=ntop
 	
 	if ! grep -q $user: $1/etc/passwd; then
 		echo -n "Adding user/group $user..."
@@ -67,9 +67,9 @@ post_install()
 	fi
 	
 	# Fix perms for files and directories
-	chroot $1/ chown -R ${user}.${group} /var/ntop 
+	chroot $1/ chown -R ${user}.${group} /var/lib/ntop /var/log/ntop
 		
-	# Start Nagios daemon if we are  on running system
+	# Start package daemon if we are  on running system
 	[ -z $1 ] && /etc/init.d/$PACKAGE start
 	
 	# post_install messges
@@ -78,5 +78,20 @@ post_install()
 	echo -e "Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf\n"
 }
 
+pre_remove()
+{
+	[ -z $1 ] && /etc/init.d/$PACKAGE stop
+}
 
+post_remove()
+{
+        user=ntop
+        group=ntop
 
+	if ! grep -q $user: $1/etc/passwd; then
+        	echo -n "Removing user/group $user..."
+                chroot $1/ delgroup $user
+                chroot $1/ deluser  $user
+                status
+       	fi
+}
