@@ -8,7 +8,7 @@ Content-type: text/html
 <head>
 	<title>Index of $QUERY_STRING</title>
 	<meta charset="utf-8" />
-	<link rel="stylesheet" type="text/css" href="../style.css" />
+	<link rel="stylesheet" type="text/css" href="/style.css" />
 </head>
 
 <!-- Header -->
