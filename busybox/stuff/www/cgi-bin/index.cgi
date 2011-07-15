@@ -1,8 +1,3 @@
-Httpd already support directory listing. Install both files and try !
-
-===>8=== /etc/httpd.conf ===>8===
-H:/var/www
-===>8=== /var/www/cgi-bin/index.cgi ===>8===
 #!/bin/sh
 
 [ ! -d ..$QUERY_STRING ] && echo "HTTP/1.1 404 Not Found" || cat <<EOT  
