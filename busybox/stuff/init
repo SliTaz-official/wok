@@ -75,9 +75,10 @@ done
 
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
+echo -n "Switching / to "
 if grep -q dmraid= /proc/cmdline; then
 	root="$(sed 's/.*dmraid=\([^ ]*\).*/\1/' < /proc/cmdline)"
-	echo -n "Switching / to dmraid $root..."
+	echo -n "dmraid $root..."
 	dmraid -s | grep ^type | awk '{ print $3 }' | load_raid
 	case "$root" in
 	/dev/*);;
@@ -89,17 +90,21 @@ if grep -q dmraid= /proc/cmdline; then
 fi
 if grep -q softraid= /proc/cmdline; then
 	root="$(sed 's/.*softraid=\([^ ]*\).*/\1/' < /proc/cmdline)"
-	echo -n "Switching / to softraid $root..."
+	echo -n "softraid $root..."
 	mdadm --examine --scan --config=partitions > /etc/mdadm.conf
 	grep -qs " $root " /etc/mdadm.conf ||
 		root=$(awk '/dev.md/ { print $2; exit }' < /etc/mdadm.conf)
 	grep level=raid /etc/mdadm.conf | load_raid
-	mdadm --assemble --scan
+	for i in 1 2 3 4 5 6 7 8 9; do
+		sleep $i
+		mdadm --assemble --scan
+		grep -qs ': active' /proc/mdstat && break
+	done
 	lvmsetup 
 	mount_mapper /etc/mdadm.conf
 fi
 if lvmsetup; then
-	echo -n "Switching / to lvm $root..."
+	echo -n "lvm $root..."
 	mount_mapper
 fi
 if grep -q mount= /proc/cmdline; then
@@ -118,7 +123,7 @@ if grep -q mount= /proc/cmdline; then
 fi
 if grep -q loopfs= /proc/cmdline; then
 	loopfs="$(sed 's/.*loopfs=\([^ ]*\).*/\1/' < /proc/cmdline)"
-	echo -n "Switching / to loop $loopfs..."
+	echo -n "loop $loopfs..."
 	losetup /dev/loop0 /mnt/$loopfs
 	mount /dev/loop0 /mnt 2> /dev/null
 fi
@@ -134,7 +139,7 @@ if grep -q subroot= /proc/cmdline; then
 		exec chroot /mnt$subroot /sbin/init
 	fi
 fi
-echo -n "Switching / to tmpfs..."
+echo -n "tmpfs..."
 size="$(grep rootfssize= < /proc/cmdline | \
 	sed 's/.*rootfssize=\([0-9]*[kmg%]\).*/-o size=\1/')"
 free=$(busybox free | busybox awk '/Mem:/ { print int(($4*100)/$3) }')
