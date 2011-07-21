@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="lxc"
+VERSION="0.7.4.1"
+CATEGORY="system-tools"
+SHORT_DESC="Userspace control package for Linux Containers."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://lxc.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="libcap perl"
+BUILD_DEPENDS="libcap-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --mandir=/usr/share/man \
+		--localstatedir=/var \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.   
+genpkg_rules()                                      
+{
+	mkdir -p $fs/usr $fs/var/lib/lxc
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib $fs/usr
+	sed -i 's|/usr/var/lib/lxc|/var/lib/lxc|;s|/bin/bash|/bin/ash|' \
+		$fs/usr/bin/lxc-version $fs/usr/bin/lxc-netstat \
+		$fs/usr/bin/lxc-destroy $fs/usr/bin/lxc-create \
+		$fs/usr/bin/lxc-setcaps $fs/usr/bin/lxc-setuid \
+		$fs/usr/bin/lxc-ls
+	sed -i -e 's/^is_set(/zgrep() { zcat | grep "$@"; }\n\n&/' \
+		-e 's/\(.*\$GREP .*\)\(\$CONFIG.*\)/\1< \2/' \
+		-e 's/ < 3/ -lt 3/;s/ > 3/ -gt 3/' -e 's|/bin/bash|/bin/ash|' \
+		$fs/usr/bin/lxc-checkconfig
+	chmod +x $fs/usr/bin/lxc-*
+}
+
+post_install()
+{
+	[ -n "$1" ] && return
+	lxc-checkconfig  | tee /dev/stderr | grep -q required && cat <<EOT
+
+You have to fix your kernel configuration first to use lxc !
+
+EOT
+}
