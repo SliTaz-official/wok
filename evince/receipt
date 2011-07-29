@@ -5,7 +5,7 @@ VERSION="2.32.0"
 CATEGORY="office"
 SHORT_DESC="Document viewer for Gnome"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="lcms poppler tiff dbus-glib"
+DEPENDS="lcms poppler tiff dbus-glib glib-dev"
 BUILD_DEPENDS="gnome-doc-utils-dev docbook-xml gnome-icon-theme gtk+-dev intltool lcms-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://projects.gnome.org/evince/"
@@ -33,7 +33,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/usr/lib
+	mkdir -p $fs/usr/share/glib-2.0 $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/evince $fs/usr/lib
@@ -41,7 +41,21 @@ genpkg_rules()
 	cp -a $_pkg/usr/share/dbus-1 $fs/usr/share
 	cp -a $_pkg/usr/share/icons $fs/usr/share
 	cp -a $_pkg/usr/share/evince $fs/usr/share
+	cp -a $_pkg/usr/share/glib-2.0/schemas $fs/usr/share/glib-2.0
 	
 	# Removing unwanted files
 	find $fs/usr/lib -name "*.*a" -exec rm -rf {} \;
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot "$1/" /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	chroot "$1/" /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
 }
