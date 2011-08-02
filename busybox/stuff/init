@@ -120,12 +120,17 @@ if grep -q mount= /proc/cmdline; then
 		fi
 		mount $dev /mnt
 	fi
+	grep -q posixovl /proc/cmdline && mount.posixovl /mnt
 fi
 if grep -q loopfs= /proc/cmdline; then
 	loopfs="$(sed 's/.*loopfs=\([^ ]*\).*/\1/' < /proc/cmdline)"
 	echo -n "loop $loopfs..."
 	losetup /dev/loop0 /mnt/$loopfs
 	mount /dev/loop0 /mnt 2> /dev/null
+fi
+if grep -q bindfs= /proc/cmdline; then
+	bind="$(sed 's/.*bindfs=\([^ ]*\).*/\1/' < /proc/cmdline)"
+	mount --bind /mnt/${bind%,*} /mnt/${bind%,*}/${bind#*,}
 fi
 grep -q cryptoroot= /proc/cmdline && try_init
 umount /sys
