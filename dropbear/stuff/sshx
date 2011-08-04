@@ -3,12 +3,13 @@
 xdbclient()
 {
 	read host type data
-	n=10; dpy=localhost:$n
-	dbclient -R $((6000+$n)):localhost:6000 "$@" \
+	svr=$(echo $DISPLAY | sed 's/.*:\([0-9]*\).*/\1/')
+	n=$((10+$svr)); dpy=localhost:$n
+	dbclient -R $((6000+$n)):localhost:$((6000+$svr)) "$@" \
 		"xauth add $dpy $type $data; export DISPLAY=$dpy; $TERM"
 }
 
-case "$TERM" in
-xterm*|rxvt*)	xauth list :0 | xdbclient "$@" ;;
-*)		dbclient "$@" ;;
+case "$DISPLAY" in
+'')	dbclient "$@" ;;
+*)	xauth list $DISPLAY | xdbclient "$@" ;;
 esac
