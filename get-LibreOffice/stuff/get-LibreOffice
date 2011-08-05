@@ -11,9 +11,10 @@ URL="http://www.libreoffice.org"
 ROOT="$1"
 DIR="stable"
 SUFFIX="Linux_x86_install-rpm_en-US.tar.gz"
+WGET_URL="http://download.documentfoundation.org/libreoffice/$DIR"
 
-VERSION="$(basename $(wget -O - http://download.documentfoundation.org/libreoffice/$DIR/ \
-	2> /dev/null | grep href=\"[0-9] | tail -1 | sed 's/.*href=\"//;s/[/\">].*//'))"
+VERSION="$(basename $(wget -O - $WGET_URL/ 2> /dev/null | \
+	sed '/href=\"[0-9]/!d;s/.*href=\"//;s/[/\">].*//' | tail -1))"
 if [ -z "$VERSION" ]; then
 	echo "Can't detect an appropriate version. The version numbering or URL may have changed. Aborted."
 	exit 0
@@ -22,24 +23,18 @@ VER="${VERSION/\-/}" # without hyphens
 
 
 TARBALL="LibO_${VER}_${SUFFIX}"
-WGET_URL="http://download.documentfoundation.org/libreoffice/${DIR}/${VERSION}/rpm/x86/${TARBALL}"
 
-case "$LANG" in
-fr_FR|de_DE|es_ES|it_IT|ru_RU)
-	LOC=${LANG%_*} # strip
+for LOC in ${LANG/_/-} ${LANG%_*}; do
 	L_SUFFIX="Linux_x86_langpack-rpm_$LOC.tar.gz"
 	L_TARBALL="LibO_${VER}_${L_SUFFIX}"
-	LANG_URL="http://download.documentfoundation.org/libreoffice/${DIR}/${VERSION}/rpm/x86/${L_TARBALL}"
-	echo "Added $LANG ($LOC)." ;;
-en_GB|pt_BR)
-	LANG=${LANG/_/-} # convert
-	L_SUFFIX="Linux_x86_langpack-rpm_$LANG.tar.gz"
-	L_TARBALL="LibO_${VER}_${L_SUFFIX}"
-	LANG_URL="http://download.documentfoundation.org/libreoffice/${DIR}/${VERSION}/rpm/x86/${L_TARBALL}"
-	echo "Added $LANG." ;;
-esac
+	LANG_URL="$WGET_URL/${VERSION}/rpm/x86/${L_TARBALL}"
+	busybox wget -s $LANG_URL 2> /dev/null || continue
+	echo "Added $LANG ($LOC)."
+	break
+done
+WGET_URL="$WGET_URL/${VERSION}/rpm/x86/${TARBALL}"
 
-
+CUR_DIR=$(pwd)
 TEMP_DIR="/tmp/$PACKAGE.$$"
 SOURCE_DIR="/tmp/src.$$"
 EXCLUDE="kde|gnome|test"
@@ -169,7 +164,14 @@ mv usr/share/icons $PACKAGE-$VERSION/fs/usr/share
 mv usr/bin $PACKAGE-$VERSION/fs/usr
 
 # relocalized libexec directory
-sed -i 's#/opt/#/usr/lib/libreoffice/#'  $PACKAGE-$VERSION/fs/usr/bin/libreoffice*
+bin=$(ls $PACKAGE-$VERSION/fs/usr/bin/libreoffice???)
+if [ -L $bin ]; then
+	target=$(readlink $bin)
+	rm -f $bin
+	ln -s ${target/opt/usr\/lib\/libreoffice} $bin
+else
+	sed -i 's#/opt/#/usr/lib/libreoffice/#'  $bin
+fi	
 
 # Create receipt
 cat > $PACKAGE-$VERSION/receipt <<EOT
@@ -179,22 +181,23 @@ PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="office"
 SHORT_DESC="Productivity suite."
-DEPENDS=""
+DEPENDS="java6-jre"
 WEB_SITE="$URL"
 
 post_install()
 {
 	cd /usr/share/applications
-	ln -s /usr/lib/libreoffice/share/xdg/base.desktop          libreoffice-base.desktop
-	ln -s /usr/lib/libreoffice/share/xdg/impress.desktop       libreoffice-impress.desktop
-	ln -s /usr/lib/libreoffice/share/xdg/writer.desktop        libreoffice-writer.desktop
-	ln -s /usr/lib/libreoffice/share/xdg/calc.desktop          libreoffice-calc.desktop
-	ln -s /usr/lib/libreoffice/share/xdg/math.desktop          libreoffice-math.desktop
-	ln -s /usr/lib/libreoffice/share/xdg/draw.desktop          libreoffice-draw.desktop
-	ln -s /usr/lib/libreoffice/share/xdg/printeradmin.desktop libreoffice-printeradmin.desktop
+	ln -s /usr/lib/libreoffice?*/share/xdg/base.desktop          libreoffice-base.desktop
+	ln -s /usr/lib/libreoffice?*/share/xdg/impress.desktop       libreoffice-impress.desktop
+	ln -s /usr/lib/libreoffice?*/share/xdg/writer.desktop        libreoffice-writer.desktop
+	ln -s /usr/lib/libreoffice?*/share/xdg/calc.desktop          libreoffice-calc.desktop
+	ln -s /usr/lib/libreoffice?*/share/xdg/math.desktop          libreoffice-math.desktop
+	ln -s /usr/lib/libreoffice?*/share/xdg/draw.desktop          libreoffice-draw.desktop
+	ln -s /usr/lib/libreoffice?*/share/xdg/printeradmin.desktop libreoffice-printeradmin.desktop
+	chmod +x /usr/lib/libreoffice?*/share/xdg/*.desktop
 
 	cd /usr/bin
-	ln -s /usr/lib/libreoffice /usr/lib/libreoffice/libreoffice
+	ln -s /usr/lib/libreoffice?* /usr/lib/libreoffice
 	ln -sf /usr/lib/libreoffice/program/soffice
 }
 
@@ -214,6 +217,10 @@ rm -rf $PACKAGE-$VERSION
 
 # Install pseudo package
 tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+case " $@ " in
+*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
+esac
 
 # Clean
+cd $CUR_DIR
 rm -rf $TEMP_DIR
