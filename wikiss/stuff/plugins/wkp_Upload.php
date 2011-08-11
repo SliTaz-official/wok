@@ -94,6 +94,13 @@ Vous pouvez inc&eacute;rer cette image avec <b>['.$url.']</b> voir
       }
       return TRUE;
    } // action
+
+   function formatEnd()
+   {
+      global $CONTENT;
+      $CONTENT = preg_replace('#\[(.*)|(pages/.*)\]#','<a href="$1">$2</a>',$CONTENT);
+      $CONTENT = preg_replace('#\[(pages/.*)\]#','<a href="$1">$1</a>',$CONTENT);
+   }
 }
 
 ?>
