@@ -14,10 +14,16 @@ SUGGESTED="screen-terminfo"
 DEPENDS="elfutils"
 BUILD_DEPENDS="ncursesw-extra"
 
+# http://fungi.yuggoth.org/vsp4s/	Vertical split ^A V
+PATCH=http://vsp4sdl.yuggoth.org/wrp_vertical_split_0.3_4.0.2.diff.bz2
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	[ -s $SOURCES_REPOSITORY/$(basename $PATCH) ] ||
+		wget -P $SOURCES_REPOSITORY $PATCH
+	bzcat $SOURCES_REPOSITORY/$(basename $PATCH) | patch -p1
 	./configure --with-sys-screenrc=/etc/screenrc $CONFIGURE_ARGS &&
 	make && make -j1 DESTDIR=$DESTDIR install || return 1
 	mkdir -p $DESTDIR/usr/share/terminfo
