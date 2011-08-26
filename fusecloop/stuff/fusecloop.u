@@ -1,9 +1,15 @@
 --- compressed_loop.h
 +++ compressed_loop.h
-@@ -41,6 +41,55 @@
+@@ -41,6 +41,85 @@
  /* data_index (num_blocks 64bit pointers, network order)...      */
  /* compressed data (gzip block compressed format)...             */
  
++struct cloop_tail
++{
++	u_int32_t index_size;
++	u_int32_t num_blocks;
++};
++
 +struct block_info
 +{
 +	loff_t offset;		/* 64-bit offsets of compressed block */
@@ -11,45 +17,69 @@
 +	u_int32_t optidx;	/* 32-bit index number */
 +};
 +
-+static inline char *build_index(struct block_info *offsets, unsigned long n)
++static inline char *build_index(struct block_info *offsets, unsigned long n,
++				unsigned long block_size)
 +{
++	u_int16_t *ofs16 = (u_int16_t *) offsets;
 +	u_int32_t *ofs32 = (u_int32_t *) offsets;
 +	loff_t    *ofs64 = (loff_t *) offsets;
++	
 +	if (ofs32[0] == 0) {
 +		if (ofs32[2]) { /* ACCELERATED KNOPPIX V1.0 */
-+			do { 
++			while (n--) {
 +				offsets[n].offset = __be64_to_cpu(offsets[n].offset);
 +				offsets[n].size = ntohl(offsets[n].size);
-+			} while (n--);
++			}
 +			return "128BE accelerated knoppix 1.0";
 +		}
 +		else { /* V2.0 */
-+			loff_t last = __be64_to_cpu(ofs64[n+1]);
-+			do { 
++			loff_t last = __be64_to_cpu(ofs64[n]);
++			while (n--) {
 +				offsets[n].size = last - 
 +					(offsets[n].offset = __be64_to_cpu(ofs64[n])); 
 +				last = offsets[n].offset;
-+			} while (n--);
++			}
 +			return "64BE v2.0";
 +		}
 +	}
 +	else if (ofs32[1] == 0) { /* V1.0 */
-+		loff_t last = __be64_to_cpu(ofs64[n+1]);
-+		do { 
++		loff_t last = __be64_to_cpu(ofs64[n]);
++		while (n--) {
 +			offsets[n].size = last - 
 +				(offsets[n].offset = __le64_to_cpu(ofs64[n])); 
 +			last = offsets[n].offset;
-+		} while (n--);
++		}
 +		return "64LE v1.0";
 +	}
-+	else { /* V0.68 */
-+		loff_t last = ntohl(ofs32[n+1]);
-+		do { 
++	else if (ntohl(ofs32[0]) == (4*n) + 0x8C) { /* V0.68 */
++		loff_t last = ntohl(ofs32[n]);
++		while (n--) {
 +			offsets[n].size = last - 
 +				(offsets[n].offset = ntohl(ofs32[n])); 
 +			last = offsets[n].offset;
-+		} while (n--);
++		}
 +		return "32BE v0.68";
++	}
++	else { /* V3.0 */
++		char *type;
++		int i, j, smallest;
++		
++		smallest = (block_size < 32768) ? 0 : block_size>>10;
++		if (block_size > 0x10000) {
++			for (i = 0; i < n; i++)
++				offsets[n].size = smallest + ntohl(ofs32[n]); 
++			type = "32BE size v3.0";
++		}
++		else {
++			for (i = 0; i < n; i++)
++				offsets[n].size = smallest + ntohs(ofs16[n]); 
++			type = "16BE size v3.0"; 
++		}
++		for (i = j = 0; i < n; i++) {
++			offsets[i].offset = j;
++			j += offsets[i].size;
++		}
++		return type;
 +	}
 +}
 +
@@ -71,20 +101,29 @@
 
 --- cloopreader.c
 +++ cloopreader.c
-@@ -59,10 +59,11 @@
+@@ -59,10 +59,20 @@
  
      ALLOC(c->pblock,c->blocksize);
  
 -    c->tocsize=sizeof *c->toc * (c->numblocks+1); /* One extra address is position of EOF */
 +    c->tocsize=sizeof(*c->toc) * c->numblocks;
++    if (c->numblocks == -1) {
++	struct cloop_tail tail;
++
++	OP(lseek(c->fh, - sizeof(tail), SEEK_END)); 
++	OP(read_all(c->fh, &tail, sizeof(tail)));
++	c->numblocks = ntohl(tail.num_blocks);
++	c->tocsize = ntohl(tail.index_size) * c->numblocks;
++	OP(lseek(c->fh, - sizeof(tail) - c->tocsize, SEEK_END));
++    }
      ALLOC(c->toc,c->tocsize);
  
      OP(read_all(c->fh,c->toc,c->tocsize));  /* read Data Index */
-+    build_index(c->toc, c->numblocks);
++    build_index(c->toc, c->numblocks, c->blocksize);
      c->cblocksizecur=0;
      c->curblock=-1;
      return 0;
-@@ -79,10 +80,10 @@
+@@ -79,10 +89,10 @@
      if(page>=c->numblocks){errno=EFAULT;return -1;}
      c->curblock=page;
  
@@ -98,6 +137,7 @@
      bprintf("Compressed size=%lu\n",c->cblocksize);
      if(c->cblocksize > c->cblocksizecur){
  	if(c->cblocksizecur)free(c->cblock);
+
 --- extract_compressed_fs.c
 +++ extract_compressed_fs.c
 @@ -7,6 +7,7 @@
@@ -108,19 +148,33 @@
  
  	if (argc != 2) {
  		fprintf(stderr, "Need filename\n");
-@@ -30,35 +31,34 @@
+@@ -30,35 +31,48 @@
  	fprintf(stderr, "%u blocks of size %u. Preamble:\n%s\n", 
  		ntohl(head.num_blocks), ntohl(head.block_size), head.preamble);
  
-+	i = ntohl(head.num_blocks) * sizeof(*offsets);
++	i = ntohl(head.num_blocks);
++	if (i == -1) {
++		struct cloop_tail tail;
++		if (lseek(handle, - sizeof(tail), SEEK_END) < 0 ||
++		    read(handle, &tail, sizeof(tail)) != sizeof(tail) ||
++		    lseek(handle, - sizeof(tail) - 
++		    	  (ntohl(tail.num_blocks) * ntohl(tail.index_size)), 
++		    	  SEEK_END) < 0) {
++			perror("Reading tail\n");
++			exit(1);
++		}
++		head.num_blocks = tail.num_blocks;
++		i = ntohl(tail.num_blocks) * ntohl(tail.index_size);
++	}
++	else i *= sizeof(*offsets);
 +	offsets = malloc(i);
 +	if (!offsets || read(handle, offsets, i) != i) {
 +		perror("Reading index\n");
 +		exit(1);
 +	}
 +	
-+	fprintf(stderr, "Index %s.\n", 
-+		build_index(offsets, ntohl(head.num_blocks)));
++	fprintf(stderr, "Index %s.\n", build_index(offsets, 
++			ntohl(head.num_blocks), ntohl(head.block_size)));
 +	
  	for (i = 0; i < ntohl(head.num_blocks); i++) {
 -		int currpos;
