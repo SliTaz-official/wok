@@ -1,0 +1,160 @@
+--- compressed_loop.h
++++ compressed_loop.h
+@@ -41,6 +41,55 @@
+ /* data_index (num_blocks 64bit pointers, network order)...      */
+ /* compressed data (gzip block compressed format)...             */
+ 
++struct block_info
++{
++	loff_t offset;		/* 64-bit offsets of compressed block */
++	u_int32_t size;		/* 32-bit compressed block size */
++	u_int32_t optidx;	/* 32-bit index number */
++};
++
++static inline char *build_index(struct block_info *offsets, unsigned long n)
++{
++	u_int32_t *ofs32 = (u_int32_t *) offsets;
++	loff_t    *ofs64 = (loff_t *) offsets;
++	if (ofs32[0] == 0) {
++		if (ofs32[2]) { /* ACCELERATED KNOPPIX V1.0 */
++			do { 
++				offsets[n].offset = __be64_to_cpu(offsets[n].offset);
++				offsets[n].size = ntohl(offsets[n].size);
++			} while (n--);
++			return "128BE accelerated knoppix 1.0";
++		}
++		else { /* V2.0 */
++			loff_t last = __be64_to_cpu(ofs64[n+1]);
++			do { 
++				offsets[n].size = last - 
++					(offsets[n].offset = __be64_to_cpu(ofs64[n])); 
++				last = offsets[n].offset;
++			} while (n--);
++			return "64BE v2.0";
++		}
++	}
++	else if (ofs32[1] == 0) { /* V1.0 */
++		loff_t last = __be64_to_cpu(ofs64[n+1]);
++		do { 
++			offsets[n].size = last - 
++				(offsets[n].offset = __le64_to_cpu(ofs64[n])); 
++			last = offsets[n].offset;
++		} while (n--);
++		return "64LE v1.0";
++	}
++	else { /* V0.68 */
++		loff_t last = ntohl(ofs32[n+1]);
++		do { 
++			offsets[n].size = last - 
++				(offsets[n].offset = ntohl(ofs32[n])); 
++			last = offsets[n].offset;
++		} while (n--);
++		return "32BE v0.68";
++	}
++}
++
+ /* Cloop suspend IOCTL */
+ #define CLOOP_SUSPEND 0x4C07
+ 
+
+--- cloopreader.h
++++ cloopreader.h
+@@ -33,7 +33,7 @@
+     int numblocks;
+     ulong blocksize;
+ 
+-    loff_t* toc; /* Data index */
++    struct block_info *toc; /* Data index */
+     size_t tocsize;
+ 
+     unsigned char* cblock;  /* Compressed block */
+
+--- cloopreader.c
++++ cloopreader.c
+@@ -59,10 +59,11 @@
+ 
+     ALLOC(c->pblock,c->blocksize);
+ 
+-    c->tocsize=sizeof *c->toc * (c->numblocks+1); /* One extra address is position of EOF */
++    c->tocsize=sizeof(*c->toc) * c->numblocks;
+     ALLOC(c->toc,c->tocsize);
+ 
+     OP(read_all(c->fh,c->toc,c->tocsize));  /* read Data Index */
++    build_index(c->toc, c->numblocks);
+     c->cblocksizecur=0;
+     c->curblock=-1;
+     return 0;
+@@ -79,10 +80,10 @@
+     if(page>=c->numblocks){errno=EFAULT;return -1;}
+     c->curblock=page;
+ 
+-    bprintf("Seeking to 0x%Lx\n",btc(c->toc[page]));
+-    OP(lseek(c->fh,btc(c->toc[page]), SEEK_SET)); 
++    bprintf("Seeking to 0x%Lx\n",c->toc[page].offset);
++    OP(lseek(c->fh,c->toc[page].offset, SEEK_SET)); 
+ 
+-    c->cblocksize=btc(c->toc[page+1]) - btc(c->toc[page]);
++    c->cblocksize=c->toc[page].size;
+     bprintf("Compressed size=%lu\n",c->cblocksize);
+     if(c->cblocksize > c->cblocksizecur){
+ 	if(c->cblocksizecur)free(c->cblock);
+--- extract_compressed_fs.c
++++ extract_compressed_fs.c
+@@ -7,6 +7,7 @@
+ 	struct cloop_head head;
+ 	unsigned int i;
+ 	unsigned char *buffer, *clear_buffer;
++	struct block_info *offsets;
+ 
+ 	if (argc != 2) {
+ 		fprintf(stderr, "Need filename\n");
+@@ -30,35 +31,34 @@
+ 	fprintf(stderr, "%u blocks of size %u. Preamble:\n%s\n", 
+ 		ntohl(head.num_blocks), ntohl(head.block_size), head.preamble);
+ 
++	i = ntohl(head.num_blocks) * sizeof(*offsets);
++	offsets = malloc(i);
++	if (!offsets || read(handle, offsets, i) != i) {
++		perror("Reading index\n");
++		exit(1);
++	}
++	
++	fprintf(stderr, "Index %s.\n", 
++		build_index(offsets, ntohl(head.num_blocks)));
++	
+ 	for (i = 0; i < ntohl(head.num_blocks); i++) {
+-		int currpos;
+ 		unsigned long destlen = ntohl(head.block_size);
+-		loff_t offset[2];
+-		unsigned int size;
++		unsigned int size = offsets[i].size;
+ 
+-		read(handle, &offset, 2*sizeof(loff_t));
+-                lseek(handle, -sizeof(loff_t), SEEK_CUR);
+-                
+-		currpos = lseek(handle, 0, SEEK_CUR);
+-		if (lseek(handle, __be64_to_cpu(offset[0]), SEEK_SET) < 0) {
++		if (lseek(handle, offsets[i].offset, SEEK_SET) < 0) {
+ 			fprintf(stderr, "lseek to %Lu: %s\n",
+-				__be64_to_cpu(offset[0]), strerror(errno));
++				offsets[i].offset, strerror(errno));
+ 			exit(1);
+ 		}
+                 
+-                size=__be64_to_cpu(offset[1])-__be64_to_cpu(offset[0]);
+ 		if (size > ntohl(head.block_size) + ntohl(head.block_size)/1000
+ 		    + 12 + 4) {
+ 			fprintf(stderr, 
+ 				"Size %u for block %u (offset %Lu) too big\n",
+-				size, i, __be64_to_cpu(offset[0]));
++				size, i, offsets[i].offset);
+ 			exit(1);
+ 		}
+ 		read(handle, buffer, size);
+-		if (lseek(handle, currpos, SEEK_SET) < 0) {
+-			perror("seeking");
+-			exit(1);
+-		}
+ 
+ 		fprintf(stderr, "Block %u length %u => %lu\n",
+ 			i, size, destlen);
