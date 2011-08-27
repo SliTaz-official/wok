@@ -1,6 +1,6 @@
 --- compressed_loop.h
 +++ compressed_loop.h
-@@ -41,6 +41,85 @@
+@@ -41,6 +41,73 @@
  /* data_index (num_blocks 64bit pointers, network order)...      */
  /* compressed data (gzip block compressed format)...             */
  
@@ -17,10 +17,8 @@
 +	u_int32_t optidx;	/* 32-bit index number */
 +};
 +
-+static inline char *build_index(struct block_info *offsets, unsigned long n,
-+				unsigned long block_size)
++static inline char *build_index(struct block_info *offsets, unsigned long n)
 +{
-+	u_int16_t *ofs16 = (u_int16_t *) offsets;
 +	u_int32_t *ofs32 = (u_int32_t *) offsets;
 +	loff_t    *ofs64 = (loff_t *) offsets;
 +	
@@ -61,25 +59,15 @@
 +		return "32BE v0.68";
 +	}
 +	else { /* V3.0 */
-+		char *type;
-+		int i, j, smallest;
++		int i, j;
 +		
-+		smallest = (block_size < 32768) ? 0 : block_size>>10;
-+		if (block_size > 0x10000) {
-+			for (i = 0; i < n; i++)
-+				offsets[n].size = smallest + ntohl(ofs32[n]); 
-+			type = "32BE size v3.0";
-+		}
-+		else {
-+			for (i = 0; i < n; i++)
-+				offsets[n].size = smallest + ntohs(ofs16[n]); 
-+			type = "16BE size v3.0"; 
-+		}
-+		for (i = j = 0; i < n; i++) {
++		for (i = n; i-- > 0; )
++			offsets[i].size = ntohl(ofs32[i]); 
++		for (i = 0, j = sizeof(struct cloop_head); i < n; i++) {
 +			offsets[i].offset = j;
 +			j += offsets[i].size;
 +		}
-+		return type;
++		return "32BE v3.0";
 +	}
 +}
 +
@@ -101,7 +89,7 @@
 
 --- cloopreader.c
 +++ cloopreader.c
-@@ -59,10 +59,20 @@
+@@ -59,10 +59,21 @@
  
      ALLOC(c->pblock,c->blocksize);
  
@@ -109,21 +97,22 @@
 +    c->tocsize=sizeof(*c->toc) * c->numblocks;
 +    if (c->numblocks == -1) {
 +	struct cloop_tail tail;
++	loff_t end = lseek(c->fh,0,SEEK_END); /* lseek(,-n,SEEK_END) buggy ? */
 +
-+	OP(lseek(c->fh, - sizeof(tail), SEEK_END)); 
++	OP(lseek(c->fh, end - sizeof(tail), SEEK_SET)); 
 +	OP(read_all(c->fh, &tail, sizeof(tail)));
 +	c->numblocks = ntohl(tail.num_blocks);
 +	c->tocsize = ntohl(tail.index_size) * c->numblocks;
-+	OP(lseek(c->fh, - sizeof(tail) - c->tocsize, SEEK_END));
++	OP(lseek(c->fh, end - sizeof(tail) - c->tocsize, SEEK_SET));
 +    }
      ALLOC(c->toc,c->tocsize);
  
      OP(read_all(c->fh,c->toc,c->tocsize));  /* read Data Index */
-+    build_index(c->toc, c->numblocks, c->blocksize);
++    build_index(c->toc, c->numblocks);
      c->cblocksizecur=0;
      c->curblock=-1;
      return 0;
-@@ -79,10 +89,10 @@
+@@ -79,10 +90,10 @@
      if(page>=c->numblocks){errno=EFAULT;return -1;}
      c->curblock=page;
  
@@ -140,20 +129,51 @@
 
 --- extract_compressed_fs.c
 +++ extract_compressed_fs.c
-@@ -7,6 +7,7 @@
+@@ -1,15 +1,18 @@
+ /* Extracts a filesystem back from a compressed fs file */
+ #include "common_header.h"
++#define CLOOP_PREAMBLE "#!/bin/sh\n" "#V2.0 Format\n" "insmod cloop.o file=$0 && mount -r -t iso9660 /dev/cloop $1\n" "exit $?\n"
+ 
+ int main(int argc, char *argv[])
+ {
+ 	int handle;
  	struct cloop_head head;
  	unsigned int i;
++	unsigned long num_blocks, block_size, zblock_maxsize;
  	unsigned char *buffer, *clear_buffer;
 +	struct block_info *offsets;
  
- 	if (argc != 2) {
- 		fprintf(stderr, "Need filename\n");
-@@ -30,35 +31,48 @@
- 	fprintf(stderr, "%u blocks of size %u. Preamble:\n%s\n", 
- 		ntohl(head.num_blocks), ntohl(head.block_size), head.preamble);
+-	if (argc != 2) {
+-		fprintf(stderr, "Need filename\n");
++	if (argc < 2 || argv[1][0] == '-') {
++		fprintf(stderr, "Usage: extract_compressed_fs file [--convert-to-v2] > output\n");
+ 		exit(1);
+ 	}
  
-+	i = ntohl(head.num_blocks);
-+	if (i == -1) {
+@@ -24,44 +27,77 @@
+ 		exit(1);
+ 	}
+ 
+-	buffer = malloc(ntohl(head.block_size) + ntohl(head.block_size)/1000
+-			+ 12 + 4);
+-	clear_buffer = malloc(ntohl(head.block_size));
+-	fprintf(stderr, "%u blocks of size %u. Preamble:\n%s\n", 
+-		ntohl(head.num_blocks), ntohl(head.block_size), head.preamble);
+-
+-	for (i = 0; i < ntohl(head.num_blocks); i++) {
+-		int currpos;
+-		unsigned long destlen = ntohl(head.block_size);
+-		loff_t offset[2];
+-		unsigned int size;
++	num_blocks = ntohl(head.num_blocks);
++	block_size = ntohl(head.block_size);
++	zblock_maxsize =  block_size + block_size/1000 + 12 + 4;
++	buffer = malloc(zblock_maxsize);
++	clear_buffer = malloc(block_size);
++	fprintf(stderr, "%lu blocks of size %lu. Preamble:\n%s\n", 
++		num_blocks, block_size, head.preamble);
++
++	if (num_blocks == -1) {
 +		struct cloop_tail tail;
 +		if (lseek(handle, - sizeof(tail), SEEK_END) < 0 ||
 +		    read(handle, &tail, sizeof(tail)) != sizeof(tail) ||
@@ -164,23 +184,40 @@
 +			exit(1);
 +		}
 +		head.num_blocks = tail.num_blocks;
-+		i = ntohl(tail.num_blocks) * ntohl(tail.index_size);
++		num_blocks = ntohl(head.num_blocks);
++		i = num_blocks * ntohl(tail.index_size);
 +	}
-+	else i *= sizeof(*offsets);
++	else i = num_blocks * sizeof(*offsets);
 +	offsets = malloc(i);
 +	if (!offsets || read(handle, offsets, i) != i) {
 +		perror("Reading index\n");
 +		exit(1);
 +	}
 +	
-+	fprintf(stderr, "Index %s.\n", build_index(offsets, 
-+			ntohl(head.num_blocks), ntohl(head.block_size)));
++	fprintf(stderr, "Index %s.\n", build_index(offsets, num_blocks));
 +	
- 	for (i = 0; i < ntohl(head.num_blocks); i++) {
--		int currpos;
- 		unsigned long destlen = ntohl(head.block_size);
--		loff_t offset[2];
--		unsigned int size;
++	if (argc > 2) {
++		loff_t offset;
++		int delta = ((num_blocks + 1) * sizeof(offset)) +
++			sizeof(head) - offsets[0].offset;
++		
++		strcpy(head.preamble, CLOOP_PREAMBLE);
++		write(STDOUT_FILENO, &head, sizeof(head));
++		for (i = 0; i < num_blocks; i++) {
++			offset = __be64_to_cpu(delta + offsets[i].offset); 
++			write(STDOUT_FILENO, &offset, sizeof(offset));
++		}
++		offset = __be64_to_cpu(delta + offsets[num_blocks-1].offset + offsets[num_blocks-1].size); 
++		write(STDOUT_FILENO, &offset, sizeof(offset));
++		for (i = 0; i < num_blocks && lseek(handle, offsets[i].offset, SEEK_SET) >= 0; i++) {
++			read(handle, buffer, offsets[i].size);
++			write(STDOUT_FILENO, buffer, offsets[i].size);
++		}
++		return 0;
++	}
++	
++	for (i = 0; i < num_blocks; i++) {
++		unsigned long destlen = block_size;
 +		unsigned int size = offsets[i].size;
  
 -		read(handle, &offset, 2*sizeof(loff_t));
@@ -196,8 +233,9 @@
  		}
                  
 -                size=__be64_to_cpu(offset[1])-__be64_to_cpu(offset[0]);
- 		if (size > ntohl(head.block_size) + ntohl(head.block_size)/1000
- 		    + 12 + 4) {
+-		if (size > ntohl(head.block_size) + ntohl(head.block_size)/1000
+-		    + 12 + 4) {
++		if (size > zblock_maxsize) {
  			fprintf(stderr, 
  				"Size %u for block %u (offset %Lu) too big\n",
 -				size, i, __be64_to_cpu(offset[0]));
@@ -210,5 +248,136 @@
 -			exit(1);
 -		}
  
- 		fprintf(stderr, "Block %u length %u => %lu\n",
- 			i, size, destlen);
+-		fprintf(stderr, "Block %u length %u => %lu\n",
+-			i, size, destlen);
++		fprintf(stderr, "Block %u at %llu length %u => %lu\n",
++			i, offsets[i].offset, size, destlen);
+ 		if (i == 3) {
+ 			fprintf(stderr,
+ 				"Block head:%02X%02X%02X%02X%02X%02X%02X%02X\n",
+@@ -105,12 +141,12 @@
+ 			fprintf(stderr, "Uncomp: unknown error %u\n", i);
+ 			exit(1);
+ 		}
+-		if (destlen != ntohl(head.block_size)) {
+-			fprintf(stderr, "Uncomp: bad len %u (%lu not %u)\n", i,
+-				destlen, ntohl(head.block_size));
++		if (destlen != block_size) {
++			fprintf(stderr, "Uncomp: bad len %u (%lu not %lu)\n", i,
++				destlen, block_size);
+ 			exit(1);
+ 		}
+-		write(STDOUT_FILENO, clear_buffer, ntohl(head.block_size));
++		write(STDOUT_FILENO, clear_buffer, block_size);
+ 	}
+ 	return 0;
+ }
+
+--- Makefile
++++ Makefile
+@@ -1,16 +1,19 @@
+ PROGNAME=fusecloop
+ ARCFILES=*.c *.h *.pl Makefile configure README VERSION HELP INSTALL typescript *.cloop COPYING
+-PROGS=fusecloop cloopreaderdemo extract_compressed_fs
++PROGS=fusecloop cloopreaderdemo extract_compressed_fs create_compressed_fs
+ FUSECFLAGS=`pkg-config fuse --cflags`
+ FUSELDFLAGS=`pkg-config fuse --libs` 
+ 
+ CFLAGS= -Wall
+ 
+-all: fusecloop extract_compressed_fs 
++all: fusecloop extract_compressed_fs create_compressed_fs
+ 
+ extract_compressed_fs: extract_compressed_fs.c
+ 	${CC} ${CFLAGS} ${LDFLAGS} -lz extract_compressed_fs.c -o extract_compressed_fs
+ 
++create_compressed_fs: create_compressed_fs.c
++	${CC} ${CFLAGS} ${LDFLAGS} -lz create_compressed_fs.c -o create_compressed_fs
++
+ fusecloop: fusecloop.c cloopreader.o strver debug.o
+ 	${CC} ${CFLAGS} ${LDFLAGS} -lz cloopreader.o ${FUSECFLAGS} ${FUSELDFLAGS} fusecloop.c debug.o -o fusecloop
+ 
+
+--- create_compressed_fs.c
++++ create_compressed_fs.c
+@@ -0,0 +1,80 @@
++/* Creates a compressed file */
++#include "common_header.h"
++
++#define CLOOP_PREAMBLE "#!/bin/sh\n" "#V3.0 Format\n" "insmod cloop.o file=$0 && mount -r -t iso9660 /dev/cloop $1\n" "exit $?\n"
++#define CHUNK 65536
++#define DEFAULT_BLOCKSIZE 65536
++
++static void quit(char *s)
++{
++	fprintf(stderr, "%s\n", s);
++	exit(1);
++}
++
++static int readblock(unsigned char *buffer, int n)
++{
++	int i;
++	
++	memset(buffer, 0, n);
++	for (i = 0 ; i < n;) {
++		int j = read(STDIN_FILENO, buffer + i, n - i);
++		if (j < 0 && errno == EINTR) continue;
++		if (j <= 0) break;
++		i += j;
++	}
++	return i;
++}
++
++int main(int argc, char *argv[])
++{
++	struct cloop_head head;
++	struct cloop_tail tail;
++	unsigned long  block_size = 0;
++	unsigned char *compressed, *uncompressed;
++	unsigned long *index;
++	int n, indexmax, zlenmax;
++	
++	if (argc > 1) {
++		if (argv[1][0] < '0' || argv[1][0] > '9')
++			quit("Usage : create_compressed_fs [block size] < input > output");
++		block_size = atoi(argv[1]);
++	}
++	if (block_size < 4096)
++		block_size = DEFAULT_BLOCKSIZE;
++	fprintf(stderr, "Block size is %lu\n", block_size);
++	zlenmax = block_size + block_size/1000 + 12;
++
++	memset(&head, 0, sizeof(head));
++	strcpy(head.preamble, CLOOP_PREAMBLE);
++	head.num_blocks = -1;
++	head.block_size = htonl(block_size);
++	write(STDOUT_FILENO, &head, sizeof(head));
++	
++	compressed = malloc(zlenmax);
++	uncompressed = malloc(block_size);
++	index = malloc(indexmax = CHUNK);
++	if (!compressed || !uncompressed || !index)
++		quit("Malloc failed");
++	
++	for (n = 0; readblock(uncompressed, block_size); n++) {
++		unsigned long len = zlenmax;
++		
++		if (compress2(compressed, &len, uncompressed, block_size, 
++				Z_BEST_COMPRESSION) != Z_OK)
++			quit("Compression failed");
++		fprintf(stderr, "Block %u length %lu => %lu\n",
++			n, block_size, len);
++		write(STDOUT_FILENO, compressed, len);
++		if (n * sizeof(*index) >= indexmax) {
++			index = realloc(index, indexmax += CHUNK);
++			if (!index)
++				quit("Realloc");
++		}
++		index[n] = ntohl(len);
++	}
++	write(STDOUT_FILENO, index, n * sizeof(*index));
++	tail.index_size = ntohl(sizeof(*index));
++	tail.num_blocks = ntohl(n);
++	write(STDOUT_FILENO, &tail, sizeof(tail));
++	return 0;
++}
