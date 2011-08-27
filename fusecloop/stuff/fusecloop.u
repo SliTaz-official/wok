@@ -150,7 +150,7 @@
  		exit(1);
  	}
  
-@@ -24,44 +27,77 @@
+@@ -24,44 +27,76 @@
  		exit(1);
  	}
  
@@ -197,18 +197,17 @@
 +	fprintf(stderr, "Index %s.\n", build_index(offsets, num_blocks));
 +	
 +	if (argc > 2) {
-+		loff_t offset;
-+		int delta = ((num_blocks + 1) * sizeof(offset)) +
-+			sizeof(head) - offsets[0].offset;
++		loff_t data, offset = ((num_blocks + 1) * sizeof(offset)) + sizeof(head);
 +		
 +		strcpy(head.preamble, CLOOP_PREAMBLE);
 +		write(STDOUT_FILENO, &head, sizeof(head));
 +		for (i = 0; i < num_blocks; i++) {
-+			offset = __be64_to_cpu(delta + offsets[i].offset); 
-+			write(STDOUT_FILENO, &offset, sizeof(offset));
++			data = __be64_to_cpu(offset);
++			write(STDOUT_FILENO, &data, sizeof(data));
++			offset += offsets[i].size;
 +		}
-+		offset = __be64_to_cpu(delta + offsets[num_blocks-1].offset + offsets[num_blocks-1].size); 
-+		write(STDOUT_FILENO, &offset, sizeof(offset));
++		data = __be64_to_cpu(offset);
++		write(STDOUT_FILENO, &data, sizeof(data));
 +		for (i = 0; i < num_blocks && lseek(handle, offsets[i].offset, SEEK_SET) >= 0; i++) {
 +			read(handle, buffer, offsets[i].size);
 +			write(STDOUT_FILENO, buffer, offsets[i].size);
@@ -255,7 +254,7 @@
  		if (i == 3) {
  			fprintf(stderr,
  				"Block head:%02X%02X%02X%02X%02X%02X%02X%02X\n",
-@@ -105,12 +141,12 @@
+@@ -105,12 +140,12 @@
  			fprintf(stderr, "Uncomp: unknown error %u\n", i);
  			exit(1);
  		}
