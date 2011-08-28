@@ -129,8 +129,9 @@
 
 --- extract_compressed_fs.c
 +++ extract_compressed_fs.c
-@@ -1,15 +1,18 @@
+@@ -1,15 +1,19 @@
  /* Extracts a filesystem back from a compressed fs file */
++#define _LARGEFILE64_SOURCE
  #include "common_header.h"
 +#define CLOOP_PREAMBLE "#!/bin/sh\n" "#V2.0 Format\n" "insmod cloop.o file=$0 && mount -r -t iso9660 /dev/cloop $1\n" "exit $?\n"
  
@@ -150,7 +151,7 @@
  		exit(1);
  	}
  
-@@ -24,44 +27,76 @@
+@@ -24,44 +28,77 @@
  		exit(1);
  	}
  
@@ -175,11 +176,12 @@
 +
 +	if (num_blocks == -1) {
 +		struct cloop_tail tail;
-+		if (lseek(handle, - sizeof(tail), SEEK_END) < 0 ||
++		loff_t end = lseek64(handle, 0, SEEK_END);
++		if (lseek64(handle, end - sizeof(tail), SEEK_SET) < 0 ||
 +		    read(handle, &tail, sizeof(tail)) != sizeof(tail) ||
-+		    lseek(handle, - sizeof(tail) - 
++		    lseek64(handle, end - sizeof(tail) - 
 +		    	  (ntohl(tail.num_blocks) * ntohl(tail.index_size)), 
-+		    	  SEEK_END) < 0) {
++		    	  SEEK_SET) < 0) {
 +			perror("Reading tail\n");
 +			exit(1);
 +		}
@@ -208,7 +210,7 @@
 +		}
 +		data = __be64_to_cpu(offset);
 +		write(STDOUT_FILENO, &data, sizeof(data));
-+		for (i = 0; i < num_blocks && lseek(handle, offsets[i].offset, SEEK_SET) >= 0; i++) {
++		for (i = 0; i < num_blocks && lseek64(handle, offsets[i].offset, SEEK_SET) >= 0; i++) {
 +			read(handle, buffer, offsets[i].size);
 +			write(STDOUT_FILENO, buffer, offsets[i].size);
 +		}
@@ -224,7 +226,7 @@
 -                
 -		currpos = lseek(handle, 0, SEEK_CUR);
 -		if (lseek(handle, __be64_to_cpu(offset[0]), SEEK_SET) < 0) {
-+		if (lseek(handle, offsets[i].offset, SEEK_SET) < 0) {
++		if (lseek64(handle, offsets[i].offset, SEEK_SET) < 0) {
  			fprintf(stderr, "lseek to %Lu: %s\n",
 -				__be64_to_cpu(offset[0]), strerror(errno));
 +				offsets[i].offset, strerror(errno));
@@ -254,6 +256,23 @@
  		if (i == 3) {
  			fprintf(stderr,
  				"Block head:%02X%02X%02X%02X%02X%02X%02X%02X\n",
+@@ -105,12 +142,12 @@
+ 			fprintf(stderr, "Uncomp: unknown error %u\n", i);
+ 			exit(1);
+ 		}
+-		if (destlen != ntohl(head.block_size)) {
+-			fprintf(stderr, "Uncomp: bad len %u (%lu not %u)\n", i,
+-				destlen, ntohl(head.block_size));
++		if (destlen != block_size) {
++			fprintf(stderr, "Uncomp: bad len %u (%lu not %lu)\n", i,
++				destlen, block_size);
+ 			exit(1);
+ 		}
+-		write(STDOUT_FILENO, clear_buffer, ntohl(head.block_size));
++		write(STDOUT_FILENO, clear_buffer, block_size);
+ 	}
+ 	return 0;
+ }
 @@ -105,12 +140,12 @@
  			fprintf(stderr, "Uncomp: unknown error %u\n", i);
  			exit(1);
