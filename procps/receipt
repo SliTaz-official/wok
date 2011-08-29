@@ -22,28 +22,44 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/lib
+	mkdir -p $fs/usr $fs/lib $fs/bin $fs/sbin
 	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/lib/* $fs/lib
+	cp -a $_pkg/bin $fs
+	cp -a $_pkg/sbin $fs
+	cp -a $_pkg/lib $fs
 
 	# Remove utils already supplied by Busybox
-	for i in free top uptime watch
-	do
-		rm -f $fs/usr/bin/$i
-	done
+	#for i in free top uptime watch
+	#do
+		#rm -f $fs/usr/bin/$i
+	#done
 }
 
 # Overlap busybox
 pre_install()
 {
+	rm -f $1/bin/kill
+	rm -f $1/bin/ps
+	rm -f $1/bin/watch
+	rm -f $1/sbin/sysctl
 	rm -f $1/usr/bin/pkill
 	rm -f $1/usr/bin/pmap
 	rm -f $1/usr/bin/pgrep
+	rm -f $1/usr/bin/top
+	rm -f $1/usr/bin/free
+	rm -f $1/usr/bin/uptime
 }
 
 post_remove()
 {
+	ln -s /bin/busybox /bin/kill
+	ln -s /bin/busybox /bin/ps
+	ln -s /bin/busybox /bin/watch
+	ln -s /bin/busybox /sbin/sysctl	
 	ln -s /bin/busybox /usr/bin/pkill
 	ln -s /bin/busybox /usr/bin/pmap
 	ln -s /bin/busybox /usr/bin/pgrep
+	ln -s /bin/busybox /usr/bin/top
+	ln -s /bin/busybox /usr/bin/free
+	ln -s /bin/busybox /usr/bin/uptime
 }
