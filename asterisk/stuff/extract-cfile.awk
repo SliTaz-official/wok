@@ -15,11 +15,10 @@ BEGIN { srcname = "nothing"; }
       close(srcname);
       exit;}
     else
-      print $0 &gt;&gt; srcname;
+      print $0 >> srcname;
   }
 }
 END {
   printf("ending file %s\n", srcname);
   close(srcname);
 }
-</pre></div></body></html>
