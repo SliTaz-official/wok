@@ -47,20 +47,24 @@ sed -i 's/df -kP/df -k/' $TARBALL
 # Extract
 sh $TARBALL --noexec --keep
 
-BUILD_DEPENDS="slitaz-toolchain bzip2 linux-source python python-dev"
+BUILD_DEPENDS="slitaz-toolchain bzip2 linux-source python python-dev coreutils-command"
 for i in $BUILD_DEPENDS; do
 	[ -d /var/lib/tazpkg/installed/$i ] && continue
 	yes y | tazpkg get-install $i
 done
+[ -d /lib/modules/$(uname -r)/source ] || get-linux-source
+[ -d /lib/modules/$(uname -r)/build ] || 
+	cp -a /lib/modules/$(uname -r)/source /lib/modules/$(uname -r)/build
 
 # Install files
 cd install 
-[ -d /usr/share/VirtualBox ] && ./uninstall.sh
-find /usr /etc /lib > ../before
-./install.sh install /usr/share/VirtualBox 
+[ -d /usr/share/VirtualBox -o -d /opt/VirtualBox ] && ./uninstall.sh
+[ -d /opt ] || mkdir /opt
+find /usr /etc /lib /opt > ../before
+./install.sh install
 cd ..
-find /usr /etc /lib > after
-sed -i 's/ps -U/ps | grep/' /usr/share/VirtualBox/VBox.sh
+find /usr /etc /lib /opt > after
+sed -i 's/ps -U/ps | grep/' /opt/VirtualBox/VBox.sh
 echo 'lsmod | grep -q vboxdrv || modprobe vboxdrv' >> /etc/vbox/vbox.cfg
 mkdir -p $PACKAGE-$VERSION/fs
 diff -U0 before after | grep ^+/ | sed 's|^\+/||' | \
