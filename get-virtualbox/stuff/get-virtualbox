@@ -65,6 +65,7 @@ find /usr /etc /lib /opt > ../before
 cd ..
 find /usr /etc /lib /opt > after
 sed -i 's/ps -U/ps | grep/' /opt/VirtualBox/VBox.sh
+chmod 644 /opt/VirtualBox/VBoxVMM.so
 echo 'lsmod | grep -q vboxdrv || modprobe vboxdrv' >> /etc/vbox/vbox.cfg
 mkdir -p $PACKAGE-$VERSION/fs
 diff -U0 before after | grep ^+/ | sed 's|^\+/||' | \
@@ -108,6 +109,9 @@ tazpkg pack $PACKAGE-$VERSION
 
 # Install pseudo package
 tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+case " $@ " in
+*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
+esac
 
 # Clean
 cd $CUR_DIR
