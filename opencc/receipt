@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="opencc"
+VERSION="0.2.0"
+CATEGORY=""
+SHORT_DESC="Libraries for Simplified-Traditional Chinese Conversion"
+MAINTAINER="liupeng <hipeng@yahoo.com>"
+DEPENDS=""
+BUILD_DEPENDS="cmake gettext"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://code.google.com/p/opencc/"
+WGET_URL="http://opencc.googlecode.com/p/files/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	mkdir build
+	pushd build
+	cmake ../ -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DENABLE_GETTEXT:BOOL=ON || return 1
+	popd
+	make -C build || return 1
+	make install -C build DESTDIR=$PWD/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/ $fs/usr/share/
+	cp -a $_pkg/usr/lib/lib*.so.* $fs/usr/lib/
+	cp -a $_pkg/usr/share/opencc/ $fs/usr/share/
+}

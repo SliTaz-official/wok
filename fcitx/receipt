@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="fcitx"
-VERSION="4.0.1"
+VERSION="4.1.1"
 CATEGORY="x-window"
 SHORT_DESC="Free Chinese Input Toy of X, a collection of Simplified Chinese input methods for Linux."
 MAINTAINER="lufeng369@gmail.com"
-DEPENDS="dbus pango"
-BUILD_DEPENDS="intltool xorg-libXrender-dev pkg-config cairo-dev pango-dev"
-TARBALL="$PACKAGE-${VERSION}_all.tar.gz"
+DEPENDS="libfcitx fcitx-skin-default gtk+"
+BUILD_DEPENDS="cmake intltool cairo-dev pango-dev gtk+-dev dbus-dev opencc-dev gcc"
+TARBALL="$PACKAGE-${VERSION}_all.tar.bz2"
 WEB_SITE="http://code.google.com/p/fcitx/"
 WGET_URL="http://fcitx.googlecode.com/files/$TARBALL"
 
@@ -15,22 +15,27 @@ WGET_URL="http://fcitx.googlecode.com/files/$TARBALL"
 compile_rules()
 {
     cd $src
-    ./configure \
-        --prefix=/usr \
-	--disable-table-data &&
-    make && make DESTDIR=$PWD/_pkg install
+    mkdir build
+    pushd build
+    cmake ../ -DCMAKE_INSTALL_PREFIX=/usr -DENABLE_QT_IM_MODULE=OFF -DENABLE_GTK2_IM_MODULE=OFF -DENABLE_GTK3_IM_MODULE=OFF -DENABLE_OPENCC=ON || return 1
+    popd
+    make -C build || return 1
+    make install/fast -C build DESTDIR=$PWD/_pkg
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr
-    cp -a $_pkg/usr $fs/
-    sed -i \
-        -e 's/DefaultValue=default/DefaultValue=classic/' \
-        -e 's/DefaultValue=L_CTRL/DefaultValue=L_SHIFT/' \
-        -e 's/DefaultValue=ALT_SPACE/DefaultValue=CTRL_./' \
-        -e 's/DefaultValue=-/DefaultValue=,/' \
-        -e 's/DefaultValue==/DefaultValue=./' $fs/usr/share/fcitx/data/config.desc
-
+    mkdir -p $fs/usr/bin/ $fs/usr/share/fcitx/ $fs/usr/share/applications/
+    cp -a $_pkg/usr/bin/fcitx $fs/usr/bin/
+    cp -a $_pkg/usr/bin/fcitx-configtool $fs/usr/bin/
+    cp -a $_pkg/usr/bin/fcitx-remote $fs/usr/bin/
+    cp -a $_pkg/usr/bin/fcitx4-config $fs/usr/bin/
+    cp -a $_pkg/usr/share/fcitx/addon/ $fs/usr/share/fcitx/
+    cp -a $_pkg/usr/share/fcitx/configdesc/ $fs/usr/share/fcitx/
+    cp -a $_pkg/usr/share/fcitx/data/ $fs/usr/share/fcitx/
+    cp -a $_pkg/usr/share/fcitx/pinyin/ $fs/usr/share/fcitx/
+    cp -a $_pkg/usr/share/fcitx/table/ $fs/usr/share/fcitx/
+    cp -a $_pkg/usr/share/applications/*.desktop $fs/usr/share/applications/
+    cp -a $_pkg/usr/share/icons/ $fs/usr/share/
 }
