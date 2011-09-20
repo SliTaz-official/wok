@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="fcitx-googlepinyin"
+VERSION="0.1.2"
+CATEGORY="x-window"
+SHORT_DESC="Googlepinyin Wrapper for Fcitx"
+MAINTAINER="liupeng <hipeng@yahoo.com>"
+DEPENDS="fcitx libgooglepinyin"
+BUILD_DEPENDS="cairo-dev pango-dev intltool cmake gtk+-dev gcc fcitx fcitx-dev libgooglepinyin-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://code.google.com/p/fcitx"
+WGET_URL="http://fcitx.googlecode.com/files/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	mkdir build
+	pushd build
+	cmake ../ -DCMAKE_INSTALL_PREFIX=/usr || return 1
+	popd
+	make -C build || return 1
+	make install/fast -C build DESTDIR=$PWD/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/fcitx/ $fs/usr/lib/fcitx/
+	cp -a $_pkg/usr/share/fcitx/addon/ $fs/usr/share/fcitx/
+	cp -a $_pkg/usr/share/fcitx/configdesc/ $fs/usr/share/fcitx/
+	cp -a $_pkg/usr/lib/fcitx/fcitx-googlepinyin* $fs/usr/lib/fcitx/
+}
+

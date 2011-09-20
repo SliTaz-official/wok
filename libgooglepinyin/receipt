@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="libgooglepinyin"
+VERSION="0.1.1"
+CATEGORY="development"
+SHORT_DESC="A fork from google pinyin on android"
+MAINTAINER="liupeng <hipeng@yahoo.com>"
+BUILD_DEPENDS="cairo-dev pango-dev intltool cmake gtk+-dev gcc"
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://code.google.com/p/libgooglepinyin/"
+WGET_URL="http://libgooglepinyin.googlecode.com/files/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	mkdir build
+	pushd build
+	cmake ../ -DCMAKE_INSTALL_PREFIX=/usr || return 11
+	popd
+	make -C build || return 1
+	make install/fast -C build DESTDIR=$PWD/_pkg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/ $fs/usr/share/
+	cp -a $_pkg/usr/lib/libgooglepinyin.so* $fs/usr/lib/
+	cp -a $_pkg/usr/share/googlepinyin/ $fs/usr/share/
+}
