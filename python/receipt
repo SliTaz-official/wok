@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="python"
-VERSION="2.7.1"
+VERSION="2.7.2"
 CATEGORY="development"
 SHORT_DESC="The Python programming language."
 MAINTAINER="pankso@slitaz.org"
@@ -17,9 +17,11 @@ BUILD_DEPENDS="openssl-dev bzip2-dev readline-dev ncursesw-dev"
 compile_rules()
 {
 	cd $src
-	# Fix urllib Security Vulnerability
-	# http://blog.python.org/2011/04/urllib-security-vulnerability-fixed.html
-	patch -Np1 -i $stuff/CVE-2011-1521.patch
+	# Temporary workaround for FS#22322
+	# See http://bugs.python.org/issue10835 for upstream report
+	sed -i "/progname =/s/python/python${_pybasever}/" Python/pythonrun.c
+	# Enable built-in SQLite3 module to load extensions (fix FS#22122)
+	sed -i "/SQLITE_OMIT_LOAD_EXTENSION/d" setup.py
 	./configure \
 		--enable-shared \
 		--build=$HOST_SYSTEM \
