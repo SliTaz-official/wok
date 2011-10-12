@@ -1,0 +1,126 @@
+#!/bin/sh -e
+
+PACKAGE="wfica"
+WEB_SITE="http://www.citrix.com"
+PROD="downloadId=2309164&productId=1689163&ntref=clientcenter"
+INSTALL_USB=yes
+
+ROOT="$1"
+[ -d "$ROOT" ] || ROOT=""
+
+if test $(id -u) != 0 ; then
+        echo -e "\nYou must be root to run `basename $0`."
+        echo -e "Please type 'su' and root password to become super-user.\n"
+        exit 0
+fi
+
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+	[ -n "$ROOT" ] && exit 1
+	tazpkg remove $PACKAGE
+	[ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
+fi
+
+TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+
+URL="$WEB_SITE$(wget -O - "$WEB_SITE/English/ss/downloads/details.asp?$PROD" | \
+		sed "/Download/h;/\.deb/!dg;s/.*([\"']\([^\"']*\).*/\1/;q")"
+
+wget -O $PACKAGE.deb "$URL"
+mkdir $PACKAGE
+dpkg-deb -e $PACKAGE.deb $PACKAGE/meta
+dpkg-deb -x $PACKAGE.deb $PACKAGE/fs
+rm -f $PACKAGE.deb
+sed '/^Description:/,$!d;s/^Description://' \
+	< $PACKAGE/meta/control > $PACKAGE/description.txt
+
+SHORT_DESC="$(sed '/^Description:/!d;s/.*: //' $PACKAGE/meta/control)"
+MAINTAINER="$(sed '/^Maintainer:/!d;s/.*: //' $PACKAGE/meta/control)"
+VERSION="$(sed '/^Version:/!d;s/.*: //' $PACKAGE/meta/control)"
+mv $PACKAGE $PACKAGE-$VERSION
+
+cd $PACKAGE-$VERSION/fs
+mkdir -p usr/share/applications usr/bin
+cat > usr/bin/wfica_assoc.sh <<EOT
+#!/bin/sh
+
+ICAROOT=/usr/lib/ICAClient
+export ICAROOT
+\$ICAROOT/wfica -associate -fileparam \$1
+EOT
+cat > usr/bin/wfica.sh <<EOT
+#!/bin/sh
+
+ICAROOT=/usr/lib/ICAClient
+export ICAROOT
+\$ICAROOT/wfica -file \$1
+EOT
+chmod +x usr/bin/wfica.sh usr/bin/wfica_assoc.sh
+cat > usr/share/applications/wfcmgr.desktop <<EOT
+[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Type=Application
+Name=Citrix Receiver
+Icon=/usr/lib/ICAClient/icons/manager.png
+TryExec=/usr/lib/ICAClient/wfcmgr
+Exec=/usr/lib/ICAClient/wfcmgr -icaroot /usr/lib/ICAClient
+Terminal=false
+Categories=Application;Network
+EOT
+ln -s ../lib/ICAClient/wfica usr/bin
+ln -s ../lib/ICAClient/wfcmgr usr/bin
+
+if [ "$INSTALL_USB" == "yes" ]; then
+	dpkg-deb -x usr/lib/ICAClient/ctxusb*.deb .
+	chmod 500 usr/lib/ICAClient/ctxusbd
+	chmod 4555 usr/lib/ICAClient/ctxusb
+	chmod 444 usr/lib/ICAClient/usb.conf
+	chmod 700 etc/init.d/ctxusbd
+	[ -s usr/lib/ICAClient/config/module.ini ] ||
+	cat > usr/lib/ICAClient/config/module.ini <<EOT
+[File Type Associations]
+[KeyboardLayout]
+[KeyboardType]
+EOT
+	sed -i  -e 's/^[ \t]*VirtualDriver[ \t]*=.*$/&, GenericUSB/' \
+	  -e '/\[ICA 3.0\]/a\GenericUSB=on' usr/lib/ICAClient/config/module.ini
+	cat >> usr/lib/ICAClient/config/module.ini <<EOT
+[GenericUSB]
+DriverName = VDGUSB.DLL
+EOT
+fi
+
+cd ../..
+
+cat > $PACKAGE-$VERSION/receipt <<EOT
+# SliTaz package receipt.
+
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="$SHORT_DESC"
+MAINTAINER="$MAINTAINER"
+DEPENDS="openmotif"
+SUGGESTED="glib gstreamer speex libvorbis"
+WEB_SITE="$WEB_SITE/"
+CONFIG_FILES="/usr/lib/ICAClient/config /usr/lib/ICAClient/nls"
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Clean to save RAM memory
+rm -rf $PACKAGE-$VERSION
+
+# Install pseudo package
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+case " $@ " in
+*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
+esac
+
+# Clean
+cd $CUR_DIR
+rm -rf $TMP_DIR
+
