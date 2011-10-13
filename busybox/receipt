@@ -53,12 +53,27 @@ compile_rules()
     make &&
     make install
     } || return 1
+
+    # prepare busybox-pam package
     sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
     make oldconfig && make || return 1
     mv busybox busybox-pam
+
+    # prepare busybox-static package
     cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
     make oldconfig && make || return 1
     mv busybox busybox-static
+
+    # prepare ssfs-busybox package
+    rootfs=$src/ssfs-busybox/usr/share/ssfs/rootfs
+    mkdir -p $rootfs/etc
+    cp $stuff/$PACKAGE-${VERSION%.*}.config-ssfs .config
+    make oldconfig && make busybox &&
+    make CONFIG_PREFIX=$rootfs install || return 1
+    cp $stuff/busybox.conf-ssfs $rootfs/etc/busybox.conf
+    chown -R 0.0 $rootfs/etc
+    chmod 0600 $rootfs/etc/busybox.conf
+    chmod 4755 $rootfs/bin/busybox
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
