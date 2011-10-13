@@ -1,16 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="clamav"
-VERSION="0.97"
+VERSION="0.97.2"
 CATEGORY="security"
 SHORT_DESC="Antivirus."
 MAINTAINER="paul@slitaz.org"
-DEPENDS="zlib gmp bzip2 slitaz-base-files ncurses libltdl"
-BUILD_DEPENDS="zlib-dev gmp gmp-dev bzip2-dev ncurses-dev bash"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.clamav.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="antivirus"
+
+DEPENDS="zlib gmp bzip2 slitaz-base-files ncurses libltdl"
+BUILD_DEPENDS="zlib-dev gmp gmp-dev bzip2-dev ncurses-dev bash"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,14 +21,11 @@ compile_rules()
 
 	cd $src
 	./configure \
-		--prefix=/usr \
 		--sysconfdir=/etc/clamav \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
 		--with-iconv=no \
 		$CONFIGURE_ARGS &&
-	make -j 4 &&
-	make DESTDIR=$PWD/_pkg install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -87,6 +85,6 @@ post_install()
 # Del user clamav when pkg is removed.
 post_remove()
 {
-	deluser clamav	
+	chroot "$1/" deluser clamav	
 }
 
