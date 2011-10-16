@@ -1,16 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="pango"
-VERSION="1.28.4"
+VERSION="1.29.4"
 CATEGORY="x-window"
 SHORT_DESC="Library for layout and rendering of text."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="cairo glib expat libxml2 xorg-libXft fontconfig freetype xcb-util"
-BUILD_DEPENDS="$DEPENDS cairo-dev glib-dev expat-dev libxml2-dev xorg-libXft-dev libgio-dev gobject-introspection-dev pkg-config"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.pango.org/"
-WGET_URL="http://ftp.gnome.org/pub/GNOME/sources/pango/${VERSION%.*}/$TARBALL"
-CONFIG_FILES="/etc/pango"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
+CONFIG_FILES="/etc/pango/pango.modules"
+
+DEPENDS="cairo glib expat libxml2 xorg-libXft fontconfig freetype xcb-util"
+BUILD_DEPENDS="$DEPENDS cairo-dev glib-dev expat-dev libxml2-dev xorg-libXft-dev \
+libgio-dev gobject-introspection-dev pkg-config"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,19 +25,19 @@ compile_rules()
     	--with-html-dir=/usr/share/doc \
     	$CONFIGURE_ARGS &&
     make &&
-    make DESTDIR=$PWD/_pkg install
+    make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin $fs/usr/lib
-    cp -a $_pkg/usr/bin/* $fs/usr/bin
-    cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-    cp -a $_pkg/usr/lib/pango $fs/usr/lib
-    cp -a $_pkg/usr/lib/girepository-1.0 $fs/usr/lib
+    cp -a $install/usr/bin/* $fs/usr/bin
+    cp -a $install/usr/lib/*.so* $fs/usr/lib
+    cp -a $install/usr/lib/pango $fs/usr/lib
+    cp -a $install/usr/lib/girepository-1.0 $fs/usr/lib
     rm -rf $fs/usr/lib/pango/1.6.0/modules/*.la
-    cp -a $_pkg/etc $fs
+    cp -a $install/etc $fs
     touch $fs/etc/pango/pango.modules
 }
 
@@ -43,7 +45,7 @@ genpkg_rules()
 post_install()
 {
     echo "Processing post-install commands..."
-    # Rebuils pango.modules when installed.
+    # Rebuilds pango.modules when installed.
     chroot $1/ /usr/bin/pango-querymodules > $1/etc/pango/pango.modules
 }
 
