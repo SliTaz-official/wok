@@ -1,32 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="pciutils"
-VERSION="3.1.7"
+VERSION="3.1.8"
 CATEGORY="system-tools"
 SHORT_DESC="Utilities to list PCI device by name (lspci)."
 MAINTAINER="pankso@slitaz.org"
-BUILD_DEPENDS="wget"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-DEPENDS="glibc-base zlib"
 WEB_SITE="http://mj.ucw.cz/pciutils.html"
 WGET_URL="ftp://atrey.karlin.mff.cuni.cz/pub/linux/pci/$TARBALL"
+
+DEPENDS="glibc-base zlib pciids"
+BUILD_DEPENDS="wget"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./update-pciids.sh
 	make PREFIX=/usr IDSDIR=/usr/share/misc
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/misc
-	if [ ! -f $src/pci.ids.gz ]; then
-		gzip $src/pci.ids
-	fi
-	cp -a $src/pci.ids.gz $fs/usr/share/misc
+	mkdir -p $fs/usr/bin $fs/usr
 	cp -a $src/lspci $fs/usr/bin
 	cp -a $src/setpci $fs/usr/bin
 }
@@ -39,5 +35,5 @@ pre_install()
 
 post_remove()
 {
-	ln -s /bin/busybox /usr/bin/lspci
+	ln -s /bin/busybox $1/usr/bin/lspci
 }
