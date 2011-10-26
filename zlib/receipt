@@ -24,6 +24,10 @@ cook_tmp_toolchain()
 compile_rules()
 {
 	cd $src
+	# see http://bugs.archlinux.org/task/19280
+	patch -p1 -i $stuff/zlib-1.2.5-lfs-decls.patch
+	# work around gcc bug; see https://bugs.archlinux.org/task/20647
+	export CFLAGS="${CFLAGS/-O2/-O3} -fno-tree-vectorize -DUNALIGNED_OK"
 	./configure --prefix=/usr --shared &&
 	make &&	make install
 }
