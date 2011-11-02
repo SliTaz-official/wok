@@ -1,27 +1,26 @@
 # SliTaz package receipt.
 
 PACKAGE="gmime"
-VERSION="2.4.22"
+VERSION="2.4.26"
 CATEGORY="development"
 SHORT_DESC="library for parsing messages using MIME"
 MAINTAINER="allan316@gmail.com"
-DEPENDS="glib zlib"
-BUILD_DEPENDS="glib-dev zlib-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://spruce.sourceforge.net/gmime"
-WGET_URL="http://ftp.acc.umu.se/pub/GNOME/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="glib zlib"
+BUILD_DEPENDS="glib-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
 		--disable-mono \
-		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
+		--build=$HOST_SYSTEM \
+		--host=$HOST_SYSTEM &&
+	make && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -41,6 +40,6 @@ pre_install()
 
 post_remove()
 {
-	ln -s /bin/busybox /usr/bin/uuencode
-	ln -s /bin/busybox /usr/bin/uudecode
+	ln -s /bin/busybox $1/usr/bin/uuencode
+	ln -s /bin/busybox $1/usr/bin/uudecode
 }
