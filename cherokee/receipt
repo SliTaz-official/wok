@@ -1,15 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="cherokee"
-VERSION="1.2.1"
+VERSION="1.2.101"
 CATEGORY="network"
 SHORT_DESC="A very fast, fiexible and easy to configure Web Server."
 MAINTAINER="slaxemulator@gmail.com"
-DEPENDS="pcre cyrus-sasl openssl python libmysqlclient libldap ffmpeg"
-BUILD_DEPENDS="pcre-dev cyrus-sasl-dev openssl-dev openldap-dev python-dev pam-dev libmysqlclient ffmpeg-dev gettext autoconf automake"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.cherokee-project.com/"
 WGET_URL="http://www.cherokee-project.com/download/1.2/$VERSION/$TARBALL"
+
+DEPENDS="pcre cyrus-sasl openssl python libmysqlclient libldap ffmpeg"
+BUILD_DEPENDS="pcre-dev cyrus-sasl-dev openssl-dev openldap-dev python-dev pam-dev libmysqlclient ffmpeg-dev gettext autoconf automake"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -24,21 +25,28 @@ compile_rules()
 		--with-wwwuser=www --with-wwwgroup=www \
 		--enable-os-string="SliTaz" \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
-	install -D -m644 pam.d_cherokee $PWD/_pkg/etc/pam.d/$PACKAGE
+	make && make DESTDIR=$DESTDIR install
+	install -D -m644 pam.d_cherokee $DESTDIR/etc/pam.d/$PACKAGE
+	chown -R www:www $DESTDIR/var/lib/$PACKAGE/graphs
+	python -m compileall $DESTDIR
+	python -O -m compileall $DESTDIR
+	mkdir -p $DESTDIR/var/log/$PACKAGE $DESTDIR/etc/logrotate.d
+	chown -R www:www $DESTDIR/var/log/$PACKAGE
+	cp -a $stuff/$PACKAGE.logrotate $DESTDIR/etc/logrotate.d/$PACKAGE
+	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/cherokee $fs/usr/share $fs/etc/init.d
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/cherokee/*.so* $fs/usr/lib/cherokee
-	cp -a $_pkg/usr/share/cherokee $fs/usr/share
-	cp -a $_pkg/var $fs
-	cp -a $_pkg/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/cherokee/*.so* $fs/usr/lib/cherokee
+	cp -a $install/usr/share/cherokee $fs/usr/share
+	cp -a $install/var $fs
+	cp -a $install/etc $fs
 	cp -a $stuff/cherokee $fs/etc/init.d
 }
 
