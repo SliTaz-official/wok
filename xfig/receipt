@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="xfig"
+VERSION="3.2.5b"
+CATEGORY="x-window"
+SHORT_DESC="Vector graphics editor for X."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE.$VERSION.full.tar.gz"
+WEB_SITE="http://www.xfig.org/"
+WGET_URL="http://downloads.sourceforge.net/mcj/$TARBALL"
+SUGGESTED="transfig"
+
+DEPENDS="jpeg libpng xorg xorg-libXp"
+BUILD_DEPENDS="xorg-imake xorg-cf-files xorg-gccmakedep jpeg-dev \
+libpng-dev xorg-libXp"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mv $PACKAGE.$VERSION $src 2> /dev/null
+	cd $src
+	sed -i 's|/usr/local|/usr|;s|#define XAW3D|XCOMM &|' Imakefile
+	xmkmf &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/* $fs
+	sed -i 's/^Fig\*Font:.*/Fig*Font:\t\t\tfixed/' $fs/etc/X11/app-defaults/Fig
+}

@@ -1,0 +1,59 @@
+# SliTaz package receipt.
+
+PACKAGE="xv"
+VERSION="3.10a"
+CATEGORY="non-free"
+SHORT_DESC="Interactive image manipulation program for the X Window System."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.trilon.com/xv/xv.html"
+WGET_URL="ftp://ftp.trilon.com/pub/$PACKAGE/$TARBALL"
+PATCH1="$SF_MIRROR/png-mng/xv-3.10a-jumbo-patches-20070520.tar.gz"
+PATCH2="http://sonic.net/~roelofs/code/xv-3.10a-enhancements.20070520-20081216.diff"
+
+DEPENDS="xorg"
+BUILD_DEPENDS="xorg-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	for i in $PATCH1 $PATCH2 ; do
+		[ -s $SOURCES_REPOSITORY/$(basename $i) ] || 
+		wget -P $SOURCES_REPOSITORY $i
+	done
+	cd .. ; tar xzf $SOURCES_REPOSITORY/$(basename $PATCH1) ; cd $src
+	#patch -p0 < $SOURCES_REPOSITORY/$(basename $PATCH2)
+	sed -i 's/.*stdio.*/&\n#include <stdlib.h>/' xcmap.c bggen.c
+	sed -i 's/ gets *(\(.*\))/ fgets(\1,sizeof(\1)-1,stdin)/' vdcomp.c
+	sed -i 's/mktemp/mkstemp/' *.c
+	cat > tiff/RANLIB.csh <<EOT
+#!/bin/sh
+exec ranlib \$@
+EOT
+	chmod +x tiff/RANLIB.csh
+	sed -i 's|.*extern.*sys_errlist.*|//&|;s|sys_errlist.x.|strerror(x)|' xv.h
+	sed -i -e 's|undef USE_GUNZIP|define USE_GUNZIP\n#define USE_GETCWD|' \
+		-e 's|/usr/local/bin/gunzip -q|/bin/gunzip|' config.h
+	make jpeg/libjpeg.a &&
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/doc/slitaz $fs/usr/share/applications
+	cp $src/xv $src/bggen $src/vdcomp $src/xcmap $src/xvpictoppm $fs/usr/bin
+	cp $src/README $fs/usr/share/doc/slitaz/README.xv
+	cat > $fs/usr/share/applications/xv.desktop <<EOT
+[Desktop Entry]
+Encoding=UTF-8
+Categories=Application;Graphics;Utility
+Exec=xv %f
+Icon=image
+StartupNotify=true
+Type=Application
+Terminal=false
+Name=Image manipulation
+EOT
+}
