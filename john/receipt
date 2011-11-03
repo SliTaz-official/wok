@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="john"
-VERSION="1.7.6"
+VERSION="1.7.8"
 CATEGORY="system-tools"
 SHORT_DESC="Fast password cracker."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -10,11 +10,22 @@ WEB_SITE="http://www.openwall.com/john/"
 WGET_URL="${WEB_SITE}g/$TARBALL"
 CONFIG_FILES="/etc/john/john.conf"
 
+DEPENDS="openssl libdes"
+BUILD_DEPENDS="libdes-dev openssl-dev"
+
+PATCH="http://www.openwall.com/john/g/$PACKAGE-$VERSION-jumbo-7.diff.gz"
+
 # Rules to configure and make the package.
 compile_rules()
 {
+	cd $src
+	[ -s $SOURCES_REPOSITORY/$(basename $PATCH) ] ||
+		wget -P $SOURCES_REPOSITORY $PATCH
+	zcat $SRC/$(basename $PATCH) | patch -p1
 	cd $src/src
 	patch -Np0 -i $stuff/params.h.patch
+	sed -i 's|LIBS = -ldes|LIBS = -ldes -Ldes|' Makefile
+	sed -i "s|CFLAGS = -c -Wall -O2|CFLAGS = -c -Wall -O2 -march=$ARCH -DJOHN_SYSTEMWIDE=1|" Makefile
 	make clean generic
 }
 
