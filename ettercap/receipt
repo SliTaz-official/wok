@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="ettercap"
+VERSION="NG-0.7.3"
+CATEGORY="network"
+SHORT_DESC="Ettercap is a suite for man in the middle attacks on LAN"
+MAINTAINER="claudinei@slitaz.org"
+DEPENDS="libpthread-stubs libpcap libnet libtool zlib"
+BUILD_DEPENDS="libpthread-stubs libpcap libpcap-dev libnet-dev libtool zlib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://ettercap.sourceforge.net"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's/ettercap_LDFLAGS = -export-dynamic @EC_LIBS@/ettercap_LDADD += @EC_LIBS@\nettercap_LDFLAGS = -export-dynamic/' src/Makefile.*
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--enable-plugins \
+		--disable-gtk \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/etc $fs
+	cp -a $_pkg/usr/share/ettercap $fs/usr/share
+	cp -a $_pkg/usr/lib $fs/usr
+}
+
