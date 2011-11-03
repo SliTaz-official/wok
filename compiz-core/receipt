@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="compiz-core"
+VERSION="0.9.4"
+CATEGORY="x-window"
+SHORT_DESC="Compiz is an OpenGL compositing manager for 3D effect."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="librsvg libxslt startup-notification libboost-serialization \
+glibmm mesa"
+BUILD_DEPENDS="$DEPENDS cmake intltool librsvg-dev libxslt-dev \
+startup-notification-dev libboost-dev libboost-serialization-dev \
+glibmm-dev mesa-dev file"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.compiz.org/"
+WGET_URL="http://releases.compiz.org/0.9.4/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	mkdir build && cd build
+	cmake \
+		-DCMAKE_INSTALL_PREFIX="/usr" \
+		-DCOMPIZ_DESTDIR="../../install" .. &&
+	make && make install &&
+	make findcompiz_install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/compiz $fs/usr/lib
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/share/compiz $fs/usr/share
+	rm -rf $fs/usr/share/compiz/cmake
+	#cp -a $_pkg/usr/share/gconf $fs/usr/share
+}
