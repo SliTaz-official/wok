@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="dovecot"
+VERSION="1.2.17"
+CATEGORY="network"
+SHORT_DESC="Dovecot IMAP and POP3 Server."
+MAINTAINER="l.lemarinel@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="www.dovecot.org"
+WGET_URL="http://www.dovecot.org/releases/1.2/$TARBALL"
+BUILD_DEPENDS="openssl-dev libcap-dev openldap-dev \
+ mysql-dev sqlite-dev pam-dev postgresql-dev"
+DEPENDS="libssl libcap"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure  --prefix=/usr \
+		--sysconfdir=/etc/dovecot \
+		--libexecdir=/usr/lib/$PACKAGE \
+		--with-ssl=openssl \
+		--with-ldap=plugin \
+		--with-sql=plugin \
+		--with-mysql \
+		--with-pgsql \
+		--with-sqlite &&
+	make &&
+	make DESTDIR=$DESTDIR install
+	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/etc $fs/
+	
+	# Remove archive file *.*a
+	find $fs -name "*.*a" -exec rm -f {} \;
+	
+}

@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="directfb"
+VERSION="1.4.3"
+CATEGORY="system-tools"
+SHORT_DESC="Thin library that provides hardware graphics acceleration."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="libpng tslib"
+BUILD_DEPENDS="libpng-dev tslib-dev"
+SOURCE="DirectFB"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.directfb.org/"
+WGET_URL="http://www.directfb.org/downloads/Core/$SOURCE-1.4/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --sysconfdir=/etc --with-dither-rgb16=none &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/directfb-1.4-0 $fs/usr/lib
+	cp -a $_pkg/usr/share/directfb-* $fs/usr/share
+	find $fs/usr/lib -name "*.*a" -exec rm '{}' \;
+}
