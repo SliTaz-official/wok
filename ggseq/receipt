@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="ggseq"
+VERSION="0.3.1"
+CATEGORY="multimedia"
+SHORT_DESC="Gungirl Sequencer is an easy to use Audiosequencer."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="wxWidgets libsndfile libsamplerate"
+BUILD_DEPENDS="$DEPENDS wxWidgets-dev libsndfile-dev libsamplerate-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://ggseq.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's/SoundTouch::getVersionId/getVersionId/' src/SoundTouch/SoundTouch.h
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+}
+

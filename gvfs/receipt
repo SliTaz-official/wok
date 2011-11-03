@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="gvfs"
+VERSION="1.6.6"
+CATEGORY="system-tools"
+SHORT_DESC="Userspace virtual filesystem designed to work with gio."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="GConf dbus hal glib gnome-keyring"
+BUILD_DEPENDS="GConf-dev dbus-dev hal-dev glib-dev gnome-keyring-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gnome.org/"
+WGET_URL="http://ftp.gnome.org/pub/gnome/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	grep -rl gio/gdesktopappinfo.h . | xargs sed -i \
+'s|.*gio/gdesktopappinfo.h.*|#ifdef G_DISABLE_DEPRECATED\n#undef G_DISABLE_DEPRECATED\n&\n#define G_DISABLE_DEPRECATED\n#else\n&\n#endif|'
+	./configure \
+		--libexecdir=/usr/lib/$PACKAGE \
+		--sysconfdir=/etc \
+		--disable-gphoto2 \
+		--disable-avahi \
+		--disable-samba &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/etc $fs
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/$PACKAGE $fs/usr/lib
+	cp -a $_pkg/usr/lib/gio $fs/usr/lib
+	cp -a $_pkg/usr/share/dbus-1 $fs/usr/share
+	cp -a $_pkg/usr/share/gvfs $fs/usr/share
+	rm $fs/usr/lib/gio/modules/*.*a
+	strip -s $fs/usr/lib/$PACKAGE/* 2>/dev/null
+}
