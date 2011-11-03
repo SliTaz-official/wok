@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="gnome-keyring"
+VERSION="2.32.1"
+CATEGORY="x-window"
+SHORT_DESC="A program that keep password and other secrets for users."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.gnome.org"
+WGET_URL="http://ftp.gnome.org/pub/gnome/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="libgcrypt libtasn1 python dbus"
+BUILD_DEPENDS="libgcrypt-dev libtasn1-dev python-dev dbus-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--libexecdir=/usr/lib/$PACKAGE \
+		--sysconfdir=/etc/gnome \
+		--disable-pam &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $install/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/$PACKAGE $fs/usr/lib
+	for i in dbus-1 GConf gcr glib-2.0 $PACKAGE
+	do
+		cp -a $install/usr/share/$i $fs/usr/share
+	done
+	
+	# Remove devel files.
+	rm -rf $fs/usr/lib/gnome-keyring/devel
+	find $fs/usr/lib -name *.*a -exec rm -f {} \;	
+}
+
