@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="seed"
+VERSION="2.31.91"
+CATEGORY="system-tools"
+SHORT_DESC="Gnome JavaScript REPL/Interpreter."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gnome.org/"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="libffi libwebkit gobject-introspection dbus dbus-glib readline \
+mpfr gmp libxslt util-linux-ng-uuid cairo gnome-js-common"
+BUILD_DEPENDS="libffi-dev libwebkit-dev gobject-introspection-dev dbus-dev \
+dbus-glib-dev readline-dev mpfr-dev gmp-dev libxslt-dev util-linux-ng-uuid-dev \
+cairo-dev gnome-js-common"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--with-webkit=1.0 \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/seed $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/seed/*.so* $fs/usr/lib/seed
+	cp -a $install/usr/share/seed $fs/usr/share
+}
