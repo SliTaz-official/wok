@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="blueman"
+VERSION="1.10"
+CATEGORY="system-tools"
+SHORT_DESC="Easy to use GTK+ Bluetooth Manager."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://blueman-project.org/"
+WGET_URL="http://download.tuxfamily.org/blueman/$TARBALL"
+
+DEPENDS="linux-bluetooth bluez python pygtk libnotify notify-python python-pyrex \
+startup-notification util-linux-ng-uuid dbus dbus-python"
+BUILD_DEPENDS="bluez-dev python-dev pygtk-dev notify-python libnotify-dev \
+python-pyrex startup-notification-dev util-linux-ng-uuid-dev dbus-dev \
+dbus-python-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--libexecdir=/usr/lib/$PACKAGE \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/pixmaps
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/share/blueman $fs/usr/share
+	cp -a $install/usr/share/hal $fs/usr/share
+	cp -a $install/usr/share/dbus-1 $fs/usr/share
+	cp -a $install/usr/share/PolicyKit $fs/usr/share
+	cp -a $install/usr/share/icons/hicolor/32x32/apps/*.png \
+		$fs/usr/share/pixmaps
+	cp -a $install/etc $fs
+}

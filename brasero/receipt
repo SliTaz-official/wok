@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="brasero"
+VERSION="2.30.0"
+CATEGORY="utilities"
+SHORT_DESC="Brasero (aka Bonfire) is yet another application to burn CD/DVD for the gnome desktop."
+MAINTAINER="devl547@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.gnome.org/projects/brasero"
+WGET_URL="http://ftp.gnome.org/pub/GNOME/sources/$PACKAGE/2.30/$TARBALL"
+
+DEPENDS="glib gtk+ GConf gstreamer gst-plugins-base libxml2 libunique \
+dbus-glib cdrdao dvd+rw-tools libcanberra libvorbis libogg"
+BUILD_DEPENDS="glib-dev gtk+-dev GConf-dev gstreamer-dev gst-plugins-base-dev \
+libxml2-dev libunique-dev dbus-glib-dev gnome-doc-utils-dev libxcb-dev \
+libpthread-stubs xcb-util-dev ORBit2-dev dbus-dev libcanberra-dev \
+gnome-doc-utils libxml2-python libvorbis-dev libogg-dev util-linux-ng-uuid-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--disable-schemas-install \
+		--disable-scrollkeeper \
+		--disable-caches \
+		--disable-gtk-doc-html \
+		--disable-nautilus \
+		--disable-gtk-doc \
+		--disable-search \
+		--disable-playlist &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr/
+	cp -a $_pkg/usr/share/applications $fs/usr/share/applications
+}
