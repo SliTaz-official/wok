@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="fbvnc"
+VERSION="20110416"
+CATEGORY="network"
+SHORT_DESC="VNC client in frame buffer."
+MAINTAINER="pascal.bellard@slitaz.org"
+WEB_SITE="http://repo.or.cz/w/fbvnc.git"
+_TARBALL="$PACKAGE-$VERSION.tar.gz"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -s $SOURCES_REPOSITORY/$_TARBALL ] || 
+	  wget -O $SOURCES_REPOSITORY/$_TARBALL \
+	   $WEB_SITE/snapshot/e42bc02b14b3331e7c7f45c6b42179d0af99ed7b.tar.gz
+	mkdir -p $src
+	cd $src
+	tar xzf $SOURCES_REPOSITORY/$_TARBALL
+	mkdir $DESTDIR
+	cd fbvnc
+	patch -p0 < $stuff/fbvnc.u &&
+	make && cp fbvnc $DESTDIR
+}
+
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp $_pkg/fbvnc $fs/usr/bin
+}

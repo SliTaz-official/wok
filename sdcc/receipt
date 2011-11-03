@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="sdcc"
+VERSION="2.9.0"
+CATEGORY="development"
+SHORT_DESC="Retargettable C compiler for 8051, Z80 and 68HC08."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-src-$VERSION.tar.bz2"
+WEB_SITE="http://sdcc.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$PACKAGE/$VERSION/$TARBALL"
+TAGS="cross compiler"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mv $PACKAGE $src 2> /dev/null
+	cd $src
+	sed -i 's/all %/%/' device/lib/pic/Makefile.in
+	find -name getline.h | xargs sed -i \
+	  's/char.*getline/#define getline sdcc_getline\nchar *sdcc_getline/'
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/usr $fs
+}
+
