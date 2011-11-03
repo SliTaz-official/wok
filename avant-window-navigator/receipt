@@ -1,0 +1,68 @@
+# SliTaz package receipt.
+
+PACKAGE="avant-window-navigator"
+VERSION="0.4.0"
+CATEGORY="x-window"
+SHORT_DESC="Dock-like bar which sits at the bottom of the screen."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="dbus librsvg libwnck xorg-xcompmgr libgtop"
+BUILD_DEPENDS="dbus-dev librsvg-dev libwnck libwnck-dev pygtk-dev xcb-util-dev \
+libxcb-dev startup-notification-dev pycairo-dev pygobject-dev libffi-dev \
+python-xdg intltool acl dbus-glib-dev python-dev libdesktop-agnostic-dev \
+GConf libgtop-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://launchpad.net/awn/"
+WGET_URL="http://launchpad.net/awn/0.4/$VERSION/+download/$TARBALL"
+TAGS="window-manager wm panel"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--with-desktop=agnostic \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	cp -a $_pkg/usr/share/applications $fs/usr/share
+	cp -a $_pkg/usr/share/icons/hicolor/32x32/apps \
+		$fs/usr/share/pixmaps
+	# Custom autostart script so we ensure xcompmgr is also started.
+	cat > $fs/usr/bin/awn-autostart << _EOT_
+#!/bin/sh
+xcompmgr &
+sleep 4 && avant-window-navigator
+_EOT_
+	
+	# split awn-manager
+	rm -f $fs/usr/bin/awn-manager
+	rm -rf $fs/usr/share/$PACKAGE/awn-manager
+	rm -f $fs/usr/share/applications/awn-manager.desktop
+	
+	# fix permissions
+	chmod +x $fs/usr/bin/*
+	
+	# Fix missing icon
+	cd $fs/usr/share/pixmaps
+	ln -s avant-window-navigator.png awn-manager.png
+	
+	
+}
+
+post_install()
+{
+  # ln missing icons
+    ln -sf $1/usr/share/icons/SliTaz/16x16/actions/go-up.png $1/usr/share/icons/SliTaz/16x16/actions/gtk-sort-ascending.png
+    ln -sf $1/usr/share/icons/SliTaz/16x16/actions/go-down.png $1/usr/share/icons/SliTaz/16x16/actions/gtk-sort-descending.png
+}

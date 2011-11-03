@@ -1,0 +1,80 @@
+# SliTaz package receipt.
+
+NAME="qca-ossl"
+PACKAGE="Qt4-$NAME"
+MAJORVERSION="2.0"
+VERSION="2.0.0-beta3"
+CATEGORY="development"
+SHORT_DESC="OpenSSL plug-in for the Qt Cryptographic Architecture (QCA)."
+MAINTAINER="ben@seawolfsanctuary.com"
+DEPENDS="glibc-locale libQtCore libQtGui libQtNetwork libQtSvg libQtXml \
+libQtDesigner libQtScript libQt3Support libQtClucene libQtDBus libQtHelp \
+libQtOpenGL libQtSql libQtWebkit qca openssl"
+BUILD_DEPENDS="qmake xorg-libX11-dev dbus-dev openssl-dev Qt4-dev qca-dev"
+TARBALL="$NAME-$VERSION.tar.bz2"
+WEB_SITE="http://delta.affinix.com/$NAME"
+WGET_URL="http://delta.affinix.com/download/qca/$MAJORVERSION/plugins/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	
+	patch -u <<EOP
+--- qca-ossl.cpp
++++ qca-ossl.cpp
+@@ -330,1 +330,1 @@
+-	X509_EXTENSION *ex = X509V3_EXT_conf_nid(NULL, &ctx, NID_subject_key_identifier, "hash");
++	X509_EXTENSION *ex = X509V3_EXT_conf_nid(NULL, &ctx, NID_subject_key_identifier, (char *)"hash");
+EOP
+	status
+	patch -u <<EOP
+--- qca-ossl.cpp
++++ qca-ossl.cpp
+@@ -6597,9 +6597,11 @@
+ #ifdef SHA512_DIGEST_LENGTH
+ 	list += "sha512";
+ #endif
++ /*
+ #ifdef OBJ_whirlpool
+ 	list += "whirlpool";
+ #endif
++ */
+ 	return list;
+ }
+EOP
+	status
+	patch -u <<EOP
+--- qca-ossl.cpp
++++ qca-ossl.cpp
+@@ -6812,10 +6812,12 @@
+ 		else if ( type == "sha512" )
+ 			return new opensslHashContext( EVP_sha512(), this, type);
+ #endif
++/*
+ #ifdef OBJ_whirlpool
+ 		else if ( type == "whirlpool" )
+ 			return new opensslHashContext( EVP_whirlpool(), this, type);
+ #endif
++*/
+ 		else if ( type == "pbkdf1(sha1)" )
+ 			return new opensslPbkdf1Context( EVP_sha1(), this, type );
+ 		else if ( type == "pbkdf1(md2)" )
+EOP
+	status
+	
+	chmod +x configure
+	./configure \
+		--qtdir=/usr/lib/qt && \
+	make -j4 && make DESTDIR=$_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/qt/plugins/crypto
+	cp -a $src/lib/* $fs/usr/lib/qt/plugins/crypto/
+
+	# Copy .desktop file:
+#	cp -a $stuff/* $fs/usr
+}
