@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="cairo-compmgr"
+VERSION="0.3.0"
+CATEGORY="x-window"
+SHORT_DESC="Cairo Composite Manager"
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://cairo-compmgr.tuxfamily.org/"
+WGET_URL="http://download.tuxfamily.org/ccm/cairo-compmgr/$TARBALL"
+
+DEPENDS="gtk+ cairo librsvg util-linux-ng-uuid"
+BUILD_DEPENDS="gtk+-dev cairo-dev librsvg-dev vala util-linux-ng-uuid-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i "s/vala-1.0/$(basename /usr/lib/pkgconfig/libvala-*.pc .pc)/" configure
+	./configure $CONFIGURE_ARGS && make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/$PACKAGE $fs/usr/lib
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
+	rm $fs/usr/lib/$PACKAGE/*.*a
+}
