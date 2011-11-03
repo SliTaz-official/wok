@@ -1,0 +1,79 @@
+# SliTaz package receipt.
+
+PACKAGE="php-auth-pam"
+VERSION="0.4"
+CATEGORY="development"
+SHORT_DESC="PHP extension for PAM"
+MAINTAINER="erjo@slitaz.org"
+DEPENDS="php-apache pam"
+BUILD_DEPENDS="php-dev pam pam-dev autoconf automake"
+TARBALL="${PACKAGE}_${VERSION}.orig.tar.gz"
+WEB_SITE="http://packages.debian.org/"
+WGET_URL="http://ftp.de.debian.org/debian/pool/main/p/php-auth-pam/$TARBALL"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	test -d  ${PACKAGE}-${VERSION} \
+		|| make ${PACKAGE}-${VERSION}.orig ${PACKAGE}-${VERSION}
+	cd $src
+	phpize 
+	patch -p1 < $stuff/php-auth-pam-Makefile.global0.4.u || exit 1
+	
+	./configure \
+		--prefix=/usr &&
+	
+	make && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/php
+	cp -a $_pkg/usr/lib/php/extensions/*/*.so $fs/usr/share/php
+}
+
+post_install()
+{
+	grep -q ^extension=pam_auth.so $1/etc/php.ini || \
+	    sed -e 's|extension=msql.so|extension=msql.so\nextension=pam_auth.so|' -i $1/etc/php.ini
+	# Start Web server.
+	while read daemon file; do
+		[ -z "$1" ] || continue
+		if [ -z "$1" -a -f "/var/run/$file" ]; then
+			/etc/init.d/$daemon stop
+			sleep 2
+		fi
+		if [ -z "$1" -a -f /etc/init.d/$daemon ]; then
+			/etc/init.d/$daemon start
+		fi
+	done <<EOT
+apache apache/httpd.pid
+lighttpd lighttpd.pid
+EOT
+}
+
+# Pre and post remove commands for Tazpkg.
+pre_remove()
+{
+	sed -i '/.*=pam_auth.so.*/d' /etc/php.ini
+
+	# Start Web server.
+	while read daemon file; do
+		if [ -f /etc/init.d/$daemon -a -f "/var/run/$file" ]; then
+			/etc/init.d/$daemon stop
+			sleep 2
+			/etc/init.d/$daemon start
+		fi
+	done <<EOT
+apache apache/httpd.pid
+lighttpd lighttpd.pid
+EOT
+}
+
+
+clean_wok()
+{
+	test -d  ${PACKAGE}-${VERSION} && rm -rf ${PACKAGE}-${VERSION}
+}
