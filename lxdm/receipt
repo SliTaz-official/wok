@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="lxdm"
+VERSION="0.2.0"
+CATEGORY="x-window"
+SHORT_DESC="Login manager from LXDE."
+MAINTAINER="pankso@slitaz.org"
+DEPENDS="glibc-base glib libgio"
+BUILD_DEPENDS="slitaz-toolchain"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://lxde.org/"
+WGET_URL="$SF_MIRROR/lxde/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/lxdm \
+		--sysconfdir=/etc \
+		--without-pam \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/etc $fs/usr/share
+	cp -a $_pkg/etc/lxdm $fs/etc
+	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $_pkg/usr/share/lxdm $fs/usr/share
+}
