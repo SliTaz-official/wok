@@ -1,0 +1,29 @@
+# SliTaz package receipt.
+
+PACKAGE="nvclock"
+VERSION="0.8b4"
+CATEGORY="network"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="A small utility which allows users to overclock NVIDIA based video cards"
+WEB_SITE="http://www.linuxhardware.org/nvclock/"
+TARBALL="$PACKAGE$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/$TARBALL"
+TAGS="power-management"
+
+# Rules to configure and make the package.
+compile_rules(){
+  [ -d $PACKAGE$VERSION ] && mv $PACKAGE$VERSION $PACKAGE-$VERSION
+  cd $src
+   patch -Np1 -i $stuff/$PACKAGE-$VERSION-install.patch 
+  ./configure --prefix=/usr --bindir=/usr/bin &&
+  make -j 1 &&
+  make DESTDIR=$DESTDIR install 
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/pixmaps
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/icons/hicolor/48x48/apps/* $fs/usr/share/pixmaps
+}
