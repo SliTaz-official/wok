@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="wput"
+VERSION="0.6.2"
+CATEGORY="network"
+SHORT_DESC="A tiny wget-like ftp-client for uploading files"
+MAINTAINER="l.lemarinel@gmail.com"
+WEB_SITE="http://wput.sourceforge.net/"
+TARBALL="${PACKAGE}-${VERSION}.tgz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+BUILD_DEPENDS=""
+DEPENDS=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i "s|^prefix *=.*|prefix = $DESTDIR/usr|" Makefile.in
+	./configure --prefix=/usr \
+		--disable-g-switch \
+		--without-ssl &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
+}
