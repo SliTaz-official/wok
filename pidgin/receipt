@@ -1,16 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="pidgin"
-VERSION="2.7.11"
+VERSION="2.10.0"
 CATEGORY="network"
 SHORT_DESC="Instant messaging client using GTK+."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ gnutls libgcrypt libgpg-error startup-notification \
-xorg-libXdamage libxml2 libxcb xcb-util libidn ncursesw libtasn1 nss"
+DEPENDS="gtk+ gnutls libgcrypt libgpg-error \
+xorg-libXdamage libxml2 libxcb xcb-util libidn libtasn1 nss"
 BUILD_DEPENDS="gtk+-dev libgcrypt-dev gnutls-dev \
-startup-notification-dev libgpg-error-dev libxml2-dev libxcb-dev \
+libgpg-error-dev libxml2-dev libxcb-dev \
 libidn-dev libtasn1-dev intltool expat-dev nss-dev \
-ncursesw-dev xcb-util-dev"
+xcb-util-dev optipng"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.pidgin.im/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
@@ -19,6 +19,7 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 compile_rules()
 {
 	cd $src
+	find | grep .png | xargs optipng -o7
 	touch pidgin.desktop
 	MSGFMT=/usr/bin/msgfmt
 	./configure \
@@ -26,8 +27,10 @@ compile_rules()
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		--disable-perl \
+		--disable-consoleui \
 		--disable-screensaver \
 		--disable-gtkspell \
+		--disable-startup-notification \
 		--disable-gstreamer \
 		--disable-gstreamer-interfaces \
 		--disable-meanwhile \
@@ -40,8 +43,9 @@ compile_rules()
 		--disable-vv \
 		--disable-idn \
 		--disable-sm \
+		--enable-trayicon-compat \
 		$CONFIGURE_ARGS &&
-	make -j 4 &&
+	make $MAKEFLAGS &&
 	make DESTDIR=$PWD/_pkg install
 }
 
