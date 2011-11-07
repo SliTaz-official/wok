@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libwebkit"
-VERSION="1.7.1"
+VERSION="1.6.1"
 CATEGORY="network"
 SHORT_DESC="xHTML render library."
 MAINTAINER="mallory@sweetpeople.org"
@@ -25,16 +25,17 @@ gobject-introspection-dev tar gettext glib-networking-dev"
 compile_rules()
 {
 	cd $src
-	#patch -Np0 -i $stuff/introspection.patch &&
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
-		--enable-introspection=yes \
+		--enable-introspection=no \
 		--enable-video=no \
 		--enable-jit=yes \
-		--with-unicode-backend=glib &&
-	make -j1 && make -j1 DESTDIR=$DESTDIR install &&
+		--with-unicode-backend=glib \
+		--with-gtk=2.0 \
+		$CONFIGURE_ARGS &&
+	make all stamp-po && make -j1 DESTDIR=$DESTDIR install &&
 	cp -a $src/Programs/GtkLauncher $DESTDIR/usr/bin
 }
 
@@ -43,5 +44,5 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/bin
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/girepository-1.0 $fs/usr/lib
+	[ -d $_pkg/usr/lib/girepository-1.0 ] && cp -a $_pkg/usr/lib/girepository-1.0 $fs/usr/lib
 }
