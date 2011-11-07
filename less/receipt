@@ -1,0 +1,51 @@
+# SliTaz package receipt.
+
+PACKAGE="less"
+VERSION="444"
+CATEGORY="base-system"
+SHORT_DESC="A terminal based program for viewing text files"
+MAINTAINER="slaxemulator@gmail.com"
+WEB_SITE="http://www.greenwoodsoftware.com/less"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/$TARBALL"
+
+DEPENDS="ncurses pcre"
+BUILD_DEPENDS="ncurses-dev pcre-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		--with-regex=pcre \
+		$CONFIGURE_ARGS && 
+	make && make prefix=$DESTDIR/usr mandir=$DESTDIR/usr/share/man install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+}
+
+# Pre and post install commands for Tazpkg.
+# We must remove all Busybox symlink before installing.
+#
+pre_install()
+{
+	local root
+	root=$1
+	echo "Processing pre-install commands..."
+	echo -n "Removing all Busybox replaced utils... "
+	rm -f $root/usr/bin/less
+	status
+}
+
+post_remove()
+{
+	ln -s /bin/busybox $1/usr/bin/less
+}
