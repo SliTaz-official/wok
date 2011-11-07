@@ -1,36 +1,32 @@
 # SliTaz package receipt.
-#
 
 PACKAGE="upx"
 VERSION="3.07"
 CATEGORY="system-tools"
 SHORT_DESC="Ultimate Packer for eXecutables (free version using UCL compression)"
 MAINTAINER="devl547@gmail.com"
+WEB_SITE="http://upx.sourceforge.net/"
+TARBALL="$PACKAGE-$VERSION-src.tar.bz2"
+WGET_URL="http://upx.sourceforge.net/download/$TARBALL"
+PATCH="http://downloads.sourceforge.net/sevenzip/lzma465.tar.bz2"
+
 DEPENDS="ucl zlib"
 BUILD_DEPENDS="ucl-dev zlib-dev"
-TARBALL="$PACKAGE-$VERSION-src.tar.bz2"
-WEB_SITE="http://upx.sourceforge.net"
-WGET_URL="$WEB_SITE/download/$TARBALL"
-LZMA_TARBALL="lzma465.tar.bz2"
-LZMA_SOURCE="http://downloads.sourceforge.net/sevenzip/$LZMA_TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	wget $LZMA_SOURCE
-	tar -xjpf $LZMA_TARBALL
-	#./configure $CONFIGURE_ARGS &&
+	[ -s $SOURCES_REPOSITORY/$(basename $PATCH) ] ||
+		wget -P $SOURCES_REPOSITORY $PATCH
+	tar -xjpf $SOURCES_REPOSITORY/$(basename $PATCH)
 	CXXFLAGS="$CXXFLAGS -DWITH_ZLIB=1"
-	UPX_LZMADIR=$src make all $MAKEFLAGS
-	cd src
-	mv upx.out upx
+	cd $src
+	UPX_LZMADIR=$src make all
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $src/src/upx $fs/usr/bin/
+	cp -a $src/src/upx.out $fs/usr/bin/upx
 }
-
