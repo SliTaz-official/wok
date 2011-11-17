@@ -1,6 +1,8 @@
 #!/bin/sh -e
 : ${DIALOG=tazdialog}
 
+. /etc/slitaz/slitaz.conf
+
 ROOT="$1"
 
 if test $(id -u) != 0 ; then
@@ -9,10 +11,11 @@ if test $(id -u) != 0 ; then
 	exit 0
 fi
 
-if [ -d $ROOT/var/lib/tazpkg/installed/flash-plugin ]; then
+PACKAGE="flash-plugin"
+if [ -d ${ROOT}${INSTALLED}/$PACKAGE ]; then
   [ -n "$ROOT" ] && exit 1
-  tazpkg remove flash-plugin
-  [ -d /var/lib/tazpkg/installed/flash-plugin ] && exit 1
+  tazpkg remove $PACKAGE
+  [ -d $INSTALLED/$PACKAGE ] && exit 1
 fi
 WEB_SITE="http://www.adobe.com/products/flash/"
 URL="http://fpdownload.macromedia.com/get/flashplayer/current/"
@@ -63,20 +66,20 @@ VERSION="$(strings libflashplayer.so | grep ^LNX | sed -e 's/LNX //' -e 's/,/./g
 # Install files
 chmod 755 libflashplayer.so
 chown root.root libflashplayer.so
-dir=flash-plugin-$VERSION/fs/usr/share/flash
+dir=$PACKAGE-$VERSION/fs/usr/share/flash
 mkdir -p $dir
 mv libflashplayer.so $dir
 
 # Sanity Check: Reexport firefox libraries if they don't exist
-dir=flash-plugin-$VERSION/fs/usr/lib
+dir=$PACKAGE-$VERSION/fs/usr/lib
 mkdir -p $dir
-for i in /usr/lib/firefox*/*.so ; do
+for i in /usr/lib/firefox/*.so ; do
   	[ -f $i ] && [ -z "`ls /usr/lib/$(basename $i)`" ] && ln -s $i $dir	
 done
 
 # Create pseudo package
-cat > flash-plugin-$VERSION/receipt <<EOT
-PACKAGE="flash-plugin"
+cat > $PACKAGE-$VERSION/receipt <<EOT
+PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="Adobe Flash Player."
@@ -89,8 +92,8 @@ xorg-libXinerama xorg-libXrandr xorg-libXrender xorg-libXt zlib"
 post_install()
 {
 	echo -n "Processing post install commands..."
-	if [ -d \$1/var/lib/tazpkg/installed/firefox ] ; then
-		ln -s /usr/share/flash/libflashplayer.so \$1/usr/lib/firefox*/plugins
+	if [ -d \$1/$INSTALLED/firefox ] ; then
+		ln -s /usr/share/flash/libflashplayer.so \$1/usr/lib/firefox/plugins
 	fi	 
 	mkdir -p \$1/usr/lib/mozilla/plugins
 	ln -s /usr/share/flash/libflashplayer.so \$1/usr/lib/mozilla/plugins
@@ -100,8 +103,8 @@ post_install()
 post_remove()
 {
 	echo -n "Processing post remove commands..."
-	if [ -d /var/lib/tazpkg/installed/firefox ] ; then
-		rm -f /usr/lib/firefox*/plugins/libflashplayer.so
+	if [ -d $INSTALLED/firefox ] ; then
+		rm -f /usr/lib/firefox/plugins/libflashplayer.so
 	fi
 	rm -f /usr/lib/mozilla/plugins/libflashplayer.so
 	status
@@ -109,10 +112,10 @@ post_remove()
 EOT
 
 # Pack
-tazpkg pack flash-plugin-$VERSION
+tazpkg pack $PACKAGE-$VERSION
 
 # Install pseudo package
-tazpkg install flash-plugin-$VERSION.tazpkg --root=$ROOT
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
 cd ..
 
 # Clean
