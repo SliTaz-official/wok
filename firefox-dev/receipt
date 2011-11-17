@@ -1,11 +1,11 @@
 # SliTaz package receipt.
 
 PACKAGE="firefox-dev"
-VERSION="8.0"
+VERSION="8.0.1"
 CATEGORY="development"
 SHORT_DESC="firefox devel files"
 MAINTAINER="jozee@slitaz.org"
-DEPENDS="alsa-lib sqlite seamonkey cairo dbus-glib pango atk \
+DEPENDS="alsa-lib sqlite cairo dbus-glib pango atk \
 libgio xorg-libXt xorg-libXinerama \
 xorg-libXcursor xorg-libXcomposite xorg-libXext xorg-libXdamage libxcb \
 xorg-libSM xorg-libICE"
@@ -16,7 +16,7 @@ WEB_SITE="http://www.mozilla.org/"
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/pkgconfig
-	cp -a $_pkg/usr/lib/firefox-devel-$VERSION $fs/usr/lib
+	cp -a $_pkg/usr/lib/firefox-devel $fs/usr/lib
 	cp -a $_pkg/usr/include $fs/usr
 
 	# Gecko 1.9.0 compatibility...
@@ -29,17 +29,20 @@ genpkg_rules()
 	cp -a $stuff/*.pc $fs/usr/lib/pkgconfig
 
 	# copy missing xpidl files
-	cp -a $_pkg/typelib/xpidl/xpidl $fs/usr/lib/firefox-devel-$VERSION/sdk/lib
+	cp -a $_pkg/typelib/xpidl/xpidl $fs/usr/lib/firefox-devel/sdk/lib
+
+	# fix version
+	sed -i "s/3\.5\../$VERSION/" $fs/usr/lib/pkgconfig/*
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
 	for i in usr/share/idl/firefox- usr/include/firefox- \
-		 usr/lib/firefox-devel- ; do
-		for j in $(ls -d $1/$i*); do
+		usr/lib/firefox-devel- ; do
+		for j in $(ls -d $1/$i* 2>/dev/null); do
 			[ "${j##*-}" = "$VERSION" ] && continue
-			rm -rf $j
+			[ -d $j ] && rm -rf $j
 		done
 	done
 }

@@ -1,20 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="firefox"
-VERSION="8.0"
+VERSION="8.0.1"
 CATEGORY="network"
 SHORT_DESC="User friendly, secure and fast web browser."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.source.tar.bz2"
 WEB_SITE="http://www.mozilla.org/"
-WGET_URL="http://releases.mozilla.org/pub/mozilla.org/firefox/releases/$VERSION/source/$TARBALL"
+#WGET_URL="http://releases.mozilla.org/pub/mozilla.org/firefox/releases/$VERSION/source/$TARBALL"
+WGET_URL="ftp://ftp.mozilla.org/pub/mozilla.org/firefox/releases/$VERSION/source/$TARBALL"
 CONFIG_FILES="/etc/firefox"
 TAGS="browser"
 
 DEPENDS="gtk+ sqlite dbus dbus-glib glib jpeg xorg-libX11 xorg-libXdamage \
-alsa-lib xorg-libXt libfirefox libnotify"
-BUILD_DEPENDS="zip libIDL coreutils findutils libnotify-dev wireless_tools-dev \
-perl python yasm alsa-lib-dev mesa-dev"
+alsa-lib xorg-libXt libfirefox libevent libvpx"
+BUILD_DEPENDS="zip libIDL coreutils findutils wireless_tools-dev \
+perl python yasm alsa-lib-dev mesa-dev libevent-dev libvpx-dev dbus-dev dbus-glib-dev"
 
 # Rules to configure and make the package.
 #
@@ -25,9 +26,18 @@ compile_rules()
 {
 	cp -a $stuff/firefox.mozconfig $src/.mozconfig
 	cd $src
-	sed -i 's/xtype/type/' toolkit/mozapps/installer/packager.mk
+	patch -Np1 -i $stuff/mozilla-firefox-1.0-lang.patch
+	patch -Np1 -i $stuff/firefox-install-dir.patch
+
+	# Fix PRE_RELEASE_SUFFIX
+	sed -i '/^PRE_RELEASE_SUFFIX := ""/s/ ""//' \
+		browser/base/Makefile.in
+
+	# Don't generate startup cache. Unbreaks build
+	sed -i 's/^GENERATE_CACHE ?=.*/GENERATE_CACHE = true/' \
+		toolkit/mozapps/installer/packager.mk
 	./configure $CONFIGURE_ARGS &&
-	make $MAKEFLAGS &&
+	make -j 4 &&
 	make DESTDIR=$DESTDIR install &&
 	cp -a xpcom/typelib $DESTDIR
 }
@@ -35,51 +45,52 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/$PACKAGE-$VERSION/defaults/profile/chrome \
-		$fs/usr/share $fs/etc 
+	mkdir -p $fs/usr/lib/$PACKAGE \
+		$fs/usr/share $fs/etc/$PACKAGE/profile/chrome
 	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/$PACKAGE-$VERSION $fs/usr/lib
+	cp -a $_pkg/usr/lib/$PACKAGE $fs/usr/lib
 
 	# Home page, bookmarks file and branding.
-	cp -a $stuff/browserconfig.properties $fs/usr/lib/$PACKAGE-$VERSION
+	cp -a $stuff/browserconfig.properties $fs/etc/$PACKAGE
 	cp -a $stuff/bookmarks.html \
-		$fs/usr/lib/$PACKAGE-$VERSION/defaults/profile
+		$fs/etc/$PACKAGE/profile
+	mkdir -p $fs/etc/$PACKAGE/pref
 	cp -a $stuff/firefox-branding.js \
-		$fs/usr/lib/$PACKAGE-$VERSION/defaults/pref/firefox.js
+		$fs/etc/$PACKAGE/pref/firefox.js
 
 	# User preference.
-	cp -a $stuff/prefs.js $fs/usr/lib/$PACKAGE-$VERSION/defaults/profile
+	cp -a $stuff/prefs.js $fs/etc/$PACKAGE/profile
 	cp -a $stuff/userChrome.css \
-		$fs/usr/lib/$PACKAGE-$VERSION/defaults/profile/chrome
-
-	# Move default config to /etc/firefox (/usr maybe read-only)
-	for i in defaults browserconfig.properties ; do
-		mv -f $fs/usr/lib/$PACKAGE-$VERSION/$i $fs/etc/$PACKAGE
-	done
+		$fs/etc/$PACKAGE/profile/chrome
 
 	# added firefox-l10n.js to stuff to make sure its copyed for langpacks
 	cp -a $stuff/firefox-l10n.js \
-		$fs/etc/firefox/pref/firefox-l10n.js
+		$fs/etc/$PACKAGE/pref/firefox-l10n.js
 
-	ln -s /etc/$PACKAGE/browserconfig.properties $fs/usr/lib/$PACKAGE-$VERSION
-	ln -s /etc/$PACKAGE $fs/usr/lib/$PACKAGE-$VERSION/defaults
+	rm -rf $fs/usr/lib/$PACKAGE/defaults
+
+	ln -sf /etc/$PACKAGE/browserconfig.properties $fs/usr/lib/$PACKAGE
+	ln -sf /etc/$PACKAGE $fs/usr/lib/$PACKAGE/defaults
 
 	# EULA is accepted by SliTaz project.
 	sed -i s:'pref("browser.EULA.3.accepted", false);':'pref("browser.EULA.3.accepted", true);': \
 		$fs/etc/firefox/pref/firefox.js
 
 	# Search Plugin (by: oddball)
-	cp -a $stuff/searchplugins $fs/usr/lib/firefox-$VERSION/
+	cp -a $stuff/searchplugins $fs/usr/lib/firefox/
 	chown -R root.root $fs
 
 	# Remove unnecessary files.
-	rm -rf $fs/usr/lib/$PACKAGE-$VERSION/dictionaries/*
-	rm -rf $fs/usr/lib/$PACKAGE-$VERSION/icons
+	rm -rf $fs/usr/lib/$PACKAGE/dictionaries/*
+	rm -rf $fs/usr/lib/$PACKAGE/icons
 	# split firefox libs
-	rm -rf $fs/usr/lib/$PACKAGE-$VERSION/*.so
+	rm -rf $fs/usr/lib/$PACKAGE/*.so
 	#retain big firefox libs
-	cp $_pkg/usr/lib/$PACKAGE-$VERSION/libxul.so \
-		$fs/usr/lib/$PACKAGE-$VERSION
+	cp -a $_pkg/usr/lib/$PACKAGE/libxul.so \
+		$fs/usr/lib/$PACKAGE
+	#workaround for now
+	#https://bugzilla.mozilla.org/show_bug.cgi?id=658850
+	ln -sf firefox $fs/usr/lib/$PACKAGE/firefox-bin
 }
 
 # Pre - Post install command to set default locale.
@@ -89,10 +100,10 @@ pre_install()
 	root=$1
 	# Get old plugins
 	mkdir /tmp/firefox-plugins-$$
-	cp -a $root/usr/lib/firefox-*/plugins/* /tmp/firefox-plugins-$$ 2> /dev/null
+	cp -a $root/usr/lib/firefox/plugins/* /tmp/firefox-plugins-$$ 2> /dev/null
 	# Remove old libs and configs
-	rm -rf $root/usr/lib/firefox-*/plugins
-	rm -rf $root/usr/lib/firefox-*/dictionaries
+	rm -rf $root/usr/lib/firefox/plugins
+	rm -rf $root/usr/lib/firefox/dictionaries
 	rm -rf $root/etc/firefox
 }
 post_install()
@@ -105,8 +116,8 @@ post_install()
 	fi
 	for i in /tmp/firefox-plugins-$$/* ; do
 		[ -e $i ] || continue
-		[ -e /usr/lib/firefox-*/plugins/$(basename $i) ] && continue
-		cp -a $i /usr/lib/firefox-*/plugins/
+		[ -e /usr/lib/firefox/plugins/$(basename $i) ] && continue
+		cp -a $i /usr/lib/firefox/plugins/
 	done
 	rm -rf /tmp/firefox-plugins-$$
 }
