@@ -1,15 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="seamonkey"
-VERSION="2.0.14"
+VERSION="2.5"
 CATEGORY="network"
 SHORT_DESC="Seamonkey suite (browser, mail, news reader)."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.source.tar.bz2"
-DEPENDS="gtk+ glib jpeg xorg-libX11 libIDL alsa-lib xorg-libXt GConf curl"
-BUILD_DEPENDS="gtk+-dev zip libIDL coreutils xorg-libXft-dev perl alsa-lib alsa-lib-dev findutils python python-dev curl-dev"
+DEPENDS="gtk+ glib jpeg xorg-libX11 libIDL alsa-lib xorg-libXt curl libnotify libevent libvpx"
+BUILD_DEPENDS="gtk+-dev zip libIDL coreutils xorg-libXft-dev libevent-dev libvpx-dev \
+perl alsa-lib alsa-lib-dev findutils python python-dev wireless_tools-dev mesa-dev \
+yasm libnotify-dev curl-dev"
 WEB_SITE="http://www.seamonkey-project.org/"
-WGET_URL="http://releases.mozilla.org/pub/mozilla.org/seamonkey/releases/$VERSION/source/$TARBALL"
+WGET_URL="ftp://ftp.mozilla.org/pub/mozilla.org/seamonkey/releases/$VERSION/source/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -24,8 +26,9 @@ endif
 EOF
 	unset CFLAGS
 	unset CXXFLAGS
-
-	export LDFLAGS="-Wl,-rpath,/usr/lib/seamonkey-$VERSION"
+	patch -Np1 -i $stuff/seamonkey-2.0-lang.patch
+	patch -Np1 -i $stuff/seamonkey-install-dir.patch
+	export LDFLAGS="-Wl,-rpath,/usr/lib/seamonkey"
 	make -j1 -f client.mk build MOZ_MAKE_FLAGS="${MAKEFLAGS}"
 	make -j1 -f client.mk DESTDIR=$DESTDIR install
 }
@@ -35,21 +38,20 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/bin $fs/usr/lib $fs/etc
 	cp -a $_pkg/usr/bin/seamonkey $fs/usr/bin
-	cp -a $_pkg/usr/lib/seamonkey-* $fs/usr/lib
+	cp -a $_pkg/usr/lib/seamonkey $fs/usr/lib
 	# Home page, bookmarks file and branding.
 	cp -a $stuff/bookmarks.html \
-		$fs/usr/lib/$PACKAGE-$VERSION/defaults/profile
+		$fs/usr/lib/$PACKAGE/defaults/profile
 	# User preference.
 	cp -a $stuff/userChrome.css \
-		$fs/usr/lib/$PACKAGE-$VERSION/defaults/profile/chrome
+		$fs/usr/lib/$PACKAGE/defaults/profile/chrome
 	# Move default config to /etc/seamonkey (/usr maybe read-only)
-	mv -f $fs/usr/lib/$PACKAGE-$VERSION/defaults $fs/etc/$PACKAGE
-	ln -s /etc/$PACKAGE $fs/usr/lib/$PACKAGE-$VERSION/defaults
+	mv -f $fs/usr/lib/$PACKAGE/defaults $fs/etc/$PACKAGE
+	ln -sf /etc/$PACKAGE $fs/usr/lib/$PACKAGE/defaults
 	# Remove unecessary file and set permissions.
 	rm -rf $fs/etc/seamonkey/profile/US
 	chown -R root.root $fs/etc
 
 	# Create default user preference file
 	cp $stuff/prefs.js $fs/etc/seamonkey/profile/prefs.js
-	
 }
