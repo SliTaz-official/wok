@@ -1,32 +1,44 @@
 # SliTaz package receipt.
 
 PACKAGE="libpng"
-VERSION="1.2.44"
+VERSION="1.4.8"
 CATEGORY="x-window"
 SHORT_DESC="PNG images library."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 BUILD_DEPENDS="pkg-config"
 WEB_SITE="http://libpng.org/pub/png/libpng.html"
-WGET_URL="$SF_MIRROR/libpng/$TARBALL"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 DEPENDS="zlib"
+
+PATCH="$SF_MIRROR/libpng-apng/$PACKAGE-$VERSION-apng.patch.gz"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    ./configure \
-    	--enable-shared \
-    	--prefix=/usr \
-    	--mandir=/usr/share/man \
-    	$CONFIGURE_ARGS &&
-    make &&
-    make DESTDIR=$PWD/_pkg install
+	cd $src
+	wget $PATCH
+	# Add animated PNG (apng) support
+	# see http://sourceforge.net/projects/libpng-apng/
+	zcat $(basename $PATCH) | patch -p1
+	./configure \
+		--enable-shared \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+
+	cd contrib/pngminus
+	make PNGLIB="-L$DESTDIR/usr/lib -lpng" -f makefile.std png2pnm pnm2png
+	mkdir -p $DESTDIR/usr/bin
+	cp -a png2pnm pnm2png $DESTDIR/usr/bin
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-    cp -a $_pkg/usr/lib/libpng*.so* $fs/usr/lib
+	cp -a $_pkg/usr/lib/libpng*.so* $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
 }
