@@ -7,7 +7,7 @@ SHORT_DESC="Yellow pages server (v2)."
 MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.kernel.org/pub/linux/utils/net/NIS/"
-DEPENDS="gdbm"
+DEPENDS="gdbm portmap"
 BUILD_DEPENDS="gdbm-dev"
 WGET_URL="$WEB_SITE/$TARBALL"
 
@@ -25,9 +25,22 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr $fs/etc/init.d
 	cp -a $_pkg/usr/sbin $fs/usr
 	cp -a $_pkg/usr/lib $fs/usr
 	cp -a $_pkg/usr/include $fs/usr
 	cp -a $_pkg/var $fs
+	
+	# Copy config files
+	for  file in ypserv.conf timezone netmasks netgroup
+	do 
+		cp -a $src/etc/$fle $fs/
+	done
+	
+	# Copy initscript
+	cp $stuff/ypserv $fs/etc/init.d
+	
+	# Copy and fix security file
+	cp $src/etc/securenets $fs/var/yp
+	sed -i 's/^0.0.0.0/#0.0.0.0/' $fs/var/yp/securenets
 }
