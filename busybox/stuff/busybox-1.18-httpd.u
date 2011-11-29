@@ -1,17 +1,17 @@
 Add support for system passwords
 --- busybox-1.18.2/networking/httpd.c
 +++ busybox-1.18.2/networking/httpd.c
-@@ -53,6 +53,8 @@
+@@ -50,6 +50,8 @@
   * /cgi-bin:foo:bar  # Require user foo, pwd bar on urls starting with /cgi-bin/
   * /adm:admin:setup  # Require user admin, pwd setup on urls starting with /adm/
   * /adm:toor:PaSsWd  # or user toor, pwd PaSsWd on urls starting with /adm/
 + * /adm:root:*       # or user root, pwd from /etc/passwd on urls starting with /adm/
 + * /wiki:*:*         # or any user from /etc/passwd with according pwd on urls starting with /wiki/
   * .au:audio/basic   # additional mime type for audio.au files
-  * *.php:/path/php   # running cgi.php scripts through an interpreter
+  * *.php:/path/php   # run xxx.php through an interpreter
   *
-@@ -96,6 +98,14 @@
-  */
+@@ -94,6 +96,14 @@
+  /* TODO: use TCP_CORK, parse_config() */
  
  #include "libbb.h"
 +#if ENABLE_PAM
@@ -23,9 +23,9 @@ Add support for system passwords
 +# include <security/pam_misc.h>
 +#endif
  #if ENABLE_FEATURE_HTTPD_USE_SENDFILE
- #include <sys/sendfile.h>
+ # include <sys/sendfile.h>
  #endif
-@@ -1663,6 +1673,56 @@
+@@ -1700,6 +1710,56 @@
  }
  
  #if ENABLE_FEATURE_HTTPD_BASIC_AUTH
@@ -82,7 +82,7 @@ Add support for system passwords
  /*
   * Config file entries are of the form "/<path>:<user>:<passwd>".
   * If config file has no prefix match for path, access is allowed.
-@@ -1672,7 +1732,7 @@
+@@ -1709,7 +1769,7 @@
   *
   * Returns 1 if user_and_passwd is OK.
   */
@@ -91,7 +91,7 @@ Add support for system passwords
  {
  	Htaccess *cur;
  	const char *prev = NULL;
-@@ -1680,6 +1740,7 @@
+@@ -1717,6 +1777,7 @@
  	for (cur = g_auth; cur; cur = cur->next) {
  		const char *dir_prefix;
  		size_t len;
@@ -99,7 +99,7 @@ Add support for system passwords
  
  		dir_prefix = cur->before_colon;
  
-@@ -1704,36 +1765,96 @@
+@@ -1741,36 +1802,96 @@
  		prev = dir_prefix;
  
  		if (ENABLE_FEATURE_HTTPD_AUTH_MD5) {
