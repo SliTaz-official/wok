@@ -1,9 +1,10 @@
 #!/bin/sh -e
-: ${DIALOG=tazdialog}
 
-. /etc/slitaz/slitaz.conf
-
+PACKAGE="flash-plugin"
+WEB_SITE="http://www.adobe.com/products/flash/"
+SHORT_DESC="Adobe Flash Player."
 ROOT="$1"
+[ -d "$ROOT" ] || ROOT=""
 
 if test $(id -u) != 0 ; then
 	echo -e "\nYou must be root to run `basename $0`."
@@ -11,56 +12,37 @@ if test $(id -u) != 0 ; then
 	exit 0
 fi
 
-PACKAGE="flash-plugin"
 if [ -d ${ROOT}${INSTALLED}/$PACKAGE ]; then
   [ -n "$ROOT" ] && exit 1
   tazpkg remove $PACKAGE
   [ -d $INSTALLED/$PACKAGE ] && exit 1
 fi
-WEB_SITE="http://www.adobe.com/products/flash/"
-URL="http://fpdownload.macromedia.com/get/flashplayer/current/"
 
-# Download tarball
-VERSIONS=""; i=9; while true; do
-  if busybox wget -s ${URL}install_flash_player_${i}_linux.tar.gz 2> /dev/null; then
-    VERSIONS="$VERSIONS $i"
-    [ -n "$ROOT" ] && break
-  elif [ -n "$VERSIONS" ]; then
-    break
-  elif [ $i -gt 20 ]; then
-    exit 1
-  fi
-  i=$(($i + 1))
+URL=
+for i in $(seq 11 99); do
+	n="$(busybox wget -O - "http://get.adobe.com/fr/flashplayer/completion/?installer=Flash_Player_${i}_for_other_Linux_(.tar.gz)_32-bit" | \
+	     sed "/gz/!d;s/.* '//;s/'.*//")"
+	[ -n "$n" ] && URL="$n" && continue
+	break
 done
 
-value="$(echo $VERSIONS)"
-case "$VERSIONS" in
-*[0-9]\ [1-9]*)
-	exec 3>&1
-	value=`$DIALOG --clear --colors --title " Install Flash plugin " \
-		--menu  "Which version to install" 16 70 5 \
-		$(for i in $VERSIONS; do echo $i; echo "flash-$i"; done) \
-		2>&1 1>&3`
-	retval=$?
-	exec 3>&-
-	[ -n "$value" ] || exit 0
-	[ "$retval" = "1" ] && exit 0
-esac
-DIR=install_flash_player_${value}_linux
-TARBALL=$DIR.tar.gz
-[ -f $TARBALL ] || wget $URL$TARBALL
+if [ -z "$URL" ]; then
+	echo "Could not find url. Exiting."
+	exit 1
+fi
+
+TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+TARBALL="$(basename $URL)"
+busybox wget -O $TARBALL $URL
 if [ ! -f $TARBALL ]; then
 	echo "Could not download $TARBALL. Exiting."
 	exit 1
 fi
 
+tar xzf $TARBALL
 
-# Extract
-mkdir $DIR
-cd $DIR
-tar xzf ../$TARBALL
-
-[ -d $DIR ] && mv $DIR/* .
 VERSION="$(strings libflashplayer.so | grep ^LNX | sed -e 's/LNX //' -e 's/,/./g')"
 
 # Install files
@@ -82,7 +64,7 @@ cat > $PACKAGE-$VERSION/receipt <<EOT
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="non-free"
-SHORT_DESC="Adobe Flash Player."
+SHORT_DESC="$SHORT_DESC"
 WEB_SITE="$WEB_SITE"
 DEPENDS="libfirefox curl atk cairo expat fontconfig freetype glib gtk+ libpng \
 pango pixman xorg-libICE xorg-libSM xorg-libX11 xorg-libXau xorg-libXcomposite \
@@ -116,8 +98,10 @@ tazpkg pack $PACKAGE-$VERSION
 
 # Install pseudo package
 tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
-cd ..
+case " $@ " in
+*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
+esac
 
 # Clean
-rm -rf $DIR $TARBALL
-
+cd $CUR_DIR
+rm -rf $TMP_DIR
