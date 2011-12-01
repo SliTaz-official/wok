@@ -107,7 +107,7 @@ Add support for system passwords
 +			char *colon_after_user;
 +			const char *passwd;
 +# if ENABLE_FEATURE_SHADOWPASSWDS && !ENABLE_PAM
-+			char buffer[256];	/* will store passwd */
++			char sp_buf[256];
 +# endif
  
 -			md5_passwd = strchr(cur->after_colon, ':');
@@ -177,9 +177,9 @@ Add support for system passwords
 +					/* getspnam_r may return 0 yet set result to NULL.
 +					 * At least glibc 2.4 does this. Be extra paranoid here. */
 +					struct spwd *result = NULL;
-+					r = getspnam_r(pw->pw_name, &spw, buffer, sizeof(buffer), &result);
++					r = getspnam_r(pw->pw_name, &spw, sp_buf, sizeof(sp_buf), &result);
 +					if (r == 0 && result)
-+						passwd = result->sp_pwdp; /* note: passwd is located into buffer ! */
++						passwd = result->sp_pwdp;
 +				}
 +#  endif
 +# endif /* ENABLE_PAM */
@@ -210,9 +210,18 @@ Add support for system passwords
  		/* Comparing plaintext "user:pass" in one go */
 -		if (strcmp(cur->after_colon, user_and_passwd) == 0) {
 - set_remoteuser_var:
-+ end_check_passwd:
 +		r = strcmp(cur->after_colon, user_and_passwd);
++ end_check_passwd:
 +		if (r == 0) {
  			remoteuser = xstrndup(user_and_passwd,
  					strchrnul(user_and_passwd, ':') - user_and_passwd);
  			return 1; /* Ok */
+@@ -2112,7 +2233,7 @@
+ 	/* Case: no "Authorization:" was seen, but page does require passwd.
+ 	 * Check that with dummy user:pass */
+ 	if (authorized < 0)
+-		authorized = check_user_passwd(urlcopy, ":");
++		authorized = check_user_passwd(urlcopy, (char *) "");
+ 	if (!authorized)
+ 		send_headers_and_exit(HTTP_UNAUTHORIZED);
+ #endif
