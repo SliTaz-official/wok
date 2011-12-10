@@ -5,20 +5,22 @@ VERSION="0.3.3"
 CATEGORY="games"
 SHORT_DESC="SuperTux is a classic 2D jump'n run sidescroller game in a style similar to the original SuperMario games."
 MAINTAINER="mallory@skyrock.com"
-DEPENDS="libsdl libsdl-image libsdl-mixer curl physfs openal mesa glew"
+DEPENDS="libsdl libsdl-image libsdl-mixer curl physfs openal mesa glew supertux-data"
 SUGGESTED="nvidia"
 BUILD_DEPENDS="libsdl-dev libsdl-image-dev libsdl-mixer-dev curl-dev physfs-dev openal-dev mesa-dev glew-dev cmake libboost-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://supertux.lethargik.org/"
-WGET_URL="http://download.berlios.de/supertux/$TARBALL"
+WGET_URL="http://supertux.googlecode.com/files/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	cp $stuff/menu.h src
+	sed -i 's|#  include <curl/types.h>||g' src/addon/addon_manager.cpp
+	sed -i '1i#include <cstddef>' src/supertux/screen_manager.hpp
 	cmake -D CMAKE_INSTALL_PREFIX=/usr -D INSTALL_SUBDIR_BIN=bin .
-	make && make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -26,7 +28,5 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr
 	cp -a $_pkg/usr/bin $fs/usr
-	echo Copying data...
-	cp -a $_pkg/usr/share $fs/usr
 }
 
