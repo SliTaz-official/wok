@@ -8,8 +8,9 @@ MAINTAINER="pankso@slitaz.org"
 WEB_SITE="http://www.slitaz.org/"
 
 # Bdeps ensure packages are built so we can get generated po files.
-BUILD_DEPENDS="asunder alsaplayer epdfview galculator viewnior gparted \
-glib gtk+ leafpad lxpanel lxtask obconf openbox pcmanfm"
+BUILD_DEPENDS="asunder alsaplayer epdfview galculator viewnior gparted nano \
+glib gtk+ leafpad lxpanel lxtask obconf openbox pcmanfm midori mtpaint \
+mhwaveedit lostirc"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -18,7 +19,13 @@ genpkg_rules()
 	. $stuff/locale-pack.conf
 	for p in $CORE_PKGS
 	do
-		[ ! -d "$WOK/$p/install" ] && echo "Missing in wok: $p"
+		if [ ! -d "$WOK/$p/install" ]; then
+			if [ -x /usr/bin/cook ]; then
+				cook $p
+			else
+				tazwok cook $p
+			fi
+		fi
 	done
 	# Cook all locale pack.
 	for i in $LOCALE_PACK
