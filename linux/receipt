@@ -13,8 +13,6 @@ CONFIG_FILES="/lib/modules/$VERSION-slitaz/modules.dep"
 DEPENDS="depmod"
 BUILD_DEPENDS="slitaz-toolchain perl git lzma patch"
 
-# FIXME: tazwok specific code in functions
-
 # Rules to configure and make the package.
 compile_rules()
 {
@@ -25,27 +23,24 @@ compile_rules()
 	#	sed -i 's|VERSION="OLDVERSION"|VERSION="NEWVERSION"|g' $i
 	#done
 
-	# FIXME: tazwok specific code
-	#report open-bloc
+	[ ! -x /usr/bin/cook ] && report open-bloc
 
 	# Check for Aufs and cook it if unbuilt.
 	echo "Checking for Aufs packages..."
 	_AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	AUFSDIR=$WOK/aufs/aufs-${_AUFSVER}
-	[ -d "$AUFSDIR" ] || AUFSDIR=$WOK/aufs/source/aufs-${_AUFSVER}
-	if [ ! -d "$AUFSDIR" ]; then
-		if [ -x /usr/bin/cook ]; then
-			# Give info an redirect to /dev/null since aufs got it own log.
-			echo "Cook: aufs $_AUFSVER"
-			cook aufs > /dev/null
-		else [ -x /usr/bin/tazwok ]
-			tazwok cook aufs
-		fi
+	if [ ! -d "$AUFSDIR" ] && [ -x /usr/bin/cook ]; then
+		# Give info an redirect to /dev/null since aufs got it own log.
+		AUFSDIR=$WOK/aufs/source/aufs-${_AUFSVER}
+		echo "Cook: aufs $_AUFSVER"
+		cook aufs > /dev/null
+	elif [ ! -x /usr/bin/cook ]; then
+		# We only need aufs source. Also cooking now is a bad idea since it
+		# needs linux-module-headers.
+		AUFSDIR=$WOK/aufs/aufs-${_AUFSVER}
+		[ -d "$AUFSDIR" ] && rm -rf $AUFSDIR
+		tazwok get-src aufs --target=$AUFSDIR || { report close-bloc; return 1; }
 	fi
 	
-	# FIXME: tazwok specific code (if aufs is cooked you dont need to get-src)
-	#tazwok get-src aufs --target=$AUFSDIR || { report close-bloc; return 1; }
-
 	echo "Copying Aufs files and patches..."
 	cp -a $AUFSDIR/Documentation $AUFSDIR/fs $AUFSDIR/include $src
 	cp -a $AUFSDIR/*.patch $stuff
@@ -82,16 +77,14 @@ aufs2-standalone.patch
 005-squashfs-add-xz-compression-configuration-option.patch
 EOT
 
-	# FIXME: tazwok specific code
-	#report step "Make kernel proper and then build lguest"
+	[ ! -x /usr/bin/cook ] && report step "Make kernel proper and then build lguest"
 	
 	make mrproper
 	cd Documentation/lguest
-	make lguest || { report close-bloc; return 1; }
+	make $MAKEFLAGS lguest || { report close-bloc; return 1; }
 	cd $src
 
-	# FIXME: tazwok specific code
-	#report step "Make bzImage without modules first"
+	[ ! -x /usr/bin/cook ] && report step "Make bzImage without modules first"
 
 	# Build bzImage without modules first
 	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
@@ -102,36 +95,35 @@ EOT
 	       -e 's/^CONFIG_R8187SE/#&/' \
 	       -e 's/^CONFIG_RT2870/#&/' .config
 	yes '' | make oldconfig
-	make -j 4 bzImage || { report close-bloc; return 1; }
+	make $MAKEFLAGS bzImage || { report close-bloc; return 1; }
 	[ -d $PWD/_pkg ] || mkdir -p $PWD/_pkg
 	mv arch/x86/boot/bzImage $PWD/_pkg
 	mv System.map System.map-without-modules
 
-	# FIXME: tazwok specific code
-	#report step "Now build bzImage with modules"
+	[ -x /usr/bin/cook ] && report step "Now build bzImage with modules"
 	
 	# Build bzImage with modules
 	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
 	make oldconfig
 	ln .config $WOK/$PACKAGE/slitaz/config
-	make -j 4 bzImage &&
-	make -j 4 modules &&
+	make $MAKEFLAGS bzImage &&
+	make $MAKEFLAGS modules &&
 	make INSTALL_MOD_PATH=$PWD/_pkg modules_install &&
 	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install &&
 	[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
 	mkdir -p $PWD/_pkg/boot 2> /dev/null
 	mv arch/x86/boot/bzImage $PWD/_pkg/boot/vmlinuz-$VERSION-slitaz
 	
-	# FIXME: tazwok specific code
-	#report step "Compressing all modules"
+	[ ! -x /usr/bin/cook ] && report step "Compressing all modules"
 	
 	# Compress all modules.
 	$stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
 	ln System.map System.map-modules
 	ln Module.symvers Module.symvers-modules
 	
-	# FIXME: tazwok specific code
-	#report close-bloc
+	if [ ! -x /usr/bin/cook ]; then
+		report close-bloc
+	fi
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -159,11 +151,6 @@ genpkg_rules()
     # Remove unresolved links
     rm -f $fs/lib/modules/$VERSION-slitaz/build
     rm -f $fs/lib/modules/$VERSION-slitaz/source
-    # Cook all packages with a kernel module
-    for i in $(cd $WOK; grep -l 'tazwok cook linux$' */receipt)
-    do
-    	echo tazwok cook ${i%/receipt}
-    done
     # Check and echo any module in kernel .config that's not added to 
     # one of linux-* pkgs
 	$stuff/check_modules.sh 
