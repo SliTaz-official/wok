@@ -24,20 +24,20 @@ compile_rules()
 	#do
 	#	sed -i 's|VERSION="OLDVERSION"|VERSION="NEWVERSION"|g' $i
 	#done
-	[ -x /usr/bin/tazwok -a ! -x /usr/bin/cook ] && report open-bloc
+
+	[ ! -x /usr/bin/cook ] && report open-bloc
 
 	# Check for Aufs and cook it if unbuilt.
 	echo "Checking for Aufs packages..."
 	_AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	if [ -x /usr/bin/cook ]; then
+	if [ ! -d "$AUFSDIR" ] && [ -x /usr/bin/cook ]; then
 		# Give info an redirect to /dev/null since aufs got it own log.
 		AUFSDIR=$WOK/aufs/source/aufs-${_AUFSVER}
-		[ -d "$AUFSDIR" ] && rm -rf $AUFSDIR
 		echo "Cook: aufs $_AUFSVER"
 		cook aufs > /dev/null
-	elif [ -x /usr/bin/tazwok ]; then
-		# we just need aufs source. Also cooking now is a bad idea since it
-		# needs linux-module-headers. The one your cooking not the one from the web.
+	elif [ ! -x /usr/bin/cook ]; then
+		# We only need aufs source. Also cooking now is a bad idea since it
+		# needs linux-module-headers.
 		AUFSDIR=$WOK/aufs/aufs-${_AUFSVER}
 		[ -d "$AUFSDIR" ] && rm -rf $AUFSDIR
 		tazwok get-src aufs --target=$AUFSDIR || { report close-bloc; return 1; }
@@ -46,16 +46,15 @@ compile_rules()
 	echo "Copying Aufs files and patches..."
 	cp -a $AUFSDIR/Documentation $AUFSDIR/fs $AUFSDIR/include $src
 	cp -a $AUFSDIR/*.patch $stuff
-
+	
 	# SliTaz db
-	[ -d $WOK/$PACKAGE/slitaz ] && rm -rf $WOK/$PACKAGE/slitaz 2> /dev/null
-	mkdir $WOK/$PACKAGE/slitaz
+	rm -rf $WOK/$PACKAGE/slitaz && mkdir $WOK/$PACKAGE/slitaz
 	echo "$WGET_URL" > $WOK/$PACKAGE/slitaz/url
 	cp $stuff/gztazmod.sh $stuff/list_modules.sh $WOK/$PACKAGE/slitaz
 	cp $stuff/bootloader.sh $WOK/$PACKAGE/slitaz
 	
 	# Apply patches
-	echo "Applying patches"
+	echo "Applying patches..."
 	while read patch_file; do
 		echo "$patch_file" >> $WOK/$PACKAGE/slitaz/patches
 		cp $stuff/$patch_file $WOK/$PACKAGE/slitaz
@@ -64,11 +63,7 @@ compile_rules()
 			continue
 		fi
 		echo "Apply $patch_file"
-		if [ -x /usr/bin/cook ]; then
-			patch -p1 < $WOK/$PACKAGE/slitaz/$patch_file || return 1
-		elif [ -x /usr/bin/tazwok ]; then
-			patch -p1 < $WOK/$PACKAGE/slitaz/$patch_file || { report close-bloc; return 1; }
-		fi
+		patch -p1 < $WOK/$PACKAGE/slitaz/$patch_file || { report close-bloc; return 1; }
 		touch done.$patch_file
 	done <<EOT
 $PACKAGE-diff-$VERSION.u
@@ -83,19 +78,16 @@ aufs2-standalone.patch
 004-squashfs-add-xz-compression-support.patch
 005-squashfs-add-xz-compression-configuration-option.patch
 EOT
-	[ -x /usr/bin/tazwok -a ! -x /usr/bin/cook ] && report step "Make kernel proper and then build lguest"
+
+	[ ! -x /usr/bin/cook ] && report step "Make kernel proper and then build lguest"
 	
 	make mrproper
 	cd Documentation/lguest
-	if [ -x /usr/bin/cook ]; then
-		make lguest || return 1
-	elif [ -x /usr/bin/tazwok ]; then
-		make lguest || { report close-bloc; return 1; }
-	fi
+	make $MAKEFLAGS lguest || { report close-bloc; return 1; }
 	cd $src
 
-	[ -x /usr/bin/tazwok -a ! -x /usr/bin/cook ] && report step "Make bzImage without modules first"
-	
+	[ ! -x /usr/bin/cook ] && report step "Make bzImage without modules first"
+
 	# Build bzImage without modules first
 	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
 	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
@@ -105,31 +97,35 @@ EOT
 	       -e 's/^CONFIG_R8187SE/#&/' \
 	       -e 's/^CONFIG_RT2870/#&/' .config
 	yes '' | make oldconfig
-	make -j 4 bzImage || { report close-bloc; return 1; }
-	[ -d $DESTDIR ] || mkdir -p $DESTDIR
-	mv arch/x86/boot/bzImage $DESTDIR
+	make $MAKEFLAGS bzImage || { report close-bloc; return 1; }
+	[ -d $PWD/_pkg ] || mkdir -p $PWD/_pkg
+	mv arch/x86/boot/bzImage $PWD/_pkg
 	mv System.map System.map-without-modules
 
-	[ -x /usr/bin/tazwok -a ! -x /usr/bin/cook ] && report step "Now build bzImage with modules"
+	[ -x /usr/bin/cook ] && report step "Now build bzImage with modules"
 	
 	# Build bzImage with modules
 	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
 	make oldconfig
 	ln .config $WOK/$PACKAGE/slitaz/config
-	make -j 4 bzImage &&
-	make -j 4 modules &&
-	make INSTALL_MOD_PATH=$DESTDIR modules_install &&
-	make INSTALL_HDR_PATH=$DESTDIR/usr headers_install &&
-	#[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
-	mkdir -p $DESTDIR/boot 2> /dev/null
-	mv arch/x86/boot/bzImage $DESTDIR/boot/vmlinuz-$VERSION-slitaz
-
+	make $MAKEFLAGS bzImage &&
+	make $MAKEFLAGS modules &&
+	make INSTALL_MOD_PATH=$PWD/_pkg modules_install &&
+	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install &&
+	[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
+	mkdir -p $PWD/_pkg/boot 2> /dev/null
+	mv arch/x86/boot/bzImage $PWD/_pkg/boot/vmlinuz-$VERSION-slitaz
+	
+	[ ! -x /usr/bin/cook ] && report step "Compressing all modules"
+	
 	# Compress all modules.
-	echo "Compressing all modules"
-	$stuff/gztazmod.sh $DESTDIR/lib/modules/$VERSION-slitaz
+	$stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
 	ln System.map System.map-modules
 	ln Module.symvers Module.symvers-modules
-	[ -x /usr/bin/tazwok -a ! -x /usr/bin/cook ] && report close-bloc
+	
+	if [ ! -x /usr/bin/cook ]; then
+		report close-bloc
+	fi
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -138,7 +134,7 @@ genpkg_rules()
     local path
     cp -a $_pkg/boot $fs
     # Compress all modules.
-    $stuff/gztazmod.sh $_pkg/lib/modules/$VERSION-slitaz
+    #$stuff/gztazmod.sh $_pkg/lib/modules/$VERSION-slitaz
     path=$fs/lib/modules/$VERSION-slitaz/kernel
     mkdir -p $path
     cp -a $_pkg/lib/modules/$VERSION-slitaz/mo* \
@@ -148,7 +144,7 @@ genpkg_rules()
     export _pkg
     mkdir $WOK/$PACKAGE/tmp
     $stuff/list_modules.sh \
-	$(cat $stuff/modules-$VERSION.list) > $WOK/$PACKAGE/tmp/modules.list
+	$(cat stuff/modules-$VERSION.list) > $WOK/$PACKAGE/tmp/modules.list
     while read module; do
     	dir=$(dirname $module)
     	[ -d $path/$dir ] || mkdir -p $path/$dir
@@ -157,7 +153,6 @@ genpkg_rules()
     # Remove unresolved links
     rm -f $fs/lib/modules/$VERSION-slitaz/build
     rm -f $fs/lib/modules/$VERSION-slitaz/source
-
     # Check and echo any module in kernel .config that's not added to 
     # one of linux-* pkgs
 	$stuff/check_modules.sh 

@@ -6,6 +6,10 @@ SOURCES_REPOSITORY=$SLITAZ_DIR/$SLITAZ_VERSION/src
 VERSION=XXX
 
 url=$(cat /usr/src/kernel-patches/slitaz/url)
+for i in http://linux-kernel.uio.no/pub http://www.gtlib.gatech.edu/pub/kernel.org http://www.kernel.org/pub ; do
+	busybox wget -s $url && break
+	url=$(echo $url | sed "s|.*/linux/kernel|$i/linux/kernel|")
+done
 
 if [ ! -d $SOURCES_REPOSITORY ]; then
 	mkdir -p $SOURCES_REPOSITORY
@@ -40,6 +44,8 @@ while read patch_file; do
 done < slitaz/patches
 [ ! -f System.map ] && cp slitaz/config .config &&
 make oldconfig && make modules_prepare
+ln -s /usr/src/linux-$VERSION /lib/modules/$VERSION-slitaz/build
+ln -s linux-$VERSION /usr/src/linux
 
 	cat <<EOT
 ----
