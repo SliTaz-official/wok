@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="barnyard2"
+VERSION="1.9"
+CATEGORY="system"
+SHORT_DESC="Output spool reader for Snort"
+MAINTAINER="erjo@slitaz.org"
+WEB_SITE="http://www.securixlive.com/barnyard2/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://www.securixlive.com/download/barnyard2/$TARBALL"
+
+DEPENDS="libpcap"
+BUILD_DEPENDS="libpcap-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --sysconfdir=/etc/barnyard2 $CONFIGURE_ARGS && make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	
+	cp -a $install/* $fs
+	
+	mkdir -p /var/log/barnyard2
+}
+
+# Post install commands
+post_install()
+{
+        echo "Processing post install commands..."
+
+        # addgroup snort if needed
+    if ! grep -q 'snort:' $1/etc/group; then
+        echo -n "Adding group Snort..."
+        chroot $1/ /bin/addgroup snort
+        status
+    fi
+    # adduser snort if needed
+    if ! grep -q 'snort:' $1/etc/passwd; then
+        echo -n "Adding user Snort..."
+        chroot $1/ /bin/adduser -s /bin/false -h /dev/null \
+            -g "Snort Daemon user" -H -D -S -G snort snort
+        status
+    fi
+
+        chroot $1/ chown snort.snort /var/log/barnyard2
+}
+
