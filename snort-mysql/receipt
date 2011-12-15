@@ -1,0 +1,97 @@
+# SliTaz package receipt.
+
+PACKAGE="snort-mysql"
+VERSION="2.9.1.2"
+CATEGORY="network"
+SHORT_DESC="Network intrusion prevention and detection system (IDS/IPS) with MySQL support."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.snort.org/"
+WGET_URL="http://www.snort.org/downloads/1207"
+DEPENDS="pcre libdnet libdaq libmysqlclient"
+BUILD_DEPENDS="pcre-dev libpcap-dev libdaq-dev libdnet-dev wget zlib-dev mysql-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr \
+		--with-mysql \
+		--enable-dynamicplugin \
+		--enable-perfprofiling \
+		--enable-zlib \
+		--enable-reload \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib \
+		$fs/etc/snort/rules \
+		$fs/usr/share/snort/schemas \
+		$fs/var/log/snort 
+		
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/snort_dynamic* $fs/usr/lib
+	
+	cp -a $src/etc/*.conf* $fs/etc/snort
+	cp -a $src/etc/*.map $fs/etc/snort
+	cp -a $src/schemas/create_mysql  $fs/usr/share/snort/schemas
+	
+	# Remove unwanted files
+	rm -f $fs/usr/lib/*/*.*a
+}
+
+
+# Post install commands
+post_install()
+{
+	local db_name=snort
+	local db_pass=snort
+	local db_schema=/usr/share/snort/create_mysql
+
+	echo "Processing post install commands..."
+
+	# addgroup snort if needed
+    if ! grep -q snort $1/etc/group; then
+        echo -n "Adding group Snort..."
+        chroot $1/ /bin/addgroup snort
+        status
+    fi
+    # adduser snort if needed
+    if ! grep -q 'snort:' $1/etc/passwd; then
+        echo -n "Adding user Snort..."
+        chroot $1/ /bin/adduser -s /bin/false -h /dev/null \
+            -g "Snort Daemon user" -H -D -S -G snort snort
+        status
+    fi
+	chroot $1/ chown snort.snort /var/log/snort 
+
+	# Create database
+        if [ -z $1 ]; then
+                if ( ! mysqladmin -s ping > /dev/null ); then
+                        echo "Starting MySQL server"
+                        ( /etc/init.d/mysql start ; status  ) || exit
+                        sleep 4 #let the mysql daemon start
+                fi
+                if ( ! mysql -u root -Be 'show databases' | grep -q $db_name ); then
+                        echo -n "Create $db_name database"
+                        mysql -Be "create database $db_name" ; 
+                        # We suppose that user does not exist.
+                        # It may be false.
+                        echo  -n "Create user $db_user with password $db_pass"
+                        mysql -Be "grant all privileges on glpi.* to $db_user@'localhost'
+                                identified by '$db_pass'" ; status
+                        # At last create the database for package
+                        echo -n "Create $db_name database schema."
+                        mysql -u $db_user -p${db_pass} $db_name < $db_schema ; status
+
+                fi
+
+        fi
+
+	
+}
