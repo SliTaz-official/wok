@@ -14,17 +14,24 @@ PROVIDE="busybox:pam"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/bin
-    cp -a $src/busybox-pam $fs/bin/busybox
-    cp -a $stuff/* $fs
+	mkdir -p $fs/bin
+	cp -a $src/busybox-pam $fs/bin/busybox
+	cp -a $stuff/* $fs
 }
 
 pre_remove()
 {
-    tazpkg get-install  ${PACKAGE%-pam}
+	# We install non-pam busybox to replace busybox-pam.
+	tazpkg get-install ${PACKAGE%-pam} --forced
+
+	# We remove /bin/busybox from the file.list of busybox-pam.
+	# This way, the non-pam busybox we just installed will not be
+	# removed.
+	sed '/\/bin\/busybox/d' \
+		-i /var/lib/tazpkg/installed/busybox-pam/files.list
 }
 
 post_install()
 {
-    chmod 4755 $1/bin/busybox
+	chmod 4755 $1/bin/busybox
 }
