@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="suricata"
+VERSION="1.1.1"
+CATEGORY="security"
+SHORT_DESC="Next Generation Intrusion Detection and Prevention Engine."
+MAINTAINER="erjo@slitaz.org"
+WEB_SITE="http://www.openinfosecfoundation.org/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://www.openinfosecfoundation.org/download/$TARBALL"
+
+DEPENDS="libhtp libcap-ng libpcap libnfnetlink libnetfilter_queue yaml "
+BUILD_DEPENDS="zlib-dev yaml-dev libnet-dev libpcap-dev libcap-ng-dev
+ libnfnetlink-dev libnetfilter_queue-dev libhtp-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	rm -f config.h
+	./configure $CONFIGURE_ARGS \
+		--enable-non-bundled-htp \
+		--enable-nfqueue \
+		--enable-af-packet \
+	&& make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin  $fs/usr
+}
