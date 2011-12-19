@@ -17,6 +17,15 @@ BUILD_DEPENDS="pkg-config glib glib-dev gtk+-dev"
 compile_rules()
 {
 	cd $src
+
+	# Don't use deprecated G_CONST_RETURN. Fixes building with newer glib versions.
+	# (gamin v0.1.10)
+	cd server
+	sed 's/^G_CONST_RETURN/const/'\
+		-i gam_node.c gam_node.h gam_subscription.c gam_subscription.h \
+		|| return 1
+	cd ..
+
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
