@@ -1,0 +1,57 @@
+# SliTaz package receipt.
+
+PACKAGE="gtklp"
+VERSION="1.2.8"
+CATEGORY="utilities"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="Tools to use and administrate CUPS"
+BUILD_DEPENDS=" gtk+-dev autoconf automake"
+WEB_SITE="http://gtklp.sourceforge.net/"
+TARBALL="$PACKAGE-$VERSION.src.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+TAGS=""
+
+DEPENDS="cups gtk+"
+BUILD_DEPENDS="cups-dev gtk+-dev"
+
+# Rules to configure and make the package.
+
+compile_rules() {
+  cd $src
+  chmod +x autogen.sh 
+  ./autogen.sh 
+  ./configure --prefix=/usr &&
+  make &&
+  make DESTDIR=$DESTDIR install || return
+  mkdir -p $DESTDIR/usr/share/applications
+  cat > $DESTDIR/usr/share/applications/gtklp.desktop <<EOT
+[Desktop Entry]
+Name=Printer Administration
+Comment=$SHORT_DESC
+Categories=Application;System;
+Icon=printer
+Exec=gtklp
+Type=Application
+StartupNotify=true
+Terminal=false
+EOT
+  cat > $DESTDIR/usr/share/applications/gtklpq.desktop <<EOT
+[Desktop Entry]
+Name=Printer Queue
+Comment=$SHORT_DESC
+Categories=Application;Utility;
+Icon=printer
+Exec=gtklpq
+Type=Application
+StartupNotify=true
+Terminal=false
+EOT
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/applications $fs/usr/share/
+}
