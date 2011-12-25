@@ -1,0 +1,65 @@
+#!/bin/sh -e
+
+PACKAGE="nz"
+WGET_URL="http://nanozip.net/"
+SHORT_DESC="Experimental file archiver"
+ROOT="$1"
+[ -d "$ROOT" ] || ROOT=""
+
+if test $(id -u) != 0 ; then
+        echo -e "\nYou must be root to run `basename $0`."
+        echo -e "Please type 'su' and root password to become super-user.\n"
+        exit 0
+fi
+
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+	[ -n "$ROOT" ] && exit 1
+	tazpkg remove $PACKAGE
+	[ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
+fi
+
+TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+
+VERSION="$(wget -O - http://nanozip.net/download.html | sed 's/>/>\n/g' | \
+           sed '/linux32/!d;s/.*href=nanozip-\(.*\).linux32.*/\1/;q')"
+TARBALL="nanozip-$VERSION.linux32.zip"
+wget ${WGET_URL}$TARBALL
+
+if [ ! -f $TARBALL ]; then
+	cd $CUR_DIR
+	rm -rf $TMP_DIR
+	echo "Could not download $TARBALL from $WGET_URL. Exiting."
+	exit 1
+fi
+
+unzip $TARBALL nz
+mkdir -p $PACKAGE-$VERSION/fs/usr/bin
+chmod +x nz
+mv nz $PACKAGE-$VERSION/fs/usr/bin
+
+cat > $PACKAGE-$VERSION/receipt <<EOT
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="non-free"
+SHORT_DESC="$SHORT_DESC"
+WEB_SITE="$WEB_SITE"
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Clean to save RAM memory
+rm -rf $PACKAGE-$VERSION
+
+# Install pseudo package
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+case " $@ " in
+*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
+esac
+
+# Clean
+cd $CUR_DIR
+rm -rf $TMP_DIR
+
