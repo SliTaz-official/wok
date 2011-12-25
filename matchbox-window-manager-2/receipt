@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="matchbox-window-manager-2"
+VERSION="2106"
+CATEGORY="x-window"
+SHORT_DESC="Matchbox Window Manager v2."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://matchbox-project.org/"
+WGET_URL="svn|http://svn.o-hand.com/repos/matchbox/trunk/$PACKAGE"
+BRANCH="$VERSION"
+
+DEPENDS="gtk+"
+BUILD_DEPENDS="gtk+-dev subversion"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./autogen.sh \
+		--enable-png-theme \
+		--enable-composite-manager=xrender \
+		--enable-matchbox-remote \
+		--with-pango \
+		--with-gtk \
+		$CONFIGURE_ARGS &&
+	# Fix Makefile identation.
+	sed -i s'/        /	/' Makefile &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share $fs/usr
+}
