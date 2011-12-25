@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="hardware-thinkpad-600e"
+VERSION="1.0"
+CATEGORY="meta"
+MAINTAINER="devel@slitaz.org"
+SHORT_DESC="ThinkPad 600e (PII pcmcia laptop) hardware support"
+WEB_SITE="http://www.slitaz.org/"
+
+DEPENDS="linux-acpi linux-mwave tp_smapi linux-sound xorg-xf86-video-neomagic"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/etc
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	for i in thinkpad_acpi snd_cs46xx yenta_socket ; do
+		grep -q $i $1/etc/rcS.conf ||
+		sed -i "s/LOAD_MODULES=\"/&$i /" $i $1/etc/rcS.conf
+		[ -n "$1" ] || modprobe $i
+	done
+	# FIXME update /etc/modprobe.d/ ?
+	# modprobe snd-cs4236 index=0 port=0x530 cport=0x538 irq=5 dma1=1 dma2=0 isapnp=0
+	# modprobe snd-cs4232 port=0x530 cport=0x120 irq=5 dma1=1 dma2=0 isapnp=0
+	
+	# Video: remove 24bits (use 1024x768x16), neomagic driver
+	sed -i 's/vesa/neomagic/;/Display/{NNN/24$/d}' $1/etc/X11/xorg.conf
+	sed -i '/Display/{NNNN/24$/d}' $1/etc/X11/xorg.conf.d/70-Screen.conf
+	sed -i 's/vesa/neomagic/'  $1/etc/X11/xorg.conf.d/60-Device.conf
+	cat <<EOT
+Please turn off quickboot in the bios to activate sound card...
+EOT
+}
