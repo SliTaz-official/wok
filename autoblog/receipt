@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="autoblog"
+VERSIONV1="0.1.31"
+VERSIONV2="2.5.22"	# need php 5.3
+VERSION="$VERSIONV1"
+CATEGORY="network"
+SHORT_DESC="replicates articles from another blog."
+MAINTAINER="pascal.bellard@slitaz.org"
+_TARBALL="$PACKAGE-$VERSION.php"
+URLV1="http://sebsauvage.net/streisand.me/download.php"
+URLV2="http://autoblog.kd2.org/source.txt"
+URL="$URLV1"
+WEB_SITE="http://sebsauvage.net/streisand.me/"
+
+DEPENDS="php"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -s "$SOURCES_REPOSITORY/$_TARBALL" ] ||
+		wget -O "$SOURCES_REPOSITORY/$_TARBALL" $URL
+	[ -s "$SOURCES_REPOSITORY/vvb.ini" ] ||
+		wget -O "$SOURCES_REPOSITORY/vvb.ini" \
+			http://sebsauvage.net/streisand.me/sebsauvage/vvb.ini
+	mkdir -p $src 2> /dev/null
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.   
+genpkg_rules()                                      
+{
+	mkdir -p $fs/var/www/$PACKAGE
+	cp $SOURCES_REPOSITORY/$_TARBALL $fs/var/www/$PACKAGE/index.php
+	cp $SOURCES_REPOSITORY/vvb.ini $fs/var/www/$PACKAGE/
+	dos2unix $fs/var/www/$PACKAGE/*
+}
+
+post_install()
+{
+	mytz="$(cat $1/etc/TZ)"
+	[ -n "$mytz" ] && sed  -i "s|Europe/Paris|$mytz|" $1/var/www/$PACKAGE/index.php
+	chown -R www $1/var/www/$PACKAGE
+	echo "You should update /var/www/$PACKAGE/vvb.ini now ..."
+}
