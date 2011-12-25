@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="hardware-ibm-6272"
+VERSION="1.0"
+CATEGORY="base-system"
+MAINTAINER="devel@slitaz.org"
+SHORT_DESC="IBM 300GL 6272/6282 (P75-233 ISA/PCI/USB/ETH desktop) hardware support"
+WEB_SITE="http://www.slitaz.org/"
+
+DEPENDS="isapnptools"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/etc/init.d
+	cat > $fs/etc/init.d/pnp.sh <<EOT
+#!/bin/sh
+
+status="\\\\033[70G[ \\\\033[1;31mFailed\\\\033[0;39m ]"
+echo -n "Switching on isa pnp ethernet card "
+# io 0x360..0x250 by 0x10, irq 15 12 11 10 9 7 6 5 4 3
+for io in \$(seq 360 -10 250); do for irq in 15 12 11 10; do
+pnpdump | busybox awk "BEGIN {s=0} \\
+/CONFIGURE CSC6040/ {s=1} { \\
+  if (s==0) print; \\
+  else if (/INT 0/) print \\"(INT 0 (IRQ \$irq (MODE +E)))\\"; \\
+  else if (/IO 0/) print \\"(IO 0 (SIZE 16) (BASE 0x0\$io) (CHECK))\\"; \\
+  else if (/ACT Y/) { s=0; print \\"(ACT Y)\\"} \\
+  else print \\
+}" > /etc/isapnp.conf
+if isapnp /etc/isapnp.conf > /dev/null 2>&1 ; then
+  modprobe cs89x0 io=0x\$io irq=\$irq > /dev/null 2>&1
+  status="\\\\033[70G[ \\\\033[1;33mOK\\\\033[0;39m ]"
+  break 2
+fi
+done ; done
+echo -e "\$status"
+EOT
+	chmod +x $fs/etc/init.d/pnp.sh
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	grep pnp.sh $1/etc/rcS.conf ||
+	sed -i 's/RUN_SCRIPTS="/&pnp.sh /' $1/etc/rcS.conf
+}
