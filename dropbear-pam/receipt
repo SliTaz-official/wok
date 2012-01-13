@@ -5,76 +5,19 @@ VERSION="2011.54"
 CATEGORY="security"
 SHORT_DESC="Light SSH client and server using PAM."
 MAINTAINER="pascal.bellard@slitaz.org"
-SOURCE="dropbear"
-TARBALL="$SOURCE-$VERSION.tar.gz"
-DEPENDS="zlib pam"
-BUILD_DEPENDS="zlib zlib-dev pam pam-dev"
-SUGGESTED="sftp-server"
+WANTED="dropbear"
+DEPENDS="dropbear pam"
 WEB_SITE="http://matt.ucc.asn.au/dropbear/dropbear.html"
-WGET_URL="http://matt.ucc.asn.au/dropbear/releases/$TARBALL"
-CONFIG_FILES="/etc/dropbear"
 PROVIDE="dropbear:pam ssh:pam"
-
-# Rules to configure and make the package.
-compile_rules()
-{
-	local i
-	local DROPBEARS
-	DROPBEARS="dropbearkey dropbearconvert dbclient scp"
-	cd $src
-	rm -rf _pkg
-	sed -i  -e 's|/usr/X11R6/bin/xauth|/usr/bin/xauth|' \
-		-e 's|/usr/libexec/sftp-server|/usr/sbin/sftp-server|' \
- 		-e 's|ENABLE_SVR_PASSWORD_AUTH|ENABLE_SVR_PAM_AUTH|' \
-		options.h
-	./configure --prefix=/usr --enable-pam $CONFIGURE_ARGS &&
-	make PROGRAMS="dropbear $DROPBEARS" MULTI=1 &&
-	install -d -m 755 $DESTDIR/usr/sbin &&
-	install -m 755 dropbearmulti $DESTDIR/usr/sbin/dropbear &&
-	chown root $DESTDIR/usr/sbin/dropbear &&
-	chgrp 0 $DESTDIR/usr/sbin/dropbear &&
-	install -d -m 755 $DESTDIR/usr/bin &&
-	for i in $DROPBEARS ssh; do
-		ln -s ../sbin/dropbear $DESTDIR/usr/bin/$i
-	done
-}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
-	# Config file and init script.
-	mkdir -p $fs/etc
-	cp -a ../$SOURCE/stuff/dropbear $fs/etc
-	cp -a ../$SOURCE/stuff/init.d $fs/etc
-	cp -a ../$SOURCE/stuff/sshx $fs/usr/bin
-	cp -a $stuff/pam.d $fs/etc
-	touch   $fs/etc/dropbear/dropbear_dss_host_key \
-		$fs/etc/dropbear/dropbear_rsa_host_key
-	
-	# Fix dropbear initscript perms
-	chown -R root.root $fs
+	mkdir -p $fs/usr/sbin
+	cp -a $_pkg/usr/sbin/dropbear-pam $fs/usr/sbin/dropbear
 }
 
-# Post message when installing.
-post_install()
+post_remove()
 {
-	while read dropbear openssh ; do
-		[ -s $openssh ] || continue
-		dropbearconvert openssh dropbear $1$openssh $1$dropbear
-		dropbearkey -y -f $1$dropbear | grep Fingerprint
-	done <<EOT
-/etc/dropbear/dropbear_rsa_host_key	/etc/ssh/ssh_host_rsa_key
-/etc/dropbear/dropbear_dss_host_key	/etc/ssh/ssh_host_dsa_key
-EOT
-	echo -e "\nTo starts $SOURCE server you can run :\n"
-	echo "/etc/init.d/$SOURCE start"
-	echo -e "Or add $SOURCE to RUN_DAEMONS in /etc/rcS.conf\n"
-}
-
-pre_remove()
-{
-    tazpkg get-install  ${PACKAGE%-pam}
+	tazpkg get-install ${PACKAGE%-pam} --forced
 }
