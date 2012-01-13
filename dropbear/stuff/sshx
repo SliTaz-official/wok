@@ -4,13 +4,24 @@ xdbclient()
 {
 	read host type data
 	svr=$(echo $DISPLAY | sed 's/.*:\([0-9]*\).*/\1/')
-	n=$((10+$svr)); dpy=localhost:$n
-	dbclient -f -R $((6000+$n)):localhost:$((6000+$svr)) "$@" \
-	    "xauth add $dpy $type $data; export DISPLAY=$dpy; $TERM || xterm" \
+	n=$((10+($RANDOM % 90))); dpy=localhost:$n
+	remote=""
+	while true; do
+		arg="$1"; shift
+		remote="$remote $arg"
+		case "$arg" in
+		-[piIlLRWKBJ])	remote="$remote $1"; shift ;;
+		-*)		;;
+		*)		break ;;
+		esac
+	done
+	[ -n "$1" ] || set -- "$TERM || xterm"
+	exec dbclient -f -R $((6000+$n)):localhost:$((6000+$svr)) $remote \
+	    "xauth add $dpy $type $data; export DISPLAY=$dpy; $@" \
 	    < /dev/null > /dev/null 2>&1
 }
 
 case "$DISPLAY" in
-'')	dbclient "$@" ;;
+'')	exec dbclient "$@" ;;
 *)	xauth list $DISPLAY | xdbclient "$@" ;;
 esac
