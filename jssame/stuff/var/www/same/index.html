@@ -1,0 +1,150 @@
+<html>
+<head>
+<title>Same Game</title>
+<style type="text/css">
+body, input {
+	background: black;
+	color: white;
+	border: none;
+	font-size: 14px;
+}
+a { color: black; }
+</style>
+<script language="javascript">
+<!-- // Original:  Jason Fondren (usher@betterbox.net) http://www.oogha.com/
+//	0=blank  1=red  2=yellow  3=blue
+
+off0 = new Image(); off0.src = "black.gif";
+off1 = new Image(); off1.src = "1off.gif";
+off2 = new Image(); off2.src = "2off.gif";
+off3 = new Image(); off3.src = "3off.gif";
+on0 = new Image();  on0.src = "black.gif";
+on1 = new Image();  on1.src = "1on.gif";
+on2 = new Image();  on2.src = "2on.gif";
+on3 = new Image();  on3.src = "3on.gif";
+
+total = 0
+imgsize = (innerHeight - 20)/10
+if (imgsize > 32) imgsize = 32
+
+main = new Array()
+init = new Array()
+for (i = 0; i < 150; i++)
+	main[i] = init[i] = 1 + Math.floor((Math.random() * 3))
+
+function isSameBelow(numba) {
+	return main[numba-1] == main[numba] && (numba % 10) != 0
+}
+
+function isSameAbove(numba) {
+	return main[numba+1] == main[numba] && (numba % 10) != 9
+}
+
+function AddAdjacent(numba) {
+	for (n=0; n<adj.length; n++)
+		if (adj[n] == numba) return
+	adj[++i] = numba
+}
+
+function isNotBallSet(numba) {
+	if (main[numba] == 0) return true
+	adj = new Array()
+	adj[0] = numba
+	for (i = c = 0; c < adj.length; c++) {
+		numba = adj[c]
+		if (isSameAbove(numba)) AddAdjacent(numba+1)
+		if (main[numba+10] == main[numba]) AddAdjacent(numba+10)
+		if (isSameBelow(numba)) AddAdjacent(numba-1)
+		if (main[numba-10] == main[numba]) AddAdjacent(numba-10)
+	}
+	if (c < 2) return true
+	c -= 2
+	score = c * c
+	return false
+}
+
+function Ball(numba,state) {
+	if (isNotBallSet(numba)) return
+	if (state == "off") score = 0
+	document.scores.click.value = score
+	for (n = 0; n < adj.length; n++)
+		document["img" + adj[n]].src = eval(state + main[numba] + ".src")
+}
+
+function clickBall(numba) {
+	if (isNotBallSet(numba)) return
+	for (n=0; n<adj.length; n++) main[adj[n]] = 0
+	for (change = i = 0; i < 15; i++, change += 10) {
+		blankCount = 0
+		column = new Array()
+		newColumn = new Array()
+		for (c = 0; c < 10; c++) {
+			column[c] = main[c + change]
+			if (column[c] == 0) 
+				newColumn[10 - ++blankCount] = 0
+			else	newColumn[c - blankCount] = column[c]
+		}
+		for (c = 0; c < 10; c++) main[c + change] = newColumn[c]
+		if (blankCount == 10) {
+			for (c = change; c < 140; c++) main[c] = main[c + 10]
+			for (c = 140; c < 150; c++) main[c] = 0
+			change -= 10
+		}
+	}
+	startUp()
+	document.scores.show.value = total += score
+	Ball(numba,"on")
+	if (main[0] == 0) return // board is cleared
+	for (q = 0; q < 150; q++) {
+		if (main[q] == 0) continue
+		if (isSameAbove(q)) return
+		if (main[q + 10] == main[q]) return
+		if (isSameBelow(q)) return
+		if (main[q - 10] == main[q]) return
+	}
+	alert("Game Over!")
+}
+
+function startUp() {
+//	if (navigator.userAgent.substring(0,6) == "TazWeb")
+//		window.resizeTo(32*15, 32*10+20)
+	document.scores.show.value = 0
+	for (i = 0; i < main.length; i++)
+		document["img" + i].src = eval("off" + main[i] + ".src")
+}
+
+function replay() {
+	for (i = total = 0; i < init.length; i++)
+		main[i] = init[i]
+	startUp()
+}
+// -->
+</script>
+</head>
+
+<body onLoad="startUp()">
+
+<div align="center">
+<table border=0 cellpadding=0 cellspacing=0 bgcolor=black>
+<script language="javascript">
+<!-- // Original:  Jason Fondren (usher@betterbox.net) http://www.oogha.com/
+for (i = 9; i >= 0; i--) {
+	document.writeln('<tr>')
+	for (n = i; n < 150; n += 10)
+		document.writeln('<td><a href=javascript:clickBall(' + n + 
+		  ') onmouseover=Ball(' + n + ',"on") onmouseout=Ball(' + n + 
+		  ',"off")><img src=black.gif height=' + imgsize + ' width=' + 
+		  imgsize + ' name=img' + n + ' border=0></a></td>')
+	document.writeln('</tr>')
+}
+//-->
+</script>
+
+</table>
+<form name=scores method=post>
+Total Score:<span title="replay the same board"><input type=text name=show size=6 value=0 onFocus="blur()" onClick="replay()"></span>
+Click Score:<input type=text name=click size=6 value=0 onFocus="blur()">
+<span title="play a new board"><input type=submit value=New></span>
+</form>
+</center>
+</body></html>
