@@ -2,24 +2,34 @@
 
 PACKAGE="gdal"
 VERSION="1.9.0"
-CATEGORY="misc"
+CATEGORY="meta"
 SHORT_DESC="Geospatial Data Abstraction Library."
 MAINTAINER="erjo@slitaz.org"
 WEB_SITE="http://www.gdal.org/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://download.osgeo.org/gdal/$TARBALL"
 
-DEPENDS=""
-BUILD_DEPENDS="geos-dev proj-dev curl-dev"
+DEPENDS="libgdal gdal-bin gdal-datas"
+BUILD_DEPENDS="python-dev postgresql-dev geos-dev proj-dev curl-dev \
+swig "
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS && make && make install
+	./configure --sysconfdir=/etc \
+		--localstatedir=/var \
+		--datadir=/usr/share/gdal \
+		--with-threads \
+		--with-perl \
+		--with-python \
+		--with-geos \
+		--with-sqlite3=no \
+		--with-ogr && make && make install BINDINGS="perl python"
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
+	mkdir $fs/usr
+	
 }
