@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="mapserver"
+VERSION="6.0.1"
+CATEGORY="misc"
+SHORT_DESC="Open Source platform for publishing spatial data."
+MAINTAINER="erjo@slitaz.org"
+WEB_SITE="mapserver.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://download.osgeo.org/mapserver/$TARBALL"
+
+DEPENDS="giflib libgd libgdal"
+BUILD_DEPENDS="giflib-dev gdal-dev libgd-dev proj-dev postgresql-dev curl-dev geos-dev \
+ apache-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	patch -p1 -i $stuff/mapserver-Makefile.u || exit 1
+	./configure \
+		--with-threads \
+		--with-proj \
+		--with-postgis \
+		--with-geos \
+		--with-mapscript \
+		--with-gdal \
+		--with-ogr \
+		--with-tiff \
+		--with-jpeg \
+		--with-gd \
+		--with-freetype \
+		--with-wmsclient\
+		--with-wmsclient \
+		--with-wfsclient \
+		--with-wcs \
+		--disable-debug \
+	$CONFIGURE_ARGS && make && make install-force
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	
+	mkdir -p $fs/var/www/cgi-bin
+	cp -a $install/usr/bin/mapserv  $fs/var/www/cgi-bin
+}
