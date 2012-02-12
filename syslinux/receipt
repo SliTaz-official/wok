@@ -38,13 +38,15 @@ genpkg_rules()
     cp -a $src/core/isolinux.bin $fs/boot/isolinux
     cp -a $src/com32/modules/reboot.c32 $fs/boot/isolinux
     cp -a $src/com32/modules/ifmem.c32 $fs/boot/isolinux
+    cp -a $src/com32/menu/vesamenu.c32 $fs/boot/isolinux
     cp -a $src/modules/poweroff.com $fs/boot/isolinux
-    cp $stuff/*.cfg $stuff/*.txt $stuff/*.msg $fs/boot/isolinux
+    # $stuff/isolinux.msg is the old way the have a splash image.
+    cp $stuff/*.cfg $stuff/*.txt $stuff/help.* $stuff/opts.* $fs/boot/isolinux
     while read cfg kbd loc ; do
         sed -e "s/^display/kbdmap $cfg.kbd\ndisplay/" \
             -e "s/^label/say Now using $kbd keyboard and $loc locale.\nlabel/" \
             -e "s/rootfs.gz/rootfs.gz lang=$loc kmap=$kbd/" \
-	        < $fs/boot/isolinux/isolinux.cfg > $fs/boot/isolinux/$cfg.cfg
+	        < $fs/boot/isolinux/default.cfg > $fs/boot/isolinux/$cfg.cfg
         cp $src/$kbd.kbd $fs/boot/isolinux/$cfg.kbd
 	cat >> $fs/boot/isolinux/common.cfg <<EOT
 label $cfg
@@ -74,5 +76,5 @@ EOT
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-    sed -i "s/-XXXXXXXX/-$(date +%Y%m%d)/" $1/boot/isolinux/isolinux.msg
+    sed -i "s/-XXXXXXXX/-$(date +%Y%m%d)/" $1/boot/isolinux/isolinux.cfg
 }
