@@ -5,35 +5,35 @@ VERSION="2.0.3"
 CATEGORY="development"
 SHORT_DESC="A powerful editor"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="gtk+ pcre xorg-libXdamage aspell libxml2 gcc-lib-base"
-BUILD_DEPENDS="gtk+-dev pcre-dev intltool libxml2-dev expat-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://bluefish.openoffice.nl/index.html"
 WGET_URL="http://www.bennewitz.com/bluefish/stable/source/${TARBALL}"
 TAGS="editor language HTML programming scripting"
 
+DEPENDS="gtk+ pcre xorg-libXdamage aspell libxml2 gcc-lib-base shared-mime-info "
+BUILD_DEPENDS="gtk+-dev pcre-dev intltool libxml2-dev expat-dev"
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	#mkdir -p _pkg/usr/share/mime-info
-	#cp data/bluefish.mime _pkg/usr/share/mime-info
-	#cp data/bluefish.keys _pkg/usr/share/mime-info
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	./configure $CONFIGURE_ARGS && make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr $fs/usr/share/locale
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
-	cp -a $_pkg/usr/share/mime $fs/usr/share
-	cp -a $_pkg/usr/share/bluefish $fs/usr/share
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/pixmaps $fs/usr/share
+	cp -a $install/usr/share/mime $fs/usr/share
+	cp -a $install/usr/share/bluefish $fs/usr/share
+	cp -a $install/usr/share/applications $fs/usr/share
+	cp -a $install/usr/share/locale/fr $fs/usr/share/locale
 	
 }
 
+# Post-install commands
+post_install()
+{
+	$1/usr/bin/update-mime-database $1/usr/share/mime || continue
+}	
