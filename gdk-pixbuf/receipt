@@ -21,7 +21,6 @@ compile_rules()
 	./configure \
 		--disable-glibtest \
 		--without-libjasper \
-		--with-included-loaders=bmp,gif,jpeg,pcx,png,xpm  \
 		--build=$HOST_SYSTEM --host=$HOST_SYSTEM &&
 	make && make install
 }
@@ -35,14 +34,12 @@ genpkg_rules()
 		$fs/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders
 	cp -a $_pkg/usr/lib/girepository-1.0 $fs/usr/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	touch $fs/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache
 }
 
-# Pre and post install commands for Tazpkg.
 post_install()
 {
-	echo "Creating /etc/gtk-2.0/gdk-pixbuf.loaders..."
-	if [ ! -d $1/etc/gtk-2.0 ]; then
-		mkdir -p $1/etc/gtk-2.0
-	fi
-	chroot $1/ /usr/bin/gdk-pixbuf-query-loaders > $1/etc/gtk-2.0/gdk-pixbuf.loaders
+	echo -n "Updating gdk pixbuf loaders cache file..."
+	chroot $1/ /usr/bin/gdk-pixbuf-query-loaders --update-cache
+	status
 }
