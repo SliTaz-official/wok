@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="R"
+VERSION="2.14.1"
+CATEGORY="office"
+SHORT_DESC="Free software environment for statistical computing and graphics."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.r-project.org/"
+WGET_URL="http://cran.cict.fr/src/base/R-2/$TARBALL"
+
+DEPENDS="libgfortran readline bzlib midori epdfview"
+BUILD_DEPENDS="gfortran readline-dev bzip2-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	export R_BROWSER="midori"
+	export R_PDFVIEWER="epdfview"
+	unset DESTDIR
+	cd $src
+	./configure \
+		--enable-R-shlib \
+		--with-system-zlib \
+		--with-system-bzlib \
+		--with-system-pcre \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	sed -i s'/bash/sh/' $fs/usr/bin/R
+	sed -i s'/bash/sh/' $fs/usr/lib/R/bin/R
+	sed -i s'/bash/sh/' $fs/usr/lib/R/bin/pager
+}
