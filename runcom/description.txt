@@ -1,0 +1,41 @@
+Runcom support DOS .com binary files and boot sector files.
+
+1- The DOS .com support
+
+Runcom provides few BIOS and DOS (int 21H) interrupt handlers. Many .com files
+may not work. DOS .exe are also supported.
+You can test it with the file /usr/bin/debug.com, with the command line :
+$ debug.com
+
+2- The boot sector image support
+
+A boot sector image is a 512 bytes file ending with the 0xAA and 0x55 bytes 
+with the .bin extension.
+Bios disk (int 13H) are amulated (CHS or LBA) with image file :
+- hard disk are image ./hd0, ./hd1, ... for disk 0x80, 0x81...
+- floppy disk are image ./fd0, ./fd1 ... or /dev/fd0, /dev/fd1 if not found.
+You can test it with the file /usr/bin/debug.bin, with the command line :
+$ debug.bin
+
+3- The boot sector debugger /usr/bin/debug.bin
+
+Usage:
+
+ f DX:CX		load one CHS sector to 0000:7C00
+ t			trace one step
+ g <address>		go to adrs
+ d <address>		display 16 bytes, CR for next 16 bytes...
+ e <address> <words>...	enter memory byte/word/dword
+ m <segment>		self move
+ + <segment>		default segment offset
+
+seqment and offset are hexadecimal values in 0..FFFF range
+address is linear hexadecimal value in 0..FFFFF range or seqment:offset
+words are bytes in 00..FF range or words in 0000..FFFF range or double words
+CX and DX are used by INT13H/AL=01 BIOS interrupt.
+
+Example:
+ m 0FC0			move debugger to 0FC0:0000 0FC0:01FF
+ f 1			read floppy boot sector to 0000:7C00
+ f 80 1			read hard disk master boot sector to 0000:7C00
+ g 7C0E			...

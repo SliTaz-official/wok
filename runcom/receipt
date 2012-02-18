@@ -1,0 +1,58 @@
+# SliTaz package receipt.
+
+PACKAGE="runcom"
+VERSION="1.0"
+CATEGORY="system-tools"
+SHORT_DESC="DOS .com binary format support"
+MAINTAINER="dev@slitaz.org"
+WEB_SITE="http://bellard.org/jslinux"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $src
+	cd $src
+	#tarball=$(wget -O - $WEB_SITE/tech.html | \
+	#	  sed '/linuxstart/!d;s/.*href="\([^"]*\)".*/\1/')
+	#wget $WEB_SITE/$tarball
+	#tar xzf $tarball
+	mkdir -p $DESTDIR/usr/bin
+	cc -o $DESTDIR/usr/bin/runcom $stuff/runcom.c
+	cc -o $src/debug.o -Wa,-a=$src/debug.lst -c $stuff/debug.S
+	objcopy -O binary $src/debug.o $DESTDIR/usr/bin/debug.bin
+	cp $stuff/debug.com $DESTDIR/usr/bin
+	chmod +x $DESTDIR/usr/bin/debug.*
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/* $fs
+}
+
+# Post install command for Tazpkg.
+post_install()
+{
+	fmt="binfmt_misc"
+	proc="/proc/sys/fs/binfmt_misc"
+	bin=":BOOTBIN:E::bin::/usr/bin/runcom:"
+	com=":DOSCOM:E::com::/usr/bin/runcom:"
+	rc="$1/etc/init.d/local.sh"
+	grep -q "$com" $rc || cat >> $rc <<EOT
+[ ! -e $proc/register ] && modprobe $fmt && mount -t $fmt $fmt $proc
+echo "$bin" >$proc/register
+echo "$com" >$proc/register
+EOT
+	[ -n "$1" ] && return
+	[ ! -e $proc/register ] && modprobe $fmt && mount -t $fmt $fmt $proc
+	echo "$bin" >$proc/register
+	echo "$com" >$proc/register
+}
+
+# Pre remove command for Tazpkg.
+pre_remove()
+{
+	echo -1 > $1/proc/sys/fs/binfmt_misc/BOOTBIN
+	echo -1 > $1/proc/sys/fs/binfmt_misc/DOSCOM
+	sed -i '/binfmt_misc/{NN;/DOSCOM:E::com/d}' $1/etc/init.d/local.sh
+}
