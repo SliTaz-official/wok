@@ -11,20 +11,21 @@
 NAME=LXnetdaemon
 DESC="Network daemon"
 DAEMON=/usr/bin/lxnetdaemon
-PIDFILE=/var/run/lxnetdaemon.socket
+PIDFILE=/var/run/lxnetdaemon.pid
 
 case "$1" in
   start)
-    if [ -f $PIDFILE ] ; then
+    if active_pidfile $PIDFILE lxnetdaemon ; then
       echo "$NAME already running."
       exit 1
     fi
     echo -n "Starting $DESC: $NAME... "
     $DAEMON $OPTIONS 
     status
+    pidof lxnetdaemon > $PIDFILE
     ;;
   stop)
-    if [ ! -f $PIDFILE ] ; then
+    if ! active_pidfile $PIDFILE lxnetdaemon ; then
       echo "$NAME is not running."
       exit 1
     fi
@@ -34,7 +35,7 @@ case "$1" in
     status
     ;;
   restart)
-    if [ ! -f $PIDFILE ] ; then
+    if ! active_pidfile $PIDFILE lxnetdaemon ; then
       echo "$NAME is not running."
       exit 1
     fi
@@ -44,6 +45,7 @@ case "$1" in
     sleep 2
     $DAEMON $OPTIONS
     status
+    pidof lxnetdaemon > $PIDFILE
     ;;
   *)
     echo ""
