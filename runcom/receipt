@@ -37,16 +37,15 @@ post_install()
 	proc="/proc/sys/fs/binfmt_misc"
 	bin=":BOOTBIN:E::bin::/usr/bin/runcom:"
 	com=":DOSCOM:E::com::/usr/bin/runcom:"
-	rc="$1/etc/init.d/local.sh"
-	grep -q "$com" $rc || cat >> $rc <<EOT
+	cat > /tmp/runcom$$ <<EOT
 [ ! -e $proc/register ] && modprobe $fmt && mount -t $fmt $fmt $proc
 echo "$bin" >$proc/register
 echo "$com" >$proc/register
 EOT
-	[ -n "$1" ] && return
-	[ ! -e $proc/register ] && modprobe $fmt && mount -t $fmt $fmt $proc
-	echo "$bin" >$proc/register
-	echo "$com" >$proc/register
+	rc="$1/etc/init.d/local.sh"
+	grep -q "$com" $rc || cat /tmp/runcom$$ >> $rc
+	[ -n "$1" ] || . /tmp/runcom$$
+	rm -f /tmp/runcom$$
 }
 
 # Pre remove command for Tazpkg.
