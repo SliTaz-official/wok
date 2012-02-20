@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="emacs"
-VERSION="23.3"
+VERSION="23.4"
 CATEGORY="development"
 SHORT_DESC="The GNU Emacs editor"
 MAINTAINER="domcox@slitaz.org"
@@ -25,7 +25,7 @@ compile_rules()
 	sed -i 's/${GZIP_PROG} -9n/${GZIP_PROG}/g' leim/Makefile.in
 	# Configure (with GCC 4.5.0 workaround)
 	CFLAGS="-g -O2 -fno-optimize-sibling-calls" ./configure $CONFIGURE_ARGS \
-		--infodir=/usr/share/emacs/info \
+		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		--without-makeinfo \
 		--without-gconf \
@@ -38,7 +38,7 @@ compile_rules()
 		--sharedstatedir=/var/lib \
 		--prefix=/usr && \
 	make $MAKEFLAGS && \
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -56,7 +56,7 @@ genpkg_rules()
 	echo -n "Copying emacs lib files"
 	cp -a $_pkg/usr/lib $fs/usr
 	status
-	strip -s $fs/usr/lib/$PACKAGE/$VERSION/i486-pc-linux-gnu/* 2> /dev/null
+	strip -s $fs/usr/lib/$PACKAGE/${VERSION:0:4}/i486-pc-linux-gnu/* 2> /dev/null
 	# lisp files
 	LISP_DIR="	lisp lisp/calc lisp/calendar lisp/cedet lisp/cedet/ede lisp/cedet/semantic \
 				lisp/cedet/semantic/analyze lisp/cedet/semantic/bovine lisp/cedet/semantic/decorate \
@@ -65,14 +65,14 @@ genpkg_rules()
 				lisp/net lisp/nxml lisp/obsolete lisp/org lisp/play lisp/progmodes lisp/textmodes lisp/url"
 	for dir in $LISP_DIR; do
 		echo -n "Copying $dir files"
-		mkdir -p $fs/usr/share/$PACKAGE/$VERSION/$dir && \
-		cp $_pkg/usr/share/$PACKAGE/$VERSION/$dir/*.elc $fs/usr/share/$PACKAGE/$VERSION/$dir
-		if [ `ls $_pkg/usr/share/$PACKAGE/$VERSION/$dir/ | grep -c \.el$` -gt 0 ]; then
-			cp $_pkg/usr/share/$PACKAGE/$VERSION/$dir/*.el $fs/usr/share/$PACKAGE/$VERSION/$dir
+		mkdir -p $fs/usr/share/$PACKAGE/${VERSION:0:4}/$dir && \
+		cp $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/$dir/*.elc $fs/usr/share/$PACKAGE/${VERSION:0:4}/$dir
+		if [ `ls $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/$dir/ | grep -c \.el$` -gt 0 ]; then
+			cp $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/$dir/*.el $fs/usr/share/$PACKAGE/${VERSION:0:4}/$dir
 		fi
 		for file in COPYING README TODO; do
-			if [ -e $_pkg/usr/share/$PACKAGE/$VERSION/$dir/$file ]; then
-				cp $_pkg/usr/share/$PACKAGE/$VERSION/$dir/$file $fs/usr/share/$PACKAGE/$VERSION/$dir
+			if [ -e $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/$dir/$file ]; then
+				cp $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/$dir/$file $fs/usr/share/$PACKAGE/${VERSION:0:4}/$dir
 			fi
 		done
 		status
@@ -80,24 +80,24 @@ genpkg_rules()
 	# Use linux term only
 	LINUX_TERM="README linux.el rxvt.elc tty-colors.elc vt100.elc xterm.elc"
 	echo -n "Copying lisp/term files (linux only)"
-	mkdir -p $fs/usr/share/$PACKAGE/$VERSION/lisp/term && \
+	mkdir -p $fs/usr/share/$PACKAGE/${VERSION:0:4}/lisp/term && \
 	for file in $LINUX_TERM; do
-		cp -a $_pkg/usr/share/$PACKAGE/$VERSION/lisp/term/$file $fs/usr/share/$PACKAGE/$VERSION/lisp/term
+		cp -a $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/lisp/term/$file $fs/usr/share/$PACKAGE/${VERSION:0:4}/lisp/term
 	done
 	status
 	# leim files
 	echo -n "Copying leim files"
-	mkdir -p $fs/usr/share/$PACKAGE/$VERSION/leim && \
-	cp $_pkg/usr/share/$PACKAGE/$VERSION/leim/*.el $fs/usr/share/$PACKAGE/$VERSION/leim
+	mkdir -p $fs/usr/share/$PACKAGE/${VERSION:0:4}/leim && \
+	cp $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/leim/*.el $fs/usr/share/$PACKAGE/${VERSION:0:4}/leim
 	status
 	LEIM_FILES="leim/ja-dic leim/quail"
 	for dir in $LEIM_FILES; do
 		echo -n "Copying $dir files"
-		mkdir -p $fs/usr/share/$PACKAGE/$VERSION/$dir && \
-		cp $_pkg/usr/share/$PACKAGE/$VERSION/$dir/*.elc $fs/usr/share/$PACKAGE/$VERSION/$dir && \
+		mkdir -p $fs/usr/share/$PACKAGE/${VERSION:0:4}/$dir && \
+		cp $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/$dir/*.elc $fs/usr/share/$PACKAGE/${VERSION:0:4}/$dir && \
 		for file in COPYING README TODO; do
-			if [ -e $_pkg/usr/share/$PACKAGE/$VERSION/$dir/$file ]; then
-				cp $_pkg/usr/share/$PACKAGE/$VERSION/$dir/$file $fs/usr/share/$PACKAGE/$VERSION/$dir
+			if [ -e $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/$dir/$file ]; then
+				cp $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/$dir/$file $fs/usr/share/$PACKAGE/${VERSION:0:4}/$dir
 			fi
 		done
 		status
@@ -107,9 +107,9 @@ genpkg_rules()
 	CONF_FILES="ETAGS.README charsets e edt-user.el emacs2.py emacs3.py emacs-buffer.gdb emacs.py \
 				forms-d2.dat gnus nxml schema enriched.doc ms-kermit ps-prin0.ps ps-prin1.ps \
 				ses-example.ses spook.lines yow.lines"
-	mkdir -p $fs/usr/share/$PACKAGE/$VERSION/etc && \
+	mkdir -p $fs/usr/share/$PACKAGE/${VERSION:0:4}/etc && \
 	for file in $CONF_FILES; do
-		cp -a $_pkg/usr/share/$PACKAGE/$VERSION/etc/$file $fs/usr/share/$PACKAGE/$VERSION/etc
+		cp -a $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/etc/$file $fs/usr/share/$PACKAGE/${VERSION:0:4}/etc
 	done
 	status
 	# Pixmaps files
@@ -118,11 +118,11 @@ genpkg_rules()
 				images/tree-widget/folder"
 	for dir in $XPM_DIR; do
 		echo -n "Copying $dir xpm files"
-		mkdir -p $fs/usr/share/$PACKAGE/$VERSION/etc/$dir && \
-		cp $_pkg/usr/share/$PACKAGE/$VERSION/etc/$dir/*.xpm $fs/usr/share/$PACKAGE/$VERSION/etc/$dir && \
+		mkdir -p $fs/usr/share/$PACKAGE/${VERSION:0:4}/etc/$dir && \
+		cp $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/etc/$dir/*.xpm $fs/usr/share/$PACKAGE/${VERSION:0:4}/etc/$dir && \
 		for file in COPYING README TODO; do
-			if [ -e $_pkg/usr/share/$PACKAGE/$VERSION/$dir/$file ]; then
-				cp $_pkg/usr/share/$PACKAGE/$VERSION/$dir/$file $fs/usr/share/$PACKAGE/$VERSION/$dir
+			if [ -e $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/$dir/$file ]; then
+				cp $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/$dir/$file $fs/usr/share/$PACKAGE/${VERSION:0:4}/$dir
 			fi
 		done
 		status
@@ -130,37 +130,37 @@ genpkg_rules()
 	PNG_DIR="	images images/gnus images/tree-widget/default images/tree-widget/folder"
 	for dir in $PNG_DIR; do
 		echo -n "Copying $dir png files"
-		cp $_pkg/usr/share/$PACKAGE/$VERSION/etc/$dir/*.png $fs/usr/share/$PACKAGE/$VERSION/etc/$dir && \
+		cp $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/etc/$dir/*.png $fs/usr/share/$PACKAGE/${VERSION:0:4}/etc/$dir && \
 		status
 	done
 	# Licence
 	GNU_FILES="AUTHORS BABYL CENSORSHIP COPYING DISTRIB FTP GNU ORDERS SERVICE copying.paper"
 	echo -n "Copying License files"
 	for file in $GNU_FILES; do
-		cp -a $_pkg/usr/share/$PACKAGE/$VERSION/etc/$file $fs/usr/share/$PACKAGE/$VERSION/etc
+		cp -a $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/etc/$file $fs/usr/share/$PACKAGE/${VERSION:0:4}/etc
 	done
 	status
 	# Install specific site file
 	echo -n "Installing specific SliTaz file"
 	mkdir -p $fs/usr/share/$PACKAGE/site-lisp/site-start.d && \
 	cp -a $_pkg/usr/share/$PACKAGE/site-lisp $fs/usr/share/$PACKAGE && \
-	cp -a stuff/default.el $fs/usr/share/$PACKAGE/site-lisp && \
-	cp -a stuff/90-slitaz.el $fs/usr/share/$PACKAGE/site-lisp/site-start.d
+	cp -a $stuff/default.el $fs/usr/share/$PACKAGE/site-lisp && \
+	cp -a $stuff/90-slitaz.el $fs/usr/share/$PACKAGE/site-lisp/site-start.d
 	status
 	# Install desktop files for emacs
 	echo -n "Installing emacs menu"
 	mkdir -p $fs/usr/share/pixmaps $fs/usr/share/applications && \
-	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/etc/emacs.desktop $fs/usr/share/applications/ && \
+	cp -a $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/etc/emacs.desktop $fs/usr/share/applications/ && \
 	cp -a $_pkg/usr/share/icons/hicolor/32x32/apps/emacs.png $fs/usr/share/pixmaps
 	status
 	# Add a desktop file for emacs client
 	echo -n "Installing emacsclient menu"
-	cp -a $_pkg/usr/share/$PACKAGE/$VERSION/etc/emacs.desktop $fs/usr/share/applications/emacsclient.desktop && \
+	cp -a $_pkg/usr/share/$PACKAGE/${VERSION:0:4}/etc/emacs.desktop $fs/usr/share/applications/emacsclient.desktop && \
 	sed -i 's/Exec.*/Exec=xterm -e emacsclient --alternate-editor="" %F/' $fs/usr/share/applications/emacsclient.desktop && \
 	sed -i 's/Name=.*/Name=Emacsclient/' $fs/usr/share/applications/emacsclient.desktop
 	status
 	# Directory  workaround
-	cd $fs/usr/share/$PACKAGE/$VERSION
+	cd $fs/usr/share/$PACKAGE/${VERSION:0:4}
 	ln -s ../site-lisp site-lisp
 }
 
