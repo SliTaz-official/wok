@@ -16,12 +16,18 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 compile_rules()
 {
 	cd $src
+	sed -i '/AC_PATH_XTRA/d' configure.ac
+	libtoolize -f
+	autoreconf
 	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$DESTDIR install
+	# libungif compatibility - instructions taken from Redhat specfile
+	MAJOR=`echo $VERSION | sed 's/\([0-9]\+\)\..*/\1/'`
+	gcc -shared -Wl,-soname,libungif.so.${MAJOR} -Llib/.libs -lgif -o libungif.so.$VERSION
+	install -m755 libungif.so.${VERSION} "$DESTDIR/usr/lib/"
+	ln -sf libungif.so.$VERSIN "$DESTDIR/usr/lib/libungif.so.4"
+	ln -sf libungif.so.4 "$DESTDIR/usr/lib/libungif.so"
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
