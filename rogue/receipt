@@ -1,0 +1,46 @@
+# SliTaz package receipt. 
+
+PACKAGE="rogue"
+VERSION="5.4.4"
+CATEGORY="non-free"
+SHORT_DESC="The classic dungeon exploration game"
+MAINTAINER="domcox@slitaz.org"
+DEPENDS="ncurses"
+BUILD_DEPENDS="ncurses-dev"
+TARBALL="$PACKAGE$VERSION-src.tar.gz"
+WEB_SITE="http://rogue.rogueforge.net/"
+WGET_URL="http://rogue.rogueforge.net/files/rogue5.4/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+#	mv $WOK/$PACKAGE/$PACKAGE$VERSION $src
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		--enable-wizardmode \
+		--enable-scorefile=/usr/games/rogue.scr \
+		--enable-lockfile=/var/lock/rogue.lck \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$PWD/_pkg install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/rogue
+	mkdir -p $fs/usr/games
+	mkdir -p $fs/usr/share/licenses
+	mkdir -p $fs/usr/share/pixmaps
+	mkdir -p $fs/usr/share/applications
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/games/rogue.scr $fs/usr/games/
+	chmod 666 $fs/usr/games/rogue.scr
+	cp -a $_pkg/usr/share/doc/$PACKAGE-$VERSION/LICENSE.TXT $fs/usr/share/licenses/rogue.txt
+	cp -a $_pkg/usr/share/doc/$PACKAGE-$VERSION/rogue.html $fs/usr/share/rogue
+	cp -a $src/rogue.png $fs/usr/share/pixmaps
+	sed -i 's/Exec.*/Exec=xterm -e rogue/' $src/rogue.desktop
+	cp -a $src/rogue.desktop $fs/usr/share/applications
+}
+
