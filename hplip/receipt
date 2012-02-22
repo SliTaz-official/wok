@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="hplip"
-VERSION="3.11.3" 
+VERSION="3.12.2" 
 CATEGORY="system-tools"
 SHORT_DESC="Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet"
 MAINTAINER="jozee@slitaz.org"
@@ -12,6 +12,7 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://hplipopensource.com"
 WGET_URL="http://downloads.sourceforge.net/sourceforge/hplip/$TARBALL"
 TAGS="printer driver printing"
+BUGS="Unable to delete hplip.desktop from $fs.  Using hack in post_install."
 
 # Rules to configure and make the package. --prefix=/usr 
 compile_rules()
@@ -28,7 +29,6 @@ compile_rules()
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
-	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -48,22 +48,20 @@ genpkg_rules()
 		   $_pkg/usr/share/ppd \
 		   $fs/usr/share
 
- # compress snon zipped ppd files
-    find $fs/usr/share/ppd/HP -name "*.ppd" -exec gzip -n9 {} \;
+	# compress non-zipped ppd files
+	find $fs/usr/share/ppd/HP -name "*.ppd" -exec gzip -n9 {} \;
  
-  # remove autostart of hp-daemon
-  rm -rf $fs/etc/sane.d
- # remove xdg
- rm -rf $fs/etc/xdg
+	# remove autostart of hp-daemon
+	rm -rf $fs/etc/sane.d
  
-
-# remove .desktop file as we compiled without pyqt3 support
-rm -rf $fs/usr/share/applications/*
-
-	
+	# remove xdg
+	rm -rf $fs/etc/xdg
 }
 
 post_install()
 {
+	# remove the desktop file                                   
+	rm $fs/usr/share/applications/hplip.desktop
+	                
 	tazpkg reconfigure udev --root=$1
 }
