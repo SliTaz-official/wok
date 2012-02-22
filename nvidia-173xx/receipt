@@ -1,0 +1,119 @@
+# SliTaz package receipt.
+
+PACKAGE="nvidia-173xx"
+VERSION="173.14.31"
+CATEGORY="x-window"
+MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="NVIDIA drivers (non-free)"
+WEB_SITE="http://www.nvidia.com/"
+SOURCE="NVIDIA-Linux-x86-${VERSION}-pkg1"
+TARBALL="${SOURCE}.run"
+WGET_URL="http://download.nvidia.com/XFree86/Linux-x86/$VERSION/$TARBALL"
+RUN_OPTS="--extract-only"
+TAGS="drivers graphic video"
+
+DEPENDS="linux xorg-server gtk+ cairo linux-agp linux-drm xorg-libXv"
+BUILD_DEPENDS="linux-module-headers coreutils-file-summarize"
+
+# Rules to configure and make the package.
+
+compile_rules()
+{
+	cd $src/usr/src/nv/
+	# Only use .unblocked_ioctl since 2.6.36
+	sed -i 's|\.ioctl|// &|' nv.c
+	make SYSSRC="/usr/src/linux" module 2>&1 | sed s'/ERROR:/error:/'
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{	
+	EXTRAVERSION=_${kvers}
+	
+	mkdir -p $fs/usr/share $fs/usr/lib/X11 $fs/usr/share/licenses/$PACKAGE \
+				 $fs/lib/modules/$kvers-slitaz/kernel/drivers/video \
+				 $fs/usr/share/doc/$PACKAGE 
+	
+	# Compress and install module
+	lzma e $src/usr/src/nv/nvidia.ko \
+			$fs/lib/modules/$kvers-slitaz/kernel/drivers/video/nvidia.ko.gz
+	chown root $fs/lib/modules/$kvers-slitaz/kernel/drivers/video/nvidia.ko.gz
+	chmod 0644 $fs/lib/modules/$kvers-slitaz/kernel/drivers/video/nvidia.ko.gz	
+	
+	cp -a $src/LICENSE $fs/usr/share/licenses/$PACKAGE
+	cp -a $src/usr/bin $fs/usr
+	cp -a $src/nvidia-installer $fs/usr/bin
+	cp -a $src/usr/lib/*.so* $fs/usr/lib/
+	cp -a $src/usr/lib/tls $fs/usr/lib/
+        cp -a $src/usr/X11R6/lib/libXvMCNVIDIA.so.$VERSION $fs/usr/lib
+        cp -a $src/usr/X11R6/lib/modules $fs/usr/lib/X11/
+        cp -a $src/usr/share/applications $fs/usr/share
+	cp -a $src/usr/share/pixmaps $fs/usr/share
+	cp -a $src/usr/share/doc/* $fs/usr/share/doc/$PACKAGE/
+	cp -a $src/usr/X11R6/lib/* $fs/usr/lib/X11
+
+        ln -s libcuda.so.$VERSION $fs/usr/lib/libcuda.so
+	ln -s libcuda.so.$VERSION $fs/usr/lib/libcuda.so.1
+	ln -s libGL.so.$VERSION $fs/usr/lib/libGL.so
+	ln -s libGL.so.$VERSION $fs/usr/lib/libGL.so.1
+	ln -s libGLcore.so.$VERSION $fs/usr/lib/libGLcore.so.1
+	ln -s libnvidia-cfg.so.$VERSION $fs/usr/lib/libnvidia-cfg.so
+	ln -s libnvidia-cfg.so.$VERSION $fs/usr/lib/libnvidia-cfg.so.1
+	ln -s libnvidia-tls.so.$VERSION $fs/usr/lib/libnvidia-tls.so.1
+	ln -s libnvidia-tls.so.$VERSION $fs/usr/lib/tls/libnvidia-tls.so.1
+	ln -s libXvMCNVIDIA.so.$VERSION $fs/usr/lib/libXvMCNVIDIA.so.1
+	ln -s libXvMCNVIDIA.so.$VERSION $fs/usr/lib/libXvMCNVIDIA.so
+	ln -s libXvMCNVIDIA.so.$VERSION $fs/usr/lib/libXvMCNVIDIA_dynamic.so.1
+	ln -s libXvMCNVIDIA.so.$VERSION $fs/usr/lib/libXvMCNVIDIA_dynamic.so
+	ln -s libnvidia-wfb.so.$VERSION $fs/usr/lib/X11/modules/libnvidia-wfb.so
+	ln -s libnvidia-wfb.so.$VERSION $fs/usr/lib/X11/modules/libnvidia-wfb.so.1
+	ln -s libglx.so.$VERSION $fs/usr/lib/X11/modules/extensions/libglx.so	
+}
+
+pre_install()
+{
+	echo ""
+	echo -e "\033[1m PROPRIETARY LICENSE:\033[0m $2"
+	echo "================================================================================"
+	echo "You are installing a package with proprietary license."
+	echo "You must accept the license."
+    echo "================================================================================"
+    echo ""
+	
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+	
+	# correct .desktop file file
+	sed -i 's:__UTILS_PATH__/::' $1/usr/share/applications/nvidia-settings.desktop
+	sed -i 's:__PIXMAP_PATH__/::' $1/usr/share/applications/nvidia-settings.desktop
+	
+	echo ""
+	echo -e "\033[1m NVIDIA LICENSE INFORMATION:\033[0m $2"
+	echo "================================================================================"
+	echo "For installing this package, you have to accept the $PACKAGE license."
+    echo "The license is stored in /usr/share/licenses/$PACKAGE "    
+    echo -n "Would you like to read the license (y/N) : "; read anser
+    if [ "$anser" = "y" ]; then
+		cat /usr/share/licenses/"$PACKAGE"/LICENSE | more	
+		echo "" 		
+	fi
+	echo "================================================================================"
+	 echo -n "Do you accept the license (y/N) : "; read anser
+    if [ "$anser" = "N" ]; then
+		echo "You did not accept the license, Removing the pkg."	
+		tazpkg remove "$PACKAGE"		
+	fi
+
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	depmod -a
+}
+
+TAZBB_NO_INSTALL="because this is not hardware neutral"
