@@ -2,16 +2,17 @@
 
 PACKAGE="tuxtype"
 SOURCE="tuxtype_w_fonts"
-VERSION="1.8.0"
+VERSION="1.8.1"
 CATEGORY="games"
 SHORT_DESC="Educational typing tutor for kids."
 MAINTAINER="claudinei@slitaz.org"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://tux4kids.alioth.debian.org"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-DEPENDS="libsdl libsdl-image libsdl-mixer libsdl-ttf"
-BUILD_DEPENDS="$DEPENDS libsdl-dev libsdl-image-dev libsdl-mixer-dev \
-libsdl-ttf-dev"
+WGET_URL="https://alioth.debian.org/frs/download.php/3270/$TARBALL"
+DEPENDS="libt4k_common libsdl librsvg libsdl-image libsdl-mixer libsdl-ttf \
+libsdl-net libsdl-pango"
+BUILD_DEPENDS="libt4k_common-dev libsdl-dev librsvg-dev libsdl-image-dev \
+libsdl-mixer-dev libsdl-ttf-dev libsdl-net-dev libsdl-pango-dev"
 TAGS="education"
 
 
@@ -21,12 +22,14 @@ compile_rules()
 	cd $src
 	./configure \
 		--prefix=/usr \
-		--localstatedir=/var/games \
-		--without-sdlpango \
-		--without-rsvg \
+		--localstatedir=/var/games
 		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	make 
+	# Adding the games group satisfies the install script.
+	addgroup games 
+	make DESTDIR=$PWD/_pkg install 
+	# We don't need to leave this behind in the build environment.
+	delgroup games
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -41,5 +44,12 @@ genpkg_rules()
 		cp -a $_pkg/usr/share/locale/$lang/LC_MESSAGES/tuxtype.mo \
 			$fs/usr/share/locale/$lang/LC_MESSAGES
 	done
+	
+	cp -ar $_pkg/usr $fs
 }
 
+post_install()
+{
+	echo "Adding games group if not already created:"
+	addgroup games
+}
