@@ -1,9 +1,9 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-icon"
-VERSION="1.1"
+VERSION="1.2"
 CATEGORY="misc"
-SHORT_DESC="SliTaz icons in size 16x16 and 32x32 (minimum)."
+SHORT_DESC="SliTaz icons in size 22x22 and 32x32 (minimum)."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.slitaz.org/"
@@ -14,7 +14,8 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share/icons
 	cp -a $src/SliTaz $fs/usr/share/icons
-	cp -a $src/themes/dark-brown/* $fs/usr/share/icons/SliTaz
+	sed -i s'/Name=Faenza/Name=SliTaz/' \
+		$fs/usr/share/icons/SliTaz/index.theme
 	chown -R root.root $fs
 }
 
@@ -24,10 +25,7 @@ post_install()
 	if [ -f $1/etc/skel/.gtkrc-2.0 ]; then
 		sed -i s/Tango/SliTaz/ $1/etc/skel/.gtkrc-2.0
 	fi
-	# Some desktop files anf boxes have hardcore path to some Tango
-	# icons, so fake.
-	if [ ! -d $1/usr/share/icons/Tango/16x16 ]; then
-		cd $1/usr/share/icons && rm -rf Tango
-		ln -s SliTaz Tango
+	if readlink $1/usr/share/icons/Tango; then
+		rm $1/usr/share/icons/Tango
 	fi
 }
