@@ -18,11 +18,23 @@ PROVIDE="ppp:pam"
 compile_rules()
 {
 	cd $src
+	cat >> include/linux/if_pppol2tp.h <<EOT
+/* The L2TPv3 protocol changes tunnel and session ids from 16 to 32
+ * bits. So we need a different sockaddr structure.
+ */
+struct pppol2tpv3_addr {
+	pid_t	pid;			/* pid that owns the fd. 0 => current */
+	int	fd;			/* FD of UDP or IP socket to use */
+	struct sockaddr_in addr;	/* IP address and port to send to */
+	__u32 s_tunnel, s_session;	/* For matching incoming packets */
+	__u32 d_tunnel, d_session;	/* For sending outgoing packets */
+};
+EOT
 	sed -i 's/#USE_PAM/USE_PAM/' pppd/Makefile.linux
 	./configure --prefix=/usr --mandir=/usr/share/man \
 	$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg/usr install
+	make DESTDIR=$DESTDIR/usr install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
