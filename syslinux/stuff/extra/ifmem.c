@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
   // find target according to ram size
   ram_size = memory_size();
   printf("Total memory found %luK.\n",ram_size);
-  ram_size += 1 <<= 10; // add 1M to round boundaries...
+  ram_size += (1 <<= 10); // add 1M to round boundaries...
   
   i = 1;
   s = argv[1];
