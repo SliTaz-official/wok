@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="gtk+"
-VERSION="2.24.8"
+VERSION="2.24.10"
 CATEGORY="x-window"
 SHORT_DESC="The GIMP Toolkit."
 MAINTAINER="pankso@slitaz.org"
 SUGGESTED="cups gnutls libgcrypt libgpg-error"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.gtk.org/"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
 CONFIG_FILES="/etc/gtk-2.0/gtk.immodules"
@@ -23,14 +23,13 @@ gobject-introspection gobject-introspection-dev libffi-dev perl gdk-pixbuf-dev"
 compile_rules()
 {
 	cd $src
-
-	patch -Np1 -i "$stuff/revert-iconview.patch"
-
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--with-html-dir=/usr/share/doc \
-		--build=$HOST_SYSTEM --host=$HOST_SYSTEM &&
+		--build=$HOST_SYSTEM --host=$HOST_SYSTEM
+	# https://bugzilla.gnome.org/show_bug.cgi?id=655517
+	sed -i -e 's/ -shared / -Wl,-O1,--as-needed\0/g' libtool
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
