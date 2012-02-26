@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 5.1.38, for pc-linux-gnu (i486)
+-- MySQL dump 10.13  Distrib 5.1.54, for slitaz-linux-gnu (i486)
 --
--- Host: localhost    Database: doli_default
+-- Host: localhost    Database: dolibarr
 -- ------------------------------------------------------
--- Server version	5.1.38-log
+-- Server version	5.1.54-log
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -128,35 +128,6 @@ LOCK TABLES `llx_accountingtransaction` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `llx_action_def`
---
-
-DROP TABLE IF EXISTS `llx_action_def`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `llx_action_def` (
-  `rowid` int(11) NOT NULL,
-  `code` varchar(32) NOT NULL,
-  `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `titre` varchar(255) NOT NULL,
-  `description` text,
-  `objet_type` varchar(16) NOT NULL,
-  PRIMARY KEY (`rowid`),
-  UNIQUE KEY `code` (`code`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `llx_action_def`
---
-
-LOCK TABLES `llx_action_def` WRITE;
-/*!40000 ALTER TABLE `llx_action_def` DISABLE KEYS */;
-INSERT INTO `llx_action_def` VALUES (1,'NOTIFY_VAL_FICHINTER','2011-07-03 17:32:38','Validation fiche intervention','Executed when a intervention is validated','ficheinter'),(2,'NOTIFY_VAL_FAC','2011-07-03 17:32:38','Validation facture client','Executed when a customer invoice is approved','facture'),(3,'NOTIFY_APP_ORDER_SUPPLIER','2011-07-03 17:32:38','Approbation commande fournisseur','Executed when a supplier order is approved','order_supplier'),(4,'NOTIFY_REF_ORDER_SUPPLIER','2011-07-03 17:32:38','Refus commande fournisseur','Executed when a supplier order is refused','order_supplier'),(5,'NOTIFY_VAL_ORDER','2011-07-03 17:32:38','Validation commande client','Executed when a customer order is validated','order'),(6,'NOTIFY_VAL_PROPAL','2011-07-03 17:32:38','Validation proposition client','Executed when a commercial proposal is validated','propal'),(7,'NOTIFY_TRN_WITHDRAW','2011-07-03 17:32:38','Transmission prélèvement','Executed when a withdrawal is transmited','withdraw'),(8,'NOTIFY_CRD_WITHDRAW','2011-07-03 17:32:38','Créditer prélèvement','Executed when a withdrawal is credited','withdraw'),(9,'NOTIFY_EMT_WITHDRAW','2011-07-03 17:32:38','Emission prélèvement','Executed when a withdrawal is emited','withdraw');
-/*!40000 ALTER TABLE `llx_action_def` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `llx_actioncomm`
 --
 
@@ -165,6 +136,7 @@ DROP TABLE IF EXISTS `llx_actioncomm`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `llx_actioncomm` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `entity` int(11) NOT NULL DEFAULT '1',
   `datep` datetime DEFAULT NULL,
   `datep2` datetime DEFAULT NULL,
   `datea` datetime DEFAULT NULL,
@@ -189,6 +161,8 @@ CREATE TABLE `llx_actioncomm` (
   `durationp` double DEFAULT NULL,
   `durationa` double DEFAULT NULL,
   `note` text,
+  `fk_element` int(11) DEFAULT NULL,
+  `elementtype` varchar(16) DEFAULT NULL,
   `propalrowid` int(11) DEFAULT NULL,
   `fk_commande` int(11) DEFAULT NULL,
   `fk_facture` int(11) DEFAULT NULL,
@@ -198,10 +172,7 @@ CREATE TABLE `llx_actioncomm` (
   PRIMARY KEY (`id`),
   KEY `idx_actioncomm_datea` (`datea`),
   KEY `idx_actioncomm_fk_soc` (`fk_soc`),
-  KEY `idx_actioncomm_fk_contact` (`fk_contact`),
-  KEY `idx_actioncomm_fk_facture` (`fk_facture`),
-  KEY `idx_actioncomm_fk_supplier_order` (`fk_supplier_order`),
-  KEY `idx_actioncomm_fk_supplier_invoice` (`fk_supplier_invoice`)
+  KEY `idx_actioncomm_fk_contact` (`fk_contact`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -224,10 +195,11 @@ DROP TABLE IF EXISTS `llx_adherent`;
 CREATE TABLE `llx_adherent` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
   `entity` int(11) NOT NULL DEFAULT '1',
+  `ref_ext` varchar(30) DEFAULT NULL,
   `civilite` varchar(6) DEFAULT NULL,
   `nom` varchar(50) DEFAULT NULL,
   `prenom` varchar(50) DEFAULT NULL,
-  `login` varchar(50) NOT NULL,
+  `login` varchar(50) DEFAULT NULL,
   `pass` varchar(50) DEFAULT NULL,
   `fk_adherent_type` int(11) NOT NULL,
   `morphy` varchar(3) NOT NULL,
@@ -272,58 +244,28 @@ LOCK TABLES `llx_adherent` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `llx_adherent_options`
+-- Table structure for table `llx_adherent_extrafields`
 --
 
-DROP TABLE IF EXISTS `llx_adherent_options`;
+DROP TABLE IF EXISTS `llx_adherent_extrafields`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `llx_adherent_options` (
+CREATE TABLE `llx_adherent_extrafields` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
   `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `fk_member` int(11) NOT NULL,
+  `fk_object` int(11) NOT NULL,
   PRIMARY KEY (`rowid`),
-  KEY `idx_adherent_options` (`fk_member`)
+  KEY `idx_adherent_options` (`fk_object`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `llx_adherent_options`
+-- Dumping data for table `llx_adherent_extrafields`
 --
 
-LOCK TABLES `llx_adherent_options` WRITE;
-/*!40000 ALTER TABLE `llx_adherent_options` DISABLE KEYS */;
-/*!40000 ALTER TABLE `llx_adherent_options` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `llx_adherent_options_label`
---
-
-DROP TABLE IF EXISTS `llx_adherent_options_label`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `llx_adherent_options_label` (
-  `rowid` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) NOT NULL,
-  `entity` int(11) NOT NULL DEFAULT '1',
-  `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `label` varchar(255) NOT NULL,
-  `type` varchar(8) DEFAULT NULL,
-  `size` int(11) DEFAULT '0',
-  `pos` int(11) DEFAULT '0',
-  PRIMARY KEY (`rowid`),
-  UNIQUE KEY `uk_adherent_options_label_name` (`name`,`entity`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `llx_adherent_options_label`
---
-
-LOCK TABLES `llx_adherent_options_label` WRITE;
-/*!40000 ALTER TABLE `llx_adherent_options_label` DISABLE KEYS */;
-/*!40000 ALTER TABLE `llx_adherent_options_label` ENABLE KEYS */;
+LOCK TABLES `llx_adherent_extrafields` WRITE;
+/*!40000 ALTER TABLE `llx_adherent_extrafields` DISABLE KEYS */;
+/*!40000 ALTER TABLE `llx_adherent_extrafields` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -648,6 +590,35 @@ LOCK TABLES `llx_boxes_def` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `llx_c_action_trigger`
+--
+
+DROP TABLE IF EXISTS `llx_c_action_trigger`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `llx_c_action_trigger` (
+  `rowid` int(11) NOT NULL AUTO_INCREMENT,
+  `code` varchar(32) NOT NULL,
+  `label` varchar(128) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `elementtype` varchar(16) NOT NULL,
+  `rang` int(11) DEFAULT '0',
+  PRIMARY KEY (`rowid`),
+  UNIQUE KEY `uk_action_trigger_code` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `llx_c_action_trigger`
+--
+
+LOCK TABLES `llx_c_action_trigger` WRITE;
+/*!40000 ALTER TABLE `llx_c_action_trigger` DISABLE KEYS */;
+INSERT INTO `llx_c_action_trigger` VALUES (1,'FICHEINTER_VALIDATE','Validation fiche intervention','Executed when a intervention is validated','ficheinter',18),(2,'BILL_VALIDATE','Validation facture client','Executed when a customer invoice is approved','facture',6),(3,'ORDER_SUPPLIER_APPROVE','Approbation commande fournisseur','Executed when a supplier order is approved','order_supplier',11),(4,'ORDER_SUPPLIER_REFUSE','Refus commande fournisseur','Executed when a supplier order is refused','order_supplier',12),(5,'ORDER_VALIDATE','Validation commande client','Executed when a customer order is validated','commande',4),(6,'PROPAL_VALIDATE','Validation proposition client','Executed when a commercial proposal is validated','propal',2),(7,'WITHDRAW_TRANSMIT','Transmission prélèvement','Executed when a withdrawal is transmited','withdraw',25),(8,'WITHDRAW_CREDIT','Créditer prélèvement','Executed when a withdrawal is credited','withdraw',26),(9,'WITHDRAW_EMIT','Emission prélèvement','Executed when a withdrawal is emited','withdraw',27),(10,'COMPANY_CREATE','Third party created','Executed when a third party is created','societe',1),(11,'CONTRACT_VALIDATE','Contract validated','Executed when a contract is validated','contrat',17),(12,'PROPAL_SENTBYMAIL','Commercial proposal sent by mail','Executed when a commercial proposal is sent by mail','propal',3),(13,'ORDER_SENTBYMAIL','Customer order sent by mail','Executed when a customer order is sent by mail ','commande',5),(14,'BILL_PAYED','Customer invoice payed','Executed when a customer invoice is payed','facture',7),(15,'BILL_CANCEL','Customer invoice canceled','Executed when a customer invoice is conceled','facture',8),(16,'BILL_SENTBYMAIL','Customer invoice sent by mail','Executed when a customer invoice is sent by mail','facture',9),(17,'ORDER_SUPPLIER_VALIDATE','Supplier order validated','Executed when a supplier order is validated','order_supplier',10),(18,'ORDER_SUPPLIER_SENTBYMAIL','Supplier order sent by mail','Executed when a supplier order is sent by mail','order_supplier',13),(19,'BILL_SUPPLIER_VALIDATE','Supplier invoice validated','Executed when a supplier invoice is validated','invoice_supplier',14),(20,'BILL_SUPPLIER_PAYED','Supplier invoice payed','Executed when a supplier invoice is payed','invoice_supplier',15),(21,'BILL_SUPPLIER_SENTBYMAIL','Supplier invoice sent by mail','Executed when a supplier invoice is sent by mail','invoice_supplier',16),(22,'SHIPPING_VALIDATE','Shipping validated','Executed when a shipping is validated','shipping',19),(23,'SHIPPING_SENTBYMAIL','Shipping sent by mail','Executed when a shipping is sent by mail','shipping',20),(24,'MEMBER_VALIDATE','Member validated','Executed when a member is validated','member',21),(25,'MEMBER_SUBSCRIPTION','Member subscribed','Executed when a member is subscribed','member',22),(26,'MEMBER_RESILIATE','Member resiliated','Executed when a member is resiliated','member',23),(27,'MEMBER_DELETE','Member deleted','Executed when a member is deleted','member',24);
+/*!40000 ALTER TABLE `llx_c_action_trigger` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `llx_c_actioncomm`
 --
 
@@ -662,6 +633,7 @@ CREATE TABLE `llx_c_actioncomm` (
   `module` varchar(16) DEFAULT NULL,
   `active` tinyint(4) NOT NULL DEFAULT '1',
   `todo` tinyint(4) DEFAULT NULL,
+  `position` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `code` (`code`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -673,8 +645,35 @@ CREATE TABLE `llx_c_actioncomm` (
 
 LOCK TABLES `llx_c_actioncomm` WRITE;
 /*!40000 ALTER TABLE `llx_c_actioncomm` DISABLE KEYS */;
-INSERT INTO `llx_c_actioncomm` VALUES (1,'AC_TEL','system','Phone call',NULL,1,NULL),(2,'AC_FAX','system','Fax send',NULL,1,NULL),(3,'AC_PROP','system','Send commercial proposal by email','propal',1,NULL),(4,'AC_EMAIL','system','Send Email',NULL,1,NULL),(5,'AC_RDV','system','Rendez-vous',NULL,1,NULL),(8,'AC_COM','system','Send customer order by email','order',1,NULL),(9,'AC_FAC','system','Send customer invoice by email','invoice',1,NULL),(30,'AC_SUP_ORD','system','Send supplier order by email','order_supplier',1,NULL),(31,'AC_SUP_INV','system','Send supplier invoice by email','invoice_supplier',1,NULL),(50,'AC_OTH','system','Other',NULL,1,NULL);
+INSERT INTO `llx_c_actioncomm` VALUES (1,'AC_TEL','system','Phone call',NULL,1,NULL,0),(2,'AC_FAX','system','Fax send',NULL,1,NULL,0),(3,'AC_PROP','system','Send commercial proposal by email','propal',1,NULL,0),(4,'AC_EMAIL','system','Send Email',NULL,1,NULL,0),(5,'AC_RDV','system','Rendez-vous',NULL,1,NULL,0),(8,'AC_COM','system','Send customer order by email','order',1,NULL,0),(9,'AC_FAC','system','Send customer invoice by email','invoice',1,NULL,0),(30,'AC_SUP_ORD','system','Send supplier order by email','order_supplier',1,NULL,0),(31,'AC_SUP_INV','system','Send supplier invoice by email','invoice_supplier',1,NULL,0),(50,'AC_OTH','system','Other',NULL,1,NULL,0),(10,'AC_SHIP','system','Send shipping by email','shipping',1,NULL,11);
 /*!40000 ALTER TABLE `llx_c_actioncomm` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `llx_c_availability`
+--
+
+DROP TABLE IF EXISTS `llx_c_availability`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `llx_c_availability` (
+  `rowid` int(11) NOT NULL AUTO_INCREMENT,
+  `code` varchar(30) NOT NULL,
+  `label` varchar(60) NOT NULL,
+  `active` tinyint(4) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`rowid`),
+  UNIQUE KEY `uk_c_availability` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `llx_c_availability`
+--
+
+LOCK TABLES `llx_c_availability` WRITE;
+/*!40000 ALTER TABLE `llx_c_availability` DISABLE KEYS */;
+INSERT INTO `llx_c_availability` VALUES (1,'AV_NOW','Immediate',1),(2,'AV_1W','1 week',1),(3,'AV_2W','2 weeks',1),(4,'AV_3W','3 weeks',1);
+/*!40000 ALTER TABLE `llx_c_availability` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -719,6 +718,7 @@ CREATE TABLE `llx_c_chargesociales` (
   `active` tinyint(4) NOT NULL DEFAULT '1',
   `code` varchar(12) NOT NULL,
   `fk_pays` int(11) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=231 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -729,7 +729,7 @@ CREATE TABLE `llx_c_chargesociales` (
 
 LOCK TABLES `llx_c_chargesociales` WRITE;
 /*!40000 ALTER TABLE `llx_c_chargesociales` DISABLE KEYS */;
-INSERT INTO `llx_c_chargesociales` VALUES (1,'Allocations familiales',1,1,'TAXFAM',1),(2,'CSG Deductible',1,1,'TAXCSGD',1),(3,'CSG/CRDS NON Deductible',0,1,'TAXCSGND',1),(10,'Taxe apprentissage',0,1,'TAXAPP',1),(11,'Taxe professionnelle',0,1,'TAXPRO',1),(20,'Impots locaux/fonciers',0,1,'TAXFON',1),(25,'Impots revenus',0,1,'TAXREV',1),(30,'Assurance Sante',0,1,'TAXSECU',1),(40,'Mutuelle',0,1,'TAXMUT',1),(50,'Assurance vieillesse',0,1,'TAXRET',1),(60,'Assurance Chomage',0,1,'TAXCHOM',1),(201,'ONSS',1,1,'TAXBEONSS',2),(210,'Precompte professionnel',1,1,'TAXBEPREPRO',2),(220,'Prime d\'existence',1,1,'TAXBEPRIEXI',2),(230,'Precompte immobilier',1,1,'TAXBEPREIMMO',2);
+INSERT INTO `llx_c_chargesociales` VALUES (1,'Allocations familiales',1,1,'TAXFAM',1,NULL),(2,'CSG Deductible',1,1,'TAXCSGD',1,NULL),(3,'CSG/CRDS NON Deductible',0,1,'TAXCSGND',1,NULL),(10,'Taxe apprentissage',0,1,'TAXAPP',1,NULL),(11,'Taxe professionnelle',0,1,'TAXPRO',1,NULL),(20,'Impots locaux/fonciers',0,1,'TAXFON',1,NULL),(25,'Impots revenus',0,1,'TAXREV',1,NULL),(30,'Assurance Sante',0,1,'TAXSECU',1,NULL),(40,'Mutuelle',0,1,'TAXMUT',1,NULL),(50,'Assurance vieillesse',0,1,'TAXRET',1,NULL),(60,'Assurance Chomage',0,1,'TAXCHOM',1,NULL),(201,'ONSS',1,1,'TAXBEONSS',2,NULL),(210,'Precompte professionnel',1,1,'TAXBEPREPRO',2,NULL),(220,'Prime d\'existence',1,1,'TAXBEPRIEXI',2,NULL),(230,'Precompte immobilier',1,1,'TAXBEPREIMMO',2,NULL);
 /*!40000 ALTER TABLE `llx_c_chargesociales` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -745,6 +745,7 @@ CREATE TABLE `llx_c_civilite` (
   `code` varchar(6) NOT NULL,
   `civilite` varchar(50) DEFAULT NULL,
   `active` tinyint(4) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `code` (`code`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -756,7 +757,7 @@ CREATE TABLE `llx_c_civilite` (
 
 LOCK TABLES `llx_c_civilite` WRITE;
 /*!40000 ALTER TABLE `llx_c_civilite` DISABLE KEYS */;
-INSERT INTO `llx_c_civilite` VALUES (1,'MME','Madame',1),(3,'MR','Monsieur',1),(5,'MLE','Mademoiselle',1),(7,'MTRE','Maître',1);
+INSERT INTO `llx_c_civilite` VALUES (1,'MME','Madame',1,NULL),(3,'MR','Monsieur',1,NULL),(5,'MLE','Mademoiselle',1,NULL),(7,'MTRE','Maître',1,NULL);
 /*!40000 ALTER TABLE `llx_c_civilite` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -784,7 +785,7 @@ CREATE TABLE `llx_c_currencies` (
 
 LOCK TABLES `llx_c_currencies` WRITE;
 /*!40000 ALTER TABLE `llx_c_currencies` DISABLE KEYS */;
-INSERT INTO `llx_c_currencies` VALUES ('BT','THB','Bath thailandais',NULL,1),('CD','DKK','Couronnes dannoises',NULL,1),('CN','NOK','Couronnes norvegiennes',NULL,1),('CS','SEK','Couronnes suedoises',NULL,1),('CZ','CZK','Couronnes tcheques',NULL,1),('TD','TND','Dinar tunisien',NULL,1),('DA','DZD','Dinar algérien',NULL,1),('DH','MAD','Dirham',NULL,1),('AD','AUD','Dollars australiens',NULL,1),('DC','CAD','Dollars canadiens',NULL,1),('HK','HKD','Dollars hong kong',NULL,1),('DS','SGD','Dollars singapour',NULL,1),('DU','USD','Dollars us',NULL,1),('EC','XEU','Ecus',NULL,1),('ES','PTE','Escudos',NULL,0),('FB','BEF','Francs belges',NULL,0),('FF','FRF','Francs francais',NULL,0),('FL','LUF','Francs luxembourgeois',NULL,0),('FO','NLG','Florins',NULL,1),('FS','CHF','Francs suisses',NULL,1),('LI','IEP','Livres irlandaises',NULL,1),('LR','ITL','Lires',NULL,0),('LS','GBP','Livres sterling',NULL,1),('MA','DEM','Deutsch mark',NULL,0),('MF','FIM','Mark finlandais',NULL,1),('MR','MRO','Ouguiya Mauritanien',NULL,1),('PA','ARP','Pesos argentins',NULL,1),('PC','CLP','Pesos chilien',NULL,1),('PE','ESP','Pesete',NULL,1),('PL','PLN','Zlotys polonais',NULL,1),('SA','ATS','Shiliing autrichiens',NULL,1),('TW','TWD','Dollar taiwanais',NULL,1),('YE','JPY','Yens',NULL,1),('ZA','ZAR','Rand africa',NULL,1),('DR','GRD','Drachme (grece)',NULL,1),('EU','EUR','Euros',NULL,1),('RB','BRL','Real bresilien',NULL,1),('SK','SKK','Couronnes slovaques',NULL,1),('YC','CNY','Yuang chinois',NULL,1),('AE','AED','Arabes emirats dirham',NULL,1),('CF','XAF','Francs cfa beac',NULL,1),('EG','EGP','Livre egyptienne',NULL,1),('KR','KRW','Won coree du sud',NULL,1),('NZ','NZD','Dollar neo-zelandais',NULL,1),('TR','TRL','Livre turque',NULL,1),('ID','IDR','Rupiahs d\'indonesie',NULL,1),('IN','INR','Roupie indienne',NULL,1),('LT','LTL','Litas',NULL,1),('RU','SUR','Rouble',NULL,1),('FH','HUF','Forint hongrois',NULL,1),('LK','LKR','Roupies sri lanka',NULL,1),('MU','MUR','Roupies mauritiennes',NULL,1),('SR','SAR','Saudi riyal',NULL,1);
+INSERT INTO `llx_c_currencies` VALUES ('BT','THB','Bath thailandais',NULL,1),('CD','DKK','Couronnes dannoises',NULL,1),('CN','NOK','Couronnes norvegiennes',NULL,1),('CS','SEK','Couronnes suedoises',NULL,1),('CZ','CZK','Couronnes tcheques',NULL,1),('TD','TND','Dinar tunisien',NULL,1),('DA','DZD','Dinar algérien',NULL,1),('DH','MAD','Dirham',NULL,1),('AD','AUD','Dollars australiens',NULL,1),('DC','CAD','Dollars canadiens',NULL,1),('HK','HKD','Dollars hong kong',NULL,1),('DS','SGD','Dollars singapour',NULL,1),('DU','USD','Dollars us',NULL,1),('EC','XEU','Ecus',NULL,1),('ES','PTE','Escudos',NULL,0),('FB','BEF','Francs belges',NULL,0),('FF','FRF','Francs francais',NULL,0),('FL','LUF','Francs luxembourgeois',NULL,0),('FO','NLG','Florins',NULL,1),('FS','CHF','Francs suisses',NULL,1),('LI','IEP','Livres irlandaises',NULL,1),('LR','ITL','Lires',NULL,0),('LS','GBP','Livres sterling',NULL,1),('MA','DEM','Deutsch mark',NULL,0),('MF','FIM','Mark finlandais',NULL,1),('MR','MRO','Ouguiya Mauritanien',NULL,1),('PA','ARP','Pesos argentins',NULL,1),('PC','CLP','Pesos chilien',NULL,1),('PE','ESP','Pesete',NULL,1),('PL','PLN','Zlotys polonais',NULL,1),('SA','ATS','Shiliing autrichiens',NULL,1),('TW','TWD','Dollar taiwanais',NULL,1),('YE','JPY','Yens',NULL,1),('ZA','ZAR','Rand africa',NULL,1),('DR','GRD','Drachme (grece)',NULL,1),('EU','EUR','Euros',NULL,1),('RB','BRL','Real bresilien',NULL,1),('SK','SKK','Couronnes slovaques',NULL,1),('YC','CNY','Yuang chinois',NULL,1),('AE','AED','Arabes emirats dirham',NULL,1),('CF','XAF','Francs cfa beac',NULL,1),('EG','EGP','Livre egyptienne',NULL,1),('KR','KRW','Won coree du sud',NULL,1),('NZ','NZD','Dollar neo-zelandais',NULL,1),('TR','TRL','Livre turque',NULL,1),('ID','IDR','Rupiahs d\'indonesie',NULL,1),('IN','INR','Roupie indienne',NULL,1),('LT','LTL','Litas',NULL,1),('RU','SUR','Rouble',NULL,1),('FH','HUF','Forint hongrois',NULL,1),('LK','LKR','Roupies sri lanka',NULL,1),('MU','MUR','Roupies mauritiennes',NULL,1),('SR','SAR','Saudi riyal',NULL,1),('LH','HNL','Lempiras',NULL,1),('MX','MXP','Pesos Mexicanos',NULL,1),('BD','BBD','Barbadian or Bajan Dollar',NULL,1);
 /*!40000 ALTER TABLE `llx_c_currencies` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -799,7 +800,7 @@ CREATE TABLE `llx_c_departements` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
   `code_departement` varchar(6) NOT NULL,
   `fk_region` int(11) DEFAULT NULL,
-  `cheflieu` varchar(7) DEFAULT NULL,
+  `cheflieu` varchar(50) DEFAULT NULL,
   `tncc` int(11) DEFAULT NULL,
   `ncc` varchar(50) DEFAULT NULL,
   `nom` varchar(50) DEFAULT NULL,
@@ -807,7 +808,7 @@ CREATE TABLE `llx_c_departements` (
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_departements` (`code_departement`,`fk_region`),
   KEY `idx_departements_fk_region` (`fk_region`)
-) ENGINE=MyISAM AUTO_INCREMENT=434 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=583 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -816,7 +817,7 @@ CREATE TABLE `llx_c_departements` (
 
 LOCK TABLES `llx_c_departements` WRITE;
 /*!40000 ALTER TABLE `llx_c_departements` DISABLE KEYS */;
-INSERT INTO `llx_c_departements` VALUES (1,'0',0,'0',0,'-','-',1),(2,'01',82,'01053',5,'AIN','Ain',1),(3,'02',22,'02408',5,'AISNE','Aisne',1),(4,'03',83,'03190',5,'ALLIER','Allier',1),(5,'04',93,'04070',4,'ALPES-DE-HAUTE-PROVENCE','Alpes-de-Haute-Provence',1),(6,'05',93,'05061',4,'HAUTES-ALPES','Hautes-Alpes',1),(7,'06',93,'06088',4,'ALPES-MARITIMES','Alpes-Maritimes',1),(8,'07',82,'07186',5,'ARDECHE','Ardèche',1),(9,'08',21,'08105',4,'ARDENNES','Ardennes',1),(10,'09',73,'09122',5,'ARIEGE','Ariège',1),(11,'10',21,'10387',5,'AUBE','Aube',1),(12,'11',91,'11069',5,'AUDE','Aude',1),(13,'12',73,'12202',5,'AVEYRON','Aveyron',1),(14,'13',93,'13055',4,'BOUCHES-DU-RHONE','Bouches-du-Rhône',1),(15,'14',25,'14118',2,'CALVADOS','Calvados',1),(16,'15',83,'15014',2,'CANTAL','Cantal',1),(17,'16',54,'16015',3,'CHARENTE','Charente',1),(18,'17',54,'17300',3,'CHARENTE-MARITIME','Charente-Maritime',1),(19,'18',24,'18033',2,'CHER','Cher',1),(20,'19',74,'19272',3,'CORREZE','Corrèze',1),(21,'2A',94,'2A004',3,'CORSE-DU-SUD','Corse-du-Sud',1),(22,'2B',94,'2B033',3,'HAUTE-CORSE','Haute-Corse',1),(23,'21',26,'21231',3,'COTE-D\'OR','Côte-d\'Or',1),(24,'22',53,'22278',4,'COTES-D\'ARMOR','Côtes-d\'Armor',1),(25,'23',74,'23096',3,'CREUSE','Creuse',1),(26,'24',72,'24322',3,'DORDOGNE','Dordogne',1),(27,'25',43,'25056',2,'DOUBS','Doubs',1),(28,'26',82,'26362',3,'DROME','Drôme',1),(29,'27',23,'27229',5,'EURE','Eure',1),(30,'28',24,'28085',1,'EURE-ET-LOIR','Eure-et-Loir',1),(31,'29',53,'29232',2,'FINISTERE','Finistère',1),(32,'30',91,'30189',2,'GARD','Gard',1),(33,'31',73,'31555',3,'HAUTE-GARONNE','Haute-Garonne',1),(34,'32',73,'32013',2,'GERS','Gers',1),(35,'33',72,'33063',3,'GIRONDE','Gironde',1),(36,'34',91,'34172',5,'HERAULT','Hérault',1),(37,'35',53,'35238',1,'ILLE-ET-VILAINE','Ille-et-Vilaine',1),(38,'36',24,'36044',5,'INDRE','Indre',1),(39,'37',24,'37261',1,'INDRE-ET-LOIRE','Indre-et-Loire',1),(40,'38',82,'38185',5,'ISERE','Isère',1),(41,'39',43,'39300',2,'JURA','Jura',1),(42,'40',72,'40192',4,'LANDES','Landes',1),(43,'41',24,'41018',0,'LOIR-ET-CHER','Loir-et-Cher',1),(44,'42',82,'42218',3,'LOIRE','Loire',1),(45,'43',83,'43157',3,'HAUTE-LOIRE','Haute-Loire',1),(46,'44',52,'44109',3,'LOIRE-ATLANTIQUE','Loire-Atlantique',1),(47,'45',24,'45234',2,'LOIRET','Loiret',1),(48,'46',73,'46042',2,'LOT','Lot',1),(49,'47',72,'47001',0,'LOT-ET-GARONNE','Lot-et-Garonne',1),(50,'48',91,'48095',3,'LOZERE','Lozère',1),(51,'49',52,'49007',0,'MAINE-ET-LOIRE','Maine-et-Loire',1),(52,'50',25,'50502',3,'MANCHE','Manche',1),(53,'51',21,'51108',3,'MARNE','Marne',1),(54,'52',21,'52121',3,'HAUTE-MARNE','Haute-Marne',1),(55,'53',52,'53130',3,'MAYENNE','Mayenne',1),(56,'54',41,'54395',0,'MEURTHE-ET-MOSELLE','Meurthe-et-Moselle',1),(57,'55',41,'55029',3,'MEUSE','Meuse',1),(58,'56',53,'56260',2,'MORBIHAN','Morbihan',1),(59,'57',41,'57463',3,'MOSELLE','Moselle',1),(60,'58',26,'58194',3,'NIEVRE','Nièvre',1),(61,'59',31,'59350',2,'NORD','Nord',1),(62,'60',22,'60057',5,'OISE','Oise',1),(63,'61',25,'61001',5,'ORNE','Orne',1),(64,'62',31,'62041',2,'PAS-DE-CALAIS','Pas-de-Calais',1),(65,'63',83,'63113',2,'PUY-DE-DOME','Puy-de-Dôme',1),(66,'64',72,'64445',4,'PYRENEES-ATLANTIQUES','Pyrénées-Atlantiques',1),(67,'65',73,'65440',4,'HAUTES-PYRENEES','Hautes-Pyrénées',1),(68,'66',91,'66136',4,'PYRENEES-ORIENTALES','Pyrénées-Orientales',1),(69,'67',42,'67482',2,'BAS-RHIN','Bas-Rhin',1),(70,'68',42,'68066',2,'HAUT-RHIN','Haut-Rhin',1),(71,'69',82,'69123',2,'RHONE','Rhône',1),(72,'70',43,'70550',3,'HAUTE-SAONE','Haute-Saône',1),(73,'71',26,'71270',0,'SAONE-ET-LOIRE','Saône-et-Loire',1),(74,'72',52,'72181',3,'SARTHE','Sarthe',1),(75,'73',82,'73065',3,'SAVOIE','Savoie',1),(76,'74',82,'74010',3,'HAUTE-SAVOIE','Haute-Savoie',1),(77,'75',11,'75056',0,'PARIS','Paris',1),(78,'76',23,'76540',3,'SEINE-MARITIME','Seine-Maritime',1),(79,'77',11,'77288',0,'SEINE-ET-MARNE','Seine-et-Marne',1),(80,'78',11,'78646',4,'YVELINES','Yvelines',1),(81,'79',54,'79191',4,'DEUX-SEVRES','Deux-Sèvres',1),(82,'80',22,'80021',3,'SOMME','Somme',1),(83,'81',73,'81004',2,'TARN','Tarn',1),(84,'82',73,'82121',0,'TARN-ET-GARONNE','Tarn-et-Garonne',1),(85,'83',93,'83137',2,'VAR','Var',1),(86,'84',93,'84007',0,'VAUCLUSE','Vaucluse',1),(87,'85',52,'85191',3,'VENDEE','Vendée',1),(88,'86',54,'86194',3,'VIENNE','Vienne',1),(89,'87',74,'87085',3,'HAUTE-VIENNE','Haute-Vienne',1),(90,'88',41,'88160',4,'VOSGES','Vosges',1),(91,'89',26,'89024',5,'YONNE','Yonne',1),(92,'90',43,'90010',0,'TERRITOIRE DE BELFORT','Territoire de Belfort',1),(93,'91',11,'91228',5,'ESSONNE','Essonne',1),(94,'92',11,'92050',4,'HAUTS-DE-SEINE','Hauts-de-Seine',1),(95,'93',11,'93008',3,'SEINE-SAINT-DENIS','Seine-Saint-Denis',1),(96,'94',11,'94028',2,'VAL-DE-MARNE','Val-de-Marne',1),(97,'95',11,'95500',2,'VAL-D\'OISE','Val-d\'Oise',1),(98,'971',1,'97105',3,'GUADELOUPE','Guadeloupe',1),(99,'972',2,'97209',3,'MARTINIQUE','Martinique',1),(100,'973',3,'97302',3,'GUYANE','Guyane',1),(101,'974',4,'97411',3,'REUNION','Réunion',1),(102,'01',201,'',1,'ANVERS','Anvers',1),(103,'02',203,'',3,'BRUXELLES-CAPITALE','Bruxelles-Capitale',1),(104,'03',202,'',2,'BRABANT-WALLON','Brabant-Wallon',1),(105,'04',201,'',1,'BRABANT-FLAMAND','Brabant-Flamand',1),(106,'05',201,'',1,'FLANDRE-OCCIDENTALE','Flandre-Occidentale',1),(107,'06',201,'',1,'FLANDRE-ORIENTALE','Flandre-Orientale',1),(108,'07',202,'',2,'HAINAUT','Hainaut',1),(109,'08',201,'',2,'LIEGE','Liège',1),(110,'09',202,'',1,'LIMBOURG','Limbourg',1),(111,'10',202,'',2,'LUXEMBOURG','Luxembourg',1),(112,'11',201,'',2,'NAMUR','Namur',1),(113,'AG',315,NULL,NULL,NULL,'AGRIGENTO',1),(114,'AL',312,NULL,NULL,NULL,'ALESSANDRIA',1),(115,'AN',310,NULL,NULL,NULL,'ANCONA',1),(116,'AO',319,NULL,NULL,NULL,'AOSTA',1),(117,'AR',316,NULL,NULL,NULL,'AREZZO',1),(118,'AP',310,NULL,NULL,NULL,'ASCOLI PICENO',1),(119,'AT',312,NULL,NULL,NULL,'ASTI',1),(120,'AV',304,NULL,NULL,NULL,'AVELLINO',1),(121,'BA',313,NULL,NULL,NULL,'BARI',1),(122,'BT',313,NULL,NULL,NULL,'BARLETTA-ANDRIA-TRANI',1),(123,'BL',320,NULL,NULL,NULL,'BELLUNO',1),(124,'BN',304,NULL,NULL,NULL,'BENEVENTO',1),(125,'BG',309,NULL,NULL,NULL,'BERGAMO',1),(126,'BI',312,NULL,NULL,NULL,'BIELLA',1),(127,'BO',305,NULL,NULL,NULL,'BOLOGNA',1),(128,'BZ',317,NULL,NULL,NULL,'BOLZANO',1),(129,'BS',309,NULL,NULL,NULL,'BRESCIA',1),(130,'BR',313,NULL,NULL,NULL,'BRINDISI',1),(131,'CA',314,NULL,NULL,NULL,'CAGLIARI',1),(132,'CL',315,NULL,NULL,NULL,'CALTANISSETTA',1),(133,'CB',311,NULL,NULL,NULL,'CAMPOBASSO',1),(134,'CI',314,NULL,NULL,NULL,'CARBONIA-IGLESIAS',1),(135,'CE',304,NULL,NULL,NULL,'CASERTA',1),(136,'CT',315,NULL,NULL,NULL,'CATANIA',1),(137,'CZ',303,NULL,NULL,NULL,'CATANZARO',1),(138,'CH',301,NULL,NULL,NULL,'CHIETI',1),(139,'CO',309,NULL,NULL,NULL,'COMO',1),(140,'CS',303,NULL,NULL,NULL,'COSENZA',1),(141,'CR',309,NULL,NULL,NULL,'CREMONA',1),(142,'KR',303,NULL,NULL,NULL,'CROTONE',1),(143,'CN',312,NULL,NULL,NULL,'CUNEO',1),(144,'EN',315,NULL,NULL,NULL,'ENNA',1),(145,'FM',310,NULL,NULL,NULL,'FERMO',1),(146,'FE',305,NULL,NULL,NULL,'FERRARA',1),(147,'FI',316,NULL,NULL,NULL,'FIRENZE',1),(148,'FG',313,NULL,NULL,NULL,'FOGGIA',1),(149,'FC',305,NULL,NULL,NULL,'FORLI-CESENA',1),(150,'FR',307,NULL,NULL,NULL,'FROSINONE',1),(151,'GE',308,NULL,NULL,NULL,'GENOVA',1),(152,'GO',306,NULL,NULL,NULL,'GORIZIA',1),(153,'GR',316,NULL,NULL,NULL,'GROSSETO',1),(154,'IM',308,NULL,NULL,NULL,'IMPERIA',1),(155,'IS',311,NULL,NULL,NULL,'ISERNIA',1),(156,'SP',308,NULL,NULL,NULL,'LA SPEZIA',1),(157,'AQ',301,NULL,NULL,NULL,'L AQUILA',1),(158,'LT',307,NULL,NULL,NULL,'LATINA',1),(159,'LE',313,NULL,NULL,NULL,'LECCE',1),(160,'LC',309,NULL,NULL,NULL,'LECCO',1),(161,'LI',314,NULL,NULL,NULL,'LIVORNO',1),(162,'LO',309,NULL,NULL,NULL,'LODI',1),(163,'LU',316,NULL,NULL,NULL,'LUCCA',1),(164,'MC',310,NULL,NULL,NULL,'MACERATA',1),(165,'MN',309,NULL,NULL,NULL,'MANTOVA',1),(166,'MS',316,NULL,NULL,NULL,'MASSA-CARRARA',1),(167,'MT',302,NULL,NULL,NULL,'MATERA',1),(168,'VS',314,NULL,NULL,NULL,'MEDIO CAMPIDANO',1),(169,'ME',315,NULL,NULL,NULL,'MESSINA',1),(170,'MI',309,NULL,NULL,NULL,'MILANO',1),(171,'MB',309,NULL,NULL,NULL,'MONZA e BRIANZA',1),(172,'MO',305,NULL,NULL,NULL,'MODENA',1),(173,'NA',304,NULL,NULL,NULL,'NAPOLI',1),(174,'NO',312,NULL,NULL,NULL,'NOVARA',1),(175,'NU',314,NULL,NULL,NULL,'NUORO',1),(176,'OG',314,NULL,NULL,NULL,'OGLIASTRA',1),(177,'OT',314,NULL,NULL,NULL,'OLBIA-TEMPIO',1),(178,'OR',314,NULL,NULL,NULL,'ORISTANO',1),(179,'PD',320,NULL,NULL,NULL,'PADOVA',1),(180,'PA',315,NULL,NULL,NULL,'PALERMO',1),(181,'PR',305,NULL,NULL,NULL,'PARMA',1),(182,'PV',309,NULL,NULL,NULL,'PAVIA',1),(183,'PG',318,NULL,NULL,NULL,'PERUGIA',1),(184,'PU',310,NULL,NULL,NULL,'PESARO e URBINO',1),(185,'PE',301,NULL,NULL,NULL,'PESCARA',1),(186,'PC',305,NULL,NULL,NULL,'PIACENZA',1),(187,'PI',316,NULL,NULL,NULL,'PISA',1),(188,'PT',316,NULL,NULL,NULL,'PISTOIA',1),(189,'PN',306,NULL,NULL,NULL,'PORDENONE',1),(190,'PZ',302,NULL,NULL,NULL,'POTENZA',1),(191,'PO',316,NULL,NULL,NULL,'PRATO',1),(192,'RG',315,NULL,NULL,NULL,'RAGUSA',1),(193,'RA',305,NULL,NULL,NULL,'RAVENNA',1),(194,'RC',303,NULL,NULL,NULL,'REGGIO CALABRIA',1),(195,'RE',305,NULL,NULL,NULL,'REGGIO NELL EMILIA',1),(196,'RI',307,NULL,NULL,NULL,'RIETI',1),(197,'RN',305,NULL,NULL,NULL,'RIMINI',1),(198,'RM',307,NULL,NULL,NULL,'ROMA',1),(199,'RO',320,NULL,NULL,NULL,'ROVIGO',1),(200,'SA',304,NULL,NULL,NULL,'SALERNO',1),(201,'SS',314,NULL,NULL,NULL,'SASSARI',1),(202,'SV',308,NULL,NULL,NULL,'SAVONA',1),(203,'SI',316,NULL,NULL,NULL,'SIENA',1),(204,'SR',315,NULL,NULL,NULL,'SIRACUSA',1),(205,'SO',309,NULL,NULL,NULL,'SONDRIO',1),(206,'TA',313,NULL,NULL,NULL,'TARANTO',1),(207,'TE',301,NULL,NULL,NULL,'TERAMO',1),(208,'TR',318,NULL,NULL,NULL,'TERNI',1),(209,'TO',312,NULL,NULL,NULL,'TORINO',1),(210,'TP',315,NULL,NULL,NULL,'TRAPANI',1),(211,'TN',317,NULL,NULL,NULL,'TRENTO',1),(212,'TV',320,NULL,NULL,NULL,'TREVISO',1),(213,'TS',306,NULL,NULL,NULL,'TRIESTE',1),(214,'UD',306,NULL,NULL,NULL,'UDINE',1),(215,'VA',309,NULL,NULL,NULL,'VARESE',1),(216,'VE',320,NULL,NULL,NULL,'VENEZIA',1),(217,'VB',312,NULL,NULL,NULL,'VERBANO-CUSIO-OSSOLA',1),(218,'VC',312,NULL,NULL,NULL,'VERCELLI',1),(219,'VR',320,NULL,NULL,NULL,'VERONA',1),(220,'VV',303,NULL,NULL,NULL,'VIBO VALENTIA',1),(221,'VI',320,NULL,NULL,NULL,'VICENZA',1),(222,'VT',307,NULL,NULL,NULL,'VITERBO',1),(223,'NSW',2801,'',1,'','New South Wales',1),(224,'VIC',2801,'',1,'','Victoria',1),(225,'QLD',2801,'',1,'','Queensland',1),(226,'SA',2801,'',1,'','South Australia',1),(227,'ACT',2801,'',1,'','Australia Capital Territory',1),(228,'TAS',2801,'',1,'','Tasmania',1),(229,'WA',2801,'',1,'','Western Australia',1),(230,'NT',2801,'',1,'','Northern Territory',1),(231,'01',419,'',19,'PAIS VASCO','País Vasco',1),(232,'02',404,'',4,'ALBACETE','Albacete',1),(233,'03',411,'',11,'ALICANTE','Alicante',1),(234,'04',401,'',1,'ALMERIA','Almería',1),(235,'05',403,'',3,'AVILA','Avila',1),(236,'06',412,'',12,'BADAJOZ','Badajoz',1),(237,'07',414,'',14,'ISLAS BALEARES','Islas Baleares',1),(238,'08',406,'',6,'BARCELONA','Barcelona',1),(239,'09',403,'',8,'BURGOS','Burgos',1),(240,'10',412,'',12,'CACERES','Cáceres',1),(241,'11',401,'',1,'CADIz','Cádiz',1),(242,'12',411,'',11,'CASTELLON','Castellón',1),(243,'13',404,'',4,'CIUDAD REAL','Ciudad Real',1),(244,'14',401,'',1,'CORDOBA','Córdoba',1),(245,'15',413,'',13,'LA CORUÑA','La Coruña',1),(246,'16',404,'',4,'CUENCA','Cuenca',1),(247,'17',406,'',6,'GERONA','Gerona',1),(248,'18',401,'',1,'GRANADA','Granada',1),(249,'19',404,'',4,'GUADALAJARA','Guadalajara',1),(250,'20',419,'',19,'GUIPUZCOA','Guipúzcoa',1),(251,'21',401,'',1,'HUELVA','Huelva',1),(252,'22',402,'',2,'HUESCA','Huesca',1),(253,'23',401,'',1,'JAEN','Jaén',1),(254,'24',403,'',3,'LEON','León',1),(255,'25',406,'',6,'LERIDA','Lérida',1),(256,'26',415,'',15,'LA RIOJA','La Rioja',1),(257,'27',413,'',13,'LUGO','Lugo',1),(258,'28',416,'',16,'MADRID','Madrid',1),(259,'29',401,'',1,'MALAGA','Málaga',1),(260,'30',417,'',17,'MURCIA','Murcia',1),(261,'31',408,'',8,'NAVARRA','Navarra',1),(262,'32',413,'',13,'ORENSE','Orense',1),(263,'33',418,'',18,'ASTURIAS','Asturias',1),(264,'34',403,'',3,'PALENCIA','Palencia',1),(265,'35',405,'',5,'LAS PALMAS','Las Palmas',1),(266,'36',413,'',13,'PONTEVEDRA','Pontevedra',1),(267,'37',403,'',3,'SALAMANCA','Salamanca',1),(268,'38',405,'',5,'STA. CRUZ DE TENERIFE','Sta. Cruz de Tenerife',1),(269,'39',410,'',10,'CANTABRIA','Cantabria',1),(270,'40',403,'',3,'SEGOVIA','Segovia',1),(271,'41',401,'',1,'SEVILLA','Sevilla',1),(272,'42',403,'',3,'SORIA','Soria',1),(273,'43',406,'',6,'TARRAGONA','Tarragona',1),(274,'44',402,'',2,'TERUEL','Teruel',1),(275,'45',404,'',5,'TOLEDO','Toledo',1),(276,'46',411,'',11,'VALENCIA','Valencia',1),(277,'47',403,'',3,'VALLADOLID','Valladolid',1),(278,'48',419,'',19,'VIZCAYA','Vizcaya',1),(279,'49',403,'',3,'ZAMORA','Zamora',1),(280,'50',402,'',1,'ZARAGOZA','Zaragoza',1),(281,'51',407,'',7,'CEUTA','Ceuta',1),(282,'52',409,'',9,'MELILLA','Melilla',1),(283,'53',420,'',20,'OTROS','Otros',1),(284,'AG',601,NULL,NULL,'ARGOVIE','Argovie',1),(285,'AI',601,NULL,NULL,'APPENZELL RHODES INTERIEURES','Appenzell Rhodes intérieures',1),(286,'AR',601,NULL,NULL,'APPENZELL RHODES EXTERIEURES','Appenzell Rhodes extérieures',1),(287,'BE',601,NULL,NULL,'BERNE','Berne',1),(288,'BL',601,NULL,NULL,'BALE CAMPAGNE','Bâle Campagne',1),(289,'BS',601,NULL,NULL,'BALE VILLE','Bâle Ville',1),(290,'FR',601,NULL,NULL,'FRIBOURG','Fribourg',1),(291,'GE',601,NULL,NULL,'GENEVE','Genève',1),(292,'GL',601,NULL,NULL,'GLARIS','Glaris',1),(293,'GR',601,NULL,NULL,'GRISONS','Grisons',1),(294,'JU',601,NULL,NULL,'JURA','Jura',1),(295,'LU',601,NULL,NULL,'LUCERNE','Lucerne',1),(296,'NE',601,NULL,NULL,'NEUCHATEL','Neuchâtel',1),(297,'NW',601,NULL,NULL,'NIDWALD','Nidwald',1),(298,'OW',601,NULL,NULL,'OBWALD','Obwald',1),(299,'SG',601,NULL,NULL,'SAINT-GALL','Saint-Gall',1),(300,'SH',601,NULL,NULL,'SCHAFFHOUSE','Schaffhouse',1),(301,'SO',601,NULL,NULL,'SOLEURE','Soleure',1),(302,'SZ',601,NULL,NULL,'SCHWYZ','Schwyz',1),(303,'TG',601,NULL,NULL,'THURGOVIE','Thurgovie',1),(304,'TI',601,NULL,NULL,'TESSIN','Tessin',1),(305,'UR',601,NULL,NULL,'URI','Uri',1),(306,'VD',601,NULL,NULL,'VAUD','Vaud',1),(307,'VS',601,NULL,NULL,'VALAIS','Valais',1),(308,'ZG',601,NULL,NULL,'ZUG','Zug',1),(309,'ZH',601,NULL,NULL,'ZURICH','Zürich',1),(310,'AL',1101,'',0,'ALABAMA','Alabama',1),(311,'AK',1101,'',0,'ALASKA','Alaska',1),(312,'AZ',1101,'',0,'ARIZONA','Arizona',1),(313,'AR',1101,'',0,'ARKANSAS','Arkansas',1),(314,'CA',1101,'',0,'CALIFORNIA','California',1),(315,'CO',1101,'',0,'COLORADO','Colorado',1),(316,'CT',1101,'',0,'CONNECTICUT','Connecticut',1),(317,'DE',1101,'',0,'DELAWARE','Delaware',1),(318,'FL',1101,'',0,'FLORIDA','Florida',1),(319,'GA',1101,'',0,'GEORGIA','Georgia',1),(320,'HI',1101,'',0,'HAWAII','Hawaii',1),(321,'ID',1101,'',0,'IDAHO','Idaho',1),(322,'IL',1101,'',0,'ILLINOIS','Illinois',1),(323,'IN',1101,'',0,'INDIANA','Indiana',1),(324,'IA',1101,'',0,'IOWA','Iowa',1),(325,'KS',1101,'',0,'KANSAS','Kansas',1),(326,'KY',1101,'',0,'KENTUCKY','Kentucky',1),(327,'LA',1101,'',0,'LOUISIANA','Louisiana',1),(328,'ME',1101,'',0,'MAINE','Maine',1),(329,'MD',1101,'',0,'MARYLAND','Maryland',1),(330,'MA',1101,'',0,'MASSACHUSSETTS','Massachusetts',1),(331,'MI',1101,'',0,'MICHIGAN','Michigan',1),(332,'MN',1101,'',0,'MINNESOTA','Minnesota',1),(333,'MS',1101,'',0,'MISSISSIPPI','Mississippi',1),(334,'MO',1101,'',0,'MISSOURI','Missouri',1),(335,'MT',1101,'',0,'MONTANA','Montana',1),(336,'NE',1101,'',0,'NEBRASKA','Nebraska',1),(337,'NV',1101,'',0,'NEVADA','Nevada',1),(338,'NH',1101,'',0,'NEW HAMPSHIRE','New Hampshire',1),(339,'NJ',1101,'',0,'NEW JERSEY','New Jersey',1),(340,'NM',1101,'',0,'NEW MEXICO','New Mexico',1),(341,'NY',1101,'',0,'NEW YORK','New York',1),(342,'NC',1101,'',0,'NORTH CAROLINA','North Carolina',1),(343,'ND',1101,'',0,'NORTH DAKOTA','North Dakota',1),(344,'OH',1101,'',0,'OHIO','Ohio',1),(345,'OK',1101,'',0,'OKLAHOMA','Oklahoma',1),(346,'OR',1101,'',0,'OREGON','Oregon',1),(347,'PA',1101,'',0,'PENNSYLVANIA','Pennsylvania',1),(348,'RI',1101,'',0,'RHODE ISLAND','Rhode Island',1),(349,'SC',1101,'',0,'SOUTH CAROLINA','South Carolina',1),(350,'SD',1101,'',0,'SOUTH DAKOTA','South Dakota',1),(351,'TN',1101,'',0,'TENNESSEE','Tennessee',1),(352,'TX',1101,'',0,'TEXAS','Texas',1),(353,'UT',1101,'',0,'UTAH','Utah',1),(354,'VT',1101,'',0,'VERMONT','Vermont',1),(355,'VA',1101,'',0,'VIRGINIA','Virginia',1),(356,'WA',1101,'',0,'WASHINGTON','Washington',1),(357,'WV',1101,'',0,'WEST VIRGINIA','West Virginia',1),(358,'WI',1101,'',0,'WISCONSIN','Wisconsin',1),(359,'WY',1101,'',0,'WYOMING','Wyoming',1),(360,'SS',8601,NULL,NULL,NULL,'San Salvador',1),(361,'SA',8603,NULL,NULL,NULL,'Santa Ana',1),(362,'AH',8603,NULL,NULL,NULL,'Ahuachapan',1),(363,'SO',8603,NULL,NULL,NULL,'Sonsonate',1),(364,'US',8602,NULL,NULL,NULL,'Usulutan',1),(365,'SM',8602,NULL,NULL,NULL,'San Miguel',1),(366,'MO',8602,NULL,NULL,NULL,'Morazan',1),(367,'LU',8602,NULL,NULL,NULL,'La Union',1),(368,'LL',8601,NULL,NULL,NULL,'La Libertad',1),(369,'CH',8601,NULL,NULL,NULL,'Chalatenango',1),(370,'CA',8601,NULL,NULL,NULL,'Cabañas',1),(371,'LP',8601,NULL,NULL,NULL,'La Paz',1),(372,'SV',8601,NULL,NULL,NULL,'San Vicente',1),(373,'CU',8601,NULL,NULL,NULL,'Cuscatlan',1),(374,'2301',2301,'',0,'CATAMARCA','Catamarca',1),(375,'2302',2301,'',0,'YUJUY','Yujuy',1),(376,'2303',2301,'',0,'TUCAMAN','Tucamán',1),(377,'2304',2301,'',0,'SANTIAGO DEL ESTERO','Santiago del Estero',1),(378,'2305',2301,'',0,'SALTA','Salta',1),(379,'2306',2302,'',0,'CHACO','Chaco',1),(380,'2307',2302,'',0,'CORRIENTES','Corrientes',1),(381,'2308',2302,'',0,'ENTRE RIOS','Entre Ríos',1),(382,'2309',2302,'',0,'FORMOSA MISIONES','Formosa Misiones',1),(383,'2310',2302,'',0,'SANTA FE','Santa Fe',1),(384,'2311',2303,'',0,'LA RIOJA','La Rioja',1),(385,'2312',2303,'',0,'MENDOZA','Mendoza',1),(386,'2313',2303,'',0,'SAN JUAN','San Juan',1),(387,'2314',2303,'',0,'SAN LUIS','San Luis',1),(388,'2315',2304,'',0,'CORDOBA','Córdoba',1),(389,'2316',2304,'',0,'BUENOS AIRES','Buenos Aires',1),(390,'2317',2304,'',0,'CABA','Caba',1),(391,'2318',2305,'',0,'LA PAMPA','La Pampa',1),(392,'2319',2305,'',0,'NEUQUEN','Neuquén',1),(393,'2320',2305,'',0,'RIO NEGRO','Río Negro',1),(394,'2321',2305,'',0,'CHUBUT','Chubut',1),(395,'2322',2305,'',0,'SANTA CRUZ','Santa Cruz',1),(396,'2323',2305,'',0,'TIERRA DEL FUEGO','Tierra del Fuego',1),(397,'2324',2305,'',0,'ISLAS MALVINAS','Islas Malvinas',1),(398,'2325',2305,'',0,'ANTARTIDA','Antártida',1),(399,'AN',11701,NULL,0,'AN','Andaman & Nicobar',1),(400,'AP',11701,NULL,0,'AP','Andhra Pradesh',1),(401,'AR',11701,NULL,0,'AR','Arunachal Pradesh',1),(402,'AS',11701,NULL,0,'AS','Assam',1),(403,'BR',11701,NULL,0,'BR','Bihar',1),(404,'CG',11701,NULL,0,'CG','Chattisgarh',1),(405,'CH',11701,NULL,0,'CH','Chandigarh',1),(406,'DD',11701,NULL,0,'DD','Daman & Diu',1),(407,'DL',11701,NULL,0,'DL','Delhi',1),(408,'DN',11701,NULL,0,'DN','Dadra and Nagar Haveli',1),(409,'GA',11701,NULL,0,'GA','Goa',1),(410,'GJ',11701,NULL,0,'GJ','Gujarat',1),(411,'HP',11701,NULL,0,'HP','Himachal Pradesh',1),(412,'HR',11701,NULL,0,'HR','Haryana',1),(413,'JH',11701,NULL,0,'JH','Jharkhand',1),(414,'JK',11701,NULL,0,'JK','Jammu & Kashmir',1),(415,'KA',11701,NULL,0,'KA','Karnataka',1),(416,'KL',11701,NULL,0,'KL','Kerala',1),(417,'LD',11701,NULL,0,'LD','Lakshadweep',1),(418,'MH',11701,NULL,0,'MH','Maharashtra',1),(419,'ML',11701,NULL,0,'ML','Meghalaya',1),(420,'MN',11701,NULL,0,'MN','Manipur',1),(421,'MP',11701,NULL,0,'MP','Madhya Pradesh',1),(422,'MZ',11701,NULL,0,'MZ','Mizoram',1),(423,'NL',11701,NULL,0,'NL','Nagaland',1),(424,'OR',11701,NULL,0,'OR','Orissa',1),(425,'PB',11701,NULL,0,'PB','Punjab',1),(426,'PY',11701,NULL,0,'PY','Puducherry',1),(427,'RJ',11701,NULL,0,'RJ','Rajasthan',1),(428,'SK',11701,NULL,0,'SK','Sikkim',1),(429,'TN',11701,NULL,0,'TN','Tamil Nadu',1),(430,'TR',11701,NULL,0,'TR','Tripura',1),(431,'UL',11701,NULL,0,'UL','Uttarakhand',1),(432,'UP',11701,NULL,0,'UP','Uttar Pradesh',1),(433,'WB',11701,NULL,0,'WB','West Bengal',1);
+INSERT INTO `llx_c_departements` VALUES (1,'0',0,'0',0,'-','-',1),(2,'01',82,'01053',5,'AIN','Ain',1),(3,'02',22,'02408',5,'AISNE','Aisne',1),(4,'03',83,'03190',5,'ALLIER','Allier',1),(5,'04',93,'04070',4,'ALPES-DE-HAUTE-PROVENCE','Alpes-de-Haute-Provence',1),(6,'05',93,'05061',4,'HAUTES-ALPES','Hautes-Alpes',1),(7,'06',93,'06088',4,'ALPES-MARITIMES','Alpes-Maritimes',1),(8,'07',82,'07186',5,'ARDECHE','Ardèche',1),(9,'08',21,'08105',4,'ARDENNES','Ardennes',1),(10,'09',73,'09122',5,'ARIEGE','Ariège',1),(11,'10',21,'10387',5,'AUBE','Aube',1),(12,'11',91,'11069',5,'AUDE','Aude',1),(13,'12',73,'12202',5,'AVEYRON','Aveyron',1),(14,'13',93,'13055',4,'BOUCHES-DU-RHONE','Bouches-du-Rhône',1),(15,'14',25,'14118',2,'CALVADOS','Calvados',1),(16,'15',83,'15014',2,'CANTAL','Cantal',1),(17,'16',54,'16015',3,'CHARENTE','Charente',1),(18,'17',54,'17300',3,'CHARENTE-MARITIME','Charente-Maritime',1),(19,'18',24,'18033',2,'CHER','Cher',1),(20,'19',74,'19272',3,'CORREZE','Corrèze',1),(21,'2A',94,'2A004',3,'CORSE-DU-SUD','Corse-du-Sud',1),(22,'2B',94,'2B033',3,'HAUTE-CORSE','Haute-Corse',1),(23,'21',26,'21231',3,'COTE-D\'OR','Côte-d\'Or',1),(24,'22',53,'22278',4,'COTES-D\'ARMOR','Côtes-d\'Armor',1),(25,'23',74,'23096',3,'CREUSE','Creuse',1),(26,'24',72,'24322',3,'DORDOGNE','Dordogne',1),(27,'25',43,'25056',2,'DOUBS','Doubs',1),(28,'26',82,'26362',3,'DROME','Drôme',1),(29,'27',23,'27229',5,'EURE','Eure',1),(30,'28',24,'28085',1,'EURE-ET-LOIR','Eure-et-Loir',1),(31,'29',53,'29232',2,'FINISTERE','Finistère',1),(32,'30',91,'30189',2,'GARD','Gard',1),(33,'31',73,'31555',3,'HAUTE-GARONNE','Haute-Garonne',1),(34,'32',73,'32013',2,'GERS','Gers',1),(35,'33',72,'33063',3,'GIRONDE','Gironde',1),(36,'34',91,'34172',5,'HERAULT','Hérault',1),(37,'35',53,'35238',1,'ILLE-ET-VILAINE','Ille-et-Vilaine',1),(38,'36',24,'36044',5,'INDRE','Indre',1),(39,'37',24,'37261',1,'INDRE-ET-LOIRE','Indre-et-Loire',1),(40,'38',82,'38185',5,'ISERE','Isère',1),(41,'39',43,'39300',2,'JURA','Jura',1),(42,'40',72,'40192',4,'LANDES','Landes',1),(43,'41',24,'41018',0,'LOIR-ET-CHER','Loir-et-Cher',1),(44,'42',82,'42218',3,'LOIRE','Loire',1),(45,'43',83,'43157',3,'HAUTE-LOIRE','Haute-Loire',1),(46,'44',52,'44109',3,'LOIRE-ATLANTIQUE','Loire-Atlantique',1),(47,'45',24,'45234',2,'LOIRET','Loiret',1),(48,'46',73,'46042',2,'LOT','Lot',1),(49,'47',72,'47001',0,'LOT-ET-GARONNE','Lot-et-Garonne',1),(50,'48',91,'48095',3,'LOZERE','Lozère',1),(51,'49',52,'49007',0,'MAINE-ET-LOIRE','Maine-et-Loire',1),(52,'50',25,'50502',3,'MANCHE','Manche',1),(53,'51',21,'51108',3,'MARNE','Marne',1),(54,'52',21,'52121',3,'HAUTE-MARNE','Haute-Marne',1),(55,'53',52,'53130',3,'MAYENNE','Mayenne',1),(56,'54',41,'54395',0,'MEURTHE-ET-MOSELLE','Meurthe-et-Moselle',1),(57,'55',41,'55029',3,'MEUSE','Meuse',1),(58,'56',53,'56260',2,'MORBIHAN','Morbihan',1),(59,'57',41,'57463',3,'MOSELLE','Moselle',1),(60,'58',26,'58194',3,'NIEVRE','Nièvre',1),(61,'59',31,'59350',2,'NORD','Nord',1),(62,'60',22,'60057',5,'OISE','Oise',1),(63,'61',25,'61001',5,'ORNE','Orne',1),(64,'62',31,'62041',2,'PAS-DE-CALAIS','Pas-de-Calais',1),(65,'63',83,'63113',2,'PUY-DE-DOME','Puy-de-Dôme',1),(66,'64',72,'64445',4,'PYRENEES-ATLANTIQUES','Pyrénées-Atlantiques',1),(67,'65',73,'65440',4,'HAUTES-PYRENEES','Hautes-Pyrénées',1),(68,'66',91,'66136',4,'PYRENEES-ORIENTALES','Pyrénées-Orientales',1),(69,'67',42,'67482',2,'BAS-RHIN','Bas-Rhin',1),(70,'68',42,'68066',2,'HAUT-RHIN','Haut-Rhin',1),(71,'69',82,'69123',2,'RHONE','Rhône',1),(72,'70',43,'70550',3,'HAUTE-SAONE','Haute-Saône',1),(73,'71',26,'71270',0,'SAONE-ET-LOIRE','Saône-et-Loire',1),(74,'72',52,'72181',3,'SARTHE','Sarthe',1),(75,'73',82,'73065',3,'SAVOIE','Savoie',1),(76,'74',82,'74010',3,'HAUTE-SAVOIE','Haute-Savoie',1),(77,'75',11,'75056',0,'PARIS','Paris',1),(78,'76',23,'76540',3,'SEINE-MARITIME','Seine-Maritime',1),(79,'77',11,'77288',0,'SEINE-ET-MARNE','Seine-et-Marne',1),(80,'78',11,'78646',4,'YVELINES','Yvelines',1),(81,'79',54,'79191',4,'DEUX-SEVRES','Deux-Sèvres',1),(82,'80',22,'80021',3,'SOMME','Somme',1),(83,'81',73,'81004',2,'TARN','Tarn',1),(84,'82',73,'82121',0,'TARN-ET-GARONNE','Tarn-et-Garonne',1),(85,'83',93,'83137',2,'VAR','Var',1),(86,'84',93,'84007',0,'VAUCLUSE','Vaucluse',1),(87,'85',52,'85191',3,'VENDEE','Vendée',1),(88,'86',54,'86194',3,'VIENNE','Vienne',1),(89,'87',74,'87085',3,'HAUTE-VIENNE','Haute-Vienne',1),(90,'88',41,'88160',4,'VOSGES','Vosges',1),(91,'89',26,'89024',5,'YONNE','Yonne',1),(92,'90',43,'90010',0,'TERRITOIRE DE BELFORT','Territoire de Belfort',1),(93,'91',11,'91228',5,'ESSONNE','Essonne',1),(94,'92',11,'92050',4,'HAUTS-DE-SEINE','Hauts-de-Seine',1),(95,'93',11,'93008',3,'SEINE-SAINT-DENIS','Seine-Saint-Denis',1),(96,'94',11,'94028',2,'VAL-DE-MARNE','Val-de-Marne',1),(97,'95',11,'95500',2,'VAL-D\'OISE','Val-d\'Oise',1),(98,'971',1,'97105',3,'GUADELOUPE','Guadeloupe',1),(99,'972',2,'97209',3,'MARTINIQUE','Martinique',1),(100,'973',3,'97302',3,'GUYANE','Guyane',1),(101,'974',4,'97411',3,'REUNION','Réunion',1),(102,'01',201,'',1,'ANVERS','Anvers',1),(103,'02',203,'',3,'BRUXELLES-CAPITALE','Bruxelles-Capitale',1),(104,'03',202,'',2,'BRABANT-WALLON','Brabant-Wallon',1),(105,'04',201,'',1,'BRABANT-FLAMAND','Brabant-Flamand',1),(106,'05',201,'',1,'FLANDRE-OCCIDENTALE','Flandre-Occidentale',1),(107,'06',201,'',1,'FLANDRE-ORIENTALE','Flandre-Orientale',1),(108,'07',202,'',2,'HAINAUT','Hainaut',1),(109,'08',201,'',2,'LIEGE','Liège',1),(110,'09',202,'',1,'LIMBOURG','Limbourg',1),(111,'10',202,'',2,'LUXEMBOURG','Luxembourg',1),(112,'11',201,'',2,'NAMUR','Namur',1),(113,'AG',315,NULL,NULL,NULL,'AGRIGENTO',1),(114,'AL',312,NULL,NULL,NULL,'ALESSANDRIA',1),(115,'AN',310,NULL,NULL,NULL,'ANCONA',1),(116,'AO',319,NULL,NULL,NULL,'AOSTA',1),(117,'AR',316,NULL,NULL,NULL,'AREZZO',1),(118,'AP',310,NULL,NULL,NULL,'ASCOLI PICENO',1),(119,'AT',312,NULL,NULL,NULL,'ASTI',1),(120,'AV',304,NULL,NULL,NULL,'AVELLINO',1),(121,'BA',313,NULL,NULL,NULL,'BARI',1),(122,'BT',313,NULL,NULL,NULL,'BARLETTA-ANDRIA-TRANI',1),(123,'BL',320,NULL,NULL,NULL,'BELLUNO',1),(124,'BN',304,NULL,NULL,NULL,'BENEVENTO',1),(125,'BG',309,NULL,NULL,NULL,'BERGAMO',1),(126,'BI',312,NULL,NULL,NULL,'BIELLA',1),(127,'BO',305,NULL,NULL,NULL,'BOLOGNA',1),(128,'BZ',317,NULL,NULL,NULL,'BOLZANO',1),(129,'BS',309,NULL,NULL,NULL,'BRESCIA',1),(130,'BR',313,NULL,NULL,NULL,'BRINDISI',1),(131,'CA',314,NULL,NULL,NULL,'CAGLIARI',1),(132,'CL',315,NULL,NULL,NULL,'CALTANISSETTA',1),(133,'CB',311,NULL,NULL,NULL,'CAMPOBASSO',1),(134,'CI',314,NULL,NULL,NULL,'CARBONIA-IGLESIAS',1),(135,'CE',304,NULL,NULL,NULL,'CASERTA',1),(136,'CT',315,NULL,NULL,NULL,'CATANIA',1),(137,'CZ',303,NULL,NULL,NULL,'CATANZARO',1),(138,'CH',301,NULL,NULL,NULL,'CHIETI',1),(139,'CO',309,NULL,NULL,NULL,'COMO',1),(140,'CS',303,NULL,NULL,NULL,'COSENZA',1),(141,'CR',309,NULL,NULL,NULL,'CREMONA',1),(142,'KR',303,NULL,NULL,NULL,'CROTONE',1),(143,'CN',312,NULL,NULL,NULL,'CUNEO',1),(144,'EN',315,NULL,NULL,NULL,'ENNA',1),(145,'FM',310,NULL,NULL,NULL,'FERMO',1),(146,'FE',305,NULL,NULL,NULL,'FERRARA',1),(147,'FI',316,NULL,NULL,NULL,'FIRENZE',1),(148,'FG',313,NULL,NULL,NULL,'FOGGIA',1),(149,'FC',305,NULL,NULL,NULL,'FORLI-CESENA',1),(150,'FR',307,NULL,NULL,NULL,'FROSINONE',1),(151,'GE',308,NULL,NULL,NULL,'GENOVA',1),(152,'GO',306,NULL,NULL,NULL,'GORIZIA',1),(153,'GR',316,NULL,NULL,NULL,'GROSSETO',1),(154,'IM',308,NULL,NULL,NULL,'IMPERIA',1),(155,'IS',311,NULL,NULL,NULL,'ISERNIA',1),(156,'SP',308,NULL,NULL,NULL,'LA SPEZIA',1),(157,'AQ',301,NULL,NULL,NULL,'L AQUILA',1),(158,'LT',307,NULL,NULL,NULL,'LATINA',1),(159,'LE',313,NULL,NULL,NULL,'LECCE',1),(160,'LC',309,NULL,NULL,NULL,'LECCO',1),(161,'LI',314,NULL,NULL,NULL,'LIVORNO',1),(162,'LO',309,NULL,NULL,NULL,'LODI',1),(163,'LU',316,NULL,NULL,NULL,'LUCCA',1),(164,'MC',310,NULL,NULL,NULL,'MACERATA',1),(165,'MN',309,NULL,NULL,NULL,'MANTOVA',1),(166,'MS',316,NULL,NULL,NULL,'MASSA-CARRARA',1),(167,'MT',302,NULL,NULL,NULL,'MATERA',1),(168,'VS',314,NULL,NULL,NULL,'MEDIO CAMPIDANO',1),(169,'ME',315,NULL,NULL,NULL,'MESSINA',1),(170,'MI',309,NULL,NULL,NULL,'MILANO',1),(171,'MB',309,NULL,NULL,NULL,'MONZA e BRIANZA',1),(172,'MO',305,NULL,NULL,NULL,'MODENA',1),(173,'NA',304,NULL,NULL,NULL,'NAPOLI',1),(174,'NO',312,NULL,NULL,NULL,'NOVARA',1),(175,'NU',314,NULL,NULL,NULL,'NUORO',1),(176,'OG',314,NULL,NULL,NULL,'OGLIASTRA',1),(177,'OT',314,NULL,NULL,NULL,'OLBIA-TEMPIO',1),(178,'OR',314,NULL,NULL,NULL,'ORISTANO',1),(179,'PD',320,NULL,NULL,NULL,'PADOVA',1),(180,'PA',315,NULL,NULL,NULL,'PALERMO',1),(181,'PR',305,NULL,NULL,NULL,'PARMA',1),(182,'PV',309,NULL,NULL,NULL,'PAVIA',1),(183,'PG',318,NULL,NULL,NULL,'PERUGIA',1),(184,'PU',310,NULL,NULL,NULL,'PESARO e URBINO',1),(185,'PE',301,NULL,NULL,NULL,'PESCARA',1),(186,'PC',305,NULL,NULL,NULL,'PIACENZA',1),(187,'PI',316,NULL,NULL,NULL,'PISA',1),(188,'PT',316,NULL,NULL,NULL,'PISTOIA',1),(189,'PN',306,NULL,NULL,NULL,'PORDENONE',1),(190,'PZ',302,NULL,NULL,NULL,'POTENZA',1),(191,'PO',316,NULL,NULL,NULL,'PRATO',1),(192,'RG',315,NULL,NULL,NULL,'RAGUSA',1),(193,'RA',305,NULL,NULL,NULL,'RAVENNA',1),(194,'RC',303,NULL,NULL,NULL,'REGGIO CALABRIA',1),(195,'RE',305,NULL,NULL,NULL,'REGGIO NELL EMILIA',1),(196,'RI',307,NULL,NULL,NULL,'RIETI',1),(197,'RN',305,NULL,NULL,NULL,'RIMINI',1),(198,'RM',307,NULL,NULL,NULL,'ROMA',1),(199,'RO',320,NULL,NULL,NULL,'ROVIGO',1),(200,'SA',304,NULL,NULL,NULL,'SALERNO',1),(201,'SS',314,NULL,NULL,NULL,'SASSARI',1),(202,'SV',308,NULL,NULL,NULL,'SAVONA',1),(203,'SI',316,NULL,NULL,NULL,'SIENA',1),(204,'SR',315,NULL,NULL,NULL,'SIRACUSA',1),(205,'SO',309,NULL,NULL,NULL,'SONDRIO',1),(206,'TA',313,NULL,NULL,NULL,'TARANTO',1),(207,'TE',301,NULL,NULL,NULL,'TERAMO',1),(208,'TR',318,NULL,NULL,NULL,'TERNI',1),(209,'TO',312,NULL,NULL,NULL,'TORINO',1),(210,'TP',315,NULL,NULL,NULL,'TRAPANI',1),(211,'TN',317,NULL,NULL,NULL,'TRENTO',1),(212,'TV',320,NULL,NULL,NULL,'TREVISO',1),(213,'TS',306,NULL,NULL,NULL,'TRIESTE',1),(214,'UD',306,NULL,NULL,NULL,'UDINE',1),(215,'VA',309,NULL,NULL,NULL,'VARESE',1),(216,'VE',320,NULL,NULL,NULL,'VENEZIA',1),(217,'VB',312,NULL,NULL,NULL,'VERBANO-CUSIO-OSSOLA',1),(218,'VC',312,NULL,NULL,NULL,'VERCELLI',1),(219,'VR',320,NULL,NULL,NULL,'VERONA',1),(220,'VV',303,NULL,NULL,NULL,'VIBO VALENTIA',1),(221,'VI',320,NULL,NULL,NULL,'VICENZA',1),(222,'VT',307,NULL,NULL,NULL,'VITERBO',1),(223,'NSW',2801,'',1,'','New South Wales',1),(224,'VIC',2801,'',1,'','Victoria',1),(225,'QLD',2801,'',1,'','Queensland',1),(226,'SA',2801,'',1,'','South Australia',1),(227,'ACT',2801,'',1,'','Australia Capital Territory',1),(228,'TAS',2801,'',1,'','Tasmania',1),(229,'WA',2801,'',1,'','Western Australia',1),(230,'NT',2801,'',1,'','Northern Territory',1),(231,'01',419,'',19,'PAIS VASCO','País Vasco',1),(232,'02',404,'',4,'ALBACETE','Albacete',1),(233,'03',411,'',11,'ALICANTE','Alicante',1),(234,'04',401,'',1,'ALMERIA','Almería',1),(235,'05',403,'',3,'AVILA','Avila',1),(236,'06',412,'',12,'BADAJOZ','Badajoz',1),(237,'07',414,'',14,'ISLAS BALEARES','Islas Baleares',1),(238,'08',406,'',6,'BARCELONA','Barcelona',1),(239,'09',403,'',8,'BURGOS','Burgos',1),(240,'10',412,'',12,'CACERES','Cáceres',1),(241,'11',401,'',1,'CADIz','Cádiz',1),(242,'12',411,'',11,'CASTELLON','Castellón',1),(243,'13',404,'',4,'CIUDAD REAL','Ciudad Real',1),(244,'14',401,'',1,'CORDOBA','Córdoba',1),(245,'15',413,'',13,'LA CORUÑA','La Coruña',1),(246,'16',404,'',4,'CUENCA','Cuenca',1),(247,'17',406,'',6,'GERONA','Gerona',1),(248,'18',401,'',1,'GRANADA','Granada',1),(249,'19',404,'',4,'GUADALAJARA','Guadalajara',1),(250,'20',419,'',19,'GUIPUZCOA','Guipúzcoa',1),(251,'21',401,'',1,'HUELVA','Huelva',1),(252,'22',402,'',2,'HUESCA','Huesca',1),(253,'23',401,'',1,'JAEN','Jaén',1),(254,'24',403,'',3,'LEON','León',1),(255,'25',406,'',6,'LERIDA','Lérida',1),(256,'26',415,'',15,'LA RIOJA','La Rioja',1),(257,'27',413,'',13,'LUGO','Lugo',1),(258,'28',416,'',16,'MADRID','Madrid',1),(259,'29',401,'',1,'MALAGA','Málaga',1),(260,'30',417,'',17,'MURCIA','Murcia',1),(261,'31',408,'',8,'NAVARRA','Navarra',1),(262,'32',413,'',13,'ORENSE','Orense',1),(263,'33',418,'',18,'ASTURIAS','Asturias',1),(264,'34',403,'',3,'PALENCIA','Palencia',1),(265,'35',405,'',5,'LAS PALMAS','Las Palmas',1),(266,'36',413,'',13,'PONTEVEDRA','Pontevedra',1),(267,'37',403,'',3,'SALAMANCA','Salamanca',1),(268,'38',405,'',5,'STA. CRUZ DE TENERIFE','Sta. Cruz de Tenerife',1),(269,'39',410,'',10,'CANTABRIA','Cantabria',1),(270,'40',403,'',3,'SEGOVIA','Segovia',1),(271,'41',401,'',1,'SEVILLA','Sevilla',1),(272,'42',403,'',3,'SORIA','Soria',1),(273,'43',406,'',6,'TARRAGONA','Tarragona',1),(274,'44',402,'',2,'TERUEL','Teruel',1),(275,'45',404,'',5,'TOLEDO','Toledo',1),(276,'46',411,'',11,'VALENCIA','Valencia',1),(277,'47',403,'',3,'VALLADOLID','Valladolid',1),(278,'48',419,'',19,'VIZCAYA','Vizcaya',1),(279,'49',403,'',3,'ZAMORA','Zamora',1),(280,'50',402,'',1,'ZARAGOZA','Zaragoza',1),(281,'51',407,'',7,'CEUTA','Ceuta',1),(282,'52',409,'',9,'MELILLA','Melilla',1),(283,'53',420,'',20,'OTROS','Otros',1),(284,'AG',601,NULL,NULL,'ARGOVIE','Argovie',1),(285,'AI',601,NULL,NULL,'APPENZELL RHODES INTERIEURES','Appenzell Rhodes intérieures',1),(286,'AR',601,NULL,NULL,'APPENZELL RHODES EXTERIEURES','Appenzell Rhodes extérieures',1),(287,'BE',601,NULL,NULL,'BERNE','Berne',1),(288,'BL',601,NULL,NULL,'BALE CAMPAGNE','Bâle Campagne',1),(289,'BS',601,NULL,NULL,'BALE VILLE','Bâle Ville',1),(290,'FR',601,NULL,NULL,'FRIBOURG','Fribourg',1),(291,'GE',601,NULL,NULL,'GENEVE','Genève',1),(292,'GL',601,NULL,NULL,'GLARIS','Glaris',1),(293,'GR',601,NULL,NULL,'GRISONS','Grisons',1),(294,'JU',601,NULL,NULL,'JURA','Jura',1),(295,'LU',601,NULL,NULL,'LUCERNE','Lucerne',1),(296,'NE',601,NULL,NULL,'NEUCHATEL','Neuchâtel',1),(297,'NW',601,NULL,NULL,'NIDWALD','Nidwald',1),(298,'OW',601,NULL,NULL,'OBWALD','Obwald',1),(299,'SG',601,NULL,NULL,'SAINT-GALL','Saint-Gall',1),(300,'SH',601,NULL,NULL,'SCHAFFHOUSE','Schaffhouse',1),(301,'SO',601,NULL,NULL,'SOLEURE','Soleure',1),(302,'SZ',601,NULL,NULL,'SCHWYZ','Schwyz',1),(303,'TG',601,NULL,NULL,'THURGOVIE','Thurgovie',1),(304,'TI',601,NULL,NULL,'TESSIN','Tessin',1),(305,'UR',601,NULL,NULL,'URI','Uri',1),(306,'VD',601,NULL,NULL,'VAUD','Vaud',1),(307,'VS',601,NULL,NULL,'VALAIS','Valais',1),(308,'ZG',601,NULL,NULL,'ZUG','Zug',1),(309,'ZH',601,NULL,NULL,'ZURICH','Zürich',1),(310,'AL',1101,'',0,'ALABAMA','Alabama',1),(311,'AK',1101,'',0,'ALASKA','Alaska',1),(312,'AZ',1101,'',0,'ARIZONA','Arizona',1),(313,'AR',1101,'',0,'ARKANSAS','Arkansas',1),(314,'CA',1101,'',0,'CALIFORNIA','California',1),(315,'CO',1101,'',0,'COLORADO','Colorado',1),(316,'CT',1101,'',0,'CONNECTICUT','Connecticut',1),(317,'DE',1101,'',0,'DELAWARE','Delaware',1),(318,'FL',1101,'',0,'FLORIDA','Florida',1),(319,'GA',1101,'',0,'GEORGIA','Georgia',1),(320,'HI',1101,'',0,'HAWAII','Hawaii',1),(321,'ID',1101,'',0,'IDAHO','Idaho',1),(322,'IL',1101,'',0,'ILLINOIS','Illinois',1),(323,'IN',1101,'',0,'INDIANA','Indiana',1),(324,'IA',1101,'',0,'IOWA','Iowa',1),(325,'KS',1101,'',0,'KANSAS','Kansas',1),(326,'KY',1101,'',0,'KENTUCKY','Kentucky',1),(327,'LA',1101,'',0,'LOUISIANA','Louisiana',1),(328,'ME',1101,'',0,'MAINE','Maine',1),(329,'MD',1101,'',0,'MARYLAND','Maryland',1),(330,'MA',1101,'',0,'MASSACHUSSETTS','Massachusetts',1),(331,'MI',1101,'',0,'MICHIGAN','Michigan',1),(332,'MN',1101,'',0,'MINNESOTA','Minnesota',1),(333,'MS',1101,'',0,'MISSISSIPPI','Mississippi',1),(334,'MO',1101,'',0,'MISSOURI','Missouri',1),(335,'MT',1101,'',0,'MONTANA','Montana',1),(336,'NE',1101,'',0,'NEBRASKA','Nebraska',1),(337,'NV',1101,'',0,'NEVADA','Nevada',1),(338,'NH',1101,'',0,'NEW HAMPSHIRE','New Hampshire',1),(339,'NJ',1101,'',0,'NEW JERSEY','New Jersey',1),(340,'NM',1101,'',0,'NEW MEXICO','New Mexico',1),(341,'NY',1101,'',0,'NEW YORK','New York',1),(342,'NC',1101,'',0,'NORTH CAROLINA','North Carolina',1),(343,'ND',1101,'',0,'NORTH DAKOTA','North Dakota',1),(344,'OH',1101,'',0,'OHIO','Ohio',1),(345,'OK',1101,'',0,'OKLAHOMA','Oklahoma',1),(346,'OR',1101,'',0,'OREGON','Oregon',1),(347,'PA',1101,'',0,'PENNSYLVANIA','Pennsylvania',1),(348,'RI',1101,'',0,'RHODE ISLAND','Rhode Island',1),(349,'SC',1101,'',0,'SOUTH CAROLINA','South Carolina',1),(350,'SD',1101,'',0,'SOUTH DAKOTA','South Dakota',1),(351,'TN',1101,'',0,'TENNESSEE','Tennessee',1),(352,'TX',1101,'',0,'TEXAS','Texas',1),(353,'UT',1101,'',0,'UTAH','Utah',1),(354,'VT',1101,'',0,'VERMONT','Vermont',1),(355,'VA',1101,'',0,'VIRGINIA','Virginia',1),(356,'WA',1101,'',0,'WASHINGTON','Washington',1),(357,'WV',1101,'',0,'WEST VIRGINIA','West Virginia',1),(358,'WI',1101,'',0,'WISCONSIN','Wisconsin',1),(359,'WY',1101,'',0,'WYOMING','Wyoming',1),(360,'SS',8601,NULL,NULL,NULL,'San Salvador',1),(361,'SA',8603,NULL,NULL,NULL,'Santa Ana',1),(362,'AH',8603,NULL,NULL,NULL,'Ahuachapan',1),(363,'SO',8603,NULL,NULL,NULL,'Sonsonate',1),(364,'US',8602,NULL,NULL,NULL,'Usulutan',1),(365,'SM',8602,NULL,NULL,NULL,'San Miguel',1),(366,'MO',8602,NULL,NULL,NULL,'Morazan',1),(367,'LU',8602,NULL,NULL,NULL,'La Union',1),(368,'LL',8601,NULL,NULL,NULL,'La Libertad',1),(369,'CH',8601,NULL,NULL,NULL,'Chalatenango',1),(370,'CA',8601,NULL,NULL,NULL,'Cabañas',1),(371,'LP',8601,NULL,NULL,NULL,'La Paz',1),(372,'SV',8601,NULL,NULL,NULL,'San Vicente',1),(373,'CU',8601,NULL,NULL,NULL,'Cuscatlan',1),(374,'2301',2301,'',0,'CATAMARCA','Catamarca',1),(375,'2302',2301,'',0,'YUJUY','Yujuy',1),(376,'2303',2301,'',0,'TUCAMAN','Tucamán',1),(377,'2304',2301,'',0,'SANTIAGO DEL ESTERO','Santiago del Estero',1),(378,'2305',2301,'',0,'SALTA','Salta',1),(379,'2306',2302,'',0,'CHACO','Chaco',1),(380,'2307',2302,'',0,'CORRIENTES','Corrientes',1),(381,'2308',2302,'',0,'ENTRE RIOS','Entre Ríos',1),(382,'2309',2302,'',0,'FORMOSA MISIONES','Formosa Misiones',1),(383,'2310',2302,'',0,'SANTA FE','Santa Fe',1),(384,'2311',2303,'',0,'LA RIOJA','La Rioja',1),(385,'2312',2303,'',0,'MENDOZA','Mendoza',1),(386,'2313',2303,'',0,'SAN JUAN','San Juan',1),(387,'2314',2303,'',0,'SAN LUIS','San Luis',1),(388,'2315',2304,'',0,'CORDOBA','Córdoba',1),(389,'2316',2304,'',0,'BUENOS AIRES','Buenos Aires',1),(390,'2317',2304,'',0,'CABA','Caba',1),(391,'2318',2305,'',0,'LA PAMPA','La Pampa',1),(392,'2319',2305,'',0,'NEUQUEN','Neuquén',1),(393,'2320',2305,'',0,'RIO NEGRO','Río Negro',1),(394,'2321',2305,'',0,'CHUBUT','Chubut',1),(395,'2322',2305,'',0,'SANTA CRUZ','Santa Cruz',1),(396,'2323',2305,'',0,'TIERRA DEL FUEGO','Tierra del Fuego',1),(397,'2324',2305,'',0,'ISLAS MALVINAS','Islas Malvinas',1),(398,'2325',2305,'',0,'ANTARTIDA','Antártida',1),(399,'AN',11701,NULL,0,'AN','Andaman & Nicobar',1),(400,'AP',11701,NULL,0,'AP','Andhra Pradesh',1),(401,'AR',11701,NULL,0,'AR','Arunachal Pradesh',1),(402,'AS',11701,NULL,0,'AS','Assam',1),(403,'BR',11701,NULL,0,'BR','Bihar',1),(404,'CG',11701,NULL,0,'CG','Chattisgarh',1),(405,'CH',11701,NULL,0,'CH','Chandigarh',1),(406,'DD',11701,NULL,0,'DD','Daman & Diu',1),(407,'DL',11701,NULL,0,'DL','Delhi',1),(408,'DN',11701,NULL,0,'DN','Dadra and Nagar Haveli',1),(409,'GA',11701,NULL,0,'GA','Goa',1),(410,'GJ',11701,NULL,0,'GJ','Gujarat',1),(411,'HP',11701,NULL,0,'HP','Himachal Pradesh',1),(412,'HR',11701,NULL,0,'HR','Haryana',1),(413,'JH',11701,NULL,0,'JH','Jharkhand',1),(414,'JK',11701,NULL,0,'JK','Jammu & Kashmir',1),(415,'KA',11701,NULL,0,'KA','Karnataka',1),(416,'KL',11701,NULL,0,'KL','Kerala',1),(417,'LD',11701,NULL,0,'LD','Lakshadweep',1),(418,'MH',11701,NULL,0,'MH','Maharashtra',1),(419,'ML',11701,NULL,0,'ML','Meghalaya',1),(420,'MN',11701,NULL,0,'MN','Manipur',1),(421,'MP',11701,NULL,0,'MP','Madhya Pradesh',1),(422,'MZ',11701,NULL,0,'MZ','Mizoram',1),(423,'NL',11701,NULL,0,'NL','Nagaland',1),(424,'OR',11701,NULL,0,'OR','Orissa',1),(425,'PB',11701,NULL,0,'PB','Punjab',1),(426,'PY',11701,NULL,0,'PY','Puducherry',1),(427,'RJ',11701,NULL,0,'RJ','Rajasthan',1),(428,'SK',11701,NULL,0,'SK','Sikkim',1),(429,'TN',11701,NULL,0,'TN','Tamil Nadu',1),(430,'TR',11701,NULL,0,'TR','Tripura',1),(431,'UL',11701,NULL,0,'UL','Uttarakhand',1),(432,'UP',11701,NULL,0,'UP','Uttar Pradesh',1),(433,'WB',11701,NULL,0,'WB','West Bengal',1),(434,'151',6715,'',0,'151','Arica',1),(435,'152',6715,'',0,'152','Parinacota',1),(436,'011',6701,'',0,'011','Iquique',1),(437,'014',6701,'',0,'014','Tamarugal',1),(438,'021',6702,'',0,'021','Antofagasa',1),(439,'022',6702,'',0,'022','El Loa',1),(440,'023',6702,'',0,'023','Tocopilla',1),(441,'031',6703,'',0,'031','Copiapó',1),(442,'032',6703,'',0,'032','Chañaral',1),(443,'033',6703,'',0,'033','Huasco',1),(444,'041',6704,'',0,'041','Elqui',1),(445,'042',6704,'',0,'042','Choapa',1),(446,'043',6704,'',0,'043','Limarí',1),(447,'051',6705,'',0,'051','Valparaíso',1),(448,'052',6705,'',0,'052','Isla de Pascua',1),(449,'053',6705,'',0,'053','Los Andes',1),(450,'054',6705,'',0,'054','Petorca',1),(451,'055',6705,'',0,'055','Quillota',1),(452,'056',6705,'',0,'056','San Antonio',1),(453,'057',6705,'',0,'057','San Felipe de Aconcagua',1),(454,'058',6705,'',0,'058','Marga Marga',1),(455,'061',6706,'',0,'061','Cachapoal',1),(456,'062',6706,'',0,'062','Cardenal Caro',1),(457,'063',6706,'',0,'063','Colchagua',1),(458,'071',6707,'',0,'071','Talca',1),(459,'072',6707,'',0,'072','Cauquenes',1),(460,'073',6707,'',0,'073','Curicó',1),(461,'074',6707,'',0,'074','Linares',1),(462,'081',6708,'',0,'081','Concepción',1),(463,'082',6708,'',0,'082','Arauco',1),(464,'083',6708,'',0,'083','Biobío',1),(465,'084',6708,'',0,'084','Ñuble',1),(466,'091',6709,'',0,'091','Cautín',1),(467,'092',6709,'',0,'092','Malleco',1),(468,'141',6714,'',0,'141','Valdivia',1),(469,'142',6714,'',0,'142','Ranco',1),(470,'101',6710,'',0,'101','Llanquihue',1),(471,'102',6710,'',0,'102','Chiloé',1),(472,'103',6710,'',0,'103','Osorno',1),(473,'104',6710,'',0,'104','Palena',1),(474,'111',6711,'',0,'111','Coihaique',1),(475,'112',6711,'',0,'112','Aisén',1),(476,'113',6711,'',0,'113','Capitán Prat',1),(477,'114',6711,'',0,'114','General Carrera',1),(478,'121',6712,'',0,'121','Magallanes',1),(479,'122',6712,'',0,'122','Antártica Chilena',1),(480,'123',6712,'',0,'123','Tierra del Fuego',1),(481,'124',6712,'',0,'124','Última Esperanza',1),(482,'131',6713,'',0,'131','Santiago',1),(483,'132',6713,'',0,'132','Cordillera',1),(484,'133',6713,'',0,'133','Chacabuco',1),(485,'134',6713,'',0,'134','Maipo',1),(486,'135',6713,'',0,'135','Melipilla',1),(487,'136',6713,'',0,'136','Talagante',1),(488,'DIF',15401,'',0,'DIF','Distrito Federal',1),(489,'AGS',15401,'',0,'AGS','Aguascalientes',1),(490,'BCN',15401,'',0,'BCN','Baja California Norte',1),(491,'BCS',15401,'',0,'BCS','Baja California Sur',1),(492,'CAM',15401,'',0,'CAM','Campeche',1),(493,'CHP',15401,'',0,'CHP','Chiapas',1),(494,'CHI',15401,'',0,'CHI','Chihuahua',1),(495,'COA',15401,'',0,'COA','Coahuila',1),(496,'COL',15401,'',0,'COL','Colima',1),(497,'DUR',15401,'',0,'DUR','Durango',1),(498,'GTO',15401,'',0,'GTO','Guanajuato',1),(499,'GRO',15401,'',0,'GRO','Guerrero',1),(500,'HGO',15401,'',0,'HGO','Hidalgo',1),(501,'JAL',15401,'',0,'JAL','Jalisco',1),(502,'MEX',15401,'',0,'MEX','México',1),(503,'MIC',15401,'',0,'MIC','Michoacán de Ocampo',1),(504,'MOR',15401,'',0,'MOR','Morelos',1),(505,'NAY',15401,'',0,'NAY','Nayarit',1),(506,'NLE',15401,'',0,'NLE','Nuevo León',1),(507,'OAX',15401,'',0,'OAX','Oaxaca',1),(508,'PUE',15401,'',0,'PUE','Puebla',1),(509,'QRO',15401,'',0,'QRO','Querétaro',1),(510,'ROO',15401,'',0,'ROO','Quintana Roo',1),(511,'SLP',15401,'',0,'SLP','San Luis Potosí',1),(512,'SIN',15401,'',0,'SIN','Sinaloa',1),(513,'SON',15401,'',0,'SON','Sonora',1),(514,'TAB',15401,'',0,'TAB','Tabasco',1),(515,'TAM',15401,'',0,'TAM','Tamaulipas',1),(516,'TLX',15401,'',0,'TLX','Tlaxcala',1),(517,'VER',15401,'',0,'VER','Veracruz',1),(518,'YUC',15401,'',0,'YUC','Yucatán',1),(519,'ZAC',15401,'',0,'ZAC','Zacatecas',1),(520,'ANT',7001,'',0,'ANT','Antioquia',1),(521,'BOL',7001,'',0,'BOL','Bolívar',1),(522,'BOY',7001,'',0,'BOY','Boyacá',1),(523,'CAL',7001,'',0,'CAL','Caldas',1),(524,'CAU',7001,'',0,'CAU','Cauca',1),(525,'CUN',7001,'',0,'CUN','Cundinamarca',1),(526,'HUI',7001,'',0,'HUI','Huila',1),(527,'LAG',7001,'',0,'LAG','La Guajira',1),(528,'MET',7001,'',0,'MET','Meta',1),(529,'NAR',7001,'',0,'NAR','Nariño',1),(530,'NDS',7001,'',0,'NDS','Norte de Santander',1),(531,'SAN',7001,'',0,'SAN','Santander',1),(532,'SUC',7001,'',0,'SUC','Sucre',1),(533,'TOL',7001,'',0,'TOL','Tolima',1),(534,'VAC',7001,'',0,'VAC','Valle del Cauca',1),(535,'RIS',7001,'',0,'RIS','Risalda',1),(536,'ATL',7001,'',0,'ATL','Atlántico',1),(537,'COR',7001,'',0,'COR','Córdoba',1),(538,'SAP',7001,'',0,'SAP','San Andrés, Providencia y Santa Catalina',1),(539,'ARA',7001,'',0,'ARA','Arauca',1),(540,'CAS',7001,'',0,'CAS','Casanare',1),(541,'AMA',7001,'',0,'AMA','Amazonas',1),(542,'CAQ',7001,'',0,'CAQ','Caquetá',1),(543,'CHO',7001,'',0,'CHO','Chocó',1),(544,'GUA',7001,'',0,'GUA','Guainía',1),(545,'GUV',7001,'',0,'GUV','Guaviare',1),(546,'PUT',7001,'',0,'PUT','Putumayo',1),(547,'QUI',7001,'',0,'QUI','Quindío',1),(548,'VAU',7001,'',0,'VAU','Vaupés',1),(549,'BOG',7001,'',0,'BOG','Bogotá',1),(550,'VID',7001,'',0,'VID','Vichada',1),(551,'CES',7001,'',0,'CES','Cesar',1),(552,'MAG',7001,'',0,'MAG','Magdalena',1),(553,'AT',11401,'',0,'AT','Atlántida',1),(554,'CH',11401,'',0,'CH','Choluteca',1),(555,'CL',11401,'',0,'CL','Colón',1),(556,'CM',11401,'',0,'CM','Comayagua',1),(557,'CO',11401,'',0,'CO','Copán',1),(558,'CR',11401,'',0,'CR','Cortés',1),(559,'EP',11401,'',0,'EP','El Paraíso',1),(560,'FM',11401,'',0,'FM','Francisco Morazán',1),(561,'GD',11401,'',0,'GD','Gracias a Dios',1),(562,'IN',11401,'',0,'IN','Intibucá',1),(563,'IB',11401,'',0,'IB','Islas de la Bahía',1),(564,'LP',11401,'',0,'LP','La Paz',1),(565,'LM',11401,'',0,'LM','Lempira',1),(566,'OC',11401,'',0,'OC','Ocotepeque',1),(567,'OL',11401,'',0,'OL','Olancho',1),(568,'SB',11401,'',0,'SB','Santa Bárbara',1),(569,'VL',11401,'',0,'VL','Valle',1),(570,'YO',11401,'',0,'YO','Yoro',1),(571,'DC',11401,'',0,'DC','Distrito Central',1),(572,'CC',4601,'Oistins',0,'CC','Christ Church',1),(573,'SA',4601,'Greenland',0,'SA','Saint Andrew',1),(574,'SG',4601,'Bulkeley',0,'SG','Saint George',1),(575,'JA',4601,'Holetown',0,'JA','Saint James',1),(576,'SJ',4601,'Four Roads',0,'SJ','Saint John',1),(577,'SB',4601,'Bathsheba',0,'SB','Saint Joseph',1),(578,'SL',4601,'Crab Hill',0,'SL','Saint Lucy',1),(579,'SM',4601,'Bridgetown',0,'SM','Saint Michael',1),(580,'SP',4601,'Speightstown',0,'SP','Saint Peter',1),(581,'SC',4601,'Crane',0,'SC','Saint Philip',1),(582,'ST',4601,'Hillaby',0,'ST','Saint Thomas',1);
 /*!40000 ALTER TABLE `llx_c_departements` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -862,6 +863,7 @@ CREATE TABLE `llx_c_effectif` (
   `code` varchar(12) NOT NULL,
   `libelle` varchar(30) DEFAULT NULL,
   `active` tinyint(4) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `code` (`code`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -873,7 +875,7 @@ CREATE TABLE `llx_c_effectif` (
 
 LOCK TABLES `llx_c_effectif` WRITE;
 /*!40000 ALTER TABLE `llx_c_effectif` DISABLE KEYS */;
-INSERT INTO `llx_c_effectif` VALUES (0,'EF0','-',1),(1,'EF1-5','1 - 5',1),(2,'EF6-10','6 - 10',1),(3,'EF11-50','11 - 50',1),(4,'EF51-100','51 - 100',1),(5,'EF100-500','100 - 500',1),(6,'EF500-','> 500',1);
+INSERT INTO `llx_c_effectif` VALUES (0,'EF0','-',1,NULL),(1,'EF1-5','1 - 5',1,NULL),(2,'EF6-10','6 - 10',1,NULL),(3,'EF11-50','11 - 50',1,NULL),(4,'EF51-100','51 - 100',1,NULL),(5,'EF100-500','100 - 500',1,NULL),(6,'EF500-','> 500',1,NULL);
 /*!40000 ALTER TABLE `llx_c_effectif` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -924,9 +926,10 @@ CREATE TABLE `llx_c_forme_juridique` (
   `libelle` varchar(255) DEFAULT NULL,
   `isvatexempted` tinyint(4) NOT NULL DEFAULT '0',
   `active` tinyint(4) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_c_forme_juridique` (`code`)
-) ENGINE=MyISAM AUTO_INCREMENT=125 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=131 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -935,35 +938,64 @@ CREATE TABLE `llx_c_forme_juridique` (
 
 LOCK TABLES `llx_c_forme_juridique` WRITE;
 /*!40000 ALTER TABLE `llx_c_forme_juridique` DISABLE KEYS */;
-INSERT INTO `llx_c_forme_juridique` VALUES (1,0,0,'-',0,1),(2,11,1,'Artisan Commerçant (EI)',0,1),(3,12,1,'Commerçant (EI)',0,1),(4,13,1,'Artisan (EI)',0,1),(5,14,1,'Officier public ou ministériel',0,1),(6,15,1,'Profession libérale (EI)',0,1),(7,16,1,'Exploitant agricole',0,1),(8,17,1,'Agent commercial',0,1),(9,18,1,'Associé Gérant de société',0,1),(10,19,1,'Personne physique',0,1),(11,21,1,'Indivision',0,1),(12,22,1,'Société créée de fait',0,1),(13,23,1,'Société en participation',0,1),(14,27,1,'Paroisse hors zone concordataire',0,1),(15,29,1,'Groupement de droit privé non doté de la personnalité morale',0,1),(16,31,1,'Personne morale de droit étranger, immatriculée au RCS',0,1),(17,32,1,'Personne morale de droit étranger, non immatriculée au RCS',0,1),(18,35,1,'Régime auto-entrepreneur',0,1),(19,41,1,'Établissement public ou régie à caractère industriel ou commercial',0,1),(20,51,1,'Société coopérative commerciale particulière',0,1),(21,52,1,'Société en nom collectif',0,1),(22,53,1,'Société en commandite',0,1),(23,54,1,'Société à responsabilité limitée (SARL)',0,1),(24,55,1,'Société anonyme à conseil d administration',0,1),(25,56,1,'Société anonyme à directoire',0,1),(26,57,1,'Société par actions simplifiée',0,1),(27,58,1,'Entreprise Unipersonnelle à Responsabilité Limitée (EURL)',0,1),(28,61,1,'Caisse d\'épargne et de prévoyance',0,1),(29,62,1,'Groupement d\'intérêt économique (GIE)',0,1),(30,63,1,'Société coopérative agricole',0,1),(31,64,1,'Société non commerciale d assurances',0,1),(32,65,1,'Société civile',0,1),(33,69,1,'Personnes de droit privé inscrites au RCS',0,1),(34,71,1,'Administration de l état',0,1),(35,72,1,'Collectivité territoriale',0,1),(36,73,1,'Établissement public administratif',0,1),(37,74,1,'Personne morale de droit public administratif',0,1),(38,81,1,'Organisme gérant régime de protection social à adhésion obligatoire',0,1),(39,82,1,'Organisme mutualiste',0,1),(40,83,1,'Comité d entreprise',0,1),(41,84,1,'Organisme professionnel',0,1),(42,85,1,'Organisme de retraite à adhésion non obligatoire',0,1),(43,91,1,'Syndicat de propriétaires',0,1),(44,92,1,'Association loi 1901 ou assimilé',0,1),(45,93,1,'Fondation',0,1),(46,99,1,'Personne morale de droit privé',0,1),(47,200,2,'Indépendant',0,1),(48,201,2,'SPRL - Société à responsabilité limitée',0,1),(49,202,2,'SA   - Société Anonyme',0,1),(50,203,2,'SCRL - Société coopérative à responsabilité limitée',0,1),(51,204,2,'ASBL - Association sans but Lucratif',0,1),(52,205,2,'SCRI - Société coopérative à responsabilité illimitée',0,1),(53,206,2,'SCS  - Société en commandite simple',0,1),(54,207,2,'SCA  - Société en commandite par action',0,1),(55,208,2,'SNC  - Société en nom collectif',0,1),(56,209,2,'GIE  - Groupement d intérêt économique',0,1),(57,210,2,'GEIE - Groupement européen d intérêt économique',0,1),(58,500,5,'Limited liability corporation (GmbH)',0,1),(59,501,5,'Stock corporation (AG)',0,1),(60,502,5,'Partnerships general or limited (GmbH & CO. KG)',0,1),(61,503,5,'Sole proprietor / Private business',0,1),(62,600,6,'Raison Individuelle',0,1),(63,601,6,'Société Simple',0,1),(64,602,6,'Société en nom collectif',0,1),(65,603,6,'Société en commandite',0,1),(66,604,6,'Société anonyme (SA)',0,1),(67,605,6,'Société en commandite par actions',0,1),(68,606,6,'Société à responsabilité limitée (SARL)',0,1),(69,607,6,'Société coopérative',0,1),(70,608,6,'Association',0,1),(71,609,6,'Fondation',0,1),(72,700,7,'Sole Trader',0,1),(73,701,7,'Partnership',0,1),(74,702,7,'Private Limited Company by shares (LTD)',0,1),(75,703,7,'Public Limited Company',0,1),(76,704,7,'Workers Cooperative',0,1),(77,705,7,'Limited Liability Partnership',0,1),(78,706,7,'Franchise',0,1),(79,1000,10,'Société à responsabilité limitée (SARL)',0,1),(80,1001,10,'Société en Nom Collectif (SNC)',0,1),(81,1002,10,'Société en Commandite Simple (SCS)',0,1),(82,1003,10,'société en participation',0,1),(83,1004,10,'Société Anonyme (SA)',0,1),(84,1005,10,'Société Unipersonnelle à Responsabilité Limitée (SUARL)',0,1),(85,1006,10,'Groupement d\'intérêt économique (GEI)',0,1),(86,1007,10,'Groupe de sociétés',0,1),(87,401,4,'Empresario Individual',0,1),(88,402,4,'Comunidad de Bienes',0,1),(89,403,4,'Sociedad Civil',0,1),(90,404,4,'Sociedad Colectiva',0,1),(91,405,4,'Sociedad Limitada',0,1),(92,406,4,'Sociedad Anónima',0,1),(93,407,4,'Sociedad Comandataria por Acciones',0,1),(94,408,4,'Sociedad Comandataria Simple',0,1),(95,409,4,'Sociedad Laboral',0,1),(96,410,4,'Sociedad Cooperativa',0,1),(97,411,4,'Sociedad de Garantía Recíproca',0,1),(98,412,4,'Entidad de Capital-Riesgo',0,1),(99,413,4,'Agrupación de Interés Económico',0,1),(100,414,4,'Sociedad de Inversión Mobiliaria',0,1),(101,415,4,'Agrupación sin Ánimo de Lucro',0,1),(102,15201,152,'Mauritius Private Company Limited By Shares',0,1),(103,15202,152,'Mauritius Company Limited By Guarantee',0,1),(104,15203,152,'Mauritius Public Company Limited By Shares',0,1),(105,15204,152,'Mauritius Foreign Company',0,1),(106,15205,152,'Mauritius GBC1 (Offshore Company)',0,1),(107,15206,152,'Mauritius GBC2 (International Company)',0,1),(108,15207,152,'Mauritius General Partnership',0,1),(109,15208,152,'Mauritius Limited Partnership',0,1),(110,15209,152,'Mauritius Sole Proprietorship',0,1),(111,15210,152,'Mauritius Trusts',0,1),(112,2301,23,'Monotributista',0,1),(113,2302,23,'Sociedad Civil',0,1),(114,2303,23,'Sociedades Comerciales',0,1),(115,2304,23,'Sociedades de Hecho',0,1),(116,2305,23,'Sociedades Irregulares',0,1),(117,2306,23,'Sociedad Colectiva',0,1),(118,2307,23,'Sociedad en Comandita Simple',0,1),(119,2308,23,'Sociedad de Capital e Industria',0,1),(120,2309,23,'Sociedad Accidental o en participación',0,1),(121,2310,23,'Sociedad de Responsabilidad Limitada',0,1),(122,2311,23,'Sociedad Anónima',0,1),(123,2312,23,'Sociedad Anónima con Participación Estatal Mayoritaria',0,1),(124,2313,23,'Sociedad en Comandita por Acciones (arts. 315 a 324, LSC)',0,1);
+INSERT INTO `llx_c_forme_juridique` VALUES (1,0,0,'-',0,1,NULL),(2,11,1,'Artisan Commerçant (EI)',0,1,NULL),(3,12,1,'Commerçant (EI)',0,1,NULL),(4,13,1,'Artisan (EI)',0,1,NULL),(5,14,1,'Officier public ou ministériel',0,1,NULL),(6,15,1,'Profession libérale (EI)',0,1,NULL),(7,16,1,'Exploitant agricole',0,1,NULL),(8,17,1,'Agent commercial',0,1,NULL),(9,18,1,'Associé Gérant de société',0,1,NULL),(10,19,1,'Personne physique',0,1,NULL),(11,21,1,'Indivision',0,1,NULL),(12,22,1,'Société créée de fait',0,1,NULL),(13,23,1,'Société en participation',0,1,NULL),(14,27,1,'Paroisse hors zone concordataire',0,1,NULL),(15,29,1,'Groupement de droit privé non doté de la personnalité morale',0,1,NULL),(16,31,1,'Personne morale de droit étranger, immatriculée au RCS',0,1,NULL),(17,32,1,'Personne morale de droit étranger, non immatriculée au RCS',0,1,NULL),(18,35,1,'Régime auto-entrepreneur',0,1,NULL),(19,41,1,'Établissement public ou régie à caractère industriel ou commercial',0,1,NULL),(20,51,1,'Société coopérative commerciale particulière',0,1,NULL),(21,52,1,'Société en nom collectif',0,1,NULL),(22,53,1,'Société en commandite',0,1,NULL),(23,54,1,'Société à responsabilité limitée (SARL)',0,1,NULL),(24,55,1,'Société anonyme à conseil d administration',0,1,NULL),(25,56,1,'Société anonyme à directoire',0,1,NULL),(26,57,1,'Société par actions simplifiée',0,1,NULL),(27,58,1,'Entreprise Unipersonnelle à Responsabilité Limitée (EURL)',0,1,NULL),(28,61,1,'Caisse d\'épargne et de prévoyance',0,1,NULL),(29,62,1,'Groupement d\'intérêt économique (GIE)',0,1,NULL),(30,63,1,'Société coopérative agricole',0,1,NULL),(31,64,1,'Société non commerciale d assurances',0,1,NULL),(32,65,1,'Société civile',0,1,NULL),(33,69,1,'Personnes de droit privé inscrites au RCS',0,1,NULL),(34,71,1,'Administration de l état',0,1,NULL),(35,72,1,'Collectivité territoriale',0,1,NULL),(36,73,1,'Établissement public administratif',0,1,NULL),(37,74,1,'Personne morale de droit public administratif',0,1,NULL),(38,81,1,'Organisme gérant régime de protection social à adhésion obligatoire',0,1,NULL),(39,82,1,'Organisme mutualiste',0,1,NULL),(40,83,1,'Comité d entreprise',0,1,NULL),(41,84,1,'Organisme professionnel',0,1,NULL),(42,85,1,'Organisme de retraite à adhésion non obligatoire',0,1,NULL),(43,91,1,'Syndicat de propriétaires',0,1,NULL),(44,92,1,'Association loi 1901 ou assimilé',0,1,NULL),(45,93,1,'Fondation',0,1,NULL),(46,99,1,'Personne morale de droit privé',0,1,NULL),(47,200,2,'Indépendant',0,1,NULL),(48,201,2,'SPRL - Société à responsabilité limitée',0,1,NULL),(49,202,2,'SA   - Société Anonyme',0,1,NULL),(50,203,2,'SCRL - Société coopérative à responsabilité limitée',0,1,NULL),(51,204,2,'ASBL - Association sans but Lucratif',0,1,NULL),(52,205,2,'SCRI - Société coopérative à responsabilité illimitée',0,1,NULL),(53,206,2,'SCS  - Société en commandite simple',0,1,NULL),(54,207,2,'SCA  - Société en commandite par action',0,1,NULL),(55,208,2,'SNC  - Société en nom collectif',0,1,NULL),(56,209,2,'GIE  - Groupement d intérêt économique',0,1,NULL),(57,210,2,'GEIE - Groupement européen d intérêt économique',0,1,NULL),(58,500,5,'Limited liability corporation (GmbH)',0,1,NULL),(59,501,5,'Stock corporation (AG)',0,1,NULL),(60,502,5,'Partnerships general or limited (GmbH & CO. KG)',0,1,NULL),(61,503,5,'Sole proprietor / Private business',0,1,NULL),(62,600,6,'Raison Individuelle',0,1,NULL),(63,601,6,'Société Simple',0,1,NULL),(64,602,6,'Société en nom collectif',0,1,NULL),(65,603,6,'Société en commandite',0,1,NULL),(66,604,6,'Société anonyme (SA)',0,1,NULL),(67,605,6,'Société en commandite par actions',0,1,NULL),(68,606,6,'Société à responsabilité limitée (SARL)',0,1,NULL),(69,607,6,'Société coopérative',0,1,NULL),(70,608,6,'Association',0,1,NULL),(71,609,6,'Fondation',0,1,NULL),(72,700,7,'Sole Trader',0,1,NULL),(73,701,7,'Partnership',0,1,NULL),(74,702,7,'Private Limited Company by shares (LTD)',0,1,NULL),(75,703,7,'Public Limited Company',0,1,NULL),(76,704,7,'Workers Cooperative',0,1,NULL),(77,705,7,'Limited Liability Partnership',0,1,NULL),(78,706,7,'Franchise',0,1,NULL),(79,1000,10,'Société à responsabilité limitée (SARL)',0,1,NULL),(80,1001,10,'Société en Nom Collectif (SNC)',0,1,NULL),(81,1002,10,'Société en Commandite Simple (SCS)',0,1,NULL),(82,1003,10,'société en participation',0,1,NULL),(83,1004,10,'Société Anonyme (SA)',0,1,NULL),(84,1005,10,'Société Unipersonnelle à Responsabilité Limitée (SUARL)',0,1,NULL),(85,1006,10,'Groupement d\'intérêt économique (GEI)',0,1,NULL),(86,1007,10,'Groupe de sociétés',0,1,NULL),(87,401,4,'Empresario Individual',0,1,NULL),(88,402,4,'Comunidad de Bienes',0,1,NULL),(89,403,4,'Sociedad Civil',0,1,NULL),(90,404,4,'Sociedad Colectiva',0,1,NULL),(91,405,4,'Sociedad Limitada',0,1,NULL),(92,406,4,'Sociedad Anónima',0,1,NULL),(93,407,4,'Sociedad Comandataria por Acciones',0,1,NULL),(94,408,4,'Sociedad Comandataria Simple',0,1,NULL),(95,409,4,'Sociedad Laboral',0,1,NULL),(96,410,4,'Sociedad Cooperativa',0,1,NULL),(97,411,4,'Sociedad de Garantía Recíproca',0,1,NULL),(98,412,4,'Entidad de Capital-Riesgo',0,1,NULL),(99,413,4,'Agrupación de Interés Económico',0,1,NULL),(100,414,4,'Sociedad de Inversión Mobiliaria',0,1,NULL),(101,415,4,'Agrupación sin Ánimo de Lucro',0,1,NULL),(102,15201,152,'Mauritius Private Company Limited By Shares',0,1,NULL),(103,15202,152,'Mauritius Company Limited By Guarantee',0,1,NULL),(104,15203,152,'Mauritius Public Company Limited By Shares',0,1,NULL),(105,15204,152,'Mauritius Foreign Company',0,1,NULL),(106,15205,152,'Mauritius GBC1 (Offshore Company)',0,1,NULL),(107,15206,152,'Mauritius GBC2 (International Company)',0,1,NULL),(108,15207,152,'Mauritius General Partnership',0,1,NULL),(109,15208,152,'Mauritius Limited Partnership',0,1,NULL),(110,15209,152,'Mauritius Sole Proprietorship',0,1,NULL),(111,15210,152,'Mauritius Trusts',0,1,NULL),(112,2301,23,'Monotributista',0,1,NULL),(113,2302,23,'Sociedad Civil',0,1,NULL),(114,2303,23,'Sociedades Comerciales',0,1,NULL),(115,2304,23,'Sociedades de Hecho',0,1,NULL),(116,2305,23,'Sociedades Irregulares',0,1,NULL),(117,2306,23,'Sociedad Colectiva',0,1,NULL),(118,2307,23,'Sociedad en Comandita Simple',0,1,NULL),(119,2308,23,'Sociedad de Capital e Industria',0,1,NULL),(120,2309,23,'Sociedad Accidental o en participación',0,1,NULL),(121,2310,23,'Sociedad de Responsabilidad Limitada',0,1,NULL),(122,2311,23,'Sociedad Anónima',0,1,NULL),(123,2312,23,'Sociedad Anónima con Participación Estatal Mayoritaria',0,1,NULL),(124,2313,23,'Sociedad en Comandita por Acciones (arts. 315 a 324, LSC)',0,1,NULL),(125,15401,154,'Sociedad en nombre colectivo',0,1,NULL),(126,15402,154,'Sociedad en comandita simple',0,1,NULL),(127,15403,154,'Sociedad de responsabilidad limitada',0,1,NULL),(128,15404,154,'Sociedad anónima',0,1,NULL),(129,15405,154,'Sociedad en comandita por acciones',0,1,NULL),(130,15406,154,'Sociedad cooperativa',0,1,NULL);
 /*!40000 ALTER TABLE `llx_c_forme_juridique` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
--- Table structure for table `llx_c_methode_commande_fournisseur`
+-- Table structure for table `llx_c_input_method`
 --
 
-DROP TABLE IF EXISTS `llx_c_methode_commande_fournisseur`;
+DROP TABLE IF EXISTS `llx_c_input_method`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `llx_c_methode_commande_fournisseur` (
+CREATE TABLE `llx_c_input_method` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
   `code` varchar(30) DEFAULT NULL,
   `libelle` varchar(60) DEFAULT NULL,
   `active` tinyint(4) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_c_methode_commande_fournisseur` (`code`)
 ) ENGINE=MyISAM AUTO_INCREMENT=6 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `llx_c_methode_commande_fournisseur`
+-- Dumping data for table `llx_c_input_method`
 --
 
-LOCK TABLES `llx_c_methode_commande_fournisseur` WRITE;
-/*!40000 ALTER TABLE `llx_c_methode_commande_fournisseur` DISABLE KEYS */;
-INSERT INTO `llx_c_methode_commande_fournisseur` VALUES (1,'OrderByMail','Courrier',1),(2,'OrderByFax','Fax',1),(3,'OrderByEMail','EMail',1),(4,'OrderByPhone','Téléphone',1),(5,'OrderByWWW','En ligne',1);
-/*!40000 ALTER TABLE `llx_c_methode_commande_fournisseur` ENABLE KEYS */;
+LOCK TABLES `llx_c_input_method` WRITE;
+/*!40000 ALTER TABLE `llx_c_input_method` DISABLE KEYS */;
+INSERT INTO `llx_c_input_method` VALUES (1,'OrderByMail','Courrier',1,NULL),(2,'OrderByFax','Fax',1,NULL),(3,'OrderByEMail','EMail',1,NULL),(4,'OrderByPhone','Téléphone',1,NULL),(5,'OrderByWWW','En ligne',1,NULL);
+/*!40000 ALTER TABLE `llx_c_input_method` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `llx_c_input_reason`
+--
+
+DROP TABLE IF EXISTS `llx_c_input_reason`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `llx_c_input_reason` (
+  `rowid` int(11) NOT NULL AUTO_INCREMENT,
+  `code` varchar(30) NOT NULL,
+  `label` varchar(60) NOT NULL,
+  `active` tinyint(4) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
+  PRIMARY KEY (`rowid`),
+  UNIQUE KEY `uk_c_input_reason` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `llx_c_input_reason`
+--
+
+LOCK TABLES `llx_c_input_reason` WRITE;
+/*!40000 ALTER TABLE `llx_c_input_reason` DISABLE KEYS */;
+INSERT INTO `llx_c_input_reason` VALUES (1,'SRC_INTE','Web site',1,NULL),(2,'SRC_CAMP_MAIL','Mailing campaign',1,NULL),(3,'SRC_CAMP_PHO','Phone campaign',1,NULL),(4,'SRC_CAMP_FAX','Fax campaign',1,NULL),(5,'SRC_COMM','Commercial contact',1,NULL),(6,'SRC_SHOP','Shop contact',1,NULL),(7,'SRC_CAMP_EMAIL','EMailing campaign',1,NULL);
+/*!40000 ALTER TABLE `llx_c_input_reason` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -979,6 +1011,7 @@ CREATE TABLE `llx_c_paiement` (
   `libelle` varchar(30) DEFAULT NULL,
   `type` smallint(6) DEFAULT NULL,
   `active` tinyint(4) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `code` (`code`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -990,7 +1023,7 @@ CREATE TABLE `llx_c_paiement` (
 
 LOCK TABLES `llx_c_paiement` WRITE;
 /*!40000 ALTER TABLE `llx_c_paiement` DISABLE KEYS */;
-INSERT INTO `llx_c_paiement` VALUES (0,'','-',3,1),(1,'TIP','TIP',2,1),(2,'VIR','Virement',2,1),(3,'PRE','Prélèvement',2,1),(4,'LIQ','Espèces',2,1),(5,'VAD','Paiement en ligne',2,0),(6,'CB','Carte Bancaire',2,1),(7,'CHQ','Chèque',2,1),(8,'TRA','Traite',2,0),(9,'LCR','LCR',2,0),(10,'FAC','Factor',2,0),(11,'PRO','Proforma',2,0);
+INSERT INTO `llx_c_paiement` VALUES (0,'','-',3,1,NULL),(1,'TIP','TIP',2,1,NULL),(2,'VIR','Virement',2,1,NULL),(3,'PRE','Prélèvement',2,1,NULL),(4,'LIQ','Espèces',2,1,NULL),(5,'VAD','Paiement en ligne',2,0,NULL),(6,'CB','Carte Bancaire',2,1,NULL),(7,'CHQ','Chèque',2,1,NULL),(8,'TRA','Traite',2,0,NULL),(9,'LCR','LCR',2,0,NULL),(10,'FAC','Factor',2,0,NULL),(11,'PRO','Proforma',2,0,NULL);
 /*!40000 ALTER TABLE `llx_c_paiement` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1009,6 +1042,7 @@ CREATE TABLE `llx_c_paper_format` (
   `height` float(6,2) DEFAULT '0.00',
   `unit` varchar(5) NOT NULL,
   `active` tinyint(4) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`rowid`)
 ) ENGINE=MyISAM AUTO_INCREMENT=226 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1019,7 +1053,7 @@ CREATE TABLE `llx_c_paper_format` (
 
 LOCK TABLES `llx_c_paper_format` WRITE;
 /*!40000 ALTER TABLE `llx_c_paper_format` DISABLE KEYS */;
-INSERT INTO `llx_c_paper_format` VALUES (1,'4A0','Format 4A0',1682.00,2378.00,'mm',1),(2,'2A0','Format 2A0',1189.00,1682.00,'mm',1),(3,'A0','Format A0',840.00,1189.00,'mm',1),(4,'A1','Format A1',594.00,840.00,'mm',1),(5,'A2','Format A2',420.00,594.00,'mm',1),(6,'A3','Format A3',297.00,420.00,'mm',1),(7,'A4','Format A4',210.00,297.00,'mm',1),(8,'A5','Format A5',148.00,210.00,'mm',1),(9,'A6','Format A6',105.00,148.00,'mm',1),(100,'USLetter','Format Letter (A)',216.00,279.00,'mm',0),(105,'USLegal','Format Legal',216.00,356.00,'mm',0),(110,'USExecutive','Format Executive',190.00,254.00,'mm',0),(115,'USLedger','Format Ledger/Tabloid (B)',279.00,432.00,'mm',0),(200,'Canadian P1','Format Canadian P1',560.00,860.00,'mm',0),(205,'Canadian P2','Format Canadian P2',430.00,560.00,'mm',0),(210,'Canadian P3','Format Canadian P3',280.00,430.00,'mm',0),(215,'Canadian P4','Format Canadian P4',215.00,280.00,'mm',0),(220,'Canadian P5','Format Canadian P5',140.00,215.00,'mm',0),(225,'Canadian P6','Format Canadian P6',107.00,140.00,'mm',0);
+INSERT INTO `llx_c_paper_format` VALUES (1,'4A0','Format 4A0',1682.00,2378.00,'mm',1,NULL),(2,'2A0','Format 2A0',1189.00,1682.00,'mm',1,NULL),(3,'A0','Format A0',840.00,1189.00,'mm',1,NULL),(4,'A1','Format A1',594.00,840.00,'mm',1,NULL),(5,'A2','Format A2',420.00,594.00,'mm',1,NULL),(6,'A3','Format A3',297.00,420.00,'mm',1,NULL),(7,'A4','Format A4',210.00,297.00,'mm',1,NULL),(8,'A5','Format A5',148.00,210.00,'mm',1,NULL),(9,'A6','Format A6',105.00,148.00,'mm',1,NULL),(100,'USLetter','Format Letter (A)',216.00,279.00,'mm',0,NULL),(105,'USLegal','Format Legal',216.00,356.00,'mm',0,NULL),(110,'USExecutive','Format Executive',190.00,254.00,'mm',0,NULL),(115,'USLedger','Format Ledger/Tabloid (B)',279.00,432.00,'mm',0,NULL),(200,'Canadian P1','Format Canadian P1',560.00,860.00,'mm',0,NULL),(205,'Canadian P2','Format Canadian P2',430.00,560.00,'mm',0,NULL),(210,'Canadian P3','Format Canadian P3',280.00,430.00,'mm',0,NULL),(215,'Canadian P4','Format Canadian P4',215.00,280.00,'mm',0,NULL),(220,'Canadian P5','Format Canadian P5',140.00,215.00,'mm',0,NULL),(225,'Canadian P6','Format Canadian P6',107.00,140.00,'mm',0,NULL);
 /*!40000 ALTER TABLE `llx_c_paper_format` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1040,6 +1074,7 @@ CREATE TABLE `llx_c_payment_term` (
   `fdm` tinyint(4) DEFAULT NULL,
   `nbjour` smallint(6) DEFAULT NULL,
   `decalage` smallint(6) DEFAULT NULL,
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`rowid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1050,7 +1085,7 @@ CREATE TABLE `llx_c_payment_term` (
 
 LOCK TABLES `llx_c_payment_term` WRITE;
 /*!40000 ALTER TABLE `llx_c_payment_term` DISABLE KEYS */;
-INSERT INTO `llx_c_payment_term` VALUES (1,'RECEP',1,1,'A réception','Réception de facture',0,0,NULL),(2,'30D',2,1,'30 jours','Réglement à 30 jours',0,30,NULL),(3,'30DENDMONTH',3,1,'30 jours fin de mois','Réglement à 30 jours fin de mois',1,30,NULL),(4,'60D',4,1,'60 jours','Réglement à 60 jours',0,60,NULL),(5,'60DENDMONTH',5,1,'60 jours fin de mois','Réglement à 60 jours fin de mois',1,60,NULL);
+INSERT INTO `llx_c_payment_term` VALUES (1,'RECEP',1,1,'A réception','Réception de facture',0,0,NULL,NULL),(2,'30D',2,1,'30 jours','Réglement à 30 jours',0,30,NULL,NULL),(3,'30DENDMONTH',3,1,'30 jours fin de mois','Réglement à 30 jours fin de mois',1,30,NULL,NULL),(4,'60D',4,1,'60 jours','Réglement à 60 jours',0,60,NULL,NULL),(5,'60DENDMONTH',5,1,'60 jours fin de mois','Réglement à 60 jours fin de mois',1,60,NULL,NULL);
 /*!40000 ALTER TABLE `llx_c_payment_term` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1123,6 +1158,7 @@ CREATE TABLE `llx_c_prospectlevel` (
   `label` varchar(30) DEFAULT NULL,
   `sortorder` smallint(6) DEFAULT NULL,
   `active` smallint(6) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`code`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1133,7 +1169,7 @@ CREATE TABLE `llx_c_prospectlevel` (
 
 LOCK TABLES `llx_c_prospectlevel` WRITE;
 /*!40000 ALTER TABLE `llx_c_prospectlevel` DISABLE KEYS */;
-INSERT INTO `llx_c_prospectlevel` VALUES ('PL_NONE','None',1,1),('PL_LOW','Low',2,1),('PL_MEDIUM','Medium',3,1),('PL_HIGH','High',4,1);
+INSERT INTO `llx_c_prospectlevel` VALUES ('PL_NONE','None',1,1,NULL),('PL_LOW','Low',2,1,NULL),('PL_MEDIUM','Medium',3,1,NULL),('PL_HIGH','High',4,1,NULL);
 /*!40000 ALTER TABLE `llx_c_prospectlevel` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1148,14 +1184,14 @@ CREATE TABLE `llx_c_regions` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
   `code_region` int(11) NOT NULL,
   `fk_pays` int(11) NOT NULL,
-  `cheflieu` varchar(7) DEFAULT NULL,
+  `cheflieu` varchar(50) DEFAULT NULL,
   `tncc` int(11) DEFAULT NULL,
   `nom` varchar(50) DEFAULT NULL,
   `active` tinyint(4) NOT NULL DEFAULT '1',
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `code_region` (`code_region`),
   KEY `idx_c_regions_fk_pays` (`fk_pays`)
-) ENGINE=MyISAM AUTO_INCREMENT=15213 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=15402 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1164,7 +1200,7 @@ CREATE TABLE `llx_c_regions` (
 
 LOCK TABLES `llx_c_regions` WRITE;
 /*!40000 ALTER TABLE `llx_c_regions` DISABLE KEYS */;
-INSERT INTO `llx_c_regions` VALUES (1,0,0,'0',0,'-',1),(101,1,1,'97105',3,'Guadeloupe',1),(102,2,1,'97209',3,'Martinique',1),(103,3,1,'97302',3,'Guyane',1),(104,4,1,'97411',3,'Réunion',1),(105,11,1,'75056',1,'Île-de-France',1),(106,21,1,'51108',0,'Champagne-Ardenne',1),(107,22,1,'80021',0,'Picardie',1),(108,23,1,'76540',0,'Haute-Normandie',1),(109,24,1,'45234',2,'Centre',1),(110,25,1,'14118',0,'Basse-Normandie',1),(111,26,1,'21231',0,'Bourgogne',1),(112,31,1,'59350',2,'Nord-Pas-de-Calais',1),(113,41,1,'57463',0,'Lorraine',1),(114,42,1,'67482',1,'Alsace',1),(115,43,1,'25056',0,'Franche-Comté',1),(116,52,1,'44109',4,'Pays de la Loire',1),(117,53,1,'35238',0,'Bretagne',1),(118,54,1,'86194',2,'Poitou-Charentes',1),(119,72,1,'33063',1,'Aquitaine',1),(120,73,1,'31555',0,'Midi-Pyrénées',1),(121,74,1,'87085',2,'Limousin',1),(122,82,1,'69123',2,'Rhône-Alpes',1),(123,83,1,'63113',1,'Auvergne',1),(124,91,1,'34172',2,'Languedoc-Roussillon',1),(125,93,1,'13055',0,'Provence-Alpes-Côte d\'Azur',1),(126,94,1,'2A004',0,'Corse',1),(201,201,2,'',1,'Flandre',1),(202,202,2,'',2,'Wallonie',1),(203,203,2,'',3,'Bruxelles-Capitale',1),(301,301,3,NULL,1,'Abruzzo',1),(302,302,3,NULL,1,'Basilicata',1),(303,303,3,NULL,1,'Calabria',1),(304,304,3,NULL,1,'Campania',1),(305,305,3,NULL,1,'Emilia-Romagna',1),(306,306,3,NULL,1,'Friuli-Venezia Giulia',1),(307,307,3,NULL,1,'Lazio',1),(308,308,3,NULL,1,'Liguria',1),(309,309,3,NULL,1,'Lombardia',1),(310,310,3,NULL,1,'Marche',1),(311,311,3,NULL,1,'Molise',1),(312,312,3,NULL,1,'Piemonte',1),(313,313,3,NULL,1,'Puglia',1),(314,314,3,NULL,1,'Sardegna',1),(315,315,3,NULL,1,'Sicilia',1),(316,316,3,NULL,1,'Toscana',1),(317,317,3,NULL,1,'Trentino-Alto Adige',1),(318,318,3,NULL,1,'Umbria',1),(319,319,3,NULL,1,'Valle d Aosta',1),(320,320,3,NULL,1,'Veneto',1),(401,401,4,'',0,'Andalucia',1),(402,402,4,'',0,'Aragón',1),(403,403,4,'',0,'Castilla y León',1),(404,404,4,'',0,'Castilla la Mancha',1),(405,405,4,'',0,'Canarias',1),(406,406,4,'',0,'Cataluña',1),(407,407,4,'',0,'Comunidad de Ceuta',1),(408,408,4,'',0,'Comunidad Foral de Navarra',1),(409,409,4,'',0,'Comunidad de Melilla',1),(410,410,4,'',0,'Cantabria',1),(411,411,4,'',0,'Comunidad Valenciana',1),(412,412,4,'',0,'Extemadura',1),(413,413,4,'',0,'Galicia',1),(414,414,4,'',0,'Islas Baleares',1),(415,415,4,'',0,'La Rioja',1),(416,416,4,'',0,'Comunidad de Madrid',1),(417,417,4,'',0,'Región de Murcia',1),(418,418,4,'',0,'Principado de Asturias',1),(419,419,4,'',0,'Pais Vasco',1),(420,420,4,'',0,'Otros',1),(601,601,6,'',1,'Cantons',1),(1001,1001,10,'',0,'Ariana',1),(1002,1002,10,'',0,'Béja',1),(1003,1003,10,'',0,'Ben Arous',1),(1004,1004,10,'',0,'Bizerte',1),(1005,1005,10,'',0,'Gabès',1),(1006,1006,10,'',0,'Gafsa',1),(1007,1007,10,'',0,'Jendouba',1),(1008,1008,10,'',0,'Kairouan',1),(1009,1009,10,'',0,'Kasserine',1),(1010,1010,10,'',0,'Kébili',1),(1011,1011,10,'',0,'La Manouba',1),(1012,1012,10,'',0,'Le Kef',1),(1013,1013,10,'',0,'Mahdia',1),(1014,1014,10,'',0,'Médenine',1),(1015,1015,10,'',0,'Monastir',1),(1016,1016,10,'',0,'Nabeul',1),(1017,1017,10,'',0,'Sfax',1),(1018,1018,10,'',0,'Sidi Bouzid',1),(1019,1019,10,'',0,'Siliana',1),(1020,1020,10,'',0,'Sousse',1),(1021,1021,10,'',0,'Tataouine',1),(1022,1022,10,'',0,'Tozeur',1),(1023,1023,10,'',0,'Tunis',1),(1024,1024,10,'',0,'Zaghouan',1),(1101,1101,11,'',0,'United-States',1),(2301,2301,23,'',0,'Norte',1),(2302,2302,23,'',0,'Litoral',1),(2303,2303,23,'',0,'Cuyana',1),(2304,2304,23,'',0,'Central',1),(2305,2305,23,'',0,'Patagonia',1),(2801,2801,28,'',0,'Australia',1),(8601,8601,86,NULL,NULL,'Central',1),(8602,8602,86,NULL,NULL,'Oriental',1),(8603,8603,86,NULL,NULL,'Occidental',1),(11701,11701,117,'',0,'India',1),(15201,15201,152,'',0,'Rivière Noire',1),(15202,15202,152,'',0,'Flacq',1),(15203,15203,152,'',0,'Grand Port',1),(15204,15204,152,'',0,'Moka',1),(15205,15205,152,'',0,'Pamplemousses',1),(15206,15206,152,'',0,'Plaines Wilhems',1),(15207,15207,152,'',0,'Port-Louis',1),(15208,15208,152,'',0,'Rivière du Rempart',1),(15209,15209,152,'',0,'Savanne',1),(15210,15210,152,'',0,'Rodrigues',1),(15211,15211,152,'',0,'Les îles Agaléga',1),(15212,15212,152,'',0,'Les écueils des Cargados Carajos',1);
+INSERT INTO `llx_c_regions` VALUES (1,0,0,'0',0,'-',1),(101,1,1,'97105',3,'Guadeloupe',1),(102,2,1,'97209',3,'Martinique',1),(103,3,1,'97302',3,'Guyane',1),(104,4,1,'97411',3,'Réunion',1),(105,11,1,'75056',1,'Île-de-France',1),(106,21,1,'51108',0,'Champagne-Ardenne',1),(107,22,1,'80021',0,'Picardie',1),(108,23,1,'76540',0,'Haute-Normandie',1),(109,24,1,'45234',2,'Centre',1),(110,25,1,'14118',0,'Basse-Normandie',1),(111,26,1,'21231',0,'Bourgogne',1),(112,31,1,'59350',2,'Nord-Pas-de-Calais',1),(113,41,1,'57463',0,'Lorraine',1),(114,42,1,'67482',1,'Alsace',1),(115,43,1,'25056',0,'Franche-Comté',1),(116,52,1,'44109',4,'Pays de la Loire',1),(117,53,1,'35238',0,'Bretagne',1),(118,54,1,'86194',2,'Poitou-Charentes',1),(119,72,1,'33063',1,'Aquitaine',1),(120,73,1,'31555',0,'Midi-Pyrénées',1),(121,74,1,'87085',2,'Limousin',1),(122,82,1,'69123',2,'Rhône-Alpes',1),(123,83,1,'63113',1,'Auvergne',1),(124,91,1,'34172',2,'Languedoc-Roussillon',1),(125,93,1,'13055',0,'Provence-Alpes-Côte d\'Azur',1),(126,94,1,'2A004',0,'Corse',1),(201,201,2,'',1,'Flandre',1),(202,202,2,'',2,'Wallonie',1),(203,203,2,'',3,'Bruxelles-Capitale',1),(301,301,3,NULL,1,'Abruzzo',1),(302,302,3,NULL,1,'Basilicata',1),(303,303,3,NULL,1,'Calabria',1),(304,304,3,NULL,1,'Campania',1),(305,305,3,NULL,1,'Emilia-Romagna',1),(306,306,3,NULL,1,'Friuli-Venezia Giulia',1),(307,307,3,NULL,1,'Lazio',1),(308,308,3,NULL,1,'Liguria',1),(309,309,3,NULL,1,'Lombardia',1),(310,310,3,NULL,1,'Marche',1),(311,311,3,NULL,1,'Molise',1),(312,312,3,NULL,1,'Piemonte',1),(313,313,3,NULL,1,'Puglia',1),(314,314,3,NULL,1,'Sardegna',1),(315,315,3,NULL,1,'Sicilia',1),(316,316,3,NULL,1,'Toscana',1),(317,317,3,NULL,1,'Trentino-Alto Adige',1),(318,318,3,NULL,1,'Umbria',1),(319,319,3,NULL,1,'Valle d Aosta',1),(320,320,3,NULL,1,'Veneto',1),(401,401,4,'',0,'Andalucia',1),(402,402,4,'',0,'Aragón',1),(403,403,4,'',0,'Castilla y León',1),(404,404,4,'',0,'Castilla la Mancha',1),(405,405,4,'',0,'Canarias',1),(406,406,4,'',0,'Cataluña',1),(407,407,4,'',0,'Comunidad de Ceuta',1),(408,408,4,'',0,'Comunidad Foral de Navarra',1),(409,409,4,'',0,'Comunidad de Melilla',1),(410,410,4,'',0,'Cantabria',1),(411,411,4,'',0,'Comunidad Valenciana',1),(412,412,4,'',0,'Extemadura',1),(413,413,4,'',0,'Galicia',1),(414,414,4,'',0,'Islas Baleares',1),(415,415,4,'',0,'La Rioja',1),(416,416,4,'',0,'Comunidad de Madrid',1),(417,417,4,'',0,'Región de Murcia',1),(418,418,4,'',0,'Principado de Asturias',1),(419,419,4,'',0,'Pais Vasco',1),(420,420,4,'',0,'Otros',1),(601,601,6,'',1,'Cantons',1),(1001,1001,10,'',0,'Ariana',1),(1002,1002,10,'',0,'Béja',1),(1003,1003,10,'',0,'Ben Arous',1),(1004,1004,10,'',0,'Bizerte',1),(1005,1005,10,'',0,'Gabès',1),(1006,1006,10,'',0,'Gafsa',1),(1007,1007,10,'',0,'Jendouba',1),(1008,1008,10,'',0,'Kairouan',1),(1009,1009,10,'',0,'Kasserine',1),(1010,1010,10,'',0,'Kébili',1),(1011,1011,10,'',0,'La Manouba',1),(1012,1012,10,'',0,'Le Kef',1),(1013,1013,10,'',0,'Mahdia',1),(1014,1014,10,'',0,'Médenine',1),(1015,1015,10,'',0,'Monastir',1),(1016,1016,10,'',0,'Nabeul',1),(1017,1017,10,'',0,'Sfax',1),(1018,1018,10,'',0,'Sidi Bouzid',1),(1019,1019,10,'',0,'Siliana',1),(1020,1020,10,'',0,'Sousse',1),(1021,1021,10,'',0,'Tataouine',1),(1022,1022,10,'',0,'Tozeur',1),(1023,1023,10,'',0,'Tunis',1),(1024,1024,10,'',0,'Zaghouan',1),(1101,1101,11,'',0,'United-States',1),(2301,2301,23,'',0,'Norte',1),(2302,2302,23,'',0,'Litoral',1),(2303,2303,23,'',0,'Cuyana',1),(2304,2304,23,'',0,'Central',1),(2305,2305,23,'',0,'Patagonia',1),(2801,2801,28,'',0,'Australia',1),(8601,8601,86,NULL,NULL,'Central',1),(8602,8602,86,NULL,NULL,'Oriental',1),(8603,8603,86,NULL,NULL,'Occidental',1),(11701,11701,117,'',0,'India',1),(15201,15201,152,'',0,'Rivière Noire',1),(15202,15202,152,'',0,'Flacq',1),(15203,15203,152,'',0,'Grand Port',1),(15204,15204,152,'',0,'Moka',1),(15205,15205,152,'',0,'Pamplemousses',1),(15206,15206,152,'',0,'Plaines Wilhems',1),(15207,15207,152,'',0,'Port-Louis',1),(15208,15208,152,'',0,'Rivière du Rempart',1),(15209,15209,152,'',0,'Savanne',1),(15210,15210,152,'',0,'Rodrigues',1),(15211,15211,152,'',0,'Les îles Agaléga',1),(15212,15212,152,'',0,'Les écueils des Cargados Carajos',1),(6701,6701,67,NULL,NULL,'Tarapacá',1),(6702,6702,67,NULL,NULL,'Antofagasta',1),(6703,6703,67,NULL,NULL,'Atacama',1),(6704,6704,67,NULL,NULL,'Coquimbo',1),(6705,6705,67,NULL,NULL,'Valparaíso',1),(6706,6706,67,NULL,NULL,'General Bernardo O Higgins',1),(6707,6707,67,NULL,NULL,'Maule',1),(6708,6708,67,NULL,NULL,'Biobío',1),(6709,6709,67,NULL,NULL,'Raucanía',1),(6710,6710,67,NULL,NULL,'Los Lagos',1),(6711,6711,67,NULL,NULL,'Aysén General Carlos Ibáñez del Campo',1),(6712,6712,67,NULL,NULL,'Magallanes y Antártica Chilena',1),(6713,6713,67,NULL,NULL,'Santiago',1),(6714,6714,67,NULL,NULL,'Los Ríos',1),(6715,6715,67,NULL,NULL,'Arica y Parinacota',1),(15401,15401,154,'',0,'Mexique',1),(7001,7001,70,'',0,'Colombie',1),(11401,11401,114,'',0,'Honduras',1),(4601,4601,46,'Bridgetown',0,'Barbados',1);
 /*!40000 ALTER TABLE `llx_c_regions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1182,6 +1218,7 @@ CREATE TABLE `llx_c_shipment_mode` (
   `libelle` varchar(50) NOT NULL,
   `description` text,
   `active` tinyint(4) DEFAULT '0',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`rowid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1192,7 +1229,7 @@ CREATE TABLE `llx_c_shipment_mode` (
 
 LOCK TABLES `llx_c_shipment_mode` WRITE;
 /*!40000 ALTER TABLE `llx_c_shipment_mode` DISABLE KEYS */;
-INSERT INTO `llx_c_shipment_mode` VALUES (1,'2011-07-03 17:32:38','CATCH','Catch','Catch by client',1),(2,'2011-07-03 17:32:38','TRANS','Transporter','Generic transporter',1),(3,'2011-07-03 17:32:38','COLSUI','Colissimo Suivi','Colissimo Suivi',0);
+INSERT INTO `llx_c_shipment_mode` VALUES (1,'2011-07-03 17:32:38','CATCH','Catch','Catch by client',1,NULL),(2,'2011-07-03 17:32:38','TRANS','Transporter','Generic transporter',1,NULL),(3,'2011-07-03 17:32:38','COLSUI','Colissimo Suivi','Colissimo Suivi',0,NULL),(4,'2012-02-25 07:44:57','LETTREMAX','Lettre Max','Courrier Suivi et Lettre Max',0,NULL);
 /*!40000 ALTER TABLE `llx_c_shipment_mode` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1250,7 +1287,7 @@ CREATE TABLE `llx_c_tva` (
 
 LOCK TABLES `llx_c_tva` WRITE;
 /*!40000 ALTER TABLE `llx_c_tva` DISABLE KEYS */;
-INSERT INTO `llx_c_tva` VALUES (231,23,21,0,0,0,'IVA standard rate',1,NULL),(232,23,10.5,0,0,0,'IVA reduced rate',1,NULL),(233,23,0,0,0,0,'IVA Rate 0',1,NULL),(281,28,10,0,0,0,'VAT standard rate',1,NULL),(282,28,0,0,0,0,'VAT Rate 0',1,NULL),(411,41,20,0,0,0,'VAT standard rate',1,NULL),(412,41,10,0,0,0,'VAT reduced rate',1,NULL),(413,41,0,0,0,0,'VAT Rate 0',1,NULL),(591,59,20,0,0,0,'VAT standard rate',1,NULL),(592,59,7,0,0,0,'VAT reduced rate',1,NULL),(593,59,0,0,0,0,'VAT Rate 0',1,NULL),(21,2,21,0,0,0,'VAT standard rate',1,NULL),(22,2,6,0,0,0,'VAT reduced rate',1,NULL),(23,2,0,0,0,0,'VAT Rate 0 ou non applicable',1,NULL),(24,2,12,0,0,0,'VAT reduced rate',1,NULL),(141,14,7,0,0,0,'VAT standard rate',1,NULL),(142,14,0,0,0,0,'VAT Rate 0',1,NULL),(671,67,19,0,0,0,'VAT standard rate',1,NULL),(672,67,0,0,0,0,'VAT Rate 0',1,NULL),(91,9,17,0,0,0,'VAT standard rate',1,NULL),(92,9,13,0,0,0,'VAT reduced rate 0',1,NULL),(93,9,3,0,0,0,'VAT super reduced rate 0',1,NULL),(94,9,0,0,0,0,'VAT Rate 0',1,NULL),(801,80,25,0,0,0,'VAT standard rate',1,NULL),(802,80,0,0,0,0,'VAT Rate 0',1,NULL),(11,1,19.6,0,0,0,'VAT standard rate (France hors DOM-TOM)',1,NULL),(12,1,8.5,0,0,0,'VAT standard rate (DOM sauf Guyane et Saint-Martin)',0,NULL),(13,1,8.5,0,0,1,'VAT standard rate (DOM sauf Guyane et Saint-Martin), non perçu par le vendeur mais récupérable par acheteur',0,NULL),(14,1,5.5,0,0,0,'VAT reduced rate (France hors DOM-TOM)',1,NULL),(15,1,0,0,0,0,'VAT Rate 0 ou non applicable',1,NULL),(16,1,2.1,0,0,0,'VAT super-reduced rate',1,NULL),(51,5,19,0,0,0,'VAT standard rate',1,NULL),(52,5,7,0,0,0,'VAT reduced rate',1,NULL),(53,5,0,0,0,0,'VAT Rate 0',1,NULL),(1161,116,25.5,0,0,0,'VAT standard rate',1,NULL),(1162,116,7,0,0,0,'VAT reduced rate',1,NULL),(1163,116,0,0,0,0,'VAT rate 0',1,NULL),(31,3,20,0,0,0,'VAT standard rate',1,NULL),(32,3,10,0,0,0,'VAT reduced rate',1,NULL),(33,3,4,0,0,0,'VAT super-reduced rate',1,NULL),(34,3,0,0,0,0,'VAT Rate 0',1,NULL),(1171,117,12.5,0,0,0,'VAT standard rate',1,NULL),(1172,117,4,0,0,0,'VAT reduced rate',1,NULL),(1173,117,1,0,0,0,'VAT super-reduced rate',1,NULL),(1174,117,0,0,0,0,'VAT Rate 0',1,NULL),(1231,123,0,0,0,0,'VAT Rate 0',1,NULL),(1232,123,5,0,0,0,'VAT Rate 5',1,NULL),(1401,140,15,0,0,0,'VAT standard rate',1,NULL),(1402,140,12,0,0,0,'VAT reduced rate',1,NULL),(1403,140,6,0,0,0,'VAT reduced rate',1,NULL),(1404,140,3,0,0,0,'VAT super-reduced rate',1,NULL),(1405,140,0,0,0,0,'VAT Rate 0',1,NULL),(121,12,20,0,0,0,'VAT standard rate',1,NULL),(122,12,14,0,0,0,'VAT reduced rate',1,NULL),(123,12,10,0,0,0,'VAT reduced rate',1,NULL),(124,12,7,0,0,0,'VAT super-reduced rate',1,NULL),(125,12,0,0,0,0,'VAT Rate 0',1,NULL),(171,17,19,0,0,0,'VAT standard rate',1,NULL),(172,17,6,0,0,0,'VAT reduced rate',1,NULL),(173,17,0,0,0,0,'VAT Rate 0',1,NULL),(1662,166,15,0,0,0,'VAT standard rate',1,NULL),(1663,166,0,0,0,0,'VAT Rate 0',1,NULL),(1841,184,20,0,0,0,'VAT standard rate',1,NULL),(1842,184,7,0,0,0,'VAT reduced rate',1,NULL),(1843,184,3,0,0,0,'VAT reduced rate',1,NULL),(1844,184,0,0,0,0,'VAT Rate 0',1,NULL),(251,25,20,0,0,0,'VAT standard rate',1,NULL),(252,25,12,0,0,0,'VAT reduced rate',1,NULL),(253,25,0,0,0,0,'VAT Rate 0',1,NULL),(254,25,5,0,0,0,'VAT reduced rate',1,NULL),(1881,188,24,0,0,0,'VAT standard rate',1,NULL),(1882,188,9,0,0,0,'VAT reduced rate',1,NULL),(1884,188,5,0,0,0,'VAT reduced rate',1,NULL),(1883,188,0,0,0,0,'VAT Rate 0',1,NULL),(861,86,13,0,0,0,'IVA 13',1,NULL),(862,86,0,0,0,0,'SIN IVA',1,NULL),(2011,201,19,0,0,0,'VAT standard rate',1,NULL),(2012,201,10,0,0,0,'VAT reduced rate',1,NULL),(2013,201,0,0,0,0,'VAT Rate 0',1,NULL),(2021,202,20,0,0,0,'VAT standard rate',1,NULL),(2022,202,8.5,0,0,0,'VAT reduced rate',1,NULL),(2023,202,0,0,0,0,'VAT Rate 0',1,NULL),(41,4,18,4,0,0,'VAT standard rate',1,NULL),(42,4,8,1,0,0,'VAT reduced rate',1,NULL),(43,4,4,0.5,0,0,'VAT super-reduced rate',1,NULL),(44,4,0,0,0,0,'VAT Rate 0',1,NULL),(201,20,25,0,0,0,'VAT standard rate',1,NULL),(202,20,12,0,0,0,'VAT reduced rate',1,NULL),(203,20,6,0,0,0,'VAT super-reduced rate',1,NULL),(204,20,0,0,0,0,'VAT Rate 0',1,NULL),(61,6,7.6,0,0,0,'VAT standard rate',1,NULL),(62,6,3.6,0,0,0,'VAT reduced rate',1,NULL),(63,6,2.4,0,0,0,'VAT super-reduced rate',1,NULL),(64,6,0,0,0,0,'VAT Rate 0',1,NULL),(101,10,6,0,0,0,'VAT 6%',1,NULL),(102,10,12,0,0,0,'VAT 12%',1,NULL),(103,10,18,0,0,0,'VAT 18%',1,NULL),(104,10,7.5,0,0,0,'VAT 6% Majoré à 25% (7.5%)',1,NULL),(105,10,15,0,0,0,'VAT 12% Majoré à 25% (15%)',1,NULL),(106,10,22.5,0,0,0,'VAT 18% Majoré à 25% (22.5%)',1,NULL),(107,10,0,0,0,0,'VAT Rate 0',1,NULL),(71,7,20,0,0,0,'VAT standard rate',1,NULL),(72,7,17.5,0,0,0,'VAT standard rate before 2011',1,NULL),(73,7,5,0,0,0,'VAT reduced rate',1,NULL),(74,7,0,0,0,0,'VAT Rate 0',1,NULL),(111,11,0,0,0,0,'No Sales Tax',1,NULL),(112,11,4,0,0,0,'Sales Tax 4%',1,NULL),(113,11,6,0,0,0,'Sales Tax 6%',1,NULL),(1931,193,0,0,0,0,'No VAT in SPM',1,NULL),(2461,246,0,0,0,0,'VAT Rate 0',1,NULL),(1521,152,0,0,0,0,'VAT Rate 0',1,NULL),(1522,152,15,0,0,0,'VAT Rate 15',1,NULL);
+INSERT INTO `llx_c_tva` VALUES (231,23,21,0,0,0,'IVA standard rate',1,NULL),(232,23,10.5,0,0,0,'IVA reduced rate',1,NULL),(233,23,0,0,0,0,'IVA Rate 0',1,NULL),(281,28,10,0,0,0,'VAT standard rate',1,NULL),(282,28,0,0,0,0,'VAT Rate 0',1,NULL),(411,41,20,0,0,0,'VAT standard rate',1,NULL),(412,41,10,0,0,0,'VAT reduced rate',1,NULL),(413,41,0,0,0,0,'VAT Rate 0',1,NULL),(591,59,20,0,0,0,'VAT standard rate',1,NULL),(592,59,7,0,0,0,'VAT reduced rate',1,NULL),(593,59,0,0,0,0,'VAT Rate 0',1,NULL),(21,2,21,0,0,0,'VAT standard rate',1,NULL),(22,2,6,0,0,0,'VAT reduced rate',1,NULL),(23,2,0,0,0,0,'VAT Rate 0 ou non applicable',1,NULL),(24,2,12,0,0,0,'VAT reduced rate',1,NULL),(141,14,7,0,0,0,'VAT standard rate',1,NULL),(142,14,0,0,0,0,'VAT Rate 0',1,NULL),(671,67,19,0,0,0,'VAT standard rate',1,NULL),(672,67,0,0,0,0,'VAT Rate 0',1,NULL),(91,9,17,0,0,0,'VAT standard rate',1,NULL),(92,9,13,0,0,0,'VAT reduced rate 0',1,NULL),(93,9,3,0,0,0,'VAT super reduced rate 0',1,NULL),(94,9,0,0,0,0,'VAT Rate 0',1,NULL),(801,80,25,0,0,0,'VAT standard rate',1,NULL),(802,80,0,0,0,0,'VAT Rate 0',1,NULL),(11,1,19.6,0,0,0,'VAT standard rate (France hors DOM-TOM)',1,NULL),(12,1,8.5,0,0,0,'VAT standard rate (DOM sauf Guyane et Saint-Martin)',0,NULL),(13,1,8.5,0,0,1,'VAT standard rate (DOM sauf Guyane et Saint-Martin), non perçu par le vendeur mais récupérable par acheteur',0,NULL),(14,1,5.5,0,0,0,'VAT reduced rate (France hors DOM-TOM)',1,NULL),(15,1,0,0,0,0,'VAT Rate 0 ou non applicable',1,NULL),(16,1,2.1,0,0,0,'VAT super-reduced rate',1,NULL),(51,5,19,0,0,0,'VAT standard rate',1,NULL),(52,5,7,0,0,0,'VAT reduced rate',1,NULL),(53,5,0,0,0,0,'VAT Rate 0',1,NULL),(1161,116,25.5,0,0,0,'VAT standard rate',1,NULL),(1162,116,7,0,0,0,'VAT reduced rate',1,NULL),(1163,116,0,0,0,0,'VAT rate 0',1,NULL),(31,3,20,0,0,0,'VAT standard rate',1,NULL),(32,3,10,0,0,0,'VAT reduced rate',1,NULL),(33,3,4,0,0,0,'VAT super-reduced rate',1,NULL),(34,3,0,0,0,0,'VAT Rate 0',1,NULL),(1171,117,12.5,0,0,0,'VAT standard rate',1,NULL),(1172,117,4,0,0,0,'VAT reduced rate',1,NULL),(1173,117,1,0,0,0,'VAT super-reduced rate',1,NULL),(1174,117,0,0,0,0,'VAT Rate 0',1,NULL),(1231,123,0,0,0,0,'VAT Rate 0',1,NULL),(1232,123,5,0,0,0,'VAT Rate 5',1,NULL),(1401,140,15,0,0,0,'VAT standard rate',1,NULL),(1402,140,12,0,0,0,'VAT reduced rate',1,NULL),(1403,140,6,0,0,0,'VAT reduced rate',1,NULL),(1404,140,3,0,0,0,'VAT super-reduced rate',1,NULL),(1405,140,0,0,0,0,'VAT Rate 0',1,NULL),(121,12,20,0,0,0,'VAT standard rate',1,NULL),(122,12,14,0,0,0,'VAT reduced rate',1,NULL),(123,12,10,0,0,0,'VAT reduced rate',1,NULL),(124,12,7,0,0,0,'VAT super-reduced rate',1,NULL),(125,12,0,0,0,0,'VAT Rate 0',1,NULL),(171,17,19,0,0,0,'VAT standard rate',1,NULL),(172,17,6,0,0,0,'VAT reduced rate',1,NULL),(173,17,0,0,0,0,'VAT Rate 0',1,NULL),(1662,166,15,0,0,0,'VAT standard rate',1,NULL),(1663,166,0,0,0,0,'VAT Rate 0',1,NULL),(1841,184,20,0,0,0,'VAT standard rate',1,NULL),(1842,184,7,0,0,0,'VAT reduced rate',1,NULL),(1843,184,3,0,0,0,'VAT reduced rate',1,NULL),(1844,184,0,0,0,0,'VAT Rate 0',1,NULL),(251,25,20,0,0,0,'VAT standard rate',1,NULL),(252,25,12,0,0,0,'VAT reduced rate',1,NULL),(253,25,0,0,0,0,'VAT Rate 0',1,NULL),(254,25,5,0,0,0,'VAT reduced rate',1,NULL),(1881,188,24,0,0,0,'VAT standard rate',1,NULL),(1882,188,9,0,0,0,'VAT reduced rate',1,NULL),(1884,188,5,0,0,0,'VAT reduced rate',1,NULL),(1883,188,0,0,0,0,'VAT Rate 0',1,NULL),(861,86,13,0,0,0,'IVA 13',1,NULL),(862,86,0,0,0,0,'SIN IVA',1,NULL),(2011,201,19,0,0,0,'VAT standard rate',1,NULL),(2012,201,10,0,0,0,'VAT reduced rate',1,NULL),(2013,201,0,0,0,0,'VAT Rate 0',1,NULL),(2021,202,20,0,0,0,'VAT standard rate',1,NULL),(2022,202,8.5,0,0,0,'VAT reduced rate',1,NULL),(2023,202,0,0,0,0,'VAT Rate 0',1,NULL),(41,4,18,4,0,0,'VAT standard rate',1,NULL),(42,4,8,1,0,0,'VAT reduced rate',1,NULL),(43,4,4,0.5,0,0,'VAT super-reduced rate',1,NULL),(44,4,0,0,0,0,'VAT Rate 0',1,NULL),(201,20,25,0,0,0,'VAT standard rate',1,NULL),(202,20,12,0,0,0,'VAT reduced rate',1,NULL),(203,20,6,0,0,0,'VAT super-reduced rate',1,NULL),(204,20,0,0,0,0,'VAT Rate 0',1,NULL),(61,6,7.6,0,0,0,'VAT standard rate',1,NULL),(62,6,3.6,0,0,0,'VAT reduced rate',1,NULL),(63,6,2.4,0,0,0,'VAT super-reduced rate',1,NULL),(64,6,0,0,0,0,'VAT Rate 0',1,NULL),(101,10,6,0,0,0,'VAT 6%',1,NULL),(102,10,12,0,0,0,'VAT 12%',1,NULL),(103,10,18,0,0,0,'VAT 18%',1,NULL),(104,10,7.5,0,0,0,'VAT 6% Majoré à 25% (7.5%)',1,NULL),(105,10,15,0,0,0,'VAT 12% Majoré à 25% (15%)',1,NULL),(106,10,22.5,0,0,0,'VAT 18% Majoré à 25% (22.5%)',1,NULL),(107,10,0,0,0,0,'VAT Rate 0',1,NULL),(71,7,20,0,0,0,'VAT standard rate',1,NULL),(72,7,17.5,0,0,0,'VAT standard rate before 2011',1,NULL),(73,7,5,0,0,0,'VAT reduced rate',1,NULL),(74,7,0,0,0,0,'VAT Rate 0',1,NULL),(111,11,0,0,0,0,'No Sales Tax',1,NULL),(112,11,4,0,0,0,'Sales Tax 4%',1,NULL),(113,11,6,0,0,0,'Sales Tax 6%',1,NULL),(1931,193,0,0,0,0,'No VAT in SPM',1,NULL),(2461,246,0,0,0,0,'VAT Rate 0',1,NULL),(1521,152,0,0,0,0,'VAT Rate 0',1,NULL),(1522,152,15,0,0,0,'VAT Rate 15',1,NULL),(1141,114,0,0,0,0,'No ISV',1,NULL),(1142,114,12,0,0,0,'ISV 12%',1,NULL),(1541,154,0,0,0,0,'No VAT',1,NULL),(1542,154,16,0,0,0,'VAT 16%',1,NULL),(1543,154,10,0,0,0,'VAT Frontero',1,NULL),(461,46,0,0,0,0,'No VAT',1,NULL),(462,46,15,0,0,0,'VAT 15%',1,NULL),(463,46,7.5,0,0,0,'VAT 7.5%',1,NULL);
 /*!40000 ALTER TABLE `llx_c_tva` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1268,6 +1305,7 @@ CREATE TABLE `llx_c_type_contact` (
   `code` varchar(16) NOT NULL,
   `libelle` varchar(64) NOT NULL,
   `active` tinyint(4) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `idx_c_type_contact_uk` (`element`,`source`,`code`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -1279,7 +1317,7 @@ CREATE TABLE `llx_c_type_contact` (
 
 LOCK TABLES `llx_c_type_contact` WRITE;
 /*!40000 ALTER TABLE `llx_c_type_contact` DISABLE KEYS */;
-INSERT INTO `llx_c_type_contact` VALUES (10,'contrat','internal','SALESREPSIGN','Commercial signataire du contrat',1),(11,'contrat','internal','SALESREPFOLL','Commercial suivi du contrat',1),(20,'contrat','external','BILLING','Contact client facturation contrat',1),(21,'contrat','external','CUSTOMER','Contact client suivi contrat',1),(22,'contrat','external','SALESREPSIGN','Contact client signataire contrat',1),(31,'propal','internal','SALESREPFOLL','Commercial à l\'origine de la propale',1),(40,'propal','external','BILLING','Contact client facturation propale',1),(41,'propal','external','CUSTOMER','Contact client suivi propale',1),(50,'facture','internal','SALESREPFOLL','Responsable suivi du paiement',1),(60,'facture','external','BILLING','Contact client facturation',1),(61,'facture','external','SHIPPING','Contact client livraison',1),(62,'facture','external','SERVICE','Contact client prestation',1),(70,'invoice_supplier','internal','SALESREPFOLL','Responsable suivi du paiement',1),(71,'invoice_supplier','external','BILLING','Contact fournisseur facturation',1),(72,'invoice_supplier','external','SHIPPING','Contact fournisseur livraison',1),(73,'invoice_supplier','external','SERVICE','Contact fournisseur prestation',1),(91,'commande','internal','SALESREPFOLL','Responsable suivi de la commande',1),(100,'commande','external','BILLING','Contact client facturation commande',1),(101,'commande','external','CUSTOMER','Contact client suivi commande',1),(102,'commande','external','SHIPPING','Contact client livraison commande',1),(120,'fichinter','internal','INTERREPFOLL','Responsable suivi de l\'intervention',1),(121,'fichinter','internal','INTERVENING','Intervenant',1),(130,'fichinter','external','BILLING','Contact client facturation intervention',1),(131,'fichinter','external','CUSTOMER','Contact client suivi de l\'intervention',1),(140,'order_supplier','internal','SALESREPFOLL','Responsable suivi de la commande',1),(141,'order_supplier','internal','SHIPPING','Responsable réception de la commande',1),(142,'order_supplier','external','BILLING','Contact fournisseur facturation commande',1),(143,'order_supplier','external','CUSTOMER','Contact fournisseur suivi commande',1),(145,'order_supplier','external','SHIPPING','Contact fournisseur livraison commande',1),(160,'project','internal','PROJECTLEADER','Chef de Projet',1),(161,'project','internal','CONTRIBUTOR','Intervenant',1),(170,'project','external','PROJECTLEADER','Chef de Projet',1),(171,'project','external','CONTRIBUTOR','Intervenant',1),(180,'project_task','internal','TASKEXECUTIVE','Responsable',1),(181,'project_task','internal','CONTRIBUTOR','Intervenant',1),(190,'project_task','external','TASKEXECUTIVE','Responsable',1),(191,'project_task','external','CONTRIBUTOR','Intervenant',1);
+INSERT INTO `llx_c_type_contact` VALUES (10,'contrat','internal','SALESREPSIGN','Commercial signataire du contrat',1,NULL),(11,'contrat','internal','SALESREPFOLL','Commercial suivi du contrat',1,NULL),(20,'contrat','external','BILLING','Contact client facturation contrat',1,NULL),(21,'contrat','external','CUSTOMER','Contact client suivi contrat',1,NULL),(22,'contrat','external','SALESREPSIGN','Contact client signataire contrat',1,NULL),(31,'propal','internal','SALESREPFOLL','Commercial à l\'origine de la propale',1,NULL),(40,'propal','external','BILLING','Contact client facturation propale',1,NULL),(41,'propal','external','CUSTOMER','Contact client suivi propale',1,NULL),(50,'facture','internal','SALESREPFOLL','Responsable suivi du paiement',1,NULL),(60,'facture','external','BILLING','Contact client facturation',1,NULL),(61,'facture','external','SHIPPING','Contact client livraison',1,NULL),(62,'facture','external','SERVICE','Contact client prestation',1,NULL),(70,'invoice_supplier','internal','SALESREPFOLL','Responsable suivi du paiement',1,NULL),(71,'invoice_supplier','external','BILLING','Contact fournisseur facturation',1,NULL),(72,'invoice_supplier','external','SHIPPING','Contact fournisseur livraison',1,NULL),(73,'invoice_supplier','external','SERVICE','Contact fournisseur prestation',1,NULL),(91,'commande','internal','SALESREPFOLL','Responsable suivi de la commande',1,NULL),(100,'commande','external','BILLING','Contact client facturation commande',1,NULL),(101,'commande','external','CUSTOMER','Contact client suivi commande',1,NULL),(102,'commande','external','SHIPPING','Contact client livraison commande',1,NULL),(120,'fichinter','internal','INTERREPFOLL','Responsable suivi de l\'intervention',1,NULL),(121,'fichinter','internal','INTERVENING','Intervenant',1,NULL),(130,'fichinter','external','BILLING','Contact client facturation intervention',1,NULL),(131,'fichinter','external','CUSTOMER','Contact client suivi de l\'intervention',1,NULL),(140,'order_supplier','internal','SALESREPFOLL','Responsable suivi de la commande',1,NULL),(141,'order_supplier','internal','SHIPPING','Responsable réception de la commande',1,NULL),(142,'order_supplier','external','BILLING','Contact fournisseur facturation commande',1,NULL),(143,'order_supplier','external','CUSTOMER','Contact fournisseur suivi commande',1,NULL),(145,'order_supplier','external','SHIPPING','Contact fournisseur livraison commande',1,NULL),(160,'project','internal','PROJECTLEADER','Chef de Projet',1,NULL),(161,'project','internal','CONTRIBUTOR','Intervenant',1,NULL),(170,'project','external','PROJECTLEADER','Chef de Projet',1,NULL),(171,'project','external','CONTRIBUTOR','Intervenant',1,NULL),(180,'project_task','internal','TASKEXECUTIVE','Responsable',1,NULL),(181,'project_task','internal','CONTRIBUTOR','Intervenant',1,NULL),(190,'project_task','external','TASKEXECUTIVE','Responsable',1,NULL),(191,'project_task','external','CONTRIBUTOR','Intervenant',1,NULL);
 /*!40000 ALTER TABLE `llx_c_type_contact` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1295,6 +1333,7 @@ CREATE TABLE `llx_c_type_fees` (
   `code` varchar(12) NOT NULL,
   `libelle` varchar(30) DEFAULT NULL,
   `active` tinyint(4) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `code` (`code`)
 ) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
@@ -1306,7 +1345,7 @@ CREATE TABLE `llx_c_type_fees` (
 
 LOCK TABLES `llx_c_type_fees` WRITE;
 /*!40000 ALTER TABLE `llx_c_type_fees` DISABLE KEYS */;
-INSERT INTO `llx_c_type_fees` VALUES (1,'TF_OTHER','Other',1),(2,'TF_TRIP','Trip',1),(3,'TF_LUNCH','Lunch',1);
+INSERT INTO `llx_c_type_fees` VALUES (1,'TF_OTHER','Other',1,NULL),(2,'TF_TRIP','Trip',1,NULL),(3,'TF_LUNCH','Lunch',1,NULL);
 /*!40000 ALTER TABLE `llx_c_type_fees` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1322,6 +1361,7 @@ CREATE TABLE `llx_c_typent` (
   `code` varchar(12) NOT NULL,
   `libelle` varchar(30) DEFAULT NULL,
   `active` tinyint(4) NOT NULL DEFAULT '1',
+  `module` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `code` (`code`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -1333,7 +1373,7 @@ CREATE TABLE `llx_c_typent` (
 
 LOCK TABLES `llx_c_typent` WRITE;
 /*!40000 ALTER TABLE `llx_c_typent` DISABLE KEYS */;
-INSERT INTO `llx_c_typent` VALUES (0,'TE_UNKNOWN','-',1),(1,'TE_STARTUP','Start-up',0),(2,'TE_GROUP','Grand groupe',1),(3,'TE_MEDIUM','PME/PMI',1),(4,'TE_SMALL','TPE',1),(5,'TE_ADMIN','Administration',1),(6,'TE_WHOLE','Grossiste',0),(7,'TE_RETAIL','Revendeur',0),(8,'TE_PRIVATE','Particulier',1),(100,'TE_OTHER','Autres',1);
+INSERT INTO `llx_c_typent` VALUES (0,'TE_UNKNOWN','-',1,NULL),(1,'TE_STARTUP','Start-up',0,NULL),(2,'TE_GROUP','Grand groupe',1,NULL),(3,'TE_MEDIUM','PME/PMI',1,NULL),(4,'TE_SMALL','TPE',1,NULL),(5,'TE_ADMIN','Administration',1,NULL),(6,'TE_WHOLE','Grossiste',0,NULL),(7,'TE_RETAIL','Revendeur',0,NULL),(8,'TE_PRIVATE','Particulier',1,NULL),(100,'TE_OTHER','Autres',1,NULL);
 /*!40000 ALTER TABLE `llx_c_typent` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1347,7 +1387,8 @@ DROP TABLE IF EXISTS `llx_c_ziptown`;
 CREATE TABLE `llx_c_ziptown` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
   `code` varchar(5) DEFAULT NULL,
-  `fk_county` int(11) NOT NULL,
+  `fk_county` int(11) DEFAULT NULL,
+  `fk_pays` int(11) NOT NULL DEFAULT '0',
   `zip` varchar(10) NOT NULL,
   `town` varchar(255) NOT NULL,
   `active` tinyint(4) NOT NULL DEFAULT '1',
@@ -1561,8 +1602,9 @@ CREATE TABLE `llx_commande` (
   `fk_projet` int(11) DEFAULT '0',
   `ref` varchar(30) NOT NULL,
   `entity` int(11) NOT NULL DEFAULT '1',
-  `ref_ext` varchar(30) DEFAULT NULL,
-  `ref_client` varchar(30) DEFAULT NULL,
+  `ref_ext` varchar(50) DEFAULT NULL,
+  `ref_int` varchar(50) DEFAULT NULL,
+  `ref_client` varchar(50) DEFAULT NULL,
   `date_creation` datetime DEFAULT NULL,
   `date_valid` datetime DEFAULT NULL,
   `date_cloture` datetime DEFAULT NULL,
@@ -1583,11 +1625,13 @@ CREATE TABLE `llx_commande` (
   `total_ttc` double(24,8) DEFAULT '0.00000000',
   `note` text,
   `note_public` text,
-  `model_pdf` varchar(50) DEFAULT NULL,
+  `model_pdf` varchar(255) DEFAULT NULL,
   `facture` tinyint(4) DEFAULT '0',
   `fk_cond_reglement` int(11) DEFAULT NULL,
   `fk_mode_reglement` int(11) DEFAULT NULL,
   `date_livraison` date DEFAULT NULL,
+  `fk_availability` int(11) DEFAULT NULL,
+  `fk_demand_reason` int(11) DEFAULT NULL,
   `fk_adresse_livraison` int(11) DEFAULT NULL,
   `import_key` varchar(14) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
@@ -1618,6 +1662,7 @@ CREATE TABLE `llx_commande_fournisseur` (
   `fk_soc` int(11) NOT NULL,
   `ref` varchar(30) NOT NULL,
   `entity` int(11) NOT NULL DEFAULT '1',
+  `ref_ext` varchar(30) DEFAULT NULL,
   `ref_supplier` varchar(30) DEFAULT NULL,
   `fk_projet` int(11) DEFAULT '0',
   `date_creation` datetime DEFAULT NULL,
@@ -1639,8 +1684,11 @@ CREATE TABLE `llx_commande_fournisseur` (
   `total_ttc` double(24,8) DEFAULT '0.00000000',
   `note` text,
   `note_public` text,
-  `model_pdf` varchar(50) DEFAULT NULL,
+  `model_pdf` varchar(255) DEFAULT NULL,
+  `fk_cond_reglement` int(11) DEFAULT '0',
+  `fk_mode_reglement` int(11) DEFAULT '0',
   `fk_methode_commande` int(11) DEFAULT '0',
+  `import_key` varchar(14) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_commande_fournisseur_ref` (`ref`,`fk_soc`,`entity`),
   KEY `idx_commande_fournisseur_fk_soc` (`fk_soc`)
@@ -1793,7 +1841,8 @@ CREATE TABLE `llx_commandedet` (
   `rang` int(11) DEFAULT '0',
   `import_key` varchar(14) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
-  KEY `idx_commandedet_fk_commande` (`fk_commande`)
+  KEY `idx_commandedet_fk_commande` (`fk_commande`),
+  KEY `idx_commandedet_fk_product` (`fk_product`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1910,7 +1959,7 @@ CREATE TABLE `llx_const` (
   `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_const` (`name`,`entity`)
-) ENGINE=MyISAM AUTO_INCREMENT=74 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=76 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1919,7 +1968,7 @@ CREATE TABLE `llx_const` (
 
 LOCK TABLES `llx_const` WRITE;
 /*!40000 ALTER TABLE `llx_const` DISABLE KEYS */;
-INSERT INTO `llx_const` VALUES (73,'MAIN_LANG_DEFAULT',1,'auto','chaine',0,'Default language','2011-07-03 17:33:30'),(2,'MAIN_FEATURES_LEVEL',0,'0','chaine',1,'Level of features to show (0=stable only, 1=stable+experimental, 2=stable+experimental+development','2011-07-03 17:32:38'),(3,'MAIN_POPUP_CALENDAR',0,'eldy','chaine',0,'Popup calendar module','2011-07-03 17:32:38'),(4,'SYSLOG_FILE',0,'DOL_DATA_ROOT/dolibarr.log','chaine',0,'Directory where to write log file','2011-07-03 17:32:38'),(5,'SYSLOG_LEVEL',0,'7','chaine',0,'Level of debug info to show','2011-07-03 17:32:38'),(6,'MAIN_MAIL_SMTP_SERVER',0,'','chaine',0,'Host or ip address for SMTP server','2011-07-03 17:32:38'),(7,'MAIN_MAIL_SMTP_PORT',0,'','chaine',0,'Port for SMTP server','2011-07-03 17:32:38'),(8,'MAIN_UPLOAD_DOC',0,'2048','chaine',0,'Max size for file upload (0 means no upload allowed)','2011-07-03 17:32:38'),(9,'MAIN_SEARCHFORM_SOCIETE',0,'1','yesno',0,'Show form for quick company search','2011-07-03 17:32:38'),(10,'MAIN_SEARCHFORM_CONTACT',0,'1','yesno',0,'Show form for quick contact search','2011-07-03 17:32:38'),(11,'MAIN_SEARCHFORM_PRODUITSERVICE',0,'1','yesno',0,'Show form for quick product search','2011-07-03 17:32:38'),(12,'MAIN_SEARCHFORM_ADHERENT',0,'1','yesno',0,'Show form for quick member search','2011-07-03 17:32:38'),(13,'MAIN_CONFIRM_AJAX',0,'1','chaine',0,'Use Ajax popup to make confirmations','2011-07-03 17:32:38'),(14,'MAIN_MONNAIE',1,'EUR','chaine',0,'Monnaie','2011-07-03 17:32:38'),(15,'MAIN_MAIL_EMAIL_FROM',1,'dolibarr-robot@domain.com','chaine',0,'EMail emetteur pour les emails automatiques Dolibarr','2011-07-03 17:32:38'),(16,'MAIN_SIZE_LISTE_LIMIT',0,'25','chaine',0,'Longueur maximum des listes','2011-07-03 17:32:38'),(17,'MAIN_SHOW_WORKBOARD',0,'1','yesno',0,'Affichage tableau de bord de travail Dolibarr','2011-07-03 17:32:38'),(18,'MAIN_MENU_BARRETOP',1,'eldy_backoffice.php','chaine',0,'Module de gestion de la barre de menu pour utilisateurs internes','2011-07-03 17:32:38'),(19,'MAIN_MENUFRONT_BARRETOP',1,'eldy_frontoffice.php','chaine',0,'Module de gestion de la barre de menu pour utilisateurs externes','2011-07-03 17:32:38'),(20,'MAIN_MENU_SMARTPHONE',1,'iphone_backoffice.php','chaine',0,'Module de gestion de la barre de menu smartphone pour utilisateurs internes','2011-07-03 17:32:38'),(21,'MAIN_MENUFRONT_SMARTPHONE',1,'iphone_frontoffice.php','chaine',0,'Module de gestion de la barre de menu smartphone pour utilisateurs externes','2011-07-03 17:32:38'),(22,'MAIN_THEME',1,'eldy','chaine',0,'Default theme','2011-07-03 17:32:38'),(23,'MAIN_DELAY_ACTIONS_TODO',1,'7','chaine',0,'Tolérance de retard avant alerte (en jours) sur actions planifiées non réalisées','2011-07-03 17:32:38'),(24,'MAIN_DELAY_ORDERS_TO_PROCESS',1,'2','chaine',0,'Tolérance de retard avant alerte (en jours) sur commandes clients non traitées','2011-07-03 17:32:38'),(25,'MAIN_DELAY_SUPPLIER_ORDERS_TO_PROCESS',1,'7','chaine',0,'Tolérance de retard avant alerte (en jours) sur commandes fournisseurs non traitées','2011-07-03 17:32:38'),(26,'MAIN_DELAY_PROPALS_TO_CLOSE',1,'31','chaine',0,'Tolérance de retard avant alerte (en jours) sur propales à cloturer','2011-07-03 17:32:38'),(27,'MAIN_DELAY_PROPALS_TO_BILL',1,'7','chaine',0,'Tolérance de retard avant alerte (en jours) sur propales non facturées','2011-07-03 17:32:38'),(28,'MAIN_DELAY_CUSTOMER_BILLS_UNPAYED',1,'31','chaine',0,'Tolérance de retard avant alerte (en jours) sur factures client impayées','2011-07-03 17:32:38'),(29,'MAIN_DELAY_SUPPLIER_BILLS_TO_PAY',1,'2','chaine',0,'Tolérance de retard avant alerte (en jours) sur factures fournisseur impayées','2011-07-03 17:32:38'),(30,'MAIN_DELAY_NOT_ACTIVATED_SERVICES',1,'0','chaine',0,'Tolérance de retard avant alerte (en jours) sur services à activer','2011-07-03 17:32:38'),(31,'MAIN_DELAY_RUNNING_SERVICES',1,'0','chaine',0,'Tolérance de retard avant alerte (en jours) sur services expirés','2011-07-03 17:32:38'),(32,'MAIN_DELAY_MEMBERS',1,'31','chaine',0,'Tolérance de retard avant alerte (en jours) sur cotisations adhérent en retard','2011-07-03 17:32:38'),(33,'MAIN_DELAY_TRANSACTIONS_TO_CONCILIATE',1,'62','chaine',0,'Tolérance de retard avant alerte (en jours) sur rapprochements bancaires à faire','2011-07-03 17:32:38'),(34,'SOCIETE_NOLIST_COURRIER',0,'1','yesno',0,'Liste les fichiers du repertoire courrier','2011-07-03 17:32:38'),(35,'SOCIETE_CODECLIENT_ADDON',1,'mod_codeclient_leopard','yesno',0,'Module to control third parties codes','2011-07-03 17:32:38'),(36,'SOCIETE_CODECOMPTA_ADDON',1,'mod_codecompta_panicum','yesno',0,'Module to control third parties codes','2011-07-03 17:32:38'),(37,'MAILING_EMAIL_FROM',1,'dolibarr@domain.com','chaine',0,'EMail emmetteur pour les envois d emailings','2011-07-03 17:32:38'),(38,'FCKEDITOR_ENABLE_USER',1,'1','yesno',0,'Activation fckeditor sur notes utilisateurs','2011-07-03 17:32:38'),(39,'FCKEDITOR_ENABLE_SOCIETE',1,'1','yesno',0,'Activation fckeditor sur notes societe','2011-07-03 17:32:38'),(40,'FCKEDITOR_ENABLE_PRODUCTDESC',1,'1','yesno',0,'Activation fckeditor sur notes produits','2011-07-03 17:32:38'),(41,'FCKEDITOR_ENABLE_MEMBER',1,'1','yesno',0,'Activation fckeditor sur notes adherent','2011-07-03 17:32:38'),(42,'FCKEDITOR_ENABLE_MAILING',1,'1','yesno',0,'Activation fckeditor sur emailing','2011-07-03 17:32:38'),(43,'OSC_DB_HOST',1,'localhost','chaine',0,'Host for OSC database for OSCommerce module 1','2011-07-03 17:32:38'),(44,'DON_ADDON_MODEL',1,'html_cerfafr','chaine',0,'','2011-07-03 17:32:38'),(45,'PROPALE_ADDON',1,'mod_propale_marbre','chaine',0,'','2011-07-03 17:32:38'),(46,'PROPALE_ADDON_PDF',1,'azur','chaine',0,'','2011-07-03 17:32:38'),(47,'COMMANDE_ADDON',1,'mod_commande_marbre','chaine',0,'','2011-07-03 17:32:38'),(48,'COMMANDE_ADDON_PDF',1,'einstein','chaine',0,'','2011-07-03 17:32:38'),(49,'COMMANDE_SUPPLIER_ADDON',1,'mod_commande_fournisseur_muguet','chaine',0,'','2011-07-03 17:32:38'),(50,'COMMANDE_SUPPLIER_ADDON_PDF',1,'muscadet','chaine',0,'','2011-07-03 17:32:38'),(51,'INVOICE_SUPPLIER_ADDON_PDF',1,'canelle','chaine',0,'','2011-07-03 17:32:38'),(52,'EXPEDITION_ADDON',1,'enlevement','chaine',0,'','2011-07-03 17:32:38'),(53,'EXPEDITION_ADDON_PDF',1,'rouget','chaine',0,'','2011-07-03 17:32:38'),(54,'FICHEINTER_ADDON',1,'pacific','chaine',0,'','2011-07-03 17:32:38'),(55,'FICHEINTER_ADDON_PDF',1,'soleil','chaine',0,'','2011-07-03 17:32:38'),(56,'FACTURE_ADDON',1,'terre','chaine',0,'','2011-07-03 17:32:38'),(57,'FACTURE_ADDON_PDF',1,'crabe','chaine',0,'','2011-07-03 17:32:38'),(58,'PROPALE_VALIDITY_DURATION',1,'15','chaine',0,'Durée de validitée des propales','2011-07-03 17:32:38'),(59,'MAIN_AGENDA_ACTIONAUTO_COMPANY_CREATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(60,'MAIN_AGENDA_ACTIONAUTO_CONTRACT_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(61,'MAIN_AGENDA_ACTIONAUTO_PROPAL_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(62,'MAIN_AGENDA_ACTIONAUTO_PROPAL_SENTBYMAIL',1,'1','chaine',0,'','2011-07-03 17:32:38'),(63,'MAIN_AGENDA_ACTIONAUTO_ORDER_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(64,'MAIN_AGENDA_ACTIONAUTO_ORDER_SENTBYMAIL',1,'1','chaine',0,'','2011-07-03 17:32:38'),(65,'MAIN_AGENDA_ACTIONAUTO_BILL_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(66,'MAIN_AGENDA_ACTIONAUTO_BILL_PAYED',1,'1','chaine',0,'','2011-07-03 17:32:38'),(67,'MAIN_AGENDA_ACTIONAUTO_BILL_CANCEL',1,'1','chaine',0,'','2011-07-03 17:32:38'),(68,'MAIN_AGENDA_ACTIONAUTO_BILL_SENTBYMAIL',1,'1','chaine',0,'','2011-07-03 17:32:38'),(69,'MAIN_AGENDA_ACTIONAUTO_ORDER_SUPPLIER_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(70,'MAIN_AGENDA_ACTIONAUTO_BILL_SUPPLIER_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(71,'MAIN_MODULE_USER',0,'1',NULL,0,NULL,'2011-07-03 17:33:30'),(72,'MAIN_VERSION_LAST_INSTALL',0,'3.0.0','chaine',0,'Dolibarr version when install','2011-07-03 17:33:30');
+INSERT INTO `llx_const` VALUES (73,'MAIN_LANG_DEFAULT',1,'auto','chaine',0,'Default language','2011-07-03 17:33:30'),(2,'MAIN_FEATURES_LEVEL',0,'0','chaine',1,'Level of features to show (0=stable only, 1=stable+experimental, 2=stable+experimental+development','2011-07-03 17:32:38'),(4,'SYSLOG_FILE',0,'DOL_DATA_ROOT/dolibarr.log','chaine',0,'Directory where to write log file','2011-07-03 17:32:38'),(5,'SYSLOG_LEVEL',0,'7','chaine',0,'Level of debug info to show','2011-07-03 17:32:38'),(6,'MAIN_MAIL_SMTP_SERVER',0,'','chaine',0,'Host or ip address for SMTP server','2011-07-03 17:32:38'),(7,'MAIN_MAIL_SMTP_PORT',0,'','chaine',0,'Port for SMTP server','2011-07-03 17:32:38'),(8,'MAIN_UPLOAD_DOC',0,'2048','chaine',0,'Max size for file upload (0 means no upload allowed)','2011-07-03 17:32:38'),(9,'MAIN_SEARCHFORM_SOCIETE',0,'1','yesno',0,'Show form for quick company search','2011-07-03 17:32:38'),(10,'MAIN_SEARCHFORM_CONTACT',0,'1','yesno',0,'Show form for quick contact search','2011-07-03 17:32:38'),(11,'MAIN_SEARCHFORM_PRODUITSERVICE',0,'1','yesno',0,'Show form for quick product search','2011-07-03 17:32:38'),(12,'MAIN_SEARCHFORM_ADHERENT',0,'1','yesno',0,'Show form for quick member search','2011-07-03 17:32:38'),(75,'MAIN_VERSION_LAST_UPGRADE',0,'3.1.0','chaine',0,'Dolibarr version for last upgrade','2012-02-25 07:45:19'),(14,'MAIN_MONNAIE',1,'EUR','chaine',0,'Monnaie','2011-07-03 17:32:38'),(15,'MAIN_MAIL_EMAIL_FROM',1,'dolibarr-robot@domain.com','chaine',0,'EMail emetteur pour les emails automatiques Dolibarr','2011-07-03 17:32:38'),(16,'MAIN_SIZE_LISTE_LIMIT',0,'25','chaine',0,'Longueur maximum des listes','2011-07-03 17:32:38'),(17,'MAIN_SHOW_WORKBOARD',0,'1','yesno',0,'Affichage tableau de bord de travail Dolibarr','2011-07-03 17:32:38'),(20,'MAIN_MENU_SMARTPHONE',1,'iphone_backoffice.php','chaine',0,'Module de gestion de la barre de menu smartphone pour utilisateurs internes','2011-07-03 17:32:38'),(21,'MAIN_MENUFRONT_SMARTPHONE',1,'iphone_frontoffice.php','chaine',0,'Module de gestion de la barre de menu smartphone pour utilisateurs externes','2011-07-03 17:32:38'),(22,'MAIN_THEME',1,'eldy','chaine',0,'Default theme','2011-07-03 17:32:38'),(23,'MAIN_DELAY_ACTIONS_TODO',1,'7','chaine',0,'Tolérance de retard avant alerte (en jours) sur actions planifiées non réalisées','2011-07-03 17:32:38'),(24,'MAIN_DELAY_ORDERS_TO_PROCESS',1,'2','chaine',0,'Tolérance de retard avant alerte (en jours) sur commandes clients non traitées','2011-07-03 17:32:38'),(25,'MAIN_DELAY_SUPPLIER_ORDERS_TO_PROCESS',1,'7','chaine',0,'Tolérance de retard avant alerte (en jours) sur commandes fournisseurs non traitées','2011-07-03 17:32:38'),(26,'MAIN_DELAY_PROPALS_TO_CLOSE',1,'31','chaine',0,'Tolérance de retard avant alerte (en jours) sur propales à cloturer','2011-07-03 17:32:38'),(27,'MAIN_DELAY_PROPALS_TO_BILL',1,'7','chaine',0,'Tolérance de retard avant alerte (en jours) sur propales non facturées','2011-07-03 17:32:38'),(28,'MAIN_DELAY_CUSTOMER_BILLS_UNPAYED',1,'31','chaine',0,'Tolérance de retard avant alerte (en jours) sur factures client impayées','2011-07-03 17:32:38'),(29,'MAIN_DELAY_SUPPLIER_BILLS_TO_PAY',1,'2','chaine',0,'Tolérance de retard avant alerte (en jours) sur factures fournisseur impayées','2011-07-03 17:32:38'),(30,'MAIN_DELAY_NOT_ACTIVATED_SERVICES',1,'0','chaine',0,'Tolérance de retard avant alerte (en jours) sur services à activer','2011-07-03 17:32:38'),(31,'MAIN_DELAY_RUNNING_SERVICES',1,'0','chaine',0,'Tolérance de retard avant alerte (en jours) sur services expirés','2011-07-03 17:32:38'),(32,'MAIN_DELAY_MEMBERS',1,'31','chaine',0,'Tolérance de retard avant alerte (en jours) sur cotisations adhérent en retard','2011-07-03 17:32:38'),(33,'MAIN_DELAY_TRANSACTIONS_TO_CONCILIATE',1,'62','chaine',0,'Tolérance de retard avant alerte (en jours) sur rapprochements bancaires à faire','2011-07-03 17:32:38'),(34,'SOCIETE_NOLIST_COURRIER',0,'1','yesno',0,'Liste les fichiers du repertoire courrier','2011-07-03 17:32:38'),(35,'SOCIETE_CODECLIENT_ADDON',1,'mod_codeclient_leopard','yesno',0,'Module to control third parties codes','2011-07-03 17:32:38'),(36,'SOCIETE_CODECOMPTA_ADDON',1,'mod_codecompta_panicum','yesno',0,'Module to control third parties codes','2011-07-03 17:32:38'),(37,'MAILING_EMAIL_FROM',1,'dolibarr@domain.com','chaine',0,'EMail emmetteur pour les envois d emailings','2011-07-03 17:32:38'),(38,'FCKEDITOR_ENABLE_USER',1,'1','yesno',0,'Activation fckeditor sur notes utilisateurs','2011-07-03 17:32:38'),(39,'FCKEDITOR_ENABLE_SOCIETE',1,'1','yesno',0,'Activation fckeditor sur notes societe','2011-07-03 17:32:38'),(40,'FCKEDITOR_ENABLE_PRODUCTDESC',1,'1','yesno',0,'Activation fckeditor sur notes produits','2011-07-03 17:32:38'),(41,'FCKEDITOR_ENABLE_MEMBER',1,'1','yesno',0,'Activation fckeditor sur notes adherent','2011-07-03 17:32:38'),(42,'FCKEDITOR_ENABLE_MAILING',1,'1','yesno',0,'Activation fckeditor sur emailing','2011-07-03 17:32:38'),(43,'OSC_DB_HOST',1,'localhost','chaine',0,'Host for OSC database for OSCommerce module 1','2011-07-03 17:32:38'),(44,'DON_ADDON_MODEL',1,'html_cerfafr','chaine',0,'','2011-07-03 17:32:38'),(45,'PROPALE_ADDON',1,'mod_propale_marbre','chaine',0,'','2011-07-03 17:32:38'),(46,'PROPALE_ADDON_PDF',1,'azur','chaine',0,'','2011-07-03 17:32:38'),(47,'COMMANDE_ADDON',1,'mod_commande_marbre','chaine',0,'','2011-07-03 17:32:38'),(48,'COMMANDE_ADDON_PDF',1,'einstein','chaine',0,'','2011-07-03 17:32:38'),(49,'COMMANDE_SUPPLIER_ADDON',1,'mod_commande_fournisseur_muguet','chaine',0,'','2011-07-03 17:32:38'),(50,'COMMANDE_SUPPLIER_ADDON_PDF',1,'muscadet','chaine',0,'','2011-07-03 17:32:38'),(51,'INVOICE_SUPPLIER_ADDON_PDF',1,'canelle','chaine',0,'','2011-07-03 17:32:38'),(52,'EXPEDITION_ADDON',1,'enlevement','chaine',0,'','2011-07-03 17:32:38'),(53,'EXPEDITION_ADDON_PDF',1,'rouget','chaine',0,'','2011-07-03 17:32:38'),(54,'FICHEINTER_ADDON',1,'pacific','chaine',0,'','2011-07-03 17:32:38'),(55,'FICHEINTER_ADDON_PDF',1,'soleil','chaine',0,'','2011-07-03 17:32:38'),(56,'FACTURE_ADDON',1,'terre','chaine',0,'','2011-07-03 17:32:38'),(57,'FACTURE_ADDON_PDF',1,'crabe','chaine',0,'','2011-07-03 17:32:38'),(58,'PROPALE_VALIDITY_DURATION',1,'15','chaine',0,'Durée de validitée des propales','2011-07-03 17:32:38'),(59,'MAIN_AGENDA_ACTIONAUTO_COMPANY_CREATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(60,'MAIN_AGENDA_ACTIONAUTO_CONTRACT_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(61,'MAIN_AGENDA_ACTIONAUTO_PROPAL_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(62,'MAIN_AGENDA_ACTIONAUTO_PROPAL_SENTBYMAIL',1,'1','chaine',0,'','2011-07-03 17:32:38'),(63,'MAIN_AGENDA_ACTIONAUTO_ORDER_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(64,'MAIN_AGENDA_ACTIONAUTO_ORDER_SENTBYMAIL',1,'1','chaine',0,'','2011-07-03 17:32:38'),(65,'MAIN_AGENDA_ACTIONAUTO_BILL_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(66,'MAIN_AGENDA_ACTIONAUTO_BILL_PAYED',1,'1','chaine',0,'','2011-07-03 17:32:38'),(67,'MAIN_AGENDA_ACTIONAUTO_BILL_CANCEL',1,'1','chaine',0,'','2011-07-03 17:32:38'),(68,'MAIN_AGENDA_ACTIONAUTO_BILL_SENTBYMAIL',1,'1','chaine',0,'','2011-07-03 17:32:38'),(69,'MAIN_AGENDA_ACTIONAUTO_ORDER_SUPPLIER_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(70,'MAIN_AGENDA_ACTIONAUTO_BILL_SUPPLIER_VALIDATE',1,'1','chaine',0,'','2011-07-03 17:32:38'),(74,'MAIN_MODULE_USER',0,'1',NULL,0,NULL,'2012-02-25 07:45:15'),(72,'MAIN_VERSION_LAST_INSTALL',0,'3.0.0','chaine',0,'Dolibarr version when install','2011-07-03 17:33:30');
 /*!40000 ALTER TABLE `llx_const` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2225,7 +2274,7 @@ CREATE TABLE `llx_dolibarr_modules` (
 
 LOCK TABLES `llx_dolibarr_modules` WRITE;
 /*!40000 ALTER TABLE `llx_dolibarr_modules` DISABLE KEYS */;
-INSERT INTO `llx_dolibarr_modules` VALUES (0,1,1,'2011-07-03 17:33:30','dolibarr');
+INSERT INTO `llx_dolibarr_modules` VALUES (0,1,1,'2012-02-25 08:45:15','dolibarr');
 /*!40000 ALTER TABLE `llx_dolibarr_modules` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2279,13 +2328,15 @@ CREATE TABLE `llx_don` (
   `ville` varchar(50) DEFAULT NULL,
   `pays` varchar(50) DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
+  `phone` varchar(24) DEFAULT NULL,
+  `phone_mobile` varchar(24) DEFAULT NULL,
   `public` smallint(6) NOT NULL DEFAULT '1',
   `fk_don_projet` int(11) DEFAULT NULL,
   `fk_user_author` int(11) NOT NULL,
   `fk_user_valid` int(11) DEFAULT NULL,
   `note` text,
   `note_public` text,
-  `model_pdf` varchar(50) DEFAULT NULL,
+  `model_pdf` varchar(255) DEFAULT NULL,
   `import_key` varchar(14) DEFAULT NULL,
   PRIMARY KEY (`rowid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -2414,9 +2465,9 @@ DROP TABLE IF EXISTS `llx_element_element`;
 CREATE TABLE `llx_element_element` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
   `fk_source` int(11) NOT NULL,
-  `sourcetype` varchar(16) NOT NULL,
+  `sourcetype` varchar(32) NOT NULL,
   `fk_target` int(11) NOT NULL,
-  `targettype` varchar(16) NOT NULL,
+  `targettype` varchar(32) NOT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `idx_element_element_idx1` (`fk_source`,`sourcetype`,`fk_target`,`targettype`),
   KEY `idx_element_element_fk_target` (`fk_target`)
@@ -2544,6 +2595,8 @@ CREATE TABLE `llx_expedition` (
   `entity` int(11) NOT NULL DEFAULT '1',
   `ref_customer` varchar(30) DEFAULT NULL,
   `fk_soc` int(11) NOT NULL,
+  `ref_ext` varchar(30) DEFAULT NULL,
+  `ref_int` varchar(30) DEFAULT NULL,
   `date_creation` datetime DEFAULT NULL,
   `fk_user_author` int(11) DEFAULT NULL,
   `date_valid` datetime DEFAULT NULL,
@@ -2561,7 +2614,7 @@ CREATE TABLE `llx_expedition` (
   `weight_units` int(11) DEFAULT NULL,
   `weight` int(11) DEFAULT NULL,
   `note` text,
-  `model_pdf` varchar(50) DEFAULT NULL,
+  `model_pdf` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `idx_expedition_uk_ref` (`ref`,`entity`),
   KEY `idx_expedition_fk_soc` (`fk_soc`),
@@ -2662,96 +2715,34 @@ LOCK TABLES `llx_export_model` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `llx_extra_fields`
+-- Table structure for table `llx_extrafields`
 --
 
-DROP TABLE IF EXISTS `llx_extra_fields`;
+DROP TABLE IF EXISTS `llx_extrafields`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `llx_extra_fields` (
+CREATE TABLE `llx_extrafields` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
-  `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `entity` int(11) NOT NULL DEFAULT '1',
-  `object` varchar(64) NOT NULL,
   `name` varchar(64) NOT NULL,
-  `label` varchar(64) NOT NULL,
-  `format` varchar(8) NOT NULL,
-  `fieldsize` int(11) DEFAULT NULL,
-  `maxlength` int(11) DEFAULT NULL,
-  `options` varchar(255) DEFAULT NULL,
-  `rank` int(11) DEFAULT NULL,
-  `assign` int(11) DEFAULT NULL,
-  PRIMARY KEY (`rowid`),
-  UNIQUE KEY `idx_extra_fields_name` (`object`,`entity`,`name`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `llx_extra_fields`
---
-
-LOCK TABLES `llx_extra_fields` WRITE;
-/*!40000 ALTER TABLE `llx_extra_fields` DISABLE KEYS */;
-/*!40000 ALTER TABLE `llx_extra_fields` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `llx_extra_fields_options`
---
-
-DROP TABLE IF EXISTS `llx_extra_fields_options`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `llx_extra_fields_options` (
-  `rowid` int(11) NOT NULL AUTO_INCREMENT,
-  `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `fk_extra_fields` int(11) NOT NULL,
-  `value` varchar(255) NOT NULL,
-  `rank` int(11) DEFAULT NULL,
-  PRIMARY KEY (`rowid`),
-  KEY `idx_extra_fields_options_fk_extra_fields` (`fk_extra_fields`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `llx_extra_fields_options`
---
-
-LOCK TABLES `llx_extra_fields_options` WRITE;
-/*!40000 ALTER TABLE `llx_extra_fields_options` DISABLE KEYS */;
-/*!40000 ALTER TABLE `llx_extra_fields_options` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `llx_extra_fields_values`
---
-
-DROP TABLE IF EXISTS `llx_extra_fields_values`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `llx_extra_fields_values` (
-  `rowid` int(11) NOT NULL AUTO_INCREMENT,
-  `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `entity` int(11) NOT NULL DEFAULT '1',
-  `datec` datetime DEFAULT NULL,
-  `datem` datetime DEFAULT NULL,
-  `fk_object` int(11) NOT NULL,
-  `fk_extra_fields` int(11) NOT NULL,
-  `value` varchar(255) DEFAULT NULL,
-  `fk_user_create` int(11) DEFAULT NULL,
-  `fk_user_modif` int(11) DEFAULT NULL,
+  `elementtype` varchar(64) NOT NULL DEFAULT 'member',
+  `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `label` varchar(255) NOT NULL,
+  `type` varchar(8) DEFAULT NULL,
+  `size` int(11) DEFAULT '0',
+  `pos` int(11) DEFAULT '0',
   PRIMARY KEY (`rowid`),
-  KEY `idx_extra_fields_values_fk_extra_fields` (`fk_extra_fields`,`entity`)
+  UNIQUE KEY `uk_extrafields_name` (`name`,`entity`,`elementtype`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `llx_extra_fields_values`
+-- Dumping data for table `llx_extrafields`
 --
 
-LOCK TABLES `llx_extra_fields_values` WRITE;
-/*!40000 ALTER TABLE `llx_extra_fields_values` DISABLE KEYS */;
-/*!40000 ALTER TABLE `llx_extra_fields_values` ENABLE KEYS */;
+LOCK TABLES `llx_extrafields` WRITE;
+/*!40000 ALTER TABLE `llx_extrafields` DISABLE KEYS */;
+/*!40000 ALTER TABLE `llx_extrafields` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -2765,8 +2756,9 @@ CREATE TABLE `llx_facture` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
   `facnumber` varchar(30) NOT NULL,
   `entity` int(11) NOT NULL DEFAULT '1',
-  `ref_ext` varchar(30) DEFAULT NULL,
-  `ref_client` varchar(30) DEFAULT NULL,
+  `ref_ext` varchar(50) DEFAULT NULL,
+  `ref_int` varchar(50) DEFAULT NULL,
+  `ref_client` varchar(50) DEFAULT NULL,
   `type` smallint(6) NOT NULL DEFAULT '0',
   `increment` varchar(10) DEFAULT NULL,
   `fk_soc` int(11) NOT NULL,
@@ -2796,7 +2788,7 @@ CREATE TABLE `llx_facture` (
   `date_lim_reglement` date DEFAULT NULL,
   `note` text,
   `note_public` text,
-  `model_pdf` varchar(50) DEFAULT NULL,
+  `model_pdf` varchar(255) DEFAULT NULL,
   `import_key` varchar(14) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `idx_facture_uk_facnumber` (`facnumber`,`entity`),
@@ -2828,6 +2820,7 @@ CREATE TABLE `llx_facture_fourn` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
   `facnumber` varchar(50) NOT NULL,
   `entity` int(11) NOT NULL DEFAULT '1',
+  `ref_ext` varchar(30) DEFAULT NULL,
   `type` smallint(6) NOT NULL DEFAULT '0',
   `fk_soc` int(11) NOT NULL,
   `datec` datetime DEFAULT NULL,
@@ -2855,7 +2848,7 @@ CREATE TABLE `llx_facture_fourn` (
   `date_lim_reglement` date DEFAULT NULL,
   `note` text,
   `note_public` text,
-  `model_pdf` varchar(50) DEFAULT NULL,
+  `model_pdf` varchar(255) DEFAULT NULL,
   `import_key` varchar(14) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_facture_fourn_ref` (`facnumber`,`fk_soc`,`entity`),
@@ -3009,7 +3002,8 @@ CREATE TABLE `llx_facturedet` (
   `import_key` varchar(14) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_fk_remise_except` (`fk_remise_except`,`fk_facture`),
-  KEY `idx_facturedet_fk_facture` (`fk_facture`)
+  KEY `idx_facturedet_fk_facture` (`fk_facture`),
+  KEY `idx_facturedet_fk_product` (`fk_product`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -3089,7 +3083,7 @@ CREATE TABLE `llx_fichinter` (
   `description` text,
   `note_private` text,
   `note_public` text,
-  `model_pdf` varchar(50) DEFAULT NULL,
+  `model_pdf` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_fichinter_ref` (`ref`,`entity`),
   KEY `idx_fichinter_fk_soc` (`fk_soc`)
@@ -3174,6 +3168,8 @@ CREATE TABLE `llx_livraison` (
   `entity` int(11) NOT NULL DEFAULT '1',
   `ref_customer` varchar(30) DEFAULT NULL,
   `fk_soc` int(11) NOT NULL,
+  `ref_ext` varchar(30) DEFAULT NULL,
+  `ref_int` varchar(30) DEFAULT NULL,
   `date_creation` datetime DEFAULT NULL,
   `fk_user_author` int(11) DEFAULT NULL,
   `date_valid` datetime DEFAULT NULL,
@@ -3184,7 +3180,7 @@ CREATE TABLE `llx_livraison` (
   `total_ht` double(24,8) DEFAULT '0.00000000',
   `note` text,
   `note_public` text,
-  `model_pdf` varchar(50) DEFAULT NULL,
+  `model_pdf` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `idx_livraison_uk_ref` (`ref`,`entity`),
   KEY `idx_livraison_fk_soc` (`fk_soc`),
@@ -3254,6 +3250,7 @@ CREATE TABLE `llx_mailing` (
   `email_from` varchar(160) DEFAULT NULL,
   `email_replyto` varchar(160) DEFAULT NULL,
   `email_errorsto` varchar(160) DEFAULT NULL,
+  `tag` varchar(128) DEFAULT NULL,
   `date_creat` datetime DEFAULT NULL,
   `date_valid` datetime DEFAULT NULL,
   `date_appro` datetime DEFAULT NULL,
@@ -3293,6 +3290,7 @@ CREATE TABLE `llx_mailing_cibles` (
   `prenom` varchar(160) DEFAULT NULL,
   `email` varchar(160) NOT NULL,
   `other` varchar(255) DEFAULT NULL,
+  `tag` varchar(128) DEFAULT NULL,
   `statut` smallint(6) NOT NULL DEFAULT '0',
   `source_url` varchar(160) DEFAULT NULL,
   `source_id` int(11) DEFAULT NULL,
@@ -3328,13 +3326,15 @@ CREATE TABLE `llx_menu` (
   `type` varchar(4) NOT NULL,
   `mainmenu` varchar(100) NOT NULL,
   `fk_menu` int(11) NOT NULL,
+  `fk_leftmenu` varchar(16) DEFAULT NULL,
+  `fk_mainmenu` varchar(16) DEFAULT NULL,
   `position` int(11) NOT NULL,
   `url` varchar(255) NOT NULL,
   `target` varchar(100) DEFAULT NULL,
   `titre` varchar(255) NOT NULL,
   `langs` varchar(100) DEFAULT NULL,
   `level` smallint(6) DEFAULT NULL,
-  `leftmenu` varchar(1) DEFAULT '1',
+  `leftmenu` varchar(100) DEFAULT NULL,
   `perms` varchar(255) DEFAULT NULL,
   `enabled` varchar(255) DEFAULT '1',
   `usertype` int(11) NOT NULL DEFAULT '0',
@@ -3695,30 +3695,6 @@ LOCK TABLES `llx_prelevement_lignes` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `llx_prelevement_notifications`
---
-
-DROP TABLE IF EXISTS `llx_prelevement_notifications`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `llx_prelevement_notifications` (
-  `rowid` int(11) NOT NULL AUTO_INCREMENT,
-  `fk_user` int(11) NOT NULL,
-  `action` varchar(32) DEFAULT NULL,
-  PRIMARY KEY (`rowid`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `llx_prelevement_notifications`
---
-
-LOCK TABLES `llx_prelevement_notifications` WRITE;
-/*!40000 ALTER TABLE `llx_prelevement_notifications` DISABLE KEYS */;
-/*!40000 ALTER TABLE `llx_prelevement_notifications` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `llx_prelevement_rejet`
 --
 
@@ -3870,6 +3846,31 @@ CREATE TABLE `llx_product_ca` (
 LOCK TABLES `llx_product_ca` WRITE;
 /*!40000 ALTER TABLE `llx_product_ca` DISABLE KEYS */;
 /*!40000 ALTER TABLE `llx_product_ca` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `llx_product_extrafields`
+--
+
+DROP TABLE IF EXISTS `llx_product_extrafields`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `llx_product_extrafields` (
+  `rowid` int(11) NOT NULL AUTO_INCREMENT,
+  `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `fk_object` int(11) NOT NULL,
+  PRIMARY KEY (`rowid`),
+  KEY `idx_product_extrafields` (`fk_object`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `llx_product_extrafields`
+--
+
+LOCK TABLES `llx_product_extrafields` WRITE;
+/*!40000 ALTER TABLE `llx_product_extrafields` DISABLE KEYS */;
+/*!40000 ALTER TABLE `llx_product_extrafields` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -4080,7 +4081,7 @@ CREATE TABLE `llx_projet` (
   `fk_statut` smallint(6) NOT NULL DEFAULT '0',
   `note_private` text,
   `note_public` text,
-  `model_pdf` varchar(50) DEFAULT NULL,
+  `model_pdf` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_projet_ref` (`ref`,`entity`),
   KEY `idx_projet_fk_soc` (`fk_soc`)
@@ -4177,10 +4178,12 @@ CREATE TABLE `llx_propal` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
   `fk_soc` int(11) DEFAULT NULL,
   `fk_projet` int(11) DEFAULT '0',
+  `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `ref` varchar(30) NOT NULL,
   `entity` int(11) NOT NULL DEFAULT '1',
-  `ref_ext` varchar(30) DEFAULT NULL,
-  `ref_client` varchar(30) DEFAULT NULL,
+  `ref_ext` varchar(50) DEFAULT NULL,
+  `ref_int` varchar(50) DEFAULT NULL,
+  `ref_client` varchar(50) DEFAULT NULL,
   `datec` datetime DEFAULT NULL,
   `datep` date DEFAULT NULL,
   `fin_validite` datetime DEFAULT NULL,
@@ -4203,9 +4206,11 @@ CREATE TABLE `llx_propal` (
   `fk_mode_reglement` int(11) DEFAULT NULL,
   `note` text,
   `note_public` text,
-  `model_pdf` varchar(50) DEFAULT NULL,
+  `model_pdf` varchar(255) DEFAULT NULL,
   `date_livraison` date DEFAULT NULL,
+  `fk_availability` int(11) DEFAULT NULL,
   `fk_adresse_livraison` int(11) DEFAULT NULL,
+  `fk_demand_reason` int(11) DEFAULT '0',
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_propal_ref` (`ref`,`entity`),
   KEY `idx_propal_fk_soc` (`fk_soc`)
@@ -4258,7 +4263,8 @@ CREATE TABLE `llx_propaldet` (
   `special_code` int(10) unsigned DEFAULT '0',
   `rang` int(11) DEFAULT '0',
   PRIMARY KEY (`rowid`),
-  KEY `idx_propaldet_fk_propal` (`fk_propal`)
+  KEY `idx_propaldet_fk_propal` (`fk_propal`),
+  KEY `idx_propaldet_fk_product` (`fk_product`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -4297,7 +4303,7 @@ CREATE TABLE `llx_rights_def` (
 
 LOCK TABLES `llx_rights_def` WRITE;
 /*!40000 ALTER TABLE `llx_rights_def` DISABLE KEYS */;
-INSERT INTO `llx_rights_def` VALUES (251,'Consulter les autres utilisateurs','user',1,'user','lire','r',0),(252,'Consulter les permissions des autres utilisateurs','user',1,'user_advance','readperms','r',0),(253,'Creer/modifier utilisateurs internes et externes','user',1,'user','creer','w',0),(254,'Creer/modifier utilisateurs externes seulement','user',1,'user_advance','write','w',0),(255,'Modifier le mot de passe des autres utilisateurs','user',1,'user','password','w',0),(256,'Supprimer ou desactiver les autres utilisateurs','user',1,'user','supprimer','d',0),(341,'Consulter ses propres permissions','user',1,'self_advance','readperms','r',1),(342,'Creer/modifier ses propres infos utilisateur','user',1,'self','creer','w',1),(343,'Modifier son propre mot de passe','user',1,'self','password','w',1),(344,'Modifier ses propres permissions','user',1,'self_advance','writeperms','w',1),(351,'Consulter les groupes','user',1,'group_advance','read','r',0),(352,'Consulter les permissions des groupes','user',1,'group_advance','readperms','r',0),(353,'Creer/modifier les groupes et leurs permissions','user',1,'group_advance','write','w',0),(354,'Supprimer ou desactiver les groupes','user',1,'group_advance','delete','d',0),(358,'Exporter les utilisateurs','user',1,'user','export','r',0);
+INSERT INTO `llx_rights_def` VALUES (352,'Consulter les permissions des groupes','user',1,'group_advance','readperms','r',0),(351,'Consulter les groupes','user',1,'group_advance','read','r',0),(344,'Modifier ses propres permissions','user',1,'self_advance','writeperms','w',1),(343,'Modifier son propre mot de passe','user',1,'self','password','w',1),(342,'Creer/modifier ses propres infos utilisateur','user',1,'self','creer','w',1),(341,'Consulter ses propres permissions','user',1,'self_advance','readperms','r',1),(256,'Supprimer ou desactiver les autres utilisateurs','user',1,'user','supprimer','d',0),(255,'Modifier le mot de passe des autres utilisateurs','user',1,'user','password','w',0),(254,'Creer/modifier utilisateurs externes seulement','user',1,'user_advance','write','w',0),(253,'Creer/modifier utilisateurs internes et externes','user',1,'user','creer','w',0),(252,'Consulter les permissions des autres utilisateurs','user',1,'user_advance','readperms','r',0),(251,'Consulter les autres utilisateurs','user',1,'user','lire','r',0),(353,'Creer/modifier les groupes et leurs permissions','user',1,'group_advance','write','w',0),(354,'Supprimer ou desactiver les groupes','user',1,'group_advance','delete','d',0),(358,'Exporter les utilisateurs','user',1,'user','export','r',0);
 /*!40000 ALTER TABLE `llx_rights_def` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4318,6 +4324,7 @@ CREATE TABLE `llx_societe` (
   `nom` varchar(60) DEFAULT NULL,
   `entity` int(11) NOT NULL DEFAULT '1',
   `ref_ext` varchar(60) DEFAULT NULL,
+  `ref_int` varchar(60) DEFAULT NULL,
   `code_client` varchar(15) DEFAULT NULL,
   `code_fournisseur` varchar(15) DEFAULT NULL,
   `code_compta` varchar(15) DEFAULT NULL,
@@ -4335,10 +4342,11 @@ CREATE TABLE `llx_societe` (
   `fk_effectif` int(11) DEFAULT '0',
   `fk_typent` int(11) DEFAULT '0',
   `fk_forme_juridique` int(11) DEFAULT '0',
-  `siren` varchar(16) DEFAULT NULL,
-  `siret` varchar(16) DEFAULT NULL,
-  `ape` varchar(16) DEFAULT NULL,
-  `idprof4` varchar(16) DEFAULT NULL,
+  `fk_currency` int(11) DEFAULT '0',
+  `siren` varchar(32) DEFAULT NULL,
+  `siret` varchar(32) DEFAULT NULL,
+  `ape` varchar(32) DEFAULT NULL,
+  `idprof4` varchar(32) DEFAULT NULL,
   `tva_intra` varchar(20) DEFAULT NULL,
   `capital` double DEFAULT NULL,
   `description` text,
@@ -4366,6 +4374,8 @@ CREATE TABLE `llx_societe` (
   `default_lang` varchar(6) DEFAULT NULL,
   `canvas` varchar(32) DEFAULT NULL,
   `import_key` varchar(14) DEFAULT NULL,
+  `status` tinyint(4) DEFAULT '1',
+  `logo` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_societe_prefix_comm` (`prefix_comm`,`entity`),
   UNIQUE KEY `uk_societe_code_client` (`code_client`,`entity`),
@@ -4445,6 +4455,31 @@ LOCK TABLES `llx_societe_commerciaux` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `llx_societe_extrafields`
+--
+
+DROP TABLE IF EXISTS `llx_societe_extrafields`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `llx_societe_extrafields` (
+  `rowid` int(11) NOT NULL AUTO_INCREMENT,
+  `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `fk_object` int(11) NOT NULL,
+  PRIMARY KEY (`rowid`),
+  KEY `idx_societe_extrafields` (`fk_object`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `llx_societe_extrafields`
+--
+
+LOCK TABLES `llx_societe_extrafields` WRITE;
+/*!40000 ALTER TABLE `llx_societe_extrafields` DISABLE KEYS */;
+/*!40000 ALTER TABLE `llx_societe_extrafields` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `llx_societe_log`
 --
 
@@ -4482,7 +4517,7 @@ DROP TABLE IF EXISTS `llx_societe_prices`;
 CREATE TABLE `llx_societe_prices` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
   `fk_soc` int(11) DEFAULT '0',
-  `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `tms` timestamp NULL DEFAULT NULL,
   `datec` datetime DEFAULT NULL,
   `fk_user_author` int(11) DEFAULT NULL,
   `price_level` tinyint(4) DEFAULT '1',
@@ -4761,15 +4796,18 @@ CREATE TABLE `llx_user` (
   `tms` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `login` varchar(24) NOT NULL,
   `entity` int(11) NOT NULL DEFAULT '1',
+  `ref_ext` varchar(30) DEFAULT NULL,
   `pass` varchar(32) DEFAULT NULL,
   `pass_crypted` varchar(128) DEFAULT NULL,
   `pass_temp` varchar(32) DEFAULT NULL,
+  `civilite` varchar(6) DEFAULT NULL,
   `name` varchar(50) DEFAULT NULL,
   `firstname` varchar(50) DEFAULT NULL,
   `office_phone` varchar(20) DEFAULT NULL,
   `office_fax` varchar(20) DEFAULT NULL,
   `user_mobile` varchar(20) DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
+  `signature` text,
   `admin` smallint(6) DEFAULT '0',
   `webcal_login` varchar(25) DEFAULT NULL,
   `phenix_login` varchar(25) DEFAULT NULL,
@@ -4802,7 +4840,7 @@ CREATE TABLE `llx_user` (
 
 LOCK TABLES `llx_user` WRITE;
 /*!40000 ALTER TABLE `llx_user` DISABLE KEYS */;
-INSERT INTO `llx_user` VALUES (1,'2011-07-03 17:33:30','2011-07-03 17:33:30','manager',0,'dolibarr','1de2f00382e35238c18f9e57a3866f23',NULL,'SuperAdmin','','','','','',1,'','','',1,1,NULL,NULL,NULL,'',NULL,NULL,NULL,'',NULL,1,NULL,NULL);
+INSERT INTO `llx_user` VALUES (1,'2011-07-03 17:33:30','2011-07-03 17:33:30','manager',0,NULL,'dolibarr','1de2f00382e35238c18f9e57a3866f23',NULL,NULL,'SuperAdmin','','','','','',NULL,1,'','','',1,1,NULL,NULL,NULL,'','2012-02-25 08:45:39',NULL,NULL,'',NULL,1,NULL,NULL);
 /*!40000 ALTER TABLE `llx_user` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4894,7 +4932,7 @@ CREATE TABLE `llx_user_rights` (
   `fk_id` int(11) NOT NULL,
   PRIMARY KEY (`rowid`),
   UNIQUE KEY `uk_user_rights` (`fk_user`,`fk_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=27 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4903,7 +4941,7 @@ CREATE TABLE `llx_user_rights` (
 
 LOCK TABLES `llx_user_rights` WRITE;
 /*!40000 ALTER TABLE `llx_user_rights` DISABLE KEYS */;
-INSERT INTO `llx_user_rights` VALUES (1,1,341),(2,1,342),(3,1,343),(4,1,344);
+INSERT INTO `llx_user_rights` VALUES (14,1,341),(15,1,342),(16,1,343),(17,1,344),(25,1,251),(6,1,252),(7,1,253),(9,1,254),(10,1,255),(12,1,256),(23,1,351),(19,1,352),(22,1,353),(24,1,354),(26,1,358);
 /*!40000 ALTER TABLE `llx_user_rights` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4969,10 +5007,13 @@ DROP TABLE IF EXISTS `llx_usergroup_user`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `llx_usergroup_user` (
   `rowid` int(11) NOT NULL AUTO_INCREMENT,
+  `entity` int(11) NOT NULL DEFAULT '1',
   `fk_user` int(11) NOT NULL,
   `fk_usergroup` int(11) NOT NULL,
   PRIMARY KEY (`rowid`),
-  UNIQUE KEY `fk_user` (`fk_user`,`fk_usergroup`)
+  UNIQUE KEY `uk_usergroup_user` (`entity`,`fk_user`,`fk_usergroup`),
+  KEY `fk_usergroup_user_fk_user` (`fk_user`),
+  KEY `fk_usergroup_user_fk_usergroup` (`fk_usergroup`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -4994,4 +5035,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2011-07-03 19:34:32
+-- Dump completed on 2012-02-26  9:27:31
