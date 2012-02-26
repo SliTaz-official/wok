@@ -16,4 +16,19 @@ genpkg_rules()
 	cp -a $src/lib/*.so* $fs/lib
 }
 
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" /usr/bin/uclibc-${PACKAGE##*-}-ldconfig
+}
+
+pre_remove()
+{
+	for i in /lib/ld-uClibc.so*; do
+		case "$(readlink $i)" in
+		*usr/share/$PACKAGE/lib/*) rm -f $i ;;
+		esac
+	done
+}
+
 TAZBB_NO_INSTALL="because this is not the right target !"
