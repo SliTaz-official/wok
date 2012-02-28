@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="c_icap"
+VERSION="0.1.7"
+CATEGORY="network"
+SHORT_DESC="Implementation of an ICAP server."
+MAINTAINER="erjo@slitaz.org"
+WEB_SITE="http://c-icap.sourceforge.net/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/c-icap/$TARBALL"
+
+DEPENDS=""
+BUILD_DEPENDS=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure  --sysconfdir=/etc/c-icap \
+		--enable-large-files \
+		$CONFIGURE_ARGS && make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/$PACKAGE
+	
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/$PACKAGE/*.so* $fs/usr/lib/$PACKAGE
+	
+	cp -pa $install/etc $fs/
+	
+	# Cleanup
+	rm -f $fs/usr/bin/c-icap-config
+}
