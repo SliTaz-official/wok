@@ -1,37 +1,41 @@
 # SliTaz package receipt.
 
 PACKAGE="fluxbox"
-VERSION="1.3.1"
+VERSION="1.3.2"
 CATEGORY="x-window"
-SHORT_DESC="Fluxbox is a windowmanager for X. It is very light on resources and easy to handle but yet full of features."
-MAINTAINER="mallory@sweetpeople.org"
-DEPENDS="fontconfig imlib2 xorg-libICE xorg-libSM xorg-libX11 \
-xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXft xorg-libXinerama \
-xorg-libXpm xorg-libXrandr xorg-libXrender gcc-lib-base"
+SHORT_DESC="Fluxbox is a light and fast window manager for X."
+MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.fluxbox.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="wm window-manager"
 
+DEPENDS="xorg fontconfig imlib2"
+BUILD_DEPENDS="xorg fontconfig imlib2"
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	patch -p1 < $stuff/fluxbox-gcc-4.3.3.diff
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
+	#patch -p1 < $stuff/fluxbox-gcc-4.3.3.diff
+	./configure $CONFIGURE_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share $fs/usr
+	mkdir -p $fs/usr/share/fluxbox/styles
+	cp -a $install/usr/bin $fs/usr
+	for f in apps keys overlay windowmenu init menu
+	do
+		cp -a $install/usr/share/fluxbox/$f $fs/usr/share/fluxbox
+	done
+	for s in Shade Flux bloe Results
+	do
+		cp -a $install/usr/share/fluxbox/styles/$s \
+			$fs/usr/share/fluxbox/styles
+	done
 }
 
 post_install()
