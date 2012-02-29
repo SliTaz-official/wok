@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="spacefm"
+VERSION="0.7.0"
+CATEGORY="system-tools"
+SHORT_DESC="Light, fast and easy to use file manager."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="http://spacefm.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/files/$TARBALL"
+
+DEPENDS="glibc-base glib libgio util-linux-ng-uuid libxcb xcb-util expat \
+gtk+ startup-notification dbus dbus-glib gdk-pixbuf"
+BUILD_DEPENDS="gtk+-dev dbus-glib-dev dbus-dev startup-notification-dev \
+libxcb-dev xcb-util-dev expat-dev gdk-pixbuf-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--with-preferable-sudo=/usr/bin/subox \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/etc/spacefm
+	cp -a $install/usr/bin $fs/usr
+	for d in applications mime pixmaps spacefm
+	do
+		cp -a $install/usr/share/$d $fs/usr/share
+	done
+	cp $stuff/spacefm.conf $fs/etc/spacefm
+}
