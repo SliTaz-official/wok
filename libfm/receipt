@@ -5,39 +5,40 @@ VERSION="0.1.17"
 CATEGORY="system-tools"
 SHORT_DESC="File manager library from LXDE."
 MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://pcmanfm.sourceforge.net"
+WGET_URL="$SF_MIRROR/pcmanfm/files/$TARBALL"
+
 DEPENDS="glibc-base glib libgio util-linux-ng-uuid libxcb xcb-util expat \
 zlib fontconfig freetype gtk+ atk cairo pango pixman menu-cache"
 BUILD_DEPENDS="$DEPENDS gtk+-dev gamin-dev shared-mime-info intltool \
 hal-dev dbus-glib-dev dbus-dev startup-notification-dev libxcb-dev \
 xcb-util-dev menu-cache-dev expat-dev"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://pcmanfm.sourceforge.net"
-WGET_URL="$SF_MIRROR/pcmanfm/files/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	grep -rl gio/gdesktopappinfo.h . | xargs sed -i \
-'s|.*gio/gdesktopappinfo.h.*|#ifdef G_DISABLE_DEPRECATED\n#undef G_DISABLE_DEPRECATED\n&\n#define G_DISABLE_DEPRECATED\n#else\n&\n#endif|'
-	chmod +x install-sh
+	#grep -rl gio/gdesktopappinfo.h . | xargs sed -i \
+		#'s|.*gio/gdesktopappinfo.h.*|#ifdef G_DISABLE_DEPRECATED\n#undef G_DISABLE_DEPRECATED\n&\n#define G_DISABLE_DEPRECATED\n#else\n&\n#endif|'
+	#chmod +x install-sh
 	./configure \
-		--prefix=/usr \
-		--mandir=/usr/share/man \
 		--sysconfdir=/etc \
 		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/gio/modules
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/gio/modules/*.so $fs/usr/lib/gio/modules
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $install/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/share/libfm $fs/usr/share
+	cp -a $install/usr/share/mime $fs/usr/share
+	cp -a $install/usr/share/applications $fs/usr/share
+	#cp -a $install/usr/lib/gio/modules/*.so $fs/usr/lib/gio/modules
 }
 
 post_install()
