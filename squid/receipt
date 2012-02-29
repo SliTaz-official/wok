@@ -50,7 +50,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/squid/errors $fs/var/cache/squid $fs/var/log/squid \
-		$fs/usr/lib/squid
+		$fs/usr/lib/squid $fs/etc/squid/conf.d
 	
 	touch $fs/var/log/squid/cache.log
 	
@@ -72,9 +72,6 @@ genpkg_rules()
 	
 	sed -i \
 		-e 's/TAG: visible_hostname/TAG: visible_hostname\nvisible_hostname slitaz/' \
-		-e 's|^access_log /var/logs|access_log /var/log/squid|' \
-		-e 's|^#cache_store_log /var/logs|cache_store_log /var/cache/squid|' \
-		-e 's|^#cache_log /var/logs|cache_log /var/cache/squid|' \
 		-e 's|^#cache_dir ufs /var/cache 100|cache_dir ufs /var/cache/squid 256|' \
 		-e 's|^#pid_filename /var/logs|pid_filename /var/run/squid.pid|' \
 		-e "s|^coredump_dir.*|coredump_dir /var/cache/squid|" \
@@ -87,7 +84,11 @@ genpkg_rules()
 cache_effective_user squid
 cache_effective_group squid 
 
-access_log /var/log/squid
+access_log /var/log/squid/access.log
+cache_log /var/log/squid/cache.log
+cache_store_log /var/log/squid/store.log
+
+include /etc/squid/conf.d/*.conf
 EOF
 }
 
