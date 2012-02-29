@@ -40,6 +40,7 @@ compile_rules()
 		--enable-ntlm-auth-helpers="smb_lm,no_check,fakeauth" \
 		--enable-useragent-log \
 		--enable-referer-log \
+		--enable-icap-client \
 		--with-pthreads ac_cv_header_linux_netfilter_ipv4_h="yes" \
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS && make install
@@ -53,40 +54,65 @@ genpkg_rules()
 	
 	touch $fs/var/log/squid/cache.log
 	
-	cp -a $_pkg/etc $fs
+	cp -a $install/etc $fs
 	rm -rf $fs/etc/squid/*.default
 	cp -a $stuff/etc $fs
 	
-	cp -a $_pkg/var $fs
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/usr/lib/squid/*kd $fs/usr/lib/squid
-	cp -a $_pkg/usr/lib/squid/*.cgi $fs/usr/lib/squid
+	cp -a $install/var $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib/squid/*kd $fs/usr/lib/squid
+	cp -a $install/usr/lib/squid/*.cgi $fs/usr/lib/squid
 	
-	cp -a $_pkg/usr/share/squid/mib.txt $fs/usr/share/squid
-	cp -a $_pkg/usr/share/squid/icons $fs/usr/share/squid
-	cp -a $_pkg/usr/share/squid/errors/templates $fs/usr/share/squid/errors
-	cp -a $_pkg/usr/share/squid/errors/en* $fs/usr/share/squid/errors
-	cp -a $_pkg/usr/share/squid/errors/fr* $fs/usr/share/squid/errors
+	cp -a $install/usr/share/squid/mib.txt $fs/usr/share/squid
+	cp -a $install/usr/share/squid/icons $fs/usr/share/squid
+	cp -a $install/usr/share/squid/errors/templates $fs/usr/share/squid/errors
+	cp -a $install/usr/share/squid/errors/en* $fs/usr/share/squid/errors
+	cp -a $install/usr/share/squid/errors/fr* $fs/usr/share/squid/errors
 	
 	sed -i \
 		-e 's/TAG: visible_hostname/TAG: visible_hostname\nvisible_hostname slitaz/' \
 		-e 's|^access_log /var/logs|access_log /var/log/squid|' \
-		-e 's|^# cache_store_log /var/logs|cache_store_log /var/cache/squid|' \
-		-e 's|^# cache_log /var/logs|cache_log /var/cache/squid|' \
-		-e 's|^# cache_dir ufs /var/cache|cache_dir ufs /var/cache/squid|' \
-		-e 's|^# pid_filename /var/logs|pid_filename /var/run|' \
-		-e 's|^coredump_dir /var/logs|coredump_dir /var/cache/squid|' \
+		-e 's|^#cache_store_log /var/logs|cache_store_log /var/cache/squid|' \
+		-e 's|^#cache_log /var/logs|cache_log /var/cache/squid|' \
+		-e 's|^#cache_dir ufs /var/cache 100|cache_dir ufs /var/cache/squid 256|' \
+		-e 's|^#pid_filename /var/logs|pid_filename /var/run/squid.pid|' \
+		-e "s|^coredump_dir.*|coredump_dir /var/cache/squid|" \
+		-e 's|^# error_directory|error_directory /usr/share/squid/errors/French|' \
 		-e 's|^# error_directory|error_directory /usr/share/squid/errors/French|' \
 		$fs/etc/squid/squid.conf
+		
+	cat <<EOF>>$fs/etc/squid/squid.conf
+	
+cache_effective_user squid
+cache_effective_group squid 
+
+access_log /var/log/squid
+EOF
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
 	local root
-	root=$1
-	chown -R nobody.nogroup $root/var/cache/squid $root/var/log/squid
+	local user
+	local group
+	
+	user=squid
+	group=squid
+	
+	if ! grep -q $user $1/etc/passwd; then
+		echo -n "Adding user/group $user..."
+		chroot $1/ addgroup -S $group
+		chroot $1/ adduser -S -D -H -G $group $user
+		status
+	fi
+	
+
+	# Set perms for files and directories
+	chroot $1/ chown -R ${user}.${group} /var/log/squid \
+		/var/cache/squid 
+
 	cat <<EOF
 ----
 To start $PACKAGE server you can run :
@@ -98,10 +124,14 @@ Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
 EOF
 }
 
+
 post_remove()
 {
 	echo "Removing stalled files..."
 	test -d /var/cache/squid && rm -rf /var/cache/squid
 	test -d /var/log/squid && rm -rf /var/log/squid
-	test -d /usr/share/squid && rm -rf /usr/share/squid	
+	test -d /usr/share/squid && rm -rf /usr/share/squid
+	
+	echo "Removing user/group squid"
+	deluser squid
 }
