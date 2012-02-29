@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="squidclamav"
-VERSION="5.7"
+VERSION="6.5"
 CATEGORY="security"
 SHORT_DESC="Antivirus redirector for Squid proxy."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -10,8 +10,8 @@ WEB_SITE="http://squidclamav.darold.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 CONFIG_FILES="/etc/squidclamav.conf"
 
-DEPENDS="squid libcurl"
-BUILD_DEPENDS="curl-dev"
+DEPENDS="squid libcurl clamav c_icap squidguard"
+BUILD_DEPENDS="curl-dev c_icap-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -21,16 +21,41 @@ compile_rules()
 	./configure \
 		--prefix=/usr \
 		--libexecdir=/usr/lib \
-	$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install &&
-	cp etc/squidclamav.conf $DESTDIR/etc
+		--sysconfdir=/etc \
+		$CONFIGURE_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
+	mkdir -p $fs/usr \
+		$fs/var/www/cgi-bin \
+		$fs/etc/squid/conf.d
+	
+	cp -a $install/etc $fs
+	cp -a $install/usr/lib $fs/usr
+	cp -a $stuff/icap-clamav.conf $fs/etc/squid/conf.d
+	
+	# Customise config file
+	sed -i -e "s|^redirect.*|redirect http://localhost/cgi-bin/clwarn.cgi|" \
+		-e "s|^#squidguard.*|squidguard /usr/bin/squidGuard|" \
+		$fs/etc/squidclamav.conf
+
+}
+
+#Post install command
+post_install()
+{
+	if ( ps | grep -q squid ); then
+		/etc/init.d/squid restart
+	fi
+}
+
+#Post remove command
+post_remove()
+{
+	if ( ps | grep -q squid ); then
+		/etc/init.d/squid restart
+	fi
 }
