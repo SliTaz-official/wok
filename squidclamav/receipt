@@ -20,7 +20,8 @@ compile_rules()
 	mkdir -p $DESTDIR/etc
 	./configure \
 		--prefix=/usr \
-		--libexecdir=/usr/lib \
+		--libdir=/usr/lib \
+		--libexecdir=/var/www/cgi-bin \
 		--sysconfdir=/etc \
 		$CONFIGURE_ARGS &&
 	make && make install
@@ -30,15 +31,15 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr \
-		$fs/var/www/cgi-bin \
 		$fs/etc/squid/conf.d
 	
 	cp -a $install/etc $fs
 	cp -a $install/usr/lib $fs/usr
+	cp -a $install/var $fs/
 	cp -a $stuff/icap-clamav.conf $fs/etc/squid/conf.d
 	
 	# Customise config file
-	sed -i -e "s|^redirect.*|redirect http://localhost/cgi-bin/clwarn.cgi|" \
+	sed -i -e "s|^redirect.*|redirect http://localhost/cgi-bin/squidclamav/clwarn.cgi|" \
 		-e "s|^#squidguard.*|squidguard /usr/bin/squidGuard|" \
 		$fs/etc/squidclamav.conf
 
