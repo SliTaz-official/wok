@@ -23,27 +23,41 @@ compile_rules()
 	./configure \
 		--sysconfdir=/etc/clamav \
 		--with-iconv=no \
-		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$DESTDIR install
+		$CONFIGURE_ARGS && make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share $fs/etc/init.d 
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/etc $fs
+	mkdir -p $fs/usr/lib $fs/usr/share $fs/etc/init.d \
+		$fs/var/log/clamav $fs/var/run/clamav
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/etc $fs
 	# Copy only shared lib (.so)
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/share/clamav $fs/usr/share
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/share/clamav $fs/usr/share
 	# Copy daemon from /$stuff
 	cp $stuff/daemon-clamd $fs/etc/init.d/clamd
+	
+	# Customize config
+	sed -i -e "s/^Example/#Example/" \
+		-e "s|^#LogFile /tmp/clamd.log|LogFile /var/log/clamav/clamav.log|" \
+		-e "s|^#PidFile.*|PidFile /var/run/clamav/clamd.pid|" \
+		-e "s|^#LocalSocket /tmp/clamd.socket|LocalSocket /var/run/clamav/clamd.ctl|" \
+		$fs/etc/clamav/clamd.conf
+		
 }
 
 post_install()
 {
+	
+	local user
+	local group
+	
+	user=clamav
+	group=clamav
+	
 	echo "Processing post-install commands..."
 	
 	# Enable freshclam update
@@ -52,34 +66,21 @@ post_install()
 	sed -i 's/^Example/#Example/' freshclam.conf 
 	status
 
-	# Enable clamd configuration
-	echo -n "Enabling clamd daemon..."
-	cd $1/etc/clamav
-	sed -i 's/^Example/#Example/; s/^#PidFile/PidFile/' clamd.conf
-	status
-
-	# Enable local socket
-	echo -n "Enabling local socket..."
-	cd $1/etc/clamav
-	sed -i 's/^#LocalSocket /LocalSocket /' clamd.conf
-	status
-
 	# adduser clamav if needed
-	if ! grep -q clamav $1/etc/passwd; then
-		echo -n "Adding user clamav..."
-		chroot $1/ adduser -s /bin/false -H -D -u 64 clamav
-		status
-	fi
-
-	# addgroup clamav if needed
-	if ! grep -q clamav $1/etc/group; then
-		echo -n "Adding group clamav..."
-		chroot $1/ addgroup -g 64 clamav 
+	if ! grep -q "${user}:" $1/etc/passwd; then
+		echo -n "Adding user/group $user..."
+		chroot $1/ addgroup -S $group
+		chroot $1/ adduser -s /bin/false -S -D -H -G $group $user
 		status
 	fi
 
 	# Enable daily.cvd updates (sometimes needed for new version)
-	chown -R clamav:clamav $1/usr/share/clamav
+	chown -R ${user}:${group} $1/usr/share/clamav
+	
+	# Fix perms
+	chroot $1/ chown -R ${user}.${group} /var/log/clamav \
+		/var/run/clamav
+
 }
 
 # Del user clamav when pkg is removed.
