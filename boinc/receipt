@@ -9,9 +9,9 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://boinc.berkeley.edu/"
 WGET_URL="svn|http://boinc.berkeley.edu/svn/tags/boinc_core_release_${SVN_TAG}"
-
-DEPENDS="openssl libcurl wxWidgets libnotify"
-BUILD_DEPENDS="subversion openssl-dev autoconf automake curl-dev \
+# The init script requires bash.
+DEPENDS="openssl libcurl wxWidgets libnotify bash"
+BUILD_DEPENDS="subversion openssl-dev autoconf automake curl-dev libidn-dev \
 wxWidgets-dev libnotify-dev"
 
 # Rules to configure and make the package.
@@ -40,14 +40,33 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp $_pkg/usr/share/boinc/boincmgr.48x48.png \
 		$fs/usr/share/pixmaps/boincmgr.png
+	rm $fs/etc/init.d/boinc-client
+	cp $stuff/boinc-client $fs/etc/init.d/boinc-client
 }
 
 post_install()
 {
-	adduser -g "BOINC User" -h /var/lib/boinc -s /bin/false -S -H -D boinc
+	# Check if boinc user already exists
+	if [ -n "`grep ^${BOINCUSER}: /etc/passwd`" ] ; then                       
+		adduser -g "BOINC User" -h /var/lib/boinc -s /bin/bash -S -H -D boinc
+	else
+		# In case boinc was previously installed:
+		chown -R boinc /var/lib/boinc
+        fi  
+                                        
+	echo -n "Start the boinc client with \"# /etc/init.d/boinc-client start\""
+	echo ""
 }
 
 post_remove()
 {
-	deluser boinc
+	echo -n "Delete user boinc and /var/lib/boinc (yes/No) ? : "
+	read -t 30 answer
+	if [ "$answer" == "yes" ]; then
+		deluser boinc
+		rm -r /var/lib/boinc
+	else
+		echo ""
+		echo "Leaving user boinc and /var/lib/boinc"
+	fi
 }
