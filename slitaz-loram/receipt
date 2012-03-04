@@ -1,11 +1,11 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-loram"
-VERSION="1.6"
+VERSION="2.0"
 CATEGORY="misc"
 SHORT_DESC="Rules to build low ram rootfs.gz."
 MAINTAINER="pascal.bellard@slitaz.org"
-DEPENDS="slitaz-boot-scripts tazlito cromfs-or-squashfs"
+DEPENDS=""
 WEB_SITE="http://www.slitaz.org/"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -13,112 +13,4 @@ genpkg_rules()
 {
     mkdir -p $fs/etc/tazlito
     cp stuff/loram.* $fs/etc/tazlito
-}
-
-set_patch()
-{
-    local tag
-    local line
-    local len
-    local i
-    tag="Fast boot into X"
-    i=$(grep -n "$tag" $1/etc/init.d/rcS | cut -d: -f1)
-    i=$(($i-1))
-    len=38
-    tag=$(grep "$tag" $1/etc/init.d/rcS)
-    if [ "$2" = "-R" ]; then
-    	line="-$(($i-$len+2)),$len +$(($i-$len+2)),2"
-	i="-"
-    else
-        grep -q 'from slitaz-loram package' $1/etc/init.d/rcS && return
-    	line="-$i,2 +$i,$len"
-	i="+"
-    fi
-    busybox patch -p0 <<EOF
---- $1/etc/init.d/rcS
-+++ $1/etc/init.d/rcS
-@@ $line @@
- 
-$i# Mount compressed /usr (from slitaz-loram package)
-$i while [ -f /.usr.cromfs -o -f /.usr.sqfs ]; do
-$i	usr=usr
-$i	echo -n "Mounting /usr read-"
-$i	if [ -d /.usr.rw ]; then
-$i		usr=.usr.ro
-$i		echo -n "write... "
-$i	else
-$i		echo -n "only... "
-$i	fi
-$i	FREEMEM=\$(free | awk '{ n = \$NF } END { print n }')
-$i	if ! grep -q " keep-loram" /proc/cmdline && [ \$FREEMEM -gt \\
-$i	\$(du -s \$FS | awk '{ print (\$1*4)+40000 }') ]; then
-$i		echo -n "Extracting loram..."
-$i		. /etc/tazlito/loram.extract
-$i		if status; then
-$i			yes y | tazpkg remove slitaz-loram > /dev/null
-$i			break
-$i		fi
-$i	fi
-$i	if [ -f /.usr.cromfs ]; then
-$i		/bin/cromfs-driver /.usr.cromfs /\$usr -o ro,dev,suid,allow_other
-$i	else
-$i		/bin/mount -o loop,ro -t squashfs /.usr.sqfs /\$usr
-$i	fi
-$i	if [ -d /.usr.rw ]; then
-$i		if [ -x bin/funionfs ]; then
-$i			/bin/funionfs -o dirs=/.usr.ro=RO:/.usr.rw -o allow_other -o suid,dev NONE /usr
-$i		else
-$i			/bin/mount -t aufs -o br:/.usr.rw:/.usr.ro none /usr
-$i		fi
-$i	fi
-$i	status
-$i	break
-$i done
-$i
- $tag
-EOF
-    chmod 0755 $1/etc/init.d/rcS
-}
-
-# Pre and post install commands for Tazpkg.
-pre_install()
-{
-    local i
-    for i in $(cd /var/lib/tazpkg/installed ; ls -d slitaz-loram* 2> /dev/null); do
-        [ "$i" = "$PACKAGE" ] && continue
-        yes y | tazpkg remove $i
-        . /etc/tazlito/tazlito.conf
-	rm -f $PACKAGES_REPOSITORY/slitaz-boot-scripts-*.tazpkg 2> /dev/null
-    done
-}
-
-post_install()
-{
-    set_patch "$1"
-    cat <<EOF
-----
-'tazlito gen-distro' will create a loram flavor while this package is installed.
-EOF
-    if [ ! -x $1/bin/funionfs -a ! -d $1/var/lib/tazpkg/installed/aufs-utils ]; then
-        cat <<EOF
-----
-You will build a live CD with /usr mounted read-only.
-You can install aufs or funionfs to have read-write access into /usr with:
-
-# tazpkg get-install aufs
-or
-# tazpkg get-install funionfs
-
-EOF
-    fi
-}
-
-# Pre remove commands for Tazpkg.
-pre_remove()
-{
-    set_patch '' -R
-    cat <<EOF
-----
-'tazlito gen-distro' will work as expected now.
-EOF
 }
