@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-nbd"
+VERSION="2.6.37"
+CATEGORY="base-system"
+SHORT_DESC="The Linux kernel network block device modules."
+MAINTAINER="devel@slitaz.org"
+WANTED="linux"
+WEB_SITE="http://www.kernel.org/"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    path=lib/modules/$VERSION-slitaz/kernel
+    mkdir -p $fs/$path
+    export src
+    export _pkg
+    $wanted_stuff/list_modules.sh drivers/block/nbd.ko.gz | \
+    while read module; do
+    	dir=$path/$(dirname $module)
+    	[ -d $fs/$dir ] || mkdir -p $fs/$dir
+        cp -a $_pkg/$path/$module $fs/$dir
+    done
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
+post_remove()
+{
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
