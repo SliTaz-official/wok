@@ -5,7 +5,6 @@ mk_locale_dir()
 {
 	mkdir -p \
 		$fs/usr/share/locale/$LOCALE \
-		$fs/usr/share/slitaz/messages \
 		$fs/etc/xdg/openbox
 }
 
@@ -14,16 +13,16 @@ get_slitaz_messages()
 {
 	configs=$WOK/slitaz-configs/source
 	openbox=$configs/slitaz-configs-*/rootfs/etc/xdg/openbox
-	tools=$WOK/slitaz-tools/source
+	#tools=$WOK/slitaz-tools/source
 
 	# Make tazwok compatible with this.
 	if [ ! -x /usr/bin/cook ]; then
 		[ -d $configs ] || tazwok get-src slitaz-configs --target=$configs
-		[ -d $tools ] || tazwok get-src slitaz-tools --target=$tools
+		#[ -d $tools ] || tazwok get-src slitaz-tools --target=$tools
 	fi
 
 	[ ! -d $configs ] && echo "ERROR: missing source slitaz-configs" && exit 1
-	[ ! -d $tools ] && echo "ERROR: missing source slitaz-tools" && exit 1
+	#[ ! -d $tools ] && echo "ERROR: missing source slitaz-tools" && exit 1
 
 	if [ -f $openbox/menu.${LOCALE}.xml ]; then
 		echo "* Found $LOCALE locale for: openbox menu"
@@ -31,20 +30,23 @@ get_slitaz_messages()
 	fi
 	
 	# Tools messages will be replace in time by POT files.
-	if [ -d $tools/slitaz-tools-*/messages/$LOCALE ]; then
-		echo "* Found $LOCALE locale for: slitaz-tools"
-		cp -a $tools/slitaz-tools-*/messages/$LOCALE \
-			$fs/usr/share/slitaz/messages
-	fi
+	#
+	# NOTE: All po files are now include into slitaz-tools (easy for update)
+	#
+	#if [ -d $tools/slitaz-tools-*/messages/$LOCALE ]; then
+		#echo "* Found $LOCALE locale for: slitaz-tools"
+		#cp -a $tools/slitaz-tools-*/messages/$LOCALE \
+			#$fs/usr/share/slitaz/messages
+	#fi
 	
-	if [ -d $tools/slitaz-tools-*/po/mo/$LOCALE ]; then
-		for app in $(ls $tools/slitaz-tools-*/po/mo/$LOCALE)
-		do
-			echo "* Found $LOCALE locale for: ${app%.mo}"
-			cp -a $tools/slitaz-tools-*/po/mo/$LOCALE/$app \
-				$fs/usr/share/locale/$LOCALE
-		done
-	fi
+	#if [ -d $tools/slitaz-tools-*/po/mo/$LOCALE ]; then
+		#for app in $(ls $tools/slitaz-tools-*/po/mo/$LOCALE)
+		#do
+			#echo "* Found $LOCALE locale for: ${app%.mo}"
+			#cp -a $tools/slitaz-tools-*/po/mo/$LOCALE/$app \
+				#$fs/usr/share/locale/$LOCALE
+		#done
+	#fi
 }
 
 # Get the core packages messages.
