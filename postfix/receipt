@@ -9,8 +9,7 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.postfix.org/"
 WGET_URL="ftp://ftp.cs.tu-berlin.de/pub/net/mail/postfix/official/$TARBALL"
 BUILD_DEPENDS="db-dev openldap-dev pcre-dev openssl-dev perl mysql-dev libsasl"
-DEPENDS="libdb libldap pcre libssl slitaz-base-files libsasl \
-libkrb5 libcomerr3"
+DEPENDS="libdb libldap pcre libssl slitaz-base-files libsasl libkrb5 libcomerr3"
 CONFIG_FILES="/etc/postfix"
 
 # Rules to configure and make the package.
@@ -25,23 +24,21 @@ compile_rules()
 	AUXLIBS="-ldb -lldap -llber \
 		-L/usr/lib/mysql -lmysqlclient -lz -lm " &&
 	make
-	install_root=$PWD/_pkg \
+	install_root=$WOK/$PACKAGE/install \
 		sh postfix-install -non-interactive
-#	install_root=$install \
-#		sh postfix-install -non-interactive
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/licenses/
-	cp -a $_pkg/usr/lib $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/etc $fs
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/etc $fs
 
 	awk 'BEGIN {n=0} /MUST/ {n++} /ALIASES/ {n++} { if (n==1) print }' \
-		< $_pkg/etc/postfix/aliases > $fs/etc/postfix/aliases
+		< $install/etc/postfix/aliases > $fs/etc/postfix/aliases
 	while read keyword data; do
 		grep -q ^$keyword $fs/etc/postfix/main.cf && continue
 		mv $fs/etc/postfix/main.cf $fs/etc/postfix/main.cf.$$
@@ -56,7 +53,7 @@ mynetworks = 127.0.0.0/8
 alias_maps = hash:/etc/postfix/aliases
 EOF
 	cp -a $stuff/etc $fs
-	cp -a $_pkg/var $fs
+	cp -a $install/var $fs
 	mv $fs/etc/postfix/TLS_LICENSE $fs/usr/share/licenses/POSTFIX_TLS_LICENSE
 	mv $fs/etc/postfix/LICENSE $fs/usr/share/licenses/POSTFIX_LICENSE
 	cp -a $stuff/etc/init.d $fs/etc
@@ -67,27 +64,37 @@ EOF
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-    # adduser postfix if needed
-	if ! grep -q postfix $1/etc/passwd; then
-		echo -n "Adding user Postfix..."
-		chroot $1/ adduser -s /bin/false -h /dev/null \
-			-g "Postfix Daemon user" -u 75 -H -D postfix
+
+	local user
+	local group
+	
+	user=postfix
+	group=postdrop
+	
+	if ! grep -q $user $1/etc/passwd; then
+		echo -n "Adding user/group $user..."
+		chroot $1/ addgroup -S $user
+		chroot $1/ adduser -S -D -H -G $user $user
+		chroot $1/ addgroup -S $group
 		status
 	fi
+
 	# addgroup postdrop if needed
 	if ! grep -q postdrop $1/etc/group; then
-		echo -n "Adding group postdrop..."
-		chroot $1/ addgroup -u 73 postdrop
+		echo -n "Adding group ${group}..."
+		chroot $1/ addgroup -S $group
 		status
 	fi
-	chroot $1/ sh -c 'chown postfix /var/spool/postfix/* /var/lib/postfix'
-	chroot $1/ chgrp postdrop /var/spool/postfix/maildrop \
+
+	chroot $1/ chown ${user} /var/spool/postfix/* /var/lib/postfix
+	chroot $1/ chgrp ${group} /var/spool/postfix/maildrop \
 		/var/spool/postfix/public /usr/sbin/postdrop /usr/sbin/postqueue
 	chmod 2755 $1/usr/sbin/postdrop $1/usr/sbin/postqueue
 	chmod 2710 $1/var/spool/postfix/public
 	chmod 1730 $1/var/spool/postfix/maildrop
 	chroot $1/ postalias /etc/postfix/aliases
 	cat <<EOF
+	
 ----
 Warning: you still need to edit myorigin/mydestination/mynetworks
 parameter settings in /etc/postfix/main.cf.
