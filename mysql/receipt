@@ -8,11 +8,12 @@ MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.mysql.com/"
 WGET_URL="http://mirrors.sunsite.dk/mysql/Downloads/MySQL-5.1/$TARBALL"
-DEPENDS="busybox libmysqlclient mysql-client zlib slitaz-base-files \
-gcc-lib-base"
 CONFIG_FILES="/etc/mysql/my.cnf"
 DATABASE_FILES="/var/lib/mysql"
 CROSS="bug: can not run test programm"
+
+DEPENDS="busybox libmysqlclient mysql-client zlib slitaz-base-files \
+gcc-lib-base"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -36,7 +37,7 @@ compile_rules()
 		--build=$HOST_SYSTEM \
 		--host=$HOST_SYSTEM &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -50,13 +51,13 @@ genpkg_rules()
 		$fs/var/lib/mysql \
 		$fs/var/run/mysqld
 
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/usr/lib/mysql/plugin/*.so* $fs/usr/lib/mysql/plugin
-	cp -a $_pkg/usr/share/mysql $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib/mysql/plugin/*.so* $fs/usr/lib/mysql/plugin
+	cp -a $install/usr/share/mysql $fs/usr/share
 
 	# Configuration file
-	cp -a stuff/etc/init.d $fs/etc
+	cp -a $stuff/etc/init.d $fs/etc
 	cp -a $src/support-files/my-medium.cnf $fs/etc/mysql/my.cnf
 	cp -a $src/support-files/my-small.cnf $fs/etc/mysql
 	grep -q "bind-address" $fs/etc/mysql/my.cnf || sed -i \
@@ -75,21 +76,22 @@ genpkg_rules()
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-	# addgroup mysql if needed
-	if ! grep -q mysql $1/etc/group; then
-		echo -n "Adding group MySQL..."
-		chroot $1/ /bin/addgroup -g 27 mysql 
+	
+	local user
+	local group
+	
+	user=mysql
+	group=mysql
+	
+	if ! grep -q $user $1/etc/passwd; then
+		echo -n "Adding user/group $user..."
+		chroot $1/ addgroup -S $group
+		chroot $1/ adduser -s /bin/false -S -D -H -G $group $user
 		status
 	fi
-	# adduser mysql if needed
-	if ! grep -q mysql $1/etc/passwd; then
-		echo -n "Adding user MySQL..."
-		chroot $1/ /bin/adduser -s /bin/false -h /dev/null \
-			-g "MySQL Daemon user" -u 27 -H -D -S -G mysql mysql
-		status
-	fi
-	#chroot $1/ /bin/chown mysql.mysql $(cat $1/$INSTALLED/$PACKAGE/files.list)
-	chroot $1/ /bin/chown -R mysql.mysql $1/var/lib/mysql $1/var/run/mysqld
+
+	chroot $1/ chown -R ${user}.${group} /var/lib/mysql /var/run/mysqld
+	
 	cat <<EOF
 ----
 To start $PACKAGE server you can run :
@@ -111,5 +113,6 @@ pre_install()
 
 post_remove()
 {
+	echo "Removing user/group squid"
 	deluser mysql
 }
