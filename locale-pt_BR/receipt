@@ -1,11 +1,12 @@
 # SliTaz package receipt
 
 PACKAGE="locale-pt_BR"
-VERSION="1.2"
+VERSION="4.0"
 CATEGORY="system-tools"
 SHORT_DESC="Portuguese/Brazilian locale pack."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="locale-pt"
+DEPENDS="glibc-base"
+BUILD_DEPENDS="glibc glibc-locale slitaz-i18n"
 WEB_SITE="http://www.slitaz.org/"
 WANTED="slitaz-i18n"
 
@@ -21,4 +22,13 @@ genpkg_rules()
 	mk_locale_dir
 	get_slitaz_messages
 	get_core_messages
+}
+
+# Back to C if it's the last used locale.
+post_remove()
+{
+	if grep -q $LOCALEDEF /etc/locale.conf; then
+		echo "LANG=C" > /etc/locale.conf
+		echo "LC_ALL=C" >> /etc/locale.conf
+	fi
 }
