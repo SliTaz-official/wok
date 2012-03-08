@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="dovecot"
-VERSION="1.2.17"
+VERSION="2.1.1"
 CATEGORY="network"
 SHORT_DESC="Dovecot IMAP and POP3 Server."
 MAINTAINER="l.lemarinel@gmail.com"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="www.dovecot.org"
-WGET_URL="http://www.dovecot.org/releases/1.2/$TARBALL"
+WGET_URL="http://www.dovecot.org/releases/${VERSION%.*}/$TARBALL"
 BUILD_DEPENDS="openssl-dev libcap-dev openldap-dev \
  libmysqlclient mysql-dev sqlite-dev pam-dev postgresql-dev"
 DEPENDS="libssl libcap"
@@ -18,7 +18,8 @@ compile_rules()
 {
 	cd $src
 	./configure  --prefix=/usr \
-		--sysconfdir=/etc/dovecot \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
 		--libexecdir=/usr/lib/$PACKAGE \
 		--with-ssl=openssl \
 		--with-ldap=plugin \
@@ -27,8 +28,8 @@ compile_rules()
 		--with-pgsql \
 		--with-sqlite \
 		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$DESTDIR install
+	make && make install
+#	make DESTDIR=$DESTDIR install
 	
 }
 
@@ -37,20 +38,40 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib \
 		$fs/var/log/dovecot \
-		$fs/var/run/dovecot 
-
+		$fs/var/run/dovecot \
+		$fs/etc/ssl/misc
+		
 	
 	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
 	cp -a $install/etc $fs/
 	
 	cp -pa $stuff/init.d $fs/etc
 
-	cp -pa $fs/etc/dovecot/dovecot-example.conf $fs/etc/dovecot/dovecot.conf
+	#cp -pa $fs/etc/dovecot/dovecot-example.conf $fs/etc/dovecot/dovecot.conf
+	cp -pa $install/usr/share/doc/dovecot/example-config/* $fs/etc/dovecot/
+	#cp -pa $src/doc/example-config/conf.d/*.conf $fs/etc/dovecot/conf.d
+	#cp -pa $src/doc/example-config/conf.d/*.ext $fs/etc/dovecot/conf.d
+	cp -pa $src/doc/*.cnf $fs/etc/ssl
+	cp -pa $src/doc/mkcert.sh $fs/etc/ssl/misc/dovmkcert.sh
 	
 	# Remove archive file *.*a
 	find $fs -name "*.*a" -exec rm -f {} \;
 	
+	# Fix perms
+	chmod 755 $fs/etc/ssl/misc/*
+	
+	# Customising config.
+	sed -i -e "s/^#default_vsz_limit.*/default_vsz_limit = 50M"/ \
+		$fs/etc/dovecot/conf.d/10-master.conf
+	
+	
+	sed -i -e "s!^#log_path =.*!log_path = /var/log/dovecot/dovecot.log"! \
+		$fs/etc/dovecot/conf.d/10-logging.conf
+	
+	sed -i -e "s/^#listen.*/listen = *"/ \
+		$fs/etc/dovecot/dovecot.conf
 }
 
 #nd post install commands for Tazpkg.
@@ -66,6 +87,7 @@ post_install()
 		echo -n "Adding user/group $user..."
 		chroot $1/ addgroup -S $group
 		chroot $1/ adduser -S -D -H -G $group $user
+		chroot $1/ adduser -S -D -H -G nogroup dovenull 
 		status
 	fi
 	
@@ -94,4 +116,5 @@ post_remove()
 	
 	echo "Removing user/group daemon"
 	deluser dovecot 
+	deluser dovenull
 }
