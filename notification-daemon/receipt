@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="notification-daemon"
+VERSION="0.5.0"
+CATEGORY="x-window"
+SHORT_DESC="Notification daemon for libnotify/notify-send"
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.galago-project.org/"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="dbus libnotify libcanberra libwnck GConf libogg libvorbis libltdl"
+BUILD_DEPENDS="dbus-dev libnotify-dev libcanberra-dev GConf-dev \
+libwnck-dev libogg-dev libvorbis-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure \
+		--sysconfdir=/etc \
+		--libexecdir=/usr/bin \
+		$CONFIGURE_ARGS && 
+	make && make install &&
+	rm -rf $install/usr/share/applications
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share
+		#$fs/usr/share/pixmaps $fs/usr/share/applications
+	#cp -a $install/etc $fs
+	cp -a $install/usr/bin/$PACKAGE $fs/usr/bin
+	cp -a $install/usr/lib $fs/usr
+	rm $fs/usr/lib/*/*/*.*a
+	cp -a $install/usr/share/dbus-1 $fs/usr/share
+	#cp -a $install/usr/share/$PACKAGE $fs/usr/share
+	#cp $install/usr/share/icons/hicolor/32x32/apps/* \
+	#	$fs/usr/share/pixmaps
+}
