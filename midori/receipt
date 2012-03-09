@@ -1,15 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="midori"
-VERSION="0.4.3"
+VERSION="0.4.4"
 CATEGORY="x-window"
 SHORT_DESC="Light Web Browse using GTK+/WebKit."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-DEPENDS="libsexy libwebkit libsoup sqlite xorg-libXdamage xorg-libXss gcc-lib-base libgnutls"
-BUILD_DEPENDS="python libsexy-dev libsexy libwebkit-dev libsoup-dev sqlite-dev intltool libgio-dev dbus-dev dbus-glib-dev pkg-config xorg-libXss xorg-libXss-dev xorg-libXdamage-dev xorg-libX11-dev gtk+-dev vala"
 WEB_SITE="http://software.twotoasts.de/?page=midori"
 WGET_URL="http://archive.xfce.org/src/apps/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="libsexy libwebkit libsoup sqlite xorg-libXdamage xorg-libXss \
+gcc-lib-base libgnutls"
+BUILD_DEPENDS="python libsexy-dev libwebkit-dev libsoup-dev sqlite-dev \
+intltool libgio-dev dbus-dev dbus-glib-dev pkg-config xorg-libXss-dev \
+xorg-libXdamage-dev xorg-libX11-dev gtk+-dev vala"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -32,13 +36,17 @@ genpkg_rules()
 	mkdir -p \
 		$fs/usr/share/pixmaps \
 		$fs/usr/share/icons
-	cp -a $_pkg/etc $fs
+	cp -a $install/etc $fs
 	cp $stuff/config $fs/etc/xdg/midori
-	cp $stuff/bookmarks.xbel $fs/etc/xdg/midori
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
-	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
-	cp -a $_pkg/usr/share/icons/hicolor $fs/usr/share/icons
+	cp $stuff/search $fs/etc/xdg/midori
+	# Midori use sqlite to store bookmarks
+	#cp $stuff/bookmarks.xbel $fs/etc/xdg/midori
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/share/$PACKAGE $fs/usr/share
+	# Icons
+	cp -a $install/usr/share/icons/hicolor $fs/usr/share/icons
+	rm -rf $fs/usr/share/icons/hicolor/scalable
 	cd $fs/usr/share/pixmaps
 	ln -s ../icons/hicolor/22x22/apps/midori.png  .
 }
