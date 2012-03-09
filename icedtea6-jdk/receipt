@@ -46,11 +46,21 @@ compile_rules()
 	sed -i -e 's/mkdir -p drops/true/' -e 's/ jar xf/ fastjar xf/'  Makefile*
 	
 	# Check than all sources files are available, or exit.
-	for i in jdk6-jaxws jdk6-jaxp jdk6-jaf; do
-		cp $SOURCES_REPOSITORY/$i-$openjdk_version.zip drops || exit 1
-	done
-	# openjdk-6-src is in BUILD_DEPENDS and must be build like jdk6-* pkgs.
-	cp $SOURCES_REPOSITORY/openjdk-6-src-$openjdk_version-$openjdk_date.tar.gz .
+	if [ -x /usr/bin/cook ]; then
+		for i in jdk6-jaxws jdk6-jaxp jdk6-jaf; do
+			cp $SOURCES_REPOSITORY/$i-$openjdk_version.zip drops || return 1
+		done
+		# openjdk-6-src is in BUILD_DEPENDS and must be build like jdk6-* pkgs.
+		cp $SOURCES_REPOSITORY/openjdk-6-src-$openjdk_version-$openjdk_date.tar.gz .
+	else
+		report open-bloc
+		for i in jdk6-jaxws jdk6-jaxp jdk6-jaf openjdk-6-src; do
+			tazwok get-src $i
+			cp $SOURCES_REPOSITORY/$i-$openjdk_version.zip drops
+		done
+		cp $SOURCES_REPOSITORY/openjdk-6-src-$openjdk_version-$openjdk_date.tar.gz .
+		report step "Running compilation"
+	fi
 
 	mem=$(free | awk '/Mem:/ { printf "%d\n",$2/1024 }')
 	cat > slitaz.sh <<EOT
@@ -75,7 +85,7 @@ EOT
 		--with-xerces2-jar=/usr/share/java/xercesImpl.jar \
 		--with-rhino=/usr/share/java/js.jar \
 		--with-abs-install-dir=$JVM_PREFIX \
-		$CONFIGURE_ARGS || exit 1
+		$CONFIGURE_ARGS || return 1
 	make -j 1 ARCH_PREFIX= 2>&1 | sed s/ERROR/error/
 	
 	echo "Copying needed files to install dir..."
@@ -118,6 +128,9 @@ EOT
 		ln -s $JVM_PREFIX/jre/bin/$jbin $JVM_DESTDIR/bin/$jbin
 		ln -s $JVM_PREFIX/jre/bin/$jbin $DESTDIR/usr/jre-bin
 	done
+	if [ ! -x /usr/bin/cook ]; then
+		report close-bloc
+	fi
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
