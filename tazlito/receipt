@@ -1,35 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="tazlito"
-VERSION="4.4"
+VERSION="4.5"
 CATEGORY="base-system"
 SHORT_DESC="SliTaz Live Tool."
 MAINTAINER="pascal.bellard@slitaz.org"
-DEPENDS="lzma cdrkit"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.slitaz.org/"
-WGET_URL="http://hg.slitaz.org/tazlito/archive/$VERSION.tar.gz"
+WGET_URL="http://mirror.slitaz.org/sources/tazlito/$TARBALL"
 CONFIG_FILES="/etc/tazlito/distro-packages.list"
 TAGS="slitaz"
 
+DEPENDS="lzma cdrkit"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make DESTDIR=$DESTDIR install
+}
+
 # Rules to gen a SliTaz package suitable for Tazpkg.
-#
-# Tazlito is SliTaz Live Tool. On an other GNU/Linux install
-# can be do with : make install from the sources directory.
-#
 genpkg_rules()
 {
-	mkdir -p \
-		$fs/usr/bin \
-		$fs/usr/share/doc \
-		$fs/etc/tazlito
-	cp -a $src/tazlito $fs/usr/bin
-	cp -a $src/tazlitobox $fs/usr/bin
-	cp -a $src/tazlito.conf $fs/etc/tazlito
-	cp -a $src/doc $fs/usr/share/doc/tazlito
-	cp -a $src/applications $fs/usr/share
-	cp -a $src/pixmaps $fs/usr/share
-	chmod 755 $fs/usr/bin/*
+	mkdir -p $fs
+	cp -a $install/* $fs
+	chown -R root.root $fs
 	# Declare /etc/tazlito/distro-packages.list
 	touch $fs/etc/tazlito/distro-packages.list
 }
