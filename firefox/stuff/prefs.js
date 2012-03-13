@@ -12,3 +12,4 @@
 user_pref("general.useragent.extra.firefox", "Firefox/8.0.1 (SliTaz GNU/Linux)");
 user_pref("intl.charsetmenu.browser.cache", "ISO-8859-1, UTF-8");
 user_pref("font.name.serif.x-western", "DejaVu Sans");
+user_pref("browser.search.selectedEngine", "DuckDuckGo (SSL)");
