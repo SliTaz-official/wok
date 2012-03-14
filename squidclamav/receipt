@@ -42,12 +42,16 @@ genpkg_rules()
 	sed -i -e "s|^redirect.*|redirect http://localhost/cgi-bin/squidclamav/clwarn.cgi|" \
 		-e "s|^#squidguard.*|squidguard /usr/bin/squidGuard|" \
 		$fs/etc/squidclamav.conf
+		
+	rm -f $fs/usr/lib/c_icap/*.la		
+
 
 }
 
 #Post install command
 post_install()
 {
+	echo 'Service squidclamav squidclamav.so' >> $1/etc/c-icap/c-icap.conf
 	if ( ps | grep -q squid ); then
 		/etc/init.d/squid restart
 	fi
@@ -56,7 +60,11 @@ post_install()
 #Post remove command
 post_remove()
 {
+	sed -i -e "s/.*squidclamav.*//" $1/etc/c-icap/c-icap.conf"
 	if ( ps | grep -q squid ); then
 		/etc/init.d/squid restart
+	fi
+	if ( ps | grep -q c-icap ); then
+		/etc/init.d/c-icapd restart
 	fi
 }
