@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="minicom"
-VERSION="2.4"
+VERSION="2.6"
 CATEGORY="development"
 SHORT_DESC="menu driven communications program"
 MAINTAINER="f.lombard@free.fr"
@@ -16,8 +16,12 @@ compile_rules()
 {
 	cd $src
 	sed -i 's/getline/get_line/' src/minicom.c
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./configure \
+		--sysconfdir=/etc \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
 }
@@ -29,3 +33,12 @@ genpkg_rules()
 	cp -a $_pkg/usr/bin $fs/usr
 }
 
+post_install()
+{
+	touch /etc/minirc.dfl
+}
+
+pre_remove()
+{
+	[ -e /etc/minirc.dfl ] && rm -f /etc/minirc.dfl
+}
