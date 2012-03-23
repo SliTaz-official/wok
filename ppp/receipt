@@ -46,9 +46,11 @@ genpkg_rules()
 	mkdir -p $fs/etc/ppp/scripts
 	cp $stuff/README.scripts $fs/etc/ppp
 	cp -a $src/etc.ppp/* $fs/etc/ppp
+
 	# PPP scripts.
 	cp -a $src/scripts/ppp-on $fs/etc/ppp/scripts
 	cp -a $src/scripts/ppp-on-dialer $fs/etc/ppp/scripts
+	sed -i 's:ppp/ppp-on-dialer:ppp/scripts/ppp-on-dialer:' $fs/etc/ppp/scripts/ppp-on
 	
 	cp -a $src/scripts/ppp-off $fs/etc/ppp/scripts
 	cp -a $src/scripts/callback $fs/etc/ppp/scripts
@@ -57,10 +59,11 @@ genpkg_rules()
 	cp -a $src/scripts/ip-up.local.add $fs/etc/ppp/ip-up
 	cp -a $src/scripts/ip-down.local.add $fs/etc/ppp/ip-down
 	chmod +x $fs/etc/ppp/ip*
+
 	# insert #!/bin/sh  on top line in ip* scripts
 	sed -i '1i\#!/bin/sh' $fs/etc/ppp/ip*	
 	# add empty peers dir
 	mkdir -p $fs/etc/ppp/peers
-	sed -i 's:ppp/ppp-on-dialer:ppp/script/ppp-on-dialer:' $fs/etc/ppp/scripts/ppp-on
-	
+	# hide data from regular users
+	chmod -R go-rwx $fs/etc/ppp/*
 }
