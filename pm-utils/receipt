@@ -3,23 +3,22 @@
 PACKAGE="pm-utils"
 VERSION="1.4.1"
 CATEGORY="system-tools"
-SHORT_DESC="scripts that handle suspend and resume on behalf of HAL."
-MAINTAINER="domcox@users.sourceforge.net"
+SHORT_DESC="Collection of scripts that handle suspend and resume."
+MAINTAINER="domcox@slitaz.org"
 DEPENDS="bash kbd"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://pm-utils.freedesktop.org/"
 WGET_URL="http://pm-utils.freedesktop.org/releases/$TARBALL"
+CONFIG_FILES="/etc/pm"
 TAGS="power-management"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	sed -i 's/grep -vxFf/grep -vFf/g' pm/functions.in
 	./configure \
 		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -28,18 +27,10 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $_pkg/usr/lib/pm-utils $fs/usr
 	mkdir -p $fs/etc
-	cp -a $_pkg/usr/etc/pm $fs/etc
-}
-
-post_install()
-{
-	rmdir /etc/pm/config.d
-	rmdir /etc/pm/power.d
-	rmdir /etc/pm/sleep.d
-	rmdir /etc/pm
+	cp -a $_pkg/etc/pm $fs/etc
 }
