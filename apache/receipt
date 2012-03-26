@@ -64,6 +64,9 @@ pre_install()
 
 post_install()
 {
+	local lang=$(. /etc/locale.conf 2>/dev/null; echo ${LANG#*_})
+	local tz=$(cat /etc/TZ 2>/dev/null)
+	local hostname=$(cat /etc/hostname 2>/dev/null)
 	echo "Processing post-install commands..."
 	# Just in case.
 	chown www.www $1/var/log/$PACKAGE
@@ -72,10 +75,10 @@ post_install()
 	[ -s $1/etc/ssl/apache/apache.pem ] ||
 	openssl req -new -x509 -keyout $1/etc/ssl/apache/apache.pem \
 		-out $1/etc/ssl/apache/apache.pem -days 3650 -nodes <<EOT
-$(. /etc/locale.conf ; echo ${LANG#*_})
-$(cat /etc/TZ)
+${lang:-us}
+${tz:-UTC}
 
-$(cat /etc/hostname)
+${hostname:-slitaz}
 
 
 
