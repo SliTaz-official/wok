@@ -1,0 +1,27 @@
+--- functions.in.orig
++++ functions.in.new
+@@ -215,8 +215,22 @@
+ 	    for p in "$@"; do
+ 		echo "$p" >> "$PARAMETERS.rm"
+ 	    done
+-	    # let grep do the dirty work.
+-	    grep -vxFf "$PARAMETERS.rm" "$PARAMETERS" > "$PARAMETERS.new"
++	    # let awk do the dirty work.
++		cat "$PARAMETERS" | awk -v VAR="$(cat "$PARAMETERS.rm")" '
++		{
++			del=0
++			split(VAR,rm)
++			for(i in rm)
++			{
++				if($1==rm[i]){
++					del++
++				}
++			}
++			if(del==0)
++			{
++				print $1
++			}
++		}' > "$PARAMETERS.new"
+ 	fi
+ 	cp -f "$PARAMETERS.new" "$PARAMETERS"
+ }

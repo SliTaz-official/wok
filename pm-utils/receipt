@@ -16,7 +16,15 @@ TAGS="power-management"
 compile_rules()
 {
 	cd $src
-	sed -i 's/grep -vxFf/grep -vFf/g' pm/functions.in
+	# workaround grep -x not implemented in busybox
+	echo -n "Applying grep -x patch.."
+	patch -p1 pm/functions.in $stuff/grep-x.patch > /dev/null \
+		&& echo done. || echo failed.
+	# remove acoustic management not implemented in busybox
+	echo -n "Applying harddrive patch.."
+	patch -p1 pm/power.d/harddrive $stuff/harddrive.patch > /dev/null \
+		&& echo done. || echo failed.
+	# build
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -28,10 +36,29 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	# main
 	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/sbin $fs/usr
 	cp -a $_pkg/usr/lib/pm-utils $fs/usr/lib
+
+	# sysconfig
 	mkdir -p $fs/etc
 	cp -a $_pkg/etc/pm $fs/etc
+
+	# remove incompatible hooks
+	echo "remove incompatible hooks"
+	# NetworkManager hook
+	rm -f $fs/usr/lib/pm-utils/sleep.d/55NetworkManager
+	# grub hook (Redhat specific)
+	rm -f $fs/usr/lib/pm-utils/sleep.d/01grub
+	# readahead hook (not busybox compliant)
+	rm -f $fs/usr/lib/pm-utils/power.d/readahead
+	# sata_alpm (causes disk errors on many hardware)
+	rm -f $fs/usr/lib/pm-utils/power.d/sata_alpm
+
+	# add video quirks
+	echo -n "Add video quirks"
+	cp -a $stuff/video-quirks $fs/usr/lib/pm-utils
+	status
 }
