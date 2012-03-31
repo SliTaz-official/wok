@@ -273,6 +273,36 @@ static unsigned char *hash_bin_to_hex(unsigned char *hash_value,
 	return (unsigned char *)hex_value;
 }
 
+static char *unrock(const char *name)
+{
+	static char buffer[256];
+	char *out = buffer;
+	int i, j;
+	for (i = 0, j = 8; *name && (buffer + 255) > (out + i); name++) {
+		if (*name == '/') {
+			out[i++] = *name;
+			out += i;
+			i = 0; j = 8;
+		}
+		else if (*name == '.') {
+			if (i > 8) i = 8;
+			for (j = 0; j < i; j++)
+				if (out[j] == '.') out[j] = '_';
+			out[i++] = *name;
+			j = i + 3;
+		}
+		else if (i >= j) continue;
+		else if ((*name >= 'A' && *name <= 'Z') || *name == '_' ||
+		    (*name >= '0' && *name <= '9'))
+			out[i++] = *name;
+		else if (*name >= 'a' && *name <= 'z')
+			out[i++] = *name + 'A' - 'a';
+		else out[i++] = '_';
+	}
+	out[i] = 0;
+	return buffer;
+}
+
 static uint8_t *hash_file(const char *filename)
 {
 	int src_fd, count;
@@ -280,6 +310,9 @@ static uint8_t *hash_file(const char *filename)
 	uint8_t *hash_value, in_buf[4096];
 
 	src_fd = open(filename, O_RDONLY);
+	if (src_fd < 0) {
+		src_fd = open(unrock(filename), O_RDONLY);
+	}
 	if (src_fd < 0) {
 		return NULL;
 	}
@@ -311,6 +344,8 @@ int main(int argc, char **argv)
 		FILE *fp;
 		char *line, buffer[256];
 		fp = fopen(*argv,"r");
+		if (fp == NULL)
+			fp = fopen(unrock(*argv),"r");
 
 		while ((line = fgets(buffer,256,fp)) != NULL) {
 			uint8_t *hash_value;
@@ -333,6 +368,8 @@ int main(int argc, char **argv)
 			}
 			*filename_ptr = '\0';
 			*++filename_ptr = '/';
+			if (filename_ptr[1] == '/')
+				filename_ptr++;
 
 			status = "NOT CHECKED" BLANK "\n";
 			hash_value = hash_file(filename_ptr);
