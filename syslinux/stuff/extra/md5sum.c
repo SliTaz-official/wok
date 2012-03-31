@@ -299,16 +299,6 @@ static uint8_t *hash_file(const char *filename)
 	return hash_value;
 }
 
-static int valid_name(char *name)
-{
-	int dots, suffix;
-	for (dots = 0, suffix = 0; *name; name++) {
-		if (dots) suffix++;
-		if (*name == '.') dots++;
-	}
-	return dots < 2 && suffix <= 3;
-}
-
 int main(int argc, char **argv)
 {
 	int return_value = EXIT_SUCCESS;
@@ -344,11 +334,11 @@ int main(int argc, char **argv)
 			*filename_ptr = '\0';
 			*++filename_ptr = '/';
 
-			status = "SKIPPED" BLANK;
-			if (valid_name(filename_ptr)) {
-				hash_value = hash_file(filename_ptr);
+			status = "NOT CHECKED" BLANK "\n";
+			hash_value = hash_file(filename_ptr);
+			if (hash_value) {
 				status = "OK" BLANK;
-				if (hash_value == NULL || strcmp((char*)hash_value, line)) {
+				if (strcmp((char*)hash_value, line)) {
 					return_value = EXIT_FAILURE;
 					status = "FAILED" BLANK "\n";
 				}
