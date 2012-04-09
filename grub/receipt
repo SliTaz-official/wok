@@ -10,6 +10,8 @@ WEB_SITE="http://www.gnu.org/software/grub/"
 WGET_URL="ftp://alpha.gnu.org/gnu/grub/$TARBALL"
 CONFIG_FILES="/boot/grub"
 
+BUILD_DEPENDS="gcc3"
+
 # Rules to configure and make the package.
 compile_rules()
 {
@@ -19,7 +21,9 @@ compile_rules()
 		patch -p1 < $i
 		touch $(basename $i)
 	done
-	./configure --prefix=/usr --infodir=/usr/share/info \
+	sed -i 's/\[ .grub-probe.*\]/mount | grep $grubdir | grep -q xfs/' \
+		util/grub-install.in
+	./configure CC=gcc-3 --prefix=/usr --infodir=/usr/share/info \
 	--without-curses --mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install

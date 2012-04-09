@@ -9,7 +9,7 @@ TARBALL="$PACKAGE-$VERSION-src.zip"
 WEB_SITE="http://grub4dos.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-BUILD_DEPENDS="lzma"
+BUILD_DEPENDS="lzma gcc3"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,7 +20,9 @@ compile_rules()
 		patch -p1 < $i
 		touch $(basename $i)
 	done
-	sh ./configure \
+	sed -i 's/\[ .grub-probe.*\]/mount | grep $grubdir | grep -q xfs/' \
+		util/grub-install.in
+	sh ./configure CC=gcc-3 \
 		--enable-preset-menu=$stuff/menu.lst \
 		--without-curses \
 	$CONFIGURE_ARGS &&
