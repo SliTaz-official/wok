@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="gcc"
-VERSION="4.5.2"
+VERSION="4.6.2"
 CATEGORY="development"
 SHORT_DESC="The the GNU Compiler Collection."
 MAINTAINER="pankso@slitaz.org"
@@ -119,7 +119,6 @@ compile_rules()
 {
 	cd $src
 
-
 	# SliTaz is a Busybox based OS, why we so small and fast. Using gawk by
 	# default to build package will not ensure package work with Busybox awk
 	# and so should NOT be use to cook.
@@ -133,8 +132,15 @@ compile_rules()
 	[ "$3" == "--first-pass" ] && opt=$3
 	
 	# Use libiberty.a from binutils.
-	sed -i 's/install_to_$(INSTALL_DEST) //' \
-		libiberty/Makefile.in || return 1
+	sed -i 's/install_to_$(INSTALL_DEST) //' libiberty/Makefile.in || return 1
+	
+	case $ARCH in
+		i?86) sed -i 's/^T_CFLAGS =$/& -fomit-frame-pointer/' \
+			gcc/Makefile.in ;;
+	esac
+	
+	#sed -i 's@\./fixinc\.sh@-c true@' gcc/Makefile.in
+	
 	mkdir -p ../gcc-build && cd ../gcc-build
 
 	# This is the default GCC and we want a native build to cross compile after.
@@ -183,18 +189,18 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p  $fs/usr/share
-	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $install/usr/bin $fs/usr
 	
 	# Copy all libs. Remove libgcc_s.so and libstdc++.so they goes in
 	# the gcc-lib-base package.
-	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $install/usr/lib $fs/usr
 	rm -f $fs/usr/lib/libgcc_s.so*
 	rm -f $fs/usr/lib/libstdc++.so*
 	rm -f $fs/usr/lib/libgomp.so*
 	rm -f $fs/usr/lib/libobjc.so*
 
 	# Include files.
-	cp -a $_pkg/usr/include $fs/usr
+	cp -a $install/usr/include $fs/usr
 	
 	# Gfortran goes in gfortran package.
 	rm -f $fs/usr/bin/*gfortran
