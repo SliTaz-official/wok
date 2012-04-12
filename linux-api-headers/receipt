@@ -1,14 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="linux-api-headers"
-VERSION="2.6.37"
+VERSION="3.2.14"
+KBASEVER="${VERSION:0:3}"
 CATEGORY="development"
 SHORT_DESC="Kernel headers sanitized for use in userspace."
 MAINTAINER="devel@slitaz.org"
 SOURCE="linux"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
+TARBALL="$SOURCE-$KBASEVER.tar.xz"
 WEB_SITE="http://www.kernel.org/"
-WGET_URL="http://www.eu.kernel.org/pub/linux/kernel/v${VERSION:0:3}/$TARBALL"
+WGET_URL="http://www.kernel.org/pub/linux/kernel/v3.0/$TARBALL"
+
+BUILD_DEPENDS="bash"
+
+[ "$KBASEVER" != "$VERSION" ] && PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz"
 
 # Rules to compile & install the temporary toolchain.
 cook_tmp_toolchain()
@@ -24,6 +29,16 @@ cook_tmp_toolchain()
 compile_rules()
 {
 	cd $src
+	
+	if [ "$KBASEVER" != "$VERSION" ]; then
+		if [ -f $SOURCES_REPOSITORY/$(basename $PATCH) ]; then
+			xzcat $SOURCES_REPOSITORY/$(basename $PATCH) | patch -Np1
+		else
+			wget $PATCH -O $SRC/$(basename $PATCH)
+			xzcat $SRC/$(basename $PATCH) | patch -Np1
+		fi
+	fi
+
 	make mrproper &&
 	make headers_check &&
 	make INSTALL_HDR_PATH=$DESTDIR/usr headers_install
@@ -41,5 +56,5 @@ genpkg_rules()
 post_install()
 {
 	# Removed old linux-headers
-	rm -rf $1/var/lib/tazpkg/installed/linux-headers 2>/dev/null
+	rm -rf ${1}${INSTALLED}/linux-headers 2>/dev/null
 }
