@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="glibc"
-VERSION="2.13"
+VERSION="2.14.1"
 CATEGORY="meta"
 SHORT_DESC="The GNU C libraries. This package is used to compile the libc."
 MAINTAINER="pankso@slitaz.org"
@@ -10,7 +10,7 @@ WEB_SITE="http://www.gnu.org/software/libc/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 
 DEPENDS="glibc-base glibc-locale glibc-dev"
-BUILD_DEPENDS="linux-api-headers"
+BUILD_DEPENDS="linux-api-headers autoconf bash"
 
 # Genpkg order for tazwok.
 COOK_OPT="genpkg=glibc-base:glibc-extra-samba:glib-locale:glibc-dev"
@@ -20,8 +20,12 @@ cook_tmp_toolchain()
 {
 	cd $src
 	
-	# Fix a bug that prevents Glibc from building with GCC-4.5.2:
-	patch -Np1 -i $stuff/glibc-2.13-gcc_fix-1.patch
+	# Glibc Bug Fixes Patch from LFS
+	patch -Np1 -i $stuff/glibc-2.14.1-fixes-1.patch
+	# Glibc Bug Sort Relocatable Objects Patch
+	patch -Np1 -i $stuff/glibc-2.14.1-sort-1.patch
+	# Fix a bug that prevents Glibc from building with GCC-4.6.2
+	patch -Np1 -i stuff/glibc-2.14.1-gcc_fix-1.patch
 
 	# Build in a separate directory.
 	mkdir ../glibc-build && cd ../glibc-build
@@ -66,17 +70,27 @@ compile_rules()
 		[ -d "/var/lib/tazpkg/installed/gawk" ] || tazpkg get-install gawk
 	fi
 
-	# Following patches and sed fixes comes from LFS development book:
-	# http://www.linuxfromscratch.org/lfs/view/development/chapter06/glibc.html
-	DL=$(readelf -l /bin/sh | sed -n 's@.*interpret.*/tools\(.*\)]$@\1@p')
-	sed -i "s|libs -o|libs -L/usr/lib -Wl,-dynamic-linker=$DL -o|" \
-		scripts/test-installation.pl
-	unset DL
+	# Fixes and patches from LFS, Redhat
 	sed -i -e 's/"db1"/& \&\& $name ne "nss_test1"/' scripts/test-installation.pl
 	sed -i 's|@BASH@|/bin/bash|' elf/ldd.bash.in
 
-	# Fix a bug that prevents Glibc from building with GCC-4.5.2:
-	patch -Np1 -i $stuff/glibc-2.13-gcc_fix-1.patch
+	# Glibc misc Bug Fixes
+	patch -Np1 -i $stuff/glibc-2.14.1-fixes-1.patch
+	
+	# Glibc Bug Sort Relocatable Objects Patch
+	#patch -Np1 -i $stuff/glibc-2.14.1-sort-1.patch
+	
+	# Fix a bug that prevents Glibc from building with GCC-4.6.2
+	patch -Np1 -i $stuff/glibc-2.14.1-gcc_fix-1.patch
+	
+	# Revert commit causing issues with crappy DNS servers
+	patch -Np1 -i $stuff/glibc-2.14-revert-4768ae77.patch
+	
+	# re-export RPC interface until libtirpc is ready as a replacement
+	# http://sourceware.org/git/?p=glibc.git;a=commitdiff;h=acee4873 (only fedora branch...)
+	patch -Np1 -i $stuff/glibc-2.14-reexport-rpc-interface.patch
+	# http://sourceware.org/git/?p=glibc.git;a=commitdiff;h=bdd816a3 (only fedora branch...)
+	patch -Np1 -i $stuff/glibc-2.14-reinstall-nis-rpc-headers.patch
 
 	# Fix a stack imbalance that occurs under some conditions:
 	sed -i '195,213 s/PRIVATE_FUTEX/FUTEX_CLOCK_REALTIME/' \
@@ -105,7 +119,8 @@ compile_rules()
 		--enable-kernel=2.6.30 \
 		--libexecdir=/usr/lib/glibc \
 		--build=$HOST_SYSTEM \
-		--host=$HOST_SYSTEM &&
+		--host=$HOST_SYSTEM \
+		--target=$BUILD_SYSTEM &&
 	make && make install_root=$DESTDIR install
 	} || return 1
 
