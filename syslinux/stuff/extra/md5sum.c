@@ -299,14 +299,13 @@ static uint8_t *hash_file(const char *filename)
 	return hash_value;
 }
 
-int main(int argc, char **argv)
+static int main_md5sum(int argc, char **argv)
 {
 	int files = 0, tested = 0, good = 0;
 	static char clear_eol[] = "                                ";
 
 	(void) argc;
 	/* -c implied */
-	openconsole(&dev_rawcon_r, &dev_stdcon_w);
 
 	do {
 		FILE *fp;
@@ -356,5 +355,209 @@ int main(int argc, char **argv)
 	} while (*++argv);
 	printf("\r%d files OK, %d broken, %d not checked.%s\n",
 		good, tested - good, files - tested, clear_eol);
+	return 0;
 }
 
+/*
+ * ifmem.c
+ *
+ * Run one command if the memory is large enought, and another if it isn't.
+ *
+ * Usage:
+ *
+ *    label boot_kernel
+ *        kernel ifmem.c
+ *        append size_in_KB boot_large [size_in_KB boot_medium] boot_small
+ *
+ *    label boot_large
+ *        kernel vmlinuz_large_memory
+ *        append ...
+ *
+ *    label boot_small
+ *        kernel vmlinuz_small_memory
+ *        append ...
+ */
+
+#include <inttypes.h>
+#include <alloca.h>
+#include <syslinux/boot.h>
+
+struct e820_data {
+	uint64_t base;
+	uint64_t len;
+	uint32_t type;
+	uint32_t extattr;
+} __attribute__((packed));
+
+// Get memory size in Kb
+static unsigned long memory_size(void)
+{
+	uint64_t bytes = 0;
+	static com32sys_t ireg, oreg;
+	static struct e820_data ed;
+
+	ireg.eax.w[0] = 0xe820;
+	ireg.edx.l    = 0x534d4150;
+	ireg.ecx.l    = sizeof(struct e820_data);
+	ireg.edi.w[0] = OFFS(__com32.cs_bounce);
+	ireg.es       = SEG(__com32.cs_bounce);
+
+	ed.extattr = 1;
+
+	do {
+		memcpy(__com32.cs_bounce, &ed, sizeof ed);
+
+		__intcall(0x15, &ireg, &oreg);
+		if (oreg.eflags.l & EFLAGS_CF ||
+		    oreg.eax.l != 0x534d4150  ||
+		    oreg.ecx.l < 20)
+			break;
+
+		memcpy(&ed, __com32.cs_bounce, sizeof ed);
+
+		if (ed.type == 1)
+			bytes += ed.len;
+
+		ireg.ebx.l = oreg.ebx.l;
+	} while (ireg.ebx.l);
+
+	if (!bytes) {
+		memset(&ireg, 0, sizeof ireg);
+		ireg.eax.w[0] = 0x8800;
+		__intcall(0x15, &ireg, &oreg);
+		return ireg.eax.w[0];
+	}
+	return bytes >> 10;
+}
+
+static int main_ifmem(int argc, char *argv[])
+{
+	int i;
+	unsigned long ram_size;
+
+	if (argc < 4) {
+		perror("\nUsage: ifmem.c32 size_KB boot_large_memory boot_small_memory\n");
+		return 1;
+	}
+
+	// find target according to ram size
+	ram_size = memory_size();
+	printf("Total memory found %luK.\n",ram_size);
+	ram_size += (1 << 10); // add 1M to round boundaries...
+  
+	i = 1;
+	do { 
+		char *s = argv[i];
+		char *p = s;
+		unsigned long scale = 1;
+
+		while (*p >= '0' && *p <= '9') p++;
+		switch (*p | 0x20) {
+			case 'g': scale <<= 10;
+			case 'm': scale <<= 10;
+			default : *p = 0; break;
+		}
+		i++; // seek to label
+		if (ram_size >= scale * strtoul(s, NULL, 0)) break;
+		i++; // next size or default label
+	} while (i + 1 < argc);
+
+	if (i != argc)  syslinux_run_command(argv[i]);
+	else		syslinux_run_default();
+	return -1;
+}
+
+#include <syslinux/reboot.h>
+
+static int main_reboot(int argc, char *argv[])
+{
+    int warm = 0;
+    int i;
+
+    for (i = 1; i < argc; i++) {
+	if (!strcmp(argv[i], "-w") || !strcmp(argv[i], "--warm"))
+	    warm = 1;
+    }
+
+    syslinux_reboot(warm);
+}
+
+/* APM poweroff module.
+ * based on poweroff.asm,  Copyright 2009 Sebastian Herbszt
+ */
+
+static int main_poweroff(int argc, char *argv[])
+{
+	static com32sys_t ireg, oreg;
+	static char notsupported[] ="APM 1.1+ not supported";
+	unsigned i;
+	static struct {
+		unsigned short ax;
+		unsigned short bx;
+		unsigned short cx;
+		char *msg;
+	} inst[] = {
+		{ 0x5300,	// APM Installation Check (00h)
+		  0, 		// APM BIOS (0000h)
+		  0, "APM not present" },
+		{ 0x5301,	// APM Real Mode Interface Connect (01h)
+		  0, 		// APM BIOS (0000h)
+		  0, "APM RM interface connect failed" },
+		{ 0x530E,	// APM Driver Version (0Eh)
+		  0, 		// APM BIOS (0000h)
+		  0x0101,	// APM Driver Version version 1.1
+		  notsupported },
+		{ 0x5307,	// Set Power State (07h)
+		  1,		// All devices power managed by the APM
+		  3,		// Power state off
+		  "Power off failed" }
+	};
+
+	(void) argc;
+	(void) argv;
+	for (i = 0; i < sizeof(inst)/sizeof(inst[0]); i++) {
+		char *msg = inst[i].msg;
+		
+		ireg.eax.w[0] = inst[i].ax;
+		ireg.ebx.w[0] = inst[i].bx;
+		ireg.ecx.w[0] = inst[i].cx;
+		__intcall(0x15, &ireg, &oreg);
+		if ((oreg.eflags.l & EFLAGS_CF) == 0) {
+			switch (inst[i].ax) {
+			case 0x5300 :
+				if (oreg.ebx.w[0] != 0x504D /* 'PM' */) break;
+				msg = "Power management disabled";
+				if (oreg.ecx.w[0] & 8) break; // bit 3 APM BIOS Power Management disabled
+			case 0x530E :
+				msg = notsupported;
+				if (oreg.eax.w[0] < 0x101) break;
+			default : continue;
+			}
+		}
+		printf("%s.\n", msg);
+		return 1;
+	}
+	return 0;
+}
+
+int main(int argc, char *argv[])
+{
+	unsigned i;
+	static struct {
+		char *name;
+		int (*main)(int argc, char *argv[]);
+	} bin[] = {
+		{ "md5sum",	main_md5sum },
+		{ "ifmem",	main_ifmem  },
+		{ "reboot",	main_reboot },
+		{ "poweroff",	main_poweroff }
+	};
+
+	openconsole(&dev_null_r, &dev_stdcon_w);
+  
+	if (strstr(argv[0], "c32box")) { argc--; argv++; }
+	for (i = 0; i < sizeof(bin)/sizeof(bin[0]); i++)
+		if (strstr(argv[0], bin[i].name))
+			return bin[i].main(argc, argv);
+	return 1;
+}
