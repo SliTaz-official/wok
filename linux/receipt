@@ -1,17 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="linux"
-VERSION="2.6.37"
+VERSION="3.2.14"
+KBASEVER="${VERSION:0:3}"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 MAINTAINER="devel@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$KBASEVER.tar.xz"
 WEB_SITE="http://www.kernel.org/"
-WGET_URL="http://www.kernel.org/pub/linux/kernel/v${VERSION:0:3}/$TARBALL"
-CONFIG_FILES="/lib/modules/$VERSION-slitaz/modules.dep"
+WGET_URL="http://www.kernel.org/pub/linux/kernel/v3.0/$TARBALL"
+CONFIG_FILES="/lib/modules/$KBASEVER-slitaz/modules.dep"
 
 DEPENDS="depmod"
-BUILD_DEPENDS="slitaz-toolchain perl git lzma patch"
+BUILD_DEPENDS="slitaz-toolchain perl git lzma patch uclibc-cross-compiler-x86_64"
+[ "$KBASEVER" != "$VERSION" ] && PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -27,66 +29,89 @@ compile_rules()
 
 	# Check for Aufs and cook it if unbuilt.
 	echo "Checking for Aufs packages..."
-	_AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	if [ ! -d "$AUFSDIR" ] && [ -x /usr/bin/cook ]; then
+	_AUFSVER=`grep ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	if [ -x /usr/bin/cook ]; then
 		# Give info an redirect to /dev/null since aufs got it own log.
 		AUFSDIR=$WOK/aufs/source/aufs-${_AUFSVER}
-		echo "Cook: aufs $_AUFSVER"
-		cook aufs > /dev/null
-	elif [ ! -x /usr/bin/cook ]; then
-		# We only need aufs source. Also cooking now is a bad idea since it
-		# needs linux-module-headers.
+		[ -d "$AUFSDIR" ] && rm -rf $AUFSDIR
+		#echo "Cook: aufs $_AUFSVER"
+		cook aufs --getsrc --extract > /dev/null
+	elif [ -x /usr/bin/tazwok ]; then
+		# we just need aufs source. Also cooking now is a bad idea since it
+		# needs linux-module-headers. The one your cooking not the one from the web.
 		AUFSDIR=$WOK/aufs/aufs-${_AUFSVER}
 		[ -d "$AUFSDIR" ] && rm -rf $AUFSDIR
 		tazwok get-src aufs --target=$AUFSDIR || { report close-bloc; return 1; }
 	fi
-	
+	echo "cook:linux" > $command
+
 	echo "Copying Aufs files and patches..."
 	cp -a $AUFSDIR/Documentation $AUFSDIR/fs $AUFSDIR/include $src
-	cp -a $AUFSDIR/*.patch $stuff
-	
+	cp -a $AUFSDIR/aufs3-*.patch $stuff
+
 	# SliTaz db
-	rm -rf $WOK/$PACKAGE/slitaz && mkdir $WOK/$PACKAGE/slitaz
+	[ -d $WOK/$PACKAGE/source/slitaz ] && rm -rf $WOK/$PACKAGE/source/slitaz 2> /dev/null
+	mkdir -p $WOK/$PACKAGE/source/slitaz
 	echo "$WGET_URL" > $WOK/$PACKAGE/slitaz/url
-	cp $stuff/gztazmod.sh $stuff/list_modules.sh $WOK/$PACKAGE/slitaz
-	cp $stuff/bootloader.sh $WOK/$PACKAGE/slitaz
+	cp $stuff/gztazmod.sh $stuff/list_modules.sh $WOK/$PACKAGE/source/slitaz
+	cp $stuff/bootloader.sh $WOK/$PACKAGE/source/slitaz
 	
 	# Apply patches
 	echo "Applying patches..."
 	while read patch_file; do
-		echo "$patch_file" >> $WOK/$PACKAGE/slitaz/patches
-		cp $stuff/$patch_file $WOK/$PACKAGE/slitaz
+		echo "$patch_file" >> $WOK/$PACKAGE/source/slitaz/patches
+		cp $stuff/$patch_file $WOK/$PACKAGE/source/slitaz
 		if [ -f done.$patch_file ]; then
 			echo "Skipping $patch_file"
 			continue
 		fi
 		echo "Apply $patch_file"
-		patch -p1 < $WOK/$PACKAGE/slitaz/$patch_file || { report close-bloc; return 1; }
+		if [ -x /usr/bin/cook ]; then
+			patch -p1 < $WOK/$PACKAGE/source/slitaz/$patch_file || return 1
+		elif [ -x /usr/bin/tazwok ]; then
+			patch -p1 < $WOK/$PACKAGE/source/slitaz/$patch_file || { report close-bloc; return 1; }
+		fi
 		touch done.$patch_file
 	done <<EOT
-$PACKAGE-diff-$VERSION.u
-$PACKAGE-header-$VERSION.u
-$PACKAGE-freeinitrd-$VERSION.u
-aufs2-base.patch
-aufs2-standalone.patch
-001-squashfs-decompressors-add-xz-decompressor-module.patch
-002-squashfs-decompressors-add-boot-time-xz-support.patch
-003-squashfs-x86-support-xz-compressed-kernel.patch
-004-squashfs-add-xz-compression-support.patch
-005-squashfs-add-xz-compression-configuration-option.patch
+$PACKAGE-diff.u
+$PACKAGE-header.u
+$PACKAGE-freeinitrd.u
+aufs3-base.patch
+aufs3-standalone.patch
+aufs3-loopback.patch
+aufs3-proc_map.patch
+channel-negative-one-maxim.patch
+mac80211.compat08082009.wl_frag+ack_v1.patch
 EOT
+
+	if [ "$KBASEVER" != "$VERSION" ]; then
+		if [ -f $SOURCES_REPOSITORY/$(basename $PATCH) ]; then
+			xzcat $SOURCES_REPOSITORY/$(basename $PATCH) | patch -Np1
+			touch done.patch-$VERSION
+		else
+			wget $PATCH -O $SRC/$(basename $PATCH)
+			xzcat $SRC/$(basename $PATCH) | patch -Np1
+			touch done.patch-$VERSION
+		fi
+	fi
+
+	sed -i 's|SUBLEVEL =.*|SUBLEVEL =|g' Makefile
 
 	[ ! -x /usr/bin/cook ] && report step "Make kernel proper and then build lguest"
 	
 	make mrproper
-	cd Documentation/lguest
-	make $MAKEFLAGS lguest || { report close-bloc; return 1; }
+	cd Documentation/virtual/lguest
+	if [ -x /usr/bin/cook ]; then
+		make lguest || return 1
+	elif [ -x /usr/bin/tazwok ]; then
+		make lguest || { report close-bloc; return 1; }
+	fi
 	cd $src
 
 	[ ! -x /usr/bin/cook ] && report step "Make bzImage without modules first"
 
 	# Build bzImage without modules first
-	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
+	cp -f $stuff/$PACKAGE-slitaz.config .config
 	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
 	
 	# We can't keep every driver in staging 
@@ -94,29 +119,78 @@ EOT
 	       -e 's/^CONFIG_R8187SE/#&/' \
 	       -e 's/^CONFIG_RT2870/#&/' .config
 	yes '' | make oldconfig
-	make $MAKEFLAGS bzImage || { report close-bloc; return 1; }
-	[ -d $PWD/_pkg ] || mkdir -p $PWD/_pkg
-	mv arch/x86/boot/bzImage $PWD/_pkg
+	if [ -x /usr/bin/cook ]; then
+		make -j 4 bzImage || exit 1
+	elif [ -x /usr/bin/tazwok ]; then
+		make -j 4 bzImage || { report close-bloc; return 1; }
+	fi
+	[ -d $DESTDIR ] || mkdir -p $DESTDIR
+	mv arch/x86/boot/bzImage $DESTDIR
 	mv System.map System.map-without-modules
 
 	[ ! -x /usr/bin/cook ] && report step "Now build bzImage with modules"
 	
 	# Build bzImage with modules
-	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config .config
-	make oldconfig
-	ln .config $WOK/$PACKAGE/slitaz/config
-	make $MAKEFLAGS bzImage &&
-	make $MAKEFLAGS modules &&
-	make INSTALL_MOD_PATH=$PWD/_pkg modules_install &&
-	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install &&
-	[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
-	mkdir -p $PWD/_pkg/boot 2> /dev/null
-	mv arch/x86/boot/bzImage $PWD/_pkg/boot/vmlinuz-$VERSION-slitaz
+	cp -f $stuff/$PACKAGE-slitaz.config .config
+	#make oldconfig
+	ln .config $WOK/$PACKAGE/source/slitaz/config
+	make -j 4 bzImage &&
+	make -j 4 modules &&
+	make INSTALL_MOD_PATH=$DESTDIR modules_install &&
+	make INSTALL_HDR_PATH=$DESTDIR/usr headers_install &&
+	if [ -x /usr/bin/cook ]; then
+		[ -s arch/x86/boot/bzImage ] || return 1
+	elif [ -x /usr/bin/tazwok ]; then
+		[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
+	fi
+	mkdir -p $DESTDIR/boot 2> /dev/null
+	mv arch/x86/boot/bzImage $DESTDIR/boot/vmlinuz-$VERSION-slitaz
+	
+	[ ! -x /usr/bin/cook ] && report step "Make bzImage64 without modules first"
+
+	# Build bzImage64 without modules first
+	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config64 .config
+	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
+	
+	# We can't keep every driver in staging 
+	sed -i -e 's/^CONFIG_RTL8192/#&/' \
+	       -e 's/^CONFIG_R8187SE/#&/' \
+	       -e 's/^CONFIG_RT2870/#&/' .config
+	yes '' | make ARCH=x86_64 oldconfig
+	if [ -x /usr/bin/cook ]; then
+		make -j 4 ARCH=x86_64 CROSS_COMPILE=uclibc-x86_64- bzImage || exit 1
+	elif [ -x /usr/bin/tazwok ]; then
+		make -j 4 ARCH=x86_64 CROSS_COMPILE=uclibc-x86_64- bzImage || { report close-bloc; return 1; }
+	fi
+	[ -d $PWD/_pkg ] || mkdir -p $DESTDIR/linux64
+	mv arch/x86/boot/bzImage $DESTDIR/linux64
+	mv System.map System.map-without-modules64
+
+	[ ! -x /usr/bin/cook ] && report step "Now build bzImage64 with modules"
+	
+	# Build bzImage64 with modules
+	cp -f $stuff/$PACKAGE-$VERSION-slitaz.config64 .config
+	#make ARCH=x86_64 oldconfig
+	ln .config $WOK/$PACKAGE/slitaz/config64
+	make -j 4 ARCH=x86_64 CROSS_COMPILE=uclibc-x86_64- bzImage &&
+	make -j 4 ARCH=x86_64 CROSS_COMPILE=uclibc-x86_64- modules &&
+	make ARCH=x86_64 INSTALL_MOD_PATH=$DESTDIR/linux64 modules_install &&
+	make ARCH=x86_64 INSTALL_HDR_PATH=$DESTDIR/linux64/usr headers_install &&
+	if [ -x /usr/bin/cook ]; then
+		[ -s arch/x86/boot/bzImage ] || return 1
+	elif [ -x /usr/bin/tazwok ]; then
+		[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
+	fi
+	mkdir -p $DESTDIR/linux64/boot 2> /dev/null
+	mv arch/x86/boot/bzImage $DESTDIR/linux64/boot/vmlinuz-$VERSION-slitaz
+	ln System.map System.map-modules64
+	ln Module.symvers Module.symvers-modules64
 	
 	[ ! -x /usr/bin/cook ] && report step "Compressing all modules"
 	
 	# Compress all modules.
-	$stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
+	$stuff/gztazmod.sh $DESTDIR/lib/modules/$KBASEVER-slitaz
+	$stuff/gztazmod.sh $DESTDIR/linux64/lib/modules/$KBASEVER-slitaz
 	ln System.map System.map-modules
 	ln Module.symvers Module.symvers-modules
 	
@@ -131,28 +205,36 @@ genpkg_rules()
     local path
     cp -a $_pkg/boot $fs
     # Compress all modules.
-    #$stuff/gztazmod.sh $_pkg/lib/modules/$VERSION-slitaz
-    path=$fs/lib/modules/$VERSION-slitaz/kernel
+    #$stuff/gztazmod.sh $_pkg/lib/modules/$KBASEVER-slitaz
+    path=$fs/lib/modules/$KBASEVER-slitaz/kernel
     mkdir -p $path
-    cp -a $_pkg/lib/modules/$VERSION-slitaz/mo* \
-		$fs/lib/modules/$VERSION-slitaz
+    cp -a $_pkg/lib/modules/$KBASEVER-slitaz/mo* \
+		$fs/lib/modules/$KBASEVER-slitaz
     # Get the base modules
     export src
     export _pkg
-    mkdir $WOK/$PACKAGE/tmp
+    mkdir -p $WOK/$PACKAGE/source/tmp
     $stuff/list_modules.sh \
-	$(cat stuff/modules-$VERSION.list) > $WOK/$PACKAGE/tmp/modules.list
+	$(cat $stuff/modules.list) > $WOK/$PACKAGE/source/tmp/modules.list
     while read module; do
     	dir=$(dirname $module)
     	[ -d $path/$dir ] || mkdir -p $path/$dir
-        cp -a $_pkg/lib/modules/$VERSION-slitaz/kernel/$module $path/$dir
-    done < $WOK/$PACKAGE/tmp/modules.list
+        cp -a $_pkg/lib/modules/$KBASEVER-slitaz/kernel/$module $path/$dir
+    done < $WOK/$PACKAGE/source/tmp/modules.list
     # Remove unresolved links
-    rm -f $fs/lib/modules/$VERSION-slitaz/build
-    rm -f $fs/lib/modules/$VERSION-slitaz/source
+    rm -f $fs/lib/modules/$KBASEVER-slitaz/build
+    rm -f $fs/lib/modules/$KBASEVER-slitaz/source
+    # Cook all packages with a kernel module
+    for i in $(cd $WOK; grep -l 'tazwok cook linux$' */receipt)
+    do
+    	echo tazwok cook ${i%/receipt}
+    done
+    # Fixed modules.dep to use right path
+    # saves 100kb of space too
+    sed -i "s|$_pkg||g" $fs/lib/modules/$KBASEVER-slitaz/modules.dep
+    sed -i "s|99.98.$KBASEVER-slitaz|$KBASEVER-slitaz|g" $fs/lib/modules/$KBASEVER-slitaz/modules.dep
     # Check and echo any module in kernel .config that's not added to 
     # one of linux-* pkgs
-    export PACKAGE
 	$stuff/check_modules.sh 
 }
 
@@ -160,7 +242,7 @@ genpkg_rules()
 post_install()
 {
     echo "Processing post-install commands..."
-    chroot "$1/" depmod -a $VERSION-slitaz
+    chroot "$1/" depmod -a $KBASEVER-slitaz
     # GRUB stuff.
     if [ -f "$1/boot/grub/menu.lst" ]; then
     	root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`

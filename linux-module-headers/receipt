@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="linux-module-headers"
-VERSION="2.6.37"
+VERSION="3.2.14"
+BASEVER="${VERSION:0:3}"
 CATEGORY="development"
 SHORT_DESC="Header files and scripts for building modules for linux kernel."
-MAINTAINER="slaxemulator@gmail.com"
+MAINTAINER="deve@slitaz.org"
 DEPENDS="slitaz-toolchain"
 WANTED="linux"
 WEB_SITE="http://kernel.org/"
-KVERSION=$VERSION-slitaz
+KVERSION=$BASEVER-slitaz
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -27,7 +28,8 @@ genpkg_rules()
 		$fs/$path/.config
 	mkdir -p $fs/$path/include
 
-	for i in acpi asm-generic config generated linux math-emu media net pcmcia scsi sound trace video xen; do
+	for i in acpi asm-generic config crypto drm generated linux math-emu \
+		media net pcmcia scsi sound trace video xen; do
 		cp -a $src/include/$i $fs/$path/include/
 	done
 
@@ -51,7 +53,7 @@ genpkg_rules()
 	mkdir -p $fs/$path/drivers/media/video
 	cp -a $src/drivers/media/video/*.h  $fs/$path/drivers/media/video/
 
-	for i in bt8xx cpia2 cx25840 cx88 em28xx et61x251 pwc saa7134 sn9c102 usbvideo ; do
+	for i in bt8xx cpia2 cx25840 cx88 em28xx et61x251 pwc saa7134 sn9c102 ; do
    		mkdir -p $fs/$path/drivers/media/video/$i
    		cp -a $src/drivers/media/video/$i/*.h $fs/$path/drivers/media/video/$i
 	done
@@ -108,19 +110,6 @@ genpkg_rules()
 	mkdir -p $fs/$path/mm
 	cp -a $src/fs/xfs/xfs_sb.h $fs/$path/fs/xfs/xfs_sb.h
 	
-	# add headers vor virtualbox
-	# in reference to:
-	# http://bugs.archlinux.org/task/14568
-	cp -a $src/include/drm $fs/$path/include/
-
-	# add headers for broadcom wl
-	# in reference to:
-	# http://bugs.archlinux.org/task/14568
-	cp -a $src/include/trace $fs/$path/include/
-	# add headers for crypto modules
-	# in reference to:
-	# http://bugs.archlinux.org/task/22081
-	cp -a $src/include/crypto $fs/$path/include/
 	# copy in Kconfig files
 	for i in $(find . -name "Kconfig*"); do 
 		mkdir -p $fs/$path/$(echo $i | sed 's|/Kconfig.*||')

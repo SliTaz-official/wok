@@ -1,7 +1,8 @@
 # SliTaz package receipt.
 
 PACKAGE="linux-source"
-VERSION="2.6.37"
+VERSION="3.2.14"
+BASEVER="${VERSION:0:3}"
 CATEGORY="development"
 SHORT_DESC="The Linux kernel source files."
 MAINTAINER="devel@slitaz.org"
@@ -15,12 +16,12 @@ genpkg_rules()
 	local _AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	local AUFSDIR="aufs-${_AUFSVER}"
 	mkdir -p $fs/usr/src/kernel-patches \
-			$fs/lib/modules/$VERSION-slitaz \
+			$fs/lib/modules/$BASEVER-slitaz \
 			$fs/usr/bin
 	cp -a $WOK/$WANTED/slitaz $fs/usr/src/kernel-patches
-	cp -a stuff/buildtaz $fs/usr/src/kernel-patches/slitaz
-	cp -a stuff/make-tazpkg.u $fs/usr/src/kernel-patches/slitaz
-	cp -a stuff/get-linux-source $fs/usr/bin
+	cp -a $stuff/buildtaz $fs/usr/src/kernel-patches/slitaz
+	cp -a $stuff/make-tazpkg.u $fs/usr/src/kernel-patches/slitaz
+	cp -a $stuff/get-linux-source $fs/usr/bin
 	sed -i "s|=XXX|=$VERSION|g" $fs/usr/bin/get-linux-source
 	# Copy Aufs2 source files
 	if [ -d $WOK/$WANTED/$AUFSDIR ]; then
@@ -30,15 +31,5 @@ genpkg_rules()
 			$fs/usr/src/kernel-patches/slitaz/aufs2
 	fi
 	ln -s /usr/src/linux-$VERSION \
-		$fs/lib/modules/$VERSION-slitaz/source
-}
-
-# Pre and post install commands for Tazpkg.
-post_install()
-{
-	cat <<EOT
-Now you should get the linux kernel source files with :
-
-# get-linux-source
-EOT
+		$fs/lib/modules/$BASEVER-slitaz/source
 }

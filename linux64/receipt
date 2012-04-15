@@ -1,0 +1,85 @@
+# SliTaz package receipt.
+
+PACKAGE="linux64"
+VERSION="3.2.14"
+KBASEVER="${VERSION:0:3}"
+CATEGORY="base-system"
+SHORT_DESC="The Linux 64 bits kernel and modules."
+MAINTAINER="devel@slitaz.org"
+WEB_SITE="http://www.kernel.org/"
+WANTED="linux"
+PROVIDE="linux"
+CONFIG_FILES="/lib/modules/$KBASEVER-slitaz/modules.dep"
+
+DEPENDS="depmod"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    _pkg=$_pkg/linux64
+    cp -a $_pkg/boot $fs
+    # Compress all modules.
+    #$wanted_stuff/gztazmod.sh $_pkg/lib/modules/$KBASEVER-slitaz
+    path=$fs/lib/modules/$KBASEVER-slitaz/kernel
+    mkdir -p $path
+    cp -a $_pkg/lib/modules/$KBASEVER-slitaz/mo* \
+		$fs/lib/modules/$KBASEVER-slitaz
+    # Get the base modules
+    export src
+    export _pkg
+    mkdir -p $WOK/$PACKAGE/source/tmp
+    $wanted_stuff/list_modules.sh \
+	$(cat $wanted_stuff/modules.list) > $WOK/$PACKAGE/source/tmp/modules.list
+    while read module; do
+    	dir=$(dirname $module)
+    	[ -d $path/$dir ] || mkdir -p $path/$dir
+        cp -a $_pkg/lib/modules/$KBASEVER-slitaz/kernel/$module $path/$dir
+    done < $WOK/$PACKAGE/source/tmp/modules.list
+    # Remove unresolved links
+    rm -f $fs/lib/modules/$KBASEVER-slitaz/build
+    rm -f $fs/lib/modules/$KBASEVER-slitaz/source
+    # Cook all packages with a kernel module
+    for i in $(cd $WOK; grep -l 'tazwok cook linux$' */receipt)
+    do
+    	echo tazwok cook ${i%/receipt}
+    done
+    # Fixed modules.dep to use right path
+    # saves 100kb of space too
+    sed -i "s|$_pkg||g" $fs/lib/modules/$KBASEVER-slitaz/modules.dep
+    sed -i "s|99.98.$KBASEVER-slitaz|$KBASEVER-slitaz|g" $fs/lib/modules/$KBASEVER-slitaz/modules.dep
+    # Check and echo any module in kernel .config that's not added to 
+    # one of linux-* pkgs
+	$wanted_stuff/check_modules.sh 
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+    echo "Processing post-install commands..."
+    chroot "$1/" depmod -a $KBASEVER-slitaz
+    # GRUB stuff.
+    if [ -f "$1/boot/grub/menu.lst" ]; then
+    	root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`
+		grub_dev=`cat $1/boot/grub/menu.lst | grep "root (" | head -n 1`
+		# Add new kernel entry in case of upgrade for installed system.
+		if ! grep -q $PACKAGE-$VERSION-slitaz $1/boot/grub/menu.lst; then
+    		cat >> $1/boot/grub/menu.lst << EOT
+
+title SliTaz GNU/Linux (Kernel $VERSION-slitaz)
+$grub_dev
+kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
+EOT
+		fi
+		# Display information message.
+    	cat <<EOT
+----
+GRUB is installed, these tree lines must be in your /boot/grub/menu.lst:
+
+title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
+$grub_dev
+kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
+----
+EOT
+	fi
+}

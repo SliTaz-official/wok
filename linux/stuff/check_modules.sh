@@ -9,21 +9,22 @@
 #WOK=$LOCAL_REPOSITORY/wok
 WOK=$(cd `dirname $0` && pwd | sed 's/wok.*/wok/')
 VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-src="$WOK/linux/linux-$VERSION"
+BASEVER="${VERSION:0:3}"
+src="$WOK/linux/source/linux-$VERSION"
 
 cd $src
-mkdir -p $WOK/$PACKAGE/tmp
+mkdir -p $WOK/$PACKAGE/tmp 2>/dev/null
 rm -f $WOK/$PACKAGE/tmp/*
 
 echo -e "\nChecking for modules selected in .config but not in linux-* pkgs"
 echo "======================================================================"
 
 # create a packaged modules list
-cat ../stuff/modules-"$VERSION".list >> $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list 
+cat $WOK/linux/stuff/modules.list >> $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list 
 
-for i in $(cd $WOK; ls -d linux-*)
+for i in $(cd $WOK; grep -l '^WANTED="linux"' */receipt | sed 's|/receipt||g')
 do
-	tazpath="taz/$i-$VERSION"
+	tazpath="taz/$i-*"
 	if [ ! $(grep -l 'linux-libre' $WOK/$i/receipt) ]; then
 		for j in $(cat $WOK/$i/$tazpath/files.list | grep ".ko.gz")
 		do
