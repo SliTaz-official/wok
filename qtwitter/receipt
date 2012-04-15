@@ -5,23 +5,19 @@ VERSION="0.10.0"
 CATEGORY="network"
 SHORT_DESC="A Qt-based, cross-network microblogging client."
 MAINTAINER="ben@seawolfsanctuary.com"
+TARBALL="$PACKAGE-$VERSION-src.tar.gz"
+WEB_SITE="http://blog.ayoy.net/qtwitter"
+WGET_URL="http://files.ayoy.net/$PACKAGE/release/$VERSION/src/$TARBALL"
+
 DEPENDS="glibc-locale libQtCore libQtGui libQtNetwork libQtSvg libQtXml \
 libQtDesigner libQtScript libQt3Support libQtClucene libQtDBus libQtHelp \
-libQtOpenGL libQtSql libQtWebkit qoauth"
+libQtOpenGL libQtSql libQtWebkit qoauth qca"
 BUILD_DEPENDS="qmake xorg-libX11-dev dbus-dev Qt4-dev qoauth qca-dev"
-TARBALL="$PACKAGE-$VERSION-src.tar.gz"
-WEB_SITE="http://www.ayoy.net/$PACKAGE"
-WGET_URL="http://files.ayoy.net/$PACKAGE/release/$VERSION/src/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	echo -n "Linking..."
-		ln -s $WOK/$PACKAGE-$VERSION-src $src
-	status
-
 	cd $src
-	
 	qmake PREFIX="/usr" && \
 	make -j4 && make DESTDIR=$DESTDIR install
 }
@@ -29,13 +25,14 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/bin
+	mkdir -p $fs/usr/lib $fs/usr/bin \
+		$fs/usr/share/applications $fs/usr/share/pixmaps
 
 	# Binaries
 	cp -a $src/build/qtwitter $fs/usr/bin
 	# Libraries
-	cp -a $src/build/lib* $fs/usr/bin
-
+	cp -a $src/build/lib* $fs/usr/lib
 	# Copy .desktop file:
-#	cp -a $WOK/$PACKAGE/stuff/* $fs/usr
+	cp -a $src/qtwitter-app/x11/*.desktop $fs/usr/share/applications
+	cp -a $src/qtwitter-app/x11/icons/32x32/*.png $fs/usr/share/pixmaps
 }
