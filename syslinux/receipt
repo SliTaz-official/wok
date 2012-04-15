@@ -36,37 +36,58 @@ genpkg_rules()
 {
     mkdir -p $fs/boot/isolinux
     cp -a $src/core/isolinux.bin $fs/boot/isolinux
-    cp -a $src/com32/modules/md5sum.c32 $fs/boot/isolinux
+    cp -a $src/com32/modules/md5sum.c32 $fs/boot/isolinux/c32box.c32
     cp -a $src/com32/menu/vesamenu.c32 $fs/boot/isolinux
     # $stuff/isolinux.msg is the old way the have a splash image.
     cp $stuff/*.cfg $stuff/*.txt $stuff/help.* $stuff/opts.* $fs/boot/isolinux
-    while read cfg kbd loc ; do
-        sed -e "s/^display/kbdmap $cfg.kbd\ndisplay/" \
-            -e "s/^label/say Now using $kbd keyboard and $loc locale.\nlabel/" \
-            -e "s/rootfs.gz/rootfs.gz lang=$loc kmap=$kbd/" \
-	        < $fs/boot/isolinux/default.cfg > $fs/boot/isolinux/$cfg.cfg
-        cp $src/$kbd.kbd $fs/boot/isolinux/$cfg.kbd
-	cat >> $fs/boot/isolinux/common.cfg <<EOT
-label $cfg
-	config $cfg.cfg
+    ( cd $src ; ls *.kbd | cpio -o -H newc ) > $fs/boot/isolinux/cpio.kbd
+    while read label kbd loc menu; do
+        [ -s $src/$kbd.kbd ] || continue
+	cat >> $fs/boot/isolinux/i18n.cfg <<EOT
+
+LABEL $label
+	MENU LABEL $menu
+	com32 c32box.c32
+	append kbdmap cpio.kbd $kbd.kbd lang=$loc kmap=$kbd
 EOT
     done <<EOT
-be    be-latin1    fr_FR
-br    br-abnt2     pt_PT
-ca    cf           fr_FR
-de    de-latin1    de_DE
-de_CH de_CH-latin1 de_DE
-en    uk           C
-es    es           es_ES
-fi    fi-latin1    fi
-fr    fr-latin1    fr_FR
-fr_CH fr_CH-latin1 fr_FR
-hu    hu           hu
-it    it           it_IT
-jp    jp106        jp_JP
-pt    pt-latin1    pt_PT
-ru    ru           ru_RU
-us    us           C
+cr		croat		hr_HR	Hvratski
+cz		cz-lat2		cs_CZ	Cesky
+de		de-latin1	de_DE	Deutsch
+de_CH\ deCH	de_CH-latin1	de_DE	Deutsch Schweitz
+dk		dk-latin1	da_DK	Dansk
+en		uk		C	English UK
+us		us		C	English US
+us_ac\ usac	us-acentos	C	English US (acentos)
+us_dv\ usdv	dvorak		C	English US (dvorak)
+us_dl\ usdl	dvorak-l	C	English US (dvorak-l)
+us_dr\ usdr	dvorak-r	C	English US (dvorak-r)
+es		es		es_ES	Espanol
+fr		fr-latin1	fr_FR	Francais
+be		be-latin1	fr_FR	Francais Belgique
+ca		cf		fr_FR	Francais Canada
+fr_CH\ frCH	fr_CH-latin1	fr_FR	Francais Suisse
+fi		fi-latin1	fi	Suomi
+is		is-latin1	is_IS	Islenska
+it		it		it_IT	Italiano
+no		no-latin1	nb_NO	Norske
+jp		jp106		jp_JP	Japanese
+hu		hu		hu	Magyar
+po		pl2		pl_PL	Polski
+br		br-abnt2	pt_PT	Brazil
+pt		pt-latin1	pt_PT	Portugues
+ru		ru		ru_RU	Russian
+se		se-lat6		sv_SE	Svenskt
+sl		slovene		sl_SI	Slovenski
+tr		tr_q-latin5	tr_TR	Turk
+EOT
+# Missing: nl2 ru sg-latin1 trq
+    cat >> $fs/boot/isolinux/i18n.cfg <<EOT
+
+LABEL exit
+	MENU LABEL Back to main menu
+MENU EXIT
+MENU END
 EOT
     chown root.root $fs/boot/isolinux/*
 }
@@ -75,7 +96,4 @@ EOT
 post_install()
 {
     sed -i "s/XXXXXXXX/$(date +%Y%m%d)/" $1/boot/isolinux/isolinux.cfg
-    for i in ifmem reboot poweroff; do
-    	ln $fs/boot/isolinux/md5sum.c32 $fs/boot/isolinux/$i.c32
-    done
 }
