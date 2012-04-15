@@ -1,0 +1,62 @@
+# SliTaz package receipt.
+
+PACKAGE="razor-qt"
+VERSION="0.4.1"
+CATEGORY="x-window"
+SHORT_DESC="Light and fast QT based Desktop Environment."
+MAINTAINER="pankso@slitaz.org"
+SOURCE="razorqt"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://razor-qt.org/"
+WGET_URL="https://github.com/downloads/Razor-qt/razor-qt/$TARBALL"
+SUGGESTED="razor-qt-themes"
+
+DEPENDS="xorg-libX11 libQtCore libQtDBus libQtGui libQtScript libmagic"
+BUILD_DEPENDS="wget cmake Qt4-dev qmake xorg-dev libmagic-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	cmake -DCMAKE_INSTALL_PREFIX=/usr .
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	# Use SliTaz XDG Menu
+	#cp -a $install/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	# Split plugins ?
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/razor-* $fs/usr/lib
+	cp -a $install/usr/share/librazorqt $fs/usr/share
+	cp -a $install/usr/share/razor $fs/usr/share
+	# Themes --> razor-qt-themes
+	rm -rf $fs/usr/share/razor/themes
+	mkdir -p $fs/usr/share/razor/themes
+	cp -a $install/usr/share/razor/themes/light $fs/usr/share/razor/themes
+	# Custom SliTaz integration
+	cp -a $stuff/*.conf $fs/usr/share/razor
+}
+
+post_install()
+{
+	res=$(cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//)
+	# Adding WM to SLIM available sessions.
+	if ! echo "$res" | grep -q $PACKAGE; then
+		echo -n "Adding $PACKAGE to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" /etc/slim.conf
+		status
+	fi
+}
+
+post_remove()
+{
+	# Remove WM from SLIM available sessions.
+	if grep -q $PACKAGE $1/etc/slim.conf; then
+		sed -i s/,$PACKAGE// $1/etc/slim.conf
+	fi
+}
