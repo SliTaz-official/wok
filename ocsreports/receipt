@@ -20,9 +20,11 @@ genpkg_rules()
 	cp -a $src/${PACKAGE} $fs/usr/share/
 	cat > $fs/etc/ocsreports/dbconfig.inc.php <<EOT
 <?php 
-	\$_SESSION["SERVEUR_SQL"]="localhost";
-	\$_SESSION["COMPTE_BASE"]="ocs";
-	\$_SESSION["PSWD_BASE"]="ocs";
+define("DB_NAME", "ocsweb");
+define("SERVER_READ","localhost");
+define("SERVER_WRITE","localhost");
+define("COMPTE_BASE","ocs");
+define("PSWD_BASE","ocs");
 ?>
 EOT
 
@@ -70,8 +72,8 @@ EOT
 		fi
 		if ( ! mysql -Be 'show databases' | grep -q ocsweb ); then
 			echo -n "Create $PACKAGE database and schema"
-		#	mysql -Be "create database ocsweb" ; status
-			mysql -f -s -u root < /usr/share/$PACKAGE/files/ocsbase.sql > /dev/null 2>&1
+			mysql -Be "create database ocsweb CHARACTER SET utf8 COLLATE utf8_bin" ; status
+			mysql -s -u root ocsweb < /usr/share/$PACKAGE/files/ocsbase_new.sql > /dev/null 2>&1
 			# We suppose that ocs user does not exist.
 			# It may be false.
 			echo  -n "Create user ocs with password ocs"
