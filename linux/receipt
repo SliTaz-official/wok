@@ -100,7 +100,7 @@ EOT
 	sed -i 's|SUBLEVEL =.*|SUBLEVEL =|g' Makefile
 
 	[ ! -x /usr/bin/cook ] && report step "Make kernel proper and then build lguest"
-	
+	[ -x /usr/bin/cook ] && echo "Make kernel proper and then build lguest"
 	make mrproper
 	cd Documentation/virtual/lguest
 	if [ -x /usr/bin/cook ]; then
@@ -109,47 +109,13 @@ EOT
 		make lguest || { report close-bloc; return 1; }
 	fi
 	cd $src
-
-	[ ! -x /usr/bin/cook ] && report step "Make bzImage without modules first"
-
-	# Build bzImage without modules first
-	cp -f $stuff/$PACKAGE-slitaz.config .config
-	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
 	
-	# We can't keep every driver in staging 
-	sed -i -e 's/^CONFIG_RTL8192/#&/' \
-	       -e 's/^CONFIG_R8187SE/#&/' \
-	       -e 's/^CONFIG_RT2870/#&/' .config
-	yes '' | make oldconfig
-	if [ -x /usr/bin/cook ]; then
-		make -j 4 bzImage || exit 1
-	elif [ -x /usr/bin/tazwok ]; then
-		make -j 4 bzImage || { report close-bloc; return 1; }
-	fi
-	[ -d $DESTDIR ] || mkdir -p $DESTDIR
-	mv arch/x86/boot/bzImage $DESTDIR
-	mv System.map System.map-without-modules
-
-	[ ! -x /usr/bin/cook ] && report step "Now build bzImage with modules"
-	
-	# Build bzImage with modules
-	cp -f $stuff/$PACKAGE-slitaz.config .config
-	#make oldconfig
-	ln .config $WOK/$PACKAGE/source/slitaz/config
-	make -j 4 bzImage &&
-	make -j 4 modules &&
-	make INSTALL_MOD_PATH=$DESTDIR modules_install &&
-	make INSTALL_HDR_PATH=$DESTDIR/usr headers_install &&
-	if [ -x /usr/bin/cook ]; then
-		[ -s arch/x86/boot/bzImage ] || return 1
-	elif [ -x /usr/bin/tazwok ]; then
-		[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
-	fi
-	mkdir -p $DESTDIR/boot 2> /dev/null
-	mv arch/x86/boot/bzImage $DESTDIR/boot/vmlinuz-$VERSION-slitaz
-	
+	#
+	# Arch x86_64
+	#
 	[ ! -x /usr/bin/cook ] && report step "Make bzImage64 without modules first"
-
+	[ -x /usr/bin/cook ] && echo "Building x86_64 Kernel"
+	
 	# Build bzImage64 without modules first
 	cp -f $stuff/$PACKAGE-slitaz.config64 .config
 	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
@@ -187,6 +153,48 @@ EOT
 	mv arch/x86/boot/bzImage $DESTDIR/linux64/boot/vmlinuz-$VERSION-slitaz
 	ln System.map System.map-modules64
 	ln Module.symvers Module.symvers-modules64
+	
+	#
+	# Standard kernel
+	#
+	[ ! -x /usr/bin/cook ] && report step "Make bzImage without modules first"
+	[ -x /usr/bin/cook ] && echo "Building standard kernel..."
+	
+	# Build bzImage without modules first
+	cp -f $stuff/$PACKAGE-slitaz.config .config
+	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
+	
+	# We can't keep every driver in staging 
+	sed -i -e 's/^CONFIG_RTL8192/#&/' \
+	       -e 's/^CONFIG_R8187SE/#&/' \
+	       -e 's/^CONFIG_RT2870/#&/' .config
+	yes '' | make oldconfig
+	if [ -x /usr/bin/cook ]; then
+		make -j 4 bzImage || exit 1
+	elif [ -x /usr/bin/tazwok ]; then
+		make -j 4 bzImage || { report close-bloc; return 1; }
+	fi
+	[ -d $DESTDIR ] || mkdir -p $DESTDIR
+	mv arch/x86/boot/bzImage $DESTDIR
+	mv System.map System.map-without-modules
+
+	[ ! -x /usr/bin/cook ] && report step "Now build bzImage with modules"
+	
+	# Build bzImage with modules
+	cp -f $stuff/$PACKAGE-slitaz.config .config
+	#make oldconfig
+	ln .config $WOK/$PACKAGE/source/slitaz/config
+	make -j 4 bzImage &&
+	make -j 4 modules &&
+	make INSTALL_MOD_PATH=$DESTDIR modules_install &&
+	make INSTALL_HDR_PATH=$DESTDIR/usr headers_install &&
+	if [ -x /usr/bin/cook ]; then
+		[ -s arch/x86/boot/bzImage ] || return 1
+	elif [ -x /usr/bin/tazwok ]; then
+		[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
+	fi
+	mkdir -p $DESTDIR/boot 2> /dev/null
+	mv arch/x86/boot/bzImage $DESTDIR/boot/vmlinuz-$VERSION-slitaz
 	
 	[ ! -x /usr/bin/cook ] && report step "Compressing all modules"
 	
