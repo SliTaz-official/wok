@@ -49,11 +49,19 @@ cook_tmp_toolchain()
 compile_rules()
 {
 	cd $src
+	
+	# Handle ARCH type
+	case $ARCH in
+		i?86)
+			EXTRA_ARGS="--disable-werror" ;;
+	esac
+	
 	mkdir -p ../binutils-build && cd ../binutils-build
 	$src/configure \
 		--program-prefix=$TOOLPREFIX \
 		--enable-shared \
-		$CONFIGURE_ARGS &&
+		--disable-initfini-array \
+		$CONFIGURE_ARGS $EXTRA_ARGS &&
 	make tooldir=/usr &&
 	make tooldir=/usr install &&
 	# This is the default binutils, so create symlinks to the target platform
