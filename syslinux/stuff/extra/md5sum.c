@@ -559,6 +559,11 @@ static int main_kbdmap(int argc, char *argv[])
     if (argc < 3)
     	goto kbdmap_error;
 
+    // Save extra cmdline arguments
+    for (i = 3; i < (size_t) argc; i++) {
+	syslinux_setadv(i - 2, strlen(argv[i]), argv[i]);
+    }
+
     msg = "Load error";
     if (kmap->version != 1 ||
 	loadfile(argv[1], (void **) &kbdmap, &map_size) || 
@@ -597,11 +602,6 @@ static int main_kbdmap(int argc, char *argv[])
     	goto kbdmap_error;
 
     memcpy(kmap->map, kbdmap, size);
-
-    // Save extra cmdline arguments
-    for (i = 3; i < (size_t) argc; i++) {
-	syslinux_setadv(i - 2, strlen(argv[i]), argv[i]);
-    }
 
     return 0;
 
