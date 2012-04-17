@@ -1,27 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="lxpanel"
-VERSION="0.5.8"
+VERSION="0.5.9"
 CATEGORY="x-window"
 SHORT_DESC="Standard compliant desktop panel."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.lxde.org/"
-WGET_URL="$SF_MIRROR/lxde/$TARBALL"
+#WGET_URL="$SF_MIRROR/lxde/$TARBALL"
+WGET_URL="http://l10n.bsnet.se/~brother/lxde_releases/$TARBALL"
 CONFIG_FILES="/etc/lxpanel/default"
 
 DEPENDS="glibc-base glib libgio expat zlib menu-cache slitaz-icon \
-gtk+ alsa-lib wireless_tools"
+gtk+ alsa-lib wireless_tools libwnck"
 BUILD_DEPENDS="gtk+-dev gettext expat-dev intltool menu-cache-dev \
-lxmenu-data alsa-lib-dev wireless_tools-dev"
+lxmenu-data alsa-lib-dev wireless_tools-dev libwnck-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-        patch -p1 -i $stuff/batt.chg.level.patch
-	patch -p1 -i $stuff/configure_desktop_number.patch
-	patch -p1 -i $stuff/fix_position.patch
+	#patch -p1 -i $stuff/batt.chg.level.patch
+	#patch -p1 -i $stuff/configure_desktop_number.patch
+	#patch -p1 -i $stuff/fix_position.patch
 	patch -p0 -i $stuff/cpu-size-color.patch || exit 1
 	./configure --with-plugins=all $CONFIGURE_ARGS &&
 	make && make install
@@ -37,14 +38,15 @@ genpkg_rules()
 	cp -a $install/usr/share/lxpanel $fs/usr/share
 
 	# Remove a few "heavy" and unuseful images (ns* goes in extra)
-	for i in file-manager* stock_volume* gnome-[a-m]*.png \
-		gnome-netstatus-[d-t]*.png my-* ns-*.png *lock-*.png
+	for i in file-manager* *volume* mute.png gnome-[a-m]*.png \
+		gnome-netstatus-*.png my-* ns-*.png *lock-*.png \
+		background.png window-manager.png
 	do
 		rm $fs/usr/share/lxpanel/images/$i
 	done
 
 	# Custom images to match SliTaz theme.
-	cp -a stuff/images/* $fs/usr/share/lxpanel/images
+	#cp -a stuff/images/* $fs/usr/share/lxpanel/images
 
 	# Remove plugins --> lxpanel-extra
 	rm $fs/usr/lib/lxpanel/plugins/kbled.so
@@ -55,7 +57,8 @@ genpkg_rules()
 	mv -f $fs/usr/share/lxpanel/profile $fs/etc/lxpanel
 	ln -s /etc/lxpanel $fs/usr/share/lxpanel/profile
 	mv $fs/etc/lxpanel/default $fs/etc/lxpanel/original
-	cp -a stuff/default $fs/etc/lxpanel
+	cp -a $stuff/default $fs/etc/lxpanel
+	rm -rf $fs/etc/lxpanel/two_panels
 
 	# lxsession-logout fake
 	cat > $fs/usr/bin/lxsession-logout << "EOT"
@@ -66,4 +69,13 @@ tazbox logout &
 exit 0
 EOT
 	chmod +x $fs/usr/bin/lxsession-logout
+	
+	# Make images symlinks so it feet SliTaz theme
+	cd $fs/usr/share/lxpanel/images
+	ln -s /usr/share/icons/SliTaz/status/32/network-idle.png ns-connected.png
+	ln -s /usr/share/icons/SliTaz/status/32/network-offline.png ns-disconnect.png
+	ln -s /usr/share/icons/SliTaz/status/32/network-receive.png ns-recvdata.png
+	ln -s /usr/share/icons/SliTaz/status/32/network-receive.png ns-senddata.png
+	ln -s /usr/share/icons/SliTaz/status/32/nm-adhoc.png ns-bothrs.png
+	ln -s /usr/share/icons/SliTaz/status/32/network-error.png ns-problem.png
 }
