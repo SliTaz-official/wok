@@ -1,0 +1,50 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-arm-api-headers"
+VERSION="3.2.14"
+KBASEVER="${VERSION:0:3}"
+CATEGORY="development"
+SHORT_DESC="Kernel headers sanitized for use in userspace."
+MAINTAINER="devel@slitaz.org"
+SOURCE="linux"
+TARBALL="$SOURCE-$KBASEVER.tar.xz"
+WEB_SITE="http://www.kernel.org/"
+WGET_URL="http://www.kernel.org/pub/linux/kernel/v3.0/$TARBALL"
+
+BUILD_DEPENDS="bash"
+
+[ "$KBASEVER" != "$VERSION" ] && PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	
+	if [ "$KBASEVER" != "$VERSION" ]; then
+		if [ -f $SOURCES_REPOSITORY/$(basename $PATCH) ]; then
+			xzcat $SOURCES_REPOSITORY/$(basename $PATCH) | patch -Np1
+		else
+			wget $PATCH -O $SRC/$(basename $PATCH)
+			xzcat $SRC/$(basename $PATCH) | patch -Np1
+		fi
+	fi
+
+	make mrproper &&
+	make ARCH=arm headers_check &&
+	make ARCH=arm INSTALL_HDR_PATH=$DESTDIR/usr headers_install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/include $fs/usr
+	rm -f $(find ${fs} -name .install -or -name ..install.cmd)
+}
+
+# Post install commands for Tazpkg.
+post_install()
+{
+	# Removed old linux-headers
+	rm -rf ${1}${INSTALLED}/linux-headers 2>/dev/null
+}
