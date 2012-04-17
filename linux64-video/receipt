@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="linux64-video"
+VERSION="3.2.14"
+BASEVER="${VERSION:0:3}"
+CATEGORY="base-system"
+SHORT_DESC="The Linux kernel video modules."
+MAINTAINER="devel@slitaz.org"
+DEPENDS="linux64"
+WANTED="linux"
+PROVIDE="linux-video"
+WEB_SITE="http://www.kernel.org/"
+
+# Modules paths and list
+MOD_PATH="lib/modules/$BASEVER-slitaz/kernel"
+MODULES="drivers/video/backlight"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	_pkg=$_pkg/linux64
+	mkdir -p ${fs}/${MOD_PATH}
+	for module in $MODULES
+	do
+		dir=$MOD_PATH/$(dirname $module)
+		[ -d $fs/$dir ] || mkdir -p $fs/$dir
+		cp -a $_pkg/$MOD_PATH/$module $fs/$dir
+	done
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" depmod -a $BASEVER-slitaz
+}
+
+post_remove()
+{
+	chroot "$1/" depmod -a $BASEVER-slitaz
+}
+

@@ -1,25 +1,29 @@
 # SliTaz package receipt.
 
-PACKAGE="linux-input-touchscreen"
+PACKAGE="linux64-arcnet"
 VERSION="3.2.14"
 BASEVER="${VERSION:0:3}"
 CATEGORY="base-system"
-SHORT_DESC="The Linux kernel touchscreen input drivers."
-MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="arcnet kernel modules"
+MAINTAINER="slaxemulator@gmail.com"
 WANTED="linux"
-DEPENDS="linux"
-WEB_SITE="http://www.kernel.org/"
+PROVIDE="linux-arcnet"
+WEB_SITE="http://kernel.org/"
+DEPENDS="linux64"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
     local path
+    _pkg=$_pkg/linux64
     path=lib/modules/$BASEVER-slitaz/kernel
     mkdir -p $fs/$path
+    
     export src
     export _pkg
-    $wanted_stuff/list_modules.sh drivers/input/touchscreen | \
-    while read module; do
+    
+    $wanted_stuff/list_modules.sh drivers/net/arcnet drivers/net/arcnet/arcnet.ko.gz \
+    drivers/net/arcnet/com90xx.ko.gz drivers/net/arcnet/rfc1051.ko.gz | while read module; do
     	dir=$path/$(dirname $module)
     	[ -d $fs/$dir ] || mkdir -p $fs/$dir
         cp -a $_pkg/$path/$module $fs/$dir
@@ -42,4 +46,3 @@ post_remove()
 {
 	chroot "$1/" depmod -a $BASEVER-slitaz
 }
-

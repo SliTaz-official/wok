@@ -1,25 +1,33 @@
 # SliTaz package receipt.
 
-PACKAGE="linux-input-touchscreen"
+PACKAGE="linux64-wireless"
 VERSION="3.2.14"
 BASEVER="${VERSION:0:3}"
 CATEGORY="base-system"
-SHORT_DESC="The Linux kernel touchscreen input drivers."
-MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="The Linux kernel wireless modules."
+MAINTAINER="devel@slitaz.org"
 WANTED="linux"
-DEPENDS="linux"
+PROVIDE="linux-wireless"
 WEB_SITE="http://www.kernel.org/"
+DEPENDS="linux-crypto wireless_tools"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
     local path
+    _pkg=$_pkg/linux64
     path=lib/modules/$BASEVER-slitaz/kernel
     mkdir -p $fs/$path
+    
     export src
     export _pkg
-    $wanted_stuff/list_modules.sh drivers/input/touchscreen | \
-    while read module; do
+    
+    $wanted_stuff/list_modules.sh drivers/net/wireless drivers/staging/wlan-ng \
+    drivers/staging/echo drivers/leds net/wireless net/mac80211 \
+    drivers/staging/rtl8192e/r8192e_pci.ko.gz drivers/staging/rtl8712/r8712u.ko.gz \
+	drivers/staging/rtl8187se/r8187se.ko.gz drivers/staging/rtl8192u/r8192u_usb.ko.gz \
+	drivers/staging/crystalhd/crystalhd.ko.gz \
+	drivers/staging/sm7xx/sm7xx.ko.gz | while read module; do
     	dir=$path/$(dirname $module)
     	[ -d $fs/$dir ] || mkdir -p $fs/$dir
         cp -a $_pkg/$path/$module $fs/$dir
