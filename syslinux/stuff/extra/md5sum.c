@@ -431,14 +431,20 @@ static unsigned long memory_size(void)
 	return bytes >> 10;
 }
 
+static void usage(const char *msg)
+{
+	fprintf(stderr,"\n%s\n.",msg);
+	sleep(5);
+	exit(1);
+}
+
 static int main_ifmem(int argc, char *argv[])
 {
 	int i;
 	unsigned long ram_size;
 
 	if (argc < 4) {
-		perror("\nUsage: ifmem.c32 size_KB boot_large_memory boot_small_memory\n");
-		return 1;
+		usage("Usage: ifmem.c32 size_KB boot_large_memory boot_small_memory");
 	}
 
 	// find target according to ram size
@@ -463,7 +469,7 @@ static int main_ifmem(int argc, char *argv[])
 		i++; // next size or default label
 	} while (i + 1 < argc);
 
-	if (i != argc)  syslinux_run_command(argv[i]);
+	if (i != argc)	syslinux_run_command(argv[i]);
 	else		syslinux_run_default();
 	return -1;
 }
@@ -549,20 +555,23 @@ static int main_poweroff(int argc, char *argv[])
 #include <syslinux/loadfile.h>
 #include <syslinux/adv.h>
 
+static void setlinuxarg(int slot, int argc, char *argv[])
+{
+	for (; argc--; argv++)
+		syslinux_setadv(slot++, strlen(*argv), *argv);
+}
+
 static int main_kbdmap(int argc, char *argv[])
 {
     const struct syslinux_keyboard_map *const kmap = syslinux_keyboard_map();
     size_t map_size, size, i;
     char *kbdmap, *msg;
 
-    msg = "Usage: kbdmap archive.cpio mapfile [cmdline]..";
     if (argc < 3)
-    	goto kbdmap_error;
+	usage("Usage: kbdmap archive.cpio mapfile [cmdline]..");
 
     // Save extra cmdline arguments
-    for (i = 3; i < (size_t) argc; i++) {
-	syslinux_setadv(i - 2, strlen(argv[i]), argv[i]);
-    }
+    setlinuxarg(1, argc - 3, argv + 3);
 
     msg = "Load error";
     if (kmap->version != 1 ||
@@ -746,8 +755,6 @@ static int main_linux(int argc, char *argv[])
     size_t dhcplen;
     char **argp, *arg, *p;
 
-    openconsole(&dev_null_r, &dev_stdcon_w);
-
     (void)argc;
     argp = argv + 1;
 
@@ -839,6 +846,75 @@ bail:
     return 1;
 }
 
+static int main_setarg(int argc, char *argv[])
+{
+	if (argc < 3) {
+		usage("Usage: setarg.c32 argnum [args]...");
+	}
+	setlinuxarg(atoi(argv[1]), argc - 2, argv + 2);
+	return 0;
+}
+
+static int main_ifarg(int argc, char *argv[])
+{
+	int i;
+	size_t size;
+
+	if (argc < 3) {
+		usage("Usage: ifarg.c32 [argnum labelifset]... labelifnoneset");
+	}
+	for (i = 1; i < argc - 1; i += 2) {
+		if (syslinux_getadv(atoi(argv[i]), &size))
+			syslinux_run_command(argv[i+1]);
+	}
+	if (i != argc)  syslinux_run_command(argv[i]);
+	else		syslinux_run_default();
+	return 0;
+}
+
+/* ----------------------------------------------------------------------- *
+ *
+ *   Copyright 2007-2008 H. Peter Anvin - All Rights Reserved
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, Inc., 53 Temple Place Ste 330,
+ *   Boston MA 02111-1307, USA; either version 2 of the License, or
+ *   (at your option) any later version; incorporated herein by reference.
+ *
+ * ----------------------------------------------------------------------- */
+
+static int main_listarg(int argc, char *argv[])
+{
+    uint8_t *p, *ep;
+    size_t s = syslinux_adv_size();
+    char buf[256];
+
+    (void) argc;
+    (void) argv;
+    p = syslinux_adv_ptr();
+
+    printf("args size: %zd bytes at %p\n", s, p);
+
+    ep = p + s;			/* Need at least opcode+len */
+    while (p < ep - 1 && *p) {
+	int t = *p++;
+	int l = *p++;
+
+	if (p + l > ep)
+	    break;
+
+	memcpy(buf, p, l);
+	buf[l] = '\0';
+
+	printf("arg %3d: \"%s\"\n", t, buf);
+
+	p += l;
+    }
+    sleep(5);
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	unsigned i;
@@ -851,7 +927,10 @@ int main(int argc, char *argv[])
 		{ "reboot",	main_reboot },
 		{ "poweroff",	main_poweroff },
 		{ "kbdmap",	main_kbdmap },
-		{ "linux",	main_linux }
+		{ "linux",	main_linux },
+		{ "setarg",	main_setarg },
+		{ "ifarg",	main_ifarg },
+		{ "listarg",	main_listarg }
 	};
 
 	openconsole(&dev_null_r, &dev_stdcon_w);

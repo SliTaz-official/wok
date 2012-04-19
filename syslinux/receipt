@@ -81,7 +81,6 @@ se		se-lat6		sv_SE	Svenskt
 sl		slovene		sl_SI	Slovenski
 tr		tr_q-latin5	tr_TR	Turk
 EOT
-# Missing: nl2 ru sg-latin1 trq
     cat >> $fs/boot/isolinux/i18n.cfg <<EOT
 
 LABEL exit
@@ -89,6 +88,12 @@ LABEL exit
 MENU EXIT
 MENU END
 EOT
+    sed -i 's/^LABEL us$/&\n	MENU DEFAULT/' $fs/boot/isolinux/i18n.cfg
+    for kbd in $(cd $src ; ls *.kbd); do
+    	[ -s $kbd.kbd ] || echo "Invalid file $kbd.kbd"
+    	grep -q " $kbd.kbd " $fs/boot/isolinux/i18n.cfg && continue
+    	echo "Missing: file $kbd.kbd"
+    done
     chown root.root $fs/boot/isolinux/*
 }
 
