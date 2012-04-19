@@ -1,16 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="mono"
-VERSION="2.10.2"
+VERSION="2.10.8"
 CATEGORY="development"
 SHORT_DESC="Cross-platform, open source .NET development framework"
 MAINTAINER="rcx@zoominternet.net"
 DEPENDS="glib glibc-base zlib libgdiplus"
 BUILD_DEPENDS="tar bzip2 m4 pkg-config bison gawk \
-gettext glib-dev perl"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+gettext glib-dev perl libgdiplus-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.mono-project.com/"
-WGET_URL="ftp://ftp.novell.com/pub/mono/sources/$PACKAGE/$TARBALL"
+WGET_URL="http://download.mono-project.com/sources/$PACKAGE/$TARBALL"
 
 # Build documentation at http://mono-project.com/Compiling_Mono
 # and http://mono-project.com/Release_Notes_Mono_2.4#Installing_Mono_2.4
@@ -21,8 +21,15 @@ compile_rules()
 	cd $src
 	./configure \
 		--sysconfdir=/etc \
+		--with-libgdiplus=installed \
 		$CONFIGURE_ARGS  &&
-	make -j 1 && make -j 1 install
+	make -j 1 && make install
+
+	cd $src/mcs/jay
+	make -j 1 && make DESTDIR=$DESTDIR prefix=/usr INSTALL=../../install-sh install
+
+	#fix .pc file to be able to request mono on what it depends, fixes #go-oo build
+	sed -i -e "s:#Requires:Requires:" $DESTDIR/usr/lib/pkgconfig/mono.pc
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
