@@ -7,25 +7,29 @@ SHORT_DESC="Scanner Access Now Easy."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.sane-project.org/"
-WGET_URL="ftp://ftp.sane-project.org/pub/sane/$PACKAGE-$VERSION/$TARBALL"
+WGET_URL="ftp://ftp2.sane-project.org/pub/sane/$PACKAGE-$VERSION/$TARBALL"
 
 DEPENDS="libusb-compat jpeg tiff zlib libgphoto2 libv4l libltdl"
+BUILD_DEPENDS="libusb-compat-dev jpeg-dev tiff-dev zlib-dev libv4l-dev libgphoto2-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	patch -Np1 -i $stuff/libv4l-0.8.3.patch
+	# fix https://bugs.archlinux.org/task/26114
+	patch -Np1 -i $stuff/xerox_mfp_fix_usb_devices.patch
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
 	make &&
-	make -j 1 DESTDIR=$PWD/_pkg install
+	make -j 1 DESTDIR=$DESTDIR install
 
 	# copy the missing udev rule
-	[ ! -d $PWD/_pkg/etc/udev/rules.d ] && mkdir -p $PWD/_pkg/etc/udev/rules.d
-	cp -a $src/tools/udev/libsane.rules $PWD/_pkg/etc/udev/rules.d/55-sane.rules
+	[ ! -d $DESTDIR/etc/udev/rules.d ] && mkdir -p $DESTDIR/etc/udev/rules.d
+	cp -a $src/tools/udev/libsane.rules $DESTDIR/etc/udev/rules.d/55-sane.rules
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -54,11 +58,11 @@ post_install()
 	local root
 	root=$1
 	
-	tazpkg reconfigure udev --root=$1
+	tazpkg reconfigure udev --root=$root
 	
 	# add group scanner
 	if ! grep -q scanner $root/etc/group ; then
-		addgroup -g 96 scanner
+		chroot "$root/" addgroup -g 96 scanner
 	fi
 	
 	echo " ADD yourself to group scanner to use sane: addgroup tux scanner"
@@ -66,5 +70,5 @@ post_install()
 
 post_remove()
 {
-	delgroup scanner & >/dev/null
+	chroot "$1/" delgroup scanner & >/dev/null
 }
