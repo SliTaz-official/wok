@@ -4,7 +4,7 @@ PACKAGE="boxbackup-server"
 VERSION="0.11.1"
 CATEGORY="network"
 SHORT_DESC="Server for the BoxBackup on-line backup system"
-MAINTAINER="domcox@users.sourceforge.net"
+MAINTAINER="domcox@slitaz.org"
 DEPENDS="db libedit openssl perl zlib gcc-lib-base"
 BUILD_DEPENDS="db-dev libedit-dev openssl-dev zlib-dev"
 SOURCE="boxbackup"
@@ -12,12 +12,13 @@ TARBALL="$SOURCE-$VERSION.tgz"
 WEB_SITE="http://www.boxbackup.org/"
 # stable
 # WGET_URL="$SF_MIRROR/$SOURCE/$TARBALL"
-WGET_URL="http://www.boxbackup.org/svn/box/packages/$TARBALL"
+#WGET_URL="http://www.boxbackup.org/svn/box/packages/$TARBALL"
+WGET_URL="http://www.boxbackup.org/browser/box/packages/$TARBALL"
 TAGS="backup automatic server network"
 
 # Configuration variables
-HOSTNAME=`ifconfig | awk -F ":" '/cast/ {print substr($2,0, index($2," ")-1) }'`
-CONF_DIR="/etc/box"
+HOSTNAME=$(ifconfig | awk -F ":" '/cast/ {print substr($2,0, index($2," ")-1) }')
+CONF_DIR="/etc/boxbackup"
 DATA_DIR="/var/lib/bbstored"
 CA_DIR="${CONF_DIR}/ca"
 BBUSER="bbstored"
@@ -58,6 +59,11 @@ pre_install()
 
 post_install()
 {
+	# default conf dir is now /etc/boxbackup
+	if [ ! -e /etc/box/bbstored.conf ]; then
+		mv /etc/box $CONF_DIR
+	fi
+
 	# adduser BBUSER if needed
 	if  ! grep -q $BBUSER $1/etc/passwd; then
 		echo -n "Adding user '$BBUSER'..."
@@ -91,8 +97,8 @@ post_install()
 	if [ ! -e $CONF_DIR/bbstored.conf ]; then
 		# Setting hostname
 		echo -n "Setting hostname... "
-		if [ `hostname -f 2>1 > /dev/null;echo $?` -eq 0 ]; then
-		HOSTNAME=`hostname -f`
+		if [ $(hostname -f 2>1 > /dev/null;echo $?) -eq 0 ]; then
+		HOSTNAME=$(hostname -f)
 		fi
 		if [ -z $HOSTNAME ]; then
 			HOSTNAME="127.0.0.1"
@@ -177,7 +183,7 @@ post_remove()
 		status
     fi
 	# Delete $CONF_DIR (if empty)
-	if [ `ls -lA $CONF_DIR | wc -l` -eq 0 ]; then
+	if [ $(ls -lA $CONF_DIR | wc -l) -eq 0 ]; then
 		echo -n "Removing $CONF_DIR..."
 		rm -r $CONF_DIR
 		status
