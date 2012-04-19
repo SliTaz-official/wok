@@ -1,25 +1,27 @@
 # SliTaz package receipt.
 
 PACKAGE="lftp"
-VERSION="4.2.3"
+VERSION="4.3.5"
 CATEGORY="network"
 SHORT_DESC="Small but powerful ftp client"
 MAINTAINER="mimas@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://lftp.yar.ru/"
 WGET_URL="http://ftp.yars.free.net/pub/source/lftp/$TARBALL"
+CROSS="bug: failed at test"
 
-DEPENDS="readline expat gcc-lib-base"
-BUILD_DEPENDS="readline-dev"
+DEPENDS="readline expat gnutls gcc-lib-base"
+BUILD_DEPENDS="readline-dev gperf gnutls-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	./configure \
-		--without-gnutls \
+		--with-gnutls \
 		--without-openssl \
-		$CONFIGURE_ARGS &&
+		--build=$HOST_SYSTEM \
+		--host=$HOST_SYSTEM &&
 	make &&
 	make install
 }
@@ -28,6 +30,6 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $install/usr/bin $fs/usr
 }
 
