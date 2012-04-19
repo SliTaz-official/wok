@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="thunderbird"
-VERSION="11.0"
+VERSION="11.0.1"
 CATEGORY="network"
 SHORT_DESC="Mozilla's Thunderbird email application."
 MAINTAINER="domcox@slitaz.org"
@@ -15,13 +15,13 @@ TARBALL="$PACKAGE-$VERSION.source.tar.bz2"
 WEB_SITE="http://www.mozilla.org/"
 WGET_URL="ftp://ftp.mozilla.org/pub/mozilla.org/thunderbird/releases/$VERSION/source/$TARBALL"
 TAGS="email pop imap smtp"
-LANG="de es_ES fr en_GB pt_PT pt_BR ru"
+TB_LOCALES="de es_ES fr en_GB pt_PT pt_BR ru"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cat <<EOF
-WARNING:  long compile time.
+WARNING: long compile time.
 Requirements: 
 - 512MB RAM with lots of available swap space. Additional RAM will 
   significantly decrease build time. 
@@ -30,11 +30,11 @@ EOF
 	# add config
     cp -a $stuff/thunderbird.mozconfig.conf $src/.mozconfig
 	# languages
-	echo "# languages" >> $src/.mozconfig
-	echo "mk_add_options MOZ_CO_LOCALES=\"$LANG\"" >> $src/.mozconfig
+	echo -e "\n# languages" >> $src/.mozconfig
+	echo "mk_add_options MOZ_CO_LOCALES=\"$TB_LOCALES\"" >> $src/.mozconfig
 	# for a quick build
-	echo "# build quicker" >> $src/.mozconfig
-	echo 'mk_add_options MOZ_MAKE_FLAGS="$MAKEFLAGS"' >> $src/.mozconfig
+	echo -e "\n# build quicker" >> $src/.mozconfig
+	echo "mk_add_options MOZ_MAKE_FLAGS=$MAKEFLAGS" >> $src/.mozconfig
 	# build
 	cd $src
 	patch -Np1 -i $stuff/thunderbird-3.0-lang.patch
@@ -51,9 +51,9 @@ genpkg_rules()
 	# program
 	cp -a $_pkg/usr/lib/$PACKAGE $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
-	# adding mime-type (x-html)
-	cp $stuff/mimeTypes.rdf $fs/usr/lib/$PACKAGE/defaults/profile
+	# mcd
+	cp $stuff/autoconf.js $fs/usr/lib/$PACKAGE/defaults/pref
+	cp $stuff/thunderbird.cfg $fs/usr/lib/$PACKAGE
+	# mimetypes
+
 }
-
-
-
