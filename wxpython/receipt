@@ -5,8 +5,8 @@ VERSION="2.8.12.1"
 CATEGORY="x-window"
 SHORT_DESC="GUI toolkit for the Python programming language."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="python gtk+"
-BUILD_DEPENDS="python-dev gtk+-dev"
+DEPENDS="python wxWidgets"
+BUILD_DEPENDS="python-dev wxWidgets-dev mesa-dev"
 SOURCE="wxPython"
 TARBALL="$SOURCE-src-$VERSION.tar.bz2"
 WEB_SITE="http://www.wxpython.org/"
@@ -16,17 +16,30 @@ WGET_URL="$SF_MIRROR/wxpython/$TARBALL"
 compile_rules()
 {
     cd $src
+    mv wxPython/wx/tools/Editra/editra wxPython/wx/tools/Editra/Editra
     ./configure \
+	--with-gtk=2 \
+	--with-opengl \
+	--enable-unicode \
+	--with-regex=sys \
+	--with-libpng=sys \
+	--with-libxpm=sys \
+	--with-libjpeg=sys \
+	--with-libtiff=sys \
+	--disable-precomp-headers \
     	--without-sdl \
     	$CONFIGURE_ARGS &&
-    make $MAKEFLAGS &&
-    make DESTDIR=$DESTDIR install
+    make $MAKEFLAGS
+    cd $src/wxPython
+    python -Np2 -i $stuff/wxpython-cairo.patch
+    python setup.py WXPORT=gtk2 UNICODE=1 build
+    python setup.py WXPORT=gtk2 UNICODE=1 install --root=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/lib
-	cp -a $_pkg/usr/bin/wxrc* $fs/usr/bin
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	mkdir -p $fs/usr/lib
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/lib/python* $fs/usr/lib
 }
