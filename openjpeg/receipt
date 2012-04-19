@@ -1,28 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="openjpeg"
-VERSION="1.4"
+VERSION="1.5.0"
 CATEGORY="development"
 SHORT_DESC="An open source JPEG 2000 codec"
 MAINTAINER="slaxemulator@gmail.com"
-DEPENDS="glibc-base"
-_VERSION=v1_4
-TARBALL="${PACKAGE}_${_VERSION}_sources_r697.tgz"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.openjpeg.org/"
 WGET_URL="http://openjpeg.googlecode.com/files/$TARBALL"
 
-BUILD_DEPENDS="coreutils-directory"
+DEPENDS="glibc-base zlib tiff"
+BUILD_DEPENDS="zlib-dev tiff-dev coreutils-directory"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	# make sure we use system libs
+	[ -d thirtparty ] && rm -rf thirtparty
 	./configure --enable-lcms2=no \
 		--enable-png=no \
 		--enable-lcms1=no \
 		--disable-static \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
