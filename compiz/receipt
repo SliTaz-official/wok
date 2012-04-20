@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="compiz"
+VERSION="0.9.4"
+CATEGORY="meta"
+SHORT_DESC="Compiz 3D effect support on SliTaz."
+MAINTAINER="pankso@slitaz.org"
+WEB_SITE="http://www.compiz.org/"
+SUGGESTED="compiz-ccsm compiz-compizconfig-python"
+
+DEPENDS="emerald compiz-core compiz-plugins-main compiz-libcompizconfig \
+slitaz-configs"
+BUILD_DEPENDS=""
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/usr/bin \
+		$fs/usr/share/doc/slitaz
+	echo "See: http://doc.slitaz.org/" > \
+		$fs/usr/share/doc/slitaz/compiz.txt
+	cp -r $stuff/xsessions $fs/usr/share
+	install -m 0777 $stuff/compiz-session $fs/usr/bin
+	chown -R 0.0 $fs
+}
+
+post_install()
+{
+	res=$(cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//)
+	# Adding WM to SLIM available sessions.
+	if ! echo "$res" | grep -q $PACKAGE; then
+		echo -n "Adding $PACKAGE to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" $1/etc/slim.conf
+		status
+	fi
+}
+
+post_remove()
+{
+	# Remove WM from SLIM available sessions.
+	if grep -q $PACKAGE $1/etc/slim.conf; then
+		sed -i s/,$PACKAGE// $1/etc/slim.conf
+	fi
+}

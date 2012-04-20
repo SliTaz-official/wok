@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# Start Compiz 3D Desktop on SliTaz. We use some LXDE componment
+# and check compiz config files exist.
+#
+
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_CURRENT_DESKTOP=LXDE
+export DESKTOP_SESSION=compiz
+
+# Start DBUS session.
+if [ ! "$DBUS_SESSION_BUS_ADDRESS" ]; then
+	dbus-launch --sh-syntax --exit-with-session &
+fi
+
+# Compiz configuration files from slitaz-configs.
+if [ ! -f "$XDG_CONFIG_HOME/compiz-1/compizconfig/config" ]; then
+	mkdir -p $XDG_CONFIG_HOME/compiz-1/compizconfig
+	cp -r /usr/share/slitaz/compiz/* $XDG_CONFIG_HOME/compiz-1/compizconfig
+fi
+
+# PCmanFM config file. NOTE: will change with new PCmanFM
+if [ ! -f "$XDG_CONFIG_HOME/pcmanfm/main" ]; then
+	mkdir -p $XDG_CONFIG_HOME/pcmanfm
+	cp /usr/share/slitaz/lxde/pcmanfm.main \
+		$XDG_CONFIG_HOME/pcmanfm/main
+fi
+
+# Start some LXDE componment.
+lxpanel -p slitaz &
+pcmanfm -d &
+emerald &
+exec compiz ccp --indirect-rendering
