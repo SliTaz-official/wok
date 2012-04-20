@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="upower"
+VERSION="0.9.15"
+CATEGORY="system-tools"
+SHORT_DESC="UPower is an abstraction for enumerating power devices."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="http://upower.freedesktop.org/"
+WGET_URL="http://upower.freedesktop.org/releases/$TARBALL"
+
+DEPENDS="polkit glib libgio dbus dbus-glib libgudev libusb"
+BUILD_DEPENDS="polkit-dev glib-dev libgio-dev dbus-dev dbus-glib-dev \
+libgudev-dev libusb-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--sysconfdir=/etc \
+		--libexecdir=/usr/lib/upower \
+		--localstatedir=/var \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $install/etc $fs
+	cp -a $install/var $fs
+	cp -a $install/lib/udev $fs/etc
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/upower $fs/usr/lib
+	cp -a $install/usr/share/dbus-1 $fs/usr/share
+	cp -a $install/usr/share/polkit-1 $fs/usr/share
+}
