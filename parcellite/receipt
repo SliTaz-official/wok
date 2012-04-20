@@ -5,11 +5,12 @@ VERSION="0.9.3"
 CATEGORY="utilities"
 SHORT_DESC="Lightweight GTK+ clipboard manager"
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ xorg-libXdamage"
-BUILD_DEPENDS="gtk+-dev intltool"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://parcellite.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="gtk+ xorg-libX11 xorg-libXdamage"
+BUILD_DEPENDS="xorg-dev gtk+-dev intltool"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -18,13 +19,14 @@ compile_rules()
 	./configure \
 		--prefix=/usr \
 		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/applications
+	mkdir -p $fs/usr/share/applications $fs/etc
 	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $stuff/skel $fs/etc
+	chown -R 0.0 $fs
 }
