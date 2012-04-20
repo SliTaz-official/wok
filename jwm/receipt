@@ -8,11 +8,12 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.joewing.net/programs/jwm/"
 WGET_URL="http://www.joewing.net/programs/jwm/releases/$TARBALL"
-CONFIG_FILES="/etc/jwm/system.jwmrc"
 TAGS="wm window-manager"
 
-DEPENDS="xorg slitaz-configs"
-BUILD_DEPENDS="xorg-dev xorg-libXft-dev jpeg-dev"
+DEPENDS="xorg-libX11 xorg-libXft xorg-libXrender xorg-libXpm xorg-libXext \
+xorg-libXmu xorg-libXinerama xorg-libXau xorg-libXdmcp xorg-libXt libjpeg \
+libpng slitaz-configs-base xorg-xload xorg-xclock nano"
+BUILD_DEPENDS="xorg-dev xorg-libXft-dev jpeg-dev libpng-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,7 +24,7 @@ compile_rules()
 	./configure \
     	--prefix=/usr \
     	--mandir=/usr/share/man \
-		--sysconfdir=/etc/jwm \
+		--sysconfdir=/etc/xdg/jwm \
 		--disable-fribidi \
 		$CONFIGURE_ARGS &&
 	make
@@ -32,15 +33,20 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/etc/jwm
+	mkdir -p $fs/usr/bin $fs/etc/xdg/jwm $fs/usr/share
 	cp -a $src/src/jwm $fs/usr/bin
 	# Simple and default config file.
-	cp $stuff/simple.jwmrc $fs/etc/jwm/simple.jwmrc
-	cp $stuff/slitaz.jwmrc $fs/etc/jwm/system.jwmrc
+	cp $stuff/simple.jwmrc $fs/etc/xdg/jwm/simple.jwmrc
+	cp $stuff/slitaz.jwmrc $fs/etc/xdg/jwm/system.jwmrc
+	cp -r $stuff/xsessions $fs/usr/share
 }
 
 post_install()
 {
+	if [ -d "$1/etc/jwm" ]; then
+		echo "Removing old system wide configs: $1/etc/jwm"
+		rm -rf $1/etc/jwm
+	fi
 	res=$(cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//)
 	# Adding WM to SLIM available sessions.
 	if ! echo "$res" | grep -q $PACKAGE; then
