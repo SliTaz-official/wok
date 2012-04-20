@@ -8,10 +8,10 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://razor-qt.org/"
 WGET_URL="https://github.com/downloads/Razor-qt/razor-qt/$TARBALL"
-SUGGESTED="razorqt-themes razorqt-appswitcher"
+SUGGESTED="razorqt-themes razorqt-appswitcher razorqt-power"
 
 DEPENDS="xorg-libX11 libQtCore libQtDBus libQtGui libQtScript libmagic"
-BUILD_DEPENDS="wget cmake Qt4-dev qmake xorg-dev libmagic-dev"
+BUILD_DEPENDS="wget cmake Qt4-dev qmake xorg-dev libmagic-dev upower-dev"
 # polkit-dev polkit-qt-dev doxygen
 
 # Rules to configure and make the package.
@@ -25,12 +25,14 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
+	mkdir -p $fs/usr/lib $fs/usr/share/xsessions
 	# Use SliTaz XDG Menu
 	#cp -a $install/etc $fs
 	cp -a $install/usr/bin $fs/usr
+	cp -f $install/usr/share/xsessions/razor.desktop \
+		$fs/usr/share/xsessions
 	
-	# Split plugins ?
+	# Split more plugins ?
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/lib/razor-* $fs/usr/lib
 	cp -a $install/usr/share/librazorqt $fs/usr/share
@@ -38,6 +40,10 @@ genpkg_rules()
 	
 	# Appswitcher --> razorqt-appswitcher
 	rm -f $fs/usr/bin/razor-appswitcher
+	
+	# Power --> razorqt-power
+	rm -f $fs/usr/bin/razor-power
+	rm -rf $fs/usr/share/razor/razor-power
 	
 	# Themes --> razorqt-themes
 	rm -rf $fs/usr/share/razor/themes
