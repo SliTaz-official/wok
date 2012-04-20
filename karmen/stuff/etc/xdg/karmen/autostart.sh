@@ -5,9 +5,13 @@
 xsetroot -solid grey4 &
 
 # Cursor setting.
-xsetroot -cursor_name arrow
+xsetroot -cursor_name arrow &
 
-# Wbar icons panel with a custom config file for Karmen providing
-# a settings and logout function.
-(sleep 2 && wbar -config $HOME/.config/karmen/wbar -pos top center \
-	-jumpf 0 -zoomf 1.8 -isize 24 -bpress -balfa 0) &
+# Start an Xterm.
+xterm &
+
+# Start Karmen configurator/menu
+xterm -geometry 50x20 -e karmen-conf &
+
+# Xclock
+xclock &

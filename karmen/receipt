@@ -8,28 +8,30 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://karmen.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-DEPENDS="xorg-libX11 xorg-xsetroot wbar"
-BUILD_DEPENDS="xorg-libX11-dev"
 TAGS="wm window-manager"
+
+DEPENDS="xorg-libX11 xorg-xsetroot nano xterm xorg-xclock dialog"
+BUILD_DEPENDS="xorg-libX11-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	./configure --prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr/share
 	cp -a $_pkg/usr/bin $fs/usr
 	# Custom configuration and scripts.
-	cp -a stuff/karmen-session $fs/usr/bin
-	cp -a stuff/karmen-conf $fs/usr/bin
-	cp -a stuff/etc $fs
+	install -m 0755 $stuff/karmen-session $fs/usr/bin
+	install -m 0755 $stuff/karmen-conf $fs/usr/bin
+	cp -a $stuff/xsessions $fs/usr/share
+	cp -a $stuff/etc $fs
 	chown 0.0 $fs/usr/bin/*
 }
 
@@ -39,7 +41,7 @@ post_install()
 	# Adding WM to SLIM available sessions.
 	if ! echo "$res" | grep -q $PACKAGE; then
 		echo -n "Adding $PACKAGE to /etc/slim.conf..."
-		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" /etc/slim.conf
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" $1/etc/slim.conf
 		status
 	fi
 }
