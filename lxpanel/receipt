@@ -12,7 +12,7 @@ WGET_URL="http://l10n.bsnet.se/~brother/lxde_releases/$TARBALL"
 CONFIG_FILES="/etc/lxpanel/default"
 
 DEPENDS="glibc-base glib libgio expat zlib menu-cache slitaz-icon \
-gtk+ alsa-lib wireless_tools libwnck"
+gtk+ alsa-lib wireless_tools libwnck lxsession"
 BUILD_DEPENDS="gtk+-dev gettext expat-dev intltool menu-cache-dev \
 lxmenu-data alsa-lib-dev wireless_tools-dev libwnck-dev"
 
@@ -20,9 +20,6 @@ lxmenu-data alsa-lib-dev wireless_tools-dev libwnck-dev"
 compile_rules()
 {
 	cd $src
-	#patch -p1 -i $stuff/batt.chg.level.patch
-	#patch -p1 -i $stuff/configure_desktop_number.patch
-	#patch -p1 -i $stuff/fix_position.patch
 	patch -p0 -i $stuff/cpu-size-color.patch || exit 1
 	./configure --with-plugins=all $CONFIGURE_ARGS &&
 	make && make install
@@ -45,9 +42,6 @@ genpkg_rules()
 		rm $fs/usr/share/lxpanel/images/$i
 	done
 
-	# Custom images to match SliTaz theme.
-	#cp -a stuff/images/* $fs/usr/share/lxpanel/images
-
 	# Remove plugins --> lxpanel-extra
 	rm $fs/usr/lib/lxpanel/plugins/kbled.so
 	rm -rf $fs/usr/share/lxpanel/images/xkb-flags
@@ -59,16 +53,6 @@ genpkg_rules()
 	mv $fs/etc/lxpanel/default $fs/etc/lxpanel/original
 	cp -a $stuff/default $fs/etc/lxpanel
 	rm -rf $fs/etc/lxpanel/two_panels
-
-	# lxsession-logout fake
-	cat > $fs/usr/bin/lxsession-logout << "EOT"
-#!/bin/sh
-# lxsession-logout fake.
-#
-tazbox logout &
-exit 0
-EOT
-	chmod +x $fs/usr/bin/lxsession-logout
 	
 	# Make images symlinks so it feet SliTaz theme
 	cd $fs/usr/share/lxpanel/images
