@@ -1,21 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="openbox"
-VERSION="3.4.11.1"
+VERSION="3.5.0"
 CATEGORY="x-window"
 SHORT_DESC="Small-footprint and standard compliant Window Manager."
 SUGGESTED="obconf pcmanfm hsetroot slitaz-configs"
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://icculus.org/openbox/"
-WGET_URL="http://offload2.icculus.org:9090/openbox/releases/$TARBALL"
+WEB_SITE="http://openbox.org/"
+WGET_URL="http://openbox.org/dist/openbox/$TARBALL"
 TAGS="window-manager wm"
 
 DEPENDS="startup-notification pango glib xorg-libX11 fontconfig freetype \
-xorg-libXrandr xorg-libXft"
+xorg-libXrandr xorg-libXft libxml2 imlib2 slitaz-configs"
 BUILD_DEPENDS="xorg-dev pango-dev glib-dev startup-notification-dev \
-xorg-libXft-dev util-linux-ng-uuid-dev"
-
+xorg-libXft-dev util-linux-ng-uuid-dev libxml2-dev imlib2-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -25,42 +24,42 @@ compile_rules()
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+		--libexecdir=/usr/lib/openbox \
 		$CONFIGURE_ARGS &&
 	sed -i 's/^mkdir_p = .*/mkdir_p = mkdir -p/' po/Makefile &&
 	make &&
-	make -j1 DESTDIR=$PWD/_pkg install
+	make -j1 DESTDIR=$DESTDIR install &&
+	rm -rf $install/usr/share/applications
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/openbox $fs/usr/share
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/share/themes $fs/usr/share
+	mkdir -p $fs/usr/lib/openbox $fs/usr/share/themes
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/openbox $fs/usr/lib
 	
 	# We dont have GNOME or KDE
 	rm $fs/usr/bin/openbox-gnome-session
 	rm $fs/usr/bin/openbox-kde-session
 	rm $fs/usr/bin/gnome-panel-control
+	rm $fs/usr/bin/gdm-control
 	chmod 0755 $fs/usr/bin/openbox-session
 	
-	# Pipe menu.
-	cp stuff/open-folder-menu.sh $fs/usr/lib/openbox
+	# Python XDG script --> openbox-python
+	rm -f $fs/usr/lib/openbox/openbox-xdg-autostart
+	patch -p1 $fs/usr/lib/openbox/openbox-autostart \
+		-i $stuff/openbox-autostart.patch || exit 1
 	
-	# Fix an error in openbox-session (version 3.4.11.1)
-	sed 's#exec /usr/bin/openbox "$@"#exec /usr/bin/openbox#' \
-		-i $fs/usr/bin/openbox-session
-
-	# Locale
-	for i in $LOCALE
-	do
-		mkdir -p $fs/usr/share/locale/$i/LC_MESSAGES
-		cp $src/po/$i.gmo \
-			$fs/usr/share/locale/$i/LC_MESSAGES/openbox.mo
-	done
+	# Just Onyx Themes --> openbox-themes
+	cp -a $install/usr/share/themes/Onyx* $fs/usr/share/themes
+	
+	# Xsessions
+	cp -a $stuff/xsessions $fs/usr/share
+	
+	# Pipe menu.
+	cp $stuff/open-folder-menu.sh $fs/usr/lib/openbox
 
 	# Set perms.
 	chown -R root.root $fs
