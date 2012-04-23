@@ -10,14 +10,13 @@ WEB_SITE="http://www.fluxbox.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="wm window-manager"
 
-DEPENDS="xorg fontconfig imlib2"
-BUILD_DEPENDS="xorg fontconfig imlib2"
+DEPENDS="xorg fontconfig imlib2 hsetroot xorg-xcompmgr"
+BUILD_DEPENDS="xorg-dev fontconfig-dev imlib2-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	#patch -p1 < $stuff/fluxbox-gcc-4.3.3.diff
 	./configure $CONFIGURE_ARGS &&
 	make && make install
 }
@@ -31,20 +30,41 @@ genpkg_rules()
 	do
 		cp -a $install/usr/share/fluxbox/$f $fs/usr/share/fluxbox
 	done
-	for s in Shade Flux bloe Results
+	
+	# 3 Default themes --> fluxbox-themes
+	for s in Shade Flux Results
 	do
 		cp -a $install/usr/share/fluxbox/styles/$s \
 			$fs/usr/share/fluxbox/styles
 	done
+	
+	# Split tools --> fluxbox-tools
+	for t in fbsetroot fbsetbg fluxbox-generate_menu fluxbox-remote \
+		fluxbox-update_configs
+	do
+		rm $fs/usr/bin/$t
+	done
+	
+	# XDG Xsessions
+	cp -a $stuff/xsessions $fs/usr/share
+	
+	# Custom SliTaz integration
+	mkdir -p $fs/usr/share/slitaz/fluxbox
+	cp -a $stuff/fluxbox-session $fs/usr/bin
+	cp $stuff/startup $fs/usr/share/slitaz/fluxbox
+	cp $stuff/styles $fs/usr/share/fluxbox
+	# Overwrite
+	cp $stuff/menu $fs/usr/share/fluxbox
+	cp $stuff/init $fs/usr/share/fluxbox
 }
 
 post_install()
 {
-	res=`cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//`
+	res=$(cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//)
 	# Adding WM to SLIM available sessions.
 	if ! echo "$res" | grep -q $PACKAGE; then
 		echo -n "Adding $PACKAGE to /etc/slim.conf..."
-		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" /etc/slim.conf
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" $1/etc/slim.conf
 		status
 	fi
 }
