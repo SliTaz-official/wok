@@ -1,24 +1,34 @@
 # SliTaz package receipt.
 
 PACKAGE="glib-dev"
-VERSION="2.30.2"
+VERSION="2.32.1"
 CATEGORY="development"
-SHORT_DESC="C routines devel files and utilities."
+SHORT_DESC="C routines devel files and utilities (with Python codegen)."
 MAINTAINER="pankso@slitaz.org"
 WANTED="glib"
-DEPENDS="glib perl libffi-dev"
 WEB_SITE="http://www.gtk.org/"
+
+DEPENDS="glib perl python"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
+	mkdir -p $fs/usr/lib $fs/usr/bin $fs/usr/share
 	cp -a $install/usr/lib/*.*a $fs/usr/lib
 	cp -a $install/usr/lib/pkgconfig $fs/usr/lib
 	cp -a $install/usr/lib/glib* $fs/usr/lib
 	cp -a $install/usr/include $fs/usr
 	cp -a $install/usr/share/aclocal $fs/usr/share
 	cp -a $install/usr/share/glib-2.0 $fs/usr/share
+	cp -a $install/usr/share/gdb $fs/usr/share
+	
+	# Python codegen, tester, compile, Perl mkenums
+	cp -a $install/usr/lib/gdbus-2.0 $fs/usr/lib
+	for bin in gdbus-codegen gtester* glib-mkenums glib-compile-*
+	do
+		cp -a $install/usr/bin/$bin $fs/usr/bin
+	done
+	
 	# Remove libgio-dev
 	rm -rf $fs/usr/lib/libgio*.*a
 	rm -rf $fs/usr/include/gio-unix-2.0
