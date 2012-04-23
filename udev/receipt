@@ -1,65 +1,68 @@
 # SliTaz package receipt.
 
 PACKAGE="udev"
-VERSION="170"
+VERSION="182"
 BUILD_WARNING="Install new udev package and rebuild hal"
 CATEGORY="base-system"
 SHORT_DESC="Udev creat automaticly right devices in /dev."
 MAINTAINER="pankso@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.kernel.org/pub/linux/utils/kernel/hotplug/udev.html"
-WGET_URL="http://www.us.kernel.org/pub/linux/utils/kernel/hotplug/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="http://www.freedesktop.org/software/systemd/man/udev.html"
+WGET_URL="http://www.kernel.org/pub/linux/utils/kernel/hotplug/$TARBALL"
 
-DEPENDS="util-linux-blkid"
+DEPENDS="util-linux-blkid pciids usbids acl kmod"
 BUILD_DEPENDS="util-linux-blkid-dev gperf pkg-config pciutils acl-dev \
-libgio-dev gobject-introspection-dev usbutils-dev libusb-dev glib-dev libgudev"
+libgio-dev usbutils-dev libusb-dev glib-dev pciids usbids kmod-dev \
+libgudev-dev pcre-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	grep -qs 'define u8' extras/*_id/*.c ||
-	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
-		extras/scsi_id/scsi_serial.c extras/ata_id/ata_id.c
-	./configure $CONFIGURE_ARGS \
-		--prefix=/usr \
+	./configure \
 		--exec-prefix="" \
+		--with-rootprefix="" \
+		--bindir=/sbin \
 		--sysconfdir=/etc \
-		--libexecdir=/lib/udev \
-		--with-rootlibdir=/lib \
-		--with-pci-ids-path=/usr/share/misc/pci.ids.gz &&
+		--libexecdir=/lib \
+		--disable-manpages \
+		--disable-introspection \
+		--disable-keymap \
+		--enable-floppy \
+		--enable-rule_generator \
+		--with-pci-ids-path=/usr/share/misc/pci.ids.gz \
+		--with-usb-ids-path=/usr/share/misc/usb.ids.gz \
+		--with-systemdsystemunitdir=no \
+		$CONFIGURE_ARGS &&
 	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/lib/firmware $fs/usr $fs/run/udev
+	mkdir -p $fs/lib/firmware $fs/run/udev
 
-	cp -a $_pkg/sbin $fs
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/lib/libudev*so* $fs/lib
-	cp -a $_pkg/lib/udev $fs/lib
-	cp -a $_pkg/usr/lib $fs/usr
+	cp -a $install/sbin $fs
+	cp -a $install/etc $fs
+	cp -a $install/lib/libudev*so* $fs/lib
+	cp -a $install/lib/udev $fs/lib
+	
+	# Have udevd in PATH
+	mv $fs/lib/udev/udevd $fs/sbin
 
-	# OLD: Copy rules files to udev conf dir
+	# Copy rules files to udev conf dir
 	mv -f $fs/lib/udev/rules.d $fs/etc/udev
 	cp $stuff/udev.conf $fs/etc/udev
 	cp $stuff/*.rules $fs/etc/udev/rules.d
 	
+	# Create some devices and directories that Udev cannot handle 
+	# due to them being required very early in the boot process
+	mkdir -p $fs/lib/udev/devices/pts
+	mknod -m 0666 $fs/lib/udev/devices/null c 1 3
+	
 	# Fix permissions
 	chmod +x $fs/lib/udev/*
 	chown -R root.root $fs
-}
-
-pre_install()
-{
-	# Remove old rules and libs
-	rm -rf $1/lib/udev/rules.d
-	rm -rf $1/lib/udev/vol_id
-	rm -f $1/lib/libvolume_id*
-	rm -f $1/lib/libudev.so.1.0
-	rm -f $1/lib/libudev.so.2.0
 }
 
 list_udev_group()
