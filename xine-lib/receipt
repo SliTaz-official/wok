@@ -1,40 +1,37 @@
 # SliTaz package receipt.
 
 PACKAGE="xine-lib"
-VERSION="1.1.19"
+VERSION="1.2.1"
 CATEGORY="multimedia"
 SHORT_DESC="Xine video library."
 MAINTAINER="pankso@slitaz.org"
 SUGGESTED="faad2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.xine-project.org/"
-WGET_URL="http://switch.dl.sourceforge.net/sourceforge/xine/$TARBALL"
+WGET_URL="http://downloads.sourceforge.net/project/xine/$PACKAGE/$VERSION/$TARBALL"
+SUGGESTED="xine-fonts"
 
-DEPENDS="xorg zlib xorg-libXv xorg-libXvMC alsa-lib libogg libvorbis \
-libtheora xorg-libXvMC xorg-libXv libmodplug libmng lcms"
+DEPENDS="zlib xorg-libX11 xorg-libXv xorg-libXvMC alsa-lib libogg libvorbis \
+libtheora xorg-libXvMC xorg-libXv libxcb ffmpeg"
 BUILD_DEPENDS="xorg-libXvMC-dev xorg-libXv-dev xorg-xextproto xorg-videoproto \
-alsa-lib-dev libogg-dev libmodplug-dev libvorbis-dev libtheora-dev freetype-dev \
-faad2-dev perl pkg-config util-linux-uuid-dev libxcb-dev lcms-dev"
+alsa-lib-dev libogg-dev libvorbis-dev libtheora-dev freetype-dev perl \
+pkg-config util-linux-uuid-dev libxcb-dev libxcb-dev ffmpeg-dev"
 
 # Rules to configure and make the package.
-#
-# Using --with-external-ffmpeg will make package smaller, but it dont seems
-# to work properly. Last try with external ffmpeg make xine unable to read avi
-# and other video files.
-#
 compile_rules()
 {
 	cd $src
 	sed -i 's/grep -x/grep/' configure
-	grep -qs 'define u8' src/input/vcd/libcdio/_cdio_linux.c ||
-	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
-		src/input/vcd/libcdio/_cdio_linux.c
-	patch -p0 < $stuff/xine-lib-1.1.19-xvmc.patch
+	#grep -qs 'define u8' src/input/vcd/libcdio/_cdio_linux.c ||
+	#sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
+	#	src/input/vcd/libcdio/_cdio_linux.c
+	#patch -p0 < $stuff/xine-lib-1.1.19-xvmc.patch
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		--with-freetype \
+		--with-xcb \
 		--without-jack \
 		--without-imagemagick \
 		--without-sdl \
@@ -46,22 +43,15 @@ compile_rules()
 		--disable-syncfb \
 		--without-esound \
 		--disable-vcd \
+		--disable-musepack \
 		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS &&
-	make DESTDIR=$PWD/_pkg install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/xine $fs/usr/lib
-
-	# Do we need extra Fonts for subtitle support? \
-	# compiled with freetype for using ttf fonts, xine fonts are only an alternative solution \
-	# should we just ln DejavuSans as in mplayer?
-	# lets keep sans font for extra support
-	mkdir -p  $fs/usr/share/xine/libxine1/fonts/
-	cp -a $_pkg/usr/share/xine/libxine1/fonts/sa* $fs/usr/share/xine/libxine1/fonts/
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/xine $fs/usr/lib
 }
