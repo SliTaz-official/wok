@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="xorg-server"
-VERSION="1.9.5"
+VERSION="1.12.1"
 CATEGORY="x-window"
 SHORT_DESC="Xorg core server."
 MAINTAINER="pankso@slitaz.org"
@@ -17,13 +17,14 @@ xorg-xf86-input-evdev"
 BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev xorg-libXxf86vm-dev \
 xorg-libXfont-dev libgcrypt-dev pixman-dev udev-dev mesa-dev pkg-config perl \
 flex xorg-xf86driproto xorg-xcmiscproto xorg-bigreqsproto xorg-randrproto \
-xorg-dri2proto xorg-libXau-dev xorg-dev-proto libdrm-dev"
+xorg-dri2proto xorg-libXau-dev xorg-dev-proto libdrm-dev xorg-glproto \
+xorg-libXv-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	# Xephyr make possible to use Xorg in a chroot: --enable-xephyr
+	# Xephyr make possible to use Xorg in a chroot.
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -39,6 +40,7 @@ compile_rules()
 		--enable-kdrive-mouse \
 		--enable-kdrive-evdev \
 		--enable-xfbdev \
+		--enable-xephyr \
 		--enable-config-udev \
 		--disable-config-dbus \
 		--with-fontrootdir=/usr/share/fonts \
@@ -52,10 +54,10 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/var $fs/etc/X11/xorg.conf.d
-	cp -a $_pkg/usr/lib/X11 $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/var/lib $fs/var
-	cp -a $_pkg/etc $fs
+	cp -a $install/usr/lib/X11 $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/var/lib $fs/var
+	cp -a $install/etc $fs
 	# Remove static libs and split Xnest
 	rm $fs/usr/lib/X11/*/*.*a
 	rm $fs/usr/lib/X11/*/*/*.*a
