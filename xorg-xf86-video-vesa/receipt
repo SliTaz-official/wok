@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="xorg-xf86-video-vesa"
-VERSION="2.3.0"
+VERSION="2.3.1"
 CATEGORY="x-window"
 SHORT_DESC="Xorg Vesa video driver."
 MAINTAINER="pankso@slitaz.org"
@@ -14,15 +14,16 @@ WGET_URL="$XORG_MIRROR/driver/$TARBALL"
 #DEPENDS="xorg-server"
 BUILD_DEPENDS="xorg-server-dev"
 
+MODS='/usr/lib/X11/modules'
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	./configure \
-		--prefix=/usr \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
-		--with-xorg-module-dir=/usr/lib/X11/modules \
+		--with-xorg-module-dir=$MODS \
 		$CONFIGURE_ARGS &&
 	make && make install
 }
@@ -30,8 +31,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/X11/modules/drivers/
-    cp -a $_pkg/usr/lib/X11/modules/drivers/*.so \
-    	$fs/usr/lib/X11/modules/drivers/
+	mkdir -p ${fs}${MODS}/drivers
+	cp -a ${install}${MODS}/drivers/*.so ${fs}${MODS}/drivers
 }
 

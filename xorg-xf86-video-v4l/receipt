@@ -6,26 +6,32 @@ CATEGORY="x-window"
 MAINTAINER="devel@slitaz.org"
 SHORT_DESC="X.org v4l video driver"
 WEB_SITE="http://xorg.freedesktop.org/"
-DEPENDS="xorg-server"
-BUILD_DEPENDS="xorg-server-dev"
 SOURCE="xf86-video-v4l"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WGET_URL="$WEB_SITE/releases/individual/driver/$TARBALL"
 TAGS=""
 
-# Rules to configure and make the package.
+DEPENDS="xorg-server"
+BUILD_DEPENDS="xorg-server-dev"
 
-compile_rules() {
-  cd "$src"
-  ./configure --prefix=/usr $CONFIGURE_ARGS &&
-  make &&
-  make DESTDIR="$PWD/_pkg" install  
+MODS='/usr/lib/X11/modules'
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		--localstatedir=/var \
+		--with-xorg-module-dir=$MODS \
+		$CONFIGURE_ARGS &&
+	make && make install
 }
-	
+
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/X11/modules/drivers/
-	cp -a $_pkg/usr/lib/xorg/modules/drivers/*.so \
-    	$fs/usr/lib/X11/modules/drivers/	
+	mkdir -p ${fs}${MODS}/drivers
+	cp -a ${install}${MODS}/drivers/*.so ${fs}${MODS}/drivers
 }
