@@ -10,24 +10,34 @@ WEB_SITE="http://ftp.kernel.org/pub/linux/utils/kernel/kmod/"
 WGET_URL="http://ftp.kernel.org/pub/linux/utils/kernel/kmod/$TARBALL"
 PROVIDES="modules-init-tools"
 
-DEPENDS="zlib"
-BUILD_DEPENDS="zlib-dev"
+DEPENDS="zlib liblzma"
+BUILD_DEPENDS="zlib-dev liblzma-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	./configure \
+		--bindir=/sbin \
+		--libdir=/lib \
 		--sysconfdir=/etc \
 		--with-zlib \
-		$CONFIGURE_ARGS && 
-	make && make install
+		--with-xz \
+		$CONFIGURE_ARGS &&
+	make && make pkgconfigdir=/usr/lib/pkgconfig install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
+	mkdir -p $fs/lib $fs/bin
+	cp -a $install/lib/*.so* $fs/lib
+	cp -a $install/sbin $fs
+	cd $fs/sbin
+	# The kmod tools symlinks
+	for tool in rmmod insmod modinfo modprobe depmod
+	do
+		ln -s kmod $tool
+	done
+	cd ../bin && ln -s /sbin/kmod lsmod
 }
