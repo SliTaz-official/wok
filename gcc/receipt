@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="gcc"
-VERSION="4.6.2"
+VERSION="4.6.3"
 CATEGORY="development"
 SHORT_DESC="The the GNU Compiler Collection."
 MAINTAINER="pankso@slitaz.org"
@@ -81,7 +81,7 @@ cook_tmp_toolchain()
 			sed '/MULTILIB_OSDIRNAMES/d' -i $file
 		done
 	fi
-	
+
 	# GCC requires the GMP, MPFR and MPC packages.
 	tazwok get-src mpfr --target=$PWD/mpfr || { report close-bloc; return 1; }
 	tazwok get-src gmp --target=$PWD/gmp || { report close-bloc; return 1; }
@@ -130,17 +130,17 @@ compile_rules()
 	# the full SliTaz toolchain.
 	[ "$2" == "--first-pass" ] && opt=$2
 	[ "$3" == "--first-pass" ] && opt=$3
-	
+
 	# Use libiberty.a from binutils.
 	sed -i 's/install_to_$(INSTALL_DEST) //' libiberty/Makefile.in || return 1
-	
+
 	case $ARCH in
 		i?86) sed -i 's/^T_CFLAGS =$/& -fomit-frame-pointer/' \
 			gcc/Makefile.in ;;
 	esac
-	
+
 	#sed -i 's@\./fixinc\.sh@-c true@' gcc/Makefile.in
-	
+
 	mkdir -p ../gcc-build && cd ../gcc-build
 
 	# This is the default GCC and we want a native build to cross compile after.
@@ -190,7 +190,7 @@ genpkg_rules()
 {
 	mkdir -p  $fs/usr/share
 	cp -a $install/usr/bin $fs/usr
-	
+
 	# Copy all libs. Remove libgcc_s.so and libstdc++.so they goes in
 	# the gcc-lib-base package.
 	cp -a $install/usr/lib $fs/usr
@@ -201,13 +201,13 @@ genpkg_rules()
 
 	# Include files.
 	cp -a $install/usr/include $fs/usr
-	
+
 	# Gfortran goes in gfortran package.
 	rm -f $fs/usr/bin/*gfortran
 	rm -f $fs/usr/lib/libgfortran*
 	rm -f $fs/usr/lib/gcc/*/$VERSION/libgfortran*
 	rm -rf $fs/usr/lib/gcc/*/$VERSION/f*
-	
+
 	# Remove build directory.
 	rm -rf $WOK/$PACKAGE/source/$PACKAGE-build
 	rm -rf $WOK/$PACKAGE/$PACKAGE-build
