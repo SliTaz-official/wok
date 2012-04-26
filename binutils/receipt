@@ -8,6 +8,7 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gnu.org/software/binutils/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+#WGET_URL="http://www.kernel.org/pub/linux/devel/binutils/$TARBALL"
 PROVIDE="libbfd"
 TAGS="assembler linker"
 
@@ -40,7 +41,7 @@ cook_tmp_toolchain()
 	make &&
 	make install &&
 	make -C ld clean &&
-	make -C ld LIB_PATH=/usr/lib:/lib 
+	make -C ld LIB_PATH=/usr/lib:/lib
 	} || return 1
 	cp ld/ld-new /tools/bin
 }
@@ -49,18 +50,19 @@ cook_tmp_toolchain()
 compile_rules()
 {
 	cd $src
-	
+
 	# Handle ARCH type
 	case $ARCH in
 		i?86)
 			EXTRA_ARGS="--disable-werror" ;;
 	esac
-	
+
 	mkdir -p ../binutils-build && cd ../binutils-build
 	$src/configure \
 		--program-prefix=$TOOLPREFIX \
 		--enable-shared \
 		--disable-initfini-array \
+		--with-bugurl="http://bugs.slitaz.org/" \
 		$CONFIGURE_ARGS $EXTRA_ARGS &&
 	make tooldir=/usr &&
 	make tooldir=/usr install &&
@@ -83,14 +85,14 @@ genpkg_rules()
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/lib/*.a $fs/usr/lib
 	cp -a $install/usr/include $fs/usr
-	
+
 	# libiberty.h
 	cp -a $src/include/libiberty.h $fs/usr/include
-	
+
 	# Remove 'strings' (Busybox).
 	#rm $fs/usr/lib/libiberty.a
 	rm $fs/usr/bin/strings $fs/usr/bin/*-strings
-	
+
 	# Remove build directory (cookutils and tazwok path).
 	rm -rf $WOK/$PACKAGE/source/$PACKAGE-build
 	rm -rf $WOK/$PACKAGE/$PACKAGE-build
