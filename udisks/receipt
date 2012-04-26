@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="udisks"
+VERSION="1.94.0"
+CATEGORY="system-tools"
+SHORT_DESC="D-Bus interfaces to query and manipulate storage devices."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.freedesktop.org/wiki/Software/udisks"
+WGET_URL="http://udisks.freedesktop.org/releases/$TARBALL"
+
+DEPENDS="expat libatasmart libxslt udev libgudev polkit dbus"
+BUILD_DEPENDS="expat-dev libatasmart-dev libxslt-dev udev-dev libgudev-dev \
+polkit-dev dbus-dev dbus-glib-dev pcre-dev dbus-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--disable-static \
+		--disable-gtk-doc \
+		$CONFIGURE_ARGS &&
+	# Build fails when build doc even with docbook-xsl installed.
+	sed -i s'/SUBDIRS =.*/SUBDIRS = data udisks src tools po/' Makefile &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share
+	cp -a $install/etc/dbus-1 $fs/etc
+	cp -a $install/lib/udev $fs/etc
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib/udisks2 $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/share/*-1 $fs/usr/share
+	cp -a $install/var $fs
+}
