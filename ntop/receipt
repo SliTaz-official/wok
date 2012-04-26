@@ -11,9 +11,11 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 CONFIG_FILES="/etc/ntop"
 TAGS="network"
 
-DEPENDS="zlib openssl libpng libpcap glibc gdbm rrdtool perl pcre geoip libwrap"
-BUILD_DEPENDS="zlib-dev openssl-dev libpng-dev libpcap-dev libtool glibc-dev gdbm-dev rrdtool \
- autoconf automake rrdtool-dev wget geoip-dev libwrap libtool"
+DEPENDS="zlib openssl libpng libpcap glibc gdbm rrdtool perl pcre geoip\
+libwrap"
+BUILD_DEPENDS="zlib-dev openssl-dev libpng-dev libpcap-dev libtool \
+glibc-dev gdbm-dev rrdtool autoconf automake rrdtool-dev wget geoip-dev \
+libwrap libtool"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -21,10 +23,10 @@ compile_rules()
 	cd $src
 	./autogen.sh --prefix=/usr	\
 		--sysconfdir=/etc \
-		--localstatedir=/var/lib $CONFIGURE_ARGS &&
-	make &&
-make DESTDIR=$PWD/_pkg install 
-#~ && make install-data-as
+		--localstatedir=/var/lib \
+		$CONFIGURE_ARGS &&
+	make && install
+	#~ && make install-data-as
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -34,15 +36,15 @@ genpkg_rules()
 		$fs/usr/share \
 		$fs/var/log/ntop
 
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/ntop $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share/ntop $fs/usr/share
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/ntop $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/ntop $fs/usr/share
 	chown -R www.www $fs/usr/share/ntop
-	cp -a $_pkg/usr/bin $fs
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/var $fs
-	
+	cp -a $install/usr/bin $fs
+	cp -a $install/etc $fs
+	cp -a $install/var $fs
+
 	# Copy startup script and fix perms
 	cp -a stuff/etc $fs
 	chown root.root $fs/etc/init.d/ntop
@@ -52,20 +54,20 @@ post_install()
 {
 	user=ntop
 	group=ntop
-	
+
 	if ! grep -q $user: $1/etc/passwd; then
 		echo -n "Adding user/group $user..."
 		chroot $1/ addgroup -S $user
 		chroot $1/ adduser -S -D -H -G $group $user
 		status
 	fi
-	
+
 	# Fix perms for files and directories
 	chroot $1/ chown -R ${user}.${group} /var/lib/ntop /var/log/ntop
-		
+
 	# Start package daemon if we are  on running system
 	[ -z $1 ] && /etc/init.d/$PACKAGE start
-	
+
 	# post_install messges
 	echo -e "\nTo starts $PACKAGE server you can run :\n"
 	echo "/etc/init.d/$PACKAGE start"
