@@ -489,7 +489,7 @@ void read_sectors(int fd, struct vm86_regs *r, int first_sector,
                 goto failed;
             }
     	}
-        if (lseek(fd, first_sector, SEEK_CUR) >= 0 &&
+        if (lseek(fd, first_sector, SEEK_SET) >= 0 &&
             read(fd, buffer, sector_count) == sector_count) {
             r->eax &= ~0xff00;
             r->eflags &= ~CF_MASK;
