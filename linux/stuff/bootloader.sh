@@ -116,7 +116,7 @@ floppyset()
 	bs=/tmp/bs$$
 
 	# Get and patch boot sector
-	# See http://hg.slitaz.org/wok/file/66e38bd6a132/linux/stuff/linux-header.u
+	# See http://hg.slitaz.org/wok/raw-file/66e38bd6a132/linux/stuff/linux-header.u
 	[ -n "$DEBUG" ] && echo "Read bootsector..." 1>&2
 	ddq if=$KERNEL bs=512 count=1 of=$bs
 
