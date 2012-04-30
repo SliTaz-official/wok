@@ -12,7 +12,7 @@ DEPENDS="xorg-base-fonts jpeg zlib"
 BUILD_DEPENDS="xorg-imake xorg-gccmakedep xorg-cf-files xorg-libXp \
 xorg-libXaw-dev xorg-libXt-dev xorg-xproto xorg-libXau-dev xorg-libXdmcp-dev \
 xorg-libXmu-dev xorg-xextproto xorg-printproto xorg-kbproto xorg-inputproto \
-xorg-scrnsaverproto xorg-xauth"
+xorg-scrnsaverproto xorg-xauth jpeg-dev zlib-dev"
 TAGS="remote-desktop"
 
 # Rules to configure and make the package.
@@ -20,6 +20,7 @@ compile_rules()
 {
 	[ -d vnc_unixsrc ] && mv vnc_unixsrc $src
 	cd $src
+	sed -i "s| FONTDIR =.*$| FONTDIR = /usr/share/fonts/X11|" Xvnc/config/cf/X11.tmpl
 	xmkmf &&
 	make -j1 World &&
 	cd Xvnc &&
@@ -28,9 +29,9 @@ compile_rules()
   	-i programs/Xserver/os/Makefile lib/font/fc/Makefile || return 1
 	find -name Makefile | xargs sed -i 's|/usr/X11R6/bin|/usr/bin|g'
 	make -j1 &&
-	make -j1 DESTDIR=$PWD/../_pkg install
+	make -j1 DESTDIR=$DESTDIR install
 	cd .. &&
-	make -j1 DESTDIR=$PWD/_pkg install
+	make -j1 DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -39,4 +40,22 @@ genpkg_rules()
 	mkdir -p $fs/usr/bin
 	cp -a $_pkg/usr/bin/Xvnc $fs/usr/bin
 	cp $src/vncpasswd/vncpasswd $fs/usr/bin
+	cat > $fs/usr/bin/startvnc <<EOM
+#!/bin/sh
+
+case "\$1" in
+''|:*)	;;
+*)	cat <<EOT
+Usage: \$0 [display] [geometry] [depth]
+Default: \$0 :1 1920x1024 24
+EOT
+	exit 1
+esac
+	
+. \$HOME/.config/slitaz/applications.conf
+Xvnc -ac -geometry \${2:-1920x1024} -depth \${3:-24} :\${1:-1} &
+export DISPLAY=:\${1:-1}
+exec \$WINDOW_MANAGER
+EOM
+	chmod +x $fs/usr/bin/startvnc
 }
