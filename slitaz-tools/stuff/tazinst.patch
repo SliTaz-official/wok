@@ -1,0 +1,110 @@
+--- slitaz-tools-4.9.1/installer/tazinst
++++ /usr/sbin/tazinst
+@@ -20,7 +20,7 @@
+ # 7: Another instance is running
+ # 8: Internal error
+ 
+-VERSION=3.32
++VERSION=3.34
+ 
+ # Internationalization
+ . /usr/bin/gettext.sh
+@@ -115,6 +115,7 @@
+ gen_setup()
+ {
+ 	SETUP=$1
++	[ -z "$1" ] && abort 1 "Missing <file> parameter for install configuration"
+ 	touch $SETUP || abort 2 $(gettext "Can't write setup file")
+ 	if [ -r "$SETUP" ]; then
+ 		cat > $SETUP << _EOF_
+@@ -172,7 +173,7 @@
+ TGT_WINBOOT=""
+ 
+ _EOF_
+-
++		echo "$(ls $1)" $(gettext "created")
+ 	else
+ 		abort 2 $(gettext "Setup file not found")
+ 	fi
+@@ -339,10 +340,10 @@
+ 		btrfs|ext2|ext3|ext4|fat16|fat32|hfs|hfs+|jfs|ntfs|reiser4|reiserfs|ufs|xfs)
+ 			found=no
+ 			for xdir in /sbin /usr/sbin /usr/bin; do
+-				[ -x "$xdir/mkfs.$TGT_FS" ] && found=yes
++				[ -x "$xdir/mkfs.$TGT_HOME_FS" ] && found=yes
+ 			done
+ 			if [ "$found" == "no" ]; then
+-				msg "$TGT_FS: mkfs.$TGT_FS $(gettext "is not installed")"; error=yes
++				msg "$TGT_FS: mkfs.$TGT_HOME_FS $(gettext "is not installed")"; error=yes
+ 			fi ;;
+ 		*) msg "$TGT_HOME_FS: $(gettext "Unknown filesystem (/home)")"; error=yes ;;
+ 	esac
+@@ -774,20 +775,39 @@
+ 	debug "Searching for Windows"
+ 	if [ "$TGT_WINBOOT" == "auto" ];then
+ 		WINBOOT=$(fdisk -l | awk '
+-BEGIN{disk=-1,	found=-1,	winboot=""}
++BEGIN{
++	disk=-1
++	found=0 
++	winboot=""}
+ {
+-	# Counting disk
+-	if ($1=="Disk"){disk++, part=-1}
+-	# Counting partition
+-	if (substr($1,1,4)=="/dev"){part++}
+-	# Read partition Id
+- 	if ($2=="*"){Id=$6}	else {Id=$5}
+-	# Detect Windows type
+-	if (Id=="7" || Id=="b"){
+-		if (found){
+-			# record 1st Windows partition found
+-			winboot=sprintf("hd%d,%d",disk,part),found++}
++	# Count disks
++	if ($1=="Disk"){
++		disk++
++		part=-1
++		dev=substr($2,6,3)
++		# get removable status
++		file="/sys/block/"dev"/removable"
++		"cat " file | getline removable
++		close("cat ")
++}
++	# Count partitions
++	if (substr($1,1,4)=="/dev"){
++		# List fixed drives only
++		if (removable==0){
++			part++
++			# Read partition Id
++	 		if ($2=="*"){Id=$6} else {Id=""}
++			# Detect Windows Partition Type: 7,b,c,e,f
++			WPT="[7bcef]"
++			if (Id ~ WPT){
++				found++
++				# record 1st Windows partition found
++				if (found==1){
++					winboot=sprintf("hd%d,%d",disk,part)
++				}
++			}
+ 		}
++	}
+ }
+ END{printf "%s", winboot}')
+ 		if [ -z "$WINBOOT" ]; then
+@@ -1201,6 +1221,7 @@
+ 	new)
+ 		gen_setup $2 ;;
+ 	showurl)
++		LOG="/dev/null"
+ 		case $2 in
+ 			stable)
+ 				echo $URL_STABLE ;;
+@@ -1208,6 +1229,8 @@
+ 				echo $URL_COOKING ;;
+ 			rolling)
+ 				echo $URL_ROLLING ;;
++			*)
++				abort 1 $(gettext "Unknown url shortcut")
+ 		esac ;;
+ 	check)
+ 		LOG="/dev/null"
