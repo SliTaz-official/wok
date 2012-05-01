@@ -27,6 +27,13 @@ CONFIG_FILES="
 /etc/services
 /etc/shells"
 
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	make DESTDIR=$DESTDIR install
+}
+
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
@@ -53,13 +60,13 @@ genpkg_rules()
 		$fs/var/games \
 		$fs/var/lib \
 		$fs/var/lock \
-		$fs/var/log \
+		$fs/var/log/slitaz \
 		$fs/var/run \
 		$fs/var/spool \
 		$fs/var/tmp
 
-	# Copy all rootfs from the stuff and set permissions.
-	cp -a $src/rootfs/* $fs
+	# Copy all installed files and set permissions.
+	cp -a $install/* $fs
 
 	chown -R root.root $fs/*
 	chmod 1777 $fs/tmp
@@ -73,6 +80,10 @@ genpkg_rules()
 	# Creat /etc/mtab symlink.
 	cd $fs/etc
 	ln -s /proc/mounts mtab
+
+	# Fix httphelper link
+	cd $fs/usr/lib/slitaz
+	rm httphelper && ln -s httphelper.sh httphelper
 }
 
 # Pre and post install to backup all /etc/settings
