@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-tools"
-VERSION="4.9.1"
+VERSION="5.0"
 CATEGORY="system-tools"
 SHORT_DESC="SliTaz tools provide installer and utils usable on termnial."
 MAINTAINER="pankso@slitaz.org"
@@ -14,7 +14,6 @@ WGET_URL="http://mirror.slitaz.org/sources/tools/$TARBALL"
 CONFIG_FILES="
 /etc/TZ
 /etc/keymap.conf
-/etc/X11/screen.conf
 /etc/locale.conf
 /etc/firewall.conf
 /etc/slitaz/applications.conf"
@@ -24,7 +23,8 @@ compile_rules()
 {
     cd $src
 	# temp tazinst patch (until next release)
-	patch -p1 < $stuff/tazinst.patch || return 1
+	# Must stay in stable since tools <5.0 are not compaible 4.0.
+	#patch -p1 < $stuff/tazinst.patch || return 1
     make && make DESTDIR=$DESTDIR install
 }
 
@@ -33,6 +33,10 @@ genpkg_rules()
 {
 	mkdir -p $fs
 	cp -a $install/* $fs
+
+	# Makefile bug in 5.0
+	cp -a $src/tinyutils/decode $fs/usr/bin
+
 	chmod 0644 $fs/usr/share/locale/*/*/*.mo
 	chown -R root.root $fs
 }
@@ -46,7 +50,6 @@ pre_install()
 	echo "Creating backups of configs..."
 	cp $root/etc/TZ $root/etc/TZ.bak 2>/dev/null
 	cp $root/etc/keymap.conf $root/etc/keymap.conf.bak 2>/dev/null
-	cp $root/etc/X11/screen.conf $root/etc/X11/screen.conf.bak 2>/dev/null
 	cp $root/etc/locale.conf $root/etc/locale.conf.bak 2>/dev/null
 	cp $root/etc/firewall.conf $root/etc/firewall.conf.bak 2>/dev/null
 }
@@ -57,11 +60,6 @@ post_install()
 	echo "Restoring configs backups..."
 	mv -f $root/etc/TZ.bak $root/etc/TZ 2>/dev/null
 	mv -f $root/etc/keymap.conf.bak $root/etc/keymap.conf 2>/dev/null
-	mv -f $root/etc/X11/screen.conf.bak $root/etc/X11/screen.conf 2>/dev/null
 	mv -f $root/etc/locale.conf.bak $root/etc/locale.conf 2>/dev/null
 	mv -f $root/etc/firewall.conf.bak $root/etc/firewall.conf 2>/dev/null
-	# Install boxes package if old slitaz-tools
-	if [ -f $root/usr/bin/mountbox ] && [ ! -d /var/lib/tazpkg/installed/slitaz-tools-boxes ]; then
-		tazpkg get-install slitaz-tools-boxes
-	fi
 }
