@@ -15,11 +15,15 @@ BUILD_DEPENDS="bash"
 
 [ "$KBASEVER" != "$VERSION" ] && PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz"
 
+# Cross toolchain variables.
+CROSS_TARGET="arm-slitaz-linux-gnueabi"
+CROSS_PREFIX="/usr/cross/arm"
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	
+
 	if [ "$KBASEVER" != "$VERSION" ]; then
 		if [ -f $SOURCES_REPOSITORY/$(basename $PATCH) ]; then
 			xzcat $SOURCES_REPOSITORY/$(basename $PATCH) | patch -Np1
@@ -31,20 +35,15 @@ compile_rules()
 
 	make mrproper &&
 	make ARCH=arm headers_check &&
-	make ARCH=arm INSTALL_HDR_PATH=$DESTDIR/usr headers_install
+	make ARCH=arm \
+		INSTALL_HDR_PATH=${DESTDIR}${CROSS_PREFIX} \
+		headers_install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $_pkg/usr/include $fs/usr
+	cp -a $install/usr/cross $fs/usr
 	rm -f $(find ${fs} -name .install -or -name ..install.cmd)
-}
-
-# Post install commands for Tazpkg.
-post_install()
-{
-	# Removed old linux-headers
-	rm -rf ${1}${INSTALLED}/linux-headers 2>/dev/null
 }
