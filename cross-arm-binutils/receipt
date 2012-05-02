@@ -1,0 +1,50 @@
+# SliTaz package receipt.
+
+PACKAGE="cross-arm-binutils"
+VERSION="2.22"
+CATEGORY="system-tools"
+SHORT_DESC="Cross compilation linker targeting ARM platform."
+MAINTAINER="pankso@slitaz.org"
+SOURCE="binutils"
+WEB_SITE="http://www.gnu.org/software/binutils/"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WGET_URL="$GNU_MIRROR/$SOURCE/$TARBALL"
+
+DEPENDS=""
+BUILD_DEPENDS=""
+
+# Cross toolchain variables.
+CROSS_TARGET="arm-slitaz-linux-gnueabi"
+CROSS_PREFIX="/usr/cross/arm"
+CROSS_TRIPLET="--build=$HOST_SYSTEM --host=$HOST_SYSTEM --target=$CROSS_TARGET"
+
+# CFLAGS and CXXFLAGS must not be set during the building of cross-tools.
+unset CFLAGS CXXFLAGS CONFIG_SITE
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	mkdir ../build && cd ../build
+	$src/configure \
+		--prefix=$CROSS_PREFIX \
+		--program-prefix=${CROSS_TARGET}- \
+		--enable-targets=$ARCH-slitaz-linux \
+		--enable-shared \
+		--disable-multilib \
+		--disable-werror \
+		--disable-nls \
+		$CROSS_TRIPLET &&
+	make configure-host &&
+	make && make install
+	#make tooldir=$CROSS_PREFIX &&
+	#make tooldir=$CROSS_PREFIX install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/cross $fs/usr
+	rm -rf ${fs}${CROSS_PREFIX}/share
+}
