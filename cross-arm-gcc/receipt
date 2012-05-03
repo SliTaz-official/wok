@@ -1,0 +1,100 @@
+# SliTaz package receipt.
+
+PACKAGE="cross-arm-gcc"
+VERSION="4.6.3"
+CATEGORY="system-tools"
+SHORT_DESC="Cross compiler for targeting ARM platform."
+MAINTAINER="pankso@slitaz.org"
+SOURCE="gcc"
+WEB_SITE="http://gcc.gnu.org/"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WGET_URL="$GNU_MIRROR/gcc/gcc-$VERSION/$TARBALL"
+
+DEPENDS="mpc-library elfutils linux-arm-api-headers cross-arm-binutils \
+cross-arm-glibc"
+BUILD_DEPENDS="linux-arm-api-headers cross-arm-binutils gmp gmp-dev \
+mpfr mpfr-dev mpc-library elfutils-dev"
+
+# Cross toolchain variables.
+CROSS_TARGET="arm-slitaz-linux-gnueabi"
+CROSS_PREFIX="/usr/cross/arm"
+CROSS_TRIPLET="--build=$HOST_SYSTEM --host=$HOST_SYSTEM --target=$CROSS_TARGET"
+
+# CFLAGS and CXXFLAGS must not be set during the building of cross-tools.
+unset CFLAGS CXXFLAGS CONFIG_SITE
+
+# Path to cross tools
+export PATH=$PATH:$CROSS_PREFIX/bin
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+
+	# Package cross-arm-toolchain use 'cook --options' when rebuilding
+	# the full SliTaz ARM cross toolchain.
+	[ "$2" == "--first-pass" ] && opt=$2
+	[ "$3" == "--first-pass" ] && opt=$3
+
+	mkdir -p ../build && cd ../build
+
+	case $opt in
+		--first-pass)
+			# Used by cross-arm-toolchain when rebuilding the full toolchain.
+			echo "cook: configure GCC for: cross toolchain first pass"
+			$src/configure \
+				--prefix=$CROSS_PREFIX \
+				--disable-shared \
+				--disable-threads \
+				--without-headers \
+				--with-newlib \
+				--enable-languages=c \
+				$CROSS_TRIPLET &&
+			make all-gcc all-target-libgcc &&
+			make install-gcc install-target-libgcc &&
+			cd ${install}${CROSS_PREFIX}/lib/gcc/$CROSS_TARGET/$VERSION &&
+			#ln -s libgcc.a libgcc_sh.a
+			ln -s libgcc.a libgcc_eh.a ;;
+		*)
+			# Used to produce a full featured ARM GCC cross compiler.
+			echo "cook: configure GCC for: final/full cross compiler"
+			# cross-arm-toolchain package will install glibc
+			#tazpkg -i /home/slitaz/packages/cross-arm-glibc-2.14.1.tazpkg
+			$src/configure \
+				--prefix=$CROSS_PREFIX \
+				--enable-shared \
+				--enable-languages=c,c++ \
+				--enable-c99 \
+				--enable-long-long \
+				--enable-__cxa_atexit \
+				$CROSS_TRIPLET &&
+			make && make install ;;
+	esac
+
+	# Some configure options I have tested (pankso)
+	#--libexec=/usr/lib
+	#--disable-threads
+	#--disable-checking
+	#--disable-shared
+	#--disable-nls
+	#--with-as=/usr/bin/${CROSS_TARGET}-as
+	#--with-ld=/usr/bin/${CROSS_TARGET}-ld
+	#--enable-languages=c,c++
+	#--enable-multilib
+	#--enable-addons
+	#--enable-softfloat
+	#--with-float=soft
+	#--disable-decimal-float
+	#--enable-interwork
+	#--disable-libgomp
+	#--disable-libmudflap
+	#--disable-libssp
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/cross $fs/usr
+	rm -rf ${fs}${CROSS_PREFIX}/share
+}
