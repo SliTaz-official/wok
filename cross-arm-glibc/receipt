@@ -14,10 +14,10 @@ DEPENDS=""
 BUILD_DEPENDS="linux-arm-api-headers cross-arm-binutils cross-arm-gcc \
 autoconf bash gawk"
 
-# Cross toolchain variables.
+# Cross toolchain variables. We dont use CROSS_TRIPLET here, we cross build
+# with: --build=$HOST_SYSTEM --host=$CROSS_TARGET
 CROSS_TARGET="arm-slitaz-linux-gnueabi"
 CROSS_PREFIX="/usr/cross/arm"
-CROSS_TRIPLET="--build=$HOST_SYSTEM --host=$HOST_SYSTEM --target=$CROSS_TARGET"
 
 # CFLAGS and CXXFLAGS must not be set during the building of cross-tools.
 unset CFLAGS CXXFLAGS CONFIG_SITE
@@ -28,9 +28,9 @@ export PATH=$PATH:$CROSS_PREFIX/bin
 # Rules to configure and make the package.
 compile_rules()
 {
-	echo "cook: make linux/version.h"
+	echo "cook: make ARCH=arm linux/version.h"
 	cd $CROSS_PREFIX/include
-	make linux/version.h
+	make ARCH=arm linux/version.h
 
 	cd $src
 
@@ -39,24 +39,23 @@ compile_rules()
 		wget $GNU_MIRROR/$SOURCE/glibc-ports-$VERSION.tar.bz2 \
 			-O $SRC/glibc-ports-$VERSION.tar.bz2
 	fi
-	echo "Extracting glibc-ports..."
+	echo "Extracting: glibc-ports-$VERSION.tar.bz2"
 	tar xjf $SRC/glibc-ports-$VERSION.tar.bz2
 	mv glibc-ports-$VERSION ports
 
-	# #define TLS_DTV_UNALLOCATED ((void *) -1l) is already in dl-tls.h
-	#echo "#define TLS_DTV_UNALLOCATED ((void *) -1l)" \
-	#	>> ports/sysdeps/arm/dl-tls.h
+	mkdir ../build && cd ../build
 
-	mkdir ../glibc-build && cd ../glibc-build
 	CC=$CROSS_PREFIX/bin/$CROSS_TARGET-gcc
 	echo "libc_cv_forced_unwind=yes" > config.cache
 	echo "libc_cv_c_cleanup=yes" >> config.cache
+	#--enable-add-ons
 	$src/configure \
 		--prefix=$CROSS_PREFIX \
-		--enable-add-ons \
 		--with-headers=$CROSS_PREFIX/include \
 		--with-binutils=$CROSS_PREFIX/bin \
 		--config-cache \
+		--disable-sanity-checks \
+		--disable-profile \
 		--build=$HOST_SYSTEM \
 		--host=$CROSS_TARGET &&
 	make && make install_root=$DESTDIR install
@@ -67,8 +66,4 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr
 	cp -a $install/usr/cross $fs/usr
-	#cd ${fs}${CROSS_PREFIX}/$CROSS_TARGET
-	#rm -rf lib include
-	#ln -s ../lib lib
-	#ln -s ../include include
 }
