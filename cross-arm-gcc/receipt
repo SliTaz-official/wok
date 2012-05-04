@@ -10,8 +10,7 @@ WEB_SITE="http://gcc.gnu.org/"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WGET_URL="$GNU_MIRROR/gcc/gcc-$VERSION/$TARBALL"
 
-DEPENDS="mpc-library elfutils linux-arm-api-headers cross-arm-binutils \
-cross-arm-glibc"
+DEPENDS="mpc-library elfutils linux-arm-api-headers cross-arm-binutils"
 BUILD_DEPENDS="linux-arm-api-headers cross-arm-binutils gmp gmp-dev \
 mpfr mpfr-dev mpc-library elfutils-dev"
 
@@ -44,6 +43,7 @@ compile_rules()
 			echo "cook: configure GCC for: cross toolchain first pass"
 			$src/configure \
 				--prefix=$CROSS_PREFIX \
+				--libexec=$CROSS_PREFIX/lib \
 				--disable-shared \
 				--disable-threads \
 				--without-headers \
@@ -58,28 +58,44 @@ compile_rules()
 		*)
 			# Used to produce a full featured ARM GCC cross compiler.
 			echo "cook: configure GCC for: final/full cross compiler"
-			# cross-arm-toolchain package will install glibc
-			#tazpkg -i /home/slitaz/packages/cross-arm-glibc-2.14.1.tazpkg
+
+			# The cross-arm-toolchain package will install glibc. We can't
+			# have it in DEPENDS since glibc is not build when we compile
+			# GCC --first-pass
+			if [ ! "/var/lib/tazpkg/installed/cross-arm-glibc" ]; then
+				tazpkg -i /home/slitaz/packages/cross-arm-glibc-2.14.1.tazpkg
+			fi
+
+			# This will fix GCC final build since we dont use --with-sysroot=.
+			# Without that we go errors such as: cannot find crtn.o
+			echo "cook: moving ldscripts to: ${CROSS_PREFIX}/lib"
+			cd ${CROSS_PREFIX}/$CROSS_TARGET
+			mv lib/ldscripts ../lib
+			rm -rf lib
+			echo "cook: creating symlinks in: ${CROSS_PREFIX}/$CROSS_TARGET"
+			ln -s ../lib lib
+			ln -s ../include include
+
+			cd $WOK/$PACKAGE/source/build
 			$src/configure \
 				--prefix=$CROSS_PREFIX \
+				--libexec=$CROSS_PREFIX/lib \
 				--enable-shared \
 				--enable-languages=c,c++ \
 				--enable-c99 \
 				--enable-long-long \
 				--enable-__cxa_atexit \
+				--disable-threads \
 				$CROSS_TRIPLET &&
 			make && make install ;;
 	esac
 
 	# Some configure options I have tested (pankso)
-	#--libexec=/usr/lib
+	#--libexec=$CROSS_PREFIX/lib
 	#--disable-threads
 	#--disable-checking
 	#--disable-shared
 	#--disable-nls
-	#--with-as=/usr/bin/${CROSS_TARGET}-as
-	#--with-ld=/usr/bin/${CROSS_TARGET}-ld
-	#--enable-languages=c,c++
 	#--enable-multilib
 	#--enable-addons
 	#--enable-softfloat
