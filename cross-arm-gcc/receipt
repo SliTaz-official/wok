@@ -35,6 +35,9 @@ compile_rules()
 	[ "$2" == "--first-pass" ] && opt=$2
 	[ "$3" == "--first-pass" ] && opt=$3
 
+	# Use libiberty.a from binutils.
+	sed -i 's/install_to_$(INSTALL_DEST) //' libiberty/Makefile.in || return 1
+
 	mkdir -p ../build && cd ../build
 
 	case $opt in
@@ -45,38 +48,29 @@ compile_rules()
 				--prefix=$CROSS_PREFIX \
 				--libexec=$CROSS_PREFIX/lib \
 				--disable-shared \
-				--disable-threads \
-				--without-headers \
-				--with-newlib \
 				--enable-languages=c \
+				--disable-threads \
+				--disable-multilib \
+				--disable-nls \
+				--without-headers \
+				--disable-libgomp \
+				--disable-libmudflap \
+				--disable-libssp \
 				$CROSS_TRIPLET &&
 			make all-gcc all-target-libgcc &&
 			make install-gcc install-target-libgcc &&
 			cd ${install}${CROSS_PREFIX}/lib/gcc/$CROSS_TARGET/$VERSION &&
-			#ln -s libgcc.a libgcc_sh.a
 			ln -s libgcc.a libgcc_eh.a ;;
 		*)
 			# Used to produce a full featured ARM GCC cross compiler.
 			echo "cook: configure GCC for: final/full cross compiler"
 
-			# The cross-arm-toolchain package will install glibc. We can't
-			# have it in DEPENDS since glibc is not build when we compile
-			# GCC --first-pass
+			# We cant't have cross-arm-glibc it in DEPENDS since it not build
+			# when we compile GCC --first-pass
 			if [ ! "/var/lib/tazpkg/installed/cross-arm-glibc" ]; then
 				tazpkg -i /home/slitaz/packages/cross-arm-glibc-2.14.1.tazpkg
 			fi
 
-			# This will fix GCC final build since we dont use --with-sysroot=.
-			# Without that we go errors such as: cannot find crtn.o
-			echo "cook: moving ldscripts to: ${CROSS_PREFIX}/lib"
-			cd ${CROSS_PREFIX}/$CROSS_TARGET
-			mv lib/ldscripts ../lib
-			rm -rf lib
-			echo "cook: creating symlinks in: ${CROSS_PREFIX}/$CROSS_TARGET"
-			ln -s ../lib lib
-			ln -s ../include include
-
-			cd $WOK/$PACKAGE/source/build
 			$src/configure \
 				--prefix=$CROSS_PREFIX \
 				--libexec=$CROSS_PREFIX/lib \
@@ -85,26 +79,18 @@ compile_rules()
 				--enable-c99 \
 				--enable-long-long \
 				--enable-__cxa_atexit \
-				--disable-threads \
+				--enable-threads=posix \
+				--with-pkgversion="SliTaz" \
 				$CROSS_TRIPLET &&
-			make && make install ;;
+			make && make install &&
+			make all-target-libgcc &&
+			make install-target-libgcc ;;
 	esac
 
-	# Some configure options I have tested (pankso)
-	#--libexec=$CROSS_PREFIX/lib
-	#--disable-threads
-	#--disable-checking
-	#--disable-shared
-	#--disable-nls
+	# Some configure options we could use
 	#--enable-multilib
 	#--enable-addons
-	#--enable-softfloat
-	#--with-float=soft
-	#--disable-decimal-float
-	#--enable-interwork
-	#--disable-libgomp
-	#--disable-libmudflap
-	#--disable-libssp
+	#--with-newlib
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -113,4 +99,13 @@ genpkg_rules()
 	mkdir -p $fs/usr
 	cp -a $install/usr/cross $fs/usr
 	rm -rf ${fs}${CROSS_PREFIX}/share
+
+	# This will fix GCC final build since we dont use --with-sysroot=
+	# Without that we go errors such as: cannot find crtn.o
+	cd ${fs}${CROSS_PREFIX}/$CROSS_TARGET
+	for dir in lib include; do
+		mv -f $dir/* ../$dir 2>/dev/null
+		rmdir $dir 2>/dev/null
+		ln -s ../$dir .
+	done
 }
