@@ -1,19 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="gimp"
-VERSION="2.6.11"
+VERSION="2.8.0"
 CATEGORY="graphics"
 SHORT_DESC="Gnu Image Manipulation Program or GIMP!"
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ libart_lgpl babl gegl libgio tiff xorg-libXdamage libexif \
-xorg-libXmu xorg-libXt"
-SUGGESTED="gimp-plug-ins gimp-console"
-BUILD_DEPENDS="$DEPENDS gettext perl-xml-parser gtk+-dev babl-dev \
-gegl-dev libgio-dev intltool expat-dev zlib-dev libart_lgpl-dev lcms \
-lcms-dev xorg-dev-proto"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gimp.org/"
-WGET_URL="ftp://ftp.gimp.org/pub/gimp/v2.6/$TARBALL"
+WGET_URL="ftp://ftp.gimp.org/pub/gimp/v2.8/$TARBALL"
+SUGGESTED="gimp-plug-ins gimp-brushes gimp-console gimp-plugin-ufraw"
+
+DEPENDS="libart_lgpl babl gegl libgio tiff xorg-libXdamage xorg-libXmu \
+xorg-libXt gdk-pixbuf gtk+ "
+BUILD_DEPENDS="gettext perl-xml-parser babl-dev gegl-dev libgio-dev \
+intltool expat-dev zlib-dev libart_lgpl-dev lcms-dev xorg-dev-proto \
+gdk-pixbuf-dev gtk+-dev libexif-dev aalib-dev libmng-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -32,11 +33,9 @@ compile_rules()
   		--without-alsa \
   		--without-librsvg \
   		--without-dbus \
-  		--without-hal \
   		--without-webkit \
 		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS &&
-	make DESTDIR=$PWD/_pkg install
+	make $MAKEFLAGS && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -44,12 +43,12 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share/pixmaps
 
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/gimp $fs/usr/lib
-	cp -a $_pkg/usr/share/gimp $fs/usr/share
-	cp $_pkg/usr/share/icons/hicolor/24x24/apps/gimp.png \
+	cp -a $install/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/gimp $fs/usr/lib
+
+	cp $install/usr/share/icons/hicolor/24x24/apps/gimp.png \
 		$fs/usr/share/pixmaps/gimp.png
 
 	# The gimp-console goes in a separate package
@@ -59,13 +58,20 @@ genpkg_rules()
 	rm -rf $fs/usr/lib/gimp/2.0/plug-ins/*
 	for i in file-jpeg file-png pixelize screenshot
 	do
-		cp $_pkg/usr/lib/gimp/2.0/plug-ins/$i $fs/usr/lib/gimp/2.0/plug-ins
+		cp $install/usr/lib/gimp/2.0/plug-ins/$i \
+			$fs/usr/lib/gimp/2.0/plug-ins
 	done
 
-	# Strip plug-ins and remove devel files
-	strip -s $fs/usr/lib/gimp/*/plug-ins/*
-	rm $fs/usr/lib/gimp/*/modules/*.*a
+	# Include only Basic brushes --> gimp-brushes
+	cp -a $install/usr/share/gimp $fs/usr/share
+	for i in gimp-* Legacy Media Sketch Splatters Texture
+	do
+		rm -rf $fs/usr/share/gimp/2.0/brushes/$i
+	done
+
+	# Remove devel files
+	rm $fs/usr/lib/gimp/2.0/modules/*.*a
 
 	# Put a nice splash with a spider
-	cp -a stuff/gimp-splash.png $fs/usr/share/gimp/2.0/images/
+	cp -a $stuff/gimp-splash.png $fs/usr/share/gimp/2.0/images
 }
