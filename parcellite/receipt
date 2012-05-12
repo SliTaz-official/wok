@@ -16,6 +16,9 @@ BUILD_DEPENDS="xorg-dev gtk+-dev intltool autoconf automake"
 compile_rules()
 {	
 	cd $src
+	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
+	export LDFLAGS="-Wl,--copy-dt-needed-entries -lX11"
+	find . -name '*.[ch]*' | xargs sed -i 's|<glib/.*h|<glib.h|'
 	./configure \
 		--prefix=/usr \
 		$CONFIGURE_ARGS &&
