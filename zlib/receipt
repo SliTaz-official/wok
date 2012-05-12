@@ -1,38 +1,41 @@
 # SliTaz package receipt.
 
 PACKAGE="zlib"
-VERSION="1.2.6"
+VERSION="1.2.7"
 CATEGORY="base-system"
 SHORT_DESC="Compression library."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://zlib.net/"
+WEB_SITE="http://zlib.net"
 WGET_URL="$WEB_SITE/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="glibc-base"
 BUILD_DEPENDS=""
-
-# Rules to compile & install the temporary toolchain by Tazwok.
-cook_tmp_toolchain()
-{
-	cd $src
-	./configure --prefix=/tools &&
-	make &&	make install
-}
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	# work around gcc bug; see https://bugs.archlinux.org/task/20647
-	export CFLAGS="${CFLAGS/-O2/-O3} -fno-tree-vectorize -DUNALIGNED_OK"
+	case "$ARCH" in
+		i486)
+			# work around gcc bug; see https://bugs.archlinux.org/task/20647
+			export CFLAGS="${CFLAGS/-O2/-O3} -fno-tree-vectorize -DUNALIGNED_OK" ;;
+	esac
 	./configure --prefix=/usr --shared &&
 	make &&	make install
+}
+
+# Important cross compiled package so run readelf.
+testsuite()
+{
+	cd $install
+	readelf -h usr/lib/*.so.$VERSION
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
     mkdir -p $fs/usr/lib
-    cp -a $_pkg/usr/lib/libz.so* $fs/usr/lib
+    cp -a $install/usr/lib/libz.so* $fs/usr/lib
 }
