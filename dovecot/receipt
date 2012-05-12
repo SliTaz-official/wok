@@ -1,24 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="dovecot"
-VERSION="2.1.1"
+VERSION="2.1.6"
 CATEGORY="network"
 SHORT_DESC="Dovecot IMAP and POP3 Server."
 MAINTAINER="l.lemarinel@gmail.com"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="www.dovecot.org"
-WGET_URL="http://www.dovecot.org/releases/${VERSION%.*}/$TARBALL"
+WEB_SITE="http://dovecot.org"
+WGET_URL="http://www.dovecot.org/releases/${VERSION:0:3}/$TARBALL"
+
+DEPENDS="libssl libcap openldap pam postgresql libmysqlclient"
 BUILD_DEPENDS="openssl-dev libcap-dev openldap-dev \
  libmysqlclient mysql-dev sqlite-dev pam-dev postgresql-dev"
-DEPENDS="libssl libcap libmysqlclient libpostgresqlclient pam"
-
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	./configure  --prefix=/usr \
-		--sysconfdir=/etc \
+		--sysconfdir=/etc/dovecot \
 		--localstatedir=/var \
 		--libexecdir=/usr/lib/$PACKAGE \
 		--with-ssl=openssl \
@@ -28,8 +28,8 @@ compile_rules()
 		--with-pgsql \
 		--with-sqlite \
 		$CONFIGURE_ARGS &&
-	make && make install
-#	make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 	
 }
 
@@ -84,9 +84,9 @@ post_install()
 	
 	if ! grep -q $user $1/etc/passwd; then
 		echo -n "Adding user/group $user..."
-		chroot $1/ addgroup -S $group
-		chroot $1/ adduser -S -D -H -G $group $user
-		chroot $1/ adduser -S -D -H -G nogroup dovenull 
+		chroot $1/ addgroup -g 76 -S $group
+		chroot $1/ adduser -u 76 -S -D -H -G $group $user
+		chroot $1/ adduser -u 74 -S -D -H -G nogroup dovenull 
 		status
 	fi
 	
@@ -110,10 +110,10 @@ EOF
 post_remove()
 {
 	echo "Removing stalled files..."
-	test -d /var/log/dovecot && rm -rf /var/log/dovecot
-	test -d /var/run/dovecot && rm -rf /var/run/dovecot
+	test -d $1/var/log/dovecot && rm -rf $1/var/log/dovecot
+	test -d $1/var/run/dovecot && rm -rf $1/var/run/dovecot
 	
 	echo "Removing user/group daemon"
-	deluser dovecot 
-	deluser dovenull
+	chroot "$1/" deluser dovecot 
+	chroot "$1/" deluser dovenull
 }
