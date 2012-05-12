@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="pciutils"
-VERSION="3.1.8"
+VERSION="3.1.9"
 CATEGORY="system-tools"
 SHORT_DESC="Utilities to list PCI device by name (lspci)."
 MAINTAINER="pankso@slitaz.org"
@@ -16,15 +16,21 @@ BUILD_DEPENDS="wget"
 compile_rules()
 {
 	cd $src
-	make PREFIX=/usr IDSDIR=/usr/share/misc
+	make OPT="${CFLAGS} -fPIC -DPIC" SHARED=no PREFIX=/usr SHAREDIR=/usr/share/misc MANDIR=/usr/share/man all
+	cp -a lib/libpci.a $WOK/$PACKAGE/source
+	make clean
+	make OPT="${CFLAGS}" ZLIB=no SHARED=yes PREFIX=/usr SHAREDIR=/usr/share/misc MANDIR=/usr/share/man all
+	make SHARED=yes PREFIX=/usr SHAREDIR=/usr/share/misc MANDIR=/usr/share/man DESTDIR="$DESTDIR" install install-lib
+	cp -a $WOK/$PACKAGE/source/libpci.a $DESTDIR/usr/lib
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr
-	cp -a $src/lspci $fs/usr/bin
-	cp -a $src/setpci $fs/usr/bin
+	mkdir -p $fs/usr/bin $fs/usr/lib
+	cp -a $install/usr/sbin/lspci $fs/usr/bin
+	cp -a $install/usr/sbin/setpci $fs/usr/bin
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
 
 # Overlap busybox
