@@ -5,13 +5,18 @@ VERSION="1.20.0"
 CATEGORY="base-system"
 SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
-DEPENDS="slitaz-base-files glibc-base ncurses-common"
-BUILD_DEPENDS="bzip2 pam pam-dev uclibc-cross-compiler-i486"
 AUFS_NOT_SUPPORTED="uclibc-cross-compiler-i486 is not compatible with aufs 8("
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.busybox.net/"
 WGET_URL="http://www.busybox.net/downloads/$TARBALL"
 CONFIG_FILES="/etc/dnsd.conf /etc/inetd.conf /etc/udhcpd.conf /etc/resolv.conf /etc/httpd.conf"
+
+DEPENDS="slitaz-base-files glibc-base ncurses-common"
+BUILD_DEPENDS="bzip2 pam pam-dev uclibc-cross-compiler-i486"
+
+case "$ARCH" in
+	arm) BUILD_DEPENDS="bzip2" ;;
+esac
 
 apply_bb_patchs()
 {
@@ -39,7 +44,7 @@ EOT
 cook_tmp_toolchain()
 {
     { stuff=${stuff:-../stuff}
-    apply_bb_patchs && 
+    apply_bb_patchs &&
     make oldconfig &&
     make &&
     make CONFIG_PREFIX=/tools install
@@ -48,37 +53,58 @@ cook_tmp_toolchain()
     chmod 4755 /tools/bin/busybox
 }
 
+# Cook Busybox
+cook_bb()
+{
+	{ apply_bb_patchs &&
+	make oldconfig &&
+	make && make install
+	} || return 1
+}
 # Rules to configure and make the package.
 compile_rules()
 {
-    { apply_bb_patchs && 
-    make oldconfig &&
-    make &&
-    make install
-    } || return 1
-    strip --strip-unneeded -R .eh_frame -R .eh_frame_hdr $src/_install/bin/busybox
+	case "$ARCH" in
+		arm)
+			export CROSS_COMPILE=$HOST_SYSTEM-
+			echo "cook: CROSS_COMPILE=$CROSS_COMPILE"
+			cook_bb
+			chmod 4755 $src/_install/bin/busybox ;;
+		x86_64) echo "TODO" ;;
+		i?86)
+			cook_bb
+		    strip --strip-unneeded \
+				-R .eh_frame -R .eh_frame_hdr \
+				$src/_install/bin/busybox
 
-    # prepare busybox-pam package
-    sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
-    make oldconfig && make || return 1
-    strip --strip-unneeded -R .eh_frame -R .eh_frame_hdr busybox
-    mv busybox busybox-pam
+			# prepare busybox-pam package
+		    sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
+		    make oldconfig && make || return 1
+		    strip --strip-unneeded -R .eh_frame -R .eh_frame_hdr busybox
+		    mv busybox busybox-pam
 
-    # prepare busybox-static package
-    cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
-    make oldconfig && make || return 1
-    mv busybox busybox-static
+		    # prepare busybox-static package
+		    cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
+		    make oldconfig && make || return 1
+		    mv busybox busybox-static
 
-    # prepare ssfs-busybox package
-    rootfs=$src/ssfs-busybox/usr/share/ssfs/rootfs
-    mkdir -p $rootfs/etc
-    cp $stuff/$PACKAGE-${VERSION%.*}.config-ssfs .config
-    make oldconfig && make busybox &&
-    make CONFIG_PREFIX=$rootfs install || return 1
-    cp $stuff/busybox.conf-ssfs $rootfs/etc/busybox.conf
-    chown -R 0.0 $rootfs/etc
-    chmod 0600 $rootfs/etc/busybox.conf
-    chmod 4755 $rootfs/bin/busybox
+		    # prepare ssfs-busybox package
+		    rootfs=$src/ssfs-busybox/usr/share/ssfs/rootfs
+		    mkdir -p $rootfs/etc
+		    cp $stuff/$PACKAGE-${VERSION%.*}.config-ssfs .config
+		    make oldconfig && make busybox &&
+		    make CONFIG_PREFIX=$rootfs install || return 1
+		    cp $stuff/busybox.conf-ssfs $rootfs/etc/busybox.conf
+		    chown -R 0.0 $rootfs/etc
+		    chmod 0600 $rootfs/etc/busybox.conf
+		    chmod 4755 $rootfs/bin/busybox ;;
+	esac
+}
+
+# Cross compilation check.
+testsuite()
+{
+	readelf -h $src/_install/bin/busybox
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -87,7 +113,7 @@ genpkg_rules()
     cp -a $src/_install/* $fs
     rm -f $fs/bin/bbconfig $fs/usr/bin/ar
     mkdir -p $fs/etc/init.d $fs/var
-    
+
     # Busybox config files.
     for f in busybox.conf dnsd.conf udhcpd.conf inetd.conf httpd.conf zcip.script
     do
@@ -101,12 +127,12 @@ genpkg_rules()
     cp $stuff/daemon $fs/etc/init.d
     DAEMON="crond dnsd ftpd httpd inetd klogd ntpd syslogd telnetd tftpd udhcpd zcip"
     for i in $DAEMON; do
-		grep -qi config_$i=y $stuff/$PACKAGE-${VERSION%.*}.config && 
+		grep -qi config_$i=y $stuff/$PACKAGE-${VERSION%.*}.config &&
 		ln -s daemon $fs/etc/init.d/$i
     done
     rm $fs/linuxrc
     mkdir -p $fs/etc/modprobe.d
-    
+
     # Udhcpc stuff.
     mkdir -p $fs/usr/share/udhcpc
     cp $stuff/udhcp.script $fs/usr/share/udhcpc/default.script
@@ -116,21 +142,18 @@ genpkg_rules()
     cp -a $stuff/www $fs/var
 }
 
-# Force glibc-2.7 reinstall if 2.3.6 still in use.
+# GNU utils stuff.
 pre_install()
 {
 	local i
 	cp -a /etc/resolv.conf /etc/resolv.conf-busybox-install
-	if grep -q 'VERSION="2.3.6"' /var/lib/tazpkg/installed/glibc-base/receipt; then
-		tazpkg get-install glibc-base --forced
-	fi
 	answer=""
 	for i in $(cat $1$INSTALLED/$PACKAGE/files.list); do
 		[ -f $1$i ] || continue
 		case "$i" in
-		/bin/busybox) continue ;;
-		*bin/*) ;;
-		*) continue ;;
+			/bin/busybox) continue ;;
+			*bin/*) ;;
+			*) continue ;;
 		esac
 		if [ -z "$answer" ]; then
 			echo -n "Keep installed GNU utilities ? "
