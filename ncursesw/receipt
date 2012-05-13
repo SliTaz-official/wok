@@ -9,6 +9,16 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://invisible-island.net/ncurses/"
 WGET_URL="ftp://invisible-island.net/ncurses/$TARBALL"
+HOST_ARCH="i486 arm"
+
+# Ncursesw need an installed /usr/bin/tic witch is in ncursesw-extra. And
+# when cross compiling we can't use the freshly cooked binary. See cook log:
+#
+#** Building terminfo database, please wait...
+#Running /usr/bin/tic to install /home/slitaz/wok/ncurses/install/usr/share/terminfo
+#
+DEPENDS="ncurses-common"
+BUILD_DEPENDS="gcc ncursesw-extra"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,8 +33,8 @@ compile_rules()
 		--without-debug \
 		--without-ada \
 		--enable-widec \
-		--build=$HOST_SYSTEM \
-		--host=$HOST_SYSTEM &&
+		--with-build-cc="gcc -D_GNU_SOURCE" \
+		$CONFIGURE_ARGS &&
 	make && make install
 }
 
@@ -32,25 +42,25 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/lib $fs/usr/bin
-	
+
 	# Libs.
-	cp -a $_pkg/lib/libncursesw.so* $fs/lib
-	
+	cp -a $install/lib/libncursesw.so* $fs/lib
+
 	# Base progs.
-	cp $_pkg/usr/bin/clear $fs/usr/bin
-	cp $_pkg/usr/bin/tset $fs/usr/bin
-	cp $_pkg/usr/bin/reset $fs/usr/bin
+	cp $install/usr/bin/clear $fs/usr/bin
+	cp $install/usr/bin/tset $fs/usr/bin
+	cp $install/usr/bin/reset $fs/usr/bin
 }
 
 # Overlap busybox
 pre_install()
 {
-	rm -f $1/usr/bin/clear
-	rm -f $1/usr/bin/reset
+	rm -f $root/usr/bin/clear
+	rm -f $root/usr/bin/reset
 }
 
 post_remove()
 {
-	ln -s /bin/busybox $1/usr/bin/clear
-	ln -s /bin/busybox $1/usr/bin/reset
+	ln -s /bin/busybox $root/usr/bin/clear
+	ln -s /bin/busybox $root/usr/bin/reset
 }
