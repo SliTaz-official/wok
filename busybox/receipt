@@ -5,14 +5,16 @@ VERSION="1.20.0"
 CATEGORY="base-system"
 SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
-AUFS_NOT_SUPPORTED="uclibc-cross-compiler-i486 is not compatible with aufs 8("
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.busybox.net/"
 WGET_URL="http://www.busybox.net/downloads/$TARBALL"
-CONFIG_FILES="/etc/dnsd.conf /etc/inetd.conf /etc/udhcpd.conf /etc/resolv.conf /etc/httpd.conf"
+HOST_ARCH="i486 arm"
 
 DEPENDS="slitaz-base-files glibc-base ncurses-common"
 BUILD_DEPENDS="bzip2 pam pam-dev uclibc-cross-compiler-i486"
+CONFIG_FILES="/etc/dnsd.conf /etc/inetd.conf /etc/udhcpd.conf \
+/etc/resolv.conf /etc/httpd.conf"
+AUFS_NOT_SUPPORTED="uclibc-cross-compiler-i486 is not compatible with aufs 8("
 
 case "$ARCH" in
 	arm) BUILD_DEPENDS="bzip2" ;;
@@ -61,12 +63,12 @@ cook_bb()
 	make && make install
 	} || return 1
 }
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	case "$ARCH" in
 		arm)
-			export CROSS_COMPILE=$HOST_SYSTEM-
 			echo "cook: CROSS_COMPILE=$CROSS_COMPILE"
 			cook_bb
 			chmod 4755 $src/_install/bin/busybox ;;
