@@ -1,25 +1,60 @@
 # SliTaz package receipt.
 
 PACKAGE="linux"
-VERSION="3.2.14"
-KBASEVER="${VERSION:0:3}"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 MAINTAINER="devel@slitaz.org"
-TARBALL="$PACKAGE-$KBASEVER.tar.xz"
 WEB_SITE="http://www.kernel.org/"
 WGET_URL="http://www.kernel.org/pub/linux/kernel/v3.0/$TARBALL"
-AUFS_NOT_SUPPORTED="uclibc-cross-compiler-x86_64 is not compatible with aufs 8("
-CONFIG_FILES="/lib/modules/$KBASEVER-slitaz/modules.dep"
+HOST_ARCH="i486 arm x86_64"
 
-DEPENDS="depmod"
-BUILD_DEPENDS="slitaz-toolchain perl git xz lzma patch uclibc-cross-compiler-x86_64"
-[ "$KBASEVER" != "$VERSION" ] && PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz"
+# Aufs enable chroot
+AUFS_NOT_SUPPORTED="uclibc-cross-compiler-x86_64 is not compatible with aufs 8("
+
+# This will save/restore the modules.dep but we want to regenerate it
+# on install/upgrade.
+#CONFIG_FILES="/lib/modules/$KBASEVER-slitaz/modules.dep"
+
+case "$ARCH" in
+	i?86)
+		VERSION="3.2.14"
+		KBASEVER="${VERSION:0:3}"
+		TARBALL="$PACKAGE-$KBASEVER.tar.xz"
+		DEPENDS="kmod"
+		BUILD_DEPENDS="slitaz-toolchain perl git xz lzma patch uclibc-cross-compiler-x86_64"
+		[ "$KBASEVER" != "$VERSION" ] && PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz" ;;
+	arm)
+		# Old school way :-) Until ARM was tested on real hardware and
+		# we know wich modules/features we realy need for ARM machines.
+		# No deps on kmod since we use Busybox modutils for ARM.
+		VERSION="2.6.35.13"
+		TARBALL="$PACKAGE-$VERSION.tar.bz2" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+
+	case "$ARCH" in
+		arm)
+			echo "Compiling: ARM Kernel"
+			make mrproper &&
+			cp -f $stuff/$ARCH/linux-slitaz.config .config &&
+			make ARCH=$ARCH CROSS_COMPILE=${HOST_SYSTEM}- bzImage &&
+			make ARCH=$ARCH CROSS_COMPILE=${HOST_SYSTEM}- modules &&
+			make ARCH=$ARCH CROSS_COMPILE=${HOST_SYSTEM}- \
+				INSTALL_MOD_PATH=$DESTDIR modules_install &&
+			mkdir -p $DESTDIR/boot &&
+			mv arch/arm/boot/compressed/vmlinux \
+				$DESTDIR/boot/linux-$VERSION-slitaz-$ARCH
+			return 0 ;;
+		x86_64)
+			echo "TODO: Maybe use default ? But cross compile in x86_64 chroot"
+			echo "so we can remove the 64 build by uclibc-cross-compiler-x86_64"
+			return 0 ;;
+	esac
+
 	# this is code to help update the kernel version faster
 	#for i in $(grep -l 'WANTED="linux"' $WOK/*/receipt)
 	#do
@@ -58,7 +93,7 @@ compile_rules()
 	echo "$WGET_URL" > $WOK/$PACKAGE/source/slitaz/url
 	cp $stuff/gztazmod.sh $stuff/list_modules.sh $WOK/$PACKAGE/source/slitaz
 	cp $stuff/bootloader.sh $WOK/$PACKAGE/source/slitaz
-	
+
 	# Apply patches
 	echo "Applying patches..."
 	while read patch_file; do
@@ -110,7 +145,7 @@ EOT
 		make lguest || { report close-bloc; return 1; }
 	fi
 	cd $src
-	
+
 	case "$opt" in
 	*--no64*);;
 	*)
@@ -119,12 +154,12 @@ EOT
 	#
 	[ ! -x /usr/bin/cook ] && report step "Make bzImage64 without modules first"
 	[ -x /usr/bin/cook ] && echo "Building x86_64 Kernel"
-	
+
 	# Build bzImage64 without modules first
 	cp -f $stuff/$PACKAGE-slitaz.config64 .config
 	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
-	
-	# We can't keep every driver in staging 
+
+	# We can't keep every driver in staging
 	sed -i -e 's/^CONFIG_RTL8192/#&/' \
 	       -e 's/^CONFIG_R8187SE/#&/' \
 	       -e 's/^CONFIG_RT2870/#&/' .config
@@ -139,7 +174,7 @@ EOT
 	mv System.map System.map-without-modules64
 
 	[ ! -x /usr/bin/cook ] && report step "Now build bzImage64 with modules"
-	
+
 	# Build bzImage64 with modules
 	cp -f $stuff/$PACKAGE-slitaz.config64 .config
 	#make ARCH=x86_64 oldconfig
@@ -158,18 +193,18 @@ EOT
 	ln System.map System.map-modules64
 	ln Module.symvers Module.symvers-modules64
 	esac
-	
+
 	#
 	# Standard kernel
 	#
 	[ ! -x /usr/bin/cook ] && report step "Make bzImage without modules first"
 	[ -x /usr/bin/cook ] && echo "Building standard kernel..."
-	
+
 	# Build bzImage without modules first
 	cp -f $stuff/$PACKAGE-slitaz.config .config
 	sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
-	
-	# We can't keep every driver in staging 
+
+	# We can't keep every driver in staging
 	sed -i -e 's/^CONFIG_RTL8192/#&/' \
 	       -e 's/^CONFIG_R8187SE/#&/' \
 	       -e 's/^CONFIG_RT2870/#&/' .config
@@ -184,7 +219,7 @@ EOT
 	mv System.map System.map-without-modules
 
 	[ ! -x /usr/bin/cook ] && report step "Now build bzImage with modules"
-	
+
 	# Build bzImage with modules
 	cp -f $stuff/$PACKAGE-slitaz.config .config
 	#make oldconfig
@@ -200,15 +235,15 @@ EOT
 	fi
 	mkdir -p $DESTDIR/boot 2> /dev/null
 	mv arch/x86/boot/bzImage $DESTDIR/boot/vmlinuz-$VERSION-slitaz
-	
+
 	[ ! -x /usr/bin/cook ] && report step "Compressing all modules"
-	
+
 	# Compress all modules.
 	$stuff/gztazmod.sh $DESTDIR/lib/modules/$KBASEVER-slitaz
 	$stuff/gztazmod.sh $DESTDIR/linux64/lib/modules/$KBASEVER-slitaz
 	ln System.map System.map-modules
 	ln Module.symvers Module.symvers-modules
-	
+
 	if [ ! -x /usr/bin/cook ]; then
 		report close-bloc
 	fi
@@ -217,6 +252,17 @@ EOT
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	case "$ARCH" in
+		arm)
+			echo "Packing: ARM Kernel"
+			cp -a $install/* $fs
+			rm -f $fs/lib/modules/*/build $fs/lib/modules/*/source
+			return 0 ;;
+		x86_64)
+			echo "TODO: use default or custom x86_64 packing"
+			return 0 ;;
+	esac
+
     export PACKAGE VERSION
     local path
     cp -a $_pkg/boot $fs
@@ -249,15 +295,21 @@ genpkg_rules()
     # saves 100kb of space too
     sed -i "s|$_pkg||g" $fs/lib/modules/$KBASEVER-slitaz/modules.dep
     sed -i "s|99.98.$KBASEVER-slitaz|$KBASEVER-slitaz|g" $fs/lib/modules/$KBASEVER-slitaz/modules.dep
-    # Check and echo any module in kernel .config that's not added to 
+    # Check and echo any module in kernel .config that's not added to
     # one of linux-* pkgs
-    $stuff/check_modules.sh 
+    $stuff/check_modules.sh
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
     echo "Processing post-install commands..."
+    case "$ARCH" in
+		arm)
+			echo "Kernel : /boot/linux-$VERSION-slitaz-$ARCH"
+			echo "Modules: /lib/modules/$VERSION-slitaz"
+			return 0 ;;
+	esac
     chroot "$1/" depmod -a $KBASEVER-slitaz
     # GRUB stuff.
     if [ -f "$1/boot/grub/menu.lst" ]; then
