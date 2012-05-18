@@ -1,12 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="glibc-base"
-VERSION="2.14.1"
 CATEGORY="base-system"
 SHORT_DESC="GNU libc minimal libraries and UTF-8 support for SliTaz."
 WEB_SITE="http://www.gnu.org/software/libc/"
-WANTED="glibc"
 MAINTAINER="pankso@slitaz.org"
+HOST_ARCH="i486 arm"
+
+case "$ARCH" in
+	arm)
+		VERSION="2.13" ;;
+	i?86)
+		VERSION="2.14.1"
+		WANTED="glibc" ;;
+esac
 
 DEFAULT_LOCALE="de_DE en_US en_GB es_ES fr_FR it_IT pt_BR pt_PT ru_RU"
 
@@ -18,22 +25,47 @@ DEFAULT_LOCALE="de_DE en_US en_GB es_ES fr_FR it_IT pt_BR pt_PT ru_RU"
 #
 genpkg_rules()
 {
-	# Mkdir's.
-	for dir in $(cat $stuff/mkdir.list)
-	do
-		mkdir -p ${fs}$dir
-	done
-    # Copy all files specified in stuff/files.list. We get the files
-    # from glibc package.
-    for file in $(cat $stuff/wanted-files.list)
-    do
-    	cp -a ${_pkg}$file ${fs}$file
-    done
-    # i18n
-    for i in $DEFAULT_LOCALE
-	do
-		cp $install/usr/share/i18n/locales/$i $fs/usr/share/i18n/locales
-	done
+	case "$ARCH" in
+		arm)
+			# EXPERIMENTAL: Glibc is cross compiled by cross to have a
+			# toolchain so we can use these files instead of recooking it.
+			# 20120514: Include just minal libs for Busybox so we can create
+			# bootable Qemu image for ARM.
+			echo "Using cross compiled Glibc"
+			mkdir -p $fs/lib $fs/etc $fs/usr/bin
+			install=/usr/cross/$ARCH
+			for bin in locale localedef
+			do
+				cp $install/bin/$bin $fs/usr/bin
+			done
+			for lib in libcrypt libm libc
+			do
+				cp $install/lib/${lib}-*.so $fs/lib
+				cp $install/lib/${lib}.so* $fs/lib
+			done
+			cp $install/lib/ld-*.so $fs/lib
+			cp $install/lib/libnss_*.so* $fs/lib
+			cp $install/etc/rpc $fs/etc
+			touch $fs/etc/ld.so.conf ;;
+		*)
+			# Mkdir's.
+			for dir in $(cat $stuff/mkdir.list)
+			do
+				mkdir -p ${fs}$dir
+			done
+		    # Copy all files specified in stuff/files.list. We get the files
+		    # from glibc package.
+		    for file in $(cat $stuff/wanted-files.list)
+		    do
+		    	cp -a ${_pkg}$file ${fs}$file
+		    done
+		    # i18n
+		    for i in $DEFAULT_LOCALE
+			do
+				cp $install/usr/share/i18n/locales/$i \
+					$fs/usr/share/i18n/locales
+			done
+	esac
 }
 
 # Remove an eventual locale-archive since we use directories.
