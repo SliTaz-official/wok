@@ -1,12 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="linux"
+VERSION="3.2.14"
+KBASEVER="${VERSION:0:3}"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 MAINTAINER="devel@slitaz.org"
+TARBALL="$PACKAGE-$KBASEVER.tar.xz"
 WEB_SITE="http://www.kernel.org/"
 WGET_URL="http://www.kernel.org/pub/linux/kernel/v3.0/$TARBALL"
 HOST_ARCH="i486 arm x86_64"
+
+DEPENDS="kmod"
+BUILD_DEPENDS="slitaz-toolchain perl git xz lzma patch uclibc-cross-compiler-x86_64"
+[ "$KBASEVER" != "$VERSION" ] && PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz"
 
 # Aufs enable chroot
 AUFS_NOT_SUPPORTED="uclibc-cross-compiler-x86_64 is not compatible with aufs 8("
@@ -16,19 +23,13 @@ AUFS_NOT_SUPPORTED="uclibc-cross-compiler-x86_64 is not compatible with aufs 8("
 #CONFIG_FILES="/lib/modules/$KBASEVER-slitaz/modules.dep"
 
 case "$ARCH" in
-	i?86)
-		VERSION="3.2.14"
-		KBASEVER="${VERSION:0:3}"
-		TARBALL="$PACKAGE-$KBASEVER.tar.xz"
-		DEPENDS="kmod"
-		BUILD_DEPENDS="slitaz-toolchain perl git xz lzma patch uclibc-cross-compiler-x86_64"
-		[ "$KBASEVER" != "$VERSION" ] && PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz" ;;
 	arm)
 		# Old school way :-) Until ARM was tested on real hardware and
 		# we know wich modules/features we realy need for ARM machines.
 		# No deps on kmod since we use Busybox modutils for ARM.
-		VERSION="2.6.35.13"
-		TARBALL="$PACKAGE-$VERSION.tar.bz2" ;;
+		#TARBALL="$PACKAGE-$VERSION.tar.bz2"
+		DEPENDS=""
+		BUILD_DEPENDS="xz" ;;
 esac
 
 # Rules to configure and make the package.
@@ -39,7 +40,11 @@ compile_rules()
 	case "$ARCH" in
 		arm)
 			echo "Compiling: ARM Kernel"
+			if [ ! -f $SRC/$(basename $PATCH) ]; then
+				wget $PATCH -O $SRC/$(basename $PATCH)
+			fi
 			make mrproper &&
+			xzcat $SRC/$(basename $PATCH) | patch -Np1
 			cp -f $stuff/$ARCH/linux-slitaz.config .config &&
 			make ARCH=$ARCH CROSS_COMPILE=${HOST_SYSTEM}- bzImage &&
 			make ARCH=$ARCH CROSS_COMPILE=${HOST_SYSTEM}- modules &&
