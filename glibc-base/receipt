@@ -1,6 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="glibc-base"
+VERSION="2.14.1"
 CATEGORY="base-system"
 SHORT_DESC="GNU libc minimal libraries and UTF-8 support for SliTaz."
 WEB_SITE="http://www.gnu.org/software/libc/"
@@ -11,7 +12,6 @@ case "$ARCH" in
 	arm)
 		VERSION="2.13" ;;
 	i?86)
-		VERSION="2.14.1"
 		WANTED="glibc" ;;
 esac
 
@@ -40,13 +40,16 @@ genpkg_rules()
 			done
 			for lib in libcrypt libm libc
 			do
-				cp $install/lib/${lib}-*.so $fs/lib
-				cp $install/lib/${lib}.so* $fs/lib
+				cp -a $install/lib/${lib}-*.so $fs/lib
+				cp -a $install/lib/${lib}.so* $fs/lib
 			done
-			cp $install/lib/ld-*.so $fs/lib
-			cp $install/lib/libnss_*.so* $fs/lib
+			cp -a $install/lib/ld-*.so* $fs/lib
+			cp -a $install/lib/libnss_*.so* $fs/lib
+			cp -a $install/lib/libc_nonshared.a $fs/lib
 			cp $install/etc/rpc $fs/etc
-			touch $fs/etc/ld.so.conf ;;
+			touch $fs/etc/ld.so.conf
+			# Fix libraries search path
+			sed -i s'|/usr/cross/arm||'g $fs/lib/libc.so ;;
 		*)
 			# Mkdir's.
 			for dir in $(cat $stuff/mkdir.list)
