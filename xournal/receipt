@@ -4,7 +4,7 @@ PACKAGE="xournal"
 VERSION="0.4.5"
 CATEGORY="utilities"
 SHORT_DESC="Notetaking application."
-MAINTAINER="remy.carel@free.fr"
+MAINTAINER="meshca@clarkson.edu"
 DEPENDS="gtk+ libgnomecanvas poppler poppler-apps gcc-lib-base"
 BUILD_DEPENDS="autoconf automake gtk+-dev libgnomecanvas libgnomecanvas-dev \
 poppler poppler-dev zlib-dev libart_lgpl-dev"
@@ -17,13 +17,15 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 compile_rules()
 {
 	cd $src
+	CFLAGS="$CFLAGS `pkg-config --cflags --libs gtk+-2.0` `pkg-config --libs x11` -lm -lz"
+	wget http://people.slitaz.org/~naitsirhc/xournal.patch && \
+	patch -p1 -i xournal.patch && \
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
-	make DESTDIR=$PWD/_pkg desktop-install	
+	make && make DESTDIR=$PWD/_pkg install && make DESTDIR=$PWD/_pkg desktop-install	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
