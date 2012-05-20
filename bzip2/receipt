@@ -8,24 +8,34 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.bzip.org/"
 WGET_URL="http://www.bzip.org/$VERSION/$TARBALL"
-DEPENDS="bzlib"
-BUILD_DEPENDS="gcc"
 TAGS="compression archive"
+HOST_ARCH="i486 arm"
 
-# Rules to compile & install the temporary toolchain.
-cook_tmp_toolchain()
-{
-	cd $src
-	make &&	make PREFIX=/tools install
-}
+DEPENDS="bzlib"
+BUILD_DEPENDS=""
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	make -f Makefile-libbz2_so &&
-	make clean &&
-	make
+	# Disable the tests since they won't work on a multi-architecture build
+	cp Makefile Makefile.orig
+	sed -e "/^all:/s/ test//" Makefile.orig > Makefile
+	# No configure script, we must used CC, AR and RANLIB set by cook.
+	case "$ARCH" in
+		arm)
+			make -f Makefile-libbz2_so CC=${CC} AR=${AR} RANLIB=${RANLIB} &&
+			make clean && make CC=${CC} AR=${AR} RANLIB=${RANLIB} ;;
+		*)
+			make -f Makefile-libbz2_so &&
+			make clean && make ;;
+	esac
+}
+
+# Just to be sure when cross-compiling.
+testsuite()
+{
+	readelf -h $src/bzip2-shared
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -42,12 +52,10 @@ genpkg_rules()
 # Remove Busybox symlinks before installing
 pre_install()
 {
-  local root
-  root=$1
-  echo "Processing post-install commands..."
-  rm -f $root/usr/bin/bunzip2
-  rm -f $root/usr/bin/bzcat
-#  rm -f $root/usr/bin/bzip2
+	echo "Processing post-install commands..."
+	rm -f $root/usr/bin/bunzip2
+	rm -f $root/usr/bin/bzcat
+	#rm -f $root/usr/bin/bzip2
 }
 
 # Restore Busybox symlinks upon removal
@@ -55,5 +63,5 @@ post_remove()
 {
 	ln -s /bin/busybox /usr/bin/bunzip2
 	ln -s /bin/busybox /usr/bin/bzcat
-#	ln -s /bin/busybox /usr/bin/bzip2
+	#ln -s /bin/busybox /usr/bin/bzip2
 }
