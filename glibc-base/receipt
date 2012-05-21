@@ -6,16 +6,16 @@ CATEGORY="base-system"
 SHORT_DESC="GNU libc minimal libraries and UTF-8 support for SliTaz."
 WEB_SITE="http://www.gnu.org/software/libc/"
 MAINTAINER="pankso@slitaz.org"
+WANTED="glibc"
 HOST_ARCH="i486 arm"
 
-case "$ARCH" in
-	arm)
-		VERSION="2.13" ;;
-	i?86)
-		WANTED="glibc" ;;
-esac
-
+# Locales include by default, other locales are in: glibc-locale
 DEFAULT_LOCALE="de_DE en_US en_GB es_ES fr_FR it_IT pt_BR pt_PT ru_RU"
+
+# Handle multiarch compilation.
+case "$ARCH" in
+	arm) VERSION="2.13" WANTED="" ;;
+esac
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 #
@@ -31,7 +31,7 @@ genpkg_rules()
 			# toolchain so we can use these files instead of recooking it.
 			# 20120514: Include just minal libs for Busybox so we can create
 			# bootable Qemu image for ARM.
-			echo "Using cross compiled Glibc"
+			echo "Using cross compiled Glibc..."
 			mkdir -p $fs/lib $fs/etc $fs/usr/bin
 			install=/usr/cross/$ARCH
 			for bin in locale localedef
@@ -48,6 +48,13 @@ genpkg_rules()
 			cp -a $install/lib/libc_nonshared.a $fs/lib
 			cp $install/etc/rpc $fs/etc
 			touch $fs/etc/ld.so.conf
+			## i18n
+			#mkdir -p $fs/usr/share/i18n/locales
+		    #for i in $DEFAULT_LOCALE
+			#do
+				#cp $install/share/i18n/locales/$i \
+					#$fs/usr/share/i18n/locales
+			#done
 			# Fix libraries search path
 			sed -i s'|/usr/cross/arm||'g $fs/lib/libc.so ;;
 		*)
@@ -74,5 +81,15 @@ genpkg_rules()
 # Remove an eventual locale-archive since we use directories.
 pre_install()
 {
-	rm -f $1/usr/lib/locale/locale-archive
+	rm -f $root/usr/lib/locale/locale-archive
+}
+
+# Glibc-base is auto-updated in chroot but when cross-compiling we need
+# to have /usr/cross/$ARCH search path in libc.so
+post_install()
+{
+	if echo $root | grep -q /usr/cross; then
+		echo "Fixing: $root/lib/libc.so"
+		sed -i s"|/lib|$root/lib|"g $root/lib/libc.so
+	fi
 }
