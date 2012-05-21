@@ -8,23 +8,22 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://expat.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    ./configure --sysconfdir=/etc --prefix=/usr \
-    --mandir=/usr/share/man $CONFIGURE_ARGS
-    make
-    make DESTDIR=$PWD/_pkg install
+	cd $src
+	./configure $CONFIGURE_ARGS &&
+	make && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/bin
-    cp -a $_pkg/usr/bin/* $fs/usr/bin
-    cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+    cp -a $install/usr/bin/* $fs/usr/bin
+    cp -a $install/usr/lib/*.so* $fs/usr/lib
     # expat so.0 symbolic link.
     cd $fs/usr/lib
     ln -s libexpat.so.1.5.2 libexpat.so.0
