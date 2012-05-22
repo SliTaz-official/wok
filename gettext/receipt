@@ -8,43 +8,34 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.gnu.org/software/gettext/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+HOST_ARCH="i486 arm"
 
+# Why deps on glib-dev ??? And glib build depends on gettext anyway...
 DEPENDS="gettext-base libgomp ncurses gcc-lib-base glib libxml2"
 BUILD_DEPENDS="glibc-locale ncurses-dev glib-dev libxml2-dev"
 
-# Rules to compile & install the temporary toolchain.
-cook_tmp_toolchain()
-{
-	cd $src/gettext-tools
-	./configure --disable-shared &&
-	make -C gnulib-lib &&
-	make -C src msgfmt &&
-	cp -a src/msgfmt /tools/bin &&
-	cd ../gettext-runtime &&
-	./configure --disable-shared &&
-	make -C gnulib-lib &&
-	make -C src envsubst &&
-	make -C src gettext &&
-	make -C src ngettext &&
-	cp -a src/envsubst src/gettext src/gettext.sh src/ngettext /tools/bin
-}
+# Handle cross compilation. Glibc-locale are installed in cross chroot.
+case "$ARCH" in
+	arm) BUILD_DEPENDS="ncurses-dev libxml2-dev" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure $CONFIGURE_ARGS && make && make install
+	./configure $CONFIGURE_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
-	cp -a $_pkg/usr/include $fs/usr
-	cp -a $_pkg/usr/share/aclocal $fs/usr/share
-	cp -a $_pkg/usr/share/gettext $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/include $fs/usr
+	cp -a $install/usr/share/aclocal $fs/usr/share
+	cp -a $install/usr/share/gettext $fs/usr/share
 	# Remove gettext-base files.
 	rm $fs/usr/bin/gettext
 	rm $fs/usr/bin/gettext.sh
