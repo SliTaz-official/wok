@@ -6,20 +6,23 @@ CATEGORY="security"
 SHORT_DESC="Light SSH client and server."
 MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-SUGGESTED="sftp-server"
 WEB_SITE="http://matt.ucc.asn.au/dropbear/dropbear.html"
 WGET_URL="http://matt.ucc.asn.au/dropbear/releases/$TARBALL"
 CONFIG_FILES="/etc/dropbear"
+SUGGESTED="sftp-server"
 PROVIDE="ssh"
 TAGS="ssh"
-#HOST_ARCH="i486 arm"
+HOST_ARCH="i486 arm"
 
 DEPENDS="zlib"
 BUILD_DEPENDS="zlib-dev pam pam-dev"
 
-# Handle multiarch compilation
+# Handle multiarch compilation.
 case "$ARCH" in
-	arm) BUILD_DEPENDS="zlib-dev" ;;
+	arm)
+		BUILD_DEPENDS=""
+		CROSS_ARGS="--disable-zlib"
+		CROSS_BUGS="Fails to find zlib: -lz... no" ;;
 esac
 
 # Rules to configure and make the package.
@@ -33,7 +36,7 @@ compile_rules()
 		-e 's|/usr/.*/sftp-server|/usr/sbin/sftp-server|' \
  		-e 's|ENABLE_SVR_PAM_AUTH|ENABLE_SVR_PASSWORD_AUTH|' \
 		options.h
-	./configure --prefix=/usr --without-pam $CONFIGURE_ARGS &&
+	./configure --prefix=/usr --without-pam $CONFIGURE_ARGS $CROSS_ARGS &&
 	make PROGRAMS="dropbear $DROPBEARS" MULTI=1 SCPPROGRESS=1 &&
 	install -d -m 755 $DESTDIR/usr/sbin &&
 	install -m 755 dropbearmulti $DESTDIR/usr/sbin/dropbear &&
@@ -42,7 +45,7 @@ compile_rules()
 	# No pam support in ARM
 	case "$ARCH" in
 		arm) echo "Skipping Dropbear PAM..." ;;
-		*)
+		i?86)
 			sed -i 's|ENABLE_SVR_PASSWORD_AUTH|ENABLE_SVR_PAM_AUTH|' \
 				options.h
 			./configure --prefix=/usr --enable-pam $CONFIGURE_ARGS &&
