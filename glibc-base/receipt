@@ -32,13 +32,16 @@ genpkg_rules()
 			# 20120514: Include just minal libs for Busybox so we can create
 			# bootable Qemu image for ARM.
 			echo "Using cross compiled Glibc..."
-			mkdir -p $fs/lib $fs/etc $fs/usr/bin
 			install=/usr/cross/$ARCH
+			mkdir -p $fs/lib $fs/etc $fs/usr/bin \
+				$fs/usr/lib/gconv $fs/usr/share/i18n/charmaps
+			# /usr/bin
 			for bin in locale localedef
 			do
 				cp $install/bin/$bin $fs/usr/bin
 			done
-			for lib in libcrypt libm libc
+			# /lib
+			for lib in libcrypt libm libc libresolv librt libutil libpthread
 			do
 				cp -a $install/lib/${lib}-*.so $fs/lib
 				cp -a $install/lib/${lib}.so* $fs/lib
@@ -48,13 +51,10 @@ genpkg_rules()
 			cp -a $install/lib/libc_nonshared.a $fs/lib
 			cp $install/etc/rpc $fs/etc
 			touch $fs/etc/ld.so.conf
-			## i18n
-			#mkdir -p $fs/usr/share/i18n/locales
-		    #for i in $DEFAULT_LOCALE
-			#do
-				#cp $install/share/i18n/locales/$i \
-					#$fs/usr/share/i18n/locales
-			#done
+			# i18n
+			cp $install/lib/gconv/UNICODE.so $fs/usr/lib/gconv
+			#cp -a $install/share/i18n/charmaps/UTF-8.gz \
+				#$fs/usr/share/i18n/charmaps
 			# Fix libraries search path
 			sed -i s'|/usr/cross/arm||'g $fs/lib/libc.so ;;
 		*)
