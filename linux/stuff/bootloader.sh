@@ -9,7 +9,7 @@
 usage()
 {
 cat <<EOT
-Usage: $0 bzImage [--prefix image_prefix]
+Usage: $0 bzImage [--prefix image_prefix] [--info file ]
        [--format 1200|1440|1680|1920|2880|... ] [--mem mb]
        [--rdev device] [--video mode] [--flags rootflags] [--tracks cnt]
        [--cmdline 'args'] [--dont-edit-cmdline] [--no-syssize-fix]
@@ -36,10 +36,12 @@ TRACKS="80"
 MEM="16"
 NOEDIT=""
 NOSYSSIZEFIX=""
+INFOFILE=""
 DEBUG=""
 while [ -n "$1" ]; do
 	case "${1/--/-}" in
 	-c*) CMDLINE="$2"; shift;;
+	-inf*) INFOFILE="$2"; shift;;
 	-i*) INITRD="$INITRD $2"; shift;;
 	-a*) ADRSRD="$2"; shift;;
 	-h*) HEAP="$2"; shift;;
@@ -169,13 +171,13 @@ EOT
 	done <<EOT
 000 1FF 08D	B8:00:01			force zImage (movw \$0x100, %ax)
 000 1FF 0CB	EB:0B				skip initrd code 
-000 201	01E	EB:1E:00:00:00:00		room for the cmdline magic
-000 201	036	BE:00:00:E8:76:01:EB:0A:06:57:B1:06:F3:A5:EB:DE	code in cmdline magic moved
+000 201 01E	EB:1E:00:00:00:00		room for the cmdline magic
+000 201 036	BE:00:00:E8:76:01:EB:0A:06:57:B1:06:F3:A5:EB:DE	code in cmdline magic moved
 000 1FF 039	90:90:90			no kernel version
 000 201 04B	22:00				old cmdline ptr 1
 000 201 06D	22:00				old cmdline ptr 2
 000 203 1F6	00:00 				syssize32
-200 FFF	210	FF				type_of_loader=FF
+200 FFF 210	FF				type_of_loader=FF
 201 FFF 224	00:9B				heap_end_ptr
 EOT
 	if [ $Version -lt 514 ]; then
@@ -203,6 +205,27 @@ EOT
 	[ -b "$RDEV" ] && RDEV=$(stat -c '0x%02t%02T' $RDEV 2> /dev/null)
 	store 16 $RootDevOfs $RDEV $bs RDEV
 	
+	# Info text after setup
+	if [ -s "$INFOFILE" ]; then
+		patch	048	9a:00:00:00:90	$bs	lcall displayinfo
+		uudecode >$bs.infotext <<EOT
+begin-base64 644 -
+MdsGYI7D6AAAXoHGSgCJ8MHoCUii8QGwDbQOuwcAzRCsPAx1I79sBLFbJgIN
+uBsBJjoNdAnNFnT0mM0Wjsc8IHPjPBt0BuvPCMB1zWEHCx4oAss=
+====
+EOT
+		cat "$INFOFILE" >>$bs.infotext
+		if [ $Version -lt 514 ]; then
+			store 16 0x050 0x0022 $bs.infotext 
+		fi
+		ddq if=/dev/zero bs=512 count=1 >>$bs.infotext
+		n=$(($(stat -c %s $bs.infotext)/512))
+		ddq if=$bs.infotext count=$n bs=512 >> $bs
+		rm -f $bs.infotext
+		store 8 0x1F1  $(($setupsz+$n))	 $bs	update setup size
+		store 8 0x04A  $((2+2*$setupsz)) $bs	update displayinfo call
+	fi
+
 	# Store cmdline after setup
 	if [ -n "$CMDLINE" ]; then
 		echo -n "$CMDLINE" | ddq bs=512 count=1 conv=sync >> $bs
@@ -240,7 +263,7 @@ INITRDALIGN=0x1000
 
 	# Output kernel code
 	syssz=$(( ($(getlong 0x1F4 $bs)+31)/32 ))
-	cat $KERNEL /dev/zero | ddq bs=512 skip=$(( $setupsz+1 )) count=$syssz
+	cat $KERNEL /dev/zero | ddq bs=512 skip=$(( $setupsz+1 )) count=$syssz conv=sync
 
 	# Output initramfs
 	for i in $( echo $INITRD | sed 's/,/ /' ); do
