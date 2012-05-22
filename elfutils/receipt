@@ -7,14 +7,16 @@ SHORT_DESC="ELF object file access library."
 MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://fedorahosted.org/elfutils/"
-# Note : use http mirror because https can't be access at elfutils compilation time
-# when cooking from scratch.
-#WGET_URL="http://cvs.fedoraproject.org/repo/pkgs/elfutils/$TARBALL/3dcfb28fa339090a1d29a9e148cce469/$TARBALL"
-#WGET_URL="http://gentoo.webm.ru/distfiles/$TARBALL"
 WGET_URL="https://fedorahosted.org/releases/e/l/$PACKAGE/$VERSION/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="glibc-base"
 BUILD_DEPENDS="wget bzip2-dev liblzma-dev"
+
+# Handle multiarch compilation
+case "$ARCH" in
+	arm) BUILD_DEPENDS="bzip2-dev xz" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
@@ -22,7 +24,11 @@ compile_rules()
 	cd $src
 	sed -i 's/run-strip-reloc.sh//' tests/Makefile* # Need cc -g !
 	./configure $CONFIGURE_ARGS &&
-	make && make check && make install
+	# Disable check/tests when cross-compiling
+	case "$ARCH" in
+		arm) make && make install ;;
+		*) make && make check && make install ;;
+	esac
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -30,8 +36,8 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/bin
 	for i in elfcmp findtextrel unstrip; do
-		cp -a $_pkg/usr/bin/$i $fs/usr/bin
+		cp -a $install/usr/bin/$i $fs/usr/bin
 	done
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/elfutils $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/elfutils $fs/usr/lib
 }
