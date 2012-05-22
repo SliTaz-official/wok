@@ -13,23 +13,31 @@ HOST_ARCH="i486 arm x86_64"
 
 DEPENDS="kmod"
 BUILD_DEPENDS="slitaz-toolchain perl git xz lzma patch uclibc-cross-compiler-x86_64"
-[ "$KBASEVER" != "$VERSION" ] && PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz"
+
+# Use version patch so we dont dl full kernel source on each minor update
+[ "$KBASEVER" != "$VERSION" ] && \
+	PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz"
 
 # Aufs enable chroot
 AUFS_NOT_SUPPORTED="uclibc-cross-compiler-x86_64 is not compatible with aufs 8("
 
-# This will save/restore the modules.dep but we want to regenerate it
-# on install/upgrade.
+# This will save/restore modules.dep but we want to regenerate it on
+# install or upgrade.
 #CONFIG_FILES="/lib/modules/$KBASEVER-slitaz/modules.dep"
 
+# Handle multiarch compilation. Less bdeps when cross-compiling for ARM
 case "$ARCH" in
-	arm)
-		# Old school way :-) Until ARM was tested on real hardware and
-		# we know wich modules/features we realy need for ARM machines.
-		# No deps on kmod since we use Busybox modutils for ARM.
-		#TARBALL="$PACKAGE-$VERSION.tar.bz2"
-		DEPENDS=""
-		BUILD_DEPENDS="xz" ;;
+	arm) BUILD_DEPENDS="xz" TARBALL="$PACKAGE-$VERSION.tar.bz2" ;;
+	x86_64) BUILD_DEPENDS="xz" ;;
+esac
+
+# TODO: slitaz.conf provide SLITAZ_ARCH and must be handled by tazpkg/spk
+[ -f "$root/etc/slitaz/slitaz.conf" ] && . $root/etc/slitaz/slitaz.conf
+
+# Handle multiarch installation. ARM use Busybox modutils, so avoid any
+# deps on kmod
+case "$SLITAZ_ARCH" in
+	arm) DEPENDS="" ;;
 esac
 
 # Rules to configure and make the package.
@@ -43,15 +51,18 @@ compile_rules()
 			if [ ! -f $SRC/$(basename $PATCH) ]; then
 				wget $PATCH -O $SRC/$(basename $PATCH)
 			fi
-			make mrproper &&
-			xzcat $SRC/$(basename $PATCH) | patch -Np1
-			cp -f $stuff/$ARCH/linux-slitaz.config .config &&
+			make mrproper
+			# Buggy: we got kernel panic about module not tinted 3.2.14
+			#echo "Applying patch: $(basename $PATCH)"
+			#xzcat $SRC/$(basename $PATCH) | patch -Np1 >/dev/null
+			patch -Np1 < $stuff/$ARCH/linux-arm.patch || exit 1
+			cp -f $stuff/$ARCH/linux-arm.config .config
 			make ARCH=$ARCH CROSS_COMPILE=${HOST_SYSTEM}- bzImage &&
 			make ARCH=$ARCH CROSS_COMPILE=${HOST_SYSTEM}- modules &&
 			make ARCH=$ARCH CROSS_COMPILE=${HOST_SYSTEM}- \
 				INSTALL_MOD_PATH=$DESTDIR modules_install &&
 			mkdir -p $DESTDIR/boot &&
-			mv arch/arm/boot/compressed/vmlinux \
+			cp -a arch/arm/boot/zImage \
 				$DESTDIR/boot/linux-$VERSION-slitaz-$ARCH
 			return 0 ;;
 		x86_64)
@@ -59,12 +70,6 @@ compile_rules()
 			echo "so we can remove the 64 build by uclibc-cross-compiler-x86_64"
 			return 0 ;;
 	esac
-
-	# this is code to help update the kernel version faster
-	#for i in $(grep -l 'WANTED="linux"' $WOK/*/receipt)
-	#do
-	#	sed -i 's|VERSION="OLDVERSION"|VERSION="NEWVERSION"|g' $i
-	#done
 
 	[ ! -x /usr/bin/cook ] && report open-bloc
 
