@@ -12,9 +12,15 @@ WGET_URL="http://matt.ucc.asn.au/dropbear/releases/$TARBALL"
 CONFIG_FILES="/etc/dropbear"
 PROVIDE="ssh"
 TAGS="ssh"
+#HOST_ARCH="i486 arm"
 
 DEPENDS="zlib"
 BUILD_DEPENDS="zlib-dev pam pam-dev"
+
+# Handle multiarch compilation
+case "$ARCH" in
+	arm) BUILD_DEPENDS="zlib-dev" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
@@ -28,21 +34,26 @@ compile_rules()
  		-e 's|ENABLE_SVR_PAM_AUTH|ENABLE_SVR_PASSWORD_AUTH|' \
 		options.h
 	./configure --prefix=/usr --without-pam $CONFIGURE_ARGS &&
-	make PROGRAMS="dropbear $DROPBEARS" MULTI=1 &&
+	make PROGRAMS="dropbear $DROPBEARS" MULTI=1 SCPPROGRESS=1 &&
 	install -d -m 755 $DESTDIR/usr/sbin &&
 	install -m 755 dropbearmulti $DESTDIR/usr/sbin/dropbear &&
-	chown root $DESTDIR/usr/sbin/dropbear &&
-	chgrp 0 $DESTDIR/usr/sbin/dropbear &&
-	sed -i 's|ENABLE_SVR_PASSWORD_AUTH|ENABLE_SVR_PAM_AUTH|' \
-		options.h
-	./configure --prefix=/usr --enable-pam $CONFIGURE_ARGS &&
-	make PROGRAMS="dropbear $DROPBEARS" MULTI=1 &&
-	install -m 755 dropbearmulti $DESTDIR/usr/sbin/dropbear-pam &&
-	chown root $DESTDIR/usr/sbin/dropbear-pam &&
-	chgrp 0 $DESTDIR/usr/sbin/dropbear-pam &&
+	chown 0.0 $DESTDIR/usr/sbin/dropbear || exit 1
+
+	# No pam support in ARM
+	case "$ARCH" in
+		arm) echo "Skipping Dropbear PAM..." ;;
+		*)
+			sed -i 's|ENABLE_SVR_PASSWORD_AUTH|ENABLE_SVR_PAM_AUTH|' \
+				options.h
+			./configure --prefix=/usr --enable-pam $CONFIGURE_ARGS &&
+			make PROGRAMS="dropbear $DROPBEARS" MULTI=1 SCPPROGRESS=1 &&
+			install -m 755 dropbearmulti $DESTDIR/usr/sbin/dropbear-pam &&
+			chown 0.0 $DESTDIR/usr/sbin/dropbear-pam || exit 1 ;;
+	esac
+
 	install -d -m 755 $DESTDIR/usr/bin &&
 	for i in $DROPBEARS ssh; do
-		ln -s ../sbin/dropbear $DESTDIR/usr/bin/$i
+		ln -s ../sbin/dropbear $DESTDIR/usr/bin/$i || exit 1
 	done
 }
 
@@ -58,7 +69,7 @@ genpkg_rules()
 	cp -a $stuff/dropbear $fs/etc
 	cp -a $stuff/init.d $fs/etc
 	cp -a $stuff/sshx $fs/usr/bin
-	touch   $fs/etc/dropbear/dropbear_dss_host_key \
+	touch $fs/etc/dropbear/dropbear_dss_host_key \
 		$fs/etc/dropbear/dropbear_rsa_host_key
 
 	# Fix dropbear initscript perms
@@ -70,8 +81,8 @@ post_install()
 {
 	while read dropbear openssh ; do
 		[ -s $openssh ] || continue
-		dropbearconvert openssh dropbear $1$openssh $1$dropbear
-		dropbearkey -y -f $1$dropbear | grep Fingerprint
+		dropbearconvert openssh dropbear ${root}$openssh ${root}$dropbear
+		dropbearkey -y -f ${root}$dropbear | grep Fingerprint
 	done <<EOT
 /etc/dropbear/dropbear_rsa_host_key	/etc/ssh/ssh_host_rsa_key
 /etc/dropbear/dropbear_dss_host_key	/etc/ssh/ssh_host_dsa_key
