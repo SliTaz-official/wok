@@ -7,14 +7,14 @@ SHORT_DESC="GNU libc minimal libraries and UTF-8 support for SliTaz."
 WEB_SITE="http://www.gnu.org/software/libc/"
 MAINTAINER="pankso@slitaz.org"
 WANTED="glibc"
-HOST_ARCH="i486 arm"
+HOST_ARCH="i486 arm x86_64"
 
 # Locales include by default, other locales are in: glibc-locale
 DEFAULT_LOCALE="de_DE en_US en_GB es_ES fr_FR it_IT pt_BR pt_PT ru_RU"
 
 # Handle multiarch compilation.
 case "$ARCH" in
-	arm) VERSION="2.13" WANTED="" ;;
+	arm|x86_64) VERSION="2.13" WANTED="" ;;
 esac
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -26,11 +26,9 @@ esac
 genpkg_rules()
 {
 	case "$ARCH" in
-		arm)
+		arm|x86_64)
 			# EXPERIMENTAL: Glibc is cross compiled by cross to have a
 			# toolchain so we can use these files instead of recooking it.
-			# 20120514: Include just minal libs for Busybox so we can create
-			# bootable Qemu image for ARM.
 			echo "Using cross compiled Glibc..."
 			install=/usr/cross/$ARCH
 			mkdir -p $fs/lib $fs/etc $fs/usr/bin \
@@ -56,7 +54,7 @@ genpkg_rules()
 			#cp -a $install/share/i18n/charmaps/UTF-8.gz \
 				#$fs/usr/share/i18n/charmaps
 			# Fix libraries search path
-			sed -i s'|/usr/cross/arm||'g $fs/lib/libc.so ;;
+			sed -i s"|/usr/cross/$ARCH||"g $fs/lib/libc.so ;;
 		*)
 			# Mkdir's.
 			for dir in $(cat $stuff/mkdir.list)
@@ -88,8 +86,17 @@ pre_install()
 # to have /usr/cross/$ARCH search path in libc.so
 post_install()
 {
-	if echo $root | grep -q /usr/cross; then
-		echo "Fixing: $root/lib/libc.so"
+	# x86_64
+	if echo $root | grep -q /usr/cross/x86_64; then
+		echo "Fixing x86_64: $root/lib/libc.so"
+		cat > $root/lib/libc.so << EOT
+OUTPUT_FORMAT(elf64-x86-64)
+GROUP ( $root/lib/libc.so.6 $root/lib/libc_nonshared.a AS_NEEDED ( $root/lib/ld-linux-x86-64.so.2 ) )
+EOT
+	fi
+	# ARM
+	if echo $root | grep -q /usr/cross/arm; then
+		echo "Fixing arm: $root/lib/libc.so"
 		cat > $root/lib/libc.so << EOT
 OUTPUT_FORMAT(elf32-littlearm)
 GROUP ( $root/lib/libc.so.6 $root/lib/libc_nonshared.a AS_NEEDED ( $root/lib/ld-linux.so.3 ) )
