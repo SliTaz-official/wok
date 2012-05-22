@@ -7,13 +7,23 @@ SHORT_DESC="GCC base libraries, libgcc_s and libstdc++."
 WEB_SITE="http://gcc.gnu.org/"
 MAINTAINER="pankso@slitaz.org"
 WANTED="gcc"
+HOST_ARCH="i486 arm"
+
+# Handle multiarch compilation.
+case "$ARCH" in
+	arm) WANTED="" ;;
+esac
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/libgcc_s.so* $fs/usr/lib
-	cp -a $install/usr/lib/libstdc++.so* $fs/usr/lib
-	rm $fs/usr/lib/*-gdb.py
+	case "$ARCH" in
+		arm) libdir=/usr/cross/$ARCH/lib ;;
+		i?86) libdir=$install/usr/lib ;;
+	esac
+	cp -a $libdir/libgcc_s.so* $fs/usr/lib
+	cp -a $libdir/libstdc++.so* $fs/usr/lib
+	rm -f $fs/usr/lib/*-gdb.py
 }
 
