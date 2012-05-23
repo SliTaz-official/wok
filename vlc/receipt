@@ -1,49 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="vlc"
-VERSION="1.1.13"
+VERSION="2.0.1"
 CATEGORY="multimedia"
 SHORT_DESC="MPEG, VCD/DVD, and DivX player"
 MAINTAINER="jozee@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.videolan.org/vlc/" 
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="http://www.videolan.org/vlc/"
 WGET_URL="http://download.videolan.org/pub/videolan/$PACKAGE/$VERSION/$TARBALL"
 TAGS="audio video multimedia movie player"
+DEPENDS="libQtCore libQtGui libvlc"
+BUILD_DEPENDS="Qt4-dev alsa-lib-dev dbus-dev ffmpeg-dev gettext \
+libmad-dev lua-dev tar xcb-util-dev yasm expat-dev"
 
-DEPENDS="libvlc libmad libxml2 ffmpeg libdvdread libcddb libproxy taglib \
-libQtCore libQtGui alsa-lib hal dbus fribidi speex libraw1394 libmodplug \
-flac libavc1394 libmpeg2 libnotify libsdl-image libvorbis mesa \
-libglu-mesa sysfsutils zvbi libass xorg-libXv faad2 glibc-locale \
-jack-audio-connection-kit"
-BUILD_DEPENDS="libmtp-dev librsvg-dev Qt4-dev libgcrypt-dev expat \
-expat-dev xorg-dev-proto zlib zlib-dev libogg libogg-dev \
-util-linux-uuid-dev pkg-config libxcb-dev dbus-dev \
-libdvdread-dev libmad-dev ffmpeg-dev faad2-dev fribidi-dev portaudio-dev \
-alsa-lib-dev libcroco-dev jack-audio-connection-kit-dev tar pango-dev \
-libxml2-dev"
-
-# Rules to configure and make the package.
-# Use --enable-ffmpeg to build against shared ffmpeg
 compile_rules()
 {
-	cd $src
 	[ -s /var/lib/dbus/machine-id ] || dbus-uuidgen > /var/lib/dbus/machine-id
-	# Be busybox comptible...
-	sed -i 's/wc -m/wc -c/' configure*
-	#sed -i 's/ImgReSampleContext/void/' modules/video_filter/imgresample.c
-	sed -i -e 's:/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf:/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans-Bold.ttf:' modules/misc/freetype.c
-	grep -qs 'define u8' src/interface/intf_eject.c ||
-	sed -i 's|# *include <scsi/scsi.h>|#define u8 __u8\n&|' \
-		src/interface/intf_eject.c
-	./configure --prefix=/usr --enable-hal --enable-dbus \
-		--enable-dbus-control --disable-rpath --enable-release \
-		--enable-shared \
-	        --enable-dvdread \
-		--enable-qt4  \
-		--enable-alsa --enable-taglib --enable-ogg --enable-faad \
-		--disable-lua --disable-live555   --disable-shout  \
-		--disable-dvdnav --disable-fluidsynth --disable-a52 \
-		--disable-smb --disable-gnomevfs --disable-glx --disable-upnp \
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--disable-pulse \
+		--disable-a52 \
+		--disable-glx \
+		--disable-portaudio \
+		--disable-sout \
+		--disable-httpd \
+		--disable-libgcrypt \
 		$CONFIGURE_ARGS &&
 	make &&
 	make install
@@ -55,13 +37,10 @@ genpkg_rules()
 	mkdir -p $fs/usr/share/pixmaps
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
-	#Remove extra icons	
-	#rm $fs/usr/share/$PACKAGE/*.png
-	#rm $fs/usr/share/$PACKAGE/*.xpm
+	#Remove extra icons
 	rm $fs/usr/share/$PACKAGE/*.ico
 	#copy vlc icon
 	cp -a $_pkg/usr/share/icons/hicolor/16x16/apps/vlc.png $fs/usr/share/pixmaps
 	#Remove unnecessary fonts
 	rm $fs/usr/share/$PACKAGE/skins2/fonts/*
-
 }
