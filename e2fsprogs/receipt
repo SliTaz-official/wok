@@ -1,20 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="e2fsprogs"
-VERSION="1.41.14"
+VERSION="1.42.3"
 CATEGORY="base-system"
 SHORT_DESC="Filesystem utilities for use with ext2 and ext3 (without fsck*)."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://e2fsprogs.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+HOST_ARCH="i486 arm"
+
 DEPENDS="libcomerr util-linux-blkid util-linux-uuid"
+
+# Handle arch installation
+case "$SLITAZ_ARCH" in
+	arm) DEPENDS="libcomerr" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure \
+	mkdir ../build && cd ../build
+	$src/configure \
 		--prefix=/usr \
 		--with-root-prefix="" \
 		--enable-elf-shlibs \
@@ -27,18 +35,23 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share/locale
-	cp -a $_pkg/sbin $fs
-	cp -a $_pkg/lib $fs
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/usr/lib/*.so $fs/usr/lib
+	mkdir -p $fs/usr/lib
+	cp -a $install/sbin $fs
+	cp -a $install/lib $fs
+	cp -a $install/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib/*.so $fs/usr/lib
 	cat $stuff/*.files-list | while read file; do
-		rm -f $fs$file
+		rm -f ${fs}$file
 	done
-	# Remove fsck provided by Busybox and blkid by util-linux.
+	# Remove fsck provided by Busybox.
 	rm $fs/sbin/fsck* $fs/sbin/blkid
+	# Package util-linux dont cross actually, keep uuid/blkid libs.
+	case "$ARCH" in
+		arm) return 0 ;;
+	esac
+	# Remove blkid provided by util-linux.
 	rm $fs/lib/libblkid* $fs/usr/lib/libblkid*
 	# Remove uuid files provided by util-linux.
 	rm $fs/usr/sbin/uuidd $fs/usr/bin/uuidgen
@@ -48,12 +61,12 @@ genpkg_rules()
 # Overlap busybox
 pre_install()
 {
-	rm -f $1/sbin/findfs
-	rm -f $1/sbin/tune2fs
+	rm -f $root/sbin/findfs
+	rm -f $root/sbin/tune2fs
 }
 
 post_remove()
 {
-	ln -s /bin/busybox $1/sbin/findfs
-	ln -s /bin/busybox $1/sbin/tune2fs
+	ln -s /bin/busybox $root/sbin/findfs
+	ln -s /bin/busybox $root/sbin/tune2fs
 }
