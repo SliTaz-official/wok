@@ -5,17 +5,24 @@ VERSION="1.97"
 CATEGORY="utilities"
 SHORT_DESC="file manager for file and archives"
 MAINTAINER="allan316@gmail.com"
-BUILD_DEPENDS="readline readline-dev ncurses-dev"
-DEPENDS="readline ncurses"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.han.de/~werner/ytree.html"
 WGET_URL="http://www.han.de/~werner/$TARBALL"
 TAGS="file-manager file-browser"
+HOST_ARCH="i486 arm"
+
+DEPENDS="ncursesw"
+BUILD_DEPENDS="ncursesw-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	# Dont use readline && utf-8 support via ncursesw && -0s to save ~10kb :-)
+	sed -i \
+		-e s"/CFLAGS.*/CFLAGS = -D_GNU_SOURCE -DWITH_UTF8 -Os -DCOLOR_SUPPORT/" \
+		-e s"/-lncurses -lreadline/-lncursesw/" \
+		Makefile &&
 	make
 }
 
