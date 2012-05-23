@@ -1,16 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="ffmpeg"
-VERSION="0.6.3"
+VERSION="0.10.3"
 CATEGORY="multimedia"
 SHORT_DESC="Record, convert and stream audio and video."
 MAINTAINER="pascal.bellard@slitaz.org"
 WEB_SITE="http://ffmpeg.org/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="${WEB_SITE}releases/$TARBALL"
-DEPENDS="bzlib freetype imlib2 alsa-lib jack-audio-connection-kit zlib"
-BUILD_DEPENDS="imlib2-dev freetype-dev libsdl-dev zlib-dev coreutils-file-format \
-coreutils-file-special"
+DEPENDS="alsa-lib"
+BUILD_DEPENDS="libsdl-dev zlib-dev bzip2-dev coreutils-file-format \
+coreutils-file-special yasm"
 SUGGESTED="ffplay"
 TAGS="audio video convert stream"
 
@@ -18,23 +18,26 @@ TAGS="audio video convert stream"
 compile_rules()
 {
 	cd $src
-	
-	# Fix gcc45 build.
-	patch -p1 < $stuff/ffmpeg-0.5.1-gcc45.u || return 1
-	
 	./configure \
 		--prefix=/usr \
-		--enable-gpl \
-		--arch=i486 \
-		--cpu=i486 \
 		--enable-shared \
-		--enable-small \
+		--disable-static \
+		--enable-gpl \
+		--enable-runtime-cpudetect \
 		--enable-pthreads \
-		--enable-postproc \
-		--enable-swscale \
-		--disable-mmx \
-		--disable-mmx2 \
-		--disable-ssse3 &&
+		--enable-small \
+		--disable-ffprobe \
+		--disable-ffserver \
+		--disable-encoder=h263 \
+		--disable-encoder=h263p \
+		--disable-encoder=mpeg2video \
+		--disable-encoder=mpeg4 \
+		--disable-encoder=msmpeg4v1 \
+		--disable-encoder=msmpeg4v2 \
+		--disable-encoder=msmpeg4v3 \
+		--disable-symver \
+		--disable-debug \
+		--disable-doc && \
 	make &&
 	make install
 }
@@ -45,6 +48,8 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib
 	cp -a $_pkg/usr/lib/*so* $fs/usr/lib
 	cp -a $_pkg/usr/bin $fs/usr
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
 	# ffplay with it SDL dep go in a splited package
 	rm $fs/usr/bin/ffplay
 }
