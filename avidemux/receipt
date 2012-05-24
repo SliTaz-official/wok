@@ -1,26 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="avidemux"
-VERSION="2.5.4"
+VERSION="2.5.6"
 CATEGORY="multimedia"
 SHORT_DESC="free video editor"
 MAINTAINER="allan316@gmail.com"
-DEPENDS="libsdl alsa-lib libsdl-gfx libxml2 xorg-libXv gtk+ cairo libQtGui"
-BUILD_DEPENDS="tar coreutils-file-special coreutils-file-format cmake yasm gettext pkg-config zlib-dev bzip2 patch"
-TARBALL="avidemux_$VERSION.tar.gz"
+TARBALL="${PACKAGE}_${VERSION}.tar.gz"
 WEB_SITE="http://fixounet.free.fr/$PACKAGE"
 WGET_URL="http://download.berlios.de/$PACKAGE/$TARBALL"
 TAGS="video movie editor avi mpeg mp4"
 
+DEPENDS="libsdl alsa-lib libsdl-gfx libxml2 xorg-libXv gtk+ cairo libQtGui"
+BUILD_DEPENDS="tar coreutils-file-special coreutils-file-format cmake yasm \
+gettext pkg-config zlib-dev bzip2 patch"
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src/avidemux/ADM_libraries
-	tar xzf ffmpeg_r25041.tar.gz
 	cd $src
-	# Fix for gcc45
-	sed -i -e 's/    "$@" >>/    $@ >>/' -e 's|mktemp -u|/usr/bin/mktemp -u|' \
-		avidemux/ADM_libraries/ffmpeg/configure
 	grep -q ADM_CPU_X86_64 avidemux/ADM*/src/ADM_vidField[sA]*.cpp ||
 	sed -i 's/ADM_CPU_X86/ADM_CPU_X86_64/' \
 		avidemux/ADM_coreImage/src/ADM_vidField[sA]*.cpp 
@@ -29,7 +26,7 @@ compile_rules()
 	cmake -DCMAKE_INSTALL_PREFIX=/usr ../
 	sed -i 's/\(find .*\) | xargs ln -sft/- ln -sf $(\1)/' \
 		avidemux/CMakeFiles/ffmpeg.dir/build.make
-	make $MAKEFLAGS  && make -j1 DESTDIR=$DESTDIR install
+	make -j 1  && make -j1 DESTDIR=$DESTDIR install
 
 	mkdir -p $DESTDIR/usr/share/pixmaps $DESTDIR/usr/share/applications
 	cp -a $src/avidemux_icon.png $DESTDIR/usr/share/pixmaps/avidemux.png
