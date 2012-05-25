@@ -23,56 +23,62 @@ esac
 # informations). You can use the precompiled package available on
 # SliTaz mirror to build a distro without recompiling glibc.
 #
+
+# i18n
+get_locales()
+{
+	local path=$1
+    for i in $DEFAULT_LOCALE
+	do
+		cp $install/$path/i18n/locales/$i $fs/usr/share/i18n/locales
+	done
+}
+
 genpkg_rules()
 {
+	# Mkdir's.
+	for dir in $(cat $stuff/mkdir.list)
+	do
+		mkdir -p ${fs}$dir
+	done
+
 	case "$ARCH" in
 		arm|x86_64)
 			# EXPERIMENTAL: Glibc is cross compiled by cross to have a
 			# toolchain so we can use these files instead of recooking it.
 			echo "Using cross compiled Glibc..."
 			install=/usr/cross/$ARCH
-			mkdir -p $fs/lib $fs/etc $fs/usr/bin \
-				$fs/usr/lib/gconv $fs/usr/share/i18n/charmaps
-			# /usr/bin
-			for bin in locale localedef
-			do
-				cp $install/bin/$bin $fs/usr/bin
-			done
+
+			# /usr/{bin,share} /usr/lib/gconv
+			for file in $(cat $stuff/arm-files.list)
+		    do
+		    	cp -a ${install}$file ${fs}/usr/$file
+		    done
+
 			# /lib
-			for lib in libcrypt libm libc libresolv librt libutil libpthread
+			for lib in libcrypt libm libc libresolv librt libutil libpthread \
+				libnss_* libnsl libanl libdl
 			do
 				cp -a $install/lib/${lib}-*.so $fs/lib
 				cp -a $install/lib/${lib}.so* $fs/lib
 			done
 			cp -a $install/lib/ld-*.so* $fs/lib
-			cp -a $install/lib/libnss_*.so* $fs/lib
 			cp -a $install/lib/libc_nonshared.a $fs/lib
+			cp -a $install/lib/libpthread_nonshared.a $fs/lib
 			cp $install/etc/rpc $fs/etc
 			touch $fs/etc/ld.so.conf
-			# i18n
-			cp $install/lib/gconv/UNICODE.so $fs/usr/lib/gconv
-			#cp -a $install/share/i18n/charmaps/UTF-8.gz \
-				#$fs/usr/share/i18n/charmaps
+			get_locales "share"
 			# Fix libraries search path
-			sed -i s"|/usr/cross/$ARCH||"g $fs/lib/libc.so ;;
+			sed -i s"|/usr/cross/$ARCH||"g $fs/lib/libc.so
+			sed -i s"|/usr/cross/$ARCH||"g $fs/lib/libpthread.so ;;
 		*)
-			# Mkdir's.
-			for dir in $(cat $stuff/mkdir.list)
-			do
-				mkdir -p ${fs}$dir
-			done
 		    # Copy all files specified in stuff/files.list. We get the files
 		    # from glibc package.
 		    for file in $(cat $stuff/wanted-files.list)
 		    do
-		    	cp -a ${_pkg}$file ${fs}$file
+		    	cp -a ${install}$file ${fs}$file
 		    done
-		    # i18n
-		    for i in $DEFAULT_LOCALE
-			do
-				cp $install/usr/share/i18n/locales/$i \
-					$fs/usr/share/i18n/locales
-			done
+		    get_locales "usr/share"
 	esac
 }
 
@@ -100,6 +106,10 @@ EOT
 		cat > $root/lib/libc.so << EOT
 OUTPUT_FORMAT(elf32-littlearm)
 GROUP ( $root/lib/libc.so.6 $root/lib/libc_nonshared.a AS_NEEDED ( $root/lib/ld-linux.so.3 ) )
+EOT
+		cat > $root/lib/libpthread.so << EOT
+OUTPUT_FORMAT(elf32-littlearm)
+GROUP ( $root/lib/libpthread.so.0 $root/lib/libpthread_nonshared.a )
 EOT
 	fi
 }
