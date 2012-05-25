@@ -6,30 +6,34 @@ CATEGORY="base-system"
 SHORT_DESC="Keyboard maping definitions and loadkeys utility."
 MAINTAINER="pankso@slitaz.org"
 WANTED="kbd"
-WEB_SITE="http://www.kernel.org/pub/linux/utils/kbd/"
+WEB_SITE="http://kbd-project.org/"
+HOST_ARCH="i486 arm"
+
+# Make sure it will run on host or no keyboard support...
+testsuite()
+{
+	readelf -h $install/usr/bin/loadkeys
+}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p \
-		$fs/usr/share/kbd/keymaps/i386/azerty \
-		$fs/usr/share/kbd/keymaps/i386/dvorak \
-		$fs/usr/share/kbd/keymaps/i386/qwerty \
-		$fs/usr/share/kbd/keymaps/i386/qwertz \
-		$fs/bin
-		
-	cp -a $_pkg/usr/bin/loadkeys $fs/bin
-	
+	mkdir -p $fs/bin
+	cp -a $install/usr/bin/loadkeys $fs/bin
+	# Dirs
+	for dir in dvorak azerty qwerty qwertz; do
+		mkdir -p $fs/usr/share/kbd/keymaps/i386/$dir
+	done
 	# i386 keymaps only.
-	for keymap in `cat $stuff/keymaps-path.list`
+	for keymap in $(cat $stuff/keymaps-path.list)
 	do
-		cp -a $_pkg/usr/share/kbd/keymaps/i386/$keymap \
+		cp -a $install/usr/share/kbd/keymaps/i386/$keymap \
 			$fs/usr/share/kbd/keymaps/i386/$keymap
 	done
 	# Include files
-	cp -a $_pkg/usr/share/kbd/keymaps/include \
+	cp -a $install/usr/share/kbd/keymaps/include \
 		$fs/usr/share/kbd/keymaps
-	cp -a $_pkg/usr/share/kbd/keymaps/i386/include \
+	cp -a $install/usr/share/kbd/keymaps/i386/include \
 		$fs/usr/share/kbd/keymaps/i386/include
 }
 

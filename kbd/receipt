@@ -4,52 +4,55 @@ PACKAGE="kbd"
 VERSION="1.15.3"
 CATEGORY="system-tools"
 SHORT_DESC="Keyboard maping definitions and tools."
-BUILD_DEPENDS="flex"
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.kernel.org/pub/linux/utils/kbd/"
-WGET_URL="http://www.kernel.org/pub/linux/utils/kbd/$TARBALL"
+WEB_SITE="http://kbd-project.org/"
+WGET_URL="http://kbd-project.org/download/$TARBALL"
 TAGS="keyboard"
+HOST_ARCH="i486 arm"
+
+#BUILD_DEPENDS="flex"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	patch -Np1 -i $stuff/fix-es.po.patch
-	./configure --datadir=/usr/share/kbd $CONFIGURE_ARGS &&
-	make &&
-	make install
+	./configure \
+		--datadir=/usr/share/kbd \
+		$CONFIGURE_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	
-	# Copy all kbd files (should we split fonts ?) and remove the one 
+
+	# Copy all kbd files (should we split fonts ?) and remove the one
 	# provided by: kbd-base.
 	cp -a $_pkg/usr/share/kbd $fs/usr/share
 	rm -rf $fs/usr/share/kbd/keymaps/i386
-	
+
 	# Tools
-	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $install/usr/bin $fs/usr
 }
 
 # Overlap busybox
 pre_install()
 {
-	rm -f $1/usr/bin/deallocvt
-	rm -f $1/usr/bin/chvt
-	rm -f $1/usr/bin/setkeycodes
-	rm -f $1/usr/bin/openvt
-	rm -f $1/usr/bin/kbd_mode
+	rm -f $root/usr/bin/deallocvt
+	rm -f $root/usr/bin/chvt
+	rm -f $root/usr/bin/setkeycodes
+	rm -f $root/usr/bin/openvt
+	rm -f $root/usr/bin/kbd_mode
 }
 
 post_remove()
 {
-	ln -s /bin/busybox $1/usr/bin/deallocvt
-	ln -s /bin/busybox $1/usr/bin/chvt
-	ln -s /bin/busybox $1/usr/bin/setkeycodes
-	ln -s /bin/busybox $1/usr/bin/openvt
-	ln -s /bin/busybox $1/usr/bin/kbd_mode
+	ln -s /bin/busybox $root/usr/bin/deallocvt
+	ln -s /bin/busybox $root/usr/bin/chvt
+	ln -s /bin/busybox $root/usr/bin/setkeycodes
+	ln -s /bin/busybox $root/usr/bin/openvt
+	ln -s /bin/busybox $root/usr/bin/kbd_mode
 }

@@ -5,12 +5,23 @@ VERSION="5.0"
 CATEGORY="system-tools"
 SHORT_DESC="SliTaz tools provide installer and utils usable on termnial."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="slitaz-boot-scripts dialog gettext-base slitaz-configs-base"
-BUILD_DEPENDS="gettext"
 SUGGESTED="slitaz-tools-boxes"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.slitaz.org/"
 WGET_URL="http://mirror.slitaz.org/sources/tools/$TARBALL"
+HOST_ARCH="i486 arm"
+
+DEPENDS="slitaz-boot-scripts dialog gettext-base slitaz-configs-base"
+BUILD_DEPENDS="gettext"
+
+# Handle multiarch compilation.
+case "$ARCH" in
+	arm)
+		DEPENDS="slitaz-boot-scripts dialog gettext-base"
+		BUILD_DEPENDS="" ;;
+esac
+
+# Saved config file by package manager
 CONFIG_FILES="
 /etc/TZ
 /etc/keymap.conf
@@ -30,33 +41,29 @@ genpkg_rules()
 {
 	mkdir -p $fs
 	cp -a $install/* $fs
-
 	# Makefile bug in 5.0
 	cp -a $src/tinyutils/decode $fs/usr/bin
-
 	chmod 0644 $fs/usr/share/locale/*/*/*.mo
 	chown -R root.root $fs
 }
 
 # Pre install commands.
-pre_install()
-{
- 	local root
- 	root=$1
+#pre_install()
+#{
 	# Backup file to restore with post install
-	echo "Creating backups of configs..."
-	cp $root/etc/TZ $root/etc/TZ.bak 2>/dev/null
-	cp $root/etc/keymap.conf $root/etc/keymap.conf.bak 2>/dev/null
-	cp $root/etc/locale.conf $root/etc/locale.conf.bak 2>/dev/null
-	cp $root/etc/firewall.conf $root/etc/firewall.conf.bak 2>/dev/null
-}
+	#echo "Creating backups of configs..."
+	#cp $root/etc/TZ $root/etc/TZ.bak 2>/dev/null
+	#cp $root/etc/keymap.conf $root/etc/keymap.conf.bak 2>/dev/null
+	#cp $root/etc/locale.conf $root/etc/locale.conf.bak 2>/dev/null
+	#cp $root/etc/firewall.conf $root/etc/firewall.conf.bak 2>/dev/null
+#}
 
 # Post install
-post_install()
-{
-	echo "Restoring configs backups..."
-	mv -f $root/etc/TZ.bak $root/etc/TZ 2>/dev/null
-	mv -f $root/etc/keymap.conf.bak $root/etc/keymap.conf 2>/dev/null
-	mv -f $root/etc/locale.conf.bak $root/etc/locale.conf 2>/dev/null
-	mv -f $root/etc/firewall.conf.bak $root/etc/firewall.conf 2>/dev/null
-}
+#post_install()
+#{
+	#echo "Restoring configs backups..."
+	#mv -f $root/etc/TZ.bak $root/etc/TZ 2>/dev/null
+	#mv -f $root/etc/keymap.conf.bak $root/etc/keymap.conf 2>/dev/null
+	#mv -f $root/etc/locale.conf.bak $root/etc/locale.conf 2>/dev/null
+	#mv -f $root/etc/firewall.conf.bak $root/etc/firewall.conf 2>/dev/null
+#}
