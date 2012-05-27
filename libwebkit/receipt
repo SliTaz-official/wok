@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="libwebkit"
-VERSION="1.6.1"
+VERSION="1.8.1"
 CATEGORY="network"
 SHORT_DESC="xHTML render library."
 MAINTAINER="mallory@sweetpeople.org"
 SOURCE="webkit"
-TARBALL="$SOURCE-$VERSION.tar.gz"
+TARBALL="$SOURCE-$VERSION.tar.xz"
 WEB_SITE="http://webkitgtk.org"
 WGET_URL="$WEB_SITE/$TARBALL"
 
@@ -19,12 +19,16 @@ BUILD_DEPENDS="gtk+-dev enchant enchant-dev gperf libxslt-dev jpeg-dev \
 libpng-dev glib-dev autoconf automake gnutls-dev sqlite-dev libtool \
 m4 bison flex xorg-libXdamage-dev acl-dev libsoup-dev libxml2-dev \
 libxcb-dev xcb-util-dev util-linux-uuid-dev zlib-dev libtasn1-dev \
-gobject-introspection-dev tar gettext glib-networking-dev"
+gobject-introspection-dev tar gettext glib-networking-dev gtk-doc"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	# fix Bug 84526: webkit-gtk-1.8.0 fails to build with --disable-video
+	patch -p0 < $stuff/CodeGeneratorGObject-bug-84526.patch || exit 1
+	# libwebkit does not like parallel builds.
+	export MAKEFLAGS=$(echo $MAKEFLAGS | sed 's/-j[0-9]*/-j1/')
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
@@ -32,8 +36,11 @@ compile_rules()
 		--enable-introspection=no \
 		--enable-video=no \
 		--enable-jit=yes \
+		--disable-webgl \
+		--disable-geolocation \
 		--with-unicode-backend=glib \
 		--with-gtk=2.0 \
+		--disable-gtk-doc \
 		$CONFIGURE_ARGS &&
 	make all stamp-po && make DESTDIR=$DESTDIR install &&
 	cp -a $src/Programs/GtkLauncher $DESTDIR/usr/bin
