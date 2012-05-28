@@ -32,14 +32,14 @@ fi
 # Extract
 TARBALL=$(ls $TARBALL skype*.tar.bz2 2> /dev/null || true)
 tar xjf $TARBALL
-VERSION=$(ls -d skype_static-*/)
+VERSION=$(ls -d skype_static*-*/)
 VERSION=${VERSION%/}
-VERSION=${VERSION#skype_static-}
+VERSION=${VERSION#skype_static*-}
 
 # extracted pkg can be removed: Save RAM
 rm -f $TARBALL
 
-cd skype_static-$VERSION
+cd skype_static*-$VERSION
 
 # Install files
 mkdir -p skype-$VERSION/fs/usr/share/skype skype-$VERSION/fs/usr/bin
@@ -64,8 +64,16 @@ VERSION="$VERSION"
 CATEGORY="non-free"
 SHORT_DESC="Skype Internet Telephony."
 WEB_SITE="$WEB_SITE"
-DEPENDS="libsigc++ xorg-libXv xorg-libXss libv4l bzip2"
+DEPENDS="libsigc++ xorg-libXv xorg-libXss libv4l bzip2 tiff"
 CONFIG_FILES="/etc/skype.conf"
+
+post_install()
+{
+	# try to fix library versions
+	ldd /usr/bin/skype | sed '/not found/!d;s/ =>.*//' | while read lib; do
+		[ -e /usr/lib/\${lib%.*} ] && ln -s \${lib%.*} /usr/lib/\$lib
+	done
+}
 EOT
 
 # Pack
