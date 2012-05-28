@@ -71,7 +71,16 @@ post_install()
 {
 	# try to fix library versions
 	ldd /usr/bin/skype | sed '/not found/!d;s/ =>.*//' | while read lib; do
-		[ -e /usr/lib/\${lib%.*} ] && ln -s \${lib%.*} /usr/lib/\$lib
+		[ -e /usr/lib/\${lib%.*} ] && 
+		ln -s \${lib%.*} /usr/lib/\$lib &&
+		touch /usr/lib/\$lib-hack-for-skype
+	done
+}
+
+pre_remove()
+{
+	for lib in /usr/lib/*-hack-by-skype ; do
+		rm -f $lib ${lib%-hack-for-skype}
 	done
 }
 EOT
