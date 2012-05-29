@@ -14,7 +14,8 @@ DEFAULT_LOCALE="de_DE en_US en_GB es_ES fr_FR it_IT pt_BR pt_PT ru_RU"
 
 # Handle multiarch compilation.
 case "$ARCH" in
-	arm|x86_64) VERSION="2.13" WANTED="" ;;
+	arm) VERSION="2.13" WANTED="" ;;
+	x86_64) VERSION="2.13" WANTED="" ;;
 esac
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -43,7 +44,34 @@ genpkg_rules()
 	done
 
 	case "$ARCH" in
-		arm|x86_64)
+		arm)
+			# Eglibc is cross compiled by cross to have a toolchain so we can
+			# use these files instead of recooking it. ARM use Eglibc
+			echo "Using cross compiled Eglibc..."
+			install=/cross/$ARCH/sysroot
+
+			# /usr/{bin,share} /usr/lib/gconv
+			for file in $(cat $stuff/arm-files.list)
+		    do
+		    	cp -a ${install}$file ${fs}$file
+		    done
+
+			# libs
+			for lib in libcrypt libm libc libresolv librt libutil libpthread \
+				libnss_* libnsl libanl libdl
+			do
+				cp -a $install/lib/${lib}-*.so $fs/lib
+				cp -a $install/lib/${lib}.so* $fs/lib
+				cp -a $install/usr/lib/${lib}.so $fs/usr/lib
+			done
+			cp -a $install/lib/ld-*.so* $fs/lib
+			cp -a $install/usr/lib/libc_nonshared.a $fs/usr/lib
+			cp -a $install/usr/lib/libpthread_nonshared.a $fs/usr/lib
+			cp $install/etc/rpc $fs/etc
+			touch $fs/etc/ld.so.conf
+			touch $fs/etc/ld.so.cache
+			get_locales "usr/share" ;;
+		x86_64)
 			# EXPERIMENTAL: Glibc is cross compiled by cross to have a
 			# toolchain so we can use these files instead of recooking it.
 			echo "Using cross compiled Glibc..."
@@ -98,18 +126,6 @@ post_install()
 		cat > $root/lib/libc.so << EOT
 OUTPUT_FORMAT(elf64-x86-64)
 GROUP ( $root/lib/libc.so.6 $root/lib/libc_nonshared.a AS_NEEDED ( $root/lib/ld-linux-x86-64.so.2 ) )
-EOT
-	fi
-	# ARM
-	if echo $root | grep -q /usr/cross/arm; then
-		echo "Fixing arm: $root/lib/libc.so"
-		cat > $root/lib/libc.so << EOT
-OUTPUT_FORMAT(elf32-littlearm)
-GROUP ( $root/lib/libc.so.6 $root/lib/libc_nonshared.a AS_NEEDED ( $root/lib/ld-linux.so.3 ) )
-EOT
-		cat > $root/lib/libpthread.so << EOT
-OUTPUT_FORMAT(elf32-littlearm)
-GROUP ( $root/lib/libpthread.so.0 $root/lib/libpthread_nonshared.a )
 EOT
 	fi
 }
