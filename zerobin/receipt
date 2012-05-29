@@ -1,0 +1,67 @@
+# SliTaz package receipt.
+
+PACKAGE="zerobin"
+VERSION="0.15_alpha"
+CATEGORY="network"
+SHORT_DESC="Online pastebin where the server has zero knowledge of pasted data."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="${PACKAGE}_$VERSION.zip"
+WEB_SITE="http://sebsauvage.net/wiki/doku.php?id=php:zerobin"
+WGET_URL="http://sebsauvage.net/files/$TARBALL"
+
+DEPENDS="php"
+SUGGESTED="php-gd"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -p0 < $stuff/zerobin.u
+	dos2unix *.txt *.php tpl/*.html lib/*.js lib/*.php lib/*.css
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.   
+genpkg_rules()                                      
+{
+	mkdir -p $fs/usr/share/zerobin
+	cp -a $src/* $fs/usr/share/zerobin
+	chown -R www.www $fs/usr/share/zerobin
+}
+
+# Post and pre install commands
+post_install()
+{
+	# Configure lighttpd server
+	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+		if ! grep -q /usr/share/zerobin/ $1/etc/lighttpd/lighttpd.conf; then
+	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/paste/" => "/usr/share/zerobin/",|g' -i $1/etc/lighttpd/lighttpd.conf
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/lighttpd stop
+				/etc/init.d/lighttpd start
+			fi
+		fi
+	fi
+	# Configure apache server
+	if [ -f $1/etc/apache/httpd.conf ]; then
+		sed -i 's/lighttpd/apache/' $1/etc/rcS.conf
+		if [ ! -f $1/etc/apache/conf.d/zerobin ]; then
+			cat > $1/etc/apache/conf.d/zerobin <<EOT
+<IfModule mod_alias.c>
+    Alias /paste /usr/share/zerobin/
+</IfModule>
+<DirectoryMatch /usr/share/zerobin/>
+    php_value upload_max_filesize 2147483647 
+    DirectoryIndex index.php
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</DirectoryMatch>
+EOT
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/apache restart
+			fi
+		fi
+	fi
+}
