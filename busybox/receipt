@@ -12,14 +12,17 @@ HOST_ARCH="i486 arm"
 
 DEPENDS="slitaz-base-files glibc-base ncurses-common"
 BUILD_DEPENDS="bzip2 pam pam-dev uclibc-cross-compiler-i486"
+
 CONFIG_FILES="/etc/dnsd.conf /etc/inetd.conf /etc/udhcpd.conf \
 /etc/resolv.conf /etc/httpd.conf"
 AUFS_NOT_SUPPORTED="uclibc-cross-compiler-i486 is not compatible with aufs 8("
 
+# Handle cross compilation
 case "$ARCH" in
 	arm) BUILD_DEPENDS="bzip2" ;;
 esac
 
+# Busybox patches
 apply_bb_patchs()
 {
     cd $src
@@ -41,41 +44,23 @@ EOT
     cp $stuff/$PACKAGE-${VERSION%.*}.config .config
 }
 
-# Rules to compile & install the temporary toolchain.
-cook_tmp_toolchain()
-{
-    { stuff=${stuff:-../stuff}
-    apply_bb_patchs &&
-    make oldconfig &&
-    make &&
-    make CONFIG_PREFIX=/tools install
-    } || return 1
-    echo "Chmod 4755 on busybox binary..."
-    chmod 4755 /tools/bin/busybox
-}
-
-# Cook Busybox
-cook_bb()
-{
-	{ apply_bb_patchs &&
-	make oldconfig &&
-	make && make install
-	} || return 1
-}
-
 # Rules to configure and make the package.
 compile_rules()
 {
 	case "$ARCH" in
 		arm)
 			echo "cook: CROSS_COMPILE=$CROSS_COMPILE"
-			cook_bb
+			apply_bb_patchs &&
+			cp $stuff/arm/$PACKAGE.config .config
+			make oldconfig &&
+			make && make install || return 1
 			chmod 4755 $src/_install/bin/busybox ;;
 		x86_64) echo "TODO" ;;
 		i?86)
-			cook_bb
-		    strip --strip-unneeded \
-				-R .eh_frame -R .eh_frame_hdr \
+			apply_bb_patchs &&
+			make oldconfig &&
+			make && make install || return 1
+		    strip --strip-unneeded -R .eh_frame -R .eh_frame_hdr \
 				$src/_install/bin/busybox
 
 			# prepare busybox-pam package
