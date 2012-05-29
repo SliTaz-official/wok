@@ -8,6 +8,7 @@ MAINTAINER="pankso@slitaz.org"
 DEPENDS="glibc-base util-linux-uuid"
 WANTED="util-linux"
 WEB_SITE="http://kernel.org/~kzak/util-linux/"
+HOST_ARCH="i486 arm"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -22,20 +23,20 @@ genpkg_rules()
 # Remove old package
 post_install()
 {
-	if [ -d "/var/lib/tazpkg/installed/util-linux-ng-blkid" ]; then
+	if [ -d "$INSTALLED/util-linux-ng-blkid" ]; then
 		echo "Removing old: util-linux-ng-blkid"
-		yes | tazpkg -r util-linux-ng-blkid
+		rm -rf $INSTALLED/util-linux-ng-blkid
 	fi
 }
 
 # Overlap busybox
 pre_install()
 {
-	[ -d "$INSTALLED/util-linux-ng-blkid" ] && yes | tazpkg -r util-linux-ng-blkid
-	rm -f $1/sbin/blkid
+	rm -f $root/sbin/blkid
 }
 
 post_remove()
 {
-	ln -s /bin/busybox /sbin/blkid
+	cd $root/sbin
+	ln -s ../bin/busybox blkid
 }
