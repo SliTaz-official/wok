@@ -1,20 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="imagemagick"
-VERSION="6.7.6-7"
+VERSION="6.7.6-10"
 SHORT_VERSION="${VERSION%-*}"
 CATEGORY="graphics"
 SHORT_DESC="Images manipulation programs."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="xorg-libXext jpeg libpng tiff libxml2 freetype libgomp bzlib expat \
-fontconfig lcms jasper ilmbase openexr graphviz librsvg libgsf libgio cairo gcc-lib-base jbigkit fftw"
-BUILD_DEPENDS="jpeg-dev ilmbase-dev openexr-dev libpng-dev tiff-dev \
-libxml2-dev lcms-dev graphviz-dev fftw-dev util-linux-uuid-dev libcroco-dev \
-expat-dev libtool"
+fontconfig lcms jasper ilmbase openexr graphviz librsvg libgsf libgio cairo \
+pango gcc-lib-base jbigkit libcroco fftw"
+BUILD_DEPENDS="xorg-libXext-dev jpeg-dev libpng-dev tiff-dev libxml2-dev \
+freetype-dev bzip2-dev expat-dev fontconfig-dev lcms-dev jasper-dev \
+ilmbase-dev openexr-dev graphviz-dev librsvg-dev libgsf-dev libgio-dev \
+cairo-dev pango-dev jbigkit-dev libcroco-dev fftw-dev util-linux-uuid-dev"
 SOURCE="ImageMagick"
 TARBALL="$SOURCE-$VERSION.tar.xz"
 WEB_SITE="http://www.imagemagick.org/"
-WGET_URL="ftp://ftp.imagemagick.org/pub/ImageMagick/$TARBALL"
+WGET_URL="ftp://ftp.imagemagick.org/pub/ImageMagick/legacy/$TARBALL"
 TAGS="image photo toolkit"
 
 # Rules to configure and make the package.
@@ -25,8 +27,10 @@ compile_rules()
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
 		--without-perl \
 		--with-magick-plus-plus \
+		--with-modules \
 		--enable-hdri \
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
@@ -37,6 +41,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $_pkg/etc $fs
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 	cp -a $_pkg/usr/lib/$SOURCE-$SHORT_VERSION $fs/usr/lib
