@@ -16,12 +16,15 @@ freetype fontconfig libpng libxdg-basedir"
 BUILD_DEPENDS="cmake xorg-libX11-dev libxcb-dev xcb-util-dev xcb-util-keysyms-dev \
 xcb-util-image-dev xcb-util-wm-dev lua-dev pango-dev cairo-dev imlib2-dev \
 dbus-dev libev-dev gperf cairo libxdg-basedir-dev startup-notification-dev \
-imagemagick pkg-config freetype-dev fontconfig-dev libpng-dev libxdg-basedir-dev openexr"
+imagemagick pkg-config freetype-dev fontconfig-dev libpng-dev libxdg-basedir-dev \
+openexr libltdl"
 
 # Rules to configure and make the package.
 compile_rules()
 {
     cd $src
+    export LDFLAGS="-Wl,--copy-dt-needed-entries -ldl"
+    sed -i 's|glib/gspawn|glib|' spawn.c
     patch -Np1 -i $stuff/0001-Normalize-icon-path-names-fixes-869.patch
     make CMAKE_ARGS=" -DPREFIX=/usr -DXDG_CONFIG_DIR=/etc/xdg \
 	-DCMAKE_BUILD_TYPE=RELEASE" &&
