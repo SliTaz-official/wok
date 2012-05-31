@@ -16,12 +16,31 @@ BUILD_DEPENDS="intltool gmime-dev glib-dev gtk+-dev"
 compile_rules()
 {
 	cd $src
-	sed -i 's|<glib/g.*h>|<glib.h>|' pan/general/file-util.h \
-		pan/general/macros.h pan/usenet-utils/mime-utils.h \
-		pan/general/worker-pool.cc pan/general/worker-pool.h \
-		pan/usenet-utils/text-massager.cc
-	# apply debian fix for gcc 4.4.0
-	# http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=504900
+	sed -i 's|<glib/gtypes.h>|<glib.h>|' pan/general/file-util.h \
+		pan/data/article-cache.h \
+		pan/gui/render-bytes.h
+	sed -i -e 's|<glib/gutils.h>|<glib.h>|' \
+		-e 's|<glib/gtestutils.h>|<glib.h>|' \
+		-e 's|<glibconfig.h>|<glib.h>|' \
+		pan/general/macros.h
+	sed -i 's|<glib/gmain.h>|<glib.h>|' pan/general/worker-pool.cc
+	sed -i -e 's|<glib/gtypes.h>|<glib.h>|' \
+		-e 's|<glib/gthreadpool.h>|<glib.h>|' \
+		-e 's|<glib/gtimer.h>|<glib.h>|' \
+		-e 's|<glib/gmain.h>|<glib.h>|' \
+		-e 's|<glib/gutils.h>|<glib.h>|' \
+		-e 's|<glib/gmacros.h>|<glib.h>|' \
+		pan/general/worker-pool.h \
+		pan/general/time-elapsed.h \
+		pan/gui/render-bytes.cc
+	sed -i 's|<glib/gtypes.h>|<glib.h>|' pan/usenet-utils/mime-utils.h
+	sed -i 's|<glib/gunicode.h>|<glib.h>|' pan/usenet-utils/text-massager.cc
+	sed -i 's|<glib/gthread.h>|<glib.h>|' pan/general/locking.h
+	sed -i -e 's|<glib/gstring.h>|<glib.h>|' \
+		-e 's|<glib/giochannel.h>|<glib.h>|' \
+		pan/tasks/socket-impl-gio.h
+	sed -i -e 's|<glib/gfileutils.h>|<glib.h>|' \
+		pan/data-impl/data-impl.cc
 	while read file last; do
 		grep -q 'include <cstdio>' pan/$file ||
 		sed -i "s/<$last>/<$last>\n#include <cstdio>/" pan/$file
