@@ -27,3 +27,15 @@ genpkg_rules()
 	# Daemon goes in cookutils-deamon
 	rm -rf $fs/etc/init.d
 }
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	case "$(cat $1/etc/hostname)" in
+	tank*)
+		if ! chroot $1/ tazpkg list | grep -q aufs ; then
+			tazpkg get-install aufs --root=$1/
+			sed -i 's/LOAD_MODULES="/&aufs /' $1/etc/rcS.conf
+		fi ;;
+	esac
+}
