@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="plymouth"
+VERSION="0.8.4"
+CATEGORY="base-system"
+SHORT_DESC="A graphical boot splash screen with KMS support."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.freedesktop.org/wiki/Software/Plymouth"
+WGET_URL="http://www.freedesktop.org/software/plymouth/releases/$TARBALL"
+
+DEPENDS="libpng pango gtk+ xorg-libpciaccess libdrm"
+BUILD_DEPENDS="libpng-dev pango-dev gtk+-dev xorg-libpciaccess-dev libdrm-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--libexecdir=/usr/lib \
+		--with-system-root-install \
+		--with-log-viewer \
+		--with-release-file=/etc/slitaz-release \
+		--disable-libdrm_nouveau \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/lib $fs/usr/lib $fs/usr/share
+	cp -a $install/bin $fs
+	cp -a $install/etc $fs
+	cp -a $install/sbin $fs
+	cp -a $install/lib/*.so* $fs/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/plymouth $fs/usr/lib
+	rm $fs/usr/lib/plymouth/*.*a
+	rm $fs/usr/lib/plymouth/*/*.*a
+}
+
