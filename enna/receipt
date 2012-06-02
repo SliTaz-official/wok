@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="enna"
+VERSION="v0.4.1"
+CATEGORY="multimedia"
+SHORT_DESC="Enna media center."
+MAINTAINER="pankso@slitaz.org"
+WEB_SITE="http://enna.geexbox.org/"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="hg|http://hg.geexbox.org/enna"
+BRANCH="$VERSION"
+TAGS="images music video e17"
+
+DEPENDS="eina eet ecore evas efreet edje edbus emotion elementary ethumb \
+libvalhalla libcurl xine-lib libexif alsa-lib libplayer"
+BUILD_DEPENDS="mercurial automake eina-dev eet-dev ecore-dev evas-dev efreet-dev \
+edje-dev edbus-dev emotion-dev elementary-dev ethumb-dev libvalhalla-dev curl-dev \
+xine-lib-dev libexif-dev alsa-lib-dev libplayer-dev libxml2-dev libtool expat-dev \
+jpeg-dev glib-dev ffmpeg-svn"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's|curl/types|curl/curl|' src/bin/url_utils.c
+	export CFLAGS="-I/usr/include/edje-1 -I/usr/include/eina-1 \
+-I/usr/include/eina-1/eina -I/usr/include/evas-1 -I/usr/include/ecore-1 \
+-I/usr/include/elementary-0 -I/usr/include/eet-1 -I/usr/include/efreet-1 \
+-I/usr/include/libxml2"
+	./autogen.sh $CONFIGURE_ARGS &&
+	make -j 1 && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/enna $fs/usr/share
+}
+
+post_install()
+{
+	for f in $(find /usr/lib/ -name "*ver-svn-05*" ! -path */enlightenment/*); do 
+		ln -s $f $(echo $f|sed s/-05/-03/); 
+	done	
+}
