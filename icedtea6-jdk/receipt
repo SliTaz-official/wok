@@ -46,11 +46,16 @@ compile_rules()
 	sed -i -e 's/mkdir -p drops/true/' -e 's/ jar xf/ fastjar xf/'  Makefile*
 	
 	# Check than all sources files are available, or exit.
+	REPO=http://icedtea.classpath.org/download/drops
 	if [ -x /usr/bin/cook ]; then
 		for i in jdk6-jaxws jdk6-jaxp jdk6-jaf; do
+			[ -s $SOURCES_REPOSITORY/$i-$openjdk_version.zip ] ||
+			     wget -P $SOURCES_REPOSITORY $REPO/$i-$openjdk_version.zip
 			cp $SOURCES_REPOSITORY/$i-$openjdk_version.zip drops || return 1
 		done
 		# openjdk-6-src is in BUILD_DEPENDS and must be build like jdk6-* pkgs.
+		[ -s $SOURCES_REPOSITORY/openjdk-6-src-$openjdk_version-$openjdk_date.tar.gz ] ||
+		    wget -P $SOURCES_REPOSITORY $REPO/openjdk-6-src-$openjdk_version-$openjdk_date.tar.gz
 		cp $SOURCES_REPOSITORY/openjdk-6-src-$openjdk_version-$openjdk_date.tar.gz .
 	else
 		report open-bloc
