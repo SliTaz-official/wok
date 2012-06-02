@@ -5,12 +5,13 @@ VERSION="5.11"
 CATEGORY="system-tools"
 SHORT_DESC="Retrieve file type."
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="zlib libmagic"
-BUILD_DEPENDS="zlib-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.darwinsys.com/file/"
 WGET_URL="ftp://ftp.astron.com/pub/file/$TARBALL"
-CROSS="bug"
+HOST_ARCH="i486 arm"
+
+DEPENDS="zlib libmagic"
+BUILD_DEPENDS="zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -18,17 +19,16 @@ compile_rules()
 	cd $src
 	./configure \
 		--datarootdir=/usr/share \
-		--build=$HOST_SYSTEM \
-		--host=$HOST_SYSTEM &&
+		$CONFIGURE_ARGS &&
 	make &&	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/share/misc $fs/usr/share
+	mkdir -p $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	# --> libmagic
+	#cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/share/misc $fs/usr/share
 }
