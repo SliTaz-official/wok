@@ -12,7 +12,8 @@ CROSS="error: cannot check for file existence when cross compiling"
 
 DEPENDS="dbus dbus-glib slitaz-base-files udev util-linux-blkid libusb-compat"
 BUILD_DEPENDS="dbus-dev dbus-glib dbus-glib-dev udev-dev pciutils \
-util-linux-blkid-dev expat-dev util-linux-uuid-dev glib-dev pkg-config"
+util-linux-blkid-dev expat-dev util-linux-uuid-dev glib-dev pkg-config \
+libv4l-dev"
 
 EXTRA="
 hald-addon-cpufreq
@@ -29,6 +30,9 @@ hald-probe-printer"
 compile_rules()
 {
 	cd $src
+	sed -i 's|linux/videodev.h|libv4l1-videodev.h|' \
+		hald/linux/probing/probe-video4linux.c
+	sed -i 's|glib/gmain|glib|' hald/linux/addons/addon-*.c
 	zcat /usr/share/misc/pci.ids.gz > /usr/share/misc/pci.ids &&
 	patch -p1 < $stuff/hal-scripts.u || return 1 &&
 	#patch -p1 < $stuff/hal-udev.patch || return 1 &&
