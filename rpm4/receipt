@@ -1,18 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="rpm4"
-VERSION="4.8.1"
+VERSION="4.10.0"
 CATEGORY="system-tools"
 SHORT_DESC="RPM Package Manager"
 MAINTAINER="erjo@slitaz.org"
 DEPENDS="popt beecrypt bzlib expat sqlite zlib gcc-lib-base neon libkrb5 \
 libcomerr3 nss nspr db liblzma libmagic"
 BUILD_DEPENDS="beecrypt beecrypt-dev popt-dev gettext zlib-dev python-dev \
-nss-dev nspr-dev db-dev liblzma-dev libmagic-dev"
+nss-dev nspr-dev db-dev liblzma liblzma-dev libmagic-dev"
 SOURCE="rpm"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.rpm.org/"
-WGET_URL="http://www.rpm.org/releases/rpm-${VERSION:0:3}.x/$TARBALL"
+WGET_URL="http://www.rpm.org/releases/rpm-${VERSION:0:4}.x/$TARBALL"
 TAGS="package-manager"
 
 # Rules to configure and make the package.
@@ -29,7 +29,7 @@ compile_rules()
 	 --with-external-db \
 	 --mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -44,10 +44,10 @@ genpkg_rules()
 		$fs/usr/src/redhat/SPECS \
 		$fs/usr/src/redhat/SRPMS
 		
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/bin/* $fs/usr/bin
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/rpm $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/bin/* $fs/usr/bin
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/rpm $fs/usr/lib
 }
 
 post_install()
@@ -76,8 +76,8 @@ post_install()
 
 pre_remove()
 {
-	if [ -d /var/lib/rpm ]; then
-		rm -f /var/lib/rpm/*
+	if [ -d $1/var/lib/rpm ]; then
+		rm -f $1/var/lib/rpm/*
 	fi
 }
 
@@ -85,10 +85,10 @@ post_remove()
 {
 	echo "Processing post remove commands..."
 	cmd=`readlink $root/bin/rpm`
-    if [ ! "$cmd" = "/bin/rpm" ]; then
-    	echo -n "Restore applets from busybox..."
-        ln -sf $root/bin/busybox $root/bin/rpm
-        ln -sf $root/bin/busybox $root/usr/bin/rpm2cpio
-        status
-    fi
+    	if [ ! "$cmd" = "/bin/rpm" ]; then
+		echo -n "Restore applets from busybox..."
+		ln -sf $root/bin/busybox $root/bin/rpm
+		ln -sf $root/bin/busybox $root/usr/bin/rpm2cpio
+		status
+	fi
 }
