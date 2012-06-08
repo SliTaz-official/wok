@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="libqwt6-qt4"
+VERSION="6.0.1"
+CATEGORY="graphics"
+SHORT_DESC="Lib Qt Widgets for Technical applications"
+MAINTAINER="slitaz@objectif-securite.ch"
+SOURCE="qwt"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://qwt.sourceforge.net"
+WGET_URL="http://switch.dl.sourceforge.net/sourceforge/qwt/$TARBALL"
+
+DEPENDS="libQtCore libQtGui libQtScript libQtXml libQtDesigner gcc-lib-base"
+BUILD_DEPENDS="qmake Qt4-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i \
+		-e 's/$${QWT_INSTALL_PREFIX}\/include/\/usr\/include\/qwt\//' \
+		-e 's/$${QWT_INSTALL_PREFIX}\/lib/\/usr\/lib\//' \
+		-e 's/$${QWT_INSTALL_PREFIX}\/plugins\/designer/\/usr\/lib\/qt\/plugins\/designer\//' \
+		-e 's/$${QWT_INSTALL_PREFIX}\/features/\/usr\/share\/qwt\/features\//' \
+		qwtconfig.pri
+	qmake &&
+	make -j1 &&
+	make INSTALL_ROOT=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/share/qwt $fs/usr/share
+}
