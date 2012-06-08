@@ -1,18 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="ffmpeg"
-VERSION="0.10.3"
+VERSION="0.11.1"
 CATEGORY="multimedia"
 SHORT_DESC="Record, convert and stream audio and video."
 MAINTAINER="pascal.bellard@slitaz.org"
 WEB_SITE="http://ffmpeg.org/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="${WEB_SITE}releases/$TARBALL"
+SUGGESTED="ffplay"
+TAGS="audio video convert stream"
+
 DEPENDS="alsa-lib"
 BUILD_DEPENDS="libsdl-dev zlib-dev bzip2-dev coreutils-file-format \
 coreutils-file-special yasm"
-SUGGESTED="ffplay"
-TAGS="audio video convert stream"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -37,19 +38,18 @@ compile_rules()
 		--disable-encoder=msmpeg4v3 \
 		--disable-symver \
 		--disable-debug \
-		--disable-doc && \
-	make &&
-	make install
+		--disable-doc &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/*so* $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
-	mkdir -p $fs/usr/share
-	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $install/usr/lib/*so* $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/$PACKAGE $fs/usr/share
+	rm -rf $fs/usr/share/$PACKAGE/examples
 	# ffplay with it SDL dep go in a splited package
 	rm $fs/usr/bin/ffplay
 }
