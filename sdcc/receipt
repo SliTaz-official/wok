@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="sdcc"
-VERSION="2.9.0"
+VERSION="3.1.0"
 CATEGORY="development"
 SHORT_DESC="Retargettable C compiler for 8051, Z80 and 68HC08."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -9,7 +9,7 @@ TARBALL="$PACKAGE-src-$VERSION.tar.bz2"
 WEB_SITE="http://sdcc.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$PACKAGE/$VERSION/$TARBALL"
 TAGS="cross compiler C 8051 Z80 68HC08 assembler"
-BUILD_DEPENDS="flex"
+BUILD_DEPENDS="flex gcc3 libboost-graph-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -22,11 +22,15 @@ compile_rules()
 	sed -i 's/all %/%/' device/lib/pic/Makefile.in
 	find -name getline.h | xargs sed -i \
 	  's/char.*getline/#define getline sdcc_getline\nchar *sdcc_getline/'
-	./configure --prefix=/usr --infodir=/usr/share/info \
+
+	# 1- build hang forever with gcc 4.6.3 for SDCCicode.c
+	# 2- pic14 & pic16 needs http://gputils.sourceforge.net/
+	./configure CC=gcc-3 --prefix=/usr --infodir=/usr/share/info \
 	--mandir=/usr/share/man \
+	--disable-pic14-port --disable-pic16-port \
 	$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
