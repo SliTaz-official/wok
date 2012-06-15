@@ -25,3 +25,16 @@ genpkg_rules()
 	cp -a $src/sshttpd $fs/usr/sbin
 }
 
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	zcat /proc/config.gz | grep -q ^CONFIG_NETFILTER_TPROXY= || cat <<EOT
+
+CONFIG_NETFILTER_TPROXY not found in /proc/config.gz
+sshttp needs Linux IP_TRANSPARENT feature to work.
+You should rebuild your kernel with a new configuration.
+
+EOT
+}
+
+# http://blog.stalkr.net/2012/02/sshhttps-multiplexing-with-sshttp.html
