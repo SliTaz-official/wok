@@ -1,0 +1,26 @@
+# SliTaz package receipt.
+
+PACKAGE="mariadb-test"
+VERSION="5.5.24"
+CATEGORY="misc"
+SHORT_DESC="SQL database system tests and benchs."
+MAINTAINER="erjo@slitaz.org"
+WEB_SITE="http://www.mysql.com/"
+WANTED="mariadb"
+DEPENDS="mariadb perl"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/mysql-test $fs/usr
+	cp -a $_pkg/usr/sql-bench $fs/usr
+	find $fs/usr/mysql-test $fs/usr/sql-bench -type d -exec chmod 2777 {} \;
+	while read file; do
+		dir=$(dirname $file)
+		[ -d $fs$dir ] || mkdir -p $fs$dir
+		cp -a $_pkg$file $fs$file
+	done < $wanted_stuff/$PACKAGE.files-list
+	mv $fs/usr/mysql-test $fs/usr/share/mysql-test
+	mv $fs/usr/sql-bench $fs/usr/share/sql-bench
+}

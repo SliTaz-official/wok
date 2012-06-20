@@ -1,0 +1,116 @@
+# SliTaz package receipt.
+
+PACKAGE="mariadb"
+VERSION="5.5.24"
+CATEGORY="office"
+SHORT_DESC="SQL database system."
+MAINTAINER="erjo@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://mariadb.org/en/"
+WGET_URL="http://mirrors.sunsite.dk/mysql/Downloads/MySQL-5.1/$TARBALL"
+PROVIDE="mysql"
+
+CONFIG_FILES="/etc/mysql/my.cnf"
+DATABASE_FILES="/var/lib/mysql"
+CROSS="bug: can not run test programm"
+
+DEPENDS="busybox libmariadbclient mariadb-client zlib slitaz-base-files \
+gcc-lib-base"
+BUILD_DEPENDS="cmake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	
+	cd $src
+	cmake  . -DCMAKE_INSTALL_PREFIX=/usr \
+	-DINSTALL-DOCREADMEDIR=/usr/share/doc \
+	-DINSTALL_MYSQLDATADIR=/var/lib/mysql \
+	-DINSTALL_SYSCONFDIR=/etc \
+	-DINSTALL_LIBDIR=lib/mysql \
+	-DINSTALL_INFODIR=share/doc/mysql \
+	-DINSTALL_MANDIR=share/man \
+	-DINSTALL_PLUGINDIR=lib/mysql/plugin \
+	-DINSTALL_SHAREDIR=share \
+	-DINSTALL_MYSQLSHAREDIR=share/mysql \
+	-DINSTALL_UNIX_ADDRDIR=/var/run/mysqld/mysqld.sock 
+	make $MAKEFLAGS &&
+	make install 
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/usr/share \
+		$fs/usr/lib/mysql/plugin \
+		$fs/etc/mysql \
+		$fs/etc/mysql.d \
+		$fs/var/lib/mysql \
+		$fs/var/run/mysqld
+
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/scripts/* $fs/usr/bin
+	cp -a $install/usr/lib/mysql/plugin/*.so* $fs/usr/lib/mysql/plugin
+	cp -a $install/usr/share/mysql $fs/usr/share
+
+	# Configuration file
+	cp -a $stuff/etc/init.d $fs/etc
+	cp -a $src/support-files/my-medium.cnf $fs/etc/mysql/my.cnf
+	cp -a $src/support-files/my-small.cnf $fs/etc/mysql
+	grep -q "bind-address" $fs/etc/mysql/my.cnf || sed -i \
+		's/^\[mysqld\]/[mysqld]\nbind-address\t= 127.0.0.1/' \
+		$fs/etc/mysql/my.cnf
+
+	# Permissions
+	chmod 600 $fs/etc/mysql/my.cnf
+
+	cat $stuff/*.files-list | while read file; do
+		[ -f $fs$file ] && rm -f $fs$file
+	done
+
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	
+	local user
+	local group
+	
+	user=mysql
+	group=mysql
+	
+	if ! grep -q $user $1/etc/passwd; then
+		echo -n "Adding user/group $user..."
+		chroot $1/ addgroup -S $group
+		chroot $1/ adduser -s /bin/false -S -D -H -G $group $user
+		status
+	fi
+
+	chroot $1/ chown -R ${user}.${group} /var/lib/mysql /var/run/mysqld
+	
+	cat <<EOF
+----
+To start $PACKAGE server you can run :
+
+    /etc/init.d/$PACKAGE start
+
+Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
+----
+EOF
+}
+
+pre_install()
+{
+	# Cleanup old files
+	rm -f $1/usr/libexec/mysql*
+	# Mv config
+	[ -f $1/etc/my.cnf ] && mv -f $1/etc/my.cnf $1/etc/mysql/my.cnf
+}
+
+post_remove()
+{
+	echo "Removing user/group mysl"
+	deluser mysql
+}
