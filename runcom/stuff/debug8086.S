@@ -11,7 +11,7 @@
 // Example:
 // m 0FC0                  move debugger to 0FC0:0000 0FC0:01FF
 // f 1			   read floppy boot sector to 0000:7C00
-// f 80 1		   read hard disk master boot sector to 0000:7C00
+// f 80:1		   read hard disk master boot sector to 0000:7C00
 // g 7C0E		   ...
 
 #define ADJESDI		16 bytes	add segment overflow support for e and d

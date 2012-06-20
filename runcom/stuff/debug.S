@@ -11,7 +11,7 @@
 // Example:
 // m 0FC0                  move debugger to 0FC0:0000 0FC0:01FF
 // f 1			   read floppy boot sector to 0000:7C00
-// f 80 1		   read hard disk master boot sector to 0000:7C00
+// f 80:1		   read hard disk master boot sector to 0000:7C00
 // g 7C0E		   ...
 
 #define REGS32		28 bytes	display FS, GS and 32 bits datas for AX..DI 
