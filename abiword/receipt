@@ -16,8 +16,9 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.abisource.com/"
 WGET_URL="http://www.abisource.com/downloads/abiword/$VERSION/source/$TARBALL"
 TAGS="word doc office"
+LOCALES="cs da de es fr hu id it pt ru sl sv zh"
 
-# Rules to configure and make the package. 	--enable-extra-optimization \
+# Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
@@ -44,37 +45,37 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/pixmaps $fs/usr/lib/abiword-2.8/plugins $fs/usr/share/icons
-	
+
 	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so $fs/usr/lib
-	
+
 	cp -a $_pkg/usr/share/abiword-* $fs/usr/share
+
 	# Non standard pixmap
 	cp $_pkg/usr/share/icons/abiword_48.png \
 		$fs/usr/share/pixmaps/abiword.png
+
 	# fix error when abiword is run in command line
 	ln -sf /usr/share/pixmaps/abiword.png $fs/usr/share/icons/abiword_48.png
-	# Non-standard locale use : get english, spanish, french, german
+
+	# Non-standard locale use: get all official SliTaz locales
 	rm $fs/usr/share/abiword-*/strings/*
 	rm $fs/usr/share/abiword-*/templates/*
 	rm $fs/usr/share/abiword-*/system.pro*
-	cp  $_pkg/usr/share/abiword-*/strings/d* \
-	   $_pkg/usr/share/abiword-*/strings/e* \
-	    $_pkg/usr/share/abiword-*/strings/f*    \
-		$fs/usr/share/abiword-*/strings/
-	cp $_pkg/usr/share/abiword-*/templates/normal.awt \
-		$_pkg/usr/share/abiword-*/templates/normal.awt-d* \
-		$_pkg/usr/share/abiword-*/templates/normal.awt-e*  \
-		$_pkg/usr/share/abiword-*/templates/normal.awt-f*  \
-	    $fs/usr/share/abiword-*/templates/
-	    
-	cp $_pkg/usr/share/abiword-*/templates/*.awt $fs/usr/share/abiword-*/templates/
-	    
-	cp $_pkg/usr/share/abiword-*/system.profile \
-		$_pkg/usr/share/abiword-*/system.profile-d* \
-		$_pkg/usr/share/abiword-*/system.profile-e* \
-		$_pkg/usr/share/abiword-*/system.profile-f* \
-	   $fs/usr/share/abiword-*/
 
+	for LOCALE in $LOCALES; do
+		cp $_pkg/usr/share/abiword-*/strings/$LOCALE*.strings \
+			 $fs/usr/share/abiword-*/strings/
+		# id locale not complete in sources
+		if [ "$LOCALE" != "id" ]; then
+			cp $_pkg/usr/share/abiword-*/templates/normal.awt-$LOCALE* \
+				 $fs/usr/share/abiword-*/templates/
+			cp $_pkg/usr/share/abiword-*/system.profile-$LOCALE* \
+				 $fs/usr/share/abiword-*/
+		fi
+	done
+
+	cp $_pkg/usr/share/abiword-*/templates/*.awt $fs/usr/share/abiword-*/templates/
+	cp $_pkg/usr/share/abiword-*/system.profile $fs/usr/share/abiword-*/
 }
 
