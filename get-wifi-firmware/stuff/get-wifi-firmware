@@ -7,18 +7,22 @@ PKG=$MODULE-firmware
 DEPENDS=""
 case "$MODULE" in
 b43)
-	VERSION=4.150.10.5
+	WEB_SITE="http://www.linuxwireless.org/en/users/Drivers/b43"
+	WGET_URL="http://mirror2.openwrt.org/sources"
+	VERSION=$(wget -O - $WGET_URL | sed \
+	  '/broadcom-wl-[0-9\.]*.tar/!d;s/.*com-wl-\([0-9\.]*\).tar.*/\1/' | \
+	  tail -n 1)
 	SUBDIR="broadcom-wl-$VERSION"
 	SHORT_DESC="Broadcom $MODULE firmware."
-	WEB_SITE="http://www.linuxwireless.org/en/users/Drivers/b43"
-	WGET_URL="http://mirror2.openwrt.org/sources/$SUBDIR.tar.bz2"
+	WGET_URL="$WGET_URL/$SUBDIR.tar.bz2"
 	DEPENDS="b43-fwcutter"
 	FWSET=wl_apsta_mimo.o
 	;;
 b43legacy)
-	VERSION=3.130.20.0
-	SHORT_DESC="Broadcom $MODULE firmware (BCM4306 rev2 or 802.11b chips)."
 	WEB_SITE="http://downloads.openwrt.org/"
+	VERSION=$(wget -O - ${WEB_SITE}sources | sed \
+	  '/wl_apsta/!d;s/.*>wl_apsta-\(.*\).o.*/\1/')
+	SHORT_DESC="Broadcom $MODULE firmware (BCM4306 rev2 or 802.11b chips)."
 	WGET_URL="${WEB_SITE}sources/wl_apsta-$VERSION.o"
 	DEPENDS="b43-fwcutter"
 	FWSET=wl_apsta-$VERSION.o
@@ -90,10 +94,12 @@ rt2870usb)
 	WGET_URL="ftp://ftp.archlinux.org/other/${MODULE}-fw/RT2870_Firmware_V${VERSION}.zip"
 	;;
 zd1211|zd1211rw)
-	VERSION=2.21.0.0-1
+	WGET_URL="http://mirrors.kernel.org/debian/pool/non-free/z/zd1211-firmware"
+	VERSION=$(wget -O - $WGET_URL | sed -e '/zd1211-firmware/!d' \
+	  -e '/all.deb/!d' -e 's/.*>zd1211-firmware_\(.*\)_all.deb.*/\1/')
 	SHORT_DESC="zd1211/zd1211rw Wireless Lan firmware."
 	WEB_SITE="http://packages.debian.org/etch/zd1211-firmware"
-	WGET_URL="http://mirrors.kernel.org/debian/pool/non-free/z/zd1211-firmware/zd1211-firmware_${VERSION}_all.deb"
+	WGET_URL="$WGET_URL/zd1211-firmware_${VERSION}_all.deb"
 	;;
 *)	echo "Unknown wifi driver. Please run one of the following commands:"
 	for i in $(cd $(dirname $0); ls get-*-firmware); do
