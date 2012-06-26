@@ -1,0 +1,50 @@
+# SliTaz package receipt.
+
+PACKAGE="lapack"
+VERSION="3.4.0"
+CATEGORY="misc"
+SHORT_DESC="Linear Algebra PACKage"
+MAINTAINER="slaxemulator@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WEB_SITE="http://www.netlib.org/lapack"
+WGET_URL="$WEB_SITE/$TARBALL"
+
+DEPENDS="gcc-lib-base blas"
+BUILD_DEPENDS="gfortran blas"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	cp -f $src/INSTALL/make.inc.gfortran make.inc
+	cp -f "$stuff/Makefile.lapack" $src/SRC/Makefile
+	
+	export FC=gfortran
+
+	cd $src/INSTALL
+	make clean
+	make NOOPT="${CFLAGS/-O?/-O0} -fPIC" OPTS="${CFLAGS} -fPIC"
+
+	cd $src/SRC
+	make clean
+
+	make FFLAGS="${CFLAGS} -fPIC" CFLAGS="${CFLAGS} -fPIC" shared
+	cp liblapack.so.$VERSION "$src/"
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+
+	install -m755 -d "$fs/usr/lib"
+  install -m755 "$src/liblapack.so.$VERSION" \
+    "$fs/usr/lib/"
+  ln -sf liblapack.so.$VERSION "$fs/usr/lib/liblapack.so"
+  ln -sf liblapack.so.$VERSION "$fs/usr/lib/liblapack.so.3"
+  
+  install -m755 -d "$fs/usr/share/licenses"
+  install -m644 "$src/LICENSE" \
+    "$fs/usr/share/licenses/lapack.LICENSE"
+}
+
