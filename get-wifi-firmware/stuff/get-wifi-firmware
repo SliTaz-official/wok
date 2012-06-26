@@ -5,6 +5,31 @@ MODULE=$(echo $0 | sed 's/.*get-\(.*\)-firmware/\1/')
 ROOT="$2"
 PKG=$MODULE-firmware
 DEPENDS=""
+
+MODULE_LIST=""
+while read module desc ; do
+	[ "$MODULE" == "$module" ] && desc="$SHORT_DESC"
+	MODULE_LIST="$MODULE_LIST $module"
+done <<EOT
+b43		Broadcom $MODULE firmware.
+b43legacy	Broadcom $MODULE firmware (BCM4306 rev2 or 802.11b chips).
+ipw2100		Intel PRO/Wireless 2100 firmware.
+ipw2200		Intel PRO/Wireless 2200BG firmware.
+iwlwifi-3945	Intel PRO/Wireless 3945ABG/BG firmware.
+iwlwifi-4965	Intel WiFi Link 4965AGN firmware.
+iwlwifi-5000	Intel Wireless WiFi Link 5000AGN firmware.
+iwlwifi-5150	Intel Wireless WiFi Link 5150AGN firmware.
+iwlwifi-1000	Intel Wireless WiFi Link 1000BGN firmware.
+iwlwifi-6000	Intel Wireless WiFi Link 6000 Series Wi-fi Adapters.
+rt61		new RT2x00 RT61 Wireless Lan firmware.
+rt61pci		new RT2x00 RT61 Wireless Lan firmware.
+rt73		new RT2x00 RT73(RT2571W) Wireless Lan firmware.
+rt73usb		new RT2x00 RT73(RT2571W) Wireless Lan firmware.
+rt2870usb	RaLink RT2870USB (RT2870/RT2770) WiFi adapter.
+zd1211		zd1211/zd1211rw Wireless Lan firmware.
+zd1211rw	zd1211/zd1211rw Wireless Lan firmware.
+EOT
+
 case "$MODULE" in
 b43)
 	WEB_SITE="http://www.linuxwireless.org/en/users/Drivers/b43"
@@ -13,7 +38,6 @@ b43)
 	  '/broadcom-wl-[0-9\.]*.tar/!d;s/.*com-wl-\([0-9\.]*\).tar.*/\1/' | \
 	  tail -n 1)
 	SUBDIR="broadcom-wl-$VERSION"
-	SHORT_DESC="Broadcom $MODULE firmware."
 	WGET_URL="$WGET_URL/$SUBDIR.tar.bz2"
 	DEPENDS="b43-fwcutter"
 	FWSET=wl_apsta_mimo.o
@@ -22,84 +46,47 @@ b43legacy)
 	WEB_SITE="http://downloads.openwrt.org/"
 	VERSION=$(wget -O - ${WEB_SITE}sources | sed \
 	  '/wl_apsta/!d;s/.*>wl_apsta-\(.*\).o.*/\1/')
-	SHORT_DESC="Broadcom $MODULE firmware (BCM4306 rev2 or 802.11b chips)."
 	WGET_URL="${WEB_SITE}sources/wl_apsta-$VERSION.o"
 	DEPENDS="b43-fwcutter"
 	FWSET=wl_apsta-$VERSION.o
 	;;
 ipw2100)
-	VERSION=1.3
-	SHORT_DESC="Intel PRO/Wireless 2100 firmware."
+	VERSION=$(wget -O - http://$MODULE.sourceforge.net/firmware.php?fid=2 |\
+		sed '/$MODULE-fw/!d;s/.*fw-\(.*\).tgz.*/\1/')
 	WEB_SITE="http://$MODULE.sourceforge.net/"
 	WGET_URL="http://bughost.org/firmware/${MODULE}-fw-${VERSION}.tgz"
 	;;
 ipw2200)
-	VERSION=3.1
-	SHORT_DESC="Intel PRO/Wireless 2200BG firmware."
+	VERSION=$(wget -O - http://$MODULE.sourceforge.net/firmware.php?fid=8 |\
+		sed '/$MODULE-fw/!d;s/.*fw-\(.*\).tgz.*/\1/')
 	WEB_SITE="http://$MODULE.sourceforge.net/"
 	WGET_URL="http://bughost.org/firmware/${MODULE}-fw-${VERSION}.tgz"
 	;;
-iwlwifi-3945)
+iwlwifi-*)
 	WEB_SITE="http://www.intellinuxwireless.org/?n=Downloads"
 	VERSION=$(wget -O - $WEB_SITE | sed -e "/$MODULE-/!d" -e \
 		's/.*-ucode-\([0-9\.-]*\).t.*/\1/;q')
-	SHORT_DESC="Intel PRO/Wireless 3945ABG/BG firmware."
 	WGET_URL="http://www.intellinuxwireless.org/iwlwifi/downloads/$MODULE-ucode-$VERSION.tgz"
 	;;
-iwlwifi-4965)
-	WEB_SITE="http://www.intellinuxwireless.org/?n=Downloads"
-	VERSION=$(wget -O - $WEB_SITE | sed -e "/$MODULE-/!d" -e \
-		's/.*-ucode-\([0-9\.-]*\).t.*/\1/;q')
-	SHORT_DESC="Intel WiFi Link 4965AGN firmware."
-	WGET_URL="http://www.intellinuxwireless.org/iwlwifi/downloads/$MODULE-ucode-$VERSION.tgz"
-	;;
-iwlwifi-5000)
-	WEB_SITE="http://www.intellinuxwireless.org/?n=Downloads"
-	VERSION=$(wget -O - $WEB_SITE | sed -e "/$MODULE-/!d" -e \
-		's/.*-ucode-\([0-9\.-]*\).t.*/\1/;q')
-	SHORT_DESC="Intel Wireless WiFi Link 5000AGN firmware."
-	WGET_URL="http://www.intellinuxwireless.org/iwlwifi/downloads/$MODULE-ucode-$VERSION.tgz"
-	;;
-iwlwifi-5150)
-	WEB_SITE="http://www.intellinuxwireless.org/?n=Downloads"
-	VERSION=$(wget -O - $WEB_SITE | sed -e "/$MODULE-/!d" -e \
-		's/.*-ucode-\([0-9\.-]*\).t.*/\1/;q')
-	SHORT_DESC="Intel Wireless WiFi Link 5150AGN firmware."
-	WGET_URL="http://www.intellinuxwireless.org/iwlwifi/downloads/$MODULE-ucode-$VERSION.tgz"
-	;;
-iwlwifi-1000)
-	WEB_SITE="http://www.intellinuxwireless.org/?n=Downloads"
-	VERSION=$(wget -O - $WEB_SITE | sed -e "/$MODULE-/!d" -e \
-		's/.*-ucode-\([0-9\.-]*\).t.*/\1/;q')
-	SHORT_DESC="Intel Wireless WiFi Link 1000BGN firmware."
-	WGET_URL="http://www.intellinuxwireless.org/iwlwifi/downloads/$MODULE-ucode-$VERSION.tgz"
-	;;
-iwlwifi-6000)
-	WEB_SITE="http://www.intellinuxwireless.org/?n=Downloads"
-	VERSION=$(wget -O - $WEB_SITE | sed -e "/$MODULE-/!d" -e \
-		's/.*-ucode-\([0-9\.-]*\).t.*/\1/;q')
-	SHORT_DESC="Intel Wireless WiFi Link 6000 Series Wi-fi Adapters"
-	WGET_URL="http://www.intellinuxwireless.org/iwlwifi/downloads/$MODULE-ucode-$VERSION.tgz"
-	;;
-rt61|rt61pci)
-	VERSION=1.2
-	SHORT_DESC="new RT2x00 RT61 Wireless Lan firmware."
+rt61*)
+	WGET_URL="http://archlinux.c3sl.ufpr.br/other/rt2x00-rt61-fw"
+	VERSION=$(wget -O - $WGET_URL | sed '/Firmware/!d;s/.*_V\(.*\).zip.*/\1/')
 	WEB_SITE="http://www.ralinktech.com/"
-	WGET_URL="ftp://ftp.archlinux.org/other/rt2x00-rt61-fw/RT61_Firmware_V${VERSION}.zip"
+	WGET_URL="$WGET_URL/RT61_Firmware_V${VERSION}.zip"
 	;;
-rt73|rt73usb)
-	VERSION=1.8
-	SHORT_DESC="new RT2x00 RT73(RT2571W) Wireless Lan firmware."
+rt73*)
+	WGET_URL="http://archlinux.c3sl.ufpr.br/other/rt2x00-rt71w-fw"
+	VERSION=$(wget -O - $WGET_URL | sed '/Firmware/!d;s/.*_V\(.*\).zip.*/\1/')
 	WEB_SITE="http://www.ralinktech.com/"
-	WGET_URL="ftp://ftp.archlinux.org/other/rt2x00-rt71w-fw/RT71W_Firmware_V${VERSION}.zip"
+	WGET_URL="$WGET_URL/RT71W_Firmware_V${VERSION}.zip"
 	;;
 rt2870usb)
-	VERSION=8
-	SHORT_DESC="RaLink RT2870USB (RT2870/RT2770) WiFi adapter."
+	WGET_URL="http://archlinux.c3sl.ufpr.br/other/${MODULE}-fw"
+	VERSION=$(wget -O - $WGET_URL | sed '/Firmware/!d;s/.*_V\(.*\).zip.*/\1/')
 	WEB_SITE="http://www.ralinktech.com/"
-	WGET_URL="ftp://ftp.archlinux.org/other/${MODULE}-fw/RT2870_Firmware_V${VERSION}.zip"
+	WGET_URL="$WGET_URL/RT2870_Firmware_V${VERSION}.zip"
 	;;
-zd1211|zd1211rw)
+zd1211*)
 	WGET_URL="http://mirrors.kernel.org/debian/pool/non-free/z/zd1211-firmware"
 	VERSION=$(wget -O - $WGET_URL | sed -e '/zd1211-firmware/!d' \
 	  -e '/all.deb/!d' -e 's/.*>zd1211-firmware_\(.*\)_all.deb.*/\1/')
@@ -107,7 +94,23 @@ zd1211|zd1211rw)
 	WEB_SITE="http://packages.debian.org/etch/zd1211-firmware"
 	WGET_URL="$WGET_URL/zd1211-firmware_${VERSION}_all.deb"
 	;;
-*)	echo "Unknown wifi driver. Please run one of the following commands:"
+*)
+	case "$2" in
+	--install)
+		cd $(dirname $0)
+		for i in $MODULE_LIST ; do
+			ln -s get-wifi-firmware get-$i-firmware
+		done
+		exit 0 ;;
+	--get-free-firmware)
+		for i in $MODULE_LIST ; do
+			case "$i" in
+			iwlwifi*|rt*) get-$i-firmware
+			esac
+		done
+		exit 0 ;;
+	esac
+	echo "Unknown wifi driver. Please run one of the following commands:"
 	for i in $(cd $(dirname $0); ls get-*-firmware); do
 		[ -L $i ] || continue
 		[ "$(readlink $i)" = "get-wifi-firmware" ] || continue
@@ -144,7 +147,7 @@ TOP=$PWD
 cd $TMP
 wget $WGET_URL
 TARBALL="$(basename $WGET_URL)"
-if [ ! -f $TARBALL ]; then
+if [ ! -s $TARBALL ]; then
 	cd $TOP
 	rm -rf $DIR
 	echo "Could not download $TARBALL. Exiting."
@@ -174,7 +177,7 @@ rt*)
 	mv RT*_Firmware_V$VERSION/*LICENSE* $PKG-$VERSION/fs/usr/share/licenses/ralink-rt61-LICENSE.txt;;
 iwlwifi*) mv iwlwifi*/iwlwifi*.ucode $PKG-$VERSION/fs/lib/firmware
 		  mv iwlwifi*/*LICENSE* $PKG-$VERSION/fs/usr/share/licenses/intel-iwlwifi-LICENSE.txt	;;
-zd1211|zd1211rw)
+zd1211*)
 	mv lib/firmware/zd1211 $PKG-$VERSION/fs/lib/firmware 
 	for i in $(cd usr/lib/hotplug/firmware; ls); do
 		target=$(readlink usr/lib/hotplug/firmware/$i)
