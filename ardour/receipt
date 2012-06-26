@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="ardour"
-VERSION="2.8.11"
+VERSION="2.8.12"
 CATEGORY="multimedia"
 MAINTAINER="jozee@slitaz.org"
 SHORT_DESC="A multichannel hard disk recorder and digital audio workstation"
@@ -11,22 +11,25 @@ WGET_URL="ftp://ftp.archlinux.org/other/ardour/$TARBALL"
 TAGS="audio recorder mixer"
 
 DEPENDS="liblrdf ladspa liblo libgnomecanvas libusb-compat aubio libsndfile 
-libsamplerate raptor fftw libxslt"
-BUILD_DEPENDS="scons libboost-dev jack-audio-connection-kit-dev alsa-lib-dev \
- liblo liblo-dev aubio-dev libxslt-dev libsndfile-dev ladspa-dev liblrdf-dev \
- libart_lgpl-dev libusb-dev libsamplerate-dev curl-dev fftw-dev \
- raptor-dev libgnomecanvas-dev pkg-config liblrdf-dev"
+libsamplerate raptor fftw libxslt libgnomecanvasmm soundtouch"
+BUILD_DEPENDS="scons libboost-dev libboost-thread-dev libboost-math-dev \
+jack-audio-connection-kit-dev alsa-lib-dev liblo-dev aubio-dev libxslt-dev \
+libsndfile-dev ladspa-dev liblrdf-dev libart_lgpl-dev libusb-dev \
+libsamplerate-dev curl-dev fftw-dev soundtouch-dev raptor-dev \
+libgnomecanvasmm-dev libgnomecanvas-dev pkg-config liblrdf-dev gtkmm-dev"
 
 # Rules to configure and make the package.
-compile_rules() {
+compile_rules()
+{
   cd $src
   sed -i '/-O3/d' SConstruct 
-  mkdir -p $PWD/_pkg
+  mkdir -p $DESTDIR
   
-  scons PREFIX=/usr 	\
+  scons ${MAKEFLAGS} ARCH="${CFLAGS}" \
+		PREFIX=/usr \
 		NLS=1 \
 		FREEDESKTOP=0 \
-		SYSLIBS=0 \
+		SYSLIBS=1 \
 		VST=0 \
 		WIIMOTE=0 \
 		LV2=0 \
@@ -36,10 +39,11 @@ compile_rules() {
 		TRANZPORT=1 \
 		DIST_LIBDIR=lib 
 			
-  scons PREFIX=/usr \
+  scons ${MAKEFLAGS} ARCH="${CFLAGS}" \
+		PREFIX=/usr \
 		NLS=1 \
 		FREEDESKTOP=0 \
-		SYSLIBS=0 \
+		SYSLIBS=1 \
 		VST=0 \
 		WIIMOTE=0 \
 		LV2=0 \
@@ -48,7 +52,7 @@ compile_rules() {
 		AUBIO=1 \
 		TRANZPORT=1 \
 		DIST_LIBDIR=lib \
-		DESTDIR=$PWD/_pkg install 
+		DESTDIR=$DESTDIR install 
 
 }
 
