@@ -1,31 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="raptor"
-VERSION="1.4.21"
+VERSION="2.0.7"
 CATEGORY="multimedia"
 MAINTAINER="jozee@slitaz.org"
 SHORT_DESC="A C library that parses RDF/XML/N-Triples into RDF triples"
 WEB_SITE="http://librdf.org/raptor"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+SOURCE="raptor2"
+TARBALL="$SOURCE-$VERSION.tar.gz"
 WGET_URL="http://librdf.org/dist/source/$TARBALL"
 
 DEPENDS="libxml2 curl zlib openssl libxslt"
 BUILD_DEPENDS="libxml2-dev curl-dev zlib-dev openssl-dev libxslt-dev libidn-dev"
 
 # Rules to configure and make the package.
-
-compile_rules() {
-  cd $src
-  # fix build with curl >= 7.21.2
-  sed -i '/#include <curl\/types.h>/d' src/raptor_internal.h
-  ./configure --disable-static $CONFIGURE_ARGS &&
-  make && make prefix=/usr install 
+compile_rules()
+{
+	cd $src
+	./configure --disable-static --with-yajl=no $CONFIGURE_ARGS &&
+	make && make prefix=/usr install 
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/bin
-	cp -a $_pkg/usr/bin/rapper $fs/usr/bin
-	cp -a $_pkg/usr/lib/*so* $fs/usr/lib/	
+	cp -a $install/usr/bin/rapper $fs/usr/bin
+	cp -a $install/usr/lib/*so* $fs/usr/lib/	
 }
