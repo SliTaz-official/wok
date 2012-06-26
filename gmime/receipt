@@ -1,23 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="gmime"
-VERSION="2.4.26"
+VERSION="2.6.7"
 CATEGORY="development"
 SHORT_DESC="library for parsing messages using MIME"
 MAINTAINER="allan316@gmail.com"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://spruce.sourceforge.net/gmime"
-WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:3}/$TARBALL"
 
-DEPENDS="glib zlib"
-BUILD_DEPENDS="glib-dev zlib-dev"
+DEPENDS="glib gpgme zlib"
+BUILD_DEPENDS="glib-dev gpgme-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	./configure \
+		--enable-smime \
 		--disable-mono \
+		--disable-static \
 		--build=$HOST_SYSTEM \
 		--host=$HOST_SYSTEM &&
 	make && make DESTDIR=$DESTDIR install
@@ -27,19 +29,5 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-}
-
-# Overlap busybox
-pre_install()
-{
-	rm -f $1/usr/bin/uuencode
-	rm -f $1/usr/bin/uudecode
-}
-
-post_remove()
-{
-	ln -s /bin/busybox $1/usr/bin/uuencode
-	ln -s /bin/busybox $1/usr/bin/uudecode
 }
