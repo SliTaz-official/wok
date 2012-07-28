@@ -17,6 +17,10 @@ genpkg_rules()
 
 post_install()
 {
+	install_resolver=false
+	[ -s /etc/resolv.conf -a ! -s $1/etc/resolv.conf ] && install_resolver=true
+	$install_resolver && cp /etc/resolv.conf $1/etc/resolv.conf
 	# directly support some freely distributable firmware drivers 
 	chroot $1 /usr/bin/get-wifi-firmware --get-free-firmware
+	$install_resolver && rm -f $1/etc/resolv.conf
 }

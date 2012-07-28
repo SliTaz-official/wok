@@ -226,7 +226,7 @@ EOT
 		store 8 0x04A  $((2+2*$setupsz)) $bs	update displayinfo call
 	fi
 
-	# Store cmdline after setup
+	# Store cmdline after setup for kernels >= 0.99
 	if [ -n "$CMDLINE" ]; then
 		echo -n "$CMDLINE" | ddq bs=512 count=1 conv=sync >> $bs
 		CmdlineOfs=0x9E00	# Should be in 0x8000 .. 0xA000
@@ -283,6 +283,10 @@ if [ "$FORMAT" == "0" ]; then # unsplitted
 	[ $PAD -ne 512 ] && ddq if=/dev/zero bs=1 count=$PAD >> $PREFIX
 	exit
 fi
+[ $FORMAT -lt 1440 ] && store 8 0xEF  16	 $bs	1.2M
+[ $FORMAT -lt 1200 ] && store 8 0xEF  10	 $bs	720K
+[ $FORMAT -lt 360  ] && store 8 0xEF  9		 $bs	320K
+[ $FORMAT -lt 320  ] && store 8 0xF8  2		 $bs	160K
 floppyset | split -b ${FORMAT}k /dev/stdin floppy$$
 i=1
 ls floppy$$* 2> /dev/null | while read file ; do
