@@ -1,23 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="libxml2"
-VERSION="2.7.8"
+VERSION="2.8.0"
 CATEGORY="system-tools"
 SHORT_DESC="Libxml2 is the XML C parser and toolkit."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://xmlsoft.org/"
 WGET_URL="ftp://xmlsoft.org/libxml2/$TARBALL"
-HOST_ARCH="i486 arm"
-
 DEPENDS="zlib"
-BUILD_DEPENDS="python"
-
-# When cross compiling Python is installed in chroot and is used
-# by cross tools, cook dont need to install it in /usr/cross/arm
-case "$ARCH" in
-	arm) BUILD_DEPENDS="" ;;
-esac
+BUILD_DEPENDS="zlib-dev python-dev"
 
 # Rules to configure and make the package.
 #
@@ -26,10 +18,17 @@ esac
 compile_rules()
 {
 	cd $src
-	patch -Np1 -i $stuff/libxml2-fix.patch
+	autoreconf -fi
 	./configure \
-		$CONFIGURE_ARGS &&
-	make && make install
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--with-html-dir=/usr/share/doc \
+		--with-threads \
+		--with-history \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
