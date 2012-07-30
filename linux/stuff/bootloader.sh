@@ -204,6 +204,12 @@ EOT
 	while [ -L "$RDEV" ]; do RDEV="$(readlink "$RDEV")"; done
 	[ -b "$RDEV" ] && RDEV=$(stat -c '0x%02t%02T' $RDEV 2> /dev/null)
 	store 16 $RootDevOfs $RDEV $bs RDEV
+
+	[ $FORMAT -lt 1440 ] && store 8 0xEF  16	 $bs	1.2M
+	[ $FORMAT -lt 1200 ] && store 8 0xEF  10	 $bs	720K
+	[ $FORMAT -lt 720  ] && store 8 0x171 40	 $bs	360K
+	[ $FORMAT -lt 360  ] && store 8 0xEF  9		 $bs	320K
+	[ $FORMAT -lt 320  ] && store 8 0xF8  2		 $bs	160K
 	
 	# Info text after setup
 	if [ -s "$INFOFILE" ]; then
@@ -283,10 +289,6 @@ if [ "$FORMAT" == "0" ]; then # unsplitted
 	[ $PAD -ne 512 ] && ddq if=/dev/zero bs=1 count=$PAD >> $PREFIX
 	exit
 fi
-[ $FORMAT -lt 1440 ] && store 8 0xEF  16	 $bs	1.2M
-[ $FORMAT -lt 1200 ] && store 8 0xEF  10	 $bs	720K
-[ $FORMAT -lt 360  ] && store 8 0xEF  9		 $bs	320K
-[ $FORMAT -lt 320  ] && store 8 0xF8  2		 $bs	160K
 floppyset | split -b ${FORMAT}k /dev/stdin floppy$$
 i=1
 ls floppy$$* 2> /dev/null | while read file ; do
