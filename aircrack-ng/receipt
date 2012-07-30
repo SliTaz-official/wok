@@ -8,8 +8,8 @@ MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.aircrack-ng.org/"
 WGET_URL="http://download.aircrack-ng.org/$TARBALL"
-DEPENDS="iw openssl zlib"
-BUILD_DEPENDS="openssl-dev"
+DEPENDS="aircrack-ng-oui iw openssl sqlite zlib pylorcon"
+BUILD_DEPENDS="sqlite-dev pylorcon openssl-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -21,8 +21,9 @@ compile_rules()
 	# fix build with gcc45
 	sed -i s/-Werror// common.mak || return 1
 	
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	make SQLITE=true unstable=true &&
+	make SQLITE=true unstable=true DESTDIR=$DESTDIR install
+	sed -i 's|/usr/local||g' $DESTDIR/usr/sbin/airodump-ng-oui-update
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
