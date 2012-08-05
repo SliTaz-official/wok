@@ -1,43 +1,46 @@
 #!/bin/sh
 
 sw=""
-case "$(basename $0)" in
-rootflags)	sw="-R" ;;
-ramsize)	sw="-r" ;;
-vidmode)	sw="-v" ;;
+case "$0" in
+*rootflags)	sw="-R" ;;
+*ramsize)	sw="-r" ;;
+*vidmode)	sw="-v" ;;
 esac
 [ -n "$sw" ] && set -- $sw "$@"
 
-offset=508
-image=
-value=
-format="Root device 0x%X"
+ofs=508
+img=
+val=
+fmt="Root device 0x%04X"
 while [ -n "$1" ]; do
 	case "$1" in	
-	-R)	offset=498; format="Root flags %d";;
-	-r)	offset=504; format="Ramsize %d";;
-	-v)	offset=506; format="Video mode%d";;
-	-o)	offset=$(($2)); shift ;;
-	*)	if [ -z "$image" ]; then
-			image="$1"
-		elif [ -z "$value" ]; then
-			value="$1"
+	-R)	ofs=498; fmt="Root flags %u" ;;
+	-r)	ofs=504; fmt="Ramsize %u" ;;
+	-v)	ofs=506; fmt="Video mode %u" ;;
+	-o)	ofs=$(($2)); shift ;;
+	*-h*)	echo "Usage: rdev [-Rrvh] [-o offset] [kernel [data [offset]]]"
+		exit 1 ;;
+	*)	if [ -z "$img" ]; then
+			img="$1"
+		elif [ -z "$val" ]; then
+			val="$1"
+			[ "${val:0:5}" == "/dev/" ] &&
+			val=$((256*$(stat -c %t $val)+$(stat -c %T $val)))
 		else
-			offset=$(($1))
+			ofs=$(($1))
 		fi
 	esac
 	shift
 done
 
-if [ ! -s "$image" ]; then
+dd="dd bs=1 conv=notrunc count=2"
+if [ ! -s "$img" ]; then
 	printf "0x%04X /\n" $(cat /proc/sys/kernel/real-root-dev)
-elif [ -n "$value" ]; then
+elif [ -n "$val" ]; then
 	for i in 1 2; do
-		printf '\\\\x%02X' $(($value & 255))
-		value=$(($value >> 8))
-	done | xargs echo -en | \
-	dd bs=1 conv=notrunc of=$image seek=$offset 2> /dev/null
+		printf '\\\\x%02X' $(($val & 255))
+		val=$(($val >> 8))
+	done | xargs echo -en | $dd of=$img seek=$ofs
 else
-	dd bs=1 conv=notrunc if=$image skip=$offset count=2 2> /dev/null | \
-	hexdump -e '"" 1/2 "$format" "\n"'
-fi
+	$dd if=$img skip=$ofs | hexdump -e "\"\" 1/2 \"$fmt\" \"\n\""
+fi 2>/dev/null
