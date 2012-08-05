@@ -25,13 +25,13 @@ compile_rules()
 		-e "s|^spool=/var/spool|spool=/var/spool|" \
 		-e "s|^CONFDIR=.*|CONFDIR=/etc/mgetty+sendfax|" \
 		Makefile
-	sed -i  -e "s|^prefix=/usr/local|prefix=$PWD/_pkg/usr|" \
-		-e "s|^spool=/var/spool|spool=$PWD/_pkg/var/spool|" \
-		-e "s|^CONFDIR=.*|CONFDIR=$PWD/_pkg/etc/mgetty+sendfax|" \
+	sed -i  -e "s|^prefix=/usr/local|prefix=$DESTDIR/usr|" \
+		-e "s|^spool=/var/spool|spool=$DESTDIR/var/spool|" \
+		-e "s|^CONFDIR=.*|CONFDIR=$DESTDIR/etc/mgetty+sendfax|" \
 		-e 's|^INSTALL=install .*|INSTALL=install -c -o root -g root|' \
 		Makefile.install
 	make bin-all vgetty
-	mkdir -p _pkg/var/spool
+	mkdir -p $DESTDIR/var/spool
 	mv -f Makefile.install Makefile
 	make -k install.bin vgetty-install || true
 }
@@ -40,10 +40,10 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/var $fs
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/etc $fs
+	cp -a $install/var $fs
 	chmod 755 $fs/var/spool/fax
 }
 
@@ -61,5 +61,5 @@ post_install()
 
 post_remove()
 {
-	deluser fax
+	chroot $1/ deluser fax
 }
