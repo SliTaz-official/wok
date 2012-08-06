@@ -1,22 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="collectd"
-VERSION="4.7.0"
+VERSION="5.1.0"
 CATEGORY="network"
 SHORT_DESC="System Stattistics Collection Daemon"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="rrdtool perl"
-BUILD_DEPENDS="slitaz-toolchain rrdtool-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://collectd.org"
 WGET_URL="http://collectd.org/files/$TARBALL"
 CONFIG_FILES="/etc/collectd/collectd.conf"
 
+DEPENDS="rrdtool perl"
+BUILD_DEPENDS="slitaz-toolchain rrdtool-dev"
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	sed -i 's/ipt_error_target/ipt2_error_target/' src/libiptc/libiptc.c
 	./configure \
 		--prefix=/usr \
 		--localstatedir=/var \
@@ -33,7 +33,7 @@ compile_rules()
 		--sysconfdir=/etc/collectd \
 		--localstatedir=/var \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -55,7 +55,7 @@ genpkg_rules()
 	cp -a $_pkg/usr/lib/perl5 $fs/usr/lib
 	
 	# Add init script and fixes
-	install -g root -o root -m 0755 stuff/collectd $fs/etc/init.d
+	install -g root -o root -m 0755 $stuff/collectd $fs/etc/init.d
 	chmod 0644 $fs/etc/collectd/*
 }
 
