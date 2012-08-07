@@ -1,5 +1,13 @@
 #!/bin/sh
 
+devname()
+{
+	d=$(find /dev -type b | while read b ; do
+		[ "$(stat -c %02t%02T $b)" == "$1" ] && echo $b && break
+	done)
+	[ -n "$d" ] && echo $d || echo 0x$1
+}
+
 sw=""
 case "$0" in
 *rootflags)	sw="-R" ;;
@@ -11,21 +19,20 @@ esac
 ofs=508
 img=
 val=
-fmt="Root device 0x%04X"
+fmt=
 while [ -n "$1" ]; do
 	case "$1" in	
-	-R)	ofs=498; fmt="Root flags %u" ;;
-	-r)	ofs=504; fmt="Ramsize %u" ;;
-	-v)	ofs=506; fmt="Video mode %u" ;;
+	-R)	ofs=498; fmt="Root flags" ;;
+	-r)	ofs=504; fmt="Ramsize" ;;
+	-v)	ofs=506; fmt="Video mode" ;;
 	-o)	ofs=$(($2)); shift ;;
 	*-h*)	echo "Usage: rdev [-Rrvh] [-o offset] [kernel [data [offset]]]"
 		exit 1 ;;
 	*)	if [ -z "$img" ]; then
 			img="$1"
 		elif [ -z "$val" ]; then
-			val="$1"
-			[ "${val:0:5}" == "/dev/" ] &&
-			val=$((256*$(stat -c %t $val)+$(stat -c %T $val)))
+			[ "${1:0:5}" == "/dev/" ] && val=0x$(stat -c %t%02T $1)
+			val=$((${val:-$1}))
 		else
 			ofs=$(($1))
 		fi
@@ -35,12 +42,15 @@ done
 
 dd="dd bs=1 conv=notrunc count=2"
 if [ ! -s "$img" ]; then
-	printf "0x%04X /\n" $(cat /proc/sys/kernel/real-root-dev)
+	echo $(devname $(stat -c %04D /)) /
 elif [ -n "$val" ]; then
 	for i in 1 2; do
 		printf '\\\\x%02X' $(($val & 255))
 		val=$(($val >> 8))
 	done | xargs echo -en | $dd of=$img seek=$ofs
+elif [ -n "$fmt" ]; then
+	$dd if=$img skip=$ofs | hexdump -e "\"\" 1/2 \"$fmt %u\" \"\n\""
 else
-	$dd if=$img skip=$ofs | hexdump -e "\"\" 1/2 \"$fmt\" \"\n\""
+	echo -n "Root device "
+	devname $($dd if=$img skip=$ofs | hexdump -e '"" 1/2 "%04X" "\n"')
 fi 2>/dev/null
