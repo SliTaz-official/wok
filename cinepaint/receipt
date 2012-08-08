@@ -1,33 +1,26 @@
 # SliTaz package receipt.
 
 PACKAGE="cinepaint"
-VERSION="0.22-1"
+VERSION="1.3"
 CATEGORY="graphics"
 SHORT_DESC="For painting and retouching bitmap frames of films."
 MAINTAINER="slaxemulator@gmail.com"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="http://www.cinepaint.org"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
 DEPENDS="desktop-file-utils gtk+ lcms tiff jpeg fltk ftgl xorg-libXmu xorg-libXpm \
 gutenprint zlib mesa jbigkit openexr"
 BUILD_DEPENDS="python coreutils-file-summarize coreutils-file-special gettext \
- xorg-xextproto util-linux-uuid-dev lcms-dev openexr-dev fltk-dev mesa-dev \
- ilmbase-dev xorg-libXpm-dev gtk+-dev libpng-dev"
+xorg-xextproto util-linux-uuid-dev lcms-dev openexr-dev fltk-dev mesa-dev \
+ilmbase-dev xorg-libXpm-dev gtk+-dev libpng-dev bash automake autoconf libtool \
+python-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	patch -Np1 -i $stuff/cinepaint-0.22.1-gcc43.patch
-	patch -Np1 -i $stuff/cinepaint-0.22-gcc44.patch
-	patch -Np1 -i $stuff/cinepaint-0.22.1-multiple_parameters_named.patch
-	patch -Np0 -i $stuff/cinepaint-0.22.1-ambiguousawake.patch
-find plug-ins/print -type f -exec \
-    sed -i "s:gutenprintui/gutenprintui:gutenprintui2/gutenprintui:" {} \;
-	grep -rl Fl/Fl * | xargs sed -i 's|Fl/Fl|FL/Fl|'
-	# Fix insecure rpath
-	sed '/-rpath/d' -i plug-ins/icc_examin/icc_examin/configure
+	sh ./autogen.sh
 	./configure \
 		--prefix=/usr \
 		--enable-gtk2 \
@@ -40,12 +33,12 @@ find plug-ins/print -type f -exec \
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/cinepaint $fs/usr/lib
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/share/cinepaint $fs/usr/share
-	cp -a $_pkg/usr/share/pixmaps $fs/usr/share
-	cp -a $_pkg/usr/share/applications $fs/usr/share
-	cp -a $_pkg/usr/share/fonts $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/cinepaint $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/share/cinepaint $fs/usr/share
+	cp -a $install/usr/share/pixmaps $fs/usr/share
+	cp -a $install/usr/share/applications $fs/usr/share
+	cp -a $install/usr/share/fonts $fs/usr/share
 }
 
