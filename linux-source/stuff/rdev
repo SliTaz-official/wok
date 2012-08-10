@@ -1,56 +1,55 @@
 #!/bin/sh
 
-devname()
+dev()
 {
-	d=$(find /dev -type b | while read b ; do
-		[ "$(stat -c %02t%02T $b)" == "$1" ] && echo $b && break
-	done)
-	[ -n "$d" ] && echo $d || echo 0x$1
+for b in $(find /dev -type b); do
+	[ $(stat -c %02t%02T $b) = $1 ] && echo $b && return
+done
+echo 0x$1
 }
 
-sw=""
+s=
 case "$0" in
-*rootflags)	sw="-R" ;;
-*ramsize)	sw="-r" ;;
-*vidmode)	sw="-v" ;;
+*gs)	s=-R;;
+*ze)	s=-r;;
+*de)	s=-v
 esac
-[ -n "$sw" ] && set -- $sw "$@"
+set -- $s "$@"
 
-ofs=508
-img=
-val=
-fmt=
+o=508
+i=
+v=
+f=
 while [ -n "$1" ]; do
-	case "$1" in	
-	-R)	ofs=498; fmt="Root flags" ;;
-	-r)	ofs=504; fmt="Ramsize" ;;
-	-v)	ofs=506; fmt="Video mode" ;;
-	-o)	ofs=$(($2)); shift ;;
-	*-h*)	echo "Usage: rdev [-Rrvh] [-o offset] [kernel [data [offset]]]"
-		exit 1 ;;
-	*)	if [ -z "$img" ]; then
-			img="$1"
-		elif [ -z "$val" ]; then
-			[ "${1:0:5}" == "/dev/" ] && val=0x$(stat -c %t%02T $1)
-			val=$((${val:-$1}))
-		else
-			ofs=$(($1))
-		fi
-	esac
-	shift
+case "$1" in	
+-R)	o=498; f="Root flags";;
+-r)	o=504; f="Ramsize";;
+-v)	o=506; f="Video mode";;
+-o)	o=$(($2)); f=" "; shift;;
+-*)	echo "Usage: rdev [-Rrvh] [-o offset] [kernel [data [offset]]]"
+	exit 1;;
+*)	if [ -z "$i" ]; then
+		i="$1"
+	elif [ -z "$v" ]; then
+		[ -b "$1" ] && v=0x$(stat -c %t%02T $1)
+		v=$((${v:-$1}))
+	else
+		o=$(($1))
+	fi
+esac
+shift
 done
 
 dd="dd bs=1 conv=notrunc count=2"
-if [ ! -s "$img" ]; then
-	echo $(devname $(stat -c %04D /)) /
-elif [ -n "$val" ]; then
+if [ ! -s "$i" ]; then
+	echo $(dev $(stat -c %04D /)) /
+elif [ -n "$v" ]; then
 	for i in 1 2; do
-		printf '\\\\x%02X' $(($val & 255))
-		val=$(($val >> 8))
-	done | xargs echo -en | $dd of=$img seek=$ofs
-elif [ -n "$fmt" ]; then
-	$dd if=$img skip=$ofs | hexdump -e "\"\" 1/2 \"$fmt %u\" \"\n\""
+		printf '\\\\x%02X' $(($v&255))
+		v=$(($v>>8))
+	done | xargs echo -en | $dd of=$i seek=$o
+elif [ -n "$f" ]; then
+	echo $f $($dd if=$i skip=$o | od -dAn)
 else
-	echo -n "Root device "
-	devname $($dd if=$img skip=$ofs | hexdump -e '"" 1/2 "%04X" "\n"')
+	echo "Root device $(dev $($dd if=$i skip=$o | od -xAn))"
 fi 2>/dev/null
