@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="freepats"
+VERSION="20060219"
+CATEGORY="multimedia"
+SHORT_DESC="Free and open set of instrument patches."
+MAINTAINER="paul@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://freepats.zenvoid.org/"
+WGET_URL="http://freepats.zenvoid.org/$TARBALL"
+
+DEPENDS="TiMidity++"
+BUILD_DEPENDS=""
+
+# Rules to gen a SliTaz package suitable for Tazpkg.   
+genpkg_rules()                                      
+{
+	mkdir -p $fs/usr/share/timidity
+	cp -a $src $fs/usr/share/timidity/freepats
+	chown -R root.root $fs/usr/share/timidity/freepats
+}
+
+post_install()
+{
+	# Update timidity.cfg
+		cat >> $1/usr/share/timidity/timidity.cfg <<EOF
+# freepats 
+dir /usr/share/timidity/freepats
+source /usr/share/timidity/freepats/freepats.cfg
+EOF
+}
+
+post_remove()
+{
+	sed -i '/freepats/d' $1/usr/share/timidity/timidity.cfg
+}
