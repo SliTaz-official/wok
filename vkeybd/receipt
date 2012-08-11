@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="vkeybd"
+VERSION="0.1.18d"
+CATEGORY="multimedia"
+SHORT_DESC="Virtual Midi keyboard."
+MAINTAINER="paul@slitaz.org"
+WEB_SITE="http://www.alsa-project.org/~tiwai/alsa.html"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="http://ftp.riken.jp/Linux/suse/people/tiwai/vkeybd/$TARBALL"
+
+DEPENDS="tk tcl alsa-lib xorg-libX11"
+BUILD_DEPENDS="tk-dev tcl-dev alsa-lib-dev xorg-libX11-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	# Hack makefile
+	sed -i 's|PREFIX = /usr/local|PREFIX = /usr|; \
+	s|TCL_VERSION = 8.4|TCL_VERSION = 8.5|' Makefile
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/pixmaps $fs/usr/share/applications
+	cp -a $install/* $fs
+	# copy .desktop file and pixmap
+	cp -a $src/vkeybd.desktop $fs/usr/share/applications
+	cp -a $src/pixmaps/vkeybd_48x48.png $fs/usr/share/pixmaps	
+	chown -R root.root $fs
+}
+
