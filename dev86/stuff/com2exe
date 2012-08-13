@@ -1,10 +1,10 @@
 #!/bin/sh
 
-[ ! -s "$1" ] && echo "Usage: $0 file.com > file.exe" && exit 1
-S=$(stat -c %s $1)
+[ ! -s "$1" ] && echo "Usage: $0 file.com [extra_ss]> file.exe" && exit 1
+S=$((32+$(stat -c %s $1)))
 P=$((($S+511)/512))
 E=$((4096-(32*$P)))
-for i in 0x5A4D $(($S%512)) $P 0 2 $E $E $((($P/128)*256-16)) -2 0 256 -16 28 0 0 0
+for i in 0x5A4D $(($S%512)) $P 0 2 $E $E $((${2:-0}-16)) -2 0 256 -16 28 0 0 0
 do printf '\\\\x%02X\\\\x%02X' $(($i&255)) $((($i>>8)&255)) | xargs echo -en
 done
 cat $1
