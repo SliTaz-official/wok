@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="zoneminder"
+VERSION="1.25.0"
+SOURCE="ZoneMinder"
+CATEGORY="misc"
+SHORT_DESC="Linux video camera security and surveillance solution."
+MAINTAINER="pascal.bellard@slitaz.org"
+WEB_SITE="http://www.zoneminder.com/"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WGET_URL="http://www2.zoneminder.com/downloads/$TARBALL"
+
+DEPENDS="mysql jpeg bzlib zlib ffmpeg-svn x264 perl perl-dbi-dbd \
+perl-dbd-mysql perl-time-hires perl-getopt-long perl-date-manip perl-libwww \
+perl-archive-zip"
+BUILD_DEPENDS="mysql-dev jpeg-dev ffmpeg-svn-dev gnutls-dev \
+linux-api-headers $DEPENDS"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's/.*fcntl.h.*/#include <limits.h>\n&/' src/zm_event.cpp \
+		src/zm_local_camera.cpp
+	CXXFLAGS=-D__STDC_CONSTANT_MACROS \
+	./configure --prefix=/usr --infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
+		--with-libarch=lib \
+		--with-mysql=/usr --with-ffmpeg=/usr \
+		--with-webuser=www --with-webgroup=www \
+		--with-webdir=/usr/share/zoneminder/www \
+		--with-cgidir=/usr/share/zoneminder/cgi-bin \
+		--enable-mmap=no \
+		$CONFIGURE_ARGS &&
+	make &&
+	make -j 1 DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $_pkg/* $stuff/* $fs
+	cp $src/db/zm_create.sql $fs/usr/share/zoneminder
+	chown -R root.root $fs/usr/share/zoneminder/zm_create.sql \
+		$fs/usr/lib/perl* $fs/etc/*.d/zoneminder
+}
