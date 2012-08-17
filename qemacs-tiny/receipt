@@ -1,12 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="qemacs-tiny"
+SOURCE="qemacs"
 VERSION="0.3.2"
 CATEGORY="development"
 SHORT_DESC="Tiny emacs clone."
 MAINTAINER="pascal.bellard@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://bellard.org/$PACKAGE/"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://bellard.org/$SOURCE/"
 WGET_URL="${WEB_SITE}$TARBALL"
 TAGS="editor"
 
@@ -17,6 +18,18 @@ BUILD_DEPENDS=""
 compile_rules()
 {
 	cd $src
+
+	# quick fix for variable 'XXX' set but not used [-Werror=unused-but-set-variable]
+	sed -i	-e 's/int count,/int count=count,/' \
+		-e 's/ line_count,/ line_count=line_count,/' \
+		-e 's/int len;/int len=len;/' \
+		-e 's/EditState \*e;/EditState *e=e;/' \
+		-e 's/int err,/int err=err,/' qe.c
+	sed -i 's/size_start,/size_start=size_start,/' buffer.c
+	sed -i 's/stack_ptr = 0;/&; stack[0] = stack[0];/' clang.c
+	sed -i 's/len, offset1/len=len, offset1/' latex-mode.c
+	sed -i 's/len1, len2/len1=len1, len2=len2/' dired.c
+	
 	sed -i 's/\(define SAVED_DATA_SIZE \).*/\1 __builtin_offsetof(EditState,end_of_saved_data)/' qe.h
 	./configure --prefix=/usr --enable-tiny && make qe
 }
