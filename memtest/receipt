@@ -10,17 +10,24 @@ TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.memtest.org/"
 WGET_URL="${WEB_SITE}download/$VERSION/$TARBALL"
 
+BUILD_DEPENDS="lz4"
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	make
+	cp $stuff/*.S $stuff/pack .
+	cc -o unpack.o -Wa,-a=unpack.lst -c unpack.S
+	objcopy -O binary unpack.o unpack.bin
+	./pack --build unpack.bin
+	./pack memtest.bin memtest.packed
 } 
 
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p  $fs/boot
-	cp $src/memtest.bin $fs/boot/memtest
+	mkdir -p $fs/boot
+	cp $src/memtest.packed $fs/boot/memtest
 }

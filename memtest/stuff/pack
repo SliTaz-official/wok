@@ -1,0 +1,41 @@
+#!/bin/sh
+if [ "$1" == "--build" ]; then
+	cat >> $0 <<EOM
+$(gzip -9 < ${2:-unpack.bin} | uuencode -m -)
+EOT
+EOM
+	sed -i '/--build/,/^fi/d' $0
+	exit
+fi
+
+store()
+{
+	n=$1
+	for i in $(seq 1 $4); do
+		printf '\\\\x%02X' $(($n & 255))
+		n=$(($n >> 8))
+	done | xargs echo -en | dd conv=notrunc bs=1 of=$2 seek=$3
+}
+
+setup="$(dd bs=1 count=1 if=$1 skip=497 | hexdump -e '"" 1/1 "%d" "\n"')"
+syssize="$(dd bs=1 count=2 if=$1 skip=500 | hexdump -e '"" 1/2 "%d" "\n"')"
+
+compress()
+{
+	lz4demo -c1 stdin stdout
+	echo -en "\x00\x00\x00\x00"
+}
+
+main()
+{
+	dd if=$1 bs=512 count=1 >$2
+	uudecode | gunzip >>$2
+	dd if=$1 bs=512 count=$setup skip=1 | compress >>$2
+	dd if=$1 bs=16 count=$syssize skip=$((32*(1+$setup))) | compress >>$2
+	size=$(stat -c %s $2)
+	store $((($size-512)/16)) $2 520 2
+	store $((($size-2560)/16)) $2 500 2
+	store 4 $2 497 1
+}
+
+main $1 $2 2>/dev/null <<EOT
