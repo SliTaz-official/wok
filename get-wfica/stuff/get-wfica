@@ -2,7 +2,7 @@
 
 PACKAGE="wfica"
 WEB_SITE="http://www.citrix.com"
-PROD="downloadId=2309164&productId=1689163&ntref=clientcenter"
+PROD="downloadId=2323812&productId=1689163&ntref=downloadreceiver" 
 INSTALL_USB=yes
 
 ROOT="$1"
@@ -25,7 +25,9 @@ CUR_DIR=$(pwd)
 mkdir -p $TMP_DIR && cd $TMP_DIR
 
 URL="$WEB_SITE$(wget -O - "$WEB_SITE/English/ss/downloads/details.asp?$PROD" | \
-		sed "/Download/h;/\.deb/!dg;s/.*([\"']\([^\"']*\).*/\1/;q")"
+		sed "/Download/h;/\.deb/!d;g;s/.*([\"']\([^\"']*\).*/\1/;q")" 
+USB_URL="$WEB_SITE$(wget -O - "$WEB_SITE/English/ss/downloads/details.asp?$PROD" | \
+		sed "1,/\.deb/d;/Download/h;/\.deb/!d;g;s/.*([\"']\([^\"']*\).*/\1/;q")" 
 
 wget -O $PACKAGE.deb "$URL"
 mkdir $PACKAGE
@@ -42,17 +44,18 @@ mv $PACKAGE $PACKAGE-$VERSION
 
 cd $PACKAGE-$VERSION/fs
 mkdir -p usr/share/applications usr/bin
+ICAROOT=/opt/Citrix/ICAClient 
 cat > usr/bin/wfica_assoc.sh <<EOT
 #!/bin/sh
 
-ICAROOT=/usr/lib/ICAClient
+ICAROOT=$ICAROOT
 export ICAROOT
 \$ICAROOT/wfica -associate -fileparam \$1
 EOT
 cat > usr/bin/wfica.sh <<EOT
 #!/bin/sh
 
-ICAROOT=/usr/lib/ICAClient
+ICAROOT=$ICAROOT
 export ICAROOT
 \$ICAROOT/wfica -file \$1
 EOT
@@ -64,29 +67,30 @@ Version=1.0
 Type=Application
 Name=Citrix Receiver
 Icon=manager
-TryExec=/usr/lib/ICAClient/wfcmgr
-Exec=/usr/lib/ICAClient/wfcmgr -icaroot /usr/lib/ICAClient
+TryExec=$ICAROOT/wfcmgr
+Exec=$ICAROOT/wfcmgr -icaroot $ICAROOT
 Terminal=false
 Categories=Application;Network
 EOT
-ln -s ../lib/ICAClient/wfica usr/bin
-ln -s ../lib/ICAClient/wfcmgr usr/bin
+ln -s $ICAROOT/wfica usr/bin
+ln -s $ICAROOT/wfcmgr usr/bin
 
 if [ "$INSTALL_USB" == "yes" ]; then
-	dpkg-deb -x usr/lib/ICAClient/ctxusb*.deb .
-	chmod 500 usr/lib/ICAClient/ctxusbd
-	chmod 4555 usr/lib/ICAClient/ctxusb
-	chmod 444 usr/lib/ICAClient/usb.conf
+	wget -O .$ICAROOT/ctxusb.deb "$USB_URL" 
+	dpkg-deb -x .$ICAROOT/ctxusb*.deb .
+	chmod 500 .$ICAROOT/ctxusbd
+	chmod 4555 .$ICAROOT/ctxusb
+	chmod 444 .$ICAROOT/usb.conf
 	chmod 700 etc/init.d/ctxusbd
-	[ -s usr/lib/ICAClient/config/module.ini ] ||
-	cat > usr/lib/ICAClient/config/module.ini <<EOT
+	[ -s .$ICAROOT/config/module.ini ] ||
+	cat > .$ICAROOT/config/module.ini <<EOT
 [File Type Associations]
 [KeyboardLayout]
 [KeyboardType]
 EOT
 	sed -i  -e 's/^[ \t]*VirtualDriver[ \t]*=.*$/&, GenericUSB/' \
-	  -e '/\[ICA 3.0\]/a\GenericUSB=on' usr/lib/ICAClient/config/module.ini
-	cat >> usr/lib/ICAClient/config/module.ini <<EOT
+	  -e '/\[ICA 3.0\]/a\GenericUSB=on' .$ICAROOT/config/module.ini
+	cat >> .$ICAROOT/config/module.ini <<EOT
 [GenericUSB]
 DriverName = VDGUSB.DLL
 EOT
@@ -105,7 +109,7 @@ MAINTAINER="$MAINTAINER"
 DEPENDS="openmotif"
 SUGGESTED="glib gstreamer speex libvorbis"
 WEB_SITE="$WEB_SITE/"
-CONFIG_FILES="/usr/lib/ICAClient/config /usr/lib/ICAClient/nls"
+CONFIG_FILES="$ICAROOT/config $ICAROOT/nls"
 EOT
 
 # Pack
