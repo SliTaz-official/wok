@@ -1,0 +1,81 @@
+#!/bin/sh
+# Start, stop and restart the netatalk deamons on SliTaz, at boot time or 
+# with the command line.
+#
+# To start netatalk at boot time, just put the right name in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf.
+#
+. /etc/init.d/rc.functions
+
+NAME=atalkd
+DESC="netatalk deamons"
+PIDFILE=/var/run/$NAME.pid
+AFPD_UAMLIST="-U uams_dhx.so,uams_clrtxt.so,uams_randnum.so"
+AFPD_GUEST=nobody
+AFPD_MAX_CLIENTS=50
+ATALK_ZONE=
+ATALK_NAME=$(hostname -s)
+ATALK_BGROUND=no
+
+. /etc/netatalk/netatalk.conf
+
+# Start Netatalk servers.
+atalk_startup()
+{
+	if [ "$ATALKD_RUN" = "yes" ]; then
+		modprobe appletalk
+		atalkd
+		pidof atalkd > $PIDFILE
+
+		# register workstation
+		nbprgstr -p 4 "$ATALK_NAME:Workstation$ATALK_ZONE"
+		nbprgstr -p 4 "$ATALK_NAME:netatalk$ATALK_ZONE"
+
+		[ "$PAPD_RUN" = "yes" ] && papd
+		[ "$TIMELORD_RUN" = "yes" ] && timelord
+	fi
+
+	[ "$AFPD_RUN" = "yes" ] && afpd $AFPD_UAMLIST -g $AFPD_GUEST \
+    		-c $AFPD_MAX_CLIENTS -n "$ATALK_NAME$ATALK_ZONE"
+}
+
+case "$1" in
+start)
+	if active_pidfile $PIDFILE $NAME ; then
+		echo "$NAME is already running."
+		exit 1
+	fi
+	echo -n "Starting $DESC: $NAME... "
+	if [ "$ATALK_BGROUND" == "yes" ]; then
+		atalk_startup >/dev/null &
+	else
+		atalk_startup
+	fi
+	status
+	;;
+stop)
+	if ! active_pidfile $PIDFILE $NAME ; then
+		echo "$NAME is not running."
+		exit 1
+	fi
+	echo -n "Stopping $DESC: $NAME... "
+	killall afpd
+	killall papd
+	killall timelord
+	killall atalkd
+	status
+	;;
+restart)
+	$0 start
+	sleep 2
+	$0 stop
+	;;
+*)
+	echo ""
+	echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+	echo ""
+	exit 1
+	;;
+esac
+
+exit 0
