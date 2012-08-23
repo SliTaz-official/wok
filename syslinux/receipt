@@ -44,16 +44,19 @@ genpkg_rules()
     rm -f $fs/boot/isolinux/display.txt
     ( cd $src ; ls *.kbd | cpio -o -H newc ) > $fs/boot/isolinux/cpio.kbd
     while read label kbd loc menu; do
-        #[ -s $src/$kbd.kbd ] || continue
-	cat >> $fs/boot/isolinux/i18n.cfg <<EOT
+        for i in ${kbd/,/ }; do
+	        [ -e $src/$i.kbd ] || continue
+		cat >> $fs/boot/isolinux/i18n.cfg <<EOT
 
 LABEL $label
 	MENU LABEL $menu
 	com32 c32box.c32
-	append kbdmap cpio.kbd $kbd.kbd lang=$loc kmap=$kbd
+	append kbdmap cpio.kbd $i.kbd lang=$loc kmap=$i
 EOT
+		break
+	done
     done <<EOT
-cr		croat		hr_HR		Hvratski
+cr		hr,croat	hr_HR		Hvratski
 cz		cz-lat2		cs_CZ		Cesky
 de		de-latin1	de_DE@euro	Deutsch
 de_CH\ deCH	de_CH-latin1	de_DE		Deutsch Schweitz
