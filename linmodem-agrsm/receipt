@@ -10,7 +10,7 @@ WEB_SITE="http://linmodems.technion.ac.il/packages/ltmodem/11c11040"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WGET_URL="$WEB_SITE/$TARBALL"
 
-BUILD_DEPENDS="linux linux-module-headers lzma"
+BUILD_DEPENDS="linux linux-module-headers xz"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -29,10 +29,12 @@ genpkg_rules()
 	mkdir -p $fs/lib/modules/$kvers-slitaz/kernel/drivers/net
 	
 	# Compress and install module
-	lzma e $src/agrmodem.ko $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/agrmodem.ko.gz
-	lzma e $src/agrserial.ko $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/agrserial.ko.gz		
-	chown root $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/*.ko.gz
-	chmod 0644 $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/*.ko.gz			
+	cp $src/agrmodem.ko $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/
+	xz $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/agrmodem.ko.gz
+	cp $src/agrserial.ko $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/
+	xz $src/agrserial.ko $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/agrserial.ko.gz
+	chown root $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/*.ko.xz
+	chmod 0644 $fs/lib/modules/$kvers-slitaz/kernel/drivers/net/*.ko.xz			
 }
 
 post_install()
