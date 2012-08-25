@@ -1,6 +1,8 @@
-#define TOP	0x8FF00
-#define SYSTEM	0x10000
-#define SETUP	4
+#define TOP		0x8FD00
+#define SYSTEM		0x10000
+#define SETUP		4
+
+#define CHANGE_STACK	1
 
 	.text
 	.code16
@@ -67,17 +69,31 @@ movlp:
 moved:
 	popw	%es		// restore setup seg
 	movw	START_IP, %di
+#if CHANGE_STACK
+	movw	$0xFFFE, %ax
+	movw	%ss, %bx
+	pushw	$0
+	popw	%ss
+	xchgw	%ax, %sp
+	pushw	%bx		// %ss
+	pushw	%ax		// %sp
+#endif
 	call	unpack		// unpack setup
 	pushw	$SYSTEM/16
 	popw	%es
 	xorw	%di,%di
 	call	unpack		// unpack system
+#if CHANGE_STACK
+	popw	%ax		// %sp
+	popw	%ss
+	xchgw	%ax, %sp
+#endif
 	popw	%es
 	popw	%ds
 	popal
 	iret
 
 unpack:
-#include "unlz4.S"
+#include "unlzma.S"
 
 end:
