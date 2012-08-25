@@ -17,19 +17,17 @@ store()
 	done | xargs echo -en | dd conv=notrunc bs=1 of=$2 seek=$3
 }
 
-setup="$(dd bs=1 count=1 if=$1 skip=497 | hexdump -e '"" 1/1 "%d" "\n"')"
-syssize="$(dd bs=1 count=2 if=$1 skip=500 | hexdump -e '"" 1/2 "%d" "\n"')"
-
 compress()
 {
-	lz4demo -c1 stdin stdout
-	echo -en "\x00\x00\x00\x00"
+	lzma e -si -so
 }
 
 main()
 {
 	dd if=$1 bs=512 count=1 >$2
 	uudecode | gunzip >>$2
+	setup="$( echo $(od -j 497 -N 1 -dAn $1))"
+	syssize="$(echo $(od -j 500 -N 2 -dAn $1))"
 	dd if=$1 bs=512 count=$setup skip=1 | compress >>$2
 	dd if=$1 bs=16 count=$syssize skip=$((32*(1+$setup))) | compress >>$2
 	size=$(stat -c %s $2)
