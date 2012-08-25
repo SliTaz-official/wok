@@ -2,7 +2,8 @@
 
 PACKAGE="wfica"
 WEB_SITE="http://www.citrix.com"
-PROD="downloadId=2323812&productId=1689163&ntref=downloadreceiver" 
+PROD="productId=1689163&ntref=downloadreceiver&downloadId=" 
+DLID="2323812"
 INSTALL_USB=yes
 
 ROOT="$1"
@@ -24,10 +25,23 @@ TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
 CUR_DIR=$(pwd)
 mkdir -p $TMP_DIR && cd $TMP_DIR
 
-URL="$WEB_SITE$(wget -O - "$WEB_SITE/English/ss/downloads/details.asp?$PROD" | \
-		sed "/Download/h;/\.deb/!d;g;s/.*([\"']\([^\"']*\).*/\1/;q")" 
-USB_URL="$WEB_SITE$(wget -O - "$WEB_SITE/English/ss/downloads/details.asp?$PROD" | \
-		sed "1,/\.deb/d;/Download/h;/\.deb/!d;g;s/.*([\"']\([^\"']*\).*/\1/;q")" 
+for i in $@ $DLID; do
+	[ -z "$(echo $i | sed 's/[0-9]//g')" ] && break
+done
+url="$WEB_SITE/English/ss/downloads/details.asp?$PROD$i"
+filter="/Download/h;/\.deb/!d;g;s/.*([\"']\([^\"']*\).*/\1/;q"
+URL="$(wget -O - "$url" | sed "$filter")"
+if [ -n "$URL" ]; then
+	URL="$WEB_SITE$URL"
+	USB_URL="$WEB_SITE$(wget -O - "$url" | sed "1,/\.deb/d;$filter")"
+else
+	cat 2>&1 <<EOT
+DownloadId $i not found on $WEB_SITE.
+Try again with the correct downloadId :
+# $0 <downloadId>
+EOT
+	exit 1
+fi
 
 wget -O $PACKAGE.deb "$URL"
 mkdir $PACKAGE
