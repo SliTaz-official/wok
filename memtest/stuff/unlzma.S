@@ -447,7 +447,6 @@ new_state:
 	cmp	$4+1, AX
 	jb	lzd21
 	mov	$3+1, AX
-	//??movb	$3+1, %al
 
 lzd21:
 
@@ -514,7 +513,7 @@ lzd25:
 
 //             } while (--numDirectBits != 0);
 
-	cmp	$4+1, CX
+	cmpb	$4+1, %cl
 	loopne	lzd23z
 
 //             prob = p + Align /* 802 */; numDirectBits = kNumAlignBits /*4*/;
@@ -726,7 +725,7 @@ Bit1:
 
 	call  RC_NORMALIZE		// kill %ax, update %si
 
-	pushal		// FIXME pushaw?
+	pushal
 
 	xchg	AX, DI
 	add	DI, DI			// short *
@@ -779,7 +778,7 @@ Bit1_2:
 	sarw	$5, %ax
 	addw	%ax, (BP, DI)
 	popf
-	popal		// FIXME popaw?
+	popal
 	sbb	AX, AX
 
 // 	}

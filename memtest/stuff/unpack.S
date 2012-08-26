@@ -3,6 +3,7 @@
 #define SETUP		4
 
 #define CHANGE_STACK	1
+#define LINUX_HEADER	0
 
 	.text
 	.code16
@@ -10,6 +11,22 @@
 
 	.globl	_start
 _start:
+#if LINUX_HEADER
+	jmp	start2
+	.ascii	"HdrS"		// 202 magic
+	.word	0x200		// 206 version 2.00
+	.long	0		// 208 realmode_swtch
+	.word	SYSTEM/16	// 20C start_sys_seg
+	.word	0		// 20E kernel_version
+	.byte	0		// 210 type_of_loader
+	.byte	0		// 211 loadflags
+	.word	0		// 212 setup_move_size
+	.long	SYSTEM		// 214 code32_start
+	.long	0		// 218 ramdisk_image
+	.long	0		// 21C ramdisk_size
+	.long	0		// 220 bootsect_kludge
+start2:
+#endif
 	pushf
 	pushw	%cs
 	call	getip

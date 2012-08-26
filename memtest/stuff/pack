@@ -1,9 +1,12 @@
 #!/bin/sh
 if [ "$1" == "--build" ]; then
+	bin=${2:-unpack.bin}
 	cat >> $0 <<EOM
-$(gzip -9 < ${2:-unpack.bin} | uuencode -m -)
+$(gzip -9 < $bin | uuencode -m -)
 EOT
 EOM
+	getip=0x$(grep getip ${bin/.bin/.lst} | sed '$!d;s/.*t:\([^ ]*\).*/\1/')
+	sed -i "s/XXX/$((515+$getip))/" $0
 	sed -i '/--build/,/^fi/d' $0
 	exit
 fi
@@ -26,12 +29,12 @@ main()
 {
 	dd if=$1 bs=512 count=1 >$2
 	uudecode | gunzip >>$2
-	setup="$( echo $(od -j 497 -N 1 -dAn $1))"
+	setup="$(echo $(od -j 497 -N 1 -dAn $1))"
 	syssize="$(echo $(od -j 500 -N 2 -dAn $1))"
 	dd if=$1 bs=512 count=$setup skip=1 | compress >>$2
 	dd if=$1 bs=16 count=$syssize skip=$((32*(1+$setup))) | compress >>$2
 	size=$(stat -c %s $2)
-	store $((($size-512)/16)) $2 520 2
+	store $((($size-512)/16)) $2 XXX 2
 	store $((($size-2560)/16)) $2 500 2
 	store 4 $2 497 1
 }
