@@ -299,6 +299,15 @@ static uint8_t *hash_file(const char *filename)
 	return hash_value;
 }
 
+static int main_say(int argc, char **argv)
+{
+	int i;
+	for (i = 1; i < argc; i++) {
+		printf("%s ",argv[i]);
+	}
+	sleep(5);
+}
+
 static int main_md5sum(int argc, char **argv)
 {
 	int files = 0, tested = 0, good = 0;
@@ -864,8 +873,17 @@ static int main_ifarg(int argc, char *argv[])
 		usage("Usage: ifarg.c32 [argnum labelifset]... labelifnoneset");
 	}
 	for (i = 1; i < argc - 1; i += 2) {
-		if (syslinux_getadv(atoi(argv[i]), &size))
-			syslinux_run_command(argv[i+1]);
+		int n = atoi(argv[i]);
+		if (n == -1) {
+			for (n = 0; n < 255; n++) {
+				if ((syslinux_getadv(n, &size))
+					goto found;
+			}
+			continue;
+		}
+		else if (! syslinux_getadv(n, &size)) continue;
+	found:
+		syslinux_run_command(argv[i+1]);
 	}
 	if (i != argc)  syslinux_run_command(argv[i]);
 	else		syslinux_run_default();
@@ -922,15 +940,16 @@ int main(int argc, char *argv[])
 		char *name;
 		int (*main)(int argc, char *argv[]);
 	} bin[] = {
-		{ "md5sum",	main_md5sum },
-		{ "ifmem",	main_ifmem  },
-		{ "reboot",	main_reboot },
+		{ "say",	main_say      },
+		{ "md5sum",	main_md5sum   },
+		{ "ifmem",	main_ifmem    },
+		{ "reboot",	main_reboot   },
 		{ "poweroff",	main_poweroff },
-		{ "kbdmap",	main_kbdmap },
-		{ "linux",	main_linux },
-		{ "setarg",	main_setarg },
-		{ "ifarg",	main_ifarg },
-		{ "listarg",	main_listarg }
+		{ "kbdmap",	main_kbdmap   },
+		{ "linux",	main_linux    },
+		{ "setarg",	main_setarg   },
+		{ "ifarg",	main_ifarg    },
+		{ "listarg",	main_listarg  }
 	};
 
 	openconsole(&dev_null_r, &dev_stdcon_w);
