@@ -582,6 +582,11 @@ static int main_kbdmap(int argc, char *argv[])
     // Save extra cmdline arguments
     setlinuxarg(1, argc - 3, argv + 3);
 
+    printf("Append to kernel parameters: ");
+    for (i = 2; i < argc; i++)
+	printf("%s ",argv[i]);
+    printf("\nHit RETURN to continue.\n");
+
     msg = "Load error";
     if (kmap->version != 1 ||
 	loadfile(argv[1], (void **) &kbdmap, &map_size) || 
