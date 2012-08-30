@@ -876,7 +876,7 @@ static int main_ifarg(int argc, char *argv[])
 		int n = atoi(argv[i]);
 		if (n == -1) {
 			for (n = 0; n < 255; n++) {
-				if ((syslinux_getadv(n, &size))
+				if (syslinux_getadv(n, &size))
 					goto found;
 			}
 			continue;
