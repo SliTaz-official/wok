@@ -1,7 +1,9 @@
 #!/bin/sh -e
 
 PACKAGE="opera"
+WEB_SITE="http://www.opera.com/"
 URL=http://mirrors.dedipower.com/opera/linux/
+
 ROOT="$1"
 [ -d "$ROOT" ] || ROOT=""
 
@@ -41,17 +43,19 @@ if [ ! -f $FILE ]; then
 	exit 1
 fi
 
-mkdir opera
-dpkg-deb -e $FILE opera/meta
-dpkg-deb -x $FILE opera/fs
+mkdir $PACKAGE
+dpkg-deb -e $FILE $PACKAGE/meta
+dpkg-deb -x $FILE $PACKAGE/fs
 # extracted pkg can be removed: Save RAM
 rm -f $FILE
 sed '/^Description:/,$!d;s/^Description://' \
-	< opera/meta/control > opera/description.txt
+	< $PACKAGE/meta/control > $PACKAGE/description.txt
 
-VERSION=$(grep ^Version opera/meta/control | awk '{ print $2 }')
-mv opera opera-$VERSION
-cd opera-$VERSION/fs
+SHORT_DESC="$(sed '/^Description:/!d;s/.*: //' $PACKAGE/meta/control)"
+MAINTAINER="$(sed '/^Maintainer:/!d;s/.*: //' $PACKAGE/meta/control)"
+VERSION="$(sed '/^Version:/!d;s/.*: //' $PACKAGE/meta/control)"
+mv $PACKAGE $PACKAGE-$VERSION
+cd $PACKAGE-$VERSION/fs
 
 # Create menu
 mkdir -p usr/share/applications
@@ -94,38 +98,39 @@ Type=Application
 EOT
 cd ../..
 
-cat > opera-$VERSION/receipt <<EOT
+cat > $PACKAGE-$VERSION/receipt <<EOT
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="non-free"
-SHORT_DESC="Opera Web browser."
+SHORT_DESC="$SHORT_DESC"
+MAINTAINER="$MAINTAINER"
 DEPENDS="libQtGui"
-WEB_SITE="http://www.opera.com/"
+WEB_SITE="$WEB_SITE"
 EOT
 
 # Remove unwanted locale
-mv opera-$VERSION/fs/usr/share/opera/locale opera-$VERSION/fs/usr/share/opera/locale-full
-mkdir -p opera-$VERSION/fs/usr/share/opera/locale 
+mv $PACKAGE-$VERSION/fs/usr/share/opera/locale $PACKAGE-$VERSION/fs/usr/share/opera/locale-full
+mkdir -p $PACKAGE-$VERSION/fs/usr/share/opera/locale 
 . /etc/locale.conf
 for i in $LANG ${LANG/_/-} ${LANG:0:2} fr pt de zh-cn ; do
-	[ -d opera-$VERSION/fs/usr/share/opera/locale-full/$i ] &&
-	cp -a opera-$VERSION/fs/usr/share/opera/locale-full/$i \
-		opera-$VERSION/fs/usr/share/opera/locale
+	[ -d $PACKAGE-$VERSION/fs/usr/share/opera/locale-full/$i ] &&
+	cp -a $PACKAGE-$VERSION/fs/usr/share/opera/locale-full/$i \
+		$PACKAGE-$VERSION/fs/usr/share/opera/locale
 done
-rm -rf opera-$VERSION/fs/usr/share/opera/locale-full
-rm -rf opera-$VERSION/fs/usr/share/pixmaps
+rm -rf $PACKAGE-$VERSION/fs/usr/share/opera/locale-full
+rm -rf $PACKAGE-$VERSION/fs/usr/share/pixmaps
 
 
 # Pack
-tazpkg pack opera-$VERSION
+tazpkg pack $PACKAGE-$VERSION
 
 # Clean to save RAM memory
-rm -rf opera-$VERSION
+rm -rf $PACKAGE-$VERSION
 
 # Install pseudo package
-tazpkg install opera-$VERSION.tazpkg --root=$ROOT
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
 case " $@ " in
-*\ --k*) mv opera-$VERSION.tazpkg $CUR_DIR ;;
+*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
 esac
 
 # Clean
