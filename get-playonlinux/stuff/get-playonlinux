@@ -1,0 +1,17 @@
+#!/bin/sh -e
+
+PACKAGE="playonlinux"
+TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+URL=http://www.playonlinux.com/$(. /etc/locale.conf ; echo ${LANG%_*})/download.html
+busybox wget -s $URL || URL=http://www.playonlinux.com/en/download.html
+URL=$(wget -O - $URL | sed '/z2*"/!d;s/.*ref="\([^"]*\).*/\1/')
+wget -O - $URL | tar xzf -
+for i in bash wxpython cabextract imagemagick gnupg wine wget ; do
+	[ -d /var/lib/tazpkg/installed/$i/ ] || tazpkg get-install $i
+done
+cd playonlinux
+su -c ./playonlinux tux
+cd $CUR_DIR
+rm -rf $TMP_DIR
