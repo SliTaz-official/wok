@@ -1,0 +1,65 @@
+# SliTaz package receipt.
+
+PACKAGE="pcmanfm"
+VERSION="0.5.2"
+CATEGORY="system-tools"
+SHORT_DESC="Light and easy to use file manager."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://pcmanfm.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="glibc-base glib libgio util-linux-uuid libxcb xcb-util expat \
+zlib fontconfig freetype gtk+ atk cairo pango pixman libpng gamin \
+startup-notification dbus dbus-glib hal xorg-libICE xorg-libSM xorg-libX11 \
+xorg-libXau xorg-libXcomposite xorg-libXcursor xorg-libXdamage xorg-libXdmcp \
+xorg-libXext xorg-libXfixes xorg-libXinerama xorg-libXrender \
+hicolor-icon-theme"
+BUILD_DEPENDS="gtk+-dev gamin-dev gamin shared-mime-info intltool hal-dev \
+dbus-glib-dev dbus-dev startup-notification-dev libxcb-dev xcb-util-dev \
+xcb-util"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
+	export LDFLAGS="-Wl,--copy-dt-needed-entries -lXt"
+
+	cd $src
+	for i in  $stuff/*.patch
+	do
+		if [ -f done.$(basename $i) ]; then
+			continue
+		else
+			patch -p0 < $i && touch done.$(basename $i) || return 1
+		fi
+	done
+
+	cp $stuff/fr.po $src/po
+
+	./configure \
+		--enable-hal \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/applications $fs/etc/xdg
+
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/mime $fs/usr/share
+	cp -a $install/usr/share/pcmanfm $fs/usr/share
+	rm -rf $fs/usr/share/pcmanfm/icons
+
+	# XDG autostart desktop file (lxsession will use it automaticaly)
+	cp -a $stuff/autostart $fs/etc/xdg
+}
+
+post_install()
+{
+	# update mime-cache
+	echo "Updating mime-types database"
+	chroot "$1/" /usr/bin/update-mime-database /usr/share/mime
+}
