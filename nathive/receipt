@@ -5,37 +5,24 @@ VERSION="0.924"
 CATEGORY="graphics"
 SHORT_DESC="lightweight image editor"
 MAINTAINER="jozee@slitaz.org"
-DEPENDS="gtk+"
-BUILD_DEPENDS="pkg-config gtk+-dev"
 TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="http://www.nathive.org/" 
 WGET_URL="${WEB_SITE}dl/$TARBALL"
 TAGS="image photo editor"
 
+DEPENDS="gtk+ python"
+BUILD_DEPENDS="pkg-config gtk+-dev python-dev coreutils-operations"
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	sed 's|"./"|"/usr/share/nathive/"|g' -i main.c
-	make	
+	sed -i "s|^BASE.*|BASE = $DESTDIR/usr/|;s|nathive.sh|nathive.py|" makefile
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
-	mkdir -p $fs/usr/share/nathive  
-	mkdir -p $fs/usr/share/applications 
-
-	cp -a $src/nathive $fs/usr/bin
-	
-	cp -a $src/cfg/ $src/img/ $src/palettes/ $src/text/ $fs/usr/share/nathive/
-	#copy locale : it only adds 4k
-	cp -a $src/lang/ $fs/usr/share/nathive/
-	# change owner and permissions
-	chown -R root.root $fs/usr/share/nathive
-	chmod -R 0755 $fs/usr/share/nathive
-	
-	cp -a $stuff/nathive.desktop $fs/usr/share/applications 
-
+	cp -a $install/usr $fs
 }
