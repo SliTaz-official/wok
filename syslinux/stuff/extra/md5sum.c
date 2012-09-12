@@ -318,12 +318,12 @@ static int main_md5sum(int argc, char **argv)
 	argv++;
 	do {
 		FILE *fp;
-		char eol, *line, buffer[256];
+		char eol, *line, buffer[4096];
 		fp = fopen(*argv,"r");
 		if (fp == NULL)
 			fp = fopen(unrockridge(*argv),"r");
 
-		while ((line = fgets(buffer,256,fp)) != NULL) {
+		while ((line = fgets(buffer,sizeof(buffer),fp)) != NULL) {
 			uint8_t *hash_value;
 			char *filename_ptr, *status;
 			int len = strlen(line);
