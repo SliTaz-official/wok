@@ -3,14 +3,21 @@
 PACKAGE="tcc"
 VERSION="0.9.25"
 CATEGORY="development"
-SHORT_DESC="fast Tiny C Compiler."
+SHORT_DESC="Fast Tiny C Compiler."
 MAINTAINER="pascal.bellard@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://bellard.org/$PACKAGE/"
-DEPENDS="tcc-common"
-BUILD_DEPENDS="perl"
+WEB_SITE="http://bellard.org/tcc/"
 WGET_URL="http://download.savannah.nongnu.org/releases/tinycc/$TARBALL"
 TAGS="compiler C"
+HOST_ARCH="i486 arm"
+
+DEPENDS="tcc-common"
+BUILD_DEPENDS="perl"
+
+# Perl is installed in a cross env.
+case "$ARCH" in
+	arm) BUILD_DEPENDS="" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,16 +30,18 @@ compile_rules()
 	sed -i 's/cp -u/cp/' tests/Makefile
 	sed -i 's, tcctest.gcc .*, tcctest.gcc $< -I. -w $(shell echo $(CFLAGS) | sed "/-O2//"),' \
 		tests/Makefile
-	./configure --prefix=/usr --enable-cross $CONFIGURE_ARGS &&
-	make &&
-	make test &&
-	make DESTDIR=$PWD/_pkg install
+	./configure \
+		--prefix=/usr \
+		--enable-cross \
+		$CONFIGURE_ARGS &&
+	make && make test &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $_pkg/usr/bin/tcc $fs/usr/bin
+	cp -a $install/usr/bin/tcc $fs/usr/bin
 }
 
