@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="dummynet"
+VERSION="20120812"
+CATEGORY="network"
+SHORT_DESC="Network testing/emulation tool."
+MAINTAINER="samuel_trassare@yahoo.com"
+WEB_SITE="http://info.iet.unipi.it/~luigi/dummynet/"
+TARBALL="$VERSION-ipfw3.tgz"
+WGET_URL="http://info.iet.unipi.it/~luigi/doc/$TARBALL"
+
+BUILD_DEPENDS="linux-module-headers"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin \
+		$fs/lib/modules/`uname -r`/kernel/net
+	cp -a $src/ipfw/ipfw $fs/usr/bin
+	cp -a $src/kipfw-mod/ipfw_mod.ko $fs/lib/modules/`uname -r`/kernel/net
+}
+
+post_install()
+{
+	echo "/lib/modules/`uname -r`/kernel/net/ipfw_mod.ko" >> /lib/modules/modules.dep
+	depmod
+}
