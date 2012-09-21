@@ -14,6 +14,9 @@ BUILD_DEPENDS="linux-module-headers"
 # Rules to configure and make the package.
 compile_rules()
 {
+	kvers=$(cd /lib/modules ; ls -d *-slitaz)
+	kvers=${kvers%-slitaz}
+	sed -i "s/uname -r/echo $kvers-slitaz/" Makefile.inc
 	make
 }
 
@@ -21,9 +24,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin \
-		$fs/lib/modules/`uname -r`/kernel/net
+		$fs/lib/modules/$kvers-slitaz/kernel/net
 	cp -a $src/ipfw/ipfw $fs/usr/bin
-	cp -a $src/kipfw-mod/ipfw_mod.ko $fs/lib/modules/`uname -r`/kernel/net
+	cp -a $src/kipfw-mod/ipfw_mod.ko $fs/lib/modules/$kvers-slitaz/kernel/net
 }
 
 post_install()
