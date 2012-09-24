@@ -1,31 +1,16 @@
 # SliTaz package receipt.
 
-PACKAGE="compcache"
-VERSION="0.6.2"
-CATEGORY="system-tools"
+PACKAGE="linux-zram"
+VERSION="3.2.14"
+BASEVER="${VERSION:0:3}"
+CATEGORY="base-system"
 SHORT_DESC="Compressed caching"
-MAINTAINER="fabrice.thiroux@free.fr"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://code.google.com/p/compcache/"
-WGET_URL="http://compcache.googlecode.com/files/$TARBALL"
+MAINTAINER="devel@slitaz.org"
+WEB_SITE="http://www.kernel.org/"
+WANTED="linux"
+PROVIDE="compcache"
 
 DEPENDS="linux"
-BUILD_DEPENDS="lzma linux-module-headers"
-
-# Rules to configure and make the package.
-compile_rules()
-{
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | \
-		cut -d "=" -f2 | sed -e 's/"//g'`
-	cd $src
-	
-	# Fix build with kernel 2.6.34
-	patch -p1 < $stuff/compcache-0.6.2-linux-2.6.34.u || return 1
-	
-	find -name Makefile | xargs sed -i \
-		"s|/lib/modules/\$(shell uname -r)/build|/usr/src/linux|"
-	make  KBUILD=/usr/src/linux KVER=$KERNEL_VERSION 
-}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -60,3 +45,33 @@ post_remove()
 	echo "Processing post-remove commands..."
 	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
 }
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    path=lib/modules/$BASEVER-slitaz/kernel
+    mkdir -p $fs/$path $fs/etc
+    export src
+    export _pkg
+    $wanted_stuff/list_modules.sh fs/${PACKAGE#*-} | while read module; do
+    	dir=$path/$(dirname $module)
+    	[ -d $fs/$dir ] || mkdir -p $fs/$dir
+        cp -a $_pkg/$path/$module $fs/$dir
+    done
+    touch $fs/etc/filesystems
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	grep -qs ^${PACKAGE#*-}$ $1/etc/filesystems || \
+		echo "${PACKAGE#*-}" >> $1/etc/filesystems
+	chroot "$1/" depmod -a $BASEVER-slitaz
+}
+
+post_remove()
+{
+	sed -i "/^${PACKAGE#*-}\$/d" $1/etc/filesystems
+	chroot "$1/" depmod -a $BASEVER-slitaz
+}
+
