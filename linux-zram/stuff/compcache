@@ -7,7 +7,7 @@
 source /etc/compcache.conf
 
 NAME="compcache"
-EXIST=`cat /proc/swaps | grep ramzswap0`
+EXIST=`cat /proc/swaps | grep zram0`
 
 case "$1" in
   start)
@@ -16,11 +16,12 @@ case "$1" in
       exit 1
     fi
     echo -n "Loading module"
-    modprobe ramzswap disksize_kb=$SIZE_KB
+    modprobe zram num_devices=1 &&
+    [ -n "$SIZE_KB" ] && echo $(($SIZE_KB * 1024)) > /sys/block/zram0/disksize
     status
+
     echo -n "Starting $NAME..."
-    rzscontrol /dev/ramzswap0 --init
-    swapon /dev/ramzswap0 -p 100
+    mkswap /dev/zram0 && swapon /dev/zram0 -p 100
     status
     ;;
   stop)
@@ -29,11 +30,10 @@ case "$1" in
       exit 1
     fi
     echo -n "Stopping $NAME... "
-    swapoff /dev/ramzswap0    
-    rzscontrol /dev/ramzswap0 --reset
+    swapoff /dev/zram0 && echo 1 > /sys/block/zram0/reset
     status
     echo -n "Unloding modules"
-    rmmod ramzswap 
+    rmmod zram
     status
     ;;
   *)

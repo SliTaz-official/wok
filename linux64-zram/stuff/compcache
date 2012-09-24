@@ -1,0 +1,47 @@
+#!/bin/sh
+# /etc/init.d/compcache: Start, stop and restart COMPCACHE daemon on SliTaz,
+# at boot time or with the command line. Daemons options are configured
+# with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+source /etc/compcache.conf
+
+NAME="compcache"
+EXIST=`cat /proc/swaps | grep zram0`
+
+case "$1" in
+  start)
+    if [ ! "$EXIST" = "" ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Loading module"
+    modprobe zram num_devices=1 &&
+    [ -n "$SIZE_KB" ] && echo $(($SIZE_KB * 1024)) > /sys/block/zram0/disksize
+    status
+
+    echo -n "Starting $NAME..."
+    mkswap /dev/zram0 && swapon /dev/zram0 -p 100
+    status
+    ;;
+  stop)
+    if [ "$EXIST" = "" ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $NAME... "
+    swapoff /dev/zram0 && echo 1 > /sys/block/zram0/reset
+    status
+    echo -n "Unloding modules"
+    rmmod zram
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
