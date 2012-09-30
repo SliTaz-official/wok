@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="csync"
+VERSION="0.50.8"
+CATEGORY="network"
+SHORT_DESC="File synchronizer"
+MAINTAINER="erjo@slitaz.org"
+WEB_SITE="http://www.csync.org/"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="http://download.owncloud.com/download/$TARBALL"
+
+DEPENDS="libsqlite neon"
+BUILD_DEPENDS="check-dev cmake sqlite-dev iniparser-dev  \
+ expat-dev openssl-dev log4c-dev neon-dev samba-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir csync-build && cd csync-build
+	cmake -DCMAKE_INSTALL_PREFIX=/usr \
+		-DWITH_LOG4C=OFF \
+		-DLOG_TO_CALLBACK=ON .. \
+		&& make && make install
+	
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib 
+	
+	cp -a $install/usr/etc $fs/
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/csync-0 $fs/usr/lib
+}
