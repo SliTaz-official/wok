@@ -1,7 +1,12 @@
 #!/bin/sh -e
 
-ROOT="$1"
 PACKAGE=${0#*get-}
+WEB_SITE=http://www.virtualbox.org/
+SHORT_DESC="x86 virtualization."
+DEPENDS="libsdl fontconfig gcc-lib-base glib libpng python udev mesa libglu-mesa"
+BUILD_DEPENDS="slitaz-toolchain bzip2 linux-source python python-dev coreutils-command"
+
+ROOT="$1"
 
 if test $(id -u) != 0 ; then
 	echo -e "\nYou must be root to run `basename $0`."
@@ -10,18 +15,22 @@ if test $(id -u) != 0 ; then
 fi
 
 if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
-  [ -n "$ROOT" ] && exit 1
-  tazpkg remove $PACKAGE
-  [ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
+	[ -n "$ROOT" ] && exit 1
+	tazpkg remove $PACKAGE
+	[ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
 fi
 [ -d $ROOT/usr/share/$PACKAGE ] && rm -rf $ROOT/usr/share/$PACKAGE
 
-WEB_SITE=http://www.virtualbox.org/
-SHORT_DESC="x86 virtualization."
+case "$(uname -m)" in
+i?86)   linux_run="Linux_x86.run" ;;
+x86_64) linux_run="Linux_amd64.run" ;;
+esac
+
 dl_url()
 {
-   wget --no-check-certificate -O - ${WEB_SITE}wiki/Linux_Downloads 2> /dev/null | \
-   	 grep Linux_x86.run | sed 's|.*href="\(.*Linux_x86.run\).*|\1|'
+	wget --no-check-certificate -O - \
+		${WEB_SITE}wiki/Linux_Downloads 2> /dev/null | \
+		grep $linux_run | sed 's|.*href="\(.*'$linux_run'\).*|\1|'
 }
 
 TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
@@ -42,7 +51,7 @@ if [ ! -f "$TARBALL" ]; then
 	exit 1
 fi
 
-VERSION=${TARBALL%-Linux_x86.run*}
+VERSION=${TARBALL%-$linux_run*}
 VERSION=${VERSION#VirtualBox-}
 
 sed -i 's/df -kP/df -k/' $TARBALL
@@ -50,7 +59,6 @@ sed -i 's/df -kP/df -k/' $TARBALL
 # Extract
 sh $TARBALL --noexec --keep
 
-BUILD_DEPENDS="slitaz-toolchain bzip2 linux-source python python-dev coreutils-command"
 for i in $BUILD_DEPENDS; do
 	[ -d /var/lib/tazpkg/installed/$i ] && continue
 	yes y | tazpkg get-install $i
@@ -85,25 +93,25 @@ EXTRAVERSION=_$(uname -r | sed 's/-slitaz//')
 CATEGORY="non-free"
 SHORT_DESC="$SHORT_DESC"
 WEB_SITE="$WEB_SITE"
-DEPENDS="libsdl fontconfig gcc-lib-base glib libpng python udev mesa libglu-mesa"
+DEPENDS="$DEPENDS"
 
 pre_remove()
 {
-    sed -i 's/$MODULE_LIST //' \$1/etc/rcS.conf
-    chroot "\$1/" delgroup vboxusers
+	sed -i 's/$MODULE_LIST //' \$1/etc/rcS.conf
+	chroot "\$1/" delgroup vboxusers
 }
 
 post_install()
 {
 $(grep '  udev[atp]' install/install.sh)
-    chroot "\$1/" depmod -a $(uname -r)
-    [ -n "\$1" ] || for i in $MODULE_LIST; do modprobe \$i ; done
-    grep -qs vboxdrv \$1/etc/rcS.conf ||
-    sed -i 's/^LOAD_MODULES="/&$MODULE_LIST /' \$1/etc/rcS.conf
-    
-    # Add vboxusers group
-    grep -qs ^vboxusers \$1/etc/group ||
-    chroot "\$1/" addgroup vboxusers
+	chroot "\$1/" depmod -a $(uname -r)
+	[ -n "\$1" ] || for i in $MODULE_LIST; do modprobe \$i ; done
+	grep -qs vboxdrv \$1/etc/rcS.conf ||
+	sed -i 's/^LOAD_MODULES="/&$MODULE_LIST /' \$1/etc/rcS.conf
+
+	# Add vboxusers group
+	grep -qs ^vboxusers \$1/etc/group ||
+	chroot "\$1/" addgroup vboxusers
 }
 EOT
 
