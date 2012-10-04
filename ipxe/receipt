@@ -28,12 +28,38 @@ genpkg_rules()
 	cat > $fs/boot/ipxe.cmd <<EOT
 #!ipxe
 
-prompt --key 0x02 --timeout 3000 Press Ctrl-B for the iPXE command line... && goto shell
 dhcp
-chain http://mirror.slitaz.org/pxe/ipxe.php ||
-chain http://mirror.switch.ch/ftp/mirror/pxe/ipxe.php ||
-chain http://download.tuxfamily.org/slitaz/pxe/ipxe.php
-:shell
+
+:menu
+menu SliTaz net boot menu
+item lan	Your PXE boot
+item web	SliTaz WEB boot
+item rolling	SliTaz development version
+item config	iPXE configuration
+item exit	iPXE command line
+choose --default web --timeout 3000 target && goto ${target}
+
+:exit
+help
 shell
+goto menu
+
+:web
+chain http://mirror.slitaz.org/pxe/pxelinux.0
+chain http://mirror.switch.ch/ftp/mirror/pxe/pxelinux.0
+chain http://download.tuxfamily.org/slitaz/pxe/pxelinux.0
+goto menu
+
+:lan
+autoboot
+goto menu
+
+:rolling
+sanboot http://mirror.slitaz.org/iso/rolling/slitaz-rolling.iso
+goto menu
+
+:config
+config
+goto menu
 EOT
 }
