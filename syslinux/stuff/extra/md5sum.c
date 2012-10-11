@@ -585,6 +585,7 @@ static int main_kbdmap(int argc, char *argv[])
     msg="Append to kernel parameters: ";
     for (i = 3; i < argc; i++, msg = " ")
 	printf("%s%s",msg,argv[i]);
+    printf("\nNow select 'Start SliTaz' in menu top.");
     printf("\n\n                            Hit RETURN to continue.\n");
 
     msg = "Load error";
