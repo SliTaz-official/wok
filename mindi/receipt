@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="mindi"
+VERSION="2.1.3"
+CATEGORY="system-tools"
+SHORT_DESC="GPL disaster recovery solution."
+MAINTAINER="erjo@slitaz.org"
+WEB_SITE="http://www.mondorescue.org/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="ftp://ftp.mondorescue.org/src/$TARBALL"
+
+DEPENDS="syslinux syslinux-extra"
+BUILD_DEPENDS=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	PREFIX=$install/usr \
+		CONFDIR=$install/etc \
+		CACHEDIR=$install/var/cache/mindi ./install.sh 
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/etc $fs/
+	cp -a $install/var $fs/
+	
+	#Fix path
+	sed -i -e "s!$install/!/!" $fs/etc/mindi/perl-scripts
+	sed -i -e "s!$install/!/!" $fs/usr/sbin/mindi
+	sed -i -e "s!/usr/lib/isolinux.bin!/boot/isolinux/isolinux.bin!" $fs/usr/sbin/mindi
+}
