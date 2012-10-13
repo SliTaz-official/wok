@@ -1,0 +1,30 @@
+# SliTaz package receipt.
+
+PACKAGE="zfs-fuse"
+VERSION="0.7.0"
+CATEGORY="system-tools"
+SHORT_DESC="ZFS file system from Sun."
+MAINTAINER="pascal.bellard@slitaz.org"
+WEB_SITE="http://zfs-fuse.net"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$WEB_SITE/releases/$VERSION/$TARBALL"
+
+DEPENDS="fuse libaio libcrypto"
+BUILD_DEPENDS="fuse-dev scons libaio-dev attr-dev zlib-dev acl-dev openssl-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $DESTDIR/usr
+	cd $src/src
+	scons PREFIX=/usr &&
+	scons install_dir=$DESTDIR/usr/sbin \
+	      cfg_dir=$DESTDIR/etc \
+	      man_dirr=$DESTDIR/usr/man install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
