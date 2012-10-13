@@ -1,18 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="razorqt"
-VERSION="0.4.1"
+VERSION="0.5.0"
 CATEGORY="x-window"
 SHORT_DESC="Light and fast QT based Desktop Environment."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://razor-qt.org/"
 WGET_URL="https://github.com/downloads/Razor-qt/razor-qt/$TARBALL"
-SUGGESTED="razorqt-themes razorqt-appswitcher razorqt-power"
+SUGGESTED="razorqt-themes razorqt-appswitcher razorqt-power \
+razorqt-runner razorqt-autosuspend"
 
-DEPENDS="xorg-libX11 libQtCore libQtDBus libQtGui libQtScript libmagic"
-BUILD_DEPENDS="wget cmake Qt4-dev qmake xorg-dev libmagic-dev upower-dev"
-# polkit-dev polkit-qt-dev doxygen
+DEPENDS="xorg-libX11 libQtCore libQtDBus libQtGui libQtScript libmagic \
+libstatgrab alsa-lib"
+BUILD_DEPENDS="wget cmake Qt4-dev qmake xorg-dev libmagic-dev upower-dev \
+grep libstatgrab-dev alsa-lib-dev polkit-dev polkit-qt-dev glib-dev \
+libgio-dev"
+
+GENERIC_MENUS="no"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -25,34 +30,57 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share/xsessions
+	mkdir -p $fs/usr/lib $fs/usr/share $fs/etc
+
 	# Use SliTaz XDG Menu
-	#cp -a $install/etc $fs
+	cp -a $install/etc $fs
+	rm -rf $fs/etc/xdg/menus
+
+	# Copy almost everything then split
 	cp -a $install/usr/bin $fs/usr
-	cp -f $install/usr/share/xsessions/razor.desktop \
-		$fs/usr/share/xsessions
-	
+	cp -f $install/usr/share/xsessions $fs/usr/share
+	cp -a $install/usr/share/applications $fs/usr/share
+
 	# Split more plugins ?
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/lib/razor-* $fs/usr/lib
 	cp -a $install/usr/share/librazorqt $fs/usr/share
 	cp -a $install/usr/share/razor $fs/usr/share
-	
+
 	# Appswitcher --> razorqt-appswitcher
 	rm -f $fs/usr/bin/razor-appswitcher
-	
+	rm -f $fs/etc/xdg/autostart/razor-appswitcher.desktop
+
+	# Autosuspend --> razorqt-autosuspend
+	rm -f $fs/usr/bin/razor-autosuspend
+	rm -f $fs/usr/bin/razor-config-autosuspend
+	rm -f $fs/etc/xdg/autostart/razor-autosuspend.desktop
+	rm -f $fs/usr/share/applications/razor-config-autosuspend.desktop
+	rm -rf $fs/usr/share/razor/razor-autosuspend
+	rm -rf $fs/usr/share/razor/razor-config-autosuspend
+
 	# Power --> razorqt-power
 	rm -f $fs/usr/bin/razor-power
 	rm -rf $fs/usr/share/razor/razor-power
-	
+	rm -f $fs/usr/share/applications/razor-power.desktop
+
+	# Policykit-agent --> razorqt-policykit-agent
+	rm -f $fs/usr/bin/razor-policykit-agent
+	rm -f $fs/etc/xdg/autostart/razor-policykit-agent.desktop
+
+	# Runner --> razorqt-runner
+	rm -f $fs/usr/bin/razor-runner
+	rm -rf $fs/usr/share/razor/razor-runner
+	rm -f $fs/etc/xdg/autostart/razor-runner.desktop
+
 	# Themes --> razorqt-themes
 	rm -rf $fs/usr/share/razor/themes
 	mkdir -p $fs/usr/share/razor/themes
 	cp -a $install/usr/share/razor/themes/light \
 		$fs/usr/share/razor/themes
-	
+
 	# Custom SliTaz integration
-	cp -a $stuff/*.conf $fs/usr/share/razor
+	cp -a $stuff/*.conf $fs/etc/razor
 }
 
 post_install()
