@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="lua"
-VERSION="5.1.4"
+VERSION="5.2.1"
 CATEGORY="development"
 SHORT_DESC="Powerful, fast, light-weight, embeddable scripting language."
 DEPENDS="readline ncurses"
@@ -15,10 +15,12 @@ WGET_URL="http://www.lua.org/ftp/$TARBALL"
 compile_rules()
 {
 	cd $src
-	sed -i "s#prefix= /usr/local#prefix= /usr#" etc/lua.pc
 	sed -i "s#/usr/local/#/usr/#" src/luaconf.h
 	sed -i s"/-O2/-Os -march=$ARCH/" src/Makefile
 	make linux &&
+	# lua.pc
+	make pc > lua.pc &&
+	sed -i "s#/local##g" lua.pc &&
 	make install \
 		INSTALL_TOP=$DESTDIR/usr \
 		INSTALL_MAN=$DESTDIR/usr/share/man/man1
