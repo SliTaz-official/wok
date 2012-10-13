@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="spacefm"
-VERSION="0.7.0"
+VERSION="0.8.0"
 CATEGORY="system-tools"
 SHORT_DESC="Light, fast and easy to use file manager."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://spacefm.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/files/$TARBALL"
+SUGGESTED="udevil"
 
 DEPENDS="glibc-base glib libgio util-linux-uuid libxcb xcb-util expat \
-gtk+ startup-notification dbus dbus-glib gdk-pixbuf"
+gtk+ startup-notification dbus dbus-glib gdk-pixbuf udev"
 BUILD_DEPENDS="gtk+-dev dbus-glib-dev dbus-dev startup-notification-dev \
-libxcb-dev xcb-util-dev expat-dev gdk-pixbuf-dev intltool"
+libxcb-dev xcb-util-dev expat-dev gdk-pixbuf-dev intltool udev-dev \
+coreutils-file-special"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,6 +22,7 @@ compile_rules()
 	cd $src
 	./configure \
 		--with-preferable-sudo=/usr/bin/subox \
+		--disable-pixmaps \
 		$CONFIGURE_ARGS &&
 	make && make install
 }
@@ -27,11 +30,22 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/etc/spacefm
+	mkdir -p $fs/usr/share $fs/etc/spacefm $fs/etc/xdg/spacefm
 	cp -a $install/usr/bin $fs/usr
-	for d in applications mime pixmaps spacefm
+	for d in applications mime icons spacefm
 	do
 		cp -a $install/usr/share/$d $fs/usr/share
 	done
 	cp $stuff/spacefm.conf $fs/etc/spacefm
+	cp -a $stuff/autostart $fs/etc/xdg
+	# Faenza --> SliTaz
+	mv $fs/usr/share/icons/Faenza $fs/usr/share/icons/SliTaz
 }
+
+# This will creat BIG icon cache file
+#
+#post_install()
+#{
+	#gtk-update-icon-cache -q -t -f $root/usr/share/icons/hicolor
+    #gtk-update-icon-cache -q -t -f $root/usr/share/icons/Faenza
+#}
