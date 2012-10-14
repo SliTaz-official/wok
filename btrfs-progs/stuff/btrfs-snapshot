@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# Keep last 30 daily snapshot with crontab
+#0 0 * * * /usr/bin/btrfs-snapshot 30
+
+btrfs_list()
+{
+	awk '/ btrfs / { if (fs[$1] == "") { fs[$1] = $2; print $2 }}' \
+		< /proc/mounts
+}
+
+which btrfs > /dev/null && for root in $(btrfs_list) ; do
+	dir=${root%/}/.snapshots
+	[ -d $dir ] || mkdir $dir
+	cd $dir
+	i=0
+	for s in $(ls -r); do
+		[ $((i++)) -ge ${1:-10} ] && btrfs subvolume delete $s
+	done
+	btrfs subvolume snapshot -r / $(date +%Y%m%d%H%M%S)
+done
