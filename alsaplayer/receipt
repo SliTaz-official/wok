@@ -5,13 +5,14 @@ VERSION="0.99.81"
 CATEGORY="multimedia"
 SHORT_DESC="Alsa GTK+ PCM player."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ alsa-lib libmad libogg libvorbis xorg-libXdamage"
-BUILD_DEPENDS="gtk+-dev alsa-lib-dev libmad-dev libogg-dev libvorbis-dev"
-SUGGESTED="alsaplayer-scopes libid3tag"
+SUGGESTED="alsaplayer-scopes libid3tag flac"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.alsaplayer.org/"
 WGET_URL="http://www.alsaplayer.org/$TARBALL"
-TAGS="music audio player mp3 ogg"
+TAGS="music audio player mp3 ogg flac"
+
+DEPENDS="gtk+ alsa-lib libmad libogg libvorbis xorg-libXdamage" 
+BUILD_DEPENDS="gtk+-dev alsa-lib-dev libmad-dev libogg-dev libvorbis-dev flac-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,14 +24,14 @@ compile_rules()
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		--enable-gtk2 \
-		--disable-flac \
+		--enable-flac \
 		--disable-jack \
 		--disable-esd \
 		$CONFIGURE_ARGS &&
 	make &&
 	# Chmod install-sh to avoid install error.
 	chmod 755 install-sh &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -38,9 +39,9 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
 
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/alsaplayer $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/alsaplayer $fs/usr/lib
 
 	# Remove devel files and scopes.
 	rm $fs/usr/lib/alsaplayer/*/*.*a
