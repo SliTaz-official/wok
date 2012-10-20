@@ -24,3 +24,12 @@ genpkg_rules()
 	mkdir -p $fs/usr/share/squirrelmail/plugins
 	cp -a $_pkg/$SOURCE $fs/usr/share/squirrelmail/plugins
 }
+
+post_install()
+{
+	local file
+	local line
+	file=$1/usr/share/squirrelmail/functions/strings.php
+	line="include_once(SM_PATH . 'plugins/compatibility/functions.php');"
+	grep -qs "$line" $file || sed -i "s|.*global.php.*|&\n$line|" $file
+}
