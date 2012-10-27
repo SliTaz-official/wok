@@ -17,8 +17,9 @@ fi
 
 # Get SSH server
 server=""
-if [ -x /usr/bin/ssh ]; then
-	echo -n "SSH server: "
+if [ -x /usr/bin/ssh -o -x /usr/bin/telnet ]; then
+	echo "Expected format [!][telnet/][user@][host][:port], default local login."
+	echo -n "TELNET/SSH server: "
 	read -t 300 server || exit 1
 fi
 
@@ -26,9 +27,11 @@ fi
 [ -n "$server" ] || exec /bin/login
 
 # Allow non default SSH port with format server:port
+port=""
 sshport=""
 case "$server" in
-*:*)	sshport="-p ${server#*:}"
+*:*)	port="${server#*:}"
+	sshport="-p $port"
 	server=${server%:*};;
 esac
 
@@ -43,7 +46,7 @@ fi
 
 # Get SSH user if missing
 case "$server" in
-*@*)	;;
+*/*|*@*)	;;
 *)	echo -n "$server login: "
 	read -t 30 user || exit 1
 	server="$user@$server";;
@@ -52,4 +55,7 @@ esac
 # Launch OpenSSH or Dropbear
 sshargs="-oPreferredAuthentications=keyboard-interactive,password -oNoHostAuthenticationForLocalhost=yes -oLogLevel=FATAL -F/dev/null";
 [ -L /usr/bin/ssh ] && sshargs=""
-exec ssh $sshport $sshargs $server
+case "$server" in
+*/*)	exec ${server%/*} ${server#*/} $port ;;
+*)	exec ssh $sshport $sshargs $server ;;
+esac
