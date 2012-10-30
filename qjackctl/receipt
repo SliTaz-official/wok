@@ -1,36 +1,36 @@
 # SliTaz package receipt.
 
 PACKAGE="qjackctl"
-VERSION="0.3.6"
+VERSION="0.3.9"
 CATEGORY="multimedia"
 SHORT_DESC="Application to Control Jack"
 MAINTAINER="allan316@gmail.com"
-BUILD_DEPENDS="qmake Qt4-dev jack-audio-connection-kit jack-audio-connection-kit-dev xorg-xproto xorg-libX11-dev"
-DEPENDS="jack-audio-connection-kit libQtCore libQtGui libQtXml alsa-lib \
-expat fontconfig freetype glib xorg-libICE xorg-libSM xorg-libX11 \
-xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXi xorg-libXrandr \
-xorg-libXrender zlib libpng"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://qjackctl.sourceforge.net"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://nchc.dl.sourceforge.net/sourceforge/qjackctl/$TARBALL"
+
+DEPENDS="alsa-lib bzlib expat fontconfig freetype gcc-lib-base glib \
+glibc-base jack-audio-connection-kit libffi libpng libQtCore libQtDBus \
+libQtGui libQtXml libxcb util-linux-ng-uuid xorg-libICE xorg-libSM \
+xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXrender zlib"
+BUILD_DEPENDS="qmake Qt4-dev jack-audio-connection-kit \
+jack-audio-connection-kit-dev xorg-xproto xorg-libX11-dev"
 TAGS="audio sound"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	sed -i 's|^LIBS.*|& -Wl,--copy-dt-needed-entries -lX11|' qjackctl.pro.in
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make -j1 &&
-	make -j1 DESTDIR=$PWD/_pkg install
+	#sed -i 's|^LIBS.*|& -Wl,--copy-dt-needed-entries -lX11|' qjackctl.pro.in
+	./configure $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share $fs/usr
+	cp -a $_pkg/usr $fs
+	#rm -rf $fs/usr/share/man
 }
 

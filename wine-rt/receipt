@@ -1,0 +1,66 @@
+# SliTaz package receipt.
+
+PACKAGE="wine-rt"
+VERSION="1.5.15"
+CATEGORY="misc"
+SHORT_DESC="Windows API for Linux."
+MAINTAINER="xj@wp.pl"
+TARBALL="${PACKAGE%-rt}-$VERSION.tar.bz2"
+WEB_SITE="http://www.winehq.org/"
+WGET_URL="$SF_MIRROR/${PACKAGE%-rt}/$TARBALL"
+TAGS="windows"
+PROVIDE="wine"
+
+DEPENDS="alsa-lib libxml2 libxslt mesa libglu-mesa xorg-dev lcms freetype"
+BUILD_DEPENDS="alsa-lib-dev flex bison mesa-dev freetype-dev libtool \
+libxml2-dev libxslt-dev lcms-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	patch -s -Np1 -i $stuff/wine-rt-101107.patch
+	
+CONFIGURE_ARGS='
+  --prefix=/usr 
+  --disable-tests
+  --without-capi
+  --without-cms
+  --without-coreaudio
+  --without-cups
+  --without-gphoto
+  --without-gnutls
+  --without-gsm
+  --without-ldap
+  --without-mpg123
+  --without-openal
+  --without-opencl
+  --without-openssl
+  --without-oss
+  --without-sane
+  --without-v4l
+  --disable-win16
+  --with-x
+'
+  CFLAGS="$CFLAGS -O2 -funroll-loops -frounding-math -mfpmath=sse -msse2 \
+     -fsignaling-nans -pipe"
+	
+  ./configure $CONFIGURE_ARGS &&
+  make $MAKEFLAGS && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/wine $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/wine $fs/usr/share
+	cp -a $install/usr/share/applications $fs/usr/share
+	cp -a $install/usr/lib/lib* $fs/usr/lib
+	cp -a $install/usr/lib/wine/*.so $fs/usr/lib/wine
+}
+
+post_install()
+{
+	modprobe snd-seq 2>/dev/null
+}
