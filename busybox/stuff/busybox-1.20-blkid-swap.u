@@ -1,10 +1,25 @@
 Swap partitions may have neither label nor uuid
 --- busybox-1.20.0/util-linux/volume_id/get_devname.c
 +++ busybox-1.20.0/util-linux/volume_id/get_devname.c
-@@ -50,5 +50,5 @@
- 		goto ret;
+@@ -46,10 +46,7 @@
+ 	if (ioctl(/*vid->*/fd, BLKGETSIZE64, &size) != 0)
+ 		size = 0;
  
+-	if (volume_id_probe_all(vid, /*0,*/ size) != 0)
+-		goto ret;
+-
 -	if (vid->label[0] != '\0' || vid->uuid[0] != '\0') {
-+	if (vid->type) {
++	if (volume_id_probe_all(vid, /*0,*/ size) == 0) {
  		*label = xstrndup(vid->label, sizeof(vid->label));
  		*uuid  = xstrndup(vid->uuid, sizeof(vid->uuid));
+ #if ENABLE_FEATURE_BLKID_TYPE
+--- busybox-1.20.0/util-linux/volume_id/volume_id.c
++++ busybox-1.20.0/util-linux/volume_id/volume_id.c
+@@ -192,6 +192,7 @@
+ 			goto ret;
+ 	}
+ 
++	id->error = 1;
+  ret:
+ 	volume_id_free_buffer(id);
+ 	return (- id->error); /* 0 or -1 */
