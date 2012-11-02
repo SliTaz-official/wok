@@ -720,14 +720,18 @@ static int find_boolean(char **argv, const char *argument)
 static char *make_cmdline(char **argv)
 {
     char **arg;
-    size_t bytes;
+    size_t bytes, size;
     char *cmdline, *p;
+    int i;
 
     bytes = 1;			/* Just in case we have a zero-entry cmdline */
     for (arg = argv; *arg; arg++) {
 	bytes += strlen(*arg) + 1;
     }
-
+    for (i = 0; i < 255; i++)
+    	if (syslinux_getadv(i, &size))
+    		bytes += ++size;
+  
     p = cmdline = malloc(bytes);
     if (!cmdline)
 	return NULL;
@@ -737,6 +741,14 @@ static char *make_cmdline(char **argv)
 	memcpy(p, *arg, len);
 	p[len] = ' ';
 	p += len + 1;
+    }
+
+    for (i = 0; i < 255; i++) {
+    	const void *q = syslinux_getadv(i, &size);
+    	if (q == NULL) continue;
+    	memcpy(p, q, size);
+	p[size] = ' ';
+	p += size + 1;
     }
 
     if (p > cmdline)
