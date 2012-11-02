@@ -306,6 +306,7 @@ static int main_say(int argc, char **argv)
 		printf("%s ",argv[i]);
 	}
 	sleep(5);
+	return 0;
 }
 
 static int main_md5sum(int argc, char **argv)
@@ -583,7 +584,7 @@ static int main_kbdmap(int argc, char *argv[])
     setlinuxarg(1, argc - 3, argv + 3);
 
     msg="Append to kernel parameters: ";
-    for (i = 3; i < argc; i++, msg = " ")
+    for (i = 3; i < (size_t) argc; i++, msg = " ")
 	printf("%s%s",msg,argv[i]);
     printf("\nNow select 'Start SliTaz' in top menu.");
     printf("\n\n                            Hit RETURN to continue.\n");
@@ -637,7 +638,7 @@ kbdmap_error:
 /* ----------------------------------------------------------------------- *
  *
  *   Copyright 2007-2008 H. Peter Anvin - All Rights Reserved
- *   Copyright 2009 Intel Corporation; author: H. Peter Anvin
+ *   Copyright 2009-2012 Intel Corporation; author: H. Peter Anvin
  *
  *   Permission is hereby granted, free of charge, to any person
  *   obtaining a copy of this software and associated documentation
@@ -674,6 +675,7 @@ kbdmap_error:
  * Usage: linux.c32 [-dhcpinfo] kernel arguments...
  */
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -718,18 +720,14 @@ static int find_boolean(char **argv, const char *argument)
 static char *make_cmdline(char **argv)
 {
     char **arg;
-    size_t bytes, size;
+    size_t bytes;
     char *cmdline, *p;
-    int i;
 
     bytes = 1;			/* Just in case we have a zero-entry cmdline */
     for (arg = argv; *arg; arg++) {
 	bytes += strlen(*arg) + 1;
     }
-    for (i = 0; i < 255; i++)
-    	if (syslinux_getadv(i, &size))
-    		bytes += ++size;
-  
+
     p = cmdline = malloc(bytes);
     if (!cmdline)
 	return NULL;
@@ -741,14 +739,6 @@ static char *make_cmdline(char **argv)
 	p += len + 1;
     }
 
-    for (i = 0; i < 255; i++) {
-    	const void *q = syslinux_getadv(i, &size);
-    	if (q == NULL) continue;
-    	memcpy(p, q, size);
-	p[size] = ' ';
-	p += size + 1;
-    }
-
     if (p > cmdline)
 	p--;			/* Remove the last space */
     *p = '\0';
@@ -756,10 +746,31 @@ static char *make_cmdline(char **argv)
     return cmdline;
 }
 
+static int setup_data_file(struct setup_data *setup_data,
+			   uint32_t type, const char *filename,
+			   bool opt_quiet)
+{
+    if (!opt_quiet)
+	printf("Loading %s... ", filename);
+
+    if (setup_data_load(setup_data, type, filename)) {
+	if (opt_quiet)
+	    printf("Loading %s ", filename);
+	printf("failed\n");
+	return -1;
+    }
+	    
+    if (!opt_quiet)
+	printf("ok\n");
+    
+    return 0;
+}
+
 static int main_linux(int argc, char *argv[])
 {
     const char *kernel_name;
     struct initramfs *initramfs;
+    struct setup_data *setup_data;
     char *cmdline;
     char *boot_image;
     void *kernel_data;
@@ -768,7 +779,9 @@ static int main_linux(int argc, char *argv[])
     bool opt_quiet = false;
     void *dhcpdata;
     size_t dhcplen;
-    char **argp, *arg, *p;
+    char **argp, **argl, *arg, *p;
+
+    openconsole(&dev_null_r, &dev_stdcon_w);
 
     (void)argc;
     argp = argv + 1;
@@ -790,9 +803,12 @@ static int main_linux(int argc, char *argv[])
 
     kernel_name = arg;
 
+    errno = 0;
     boot_image = malloc(strlen(kernel_name) + 12);
-    if (!boot_image)
+    if (!boot_image) {
+	fprintf(stderr, "Error allocating BOOT_IMAGE string: ");
 	goto bail;
+    }
     strcpy(boot_image, "BOOT_IMAGE=");
     strcpy(boot_image + 11, kernel_name);
     /* argp now points to the kernel name, and the command line follows.
@@ -805,23 +821,30 @@ static int main_linux(int argc, char *argv[])
 
     if (!opt_quiet)
 	printf("Loading %s... ", kernel_name);
+    errno = 0;
     if (loadfile(kernel_name, &kernel_data, &kernel_len)) {
 	if (opt_quiet)
 	    printf("Loading %s ", kernel_name);
-	printf("failed!\n");
+	printf("failed: ");
 	goto bail;
     }
     if (!opt_quiet)
 	printf("ok\n");
 
+    errno = 0;
     cmdline = make_cmdline(argp);
-    if (!cmdline)
+    if (!cmdline) {
+	fprintf(stderr, "make_cmdline() failed: ");
 	goto bail;
+    }
 
     /* Initialize the initramfs chain */
+    errno = 0;
     initramfs = initramfs_init();
-    if (!initramfs)
+    if (!initramfs) {
+	fprintf(stderr, "initramfs_init() failed: ");
 	goto bail;
+    }
 
     if ((arg = find_argument(argp, "initrd="))) {
 	do {
@@ -831,10 +854,11 @@ static int main_linux(int argc, char *argv[])
 
 	    if (!opt_quiet)
 		printf("Loading %s... ", arg);
+	    errno = 0;
 	    if (initramfs_load_archive(initramfs, arg)) {
 		if (opt_quiet)
 		    printf("Loading %s ", kernel_name);
-		printf("failed!\n");
+		printf("failed: ");
 		goto bail;
 	    }
 	    if (!opt_quiet)
@@ -848,16 +872,58 @@ static int main_linux(int argc, char *argv[])
     /* Append the DHCP info */
     if (opt_dhcpinfo &&
 	!pxe_get_cached_info(PXENV_PACKET_TYPE_DHCP_ACK, &dhcpdata, &dhcplen)) {
+	errno = 0;
 	if (initramfs_add_file(initramfs, dhcpdata, dhcplen, dhcplen,
-			       "/dhcpinfo.dat", 0, 0755))
+			       "/dhcpinfo.dat", 0, 0755)) {
+	    fprintf(stderr, "Unable to add DHCP info: ");
 	    goto bail;
+	}
+    }
+
+    /* Handle dtb and eventually other setup data */
+    setup_data = setup_data_init();
+    if (!setup_data)
+	goto bail;
+
+    for (argl = argv; (arg = *argl); argl++) {
+	if (!memcmp(arg, "dtb=", 4)) {
+	    if (setup_data_file(setup_data, SETUP_DTB, arg+4, opt_quiet))
+		goto bail;
+	} else if (!memcmp(arg, "blob.", 5)) {
+	    uint32_t type;
+	    char *ep;
+
+	    type = strtoul(arg + 5, &ep, 10);
+	    if (ep[0] != '=' || !ep[1])
+		continue;
+
+	    if (!type)
+		continue;
+
+	    if (setup_data_file(setup_data, type, ep+1, opt_quiet))
+		goto bail;
+	}
     }
 
     /* This should not return... */
-    syslinux_boot_linux(kernel_data, kernel_len, initramfs, cmdline);
+    errno = 0;
+    syslinux_boot_linux(kernel_data, kernel_len, initramfs,
+			setup_data, cmdline);
+    fprintf(stderr, "syslinux_boot_linux() failed: ");
 
 bail:
-    fprintf(stderr, "Kernel load failure (insufficient memory?)\n");
+    switch(errno) {
+    case ENOENT:
+	fprintf(stderr, "File not found\n");
+	break;
+    case ENOMEM:
+	fprintf(stderr, "Out of memory\n");
+	break;
+    default:
+	fprintf(stderr, "Error %d\n", errno);
+	break;
+    }
+    fprintf(stderr, "%s: Boot aborted!\n", progname);
     return 1;
 }
 
