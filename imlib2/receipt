@@ -1,17 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="imlib2"
-VERSION="1.4.4"
+VERSION="1.4.5"
 CATEGORY="graphics"
 SHORT_DESC="Imlib graphic library."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="libpng tiff jpeg xorg-libXpm bzlib freetype libid3tag \
-xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext giflib xorg-libSM \
-xorg-libICE"
-BUILD_DEPENDS="libpng-dev tiff-dev jpeg-dev giflib-dev bzip2-dev xorg-libXpm-dev xorg-xextproto libid3tag-dev xorg-dev pkg-config freetype-dev zlib-dev util-linux-uuid-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://sourceforge.net/projects/enlightenment/"
 WGET_URL="$SF_MIRROR/enlightenment/$TARBALL"
+
+DEPENDS="libpng tiff jpeg xorg-libXpm bzlib freetype libid3tag \
+xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext giflib xorg-libSM \
+xorg-libICE"
+BUILD_DEPENDS="libpng-dev tiff-dev jpeg-dev giflib-dev bzip2-dev \
+xorg-libXpm-dev xorg-xextproto libid3tag-dev xorg-dev pkg-config \
+freetype-dev zlib-dev util-linux-uuid-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,21 +26,20 @@ compile_rules()
 		--mandir=/usr/share/man \
 		--with-x \
 		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/imlib2 $fs/usr/bin
-	
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	mkdir -p $fs/usr/lib/imlib2/filters
-	cp -a $_pkg/usr/lib/imlib2/filters/*.so* $fs/usr/lib/imlib2/filters
-	mkdir -p $fs/usr/lib/imlib2/loaders
-	cp -a $_pkg/usr/lib/imlib2/loaders/*.so* $fs/usr/lib/imlib2/loaders
-	
-	cp -a $_pkg/usr/bin/imlib2_* $fs/usr/bin
+	mkdir -p $fs/usr/bin \
+		$fs/usr/lib/imlib2/filters \
+		$fs/usr/lib/imlib2/loaders
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/imlib2/filters/*.so* \
+		$fs/usr/lib/imlib2/filters
+	cp -a $install/usr/lib/imlib2/loaders/*.so* \
+		$fs/usr/lib/imlib2/loaders
+	cp -a $install/usr/bin/imlib2_* $fs/usr/bin
 }
 
