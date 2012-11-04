@@ -1,7 +1,10 @@
 #!/bin/sh
 
-# Keep last 30 daily snapshot with crontab
-#0 0 * * * /usr/bin/btrfs-snapshot 30
+# Keep last 30 daily snapshots with crontab
+#0 * * * * /usr/bin/btrfs-snapshot 5  -hourly
+#0 0 * * * /usr/bin/btrfs-snapshot 30 -daily
+#0 0 1 * * /usr/bin/btrfs-snapshot 12 -monthly
+#0 0 1 1 * /usr/bin/btrfs-snapshot 99 -yearly
 
 btrfs_list()
 {
@@ -10,7 +13,7 @@ btrfs_list()
 }
 
 which btrfs > /dev/null && for root in $(btrfs_list) ; do
-	dir=${root%/}/.snapshots
+	dir=${root%/}/.snapshots$2
 	[ -d $dir ] || mkdir $dir
 	cd $dir
 	i=0
