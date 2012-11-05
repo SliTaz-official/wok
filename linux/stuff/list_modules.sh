@@ -34,7 +34,7 @@ for tree in $@; do
     done | awk '{ for (i = 1; i <= NF; i++)  print $i; }'
 done | sort | uniq | sed -e 's,.*slitaz/,,' -e 's,^kernel/,,' -e 's/:$//' | \
 while read module; do
-    grep -qs ^$module$ $src/modules.list && continue
+    grep -qs ^$module$ $src/../tmp//modules.list && continue
     if [ ! -f $_pkg/lib/modules/*-slitaz/kernel/$module ]; then
 	(cd $_pkg/lib/modules/*-slitaz/kernel; find -name $(basename $module) )
     else
