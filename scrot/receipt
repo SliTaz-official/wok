@@ -1,31 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="scrot"
-VERSION="0.8"
+VERSION="0.8-12"
 CATEGORY="x-window"
-SHORT_DESC="A screen capture utility."
-MAINTAINER="rocky@slitaz.org"
-DEPENDS="giblib"
-BUILD_DEPENDS="giblib giblib-dev imlib2-dev"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.linuxbrit.co.uk/scrot"
+SHORT_DESC="A screen capture utility"
+MAINTAINER="al.bobylev@gmail.com"
+DEPENDS="bzlib freetype giblib glibc-base imlib2 libxcb xorg-libX11 \
+xorg-libXau xorg-libXdmcp xorg-libXext zlib"
+BUILD_DEPENDS="patch giblib-dev imlib2-dev xorg-libX11-dev"
+TARBALL="$PACKAGE-${VERSION%-*}.tar.gz"
+WEB_SITE="http://freecode.com/projects/scrot"
 WGET_URL="http://www.linuxbrit.co.uk/downloads/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    ./configure --prefix=/usr \
-        --mandir=/usr/share/man \
-        --disable-nls \
-        $CONFIGURE_ARGS &&
-    make &&
-    make DESTDIR=$PWD/_pkg install
+	cd $src
+	patch -p1 < $stuff/scrot.patch
+	./configure $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$PWD/_pkg install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr
-    cp -a $_pkg/usr/bin $fs/usr
+	mkdir -p $fs/usr
+	cp -a $_pkg/usr/bin $fs/usr
 }
