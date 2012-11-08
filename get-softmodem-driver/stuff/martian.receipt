@@ -1,0 +1,49 @@
+# SliTaz package receipt.
+
+PACKAGE="martian"
+VERSION="full-20080617"
+CATEGORY="non-free"
+SHORT_DESC="Driver for the Agere Systems PCI Modem built on DSP 164x (Mars) series."
+MAINTAINER="domcox@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+DEPENDS="module-init-tools linux-source"
+WEB_SITE="http://martian.barrelsoutofbond.org"
+WGET_URL="http://www.barrelsoutofbond.org/downloads/$PACKAGE/$TARBALL"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+
+post_install()
+{
+	# Country settings
+	if [ -e /etc/TZ ]; then
+		ZONE=`cat /etc/TZ`
+		CODE=`grep $ZONE /usr/share/martian/zone.tab | cut -f1'`
+		if [ -n $CODE ]; then
+			COUNTRY=`grep ^$CODE /usr/share/martian/martian.country | cut -f2`
+			COUNTRY_NAME=`grep ^$CODE /usr/share/martian/martian.country | cut -f3`
+		fi
+	fi
+	if [ -z $COUNTRY ]; then
+		COUNTRY="us"
+		COUNTRY_NAME="USA"
+	fi
+	echo "Automatic country setting: $COUNTRY_NAME"
+	# Save options
+	if [ `grep -c MARTIAN_OPTIONS /etc/daemons.conf` -gt 0 ]; then
+		sed -i 's/MARTIAN_OPTIONS=.*/MARTIAN_OPTIONS="--country='"$COUNTRY"' \/dev\/ttySM0"/' /etc/daemons.conf
+	else
+	echo "# slmodemd daemon options." >> $root/etc/daemons.conf
+		echo "MARTIAN_OPTIONS=\"--country=$COUNTRY /dev/ttySM0\"" >> $root/etc/daemons.conf
+		echo  >> $root/etc/daemons.conf
+	fi
+	# Load module
+	/sbin/depmod -a
+	/sbin/modprobe martian_dev && \
+	/etc/init.d/martian start
+}
+
+post_remove()
+{
+	/etc/init.d/martian stop
+	rm -rf /usr/share/martian
+}

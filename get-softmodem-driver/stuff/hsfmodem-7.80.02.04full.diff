@@ -1,0 +1,170 @@
+diff -ru hsfmodem-7.80.02.04full/config.mak hsfmodem-7.80.02.04full-slitaz/config.mak
+--- hsfmodem-7.80.02.04full/config.mak	2009-02-20 22:30:12.000000000 +0100
++++ hsfmodem-7.80.02.04full-slitaz/config.mak	2009-06-15 11:49:13.000000000 +0200
+@@ -131,4 +131,4 @@
+ 		-e "s!@SCR_SUPPORT@!`test ! \"$(IMPORTED_SCR_SUPPORT)\" = yes; echo $$?`!g" \
+ 		-e "s!@DMP_SUPPORT@!`test -z \"$(IMPORTED_DMP_SUPPORT)\"; echo $$?`!g" \
+ 		< $< > $@
+-	chmod --reference=$< $@
++	chmod 755 $@
+diff -ru hsfmodem-7.80.02.04full/makefile hsfmodem-7.80.02.04full-slitaz/makefile
+--- hsfmodem-7.80.02.04full/makefile	2009-02-23 22:51:37.000000000 +0100
++++ hsfmodem-7.80.02.04full-slitaz/makefile	2009-06-15 11:49:13.000000000 +0200
+@@ -149,7 +149,7 @@
+ ifeq ($(RPMOPTEVAL),yes)
+ RPMTARGETCPU=$(shell rpm --eval '%_target_cpu')
+ else
+-RPMTARGETCPU=$(shell uname -i)
++RPMTARGETCPU=$(shell uname -m)
+ endif
+ 
+ ifneq ($(RPMOPTDEFINE),yes)
+diff -ru hsfmodem-7.80.02.04full/modules/Makefile hsfmodem-7.80.02.04full-slitaz/modules/Makefile
+--- hsfmodem-7.80.02.04full/modules/Makefile	2009-04-24 03:03:57.000000000 +0200
++++ hsfmodem-7.80.02.04full-slitaz/modules/Makefile	2009-06-15 11:49:13.000000000 +0200
+@@ -20,7 +20,7 @@
+ include $(TOP)/config.mak
+ 
+ IMPORTED = $(TOP)/modules/imported
+-MACHINE_ARCH := $(shell if uname --hardware-platform >/dev/null 2>&1 && ! uname --hardware-platform | grep -q "unknown"; then uname --hardware-platform; else uname --machine | sed 's/^i.86$$/i386/'; fi)
++MACHINE_ARCH := $(shell if uname -p >/dev/null 2>&1 && ! uname -p | grep -q "unknown"; then uname -p; else uname -m | sed 's/^i.86$$/i386/'; fi)
+ ifneq ($(subst powerpc,ppc,$(IMPORTED_ARCH)),$(MACHINE_ARCH))
+ $(warning *** WARNING: Trying to compile kernel modules on a $(MACHINE_ARCH) system while the installed $(CNXTTARGET) driver package is for $(IMPORTED_ARCH), this is likely to fail... ***)
+ endif
+diff -ru hsfmodem-7.80.02.04full/scripts/cnxtconfig.in hsfmodem-7.80.02.04full-slitaz/scripts/cnxtconfig.in
+--- hsfmodem-7.80.02.04full/scripts/cnxtconfig.in	2009-04-23 17:32:18.000000000 +0200
++++ hsfmodem-7.80.02.04full-slitaz/scripts/cnxtconfig.in	2009-06-15 21:29:49.000000000 +0200
+@@ -74,7 +74,7 @@
+ 				answer="${region}"
+ 				;;
+ 			*)
+-				answer="`echo \"${answer}\" | tr '[a-z ]' '[A-Z_]'`"
++				answer="`echo \"${answer}\" | tr '[a-z]' '[A-Z]' | sed 's/\s/_/g'`"
+ 				;;
+ 			esac
+ 		fi
+@@ -109,15 +109,13 @@
+ {
+ 	# Try to guess what region we're in, using the timezone settings
+ 
+-	localtime_size="`/bin/ls -lL /etc/localtime 2>/dev/null | ${AWK} '{print $5}'`"
+-
+-	if ! [ ${localtime_size} -gt 0 ]; then
++	if [ ! -e /etc/TZ ]; then
+ 		return 1
+ 	fi
+ 
+-	zoneinfo_dir=/usr/share/zoneinfo
++	zoneinfo_dir=/usr/share/hsfmodem
+ 
+-	if [ ! -d ${zoneinfo_dir} -o ! -f ${zoneinfo_dir}/zone.tab ]; then
++	if [ ! -f ${zoneinfo_dir}/zone.tab ]; then
+ 		return 1
+ 	fi
+ 
+@@ -206,18 +204,11 @@
+ 	iso_VN=00BC # VIETNAM
+ 
+ 	(
+-		cd ${zoneinfo_dir} 2>/dev/null || return 1
+-		find . -type f -size "${localtime_size}"c -print | sed 's@^\./@@' | \
+-			while read file; do
+-				cmp -s /etc/localtime $file || continue
+-# in the egrep and sed regular expressions below, it is very important to
+-# have tabs, not spaces
+-				egrep "	$file(	.*|\$)" ${zoneinfo_dir}/zone.tab
+-			done | sed -n '/^[^#]/s/	.*//p' | sort | uniq | \
+-				while read code; do
+-					eval "echo \${iso_${code}}"
+-				done | sort | uniq
++		zone=`cat /etc/TZ`
++		code=`grep $zone ${zoneinfo_dir}/zone.tab | awk '{print $1}' | sort | uniq`
++		eval "echo \${iso_${code}}"
+ 		return 0
++		
+ 	)
+ }
+ 
+@@ -271,7 +262,7 @@
+ # The md5sum is used for input verification.
+ disptokey()
+ {
+-	k="`echo \"$1\" | tr '[a-z]' '[A-Z]' | sed 's/FREE/00000000/' | tr -d -c '[0-9A-F\012]'`"
++	k="`echo \"$1\" | tr '[a-z]' '[A-Z]' | sed 's/FREE/00000000/' | tr -d -c '[0-9][A-F][\012]'`"
+ 	case $k in
+ 	00000000)
+ 		echo "$k"
+@@ -1655,7 +1646,7 @@
+ 		update-modules
+ 	else
+ 		if ("$@" "${modulesconf}" | "${filter}"; cat ${f}) > ${modulesconf}.$$; then
+-			if ! cmp --silent ${modulesconf}.$$ ${modulesconf}; then
++			if ! cmp -s ${modulesconf}.$$ ${modulesconf}; then
+ 				if ! cp ${modulesconf}.$$ ${modulesconf}; then
+ 					rm -f ${modulesconf}.$$ ${f}
+ 					exit 1
+@@ -1681,7 +1672,7 @@
+ 	fi
+ 
+ 	if ("$@" "${modprobeconf}" | "${filter}"; cat ${f}) > ${modprobeconf}.$$; then
+-		if ! cmp --silent ${modprobeconf}.$$ ${modprobeconf}; then
++		if ! cmp -s ${modprobeconf}.$$ ${modprobeconf}; then
+ 			if ! cp ${modprobeconf}.$$ ${modprobeconf}; then
+ 				rm -f ${modprobeconf}.$$ ${f}
+ 				exit 1
+@@ -2214,6 +2205,10 @@
+ 	elif [ -d /var/lib/LST ]; then
+ 		OSDISTNAME=Caldera
+ 		OSDISTIDNT=caldera
++	elif [ -f /etc/slitaz-release ]; then
++		OSDISTNAME=SliTaz
++		OSDISTIDNT=slitaz
++		OSDISTVERS="`cat /etc/slitaz-release`"
+ 	fi
+ 
+ 	OSKERNNAME="`uname -s | tr '[A-Z]' '[a-z]'`"
+@@ -2268,7 +2263,7 @@
+ 
+ dump_file()
+ {
+-	dump_cmd cat -v $@
++	dump_cmd cat $@
+ }
+ 
+ dump_diagnostics()
+@@ -2587,7 +2582,7 @@
+ 	fi
+ 	units="${specificunit}"
+ 	if [ -z "${units}" ]; then
+-		units=`ls --ignore=flush_nvm ${procdrvdir}`
++		units=`ls ${procdrvdir} | grep -v flush_nvm`
+ 
+ 		if [ -z "${units}" ]; then
+ 			echo ""
+@@ -2884,7 +2879,7 @@
+ 			explicitopt=true
+ 			do_cfgregion=true
+ 			if [ -n "$2" ]; then
+-				setregion="`echo \"$2\" | tr '[a-z ]' '[A-Z_]'`"
++				setregion="`echo \"$2\" | tr '[a-z]' '[A-Z]' | sed 's/\s/_/g'`"
+ 			fi
+ 			shift 2
+ 			;;
+@@ -2954,6 +2949,6 @@
+ 
+ # Accept --region <name> as equivalent to --region=<name>
+ if ${do_cfgregion} && [ $# -ge 1 -a -z "${setregion}" ]; then
+-	setregion="`echo \"$1\" | tr '[a-z ]' '[A-Z_]'`"
++	setregion="`echo \"$1\" | tr '[a-z]' '[A-Z]' | sed 's/\s/_/s'`"
+ 	shift
+ fi
+
+@@ -3033,0 +3027,0 @@
+
+ if ${do_cfgnewinstance}; then
+  if [ ! -d "${cnxtnvmdir}/dynamic/${newinstance}" ]; then
+-		mkdir --mode=700 --parents "${cnxtnvmdir}/dynamic/${newinstance}" || exit $?
++		mkdir -m 700 -p "${cnxtnvmdir}/dynamic/${newinstance}" || exit $?
+ 		# The purpose of --info here is to ensure module reload:
+ 		(sleep 2; exec @CNXTTARGET@config --auto --region=AUTO --info) </dev/null >/dev/null 2>&1 &
+ 	fi

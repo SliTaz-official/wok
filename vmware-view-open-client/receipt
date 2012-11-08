@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="vmware-view-open-client"
+VERSION="4.5.0-297975"
+SOURCE="VMware-view-open-client-source"
+CATEGORY="network"
+SHORT_DESC="Connection tools to remote Windows desktops managed by VMware View."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://code.google.com/p/$PACKAGE/"
+WGET_URL="http://$PACKAGE.googlecode.com/files/$TARBALL"
+
+DEPENDS="gtk+ libssl libxml2 curl libboost-signals icu bzlib"
+BUILD_DEPENDS="gtk+-dev openssl-dev libxml2-dev curl-dev libboost-dev \
+libboost-signals-dev icu-dev icu intltool"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	export LDFLAGS="-Wl,--copy-dt-needed-entries -lX11"
+	sed -i 's|.*curl/types|// &|' lib/bora/basicHttp/http.c
+	./configure --prefix=/usr \
+		$CONFIGURE_ARGS && \
+	make && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
+

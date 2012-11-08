@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="splashutils"
+VERSION="1.5.4.4"
+CATEGORY="system-tools"
+SHORT_DESC="Graphical boot utilities (fbsplash)."
+MAINTAINER="devel@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://fbsplash.alanhaggai.org/"
+WGET_URL="http://fbsplash.alanhaggai.org/tarballs/files/$TARBALL"
+
+DEPENDS="libjpeg libpng gpm"
+BUILD_DEPENDS="jpeg-dev libpng-dev gpm-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	autoreconf
+	LIBS="-lbz2"
+	./configure \
+		--sysconfdir=/etc \
+		--without-klibc \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/sbin $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+}

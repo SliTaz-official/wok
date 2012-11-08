@@ -1,0 +1,194 @@
+#!/bin/sh
+# install softmodems drivers if needed.
+
+PACKAGE=$(echo $0 | sed 's/.*get-\(.*\)-driver/\1/')
+ROOT="$1"
+DEPENDS=""
+
+untested()
+{
+echo "--------------------------------------------------------"
+echo "Due to a lack of compatible hardware for troubleshooting,"
+echo "this $PACKAGE package has not been tested. Please report"
+echo "any success, failure, bug to SliTaz Labs or SliTaz Forum."
+echo "--------------------------------------------------------"
+sleep 1
+}
+
+case "$PACKAGE" in
+hsfmodem)
+	. /usr/share/softmodem/hsfmodem.receipt ;;
+hcfpcimodem)
+	. /usr/share/softmodem/hcfpcimodem.receipt ;;
+martian)
+	. /usr/share/softmodem/martian.receipt ;;
+slmodem)
+	. /usr/share/softmodem/slmodem.receipt ;;
+*)
+	echo "Unknown modem driver. Please run one of the following commands:"
+	for i in $(cd $(dirname $0); ls get-*-driver); do
+		[ -L $i ] || continue
+		[ "$(readlink $i)" = "get-modem-driver" ] || continue
+		echo "  $i"
+	done
+	exit 1;;
+esac
+
+# Report
+echo "Installing $SHORT_DESC.."
+
+# Check if user is root to install.
+if test $(id -u) != 0 ; then
+	echo -e "\nYou must be root to run `basename $0`."
+	echo -e "Please use 'su' and root password to become super-user.\n"
+	exit 0
+fi
+
+# Avoid reinstall
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+	echo -e "\n$PACKAGE-$VERSION package is already installed.\n"
+	exit 0
+fi
+
+# Check linux-source
+cp /proc/config.gz . && gunzip config.gz
+DIFF=$(diff /usr/src/linux/.config config | awk 'BEGIN{i=0}/^[-+]/{ i++} END{print i}')
+rm -f config config.gz
+if [ $DIFF -gt 2 ]; then
+	echo "Warning: Linux source .config file and currently installed kernel don't match."
+	echo "Please rebuild Linux source with the proper .config file."
+	echo "Otherwise you may not be able to load the generated drivers."
+	sleep 2
+fi
+
+# Get files
+cd /usr/src
+echo "Checking for source tarball... $WGET_URL"
+if [ ! -f "$TARBALL" ]; then 
+	wget $WGET_URL
+	# Exit if download failed to avoid errors.
+	if [ ! -f "$TARBALL" ]; then
+		echo -e "\nDownload failed, exiting. Please check WGET_URL variable.\n"
+		exit 1
+	fi
+fi
+
+case "$WGET_URL" in
+*rpm)	rpm2cpio < $(basename $WGET_URL) | cpio -id;;
+*deb)	dpkg-deb -x $(basename $WGET_URL) . ;;
+*bz2)	tar xjf $(basename $WGET_URL) ;;
+*tar.gz|*tgz)	tar xzf $(basename $WGET_URL) || exit 1 ;;
+*zip)	unzip $(basename $WGET_URL);;
+*o)	;;
+esac
+
+# Set dirs
+src=/usr/src/$PACKAGE-$VERSION
+taz=/tmp/sm$RANDOM$RANDOM$RANDOM.$$
+fs=$taz/$PACKAGE-$VERSION/fs
+mkdir -p $fs
+
+# Create pseudo package
+case "$PACKAGE" in 
+hsfmodem)
+	# Rules to configure and make the package.
+	cd $src
+	echo "Apply $file..."
+	patch -p1 < /usr/share/softmodem/$PACKAGE-$VERSION.diff || exit 1
+	# Build
+	make all
+	make ROOT=$fs install
+	make clean
+	# Data for automatic region setting
+	mkdir -p $fs/usr/share/hsfmodem
+	cp -a /usr/share/softmodem/zone.tab $fs/usr/share/hsfmodem
+	# src is needed
+	cd $taz
+	mkdir -p $fs/usr/src
+	mv $src $fs/usr/src
+	;;
+hcfpcimodem)
+	untested
+	# Rules to configure and make the package.
+	cd $src
+	echo "Apply $file..."
+	patch -p1 < /usr/share/softmodem/$PACKAGE-$VERSION.diff || exit 1
+	# Build
+	make all
+	make ROOT=$fs install
+	make clean
+	# Data for automatic region setting
+	mkdir -p $fs/usr/share/hcfpcimodem
+	cp -a /usr/share/softmodem/zone.tab $fs/usr/share/hcfpcimodem
+	# src is needed
+	cd $taz
+	mkdir -p $fs/usr/src
+	mv $src $fs/usr/src
+	;;
+martian)
+	untested
+	# Build
+	src=/usr/src/$PACKAGE
+	cd $src
+	sed -i 's/uname -i/uname -m/' modem/Makefile
+	sed -i 's/asm\/page.h/\/usr\/src\/linux\/include\/asm\/page.h/' modem/mport.c
+	sed -i 's/asm\/page.h/\/usr\/src\/linux\/include\/asm\/page.h/' modem/tweakrelocsdynamic.c
+	make all
+	# Install
+	mkdir -p $fs/usr/sbin
+	cp -a modem/martian_modem $fs/usr/sbin
+	mkdir -p $fs/lib/modules/`uname -r`/martian
+	cp -a kmodule/martian_dev.ko $fs/lib/modules/`uname -r`/martian
+	mkdir -p $fs/etc/init.d
+	cp -a /usr/share/softmodem/martian.init $fs/etc/init.d/martian
+	chmod +x $fs/etc/init.d/martian
+	# Data for automatic region setting
+	mkdir -p $fs/usr/share/martian
+	cp -a /usr/share/softmodem/zone.tab $fs/usr/share/martian
+	cp -a /usr/share/softmodem/martian.country $fs/usr/share/martian
+	rm -rf $src
+	;;
+slmodem)
+	untested
+	# build modules
+	cd $src
+	make clean
+	make drivers
+	# Build slmodemd with ALSA support
+	cd modem
+	make clean
+	make SUPPORT_ALSA=1
+	# install
+	cd $src
+	mkdir -p $fs/lib/modules/`uname -r`/slamr
+	cp -a drivers/*ko $fs/lib/modules/`uname -r`/slamr
+	mkdir -p $fs/usr/sbin
+	cp -a modem/slmodemd $fs/usr/sbin
+	mkdir -p $fs/etc/init.d
+	cp -a /usr/share/softmodem/slmodem.init $fs/etc/init.d/slmodem
+	chmod +x $fs/etc/init.d/slmodem
+	# Data for automatic region setting
+	mkdir -p $fs/usr/share/slmodem
+	cp -a /usr/share/softmodem/zone.tab $fs/usr/share/slmodem
+	cp -a /usr/share/softmodem/slmodem.country $fs/usr/share/slmodem
+	rm -rf $src
+	;;
+esac
+
+# Create receipt
+cd $taz
+cat /usr/share/softmodem/$PACKAGE.receipt> $PACKAGE-$VERSION/receipt
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Install pseudo package
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+
+# Clean
+if [ -e /etc/tazwok.conf ]; then
+	. /etc/tazwok.conf
+	mkdir -p $PACKAGES_REPOSITORY
+	cp -a $PACKAGE-$VERSION.tazpkg $PACKAGES_REPOSITORY
+fi
+rm -rf $taz

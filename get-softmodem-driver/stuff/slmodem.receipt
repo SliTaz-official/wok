@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="slmodem"
+VERSION="2.9.11-20090222"
+CATEGORY="non-free"
+SHORT_DESC="Support for the SmartLink Softmodem and ALSA supported chipsets."
+MAINTAINER="domcox@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+DEPENDS="alsa-lib module-init-tools linux-source"
+WEB_SITE="http://linmodems.technion.ac.il"
+WGET_URL="http://linmodems.technion.ac.il/packages/smartlink/$TARBALL"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+
+post_install()
+{
+	# Country detection
+	if [ -e /etc/TZ ]; then
+		ZONE=`cat /etc/TZ`
+		CODE=`grep $ZONE /usr/share/slmodem/zone.tab | cut -f1'`
+		if [ -n $CODE ]; then
+			COUNTRY=`grep ^$CODE /usr/share/slmodem/slmodem.country | cut -f2`
+		fi
+	fi
+	if [ -z $COUNTRY ]; then
+		COUNTRY="USA"
+	fi
+	echo "Automatic country setting: $COUNTRY"
+	# Save options
+	if [ `grep -c SLMODEM_OPTIONS /etc/daemons.conf` -gt 0 ]; then
+		sed -i 's/SLMODEM_OPTIONS=.*/SLMODEM_OPTIONS="--country='"$COUNTRY"' \/dev\/slamr0"/' /etc/daemons.conf
+	else
+		echo "# slmodemd daemon options." >> $root/etc/daemons.conf
+		echo "SLMODEM_OPTIONS=\"--country=$COUNTRY /dev/slamr0\"" >> $root/etc/daemons.conf
+		echo  >> $root/etc/daemons.conf
+	fi
+	# Load module 
+	depmod -a
+	/sbin/modprobe slamr && /etc/init.d/slmodem start
+}
+
+post_remove()
+{
+	/etc/init.d/slmodem stop
+	rm -rf /usr/share/slmodem
+}
