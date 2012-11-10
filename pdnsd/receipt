@@ -32,21 +32,21 @@ genpkg_rules()
 # Pre and post install commands for Tazpkg.
 pre_remove()
 {
-	sed -i 's/ pdns / /' $1/etc/rcS.conf
-	rm -f $1/etc/init.d/pdns
+	sed -i 's/pdnsd//' $1/etc/rcS.conf
+	rm -f $1/etc/init.d/pdnsd
 }
 
 post_install()
 {
 	local tmp
 	tmp=$(route -n | awk '/^0.0.0.0/ { print $8; }')
-	[ -n "$tmp" ] && sed -i "s/eth0/$tmp/" $1/etc/pdns.conf
+	[ -n "$tmp" ] && sed -i "s/eth0/$tmp/" $1/etc/pdnsd.conf
 	tmp=$(sed '/nameserver/!d;s/nameserver //;q' < /etc/resolv.conf)
-	[ -n "$tmp" ] && sed -i "s/192\.168\.0\.1/$tmp/" $1/etc/pdns.conf
+	[ -n "$tmp" ] && sed -i "s/192\.168\.0\.1/$tmp/" $1/etc/pdnsd.conf
 	tmp=
-	[ -s $1/etc/init.d/daemon ] && ln -s daemon $1/etc/init.d/pdns &&
-		tmp=" and add pdns to RUN_DAEMONS in /etc/rcS.conf"
+	[ -s $1/etc/init.d/daemon ] && ln -s daemon $1/etc/init.d/pdnsd &&
+		tmp=" and add pdnsd to RUN_DAEMONS in /etc/rcS.conf"
 	cat <<EOT
-Now you can check /etc/pdns.conf$tmp.
+Now you can check /etc/pdnsd.conf$tmp.
 EOT
 }
