@@ -28,3 +28,25 @@ genpkg_rules()
 	rm -rf $fs/usr/share
 	mv $fs/etc/pdnsd.conf.sample $fs/etc/pdnsd.conf
 }
+
+# Pre and post install commands for Tazpkg.
+pre_remove()
+{
+	sed -i 's/ pdns / /' $1/etc/rcS.conf
+	rm -f $1/etc/init.d/pdns
+}
+
+post_install()
+{
+	local tmp
+	tmp=$(route -n | awk '/^0.0.0.0/ { print $8; }')
+	[ -n "$tmp" ] && sed -i "s/eth0/$tmp/" $1/etc/pdns.conf
+	tmp=$(sed '/nameserver/!d;s/nameserver //;q' < /etc/resolv.conf)
+	[ -n "$tmp" ] && sed -i "s/192\.168\.0\.1/$tmp/" $1/etc/pdns.conf
+	tmp=
+	[ -s $1/etc/init.d/daemon ] && ln -s daemon $1/etc/init.d/pdns &&
+		tmp=" and add pdns to RUN_DAEMONS in /etc/rcS.conf"
+	cat <<EOT
+Now you can check /etc/pdns.conf$tmp.
+EOT
+}
