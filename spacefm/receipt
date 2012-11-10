@@ -21,7 +21,7 @@ compile_rules()
 {
 	cd $src
 	./configure \
-		--with-preferable-sudo=/usr/bin/subox \
+		--with-preferable-sudo="/usr/bin/subox" \
 		--disable-pixmaps \
 		$CONFIGURE_ARGS &&
 	make && make install
@@ -30,22 +30,17 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/etc/spacefm $fs/etc/xdg/spacefm
+	mkdir -p $fs/usr/share $fs/etc/spacefm
 	cp -a $install/usr/bin $fs/usr
 	for d in applications mime icons spacefm
 	do
 		cp -a $install/usr/share/$d $fs/usr/share
 	done
 	cp $stuff/spacefm.conf $fs/etc/spacefm
-	cp -a $stuff/autostart $fs/etc/xdg
+	cp -a $stuff/xdg $fs/etc
 	# Faenza --> SliTaz
 	mv $fs/usr/share/icons/Faenza $fs/usr/share/icons/SliTaz
+	rm -rf $fs/usr/share/icons/hicolor/128x128
+	# /bin/bash --> /bin/sh
+	sed -i s'|/bin/bash|/bin/sh|'g $fs/usr/bin/spacefm-auth
 }
-
-# This will creat BIG icon cache file
-#
-#post_install()
-#{
-	#gtk-update-icon-cache -q -t -f $root/usr/share/icons/hicolor
-    #gtk-update-icon-cache -q -t -f $root/usr/share/icons/Faenza
-#}
