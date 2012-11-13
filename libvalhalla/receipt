@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="libvalhalla"
-VERSION="2.0.0"
+VERSION="2.1.0"
 CATEGORY="multimedia"
 SHORT_DESC="A tiny media scanner API."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="ffmpeg libexif sqlite libxml2 libgcrypt libcurl libcrypto"
-BUILD_DEPENDS="ffmpeg-dev"
+BUILD_DEPENDS="ffmpeg-dev sqlite-dev libxml2-dev libexif-dev curl-dev"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://libvalhalla.geexbox.org/"
 WGET_URL="http://libvalhalla.geexbox.org/releases/$TARBALL"
@@ -15,6 +15,9 @@ WGET_URL="http://libvalhalla.geexbox.org/releases/$TARBALL"
 compile_rules()
 {
 	cd $src
+	sed -i '/av_metadata_get/d' configure
+	sed -i 's/av_metadata_get/av_dict_get/' configure src/parser.c
+	sed -i 's/AVMetadataTag/AVDictionaryEntry/' src/parser.c
 
 	# Fix build with curl >= 7.21.2
 	sed -i '/#include <curl\/types.h>/d' src/url_utils.c
