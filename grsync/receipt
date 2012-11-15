@@ -1,19 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="grsync"
-VERSION="1.2.1"
+VERSION="1.2.2"
 CATEGORY="network"
 SHORT_DESC="GTK+ intuitive interface to rsync."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ rsync xorg-libXdamage acl"
-BUILD_DEPENDS="gtk+-dev xorg-xproto perl-xml-parser intltool"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.opbyte.it/grsync/"
 WGET_URL="http://www.opbyte.it/release/$TARBALL"
 
+DEPENDS="gtk+ rsync xorg-libXdamage acl"
+BUILD_DEPENDS="gtk+-dev xorg-xproto perl-xml-parser intltool"
+
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
+	export LDFLAGS="-Wl,--copy-dt-needed-entries"
 	cd $src
 	chmod +x install-sh
 	./configure \
@@ -30,8 +33,8 @@ compile_rules()
 genpkg_rules()
 {
     	mkdir -p $fs/usr/share
-    	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share/grsync $fs/usr/share
+    	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/grsync $fs/usr/share
     	sed -i s'|#!/bin/bash|#!/bin/sh|' $fs/usr/bin/grsync-batch
 	chmod +x $fs/usr/bin/*
 }
