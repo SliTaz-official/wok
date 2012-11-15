@@ -1,26 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="enlightenment"
-VERSION="0.16.999.55225"
+VERSION="0.17.0-alpha2"
 CATEGORY="x-window"
 SHORT_DESC="Enlightenment window manager (E17)."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.enlightenment.org/"
-WGET_URL="http://download.enlightenment.org/snapshots/2010-12-03/$TARBALL"
+WGET_URL="http://download.enlightenment.org/releases/$TARBALL"
 TAGS="wm window-manager"
 TAGS="e17"
 
-DEPENDS="eina eet ecore evas edje efreet edbus alsa-lib"
+DEPENDS="eina eet ecore evas edje efreet edbus alsa-lib embryo eio emotion \
+eeze xcb-util-keysyms"
 BUILD_DEPENDS="eina-dev eet-dev ecore-dev evas-dev edje-dev efreet-dev
-edbus-dev alsa-lib-dev"
+edbus-dev alsa-lib-dev lua5.1-dev embryo-dev eio-dev emotion-dev eeze-dev \
+xcb-util-keysyms-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	./configure \
+		--sysconfdir=/etc \
 		--disable-connman \
-		--disable-bluez \
+		--disable-enlightenment-menu \
 		$CONFIGURE_ARGS &&
 	make && make install
 }
@@ -32,9 +35,10 @@ genpkg_rules()
 	# Use a modified sysactions.conf
 	cp -a $stuff/etc $fs
 
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
-	cp -a $_pkg/usr/share/enlightenment $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/share/enlightenment $fs/usr/share
+	cp -a $install/usr/share/xsession $fs/usr/share
 
 	# Remove devel files *.a/*.la
 	rm -rf $fs/usr/lib/$PACKAGE/preload/*.*a
@@ -46,7 +50,7 @@ genpkg_rules()
 
 post_install()
 {
-	res=`cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//`
+	res=$(cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//)
 	# Adding WM to SLIM available sessions.
 	if ! echo "$res" | grep -q e17; then
 		echo -n "Adding e17 to /etc/slim.conf..."
