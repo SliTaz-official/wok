@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="netrik"
+VERSION="1.16.1"
+CATEGORY="utilities"
+SHORT_DESC="Advanced text-mode WWW browser, focusing on a convenient user interface"
+MAINTAINER="al.bobylev@gmail.com"
+WEB_SITE="http://netrik.sourceforge.net/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="glibc-base ncursesw readline"
+BUILD_DEPENDS="readline-dev ncursesw-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+
+	# fix headers
+	for src in colors-bright colors-dark links main pager parse-syntax render screen; do
+		sed -i '/#include <ncursesw/ s|ncursesw/||g' ${src}.c
+	done
+
+	./configure $CONFIGURE_ARGS && make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $install/usr/bin $fs/usr
+}

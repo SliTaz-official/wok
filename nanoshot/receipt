@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="nanoshot"
+VERSION="0.2.15"
+CATEGORY="utilities"
+SHORT_DESC="Take screenshots of screen area, selected windows, web pages and videos"
+MAINTAINER="al.bobylev@gmail.com"
+WEB_SITE="http://sourceforge.net/projects/nanoshot/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="xdg-utils python pygobject pygtk pycurl gnome-python-desktop \
+dbus-python python-pil gst-python"
+BUILD_DEPENDS="xdg-utils python pygobject pygtk pycurl gnome-python-desktop \
+dbus-python python-pil bash sed"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p /usr/share/man
+	cd $src
+	./configure $CONFIGURE_ARGS &&
+	sed -i 's/cp -T/cp/g' ./install
+	# fix install paths
+	sed -i "s|\"/usr|\"$install/usr|g" ./install
+
+	./install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	rm -rf $fs/usr/share/icons/{Humanity,Humanity-Dark,ubuntu-mono-dark}
+	rm -rf $fs/usr/man
+	# fix paths
+	sed -i "s|$install||g" $fs/usr/bin/Nanoshot
+}
