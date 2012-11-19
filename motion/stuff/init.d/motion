@@ -1,0 +1,48 @@
+#!/bin/sh
+# /etc/init.d/motion: Start, stop and restart Motion daemon on SliTaz,
+# at boot time or with the command line. Daemons options are configured
+# with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+
+NAME=Motion
+DESC="Video detection"
+DAEMON=/usr/bin/motion
+PIDFILE=/run/motion/motion.pid
+
+case "$1" in
+	start)
+		if active_pidfile $PIDFILE motion ; then
+			echo "$NAME already running."
+			exit 1
+		fi
+		echo "Starting $DESC: $NAME... "
+		mkdir -p $(dirname $PIDFILE)
+		$DAEMON -p $PIDFILE ;;
+	stop)
+		if ! active_pidfile $PIDFILE motion ; then
+			echo "$NAME is not running."
+			exit 1
+		fi
+		echo -n "Stopping $DESC: $NAME... "
+		kill $(cat $PIDFILE)
+		rm $PIDFILE
+		status ;;
+	restart)
+		if ! active_pidfile $PIDFILE motion ; then
+			echo "$NAME is not running."
+			exit 1
+		fi
+		echo "Restarting $DESC: $NAME... "
+		kill $(cat $PIDFILE)
+		rm $PIDFILE
+		sleep 2
+		$DAEMON -p $PIDFILE ;;
+	*)
+		echo ""
+		echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
+		echo ""
+		exit 1 ;;
+esac
+
+exit 0
