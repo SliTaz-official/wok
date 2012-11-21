@@ -88,10 +88,10 @@ store()
 	[ -n "$DEBUG" ] && printf "store%d(%03X) = %0$(($1/4))X	%s\n" $1 $2 $3 "$5" 1>&2
 }
 
-# usage: getlong offset file
+# usage: getlong offset file [bytes]
 getlong()
 {
-	ddq if=$2 bs=1 skip=$(($1)) count=4 | hexdump -e '"" 1/4 "%d" "\n"'
+	od -j $1 -N ${3:-4} -t u${3:-4} -An $2
 }
 
 error()
@@ -122,8 +122,7 @@ floppyset()
 	[ -n "$DEBUG" ] && echo "Read bootsector..." 1>&2
 	ddq if=$KERNEL bs=512 count=1 of=$bs
 
-	[ $(( $(getlong 0x1FE $bs) & 0xFFFF )) -eq 43605 ] ||
-		error "Not bootable"
+	[ $(getlong 0x1FE $bs 2) -eq 43605 ] || error "Not bootable"
 	
 	uudecode <<EOT | ddq of=$bs conv=notrunc
 begin-base64 644 -
@@ -141,7 +140,7 @@ ZAINuA0BZDoNdArNFnT0mM0WjudHw1g6AEluc2VydCBkaXNrIDEHDQA=
 ====
 EOT
 	# Get setup
-	setupsz=$(( $(getlong $SetupSzOfs $bs) & 0xFF ))
+	setupsz=$(getlong $SetupSzOfs $bs 1)
 	if [ $setupsz -eq 0 ]; then
 		setupsz=4
 		store 8 $SetupSzOfs $setupsz $bs "setup size $setupsz"
@@ -149,7 +148,7 @@ EOT
 	[ -n "$DEBUG" ] && echo "Read setup ($setupsz sectors) ..." 1>&2
 	ddq if=$KERNEL bs=512 skip=1 count=$setupsz >> $bs
 
-	Version=$(( $(getlong 0x206 $bs) & 0xFFFF ))
+	Version=$(getlong 0x206 $bs 2)
 	[ $(getlong $Magic $bs) -ne 1400005704 ] && Version=0
 	feature=""
 	while read prot kern info ; do
@@ -181,7 +180,7 @@ EOT
 201 FFF 224	00:9B				heap_end_ptr
 EOT
 	if [ $Version -lt 514 ]; then
-		version_string=$((0x200 + ($(getlong 0x20E $bs) & 65535) ))
+		version_string=$((0x200 + $(getlong 0x20E $bs 2) ))
 		store	16	0x0037	$version_string	$bs version_string
 	fi
 	if [ $Version -ge 512 -a $(getlong 0x214 $bs) -ge $((0x100000)) ]; then 

@@ -71,7 +71,7 @@ readiso()
 # read a 32 bits data
 read32()
 {
-	readiso $1 $2 4 | hexdump -e '"" 1/4 "%d" "\n"'
+	readiso $1 $2 4 | od -N 4 -t u4 -An
 }
 
 # write a 32 bits data
