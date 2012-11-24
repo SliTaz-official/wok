@@ -18,9 +18,10 @@ compile_rules()
 	cd $src
 	./configure --prefix=/usr \
 		--sysconfdir=/etc \
-		--enable-usbdropdir=/usr/lib/pscs/drivers \
+		--enable-usbdropdir=/usr/lib/pcsc/drivers \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make && make DESTDIR=$DESTDIR install &&
+	make DESTDIR=$DESTDIR -C src install_ccidtwin
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -29,4 +30,18 @@ genpkg_rules()
 	mkdir -p $fs/etc/udev/rules.d/
 	cp -a $install/* $fs/
 	cp $src/src/92_pcscd_ccid.rules $fs/etc/udev/rules.d/
+	mv $fs/usr/lib/pcsc/drivers/ifd-ccid.bundle/Contents/Info.plist \
+		$fs/etc/libccid_Info.plist
+	ln -s $fs/etc/libccid_Info.plist \
+		/usr/lib/pcsc/drivers/ifd-ccid.bundle/Contents/Info.plist
+}
+
+post_install()
+{
+	# addgroup pcscd if needed                                                                                                                
+	if ! grep -q pcscd $1/etc/group; then
+		echo -n "Adding group pcscd..."
+		chroot $1/ addgroup pcscd
+		status
+	fi
 }
