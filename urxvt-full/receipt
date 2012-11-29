@@ -1,34 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="urxvt-full"
-VERSION="9.10"
+VERSION="9.15"
 CATEGORY="utilities"
-SHORT_DESC="terminal with unicode support"
-MAINTAINER="sygne@ombres.eu"
-DEPENDS="fontconfig xorg-libX11 expat freetype xorg-libXft zlib gcc-lib-base xorg-xmessage"
+SHORT_DESC="Terminal emulator with Unicode support for X11"
+WEB_SITE="http://software.schmorp.de/pkg/rxvt-unicode.html"
+MAINTAINER="al.bobylev@gmail.com"
+
 SOURCE="rxvt-unicode"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="http://software.schmorp.de/pkg/rxvt-unicode.html"
 WGET_URL="http://dist.schmorp.de/rxvt-unicode/$TARBALL"
+DEPENDS="bzlib expat fontconfig freetype gcc-lib-base gdk-pixbuf glib \
+glibc-base libffi libgio libpng libxcb startup-notification xcb-util \
+xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXft xorg-libXrender zlib"
+BUILD_DEPENDS="xorg-libX11-dev freetype-dev xorg-libXft-dev gdk-pixbuf-dev \
+startup-notification-dev ncursesw-extra"
+
 PROVIDE="urxvt"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	busybox patch -p0 -i $WOK/urxvt/stuff/gcc.u
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--enable-everything \
-	--mandir=/usr/share/man $CONFIGURE_ARGS && \
-	make && make DESTDIR=$PWD/_pkg install
+	./configure --enable-everything --enable-256-color \
+	--with-terminfo=/usr/share/terminfo $CONFIGURE_ARGS && \
+	make && make install
+	R="$install/usr/share/terminfo"; mkdir -p $R
+	tic -s -o $R $src/doc/etc/rxvt-unicode.terminfo
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
-
+	cp -a $install/* $fs
+	rm -rf $fs/usr/share/man
+	P="$fs/usr/share/pixmaps"; mkdir -p $P; cp -a $stuff/urxvt.png $P
 }
 
