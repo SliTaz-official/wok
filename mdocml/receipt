@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="mdocml"
+VERSION="1.12.1"
+CATEGORY="base-system"
+SHORT_DESC="UNIX manpage compiler"
+MAINTAINER="al.bobylev@gmail.com"
+WEB_SITE="http://mdocml.bsd.lv/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://mdocml.bsd.lv/snapshots/$TARBALL"
+
+DEPENDS="glibc-base"
+BUILD_DEPENDS="db-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	# configure
+	sed -i '/^#.*CFLAGS.*/ s/# //; s/OpenBSD 4\.5/SliTaz Cooking/; \
+		s/^STATIC.*/#\0/; \
+		s/^PREFIX.*/PREFIX = \/usr/;
+		s/^MANDIR.*/MANDIR = $(PREFIX)\/share\/man/;
+		s/^#\(DBLIB.*\)/\1/' \
+		Makefile
+	make clean &&
+	make &&
+	make DESTDIR=$install install &&
+	make DESTDIR=$install installcgi &&
+	install -m 0755 apropos catman mandocdb whatis $install/usr/bin
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $install/usr/bin/mandoc $fs/usr/bin
+}
