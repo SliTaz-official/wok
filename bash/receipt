@@ -63,41 +63,37 @@ genpkg_rules()
 	cp $stuff/example.bashrc $fs/etc/bashrc
 }
 
-# Post install commands for Tazpkg.
-# Check /bin/sh stat.
-#
+
 post_install()
 {
 	local root
 	root=$1
 	echo "Processing post-install commands..."
-	sh=`readlink $root/bin/sh`
-	if [ ! "$sh" = "/bin/bash" ]; then
-		echo ""
-		echo "**** Actual SH link : $sh"
-		echo ""
-		echo -n "Do you want Bash for /bin/sh (yes/No) ? : "
+		echo -n "Do you want to set Bash to default (y/N) ? : "
 		read -t 30 anser
-		if [ "$anser" == "yes" ]; then
+		if [ "$anser" == "y" ]; then
 			echo ""
-			echo -n "Removing sh link to make a new one pointing on /bin/bash..."
-			rm $root/bin/sh && ln -s /bin/bash $root/bin/sh
-			status
-		else
-			echo ""
-			echo "Leaving /bin/sh to : $sh"
+			echo "Setting bash as default for all users"
+			sed -i "s/:\/bin\/sh$/:\/bin\/bash/g"  /etc/passwd
+			sed -i "s/:\/bin\/ksh$/:\/bin\/bash/g" /etc/passwd
+			sed -i "s/:\/bin\/zsh$/:\/bin\/bash/g" /etc/passwd
+			sed -i "s/:\/bin\/csh$/:\/bin\/bash/g" /etc/passwd	
+			echo "Creating .bashrc file for all users"
+			for i in `ls -d /home/*`
+			    do
+			    cp /etc/bashrc $i/.bashrc
+			    done
+			cp /etc/bashrc /root/.bashrc
+			cp /etc/bashrc /etc/skel/.bashrc
 		fi
-	fi
 }
 
-# Restore a valid sh link if needed.
+
 pre_remove()
 {
 	local root
 	root=$1
-	sh=`readlink $root/bin/sh`
-	if [ ! "$sh" = "busybox" ]; then
-		rm $root/bin/sh &&
-		ln -s /bin/busybox $root/bin/sh
-	fi
+	echo "Setting back sh as default for all users"
+	sed -i "s/:\/bin\/bash$/:\/bin\/sh/g"  /etc/passwd
+	rm /etc/skel/.bashrc
 }
