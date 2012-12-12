@@ -34,7 +34,7 @@ if [ ! -f $TARBALL ]; then
 	echo "Could not download $TARBALL. Exiting."
 	exit 1
 fi
-
+	
 # Extract package
 dpkg-deb -e $TARBALL e
 dpkg-deb -x $TARBALL x
@@ -42,12 +42,12 @@ dpkg-deb -x $TARBALL x
 VERSION="$(awk '/Version:/ { print $2 }' < e/control | sed 's/-/./g')"
 
 # Create pseudo package
-mkdir -p $PACKAGE-$VERSION/usr/share/$PACKAGE
-mv x/opt/google/talkplugin/* $PACKAGE-$VERSION/usr/share/$PACKAGE
-mv $PACKAGE-$VERSION/usr/share/$PACKAGE/lib $PACKAGE-$VERSION/usr
+mkdir -p $PACKAGE-$VERSION/fs/usr/share/$PACKAGE
+mv x/opt/google/talkplugin/* $PACKAGE-$VERSION/fs/usr/share/$PACKAGE
+mv $PACKAGE-$VERSION/fs/usr/share/$PACKAGE/lib $PACKAGE-$VERSION/fs/usr
 
 # No auto updates...
-rm -rf $PACKAGE-$VERSION/usr/share/$PACKAGE/cron
+rm -rf $PACKAGE-$VERSION/fs/usr/share/$PACKAGE/cron
 
 cat > $PACKAGE-$VERSION/receipt <<EOT
 PACKAGE="$PACKAGE"
@@ -59,29 +59,29 @@ DEPENDS="$DEPENDS"
 
 post_install()
 {
-	chroot $1/ ln -s /usr/share/$PACKAGE/*.so /usr/lib/firefox*/plugins
+	mkdir -p /usr/lib/firefox/plugins
+	chroot $1/ ln -s /usr/share/$PACKAGE/*.so /usr/lib/firefox/plugins
 }
 
 post_remove()
-{
+{	 	 	 
 	for i in /usr/lib/firefox*/plugins/*.so ; do
 		case "$(readlink $i)" in
 		/usr/share/$PACKAGE/*) rm -f $i ;;
 		esac
-	done
+done
 }
 EOT
+
 
 # Pack
 tazpkg pack $PACKAGE-$VERSION
 
-# Clean to save RAM memory
-rm -rf $PACKAGE-$VERSION
-
 # Install pseudo package
 tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
-
-# Clean
+														
+# Clean to save RAM memory
+rm -rf $PACKAGE-$VERSION
 cd $CUR_DIR
 rm -rf $TMP_DIR
 
