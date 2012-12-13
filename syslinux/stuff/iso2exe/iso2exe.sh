@@ -40,12 +40,12 @@ main()
 	*0000)	[ -x /usr/bin/isohybrid ] && isohybrid $1
 	esac
 	[ ! -x /usr/sbin/mount.posixovl ] && 
-	echo "No file mount.posixovl. Abort." 1>&2 && exit 1
+	echo "No file mount.posixovl. Aborting." 1>&2 && exit 1
 		
-	echo "Move syslinux hybrid boot record..."
+	echo "Moving syslinux hybrid boot record..."
 	ddq if=$1 bs=512 count=1 | ddq of=$1 bs=512 count=1 seek=1 conv=notrunc 
 	
-	echo "Insert EXE boot record..."
+	echo "Inserting EXE boot record..."
 	$0 --get bootiso.bin | ddq of=$1 conv=notrunc
 
 	# keep the largest room for the tazlito info file
@@ -59,12 +59,12 @@ main()
 	SIZE=$(wc -c < $TMP/rootfs.gz)
 	store 28 $SIZE $1
 	OFS=$(( 0x8000 - $SIZE ))
-	printf "Add rootfs.gz file at %04X...\n" $OFS
+	printf "Adding rootfs.gz file at %04X...\n" $OFS
 	cat $TMP/rootfs.gz | ddq of=$1 bs=1 seek=$OFS conv=notrunc
 	rm -rf $TMP
 	SIZE=$($0 --get lzcom.bin boot.com.lzma | wc -c)
 	OFS=$(( $OFS - $SIZE ))
-	printf "Add DOS boot file at %04X...\n" $OFS
+	printf "Adding DOS boot file at %04X...\n" $OFS
 	$0 --get lzcom.bin boot.com.lzma | ddq of=$1 bs=1 seek=$OFS conv=notrunc
 	store 36 $(($OFS+0xE0)) $1
 	store 30 ${RANDOM:-0} $1
