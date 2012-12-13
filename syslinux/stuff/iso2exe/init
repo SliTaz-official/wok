@@ -1,0 +1,251 @@
+#!/bin/sh
+
+DIALOG=dialog
+
+get()
+{
+	od -j $1 -N ${3:-4} -t u${3:-4} -An $2
+}
+
+getarg()
+{
+	sed "/$1=/!d;s/.*$1=\\([^ ]*\\).*/\\1/" /proc/cmdline
+}
+
+gettazboot()
+{
+	echo "Create $(basename $1) ..."
+	O=$(($(get 36 /mnt/$ISO 2) - 0xE0))
+	L=$((0x8000 - $(get 28 /mnt/$ISO 2) - $O))
+	S=$((32+$L))
+	P=$((($S+511)/512))
+	E=$((4096-(32*$P)))
+	for i in 0x5A4D $(($S%512)) $P 0 2 $E -1 $((${2:-0}-16)) \
+			-2 0 256 -16 28 0x6C53 0x5469 0x7A61; do 
+		printf '\\\\x%02X\\\\x%02X' $(($i&255)) $((($i>>8)&255)) | \
+			xargs echo -en
+	done > $1
+	dd bs=1 count=$L skip=$(echo $O) if=/mnt/$ISO >> $1 2> /dev/null
+}
+
+checkmagic()
+{
+	[ -s $1 ] && [ $(getarg magic) == $(get 28 $1) ]
+}
+
+getiso()
+{
+	blkid | while read dev info ; do
+		case "$info" in
+		*dos*|*fat*|*ntfs*)
+			mount ${dev%:} /mnt
+			if checkmagic /mnt/$ISO; then
+				mount -o loop,ro /mnt/$ISO /media/cdrom
+				echo "Found $ISO on ${dev%:}"
+				break
+			fi
+			umount /mnt ;;
+		esac
+	done
+}
+
+uncpio()
+{
+	echo "Extracting $(basename $1) ..."
+	case $(get 0 $1 2) in
+	*35615)	zcat $1 ;;
+	*\ 93)	unlzma -c $1 ;;
+	*)	cat $1 ;;
+	esac | ( cd ${2:-/} ; cpio -idmu > /dev/null 2>&1 )
+}
+
+getuuid()
+{
+	dev=$(mount | sed '/ \/mnt /!d;s/ .*//;s|/dev/||;q')
+	blkid | sed "/$dev:/!d;s/.*UUID=.\\([^ ]*\\)\".*/\\1/"
+}
+
+mkinitrd()
+{
+	echo "Create $(basename $1) ..."
+	for i in bin lib dev proc tmp mnt etc ; do
+		mkdir -p /tmp/fs/$i
+	done
+	for i in /dev/console /dev/null /dev/tty /dev/tty1 /dev/fuse \
+		 /dev/hd* /dev/sd* ; do
+		cp -a $i /tmp/fs$i
+	done
+	for i in /bin/busybox /usr/sbin/mount.posixovl $(which blkid); do
+		cp $(LD_TRACE_LOADED_OBJECTS=1 /lib/ld*.so $i | \
+		sed 's|.*=> \(.*/lib/l[^ ]*\).*|\1|;/^\//!d') /tmp/fs/lib
+		cp $i /tmp/fs/bin
+	done
+	cp -a /lib/ld-* /tmp/fs/lib
+	for i in $(busybox | sed '/Current/,$!d'); do
+		ln -s busybox /tmp/fs/bin/${i%,}
+	done
+	ln -s /proc/mounts /tmp/fs/etc/mtab
+	cat > /tmp/fs/init <<EOT
+#!/bin/sh
+
+arg()
+{
+	grep -q \$1 /proc/cmdline &&
+	val="\$(sed "s/.*\$1=\\([^ ]*\\).*/\\1/" < /proc/cmdline)" &&
+	echo "\$2 \$val"
+}
+
+mount -t proc /proc /proc
+arg mount "Mount device"
+mount \$( (blkid /dev/?d* || blkid) | grep \$val | sed 's/:.*//;q') /mnt
+arg subroot "Change root to directory"
+mount.posixovl /mnt/\$val
+mount --bind /mnt /mnt/\$val/mnt/dos
+LDSO=\$(ls /mnt/\$val/lib/ld-* | sed q)
+umount /proc
+export LD_LIBRARY_PATH=\$val/lib:\$val/usr/lib:/lib
+exec /bin/switch_root /mnt \${LDSO#/mnt/} \$val/usr/sbin/chroot \$val /sbin/init
+EOT
+	chmod +x /tmp/fs/init
+	( cd /tmp/fs ; find * | cpio -o -H newc ) | lzma e $1 -si 2> /dev/null
+	rm -rf /tmp/fs
+}
+
+doinstall()
+{
+	mkdir /mnt/slitaz
+	mount.posixovl /mnt/slitaz || return
+	mkdir -p /mnt/slitaz/boot /mnt/slitaz/mnt/dos
+	for i in $(ls -r /media/cdrom/boot/rootfs*); do
+		uncpio $i /mnt/slitaz
+	done
+	for i in /media/cdrom/boot/bzImage /media/cdrom/boot/*pxe* \
+		/media/cdrom/boot/isolinux/he* /media/cdrom/boot/isolinux/opt* \
+		/media/cdrom/README /media/cdrom/boot/memtest* ; do
+		[ -s $i ] && cp $i /mnt/slitaz/boot
+	done
+	umount -d /media/cdrom
+	gettazboot /mnt/slitaz/boot/tazboot.exe
+	mkinitrd /mnt/slitaz/boot/initrd
+	cat > /mnt/slitaz/boot/tazboot.cmd <<EOT
+kernel=\\slitaz\\boot\\bzimage
+initrd=\\slitaz\\boot\\initrd
+rw root=/dev/null mount=$(getuuid) subroot=slitaz autologin
+EOT
+	unix2dos /mnt/slitaz/boot/he* /mnt/slitaz/boot/opt* \
+		/mnt/slitaz/boot/README /mnt/slitaz/boot/tazboot.cmd
+	[ -x /mnt/slitaz/usr/sbin/mount.posixovl ] ||
+	cp /usr/sbin/mount.posixovl /mnt/slitaz/usr/sbin
+	! grep -qs tazboot /mnt/boot.ini && cat >> /mnt/boot.ini <<EOT
+C:\\slitaz\\boot\\tazboot.exe="SliTaz"
+EOT
+	grep -qs menuitem /mnt/config.sys && !grep -q tazboot /mnt/config.sys &&
+	sed -i 's/menudefault=/menuitem=slitaz,SliTaz\n&/' /mnt/config.sys &&
+	cat >> /mnt/config.sys <<EOT
+[slitaz]
+device=\\slitaz\\boot\\tazboot.exe
+EOT
+}
+
+install()
+{
+	$DIALOG --clear \
+		--title " SliTaz UMSDOS like installation " \
+		--yes-label "Install" --yesno \
+"\nSliTaz will be installed in the subdirectory \\slitaz of the current
+DOS/Windows partition. You will see your files from /mnt/dos.\n\n
+You will start SliTaz with \\slitaz\\boot\\tazboot.exe\n\n
+To uninstall SliTaz, you have only to remove this directory.
+The file \\boot.ini or \\config.sys may be modified too.\n\n
+To do a traditionnal installation with disk partitioning
+start SliTaz Live with 'SliTaz RAM boot' menu.\n
+" 16 70
+	[ $? -eq 0 -a -x /usr/sbin/mount.posixovl ] || return
+	doinstall
+	umount /proc
+	exec chroot /mnt/slitaz /sbin/init
+}
+
+tazboot()
+{
+	$DIALOG --clear \
+		--title " SliTaz bootloader for DOS " \
+		--yes-label "Install" --yesno \
+"\nThe file TAZBOOT.EXE will be created in top directory. It supports
+bzImage linux kernel, multiples initramfs, kernel command line and
+ISO image file loopback (can retrieve files from an ISO file).\n\n
+Usage: tazboot.exe [[@commands]|[kernel=<bzimage>] 
+[initrd=<rootfs>[,<rootfs2>...]] [iso=<isofile>] cmdline args ...]\n\n
+Defaults: tazboot @tazboot.cmd  or  tazboot kernel=bzImage auto\n\n\
+Examples for tazboot.cmd:\n\n\
+  iso=\\isos\\slitaz-4.0.iso\n\
+  kernel=boot/bzImage\n\
+  initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz\n\
+  rw root=/dev/null autologin\n\n\
+  kernel=\\slitaz\\vmlinuz root=/dev/sda5 ro\n\n
+Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n
+" 24 78
+	[ $? -eq 0 ] || return
+	gettazboot /mnt/tazboot.exe
+}
+
+text()
+{
+	umount -d /media/cdrom
+	umount /mnt
+	umount /proc
+	exec /init
+}
+
+live()
+{
+	n=0
+	for i in $(ls -r /media/cdrom/boot/rootfs*); do
+		[ $((n++)) -eq 0 ] || uncpio $i
+	done
+	text
+}
+
+reboot()
+{
+	umount -d /media/cdrom
+	umount /mnt
+	/sbin/reboot -f
+}
+
+poweroff()
+{
+	umount -d /media/cdrom
+	umount /mnt
+	/sbin/poweroff -f
+}
+
+[ -x /usr/sbin/mount.posixovl ] ||
+mv /usr/sbin/mount.posixovl.iso2exe /usr/sbin/mount.posixovl
+mount -t proc /proc /proc
+ISO="$(getarg iso | sed 's/.://;s|\\|/|g')"
+getiso
+case "$(basename $ISO | tr [A-Z] [a-z])$(getarg mode)" in
+*install*)	install ;;
+*live*)		live ;;
+*text*)		text ;;
+esac
+
+while true; do
+	exec 3>&1
+	value=`$DIALOG  --clear \
+	--title " Welcome to SliTaz " \
+	--menu "\nPlease select" 15 70 7 \
+		"live"		"SliTaz RAM boot" \
+		"text"		"SliTaz RAM boot (text mode only)" \
+		"install"	"Hard disk installation" \
+		"tazboot"	"Get tazboot.exe Linux loader" \
+		"reboot"	"Restart the computer" \
+		"poweroff"	"Power off" \
+		"ash"		"Shell prompt" \
+	2>&1 1>&3`
+	retval=$?
+	exec 3>&-
+	[ $retval -eq 0 ] || continue
+	$value
+done
