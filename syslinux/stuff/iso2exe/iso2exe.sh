@@ -66,8 +66,17 @@ main()
 	OFS=$(( $OFS - $SIZE ))
 	printf "Adding DOS boot file at %04X...\n" $OFS
 	$0 --get lzcom.bin boot.com.lzma | ddq of=$1 bs=1 seek=$OFS conv=notrunc
-	store 36 $(($OFS+0xE0)) $1
+	store 34 $(($OFS+0xE0)) $1
 	store 30 ${RANDOM:-0} $1
+	i=34
+	n=0
+	echo -n "Adding checksum..."
+	while [ $i -lt 32768 ]; do
+		n=$(($n + $(od -j $i -N 2 -t u2 -An $1) ))
+		i=$(($i + 2))
+	done
+	store 32 -$n $1
+	echo " done."
 }
 
 main $@ <<EOT

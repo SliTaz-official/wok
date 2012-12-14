@@ -30,7 +30,7 @@ id:
 end_header:
 
 chksum:
-	.long	0
+	.word	0
 comstart:
 	.word	0
 
@@ -95,56 +95,68 @@ dxfound:
 
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
+eol:
+	.ascii	".\r\n$"
 no386:
 	.ascii	"No 386+$"
 noDOS3:
 	.ascii	"No DOS 3.0+$"
 rmPaging:
-	.ascii	"Broken paging.$"
+	.ascii	"Broken paging$"
 ERRvcpi:
 	.ascii	"No VCPI 4.0+$"
 chkerr:
-	.ascii	"Broken ISO.$"
+	.ascii	"Broken ISO$"
 realmodemsg:
-	.ascii	"Real mode\r$"
+	.ascii	"Real mode$"
 vm86modemsg:
-	.ascii	"Vm86\r$"
+	.ascii	"VM86 mode$"
 help:
-	.ascii	"Linux kickstarter.\r\n$"
+	.ascii	"SliTaz GNU/Linux bootloader$"
+
 fixseg:
-#if 1
 	movb	$EXESTR(help), %dl
-	movw	0x82, %ax
-	cmpw	$0x3F2F, %ax		# /?
+	movw	$0x100, %si
+	cmpw	$0x3F2F, -126(%si)	# /? 
 	je	abort
-#endif
+	movw	(%si), %cx
+	jcxz	skip
+	xorw	%dx, %dx
+	movw	$0x7FE0/2, %cx
+chklp:
+	lodsw
+	addw	%ax, %dx
+	loop	chklp
+	orw	%dx, %dx
+	movb	$EXESTR(chkerr), %dl
+	jne	abort
+skip:
 	pushf
 	popw	%ax
 	movw	$0xF0F0, %cx
 	orb	%ah, %ch
 	andb	$0xF, %ah
-	
 	pushw	%ax
 	popf
 	pushf
 	popw	%ax
 	andb	%cl, %ah
-	
 	cmp	%cl, %ah
 	je	NotSupported	// 8086 family
-	
 	pushw	%cx
 	popf
 	pushf
 	popw	%ax
 	andb	%cl, %ah
-	
 	jnz	is386		// 80286 family
 NotSupported:
 	movb	$EXESTR(no386), %dl
 abort:
 puts:
 	movb	$1, %dh
+	call	puts2
+	movw	$EXEADRS(eol), %dx
+puts2:
 	movb	$9, %ah
 	int	$0x21
 	ret
@@ -155,13 +167,13 @@ is386:
 	cmpb	$3, %al
 	movb	$EXESTR(noDOS3), %dl
 	jb	abort
-	smsw	%ax
+	movl	%cr0, %eax
 	andb	$1, %al
 	jne	tstvcpi
-	movl	%cr0, %eax
 	movb	$EXESTR(rmPaging), %dl
 	shll	$1, %eax
 	jc	abort
+	movb	$EXESTR(realmodemsg), %dl
 	jmp	realmode
 
 tstvcpi:
@@ -182,7 +194,6 @@ goabort:
 	jne	abort
 	shll	$8, %eax
 	cmpl	$0x4D4D4500, %eax	// [XQ]MME
-#if 1
 	movw	$EXEADRS(CmdVCPI), %si
 ChkVCPI:
 	jne	NoVCPI
@@ -191,55 +202,20 @@ ChkVCPI:
 	je	VersionVCPI
 	int	$0x67
 	jmp	ChkVCPI
+
 CmdVCPI:
 	.byte	0x40			// status
 	.byte	0xDE			// vcpi present ?
 	.byte	0x46			// version
 	.byte	0
+	
 VersionVCPI:
 	cmpb	$0x40, %al		// >= 4.0 ?
 	jb	NoVCPI
-#else
-	jne	NoVCPI
-	movb	$0x40, %ah		// status
-	int	$0x67
-	testb	%ah, %ah
-	jne	NoVCPI
-	movb	$0x46, %ah		// version
-	int	$0x67
-	testb	%ah, %ah
-	jne	NoVCPI
-	cmpb	$0x40, %al		// >= 4.0 ?
-	jb	NoVCPI
-	movw	$0xDE00, %ax		// vcpi present ?
-	int	$0x67
-	testb	%ah, %ah
-	jne	NoVCPI
-#endif
-realmode:
-	movw	$0x100, %si
-	lodsl
-	xchgl	%eax, %edx
-	orl	%edx, %edx
-	jz	skip
-	movw	$0x7FDC/4, %cx
-chklp:
-	lodsl
-	addl	%eax, %edx
-	loop	chklp
-	orl	%edx, %edx
-	movb	$EXESTR(chkerr), %dl
-	jne	goabort
-skip:
-	movb	$EXESTR(realmodemsg), %dl
-	smsww	%ax
-	andb	$1, %al
-	jz	isrealmode
 	movb	$EXESTR(vm86modemsg), %dl
-isrealmode:
+realmode:
 	call	puts
 	movw	EXEADRS(comstart), %ax			// .com address
-
 	cld
 	movw	$moveend-move, %cx
 	movw	$EXEADRS(move), %si

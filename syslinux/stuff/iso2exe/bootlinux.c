@@ -162,17 +162,23 @@ void loadkernel(void)
 		xor	si, si
 		xor	di, di
 		rep
-		  movsw
+		  movsw			// move 64K data
 		push	es
 		pop	ds
 		push	es
 		pop	ss
+		mov	ch, #0x70
+		mov	es, cx
+		mov	ch, #0x80
+		rep
+		 seg	cs
+		  movsw			// move 64K code
 		popa
-		jmpi	relocated, #0x8000
+		jmpi	relocated, #0x7000
 relocated:
 #endasm
 				kernelmem.base = 0x10000;
-				if (syssize > 0x70000)
+				if (syssize > 0x60000)	/* 384K max */
 #endif
 				die("Not a bzImage format");
 			}
