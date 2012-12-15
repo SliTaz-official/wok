@@ -44,19 +44,25 @@ start:
 	pushf
 	pushw	%ds
 	pushw	%es
-	pushw	$0
-	popw	%ds
 	call	setreg
 	rep
 	movsw
 	ljmp	$0, $0x0600+start2
 	
+readsector2:
+	incw	%cx
+readsector1:
+	movw	%cx, (%bx)
+	incw	%cx
+	movw	$0x201, %ax
+	int	$0x13
 setreg:
 	cld
-	pushw	%ds
-	popw	%es
-	movw	$0x7C00, %si
-	movw	%si, %bx
+	xorw	%bx, %bx		// Clear C
+	movw	%bx, %ds
+	movw	%bx, %es
+	movb	$0x7C, %bh
+	movw	%bx, %si
 	movw	$0x0600, %di
 	movw	$0x0100, %cx
 return:
@@ -64,29 +70,26 @@ return:
 start2:
 	movw	$0x80, %dx
 dxloop:
-	movw	$1, %cx
-	movw	$0x201, %ax
-	int	$0x13
-	jc	next
-	call 	setreg
+	call	readsector1
 	repe
 	cmpsw
 	je	dxfound
 next:
-	addb	$0x7D, %dl		// try every hard disk
-	andb	$0x83, %dl		//   and floppy disk
-	cmpb	$0x80, %dl
+	xorw	%cx, %cx
+	xchgw	%ax, %dx
+	addb	$0x7D, %al		// try every hard disk
+	andb	$0x83, %al		//   and floppy disk
+	cmpb	$0x80, %al
+	xchgw	%ax, %dx
 	jnz	dxloop
 fail:
 	int	$0x19
 dxfound:
 	movw	%dx, 10(%bp)
-	movb	$2, %cl			// %ch = 0
-	movw	$0x201, %ax
-	int	$0x13
-	jc	fail
-	cmpw	$0xAA55, 0x7DFE
-	jne	fail
+	call	readsector2
+	lodsw
+	decw	%ax
+	jz	fail			// read fail or not isohydrid
 	popw	%es
 	popw	%ds
 	popf
@@ -104,17 +107,18 @@ noDOS3:
 rmPaging:
 	.ascii	"Broken paging$"
 ERRvcpi:
-	.ascii	"No VCPI 4.0+$"
+	.ascii	"No EMM386/VCPI 4.0+$"
 chkerr:
-	.ascii	"Broken ISO$"
+	.ascii	"Broken ISO file$"
 realmodemsg:
 	.ascii	"Real mode$"
 vm86modemsg:
 	.ascii	"VM86 mode$"
 help:
-	.ascii	"SliTaz GNU/Linux bootloader$"
+	.ascii	"SliTaz GNU/Linux boot loader$"
 
 fixseg:
+	cld
 	movb	$EXESTR(help), %dl
 	movw	$0x100, %si
 	cmpw	$0x3F2F, -126(%si)	# /? 
@@ -133,21 +137,21 @@ chklp:
 skip:
 	pushf
 	popw	%ax
-	movw	$0xF0F0, %cx
-	orb	%ah, %ch
+	movw	$0xF0F0, %dx
+	orb	%ah, %dh
 	andb	$0xF, %ah
 	pushw	%ax
 	popf
 	pushf
 	popw	%ax
-	andb	%cl, %ah
-	cmp	%cl, %ah
+	andb	%dl, %ah
+	cmp	%dl, %ah
 	je	NotSupported	// 8086 family
-	pushw	%cx
+	pushw	%dx
 	popf
 	pushf
 	popw	%ax
-	andb	%cl, %ah
+	andb	%dl, %ah
 	jnz	is386		// 80286 family
 NotSupported:
 	movb	$EXESTR(no386), %dl
@@ -162,24 +166,19 @@ puts2:
 	ret
 
 is386:
-	movb	$0x30, %ah
-	int	$0x21
-	cmpb	$3, %al
-	movb	$EXESTR(noDOS3), %dl
-	jb	abort
 	movl	%cr0, %eax
 	andb	$1, %al
 	jne	tstvcpi
 	movb	$EXESTR(rmPaging), %dl
 	shll	$1, %eax
+cabort:
 	jc	abort
 	movb	$EXESTR(realmodemsg), %dl
 	jmp	realmode
 
 tstvcpi:
 	pushw	%ds
-	pushw	$0
-	popw	%ds
+	movw	%cx, %ds		// %cx = 0
 	movw	0x67*4+2, %ds
 	std
 	movw	$14, %si
@@ -190,7 +189,6 @@ tstvcpi:
 	popw	%ds
 NoVCPI:
 	movb	$EXESTR(ERRvcpi), %dl
-goabort:
 	jne	abort
 	shll	$8, %eax
 	cmpl	$0x4D4D4500, %eax	// [XQ]MME
@@ -215,8 +213,12 @@ VersionVCPI:
 	movb	$EXESTR(vm86modemsg), %dl
 realmode:
 	call	puts
+	movb	$0x30, %ah
+	int	$0x21
+	cmpb	$3, %al
+	movb	$EXESTR(noDOS3), %dl
+	jb	cabort
 	movw	EXEADRS(comstart), %ax			// .com address
-	cld
 	movw	$moveend-move, %cx
 	movw	$EXEADRS(move), %si
 	movw	$0xC000, %di

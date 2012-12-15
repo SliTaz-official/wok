@@ -88,12 +88,29 @@ zero2:
 #endasm
 }
 
+static int versiondos;
+static int dosversion(void)
+{
+#asm
+		mov	ah, #0x30
+		int	0x21
+		cbw
+		mov	_versiondos, ax
+#endasm
+}
+
 static void load(struct mem *p, unsigned long size)
 {
 	if (vm86())
 		die("Need real mode");
 	switch (p->align) {
 	case 0:	// kernel
+		switch (dosversion()) {
+		case 3: case 4: case 6: break;
+		default:
+			printf("DOS %d not supported.\nTrying anyway...\n",
+				versiondos);
+		}
 		p->align = 4096;
 		break;
 	case 4096: // first initrd

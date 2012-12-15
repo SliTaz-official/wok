@@ -4,7 +4,7 @@ DIALOG=dialog
 
 get()
 {
-	od -j $1 -N ${3:-4} -t u${3:-4} -An $2
+	od -j $1 -N ${3:-2} -t u${3:-2} -An $2
 }
 
 getarg()
@@ -15,8 +15,8 @@ getarg()
 gettazboot()
 {
 	echo "Creating $(basename $1) ..."
-	O=$(($(get 34 /mnt/$ISO 2) - 0xE0))
-	L=$((0x8000 - $(get 28 /mnt/$ISO 2) - $O))
+	O=$(($(get 34 /mnt/$ISO) - 0xE0))
+	L=$((0x8000 - $(get 28 /mnt/$ISO) - $O))
 	S=$((32+$L))
 	P=$((($S+511)/512))
 	E=$((4096-(32*$P)))
@@ -30,7 +30,7 @@ gettazboot()
 
 checkmagic()
 {
-	[ -s $1 ] && [ $(getarg magic) == $(get 28 $1) ]
+	[ -s $1 ] && [ $(getarg magic) == $(get 28 $1 4) ]
 }
 
 getiso()
@@ -52,7 +52,7 @@ getiso()
 uncpio()
 {
 	echo "Extracting $(basename $1) ..."
-	case $(get 0 $1 2) in
+	case $(get 0 $1) in
 	*35615)	zcat $1 ;;
 	*\ 93)	unlzma -c $1 ;;
 	*)	cat $1 ;;
@@ -291,11 +291,11 @@ to machine.\n\n
 Please plug your USB stick in now.\n 
 " 18 70
 	[ $? -eq 0 ] || return
+	sleep 5
 	DEV="$(grep -l 1 /sys/block/*/removable | \
 		sed 's|/sys/block/\(.*\)/removable|\1|')"
 	[ -n "$DEV" ] || return
 	exec 3>&1
-	sleep 5
 	device=`$DIALOG  --clear \
 	--title " Select your USB key " \
 	--menu "\nPlease select the USB key according to its known size.\n\n" \
@@ -312,11 +312,11 @@ Please plug your USB stick in now.\n
 	--title " Select the filesystem " \
 	--menu "\nPlease select the filesystem type to create.\n\n\
 The filesystem creation will erase all the data \
-on the USB key." 14 70 4 \
+in the USB key." 14 70 4 \
 		"none"	"Do not erase the USB key" \
 		"ext3"	"Ext3 journaling filesystem" \
 		"ext2"	"Ext2 filesystem" \
-		"fat32"	"Window FAT32 filesystem" \
+		"fat32"	"Windows FAT32 filesystem" \
 	2>&1 1>&3`
 	retval=$?
 	exec 3>&-
