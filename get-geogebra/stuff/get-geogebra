@@ -1,12 +1,12 @@
 #!/bin/sh -e
 
-PACKAGE="xcas"
-WEB_SITE="http://www-fourier.ujf-grenoble.fr/~parisse/giac.html"
-CATEGORY="misc"
-SHORT_DESC="Computer algebra system"
-MAINTAINER="bernard.parisse@ujf-grenoble.fr"
-DEPENDS=""
-URL=http://www-fourier.ujf-grenoble.fr/~parisse/giac/xcas.tgz
+PACKAGE="geogebra"
+WEB_SITE="http://www.geogebra.org/"
+CATEGORY="non-free"
+SHORT_DESC="Mathematics software for learning and teaching."
+MAINTAINER="somebody@geogebra.org"
+DEPENDS="bash"
+URL="http://www.geogebra.org/download/?os=linux&portable=true"
 
 ROOT="$1"
 [ -d "$ROOT" ] || ROOT=""
@@ -33,8 +33,8 @@ get_releases()
 }
 
 # Download deb
-FILE=$(basename $URL)
-wget $URL
+FILE=$PACKAGE.tgz
+wget -O $FILE "$URL"
 
 if [ ! -f $FILE ]; then
 	cd $CUR_DIR
@@ -43,24 +43,15 @@ if [ ! -f $FILE ]; then
 	exit 1
 fi
 
-XCAS_BASE=/usr/local
-mkdir -p $PACKAGE/fs$XCAS_BASE $PACKAGE/fs/usr/bin
-tar xzf $FILE -C $PACKAGE/fs$XCAS_BASE || true
+mkdir -p $PACKAGE/fs/usr/share
+tar xzf $FILE -C $PACKAGE/fs/usr/share
 # extracted pkg can be removed: Save RAM
 rm -f $FILE
 
-cat > $PACKAGE/fs/usr/bin/$PACKAGE << EOT
-#!/bin/sh
-
-export LD_LIBRARY_PATH=$XCAS_BASE/lib:/lib:/usr/lib
-export XCAS_HELP=$XCAS_BASE/share/giac
-export XCAS_ROOT=$XCAS_BASE/bin
-\$XCAS_ROOT/xcas \$@
-EOT
-chmod +x $PACKAGE/fs/usr/bin/$PACKAGE 
-
-VERSION="$(sed '/^VERSION/!d;s/.*= //' \
-	$PACKAGE/fs$XCAS_BASE/share/giac/examples/Exemples/Makefile)"
+VERSION="$(ls $PACKAGE/fs/usr/share | sed 's/.*-//;s|/||')"
+mv  $PACKAGE/fs/usr/share/* $PACKAGE/fs/usr/share/$PACKAGE
+mkdir -p $PACKAGE/fs/usr/bin
+ln -s /usr/share/$PACKAGE/$PACKAGE-portable $PACKAGE/fs/usr/bin/$PACKAGE
 
 mv $PACKAGE $PACKAGE-$VERSION
 cd $PACKAGE-$VERSION/fs
@@ -75,7 +66,6 @@ Name=$PACKAGE
 Exec=$PACKAGE
 Terminal=false
 Categories=Application
-Icon=$XCAS_BASE/share/giac//doc/en/tutoriel/img8.png
 Comment=$SHORT_DESC
 Type=Application
 Categories=Office;
