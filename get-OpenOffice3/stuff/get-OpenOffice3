@@ -21,15 +21,18 @@ http://ftp.iitm.ac.in/openoffice \
 http://www.ring.gr.jp/archives/misc/openoffice \
 http://ftp.nluug.nl/pub/office/openoffice \
 
-do wget -O - $MIRROR/ 2> /dev/null | grep -q localized && break ; done
+do
+	wget -O - $MIRROR/ 2> /dev/null | grep -q localized || continue
+	DIR="stable"
+	LOC=$(wget -O - $MIRROR/localized/ 2> /dev/null | \
+		grep -E ">$LANG/|>${LANG/_/-}/|>${LANG%_*}/" | \
+		head -1 | sed 's/.*href=\"\(.*\)\/\".*/\1/')
+	[ -n "$LOC" ] && DIR="localized/$LOC"
+	VERSION="$(basename $(wget -O - $MIRROR/$DIR/ 2> /dev/null | \
+		grep href=\"[0-9] | tail -1 | sed 's/.*href=\"\(.*\)\".*/\1/'))"
+	[ -n "$VERSION" ] && break
+done
 
-DIR="stable"
-LOC=$(wget -O - $MIRROR/localized/ 2> /dev/null \
-| grep -E ">$LANG/|>${LANG/_/-}/|>${LANG%_*}/" | head -1 | sed 's/.*href=\"\(.*\)\/\".*/\1/')
-[ -n "$LOC" ] && DIR="localized/$LOC"
-
-VERSION="$(basename $(wget -O - $MIRROR/$DIR/ \
-	2> /dev/null | grep href=\"[0-9] | tail -1 | sed 's/.*href=\"\(.*\)\".*/\1/'))"
 if [ -z "$VERSION" ]; then
 	echo "Can't find VERSION. Abort."
 	exit 0
@@ -41,6 +44,7 @@ echo "Archive is $TARBALL ..."
 WGET_URL=$MIRROR/$DIR/$VERSION/$TARBALL
 
 TEMP_DIR="/tmp/$PACKAGE.$$"
+CUR_DIR=$(pwd)
 SOURCE_DIR="/tmp/src.$$"
 EXCLUDE="kde|gnome|test"
 LOG="/tmp/$(basename $0 .sh).log"
@@ -159,7 +163,7 @@ PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="office"
 SHORT_DESC="Productivity suite."
-DEPENDS=""
+DEPENDS="java-jre"
 WEB_SITE="$URL"
 
 post_install()
@@ -192,7 +196,11 @@ rm -rf $PACKAGE-$VERSION
 
 # Install pseudo package
 tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+case " $@ " in
+*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
+esac
 
 # Clean
-rm -rf $TEMP_DIR
+cd $CUR_DIR
+rm -rf $TMP_DIR
 
