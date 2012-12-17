@@ -1,0 +1,110 @@
+#!/bin/sh -e
+
+PACKAGE="xcas"
+WEB_SITE="http://www-fourier.ujf-grenoble.fr/~parisse/giac.html"
+CATEGORY="misc"
+SHORT_DESC="Computer algebra system"
+MAINTAINER="bernard.parisse@ujf-grenoble.fr"
+DEPENDS=""
+URL=http://www-fourier.ujf-grenoble.fr/~parisse/giac/xcas.tgz
+
+ROOT="$1"
+[ -d "$ROOT" ] || ROOT=""
+
+if test $(id -u) != 0 ; then
+        echo -e "\nYou must be root to run `basename $0`."
+        echo -e "Please type 'su' and root password to become super-user.\n"
+        exit 0
+fi
+
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+	[ -n "$ROOT" ] && exit 1
+	tazpkg remove $PACKAGE
+	[ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
+fi
+
+TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+
+get_releases()
+{
+	wget -qO- "$URL?C=M;O=D" | sed 's|.*[Ff]="\([^"/]*\).*|\1|;/[^0-9b]/d'
+}
+
+# Download deb
+FILE=$(basename $URL)
+wget $URL
+
+if [ ! -f $FILE ]; then
+	cd $CUR_DIR
+	rm -rf $TMP_DIR
+	echo "Could not download $FILE from $URL. Exiting."
+	exit 1
+fi
+
+XCAS_BASE=/usr/local
+mkdir -p $PACKAGE/fs$XCAS_BASE $PACKAGE/fs/usr/bin
+tar xzf $FILE -C $PACKAGE/fs$XCAS_BASE || true
+# extracted pkg can be removed: Save RAM
+rm -f $FILE
+
+cat > $PACKAGE/fs/usr/bin/$PACKAGE << EOT
+#!/bin/sh
+
+export LD_LIBRARY_PATH=$XCAS_BASE/lib:/lib:/usr/lib
+export XCAS_HELP=$XCAS_BASE/share/giac
+export XCAS_ROOT=$XCAS_BASE/bin
+\$XCAS_ROOT/xcas \$@
+EOT
+chmod +x $PACKAGE/fs/usr/bin/$PACKAGE 
+
+VERSION="$(sed '/^VERSION/!d;s/.*= //' \
+	$PACKAGE/fs$XCAS_BASE/share/giac/examples/Exemples/Makefile)"
+
+mv $PACKAGE $PACKAGE-$VERSION
+cd $PACKAGE-$VERSION/fs
+
+# Create menu
+mkdir -p usr/share/applications
+cat > usr/share/applications/xcas.desktop <<EOT
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Xcas
+Exec=xcas
+Terminal=false
+Categories=Application
+Icon=$XCAS_BASE/share/giac//doc/en/tutoriel/img8.png
+Comment=Computer algebra system
+Type=Application
+Categories=Office;
+EOT
+cd ../..
+
+cat > $PACKAGE-$VERSION/receipt <<EOT
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="$CATEGORY"
+SHORT_DESC="$SHORT_DESC"
+MAINTAINER="$MAINTAINER"
+DEPENDS="$DEPENDS"
+WEB_SITE="$WEB_SITE"
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Clean to save RAM memory
+rm -rf $PACKAGE-$VERSION
+
+# Install pseudo package
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+case " $@ " in
+*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
+esac
+
+# Clean
+cd $CUR_DIR
+rm -rf $TMP_DIR
+
