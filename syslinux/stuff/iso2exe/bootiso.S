@@ -39,10 +39,14 @@ comstart:
 start:
 	incw	%bp
 	pushw	%dx			// restore SP
+	pushw	$0
+	popw	%ds
+	movw	$0x7C00, %bx
+	pushfw
+	pushw	%ds
+	pushw	%bx
 	pushaw
 	movw	%sp, %bp
-	pushf
-	pushw	%ds
 	pushw	%es
 	call	setreg
 	rep
@@ -58,10 +62,8 @@ readsector1:
 	int	$0x13
 setreg:
 	cld
-	xorw	%bx, %bx		// Clear C
-	movw	%bx, %ds
-	movw	%bx, %es
-	movb	$0x7C, %bh
+	pushw	%ds
+	popw	%es
 	movw	%bx, %si
 	movw	$0x0600, %di
 	movw	$0x0100, %cx
@@ -83,147 +85,144 @@ next:
 	xchgw	%ax, %dx
 	jnz	dxloop
 fail:
-	int	$0x19
+	movw	$0x0600+noloader, %si
+	call	putslp
+stop:
+	hlt
+	jmp	stop
 dxfound:
 	movw	%dx, 10(%bp)
 	call	readsector2
 	lodsw
-	decw	%ax
+	shrw	$1, %ax
 	jz	fail			// read fail or not isohydrid
 	popw	%es
-	popw	%ds
-	popf
 	popa
-	ljmp	$0, $0x7C00
+	iret
 
+	
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
-eol:
-	.ascii	".\r\n$"
-no386:
-	.ascii	"No 386+$"
-noDOS3:
-	.ascii	"No DOS 3.0+$"
-rmPaging:
-	.ascii	"Broken paging$"
-ERRvcpi:
-	.ascii	"No EMM386/VCPI 4.0+$"
-chkerr:
-	.ascii	"Broken ISO file$"
-realmodemsg:
-	.ascii	"Real mode$"
-vm86modemsg:
-	.ascii	"VM86 mode$"
 help:
-	.ascii	"SliTaz GNU/Linux boot loader$"
+	.ascii	"SliTaz GNU/Linux"
+	.byte	EXESTR(loader)
+no386:
+	.ascii	"No 386"		// No 386+
+	.byte	EXESTR(plus)
+ERRvcpi:
+	.ascii	"No EMM386/VCPI 4"	// No EMM386/VCPI 4.0+
+	.byte	EXESTR(dot0)
+chkerr:
+	.ascii	"Broken ISO image fil"	// Broken ISO image file.
+	.byte	EXESTR(eeol)
+vm86modemsg:
+	.ascii	"vm86"			// vm86 mode.
+	.byte	EXESTR(mode)
+rmPaging:
+	.ascii	"Invalid: paging + "	// Invalid: paging + real mode.
+realmodemsg:
+	.ascii	"real"			// real mode.
+// -------------------------------------------------------------------
+mode:
+	.ascii	" mod"
+eeol:
+	.ascii  "e"
+	.byte	EXESTR(eol)
+noloader:
+	.ascii	"No"
+loader:
+	.ascii	" boot loader"
+eol:
+	.ascii	"."
+eol2:
+	.asciz	"\r\n"
+noDOS3:
+	.ascii	"No DOS 3"		// No DOS 3.0+
+dot0:
+	.ascii	".0"
+plus:
+	.ascii	"+"
+	.byte	EXESTR(eol2)
 
 fixseg:
 	cld
-	movb	$EXESTR(help), %dl
 	movw	$0x100, %si
-	cmpw	$0x3F2F, -126(%si)	# /? 
+	movw	-127(%si), %ax
+	cwd
+	pushw	%dx			// dos exit
+	cmpw	$0x2F20, %ax
+	movb	$EXESTR(help), %al
 	je	abort
 	movw	(%si), %cx
 	jcxz	skip
-	xorw	%dx, %dx
 	movw	$0x7FE0/2, %cx
 chklp:
 	lodsw
 	addw	%ax, %dx
 	loop	chklp
 	orw	%dx, %dx
-	movb	$EXESTR(chkerr), %dl
+	movb	$EXESTR(chkerr), %al
 	jne	abort
 skip:
-	pushf
-	popw	%ax
-	movw	$0xF0F0, %dx
-	orb	%ah, %dh
-	andb	$0xF, %ah
+	pushfw			// save flags
+		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
+	movb	$0x70, %ah
 	pushw	%ax
-	popf
-	pushf
-	popw	%ax
-	andb	%dl, %ah
-	cmp	%dl, %ah
-	je	NotSupported	// 8086 family
-	pushw	%dx
-	popf
-	pushf
-	popw	%ax
-	andb	%dl, %ah
-	jnz	is386		// 80286 family
+	popfw			// < 286 : flags[12..15] are forced 1
+	pushfw			// = 286 : flags[12..15] are forced 0
+	popw	%ax		// > 286 : only flags[15] is forced 0
+	popfw			// restore flags
+	addb	$0x10, %ah	// test F0 and 00 cases
+	cmpb	$0x10, %ah
+	ja	is386		// C=8086/80186, Z=80286
+#if 0
+	jz	is286
+	xorw	%bx, %bx
+	movb	(%bx), %dh
+	decw	%bx
+	xorw	%bx, (%bx)	// 80186 write bytes at FFFF and 10000
+	movw	(%bx), %ax
+	xorw	%bx, (%bx)	// 8086 write bytes at FFFF and 0000
+	cmpw	%ah, %dh
+	jnz	is186
+#endif
 NotSupported:
-	movb	$EXESTR(no386), %dl
+	movb	$EXESTR(no386), %al
 abort:
 puts:
-	movb	$1, %dh
-	call	puts2
-	movw	$EXEADRS(eol), %dx
-puts2:
-	movb	$9, %ah
-	int	$0x21
-	ret
+	movb	$1, %ah
+	xchgw	%ax, %si
+putslp:
+	lodsb
+	orb	%al, %al
+	jz	moveret
+	js	puts
+	movw	$7, %bx
+	movb	$0xE, %ah
+	int	$0x10
+	jmp	putslp
 
 is386:
 	movl	%cr0, %eax
 	andb	$1, %al
 	jne	tstvcpi
-	movb	$EXESTR(rmPaging), %dl
 	shll	$1, %eax
-cabort:
+	movb	$EXESTR(rmPaging), %al
 	jc	abort
-	movb	$EXESTR(realmodemsg), %dl
-	jmp	realmode
-
-tstvcpi:
-	pushw	%ds
-	movw	%cx, %ds		// %cx = 0
-	movw	0x67*4+2, %ds
-	std
-	movw	$14, %si
-	lodsl
-	cmpl	$0x30585858, %eax	// 0XXX
-	lodsl
-	cld
-	popw	%ds
-NoVCPI:
-	movb	$EXESTR(ERRvcpi), %dl
-	jne	abort
-	shll	$8, %eax
-	cmpl	$0x4D4D4500, %eax	// [XQ]MME
-	movw	$EXEADRS(CmdVCPI), %si
-ChkVCPI:
-	jne	NoVCPI
-	lodsb
-	shlw	$8, %ax
-	je	VersionVCPI
-	int	$0x67
-	jmp	ChkVCPI
-
-CmdVCPI:
-	.byte	0x40			// status
-	.byte	0xDE			// vcpi present ?
-	.byte	0x46			// version
-	.byte	0
-	
-VersionVCPI:
-	cmpb	$0x40, %al		// >= 4.0 ?
-	jb	NoVCPI
-	movb	$EXESTR(vm86modemsg), %dl
+	movb	$EXESTR(realmodemsg), %al
 realmode:
 	call	puts
 	movb	$0x30, %ah
 	int	$0x21
 	cmpb	$3, %al
-	movb	$EXESTR(noDOS3), %dl
-	jb	cabort
+	movb	$EXESTR(noDOS3), %al
+	jb	abort
 	movw	EXEADRS(comstart), %ax			// .com address
 	movw	$moveend-move, %cx
 	movw	$EXEADRS(move), %si
 	movw	$0xC000, %di
 	jmp	move2
-
 move:
 	movb	$0x80, %ch
 	xchgw	%ax, %si
@@ -232,9 +231,49 @@ move2:
 	pushw	%di
 	rep
 	movsb
+moveret:
 	ret
 moveend:
-	
+
+VersionVCPI:
+	cmpb	$0x40, %dl		// >= 4.0 ?
+	jb	NoVCPI
+	movb	$EXESTR(vm86modemsg), %al
+	jmp	realmode
+tstvcpi:
+	pushw	%ds
+	movw	%cx, %ds		// %cx = 0
+	movw	0x67*4+2, %ds
+	movw	$10, %si
+	lodsw
+	xorw	$0x4D45, %ax		// EM(MX) or EM(MQ)
+	xchgw	%ax, %dx
+	lodsw				// si += 2
+	lodsw
+	xorw	$0x5858, %ax		// XX
+	orw	%ax, %dx
+	lodsw
+	popw	%ds
+	xorw	$0x3058, %ax		// X0
+	orw	%ax, %dx
+	movw	$EXEADRS(CmdVCPI), %si
+ChkVCPI:
+NoVCPI:
+	xchgw	%ax, %dx
+	movb	$EXESTR(ERRvcpi), %al
+	jne	abort
+	lodsb
+	shlw	$8, %ax
+	je	VersionVCPI
+	int	$0x67
+	testb	%ah, %ah
+	jmp	ChkVCPI
+CmdVCPI:
+	.byte	0x40			// status
+	.byte	0xDE			// vcpi present ?
+	.byte	0x46			// version
+	.byte	0
+
 	.org	440
 //////////////////////////// partition table //////////////////////////////////
 

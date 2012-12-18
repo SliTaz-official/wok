@@ -50,11 +50,12 @@ main()
 
 	# keep the largest room for the tazlito info file
 	TMP=/tmp/iso2exe$$
-	mkdir -p $TMP/usr/sbin
-	cp /usr/sbin/mount.posixovl $TMP/usr/sbin/mount.posixovl.iso2exe
+	mkdir -p $TMP/bin $TMP/dev
+	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe
+	cp -a /dev/?d?* $TMP/dev
 	$0 --get init > $TMP/init.exe
-	chmod +x $TMP/init.exe $TMP/usr/sbin/mount.posixov*
-	( cd $TMP ; ls init.exe usr/sbin/mount.posixov* | cpio -o -H newc ) | \
+	chmod +x $TMP/init.exe $TMP/bin/mount.posixov*
+	( cd $TMP ; find * | cpio -o -H newc ) | \
 		lzma e $TMP/rootfs.gz -si 2> /dev/null
 	SIZE=$(wc -c < $TMP/rootfs.gz)
 	store 28 $SIZE $1

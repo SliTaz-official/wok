@@ -4,7 +4,9 @@ DIALOG=dialog
 
 get()
 {
-	od -j $1 -N ${3:-2} -t u${3:-2} -An $2
+	od -j $1 -N ${3:-2} -t u${3:-2} -An $2 2> /dev/null ||
+	dd if=$2 bs=1 skip=$1 count=${3:-2} 2> /dev/null | \
+		hexdump -e "\"\" 1/${3:-2} \"%d\""
 }
 
 getarg()
@@ -35,17 +37,15 @@ checkmagic()
 
 getiso()
 {
+	mkdir -p /media/cdrom
 	blkid | while read dev info ; do
-		case "$info" in
-		*dos*|*fat*|*ntfs*)
-			mount ${dev%:} /mnt
-			if checkmagic /mnt/$ISO; then
-				mount -o loop,ro /mnt/$ISO /media/cdrom
-				echo "Found $ISO on ${dev%:}"
-				break
-			fi
-			umount /mnt ;;
-		esac
+		mount ${dev%:} /mnt
+		if checkmagic /mnt/$ISO; then
+			mount -o loop,ro /mnt/$ISO /media/cdrom
+			echo "Found $ISO on ${dev%:}"
+			break
+		fi
+		umount /mnt
 	done
 }
 
@@ -75,7 +75,7 @@ mkinitrd()
 		 /dev/hd* /dev/sd* ; do
 		cp -a $i /tmp/fs$i
 	done
-	for i in /bin/busybox /usr/sbin/mount.posixovl $(which blkid); do
+	for i in /bin/busybox $(which mount.posixovl) $(which blkid); do
 		cp $(LD_TRACE_LOADED_OBJECTS=1 /lib/ld*.so $i | \
 		sed 's|.*=> \(.*/lib/l[^ ]*\).*|\1|;/^\//!d') /tmp/fs/lib
 		cp $i /tmp/fs/bin
@@ -111,14 +111,33 @@ EOT
 	rm -rf /tmp/fs
 }
 
+is_loram()
+{
+	[ -s /lib/squashfs.ko* ]
+}
+
 doinstall()
 {
 	mkdir /mnt/slitaz
 	mount.posixovl /mnt/slitaz || return
 	mkdir -p /mnt/slitaz/boot /mnt/slitaz/mnt/dos
-	for i in $(ls -r /media/cdrom/boot/rootfs*); do
-		uncpio $i /mnt/slitaz
-	done
+	if [ -d /media/cdrom/fs ]; then
+		cp -a /media/cdrom/fs/. /mnt/slitaz
+	elif is_loram ; then
+		for i in /media/cdrom/boot/rootfs?.* ; do
+			[ -s $(basename $i) ] && continue
+			cpio -i $i
+		done
+		for i in $(ls -r /media/cdrom/boot/rootfs*); do
+			mount -o loop,ro $i /sqfs/mnt
+			cp -a /sqfs/mnt/. /mnt/slitaz
+			umount -d /sqfs/mnt
+		done
+	else
+		for i in $(ls -r /media/cdrom/boot/rootfs*); do
+			uncpio $i /mnt/slitaz
+		done
+	fi
 	for i in /media/cdrom/boot/bzImage /media/cdrom/boot/*pxe* \
 		/media/cdrom/boot/isolinux/he* /media/cdrom/boot/isolinux/opt* \
 		/media/cdrom/README /media/cdrom/boot/memtest* ; do
@@ -135,7 +154,7 @@ EOT
 	unix2dos /mnt/slitaz/boot/he* /mnt/slitaz/boot/opt* \
 		/mnt/slitaz/boot/README /mnt/slitaz/boot/tazboot.cmd
 	[ -x /mnt/slitaz/usr/sbin/mount.posixovl ] ||
-	cp /usr/sbin/mount.posixovl /mnt/slitaz/usr/sbin
+	cp $(which mount.posixovl) /mnt/slitaz/usr/sbin
 	! grep -qs tazboot /mnt/boot.ini && cat >> /mnt/boot.ini <<EOT
 C:\\slitaz\\boot\\tazboot.exe="SliTaz"
 EOT
@@ -160,7 +179,7 @@ The file \\boot.ini or \\config.sys may be modified too.\n\n
 To do a traditional installation with disk partitioning,
 start SliTaz Live with 'SliTaz RAM boot' menu.\n
 " 16 70
-	[ $? -eq 0 -a -x /usr/sbin/mount.posixovl ] || return
+	[ $? -eq 0 -a -n "$(which mount.posixovl)" ] || return
 	doinstall
 	umount /proc
 	exec chroot /mnt/slitaz /sbin/init
@@ -191,7 +210,8 @@ Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n
 
 md5()
 {
-	( cd /media/cdrom ; md5sum -c md5sum ) | tee /tmp/data
+	echo "Checking files..."
+	( cd /media/cdrom ; md5sum -c md5sum ) > /tmp/data
 	$DIALOG --clear \
 		--title " Checked files " \
 		--textbox /tmp/data 24 78
@@ -325,8 +345,34 @@ in the USB key." 14 70 4 \
 	tazusb gen-iso2usb /mnt/$ISO $device
 }
 
+mount_loram()
+{
+	is_loram || return
+	insmod /lib/squashfs.ko* 2> /dev/null
+	if [ -d /media/cdrom/fs ]; then
+		ln -s /media/cdrom/fs /sqfs
+	else
+		mkdir /sqfs
+		mount -o loop,ro -t squashfs /rootfs*.gz /sqfs
+	fi
+	ln -s /sqfs/lib/* lib
+	ln -s /sqfs/usr /sqfs/var /
+	for i in dmesg basename tr od reboot poweroff getty sync ; do
+		ln -s /sqfs/bin/busybox /bin/$i
+	done
+}
+
+umount_loram()
+{
+	is_loram || return
+	rm  /var /usr
+	umount -d /sqfs
+	rmdir /sqfs
+}
+
 text()
 {
+	umount_loram
 	umount -d /media/cdrom
 	umount /mnt
 	umount /proc
@@ -342,36 +388,38 @@ live()
 	text
 }
 
-reboot()
+restart()
 {
-	umount -d /media/cdrom
-	umount /mnt
-	/sbin/reboot -f
+	sync
+	[ ! -L /sqfs ] && umount -d /media/cdrom && umount /mnt
+	reboot -f
 }
 
-poweroff()
+stop()
 {
-	umount -d /media/cdrom
-	umount /mnt
-	/sbin/poweroff -f
+	sync
+	[ ! -L /sqfs ] && umount -d /media/cdrom && umount /mnt
+	poweroff -f
 }
 
 shell()
 {
-	/sbin/getty -n -l /bin/ash 38400 tty1
+	getty -n -l /bin/ash 38400 tty1 || sh
 }
 
 [ -x /usr/sbin/mount.posixovl ] ||
-mv /usr/sbin/mount.posixovl.iso2exe /usr/sbin/mount.posixovl
+mv /bin/mount.posixovl.iso2exe /usr/sbin/mount.posixovl 2> /dev/null ||
+mv /bin/mount.posixovl.iso2exe /bin/mount.posixovl
 mount -t proc /proc /proc
-dmesg > /tmp/dmesg
 ISO="$(getarg iso | sed 's/.://;s|\\|/|g')"
 getiso
+mount_loram
 case "$(basename $ISO | tr [A-Z] [a-z])$(getarg mode)" in
 *install*)	install ;;
 *live*)		live ;;
 *text*)		text ;;
 esac
+dmesg > /tmp/dmesg
 
 while true; do
 	exec 3>&1
@@ -389,8 +437,8 @@ $(cdfile Xboot/memtest	"memtest"	"Get Memtest86") \
 $(cdfile boot/memtest	"fdmemtest"	"Create a Memtest86 boot floppy") \
 $(cdfile Xboot/gpxe	"gpxe"		"Get SliTaz Web boot utility") \
 $(cdfile boot/gpxe	"fdgpxe"	"Create a SliTaz Web boot floppy") \
-			"reboot"	"Restart the computer" \
-			"poweroff"	"Power off" \
+			"restart"	"Restart the computer" \
+			"stop"		"Power off" \
 			"bootlog"	"Linux boot messages" \
 			"shell"		"Shell prompt" \
 	2>&1 1>&3`
