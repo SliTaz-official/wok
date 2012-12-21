@@ -1,0 +1,30 @@
+# SliTaz package receipt.
+
+PACKAGE="pygtksourceview"
+VERSION="2.10.1"
+CATEGORY="misc"
+SHORT_DESC="Python bindings for GtkSourceView"
+MAINTAINER="al.bobylev@gmail.com"
+WEB_SITE="http://projects.gnome.org/gtksourceview/pygtksourceview.html"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="http://ftp.gnome.org/pub/gnome/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="python pygtk gtksourceview pygobject"
+BUILD_DEPENDS="python-dev pygtk-dev gtksourceview-dev pygobject-dev pkg-config \
+libxml2-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	CFLAGS="$CFLAGS $(pkg-config --cflags pygtk-2.0 gtksourceview-2.0)"
+	./configure $CONFIGURE_ARGS --disable-docs &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	LIBDIR="usr/lib/python2.7/site-packages"
+	mkdir -p $fs/$LIBDIR
+	cp -a $install/$LIBDIR/gtksourceview2.so $fs/$LIBDIR
+}
