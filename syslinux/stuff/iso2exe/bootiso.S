@@ -19,7 +19,7 @@ _start:
 	.word	0xFFF0			// Initial (relative) SS value
 	.word	0xFFFE			// Initial SP value
 	.word	0			// Checksum
-	.word	EXEADRS(fixseg)		// Initial IP value
+	.word	EXEADRS(exestart)	// Initial IP value
 	.word	0xFFF0			// Initial (relative) CS value
 	.word	0x001C			// File address of relocation table
 	.word	0			// Overlay number
@@ -104,8 +104,8 @@ dxfound:
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
 help:
-	.ascii	"SliTaz GNU/Linux"
-	.byte	EXESTR(loader)
+	.ascii	"SliTaz GNU/L"		// SliTaz GNU/Linux boot loader
+	.byte	EXESTR(iloader)
 no386:
 	.ascii	"No 386"		// No 386+
 	.byte	EXESTR(plus)
@@ -122,16 +122,16 @@ rmPaging:
 	.ascii	"Invalid: paging + "	// Invalid: paging + real mode.
 realmodemsg:
 	.ascii	"real"			// real mode.
-// -------------------------------------------------------------------
+// --------------- Must be in 00A0 011F range ------------------------
 mode:
 	.ascii	" mod"
 eeol:
 	.ascii  "e"
 	.byte	EXESTR(eol)
 noloader:
-	.ascii	"No"
-loader:
-	.ascii	" boot loader"
+	.ascii	"No isol"		// No isolinux boot loader
+iloader:
+	.ascii	"inux boot loader"
 eol:
 	.ascii	"."
 eol2:
@@ -143,52 +143,41 @@ dot0:
 plus:
 	.ascii	"+"
 	.byte	EXESTR(eol2)
+// -------------------------------------------------------------------
 
-fixseg:
+exestart:
 	cld
 	movw	$0x100, %si
 	movw	-127(%si), %ax
-	cwd
+	cwd				// clear dx
 	pushw	%dx			// dos exit
 	cmpw	$0x2F20, %ax
-	movb	$EXESTR(help), %al
+	movw	$0x1000+EXESTR(help), %ax
 	je	abort
+	pushfw			// save flags
+		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
+	// movb	$0x10, %ah
+	pushw	%ax
+	popfw			// < 286 : flags[12..15] are forced 1
+	pushfw			// = 286 : flags[12..15] are forced 0
+	popw	%cx		// > 286 : only flags[15] is forced 0
+	popfw			// restore flags
+	addb	%ah, %ch	// test F0 and 00 cases
+	cmpb	%ah, %ch
+	movb	$EXESTR(no386), %al
+	jbe	abort		// C=8086/80186, Z=80286
+#if 1
 	movw	(%si), %cx
-	jcxz	skip
+	jcxz	is386
+#endif
 	movw	$0x7FE0/2, %cx
 chklp:
 	lodsw
 	addw	%ax, %dx
 	loop	chklp
-	orw	%dx, %dx
 	movb	$EXESTR(chkerr), %al
-	jne	abort
-skip:
-	pushfw			// save flags
-		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
-		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
-	movb	$0x70, %ah
-	pushw	%ax
-	popfw			// < 286 : flags[12..15] are forced 1
-	pushfw			// = 286 : flags[12..15] are forced 0
-	popw	%ax		// > 286 : only flags[15] is forced 0
-	popfw			// restore flags
-	addb	$0x10, %ah	// test F0 and 00 cases
-	cmpb	$0x10, %ah
-	ja	is386		// C=8086/80186, Z=80286
-#if 0
-	jz	is286
-	xorw	%bx, %bx
-	movb	(%bx), %dh
-	decw	%bx
-	xorw	%bx, (%bx)	// 80186 write bytes at FFFF and 10000
-	movw	(%bx), %ax
-	xorw	%bx, (%bx)	// 8086 write bytes at FFFF and 0000
-	cmpw	%ah, %dh
-	jnz	is186
-#endif
-NotSupported:
-	movb	$EXESTR(no386), %al
+	je	is386		// dx == 0 ?
 abort:
 puts:
 	movb	$1, %ah
