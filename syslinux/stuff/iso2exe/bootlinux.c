@@ -22,7 +22,9 @@ static unsigned version;
 #define SETUP_SEGMENT	0x9000
 #define CMDLINE_OFFSET	0x9E00
 
-#define BUFFERSZ	2*1024
+#define PAGE_BITS	12
+#define PAGE_SIZE	4096
+#define BUFFERSZ	PAGE_SIZE
 static char buffer[BUFFERSZ];
 static unsigned long initrd_addr, initrd_size;
 
@@ -88,6 +90,8 @@ zero2:
 #endasm
 }
 
+#undef ZIMAGE_SUPPORT	/* Does not work... */
+
 static int versiondos;
 static int dosversion(void)
 {
@@ -111,7 +115,7 @@ static void load(struct mem *p, unsigned long size)
 			printf("DOS %d not supported.\nTrying anyway...\n",
 				versiondos);
 		}
-		p->align = 4096;
+		p->align = PAGE_SIZE;
 		break;
 	case 4096: // first initrd
 		initrd_addr = p->base;
@@ -169,8 +173,35 @@ void loadkernel(void)
 #define HDRS	0x53726448
 			if (* (unsigned long *) (buffer + HEADER) != HDRS)
 				version = 0;
+			if (version < 0x204)
+				syssize &= 0x000FFFFFUL;
+			if (version) {
+#ifdef REALMODE_SWITCH
+				extern int far_realmode_switch();
+#asm
+				jmp	end_realmode_switch
+_far_realmode_switch:
+				call	_realmode_switch
+				cli
+				mov	al, #0x80	// Disable NMI
+				out	0x70, al
+				retf
+end_realmode_switch:
+#endasm
+				* (unsigned short *) (buffer + RMSWOFS) = 
+					far_realmode_switch;
+				* (unsigned short *) (buffer + RMSWSEG) = 
+					getcs();
+#endif
+				kernelmem.base =
+					* (unsigned long *) (buffer + SYSTEMCODE);
+				* (unsigned short *) (buffer + HEAPPTR) = 
+					0x9B00;
+				// buffer[LOADFLAGS] |= 0x80;
+				* (unsigned short *) (buffer + LOADERTYPE) |= 
+					0x80FF;
+			}
 			if (!version || !(buffer[LOADFLAGS] & 1)) {
-#undef ZIMAGE_SUPPORT	/* Does not work... */
 #ifdef ZIMAGE_SUPPORT
 #asm
 		pusha
@@ -198,21 +229,6 @@ relocated:
 				if (syssize > 0x60000)	/* 384K max */
 #endif
 				die("Not a bzImage format");
-			}
-			if (version < 0x204)
-				syssize &= 0x000FFFFFUL;
-			if (version) {
-#ifdef REALMODE_SWITCH
-				* (unsigned short *) (buffer + RMSWOFS) = 
-					realmode_switch;
-				* (unsigned short *) (buffer + RMSWSEG) = 
-					getcs();
-#endif
-				* (unsigned short *) (buffer + HEAPPTR) = 
-					0x9B00;
-				// buffer[LOADFLAGS] |= 0x80;
-				* (unsigned short *) (buffer + LOADERTYPE) |= 
-					0x80FF;
 			}
 		}
 		movesetup();
