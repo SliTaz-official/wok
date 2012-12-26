@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="gmerlin"
+VERSION="1.2.0"
+CATEGORY="multimedia"
+SHORT_DESC="Gmerlin is a multimedia architecture for linux."
+MAINTAINER="pankso@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://gmerlin.sourceforge.net/"
+WGET_URL="$SF_MIRROR/project/gmerlin/gmerlin/$VERSION/$TARBALL"
+
+DEPENDS="libxml2 expat gavl gtk+ alsa-lib libpng"
+BUILD_DEPENDS="texinfo libxml2-dev expat-dev gavl-dev gtk+-dev alsa-lib-dev \
+libpng-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	rm -rf cpuinfo.sh
+	./configure \
+		--without-doxygen \
+		$CONFIGURE_ARGS &&
+	sed -i 's|LIBS = -lgavl|LIBS = -lgavl -ldl -lpthread -lgtk-x11-2.0 -lgobject-2.0 -lglib-2.0 -lxml2 -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lX11|' apps/*/Makefile &&
+	sed -i 's|LIBS = -lgavl|LIBS = -lgavl -ldl -lpthread -lgtk-x11-2.0 -lgobject-2.0 -lglib-2.0 -lxml2 -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lX11|' lib/Makefile &&
+	sed -i 's|LIBS = -lgavl|LIBS = -lgavl -ldl -lpthread -lgtk-x11-2.0 -lgobject-2.0 -lglib-2.0 -lxml2 -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lX11|' tests/Makefile &&
+	sed -i 's|ln -sf $(DESTDIR)$(pkgdatadir)|ln -sf $(pkgdatadir)|' icons/Makefile &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/usr/lib/gmerlin/plugins
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/gmerlin/plugins/*.so* $fs/usr/lib/gmerlin/plugins
+	cp -a $install/usr/share/gmerlin $fs/usr/share
+	cp -a $install/usr/share/icons $fs/usr/share
+}
