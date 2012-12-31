@@ -1,0 +1,56 @@
+--- core/fs/iso9660/iso9660.c
++++ core/fs/iso9660/iso9660.c
+@@ -132,6 +132,28 @@
+ 	
+ 	de_name_len = de->name_len;
+ 	de_name = de->name;
++#define __ROCKRIDGE
++#ifdef __ROCKRIDGE
++	{
++		char *name = NULL, *end;
++		int n = (offset - de_len + de->name_len + 34) & -2;
++		int len = data[n + 2];
++		do {
++			if (* (short *) (data + n) == 0x4D4E) { // NM
++				name = data + n + 5;
++				end = data + n + len;
++			}
++			n += len;
++		} while (n + 2 < offset);
++		if (name) {
++			*end = 0;
++			if (!strcmp(name, dname)) {
++				dprintf("Found rockridge.\n");
++				return de;
++			}
++		}
++	}
++#endif
+ 	if (iso_compare_name(de_name, de_name_len, dname)) {
+ 	    dprintf("Found.\n");
+ 	    return de;
+@@ -211,6 +233,24 @@
+ 	    data = NULL;
+ 	    continue;
+ 	}
++#ifdef __ROCKRIDGE2
++	{
++		char *name = NULL;
++		int n = (offset + de->name_len + 34) & -2;
++		int len = data[n + 2], delen;
++		do {
++			if (* (short *) (data + n) == 0x4D4E) { // NM
++				name = data + n + 5;
++				delen = len - 5;
++			}
++			n += len;
++		} while (n + 2 < offset + de->length);
++		if (name) {
++			de->name_len = delen;
++			strcpy(de->name, name, delen);
++		}
++	}
++#endif
+ 	break;
+     }
+     
