@@ -328,15 +328,18 @@ post_install()
 		grub_dev=`cat $1/boot/grub/menu.lst | grep "root (" | head -n 1`
 		# Add new kernel entry in case of upgrade for installed system.
 		if ! grep -q vmlinuz-$VERSION-slitaz $1/boot/grub/menu.lst; then
-    		cat >> $1/boot/grub/menu.lst << EOT
+			cat >> $1/boot/grub/menu.lst << EOT
 
 title SliTaz GNU/Linux (Kernel $VERSION-slitaz)
-$grub_dev
-kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
+$grub_dev 
+kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev quiet
 EOT
+			# Make it the default entry
+			last_entry=$(( $(grep -c '^title' $1/boot/grub/menu.lst)-1 ))
+			sed -e "s/^default.*/default $last_entry/g" -i $1/boot/grub/menu.lst
 		fi
 		# Display information message.
-    	cat <<EOT
+			cat <<EOT
 ----
 GRUB is installed, these tree lines must be in your /boot/grub/menu.lst:
 
