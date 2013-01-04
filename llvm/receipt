@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="llvm"
+VERSION="3.2"
+CATEGORY="development"
+SHORT_DESC="Modular compiler toolchain collection."
+MAINTAINER="pascal.bellard@slitaz.org"
+WEB_SITE="http://llvm.org/"
+#TARBALL="$PACKAGE-$VERSION.tar.gz"
+TARBALL="$PACKAGE-${VERSION}_${VERSION}.orig.tar.bz2"
+WGET_URL="http://ftp.de.debian.org/debian/pool/main/${PACKAGE:0:1}/$PACKAGE-$VERSION/$TARBALL"
+#SUGGESTED="udevil"
+
+DEPENDS="libffi gcc-lib-base"
+BUILD_DEPENDS="libffi-dev libffi perl"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --sysconfdir=/etc \
+		--enable-libffi \
+		--enable-optimized \
+		--enable-shared \
+		--enable-targets=all \
+		--disable-assertions \
+		--disable-debug-runtime \
+		--disable-expensive-checks \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/include $fs/usr
+}
