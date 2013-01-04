@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="terminus-font-base"
+VERSION="4.38"
+CATEGORY="system-tools"
+SHORT_DESC="8x14 Unicode console font"
+MAINTAINER="al.bobylev@gmail.com"
+WEB_SITE="http://terminus-font.sourceforge.net/"
+SOURCE="terminus-font"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$SOURCE/$TARBALL"
+
+DEPENDS=""
+BUILD_DEPENDS="perl"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	patch -i alt/dv1.diff || return 1
+	patch -i alt/gq2.diff || return 1
+	patch -i alt/ij1.diff || return 1
+	patch -i alt/ll2.diff || return 1
+	chmod +x ./configure
+	./configure \
+		--prefix=/usr \
+		--psfdir=/usr/share/kbd/consolefonts \
+		--x11dir=/usr/share/fonts/X11 &&
+	make psf
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	fontdir=$fs/usr/share/kbd/consolefonts
+	mkdir -p $fontdir
+	cp -a $src/ter-v14n.psf $fontdir
+	gzip -9 $fontdir/*
+}
