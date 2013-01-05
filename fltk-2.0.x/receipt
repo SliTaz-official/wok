@@ -5,14 +5,16 @@ VERSION="r7725"
 CATEGORY="system-tools"
 SHORT_DESC="Fast Light Tool Kit (provide fluid)."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="expat fontconfig freetype jpeg xorg-libX11 xorg-libXau xorg-libXdmcp \
-xorg-libXext xorg-libXft xorg-libXrender zlib libpng xorg-libXi \
-xorg-libXinerama gcc-lib-base"
-BUILD_DEPENDS="xorg-libXft-dev libglu-mesa mesa mesa-dev subversion autoconf"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.fltk.org/"
 WGET_URL="subversion|http://svn.easysw.com/public/fltk/fltk/trunk"
 BRANCH="${VERSION#r}"
+
+DEPENDS="expat fontconfig freetype jpeg xorg-libX11 xorg-libXau xorg-libXdmcp \
+xorg-libXext xorg-libXft xorg-libXrender zlib libpng xorg-libXi \
+xorg-libXinerama gcc-lib-base"
+BUILD_DEPENDS="xorg-libXft-dev libglu-mesa libglu-mesa-dev mesa mesa-dev \
+subversion autoconf"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -34,14 +36,14 @@ EOF
 		$CONFIGURE_ARGS &&
 	make &&
 	cp -f fltk2-config /usr/bin &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	# Remove gl support --> fltk-2.0.x-gl
 	rm $fs/usr/lib/libfltk2*gl*
 }
