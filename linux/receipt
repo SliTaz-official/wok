@@ -324,11 +324,21 @@ post_install()
     chroot "$1/" depmod -a $KBASEVER-slitaz
     # GRUB stuff.
     if [ -f "$1/boot/grub/menu.lst" ]; then
-    	root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`
-		grub_dev=`cat $1/boot/grub/menu.lst | grep "root (" | head -n 1`
-		# Add new kernel entry in case of upgrade for installed system.
-		if ! grep -q vmlinuz-$VERSION-slitaz $1/boot/grub/menu.lst; then
-			cat >> $1/boot/grub/menu.lst << EOT
+    	root_dev="/dev/`lsblk | grep '/$'| grep -o '[a-z]d[a-z][0-9]*'`" # current root device
+    	grub_part="$(( `echo $root_dev | grep -o '[0-9]*$'`-1 ))"
+    	grub_dev="`grep $(echo $root_dev | grep -o  '^/dev/.d.' ) $1/boot/grub/device.map |\
+    	cut -f1 | sed "s/)$/.$grub_part)/g"`" # use device.map to find grub device number
+    	
+	# Add and clean kernel entrys in case of upgrade for installed system.
+	if ! grep -q vmlinuz-$VERSION-slitaz $1/boot/grub/menu.lst; then
+		
+		#clean the old entry
+		# TODO somewhere, the old vmlinuz file is removed.
+		#      but the entry is still there. this cause a grub error:15 when selected
+		# see http://bugs.slitaz.org/?id=74
+
+		#add the new
+		cat >> $1/boot/grub/menu.lst << EOT
 
 title SliTaz GNU/Linux (Kernel $VERSION-slitaz)
 $grub_dev 
