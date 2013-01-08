@@ -22,6 +22,13 @@ compile_rules()
 		--prefix=/usr \
 		intl nogif &&
 	make
+	# install mo files to the right place
+	for i in $(find $src/po/*.mo); do
+		LNG=$(basename $i .mo)
+		LFOLDER=$install/usr/share/locale/$LNG/LC_MESSAGES
+		mkdir -p $LFOLDER
+		cp -a $scr/po/$LNG.mo $LFOLDER/mtpaint.mo
+	done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -29,10 +36,4 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
 	cp -a $src/src/mtpaint $fs/usr/bin
-	# Get locale from tazwok.conf
-	for i in $LOCALE
-	do
-		mkdir -p $fs/usr/share/locale/$i/LC_MESSAGES
-		cp -a $src/po/$i.mo $fs/usr/share/locale/$i/LC_MESSAGES/mtpaint.mo
-	done
 }
