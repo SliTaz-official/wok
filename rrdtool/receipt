@@ -13,7 +13,7 @@ DEPENDS="zlib freetype libpng libxml2 fontconfig pixman cairo glib pango \
 xcb-util xorg-base-fonts libwrap"
 BUILD_DEPENDS="perl pkg-config zlib-dev freetype-dev libpng-dev libxml2-dev \
 fontconfig-dev pixman-dev cairo-dev glib-dev pango-dev python-dev perl groff \
-libwrap-dev tcl-dev lua-dev ruby"
+libwrap-dev tcl-dev lua5.1-dev ruby"
 TAGS="logs"
 
 # Rules to configure and make the package.
@@ -21,18 +21,29 @@ compile_rules()
 {
 	cd $src
 	sed -i 's/PL_sv_undef sv_undef/PL_sv_undef PL_sv_undef/' bindings/perl-shared/RRDs.xs
+	export LDFLAGS="-L/usr/lib/lua/5.1"
+	TOREMOVE="/usr/include/lua5.1"
+	ln -s lua/5.1 /usr/include/lua5.1
+	for i in /usr/bin/lua /usr/bin/luac ; do
+		[ -e $i ] && continue
+		ln -s $(basename $i)5.1 $i
+		TOREMOVE="$TOREMOVE $i"
+	done
 	./configure --prefix=/usr --infodir=/usr/share/info \
 	--enable-perl-site-install \
 	--mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
+	for i in $TOREMOVE ; do
+		rm -f $i
+	done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
 }
 
