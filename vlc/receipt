@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="vlc"
-VERSION="2.0.1"
+VERSION="2.0.5"
 CATEGORY="multimedia"
 SHORT_DESC="MPEG, VCD/DVD, and DivX player"
 MAINTAINER="jozee@slitaz.org"
@@ -11,12 +11,13 @@ WGET_URL="http://download.videolan.org/pub/videolan/$PACKAGE/$VERSION/$TARBALL"
 TAGS="audio video multimedia movie player"
 DEPENDS="libQtCore libQtGui libvlc"
 BUILD_DEPENDS="Qt4-dev alsa-lib-dev dbus-dev ffmpeg-dev gettext \
-libmad-dev lua-dev tar xcb-util-dev yasm expat-dev"
+libmad-dev lua5.1-dev tar xcb-util-dev yasm expat-dev"
 
 compile_rules()
 {
 	[ -s /var/lib/dbus/machine-id ] || dbus-uuidgen > /var/lib/dbus/machine-id
 	cd $src
+	[ -e /usr/bin/luac ] && ln -s luac5.1 /usr/bin/luac
 	./configure \
 		--prefix=/usr \
 		--disable-pulse \
@@ -29,18 +30,19 @@ compile_rules()
 		$CONFIGURE_ARGS &&
 	make &&
 	make install
+	[ -L /usr/bin/luac ] && rm -f /usr/bin/luac
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/pixmaps
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/$PACKAGE $fs/usr/share
 	#Remove extra icons
 	rm $fs/usr/share/$PACKAGE/*.ico
 	#copy vlc icon
-	cp -a $_pkg/usr/share/icons/hicolor/16x16/apps/vlc.png $fs/usr/share/pixmaps
+	cp -a $install/usr/share/icons/hicolor/16x16/apps/vlc.png $fs/usr/share/pixmaps
 	#Remove unnecessary fonts
 	rm $fs/usr/share/$PACKAGE/skins2/fonts/*
 }
