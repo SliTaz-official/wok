@@ -14,7 +14,7 @@ CONFIG_FILES=""
 genpkg_rules()
 {
 	jslinux=false
-	mkdir $fs/bin $fs/sbin $fs/dev $fs/proc
+	mkdir $fs/bin $fs/dev
 	cp -a $src/busybox-static $fs/bin/busybox
 	mknod -m 660 $fs/dev/console c 5 1
 	mknod -m 771 $fs/dev/null c 1 3
@@ -33,8 +33,8 @@ export PATH=/bin
 export HOME=/
 export TERM=vt100
 
+mkdir /tmp /mnt /proc
 mount -t proc none /proc
-mkdir /tmp /mnt
 while read name major minor ; do
 	for i in '' 1 2 3 4 5 6 7 8 9 ; do
 		mknod -m 644 /dev/\$name\$i b \$major \$((\$i + \$minor))
@@ -83,12 +83,11 @@ while true; do
 done
 EOT
 	chmod +x $fs/init
-	ln $fs/init $fs/sbin/init
 }
 
 pre_install()
 {
-	rm -rf $1/bin $1/sbin
+	rm -rf $1/bin $1/dev
 }
 
 post_install()
