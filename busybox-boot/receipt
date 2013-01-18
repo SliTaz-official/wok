@@ -14,28 +14,16 @@ CONFIG_FILES=""
 genpkg_rules()
 {
 	jslinux=false
-	mkdir -p $fs/bin $fs/sbin $fs/dev/pts $fs/proc $fs/sys $fs/tmp $fs/mnt
+	mkdir $fs/bin $fs/sbin $fs/dev $fs/proc
 	cp -a $src/busybox-static $fs/bin/busybox
 	mknod -m 660 $fs/dev/console c 5 1
 	mknod -m 771 $fs/dev/null c 1 3
 	mknod -m 660 $fs/dev/tty c 5 0
-	mknod -m 660 $fs/dev/loop0 b 7 0
-	mknod -m 660 $fs/dev/loop1 b 7 1
-	while read name major minor ; do
-		for i in '' 1 2 3 4 5 6 7 8 9 ; do
-			mknod -m 644 $fs/dev/$name$i b $major $(($i + $minor))
-		done
-	done <<EOT
-hda	3	0
-hdb	3	64
-sda	8	0
-sdb	8	16
-EOT
+	mknod -m 660 $fs/dev/tty1 c 4 1
 	if $jslinux; then
 		mknod -m 644 $fs/dev/clipboard c 10 231
 		mknod -m 660 $fs/dev/ttyS0 c 4 64
 	fi
-	mknod -m 660 $fs/dev/tty1 c 4 1
 	cat > $fs/init <<EOT
 #!/bin/busybox sh
 
@@ -46,6 +34,18 @@ export HOME=/
 export TERM=vt100
 
 mount -t proc none /proc
+mkdir /tmp /mnt
+while read name major minor ; do
+	for i in '' 1 2 3 4 5 6 7 8 9 ; do
+		mknod -m 644 /dev/\$name\$i b \$major \$((\$i + \$minor))
+	done
+done <<EOM
+loop	7	0
+hda	3	0
+hdb	3	64
+sda	8	0
+sdb	8	16
+EOM
 
 arg()
 {
@@ -53,21 +53,24 @@ grep -q \$1= /proc/cmdline && root="\$(sed "s/.*\$1=\\([^ ]*\\).*/\\1/" </proc/c
 }
 
 arg mount && mount \$root /mnt
-arg loopfs && losetup /dev/loop0 /mnt/\$root && mount /dev/loop0 /mnt
+arg loopfs && losetup /dev/loop /mnt/\$root && mount /dev/loop /mnt
 arg subroot && cp /bin/busybox /mnt/\$root/dev/shm &&
 exec switch_root mnt \$root/dev/shm/busybox chroot \$root /sbin/init
 arg loopfs && exec switch_root mnt /sbin/init
 
 [ -d /proc/bus/usb ] && mount -t usbfs usbfs /proc/bus/usb
-mount -t sysfs none /sys
-mount -t devpts none /dev/pts
+while read type dir ; do
+	grep -qs \$type /proc/filesystems &&
+	mkdir \$dir && mount -t \$type none \$dir
+done <<EOM
+sysfs	/sys
+devpts	/dev/pts
+EOM
 
 TTY=\$(tty 2>/dev/null)
 TTY=\${TTY:-/dev/tty1}
 EOT
-	$jslinux && cat >> $fs/init <<EOT
-stty -F \$TTY rows 30 2>/dev/null
-EOT
+	$jslinux && echo 'stty -F $TTY rows 30 2>/dev/null' >> $fs/init
 	cat >> $fs/init <<EOT
 
 busybox | sed '/Current/,\$!d'
