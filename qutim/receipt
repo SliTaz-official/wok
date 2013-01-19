@@ -9,15 +9,16 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://qutim.org"
 WGET_URL="$WEB_SITE/dwnl/40/$TARBALL"
 
-DEPENDS="libQtCore libQtGui libQtNetwork"
-BUILD_DEPENDS="Qt4-dev qmake cmake dbus-dev"
+DEPENDS="qt4 qca qt4-phonon xorg-libXss libjreen"
+BUILD_DEPENDS="Qt4-dev qmake cmake qca-dev xorg-libXss-dev dbus-dev libjreen-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	mkdir ../qutim-build && cd ../qutim-build
-	cmake ../$PACKAGE-$VERSION -DCMAKE_INSTALL_PREFIX=/usr &&
+	cmake ../$PACKAGE-$VERSION -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=release \
+	-DQUTIM_ENABLE_ALL_PLUGINS=on &&
 	make $MAKEOPTS &&
 	make DESTDIR=$DESTDIR install
 }
@@ -27,6 +28,6 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/
 	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/lib
+	cp -a $install/usr/lib $fs/usr
 	cp -a $install/usr/share $fs/usr
 }
