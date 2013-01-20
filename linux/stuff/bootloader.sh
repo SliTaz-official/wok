@@ -91,7 +91,7 @@ store()
 # usage: getlong offset file [bytes]
 getlong()
 {
-	od -j $1 -N ${3:-4} -t u${3:-4} -An $2
+	echo $(od -j $1 -N ${3:-4} -t u${3:-4} -An $2)
 }
 
 error()
