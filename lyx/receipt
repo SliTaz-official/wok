@@ -1,33 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="lyx"
-VERSION="1.6.9"
+VERSION="2.0.5.1"
 CATEGORY="office"
-SHORT_DESC="An advanced open-source document processor."
+SHORT_DESC="An advanced WYSIWYM document processor & LaTeX front-end"
 MAINTAINER="gokhlayeh@slitaz.org"
-DEPENDS="qt4 python perl imagemagick aspell aiksaurus"
-BUILD_DEPENDS="Qt4-dev"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.lyx.org"
-WGET_URL="ftp://ftp.lyx.org/pub/lyx/stable/1.6.x/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="ftp://ftp.lyx.org/pub/lyx/stable/2.0.x/$TARBALL"
+
+DEPENDS="aiksaurus aspell bzlib libQtGui python"
+BUILD_DEPENDS="python Qt4-dev bison aspell-dev xorg-libX11-dev aiksaurus-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	sed -i 's|.*define STRFWD_H.*|&\n#include <stdlib.h>|' src/support/strfwd.h
-	sed -i 's|.*<algorithm>.*|#include <cstddef>\n&|' src/support/weighted_btree.h
 	./configure --with-frontend=qt4 $CONFIGURE_ARGS &&
-	make && make -j1 install
+	make &&
+	make -j1 install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/applications
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/lyx $fs/usr/share
-	cp -a $stuff/lyx.desktop $fs/usr/share/applications
+	mkdir -p $fs/usr/share
+	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $_pkg/usr/share/lyx $fs/usr/share
 	rm -r $fs/usr/share/lyx/doc $fs/usr/share/lyx/examples
 }
-
