@@ -26,19 +26,19 @@ for i in $(cd $WOK; grep -l '^WANTED="linux"' */receipt | sed 's|/receipt||g')
 do
 	tazpath="taz/$i-*"
 	if [ ! $(grep -l 'linux-libre' $WOK/$i/receipt) ]; then
-		for j in $(cat $WOK/$i/$tazpath/files.list | grep ".ko.gz")
+		for j in $(cat $WOK/$i/$tazpath/files.list | grep ".ko..z")
 		do
 			basename $j >> $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list	
 		done
 	fi
 done
 # get the original list in .config
-for i in $(find $_pkg -iname "*.ko.gz")
+for i in $(find $_pkg -iname "*.ko.?z")
 do
-	basename $i >> $WOK/$PACKAGE/tmp/originial-"$VERSION".list
-done
+	basename $i
+done > $WOK/$PACKAGE/tmp/originial-"$VERSION".list
 # compare original .config and pkged modules
-for i in $(cat $WOK/$PACKAGE/tmp/originial-$VERSION.list)
+for i in $(cat $WOK/$PACKAGE/tmp/original-$VERSION.list)
 do
 	if ! grep -qs "$i" $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list ; then
 		modpath=`find $_pkg -iname "$i"`
