@@ -36,7 +36,7 @@ done
 for i in $(find $_pkg -iname "*.ko.?z")
 do
 	basename $i
-done > $WOK/$PACKAGE/tmp/originial-"$VERSION".list
+done > $WOK/$PACKAGE/tmp/original-"$VERSION".list
 # compare original .config and pkged modules
 for i in $(cat $WOK/$PACKAGE/tmp/original-$VERSION.list)
 do
