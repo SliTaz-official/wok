@@ -20,7 +20,13 @@ compile_rules()
 	sed -i 's/tar -xof/tar -xf/' drivers/dahdi/firmware/Makefile
 	find -type f | xargs sed -i -e 's/DECLARE_MUTEX/DEFINE_SEMAPHORE/g' \
 		-e 's/init_MUTEX\([^)]*\)/sema_init\1, 1/g'
-	[ -d $WOK/linux/taz ] || tazwok cook linux
+	if [ ! -d $WOK/linux/taz ]; then
+		if [ -x /usr/bin/cook ]; then
+			cook linux
+		else
+			tazwok cook linux
+		fi
+	fi
 	make KVERS=$kvers KSRC=$WOK/linux/source/$(ls $WOK/linux/taz) install
 }
 
