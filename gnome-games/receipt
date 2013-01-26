@@ -10,26 +10,24 @@ WEB_SITE="http://www.gnome.org/"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
 
 # Games: aisleriot need guile. glchess use pygtk/mesa and is splitted
-DEPENDS="GConf librsvg libcroco mesa clutter clutter-gtk libcanberra \
-libvorbis libogg util-linux-uuid gnuchess gnome-games-icons seed"
+DEPENDS="clutter-gtk GConf guile libcanberra librsvg xorg-libXi"
 BUILD_DEPENDS="GConf-dev librsvg-dev libcroco-dev mesa-dev clutter-dev \
 clutter-gtk-dev python-dev pygtk-dev libcanberra-dev gnome-doc-utils-dev \
-libvorbis-dev libogg-dev util-linux-uuid-dev seed-dev libtool"
+libvorbis-dev libogg-dev util-linux-uuid-dev seed-dev libtool guile-dev \
+libffi-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	LDFLAGS="$LDFLAGS -lgmodule"
 	./configure \
 		--sysconfdir=/etc \
 		--bindir=/usr/games \
 		--localstatedir=/var \
-		--enable-omitgames=aisleriot \
 		--disable-scrollkeeper \
+		--enable-introspection=no \
+		--enable-sound \
 		$CONFIGURE_ARGS &&
-	make && make install &&
-	rm $DESTDIR/usr/share/*/glchess.desktop &&
-	rm $DESTDIR/usr/share/*/gnome-sudoku.desktop
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -43,6 +41,8 @@ genpkg_rules()
 	# Remove splitted games files
 	rm -f $fs/usr/games/glchess
 	rm -f $fs/usr/games/gnome-sudoku
+	rm -f $fs/usr/share/*/glchess.desktop
+	rm -f $fs/usr/share/*/gnome-sudoku.desktop
 	
 	cp -a $install/var $fs
 	chmod a+w $fs/var/games/*
