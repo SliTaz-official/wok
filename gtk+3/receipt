@@ -1,0 +1,54 @@
+# SliTaz package receipt.
+
+PACKAGE="gtk+3"
+SOURCE="gtk+"
+VERSION="3.2.3"
+CATEGORY="x-window"
+SHORT_DESC="The GIMP Toolkit 3.x"
+MAINTAINER="pankso@slitaz.org"
+SUGGESTED="cups"
+TARBALL="$SOURCE-$VERSION.tar.xz"
+WEB_SITE="http://www.gtk.org/"
+WGET_URL="$GNOME_MIRROR/$SOURCE/${VERSION:0:3}/$TARBALL"
+CONFIG_FILES="/etc/gtk-3.0/settings.ini"
+CROSS="bug: /bin/bash: no: command not found"
+
+DEPENDS="atk gdk-pixbuf pango xorg-libXcomposite xorg-libXcursor \
+xorg-libXdamage xorg-libXi xorg-libXinerama xorg-libXrandr"
+BUILD_DEPENDS="bash pkg-config cups-dev dbus-dev gobject-introspection-dev \
+perl gdk-pixbuf-dev xorg-dev libffi-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--build=$HOST_SYSTEM --host=$HOST_SYSTEM &&
+	make $MAKEFLAGS &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/gtk-3.0 $fs/usr/share $fs/usr/bin $fs/etc/gtk-3.0
+
+	# Libs.
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/gtk-3.0/3.0.0 $fs/usr/lib/gtk-2.0
+	rm -rf $fs/usr/lib/gtk-3.0/3.0.0/*/*.la
+
+	# Themes
+	cp -a $install/usr/share/themes $fs/usr/share
+	cp -a $install/usr/share/glib-2.0 $fs/usr/share
+
+	# Apps.
+	cp  $install/usr/bin/gtk-query-immodules-3.0 $fs/usr/bin
+	#cp  $install/usr/bin/gtk-update-icon-cache $fs/usr/bin
+
+	# Configuration file
+	cp -a $install/etc $fs
+	cp -f $stuff/settings.ini $fs/etc/gtk-3.0
+}
