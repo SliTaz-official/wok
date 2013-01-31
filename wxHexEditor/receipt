@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="wxHexEditor"
+VERSION="0.21"
+CATEGORY="development"
+SHORT_DESC="Hex editor for massive files"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL"
+WEB_SITE="http://wxhexeditor.sourceforge.net/"
+TARBALL="$PACKAGE-v$VERSION-src.tar.bz2"
+SF_PROJECT="wxhexeditor"
+WGET_URL="$SF_MIRROR/$SF_PROJECT/$TARBALL"
+
+DEPENDS="libgomp wxWidgets"
+BUILD_DEPENDS="wxWidgets-dev libffi libtool autoconf automake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|^PREFIX\ *= /usr/local|PREFIX = /usr|' $src/makefile
+	sed -i 's|^HOST=|HOST = '$HOST_SYSTEM'|' $src/makefile
+
+	# don't know why but `backticks` unusable in this makefile
+	# mhash/configure:14063 say "libtool.m4: error: problem compiling CXX test program"
+	# mhash/config.log beginning from "configure:13977"
+	sed -i "s|^CC =.*|CC = $(wx-config --cc)|" $src/makefile
+	sed -i "s|^CXX =.*|CXX = $(wx-config --cxx)|" $src/makefile
+	sed -i "s|^CXXFLAGS=.*|CXXFLAGS = $(wx-config --cxxflags) -Iudis86 -Imhash/include -MMD -O2 -c \${OPTFLAGS}|" $src/makefile
+	sed -i "s|^LDFLAGS =.*|LDFLAGS = $(wx-config --libs)|" $src/makefile
+	sed -i "s|^RC =.*|$(wx-config --rescomp)|" $src/makefile
+	sed -i "s|^RCFLAGS =.*|RCFLAGS = $(wx-config --cxxflags | sed s/' '-m.*//g;)|" $src/makefile
+
+	make OPTFLAGS="-fopenmp" && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
