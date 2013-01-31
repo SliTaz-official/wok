@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="guvcview"
+SOURCE="guvcview-src"
+VERSION="1.5.0"
+CATEGORY="multimedia"
+SHORT_DESC="A simple GTK interface for capturing and viewing video from webcams."
+MAINTAINER="claudinei@slitaz.org"
+LICENSE="GNU General Public Licence"
+WEB_SITE="http://guvcview.sourceforge.net"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="gtk+ libsdl libpng portaudio libv4l ffmpeg libgudev"
+BUILD_DEPENDS="gtk+-dev libsdl-dev libpng-dev portaudio-dev libv4l-dev \
+ffmpeg-dev libgudev-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	patch -p0 < $stuff/v412_formats.patch
+	patch -p0 < $stuff/vcodecs.patch
+	./configure --prefix=/usr $CONFIGURE_ARGS && 
+	make && 
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/pixmaps $fs/usr/bin $fs/usr/share/menu
+	cp -a $install/usr/bin/* $fs/usr/bin
+	cp -a $install/usr/share/pixmaps/* $fs/usr/share/pixmaps
+	cp -a $install/usr/share/menu/* $fs/usr/share/menu
+}
