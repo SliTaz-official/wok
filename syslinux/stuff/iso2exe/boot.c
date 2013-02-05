@@ -42,7 +42,7 @@ static void bootiso(char **iso)
 	loadkernel();
 	isoopen(rootfs);
 	loadinitrd();
-	lseek(isofd, 28, SEEK_SET);
+	lseek(isofd, 24, SEEK_SET);
 	read(isofd, &magic, 4);
 	isofilesize = magic & 0xFFFF;
 	isofileofs = 0x8000 - isofilesize;

@@ -2,15 +2,14 @@ GCC=gcc -m32
 BCC=bcc -ansi -O -0 -C-t
 BCCFLAGS=-D__MSDOS__ -Md
 
-iso2exe: iso2exe.sh bootiso.bin lzcom.bin boot.com init
+iso2exe: iso2exe.sh boot.com bootiso.bin init win32.exe
 	cp iso2exe.sh $@
 	chmod +x $@
-	lzma e boot.com boot.com.lzma -eos
-	./$@ --build bootiso.bin lzcom.bin boot.com.lzma init
+	./$@ --build boot.com bootiso.bin init win32.exe
 
 OBJS = boot.o iso9660.o libdos.o bootlinux.o
 boot.com: $(OBJS)
-	$(BCC) $(BCCFLAGS) -o $@ $(OBJS)
+	$(BCC) $(BCCFLAGS) -o $@ $(OBJS) &&  upx --ultra-brute $@
 
 boot.o: boot.c iso9660.h bootlinux.h libdos.h
 
@@ -20,8 +19,9 @@ iso9660.o: iso9660.c iso9660.h
 
 libdos.o: libdos.c libdos.h
 
-lzcom.bin: lzcom.S unlzma.S
-
+win32.exe: win32.c
+	i586-pc-mingw32-gcc -s -o $@ $< -lws2_32 && upx --ultra-brute $@
+	
 %.o: %.c
 	$(BCC) $(BCCFLAGS) -A-l -A$*.lst -c -o $@ $<
 

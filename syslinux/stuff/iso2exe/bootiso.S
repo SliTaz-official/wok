@@ -3,14 +3,14 @@
 	.org	0
 
 CODESZ	=	0x8000			// 16 sectors = 32Kb
-#define EXEADRS(x)	x+0xE0
-#define EXESTR(x)	x-0x20
+#define EXEADRS(x)	x+0xC0
+#define EXESTR(x)	x-0x40
 
 	.globl	_start
 _start:
 	decw	%bp			// Magic number: MZ
 	popw	%dx
-	jmp	start			// Bytes on last page of file
+	jmp	start0			// Bytes on last page of file
 	.word	(CODESZ+511)/512	// Pages in file
 	.word	0			// Relocations
 	.word	(end_header-_start)/16	// Size of header in paragraphs
@@ -21,24 +21,16 @@ _start:
 	.word	0			// Checksum
 	.word	EXEADRS(exestart)	// Initial IP value
 	.word	0xFFF0			// Initial (relative) CS value
-	.word	0x001C			// File address of relocation table
-	.word	0			// Overlay number
 initramfssize:
-	.word	0
+	.word	0			// File address of relocation table
 id:
-	.word	0
-end_header:
-
-chksum:
-	.word	0
-comstart:
-	.word	0
+	.word	0			// Overlay number
 
 /////////////////////// Master Boot Record code //////////////////////////////
 
-start:
-	incw	%bp
+start0:					// File address of relocation table
 	pushw	%dx			// restore SP
+	incw	%bp			// restore %bp
 	pushw	$0
 	popw	%ds
 	movw	$0x7C00, %bx
@@ -48,10 +40,22 @@ start:
 	pushaw
 	movw	%sp, %bp
 	pushw	%es
+	cld
+	pushw	%ds
+	popw	%es
 	call	setreg
 	rep
 	movsw
+	movw	$0x80, %dx
 	ljmp	$0, $0x0600+start2
+
+	.org	60
+	.long	0			// PE header offset
+end_header:
+chksum:
+	.word	0
+comstart:
+	.word	0
 	
 readsector2:
 	incw	%cx
@@ -61,16 +65,12 @@ readsector1:
 	movw	$0x201, %ax
 	int	$0x13
 setreg:
-	cld
-	pushw	%ds
-	popw	%es
 	movw	%bx, %si
 	movw	$0x0600, %di
 	movw	$0x0100, %cx
 return:
 	ret
 start2:
-	movw	$0x80, %dx
 dxloop:
 	call	readsector1
 	repe
@@ -122,7 +122,7 @@ rmPaging:
 	.ascii	"Invalid: paging + "	// Invalid: paging + real mode.
 realmodemsg:
 	.ascii	"real"			// real mode.
-// --------------- Must be in 00A0 011F range ------------------------
+// --------------- Must be in 00C0 013F range ------------------------
 mode:
 	.ascii	" mod"
 eeol:

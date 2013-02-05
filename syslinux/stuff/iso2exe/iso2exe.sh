@@ -25,6 +25,11 @@ store()
 	done | xargs echo -en | ddq bs=1 conv=notrunc of=$3 seek=$(($1))
 }
 
+get()
+{
+	echo $(od -j $(($1)) -N ${3:-2} -t u${3:-2} -An $2)
+}
+
 main()
 {
 	case "$1" in
@@ -58,25 +63,36 @@ main()
 	( cd $TMP ; find * | cpio -o -H newc ) | \
 		lzma e $TMP/rootfs.gz -si 2> /dev/null
 	SIZE=$(wc -c < $TMP/rootfs.gz)
-	store 28 $SIZE $1
+	store 24 $SIZE $1
 	OFS=$(( 0x8000 - $SIZE ))
 	printf "Adding rootfs.gz file at %04X...\n" $OFS
 	cat $TMP/rootfs.gz | ddq of=$1 bs=1 seek=$OFS conv=notrunc
 	rm -rf $TMP
-	SIZE=$($0 --get lzcom.bin boot.com.lzma | wc -c)
+	SIZE=$($0 --get boot.com | wc -c)
 	OFS=$(( $OFS - $SIZE ))
 	printf "Adding DOS boot file at %04X...\n" $OFS
-	$0 --get lzcom.bin boot.com.lzma | ddq of=$1 bs=1 seek=$OFS conv=notrunc
-	store 34 $(($OFS+0xE0)) $1
-	store 30 ${RANDOM:-0} $1
+	$0 --get boot.com | ddq of=$1 bs=1 seek=$OFS conv=notrunc
+	store 66 $(($OFS+0xC0)) $1
+	SIZE=$($0 --get win32.exe | tee /tmp/exe$$ | wc -c)
+	OFS=$(( 128 + ( ($OFS - $SIZE + 128) & 0xFE00 ) ))
+	printf "Adding WIN32 file at %04X...\n" $OFS
+	LOC=$((0xAC+$(get 0x94 /tmp/exe$$)))
+	for i in $(seq 1 $(get 0x86 /tmp/exe$$)); do
+		store $LOC $(($(get $LOC /tmp/exe$$)+$OFS-128)) /tmp/exe$$
+		LOC=$(($LOC+40))
+	done
+	ddq if=/tmp/exe$$ of=$1 bs=1 skip=128 seek=$OFS conv=notrunc
+	rm -f /tmp/exe$$ 
+	store 60 $OFS $1
+	store 26 ${RANDOM:-0} $1
 	i=34
 	n=0
 	echo -n "Adding checksum..."
 	while [ $i -lt 32768 ]; do
-		n=$(($n + $(od -j $i -N 2 -t u2 -An $1) ))
+		n=$(($n + $(get $i $1) ))
 		i=$(($i + 2))
 	done
-	store 32 -$n $1
+	store 64 -$n $1
 	echo " done."
 }
 
