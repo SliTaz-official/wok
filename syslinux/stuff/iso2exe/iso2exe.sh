@@ -44,8 +44,6 @@ main()
 	*5a4d)	echo "The file $1 is already an EXE file." 1>&2 && exit 1;;
 	*0000)	[ -x /usr/bin/isohybrid ] && isohybrid $1
 	esac
-	[ ! -x /usr/sbin/mount.posixovl ] && 
-	echo "No file mount.posixovl. Aborting." 1>&2 && exit 1
 		
 	echo "Moving syslinux hybrid boot record..."
 	ddq if=$1 bs=512 count=1 | ddq of=$1 bs=512 count=1 seek=1 conv=notrunc 
@@ -56,10 +54,11 @@ main()
 	# keep the largest room for the tazlito info file
 	TMP=/tmp/iso2exe$$
 	mkdir -p $TMP/bin $TMP/dev
-	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe
 	cp -a /dev/?d?* $TMP/dev
 	$0 --get init > $TMP/init.exe
-	chmod +x $TMP/init.exe $TMP/bin/mount.posixov*
+	grep -q mount.posixovl.iso2exe $TMP/init.exe &&
+	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe
+	find $TMP -type f | xargs chmod +x
 	( cd $TMP ; find * | cpio -o -H newc ) | \
 		lzma e $TMP/rootfs.gz -si 2> /dev/null
 	SIZE=$(wc -c < $TMP/rootfs.gz)
@@ -73,19 +72,21 @@ main()
 	printf "Adding DOS boot file at %04X...\n" $OFS
 	$0 --get boot.com | ddq of=$1 bs=1 seek=$OFS conv=notrunc
 	store 66 $(($OFS+0xC0)) $1
-	SIZE=$($0 --get win32.exe | tee /tmp/exe$$ | wc -c)
-	OFS=$(( 128 + ( ($OFS - $SIZE + 128) & 0xFE00 ) ))
-	printf "Adding WIN32 file at %04X...\n" $OFS
-	LOC=$((0xAC+$(get 0x94 /tmp/exe$$)))
-	for i in $(seq 1 $(get 0x86 /tmp/exe$$)); do
-		store $LOC $(($(get $LOC /tmp/exe$$)+$OFS-128)) /tmp/exe$$
-		LOC=$(($LOC+40))
-	done
-	ddq if=/tmp/exe$$ of=$1 bs=1 skip=128 seek=$OFS conv=notrunc
+	SIZE=$($0 --get win32.exe 2> /dev/null | tee /tmp/exe$$ | wc -c)
+	if [ $SIZE -ne 0 ]; then
+		OFS=$(( 128 + ( ($OFS - $SIZE + 128) & 0xFE00 ) ))
+		printf "Adding WIN32 file at %04X...\n" $OFS
+		LOC=$((0xAC+$(get 0x94 /tmp/exe$$)))
+		for i in $(seq 1 $(get 0x86 /tmp/exe$$)); do
+			store $LOC $(($(get $LOC /tmp/exe$$)+$OFS-128)) /tmp/exe$$
+			LOC=$(($LOC+40))
+		done
+		ddq if=/tmp/exe$$ of=$1 bs=1 skip=128 seek=$OFS conv=notrunc
+	fi
 	rm -f /tmp/exe$$ 
 	store 60 $OFS $1
 	store 26 ${RANDOM:-0} $1
-	i=34
+	i=66
 	n=0
 	echo -n "Adding checksum..."
 	while [ $i -lt 32768 ]; do

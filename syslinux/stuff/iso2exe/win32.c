@@ -1,6 +1,6 @@
-#include <stdio.h>
+#include <windows.h>
 
 int main()
 {
-	printf("No support for Windows yet.\n");
+	MessageBox(NULL,"No support for Windows yet.","Sorry",MB_OK);
 }

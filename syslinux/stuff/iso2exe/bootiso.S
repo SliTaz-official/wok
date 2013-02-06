@@ -171,7 +171,7 @@ exestart:
 	movw	(%si), %cx
 	jcxz	is386
 #endif
-	movw	$0x7FE0/2, %cx
+	movw	$(EXESTR(0x8000))/2, %cx
 chklp:
 	lodsw
 	addw	%ax, %dx
