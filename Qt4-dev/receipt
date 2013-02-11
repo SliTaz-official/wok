@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="Qt4-dev"
-VERSION="4.7.3"
+VERSION="4.8.4"
 CATEGORY="development"
 SHORT_DESC="qt x11 toolkit"
 MAINTAINER="allan316@gmail.com"
@@ -11,20 +11,23 @@ libQt3Support libQtClucene libQtPlugins libQtDBus libQtHelp libQtOpenGL \
 libQtScript libQtSql libQtScriptTools libQtWebkit libQtTest \
 qtconfig gcc-lib-base"
 SUGGESTED="libmng nvidia"
-WEB_SITE="http://qt.nokia.com/"
+WEB_SITE="http://qt-project.org/"
 WANTED="qt4"
-SOURCE="qt-everywhere-opensource-src"
+
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/lib $fs/usr/include/private
 	cp -a $_pkg/usr/include $fs/usr
 	cp -a $_pkg/usr/lib/pkgconfig  $fs/usr/lib
 	cp -a $_pkg/usr/lib/*.*a  $fs/usr/lib/	
 	cp -a $_pkg/usr/lib/*.prl  $fs/usr/lib/	
 	cp -a $_pkg/usr/share  $fs/usr	
 	cp -a $_pkg/usr/lib/qt $fs/usr/lib
+
+	#private qt includes
+	for i in $src/include/*/private/*; do cp $src/$(cat $i | sed 's/^#include "[./]*\([a-z].*\)"$/\1/') $fs/usr/include/private; done
 	
 	# all qt plugins are in libQtPlugins
 	rm -rf $fs/usr/lib/qt/plugins

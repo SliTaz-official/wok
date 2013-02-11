@@ -2,13 +2,13 @@
 
 PACKAGE="qt4"
 SOURCE="qt-everywhere-opensource-src"
-VERSION="4.7.3"
+VERSION="4.8.4"
 CATEGORY="meta"
 SHORT_DESC="qt x11 toolkit"
 MAINTAINER="allan316@gmail.com"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://qt.nokia.com/"
-WGET_URL="ftp://ftp.qt.nokia.com/qt/source/$TARBALL"
+WEB_SITE="http://qt-project.org/"
+WGET_URL="http://releases.qt-project.org/qt4/source/$TARBALL"
 PROVIDE="qt-x11-opensource-src"
 TAGS="qt"
 
@@ -29,11 +29,29 @@ sqlite-dev libglu-mesa-dev libglw-mesa-dev"
 compile_rules()
 {
 	cd $src
-	touch .qmake.vars
-	./configure -v \
+	
+	#ugly fix for missing files, you probably could do better
+	
+	mkdir -p $src/src/3rdparty/webkit/Source/WebKit2/generated
+
+	for i in $(grep MessageReceiver.cpp $stuff/missinglist); do
+	fileprefix=${i%MessageReceiver.cpp}
+	cppfilename=$(find $src/src/3rdparty/webkit/Source/WebKit2  -name $fileprefix.cpp)
+	dname=$(dirname $cppfilename)
+	/usr/bin/python $src/src/3rdparty/webkit/Source/WebKit2/Scripts/generate-message-receiver.py $dname/$fileprefix.messages.in > $src/src/3rdparty/webkit/Source/WebKit2/generated/$i
+	done
+	
+	for i in $(grep Messages.h $stuff/missinglist); do
+	fileprefix=${i%Messages.h}
+	hfilename=$(find $src/src/3rdparty/webkit/Source/WebKit2  -name $fileprefix.h)
+	dname=$(dirname $hfilename)
+	/usr/bin/python $src/src/3rdparty/webkit/Source/WebKit2/Scripts/generate-messages-header.py $dname/$fileprefix.messages.in > $src/src/3rdparty/webkit/Source/WebKit2/generated/$i
+	done
+	
+		./configure\
+		-silent \
 		-prefix /usr \
 		-confirm-license -opensource \
-		-silent \
 		-sysconfdir /etc \
 		-plugindir /usr/lib/qt/plugins \
 		-importdir /usr/lib/qt/imports \
@@ -42,7 +60,7 @@ compile_rules()
 		-docdir /usr/share/doc/qt \
 		-examplesdir /usr/share/doc/qt/examples \
 		-demosdir /usr/share/doc/qt/demos \
-		-no-separate-debug-info \
+		-release \
 		-nomake demos \
 		-nomake examples \
 		-nomake docs \
@@ -68,8 +86,4 @@ genpkg_rules()
 {
 	# dummy tree to avoid 'tazwok cmp --cook' building loop
 	mkdir $fs/etc
-	# pkgconfig path fixes
-	sed -i -e "s|-L$src/_pkg/usr/lib||g" $install/usr/lib/pkgconfig/*.pc
-	sed -i -e "s|$src/_pkg/usr/bin/moc|/usr/bin/moc|g" $install/usr/lib/pkgconfig/*.pc
-	sed -i -e "s|$src/_pkg/usr/bin/uic|/usr/bin/uic|g" $install/usr/lib/pkgconfig/*.pc
 }
