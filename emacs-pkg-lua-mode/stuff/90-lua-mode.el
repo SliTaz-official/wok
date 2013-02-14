@@ -1,18 +1,10 @@
 ;; lua-mode start file for SliTaz
-;; Last update: 2009-08-22
+;; Last update: 2013-02-08
 ;;
-;; To set up Emacs to automatically edit files ending in .lua using Lua-mode 
+;; To set up Emacs to automatically edit files ending in .lua using Lua-mode
 
-(setq auto-mode-alist (cons '("\\.lua$" . lua-mode) auto-mode-alist))
 (autoload 'lua-mode "lua-mode" "Lua editing mode." t)
+(add-to-list 'auto-mode-alist '("\\.lua$" . lua-mode))
+(add-to-list 'interpreter-mode-alist '("lua" . lua-mode))
 
-;; If you want colorization, turn on global-font-lock or add this:
-
-(add-hook 'lua-mode-hook 'turn-on-font-lock)
-
-;; If you want to use hideshow, turn on hs-minor-mode or add this:
-
-(add-hook 'lua-mode-hook 'hs-minor-mode)
-
-;;
 
