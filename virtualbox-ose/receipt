@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="virtualbox-ose"
-VERSION="4.1.8"
+VERSION="4.2.6"
 CATEGORY="misc"
 SHORT_DESC="Powerful x86 virtualization for enterprise as well as home use (Open Source Edition)"
 MAINTAINER="slaxemulator@gmail.com"
@@ -18,14 +18,14 @@ libglu-mesa-dev Qt4-dev libsdl-ttf-dev alsa-lib-dev hal-dev xorg-libXtst-dev \
 xorg-libXrandr-dev python python-dev xalan-c curl-dev xalan-c-dev \
 xerces-c-dev openssl-dev zlib-dev libcap-dev glib-dev libvncserver-dev \
 pam pam-dev bzip2 linux-module-headers pkg-config tar wget vde2-dev \
-libpng-dev gsoap-dev"
+libpng-dev gsoap-dev libdevmapper-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	patch -Np1 -i "$stuff/virtualbox-4-makeself-check.patch"
-	patch -Np1 -i "$stuff/virtualbox-4-mkisofs-check.patch"
+	#patch -Np1 -i "$stuff/virtualbox-4-mkisofs-check.patch"
 	cp $stuff/LocalConfig.kmk .
 	./configure \
 		--disable-pulse \
@@ -124,6 +124,9 @@ genpkg_rules()
 	# virtualbox-modules
 	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 
+	#cooking installs module in linux major version dir
+	KERNEL_VERSION=${KERNEL_VERSION:0:3}
+
 	cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/src"
 	install -D -m644 vboxdrv.ko "$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxdrv.ko"
 	install -D -m644 vboxnetflt.ko "$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxnetflt.ko"
@@ -148,8 +151,8 @@ genpkg_rules()
 	install -m755 -D $src/src/VBox/Additions/x11/Installer/vboxclient.desktop \
 		$fs/etc/xdg/autostart/vboxclient.desktop
 
-	install -D vboxmouse_drv_19.so \
-		"$fs/usr/lib/X11/modules/input/vboxmouse.so"
+	#install -D vboxmouse_drv_19.so \
+	#	"$fs/usr/lib/X11/modules/input/vboxmouse.so"
 	[ -f vboxvideo_drv_19.so ] &&
 	install -D vboxvideo_drv_19.so \
 		"$fs/usr/lib/X11/modules/drivers/vboxvideo.so"
@@ -185,6 +188,9 @@ pre_remove()
 post_install()
 {
 	KERNEL_VERSION=`grep  ^VERSION= $1/var/lib/tazpkg/installed/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
+	
+	#cooking installs module in linux major version dir
+	KERNEL_VERSION=${KERNEL_VERSION:0:3}	
 
 	chroot "$1/" depmod -a $KERNEL_VERSION-slitaz
 	grep -qs vboxdrv $1/etc/rcS.conf ||
