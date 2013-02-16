@@ -18,13 +18,13 @@ libglu-mesa-dev Qt4-dev libsdl-ttf-dev alsa-lib-dev hal-dev xorg-libXtst-dev \
 xorg-libXrandr-dev python python-dev xalan-c curl-dev xalan-c-dev \
 xerces-c-dev openssl-dev zlib-dev libcap-dev glib-dev libvncserver-dev \
 pam pam-dev bzip2 linux-module-headers pkg-config tar wget vde2-dev \
-libpng-dev gsoap-dev libdevmapper-dev"
+libpng-dev gsoap-dev libdevmapper-dev makeself"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	patch -Np1 -i "$stuff/virtualbox-4-makeself-check.patch"
+	#patch -Np1 -i "$stuff/virtualbox-4-makeself-check.patch"
 	#patch -Np1 -i "$stuff/virtualbox-4-mkisofs-check.patch"
 	cp $stuff/LocalConfig.kmk .
 	./configure \
@@ -39,7 +39,7 @@ compile_rules()
 
 	# build modules. NOTE: we gor ERROR even if it build and cook will exit
 	# sed ERROR to error.
-	cd 
+	#cd 
 	KERN_DIR=/usr/src/linux make -C "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/src"
 	# build guest additions modules
 	KERN_DIR=/usr/src/linux make -C "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions/src"
@@ -107,8 +107,10 @@ genpkg_rules()
 	echo 'INSTALL_DIR=/usr/lib/virtualbox' >> "$fs/etc/vbox/vbox.cfg"
 
 	#udev
-	install -D -m 0644 "$stuff/60-virtualbox.rules" \
-	"$fs/etc/udev/rules.d/60-virtualbox.rules"
+	#install -D -m 0644 "$stuff/60-virtualbox.rules" \
+	#"$fs/etc/udev/rules.d/60-virtualbox.rules"
+	install -D -m 0644 "$stuff/10-vboxdrv.rules" \
+	"$fs/etc/udev/rules.d/10-vboxdrv.rules"
 
 	mkdir -p $fs/usr/lib/virtualbox/sdk/bindings/xpcom/python/
 	cd sdk/installer
@@ -121,16 +123,18 @@ genpkg_rules()
 	chmod 644 $fs/usr/lib/virtualbox/sdk/bindings/xpcom/python/xpcom/client/*.py
 	cd $src/out/linux.$BUILD_PLATFORM_ARCH/release/bin
 
-	# virtualbox-modules
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-
-	#cooking installs module in linux major version dir
-	KERNEL_VERSION=${KERNEL_VERSION:0:3}
+	
+	
+	KERNEL_VERSION=$(grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g')
+	#cooking installs modules in linux major version dir
+	KBASEVER="${KERNEL_VERSION:0:3}"
+	
 
 	cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/src"
-	install -D -m644 vboxdrv.ko "$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxdrv.ko"
-	install -D -m644 vboxnetflt.ko "$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxnetflt.ko"
-	install -D -m644 vboxnetadp.ko "$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxnetadp.ko"
+	install -D -m644 vboxdrv.ko "$fs/lib/modules/$KBASEVER-slitaz/misc/vboxdrv.ko"
+	install -D -m644 vboxnetflt.ko "$fs/lib/modules/$KBASEVER-slitaz/misc/vboxnetflt.ko"
+	install -D -m644 vboxnetadp.ko "$fs/lib/modules/$KBASEVER-slitaz/misc/vboxnetadp.ko"
+	#install -D -m644 vboxpci.ko "$fs/lib/modules/$KBASEVER-slitaz/misc/vboxpci.ko"
 
 	# virtualbox-ose-additions
 
@@ -166,33 +170,44 @@ genpkg_rules()
 
 	cd vboxguest
 	install -D -m644 vboxguest.ko \
-		"$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxguest.ko"
+		"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxguest.ko"
 
 	cd ../vboxsf
 	install -D -m644 vboxsf.ko \
-		"$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxsf.ko"
+		"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxsf.ko"
 
 	cd ../vboxvideo
 	install -D -m644 vboxvideo.ko \
-		"$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxvideo.ko"
+		"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxvideo.ko"
 
 	install -D -m 0644 "$stuff/60-vboxguest.rules" \
 		"$fs/etc/udev/rules.d/60-vboxguest.rules"
+
 }
 
 pre_remove()
 {
-    sed -i "s/vboxdrv vboxnetadp vboxnetflt //" $1/etc/rcS.conf
+    #sed -i "s/vboxdrv vboxnetadp vboxnetflt vboxpci//" $1/etc/rcS.conf
+    sed -i "s/vboxdrv vboxnetadp vboxnetflt//" $1/etc/rcS.conf
+    delgroup vboxusers
 }
 
 post_install()
 {
-	KERNEL_VERSION=`grep  ^VERSION= $1/var/lib/tazpkg/installed/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	
-	#cooking installs module in linux major version dir
-	KERNEL_VERSION=${KERNEL_VERSION:0:3}	
-
-	chroot "$1/" depmod -a $KERNEL_VERSION-slitaz
+	#chroot "$1/"
+	KERNEL_VERSION=$(uname -r)
+	depmod -a $KERNEL_VERSION
+	#modprobe -a vboxdrv vboxnetadp vboxnetflt vboxpci
+	modprobe -a vboxdrv vboxnetadp vboxnetflt
 	grep -qs vboxdrv $1/etc/rcS.conf ||
-	sed -i 's/LOAD_MODULES="/&vboxdrv vboxnetadp vboxnetflt /' $1/etc/rcS.conf
+	#sed -i 's/LOAD_MODULES="/&vboxdrv vboxnetadp vboxnetflt vboxpci/' /etc/rcS.conf
+	sed -i 's/LOAD_MODULES="/&vboxdrv vboxnetadp vboxnetflt/' /etc/rcS.conf
+	grep -qs vboxuser /etc/group || addgroup -g 199 vboxusers
+	echo "add yourself to vboxusers group if you want to access host"
+	echo "usb devices: addgroup $USER vboxusers"
+	#echo "then logout and login again"
+	echo "then reboot, until i find how to make udev do what it should without reboot..."
+	#addgroup $USER vboxusers
+	udevadm control --reload
+	udevadm trigger
 }
