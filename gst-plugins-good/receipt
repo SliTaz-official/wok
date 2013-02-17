@@ -1,43 +1,54 @@
 # SliTaz package receipt.
 
 PACKAGE="gst-plugins-good"
-VERSION="0.10.30"
+VERSION="0.10.31"
+SERIES="0.10"
 CATEGORY="multimedia"
 SHORT_DESC="GStreamer Good Plugins"
 MAINTAINER="jozee@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://gstreamer.freedesktop.org/" 
+DEPENDS="gst-plugins-base \
+cairo flac libjpeg libpng \
+libsoup
+libcdio libdv orc speex taglib wavpack bzip"
+BUILD_DEPENDS="gst-plugins-base-dev
+cairo-dev flac-dev jpeg-dev libpng-dev xorg-libXv-dev
+libsoup-dev
+jack-audio-connection-kit-dev libcdio-dev \
+libdv-dev orc-dev speex-dev taglib-dev wavpack-dev bzip2-dev"
+SUGGESTED="jack-audio-connection-kit"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="http://gstreamer.freedesktop.org/"
 WGET_URL="$WEB_SITE/src/$PACKAGE/$TARBALL"
+LOCALES="da de es fr id it pt_BR ru zh_CN"
 
-DEPENDS="libxml2 gst-plugins-base gtk+ bzlib dbus flac libdv taglib \
-xorg-libXcomposite xorg-libXcursor xorg-libXfixes xorg-libXinerama \
-xorg-libXrandr xorg-libXrender xorg-libXv GConf libsoup esound libavc1394 \
-libiec61883 libv4l libtasn1 wavpack audiofile"
-BUILD_DEPENDS="pkg-config gst-plugins-base gst-plugins-base-dev libogg-dev \
-liboil-dev gstreamer-dev libxml2-dev glib-dev libjpeg jpeg-dev bzip2-dev \
-wavpack-dev GConf-dev esound-dev flac-dev xorg-libXv-dev audiofile-dev \
-jack-audio-connection-kit-dev dbus-dev util-linux-uuid-dev hal-dev \
-libdv-dev alsa-lib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	sed -i 's/String::String/String/' ext/taglib/gstapev2mux.cc
 	./configure \
-		--prefix=/usr --sysconfdir=/etc --localstatedir=/var \
-		--enable-experimental --disable-static --disable-speex \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--enable-experimental \
+		--disable-static \
+		--disable-debug \
+		--disable-hal \
+		--disable-esd \
+		--with-package-name="GStreamer Good Plugins ($SERIES)" \
+		--with-package-origin="http://www.slitaz.org/" \
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make install	
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $_pkg/usr/lib/gstreamer* $fs/usr/lib
-	cp -a $_pkg/usr/share/gstreamer* $fs/usr/share
-	rm $fs/usr/lib/gstreamer*/*.*a
-
+	mkdir -p $fs/usr/lib/gstreamer-$SERIES $fs/usr/share
+	mv $install/usr/lib/gstreamer-$SERIES/*.so* $fs/usr/lib/gstreamer-$SERIES
+	mv $install/usr/share/gstreamer* $fs/usr/share
+	for locale in $LOCALES; do
+		mv $install/usr/share/locale/$locale $fs/usr/share/locale
+	done
 }
