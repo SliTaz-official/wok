@@ -2,33 +2,36 @@
 
 PACKAGE="gst-ffmpeg"
 VERSION="0.10.11"
+SERIES="0.10"
 CATEGORY="multimedia"
 SHORT_DESC="GStreamer FFmpeg Plugins"
 MAINTAINER="jozee@slitaz.org"
-DEPENDS="gstreamer gst-plugins-base ffmpeg glib"
-BUILD_DEPENDS="pkg-config gst-plugins-base-dev liboil-dev gstreamer-dev \
-libxml2-dev glib-dev ffmpeg-dev bzip2-dev coreutils-file-special libffi"
+DEPENDS="gst-plugins-base bzip2 orc"
+BUILD_DEPENDS="pkg-config gstreamer-dev gst-plugins-base-dev bzip2-dev \
+coreutils-file-format coreutils-file-special glib-dev orc-dev yasm \
+libxml2-dev libffi"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://gstreamer.freedesktop.org/" 
+WEB_SITE="http://gstreamer.freedesktop.org/"
 WGET_URL="$WEB_SITE/src/$PACKAGE/$TARBALL"
 
 # Rules to configure and make the package.
-# Add --with-system-ffmpeg from  ./configure for compiling with shared FFmpeg.
-# need atleast version 18330 for shared ffmpeg
 compile_rules()
 {
 	cd $src
-	sed -i 's/pr -. -t/cat/' gst-libs/ext/ffmpeg/configure
-	# fix mktemp -u
-	sed -i 's|mktemp -u|/usr/bin/mktemp -u|g' gst-libs/ext/ffmpeg/configure
-	./configure --prefix=/usr $CONFIGURE_ARGS &&
+	./configure \
+		--prefix=/usr \
+		--disable-static \
+		--with-ffmpeg-extra-configure="--enable-runtime-cpudetect" \
+		--with-package-name="GStreamer FFMpeg Plugin ($SERIES)" \
+		--with-package-origin="http://www.slitaz.org/" \
+		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$install install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/gstreamer* $fs/usr/lib
+	mkdir -p $fs/usr/lib/gstreamer-$SERIES
+	cp -a $_pkg/usr/lib/gstreamer-$SERIES/*.so* $fs/usr/lib/gstreamer-$SERIES
 }
