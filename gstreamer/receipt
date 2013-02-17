@@ -1,16 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="gstreamer"
-VERSION="0.10.35"
+VERSION="0.10.36"
+SERIES="0.10"
 CATEGORY="multimedia"
 SHORT_DESC="GStreamer Multimedia Framework"
 MAINTAINER="jozee@slitaz.org"
 DEPENDS="libxml2 glib"
 BUILD_DEPENDS="intltool pkg-config bison flex glib-dev libxml2-dev python
-python-dev m4 libgio-dev gobject-introspection-dev libffi"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+python-dev m4 libgio-dev gobject-introspection-dev libffi valgrind"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://gstreamer.freedesktop.org/"
 WGET_URL="$WEB_SITE/src/$PACKAGE/$TARBALL"
+LOCALES="da de es fr id it pt_BR ru zh_CN"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,6 +22,11 @@ compile_rules()
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		--libexecdir=/usr/lib \
+		--disable-static \
+		--disable-examples \
+		--disable-debug \
+		--with-package-name="GStreamer ($SERIES)" \
+		--with-package-origin="http://www.slitaz.org/" \
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS && make install
 }
@@ -27,8 +34,13 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/gstreamer* $fs/usr/lib
+	mkdir -p $fs/usr/lib/gstreamer-$SERIES $fs/usr/bin $fs/usr/share/locale
+	mv $install/usr/bin/*-$SERIES $fs/usr/bin
+	mv $install/usr/lib/*.so* $fs/usr/lib
+	mv $install/usr/lib/gstreamer-$SERIES/*.so $fs/usr/lib/gstreamer-$SERIES
+	mv $install/usr/lib/gstreamer-$SERIES/gst-* $fs/usr/lib/gstreamer-$SERIES
+	mv $install/usr/lib/girepository-1.0 $fs/usr/lib
+	for locale in $LOCALES; do
+		mv $install/usr/share/locale/$locale $fs/usr/share/locale
+	done
 }
