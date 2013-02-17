@@ -1,35 +1,49 @@
 # SliTaz package receipt.
 
 PACKAGE="gst-plugins-bad"
-VERSION="0.10.22"
+VERSION="0.10.23"
+SERIES="0.10"
 CATEGORY="multimedia"
 SHORT_DESC="GStreamer Bad Plugins"
 MAINTAINER="jozee@slitaz.org"
-DEPENDS="libxml2 gst-plugins-base bzlib flac libsdl libcomerr openssl libexif \
- libkrb5 libmodplug libsndfile expat neon libcomerr3 faac faad2 libmms jasper \
-mjpegtools"
-BUILD_DEPENDS="pkg-config glib-dev gst-plugins-base gst-plugins-base-dev \
-liboil-dev gstreamer-dev libxml2-dev libmodplug libcroco-dev"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://gstreamer.freedesktop.org/" 
+DEPENDS="gst-plugins-base \
+faac libpng libvpx openssl xvidcore \
+faad2 jasper libmms libmodplug libsndfile mjpegtools neon orc"
+BUILD_DEPENDS="pkg-config glib-dev gstreamer-dev gst-plugins-base-dev \
+faac-dev libpng-dev libvpx-dev openssl-dev xvidcore-dev \
+faad2-dev jasper-dev libmms-dev libmodplug-dev libsndfile-dev libsdl-dev \
+mjpegtools-dev neon-dev orc-dev schroedinger-dev"
+SUGGESTED="libsdl schroedinger"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="http://gstreamer.freedesktop.org/"
 WGET_URL="$WEB_SITE/src/$PACKAGE/$TARBALL"
+LOCALES="da de es fr id it pt_BR ru zh_CN"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --sysconfdir=/etc \
-	--localstatedir=/var --enable-experimental $CONFIGURE_ARGS &&
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--disable-static \
+		--disable-debug \
+		--enable-experimental \
+		--with-package-name="GStreamer Bad Plugins ($SERIES)" \
+		--with-package-origin="http://www.slitaz.org/" \
+		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make install	
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/gstreamer* $fs/usr/lib
-	rm $fs/usr/lib/gstreamer*/*.*a
-
+	mkdir -p $fs/usr/lib/gstreamer-$SERIES $fs/usr/share/locale
+	mv $install/usr/lib/*.so* $fs/usr/lib
+	mv $install/usr/lib/gstreamer-$SERIES/*.so* $fs/usr/lib/gstreamer-$SERIES
+	for locale in $LOCALES; do
+		mv $install/usr/share/locale/$locale $fs/usr/share/locale
+	done
 }
