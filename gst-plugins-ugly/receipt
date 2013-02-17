@@ -1,23 +1,36 @@
 # SliTaz package receipt.
 
 PACKAGE="gst-plugins-ugly"
-VERSION="0.10.18"
+VERSION="0.10.19"
+SERIES="0.10"
 CATEGORY="multimedia"
 SHORT_DESC="GStreamer Ugly Plugins"
 MAINTAINER="jozee@slitaz.org"
-DEPENDS="libxml2 gst-plugins-base glib lame libcdio libdvdread libid3tag \
-libmad libmpeg2"
-BUILD_DEPENDS="pkg-config gst-plugins-base gst-plugins-base-dev liboil-dev gstreamer-dev libxml2-dev glib-dev libcdio"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://gstreamer.freedesktop.org/" 
+DEPENDS="gst-plugins-base \
+lame libdvdread \
+libcdio libmad libmpeg2 opencore-amr orc "
+BUILD_DEPENDS="pkg-config gst-plugins-base-dev \
+lame-dev libdvdread-dev \
+libcdio-dev libmad-dev libmpeg2-dev orc-dev x264-dev"
+SUGGESTED="x264"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="http://gstreamer.freedesktop.org/"
 WGET_URL="$WEB_SITE/src/$PACKAGE/$TARBALL"
+LOCALES="da de es fr id it pt_BR ru zh_CN"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --sysconfdir=/etc \
-	--localstatedir=/var $CONFIGURE_ARGS &&
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--disable-static \
+		--disable-debug \
+		--with-package-name="GStreamer Ugly Plugins ($SERIES)" \
+		--with-package-origin="http://www.slitaz.org/" \
+		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
 	make install
 }
@@ -25,8 +38,10 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/gstreamer* $fs/usr/lib
-	rm $fs/usr/lib/gstreamer*/*.*a
-
+	mkdir -p $fs/usr/lib/gstreamer-$SERIES $fs/usr/share/locale
+	mv $install/usr/lib/gstreamer-$SERIES/*.so* $fs/usr/lib/gstreamer-$SERIES
+	mv $install/usr/share/gstreamer-$SERIES $fs/usr/share
+	for locale in $LOCALES; do
+		mv $install/usr/share/locale/$locale $fs/usr/share/locale
+	done
 }
