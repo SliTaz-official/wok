@@ -2,27 +2,43 @@
 
 xdbclient()
 {
-	read host type data
-	svr=$(echo $DISPLAY | sed 's/.*:\([0-9]*\).*/\1/')
-	scr=${DISPLAY/*./.}; [ "$scr" == "$DISPLAY" ] && scr=""
+	read host data
+	svr=${DISPLAY#*:}
 	n=$((10+($RANDOM % 90))); dpy=localhost:$n
-	remote=""
+	scr=${DISPLAY/${DISPLAY%.*}/$dpy}
+	r=""
 	while true; do
-		arg="$1"; shift
-		remote="$remote $arg"
-		case "$arg" in
-		-[piIlLRWKBJ])	remote="$remote $1"; shift ;;
+		a="$1"
+		r="$r $1"; shift
+		case "$a" in
+		-[piIlLRWKBJ])	r="$r $1"; shift;;
 		-*)		;;
 		*)		break ;;
 		esac
 	done
-	[ -n "$1" ] || set -- "$TERM || xterm"
-	exec dbclient -f -R $((6000+$n)):localhost:$((6000+$svr)) $remote \
-	    "xauth add $dpy $type $data; export DISPLAY=$dpy$scr; $@ ; xauth remove $dpy" \
-	    < /dev/null > /dev/null
+	[ -n "$1" ] || set -- "${TERM:-false} || xterm -ls"
+	exec dbclient -f -R $((6000+$n)):localhost:$((6000+${svr%.*})) $r \
+	   "xauth add $dpy $data; export DISPLAY=$scr; $@ ; xauth remove $dpy" \
+	   </dev/null >/dev/null
 }
 
-case "$DISPLAY" in
-'')	exec dbclient "$@" ;;
-*)	xauth list $DISPLAY | xdbclient "$@" ;;
+pppssh()
+{
+	[ -z "$DROPBEAR_PASSWORD" ] && echo -n "ssh password: " &&
+	read -s -t 30 DROPBEAR_PASSWORD && export DROPBEAR_PASSWORD
+	dbclient -y $1 true || exit 1
+	ff=/tmp/pppssh$$
+	n=10.$(($$%256)).$(($$/256))
+	ppp="/usr/sbin/pppd local lock notty"
+	mkfifo $ff
+	dbclient -y $1 "$ppp ${3:-proxyarp}" <$ff | $ppp ${2:-$n.1:$n.2} >$ff
+	rm -f $ff
+}
+
+case "$(basename $0)" in
+ppp*)	[ -z "$1" ] &&
+	echo "Usage: $0 '[sshargs] user@remote' '[localip:remoteip] [localpppargs]' 'remotepppargs'" ||
+	pppssh "$@" ;;
+*)	[ -z "$DISPLAY" ] && exec dbclient "$@"
+	xauth list $DISPLAY | xdbclient "$@"
 esac
