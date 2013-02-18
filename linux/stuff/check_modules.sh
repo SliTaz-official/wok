@@ -13,14 +13,15 @@ BASEVER="${VERSION:0:3}"
 src="$WOK/linux/source/linux-$VERSION"
 
 cd $src
-mkdir -p $WOK/$PACKAGE/tmp 2>/dev/null
-rm -f $WOK/$PACKAGE/tmp/*
+tmp=$WOK/${PACKAGE:-linux}/tmp
+mkdir -p $tmp 2>/dev/null
+rm -f $tmp/*
 
 echo -e "\nChecking for modules selected in .config but not in linux-* pkgs"
 echo "======================================================================"
 
 # create a packaged modules list
-cat $WOK/linux/stuff/modules.list >> $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list 
+cat $WOK/linux/stuff/modules.list >> $tmp/pkgs-modules-"$VERSION".list 
 
 for i in $(cd $WOK; grep -l '^WANTED="linux"' */receipt | sed 's|/receipt||g')
 do
@@ -28,7 +29,7 @@ do
 	if [ ! $(grep -l 'linux-libre' $WOK/$i/receipt) ]; then
 		for j in $(cat $WOK/$i/$tazpath/files.list | grep ".ko..z")
 		do
-			basename $j >> $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list	
+			basename $j >> $tmp/pkgs-modules-"$VERSION".list	
 		done
 	fi
 done
@@ -36,22 +37,22 @@ done
 for i in $(find $_pkg -iname "*.ko.?z")
 do
 	basename $i
-done > $WOK/$PACKAGE/tmp/original-"$VERSION".list
+done > $tmp/original-"$VERSION".list
 # compare original .config and pkged modules
-for i in $(cat $WOK/$PACKAGE/tmp/original-$VERSION.list)
+for i in $(cat $tmp/original-$VERSION.list)
 do
-	if ! grep -qs "$i" $WOK/$PACKAGE/tmp/pkgs-modules-"$VERSION".list ; then
+	if ! grep -qs "$i" $tmp/pkgs-modules-"$VERSION".list ; then
 		modpath=`find $_pkg -iname "$i"`
 		echo "Orphan module: $i"
-		echo "$i : $modpath" >> $WOK/$PACKAGE/tmp/unpackaged-modules-"$VERSION".list
+		echo "$i : $modpath" >> $tmp/unpackaged-modules-"$VERSION".list
 	fi
 done
-if [ -f $WOK/$PACKAGE/tmp/unpackaged-modules-"$VERSION".list ]; then
+if [ -f $tmp/unpackaged-modules-"$VERSION".list ]; then
 	echo "======================================================================"
 	echo -e "Check linux/tmp/unpackaged-modules-$VERSION.list for mod path\n"
 else
 	echo -e "\nAll modules are packaged\n"
 	echo "======================================================================"
 	echo ""
-	rm -rf $WOK/$PACKAGE/tmp
+	rm -rf $tmp
 fi
