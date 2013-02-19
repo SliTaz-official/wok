@@ -1,0 +1,105 @@
+# SliTaz package receipt.
+
+PACKAGE="virtualbox-ose-guestutils"
+VERSION="4.2.6"
+CATEGORY="misc"
+SHORT_DESC="VirtualBox Guest userspace utilities, useful for running Slitaz inside a virtual machine"
+MAINTAINER="slaxemulator@gmail.com"
+WANTED="virtualbox-ose"
+WEB_SITE="https://www.virtualbox.org/"
+DEPENDS="xorg-libXfixes xorg-libXmu xorg-xrandr"
+BUILD_DEPENDS=""
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	# virtualbox-ose-additions
+	source $src/env.sh
+	cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions"
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/sbin
+	mkdir -p $fs/etc/X11/xorg.conf.d
+	mkdir -p $fs/etc/init.d
+
+	install -m755 VBoxClient VBoxControl VBoxService "$fs/usr/bin"
+	install -m755 mount.vboxsf "$fs/sbin"
+
+	install -m755 -D $src/src/VBox/Additions/x11/Installer/98vboxadd-xclient \
+		$fs/usr/bin/VBoxClient-all
+	install -m755 -D $src/src/VBox/Additions/x11/Installer/vboxclient.desktop \
+		$fs/etc/xdg/autostart/vboxclient.desktop
+
+	install -D vboxmouse_drv_16.so \
+		"$fs/usr/lib/X11/modules/input/vboxmouse.so"
+		install -D vboxvideo_drv_112.so \
+		"$fs/usr/lib/X11/modules/drivers/vboxvideo.so"
+	install -d "$fs/usr/lib/dri"
+	install -m755 VBoxOGL*.so "$fs/usr/lib"
+	ln -s /usr/lib/VBoxOGL.so "$fs/usr/lib/dri/vboxvideo_dri.so"
+	install -m755 -D pam_vbox.so "$fs/lib/security/pam_vbox.so"
+
+	# virtualbox-ose-additions-modules
+
+	KERNEL_VERSION=$(grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g')
+	#cooking installs modules in linux major version dir
+	KBASEVER="${KERNEL_VERSION:0:3}"
+
+
+	cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions/src"
+
+	cd vboxguest
+	install -D -m644 vboxguest.ko \
+		"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxguest.ko"
+
+	cd ../vboxsf
+	install -D -m644 vboxsf.ko \
+		"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxsf.ko"
+
+	cd ../vboxvideo
+	install -D -m644 vboxvideo.ko \
+		"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxvideo.ko"
+
+	install -D -m 0644 "$stuff/60-vboxguest.rules" \
+		"$fs/etc/udev/rules.d/60-vboxguest.rules"
+		
+	install -D -m 0755 "$stuff/VBoxService" \
+		"$fs/etc/init.d/VBoxService"
+
+}
+
+pre_remove()
+{
+    sed -i "s/vboxguest vboxsf vboxvideo //" $1/etc/rcS.conf
+    chroot $1/ /etc/init.d/VBoxService stop
+    sed -i '/# VBoxService daemon options./{N;N;N;d}' $1/etc/daemons.conf
+    sed -i 's/VBoxService //' $1/etc/rcS.conf
+    chroot $1/ delgroup vboxsf
+    sed -i 's/^\tDriver.*$/\tDriver      "vesa"/' $1/etc/X11/xorg.conf.d/60-Device.conf
+}
+
+post_install()
+{
+	chroot $1/ udevadm control --reload
+	chroot $1/ udevadm trigger
+	grep -qs VBOXSERVICE_OPTIONS $1/etc/daemons.conf || 
+		cat >> $1/etc/daemons.conf << "EOT"
+# VBoxService daemon options.
+VBOXSERVICE_OPTIONS=""
+
+EOT
+	KERNEL_VERSION=$( chroot $1/ uname -r) 
+	chroot $1/ depmod -a $KERNEL_VERSION 
+	#chroot $1/ modprobe -a vboxguest vboxsf vboxvideo
+	sed -i 's/^\tDriver.*$/\tDriver      "vboxvideo"/' $1/etc/X11/xorg.conf.d/60-Device.conf
+	grep -qs vboxguest $1/etc/rcS.conf || 	
+		sed -i 's/LOAD_MODULES="/&vboxguest vboxsf vboxvideo /' $1/etc/rcS.conf
+	grep -qs VBoxService $1/etc/rcS.conf ||
+		sed -i 's/RUN_DAEMONS="/&VBoxService /' $1/etc/rcS.conf
+	grep -qs vboxsf $1/etc/group || chroot $1/ addgroup -g 109 vboxsf
+	echo "add yourself to vboxsf group if you want to access"
+	echo "host shared folder: addgroup $USER vboxsf"
+	echo "then reboot"
+	#i can't get udev to do its work
+	#echo "then logout and login again"
+	#chroot $1/ /etc/init.d/VBoxService start &> /dev/null
+}

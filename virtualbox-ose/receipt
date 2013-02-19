@@ -7,7 +7,7 @@ SHORT_DESC="Powerful x86 virtualization for enterprise as well as home use (Open
 MAINTAINER="slaxemulator@gmail.com"
 SOURCE="VirtualBox"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="http://virtualbox.org/"
+WEB_SITE="https://www.virtualbox.org/"
 WGET_URL="http://download.virtualbox.org/virtualbox/$VERSION/$TARBALL"
 PROVIDE="virtualbox"
 
@@ -38,20 +38,20 @@ compile_rules()
 	kmk all
 
 	# build modules. NOTE: we gor ERROR even if it build and cook will exit
-	# sed ERROR to error.
+	# so we redirect some output to avoid cooker thinking something is wrong
 	#cd 
 	KERN_DIR=/usr/src/linux make -C "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/src"
 	# build guest additions modules
 	KERN_DIR=/usr/src/linux make -C "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions/src"
 	KERN_DIR=/usr/src/linux make -C \
 		"$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions/src/vboxvideo" \
-		2>&1 | sed s'/ERROR/error/'
+		2>&1 /dev/null
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	fs=$WOK/$PACKAGE/taz/$PACKAGE-$VERSION/fs
+	#fs=$WOK/$PACKAGE/taz/$PACKAGE-$VERSION/fs
 
 	source $src/env.sh
 	cd $src/out/linux.$BUILD_PLATFORM_ARCH/release/bin
@@ -134,54 +134,53 @@ genpkg_rules()
 	install -D -m644 vboxdrv.ko "$fs/lib/modules/$KBASEVER-slitaz/misc/vboxdrv.ko"
 	install -D -m644 vboxnetflt.ko "$fs/lib/modules/$KBASEVER-slitaz/misc/vboxnetflt.ko"
 	install -D -m644 vboxnetadp.ko "$fs/lib/modules/$KBASEVER-slitaz/misc/vboxnetadp.ko"
-	#install -D -m644 vboxpci.ko "$fs/lib/modules/$KBASEVER-slitaz/misc/vboxpci.ko"
 
-	# virtualbox-ose-additions
+	## virtualbox-ose-additions
 
-	cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions"
-	mkdir -p $fs/usr/bin
-	mkdir -p $fs/sbin
-	mkdir -p $fs/etc/X11/xorg.conf.d
+	#cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions"
+	#mkdir -p $fs/usr/bin
+	#mkdir -p $fs/sbin
+	#mkdir -p $fs/etc/X11/xorg.conf.d
 
-	install -m755 VBoxClient VBoxControl VBoxService "$fs/usr/bin"
-	install -m755 mount.vboxsf "$fs/sbin"
+	#install -m755 VBoxClient VBoxControl VBoxService "$fs/usr/bin"
+	#install -m755 mount.vboxsf "$fs/sbin"
 
-	[ -f $src/src/VBox/Additions/x11/Installer/50-vboxmouse.conf ] &&
-	install -m644 $src/src/VBox/Additions/x11/Installer/50-vboxmouse.conf \
-		$fs/etc/X11/xorg.conf.d/50-vboxmouse.conf
+	#[ -f $src/src/VBox/Additions/x11/Installer/50-vboxmouse.conf ] &&
+	#install -m644 $src/src/VBox/Additions/x11/Installer/50-vboxmouse.conf \
+		#$fs/etc/X11/xorg.conf.d/50-vboxmouse.conf
 
-	install -m755 -D $src/src/VBox/Additions/x11/Installer/98vboxadd-xclient \
-		$fs/usr/bin/VBoxClient-all
-	install -m755 -D $src/src/VBox/Additions/x11/Installer/vboxclient.desktop \
-		$fs/etc/xdg/autostart/vboxclient.desktop
+	#install -m755 -D $src/src/VBox/Additions/x11/Installer/98vboxadd-xclient \
+		#$fs/usr/bin/VBoxClient-all
+	#install -m755 -D $src/src/VBox/Additions/x11/Installer/vboxclient.desktop \
+		#$fs/etc/xdg/autostart/vboxclient.desktop
 
-	#install -D vboxmouse_drv_19.so \
-	#	"$fs/usr/lib/X11/modules/input/vboxmouse.so"
-	[ -f vboxvideo_drv_19.so ] &&
-	install -D vboxvideo_drv_19.so \
-		"$fs/usr/lib/X11/modules/drivers/vboxvideo.so"
-	install -d "$fs/usr/lib/dri"
-	install -m755 VBoxOGL*.so "$fs/usr/lib"
-	ln -s /usr/lib/VBoxOGL.so "$fs/usr/lib/dri/vboxvideo_dri.so"
-	install -m755 -D pam_vbox.so "$fs/lib/security/pam_vbox.so"
+	##install -D vboxmouse_drv_19.so \
+	##	"$fs/usr/lib/X11/modules/input/vboxmouse.so"
+	#[ -f vboxvideo_drv_19.so ] &&
+	#install -D vboxvideo_drv_19.so \
+		#"$fs/usr/lib/X11/modules/drivers/vboxvideo.so"
+	#install -d "$fs/usr/lib/dri"
+	#install -m755 VBoxOGL*.so "$fs/usr/lib"
+	#ln -s /usr/lib/VBoxOGL.so "$fs/usr/lib/dri/vboxvideo_dri.so"
+	#install -m755 -D pam_vbox.so "$fs/lib/security/pam_vbox.so"
 
-	# virtualbox-ose-additions-modules
-	cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions/src"
+	## virtualbox-ose-additions-modules
+	#cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions/src"
 
-	cd vboxguest
-	install -D -m644 vboxguest.ko \
-		"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxguest.ko"
+	#cd vboxguest
+	#install -D -m644 vboxguest.ko \
+		#"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxguest.ko"
 
-	cd ../vboxsf
-	install -D -m644 vboxsf.ko \
-		"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxsf.ko"
+	#cd ../vboxsf
+	#install -D -m644 vboxsf.ko \
+		#"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxsf.ko"
 
-	cd ../vboxvideo
-	install -D -m644 vboxvideo.ko \
-		"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxvideo.ko"
+	#cd ../vboxvideo
+	#install -D -m644 vboxvideo.ko \
+		#"$fs/lib/modules/$KBASEVER-slitaz/misc/vboxvideo.ko"
 
-	install -D -m 0644 "$stuff/60-vboxguest.rules" \
-		"$fs/etc/udev/rules.d/60-vboxguest.rules"
+	#install -D -m 0644 "$stuff/60-vboxguest.rules" \
+		#"$fs/etc/udev/rules.d/60-vboxguest.rules"
 
 }
 
@@ -189,25 +188,22 @@ pre_remove()
 {
     #sed -i "s/vboxdrv vboxnetadp vboxnetflt vboxpci //" $1/etc/rcS.conf
     sed -i "s/vboxdrv vboxnetadp vboxnetflt //" $1/etc/rcS.conf
-    delgroup vboxusers
+    chroot $1/ delgroup vboxusers
 }
 
 post_install()
 {
-	#chroot "$1/"
-	KERNEL_VERSION=$(uname -r)
-	depmod -a $KERNEL_VERSION
-	#modprobe -a vboxdrv vboxnetadp vboxnetflt vboxpci
-	modprobe -a vboxdrv vboxnetadp vboxnetflt
-	grep -qs vboxdrv $1/etc/rcS.conf ||
-	#sed -i 's/LOAD_MODULES="/&vboxdrv vboxnetadp vboxnetflt vboxpci /' /etc/rcS.conf
-	sed -i 's/LOAD_MODULES="/&vboxdrv vboxnetadp vboxnetflt /' /etc/rcS.conf
-	grep -qs vboxuser /etc/group || addgroup -g 199 vboxusers
-	echo "add yourself to vboxusers group if you want to access host"
-	echo "usb devices: addgroup $USER vboxusers"
+	chroot $1/ udevadm control --reload
+	chroot $1/ udevadm trigger
+	KERNEL_VERSION=$( chroot $1/ uname -r) 
+	chroot $1/ depmod -a $KERNEL_VERSION 
+	chroot $1/ modprobe -a vboxdrv vboxnetadp vboxnetflt
+	grep -qs vboxdrv $1/etc/rcS.conf || 	
+		sed -i 's/LOAD_MODULES="/&vboxdrv vboxnetadp vboxnetflt /' $1/etc/rcS.conf
+	grep -qs vboxuser $1/etc/group || chroot $1/ addgroup -g 199 vboxusers
+	echo "add yourself to vboxusers group if you want to access"
+	echo "host usb devices: addgroup $USER vboxusers"
+	echo "then reboot"
+	#i can't get udev to do its work
 	#echo "then logout and login again"
-	echo "then reboot, until i find how to make udev do what it should without reboot..."
-	#addgroup $USER vboxusers
-	udevadm control --reload
-	udevadm trigger
 }
