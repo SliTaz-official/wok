@@ -3,31 +3,56 @@
 PACKAGE="catfish"
 VERSION="0.3.2"
 CATEGORY="utilities"
-SHORT_DESC="Catfish is a versatile file searching tool."
+SHORT_DESC="Catfish is a versatile file searching tool"
 MAINTAINER="devl547@gmail.com"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.twotoasts.de/"
-WGET_URL="http://www.twotoasts.de/media/catfish/$TARBALL"
-BUILD_DEPENDS="pygtk-dev libglade-dev"
-DEPENDS="pygtk libglade python-xdg"
+WEB_SITE="http://twotoasts.de/index.php/catfish/"
+WGET_URL="http://twotoasts.de/media/$PACKAGE/$TARBALL"
+
+DEPENDS="pygtk python-xdg findutils"
+BUILD_DEPENDS="pygtk-dev libglade-dev python-xdg"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure --prefix=/usr &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$install install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/catfish
-	mkdir $fs/usr/share
-	
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share/catfish $fs/usr/share
-	cp -a $_pkg/usr/share/icons $fs/usr/share
-	cp -a $_pkg/usr/share/applications $fs/usr/share
+	mkdir -p $fs/usr/bin $fs/usr/share/catfish
+	cat > $fs/usr/bin/catfish << EOT
+#!/bin/sh
+. /etc/slitaz/applications.conf
+# use default FILE_MANAGER to open both folders and files
+
+cd /usr/share/catfish
+python catfish.py --large-icons --thumbnails --path=\$HOME \
+--fileman=\$FILE_MANAGER --wrapper=\$FILE_MANAGER "\$@"
+EOT
+	chmod +x $fs/usr/bin/catfish
+
+	cd $fs/usr/share/catfish
+
+	cp -a $install/usr/share/catfish/catfish.glade .
+	# minify glade file
+	gzip ./catfish.glade; mv ./catfish.glade.gz catfish.glade
+
+	# can't copy *.pyc because 'cook' removes it from package!
+	#cp -a $install/usr/share/catfish/catfish.pyc .
+	cp -a $src/catfish.py .
+
+	# seems catfish --wrapper not works at all, fix it (attention spaces!)
+	sed -i "189 a\
+\        self.open_wrapper = self.options.open_wrapper" \
+		$fs/usr/share/catfish/catfish.py
+
+	cp -a $install/usr/share/icons $fs/usr/share
+	ln -s ../icons/hicolor/scalable/apps/catfish.svg catfish.svg
+
+	cp -a $install/usr/share/locale $fs/usr/share
+	ln -s ../locale locale
 }
