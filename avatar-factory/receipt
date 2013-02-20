@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="avatar-factory"
+VERSION="0.8"
+CATEGORY="utilities"
+SHORT_DESC="A bash script that creates eye candy shortcuts for music albums, photo albums, movie files, and more..."
+MAINTAINER="al.bobylev@gmail.com"
+WEB_SITE="http://yuzem.blogspot.com/p/avatar-factory.html?m=1"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://launchpad.net/$PACKAGE/trunk/$VERSION/+download/$TARBALL"
+
+DEPENDS="bash findutils imagemagick sed zenity"
+BUILD_DEPENDS="wget"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/applications
+	sed -i 's|/usr/local|/usr|g' $src/avatar-factory
+	cp -a $src/avatar-factory $fs/usr/bin
+	cp -a $src/Avatar-Factory $fs/usr/share/avatar-factory
+	sed -i 's|/usr/local|/usr|' $src/avatar-factory.desktop
+	cp -a $src/avatar-factory.desktop $fs/usr/share/applications
+
+	# fix permissions
+	find $fs -type d -exec chmod 755 {} \;
+	find $fs -type f -exec chmod 644 {} \;
+	for file in $(find $fs -type f); do
+		[ $(head -n1 $file | grep '#!/bin/bash') ] && chmod 755 $file
+	done
+}
