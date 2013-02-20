@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="tazinst"
+VERSION="3.90"
+CATEGORY="base-system"
+SHORT_DESC="SliTaz installer."
+MAINTAINER="domcox@slitaz.org"
+DEPENDS="blkid lzma parted"
+SUGGESTED="syslinux syslinux-extra syslinux-modules grub4dos-linux"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.slitaz.org/"
+WGET_URL="http://hg.slitaz.org/tazinst/archive/$VERSION.tar.bz2"
+TAGS="slitaz"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src && make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+#
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $install/etc $fs
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/share/doc $fs/usr/share
+	cp -a $install/usr/share/locale $fs/usr/share
+	chmod 0644 $fs/usr/share/locale/*/*/*.mo
+	chown -R root.root $fs
+	# remove tazinst-gui locales
+	cd $fs/usr/share/locale
+	for lang in *; do
+		rm -f $lang/*/installer.mo
+	done
+}
