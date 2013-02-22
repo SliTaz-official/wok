@@ -31,7 +31,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share
+	mkdir -p $fs/etc/polkit-1/localauthority/90-mandatory.d \
+		$fs/usr/lib $fs/usr/share
 	cp -a $install/etc/dbus-1 $fs/etc
 	cp -a $install/lib/udev $fs/etc
 	cp -a $install/usr/bin $fs/usr
@@ -40,4 +41,9 @@ genpkg_rules()
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/share/*-1 $fs/usr/share
 	cp -a $install/var $fs
+	#we don't have consolekit and don't want systemd so we need
+	#a rule to give disk group complete access to udisks2
+	#methods without password.
+	cp $stuff/org.freedesktop.udisks2.pkla \
+		$fs/etc/polkit-1/localauthority/90-mandatory.d
 }
