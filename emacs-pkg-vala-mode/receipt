@@ -13,15 +13,24 @@ TAGS="emacs vala"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	echo -n "Installing vala-mode"
-	mkdir -p $fs/usr/share/emacs/site-lisp/vala-mode && \
-	cp stuff/vala-mode.el $fs/usr/share/emacs/site-lisp/vala-mode
-	status
-
 	echo -n "Installing start file"
 	mkdir -p $fs/usr/share/emacs/site-lisp/site-start.d && \
-	cp stuff/80-vala-init.el $fs/usr/share/emacs/site-lisp/site-start.d
+	cp -a stuff/80-vala-init.el $fs/usr/share/emacs/site-lisp/site-start.d
 	status
+
+	echo -n "Installing vala-mode"
+	mkdir -p $fs/usr/share/emacs/site-lisp/vala-mode && \
+	cp -a stuff/vala-mode.el $fs/usr/share/emacs/site-lisp/vala-mode
+	status
+
+	# byte-compile files, remove src
+	cd $fs/usr/share/emacs/site-lisp/vala-mode/
+	for file in vala*.el ; do
+		echo -n "Byte-compiling $file"
+		emacs -batch -f batch-byte-compile $file 2> /dev/null
+		status
+		rm -f $file
+	done
 }
 
 post_install()
