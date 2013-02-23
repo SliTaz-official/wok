@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="ntfs-3g"
-VERSION="2011.1.15"
+VERSION="2013.1.13"
 CATEGORY="system-tools"
 SHORT_DESC="The free ntfs driver."
 MAINTAINER="pankso@slitaz.org"
 DEPENDS="fuse attr"
-BUILD_DEPENDS="attr-dev"
-TARBALL="$PACKAGE-$VERSION.tgz"
-WEB_SITE="http://www.tuxera.com/opensource/" 
+BUILD_DEPENDS="fuse-dev attr-dev"
+SOURCE="ntfs-3g_ntfsprogs"
+TARBALL="$SOURCE-$VERSION.tgz"
+WEB_SITE="http://tuxera.com/opensource"
 WGET_URL="$WEB_SITE/$TARBALL"
 CONFIG_FILES="/etc/filesystems"
 TAGS="windows"
@@ -17,9 +18,9 @@ TAGS="windows"
 compile_rules()
 {
 	cd $src
-	sed -i 's/\terr = ntfs_open\(.*\);/\tntfs_log_clear_levels((u32) -1); if (err = ntfs_open\1) goto err2;/' \
-		src/ntfs-3g.c
 	./configure --prefix=/usr \
+	--disable-static \
+	--with-fuse=external \
 	--mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$PWD/_pkg install
@@ -28,14 +29,17 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/lib $fs/usr/lib $fs/etc \
-			 $fs/usr/share/hal/fdi/policy/10osvendor
-	cp -a $_pkg/bin $fs/
-	cp -a $_pkg/sbin $fs/
-	cp -a $_pkg/lib/*.so* $fs/lib
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
+	mkdir -p $fs/lib $fs/usr/lib $fs/etc $fs/sbin $fs/usr/bin
+	cp -a $install/bin $fs/
+	cp -a $install/sbin/*-3g $fs/sbin
+	cp -a $install/lib/*-3g.so* $fs/lib
+	cp -a $install/usr/lib/*-3g.so* $fs/usr/lib
+	cp -a $install/usr/bin/*-3g* $fs/usr/bin
 	touch $fs/etc/filesystems
+	#this link allow udisks to use ntfs-3g
+	cd $fs/sbin
+	ln -s mount.ntfs-3g mount.ntfs
+	
 }
 
 # Pre remove and post install commands for Tazpkg.
