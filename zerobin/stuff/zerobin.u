@@ -1,74 +1,51 @@
---- lib/zerobin.js
-+++ lib/zerobin.js
-@@ -180,7 +180,12 @@
- {
-     if ($('textarea#message').val().length==0) return; // Do not send if no data.
-     showStatus('Sending paste...',spin=true); 
--    var randomkey = sjcl.codec.base64.fromBits(sjcl.random.randomWords(8,0),0);
-+    var randomkey = (window.location.hash.length > 2) ?
-+    	// force key
-+    	window.location.hash.substring(1) :
-+    	// Generate a random 256 bits key, encoded in base64:
-+    	sjcl.codec.base64.fromBits(sjcl.random.randomWords(8,0),0);
-+    if (randomkey.charAt(randomkey.length-1)!=='=') randomkey+='='; // Add trailing = if missing.
-     var cipherdata = zeroCipher(randomkey,$('textarea#message').val());
-     var data_to_send =  { data:cipherdata,
-                           expire:$('select#pasteExpiration').val(),
 --- index.php
 +++ index.php
-@@ -16,6 +16,14 @@
+@@ -17,6 +17,13 @@
      $_COOKIE = array_map('stripslashes_deep', $_COOKIE);
  }
  
 +function remote_address()
-+
 +{
-+    if (isset($_SERVER["HTTP_X_FORWARDED_FOR"]))
-+    	return $_SERVER["HTTP_X_FORWARDED_FOR"];
-+    return $_SERVER["REMOTE_ADDR"];
++	if (isset($_SERVER["HTTP_X_FORWARDED_FOR"]))
++		return $_SERVER["HTTP_X_FORWARDED_FOR"];
++	return $_SERVER["REMOTE_ADDR"];
 +}
 +
  // trafic_limiter : Make sure the IP address makes at most 1 request every 10 seconds.
  // Will return false if IP address made a call less than 10 seconds ago.
  function trafic_limiter_canPass($ip)
-@@ -136,7 +144,7 @@
-     }  
-     
-     // Make sure last paste from the IP address was more than 10 seconds ago. 
+@@ -137,7 +144,7 @@
+     }
+ 
+     // Make sure last paste from the IP address was more than 10 seconds ago.
 -    if (!trafic_limiter_canPass($_SERVER['REMOTE_ADDR']))
 +    if (!trafic_limiter_canPass(remote_address()))
          { echo json_encode(array('status'=>1,'message'=>'Please wait 10 seconds between each post.')); exit; }
  
      // Make sure content is not too big.
-@@ -191,7 +199,7 @@
+@@ -192,7 +199,7 @@
              // (We assume that if the user did not enter a nickname, he/she wants
              // to be anonymous and we will not generate the vizhash.)
              $vz = new vizhash16x16();
 -            $pngdata = $vz->generate($_SERVER['REMOTE_ADDR']);
 +            $pngdata = $vz->generate(remote_address());
-             if ($pngdata!='') $meta['vizhash'] = 'data:image/png;base64,'.base64_encode($pngdata);  
-             // Once the avatar is generated, we do not keep the IP address, nor its hash.           
-         }            
-@@ -286,11 +294,11 @@
-             if ($ERRORMESSAGE=='') // If no error, return the paste.
-             {
-                 // We kindly provide the remaining time before expiration (in seconds)
--                if ($paste->meta->expire_date) $paste->meta->remaining_time = $paste->meta->expire_date - time();
-+                if (isset($paste->meta->expire_date)) $paste->meta->remaining_time = $paste->meta->expire_date - time();
- 
-                 $messages = array($paste); // The paste itself is the first in the list of encrypted messages.
-                 // If it's a discussion, get all comments.
--                if ($paste->meta->opendiscussion)
-+                if (isset($paste->meta->opendiscussion))
-                 {
-                     $comments=array();
-                     $datadir = dataid2discussionpath($dataid);
-@@ -318,7 +326,7 @@
-                 $CIPHERDATA = json_encode($messages);
-                 
-                 // If the paste was meant to be read only once, delete it.
--                if ($paste->meta->burnafterreading) deletePaste($dataid);
-+                if (isset($paste->meta->burnafterreading)) deletePaste($dataid);
-             }
+             if ($pngdata!='') $meta['vizhash'] = 'data:image/png;base64,'.base64_encode($pngdata);
+             // Once the avatar is generated, we do not keep the IP address, nor its hash.
          }
-         else
+--- js/zerobin.js
++++ js/zerobin.js
+@@ -308,7 +308,13 @@
+         return;
+     }
+     showStatus('Sending paste...', spin=true);
+-    var randomkey = sjcl.codec.base64.fromBits(sjcl.random.randomWords(8, 0), 0);
++    var randomkey = (window.location.hash.length > 2) ?
++	// force key
++	window.location.hash.substring(1) :
++	// Generate a random 256 bits key, encoded in base64:
++	sjcl.codec.base64.fromBits(sjcl.random.randomWords(8,0),0);
++    if (randomkey.charAt(randomkey.length-1) !== '=')
++	randomkey+='='; // Add trailing = if missing.
+     var cipherdata = zeroCipher(randomkey, $('textarea#message').val());
+     var data_to_send = { data:           cipherdata,
+                          expire:         $('select#pasteExpiration').val(),
