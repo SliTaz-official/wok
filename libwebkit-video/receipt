@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libwebkit-video"
-VERSION="1.8.1"
+VERSION="1.8.3"
 CATEGORY="network"
 SHORT_DESC="xHTML render library."
 MAINTAINER="mallory@sweetpeople.org"
@@ -14,15 +14,14 @@ DEPENDS="gtk+ enchant libxslt expat gtk+ jpeg libpng libxml2 sqlite \
 xorg-libICE xorg-libSM xorg-libX11 xorg-libXau xorg-libXcomposite \
 xorg-libXcursor xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXinerama \
 xorg-libXrandr xorg-libXrender xorg-libXt acl xorg-libXdamage libsoup \
-gcc-lib-base libtasn1 util-linux-uuid glib-networking"
+gcc-lib-base libtasn1 util-linux-uuid glib-networking gst-plugins-base"
 BUILD_DEPENDS="gtk+-dev enchant enchant-dev gperf libxslt-dev jpeg-dev \
 libpng-dev glib-dev autoconf automake gnutls-dev sqlite-dev libtool \
 m4 bison flex xorg-libXdamage-dev acl-dev libsoup-dev libxml2-dev \
 libxcb-dev xcb-util-dev util-linux-uuid-dev zlib-dev libtasn1-dev \
 gobject-introspection-dev tar gettext glib-networking-dev \
-gstreamer-dev gst-plugins-base-dev gtk-doc"
-SUGGESTED="gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad \
-gst-plugins-ugly gst-ffmpeg"
+gstreamer-dev gst-plugins-base-dev orc-dev"
+SUGGESTED="gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-ffmpeg"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -30,6 +29,13 @@ compile_rules()
 	cd $src
 	# libwebkit does not like parallel builds.
 	export MAKEFLAGS=$(echo $MAKEFLAGS | sed 's/-j[0-9]*/-j1/')
+	# Build fix with newer bison 2.6
+	for file_diff in $stuff/*.diff; do
+		echo -n "Applying patch $(basename $file_diff)"
+		patch -Np1 -i $file_diff > /dev/null
+		status
+	done
+	# Build
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
@@ -41,6 +47,7 @@ compile_rules()
 		--disable-geolocation \
 		--with-unicode-backend=glib \
 		--with-gtk=2.0 \
+		--disable-webkit2 \
 		--disable-gtk-doc-html \
 		$CONFIGURE_ARGS &&
 	make all stamp-po && make DESTDIR=$DESTDIR install &&
@@ -51,6 +58,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/bin
-	[ -d $_pkg/usr/lib/girepository-1.0 ] && cp -a $_pkg/usr/lib/girepository-1.0 $fs/usr/lib
+	[ -d $_pkg/usr/lib/girepository-1.0 ] &&
+		cp -a $_pkg/usr/lib/girepository-1.0 $fs/usr/lib
 	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
 }
