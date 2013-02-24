@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libwebkit"
-VERSION="1.8.1"
+VERSION="1.8.3"
 CATEGORY="network"
 SHORT_DESC="xHTML render library."
 MAINTAINER="mallory@sweetpeople.org"
@@ -25,10 +25,17 @@ gobject-introspection-dev tar gettext glib-networking-dev gtk-doc"
 compile_rules()
 {
 	cd $src
-	# fix Bug 84526: webkit-gtk-1.8.0 fails to build with --disable-video
-	patch -p0 < $stuff/CodeGeneratorGObject-bug-84526.patch || exit 1
 	# libwebkit does not like parallel builds.
 	export MAKEFLAGS=$(echo $MAKEFLAGS | sed 's/-j[0-9]*/-j1/')
+	# fix Bug 84526: webkit-gtk-1.8.0 fails to build with --disable-video
+	# Build fix with newer bison 2.6
+	for file_diff in $stuff/*.diff; do
+		echo -n "Applying patch $(basename $file_diff)"
+		patch -Np1 -i $file_diff > /dev/null
+		status
+	done
+	# Build
+	patch -p0 < $stuff/CodeGeneratorGObject-bug-84526.patch || exit 1
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
