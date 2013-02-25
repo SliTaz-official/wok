@@ -8,9 +8,11 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.gnome.org/"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
-
 DEPENDS="dbus glib udev libgudev fuse udisks"
-BUILD_DEPENDS="dbus-dev glib-dev udev-dev libgudev-dev fuse-dev udisks-dev"
+BUILD_DEPENDS="dbus-dev glib-dev udev-dev libgudev-dev fuse-dev \
+udisks-dev samba-dev smbclient"
+SUGGESTED="gvfs-smb"
+#gvfs-smb enables samba support
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,6 +25,8 @@ compile_rules()
 		--disable-gphoto2 \
 		--disable-avahi \
 		--disable-keyring \
+		--disable-hal \
+		--disable-afp \
 		--disable-bash-completion &&
 	make && make install
 }
@@ -37,4 +41,12 @@ genpkg_rules()
 	cp -a $install/usr/share/gvfs $fs/usr/share
 	cp -a $install/usr/share/glib-* $fs/usr/share
 	rm -f $(find ${fs} -name *.*a)
+	#following files are provided by gvfs-smb
+	rm $fs/usr/lib/gvfs/gvfsd-smb*
+	rm $fs/usr/share/gvfs/mounts/smb*
+	rm $fs/usr/share/glib-2.0/schemas/*smb*
+	##following files are provided by gvfs-udisks2
+	#rm $fs/usr/lib/gvfs/gvfs-udisks2-volume-monitor
+	#rm $fs/usr/share/dbus-1/services/org.gtk.Private.UDisks2VolumeMonitor.service
+	#rm $fs/usr/share/gvfs/remote-volume-monitors/udisks2.monitor
 }
