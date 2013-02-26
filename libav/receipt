@@ -1,0 +1,50 @@
+# SliTaz package receipt.
+
+PACKAGE="libav"
+VERSION="0.6.1"
+CATEGORY="multimedia"
+SHORT_DESC="clone of git://git.libav.org/libav"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPLv2 GPLv3 LGPLv2.1 LGPLv3"
+WEB_SITE="http://www.libav.org/"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="git|git://github.com/andoma/libav.git"
+BRANCH="v$VERSION"
+
+DEPENDS="libsdl xorg-libXfixes zlib"
+BUILD_DEPENDS="git coreutils-file-format \
+libsdl-dev faac-dev faad2-dev lame-dev nut opencore-amr-dev openjpeg-dev \
+netatalk-dev schroedinger-dev speex-dev libtheora-dev libvorbis-dev \
+libvpx-dev x264 xvidcore-dev \
+zlib-dev bzlib binutils "
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure \
+		--prefix=/usr \
+		--enable-shared \
+		--enable-gpl \
+		--enable-nonfree \
+		--enable-runtime-cpudetect \
+		--disable-doc \
+		--enable-postproc \
+		--enable-avfilter \
+		--enable-avfilter-lavf \
+		--enable-pthreads \
+		--enable-x11grab \
+		--disable-debug \
+		--arch=i486 \
+		--cpu=i486 && \
+	make && \
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/share $fs/usr
+}
