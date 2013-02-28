@@ -1,0 +1,51 @@
+--- "a/Comical Icons/comical.xpm"
++++ "b/Comical Icons/comical.xpm"
+@@ -1,5 +1,5 @@
+ /* XPM */
+-static char *comical_xpm[]={
++static const char *comical_xpm[]={
+ "128 128 131 2",
+ "Qt c None",
+ ".8 c #080000",
+--- a/src/ComicalApp.cpp
++++ b/src/ComicalApp.cpp
+@@ -28,6 +28,8 @@
+ #include "ComicalApp.h"
+ #include "ComicalFrame.h"
+ #include <wx/log.h>
++#include <wx/icon.h>
++#include <wx/numdlg.h>
+ 
+ #if !defined(__WXMAC__) && !defined(__WXCOCOA__) && !defined(__WXMSW__) && !defined(__WXPM__)
+ #include "../Comical Icons/comical.xpm"
+--- a/src/ComicBook.cpp
++++ b/src/ComicBook.cpp
+@@ -537,7 +537,8 @@
+ 			if (curr > 0) {	// ftw and fth scaling requires previous page to
+ 				target--;	// do FitWithoutScrollbars.
+ 				if (target > high)
+-					target = curr - (++target - high);
++					// target = curr - (++target - high); // will cause 'target' uninitialized warning
++					target = curr - ((target + 1) - high);
+ 			} else if (target > high)
+ 				target = curr - (target - high);
+ 			try {
+--- a/Makefile
++++ b/Makefile
+@@ -1,8 +1,8 @@
+ CC = `wx-config --cxx`
+-LDFLAGS = `wx-config --libs` -Lunrar -lunrar -Lunzip -lminiunzip
++LDFLAGS = `wx-config --libs` -Lunrar -lunrar -Lunzip -lminiunzip -lz
+ INSTALL = install
+ INSTALL_PROGRAM = $(INSTALL)
+-prefix = /usr/local
++prefix = /usr
+ exec_prefix = $(prefix)
+ bindir = $(exec_prefix)/bin
+ 
+@@ -43,4 +43,4 @@
+ 	$(MAKE) clean -C unzip
+ 	rm -f $(DEPS) bin2h src/bin2h.o
+ 
+-.PHONY : install install-strip uninstall clean distclean
++.PHONY : all install install-strip uninstall clean distclean
