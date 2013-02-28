@@ -9,30 +9,27 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.xfce.org"
 WGET_URL="http://archive.xfce.org/xfce/${VERSION%.*}/src/$TARBALL"
 
-DEPENDS="gtk+ libxfce4util xfconf startup-notification dbus-glib libglade \
+DEPENDS="gtk+ libxfce4util libxfconf startup-notification dbus-glib libglade \
 util-linux-uuid"
-BUILD_DEPENDS="gtk+-dev libxfce4util-dev xfconf-dev startup-notification-dev 
-libglade-dev xcb-util-dev util-linux-uuid-dev intltool"
+BUILD_DEPENDS="gtk+-dev libxfce4util-dev libxfconf-dev \
+startup-notification-dev libglade-dev xcb-util-dev util-linux-uuid-dev intltool"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr \
+	./configure \
 		--sysconfdir=/etc \
-		--disable-debug $CONFIGURE_ARGS &&
+		--disable-debug \
+		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make DESTDIR=$install install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib \
-		$fs/usr/share/locale 
-		
-	cp -a $_pkg/etc $fs/
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/share/locale/fr $fs/usr/share/locale
+	mkdir -p $fs/usr/lib
+	cp -a $install/etc $fs/
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
 
