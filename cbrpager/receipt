@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="cbrpager"
+VERSION="0.9.22"
+CATEGORY="graphics"
+SHORT_DESC="Viewer for CBR, CBZ and CB7 (comic book archive) files"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPLv2"
+WEB_SITE="http://jcoppens.com/soft/cbrpager/index.en.php"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="libgnome-keyring libgnomeui p7zip-full rar unzip"
+BUILD_DEPENDS="gettext libgnomeui-dev libgnome-dev libbonoboui-dev \
+libgnomecanvas-dev libgnome-keyring-dev gtk+-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure \
+		$CONFIGURE_ARGS \
+		LDFLAGS="$(pkg-config --libs libgnomeui-2.0 gtk+-2.0)" && \
+	make && \
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	# add Russian translation
+	mkdir -p $fs/usr/share/locale/ru/LC_MESSAGES
+	msgfmt $stuff/ru.po -o $fs/usr/share/locale/ru/LC_MESSAGES/cbrpager.mo
+}
