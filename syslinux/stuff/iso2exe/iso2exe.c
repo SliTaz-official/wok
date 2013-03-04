@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	* (unsigned long *)  &bootiso[512 + 440] = rand();
 	* (unsigned long *)  &bootiso[512 + partition] = 0x10080;
 	* (unsigned short *) &bootiso[512 + 510] = 0xAA55;
-	size = lseek(fd, 0, SEEK_END);
+	size = lseek(fd, 0UL, SEEK_END);
 	cylinders = (size + trksz - 1) / trksz;
 	bootiso[512 + partition + 4] = 23; // "Windows hidden IFS"
 	bootiso[512 + partition + 5] = heads - 1;
@@ -71,13 +71,13 @@ int main(int argc, char *argv[])
 	* (unsigned short *) (bootiso + 26) = rand();
 
 	// Update iso image
-	lseek(fd, 0, SEEK_SET);
+	lseek(fd, 0UL, SEEK_SET);
 	write(fd, bootiso, 1024);
-	lseek(fd, 0x8400 - BOOTISOSZ, SEEK_SET);
+	lseek(fd, 0x8400UL - BOOTISOSZ, SEEK_SET);
 	write(fd, bootiso + 1024, BOOTISOSZ - 1024);
 
 	// Compute the checksum
-	lseek(fd, 0, SEEK_SET);
+	lseek(fd, 0UL, SEEK_SET);
 	for (i = 66, n = 0, j = 0; j < 16; j++, i = 0) {
 		if (read(fd, buffer, sizeof(buffer)) != sizeof(buffer))
 			goto nochksum;
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 			n += * (unsigned short *) (buffer + i);
 	}
 	* (unsigned short *) (bootiso + 64) = -n;
-	lseek(fd, 0, SEEK_SET);
+	lseek(fd, 0UL, SEEK_SET);
 	write(fd, bootiso, 512);
 nochksum:
 	close(fd);
