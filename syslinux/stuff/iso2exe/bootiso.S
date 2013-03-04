@@ -196,9 +196,9 @@ is386:
 	movl	%cr0, %eax
 	andb	$1, %al
 	jne	tstvcpi
-	shll	$1, %eax
+	incl	%eax
 	movb	$EXESTR(rmPaging), %al
-	jc	abort
+	js	abort
 	movb	$EXESTR(realmodemsg), %al
 realmode:
 	call	puts
@@ -207,16 +207,15 @@ realmode:
 	cmpb	$3, %al
 	movb	$EXESTR(noDOS3), %al
 	jb	abort
-	movw	EXEADRS(comstart), %ax			// .com address
 	movw	$moveend-move, %cx
-	movw	$EXEADRS(move), %si
 	movw	$0xC000, %di
-	jmp	move2
+	call	move2
 move:
 	movb	$0x80, %ch
-	xchgw	%ax, %si
 	movw	$0x0100, %di
+	pushw	comstart-end_header(%di)		// .com address
 move2:
+	popw	%si
 	pushw	%di
 	rep
 	movsb
@@ -234,21 +233,15 @@ tstvcpi:
 	movw	%cx, %ds		// %cx = 0
 	movw	0x67*4+2, %ds
 	movw	$10, %si
-	lodsw
+	lodsl
 	xorw	$0x4D45, %ax		// EM(MX) or EM(MQ)
-	xchgw	%ax, %dx
-	lodsw				// si += 2
-	lodsw
-	xorw	$0x5858, %ax		// XX
-	orw	%ax, %dx
-	lodsw
+	lodsl
 	popw	%ds
-	xorw	$0x3058, %ax		// X0
-	orw	%ax, %dx
+	jne	NoVCPI
+	xorl	$0x30585858, %eax	// XXX0
 	movw	$EXEADRS(CmdVCPI), %si
 ChkVCPI:
 NoVCPI:
-	xchgw	%ax, %dx
 	movb	$EXESTR(ERRvcpi), %al
 	jne	abort
 	lodsb
@@ -256,6 +249,7 @@ NoVCPI:
 	je	VersionVCPI
 	int	$0x67
 	testb	%ah, %ah
+	xchgw	%ax, %dx
 	jmp	ChkVCPI
 CmdVCPI:
 	.byte	0x40			// status

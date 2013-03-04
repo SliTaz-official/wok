@@ -1,16 +1,4 @@
 #!/bin/sh
-if [ "$1" == "--build" ]; then
-	shift
-	[ $(tar cf - $@ | wc -c) -gt $((32 * 1024)) ] &&
-		echo "The file set $@ is too large (31K max) :" &&
-		ls -l $@ && exit 1
-	cat >> $0 <<EOM
-$(tar cf - $@ | lzma e -si -so | uuencode -m -)
-EOT
-EOM
-	sed -i '/--build/,/^fi/d' $0
-	exit
-fi
 
 ddq()
 {
@@ -30,28 +18,8 @@ get()
 	echo $(od -j $(($1)) -N ${3:-2} -t u${3:-2} -An $2)
 }
 
-main()
+add_rootfs()
 {
-	case "$1" in
-	--get)	shift
-		uudecode | unlzma | tar xOf - $@
-		exit ;;
-	*)	cat > /dev/null
-	esac
-	
-	[ ! -s "$1" ] && echo "usage: $0 image.iso" 1>&2 && exit 1
-	case "$(od -N 2 -t x2 -An $1)" in
-	*5a4d)	echo "The file $1 is already an EXE file." 1>&2 && exit 1;;
-	*0000)	[ -x /usr/bin/isohybrid ] && isohybrid $1
-	esac
-		
-	echo "Moving syslinux hybrid boot record..."
-	ddq if=$1 bs=512 count=1 | ddq of=$1 bs=512 count=1 seek=1 conv=notrunc 
-	
-	echo "Inserting EXE boot record..."
-	$0 --get bootiso.bin | ddq of=$1 conv=notrunc
-
-	# keep the largest room for the tazlito info file
 	TMP=/tmp/iso2exe$$
 	mkdir -p $TMP/bin $TMP/dev
 	cp -a /dev/?d?* $TMP/dev
@@ -67,24 +35,113 @@ main()
 	printf "Adding rootfs.gz file at %04X...\n" $OFS
 	cat $TMP/rootfs.gz | ddq of=$1 bs=1 seek=$OFS conv=notrunc
 	rm -rf $TMP
+}
+
+add_doscom()
+{
 	SIZE=$($0 --get boot.com | wc -c)
 	OFS=$(( $OFS - $SIZE ))
 	printf "Adding DOS boot file at %04X...\n" $OFS
 	$0 --get boot.com | ddq of=$1 bs=1 seek=$OFS conv=notrunc
 	store 66 $(($OFS+0xC0)) $1
+}
+
+add_win32exe()
+{
 	SIZE=$($0 --get win32.exe 2> /dev/null | tee /tmp/exe$$ | wc -c)
 	if [ $SIZE -ne 0 ]; then
 		OFS=$(( 128 + ( ($OFS - $SIZE + 128) & 0xFE00 ) ))
 		printf "Adding WIN32 file at %04X...\n" $OFS
 		LOC=$((0xAC+$(get 0x94 /tmp/exe$$)))
 		for i in $(seq 1 $(get 0x86 /tmp/exe$$)); do
-			store $LOC $(($(get $LOC /tmp/exe$$)+$OFS-128)) /tmp/exe$$
+			CUR=$(get $LOC /tmp/exe$$)
+			[ $CUR -eq 0 ] || store $LOC $(($CUR+$OFS-128)) /tmp/exe$$
 			LOC=$(($LOC+40))
 		done
 		ddq if=/tmp/exe$$ of=$1 bs=1 skip=128 seek=$OFS conv=notrunc
 	fi
 	rm -f /tmp/exe$$ 
 	store 60 $OFS $1
+}
+case "$1" in
+--build)
+	shift
+	[ $(tar cf - $@ | wc -c) -gt $((32 * 1024)) ] &&
+		echo "The file set $@ is too large (31K max) :" &&
+		ls -l $@ && exit 1
+	cat >> $0 <<EOM
+$(tar cf - $@ | lzma e -si -so | uuencode -m -)
+EOT
+EOM
+	sed -i '/^case/,/^esac/d' $0
+	exit ;;
+--get)
+	cat $2
+	exit ;;
+--array)
+	DATA=/tmp/dataiso$$
+	ddq if=/dev/zero bs=32k count=1 of=$DATA
+	ddq if=bootiso.bin of=$DATA conv=notrunc
+	ddq if=$2 of=$DATA bs=512 seek=1 conv=notrunc
+	add_rootfs $DATA > /dev/null
+	add_doscom $DATA > /dev/null
+	add_win32exe $DATA > /dev/null
+	cat <<EOT
+
+#define BOOTISOSZ $((0x8400 - $OFS))
+
+#ifdef WIN32
+static char bootiso[] = {
+$(hexdump -v -n 1024 -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
+$(hexdump -v -s $OFS -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
+};
+#endif
+EOT
+	rm -rf $DATA
+	exit ;;
+--exe)
+	# --exe mvcom.bin x.com y.exe > xy.exe
+	cat $4 $3 > /tmp/exe$$
+	S=$(stat -c %s /tmp/exe$$)
+	store 2 $(($S%512)) /tmp/exe$$
+	store 4 $((($S+511)/512)) /tmp/exe$$
+	store 14 -16 /tmp/exe$$
+	store 16 -2 /tmp/exe$$
+	store 20 256 /tmp/exe$$
+	store 22 -16 /tmp/exe$$
+	ddq if=$2 bs=1 seek=64 of=/tmp/exe$$ conv=notrunc
+	store 65 $(stat -c %s $3) /tmp/exe$$
+	store 68 $((0x100-0x40+$(stat -c %s $4))) /tmp/exe$$
+	cat /tmp/exe$$
+	rm -f /tmp/exe$$
+	exit ;;
+esac
+
+main()
+{
+	case "$1" in
+	--get)	shift
+		uudecode | unlzma | tar xOf - $@
+		exit ;;
+	*)	cat > /dev/null
+	esac
+	
+	[ ! -s "$1" ] && echo "usage: $0 image.iso" 1>&2 && exit 1
+	case "$(get 0 $1)" in
+	23117)	echo "The file $1 is already an EXE file." 1>&2 && exit 1;;
+	0)	[ -x /usr/bin/isohybrid ] && isohybrid $1
+	esac
+		
+	echo "Moving syslinux hybrid boot record..."
+	ddq if=$1 bs=512 count=1 | ddq of=$1 bs=512 count=1 seek=1 conv=notrunc 
+	
+	echo "Inserting EXE boot record..."
+	$0 --get bootiso.bin | ddq of=$1 conv=notrunc
+
+	# keep the largest room for the tazlito info file
+	add_rootfs $1
+	add_doscom $1
+	add_win32exe $1
 	store 26 ${RANDOM:-0} $1
 	i=66
 	n=0
