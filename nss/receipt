@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="nss"
-VERSION="3.13.3"
+VERSION="3.14.1"
 CATEGORY="utilities"
 SHORT_DESC="Mozilla Network Security Services (NSS)."
 MAINTAINER="rocky@slitaz.org"
@@ -15,79 +15,36 @@ WGET_URL="ftp://ftp.mozilla.org/pub/security/nss/releases/NSS_${VERSION//./_}_RT
 compile_rules()
 {
     cd $src
-    # Adds the SPI Inc. and CAcert.org CA certificates - patch from Debian
-    patch -Np1 -i $stuff/add_spi+cacert_ca_certs.patch
-    # Adds transitional SSL renegotiate support - patch from Debian
-    patch -Np1 -i  $stuff/ssl-renegotiate-transitional.patch
-    # Builds against system sqlite - patch from Fedora
-    patch -Np0 -i $stuff/nss-nolocalsql.patch
-    # Removes rpath
-    patch -Np0 -i $stuff/nss-no-rpath.patch
+	patch -Np1 -i $stuff/nss-3.14.1-standalone-1.patch &&
+	cd mozilla/security/nss &&
+	make -j1 nss_build_all BUILD_OPT=1 \
+		NSPR_INCLUDE_DIR=/usr/include/nspr \
+		USE_SYSTEM_ZLIB=1 \
+		ZLIB_LIBS=-lz \
+		$([ $(uname -m) = x86_64 ] && echo USE_64=1) \
+		$([ -f /usr/include/sqlite3.h ] && echo NSS_USE_SYSTEM_SQLITE=1) &&
 
-    cd $src/mozilla/security/nss/lib/ckfw/builtins
-    make generate
-
-    cd $src
-    unset CFLAGS
-    unset CXXFLAGS
-    export NSS_USE_SYSTEM_SQLITE=1
-    export BUILD_OPT=1
-    export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
-    export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
-    export NSPR_INCLUDE_DIR=`pkg-config --cflags-only-I nspr | sed 's/-I//'`
-    export NSPR_LIB_DIR=`pkg-config --libs-only-L nspr | sed 's/-L.//'`
-
-    make -j 1 -C mozilla/security/coreconf
-    make -j 1 -C mozilla/security/dbm
-    make -j 1 -C mozilla/security/nss
-
-    mkdir -p $PWD/_pkg/usr/bin
-    mkdir -p $PWD/_pkg/usr/lib/pkgconfig
-    mkdir -p $PWD/_pkg/usr/include/nss
-
-    NSS_VMAJOR=`grep "#define.*NSS_VMAJOR" mozilla/security/nss/lib/nss/nss.h | awk '{print $3}'`
-    NSS_VMINOR=`grep "#define.*NSS_VMINOR" mozilla/security/nss/lib/nss/nss.h | awk '{print $3}'`
-    NSS_VPATCH=`grep "#define.*NSS_VPATCH" mozilla/security/nss/lib/nss/nss.h | awk '{print $3}'`
-
-    sed $stuff/nss.pc.in -e "s,%libdir%,/usr/lib,g" \
-                             -e "s,%prefix%,/usr,g" \
-                             -e "s,%exec_prefix%,/usr/bin,g" \
-                             -e "s,%includedir%,/usr/include/nss,g" \
-                             -e "s,%NSPR_VERSION%,${VERSION},g" \
-                             -e "s,%NSS_VERSION%,${VERSION},g" \
-                    > $PWD/_pkg/usr/lib/pkgconfig/nss.pc || return 1
-
-    sed $stuff/nss-config.in -e "s,@libdir@,/usr/lib,g" \
-                                 -e "s,@prefix@,/usr/bin,g" \
-                                 -e "s,@exec_prefix@,/usr/bin,g" \
-                                 -e "s,@includedir@,/usr/include/nss,g" \
-                                 -e "s,@MOD_MAJOR_VERSION@,${NSS_VMAJOR},g" \
-                                 -e "s,@MOD_MINOR_VERSION@,${NSS_VMINOR},g" \
-                                 -e "s,@MOD_PATCH_VERSION@,${NSS_VPATCH},g" \
-                            > $PWD/_pkg/usr/bin/nss-config || return 1
-    chmod 755 $PWD/_pkg/usr/bin/nss-config || return 1
-
-    for file in libsoftokn3.so libfreebl3.so libnss3.so libnssutil3.so \
-              libssl3.so libsmime3.so libnssckbi.so libnssdbm3.so
-    do
-      cp mozilla/dist/*.OBJ/lib/${file} $PWD/_pkg/usr/lib/ || return 1
-    done
-    for file in libcrmf.a libnssb.a libnssckfw.a; do
-      cp mozilla/dist/*.OBJ/lib/${file} $PWD/_pkg/usr/lib/ || return 1
-    done
-
-    for file in certutil cmsutil crlutil modutil pk12util signtool signver ssltap; do
-      cp mozilla/dist/*.OBJ/bin/${file} $PWD/_pkg/usr/bin/ || return 1
-    done
-
-    cp mozilla/dist/public/nss/*.h $PWD/_pkg/usr/include/nss || return 1
+	mkdir -p $install/usr/lib $install/usr/include/nss
+	mkdir -p $install/usr/bin $install/usr/lib/pkgconfig &&
+	cd ../../dist &&
+	install -v -m755 Linux*/lib/*.so $install/usr/lib			&&
+	install -v -m644 Linux*/lib/*.chk $install/usr/lib			&&
+	install -v -m644 Linux*/lib/libcrmf.a $install/usr/lib		&&
+	install -v -m755 -d $install/usr/include/nss				&&
+	cp -v -RL public/nss/* $install/usr/include/nss				&&
+	cp -v -RL private/nss/* $install/usr/include/nss			&&
+	chmod 644 $install/usr/include/nss/*						&&
+	install -v -m755 Linux*/bin/certutil $install/usr/bin		&&
+	install -v -m755 Linux*/bin/nss-config $install/usr/bin		&&
+	install -v -m755 Linux*/bin/pk12util $install/usr/bin		&&
+	install -v -m644 Linux*/lib/pkgconfig/nss.pc $install/usr/lib/pkgconfig
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
     mkdir -p $fs/usr/lib
-    cp -a $_pkg/usr/bin $fs/usr
-    cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+    cp -a $install/usr/bin $fs/usr
+    cp -a $install/usr/lib/*.so* $fs/usr/lib
     rm $fs/usr/bin/nss-config
 }
