@@ -48,7 +48,7 @@ compile_rules()
 	case "$ARCH" in
 		arm)
 			echo "Compiling: ARM Kernel"
-			if [ ! -f $SRC/$(basename $PATCH) ]; then
+			if [ ! -s $SRC/$(basename $PATCH) ]; then
 				wget --no-check-certificate $PATCH -O $SRC/$(basename $PATCH)
 			fi
 			make mrproper
@@ -133,14 +133,10 @@ mac80211.compat08082009.wl_frag+ack_v1.patch
 EOT
 
 	if [ "$KBASEVER" != "$VERSION" ]; then
-		if [ -f $SOURCES_REPOSITORY/$(basename $PATCH) ]; then
-			xzcat $SOURCES_REPOSITORY/$(basename $PATCH) | patch -Np1
-			touch done.patch-$VERSION
-		else
-			wget --no-check-certificate $PATCH -O $SRC/$(basename $PATCH)
-			xzcat $SRC/$(basename $PATCH) | patch -Np1
-			touch done.patch-$VERSION
-		fi
+		[ -s $SRC/$(basename $PATCH) ] ||
+		wget --no-check-certificate $PATCH -O $SRC/$(basename $PATCH)
+		xzcat $SRC/$(basename $PATCH) | patch -Np1
+		touch done.patch-$VERSION
 	fi
 
 	sed -i 's|SUBLEVEL =.*|SUBLEVEL =|g' Makefile
