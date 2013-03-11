@@ -27,6 +27,8 @@ libvorbis-dev libvorbis speex"
 #
 compile_rules()
 {
+# according to https://issues.asterisk.org/jira/browse/ASTERISK-20576
+# the message "Makefile:82: pjproject/build.mak: No such file or directory" is normal :-/
 	cd $src
 	find * -name config.guess -o -name configure | xargs \
 		sed -i "s/(uname -m)/(echo $ARCH)/"
@@ -53,7 +55,7 @@ compile_rules()
 		--with-dahdi=$WOK/dahdi/$(ls $WOK/dahdi/taz) \
 		--with-tonezone \
 		$CONFIGURE_ARGS &&
-	make -j 1 &&
+	make -j 1 | grep -v pjproject &&
 	make -j 1 DESTDIR=$DESTDIR install &&
 	make -j 1 DESTDIR=$DESTDIR samples &&
 	cd contrib/utils &&
