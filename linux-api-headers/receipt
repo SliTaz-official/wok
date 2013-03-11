@@ -12,7 +12,7 @@ WEB_SITE="http://www.kernel.org/"
 WGET_URL="http://www.kernel.org/pub/linux/kernel/v3.0/$TARBALL"
 PROVIDE="linux-headers"
 
-BUILD_DEPENDS="bash"
+BUILD_DEPENDS="bash wget"
 
 [ "$KBASEVER" != "$VERSION" ] && PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz"
 
@@ -32,12 +32,10 @@ compile_rules()
 	cd $src
 	
 	if [ "$KBASEVER" != "$VERSION" ]; then
-		if [ -f $SOURCES_REPOSITORY/$(basename $PATCH) ]; then
-			xzcat $SOURCES_REPOSITORY/$(basename $PATCH) | patch -Np1
-		else
-			wget $PATCH -O $SRC/$(basename $PATCH)
-			xzcat $SRC/$(basename $PATCH) | patch -Np1
-		fi
+		[ -s $SRC/$(basename $PATCH) ] ||
+		wget --no-check-certificate $PATCH -O $SRC/$(basename $PATCH)
+		xzcat $SRC/$(basename $PATCH) | patch -Np1
+		touch done.patch-$VERSION
 	fi
 
 	make mrproper &&
