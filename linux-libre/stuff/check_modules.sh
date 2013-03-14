@@ -9,7 +9,7 @@
 #WOK=$LOCAL_REPOSITORY/wok
 WOK=$(cd `dirname $0` && pwd | sed 's/wok.*/wok/')
 VERSION=`grep  ^VERSION= $WOK/linux-libre/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-src="$WOK/linux-libre/source/linux-$VERSION"
+src="$WOK/linux-libre/source/linux-libre-$VERSION"
 
 cd $src
 tmp=$WOK/${PACKAGE:-linux-libre}/tmp
