@@ -15,7 +15,16 @@ BUILD_DEPENDS="gc gc-dev libcrypto-dev openssl-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS && make && make install
+       cd $src
+       for i in  $stuff/*.patch
+       do
+	        if [ -f done.$(basename $i) ]; then
+		       continue
+	        else
+		       patch -p0 < $i && touch done.$(basename $i) || return 1
+	        fi
+	done
+       ./configure $CONFIGURE_ARGS && make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
