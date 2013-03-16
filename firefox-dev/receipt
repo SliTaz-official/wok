@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="firefox-dev"
-VERSION="10.0.2"
+VERSION="17.0.4esr"
 CATEGORY="development"
 SHORT_DESC="firefox devel files"
 MAINTAINER="jozee@slitaz.org"
@@ -15,24 +15,40 @@ WEB_SITE="http://www.mozilla.org/"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/pkgconfig
-	cp -a $_pkg/usr/lib/firefox-devel $fs/usr/lib
-	cp -a $_pkg/usr/include $fs/usr
+	printf "Installing include files.."
+	mkdir -p $fs/usr/include/$WANTED-$VERSION &&
+	cp -rL $src/obj-firefox/dist/include/* $fs/usr/include/$WANTED-$VERSION
+	status
 
-	# Gecko 1.9.0 compatibility...
-	#ln -s npfunctions.h $fs/usr/include/firefox-$VERSION/stable/npupp.h
+	printf "Installing libs files.."
+	mkdir -p $fs/usr/lib/$WANTED-devel/sdk/bin/ply &&
+	cp -rL $src/obj-firefox/dist/sdk/bin/*.py \
+		$fs/usr/lib/$WANTED-devel/sdk/bin &&
+	cp -rL $src/obj-firefox/dist/sdk/bin/ply/*.py \
+		$fs/usr/lib/$WANTED-devel/sdk/bin/ply &&
+	mkdir -p $fs/usr/lib/$WANTED-devel/sdk/lib &&
+	cp -rL $src/obj-firefox/dist/sdk/lib/* \
+		$fs/usr/lib/$WANTED-devel/sdk/lib
+	status
+
+#	printf "Installing npapi files.."
+#	mkdir -v $fs/usr/include/$WANTED-$VERSION/npapi &&
+#	cp -a $src/dom/plugins/base/*.h $fs/usr/include/$WANTED-$VERSION/npapi
+#	status
 
 	# /usr/share/idl folder should also be in firefox-dev
-	cp -a $_pkg/usr/share $fs/usr
+	printf "Installing idl files.."
+	mkdir -p $fs/usr/share/$WANTED-$VERSION/idl &&
+	cp -rL $src/obj-firefox/dist/idl/* $fs/usr/share/$WANTED-$VERSION/idl
+	status
 
 	# copy missing *.pc files
-	cp -a $stuff/*.pc $fs/usr/lib/pkgconfig
-
-	# copy missing xpidl files
-	cp -a $_pkg/typelib/xpidl/xpidl $fs/usr/lib/firefox-devel/sdk/lib
-
+	printf "Installing pkgconfig files.."
+	mkdir -p $fs/usr/lib/pkgconfig &&
+	cp -a $stuff/*.pc $fs/usr/lib/pkgconfig &&
 	# fix version
-	sed -i "s/3\.5\../$VERSION/" $fs/usr/lib/pkgconfig/*
+	sed -i "s/VERSION/$VERSION/" $fs/usr/lib/pkgconfig/*
+	status
 }
 
 # Pre and post install commands for Tazpkg.
