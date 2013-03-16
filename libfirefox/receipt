@@ -1,9 +1,9 @@
 # SliTaz package receipt.
 
 PACKAGE="libfirefox"
-VERSION="10.0.2"
+VERSION="17.0.4esr"
 CATEGORY="network"
-SHORT_DESC="firefox lib files"
+SHORT_DESC="firefox/thunderbird common files"
 MAINTAINER="jozee@slitaz.org"
 WANTED="firefox"
 WEB_SITE="http://www.mozilla.org/"
@@ -14,20 +14,51 @@ alsa-lib xorg-libXt"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/$WANTED
-	cp -a $_pkg/usr/lib/$WANTED/*.so $fs/usr/lib/$WANTED
-	
-	# remove some firefox libs (in firefox receipts)
-	rm -rf $fs/usr/lib/firefox/libxul.so
-	
-	# Remove unnecessary files (copied from firefox receipt)
-	rm -rf $fs/usr/lib/firefox/libsqlite3.so
-}
+	# dictionaries/en-US.aff
+	# dictionaries/en-US.dic
+	printf "Installing dictionaries"
+	mkdir -p $fs/usr/lib/mozilla-common-$VERSION/dictionaries
+#	cp -a $install/usr/lib/firefox-$VERSION/dictionaries \
+#		$fs/usr/lib/mozilla-common-$VERSION
+	status
 
-post_install()
-{
-	# Export firefox libraries
-	for i in /usr/lib/firefox/*.so ; do
-		[ -f $i ] && ln -sf $i /usr/lib
-	done	
+	# plugin-container
+	printf "Installing common plugin-container"
+	cp -a $install/usr/lib/firefox-$VERSION/plugin-container \
+		$fs/usr/lib/mozilla-common-$VERSION
+	status
+
+	# mozilla-xremote-client
+	printf "Installing common mozilla-xremote-client"
+	cp -a $install/usr/lib/firefox-$VERSION/mozilla-xremote-client \
+		$fs/usr/lib/mozilla-common-$VERSION
+	status
+
+	# components/libdbusservice.so
+	# components/libmozgnome.so
+	mkdir -p $fs/usr/lib/mozilla-common-$VERSION/components
+	for file in libdbusservice.so libmozgnome.so; do
+		printf "Installing common components/$file"
+		cp -a $install/usr/lib/firefox-$VERSION/components/$file \
+		$fs/usr/lib/mozilla-common-$VERSION/components
+		status
+	done
+
+	# chrome.manifest
+	printf "Installing common chrome.manifest"
+	cp -a $install/usr/lib/firefox-$VERSION/chrome.manifest \
+		$fs/usr/lib/mozilla-common-$VERSION
+	status
+
+	# run-mozilla.sh
+	printf "Installing common run-mozilla.sh"
+	cp -a $install/usr/lib/firefox-$VERSION/run-mozilla.sh \
+		$fs/usr/lib/mozilla-common-$VERSION
+	status
+
+	# libmozalloc.so
+	printf "Installing common libmozalloc.so"
+	cp -a $install/usr/lib/firefox-$VERSION/libmozalloc.so \
+		$fs/usr/lib/mozilla-common-$VERSION
+	status
 }
