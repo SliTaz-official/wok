@@ -1,60 +1,130 @@
 # SliTaz package receipt.
 
 PACKAGE="thunderbird"
-VERSION="11.0.1"
+VERSION="17.0.4esr"
 CATEGORY="network"
 SHORT_DESC="Mozilla's Thunderbird email application."
 MAINTAINER="domcox@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.source.tar.bz2"
 WEB_SITE="http://www.mozilla.org/"
 WGET_URL="ftp://ftp.mozilla.org/pub/mozilla.org/thunderbird/releases/$VERSION/source/$TARBALL"
-TAGS="email pop imap smtp"
-TB_LOCALES="de es_ES fr en_GB pt_PT pt_BR ru"
 
-DEPENDS="alsa-lib gtk+ dbus dbus-glib glib jpeg libevent libnotify nss \
-         sqlite xorg-libX11 xorg-libXdamage xorg-libXt"
-BUILD_DEPENDS="alsa-lib-dev bzip2 dbus-dev dbus-glib-dev freetype fontconfig \
-         gtk+-dev libIDL libevent-dev libnotify-dev make mesa-dev nspr-dev \
-         nss-dev perl pkg-config python sqlite-dev tar wireless_tools-dev \
-         xorg-dev xorg-libXt-dev zip"
+DEPENDS="alsa-lib gtk+ zip unzip libevent libvpx nspr nss sqlite \
+dbus dbus-glib glib libnotify libfirefox"
+BUILD_DEPENDS="alsa-lib-dev gtk+-dev bzip2 zip unzip coreutils \
+libevent-dev libvpx-dev nspr-dev nss-dev yasm sqlite-dev \
+dbus-dev dbus-glib-dev libnotify-dev freetype fontconfig tar gzip mesa-dev"
+TAGS="email pop imap smtp"
 
 # Rules to configure and make the package.
+# WARNING: 1GB RAM minimum. Additional RAM will significantly decrease
+# build time.
+# At least 2.5 GB free disk space
+
+
 compile_rules()
 {
-	cat <<EOF
-WARNING: long compile time.
-Requirements: 
-- 512MB RAM with lots of available swap space. Additional RAM will 
-  significantly decrease build time. 
-- At least 2.5 GB of disk space.
-EOF
-	# add config
-    cp -a $stuff/thunderbird.mozconfig.conf $src/.mozconfig
-	# languages
-	echo -e "\n# languages" >> $src/.mozconfig
-	echo "mk_add_options MOZ_CO_LOCALES=\"$TB_LOCALES\"" >> $src/.mozconfig
-	# for a quick build
-	echo -e "\n# build quicker" >> $src/.mozconfig
-	echo "mk_add_options MOZ_MAKE_FLAGS=$MAKEFLAGS" >> $src/.mozconfig
-	# build
 	cd $src
-	patch -Np1 -i $stuff/thunderbird-3.0-lang.patch
-	patch -Np1 -i $stuff/thunderbird-install-dir.patch
-	./configure $CONFIGURE_ARGS &&
-	make 2>&1 | head -n 1000 &&
-	make DESTDIR=$DESTDIR install
+	# load mozconfig
+    cp -a $stuff/mozconfig $src
+
+	# fix path of 'check_debug_ranges.py'
+	ln -s $src/mozilla/build/autoconf/check_debug_ranges.py \
+		$src/build/autoconf/check_debug_ranges.py
+
+	# build and create a thunderbird tarball
+	# reducing log size: hide c++, nsinstall, python msgs
+	# Exception... Component returned failure code: known bug #696763
+	make -f client.mk | egrep -v "c++|nsinstall|python" &&
+	make -C obj-thunderbird/mail/installer
+
+	# install
+	# locate tarball
+	local tarball tarpath fn1 fn2
+	tarpath=$src/obj-thunderbird/mozilla/dist
+	fn1="$tarpath/thunderbird-${VERSION%esr}.en-US.linux-$ARCH.tar.bz2"
+	fn2="$tarpath/thunderbird-${VERSION%esr}.en-US.linux-$(uname -m).tar.bz2"
+	[ -e "$fn1" ] && tarball="$fn1" && echo "$ARCH tarball found"
+	[ -e "$fn2" ] && tarball="$fn2" && echo "$(uname -m) tarball found"
+	[ -z "$tarball" ] && echo "ERROR: tarball not found" && exit 1
+	# extract tarball
+	mkdir -p $install/usr/lib/thunderbird-$VERSION &&
+	tar -xvf $tarball -C $install/usr/lib/thunderbird-$VERSION \
+		--strip-components=1 &&
+	# install symlink in /usr/bin
+	mkdir -p $install/usr/bin &&
+	ln -sf ../lib/thunderbird-$VERSION/thunderbird $install/usr/bin
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
 	# program
-	cp -a $install/usr/lib/$PACKAGE $fs/usr/lib
+	printf "Installing program.."
+	mkdir -p $fs/usr/lib &&
+	cp -a $install/usr/lib/$PACKAGE-$VERSION $fs/usr/lib &&
 	cp -a $install/usr/bin $fs/usr
-	# mcd
-	cp $stuff/autoconf.js $fs/usr/lib/$PACKAGE/defaults/pref
-	cp $stuff/thunderbird.cfg $fs/usr/lib/$PACKAGE
-	# mimetypes
+	status
 
+	# add Mission Control Desktop
+	printf "Installing Mission Control Desktop.."
+	cp $stuff/autoconf.js $fs/usr/lib/$PACKAGE-$VERSION/defaults/pref &&
+	touch $fs/usr/lib/$PACKAGE-$VERSION/thunderbird.cfg
+	status
+
+	# slitaz prefs.
+	printf "Installing SliTaz prefs.."
+	cp $stuff/distribution.ini $fs/usr/lib/$PACKAGE-$VERSION/distribution/ &&
+	# slitaz search plugins
+	cp -a $stuff/searchplugins/* $fs/usr/lib/$PACKAGE-$VERSION/searchplugins &&
+	status
+
+	# mozilla-common files
+	# dictionaries
+	printf "Installing common dictionnaries.."
+	rm -rf $fs/usr/lib/$PACKAGE-$VERSION/dictionaries &&
+	ln -sf ../mozilla-common-$VERSION/dictionaries \
+		$fs/usr/lib/$PACKAGE-$VERSION/dictionaries
+	status
+	# plugin-container
+	printf "Installing common plugin-container"
+	rm -f $fs/usr/lib/$PACKAGE-$VERSION/plugin-container &&
+	ln -sf ../mozilla-common-$VERSION/plugin-container \
+		$fs/usr/lib/$PACKAGE-$VERSION/plugin-container
+	status
+	# mozilla-xremote-client
+	printf "Installing common mozilla-xremote-client"
+	rm -f $fs/usr/lib/$PACKAGE-$VERSION/mozilla-xremote-client &&
+	ln -sf ../mozilla-common-$VERSION/mozilla-xremote-client \
+		$fs/usr/lib/$PACKAGE-$VERSION/mozilla-xremote-client
+	status
+	# components/libdbusservice.so
+	# components/libmozgnome.so
+	for file in libdbusservice.so libmozgnome.so; do
+		printf "Installing common components/$file"
+		rm -f $fs/usr/lib/$PACKAGE-$VERSION/components/$file &&
+		ln -sf ../../mozilla-common-$VERSION/components/$file \
+			$fs/usr/lib/$PACKAGE-$VERSION/components/$file
+		status
+	done
+	# chrome.manifest
+	printf "Installing common chrome.manifest"
+	rm -f $fs/usr/lib/$PACKAGE-$VERSION/chrome.manifest &&
+	ln -sf ../mozilla-common-$VERSION/chrome.manifest \
+		$fs/usr/lib/$PACKAGE-$VERSION/chrome.manifest
+	status
+
+	# run-mozilla.sh
+	printf "Installing common run-mozilla.sh"
+	rm -f $fs/usr/lib/$PACKAGE-$VERSION/run-mozilla.sh &&
+	ln -sf ../mozilla-common-$VERSION/run-mozilla.sh \
+		$fs/usr/lib/$PACKAGE-$VERSION/run-mozilla.sh
+	status
+
+	# libmozalloc.so
+	printf "Installing common libmozalloc.so"
+	rm -f $fs/usr/lib/$PACKAGE-$VERSION/libmozalloc.so &&
+	ln -sf ../mozilla-common-$VERSION/libmozalloc.so \
+		$fs/usr/lib/$PACKAGE-$VERSION/libmozalloc.so
+	status
 }
