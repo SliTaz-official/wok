@@ -1,124 +1,137 @@
 # SliTaz package receipt.
 
 PACKAGE="firefox"
-VERSION="10.0.2"
+VERSION="17.0.4esr"
 CATEGORY="network"
 SHORT_DESC="User friendly, secure and fast web browser."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.source.tar.bz2"
-WEB_SITE="http://www.mozilla.org/"
-#WGET_URL="http://releases.mozilla.org/pub/mozilla.org/firefox/releases/$VERSION/source/$TARBALL"
+WEB_SITE="http://www.mozilla.org/firefox"
 WGET_URL="ftp://ftp.mozilla.org/pub/mozilla.org/firefox/releases/$VERSION/source/$TARBALL"
-CONFIG_FILES="/etc/firefox"
 TAGS="browser"
 
 DEPENDS="gtk+ sqlite dbus dbus-glib glib jpeg xorg-libX11 xorg-libXdamage \
-alsa-lib xorg-libXt libfirefox libevent libvpx"
+alsa-lib xorg-libXt libevent libvpx pango nss sqlite libfirefox \
+gstreamer gst-plugins-base"
 BUILD_DEPENDS="zip libIDL coreutils findutils wireless_tools-dev \
 perl python yasm alsa-lib-dev mesa-dev libevent-dev libvpx-dev dbus-dev \
-dbus-glib-dev gtk+-dev glib-dev"
+dbus-glib-dev gtk+-dev glib-dev pango-dev nss-dev sqlite-dev tar gzip \
+gstreamer-dev gst-plugins-base-dev"
 
 # Rules to configure and make the package.
 #
 # A long compile time... dont forget to build libidl before and check the
 # .mozconfig file from the stuff and the stuff/README document.
 #
+# WARNING: 1GB RAM minimum. Additional RAM will significantly decrease
+# build time.
+# At least 2.5 GB free disk space
+
 compile_rules()
 {
-	cp -a $stuff/firefox.mozconfig $src/.mozconfig
 	cd $src
-	patch -Np1 -i $stuff/mozilla-firefox-1.0-lang.patch
-	patch -Np1 -i $stuff/firefox-install-dir.patch
+	# load mozconfig
+	cp -a $stuff/mozconfig $src
 
-	# Fix PRE_RELEASE_SUFFIX
-	sed -i '/^PRE_RELEASE_SUFFIX := ""/s/ ""//' \
-		browser/base/Makefile.in
+	# build firefox and create a firefox tarball
+	# reducing log size: hide c++, nsinstall, python msgs
+	# Exception... Component returned failure code: known bug #696763
+	make -f client.mk | egrep -v "c++|nsinstall|python" &&
+	make -C obj-firefox/browser/installer
 
-	# Don't generate startup cache. Unbreaks build
-	sed -i 's/^GENERATE_CACHE ?=.*/GENERATE_CACHE = true/' \
-		toolkit/mozapps/installer/packager.mk
-	./configure $CONFIGURE_ARGS &&
-	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install &&
-	cp -a xpcom/typelib $DESTDIR
+	# install
+	# locate tarball
+	local tarball tarpath fn1 fn2
+	tarpath=$src/obj-firefox/dist
+	fn1="$tarpath/firefox-${VERSION%esr}.en-US.linux-$ARCH.tar.bz2"
+	fn2="$tarpath/firefox-${VERSION%esr}.en-US.linux-$(uname -m).tar.bz2"
+	[ -e "$fn1" ] && tarball="$fn1" && echo "$ARCH tarball found"
+	[ -e "$fn2" ] && tarball="$fn2" && echo "$(uname -m) tarball found"
+	[ -z "$tarball" ] && echo "ERROR: tarball not found" && exit 1
+	# extract tarball
+	mkdir -p $install/usr/lib/firefox-$VERSION &&
+	tar -xvf $tarball -C $install/usr/lib/firefox-$VERSION \
+		--strip-components=1 &&
+	chown -R -v root:root $install/usr/lib/firefox-$VERSION &&
+	chmod -v 755 $install/usr/lib/firefox-$VERSION/libxpcom.so &&
+	# install symlink in /usr/bin
+	mkdir -p $install/usr/bin &&
+	ln -sf ../lib/firefox-$VERSION/firefox $install/usr/bin &&
+	# install symlink for plugins
+	mkdir -p $install/usr/lib/mozilla/plugins &&
+	ln -sf ../mozilla/plugins $install/usr/lib/firefox-$VERSION
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/$PACKAGE \
-		$fs/usr/share $fs/etc/$PACKAGE/profile/chrome
+	# program
+	printf "Installing program.."
+	mkdir -p $fs/usr/lib &&
+	cp -a $install/usr/lib/$PACKAGE-$VERSION $fs/usr/lib &&
+	cp -a $install/usr/lib/mozilla $fs/usr/lib &&
 	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/$PACKAGE $fs/usr/lib
+	status
 
-	# Home page, bookmarks file and branding.
-	cp -a $stuff/browserconfig.properties $fs/etc/$PACKAGE
-	cp -a $stuff/bookmarks.html \
-		$fs/etc/$PACKAGE/profile
-	mkdir -p $fs/etc/$PACKAGE/pref
-	cp -a $stuff/firefox-branding.js \
-		$fs/etc/$PACKAGE/pref/firefox.js
+	# search Plugin (by: oddball)
+	printf "Installing SliTaz search plugins.."
+	cp -a $stuff/searchplugins $fs/usr/lib/$PACKAGE-$VERSION
+	status
 
-	# User preference.
-	cp -a $stuff/prefs.js $fs/etc/$PACKAGE/profile
-	cp -a $stuff/userChrome.css \
-		$fs/etc/$PACKAGE/profile/chrome
+	# prefs
+	printf "Installing SliTaz preferences.."
+	mkdir -p $fs/usr/lib/$PACKAGE-$VERSION/distribution &&
+	cp -a $stuff/distribution.ini $fs/usr/lib/$PACKAGE-$VERSION/distribution
+	status
 
-	# added firefox-l10n.js to stuff to make sure its copyed for langpacks
-	cp -a $stuff/firefox-l10n.js \
-		$fs/etc/$PACKAGE/pref/firefox-l10n.js
-
-	rm -rf $fs/usr/lib/$PACKAGE/defaults
-
-	ln -sf /etc/$PACKAGE/browserconfig.properties $fs/usr/lib/$PACKAGE
-	ln -sf /etc/$PACKAGE $fs/usr/lib/$PACKAGE/defaults
-
-	# EULA is accepted by SliTaz project.
-	sed -i s:'pref("browser.EULA.3.accepted", false);':'pref("browser.EULA.3.accepted", true);': \
-		$fs/etc/firefox/pref/firefox.js
-
-	# Search Plugin (by: oddball)
-	cp -a $stuff/searchplugins $fs/usr/lib/firefox/
-	chown -R root.root $fs
-
-	# Remove unnecessary files.
-	rm -rf $fs/usr/lib/$PACKAGE/dictionaries/*
-	rm -rf $fs/usr/lib/$PACKAGE/icons
-	# split firefox libs
-	rm -rf $fs/usr/lib/$PACKAGE/*.so
-	#retain big firefox libs
-	cp -a $install/usr/lib/$PACKAGE/libxul.so \
-		$fs/usr/lib/$PACKAGE
-	#workaround for now
-	#https://bugzilla.mozilla.org/show_bug.cgi?id=658850
-	ln -sf firefox $fs/usr/lib/$PACKAGE/firefox-bin
-}
-
-# Pre - Post install command to set default locale.
-pre_install()
-{
-	local root
-	root=$1
-	# Get old plugins
-	mkdir /tmp/firefox-plugins-$$
-	cp -a $root/usr/lib/firefox/plugins/* /tmp/firefox-plugins-$$ 2> /dev/null
-	# Remove old libs and configs
-	rm -rf $root/usr/lib/firefox/plugins
-	rm -rf $root/usr/lib/firefox/dictionaries
-	rm -rf $root/etc/firefox
-}
-post_install()
-{
-	local root
-	root=$1
-	if grep -q "fr_*" $root/etc/locale.conf 2>/dev/null; then
-		sed -i 's/en-US/fr/' \
-		$root/etc/firefox/pref/firefox-l10n.js
-	fi
-	for i in /tmp/firefox-plugins-$$/* ; do
-		[ -e $i ] || continue
-		[ -e /usr/lib/firefox/plugins/$(basename $i) ] && continue
-		cp -a $i /usr/lib/firefox/plugins/
+	# mozilla-common files
+	# dictionaries
+	printf "Installing common dictionnaries.."
+	rm -rf $fs/usr/lib/$PACKAGE-$VERSION/dictionaries &&
+	ln -sf ../mozilla-common-$VERSION/dictionaries \
+		$fs/usr/lib/$PACKAGE-$VERSION/dictionaries
+	status
+	# plugin-container
+	printf "Installing common plugin-container"
+	rm -f $fs/usr/lib/$PACKAGE-$VERSION/plugin-container &&
+	ln -sf ../mozilla-common-$VERSION/plugin-container \
+		$fs/usr/lib/$PACKAGE-$VERSION/plugin-container
+	status
+	# mozilla-xremote-client
+	printf "Installing common mozilla-xremote-client"
+	rm -f $fs/usr/lib/$PACKAGE-$VERSION/mozilla-xremote-client &&
+	ln -sf ../mozilla-common-$VERSION/mozilla-xremote-client \
+		$fs/usr/lib/$PACKAGE-$VERSION/mozilla-xremote-client
+	status
+	# components/libdbusservice.so
+	# components/libmozgnome.so
+	for file in libdbusservice.so libmozgnome.so; do
+		printf "Installing common components/$file"
+		rm -f $fs/usr/lib/$PACKAGE-$VERSION/components/$file &&
+		ln -sf ../../mozilla-common-$VERSION/components/$file \
+			$fs/usr/lib/$PACKAGE-$VERSION/components/$file
+		status
 	done
-	rm -rf /tmp/firefox-plugins-$$
+	# chrome.manifest
+	printf "Installing common chrome.manifest"
+	rm -f $fs/usr/lib/$PACKAGE-$VERSION/chrome.manifest &&
+	ln -sf ../mozilla-common-$VERSION/chrome.manifest \
+		$fs/usr/lib/$PACKAGE-$VERSION/chrome.manifest
+	status
+
+	# run-mozilla.sh
+	printf "Installing common run-mozilla.sh"
+	rm -f $fs/usr/lib/$PACKAGE-$VERSION/run-mozilla.sh &&
+	ln -sf ../mozilla-common-$VERSION/run-mozilla.sh \
+		$fs/usr/lib/$PACKAGE-$VERSION/run-mozilla.sh
+	status
+
+	# libmozalloc.so
+	printf "Installing common libmozalloc.so"
+	rm -f $fs/usr/lib/$PACKAGE-$VERSION/libmozalloc.so &&
+	ln -sf ../mozilla-common-$VERSION/libmozalloc.so \
+		$fs/usr/lib/$PACKAGE-$VERSION/libmozalloc.so
+	status
+
+	chown -R root.root $fs
 }
