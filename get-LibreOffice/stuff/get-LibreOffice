@@ -7,10 +7,14 @@
 #
 
 PACKAGE="LibreOffice"
-URL="http://www.libreoffice.org"
+WEB_SITE="http://www.libreoffice.org"
+CATEGORY="office"
+SHORT_DESC="Productivity suite."
+DEPENDS="java6-jre cups"
 ROOT="$1"
 DIR="stable"
-SUFFIX="Linux_x86_install-rpm_en-US.tar.gz"
+PREFIX="LibreOffice"
+SUFFIX="Linux_x86_rpm.tar.gz"
 WGET_URL="http://download.documentfoundation.org/libreoffice/$DIR"
 
 VERSION="$(basename $(wget -O - $WGET_URL/ 2> /dev/null | \
@@ -22,11 +26,12 @@ fi
 VER="${VERSION/\-/}" # without hyphens
 
 
-TARBALL="LibO_${VER}_${SUFFIX}"
+#http://download.documentfoundation.org/libreoffice/stable/4.0.1/rpm/x86/LibreOffice_4.0.1_Linux_x86_rpm.tar.gz
+TARBALL="${PREFIX}_${VER}_${SUFFIX}"
 
 for LOC in ${LANG/_/-} ${LANG%_*}; do
-	L_SUFFIX="Linux_x86_langpack-rpm_$LOC.tar.gz"
-	L_TARBALL="LibO_${VER}_${L_SUFFIX}"
+	L_SUFFIX="Linux_x86_rpm_langpack_$LOC.tar.gz"
+	L_TARBALL="${PREFIX}_${VER}_${L_SUFFIX}"
 	LANG_URL="$WGET_URL/${VERSION}/rpm/x86/${L_TARBALL}"
 	busybox wget -s $LANG_URL 2> /dev/null || continue
 	echo "Added $LANG ($LOC)."
@@ -122,7 +127,7 @@ for TB in $TARBALL $L_TARBALL ; do
 done
 
 # Get version found in archive (often directory is still RC version when final is present)
-ARCHIVED_VERSION=`find $TEMP_DIR -type d 2> /dev/null | grep LibO | head -n 1 | sed 's/_/ /g' | awk '{print $2}'`
+ARCHIVED_VERSION=$(find $TEMP_DIR -type d 2> /dev/null | sed "/$PREFIX/!d;\$!d;s/_/ /g" | awk '{print $2}')
 echo -n "(found v${ARCHIVED_VERSION})"
 
 # Consolidate localisations into main package
@@ -154,11 +159,10 @@ status
 echo -n "Preparing package... "
 
 # Make the package
-mkdir -p $PACKAGE-$VERSION/fs/usr/lib/libreoffice  \
-         $PACKAGE-$VERSION/fs/usr/share
+mkdir -p $PACKAGE-$VERSION/fs/usr/lib $PACKAGE-$VERSION/fs/usr/share
 
 # use mv instead of 'cp -a' to save RAM
-mv opt/libreoffice* $PACKAGE-$VERSION/fs/usr/lib
+mv opt/libreoffice* $PACKAGE-$VERSION/fs/usr/lib/libreoffice
 mv usr/share/mime $PACKAGE-$VERSION/fs/usr/share
 mv usr/share/icons $PACKAGE-$VERSION/fs/usr/share
 mv usr/bin $PACKAGE-$VERSION/fs/usr
@@ -179,10 +183,11 @@ cat > $PACKAGE-$VERSION/receipt <<EOT
 
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
-CATEGORY="office"
-SHORT_DESC="Productivity suite."
-DEPENDS="java6-jre"
-WEB_SITE="$URL"
+CATEGORY="$CATEGORY"
+SHORT_DESC="$SHORT_DESC"
+WEB_SITE="$WEB_SITE"
+
+DEPENDS="$DEPENDS"
 
 post_install()
 {
