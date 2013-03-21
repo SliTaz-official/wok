@@ -1,24 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="gobject-introspection"
-VERSION="1.30.0"
-CATEGORY="x-window"
-SHORT_DESC="Introspection system for GObject-based libraries."
-DEPENDS="libgio glib libffi python"
-BUILD_DEPENDS="glib-dev libgio-dev pkg-config bison flex libffi-dev python-dev cairo-dev"
+VERSION="1.32.1"
+CATEGORY="development"
+SHORT_DESC="Introspection system for GObject-based libraries"
 MAINTAINER="pankso@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://live.gnome.org/GObjectInstrospection"
-WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+HI_VERSION=$(echo $VERSION | cut -d. -f1,2)
+WGET_URL="$GNOME_MIRROR/$PACKAGE/$HI_VERSION/$TARBALL"
+
+DEPENDS="libgio"
+BUILD_DEPENDS="flex bison glib-dev python-dev libgio-dev libffi-dev cairo-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	sed -i "s/.*self._linker_cmd,.*/&\n        if libtool:\n            args.append('-export-dynamic')/" giscanner/dumper.py
 	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
 		--disable-static \
 		$CONFIGURE_ARGS &&
 	make &&
@@ -28,9 +26,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/gobject-introspection $fs/usr/lib
-	cp -a $_pkg/usr/lib/girepository-1.0 $fs/usr/lib
+	mkdir -p \
+		$fs/usr/lib \
+		$fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/girepository-1.0 $fs/usr/lib
+	cp -a $install/usr/lib/gobject-introspection $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }

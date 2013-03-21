@@ -1,31 +1,44 @@
 # SliTaz package receipt.
 
 PACKAGE="gtk+3"
-SOURCE="gtk+"
-VERSION="3.2.3"
+VERSION="3.4.4"
 CATEGORY="x-window"
 SHORT_DESC="The GIMP Toolkit 3.x"
 MAINTAINER="pankso@slitaz.org"
-SUGGESTED="cups"
+SOURCE="gtk+"
 TARBALL="$SOURCE-$VERSION.tar.xz"
 WEB_SITE="http://www.gtk.org/"
 WGET_URL="$GNOME_MIRROR/$SOURCE/${VERSION:0:3}/$TARBALL"
 CONFIG_FILES="/etc/gtk-3.0/settings.ini"
 CROSS="bug: /bin/bash: no: command not found"
 
-DEPENDS="atk gdk-pixbuf pango xorg-libXcomposite xorg-libXcursor \
-xorg-libXdamage xorg-libXi xorg-libXinerama xorg-libXrandr"
+DEPENDS="atk gdk-pixbuf pango xorg-libXcomposite xorg-libXcursor xorg-libXi \
+xorg-libXinerama xorg-libXrandr"
+SUGGESTED="cups"
 BUILD_DEPENDS="bash pkg-config cups-dev dbus-dev gobject-introspection-dev \
-perl gdk-pixbuf-dev xorg-dev libffi-dev atk-dev pango-dev cairo-dev"
+perl gdk-pixbuf-dev xorg-dev libffi-dev atk-dev pango-dev cairo-dev indent "
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
-		--build=$HOST_SYSTEM --host=$HOST_SYSTEM &&
+		--localstatedir=/var \
+		--build=$HOST_SYSTEM \
+		--host=$HOST_SYSTEM \
+		--enable-debug=no \
+		--enable-xkb \
+		--enable-xinerama \
+		--enable-xrandr \
+		--enable-xfixes \
+		--enable-xcomposite \
+		--enable-xdamage \
+		--enable-x11-backend \
+		--enable-introspection=yes \
+		--enable-packagekit=no \
+		--enable-colord=no \
+		--with-x &&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
@@ -33,22 +46,28 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/gtk-3.0 $fs/usr/share $fs/usr/bin $fs/etc/gtk-3.0
+	mkdir -p \
+		$fs/etc/gtk-3.0 \
+		$fs/usr/bin \
+		$fs/usr/lib/gtk-3.0 \
+		$fs/usr/share
+
+	# Configuration file.
+	cp -a $install/etc $fs
+	cp -f $stuff/settings.ini $fs/etc/gtk-3.0
+
+	# Apps.
+	cp $install/usr/bin/gtk-query-immodules-3.0 $fs/usr/bin
+	cp $install/usr/bin/gtk-update-icon-cache $fs/usr/bin
+	# gtk3-demo & gtk3-demo-application -> gtk+3-demo
+	# gtk3-widget-factory -> gtk+3-widget-factory
 
 	# Libs.
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/gtk-3.0/3.0.0 $fs/usr/lib/gtk-2.0
+	cp -a $install/usr/lib/gtk-3.0/3.0.0 $fs/usr/lib/gtk-3.0
 	rm -rf $fs/usr/lib/gtk-3.0/3.0.0/*/*.la
 
-	# Themes
+	# Themes.
 	cp -a $install/usr/share/themes $fs/usr/share
 	cp -a $install/usr/share/glib-2.0 $fs/usr/share
-
-	# Apps.
-	cp  $install/usr/bin/gtk-query-immodules-3.0 $fs/usr/bin
-	#cp  $install/usr/bin/gtk-update-icon-cache $fs/usr/bin
-
-	# Configuration file
-	cp -a $install/etc $fs
-	cp -f $stuff/settings.ini $fs/etc/gtk-3.0
 }

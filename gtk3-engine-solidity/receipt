@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="gtk3-engine-solidity"
+VERSION="0.4.1"
+CATEGORY="x-window"
+SHORT_DESC="Solidity GTK+3 engine and themes"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL"
+WEB_SITE="http://gnome-look.org/content/show.php/solidity+gtk3+engine?content=142331"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="http://gnome-look.org/CONTENT/content-files/142331-solidity-$VERSION.tar.bz2"
+
+DEPENDS="gtk+3"
+BUILD_DEPENDS="vala glib-dev gtk+3-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/source/gtk3
+	valac --pkg=gmodule-2.0 --pkg=gtk+-3.0 -C solidity.vala
+	gcc -shared -fPIC \
+		$(pkg-config --cflags --libs glib-2.0 gmodule-2.0 gtk+-3.0) \
+		-o libsolidity.so solidity.c
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/usr/lib/gtk-3.0/3.0.0/theming-engines \
+		$fs/usr/share
+	cp -a $src/source/gtk3/libsolidity.so \
+		$fs/usr/lib/gtk-3.0/3.0.0/theming-engines
+	cp -a $src/themes $fs/usr/share
+	find $fs -name 'gtk-2.0' -delete
+}

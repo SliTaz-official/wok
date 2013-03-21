@@ -1,0 +1,69 @@
+# SliTaz package receipt.
+
+PACKAGE="freetype-infinality"
+PROVIDE="freetype"
+VERSION="2.4.11"
+CATEGORY="x-window"
+SHORT_DESC="Freetype font engine with infinality patches"
+MAINTAINER="al.bobylev@gmail.com"
+SOURCE="freetype"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.freetype.org/"
+WGET_URL="http://download.savannah.gnu.org/releases/freetype/$TARBALL"
+
+DEPENDS="slitaz-base-files zlib"
+BUILD_DEPENDS="bzip2-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# http://www.infinality.net/blog/infinality-freetype-patches/
+	# http://www.infinality.net/forum/viewtopic.php?f=2&t=77#p794
+	mkdir -p $src/patch
+	tar -xjf $stuff/* -C $src/patch
+	patch -p1 < $src/patch/freetype-enable-subpixel-hinting-infinality-20120615-01.patch
+	patch -p1 < $src/patch/freetype-entire-infinality-patchset-20130104-01.patch
+
+	./configure \
+		--sysconfdir=/etc \
+		--disable-static \
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/etc/profile.d \
+		$fs/usr/lib/freetype-infinality
+	# profile settings
+	install -m644 $src/patch/infinality-settings.sh $fs/etc/profile.d
+	# binary & libs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib/freetype-infinality
+}
+
+
+post_install()
+{
+	# SliTaz not support /etc/profile.d/ by default, but use /etc/profile file
+	cat >> /etc/profile << EOT
+
+# freetype-infinality profile settings
+. /etc/profile.d/infinality-settings.sh
+EOT
+
+	# add patched libs to loader config
+	echo '/usr/lib/freetype-infinality' >> /etc/ld.so.conf
+	ldconfig
+	echo 'Now you can log out/in to take effect on all your apps'
+}
+
+post_remove()
+{
+	sed -i '/infinality/d' /etc/profile
+	sed -i '/freetype-infinality/d' /etc/ld.so.conf
+	ldconfig
+}
