@@ -8,15 +8,15 @@ SHORT_DESC="The Linux kernel and modules."
 MAINTAINER="devel@slitaz.org"
 TARBALL="$PACKAGE-$KBASEVER.tar.xz"
 WEB_SITE="http://www.kernel.org/"
-WGET_URL="https://www.kernel.org/pub/linux/kernel/v3.0/$TARBALL"
+WGET_URL="ftp://ftp.kernel.org/pub/linux/kernel/v3.0/$TARBALL"
 HOST_ARCH="i486 arm x86_64"
 
 DEPENDS="kmod"
-BUILD_DEPENDS="slitaz-toolchain perl git xz lzma patch uclibc-cross-compiler-x86_64 wget"
+BUILD_DEPENDS="slitaz-toolchain perl git xz lzma patch uclibc-cross-compiler-x86_64"
 
 # Use version patch so we dont dl full kernel source on each minor update
 [ "$KBASEVER" != "$VERSION" ] && \
-	PATCH="http://www.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz"
+	PATCH="ftp://ftp.kernel.org/pub/linux/kernel/v3.0/patch-$VERSION.xz"
 
 # Aufs enable chroot
 AUFS_NOT_RAMFS="uclibc-cross-compiler-x86_64 is not compatible with aufs+tmpfs 8("
@@ -47,7 +47,7 @@ compile_rules()
 
 	if [ "$KBASEVER" != "$VERSION" ]; then
 		[ -s $SRC/$(basename $PATCH) ] ||
-		wget --no-check-certificate $PATCH -O $SRC/$(basename $PATCH)
+		wget $PATCH -O $SRC/$(basename $PATCH)
 		xzcat $SRC/$(basename $PATCH) | patch -Np1
 		touch done.patch-$VERSION
 	fi
@@ -56,7 +56,7 @@ compile_rules()
 		arm)
 			echo "Compiling: ARM Kernel"
 			if [ ! -s $SRC/$(basename $PATCH) ]; then
-				wget --no-check-certificate $PATCH -O $SRC/$(basename $PATCH)
+				wget $PATCH -O $SRC/$(basename $PATCH)
 			fi
 			make mrproper
 			# Buggy: we got kernel panic about module not tinted 3.2.14
