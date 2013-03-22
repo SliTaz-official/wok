@@ -1,0 +1,54 @@
+# SliTaz package receipt.
+
+PACKAGE="steadyflow"
+VERSION="0.2.0"
+CATEGORY="x-window"
+SHORT_DESC="Simple download manager for GNOME"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="https://launchpad.net/steadyflow"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://launchpad.net/$PACKAGE/trunk/$VERSION/+download/$TARBALL"
+TAGS="gtk3"
+
+DEPENDS="gtk+3 libgee libnotify-gtk3"
+BUILD_DEPENDS="wget cmake vala gtk+3-dev glib-dev libgee-dev libnotify-gtk3-dev"
+
+BUGS="Not able to download anything. Gnome-VFS error?"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# gee-1.0 is old while gee-0.8 is latest ;)
+	sed -i 's|gee-1.0|gee-0.8|g; s|Gee-1.0|Gee-0.8|g' \
+		$(grep -li gee-1.0 $(find . -type f))
+
+	mkdir build
+	cd build
+	cmake -DCMAKE_INSTALL_PREFIX=/usr .. &&
+	make
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/usr/share/applications \
+		$fs/usr/share/pixmaps \
+		$fs/usr/share/locale
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/glib* $fs/usr/share
+	cp -a $install/usr/share/steadyflow $fs/usr/share
+
+#	cp -a $stuff/*.desktop $fs/usr/share/applications
+#	cp -a $stuff/*.png $fs/usr/share/pixmaps
+
+	# localization
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+	for lang in $LOCALE_PACK; do
+		langf=$install/usr/share/locale/$lang
+		[ -d $langf ] && cp -a $langf $fs/usr/share/locale && echo -n "$lang "
+	done
+	echo
+}

@@ -1,28 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="libgee"
-VERSION="0.6.4"
+VERSION="0.9.92"
 CATEGORY="x-window"
 SHORT_DESC="GObject collection library."
 MAINTAINER="pankso@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://live.gnome.org/Libgee"
-WGET_URL="$GNOME_MIRROR/libgee/0.6/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+HI_VERSION="$(echo $VERSION | cut -d. -f1,2)"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/$HI_VERSION/$TARBALL"
 
 DEPENDS="glib libffi"
-BUILD_DEPENDS="glib-dev libffi-dev"
+BUILD_DEPENDS="bash vala gobject-introspection-dev sed glib-dev libffi-dev"
 
 # Rules to configure and make the package.
 compile_rules() 
 {
-	cd $src
-	./configure $CONFIGURE_ARGS &&
-	make && make install
+	./configure \
+		--enable-introspection=yes \
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -s $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
