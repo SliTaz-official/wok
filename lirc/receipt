@@ -19,6 +19,8 @@ libftdi-dev jack-audio-connection-kit-dev"
 compile_rules()
 {
 	cd $src
+	
+	sed -i '/smp_lock.h/d' drivers/lirc_atiusb/lirc_atiusb.c
 
 	# Up through at least lirc 0.8.5, lirc_gpio doesn't build with kernel 2.6.22+
 	#echo "Disabling build of drivers/lirc_gpio due to kernel incompatibility"
@@ -30,6 +32,14 @@ compile_rules()
 	sed -i -e "s:lirc_parallel\.o::" drivers/lirc_parallel/Makefile.am
 	sed -i -e "s:lirc_parallel\.o::" drivers/lirc_parallel/Makefile.in
 
+	echo "Disabling build of drivers/lirc_i2c due to kernel 2.6.38+ incompatibility"
+	sed -i -e "s:lirc_i2c\.o::" drivers/lirc_i2c/Makefile.am
+	sed -i -e "s:lirc_i2c\.o::" drivers/lirc_i2c/Makefile.in
+
+	echo "Disabling build of drivers/lirc_wpc8769l due to kernel incompatibility"
+	sed -i -e "s:lirc_wpc8769l\.o::" drivers/lirc_wpc8769l/Makefile.am
+	sed -i -e "s:lirc_wpc8769l\.o::" drivers/lirc_wpc8769l/Makefile.in
+
 	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	sed -i "s/uname -r/echo $KERNEL_VERSION-slitaz/g" configure
 
@@ -40,8 +50,8 @@ compile_rules()
 		--with-kerneldir=/usr/src/linux \
 		--with-moduledir=/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc \
 		$CONFIGURE_ARGS &&
-	make | sed s/ERROR/Error/ &&
-	make DESTDIR=$DESTDIR install
+	make 2>&1 | sed 's/ERROR/Error/;/lirc_dev\/Module/d' &&
+	make DESTDIR=$DESTDIR install 2>&1 | sed '/depmod:/d'
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
