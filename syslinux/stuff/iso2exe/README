@@ -1,7 +1,7 @@
 (c) GPLv2, Pascal Bellard <pascal.bellard@slitaz.org>
 
-The iso2exe tool inserts a DOS .EXE header in an ISO image.
-The ISO image can be launched by DOS :
+The iso2exe tool inserts a DOS/WIN32 .EXE header in an ISO image.
+The ISO image can be launched by DOS or Windows :
 
 C:\> ren slitaz-5.0.iso slitaz.exe
 C:\> slitaz
@@ -22,6 +22,8 @@ The slitaz.exe program boots the SliTaz ISO image with a text menu:
 
 - to create a SliTaz USB Key.
 
+When the slitaz.exe program can't boot SliTaz directly it will prompt to create
+a bootable image on a removeable media (Memory card, USB stick or ... floppy).
 
 Usage:
 
@@ -57,7 +59,7 @@ loader and an initramfs in the end of the first 32Kb.
     +-----------------+
     | DOS .COM loader | Load bzImage, the last rootfs*.gz and the ISO initramfs
     +-----------------+
-    |  WIN32 PE .exe  | Windows UMSDOS like installer / USB Key creator.
+    |  WIN32 PE .exe  | USB boot Key creator / floppy bootstrap creator.
     +-----------------+
            unused
     +-----------------+
@@ -66,7 +68,7 @@ loader and an initramfs in the end of the first 32Kb.
     | isohybrid boot  | Starts isolinux.bin
 512 +-----------------+
     |  iso2exe boot   | Boot starts isohybrid (*), .EXE starts DOS .COM loader
-  0 +-----------------+ or 32 bits Windows UMSDOS like installer
+  0 +-----------------+ or 32 bits Windows boot device creator
 
 * Eltorito boot (i.e. bootable CD-ROM by BIOS) is not concerned by iso2exe.
 
@@ -75,20 +77,29 @@ Limitations:
 
 - Only DOS 3, 4 and 6 supported. Checked with http://www.allbootdisks.com/
 
-- Real mode support only. VM86 is not supported.
+- Real mode support only. VM86 is not supported. Will not boot directly, but
+  a removable boot media is created.
 
 - Image/zImage format not supported, bzImage only. Can't boot memtest or gpxe.
-
-- posixovl still needs fixes !
 
 - The tiny Linux loader can't load more than 15Mb of files. (not really a 
   problem since many-in-1 ISO format).
 
 - The DOS Linux loader and the ISO initramfs must fit in ~30Kb.
 
-- Old Linux kernels don't support multiple initramfs load. They will not
-  find the /init.exe file. Only the "text" mode will work:
+- Linux kernels before version 2.6.30 don't support multiple initramfs load.
+  They will not find the /init.exe file. The "text" mode will be forced:
 	C:\> slitaz.exe text
 
 - The ISO image must include the files /boot/bzImage and /boot/rootfs*.
+
+TODO:
+
+- Add Windows boot device creator
+
+- Add XMM and VCPI (VM86) support.
+
+- floppy bootstrap
+
+- zImage support ?
 

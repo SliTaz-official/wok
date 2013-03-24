@@ -99,7 +99,7 @@ mount -t proc /proc /proc
 arg mount "Mount device"
 mount \$( (blkid /dev/?d* || blkid) | grep \$val | sed 's/:.*//;q') /mnt
 arg subroot "Change root to directory"
-mount.posixovl /mnt/\$val
+mount.posixovl -F /mnt/\$val
 mount --bind /mnt /mnt/\$val/mnt/dos
 LDSO=\$(ls /mnt/\$val/lib/ld-* | sed q)
 umount /proc
@@ -119,7 +119,7 @@ is_loram()
 doinstall()
 {
 	mkdir /mnt/slitaz
-	mount.posixovl /mnt/slitaz || return
+	mount.posixovl -F /mnt/slitaz || return
 	mkdir -p /mnt/slitaz/boot /mnt/slitaz/mnt/dos
 	if [ -d /media/cdrom/fs ]; then
 		cp -a /media/cdrom/fs/. /mnt/slitaz
@@ -146,16 +146,16 @@ doinstall()
 	umount -d /media/cdrom
 	gettazboot /mnt/slitaz/boot/tazboot.exe
 	mkinitrd /mnt/slitaz/boot/initrd
-	cat > /mnt/slitaz/boot/tazboot.cmd <<EOT
+	unix2dos > /mnt/slitaz/boot/tazboot.cmd <<EOT
 kernel=\\slitaz\\boot\\bzimage
 initrd=\\slitaz\\boot\\initrd
 rw root=/dev/null mount=$(getuuid) subroot=slitaz autologin
 EOT
 	unix2dos /mnt/slitaz/boot/he* /mnt/slitaz/boot/opt* \
-		/mnt/slitaz/boot/README /mnt/slitaz/boot/tazboot.cmd
+		/mnt/slitaz/boot/README
 	[ -x /mnt/slitaz/usr/sbin/mount.posixovl ] ||
 	cp $(which mount.posixovl) /mnt/slitaz/usr/sbin
-	! grep -qs tazboot /mnt/boot.ini && cat >> /mnt/boot.ini <<EOT
+	! grep -qs tazboot /mnt/boot.ini && unix2dos >> /mnt/boot.ini <<EOT
 C:\\slitaz\\boot\\tazboot.exe="SliTaz"
 EOT
 	grep -qs menuitem /mnt/config.sys && !grep -q tazboot /mnt/config.sys &&
@@ -164,6 +164,7 @@ EOT
 [slitaz]
 device=\\slitaz\\boot\\tazboot.exe
 EOT
+	unix2dos /mnt/config.sys
 }
 
 install()
@@ -310,7 +311,7 @@ Unlike a device name, the UUID has the benefit of never changing from machine
 to machine.\n\n
 Please plug your USB stick in now.\n 
 " 18 70
-	[ $? -eq 0 ] || return
+	[ $? -eq 0 -a -n "$(which tazusb)" ] || return
 	sleep 5
 	DEV="$(grep -l 1 /sys/block/*/removable | \
 		sed 's|/sys/block/\(.*\)/removable|\1|')"
@@ -407,9 +408,9 @@ shell()
 	getty -n -l /bin/ash 38400 tty1 || sh
 }
 
-[ -x /usr/sbin/mount.posixovl ] ||
-mv /bin/mount.posixovl.iso2exe /usr/sbin/mount.posixovl 2> /dev/null ||
-mv /bin/mount.posixovl.iso2exe /bin/mount.posixovl
+BIN=bin/mount.posixovl
+[ -x /usr/s$BIN ] || mv /bin/mount.posixovl.iso2exe \
+/usr/s$BIN 2> /dev/null || mv /bin/mount.posixovl.iso2exe /$BIN
 mount -t proc /proc /proc
 ISO="$(getarg iso | sed 's/.://;s|\\|/|g')"
 getiso
@@ -419,6 +420,7 @@ case "$(basename $ISO | tr [A-Z] [a-z])$(getarg mode)" in
 *live*)		live ;;
 *text*)		text ;;
 esac
+which $DIALOG || live
 dmesg > /tmp/dmesg
 
 while true; do
