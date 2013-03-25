@@ -5,38 +5,54 @@ VERSION="0.5.905"
 CATEGORY="multimedia"
 SHORT_DESC="GTK+ Xine media player user interface."
 MAINTAINER="jozee@slitaz.org"
-DEPENDS="xine-lib libvorbis gtk+ spidermonkey hal"
-BUILD_DEPENDS="spidermonkey-dev spidermonkey xine-lib xine-lib-dev xorg-dev \
-gtk+-dev hal dbus xorg-libXinerama xorg-libXext xorg-libX11 xorg-xextproto perl"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.xine-project.org"
 WGET_URL="http://switch.dl.sourceforge.net/sourceforge/xine/$TARBALL"
+
+DEPENDS="xine-lib libvorbis gtk+ spidermonkey dbus"
+BUILD_DEPENDS="spidermonkey-dev xine-lib-dev xorg-dev dbus-dev \
+gtk+-dev xorg-libXinerama-dev xorg-libXext-dev xorg-xextproto perl \
+xorg-libXv-dev xorg-videoproto xorg-xf86vidmodeproto"
 
 # Rules to configure and make the package.
 
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr \
+	
+	# Fix for glib2 (-lm)
+	sed -i "/<glib\//d" src/*
+	export LDFLAGS="-Wl,--copy-dt-needed-entries"
+	
+	# Fix for lirc
+	#patch -p0 < $stuff/gxine-0.5.907-lirc.patch || return 1
+	
+	#--with-logo-format=image
+	./configure \
+		--prefix=/usr \
 		--mandir=/usr/share/man \
 		--sysconfdir=/etc \
+		--with-dbus \
 		--with-spidermonkey=/usr/include/js \
 		--without-browser-plugin \
+		--without-hal \
 		--disable-lirc \
+		--disable-deprecated \
 		--disable-integration-wizard \
+		--disable-own-playlist-parsers \
+		VENDOR_PKG_VERSION="$VERSION; SliTaz GNU/Linux" \
 		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share $fs/etc $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
-        cp -a $_pkg/usr/lib/$PACKAGE $fs/usr/lib
-	cp -a $_pkg/usr/share/$PACKAGE $fs/usr/share
-        cp -a $_pkg/usr/share/pixmaps $fs/usr/share
-	cp -a $_pkg/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/$PACKAGE $fs/usr/lib
+	cp -a $install/usr/share/$PACKAGE $fs/usr/share
+	cp -a $install/usr/share/pixmaps $fs/usr/share
+	cp -a $install/etc $fs
 }
 
