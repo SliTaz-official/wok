@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="kexec-tools"
+VERSION="2.0.4"
+CATEGORY="system-tools"
+SHORT_DESC="Directly boot into a new kernel."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="ftp://ftp.kernel.org/pub/linux/utils/kernel/kexec/"
+WGET_URL="${WEB_SITE}$TARBALL"
+
+DEPENDS="zlib"
+BUILD_DEPENDS="zlib-dev liblzma-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	export LDFLAGS="-lpthread"
+	./configure prefix=/usr \
+		--target=i386-linux &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/usr $fs
+	rm -rf $fs/usr/share
+}
+
