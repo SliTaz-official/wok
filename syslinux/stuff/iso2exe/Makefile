@@ -38,7 +38,7 @@ libdos.o: libdos.c libdos.h
 win32.res: win32.rc win32.ico
 	i586-pc-mingw32-windres $< -O coff -o $@
 
-win32.exe: win32.c winutils.c win32.res
+win32.exe: win32.c win32.res
 	i586-pc-mingw32-gcc -s -o $@ $< win32.res -mwindows -lws2_32 && upx --ultra-brute $@
 
 %.o: %.c
