@@ -25,6 +25,8 @@ initramfssize:
 	.word	0			// File address of relocation table
 id:
 	.word	0			// Overlay number
+fdcnt:
+	.byte	0			// Bootstrap floppy sector count
 
 /////////////////////// Master Boot Record code //////////////////////////////
 

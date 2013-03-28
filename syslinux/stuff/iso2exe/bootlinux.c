@@ -156,10 +156,17 @@ void movesetup(void)
 #endasm
 }
 
-void loadkernel(void)
+static unsigned getcs(void)
+{
+#asm
+	mov	ax, cs
+#endasm
+}
+
+unsigned long loadkernel(void)
 {
 	unsigned setup, n = BUFFERSZ;
-	unsigned long syssize = 0;
+	unsigned long syssize = 0, version = 0;
 
 	do {
 		isoread(buffer, n);
@@ -181,7 +188,7 @@ void loadkernel(void)
 #asm
 				jmp	end_realmode_switch
 _far_realmode_switch:
-				call	_realmode_switch
+				call	REALMODE_SWITCH
 				cli
 				mov	al, #0x80	// Disable NMI
 				out	0x70, al
@@ -236,7 +243,42 @@ relocated:
 		n = (setup > BUFFERSZ) ? BUFFERSZ : setup;
 	} while (setup > 0);
 
+#asm
+		push	ds
+		push	#SETUP_SEGMENT
+		pop	ds
+		mov	si, #0x200
+		mov	eax, #0x53726448	// HdrS
+		cdq				// clear edx
+		cmp	[si+2], eax
+		jne	noversion
+		add	si, [si+14]
+		mov	cx, #3
+		xor	ax, ax
+nextdigit:
+		shl	edx, #4
+		or	dl, al
+next:
+		lodsb
+		xor	ah, #1
+		sub	al, #0x30
+		cmp	al, #9
+		jbe	nextdigit
+		shr	ah, #1
+		jc	got2
+		mov	al, #0xF
+		and	al, dl
+		and	dl, #0xF0
+		shl	edx, #4
+		or	dl, al
+got2:
+		loop	next
+		pop	ds
+		mov	.loadkernel.version[bp], edx
+noversion:
+#endasm
 	load(&kernelmem, syssize);
+	return version;
 }
 
 void loadinitrd(void)

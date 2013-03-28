@@ -59,16 +59,27 @@ add_win32exe()
 			LOC=$(($LOC+40))
 		done
 		ddq if=/tmp/exe$$ of=$1 bs=1 skip=128 seek=$OFS conv=notrunc
+		store 60 $OFS $1
 	fi
 	rm -f /tmp/exe$$ 
-	store 60 $OFS $1
+}
+
+add_fdbootstrap()
+{
+	SIZE=$($0 --get bootfd.bin 2> /dev/null | tee /tmp/exe$$ | wc -c)
+	if [ $SIZE -ne 0 ]; then
+		OFS=$(( $OFS - $SIZE ))
+		printf "Adding floppy bootstrap file at %04X...\n" $OFS
+		$0 --get bootfd.bin | ddq of=$1 bs=1 seek=$OFS conv=notrunc
+		store 28 $(($SIZE/512)) $1 8
+	fi
 }
 case "$1" in
 --build)
 	shift
 	[ $(tar cf - $@ | wc -c) -gt $((32 * 1024)) ] &&
-		echo "The file set $@ is too large (31K max) :" &&
-		ls -l $@ && exit 1
+		echo "WARNING: The file set $@ is too large (31K max) :" &&
+		ls -l $@
 	cat >> $0 <<EOM
 $(tar cf - $@ | lzma e -si -so | uuencode -m -)
 EOT
@@ -86,12 +97,14 @@ EOM
 	add_rootfs $DATA > /dev/null
 	add_doscom $DATA > /dev/null
 	add_win32exe $DATA > /dev/null
+	add_fdbootstrap $DATA > /dev/null
+	name=${3:-bootiso}
 	cat <<EOT
 
-#define BOOTISOSZ $((0x8400 - $OFS))
+#define $(echo $name | tr '[a-z]' '[A-Z]')SZ $((0x8400 - $OFS))
 
 #ifdef WIN32
-static char bootiso[] = {
+static char $name[] = {
 $(hexdump -v -n 1024 -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
 $(hexdump -v -s $OFS -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
 };
@@ -119,6 +132,7 @@ esac
 
 main()
 {
+	[ $(id -u) -ne 0 ] && exec su -c "$0 $@" < /dev/tty
 	case "$1" in
 	--get)	shift
 		uudecode | unlzma | tar xOf - $@
@@ -142,6 +156,7 @@ main()
 	add_rootfs $1
 	add_doscom $1
 	add_win32exe $1
+	add_fdbootstrap $1
 	store 26 ${RANDOM:-0} $1
 	i=66
 	n=0

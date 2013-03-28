@@ -294,6 +294,67 @@ cdfile()
 	[ -s /media/cdrom/$1 ] && echo -en "$2	${3// /.}"
 }
 
+fdbootstrap()
+{
+	sz=$(echo $(od -j 28 -N 1 -t u1 -An /mnt/$ISO))
+	if [ 0$sz -eq 0 ]; then
+		$DIALOG --clear \
+			--title " No floppy bootstrap available " \
+			--msgbox \
+"\nThe floppy bootstrap code is not available in the ISO file.\n\n
+Can't create the floppy.\n
+" 9 70
+	else
+		$DIALOG --clear \
+			--title " Create a floppy bootstrap " \
+			--yes-label "Continue" --yesno \
+"\nThe floppy will install a driver to access to the ISO file
+on your hard disk and will emulate a CD-ROM during the boot process.\n\n 
+Please insert a floppy in drive now.\n 
+" 10 70
+		[ $? -eq 0 ] || return
+		dd if=/mnt/$ISO of=/dev/fd0 bs=1 count=$(($sz * 512)) \
+			skip=$(( $(od -j 60 -N 4 -t u4 -An) - ($sz * 512) ))
+		echo "$ISO" | dd of=/dev/fd0 bs=512 seek=1
+	fi
+}
+
+usbdev()
+{
+	sleep 5
+	DEV="$(grep -l 1 /sys/block/*/removable | \
+		sed 's|/sys/block/\(.*\)/removable|\1|')"
+	[ -n "$DEV" ] || return
+	exec 3>&1
+	device=`$DIALOG  --clear \
+	--title " Select your USB key " \
+	--menu "\nPlease select the USB key according to its known size.\n\n" \
+	14 70 4 \
+	$(for i in $DEV ; do
+		echo "/dev/$i $(( $(cat /sys/block/$i/size) / 1024 ))MB"	 
+	done) \
+	2>&1 1>&3`
+	retval=$?
+	exec 3>&-
+	[ $retval -eq 0 ]
+}
+
+usbbootkey()
+{
+	$DIALOG --clear \
+		--title " Create a USB boot key " \
+		--yes-label "Continue" --yesno \
+"\nThe USB key will be used like a CD-ROM. You will not be able to write
+any data on it.\n\n
+You should choose 'USB key read/write installation' to be
+able to save the package updates or your own configuration and data files.\n\n
+Please plug your USB stick in now.\n 
+" 13 70
+	[ $? -eq 0 ] || return
+	usbdev || return
+	dd if=/mnt/$ISO of=$device
+}
+
 usbkey()
 {
 	$DIALOG --clear \
@@ -310,24 +371,9 @@ giving the effective benefits of a hard drive install.\n\n
 Unlike a device name, the UUID has the benefit of never changing from machine
 to machine.\n\n
 Please plug your USB stick in now.\n 
-" 18 70
+" 19 70
 	[ $? -eq 0 -a -n "$(which tazusb)" ] || return
-	sleep 5
-	DEV="$(grep -l 1 /sys/block/*/removable | \
-		sed 's|/sys/block/\(.*\)/removable|\1|')"
-	[ -n "$DEV" ] || return
-	exec 3>&1
-	device=`$DIALOG  --clear \
-	--title " Select your USB key " \
-	--menu "\nPlease select the USB key according to its known size.\n\n" \
-	14 70 4 \
-	$(for i in $DEV ; do
-		echo "/dev/$i $(( $(cat /sys/block/$i/size) / 1024 ))MB"	 
-	done) \
-	2>&1 1>&3`
-	retval=$?
-	exec 3>&-
-	[ $retval -eq 0 ] || continue
+	usbdev || return
 	exec 3>&1
 	format=`$DIALOG  --clear \
 	--title " Select the filesystem " \
@@ -341,7 +387,7 @@ in the USB key." 14 70 4 \
 	2>&1 1>&3`
 	retval=$?
 	exec 3>&-
-	[ $retval -eq 0 ] || continue
+	[ $retval -eq 0 ] || return
 	[ "$format" != "none" ] && tazusb format $device "SliTaz" $format
 	tazusb gen-iso2usb /mnt/$ISO $device
 }
@@ -427,13 +473,15 @@ while true; do
 	exec 3>&1
 	value=`$DIALOG  --clear \
 	--title " Welcome to SliTaz " \
-	--menu "\nPlease select" 17 70 9 \
+	--menu "\nPlease select" 19 70 11 \
 			"live"		"SliTaz RAM boot" \
 			"text"		"SliTaz RAM boot (text mode only)" \
 $(cdfile README		"readme"	"Show the README file") \
 $(cdfile md5sum		"md5"		"Check ISO files") \
 			"install"	"Hard disk installation" \
-			"usbkey"	"USB key installation" \
+			"usbkey"	"USB key read/write installation" \
+			"usbbootkey"	"USB boot key (read only)" \
+			"fdbootstrap"	"Floppy bootstrap" \
 			"tazboot"	"Get tazboot.exe Linux loader" \
 $(cdfile Xboot/memtest	"memtest"	"Get Memtest86") \
 $(cdfile boot/memtest	"fdmemtest"	"Create a Memtest86 boot floppy") \

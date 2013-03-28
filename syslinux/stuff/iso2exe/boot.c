@@ -39,7 +39,8 @@ static void bootiso(char **iso)
 	}
 	if (isoopen(mode))
 		isoopen("bzImage");
-	loadkernel();
+	if (loadkernel() < 0x20630)
+		init = ""; // Does not support multiple initramfs
 	isoopen(rootfs);
 	loadinitrd();
 	lseek(isofd, 24, SEEK_SET);
@@ -87,7 +88,7 @@ int main(int argc, char *argv[])
 	char *kernel, *initrd, *cmdline, *cmdfile, *s;
 	
 	argv[0] = progname();
-	bootiso(argv);		// iso ? parsing is /init.exe stuff !
+	bootiso(argv + (argc == 2));	// iso ? parsing is /init.exe stuff !
 
 	chdirname(*argv);
 	cmdfile = "tazboot.cmd";

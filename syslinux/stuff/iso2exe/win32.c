@@ -2,5 +2,5 @@
 
 int main()
 {
-	MessageBox(NULL,"No support for Windows yet.","Sorry",MB_OK);
+	MessageBox(NULL,"No support for Windows yet.","Sorry",MB_OK|MB_ICONERROR);
 }
