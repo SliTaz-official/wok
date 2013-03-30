@@ -1,69 +1,64 @@
 # SliTaz package receipt.
 
 PACKAGE="lxpanel"
-VERSION="0.5.10"
+VERSION="0.5.12"
 CATEGORY="x-window"
-SHORT_DESC="Standard compliant desktop panel."
+SHORT_DESC="Lightweight X11 desktop panel"
 MAINTAINER="pankso@slitaz.org"
-TARBALL="${PACKAGE}_${VERSION}.orig.tar.xz"
 WEB_SITE="http://www.lxde.org/"
-#WGET_URL="$SF_MIRROR/lxde/$TARBALL"
-WGET_URL="http://ftp.de.debian.org/debian/pool/main/l/$PACKAGE/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/lxde/LXPanel%20%28desktop%20panel%29/LXPanel%20$VERSION/$TARBALL"
 CONFIG_FILES="/etc/lxpanel/default"
 
-DEPENDS="glibc-base glib libgio expat zlib menu-cache slitaz-icon \
-gtk+ alsa-lib wireless_tools libwnck lxsession"
-BUILD_DEPENDS="gtk+-dev gettext expat-dev intltool menu-cache-dev \
-lxmenu-data alsa-lib-dev wireless_tools-dev libwnck-dev"
+# drop: slitaz-icon lxsession
+DEPENDS="alsa-lib gtk+ libwnck menu-cache wireless_tools"
+BUILD_DEPENDS="gtk+-dev menu-cache-dev libwnck-dev alsa-lib-dev \
+wireless_tools-dev libxml2-dev lxmenu-data"
+TAGS="gtk2 panel"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	patch -p0 -i $stuff/cpu-size-color.patch || exit 1
-	./configure --with-plugins=all $CONFIGURE_ARGS &&
-	make && make install
+	./configure \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--with-plugins=all \
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/usr/lib $fs/etc/xdg
+	mkdir -p \
+		$fs/usr/lib \
+		$fs/usr/share/lxpanel/images \
+		$fs/etc/lxpanel \
+		$fs/etc/xdg
 
 	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/lxpanel $fs/usr/lib
-	cp -a $install/usr/share/lxpanel $fs/usr/share
 
-	# Remove a few "heavy" and unuseful images (ns* goes in extra)
-	for i in file-manager* *volume* mute.png gnome-[a-m]*.png \
-		gnome-netstatus-*.png my-* ns-*.png *lock-*.png \
-		background.png window-manager.png
-	do
-		rm $fs/usr/share/lxpanel/images/$i
+	# Plugins (kbled -> lxpanel-extra)
+	cp -a $install/usr/lib/lxpanel $fs/usr/lib
+	find $fs -name kbled.so -delete
+
+	# Images
+	imgs=usr/share/lxpanel/images
+	for i in clock cpufreq-icon my-computer; do
+		cp -a $install/$imgs/$i.png $fs/$imgs
 	done
 
-	# Remove plugins --> lxpanel-extra
-	rm $fs/usr/lib/lxpanel/plugins/kbled.so
-	rm -rf $fs/usr/share/lxpanel/images/xkb-flags
-
 	# Move profile to /etc/lxpanel (/usr maybe read-only) and default config
-	mkdir $fs/etc
-	mv -f $fs/usr/share/lxpanel/profile $fs/etc/lxpanel
+	cp -a $install/usr/share/lxpanel/profile/* $fs/etc/lxpanel
 	ln -sf /etc/lxpanel $fs/usr/share/lxpanel/profile
 	mv -f $fs/etc/lxpanel/default $fs/etc/lxpanel/original
 	cp -a $stuff/default $fs/etc/lxpanel
-
 	rm -rf $fs/etc/lxpanel/two_panels
 
 	# XDG autostart desktop file (lxsession will use it automaticaly)
 	cp -a $stuff/autostart $fs/etc/xdg
 
-	# Make images symlinks so it feet SliTaz theme
-	cd $fs/usr/share/lxpanel/images
-	ln -s /usr/share/icons/SliTaz/status/32/network-idle.png ns-connected.png
-	ln -s /usr/share/icons/SliTaz/status/32/network-offline.png ns-disconnect.png
-	ln -s /usr/share/icons/SliTaz/status/32/network-receive.png ns-recvdata.png
-	ln -s /usr/share/icons/SliTaz/status/32/network-receive.png ns-senddata.png
-	ln -s /usr/share/icons/SliTaz/status/32/nm-adhoc.png ns-bothrs.png
-	ln -s /usr/share/icons/SliTaz/status/32/network-error.png ns-problem.png
+	cp -a $install/usr/share/lxpanel/ui $fs/usr/share/lxpanel
+	cp -a $install/usr/share/lxpanel/x* $fs/usr/share/lxpanel
 }
