@@ -4,7 +4,8 @@
 
 CODESZ	=	0x8000			// 16 sectors = 32Kb
 #define EXEADRS(x)	x+0xC0
-#define EXESTR(x)	x-0x40
+#define EXELOC(x)	x-0x40
+#define EXESTR(x)	x-0x7F40
 
 	.globl	_start
 _start:
@@ -52,15 +53,15 @@ start0:					// File address of relocation table
 	ljmp	$0, $0x0600+start2
 
 	.org	60
-	.long	0			// PE header offset
+	.long	0x0080			// PE header offset
 end_header:
 chksum:
 	.word	0
 comstart:
 	.word	0
 	
-readsector2:
-	incw	%cx
+readsectorX:
+	movb	$0, %cl
 readsector1:
 	movw	%cx, (%bx)
 	incw	%cx
@@ -87,14 +88,14 @@ next:
 	xchgw	%ax, %dx
 	jnz	dxloop
 fail:
-	movw	$0x0600+noloader, %si
-	call	putslp
+//	movw	$0x0600+noloader, %si
+//	call	putslp
 stop:
 	hlt
 	jmp	stop
 dxfound:
 	movw	%dx, 10(%bp)
-	call	readsector2
+	call	readsectorX
 	lodsw
 	shrw	$1, %ax
 	jz	fail			// read fail or not isohydrid
@@ -102,50 +103,11 @@ dxfound:
 	popa
 	iret
 
-	
-////////////////////////////// DOS EXE code ///////////////////////////////////
+	.org	0x0080
+////////////////////////////// EXE/PE header //////////////////////////////////
 
-help:
-	.ascii	"SliTaz GNU/L"		// SliTaz GNU/Linux boot loader
-	.byte	EXESTR(iloader)
-no386:
-	.ascii	"No 386"		// No 386+
-	.byte	EXESTR(plus)
-ERRvcpi:
-	.ascii	"No EMM386/VCPI 4"	// No EMM386/VCPI 4.0+
-	.byte	EXESTR(dot0)
-chkerr:
-	.ascii	"Broken ISO image fil"	// Broken ISO image file.
-	.byte	EXESTR(eeol)
-vm86modemsg:
-	.ascii	"vm86"			// vm86 mode.
-	.byte	EXESTR(mode)
-rmPaging:
-	.ascii	"Invalid: paging + "	// Invalid: paging + real mode.
-realmodemsg:
-	.ascii	"real"			// real mode.
-// --------------- Must be in 00C0 013F range ------------------------
-mode:
-	.ascii	" mod"
-eeol:
-	.ascii  "e"
-	.byte	EXESTR(eol)
-noloader:
-	.ascii	"No isol"		// No isolinux boot loader
-iloader:
-	.ascii	"inux boot loader"
-eol:
-	.ascii	"."
-eol2:
-	.asciz	"\r\n"
-noDOS3:
-	.ascii	"No DOS 3"		// No DOS 3.0+
-dot0:
-	.ascii	".0"
-plus:
-	.ascii	"+"
-	.byte	EXESTR(eol2)
-// -------------------------------------------------------------------
+	.org	0x7EE0
+////////////////////////////// DOS EXE code ///////////////////////////////////
 
 exestart:
 	cld
@@ -173,7 +135,7 @@ exestart:
 	movw	(%si), %cx
 	jcxz	is386
 #endif
-	movw	$(EXESTR(0x8000))/2, %cx
+	movw	$(EXELOC(0x8000))/2, %cx
 chklp:
 	lodsw
 	addw	%ax, %dx
@@ -182,7 +144,7 @@ chklp:
 	je	is386		// dx == 0 ?
 abort:
 puts:
-	movb	$1, %ah
+	movb	$0x80, %ah
 	xchgw	%ax, %si
 putslp:
 	lodsb
@@ -209,21 +171,14 @@ realmode:
 	cmpb	$3, %al
 	movb	$EXESTR(noDOS3), %al
 	jb	abort
-	movw	$moveend-move, %cx
-	movw	$0xC000, %di
-	call	move2
-move:
-	movb	$0x80, %ch
 	movw	$0x0100, %di
-	pushw	comstart-end_header(%di)		// .com address
-move2:
-	popw	%si
+	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
+	movb	$0x7D, %ch
 	rep
 	movsb
 moveret:
 	ret
-moveend:
 
 VersionVCPI:
 	cmpb	$0x40, %dl		// >= 4.0 ?
@@ -259,6 +214,49 @@ CmdVCPI:
 	.byte	0x46			// version
 	.byte	0
 
-	.org	440
-//////////////////////////// partition table //////////////////////////////////
+// -------------------------------------------------------------------
+
+help:
+	.ascii	"SliTaz GNU/L"		// SliTaz GNU/Linux boot loader
+	.byte	EXESTR(iloader)
+no386:
+	.ascii	"No 386"		// No 386+
+	.byte	EXESTR(plus)
+ERRvcpi:
+	.ascii	"No EMM386/VCPI 4"	// No EMM386/VCPI 4.0+
+	.byte	EXESTR(dot0)
+chkerr:
+	.ascii	"Broken ISO image fil"	// Broken ISO image file.
+	.byte	EXESTR(eeol)
+vm86modemsg:
+	.ascii	"vm86"			// vm86 mode.
+	.byte	EXESTR(mode)
+rmPaging:
+	.ascii	"Invalid: paging + "	// Invalid: paging + real mode.
+realmodemsg:
+	.ascii	"real"			// real mode.
+// --------------- Must be in 00C0 013F range ------------------------
+mode:
+	.ascii	" mod"
+eeol:
+	.ascii  "e"
+	.byte	EXESTR(eol)
+//noloader:
+//	.ascii	"No isol"		// No isolinux boot loader
+iloader:
+	.ascii	"inux boot loader"
+eol:
+	.ascii	"."
+eol2:
+	.asciz	"\r\n"
+noDOS3:
+	.ascii	"No DOS 3"		// No DOS 3.0+
+dot0:
+	.ascii	".0"
+plus:
+	.ascii	"+"
+	.byte	EXESTR(eol2)
+
+	.org	0x8000
+////////////////////////// ISO9660 header /////////////////////////////////////
 

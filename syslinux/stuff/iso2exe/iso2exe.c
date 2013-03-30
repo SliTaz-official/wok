@@ -26,8 +26,9 @@ int main(int argc, char *argv[])
 #define partition 446
 #define trksz (512 * heads * sectors)
 	unsigned long size, catalog, lba;
-	int cylinders, i, j;
+	int cylinders, i, j, isohybrid;
 	unsigned n;
+	char tazlitoinfo[31*1024];
 #ifndef WIN32
 	char *bootiso;
 	for (bootiso = (char *) main;
@@ -53,28 +54,34 @@ int main(int argc, char *argv[])
 	readsector(lba);
 	if (* (unsigned long *) (buffer + 64) != 1886961915)
 		quit("no isolinux.bin hybrid signature in bootloader");
-	* (unsigned long *)  &bootiso[512 + 432] = lba * 4;
-	* (unsigned long *)  &bootiso[512 + 440] = rand();
-	* (unsigned long *)  &bootiso[512 + partition] = 0x10080;
-	* (unsigned short *) &bootiso[512 + 510] = 0xAA55;
+	isohybrid = bootiso[69] * 512;
+	* (unsigned long *)  &bootiso[isohybrid + 432] = lba * 4;
+	* (unsigned long *)  &bootiso[isohybrid + 440] = rand();
+	* (unsigned long *)  &bootiso[isohybrid + partition] = 0x10080;
+	* (unsigned short *) &bootiso[isohybrid + 510] = 0xAA55;
 	size = lseek(fd, 0UL, SEEK_END);
 	cylinders = (size + trksz - 1) / trksz;
-	bootiso[512 + partition + 4] = 23; // "Windows hidden IFS"
-	bootiso[512 + partition + 5] = heads - 1;
-	bootiso[512 + partition + 6] = (((cylinders - 1) & 0x300) >> 2) + sectors;
-	bootiso[512 + partition + 7] = (cylinders - 1) & 0xFF;
-	* (unsigned long *) &bootiso[512 + partition + 8] = 0;
-	* (unsigned long *) &bootiso[512 + partition + 12] = cylinders * sectors * heads;
+	bootiso[isohybrid + partition + 4] = 23; // "Windows hidden IFS"
+	bootiso[isohybrid + partition + 5] = heads - 1;
+	bootiso[isohybrid + partition + 6] = (((cylinders - 1) & 0x300) >> 2) + sectors;
+	bootiso[isohybrid + partition + 7] = (cylinders - 1) & 0xFF;
+	* (unsigned long *) &bootiso[isohybrid + partition + 8] = 0;
+	* (unsigned long *) &bootiso[isohybrid + partition + 12] = cylinders * sectors * heads;
 
 	// Install iso2exe boot sector
-	memcpy(bootiso + 512 - 66, bootiso + 1024 - 66, 66); 
 	* (unsigned short *) (bootiso + 26) = rand();
 
+	// read tazlito flavor data
+	lseek(fd, 1024UL, SEEK_SET);
+	read(fd, tazlitoinfo, sizeof(tazlitoinfo));
+
 	// Update iso image
+	n = (bootiso[69] + 1) * 512;
 	lseek(fd, 0UL, SEEK_SET);
-	write(fd, bootiso, 1024);
-	lseek(fd, 0x8400UL - BOOTISOSZ, SEEK_SET);
-	write(fd, bootiso + 1024, BOOTISOSZ - 1024);
+	write(fd, bootiso, n); // EXE/PE + isohybrid mbr
+	write(fd, tazlitoinfo, ((0x8000U - BOOTISOSZ) > sizeof(tazlitoinfo)) 
+		? sizeof(tazlitoinfo) : (0x8000U - BOOTISOSZ));
+	write(fd, bootiso + n, BOOTISOSZ - n); // COM + rootfs + EXE/DOS 
 
 	// Compute the checksum
 	lseek(fd, 0UL, SEEK_SET);
@@ -89,4 +96,6 @@ int main(int argc, char *argv[])
 	write(fd, bootiso, 512);
 nochksum:
 	close(fd);
+	printf("Note you can create a USB key with %s.\n"
+	       "Simply rename it to a .exe file and run it.\n", argv[1]);
 }

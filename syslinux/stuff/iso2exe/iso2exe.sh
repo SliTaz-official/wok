@@ -25,16 +25,25 @@ add_rootfs()
 	cp -a /dev/?d?* $TMP/dev
 	$0 --get init > $TMP/init.exe
 	grep -q mount.posixovl.iso2exe $TMP/init.exe &&
-	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe
+	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe &&
+	echo "Store mount.posixovl..."
 	find $TMP -type f | xargs chmod +x
 	( cd $TMP ; find * | cpio -o -H newc ) | \
 		lzma e $TMP/rootfs.gz -si 2> /dev/null
 	SIZE=$(wc -c < $TMP/rootfs.gz)
 	store 24 $SIZE $1
-	OFS=$(( 0x8000 - $SIZE ))
+	OFS=$(( $OFS - $SIZE ))
 	printf "Adding rootfs.gz file at %04X...\n" $OFS
 	cat $TMP/rootfs.gz | ddq of=$1 bs=1 seek=$OFS conv=notrunc
 	rm -rf $TMP
+}
+
+add_dosexe()
+{
+	OFS=$((0x7EE0))
+	printf "Adding DOS/EXE at %04X...\n" $OFS
+	$0 --get bootiso.bin 2> /dev/null | \
+	ddq bs=1 skip=$OFS of=$1 seek=$OFS conv=notrunc
 }
 
 add_doscom()
@@ -48,20 +57,19 @@ add_doscom()
 
 add_win32exe()
 {
+	printf "Adding WIN32 file at %04X...\n" 0
+	ddq if=/tmp/exe$$ of=$1 conv=notrunc
 	SIZE=$($0 --get win32.exe 2> /dev/null | tee /tmp/exe$$ | wc -c)
-	if [ $SIZE -ne 0 ]; then
-		OFS=$(( 128 + ( ($OFS - $SIZE + 128) & 0xFE00 ) ))
-		printf "Adding WIN32 file at %04X...\n" $OFS
-		LOC=$((0xAC+$(get 0x94 /tmp/exe$$)))
-		for i in $(seq 1 $(get 0x86 /tmp/exe$$)); do
-			CUR=$(get $LOC /tmp/exe$$)
-			[ $CUR -eq 0 ] || store $LOC $(($CUR+$OFS-128)) /tmp/exe$$
-			LOC=$(($LOC+40))
-		done
-		ddq if=/tmp/exe$$ of=$1 bs=1 skip=128 seek=$OFS conv=notrunc
-		store 60 $OFS $1
-	fi
+	ddq if=/tmp/exe$$ of=$1 conv=notrunc
+	printf "Adding bootiso head at %04X...\n" 0
+	$0 --get bootiso.bin 2> /dev/null > /tmp/exe$$
+	ddq if=/tmp/exe$$ of=$1 bs=128 count=1 conv=notrunc
+	store 69 $(($SIZE/512)) $1 8
+	store 510 $((0xAA55)) $1
 	rm -f /tmp/exe$$ 
+	printf "Moving syslinux hybrid boot record at %04X ...\n" $SIZE
+	ddq if=$2 bs=1 count=512 of=$1 seek=$SIZE conv=notrunc
+	OFS=$(($SIZE+512))
 }
 
 add_fdbootstrap()
@@ -77,9 +85,7 @@ add_fdbootstrap()
 case "$1" in
 --build)
 	shift
-	[ $(tar cf - $@ | wc -c) -gt $((32 * 1024)) ] &&
-		echo "WARNING: The file set $@ is too large (31K max) :" &&
-		ls -l $@
+	ls -l $@
 	cat >> $0 <<EOM
 $(tar cf - $@ | lzma e -si -so | uuencode -m -)
 EOT
@@ -92,20 +98,20 @@ EOM
 --array)
 	DATA=/tmp/dataiso$$
 	ddq if=/dev/zero bs=32k count=1 of=$DATA
-	ddq if=bootiso.bin of=$DATA conv=notrunc
-	ddq if=$2 of=$DATA bs=512 seek=1 conv=notrunc
+	add_win32exe $DATA $2 > /dev/null
+	HSZ=$OFS
+	add_dosexe $DATA > /dev/null
 	add_rootfs $DATA > /dev/null
 	add_doscom $DATA > /dev/null
-	add_win32exe $DATA > /dev/null
 	add_fdbootstrap $DATA > /dev/null
 	name=${3:-bootiso}
 	cat <<EOT
 
-#define $(echo $name | tr '[a-z]' '[A-Z]')SZ $((0x8400 - $OFS))
+#define $(echo $name | tr '[a-z]' '[A-Z]')SZ $((0x8000 - $OFS + $HSZ))
 
 #ifdef WIN32
 static char $name[] = {
-$(hexdump -v -n 1024 -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
+$(hexdump -v -n $HSZ -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
 $(hexdump -v -s $OFS -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
 };
 #endif
@@ -143,19 +149,21 @@ main()
 	[ ! -s "$1" ] && echo "usage: $0 image.iso" 1>&2 && exit 1
 	case "$(get 0 $1)" in
 	23117)	echo "The file $1 is already an EXE file." 1>&2 && exit 1;;
-	0)	[ -x /usr/bin/isohybrid ] && isohybrid $1
+	0)	[ -x /usr/bin/isohybrid ] && isohybrid $1 && echo "Do isohybrid"
 	esac
 		
-	echo "Moving syslinux hybrid boot record..."
-	ddq if=$1 bs=512 count=1 | ddq of=$1 bs=512 count=1 seek=1 conv=notrunc 
+	echo "Read hybrid & tazlito data..."
+	ddq if=$1 bs=512 count=1 of=/tmp/hybrid$$
+	ddq if=$1 bs=512 skip=2 count=20 of=/tmp/tazlito$$
+	add_win32exe $1 /tmp/hybrid$$
+	printf "Moving tazlito data record at %04X ...\n" $OFS
+	ddq if=/tmp/tazlito$$ bs=1 count=512 of=$1 seek=$OFS conv=notrunc
+	rm -f /tmp/tazlito$$ /tmp/hybrid$$
 	
-	echo "Inserting EXE boot record..."
-	$0 --get bootiso.bin | ddq of=$1 conv=notrunc
-
 	# keep the largest room for the tazlito info file
+	add_dosexe $1
 	add_rootfs $1
 	add_doscom $1
-	add_win32exe $1
 	add_fdbootstrap $1
 	store 26 ${RANDOM:-0} $1
 	i=66
