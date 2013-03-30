@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 	unsigned long size, catalog, lba;
 	int cylinders, i, j, isohybrid;
 	unsigned n;
-	char tazlitoinfo[31*1024];
+	char tazlitoinfo[10*1024];
 #ifndef WIN32
 	char *bootiso;
 	for (bootiso = (char *) main;
