@@ -203,7 +203,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	if (!ishybrid(isoFileName)) {
 		if (MessageBox(NULL,"Not an isolinux hybrid ISO.\n"
 				    "This ISO image will not boot\n"
-				    "from the media you will create !",
+				    "from the media that you create !",
 			   "Will not boot !", 
 			   MB_OKCANCEL|MB_ICONWARNING) == IDCANCEL)
 			exit(0);
