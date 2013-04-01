@@ -256,22 +256,15 @@ relocated:
 		mov	cx, #3
 		xor	ax, ax
 nextdigit:
-		shl	edx, #4
-		or	dl, al
+		shl	al, #4
+		shl	ax, #4
 next:
 		lodsb
-		xor	ah, #1
 		sub	al, #0x30
 		cmp	al, #9
 		jbe	nextdigit
-		shr	ah, #1
-		jc	got2
-		mov	al, #0xF
-		and	al, dl
-		and	dl, #0xF0
-		shl	edx, #4
-		or	dl, al
-got2:
+		shl	eax, #16
+		shld	edx, eax, #8
 		loop	next
 		pop	ds
 		mov	.loadkernel.version[bp], edx

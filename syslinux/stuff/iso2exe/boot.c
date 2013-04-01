@@ -46,7 +46,7 @@ static void bootiso(char **iso)
 	lseek(isofd, 24, SEEK_SET);
 	read(isofd, &magic, 4);
 	isofilesize = magic & 0xFFFF;
-	isofileofs = 0x8000 - isofilesize;
+	isofileofs = 0x7EE0 - isofilesize;
 	loadinitrd();
 	close(isofd);
 	sprintf(cmdline,"rw root=/dev/null %s iso=%s magic=%lu mode=%s",

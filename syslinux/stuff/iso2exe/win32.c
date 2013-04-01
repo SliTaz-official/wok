@@ -14,6 +14,7 @@ static int fullread(int fd, char *p, int n)
 		if (j <= 0) break;
 	}
 	return i;
+#define read fullread
 }
 
 static int fullwrite(int fd, char *p, int n)
@@ -24,6 +25,7 @@ static int fullwrite(int fd, char *p, int n)
 		if (j <= 0) break;
 	}
 	return i;
+#define write fullwrite
 }
 
 static void exec16bits(char *isoFileName)
@@ -39,9 +41,9 @@ static void exec16bits(char *isoFileName)
 	fdiso = open(isoFileName, O_RDONLY|O_BINARY);
 	fdtmp = open(tmpFileName, O_WRONLY|O_BINARY|O_CREAT,0555);
 	for (i = 0; i < 0x8000; i += sizeof(buffer)) {
-		fullread(fdiso, (char *) buffer, sizeof(buffer));
+		read(fdiso, (char *) buffer, sizeof(buffer));
 		if (i == 0) buffer[15] = 0;	// kill PE header
-		fullwrite(fdtmp, (char *) buffer, sizeof(buffer));
+		write(fdtmp, (char *) buffer, sizeof(buffer));
 	}
 	close(fdiso);
 	close(fdtmp);
@@ -64,17 +66,17 @@ static int ishybrid(char *isoFileName)
 	
 	fdiso = open(isoFileName, O_RDONLY|O_BINARY);
 	if (lseek(fdiso, 17 * 2048L, SEEK_SET) != -1 &&
-	    fullread(fdiso, buffer, 2048) == 2048 &&
+	    read(fdiso, buffer, 2048) == 2048 &&
 	    strncmp(buffer+23,"EL TORITO SPECIFICATION",23) == 0) {
 		unsigned long lba = * (unsigned long *) (buffer + 71);
 		
 		if (lseek(fdiso, lba * 2048L, SEEK_SET) != -1 &&
-		    fullread(fdiso, buffer, 2048) == 2048 &&
+		    read(fdiso, buffer, 2048) == 2048 &&
 		    * (unsigned long *) (buffer + 0) == 1 &&
 		    * (unsigned long *) (buffer + 30) == 0x88AA55) {
 			lba = * (unsigned long *) (buffer + 40);
 			if (lseek(fdiso, lba * 2048L, SEEK_SET) != -1 &&
-			    fullread(fdiso, buffer, 2048) == 2048)
+			    read(fdiso, buffer, 2048) == 2048)
 				magic = * (unsigned long *) (buffer + 64);
 		}
 	}
@@ -126,7 +128,7 @@ static void rawrite(unsigned long drive, char *isoFileName)
 		drive >>= 1;
 	fdiso = open(isoFileName, O_RDONLY|O_BINARY);
 	for (s = 0;;) {
-		int s, n = fullread(fdiso, buffer, sizeof(buffer));
+		int s, n = read(fdiso, buffer, sizeof(buffer));
 		if (n <= 0) break;
 		n = (n+511)/512;
 		if (s == 0) isohybrid = buffer[69];
@@ -160,10 +162,10 @@ static void writefloppy(char *isoFileName)
 		read(fd, buffer, sizeof(buffer));
 		n = buffer[BOOTSTRAP_SECTOR_COUNT_OFFSET];
 		if (n != 0 &&
-	            lseek(fd, * (unsigned long *) (buffer + 60) - (512 * n),
+	            lseek(fd, * (unsigned short *) (buffer + 66) - (512 * n),
 			      SEEK_SET) != -1) {
 			for (i = 0; i < n; i++) {
-				fullread(fd, buffer, 512);
+				read(fd, buffer, 512);
 				if (i == 1) strncpy(buffer, isoFileName, 512);
 				rdwrsector(MODE_WRITE, 0, i, 1, buffer);
 			}

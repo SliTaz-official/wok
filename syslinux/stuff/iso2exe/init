@@ -5,8 +5,7 @@ DIALOG=dialog
 get()
 {
 	od -j $1 -N ${3:-2} -t u${3:-2} -An $2 2> /dev/null ||
-	dd if=$2 bs=1 skip=$1 count=${3:-2} 2> /dev/null | \
-		hexdump -e "\"\" 1/${3:-2} \"%d\""
+	hexdump -s $1 -n ${3:-2} -e "\"\" 1/${3:-2} \"%d\"" $2
 }
 
 getarg()
@@ -296,7 +295,7 @@ cdfile()
 
 fdbootstrap()
 {
-	sz=$(echo $(od -j 28 -N 1 -t u1 -An /mnt/$ISO))
+	sz=$(echo $(get 28 /mnt/$ISO 1))
 	if [ 0$sz -eq 0 ]; then
 		$DIALOG --clear \
 			--title " No floppy bootstrap available " \
@@ -314,7 +313,7 @@ Please insert a floppy in drive now.\n
 " 10 70
 		[ $? -eq 0 ] || return
 		dd if=/mnt/$ISO of=/dev/fd0 bs=1 count=$(($sz * 512)) \
-			skip=$(( $(od -j 60 -N 4 -t u4 -An) - ($sz * 512) ))
+			skip=$(( $(get 66 /mnt/$ISO) - ($sz * 512) ))
 		echo "$ISO" | dd of=/dev/fd0 bs=512 seek=1
 	fi
 }

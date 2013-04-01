@@ -4,7 +4,9 @@
 #include "iso2exe.h"
 
 static int fd;
-static char buffer[2048];
+static char tazlitoinfo[10*1024];
+#define buffer tazlitoinfo
+#define BUFFERSZ 2048
 
 static void quit(char *msg)
 {
@@ -14,8 +16,8 @@ static void quit(char *msg)
 
 static void readsector(unsigned long sector)
 {
-	if (lseek(fd, sector * sizeof(buffer), SEEK_SET) == -1 ||
-	    read(fd, buffer, sizeof(buffer)) != sizeof(buffer))
+	if (lseek(fd, sector * BUFFERSZ, SEEK_SET) == -1 ||
+	    read(fd, buffer, BUFFERSZ) != BUFFERSZ)
 		quit("read sector failure");
 }
 
@@ -28,7 +30,6 @@ int main(int argc, char *argv[])
 	unsigned long size, catalog, lba;
 	int cylinders, i, j, isohybrid;
 	unsigned n;
-	char tazlitoinfo[10*1024];
 #ifndef WIN32
 	char *bootiso;
 	for (bootiso = (char *) main;
@@ -86,9 +87,9 @@ int main(int argc, char *argv[])
 	// Compute the checksum
 	lseek(fd, 0UL, SEEK_SET);
 	for (i = 66, n = 0, j = 0; j < 16; j++, i = 0) {
-		if (read(fd, buffer, sizeof(buffer)) != sizeof(buffer))
+		if (read(fd, buffer, BUFFERSZ) != BUFFERSZ)
 			goto nochksum;
-		for (; i < sizeof(buffer); i += 2)
+		for (; i < BUFFERSZ; i += 2)
 			n += * (unsigned short *) (buffer + i);
 	}
 	* (unsigned short *) (bootiso + 64) = -n;
