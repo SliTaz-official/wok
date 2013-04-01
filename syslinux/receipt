@@ -20,17 +20,17 @@ compile_rules()
     patch -p 0 < $stuff/extra/readconfig.u
     patch -p 0 < $stuff/extra/fs.u
     cp $stuff/tools/isohybrid.sh .
-    cp $stuff/tools/keytab-lilo.pl .
     cp $stuff/extra/md5sum.c com32/modules
     grep -q md5sum.c32 com32/modules/Makefile ||
 	sed -i 's/ifcpu64.c32/ifcpu64.c32 md5sum.c32/' com32/modules/Makefile
     make -C com32
     ./isohybrid.sh --build
+    sed -i 's/loadkeys -m/loadkeys -u -m/' utils/keytab-lilo	# for ru.kbd
     for i in /usr/share/kbd/keymaps/i386/*/*.map.gz; do
         [ "$(basename $(dirname $i))" = "include" ] && continue
         j=$(basename $i)
         j=${j%.map.gz}.kbd
-        ./keytab-lilo.pl /usr/share/kbd/keymaps/i386/qwerty/us.map.gz $i > $j
+        utils/keytab-lilo /usr/share/kbd/keymaps/i386/qwerty/us.map.gz $i > $j
     done
     cp -a $stuff/iso2exe .
     make -C iso2exe
