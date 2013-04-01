@@ -25,8 +25,8 @@ add_rootfs()
 	cp -a /dev/?d?* $TMP/dev
 	$0 --get init > $TMP/init.exe
 	grep -q mount.posixovl.iso2exe $TMP/init.exe &&
-	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe &&
-	echo "Store mount.posixovl..."
+	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe \
+		2> /dev/null && echo "Store mount.posixovl..."
 	find $TMP -type f | xargs chmod +x
 	( cd $TMP ; find * | cpio -o -H newc ) | \
 		lzma e $TMP/rootfs.gz -si 2> /dev/null
@@ -64,6 +64,11 @@ add_win32exe()
 	printf "Adding bootiso head at %04X...\n" 0
 	$0 --get bootiso.bin 2> /dev/null > /tmp/exe$$
 	ddq if=/tmp/exe$$ of=$1 bs=128 count=1 conv=notrunc
+	store $((0x94)) $((0xE0 - 12*8)) $1
+	store $((0xF4)) $((16 - 12)) $1
+	ddq if=$1 of=/tmp/exe$$ bs=1 skip=$((0x178)) count=$((0x88))
+	ddq if=/tmp/exe$$ of=$1 conv=notrunc bs=1 seek=$((0x178 - 12*8))
+	ddq if=$2 bs=1 skip=$((0x1B8)) seek=$((0x1B8)) count=72 of=$1 conv=notrunc
 	store 69 $(($SIZE/512)) $1 8
 	store 510 $((0xAA55)) $1
 	rm -f /tmp/exe$$ 

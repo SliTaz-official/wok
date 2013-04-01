@@ -67,7 +67,7 @@ static int ishybrid(char *isoFileName)
 	fdiso = open(isoFileName, O_RDONLY|O_BINARY);
 	if (lseek(fdiso, 17 * 2048L, SEEK_SET) != -1 &&
 	    read(fdiso, buffer, 2048) == 2048 &&
-	    strncmp(buffer+23,"EL TORITO SPECIFICATION",23) == 0) {
+	    strncmp(buffer+7,"EL TORITO SPECIFICATION",23) == 0) {
 		unsigned long lba = * (unsigned long *) (buffer + 71);
 		
 		if (lseek(fdiso, lba * 2048L, SEEK_SET) != -1 &&
@@ -118,9 +118,9 @@ static int rdwrsector(int mode, int drive, unsigned long startingsector,
 	return result;
 }
 
-static void rawrite(unsigned long drive, char *isoFileName)
+static int rawrite(unsigned long drive, char *isoFileName)
 {
-	int fdiso, s, dev, isohybrid = -1;
+	int fdiso, s, dev;
 	char buffer[2048];
 	
 	if (drive == 0) return;
@@ -131,13 +131,11 @@ static void rawrite(unsigned long drive, char *isoFileName)
 		int s, n = read(fdiso, buffer, sizeof(buffer));
 		if (n <= 0) break;
 		n = (n+511)/512;
-		if (s == 0) isohybrid = buffer[69];
 		rdwrsector(MODE_WRITE, dev, s, n, buffer);
-		if (s == isohybrid)
-			rdwrsector(MODE_WRITE, dev, 0, 1, buffer);
 		s += n;
 	}
 	close(fdiso);
+	return dev;
 }
 
 static unsigned long drives(void)
@@ -242,11 +240,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		if (new == base) {
 			MessageBox(NULL,"No USB stick found.","Sorry",
 				   MB_OK|MB_ICONERROR);
-			exit(1);
 		}
-		rawrite(base ^ new, isoFileName);
+		else {
+			char *msg = "(hd0) is up to date.";
+			msg[3] += rawrite(base ^ new, isoFileName) - 128;
+			MessageBox(NULL,msg,"Finished",MB_OK);
+		}
 	}
-	if (header[BOOTSTRAP_SECTOR_COUNT_OFFSET] != 0 &&
+	else if (header[BOOTSTRAP_SECTOR_COUNT_OFFSET] != 0 &&
 	    MessageBox(NULL,"Do you want to create a bootstrap floppy ?",
 			    "Create a bootstrap floppy ?",
 			MB_YESNO|MB_ICONQUESTION) == IDYES &&
@@ -257,5 +258,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		// Create a 9k bootstrap with vfat, ext2 & ntfs drivers
 		// to boot the ISO image on hard disk
 		writefloppy(isoFileName);
+		MessageBox(NULL,"The bootstrap floppy is up to date.",
+				"Finished",MB_OK);
 	}
 }
