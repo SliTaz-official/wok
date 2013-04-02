@@ -66,12 +66,13 @@ add_win32exe()
 	ddq if=/tmp/exe$$ of=$1 bs=128 count=1 conv=notrunc
 	store $((0x94)) $((0xE0 - 12*8)) $1
 	store $((0xF4)) $((16 - 12)) $1
-	ddq if=$1 of=/tmp/exe$$ bs=1 skip=$((0x178)) count=$((0x88))
-	ddq if=/tmp/exe$$ of=$1 conv=notrunc bs=1 seek=$((0x178 - 12*8))
-	ddq if=$2 bs=1 skip=$((0x1B8)) seek=$((0x1B8)) count=72 of=$1 conv=notrunc
+	ddq if=$1 of=/tmp/coff$$ bs=1 skip=$((0x178)) count=$((0x88))
+	ddq if=/tmp/coff$$ of=$1 conv=notrunc bs=1 seek=$((0x178 - 12*8))
+	ddq if=/tmp/exe$$ of=$1 bs=1 count=30 seek=$((0x1A0)) skip=$((0x1A0)) conv=notrunc
+	ddq if=$2 bs=1 skip=$((0x1BE)) seek=$((0x1BE)) count=66 of=$1 conv=notrunc
 	store 69 $(($SIZE/512)) $1 8
 	store 510 $((0xAA55)) $1
-	rm -f /tmp/exe$$ 
+	rm -f /tmp/exe$$ /tmp/coff$$
 	printf "Moving syslinux hybrid boot record at %04X ...\n" $SIZE
 	ddq if=$2 bs=1 count=512 of=$1 seek=$SIZE conv=notrunc
 	OFS=$(($SIZE+512))

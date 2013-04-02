@@ -87,24 +87,39 @@ next:
 	cmpb	$0x80, %al
 	xchgw	%ax, %dx
 	jnz	dxloop
-fail:
-//	movw	$0x0600+noloader, %si
-//	call	putslp
-stop:
-	hlt
-	jmp	stop
 dxfound:
 	movw	%dx, 10(%bp)
+	call	checkboot
+noboot:
+	.ascii	"No isolinux mbr."
+noboot_end:
+
+	.org	0x0080
+////////////////////////////// EXE/PE header //////////////////////////////////
+
+	.org	0x01A0
+checkboot:
 	call	readsectorX
 	lodsw
+	popw	%si
 	shrw	$1, %ax
-	jz	fail			// read fail or not isohydrid
+	jz	error			// read fail or not isohydrid
 	popw	%es
 	popa
 	iret
 
-	.org	0x0080
-////////////////////////////// EXE/PE header //////////////////////////////////
+error:
+	movw	$noboot_end-noboot, %cx
+putsloop:
+	lodsb
+	movw	$7, %bx
+	movb	$0xE, %ah
+	int	$0x10
+	loop	putsloop
+halt:
+	hlt
+	jmp	halt
+	.org	0x01BE
 
 	.org	0x7EE0
 ////////////////////////////// DOS EXE code ///////////////////////////////////

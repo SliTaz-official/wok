@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 	* (unsigned long *) &bootiso[isohybrid + partition + 12] = cylinders * sectors * heads;
 
 	// Copy the partition table
-	memcpy(bootiso + 0x1B8, bootiso + isohybrid + 0x1B8, 0x48);
+	memcpy(bootiso + 0x1BE, bootiso + isohybrid + 0x1BE, 66);
 
 	// Install iso2exe boot sector
 	* (unsigned short *) (bootiso + 26) = rand();
