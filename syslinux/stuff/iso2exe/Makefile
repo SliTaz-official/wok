@@ -17,7 +17,7 @@ iso2exe.com: iso2exe.c iso2exe.h
 	$(BCC) $(BCCFLAGS) -o $@ iso2exe.c && upx --ultra-brute $@
 
 iso2exe.exe: iso2exe.c iso2exe.h
-	i586-pc-mingw32-gcc -s -o $@ iso2exe.c -lws2_32
+	i586-pc-mingw32-gcc -Os -s -o $@ iso2exe.c -lws2_32
 
 isohybrid.exe: iso2exe.sh mvcom.bin iso2exe.com iso2exe.exe
 	./iso2exe.sh --exe mvcom.bin iso2exe.com iso2exe.exe > $@
@@ -39,7 +39,7 @@ win32.res: win32.rc win32.ico
 	i586-pc-mingw32-windres $< -O coff -o $@
 
 win32.exe: win32.c win32.res
-	i586-pc-mingw32-gcc -s -o $@ $< win32.res -mwindows -lws2_32 && upx --ultra-brute $@
+	i586-pc-mingw32-gcc -Os -s -o $@ $< win32.res -mwindows -lws2_32 && upx --ultra-brute $@
 
 %.o: %.c
 	$(BCC) $(BCCFLAGS) -A-l -A$*.lst -c -o $@ $<

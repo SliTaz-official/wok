@@ -1,27 +1,26 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <stdio.h>
+#ifdef WIN32
+#include <windows.h>
+#endif
 #include "iso2exe.h"
 
-static int fd;
+static int fd, status = 1;
 static char tazlitoinfo[10*1024];
 #define buffer tazlitoinfo
 #define BUFFERSZ 2048
 
-static void quit(char *msg)
-{
-	fprintf(stderr,"%s.\n", msg);
-	exit(1);
-}
-
 static void readsector(unsigned long sector)
 {
 	if (lseek(fd, sector * BUFFERSZ, SEEK_SET) == -1 ||
-	    read(fd, buffer, BUFFERSZ) != BUFFERSZ)
-		quit("read sector failure");
+	    read(fd, buffer, BUFFERSZ) != BUFFERSZ) {
+		puts("Read sector failure.\n");
+		exit(1);
+	}
 }
 
-int main(int argc, char *argv[])
+static char *install(char *filename)
 {
 #define heads 64
 #define sectors 32
@@ -32,29 +31,29 @@ int main(int argc, char *argv[])
 	unsigned n;
 #ifndef WIN32
 	char *bootiso;
-	for (bootiso = (char *) main;
+	for (bootiso = (char *) install;
 	     bootiso[0] != 'M' || bootiso[1] != 'Z' || bootiso[2] != 0xEB;
-	     bootiso++) if (bootiso < (char *) main) quit("bootiso not found");
+	     bootiso++) if (bootiso < (char *) install) return "No bootiso data.\n";
 #endif
-	if (argc < 2)
-		quit("Usage : isohybrid.exe file.iso");
-	fd = open(argv[1],O_RDWR|O_BINARY);
+	if (!filename)
+		return "Usage: isohybrid.exe file.iso\n";
+	fd = open(filename,O_RDWR|O_BINARY);
 	if (fd == -1)
-		quit("Can't open rw");
+		return "Can't open rw the iso file.\n";
 
 	// Install hybridiso boot sector
 	readsector(17UL);
 	if (strncmp(buffer+7, "EL TORITO SPECIFICATION", 23))
-		quit("No EL TORITO boot record found");
+		return "No EL TORITO signature.\n";
 	catalog = * (unsigned long *) (buffer + 71);
 	readsector(catalog);
 	if (* (unsigned long *) buffer != 1 || 
 	    * (unsigned long *) (buffer + 30) != 0x88AA55)
-	    	quit("invalid boot catalog.");
+	    	return "Invalid boot catalog.\n";
 	lba = * (unsigned long *) (buffer + 40);
 	readsector(lba);
 	if (* (unsigned long *) (buffer + 64) != 1886961915)
-		quit("no isolinux.bin hybrid signature in bootloader");
+		return "No isolinux.bin hybrid signature.\n";
 	isohybrid = bootiso[69] * 512;
 	* (unsigned long *)  &bootiso[isohybrid + 432] = lba * 4;
 	* (unsigned long *)  &bootiso[isohybrid + 440] = rand();
@@ -100,6 +99,16 @@ int main(int argc, char *argv[])
 	write(fd, bootiso, 512);
 nochksum:
 	close(fd);
-	printf("Note you can create a USB key with %s.\n"
-	       "Simply rename it to a .exe file and run it.\n", argv[1]);
+	status = 0;
+	return "Now you can create a USB key with your .iso file.\n"
+	       "Simply rename it to a .exe file and run it.\n";
+}
+
+int main(int argc, char *argv[])
+{
+	puts(install(argv[1]));
+#ifdef WIN32
+	Sleep(2000);
+#endif
+	return status;
 }

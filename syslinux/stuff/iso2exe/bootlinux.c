@@ -166,7 +166,7 @@ static unsigned getcs(void)
 unsigned long loadkernel(void)
 {
 	unsigned setup, n = BUFFERSZ;
-	unsigned long syssize = 0, version = 0;
+	unsigned long syssize = 0, kernel_version = 0;
 
 	do {
 		isoread(buffer, n);
@@ -267,11 +267,11 @@ next:
 		shld	edx, eax, #8
 		loop	next
 		pop	ds
-		mov	.loadkernel.version[bp], edx
+		mov	.loadkernel.kernel_version[bp], edx
 noversion:
 #endasm
 	load(&kernelmem, syssize);
-	return version;
+	return kernel_version;
 }
 
 void loadinitrd(void)

@@ -84,10 +84,11 @@ static int ishybrid(char *isoFileName)
 	return (magic == 1886961915);
 }
 
+static char buffer[512];
+
 #define MODE_READ  0
 #define MODE_WRITE 1
-static int rdwrsector(int mode, int drive, unsigned long startingsector, 
-		      unsigned long count, char *buffer)
+static int rdwrsector(int mode, int drive, unsigned long startingsector)
 {
 	HANDLE hDevice;
 	DWORD  result;
@@ -107,11 +108,11 @@ static int rdwrsector(int mode, int drive, unsigned long startingsector,
 		return -1;
 	SetFilePointer(hDevice, (startingsector*512), NULL, FILE_BEGIN);
 	if (mode == MODE_READ) {
-		if (!ReadFile(hDevice, buffer, 512*count, &result, NULL))
+		if (!ReadFile(hDevice, buffer, 512, &result, NULL))
 			result = -1;
 	}
 	else {
-		if (!WriteFile(hDevice, buffer, 512*count, &result, NULL))
+		if (!WriteFile(hDevice, buffer, 512, &result, NULL))
 			result = -1;
 	}
 	CloseHandle(hDevice);
@@ -121,18 +122,15 @@ static int rdwrsector(int mode, int drive, unsigned long startingsector,
 static int rawrite(unsigned long drive, char *isoFileName)
 {
 	int fdiso, s, dev;
-	char buffer[2048];
 	
 	if (drive == 0) return;
 	for (dev = 128; (drive & 1) == 0; dev++)
 		drive >>= 1;
 	fdiso = open(isoFileName, O_RDONLY|O_BINARY);
-	for (s = 0;;) {
+	for (s = 0;; s++) {
 		int s, n = read(fdiso, buffer, sizeof(buffer));
 		if (n <= 0) break;
-		n = (n+511)/512;
-		rdwrsector(MODE_WRITE, dev, s, n, buffer);
-		s += n;
+		rdwrsector(MODE_WRITE, dev, s);
 	}
 	close(fdiso);
 	return dev;
@@ -141,9 +139,9 @@ static int rawrite(unsigned long drive, char *isoFileName)
 static unsigned long drives(void)
 {
 	int i, mask, result;
-	char buffer[512];
+
 	for (i = result = 0, mask = 1; i < 8; i++, mask <<= 1) {
-		if (rdwrsector(MODE_READ, i+128, 0, 1, buffer) != -1)
+		if (rdwrsector(MODE_READ, i+128, 0) != -1)
 			result |= mask;
 	}
 	return result;
@@ -151,7 +149,6 @@ static unsigned long drives(void)
 
 static void writefloppy(char *isoFileName)
 {
-	char buffer[512];
 	int i, n, fd;
 
 	buffer[BOOTSTRAP_SECTOR_COUNT_OFFSET] = 0;
@@ -162,10 +159,10 @@ static void writefloppy(char *isoFileName)
 		if (n != 0 &&
 	            lseek(fd, * (unsigned short *) (buffer + 66) - (512 * n),
 			      SEEK_SET) != -1) {
-			for (i = 0; i < n; i++) {
-				read(fd, buffer, 512);
+			for (i = 0; i <= n; i++) {
 				if (i == 1) strncpy(buffer, isoFileName, 512);
-				rdwrsector(MODE_WRITE, 0, i, 1, buffer);
+				else read(fd, buffer, 512);
+				rdwrsector(MODE_WRITE, 0, i);
 			}
 		}
 		close(fd);

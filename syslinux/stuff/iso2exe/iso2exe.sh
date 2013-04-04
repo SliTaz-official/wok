@@ -80,12 +80,15 @@ add_win32exe()
 
 add_fdbootstrap()
 {
-	SIZE=$($0 --get bootfd.bin 2> /dev/null | tee /tmp/exe$$ | wc -c)
+	SIZE=$($0 --get bootfd.bin 2> /dev/null | wc -c)
 	if [ $SIZE -ne 0 ]; then
-		OFS=$(( $OFS - $SIZE ))
+		OFS=$(( $OFS - $SIZE + 512 ))
 		printf "Adding floppy bootstrap file at %04X...\n" $OFS
-		$0 --get bootfd.bin | ddq of=$1 bs=1 seek=$OFS conv=notrunc
-		store 28 $(($SIZE/512)) $1 8
+		$0 --get bootfd.bin | \
+		ddq of=$1 bs=1 count=512 seek=$OFS conv=notrunc
+		$0 --get bootfd.bin | \
+		ddq of=$1 bs=1 skip=1024 seek=$((512 + $OFS)) conv=notrunc
+		store 28 $(($SIZE/512 - 1)) $1 8
 	fi
 }
 case "$1" in

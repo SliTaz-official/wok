@@ -88,7 +88,9 @@ int main(int argc, char *argv[])
 	char *kernel, *initrd, *cmdline, *cmdfile, *s;
 	
 	argv[0] = progname();
-	bootiso(argv + (argc == 2));	// iso ? parsing is /init.exe stuff !
+	bootiso(argv);	// iso ? parsing is /init.exe stuff !
+	if (argc == 2)
+		bootiso(argv + 1);
 
 	chdirname(*argv);
 	cmdfile = "tazboot.cmd";
