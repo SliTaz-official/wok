@@ -16,8 +16,8 @@ getarg()
 gettazboot()
 {
 	echo "Creating $(basename $1) ..."
-	O=$(($(get 66 /mnt/$ISO) - 0xE0))
-	L=$((0x8000 - $(get 24 /mnt/$ISO) - $O))
+	O=$(($(get 66 /mnt/$ISO) - 0xC0))
+	L=$((0x7EE0 - $(get 24 /mnt/$ISO) - $O))
 	S=$((32+$L))
 	P=$((($S+511)/512))
 	E=$((4096-(32*$P)))
@@ -81,7 +81,7 @@ mkinitrd()
 	done
 	cp -a /lib/ld-* /tmp/fs/lib
 	for i in $(busybox | sed '/Current/,$!d'); do
-		ln -s busybox /tmp/fs/bin/${i%,}
+		[ -e /tmp/fs/bin/${i%,} ] || ln -s busybox /tmp/fs/bin/${i%,}
 	done
 	ln -s /proc/mounts /tmp/fs/etc/mtab
 	cat > /tmp/fs/init <<EOT
@@ -117,42 +117,55 @@ is_loram()
 
 doinstall()
 {
-	mkdir /mnt/slitaz
-	mount.posixovl -F /mnt/slitaz || return
 	mkdir -p /mnt/slitaz/boot /mnt/slitaz/mnt/dos
-	if [ -d /media/cdrom/fs ]; then
-		cp -a /media/cdrom/fs/. /mnt/slitaz
-	elif is_loram ; then
-		for i in /media/cdrom/boot/rootfs?.* ; do
-			[ -s $(basename $i) ] && continue
-			cpio -i $i
-		done
-		for i in $(ls -r /media/cdrom/boot/rootfs*); do
-			mount -o loop,ro $i /sqfs/mnt
-			cp -a /sqfs/mnt/. /mnt/slitaz
-			umount -d /sqfs/mnt
-		done
+	mount.posixovl -F /mnt/slitaz || return
+	echo "Install root filesystem..."
+	if [ -n "$1" ]; then
+		if [ -d /media/cdrom/fs ]; then
+			( cd /mnt/slitaz/fs; find | cpio -o -H newc ) | gzip -9
+		else
+			ls -r /media/cdrom/boot/rootfs* | xargs cat
+		fi > /mnt/slitaz/boot/rootfs.gz
+		mkdir /mnt/slitaz/home
+		initrd=rootfs.gz
+		extraargs="/home=$(getuuid)/slitaz/home" # FIXME /dos
 	else
-		for i in $(ls -r /media/cdrom/boot/rootfs*); do
-			uncpio $i /mnt/slitaz
-		done
+		if [ -d /media/cdrom/fs ]; then
+			cp -a /media/cdrom/fs/. /mnt/slitaz
+		elif is_loram ; then
+			for i in /media/cdrom/boot/rootfs?.* ; do
+				[ -s $(basename $i) ] && continue
+				cpio -i $i
+			done
+			for i in $(ls -r /media/cdrom/boot/rootfs*); do
+				mount -o loop,ro $i /sqfs/mnt
+				cp -a /sqfs/mnt/. /mnt/slitaz
+				umount -d /sqfs/mnt
+			done
+		else
+			for i in $(ls -r /media/cdrom/boot/rootfs*); do
+				uncpio $i /mnt/slitaz
+			done
+		fi
+		mkinitrd /mnt/slitaz/boot/initrd
+		initrd=initrd
+		extraargs="mount=$(getuuid) subroot=slitaz"
 	fi
+	echo "Install boot files..."
 	for i in /media/cdrom/boot/bzImage /media/cdrom/boot/*pxe* \
 		/media/cdrom/boot/isolinux/he* /media/cdrom/boot/isolinux/opt* \
 		/media/cdrom/README /media/cdrom/boot/memtest* ; do
 		[ -s $i ] && cp $i /mnt/slitaz/boot
 	done
-	umount -d /media/cdrom
 	gettazboot /mnt/slitaz/boot/tazboot.exe
-	mkinitrd /mnt/slitaz/boot/initrd
 	unix2dos > /mnt/slitaz/boot/tazboot.cmd <<EOT
 kernel=\\slitaz\\boot\\bzimage
-initrd=\\slitaz\\boot\\initrd
-rw root=/dev/null mount=$(getuuid) subroot=slitaz autologin
+initrd=\\slitaz\\boot\\$initrd
+rw root=/dev/null $extraargs autologin
 EOT
 	unix2dos /mnt/slitaz/boot/he* /mnt/slitaz/boot/opt* \
 		/mnt/slitaz/boot/README
-	[ -x /mnt/slitaz/usr/sbin/mount.posixovl ] ||
+	[ -d /mnt/slitaz/usr/sbin -a ! -x /mnt/slitaz/usr/sbin/mount.posixovl ] &&
 	cp $(which mount.posixovl) /mnt/slitaz/usr/sbin
 	! grep -qs tazboot /mnt/boot.ini && unix2dos >> /mnt/boot.ini <<EOT
 C:\\slitaz\\boot\\tazboot.exe="SliTaz"
@@ -163,26 +176,61 @@ EOT
 [slitaz]
 device=\\slitaz\\boot\\tazboot.exe
 EOT
-	unix2dos /mnt/config.sys
+	unix2dos /mnt/config.sys 2> /dev/null
 }
 
 install()
 {
 	$DIALOG --clear \
-		--title " SliTaz UMSDOS like installation " \
+		--title " SliTaz UMSDOS way installation " \
 		--yes-label "Install" --yesno \
 "\nSliTaz will be installed in the subdirectory \\slitaz of the current
 DOS/Windows partition. You will see your files from /mnt/dos.\n\n
 You can start SliTaz with \\slitaz\\boot\\tazboot.exe\n\n
 To uninstall SliTaz, you have only to remove this directory.
 The file \\boot.ini or \\config.sys may be modified too.\n\n
+SliTaz may run slowly on 'UMSDOS way' installation due to the 
+posixovl filesystem. The 'TAZUSB way' installation run faster.\n\n
 To do a traditional installation with disk partitioning,
 start SliTaz Live with 'SliTaz RAM boot' menu.\n
-" 16 70
-	[ $? -eq 0 -a -n "$(which mount.posixovl)" ] || return
+" 19 70
+	[ $? -eq 0 ] || return
 	doinstall
+	umount -d /media/cdrom
 	umount /proc
 	exec chroot /mnt/slitaz /sbin/init
+}
+
+installtaz()
+{
+	$DIALOG --clear \
+		--title " SliTaz TAZUSB way installation " \
+		--yes-label "Install" --yesno \
+"\nSliTaz will be installed in the subdirectory \\slitaz of the current
+DOS/Windows partition. You will see your files from /mnt/dos.\n\n
+You can start SliTaz with \\slitaz\\boot\\tazboot.exe\n\n
+To uninstall SliTaz, you have only to remove this directory.
+The file \\boot.ini or \\config.sys may be modified too.\n\n
+The filesystem is loaded entirely into memory upon boot to
+increase responsiveness. Only /home lands on hard disk.\n\n
+To do a traditional installation with disk partitioning,
+start SliTaz Live with 'SliTaz RAM boot' menu.\n
+" 19 70
+	[ $? -eq 0 ] || return
+	doinstall tazusblike
+	if [ -d /media/cdrom/fs ]; then
+		zcat /mnt/slitaz/boot/rootfs.gz | cpio -idmu
+	else
+		for i in $(ls -r /media/cdrom/boot/rootfs*); do
+			( zcat $i 2> /dev/null || unlzma -c $i ) | cpio -idmu
+		done
+	fi
+	umount -d /media/cdrom
+	mkdir /dos
+	mount --move /mnt /dos
+	ln -s /dos/slitaz/home /home
+	umount /proc
+	exec /sbin/init
 }
 
 tazboot()
@@ -288,34 +336,38 @@ Please insert a blank disk in floppy drive.\n
 	dd if=/media/cdrom/boot/gpxe of=/dev/fd0
 }
 
+xfile()
+{
+	[ -n "$(which $1)" ] && echo -en "\"$2\"	\"$3\""
+}
+
 cdfile()
 {
-	[ -s /media/cdrom/$1 ] && echo -en "$2	${3// /.}"
+	[ -s /media/cdrom/$1 ] && echo -en "\"$2\"	\"$3\""
+}
+
+fddata()
+{
+	[ $(get 28 /mnt/$ISO 1 2> /dev/null || echo 0) -ne 0 ] &&
+	echo -en "\"$1\"	\"$2\""
 }
 
 fdbootstrap()
 {
-	sz=$(echo $(get 28 /mnt/$ISO 1))
-	if [ 0$sz -eq 0 ]; then
-		$DIALOG --clear \
-			--title " No floppy bootstrap available " \
-			--msgbox \
-"\nThe floppy bootstrap code is not available in the ISO file.\n\n
-Can't create the floppy.\n
-" 9 70
-	else
-		$DIALOG --clear \
-			--title " Create a floppy bootstrap " \
-			--yes-label "Continue" --yesno \
+	sz=$((512 * $(echo $(get 28 /mnt/$ISO 1))))
+	$DIALOG --clear \
+		--title " Create a floppy bootstrap " \
+		--yes-label "Continue" --yesno \
 "\nThe floppy will install a driver to access the ISO file
 on your hard disk and will emulate a CD-ROM during the boot process.\n\n 
 Please insert a floppy in drive now.\n 
 " 10 70
-		[ $? -eq 0 ] || return
-		dd if=/mnt/$ISO of=/dev/fd0 bs=1 count=$(($sz * 512)) \
-			skip=$(( $(get 66 /mnt/$ISO) - ($sz * 512) ))
-		echo "$ISO" | dd of=/dev/fd0 bs=512 seek=1
-	fi
+	[ $? -eq 0 ] || return
+	dd if=/mnt/$ISO of=/dev/fd0 bs=1 count=512 \
+		skip=$(( $(get 66 /mnt/$ISO) - $sz ))
+	echo "$ISO" | dd of=/dev/fd0 bs=512 seek=1 count=1
+	dd if=/mnt/$ISO of=/dev/fd0 bs=1 count=$sz seek=2 \
+		skip=$(( $(get 66 /mnt/$ISO) - $sz + 512 ))
 }
 
 usbdev()
@@ -371,7 +423,7 @@ Unlike a device name, the UUID has the benefit of never changing from machine
 to machine.\n\n
 Please plug your USB stick in now.\n 
 " 19 70
-	[ $? -eq 0 -a -n "$(which tazusb)" ] || return
+	[ $? -eq 0 ] || return
 	usbdev || return
 	exec 3>&1
 	format=`$DIALOG  --clear \
@@ -469,28 +521,32 @@ which $DIALOG || live
 dmesg > /tmp/dmesg
 
 while true; do
-	exec 3>&1
-	value=`$DIALOG  --clear \
+	cat > /tmp/dialog <<EOT
+$DIALOG  --clear \
 	--title " Welcome to SliTaz " \
-	--menu "\nPlease select" 19 70 11 \
+	--menu "" 21 70 15 \
 			"live"		"SliTaz RAM boot" \
 			"text"		"SliTaz RAM boot (text mode only)" \
 $(cdfile README		"readme"	"Show the README file") \
 $(cdfile md5sum		"md5"		"Check ISO files") \
-			"install"	"Hard disk installation" \
-			"usbkey"	"USB key read/write installation" \
+$(xfile mount.posixovl	"install"	"Hard disk installation (UMSDOS way)") \
+$(xfile mount.posixovl	"installtaz"	"Hard disk installation (TAZUSB way)") \
+$(xfile tazusb		"usbkey"	"USB key read/write installation") \
 			"usbbootkey"	"USB boot key (read only)" \
-			"fdbootstrap"	"Floppy bootstrap" \
+$(fddata		"fdbootstrap"	"Floppy bootstrap") \
 			"tazboot"	"Get tazboot.exe Linux loader" \
 $(cdfile Xboot/memtest	"memtest"	"Get Memtest86") \
 $(cdfile boot/memtest	"fdmemtest"	"Create a Memtest86 boot floppy") \
 $(cdfile Xboot/gpxe	"gpxe"		"Get SliTaz Web boot utility") \
 $(cdfile boot/gpxe	"fdgpxe"	"Create a SliTaz Web boot floppy") \
-			"restart"	"Restart the computer" \
-			"stop"		"Power off" \
+$(xfile reboot		"restart"	"Restart the computer") \
+$(xfile poweroff	"stop"		"Power off") \
 			"bootlog"	"Linux boot messages" \
 			"shell"		"Shell prompt" \
-	2>&1 1>&3`
+
+EOT
+	exec 3>&1
+	value=$(sh /tmp/dialog 2>&1 1>&3)
 	retval=$?
 	exec 3>&-
 	[ $retval -eq 0 ] || continue
