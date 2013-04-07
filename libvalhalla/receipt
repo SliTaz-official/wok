@@ -15,6 +15,10 @@ WGET_URL="http://libvalhalla.geexbox.org/releases/$TARBALL"
 compile_rules()
 {
 	cd $src
+	export LDFLAGS="-lavformat"
+	sed -i '/prealloced_context/d' src/lavf_utils.c
+	sed -i 's/AVFormatParameters /AVDictionary */' src/lavf_utils.c
+	sed -i 's/av_open_input_file\(.*, \)0, \(.*\)$/avformat_open_input\1\2/' src/lavf_utils.c
 	sed -i '/av_metadata_get/d' configure
 	sed -i 's/av_metadata_get/av_dict_get/' configure src/parser.c
 	sed -i 's/AVMetadataTag/AVDictionaryEntry/' src/parser.c
