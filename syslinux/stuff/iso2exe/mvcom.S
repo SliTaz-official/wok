@@ -42,4 +42,6 @@ move:
 	  movsb
 	ret
 done:
+	.ascii	"(www.slitaz.org)"
+	
 //	.org	64

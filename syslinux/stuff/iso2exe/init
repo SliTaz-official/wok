@@ -128,7 +128,7 @@ doinstall()
 		fi > /mnt/slitaz/boot/rootfs.gz
 		mkdir /mnt/slitaz/home
 		initrd=rootfs.gz
-		extraargs="/home=$(getuuid)/slitaz/home" # FIXME /dos
+		extraargs="/home=$(getuuid)/slitaz/home" # FIXME /mnt/dos
 	else
 		if [ -d /media/cdrom/fs ]; then
 			cp -a /media/cdrom/fs/. /mnt/slitaz
@@ -196,6 +196,7 @@ start SliTaz Live with 'SliTaz RAM boot' menu.\n
 " 19 70
 	[ $? -eq 0 ] || return
 	doinstall
+	[ -x /sbin/init ] || return
 	umount -d /media/cdrom
 	umount /proc
 	exec chroot /mnt/slitaz /sbin/init
@@ -225,10 +226,10 @@ start SliTaz Live with 'SliTaz RAM boot' menu.\n
 			( zcat $i 2> /dev/null || unlzma -c $i ) | cpio -idmu
 		done
 	fi
+	[ -x /sbin/init ] || return
 	umount -d /media/cdrom
-	mkdir /dos
-	mount --move /mnt /dos
-	ln -s /dos/slitaz/home /home
+	mount --move /mnt /mnt/dos
+	ln -s /mnt/dos/slitaz/home /home
 	umount /proc
 	exec /sbin/init
 }

@@ -9,6 +9,9 @@ iso2exe: iso2exe.sh boot.com bootiso.bin init win32.exe
 	chmod +x $@
 	./$@ --build boot.com bootiso.bin init win32.exe
 
+isohybrid.res: isohybrid.rc isohybrid.ico
+	i586-pc-mingw32-windres $< -O coff -o $@
+
 iso2exe.h: iso2exe ../mbr/isohdpfx.bin
 	chmod +x iso2exe.sh
 	./iso2exe.sh --array ../mbr/isohdpfx.bin > $@
@@ -16,8 +19,8 @@ iso2exe.h: iso2exe ../mbr/isohdpfx.bin
 iso2exe.com: iso2exe.c iso2exe.h
 	$(BCC) $(BCCFLAGS) -o $@ iso2exe.c && upx --ultra-brute $@
 
-iso2exe.exe: iso2exe.c iso2exe.h
-	i586-pc-mingw32-gcc -Os -s -o $@ iso2exe.c -lws2_32
+iso2exe.exe: iso2exe.c iso2exe.h isohybrid.res
+	i586-pc-mingw32-gcc -Os -s -o $@ iso2exe.c isohybrid.res -lws2_32
 
 isohybrid.exe: iso2exe.sh mvcom.bin iso2exe.com iso2exe.exe
 	./iso2exe.sh --exe mvcom.bin iso2exe.com iso2exe.exe > $@
