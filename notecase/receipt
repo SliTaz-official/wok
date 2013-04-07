@@ -17,6 +17,7 @@ compile_rules()
 {
 	
 	cd $src
+	export LDFLAGS="-Wl,--copy-dt-needed-entries -lX11"
 	busybox patch -p1 -i $stuff/notecase-1.9.8_gcc4.u || return 1
 	
 	# Disable gnome-vfs support
@@ -25,7 +26,7 @@ compile_rules()
 	sed -i /'AUTODETECT_GTKSOURCEVIEW=1'/d Makefile
 	sed -i s/'install -D'/'install'/ Makefile
 	# Compile
-	make
+	make 2>&1 | grep -v gtksourceview.h
 	# Locale trick (Makefile use install -D)
 	cd po
 	for i in `ls *.po | cut -f1 -d.`
