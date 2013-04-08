@@ -10,9 +10,10 @@ WEB_SITE="http://www.enlightenment.org/"
 WGET_URL="http://download.enlightenment.org/releases/$TARBALL"
 TAGS="wm window-manager"
 TAGS="e17"
+LOCALES="da de es fr fr_CH it pt_BR ru zh_CN zh_TW"
 
 DEPENDS="eina eet ecore evas edje efreet edbus alsa-lib embryo eio emotion \
-eeze xcb-util-keysyms"
+eeze xcb-util-keysyms slitaz-menus"
 BUILD_DEPENDS="eina-dev eet-dev ecore-dev evas-dev edje-dev efreet-dev
 edbus-dev alsa-lib-dev lua5.1-dev embryo-dev eio-dev emotion-dev eeze-dev \
 xcb-util-keysyms-dev"
@@ -50,15 +51,22 @@ genpkg_rules()
 
 	# Rm backgrouds (1,6 Mb).
 	rm -rf $fs/usr/share/enlightenment/data/backgrounds/*
+
+	# locales
+	for locale in $LOCALES; do
+		mv $install/usr/share/locale/$locale $fs/usr/share/locale
+	done
 }
 
 post_install()
 {
-	res=$(cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//)
+	res=$(grep ^session <$1/etc/slim.conf | sed s/"sessions. *"// \
+		| sed s/,e17//)
 	# Adding WM to SLIM available sessions.
-	if ! echo "$res" | grep -q e17; then
-		echo -n "Adding e17 to /etc/slim.conf..."
-		sed -i "s/^sessions.*/sessions            ${res},e17/" /etc/slim.conf
+	if ! echo "$res" | grep -q enlightenment; then
+		echo -n "Adding enlightenment to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},enlightenment/" \
+			/etc/slim.conf
 		status
 	fi
 }
