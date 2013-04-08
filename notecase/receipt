@@ -25,8 +25,9 @@ compile_rules()
 	sed -i /'HAVE_GNOME_VFS=1'/d Makefile
 	sed -i /'AUTODETECT_GTKSOURCEVIEW=1'/d Makefile
 	sed -i s/'install -D'/'install'/ Makefile
+	sed -i 's/^DEBSIZE:=.*/DEBSIZE:=0/' Makefile*
 	# Compile
-	make 2>&1 | grep -v gtksourceview.h | grep -v './notecase/.'
+	make 2>&1 | grep -v gtksourceview.h
 	# Locale trick (Makefile use install -D)
 	cd po
 	for i in `ls *.po | cut -f1 -d.`
@@ -35,7 +36,7 @@ compile_rules()
 	done
 	cd ..
 	# Install
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -43,7 +44,7 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share/applications
 	cp -a $stuff/notecase.desktop $fs/usr/share/applications
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share/mime $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/mime $fs/usr/share
 }
 
