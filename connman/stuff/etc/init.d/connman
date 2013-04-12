@@ -1,0 +1,58 @@
+#!/bin/sh
+# /etc/init.d/connman : Start, stop and restart the connexion manager
+# on SliTaz, at boot time or with the command line.
+#
+# To start the connexion manager at boot time, just put connman in the
+# $RUN_DAEMONS variable of /etc/rcS.conf and configure options with
+# /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Connman
+DESC="Connexion Manager"
+DAEMON=/usr/sbin/connmand
+OPTIONS=$CONNMAN_OPTIONS
+PIDFILE=/run/connman
+
+case "$1" in
+  start)
+    if [ -d $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS
+    status
+    ;;
+  stop)
+    if [ -z "$(pidof connmand)" ] ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+	rm -rf $PIDFILE
+	kill $(pidof connmand)
+	status
+    ;;
+  restart)
+    if [ -z "$(pidof connmand)" ]; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+	rm -rf $PIDFILE
+    kill $(pidof connmand) &&
+    sleep 2 &&
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/$(basename $0) [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
