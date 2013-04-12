@@ -2,37 +2,47 @@
 
 PACKAGE="enlightenment-pam"
 SOURCE="enlightenment"
-VERSION="0.16.999.55225"
+VERSION="0.17.2.1"
 CATEGORY="x-window"
 SHORT_DESC="Enlightenment window manager (E17) with PAM, Bluez and connman support."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.enlightenment.org/"
-WGET_URL="http://download.enlightenment.org/snapshots/2010-12-03/$TARBALL"
+WGET_URL="http://download.enlightenment.org/releases/$TARBALL"
 PROVIDE="enlightenment:pam"
 TAGS="e17"
+LOCALES="da de es fr fr_CH it pt_BR ru zh_CN zh_TW"
 
 # Add PAM and bluez support (enlightenment is smaller).
-DEPENDS="eina eet ecore evas edje efreet edbus alsa-lib pam bluez connman"
-BUILD_DEPENDS="eina-dev eet-dev ecore-dev evas-dev edje-dev efreet-dev
-edbus-dev alsa-lib-dev pam-dev bluez-dev connman-dev"
+DEPENDS="eina eet ecore evas edje eio efreet edbus eeze alsa-lib pam bluez connman xcb-util-keysyms
+emotion"
+BUILD_DEPENDS="eina-dev eet-dev ecore-dev evas-dev edje-dev eio-dev efreet-dev eeze-dev emotion-dev
+edbus-dev alsa-lib-dev pam-dev bluez-dev connman-dev xcb-util-keysyms-dev pm-utils"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS && make && make install
+	CFLAGS="$CFLAGS -fvisibility=hidden"
+	LDFLAGS="$LDFLAGS -fvisibility=hidden"
+	export LDFLAGS
+	./configure \
+		--sysconfdir=/etc \
+		--disable-doc \
+		$CONFIGURE_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
+	mkdir -p $fs/usr/lib $fs/usr/share/applications
 	# Use a modified sysactions.conf
-	cp -a $WOK/$SOURCE/stuff/etc $fs
+	cp -a $stuff/etc $fs
 
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/enlightenment $fs/usr/lib
-	cp -a $_pkg/usr/share/enlightenment $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/enlightenment $fs/usr/lib
+	cp -a $install/usr/share/enlightenment $fs/usr/share
+	cp -a $install/usr/share/xsessions/enlightenment.desktop $fs/usr/share/applications
 
 	# Remove devel files *.a/*.la
 	rm -rf $fs/usr/lib/$SOURCE/preload/*.*a
@@ -40,16 +50,22 @@ genpkg_rules()
 
 	# Rm backgrouds (1,6 Mb) and desktop file already provides by other.
 	rm -rf $fs/usr/share/enlightenment/data/backgrounds/*
-	rm $fs/usr/share/enlightenment/data/other/desktop_files*
+
+	# locales
+	for locale in $LOCALES; do
+		mv $install/usr/share/locale/$locale $fs/usr/share/locale
+	done
 }
 
 post_install()
 {
-	res=`cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//`
+	res=$(grep ^session <$1/etc/slim.conf | sed s/"sessions. *"// \
+		| sed s/,e17//)
 	# Adding WM to SLIM available sessions.
-	if ! echo "$res" | grep -q e17; then
-		echo -n "Adding e17 to /etc/slim.conf..."
-		sed -i "s/^sessions.*/sessions            ${res},e17/" /etc/slim.conf
+	if ! echo "$res" | grep -q enlightenment; then
+		echo -n "Adding enlightenment to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            enlightenment,${res}/" \
+			/etc/slim.conf
 		status
 	fi
 }
@@ -57,7 +73,7 @@ post_install()
 post_remove()
 {
 	# Remove WM from SLIM available sessions.
-	if grep -q e17 $1/etc/slim.conf; then
-		sed -i s/,e17// $1/etc/slim.conf
+	if grep -q enlightenment $1/etc/slim.conf; then
+		sed -i s/enlightenement,// $1/etc/slim.conf
 	fi
 }
