@@ -3,12 +3,12 @@
 PACKAGE="linux-uml"
 SOURCE="linux"
 VERSION="3.2.40"
-KBASEVER="${VERSION:0:3}"
+KBASEVER="3.2"
 CATEGORY="base-system"
 SHORT_DESC="The User Mode Linux kernel."
 BUILD_DEPENDS="slitaz-toolchain perl"
 MAINTAINER="pascal.bellard@slitaz.org"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
+TARBALL="$SOURCE-$KBASEVER.tar.xz"
 WEB_SITE="http://www.kernel.org/"
 WGET_URL="ftp://ftp.kernel.org/pub/linux/kernel/v3.0/$TARBALL"
 
@@ -92,8 +92,8 @@ genpkg_rules()
 #!/bin/sh
 
 # /etc/inittab: "tty21::respawn:/bin/su -c '/boot/vm-uml 1 /boot/guests/slitaz.img 2 512m' nobody"
-tap=tap\${1:-0}
-n=\${tap#tap}
+n=\${1:-0}
+tap=tap\$n
 args="rw root=/dev/null"
 dev="initrd=\$(ls -r /boot/rootfs*.gz | sed q)"
 if [ -n "\$2" ]; then
@@ -102,9 +102,10 @@ if [ -n "\$2" ]; then
 fi
 
 cd \$(dirname \$0)
-ifconfig \$tap 192.168.\${tap#tap}.1
-./linux-uml-$VERSION \$dev mem=\${4:-512m} fakehd fake_ide ubd=3 con=pts ssl=pts \\
-	con0=fd:0,fd:1 eth0=tuntap,\$tap,fe:f0:00:00:00:0\$n,192.168.\$n.1 \$args
+ifconfig \$tap 192.168.\$n.1
+./linux-uml-$VERSION \$dev mem=\${4:-512m} fakehd fake_ide ubd=3 con0=fd:0,fd:1 \\
+	con=pts ssl=pts eth0=tuntap,\$tap,fe:f0:00:00:00:0\$n,192.168.\$n.1 \\
+	\$args cpuinfo=\$(sed '/model name/!d;s/.*: //;s/ /_/g;q' /proc/cpuinfo)
 EOT
 	chmod 755 $fs/boot/vm-uml
 }
