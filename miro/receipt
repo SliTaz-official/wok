@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="miro"
-VERSION="5.0.2"
+VERSION="5.0.4"
 CATEGORY="multimedia"
 SHORT_DESC="The free and open source internet TV platform."
 MAINTAINER="slaxemulator@gmail.com"
@@ -15,12 +15,21 @@ libtorrent-rasterbar gst-plugins-base gst-plugins-good gst-ffmpeg \
 pycurl taglib python-gconf"
 BUILD_DEPENDS="$DEPENDS python-dev dbus-python-dev pygtk-dev gstreamer-dev \
 shared-mime-info-dev gst-python-dev libtorrent-rasterbar-dev libsoup-dev \
-libwebkit-dev gst-plugins-base-dev gst-plugins-good-dev ffmpeg-dev imagemagick-dev taglib-dev"
+libwebkit-dev gst-plugins-base-dev gst-plugins-good-dev ffmpeg-dev \
+imagemagick-dev taglib-dev libboost-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src/linux
+	sed -i  -e 's/av_open_input_file\(.*\), NULL/avformat_open_input\1/' \
+		-e 's/av_set_parameters.*0/0/' \
+		-e 's/ dump_format/ av_dump_format/' \
+		-e 's/url_fopen\(.*\)URL_WRONLY/avio_open\1AVIO_FLAG_WRITE/' \
+		-e 's/av_write_header(oc)/avformat_write_header(oc, NULL)/' \
+		-e 's/put_flush_packet/avio_flush/' \
+		-e 's/url_fclose/avio_close/' \
+			miro-segmenter.c
 	python setup.py install --root=$DESTDIR
 	sed -i "s|./miro.real|/usr/bin/miro.real|g" $DESTDIR/usr/bin/miro
 }
