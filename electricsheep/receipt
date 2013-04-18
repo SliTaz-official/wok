@@ -21,9 +21,14 @@ compile_rules()
 		-e '/stream_copy/d' -e '/av_set_parameters/d' \
 		-e 's/url_fopen\(.*\)URL_WRONLY/avio_open\1AVIO_FLAG_WRITE/' \
 		-e 's/av_open_input_file\(.*\), NULL/avformat_open_input\1/' \
-		-e 's/av\(_write_header(output_ctx\)/av\1, NULL)/' \
+		-e 's/av\(_write_header(output_ctx\)/avformat\1, NULL/' \
 		-e 's/av_alloc_format_context/avformat_alloc_context/' \
+		-e '/GNOME_SCREENSAVER/d' \
 			electricsheep.c
+	mkdir -p $DESTDIR/usr/share/gconf/defaults
+	sed -i	-e '/update-gconf-defaults/d' \
+		-e 's|/usr/share/gconf/defaults|$(DESTDIR)&|' \
+			Makefile*
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
