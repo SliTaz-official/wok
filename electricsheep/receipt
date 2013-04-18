@@ -15,18 +15,27 @@ WGET_URL="http://147.52.159.12/mirrors/ftp.kernel.org/pub/dist/vectorlinux/VL64-
 compile_rules()
 {
 	cd $src
+	sed -i	-e 's/CODEC_TYPE_VIDEO/AVMEDIA_TYPE_VIDEO/' \
+		-e 's/guess_format/av_guess_format/' \
+		-e 's/PKT_FLAG_KEY/AV_PKT_FLAG_KEY/' \
+		-e '/stream_copy/d' -e '/av_set_parameters/d' \
+		-e 's/url_fopen\(.*\)URL_WRONLY/avio_open\1AVIO_FLAG_WRITE/' \
+		-e 's/av_open_input_file\(.*\), NULL/avformat_open_input\1/' \
+		-e 's/av\(_write_header(output_ctx\)/av\1, NULL)/' \
+		-e 's/av_alloc_format_context/avformat_alloc_context/' \
+			electricsheep.c
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS && make DESTDIR=$PWD/_pkg install
+	make $MAKEFLAGS && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $_pkg/* $fs/
+	cp -a $install/* $fs/
 	rm -r $fs/usr/share/man
 	rm $fs/usr/share/electricsheep/electricsheep-wait.avi
 }
