@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="dietlibc"
-VERSION="0.32"
+VERSION="0.33"
 CATEGORY="development"
 SHORT_DESC="A libc optimized ofr small size."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -13,16 +13,14 @@ WGET_URL="http://www.kernel.org/pub/linux/libs/$PACKAGE/$TARBALL"
 compile_rules()
 {
 	cd $src
-	mkdir -p $PWD/_pkg/etc
-	make -j 1 prefix=/usr/lib/diet && 
-	make -j 1 dyn prefix=/usr/lib/diet && 
-	make prefix=/usr/lib/diet DESTDIR=$PWD/_pkg install
+	sed -i 's|.*/nice.S.*|// &|' i386/dyn_syscalls.S
+	make prefix=/usr/lib/diet && 
+	#make dyn prefix=/usr/lib/diet && 
+	make prefix=/usr/lib/diet DESTDIR=$DESTDIR install 2> /dev/null
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/diet/lib-i386 $fs/etc
-	cp -a $_pkg/usr/lib/diet/lib-i386/*.so $fs/usr/lib/diet/lib-i386
-	echo /usr/lib/diet/lib-i386 > $fs/etc/diet.ld.conf
+	cp -a $install/* $fs
 }
