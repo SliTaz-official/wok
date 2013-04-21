@@ -5,13 +5,14 @@ VERSION="3.0.9"
 CATEGORY="network"
 SHORT_DESC="Utility that provides fast incremental."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="popt attr acl"
-BUILD_DEPENDS="popt-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://rsync.samba.org/"
-WGET_URL="http://rsync.samba.org/ftp/rsync/$TARBALL"
+WGET_URL="${WEB_SITE}ftp/rsync/$TARBALL"
 TAGS="sync"
 CONFIG_FILES="/etc/rsyncd.conf /etc/rsyncd.secrets"
+
+DEPENDS="popt attr acl"
+BUILD_DEPENDS="popt-dev acl-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -26,14 +27,14 @@ compile_rules()
 		-e 's/HAVE_ICONV_OPEN ./HAVE_ICONV_OPEN 0/' config.h
 	sed -i 's/-liconv//' Makefile
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $install/usr/bin $fs/usr
 	# Config file is /etc/rsyncd.conf.
 	# User and passwd in /etc/rsyncd.secrets, syntax : user:passwd
 	#
