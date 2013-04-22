@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="extended-actions"
+VERSION="0"
+CATEGORY="system-tools"
+SHORT_DESC="Service for generating extended actions on files"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="https://launchpad.net/extended-actions"
+BRANCH="5"
+TARBALL="$PACKAGE-$BRANCH.tar.bz2"
+WGET_URL="bzr|lp:extended-actions"
+
+DEPENDS="libgee libgio"
+BUILD_DEPENDS="bazaar cmake vala glib-dev libgio-dev libgee-dev"
+
+TODO="Setup extended-actions specific to SliTaz"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# gee-1.0 is old while gee-0.8 is latest ;)
+	sed -i 's|gee-1.0|gee-0.8|g' $(grep -l gee-1.0 $(find . -type f))
+
+	mkdir build && cd build &&
+	cmake .. -DCMAKE_INSTALL_PREFIX=/usr &&
+	make &&
+	make DESTDIR=$install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}

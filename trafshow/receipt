@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="trafshow"
+VERSION="5.2.3"
+CATEGORY="network"
+SHORT_DESC="Full screen network traffic monitor."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="ncurses libpcap"
+BUILD_DEPENDS="ncurses-dev libpcap-dev"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WEB_SITE="http://soft.risp.ru/trafshow/index_en.shtml"
+WGET_URL="http://fossies.org/linux/misc/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+
+	# fix session.c bug
+	sed -i '43d' session.c
+
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS && make 
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/etc
+	cp -a $src/$PACKAGE $fs/usr/bin
+	cp -a $src/.trafshow $fs/etc/trafshow
+
+	# tidy config file and change perms
+	chown root:root $fs/etc/trafshow
+	sed -i 's|*/icmp|#*/icmp|' $fs/etc/trafshow
+	sed -i 's|nfs|#nfs|' $fs/etc/trafshow
+	sed -i 's|513|#513|' $fs/etc/trafshow
+	sed -i 's|514|#514|' $fs/etc/trafshow
+}
+
