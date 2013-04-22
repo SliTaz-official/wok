@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="gnucash"
+VERSION="2.4.11"
+CATEGORY="office"
+SHORT_DESC="Financial-accounting software"
+MAINTAINER="domcox@slitaz.org"
+LICENSE="gpl"
+WEB_SITE="http://www.gnucash.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="GConf gnome-vfs gmp goffice guile libgnome libgnomeui libgsf libofx libwebkit libxslt slib zlib"
+BUILD_DEPENDS="GConf-dev gnome-vfs-dev gmp-dev goffice-dev guile-dev libgnome-dev libgnomeui-dev libgsf-dev libofx-dev libtool libwebkit-dev libxslt-dev slib"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# patch G_CONST_RETURN deprecated
+	for file_diff in $stuff/*.patch; do
+		echo -n "Applying patch $(basename $file_diff)"
+		patch -Np3 -i $file_diff > /dev/null
+		status
+	done
+	# busybox compliant
+	sed -i 's/cat -s/cat/g' $src/doc/Makefile.in
+	# build
+	./configure $CONFIGURE_ARGS \
+		--prefix="/usr" \
+		--disable-html-docs \
+		--with-html-engine="webkit" \
+		--disable-dbi \
+		--disable-ofx \
+		--disable-aqbanking \
+		--disable-deprecated-glib \
+		--disable-schemas-install \
+		LDFLAGS='-Wl,-O1 -Wl,--as-needed' &&
+	make && make -j1 install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}

@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="faenza-icon-theme-emblems"
+VERSION="1.3"
+CATEGORY="x-window"
+SHORT_DESC="Faenza icon theme (emblems)"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE=""
+WEB_SITE="http://tiheum.deviantart.com/art/Faenza-Icons-173323228"
+
+WANTED="faenza-icon-theme"
+DEPENDS="faenza-icon-theme"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/icons
+	cd $fs/usr/share/icons
+	tar xf $src/Faenza.tar.gz Faenza/emblems
+	# remove big sizes and scalable
+	rm -rf $(find . -type d -regex '.*/\(64\|96\|scalable\)')
+	# SliTaz locale settings
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+	cd $fs/usr/share/icons/Faenza/emblems/16
+	for icon in $(ls -1 *.icon); do
+		CONTENT=$(cat $icon);
+		echo "[Icon Data]" > $icon;
+		echo "$CONTENT" | grep 'DisplayName=' >> $icon;
+		for lang in $LOCALE_PACK; do
+			echo "$CONTENT" | fgrep "DisplayName["$lang"]=" >> $icon;
+			for size in 22 24 32 48; do
+				rm -f ../$size/$icon
+				ln -s ../16/$icon ../$size/$icon
+			done
+		done
+	done
+	true
+}
+

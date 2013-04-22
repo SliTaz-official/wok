@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="foobillardplus"
+VERSION="3.42beta"
+CATEGORY="games"
+SHORT_DESC="FooBillard - free 3D OpenGL billard game for linux"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE=""
+WEB_SITE="http://foobillard.sourceforge.net/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="bzlib freetype libglu-mesa libpng libsdl-mixer libsdl-net"
+
+BUILD_DEPENDS="bash automake autoconf libsdl-dev libsdl-mixer-dev \
+libsdl-net-dev mesa-dev libglu-mesa freetype-dev libpng-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	aclocal --force
+	autoconf -f
+	autoheader -f
+	automake --gnu -a -c -f
+	./configure &&
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/foobillardplus
+	cp -a $src/src/foobillardplus $fs/usr/bin
+	DATADIR=$fs/usr/share/foobillardplus
+	cp -a $src/data/* $DATADIR
+	rm -f $DATADIR/*.ttf
+	rm -f $DATADIR/*.ico
+	# move to package foobillardplus-music
+	rm -rf $DATADIR/music
+}
