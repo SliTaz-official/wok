@@ -9,9 +9,11 @@ TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://connman.net/"
 WGET_URL="http://linux-kernel.uio.no/pub/linux/network/$PACKAGE/$TARBALL"
 
-DEPENDS="glib dbus iptables gnutls libnl udev wpa_supplicant"
-BUILD_DEPENDS="glib-dev dbus-dev iptables iptables-dev gnutls-dev libnl-dev \
-openconnect udev-dev wpa_supplicant readline-dev ncursesw-dev openvpn bluez-dev"
+DEPENDS="glib dbus iptables gnutls libnl udev wpa_supplicant dbus-helper"
+BUILD_DEPENDS="glib-dev dbus-dev iptables-dev gnutls-dev libnl-dev
+openconnect udev-dev wpa_supplicant readline-dev ncursesw-dev openvpn
+bluez-dev ppp-dev"
+SUGGESTED="xl2tpd pptpclient"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -28,11 +30,12 @@ compile_rules()
 		--disable-gtk-doc \
 		--disable-neard \
 		--enable-threads \
+		--enable-polkit \
 		--enable-openconnect \
 		--enable-vpnc \
 		--enable-openvpn \
-		--enable-polkit \
 		--enable-client \
+		--enable-test \
 		$CONFIGURE_ARGS &&
 	make && make DESTDIR=$DESTDIR install
 }
@@ -67,13 +70,13 @@ post_install()
 		echo '' >> $root/etc/daemons.conf
 	fi
 	if [ -z "$root" ]; then
-		/etc/init.d/connmand start || continue
+		/etc/init.d/connman start || /etc/init.d/connman restart
 	fi
 }
 
 pre_remove()
 {
 	if [ -z "$1" ]; then
-		/etc/init.d/connmand stop
+		/etc/init.d/connman stop
 	fi
 }
