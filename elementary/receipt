@@ -8,13 +8,10 @@ MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.enlightenment.org/"
 WGET_URL="http://download.enlightenment.org/releases/$TARBALL"
-TAGS="e17"
+TAGS="e enlightenment efl"
 
-DEPENDS="eina eet evas ecore edje efreet libelementary edbus eio emotion \
-ethumb embryo libxml2"
-BUILD_DEPENDS="eina-dev eet-dev evas-dev ecore-dev edje-dev efreet-dev \
-expat-dev jpeg-dev glib-dev libpng-dev edbus-dev eio-dev emotion-dev \
-ethumb-dev embryo-dev lua5.1-dev libxml2-dev"
+DEPENDS="efreet emotion ethumb libelementary"
+BUILD_DEPENDS="efreet-dev emotion-dev ethumb-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,6 +20,7 @@ compile_rules()
 	LDFLAGS="$LDFLAGS -fvisibility=hidden"
 	export LDFLAGS
 	./configure \
+	--datadir=/usr/share2 \
 		$CONFIGURE_ARGS &&
 	make && make install
 }
@@ -30,14 +28,16 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/edje/modules/elm/linux-gnu-i486-1.0.0
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/edje/modules/elm/linux-gnu-i486-1.0.0/module.so \
-		$fs/usr/lib/edje/modules/elm/linux-gnu-i486-1.0.0
+	# lib
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/lib/edje	$fs/usr/lib
 	cp -a $install/usr/lib/elementary $fs/usr/lib
-	rm -f $fs/usr/lib/elementary/modules/*/*/*.la
+	rm -f $fs/usr/lib/*/modules/*/*/*.la
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	# Package: libelementary
 	rm -f $fs/usr/lib/libelementary.so.*
+	# share
+	# /usr/share2: to not automatically install /usr/share/applications
+	mkdir -p $fs/usr/share
+	cp -a $install/usr/share2/elementary $fs/usr/share
 }
