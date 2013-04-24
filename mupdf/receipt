@@ -1,28 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="mupdf"
-VERSION="0.7"
+VERSION="1.2"
 CATEGORY="utilities"
-SHORT_DESC="lightweight PDF viewer and toolkit written in portable C"
+SHORT_DESC="A lightweight PDF and XPS viewer"
 MAINTAINER="jozee@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-DEPENDS="freetype jpeg zlib jbig2dec openjpeg"
-BUILD_DEPENDS="freetype-dev jpeg-dev openjpeg-dev jbig2dec-dev zlib-dev pkg-config xorg-libX11-dev xorg-libXext-dev xorg-xextproto ftjam"
+LICENSE="GPL3"
 WEB_SITE="http://mupdf.com/"
-WGET_URL="http://mupdf.com/download/$TARBALL"
+TARBALL="$PACKAGE-$VERSION-source.zip"
+WGET_URL="http://mupdf.googlecode.com/files/$TARBALL"
+
+#DEPENDS="freetype jpeg zlib jbig2dec openjpeg"
+#BUILD_DEPENDS="freetype-dev jpeg-dev openjpeg-dev jbig2dec-dev zlib-dev pkg-config xorg-libX11-dev xorg-libXext-dev xorg-xextproto ftjam"
+DEPENDS="bzlib freetype jbig2dec openjpeg xorg-libXext"
+BUILD_DEPENDS="freetype-dev jbig2dec-dev jpeg-dev openjpeg-dev zlib-dev"
 
 # Rules to configure and make the package.  
 compile_rules()
 {
-	cd $src
-	sed -i 's| debug| release|g' Makefile
+	# use system wide libraries instead of included ones
+	rm -rf $src/thirdparty
 	make build=release
-	make build=release prefix=$PWD/_pkg/usr install
+	make build=release prefix=/usr install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $install/usr/bin/mupdf $fs/usr/bin
 }
