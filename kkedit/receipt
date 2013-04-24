@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="kkedit"
+VERSION="0.0.12"
+CATEGORY="development"
+SHORT_DESC="Source code text editor"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL"
+WEB_SITE="http://keithhedger.hostingsiteforfree.com/pages/kkedit/help.html"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://keithhedger.hostingsiteforfree.com/zips/kkedit/KKEdit-$VERSION.tar.gz"
+
+DEPENDS="gtk+ gtksourceview libunique"
+BUILD_DEPENDS="automake autoconf gtk+-dev gtksourceview-dev libunique-dev \
+ctags libxml2-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh --prefix=/usr &&
+	sed -i '129 c\
+GTKSRC_CFLAGS = $(pkg-config --cflags gtksourceview-2.0)' $src/Makefile &&
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/usr/share/KKEdit \
+		$fs/usr/share/applications \
+		$fs/usr/share/pixmaps
+	cp -a $install/usr/bin $fs/usr
+	cp -a $stuff/*.desktop $fs/usr/share/applications
+	cp -a $stuff/*.png $fs/usr/share/pixmaps
+	cp -a $install/usr/share/KKEdit/tools $fs/usr/share/KKEdit
+}
