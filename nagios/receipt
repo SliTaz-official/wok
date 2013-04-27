@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="nagios"
-VERSION="3.2.3"
+VERSION="3.5.0"
 CATEGORY="network"
 SHORT_DESC="Host and network monitoring"
 MAINTAINER="erjo@slitaz.org"
@@ -24,7 +24,6 @@ compile_rules()
 	done <<EOT
 $PACKAGE-$VERSION-Makefiles.u
 EOT
-	#patch -p1 < $stuff/nagios-3.2.1-Makefiles.u || return 1
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
@@ -38,14 +37,19 @@ EOT
 		--libexecdir=/usr/lib/nagios/plugins \
 		--sbindir=/usr/lib/nagios/cgi \
 		--datadir=/usr/share/nagios \
-		--htmldir=/usr/share/nagios \
 		--localstatedir=/var/lib/nagios \
 		$CONFIGURE_ARGS 
 		
 	sed -i s!HTMLDIR=.*!HTMLDIR=/usr/share/nagios! html/Makefile
 	
-	make all && make DESTDIR=$PWD/_pkg fullinstall \
-	&& make DESTDIR=$PWD/_pkg install-config
+	#~ make all && make DESTDIR=$PWD/_pkg fullinstall \
+	#~ && make DESTDIR=$PWD/_pkg install-config
+	make all && make install \
+	&& make install-config \
+	&& make install-commandmode \
+	&& make install-webconf \
+	&& make install-classicui 
+	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -57,14 +61,14 @@ genpkg_rules()
 	  $fs/var/spool/nagios/checkresults \
 	  $fs/etc/apache
 		
-	cp -a $_pkg/etc/apache $fs/etc
-	cp -a $_pkg/etc/nagios $fs/etc
-	cp -a stuff/nagios  $fs/etc/init.d
-	install -o root -g root -m 644 stuff/htpasswd.users  $fs/etc/nagios/
+	cp -a $install/etc/apache $fs/etc
+	cp -a $install/etc/nagios $fs/etc
+	cp -a $stuff/nagios  $fs/etc/init.d
+	install -o root -g root -m 644 $stuff/htpasswd.users  $fs/etc/nagios/
 	
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
-	cp -a $_pkg/usr/share $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/share $fs/usr
 	
 	# Put doc in separate package
 	rm -rf $fs/usr/share/nagios/docs
