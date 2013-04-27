@@ -10,13 +10,6 @@ TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="http://www.nconf.org/dokuwiki/doku.php"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-# Rules to configure and make the package.
-compile_rules()
-{
-	[ -d $PACKAGE-$VERSION ] || mv $PACKAGE $PACKAGE-$VERSION
-	cd $src
-}
-
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
@@ -26,7 +19,7 @@ genpkg_rules()
 		$fs/etc/apache/conf.d \
 		$fs/etc/nagios/import
 		
-	cp  stuff/apache2-nconf.conf $fs/etc/apache/conf.d
+	cp  $stuff/apache2-nconf.conf $fs/etc/apache/conf.d
 	
 	# Copy files
 	cp -a $src/* $fs/usr/share/nconf
@@ -96,6 +89,7 @@ post_install()
 
 post_remove()
 {
+	if [ -z $1 ]; then
 		local db=nconf
 		local db_user=nconf
 		local db_password=nconf
@@ -115,9 +109,10 @@ post_remove()
 				echo  -n "Delete user $db_user"
 				mysql -Be "delete from mysql.db where user='"$db_user"'" ; status
 			fi
-			unset $answer
+			unset answer
 			;;
 		*)
 			;;
 		esac
+	fi
 }
