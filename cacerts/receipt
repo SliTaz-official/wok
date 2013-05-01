@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="cacerts"
+VERSION="1.87"
+CATEGORY="security"
+SHORT_DESC="Certificate Authority Certificates"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="MPL2"
+WEB_SITE="http://www.linuxfromscratch.org/blfs/view/svn/postlfs/cacerts.html"
+TARBALL="$PACKAGE-$VERSION.txt"
+WGET_URL="http://mxr.mozilla.org/mozilla/source/security/nss/lib/ckfw/builtins/certdata.txt?raw=1"
+
+DEPENDS="openssl"
+BUILD_DEPENDS="openssl"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mv -f *.txt certdata.txt &&
+	cp -a $stuff/* $src &&
+	./make-ca.sh &&
+	./remove-expired-certs.sh $src/certs
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/etc/ssl/certs
+	cp -a $src/certs/*.pem $fs/etc/ssl/certs
+	cp -a $src/ca-bundle.crt $fs/etc/ssl
+}
+
+post_install()
+{
+	echo "Rehash certificates:"
+	c_rehash
+}
