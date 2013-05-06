@@ -35,6 +35,7 @@ compile_rules()
 		patch -Np1 -i $file_diff > /dev/null
 		status
 	done
+	touch Documentation/webkitgtk/version.xml
 	# Build
 	./configure \
 		--prefix=/usr \
@@ -50,7 +51,8 @@ compile_rules()
 		--disable-webkit2 \
 		--disable-gtk-doc-html \
 		$CONFIGURE_ARGS &&
-	make all stamp-po && make DESTDIR=$DESTDIR install &&
+	make all stamp-po 2>&1 | grep -v Source/WebCore/dom/testing && 
+	make DESTDIR=$DESTDIR install 2>&1 | grep -v /usr/share/gtk-doc/html/ &&
 	cp -a $src/Programs/GtkLauncher $DESTDIR/usr/bin
 }
 
