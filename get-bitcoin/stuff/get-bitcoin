@@ -1,15 +1,11 @@
 #!/bin/sh -e
 
-PACKAGE="bitcoin"
-VERSION="0.7.2"
+PACKAGE="$(basename $0 | sed 's/get-//')"
 CATEGORY="misc"
-WEB_SITE="http://bitcoin.org/"
+WEB_SITE="http://$PACKAGE.org/"
 SHORT_DESC="New digital currency for instant payments to anyone, anywhere."
-MAINTAINER="somebody@bitcoin.org"
+MAINTAINER="somebody@$PACKAGE.org"
 DEPENDS="libQtGui bzlib"
-TARBALL="$PACKAGE-$VERSION-linux.tar.gz"
-SF_MIRROR="http://netcologne.dl.sourceforge.net/project"
-URL="$SF_MIRROR/$PACKAGE/Bitcoin/$PACKAGE-$VERSION/$TARBALL"
 
 ROOT="$1"
 [ -d "$ROOT" ] || ROOT=""
@@ -31,7 +27,10 @@ CUR_DIR=$(pwd)
 mkdir -p $TMP_DIR && cd $TMP_DIR
 
 # Download tarball
+URL=$(wget -O - $WEB_SITE/en/download | sed \
+      '/linux.tar/!d;s/.*href="\([^"]*\).*/\1/;s|/download$||')
 FILE="$(basename $URL)"
+VERSION="$(echo $FILE | sed 's/.*coin-\(.*\)-linux.tar.*/\1/')"
 wget -O $FILE "$URL"
 
 if [ ! -f $FILE ]; then
@@ -59,7 +58,7 @@ cat > usr/share/applications/$PACKAGE.desktop <<EOT
 Version=1.0
 Encoding=UTF-8
 Name=$PACKAGE
-Exec=/usr/bin/bitcoin-qt
+Exec=/usr/bin/$PACKAGE-qt
 Icon=stock_certificate.png
 Terminal=false
 Categories=Application
