@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="fdutils"
+VERSION="5.5"
+CATEGORY="system"
+SHORT_DESC="Utilities for configuring and formatting floppy."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.fdutils.linux.lu/"
+WGET_URL="$WEB_SITE$TARBALL"
+
+DEPENDS=""
+BUILD_DEPENDS="flex"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	mkdir -p $DESTDIR/etc
+	sed -i -e "s|^bindir.*|bindir = $DESTDIR/usr/bin|" \
+		-e "s|^sysconfdir.*|sysconfdir = $DESTDIR/etc|" \
+			src/Makefile*
+	./configure $CONFIGURE_ARGS &&
+	make DESTDIR=$DESTDIR install-prog
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{	
+	cp -a $install/* $fs
+}
