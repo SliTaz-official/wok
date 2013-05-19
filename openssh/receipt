@@ -28,7 +28,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/init.d $fs/etc/ssh $fs/var/run/sshd
+	mkdir -p $fs/usr $fs/etc/init.d $fs/etc/ssh 
 	cp -a $_pkg/usr/sbin $_pkg/usr/bin $fs/usr
 	rm -f $fs/usr/sbin/sftp-server
 	cp -a $_pkg/etc $fs
@@ -38,15 +38,27 @@ genpkg_rules()
 }
 
 # Pre and post install commands for Tazpkg.
+pre_install()
+{
+       mkdir -p /var/run/sshd
+}
+
 post_install()
 {
-	while read dropbear openssh ; do
+       while read dropbear openssh ; do
 		[ -s $dropbear ] || continue
 		dropbearconvert dropbear openssh $1$dropbear $1$openssh
 		dropbearkey -y -f $1$dropbear | grep ssh > $1$openssh.pub
 		dropbearkey -y -f $1$dropbear | grep Fingerprint
-	done <<EOT
+       done <<EOT
 /etc/dropbear/dropbear_rsa_host_key	/etc/ssh/ssh_host_rsa_key
 /etc/dropbear/dropbear_dss_host_key	/etc/ssh/ssh_host_dsa_key
 EOT
 }
+
+# Pre and post remove commands for Tazpkg.
+post_remove()
+{
+       rm -fr /var/run/sshd
+}       
+
