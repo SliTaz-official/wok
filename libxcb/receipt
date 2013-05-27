@@ -1,32 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="libxcb"
-VERSION="1.9.1"
+VERSION="1.9"
 CATEGORY="x-window"
-SHORT_DESC="The X protocol C-language Binding (XCB) is a replacement for \
-Xlib featuring a small footprint, latency hiding, direct access to the \
-protocol, improved threading support, and extensibility."
+SHORT_DESC="A C binding to the X11 protocol"
 MAINTAINER="mallory@sweetpeople.org"
-DEPENDS="xorg-libXau xorg-libXdmcp"
-BUILD_DEPENDS="xcb-proto libxslt-dev pkg-config libpthread-stubs xorg-libXau-dev xorg-libXdmcp-dev"
+LICENSE="other"
+WEB_SITE="http://xcb.freedesktop.org/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://xcb.freedesktop.org"
-WGET_URL="$WEB_SITE/dist/$TARBALL"
+WGET_URL="${WEB_SITE}dist/$TARBALL"
+
+DEPENDS="glibc-base xorg-libXau xorg-libXdmcp"
+# autoconf and automake in bdeps breaks build (but, see warnings in log)
+BUILD_DEPENDS="libxslt-dev xcb-proto xorg-libXau-dev xorg-libXdmcp-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	# http://www.linuxfromscratch.org/blfs/view/svn/x/libxcb.html
+	sed -i "s|pthread-stubs||" $src/configure.ac &&
 	./configure \
 		--enable-xinput \
+		--disable-build-docs \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib 
+	mkdir -p \
+		$fs/usr/lib \
+		$fs/usr/share/licenses
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $src/COPYING $fs/usr/share/licenses/$PACKAGE.txt
 }
 
