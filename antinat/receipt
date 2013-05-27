@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="antinat"
+VERSION="0.90"
+CATEGORY="network"
+SHORT_DESC="Flexible SOCKS server & client library for proxy-based applications."
+MAINTAINER="pascal.bellard@slitaz.org"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://antinat.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="expat"
+BUILD_DEPENDS="expat-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure --prefix=/usr --sysconfdir=/etc $CONFIGURE_ARGS &&
+	make &&
+	make prefix=$DESTDIR/usr install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.   
+genpkg_rules()                                      
+{
+	mkdir -p $fs/usr/lib $fs/etc
+	cp $src/etc/antinat.xml $fs/etc
+	chmod 600 $fs/etc/antinat.xml
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/var $fs
+}
