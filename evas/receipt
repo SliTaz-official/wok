@@ -1,18 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="evas"
-VERSION="1.7.6"
+VERSION="1.7.7"
 CATEGORY="x-window"
-SHORT_DESC="Enlightenment's hardware-accelerated retained canvas API"
+SHORT_DESC="EFL Canvas and scenegraph rendering library."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.enlightenment.org/"
 WGET_URL="http://download.enlightenment.org/releases/$TARBALL"
 TAGS="e enlightenment efl"
 
-DEPENDS="eet fontconfig freetype giflib libpng libxml2 tiff"
+DEPENDS="eet expat fontconfig freetype
+giflib libpng tiff libxml2 xorg xorg-libXss xorg-libXp"
 BUILD_DEPENDS="eet-dev expat-dev fontconfig-dev freetype-dev fribidi-dev
-giflib-dev libpng-dev libxml2-dev tiff-dev"
+giflib-dev libpng-dev tiff-dev libxml2-dev
+xorg-dev xorg-libXss-dev xorg-libXp-dev"
+OPTIONAL_DEPENDS="mesa-dev libglu-mesa-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,14 +23,14 @@ compile_rules()
 	CFLAGS="$CFLAGS -fvisibility=hidden"
 	LDFLAGS="$LDFLAGS -fvisibility=hidden"
 	export LDFLAGS
+
 	./configure \
+		--libexecdir=/usr/lib/$PACKAGE \
+		--enable-cpu-c \
 		--disable-doc \
 		--disable-install-examples \
-		--enable-cpu-c \
-		--disable-wayland-shm \
-		--disable-fb \
 		$CONFIGURE_ARGS &&
-	make && make install
+	make $MAKEFLAGS && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -37,4 +40,5 @@ genpkg_rules()
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/lib/evas $fs/usr/lib
 	rm -rf $fs/usr/lib/evas/modules/*/*/*/*.*a
+	cp -a $install/usr/share $fs/usr
 }
