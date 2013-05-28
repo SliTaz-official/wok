@@ -1,66 +1,67 @@
 # SliTaz package receipt.
 
 PACKAGE="slim-pam"
-VERSION="1.3.3"
+VERSION="1.3.5"
 CATEGORY="x-window"
-SHORT_DESC="Desktop-independent graphical login manager for X11."
+SHORT_DESC="Desktop-independent graphical login manager for X11 (PAM enabled)."
 MAINTAINER="pascal.bellard@slitaz.org"
-SUGGESTED="slim-theme-default slitaz-configs"
+LICENSE="GPL2"
+WEB_SITE="http://slim.berlios.de/"
 SOURCE="slim"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://slim.berlios.de"
 WGET_URL="http://download.berlios.de/slim/$TARBALL"
 CONFIG_FILES="/etc/slim.conf"
-PROVIDE="slim:pam"
 
-DEPENDS="glibc-base gcc-lib-base expat fontconfig freetype util-linux-uuid \
-zlib jpeg libpng xorg-libXft xorg-libXmu pam"
-BUILD_DEPENDS="pam-dev xorg-libXft-dev xorg-libXmu-dev jpeg-dev libpng-dev cmake"
+PROVIDE="slim:pam"
+DEPENDS="gcc-lib-base libjpeg libpng pam xorg-libXft xorg-libXmu"
+SUGGESTED="slim-theme-default slitaz-configs"
+BUILD_DEPENDS="cmake freetype-dev jpeg-dev libpng-dev xorg-libXft-dev \
+xorg-libXmu-dev pam-dev"
+RELATED="slim slim-theme-default"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	patch -p1 < $WOK/$SOURCE/stuff/$SOURCE-$VERSION.patch || return 1
+	mkdir build; cd build
 	cmake \
 		-DCMAKE_INSTALL_PREFIX=/usr \
-		-DUSE_PAM=yes . &&
-	make && make DESTDIR=$DESTDIR install
+		-DX11_Xmu_LIB=-lXmu \
+		-DUSE_PAM=yes \
+		.. &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/slim
-	cp -a ../$SOURCE/stuff/themes $fs/usr/share/slim
+	cp -a $install/etc $fs
 	cp -a $install/usr/bin $fs/usr
+	cp -a $WOK/$SOURCE/stuff/themes $fs/usr/share/slim
 
 	# Config file and rc script.
-	cp -a ../$SOURCE/stuff/etc $fs
+	cp -a $WOK/$SOURCE/stuff/etc $fs
 	chown -R root.root $fs
-}
 
-pre_install()
-{
-	local root
-	root=$1
-	# Backup config file.
-	if [ -f $root/etc/slim.conf ]; then
-		cp $root/etc/slim.conf $root/etc/slim.conf.bak
-	fi
+	# slim-theme manager
+	install -m755 $WOK/$SOURCE/stuff/slim-theme $fs/usr/bin/slim-theme
 }
 
 post_install()
 {
-	local root
-	root=$1
-	# Restore original config.
-	if [ -f $root/etc/slim.conf.bak ]; then
-		mv -f $root/etc/slim.conf.bak $root/etc/slim.conf
-	fi
 	local USER
 	USER=$(awk -F: '/:1000:1000:/ { print $1 }' < $1/etc/passwd)
 	[ -n "$USER" ] &&
 	sed -i s/"default_user .*"/"default_user        $USER"/ $1/etc/slim.conf
+
+	# In order to update the SLiM, we need to restart it.
+	# We can't just "/etc/init.d/slim restart" because it momentarily interrupts
+	# X session and the user will get a terrible console with strange letters.
+	printf '%40s\n' | tr ' ' '='
+	echo "In order to update the SLiM,"
+	echo "please, reboot your system!"
 }
 
 pre_remove()

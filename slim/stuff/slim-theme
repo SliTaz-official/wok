@@ -1,0 +1,135 @@
+#/bin/sh
+# slim-theme: manage SLiM themes
+# Aleksej Bobylev <al.bobylev@gmail.com>, 2013
+
+ME=$(basename $0)
+VERSION=20130525
+CONF=/etc/slim.conf
+
+help()
+{
+	cat >&2 << EOT
+$ME: Manage SLiM themes
+
+Usage: $ME OPTION [NAME]
+
+Options:
+  -h       Display this short help and exit
+  -l       List available themes (comma separated)
+  -g       Get the name of current theme (note, it can be comma separated list)
+  -s NAME  Set NAME theme as current; name of previous theme will be stored
+           (note, you can set comma separated list for random theme behavior)
+  -f NAME  Forget about NAME theme and return to previous used theme
+  -V       Display information about $ME version
+  -t       Translate current theme's strings according to global LANG value
+           (note, its done auto when -s processed)
+  -T LANG  Same as above, but use specified language
+
+Set option works like stack: you can "set" theme several times (every time you
+install new SLiM theme). Use "forget" option at every theme uninstall to revert
+to previous theme, if it was current.
+EOT
+	exit 0
+}
+
+get_current()	awk '/current_theme/ { print $2 }' $CONF
+get_prev()		awk '/previous_theme/ { print $2 }' $CONF
+set_current()	sed -i 's|^current_theme .*$|current_theme       '$1'|' $CONF
+set_prev()
+{
+	sed -i '/^previous_theme/d' $CONF
+	[ x$1 != x ] && echo "previous_theme      $1" >> $CONF
+}
+find_theme()
+{
+	cd /usr/share/slim/themes
+	theme=$(ls -Ad $1 2>/dev/null | head -n1)
+	[ x$theme == x ] && echo "Theme \"$1\" not exist!" >&2 && exit 1
+	echo $theme
+}
+i18n()
+{
+	lang=$1
+	curr=$(get_current)
+	strings=/usr/share/slim/themes/$curr/strings
+	[ ! -e $strings ] && exit 0
+	conf=/usr/share/slim/themes/$curr/slim.theme
+	for str in welcome_msg username_msg password_msg; do
+		# ll_CC.UTF-8@euro ; ll_CC.UTF-8 ; ll_CC ; ll ; en
+		for langtry in $lang ${lang%@*} ${lang%\.*} ${lang%_*} en; do
+			try="$(grep '^'${str:0:1}':'$langtry'	' $strings | cut -d'	' -f2)"
+			[ x"$try" != x ] && break
+		done
+		sed -i 's|^\('$str'\).*$|\1             '"$try"'|' $conf
+		echo "$str[$langtry]=$try" >&2
+	done
+}
+
+set_theme()
+{
+	theme=$(find_theme "$1")
+	curr=$(get_current)
+	prev=$(get_prev)
+	if [ x$theme != x$curr ]; then
+		echo "Set theme $theme" >&2
+		[ x$prev != x ] && curr=$curr:$prev
+		set_prev $curr
+		set_current $theme
+	else
+		echo "Already set" >&2
+	fi
+
+	i18n $LANG
+	exit 0
+}
+
+forget_theme()
+{
+	theme=$(find_theme "$1")
+	curr=$(get_current)
+	prev=$(get_prev)
+	echo "Forget theme \"$theme\"" >&2
+	if [ x$theme == x$curr ]; then
+		last=$(echo $prev | cut -d: -f1); [ x$last == x ] && last=base
+		rest=${prev#*:}; [ x$rest == x$prev ] && rest=
+		prev=$rest; set_prev $prev
+		echo "Back to \"$last\" theme" >&2
+		set_current $last
+	fi
+	prev=$(echo $(echo $prev | tr ':' '\n' | sed "/$theme/d") | tr ' ' ':')
+	set_prev $prev
+
+	exit 0
+}
+
+
+# parse only first option
+getopts ":lgs:f:VhtT:" opt
+case $opt in
+	l)
+		list=$(find /usr/share/slim/themes/*/slim.theme | sort | awk -F/ '{ print $6 }')
+		echo $list | tr ' ' ','; exit 0 ;;
+	g)
+		get_current; exit 0 ;;
+	s)
+		set_theme "$OPTARG" ;;
+	f)
+		forget_theme "$OPTARG" ;;
+	V)
+		echo $VERSION; exit 0 ;;
+	h)
+		help; exit 0 ;;
+	t)
+		i18n $LANG; exit 0 ;;
+	T)
+		i18n $OPTARG; exit 0 ;;
+	*)
+		if [ x$OPTARG == xs -o x$OPTARG == xf -o x$OPTARG == xT ]; then
+			echo "Option \"$OPTARG\" requires an argument."
+		else
+			[ x$OPTARG != x ] && echo "Illegal option \"$OPTARG\"."
+		fi
+		echo "$ME -h for help."; exit 1 ;;
+esac
+
+help
