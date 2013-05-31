@@ -3,27 +3,32 @@
 PACKAGE="xorg-fontcacheproto"
 VERSION="0.1.3"
 CATEGORY="development"
-SHORT_DESC="Xorg server protocol."
+SHORT_DESC="Fontcache extension headers"
 MAINTAINER="pankso@slitaz.org"
-SOURCE="fontcacheproto"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
+LICENSE="other"
 WEB_SITE="http://www.x.org/"
+TARBALL="${PACKAGE#xorg-}-$VERSION.tar.bz2"
 WGET_URL="$XORG_MIRROR/proto/$TARBALL"
+
+DEPENDS="xorg-util-macros xorg-libX11-dev"
+BUILD_DEPENDS="xorg-util-macros"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    ./configure --prefix=/usr --sysconfdir=/etc \
-    --mandir=/usr/share/man --localstatedir=/var \
-    $CONFIGURE_ARGS
-    make
-    make DESTDIR=$PWD/_pkg install
+	./configure \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    cp -a $_pkg/* $fs
-}
+	mkdir -p $fs/usr/share/licenses
+	cp -a $src/COPYING $fs/usr/share/licenses/$PACKAGE.txt
 
+	cp -a $install/* $fs
+}

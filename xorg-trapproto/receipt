@@ -3,27 +3,34 @@
 PACKAGE="xorg-trapproto"
 VERSION="3.4.3"
 CATEGORY="development"
-SHORT_DESC="Xorg server protocol."
+SHORT_DESC="Trap extension headers"
 MAINTAINER="pankso@slitaz.org"
-SOURCE="trapproto"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
+LICENSE="other"
 WEB_SITE="http://www.x.org/"
+TARBALL="${PACKAGE#xorg-}-$VERSION.tar.bz2"
 WGET_URL="$XORG_MIRROR/proto/$TARBALL"
+
+DEPENDS="xorg-libX11-dev xorg-server-dev xorg-xproto"
+# /usr/include/X11/extensions/xtraplib.h:	#include <X11/Intrinsic.h>			?
+# /usr/lib/pkgconfigtrapproto.pc:			Requires: xt.pc						?
+BUILD_DEPENDS="xorg-util-macros"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    ./configure --prefix=/usr --sysconfdir=/etc \
-    --mandir=/usr/share/man --localstatedir=/var \
-    $CONFIGURE_ARGS
-    make
-    make DESTDIR=$PWD/_pkg install
+	./configure \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    cp -a $_pkg/* $fs
-}
+	mkdir -p $fs/usr/share/licenses
+	cp -a $src/COPYING $fs/usr/share/licenses/$PACKAGE.txt
 
+	cp -a $install/* $fs
+}

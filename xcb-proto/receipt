@@ -1,33 +1,36 @@
 # SliTaz package receipt.
 
 PACKAGE="xcb-proto"
-VERSION="1.7.1"
-CATEGORY="x-window"
-SHORT_DESC="XCB protocol."
+VERSION="1.8"
+CATEGORY="development"
+SHORT_DESC="X protocol descriptions for XCB"
 MAINTAINER="mallory@sweetpeople.org"
-DEPENDS="python"
-BUILD_DEPENDS="python-dev"
+LICENSE="other"
+WEB_SITE="http://xcb.freedesktop.org/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://xcb.freedesktop.org"
-WGET_URL="$WEB_SITE/dist/$TARBALL"
+WGET_URL="${WEB_SITE}dist/$TARBALL"
+
+DEPENDS="python"
+BUILD_DEPENDS="python-dev libxml2-tools"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $_pkg/usr/share $fs/usr
-    cp -a $_pkg/usr/lib $fs/usr
-}
+	mkdir -p $fs/usr/share/licenses
+	cp -a $src/COPYING $fs/usr/share/licenses/$PACKAGE.txt
 
+	cp -a $install/* $fs
+	# cook removes *.pyc *.pyo files by itself, but they leaves in files.list
+	find $fs -name '*.py?' -delete
+}

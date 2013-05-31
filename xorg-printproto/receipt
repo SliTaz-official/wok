@@ -1,33 +1,35 @@
 # SliTaz package receipt.
 
 PACKAGE="xorg-printproto"
-SOURCE="printproto"
 VERSION="1.0.5"
 CATEGORY="development"
-SHORT_DESC="Xorg server devel module."
+SHORT_DESC="Print extension headers"
 MAINTAINER="rcx@zoominternet.net"
-DEPENDS="xorg-util-macros"
-BUILD_DEPENDS="xorg-util-macros"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
+LICENSE="other"
 WEB_SITE="http://www.x.org/"
+TARBALL="${PACKAGE#xorg-}-$VERSION.tar.bz2"
 WGET_URL="$XORG_MIRROR/proto/$TARBALL"
+
+DEPENDS="xorg-fontsproto xorg-libX11-dev xorg-libXau-dev"
+BUILD_DEPENDS="xorg-util-macros"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$PWD/_pkg install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs
-	cp -a $_pkg/usr $fs
-}
+	mkdir -p $fs/usr/share/licenses
+	cp -a $src/COPYING $fs/usr/share/licenses/$PACKAGE.txt
 
+	cp -a $install/* $fs
+	rm -rf $fs/usr/share/man
+}

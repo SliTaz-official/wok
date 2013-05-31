@@ -11,17 +11,19 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="${WEB_SITE}dist/$TARBALL"
 
 DEPENDS="glibc-base xorg-libXau xorg-libXdmcp"
-# autoconf and automake in bdeps breaks build (but, see warnings in log)
-BUILD_DEPENDS="libxslt-dev xcb-proto xorg-libXau-dev xorg-libXdmcp-dev"
+BUILD_DEPENDS="libxslt-dev xcb-proto xorg-libXau-dev xorg-libXdmcp-dev \
+autoconf automake libtool"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# http://www.linuxfromscratch.org/blfs/view/svn/x/libxcb.html
 	sed -i "s|pthread-stubs||" $src/configure.ac &&
+	autoreconf -fi &&
 	./configure \
 		--enable-xinput \
 		--disable-build-docs \
+		--disable-static \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install

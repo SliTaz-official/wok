@@ -3,29 +3,34 @@
 PACKAGE="xorg-libXau"
 VERSION="1.0.7"
 CATEGORY="x-window"
-SHORT_DESC="Xorg authorization routines."
+SHORT_DESC="X authorization file management libary"
 MAINTAINER="pankso@slitaz.org"
-SOURCE="libXau"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
-BUILD_DEPENDS="pkg-config xorg-xproto"
+LICENSE="other"
 WEB_SITE="http://www.x.org/"
+TARBALL="${PACKAGE#xorg-}-$VERSION.tar.bz2"
 WGET_URL="$XORG_MIRROR/lib/$TARBALL"
+
+DEPENDS="glibc-base"
+BUILD_DEPENDS="xorg-xproto"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--sysconfdir=/etc \
-		--mandir=/usr/share/man \
 		--localstatedir=/var \
+		--disable-static \
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
+	mkdir -p \
+		$fs/usr/share/licenses \
+		$fs/usr/lib
+	cp -a $src/COPYING $fs/usr/share/licenses/$PACKAGE.txt
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
