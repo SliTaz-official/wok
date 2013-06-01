@@ -1,18 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="hplip"
-VERSION="3.12.2" 
+VERSION="3.12.11" 
 CATEGORY="system-tools"
 SHORT_DESC="Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet"
 MAINTAINER="jozee@slitaz.org"
 DEPENDS="ghostscript python cups dbus-python libusb jpeg tiff sane-backends \
-libgphoto2 libexif gcc-lib-base libtool libv4l"
-BUILD_DEPENDS="ghostscript-dev dbus-python-dev sane-backends-dev sane-backends \
-libexif-dev libgphoto2-dev libgphoto2 pkg-config libusb-dev jpeg-dev cups-dev \
-dbus-dev tiff-dev python python-dev dbus-python libtool"
+libgphoto2 libexif gcc-lib-base libtool libv4l net-snmp PyQt-x11-gpl"
+BUILD_DEPENDS="ghostscript-dev dbus-python-dev sane-backends-dev \
+sane-backends libexif-dev libgphoto2-dev Qt4-dev libgphoto2 pkg-config libusb-dev \
+jpeg-dev cups-dev dbus-dev tiff-dev python python-dev dbus-python net-snmp-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://hplipopensource.com"
-WGET_URL="http://downloads.sourceforge.net/sourceforge/hplip/$TARBALL"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="printer driver printing"
 BUGS="Unable to delete hplip.desktop from $fs.  Using hack in post_install."
 
@@ -20,18 +20,18 @@ BUGS="Unable to delete hplip.desktop from $fs.  Using hack in post_install."
 compile_rules()
 {
 	cd $src
+
+	# fix build with cups 1.6 - FC hplip-ipp-accessors.patch
+	patch -Np1 -i $stuff/cups-1.6-buildfix.diff
+
 	./configure  \
 		--prefix=/usr \
 		--sysconfdir=/etc \
-		--disable-network-build \
 		--disable-doc-build \
-		--disable-gui-build \
-		--disable-fax-build \
-		--disable-qt3 \
-                --enable-pp-build \
+		--enable-qt4 \
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -39,21 +39,23 @@ genpkg_rules()
 {
 	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share
 	
-	cp -a $_pkg/etc   $fs
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/cups $fs/usr/lib
-	cp -a $_pkg/usr/lib/python* $fs/usr/lib
-	cp -a $_pkg/usr/lib/sane $fs/usr/lib
-	cp -a $_pkg/usr/lib/*so* $fs/usr/lib
-	cp -a $_pkg/usr/share/cups \
-		   $_pkg/usr/share/hal \
-		   $_pkg/usr/share/hplip \
-		   $_pkg/usr/share/ppd \
+	cp -a $install/etc   $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/cups $fs/usr/lib
+	cp -a $install/usr/lib/python* $fs/usr/lib
+	cp -a $install/usr/lib/sane $fs/usr/lib
+	cp -a $install/usr/lib/*so* $fs/usr/lib
+	cp -a $install/usr/share/cups \
+		   $install/usr/share/hplip \
+		   $install/usr/share/ppd \
 		   $fs/usr/share
 
 	# compress non-zipped ppd files
 	find $fs/usr/share/ppd/HP -name "*.ppd" -exec gzip -n9 {} \;
- 
+
+	# make sure hp-toolbox exist
+	ln -sf ../share/hplip/toolbox.py $fs/usr/bin/hp-toolbox	
+
 	# remove autostart of hp-daemon
 	rm -rf $fs/etc/sane.d
  
@@ -63,8 +65,5 @@ genpkg_rules()
 
 post_install()
 {
-	# remove the desktop file                                   
-	rm $fs/usr/share/applications/hplip.desktop
-	                
 	tazpkg reconfigure udev --root=$1
 }
