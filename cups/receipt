@@ -1,23 +1,26 @@
 # SliTaz package receipt.
 
 PACKAGE="cups"
-VERSION="1.5.3"
+VERSION="1.6.1"
 CATEGORY="system-tools"
 SHORT_DESC="Common UNIX Printing System."
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="libssl slitaz-base-files gnutls dbus jpeg libpng tiff zlib \
-libcomerr libkrb5 gcc-lib-base libusb-compat libtasn1 poppler-apps"
-BUILD_DEPENDS="openssl-dev php-dev poppler-apps"
 TARBALL="$PACKAGE-$VERSION-source.tar.bz2"
 WEB_SITE="http://www.cups.org/"
 WGET_URL="ftp://ftp.easysw.com/pub/cups/$VERSION/$TARBALL"
 TAGS="printer printing"
 
+DEPENDS="libssl slitaz-base-files libgcrypt gnutls dbus jpeg libpng tiff zlib \
+libcomerr cups-doc libkrb5 libcomerr3 gcc-lib-base libusb-compat libtasn1 acl poppler-apps"
+BUILD_DEPENDS="libgcrypt-dev gnutls-dev dbus-dev jpeg-dev libpng-dev \
+tiff-dev zlib-dev libtasn1-dev openssl-dev libusb-compat-dev php-dev \
+acl-dev poppler-apps"
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	patch -p1 < $stuff/install-sh.u
+	patch -Np1 -i $stuff/install-sh.u
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -37,7 +40,7 @@ compile_rules()
 		--with-pdftops=pdftops \
 		$CONFIGURE_ARGS &&
 	make &&
-	make BUILDROOT=$PWD/_pkg install
+	make BUILDROOT=$DESTDIR install
 
 }
 
@@ -46,18 +49,15 @@ genpkg_rules()
 {
 	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share/pixmaps
 
-	cp -a $_pkg/etc/cups $fs/etc
-	cp -a $_pkg/etc/dbus* $fs/etc
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/cups $fs/usr/lib
-	cp -a $_pkg/usr/share/cups $fs/usr/share
-	cp -a $_pkg/usr/share/icons/hicolor/32x32/apps/cups.png $fs/usr/share/pixmaps
-	cp -a $_pkg/var $fs
-
-	# We need the doc for CSS, images and help in the web interface.
-	cp -a $_pkg/usr/share/doc $fs/usr/share
+	cp -a $install/etc/cups $fs/etc
+	cp -a $install/etc/dbus* $fs/etc
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/cups $fs/usr/lib
+	cp -a $install/usr/share/cups $fs/usr/share
+	cp -a $install/usr/share/icons/hicolor/32x32/apps/cups.png $fs/usr/share/pixmaps
+	cp -a $install/var $fs
 
 	# tazwok does not strip files other than .so in usr/lib
 
@@ -90,7 +90,11 @@ post_install()
 # Stop cups daemon before rm.
 pre_remove()
 {
-	[ -z "$1" ] && /etc/init.d/cupsd stop
+	local root
+	root=$1
+	if [ -z "$root" ]; then
+		/etc/init.d/cupsd stop
+	fi
 }
 
 # Overlap busybox
@@ -101,5 +105,5 @@ pre_install()
 
 post_remove()
 {
-	ln -s /bin/busybox /usr/bin/lpr
+	ln -s /bin/busybox $1/usr/bin/lpr
 }
