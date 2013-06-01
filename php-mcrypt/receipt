@@ -1,20 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="php-mcrypt"
-VERSION="5.4.4"
+VERSION="5.4.13"
 CATEGORY="development"
 SHORT_DESC="mcrypt module for PHP web programming language."
 MAINTAINER="erjo@slitaz.org"
+DEPENDS="libmcrypt php libtool"
 WEB_SITE="http://www.php.net/"
 WANTED="php"
-
-DEPENDS="libmcrypt php libltdl"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/php
-	cp $(find $_pkg | grep mcrypt.so) $fs/usr/share/php/
+	cp $(find $install | grep mcrypt.so) $fs/usr/share/php/
 }
 
 # Post and pre install commans to stop
@@ -58,9 +57,12 @@ pre_remove()
 
 	# Start Web server.
 	while read daemon file; do
-		if [ -f /etc/init.d/$daemon -a -f "/var/run/$file" ]; then
+		[ -z "$1" ] || continue
+		if [ -f "/var/run/$file" ]; then
 			/etc/init.d/$daemon stop
 			sleep 2
+		fi
+		if [ -f /etc/init.d/$daemon ]; then
 			/etc/init.d/$daemon start
 		fi
 	done <<EOT

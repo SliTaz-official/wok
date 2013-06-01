@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="php"
-VERSION="5.4.4"
+VERSION="5.4.13"
 CATEGORY="development"
 SHORT_DESC="PHP web programming language."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.php.net/"
-WGET_URL="http://us2.php.net/distributions/$TARBALL"
+WGET_URL="http://www.php.net/distributions/$TARBALL"
 PROVIDE="php:lighttpd"
 
 DEPENDS="php-common lighttpd zlib libxml2 sqlite libssl"
@@ -15,8 +15,7 @@ BUILD_DEPENDS="sqlite-dev libxml2-dev zlib-dev libmysqlclient mysql-dev \
 net-snmp-dev postgresql-dev gettext openssl-dev apache-dev apr-util-dev \
 c-client mhash-dev libpng-dev libunixODBC unixODBC-dev openldap-dev \
 libldap apr-dev libmcrypt-dev curl-dev cyrus-sasl-dev perl pkg-config \
-jpeg-dev net-snmp-dev apache freetype-dev libtool bison \
-re2c coreutils-conditions"
+jpeg-dev net-snmp-dev libvpx-dev apache"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -27,17 +26,14 @@ compile_rules()
 --sysconfdir=/etc \
 --infodir=/usr/share/info \
 --mandir=/usr/share/man \
---enable-fastcgi \
---enable-discard-path \
---enable-force-cgi-redirect \
 --enable-mbstring \
 --enable-sockets \
 --enable-ftp \
 --enable-zip \
 --enable-calendar \
 --enable-exif \
+--config-cache \
 --enable-dba=shared \
---enable-dbase=shared \
 --with-config-file-path=/etc \
 --with-zlib \
 --with-gettext \
@@ -45,31 +41,35 @@ compile_rules()
 --with-mysql=shared,/usr \
 --with-mysqli=shared \
 --with-mysql-sock=/var/mysql/mysql.sock \
+--with-pdo-sqlite=shared,/usr \
 --with-pgsql=shared,/usr \
 --with-snmp=shared,/usr \
 --enable-soap=shared,/usr \
 --with-ldap=shared \
 --with-imap=shared --with-imap-ssl \
---with-freetype-dir=/usr/include/freetype2 \
---with-mhash=shared \
+--with-mhash \
 --with-gd=shared \
 --with-jpeg-dir=/usr \
 --with-png-dir=/usr \
+--with-vpx-dir=/usr \
 --with-openssl=shared \
 --with-unixODBC=shared,/usr \
 --with-pear=/usr/share/php \
 --with-pdo-mysql=shared \
 --with-pdo-pgsql=shared \
 --with-curl=shared \
+--enable-sqlite-utf8 \
+--with-sqlite3=shared,/usr \
+--with-sqlite=shared \
 "
 	sed -i 's/pam_start/pam_nostart/' configure
-	./configure $COMMON_ARGS && \
-	make $MAKEFLAGS && make INSTALL_ROOT=$DESTDIR install
-	./configure $COMMON_ARGS --with-apxs2=/usr/bin/apxs && \
+	./configure $COMMON_ARGS $CONFIGURE_ARGS && \
+	make $MAKEFLAGS && make -j1 INSTALL_ROOT=$DESTDIR install
+	./configure $COMMON_ARGS $CONFIGURE_ARGS --with-apxs2=/usr/bin/apxs && \
 	make $MAKEFLAGS && {
 		mkdir -p $DESTDIR/etc/apache
 		cp /etc/apache/httpd.conf $DESTDIR/etc/apache/httpd.conf
-		make INSTALL_ROOT=$DESTDIR install
+		make -j1 INSTALL_ROOT=$DESTDIR install
 	}
 	# Production config file.
 	mkdir -p $DESTDIR/etc
@@ -85,10 +85,11 @@ genpkg_rules()
 	cp -a $src/sapi/cgi/php-cgi $fs/usr/bin
 }
 
-# Post and pre install commands to stop and restart Web server if needed.
+# Post and pre install commands to stop
+# and restart Web server if needed.
 pre_install()
 {
-	if [ -f "$1/var/run/lighttpd.pid" ]; then
+	if [ -z "$1" -a ! -f "/var/run/lighttpd.pid" ]; then
 		/etc/init.d/lighttpd stop
 	fi
 }

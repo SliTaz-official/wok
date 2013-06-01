@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="php-pdo-pgsql"
-VERSION="5.4.4"
+VERSION="5.4.13"
 CATEGORY="development"
 SHORT_DESC="PDO PgSQL module for PHP web programming language."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -13,7 +13,7 @@ WANTED="php"
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/php
-	cp $(find $_pkg | grep pdo_pgsql.so) $fs/usr/share/php/
+	cp $(find $install | grep pdo_pgsql.so) $fs/usr/share/php/
 }
 
 # Post and pre install commans to stop
@@ -57,9 +57,12 @@ pre_remove()
 
 	# Start Web server.
 	while read daemon file; do
-		if [ -f /etc/init.d/$daemon -a -f "/var/run/$file" ]; then
+		[ -z "$1" ] || continue
+		if [ -z "$1" -a -f "/var/run/$file" ]; then
 			/etc/init.d/$daemon stop
 			sleep 2
+		fi
+		if [ -z "$1" -a -f /etc/init.d/$daemon ]; then
 			/etc/init.d/$daemon start
 		fi
 	done <<EOT

@@ -1,11 +1,11 @@
 # SliTaz package receipt.
 
-PACKAGE="php-ldap"
+PACKAGE="php-sqlite"
 VERSION="5.4.13"
 CATEGORY="development"
-SHORT_DESC="ldap module for PHP web programming language."
-MAINTAINER="pascal.bellard@slitaz.org"
-DEPENDS="libldap php openssl cyrus-sasl libkrb5 libcomerr3"
+SHORT_DESC="sqlite module for PHP web programming language."
+MAINTAINER="slaxemulator@gmail.com"
+DEPENDS="php sqlite"
 WEB_SITE="http://www.php.net/"
 WANTED="php"
 
@@ -13,27 +13,15 @@ WANTED="php"
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/php
-	cp $(find $install | grep ldap.so) $fs/usr/share/php/
-}
-
-# Post and pre install commans to stop
-# and restart Web server if needed.
-pre_install()
-{
-	while read daemon file; do
-		if [ -z "$1" -a -f "/var/run/$file" ]; then
-			/etc/init.d/$daemon stop
-		fi
-	done <<EOT
-apache apache/httpd.pid
-lighttpd lighttpd.pid
-EOT
+	cp $(find $install | grep sqlite.so) $fs/usr/share/php/
+	cp $(find $install | grep sqlite3.so) $fs/usr/share/php/
+	cp $(find $install | grep pdo_sqlite.so) $fs/usr/share/php/
 }
 
 post_install()
 {
-	grep -q ^extension=ldap.so $1/etc/php.ini || \
-	    sed -e 's|extension=msql.so|extension=msql.so\nextension=ldap.so|' -i $1/etc/php.ini
+	grep -q ^extension=sqlite3.so $1/etc/php.ini || \
+	    sed -e 's|extension=msql.so|extension=msql.so\nextension=sqlite3.so|' -i $1/etc/php.ini
 	# Start Web server.
 	while read daemon file; do
 		[ -z "$1" ] || continue
@@ -53,7 +41,7 @@ EOT
 # Pre and post remove commands for Tazpkg.
 pre_remove()
 {
-	sed -i '/.*=ldap.so.*/d' /etc/php.ini
+	sed -i '/.*=sqlite3.so.*/d' /etc/php.ini
 
 	# Start Web server.
 	while read daemon file; do
