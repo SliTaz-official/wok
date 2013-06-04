@@ -1,24 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="wicd"
-VERSION="1.7.0"
+VERSION="1.7.2.4"
 CATEGORY="network"
 SHORT_DESC="Network connection manager"
 MAINTAINER="jozee@slitaz.org"
 DEPENDS="python dbus-python ethtool wpa_supplicant pygtk"
-BUILD_DEPENDS="python-dev dbus-python-dev python"
+BUILD_DEPENDS="python-distribute python-babel python-dev dbus-python-dev"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://heanet.dl.sourceforge.net/sourceforge/wicd/"
-WGET_URL="$WEB_SITE/$TARBALL"
+WEB_SITE="http://wicd.sourceforge.net/"
+WGET_URL="https://launchpad.net/wicd/${VERSION:0:3}/$VERSION/+download/$TARBALL"
 TAGS="wireless ethernet"
 
 # Rules to configure and make the package.
 compile_rules()
 {
     cd $src
+    # Fix problem with new urwid FS#33378 LP#1075399
+    patch -Np0 -i $stuff/831_830.patch
+    patch -Np0 -i $stuff/835_834.patch
+    patch -Np0 -i $stuff/dbus_string_fix.patch
     python setup.py configure
-    python setup.py install --root=$PWD/_pkg
-   
+    #HACK for https://bugs.launchpad.net/wicd/+bug/928589
+    mkdir -p translations/ast/LC_MESSAGES
+    msgfmt po/ast.po -o translations/ast/LC_MESSAGES/wicd.mo
+    python setup.py install --root=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -27,19 +33,19 @@ genpkg_rules()
     mkdir -p $fs/usr
     mkdir -p $fs/etc
     mkdir -p $fs/var
-    cp -a $_pkg/usr/* $fs/usr
-    cp -a $_pkg/etc/* $fs/etc
-    cp -a $_pkg/var/* $fs/var
+    cp -a $install/usr/* $fs/usr
+    cp -a $install/etc/* $fs/etc
+    cp -a $install/var/* $fs/var
     rm -f -r $fs/usr/share/doc
     rm -f -r $fs/usr/share/man
     rm -f -r $fs/usr/share/icons/hicolor/*
     rm -f -r $fs/usr/share/locale
-    cp -a $_pkg/usr/share/icons/hicolor/scalable $fs/usr/share/icons/hicolor
-    cp -a $_pkg/usr/share/icons/hicolor/32x32 $fs/usr/share/icons/hicolor
+    cp -a $install/usr/share/icons/hicolor/scalable $fs/usr/share/icons/hicolor
+    cp -a $install/usr/share/icons/hicolor/32x32 $fs/usr/share/icons/hicolor
     mkdir -p $fs/etc/init.d
-    cp -a stuff/wicd $fs/etc/init.d
+    cp -a $stuff/wicd $fs/etc/init.d
 	# dhclient as fake udhcpc wrapper
-  	cp -a stuff/dhclient $fs/usr/bin 
+  	cp -a $stuff/dhclient $fs/usr/bin 
 	# set permissions
 	chmod +x $fs/usr/bin/dhclient
 	
