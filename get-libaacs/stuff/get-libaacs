@@ -1,0 +1,83 @@
+#!/bin/sh -e
+
+PACKAGE="libaacs"
+VERSION="1.0"
+WEB_SITE="http://vlc-bluray.whoknowsmy.name/"
+CATEGORY="non-free"
+SUGGESTED="vlc"
+SHORT_DESC="A library to play encrypted blu-ray"
+MAINTAINER="nobody@slitaz.org"
+
+ROOT="$1"
+[ -d "$ROOT" ] || ROOT=""
+
+if test $(id -u) != 0 ; then
+        echo -e "\nYou must be root to run `basename $0`."
+        echo -e "Please type 'su' and root password to become super-user.\n"
+        exit 0
+fi
+
+if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+	[ -n "$ROOT" ] && exit 1
+	tazpkg remove $PACKAGE
+	[ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
+fi
+
+TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR && cd $TMP_DIR
+
+for i in KEYDB.cfg linux32/libaacs.so.0 ; do
+	wget ${WEB_SITE}files/$i
+	[ -s $(basename $i) ] && continue
+	cd $CUR_DIR
+	rm -rf $TMP_DIR
+	echo "Could not download $(basename $i) from ${WEB_SITE}files/$i. Exiting."
+	exit 1
+done
+
+mkdir -p $PACKAGE-$VERSION/fs/usr/lib $PACKAGE-$VERSION/fs/etc/skel/.config/aacs
+mv libaacs.so.0 $PACKAGE-$VERSION/fs/usr/lib
+mv KEYDB.cfg $PACKAGE-$VERSION/fs/etc/skel/.config/aacs
+
+cat > $PACKAGE-$VERSION/receipt <<EOT
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="$CATEGORY"
+SHORT_DESC="$SHORT_DESC"
+MAINTAINER="$MAINTAINER"
+SUGGESTED="$SUGGESTED"
+WEB_SITE="$WEB_SITE"
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	for i in $1/home/*/.config ; do
+		[ -d $i ] || continue
+		cp -a $1/etc/skel/.config/aacs $i
+		chown -R $(stat -c '%u.%g' $i) $i/aacs
+	done
+}
+
+pre_remove()
+{
+	rm -rf $1/home/*/.config/aacs
+}
+EOT
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+
+# Clean to save RAM memory
+rm -rf $PACKAGE-$VERSION
+
+# Install pseudo package
+tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+case " $@ " in
+*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
+esac
+
+# Clean
+cd $CUR_DIR
+rm -rf $TMP_DIR
+
