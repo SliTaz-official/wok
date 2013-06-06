@@ -2,7 +2,7 @@
 
 PACKAGE="enlightenment-pam"
 SOURCE="enlightenment"
-VERSION="0.17.2.1"
+VERSION="0.17.3"
 CATEGORY="x-window"
 SHORT_DESC="Enlightenment window manager (E17) with PAM, Bluez and connman support."
 MAINTAINER="pankso@slitaz.org"
@@ -14,9 +14,11 @@ TAGS="e enlightenment wm window-manager"
 LOCALES="da de es fr fr_CH it pt_BR ru zh_CN zh_TW"
 
 # Add PAM and bluez support (enlightenment is smaller).
-DEPENDS="emotion efreet edbus eeze alsa-lib connman pam xcb-util-keysyms"
-BUILD_DEPENDS="emotion-dev efreet-dev edbus-dev eeze-dev
-alsa-lib-dev bluez-dev connman-dev pam-dev pm-utils xcb-util-keysyms-dev"
+DEPENDS="emotion efreet edbus alsa-lib pam xcb-util-keysyms"
+BUILD_DEPENDS="emotion-dev efreet-dev edbus-dev
+xcb-util-keysyms-dev alsa-lib-dev
+bluez-dev connman-dev pam-dev pm-utils"
+SUGGESTED="bluez wpa_supplicant connman pm-utils"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -24,11 +26,14 @@ compile_rules()
 	CFLAGS="$CFLAGS -fvisibility=hidden"
 	LDFLAGS="$LDFLAGS -fvisibility=hidden"
 	export LDFLAGS
+
 	./configure \
 		--sysconfdir=/etc \
+		--disable-mount-hal \
 		--disable-doc \
+		--build=${ARCH}-slitaz-gnulinux \
 		$CONFIGURE_ARGS &&
-	make && make install
+	make $MAKEFLAGS && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
