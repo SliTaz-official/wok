@@ -1,17 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="emotion"
-VERSION="1.7.6"
+VERSION="1.7.7"
 CATEGORY="x-window"
-SHORT_DESC="E17 Emotion is a video (and audio) codec playback library."
+SHORT_DESC="EFL video and audio codec playback library."
 MAINTAINER="pankso@slitaz.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.enlightenment.org/"
 WGET_URL="http://download.enlightenment.org/releases/$TARBALL"
 TAGS="e enlightenment efl"
 
-DEPENDS="edje eio xine-lib"
-BUILD_DEPENDS="edje-dev eio-dev xine-lib-dev"
+DEPENDS="edje eio eeze xine-lib"
+BUILD_DEPENDS="edje-dev eio-dev eeze-dev
+xine-lib-dev"
+OPTIONAL_DEPENDS="gstreamer-dev gst-plugins-base-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -19,12 +21,12 @@ compile_rules()
 	CFLAGS="$CFLAGS -fvisibility=hidden"
 	LDFLAGS="$LDFLAGS -fvisibility=hidden"
 	export LDFLAGS
-	sed -i 's|.*driver_class.get_.*|//&|' src/modules/xine/emotion_xine_vo_out.c
+
 	./configure \
-		--disable-gstreamer \
-		--disable-emotion-test \
+		--disable-doc \
+		--enable-emotion-test \
 		$CONFIGURE_ARGS &&
-	make && make install
+	make $MAKEFILE && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -32,8 +34,8 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/edje/modules/emotion/linux-gnu-i486-1.0.0 \
 		$fs/usr/lib/emotion
+	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/share $fs/usr
-#	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/lib/emotion/*.so $fs/usr/lib/emotion
 	cp -a $install/usr/lib/edje/modules/emotion/linux-gnu-i486-1.0.0/*.so \
