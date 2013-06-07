@@ -1,0 +1,73 @@
+# SliTaz package receipt.
+
+PACKAGE="monitorix"
+VERSION="3.2.1"
+CATEGORY="misc"
+SHORT_DESC="A lightweight system monitoring tool."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+WEB_SITE="http://www.monitorix.org/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}$TARBALL"
+SUGGESTED="iptables logrotate"
+
+DEPENDS="rrdtool-perl perl-libwww perl-dbi perl-xml-simple perl-cgi \
+perl-mailtools perl-mime-lite perl-config-general perl-http-server-simple"
+BUILD_DEPENDS=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+} 
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/bin $fs/etc/logrotate.d 
+	mkdir -p $fs/usr/share/monitorix
+	cp -a $src/monitorix.conf $fs/etc
+	sed 's|/var/lib|/usr/lib|' $fs/etc/monitorix.conf
+	cp -a $src/docs/monitorix.logrotate $fs/etc/logrotate.d/monitorix
+	cp -a $src/monitorix $fs/usr/bin
+	cp -a $src/lib $fs/usr/lib/monitorix
+	cp -a $src/monitorix.cgi $src/*.png $src/reports $fs/usr/share/monitorix
+}
+
+post_install()
+{
+	# Configure lighttpd server
+	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+		if ! grep -q /usr/share/monitorix/ $1/etc/lighttpd/lighttpd.conf; then
+	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/monitorix/" => "/usr/share/monitorix/",\n    "/monitorix-cgi/" => "/usr/share/monitorix/cgi/",|g' -i $1/etc/lighttpd/lighttpd.conf
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/lighttpd stop
+				/etc/init.d/lighttpd start
+			fi
+		fi
+	fi
+	# Configure apache server
+	if [ -f $1/etc/apache/httpd.conf ]; then
+		if [ ! -f $1/etc/apache/conf.d/monitorix ]; then
+			cat > $1/etc/apache/conf.d/monitorix <<EOT
+Alias /monitorix /usr/share/monitorix
+ScriptAlias /monitorix-cgi /usr/share/monitorix/cgi
+
+<Directory /usr/share/monitorix/cgi/>
+        DirectoryIndex monitorix.cgi
+        Options ExecCGI
+        Order Deny,Allow
+        Deny from all
+        Allow from 127.0.0.1
+</Directory>
+
+EOT
+			if [ -z "$1" ]; then
+				# Start Web server.
+				/etc/init.d/apache stop
+				/etc/init.d/apache start
+			fi
+		fi
+	fi
+}
