@@ -165,7 +165,7 @@
  		exit(1);
  	}
  
-@@ -24,44 +28,91 @@
+@@ -24,44 +28,99 @@
  		exit(1);
  	}
  
@@ -226,13 +226,15 @@
 +	fprintf(stderr, "Index %s.\n", build_index(offsets, num_blocks));
 +	
 +	if (argc > 2) {
++		unsigned n;
 +		loff_t data, offset = ((num_blocks + 1) * sizeof(offset)) + sizeof(head);
 +		
 +		strcpy(head.preamble, CLOOP_PREAMBLE);
-+		write(STDOUT_FILENO, &head, sizeof(head));
++		write(STDOUT_FILENO, &head, n = sizeof(head));
 +		for (i = 0; i < num_blocks; i++) {
 +			data = __be64_to_cpu(offset);
 +			write(STDOUT_FILENO, &data, sizeof(data));
++			n += sizeof(data);
 +			offset += offsets[i].size;
 +		}
 +		data = __be64_to_cpu(offset);
@@ -240,6 +242,12 @@
 +		for (i = 0; i < num_blocks && lseek64(handle, offsets[i].offset, SEEK_SET) >= 0; i++) {
 +			read(handle, buffer, offsets[i].size);
 +			write(STDOUT_FILENO, buffer, offsets[i].size);
++			n += offsets[i].size;
++		}
++		n &= 0x1FF;
++		if (n) {
++			memset(buffer, 0, 512);
++			write(STDOUT_FILENO, buffer, 512 - n);
 +		}
 +		return 0;
 +	}
@@ -283,7 +291,7 @@
  		if (i == 3) {
  			fprintf(stderr,
  				"Block head:%02X%02X%02X%02X%02X%02X%02X%02X\n",
-@@ -105,12 +156,12 @@
+@@ -105,12 +164,12 @@
  			fprintf(stderr, "Uncomp: unknown error %u\n", i);
  			exit(1);
  		}
