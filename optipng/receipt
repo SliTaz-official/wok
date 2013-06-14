@@ -1,30 +1,36 @@
 # SliTaz package receipt.
 
 PACKAGE="optipng"
-VERSION="0.6.5"
-CATEGORY="graphics"
+VERSION="0.7.4"
+CATEGORY="utilities"
 SHORT_DESC="A command line tool to compress and optimize PNG images."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="libpng zlib"
-BUILD_DEPENDS="libpng-dev zlib-dev"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+LICENSE="zlib/libpng"
 WEB_SITE="http://optipng.sourceforge.net/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="image compression"
+
+DEPENDS="libpng+apng"
+BUILD_DEPENDS="libpng+apng-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src/lib/zlib
-	./configure &&
+	./configure \
+		-prefix=/usr \
+		-with-system-libpng &&
 	make &&
-	cd $src/src
-	make -f scripts/gcc.mak
+	make test &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
-	cp -a $src/src/optipng $fs/usr/bin
+	mkdir -p \
+		$fs/usr/bin \
+		$fs/usr/share/licenses
+	cp -a $src/LICENSE.txt $fs/usr/share/licenses/$PACKAGE.txt
+	cp -a $install/usr/bin $fs/usr
 }
