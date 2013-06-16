@@ -15,7 +15,7 @@ CONFIG_FILES=""
 genpkg_rules()
 {
 	jslinux=false
-	mkdir $fs/bin $fs/dev
+	mkdir $fs/usr/share/boot/bin $fs/usr/share/boot/dev
 	CHOICE=static
 	for i in uclibc musl diet ; do
 		[ -x $src/busybox-$i ] || continue
@@ -23,16 +23,17 @@ genpkg_rules()
 	          $(stat -c %s $src/busybox-$CHOICE) ] &&
 		CHOICE=$i
 	done
-	cp -a $src/busybox-$CHOICE $fs/bin/busybox
-	mknod -m 660 $fs/dev/console c 5 1
-	mknod -m 771 $fs/dev/null c 1 3
-	mknod -m 660 $fs/dev/tty c 5 0
-	mknod -m 660 $fs/dev/tty1 c 4 1
+	cp -a $src/busybox-$CHOICE $fs/usr/share/boot/bin/busybox
+	chmod 4755 $fs/usr/share/boot/bin/busybox
+	mknod -m 660 $fs/usr/share/boot/dev/console c 5 1
+	mknod -m 771 $fs/usr/share/boot/dev/null c 1 3
+	mknod -m 660 $fs/usr/share/boot/dev/tty c 5 0
+	mknod -m 660 $fs/usr/share/boot/dev/tty1 c 4 1
 	if $jslinux; then
-		mknod -m 644 $fs/dev/clipboard c 10 231
-		mknod -m 660 $fs/dev/ttyS0 c 4 64
+		mknod -m 644 $fs/usr/share/boot/dev/clipboard c 10 231
+		mknod -m 660 $fs/usr/share/boot/dev/ttyS0 c 4 64
 	fi
-	cat > $fs/init <<EOT
+	cat > $fs/usr/share/boot/init <<EOT
 #!/bin/busybox sh
 
 for i in \$(busybox --list) ; do busybox ln /bin/busybox /bin/\$i; done
@@ -90,15 +91,7 @@ while true; do
 	fi
 done
 EOT
-	chmod +x $fs/init
-}
-
-pre_install()
-{
-	rm -rf $1/bin $1/dev
-}
-
-post_install()
-{
-	rm -rf $1/lib $1/var $1/sbin $1/home $1/root $1/media
+	chmod +x $fs/usr/share/boot/init
+	( cd $fs/usr/share/boot ; find bin dev init | cpio -o -H newc ) > initrd 
+	rm -rf $fs/usr/share/boot/bin $fs/usr/share/boot/dev $fs/usr/share/boot/init
 }
