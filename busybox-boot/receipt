@@ -16,7 +16,14 @@ genpkg_rules()
 {
 	jslinux=false
 	mkdir $fs/bin $fs/dev
-	cp -a $src/busybox-static $fs/bin/busybox
+	CHOICE=static
+	for i in uclibc musl diet ; do
+		[ -x $src/busybox-$i ] || continue
+		[ $(stat -c %s $src/busybox-$i) -lt \
+	          $(stat -c %s $src/busybox-$CHOICE) ] &&
+		CHOICE=$i
+	done
+	cp -a $src/busybox-$CHOICE $fs/bin/busybox
 	mknod -m 660 $fs/dev/console c 5 1
 	mknod -m 771 $fs/dev/null c 1 3
 	mknod -m 660 $fs/dev/tty c 5 0

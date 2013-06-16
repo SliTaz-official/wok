@@ -14,8 +14,15 @@ CONFIG_FILES=""
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr/share/boot
-    cp -a $src/busybox-static $fs/usr/share/boot
+	mkdir -p $fs/usr/share/boot
+	CHOICE=static
+	for i in uclibc musl diet ; do
+		[ -x $src/busybox-$i ] || continue
+		[ $(stat -c %s $src/busybox-$i) -lt \
+	          $(stat -c %s $src/busybox-$CHOICE) ] &&
+		CHOICE=$i
+	done
+	cp -a $src/busybox-$CHOICE $fs/usr/share/boot/busybox-static
 }
 
 post_install()
