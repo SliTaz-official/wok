@@ -1,0 +1,40 @@
+--- busybox-1.21.0/include/platform.h
++++ busybox-1.21.0/include/platform.h
+@@ -453,6 +453,13 @@
+ # undef HAVE_NET_ETHERNET_H
+ #endif
+ 
++#if defined(__musl__)
++# undef HAVE_SETBIT
++# include <stddef.h>
++# include <termios.h>
++# include <sys/ioctl.h>
++#endif
++
+ /*
+  * Now, define prototypes for all the functions defined in platform.c
+  * These must come after all the HAVE_* macros are defined (or not)
+--- busybox-1.21.0/include/libbb.h
++++ busybox-1.21.0/include/libbb.h
+@@ -210,6 +210,13 @@
+  * (in today's world - signed 64bit). For full support of large files,
+  * we need a few helper #defines (below) and careful use of off_t
+  * instead of int/ssize_t. No lseek64(), O_LARGEFILE etc necessary */
++#if defined(__musl__)
++typedef unsigned long long uoff_t;
++#  define XATOOFF(a) xatoull_range((a), 0, LLONG_MAX)
++#  define BB_STRTOOFF bb_strtoull
++#  define STRTOOFF strtoull
++#  define OFF_FMT "ll"
++#else
+ #if ENABLE_LFS
+ /* CONFIG_LFS is on */
+ # if ULONG_MAX > 0xffffffff
+@@ -246,6 +253,7 @@
+ #  define STRTOOFF strtol
+ #  define OFF_FMT "l"
+ # endif
++#endif
+ #endif
+ /* scary. better ideas? (but do *test* them first!) */
+ #define OFF_T_MAX  ((off_t)~((off_t)1 << (sizeof(off_t)*8-1)))

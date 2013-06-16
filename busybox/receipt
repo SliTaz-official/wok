@@ -12,7 +12,8 @@ WGET_URL="http://www.busybox.net/downloads/$TARBALL"
 HOST_ARCH="i486 arm"
 
 DEPENDS="slitaz-base-files glibc-base ncurses-common"
-BUILD_DEPENDS="bzip2 pam pam-dev uclibc-cross-compiler-i486"
+BUILD_DEPENDS="bzip2 pam pam-dev uclibc-cross-compiler-i486 \
+musl-libc-dev dietlibc"
 
 CONFIG_FILES="/etc/dnsd.conf /etc/inetd.conf /etc/udhcpd.conf \
 /etc/resolv.conf /etc/httpd.conf"
@@ -42,6 +43,8 @@ cmdline.u
 diff.u
 nfs-segfault.u
 xz.u
+musl.u
+diet.u
 EOT
     cp $stuff/$PACKAGE-${VERSION%.*}.config .config
 }
@@ -72,9 +75,28 @@ compile_rules()
 		    mv busybox busybox-pam
 
 		    # prepare busybox-static package
-		    cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
-		    make oldconfig && make || return 1
-		    mv busybox busybox-static
+		    if [ -x /usr/bin/uclibc-i486-gcc ]; then
+			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
+			make oldconfig && make || return 1
+			cp busybox busybox-static
+			mv busybox busybox-uclibc
+		    fi
+
+		    if [ -x /usr/bin/musl-gcc ]; then
+			# prepare busybox-musl package
+			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
+			sed -i 's|uclibc-i486-||;s|CFLAGS="|&-D__musl__ |' .config
+			make oldconfig && make CC=musl-gcc || return 1
+			mv busybox busybox-musl
+		    fi
+
+		    if [ -x /usr/lib/diet/bin/diet ]; then
+			# prepare busybox-diet package
+			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
+			sed -i 's|uclibc-i486-||;s|CFLAGS="|&-D_BSD_SOURCE |;s|LDFLAGS="|&-Wl,--allow-multiple-definition |;s|LDLIBS="|&compat rpc |' .config
+			make oldconfig && make CC="/usr/lib/diet/bin/diet -Os gcc" || return 1
+			mv busybox busybox-diet
+		    fi
 
 		    # prepare ssfs-busybox package
 		    rootfs=$src/ssfs-busybox/usr/share/ssfs/rootfs
