@@ -6,7 +6,6 @@ VERSION="3.2.40"
 KBASEVER="3.2"
 CATEGORY="base-system"
 SHORT_DESC="The User Mode Linux kernel."
-BUILD_DEPENDS="bash perl"
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$SOURCE-$KBASEVER.tar.xz"
@@ -15,6 +14,8 @@ WGET_URL="ftp://ftp.kernel.org/pub/linux/kernel/v3.0/$TARBALL"
 [ "$KBASEVER" != "$VERSION" ] && 
 PATCH="$(dirname $WGET_URL)/patch-$VERSION.xz" &&
 EXTRA_SOURCE_FILES="$(basename $PATCH)"
+
+BUILD_DEPENDS="bash perl busybox-boot"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -26,6 +27,7 @@ compile_rules()
 		xzcat $SRC/$(basename $PATCH) | patch -Np1
 		touch done.patch-$VERSION
 	fi
+	cp /usr/share/boot/initrd initrd.cpio
 	sed -i 's/uname -m/echo i386/;s|/bin/bash|/bin/ash|g' Makefile
 	make ARCH=um mrproper	
 	cat > mini.config << EOF &&
@@ -81,6 +83,7 @@ CONFIG_IP_NF_TARGET_MASQUERADE=y
 CONFIG_IP_NF_TARGET_REDIRECT=y
 CONFIG_NETDEVICES=y
 CONFIG_TUN=y
+CONFIG_INITRAMFS_SOURCE="initrd.cpio"
 EOF
 	make ARCH=um allnoconfig KCONFIG_ALLCONFIG=mini.config &&
 	make ARCH=um
