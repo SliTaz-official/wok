@@ -1,0 +1,52 @@
+Allow to boot on any directories in a filesystem
+--- linux-3.2.40/Documentation/kernel-parameters.txt
++++ linux-3.2.40/Documentation/kernel-parameters.txt
+@@ -2304,8 +2304,9 @@
+ 
+ 	ro		[KNL] Mount root device read-only on boot
+ 
+-	root=		[KNL] Root filesystem
++	root=		[KNL] Root filesystem and root directory
+ 			See name_to_dev_t comment in init/do_mounts.c.
++			Format: <root_filesystem>[:root_directory]
+ 
+ 	rootdelay=	[KNL] Delay (in seconds) to pause before attempting to
+ 			mount the root filesystem
+--- linux-3.2.40/init/do_mounts.c
++++ linux-3.2.40/init/do_mounts.c
+@@ -28,6 +28,7 @@
+ int root_mountflags = MS_RDONLY | MS_SILENT;
+ static char * __initdata root_device_name;
+ static char __initdata saved_root_name[64];
++static char __initdata saved_root_directory[256];
+ static int root_wait;
+ 
+ dev_t ROOT_DEV;
+@@ -255,7 +256,20 @@
+ 
+ static int __init root_dev_setup(char *line)
+ {
++	char *s;
++	
++	strcpy(saved_root_directory, ".");
+ 	strlcpy(saved_root_name, line, sizeof(saved_root_name));
++	s = strchr(saved_root_name, ':');
++	if (s) {
++		*s = '\0';
++		s = strchr(line, ':');
++		for (s++; *s == '/'; s++);
++		if (*s) {
++			strlcpy(saved_root_directory, s,
++				sizeof(saved_root_directory));
++		}
++	}
+ 	return 1;
+ }
+ 
+@@ -554,5 +568,5 @@
+ out:
+ 	devtmpfs_mount("dev");
+ 	sys_mount(".", "/", NULL, MS_MOVE, NULL);
+-	sys_chroot((const char __user __force *)".");
++	sys_chroot((const char __user __force *)saved_root_directory);
+ }
