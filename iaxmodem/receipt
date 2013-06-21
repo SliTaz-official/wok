@@ -1,0 +1,66 @@
+# SliTaz package receipt.
+
+PACKAGE="iaxmodem"
+VERSION="1.2.0"
+CATEGORY="network"
+SHORT_DESC="Software modem for libiax2."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://iaxmodem.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+CONFIG_FILES="/etc/iaxmodem"
+
+DEPENDS="jpeg tiff zlib hylafax"
+BUILD_DEPENDS="jpeg-dev tiff-dev zlib-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	#sed -i 's/uucp/root/' iaxmodem.c
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man \
+	$CONFIGURE_ARGS && make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/etc/iaxmodem $fs/var/log/iaxmodem
+	cp -a $src/iaxmodem $fs/usr/bin
+	cat > $fs/etc/iaxmodem/ttyIAX0 <<EOT
+device		/dev/ttyIAX0
+owner		root:root
+mode		660
+port		4570
+refresh		60
+server		127.0.0.1
+peername	iaxmodem
+secret		password
+codec		alaw
+EOT
+#owner		uucp:uucp
+#refresh		50
+}
+
+pre_remove()
+{
+	sed -i '/iaxmodem/d' $1/etc/inittab
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	grep -q ^uucp: $1/etc/passwd || {
+		chroot $1/ adduser -s /bin/false -S -D -H uucp
+		sed -i 's/^uucp:x:[0-9]*:[0-9]*:/uucp:x:0:0:/' $1/etc/passwd 
+	}
+	grep -q ^uucp: $1/etc/group  || chroot $1/ addgroup uucp
+	touch $1/var/log/iaxmodem/ttyIAX0 $1/var/log/iaxmodem/iaxmodem
+	grep iaxmodem $1/etc/inittab || cat >> $1/etc/inittab << EOT
+::respawn:/usr/bin/iaxmodem ttyIAX0 > /var/log/iaxmodem.log 2>&1
+::respawn:/usr/sbin/faxgetty ttyIAX0
+EOT
+	[ -n "$1" ] || kill -1 1
+}
