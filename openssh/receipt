@@ -9,10 +9,12 @@ LICENSE="BSD"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.openssh.org/"
 WGET_URL="ftp://ftp.fr.openbsd.org/pub/OpenBSD/OpenSSH/portable/$TARBALL"
-DEPENDS="sftp-server libcrypto zlib"
-BUILD_DEPENDS="libcrypto-dev zlib-dev openssl-dev"
+TAZPANEL_DAEMON="man::sshd|edit::/etc/ssh/sshd_config|options|web::$WEB_SITE"
 PROVIDE="ssh"
 TAGS="ssh"
+
+DEPENDS="sftp-server libcrypto zlib"
+BUILD_DEPENDS="libcrypto-dev zlib-dev openssl-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -30,9 +32,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr $fs/etc/init.d $fs/etc/ssh 
-	cp -a $_pkg/usr/sbin $_pkg/usr/bin $fs/usr
+	cp -a $install/usr/sbin $install/usr/bin $fs/usr
 	rm -f $fs/usr/sbin/sftp-server
-	cp -a $_pkg/etc $fs
+	cp -a $install/etc $fs
 	cp $stuff/openssh $fs/etc/init.d
 	sed -i 's|/usr/libexec/sftp-server|/usr/sbin/sftp-server|' \
 		$fs/etc/ssh/sshd_config
@@ -41,7 +43,7 @@ genpkg_rules()
 # Pre and post install commands for Tazpkg.
 pre_install()
 {
-       mkdir -p /var/run/sshd
+       mkdir -p $1/var/run/sshd
 }
 
 post_install()
@@ -60,6 +62,6 @@ EOT
 # Pre and post remove commands for Tazpkg.
 post_remove()
 {
-       rm -fr /var/run/sshd
+       rm -fr $1/var/run/sshd
 }       
 

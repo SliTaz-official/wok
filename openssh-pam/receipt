@@ -10,9 +10,11 @@ SOURCE="openssh"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.openssh.org/"
 WGET_URL="ftp://ftp.fr.openbsd.org/pub/OpenBSD/OpenSSH/portable/$TARBALL"
+TAZPANEL_DAEMON="man::sshd|edit::/etc/ssh/sshd_config|options::OPENSSH_OPTIONS|web::$WEB_SITE"
+PROVIDE="openssh:pam ssh:pam"
+
 DEPENDS="sftp-server libcrypto zlib pam"
 BUILD_DEPENDS="libcrypto-dev zlib-dev openssl-dev pam pam-dev"
-PROVIDE="openssh:pam ssh:pam"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -30,9 +32,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr $fs/etc/init.d $fs/etc/ssh 
-	cp -a $_pkg/usr/sbin $_pkg/usr/bin $fs/usr
+	cp -a $install/usr/sbin $install/usr/bin $fs/usr
 	rm -f $fs/usr/sbin/sftp-server
-	cp -a $_pkg/etc $fs
+	cp -a $install/etc $fs
 	cp ../$SOURCE/stuff/openssh $fs/etc/init.d
 	sed -i 's/.*UsePAM.*/UsePAM yes/' $fs/etc/ssh/sshd_config
 }
@@ -40,7 +42,7 @@ genpkg_rules()
 # Pre and post install commands for Tazpkg.
 pre_install()
 {
-       mkdir -p /var/run/sshd
+       mkdir -p $1/var/run/sshd
 }        
 
 post_install()
@@ -59,5 +61,5 @@ EOT
 # Pre and post remove commands for Tazpkg.
 post_remove()
 {
-       rm -fr /var/run/sshd
+       rm -fr $1/var/run/sshd
 }
