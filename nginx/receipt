@@ -56,36 +56,38 @@ compile_rules()
 # On SliTaz Lighttpd runs as user/group : www/www or 80/80.
 genpkg_rules()
 {
-	cp -a $_pkg/* $fs/
-	rm -rf $fs/usr/html
-	cp -a stuff/* $fs
+        cp -a $_pkg/* $fs/
+        rm -rf $fs/usr/html
+        cp -a stuff/* $fs
+        sed -i 's/#user  nobody;/user  www;/' $fs/etc/nginx/nginx.conf
 }
 
 # Pre and post install commands for Tazpkg.
 # We stop the server by default in case of upgarde.
 pre_install()
 {
-	echo "Processing pre-install commands..."
-	[ -f /etc/init.d/$PACKAGE ] && /etc/init.d/$PACKAGE stop
-	# Backup config file.
-	if [ -d $1/$CONFIG_FILES ]; then
+        echo "Processing pre-install commands..."
+        [ -f /etc/init.d/$PACKAGE ] && /etc/init.d/$PACKAGE stop
+        # Backup config file.
+        if [ -d $1/$CONFIG_FILES ]; then
 		cp -a $1/$CONFIG_FILES $1/$CONFIG_FILES.bak
-	fi
+        fi
 }
 post_install()
 {
-	echo "Processing post-install commands..."
-	# Restore original config.
-	if [ -d $1/$CONFIG_FILES.bak ]; then
+        echo "Processing post-install commands..."
+        mkdir -p /var/spool/nginx
+        # Restore original config.
+        if [ -d $1/$CONFIG_FILES.bak ]; then
 		rm -rf $1/$CONFIG_FILES
 		mv $1/$CONFIG_FILES.bak $1/$CONFIG_FILES
-	fi
-	# Just in case.
-	chown www.www $1/var/log/$PACKAGE
-	if [ -z "$1" ]; then
+        fi
+        # Just in case.
+        chown www.www $1/var/log/$PACKAGE
+        if [ -z "$1" ]; then
 		for i in apache lighttpd ; do
 			[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
 		done
 		/etc/init.d/$PACKAGE start
-	fi
+        fi
 }
