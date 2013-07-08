@@ -5,51 +5,45 @@ VERSION="0.9"
 CATEGORY="misc"
 SHORT_DESC="boot process performance analyzer (add init=/sbin/bootchartd to boot options)"
 MAINTAINER="jozee@slitaz.org"
-SUGGESTED="pybootchartgui"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.bootchart.org/"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="boot performance profile analyze"
 
-
+SUGGESTED="pybootchartgui"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/sbin $fs/etc 
+	mkdir -p $fs/sbin $fs/etc 
 	cp -a $src/script/bootchartd $fs/sbin/bootchartd
-	cp -a $src/script/bootchartd.conf $fs/etc  
+	cp -a $src/script/bootchartd.conf $fs/etc
 	sed -i "s/SAMPLE_PERIOD=0.2/SAMPLE_PERIOD=1/" $fs/etc/bootchartd.conf
 	sed -i "s/kdm_greet/kdm_greet slim /" $fs/sbin/bootchartd
-	sed -i "s|\/usr\/bin\/bootchart|\/usr\/bin\/pybootchartgui|g" $fs/sbin/bootchartd
-	
+	sed -i 's|/usr/bin/bootchart|/usr/bin/pybootchartgui|g' $fs/sbin/bootchartd
 }
 
 post_install()
 {
-	   KERNEL_VERSION=`uname -a | cut -d ' ' -f3 | cut -d '-' -f1`
-	  if [ -f "$1/boot/grub/menu.lst" ]; then
-	   # add an entry only if slitaz is installed and bootchart is not configured
-		if ! grep -q "vmlinuz-$KERNEL_VERSION-slitaz.*sbin/bootchartd.*" $1/boot/grub/menu.lst; then
-    		root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1`
-			grub_dev=`cat $1/boot/grub/menu.lst | grep "root.* (" | head -n 1`
-			# Add new kernel entry for bootchart
-    		cat >> $1/boot/grub/menu.lst << EOT
+	KERNEL_VERSION=$(uname -r | cut -d- -f1)
+	MENU="$1/boot/grub/menu.lst"
+	if [ -f "$MENU" ]; then
+		# add an entry only if slitaz is installed and bootchart is not configured
+		if ! grep -q "vmlinuz-$KERNEL_VERSION-slitaz.*sbin/bootchartd.*" "$MENU"; then
+			# FIXME: really use the first comer value?
+			#        (our lines will be LAST)
+			root_dev=`sed -n 's/.*root=\([^ ]*\).*/\1/p' "$MENU" | head -n1`
+			grub_dev=`sed -n '/^[^#]*root.* (/p' "$MENU" | head -n1`
+			# Add new kernel entry for bootchart and display information message
+			echo "----"
+			echo "GRUB is installed, these tree lines has been added to the menu.lst:"
+			tee -a "$MENU" << EOT
 
 title  SliTaz GNU/Linux (Kernel $KERNEL_VERSION-slitaz) with bootchart
 $grub_dev
        kernel /boot/vmlinuz-$KERNEL_VERSION-slitaz root=$root_dev init=/sbin/bootchartd
 EOT
-			# Display information message.
-    		cat <<EOT
-----
-GRUB is installed, these tree lines has been added to the menu.lst:
- 
-title  SliTaz GNU/Linux (Kernel $KERNEL_VERSION-slitaz)
-$grub_dev
-       kernel /boot/vmlinuz-$KERNEL_VERSION-slitaz root=$root_dev init=/sbin/bootchartd
-----
-EOT
+			echo "----"
 		else
 			echo "Grub menu.lst seems already configured to boot new Kernel..."
 		fi

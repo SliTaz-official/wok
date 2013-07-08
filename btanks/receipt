@@ -5,8 +5,8 @@ VERSION="0.9.8083"
 CATEGORY="games"
 SHORT_DESC="A fast 2d tank arcade game with multiplayer and split-screen modes."
 MAINTAINER="slaxemulator@gmail.com"
+WEB_SITE="http://btanks.sourceforge.net/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://btanks.sourceforge.net"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
 DEPENDS="expat mesa libsigc++ libvorbis lua5.1 openal libsdl libsdl-image libsmpeg"
@@ -25,8 +25,20 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/btanks $fs/usr/share/applications $fs/usr/bin
+	mkdir -p \
+		$fs/usr/bin \
+		$fs/usr/lib/btanks \
+		$fs/usr/share/applications \
+		$fs/usr/share/btanks
+
+	# libs
 	cp -a $src/*.so $fs/usr/lib/btanks
+
+	ls -1 $fs/usr/lib/btanks/ | while read A; do
+		ln -s /usr/lib/btanks/$A $fs/usr/share/btanks/$A || return 1
+	done
+
+	# executables & wrappers
 	cp -a $src/btanks $fs/usr/bin/btanks-bin
 	cp -a $src/bted $fs/usr/bin/bted-bin
 
@@ -35,21 +47,17 @@ genpkg_rules()
 	chmod +x $fs/usr/bin/btanks
 	chmod +x $fs/usr/bin/bted
 
-	mkdir -p $fs/usr/share/btanks
-
-	# Make settings saveable
-
-	touch $fs/usr/share/btanks/bt.xml
-	chgrp 1000 $fs/usr/share/btanks/bt.xml
-	chmod 664 $fs/usr/share/btanks/bt.xml
-	
 	ln -s /usr/bin/btanks-bin $fs/usr/share/btanks/btanks && \
 	ln -s /usr/bin/bted-bin $fs/usr/share/btanks/bted || return 1
 
-	ls -1 $fs/usr/lib/btanks/ | while read A; do
-		ln -s /usr/lib/btanks/$A $fs/usr/share/btanks/$A || return 1
-	done
-
 	# game data
 	cp -a $src/data $fs/usr/share/btanks
+	chown -R root:root $fs
+	chmod a-x $fs/usr/share/btanks/data/sounds/boomerang-missile.ogg
+
+	# make settings saveable
+	SETTINGS=$fs/usr/share/btanks/bt.xml
+	touch $SETTINGS
+	chgrp 1000 $SETTINGS
+	chmod 664 $SETTINGS
 }
