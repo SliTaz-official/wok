@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="apache"
-VERSION="2.2.22"
+VERSION="2.4.4"
 CATEGORY="network"
 SHORT_DESC="Secure, efficient and extensible HTTP server."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -23,8 +23,11 @@ compile_rules()
 	cd $src
 	grep -q Slitaz config.layout || \
 		cat $stuff/slitaz.layout >> config.layout
-	./configure --mandir=/usr/share/man --enable-mods-shared=all \
-		--enable-proxy --enable-ssl \
+	./configure --mandir=/usr/share/man \
+		--with-program-name=apache \
+		--enable-mods-shared=all \
+		--enable-proxy \
+		--enable-ssl \
 		--enable-layout=Slitaz $CONFIGURE_ARGS &&
 	make $MAKEFLAGS && make DESTDIR=$DESTDIR install
 }
@@ -52,8 +55,8 @@ genpkg_rules()
 		-e 's|#Include /etc/apache/extra/httpd-ssl.conf|Include /etc/apache/extra/httpd-ssl.conf|' \
 		-e 's|/etc/apache/server.crt|/etc/ssl/apache/apache.pem|' \
 		-e 's|/etc/apache/server.key|/etc/ssl/apache/apache.pem|' \
-		$fs/etc/apache/httpd.conf $fs/etc/apache/extra/httpd-ssl.conf
-	echo "Include /etc/apache/conf.d" >> $fs/etc/apache/httpd.conf
+		$fs/etc/apache/apache.conf $fs/etc/apache/extra/httpd-ssl.conf
+	echo "Include /etc/apache/conf.d" >> $fs/etc/apache/apache.conf
 }
 
 # Pre and post install commands for Tazpkg.
