@@ -1,25 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="kbd-busybox"
-VERSION="1.15.3"
+VERSION="1.15.5"
 CATEGORY="base-system"
 SHORT_DESC="Keyboard maping definitions for busybox."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-BUILD_DEPENDS="kbd-base busybox"
 WEB_SITE="http://www.slitaz.org/"
+
+BUILD_DEPENDS="kbd-base busybox"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	mkdir -p $install/usr/share/kmap
-	cd $src
 	dumpkmap > current.kmap || return 1
 	for i in $(cd /usr/share/kbd/keymaps/i386 ; ls */*.map.gz); do
 		[ "$(dirname $i)" = "include" ] && continue
 		k=$(basename $i)
 		k=${k%.map.gz}
-		loadkeys /usr/share/kbd/keymaps/i386/$i && 
+		loadkeys -u /usr/share/kbd/keymaps/i386/$i && 
 		dumpkmap > $install/usr/share/kmap/$k.kmap
 		dumpkmap | cmp current.kmap - > /dev/null && map=$i
 	done
@@ -31,4 +31,3 @@ genpkg_rules()
 {
 	cp -a $install/usr $fs
 }
-

@@ -1,26 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="kbd"
-VERSION="1.15.3"
+VERSION="1.15.5"
 CATEGORY="system-tools"
 SHORT_DESC="Keyboard maping definitions and tools."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://kbd-project.org/"
-WGET_URL="http://kbd-project.org/download/$TARBALL"
+#WGET_URL="http://kbd-project.org/download/$TARBALL"
+WGET_URL="ftp://ftp.altlinux.org/pub/people/legion/kbd/$TARBALL"
 TAGS="keyboard"
 HOST_ARCH="i486 arm"
 
-#BUILD_DEPENDS="flex"
+DEPENDS="kbd-base"
+BUILD_DEPENDS="flex pam-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	patch -Np1 -i $stuff/fix-es.po.patch
+	# standard locale placement
+	sed 's|localedir = .*|localedir = @localedir@|' -i $src/po/Makefile.in.in
 	./configure \
 		--datadir=/usr/share/kbd \
+		--localedir=/usr/share/locale \
 		$CONFIGURE_ARGS &&
 	make && make install
 }
@@ -30,13 +33,19 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share
 
-	# Copy all kbd files (should we split fonts ?) and remove the one
-	# provided by: kbd-base.
-	cp -a $_pkg/usr/share/kbd $fs/usr/share
-	rm -rf $fs/usr/share/kbd/keymaps/i386
+	# Copy all kbd files (should we split fonts?)
+	cp -a $install/usr/share/kbd $fs/usr/share
 
 	# Tools
 	cp -a $install/usr/bin $fs/usr
+
+	# Remove files provided by kbd-base and kbd-vlock.
+	for keymap in $(cat $WOK/kbd-base/stuff/keymaps-path.list); do
+		rm -f $fs/usr/share/kbd/keymaps/i386/$keymap
+	done
+	rm -rf $fs/usr/share/kbd/keymaps/include
+	rm -rf $fs/usr/share/kbd/keymaps/i386/include
+	rm -f $fs/usr/bin/loadkeys $fs/usr/bin/vlock
 }
 
 # Overlap busybox
