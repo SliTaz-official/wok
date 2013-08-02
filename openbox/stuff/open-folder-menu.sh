@@ -1,29 +1,23 @@
 #!/bin/sh
 #
-# Openbox pipe menu to launch SpaceFM using GTK bookmarks.
+# Openbox pipe menu to launch file-manager using GTK bookmarks.
 #
-
 echo '<openbox_pipe_menu>'
 
-# Home
-echo '<item label="Home">'
-echo '<action name="Execute"><execute>'
-echo "spacefm ~"
-echo '</execute></action></item>'
+bookmarks="~ $(whoami)
+~/Desktop $(gettext gtk20 Desktop)
+$(cat ~/.gtk-bookmarks)"
 
-# ~/Desktop
-echo '<item label="Desktop">'
-echo '<action name="Execute"><execute>'
-echo "spacefm ~/Desktop"
-echo '</execute></action></item>'
-
-# GTK bookmarks
-for dir in `sed 's/[ ][^ ]*$//' .gtk-bookmarks`
-do
-	echo '<item label="'`basename $dir`'">'
-	echo '<action name="Execute"><execute>'
-	echo "spacefm $dir"
-	echo '</execute></action></item>'
+IFS='
+'
+for dir in $bookmarks; do
+	cat << EOT
+	<item label="$(echo $dir | sed 's|^[^ ]* ||')">
+		<action name="Execute">
+			<execute>file-manager $(echo $dir | awk '{print $1}')</execute>
+		</action>
+	</item>
+EOT
 done
 
 echo '</openbox_pipe_menu>'
