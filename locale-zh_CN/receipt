@@ -1,50 +1,35 @@
 # SliTaz package receipt
 
 PACKAGE="locale-zh_CN"
-VERSION="4.0"
+VERSION="4.1"
 CATEGORY="system-tools"
 SHORT_DESC="Chinese Simplified locale pack."
 MAINTAINER="lufeng369@slitaz.org"
 WEB_SITE="http://www.slitaz.org/"
 
-WANTED="slitaz-i18n xorg-libX11"
+WANTED="glibc slitaz-i18n xorg-libX11"
 DEPENDS="glibc-base wqy-microhei"
-BUILD_DEPENDS="glibc-locale xorg-libX11 slitaz-i18n"
 
 LOCALE="zh_CN"
-LOCALEDEF="zh_CN"
-CHARMAP="UTF-8"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
-# Genereted locale files are in /usr/lib/locale.
 genpkg_rules()
 {
 	. $WOK/slitaz-i18n/stuff/locale-pack.functions
 	. $WOK/slitaz-i18n/stuff/locale-pack.conf
-
-	mkdir -p $fs/usr/share/locale/$LOCALE $fs/usr/lib/locale
-	localedef -i $LOCALEDEF -c -f $CHARMAP $fs/usr/lib/locale/$LOCALEDEF.UTF-8
+	get_locale
 
 	GCONV_MODULES="
-		BIG5.so             GBBIG5.so   GBGBK.so
-		UTF-32.so           GB18030.so	EUC-CN.so
-		GBK.so              UTF-7.so	libGB.so"
+		BIG5.so    GBBIG5.so   GBGBK.so
+		UTF-32.so  GB18030.so  EUC-CN.so
+		GBK.so     UTF-7.so    libGB.so"
 	mkdir -p $fs/usr/bin
 	mkdir -p $fs/usr/lib/gconv
 
 	cp /usr/bin/iconv $fs/usr/bin
 	for i in $GCONV_MODULES; do
-		cp /usr/lib/gconv/$i $fs/usr/lib/gconv
+		cp $WOK/glibc/install/usr/lib/gconv/$i $fs/usr/lib/gconv
 	done
-	
-	install  -D /usr/share/zoneinfo/Asia/Shanghai \
-		$fs/usr/share/zoneinfo/Asia/Shanghai -m 644
-	install  -D /usr/share/zoneinfo/posix/Asia/Shanghai \
-		$fs/usr/share/posix/zoneinfo/Asia/Shanghai -m 644
-	install  -D /usr/share/zoneinfo/right/Asia/Shanghai \
-		$fs/usr/share/right/zoneinfo/Asia/Shanghai -m 644
-
-	get_x11_locale
 }
 
 post_install()
@@ -60,9 +45,5 @@ post_install()
 # Back to C if it's the last used locale.
 post_remove()
 {
-	if [ -z "$1" ]; then
-		if [ $(grep -q $LOCALEDEF /etc/locale.conf) ]; then
-			echo "LANG=C" > /etc/locale.conf
-		fi
-	fi
+	echo -e "LANG=C\nLC_ALL=C" > /etc/locale.conf
 }

@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-configs"
-VERSION="5.1.5"
+VERSION="5.1.6"
 CATEGORY="base-system"
 SHORT_DESC="SliTaz config files and artwork."
 MAINTAINER="pankso@slitaz.org"
@@ -14,23 +14,30 @@ CONFIG_FILES="/etc/slitaz/applications.conf"
 DEPENDS="slitaz-configs-base xorg-libXcomposite xorg-libXdamage xorg-xcompmgr \
 transset-df ttf-dejavu slitaz-tools-boxes clearlooks slim"
 
+# Rules to configure and make the package.
+compile_rules()
+{
+	make DESTDIR=$DESTDIR menu
+	ln -s menu.en.xml $install/etc/xdg/openbox/menu.xml
+}
+
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	# Copy rootfs files from the stuff and set permissions.
 	mkdir -p $fs/etc/xdg/openbox $fs/usr/share
-	for f in menu.en.xml menu.xml autostart environment rc.xml
-	do
-		cp -a $src/rootfs/etc/xdg/openbox/$f $fs/etc/xdg/openbox
-	done
+	cp -a $src/rootfs/etc/xdg/openbox $fs/etc/xdg
+
 	# /usr/share
 	for i in applications lxdm slim slitaz
 	do
 		cp -r $src/rootfs/usr/share/$i $fs/usr/share
 	done
+
 	cp -a $src/rootfs/usr/bin $fs/usr
 	cp -a $src/rootfs/etc/lxpanel $fs/etc
 	cp -a $src/rootfs/etc/slitaz $fs/etc
+
 	chown -R root.root $fs
 }
 

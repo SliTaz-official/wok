@@ -1,71 +1,61 @@
-#!/bin/sh
-
-# Standard directories having translated files.
-mk_locale_dir()
+get_locale()
 {
-	mkdir -p \
-		$fs/usr/share/locale/$LOCALE \
-		$fs/etc/xdg/openbox
-}
+	[ "x$CHARMAP" == x ] && CHARMAP=UTF-8
 
-# Get translated files from SliTaz sub projects: configs & tools.
-get_slitaz_messages()
-{
-	configs=$WOK/slitaz-configs/source
-	openbox=$configs/slitaz-configs-*/rootfs/etc/xdg/openbox
-	#tools=$WOK/slitaz-tools/source
-
-	# Make tazwok compatible with this.
-	if [ ! -x /usr/bin/cook ]; then
-		[ -d $configs ] || tazwok get-src slitaz-configs --target=$configs
-		#[ -d $tools ] || tazwok get-src slitaz-tools --target=$tools
+	# Get translated Openbox menu from SliTaz sub project slitaz-configs
+	obmenu=$WOK/slitaz-configs/install/etc/xdg/openbox/menu.$LOCALE.xml
+	if [ -f $obmenu ]; then
+		mkdir -p $fs/etc/xdg/openbox
+		echo "* Found $LOCALE translations for: openbox menu"
+		cp $obmenu $fs/etc/xdg/openbox
 	fi
 
-	[ ! -d $configs ] && echo "ERROR: missing source slitaz-configs" && exit 1
-	#[ ! -d $tools ] && echo "ERROR: missing source slitaz-tools" && exit 1
-
-	if [ -f $openbox/menu.${LOCALE}.xml ]; then
-		echo "* Found $LOCALE locale for: openbox menu"
-		cp $openbox/menu.${LOCALE}.xml $fs/etc/xdg/openbox
-	fi
-	
-	# Tools messages will be replace in time by POT files.
-	#
-	# NOTE: All po files are now include into slitaz-tools (easy for update)
-	#
-	#if [ -d $tools/slitaz-tools-*/messages/$LOCALE ]; then
-		#echo "* Found $LOCALE locale for: slitaz-tools"
-		#cp -a $tools/slitaz-tools-*/messages/$LOCALE \
-			#$fs/usr/share/slitaz/messages
-	#fi
-	
-	#if [ -d $tools/slitaz-tools-*/po/mo/$LOCALE ]; then
-		#for app in $(ls $tools/slitaz-tools-*/po/mo/$LOCALE)
-		#do
-			#echo "* Found $LOCALE locale for: ${app%.mo}"
-			#cp -a $tools/slitaz-tools-*/po/mo/$LOCALE/$app \
-				#$fs/usr/share/locale/$LOCALE
-		#done
-	#fi
-}
-
-# Get the core packages messages.
-get_core_messages()
-{
-	for i in $CORE_PKGS
-	do
-		if [ -d $WOK/$i/install/usr/share/locale/$LOCALE ]; then
-			echo "* Found $LOCALE locale for: $i"
-			cp -a $WOK/$i/install/usr/share/locale/$LOCALE \
-				$fs/usr/share/locale
+	# Get the core packages messages.
+	mkdir -p $fs/usr/share/locale/$LOCALE
+	for app in $CORE_PKGS; do
+		app_locale=$WOK/$app/install/usr/share/locale/$LOCALE
+		if [ -d $app_locale ]; then
+			echo "* Found $LOCALE translations for: $app"
+			cp -a $app_locale $fs/usr/share/locale
 		fi
 	done
-}
 
-# Get X11 locale
-get_x11_locale()
-{
-	mkdir -p $fs/usr/share/X11/locale
-	cp -a $WOK/xorg-libX11/install/usr/share/X11/locale/$LOCALEDEF.$CHARMAP \
-		$fs/usr/share/X11/locale
+	# List of available locales
+	cd $WOK/glibc/install/usr/share/i18n/locales
+	locales=$(ls -1 | sed -n '/^'$LOCALE'$/p; /^'$LOCALE'_.*/p' | sed '/translit/d')
+	[ "x$LOCALEDEF" != x ] && locales=$LOCALEDEF
+
+	# Get X11 locale
+	for def in $locales; do
+		x11_locale=$WOK/xorg-libX11/install/usr/share/X11/locale/$def.$CHARMAP
+		if [ -d $x11_locale ]; then
+			echo "* Found $def.$CHARMAP locale for: X11"
+			mkdir -p $fs/usr/share/X11/locale
+			cp -a $x11_locale $fs/usr/share/X11/locale
+		fi
+	done
+
+	# Pregenerate locale file so we dont need glibc-locale as dep.
+	for def in $locales; do
+		echo "* Generate $def locale definition"
+		mkdir -p $fs/usr/lib/locale
+		localedef -i $def -c -f $CHARMAP $fs/usr/lib/locale/$def
+	done
+
+	# Get timezones
+	countries=$(echo $locales | \
+		sed 's|@[^ ]*||g; s|[^ _]*_||g' | tr ' ' '\n' | sort -u)
+	echo "* Copy timezone info for countries: "$countries
+	locations=''
+	for country in $countries; do
+		location=$(grep '^'$country \
+			$WOK/glibc/install/usr/share/zoneinfo/zone.tab | awk '{ print $3}')
+		locations="$locations $location"
+	done
+	for location in $locations; do
+		for tz in $location posix/$location right/$location; do
+			install -Dm644 /usr/share/zoneinfo/$tz \
+						$fs/usr/share/zoneinfo/$tz
+		done
+	done
 }
