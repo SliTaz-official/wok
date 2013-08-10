@@ -6,13 +6,15 @@ VERSION="3.4.6"
 CATEGORY="development"
 SHORT_DESC="gcc targeting the H8/300"
 MAINTAINER="rcx@zoominternet.net"
-DEPENDS="h8300-binutils"
-BUILD_DEPENDS="bison flex h8300-binutils"
+LICENSE="GPL2"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gnu.org/software/gcc/"
 WGET_URL="$GNU_MIRROR/$SOURCE/$SOURCE-$VERSION/$TARBALL"
 PROVIDE="h8300-gcc"
 TAGS="compiler C C++ ada"
+
+DEPENDS="h8300-binutils"
+BUILD_DEPENDS="bison flex h8300-binutils"
 
 # Configuration only needs included if we're in the build/wok environment
 if [ -e $WOK/h8300-toolchain/stuff/h8300.conf ] ; then
@@ -36,18 +38,18 @@ compile_rules()
 		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$src/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/include $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/include $fs/usr
 	# Do not need to copy lib/libiberty.a
 	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/gcc $fs/usr/lib
+	cp -a $install/usr/lib/gcc $fs/usr/lib
 	# Do not include the h8300* variant folders; create separate packages if they are needed
 	rm -r -f $fs/usr/lib/gcc/$H8300_TARGET/$VERSION/h8300h
 	rm -r -f $fs/usr/lib/gcc/$H8300_TARGET/$VERSION/h8300s

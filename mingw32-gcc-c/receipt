@@ -6,14 +6,16 @@ VERSION="3.4.5-20060117-2"
 CATEGORY="development"
 SHORT_DESC="MinGW32 gcc, for the C language only."
 MAINTAINER="rcx@zoominternet.net"
-DEPENDS="glibc-base mingw32-binutils mingw32-w32api-headers mingw32-runtime-headers"
-BUILD_DEPENDS="slitaz-toolchain bison flex mingw32-binutils mingw32-runtime-headers mingw32-w32api-headers"
+LICENSE="GPL2"
 TARBALL="$SOURCE-$VERSION-src.tar.gz"
 WEB_SITE="http://www.mingw.org/"
 MINGW32_URL="$SF_MIRROR/mingw"
 WGET_URL="$MINGW32_URL/$TARBALL"
 MINGW32_ID="i586-pc-mingw32"
 TAGS="compiler C"
+
+DEPENDS="glibc-base mingw32-binutils mingw32-w32api-headers mingw32-runtime-headers"
+BUILD_DEPENDS="slitaz-toolchain bison flex mingw32-binutils mingw32-runtime-headers mingw32-w32api-headers"
 
 # Configuration only needs included if we're in the build/wok environment
 if [ -e $WOK/mingw32-toolchain/stuff/mingw32.conf ] ; then
@@ -46,17 +48,17 @@ compile_rules()
 		--enable-sjlj-exceptions \
 		$CONFIGURE_ARGS &&
 	make CFLAGS="-O2 -fomit-frame-pointer" LDFLAGS="-s"  &&
-	make DESTDIR=$src/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $_pkg/usr/bin $fs/usr
+	cp -a $install/usr/bin $fs/usr
 	# do not need to copy lib/libiberty.a
 	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/gcc $fs/usr/lib
+	cp -a $install/usr/lib/gcc $fs/usr/lib
 }
 
 # Rules to setup after installation
