@@ -5,18 +5,20 @@ VERSION="2.8.6"
 CATEGORY="office"
 SHORT_DESC="Light and speed word processing application."
 MAINTAINER="pankso@slitaz.org"
-DEPENDS="gtk+ libgnomeprint libgnomeprintui libgnomecanvas fribidi libglade \
-popt libxml2 libart_lgpl libgsf libgio enchant wv xorg-libXdamage gcc-lib-base librsvg \
-goffice glibc-locale"
-BUILD_DEPENDS="$DEPENDS gtk+-dev libgnomeprint-dev libgnomeprintui-dev \
-fribidi-dev libglade-dev popt-dev libxml2-dev libart_lgpl-dev libgsf-dev \
-enchant-dev wv-dev libgnomecanvas-dev libcroco-dev libboost-dev librsvg-dev"
+LICENSE="GPL2"
 SUGGESTED="abiword-extras"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.abisource.com/"
 WGET_URL="http://www.abisource.com/downloads/abiword/$VERSION/source/$TARBALL"
 TAGS="word doc office"
 LOCALES="cs da de es fr hu id it pt ru sl sv zh"
+
+DEPENDS="gtk+ libgnomeprint libgnomeprintui libgnomecanvas fribidi libglade \
+popt libxml2 libart_lgpl libgsf libgio enchant wv xorg-libXdamage gcc-lib-base librsvg \
+goffice glibc-locale"
+BUILD_DEPENDS="$DEPENDS gtk+-dev libgnomeprint-dev libgnomeprintui-dev \
+fribidi-dev libglade-dev popt-dev libxml2-dev libart_lgpl-dev libgsf-dev \
+enchant-dev wv-dev libgnomecanvas-dev libcroco-dev libboost-dev librsvg-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -36,10 +38,10 @@ compile_rules()
 		--disable-collab-backend-sugar \
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 	
 	cd plugins
-	make DESTDIR=$src/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -47,13 +49,13 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share/pixmaps $fs/usr/lib/abiword-2.8/plugins $fs/usr/share/icons
 
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/*.so $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so $fs/usr/lib
 
-	cp -a $_pkg/usr/share/abiword-* $fs/usr/share
+	cp -a $install/usr/share/abiword-* $fs/usr/share
 
 	# Non standard pixmap
-	cp $_pkg/usr/share/icons/abiword_48.png \
+	cp $install/usr/share/icons/abiword_48.png \
 		$fs/usr/share/pixmaps/abiword.png
 
 	# fix error when abiword is run in command line
@@ -65,18 +67,18 @@ genpkg_rules()
 	rm $fs/usr/share/abiword-*/system.pro*
 
 	for LOCALE in $LOCALES; do
-		cp $_pkg/usr/share/abiword-*/strings/$LOCALE*.strings \
+		cp $install/usr/share/abiword-*/strings/$LOCALE*.strings \
 			 $fs/usr/share/abiword-*/strings/
 		# id locale not complete in sources
 		if [ "$LOCALE" != "id" ]; then
-			cp $_pkg/usr/share/abiword-*/templates/normal.awt-$LOCALE* \
+			cp $install/usr/share/abiword-*/templates/normal.awt-$LOCALE* \
 				 $fs/usr/share/abiword-*/templates/
-			cp $_pkg/usr/share/abiword-*/system.profile-$LOCALE* \
+			cp $install/usr/share/abiword-*/system.profile-$LOCALE* \
 				 $fs/usr/share/abiword-*/
 		fi
 	done
 
-	cp $_pkg/usr/share/abiword-*/templates/*.awt $fs/usr/share/abiword-*/templates/
-	cp $_pkg/usr/share/abiword-*/system.profile $fs/usr/share/abiword-*/
+	cp $install/usr/share/abiword-*/templates/*.awt $fs/usr/share/abiword-*/templates/
+	cp $install/usr/share/abiword-*/system.profile $fs/usr/share/abiword-*/
 }
 
