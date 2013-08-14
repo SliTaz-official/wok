@@ -8,24 +8,26 @@ MAINTAINER="devl547@gmail.com"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://icculus.org/physfs/"
 WGET_URL="http://icculus.org/physfs/downloads/$TARBALL"
+
 BUILD_DEPENDS="cmake wget"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	export CFLAGS="-Wno-error=unused-but-set-variable"
 	cmake $src &&
 	cmake -DCMAKE_INSTALL_PREFIX=/usr \
 	-DPHYSFS_BUILD_SHARED=ON \
 	-DPHYSFS_BUILD_TEST=OFF \
 	-DPHYSFS_BUILD_WX_TEST=OFF \
 	-DPHYSFS_INTERNAL_ZLIB=OFF .	&&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
