@@ -6,14 +6,16 @@ CATEGORY="games"
 SHORT_DESC="Soltaire games for X."
 MAINTAINER="b1+slitaz@nagel.org"
 WEB_SITE="http://manpages.ubuntu.com/manpages/intrepid/man6/xpat2.html"
-DEPENDS="xorg-libX11 xorg-libXt xorg-libXaw"
 TARBALL="$PACKAGE-$VERSION-src.tar.gz"
 WGET_URL="http://www.ibiblio.org/pub/Linux/games/solitaires/$TARBALL"
+
+DEPENDS="xorg-libX11 xorg-libXt xorg-libXaw"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
+	export LDFLAGS="-Wl,--copy-dt-needed-entries -lXmu"
 	for i in xpat2.patch layout.patch ; do
 		[ -f done.$i ] && continue
 		patch -p1 < $stuff/$i
@@ -22,14 +24,14 @@ compile_rules()
 	cd src
 	cp $stuff/Makefile .
 	make &&
-	make DESTDIR=../_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/var/games/xpat2
-	cp -a $_pkg/usr $fs
+	cp -a $install/usr $fs
 	mkdir -p $fs/usr/share/X11/app-defaults/
 	cp -a $stuff/XPat.ad $fs/usr/share/X11/app-defaults/XPat
 	touch $fs/var/games/xpat2/xpat.log

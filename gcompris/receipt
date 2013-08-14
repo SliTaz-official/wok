@@ -16,21 +16,22 @@ WGET_URL="$SF_MIRROR/project/$PACKAGE/$VERSION/$TARBALL"
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    ./configure \
-    	--enable-sdlmixer &&
-    make CFLAGS="-DG_CONST_RETURN=const" && make install &&
-    find | grep .png | xargs optipng -o7 > /dev/null
+	cd $src
+	export LDFLAGS="-Wl,--copy-dt-needed-entries -lgmodule"
+	./configure \
+		--enable-sdlmixer &&
+	make CFLAGS="-DG_CONST_RETURN=const" && make install &&
+	find | grep .png | xargs optipng -o7 > /dev/null
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/gcompris $fs/usr/share
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/gcompris/*.so* \
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/gcompris/*.so* \
 		$fs/usr/lib/gcompris
-	cp -a $_pkg/usr/share/gcompris $fs/usr/share
+	cp -a $install/usr/share/gcompris $fs/usr/share
 	# Music and voices are splited (gcompris-music, gcompris-fr, etc)
 	rm -rf $fs/usr/share/gcompris/boards/music
 	rm -rf $fs/usr/share/gcompris/boards/voices
