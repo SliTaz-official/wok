@@ -5,6 +5,7 @@ VERSION="1.1.18"
 CATEGORY="network"
 SHORT_DESC="Secure Internet Live Conferencing server."
 MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.silcnet.org"
 WGET_URL="$WEB_SITE/download/server/sources/$TARBALL"
@@ -14,19 +15,26 @@ CONFIG_FILES="/etc/silcalgs.conf /etc/silcd.conf"
 compile_rules()
 {
 	cd $src
+	mkdir -p $DESTDIR/etc
+	touch $DESTDIR/etc/silcd.pub
 	./configure --prefix=/usr --infodir=/usr/share/info \
 	--mandir=/usr/share/man --sysconfdir=/etc \
 	--with-logsdir=/var/log/silc \
 	$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr $fs/var/log/silc
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $install/etc $fs
+	cp -a $install/usr/sbin $fs/usr
 }
 
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	[ -s $1/etc/silcd.pub ] || chroot $1/ /usr/sbin/silcd -C /etc
+}
