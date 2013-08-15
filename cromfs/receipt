@@ -1,16 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="cromfs"
-VERSION="1.5.9.1"
+VERSION="1.5.10.1"
 CATEGORY="system-tools"
 SHORT_DESC="Compressed read only filesystem implemented with FUSE."
 MAINTAINER="pascal.bellard@slitaz.org"
-DEPENDS="fuse lzma lzo libgomp"
-BUILD_DEPENDS="$DEPENDS fuse-dev lzo-dev pkg-config coreutils-file-format perl"
+LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://bisqwit.iki.fi/source/cromfs.html"
 WGET_URL="http://bisqwit.iki.fi/src/arch/$TARBALL"
 PROVIDE="cromfs-or-squashfs"
+
+DEPENDS="fuse lzma lzo libgomp"
+BUILD_DEPENDS="$DEPENDS fuse-dev lzo-dev pkg-config coreutils-file-format perl"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -21,19 +23,19 @@ compile_rules()
 	./configure \
 		--prefix=/usr \
 		$CONFIGURE_ARGS &&
-	make
-	mkdir -p $PWD/_pkg/bin $PWD/_pkg/usr/bin
-	cp $src/cromfs-driver $PWD/_pkg/bin
+	make 2>&1 | grep -v cromfs-driver-static
+	mkdir -p $DESTDIR/bin $DESTDIR/usr/bin
+	cp $src/cromfs-driver $DESTDIR/bin
 	# Maybe have a plited packages (cromfs-static)
 	#cp $src/cromfs-driver-static $PWD/_pkg/bin/cromfs-driver
-	cp $src/util/cvcromfs $PWD/_pkg/usr/bin
-	cp $src/util/mkcromfs $PWD/_pkg/usr/bin
-	cp $src/util/unmkcromfs $PWD/_pkg/bin
+	cp $src/util/cvcromfs $DESTDIR/usr/bin
+	cp $src/util/mkcromfs $DESTDIR/usr/bin
+	cp $src/util/unmkcromfs $DESTDIR/bin
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $_pkg/usr $fs
-	cp -a $_pkg/bin $fs
+	cp -a $install/usr $fs
+	cp -a $install/bin $fs
 }
