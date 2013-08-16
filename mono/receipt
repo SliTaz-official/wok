@@ -5,12 +5,14 @@ VERSION="2.10.8"
 CATEGORY="development"
 SHORT_DESC="Cross-platform, open source .NET development framework"
 MAINTAINER="rcx@zoominternet.net"
-DEPENDS="glib glibc-base zlib libgdiplus"
-BUILD_DEPENDS="tar bzip2 m4 pkg-config bison gawk \
-gettext glib-dev perl libgdiplus-dev"
+LICENSE="LGPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.mono-project.com/"
 WGET_URL="http://download.mono-project.com/sources/$PACKAGE/$TARBALL"
+
+DEPENDS="glib glibc-base zlib libgdiplus"
+BUILD_DEPENDS="tar bzip2 m4 pkg-config bison gawk \
+gettext glib-dev perl libgdiplus-dev"
 
 # Build documentation at http://mono-project.com/Compiling_Mono
 # and http://mono-project.com/Release_Notes_Mono_2.4#Installing_Mono_2.4
@@ -22,9 +24,17 @@ compile_rules()
 	./configure \
 		--sysconfdir=/etc \
 		--with-libgdiplus=installed \
-		$CONFIGURE_ARGS  &&
+		$CONFIGURE_ARGS 2>&1 | grep -v /libtool &&
 	make -j 1 && make install
 
+	for i in System.Web_standalone_test_net_2_0 \
+		 System.Web_standalone_test_net_4_0 \
+		 System.Web.Extensions_standalone_test_net_2_0 \
+		 System.Web.Extensions_standalone_test_net_4_0 \
+		 net_2_0_standalone-runner-support \
+		 net_4_0_standalone-runner-support ; do
+		touch -d 197001010000 mcs/build/deps/$i.dll.makefrag
+	done
 	cd $src/mcs/jay
 	make -j 1 && make DESTDIR=$DESTDIR prefix=/usr INSTALL=../../install-sh install
 
@@ -36,9 +46,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/mono $fs/usr/lib
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/etc $fs
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/mono $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/etc $fs
 	chmod +x $fs/usr/bin/*
 }
