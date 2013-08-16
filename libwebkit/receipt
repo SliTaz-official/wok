@@ -49,7 +49,8 @@ compile_rules()
 		--with-gtk=2.0 \
 		--disable-gtk-doc \
 		$CONFIGURE_ARGS &&
-	make all stamp-po && make DESTDIR=$DESTDIR install &&
+	make all stamp-po 2>&1 | grep -v Source/WebCore/dom/testing &&
+	make DESTDIR=$DESTDIR install 2>&1 | grep -Ev (/usr/share/gtk-doc/html|Documentation/webkitgtk/version.xml) &&
 	cp -a $src/Programs/GtkLauncher $DESTDIR/usr/bin
 }
 
@@ -57,6 +58,6 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/bin
-	[ -d $_pkg/usr/lib/girepository-1.0 ] && cp -a $_pkg/usr/lib/girepository-1.0 $fs/usr/lib
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	[ -d $install/usr/lib/girepository-1.0 ] && cp -a $install/usr/lib/girepository-1.0 $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
