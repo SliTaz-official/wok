@@ -1,0 +1,53 @@
+# SliTaz package receipt.
+
+PACKAGE="php-cherokee"
+VERSION="5.4.13"
+CATEGORY="development"
+SHORT_DESC="PHP module for cherokee."
+MAINTAINER="shann@slitaz.org"
+DEPENDS="php-common cherokee libxml2 zlib"
+WEB_SITE="http://www.php.net/"
+WANTED="php"
+PROVIDE="php:cherokee"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/php
+	cp -a $src/sapi/cgi/php-cgi $fs/usr/bin
+}
+
+# Post and pre install commands to stop
+# and restart Web server if needed.
+pre_install()
+{
+	if [ -z "$1" -a ! -f "/var/run/cherokee.pid" ]; then
+		/etc/init.d/cherokee stop
+	fi
+}
+
+post_install()
+{
+	# Enable php
+#	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+#	  [ -f $1/usr/lib/lighttpd/mod_fastcgi.so ] || \
+#	  	tazpkg get-install lighttpd-modules --root=$1/
+#	  sed -e 's|#fastcgi.server = ( ".php"|fastcgi.server = ( ".php"|' \
+#	    -e 's|#"bin-path" => "/usr/bin/php-cgi"|"bin-path" => "/usr/bin/php-cgi"|' \
+#	    -e 's|#"socket" => "/tmp/php.socket"|"socket" => "/tmp/php.socket"\n  )))|' \
+#	    -i $1/etc/lighttpd/lighttpd.conf
+#	  grep -q mod_fastcgi $1/etc/lighttpd/lighttpd.conf || \
+#	  	sed -e 's|server.modules = (|server.modules = (\n  "mod_fastcgi",|' \
+#	  	    -i $1/etc/lighttpd/lighttpd.conf
+#	  grep -q php3 $1/etc/lighttpd/lighttpd.conf || \
+#	  	sed -e 's|for PHP.*|for PHP.\nfastcgi.map-extensions = ( ".php3" => ".php", ".php4" => ".php", ".php5" => ".php" )|' \
+#	  	    -i $1/etc/lighttpd/lighttpd.conf
+#	fi
+
+
+	# Start Web server.
+	if [ -z "$1" -a ! -f /var/run/cherokee.pid \
+		     -a -f /etc/init.d/cherokee ]; then
+		/etc/init.d/cherokee start
+	fi
+}
