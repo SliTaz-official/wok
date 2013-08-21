@@ -9,9 +9,11 @@ SUGGESTED="php perl python"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://nginx.org/"
 WGET_URL="${WEB_SITE}download//$TARBALL"
+PROVIDE="lighttpd"
+CONFIG_FILES="/etc/nginx"
+
 DEPENDS="pcre openssl zlib"
 BUILD_DEPENDS="pcre-dev openssl-dev zlib-dev"
-CONFIG_FILES="/etc/nginx"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -49,14 +51,14 @@ compile_rules()
 		--with-mail --with-mail_ssl_module \
 		--user=80 --group=80 &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 # On SliTaz Lighttpd runs as user/group : www/www or 80/80.
 genpkg_rules()
 {
-        cp -a $_pkg/* $fs/
+        cp -a $install/* $fs/
         rm -rf $fs/usr/html
         cp -a stuff/* $fs
         sed -i 's/#user  nobody;/user  www;/' $fs/etc/nginx/nginx.conf
