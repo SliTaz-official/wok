@@ -19,7 +19,7 @@ case "$1" in
       exit 1
     fi
     echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS -k start 
+    $DAEMON $OPTIONS -d &>/dev/null  
     status
     ;;
   stop)
@@ -28,17 +28,7 @@ case "$1" in
       exit 1
     fi
     echo -n "Stopping $DESC: $NAME... "
-    $DAEMON $OPTION -k stop
-    rm $PIDFILE
-    status
-    ;;
-  reload)
-    if ! active_pidfile $PIDFILE cherokee ; then
-      echo "$NAME is not running."
-      exit 1
-    fi
-    echo -n "Stopping $DESC: $NAME... "
-    $DAEMON $OPTION -k graceful
+    kill $(cat $PIDFILE)
     status
     ;;
   restart)
@@ -47,7 +37,10 @@ case "$1" in
       exit 1
     fi
     echo -n "Restarting $DESC: $NAME... "
-    $DAEMON $OPTIONS -k restart
+    kill $(cat $PIDFILE)
+    rm $PIDFILE
+    sleep 2
+    $DAEMON $OPTIONS -d &>/dev/null
     status
     ;;
   *)
