@@ -19,9 +19,11 @@ compile_rules()
 	cd $src
 	make
 	cp $stuff/*.S $stuff/pack .
-	cc -o unpack.o -Wa,-a=unpack.lst -c unpack.S
-	objcopy -O binary unpack.o unpack.bin
-	./pack --build unpack.bin
+	for i in bootloader unpack ; do
+		cc -o $i.o -Wa,-a=$i.lst -c $i.S
+		objcopy -O binary $i.o $i.bin
+	done
+	./pack --build bootloader.bin unpack.bin
 	./pack memtest.bin memtest.packed
 	sed -i  -e 's/SERIAL_CONSOLE_DEFAULT 0/SERIAL_CONSOLE_DEFAULT 1/' \
 		-e 's/SERIAL_BAUD_RATE 9600/SERIAL_BAUD_RATE 115200/' config.h
@@ -35,13 +37,5 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/boot
-	cp $src/memtest.packed-115200 $fs/boot/memtest
-}
-
-# Pre and post install commands for Tazpkg.
-post_install()
-{
-	cat <<EOT
-Output to vga and serial port. Default kernel cmdline: console=ttyS0,115200e8
-EOT
+	cp $src/memtest.packed $fs/boot/memtest
 }

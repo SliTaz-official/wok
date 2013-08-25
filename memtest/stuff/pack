@@ -1,12 +1,15 @@
 #!/bin/sh
 if [ "$1" == "--build" ]; then
-	bin=${2:-unpack.bin}
+	set -- ${2:-bootloader.bin} ${3:-unpack.bin}
 	cat >> $0 <<EOM
-$(gzip -9 < $bin | uuencode -m -)
+$(dd if=$1 bs=512 count=1 conv=sync | cat - $2 | gzip -9 | uuencode -m -)
 EOT
 EOM
-	getip=$(grep -s getip ${bin/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
+	getip=$(grep -s getip ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
 	sed -i "s/XXX/$((515+0x${getip:-5}))/" $0
+	helpmsg=$(sed '/helpmsg:/!d{n;s/ [0-9]* \([^ ]*\).*/\1/}' ${1/.bin/.lst} | sed '$!d')
+	sed -i "s/YYY/$((0x$helpmsg))/" $0
+	sed -i "s/ZZZ/$((496-0x$helpmsg))/" $0
 	sed -i '/--build/,/^fi/d' $0
 	exit
 fi
@@ -14,7 +17,7 @@ fi
 store()
 {
 	n=$1
-	for i in $(seq 1 $4); do
+	for i in $(seq 1 ${4:-2}); do
 		printf '\\\\x%02X' $(($n & 255))
 		n=$(($n >> 8))
 	done | xargs echo -en | dd conv=notrunc bs=1 of=$2 seek=$3
@@ -27,16 +30,25 @@ compress()
 
 main()
 {
-	dd if=$1 bs=512 count=1 >$2
-	uudecode | gunzip >>$2
+	uudecode | gunzip >$2
+	dd if=$1 bs=1 skip=497 seek=497 count=15 of=$2 conv=notrunc
 	setup="$(echo $(od -j 497 -N 1 -dAn $1))"
 	syssize="$(echo $(od -j 500 -N 2 -dAn $1))"
 	dd if=$1 bs=512 count=$setup skip=1 | compress >>$2
 	dd if=$1 bs=16 count=$syssize skip=$((32*(1+$setup))) | compress >>$2
 	size=$(stat -c %s $2)
-	store $((($size-512)/16)) $2 XXX 2
-	store $((($size-2560)/16)) $2 500 2
+	store $((($size-512)/16)) $2 XXX
+	store $((($size-2560)/16)) $2 500
 	store 4 $2 497 1
+	store $((($size+511)/512)) $2 4
+	store $((($size+15)/16)) $2 14
+	echo -en "$3" | dd conv=notrunc bs=1 seek=YYY of=$2 count=ZZZ
 }
 
-main $1 $2 2>/dev/null <<EOT
+HELP="$(unix2dos <<EOT
+Memtest86+ is an endless advanced memory diagnostic tool released under the
+terms of the Gnu Public License (GPL).
+
+EOT
+)"
+main $1 ${2:-$1.packed} "${3:-$HELP}" 2>/dev/null <<EOT

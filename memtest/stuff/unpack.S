@@ -1,9 +1,15 @@
-#define TOP		0x8FD00
+#define TOP		(0x90000+_start-end)
 #define SYSTEM		0x10000
 #define SETUP		4
+#define SYSSIZE		0x1F4
+#define SETUPSIZE	0x1F1
 
-#define CHANGE_STACK	1
-#define LINUX_HEADER	0
+#define CHANGE_STACK		0
+#define LINUX_HEADER		0
+#define UPDATE_SYSSIZE		1
+#define HARDCODED_SYSSIZE	1
+#define HARDCODED_SETUPSIZE	1
+#define HARDCODED_IP		1
 
 	.text
 	.code16
@@ -29,74 +35,103 @@ start2:
 #endif
 	pushf
 	pushw	%cs
+#if HARDCODED_IP
+	pushw	$0
+#else
 	call	getip
 getip:
+#endif
 	pushal
-	movw	$0, %bx		// packed sizes
+#if HARDCODED_SYSSIZE
+packed_syssize:
+	movw	$0, %bx		// system size
+#else
+	movw	SYSSIZE, %bx
+#endif
+#if HARDCODED_SETUPSIZE == 0
+	xorw	%dx, %dx
+	movb	SETUPSIZE, %dh
+#endif
+#if HARDCODED_IP
+	xorw	%si, %si
+#else
 	movw	%sp, %bp
 #define START_IP	32(%bp)
+	subw	$getip-_start, START_IP
+	movw	START_IP, %si
+#endif
 	pushw	%ds
 	pushw	%es
-	subw	$getip-_start, START_IP
 
 	cld
+#if CHANGE_STACK
+STKSZ=0x9000-0x0990
+	movw	$(TOP-STKSZ)/16, %ax
+#else
+	movw	$TOP/16, %ax
+#endif
+	movw	%ax, %es
+	pushw	%es			// moved
+	.byte	0x6A, moved-_start	//   unpack code
 	pushw	%cs
 	popw	%ds	
-	movw	$TOP/16, %ax
-	movw	%ax, %es
-	subw	%bx, %ax	// moved packed data
-	movw	START_IP, %si
-	movw	$moved-_start, %di
-	addw	%si, %di
-	pushw	%ds		// save setup seg
-	pushw	%es		// moved
-	pushw	%di		//   unpack code
-	movw	%si, %di
+	xorw	%di, %di
 	movw	$end-_start, %cx
+	pushw	%si
 	rep
 	movsb			// move upack code to $TOP
-	pushw	%si		// data offset
+
+	leaw	SYSTEM/16(%bx), %bp
+movlp:
+	decw	%bp
+	movw	%bp, %ds
+	decw	%ax
 	movw	%ax, %es
-	movw	$SETUP*512, %cx
-	subw	$SETUP*32, %bx
 	xorw	%si, %si
 	xorw	%di, %di
-	rep
-	movsb			// move header part
-	pushw	$SYSTEM/16
-	popw	%ds
-movlp:
-	xorw	%si, %si
-	movw	$8, %cx
+	movb	$8, %cl
 	rep
 	movsw			// move system part
-	subw	$16, %di
-	movw	%ds, %cx
-	incw	%cx
-	movw	%cx, %ds
-	movw	%es, %cx
-	incw	%cx
-	movw	%cx, %es
 	decw	%bx
-	jns	movlp
-	popw	%si		// data offset
-	movw	%ax, %ds
+	jnz	movlp
+
+	pushw	%cs
+	popw	%ds
+	popw	%si
+	xorw	%di, %di
+#if HARDCODED_SETUPSIZE
+	movb	$SETUP, %ch
+	subw	$SETUP*32, %ax
+#else
+	movb	%dh, %ch
+	shrw	$3, %dx
+	subw	%dx, %ax
+#endif
+	movw	%ax, %es
+	pushw	%si
+	rep
+	movsw			// move header part
+
+	pushw	%es
+	popw	%ds
+	movw	$end-_start, %si
+	pushw	%cs
+	popw	%es		// restore setup seg
+	popw	%di
 	retf
 
 moved:
-	popw	%es		// restore setup seg
-	movw	START_IP, %di
 #if CHANGE_STACK
-	movw	$0xFFFE, %ax
+	movw	$STKSZ, %ax	// trick: %ss = %sp
 	movw	%ss, %bx
-	pushw	$0
+	pushw	%ax
 	popw	%ss
 	xchgw	%ax, %sp
 	pushw	%bx		// %ss
 	pushw	%ax		// %sp
 #endif
+	pushw	%bp		// SYSTEM/16
 	call	unpack		// unpack setup
-	pushw	$SYSTEM/16
 	popw	%es
 	xorw	%di,%di
 	call	unpack		// unpack system
@@ -105,8 +140,23 @@ moved:
 	popw	%ss
 	xchgw	%ax, %sp
 #endif
+#if UPDATE_SYSSIZE
+# if HARDCODED_SYSSIZE
+original_syssize:
+	movw	$0, %ax
+# else
+	addw	$15, %di
+	shrw	$4, %di
+	movw	%es, %ax
+	addw	%di, %ax
+	subw	$SYSTEM/16, %ax
+# endif
+#endif
 	popw	%es
 	popw	%ds
+#if UPDATE_SYSSIZE
+	movw	%ax, SYSSIZE
+#endif
 	popal
 	iret
 
