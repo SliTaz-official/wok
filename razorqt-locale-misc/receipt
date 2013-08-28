@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="razorqt-locale-misc"
+VERSION="0.5.2"
+CATEGORY="misc"
+SHORT_DESC="Miscelaneous locales for Razor-qt not included in razorqt-locale-*"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL2 LGPL2.1"
+WEB_SITE="http://razor-qt.org/"
+WANTED="razorqt"
+
+LOCALES="cs da de el es fr hu id it pl pt ru sl sv uk zh"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	# copy all translations
+	cd $install
+	qms=$(find . -name "*.qm" | sed 's|^.||')
+	for qm in $qms; do
+		mkdir -p $(dirname $fs$qm)
+		cp -a $install$qm $fs$qm
+	done
+	# remove translations that exists in razorqt-locale-*
+	for locale in $LOCALES; do
+		cook razorqt-locale-$locale
+		for qm in $(cat $WOK/razorqt-locale-$locale/taz/*/files.list); do
+			rm -f $fs$qm
+		done
+	done
+}
