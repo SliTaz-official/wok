@@ -1,0 +1,56 @@
+# SliTaz package receipt.
+
+PACKAGE="lightdm-qt"
+VERSION="1.5.3"
+CATEGORY="system-tools"
+SHORT_DESC="A lightweight display manager for Qt"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3 LGPL3"
+WEB_SITE="https://launchpad.net/lightdm"
+SOURCE="lightdm"
+TARBALL="$SOURCE-$VERSION.tar.xz"
+WGET_URL="https://launchpad.net/$SOURCE/1.8/$VERSION/+download/$TARBALL"
+HELP="https://wiki.archlinux.org/index.php/LightDM"
+CONFIG_FILES="/etc/init/lightdm.conf /etc/lightdm/keys.conf \
+/etc/lightdm/lightdm.conf /etc/lightdm/users.conf"
+
+DEPENDS="libQtDBus libQtGui libgcrypt libgio libxklavier pam"
+BUILD_DEPENDS="Qt4-dev gobject-introspection-dev pam-dev itstool libxklavier-dev \
+libgcrypt-dev wget xorg-libXdmcp-dev xorg-libX11-dev xorg-libXi-dev \
+xorg-libxkbfile-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure \
+		--libexecdir=/usr/lib \
+		--sysconfdir=/etc \
+		--disable-static \
+		--enable-introspection \
+		--enable-liblightdm-gobject \
+		--disable-gtk-doc \
+		--with-greeter-session=lightdm-gtk-greeter \
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/usr/lib \
+		$fs/usr/share/locale
+	cp -a $install/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/lightdm $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/sbin $fs/usr
+
+	# localization
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+	for lang in $LOCALE_PACK; do
+		langf=$install/usr/share/locale/$lang
+		[ -d $langf ] && cp -a $langf $fs/usr/share/locale
+	done
+}
