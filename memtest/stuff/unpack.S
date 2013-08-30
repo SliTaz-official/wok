@@ -156,6 +156,10 @@ original_syssize:
 	popw	%ds
 #if UPDATE_SYSSIZE
 	movw	%ax, SYSSIZE
+# if HARDCODED_SETUPSIZE
+original_setupsize:
+	movb	$4, SETUPSIZE
+# endif
 #endif
 	popal
 	iret

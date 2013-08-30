@@ -1,0 +1,30 @@
+# SliTaz package receipt.
+
+PACKAGE="larch"
+VERSION="1.1.2"
+CATEGORY="network"
+SHORT_DESC="Copies messages from one IMAP server to another."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://github.com/rgrove/larch/"
+WGET_URL="${WEB_SITE}archive/release-$VERSION.tar.gz"
+
+DEPENDS="ruby"
+BUILD_DEPENDS="ruby-dev wget"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	local _gemdir="$(ruby -rubygems -e'puts Gem.default_dir')"
+	gem install --ignore-dependencies -i "$DESTDIR/$_gemdir" larch
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $install/usr $fs
+	cd $fs/usr
+	ln -s ../$(ls lib/ruby/gems/*/bin/larch) bin
+}
