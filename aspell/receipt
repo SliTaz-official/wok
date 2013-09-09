@@ -5,11 +5,13 @@ VERSION="0.60.6"
 CATEGORY="system-tools"
 SHORT_DESC="GNU spell checker."
 MAINTAINER="paul@slitaz.org"
-DEPENDS="ncurses gcc-lib-base"
+LICENSE="LGPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://aspell.net/"
 WGET_URL="ftp://ftp.gnu.org/gnu/aspell/$TARBALL"
 TAGS="spell check"
+
+DEPENDS="ncurses gcc-lib-base"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -17,19 +19,19 @@ compile_rules()
 	cd $src
 	./configure --prefix=/usr --infodir=/usr/share/info \
 	--mandir=/usr/share/man $CONFIGURE_ARGS && \
-	make && make DESTDIR=$PWD/_pkg install
+	make && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share/locale
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
-	cp -a $_pkg/usr/lib/aspell* $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/aspell* $fs/usr/lib
 
 	for i in de es pt_BR; do
-		cp -a $_pkg/usr/share/locale/$i $fs/usr/share/locale
+		cp -a $install/usr/share/locale/$i $fs/usr/share/locale
 	done
 
 	# Remove unneeded files

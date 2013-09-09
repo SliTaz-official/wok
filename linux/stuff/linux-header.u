@@ -1,6 +1,6 @@
 --- linux-3.2.14/arch/x86/boot/header.S
 +++ linux-3.2.14/arch/x86/boot/header.S
-@@ -7,6 +7,7 @@
+@@ -7,12 +7,14 @@
   *	modified by more people than can be counted
   *
   *	Rewritten as a common file by H. Peter Anvin (Apr 2007)
@@ -8,23 +8,97 @@
   *
   * BIG FAT NOTE: We're in real mode using 64k segments.  Therefore segment
   * addresses must be multiplied by 16 to obtain their respective linear
-@@ -27,7 +28,12 @@
+  * addresses. To avoid confusion, linear addresses are written using leading
+  * hex while segment addresses are written as segment:offset.
+  *
++ * Assume protocol 2.00+ (kernel >= 1.3.73)
+  */
+ 
+ #include <asm/segment.h>
+@@ -27,6 +29,8 @@
  
  BOOTSEG		= 0x07C0		/* original address of boot-sector */
  SYSSEG		= 0x1000		/* historical load address >> 4 */
 +INITSEG		= 0x9000		/* boot address >> 4 */
 +SETUPSEG	= 0x9020		/* setup address >> 4 */
  
-+#define LOADSEG	 0x0800
-+#define LOADSZ	 (LOADSEG*0x10)
-+
  #ifndef SVGA_MODE
  #define SVGA_MODE ASK_VGA
+@@ -40,53 +44,476 @@
+ #define ROOT_RDONLY 1
  #endif
-@@ -45,48 +51,362 @@
+ 
++setup_sects	= 497
++syssize		= 500
++cmd_line_ptr	= 0x228
++
++/* some extra features */
++#define EXE_SUPPORT		real mode dos .exe file support (no himem.sys)
++#define CMDLINE			kernel >= 2.4
++#define OLDCMDLINE		kernel  < 2.4
++#define HELP			display version for ? argument
++#define MORETHAN16M		up to 4Gb RAM, not 16Mb
++#define KEYBOARDLESS_SUPPORT	scan floppy swap each 5 seconds
++#define FULL_ZIMAGE		Up to 512K system zImage
++
++/* some limitations to reduce code size */
++//#define FLOPPY_1440K_ONLY	1.44M floppies support only
++
+ 	.code16
+ 	.section ".bstext", "ax"
  
  	.global bootsect_start
  bootsect_start:
+ 
+-	# Normalize the start address
+-	ljmp	$BOOTSEG, $start2
++#ifdef EXE_SUPPORT
++#define CODESZ		0x8000
++#define EXEADRS(x)	x+0xE0
++stacktop	= 0x9E00		# in 0x8000 .. 0xA000
++	decw	%bp			// Magic number: MZ
++	popw	%dx
++	jmp	start			// Bytes on last page of file
++	.word	(CODESZ+511)/512	// Pages in file
++	.word	0			// Relocations
++	.word	2			// Size of header in paragraphs
++	.word	4096			// Minimum extra paragraphs needed
++	.word	-1			// Maximum extra paragraphs needed
++	.word	(CODESZ+15)/16		// Initial (relative) SS value
++	.word	stacktop		// Initial SP value
++	.word	0			// Checksum
++	.word	EXEADRS(comstart)	// Initial IP value
++	.word	0xFFF0			// Initial (relative) CS value
++//	.word	0x001C			// File address of relocation table
++//	.word	0,0,0			// Overlay number
++swap_floppy:
++	.ascii	"Next!"
++	.byte	7,13,0			# swap detection needs 13, 0
++#ifdef OLDCMDLINE
++	.word	0xA33F
++	.word	stacktop
++#endif
++start:
++	pushw	%dx
++#endif
+ 
+-start2:
+-	movw	%cs, %ax
+-	movw	%ax, %ds
+-	movw	%ax, %es
+-	movw	%ax, %ss
+-	xorw	%sp, %sp
+-	sti
+-	cld
++#ifdef FULL_ZIMAGE
++#define LOADSEG	0x8800		// Up to 512K zImage
++#else
++#define LOADSEG	 0x8000		// 0x1000 multiple, up to 480K zImage
++#endif
++#define LOADSZ	 0x8000
+ 
+-	movw	$bugger_off_msg, %si
++bootsect_start:
 +	cld				# assume nothing
 +stacktop	= 0x9E00		# in 0x8000 .. 0xA000
 +zeroed		= 48+12			# gdt + zeroed registers
@@ -35,9 +109,7 @@
 +	pushw	$INITSEG
 +	popw	%ss			# %ss contain INITSEG
 +	movw	%di, %sp		# put stack at INITSEG:stacktop-...
- 
--	# Normalize the start address
--	ljmp	$BOOTSEG, $start2
++
 +# Many BIOS's default disk parameter tables will not recognize
 +# multi-sector reads beyond the maximum sector number specified
 +# in the default diskette parameter tables - this may mean 7
@@ -49,35 +121,23 @@
 +# count to 36 - the most we will encounter on an ED 2.88.  
 +#
 +# High doesn't hurt.  Low does.  Let's use the max: 63
- 
--start2:
--	movw	%cs, %ax
--	movw	%ax, %ds
--	movw	%ax, %es
--	movw	%ax, %ss
--	xorw	%sp, %sp
--	sti
--	cld
++
 +	pushw	%ss
 +	popw	%es			# %es = %ss = INITSEG
 +	xorw	%ax, %ax		# %ax = 0
++#ifdef EXE_SUPPORT
++	cwd				# floppy = head = 0
++#endif
 +	movw	$zeroed/2, %cx		# clear gdt + offset, %ds, limits
 +	rep				# don't worry about cld
 +	stosw				# already done above
 +	popw	%bx			# offset = 0
 +	popw	%ds			# %ds = 0
 +	popw	%fs			# %fs = 0
- 
--	movw	$bugger_off_msg, %si
++
 +	movb	setup_sects+0x7C00, %al	# read bootsector + setup (%ds = 0)
 +	incw	%ax
- 
--msg_loop:
--	lodsb
--	andb	%al, %al
--	jz	bs_die
--	movb	$0xe, %ah
--	movw	$7, %bx
++
 +	ldsw	0x78(%bx), %si		# %ds:%bx+0x78 is parameter table address
 +	pushw	%es
 +	pushw	%di
@@ -94,131 +154,94 @@
 +	popw	%ax			# limits = 0
 +	incw	%cx			# cylinder 0, sector 1, clear Z
 +	call	read_first_sectors	# read setup
-+
++loadsys:
 +	movw	$0x200,%si
-+#define kernel_version	0xE
 +type_of_loader	=	0x10
 +loadflags	=	0x11
 +heap_end_ptr	=	0x24
 +	orw	$0x8020, type_of_loader(%si) # loader type = 0x20 = bootsect-loader
 +	movb	$(stacktop-0x300)/256, heap_end_ptr+1(%si)
-+	addw	kernel_version(%si),%si	# starting protocol 2.00, Kernel 1.3.73
-+	call	puts			# show which kernel we are loading
++	call	puts_version		# show which kernel we are loading
 +
-+# The cmdline can be entered and modifed at boot time.
-+# Only characters before the cursor are passed to the kernel.
-+	popw	%bx			# clear %bx
-+	orw	cmd_line_ptr, %bx
-+	jz	nocmdline
-+	pushw	%bx
-+	incw	%di
-+	call	read_sectors
-+	popw	%si
-+	call	puts
-+cmdlp:
-+	movb	$0x20, %al		# clear end of line
-+	int	$0x10			#  with Space
-+	movb	$8, %al			#   and BackSpace
- 	int	$0x10
--	jmp	msg_loop
-+	decw	%si
-+cmdget:
-+	call	wait4key
-+	cmpb	$8, %al			# BackSpace ?
-+	je	cmdbs
-+	movb	%al, (%si)		# store char
-+	lodsw				# %si += 2
-+cmdbs:
-+	cmpw	%si,cmd_line_ptr
-+	je	cmdget
-+	call	putc			# set %ah and %bx
-+	cmpb	$10, %al		# Enter ?
-+	jne	cmdlp
-+	movb	%bh,-2(%si)		# set end of string and remove CR
-+endcmdline:
-+nocmdline:
- 
--bs_die:
--	# Allow the user to press a key, then reboot
--	xorw	%ax, %ax
--	int	$0x16
--	int	$0x19
 +# This routine loads the system at address LOADSEG, making sure
 +# no 64kB boundaries are crossed. We try to load it as fast as
 +# possible, loading whole tracks whenever we can.
- 
--	# int 0x19 should never return.  In case it does anyway,
--	# invoke the BIOS reset code...
--	ljmp	$0xf000,$0xfff0
++
 +ramdisk_image	=	0x0218
 +ramdisk_size	=	0x021C
 +bootsect_src_limit	= 16
 +bootsect_dst_limit	= 24
 +bootsect_src_base	= 18
-+bootsect_dst_base	= 26
++bootsect_dst_base	= 26		# bits  0..23
++bootsect_dst_base_hi	= 31		# bits 24..31
 +	popw	%bx			# clear %bx
 +	movw	%sp, %si		# for bootsect_gdt
 +init_gdt:
 +	decw	bootsect_src_limit(%bx,%si)	# max 64Kb
-+	movb	$0x93, bootsect_src_base+3(%bx,%si)
++#if LOADSEG % 0x1000 == 0
++	movw	$0x9300+(LOADSEG/0x1000), bootsect_src_base+2(%bx,%si)
++#else
++	movl	$0x93000000+(LOADSEG*0x10), bootsect_src_base(%bx,%si)
++#endif
 +	xorb	$bootsect_dst_limit-bootsect_src_limit, %bl
 +	jne	init_gdt
-+	movw	$syssize, %bx
 +code32_start	=	0x214
++#ifdef MORETHAN16M
++	movb	code32_start+3, %al		# destination = 0x00100000 or 0x00010000
++	movb	%al, bootsect_dst_base_hi(%si)	# load high (> 16M) ?
++#endif
 +	movw	code32_start+1, %ax		# destination = 0x00100000 or 0x00010000
-+	movb	$5, %cl
-+initrdlp:
-+	movl	(%bx),%ebx
++	movl	syssize, %ebx
 +	decl	%ebx
-+	shrl	%cl, %ebx
-+	incw	%bx
++	shrl	$5, %ebx
++	incl	%ebx
 +syslp:
-+	pushw	$LOADSEG
-+	popw	%es
-+	movw	$LOADSZ/256,%di		# size in pages
-+	movw	%di, bootsect_src_base+1(%si) # assume LOADSZ == LOADSEG*16
 +	movw	%ax, bootsect_dst_base+1(%si)
-+	addw	%di, %ax		# next dest
-+	shrw	$1, %di			# pages to sectors
-+	subw	%di, %bx		# max 32M > int 15 limit
++	movw	$LOADSZ/512, %di	# size in sectors
++	subl	$LOADSZ/512, %ebx
 +	pushf
 +	jnc	not_last
 +	addw	%bx, %di
 +not_last:
 +	pushw	%ax
-+	pushw	%di
 +	pushw	%si
 +	pushw	%bx
 +	xorw	%bx,%bx
++	pushw	$LOADSEG
++	popw	%es
++patchcall:
 +	call	read_sectors		# update %bp
 +	popw	%bx
 +	popw	%si
-+	popw	%cx			# sectors to word count:
-+	xchgb	%cl, %ch		# %cx <<= 8
++	movw	$LOADSZ/2, %cx		# word count
 +	movb	$0x87, %ah
 +	pushw	%ss
 +	popw	%es			# restore es
-+	int	$0x15			# max 16M
++	int	$0x15			# max 16M, maybe more...
 +	popw	%ax
++	addw	$LOADSZ/256, %ax	# next dest
++#ifdef MORETHAN16M
++	adcb	%cl, bootsect_dst_base_hi(%si)	# breaks 16M limit ?
++#endif
 +	popf
 +	ja	syslp
-+	movw	ramdisk_image+1,%ax
-+	movw	$ramdisk_size,%bx
-+	movb	$9, %cl
-+	cmpw	%ax, bootsect_dst_base+1(%si)
-+	jb	initrdlp
  
--	.section ".bsdata", "a"
--bugger_off_msg:
--	.ascii	"Direct booting from floppy is no longer supported.\r\n"
--	.ascii	"Please use a boot loader program instead.\r\n"
--	.ascii	"\n"
--	.ascii	"Remove disk and press any key to reboot . . .\r\n"
--	.byte	0
+-msg_loop:
+-	lodsb
+-	andb	%al, %al
+-	jz	bs_die
+-	movb	$0xe, %ah
+-	movw	$7, %bx
+-	int	$0x10
+-	jmp	msg_loop
+-
+-bs_die:
+-	# Allow the user to press a key, then reboot
+-	xorw	%ax, %ax
 +# This procedure turns off the floppy drive motor, so
 +# that we enter the kernel in a known state, and
 +# don't have to worry about it later.
- 
++
 +kill_motor:
 +	xchgw	%ax, %di		# reset FDC (%di < 128)
 +	int	$0x13
@@ -240,15 +263,9 @@
 +#define FLOPPY_HEADS		2	/* 2 heads minimum */
 +#define FLOPPY_SECTORS		18	/* 18 sectors minimum */
 +
-+print_loop:
-+	movb	$0x6 + 'A' - 1, %al
-+	subb	%cl, %al
-+	movw	$regs, %si		# caller %si is saved
-+	call	putcs			# putc(%al) + puts(%si)
-+# it will print out all of the registers.
-+	popw	%bp			# load word into %si
-+	jmp	print_all		# print %bp (status)
 +check_limits:
++#ifndef FLOPPY_1440K_ONLY
++	popw	%dx
 +	cmpb	$FLOPPY_SECTORS+1, %cl	# 18 sectors minimum
 +	jb	check_head
 +        cmpb    %al, %cl		# max sector known ?
@@ -259,45 +276,28 @@
 +        cmpb    %ah, %dh		# max head known ?
 +        ja	next_cylinder		#   no -> store it
 +check_cylinder:
++#endif
 +	pushaw
-+	cmpw	$0x600,%bp		# disk changed ?
-+	je	reset_floppy
-+	pushw	%es			# print %es (named EX)
-+	pushw	%dx			# print %dx
-+	pushw	%cx			# print %cx
-+	pushw	%bx			# print %bx
-+	xchgw	%ax, %si
-+	movb	$2,%ah
-+	pushw	%ax			# print %ax
-+	movb	$6,%cl
-+print_all:
-+	movb	$4, %ch			# 4 hex digits
-+print_digit:
-+	rolw	$4, %bp			# rotate to use low 4 bits
-+	movb	$0x0f, %al
-+	andw	%bp, %ax		# %al = mask for nybble
-+	addb	$0x90, %al		# convert %al to ascii hex
-+	daa				# in only four instructions!
-+	adcb	$0x40, %al
-+	daa
-+	call	putc			# set %ah and %bx
-+	decb	%ch
-+	jnz	print_digit
-+	movb	$0x20, %al		# SPACE
-+	int	$0x10
-+	loop	print_loop
-+	call	wait
++#ifndef FLOPPY_1440K_ONLY
 +	cbw				# %ah = 0
-+reset_floppy:
++#endif
 +        int     $0x13			# reset controler
-+	popaw
++	stc
++	call	putcdot			# print '-'
 +read_sectorslp:
++	popaw
++bdendlp:
 +	pushw	%dx			# some bios break dx...
++#ifndef FLOPPY_1440K_ONLY
 +        pushw   %ax			# limits
 +	subb	%cl, %al		# sectors remaining in track
 +	ja	tolastsect
 +	movb	$1, %al			# 1 sector mini
 +tolastsect:
++#else
++	mov	$FLOPPY_SECTORS+1, %al
++	subb	%cl, %al		# sectors remaining in track
++#endif
 +	cbw
 +	cmpw	%di, %ax
 +	jb	more1trk
@@ -306,46 +306,69 @@
 +	pushw	%ax			# save context
 +	movb	$2, %ah			# cmd: read chs
 +        int     $0x13
-+	xchgw	%ax, %bp		# status
-+	popw	%si			# save %ax
++#ifndef FLOPPY_1440K_ONLY
++	popw	%dx			# save %ax
 +        popw    %ax			# limits
++#else
++	popw	%ax			# restore context
 +	popw	%dx
++#endif
 +	jc	check_limits
++#ifndef FLOPPY_1440K_ONLY
 +	xchgw	%ax, %bp
-+update_regs:
-+	incw	%cx			# next sector
++	addw	%dx,%cx			# next sector
 +	movw	%cx, %gs
-+	addb	$2,%bh			# next location
-+	decw	%di			# update sector counter
++	addb	%dl,%bh
++	addb	%dl,%bh			# next location
++	subw	%dx,%di			# update sector counter
++	popw	%dx
 +	jz	putcdot
-+	decw	%si
-+	jnz	update_regs
++#else
++	addw	%ax,%cx			# next sector
++	movw	%cx, %gs
++	addb	%al,%bh
++	addb	%al,%bh			# next location
++	subw	%ax,%di			# update sector counter
++	jz	putcdot
++#endif
 +read_sectors:
 +	movw	%gs, %cx
++#ifndef FLOPPY_1440K_ONLY
 +#   al is last sector+1
 +#   ah is last cylinder+1
 +	xchgw	%ax, %bp
++#endif
++#ifndef FLOPPY_1440K_ONLY
 +        cmpb    %al,%cl			# reach sector limit ?
 +        jne     bdendlp
 +next_head:
 +        movb    %cl,%al
++#else
++        cmpb    $FLOPPY_SECTORS+1,%cl	# reach sector limit ?
++        jne     bdendlp
++#endif
 +        incb    %dh			# next head
 +        movb    $1,%cl			# first sector
++#ifndef FLOPPY_1440K_ONLY
 +        cmpb    %ah, %dh		# reach head limit ?
 +        jne     bdendlp
 +next_cylinder:
 +        movb    %dh,%ah
++#else
++        cmpb    %cl,%dh			# reach head limit ?
++        je	bdendlp
++#endif
 +# NOTE : support 256 cylinders max
 +        incb    %ch			# next cylinder
-+        cmpb    $FLOPPY_CYLINDERS, %ch	# reach cylinder limit ?
 +read_first_sectors:
++        cmpb    $FLOPPY_CYLINDERS,%ch	# reach cylinder limit ?
 +        movb    $0,%dh			# first head
 +        jne	bdendlp
 +next_floppy:
 +	movb	$0,%ch			# first cylinder
 +	pushaw
 +	movw	$swap_floppy,%si
-+	incb	12(%si)
++#ifdef KEYBOARDLESS_SUPPORT
 +	pushw	%bx
 +	call	puts
 +	popw	%bx
@@ -362,17 +385,46 @@
 +	cmpb	-2(%si), %ah		# 0D then 00
 +	jne	waitfloppy		# no => try again
 +	incw	%si
-+	orb	%ah,%ah			# was 00 ?
++	decw	%ax			# was 0001 ?
 +	jne	waitfloppy
 +waitfloppydone:
-+	popaw
-+bdendlp:
++#else
++	call	puts
++	cbw				# %ah = 0, get keyboard character
+ 	int	$0x16
+-	int	$0x19
++#endif
 +        jmp	read_sectorslp
 +
++#ifdef EXE_SUPPORT
++read_sectors_dos:
++	pushw	%es
++	popw	%ds
++	movb	$0x3F, %ah	// read
++	cwd			// write to %ds:%dx, not %es:%bx
++	movw	%di, %cx
++	shlw	$9, %cx		// byte count
++	movw	%bp, %bx
++	int	$0x21
++	pushw	%ss
++	popw	%ds
++#endif
+ 
+-	# int 0x19 should never return.  In case it does anyway,
+-	# invoke the BIOS reset code...
+-	ljmp	$0xf000,$0xfff0
+-
+-	.section ".bsdata", "a"
+-bugger_off_msg:
+-	.ascii	"Direct booting from floppy is no longer supported.\r\n"
+-	.ascii	"Please use a boot loader program instead.\r\n"
+-	.ascii	"\n"
+-	.ascii	"Remove disk and press any key to reboot . . .\r\n"
+-	.byte	0
 +putcdot:
-+	movb	$0x2e+3, %al 		# loading... message 2e = .
++	movb	$'.'+3, %al	// . = success, - = failure
 +putclf:
-+	subb	$3, %al
++	sbbb	$3, %al
 +putc:
 +	movb	$0xe, %ah
 +	movw	$7, %bx			#   one dot each 64k
@@ -381,25 +433,16 @@
 +	je	putclf
 +	ret
 +
-+puts:
-+	movb	$0xd, %al		# CR
-+putcs:
-+	call	putc
-+	lodsb
-+	orb	%al,%al			# end of string is \0
-+	jnz	putcs
-+	ret
-+
++#ifdef KEYBOARDLESS_SUPPORT
 +clock	= 0x46C
 +wait:
 +wait4key:
 +	movw	$clock, %di
 +#define DELAY 5
-+	movb	$(DELAY*182)/10,%cl
-+	addb	%fs:(%di),%cl
++	movb	$257-(DELAY*182)/10, %fs:(%di)
 +waitkbd:
 +	movw	$0x10D, %ax		# test keyboard, timeout => CR
-+	cmpb	%fs:(%di),%cl
++	cmpb	%fs:(%di),%ah
 +	je	waitdone
 +	int	$0x16
 +	jz	waitkbd
@@ -409,11 +452,87 @@
 +	incw	%di			# clear Z
 +waitdone:
 +	ret
-+
-+regs:	.asciz	"X:"
-+
-+swap_floppy:	.ascii	"Insert disk 1"
-+		.byte	7,13,0
++#endif
+ 
++#ifdef EXE_SUPPORT
++comstart:
++	cld				# assume nothing
++	pushw	$INITSEG
++	popw	%es
++	pushw	%es
++	popw	%ss
++#ifdef CMDLINE
++	movw	%sp, %di
++	movw	$0x80, %si
++	lodsb
++	cbw
++	xchgw	%ax, %cx
++	rep
++	  movsb
++	movb	$(48+2)/2, %cl
++	xorw	%bx, %bx
++clearstacklp:
++	pushw	%bx
++	loop	clearstacklp
++# ifdef HELP
++	cmpb	$'?', -1(%si)
++	movw	$EXEADRS(0x200), %si
++	movw	setup_sects-0x200(%si), %di	// bits 0..6
++	je	puts_version
++	smsww	%ax
++	andb	$1, %al
++	jne	puts_version			// real mode only...
++# endif
++#else
++	movw	$(48+2)/2, %cx
++	xorw	%bx, %bx
++clearstacklp:
++	pushw	%bx
++	loop	clearstacklp
++#endif
++#if !defined(CMDLINE) || !defined(HELP)
++	movw	EXEADRS(setup_sects), %di	// bits 0..6
++	movb	$0, %al	// access = RO
++#endif
++	movw	0x2C(%bx), %ds	// DOS 3.0+
++loop1:
++	incw	%bx
++	cmpw	%cx, (%bx)
++	jne	loop1
++	leaw	4(%bx), %dx 	// %ds:%dx filename
++	movb	$0x3D, %ah	// open, access = RO
++	int	$0x21
++	jc	dosexit
++	xchgw	%ax, %bp	// fd
++	incw	%di
++	call	read_sectors_dos	// update %ds
++	addb	$read_sectors_dos-read_sectors, patchcall+1
++#ifdef CMDLINE
++# ifdef OLDCMDLINE
++	movw	$0x202, %bx
++	cmpw	%bx, 0x206-0x202(%bx)
++	jb	oldcmdline
++	movw	$INITSEG/16+stacktop/256, cmd_line_ptr+1-0x202(%bx)
++oldcmdline:
++# else
++	movw	$INITSEG/16+stacktop/256, cmd_line_ptr+1
++# endif
++#endif
++	ljmp	$INITSEG, $loadsys
++#endif
++	
++#define kernel_version	0xE
++puts_version:
++	addw	kernel_version(%si),%si	# starting protocol 2.00, Kernel 1.3.73
++puts:
++	movb	$0xd, %al		# CR
++putcs:
++	call	putc
++	lodsb
++	cmpb	$0, %al			# end of string is any byte <= 0
++	jg	putcs
++dosexit:
++	ret	
  
  	# Kernel attributes; used by setup.  This is part 1 of the
  	# header, from the old boot sector.
