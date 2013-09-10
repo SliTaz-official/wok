@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="udftools"
+VERSION="1.0.0b3"
+CATEGORY="utilities"
+SHORT_DESC="tools for UDF filesystems and DVD/CD-R(W) drives."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://linux-udf.sourceforge.net/"
+WGET_URL="$SF_MIRROR/linux-udf/$TARBALL"
+
+DEPENDS="ncurses readline"
+BUILD_DEPENDS="ncurses-dev readline-dev bash"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's/(char\*)spm += /spm = (char*)spm + /' wrudf/wrudf.c
+	sed -i 's/<stdio.h>/&\n#include <limits.h>/' \
+		cdrwtool/cdrwtool.c pktsetup/pktsetup.c
+	./configure --prefix=/usr &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+}
