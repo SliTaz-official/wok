@@ -5,11 +5,13 @@ VERSION="2.1a15"
 CATEGORY="network"
 SHORT_DESC="arpwatch and arpsnmp network monitoring tools"
 MAINTAINER="slaxemulator@gmail.com"
-DEPENDS="libpcap"
-BUILD_DEPENDS="libpcap-dev"
+LICENSE="BSD"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="ftp://ftp.ee.lbl.gov"
 WGET_URL="$WEB_SITE/$TARBALL"
+
+DEPENDS="libpcap"
+BUILD_DEPENDS="libpcap-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -18,7 +20,7 @@ compile_rules()
 	sed -i 's|ARPDIR = $(prefix)/arpwatch|ARPDIR = /var/lib/arpwatch|' Makefile.in
 	sed -i 's|-o bin -g bin||' Makefile.in
 	./configure $CONFIGURE_ARGS && 
-	make  &&
+	make 2>&1 | grep -v "STRERROR" &&
 	install -d -m 755 $DESTDIR/usr/sbin
 	make install
 	
@@ -29,7 +31,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
 	install -d -m 0755 $fs/var/lib/arpwatch
 	touch $fs/var/lib/arpwatch/arp.dat
 }
