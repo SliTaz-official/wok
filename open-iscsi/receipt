@@ -5,9 +5,11 @@ VERSION="2.0-871"
 CATEGORY="network"
 SHORT_DESC="Implementation of RFC3720 userland utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.open-iscsi.org/"
 WGET_URL="${WEB_SITE}bits/$TARBALL"
+
 DEPENDS="linux-scsi"
 
 # Rules to configure and make the package.
@@ -17,16 +19,16 @@ compile_rules()
 	sed -i 's/ install_kernel / /' Makefile
 	sed -i 's|dirent.h>|&\n#include <sys/types.h>\n#include <sys/stat.h>|' \
 		usr/iscsi_sysfs.c
-	make user
-	make DESTDIR=$PWD/_pkg install
-
+	sed -i "s|/etc/iscsi/initiatorname.iscsi|$DESTDIR&|" Makefile
+	make user 2>&1 | grep -v 'slitaz/build/Makefile'
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/sbin $fs
+	cp -a $install/etc $fs
+	cp -a $install/sbin $fs
 }
 
 post_install()
