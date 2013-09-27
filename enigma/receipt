@@ -17,10 +17,12 @@ BUILD_DEPENDS="gettext libsdl-ttf-dev libsdl-mixer-dev libsdl-image-dev libsdl-d
 compile_rules()
 {
 	cd $src
+	sed -i 's/stdexcept>/&\n#include <stddef.h>/' lib-src/zipios++/src/directory.h
+	sed -i 's/#ifndef.*/&\n#include <stddef.h>/' lib-src/enigma-core/ecl_dict.hh
 	./configure \
 		--build=$HOST_SYSTEM \
 		--host=$HOST_SYSTEM \
-		--enable-optimize &&
+		--enable-optimize 2>&1 | grep -v 'config.rpath: No such file' &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
