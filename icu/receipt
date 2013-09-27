@@ -5,6 +5,7 @@ VERSION="4.6.1"
 CATEGORY="system-tools"
 SHORT_DESC="C/C++ and Java libraries providing Unicode and Globalization."
 MAINTAINER="pankso@slitaz.org"
+LICENSE="MIT"
 SOURCE="icu4c"
 TARBALL="$SOURCE-${VERSION//./_}-src.tgz"
 WEB_SITE="http://www.icu-project.org/"
@@ -16,17 +17,19 @@ compile_rules()
 {
 	cd $src/source
 	sed -i 's/dirname -- /dirname/' configure
+	{
 	./configure \
 		--disable-tests \
 		--disable-samples \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
+	} 2>&1 | sed -e 's|\(./config.*\)No such file|\1no such file|'
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $_pkg/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
