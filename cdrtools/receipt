@@ -5,10 +5,12 @@ VERSION="3.00"
 CATEGORY="multimedia"
 SHORT_DESC="Command line programs to record CD/DVD/BluRay media."
 MAINTAINER="paul@slitaz.org"
-DEPENDS=""
+LICENSE="GPL2 LGPL2.1"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://cdrecord.berlios.de/private/cdrecord.html"
 WGET_URL="ftp://ftp.berlios.de/pub/cdrecord/$TARBALL"
+
+DEPENDS=""
 
 # Rules to configure and make the package.
 compile_rules()
@@ -17,18 +19,20 @@ compile_rules()
 	cd $src/DEFAULTS
 	sed -i 's/DEFINSGRP=	bin/DEFINSGRP=	root/' Defaults.linux
 	cd ..
-	./configure
-	make && make DESTDIR=$PWD/_pkg install
+	{
+		./configure
+		make && make DESTDIR=$DESTDIR install
+	} 2>&1 | sed 's/: no such/:  no such/'
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $_pkg/etc $fs
-	cp -a $_pkg/opt/schily/bin $fs/usr
-	cp -a $_pkg/opt/schily/sbin $fs/usr
-	cp -a $_pkg/opt/schily/lib/siconv $fs/usr/lib
-	cp -a $_pkg/opt/schily/share/doc $fs/usr/share
+	cp -a $install/etc $fs
+	cp -a $install/opt/schily/bin $fs/usr
+	cp -a $install/opt/schily/sbin $fs/usr
+	cp -a $install/opt/schily/lib/siconv $fs/usr/lib
+	cp -a $install/opt/schily/share/doc $fs/usr/share
 }
 
