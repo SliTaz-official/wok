@@ -22,6 +22,12 @@ compile_rules()
 	sed -i 's/<config.h>/&\n#include <stdio.h>\n#define g_fopen fopen/' \
 		src/epdfview.h
 	find . -name '*.[ch]*' | xargs sed -i 's|<glib/.*h|<glib.h|'
+	# cups 1.6 support
+	sed -i -e '/ippNew/{NNNNNNNNNd}' \
+	    -e 's/state->values\[0\].integer/ippGetInteger(state, 0)/' \
+	    -e 's/location->values\[0\].string.text/ippGetString(location, 0, NULL)/' \
+	    -e 's/.*IPP_TAG_KEYWORD.*/    ipp_t *request = ippNewRequest(IPP_GET_PRINTER_ATTRIBUTES);\n&/' \
+		src/PrintPter.cxx
 	./configure \
 		--with-cups \
 		$CONFIGURE_ARGS &&
