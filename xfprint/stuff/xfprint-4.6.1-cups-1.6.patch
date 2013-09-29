@@ -1,0 +1,136 @@
+>From 2b5b2efdf2ce8233933c1304dc00c271303a4d92 Mon Sep 17 00:00:00 2001
+From: Matt Philips <matt.philips@timesys.com>
+Date: Fri, 19 Apr 2013 14:31:37 -0400
+Subject: [PATCH] Use CUPS-1.6 IPP API getter/setter functions
+
+CUPS 1.6 makes various structures private and introduces these ippGet
+and ippSet functions for all of the fields in these structures.
+http://www.cups.org/str.php?L3928
+
+We define our own accessors when building against CUPS < 1.6.
+
+Based on work by Jiri Popelka <jpopelka@redhat.com> at
+https://bugzilla.gnome.org/show_bug.cgi?id=679759
+---
+ printing-systems/cups/cups.c |   64 +++++++++++++++++-----------
+ 1 file changed, 38 insertions(+), 26 deletions(-)
+
+diff --git a/printing-systems/cups/cups.c b/xfprint-4.6.1/printing-systems/cups/cups.c
+index 96b30d1..9d5df01 100644
+--- a/printing-systems/cups/cups.c
++++ b/printing-systems/cups/cups.c
+@@ -44,6 +44,37 @@ G_MODULE_EXPORT const gchar version[] = VERSION;
+ G_MODULE_EXPORT const gchar author[] = "Jean-François Wauthy";
+ G_MODULE_EXPORT const gchar homepage[] = "http://www.xfce.org";
+ 
++/* fix for cups 1.6 incompatibility */
++#if (CUPS_VERSION_MAJOR > 1) || (CUPS_VERSION_MINOR > 5)
++#define HAVE_CUPS_1_6 1
++#endif
++
++#ifndef HAVE_CUPS_1_6
++#define ippGetState(request) request->state 
++#define ippGetInteger(attr, element) attr->values[element].integer
++#define ippGetString(attr, element, language) attr->values[element].string.text
++#define ippNewRequest(operation_id) cups_request_new(operation_id)
++
++static ipp_t *
++cups_request_new (int operation_id)
++{
++  ipp_t *request;
++  cups_lang_t *language;
++
++  language = cupsLangDefault ();
++  request = ippNew ();
++  request->request.op.operation_id = operation_id;
++  request->request.op.request_id = 1;
++
++  ippAddString (request, IPP_TAG_OPERATION, IPP_TAG_CHARSET, "attributes-charset", NULL, "utf-8");
++
++  ippAddString (request, IPP_TAG_OPERATION, IPP_TAG_LANGUAGE, "attributes-natural-language", NULL, language->language);
++  cupsLangFree (language);
++
++  return request;
++}
++#endif
++
+ static GtkActionEntry printer_list_action_entries[] = {
+   {"set-default-printer", GTK_STOCK_PRINT, N_("Set as default printer"), NULL,
+    N_("Set as default CUPS printer"), G_CALLBACK (action_set_default_printer_cb),},
+@@ -126,25 +157,6 @@ cups_password_cb (const char *prompt)
+ }
+ 
+ static ipp_t *
+-cups_request_new (int operation_id)
+-{
+-  ipp_t *request;
+-  cups_lang_t *language;
+-
+-  language = cupsLangDefault ();
+-  request = ippNew ();
+-  request->request.op.operation_id = operation_id;
+-  request->request.op.request_id = 1;
+-
+-  ippAddString (request, IPP_TAG_OPERATION, IPP_TAG_CHARSET, "attributes-charset", NULL, "utf-8");
+-
+-  ippAddString (request, IPP_TAG_OPERATION, IPP_TAG_LANGUAGE, "attributes-natural-language", NULL, language->language);
+-  cupsLangFree (language);
+-
+-  return request;
+-}
+-
+-static ipp_t *
+ cups_request_new_for_printer (int operation_id, const gchar * printer)
+ {
+   ipp_t *request;
+@@ -160,7 +172,7 @@ cups_request_new_for_printer (int operation_id, const gchar * printer)
+   }
+ 
+   printer_uri = g_strdup_printf ("ipp://%s/printers/%s", server, printer);
+-  request = cups_request_new (operation_id);
++  request = ippNewRequest (operation_id);
+ 
+   ippAddString (request, IPP_TAG_OPERATION, IPP_TAG_URI, "printer-uri", NULL, printer_uri);
+ 
+@@ -242,24 +254,24 @@ get_printers ()
+ 
+       if (!request)
+         continue;
+-      if (request->state == IPP_ERROR || request->state == IPP_IDLE) {
++      if (ippGetState (request) == IPP_ERROR || ippGetState (request) == IPP_IDLE) {
+         ippDelete (request);
+         continue;
+       }
+ 
+       attr = ippFindAttribute (request, "printer-info", IPP_TAG_TEXT);
+-      if (!attr || strlen (attr->values[0].string.text) == 0) {
++      if (!attr || strlen (ippGetString (attr, 0, NULL)) == 0) {
+         attr = ippFindAttribute (request, "printer-make-and-model", IPP_TAG_TEXT);
+         if (attr)
+-          printer->alias = g_strdup (attr->values[0].string.text);
++          printer->alias = g_strdup (ippGetString (attr, 0, NULL));
+         else
+           printer->alias = g_strdup ("");
+       }
+       else
+-        printer->alias = g_strdup (attr->values[0].string.text);
++        printer->alias = g_strdup (ippGetString (attr, 0, NULL));
+ 
+       attr = ippFindAttribute (request, "printer-type", IPP_TAG_ENUM);
+-      if (attr && (attr->values[0].integer & CUPS_PRINTER_CLASS))
++      if (attr && (ippGetInteger (attr, 0) & CUPS_PRINTER_CLASS))
+         printer->type = PRINTER_TYPE_CLASS;
+       else
+         printer->type = PRINTER_TYPE_PRINTER;
+@@ -309,7 +321,7 @@ get_printer_state (const gchar * printer)
+     ipp_attribute_t *attr = ippFindAttribute (request, "printer-state",
+                                               IPP_TAG_ENUM);
+     if (attr)
+-      switch (attr->values[0].integer) {
++      switch (ippGetInteger (attr, 0)) {
+       case IPP_PRINTER_IDLE:
+         state = PRINTER_STATE_IDLE;
+         break;
+-- 
+1.7.9.5
+
