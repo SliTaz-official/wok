@@ -23,6 +23,11 @@ esac
 compile_rules()
 {
 	cd $src
+	mkdir -p src/.deps
+	touch src/.deps/none_ld.Po
+	sed -i	-e 's/strcmp.*symtab")/(&\n\t\t\t\t\&\& strcmp (section_name (ebl, idx), ".dynsym"))/' \
+		-e 's/__fini_array_start.*/&\n\t\t\t\t\&\& strcmp (name, "__bss_start") != 0\n\t\t\t\t\&\& strcmp (name, "__TMC_END__") != 0/' \
+			src/elflint.c
 	sed -i 's/run-strip-reloc.sh//' tests/Makefile* # Need cc -g !
 	./configure $CONFIGURE_ARGS &&
 	# Disable check/tests when cross-compiling
