@@ -79,6 +79,7 @@ find -name Platform.gmk | xargs sed -i "s@MB_OF_MEMORY *:=.*free.*@MB_OF_MEMORY 
 EOT
 	sed -i  -e 's|touch .*|&\n\tsh slitaz.sh|' \
 		-e 's/--check/-c/' \
+		-e 's/Bsymbolic/& -lgcj/' \
 		-e 's/ln -sfv/ln -sf/' Makefile*
 	autoreconf &&
 	{
@@ -96,8 +97,7 @@ EOT
 		--with-rhino=/usr/share/java/js.jar \
 		--with-abs-install-dir=$JVM_PREFIX \
 		$CONFIGURE_ARGS || return 1
-	export LDFLAGS="-Wl,--copy-dt-needed-entries -lgcj"
-	make -j 1 ARCH_PREFIX= 2>&1 | sed '/java_lang_ClassLoaderr.NativeLibrary/d;s/ERROR/error/'
+	make -j 1 ARCH_PREFIX= 2>&1 | sed '/java_lang_ClassLoaderr.NativeLibrary/d'
 	} 2>&1 | sed 's/No such file/no such file/'
 	
 	echo "Copying needed files to install dir..."
