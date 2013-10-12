@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="apache-mod-perl"
-VERSION="2.0.5"
+VERSION="2.0.7"
 CATEGORY="network"
 SHORT_DESC="PERL module for Apache"
 MAINTAINER="erjo@slitaz.org"
@@ -18,8 +18,11 @@ BUILD_DEPENDS="perl gdbm-dev apache-dev apr-dev apr-util-dev apache"
 compile_rules()
 {
 	cd $src
-	perl Makefile.PL MP_APXS=/usr/bin/apxs && \
-	make && \
+	sed -i 's/c->remote_ip/r->useragent_ip/' \
+		src/modules/perl/modperl_interp.c
+	perl Makefile.PL MP_APXS=/usr/bin/apxs \
+			 MP_APR_CONFIG=/usr/bin/apr-1-config &&
+	make &&
 	make DESTDIR=$DESTDIR install
 }
 
