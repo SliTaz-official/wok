@@ -21,12 +21,6 @@
 	contains some other parameters that aren't interesting in this
 	case.
 
-	When a bootloader loads the sectors that comprise a kernel image,
-	it doesn't execute the code in the first sector (since that code
-	would try to load the image from a floppy disk.)  The code in the
-	first sector below doesn't expect to get executed (and prints an
-	error message if it ever -is- executed.)
-
 	We don't require much in the way of setup code.  Historically, the
 	Linux kernel required at least 4 sectors of setup code.
 	Therefore, at least 4 sectors must be present even though we don't
@@ -104,7 +98,6 @@ init_ss:
 	.word	0			// Checksum
 	.word	_exe_start		// Initial IP value
 	/* Initial code segment (relative to start of executable) */
-	//.word	-( ( _exe_start - signature ) / 16 )	// Initial (relative) CS value
 	.word	-( HEADER_SIZE / 16 )	// Initial (relative) CS value
 //	.word	0x001C			// File address of relocation table
 //	.word	0,0,0			// Overlay number
