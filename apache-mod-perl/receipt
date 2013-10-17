@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="apache-mod-perl"
-VERSION="2.0.7"
+VERSION="2.0.8"
 CATEGORY="network"
 SHORT_DESC="PERL module for Apache"
 MAINTAINER="erjo@slitaz.org"
@@ -9,7 +9,7 @@ LICENSE="Apache"
 SOURCE="mod_perl"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://perl.apache.org/"
-WGET_URL="http://perl.apache.org/dist/$TARBALL"
+WGET_URL="http://search.cpan.org/CPAN/authors/id/P/PH/PHRED/$TARBALL"
 
 DEPENDS="apache"
 BUILD_DEPENDS="perl gdbm-dev apache-dev apr-dev apr-util-dev apache"
@@ -18,10 +18,12 @@ BUILD_DEPENDS="perl gdbm-dev apache-dev apr-dev apr-util-dev apache"
 compile_rules()
 {
 	cd $src
-	sed -i 's/c->remote_ip/r->useragent_ip/' \
-		src/modules/perl/modperl_interp.c
 	perl Makefile.PL MP_APXS=/usr/bin/apxs \
-			 MP_APR_CONFIG=/usr/bin/apr-1-config &&
+			 MP_APR_CONFIG=/usr/bin/apr-1-config
+	sed -i 's/remote_ip/client_ip/;s/remote_addr/client_addr/' \
+		WrapXS/Apache2/Connection/Connection.xs
+	sed -i 's/>loglevel/>log.level/' \
+		WrapXS/Apache2/ServerRec/ServerRec.xs
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -35,4 +37,3 @@ genpkg_rules()
 	cp -a $install/usr/share/apache $fs/usr/share
 	
 }
-
