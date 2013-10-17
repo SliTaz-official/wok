@@ -5,12 +5,13 @@ VERSION="0.4"
 CATEGORY="development"
 SHORT_DESC="PHP extension for PAM"
 MAINTAINER="erjo@slitaz.org"
-DEPENDS="php-apache pam"
-BUILD_DEPENDS="php-dev pam pam-dev autoconf automake"
+LICENSE="BSD"
 TARBALL="${PACKAGE}_${VERSION}.orig.tar.gz"
 WEB_SITE="http://packages.debian.org/"
 WGET_URL="http://ftp.de.debian.org/debian/pool/main/p/php-auth-pam/$TARBALL"
 
+DEPENDS="php-apache pam"
+BUILD_DEPENDS="php-dev pam pam-dev autoconf automake"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,6 +21,7 @@ compile_rules()
 	cd $src
 	phpize
 	patch -p1 < $stuff/php-auth-pam-Makefile.global0.4.u || exit 1
+	sed -i 's/^function_entry/zend_&/;s/pval /zval /' pam_auth.c # php 5.4
 	
 	./configure $CONFIGURE_ARGS \
 		--prefix=/usr &&
@@ -31,7 +33,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/php
-	cp -a $_pkg/usr/lib/php/extensions/*/*.so $fs/usr/share/php
+	cp -a $install/usr/lib/php/extensions/*/*.so $fs/usr/share/php
 }
 
 post_install()
