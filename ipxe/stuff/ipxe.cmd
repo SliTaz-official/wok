@@ -1,10 +1,11 @@
 #!ipxe
 
 set menu-timeout 3000
-dhcp
+dhcp ||
 
 :menu
 menu SliTaz net boot menu
+item --key b boot	Local boot
 item --key l lan	Your PXE boot
 item --key w web	SliTaz WEB boot
 item --key r rolling	SliTaz development version
@@ -13,6 +14,9 @@ item --key e exit	iPXE command line
 choose --timeout ${menu-timeout} --default web target || goto exit
 set menu-timeout 0
 goto ${target}
+
+:boot
+exit
 
 :exit
 help

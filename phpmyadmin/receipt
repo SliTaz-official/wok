@@ -44,6 +44,9 @@ EOT
 
 post_install()
 {
+	secret=$(dd if=/dev/urandom count=1 2> /dev/null | md5sum | sed 's/ .*//')
+	sed -i "s/^\(.*blowfish_secret'] = '\)'/\1$secret'/" \
+		$1/etc/phpmyadmin/config.inc.php
 	# Configure lighttpd server
 	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
 		if ! grep -q /usr/share/phpmyadmin/ $1/etc/lighttpd/lighttpd.conf; then
