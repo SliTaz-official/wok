@@ -1,0 +1,58 @@
+#!/bin/sh
+# /etc/init.d/ofono : Start, stop and restart the Mobile Telephony manager
+# on SliTaz, at boot time or with the command line.
+#
+# To start the Mobile Telephony manager at boot time, just put ofono in the
+# $RUN_DAEMONS variable of /etc/rcS.conf and configure options with
+# /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Ofono
+DESC="Mobile telephony Manager"
+DAEMON=/usr/sbin/ofonod
+OPTIONS=$OFONO_OPTIONS
+PIDFILE=/run/ofono
+
+case "$1" in
+  start)
+    if [ -d $PIDFILE ] ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS
+    status
+    ;;
+  stop)
+    if [ -z "$(pidof ofonod)" ] ; then
+      echo "$NAME is not running."
+	  rm -rf $PIDFILE
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+	rm -rf $PIDFILE
+	kill $(pidof ofonod)
+	status
+    ;;
+  restart)
+    if [ -z "$(pidof ofonod)" ]; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+	rm -rf $PIDFILE
+    kill $(pidof ofonod) &&
+    sleep 2 &&
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+	printf "\n\033[1mUsage:\033[0m /etc/init.d/%b [start|stop|restart]\n" \
+		"$(basename $0)"
+    exit 1
+    ;;
+esac
+
+exit 0
