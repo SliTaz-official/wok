@@ -44,24 +44,20 @@ stacktop	= 0x9E00		# in 0x8000 .. 0xA000
 	.ascii  "(SliTaz)"
 end_header:
 comstart:
+	cld				# assume nothing
 #ifdef CMDLINE
-	cld				# assume nothing
-	.byte	0xA3			// mov     %ax,[stacktop]
-	.word	stacktop
-#else
-	cld				# assume nothing
+	movw	$stacktop, %di
 #undef HELP
 #endif
 	pushw	$INITSEG
 	popw	%es
 #ifdef CMDLINE
-	movw	%sp, %di
 	movw	$0x80, %si
 	lodsb
 	cbw
 	xchgw	%ax, %cx
 	jcxz	nocmdline
-	movb	$0x3F, 0x7F(%si)
+	movw	$0xA33F, 0x7F(%si)
 skipspace:
 	lodsb
 	cmpb	$0x20, %al
@@ -77,7 +73,6 @@ skipspace:
 	movw	$EXEADRS(helpmsg), %si
 	cmpb	$'/', %al
 	je	puts
-	movb	setup_sects-helpmsg(%si), %ch
 # endif
 nocmdline:
 #endif
@@ -102,9 +97,7 @@ nocmdline:
 #endif
 	movw	$0x100, %si
 	movw	$end_header, %di
-#ifndef HELP
 	movb	EXEADRS(setup_sects), %ch
-#endif
 	movb	$(512-(end_header-_start))/2, %cl
 	rep
 	  movsw
