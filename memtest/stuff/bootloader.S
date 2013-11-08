@@ -47,6 +47,7 @@ comstart:
 	cld				# assume nothing
 #ifdef CMDLINE
 	movw	$stacktop, %di
+#else
 #undef HELP
 #endif
 	pushw	$INITSEG
