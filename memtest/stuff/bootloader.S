@@ -45,12 +45,13 @@ stacktop	= 0x9E00		# in 0x8000 .. 0xA000
 end_header:
 comstart:
 #ifdef CMDLINE
-	.word	0xA33A			// CMP     AH,[BP+DI+stacktop]
+	cld				# assume nothing
+	.byte	0xA3			// mov     %ax,[stacktop]
 	.word	stacktop
 #else
+	cld				# assume nothing
 #undef HELP
 #endif
-	cld				# assume nothing
 	pushw	$INITSEG
 	popw	%es
 #ifdef CMDLINE
@@ -68,11 +69,15 @@ skipspace:
 	decw	%si
 	rep
 	  movsb
+# if defined(HELP) || defined(CHECK_REALMODE)
+	pushw	%cx		// dos exit (int $0x20)
+# endif
 # ifdef HELP
 # define PUTS
 	movw	$EXEADRS(helpmsg), %si
 	cmpb	$'/', %al
 	je	puts
+	movb	setup_sects-helpmsg(%si), %ch
 # endif
 nocmdline:
 #endif
@@ -86,10 +91,10 @@ nocmdline:
 	pushw	%ax
 	popfw			// < 286 : flags[12..15] are forced 1
 	pushfw			// = 286 : flags[12..15] are forced 0
-	popw	%cx		// > 286 : only flags[15] is forced 0
+	popw	%dx		// > 286 : only flags[15] is forced 0
 	popfw			// restore flags
-	addb	%ah, %ch	// test F0 and 00 cases
-	cmpb	%ah, %ch
+	addb	%ah, %dh	// test F0 and 00 cases
+	cmpb	%ah, %dh
 	jbe	puts		// C=8086/80186, Z=80286
 	smsww	%ax
 	andb	$1, %al
@@ -97,7 +102,9 @@ nocmdline:
 #endif
 	movw	$0x100, %si
 	movw	$end_header, %di
+#ifndef HELP
 	movb	EXEADRS(setup_sects), %ch
+#endif
 	movb	$(512-(end_header-_start))/2, %cl
 	rep
 	  movsw
