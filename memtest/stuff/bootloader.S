@@ -77,13 +77,14 @@ skipspace:
 # endif
 nocmdline:
 #endif
+	movw	$SYSSEG, %ax
 #ifdef CHECK_REALMODE
 #define PUTS
 	movw	$EXEADRS(realmode_expected), %si
 	pushfw			// save flags
 		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
 		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
-	movb	$0x10, %ah	// DF = IF = TF = 0
+	//movb	$0x10, %ah	// DF = IF = TF = 0
 	pushw	%ax
 	popfw			// < 286 : flags[12..15] are forced 1
 	pushfw			// = 286 : flags[12..15] are forced 0
@@ -92,9 +93,9 @@ nocmdline:
 	addb	%ah, %dh	// test F0 and 00 cases
 	cmpb	%ah, %dh
 	jbe	puts		// C=8086/80186, Z=80286
-	smsww	%ax
-	andb	$1, %al
-	jne	puts
+	smsww	%dx
+	shrw	$1, %dx
+	jc	puts
 #endif
 	movw	$0x100, %si
 	movw	$end_header, %di
@@ -105,7 +106,6 @@ nocmdline:
 	ljmp	$INITSEG, $movesys
 start:
 	pushw	%dx
-	xorw	%dx, %dx
 #else
 #undef HELP
 #undef CMDLINE
@@ -137,6 +137,9 @@ zeroed		= 12			# zeroed registers
 	pushw	%ss
 	popw	%es			# %es = %ss = INITSEG
 	xorw	%ax, %ax		# %ax = 0
+#ifdef EXE_SUPPORT
+	cwd				# %dx = 0
+#endif
 	movw	$zeroed/2, %cx		# clear gdt + offset, %ds, limits
 	rep				# don't worry about cld
 	stosw				# already done above
@@ -192,19 +195,19 @@ jmp_setup:
 
 #ifdef PUTS
 #define PUTC
+putslp:
+	call	putc
 puts:
 	lodsb
 	orb	%al, %al
-	je	exit
-	call	putc
-	jmp	puts
+	jne	putslp	
+	ret
 #endif
 #ifdef EXE_SUPPORT
 movesys:
 	pushw	%es
 	popw	%ss
 	movw	EXEADRS(syssize), %bp	// %ds untouched
-	movw	$SYSSEG, %ax
 	movw	%ds, %bx
 	cwd
 	incw	%dx
@@ -218,9 +221,10 @@ forward:
 	movw	%bx, %ds
 	xorw	%di, %di
 	movb	$8, %cl
+	pushw	%si
 	rep
 	  movsw
-	subw	$16, %si
+	popw	%si
 	addw	%dx, %ax
 	addw	%dx, %bx
 	decw	%bp
@@ -243,7 +247,6 @@ putc:
 	movw	$7, %bx
 	int	$0x10
 #endif
-exit:
 	ret
 
 

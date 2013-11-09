@@ -104,7 +104,6 @@ init_ss:
 
 start:
 	pushw	%dx
-	xorw	%dx, %dx
 #endif
 	cld				# assume nothing
 stacktop	= 0x9E00		# in 0x8000 .. 0xA000
@@ -132,6 +131,9 @@ zeroed		= 12			# zeroed registers
 	pushw	%ss
 	popw	%es			# %es = %ss = INITSEG
 	xorw	%ax, %ax		# %ax = 0
+#ifdef EXE_SUPPORT
+	cwd				# %dx = 0
+#endif
 	movw	$zeroed/2, %cx		# clear gdt + offset, %ds, limits
 	rep				# don't worry about cld
 	stosw				# already done above
