@@ -386,7 +386,7 @@ bdendlp:
 
 #ifdef CHECK_REALMODE
 realmode_expected:
-	.ascii	"386 real mode only."
+	.ascii	"386+ real mode only."
 	.byte	13,10,0
 #endif
 #ifdef HELP
