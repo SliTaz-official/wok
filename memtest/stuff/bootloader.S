@@ -66,9 +66,6 @@ skipspace:
 	decw	%si
 	rep
 	  movsb
-# if defined(HELP) || defined(CHECK_REALMODE)
-	pushw	%cx		// dos exit (int $0x20)
-# endif
 # ifdef HELP
 # define PUTS
 	movw	$EXEADRS(helpmsg), %si
@@ -206,7 +203,7 @@ puts:
 	lodsb
 	orb	%al, %al
 	jne	putslp	
-	ret
+	int	$0x20			// dos exit
 #endif
 #ifdef EXE_SUPPORT
 movesys:

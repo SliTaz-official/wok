@@ -37,10 +37,11 @@ main()
 	uudecode | gunzip >$2
 	dd if=$1 bs=1 skip=497 seek=497 count=15 of=$2 conv=notrunc
 	setup="$(echo $(od -j 497 -N 1 -dAn $1))"
+	[ $setup -eq 0 ] && setup=4
 	syssize="$(echo $(od -j 500 -N 2 -dAn $1))"
+	[ $syssize -eq 0 ] && syssize=$((($(stat -c %s $1) + 15 - 512*($setup + 1))/16))
 	store $syssize $2 XXXO
 	store $setup $2 XXXS 1
-	[ $syssize -eq 0 ] && syssize=$((($(stat -c %s $1) + 15 - 512*($setup + 1))/16))
 	dd if=$1 bs=512 count=$setup skip=1 | compress >>$2
 	dd if=$1 bs=16 count=$syssize skip=$((32*(1+$setup))) | compress >>$2
 	size=$(stat -c %s $2)
@@ -49,13 +50,12 @@ main()
 	store 4 $2 497 1
 	store $((($size+511)/512)) $2 4
 	store $((($size+15)/16)) $2 14
-	echo -en "$3" | dd conv=notrunc bs=1 seek=YYY of=$2 count=ZZZ
+	echo -e "$3" | dd conv=notrunc bs=1 seek=YYY of=$2 count=ZZZ
 }
 
 HELP="$(unix2dos <<EOT
 Memtest86+ is an endless advanced memory diagnostic tool released under the
 terms of the Gnu Public License (GPL).
-
 
 EOT
 )"
