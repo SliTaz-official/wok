@@ -73,7 +73,11 @@ skipspace:
 # define PUTS
 	movw	$EXEADRS(helpmsg), %si
 	cmpb	$'/', %al
+#  ifdef CHECK_REALMODE
+	je	jeputs
+#  else
 	je	puts
+#  endif
 # endif
 nocmdline:
 #endif
@@ -92,6 +96,7 @@ nocmdline:
 	popfw			// restore flags
 	addb	%ah, %dh	// test F0 and 00 cases
 	cmpb	%ah, %dh
+jeputs:
 	jbe	puts		// C=8086/80186, Z=80286
 	smsww	%dx
 	shrw	$1, %dx
