@@ -203,9 +203,8 @@ _exe_start:
 	pushfw			// = 286 : flags[12..15] are forced 0
 	popw	%cx		// > 286 : only flags[15] is forced 0
 	popfw			// restore flags
-	addb	%ah, %ch	// test F0 and 00 cases
-	cmpb	%ah, %ch
-	jbe	puts		// C=8086/80186, Z=80286
+	cmpb	%ah, %ch	// test Fx and 0x cases
+	js	puts		// S= not 386+
 //	smsww	%ax
 //	andb	$1, %al
 //	jne	puts

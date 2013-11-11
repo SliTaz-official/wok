@@ -69,11 +69,11 @@ skipspace:
 # ifdef HELP
 # define PUTS
 	movw	$EXEADRS(helpmsg), %si
-	cmpb	$'/', %al
+	cmpb	$'/'+1, %al
 #  ifdef CHECK_REALMODE
-	je	jeputs
+	js	jsputs
 #  else
-	je	puts
+	js	puts
 #  endif
 # endif
 nocmdline:
@@ -91,10 +91,9 @@ nocmdline:
 	pushfw			// = 286 : flags[12..15] are forced 0
 	popw	%dx		// > 286 : only flags[15] is forced 0
 	popfw			// restore flags
-	addb	%ah, %dh	// test F0 and 00 cases
-	cmpb	%ah, %dh
-jeputs:
-	jbe	puts		// C=8086/80186, Z=80286
+	cmpb	%ah, %dh	// test Fx and 0x cases
+jsputs:
+	js	puts		// S= not 386+
 	smsww	%dx
 	shrw	$1, %dx
 	jc	puts
