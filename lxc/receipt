@@ -18,6 +18,8 @@ compile_rules()
 {
 	cd $src
 	./configure --prefix=/usr --mandir=/usr/share/man \
+		--sysconfdir=/etc \
+		--libexec=/usr/lib/$PACKAGE \
 		--localstatedir=/var \
 	$CONFIGURE_ARGS &&
 	make &&
@@ -27,17 +29,15 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.   
 genpkg_rules()                                      
 {
-	mkdir -p $fs/usr $fs/var/lib/lxc
+	mkdir -p $fs/usr/share $fs/var/lib/lxc
+	cp -a $install/usr/share/lxc $fs/usr/share
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
-	sed -i 's|/usr/var/lib/lxc|/var/lib/lxc|;s|/bin/bash|/bin/ash|' \
-		$fs/usr/bin/lxc-version $fs/usr/bin/lxc-netstat \
-		$fs/usr/bin/lxc-destroy $fs/usr/bin/lxc-create \
-		$fs/usr/bin/lxc-setcap $fs/usr/bin/lxc-setuid \
-		$fs/usr/bin/lxc-ls
+	rm -rf $install/usr/lib/pkgconfig
+	cp -a $install/etc $fs
+	cp -a $install/var $fs
 	sed -i -e 's/^is_set(/zgrep() { zcat | grep "$@"; }\n\n&/' \
 		-e 's/\(.*\$GREP .*\)\(\$CONFIG.*\)/\1< \2/' \
-		-e 's/ < 3/ -lt 3/;s/ > 3/ -gt 3/' -e 's|/bin/bash|/bin/ash|' \
 		$fs/usr/bin/lxc-checkconfig
 	chmod +x $fs/usr/bin/lxc-*
 }
