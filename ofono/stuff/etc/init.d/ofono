@@ -13,43 +13,43 @@ NAME=Ofono
 DESC="Mobile telephony Manager"
 DAEMON=/usr/sbin/ofonod
 OPTIONS=$OFONO_OPTIONS
-PIDFILE=/run/ofono
+PIDFILE=/var/run/ofono.pid
 
 case "$1" in
   start)
-    if [ -d $PIDFILE ] ; then
+    if active_pidfile $PIDFILE ofonod ; then
       echo "$NAME already running."
       exit 1
     fi
     echo -n "Starting $DESC: $NAME... "
     $DAEMON $OPTIONS
     status
+    pidof ofonod > $PIDFILE
     ;;
   stop)
-    if [ -z "$(pidof ofonod)" ] ; then
+    if ! active_pidfile $PIDFILE ofonod ; then
       echo "$NAME is not running."
-	  rm -rf $PIDFILE
       exit 1
     fi
     echo -n "Stopping $DESC: $NAME... "
-	rm -rf $PIDFILE
-	kill $(pidof ofonod)
-	status
+    rm -rf $PIDFILE
+    kill $(pidof ofonod)
+    status
     ;;
   restart)
-    if [ -z "$(pidof ofonod)" ]; then
+    if ! active_pidfile $PIDFILE ofonod ; then
       echo "$NAME is not running."
       exit 1
     fi
     echo -n "Restarting $DESC: $NAME... "
-	rm -rf $PIDFILE
+    rm -rf $PIDFILE
     kill $(pidof ofonod) &&
     sleep 2 &&
     $DAEMON $OPTIONS
     status
     ;;
   *)
-	printf "\n\033[1mUsage:\033[0m /etc/init.d/%b [start|stop|restart]\n" \
+    printf "\n\033[1mUsage:\033[0m /etc/init.d/%b [start|stop|restart]\n" \
 		"$(basename $0)"
     exit 1
     ;;

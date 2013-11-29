@@ -31,19 +31,15 @@ compile_rules()
 {
 	cd $src
 	sed -i '/addrs_left/d' src/mod_extforward.c
-	if [ ! done.fastcgi_detach.patch ]; then
-		patch -i $stuff/fastcgi_detach.patch || return 1
-		touch done.fastcgi_detach.patch
-	fi
 	./configure \
 		--enable-shared \
 		--disable-ipv6 \
 		--prefix=/usr \
-    	--libdir=/usr/lib/lighttpd \
-    	--mandir=/usr/share/man \
-    	$CONFIGURE_ARGS &&
+		--libdir=/usr/lib/lighttpd \
+		--mandir=/usr/share/man \
+	$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -51,14 +47,14 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	#cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
+	#cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
 
 	# Modules.
 	mkdir -p $fs/usr/lib/lighttpd
 	for module in $BASE_MODULES
 	do
-		cp $_pkg/usr/lib/lighttpd/mod_${module}.so $fs/usr/lib/lighttpd
+		cp $install/usr/lib/lighttpd/mod_${module}.so $fs/usr/lib/lighttpd
 		echo -n "Copying : mod_${module}.so" && status
 	done
 

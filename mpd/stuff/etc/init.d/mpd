@@ -11,21 +11,35 @@ NAME=mpd
 DESC="Music Player Daemon"
 DAEMON=/usr/sbin/mpd
 OPTION="/etc/mpd.conf"
+PIDFILE="/var/run/mpd.pid"
 
 case "$1" in
 start)
+	if active_pidfile $PIDFILE mpd ; then
+		echo "$NAME already running."
+		exit 1
+	fi
 	echo -n "Starting $DESC: $NAME... "
 	$DAEMON $OPTION 2> /dev/null
 	status
+	pidof $NAME > $PIDFILE
 	;;
 stop)
+	if ! active_pidfile $PIDFILE mpd ; then
+		echo "$NAME is not running."
+		exit 1
+	fi
 	echo -n "Stopping $DESC: $NAME... "
-	$DAEMON --kill 2> /dev/null
+	kill $(pidof $NAME)
 	status
 	;;
 restart)
+	if ! active_pidfile $PIDFILE mpd ; then
+		echo "$NAME is not running."
+		exit 1
+	fi
 	echo -n "Restarting $DESC: $NAME... "
-	$DAEMON --kill 2> /dev/null
+	kill $(pidof $NAME)
 	sleep 2
 	$DAEMON $OPTION 2> /dev/null
 	status

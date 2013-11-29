@@ -17,33 +17,32 @@ PIDFILE=/run/connman
 
 case "$1" in
   start)
-    if [ -d $PIDFILE ] ; then
+    if active_pidfile $PIDFILE connmand ; then
       echo "$NAME already running."
       exit 1
     fi
-	killall udhcpc 2>/dev/null
+    killall udhcpc 2>/dev/null
     echo -n "Starting $DESC: $NAME... "
     $DAEMON $OPTIONS
     status
     ;;
   stop)
-    if [ -z "$(pidof connmand)" ] ; then
+    if ! active_pidfile $PIDFILE connmand ; then
       echo "$NAME is not running."
-	  rm -rf $PIDFILE
       exit 1
     fi
     echo -n "Stopping $DESC: $NAME... "
-	rm -rf $PIDFILE
-	kill $(pidof connmand)
-	status
+    rm -rf $PIDFILE
+    kill $(pidof connmand)
+    status
     ;;
   restart)
-    if [ -z "$(pidof connmand)" ]; then
+    if ! active_pidfile $PIDFILE connmand ; then
       echo "$NAME is not running."
       exit 1
     fi
     echo -n "Restarting $DESC: $NAME... "
-	rm -rf $PIDFILE
+    rm -rf $PIDFILE
     kill $(pidof connmand) &&
     sleep 2 &&
     $DAEMON $OPTIONS

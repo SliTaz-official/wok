@@ -16,14 +16,26 @@ OPTIONS=$GPM_OPTIONS
 
 case "$1" in
   start)
+    if active_pidfile $PIDFILE gpm ; then
+      echo "$NAME already running."
+      exit 1
+    fi
     $DAEMON $OPTIONS
     status
     ;;
   stop)
+    if ! active_pidfile $PIDFILE gpm ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
     $DAEMON -k
     status
     ;;
   restart)
+    if ! active_pidfile $PIDFILE gpm ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
     $DAEMON -k
     status
     $DAEMON $OPTIONS
