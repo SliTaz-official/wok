@@ -1,14 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="lighttpd-ssl"
-VERSION="1.4.30"
+VERSION="1.4.33"
 CATEGORY="network"
 SHORT_DESC="Fast and light HTTP Web server with SSL support."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="BSD"
 SUGGESTED="lighttpd-modules php perl python"
 SOURCE="lighttpd"
-TARBALL="$SOURCE-$VERSION.tar.gz"
+TARBALL="$SOURCE-$VERSION.tar.xz"
 WEB_SITE="http://www.lighttpd.net/"
 WGET_URL="http://download.lighttpd.net/lighttpd/releases-1.4.x/$TARBALL"
 CONFIG_FILES="/etc/lighttpd/vhosts.conf /etc/lighttpd/lighttpd.conf /etc/ssl/lighttpd"
@@ -32,10 +32,7 @@ BUILD_DEPENDS="pcre-dev bzip2-dev openssl-dev"
 compile_rules()
 {
 	cd $src
-	if [ ! done.fastcgi_detach.patch ]; then
-		patch -i $WOK/$SOURCE/stuff/fastcgi_detach.patch || return 1
-		touch done.fastcgi_detach.patch
-	fi
+	sed -i '/addrs_left/d' src/mod_extforward.c
 	./configure \
 		--enable-shared \
 		--disable-ipv6 \
@@ -45,7 +42,7 @@ compile_rules()
     	--mandir=/usr/share/man \
     	$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$PWD/_pkg install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -53,14 +50,14 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	#cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/sbin $fs/usr
+	#cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
 
 	# Modules.
 	mkdir -p $fs/usr/lib/lighttpd
 	for module in $BASE_MODULES
 	do
-		cp $_pkg/usr/lib/lighttpd/mod_${module}.so $fs/usr/lib/lighttpd
+		cp $install/usr/lib/lighttpd/mod_${module}.so $fs/usr/lib/lighttpd
 		echo -n "Copying : mod_${module}.so" && status
 	done
 
