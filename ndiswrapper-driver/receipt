@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="ndiswrapper-driver"
-VERSION="1.57"
+VERSION="1.59"
 CATEGORY="system-tools"
 SHORT_DESC="Add Windows network drivers support to Linux kernel."
 MAINTAINER="erjo@slitaz.org"
@@ -9,7 +9,7 @@ LICENSE="GPL"
 SOURCE="ndiswrapper"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://ndiswrapper.sourceforge.net/joomla/"
-WGET_URL="$SF_MIRROR/$SOURCE/stable/$VERSION/$TARBALL"
+WGET_URL="$SF_MIRROR/$SOURCE/stable/$TARBALL"
 TAGS="windows wireless network"
 
 DEPENDS="linux"
@@ -21,9 +21,8 @@ compile_rules()
 	
 	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
 	cd $src
-	patch -Np1 -i $stuff/kernel-2.6.35.patch
-	patch -Np1 -i $stuff/kernel-2.6.36.patch
 	make KBUILD=/usr/src/linux KVER=linux-$KERNEL_VERSION-slitaz
+	xz driver/ndiswrapper.ko
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -37,11 +36,8 @@ genpkg_rules()
 	# Install utilities	
 	install -o root -m 755 $src/utils/loadndisdriver $fs/sbin/
 
-	# Compress and install module
-	# $stuff/gztazmod.sh $fs/lib/modules/$VERSION-slitaz
-	cp $src/driver/ndiswrapper.ko \
+	cp $src/driver/ndiswrapper.ko.xz \
 		$fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/
-	xz $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/ndiswrapper.ko
 	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/ndiswrapper.ko.xz
 	chmod 644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/ndiswrapper.ko.xz
 }
