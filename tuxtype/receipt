@@ -6,15 +6,16 @@ VERSION="1.8.1"
 CATEGORY="games"
 SHORT_DESC="Educational typing tutor for kids."
 MAINTAINER="claudinei@slitaz.org"
+LICENSE="GPL2"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://tux4kids.alioth.debian.org"
 WGET_URL="https://alioth.debian.org/frs/download.php/3270/$TARBALL"
+
 DEPENDS="libt4k_common libsdl librsvg libsdl-image libsdl-mixer libsdl-ttf \
 libsdl-net libsdl-pango"
 BUILD_DEPENDS="libt4k_common-dev libsdl-dev librsvg-dev libsdl-image-dev \
 libsdl-mixer-dev libsdl-ttf-dev libsdl-net-dev libsdl-pango-dev wget"
 TAGS="education"
-
 
 # Rules to configure and make the package.
 compile_rules()
@@ -27,7 +28,7 @@ compile_rules()
 	make 
 	# Adding the games group satisfies the install script.
 	addgroup games 
-	make DESTDIR=$PWD/_pkg install 
+	make DESTDIR=$DESTDIR install 
 	# We don't need to leave this behind in the build environment.
 	delgroup games
 }
@@ -36,16 +37,16 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share $fs/var/games/tuxtype/words
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/share/tuxtype $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/tuxtype $fs/usr/share
 
 	for lang in de es fr pt; do
 		mkdir -p $fs/usr/share/locale/$lang/LC_MESSAGES
-		cp -a $_pkg/usr/share/locale/$lang/LC_MESSAGES/tuxtype.mo \
+		cp -a $install/usr/share/locale/$lang/LC_MESSAGES/tuxtype.mo \
 			$fs/usr/share/locale/$lang/LC_MESSAGES
 	done
 	
-	cp -ar $_pkg/usr $fs
+	cp -ar $install/usr $fs
 }
 
 post_install()
