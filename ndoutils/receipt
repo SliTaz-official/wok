@@ -5,12 +5,14 @@ VERSION="1.5.2"
 CATEGORY="network"
 SHORT_DESC="Provide mysql access to nagios."
 MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.nagios.org/"
 WGET_URL="$SF_MIRROR/nagios/$TARBALL"
+CONFIG_FILES="/etc/nagios"
+
 DEPENDS="nagios mysql"
 BUILD_DEPENDS="mysql-dev"
-CONFIG_FILES="/etc/nagios"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -34,8 +36,8 @@ EOT
 	--libexecdir=/usr/lib/$PACKAGE \
 	--mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make && \
-	make DESTDIR=$PWD/_pkg install && \
-	make DESTDIR=$PWD/_pkg install-config
+	make DESTDIR=$DESTDIR install && \
+	make DESTDIR=$DESTDIR install-config
 }	
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -46,9 +48,9 @@ genpkg_rules()
 		$fs/var/run/nagios \
 		$fs/etc/mysql.d
 	
-	cp -a $_pkg/usr/bin $fs/usr
-	cp -a $_pkg/usr/lib $fs/usr
-	cp -a $_pkg/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/etc $fs
 	
 	# config ndo2db.cfg
 	sed -i  -e 's/ndo2db_user=nagios/ndo2db_user=nagios/' \
