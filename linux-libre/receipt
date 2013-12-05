@@ -97,8 +97,8 @@ EOT
 	       -e 's/^CONFIG_RT2870/#&/' .config
 	yes '' | make oldconfig
 	make $MAKEFLAGS bzImage || { report close-bloc; return 1; }
-	[ -d $PWD/_pkg ] || mkdir -p $PWD/_pkg
-	mv arch/x86/boot/bzImage $PWD/_pkg
+	[ -d $DESTDIR ] || mkdir -p $DESTDIR
+	mv arch/x86/boot/bzImage $DESTDIR
 	mv System.map System.map-without-modules
 
 	[ ! -x /usr/bin/cook ] && report step "Now build bzImage with modules"
@@ -109,16 +109,16 @@ EOT
 	ln .config $WOK/$PACKAGE/slitaz/config
 	make $MAKEFLAGS bzImage &&
 	make $MAKEFLAGS modules &&
-	make INSTALL_MOD_PATH=$PWD/_pkg modules_install &&
-	make INSTALL_HDR_PATH=$PWD/_pkg/usr headers_install &&
+	make INSTALL_MOD_PATH=$DESTDIR modules_install &&
+	make INSTALL_HDR_PATH=$DESTDIR/usr headers_install &&
 	[ -s arch/x86/boot/bzImage ] || { report close-bloc; return 1; }
-	mkdir -p $PWD/_pkg/boot 2> /dev/null
-	mv arch/x86/boot/bzImage $PWD/_pkg/boot/vmlinuz-$VERSION-slitaz
+	mkdir -p $DESTDIR/boot 2> /dev/null
+	mv arch/x86/boot/bzImage $DESTDIR/boot/vmlinuz-$VERSION-slitaz
 	
 	[ ! -x /usr/bin/cook ] && report step "Compressing all modules"
 	
 	# Compress all modules.
-	$stuff/gztazmod.sh $PWD/_pkg/lib/modules/$VERSION-slitaz
+	$stuff/gztazmod.sh $DESTDIR/lib/modules/$VERSION-slitaz
 	ln System.map System.map-modules
 	ln Module.symvers Module.symvers-modules
 	
