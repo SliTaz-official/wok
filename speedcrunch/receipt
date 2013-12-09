@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="speedcrunch"
+VERSION="0.10.1"
+CATEGORY="utilities"
+SHORT_DESC="SpeedCrunch is a fast, high precision and powerful desktop calculator"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL2"
+WEB_SITE="http://speedcrunch.org/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://speedcrunch.googlecode.com/files/$TARBALL"
+
+DEPENDS="glibc-base libQtGui libQtXml"
+BUILD_DEPENDS="cmake Qt4-dev qmake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir ./build && cd ./build
+	cmake -DCMAKE_INSTALL_PREFIX=/usr ../src &&
+	make &&
+	lrelease ../src/speedcrunch.pro &&
+	make install
+	# proper sub-category
+	sed -i 's|^Categories.*$|&;Calculator;|' \
+		$install/usr/share/applications/speedcrunch.desktop
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
