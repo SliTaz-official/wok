@@ -1,12 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="wxWidgets"
-VERSION="2.9.5"
+VERSION="2.8.12.1"
 CATEGORY="x-window"
 SHORT_DESC="Cross-platform GUI Library"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="LGPL"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+SOURCE="wxPython"
+TARBALL="$SOURCE-src-$VERSION.tar.bz2"
 WEB_SITE="http://www.wxwidgets.org/"
 WGET_URL="$SF_MIRROR/wxwindows/$TARBALL"
 
@@ -23,6 +24,7 @@ jpeg-dev xorg-libXpm-dev patch"
 compile_rules()
 {
 	cd $src
+	sed -i 's|/opt/wx/current/bin/||' wxPython/wx/build/build_options.py
 	./configure \
 		--enable-shared \
 		--enable-unicode \
@@ -37,8 +39,10 @@ compile_rules()
 	make &&
 	make DESTDIR=$DESTDIR install &&
 	cd $src/contrib &&
+	{
 	make &&
 	make DESTDIR=$DESTDIR  install
+	} 2>&1 | sed 's/h: No such/h: no such/'
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
