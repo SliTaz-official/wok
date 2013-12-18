@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="linux"
-VERSION="3.2.40"
+VERSION="3.2.53"
 KBASEVER="${VERSION:0:3}"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
@@ -220,11 +220,11 @@ EOT
 	sed -i -e 's/^CONFIG_RTL8192/#&/' \
 	       -e 's/^CONFIG_R8187SE/#&/' \
 	       -e 's/^CONFIG_RT2870/#&/' .config
-	yes '' | make oldconfig
+	yes '' | make ARCH=i386 oldconfig
 	if [ -x /usr/bin/cook ]; then
-		make -j 4 bzImage || exit 1
+		make ARCH=i386 -j 4 bzImage || exit 1
 	elif [ -x /usr/bin/tazwok ]; then
-		make -j 4 bzImage || { report close-bloc; return 1; }
+		make ARCH=i386 -j 4 bzImage || { report close-bloc; return 1; }
 	fi
 	[ -d $DESTDIR ] || mkdir -p $DESTDIR
 	mv arch/x86/boot/bzImage $DESTDIR
@@ -234,12 +234,12 @@ EOT
 
 	# Build bzImage with modules
 	cp -f $stuff/$PACKAGE-slitaz.config .config
-	#make oldconfig
+	#make ARCH=i386 oldconfig
 	ln .config $WOK/$PACKAGE/source/slitaz/config
-	make -j 4 bzImage &&
-	make -j 4 modules &&
-	make INSTALL_MOD_PATH=$DESTDIR modules_install &&
-	make INSTALL_HDR_PATH=$DESTDIR/usr headers_install &&
+	make ARCH=i386 -j 4 bzImage &&
+	make ARCH=i386 -j 4 modules &&
+	make ARCH=i386 INSTALL_MOD_PATH=$DESTDIR modules_install &&
+	make ARCH=i386 INSTALL_HDR_PATH=$DESTDIR/usr headers_install &&
 	if [ -x /usr/bin/cook ]; then
 		[ -s arch/x86/boot/bzImage ] || return 1
 	elif [ -x /usr/bin/tazwok ]; then
