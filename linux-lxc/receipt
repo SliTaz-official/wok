@@ -20,3 +20,37 @@ genpkg_rules()
         cp -a $src/lib/firmware $fs/lib
         chown -R root.root $fs
 }
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+    echo "Processing post-install commands..."
+    chroot "$1/" depmod -a $VERSION-lxc-slitaz
+    # GRUB stuff.
+    if [ -f "$1/boot/grub/menu.lst" ]; then
+        root_dev=`cat $1/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ 
+]*\).*/\1/' | head -n 1`
+                grub_dev=`cat $1/boot/grub/menu.lst | grep "root (" | head -n 
+1`
+                # Add new kernel entry in case of upgrade for installed system.
+                if ! grep -q $PACKAGE-$VERSION-lxc-slitaz $1/boot/grub/menu.lst; 
+then
+                cat >> $1/boot/grub/menu.lst << EOT
+
+title SliTaz GNU/Linux (Kernel $VERSION-lxc-slitaz)
+$grub_dev
+kernel /boot/vmlinuz-$VERSION-lxc-slitaz root=$root_dev
+EOT
+                fi
+                # Display information message.
+        cat <<EOT
+----
+GRUB is installed, these tree lines must be in your /boot/grub/menu.lst:
+
+title  SliTaz GNU/Linux (Kernel $VERSION-lxc-slitaz)
+$grub_dev
+kernel /boot/vmlinuz-$VERSION-lxc-slitaz root=$root_dev
+----
+EOT
+        fi
+}
