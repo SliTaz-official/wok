@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="util-linux-eject"
+VERSION="2.24"
+CATEGORY="base-system"
+SHORT_DESC="The eject utility from Util linux NG."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL2"
+WANTED="util-linux"
+WEB_SITE="http://kernel.org/~kzak/util-linux/"
+HOST_ARCH="i486 arm"
+
+DEPENDS="glibc-base"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $install/usr/bin/eject $fs/usr/bin
+}
+
+# Remove old package
+post_install()
+{
+	if [ -d "$INSTALLED/util-linux-eject" ]; then
+		echo "Removing old: util-linux-eject"
+		rm -rf $INSTALLED/util-linux-eject
+	fi
+}
+
+# Overlap busybox
+pre_install()
+{
+	rm -f $root/usr/bin/eject
+}
+
+post_remove()
+{
+	cd $root/usr/bin
+	ln -s ../../bin/busybox eject
+}
