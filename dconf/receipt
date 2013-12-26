@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="dconf"
+VERSION="0.13.0"
+CATEGORY="system-tools"
+SHORT_DESC="A low-level configuration system"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="LGPL2.1"
+WEB_SITE="http://live.gnome.org/dconf"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+HI_VERSION=$(echo $VERSION | cut -d. -f1,2)
+WGET_URL="$GNOME_MIRROR/$PACKAGE/$HI_VERSION/$TARBALL"
+
+DEPENDS="dbus gtk+3"
+BUILD_DEPENDS="vala glib-dev dbus-dev gtk+3-dev libxml2-dev"
+GENERIC_MENUS="no"
+GENERIC_PIXMAPS="no"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure \
+		--sysconfdir=/etc \
+		--libexecdir=/usr/lib \
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/usr/bin \
+		$fs/usr/lib \
+		$fs/usr/share
+	cp -a $install/usr/bin/dconf $fs/usr/bin
+	cp -a $install/usr/lib/gio $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/dconf-service $fs/usr/lib
+	cp -a $install/usr/share/dbus* $fs/usr/share
+	cp -a $install/usr/share/glib* $fs/usr/share
+}

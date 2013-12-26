@@ -1,0 +1,51 @@
+# SliTaz package receipt.
+
+PACKAGE="granite"
+VERSION="0.2.1"
+CATEGORY="system-tools"
+SHORT_DESC="A development library for elementary development"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="LGPL3"
+WEB_SITE="https://launchpad.net/granite"
+BRANCH="535"
+TARBALL="$PACKAGE-$BRANCH.tar.bz2"
+WGET_URL="bzr|lp:granite"
+
+DEPENDS="gtk+3 libgee"
+BUILD_DEPENDS="bazaar cmake vala gtk+3-dev libgio-dev glib-dev libgee-dev \
+gobject-introspection-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# gee-1.0 is old while gee-0.8 is latest ;)
+	sed -i 's|gee-1.0|gee-0.8|g; s|Gee-1.0|Gee-0.8|g' \
+		$(grep -li gee-1.0 $(find . -type f))
+
+	mkdir build &&
+	cd build &&
+	cmake .. -DCMAKE_INSTALL_PREFIX=/usr &&
+	make &&
+	make DESTDIR=$install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/usr/lib \
+		$fs/usr/share
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	# icons converted from svg
+	for size in 16 22 24 32 48; do
+		ifolder=$fs/usr/share/icons/hicolor/${size}x${size}/actions
+		mkdir -p $ifolder
+		cp $stuff/${size}.png $ifolder/application-menu.png
+	done
+	# localization
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+	for lang in $LOCALE_PACK; do
+		langf=$install/usr/share/locale/$lang
+		[ -d $langf ] && cp -a $langf $fs/usr/share/locale
+	done
+}

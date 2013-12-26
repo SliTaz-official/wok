@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="efl"
+VERSION="1.8.3"
+CATEGORY="base-system"
+SHORT_DESC="EFL Core data structure library."
+MAINTAINER="domcox@slitaz.org"
+LICENSE="LGPL2.1"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.enlightenment.org/"
+WGET_URL="http://download.enlightenment.org/rel/libs/$PACKAGE/$TARBALL"
+TAGS="e enlightenment efl"
+
+DEPENDS="gstreamer gst-plugins-base
+util-linux-mount util-linux-blkid udev openssl dbus
+libjpeg fribidi giflib tiff libsndfile lua
+xorg-libXp xorg-libXScrnSaver mesa bullet util-linux-uuid"
+
+BUILD_DEPENDS="gstreamer-dev gst-plugins-base-dev check-dev
+util-linux-mount-dev util-linux-blkid-dev udev-dev openssl-dev dbus-dev
+jpeg-dev fribidi-dev giflib-dev tiff-dev libsndfile-dev lua-dev
+xorg-libXp-dev xorg-printproto xorg-scrnsaverproto xorg-libXScrnSaver-dev
+mesa-dev util-linux-uuid-dev libxml2-dev
+autoconf automake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	autoreconf -v &&
+	./configure \
+		--disable-static \
+		--disable-doc \
+		--disable-pulseaudio \
+		--disable-physics \
+		$CONFIGURE_ARGS &&
+	make && make -j1 install DESTDIR=$install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/e* $fs/usr/lib
+	cp -a $install/usr/share $fs/usr/
+}
