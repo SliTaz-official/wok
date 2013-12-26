@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="varka"
+VERSION="0.1"
+CATEGORY="development"
+SHORT_DESC="A library on top of gtk to build applications"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="https://launchpad.net/varka"
+BRANCH="15"
+TARBALL="$PACKAGE-$BRANCH.tar.bz2"
+WGET_URL="bzr|lp:varka"
+
+DEPENDS="gtk+3"
+BUILD_DEPENDS="bazaar cmake gobject-introspection-dev gtk+3-dev libgio-dev vala"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	export LDFLAGS="$LDFLAGS $(pkg-config --libs gio-unix-2.0 gmodule-2.0)"
+	mkdir build && cd build
+	cmake .. -DCMAKE_INSTALL_PREFIX=/usr && \
+	make && \
+	make DESTDIR=$install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+}

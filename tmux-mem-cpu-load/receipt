@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="tmux-mem-cpu-load"
+VERSION="2.2.1"
+CATEGORY="utilities"
+SHORT_DESC="CPU, RAM memory, and load monitor for use with tmux."
+MAINTAINER="paul@slitaz.org"
+LICENSE="Apache"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="https://github.com/thewtex/tmux-mem-cpu-load"
+WGET_URL="git|git://github.com/thewtex/tmux-mem-cpu-load"
+
+DEPENDS="tmux"
+BUILD_DEPENDS="cmake python bzip2 git"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	cmake . -DCMAKE_INSTALL_PREFIX=/usr
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+}
+
+post_install()
+{
+	echo -n "Checking for .tmux.conf..."
+	if [ ! -f /home/tux/.tmux.conf ] || $(! grep -q "tmux-mem-cpu-load" /home/tux/.tmux.conf); then
+	cat >> /home/tux/.tmux.conf << EOT
+# tmux-mem-cpu-load
+set -g status-interval 2
+set -g status-right "#[fg=black,bg=green]#(tmux-mem-cpu-load 2)#[default]"
+EOT
+	fi
+	chown tux:users /home/tux/.tmux.conf
+	status
+}
+
