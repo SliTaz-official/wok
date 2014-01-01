@@ -1,48 +1,66 @@
 # SliTaz package receipt.
 
 PACKAGE="gnucash"
-VERSION="2.4.11"
+VERSION="2.6.0"
 CATEGORY="office"
 SHORT_DESC="Financial-accounting software"
 MAINTAINER="domcox@slitaz.org"
-LICENSE="GPL3"
+LICENSE="gpl"
 WEB_SITE="http://www.gnucash.org"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+LOCALES="da de es fr it pt_BR ru zh_CN"
 
-DEPENDS="GConf gnome-vfs gmp goffice guile libgnome libgnomeui libgsf libofx \
-libwebkit libxslt slib zlib"
-BUILD_DEPENDS="GConf-dev gnome-vfs-dev gmp-dev goffice-dev guile-dev \
-libgnome-dev libgnomeui-dev libgsf-dev libofx-dev libtool libwebkit-dev \
-libxslt-dev slib util-linux-uuid-dev"
+DEPENDS="glib gtk+ goffice guile libgnomecanvas libofx libwebkit libxml2 \
+libxslt perl slib zlib util-linux-uuid"
+BUILD_DEPENDS="glib-dev gtk-dev goffice-dev guile-dev libgnomecanvas-dev \
+libofx-dev libwebkit-dev libxml2-dev libxslt-dev perl slib zlib-dev intltool \
+util-linux-uuid-dev "
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	# patch G_CONST_RETURN deprecated
-	for file_diff in $stuff/*.patch; do
-		echo -n "Applying patch $(basename $file_diff)"
-		patch -Np3 -i $file_diff > /dev/null
-		status
-	done
-	# busybox compliant
+	# busybox compliance
 	sed -i 's/cat -s/cat/g' $src/doc/Makefile.in
 	# build
-	./configure $CONFIGURE_ARGS \
-		--prefix="/usr" \
-		--disable-html-docs \
-		--with-html-engine="webkit" \
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--libexecdir=/usr/lib \
 		--disable-dbi \
-		--disable-ofx \
+		--enable-ofx \
 		--disable-aqbanking \
-		--disable-deprecated-glib \
-		--disable-schemas-install \
-		LDFLAGS='-Wl,-O1 -Wl,--as-needed' &&
-	make && make -j1 install
+		--enable-locale-specific-tax \
+		$CONFIGURE_ARGS &&
+	make &&
+	make -j1 install $DESTDIR=$install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
+	# /etc
+	cp -a $install/etc $fs
+	mkdir -p $fs/usr/share
+	# /usr/bin
+	cp -a $install/usr/bin $fs/usr
+	# /usr/lib
+	cp -a $install/usr/lib $fs/usr
+	rm -f $fs/usr/lib/*.*a
+	rm -f $fs/usr/lib/gnucash/*.*a
+	# /usr/share
+	local sharedirs="appdata applications glib-2.0 gnucash"
+	for dir in $sharedirs; do
+		cp -a $install/usr/share/$dir $fs/usr/share
+	done
+	# desktop file and icon
+	mkdir -p $fs/usr/share/pixmaps
+	cp -a $install/usr/share/icons/hicolor/32x32/apps/gnucash-icon.png \
+		$fs/usr/share/pixmaps/gnucash.png
+	sed -i 's/Icon=.*/Icon=gnucash/' \
+		$install/usr/share/applications/gnucash.desktop
+	# locales
+	for locale in $LOCALES; do
+		cp -a $install/usr/share/locale/$locale $fs/usr/share/locale
+	done
 }
