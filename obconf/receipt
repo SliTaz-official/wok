@@ -1,29 +1,27 @@
 # SliTaz package receipt.
 
 PACKAGE="obconf"
-VERSION="2.0.3"
-GITTAG="500163e2c74cbbded0361574fd14d0a1168c1119"
+VERSION="2.0.4"
 CATEGORY="x-window"
 SHORT_DESC="Openbox WM configuration interface."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION-$GITTAG.tar.gz"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://icculus.org/openbox/"
-WGET_URL="http://git.openbox.org/?p=dana/obconf.git;a=snapshot;h=$GITTAG;sf=tgz"
+WGET_URL="http://openbox.org/dist/obconf/$TARBALL"
 TAGS="openbox"
 
 DEPENDS="openbox gtk+ libglade shared-mime-info xorg-libXdamage \
 startup-notification slitaz-boot-scripts"
 BUILD_DEPENDS="xorg-dev gtk+-dev libglade-dev openbox-dev \
-startup-notification-dev git autoconf automake"
+gdk-pixbuf-dev startup-notification-dev"
 
+#  
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	export LDFLAGS="-Wl,--copy-dt-needed-entries -lX11 -lobt -lobrender"
-	autoreconf -f -i &&
-	./configure CFLAGS="-I/usr/include/openbox/3.5" $CONFIGURE_ARGS &&
+	./configure $CONFIGURE_ARGS &&
 	sed -i 's/^mkdir_p = .*/mkdir_p = mkdir -p/' po/Makefile &&
 	make && make install
 }
@@ -45,4 +43,12 @@ genpkg_rules()
 post_install()
 {
 	chroot "$1/" /usr/bin/update-mime-database /usr/share/mime
+	chroot "$1/" /usr/bin/update-desktop-database /usr/share/applications
+}
+
+# Update mime database.
+post_remove()
+{
+	chroot "$1/" /usr/bin/update-mime-database /usr/share/mime
+	chroot "$1/" /usr/bin/update-desktop-database /usr/share/applications
 }
