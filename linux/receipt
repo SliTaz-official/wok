@@ -68,7 +68,9 @@ compile_rules()
 			#xzcat $SRC/$(basename $PATCH) | patch -Np1 >/dev/null
 			patch -Np1 < $stuff/$ARCH/linux-arm.patch || exit 1
 			cp -f $stuff/$ARCH/linux-arm.config .config
+			echo "Configure $ARCH kernel..."
 			yes '' | make ARCH=$ARCH oldconfig
+			echo "Build $ARCH kernel..."
 			make ARCH=$ARCH CROSS_COMPILE=${HOST_SYSTEM}- bzImage &&
 			make ARCH=$ARCH CROSS_COMPILE=${HOST_SYSTEM}- modules &&
 			make ARCH=$ARCH CROSS_COMPILE=${HOST_SYSTEM}- \
@@ -176,7 +178,9 @@ EOT
 	sed -i -e 's/^CONFIG_RTL8192/#&/' \
 	       -e 's/^CONFIG_R8187SE/#&/' \
 	       -e 's/^CONFIG_RT2870/#&/' .config
+	echo "Configure bzImage64 without modules..."
 	yes '' | make ARCH=x86_64 oldconfig
+	echo "Build bzImage64 without modules..."
 	if [ -x /usr/bin/cook ]; then
 		make -j 4 ARCH=x86_64 CROSS_COMPILE=uclibc-x86_64- bzImage || exit 1
 	elif [ -x /usr/bin/tazwok ]; then
@@ -190,7 +194,9 @@ EOT
 
 	# Build bzImage64 with modules
 	cp -f $stuff/$PACKAGE-slitaz.config64 .config
+	echo "Configure bzImage64 with modules..."
 	yes '' | make ARCH=x86_64 oldconfig
+	echo "Build bzImage64 with modules..."
 	make -j 4 ARCH=x86_64 CROSS_COMPILE=uclibc-x86_64- bzImage &&
 	make -j 4 ARCH=x86_64 CROSS_COMPILE=uclibc-x86_64- modules &&
 	make ARCH=x86_64 INSTALL_MOD_PATH=$DESTDIR/linux64 modules_install &&
@@ -221,7 +227,9 @@ EOT
 	sed -i -e 's/^CONFIG_RTL8192/#&/' \
 	       -e 's/^CONFIG_R8187SE/#&/' \
 	       -e 's/^CONFIG_RT2870/#&/' .config
+	echo "Configure bzImage without modules..."
 	yes '' | make ARCH=i386 oldconfig
+	echo "Build bzImage without modules..."
 	if [ -x /usr/bin/cook ]; then
 		make ARCH=i386 -j 4 bzImage || exit 1
 	elif [ -x /usr/bin/tazwok ]; then
@@ -235,8 +243,10 @@ EOT
 
 	# Build bzImage with modules
 	cp -f $stuff/$PACKAGE-slitaz.config .config
+	echo "Configure bzImage with modules..."
 	yes '' | make ARCH=i386 oldconfig
 	ln .config $WOK/$PACKAGE/source/slitaz/config
+	echo "Build bzImage with modules..."
 	make ARCH=i386 -j 4 bzImage &&
 	make ARCH=i386 -j 4 modules &&
 	make ARCH=i386 INSTALL_MOD_PATH=$DESTDIR modules_install &&
