@@ -15,9 +15,16 @@
 #geometry=780x580
 
 # Change this if you want to have text-only browsing from the start.
-# (there's a toggle button near the bug meter to change this on-the-fly)
-#load_images=YES
+# (While browsing, this can be changed from the tools/settings menu.)
+load_images=YES
 
+# Change this if you want to disable loading of CSS stylesheets initially.
+# (While browsing, this can be changed from the tools/settings menu.)
+load_stylesheets=YES
+
+# Change this if you want to disable parsing of embedded CSS initially.
+# (While browsing, this can be changed from the tools/settings menu.)
+parse_embedded_css=YES
 
 # Change the buffering scheme for drawing
 # 0 no double buffering - useful for debugging
@@ -32,39 +39,82 @@
 #                           RENDERING SECTION
 #-------------------------------------------------------------------------
 
-# Fontname for variable width rendering (most of the text).
-#   - some fonts may slow down rendering.
-#   - try to tune a fontname/font_factor combination.
-# Ex. {helvetica, lucida, times, "new century schoolbook", utopia, ...}
-# vw_fontname="new century schoolbook"
-# vw_fontname="helvetica"
-# vw_fontname="times"
-# vw_fontname="Bitstream vera Serif"
-# vw_fontname="arial"
-#vw_fontname="DejaVu Sans"
+# Default fonts:
+#
+# If FLTK has been configured with Xft enabled (the default), you can use
+# scalable fonts such as DejaVu or Liberation (try running
+# "fc-list : family | cut -d ',' -f 2 | sort").
+#font_serif="DejaVu Serif"
+#font_sans_serif="DejaVu Sans"
+#font_cursive="URW Chancery L"
+#font_fantasy="DejaVu Sans"
+#font_monospace="DejaVu Sans Mono"
+#
+# Otherwise, use bitmapped fonts like the following (for a list, try running
+# "xlsfonts -fn *-iso10646-1 | grep -v -e -0-0 | cut -d - -f 3 | sort | uniq").
+# font_serif="times"
+# font_sans_serif="helvetica"
+# font_cursive="helvetica"
+# font_fantasy="helvetica"
+# font_monospace="courier"
 
-# Fontname for fixed width rendering (mainly text quoted with <pre>)
-# fw_fontname=courier
-# fw_fontname="Bitstream Vera Sans Mono"
-# fw_fontname="Andale Mono"
-#fw_fontname="DejaVu Sans Mono"
-
-# All fontsizes are scaled by this value
+# All font sizes are scaled by this value
 # font_factor=1.5
 #font_factor=1.0
 
-# Show tooltip popup for images?
-# Note: We use the "title" attribute and not "alt".
-#       More info at: http://bugzilla.mozilla.org/show_bug.cgi?id=25537
-# *** NOT HOOKED UP YET ***
-#
+# Maximum font size in pixels
+#font_max_size=100
+
+# Minimum font size in pixels
+#font_min_size=6
+
+# Show tooltip popups for UI and for HTML title attributes
 #show_tooltip=YES
 
 # Set this to YES if you want to limit the word wrap width to the viewport
 # width (may be useful for iPAQ)
-# *** NOT HOOKED UP YET ***
-#
 #limit_text_width=NO
+
+
+#-------------------------------------------------------------------------
+#                               PENALTIES
+#-------------------------------------------------------------------------
+
+# Penalties are used to control good and bad break points. The bigger
+# the penalty for a given break point, the less likely the line is
+# broken here. "inf" means that breaking is prohibited, "-inf" means
+# that a line *must* be broken here. (The latter should not be used
+# here, however.) Normal spaces get a penalty of 0. The exact
+# definition can be found in doc/dw-line-breaking.doc.
+
+# Penalties for hyphenation breaks; this covers automatic hyphenation,
+# soft hyphens, and unconditional hyphens. Since hyphenation should
+# rather be avoided, the default values are larger than 0.
+
+# This is used for hyphenation points, when there is no hyphen or dash
+# before:
+#penalty_hyphen = 1
+
+# This is used for hyphenation points, when the line before ends
+# already with a hyphen or a dash. Consequent lines ending with
+# hyphens or dashes should be avoided, so this value is bigger than
+# "penalty_hyphen":
+#penalty_hyphen_2 = 8
+
+# The same for a break right of an em-dash, when there are no spaces
+# surrounding it (as in English). The default values are the same as
+# for hyphens:
+#penalty_em_dash_right = 1
+#penalty_em_dash_right_2 = 8
+
+# Penalty for a break *left* of an em-dash. Since a line ending with
+# an em-dash (and so breaking right of the em-dash) looks better than
+# a line beginning with an em-dash (breaking left of an em-dash), the
+# default value is bigger than "penalty_em_dash_right":
+#penalty_em_dash_left = 8
+
+# Notice that there is no "penalty_em_dash_left_2", since breaking
+# left of an em-dash makes the line *begin*, not *end* with a dash.
 
 
 #-------------------------------------------------------------------------
@@ -91,15 +141,33 @@ start_page="file:/usr/share/webhome/index.html"
 # home="file:/home/jcid/HomePage/Home.html"
 home="file:/usr/share/webhome/index.html"
 
-# Set the URL used by the web search dialog.
+# Set the URLs used by the web search dialog.
 # "%s" is replaced with the search keywords separated by '+'.
-# search_url="http://search.lycos.com/?query=%s"
-# search_url="http://www.alltheweb.com/search?cat=web&query=%s"
-#search_url="http://www.google.com/search?q=%s"
+# Format: search_url="[<label> ]<url>"
+# You can enable multiple search_url strings at once and select from among
+# them at runtime, with the first being the default.
+search_url="http://duckduckgo.com/lite/?kp=-1&q=%s&t=slitaz"
+search_url="Wikipedia http://www.wikipedia.org/w/index.php?search=%s&go=Go"
+search_url="Free Dictionary http://www.thefreedictionary.com/%s"
+search_url="Google http://www.google.com/search?ie=UTF-8&oe=UTF-8&q=%s"
+
+# If set, dillo will ask web servers to send pages in this language.
+# This setting does NOT change dillo's user interface.
+# Format explained: www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.4
+# Language-REGION values: www.iana.org/assignments/language-subtag-registry
+# (by default, no Accept-Language header is sent)
+# http_language="de"
+# http_language="pt-BR"
+# http_language="vi,de-CH,de;q=0.5,th;q=0.3"
+
+# Maximum number of simultaneous TCP connections to a single server or proxy.
+# http_max_conns=6
 
 # Set the proxy information for http.
-# WARNING: dillo uses wget for ftp and https. To use a proxy for those
-# protocols, you will need to configure wget.
+# Note that the http_proxy environment variable overrides this setting.
+# WARNING: FTP and downloads plugins use wget. To use a proxy with them,
+#          you will need to configure wget accordingly. See
+#          http://www.gnu.org/software/wget/manual/html_node/Proxies.html
 # http_proxy="http://localhost:8080/"
 #(by default, no proxy is used)
 
@@ -110,7 +178,7 @@ home="file:/usr/share/webhome/index.html"
 
 # Set the domains to access without proxy
 # no_proxy = ".hola.com .mynet.cl .hi.de"
-#(by default, no proxy is used)
+#no_proxy="localhost 127.0.0.1"
 
 # Set the HTTP Referer (sic) header.
 # Note that there is no option to reveal the page that you came from because it
@@ -121,53 +189,131 @@ home="file:/usr/share/webhome/index.html"
 # path  : Send the requested URI's host and path.
 #http_referer=host
 
+# Set the HTTP User-Agent header.
+# This can be useful for privacy and for working around servers who think
+# Dillo is less capable than it really is. However, if you pretend to use a
+# different browser, servers may send you pages that work with the features
+# and bugs of that other browser -- or even disallow access in cases like
+# wget or googlebot. Remember this before submitting bug reports.
+#
+# See http://zytrax.com/tech/web/browser_ids.htm for a compilation of strings.
+#
+# http_user_agent="Mozilla/5.0 (Windows NT 5.1; rv:18.0) Gecko/20100101 Firefox/18.0"
+# http_user_agent="Wget/1.12 (linux-gnu)"
+#The default is "Dillo/"+current_version_number
 
 #-------------------------------------------------------------------------
 #                            COLORS SECTION
 #-------------------------------------------------------------------------
 
-# Here we can use the HTML color names or C syntax.
-
-# Set the background color
+# Set the page background color
 # bg_color=gray
 # bg_color=0xd6d6c0
-bg_color=ffffff
-
-# Set the text color
-#text_color=black
-
-# Set the link color
-#link_color=blue
+#bg_color=0xdcd1ba
 
 # If your eyes suffer with white backgrounds, change this.
 #allow_white_bg=YES
 
-# Use the same colors with all documents?
-#force_my_colors=NO
-
 # When set to YES, the page author's visited link color may be overridden
 # to allow better contrast with text/links/background
 #contrast_visited_color=YES
-
-# Colors for widgets inside forms.
-# YES = toolkit's default colors, NO = use page's text and background color.
-# ("NO" looks less traditional but more stylish).
-standard_widget_colors=YES
 
 
 #-------------------------------------------------------------------------
 #                        USER INTERFACE SECTION
 #-------------------------------------------------------------------------
 
-# Size of dillo panel (used to enlarge the browsing area)
-# tiny   :  recommended for iPAQ (with small_icons)
-# small  :  very nice! (it's "medium" without icon titles)
-# medium :  nice!
-# large  :  Traditional
-# panel_size=tiny
-# panel_size=small
-# panel_size=medium
+# UI theme
+# "none" is the default FLTK appearance, which "resembles old Windows...and
+# old GTK/KDE".
+# "plastic" "is inspired by the Aqua user interface on Mac OS X".
+# "gtk+" "is inspired by the Red Hat Bluecurve theme".
+#theme=none
+theme=gtk+
+#theme=plastic
+
+# UI colors
+# The first four colors map to concepts in the underlying FLTK toolkit. Note
+# that FLTK may sometimes override colors, generally for contrast and
+# readability.
+#
+#ui_fg_color=black
+#ui_main_bg_color=silver
+#ui_text_bg_color=white
+#ui_selection_color=navy
+#
+# Background used when the mouse cursor is over a button.
+#ui_button_highlight_color=(by default, the main background color, lightened)
+#
+# Colors for the current tab.
+#ui_tab_active_bg_color=(by default, the text background color)
+#ui_tab_active_fg_color=(by default, the main foreground color)
+#
+# Colors for the other tabs.
+#ui_tab_bg_color=(by default, the main background color)
+#ui_tab_fg_color=(by default, the main foreground color)
+
+
+# Note to packagers: leaving these variables for the system to guess
+# gives different results in different environments, so we played it safe
+# by defining the traditional colors.  Please choose the color theme that
+# better fits your distro.
+
+#
+# SliTaz theme
+#
+ui_fg_color=black
+ui_main_bg_color=#ededed
+ui_text_bg_color=#d9d4ce
+ui_selection_color=#d66018
+ui_button_highlight_color=#a9a9a9
+ui_tab_active_bg_color=#333333
+ui_tab_active_fg_color=white
+ui_tab_bg_color=#dadada
+
+#
+# Gray theme (traditional)
+#
+#ui_fg_color=black
+#ui_main_bg_color=#c6c6c6
+#ui_text_bg_color=bfdabf
+#ui_selection_color=#191970
+#ui_button_highlight_color=#a9a9a9
+#ui_tab_active_bg_color=#87aca7
+#ui_tab_active_fg_color=black
+#ui_tab_bg_color=#b7beb7
+
+#
+# Earthly theme:
+#
+#ui_fg_color=#100404
+#ui_main_bg_color=#c2a47b
+#ui_text_bg_color=#cdc9a5
+#ui_selection_color=#763024
+#ui_tab_active_bg_color=#af4b3f
+#ui_tab_active_fg_color=white
+#ui_tab_bg_color=#d2b48c
+
+#
+# Greenish theme:
+#
+#ui_fg_color=#100404
+#ui_main_bg_color=#c8d394
+#ui_text_bg_color=#bdd8b6
+#ui_selection_color=#7c5f42
+#ui_button_highlight_color=#adad70
+#ui_tab_active_bg_color=#b5b679
+#ui_tab_active_fg_color=#b60907
+#ui_tab_bg_color=#cac682
+
+
+# Size of dillo panel
+# tiny   : buttons, location, and progress boxes in one row
+# small  : location in one row, buttons + progress boxes in another
+# medium : adds text labels to buttons and boxes
+#panel_size=tiny
 panel_size=small
+#panel_size=medium
 
 #small_icons=NO
 
@@ -179,10 +325,11 @@ panel_size=small
 #show_save=YES
 #show_stop=YES
 #show_bookmarks=YES
+#show_tools=YES
 #show_filemenu=YES
 #show_clear_url=YES
-#show_url=YES
 #show_search=YES
+#show_help=YES
 #show_progress_box=YES
 
 # Start dillo with the panels hidden?
@@ -194,19 +341,25 @@ panel_size=small
 # useful to keep away from the mouse by forcing enter to submit.
 #enterpress_forces_submit=NO
 
-# Some forms lack a submit button, and dillo can generate a custom one
-# internally. Unfortunately there's no guarantee for it to work. :(
-# (my experience is that forms that lack a submit rely on Javascript)
-#generate_submit=NO
-
 # A mouse's middle click over a link opens a new Tab.
 # If you prefer to open a new Window instead, set it to NO.
 #middle_click_opens_new_tab=YES
+
+# A mouse's middle click over a tab closes the Tab.
+# With mousewheel mouses, right click feels way better (set to YES).
+#right_click_closes_tab=NO
+
+# Mouse middle click by default drives drag-scrolling.
+# To paste an URL into the window instead of scrolling, set it to NO.
+# Note: You could always paste the URL onto the URL box clear button.
+#middle_click_drags_page=YES
 
 # Focus follows new Tabs.
 # You can hold SHIFT to temporarily revert this behaviour.
 #focus_new_tab=YES
 
+# Ask before quitting Dillo with more than one window or tab open.
+#show_quit_dialog=YES
 
 #-------------------------------------------------------------------------
 #                        DEBUG MESSAGES SECTION
