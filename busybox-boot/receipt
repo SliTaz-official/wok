@@ -44,15 +44,16 @@ export PATH=/bin
 export HOME=/
 export TERM=vt100
 
-if [ -n "\$1" ]; then
-	[ -n "\$broadcast" ] && BROADCAST="broadcast \$broadcast"
-	[ -n "\$subnet" ] && NETMASK="netmask \$subnet"
-	ifconfig \$interface \${ip:-0.0.0.0} \$BROADCAST \$NETMASK
-	while route del default gw 0.0.0.0 dev \$interface ; do : ; done
-	for i in \$router ; do route add default gw \$i dev \$interface; done
+if [ -d /etc ]; then
 	[ -n "\$domain" ] && echo search \$domain > /etc/resolv.conf
 	for i in \$dns ; do echo nameserver \$i; done >> /etc/resolv.conf
-	exit 0
+	[ -n "\$broadcast" ] && BROADCAST="broadcast \$broadcast"
+	[ -n "\$subnet" ] && NETMASK="netmask \$subnet"
+	if ifconfig \$interface \${ip:-0.0.0.0} \$BROADCAST \$NETMASK ; then
+		while route del default gw 0.0.0.0 dev \$interface ; do : ; done
+		for i in \$router ; do route add default gw \$i dev \$interface; done
+	fi
+	exit
 fi
 
 mkdir /tmp /mnt /proc /etc
