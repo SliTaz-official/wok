@@ -1,0 +1,15 @@
+--- busybox-1.22.0/modutils/modutils.c
++++ busybox-1.22.0/modutils/modutils.c
+@@ -160,7 +160,11 @@
+ 		mmaped = 1;
+ 	} else {
+ 		errno = ENOMEM; /* may be changed by e.g. open errors below */
+-		image = xmalloc_open_zipped_read_close(filename, &image_size);
++		image = xmalloc_open_read_close(filename, &image_size);
++		if (image && image_size >= 4 && strncmp(image+1,"ELF",3)) {
++			free(image);
++			image = xmalloc_open_zipped_read_close(filename, &image_size);
++		}
+ 		if (!image)
+ 			return -errno;
+ 	}
