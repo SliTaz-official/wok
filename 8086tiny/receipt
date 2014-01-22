@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="8086tiny"
+VERSION="1.00"
+CATEGORY="system-tools"
+SHORT_DESC="PC XT-compatible emulator/virtual machine."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="CC-SA"
+TARBALL="${PACKAGE}_${VERSION/./}.tar.bz2"
+WEB_SITE="http://www.megalith.co.uk/8086tiny"
+WGET_URL="$WEB_SITE/downloads/$TARBALL"
+
+DEPENDS="libsdl"
+BUILD_DEPENDS="nasm libsdl-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's/.*time.h/#include <stdio.h>\n&/' 8086tiny.c
+	sed 's/#OPTS/OPTS/' < Makefile > Makefile.nographics
+	make -f Makefile.nographics CC=gcc &&
+	mv 8086tiny 8086tiny.nographics &&
+	make CC=gcc &&
+	nasm bios_source/bios.asm
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/8086tiny
+	cp -a $src/8086tiny $fs/usr/bin
+	cp -a $src/8086tiny.nographics $fs/usr/bin
+	cp -a $src/bios_source/bios $fs/usr/share/8086tiny
+	cat > $src/8086tiny.sh <<EOT
+#!/bin/sh
+
+clear
+stty cbreak raw -echo min 0
+${8086TINY:-/usr/bin/8086tiny} /usr/share/8086tiny/bios "$@"
+stty cooked echo
+EOT
+	chmod 755 $src/8086tiny.sh
+}
