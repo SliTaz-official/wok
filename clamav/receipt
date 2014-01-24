@@ -1,11 +1,10 @@
 # SliTaz package receipt.
 
 PACKAGE="clamav"
-VERSION="0.97.3"
+VERSION="0.97.5"
 CATEGORY="security"
 SHORT_DESC="Antivirus."
 MAINTAINER="paul@slitaz.org"
-LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.clamav.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
@@ -18,13 +17,15 @@ BUILD_DEPENDS="zlib-dev gmp gmp-dev bzip2-dev ncurses-dev bash"
 compile_rules()
 {
 	# Have to create clamav user/group to be able to compile
-	adduser -s /bin/false -H -D clamav
+	adduser -s /bin/false -H -D -u 64 clamav
 
 	cd $src
 	./configure \
 		--sysconfdir=/etc/clamav \
 		--with-iconv=no \
-		$CONFIGURE_ARGS && make && make install
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -33,6 +34,7 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib $fs/usr/share $fs/etc/init.d \
 		$fs/var/log/clamav $fs/var/run/clamav
 	cp -a $install/usr/bin $fs/usr
+	rm -f $fs/usr/bin/clamav-config
 	cp -a $install/usr/sbin $fs/usr
 	cp -a $install/etc $fs
 	# Copy only shared lib (.so)
