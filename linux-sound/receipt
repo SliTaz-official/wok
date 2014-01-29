@@ -2,7 +2,6 @@
 
 PACKAGE="linux-sound"
 VERSION="3.2.53"
-BASEVER="${VERSION:0:3}"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel sound modules."
 MAINTAINER="devel@slitaz.org"
@@ -15,15 +14,16 @@ WEB_SITE="http://www.kernel.org/"
 genpkg_rules()
 {
     local path
-    path=lib/modules/$BASEVER-slitaz/kernel
+    path=lib/modules/$VERSION-slitaz/kernel
     mkdir -p $fs/$path
-    export src
-    export _pkg
+    export src install
     $wanted_stuff/list_modules.sh sound | while read module; do
     	dir=$path/$(dirname $module)
     	[ -d $fs/$dir ] || mkdir -p $fs/$dir
         cp -a $install/$path/$module $fs/$dir
     done
+    
+    # Firmware
 	mkdir $fs/lib/firmware
 	for i in ess korg sun yamaha; do
 		cp -a $install/lib/firmware/$i $fs/lib/firmware
@@ -31,8 +31,8 @@ genpkg_rules()
 
     for i in $(cat $wanted_stuff/modules.list); do
         if [ -f $fs/$path/$i ]; then
-	    rm -f $fs/$path/$i
-	fi
+			rm -f $fs/$path/$i
+		fi
     done
 
 }
@@ -40,11 +40,11 @@ genpkg_rules()
 # Post install/remove commands for Tazpkg.
 post_install()
 {
-	chroot "$1/" depmod -a $BASEVER-slitaz
+	chroot "$root/" depmod -a $VERSION-slitaz
 }
 
 post_remove()
 {
-	chroot "$1/" depmod -a $BASEVER-slitaz
+	chroot "$root/" depmod -a $VERSION-slitaz
 }
 

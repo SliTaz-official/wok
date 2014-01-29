@@ -21,13 +21,7 @@ compile_rules()
 	sed -i 's/tar -xof/tar -xf/' drivers/dahdi/firmware/Makefile
 	find -type f | xargs sed -i -e 's/DECLARE_MUTEX/DEFINE_SEMAPHORE/g' \
 		-e 's/init_MUTEX\([^)]*\)/sema_init\1, 1/g'
-	if [ ! -d $WOK/linux/taz ]; then
-		if [ -x /usr/bin/cook ]; then
-			cook linux
-		else
-			tazwok cook linux
-		fi
-	fi
+	[ ! -d $WOK/linux/taz ] && cook linux
 	make KVERS=$kvers KSRC=$WOK/linux/source/$(ls $WOK/linux/taz) \
 		install 2>&1 | grep -v 'slitaz/modules'
 }
@@ -35,17 +29,18 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	EXTRAVERSION=_${kvers%.*}
+	EXTRAVERSION=_${kvers}
 	cp -a $install/* $fs
+	rm -rf $fs/usr/include
 }
 
 # Post install/remove commands for Tazpkg.
 post_install()
 {
-	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+	chroot "$root/" depmod -a ${EXTRAVERSION#_}-slitaz
 }
 
 post_remove()
 {
-	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+	chroot "$root/" depmod -a ${EXTRAVERSION#_}-slitaz
 }

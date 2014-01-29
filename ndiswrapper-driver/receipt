@@ -18,38 +18,30 @@ BUILD_DEPENDS="linux-module-headers xz"
 # Rules to configure and make the package.
 compile_rules()
 {
-	
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	cd $src
-	make KBUILD=/usr/src/linux KVER=linux-$KERNEL_VERSION-slitaz
+	make KBUILD=/usr/src/linux KVER=linux-${kvers}-slitaz
 	xz driver/ndiswrapper.ko
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	EXTRAVERSION=_${KERNEL_VERSION%.*}
-	
-	mkdir -p $fs/usr/sbin $fs/sbin $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc
+	EXTRAVERSION=_${kvers}
+	mkdir -p $fs/usr/sbin $fs/sbin $fs/lib/modules/${kvers}-slitaz/kernel/misc
 	
 	# Install utilities	
-	install -o root -m 755 $src/utils/loadndisdriver $fs/sbin/
-
-	cp $src/driver/ndiswrapper.ko.xz \
-		$fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/
-	chown root $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/ndiswrapper.ko.xz
-	chmod 644 $fs/lib/modules/$KERNEL_VERSION-slitaz/kernel/misc/ndiswrapper.ko.xz
+	install -o root -m 0755 $src/utils/loadndisdriver $fs/sbin/
+	install -o root -m 0644 $src/driver/ndiswrapper.ko.xz \
+		$fs/lib/modules/${kvers}-slitaz/kernel/misc/ndiswrapper.ko.xz
 }
 
 post_install()
 {
 	echo "Processing post-install commands..."
-	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+	chroot "$root/" depmod -a ${EXTRAVERSION#_}-slitaz
 }
 
 post_remove()
 {
 	echo "Processing post-remove commands..."
-	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+	chroot "$root/" depmod -a ${EXTRAVERSION#_}-slitaz
 }
