@@ -16,7 +16,7 @@ xdbclient()
 		*)		break ;;
 		esac
 	done
-	[ -n "$1" ] || set -- "${TERM:-false} || xterm -ls"
+	[ -n "$1" ] || set -- "${TERM:-xterm} -ls || ${TERM:-sakura} -l || xterm -ls"
 	exec dbclient -f -R $((6000+$n)):localhost:$((6000+${svr%.*})) $r \
 	   "xauth add $dpy $data; export DISPLAY=$scr; $@ ; xauth remove $dpy" \
 	   </dev/null >/dev/null
@@ -26,19 +26,24 @@ pppssh()
 {
 	[ -z "$DROPBEAR_PASSWORD" ] && echo -n "ssh password: " &&
 	read -s -t 30 DROPBEAR_PASSWORD && export DROPBEAR_PASSWORD
-	dbclient -y $1 true || exit 1
-	ff=/tmp/pppssh$$
+	for i in $4 ; do
+		echo "route add -net $i dev \$1"
+	done > /etc/ppp/ip-up.d/pppssh$$
+	chmod +x /etc/ppp/ip-up.d/pppssh$$
+	ssh="dbclient -y"
+	$ssh $1 true || exit 1
 	n=10.$(($$%256)).$(($$/256))
-	ppp="/usr/sbin/pppd local lock notty"
-	mkfifo $ff
-	dbclient -y $1 "$ppp ${3:-proxyarp}" <$ff | $ppp ${2:-$n.1:$n.2} >$ff
-	rm -f $ff
+	ppp="/usr/sbin/pppd local noauth nodetach"
+	$ppp ${2:-$n.1:$n.2} passive pty "$ssh $1 $ppp ${3:-proxyarp} notty" \
+		ipparam pppssh$$
+	rm -f /etc/ppp/ip-up.d/pppssh$$
 }
 
 case "$(basename $0)" in
-ppp*)	[ -z "$1" ] &&
-	echo "Usage: $0 '[sshargs] user@remote' '[localip:remoteip] [localpppargs]' 'remotepppargs'" ||
-	pppssh "$@" ;;
+ppp*)	[ -z "$1" ] && cat <<EOT || pppssh "$@" ;;
+Usage: $0 '[sshargs] user@remote' '[localip:remoteip] [localpppargs]' 'remotepppargs' 'routes' 
+Example: $0 tux@slitaz.org '' '' '192.168.1.0/24 10.1.2.0/24'
+EOT
 *)	[ -z "$DISPLAY" ] && exec dbclient "$@"
 	xauth list $DISPLAY | xdbclient "$@"
 esac
