@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="wpa_supplicant"
-VERSION="1.1"
+VERSION="2.1"
 CATEGORY="utilities"
 SHORT_DESC="WPA Supplicant with support for WPA and WPA2"
 MAINTAINER="0dddba11@googlemail.com"
@@ -57,20 +57,22 @@ genpkg_rules()
 		$src/wpa_supplicant/dbus/dbus-wpa_supplicant.conf \
 		$fs/etc/dbus-1/system.d/wpa_supplicant.conf
 
-	# Startup script and cleaned up wpa_supplicant.conf
-	cp -a stuff/etc $fs
-	# dont copy the original
-	# cp -a $src/$PACKAGE/wpa_supplicant.conf $fs/etc
+	# Startup script and cleaned up wpa_empty.conf
+	cp -a $stuff/etc $fs
+	cp -a $src/$PACKAGE/wpa_supplicant.conf $fs/etc/wpa
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-	grep -qs ^WPA_OPTIONS= $1/etc/daemons.conf || cat >> $1/etc/daemons.conf <<EOT
+	grep -qs ^WPA_OPTIONS= $1/etc/daemons.conf || cat >> $1/etc/daemons.conf << EOT
+
 # wpa_supplicant daemon options
-WPA_OPTIONS="-B -u -P /var/run/wpa_supplicant.pid -c /etc/wpa_supplicant.conf -i \$(. /etc/network.conf ; echo \$WIFI_INTERFACE)"
+WPA_OPTIONS="-B -u -P /var/run/wpa_supplicant.pid -c /etc/wpa/wpa.conf -i \$(. /etc/network.conf ; echo \$WIFI_INTERFACE)"
 
 EOT
+	# We use /etc/wpa/wpa.conf from SliTaz 5.0
+	sed -i s'#/etc/wpa_supplicant.conf#/etc/wpa/wpa.conf#'/ $1/etc/daemons.conf 2> /dev/null
 	# 'w' option dont exist anymore with < 0.6.9
 	sed -i s/'-Bw'/'-B'/ $1/etc/daemons.conf 2> /dev/null
 	sed -i s/'-B -w'/'-B'/g $1/etc/init.d/network.sh 2> /dev/null
