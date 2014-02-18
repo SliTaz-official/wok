@@ -37,16 +37,19 @@ esac
 
 # Handle multiarch installation. ARM use Busybox modutils, so avoid any
 # deps on kmod. SLITAZ_ARCH can have also custom post_install commands
-. $root/etc/slitaz/slitaz.conf || exit 1
-case "$SLITAZ_ARCH" in
-	arm) DEPENDS="" ;;
-esac
+if [ -f $root/etc/slitaz/slitaz.conf ]; then
+	. $root/etc/slitaz/slitaz.conf
+	case "$SLITAZ_ARCH" in
+		arm) DEPENDS="" ;;
+	esac
+fi
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	cp /usr/share/boot/initrd initrd.cpio
+	if [ -f "/usr/share/boot/initrd" ]; then
+		cp /usr/share/boot/initrd initrd.cpio
+	fi
 
 	# Handle cross compilation
 	case "$ARCH" in
@@ -63,6 +66,7 @@ compile_rules()
 			mkdir -p $DESTDIR/boot &&
 			cp -a arch/arm/boot/zImage \
 				$DESTDIR/boot/linux-$VERSION-slitaz-$ARCH
+			#$stuff/gztazmod.sh $DESTDIR/lib/modules/$VERSION-slitaz
 			return 0 ;;
 		x86_64)
 			echo "TODO: Maybe use default ? But cross compile in x86_64 chroot"
