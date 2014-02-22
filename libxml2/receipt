@@ -16,8 +16,11 @@ BUILD_DEPENDS="zlib-dev python-dev autoconf automake libtool"
 
 # When cross compiling Python is installed in chroot and is used
 # by cross tools, cook dont need to install it in /usr/cross/arm
+# Building with LZMA support is buggy and build fails
 case "$ARCH" in
-	arm) BUILD_DEPENDS="" ;;
+	arm)
+		BUILD_DEPENDS="" 
+		ARCH_ARGS="--without-lzma" ;;
 esac
 
 # Rules to configure and make the package.
@@ -26,7 +29,6 @@ esac
 # and binaries are splited into libxml2-tools
 compile_rules()
 {
-	cd $src
 	autoreconf -fi
 	./configure \
 		--prefix=/usr \
@@ -35,7 +37,7 @@ compile_rules()
 		--with-html-dir=/usr/share/doc \
 		--with-threads \
 		--with-history \
-	$CONFIGURE_ARGS &&
+	$CONFIGURE_ARGS $ARCH_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install 2>&1 | grep -v "can't stat './..html':"
 }
