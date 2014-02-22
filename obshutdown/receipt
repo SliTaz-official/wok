@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="obshutdown"
+VERSION="0.1-rc1"
+CATEGORY="x-window"
+SHORT_DESC="Light Openbox shutdown manager"
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL2"
+TARBALL="${PACKAGE}-${VERSION}.tar.gz"
+WEB_SITE="https://github.com/panjandrum/obshutdown"
+WGET_URL="https://github.com/downloads/panjandrum/$PACKAGE/$TARBALL"
+
+DEPENDS="gtk+ cairo openbox"
+BUILD_DEPENDS="gtk+-dev cairo-dev wget"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure $CONFIGURE_ARGS &&
+	IFS=$(echo -en "\n\b")
+	for i in $(grep -lr "#include <glib" src/)
+	do
+		sed -i 's/#include <glib\/.*>/#include <glib\.h>/g' "$i"
+	done &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs
+	cp -r $install/usr $fs
+}
+
+post_install()
+{
+		colorize 36 "To get per user config file:"
+		echo "$ cp /usr/share/obshutdown/example.rc ~/.obshutdown.rc"
+}
