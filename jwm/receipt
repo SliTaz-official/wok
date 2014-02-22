@@ -1,41 +1,40 @@
 # SliTaz package receipt.
 
 PACKAGE="jwm"
-VERSION="2.1.0"
+VERSION="2.2.0"
 CATEGORY="x-window"
 SHORT_DESC="JWM is a light Window Manager for the X window system."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.joewing.net/programs/jwm/"
 WGET_URL="http://www.joewing.net/programs/jwm/releases/$TARBALL"
 TAGS="wm window-manager"
 
 DEPENDS="xorg-libX11 xorg-libXft xorg-libXrender xorg-libXpm xorg-libXext \
 xorg-libXmu xorg-libXinerama xorg-libXau xorg-libXdmcp xorg-libXt libjpeg \
-libpng slitaz-configs-base xorg-xload xorg-xclock nano"
+libpng slitaz-configs-base xorg-xload xorg-xclock nano imlib2 hsetroot compton"
 BUILD_DEPENDS="xorg-dev xorg-libXft-dev jpeg-dev libpng-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	[ -f done.resize-backgound.u ] || patch -p1 < $stuff/resize-backgound.u
-	touch done.resize-backgound.u
+	#[ -f done.resize-backgound.u ] || patch -p1 < $stuff/resize-backgound.u
+	#touch done.resize-backgound.u
 	./configure \
     	--prefix=/usr \
     	--mandir=/usr/share/man \
 		--sysconfdir=/etc/xdg/jwm \
 		--disable-fribidi \
 		$CONFIGURE_ARGS &&
-	make
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/etc/xdg/jwm $fs/usr/share
-	cp -a $src/src/jwm $fs/usr/bin
+	mkdir -p $fs/etc/xdg/jwm $fs/usr/share
+	cp -a $install/usr/bin $fs/usr/bin
 	# Simple and default config file.
 	cp $stuff/simple.jwmrc $fs/etc/xdg/jwm/simple.jwmrc
 	cp $stuff/slitaz.jwmrc $fs/etc/xdg/jwm/system.jwmrc
