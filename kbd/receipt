@@ -1,30 +1,45 @@
 # SliTaz package receipt.
 
 PACKAGE="kbd"
-VERSION="1.15.5"
+VERSION="2.0.1"
 CATEGORY="system-tools"
 SHORT_DESC="Keyboard maping definitions and tools."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://kbd-project.org/"
-#WGET_URL="http://kbd-project.org/download/$TARBALL"
-WGET_URL="ftp://ftp.altlinux.org/pub/people/legion/kbd/$TARBALL"
+WGET_URL="ftp://ftp.kernel.org/pub/linux/utils/kbd/$TARBALL"
 TAGS="keyboard"
 HOST_ARCH="i486 arm"
 
 DEPENDS="kbd-base"
-BUILD_DEPENDS="flex pam-dev"
+BUILD_DEPENDS="flex pam-dev check-dev"
+
+# Handle cross compilation.
+case "$ARCH" in
+	arm) BUILD_DEPENDS="flex check-dev" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# standard locale placement
 	sed 's|localedir = .*|localedir = @localedir@|' -i $src/po/Makefile.in.in
-	./configure \
-		--datadir=/usr/share/kbd \
-		--localedir=/usr/share/locale \
-		$CONFIGURE_ARGS &&
+	# Handle cross compilation.
+	case "$ARCH" in
+		arm)
+			# No PAM support for ARM
+			./configure \
+				--datadir=/usr/share/kbd \
+				--localedir=/usr/share/locale \
+				--disable-vlock \
+				$CONFIGURE_ARGS ;;
+		i468)
+			./configure \
+				--datadir=/usr/share/kbd \
+				--localedir=/usr/share/locale \
+				$CONFIGURE_ARGS ;;
+	esac &&
 	make && make install
 }
 
