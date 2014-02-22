@@ -21,7 +21,7 @@ pam libcomerr-dev pam-dev acl-dev libgcrypt-dev"
 compile_rules()
 {
 	cd $src
-	patch -Np1 -i $WOK/$SOURCE/stuff/install-sh.u
+	patch -Np1 -i ${wanted_stuff}/install-sh.u
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -32,7 +32,7 @@ compile_rules()
 		--disable-ldap \
 		--with-cups-user=nobody \
 		--with-cups-group=nogroup \
-		--with-languages="de es fr" \
+		--with-languages="de es fr pt_BR ru" \
 		$CONFIGURE_ARGS &&
 	make &&
 	make BUILDROOT=$DESTDIR install
@@ -53,21 +53,12 @@ genpkg_rules()
 	cp -a $install/usr/share/icons/hicolor/32x32/apps/cups.png \
 		 $fs/usr/share/pixmaps
 	cp -a $install/var $fs
-
-	# tazwok does not strip files other than .so in usr/lib
-		
-	for dir in $fs/usr/lib/cups
-	do
-		if [ -d "$dir" ]; then
-			find $dir -type f -exec strip -s '{}' 2>/dev/null \;
-		fi
-	done
 	
 	# PAM conf
-	cp -a $stuff/* $fs
+	cp -a $stuff/etc $fs
 
 	# Daemon script
-	cp -a $WOK/cups/stuff/etc $fs
+	cp -a ${wanted_stuff}/etc $fs
 }
 
 # Start cups daemon and edit daemons.conf.
