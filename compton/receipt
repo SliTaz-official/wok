@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="compton"
+VERSION="0.1_beta2"
+CATEGORY="x-window"
+SHORT_DESC="Light X Compositor new generation"
+MAINTAINER="pankso@slitaz.org"
+LICENSE="MIT"
+TARBALL="v${VERSION}.tar.gz"
+WEB_SITE="https://github.com/chjj/compton"
+WGET_URL="https://github.com/chjj/$PACKAGE/archive/$TARBALL"
+
+DEPENDS="xorg-libXcomposite xorg-libXrandr libdrm xorg-xwininfo \
+xorg-xprop"
+BUILD_DEPENDS="xorg-dev xorg-libXcomposite xorg-libXrandr-dev libdrm-dev \
+wget" #asciidoc
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i "s:\(COMPTON_VERSION ?= \)git.*:\1v${VERSION}:" Makefile
+	make NO_LIBCONFIG="true"
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/etc/xdg/compton $fs/usr/bin
+	cp $src/compton $fs/usr/bin
+	cp $stuff/compton.conf $fs/etc/xdg/compton
+	cp -r $stuff/autostart $fs/etc/xdg
+}
