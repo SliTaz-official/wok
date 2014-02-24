@@ -1,0 +1,19 @@
+#!/bin/sh
+
+ppp="/usr/sbin/pppd local noauth nodetach"
+port=1111
+ipupd=/etc/ppp/ip-up.d
+
+case "$0" in
+*server) # Usage: pppnc-server [port] [localip:remoteip]
+	n=10.$(($$%256)).$(($$/256))
+	exec $ppp ${2:-$n.1:$n.2} passive proxyarp pty "nc -lp ${1:-$port}"
+esac
+
+[ -z "$1" ] && echo "Usage: $0 serverip [port] [routes]" && exit 1
+for i in $3 ; do
+	echo "route add -net $i dev \$1"
+done > $ipupd/pppnc$$
+chmod +x $ipupd/pppnc$$
+$ppp noipdefault pty "nc $1 ${2:-$port}" ipparam pppnc$$
+rm -f $ipupd/pppnc$$
