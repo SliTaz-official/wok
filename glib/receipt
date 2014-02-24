@@ -2,6 +2,7 @@
 
 PACKAGE="glib"
 VERSION="2.32.4"
+#VERSION="2.34.3"
 CATEGORY="x-window"
 SHORT_DESC="C routines."
 MAINTAINER="pankso@slitaz.org"
@@ -9,18 +10,45 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.gtk.org/"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
+#HOST_ARCH="i486 arm"
+CROSS_BUGS="2.32.4: error: cannot compute alignment of guint32 
+      2.34.3: Buggy shared libs format (libpcre, libffi)"
 
 DEPENDS="pcre libffi libxml2 elfutils"
 BUILD_DEPENDS="pcre-dev libffi-dev gettext zlib-dev perl python python-dev \
 elfutils-dev libxml2-dev libxml2-tools automake"
 
+# Handle cross comilation. Use host Perl, Python, etc
+case "$ARCH" in
+	arm) BUILD_DEPENDS="pcre-dev libffi-dev zlib-dev elfutils-dev libxml2-dev" ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --sysconfdir=/etc \
-		--with-pcre=system \
-		$CONFIGURE_ARGS &&
+	case "$ARCH" in
+		arm)
+			export glib_cv_stack_grows=${glib_cv_stack_grows=no}
+			export glib_cv_uscore=${glib_cv_uscore=no}
+			export ac_cv_func_posix_getpwuid_r=${ac_cv_func_posix_getpwuid_r=no}
+			export ac_cv_func_posix_getgrgid_r=${ac_cv_func_posix_getgrgid_r=no}
+			export ac_cv_type_long_long=${ac_cv_type_long_long=yes}
+			export LD_LIBRARY_PATH=/cross/arm/sysroot/usr/lib:/usr/lib:/lib:/usr/local/lib
+			export PKG_CONFIG_LIBPATH=/cross/arm/sysroot/usr/lib/pkgconfig
+			CC="arm-slitaz-linux-gnueabi-gcc" \
+			./configure \
+				--sysconfdir=/etc \
+				--with-pcre=system \
+				--build=i486-slitaz-linux \
+				--host=arm-slitaz-linux-gnueabi \
+				--enable-shared=yes \
+				--enable-static=yes ;;
+		*)
+			./configure \
+				--sysconfdir=/etc \
+				--with-pcre=system \
+				$CONFIGURE_ARGS ;;
+	esac && 
 	make && make install
 }
 
