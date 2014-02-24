@@ -10,18 +10,34 @@ SOURCE="DirectFB"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.directfb.org/"
 WGET_URL="http://www.directfb.org/downloads/Core/$SOURCE-1.4/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="libpng tslib"
 BUILD_DEPENDS="libpng-dev tslib-dev perl"
+
+# Handle cross compilation.
+case "$ARCH" in
+	arm) 
+		BUILD_DEPENDS="libpng-dev"
+		CROSS_ARGS='LDFLAGS="-L/cross/arm/sysroot/usr/lib" \
+			CPPFLAGS="-I/cross/arm/sysroot/usr/include"';;
+esac
+
+# Handle SliTaz arch installation.
+case "$SLITAZ_ARCH" in
+	arm) DEPENDS="libpng" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	./configure --prefix=/usr --sysconfdir=/etc --with-dither-rgb16=none \
-		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$DESTDIR install
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--with-dither-rgb16=none \
+		$CONFIGURE_ARGS $CROSS_ARGS &&
+	make && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
