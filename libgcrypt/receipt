@@ -9,7 +9,7 @@ LICENSE="GPL2 LGPL2.1"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gnupg.org/"
 WGET_URL="ftp://ftp.gnupg.org/gcrypt/libgcrypt/$TARBALL"
-CROSS="bug"
+HOST_ARCH="i486 arm"
 
 DEPENDS="libgpg-error"
 BUILD_DEPENDS="libgpg-error-dev"
@@ -17,11 +17,18 @@ BUILD_DEPENDS="libgpg-error-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	export LDFLAGS="-Wl,--copy-dt-needed-entries -lgpg-error"
-	./configure \
-		--build=$HOST_SYSTEM \
-		--host=$HOST_SYSTEM &&
+	case "$ARCH" in
+		arm)
+			#LIBS="-L/cross/arm/sysroot/usr/lib -lgpg-error"
+			./configure \
+				--build=i486-slitaz-linux \
+				--host=arm-slitaz-linux-gnueabi ;;
+		*)
+			export LDFLAGS="-Wl,--copy-dt-needed-entries -lgpg-error"
+			./configure \
+				--build=$HOST_SYSTEM \
+				--host=$HOST_SYSTEM ;;
+	esac &&
 	make && make install
 }
 
@@ -30,5 +37,6 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/bin $fs/usr/lib
 	cp -a $install/usr/bin/dumpsexp $fs/usr/bin
+	cp -a $install/usr/bin/hmac256 $fs/usr/bin
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
