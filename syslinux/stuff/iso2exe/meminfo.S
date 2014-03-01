@@ -119,9 +119,29 @@ e801_configured:
 	movw	$configured, %si
 	call	pute801
 	call	pute801
-fail2:
 	movb	$10, %al
 	call	putc
+fail2:
+	movw	$8, %cx
+	movw	$buffer, %di
+	pushw	%di
+	xorw	%ax, %ax
+	rep
+	  stosw
+	movb	$0x88, %ah
+	int	$0x15
+	popw	%di
+	jc	fail3
+	movb	$0x10, 0+2(%di)		// 1M
+	shrw	$6, %ax		// 1K -> 64K
+	jz	fail3
+	addw	$0x10, %ax
+	movw	%ax, 8+2(%di)
+	movw	$header_0088, %si
+	call	puts64
+	movb	$10, %al
+	call	putc
+fail3:
 	retf
 
 puts64:
@@ -175,6 +195,10 @@ putc:
 	int	$0x10
 	ret
 
+header_0088:
+	.byte	13,10
+	.ascii  "BIOS-0088: "
+	.byte	0
 header_e801:
 	.byte	13,10
 	.ascii  "BIOS-e801: "
