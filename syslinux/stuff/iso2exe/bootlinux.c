@@ -83,7 +83,7 @@ zero2:
 		mov	ax, #0x8793
 		mov	[si+0x15], al
 		xchg	[si+0x1D], al
-		mov	[si+0x1F], al	// bits 24..31, doesn't work for me :(
+		mov	[si+0x1F], al	// bits 24..31
 		int	0x15
 		add	sp, #0x30
 		popa
@@ -117,8 +117,9 @@ static void load(struct mem *p, unsigned long size)
 		}
 		p->align = PAGE_SIZE;
 		break;
-	case 4096: // first initrd
-		initrd_addr = p->base;
+	case 4096: // first initrd : skip 0xF00000 .. 0x1000000 mapping hole
+		initrd_addr = (p->base + size > 0xF00000 && 
+				p->base < 0x1000000) ? 0x1000000 : p->base;
 		p->align = 4;
 	}
 	while (size) {
