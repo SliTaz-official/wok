@@ -2,7 +2,11 @@ GCC=gcc -m32
 BCC=bcc -ansi -O -0 -C-t
 BCCFLAGS=-D__MSDOS__ -Md
 
-all: isohybrid.exe iso2exe
+all: isohybrid.exe iso2exe meminfo.exe
+
+meminfo.exe: meminfo.S
+	cc -o meminfo.o -Wa,-a=meminfo.lst -c meminfo.S
+	objcopy -O binary meminfo.o meminfo.exe
 
 iso2exe: iso2exe.sh boot.com bootiso.bin init win32.exe
 	cp iso2exe.sh $@

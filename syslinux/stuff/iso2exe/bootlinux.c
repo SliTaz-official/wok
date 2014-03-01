@@ -103,6 +103,17 @@ static int dosversion(void)
 #endasm
 }
 
+static unsigned extendedramsizeinkb(void)
+{
+#asm
+		mov	ah, #0x88
+		int	0x15
+		jnc	gottop
+		xor	ax, ax
+gottop:
+#endasm
+}
+
 static void load(struct mem *p, unsigned long size)
 {
 	if (vm86())
@@ -117,9 +128,9 @@ static void load(struct mem *p, unsigned long size)
 		}
 		p->align = PAGE_SIZE;
 		break;
-	case 4096: // first initrd : skip 0xF00000 .. 0x1000000 mapping hole
-		initrd_addr = (p->base + size > 0xF00000 && 
-				p->base < 0x1000000) ? 0x1000000 : p->base;
+	case 4096: // first initrd : skip mapping hole before 16M
+		initrd_addr = (extendedramsizeinkb() > 24000U) ?
+				 0x1000000 : p->base;
 		p->align = 4;
 	}
 	while (size) {
