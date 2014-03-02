@@ -9,12 +9,15 @@ LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://rsync.samba.org/"
 WGET_URL="${WEB_SITE}ftp/rsync/$TARBALL"
-TAGS="sync"
 CONFIG_FILES="/etc/rsyncd.conf /etc/rsyncd.secrets"
-TAZPANEL_DAEMON="man::rsync|help::rsync|edit|options|web::$WEB_SITE"
+TAGS="sync copy secure"
+#HOST_ARCH="i486 arm"
 
 DEPENDS="popt attr acl"
-BUILD_DEPENDS="popt-dev acl-dev"
+BUILD_DEPENDS="popt-dev attr-dev acl-dev"
+
+# TazPanel
+TAZPANEL_DAEMON="man::rsync|help::rsync|edit|options|web::$WEB_SITE"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,7 +26,8 @@ compile_rules()
 	./configure \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
-		--disable-iconv --disable-iconv-open \
+		--disable-iconv \
+		--disable-iconv-open \
 		$CONFIGURE_ARGS
 	sed -i  -e 's/HAVE_ICONV_H ./HAVE_ICONV_H 0/' \
 		-e 's/HAVE_ICONV_OPEN ./HAVE_ICONV_OPEN 0/' config.h
@@ -40,7 +44,7 @@ genpkg_rules()
 	# Config file is /etc/rsyncd.conf.
 	# User and passwd in /etc/rsyncd.secrets, syntax : user:passwd
 	#
-	cp -a stuff/etc $fs
+	cp -a $stuff/etc $fs
 	chown root.root $fs/etc/init.d/*
 	chmod 0644 $fs/etc/rsyncd.conf
 
