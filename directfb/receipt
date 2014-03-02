@@ -9,34 +9,34 @@ LICENSE="LGPL2.1"
 SOURCE="DirectFB"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://www.directfb.org/"
-WGET_URL="http://www.directfb.org/downloads/Core/$SOURCE-1.4/$TARBALL"
-#HOST_ARCH="i486 arm"
+WGET_URL="http://www.directfb.org/downloads/Core/$SOURCE-1.7/$TARBALL"
+HOST_ARCH="i486 arm"
 
-DEPENDS="libpng tslib"
-BUILD_DEPENDS="libpng-dev tslib-dev perl"
+DEPENDS="libpng libjpeg freetype tslib zlib"
+BUILD_DEPENDS="libpng-dev jpeg-dev freetype-dev tslib-dev perl"
 
 # Handle cross compilation.
 case "$ARCH" in
 	arm) 
-		BUILD_DEPENDS="libpng-dev"
-		CROSS_ARGS='LDFLAGS="-L/cross/arm/sysroot/usr/lib" \
-			CPPFLAGS="-I/cross/arm/sysroot/usr/include"';;
+		BUILD_DEPENDS="libpng-dev jpeg-dev freetype-dev"
+		ARCH_ARGS="--with-gfxdrivers=none --disable-x11"
+		export LDFLAGS="-L/cross/arm/sysroot/usr/lib"
+		export CPPFLAGS="-I/cross/arm/sysroot/usr/include" ;;
 esac
 
 # Handle SliTaz arch installation.
 case "$SLITAZ_ARCH" in
-	arm) DEPENDS="libpng" ;;
+	arm) DEPENDS="libpng libjpeg freetype zlib" ;;
 esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--with-dither-rgb16=none \
-		$CONFIGURE_ARGS $CROSS_ARGS &&
+		$CONFIGURE_ARGS $ARCH_ARGS &&
 	make && make DESTDIR=$DESTDIR install
 }
 
