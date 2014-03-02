@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="sawman"
+VERSION="1.4.3"
+CATEGORY="graphics"
+SHORT_DESC="DirectFB Window manager"
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL2"
+SOURCE="SaWMan"
+TARBALL="${SOURCE}-${VERSION}.tar.gz"
+WEB_SITE="http://directfb.org/index.php?path=Platform/SaWMan"
+WGET_URL="http://directfb.org/downloads/Extras/$TARBALL"
+HOST_ARCH="i486 arm"
+
+DEPENDS="directfb"
+BUILD_DEPENDS="directfb-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	 ./configure \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/directfb-* $fs/usr/lib
+	find $fs/usr/lib -name "*.*a" -exec rm '{}' \;
+}
+
+testsuite()
+{
+	readelf -h $install/usr/bin/testman
+}
