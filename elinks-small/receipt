@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="elinks-small"
+VERSION="0.11.7"
+CATEGORY="network"
+SHORT_DESC="Small Elinks www text browser version (no JS SSL GPM)"
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL2"
+SOURCE="elinks"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://elinks.or.cz"
+WGET_URL="$WEB_SITE/download/$TARBALL"
+HOST_ARCH="i486 arm"
+
+TAGS="browser web"
+DEPENDS="bzip2 zlib libidn expat"
+BUILD_DEPENDS="bzip2-dev zlib-dev libidn-dev expat-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure \
+		--enable-small \
+		--enable-fastmem \
+		--disable-backtrace \
+		--without-gnutls \
+		--without-openssl \
+		--without-spidermonkey \
+		--without-gpm \
+		--without-x \
+		$CONFIGURE_ARGS && 
+	make && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	# No conflict with full elinks
+	cp -a $install/usr/bin/elinks $fs/usr/bin/elinks-small
+}

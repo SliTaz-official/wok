@@ -11,16 +11,21 @@ WEB_SITE="http://elinks.or.cz"
 WGET_URL="$WEB_SITE/download/$TARBALL"
 TAGS="browser"
 
-DEPENDS="openssl bzip2 spidermonkey xorg-libX11 zlib libidn expat \
-xorg-libXau xorg-libXdmcp"
-BUILD_DEPENDS="openssl-dev bzip2-dev spidermonkey-dev libidn-dev expat-dev \
-xorg-libXau-dev xorg-libXdmcp-dev"
+DEPENDS="openssl bzip2 spidermonkey zlib libidn expat gpm"
+BUILD_DEPENDS="openssl-dev bzip2-dev spidermonkey-dev zlib-dev libidn-dev \
+expat-dev gpm-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure $CONFIGURE_ARGS && 
+	# --enable-fastmem: disables internal `malloc()` debugging and 
+	# use `alloca()` wherever possible.
+	# --disable-backtrace disables internal backtrace code.
+	./configure \
+		--enable-fastmem \
+		--disable-backtrace \
+		--without-x \
+		$CONFIGURE_ARGS && 
 	make && make DESTDIR=$DESTDIR install
 }
 
@@ -30,4 +35,3 @@ genpkg_rules()
 	mkdir -p $fs/usr
 	cp -a $install/usr/bin $fs/usr
 }
-
