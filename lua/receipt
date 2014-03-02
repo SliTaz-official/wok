@@ -9,6 +9,7 @@ LICENSE="MIT"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.lua.org/"
 WGET_URL="http://www.lua.org/ftp/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="readline ncurses"
 BUILD_DEPENDS="readline-dev"
@@ -16,10 +17,14 @@ BUILD_DEPENDS="readline-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i "s#/usr/local/#/usr/#" src/luaconf.h
-	sed -i s"/-O2/-Os -march=$ARCH/" src/Makefile
-	make linux &&
+	case "$ARCH" in
+		arm)
+			make CC=${HOST_SYSTEM}-gcc posix ;;
+		i486)
+			sed -i s"/-O2/-Os -march=$ARCH/" src/Makefile
+			make linux ;;
+	esac &&
 	# lua.pc
 	make pc > lua.pc &&
 	sed -i "s#/local##g" lua.pc &&
@@ -33,4 +38,9 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
 	cp -a $install/usr/bin $fs/usr
+}
+
+testsuite()
+{
+	readelf -h $install/usr/bin/lua
 }
