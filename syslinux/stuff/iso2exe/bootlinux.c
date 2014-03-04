@@ -83,7 +83,7 @@ zero2:
 		mov	ax, #0x8793
 		mov	[si+0x15], al
 		xchg	[si+0x1D], al
-		mov	[si+0x1F], al	// bits 24..31
+		xchg	[si+0x1F], al	// bits 24..31
 		int	0x15
 		add	sp, #0x30
 		popa
@@ -121,16 +121,16 @@ static void load(struct mem *p, unsigned long size)
 	switch (p->align) {
 	case 0:	// kernel
 		switch (dosversion()) {
-		case 3: case 4: case 6: break;
+		case 3: case 4: case 6: case 7: break;
 		default:
 			printf("DOS %d not supported.\nTrying anyway...\n",
 				versiondos);
 		}
 		p->align = PAGE_SIZE;
 		break;
-	case PAGE_SIZE: // first initrd : skip mapping hole before 16M
-		if (extendedramsizeinkb() > 24000U && p->base < 0x1000000)
-			p->base = 0x1000000;
+	case PAGE_SIZE: // first initrd : keep 16M..48M for the kernel
+		if (extendedramsizeinkb() > 0xF000U && p->base < 0x3000000)
+			p->base = 0x3000000;
 		initrd_addr = p->base;
 		p->align = 4;
 	}
