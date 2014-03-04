@@ -15,7 +15,7 @@ Defaults: %s @tazboot.cmd  or  %s kernel=bzImage auto\n\n\
 Examples for tazboot.cmd:\n\n\
   iso=\\isos\\slitaz-4.0.iso\n\
   kernel=boot/bzImage\n\
-  initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz\n\
+  initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz,\\slitaz\\extrafs.gz\n\
   rw root=/dev/null vga=normal autologin\n\n\
   kernel=\\slitaz\\vmlinuz\n\
   root=/dev/sda5 ro\n",iso,iso,iso);
@@ -26,7 +26,7 @@ static void bootiso(char **iso)
 {
 	char *init = "rdinit=/init.exe", *mode="menu";
 	char c, rootfs[16], cmdline[256];
-	int fd, restart;
+	int restart;
 	unsigned long magic;
 	
 	if (isoreset(*iso) || isoopen("boot")) return;
@@ -74,6 +74,11 @@ static int fakeopen(char *file)
 		char *s = file;
 		while (*s && *s != '\r' && *s != '\n') s++;
 		*s = 0;
+	}
+	if (*file == '\\') {
+		static fd = -1;
+		if (fd >= 0) close(fd);
+		return open(file, O_RDONLY);
 	}
 	if (iso) {
 		isoreset(iso);
