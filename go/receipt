@@ -1,0 +1,72 @@
+# SliTaz package receipt.
+
+PACKAGE="go"
+VERSION="1.2.1"
+CATEGORY="development"
+SHORT_DESC="The Go programming language (R.Griesemer R.Pike K.Thompson)"
+MAINTAINER="domcox@slitaz.org"
+LICENSE="BSD"
+WEB_SITE="http://www.golang.org"
+TARBALL="$PACKAGE$VERSION.src.tar.gz"
+WGET_URL="https://go.googlecode.com/files/$TARBALL"
+TAGS="go"
+
+DEPENDS=""
+BUILD_DEPENDS="bash bison make ed"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/src
+
+	# Setting up environnment before building go.
+	# For more information, see: http://golang.org/doc/install/source
+
+	# Go tree, binaries and scripts locations.
+	export GOROOT_FINAL=/usr/lib/go
+
+	# Support all x86 chips (Pentium MMX or later)
+	# or optionaly only Pentium 4/Opteron/Athlon 64 or later.
+	export GO386=387	# Pentium MMX or later
+	# export GO386=sse2	# Pentium 4/Opteron/Athlon 64 or later
+
+	# Target operating system (optional).
+	export GOOS=linux
+
+	# Target compilation architecture.
+	case $ARCH in
+		x86_64)
+			# A mature implementation. The compiler has an effective optimizer
+			# (registerizer) and generates good code (although gccgo can do
+			# noticeably better sometimes).
+			export GOARCH="amd64" ;;
+
+		i486)
+			# Comparable to the amd64
+			export GOARCH="386" ;;
+
+		arm)
+			# Supports Linux, FreeBSD and NetBSD binaries. Less widely used
+			# than the other ports.
+			export GOARCH="arm"
+			# ARM11 (VFPv1) or better cores + cross-compiling.
+			export GOARM=6 ;;
+	esac
+
+	# Build go
+	/bin/bash make.bash --no-banner
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/go
+	# bin
+	cp -a $src/bin $fs/usr
+	# go tree
+	cp -a $src/pkg $fs/usr/lib/go
+	# lib
+	cp -a $src/lib $fs/usr/lib/go
+	# include
+	cp -a $src/include $fs/usr/lib/go
+}
