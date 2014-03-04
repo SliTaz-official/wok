@@ -128,9 +128,10 @@ static void load(struct mem *p, unsigned long size)
 		}
 		p->align = PAGE_SIZE;
 		break;
-	case 4096: // first initrd : skip mapping hole before 16M
-		initrd_addr = (extendedramsizeinkb() > 24000U) ?
-				 0x1000000 : p->base;
+	case PAGE_SIZE: // first initrd : skip mapping hole before 16M
+		if (extendedramsizeinkb() > 24000U && p->base < 0x1000000)
+			p->base = 0x1000000;
+		initrd_addr = p->base;
 		p->align = 4;
 	}
 	while (size) {

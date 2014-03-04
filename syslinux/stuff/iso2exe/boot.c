@@ -25,7 +25,7 @@ Examples for tazboot.cmd:\n\n\
 static void bootiso(char **iso)
 {
 	char *init = "rdinit=/init.exe", *mode="menu";
-	char c, *s, rootfs[16], cmdline[256];
+	char c, rootfs[16], cmdline[256];
 	int fd, restart;
 	unsigned long magic;
 	
@@ -33,9 +33,10 @@ static void bootiso(char **iso)
 	if (iso[1] && !strcmp(mode = iso[1], "text"))
 		init = "";
 	for (c = 0, restart = 1; isoreaddir(restart) == 0; restart = 0) {
-		if (strncmp(isofilename, "rootfs", 6) || c > s[6]) continue;
+		if (strncmp(isofilename, "rootfs", 6) 
+			|| c > isofilename[6]) continue;
 		strcpy(rootfs, isofilename);
-		c = s[6];
+		c = isofilename[6];
 	}
 	if (isoopen(mode))
 		isoopen("bzImage");
@@ -69,6 +70,11 @@ static int stricmp(char *ref, char *s)
 static char *iso;
 static int fakeopen(char *file)
 {
+	if (file) {
+		char *s = file;
+		while (*s && *s != '\r' && *s != '\n') s++;
+		*s = 0;
+	}
 	if (iso) {
 		isoreset(iso);
 		return isoopen(file);
@@ -140,6 +146,12 @@ int main(int argc, char *argv[])
 		}
 		while (*s && *s != ' ') s++;
 		*s = 0;
+	}
+	if (cmdline) {
+		char *last;
+		for (s = cmdline; *s && *s != '\r' && *s != '\n'; s++)
+			if (*s != ' ') last = s;
+		*++last = 0;
 	}
 	if (fakeopen(kernel) == -1)
 		usage(argv[0]);
