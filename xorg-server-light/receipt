@@ -12,6 +12,7 @@ TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.x.org/"
 WGET_URL="http://xorg.freedesktop.org/releases/individual/xserver/$TARBALL"
 PROVIDE="xorg-server"
+#HOST_ARCH="i486 arm"
 
 DEPENDS="xorg-xkeyboard-config xorg-libpciaccess xorg-libXxf86vm \
 xorg-libXfont xorg-libXau xorg-base-fonts libgcrypt pixman udev \
@@ -19,13 +20,15 @@ xorg-xf86-input-evdev"
 BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev xorg-libXxf86vm-dev \
 xorg-libXfont-dev libgcrypt-dev pixman-dev udev-dev perl flex xorg-dev-proto"
 
+# Handle arch compilation
+case "$ARCH" in
+	arm) BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev \
+xorg-libXfont-dev libgcrypt-dev pixman-dev" ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	#CFLAGS="-march=$ARCH -O2 -pipe -fomit-frame-pointer"
-	#CXXFLAGS="$CFLAGS"
-	# Sizes: 792.0K with -Os and 968.0K
-	cd $src
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -49,6 +52,7 @@ compile_rules()
 		--disable-xvfb \
 		--disable-xnest \
 		--disable-xfbdev \
+		--disable-xv \
 		$CONFIGURE_ARGS &&
 	make && make install
 }
