@@ -9,38 +9,48 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.musicpd.org/"
 WGET_URL="$SF_MIRROR/musicpd/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="libid3tag libmad libogg libvorbis libsamplerate flac alsa-lib \
 audiofile faad2 lame sqlite libcurl glib libcrypto"
 BUILD_DEPENDS="alsa-lib-dev zlib-dev libid3tag-dev libsamplerate-dev \
-libmad-dev libogg-dev libvorbis-dev flac-dev libsamplerate \
-libid3tag audiofile audiofile-dev faad2 faad2-dev pkg-config glib-dev lame-dev"
+libmad-dev libogg-dev libvorbis-dev flac-dev audiofile-dev faad2-dev 
+glib-dev lame-dev"
+
+# Handle SliTaz arch
+case "$SLITAZ_ARCH" in
+	arm) DEPENDS="alsa-lib zlib glib lame libmad libsamplerate" ;;
+esac
+
+# Handle cross comilation
+case "$ARCH" in
+	arm) 
+		BUILD_DEPENDS="alsa-lib-dev zlib-dev glib-dev lame-dev libmad-dev \
+libsamplerate-dev" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
 	sed -i 's/<stdbool.h>/&\n#include <stdio.h>/' src/decoder_api.h
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man \
-	--disable-jack \
-	--disable-ao \
-	--disable-modplug \
-	--disable-mms \
-	--disable-ffmpeg \
-	--disable-wavpack \
-	--disable-systemd-daemon \
-	--with-zeroconf=no \
-	$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$DESTDIR install
+	./configure \
+		--disable-jack \
+		--disable-ao \
+		--disable-modplug \
+		--disable-mms \
+		--disable-ffmpeg \
+		--disable-wavpack \
+		--disable-systemd-daemon \
+		--with-zeroconf=no \
+		$CONFIGURE_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/sbin
-	mkdir -p $fs/etc
+	mkdir -p $fs/usr/sbin $fs/etc
 	cp -a $install/usr/bin/mpd $fs/usr/sbin
 	cp $install/usr/share/doc/mpd/mpdconf.example $fs/etc/mpd.conf
 	cp -a $stuff/* $fs
@@ -52,7 +62,7 @@ post_install()
 
 	# Drop root priviledges and enable pid file
 	echo -n "Enabling mpd.conf..."
-	cd $1/etc
+	cd $root/etc
 	sed -i 's/#music_directory/music_directory/; \
 	s/#playlist_directory/playlist_directory/; \
 	s/#db_file/db_file/; \
@@ -63,15 +73,11 @@ post_install()
 	
 	# Make mpd directories and files
 	echo -n "Enabling mpd files and directories..."
-	mkdir /home/tux/music
-	mkdir -p /home/tux/.mpd/playlists
-	touch /home/tux/.mpd/mpd.log
-	#touch /home/tux/.mpd/mpd.error
-	cp -a /etc/mpd.conf /home/tux/.mpd
-
-	# And change permissions
-	chown tux:users /home/tux/music
-	chown -R tux:users /home/tux/.mpd
+	mkdir $root/etc/skel/music
+	mkdir -p $root/etc/skel/.mpd/playlists
+	touch $root/etc/skel/.mpd/mpd.log
+	#touch $root/etc/skel/.mpd/mpd.error
+	cp -f $root/etc/mpd.conf /etc/skel/.mpd
 	status
 }
 	
