@@ -2,7 +2,6 @@
 
 PACKAGE="glib"
 VERSION="2.32.4"
-#VERSION="2.34.3"
 CATEGORY="x-window"
 SHORT_DESC="C routines."
 MAINTAINER="pankso@slitaz.org"
@@ -10,9 +9,9 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.gtk.org/"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
-#HOST_ARCH="i486 arm"
-CROSS_BUGS="2.32.4: error: cannot compute alignment of guint32 
-      2.34.3: Buggy shared libs format (libpcre, libffi)"
+HOST_ARCH="i486 arm"
+
+CROSS_BUGS="arm: glib 2.32.4 error: cannot compute alignment of guint32"
 
 DEPENDS="pcre libffi libxml2 elfutils"
 BUILD_DEPENDS="pcre-dev libffi-dev gettext zlib-dev perl python python-dev \
@@ -20,21 +19,39 @@ elfutils-dev libxml2-dev libxml2-tools automake"
 
 # Handle cross comilation. Use host Perl, Python, etc
 case "$ARCH" in
-	arm) BUILD_DEPENDS="pcre-dev libffi-dev zlib-dev elfutils-dev libxml2-dev" ;;
+	arm)
+		VERSION="2.34.3"
+		TARBALL="$PACKAGE-$VERSION.tar.xz"
+		WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
+		BUILD_DEPENDS="pcre-dev libffi-dev zlib-dev elfutils-dev libxml2-dev" ;;
 esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	case "$ARCH" in
+		i?68)
+			./configure \
+				--sysconfdir=/etc \
+				--with-pcre=system \
+				$CONFIGURE_ARGS ;;
 		arm)
+			# Native ARM build --> if ARCH != SLITAZ_ARCH ?
+			
+			# Libtool fixes: /usr/bin/cross libhack (when released)
+			sed -i s"#/usr/lib#/cross/$ARCH/sysroot/usr/lib#" \
+				/cross/${ARCH}/sysroot/usr/lib/libpcre.la \
+				/cross/${ARCH}/sysroot/usr/lib/libffi.la || exit 1
+			#export LIBTOOL=arm-slitaz-linux-gnueabi-libtool 
+			export LD_LIBRARY_PATH=/cross/arm/sysroot/usr/lib:/usr/lib:/lib
+			export PKG_CONFIG_LIBPATH=/cross/arm/sysroot/usr/lib/pkgconfig
+			
+			# Glib
 			export glib_cv_stack_grows=${glib_cv_stack_grows=no}
 			export glib_cv_uscore=${glib_cv_uscore=no}
 			export ac_cv_func_posix_getpwuid_r=${ac_cv_func_posix_getpwuid_r=no}
 			export ac_cv_func_posix_getgrgid_r=${ac_cv_func_posix_getgrgid_r=no}
 			export ac_cv_type_long_long=${ac_cv_type_long_long=yes}
-			export LD_LIBRARY_PATH=/cross/arm/sysroot/usr/lib:/usr/lib:/lib:/usr/local/lib
-			export PKG_CONFIG_LIBPATH=/cross/arm/sysroot/usr/lib/pkgconfig
 			CC="arm-slitaz-linux-gnueabi-gcc" \
 			./configure \
 				--sysconfdir=/etc \
@@ -43,11 +60,6 @@ compile_rules()
 				--host=arm-slitaz-linux-gnueabi \
 				--enable-shared=yes \
 				--enable-static=yes ;;
-		*)
-			./configure \
-				--sysconfdir=/etc \
-				--with-pcre=system \
-				$CONFIGURE_ARGS ;;
 	esac && 
 	make && make install
 }
