@@ -67,6 +67,13 @@ static int stricmp(char *ref, char *s)
 	return 0;
 }
 
+static int chkstatus(int status, char *name)
+{
+	if (status == -1)
+		printf("%s not found.\n",name);
+	return status;
+}
+
 static char *iso;
 static int fakeopen(char *file)
 {
@@ -78,14 +85,15 @@ static int fakeopen(char *file)
 	if (*file == '\\') {
 		static fd = -1;
 		if (fd >= 0) close(fd);
-		return open(file, O_RDONLY);
+		fd = chkstatus(open(file, O_RDONLY), file);
+		return fd;
 	}
 	if (iso) {
-		isoreset(iso);
-		return isoopen(file);
+		chkstatus(isoreset(iso), iso);
+		return chkstatus(isoopen(file), file);
 	}
 	close(isofd);
-	isofd = open(file, O_RDONLY);
+	isofd = chkstatus(open(file, O_RDONLY), file);
 	if (isofd != -1) {
 		isofileofs = 0;
 		isofilesize = LONG_MAX;
@@ -100,7 +108,7 @@ int main(int argc, char *argv[])
 	
 	argv[0] = progname();
 	bootiso(argv);	// iso ? parsing is /init.exe stuff !
-	if (argc == 2)
+	if (argc >= 2)
 		bootiso(argv + 1);
 
 	chdirname(*argv);
@@ -127,7 +135,7 @@ int main(int argc, char *argv[])
 	}
 	if (cmdfile) {
 		int fd;
-		fd = open(cmdfile, O_RDONLY);;
+		fd = chkstatus(open(cmdfile, O_RDONLY), chkstatus);
 		if (fd != -1) {
 			read(fd, args, sizeof(args));
 			close(fd);

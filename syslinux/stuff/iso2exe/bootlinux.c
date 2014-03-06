@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "iso9660.h"
 
-static unsigned version;
+static unsigned setup_version;
 #define SETUPSECTORS	0x1F1
 #define ROFLAG		0x1F2
 #define SYSSIZE		0x1F4
@@ -24,9 +24,9 @@ static unsigned version;
 
 #define PAGE_BITS	12
 #define PAGE_SIZE	4096
-#define BUFFERSZ	PAGE_SIZE
+#define BUFFERSZ	2048		// lower than mix setup
 static char buffer[BUFFERSZ];
-static unsigned long initrd_addr, initrd_size;
+static unsigned long initrd_addr = 0, initrd_size;
 
 static int may_exit_dos = 1;
 static void die(char *msg)
@@ -45,12 +45,10 @@ static int vm86(void)
 #endasm
 } 
 
-static struct mem {
+static struct {
 	unsigned long base;
 	int align;
-} kernelmem = { 0x100000, 0 };
-
-#define initrdmem kernelmem
+} mem = { 0x100000, 0 };
 
 static void movehi(void)
 {
@@ -61,7 +59,7 @@ static void movehi(void)
 zero1:
 		push	di
 		loop	zero1
-		push	dword [_kernelmem]	// 1A p->base
+		push	dword [_mem]	// 1A mem.base
 		push	#-1		// 18
 		push	di		// 16
 		xor	eax, eax
@@ -90,7 +88,18 @@ zero2:
 #endasm
 }
 
-#undef ZIMAGE_SUPPORT	/* Does not work... */
+#define ZIMAGE_SUPPORT
+
+#ifdef ZIMAGE_SUPPORT
+static int zimage = 0;
+static unsigned zimage_base;
+static unsigned getss(void)
+{
+#asm
+	mov	ax, ss
+#endasm
+}
+#endif
 
 static int versiondos;
 static int dosversion(void)
@@ -114,11 +123,11 @@ gottop:
 #endasm
 }
 
-static void load(struct mem *p, unsigned long size)
+static void load(unsigned long size)
 {
 	if (vm86())
 		die("Need real mode");
-	switch (p->align) {
+	switch (mem.align) {
 	case 0:	// kernel
 		switch (dosversion()) {
 		case 3: case 4: case 6: case 7: break;
@@ -126,29 +135,27 @@ static void load(struct mem *p, unsigned long size)
 			printf("DOS %d not supported.\nTrying anyway...\n",
 				versiondos);
 		}
-		p->align = PAGE_SIZE;
+		mem.align = PAGE_SIZE;
 		break;
 	case PAGE_SIZE: // first initrd : keep 16M..48M for the kernel
-		if (extendedramsizeinkb() > 0xF000U && p->base < 0x3000000)
-			p->base = 0x3000000;
-		initrd_addr = p->base;
-		p->align = 4;
+		if (extendedramsizeinkb() > 0xF000U && mem.base < 0x3000000)
+			mem.base = 0x3000000;
+		initrd_addr = mem.base;
+		mem.align = 4;
 	}
 	while (size) {
 		int n, s = sizeof(buffer);
 		for (n = 0; n < s; n++) buffer[n] = 0;
 		if (s > size) s = size;
-		n = isoread(buffer, s);
+		if ((n = isoread(buffer, s)) < 0) break;
 		movehi();
-		if (n != -1) {
-			p->base += n;
-			size -= n;
-		}
-		if (s != n) break;
+		mem.base += n;
+		size -= n;
+		if (s != n) break;	// end of file
 	}
-	initrd_size = p->base - initrd_addr;
-	p->base += p->align - 1;
-	p->base &= - p->align;
+	initrd_size = mem.base - initrd_addr;
+	mem.base += mem.align - 1;
+	mem.base &= - mem.align;
 }
 
 static unsigned setupofs = 0;
@@ -189,13 +196,13 @@ unsigned long loadkernel(void)
 			setup = (1 + buffer[SETUPSECTORS]) << 9;
 			if (setup == 512) setup = 5 << 9;
 			syssize = * (unsigned long  *) (buffer + SYSSIZE) << 4;
-			version = * (unsigned short *) (buffer + VERSION);
+			setup_version = * (unsigned short *) (buffer + VERSION);
 #define HDRS	0x53726448
 			if (* (unsigned long *) (buffer + HEADER) != HDRS)
-				version = 0;
-			if (version < 0x204)
+				setup_version = 0;
+			if (setup_version < 0x204)
 				syssize &= 0x000FFFFFUL;
-			if (version) {
+			if (setup_version) {
 #ifdef REALMODE_SWITCH
 				extern int far_realmode_switch();
 #asm
@@ -213,7 +220,7 @@ end_realmode_switch:
 				* (unsigned short *) (buffer + RMSWSEG) = 
 					getcs();
 #endif
-				kernelmem.base =
+				mem.base =
 					* (unsigned long *) (buffer + SYSTEMCODE);
 				* (unsigned short *) (buffer + HEAPPTR) = 
 					0x9B00;
@@ -221,34 +228,16 @@ end_realmode_switch:
 				* (unsigned short *) (buffer + LOADERTYPE) |= 
 					0x80FF;
 			}
-			if (!version || !(buffer[LOADFLAGS] & 1)) {
+			if (!setup_version || !(buffer[LOADFLAGS] & 1)) {
 #ifdef ZIMAGE_SUPPORT
-#asm
-		pusha
-		mov	cx, #0x8000
-		mov	es, cx
-		xor	si, si
-		xor	di, di
-		rep
-		  movsw			// move 64K data
-		push	es
-		pop	ds
-		push	es
-		pop	ss
-		mov	ch, #0x70
-		mov	es, cx
-		mov	ch, #0x80
-		rep
-		 seg	cs
-		  movsw			// move 64K code
-		popa
-		jmpi	relocated, #0x7000
-relocated:
-#endasm
-				kernelmem.base = 0x10000;
-				if (syssize > 0x60000)	/* 384K max */
-#endif
+				zimage = 1;
+				zimage_base = getss() + 0x1000L;
+				mem.base = zimage_base * 16L; 
+				if (mem.base + syssize > SETUP_SEGMENT*16L - 32)
+					die("Out of memory");
+#else
 				die("Not a bzImage format");
+#endif
 			}
 		}
 		movesetup();
@@ -281,16 +270,18 @@ next:
 		loop	next
 		pop	ds
 		mov	.loadkernel.kernel_version[bp], edx
+		push	ds
 noversion:
+		pop	ds
 #endasm
-	load(&kernelmem, syssize);
+	load(syssize);
 	return kernel_version;
 }
 
 void loadinitrd(void)
 {
-	if (version)
-		load(&initrdmem, isofilesize);
+	if (setup_version && zimage == 0)
+		load(isofilesize);
 }
 
 void bootlinux(char *cmdline)
@@ -298,6 +289,9 @@ void bootlinux(char *cmdline)
 #asm
 	push	#SETUP_SEGMENT
 	pop	es
+	push	es
+	pop	ss
+	mov	sp, #CMDLINE_OFFSET
 	mov	eax, _initrd_addr
 	or	eax, eax
 	jz	no_initrd
@@ -308,7 +302,7 @@ void bootlinux(char *cmdline)
 no_initrd:
 #endasm
 	if (cmdline) {
-		if (version <= 0x201) {
+		if (setup_version <= 0x201) {
 #asm
 		mov	di, #0x0020
 		mov	ax, #0xA33F
@@ -334,12 +328,45 @@ copy:
 		jne	copy
 #endasm
 	}
+#ifdef ZIMAGE_SUPPORT
+	if (zimage) {
 #asm
-	push	es
+		mov	eax, _mem
+		shr	eax, #4		// top
+		mov	bx, _zimage_base
+		mov	dx, #0x1000
+		push	cs
+		pop	ds
+		mov	es, ax
+		push	es
+		mov	si, #sysmove
+		xor	di, di
+		push	di
+		mov	cx, #endsysmove-sysmove
+		rep
+		  movsb
+		retf
+sysmove:
+		mov	ds, bx
+		mov	es, dx
+		xor	di, di
+		xor	si, si
+		mov	cl, #8
+		rep
+		  movsw
+		inc	bx
+		inc	dx
+		cmp	ax,bx
+		jne	sysmove
+#endasm
+	}
+#endif
+#asm
+	push	ss
 	pop	ds
 	push	ds
-	pop	ss
-	mov	sp, #CMDLINE_OFFSET
+	pop	es
 	jmpi	0, #0x9020
+endsysmove:
 #endasm
 }
