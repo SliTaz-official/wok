@@ -24,7 +24,7 @@ static unsigned setup_version;
 
 #define PAGE_BITS	12
 #define PAGE_SIZE	4096
-#define BUFFERSZ	2048		// lower than mix setup
+#define BUFFERSZ	2048		// lower than min setup
 static char buffer[BUFFERSZ];
 static unsigned long initrd_addr = 0, initrd_size;
 
@@ -289,17 +289,6 @@ void bootlinux(char *cmdline)
 #asm
 	push	#SETUP_SEGMENT
 	pop	es
-	push	es
-	pop	ss
-	mov	sp, #CMDLINE_OFFSET
-	mov	eax, _initrd_addr
-	or	eax, eax
-	jz	no_initrd
-	mov	di, #0x218
-	stosd
-	mov	eax, _initrd_size
-	stosd
-no_initrd:
 #endasm
 	if (cmdline) {
 		if (setup_version <= 0x201) {
@@ -328,6 +317,20 @@ copy:
 		jne	copy
 #endasm
 	}
+	if (setup_version >= 0x200) {
+#asm
+		mov	eax, _initrd_addr
+		mov	di, #0x218
+		stosd
+		mov	eax, _initrd_size
+		stosd
+#endasm
+	}
+#asm
+	push	es
+	pop	ss
+	mov	sp, #CMDLINE_OFFSET
+#endasm
 #ifdef ZIMAGE_SUPPORT
 	if (zimage) {
 #asm

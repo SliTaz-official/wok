@@ -24,7 +24,7 @@ Examples for tazboot.cmd:\n\n\
 
 static void bootiso(char **iso)
 {
-	char *init = "rdinit=/init.exe", *mode="menu";
+	char *init = " rdinit=/init.exe", *mode="menu", *fmt="";
 	char c, rootfs[16], cmdline[256];
 	int restart;
 	unsigned long magic;
@@ -40,18 +40,24 @@ static void bootiso(char **iso)
 	}
 	if (isoopen(mode))
 		isoopen("bzImage");
-	if (loadkernel() < 0x20630)
+	magic = loadkernel();
+	if (magic < 0x20630)
 		init = ""; // Does not support multiple initramfs
-	isoopen(rootfs);
-	loadinitrd();
-	lseek(isofd, 24, SEEK_SET);
-	read(isofd, &magic, 4);
-	isofilesize = magic & 0xFFFF;
-	isofileofs = 0x7EE0 - isofilesize;
-	loadinitrd();
+	if (magic > 0) {
+		fmt = "rw root=/dev/null%s iso=%s magic=%lu mode=%s";
+		isoopen(rootfs);
+		loadinitrd();
+		if (*init) {
+			lseek(isofd, 24L, SEEK_SET);
+			read(isofd, &magic, 4);
+			isofilesize = magic & 0xFFFFL;
+			isofileofs = 0x7EE0L - isofilesize;
+			if (isofilesize) loadinitrd();
+			else init="";
+		}
+	}
+	sprintf(cmdline, fmt, init, *iso, magic, mode);
 	close(isofd);
-	sprintf(cmdline,"rw root=/dev/null %s iso=%s magic=%lu mode=%s",
-		init, *iso, magic, mode);
 	bootlinux(cmdline);
 }
 
@@ -135,7 +141,7 @@ int main(int argc, char *argv[])
 	}
 	if (cmdfile) {
 		int fd;
-		fd = chkstatus(open(cmdfile, O_RDONLY), chkstatus);
+		fd = chkstatus(open(cmdfile, O_RDONLY), cmdfile);
 		if (fd != -1) {
 			read(fd, args, sizeof(args));
 			close(fd);
