@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="ffmpeg"
-VERSION="1.0"
+VERSION="2.1.4"
 CATEGORY="multimedia"
 SHORT_DESC="Record, convert and stream audio and video."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -9,17 +9,31 @@ LICENSE="GPL2 LGPL2.1"
 WEB_SITE="http://ffmpeg.org/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="${WEB_SITE}releases/$TARBALL"
+HOST_ARCH="i486 arm"
+
 SUGGESTED="ffplay"
 TAGS="audio video convert stream"
 
-DEPENDS="alsa-lib"
+DEPENDS="alsa-lib libsdl bzip2"
 BUILD_DEPENDS="libsdl-dev zlib-dev bzip2-dev coreutils-file-format \
 coreutils-file-special yasm"
+
+# Handle cross compilation. Host coreutils-file-* are used
+case "$ARCH" in
+	i?86) ARCH_ARGS="--arch=$ARCH --cpu=$ARCH" ;;
+	arm*) BUILD_DEPENDS="zlib-dev bzip2-dev yasm" 
+		ARCH_ARGS="--enable-cross-compile --arch=armel --target-os=linux \
+--cross-prefix=$HOST_SYSTEM-" ;;
+esac
+
+# Handle arch package install
+case "$SLITAZ_ARCH" in
+	arm*) DEPENDS="alsa-lib bzip2" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--prefix=/usr \
 		--enable-shared \
@@ -40,7 +54,7 @@ compile_rules()
 		--disable-encoder=msmpeg4v3 \
 		--disable-symver \
 		--disable-debug \
-		--disable-doc &&
+		--disable-doc ${ARCH_ARGS} &&
 	make && make install
 }
 
@@ -53,5 +67,5 @@ genpkg_rules()
 	cp -a $install/usr/share/$PACKAGE $fs/usr/share
 	rm -rf $fs/usr/share/$PACKAGE/examples
 	# ffplay with it SDL dep go in a splited package
-	rm $fs/usr/bin/ffplay
+	rm -f $fs/usr/bin/ffplay
 }

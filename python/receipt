@@ -10,25 +10,40 @@ SOURCE="Python"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.python.org/"
 WGET_URL="http://www.python.org/ftp/python/$VERSION/$TARBALL"
+#HOST_ARCH="i486 arm"
 
 DEPENDS="openssl bzlib readline sqlite zlib ncursesw gdbm"
 BUILD_DEPENDS="openssl-dev bzip2-dev readline-dev sqlite-dev zlib-dev \
 ncursesw-dev tcl-dev tk-dev db-dev gdbm-dev"
 SUGGESTED="tcl tk"
 
+# Handle cross compilation
+case "$ARCH" in
+	arm*) BUILD_DEPENDS="bzip2-dev readline-dev ncursesw-dev tcl-dev" ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	# Temporary workaround for FS#22322
 	# See http://bugs.python.org/issue10835 for upstream report
 	sed -i "/progname =/s/python/python${_pybasever}/" Python/pythonrun.c
 	# Enable built-in SQLite3 module to load extensions (fix FS#22122)
 	sed -i "/SQLITE_OMIT_LOAD_EXTENSION/d" setup.py
-	./configure \
-		--enable-shared \
-		--build=$HOST_SYSTEM \
-		--host=$HOST_SYSTEM &&
+	case "$ARCH" in
+		arm*)
+			#export ac_cv_file_dev__ptmx=yes
+			./configure \
+				--disable-ipv6 \
+				--enable-shared \
+				--build=i486-slitaz-linux \
+				--host=${ARCH}-slitaz-linux-gnueabi ;;
+		i?86)
+			./configure \
+				--enable-shared \
+				--build=${HOST_SYSTEM} \
+				--host=${HOST_SYSTEM} ;;
+	esac &&
 	make &&	make DESTDIR=$DESTDIR install
 }
 

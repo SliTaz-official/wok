@@ -10,16 +10,23 @@ TARBALL="${PACKAGE}${VERSION}-src.tar.gz"
 WEB_SITE="http://tcl.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="language programming"
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	case "$ARCH" in
+		arm*) 
+			export tcl_cv_strtod_buggy=1
+			export ac_cv_func_strtod=yes ;;
+	esac
 	cd $src/unix
 	./configure \
-	 --enable-shared \
-	 --disable-symbols \
-	 --mandir=/usr/share/man $CONFIGURE_ARGS && \
-	make && \
+		 --enable-shared \
+		 --disable-symbols \
+		 --mandir=/usr/share/man \
+		 $CONFIGURE_ARGS &&
+	make &&
 	make install install-private-headers
 }
 
@@ -27,7 +34,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/tcl8* $fs/usr/lib
+	cp -a $install/usr/lib/tcl8* $fs/usr/lib 2>/dev/null
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/bin $fs/usr
 	ln -sf tclsh8.5 $fs/usr/bin/tclsh
