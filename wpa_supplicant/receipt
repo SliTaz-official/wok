@@ -10,10 +10,25 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://hostap.epitest.fi/wpa_supplicant/"
 WGET_URL="http://hostap.epitest.fi/releases/$TARBALL"
 CONFIG_FILES="/etc/wpa_supplicant.conf"
-TAGS="wireless"
+HOST_ARCH="i486 arm"
 
-DEPENDS="libssl slitaz-base-files libcrypto libnl"
-BUILD_DEPENDS="openssl-dev libcrypto libcrypto-dev libnl-dev dbus-dev"
+TAGS="wireless"
+DEPENDS="libssl libcrypto libnl"
+BUILD_DEPENDS="openssl-dev libcrypto-dev libnl-dev dbus-dev"
+
+# Cross compile
+case "$ARCH" in
+	arm*) 
+		VERSION="1.1"
+		BUILD_DEPENDS="openssl-dev libcrypto-dev"
+		TARBALL="$PACKAGE-$VERSION.tar.gz"
+		WGET_URL="http://hostap.epitest.fi/releases/$TARBALL" ;;
+esac
+
+# Arch install
+case "$SLITAZ_ARCH" in
+	arm*) DEPENDS="libssl libcrypto" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
@@ -22,15 +37,23 @@ compile_rules()
 	sed 's/-lnl/-lnl-3/g' -i ../src/drivers/drivers.mak
 	sed 's/-lnl-3-genl/-lnl-genl-3/g' -i ../src/drivers/drivers.mak
 	cp -a ./defconfig ./.config
-	cat >> .config << EOF
+	case "$ARCH" in
+		i?86)
+			cat >> .config << EOF
 CONFIG_AP=y
 CONFIG_BGSCAN_SIMPLE=y
+CONFIG_LIBNL20=y
+CFLAGS += -I/usr/include/libnl3
 CONFIG_CTRL_IFACE_DBUS=y
 CONFIG_CTRL_IFACE_DBUS_NEW=y
 CONFIG_CTRL_IFACE_DBUS_INTRO=y
-CONFIG_LIBNL20=y
-CFLAGS += -I/usr/include/libnl3
 EOF
+			;;
+		arm)
+			# 2.X dont cross compile for ARM
+			#echo 'CFLAGS += -I${sysroot}/usr/include/libnl3' >> .config 
+			continue ;;
+	esac
 	make BINDIR=/usr/bin LIBDIR=/lib
 }
 

@@ -9,24 +9,22 @@ LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://gmplib.org/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+#HOST_ARCH="i486 arm"
 
-DEPENDS="glibc-base"
 BUILD_DEPENDS="binutils m4"
 
 # Rules to configure and make the package.
 compile_rules()
 {	
-	cd $src
-	if [ -x /usr/bin/cook ]; then
-		[ -d "/var/lib/tazpkg/binutils" ] || tazpkg get-install binutils
-	fi
-	# gmp try to cook for 64bits system if kernel can support when using
-	# tmp toolchain. Not only and this export does nothing !!!
-	export ABI=32
-	./configure $CONFIGURE_ARGS --enable-cxx &&
-	make &&
+	case "$ARCH" in
+		i?86)
+			export ABI=32 
+			ARCH_ARGS="--enable-cxx" ;;
+	esac
+	./configure \
+		$CONFIGURE_ARGS $ARCH_ARGS &&
 	# -j > 1 make install fails.
-	make -j 1 install
+	make && make -j 1 install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
