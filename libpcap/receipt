@@ -9,18 +9,25 @@ LICENSE="BSD"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.tcpdump.org/"
 WGET_URL="http://www.tcpdump.org/release/$TARBALL";
+HOST_ARCH="i468 arm"
 
 DEPENDS="libnl"
 BUILD_DEPENDS="flex bison"
 
+# Handle cross compilation
+case "$ARCH" in
+	arm) 
+		BUILD_DEPENDS="" 
+		ARCH_ARGS="--with-pcap=linux" 
+		export ac_cv_linux_vers=2 ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-        cd $src
-        ./configure --prefix=/usr --infodir=/usr/share/info \
-        --mandir=/usr/share/man $CONFIGURE_ARGS &&
-        make &&
-        make DESTDIR=$DESTDIR install
+	./configure \
+		$CONFIGURE_ARGS $ARCH_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
