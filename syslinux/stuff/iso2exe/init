@@ -13,6 +13,21 @@ getarg()
 	sed "/$1=/!d;s/.*$1=\\([^ ]*\\).*/\\1/" /proc/cmdline
 }
 
+mount_proc()
+{
+	mount -t proc /proc /proc
+	mount -t sysfs /sys /sys
+	udevd --daemon 2> /dev/null && udevadm trigger && sleep 5
+}
+
+umount_proc()
+{
+	killall udevd 2> /dev/null
+	umount /sys/fs/fuse/connections 2> /dev/null
+	umount /sys
+	umount /proc
+}
+
 gettazboot()
 {
 	echo "Creating $(basename $1) ..."
@@ -61,7 +76,7 @@ uncpio()
 getuuid()
 {
 	dev=$(mount | sed '/ \/mnt /!d;s/ .*//;s|/dev/||;q')
-	blkid | sed "/$dev:/!d;s/.*UUID=.\\([^ ]*\\)\".*/\\1/"
+	blkid | sed "/$dev:/!d;s/.* UUID=.\\([^ ]*\\)\".*/\\1/"
 }
 
 mkinitrd()
@@ -70,7 +85,7 @@ mkinitrd()
 	for i in bin lib dev proc tmp mnt etc ; do
 		mkdir -p /tmp/fs/$i
 	done
-	for i in /dev/console /dev/null /dev/tty /dev/tty1 /dev/fuse \
+	for i in /dev/console /dev/null /dev/tty /dev/tty1 /dev/tty2 /dev/fuse \
 		 /dev/hd* /dev/sd* ; do
 		cp -a $i /tmp/fs$i
 	done
@@ -84,6 +99,10 @@ mkinitrd()
 		[ -e /tmp/fs/bin/${i%,} ] || ln -s busybox /tmp/fs/bin/${i%,}
 	done
 	ln -s /proc/mounts /tmp/fs/etc/mtab
+	sed 's/ .*//' /proc/modules | while read mod ; do
+		find /lib/modules/ | grep $mod.ko | \
+			sed 's|.*|cp & /tmp/fs/lib|' | sh
+	done
 	cat > /tmp/fs/init <<EOT
 #!/bin/sh
 
@@ -95,14 +114,17 @@ arg()
 }
 
 mount -t proc /proc /proc
+  arg debug "shell" && debug=true && set -x
+for i in /lib/*.ko* ; do insmod \$i ; done; sleep 2
 arg mount "Mount device"
 mount \$( (blkid /dev/?d* || blkid) | grep \$val | sed 's/:.*//;q') /mnt
 arg subroot "Change root to directory"
-mount.posixovl -F /mnt/\$val
+mount.posixovl -F /mnt/\$val -- -oallow_other -odefault_permissions -osuid
 mount --bind /mnt /mnt/\$val/mnt/dos
 LDSO=\$(ls /mnt/\$val/lib/ld-* | sed q)
-umount /proc
 export LD_LIBRARY_PATH=\$val/lib:\$val/usr/lib:/lib
+  [ "$debug" = "true" ] && sh
+umount /proc
 exec /bin/switch_root /mnt \${LDSO#/mnt/} \$val/usr/sbin/chroot \$val /sbin/init
 EOT
 	chmod +x /tmp/fs/init
@@ -115,16 +137,26 @@ is_loram()
 	[ -s /lib/squashfs.ko* ]
 }
 
+ls_r()
+{
+	ls -r $@ 2> /dev/null || ls $@
+}
+
 doinstall()
 {
 	mkdir -p /mnt/slitaz/boot /mnt/slitaz/mnt/dos
-	mount.posixovl -F /mnt/slitaz || return
-	echo "Install root filesystem..."
+	if ! mount.posixovl -F /mnt/slitaz -- \
+		-oallow_other -odefault_permissions -osuid; then
+		echo "Can't install SliTaz. Abort."
+		sleep 5
+		return 1
+	fi
+	echo "Install root filesystem in /slitaz..."
 	if [ -n "$1" ]; then
 		if [ -d /media/cdrom/fs ]; then
 			( cd /mnt/slitaz/fs; find | cpio -o -H newc ) | gzip -9
 		else
-			ls -r /media/cdrom/boot/rootfs* | xargs cat
+			ls_r /media/cdrom/boot/rootfs* | xargs cat
 		fi > /mnt/slitaz/boot/rootfs.gz
 		mkdir /mnt/slitaz/home
 		initrd=rootfs.gz
@@ -137,13 +169,13 @@ doinstall()
 				[ -s $(basename $i) ] && continue
 				cpio -i $i
 			done
-			for i in $(ls -r /media/cdrom/boot/rootfs*); do
+			for i in $(ls_r /media/cdrom/boot/rootfs*); do
 				mount -o loop,ro $i /sqfs/mnt
 				cp -a /sqfs/mnt/. /mnt/slitaz
 				umount -d /sqfs/mnt
 			done
 		else
-			for i in $(ls -r /media/cdrom/boot/rootfs*); do
+			for i in $(ls_r /media/cdrom/boot/rootfs*); do
 				uncpio $i /mnt/slitaz
 			done
 		fi
@@ -159,24 +191,29 @@ doinstall()
 	done
 	gettazboot /mnt/slitaz/boot/tazboot.exe
 	unix2dos > /mnt/slitaz/boot/tazboot.cmd <<EOT
-kernel=\\slitaz\\boot\\bzimage
-initrd=\\slitaz\\boot\\$initrd
+kernel=/slitaz/boot/bzimage
+initrd=/slitaz/boot/$initrd
 rw root=/dev/null $extraargs autologin
 EOT
 	unix2dos /mnt/slitaz/boot/he* /mnt/slitaz/boot/opt* \
 		/mnt/slitaz/boot/README
 	[ -d /mnt/slitaz/usr/sbin -a ! -x /mnt/slitaz/usr/sbin/mount.posixovl ] &&
 	cp $(which mount.posixovl) /mnt/slitaz/usr/sbin
-	! grep -qs tazboot /mnt/boot.ini && unix2dos >> /mnt/boot.ini <<EOT
+false &&
+	! grep -qs tazboot /mnt/boot.ini && echo "Update boot.ini ..." &&
+	unix2dos >> /mnt/boot.ini <<EOT
 C:\\slitaz\\boot\\tazboot.exe="SliTaz"
 EOT
-	grep -qs menuitem /mnt/config.sys && !grep -q tazboot /mnt/config.sys &&
-	sed -i 's/menudefault=/menuitem=slitaz,SliTaz\n&/' /mnt/config.sys &&
-	cat >> /mnt/config.sys <<EOT
-[slitaz]
-device=\\slitaz\\boot\\tazboot.exe
+	grep -qs menuitem /mnt/config.sys && ! grep -q tazboot /mnt/config.sys &&
+	echo "Update config.sys ..." &&
+	sed -i 's/menudefault=/menuitem=slitaz,SliTaz\r\n&/' /mnt/config.sys &&
+	echo -e "[slitaz]\r" >> /mnt/config.sys &&
+	echo "Update autoexec.bat ..." &&
+	unix2dos >> /mnt/autoexec.bat <<EOT
+:slitaz
+\\slitaz\\boot\\tazboot.exe
 EOT
-	unix2dos /mnt/config.sys 2> /dev/null
+	return 0
 }
 
 install()
@@ -195,10 +232,10 @@ To do a traditional installation with disk partitioning,
 start SliTaz Live with 'SliTaz RAM boot' menu.\n
 " 19 70
 	[ $? -eq 0 ] || return
-	doinstall
-	[ -x /sbin/init ] || return
+	doinstall || return
+	[ -x /mnt/slitaz/sbin/init ] || return
 	umount -d /media/cdrom
-	umount /proc
+	umount_proc
 	exec chroot /mnt/slitaz /sbin/init
 }
 
@@ -218,11 +255,11 @@ To do a traditional installation with disk partitioning,
 start SliTaz Live with 'SliTaz RAM boot' menu.\n
 " 19 70
 	[ $? -eq 0 ] || return
-	doinstall tazusblike
+	doinstall tazusblike || return
 	if [ -d /media/cdrom/fs ]; then
 		zcat /mnt/slitaz/boot/rootfs.gz | cpio -idmu
 	else
-		for i in $(ls -r /media/cdrom/boot/rootfs*); do
+		for i in $(ls_r /media/cdrom/boot/rootfs*); do
 			( zcat $i 2> /dev/null || unlzma -c $i ) | cpio -idmu
 		done
 	fi
@@ -230,7 +267,7 @@ start SliTaz Live with 'SliTaz RAM boot' menu.\n
 	umount -d /media/cdrom
 	mount --move /mnt /mnt/dos
 	ln -s /mnt/dos/slitaz/home /home
-	umount /proc
+	umount_proc
 	exec /sbin/init
 }
 
@@ -336,6 +373,12 @@ Please insert a blank disk in floppy drive.\n
 " 12 70
 	[ $? -eq 0 ] || return
 	dd if=/media/cdrom/boot/?pxe of=/dev/fd0
+}
+
+gotposixovl()
+{
+	mount.posixovl 2>&1 | grep -qi usage && 
+	echo -en "\"$1\"	\"$2\""
 }
 
 xfile()
@@ -481,14 +524,14 @@ text()
 	umount_loram
 	umount -d /media/cdrom
 	umount /mnt
-	umount /proc
+	umount_proc
 	exec /init
 }
 
 live()
 {
 	n=0
-	for i in $(ls -r /media/cdrom/boot/rootfs*); do
+	for i in $(ls_r /media/cdrom/boot/rootfs* 2> /dev/null); do
 		[ $((n++)) -eq 0 ] || uncpio $i
 	done
 	text
@@ -516,16 +559,16 @@ shell()
 BIN=bin/mount.posixovl
 [ -x /usr/s$BIN ] || mv /bin/mount.posixovl.iso2exe \
 /usr/s$BIN 2> /dev/null || mv /bin/mount.posixovl.iso2exe /$BIN
-mount -t proc /proc /proc
+mount_proc
 ISO="$(getarg iso | sed 's/.://;s|\\|/|g')"
 getiso
 mount_loram
-case "$(basename $ISO | tr [A-Z] [a-z])$(getarg mode)" in
+case "${ISO##*/}$(getarg mode)" in
 *install*)	install ;;
 *live*)		live ;;
 *text*)		text ;;
 esac
-which $DIALOG || live
+which $DIALOG 2> /dev/null || live
 dmesg > /tmp/dmesg
 
 while true; do
@@ -533,16 +576,16 @@ while true; do
 $DIALOG  --clear \
 	--title " Welcome to SliTaz " \
 	--menu "" 21 70 15 \
-			"live"		"SliTaz RAM boot" \
+$(cdfile boot/bzImage	"live"		"SliTaz RAM boot") \
 			"text"		"SliTaz RAM boot (text mode only)" \
 $(cdfile README		"readme"	"Show the README file") \
 $(cdfile md5sum		"md5"		"Check ISO files") \
-$(xfile mount.posixovl	"install"	"Hard disk installation (UMSDOS way)") \
-$(xfile mount.posixovl	"installtaz"	"Hard disk installation (TAZUSB way)") \
+$(gotposixovl		"install"	"Hard disk installation (UMSDOS way)") \
+$(gotposixovl		"installtaz"	"Hard disk installation (TAZUSB way)") \
 $(xfile tazusb		"usbkey"	"USB key read/write installation") \
-			"usbbootkey"	"USB boot key (read only)" \
+$(cdfile boot/bzImage	"usbbootkey"	"USB boot key (read only)") \
 $(fddata		"fdbootstrap"	"Floppy bootstrap") \
-			"tazboot"	"Get tazboot.exe Linux loader" \
+$(cdfile boot/bzImage	"tazboot"	"Get tazboot.exe Linux loader") \
 $(cdexe boot/memtest	"memtest"	"Get Memtest86") \
 $(cdfile boot/memtest	"fdmemtest"	"Create a Memtest86 boot floppy") \
 $(cdexe boot/gpxe	"pxe"		"Get SliTaz Web boot utility") \

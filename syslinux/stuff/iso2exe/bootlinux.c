@@ -91,8 +91,7 @@ zero2:
 #define ZIMAGE_SUPPORT
 
 #ifdef ZIMAGE_SUPPORT
-static int zimage = 0;
-static unsigned zimage_base;
+static unsigned zimage = 0;
 static unsigned getss(void)
 {
 #asm
@@ -230,9 +229,8 @@ end_realmode_switch:
 			}
 			if (!setup_version || !(buffer[LOADFLAGS] & 1)) {
 #ifdef ZIMAGE_SUPPORT
-				zimage = 1;
-				zimage_base = getss() + 0x1000L;
-				mem.base = zimage_base * 16L; 
+				zimage = getss() + 0x1000;
+				mem.base = zimage * 16L; 
 				if (mem.base + syssize > SETUP_SEGMENT*16L - 32)
 					die("Out of memory");
 #else
@@ -332,11 +330,12 @@ copy:
 	mov	sp, #CMDLINE_OFFSET
 #endasm
 #ifdef ZIMAGE_SUPPORT
-	if (zimage) {
 #asm
+	mov	bx, _zimage
+	or	bx, bx
+	jz	notzimage
 		mov	eax, _mem
 		shr	eax, #4		// top
-		mov	bx, _zimage_base
 		mov	dx, #0x1000
 		push	cs
 		pop	ds
@@ -361,8 +360,8 @@ sysmove:
 		inc	dx
 		cmp	ax,bx
 		jne	sysmove
+notzimage:
 #endasm
-	}
 #endif
 #asm
 	push	ss

@@ -44,7 +44,9 @@ static void bootiso(char **iso)
 	if (magic < 0x20630)
 		init = ""; // Does not support multiple initramfs
 	if (magic > 0) {
-		fmt = "rw root=/dev/null%s iso=%s magic=%lu mode=%s";
+		fmt = "rw root=/dev/null%s iso=%s magic=%lu mode=%s autologin";
+		if (rootfs[6] != '.' && !isoopen("rootfs.gz"))
+			loadinitrd();	// for loram
 		isoopen(rootfs);
 		loadinitrd();
 		if (*init) {
