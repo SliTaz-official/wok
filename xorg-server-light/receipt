@@ -12,18 +12,29 @@ TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.x.org/"
 WGET_URL="http://xorg.freedesktop.org/releases/individual/xserver/$TARBALL"
 PROVIDE="xorg-server"
-#HOST_ARCH="i486 arm"
+HOST_ARCH="i486 arm"
 
 DEPENDS="xorg-xkeyboard-config xorg-libpciaccess xorg-libXxf86vm \
 xorg-libXfont xorg-libXau xorg-base-fonts libgcrypt pixman udev \
-xorg-xf86-input-evdev"
+xorg-xf86-input-evdev libgpg-error libgcrypt freetype libxcb bzip2"
 BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev xorg-libXxf86vm-dev \
-xorg-libXfont-dev libgcrypt-dev pixman-dev udev-dev perl flex xorg-dev-proto"
+xorg-libXfont-dev libgpg-error-dev libgcrypt-dev pixman-dev udev-dev perl \
+flex xorg-dev-proto freetype-dev libxcb-dev bzip2-dev"
 
 # Handle arch compilation
 case "$ARCH" in
-	arm) BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev \
-xorg-libXfont-dev libgcrypt-dev pixman-dev" ;;
+	arm)
+		#--disable-xf86vidmode
+		BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev pixman-dev \
+xorg-util-macros xorg-libXfont-dev libgcrypt-dev xorg-resourceproto \
+xorg-bigreqsproto xorg-xcmiscproto xorg-renderproto xorg-damageproto \
+xorg-compositeproto xorg-xf86dgaproto  xorg-randrproto xorg-recordproto \
+xorg-videoproto xorg-xtrans libgpg-error-dev libgcrypt-dev freetype-dev \
+libxcb-dev bzip2-dev" 
+		ARCH_ARGS="--disable-config-udev"
+		ARM_LIBS="/cross/$arch/sysroot/usr/lib" ;;
+	i?86)
+		ARCH_ARGS="--enable-config-udev" ;;
 esac
 
 # Rules to configure and make the package.
@@ -38,7 +49,6 @@ compile_rules()
 		--with-serverconfig-path=/etc/X11 \
 		--enable-install-setuid \
 		--enable-xorg \
-		--enable-config-udev \
 		--disable-config-dbus \
 		--with-fontrootdir=/usr/share/fonts \
 		--with-os-name="SliTaz GNU/Linux" \
@@ -53,7 +63,11 @@ compile_rules()
 		--disable-xnest \
 		--disable-xfbdev \
 		--disable-xv \
-		$CONFIGURE_ARGS &&
+XSERVERCFLAGS_LIBS="-L${ARM_LIBS} -lrt -lpthread -lmd -lgcrypt -lm -lz \
+-lcrypto -lpixman -lxkbfile -lXfont -lfreetype -lXau -lfontenc -lXdmcp" \
+XSERVERLIBS_LIBS="-L${ARM_LIBS} -lrt -lpthread -lmd -lgcrypt -lm -lz \
+-lcrypto -lpixman -lxkbfile -lXfont -lfreetype -lXau -lfontenc -lXdmcp" \
+		${CONFIGURE_ARGS} ${ARCH_ARGS} &&
 	make && make install
 }
 
