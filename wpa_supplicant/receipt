@@ -10,16 +10,16 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://hostap.epitest.fi/wpa_supplicant/"
 WGET_URL="http://hostap.epitest.fi/releases/$TARBALL"
 CONFIG_FILES="/etc/wpa_supplicant.conf"
+TAGS="wireless wifi network"
 HOST_ARCH="i486 arm"
 
-TAGS="wireless"
 DEPENDS="libssl libcrypto libnl"
 BUILD_DEPENDS="openssl-dev libcrypto-dev libnl-dev dbus-dev"
 
 # Cross compile
 case "$ARCH" in
 	arm*) 
-		VERSION="1.1"
+		VERSION="0.7.3"
 		BUILD_DEPENDS="openssl-dev libcrypto-dev"
 		TARBALL="$PACKAGE-$VERSION.tar.gz"
 		WGET_URL="http://hostap.epitest.fi/releases/$TARBALL" ;;
@@ -27,18 +27,20 @@ esac
 
 # Arch install
 case "$SLITAZ_ARCH" in
-	arm*) DEPENDS="libssl libcrypto" ;;
+	arm*) 
+		VERSION="0.7.3"
+		DEPENDS="libssl libcrypto" ;;
 esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src/$PACKAGE
-	sed 's/-lnl/-lnl-3/g' -i ../src/drivers/drivers.mak
-	sed 's/-lnl-3-genl/-lnl-genl-3/g' -i ../src/drivers/drivers.mak
 	cp -a ./defconfig ./.config
 	case "$ARCH" in
 		i?86)
+			sed 's/-lnl/-lnl-3/g' -i ../src/drivers/drivers.mak
+			sed 's/-lnl-3-genl/-lnl-genl-3/g' -i ../src/drivers/drivers.mak
 			cat >> .config << EOF
 CONFIG_AP=y
 CONFIG_BGSCAN_SIMPLE=y
