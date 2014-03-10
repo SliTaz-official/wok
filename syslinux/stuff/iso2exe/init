@@ -189,6 +189,10 @@ doinstall()
 		/media/cdrom/README /media/cdrom/boot/memtest* ; do
 		[ -s $i ] && cp $i /mnt/slitaz/boot
 	done
+	for i in /mnt/slitaz/boot/memtest /mnt/slitaz/boot/*pxe* ; do
+		[ $(get 0 $i 2> /dev/null || echo 0) -eq 23117 ] &&
+		mv $i $i.exe
+	done
 	gettazboot /mnt/slitaz/boot/tazboot.exe
 	unix2dos > /mnt/slitaz/boot/tazboot.cmd <<EOT
 kernel=/slitaz/boot/bzimage
@@ -564,9 +568,9 @@ ISO="$(getarg iso | sed 's/.://;s|\\|/|g')"
 getiso
 mount_loram
 case "${ISO##*/}$(getarg mode)" in
-*install*)	install ;;
-*live*)		live ;;
-*text*)		text ;;
+*install*|*INSTALL*)	install ;;
+*live*|*LIVE*)		live ;;
+*text*|*TEXT*)		text ;;
 esac
 which $DIALOG 2> /dev/null || live
 dmesg > /tmp/dmesg
