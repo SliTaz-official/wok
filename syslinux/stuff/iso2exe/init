@@ -79,6 +79,48 @@ getuuid()
 	blkid | sed "/$dev:/!d;s/.* UUID=.\\([^ ]*\\)\".*/\\1/"
 }
 
+tazusbinitfs()
+{
+	PAD=$(($(stat -c %s $1) % 4))
+	[ $PAD -ne 0 ] && dd if=/dev/zero bs=1 count=$((4 - $PAD)) >> $1
+	mkdir -p /tmp/fs/etc /tmp/fs/lib /tmp/fs/home
+	cp -a /etc/locale.conf /tmp/fs/etc 2> /dev/null
+	cp -a /etc/keymap.conf /tmp/fs/etc 2> /dev/null
+	sed 's/ .*//' /proc/modules | while read mod ; do
+		find /lib/modules/ | grep $mod.ko | \
+			sed 's|.*|cp & /tmp/fs/lib|' | sh
+	done
+	cat > /tmp/fs/init1 <<EOT
+#!/bin/sh
+sed -i 's|sbin/init|init2|' /init
+exec /init
+EOT
+	cat > /tmp/fs/init2 <<EOT
+#!/bin/sh
+
+mount -t proc /proc /proc
+  grep -q debug /proc/cmdline && debug=true && set -x
+for i in /lib/*.ko* ; do insmod \$i 2> /dev/null ; done; sleep 2
+v=\$(sed '/\\/home=/!d;s|.*/home=\\([^ ]*\\).*|\\1|' /proc/cmdline /cmdline 2> /dev/null)
+mount / -o remount,rw
+mkdir /mnt/dos
+rm -f /cmdline 2> /dev/null
+mount / -o remount,ro
+mnt=/mnt/dos/\${v#*/}
+dev=\$( (blkid /dev/[sh]d* || blkid) | grep \${v%%/*} | sed 's/:.*//;q')
+echo "Mount \$dev in /mnt/dos for \$v..." | tee -a /run/boot.log
+mount \$dev /mnt/dos
+mount.posixovl -F \$mnt -- -oallow_other -odefault_permissions -osuid
+mount --bind \$mnt /home
+  [ "\$debug" = "true" ] && sh
+umount /proc
+exec /sbin/init
+EOT
+	chmod 755 /tmp/fs/init?
+	cp -a /tmp/fs/* /
+	( cd /tmp/fs ; find * | cpio -o -H newc ) | gzip -9 >> $1
+}
+
 mkinitrd()
 {
 	echo "Creating $(basename $1) ..."
@@ -115,9 +157,9 @@ arg()
 
 mount -t proc /proc /proc
   arg debug "shell" && debug=true && set -x
-for i in /lib/*.ko* ; do insmod \$i ; done; sleep 2
+for i in /lib/*.ko* ; do insmod \$i 2> /dev/null ; done; sleep 2
 arg mount "Mount device"
-mount \$( (blkid /dev/?d* || blkid) | grep \$val | sed 's/:.*//;q') /mnt
+mount \$( (blkid /dev/[sh]d* || blkid) | grep \$val | sed 's/:.*//;q') /mnt
 arg subroot "Change root to directory"
 mount.posixovl -F /mnt/\$val -- -oallow_other -odefault_permissions -osuid
 mount --bind /mnt /mnt/\$val/mnt/dos
@@ -158,9 +200,9 @@ doinstall()
 		else
 			ls_r /media/cdrom/boot/rootfs* | xargs cat
 		fi > /mnt/slitaz/boot/rootfs.gz
-		mkdir /mnt/slitaz/home
+		tazusbinitfs /mnt/slitaz/boot/rootfs.gz
 		initrd=rootfs.gz
-		extraargs="/home=$(getuuid)/slitaz/home" # FIXME /mnt/dos
+		extraargs="/home=$(getuuid)/slitaz rdinit=/init1"
 	else
 		if [ -d /media/cdrom/fs ]; then
 			cp -a /media/cdrom/fs/. /mnt/slitaz
@@ -179,6 +221,8 @@ doinstall()
 				uncpio $i /mnt/slitaz
 			done
 		fi
+		cp -a /etc/locale.conf /tmp/slitaz/etc 2> /dev/null
+		cp -a /etc/keymap.conf /tmp/slitaz/etc 2> /dev/null
 		mkinitrd /mnt/slitaz/boot/initrd
 		initrd=initrd
 		extraargs="mount=$(getuuid) subroot=slitaz"
@@ -261,18 +305,21 @@ start SliTaz Live with 'SliTaz RAM boot' menu.\n
 	[ $? -eq 0 ] || return
 	doinstall tazusblike || return
 	if [ -d /media/cdrom/fs ]; then
-		zcat /mnt/slitaz/boot/rootfs.gz | cpio -idmu
+		cp -a /media/cdrom/fs/. /
 	else
 		for i in $(ls_r /media/cdrom/boot/rootfs*); do
-			( zcat $i 2> /dev/null || unlzma -c $i ) | cpio -idmu
+			unlzma < $i | (cd / ; cpio -idmu )
 		done
 	fi
-	[ -x /sbin/init ] || return
+	cp /tmp/fs/etc/* /etc
+	echo "/home=$(getuuid)/slitaz" > /cmdline
+	[ -x /init1 ] || return
 	umount -d /media/cdrom
-	mount --move /mnt /mnt/dos
-	ln -s /mnt/dos/slitaz/home /home
+	umount /mnt/slitaz
+	umount /mnt
+	mkdir /mnt/dos
 	umount_proc
-	exec /sbin/init
+	exec /init1
 }
 
 tazboot()
@@ -576,10 +623,14 @@ which $DIALOG 2> /dev/null || live
 dmesg > /tmp/dmesg
 
 while true; do
+	keymap="$(cat /etc/keymap.conf 2> /dev/null)"
+	locale="$(sed '/^LANG=/!d;s/.*=//' /etc/locale.conf 2> /dev/null)"
 	cat > /tmp/dialog <<EOT
 $DIALOG  --clear \
 	--title " Welcome to SliTaz " \
 	--menu "" 21 70 15 \
+$(xfile tazkeymap	"tazkeymap"	"Select keyboard ($keymap)") \
+$(xfile tazlocale	"tazlocale"	"Select locale ($locale)") \
 $(cdfile boot/bzImage	"live"		"SliTaz RAM boot") \
 			"text"		"SliTaz RAM boot (text mode only)" \
 $(cdfile README		"readme"	"Show the README file") \

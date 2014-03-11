@@ -6,7 +6,7 @@
 #endif
 #include "iso2exe.h"
 
-static int fd, status = 1;
+static int fd, forced, status = 1;
 static char tazlitoinfo[10*1024];
 #define buffer tazlitoinfo
 #define BUFFERSZ 2048
@@ -36,40 +36,43 @@ static char *install(char *filename)
 	     bootiso++) if (bootiso < (char *) install) return "No bootiso data.\n";
 #endif
 	if (!filename)
-		return "Usage: isohybrid.exe file.iso\n";
+		return "Usage: isohybrid.exe file.iso [--forced]\n";
 	fd = open(filename,O_RDWR|O_BINARY);
 	if (fd == -1)
 		return "Can't open rw the iso file.\n";
 
-	// Install hybridiso boot sector
-	readsector(17UL);
-	if (strncmp(buffer+7, "EL TORITO SPECIFICATION", 23))
-		return "No EL TORITO signature.\n";
-	catalog = * (unsigned long *) (buffer + 71);
-	readsector(catalog);
-	if (* (unsigned long *) buffer != 1 || 
-	    * (unsigned long *) (buffer + 30) != 0x88AA55)
-	    	return "Invalid boot catalog.\n";
-	lba = * (unsigned long *) (buffer + 40);
-	readsector(lba);
-	if (* (unsigned long *) (buffer + 64) != 1886961915)
-		return "No isolinux.bin hybrid signature.\n";
-	isohybrid = bootiso[69] * 512;
-	* (unsigned long *)  &bootiso[isohybrid + 432] = lba * 4;
-	* (unsigned long *)  &bootiso[isohybrid + 440] = rand();
-	* (unsigned long *)  &bootiso[isohybrid + partition] = 0x10080;
-	* (unsigned short *) &bootiso[isohybrid + 510] = 0xAA55;
-	size = lseek(fd, 0UL, SEEK_END);
-	cylinders = (size + trksz - 1) / trksz;
-	bootiso[isohybrid + partition + 4] = 23; // "Windows hidden IFS"
-	bootiso[isohybrid + partition + 5] = heads - 1;
-	bootiso[isohybrid + partition + 6] = (((cylinders - 1) & 0x300) >> 2) + sectors;
-	bootiso[isohybrid + partition + 7] = (cylinders - 1) & 0xFF;
-	* (unsigned long *) &bootiso[isohybrid + partition + 8] = 0;
-	* (unsigned long *) &bootiso[isohybrid + partition + 12] = cylinders * sectors * heads;
+	if (forced == 0) {
+		status = 2;
+		// Install hybridiso boot sector
+		readsector(17UL);
+		if (strncmp(buffer+7, "EL TORITO SPECIFICATION", 23))
+			return "No EL TORITO signature.\n";
+		catalog = * (unsigned long *) (buffer + 71);
+		readsector(catalog);
+		if (* (unsigned long *) buffer != 1 || 
+		    * (unsigned long *) (buffer + 30) != 0x88AA55)
+		    	return "Invalid boot catalog.\n";
+		lba = * (unsigned long *) (buffer + 40);
+		readsector(lba);
+		if (* (unsigned long *) (buffer + 64) != 1886961915)
+			return "No isolinux.bin hybrid signature.\n";
+		isohybrid = bootiso[69] * 512;
+		* (unsigned long *)  &bootiso[isohybrid + 432] = lba * 4;
+		* (unsigned long *)  &bootiso[isohybrid + 440] = rand();
+		* (unsigned long *)  &bootiso[isohybrid + partition] = 0x10080;
+		* (unsigned short *) &bootiso[isohybrid + 510] = 0xAA55;
+		size = lseek(fd, 0UL, SEEK_END);
+		cylinders = (size + trksz - 1) / trksz;
+		bootiso[isohybrid + partition + 4] = 23; // "Windows hidden IFS"
+		bootiso[isohybrid + partition + 5] = heads - 1;
+		bootiso[isohybrid + partition + 6] = (((cylinders - 1) & 0x300) >> 2) + sectors;
+		bootiso[isohybrid + partition + 7] = (cylinders - 1) & 0xFF;
+		* (unsigned long *) &bootiso[isohybrid + partition + 8] = 0;
+		* (unsigned long *) &bootiso[isohybrid + partition + 12] = cylinders * sectors * heads;
 
-	// Copy the partition table
-	memcpy(bootiso + 0x1BE, bootiso + isohybrid + 0x1BE, 66);
+		// Copy the partition table
+		memcpy(bootiso + 0x1BE, bootiso + isohybrid + 0x1BE, 66);
+	}
 
 	// Install iso2exe boot sector
 	* (unsigned short *) (bootiso + 26) = rand();
@@ -106,7 +109,10 @@ nochksum:
 
 int main(int argc, char *argv[])
 {
+	forced = (argc > 2);
 	puts(install(argv[1]));
+	if (status > 1)
+		puts("You can add --forced to proceed anayway");
 #ifdef WIN32
 	Sleep(2000);
 #endif
