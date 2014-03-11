@@ -9,15 +9,21 @@ LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.gnu.org/software/wget/wget.html"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="openssl libidn"
 BUILD_DEPENDS="openssl-dev libidn-dev"
 
+# Handle cross compilation
+case "$ARCH" in
+	arm) ARCH_ARGS="--with-libssl-prefix=/cross/$ARCH/sysroot/usr/lib" ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src	
-	./configure --with-ssl=openssl $CONFIGURE_ARGS &&
+	./configure --with-ssl=openssl \
+		$CONFIGURE_ARGS $ARCH_ARGS &&
 	make DESTDIR=$DESTDIR install
 }
 
