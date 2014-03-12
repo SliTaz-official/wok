@@ -1,44 +1,47 @@
 # SliTaz package receipt.
 
 PACKAGE="xorg-server-light"
-VERSION="1.12.4"
+VERSION="1.12.1"
 CATEGORY="x-window"
 SHORT_DESC="Xorg core server light version (no dri, gl, and friends)."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
-SUGGESTED="xorg-xf86-video-vesa"
 SOURCE="xorg-server"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.x.org/"
 WGET_URL="http://xorg.freedesktop.org/releases/individual/xserver/$TARBALL"
 PROVIDE="xorg-server"
-#HOST_ARCH="i486 arm"
+HOST_ARCH="i486 arm"
 
+SUGGESTED="xorg-xf86-video-vesa xorg-xf86-video-fbdev"
 DEPENDS="xorg-xkeyboard-config xorg-libpciaccess xorg-libXxf86vm \
-xorg-libXfont xorg-libXau xorg-base-fonts libgcrypt pixman udev \
-xorg-xf86-input-evdev libgpg-error libgcrypt freetype libxcb bzip2"
-BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev xorg-libXxf86vm-dev \
-xorg-libXfont-dev libgpg-error-dev libgcrypt-dev pixman-dev udev-dev perl \
-flex xorg-dev-proto freetype-dev libxcb-dev bzip2-dev"
-
-# Handle cross compilation: ARM can't find -lmd
-case "$ARCH" in
-	arm)
-		BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev pixman-dev \
+xorg-libXfont xorg-libXau xorg-base-fonts libgcrypt pixman \
+xorg-xf86-input-evdev libgpg-error libgcrypt freetype libxcb \
+xorg-libXcomposite bzip2"
+BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev pixman-dev \
 xorg-util-macros xorg-libXfont-dev libgcrypt-dev xorg-resourceproto \
 xorg-bigreqsproto xorg-xcmiscproto xorg-renderproto xorg-damageproto \
 xorg-compositeproto xorg-xf86dgaproto  xorg-randrproto xorg-recordproto \
 xorg-videoproto xorg-xtrans libgpg-error-dev libgcrypt-dev freetype-dev \
-libxcb-dev bzip2-dev" 
-		ARCH_ARGS="--disable-config-udev --disable-xf86vidmode"
-		export ARM_LIBS="/cross/$arch/sysroot/usr/lib" 
-		export LIBTOOL=${HOST_SYSTEM}-libtool 
-		export XSERVERCFLAGS_LIBS="-L${ARM_LIBS} -lrt -lpthread -lmd -lgcrypt \
--lm -lz -lcrypto -lxkbfile -lXfont -lfreetype -lXau -lfontenc -lXdmcp" 
-		export XSERVERLIBS_LIBS="-L${ARM_LIBS} -lrt -lpthread -lmd -lgcrypt \
--lm -lz -lcrypto -lxkbfile -lXfont -lfreetype -lXau -lfontenc -lXdmcp" ;;
+libxcb-dev xorg-libXcomposite-dev xorg-libXxf86vm-dev bzip2-dev"
+
+# Handle arch installation
+case "$SLITAZ_ARCH" in
+	i?86) DEPENDS="$DEPENDS udev" ;;
+esac
+
+# Handle cross compilation. ARM use build host: perl flex
+case "$ARCH" in
+	arm)
+		#--disable-static
+		ARCH_ARGS="--disable-config-udev --enable-malloc0returnsnull" 
+		OS_NAME="SliTaz ARM"
+		VENDOR="http://arm.slitaz.org" ;;
 	i?86)
-		ARCH_ARGS="--enable-config-udev" ;;
+		BUILD_DEPENDS="$BUILD_DEPENDS perl flex udev-dev"
+		ARCH_ARGS="--enable-config-udev" 
+		OS_NAME="SliTaz GNU/Linux"
+		VENDOR="http://www.slitaz.org" ;;
 esac
 
 # Rules to configure and make the package.
@@ -52,8 +55,8 @@ compile_rules()
 		--with-xkb-output=/var/lib/xkb \
 		--with-serverconfig-path=/etc/X11 \
 		--with-fontrootdir=/usr/share/fonts \
-		--with-os-name="SliTaz GNU/Linux" \
-		--with-vendor-web="http://www.slitaz.org/" \
+		--with-os-name="$OS_NAME" \
+		--with-vendor-web="$VENDOR" \
 		--with-builder-addr="$MAINTAINER" \
 		--enable-install-setuid \
 		--enable-xorg \
@@ -70,8 +73,17 @@ compile_rules()
 		--disable-xephyr \
 		--disable-xfake \
 		--disable-xv \
+		--disable-ipv6 \
+		--disable-docs \
+		--disable-devel-docs \
 		${CONFIGURE_ARGS} ${ARCH_ARGS} &&
 	make && make install
+}
+
+# Be sure it as cross compile
+testsuite()
+{
+	readelf -h $install/usr/bin/Xorg
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

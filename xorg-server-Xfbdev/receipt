@@ -9,79 +9,10 @@ LICENSE="MIT"
 WANTED="xorg-server"
 SOURCE="xorg-server"
 WEB_SITE="http://www.x.org/"
-HOST_ARCH="i486 arm"
+HOST_ARCH="i486"
 
 DEPENDS="xorg-libXfont xorg-libXau xorg-libXdmcp zlib pixman libgcrypt \
 xorg-libxkbfile xorg-xkeyboard-config"
-
-#
-# This is the default Xserver for ARM platform until full Xorg or Xorg light
-# dont cross compile nicely. Note: on the RPi the Xorg driver is fbdev so
-# using Kdrive Xfbdev is a light and fast solution.
-#
-case "$ARCH" in
-	arm)
-		unset WANTED
-		SOURCE="xorg-server"
-		TARBALL="$SOURCE-$VERSION.tar.bz2"
-		WGET_URL="http://xorg.freedesktop.org/releases/individual/xserver/$TARBALL"
-		PROVIDE="xorg-server"
-		BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev pixman-dev \
-xorg-util-macros xorg-libXfont-dev libgcrypt-dev xorg-resourceproto \
-xorg-bigreqsproto xorg-xcmiscproto xorg-renderproto xorg-damageproto \
-xorg-compositeproto xorg-xf86dgaproto  xorg-randrproto xorg-recordproto \
-xorg-videoproto xorg-xtrans libgpg-error-dev libgcrypt-dev freetype-dev \
-libxcb-dev bzip2-dev"
-		export ARM_LIBS="/cross/$arch/sysroot/usr/lib" 
-		export LIBTOOL=${HOST_SYSTEM}-libtool  
-		export XSERVERCFLAGS_LIBS="-L${ARM_LIBS} -lrt -lpthread -lgcrypt \
--lm -lz -lcrypto -lxkbfile -lXfont -lfreetype -lXau -lfontenc -lXdmcp" 
-		export XSERVERLIBS_LIBS="-L${ARM_LIBS} -lrt -lpthread -lgcrypt \
--lm -lz -lcrypto -lxkbfile -lXfont -lfreetype -lXau -lfontenc -lXdmcp" ;;
-esac
-
-# Rules to configure and make the package.
-compile_rules()
-{
-	case "$ARCH" in
-		arm*)
-			./configure \
-				--prefix=/usr \
-				--sysconfdir=/etc \
-				--localstatedir=/var \
-				--with-module-dir=/usr/lib/X11/modules \
-				--with-xkb-output=/var/lib/xkb \
-				--with-serverconfig-path=/etc/X11 \
-				--with-fontrootdir=/usr/share/fonts \
-				--with-os-name="SliTaz ARM" \
-				--with-vendor-web="http://arm.slitaz.org/" \
-				--with-builder-addr="$MAINTAINER" \
-				--enable-install-setuid \
-				--enable-kdrive \
-				--enable-kdrive-kbd \
-				--enable-kdrive-mouse \
-				--enable-kdrive-evdev \
-				--enable-xfbdev \
-				--disable-config-dbus \
-				--disable-config-udev \
-				--disable-screensaver \
-				--disable-glx \
-				--disable-dri \
-				--disable-dri2 \
-				--disable-xinerama \
-				--disable-libdrm \
-				--disable-xvfb \
-				--disable-xnest \
-				--disable-xephyr \
-				--disable-xfake \
-				--disable-xv \
-				--disable-xorg \
-				${CONFIGURE_ARGS} &&
-			make && make install ;;
-		*)
-			echo "Nothing to do for: $ARCH" ;;
-	esac
-}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -89,11 +20,6 @@ genpkg_rules()
 	mkdir -p $fs/usr/bin
 	cp -a $install/usr/bin/Xfbdev $fs/usr/bin
 	chmod 4711 $fs/usr/bin/Xfbdev
-	case "$ARCH" in
-		arm) 
-			cp -a $install/etc $fs 
-			cp -a $install/var $fs ;;
-	esac
 }
 
 # We need /var/tmp rw to let xkbcomp builr XKB definition.

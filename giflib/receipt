@@ -9,6 +9,7 @@ LICENSE="MIT"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://sourceforge.net/projects/giflib/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="glibc-base xorg-libSM xorg-libICE xorg-libX11 xorg-libXau \
 xorg-libXdmcp"
@@ -17,19 +18,22 @@ BUILD_DEPENDS="util-linux-uuid-dev libtool"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i '/AC_PATH_XTRA/d' configure.ac
 	libtoolize -f
 	autoreconf
 	./configure \
 		$CONFIGURE_ARGS &&
 	make && make DESTDIR=$DESTDIR install
-	# libungif compatibility - instructions taken from Redhat specfile
-	MAJOR=`echo $VERSION | sed 's/\([0-9]\+\)\..*/\1/'`
-	gcc -shared -Wl,-soname,libungif.so.${MAJOR} -Llib/.libs -lgif -o libungif.so.$VERSION
-	install -m755 libungif.so.${VERSION} "$DESTDIR/usr/lib/"
-	ln -sf libungif.so.$VERSIN "$DESTDIR/usr/lib/libungif.so.4"
-	ln -sf libungif.so.4 "$DESTDIR/usr/lib/libungif.so"
+	case "$ARCH" in
+		i?86)
+			# libungif compatibility - instructions taken from Redhat specfile
+			MAJOR=`echo $VERSION | sed 's/\([0-9]\+\)\..*/\1/'`
+			gcc -shared -Wl,-soname,libungif.so.${MAJOR} \
+				-Llib/.libs -lgif -o libungif.so.$VERSION
+			install -m755 libungif.so.${VERSION} "$DESTDIR/usr/lib/"
+			ln -sf libungif.so.$VERSIN "$DESTDIR/usr/lib/libungif.so.4"
+			ln -sf libungif.so.4 "$DESTDIR/usr/lib/libungif.so" ;;
+	esac
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

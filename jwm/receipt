@@ -10,11 +10,17 @@ TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.joewing.net/programs/jwm/"
 WGET_URL="http://www.joewing.net/programs/jwm/releases/$TARBALL"
 TAGS="wm window-manager"
+HOST_ARCH="i486 arm"
 
 DEPENDS="xorg-libX11 xorg-libXft xorg-libXrender xorg-libXpm xorg-libXext \
 xorg-libXmu xorg-libXinerama xorg-libXau xorg-libXdmcp xorg-libXt libjpeg \
 libpng slitaz-configs-base xorg-xload xorg-xclock nano imlib2 hsetroot compton"
-BUILD_DEPENDS="xorg-dev xorg-libXft-dev jpeg-dev libpng-dev"
+BUILD_DEPENDS="xorg-libX11-dev xorg-libXft-dev jpeg-dev libpng-dev"
+
+# Handle cross compilation
+case "$ARCH" in
+	arm) ARCH_ARGS="--disable-nls" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
@@ -26,9 +32,16 @@ compile_rules()
     	--mandir=/usr/share/man \
 		--sysconfdir=/etc/xdg/jwm \
 		--disable-fribidi \
-		$CONFIGURE_ARGS 2>&1 | \
-		sed 's/config.rpath: No such/config.rpath: no such/' &&
+		--disable-rpath \
+		--disable-rsvg \
+		--disable-confirm \
+		$CONFIGURE_ARGS $ARCH_ARGS 2>/dev/null &&
 	make && make install
+}
+
+testsuite()
+{
+	readelf -h $install/usr/bin/jwm
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

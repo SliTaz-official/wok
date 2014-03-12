@@ -10,14 +10,19 @@ TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://ftp.kernel.org/pub/linux/utils/kernel/kmod/"
 WGET_URL="ftp://ftp.kernel.org/pub/linux/utils/kernel/kmod/$TARBALL"
 PROVIDE="modules-init-tools"
+HOST_ARCH="i486 arm"
 
 DEPENDS="zlib liblzma"
 BUILD_DEPENDS="zlib-dev liblzma-dev tar"
 
+# Handle cross compilation. ARM use build host: tar
+case "$ARCH" in
+	arm) BUILD_DEPENDS="zlib-dev liblzma-dev" ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--bindir=/sbin \
 		--with-rootlibdir=/lib \
@@ -32,9 +37,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/lib $fs/bin
-	cp -a $install/lib/*.so* $fs/lib
+	mkdir -p $fs/lib $fs/bin $fs/usr/lib
 	cp -a $install/sbin $fs
+	cp -a $install/lib/*.so* $fs/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	
 	cd $fs/sbin
 	# The kmod tools symlinks
 	for tool in rmmod insmod modinfo modprobe depmod
