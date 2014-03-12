@@ -10,13 +10,25 @@ WEB_SITE="http://www.x.org/"
 SOURCE="libXpm"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WGET_URL="$XORG_MIRROR/lib/$TARBALL"
+HOST_ARCH="i486 arm"
 
-DEPENDS="xorg-libX11"
-BUILD_DEPENDS="xorg-libXt-dev xorg-libXext-dev util-linux-uuid-dev"
+DEPENDS="xorg-libX11 xorg-libXt"
+BUILD_DEPENDS="xorg-libXt-dev xorg-libXext-dev xorg-libSM-dev util-linux-uuid-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	case "$ARCH" in
+		arm*) 
+			# ARM Hack
+			for la in libICE.la libSM.la libuuid.la
+			do
+				if grep -q "^libdir='/usr/lib'" /usr/lib/${la}; then
+					sed -i s"#/usr/lib#/cross/$ARCH/sysroot/usr/lib#" \
+						/usr/lib/${la}
+				fi 
+			done ;;
+	esac
 	./configure \
 		--sysconfdir=/etc \
 		--localstatedir=/var \

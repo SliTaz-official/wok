@@ -10,24 +10,26 @@ SOURCE="xkeyboard-config"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.x.org/"
 WGET_URL="http://xorg.freedesktop.org/releases/individual/data/$SOURCE/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="xorg-xkbcomp"
 BUILD_DEPENDS="perl-xml-parser xorg-xkbcomp xorg-xproto xorg-libX11-dev intltool"
 
+# Handle cross compilation. Use build host: xorg-xkbcomp perl-xml-parser
+case "$ARCH" in
+	arm) BUILD_DEPENDS="xorg-xproto xorg-libX11-dev" ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-    ./configure \
-    	--prefix=/usr\
-    	--sysconfdir=/etc \
-    	--mandir=/usr/share/man \
-    	--localstatedir=/var \
-    	--with-xkb-base=/usr/share/X11/xkb \
-    	--with-xkb-rules-symlink=xorg \
-    	$CONFIGURE_ARGS &&
-    make &&
-    make DESTDIR=$DESTDIR install
+	./configure \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--with-xkb-base=/usr/share/X11/xkb \
+		--with-xkb-rules-symlink=xorg \
+		$CONFIGURE_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

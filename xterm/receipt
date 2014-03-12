@@ -9,36 +9,48 @@ LICENSE="MIT"
 TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="http://invisible-island.net/xterm/"
 WGET_URL="ftp://invisible-island.net/xterm/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="expat fontconfig freetype ncurses xorg-libXft xorg-libXt xorg-libXaw"
 BUILD_DEPENDS="expat-dev fontconfig-dev freetype-dev ncurses-dev \
 xorg-libXft-dev xorg-libXt-dev xorg-libXaw-dev imagemagick libltdl"
 
+# Handle cross compilation.
+case "$ARCH" in
+	arm) BUILD_DEPENDS="expat-dev fontconfig-dev freetype-dev ncurses-dev \
+xorg-libXft-dev xorg-libXt-dev xorg-libXaw-dev "
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    mkdir -p $DESTDIR/usr/share/pixmaps $DESTDIR/usr/share/applications
-    cp xterm.desktop $DESTDIR/usr/share/applications
-    convert icons/xterm_32x32.xpm $DESTDIR/usr/share/pixmaps/xterm.png
-    ./configure \
-    	--prefix=/usr \
-    	--sysconfdir=/etc \
-    	--mandir=/usr/share/man \
-    	--localstatedir=/var \
-    	--with-app-defaults=/usr/share/X11/app-defaults \
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		--localstatedir=/var \
+		--with-app-defaults=/usr/share/X11/app-defaults \
 		--enable-wide-chars \
 		--enable-freetype \
 		--enable-doublechars \
-    	$CONFIGURE_ARGS &&
-    make &&
-    make DESTDIR=$DESTDIR install
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr/share/pixmaps $fs/usr/share/applications
+	[ -x "/usr/bin/convert" ] &&
+		convert icons/xterm_32x32.xpm $DESTDIR/usr/share/pixmaps/xterm.png
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/share $fs/usr
+	cp $src/xterm.desktop $DESTDIR/usr/share/applications
+}
+
+# One of the first X apps cross compiled. Be sure all went well
+testsuite()
+{
+	readelf -h $install/usr/bin/xterm
 }
