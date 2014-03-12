@@ -19,7 +19,8 @@ SUGGESTED="tcl tk"
 
 # Handle cross compilation
 case "$ARCH" in
-	arm*) BUILD_DEPENDS="bzip2-dev readline-dev ncursesw-dev tcl-dev" ;;
+	arm*) BUILD_DEPENDS="openssl-dev bzip2-dev readline-dev ncursesw-dev \
+tcl-dev db-dev" ;;
 esac
 
 # Rules to configure and make the package.
@@ -32,7 +33,12 @@ compile_rules()
 	sed -i "/SQLITE_OMIT_LOAD_EXTENSION/d" setup.py
 	case "$ARCH" in
 		arm*)
-			#export ac_cv_file_dev__ptmx=yes
+			#ac_cv_file__dev_ptmx=no
+			#ac_cv_file__dev_ptc=no
+			cp -s $CONFIG_SITE .
+			CONFIG_SITE="$(pwd)/cook.site"
+			echo 'ac_cv_file__dev_ptmx=no' >> $CONFIG_SITE
+			echo 'ac_cv_file__dev_ptc=no' >> $CONFIG_SITE
 			./configure \
 				--disable-ipv6 \
 				--enable-shared \
@@ -54,7 +60,7 @@ genpkg_rules()
 	mkdir -p $fs/usr/include/${PACKAGE}$python_version
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
-	# needed for mericurial to work now
+	# needed for mercurial to work now
 	cp -a $install/usr/include/${PACKAGE}$python_version/pyconfig.h \
 		$fs/usr/include/${PACKAGE}$python_version
 	rm -f $fs/usr/bin/*-config

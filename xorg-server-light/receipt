@@ -12,7 +12,7 @@ TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="http://www.x.org/"
 WGET_URL="http://xorg.freedesktop.org/releases/individual/xserver/$TARBALL"
 PROVIDE="xorg-server"
-HOST_ARCH="i486 arm"
+#HOST_ARCH="i486 arm"
 
 DEPENDS="xorg-xkeyboard-config xorg-libpciaccess xorg-libXxf86vm \
 xorg-libXfont xorg-libXau xorg-base-fonts libgcrypt pixman udev \
@@ -21,19 +21,22 @@ BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev xorg-libXxf86vm-dev \
 xorg-libXfont-dev libgpg-error-dev libgcrypt-dev pixman-dev udev-dev perl \
 flex xorg-dev-proto freetype-dev libxcb-dev bzip2-dev"
 
-# Handle arch compilation
+# Handle cross compilation: ARM can't find -lmd
 case "$ARCH" in
 	arm)
-		#--disable-xf86vidmode
 		BUILD_DEPENDS="xorg-libxkbfile-dev xorg-libpciaccess-dev pixman-dev \
 xorg-util-macros xorg-libXfont-dev libgcrypt-dev xorg-resourceproto \
 xorg-bigreqsproto xorg-xcmiscproto xorg-renderproto xorg-damageproto \
 xorg-compositeproto xorg-xf86dgaproto  xorg-randrproto xorg-recordproto \
 xorg-videoproto xorg-xtrans libgpg-error-dev libgcrypt-dev freetype-dev \
 libxcb-dev bzip2-dev" 
-		ARCH_ARGS="--disable-config-udev"
-		ARM_LIBS="/cross/$arch/sysroot/usr/lib" 
-		export LIBTOOL=${HOST_SYSTEM}-libtool ;;
+		ARCH_ARGS="--disable-config-udev --disable-xf86vidmode"
+		export ARM_LIBS="/cross/$arch/sysroot/usr/lib" 
+		export LIBTOOL=${HOST_SYSTEM}-libtool 
+		export XSERVERCFLAGS_LIBS="-L${ARM_LIBS} -lrt -lpthread -lmd -lgcrypt \
+-lm -lz -lcrypto -lxkbfile -lXfont -lfreetype -lXau -lfontenc -lXdmcp" 
+		export XSERVERLIBS_LIBS="-L${ARM_LIBS} -lrt -lpthread -lmd -lgcrypt \
+-lm -lz -lcrypto -lxkbfile -lXfont -lfreetype -lXau -lfontenc -lXdmcp" ;;
 	i?86)
 		ARCH_ARGS="--enable-config-udev" ;;
 esac
@@ -48,12 +51,13 @@ compile_rules()
 		--with-module-dir=/usr/lib/X11/modules \
 		--with-xkb-output=/var/lib/xkb \
 		--with-serverconfig-path=/etc/X11 \
+		--with-fontrootdir=/usr/share/fonts \
+		--with-os-name="SliTaz GNU/Linux" \
+		--with-vendor-web="http://www.slitaz.org/" \
+		--with-builder-addr="$MAINTAINER" \
 		--enable-install-setuid \
 		--enable-xorg \
 		--disable-config-dbus \
-		--with-fontrootdir=/usr/share/fonts \
-		--with-os-name="SliTaz GNU/Linux" \
-		--with-builder-addr=$MAINTAINER \
 		--disable-screensaver \
 		--disable-glx \
 		--disable-dri \
@@ -63,11 +67,9 @@ compile_rules()
 		--disable-xvfb \
 		--disable-xnest \
 		--disable-xfbdev \
+		--disable-xephyr \
+		--disable-xfake \
 		--disable-xv \
-XSERVERCFLAGS_LIBS="-L${ARM_LIBS} -lrt -lpthread -lmd -lgcrypt -lm -lz \
--lcrypto -lpixman -lxkbfile -lXfont -lfreetype -lXau -lfontenc -lXdmcp" \
-XSERVERLIBS_LIBS="-L${ARM_LIBS} -lrt -lpthread -lmd -lgcrypt -lm -lz \
--lcrypto -lpixman -lxkbfile -lXfont -lfreetype -lXau -lfontenc -lXdmcp" \
 		${CONFIGURE_ARGS} ${ARCH_ARGS} &&
 	make && make install
 }
