@@ -19,8 +19,10 @@ static unsigned setup_version;
 #define HEAPPTR		0x224
 #define CMDLINE		0x228
 
+#define SYSTEM_SEGMENT	0x1000
 #define SETUP_SEGMENT	0x9000
 #define CMDLINE_OFFSET	0x9E00
+#define SETUP_END	0x8200
 
 #define PAGE_BITS	12
 #define PAGE_SIZE	4096
@@ -92,12 +94,14 @@ zero2:
 
 #ifdef ZIMAGE_SUPPORT
 static unsigned zimage = 0;
+#ifndef FULL_ZIMAGE 
 static unsigned getss(void)
 {
 #asm
 	mov	ax, ss
 #endasm
 }
+#endif
 #endif
 
 static int versiondos;
@@ -122,15 +126,16 @@ gottop:
 #endasm
 }
 
+
+#include "a20.c"
+
 static void load(unsigned long size)
 {
 	if (vm86())
 		die("Need real mode");
 	switch (mem.align) {
 	case 0:	// kernel
-		switch (dosversion()) {
-		case 3: case 4: case 6: case 7: break;
-		default:
+		if ((unsigned) (dosversion() - 3) > 7 - 3) {
 			printf("DOS %d not supported.\nTrying anyway...\n",
 				versiondos);
 		}
@@ -142,6 +147,9 @@ static void load(unsigned long size)
 		initrd_addr = mem.base;
 		mem.align = 4;
 	}
+#ifdef ALLOCMEM
+	ALLOCMEM(size);
+#endif
 	while (size) {
 		int n, s = sizeof(buffer);
 		for (n = 0; n < s; n++) buffer[n] = 0;
@@ -229,10 +237,16 @@ end_realmode_switch:
 			}
 			if (!setup_version || !(buffer[LOADFLAGS] & 1)) {
 #ifdef ZIMAGE_SUPPORT
+#ifndef FULL_ZIMAGE 
 				zimage = getss() + 0x1000;
 				mem.base = zimage * 16L; 
 				if (mem.base + syssize > SETUP_SEGMENT*16L - 32)
 					die("Out of memory");
+#else
+				zimage = 0x11;
+				mem.base = 0x110000L;	// 1M + 64K HMA 
+
+#endif
 #else
 				die("Not a bzImage format");
 #endif
@@ -335,20 +349,30 @@ copy:
 	or	bx, bx
 	jz	notzimage
 		mov	eax, _mem
+#ifndef FULL_ZIMAGE 
 		shr	eax, #4		// top
-		mov	dx, #0x1000
+		mov	dx, #SYSTEM_SEGMENT
+#else
+		dec	eax
+		shr	eax, #16
+		inc	ax
+		mov	dx, #SYSTEM_SEGMENT/0x1000
+#endif
 		push	cs
 		pop	ds
-		mov	es, ax
+		push	ss
+		pop	es
 		push	es
 		mov	si, #sysmove
-		xor	di, di
+		mov	di, #SETUP_END
 		push	di
 		mov	cx, #endsysmove-sysmove
+		cld
 		rep
 		  movsb
 		retf
 sysmove:
+#ifndef FULL_ZIMAGE 
 		mov	ds, bx
 		mov	es, dx
 		xor	di, di
@@ -358,8 +382,36 @@ sysmove:
 		  movsw
 		inc	bx
 		inc	dx
-		cmp	ax,bx
+		cmp	ax, bx
 		jne	sysmove
+#else
+		xchg	ax, cx
+		mov	si, di
+		push	es
+		pop	ds
+		push	cx
+		mov	cx, #0x18
+		rep
+		  stosw
+		dec	cx
+		mov	[si+0x10], cx
+		mov	[si+0x18], cx
+		pop	cx
+		mov	bh, #0x93
+		mov	dh, #0x93
+mvdown:
+		mov	[si+0x12+2], bx	// srce
+		mov	[si+0x1A+2], dx	// dest
+		pusha
+		mov	cx, #0x8000
+		mov	ah, #0x87
+		int	0x15	// catched by himem.sys: may need dos=high,umb
+		popa
+		inc	bx
+		inc	dx
+		cmp	cl, bl
+		jne	mvdown
+#endif
 notzimage:
 #endasm
 #endif

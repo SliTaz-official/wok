@@ -2,7 +2,7 @@ GCC=gcc -m32
 BCC=bcc -ansi -O -0 -C-t
 BCCFLAGS=-D__MSDOS__ -Md
 
-all: isohybrid.exe iso2exe meminfo.exe
+all: isohybrid.exe iso2exe meminfo.exe tazboot.exe
 
 meminfo.exe: meminfo.S
 	cc -o meminfo.o -Wa,-a=meminfo.lst -c meminfo.S
@@ -29,6 +29,9 @@ iso2exe.exe: iso2exe.c iso2exe.h isohybrid.res
 isohybrid.exe: iso2exe.sh mvcom.bin iso2exe.com iso2exe.exe
 	./iso2exe.sh --exe mvcom.bin iso2exe.com iso2exe.exe > $@
 	chmod +x $@
+
+tazboot.exe: boot.com
+	com2exe $< > $@
 
 OBJS = boot.o iso9660.o libdos.o bootlinux.o
 boot.com: $(OBJS)
