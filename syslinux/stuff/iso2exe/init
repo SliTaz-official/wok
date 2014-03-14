@@ -252,14 +252,13 @@ false &&
 	unix2dos >> /mnt/boot.ini <<EOT
 C:\\slitaz\\boot\\tazboot.exe="SliTaz"
 EOT
-	grep -qs menuitem /mnt/config.sys && ! grep -q tazboot /mnt/config.sys &&
+false &&
+	grep -qis menuitem /mnt/config.sys && ! grep -qi tazboot /mnt/config.sys &&
 	echo "Update config.sys ..." &&
-	sed -i 's/menudefault=/menuitem=slitaz,SliTaz\r\n&/' /mnt/config.sys &&
-	echo -e "[slitaz]\r" >> /mnt/config.sys &&
-	echo "Update autoexec.bat ..." &&
-	unix2dos >> /mnt/autoexec.bat <<EOT
-:slitaz
-\\slitaz\\boot\\tazboot.exe
+	sed -i 's/menudefault/menuitem SLITAZ, SliTaz\r\n&/' /mnt/config.sys &&
+	unix2dos >> /mnt/config.sys <<EOT
+[SLITAZ]
+install=\\slitaz\\boot\\tazboot.exe
 EOT
 	return 0
 }
@@ -316,6 +315,7 @@ start SliTaz Live with 'SliTaz RAM boot' menu.\n
 	[ -x /init1 ] || return
 	umount -d /media/cdrom
 	umount /mnt/slitaz
+	rm -f /dev/cdrom
 	umount /mnt
 	mkdir /mnt/dos
 	umount_proc
@@ -574,6 +574,7 @@ text()
 {
 	umount_loram
 	umount -d /media/cdrom
+	rm -f /dev/cdrom
 	umount /mnt
 	umount_proc
 	exec /init
