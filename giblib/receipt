@@ -9,15 +9,23 @@ LICENSE="MIT"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://linuxbrit.co.uk/feh/"
 WGET_URL="http://linuxbrit.co.uk/downloads/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="imlib2 freetype xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext"
 BUILD_DEPENDS="imlib2-dev imlib2 xorg-xproto freetype-dev xorg-libXext-dev"
 
+# Handle cross compilation
+case "$ARCH" in
+	arm*) export CFLAGS="$CFLAGS -L/cross/$ARCH/sysroot/usr/lib" ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr $CONFIGURE_ARGS &&
+	
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
