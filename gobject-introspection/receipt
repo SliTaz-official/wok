@@ -10,9 +10,20 @@ WEB_SITE="http://live.gnome.org/GObjectInstrospection"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 SERIES=$(echo $VERSION | cut -d. -f1,2)
 WGET_URL="$GNOME_MIRROR/$PACKAGE/$SERIES/$TARBALL"
+#HOST_ARCH="i486 arm"
 
-DEPENDS="libgio"
-BUILD_DEPENDS="flex bison glib-dev python-dev libgio-dev libffi-dev cairo-dev"
+DEPENDS="libgio dbux"
+BUILD_DEPENDS="flex bison glib-dev python-dev libgio-dev libffi-dev \
+cairo-dev dbus-dev"
+
+# Handle cross compilation
+case "$ARCH" in
+	arm*)
+		export CFLAGS="$CFLAGS -L/cross/$ARCH/sysroot/usr/lib"
+		export LDFLAGS="-L/cross/$ARCH/sysroot/usr/lib"
+		export PKG_CONFIG_PATH="/cross/$ARCH/sysroot/usr/pkgconfig"
+		BUILD_DEPENDS="glib-dev libgio-dev libffi-dev cairo-dev dbus-dev" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,8 +31,7 @@ compile_rules()
 	./configure \
 		--disable-static \
 		$CONFIGURE_ARGS &&
-	make &&
-	make install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

@@ -6,27 +6,33 @@ CATEGORY="multimedia"
 SHORT_DESC="Xine video library."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-SUGGESTED="faad2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.xine-project.org/"
 WGET_URL="http://downloads.sourceforge.net/project/xine/$PACKAGE/$VERSION/$TARBALL"
 SUGGESTED="xine-fonts"
+#HOST_ARCH="i486 arm"
 
+SUGGESTED="faad2"
 DEPENDS="zlib xorg-libX11 xorg-libXv xorg-libXvMC alsa-lib libogg libvorbis \
-libtheora xorg-libXvMC xorg-libXv libxcb ffmpeg"
+libtheora xorg-libXvMC xorg-libXv libxcb ffmpeg libmodplug"
 BUILD_DEPENDS="xorg-libXvMC-dev xorg-libXv-dev xorg-xextproto xorg-videoproto \
 alsa-lib-dev libogg-dev libvorbis-dev libtheora-dev freetype-dev perl \
-pkg-config util-linux-uuid-dev libxcb-dev libxcb-dev ffmpeg-dev file"
+pkg-config util-linux-uuid-dev libxcb-dev libxcb-dev ffmpeg-dev file \
+libmodplug-dev"
+
+# Handle cross compilation
+case "$ARCH" in
+	arm*)
+		export LDFLAGS="-L/cross/$ARCH/sysroot/usr/lib" 
+		export LIBTOOL=${HOST_SYSTEM}-libtool 
+		ARCH_ARGS="--disable-xinerama" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's/grep -x/grep/' configure
-	#grep -qs 'define u8' src/input/vcd/libcdio/_cdio_linux.c ||
-	#sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
-	#	src/input/vcd/libcdio/_cdio_linux.c
-	#patch -p0 < $stuff/xine-lib-1.1.19-xvmc.patch
+	CPPFLAGS="-DHAVE_NANO_SLEEP" \
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
@@ -41,11 +47,10 @@ compile_rules()
 		--disable-glu \
 		--disable-opengl \
 		--disable-fb \
-		--disable-syncfb \
 		--without-esound \
 		--disable-vcd \
 		--disable-musepack \
-		$CONFIGURE_ARGS &&
+		$CONFIGURE_ARGS $ARCH_ARGS &&
 	make && make install
 }
 
