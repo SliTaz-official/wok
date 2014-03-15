@@ -10,26 +10,40 @@ WEB_SITE="http://www.slitaz.org/"
 SOURCE="slitaz-configs"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WGET_URL="http://hg.slitaz.org/slitaz-configs/archive/$VERSION.tar.gz"
+HOST_ARCH="i486 arm"
 
 DEPENDS="tazlito tazpkg"
+
+# Handle SliTaz arch
+case "$SLITAZ_ARCH" in
+	arm*) DEPENDS="" ;;
+esac
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	# Copy rootfs files from the stuff and set permissions.
-	mkdir -p \
-		$fs/etc \
-		$fs/boot \
-		$fs/usr/share \
-		$fs/etc/skel/Music \
-		$fs/etc/skel/Documents
-	cp -a $src/rootfs/boot $fs
-	cp -a $src/rootfs/etc/skel $fs/etc
-	cp -a $src/rootfs/etc/X11 $fs/etc
-
-	for i in images pixmaps themes webhome; do
-		cp -r $src/rootfs/usr/share/$i $fs/usr/share
-	done
+	# Copy rootfs files and set permissions.
+	case "$ARCH" in
+	arm*)
+		# Most ARM configs are in: slitaz-arm repo
+		mkdir -p $fs/usr/share
+		cp -a $src/rootfs/usr/bin $fs/usr 
+		cp -a $src/rootfs/usr/share/webhome $fs/usr/share ;;
+	*)
+		mkdir -p \
+			$fs/etc \
+			$fs/boot \
+			$fs/usr/share \
+			$fs/etc/skel/Music \
+			$fs/etc/skel/Documents
+		cp -a $src/rootfs/boot $fs
+		cp -a $src/rootfs/etc/skel $fs/etc
+		cp -a $src/rootfs/etc/X11 $fs/etc
+		
+		for i in images pixmaps themes webhome; do
+			cp -r $src/rootfs/usr/share/$i $fs/usr/share
+		done ;;
+	esac
 
 	cp -a $src/rootfs/root $fs
 	chown -R root.root $fs
