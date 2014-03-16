@@ -10,30 +10,32 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://libvalhalla.geexbox.org/"
 WGET_URL="http://libvalhalla.geexbox.org/releases/$TARBALL"
 
-DEPENDS="ffmpeg libexif sqlite libxml2 libgcrypt libcurl libcrypto"
-BUILD_DEPENDS="ffmpeg-dev sqlite-dev libxml2-dev libexif-dev curl-dev"
+DEPENDS="ffmpeg ffmpeg-compat libexif sqlite libxml2 libgcrypt libcurl libcrypto"
+BUILD_DEPENDS="ffmpeg-compat-dev sqlite-dev libxml2-dev libexif-dev curl-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	export LDFLAGS="-lavformat"
-	sed -i '/prealloced_context/d' src/lavf_utils.c
-	sed -i 's/AVFormatParameters /AVDictionary */' src/lavf_utils.c
-	sed -i 's/av_open_input_file\(.*, \)0, \(.*\)$/avformat_open_input\1\2/' src/lavf_utils.c
-	sed -i '/av_metadata_get/d' configure
-	sed -i 's/av_metadata_get/av_dict_get/' configure src/parser.c
-	sed -i 's/AVMetadataTag/AVDictionaryEntry/' src/parser.c
-
-	# Fix build with curl >= 7.21.2
-	sed -i '/#include <curl\/types.h>/d' src/url_utils.c
-
+	export PKG_CONFIG_PATH=/usr/lib/ffmpeg-compat/pkgconfig
+	export LDFLAGS="-Wl,-rpath=/usr/lib/ffmpeg-compat"
+	# Fix Busybox cat
 	sed -i 's/cat -n/awk '"'"'{ printf "%6d  %s\\n",++n,$0 }'"'"' </' configure
-	# Fix configure for GCC 4.5.0
-	sed -i 's/"\$@" >>\$logfile 2/$@ >>$logfile 2/' configure
+	
+	##export LDFLAGS="-lavformat"
+	#sed -i '/prealloced_context/d' src/lavf_utils.c
+	#sed -i 's/AVFormatParameters /AVDictionary */' src/lavf_utils.c
+	#sed -i 's/av_open_input_file\(.*, \)0, \(.*\)$/avformat_open_input\1\2/' src/lavf_utils.c
+	#sed -i '/av_metadata_get/d' configure
+	#sed -i 's/av_metadata_get/av_dict_get/' configure src/parser.c
+	#sed -i 's/AVMetadataTag/AVDictionaryEntry/' src/parser.c
+	## Fix build with curl >= 7.21.2
+	#sed -i '/#include <curl\/types.h>/d' src/url_utils.c
+	## Fix configure for GCC 4.5.0
+	#sed -i 's/"\$@" >>\$logfile 2/$@ >>$logfile 2/' configure
+	
 	./configure \
 		--prefix=/usr &&
-	make && make DESTDIR=$DESTDIR install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
