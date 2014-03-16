@@ -9,20 +9,24 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://roland65.free.fr/xfe/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+HOST_ARCH="i486 arm"
+
 SUGGESTED="adie calculator shutterbug xfe-extras"
-
 DEPENDS="libpng jpeg tiff xorg-libXft fox"
-BUILD_DEPENDS="$DEPENDS libpng-dev jpeg-dev tiff-dev xorg-libXft-dev fox-dev intltool"
+BUILD_DEPENDS="libpng-dev jpeg-dev tiff-dev xorg-libXft-dev fox-dev"
+GENERIC_MENUS="no"
 
-GENERIC_MENUS=no
-
+# Handle cross compilation.
+case "$ARCH" in
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS intltool" ;;
+	arm)
+		export CFLAGS="$CFLAGS -L/cross/$ARCH/sysroot/usr/lib" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure $CONFIGURE_ARGS && make && make install
-	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -36,8 +40,5 @@ genpkg_rules()
 	cp -a $install/usr/share/xfe/icons/tango-theme \
 		$fs/usr/share/xfe/icons
 	cp -a $install/usr/share/xfe/icons/gnome-theme \
-		$fs/usr/share/xfe/icons
-		
-	# Remove unwanted desktop menus.
-#	rm -f $fs/usr/share/applications/xf[i,v,p,w].desktop	
+		$fs/usr/share/xfe/icons	
 }
