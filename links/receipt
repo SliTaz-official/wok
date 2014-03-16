@@ -9,23 +9,36 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://links.twibright.com/"
 WGET_URL="http://links.twibright.com/download/$TARBALL"
+HOST_ARCH="i486 arm"
 
-DEPENDS="ncurses openssl jpeg libpng tiff xorg-libX11 xorg-libXau \
-xorg-libXdmcp zlib"
-BUILD_DEPENDS="openssl-dev xorg-libXt-dev ncurses-dev jpeg-dev libpng-dev 
-tiff-dev zlib-dev"
+SUGGESTED="gpm"
+DEPENDS="ncurses libssl libcrypto jpeg libpng tiff xorg-libX11 xorg-libXau \
+xorg-libXdmcp libxcb zlib liblzma bzlib"
+BUILD_DEPENDS="openssl-dev xorg-libX11-dev jpeg-dev libpng-dev tiff-dev \
+zlib-dev xorg-libXdmcp-dev libxcb-dev xorg-libXau-dev xz-dev bzip2-dev \
+gpm-dev"
+
+# Handle cross compilation
+case "$ARCH" in
+	arm*)
+		VERSION="2.7" 
+		TARBALL="$PACKAGE-$VERSION.tar.gz" 
+		WGET_URL="http://links.twibright.com/download/$TARBALL" ;;
+esac
+
+# Handle SliTaz arch
+case "$SLITAZ_ARCH" in
+	arm*) VERSION="2.7" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
-		--mandir=/usr/share/man \
-		--without-directfb \
-		--without-bzip2 \
 		--enable-graphics \
+		--without-directfb \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
