@@ -1,34 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="fbvnc"
-VERSION="20110416"
+VERSION="20130314"
 CATEGORY="network"
 SHORT_DESC="VNC client in frame buffer."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://repo.or.cz/w/fbvnc.git"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="git|git://repo.or.cz/fbvnc.git"
 TAGS="vnc remote-desktop"
+HOST_ARCH="i486 arm"
+
+# Git must be installed in a cross chroot
+case "$ARCH" in
+	i?86) BUILD_DEPENDS="git" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	[ -s $SOURCES_REPOSITORY/$TARBALL ] || 
-	  wget -O $SOURCES_REPOSITORY/$TARBALL \
-	   $WEB_SITE/snapshot/e42bc02b14b3331e7c7f45c6b42179d0af99ed7b.tar.gz
-	mkdir -p $src
-	cd $src
-	tar xzf $SOURCES_REPOSITORY/$TARBALL
-	mkdir $DESTDIR
-	cd fbvnc
-	patch -p0 < $stuff/fbvnc.u &&
-	make && cp fbvnc $DESTDIR
+	#patch -p0 < $stuff/fbvnc.u &&
+	sed -i s"/cc/${HOST_SYSTEM}-gcc/" Makefile &&
+	make
 }
-
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp $install/fbvnc $fs/usr/bin
+	cp -a $src/fbvnc $fs/usr/bin
 }
