@@ -23,9 +23,9 @@ case "$ARCH" in
 	i?86) 
 		ARCH_ARGS="--arch=$ARCH --cpu=$ARCH" ;;
 	arm*) 
-		BUILD_DEPENDS="zlib-dev bzip2-dev yasm libsdl-dev" 
+		BUILD_DEPENDS="zlib-dev bzip2-dev yasm" 
 		ARCH_ARGS="--enable-cross-compile --arch=armel --target-os=linux \
---cross-prefix=$HOST_SYSTEM-" ;;
+		--cross-prefix=$HOST_SYSTEM-" ;;
 esac
 
 # Handle arch package install
@@ -45,8 +45,8 @@ compile_rules()
 		--enable-avresample \
 		--enable-pthreads \
 		--enable-small \
+		--enable-ffserver \
 		--disable-ffprobe \
-		--disable-ffserver \
 		--disable-encoder=h263 \
 		--disable-encoder=h263p \
 		--disable-encoder=mpeg2video \
@@ -63,11 +63,12 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
+	mkdir -p \
+		$fs/usr/bin \
+		$fs/usr/lib \
+		$fs/usr/share
 	cp -a $install/usr/lib/*so* $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin/ffmpeg $fs/usr/bin
 	cp -a $install/usr/share/$PACKAGE $fs/usr/share
 	rm -rf $fs/usr/share/$PACKAGE/examples
-	# ffplay with it SDL dep go in a splited package
-	rm -f $fs/usr/bin/ffplay
 }
