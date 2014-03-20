@@ -18,19 +18,20 @@ BUILD_DEPENDS="alsa-lib-dev"
 compile_rules()
 {
 	./configure \
-		--prefix=/usr \
-		--mandir=/usr/share/man \
 		--with-default-audio=alsa \
 		$CONFIGURE_ARGS &&
-	make &&
-	make install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	# mpg123 needs the plugins libtool library file (.la) to work.
 	mkdir -p $fs/usr/lib
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/bin $fs/usr
+	# ARM
+	if [ -d "$install/usr/lib/mpg123" ]; then
+		cp -a $install/usr/lib/mpg123 $fs/usr/lib
+		find $fs/usr/lib -name "*.la" -exec rm -f {} \;
+	fi
 }
