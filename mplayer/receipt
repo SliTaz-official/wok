@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="mplayer"
-VERSION="1.1"
+VERSION="1.1.1"
 CATEGORY="multimedia"
 SHORT_DESC="The Ultimate Movie Player For Linux."
 MAINTAINER="pankso@slitaz.org"
@@ -10,7 +10,9 @@ SOURCE="MPlayer"
 TARBALL="$SOURCE-$VERSION.tar.xz"
 WEB_SITE="http://www.mplayerhq.hu/design7/news.html"
 WGET_URL="http://www1.mplayerhq.hu/MPlayer/releases/$TARBALL"
+HOST_ARCH="i486 arm"
 
+RELATED="mplayer-codecs mencoder" # Dont forget to update them
 DEPENDS="gtk+ cdparanoia-III libmad xorg-libXv libtheora alsa-lib ncurses \
 lame xorg-libXdamage giflib enca lirc xorg-libXxf86vm esound libmng audiofile \
 libvorbis libogg xvidcore x264 zlib xorg-libXss"
@@ -20,15 +22,30 @@ giflib-dev enca-dev lirc-dev xorg-libXxf86vm-dev esound-dev libmng-dev \
 audiofile-dev x264-dev libogg-dev libvorbis-dev xvidcore-dev zlib-dev \
 xorg-xextproto pkg-config yasm"
 
+# Handle arch package install. Less deps and no GTK gui for ARM
+case "$SLITAZ_ARCH" in
+	arm*) DEPENDS="alsa-lib zlib libmad xorg-libXv xorg-libXxf86vm libogg \
+libvorbis libtheora libsdl xvidcore lame esound" ;;
+esac
+
+# Handle cross compilation. Host coreutils-file-* are used
+case "$ARCH" in
+	i?86) 
+		ARCH_ARGS="--target=i386-linux --enable-gui --disable-sdl" ;;
+	arm*) 
+		BUILD_DEPENDS="alsa-lib-dev zlib-dev libmad-dev xorg-libXv-dev \
+xorg-libXxf86vm-dev libogg-dev libvorbis-dev libsdl-dev xvidcore-dev lame-dev \
+libtheora-dev esound-dev" 
+		ARCH_ARGS="--target=arm-linux --enable-cross-compile --enable-sdl" ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--prefix=/usr \
 		--confdir=/etc/mplayer \
 		--libdir=/usr/lib/mplayer \
-		--target=i386-linux \
 		--language="en de es fr it ru" \
 		--disable-mmx \
 		--disable-mmxext \
@@ -39,7 +56,6 @@ compile_rules()
 		--disable-ssse3 \
 		--disable-fastmemcpy \
 		--disable-gl \
-		--disable-sdl \
 		--disable-jack \
 		--disable-liblzo \
 		--disable-libdv \
@@ -50,19 +66,20 @@ compile_rules()
 		--disable-openal \
 		--disable-faac \
 		--disable-speex \
-		--enable-gui &&
+		${ARCH_ARGS} &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install
+	make DESTDIR=$DESTDIR install | sed '/install: strip: .*/'d
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/share/mplayer/skins
 	cp -a $install/usr/bin $fs/usr
 	# Mencoder goes in a splited package.
 	rm $fs/usr/bin/mencoder
-	cp -a $install/usr/share/mplayer $fs/usr/share
+	[ -d "$install/usr/share/mplayer" ] && \
+		cp -a $install/usr/share/mplayer $fs/usr/share
 	cp -a $install/etc $fs
 	cp $src/etc/example.conf $fs/etc/mplayer
 	# Config to use Xv by default.
@@ -72,4 +89,8 @@ genpkg_rules()
 	cd $fs/usr/share/mplayer/skins && ln -s productive default
 	# Font
 	cd .. && ln -s ../fonts/truetype/ttf-dejavu/DejaVuSans.ttf subfont.ttf
+	# Xv support dont work for ARM
+	case "$ARCH" in
+		arm*) cp -f $stuff/mplayer-arm.conf $fs/etc/mplayer/mplayer.conf ;;
+	esac
 }
