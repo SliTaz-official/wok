@@ -9,21 +9,29 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.gtk.org/"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
-CROSS="bug: can not run test program"
+HOST_ARCH="i486 arm"
 
 DEPENDS="glib libgio libpng tiff jpeg zlib xorg-libX11 shared-mime-info"
 BUILD_DEPENDS="libgio-dev glib-dev jbigkit libpng-dev tiff-dev jpeg-dev \
-xorg-libX11-dev zlib-dev pkg-config gobject-introspection-dev"
+xorg-libX11-dev zlib-dev"
+
+# Handle cross compilation
+case "$ARCH" in
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS gobject-introspection-dev" ;;
+	arm) ARCH_ARGS="--enable-introspection=no --cache-file=arm.cache" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	case "$ARCH" in
+		arm) echo "gio_can_sniff=yes" > arm.cache ;;
+	esac
 	./configure \
 		--disable-glibtest \
 		--without-libjasper \
 		--with-x11 \
-		--build=$HOST_SYSTEM --host=$HOST_SYSTEM &&
+		$CONFIGURE_ARGS $ARCH_ARGS &&
 	make && make install
 }
 
@@ -34,7 +42,8 @@ genpkg_rules()
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so \
 		$fs/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders
-	cp -a $install/usr/lib/girepository-1.0 $fs/usr/lib
+	[ -d "$install/usr/lib/girepository-1.0" ] && \
+		cp -a $install/usr/lib/girepository-1.0 $fs/usr/lib
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	touch $fs/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache
 }
