@@ -9,20 +9,27 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://freedesktop.org/wiki/Software/DBusBindings"
 WGET_URL="http://dbus.freedesktop.org/releases/dbus-glib/$TARBALL"
-CROSS="bug: can not run test program"
+HOST_ARCH="i486 arm"
 
 DEPENDS="dbus libgio expat"
-BUILD_DEPENDS="dbus-dev glib-dev libgio-dev expat-dev \
-pkg-config gettext"
+BUILD_DEPENDS="dbus-dev glib-dev libgio-dev expat-dev pkg-config gettext"
+
+# Handle cross compilation. Host pkg-config/gettext are used
+case "$ARCH" in
+	arm*) 
+		BUILD_DEPENDS="dbus-dev glib-dev libgio-dev expat-dev" 
+		export ac_cv_have_abstract_sockets=${ac_cv_have_abstract_sockets=yes} ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure \
-		--prefix=/usr \
-		--build=$HOST_SYSTEM \
-		--host=$HOST_SYSTEM &&
+	./configure $CONFIGURE_ARGS &&
+	case "$ARCH" in
+		arm)
+			patch -p1 < $stuff/dbus-glib.patch &&
+			patch -p0 < $stuff/dbus.patch ;;
+	esac &&
 	make && make install
 }
 
