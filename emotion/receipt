@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="emotion"
-VERSION="1.7.9"
+VERSION="1.7.10"
 CATEGORY="x-window"
 SHORT_DESC="EFL video and audio codec playback library."
 MAINTAINER="pankso@slitaz.org"
@@ -10,19 +10,22 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.enlightenment.org/"
 WGET_URL="http://download.enlightenment.org/releases/$TARBALL"
 TAGS="e enlightenment efl"
+HOST_ARCH="i486 arm"
 
 DEPENDS="edje eio eeze xine-lib"
-BUILD_DEPENDS="edje-dev eio-dev eeze-dev
-xine-lib-dev"
+BUILD_DEPENDS="edje-dev eio-dev eeze-dev xine-lib-dev"
 OPTIONAL_DEPENDS="gstreamer-dev gst-plugins-base-dev"
+
+# Handle cross compilation
+case "$ARCH" in
+	arm) BUILD_DEPENDS="edje-dev eio-dev eeze-dev" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	CFLAGS="$CFLAGS -fvisibility=hidden"
-	LDFLAGS="$LDFLAGS -fvisibility=hidden"
-	export LDFLAGS
-
+	export CFLAGS="$CFLAGS -fvisibility=hidden"
+	export LDFLAGS="$LDFLAGS -fvisibility=hidden"
 	./configure \
 		--disable-doc \
 		--enable-emotion-test \
@@ -33,12 +36,14 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/edje/modules/emotion/linux-gnu-i486-1.0.0 \
-		$fs/usr/lib/emotion
+	case "$ARCH" in
+		i?86) edje_mods="/usr/lib/edje/modules/emotion/linux-gnu-i486-1.0.0" ;;
+		arm) edje_mods="/usr/lib/edje/modules/emotion/linux-gnueabi-arm-1.0.0" ;;
+	esac
+	mkdir -p $fs/usr/lib/emotion ${fs}${edje_mods}
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/share $fs/usr
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/lib/emotion/*.so $fs/usr/lib/emotion
-	cp -a $install/usr/lib/edje/modules/emotion/linux-gnu-i486-1.0.0/*.so \
-		$fs/usr/lib/edje/modules/emotion/linux-gnu-i486-1.0.0
+	cp -a ${install}${edje_mods}/*.so ${fs}${edje_mods}
 }

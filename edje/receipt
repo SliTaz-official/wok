@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="edje"
-VERSION="1.7.9"
+VERSION="1.7.10"
 CATEGORY="x-window"
 SHORT_DESC="EFL Abstract GUI layout and animation object library."
 MAINTAINER="pankso@slitaz.org"
@@ -10,6 +10,7 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.enlightenment.org/"
 WGET_URL="http://download.enlightenment.org/releases/$TARBALL"
 TAGS="e enlightenment efl"
+HOST_ARCH="i486 arm"
 
 DEPENDS="embryo ecore lua"
 BUILD_DEPENDS="embryo-dev ecore-dev lua-dev"
@@ -17,10 +18,17 @@ BUILD_DEPENDS="embryo-dev ecore-dev lua-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	CFLAGS="$CFLAGS -fvisibility=hidden"
-	LDFLAGS="$LDFLAGS -fvisibility=hidden"
-	export LDFLAGS
-
+	# Fix libe*.la to use shared libs in sysroot
+	case "$ARCH" in
+		arm)
+			sed -i s"#libdir=.*#libdir='/cross/$ARCH/sysroot/usr/lib'#" \
+				/usr/lib/libecore_*.la \
+				/usr/lib/libeina.la \
+				/usr/lib/libevas.la \
+				/usr/lib/libeet.la ;;
+	esac
+	export CFLAGS="$CFLAGS -fvisibility=hidden"
+	export LDFLAGS="$LDFLAGS -fvisibility=hidden"
 	./configure --disable-doc $CONFIGURE_ARGS &&
 	make $MAKEFILE && make install
 }

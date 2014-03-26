@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="elementary"
-VERSION="1.7.9"
+VERSION="1.7.10"
 CATEGORY="x-window"
 SHORT_DESC="EFL full regular widget set."
 MAINTAINER="pankso@slitaz.org"
@@ -10,18 +10,19 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.enlightenment.org/"
 WGET_URL="http://download.enlightenment.org/releases/$TARBALL"
 TAGS="e enlightenment efl"
+HOST_ARCH="i486 arm"
 
+GENERIC_MENUS="no"
+RELATED="elementary libelementary"
 DEPENDS="efreet emotion ethumb libelementary"
 BUILD_DEPENDS="efreet-dev emotion-dev ethumb-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	CFLAGS="$CFLAGS -fvisibility=hidden"
-	LDFLAGS="$LDFLAGS -fvisibility=hidden"
-	export LDFLAGS
-
-	./configure --datadir=/usr/share2 $CONFIGURE_ARGS &&
+	export CFLAGS="$CFLAGS -fvisibility=hidden"
+	export LDFLAGS="$LDFLAGS -fvisibility=hidden"
+	./configure --datadir=/usr/share $CONFIGURE_ARGS &&
 	make $MAKEFLAGS && make install
 }
 
@@ -29,15 +30,13 @@ compile_rules()
 genpkg_rules()
 {
 	# lib
-	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/lib $fs/usr/share
 	cp -a $install/usr/lib/edje	$fs/usr/lib
 	cp -a $install/usr/lib/elementary $fs/usr/lib
 	rm -f $fs/usr/lib/*/modules/*/*/*.la
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	# Package: libelementary
 	rm -f $fs/usr/lib/libelementary.so.*
-	# share
-	# /usr/share2: to not automatically install /usr/share/applications
-	mkdir -p $fs/usr/share
-	cp -a $install/usr/share2/elementary $fs/usr/share
+	# share 
+	cp -a $install/usr/share/elementary $fs/usr/share
 }
