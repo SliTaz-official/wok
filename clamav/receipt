@@ -22,7 +22,9 @@ compile_rules()
 
 	cd $src
 	./configure \
+		--prefix=/usr \
 		--sysconfdir=/etc/clamav \
+		--with-dbdir=/var/lib/clamav \
 		--with-iconv=no \
 		$CONFIGURE_ARGS &&
 	make &&
@@ -32,8 +34,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share $fs/etc/init.d \
-		$fs/var/log/clamav $fs/var/run/clamav
+	mkdir -p $fs/usr/lib $fs/etc/init.d $fs/var/lib/clamav \
+		$fs/var/log/clamav $fs/run/clamav
 	cp -a $install/usr/bin $fs/usr
 	rm -f $fs/usr/bin/clamav-config
 	cp -a $install/usr/sbin $fs/usr
@@ -48,8 +50,8 @@ genpkg_rules()
 	# Customize config
 	sed -i -e "s/^Example/#Example/" \
 		-e "s|^#LogFile /tmp/clamd.log|LogFile /var/log/clamav/clamav.log|" \
-		-e "s|^#PidFile.*|PidFile /var/run/clamav/clamd.pid|" \
-		-e "s|^#LocalSocket /tmp/clamd.socket|LocalSocket /var/run/clamav/clamd.ctl|" \
+		-e "s|^#PidFile.*|PidFile /run/clamav/clamd.pid|" \
+		-e "s|^#LocalSocket /tmp/clamd.socket|LocalSocket /run/clamav/clamd-socket|" \
 		$fs/etc/clamav/clamd.conf
 		
 }
@@ -80,11 +82,11 @@ post_install()
 	fi
 
 	# Enable daily.cvd updates (sometimes needed for new version)
-	chown -R ${user}:${group} $1/usr/share/clamav
+	#chown -R ${user}:${group} $1/var/lib/clamav
 	
 	# Fix perms
 	chroot $1/ chown -R ${user}.${group} /var/log/clamav \
-		/var/run/clamav
+		/run/clamav /var/lib/clamav
 
 }
 
