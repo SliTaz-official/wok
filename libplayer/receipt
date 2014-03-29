@@ -4,22 +4,30 @@ PACKAGE="libplayer"
 VERSION="2.0.1"
 CATEGORY="multimedia"
 SHORT_DESC="A multimedia A/V abstraction layer API."
-DEPENDS="xine-lib mplayer"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="LGPL2.1"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://libplayer.geexbox.org/"
 WGET_URL="http://libplayer.geexbox.org/releases/$TARBALL"
+HOST_ARCH="i486 arm"
+
+DEPENDS="xine-lib"
+BUILD_DEPENDS="xine-lib-dev"
+
+# Handle cross compilation
+case "$ARCH" in
+	arm*) ARCH_ARGS="--cross-compile" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's/cat -n/awk '"'"'{ printf "%6d  %s\\n",++n,$0 }'"'"' </' configure
-	./configure --prefix=/usr\
+	./configure \
+		--prefix=/usr\
 		--enable-mplayer \
 		--disable-gstreamer \
-		--disable-vlc &&
+		--disable-vlc ${ARCH_ARGS} &&
 	make && make install
 }
 
