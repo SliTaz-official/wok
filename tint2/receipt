@@ -11,19 +11,26 @@ WEB_SITE="http://tint2.googlecode.com/files/"
 WGET_URL="$WEB_SITE/$TARBALL"
 CONFIG_FILES="/etc/xdg/tint2/tint2rc"
 TAGS="desktop panel taskbar"
+HOST_ARCH="i486 arm"
 
 DEPENDS="gtk+ cairo pango glib imlib2 xorg-libXinerama xcb-util freetype"
-BUILD_DEPENDS="pygtk-dev cmake pkg-config imlib2-dev xcb-util-dev"
+BUILD_DEPENDS="cairo-dev pango-dev glib-dev imlib2-dev xorg-libXinerama-dev \
+xcb-util-dev freetype-dev"
+
+# Handle cross compilation
+case "$ARCH" in
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS pygtk-dev cmake pkg-config" ;;
+	arm*) ARCH_ARGS="-DENABLE_TINT2CONF=OFF" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    [ -d build ] || mkdir build
-    cd build
-    cmake -DCMAKE_INSTALL_PREFIX=/usr ../ &&
-    make &&
-    make DESTDIR=$DESTDIR install
+    mkdir build && cd build
+    cmake \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		$ARCH_ARGS .. &&
+    make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
