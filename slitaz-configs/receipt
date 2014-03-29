@@ -2,6 +2,7 @@
 
 PACKAGE="slitaz-configs"
 VERSION="5.2.2"
+ARM_VERSION="0.1"
 CATEGORY="base-system"
 SHORT_DESC="SliTaz config files and artwork."
 MAINTAINER="pankso@slitaz.org"
@@ -10,46 +11,75 @@ WEB_SITE="http://www.slitaz.org/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://hg.slitaz.org/slitaz-configs/archive/$VERSION.tar.gz"
 CONFIG_FILES="/etc/slitaz/applications.conf"
+HOST_ARCH="i486 arm"
 
 DEPENDS="slitaz-configs-base xorg-libXcomposite xorg-libXdamage xorg-xcompmgr \
 transset-df ttf-dejavu slim"
 
+# Special case for ARM since some (most) config files are in slitaz-arm repo.
+# i486/arm common configs are provided by slitaz-configs-base.
+case "$SLITAZ_ARCH" in
+	arm*)
+		VERSION="$ARM_VERSION"
+		WEB_SITE="http://arm.slitaz.org/"
+		DEPENDS="slitaz-configs-base ttf-dejavu slim" ;;
+esac
+
+case "$ARCH" in
+	arm*)
+		VERSION="$ARM_VERSION"
+		WEB_SITE="http://arm.slitaz.org/"
+		TARBALL="$PACKAGE-arm-$VERSION.tar.bz2"
+		WGET_URL="http://hg.slitaz.org/slitaz-arm/archive/tip.tar.bz2" ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	make DESTDIR=$DESTDIR menu
-	ln -s menu.en.xml $install/etc/xdg/openbox/menu.xml
+	case "$ARCH" in
+		i?86)
+			make DESTDIR=$DESTDIR menu
+			ln -s menu.en.xml $install/etc/xdg/openbox/menu.xml ;;
+	esac
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	# Copy rootfs files from the stuff and set permissions.
-	mkdir -p $fs/etc/xdg/openbox $fs/usr/share
-	cp -a $src/rootfs/etc/xdg/openbox $fs/etc/xdg
-
-	# /usr/share
-	for i in applications lxdm slim slitaz
-	do
-		cp -r $src/rootfs/usr/share/$i $fs/usr/share
-	done
-
-	cp -a $src/rootfs/usr/bin $fs/usr
-	cp -a $src/rootfs/etc/lxpanel $fs/etc
-	cp -a $src/rootfs/etc/slitaz $fs/etc
-	cp -a $install/etc/xdg/openbox/menu.en.xml $install/etc/xdg/openbox/menu.xml \
-		$fs/etc/xdg/openbox
-
+	cd ${src}
+	case "$ARCH" in
+		i?86)
+			# Copy rootfs files from the stuff and set permissions.
+			mkdir -p $fs/etc/xdg/openbox $fs/usr/share
+			cp -a $src/rootfs/etc/xdg/openbox $fs/etc/xdg
+		
+			# /usr/share
+			for i in applications lxdm slim slitaz
+			do
+				cp -r $src/rootfs/usr/share/$i $fs/usr/share
+			done
+		
+			cp -a $src/rootfs/usr/bin $fs/usr
+			cp -a $src/rootfs/etc/lxpanel $fs/etc
+			cp -a $src/rootfs/etc/slitaz $fs/etc
+			cp -a $install/etc/xdg/openbox/menu.en.xml $install/etc/xdg/openbox/menu.xml \
+				$fs/etc/xdg/openbox ;;
+		arm)
+			cp -a rootfs/* ${fs} ;;
+	esac
 	chown -R root.root $fs
 }
 
 post_install()
 {
-	# By default slim provide a base theme and config file have both
-	# base and slitaz who will be choose randomly, so make sure we use
-	# only slitaz theme.
-	if grep -q 'current_theme       slitaz,base' $1/etc/slim.conf; then
-		sed -i s/"current_theme .*"/"current_theme       slitaz"/ \
-			$1/etc/slim.conf
-	fi
+	case "$SLITAZ_ARCH" in
+		i?86)
+			# By default slim provide a base theme and config file have both
+			# base and slitaz who will be choose randomly, so make sure we use
+			# only slitaz theme.
+			if grep -q 'current_theme       slitaz,base' $1/etc/slim.conf; then
+				sed -i s/"current_theme .*"/"current_theme       slitaz"/ \
+					$1/etc/slim.conf
+			fi ;;
+	esac
 }
