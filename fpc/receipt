@@ -1,9 +1,9 @@
 # SliTaz package receipt.
 
 PACKAGE="fpc"
-VERSION="2.4.2"
+VERSION="2.6.4"
 CATEGORY="development"
-SHORT_DESC="The Free Pascal Compiler is a Turbo Pascal 7.0 and Delphi compatible 32bit Pascal Compiler. It comes with fully TP 7.0 compatible run-time library."
+SHORT_DESC="The Free Pascal Compiler"
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL2 LGPL2.1"
 SOURCE="fpcbuild"
@@ -13,19 +13,39 @@ WGET_URL="ftp://ftp.freepascal.org/pub/fpc/dist/$VERSION/source/$TARBALL"
 CONFIG_FILE="/etc/fpc.cfg"
 TAGS="compiler pascal"
 
+CROSS_BUGS="arm-slitaz-gnueabi-as: Command not found"
+#HOST_ARCH="i486 arm"
+
 DEPENDS="ncurses"
 BUILD_DEPENDS="fpc-bootstrap"
+
+# Handle cross compilation. ARM: fpc-bootstrap build host must be installed
+case "$ARCH" in
+	arm*) BUILD_DEPENDS="" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	make NOGDB=1 build
-	make -j1 NOGDB=1 PREFIX=$DESTDIR/usr install
-
+	case "$ARCH" in
+	i?86)
+		make ${ARCH_ARGS} NOGDB=1 build
+		make -j1 NOGDB=1 PREFIX=$DESTDIR/usr install ;;
+	arm*)
+		make crossinstall \
+			NOGDB=1 \
+			CPU_TARGET=arm \
+			OS_TARGET=linux \
+			OPT=-dFPC_ARMEL \
+			CROSSBINDIR=/cross/$ARCH/tools/bin \
+			BINUTILSPREFIX=arm-slitaz-gnueabi- \ 
+			INSTALL_PREFIX=$DESTDIR/usr ;;
+	esac &&
+	
 	# install package license
-	install -m 755 -d $DESTDIR/usr/share/licenses/fpc
-	install -m 644 $src/fpcsrc/rtl/COPYING.FPC $DESTDIR/usr/share/licenses/fpc/
+	install -m 755 -d $DESTDIR/usr/share/licenses/fpc &&
+	install -m 644 $src/fpcsrc/rtl/COPYING.FPC \
+		$DESTDIR/usr/share/licenses/fpc/
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -34,10 +54,9 @@ genpkg_rules()
 	mkdir -p $fs/usr $fs/etc
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
-
 	# create symlink for compiler
 	ln -s /usr/lib/$PACKAGE/$VERSION/ppc386 $fs/usr/bin
-
+	# config file
 	mkdir -p $fs/etc
 	cp -a $fs/usr/lib/fpc/$VERSION/samplecfg $fs/etc/fpc.cfg
 }

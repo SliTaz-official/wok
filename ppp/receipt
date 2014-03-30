@@ -10,11 +10,11 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://ppp.samba.org/"
 WGET_URL="ftp://ftp.samba.org/pub/ppp/$TARBALL"
 CONFIG_FILES="/etc/ppp"
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	if ! grep -qs pppol2tpv3_addr include/linux/if_pppol2tp.h ; then
 		sed -i /#endif/d include/linux/if_pppol2tp.h
 		cat >> include/linux/if_pppol2tp.h <<EOT
@@ -31,7 +31,7 @@ struct pppol2tpv3_addr {
 #endif
 EOT
 	fi
-	./configure --prefix=/usr --mandir=/usr/share/man \
+	./configure --prefix=/usr \
 	$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR/usr install
@@ -42,7 +42,7 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr
 	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib $fs/usr
+	[ -d "$install/usr/lib" ] && cp -a $install/usr/lib $fs/usr
 	cp -a $stuff/pppnc-server $fs/usr/sbin
 	ln $fs/usr/sbin/pppnc-server $fs/usr/sbin/pppnc-client
 	# Config files.
@@ -53,7 +53,8 @@ genpkg_rules()
 	# PPP scripts.
 	cp -a $src/scripts/ppp-on $fs/etc/ppp/scripts
 	cp -a $src/scripts/ppp-on-dialer $fs/etc/ppp/scripts
-	sed -i 's:ppp/ppp-on-dialer:ppp/scripts/ppp-on-dialer:' $fs/etc/ppp/scripts/ppp-on
+	sed -i 's:ppp/ppp-on-dialer:ppp/scripts/ppp-on-dialer:' \
+		$fs/etc/ppp/scripts/ppp-on
 	
 	cp -a $src/scripts/ppp-off $fs/etc/ppp/scripts
 	cp -a $src/scripts/callback $fs/etc/ppp/scripts
@@ -96,7 +97,7 @@ EOT
 	chmod 711 $fs/etc/ppp/ip-up $fs/etc/ppp/ip-down
 
 	# insert #!/bin/sh  on top line in ip* scripts
-	sed -i '1i\#!/bin/sh' $fs/etc/ppp/ip*	
+	sed -i '1i\#!/bin/sh' $fs/etc/ppp/ip* 2>/dev/null	
 	# add empty peers dir
 	mkdir -p $fs/etc/ppp/peers
 	# hide login/pass from regular users
