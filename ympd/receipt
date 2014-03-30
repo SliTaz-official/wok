@@ -14,12 +14,20 @@ HOST_ARCH="i486 arm"
 DEPENDS="mpd libmpdclient"
 BUILD_DEPENDS="libmpdclient-dev git"
 
+# Handle cross compilation.
+case "$ARCH" in
+	arm*) 
+		BUILD_DEPENDS="libmpdclient-dev" 
+		ARCH_ARGS="-DLIBMPDCLIENT_LIBRARY=/cross/$ARCH/sysroot/usr/lib \
+		-DLIBMPDCLIENT_INCLUDE_DIR=/cross/$ARCH/sysroot/usr/include" ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	mkdir build && cd build
 	cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr \
-		.. &&
+		${ARCH_ARGS} .. &&
 	make && make install
 }
 
