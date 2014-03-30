@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="hexchat-plugin"
+VERSION="2.9.6.1"
+CATEGORY="network"
+SHORT_DESC="IRC client using GTK+ with plugins support"
+MAINTAINER="lenios@slitaz.org"
+LICENSE="GPL2"
+SOURCE="hexchat"
+TARBALL="$SOURCE-$VERSION.tar.xz"
+WEB_SITE="http://hexchat.github.io/"
+WGET_URL="http://dl.hexchat.net/hexchat/$TARBALL"
+PROVIDE="hexchat"
+
+DEPENDS="gtk+ dbus openssl gettext dbus-glib xorg-libXdamage python"
+BUILD_DEPENDS="gtk+-dev dbus-dev openssl shared-mime-info python-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+    cd $src
+    sed -i -e 's|glib/gslist.h|glib.h|' -e 's|glib/giochannel.h|glib.h|' \
+	   -e 's|glib/glist.h|glib.h|' -e 's|glib/gstrfuncs.h|glib.h|'
+    sed -i 's|glib/ghash.h|glib.h|' src/common/servlist.c src/common/text.c
+    sed -i 's|glib/gmarkup.h|glib.h|' src/common/util.c
+    ./configure  --prefix=/usr \
+	  --infodir=/usr/share/info \
+	  --mandir=/usr/share/man \
+	  --disable-tcl \
+	  --enable-spell=static \
+	  --enable-ipv6 \
+      $CONFIGURE_ARGS &&
+    make &&
+    make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    mkdir -p $fs/usr \
+    	$fs/usr/share
+    cp -a $install/usr/bin $fs/usr
+#    cp -a $install/usr/share/dbus-1 $fs/usr/share
+}
