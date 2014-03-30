@@ -9,36 +9,31 @@ LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.midnight-commander.org/"
 WGET_URL="http://www.midnight-commander.org/downloads/$TARBALL"
+HOST_ARCH="i486 arm"
 
+SUGGESTED="gpm"
 DEPENDS="ncursesw glib e2fsprogs"
-SUGGESTED="gpm glib"
-BUILD_DEPENDS="pkg-config gpm-dev glib-dev ncurses-dev"
+BUILD_DEPENDS="gpm-dev glib-dev ncursesw-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr \
-	--with-gpm-mouse \
-	--with-screen=ncurses \
-	--infodir=/usr/share/info \
-	--libexecdir=/usr/lib \
-	--sysconfdir=/etc \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$DESTDIR install
+	./configure \
+		--prefix=/usr \
+		--with-gpm-mouse \
+		--with-screen=ncurses \
+		--libexecdir=/usr/lib \
+		--sysconfdir=/etc \
+		$CONFIGURE_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/locale $fs/usr/share/applications
-	
+	mkdir -p $fs/usr/share
 	cp -a $install/etc $fs/
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
 	cp -a $install/usr/share/mc $fs/usr/share
-	cp -a $install/usr/share/locale/fr $fs/usr/share/locale
-	cp $stuff/mc.desktop $fs/usr/share/applications
 }
-
