@@ -1,0 +1,50 @@
+# SliTaz package receipt.
+
+PACKAGE="cairo-gl"
+VERSION="1.12.2"
+CATEGORY="x-window"
+SHORT_DESC="2D graphics library with GL support."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="MPL LGPL2.1"
+SOURCE="cairo"
+TARBALL="$SOURCE-$VERSION.tar.xz"
+WEB_SITE="http://www.cairographics.org/"
+WGET_URL="http://cairographics.org/releases/$TARBALL"
+HOST_ARCH="i486"
+
+DEPENDS="glib pixman libpng zlib expat fontconfig freetype xorg-libX11 \
+xorg-libXau xorg-libXdmcp xorg-libXrender xcb-util libxcb mesa-wayland"
+BUILD_DEPENDS="pkg-config glib-dev libpng-dev zlib-dev fontconfig-dev \
+freetype-dev xorg-libX11-dev pixman-dev xorg-libXau-dev xorg-libXdmcp-dev \
+xorg-libXrender-dev xcb-util-dev libxcb-dev expat-dev libxml2-dev \
+mesa-wayland-dev wayland-dev"
+
+# Handle cross compilation
+case "$ARCH" in
+	arm*) export CFLAGS="$CFLAGS -L/cross/$ARCH/sysroot/usr/lib" ;;
+esac
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	patch -Np1 -i $stuff/cairo-1.10.0-buggy_gradients.patch
+	# https://bugs.freedesktop.org/show_bug.cgi?id=50852
+	patch -Np1 -i $stuff/cairo-1.12.2-reduce-broken-stopped-edge-continuation.patch
+	./configure \
+		--prefix=/usr \
+		--with-html-dir=/usr/share/doc \
+		--enable-xcb \
+		--enable-tee \
+		--enable-gl \
+		--disable-static \
+ 		$CONFIGURE_ARGS &&
+	make $MAKEFLAGS &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+}
