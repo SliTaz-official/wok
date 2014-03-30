@@ -12,26 +12,32 @@ WGET_URL="$WEB_SITE/downloads/$TARBALL"
 HOST_ARCH="i486 arm"
 
 DEPENDS="libsdl"
-BUILD_DEPENDS="nasm libsdl-dev"
+BUILD_DEPENDS="libsdl-dev nasm"
 
 # Handle cross compilation.
 case "$ARCH" in
-	arm*)
-		BUILD_DEPENDS="libsdl-dev" ;;
+	arm*) BUILD_DEPENDS="libsdl-dev" ;;
 esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	make CC=gcc no_graphics &&
-	mv 8086tiny 8086tiny.nographics &&
-	make CC=gcc &&
 	case "$ARCH" in
-		arm*)
-			cp bios bios_source/ ;;
-		*)
+		i?86)
+			make CC=gcc no_graphics &&
+			mv 8086tiny 8086tiny.nographics &&
+			make CC=gcc &&
 			nasm bios_source/bios.asm ;;
+		arm*)
+			make CC=${HOST_SYSTEM}-gcc 8086tiny_slowcpu
+			nasm bios_source/bios.asm &&
+			echo "Skipping: strip: Unable to recognise the format" ;;
 	esac
+}
+
+# SliTaz package testsuite
+testsuite() {
+	readelf -Ah ${src}/8086tiny
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -39,9 +45,10 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/bin $fs/usr/share/8086tiny
 	cp -a $src/8086tiny $fs/usr/bin
-	cp -a $src/8086tiny.nographics $fs/usr/bin
+	[ -x "$src/8086tiny.nographics" ] && \
+		cp -a $src/8086tiny.nographics $fs/usr/bin
 	cp -a $src/bios_source/bios $fs/usr/share/8086tiny
-	cat > $fs/usr/bin//8086tiny.sh <<EOT
+	cat > $fs/usr/bin/8086tiny.sh <<EOT
 #!/bin/sh
 
 if [ ! -e "\$1" ]; then
