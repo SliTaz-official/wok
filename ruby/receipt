@@ -9,20 +9,34 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.ruby-lang.org/"
 WGET_URL="ftp://ftp.ruby-lang.org/pub/ruby/${VERSION%.*}/$TARBALL"
-SUGGESTED="tk"
 TAGS="ruby language programming"
+HOST_ARCH="i486 arm"
 
+SUGGESTED="tk"
+RELATED="libruby libruby-dev libruby-extras ruby-dev"
 DEPENDS="libdb ncurses openssl readline zlib gdbm"
-BUILD_DEPENDS="coreutils-file-output-full zlib-dev tk-dev tcl-dev openssl-dev \
-db-dev readline-dev"
+BUILD_DEPENDS="zlib-dev tcl-dev openssl-dev db-dev readline-dev"
+
+# Handle cross compilation.
+case "$ARCH" in
+	i?86) 
+		BUILD_DEPENDS="$BUILD_DEPENDS coreutils-file-output-full tk-dev " ;;
+	arm*)
+		# executable host ruby is required. use --with-baseruby option.
+		# --with-arch=arm 
+		export ac_cv_func_getpgrp_void=yes
+		export ac_cv_func_setpgrp_void=yes 
+		ARCH_ARGS="--with-baseruby=/usr/bin/ruby" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	patch -Np1 < $stuff/openssl-1.0.patch
-	./configure --prefix=/usr --enable-shared \
-		$CONFIGURE_ARGS &&
+	#patch -Np1 < $stuff/openssl-1.0.patch
+	./configure \
+		--prefix=/usr \
+		--enable-shared \
+		$CONFIGURE_ARGS ${ARCH_ARGS} &&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
