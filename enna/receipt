@@ -14,11 +14,12 @@ TAGS="images music video e17"
 HOST_ARCH="i486 arm"
 
 DEPENDS="eina eet ecore evas efreet edje edbus emotion ethumb elementary  \
-libvalhalla libcurl xine-lib libexif alsa-lib libplayer"
+embryo libvalhalla libcurl xine-lib libexif alsa-lib libplayer xorg-libXrandr"
 BUILD_DEPENDS="eina-dev eet-dev ecore-dev evas-dev efreet-dev edje-dev \
-edbus-dev emotion-dev ethumb-dev elementary-dev curl-dev eio-dev \
+edbus-dev emotion-dev ethumb-dev elementary-dev embryo-dev curl-dev eio-dev \
 xine-lib-dev libexif-dev alsa-lib-dev libplayer-dev libxml2-dev libtool \
-expat-dev jpeg-dev glib-dev ffmpeg-dev libvalhalla-dev libelementary"
+expat-dev jpeg-dev glib-dev ffmpeg-dev libvalhalla-dev libelementary \
+xorg-libXrandr-dev"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -28,7 +29,6 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	while read name file; do
 		sed -i "s/name: \"$name\";/&\n\ttype: RECT;/" \
 			data/theme/default/$file.edc
@@ -72,7 +72,11 @@ EOT
 -I/usr/include/e_dbus-1 -I/usr/include/dbus-1.0 -I/usr/lib/dbus-1.0/include \
 -I/usr/include/ethumb-1 \
 -I/usr/include/libxml2"
-	./autogen.sh $CONFIGURE_ARGS &&
+	./autogen.sh \
+		--enable-libxrandr \
+		--enable-backend-emotion \
+		--enable-activity-tv \
+		$CONFIGURE_ARGS &&
 	make -j 1 && make install
 }
 
