@@ -11,7 +11,9 @@ TARBALL="$SOURCE-$VERSION.tar.xz"
 WEB_SITE="http://www.gtk.org/"
 WGET_URL="$GNOME_MIRROR/$SOURCE/${VERSION:0:3}/$TARBALL"
 CONFIG_FILES="/etc/gtk-3.0/settings.ini"
-CROSS="bug: /bin/bash: no: command not found"
+
+#HOST_ARCH="i486 arm"
+CROSS_BUGS="bug: /bin/bash: no: command not found"
 
 DEPENDS="atk gdk-pixbuf pango xorg-libXcomposite xorg-libXcursor xorg-libXi \
 xorg-libXinerama xorg-libXrandr"
@@ -20,6 +22,17 @@ BUILD_DEPENDS="bash pkg-config cups-dev dbus-dev gobject-introspection-dev \
 perl gdk-pixbuf-dev xorg-dev libffi-dev atk-dev pango-dev cairo-dev indent \
 libxml2-dev"
 
+# Handle cross compilation.
+case "$ARCH" in
+	arm*) 
+		BUILD_DEPENDS="atk-dev pango-dev gdk-pixbuf-dev dbus-dev dbus-glib-dev \
+xorg-inputproto"
+		ARCH_ARGS="--enable-introspection=no --disable-glibtest --disable-cups \
+--disable-papi --with-xinput gio_can_sniff=yes"
+		export LDFLAGS=-L/cross/$ARCH/sysroot/usr/lib 
+		export CPPFLAGS=-I/cross/$ARCH/sysroot/usr/include ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
@@ -27,8 +40,6 @@ compile_rules()
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
-		--build=$HOST_SYSTEM \
-		--host=$HOST_SYSTEM \
 		--enable-debug=no \
 		--enable-xkb \
 		--enable-xinerama \
@@ -40,7 +51,7 @@ compile_rules()
 		--enable-introspection=yes \
 		--enable-packagekit=no \
 		--enable-colord=no \
-		--with-x &&
+		--with-x $CONFIGURE_ARGS ${ARCH_ARGS}&&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
