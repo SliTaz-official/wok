@@ -9,20 +9,25 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://librsvg.sourceforge.net/"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
+HOST_ARCH="i486 arm"
+ 
+DEPENDS="cairo freetype libxml2 pango fontconfig libcroco xcb-util libgsf \
+libgio gdk-pixbuf xorg-libXinerama xorg-libXcursor xorg-libXcomposite \
+xorg-libXext xorg-libXdamage"
+BUILD_DEPENDS="libffi-dev cairo-dev freetype-dev libxml2-dev pango-dev \
+fontconfig-dev gdk-pixbuf-dev libcroco-dev glib-dev libpng-dev expat-dev"
 
-DEPENDS="cairo freetype libxml2 pango fontconfig libcroco libgsf xcb-util \
-libgio atk gdk-pixbuf xorg-libXinerama xorg-libXcursor xorg-libXcomposite xorg-libXext \
-xorg-libXdamage"
-BUILD_DEPENDS="$DEPENDS libffi-dev pkg-config cairo-dev freetype-dev libxml2-dev pango-dev \
-fontconfig-dev gdk-pixbuf-dev libcroco-dev glib-dev libpng-dev gtk+-dev perl expat-dev expat"
+# Handle cross compilation
+case "$ARCH" in
+	i?86) BUILD_DEPENDS="gtk+-dev perl libgsf" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--disable-static \
-		$CONFIGURE_ARGS &&
+		$CONFIGURE_ARGS LIBCROCO_CFLAGS="-I/cross/$ARCH/sysroot/usr/include" &&
 	make && make install
 }
 
@@ -31,11 +36,13 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/gtk-2.0 $fs/usr/lib
+	[ -d "$install/usr/lib/gtk-2.0" ] && \
+		cp -a $install/usr/lib/gtk-2.0 $fs/usr/lib
 	cp -a $install/usr/lib/gdk-pixbuf-2.0 $fs/usr/lib
 
 	# remove *.*a files
-	find $fs/usr/lib/gtk-2.0 -name "*.*a" -exec rm -f {} \;
+	[ -d "$install/usr/lib/gtk-2.0" ] && \
+		find $fs/usr/lib/gtk-2.0 -name "*.*a" -exec rm -f {} \;
 	find $fs/usr/lib/gdk-pixbuf-2.0 -name "*.*a" -exec rm -f {} \;
 }
 
