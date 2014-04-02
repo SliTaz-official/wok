@@ -11,19 +11,30 @@ WEB_SITE="http://nfs.sourceforge.net/"
 WGET_URL="$SF_MIRROR/nfs/$PACKAGE/$VERSION/$TARBALL"
 CONFIG_FILES="/etc/exports"
 TAGS="filesystem"
+HOST_ARCH="i486 arm"
 
-DEPENDS="libtirpc libwrap util-linux-blkid util-linux-uuid rpcbind linux-nfsd"
-BUILD_DEPENDS="libtirpc-dev util-linux-blkid-dev libcap-dev libwrap-dev \
+DEPENDS="libtirpc libwrap libcap util-linux-blkid util-linux-uuid rpcbind"
+BUILD_DEPENDS="libtirpc-dev libcap-dev libwrap-dev util-linux-blkid-dev \
 util-linux-uuid-dev util-linux-blkid"
+
+# Handle SliTaz arch.
+case "$SLITAZ_ARCH" in
+	i?86) DEPENDS="$DEPENDS linux-nfsd" ;;
+esac
+
+# Handle cross compilation.
+case "$ARCH" in
+	arm*) ARCH_ARGS="--with-tirpcinclude=/cross/arm/sysroot/usr/include/tirpc" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	sh autogen.sh
 	./configure --prefix=/usr --infodir=/usr/share/info \
 	--disable-nfsv4 --disable-gss \
 	--mandir=/usr/share/man \
-	$CONFIGURE_ARGS &&
+	$CONFIGURE_ARGS ${ARCH_ARGS} &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
