@@ -11,28 +11,27 @@ TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.gtk.org/"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
 CONFIG_FILES="/etc/gtk-2.0/gtk.immodules"
-
 HOST_ARCH="i486 arm"
-CROSS_BUGS="/bin/bash: no: command not found"
 
 DEPENDS="glibc-base expat libxcb xcb-util zlib glib cairo pango atk libpng \
 jpeg tiff gdk-pixbuf fontconfig freetype pixman libgio xorg-libX11 xorg-libXau \
 xorg-libXcomposite xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext \
 xorg-libXfixes xorg-libXinerama xorg-libXrender xorg-libXrandr"
-BUILD_DEPENDS="bash pkg-config xorg-xextproto cups-dev libcomerr3 \
-dbus-dev gobject-introspection-dev libffi-dev perl atk-dev pango-dev \
-cairo-dev gdk-pixbuf-dev libxml2-dev"
+BUILD_DEPENDS="atk-dev pango-dev gdk-pixbuf-dev dbus-dev dbus-glib-dev \
+xorg-inputproto libxcb-dev fontconfig-dev freetype-dev pixman-dev libxml2-dev \
+libpng-dev libffi-dev xorg-xextproto"
 
 # Handle cross compilation.
 case "$ARCH" in
-	arm*) 
-		BUILD_DEPENDS="atk-dev pango-dev gdk-pixbuf-dev dbus-dev dbus-glib-dev \
-xorg-inputproto"
+	i?86)
+		BUILD_DEPENDS="$BUILD_DEPENDS bash pkg-config cups-dev perl 
+		gobject-introspection-dev" ;;
+	arm*)
 		ARCH_ARGS="--enable-introspection=no --disable-glibtest --disable-cups \
---disable-papi --with-gdktarget=x11 --with-xinput --enable-display-migration \
-gio_can_sniff=yes"
-		export LDFLAGS=-L/cross/$ARCH/sysroot/usr/lib 
-		export CPPFLAGS=-I/cross/$ARCH/sysroot/usr/include ;;
+		--disable-papi --with-gdktarget=x11 --with-xinput gio_can_sniff=yes"
+		export LDFLAGS="$LDFLAGS -L/cross/$ARCH/sysroot/usr/lib"
+		export CPPFLAGS="$CPPFLAGS -I/cross/$ARCH/sysroot/usr/include"
+		export LIBTOOL=${HOST_SYSTEM}-libtool ;;
 esac
 
 # Rules to configure and make the package.
@@ -42,7 +41,7 @@ compile_rules()
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--with-html-dir=/usr/share/doc \
-		$CONFIGURE_ARGS $ARCH_ARGS &&
+		$CONFIGURE_ARGS ${ARCH_ARGS} &&
 	# https://bugzilla.gnome.org/show_bug.cgi?id=655517
 	sed -i -e 's/ -shared / -Wl,-O1,--as-needed\0/g' libtool &&
 	make $MAKEFLAGS &&
