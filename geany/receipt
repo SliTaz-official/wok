@@ -10,22 +10,28 @@ SUGGESTED="geany-plugins vte"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://geany.uvena.de/"
 WGET_URL="http://download.geany.org/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="glibc-base glib gcc-lib-base libgio expat zlib libxcb xcb-util \
-gtk+ atk cairo pango pixman libpng fontconfig freetype \
-xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor xorg-libXdamage \
+gtk+ atk cairo pango pixman libpng fontconfig freetype xorg-libX11 \
+xorg-libXau xorg-libXcomposite xorg-libXcursor xorg-libXdamage \
 xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXinerama xorg-libXrender"
-BUILD_DEPENDS="glib-dev expat-dev gtk+-dev atk-dev pango-dev cairo-dev pixman-dev \
-libpng-dev freetype-dev fontconfig-dev perl-xml-parser intltool gettext \
-xorg-libXrender-dev xorg-xproto xorg-renderproto xorg-libX11-dev \
-xorg-kbproto xorg-libXau-dev xorg-libXdmcp-dev glibc-locale libxml2-dev"
+BUILD_DEPENDS="glib-dev expat-dev gtk+-dev atk-dev pango-dev cairo-dev \
+pixman-dev libpng-dev freetype-dev fontconfig-dev xorg-libXrender-dev \
+xorg-xproto xorg-renderproto xorg-libX11-dev xorg-kbproto xorg-libXau-dev \
+xorg-libXdmcp-dev libxml2-dev"
+
+# Handle cross compilation.
+case "$ARCH" in
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS perl-xml-parser intltool gettext glibc-locale" ;;
+	arm*) ARCH_ARGS="--disable-vte" ;;
+esac
 
 # Rules to configure and make the package.
-# Without vte : --disable-vte
 compile_rules()
 {
-	cd $src
-	./configure $CONFIGURE_ARGS &&
+	./configure \
+		${CONFIGURE_ARGS} ${ARCH_ARGS} &&
 	make && make install
 }
 
