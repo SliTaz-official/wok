@@ -11,7 +11,9 @@ SOURCE="slitaz-tools"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WGET_URL="http://hg.slitaz.org/slitaz-tools/archive/$VERSION.tar.gz"
 CONFIG_FILES="/etc/wireless"
+HOST_ARCH="i486 arm"
 
+GENERIC_MENUS="no"
 DEPENDS="slitaz-tools gtkdialog gettext-base yad"
 
 # Rules to configure and make the package.
@@ -25,6 +27,12 @@ genpkg_rules()
 {
 	mkdir -p $fs
 	cp -a $install/* $fs
+	# No cdrom on emb devices
+	case "$ARCH" in
+		arm*) 
+			rm -f $fs/usr/bin/burn-box 
+			rm -f $fs/usr/share/applications/burn-*.desktop ;;
+	esac
 	chmod 0644 $fs/usr/share/locale/*/*/*.mo
 	chown -R root.root $fs
 }

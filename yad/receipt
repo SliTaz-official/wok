@@ -2,6 +2,7 @@
 
 PACKAGE="yad"
 VERSION="0.26.0"
+VERSION_NOTE="latest"
 CATEGORY="utilities"
 SHORT_DESC="Display graphical dialogs from shell scripts or command line"
 MAINTAINER="devl547@gmail.com"
@@ -10,19 +11,23 @@ TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://sourceforge.net/projects/yad-dialog/"
 WGET_URL="$SF_MIRROR/project/yad-dialog/$TARBALL"
 TAGS="gtk2"
-VERSION_NOTE="latest"
+HOST_ARCH="i486 arm"
 
 DEPENDS="gtk+"
-BUILD_DEPENDS="gtk+-dev optipng"
+BUILD_DEPENDS="gtk+-dev"
+
+case "$ARCH" in
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS optipng" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	patch -p1 < $stuff/ru.patch
 	./configure \
-		--enable-icon-browser &&
-	make &&
-	make install
+		--enable-icon-browser \
+		$CONFIGURE_ARGS &&
+	make && make install &&
 	optipng -quiet -zc1-9 -zm1-9 -zs0-3 -f0-5 \
 		$install/usr/share/icons/hicolor/48x48/apps/yad.png
 }
@@ -31,7 +36,7 @@ compile_rules()
 genpkg_rules()
 {
 	usih=/usr/share/icons/hicolor
-	mkdir -p $fs$usih
+	mkdir -p ${fs}$usih
 	cp -a $install/usr/bin $fs/usr
-	cp -a $install$usih/48x48 $fs$usih
+	cp -a ${install}$usih/48x48 ${fs}$usih
 }
