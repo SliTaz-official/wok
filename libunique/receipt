@@ -9,18 +9,22 @@ LICENSE="LGPL2.1"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://live.gnome.org/LibUnique"
 WGET_URL="http://ftp.gnome.org/pub/GNOME/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
+#HOST_ARCH="i486 arm"
 
-DEPENDS="gtk+ cairo dbus-glib"
-BUILD_DEPENDS="pkg-config gtk+-dev glib-dev gobject-introspection-dev perl expat-dev"
+DEPENDS="cairo gtk+ dbus dbus-glib"
+BUILD_DEPENDS="cairo-dev gtk+-dev glib-dev dbus-dev dbus-glib-dev expat-dev"
+
+case "$ARCH" in
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS gobject-introspection-dev perl"
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	patch -Np1 -i $stuff/remove_G_CONST_RETURN.patch
 	./configure \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

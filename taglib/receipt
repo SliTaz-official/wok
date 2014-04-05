@@ -10,24 +10,27 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://developer.kde.org/~wheeler/taglib.html"
 WGET_URL="http://developer.kde.org/~wheeler/files/src/$TARBALL"
 TAGS="multimedia music tag"
+HOST_ARCH="i486 arm"
 
 DEPENDS="zlib gcc-lib-base"
-BUILD_DEPENDS="zlib-dev cmake"
+BUILD_DEPENDS="zlib-dev"
+
+case $ARCH in 
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS cmake" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	mkdir build
-	cd build
-	cmake ../ \
+	mkdir build && cd build
+	cmake \
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DENABLE_STATIC=OFF \
 		-DWITH_MP4=ON \
-		-DWITH_ASF=ON
-	make VERBOSE=1
-	make install
+		-DWITH_ASF=ON \
+		.. &&
+	make VERBOSE=1 && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
