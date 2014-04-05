@@ -11,11 +11,21 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/lxde/LXPanel%20%28desktop%20panel%29/LXPanel%20$VERSION/$TARBALL"
 CONFIG_FILES="/etc/lxpanel/default"
 TAGS="gtk2 panel"
+HOST_ARCH="i486 arm"
 
-SUGGESTED="lxsession slitaz-icon"
-DEPENDS="alsa-lib gtk+ menu-cache wireless_tools"
-BUILD_DEPENDS="gtk+-dev menu-cache-dev libwnck-dev alsa-lib-dev \
-wireless_tools-dev libxml2-dev lxmenu-data"
+SUGGESTED="lxde lxsession slitaz-icon"
+DEPENDS="alsa-lib gtk+ menu-cache wireless_tools libxml2 slitaz-menus"
+BUILD_DEPENDS="gtk+-dev menu-cache-dev alsa-lib-dev wireless_tools-dev \
+libxml2-dev lxmenu-data"
+
+# Handle cross compilation
+case "$ARCH" in
+	i?86) 
+		BUILD_DEPENDS="$BUILD_DEPENDS libwnck-dev" 
+		pluglist="all" ;;
+	arm*)
+		pluglist="netstatus,volumealsa,cpu,batt,xkb,thermal,cpufreq,monitors" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,10 +33,9 @@ compile_rules()
 	./configure \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
-		--with-plugins=all \
+		--with-plugins="$pluglist" \
 		$CONFIGURE_ARGS &&
-	make &&
-	make install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
