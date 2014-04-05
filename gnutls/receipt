@@ -9,23 +9,38 @@ LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gnu.org/software/gnutls/"
 WGET_URL="http://ftp.gnu.org/gnu/$PACKAGE/$TARBALL"
+HOST_ARCH="i486 arm"
 
-DEPENDS="nettle libgpg-error ncurses readline zlib gcc-lib-base libgnutls \
-libtasn1 p11-kit"
-BUILD_DEPENDS="libtasn1-dev ncurses-dev readline-dev p11-kit-dev \
-nettle-dev libgpg-error-dev libgcrypt-dev"
+DEPENDS="nettle libgpg-error ncurses readline zlib gcc-lib-base 
+libgnutls libcrypto libtasn1"
+BUILD_DEPENDS="libtasn1-dev ncurses-dev readline-dev nettle-dev 
+libgpg-error-dev libgcrypt-dev libcrypto-dev"
+
+# Handle SliTaz arch.
+case "$SLITAZ_ARCH" in
+	i?86) DEPENDS="$DEPENDS p11-kit" ;;
+esac
+
+# Handle cross compilation.
+case "$ARCH" in
+	i?86) 
+		BUILD_DEPENDS="$BUILD_DEPENDS p11-kit-dev" ;;
+	arm*) 
+		ARCH_ARGS="--with-libgcrypt-prefix=/cross/$ARCH/sysroot/usr \
+		--without-p11-kit --disable-rpath" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	# Apply http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-0092 fix
 	# from https://www.gitorious.org/gnutls/gnutls/commit/6aa26f78150ccbdf0aec1878a41c17c41d358a3b
 	patch -p1 < $stuff/CVE-2014-0092.u
-	./configure --with-libgcrypt \
-	--disable-guile \
-	--with-zlib \
-	$CONFIGURE_ARGS &&
+	./configure \
+		--with-libgcrypt \
+		--disable-guile \
+		--with-zlib \
+		$CONFIGURE_ARGS ${ARCH_ARGS} &&
 	make && make install
 }
 
