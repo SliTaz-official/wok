@@ -10,22 +10,24 @@ SOURCE="SDL_Pango"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://sdlpango.sourceforge.net/"
 WGET_URL="$SF_MIRROR/sdlpango/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="pango libsdl"
 BUILD_DEPENDS="pango-dev libsdl-dev pkg-config libxml2-dev"
 
+# Handle cross compilation
+case "$ARCH" in
+	arm*) ARCH_MAKE="LIBS=/cross/$ARCH/sysroot/usr/lib" ;;
+esac
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	patch -Np0 -i $stuff/SDL_Pango-$VERSION-API-adds.patch
 	patch -Np1 -i $stuff/matrix_declarations.patch
 	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make ${ARCH_MAKE} && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
