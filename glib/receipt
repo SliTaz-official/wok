@@ -14,12 +14,17 @@ HOST_ARCH="i486 arm"
 CROSS_BUGS="arm: glib 2.32.4 error: cannot compute alignment of guint32"
 
 DEPENDS="pcre libffi libxml2 elfutils"
-BUILD_DEPENDS="pcre-dev libffi-dev gettext zlib-dev perl python python-dev \
+BUILD_DEPENDS="pcre-dev libffi-dev gettext zlib-dev perl python-dev \
 elfutils-dev libxml2-dev libxml2-tools automake"
+
+# Handle SliTaz arch
+case "$SLITAZ_ARCH" in
+	arm*) VERSION="2.34.3" ;;
+esac
 
 # Handle cross comilation. Use host Perl, Python, etc
 case "$ARCH" in
-	arm)
+	arm*)
 		VERSION="2.34.3"
 		TARBALL="$PACKAGE-$VERSION.tar.xz"
 		WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
@@ -35,11 +40,10 @@ compile_rules()
 				--sysconfdir=/etc \
 				--with-pcre=system \
 				$CONFIGURE_ARGS ;;
-		arm)
+		arm*)
 			# Native ARM build --> if ARCH != SLITAZ_ARCH ?
-			#export LIBTOOL=arm-slitaz-linux-gnueabi-libtool 
-			export LD_LIBRARY_PATH=/cross/arm/sysroot/usr/lib:/usr/lib:/lib
-			export PKG_CONFIG_LIBPATH=/cross/arm/sysroot/usr/lib/pkgconfig
+			export LD_LIBRARY_PATH=/cross/$ARCH/sysroot/usr/lib:/usr/lib:/lib
+			export PKG_CONFIG_LIBPATH=/cross/$ARCH/sysroot/usr/lib/pkgconfig
 			
 			# Glib
 			export glib_cv_stack_grows=${glib_cv_stack_grows=no}
@@ -47,7 +51,8 @@ compile_rules()
 			export ac_cv_func_posix_getpwuid_r=${ac_cv_func_posix_getpwuid_r=no}
 			export ac_cv_func_posix_getgrgid_r=${ac_cv_func_posix_getgrgid_r=no}
 			export ac_cv_type_long_long=${ac_cv_type_long_long=yes}
-			CC="arm-slitaz-linux-gnueabi-gcc" \
+			CC="$HOST_SYSTEM-gcc" \
+			LIBTOOL="$HOST_SYSTEM-libtool" \
 			./configure \
 				--sysconfdir=/etc \
 				--with-pcre=system \

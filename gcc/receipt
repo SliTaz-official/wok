@@ -10,124 +10,28 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://gcc.gnu.org/"
 WGET_URL="ftp://gcc.gnu.org/pub/gcc/releases/gcc-$VERSION/$TARBALL"
 TAGS="compiler C"
+#HOST_ARCH="i486 arm"
 
 # We need gawk since busybox awk is not sufficient. We have BUILD_DEPENDS
 # for cookutils that are not used by tazwok/cook-toolchain since it install
 # and use it's own copy.
 DEPENDS="binutils libgomp libobjc gcc-lib-base mpc-library elfutils"
-BUILD_DEPENDS="elfutils mpc-library mpfr mpfr-dev gmp gmp-dev \
-elfutils-dev"
+BUILD_DEPENDS="mpc-library mpfr-dev gmp-dev elfutils-dev"
 
-# Rules to compile & install the temporary toolchain.
-precook_tmp_toolchain()
-{
-	report open-bloc
-	cd $src
-
-	# GCC requires the GMP, MPFR and MPC packages.
-	tazwok get-src mpfr --target=$PWD/mpfr || { report close-bloc; return 1; }
-	tazwok get-src gmp --target=$PWD/gmp || { report close-bloc; return 1; }
-	tazwok get-src mpc-library --target=$PWD/mpc || { report close-bloc; return 1; }
-
-	report step "Running compilation"
-
-	# Use libiberty.a from binutils.
-	sed -i 's/install_to_$(INSTALL_DEST) //' \
-		libiberty/Makefile.in || return 1
-
-	# Build it in a separate directory.
-	mkdir ../gcc-build
-	cd ../gcc-build
-
-	{ $src/configure \
-		--target=$HOST_SYSTEM \
-		--disable-nls --disable-shared --disable-multilib \
-		--disable-decimal-float --disable-threads \
-		--disable-libmudflap --disable-libssp \
-		--disable-libgomp --enable-languages=c \
-		--with-gmp-include=$(pwd)/gmp --with-gmp-lib=$(pwd)/gmp/.libs \
-		--without-ppl --without-cloog &&
-	make &&
-	make install
-	} || { report close-bloc; return 1; }
-
-	# See LFS for more detais about this.
-	ln -s libgcc.a `$HOST_SYSTEM-gcc -print-libgcc-file-name | \
-    		sed 's/libgcc/&_eh/'`
-	report close-bloc
-}
-
-cook_tmp_toolchain()
-{
-	report open-bloc
-	cd $src
-	patch -Np1 -i $stuff/gcc-$VERSION-startfiles_fix-1.patch || { report close-bloc; return 1; }
-
-	# Details about theses lines are in LFS book.
-	sed 's@\./fixinc\.sh@-c true@' -i gcc/Makefile.in
-	sed 's/^T_CFLAGS =$/& -fomit-frame-pointer/' -i gcc/Makefile.in
-	for file in \
-		$(find gcc/config -name linux64.h -o -name linux.h -o -name sysv4.h)
-	do
-		sed -e 's@/lib\(64\)\?\(32\)\?/ld@/tools&@g' \
-			-e 's@/usr@/tools@g' -i $file
-		echo '
-#undef STANDARD_INCLUDE_DIR
-#define STANDARD_INCLUDE_DIR 0
-#define STANDARD_STARTFILE_PREFIX_1 ""
-#define STANDARD_STARTFILE_PREFIX_2 ""' >> $file
-	done
-
-	if [ "$ARCH" = x86_64 ]; then
-		for file in $(find gcc/config -name t-linux64) ; do
-			sed '/MULTILIB_OSDIRNAMES/d' -i $file
-		done
-	fi
-
-	# GCC requires the GMP, MPFR and MPC packages.
-	tazwok get-src mpfr --target=$PWD/mpfr || { report close-bloc; return 1; }
-	tazwok get-src gmp --target=$PWD/gmp || { report close-bloc; return 1; }
-	tazwok get-src mpc-library --target=$PWD/mpc || { report close-bloc; return 1; }
-
-	report step "Running compilation"
-
-	# Use libiberty.a from binutils.
-	sed -i 's/install_to_$(INSTALL_DEST) //' \
-		libiberty/Makefile.in || return 1
-
-	# Build it in a separate directory.
-	mkdir ../gcc-build
-	cd ../gcc-build
-
-	{ CC="$HOST_SYSTEM-gcc -B/tools/lib/" \
-		AR=$HOST_SYSTEM-ar RANLIB=$HOST_SYSTEM-ranlib \
-		$src/configure \
-		--with-local-prefix=/tools --enable-clocale=gnu \
-		--enable-shared --enable-threads=posix \
-		--enable-__cxa_atexit --enable-languages=c,c++ \
-		--disable-libstdcxx-pch --disable-multilib \
-		--disable-bootstrap --disable-libgomp \
-		--with-gmp-include=$(pwd)/gmp --with-gmp-lib=$(pwd)/gmp/.libs \
-		--without-ppl --without-cloog &&
-	make &&
-	make install
-	} || { report close-bloc; return 1; }
-	ln -s gcc /tools/bin/cc
-	report close-bloc
-}
+# Handle cross compilation (native i486/ARM gcc)
+case "$ARCH" in
+	i?86)
+		ARCH_ARGS="--with-tune=$ARCH"
+		pkgversion="SliTaz"
+		languages="c,c++,objc,fortran" ;;
+	arm*)
+		pkgversion="SliTaz ARM"
+		languages="c,c++" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-
-	# SliTaz is a Busybox based OS, why we so small and fast. Using gawk by
-	# default to build package will not ensure package work with Busybox awk
-	# and so should NOT be use to cook.
-	if [ -x /usr/bin/cook ]; then
-		[ -d "/var/lib/tazpkg/installed/gawk" ] || tazpkg get-install gawk
-	fi
-
 	# Package slitaz-toolchain use 'cook --options' when rebuilding
 	# the full SliTaz toolchain.
 	[ "$2" == "--first-pass" ] && opt=$2
@@ -136,9 +40,8 @@ compile_rules()
 	# Use libiberty.a from binutils.
 	sed -i 's/install_to_$(INSTALL_DEST) //' libiberty/Makefile.in || return 1
 
-	case $ARCH in
-		i?86) sed -i 's/^T_CFLAGS =$/& -fomit-frame-pointer/' \
-			gcc/Makefile.in ;;
+	case "$ARCH" in
+		i?86) sed -i 's/^T_CFLAGS =$/& -fomit-frame-pointer/' gcc/Makefile.in ;;
 	esac
 
 	#sed -i 's@\./fixinc\.sh@-c true@' gcc/Makefile.in
@@ -161,8 +64,7 @@ compile_rules()
 				--enable-clocale=gnu \
 				--enable-threads=posix \
 				--disable-bootstrap \
-				--build=$HOST_SYSTEM \
-				--host=$HOST_SYSTEM &&
+				${CONFIGURE_ARGS} &&
 			make && make install ;;
 		*)
 			# Used by default to produce a full featured X86 GCC compiler.
@@ -170,7 +72,7 @@ compile_rules()
 			$src/configure \
 				--libexecdir=/usr/lib \
 				--enable-nls \
-				--enable-languages=c,c++,objc,fortran \
+				--enable-languages=${languages} \
 				--enable-shared \
 				--with-system-zlib \
 				--enable-clocale=gnu \
@@ -179,10 +81,8 @@ compile_rules()
 				--enable-lto \
 				--enable-threads=posix \
 				--disable-bootstrap \
-				--with-pkgversion="SliTaz" \
-				--with-tune=$ARCH \
-				--build=$HOST_SYSTEM \
-				--host=$HOST_SYSTEM &&
+				--with-pkgversion="$pkgversion" \
+				${CONFIGURE_ARGS} ${ARCH_ARGS} &&
 			make && make install ;;
 	esac
 }
