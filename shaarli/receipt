@@ -1,6 +1,8 @@
 # SliTaz package receipt.
 
 PACKAGE="shaarli"
+GITHASH="48b68c8fa5aa9ca98f3a9aaf9277656fe0cafb01"
+VERSION=${GITHASH:0:7}
 VERSION="0.0.41beta"
 CATEGORY="network"
 SHORT_DESC="A minimalist delicious clone."
@@ -8,27 +10,18 @@ WEB_SITE="http://sebsauvage.net/wiki/doku.php?id=php:shaarli"
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="zlib/libpng"
 TARBALL="${PACKAGE}_$VERSION.zip"
-_URL="http://sebsauvage.net/files/$TARBALL"
+WGET_URL="https://github.com/sebsauvage/Shaarli/archive/$GITHASH.zip"
 HOST_ARCH="any"
 
 DEPENDS="php"
-
-# Rules to configure and make the package.
-compile_rules()
-{
-	[ -s "$SOURCES_REPOSITORY/$TARBALL" ] ||
-		wget -O "$SOURCES_REPOSITORY/$TARBALL" $_URL
-	mkdir -p $src 2> /dev/null
-}
+BUILD_DEPENDS="wget"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.   
 genpkg_rules()                                      
 {
 	mkdir -p $fs/var/www
-	cd $fs/var/www
-	unzip "$SOURCES_REPOSITORY/$TARBALL"
-	mv $fs/var/www/$PACKAGE* $fs/var/www/$PACKAGE
-	sed -i "s|mt_rand())|mt_rand().'$_URL$$')|" $fs/var/www/$PACKAGE/index.php
+	cp -a $src $fs/var/www/$PACKAGE
+	sed -i "s|mt_rand())|mt_rand().'$WGET_URL$$')|" $fs/var/www/$PACKAGE/index.php
 }
 
 post_install()
