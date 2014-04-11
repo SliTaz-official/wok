@@ -9,6 +9,7 @@ LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://mtpaint.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+#HOST_ARCH="i486 arm"
 
 DEPENDS="gtk+ libpng lcms"
 BUILD_DEPENDS="gtk+-dev libpng-dev lcms-dev"
@@ -17,12 +18,19 @@ BUILD_DEPENDS="gtk+-dev libpng-dev lcms-dev"
 compile_rules()
 {
 	cp -a $stuff/icons/*.xpm $src/src/icons1
-	cd $src
-	./configure \
-		--cpu=$ARCH \
-		--prefix=/usr \
-		intl nogif &&
-	make
+	case "$ARCH" in
+		i?86)
+			./configure \
+				--cpu=$ARCH \
+				--prefix=/usr \
+				intl nogif ;;
+		arm*)
+			# we need: arm-slitaz-linux-gnueabi-pkg-config
+			./configure \
+				--prefix=/usr \
+				--host=${HOST_SYSTEM} \
+				intl nogif
+	esac && make
 	# install mo files to the right place
 	for i in $(find $src/po/*.mo); do
 		LNG=$(basename $i .mo)
