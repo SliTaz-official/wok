@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="squeak-vm"
+VERSION="4.10.2.2614"
+SOURCE="Squeak"
+CATEGORY="network"
+SHORT_DESC="Create and share interactive stories, games, music and art."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="MIT"
+TARBALL="$SOURCE-$VERSION-src.tar.gz"
+WEB_SITE="http://scratch.mit.edu/"
+WGET_URL="http://squeakvm.org/unix/release/$TARBALL"
+HOST_ARCH="i486 arm"
+
+SUGGESTED=""
+DEPENDS="alsa-lib dbus xorg-libXrender"
+BUILD_DEPENDS="alsa-lib-dev dbus-dev xorg-libXrender-dev cmake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./unix/cmake/configure \
+		--prefix=/usr \
+		--without-quartz \
+		--with-x \
+		--enable-mpg-mmx &&
+	make && make DESTDIR=${DESTDIR} install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+}

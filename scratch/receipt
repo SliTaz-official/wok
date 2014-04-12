@@ -1,0 +1,50 @@
+# SliTaz package receipt.
+
+PACKAGE="scratch"
+VERSION="1.4.0.7"
+CATEGORY="network"
+SHORT_DESC="Create and share interactive stories, games, music and art."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.src.tar.gz"
+WEB_SITE="http://scratch.mit.edu/"
+WGET_URL="http://download.scratch.mit.edu/$TARBALL"
+HOST_ARCH="i486 arm"
+
+SUGGESTED="scratch-help"
+DEPENDS="pango shared-mime-info squeak-vm"
+BUILD_DEPENDS="pango-dev shared-mime-info-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's/-vm-sound-pulse/-vm-sound-ALSA/' src/scratch &&
+	make build &&
+	# Install
+	mkdir -p ${DESTDIR}/usr/bin \
+		${DESTDIR}/usr/lib/scratch \
+		${DESTDIR}/usr/share/scratch \
+		${DESTDIR}/usr/share/icons/hicolor \
+		${DESTDIR}/usr/share/applications \
+		${DESTDIR}/usr/share/mime/packages \
+		${DESTDIR}/usr/share/icons/hicolor/48x48/apps \
+		${DESTDIR}/usr/share/icons/hicolor/48x48/mimetypes &&
+	install -m 755 src/scratch ${DESTDIR}/usr/bin/scratch &&
+	install -m 644 Scratch.image ${DESTDIR}/usr/lib/scratch/Scratch.image &&
+	install -m 644 Scratch.ini ${DESTDIR}/usr/lib/scratch/Scratch.ini &&
+	cp src/scratch.desktop ${DESTDIR}/usr/share/applications &&
+	cp src/scratch.xml ${DESTDIR}/usr/share/mime/packages &&
+	cp -a Plugins ${DESTDIR}/usr/lib/scratch &&
+	cp -a locale Media Projects ${DESTDIR}/usr/share/scratch &&
+	cp src/icons/48x48/scratch.png \
+		${DESTDIR}/usr/share/icons/hicolor/48x48/apps &&
+	cp src/icons/48x48/gnome-mime-*.png \
+		${DESTDIR}/usr/share/icons/hicolor/48x48/mimetypes
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs
+	cp -a $install/* $fs
+}
