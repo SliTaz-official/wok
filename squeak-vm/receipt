@@ -12,16 +12,23 @@ WEB_SITE="http://scratch.mit.edu/"
 WGET_URL="http://squeakvm.org/unix/release/$TARBALL"
 HOST_ARCH="i486 arm"
 
-SUGGESTED=""
+SUGGESTED="scratch"
 DEPENDS="alsa-lib dbus xorg-libXrender"
-BUILD_DEPENDS="alsa-lib-dev dbus-dev xorg-libXrender-dev cmake"
+BUILD_DEPENDS="alsa-lib-dev dbus-dev xorg-libXrender-dev"
+
+# Use build host cmake when cross compiling
+case "$ARCH" in
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS cmake" ;;
+	arm) ARCH_ARGS="--without-SqueakFFIPrims" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./unix/cmake/configure \
+	./unix/cmake/configure ${ARCH_ARGS} \
 		--prefix=/usr \
 		--without-quartz \
+		--without-gl \
 		--with-x \
 		--enable-mpg-mmx &&
 	make && make DESTDIR=${DESTDIR} install
