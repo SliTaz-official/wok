@@ -9,28 +9,38 @@ LICENSE="LGPL2"
 TARBALL="$PACKAGE-$VERSION-source.tar.gz"
 WEB_SITE="http://www.fltk.org/"
 WGET_URL="http://fltk.org/pub/fltk/$VERSION/$TARBALL"
-#HOST_ARCH="i486 arm"
+HOST_ARCH="i486 arm"
 
 DEPENDS="expat fontconfig freetype libpng jpeg xorg-libX11 xorg-libXau xorg-libXdmcp \
 xorg-libXext xorg-libXft xorg-libXrender zlib libpng gcc-lib-base mesa libglu-mesa"
 BUILD_DEPENDS="jpeg-dev libpng-dev libglu-mesa libglu-mesa-dev mesa mesa-dev"
 
+# Handle SliTaz arch
+case "$SLITAZ_ARCH" in
+	arm*) DEPENDS="$DEPENDS expat fontconfig freetype jpeg libpng xorg-libXft" ;;
+esac
+
 # Handle cross compilation.
 case "$ARCH" in
-	arm) BUILD_DEPENDS="jpeg-dev libpng-dev xorg-libXft-dev" ;;
+	i?86) ARCH_ARGS="--with-archflags=i386" ;;
+	arm) 
+		BUILD_DEPENDS="jpeg-dev libpng-dev xorg-libXft-dev" 
+		ARCH_ARGS="--x-includes=/cross/$ARCH/sysroot/usr/include" ;;
 esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
+	sed -i \
+		-e 's/$(LINKFLTK)/$(LINKSHARED)/' \
+		-e 's/$(LINKFLTKIMG)/$(LINKSHARED)/' test/Makefile
+	./configure ${ARCH_ARGS} \
 		--enable-shared \
 		--enable-xft \
 		--enable-threads \
-		 --x-includes=/cross/arm/sysroot/usr/include \
-		 --x-libraries=/cross/arm/sysroot/usr/lib \
+		 --x-libraries=/cross/$ARCH/sysroot/usr/lib \
 		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS &&
+	make lib $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
 
