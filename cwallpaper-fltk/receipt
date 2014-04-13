@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="cwallpaper-fltk"
+VERSION="0.4.2"
+CATEGORY="system-tools"
+SHORT_DESC="PC XT-compatible emulator/virtual machine."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://cwallpaper.sourceforge.net"
+WGET_URL="$SF_MIRROR/cwallpaper/$PACKAGE/cwallpaper-fltk-$VERSION/$TARBALL"
+HOST_ARCH="i486 arm"
+
+SUGGESTED="hsetroot feh"
+DEPENDS="fltk"
+BUILD_DEPENDS="fltk-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i s"#g++#${HOST_SYSTEM}-g++#" Makefile || return 1
+	make && mkdir -p ${DESTDIR}/usr/bin/ &&
+	make DESTDIR=${DESTDIR} install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/cwallpaper
+	cp -a $install/usr/bin $fs/usr
+	cp $install/usr/share/cwallpaper/example_config \
+		$fs/usr/share/cwallpaper
+}
