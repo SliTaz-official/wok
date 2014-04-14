@@ -1,0 +1,34 @@
+# SliTaz package receipt
+
+PACKAGE="flmusic"
+VERSION="1.2.1"
+CATEGORY="multimedia"
+SHORT_DESC="FLTK Audio player"
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL"
+TARBALL="$PACKAGE-fltk13-source-$VERSION.tgz"
+WEB_SITE="http://home.arcor.de/szukw000/english_index.html"
+WGET_URL="http://home.arcor.de/szukw000/$TARBALL"
+
+DEPENDS="fltk alsa-lib sox"
+BUILD_DEPENDS="fltk-dev alsa-lib-dev sox-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	#sed -i '/ioctl.h/a #include <limits.h>' reader.c &&
+	sed -i 's/$(installdir)/$(DESTDIR)$(installdir)/' \
+		Makefile.in || return 1
+	chmod +x configure &&
+	./configure --prefix=/usr \
+		$CONFIGURE_ARGS  && 
+	make && mkdir -p $DESTDIR/usr/bin &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+}

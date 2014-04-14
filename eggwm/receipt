@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="eggwm"
+VERSION="0.2"
+CATEGORY="x-window"
+SHORT_DESC="EggWM is a light QT Window Manager."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL3"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://code.google.com/p/eggwm/"
+WGET_URL="http://eggwm.googlecode.com/files/$TARBALL"
+
+DEPENDS="xorg-libX11 libQtCore libQtGui"
+BUILD_DEPENDS="qmake Qt4-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	qmake EggWM.pro && 
+	make && 
+	make install INSTALL_ROOT=$DESTDIR
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share
+	install -m 755 $src/eggwm $fs/usr/bin/eggwm
+	cp -a $src/installation $fs/usr/share/eggwm
+	rm -rf $fs/usr/share/eggwm/themes/testtheme
+	find $fs/usr/share/eggwm -type f -exec chmod 0644 {} \;
+	cp -r $stuff/xsessions $fs/usr/share
+}
+
+post_install()
+{
+	res=$(cat $root/etc/slim.conf | grep ^session | sed s/"sessions. *"//)
+	# Adding WM to SLIM available sessions.
+	if ! echo "$res" | grep -q $PACKAGE; then
+		echo -n "Adding $PACKAGE to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" $root/etc/slim.conf
+		status
+	fi
+}
+
+post_remove()
+{
+	# Remove WM from SLIM available sessions.
+	if grep -q $PACKAGE $1/etc/slim.conf; then
+		sed -i s/,$PACKAGE// $root/etc/slim.conf
+	fi
+}

@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="tinyxml"
+VERSION="2_6_2"
+CATEGORY="system-tools"
+SHORT_DESC="TinyXML is a simple, small, C++ XML parser."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL2"
+TARBALL="${PACKAGE}_$VERSION.zip"
+WEB_SITE="http://wiki.lxde.org/en/LXMusic"
+WGET_URL="$SF_MIRROR/project/$PACKAGE/$PACKAGE/2.6.2/$TARBALL"
+HOST_ARCH="i486 arm"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	make &&
+	${HOST_SYSTEM}-g++ -m32 -fPIC "$CXXFLAGS" -shared \
+		-o libtinyxml.so.0.${pkgver} \
+		-Wl,-soname,libtinyxml.so.0 $(ls *.o | grep -v xmltest)
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/bin
+	cp -a ${src}/xmltest $fs/usr/bin
+	cp -a ${src}/*.so* $fs/usr/lib
+	cd  $fs/usr/lib
+	ln -s libtinyxml.so.0.2.6.2 libtinyxml.so.0
+	ln -s libtinyxml.so.0.2.6.2 libtinyxml.so
+}
+
