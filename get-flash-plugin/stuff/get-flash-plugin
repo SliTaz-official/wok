@@ -21,41 +21,21 @@ if [ -d ${ROOT}${INSTALLED}/$PACKAGE ]; then
   [ -d $INSTALLED/$PACKAGE ] && exit 1
 fi
 
-VERSION=$(echo " $@ " | sed '/ [0-9]* /!d;s/.* \([0-9]*\) .*/\1/')
-[ -n "$VERSION" ] && [ $VERSION -lt 100 ] && VERSION=${VERSION}0
+VERSION=11.2.202.350
 
-URL=
-for i in ${VERSION/./} $(seq 111 999); do
-	n="$(busybox wget -O - "http://get.adobe.com/fr/flashplayer/completion/?installer=Flash_Player_${i:0:2}.${i:2:1}_for_other_Linux_(.tar.gz)_32-bit" | \
-	     sed "/gz/!d;s/.* '//;s/'.*//")"
-	[ -n "$n" ] && URL="$n" && [ "$i" != "${VERSION/./}" ] && continue
-	[ -n "$URL" ] && break
-done
-[ -z "$URL" ] && for i in ${VERSION:0:2} $(seq 11 99); do
-	n="$(busybox wget -O - "http://get.adobe.com/fr/flashplayer/completion/?installer=Flash_Player_${i}_for_other_Linux_(.tar.gz)_32-bit" | \
-	     sed "/gz/!d;s/.* '//;s/'.*//")"
-	[ -n "$n" ] && URL="$n" && [ "$i" != "${VERSION:0:2}" ] && continue
-	[ -n "$URL" ] && break
-done
-
-if [ -z "$URL" ]; then
-	echo "Could not find url. Exiting."
-	exit 1
-fi
-
+URL=http://fpdownload.macromedia.com/get/flashplayer/pdc/$VERSION/install_flash_player_11_linux.i386.tar.gz
 TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
 CUR_DIR=$(pwd)
 mkdir -p $TMP_DIR && cd $TMP_DIR
-TARBALL="$(basename $URL)"
+TARBALL="install_flash_player_11_linux.i386.tar.gz"
 busybox wget -O $TARBALL $URL
+
 if [ ! -f $TARBALL ]; then
 	echo "Could not download $TARBALL. Exiting."
 	exit 1
 fi
 
 tar xzf $TARBALL
-
-VERSION="$(strings libflashplayer.so | grep ^LNX | sed -e 's/LNX //' -e 's/,/./g')"
 
 # Install files
 chmod 755 libflashplayer.so
