@@ -9,21 +9,20 @@ LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://parcellite.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="gtk+ xorg-libX11 xorg-libXdamage"
-BUILD_DEPENDS="xorg-dev gtk+-dev intltool autoconf automake"
+BUILD_DEPENDS="xorg-libX11-dev gtk+-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {	
-	cd $src
 	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
 	export LDFLAGS="-Wl,--copy-dt-needed-entries -lX11"
 	find . -name '*.[ch]*' | xargs sed -i 's|<glib/.*h|<glib.h|'
 	./configure \
-		--prefix=/usr \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

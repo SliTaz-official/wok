@@ -9,22 +9,28 @@ LICENSE="BSD"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.openssh.org/"
 WGET_URL="ftp://ftp.fr.openbsd.org/pub/OpenBSD/OpenSSH/portable/$TARBALL"
-TAZPANEL_DAEMON="man::sshd|edit::/etc/ssh/sshd_config|options|web::$WEB_SITE"
-PROVIDE="ssh"
-TAGS="ssh"
+TAGS="ssh security"
+HOST_ARCH="i486 arm"
 
+PROVIDE="ssh"
 DEPENDS="sftp-server libcrypto zlib"
 BUILD_DEPENDS="libcrypto-dev zlib-dev openssl-dev"
+TAZPANEL_DAEMON="man::sshd|edit::/etc/ssh/sshd_config|options|web::$WEB_SITE"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr --sysconfdir=/etc/ssh --without-pam \
-		--with-privsep-user=nobody --with-privsep-path=/var/run/sshd \
+	unset LD # for cross compiling with --disable-strip
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc/ssh \
 		--libexecdir=/usr/sbin \
+		--with-privsep-user=nobody \
+		--with-privsep-path=/var/run/sshd \
+		--without-pam \
+		--disable-strip \
 		$CONFIGURE_ARGS &&
-	make &&
+	make STRIP_OPT="" &&
 	make DESTDIR=$DESTDIR install
 }
 
