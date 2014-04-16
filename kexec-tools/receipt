@@ -9,6 +9,7 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="ftp://ftp.kernel.org/pub/linux/utils/kernel/kexec/"
 WGET_URL="${WEB_SITE}$TARBALL"
+HOST_ARCH="i486 arm x86_64"
 
 DEPENDS="zlib"
 BUILD_DEPENDS="zlib-dev liblzma-dev"
@@ -18,10 +19,24 @@ compile_rules()
 {
 	cd $src
 	export LDFLAGS="-lpthread"
-	./configure prefix=/usr \
-		--target=i386-linux &&
+	case "$ARCH" in
+	i?86)
+		./configure prefix=/usr \
+			--target=i386-linux ;;
+	*)
+		./configure prefix=/usr \
+			--build=$BUILD_SYSTEM \
+			--host=$HOST_SYSTEM ;;
+	esac &&
 	make &&
 	make DESTDIR=$DESTDIR install
+}
+
+# Important cross compiled package so run readelf.
+testsuite()
+{
+	cd $install
+	readelf -h usr/sbin/kexec
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
