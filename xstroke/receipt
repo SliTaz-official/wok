@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="xstroke"
+VERSION="0.6"
+CATEGORY="x-window"
+SHORT_DESC="Full-screen gesture recognition program for X."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://cworth.org/~cworth/papers/xstroke/"
+WGET_URL="http://davesource.com/Projects/xstroke/xstroke.tar.gz"
+HOST_ARCH="i486 arm"
+
+DEPENDS="xorg-libX11"
+BUILD_DEPENDS="xorg-libX11-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	case "$ARCH" in
+		i?86) sysroot="" ;;
+		arm*) sysroot="/cross/$ARCH/sysroot" ;;
+	esac
+	sed -i \
+		-e s"#^CC.*#CC = ${HOST_SYSTEM}-gcc#" \
+		-e s"#^INCLUDE.*#INCLUDE = -I${sysroot}/usr/include#" \
+		-e s"#^LDFLAGS.*#LDFLAGS = -L${sysroot}/usr/lib#" Makefile &&
+	make xstroke
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/doc/${PACKAGE}
+	cp -a ${src}/${PACKAGE} $fs/usr/bin
+	cp -a ${src}/${PACKAGE}.man \
+		$fs/usr/share/doc/${PACKAGE}/${PACKAGE}.txt
+}
