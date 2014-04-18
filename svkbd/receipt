@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="svkbd"
+VERSION="git-1"
+CATEGORY="x-window"
+SHORT_DESC="Simple virtual keyboard that suck less (EN Layout)."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="BSD"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://tools.suckless.org/svkbd"
+WGET_URL="git|http://git.suckless.org/svkbd"
+HOST_ARCH="i486 arm"
+
+DEPENDS="xorg-libX11 xorg-libXtst"
+BUILD_DEPENDS="xorg-libX11-dev xorg-libXtst-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{ 
+	cp -d ${stuff}/config.def.h .
+	for layout in de en ru
+	do
+		make svkbd-${layout} CC=${HOST_SYSTEM}-gcc || return 1
+	done
+	# We may need to sed config.def.h to set correct font for RU ???
+	#make svkbd-ru CC=${HOST_SYSTEM}-gcc
+	make install DESTDIR=${DESTDIR} PREFIX="/usr"
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a ${install}/usr/bin/${PACKAGE}-en $fs/usr/bin
+}
