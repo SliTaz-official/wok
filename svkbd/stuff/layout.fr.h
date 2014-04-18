@@ -6,7 +6,7 @@ static Key keys[] = {
 	{ "(5[", XK_parenleft, 1 },
 	{ "-6|", XK_minus, 1 },
 	{ "é7`", XK_egrave, 1 },
-	{ "_8\", XK_underscore, 1 },
+	{ "_8\\", XK_underscore, 1 },
 	{ "ç9^", XK_cedilla, 1 },
 	{ "à0@", XK_agrave, 1 },
 	{ ")°]", XK_parenright, 1 },
@@ -24,7 +24,7 @@ static Key keys[] = {
 	{ "iI", XK_i, 1 },
 	{ "oO", XK_o, 1 },
 	{ "pP", XK_p, 1 },
-	{ "^", XK_caret, 1 },
+	{ "^", XK_dead_circumflex, 1 },
 	{ "$£¤", XK_dollar, 1 },
 	{ "Return", XK_Return, 3 },
 	{ 0 }, /* New row */
