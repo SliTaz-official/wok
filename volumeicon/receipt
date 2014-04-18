@@ -9,6 +9,7 @@ LICENSE="GPL3"
 WEB_SITE="http://softwarebakery.com/maato/volumeicon.html"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://softwarebakery.com/maato/files/$PACKAGE/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="gtk+ alsa-lib libnotify"
 BUILD_DEPENDS="gtk+-dev alsa-lib-dev libnotify-dev"
@@ -18,12 +19,16 @@ compile_rules()
 {
 	patch -p0 < $stuff/alsa_backend.patch
 	./configure --enable-notify $CONFIGURE_ARGS && 
-	make && 
-	make install
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
+	mkdir -p $fs/etc/xdg
+	cp -rf ${stuff}/autostart $fs/etc/xdg
+	cp -rf ${stuff}/skel $fs/etc
+	cp -rf $install/* $fs
+	rm -rf $fs/usr/share/${PACKAGE}/icons/*Gnone
+	rm -rf $fs/usr/share/${PACKAGE}/icons/tango
 }

@@ -4,7 +4,7 @@ PACKAGE="feh"
 VERSION="2.10"
 CATEGORY="graphics"
 SHORT_DESC="Lightweight and powerful image viewer and composer"
-MAINTAINER="mallory@sweetpeople.org"
+MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://derf.homelinux.org/~derf/projects/feh/"
@@ -20,9 +20,14 @@ xorg-libX11-dev libpng-dev jpeg-dev curl-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i -e 's:/usr/local:/usr:g' config.mk &&
-	make && make DESTDIR=$DESTDIR install
+	make && make DESTDIR=$DESTDIR install &&
+	# Fix path to icon and remove from menu since it need a param to
+	# load images.
+	sed -i \
+		-e s'#/home/slitaz/wok/feh/install##' \
+		-e '/Categories.*/'d \
+		$DESTDIR/usr/share/applications/feh.desktop || return 1
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
