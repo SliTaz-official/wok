@@ -2,7 +2,6 @@
 
 PACKAGE="slitaz-configs"
 VERSION="5.4"
-ARM_VERS="0.3"
 CATEGORY="base-system"
 SHORT_DESC="SliTaz config files and artwork."
 MAINTAINER="pankso@slitaz.org"
@@ -10,7 +9,6 @@ LICENSE="GPL3"
 WEB_SITE="http://www.slitaz.org/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://hg.slitaz.org/slitaz-configs/archive/$VERSION.tar.gz"
-CONFIG_FILES="/etc/slitaz/applications.conf"
 HOST_ARCH="i486 arm"
 
 DEPENDS="slitaz-configs-base xorg-libXcomposite xorg-libXdamage \
@@ -19,19 +17,8 @@ xorg-xcompmgr transset-df ttf-dejavu slim"
 # Special case for ARM since some (most) config files are in slitaz-arm repo.
 # i486/arm common configs are provided by slitaz-configs-base.
 case "$SLITAZ_ARCH" in
-	arm*)
-		VERSION="$ARM_VERS"
-		WEB_SITE="http://arm.slitaz.org/"
-		DEPENDS="slitaz-configs-base ttf-dejavu slim" 
-		CONFIG_FILES="/etc/slitaz/applications.conf /etc/rcS.conf" ;;
-esac
-
-case "$ARCH" in
-	arm*)
-		VERSION="$ARM_VERS"
-		WEB_SITE="http://arm.slitaz.org/"
-		TARBALL="$PACKAGE-arm-$VERSION.tar.bz2"
-		WGET_URL="http://hg.slitaz.org/slitaz-arm/archive/tip.tar.bz2" ;;
+	i?86) CONFIG_FILES="/etc/slitaz/applications.conf" ;;
+	i?86) DEPENDS="$DEPENDS slitaz-arm-configs" ;;
 esac
 
 # Rules to configure and make the package.
@@ -59,14 +46,16 @@ genpkg_rules()
 			do
 				cp -r $src/rootfs/usr/share/$i $fs/usr/share
 			done
-		
 			cp -a $src/rootfs/usr/bin $fs/usr
 			cp -a $src/rootfs/etc/lxpanel $fs/etc
 			cp -a $src/rootfs/etc/slitaz $fs/etc
-			cp -a $install/etc/xdg/openbox/menu.en.xml $install/etc/xdg/openbox/menu.xml \
+			cp -a $install/etc/xdg/openbox/menu.en.xml \
+				$install/etc/xdg/openbox/menu.xml \
 				$fs/etc/xdg/openbox ;;
 		arm)
-			cp -a rootfs/* ${fs} ;;
+			mkdir -p $fs/usr/share
+			cp -a $src/rootfs/usr/share/applications $fs/usr/share
+			cp -a $src/rootfs/usr/share/slitaz $fs/usr/share ;;
 	esac
 	chown -R root.root $fs
 }
