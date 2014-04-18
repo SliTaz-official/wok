@@ -11,7 +11,11 @@ WEB_SITE="http://www.slitaz.org/"
 WGET_URL="http://hg.slitaz.org/$PACKAGE/archive/$VERSION.tar.gz"
 HOST_ARCH="i486 arm"
 
-CONFIG_FILES="/etc/inittab /etc/init.d/local.sh /etc/rcS.conf /etc/network.conf"
+CONFIG_FILES="
+/etc/inittab 
+/etc/init.d/local.sh
+/etc/rcS.conf
+/etc/network.conf"
 
 # Needed to fetch the keymaps and test the filesystem.
 DEPENDS="kbd-base e2fsprogs busybox"
@@ -30,16 +34,28 @@ genpkg_rules()
 	cp -a $src/init $fs
 	cp -a $src/applications $fs/usr/share
 
-	# Perms
 	chown -R root.root $fs
 	chmod 755 $fs/etc/init.d/*.sh
 	chmod 755 $fs/etc/init.d/rc*
 	chmod 755 $fs/init
+	
+	case "$ARCH" in
+		arm*)
+			# Provided by slitaz-arm-configs
+			rm \
+				$fs/etc/rcS.conf \
+				$fs/etc/inittab \
+				$fs/etc/init.d/rcS \
+				$fs/etc/init.d/shutdown.sh \
+				$fs/etc/init.d/system.sh ;;
+	esac
 }
 
 # Post install commands.
 #
 post_install()
 {
- 	chroot $1/ /usr/bin/rcSconf up
+	case "$SLITAZ_ARCH" in
+		i?86) chroot $1/ /usr/bin/rcSconf up ;;
+	esac
 }
