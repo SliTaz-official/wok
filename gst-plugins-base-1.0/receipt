@@ -5,23 +5,36 @@ VERSION="1.2.3"
 SERIES="1.0"
 CATEGORY="multimedia"
 SHORT_DESC="GStreamer Base Plugins"
-MAINTAINER="jozee@slitaz.org"
+MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 SOURCE="gst-plugins-base"
 TARBALL="$SOURCE-$VERSION.tar.xz"
 WEB_SITE="http://gstreamer.freedesktop.org/"
 WGET_URL="${WEB_SITE}src/gst-plugins-base/$TARBALL"
-LOCALES="da de es fr id it pt_BR ru zh_CN"
+HOST_ARCH="i486 arm"
 
 DEPENDS="gstreamer-1.0 pango alsa-lib libogg libtheora libtheora-enc \
-libvorbis vorbis-tools udev xorg xorg-libXv xorg-libXvMC cdparanoia-III orc"
+libvorbis vorbis-tools udev xorg xorg-libXv xorg-libXvMC orc"
 BUILD_DEPENDS="gstreamer-1.0-dev pango-dev alsa-lib-dev libogg-dev \
 libtheora-dev libtheora-enc libvorbis-dev udev-dev xorg-libXv-dev \
-xorg-libXvMC-dev cdparanoia-III-dev orc-dev util-linux-uuid-dev"
+xorg-libXvMC-dev util-linux-uuid-dev orc-dev"
+
+# Arch install
+case "$SLITAZ_ARCH" in
+	i?86) DEPENDS="$DEPENDS cdparanoia-III orc" ;
+esac
+
+# Cross compilation
+case "$ARCH" in
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS cdparanoia-III-dev orc-dev" ;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	sysroot="/cross/arm/sysroot"
+	libs="/usr/lib"
+	incl="/usr/include"
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -29,13 +42,13 @@ compile_rules()
 		--enable-experimental \
 		--disable-static \
 		--disable-debug \
-		--disable-gnome_vfs \
+		--disable-gnome-vfs \
+		--disable-libvisual \
 		--enable-introspection=no \
 		--with-package-name="GStreamer Base Plugins ($SERIES)" \
 		--with-package-origin="http://www.slitaz.org/" \
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS && make install
-
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -45,7 +58,4 @@ genpkg_rules()
 	mv $install/usr/bin $fs/usr
 	mv $install/usr/lib/*.so* $fs/usr/lib
 	mv $install/usr/lib/gstreamer-$SERIES/*.so* $fs/usr/lib/gstreamer-$SERIES
-	for locale in $LOCALES; do
-		mv $install/usr/share/locale/$locale $fs/usr/share/locale
-	done
 }
