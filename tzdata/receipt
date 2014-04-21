@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="tzdata"
+VERSION="2014b"
+CATEGORY="base-system"
+SHORT_DESC="Time Zone Database"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="PublicDomain"
+WEB_SITE="http://www.iana.org/time-zones"
+TARBALL="$PACKAGE$VERSION.tar.gz"
+WGET_URL="ftp://ftp.iana.org/tz/releases/$TARBALL"
+
+DEPENDS="glibc"
+BUILD_DEPENDS="glibc-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	ZONEINFO=$install/usr/share/zoneinfo
+	mkdir -p $ZONEINFO/posix $ZONEINFO/right
+
+	tzs="etcetera southamerica northamerica europe africa antarctica asia \
+australasia backward pacificnew solar87 solar88 solar89 systemv"
+	zic -L /dev/null	-d $ZONEINFO		-y "sh yearistype.sh" $tzs
+	zic -L /dev/null	-d $ZONEINFO/posix	-y "sh yearistype.sh" $tzs
+	zic -L leapseconds	-d $ZONEINFO/right	-y "sh yearistype.sh" $tzs
+
+	cp -a $src/zone.tab $src/iso3166.tab $ZONEINFO
+	zic -d $ZONEINFO -p America/New_York
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+	for locale in $LOCALE_PACK; do
+		echo "* Removing files provided by locale-$locale..."
+		files=$(cat $WOK/locale-$locale/taz/locale-$locale-*/files.list | \
+				grep /usr/share/zoneinfo/)
+		for file in $files; do
+			[ -e $fs/$file ] && rm -f $fs$file
+		done
+	done
+}
