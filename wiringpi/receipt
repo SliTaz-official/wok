@@ -1,0 +1,58 @@
+# SliTaz package receipt.
+
+PACKAGE="wiringpi"
+GITHASH="f18c8f7204d6354220fd6754578b3daa43734e1b"
+VERSION="${GITHASH:0:7}"
+CATEGORY="system-tools"
+SHORT_DESC="GPIO access library written in C for the Raspberry Pi/BCM2835."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="LGPL"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://wiringpi.com/"
+WGET_URL="git|git://git.drogon.net/wiringPi"
+HOST_ARCH="arm"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Fixes: fancy paths in Makefile and do sym link manually
+	sed -i \
+		-e s"#CC	= gcc#CC = ${HOST_SYSTEM}-gcc#" \
+		-e s"#DESTDIR=.*#DESTDIR=$DESTDIR#" \
+		-e s"#PREFIX=.*#PREFIX=/usr#" */Makefile
+	
+	# First: WiringPi Library
+	cd ${src}/wiringPi
+	make || return 1
+	sed -i '/libwiringPi.so$/'d Makefile
+	make install && cd ${DESTDIR}/usr/lib
+	ln -s libwiringPi.so.2.0 libwiringPi.so
+	
+	# Second: Devices Library
+	cd ${src}/devLib
+	sed -i \
+		-e s'#^INCLUDE.*#INCLUDE = -I. -I${DESTDIR}/usr/include#' \
+		-e '/libwiringPiDev.so$/'d Makefile
+	make || return 1
+	make install && cd ${DESTDIR}/usr/lib
+	ln -s libwiringPiDev.so.2.0 libwiringPiDev.so
+	
+	# Last: GPIO Utility
+	cd ${src}/gpio
+	patch -p0 < ${stuff}/gpio-decodePin.patch
+	mkdir -p ${DESTDIR}/usr/bin
+	make && make install
+}
+
+# SliTaz package testsuite
+testsuite() {
+	readelf -Ah ${install}/usr/bin/gpio || return 1
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a ${install}/usr/lib/*.so* $fs/usr/lib
+	cp -a ${install}/usr/bin $fs/usr
+}
