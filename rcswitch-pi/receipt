@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="rcswitch-pi"
+GITHASH="2c9c027217ae0b4fe132e0725db166ac29f93974"
+VERSION="${GITHASH:0:7}"
+CATEGORY="system-tools"
+SHORT_DESC="Control remote power sockets using the Raspberry Pi."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="https://github.com/r10r/rcswitch-pi"
+WGET_URL="git|git://github.com/r10r/rcswitch-pi.git"
+HOST_ARCH="arm"
+
+DEPENDS="wiringpi"
+BUILD_DEPENDS="wiringpi-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	git checkout ${GITHASH} &&
+	make 
+}
+
+# SliTaz package testsuite
+testsuite() {
+	readelf -h ${src}/send || return 1
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	install -m 0755 ${src}/send ${fs}/usr/bin/${PACKAGE}
+}
