@@ -11,15 +11,22 @@ WEB_SITE="http://www.mpg123.de/"
 WGET_URL="http://www.mpg123.de/download/$TARBALL"
 HOST_ARCH="i486 arm"
 
-DEPENDS="alsa-lib"
-BUILD_DEPENDS="alsa-lib-dev"
+DEPENDS="alsa-lib audiofile"
+BUILD_DEPENDS="alsa-lib-dev audiofile-dev"
+
+# Arch optimisation
+case "$ARCH" in
+	i486) ARCH_ARGS="--with-cpu=i486" ;;
+	arm*) ARCH_ARGS="--with-cpu=arm_nofpu" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	./configure \
 		--with-default-audio=alsa \
-		$CONFIGURE_ARGS &&
+		--with-audio="alsa" \
+		$CONFIGURE_ARGS ${ARCH_ARGS} &&
 	make && make install
 }
 
@@ -34,4 +41,6 @@ genpkg_rules()
 		cp -a $install/usr/lib/mpg123 $fs/usr/lib
 		find $fs/usr/lib -name "*.la" -exec rm -f {} \;
 	fi
+	# Needed to work!!! Dont remove
+	cp $install/usr/lib/libmpg123.la $fs/usr/lib
 }
