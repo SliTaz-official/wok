@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="python-rpi-gpio"
+VERSION="0.5.5"
+CATEGORY="raspberrypi"
+SHORT_DESC="Python class to control the GPIO on a Raspberry Pi."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="BSD"
+SOURCE="RPi.GPIO"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="https://pypi.python.org/pypi/RPi.GPIO"
+WGET_URL="https://pypi.python.org/packages/source/R/$SOURCE/$TARBALL"
+HOST_ARCH="arm"
+
+DEPENDS="python python-smbus"
+BUILD_DEPENDS="python-dev setuptools"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Cross compilation hack
+	case "$ARCH" in
+		arm*)
+			mv /usr/bin/i486-slitaz-linux-gcc /tmp &&
+			ln -s /cross/${ARCH}/tools/bin/arm-slitaz-linux-gnueabi-gcc \
+				/usr/bin/i486-slitaz-linux-gcc ;;
+	esac &&
+	python setup.py install --root=$DESTDIR
+	case "$ARCH" in
+		arm*) 
+			rm /usr/bin/i486-slitaz-linux-gcc &&
+			mv /tmp/i486-slitaz-linux-gcc /usr/bin ;;
+	esac
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/usr $fs
+}
