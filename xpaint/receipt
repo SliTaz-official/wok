@@ -18,12 +18,15 @@ expat-dev libxml2-dev util-linux-uuid-dev xorg-libXaw3d-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	[ "$ARCH" == "i486" ] && LIBTOOL=libtool
+	case "$ARCH" in
+		i?86) LIBTOOL=libtool 
+		arm) LIBTOOL=${HOST_SYSTEM}-libtool ;;
+	esac
 	./configure $CONFIGURE_ARGS &&
 	# Fix cross compilation
 	sed -i s'/$(CC) substads.c/gcc substads.c/' Makefile &&
 	sed -i s'/$(CC) preproc.c/gcc preproc.c/' Makefile &&
-	make -j 1 LIBTOOL=${HOST_SYSTEM}-libtool && make install
+	make -j 1 LIBTOOL=${LIBTOOL} && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
