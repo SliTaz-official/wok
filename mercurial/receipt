@@ -10,6 +10,7 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://mercurial.selenic.com/"
 WGET_URL="http://www.selenic.com/mercurial/release/$TARBALL"
 CONFIG_FILES="/etc/mercurial/hgweb.config"
+HOST_ARCH="arm"
 
 DEPENDS="python patch libssl"
 BUILD_DEPENDS="python-dev patch openssl-dev"
@@ -17,9 +18,21 @@ BUILD_DEPENDS="python-dev patch openssl-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	python setup.py install --root="$DESTDIR" --optimize=1
-	mkdir -p $DESTDIR/usr/share/examples/mercurial
-	cp -a $src/hgweb.cgi $DESTDIR/usr/share/examples/mercurial
+	# Cross compilation hack
+	case "$ARCH" in
+		arm*)
+			mv /usr/bin/i486-slitaz-linux-gcc /tmp &&
+			ln -s /cross/${ARCH}/tools/bin/arm-slitaz-linux-gnueabi-gcc \
+				/usr/bin/i486-slitaz-linux-gcc ;;
+	esac &&
+	python setup.py install --root="$DESTDIR" --optimize=1 &&
+	mkdir -p $DESTDIR/usr/share/examples/mercurial &&
+	cp -a $src/hgweb.cgi $DESTDIR/usr/share/examples/mercurial &&
+	case "$ARCH" in
+		arm*) 
+			rm /usr/bin/i486-slitaz-linux-gcc &&
+			mv /tmp/i486-slitaz-linux-gcc /usr/bin ;;
+	esac
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
