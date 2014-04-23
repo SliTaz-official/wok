@@ -9,16 +9,25 @@ LICENSE="MIT"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.slitaz.org/"
 WGET_URL="http://wayland.freedesktop.org/releases/$TARBALL"
+HOST_ARCH="i486 arm"
 
+# WARNING: wayland must be installed in chroot since build host 
+# wayland-scanner is used for cross compilation to ARM
 DEPENDS="libffi expat"
 BUILD_DEPENDS="libffi-dev expat-dev"
+
+# Handle cross compilation
+case "$ARCH" in
+	arm*) ARCH_ARGS="--disable-scanner" ;;
+esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	./configure \
 		--prefix=/usr \
-		--disable-documentation &&
+		--disable-documentation \
+		${CONFIGURE_ARGS} ${ARCH_ARGS} &&
 	make && make install
 }
 
@@ -26,7 +35,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
+	[ -d "$install/usr/bin" ] && cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/share/wayland $fs/usr/share
 }
