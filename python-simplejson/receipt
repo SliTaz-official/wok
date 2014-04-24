@@ -10,6 +10,7 @@ LICENSE="MIT"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://pypi.python.org/pypi/simplejson"
 WGET_URL="http://pypi.python.org/packages/source/s/$SOURCE/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="python"
 BUILD_DEPENDS="python-dev setuptools"
@@ -17,9 +18,21 @@ BUILD_DEPENDS="python-dev setuptools"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	python setup.py build
-	python setup.py install --root=$DESTDIR
+	# Cross compilation hack to avoid using compiler wich build python 
+	# itself.
+	case "$ARCH" in
+		arm*)
+			mv /usr/bin/i486-slitaz-linux-gcc /tmp &&
+			ln -s /cross/${ARCH}/tools/bin/arm-slitaz-linux-gnueabi-gcc \
+				/usr/bin/i486-slitaz-linux-gcc ;;
+	esac &&
+	python setup.py build  &&
+	python setup.py install --root=$DESTDIR &&
+	case "$ARCH" in
+		arm*) 
+			rm /usr/bin/i486-slitaz-linux-gcc &&
+			mv /tmp/i486-slitaz-linux-gcc /usr/bin ;;
+	esac
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
