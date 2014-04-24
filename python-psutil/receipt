@@ -10,6 +10,7 @@ SOURCE="psutil"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://code.google.com/p/psutil/"
 WGET_URL="http://psutil.googlecode.com/files/$TARBALL"
+HOST_ARCH="i486 arm"
 
 DEPENDS="python"
 BUILD_DEPENDS="python-dev setuptools"
@@ -17,8 +18,19 @@ BUILD_DEPENDS="python-dev setuptools"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	# Cross compilation hack
+	case "$ARCH" in
+		arm*)
+			mv /usr/bin/i486-slitaz-linux-gcc /tmp &&
+			ln -s /cross/${ARCH}/tools/bin/arm-slitaz-linux-gnueabi-gcc \
+				/usr/bin/i486-slitaz-linux-gcc ;;
+	esac &&
 	python setup.py install --root=$DESTDIR
+	case "$ARCH" in
+		arm*) 
+			rm /usr/bin/i486-slitaz-linux-gcc &&
+			mv /tmp/i486-slitaz-linux-gcc /usr/bin ;;
+	esac
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="dhid"
+VERSION="5.5"
+CATEGORY="network"
+SHORT_DESC="Open source Dynamic IP Updater."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="BSD"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://dhis.org"
+WGET_URL="ftp://ftp.dhis.org/pub/dhis/$TARBALL"
+CONFIG_FILES="/etc/dhid.conf"
+HOST_ARCH="i486 arm"
+
+DEPENDS="gmp"
+BUILD_DEPENDS="gmp-dev"
+
+# Handle cross comilation
+case "$ARCH" in
+	arm) ARCH_FLAGS=" LFLAGS=-L/cross/$ARCH/sysroot/usr/lib" ;;
+esac
+	
+# Rules to configure and make the package.
+compile_rules()
+{
+	make CC=${HOST_SYSTEM}-gcc ${ARCH_FLAGS}
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/sbin $fs/etc $fs/usr/share/doc/dhid
+	cp ${src}/dhid.conf.sample ${fs}/etc/dhid.conf
+	cp ${src}/README ${fs}/usr/share/doc/dhid
+	cp -a ${src}/dhid ${fs}/usr/sbin
+	cp -a ${stuff}/init.d ${fs}/etc
+}
+

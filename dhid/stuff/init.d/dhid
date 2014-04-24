@@ -1,0 +1,48 @@
+#!/bin/sh
+#
+# /etc/init.d/dhid: Start, stop and restart dhis daemon on SliTaz
+#
+. /lib/libtaz.sh
+#. /etc/daemons.conf
+
+NAME=DHID
+DESC="dyn ip"
+DAEMON=/usr/sbin/dhid
+PIDFILE=/run/dhid.pid
+OPTIONS="-P $PIDFILE"
+
+case "$1" in
+		start)
+		if active_pidfile $PIDFILE dhid; then
+			echo "$NAME already running."; §exit 1
+		fi
+		echo -n "Starting $DESC: $NAME... "
+		$DAEMON $OPTIONS 
+		status ;;
+	
+	stop)
+		if ! active_pidfile $PIDFILE dhid; then
+			echo "$NAME is not running."; exit 1
+		fi
+		echo -n "Stopping $DESC: $NAME... "
+		kill $(cat $PIDFILE)
+		rm $PIDFILE
+		status ;;
+	
+	restart)
+		if ! active_pidfile $PIDFILE dhid; then
+			echo "$NAME is not running."; exit 1
+		fi
+		echo -n "Restarting $DESC: $NAME... "
+		kill $(cat $PIDFILE)
+		rm $PIDFILE
+		sleep 2
+		$DAEMON $OPTIONS
+		status ;;
+	
+	*) 
+		echo "Usage: /etc/init.d/$(basename $0) [start|stop|restart]"
+		exit 1 ;;
+esac
+
+exit 0
