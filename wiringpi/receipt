@@ -10,7 +10,10 @@ LICENSE="LGPL"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://wiringpi.com/"
 WGET_URL="git|git://git.drogon.net/wiringPi"
+TAGS="raspberrypi rpi"
 HOST_ARCH="arm"
+
+RELATED="wiringpi-dev wiringpi-piglow"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -42,6 +45,14 @@ compile_rules()
 	patch -p0 < ${stuff}/gpio-decodePin.patch
 	mkdir -p ${DESTDIR}/usr/bin
 	make && make install
+	
+	# Extra: PiGlow --> wiringpi-piglow
+	cd ${src}/examples/PiGlow
+	sed -i \
+		-e s'#^INCLUDE.*#INCLUDE = -I. -I${DESTDIR}/usr/include#' \
+		-e s'#^LDFLAGS.*#LDFLAGS= -L${DESTDIR}/usr/lib#' \
+		-e s"#^CC.*#CC = ${HOST_SYSTEM}-gcc#" Makefile
+	make
 }
 
 # SliTaz package testsuite
