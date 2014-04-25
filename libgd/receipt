@@ -13,16 +13,13 @@ HOST_ARCH="i486 arm"
 
 DEPENDS="zlib libpng libjpeg freetype expat fontconfig xorg-libX11 \
 xorg-libXau xorg-libXdmcp xorg-libXpm"
-BUILD_DEPENDS="libpng-dev jpeg-dev expat-dev freetype-dev  \
+BUILD_DEPENDS="libpng-dev jpeg-dev expat-dev freetype-dev \
 xorg-libXau-dev xorg-libXdmcp-dev xorg-libXpm-dev automake libtool"
 
 # Cross compilation use some build host tools
 case "$ARCH" in
-	i?86) 
-		BUILD_DEPENDS="$BUILD_DEPENDS cmake wget" 
-		jpeg="/usr/lib" ;;
-	arm) 
-		jpeg="/cross/$ARCH/sysroot/usr/lib" ;;
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS cmake wget" ;;
+	arm) ARCH_ARGS="--with-jpeg=/cross/$ARCH/sysroot/usr/lib" ;;
 esac
 
 # Rules to configure and make the package.
@@ -34,7 +31,6 @@ compile_rules()
 	./bootstrap.sh
 	./configure \
 		--prefix=/usr \
-		--with-jpeg=${jpeg} \
 		$CONFIGURE_ARGS
 	make -C config gdlib-config
 	cp config/gdlib-config $DESTDIR/usr/local/bin
