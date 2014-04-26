@@ -16,9 +16,36 @@ HOST_ARCH="arm"
 
 BUILD_DEPENDS="wget"
 
+# Cross tool PATH is not set in genpkg_rules
+compile_rules()
+{
+	echo -n "Stripping VideoCore libraries..."
+	${ARCH}-slitaz-linux-gnueabi-strip -s ${src}/opt/vc/lib/*.so
+	status
+}
+
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/opt
+	vc="$fs/opt/vc"
+	mkdir -p ${fs}/opt
 	cp -a ${src}/opt/vc ${fs}/opt
+	echo -n "Cleaning: VC libraries devel files"
+	rm -rf ${vc}/include ${vc}/src ${vc}/lib/*.a
+	status
+}
+
+# PATH + LD_LIBRARY_PATH
+post_install()
+{
+	# PATH + LD_LIBRARY_PATH
+	echo -n "Enabling: /opt/vc/bin /opt/vc/lib"
+	cat >> ${1}/etc/profile << EOT
+
+# Raspberry Pi VC tools and libs
+export PATH=$PATH:/opt/vc/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/vc/lib
+
+EOT
+	status
 }
