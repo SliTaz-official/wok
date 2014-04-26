@@ -1,8 +1,8 @@
 # Sample script for PiGlow that creates a continuous whirly vortex animation
 #
-# Please see our GitHub repository for more information: https://github.com/pimoroni/piglow
+# Official Pimorini example modified by Christophe Lincoln for SliTaz ARM
+# See our GitHub repository for more information: https://github.com/pimoroni/piglow
 #
-# Once running you'll need to press ctrl-C to cancel stop the script
 
 import time
 from smbus import SMBus
@@ -27,7 +27,6 @@ class PiGlow:
 		self.write_i2c(CMD_ENABLE_LEDS, [0xFF, 0xFF, 0xFF])
 
 	def update_leds(self, values):
-		print "update pwm"
 		self.write_i2c(CMD_SET_PWM_VALUES, values)
 		self.write_i2c(CMD_UPDATE, 0xFF)
 
@@ -54,18 +53,19 @@ piglow = PiGlow(1)
 # loop forever, i mean why would we ever want to stop now the party has started?
 # you can however use Ctrl+C to stop the script and reset the LEDs to off state
 try:
-        while True:
-                # pop the first value off then drop it back on again - this just cycles the values around
-                values.append(values.pop(0))
+	print "Use Ctrl-C to stop"
+	while True:
+		# pop the first value off then drop it back on again - this just cycles the values around
+		values.append(values.pop(0))
 
-                # update the piglow with current values
-                piglow.update_leds(values)
+		# update the piglow with current values
+		piglow.update_leds(values)
 
-                # sleep for a bit, don't go too fast!
-                time.sleep(0.1)
+		# sleep for a bit, don't go too fast!
+		time.sleep(0.1)
                 
 except KeyboardInterrupt:
 	# set all the LEDs to "off" when Ctrl+C is pressed before exiting
-        values = [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]
-        piglow.update_leds(values)
+	values = [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]
+	piglow.update_leds(values)
 
