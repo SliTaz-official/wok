@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="shaarlo"
+GITHASH="ac6ef877ce1cbd33e85b3d041715d765a26497b7"
+VERSION=${GITHASH:0:7}
+CATEGORY="network"
+SHORT_DESC="Unified Shaarlis Rss."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="zlib/libpng"
+TARBALL="$PACKAGE-$VERSION.zip"
+WEB_SITE="https://github.com/DMeloni/shaarlo"
+WGET_URL="$WEB_SITE/archive/$GITHASH.zip"
+HOST_ARCH="any"
+
+DEPENDS="php"
+BUILD_DEPENDS="wget"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/var/www $fs/etc
+	cp -a $src $fs/var/www/$PACKAGE
+	mv $fs/var/www/config.php $fs/etc/shaarlo.php
+	ln -s /etc/shaarlo.php $fs/var/www/config.php
+	mkdir $fs/var/www/$PACKAGE/data
+	chmod +w $fs/var/www/$PACKAGE/data
+}
+
+post_install()
+{
+	chown -R www $1/var/www/$PACKAGE
+	cat <<EOT
+Configure /etc/shaarlo.php and put /var/www/$PACKAGE/refresh.php in crontab
+EOT
+}
+
