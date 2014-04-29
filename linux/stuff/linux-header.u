@@ -4,7 +4,7 @@
   *	modified by more people than can be counted
   *
   *	Rewritten as a common file by H. Peter Anvin (Apr 2007)
-+ *	Rewritten Pascal Bellard (Nov 2009)
++ *	Rewritten by Pascal Bellard (Nov 2009)
   *
   * BIG FAT NOTE: We're in real mode using 64k segments.  Therefore segment
   * addresses must be multiplied by 16 to obtain their respective linear
@@ -24,7 +24,7 @@
  
  #ifndef SVGA_MODE
  #define SVGA_MODE ASK_VGA
-@@ -40,53 +44,480 @@
+@@ -40,53 +44,505 @@
  #define ROOT_RDONLY 1
  #endif
  
@@ -33,16 +33,15 @@
 +cmd_line_ptr	= 0x228
 +
 +/* some extra features */
-+#define EXE_SUPPORT		real mode dos .exe file support (no himem.sys)
++#define EXE_SUPPORT		real mode dos .exe file support
 +#define CMDLINE			kernel >= 2.4
 +#define OLDCMDLINE		kernel  < 2.4
 +#define HELP			display version for ? argument
 +#define MORETHAN16M		up to 4Gb RAM, not 16Mb
 +#define KEYBOARDLESS_SUPPORT	scan floppy swap each 5 seconds
-+#define FULL_ZIMAGE		Up to 512K system zImage
 +
-+/* some limitations to reduce code size */
-+//#define FLOPPY_1440K_ONLY	1.44M floppies support only
++/* some limitations to reduce the code size */
++#define FLOPPY_1440K_ONLY	1.44M floppies support only (no 1.72M, 1.96M...)
 +
  	.code16
  	.section ".bstext", "ax"
@@ -90,15 +89,16 @@
 -	xorw	%sp, %sp
 -	sti
 -	cld
-+#ifdef FULL_ZIMAGE
-+#define LOADSEG	0x8800		// Up to 512K zImage
-+#else
-+#define LOADSEG	 0x8000		// 0x1000 multiple, up to 480K zImage
++LOADSEG		= 0x8000		# 0x1000 multiple, up to 512K zImage
++LOADSZ		= 0x10000
++#ifdef EXE_SUPPORT
++#A20BUFFER	= 0x60000		# a20 gate / himem.sys support
++A20BUFFER	= 0x68000		# a20 gate / himem.sys support
++#define USEA20BUFFER
 +#endif
-+#define LOADSZ	 0x8000
  
 -	movw	$bugger_off_msg, %si
-+oldstart:
++# bootsect_start:
 +	cld				# assume nothing
 +stacktop	= 0x9E00		# in 0x8000 .. 0xA000
 +zeroed		= 48+12			# gdt + zeroed registers
@@ -109,7 +109,15 @@
 +	pushw	$INITSEG
 +	popw	%ss			# %ss contain INITSEG
 +	movw	%di, %sp		# put stack at INITSEG:stacktop-...
-+
+ 
+-msg_loop:
+-	lodsb
+-	andb	%al, %al
+-	jz	bs_die
+-	movb	$0xe, %ah
+-	movw	$7, %bx
+-	int	$0x10
+-	jmp	msg_loop
 +# Many BIOS's default disk parameter tables will not recognize
 +# multi-sector reads beyond the maximum sector number specified
 +# in the default diskette parameter tables - this may mean 7
@@ -121,7 +129,10 @@
 +# count to 36 - the most we will encounter on an ED 2.88.  
 +#
 +# High doesn't hurt.  Low does.  Let's use the max: 63
-+
+ 
+-bs_die:
+-	# Allow the user to press a key, then reboot
+-	xorw	%ax, %ax
 +	pushw	%ss
 +	popw	%es			# %es = %ss = INITSEG
 +	xorw	%ax, %ax		# %ax = 0
@@ -178,27 +189,37 @@
 +	movw	%sp, %si		# for bootsect_gdt
 +init_gdt:
 +	decw	bootsect_src_limit(%bx,%si)	# max 64Kb
-+#if LOADSEG % 0x1000 == 0
 +	movw	$0x9300+(LOADSEG/0x1000), bootsect_src_base+2(%bx,%si)
-+#else
-+	movl	$0x93000000+(LOADSEG*0x10), bootsect_src_base(%bx,%si)
-+#endif
 +	xorb	$bootsect_dst_limit-bootsect_src_limit, %bl
 +	jne	init_gdt
 +code32_start	=	0x214
-+#ifdef MORETHAN16M
-+	movb	code32_start+3, %al		# destination = 0x00100000 or 0x00010000
-+	movb	%al, bootsect_dst_base_hi(%si)	# load high (> 16M) ?
-+#endif
 +	movw	code32_start+1, %ax		# destination = 0x00100000 or 0x00010000
 +	movl	syssize, %ebx
 +	decl	%ebx
 +	shrl	$5, %ebx
++#ifdef MORETHAN16M
 +	incl	%ebx
++#else
++	incw	%bx
++#endif
++#ifdef USEA20BUFFER
++	movw	$0x00100000>>8, %di
++#endif
 +syslp:
++#ifdef USEA20BUFFER
++	cmpw	%ax, %di
++	jne	nota20
++	xorw	$(0x00100000+A20BUFFER)>>8, %ax
++nota20:
++#endif
 +	movw	%ax, bootsect_dst_base+1(%si)
++#ifdef MORETHAN16M
++	movl	$LOADSZ/512, %edi	# size in sectors
++	subl	%edi, %ebx
++#else
 +	movw	$LOADSZ/512, %di	# size in sectors
-+	subl	$LOADSZ/512, %ebx
++	subw	%di, %bx
++#endif
 +	pushf
 +	jnc	not_last
 +	addw	%bx, %di
@@ -219,25 +240,25 @@
 +	popw	%es			# restore es
 +	int	$0x15			# max 16M, maybe more...
 +	popw	%ax
-+	addw	$LOADSZ/256, %ax	# next dest
++	incb	%ah			# next dest (ax+=LOADSZ/256)
 +#ifdef MORETHAN16M
 +	adcb	%cl, bootsect_dst_base_hi(%si)	# breaks 16M limit ?
 +#endif
++#ifdef USEA20BUFFER
++	movw	$(LOADSZ+A20BUFFER)>>8, %di
++#endif
 +	popf
 +	ja	syslp
- 
--msg_loop:
--	lodsb
--	andb	%al, %al
--	jz	bs_die
--	movb	$0xe, %ah
--	movw	$7, %bx
--	int	$0x10
--	jmp	msg_loop
--
--bs_die:
--	# Allow the user to press a key, then reboot
--	xorw	%ax, %ax
++#ifdef USEA20BUFFER
++#ifdef MORETHAN16M
++	movb	%cl, bootsect_dst_base_hi(%si)
++#endif
++	movb	$0x10, bootsect_dst_base+2(%si)
++	movw	$A20BUFFER/0x100, bootsect_src_base+1(%si)
++	movb	$0x87, %ah
++	int	$0x15
++#endif
++
 +# This procedure turns off the floppy drive motor, so
 +# that we enter the kernel in a known state, and
 +# don't have to worry about it later.
@@ -395,25 +416,27 @@
 -	int	$0x19
 +#endif
 +        jmp	read_sectorslp
-+
-+#ifdef EXE_SUPPORT
-+read_sectors_dos:
-+	pushw	%es
-+	popw	%ds
-+	movb	$0x3F, %ah	// read
-+	cwd			// write to %ds:%dx, not %es:%bx
-+	movw	%di, %cx
-+	shlw	$9, %cx		// byte count
-+	movw	%bp, %bx
-+	int	$0x21
-+	pushw	%ss
-+	popw	%ds
-+#endif
  
 -	# int 0x19 should never return.  In case it does anyway,
 -	# invoke the BIOS reset code...
 -	ljmp	$0xf000,$0xfff0
--
++#ifdef EXE_SUPPORT
++read_sectors_dos:
++	xorw	%dx, %dx	// write to %ds:%dx, not %es:%bx
++	call	read_sectors_dosz
++read_sectors_dosz:
++	pushw	%es
++	popw	%ds
++	movb	$0x3F, %ah	// read
++	movw	%di, %cx
++	shlw	$8, %cx		// byte count / 2
++	movw	%bp, %bx
++	int	$0x21
++	xchgw	%ax, %dx
++	pushw	%ss
++	popw	%ds
++#endif
+ 
 -	.section ".bsdata", "a"
 -bugger_off_msg:
 -	.ascii	"Direct booting from floppy is no longer supported.\r\n"
@@ -432,7 +455,7 @@
 +	cmp	$0xd, %al		# CR ?
 +	je	putclf
 +	ret
-+
+ 
 +#ifdef KEYBOARDLESS_SUPPORT
 +clock	= 0x46C
 +wait:
@@ -453,7 +476,7 @@
 +waitdone:
 +	ret
 +#endif
- 
++
 +#ifdef EXE_SUPPORT
 +comstart:
 +	cld				# assume nothing
