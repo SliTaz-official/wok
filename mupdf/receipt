@@ -1,27 +1,46 @@
 # SliTaz package receipt.
 
 PACKAGE="mupdf"
-VERSION="1.2"
+VERSION="1.4"
 CATEGORY="utilities"
 SHORT_DESC="A lightweight PDF and XPS viewer"
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL3"
 WEB_SITE="http://mupdf.com/"
-TARBALL="$PACKAGE-$VERSION-source.zip"
-WGET_URL="http://mupdf.googlecode.com/files/$TARBALL"
+TARBALL="$PACKAGE-$VERSION-source.tar.gz"
+WGET_URL="http://mupdf.com/downloads/$TARBALL"
+#HOST_ARCH="i486 arm"
 
-#DEPENDS="freetype jpeg zlib jbig2dec openjpeg"
-#BUILD_DEPENDS="freetype-dev jpeg-dev openjpeg-dev jbig2dec-dev zlib-dev pkg-config xorg-libX11-dev xorg-libXext-dev xorg-xextproto ftjam"
-DEPENDS="bzlib freetype jbig2dec openjpeg xorg-libXext"
-BUILD_DEPENDS="freetype-dev jbig2dec-dev jpeg-dev openjpeg-dev zlib-dev"
+DEPENDS="bzlib freetype fontconfig jbig2dec openjpeg xorg-libXext"
+BUILD_DEPENDS="freetype-dev fontconfig-dev jbig2dec-dev jpeg-dev \
+openjpeg-dev zlib-dev"
 
 # Rules to configure and make the package.  
 compile_rules()
 {
-	# use system wide libraries instead of included ones
+	# Use system wide libraries instead of included ones
 	rm -rf $src/thirdparty
-	make build=release
-	make build=release prefix=/usr install
+	
+	case "$ARCH" in
+		arm*)
+			ARCH_ARGS='OS="slitaz-arm"'
+			unset CC CFLAGS
+			make generate
+			cat >> Makerules << EOT
+ifeq "\$(OS)" "slitaz-arm"
+SYS_FREETYPE_INC = -I/cross/$ARCH/sysroot/usr/include
+CC = ${HOST_SYSTEM}-gcc
+LD = ${HOST_SYSTEM}-ld
+AR = ${HOST_SYSTEM}-ar
+CFLAGS += -I/cross/$ARCH/sysroot/usr/include -O2 -march=armv6 -ftree-vectorize -ffast-math -fsingle-precision-constant
+CROSSCOMPILE=yes
+endif
+EOT
+		ln -s /usr/include/freetype2/freetype/ /usr/include/freetype ;;
+	esac
+	make ${ARCH_ARGS} build=release &&
+	make ${ARCH_ARGS} build=release prefix=/usr install
+	rm -rf /usr/include/freetype
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
