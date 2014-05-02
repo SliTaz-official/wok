@@ -1,46 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="childsplay"
-VERSION="1.6"
+VERSION="2.6.1"
 CATEGORY="games"
 SHORT_DESC="Python educational game."
 MAINTAINER="claudinei@slitaz.org"
 LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="http://www.schoolsplay.org/"
-WGET_URL="$SF_MIRROR/schoolsplay/$TARBALL"
+WGET_URL="http://download.savannah.gnu.org/releases/childsplay/$TARBALL"
 
 DEPENDS="python pygtk python-pygame python-pysqlite python-sqlalchemy libogg"
-BUILD_DEPENDS="python-dev pygtk-dev python-pygame-dev libogg-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	PYTHON_LIB=python$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
-	sed -i \
-		-e "s|PREFIX = '/usr/local'|PREFIX = '$DESTDIR/usr'|" \
-		-e "s|get_python_lib()|'$DESTDIR', 'usr', 'lib', '$PYTHON_LIB', 'site-packages'|" \
-		-e "/key/s/raw_input/#raw_input/" $src/setup.py
-	python setup.py install --root=$DESTDIR
+	mkdir -p ${DESTDIR}/usr/share/${PACKAGE}
+	cp -a ${src}/* ${DESTDIR}/usr/share/${PACKAGE}
+	mv ${DESTDIR}/usr/share/${PACKAGE}/locale ${DESTDIR}/usr/share
+	rm -rf ${DESTDIR}/usr/share/${PACKAGE}/po
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	PYTHON_LIB=python$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
-	BASEPATHS="$install/usr/lib/$PYTHON_LIB/site-packages/childsplay_sp/SPBasePaths.py"
-
-	sed -i "s|$install/|/|g" $BASEPATHS
-	mkdir -p $fs/usr/share/locale
-	
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/childsplay_sp $fs/usr/share
-	cp -a $install/usr/share/sp_alphabetsounds $fs/usr/share
-
-	for lang in de en es fr pt_BR sv ru; do
-		cp -a $install/usr/share/locale/$lang \
-			$fs/usr/share/locale
-	done
+	mkdir -p $fs/usr/games
+	cp ${stuff}/${PACKAGE} $fs/usr/games
+	cp -a ${install}/* ${fs}
 }
