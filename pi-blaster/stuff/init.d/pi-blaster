@@ -1,0 +1,34 @@
+#!/bin/sh
+# Start, stop and restart pi-blaster on SliTaz
+#
+# To start daemon at boot time, just put the right name in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf.
+#
+
+NAME=$(basename $0)
+DESC="$NAME deamon"
+DAEMON=$(which $NAME)
+OPTIONS=""
+PID=$(pidof $NAME)
+
+case "$1" in
+	start)
+		if [ "$PID" ]; then
+			echo "$NAME is already running..."
+		else
+			echo -n "Starting $DESC: $NAME..."
+			${DAEMON} ${OPTIONS}; status
+		fi ;;
+	stop)
+		if [ "$PID" ]; then
+			echo -n "Stopping $DESC: $NAME..."
+			killall ${NAME} 2>/dev/bull; status
+		else
+			echo "$NAME is not running..."
+		fi ;;
+	restart) 
+		$0 stop && sleep 1 && $0 start ;;
+	*) 
+		echo "Usage: $0 [start|stop|restart]" ;;
+esac
+exit 0
