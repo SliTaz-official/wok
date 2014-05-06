@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="slitaz-tools-boxes"
-VERSION="5.8.5"
+VERSION="5.8.6"
 CATEGORY="system-tools"
 SHORT_DESC="All SliTaz GTK/Yad boxes to command line tools."
 MAINTAINER="pankso@slitaz.org"
@@ -20,6 +20,24 @@ DEPENDS="slitaz-tools gettext-base yad"
 compile_rules()
 {
 	make && make DESTDIR=$DESTDIR install-boxes
+
+	# make zone-mini.tab for timezone selector
+	TAB=$WOK/tzdata/install/usr/share/zoneinfo/zone.tab
+	OUT=$install/usr/share/zoneinfo/zone-mini.tab
+	echo -n > $OUT
+	ZONES="$(cat $1 | sed '/#/ d' | cut -d'	' -f1,3 | sort -u)"
+	for COUNTRY in $(echo "$ZONES" | cut -d'	' -f1 | sort -u); do
+		echo -ne "$COUNTRY\t" >> $OUT
+		for LOC in $(echo "$ZONES" | sed -n "/$COUNTRY/ s|.*\t\(.*\)|\1|p"); do
+			echo -n "${LOC##*/} " >> $OUT
+		done
+		echo >> $OUT
+	done
+	sed -i 's| $||g' $OUT
+
+	# country names
+	cp -a $WOK/tzdata/install/usr/share/zoneinfo/iso3166.tab \
+		$install/usr/share/zoneinfo/
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -27,7 +45,7 @@ genpkg_rules()
 {
 	mkdir -p $fs
 	cp -a $install/* $fs
-	# No cdrom on emb devices
+	# No CD-ROM on embedded devices
 	case "$ARCH" in
 		arm*) 
 			rm -f $fs/usr/bin/burn-box 

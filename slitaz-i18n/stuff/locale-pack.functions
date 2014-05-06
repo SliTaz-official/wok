@@ -43,6 +43,14 @@ get_locale()
 		cp -a $WOK/glibc/install/$usil/$def $fs/$usil
 	done
 
+	if [ "x$LOCALE_DEPENDS" != x ]; then
+		for dep in $LOCALE_DEPENDS; do
+			echo "* Copying additional $dep locale files"
+			cp -a $WOK/glibc/install/usr/share/i18n/locales/$dep \
+			$fs/usr/share/i18n/locales
+		done
+	fi
+
 	# Get timezones from tzdata
 	countries=$(echo $locales | \
 		sed 's|@[^ ]*||g; s|[^ _]*_||g' | tr ' ' '\n' | sort -u)
@@ -61,9 +69,9 @@ get_locale()
 	done
 
 	# Get country flags
-	echo "* Copy flag icons for countries: "$countries $ADD_FLAGS
+	echo "* Copy flag icons for countries: "$countries
 	usih=usr/share/icons/hicolor
-	for country in $countries $ADD_FLAGS; do
+	for country in $countries; do
 		for size in 16x16 48x48; do
 			install -Dm644 \
 				$WOK/flag-icons/taz/*/fs/$usih/$size/intl/$country.png \
@@ -75,14 +83,27 @@ get_locale()
 	mkdir -p $fusl
 	cp -a $WOK/flag-icons/source/*/LICENSE.txt $fusl/gosquared.txt
 
-	# Keyboard flags for default lxpanel keyboard applet
-	if [ "x$LXPANEL_FLAGS" != "x" ]; then
-		uslix=usr/share/lxpanel/images/xkb-flags
-		mkdir -p $fs/$uslix
-		for i in $LXPANEL_FLAGS; do
-			ln -s /$usih/16x16/intl/$(echo $i | tr a-z A-Z).png $fs/$uslix/$i.png
+	# Gconv modules for encodings other than default
+	if [ "x$GCONV" != x ]; then
+		mkdir -p $fs/usr/lib/gconv
+		for enc in $GCONV; do
+			echo "* Copying $enc gconv module"
+			cp -a $WOK/glibc/install/usr/lib/gconv/$enc.so $fs/usr/lib/gconv
 		done
 	fi
 
+	# Keyboard flags for default lxpanel keyboard applet
+	if [ "x$KB_FLAGS" != x ]; then
+		uslix=usr/share/lxpanel/images/xkb-flags
+		mkdir -p $fs/$uslix
+		for i in $KB_FLAGS; do
+			install -Dm644 \
+				$WOK/flag-icons/taz/*/fs/$usih/16x16/intl/${i%%:*}.png \
+				$fs/$usih/16x16/intl/${i%%:*}.png
+			ln -s /$usih/16x16/intl/${i%%:*}.png $fs/$uslix/${i##*:}.png
+		done
+	fi
+
+	# exit code OK
 	echo
 }
