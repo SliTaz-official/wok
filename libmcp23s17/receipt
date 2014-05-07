@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="libmcp23s17"
+VERSION="0.3.0"
+CATEGORY="system-tools"
+SHORT_DESC="A simple library for controlling PiFace Digital."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://github.com/piface/libmcp23s17"
+WGET_URL="https://github.com/piface/libmcp23s17/archive/v${VERSION}.tar.gz"
+HOST_ARCH="arm"
+
+DEPENDS="i2c-tools"
+TAGS="raspberrypi rpi"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i \
+		-e s"/^CC=gcc/CC=${HOST_SYSTEM}-gcc/" \
+		-e s"/^CFLAGS=.*/CFLAGS=-c -Wall $CFLAGS/" Makefile
+	make && 
+	${HOST_SYSTEM}-gcc -o mcp23s17-example example.c -Isrc/ -L. -lmcp23s17
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/lib $fs/usr/include
+	cp -a ${src}/*-example $fs/usr/bin
+	cp -a ${src}/${PACKAGE}.a ${fs}/usr/lib
+	cp -a ${src}/src/mcp23s17.h ${fs}/usr/include
+}

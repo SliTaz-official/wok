@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="libpifacedigital"
+VERSION="0.2.0"
+CATEGORY="system-tools"
+SHORT_DESC="A simple library for controlling PiFace Digital."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.piface.org.uk"
+WGET_URL="https://github.com/piface/libpifacedigital/archive/v${VERSION}.tar.gz"
+HOST_ARCH="arm"
+
+TAGS="raspberrypi rpi"
+DEPENDS="i2c-tools libmcp23s17"
+BUILD_DEPENDS="libmcp23s17"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i \
+		-e s"/^CC=gcc/CC=${HOST_SYSTEM}-gcc/" \
+		-e s"/gcc -o/${HOST_SYSTEM}-gcc -o/" \
+		-e s"/^CFLAGS=.*/CFLAGS=-c -Wall $CFLAGS/" \
+		-e s"#INCPATHS=.*#INCPATHS=/usr/include#" \
+		-e s"#LIBPATHS=.*#LIBPATHS=/usr/lib#" Makefile
+	make && make example && 
+	make pifacedigital
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/bin $fs/usr/include
+	cp -a ${src}/${PACKAGE}.a ${fs}/usr/lib
+	cp -a ${src}/pifacedigital ${fs}/usr/bin
+	cp -s ${src}/example ${fs}/usr/bin/pifacedigital-example
+	cp -a ${src}/src/pifacedigital.h ${fs}/usr/include
+}
