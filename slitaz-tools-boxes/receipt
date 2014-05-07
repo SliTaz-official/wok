@@ -25,7 +25,7 @@ compile_rules()
 	TAB=$WOK/tzdata/install/usr/share/zoneinfo/zone.tab
 	OUT=$install/usr/share/zoneinfo/zone-mini.tab
 	echo -n > $OUT
-	ZONES="$(cat $1 | sed '/#/ d' | cut -d'	' -f1,3 | sort -u)"
+	ZONES="$(cat $TAB | sed '/#/ d' | cut -d'	' -f1,3 | sort -u)"
 	for COUNTRY in $(echo "$ZONES" | cut -d'	' -f1 | sort -u); do
 		echo -ne "$COUNTRY\t" >> $OUT
 		for LOC in $(echo "$ZONES" | sed -n "/$COUNTRY/ s|.*\t\(.*\)|\1|p"); do
@@ -34,6 +34,8 @@ compile_rules()
 		echo >> $OUT
 	done
 	sed -i 's| $||g' $OUT
+	# Remove historical locations for UA
+	sed -i 's| Uzhgorod Zaporozhye||' $OUT
 
 	# country names
 	cp -a $WOK/tzdata/install/usr/share/zoneinfo/iso3166.tab \
