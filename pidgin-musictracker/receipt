@@ -17,7 +17,9 @@ gtk+-dev glib-dev pkg-config libffi"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	sed -i  -e 's/g_value_array_free/g_array_unref/' -e 's/GValueArray/GArray/' \
+		-e '/g_value_array_get_nth/{N;s/GValue.*/status = g_array_index(sigstruct, gint, 0);/}' \
+			src/mpris.c
 	./configure $CONFIGURE_ARGS &&
 	make && make DESTDIR=$DESTDIR install
 }
