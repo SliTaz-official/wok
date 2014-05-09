@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="qpdfview"
+VERSION="0.4.10"
+CATEGORY="office"
+SHORT_DESC="qpdfview is a tabbed document viewer"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL2"
+WEB_SITE="https://launchpad.net/qpdfview"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://launchpad.net/$PACKAGE/trunk/$VERSION/+download/$TARBALL"
+
+DEPENDS="cups djvulibre libQtDBus libQtSql libQtSvg libgnutls libmagic \
+libspectre poppler-qt4"
+BUILD_DEPENDS="qmake Qt4-dev libspectre-dev poppler-qt4-dev djvulibre-dev \
+libmagic-dev cups-dev zlib-dev wget"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cp /usr/lib/poppler-qt4.pc /usr/lib/pkgconfig
+
+	cp -f $stuff/qpdfview_ru.ts $src/translations
+
+	lrelease qpdfview.pro
+	qmake PREFIX=/usr qpdfview.pro
+	make
+	make INSTALL_ROOT=$install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
