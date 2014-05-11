@@ -7,13 +7,13 @@ CATEGORY="system-tools"
 SHORT_DESC="GPIO access library written in C for the Raspberry Pi/BCM2835."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="LGPL"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.tgz"
 WEB_SITE="http://wiringpi.com/"
-WGET_URL="git|git://git.drogon.net/wiringPi"
+WGET_URL="https://git.drogon.net/?p=wiringPi;a=snapshot;h=${GITHASH};sf=tgz"
 TAGS="raspberrypi rpi"
 HOST_ARCH="arm"
 
-RELATED="wiringpi-dev wiringpi-piglow"
+RELATED="wiringpi-dev wiringpi-piglow wiringpi-piface"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -47,7 +47,16 @@ compile_rules()
 	make && make install
 	
 	# Extra: PiGlow --> wiringpi-piglow
+	echo "Compiling PiGlow example..."
 	cd ${src}/examples/PiGlow
+	sed -i \
+		-e s'#^INCLUDE.*#INCLUDE = -I. -I${DESTDIR}/usr/include#' \
+		-e s'#^LDFLAGS.*#LDFLAGS= -L${DESTDIR}/usr/lib#' \
+		-e s"#^CC.*#CC = ${HOST_SYSTEM}-gcc#" Makefile
+	make
+	
+	# Extra: PiFace --> wiringpi-piface
+	cd ${src}/examples/PiFace
 	sed -i \
 		-e s'#^INCLUDE.*#INCLUDE = -I. -I${DESTDIR}/usr/include#' \
 		-e s'#^LDFLAGS.*#LDFLAGS= -L${DESTDIR}/usr/lib#' \
