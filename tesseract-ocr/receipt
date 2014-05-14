@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="tesseract-ocr"
+VERSION="3.02.02"
+CATEGORY="office"
+SHORT_DESC="The most accurate open source OCR engine available."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="Apache"
+WEB_SITE="http://code.google.com/p/tesseract-ocr/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://$PACKAGE.googlecode.com/files/$TARBALL"
+
+DEPENDS="leptonica libpng jpeg tiff giflib"
+BUILD_DEPENDS="libtool autoconf automake libpng-dev jpeg-dev tiff-dev \
+giflib-dev zlib-dev icu-dev pango-dev cairo-dev leptonica-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share $fs/usr
+	rm -rf $fs/usr/share/man
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+}
