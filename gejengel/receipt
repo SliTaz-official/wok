@@ -20,8 +20,13 @@ util-linux-uuid-dev libogg-dev intltool libcroco sqlite-dev gtk+-dev libtool"
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's/CODEC_TYPE_AUDIO/AVMEDIA_TYPE_AUDIO/' \
-		src/AudioDecoder/ffmpegdecoder.cpp
+	sed -i	-e 's/CODEC_TYPE_AUDIO/AVMEDIA_TYPE_AUDIO/' \
+		-e 's/SAMPLE_FMT_S16/AV_&/' -e 's/SAMPLE_FMT_U8/AV_&/' \
+		-e 's/SAMPLE_FMT_S32/AV_&/' \
+		-e 's/AVCODEC_MAX_AUDIO_FRAME_SIZE/192000/' \
+		-e 's/av_open_input_file\(.*\), NULL/avformat_open_input\1/' \
+		-e 's/avcodec_open(\([^)]*\)/avcodec_open2(\1, NULL/' \
+			src/AudioDecoder/ffmpegdecoder.cpp
 	find . -name '*.h' -o -name '*.c*' | xargs sed -i 's|glibmm/i18n|glib/gi18n|'
 	./configure --enable-alsa --enable-ffmpeg --enable-flac \
 		$CONFIGURE_ARGS && make && make install
