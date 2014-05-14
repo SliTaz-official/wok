@@ -19,23 +19,23 @@ DEPENDS="depmod"
 genpkg_rules()
 {
     local path
-    _pkg=$install/linux64
-    cp -a $_pkg/boot $fs
+    install=$install/linux64
+    cp -a $install/boot $fs
     path=$fs/lib/modules/$VERSION-slitaz/kernel
     mkdir -p $path
-    cp -a $_pkg/lib/modules/$VERSION-slitaz/mo* \
+    cp -a $install/lib/modules/$VERSION-slitaz/mo* \
 		$fs/lib/modules/$VERSION-slitaz
 
     # Get the base modules
     export src
-    export _pkg
+    export install
     mkdir -p $WOK/$PACKAGE/source/tmp
     $wanted_stuff/list_modules.sh \
 	$(cat $stuff/modules64.list) > $WOK/$PACKAGE/source/tmp/modules.list
     while read module; do
     	dir=$(dirname $module)
     	[ -d $path/$dir ] || mkdir -p $path/$dir
-        cp -a $_pkg/lib/modules/$VERSION-slitaz/kernel/$module $path/$dir
+        cp -a $install/lib/modules/$VERSION-slitaz/kernel/$module $path/$dir
     done < $WOK/$PACKAGE/source/tmp/modules.list
     # Remove unresolved links
     rm -f $fs/lib/modules/$VERSION-slitaz/build
@@ -47,7 +47,7 @@ genpkg_rules()
     done
     # Fixed modules.dep to use right path
     # saves 100kb of space too
-    sed -i "s|$_pkg||g" $fs/lib/modules/$VERSION-slitaz/modules.dep
+    sed -i "s|$install||g" $fs/lib/modules/$VERSION-slitaz/modules.dep
     sed -i "s|99.98.$VERSION-slitaz|$VERSION-slitaz|g" $fs/lib/modules/$VERSION-slitaz/modules.dep
     # Check and echo any module in kernel .config that's not added to 
     # one of linux-* pkgs
