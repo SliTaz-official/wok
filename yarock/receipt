@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="yarock"
+VERSION="0.9.67"
+CATEGORY="multimedia"
+SHORT_DESC="Yarock is a music player in c++/Qt"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="https://launchpad.net/yarock"
+TARBALL="Yarock_${VERSION}_source.tar.gz"
+WGET_URL="https://launchpad.net/yarock/trunk/$VERSION/+download/$TARBALL"
+
+# full list of depends to make available to listen to music and internet radio
+# (not only runtime (ldd) depends)
+# but something wrong with sub-depends - why Qt application needs GTK?!
+#
+# TODO: review libQtPlugins (huge depends, maybe split?) gst-plugins-good (gtk?)
+#
+DEPENDS="libQtDBus qjson qt4-phonon taglib gst-ffmpeg gst-plugins-good \
+libshout libQtMultimedia libQtPlugins jack-audio-connection-kit"
+BUILD_DEPENDS="cmake Qt4-dev qmake qt4-phonon taglib-dev pkgconfig qjson-dev \
+xorg-libX11 xorg-libXext xorg-libX11-dev wget"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cp -f $stuff/yarock_ru.ts $src/translation
+	patch -p0 < $stuff/yarock.patch
+
+	mkdir build; cd build
+	cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+	make
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
