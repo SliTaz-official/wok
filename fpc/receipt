@@ -54,10 +54,25 @@ genpkg_rules()
 	mkdir -p $fs/usr $fs/etc
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
+	
 	# create symlink for compiler
 	ln -s /usr/lib/$PACKAGE/$VERSION/ppc386 $fs/usr/bin
+	
 	# config file
-	mkdir -p $fs/etc
-	cp -a $fs/usr/lib/fpc/$VERSION/samplecfg $fs/etc/fpc.cfg
+	#mkdir -p $fs/etc
+	#cp -a $fs/usr/lib/fpc/$VERSION/samplecfg $fs/etc/fpc.cfg
 }
 
+post_install()
+{
+	echo"Processing postinstall commands..."
+	if [ ! -f $1/etc/fpc.cfg ]; then
+		chroot $1/ fpcmkcfg > /etc/fpc.cfg 
+	fi
+	
+	# Fix units search path
+	sed -i -e 's!^-Fu/units/$fpctarget!-Fu/usr/lib/fpc/2.6.4/units/$fpctarget!' \
+	-e 's!^-Fu/units/$fpctarget/*!-Fu/usr/lib/fpc/2.6.4/units/$fpctarget/*!' \
+	-e 's!^-Fu/units/$fpctarget/rtl!-Fu/usr/lib/fpc/2.6.4/units/$fpctarget/rtl!' $1/etc/fpc.cfg
+
+}
