@@ -1,0 +1,282 @@
+diff -Naurb squidGuard-1.4/doc/configuration.html squidGuard-1.4-dnsbl/doc/configuration.html
+--- squidGuard-1.4/doc/configuration.html	2007-11-16 17:58:32.000000000 +0100
++++ squidGuard-1.4-dnsbl/doc/configuration.html	2009-03-04 18:07:15.000000000 +0100
+@@ -1630,6 +1630,15 @@
+      "<B><TT>^[^:/]+://[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}($|[:/])</TT></B>".
+     </DD>
+     <DT>
++     <B>dnsbl</B>
++    </DT>
++    <DD>
++     <B>!dnsbl</B> can be used to dynamically check domain names against
++     DNS-based blacklists, such as black.uribl.com, which is the default.
++     The DNS blacklist can be set to another domain by setting
++     !dnsbl:your.blacklist.domain.com
++    </DD>
++    <DT>
+      <B>any</B>
+     </DT>
+     <DD>
+@@ -2419,6 +2428,9 @@
+    even if they would match a blocking regex:
+    <BR>
+    &nbsp;<TT><B>+</B></TT> limiting the usage of IP-address URLs:
++   <BR>
++   &nbsp;<TT><B>+</B></TT> blocking sites known to be part of the
++   black.uribl.com DNS blacklist.
+   </P>
+
+   <TT>
+@@ -2442,7 +2454,7 @@
+
+      acl {
+ 	 default {
+-	     pass local good !in-addr !porn all
++	     pass local good !in-addr !porn !dnsbl:black.uribl.com all
+ 	     redirect http://localhost/cgi/blocked?clientaddr=%a&clientname=%n&clientuser=%i&clientgroup=%s&url=%u
+ 	 }
+      }
+diff -Naurb squidGuard-1.4/doc/configuration.txt squidGuard-1.4-dnsbl/doc/configuration.txt
+--- squidGuard-1.4/doc/configuration.txt	2007-11-16 17:58:32.000000000 +0100
++++ squidGuard-1.4-dnsbl/doc/configuration.txt	2009-03-04 18:09:39.000000000 +0100
+@@ -637,6 +637,12 @@
+                 "^[^:/]+://[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9
+                 ]\{1,3\}($|[:/])".
+
++        dnsbl
++                !dnsbl can be used to dynamically check domain names against
++                DNS-based blacklists, such as black.uribl.com, which is the default.
++                The DNS blacklist can be set to another domain by setting
++                !dnsbl:your.blacklist.domain.com
++
+         any
+                 matches any URL and is a fast equivalent to the
+                 expression ".*".
+@@ -1052,6 +1058,7 @@
+     + ensuring local and good sites are passed even if they would match a
+    blocking regex:
+     + limiting the usage of IP-address URLs:
++    + blocking sites known to be part of the black.uribl.com DNS blacklist:
+      logdir /usr/local/squidGuard/log
+      dbhome /usr/local/squidGuard/db
+
+@@ -1071,7 +1078,7 @@
+
+      acl {
+          default {
+-             pass local good !in-addr !porn all
++             pass local good !in-addr !porn !dnsbl:black.uribl.com all
+              redirect http://localhost/cgi/blocked?clientaddr=%a&clientname=%n&
+ clientuser=%i&clientgroup=%s&url=%u
+          }
+diff -Naurb squidGuard-1.4/doc/extended.html squidGuard-1.4-dnsbl/doc/extended.html
+--- squidGuard-1.4/doc/extended.html	2007-11-16 17:58:37.000000000 +0100
++++ squidGuard-1.4-dnsbl/doc/extended.html	2009-03-04 18:15:59.000000000 +0100
+@@ -168,6 +168,34 @@
+ </pre>
+ </td></tr></table>
+ <br><br>
++
++<li> <a name=notIP> <b>Using online DNS blacklists</b></a><br><br>
++Several DNS based databases can be used to block domain names referrenced in
++blacklists. First choose which database you would like to trust (some well known
++are : http://www.uribl.com/, or http://www.surbl.org/).
++Be aware that this will raise several DNS requests every time squidGuard
++receives a request to filter. SquidGuard will not cache any DNS result, so make
++sure your DNS server does, and mesure the performance impact before using on
++production.
++To get squidGuard to request DNS dynamically and block listed domain names, just use :
++<br><br>
++<table width="75%" cellpadding="0" cellspacing="0" style="background-color: #f2fff0; border: solid 1px #2299bf;">
++<tr>
++<td style="background-color: #77afaf; border-bottom: 1px solid #888;"> <font size="-1" color=white>Blocking domain names referenced in a DNS blacklist</font>
++</td></tr>
++<tr>
++<td>
++<pre> acl {
++        default {
++                pass !dnsbl:black.uribl.com all
++                redirect http://localhost/block.html
++        }
++ }
++</pre>
++</td></tr>
++</table>
++<br><br>
++
+ <li><a name=blocklog><b>Logging blocked access tries</b></a>
+ <br><br>
+ It may be of interest who is accessing blocked sites. To track that
+diff -Naurb squidGuard-1.4/doc/extended.txt squidGuard-1.4-dnsbl/doc/extended.txt
+--- squidGuard-1.4/doc/extended.txt	2007-11-16 17:58:32.000000000 +0100
++++ squidGuard-1.4-dnsbl/doc/extended.txt	2009-03-04 18:18:01.000000000 +0100
+@@ -100,6 +100,29 @@
+ 172.16.12.0/255.255.255.0
+ 10.5.3.1/28
+
++     Using online DNS blacklists
++   Several DNS based databases can be used to block domain names referrenced in
++   blacklists. First choose which database you would like to trust (some well known
++   are : http://www.uribl.com/, or http://www.surbl.org/).
++   Be aware that this will raise several DNS requests every time squidGuard
++   receives a request to filter. SquidGuard will not cache any DNS result, so make
++   sure your DNS server does, and mesure the performance impact before using on
++   production.
++   To get squidGuard to request DNS dynamically and block listed domain names, just use :
++acl {
++        default {
++                pass !dnsbl:black.uribl.com all
++                redirect http://localhost/block.html
++        }
++}
++
++
++
++
++
++
++
++
+      Logging blocked access tries
+    It may be of interest who is accessing blocked sites. To track that
+    down you can add a log directive to your src or dest definitions in
+diff -Naurb squidGuard-1.4/src/sg.h.in squidGuard-1.4-dnsbl/src/sg.h.in
+--- squidGuard-1.4/src/sg.h.in	2007-11-16 17:58:32.000000000 +0100
++++ squidGuard-1.4-dnsbl/src/sg.h.in	2009-03-04 17:38:32.000000000 +0100
+@@ -68,6 +68,7 @@
+ #define ACL_TYPE_DEFAULT    1
+ #define ACL_TYPE_TERMINATOR 2
+ #define ACL_TYPE_INADDR     3
++#define ACL_TYPE_DNSBL      4
+
+ #define REQUEST_TYPE_REWRITE    1
+ #define REQUEST_TYPE_REDIRECT   2
+@@ -301,6 +302,7 @@
+
+ struct AclDest {
+   char *name;
++  char *dns_suffix;
+   struct Destination *dest;
+   int    access;
+   int    type;
+diff -Naurb squidGuard-1.4/src/sg.y.in squidGuard-1.4-dnsbl/src/sg.y.in
+--- squidGuard-1.4/src/sg.y.in	2008-05-17 20:25:18.000000000 +0200
++++ squidGuard-1.4-dnsbl/src/sg.y.in	2009-03-22 21:43:08.000000000 +0100
+@@ -2253,6 +2274,7 @@
+      int allowed;
+ #endif
+ {
++  char *subval = NULL;
+   struct Destination *dest = NULL;
+   struct sgRewrite *rewrite = NULL;
+   struct AclDest *acldest;
+@@ -2264,6 +2286,9 @@
+       allowed=0;
+     else if(!strcmp(value,"in-addr")){
+       type = ACL_TYPE_INADDR;
++    } else if (!strncmp(value,"dnsbl",5)) {
++      subval = strstr(value,":");
++      type = ACL_TYPE_DNSBL;
+     } else {
+       if((dest = sgDestFindName(value)) == NULL){
+ 	sgLogFatalError("%s: ACL destination %s is not defined in configfile %s",
+@@ -2278,6 +2303,25 @@
+     acldest->dest = dest;
+     acldest->access = allowed;
+     acldest->type = type;
++    if (type == ACL_TYPE_DNSBL)
++    {
++      if ((subval==NULL) || (subval[1])=='\0')//Config does not define which dns domain to use
++      {
++	acldest->dns_suffix = (char *) sgCalloc(1,strlen(".black.uribl.com")+1);
++	strcpy(acldest->dns_suffix, ".black.uribl.com");
++      }else{
++	subval=subval+1;
++	if (strspn(subval,".-abcdefghijklmnopqrstuvwxyz0123456789") !=
++	  					     strlen(subval)  )
++	  {
++	    sgLogFatalError("%s: provided dnsbl \"%s\" doesn't look like a valid domain suffix",
++	                    progname,subval);
++	  }
++	acldest->dns_suffix = (char *) sgCalloc(1,strlen(subval)+1);
++	strcpy(acldest->dns_suffix, ".");
++	strcat(acldest->dns_suffix,subval);
++      }
++    }
+     acldest->next = NULL;
+     if(lastAcl->pass == NULL){
+       lastAcl->pass = acldest;
+@@ -2365,6 +2409,56 @@
+   return acl;
+ }
+
++char *strip_fqdn(char *domain)
++{
++  char *result;
++  result=strstr(domain,".");
++  if (result == NULL)
++    return NULL;
++  return (result+1);
++}
++
++int is_blacklisted(char *domain, char *suffix)
++{
++  char target[MAX_BUF];
++  struct addrinfo *res;
++  int result;
++  //Copying domain to target
++  if (strlen(domain)+strlen(suffix)+1>MAX_BUF)
++  {
++    //Buffer overflow risk - just return and accept
++@NOLOG1@
++    if( globalDebug == 1 ) { sgLogError("dnsbl : too long domain name - accepting without actual check"); }
++@NOLOG2@
++    return(0);
++  }
++  strncpy(target,domain,strlen(domain)+1);
++  strcat(target,suffix);
++
++  result = getaddrinfo(target,NULL,NULL,&res);
++  if (result == 0) //Result is defined
++  {
++    freeaddrinfo(res);
++    return 1;
++  }
++  //If anything fails (DNS server not reachable, any problem in the resolution,
++  //let's not block anything.
++  return 0;
++}
++
++int blocked_by_dnsbl(char *domain, char *suffix)
++{
++  char *dn=domain;
++  while ((dn !=NULL) && (strchr(dn,'.')!=NULL)) //No need to lookup "com.black.uribl.com"
++  {
++    if (is_blacklisted(dn,suffix))
++      return(1);
++    dn=strip_fqdn(dn);
++  }
++  return 0;
++}
++
++
+ #if __STDC__
+ char *sgAclAccess(struct Source *src, struct Acl *acl, struct SquidInfo *req)
+ #else
+@@ -2397,6 +2491,16 @@
+ 	}
+ 	continue;
+       }
++      // http://www.yahoo.fr/ 172.16.2.32 - GET
++      if(aclpass->type == ACL_TYPE_DNSBL){
++	if (req->dot)
++	  continue;
++	if (blocked_by_dnsbl(req->domain, aclpass->dns_suffix)){
++	  access=0;
++	  break;
++	}
++	continue;
++      }
+       if(aclpass->dest->domainlistDb != NULL){
+ 	result = defined(aclpass->dest->domainlistDb, req->domain, &dbdata);
+        if(result != DB_NOTFOUND) {
