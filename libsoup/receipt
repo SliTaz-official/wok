@@ -11,10 +11,10 @@ WEB_SITE="https://live.gnome.org/LibSoup/"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
 HOST_ARCH="i486 arm"
 
-DEPENDS="glibc-base libxml2 zlib glib glib-networking libgio gtk+ \
-libgnutls libtasn1 libgcrypt"
-BUILD_DEPENDS="gtk+-dev glib-networking-dev libgio libgio-dev \
-libxml2-dev libgcrypt-dev libtasn1-dev gnutls-dev zlib-dev"
+DEPENDS="glib glibc-base libffi libgio libxml2 pcre zlib"
+BUILD_DEPENDS="glib-networking-dev libgio-dev \
+libxml2-dev libgcrypt-dev libtasn1-dev gnutls-dev zlib-dev \
+libgnome-keyring-dev sqlite-dev dbus-dev"
 
 # Handle cross compilation.
 case "$ARCH" in
@@ -27,7 +27,6 @@ compile_rules()
 	./configure \
 		--with-html-dir=/usr/share/doc \
 		--disable-gtk-doc \
-		--without-gnome \
 		$CONFIGURE_ARGS &&
 	make && make install
 }
@@ -37,5 +36,7 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
-}
 
+	# move to libsoup-gnome package
+	rm -f $fs/usr/lib/libsoup-gnome*
+}
