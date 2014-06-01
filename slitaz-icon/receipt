@@ -16,13 +16,23 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share/icons
 	cp -a $src/SliTaz $fs/usr/share/icons
-	sed -i s'/Name=Faenza/Name=SliTaz/' \
-		$fs/usr/share/icons/SliTaz/index.theme
+
 	# We use a new one provided by TazPanel
 	rm $fs/usr/share/icons/SliTaz/apps/22/tazpanel.png
+
 	# fix icons for Yad
 	ln -s go-next.png $fs/usr/share/icons/SliTaz/actions/22/gtk-go-forward.png
 	ln -s go-previous.png $fs/usr/share/icons/SliTaz/actions/22/gtk-go-back.png
+
+	# remove non-existent entities => faster icon search
+	rm -f $fs/usr/share/icons/SliTaz/index.theme
+	cp $stuff/index.theme $fs/usr/share/icons/SliTaz
+
+	# remove broken symlinks
+	for i in $(find $fs -type l); do
+		[ ! -e $i ] && rm -f $i
+	done
+
 	chown -R root.root $fs
 }
 
