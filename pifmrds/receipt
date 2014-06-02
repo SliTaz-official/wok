@@ -21,20 +21,20 @@ BUILD_DEPENDS="wget libsndfile-dev"
 compile_rules()
 {
 	cd $src/src
-	sed -i "s|STD_CFLAGS = |&-I/cross/$ARCH/sysroot/usr/include |" Makefile
+	sed -i 's|^CC|# &|;/^ifeq/d;/^else/,/^endif/d;s|-march.*$||' Makefile
 	make
 }
 
 # SliTaz package testsuite
 testsuite() {
-	readelf -Ah $src/pi_fm_rds
+	readelf -Ah $src/src/pi_fm_rds
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir $fs/usr/sbin
-	cp $src/pi_fm_rds $fs/usr/sbin
+	mkdir -p $fs/usr/sbin
+	cp $src/src/pi_fm_rds $fs/usr/sbin
 	cat > $fs/usr/sbin/pifmogg.sh <<EOT
 #!/bin/sh
 
