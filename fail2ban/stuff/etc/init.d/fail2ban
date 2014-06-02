@@ -1,0 +1,60 @@
+#!/bin/sh
+# /etc/init.d/fail2ban: Start, stop and restart Apache web server on SliTaz, 
+# at boot time or with the command line. Daemons options are configured
+# with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=Fail2ban
+DESC="Fail2ban Server"
+DAEMON=/usr/bin/fail2ban-client
+OPTIONS=
+PIDFILE=/var/run/fail2ban/fail2ban.pid
+SOCKET=/var/run/fail2ban/fail2ban.sock
+
+case "$1" in
+  start)
+    if active_pidfile $PIDFILE fail2ban-server ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    rm -f $SOCKET
+    $DAEMON start > /dev/null
+    status
+    ;;
+  stop)
+    echo -n "Stopping $DESC: $NAME... "
+    $DAEMON stop
+    rm -f $PIDFILE
+    status
+    ;;
+  reload)
+    if ! active_pidfile $PIDFILE fail2ban-server  ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    $DAEMON stop
+    status
+    ;;
+  restart)
+    if ! active_pidfile $PIDFILE fail2ban-server ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    $0 stop
+    $0 start
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|reload|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
