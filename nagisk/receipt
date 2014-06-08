@@ -1,0 +1,49 @@
+# SliTaz package receipt.
+
+PACKAGE="nagisk"
+VERSION="1.2.5"
+CATEGORY="network"
+SHORT_DESC="Simple tool to monitor Asterisk from a Nagios server."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL3"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://github.com/nicolargo/nagisk"
+WGET_URL="https://codeload.github.com/nicolargo/nagisk/tar.gz/v$VERSION"
+
+DEPENDS="nagios-nrpe perl sudo"
+BUILD_DEPENDS="wget"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/nagios/libexec
+	cp -a $src/nagisk.pl $fs/usr/share/nagios/libexec
+	sed -i 's/^elsif/} &/' $fs/usr/share/nagios/libexec/nagisk.pl
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	grep -qs check_asterisk_version $1/etc/nagios/nrpe.cfg ||
+	cat >> $1/etc/nagios/nrpe.cfg <<EOT
+command[check_asterisk_version]=/usr/share/nagios/libexec/nagisk.pl -c version
+command[check_asterisk_peers]=/usr/share/nagios/libexec/nagisk.pl -c peers -w \$ARG1\$ -x \$ARG2\$
+command[check_asterisk_peer]=/usr/share/nagios/libexec/nagisk.pl -c peer -p \$ARG1\$ -w \$ARG2\$ -x \$ARG3\$
+command[check_asterisk_channels]=/usr/share/nagios/libexec/nagisk.pl -c channels -w \$ARG1\$ -x \$ARG2\$
+command[check_asterisk_konference]=/usr/share/nagios/libexec/nagisk.pl -c konference -w \$ARG1\$ -x \$ARG2\$
+command[check_asterisk_jabber]=/usr/share/nagios/libexec/nagisk.pl -c jabber -b \$ARG1\$
+#command[check_asterisk_zaptel]=/usr/share/nagios/libexec/nagisk.pl -c zaptel
+#command[check_asterisk_span]=/usr/share/nagios/libexec/nagisk.pl -c span -s \$ARG1\$
+#command[check_asterisk_dahdi]=/usr/share/nagios/libexec/nagisk.pl -c dahdi
+#command[check_asterisk_dahdi_span]=/usr/share/nagios/libexec/nagisk.pl -c dahdi_span -s \$ARG1\$
+#command[check_asterisk_pri_span]=/usr/share/nagios/libexec/nagisk.pl -c pri_span -s \$ARG1\$
+#command[check_asterisk_pri_spans]=/usr/share/nagios/libexec/nagisk.pl -c pri_spans
+command[check_asterisk_registry]=/usr/share/nagios/libexec/nagisk.pl -c registry
+EOT
+	grep '^nagios ALL= NOPASSWD' $1/etc/sudoers | grep -q asterisk ||
+	cat >> $1/etc/sudoers <<EOT
+www ALL= NOPASSWD: /usr/sbin/asterisk
+EOT
+	chown nagios:nagios $1/usr/share/nagios/libexec
+	chown nagios:nagios $1/usr/share/nagios/libexec/nagisk.pl
+}
