@@ -22,6 +22,7 @@ compile_rules()
 	cd $src
 	./configure --prefix=/usr --sysconfdir=/etc/ssh --with-pam \
 		--with-privsep-user=nobody --with-privsep-path=/var/run/sshd \
+		--with-xauth=/usr/bin/xauth \
 		--libexecdir=/usr/sbin \
 		$CONFIGURE_ARGS &&
 	make &&
@@ -41,12 +42,12 @@ genpkg_rules()
 
 post_install()
 {
-       [ "$1" ] || while read dropbear openssh ; do
-		[ -s $dropbear ] || continue
+	while read dropbear openssh ; do
+		[ -s $1$dropbear ] || continue
 		dropbearconvert dropbear openssh $1$dropbear $1$openssh
 		dropbearkey -y -f $1$dropbear | grep ssh > $1$openssh.pub
 		dropbearkey -y -f $1$dropbear | grep Fingerprint
-       done <<EOT
+	done <<EOT
 /etc/dropbear/dropbear_rsa_host_key	/etc/ssh/ssh_host_rsa_key
 /etc/dropbear/dropbear_dss_host_key	/etc/ssh/ssh_host_dsa_key
 EOT
