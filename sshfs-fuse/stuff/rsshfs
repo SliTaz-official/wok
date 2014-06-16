@@ -1,0 +1,25 @@
+#!/bin/sh
+# from https://github.com/rom1v/rsshfs/blob/master/rsshfs
+
+rhost="${2%:*}"
+rpath="${2#*:}"
+lpath="$1"
+
+case "$2" in
+-u)	ssh "$rhost" fusermount -u "$rpath"
+	;;
+	
+''|-*)	cat <<EOT
+usage:
+	$0 localpath remotehost:remotepath [-o ro -o allow_other]
+	$0 -u remotehost:remotepath
+EOT
+	;;
+	
+*)	fifo=/tmp/rsshfs-fifo$$
+	shift 2
+	mkfifo $fifo
+	/usr/sbin/sftp-server < $fifo | \
+	ssh "$rhost" sshfs -o slave ":$lpath" "$rpath" "$@" > $fifo
+	rm -f $fifo
+esac
