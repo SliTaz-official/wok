@@ -18,10 +18,12 @@ EOT
 	;;
 	
 *)	fifo=/tmp/rsshfs-$$
+	ro=""
 	mkfifo $fifo
 	case " $@ " in
-	*\ -o\ ro\ *) sftp-server -R ;;
-	*) sftp-server ;;
-	esac <$fifo | ssh "$rhost" sshfs -o slave ":$lpath" "$rpath" "$@" >$fifo
+	*\ -o\ ro\ *) ro="-R"
+	esac
+	/usr/sbin/sftp-server $ro <$fifo | \
+	ssh "$rhost" sshfs -o slave ":$lpath" "$rpath" "$@" >$fifo
 	rm -f $fifo
 esac
