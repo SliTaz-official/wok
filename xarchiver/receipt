@@ -1,22 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="xarchiver"
-VERSION="0.5.2"
+VERSION="0.5.3"
 CATEGORY="x-window"
-SHORT_DESC="Archive manager for thunar"
+SHORT_DESC="A GTK+ lightweight archive manager"
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://xarchiver.sourceforge.net/"
-WGET_URL="http://downloads.sourceforge.net/project/xarchiver/xarchiver/$VERSION/$TARBALL"
+WGET_URL="$SF_MIRROR/$PACKAGE/$VERSION/$TARBALL"
 
-DEPENDS="gtk+ tar"
+# binutils for ar; busybox also contains gzip & cpio; rar is get-rar; gtar is absent
+SUGGESTED="arj bzip2 binutils gzip lzma xz lzop lha rar cpio zip p7zip-full xdg-utils"
+DEPENDS="gtk+"
 BUILD_DEPENDS="gtk+-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	patch -p0 < $stuff/xarchiver-0.5.3-icons.diff
 	./configure \
 		--prefix=/usr \
 		--libexecdir=/usr/lib \
@@ -27,15 +29,13 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/locale
+	mkdir -p $fs/usr/share
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/pixmaps $fs/usr/share
-	cp -a $install/usr/share/locale/fr $fs/usr/share/locale
 	cp -a $install/usr/share/applications $fs/usr/share
 	cp -a $install/usr/share/icons $fs/usr/share
-	
-	chmod 755 $fs/usr/lib/thunar-archive-plugin/*
 	rm -rf $fs/usr/share/icons/hicolor/scalable
-}
 
+	sed -i '/Encoding/d;/Version/d;/Name\[.*\]=Xarchiver/d;/GenericName/d;/Exec/s/.*/& %f/' \
+		$fs/usr/share/applications/xarchiver.desktop
+}
