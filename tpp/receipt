@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="tpp"
+VERSION="1.3.1"
+CATEGORY="utilities"
+SHORT_DESC="Text presentation program."
+MAINTAINER="paul@slitaz.org"
+DEPENDS="ruby ruby-ncurses ncurses"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.ngolde.de/tpp.html"
+WGET_URL="http://www.ngolde.de/download/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	# use debian patches and fixes
+	patch -i ../../stuff/ruby19.patch
+	patch -i ../../stuff/optional-x.patch
+	cd examples
+	for tppfile in *.tpp; do 
+  		iconv -f ISO-8859-1 -t UTF-8 -o $tppfile.new $tppfile && \
+  		touch -r $tppfile $tppfile.new && \
+  		mv $tppfile.new $tppfile
+	done
+	cd ..
+	# make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/doc/tpp/examples
+	install $src/tpp.rb $fs/usr/bin/tpp
+	install -m644 $src/examples/* $fs/usr/share/doc/tpp/examples
+}
+
