@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="tazpanel-theme-sandfive"
+VERSION="1.0"
+CATEGORY="misc"
+SHORT_DESC="SliTaz Sand Five theme for TazPanel"
+MAINTAINER="holkfoor@gmail.com"
+LICENSE="PublicDomain"
+WEB_SITE="http://www.slitaz.org/"
+
+DEPENDS="tazpanel"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/var/www/tazpanel/styles/sandfive
+	cp -a stuff/* $fs/var/www/tazpanel/styles/sandfive
+
+	# link absent files with default theme
+	cd $fs/var/www/tazpanel/styles/sandfive
+	for i in favicon.ico footer.html header.html images; do
+		ln -s ../default/$i $i
+	done
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	sed -i 's|STYLE=".*"|STYLE="sandfive"|' $1/etc/slitaz/tazpanel.conf
+}
+
+pre_remove()
+{
+	sed -i 's|STYLE=".*"|STYLE="default"|' $1/etc/slitaz/tazpanel.conf
+}
