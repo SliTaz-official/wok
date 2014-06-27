@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="softether"
+VERSION="v4.09-9451-beta"
+RELEASE="2014.06.09"
+CATEGORY="network"
+SHORT_DESC="An Open-Source Free Cross-platform Multi-protocol VPN Program."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-src-$VERSION.tar.gz"
+WEB_SITE="https://www.softether.org/"
+WGET_URL="http://www.softether-download.com/files/softether/$VERSION-$RELEASE-tree/Source%20Code/$TARBALL"
+
+DEPENDS="libssl libcryto readline ncurses zlib"
+BUILD_DEPENDS="openssl-dev readline-dev ncurses-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $DESTDIR/usr/bin
+	yes 1 | ./configure $CONFIGURE_ARGS &&
+	sed -i "s|^INSTALL_.*DIR=|&$DESTDIR|" Makefile &&
+	make &&
+	make DESTDIR=$DESTDIR install &&
+	sed -i "s|$DESTDIR||" $DESTDIR/usr/bin/*
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs
+	cp -a $install/usr $fs
+}
