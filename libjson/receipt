@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="libjson"
+VERSION="7.6.1"
+CATEGORY="misc"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="BSD"
+SHORT_DESC="A super-effiecient JSON reader and writer."
+WEB_SITE="http://sourceforge.net/projects/libjson/"
+TARBALL="${PACKAGE}_$VERSION.zip"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS=""
+BUILD_DEPENDS=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	unset CXXFLAGS
+	mkdir Objects_static Objects_shared _internal/Source/Dependencies
+	mkdir -p $DESTDIR/usr/lib 
+	sed -i 's|^in[a-z]*_path *= |&$(DESTDIR)|' makefile
+	make -j 1 SHARED=1 all &&
+	make DESTDIR=$DESTDIR install
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs/
+}
