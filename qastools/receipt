@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="qastools"
+VERSION="0.17.2"
+CATEGORY="multimedia"
+SHORT_DESC="QasTools is a collection of desktop applications for the ALSA"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="http://xwmw.org/qastools/index.html"
+TARBALL="${PACKAGE}_$VERSION.tar.xz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$VERSION/$TARBALL"
+GENERIC_MENUS="no"
+
+DEPENDS="alsa-lib libQtCore libQtGui libQtNetwork libQtSvg qasmixer"
+BUILD_DEPENDS="cmake Qt4-dev qmake alsa-lib-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir build; cd build
+	cmake -DCMAKE_INSTALL_PREFIX=/usr .. &&
+	make &&
+	make DESTDIR=$install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	rm -rf $fs/usr/share/man $fs/usr/share/qastools/COPYING
+
+	# separate qasmixer
+	for file in $(cat $stuff/qasmixer.files); do
+		rm -f $fs$file
+	done
+}
