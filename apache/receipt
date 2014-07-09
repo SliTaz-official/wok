@@ -78,7 +78,7 @@ post_install()
 	# Just in case.
 	chown www.www $1/var/log/$PACKAGE
 	ping -c 2 $(hostname) > /dev/null 2>&1 || 
-		sed -i "s/localhost/$(hostname) localhost/" /etc/hosts
+		sed -i "s/localhost/$(hostname) localhost/" $1/etc/hosts
 	[ -s $1/etc/ssl/apache/apache.pem ] ||
 	openssl req -new -x509 -keyout $1/etc/ssl/apache/apache.pem \
 		-out $1/etc/ssl/apache/apache.pem -days 3650 -nodes <<EOT
@@ -97,6 +97,7 @@ EOT
 		echo "Reconfiguring $pkg for $PACKAGE..."
 		tazpkg reconfigure $pkg
 	done
+	[ -f $1/etc/php.ini ] && tazpkg get-install php-apache --root=$1
 	if [ -z "$1" ]; then
 		for i in lighttpd ; do
 			[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
