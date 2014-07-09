@@ -7,14 +7,9 @@
 #
 
 PACKAGE="LibreOffice"
-WEB_SITE="http://www.libreoffice.org"
-CATEGORY="office"
-SHORT_DESC="Productivity suite."
-DEPENDS="cups"
-SUGGESTED="java6-jre"
+URL="http://www.libreoffice.org"
 ROOT="$1"
 DIR="stable"
-PREFIX="LibreOffice"
 SUFFIX="Linux_x86_rpm.tar.gz"
 WGET_URL="http://download.documentfoundation.org/libreoffice/$DIR"
 
@@ -27,11 +22,11 @@ fi
 VER="${VERSION/\-/}" # without hyphens
 
 
-TARBALL="${PREFIX}_${VER}_${SUFFIX}"
+TARBALL="LibreOffice_${VER}_${SUFFIX}"
 
 for LOC in ${LANG/_/-} ${LANG%_*}; do
 	L_SUFFIX="Linux_x86_rpm_langpack_$LOC.tar.gz"
-	L_TARBALL="${PREFIX}_${VER}_${L_SUFFIX}"
+	L_TARBALL="LibreOffice_${VER}_${L_SUFFIX}"
 	LANG_URL="$WGET_URL/${VERSION}/rpm/x86/${L_TARBALL}"
 	busybox wget -s $LANG_URL 2> /dev/null || continue
 	echo "Added $LANG ($LOC)."
@@ -110,7 +105,9 @@ if [ ! -f $SOURCE_DIR/$TARBALL ]; then
 		wget -c $LANG_URL -O $SOURCE_DIR/$L_TARBALL
 	fi
 	status
+	
 fi
+
 if [ ! -f $SOURCE_DIR/$TARBALL ]; then
 	rm -rf $SOURCE_DIR
 	echo "Could not download $TARBALL. Exiting."
@@ -124,10 +121,10 @@ mkdir -p $TEMP_DIR
 for TB in $TARBALL $L_TARBALL ; do
 	tar xvzf $SOURCE_DIR/$TB -C $TEMP_DIR > $LOG 2>&1 || \
 	(echo "Failed to extract $TB" ; exit 1)
-done
+done 
 
 # Get version found in archive (often directory is still RC version when final is present)
-ARCHIVED_VERSION=$(find $TEMP_DIR -type d 2> /dev/null | sed "/$PREFIX/!d;\$!d;s/_/ /g" | awk '{print $2}')
+ARCHIVED_VERSION=`cd $TEMP_DIR;find . -type d 2> /dev/null | grep LibreOffice | head -n 1 | sed 's/_/ /g' | awk '{print $2}'`
 echo -n "(found v${ARCHIVED_VERSION})"
 
 # Consolidate localisations into main package
@@ -150,32 +147,35 @@ do
 		(rpm2cpio $i | cpio -id >> $LOG 2>&1 ) && rm  -f $i
 	fi
 done
-rpm2cpio libobasis*-gnome-integration*.rpm | cpio -id >> $LOG 2>&1
+
+#rpm2cpio desktop-integration/*freedesktop*.rpm | cpio -id >> $LOG 2>&1
+#rpm2cpio *freedesktop*.rpm | cpio -id >> $LOG 2>&1
 
 # extracted pkg can be removed: Save RAM
-rm -f libobasis*.rpm
+rm -f desktop-integration/*freedesktop*.rpm
 
 status
 echo -n "Preparing package... "
 
 # Make the package
-mkdir -p $PACKAGE-$VERSION/fs/usr/lib $PACKAGE-$VERSION/fs/usr/share
+mkdir -p $PACKAGE-$VERSION/fs/usr/lib/libreoffice  \
+         $PACKAGE-$VERSION/fs/usr/share
 
 # use mv instead of 'cp -a' to save RAM
-mv opt/libreoffice* $PACKAGE-$VERSION/fs/usr/lib/libreoffice
+mv opt/libreoffice* $PACKAGE-$VERSION/fs/usr/lib
 mv usr/share/mime $PACKAGE-$VERSION/fs/usr/share
 mv usr/share/icons $PACKAGE-$VERSION/fs/usr/share
 mv usr/bin $PACKAGE-$VERSION/fs/usr
 
 # relocalized libexec directory
-bin=$(echo $PACKAGE-$VERSION/fs/usr/bin/libreoffice${VERSION%.*})
+bin=$(ls $PACKAGE-$VERSION/fs/usr/bin/libreoffice???)
 if [ -L $bin ]; then
 	target=$(readlink $bin)
 	rm -f $bin
 	ln -s ${target/opt/usr\/lib\/libreoffice} $bin
 else
 	sed -i 's#/opt/#/usr/lib/libreoffice/#'  $bin
-fi
+fi	
 
 # Create receipt
 cat > $PACKAGE-$VERSION/receipt <<EOT
@@ -183,33 +183,39 @@ cat > $PACKAGE-$VERSION/receipt <<EOT
 
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
-CATEGORY="$CATEGORY"
-SHORT_DESC="$SHORT_DESC"
-WEB_SITE="$WEB_SITE"
-
-DEPENDS="$DEPENDS"
-SUGGESTED="$SUGGESTED"
+CATEGORY="office"
+SHORT_DESC="Productivity suite."
+DEPENDS="java6-jre cups"
+WEB_SITE="$URL"
 
 post_install()
 {
-	cd \$1/usr/share/applications
-	ln -s /usr/lib/libreoffice*/share/xdg/base.desktop          libreoffice-base.desktop
-	ln -s /usr/lib/libreoffice*/share/xdg/impress.desktop       libreoffice-impress.desktop
-	ln -s /usr/lib/libreoffice*/share/xdg/writer.desktop        libreoffice-writer.desktop
-	ln -s /usr/lib/libreoffice*/share/xdg/calc.desktop          libreoffice-calc.desktop
-	ln -s /usr/lib/libreoffice*/share/xdg/math.desktop          libreoffice-math.desktop
-	ln -s /usr/lib/libreoffice*/share/xdg/draw.desktop          libreoffice-draw.desktop
-	ln -s /usr/lib/libreoffice*/share/xdg/printeradmin.desktop libreoffice-printeradmin.desktop
-	chmod +x /usr/lib/libreoffice*/share/xdg/*.desktop
+        ln -sf /usr/lib/libreoffice?* /usr/lib/libreoffice
+        path_libreoffice=\$(find /usr/lib/libreoffice -name libreoffice*.*)
 
-	cd \$1/usr/bin
-	ln -sf /usr/lib/libreoffice/program/soffice
-	ln -sf /usr/lib/libreoffice/program/soffice libreoffice${VERSION%.*}
+        # Remove links if exist
+        rm -f /usr/share/applications/libreoffice-*
+
+        # Create links
+        cd /usr/share/applications
+        ln -sf \$path_libreoffice/share/xdg/base.desktop          libreoffice-base.desktop
+        ln -sf \$path_libreoffice/share/xdg/impress.desktop       libreoffice-impress.desktop
+        ln -sf \$path_libreoffice/share/xdg/writer.desktop        libreoffice-writer.desktop
+        ln -sf \$path_libreoffice/share/xdg/calc.desktop          libreoffice-calc.desktop
+        ln -sf \$path_libreoffice/share/xdg/math.desktop          libreoffice-math.desktop
+        ln -sf \$path_libreoffice/share/xdg/draw.desktop          libreoffice-draw.desktop
+
+        chmod +x \$path_libreoffice/share/xdg/*.desktop
+
+        # If necessary, recreate links for soffice
+        rm -f /usr/bin/soffice /usr/bin/libreoffice
+        ln -sf \$path_libreoffice/program/soffice /usr/bin/libreoffice
+        ln -sf \$path_libreoffice/program/soffice /usr/bin/soffice
 }
 
 post_remove()
 {
-	rm -f \$1/usr/share/applications/libreoffice-*
+	rm -f /usr/share/applications/libreoffice-*
 }
 
 EOT
