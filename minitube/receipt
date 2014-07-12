@@ -18,6 +18,10 @@ BUILD_DEPENDS="wget cacerts Qt4-dev qmake"
 # Rules to configure and make the package.
 compile_rules()
 {
+	# put default icons to resources (instead of to hicolor icon theme)
+	cp -a $stuff/*.png $src/images
+	patch -p0 < $stuff/icons.diff
+
 	mkdir build; cd build
 	qmake ../minitube.pro &&
 	make && make INSTALL_ROOT=$install install
@@ -28,6 +32,7 @@ genpkg_rules()
 {
 	cp -a $install/* $fs
 
+	# remove big icons
 	for size in 64 128 256 512; do
 		rm -rf $fs/usr/share/icons/hicolor/${size}x$size
 	done
