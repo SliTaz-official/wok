@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="lxqt-panel"
+VERSION="0.7.0"
+CATEGORY="system"
+SHORT_DESC="The LXQt desktop panel"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="LGPL2.1"
+WEB_SITE="https://github.com/lxde/lxqt-panel"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/lxde/$PACKAGE/archive/$VERSION.tar.gz"
+TAGS="LXQt"
+
+DEPENDS="alsa-lib icu libQtCore libQtDBus libQtGui libQtXml libqtxdg \
+libstatgrab lm-sensors pcre xorg-libX11 xorg-libXcomposite xorg-libXdamage \
+xorg-libXext xorg-libXfixes xorg-libXrender lxqt-globalkeys liblxqt \
+liblxqt-mount menu-cache libsysstat"
+SUGGESTED="qastools xscreensaver"
+BUILD_DEPENDS="wget cacerts cmake Qt4-dev qmake xorg-libX11-dev liblxqt-dev \
+libqtxdg-dev lxqt-globalkeys-dev liblxqt-mount-dev xorg-libXcomposite-dev \
+xorg-libXdamage-dev xorg-libXrender-dev menu-cache-dev libstatgrab-dev \
+lm-sensors-dev alsa-lib-dev libsysstat-dev icu-dev grep glib-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir build; cd build
+	cmake \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DLIB_SUFFIX=/usr/lib \
+		-DVOLUME_USE_PULSEAUDIO=No \
+		-DTEATIME_PLUGIN=Yes \
+		.. &&
+	make &&
+	make DESTDIR=$install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/lxqt/lxqt-panel
+	cp -a $install/etc $fs
+	cp -a $install/usr/bin $install/usr/lib $fs/usr
+	cp -a $install/usr/share/lxqt/lxqt-panel/*.desktop $fs/usr/share/lxqt/lxqt-panel
+}

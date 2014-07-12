@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="lxqt-common"
+VERSION="0.7.0"
+CATEGORY="system-tools"
+SHORT_DESC="Common files for LXQt"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL2"
+WEB_SITE="https://github.com/lxde/lxqt-common"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/lxde/$PACKAGE/archive/$VERSION.tar.gz"
+TAGS="LXQt"
+
+# TODO: add more depends
+DEPENDS="xorg-xprop dbus "
+BUILD_DEPENDS="wget cacerts cmake Qt4-dev qmake liblxqt-dev grep"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir build; cd build
+	cmake -DCMAKE_INSTALL_PREFIX=/usr .. &&
+	make &&
+	make DESTDIR=$install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/etc $fs
+	cd $fs; patch -p0 < $stuff/settings.diff
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share $fs/usr
+	# all themes but 'flat' go to 'lxqt-themes'
+	rm -rf $fs/usr/share/lxqt/themes/*
+	cp -a $install/usr/share/lxqt/themes/flat $fs/usr/share/lxqt/themes
+}
