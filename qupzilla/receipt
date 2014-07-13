@@ -1,32 +1,37 @@
 # SliTaz PACKAGE receipt.
 
 PACKAGE="qupzilla"
-VERSION="v1.6.6"
-CATEGORY="x-window"
-SHORT_DESC="QupZilla is a new, lightweight and very fast QtWebKit browser"
+VERSION="1.6.6"
+CATEGORY="network"
+SHORT_DESC="QupZilla - QtWebKit browser"
 MAINTAINER="claudinei@slitaz.org"
 LICENSE="GPL3"
 WEB_SITE="https://github.com/QupZilla/qupzilla"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/v$VERSION.tar.gz"
+GENERIC_PIXMAPS="no"
 
-DEPENDS="qt4 openssl gst-plugins-base"
-BUILD_DEPENDS="Qt4-dev qmake openssl-dev wget"
-SUGGESTED="qupzilla-locales"
+DEPENDS="libQtCore libQtDBus libQtGui libQtNetwork libQtScript libQtSql \
+libQtWebkit libQtXml libcrypto xorg-libX11 zlib"
+BUILD_DEPENDS="wget cacerts Qt4-dev qmake openssl-dev xorg-libX11-dev"
+SUGGESTED="qupzilla-locales gst-plugins-base"
 
 # Rules to configure and make the PACKAGE.
 compile_rules()
 {
-	export QUPZILLA_PREFIX="$DESTDIR/usr/"
-	qmake &&
-	make && make install 
+	qmake QupZilla.pro &&
+	make &&
+	make INSTALL_ROOT=$install install
 }
 
 # Rules to gen a SliTaz PACKAGE suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/$PACKAGE
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/$PACKAGE/themes $fs/usr/share/$PACKAGE
+	cp -a $install/* $fs
+	rm -rf $fs/usr/share/bash-completion
+	for size in 64 128 256; do
+		rm -rf $fs/usr/share/icons/hicolor/${size}x$size
+	done
+	rm -rf $fs/usr/share/pixmaps
+	rm -rf $fs/usr/share/qupzilla/locale
 }
