@@ -6,39 +6,39 @@ CATEGORY="network"
 SHORT_DESC="IRC client using GTK+"
 MAINTAINER="lenios@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.xchat.org/"
-WGET_URL="http://www.xchat.org/files/source/2.8/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="http://www.xchat.org/files/source/${VERSION%.*}/$TARBALL"
 
-DEPENDS="gtk+ dbus openssl gettext dbus-glib xorg-libXdamage"
+DEPENDS="gtk+ dbus openssl gettext-base dbus-glib xorg-libXdamage"
 BUILD_DEPENDS="gtk+-dev dbus-dev openssl shared-mime-info"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    sed -i -e 's|glib/gslist.h|glib.h|' -e 's|glib/giochannel.h|glib.h|' \
-	   -e 's|glib/glist.h|glib.h|' -e 's|glib/gstrfuncs.h|glib.h|' \
-	   -e 's|glib/gutils.h|glib.h|' src/common/xchat.h
-    sed -i 's|glib/ghash.h|glib.h|' src/common/servlist.c src/common/text.c
-    sed -i 's|glib/gmarkup.h|glib.h|' src/common/util.c
-    ./configure  --prefix=/usr \
-	  --infodir=/usr/share/info \
-	  --mandir=/usr/share/man \
-	  --disable-plugin \
-	  --disable-tcl \
-	  --enable-spell=static \
-	  --enable-ipv6 \
-      $CONFIGURE_ARGS &&
-    make &&
-    make DESTDIR=$DESTDIR install
+	sed -i -e 's|glib/gslist.h|glib.h|' -e 's|glib/giochannel.h|glib.h|' \
+		-e 's|glib/glist.h|glib.h|' -e 's|glib/gstrfuncs.h|glib.h|' \
+		-e 's|glib/gutils.h|glib.h|' src/common/xchat.h
+	sed -i 's|glib/ghash.h|glib.h|' src/common/servlist.c src/common/text.c
+	sed -i 's|glib/gmarkup.h|glib.h|' src/common/util.c
+
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--disable-plugin \
+		--disable-tcl \
+		--enable-spell=static \
+		--enable-ipv6 \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr \
-    	$fs/usr/share
-    cp -a $install/usr/bin $fs/usr
-   # cp -a $install/usr/share/dbus-1 $fs/usr/share
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	# cp -a $install/usr/share/dbus-1 $fs/usr/share
 }
