@@ -3,27 +3,30 @@
 PACKAGE="pangox-compat"
 VERSION="0.0.2"
 CATEGORY="x-window"
-LICENSE="GPL3"
-SHORT_DESC="Pango compatibility library (see: pangox)."
+SHORT_DESC="X Window System font support for Pango"
 MAINTAINER="yuripourre@gmail.com"
+LICENSE="LGPL2"
+WEB_SITE="http://www.gnome.org/"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="https://wiki.gnome.org/Apps/Calculator"
-WGET_URL="http://ftp.gnome.org/pub/gnome/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
 
-DEPENDS="pango"
-BUILD_DEPENDS="pango-dev"
+DEPENDS="glib glibc-base libffi pango pcre xorg-libX11"
+BUILD_DEPENDS="pango-dev glib-dev xorg-libX11-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	./configure \
 		--prefix=/usr \
+		--sysconfdir=/etc \
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install
 }
 
 genpkg_rules()
 {
-	cp -a $install/usr $fs
+	mkdir -p $fs/usr/lib
+	cp -a $install/etc $fs
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
