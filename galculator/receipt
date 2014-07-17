@@ -10,25 +10,44 @@ WEB_SITE="http://galculator.sourceforge.net/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 HOST_ARCH="i486 arm"
+GENERIC_PIXMAPS="no"; GENERIC_MENUS="no"
 
 DEPENDS="gtk+"
-BUILD_DEPENDS="gtk+-dev"
+BUILD_DEPENDS="gtk+-dev flex"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch < $stuff/galculator-2.0.1-gtk2.patch
-
 	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
 	export LDFLAGS="-Wl,--copy-dt-needed-entries"
-	./configure --disable-quadmath \
-	$CONFIGURE_ARGS && make && make install
+
+	./configure \
+		--disable-gtk3 \
+		--disable-quadmath \
+		$CONFIGURE_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/share/icons/hicolor/48x48
+
 	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/$PACKAGE $fs/usr/share
+
+	cp -a $install/usr/share/galculator $fs/usr/share
+	find $fs/usr/share/galculator -name '*gtk3*' -delete
+	sed -i 's|^[ ]*||g' $fs/usr/share/galculator/ui/*
+
+	cp -a $install/usr/share/icons/hicolor/48x48/apps $fs/usr/share/icons/hicolor/48x48
+
+	cp -a $install/usr/share/applications $fs/usr/share
+	sdft $fs/usr/share/applications/galculator.desktop -i -tf \
+		-a "Name[fr]=Calculatrice scientifique" \
+		-a "Name[pt]=Calculadora Científica" \
+		-a "Name[pt_BR]=Calculadora Científica" \
+		-a "Name[ru]=Инженерный калькулятор" \
+		-a "Name[zh_CN]=科学计算器" \
+		-a "Comment[ru]=Выполняйте простые и инженерные вычисления" \
+		-s "Categories=Utility;Calculator;"
 }
