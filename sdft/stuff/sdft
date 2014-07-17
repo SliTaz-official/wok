@@ -1,0 +1,124 @@
+#!/bin/sh
+# sdft - SliTaz Desktop Files Tools
+#      - tools for edit and pretty print .desktop files for SliTaz GNU/Linux
+# Aleksej Bobylev <al.bobylev@gmail.com>, 2014
+
+VERSION="040717"
+
+### functions ###
+usage() {
+	cat << "EOT"
+sdft - SliTaz Desktop Files Tools, v. $VERSION
+Tools for edit and pretty print .desktop files for SliTaz GNU/Linux
+
+Usage:
+sdft /path/to/file.desktop [COMMAND ...]
+
+Commands:
+-a "LINE"  Add a LINE to .desktop file
+-r "LINE"  Remove all lines with LINE
+-s "LINE"  Substitute existing LINE (like '-r' then '-a')
+-g         Remove GenericName lines (who uses it?)
+-x         Remove X- lines
+-t         Remove Terminal line
+-tf        Remove Terminal=false line
+-te        Remove TryExec line
+-o         Remove sections other than '[Desktop Entry]'
+-i         In-place edit (replace original)
+
+Examples:
+sdft $src/my.desktop -a "Name[en_GB]=Desktop"
+sdft $src/my.desktop -r "Name[en_GB]"
+sdft $src/my.desktop -s "Categories=Utility;Calculator;"
+sdft $src/my.desktop -r "X-GNOME-.*"
+sdft $src/my.desktop -a "Name[en_GB]=Desktop" -g -o
+
+EOT
+}
+extract() {
+	local EX=${1//[/\[}; EX=${EX//]/\]}
+	grep -e "^$EX=" $WORKING/section
+	sed -i "/^$EX=/d" $WORKING/section
+}
+extract_no_repeat() {
+	local IT_NAME="$1" IT_CONTENT
+	IT_CONTENT=$(extract "$IT_NAME" | sed "s|$IT_NAME=\(.*\)|\1|")
+	[ "x$IT_CONTENT" != x ] && echo "$IT_NAME=$IT_CONTENT"
+	extract "$IT_NAME[.*]" | sort | sed -n "/$IT_NAME\[.*\]=$IT_CONTENT$/!p"
+}
+semicolon() {
+	sed -e 's|.*|&;|' -e 's|;;|;|g'
+}
+### /functions ###
+
+
+
+case "$1" in
+	-h|--help) usage; exit 0 ;;
+	-v|-V|--version) echo "sdft v. $VERSION"; exit 0 ;;
+esac
+
+# working dir
+WORKING=$(mktemp -d)
+# original .desktop file to process it
+ORIGINAL="$WORKING/original.desktop"
+DESKTOP="$1"; cp "$DESKTOP" $ORIGINAL
+
+SECTION="Desktop Entry"
+if ! grep -qF "[$SECTION]" "$ORIGINAL"; then
+	echo "Seems $1 is not a Desktop file. Abort" >&2
+	exit 1
+fi
+
+# extract section content
+sed -n "/^\[$SECTION\]$/,/^\[.*\]$/{/^\[/!p}" $ORIGINAL > $WORKING/section
+
+# rest of the file
+sed "/^\[$SECTION\]$/,/^\[.*\]$/{/^[^\[]/d}" $ORIGINAL | sed "/^\[$SECTION\]$/d" > $WORKING/rest
+
+shift
+while [ "x$1" != "x" ]; do
+	case "$1" in
+		-a) shift; echo "$1" >> $WORKING/section; shift ;;
+		-r) shift; extract "$1" > /dev/null; shift ;;
+		-s) shift; extract "${1%%=*}" > /dev/null; echo "$1" >> $WORKING/section; shift ;;
+		-g) shift; extract_no_repeat 'GenericName' > /dev/null ;;
+		-x) shift; extract 'X-.*' > /dev/null ;;
+		-t) shift; extract 'Terminal' > /dev/null ;;
+		-tf) shift; sed -i '/^Terminal=false$/d' $WORKING/section ;;
+		-te) shift; extract 'TryExec' > /dev/null ;;
+		-o) shift; REMOVE_OTHER="yes" ;;
+		-i) shift; IN_PLACE="yes" ;;
+		*) echo "Unknown command '$1'" >&2; shift ;;
+	esac
+done
+
+{
+	echo "[$SECTION]"
+	extract 'Encoding' > /dev/null
+	extract 'Version' > /dev/null
+	extract 'Type'
+	extract_no_repeat 'Name'
+	extract_no_repeat 'GenericName'
+	extract_no_repeat 'Comment'
+	extract 'Terminal'
+	extract 'StartupNotify'
+	extract 'TryExec'
+	extract 'Exec'
+	extract 'Icon'; extract 'Icon[.*]' > /dev/null
+	extract 'Categories' | sed 's|Application;||' | semicolon
+	extract 'NoDisplay'
+	extract 'MimeType' | semicolon
+
+	cat $WORKING/section | sort | sed -n '/^$/!p'
+	[ "x$REMOVE_OTHER" != "xyes" ] && cat $WORKING/rest | sed -n '/^$/!p'
+} > $WORKING/new
+
+if [ "x$IN_PLACE" == "xyes" ]; then
+	cp -f $WORKING/new "$DESKTOP"
+else
+	cat $WORKING/new
+fi
+
+# clean
+rm -rf $WORKING
