@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="mailsync"
+VERSION="5.2.1"
+CATEGORY="network"
+SHORT_DESC="A way of synchronizing a collection of mailboxes"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="${PACKAGE}_$VERSION.orig.tar.gz"
+WEB_SITE="http://mailsync.sourceforge.net/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$VERSION/$TARBALL"
+EXTRA_SOURCE_FILES="imap-2007f.tar.gz"
+WGET_URL2="ftp://ftp.cac.washington.edu/mail/$EXTRA_SOURCE_FILES"
+TAGS="email imap"
+
+DEPENDS="libssl"
+BUILD_DEPENDS="c-client openssl-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] ||
+		wget -P $SOURCES_REPOSITORY $WGET_URL2
+	tar xzf $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES
+	cd $src/${EXTRA_SOURCE_FILES%%.*}
+	sed -i 's|SSLCFLAGS)|SSLCFLAGS) -I/usr/include/openssl|' \
+		src/osdep/unix/Makefile
+	make slx
+	cd ..
+	./configure --prefix=/usr \
+		--with-c-client=$src/${EXTRA_SOURCE_FILES%%.*} \
+		$CONFIGURE_ARGS &&
+	make && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+}
