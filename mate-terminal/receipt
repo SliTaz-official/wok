@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="mate-terminal"
+VERSION="1.9.0"
+CATEGORY="utilities"
+LICENSE="GPL3"
+SHORT_DESC="MATE Terminal is a terminal emulator for the MATE desktop."
+MAINTAINER="yuripourre@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.mate-desktop.org/"
+WGET_URL="https://github.com/mate-desktop/$PACKAGE/archive/$TARBALL"
+
+DEPENDS="gtk+ dconf util-linux-uuid vte mate-desktop harfbuzz"
+BUILD_DEPENDS="wget dconf-dev gtk+-dev util-linux-uuid-dev vte-dev \
+mate-common mate-desktop yelp-tools autoconf automake libtool itstool \
+harfbuzz-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh                   \
+		--prefix=/usr          \
+		--sysconfdir=/etc      \
+		--localstatedir=/var   \
+		--disable-static       \
+		--disable-scrollkeeper \
+		--with-gnu-ld          \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr $fs
+}
