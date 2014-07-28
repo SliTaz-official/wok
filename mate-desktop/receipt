@@ -11,8 +11,8 @@ WEB_SITE="http://www.mate-desktop.org/"
 WGET_URL="https://github.com/mate-desktop/$PACKAGE/archive/$TARBALL"
 
 DEPENDS="gtk+ gdk-pixbuf"
-BUILD_DEPENDS="wget autoconf automake dconf-dev libtool itstool \
-mate-common gtk-doc gtk+-dev gdk-pixbuf-dev yelp-tools"
+BUILD_DEPENDS="wget cacerts autoconf automake dconf-dev libtool itstool \
+mate-common gtk-doc gtk+-dev gdk-pixbuf-dev yelp-tools harfbuzz-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -24,8 +24,24 @@ compile_rules()
 	make DESTDIR=$DESTDIR install
 }
 
+# Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/ $fs
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot "$1/" /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
+}
+
+post_remove()
+{ 
+	echo "Processing post-remove commands..."
+	chroot "$1/" /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
 }
