@@ -255,7 +255,7 @@ INITRDALIGN=0x1000
 		size=$(( ($(stat -c %s "$i") + $INITRDPAD - 1) & -$INITRDPAD ))
 		[ -n "$DEBUG" ] && echo "initrd $i $size " 1>&2
 		initrdlen=$(( $initrdlen + $size ))
-		[ -n "$ADRSRD" ] || ADRSRD=$(( (($MEM * 0x100000) - $initrdlen) & -$INITRDALIGN ))
+		ADRSRD=$(( (($MEM * 0x100000) - $initrdlen) & -$INITRDALIGN ))
 		store 32 $RamfsAdrOfs $(( $ADRSRD )) $bs initrd adrs
 		store 32 $RamfsLenOfs $initrdlen $bs initrdlen
 	done
