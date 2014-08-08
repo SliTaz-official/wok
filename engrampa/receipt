@@ -1,0 +1,53 @@
+# SliTaz package receipt.
+
+PACKAGE="engrampa"
+VERSION="1.9.0"
+CATEGORY="utilities"
+LICENSE="GPL3"
+SHORT_DESC="MATE archive manipulator."
+MAINTAINER="yuripourre@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.mate-desktop.org/"
+WGET_URL="https://github.com/mate-desktop/$PACKAGE/archive/$TARBALL"
+
+DEPENDS="bzip2 caja desktop-file-utils gtk+ gzip libarchive tar"
+BUILD_DEPENDS="wget dbus-dev dconf-dev cacerts autoconf automake libtool itstool \
+gtk+-dev gtk-doc mate-common-dev mate-desktop-dev yelp-tools"
+SUGGESTED="unrar unace p7zip yelp zip"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh                           \
+		--prefix=/usr                  \
+		--libexecdir=/usr/lib/$PACKAGE \
+		--with-gtk=2.0                 \
+		--disable-static               \
+		--disable-packagekit           \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/pixmaps
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/share/$PACKAGE $fs/usr/share
+	cp -a $install/usr/share/icons/hicolor/32x32/apps/*.png \
+		$fs/usr/share/pixmaps
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot "$1/" /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
+}
+
+post_remove()
+{ 
+	echo "Processing post-remove commands..."
+	chroot "$1/" /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
+}
