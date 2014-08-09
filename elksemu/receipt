@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="elksemu"
+VERSION="0.16.18"
+CATEGORY="system-tools"
+SHORT_DESC="ELKS (linux-8086) binary format support"
+MAINTAINER="devel@slitaz.org"
+LICENSE="GPL2"
+WEB_SITE="http://www.debath.co.uk/"
+WANTED="dev86"
+TAGS="virtual 8086 vm86"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $install/usr/bin/elksemu $fs/usr/bin
+}
+
+# Post install command for Tazpkg.
+post_install()
+{
+	fmt="binfmt_misc"
+	proc="/proc/sys/fs/binfmt_misc"
+	cat > /tmp/runelks$$ <<EOT
+[ ! -e $proc/register ] && modprobe $fmt && mount -t $fmt $fmt $proc
+echo ':i86-elks:M::\x01\x03\x20\x00:\xff\xff\xff\x83:/usr/bin/elksemu:' >$proc/register
+EOT
+	rc="$1/etc/init.d/local.sh"
+	grep -q ':i86-elks:M:' $rc || cat /tmp/runelks$$ >> $rc
+	[ -n "$1" ] || . /tmp/runelks$$
+	rm -f /tmp/runelks$$
+}
+
+# Pre remove command for Tazpkg.
+pre_remove()
+{
+	echo -1 > $1/proc/sys/fs/binfmt_misc/i86-elks
+	sed -i '/binfmt_misc/{N;/:i86-elks:M:/d}' $1/etc/init.d/local.sh
+}
