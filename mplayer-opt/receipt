@@ -3,7 +3,7 @@
 PACKAGE="mplayer-opt"
 VERSION="1.1.1"
 CATEGORY="multimedia"
-SHORT_DESC="The Ultimate Movie Player For Linux (with CPU optimizations)"
+SHORT_DESC="The Ultimate Movie Player For Linux (with minimal depends)"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 SOURCE="MPlayer"
@@ -12,29 +12,26 @@ WEB_SITE="http://www.mplayerhq.hu/design7/news.html"
 WGET_URL="http://www1.mplayerhq.hu/MPlayer/releases/$TARBALL"
 HOST_ARCH="i486 arm"
 
-# Dont forget to update all related pkgs
-RELATED="mplayer-codecs mencoder" 
-DEPENDS="gtk+ cdparanoia-III libmad xorg-libXv alsa-lib ncurses \
-xorg-libXdamage giflib enca xorg-libXxf86vm libmng audiofile \
-libogg zlib xorg-libXss"
-BUILD_DEPENDS="gtk+-dev libmad-dev xorg-libXv-dev alsa-lib-dev \
+DEPENDS="libmad xorg-libXv alsa-lib cdparanoia-III giflib ncurses \
+libmng enca xorg-libXdamage xorg-libXxf86vm zlib xorg-libXss"
+BUILD_DEPENDS="libmad-dev xorg-libXv-dev alsa-lib-dev \
 ncurses-dev xorg-libXdamage-dev giflib-dev xorg-libXxf86vm-dev \
-esound-dev audiofile-dev libogg-dev zlib-dev \
-xorg-xextproto pkg-config yasm"
+audiofile-dev libogg-dev zlib-dev xorg-xextproto pkg-config yasm"
 
-# Handle arch package install. Less deps and no GTK gui for ARM
+GENERIC_MENUS="no"
+
+# Handle arch package install. Less deps and no GTK gui
 case "$SLITAZ_ARCH" in
 	arm*) 
 		DEPENDS="alsa-lib zlib libmad xorg-libXv xorg-libXxf86vm libogg \
-		libvorbis libtheora libsdl xvidcore lame esound gtk+" ;;
+		libvorbis libtheora libsdl" ;;
 esac
 
 # Handle cross compilation. Host coreutils-file-* are used
 case "$ARCH" in
 	i?86) 
-		ARCH_ARGS="--target=i486-linux --disable-sdl" 
-		BUILD_DEPENDS="$BUILD_DEPENDS cdparanoia-III-dev enca-dev \
-		libmng-dev lirc-dev" ;;
+		ARCH_ARGS="--target=i486-linux --disable-sdl --enable-runtime-cpudetection" 
+		BUILD_DEPENDS="$BUILD_DEPENDS cdparanoia-III-dev enca-dev libmng-dev" ;;
 	arm*) 
 		BUILD_DEPENDS="$BUILD_DEPENDS libsdl-dev" 
 		ARCH_ARGS="--target=arm-linux --enable-cross-compile --enable-sdl" ;;
@@ -43,16 +40,11 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	# just remove next configure options:
-	# --disable-mmx --disable-mmxext --disable-3dnow --disable-3dnowext
-	# --disable-sse --disable-sse2 --disable-ssse3
 	./configure \
 		--prefix=/usr \
 		--confdir=/etc/mplayer \
 		--libdir=/usr/lib/mplayer \
-		--enable-gui \
 		--language="en de es fr it pl ru" \
-		--enable-runtime-cpudetection \
 		--disable-mencoder \
 		--disable-gl \
 		--disable-jack \
@@ -74,21 +66,18 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/mplayer/skins
+	mkdir -p $fs/usr/share/mplayer
 	cp -a $install/usr/bin $fs/usr
-	[ -d "$install/usr/share/mplayer" ] && \
-		cp -a $install/usr/share/mplayer $fs/usr/share
 	cp -a $install/etc $fs
 	cp $src/etc/example.conf $fs/etc/mplayer
 	# Add /etc/mplayer/input.conf
 	cp $stuff/input.conf $fs/etc/mplayer
 	# Config to use Xv by default.
 	cp $stuff/mplayer.conf $fs/etc/mplayer
-	# default skin
-	tar xjf $stuff/productive-1.0.tar.bz2 -C $fs/usr/share/mplayer/skins
-	cd $fs/usr/share/mplayer/skins && ln -s productive default
+	# No-gui
+	cp $stuff/mplayer.desktop $fs/usr/share/applications
 	# Font
-	cd .. && ln -s ../fonts/truetype/ttf-dejavu/DejaVuSans.ttf subfont.ttf
+	cd $fs/usr/share/mplayer && ln -s ../fonts/truetype/ttf-dejavu/DejaVuSans.ttf subfont.ttf
 	# Xv support dont work for ARM and gmplayer symlink not created
 	case "$ARCH" in
 		arm*)
