@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="mate-polkit"
+VERSION="1.9.0"
+CATEGORY="utilities"
+LICENSE="GPL3"
+SHORT_DESC="PolicyKit integration for the MATE desktop."
+MAINTAINER="yuripourre@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.mate-desktop.org/"
+WGET_URL="https://github.com/mate-desktop/$PACKAGE/archive/$TARBALL"
+
+DEPENDS="gtk+ polkit"
+BUILD_DEPENDS="wget cacerts autoconf automake libtool itstool \
+gtk+-dev gtk-doc polkit-dev gobject-introspection-dev mate-common-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh                           \
+		--prefix=/usr                  \
+		--libexecdir=/usr/lib/$PACKAGE \
+		--sysconfdir=/etc              \
+		--localstatedir=/var           \
+		--with-gtk=2.0                 \
+		--enable-introspection         \
+		--disable-static               \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/etc $fs
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/$PACKAGE $fs/usr/lib/$PACKAGE
+}
