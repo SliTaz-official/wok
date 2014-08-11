@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-cloop"
+SOURCE="cloop"
+VERSION="2.639-2"
+CATEGORY="base-system"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+SHORT_DESC="The read-only compressed loop device kernel module."
+WEB_SITE="http://knoppix.net/wiki/Cloop"
+TARBALL="${SOURCE}_${VERSION}.tar.gz"
+WGET_URL="http://debian-knoppix.alioth.debian.org/packages/$SOURCE/$TARBALL"
+
+DEPENDS="linux"
+BUILD_DEPENDS="linux-module-headers xz"
+SUGGESTED="cloop-utils"
+
+# Rules to configure and make the package.
+
+compile_rules()
+{
+	patch -p0 < cloop.u
+	make KERNEL_DIR="/usr/src/linux" cloop.ko && xz cloop.ko
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{	
+	EXTRAVERSION=_${kvers%.*}
+	mkdir -p $fs/lib/modules/$kvers-slitaz/kernel/misc $fs/dev
+	cp $src/cloop.ko.xz $fs/lib/modules/$kvers-slitaz/kernel/misc
+	mknod $fs/dev/cloop b 240 0
+	for i in $(seq 1 7); do
+		mknod $fs/dev/cloop$i b 240 $i
+	done
+}
+
+post_install()
+{
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+}
+
+post_remove()
+{
+	depmod -a
+}
