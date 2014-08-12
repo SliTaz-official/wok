@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="pulseaudio"
+VERSION="5.0"
+CATEGORY="multimedia"
+SHORT_DESC="A sound system for POSIX OSes."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="LGPL2.1 GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="http://www.pulseaudio.org/"
+WGET_URL="http://www.freedesktop.org/software/pulseaudio/releases/$TARBALL"
+
+DEPENDS="libcap libjson-c libsndfile flac libvorbis"
+BUILD_DEPENDS="pkg-config libtool automake autoconf intltool m4 libcap-dev \
+libjson-c-dev libsndfile-dev flac-dev libvorbis-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./bootstrap.sh
+	./configure --prefix=/usr \
+		--sysconfdir=/etc \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/pulseaudio
+	cp -a $install/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/pulseaudio/*.so* $fs/usr/lib/pulseaudio
+	cp -a $install/usr/lib/pulse-$VERSION $fs/usr/lib
+}
