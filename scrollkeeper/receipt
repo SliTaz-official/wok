@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="scrollkeeper"
+VERSION="0.3.14"
+CATEGORY="utilities"
+LICENSE="GPL3"
+SHORT_DESC="A cataloging system for documentation on open systems."
+MAINTAINER="yuripourre@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://sourceforge.net/projects/scrollkeeper/"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS=""
+BUILD_DEPENDS="intltool libxml2-dev libxslt-dev docbook-xml"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure                  \
+		--prefix=/usr        \
+		--sysconfdir=/etc    \
+		--localstatedir=/var \
+		--disable-static     \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/share/doc $fs/usr/share
+	cp -a $install/usr/share/omf $fs/usr/share
+	cp -a $install/usr/share/xml $fs/usr/share
+	cp -a $install/usr/share/$PACKAGE $fs/usr/share
+}
