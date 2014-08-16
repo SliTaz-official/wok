@@ -4,7 +4,7 @@
 #
 
 find_modules() {
-	find $install/lib/modules/*-slitaz/kernel/$1 -type f -exec basename {} \;
+	find $install/lib/modules/*-slitaz*/kernel/$1 -type f -exec basename {} \;
 }
 
 if [ -z "$1" ] ; then
@@ -17,7 +17,7 @@ EOT
   exit 1
 fi
 
-if [ -z "$(ls -d $install/lib/modules/*-slitaz/kernel/$1 2> /dev/null)" ] ; then
+if [ -z "$(ls -d $install/lib/modules/*-slitaz*/kernel/$1 2> /dev/null)" ] ; then
   cat 1>&2 <<EOT
   
 Error : $1 does not exist.
@@ -28,14 +28,14 @@ fi
 
 for tree in $@; do
     for module in $(find_modules $tree) ; do
-        grep /$module: $install/lib/modules/*-slitaz/modules.dep ||
-        find $install/lib/modules/*-slitaz/kernel/$tree -name $module
+        grep /$module: $install/lib/modules/*-slitaz*/modules.dep ||
+        find $install/lib/modules/*-slitaz*/kernel/$tree -name $module
     done | awk '{ for (i = 1; i <= NF; i++)  print $i; }'
-done | sort | uniq | sed -e 's,.*slitaz/,,' -e 's,^kernel/,,' -e 's/:$//' | \
+done | sort | uniq | sed -e 's,.*slitaz*/,,' -e 's,^kernel/,,' -e 's/:$//' | \
 while read module; do
     grep -qs ^$module$ $src/../tmp/modules.list && continue
-    if [ ! -f $install/lib/modules/*-slitaz/kernel/$module ]; then
-	(cd $install/lib/modules/*-slitaz/kernel; find -name $(basename $module) )
+    if [ ! -f $install/lib/modules/*-slitaz*/kernel/$module ]; then
+	(cd $install/lib/modules/*-slitaz*/kernel; find -name $(basename $module) )
     else
         echo $module
     fi
