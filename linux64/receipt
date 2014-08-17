@@ -24,7 +24,7 @@ genpkg_rules()
     path=$fs/lib/modules/$VERSION-slitaz64/kernel
     mkdir -p $path
     cp -a $install/lib/modules/$VERSION-slitaz64/mo* \
-		$fs/lib/modules/$VERSION-slitaz
+		$fs/lib/modules/$VERSION-slitaz64
 
     # Get the base modules
     export src
@@ -41,7 +41,7 @@ genpkg_rules()
     rm -f $fs/lib/modules/$VERSION-slitaz64/build
     rm -f $fs/lib/modules/$VERSION-slitaz64/source
     # Cook all packages with a kernel module
-    for i in $(cd $WOK; grep -l 'cook linux$' */receipt)
+    for i in $(cd $WOK; grep -l 'cook linux64$' */receipt)
     do
     	echo cook ${i%/receipt}
     done
@@ -58,18 +58,18 @@ genpkg_rules()
 post_install()
 {
     echo "Processing post-install commands..."
-    chroot "$root/" depmod -a $VERSION-slitaz
+    chroot "$root/" depmod -a $VERSION-slitaz64
     # GRUB stuff.
     if [ -f "$root/boot/grub/menu.lst" ]; then
     	root_dev=$(cat $root/boot/grub/menu.lst | grep root= | sed 's/.*root=\([^ ]*\).*/\1/' | head -n 1)
 		grub_dev=$(cat $root/boot/grub/menu.lst | grep "root (" | head -n 1)
 		# Add new kernel entry in case of upgrade for installed system.
-		if ! grep -q $PACKAGE-$VERSION-slitaz $1/boot/grub/menu.lst; then
+		if ! grep -q $PACKAGE-$VERSION-slitaz64 $1/boot/grub/menu.lst; then
     		cat >> $1/boot/grub/menu.lst << EOT
 
-title SliTaz GNU/Linux (Kernel $VERSION-slitaz)
+title SliTaz GNU/Linux (Kernel $VERSION-slitaz64)
 $grub_dev
-kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
+kernel /boot/vmlinuz-$VERSION-slitaz64 root=$root_dev
 EOT
 		fi
 		# Display information message.
@@ -77,9 +77,9 @@ EOT
 ----
 GRUB is installed, these tree lines must be in your /boot/grub/menu.lst:
 
-title  SliTaz GNU/Linux (Kernel $VERSION-slitaz)
+title  SliTaz GNU/Linux (Kernel $VERSION-slitaz64)
 $grub_dev
-kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev
+kernel /boot/vmlinuz-$VERSION-slitaz64 root=$root_dev
 ----
 EOT
 	fi
