@@ -5,7 +5,7 @@
  	set_memory_rw(begin, (end - begin) >> PAGE_SHIFT);
  
 -	printk(KERN_INFO "Freeing %s: %luk freed\n", what, (end - begin) >> 10);
-+	if (what) printk(KERN_INFO "Freeing %s: %luk freed\n", what, (end - begin) >> 10);
++	if (what && *what) printk(KERN_INFO "Freeing %s: %luk freed\n", what, (end - begin) >> 10);
  
  	for (; addr < end; addr += PAGE_SIZE) {
  		ClearPageReserved(virt_to_page(addr));
@@ -22,22 +22,22 @@
 +
 +static void free_rootfs_mem(unsigned long start, unsigned long end)
 +{
-+	free_init_pages(NULL, start, end);
++	free_init_pages("", start, end);
 +}
 +
 +static void _free_initrd(unsigned long initrd_start, unsigned long initrd_end, 
 +			 void (*free_initrd_mem)(unsigned long, unsigned long));
 +
 +static struct {
-+	int offset, last, inptr, freed;
++	unsigned long offset, last, inptr, freed;
 +	char *max;
 +} fill;
 +
 +static void release_inbuf(unsigned n)
 +{
 +	if (n >= INITRD_PAGE) {
-+		unsigned rem = n % INITRD_PAGE;
-+		unsigned end = initrd_start + n - rem;
++		unsigned long rem = n % INITRD_PAGE;
++		unsigned long end = initrd_start + n - rem;
 +		_free_initrd(initrd_start, end, free_rootfs_mem);
 +		fill.freed += n - rem;
 +		if (fill.freed >= INITRD_DOT) {
@@ -49,9 +49,9 @@
 +	}
 +}
 +
-+static int fill_buffer(void *buffer, unsigned size)
++static unsigned long fill_buffer(void *buffer, unsigned size)
 +{
-+	int max =  fill.max - (char *) initrd_start - fill.offset;
++	unsigned long max =  fill.max - (char *) initrd_start - fill.offset;
 +	if (max > size) max = size;
 +	if (max > INITRD_PAGE) max = INITRD_PAGE;
 +	memcpy(buffer, (void *)(initrd_start + fill.offset), max);
