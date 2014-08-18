@@ -31,7 +31,7 @@ for tree in $@; do
         grep /$module: $install/lib/modules/*-slitaz*/modules.dep ||
         find $install/lib/modules/*-slitaz*/kernel/$tree -name $module
     done | awk '{ for (i = 1; i <= NF; i++)  print $i; }'
-done | sort | uniq | sed -e 's,.*slitaz*/,,' -e 's,^kernel/,,' -e 's/:$//' | \
+done | sort | uniq | sed -e 's,.*slitaz[64]*/,,' -e 's,^kernel/,,' -e 's/:$//' | \
 while read module; do
     grep -qs ^$module$ $src/../tmp/modules.list && continue
     if [ ! -f $install/lib/modules/*-slitaz*/kernel/$module ]; then
