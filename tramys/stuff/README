@@ -1,0 +1,306 @@
+tramys - TRAnslate MY Slitaz
+Tool for managing translation files for SliTaz GNU/Linux
+
+Aleksei Bobylev <al.bobylev@gmail.com>, 2014
+
+
+Some random notes about tramys development.
+
+
+The idea
+========
+
+I like to use applications translated to my language. But in other hand I like
+that fact SliTaz is not overloaded with unnecessary files.
+
+Some packages have their “twins”, which contains only translations. But note
+that all translations for the GIMP takes about 30 MB! And for Wesnoth ~ 90 MB!!!
+I don't need ALL that translations. Really. I need only one.
+
+Now we have some language-packs in the SliTaz repository. These packs contains
+translations for several packages for several chosen locales. Not bad, but
+what to do if I need translations for other packages not listed here?
+
+We set up the ftp.slitaz.org. Then I thought it was a good idea to seek and take
+the files with translations you want. And what about automation?
+
+Translations we'll found in the “install” sub-folders. Something like that:
+ftp://cook.slitaz.org/nano/install/usr/share/locale/ru/LC_MESSAGES/nano.mo
+for “nano” package with “ru” locale.
+
+Also we can download the same file using possibility in the cooker:
+http://cook.slitaz.org/cooker.cgi?download=../wok/nano/install/usr/share/locale/
+ru/LC_MESSAGES/nano.mo
+
+
+About gettext's locale search order
+===================================
+
+I know it's easy as for a first glance. My locale is “ru_UA” (I speak Russian
+and live in Ukraine). Gettext searches for “ru_UA” translations first. When it
+not finds them, he throws the country from the locale and looking for a “ru”
+translations.
+
+And I know that full locale definition can contain encoding and variant as
+addition:
+  language_COUNTRY.ENCODING@variant
+And all parts except language are optional. Can't figure it out reading official
+docs [[ https://www.gnu.org/software/gettext/manual/gettext.html ]]
+So, experimenting with next piece of code:
+
+VAR0=$(LC_ALL="LL_CC.EE@VV" strace -o /tmp/s -e trace=file gettext test test; \
+grep -F '/usr/lib/locale/' /tmp/s | \
+grep -v locale-archive | \
+grep -F '/LC_IDENTIFICATION' | \
+sed 's|.*/usr/lib/locale/\([^/]*\).*|\1|g' | \
+tr '\n' ' ')
+echo "${VAR0#test}"
+
+Here using special non-existing value for LC_ALL variable with aim to see all
+search variants (gettext stops to search if it found one of variants).
+Try it with different LC_ALL such as "LL@VV" or "LL.EE", etc.
+
+
+About preferred languages
+=========================
+
+It is a good possibility I found in the Gettext docs, but not applied yet.
+When Gettext not found any matched translations, it shows untranslated
+(=English) messages. Some of us not learned English in the school; it can be
+German of French. So, I want to see translations to my native language, or
+(if they not exists), let's say, French translations. All it done with setting
+of LANGUAGE environment variable.
+
+
+About LC_ALL
+============
+
+It is not correct to set this variable up in some cases. And if we want to more
+mimic Gettext's behavior, we need to check many locale environment variables in
+certain order.
+
+
+About traffic saving
+====================
+
+Now tramys downloading all the localization files, again and again.
+It have no knowledge, is your existing localization file actual or outdated,
+it just re-download it.
+
+Actually at the moment we have no simple solution. All solutions touches both
+client- and server-side.
+
+1. Using GNU wget
+-----------------
+
+It have '-N' option:
+
+  -N,  --timestamping            don't re-retrieve files unless newer than
+                                 local.
+
+But: a) default SliTaz uses BusyBox's wget that have no '-N' option, and
+b) SliTaz HTTP server not returned info about file's timestamp:
+
+$ curl -I 'http://cook.slitaz.org/cooker.cgi?download=../wok/nano/install/usr/sh
+are/locale/ru/LC_MESSAGES/nano.mo'
+HTTP/1.1 200 OK
+Content-Type: application/octet-stream
+Content-Length: 55436
+Content-Disposition: attachment; filename=nano.mo
+Date: Wed, 06 Aug 2014 20:53:37 GMT
+Server: lighttpd (SliTaz GNU/Linux)
+
+Our FTP server returned "Last-Modified", but both wgets not working with it :(
+
+$ curl -I 'ftp://cook.slitaz.org/nano/install/usr/share/locale/ru/LC_MESSAGES/na
+no.mo'
+Last-Modified: Thu, 10 Apr 2014 20:34:37 GMT
+Content-Length: 55436
+Accept-ranges: bytes
+
+$ busybox wget -O /tmp/nano1.mo 'ftp://cook.slitaz.org/nano/install/usr/share/lo
+cale/ru/LC_MESSAGES/nano.mo'
+Connecting to cook.slitaz.org (37.187.4.13:21)
+nano1.mo             100% |*******************************| 55436   0:00:00 ETA
+
+$ ls -l /tmp/nano1.mo
+-rw-r--r-- 1 tux users 55436 Aug  6 22:01 /tmp/nano1.mo
+
+$ wget -O /tmp/nano2.mo 'ftp://cook.slitaz.org/nano/install/usr/share/locale/ru/
+LC_MESSAGES/nano.mo'
+
+$ ls -l /tmp/nano2.mo
+-rw-r--r-- 1 tux users 55436 Aug  6 22:03 /tmp/nano2.mo
+
+
+2. Write new client-server infrastructure
+-----------------------------------------
+
+We can write script instead of using two-byte solution (-N) :D
+Using BusyBox's wget on client.
+Script logic is followed. Client sends request to server: filename and date.
+Server returns newer file or returns nothing... It need to establish only one
+connection per file.
+
+
+3. Using curl
+-------------
+
+What about curl? Yes, it works:
+
+$ curl -R -o /tmp/nano.mo 'ftp://cook.slitaz.org/nano/install/usr/share/locale/r
+u/LC_MESSAGES/nano.mo'
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 55436  100 55436    0     0  30898      0  0:00:01  0:00:01 --:--:-- 32361
+
+$ ls -l /tmp/nano.mo
+-rw-r--r-- 1 tux users 55436 Apr 10 20:34 /tmp/nano.mo
+
+Also, curl can ask server for gzipped content for traffic saving, and
+transparently ungzip it for you:
+
+$ curl -h
+     --compressed    Request compressed response (using deflate or gzip)
+
+And wget can send any specified header to server:
+
+$ wget -h
+       --header=STRING         insert STRING among the headers.
+
+
+Small note about date
+=====================
+
+Do you remember server answer?
+
+Last-Modified: Thu, 10 Apr 2014 20:34:37 GMT
+
+We can get date of file in this format using next code:
+
+LC_ALL=C; date -Rur ./nano.mo
+Thu, 10 Apr 2014 20:34:37 UTC
+
+Only need to remove both “GMT” and “UTC” and now we can compare two strings
+that contains date:
+if [ "${SERVER_DATE% GMT}" != "${LOCAL_DATE% UTC}" ]; then ...
+
+
+About lists format
+==================
+
+Here three formats of localization: GNU gettext's mo-files, Qt's qm-files,
+and other techniques (not supported yet).
+
+Gettext is more standardized: most often translation file called as package
+name, and it uses hierarchical tree structure in the
+/usr/share/locale/<locale name>/LC_MESSAGES
+Most often, but not always.
+
+In other hand, Qt frequently uses one directory for all package's translations.
+Something like /usr/share/<package>/translations/<package>_<locale>.qm
+Not always too.
+
+We can save all filenames with full path into one archive like it done in the
+tazpkg file /var/lib/tazpkg/files.list.lzma and will get 1.4 MiB file (48 KiB in
+LZMA). But I prefer lists with special format, I think plain list contains too
+much redundant info, and in some cases its too hard to determine which is the
+locale part in the filename.
+
+So, let me describe lists format.
+Here are one or more lines for package that supports localization. In the each
+line here are four tab-delimited fields. First two are mandatory, and next two
+are optional.
+
+1: package name
+2: locale name
+3: name of file that contains translations
+4: full path to that file
+
+For “nano” package (30 lines):
+nano	bg	nano.mo	/usr/share/locale/bg/LC_MESSAGES
+...
+nano	zh_TW	nano.mo	/usr/share/locale/zh_TW/LC_MESSAGES
+
+Now let's use some rules to make list smaller.
+
+RULE. Use “%” as placeholder for locale name in the path:
+      /usr/share/locale/%/LC_MESSAGES
+RULE. Combine several locales into one space-separated list:
+      bg ca cs da de es eu fi fr ga gl hu id it ms nb nl nn pl pt_BR ro ru rw sr
+      sv tr uk vi zh_CN zh_TW
+RULE. Remove “.mo” from the end of filenames:
+      nano
+RULE. Remove filename completely if it equals to package name.
+RULE. Remove default path “/usr/share/locale/%/LC_MESSAGES” completely.
+RULE. We can avoid empty 3rd and/or 4th fields:
+      empty 3:  field1 tab field2 tab tab field4
+      empty 4:  field1 tab field2 tab field3
+      empty3&4: field1 tab field2
+
+So, now rule for the “nano” package is very simple (one line):
+nano	bg ca cs da de es eu fi fr ga gl hu id it ms nb nl nn pl pt_BR ro ru rw 
+sr sv tr uk vi zh_CN zh_TW
+
+And few more rules to compress list more.
+RULE. Combine several mo-files into one space-separated field if they have
+      identical list of locales.
+      Package “gtk+” contains “gtk20 gtk20-properties” in the third field.
+      Also we can combine few paths into one space separated list.
+RULE. Use shell-syntax constants to save few bytes more:
+      US="/usr/share"
+      LC="LC_MESSAGES"
+      PY="/usr/lib/python2.7/site-packages"
+      R="/usr/lib/R/library"
+      RT="$R/translations/%/$LC"
+
+In some situations we have choice:
+
+lcdnurse	es fr he nl pt_BR ru th tr zh_CN		$US/$P/locale/%/$LC
+lcdnurse	es fr nl pt_BR ru tr zh_CN	wxstd	$US/$P/locale/%/$LC
+
+or:
+
+lcdnurse	he th		$US/$P/locale/%/$LC
+lcdnurse	es fr nl pt_BR ru tr zh_CN	$P wxstd	$US/$P/locale/%/$LC
+
+Both variants works, and no one is mistaken. Also, second variant is shorter by
+24 bytes :)
+
+
+Lists: to be or not...
+======================
+
+While I developed tramys my lists slowly moves to be more and more outdated.
+Many new packages in the wok, many upgrades... It seems like tramys lists
+needs to released very frequently. And I can't write all the sophisticated
+rules to automate process.
+
+It sounds not bad if we'll attach localization info to the package! Like
+description file? No. The more files our filesystem contains — the slower it is.
+Better to attach it to the package receipt. In this case we not need first
+field. Something like:
+
+L10N="he th		$US/$P/locale/%/$LC
+es fr nl pt_BR ru tr zh_CN	$P wxstd	$US/$P/locale/%/$LC"
+
+Off topic. I think it's better to place description to the package too:
+description()
+{
+	cat << EOT
+Description here
+EOT
+}
+
+And for compatibility: read info both from receipt (if any) and from lists.
+
+
+TODO
+====
+
+- Remove all translation files from all existing packages.
+- Migrate lists to receipts.
+- To support preferred languages in the LANGUAGE variable.
+- Write server-side script to get only changed/newer translation files.
+- Add tazpkg hook to get translations after package install (if user wants).
+- ...

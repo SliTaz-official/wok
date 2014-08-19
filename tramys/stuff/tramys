@@ -1,0 +1,134 @@
+#!/bin/sh
+# tramys - TRAnslate MY Slitaz
+# Tool for managing translation files for SliTaz GNU/Linux
+# Aleksej Bobylev <al.bobylev@gmail.com>, 2014
+
+. /etc/slitaz/slitaz.conf
+
+VERSION="140819"
+DATADIR=/usr/share/tramys
+WORKING=$(mktemp -d)
+# default values, can be changed using options
+GET_VIA="ftp" # "ftp" or "http"
+VERBOSE="low"  # "high" or "low" or "off"
+PKGS_LIST=''
+
+# prepare list for search
+# original GNU gettext searches precisely in this order
+locales_list() {
+	LL=$(echo $LANG | sed 's|^\([^_.@]*\).*$|\1|')
+	CC=$(echo $LANG | sed -n '/_/s|^[^_]*\(_[^.@]*\).*$|\1|p')
+	EE=$(echo $LANG | sed -n '/./s|^[^\.]*\(\.[^@]*\).*$|\1|p')
+	VV=$(echo $LANG | sed -n '/@/s|^[^@]*\(@.*\)$|\1|p')
+	ee=$(echo $EE | tr A-Z a-z | tr -cd a-z0-9); [ "$ee" ] && ee=.$ee
+	[ "x$EE" == "x$ee" ] && ee=''
+
+	[ "$CC" -a "$EE" -a "$VV" ]	&& echo -n "$LL$CC$EE$VV "
+	[ "$CC" -a "$ee" -a "$VV" ]	&& echo -n "$LL$CC$ee$VV "
+	[ "$CC" -a "$VV" ]			&& echo -n "$LL$CC$VV "
+	[ "$EE" -a "$VV" ]			&& echo -n "$LL$EE$VV "
+	[ "$ee" -a "$VV" ]			&& echo -n "$LL$ee$VV "
+	[ "$VV" ]					&& echo -n "$LL$VV "
+	[ "$CC" -a "$EE" ]			&& echo -n "$LL$CC$EE "
+	[ "$CC" -a "$ee" ]			&& echo -n "$LL$CC$ee "
+	[ "$CC" ]					&& echo -n "$LL$CC "
+	[ "$EE" ]					&& echo -n "$LL$EE "
+	[ "$ee" ]					&& echo -n "$LL$ee "
+	echo "$LL"
+}
+MY_LOCALES=$(locales_list)
+
+get_file() {
+	local q
+	[ "$VERBOSE" == "high" ] && q='' || q='-q'
+	[ "$VERBOSE" != "off" ] && echo "Getting $P $locale locale..."
+	case $GET_VIA in
+		ftp)
+			[ -e "$fullname" ] && cp -f $fullname $WORKING/$(basename $fullname)
+#			curl -R -o $WORKING/$(basename $fullname) \
+#				"ftp://cook.slitaz.org/$P/install/$fullname"
+			wget $q -O $WORKING/$(basename $fullname) \
+				"ftp://cook.slitaz.org/$P/install/$fullname"
+			;;
+		http)
+			wget $q -O $WORKING/$(basename $fullname) \
+				"http://cook.slitaz.org/cooker.cgi?download=../wok/$P/install/$fullname";;
+	esac
+}
+
+main_loop() {
+	# constants to use in lists
+	US="/usr/share"
+	LC="LC_MESSAGES"
+	PY="/usr/lib/python2.7/site-packages"
+	R="/usr/lib/R/library"
+	RT="$R/translations/%/$LC"
+
+	for P in $@; do
+
+		for list_type in mo qm; do
+			IFS=$'\n'
+			for line in $(grep -e "^$P	" $DATADIR/$list_type.list); do
+				locales=$(echo $line | cut -d'	' -f2)
+				names=$(echo $line | cut -d'	' -f3)
+					[ "x$names" == "x" ] && names=$P
+				pathes=$(echo $line | cut -d'	' -f4)
+					[ "x$pathes" == "x" ] && pathes="$US/locale/%/$LC"
+
+				IFS=' '
+				for locale in $MY_LOCALES; do
+					if $(echo " $locales " | grep -q " $locale "); then
+						echo "Found «$locale» locale for «$P» ($list_type)"
+
+						for name in $names; do
+							for path in $pathes; do
+								eval "fullname=${path//%/$locale}/${name//%/$locale}.$list_type"
+								get_file $fullname
+							done
+						done
+						break
+					fi
+				done
+			done
+		done
+	done
+}
+
+help() {
+	cat << EOT
+tramys - TRAnslate MY Slitaz, v. $VERSION
+Tool for managing translation files for SliTaz GNU/Linux
+
+Usage:
+tramys command [ command ... ]
+
+Commands:
+-V --version  Show version info
+-h --help     Show this help
+-v --verbose  Set verbosity level to maximum
+-q --quiet    Set verbosity level to silence
+-H --http     Configure to get translations using http://cook.slitaz.org/
+-F --ftp      Configure to get translations using ftp://cook.slitaz.org/
+-g --get      Get translations for all installed packages
+-p --pkg      Get translations for specified package, example: tramys -p nano
+
+EOT
+}
+
+while [ "x$1" != "x" ]; do
+	case $1 in
+		-V|--version) echo $VERSION ;;
+		-h|--help) help ;;
+		-v|--verbose) VERBOSE="high" ;;
+		-q|--quiet)   VERBOSE="off" ;;
+		-H|--http) GET_VIA="http" ;;
+		-F|--ftp)  GET_VIA="ftp" ;;
+		-g|--get) PKGS_LIST=$(cd $INSTALLED; ls) ;;
+		-p|--pkg) PKGS_LIST="$PKGS_LIST $2"; shift ;;
+	esac
+	shift
+done
+
+[ "x$PKGS_LIST" != "x" ] && main_loop "$PKGS_LIST"
+rm -rf $WORKING
+
