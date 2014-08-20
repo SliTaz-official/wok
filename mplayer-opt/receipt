@@ -4,7 +4,7 @@ PACKAGE="mplayer-opt"
 VERSION="1.1.1"
 CATEGORY="multimedia"
 SHORT_DESC="The Ultimate Movie Player For Linux (with minimal depends)"
-MAINTAINER="pankso@slitaz.org"
+MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL2"
 SOURCE="MPlayer"
 TARBALL="$SOURCE-$VERSION.tar.xz"
@@ -13,12 +13,10 @@ WGET_URL="http://www1.mplayerhq.hu/MPlayer/releases/$TARBALL"
 HOST_ARCH="i486 arm"
 
 DEPENDS="libmad xorg-libXv alsa-lib cdparanoia-III giflib ncurses \
-libmng enca xorg-libXdamage xorg-libXxf86vm zlib xorg-libXss"
+enca xorg-libXdamage xorg-libXxf86vm zlib xorg-libXss"
 BUILD_DEPENDS="libmad-dev xorg-libXv-dev alsa-lib-dev \
 ncurses-dev xorg-libXdamage-dev giflib-dev xorg-libXxf86vm-dev \
 audiofile-dev libogg-dev zlib-dev xorg-xextproto pkg-config yasm"
-
-GENERIC_MENUS="no"
 
 # Handle arch package install. Less deps and no GTK gui
 case "$SLITAZ_ARCH" in
@@ -31,7 +29,7 @@ esac
 case "$ARCH" in
 	i?86) 
 		ARCH_ARGS="--target=i486-linux --disable-sdl --enable-runtime-cpudetection" 
-		BUILD_DEPENDS="$BUILD_DEPENDS cdparanoia-III-dev enca-dev libmng-dev" ;;
+		BUILD_DEPENDS="$BUILD_DEPENDS cdparanoia-III-dev enca-dev" ;;
 	arm*) 
 		BUILD_DEPENDS="$BUILD_DEPENDS libsdl-dev" 
 		ARCH_ARGS="--target=arm-linux --enable-cross-compile --enable-sdl" ;;
@@ -45,6 +43,7 @@ compile_rules()
 		--confdir=/etc/mplayer \
 		--libdir=/usr/lib/mplayer \
 		--language="en de es fr it pl ru" \
+		--enable-menu \
 		--disable-mencoder \
 		--disable-gl \
 		--disable-jack \
@@ -72,16 +71,11 @@ genpkg_rules()
 	cp $src/etc/example.conf $fs/etc/mplayer
 	# Add /etc/mplayer/input.conf
 	cp $stuff/input.conf $fs/etc/mplayer
-	# Config to use Xv by default.
+	# Config
 	cp $stuff/mplayer.conf $fs/etc/mplayer
-	# No-gui
+	# No-gui, OSD ($username@slitaz:~$ mplayer -menu filename)
 	cp $stuff/mplayer.desktop $fs/usr/share/applications
+	cp $WOK/$SOURCE/etc/input.conf $fs/etc/mplayer
 	# Font
 	cd $fs/usr/share/mplayer && ln -s ../fonts/truetype/ttf-dejavu/DejaVuSans.ttf subfont.ttf
-	# Xv support dont work for ARM and gmplayer symlink not created
-	case "$ARCH" in
-		arm*)
-			cp -f $stuff/mplayer-arm.conf $fs/etc/mplayer/mplayer.conf 
-			cd $fs/usr/bin && ln -s mplayer gmplayer ;;
-	esac
 }
