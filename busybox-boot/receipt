@@ -38,7 +38,7 @@ genpkg_rules()
 		mknod -m 660 $fs/usr/share/boot/dev/ttyS0 c 4 64
 	fi
 	cat > $fs/usr/share/boot/init <<EOT
-#!/bin/sh
+#!/bin/busybox sh
 
 export PATH=/bin
 export HOME=/
@@ -58,21 +58,7 @@ fi
 
 mkdir /tmp /mnt /proc /etc
 mount -t proc none /proc
-while read name major minor ; do
-	for i in '' 1 2 3 4 5 6 7 8 9 ; do
-		mknod -m 644 /dev/\$name\$i b \$major \$((\$i + \$minor))
-	done
-done <<EOM
-loop	7	0
-hda	3	0
-hdb	3	64
-hdc	22	0
-hdd	22	64
-sda	8	0
-sdb	8	16
-sdc	8	32
-sdd	8	48
-EOM
+mount -t devtmpfs none /dev
 
 arg()
 {
@@ -85,22 +71,20 @@ init=\${root:-/sbin/init}
 [ -n "\$(sed 's/\$/ /;s/^/ /;/ ro /!d' /proc/cmdline)" ] && ro="-o ro"
 [ -n "\$(sed 's/\$/ /;s/^/ /;/ rw /!d' /proc/cmdline)" ] && ro="-o rw"
 arg root && root="\$(echo \$root | sed 's|/|\\\\/|g')" &&
-	mount \$ro \$(busybox blkid | sed "s/\"//g;/\$root/!d;s/:.*//;q") /mnt
-arg loopfs && busybox losetup /dev/loop /mnt/\$root && mount /dev/loop /mnt
+	root="\$(busybox blkid | sed "s/\"//g;/\$root/!d;s/:.*//;q")" &&
+	[ -n "\$root" ] && mount \$ro \$root /mnt
+arg loopfs && busybox losetup /dev/loop0 /mnt/\$root && mount /dev/loop0 /mnt
 arg subroot && cp /bin/busybox /mnt/\$root/dev/shm &&
 	chroot="\$root/dev/shm/busybox chroot \$root"
-busybox [ -x /mnt/\$root/\$init ] && exec busybox switch_root mnt \$chroot \$init
-
-for i in \$(busybox --list) ; do ln /bin/busybox /bin/\$i 2> /dev/null ; done
+busybox [ -x /mnt/\$root/\$init ] && umount /dev && umount /proc && exec busybox switch_root mnt \$chroot \$init
 
 [ -d /proc/bus/usb ] && mount -t usbfs usbfs /proc/bus/usb
 while read type dir ; do
 	grep -qs \$type /proc/filesystems || continue
-	mkdir \$dir
+	[ -d "\$dir" ] || mkdir \$dir
 	mount -t \$type none \$dir
 done <<EOM
 sysfs		/sys
-devtmpfs	/dev
 devpts		/dev/pts
 EOM
 
@@ -110,14 +94,10 @@ EOT
 	$jslinux && echo 'stty -F $TTY rows 30 2>/dev/null' >> $fs/usr/share/boot/init
 	cat >> $fs/usr/share/boot/init <<EOT
 
-[ -x /bin/udhcpc ] && udhcpc -b -s /init
+udhcpc -b -s /init
 while true; do
 	busybox | sed '/Current/,\$!d'
-	if [ -x /bin/setsid ]; then
-		setsid sh -c "exec sh <\$TTY >\$TTY 2>&1"
-	else
-		sh <\$TTY >\$TTY 2>&1
-	fi
+	setsid sh -c "exec sh <\$TTY >\$TTY 2>&1"
 done
 EOT
 	chmod +x $fs/usr/share/boot/init
