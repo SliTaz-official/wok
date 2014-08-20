@@ -9,7 +9,7 @@ LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://rsync.samba.org/"
 WGET_URL="${WEB_SITE}ftp/rsync/$TARBALL"
-CONFIG_FILES="/etc/rsyncd.conf /etc/rsyncd.secrets"
+CONFIG_FILES="/etc/rsyncd.conf /etc/rsyncd.secrets /etc/inetd.conf"
 TAGS="sync copy secure"
 HOST_ARCH="i486 arm"
 
@@ -46,5 +46,12 @@ genpkg_rules()
 	cp -a $stuff/etc $fs
 	chown root.root $fs/etc/init.d/*
 	chmod 0644 $fs/etc/rsyncd.conf
+	grep -q rsync $1/etc/inetd.conf || cat >> $1/etc/inetd.conf <<EOT
+#rsync	stream	tcp	nowait	root	rsync	rsync	-daemon
+EOT
+}
 
+post_remove()
+{
+	grep -q rsync $1/etc/inetd.conf && sed -i '/rsync/d' $1/etc/inetd.conf
 }
