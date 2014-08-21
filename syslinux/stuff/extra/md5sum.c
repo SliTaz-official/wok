@@ -800,7 +800,7 @@ static char *extfilename(char *filename, char *ext, int feature)
 	FILE *fp;
 
 	if (strlen(filename) + strlen(ext) <= NEWFILENAMESZ) {
-		strcpy(newfilename, filename, NEWFILENAMESZ);
+		strcpy(newfilename, filename);
 		if (cpu_has_feature(feature)) {
 			strcat(newfilename, ext);
 			fp = fopen(newfilename, "r");
