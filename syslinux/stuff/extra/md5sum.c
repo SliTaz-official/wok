@@ -680,6 +680,7 @@ kbdmap_error:
 #include <stdio.h>
 #include <string.h>
 #include <console.h>
+#include <cpuid.h>
 #include <syslinux/loadfile.h>
 #include <syslinux/linux.h>
 #include <syslinux/pxe.h>
@@ -757,6 +758,72 @@ static char *make_cmdline(char **argv)
     return cmdline;
 }
 
+static bool __constfunc cpu_has_cpuid(void)
+{
+    return cpu_has_eflag(X86_EFLAGS_ID);
+}
+
+static bool __constfunc cpu_has_level(uint32_t level)
+{
+    uint32_t group;
+    uint32_t limit;
+
+    if (!cpu_has_cpuid())
+	return false;
+
+    group = level & 0xffff0000;
+    limit = cpuid_eax(group);
+
+    if ((limit & 0xffff0000) != group)
+	return false;
+
+    if (level > limit)
+	return false;
+
+    return true;
+}
+
+/* This only supports feature groups 0 and 1, corresponding to the
+   Intel and AMD EDX bit vectors.  We can add more later if need be. */
+static bool __constfunc cpu_has_feature(int x)
+{
+    uint32_t level = ((x & 1) << 31) | 1;
+
+    return cpu_has_level(level) && ((cpuid_edx(level) >> (x & 31) & 1));
+}
+
+static char *extfilename(char *filename, char *ext, int feature)
+{
+#define NEWFILENAMESZ 80
+	static char newfilename[NEWFILENAMESZ+1];
+	char *found = filename;
+	FILE *fp;
+
+	if (strlen(filename) + strlen(ext) <= NEWFILENAMESZ) {
+		strcpy(newfilename, filename, NEWFILENAMESZ);
+		if (cpu_has_feature(feature)) {
+			strcat(newfilename, ext);
+			fp = fopen(newfilename, "r");
+			if (fp)
+				found = newfilename;
+			fclose(fp);
+		}
+	}
+	return found;
+}
+
+static char *bestextfilename(char *filename)
+{
+	char *found;
+
+	//found = extfilename(filename, "fpu",   X86_FEATURE_FPU);
+	//found = extfilename(filename, "686",   X86_FEATURE_CMOV);
+	//found = extfilename(filename, "pae",   X86_FEATURE_PAE);
+	found = extfilename(filename, "64",    X86_FEATURE_LM);
+	//found = extfilename(filename, "guest", X86_FEATURE_HYPERVISOR);
+	return found;
+}
+
 static int setup_data_file(struct setup_data *setup_data,
 			   uint32_t type, const char *filename,
 			   bool opt_quiet)
@@ -780,6 +847,7 @@ static int setup_data_file(struct setup_data *setup_data,
 static int main_linux(int argc, char *argv[])
 {
     const char *kernel_name;
+    const char *initrd_name;
     struct initramfs *initramfs;
     struct setup_data *setup_data;
     char *cmdline;
@@ -812,7 +880,7 @@ static int main_linux(int argc, char *argv[])
 	return 1;
     }
 
-    kernel_name = arg;
+    kernel_name = bestextfilename(arg);
 
     errno = 0;
     boot_image = malloc(strlen(kernel_name) + 12);
@@ -863,12 +931,13 @@ static int main_linux(int argc, char *argv[])
 	    if (p)
 		*p = '\0';
 
+	    initrd_name = bestextfilename(arg);
 	    if (!opt_quiet)
-		printf("Loading %s... ", arg);
+		printf("Loading %s... ", initrd_name);
 	    errno = 0;
-	    if (initramfs_load_archive(initramfs, arg)) {
+	    if (initramfs_load_archive(initramfs, initrd_name)) {
 		if (opt_quiet)
-		    printf("Loading %s ", kernel_name);
+		    printf("Loading %s ", initrd_name);
 		printf("failed: ");
 		goto bail;
 	    }
