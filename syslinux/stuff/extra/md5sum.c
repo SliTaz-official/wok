@@ -884,7 +884,7 @@ static int main_linux(int argc, char *argv[])
 	return 1;
     }
 
-    kernel_name = bestextfilename(arg);
+    kernel_name = arg;
 
     errno = 0;
     boot_image = malloc(strlen(kernel_name) + 12);
@@ -905,7 +905,7 @@ static int main_linux(int argc, char *argv[])
     if (!opt_quiet)
 	printf("Loading %s... ", kernel_name);
     errno = 0;
-    if (loadfile(kernel_name, &kernel_data, &kernel_len)) {
+    if (loadfile(bestextfilename(kernel_name), &kernel_data, &kernel_len)) {
 	if (opt_quiet)
 	    printf("Loading %s ", kernel_name);
 	printf("failed: ");
@@ -935,11 +935,11 @@ static int main_linux(int argc, char *argv[])
 	    if (p)
 		*p = '\0';
 
-	    initrd_name = bestextfilename(arg);
+	    initrd_name = arg;
 	    if (!opt_quiet)
 		printf("Loading %s... ", initrd_name);
 	    errno = 0;
-	    if (initramfs_load_archive(initramfs, initrd_name)) {
+	    if (initramfs_load_archive(initramfs, bestextfilename(initrd_name))) {
 		if (opt_quiet)
 		    printf("Loading %s ", initrd_name);
 		printf("failed: ");
