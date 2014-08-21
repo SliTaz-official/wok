@@ -4,7 +4,7 @@ PACKAGE="qt4-base"
 SOURCE="qt-everywhere-opensource-src"
 VERSION="4.8.6"
 CATEGORY="development"
-SHORT_DESC="Qt4 less deps experimental rebuild, empty package"
+SHORT_DESC="Qt4 less deps experimental rebuild, dev package"
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL3 LGPL2.1"
 TARBALL="$SOURCE-$VERSION.tar.gz"
@@ -22,15 +22,15 @@ freetype-dev gettext glib-dev jpeg-dev libIDL libcap-dev libpng-dev libtool \
 libxml2-dev linux-api-headers m4 make mercurial ncurses-dev openssl-dev \
 pango-dev patch pcre-dev perl perl-xml-parser perl-xml-simple pixman-dev \
 pkg-config tiff-dev xorg-dev-proto xorg-dev zip unzip gtk+-dev alsa-lib-dev \
-sqlite-dev"
+sqlite-dev libQtClucene wayland-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir -p $WOK/$PACKAGE/source/
-	ln -s $WOK/qt4/source/qt4-$VERSION $WOK/$PACKAGE/source/$PACKAGE-$VERSION
-	cd $WOK/$PACKAGE/source/$PACKAGE-$VERSION &&
-	#cd $src
+	#mkdir -p $WOK/$PACKAGE/source/
+	#ln -s $WOK/qt4/source/qt4-$VERSION $WOK/$PACKAGE/source/$PACKAGE-$VERSION
+	#cd $WOK/$PACKAGE/source/$PACKAGE-$VERSION &&
+	cd $src
 	./configure\
 		-silent \
 		-prefix /usr \
@@ -72,6 +72,16 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	# dummy tree to avoid 'tazwok cmp --cook' building loop
-	mkdir $fs/etc
+		mkdir $fs/etc
+		cp -a $install/usr/lib/pkgconfig  $fs/usr/lib
+		cp -a $install/usr/lib/*.*a  $fs/usr/lib/    
+		cp -a $install/usr/lib/*.prl  $fs/usr/lib/
+		/mkdir $fs/usr/share/qt
+		cp -a $install/usr/share/qt/mkspecs/ $fs/usr/share/qt
+		cp -a $install/usr/bin $fs/usr    
+		rm $fs/usr/bin/qmake
+		rm $fs/usr/bin/designer
+		rm $fs/usr/bin/linguist
+		rm $fs/usr/bin/assistant
+		rm $fs/usr/bin/qtconfig
 }
