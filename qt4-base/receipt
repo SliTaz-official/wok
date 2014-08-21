@@ -1,0 +1,77 @@
+# SliTaz package receipt.
+
+PACKAGE="qt4-base"
+SOURCE="qt-everywhere-opensource-src"
+VERSION="4.8.6"
+CATEGORY="development"
+SHORT_DESC="Qt4 less deps experimental rebuild, empty package"
+MAINTAINER="psychomaniak@xakep.ru"
+LICENSE="GPL3 LGPL2.1"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://qt-project.org/"
+WGET_URL="http://download.qt-project.org/archive/qt/4.8/$VERSION/$TARBALL"
+PROVIDE="qt-x11-opensource-src Qt4"
+TAGS="qt"
+
+DEPENDS=""
+BUILD_DEPENDS="xorg-libX11-dev dbus-dev libmng-dev \
+cups-dev mysql-dev unixODBC-dev mesa-dev fontconfig-dev \
+postgresql-dev atk-dev autoconf automake bash \
+binutils bison bzip2-dev cairo-dev coreutils expat-dev flex fontconfig-dev \
+freetype-dev gettext glib-dev jpeg-dev libIDL libcap-dev libpng-dev libtool \
+libxml2-dev linux-api-headers m4 make mercurial ncurses-dev openssl-dev \
+pango-dev patch pcre-dev perl perl-xml-parser perl-xml-simple pixman-dev \
+pkg-config tiff-dev xorg-dev-proto xorg-dev zip unzip gtk+-dev alsa-lib-dev \
+sqlite-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $WOK/$PACKAGE/source/
+	ln -s $WOK/qt4/source/qt4-$VERSION $WOK/$PACKAGE/source/$PACKAGE-$VERSION
+	cd $WOK/$PACKAGE/source/$PACKAGE-$VERSION &&
+	#cd $src
+	./configure\
+		-silent \
+		-prefix /usr \
+		-confirm-license -opensource \
+		-sysconfdir /etc/xdg \
+		-plugindir /usr/lib/qt/plugins \
+		-importdir /usr/lib/qt/imports \
+		-translationdir /usr/share/qt/translations \
+		-datadir /usr/share/qt \
+		-docdir /usr/share/doc/qt \
+		-examplesdir /usr/share/doc/qt/examples \
+		-demosdir /usr/share/doc/qt/demos \
+		-release \
+		-nomake demos \
+		-nomake examples \
+		-nomake docs \
+		-system-zlib \
+		-system-libtiff \
+		-system-libpng \
+		-system-libmng \
+		-system-libjpeg \
+		-system-sqlite \
+		-scripttools \
+		-glib \
+		-optimized-qmake \
+		-gtkstyle \
+		-no-opengl -no-openvg \
+		-reduce-relocations \
+		-no-gstreamer -no-phonon \
+		-no-declarative -no-phonon-backend \
+		-graphicssystem raster \
+		-silent \
+		-continue \
+		2>&1 | sed 's/such file or directory/file/' &&
+	make $MAKEFLAGS &&
+	make INSTALL_ROOT=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	# dummy tree to avoid 'tazwok cmp --cook' building loop
+	mkdir $fs/etc
+}
