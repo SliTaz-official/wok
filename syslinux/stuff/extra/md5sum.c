@@ -794,19 +794,23 @@ static bool __constfunc cpu_has_feature(int x)
 
 static char *extfilename(char *filename, char *ext, int feature)
 {
-#define NEWFILENAMESZ 80
+#define NEWFILENAMESZ 256
 	static char newfilename[NEWFILENAMESZ+1];
 	char *found = filename;
-	FILE *fp;
+	char *new = newfilename;
+	int fd;
 
 	if (strlen(filename) + strlen(ext) <= NEWFILENAMESZ) {
 		strcpy(newfilename, filename);
 		if (cpu_has_feature(feature)) {
 			strcat(newfilename, ext);
-			fp = fopen(newfilename, "r");
-			if (fp)
-				found = newfilename;
-			fclose(fp);
+			fd = open(new, O_RDONLY);
+			if (fd < 0)
+				fd = open(new = unrockridge(new), O_RDONLY);
+			if (fd >= 0) {
+				found = new;
+				close(fd);
+			}
 		}
 	}
 	return found;
