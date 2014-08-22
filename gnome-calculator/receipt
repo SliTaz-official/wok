@@ -13,9 +13,18 @@ WGET_URL="http://ftp.gnome.org/pub/gnome/sources/$PACKAGE/${VERSION%.*}/$TARBALL
 DEPENDS="gtk+3 glib"
 BUILD_DEPENDS="gtk+3-dev glib-dev itstool yelp-xsl"
 
+L10N_MO="af am ar as ast az be@latin be bg bn_IN bn bs ca ca@valencia cs cy da \
+de dz el en_CA en_GB en@shaw en_US eo es et eu fa fi fr ga gl gu he hi hr hu \
+hy id it ja ka kk km kn ko ku lt lv mai mg mk ml mn mr ms my nb ne nl nn oc or \
+pa pl pt_BR pt ro ru rw si sk sl sq sr@latin sr sv ta te tg th tk tr ug uk vi \
+xh zh_CN zh_HK zh_TW"
+
 # Rules to configure and make the package.
 compile_rules()
 {
+	# SliTaz icon theme has no symbolic icons
+	sed -i 's|-symbolic||g' $src/data/buttons*.ui
+
 	./configure \
 		--prefix=/usr \
 		$CONFIGURE_ARGS &&
@@ -26,4 +35,17 @@ compile_rules()
 genpkg_rules()
 {
 	cp -a $install/usr $fs
+	rm -rf $fs/usr/share/locale
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot $1/ /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	chroot $1/ /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
 }
