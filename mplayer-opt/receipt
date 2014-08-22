@@ -6,10 +6,8 @@ CATEGORY="multimedia"
 SHORT_DESC="The Ultimate Movie Player For Linux (with minimal depends)"
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL2"
-SOURCE="MPlayer"
-TARBALL="$SOURCE-$VERSION.tar.xz"
+WANTED="mplayer"
 WEB_SITE="http://www.mplayerhq.hu/design7/news.html"
-WGET_URL="http://www1.mplayerhq.hu/MPlayer/releases/$TARBALL"
 HOST_ARCH="i486 arm"
 
 DEPENDS="libmad xorg-libXv alsa-lib cdparanoia-III giflib ncurses \
@@ -28,7 +26,7 @@ esac
 # Handle cross compilation. Host coreutils-file-* are used
 case "$ARCH" in
 	i?86) 
-		ARCH_ARGS="--target=i486-linux --disable-sdl --enable-runtime-cpudetection" 
+		ARCH_ARGS="--target=i486-linux --disable-sdl --enable-runtime-cpudetection"
 		BUILD_DEPENDS="$BUILD_DEPENDS cdparanoia-III-dev enca-dev" ;;
 	arm*) 
 		BUILD_DEPENDS="$BUILD_DEPENDS libsdl-dev" 
@@ -38,6 +36,10 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
+	rm -rf $WOK/$PACKAGE/source/ && mkdir -p $WOK/$PACKAGE/source/
+	ln -s $WOK/$WANTED/source/$WANTED-$VERSION \
+	$WOK/$PACKAGE/source/$PACKAGE-$VERSION &&
+	cd $src &&
 	./configure \
 		--prefix=/usr \
 		--confdir=/etc/mplayer \
@@ -76,7 +78,7 @@ genpkg_rules()
 	# No-gui, OSD ($username@slitaz:~$ mplayer -menu filename)
 	mkdir -p $fs/usr/share/applications
 	cp -f $stuff/mplayer.desktop $fs/usr/share/applications/mplayer.desktop
-	cp $src/etc/input.conf $fs/etc/mplayer
+	cp $src/etc/*menu.conf $fs/etc/mplayer
 	# Font
 	cd $fs/usr/share/mplayer && ln -s ../fonts/truetype/ttf-dejavu/DejaVuSans.ttf subfont.ttf
 }
