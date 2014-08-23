@@ -60,7 +60,7 @@ mount -t devtmpfs none /dev
 arg()
 {
 root="\$(sed "s/^/ /;s/\$/ /;/ \$1=/!d;s/.* \$1=\\([^ ]*\\).*/\\1/" </proc/cmdline)"
-busybox [ -n "\$root" ]
+[ -n "\$root" ]
 }
 
 arg init
@@ -68,12 +68,12 @@ init=\${root:-/sbin/init}
 [ -n "\$(sed 's/\$/ /;s/^/ /;/ ro /!d' /proc/cmdline)" ] && ro="-o ro"
 [ -n "\$(sed 's/\$/ /;s/^/ /;/ rw /!d' /proc/cmdline)" ] && ro="-o rw"
 arg root && root="\$(echo \$root | sed 's|/|\\\\/|g')" &&
-	root="\$(busybox blkid | sed "s/\"//g;/\$root/!d;s/:.*//;q")" &&
+	root="\$(blkid | sed "s/\"//g;/\$root/!d;s/:.*//;q")" &&
 	[ -n "\$root" ] && mount \$ro \$root /mnt
-arg loopfs && busybox losetup /dev/loop0 /mnt/\$root && mount /dev/loop0 /mnt
+arg loopfs && losetup /dev/loop0 /mnt/\$root && mount /dev/loop0 /mnt
 arg subroot && cp /bin/busybox /mnt/\$root/dev/shm &&
 	chroot="\$root/dev/shm/busybox chroot \$root"
-busybox [ -x /mnt/\$root/\$init ] && umount /dev && umount /proc && exec busybox switch_root mnt \$chroot \$init
+[ -x /mnt/\$root/\$init ] && umount /dev && umount /proc && exec switch_root mnt \$chroot \$init
 
 [ -d /proc/bus/usb ] && mount -t usbfs usbfs /proc/bus/usb
 while read type dir ; do
