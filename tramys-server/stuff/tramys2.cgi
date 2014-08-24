@@ -12,7 +12,7 @@
 . /usr/bin/httpd_helper.sh
 
 WORKING=$(mktemp -d)
-DATADIR=/home/lexeii/Public/tramys
+DATADIR=/usr/share/tramys
 
 # hide script
 if [ "x$(GET lang)$(GET rel)$(GET dl)" == "x" ]; then
@@ -71,7 +71,7 @@ RT="$R/translations/%/$LC"
 # supported 4.0 (as stable now) an cooking (rolling, 5.0)
 # don't know what to do with "arm" and "x86_64" woks
 case $(GET rel) in
-	4*) PREFIX="stable"; WOK="stable"  ;;
+	4*) PREFIX="stable_"; WOK="stable"  ;;
 	*)  PREFIX="";       WOK="cooking" ;;
 esac
 WOK="/home/slitaz/$WOK/chroot/home/slitaz/wok"
