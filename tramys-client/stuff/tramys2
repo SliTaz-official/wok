@@ -5,11 +5,57 @@
 
 . /etc/slitaz/slitaz.conf
 . /lib/libtaz.sh
-check_root $@
+
+if [ $(id -u) != 0 ]; then
+	exec tazbox su $0 $@; exit 0
+fi
+
+export TEXTDOMAIN='tramys' # i18n
 WORKING=$(mktemp -d)
+LOG="/tmp/tramys.log"
+TGZ="/tmp/tramys.tgz"
+YADCONF="--center --window-icon=config-language --image=config-language --image-on-top"
+
+yad $YADCONF --title="tramys (1/3)" --text="$(_ \
+'Now translations for all installed programs will be found and downloaded.
+You can change locale if you want, or proceed.
+
+Your current locale: <b>$LANG</b>')" \
+	--button "gtk-edit:2" --button "gtk-cancel:1" --button "gtk-go-forward:0"
+case $? in
+	2) tazbox locale; exit 0 ;;
+	1) exit 0 ;;
+esac
+
 busybox wget -U "$(cd $INSTALLED; ls -1 | tr '\n' ' ')" \
-	"http://cook.slitaz.org/tramys.cgi?lang=$LANG" -O - | \
-	busybox tar -C $WORKING -xz
+	"http://cook.slitaz.org/tramys2.cgi?lang=$LANG&rel=$(cat /etc/slitaz-release)" \
+	-O - | tee $LOG | \
+	yad $YADCONF --title="tramys (2/3)" --progress --width=320 --text="$(_ \
+'The server processes the request.
+Please wait.')" \
+	--enable-log --log-expanded \
+	--button "gtk-cancel:1" --button "gtk-go-forward:0"
+case $? in
+	1) exit 0 ;;
+esac
+
+DLKEY=$(tail -n1 $LOG); rm -f $LOG
+
+busybox wget "http://cook.slitaz.org/tramys2.cgi?dl=$DLKEY" -O $TGZ 2>&1 | \
+yad $YADCONF --title="tramys (3/3)" --progress --pulsate --width=320 \
+	--text="$(_ \
+'Downloading in progress.
+Please wait.')" \
+	--button "gtk-cancel:1" --button "gtk-ok:0"
+case $? in
+	1) exit 0 ;;
+esac | \
+
+busybox tar -xz -C $WORKING -f $TGZ
 chown -R root:root $WORKING
 cp -fpr $WORKING/* /
+rm -f $TGZ
 rm -rf $WORKING
+
+yad $YADCONF --title="tramys" --text="$(_ \
+'Translation files have been installed in your system.')"

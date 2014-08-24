@@ -3,14 +3,38 @@
 # Tool for managing translation files for SliTaz GNU/Linux
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014
 
-# How to use: tramys.cgi?lang=$LANG
+# How to use:
+# 1. tramys2.cgi?lang=$LANG&rel=$RELEASE to generate archive
 # Pass packages list in HTTP_USER_AGENT header
 # (seems it have no restrictions for length and no encoded symbols ' ' and '+')
+# 2. tramys2.cgi?dl=$DL_KEY to download archive (user can cancel downloading)
 
 . /usr/bin/httpd_helper.sh
 
 WORKING=$(mktemp -d)
 DATADIR=/home/lexeii/Public/tramys
+
+# hide script
+if [ "x$(GET lang)$(GET rel)$(GET dl)" == "x" ]; then
+	echo -e "HTTP/1.1 404 Not Found\nContent-Type: text/html\n\n<!DOCTYPE html><html><head><title>404 - Not Found</title></head><body><h1>404 - Not Found</h1></body></html>"
+	exit
+fi
+
+# begin: compress and give to client
+if [ "x$(GET dl)" != "x" ]; then
+	WORKING="/tmp/tmp.$(echo $(GET dl) | tr -cd 'A-Za-z0-9')" # avoid relative paths
+	cat <<EOT
+Content-Type: application/x-compressed-tar
+Content-Length: $(stat -c %s $WORKING.tgz)
+Content-Disposition: attachment; filename=tramys.tgz
+
+EOT
+	cat $WORKING.tgz
+	rm -f $WORKING.tgz
+	exit 0
+fi
+# end: compress and give to client
+
 
 # prepare list for search
 # original GNU gettext searches precisely in this order
@@ -44,11 +68,29 @@ PY="/usr/lib/python2.7/site-packages"
 R="/usr/lib/R/library"
 RT="$R/translations/%/$LC"
 
+# supported 4.0 (as stable now) an cooking (rolling, 5.0)
+# don't know what to do with "arm" and "x86_64" woks
+case $(GET rel) in
+	4*) PREFIX="stable"; WOK="stable"  ;;
+	*)  PREFIX="";       WOK="cooking" ;;
+esac
+WOK="/home/slitaz/$WOK/chroot/home/slitaz/wok"
+
+PKGNUM=$(echo $HTTP_USER_AGENT | wc -w)
+NUM=1
+
+echo -e "Content-Type: text/plain\n\n" # to Yad client
+echo "#Number of packages: $PKGNUM"
+echo "#Searching in progress..."
+
 for P in $HTTP_USER_AGENT; do
+
+	echo "$((100*$NUM/$PKGNUM))" # percentage to Yad client
+	NUM=$(($NUM+1))
 
 	for list_type in mo qm; do
 		IFS=$'\n'
-		for line in $(grep -e "^$P	" $DATADIR/$list_type.list); do
+		for line in $(grep -e "^$P	" $DATADIR/$PREFIX$list_type.list); do
 			locales=$(echo $line | cut -d'	' -f2)
 			names=$(echo $line | cut -d'	' -f3)
 				[ "x$names" == "x" ] && names=$P
@@ -63,8 +105,7 @@ for P in $HTTP_USER_AGENT; do
 						for path in $pathes; do
 							eval "fullname=${path//%/$locale}/${name//%/$locale}.$list_type"
 							mkdir -p $WORKING$(dirname $fullname)
-							cp -pf /home/slitaz/cooking/chroot/home/slitaz/wok/$P/install$fullname \
-								$WORKING$fullname
+							cp -pf $WOK/$P/install$fullname $WORKING$fullname
 						done
 					done
 					break
@@ -74,14 +115,17 @@ for P in $HTTP_USER_AGENT; do
 	done
 done
 
+echo "#" # to Yad client log
+echo "#Preparing archive. Please wait"
+
 busybox tar -czf $WORKING.tgz -C $WORKING .
-cat <<EOT
-Content-Type: application/x-compressed-tar
-Content-Length: $(stat -c %s $WORKING.tgz)
-Content-Disposition: attachment; filename=tramys.tgz
-
-EOT
-cat $WORKING.tgz
-
 rm -rf $WORKING
-rm -f $WORKING.tgz
+
+echo "#" # to Yad client log
+echo "#Done!"
+echo "#Now you can proceed to downloading"
+echo "#and installing your translations."
+echo "#File size: $(stat -c %s $WORKING.tgz)"
+
+echo "${WORKING#*.}" # give download key to Yad client
+exit 0
