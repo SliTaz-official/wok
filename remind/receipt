@@ -35,11 +35,16 @@ genpkg_rules()
 post_install()
 {
 	# Check for ~/.reminders file - needed for wyrd
-	if [ ! -f $1/home/tux/.reminders -a -d $1/home/tux ]; then
-		echo -n "Creating config file..."
-		touch $1/home/tux/.reminders 
-		chown tux:tux $1/home/tux/.reminders
+	for i in $(ls $1/home); do
+		[ -f $1/home/$i/.reminders ] && continue
+		echo -n "Creating config file for $i ..."
+		touch $1/home/$i/.reminders 
+		chroot $1/ chown $i.users /home/$i/.reminders
 		status
-	fi
+	done
 }
 
+post_remove()
+{
+	rm -f $1/home/*/.reminders
+}

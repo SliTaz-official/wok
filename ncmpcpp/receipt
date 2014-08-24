@@ -39,19 +39,22 @@ genpkg_rules()
 post_install()
 {
 	echo -n "Enabling configuration files..."
-	mkdir -p $1/home/tux/.ncmpcpp
-	cp $1/usr/share/doc/ncmpcpp/config /home/tux/.ncmpcpp
-	cp $1/usr/share/doc/ncmpcpp/keys /home/tux/.ncmpcpp
-	sed -i 's|#mpd_music_dir = ""|mpd_music_dir = "/home/tux/music"|' /home/tux/.ncmpcpp/config
-	# Change permissions also
-	chown -R tux:users /home/tux/.ncmpcpp
+	for i in $(ls $1/home); do
+		mkdir -p $1/home/$i/.ncmpcpp
+		cp $1/etc/skel/.tiptoprc $1/home/$i
+		cp $1/usr/share/doc/ncmpcpp/config /home/$i/.ncmpcpp
+		cp $1/usr/share/doc/ncmpcpp/keys /home/$i/.ncmpcpp
+		sed -i 's|#mpd_music_dir = ""|mpd_music_dir = "/home/'$i'/music"|' /home/$i/.ncmpcpp/config
+		# Change permissions also
+		chroot $1/ chown -R $i.users /home/$i/.ncmpcpp
+	done
 	status
 }
 
 post_remove()
 {
 	echo -n "Removing configuration files..."
-	rm -rf /home/tux/.ncmpcpp
+	rm -rf /home/*/.ncmpcpp
 	status
 }
 	

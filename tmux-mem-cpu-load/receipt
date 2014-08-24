@@ -31,14 +31,15 @@ genpkg_rules()
 post_install()
 {
 	echo -n "Checking for .tmux.conf..."
-	if [ ! -f /home/tux/.tmux.conf ] || $(! grep -q "tmux-mem-cpu-load" /home/tux/.tmux.conf); then
-	cat >> /home/tux/.tmux.conf << EOT
+	for i in $(ls $1/home); do
+		grep -qs "tmux-mem-cpu-load" /home/$i/.tmux.conf && continue
+		cat >> /home/$i/.tmux.conf << EOT
 # tmux-mem-cpu-load
 set -g status-interval 2
 set -g status-right "#[fg=black,bg=green]#(tmux-mem-cpu-load 2)#[default]"
 EOT
-	fi
-	chown tux:users /home/tux/.tmux.conf
+	
+		chroot $1/ chown $i.users /home/$i/.tmux.conf
+	done
 	status
 }
-

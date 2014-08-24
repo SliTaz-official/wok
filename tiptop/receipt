@@ -23,9 +23,20 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/home/tux # config file
+	mkdir -p $fs/usr $fs/etc/skel
 	cp -a $install/usr/bin $fs/usr
-	cp -a $src/tiptoprc $fs/home/tux/.tiptoprc
-	chown tux.users $fs/home/tux/.tiptoprc
+	cp -a $src/tiptoprc $fs/etc/skel/.tiptoprc
 }
 
+post_install()
+{
+	for i in $(ls $1/home); do
+		cp $1/etc/skel/.tiptoprc $1/home/$i
+		chroot $1/ chown $i.users /home/$i/.tiptoprc
+	done
+}
+
+post_remove()
+{
+	rm -f $1/home/*/.tiptoprc
+}
