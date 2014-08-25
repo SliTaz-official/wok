@@ -31,19 +31,19 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/share $fs/etc/skel/.ncmpcpp
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/share/doc $fs/usr/share
+	ln $fs/usr/share/doc/ncmpcpp/config $fs/etc/skel/.ncmpcpp
+	ln $fs/usr/share/doc/ncmpcpp/keys $fs/etc/skel/.ncmpcpp
 }
 
 post_install()
 {
-	echo -n "Enabling configuration files..."
-	for i in $(ls $1/home); do
-		mkdir -p $1/home/$i/.ncmpcpp
-		cp $1/etc/skel/.tiptoprc $1/home/$i
-		cp $1/usr/share/doc/ncmpcpp/config /home/$i/.ncmpcpp
-		cp $1/usr/share/doc/ncmpcpp/keys /home/$i/.ncmpcpp
+	for i in $(ls $1/home 2> /dev/null); do
+		[ -d $1/home/$i/.ncmpcpp ] && continue
+		echo -n "Enabling configuration files for $i ..."
+		cp -a $1/etc/skel/.ncmpcpp $1/home/$i/
 		sed -i 's|#mpd_music_dir = ""|mpd_music_dir = "/home/'$i'/music"|' /home/$i/.ncmpcpp/config
 		# Change permissions also
 		chroot $1/ chown -R $i.users /home/$i/.ncmpcpp
@@ -57,5 +57,3 @@ post_remove()
 	rm -rf /home/*/.ncmpcpp
 	status
 }
-	
-
