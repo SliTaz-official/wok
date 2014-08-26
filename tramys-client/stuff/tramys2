@@ -6,6 +6,7 @@
 . /etc/slitaz/slitaz.conf
 . /lib/libtaz.sh
 
+# Ask for root access in order to install the files in the system.
 if [ $(id -u) != 0 ]; then
 	exec tazbox su $0 $@; exit 0
 fi
@@ -14,8 +15,14 @@ export TEXTDOMAIN='tramys' # i18n
 WORKING=$(mktemp -d)
 LOG="/tmp/tramys.log"
 TGZ="/tmp/tramys.tgz"
+URL="http://cook.slitaz.org/tramys2.cgi"
+
+# Common Yad options.
 YADCONF="--center --window-icon=config-language --image=config-language --image-on-top"
 
+# First step. Describes the functions of the program.
+# It is possible to set the language.
+# Also here the user has the ability to stop the program.
 yad $YADCONF --title="tramys (1/3)" --text="$(_ \
 'Now translations for all installed programs will be found and downloaded.
 You can change locale if you want, or proceed.
@@ -27,23 +34,44 @@ case $? in
 	1) exit 0 ;;
 esac
 
-busybox wget -U "$(cd $INSTALLED; ls -1 | tr '\n' ' ')" \
-	"http://cook.slitaz.org/tramys2.cgi?lang=$LANG&rel=$(cat /etc/slitaz-release)" \
-	-O - | tee $LOG | \
+# your locale -> HTTP_ACCEPT_LANGUAGE
+# your SliTaz release -> HTTP_ACCEPT (different releases have different translations)
+# your installed packages list -> HTTP_COOKIE (list=...)
+# Note clean address "tramys2.cgi" in the server access logs.
+#
+# Server sending and Yad shows user useful info using log widget.
+# We are temporarily stored this log in the $LOG file in order to get
+# a download token (see below).
+# Here the user can refuse to download the file.
+busybox wget --header "Accept-Language: $LANG" \
+	--header "Accept: $(cat /etc/slitaz-release)" \
+	--header "Cookie: list=$(cd $INSTALLED; ls -1 | tr '\n' ' ')" \
+	$URL -O - | tee $LOG | \
 	yad $YADCONF --title="tramys (2/3)" --progress --width=320 --text="$(_ \
 'The server processes the request.
 Please wait.')" \
 	--enable-log --log-expanded \
 	--button "gtk-cancel:1" --button "gtk-go-forward:0"
-case $? in
-	1) exit 0 ;;
-esac
+ANSWER=$?
 
+# In the last line of log server gives us a download token.
+# We can download archive which the server has prepared for us.
+# Get download token and remove log.
 DLKEY=$(tail -n1 $LOG); rm -f $LOG
 
-busybox wget "http://cook.slitaz.org/tramys2.cgi?dl=$DLKEY" -O $TGZ 2>&1 | \
-yad $YADCONF --title="tramys (3/3)" --progress --pulsate --width=320 \
-	--text="$(_ \
+case $ANSWER in
+	1)
+		# We need to remove archive that the user has refused to download.
+		# This command passed in HTTP_COOKIE (rm=...)
+		busybox wget --header "Cookie: rm=$DLKEY" $URL -O /dev/null; exit 0 ;;
+esac
+
+# We want to download the file. Show pulsate progress bar.
+# This command passed in HTTP_COOKIE (dl=...)
+# Also here the user can terminate file downloading.
+busybox wget --header "Cookie: dl=$DLKEY" $URL -O $TGZ 2>&1 | \
+	yad $YADCONF --title="tramys (3/3)" --progress --pulsate --width=320 \
+		--text="$(_ \
 'Downloading in progress.
 Please wait.')" \
 	--button "gtk-cancel:1" --button "gtk-ok:0"
@@ -51,11 +79,21 @@ case $? in
 	1) exit 0 ;;
 esac | \
 
+# Unpack archive content to a temporary folder.
 busybox tar -xz -C $WORKING -f $TGZ
+# All folders and files in the archive are owned by user www and group www.
+# This is because the CGI script on the server is executed by the user www.
+# If we had just unpacked the archive content into our file system, then there
+# would be a big trouble. For example, all folders: /, /usr, /usr/share,
+# /usr/share/locale, etc. would be owned by user www and become unavailable
+# for a regular user. So force all folders and files to root own.
 chown -R root:root $WORKING
+# copy all translation files to root file system.
 cp -fpr $WORKING/* /
+# remove temporary folder and file, they are no longer needed.
 rm -f $TGZ
 rm -rf $WORKING
 
+# Final message.
 yad $YADCONF --title="tramys" --text="$(_ \
 'Translation files have been installed in your system.')"

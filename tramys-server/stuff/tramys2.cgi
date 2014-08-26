@@ -4,40 +4,34 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014
 
 # How to use:
-# 1. tramys2.cgi?lang=$LANG&rel=$RELEASE to generate archive
-# Pass packages list in HTTP_USER_AGENT header
-# (seems it have no restrictions for length and no encoded symbols ' ' and '+')
-# 2. tramys2.cgi?dl=$DL_KEY to download archive (user can cancel downloading)
+# 1. Request for archive:
+#    HTTP_ACCEPT_LANGUAGE -> users locale
+#    HTTP_ACCEPT -> SliTaz release
+#    HTTP_COOKIE (list=...) -> space-separated list of packages to process
+#
+# 2. Remove archive that the user has refused to download:
+#    HTTP_COOKIE (rm=DLKEY) -> remove /tmp/tmp.DLKEY.tgz file
+#
+# 3. Send archive to user:
+#    HTTP_COOKIE (dl=DLKEY) -> send /tmp/tmp.DLKEY.tgz file
 
 . /usr/bin/httpd_helper.sh
 
-WORKING=$(mktemp -d)
-DATADIR=/usr/share/tramys
+WORKING=$(busybox mktemp -d) # make temp working dir /tmp/tmp.??????
+DATADIR=/usr/share/tramys    # this folder contains lists
 
-# hide script
-if [ "x$(GET lang)$(GET rel)$(GET dl)" == "x" ]; then
-	echo -e "HTTP/1.1 404 Not Found\nContent-Type: text/html\n\n<!DOCTYPE html><html><head><title>404 - Not Found</title></head><body><h1>404 - Not Found</h1></body></html>"
-	exit
-fi
+# Get user settings from HTTP headers.
+lang="$HTTP_ACCEPT_LANGUAGE"
+rel="$HTTP_ACCEPT"
+cmd="${HTTP_COOKIE%%=*}"
+arg="${HTTP_COOKIE#*=}"
 
-# begin: compress and give to client
-if [ "x$(GET dl)" != "x" ]; then
-	WORKING="/tmp/tmp.$(echo $(GET dl) | tr -cd 'A-Za-z0-9')" # avoid relative paths
-	cat <<EOT
-Content-Type: application/x-compressed-tar
-Content-Length: $(stat -c %s $WORKING.tgz)
-Content-Disposition: attachment; filename=tramys.tgz
+#-----------#
+# Functions #
+#-----------#
 
-EOT
-	cat $WORKING.tgz
-	rm -f $WORKING.tgz
-	exit 0
-fi
-# end: compress and give to client
-
-
-# prepare list for search
-# original GNU gettext searches precisely in this order
+# Prepare list for search.
+# Original GNU gettext searches precisely in this order.
 locales_list() {
 	LL=$(echo $1 | sed 's|^\([^_.@]*\).*$|\1|')
 	CC=$(echo $1 | sed -n '/_/s|^[^_]*\(_[^.@]*\).*$|\1|p')
@@ -59,73 +53,127 @@ locales_list() {
 	[ "$ee" ]					&& echo -n "$LL$ee "
 	echo "$LL"
 }
-MY_LOCALES=$(locales_list $(GET lang))
+MY_LOCALES=$(locales_list $lang)
 
-# constants to use in lists
-US="/usr/share"
-LC="LC_MESSAGES"
-PY="/usr/lib/python2.7/site-packages"
-R="/usr/lib/R/library"
-RT="$R/translations/%/$LC"
+# Search and copy translation files
+copy_translations() {
+	# for all packages in list
+	for P in $arg; do
 
-# supported 4.0 (as stable now) an cooking (rolling, 5.0)
-# don't know what to do with "arm" and "x86_64" woks
-case $(GET rel) in
-	4*) PREFIX="stable_"; WOK="stable"  ;;
-	*)  PREFIX="";       WOK="cooking" ;;
-esac
-WOK="/home/slitaz/$WOK/chroot/home/slitaz/wok"
+		echo "$((100*$NUM/$PKGNUM))" # send percentage to Yad client
+		NUM=$(($NUM+1))              # next package
 
-PKGNUM=$(echo $HTTP_USER_AGENT | wc -w)
-NUM=1
+		# for all list types
+		for list_type in mo qm; do
+			IFS=$'\n'
+			for line in $(grep -e "^$P	" $DATADIR/$PREFIX$list_type.list); do
+				locales=$(echo $line | cut -d'	' -f2)
+				names=$(echo $line | cut -d'	' -f3)
+					[ "x$names" == "x" ] && names=$P
+				paths=$(echo $line | cut -d'	' -f4)
+					[ "x$paths" == "x" ] && paths="$US/locale/%/$LC"
 
-echo -e "Content-Type: text/plain\n\n" # to Yad client
-echo "#Number of packages: $PKGNUM"
-echo "#Searching in progress..."
+				IFS=' '
+				# for all valid locale variants
+				for locale in $MY_LOCALES; do
+					if $(echo " $locales " | grep -q " $locale "); then
 
-for P in $HTTP_USER_AGENT; do
+						# for all file names
+						for name in $names; do
+							# for all paths
+							for path in $paths; do
+								# substitute variables and "%"
+								eval "fullname=${path//%/$locale}/${name//%/$locale}.$list_type"
 
-	echo "$((100*$NUM/$PKGNUM))" # percentage to Yad client
-	NUM=$(($NUM+1))
-
-	for list_type in mo qm; do
-		IFS=$'\n'
-		for line in $(grep -e "^$P	" $DATADIR/$PREFIX$list_type.list); do
-			locales=$(echo $line | cut -d'	' -f2)
-			names=$(echo $line | cut -d'	' -f3)
-				[ "x$names" == "x" ] && names=$P
-			pathes=$(echo $line | cut -d'	' -f4)
-				[ "x$pathes" == "x" ] && pathes="$US/locale/%/$LC"
-
-			IFS=' '
-			for locale in $MY_LOCALES; do
-				if $(echo " $locales " | grep -q " $locale "); then
-
-					for name in $names; do
-						for path in $pathes; do
-							eval "fullname=${path//%/$locale}/${name//%/$locale}.$list_type"
-							mkdir -p $WORKING$(dirname $fullname)
-							cp -pf $WOK/$P/install$fullname $WORKING$fullname
+								# copy translation file to working dir
+								mkdir -p $WORKING$(dirname $fullname)
+								cp -pf $WOK/$P/install$fullname $WORKING$fullname
+							done
 						done
-					done
-					break
-				fi
+						break
+					fi
+				done
 			done
 		done
 	done
-done
+}
 
-echo "#" # to Yad client log
-echo "#Preparing archive. Please wait"
+#----------#
+#   Main   #
+#----------#
 
-busybox tar -czf $WORKING.tgz -C $WORKING .
-rm -rf $WORKING
+# Branch commands: list, rm, dl.
+case "x$cmd" in
+	xlist) # Main actions: get list, search translations, make an archive.
+		# constants to use in lists
+		US="/usr/share"
+		LC="LC_MESSAGES"
+		PY="/usr/lib/python2.7/site-packages"
+		R="/usr/lib/R/library"
+		RT="$R/translations/%/$LC"
 
-echo "#" # to Yad client log
-echo "#Done!"
-echo "#Now you can proceed to downloading"
-echo "#and installing your translations."
-echo "#File size: $(stat -c %s $WORKING.tgz)"
+		# Supported 4.0 (as stable now) and cooking (rolling, 5.0)
+		# Don't know what to do with "arm" and "x86_64" woks ???
+		case "x$rel" in
+			x4*|xstable) PREFIX="stable_"; WOK="stable"  ;;
+			*)           PREFIX="";        WOK="cooking" ;;
+		esac
+		# Path to the specified WOK in the SliTaz server.
+		WOK="/home/slitaz/$WOK/chroot/home/slitaz/wok"
 
-echo "${WORKING#*.}" # give download key to Yad client
+		PKGNUM=$(echo $arg | wc -w) # number of packages in the list
+		NUM=1 # initial value
+
+		echo -e "Content-Type: text/plain\n\n" # to Yad client
+		echo "#Number of packages: $PKGNUM"    # Message to Yad log
+		echo "#Searching in progress..."       # And another one
+
+		copy_translations
+
+		echo "#"                                  # Message to Yad log
+		echo "#Preparing archive. Please wait..." # And another one
+
+		# Make the archive from working dir and remove temp working dir.
+		busybox tar -czf $WORKING.tgz -C $WORKING .
+		rm -rf $WORKING
+
+		echo "#" # to Yad client log
+		echo "#Done!"
+		echo "#Now you can proceed to downloading"
+		echo "#and installing your translations."
+		echo "#File size: $(stat -c %s $WORKING.tgz) bytes."
+
+		echo "${WORKING#*.}" # give download token to Yad client
+		exit 0 ;;
+
+	xrm) # Remove archive.
+		# Avoid relative path to avoid removing of any system file.
+		archive="/tmp/tmp.$(echo $arg | tr -cd 'A-Za-z0-9').tgz"
+		rm -f $archive
+		cat <<EOT
+Content-Type: text/plain
+Content-Length: 0
+
+EOT
+		exit 0 ;;
+
+	xdl) # Send archive to client.
+		# Avoid relative path to avoid hijacking of any system file.
+		archive="/tmp/tmp.$(echo $arg | tr -cd 'A-Za-z0-9').tgz"
+		cat <<EOT
+Content-Type: application/x-compressed-tar
+Content-Length: $(stat -c %s $archive)
+Content-Disposition: attachment; filename=tramys.tgz
+
+EOT
+		cat $archive
+		# Remove archive after sending.
+		rm -f $archive
+		exit 0 ;;
+
+	*) # Hide the script from the web bots and browsers.
+		echo -e "HTTP/1.0 404 Not Found\nContent-Type: text/html\n\n<!DOCTYPE html><html><head><title>404 - Not Found</title></head><body><h1>404 - Not Found</h1></body></html>"
+		exit ;;
+esac
+
 exit 0
