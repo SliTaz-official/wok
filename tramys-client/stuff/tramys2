@@ -5,6 +5,7 @@
 
 . /etc/slitaz/slitaz.conf
 . /lib/libtaz.sh
+. /etc/locale.conf
 
 # Ask for root access in order to install the files in the system.
 if [ $(id -u) != 0 ]; then
@@ -30,7 +31,7 @@ You can change locale if you want, or proceed.
 Your current locale: <b>$LANG</b>')" \
 	--button "gtk-edit:2" --button "gtk-cancel:1" --button "gtk-go-forward:0"
 case $? in
-	2) tazbox locale; exit 0 ;;
+	2) tazbox locale; tramys2; exit 0 ;;
 	1) exit 0 ;;
 esac
 
@@ -88,8 +89,34 @@ busybox tar -xz -C $WORKING -f $TGZ
 # /usr/share/locale, etc. would be owned by user www and become unavailable
 # for a regular user. So force all folders and files to root own.
 chown -R root:root $WORKING
+
+# Create or recreate virtual package "tramys-data".
+# It contains all translations.
+# And you can remove it if you no longer need translations.
+TD=$INSTALLED/tramys-data
+mkdir -p $TD
+cat <<EOT > $TD/receipt
+# SliTaz package receipt.
+
+PACKAGE="tramys-data"
+VERSION="$(date +%y%m%d)"
+CATEGORY="system-tools"
+SHORT_DESC="This package contains translation files installed by tramys-client"
+MAINTAINER="you@slitaz.org"
+LICENSE="GPL"
+WEB_SITE="http://www.slitaz.org/"
+DEPENDS="tramys-client"
+EOT
+# Update files list.
+cd $WORKING; find . -type f | sed 's|^./|/|g' >> $TD/files.list
+sort -u $TD/files.list -o $TD/files.list
+
 # copy all translation files to root file system.
 cp -fpr $WORKING/* /
+
+# Recreate md5sums.
+md5sum $(cat $TD/files.list) > $TD/md5sum
+
 # remove temporary folder and file, they are no longer needed.
 rm -f $TGZ
 rm -rf $WORKING
