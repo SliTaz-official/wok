@@ -16,6 +16,7 @@
 #    HTTP_COOKIE (dl=DLKEY) -> send /tmp/tmp.DLKEY.tgz file
 
 . /usr/bin/httpd_helper.sh
+. /home/slitaz/www/cook/tramys2.msg # translations
 
 WORKING=$(busybox mktemp -d) # make temp working dir /tmp/tmp.??????
 DATADIR=/usr/share/tramys    # this folder contains lists
@@ -125,23 +126,18 @@ case "x$cmd" in
 		NUM=1 # initial value
 
 		echo -e "Content-Type: text/plain\n\n" # to Yad client
-		echo "#Number of packages: $PKGNUM"    # Message to Yad log
-		echo "#Searching in progress..."       # And another one
+		msg 1 # Message to Yad log
 
 		copy_translations
 
-		echo "#"                                  # Message to Yad log
-		echo "#Preparing archive. Please wait..." # And another one
+		msg 2 # Message to Yad log
 
 		# Make the archive from working dir and remove temp working dir.
 		busybox tar -czf $WORKING.tgz -C $WORKING .
 		rm -rf $WORKING
 
-		echo "#" # to Yad client log
-		echo "#Done!"
-		echo "#Now you can proceed to downloading"
-		echo "#and installing your translations."
-		echo "#File size: $(stat -c %s $WORKING.tgz) bytes."
+		SIZE=$(ls -lh $WORKING.tgz | awk '{print $5}')
+		msg 3 # Message to Yad log
 
 		echo "${WORKING#*.}" # give download token to Yad client
 		exit 0 ;;
@@ -151,7 +147,7 @@ case "x$cmd" in
 		archive="/tmp/tmp.$(echo $arg | tr -cd 'A-Za-z0-9').tgz"
 		rm -f $archive
 		cat <<EOT
-Content-Type: text/plain
+Content-Type: text/plain; charset=UTF-8
 Content-Length: 0
 
 EOT
