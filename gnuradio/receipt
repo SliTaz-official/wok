@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="gnuradio"
+VERSION="3.7.4"
+CATEGORY="development"
+MAINTAINER="pascal.bellard@slitaz.org"
+SHORT_DESC="Signal processing blocks to implement software radios."
+LICENSE="GPL3"
+WEB_SITE="http://gnuradio.org/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/releases/$PACKAGE/$TARBALL"
+
+DEPENDS="python libboost-date-time libboost-program-options \
+libboost-filesystem libboost-system libboost-thread orc alsa-lib \
+gsl fftw jack-audio-connection-kit portaudio"
+BUILD_DEPENDS="cmake fftw-dev python-numpy python-cheetah python-lxml \
+libboost-filesystem-dev libboost-system-dev libboost-test-dev libboost-dev \
+libboost-program-options-dev libboost-thread-dev libboost-tr1-dev \
+libboost-regex-dev pygtk-dev libsdl-dev \
+pkg-config swig cppunit-dev orc-dev python-sphinx gsl-dev libusb-dev \
+alsa-lib-dev jack-audio-connection-kit-dev portaudio-dev log4c-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir build
+	cd build
+	cmake -Wno-dev -DCMAKE_INSTALL_PREFIX=/usr .. &&
+	make &&
+	make test # &&
+	make DESTDIR=$DESTDIR install
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/usr/lib
+	cp -a $install/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/gnuradio $fs/usr/share
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/python* $fs/usr/lib
+}
