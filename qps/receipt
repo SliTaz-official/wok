@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="qps"
+VERSION="1.10.16"
+CATEGORY="system-tools"
+SHORT_DESC="Advanced process monitor (taskmanager)"
+MAINTAINER="psychomaniak@xakep.ru"
+LICENSE="GPL2"
+WEB_SITE="http://kldp.net/projects/qps"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="http://kldp.net/frs/download.php/5963/$TARBALL"
+
+DEPENDS="libQtGui libQtDBus libQtXml"
+BUILD_DEPENDS="Qt4-dev qmake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	sed -i 's|/local||g'			qps.pro
+	sed -i 's|man/man1|applications|g'	qps.pro
+	sed -i 's|qps.1|qps.desktop|g'		qps.pro
+	sed -i 's/qps.xpm/utilities-system-monitor/g'	qps.desktop
+
+	qmake && make
+	make INSTALL_ROOT=$install install
+	rm -rf $src/.obj
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
