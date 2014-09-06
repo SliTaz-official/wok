@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="djview"
+VERSION="4.9"
+CATEGORY="graphics"
+SHORT_DESC="Djvu files viewer."
+MAINTAINER="psychomaniak@xakep.ru"
+LICENSE="GPL2"
+WEB_SITE="http://djvu.sourceforge.net/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/djvu/$TARBALL"
+
+DEPENDS="libQtGui libQtNetwork djvulibre"
+BUILD_DEPENDS="qmake Qt4-dev djvulibre-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure
+	sed -i 's/-O2/-Os/g' $src/src/Makefile
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	mkdir -p $fs/usr/share/applications $fs/usr/share/icons/hicolor/32x32/apps
+	cd $fs/usr/share/djvu/djview4/desktop
+	mv djvulibre-djview4.desktop $fs/usr/share/applications
+	mv hi32-djview4.png $fs/usr/share/icons/hicolor/32x32/apps/djvulibre-djview4.png
+	rm -rf *.png *.svgz
+	rm -rf $fs/usr/lib
+}

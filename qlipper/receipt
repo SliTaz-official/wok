@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="qlipper"
+VERSION="2.0.2"
+CATEGORY="utilities"
+SHORT_DESC="Clipboard history tool."
+MAINTAINER="psychomaniak@xakep.ru"
+LICENSE="GPL2"
+WEB_SITE="http://qlipper.googlecode.com/"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$WEB_SITE/files/$TARBALL"
+
+DEPENDS="libQtGui libQtDBus libQtNetwork"
+BUILD_DEPENDS="Qt4-dev cmake qmake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src && sed -i 's/ ON/ OFF/g' CMakeLists.txt
+	cmake \
+		-DCMAKE_BUILD_TYPE=release \
+		-DUSE_SYSTEM_QXT=0 \
+		-DCMAKE_INSTALL_PREFIX=/usr . &&
+	make && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
