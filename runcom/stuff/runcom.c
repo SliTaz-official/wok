@@ -13,10 +13,13 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <signal.h>
 #include <errno.h>
 #include <ctype.h>
 #include <termios.h>
+#include <dirent.h>
+#include <fnmatch.h>
 
 #include <sys/syscall.h>
 #include <asm/vm86.h>
@@ -87,6 +90,9 @@ void dump_regs(struct vm86_regs *r)
     fprintf(stderr,"\n");
 }
 
+static int argflags;
+#define DEBUG 1
+
 #define DOS_FD_MAX 256
 typedef struct {
     int fd; /* -1 means closed */
@@ -94,6 +100,8 @@ typedef struct {
 
 DOSFile dos_files[DOS_FD_MAX];
 uint16_t cur_psp;
+uint16_t cur_dta_seg;
+uint16_t cur_dta_ofs;
 
 void dos_init(void)
 {
@@ -155,12 +163,23 @@ static char *get_filename1(struct vm86_regs *r, char *buf, int buf_size,
         offset++;
     }
     *q = '\0';
+    if (buf[1] == ':')
+    	strcpy(buf, buf+2);
     return buf;
 } 
 
 static char *get_filename(struct vm86_regs *r, char *buf, int buf_size)
 {
     return get_filename1(r, buf, buf_size, r->ds, r->edx & 0xffff);
+}
+
+static char *upcase(const char *s)
+{
+    static char buffer[80];
+    int i;
+    for (i = 0; i < sizeof(buffer)-1; i++, s++)
+	buffer[i] = (*s >= 'a' && *s <= 'z') ? *s + 'A' - 'a' : *s;
+    return buffer;
 }
 
 typedef struct __attribute__((packed)) {
@@ -186,6 +205,22 @@ typedef struct __attribute__((packed)) {
     uint16_t sp, ss;
     uint16_t ip, cs;
 } ExecParamBlock;
+
+typedef struct __attribute__((packed)) {
+    /* internals */
+	uint8_t attr;		/* 00 */
+	uint8_t drive_letter;	/* 01 */
+	uint8_t template[11];	/* 02 */
+	uint16_t entry_count;	/* 0D */
+	uint32_t dta_address;	/* 0F */
+	uint16_t cluster_parent_dir;	/* 13 */
+    /* output */
+	uint8_t attr_found;	/* 15 */
+	uint16_t file_time;	/* 16 */
+	uint16_t file_date;	/* 18 */
+	uint32_t file_size;	/* 1A */
+	uint8_t filename[13];	/* 1E */
+} dirdta;
 
 typedef struct MemBlock {
     struct MemBlock *next;
@@ -340,7 +375,8 @@ int load_exe(ExecParamBlock *blk, const char *filename,
     header.min_extra_paragraphs += (size-1)/16;
     
     /* address of last segment allocated */
-    *(uint16_t *)seg_to_linear(psp, 2) = psp + header.min_extra_paragraphs;
+    //*(uint16_t *)seg_to_linear(psp, 2) = psp + header.min_extra_paragraphs;
+    *(uint16_t *)seg_to_linear(psp, 2) = 0x9fff;
     
     if (pfile_size)
         *pfile_size = size;
@@ -378,6 +414,8 @@ int load_com(ExecParamBlock *blk, const char *filename, uint32_t *pfile_size,
 
     /* load the MSDOS .com executable */
     fd = open(filename, O_RDONLY);
+    if (fd < 0)
+        fd = open(upcase(filename), O_RDONLY);
     if (fd < 0) {
         return -1;
     }
@@ -394,10 +432,10 @@ int load_com(ExecParamBlock *blk, const char *filename, uint32_t *pfile_size,
     /* reset the PSP */
     memset(seg_to_linear(psp, 0), 0, 0x100);
 
-    *seg_to_linear(psp, 0) = 0xcd; /* int $0x20 */
-    *seg_to_linear(psp, 1) = 0x20;
+    * (uint16_t *) seg_to_linear(psp, 0) = 0x20CD; /* int $0x20 */
     /* address of last segment allocated */
-    *(uint16_t *)seg_to_linear(psp, 2) = psp + 0xfff;
+    //*(uint16_t *)seg_to_linear(psp, 2) = psp + 0xfff;
+    *(uint16_t *)seg_to_linear(psp, 2) = 0x9fff;
 
     if (argc) {
         int i, p;
@@ -499,17 +537,97 @@ void read_sectors(int fd, struct vm86_regs *r, int first_sector,
     }
 }
 
+#define ESC "\033"
 void do_int10(struct vm86_regs *r)
 {
     uint8_t ah;
+    char buf[20];
+    static unsigned cursorlines = 0x0607;
+    static unsigned activepage = 0;
+    static uint8_t cursrow, curscol;
     
     ah = (r->eax >> 8);
     switch(ah) {
+    case 0x02: /* set cursor position (BH == page number) */
+        cursrow = r->edx >> 8;
+        curscol = r->edx;
+        * (uint16_t *) seg_to_linear(0x40, 0x50 + 2*((r->ebx >> 8) & 0xFF)) = r->edx;
+	sprintf(buf,ESC"[%u;%uH",cursrow + 1, curscol + 1);
+	write(1, buf, strlen(buf));
+        break;
+    case 0x03: /* get cursor position (BH == page number) */
+	r->eax = 0;
+	r->ecx = cursorlines;
+	r->edx &= ~0xFFFF;
+        r->edx |= * (uint16_t *) seg_to_linear(0x40, 0x50 + 2*((r->ebx >> 8) & 0xFF));
+	sprintf(buf,ESC"[%u;%uH",cursrow + 1, curscol + 1);
+	write(1, buf, strlen(buf));
+        break;
+    case 0x05: /* set active page */
+	activepage = r->eax & 0xFF;
+        break;
+    case 0x06: /* scroll up */
+    case 0x07: /* scroll down */
+	{
+	    int i = r->eax & 0xFF;
+	    if (i == 0) i = 50;
+    	/* FIXME assume full row, ignore colums in CL, DL */
+	    sprintf(buf,ESC"[%u;%ur",1+(r->ecx >> 8) & 0xFF, 1+(r->edx >> 8) & 0xFF);
+	    write(1, buf, strlen(buf));
+	    buf[2] = (ah != 6) ? 'T' : 'S';
+	    while (i--) write(1,buf,3);
+	}
+        break;
+    case 0x09: /* write char and attribute at cursor position (BH == page number) */
+        {
+            static char color[8] = "04261537";
+            char extra[5], *s = extra;
+            uint8_t c = r->eax;
+            uint16_t n = r->ecx;
+            int i;
+
+	    if (r->ebx & 0x8) { *s++ = '1'; *s++ = ';'; } // bold
+	    if (r->ebx & 0x80) { *s++ = '5'; *s++ = ';'; } // blink
+	    *s = 0;
+	    sprintf(buf,ESC"[0;%s4%c;3%cm",extra,
+	    	   color[(r->ebx & 0x70) >> 4],color[r->ebx & 0x7]);
+	    write(1, buf, strlen(buf));
+            for (i = 0; i < n; i++) 
+		write(1, &c, 1);
+	    write(1, ESC"[0m", 4); /* restore attributes */
+        }
+        break;
     case 0x0E: /* write char */
         {
             uint8_t c = r->eax;
             write(1, &c, 1);
         }
+        break;
+    case 0x0F: /* get current video mode */
+        {
+	    r->eax &= ~0xFFFF;
+	    r->eax |= 0x5003; /* color or 5007 mono */
+	    r->ebx &= ~0xFF00;
+	    r->ebx |= activepage << 8;
+        }
+        break;
+    case 0x11: /* get window coordonates  */
+        r->ecx &= ~0xFFFF;
+        r->edx &= ~0xFFFF;
+        r->edx |= ~0x1950; /* 80x25 */
+        break;
+    case 0x12: /* get blanking attribute (for scroll) */
+        r->ebx &= ~0xFF00;
+        break;
+    case 0x1A: /* get display combination code */
+#if 0
+        set_error(r, 1);
+#else
+        r->eax &= ~0xFF;
+        r->eax |= ~0x1A;
+        r->ebx &= ~0xFFFF;
+        r->ebx |= ~0x0202; // CGA + color display
+#endif
         break;
     default:
         unsupported_function(r, 0x10, ah);
@@ -684,6 +802,8 @@ void do_int20(struct vm86_regs *r)
 void do_int21(struct vm86_regs *r)
 {
     uint8_t ah;
+    DIR *dirp;
+    dirdta *dta;
     
     ah = (r->eax >> 8);
     switch(ah) {
@@ -693,6 +813,11 @@ void do_int21(struct vm86_regs *r)
         {
             uint8_t c = r->edx;
             write(1, &c, 1);
+        }
+        break;
+    case 0x08: /* read stdin */
+        {
+            read(0,&r->eax,1);
         }
         break;
     case 0x09: /* write string */
@@ -736,6 +861,34 @@ void do_int21(struct vm86_regs *r)
             }
             *seg_to_linear(r->ds, off + 1) = cur_len;
             *seg_to_linear(r->ds, off + 2 + cur_len) = '\r';
+        }
+        break;
+    case 0x0b: /* get stdin status */
+        {
+	    r->eax &= ~0xFF; /* no character available */
+        }
+        break;
+    case 0x0d: /* disk reset */
+        {
+            sync();
+        }
+        break;
+    case 0x0e: /* select default disk */
+        {
+            r->eax &= ~0xFF;
+            r->eax |= 3; /* A: B: & C: valid */
+        }
+        break;
+    case 0x19: /* get current default drive */
+        {
+	    r->eax &= ~0xFF;
+	    r->eax |= 2; /* C: */
+        }
+        break;
+    case 0x1a: /* set DTA (disk transfert address) */
+        {
+	    cur_dta_seg = r->ds;
+	    cur_dta_ofs = r->edx;
         }
         break;
     case 0x25: /* set interrupt vector */
@@ -851,6 +1004,12 @@ void do_int21(struct vm86_regs *r)
             r->edx = (tim.tv_sec * 256) + tim.tv_usec/10000;
         }
         break;
+    case 0x2f: /* get DTA (disk transfert address */
+        {
+	    r->es = cur_dta_seg;
+	    r->ebx = cur_dta_ofs;
+        }
+        break;
     case 0x30: /* get dos version */
         {
             int major, minor, serial, oem;
@@ -864,12 +1023,36 @@ void do_int21(struct vm86_regs *r)
             r->ebx = (r->ebx & ~0xffff) | (serial & 0xff) | (0x66 << 8);
         }
         break;
+    case 0x33: /* extended break checking */
+        {
+	    r->edx &= ~0xFFFF;
+        }
+        break;
     case 0x35: /* get interrupt vector */
         {
             uint16_t *ptr;
             ptr = (uint16_t *)seg_to_linear(0, (r->eax & 0xff) * 4);
             r->ebx = (r->ebx & ~0xffff) | ptr[0];
             r->es = ptr[1];
+        }
+        break;
+    case 0x36: /* get free disk space */
+        {
+            struct statfs buf;
+            
+            if (statfs(".", &buf)) {
+		r->eax |= 0xFFFF;
+            }
+            else {
+		r->eax &= ~0xFFFF;
+		r->eax |= buf.f_bsize / 512; /* sectors per cluster */
+		r->ebx &= ~0xFFFF;
+		r->ebx |= buf.f_bavail;
+		r->ecx &= ~0xFFFF;
+		r->ecx |= 512; /* bytes per sector */
+		r->edx &= ~0xFFFF;
+		r->edx |= buf.f_blocks;
+            }
         }
         break;
     case 0x37: 
@@ -882,6 +1065,15 @@ void do_int21(struct vm86_regs *r)
             default:
                 goto unsupported;
             }
+        }
+        break;
+    case 0x3B: 
+        {
+            char filename[1024];
+        
+            get_filename(r, filename, sizeof(filename));
+            if (chdir(filename))
+                set_error(r, 0x03); /* path not found */
         }
         break;
     case 0x3c: /* create or truncate file */
@@ -899,6 +1091,8 @@ void do_int21(struct vm86_regs *r)
                 else
                     flags = 0777;
                 fd = open(filename, O_RDWR | O_TRUNC | O_CREAT, flags);
+                if (fd < 0)
+                    fd = open(upcase(filename), O_RDWR | O_TRUNC | O_CREAT, flags);
 #ifdef DUMP_INT21
                 printf("int21: create: file='%s' cx=0x%04x ret=%d\n", 
                        filename, (int)(r->ecx & 0xffff), h);
@@ -923,11 +1117,9 @@ void do_int21(struct vm86_regs *r)
                 set_error(r, 0x04); /* too many open files */
             } else {
                 get_filename(r, filename, sizeof(filename));
-#ifdef DUMP_INT21
-                printf("int21: open: file='%s' al=0x%02x ret=%d\n", 
-                       filename, (int)(r->eax & 0xff), h);
-#endif
                 fd = open(filename, r->eax & 3);
+                if (fd < 1)
+                    fd = open(upcase(filename), r->eax & 3);
                 if (fd < 0) {
                     set_error(r, 0x02); /* file not found */
                 } else {
@@ -1031,7 +1223,7 @@ void do_int21(struct vm86_regs *r)
         {
             char filename[1024];
             get_filename(r, filename, sizeof(filename));
-            if (unlink(filename) < 0) {
+            if (unlink(filename) < 0 && unlink(upcase(filename))) {
                 set_error(r, 0x02); /* file not found */
             } else {
                 set_error(r, 0);
@@ -1062,6 +1254,20 @@ void do_int21(struct vm86_regs *r)
             }
         }
         break;
+    case 0x43: /* get attribute */
+        {
+	    struct stat statbuf;
+            char filename[1024];
+            get_filename(r, filename, sizeof(filename));
+            if (stat(filename, &statbuf) && stat(upcase(filename), &statbuf)) {
+		set_error(r, 5);
+            }
+            else {
+            	r->ecx &= ~0xFFFF;
+		if (S_ISDIR(statbuf.st_mode)) r->ecx |= 0x10;
+            }
+        }
+        break;
     case 0x44: /* ioctl */
         switch(r->eax & 0xff) {
         case 0x00: /* get device information */
@@ -1084,9 +1290,21 @@ void do_int21(struct vm86_regs *r)
                     set_error(r, 0);
                 }
             }
+        case 0x01: /* set device information */
             break;
         default:
             goto unsupported;
+        }
+        break;
+    case 0x47: /* get current directory (DL drive)*/
+        {
+            char *s = seg_to_linear(r->ds, r->esi);
+            getcwd(s,64);
+            strcpy(s,s+1);
+            while (*s)
+        	if (*s++ == '/')
+        	    s[-1] = '\\';
+            r->eax = 0x100;
         }
         break;
     case 0x48: /* allocate memory */
@@ -1144,16 +1362,66 @@ void do_int21(struct vm86_regs *r)
             get_filename(r, filename, sizeof(filename));
             blk = (ExecParamBlock *)seg_to_linear(r->es, r->ebx);
             ret = load_com(blk, filename, NULL, 0, NULL);
+            if (ret < 0)
+                ret = load_com(blk, upcase(filename), NULL, 0, NULL);
             if (ret < 0) {
                 set_error(r, 0x02); /* file not found */
             } else {
-                cur_psp = ret;
+                cur_dta_seg = cur_psp = ret;
+                cur_dta_ofs = 0x80;
                 set_error(r, 0);
             }
         }
         break;
     case 0x4c: /* exit with return code */
         exit(r->eax & 0xff);
+        break;
+    case 0x4e: /* find first matching file */
+// TODO AL input support
+	dirp = opendir(".");
+	if (dirp == NULL) {
+		set_error(r, (errno == ENOTDIR) ? 0x03 /* path not found */
+						: 0x02 /* file not found */ );
+		goto pattern_found;		
+	}
+	else {
+		struct dirent *dp;
+		char *s;
+		
+		dta = (dirdta *) seg_to_linear(cur_dta_seg, cur_dta_ofs);
+		dta->attr = r->ecx;
+    		* (DIR **) &dta->entry_count = dirp;
+    		s = seg_to_linear(r->ds, r->edx);
+    		if (s[1] == ':') s+= 2;
+    		if (s[0] == '\\') s++;
+		strncpy(dta->template, s, 11);
+        // NO break;
+    case 0x4f: /* find next matching file */
+		dta = (dirdta *) seg_to_linear(cur_dta_seg, cur_dta_ofs);
+    		dirp = * (DIR **) &dta->entry_count;
+		while ((dp = readdir(dirp)) != NULL) {
+			if (!fnmatch(dta->template, dp->d_name, 0)) {
+				struct stat statbuf;
+				
+				r->eflags &= ~CF_MASK;
+				strncpy(dta->filename, dp->d_name, 13);
+				stat(dp->d_name, &statbuf);
+				dta->file_size = statbuf.st_size;
+				dta->file_date = 0; //DOSDATE(statbuf.st_mtime);
+				dta->file_time = 0; //DOSIME(statbuf.st_mtime);
+				dta->attr_found = S_ISDIR(statbuf.st_mode) ?
+					0x10 /*aDvshr*/ : 0x20 /*Advshr*/;
+#if 0
+				if ((dta->attr_found ^ dta->attr) & 0x16)
+					continue;
+#endif
+				goto pattern_found;		
+			}
+		}
+	}
+	closedir(dirp);
+	set_error(r, 0x12 /* no more files */);
+pattern_found:
         break;
     case 0x50: /* set PSP address */
 #ifdef DUMP_INT21
@@ -1182,6 +1450,11 @@ void do_int21(struct vm86_regs *r)
             r->eax = (r->eax & ~0xff);
         }
         break;
+    case 0x56: /* rename file (CL attribute mask) */
+        if (rename((char *) seg_to_linear(r->ds, r->edx),
+	           (char *) seg_to_linear(r->es, r->edi)))
+	    set_error(r, 0x5 /* access denied or 2,3,0x11 */);
+        break;
     default:
     unsupported:
         unsupported_function(r, 0x21, ah);
@@ -1194,26 +1467,45 @@ void do_int29(struct vm86_regs *r)
     write(1, &c, 1);
 }
 
+static int int8pending;
+
 void raise_interrupt(int number)
 {
     if (* (uint32_t *) seg_to_linear(0, number * 4) == 0)
         return;
-    // FIXME VM86_SIGNAL
+    int8pending++;
 }
 
 void biosclock()
 {
-    uint32_t *timer = (uint32_t *) seg_to_linear(0, 0x46C);
-    ++*timer;
+    //uint32_t *timer = (uint32_t *) seg_to_linear(0, 0x46C);
+    //++*timer;
     raise_interrupt(8);
-    raise_interrupt(0x1C);
+    //raise_interrupt(0x1C);
+}
+
+static void exec_int(struct vm86_regs *r, unsigned num)
+{
+    uint16_t *int_vector;
+    uint32_t eflags;
+
+    eflags = r->eflags & ~IF_MASK;
+    if (r->eflags & VIF_MASK)
+        eflags |= IF_MASK;
+    pushw(r, eflags);
+    pushw(r, r->cs);
+    pushw(r, r->eip);
+    int_vector = (uint16_t *)seg_to_linear(0, num * 4);
+    r->eip = int_vector[0];
+    r->cs = int_vector[1];
+    r->eflags &= ~(VIF_MASK | TF_MASK | AC_MASK);
 }
 
 int main(int argc, char **argv)
 {
     uint8_t *vm86_mem;
     const char *filename;
-    int ret;
+    int i, ret;
     uint32_t file_size;
     struct sigaction sa; 
     struct itimerval timerval;
@@ -1221,6 +1513,16 @@ int main(int argc, char **argv)
     struct vm86_regs *r;
     ExecParamBlock blk1, *blk = &blk1;
 
+    for (argflags = 0; *argv[1] == '-'; argv++) {
+    	char *s = argv[1];
+
+    	while (1)
+    	switch (*++s) {
+    	case 'd' : argflags |= DEBUG; break;
+    	case 0 : goto nextargv;
+    	}
+nextargv:;
+    }
     if (argc < 2)
         usage();
     filename = argv[1];
@@ -1253,7 +1555,8 @@ int main(int argc, char **argv)
             perror(filename);
             exit(1);
         }
-        cur_psp = ret;
+        cur_dta_seg = cur_psp = ret;
+        cur_dta_ofs = 0x80;
 
         /* init basic registers */
         r->eip = blk->ip;
@@ -1291,6 +1594,13 @@ int main(int argc, char **argv)
         timerval.it_interval.tv_usec = timerval.it_value.tv_usec = 10000000 / 182;
         setitimer (ITIMER_REAL, &timerval, NULL);
     }
+    *(uint8_t *)seg_to_linear(0xF000, 0) = 0xCF;
+    for (i = 0; i < 16; i++) 
+	*(uint32_t *)seg_to_linear(0, i * 4) = 0xF0000000;
+    *(uint32_t *)seg_to_linear(0, 0x18 * 4) = 0xF0000000; /* Basic */
+    *(uint32_t *)seg_to_linear(0, 0x1B * 4) = 0xF0000000; /* Keyboard Ctrl-Break */
+    *(uint32_t *)seg_to_linear(0, 0x23 * 4) = 0xF0000000; /* DOS Ctrl-Break */
+    *(uint32_t *)seg_to_linear(0, 0x24 * 4) = 0xF0000000; /* Critical error */
 
     for(;;) {
         ret = vm86(VM86_ENTER, &ctx);
@@ -1300,6 +1610,9 @@ int main(int argc, char **argv)
                 int int_num;
 
                 int_num = VM86_ARG(ret);
+		if (argflags & 1)
+			fprintf(stderr,"Int%02X: CS:IP=%04X:%04X AX=%04X\n",
+				int_num, r->cs, r->eip, r->eax);
                 switch(int_num) {
                 case 0x10:
                     do_int10(r);
@@ -1334,27 +1647,32 @@ int main(int argc, char **argv)
             break;
         case VM86_SIGNAL:
             /* a signal came, we just ignore that */
+            if (int8pending) {
+		int8pending--;
+		exec_int(r, 8);
+            }
             break;
         case VM86_STI:
             break;
         case VM86_TRAP:
             /* just executes the interruption */
-            {
-                uint16_t *int_vector;
-                uint32_t eflags;
-                
-                eflags = r->eflags & ~IF_MASK;
-                if (r->eflags & VIF_MASK)
-                    eflags |= IF_MASK;
-                pushw(r, eflags);
-                pushw(r, r->cs);
-                pushw(r, r->eip);
-                int_vector = (uint16_t *)seg_to_linear(0, VM86_ARG(ret) * 4);
-                r->eip = int_vector[0];
-                r->cs = int_vector[1];
-                r->eflags &= ~(VIF_MASK | TF_MASK | AC_MASK);
-            }
+            exec_int(r, VM86_ARG(ret));
             break;
+        case VM86_UNKNOWN:
+            switch ( *(uint8_t *)seg_to_linear(r->cs, r->eip) ) {
+            case 0xE4: /* inx portb,al */
+            case 0xE5: /* in portb,ax */
+            case 0xE6: /* out al,portb */
+            case 0xE7: /* out ax,portb */
+            	r->eip += 2;
+            	continue;
+            case 0xEC: /* in dx,al */
+            case 0xED: /* in dx,ax */
+            case 0xEE: /* out al,dx */
+            case 0xEF: /* out ax,dx */
+            	r->eip++;
+            	continue;
+            }
         default:
             fprintf(stderr, "unhandled vm86 return code (0x%x)\n", ret);
             dump_regs(&ctx.regs);
