@@ -20,7 +20,18 @@ genpkg_rules()
 	cp -a $install/usr/lib/libQtGui.so* $fs/usr/lib
 	
 	mkdir -p $fs/usr/lib/qt/plugins/imageformats
-	cp -a $install/usr/lib/qt/plugins/imageformats/libqjpeg.so $fs/usr/lib/qt/plugins/imageformats/libqjpeg.so
-	cp -a $install/usr/lib/qt/plugins/imageformats/libqgif.so $fs/usr/lib/qt/plugins/imageformats/libqgif.so
+	cp -a $install/usr/lib/qt/plugins/imageformats/libqjpeg.so $fs/usr/lib/qt/plugins/imageformats
+	cp -a $install/usr/lib/qt/plugins/imageformats/libqgif.so $fs/usr/lib/qt/plugins/imageformats
+
+	mkdir -p $fs/etc/skel/.config
+	cp -a $stuff/Trolltech.conf $fs/etc/skel/.config
 }
 
+post_install()
+{
+        for i in $(ls $1/home 2> /dev/null); do
+                [ -f /home/$i/.config/Trolltech.conf ] && continue
+                cp $1/etc/skel/.config/Trolltech.conf $1/home/$i/.config
+                chroot $1/ chown -R $i.users /home/$i/.config
+        done
+}
