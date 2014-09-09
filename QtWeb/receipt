@@ -1,15 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="QtWeb"
-COMMIT="fffaddce36"
+COMMIT="c7c4a47d81"
 VERSION=${COMMIT:0:4}
 CATEGORY="network"
-SHORT_DESC="Lightweight, secure and fast Qt4 WebKit browser"
+SHORT_DESC="Customizable Qt4 WebKit browser with opera-like gestures"
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL2"
 WEB_SITE="http://qtweb.googlecode.com/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="https://github.com/magist3r/$PACKAGE/archive/$COMMIT.tar.gz"
+#WGET_URL="https://github.com/magist3r/$PACKAGE/archive/fffaddce36.tar.gz"
+WGET_URL="https://github.com/RomanChebotarev/$PACKAGE/archive/$COMMIT.tar.gz"
 
 DEPENDS="libQtWebkit libQtXml cacerts xdg-utils"
 BUILD_DEPENDS="wget cacerts qmake Qt4-dev"
@@ -24,15 +25,18 @@ compile_rules()
 	sed -i 's|http://www.qtweb.net/")|file:/usr/share/webhome/index.html")|g' \
 	settings.cpp browsermainwindow.cpp tabwidget.cpp
 	
+	# sed -i 's/* 0.9;/* ;/' browsermainwindow.cpp
+	
 	# Save profile to ~./config ; ~/.local/share/data instead of /tmp:
 	sed -i 's/unins000.exe/QtWeb/' browserapplication.cpp
+	
 	RTOOLBAR="./data/defaultbookmarks.xbel"
 	sed -i '33d' $RTOOLBAR
-	sed -i 33i\ '<bookmark href="http://slitaz.org/">' $RTOOLBAR
-	sed -i 's/NTFS Disk Tools/SLITAZ/' $RTOOLBAR
+	sed -i 33i\ '<bookmark href="http://root:root@tazpanel:82/pkgs.cgi?info=libQtWebkit-video">' $RTOOLBAR
+	sed -i 's/NTFS Disk Tools/WebkitVideo/' $RTOOLBAR
 	sed -i "15,29d" $RTOOLBAR
 	
-	qmake && make $MAKEFLAGS --silent
+	qmake && sed -i 's/-O2/-Os/g' Makefile && make $MAKEFLAGS
 	mkdir -p $install
 	install $src/src/$PACKAGE $install/$PACKAGE
 	rm -rf  $src/src/$PACKAGE
@@ -49,7 +53,34 @@ genpkg_rules()
 Type=Application
 Name=QtWeb
 Exec=/usr/bin/QtWeb
+Icon=browser
 Categories=Network;WebBrowser;
 EOT
 
+}
+
+post_install()
+{
+	cd $1/tmp ; cat>'QtWeb Internet Browser.conf' << EOT
+[MainWindow]
+downloadAudioVideo=true
+style=Cleanlooks
+home=file:/usr/share/webhome/index.html
+ToolbarSize=80%
+ShowTabbarWhenOneTab=true
+[AddressBar]
+showGoHome=true
+showAppStyle=false
+showPrivacyMode=false
+showPreferences=true
+showCompatibility=false
+showDisableJavascript=true
+EOT
+
+	for i in $(ls $1/home 2> /dev/null); do
+		[ -f /home/$i/.config/QtWeb.NET/QtWeb\ Internet\ Browser.conf ] && continue
+		mkdir -p $1/home/$i/.config/QtWeb.NET
+		cp $1/tmp/QtWeb\ Internet\ Browser.conf $1/home/$i/.config/QtWeb.NET
+		chroot $1/ chown -R $i.users /home/$i/.config/QtWeb.NET
+	done
 }
