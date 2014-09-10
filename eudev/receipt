@@ -1,0 +1,80 @@
+# SliTaz package receipt.
+
+PACKED_SIZE="676.0K"
+UNPACKED_SIZE="5.3M"
+PACKAGE="eudev"
+VERSION="1.9"
+CATEGORY="base-system"
+SHORT_DESC="Fork of udev to avoid depending on systemd"
+MAINTAINER="tcg.thegamer@gmail.com"
+LICENSE="GPLv2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://dev.gentoo.org/~blueness/eudev"
+WGET_URL="${WEB_SITE}/${TARBALL}"
+PROVIDE="udev"
+
+DEPENDS="dbus util-linux-blkid pciids usbids acl kmod"
+BUILD_DEPENDS="util-linux-blkid-dev util-linux-uuid-dev pcre-dev kmod-dev dbus-dev gperf pkg-config acl-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	./configure \
+		--exec-prefix="" \
+		--with-rootprefix="" \
+		--disable-manpages \
+		--disable-introspection \
+		--disable-keymap \
+		--enable-floppy \
+		--enable-rule-generator \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/lib/firmware
+
+	cp -a $install/sbin $fs
+	cp -a $install/etc $fs
+	cp -a $install/lib/libgudev*so* $fs/lib
+	cp -a $install/lib/udev $fs/lib
+
+	# Copy rules files to udev conf dir
+	mv -f $fs/lib/udev/rules.d $fs/etc/udev
+	cp $stuff/udev.conf $fs/etc/udev
+	cp $stuff/*.rules $fs/etc/udev/rules.d
+
+	# Create some devices and directories that Udev cannot handle
+	# due to them being required very early in the boot process
+	mkdir -p $fs/lib/udev/devices/pts
+	mkdir -p $fs/lib/udev/devices/shm
+	mknod -m 0666 $fs/lib/udev/devices/null c 1 3
+
+	# Fix permissions
+	chmod +x $fs/lib/udev/*
+	chown -R root.root $fs
+
+}
+
+list_udev_group()
+{
+    object=$2
+    [ -n "$object" ] || object=GROUP
+    grep $object $1/etc/udev/rules.d/* | \
+        sed 's/.*GROUP="\([a-zA-Z0-9]*\)".*/\1/' | sort | uniq
+}
+
+post_install()
+{
+    # Sanity check for udev+ldap boot
+    list_udev_group "$1" GROUP | while read x ; do
+        grep -q ^$x: $1/etc/group || chroot $1/ addgroup -S $x
+    done
+    list_udev_group "$1" OWNER | while read x ; do
+        grep -q ^$x: $1/etc/passwd || chroot $1/ adduser -S -D -H $x
+    done
+}
