@@ -1,24 +1,41 @@
 --- core/fs/iso9660/iso9660.c
 +++ core/fs/iso9660/iso9660.c
-@@ -132,6 +132,28 @@
+@@ -89,6 +89,24 @@
+     return true;
+ }
+ 
++#define __ROCKRIDGE
++#ifdef __ROCKRIDGE
++static size_t rockname(const struct iso_dir_entry *de, char **name)
++{
++	size_t len, delen, n = (de->name_len + 34) & -2;
++	char *data = (char *) de;
++	
++	for (delen = 0; n + 2 < de->length; n += len) {
++		len = data[n + 2];
++		if (* (short *) (data + n) == 0x4D4E) { /* NM */
++			*name = data + n + 5;
++			delen = len - 5;
++		}
++	}
++	return delen;
++}
++#endif
++
+ /*
+  * Find a entry in the specified dir with name _dname_.
+  */
+@@ -132,6 +150,20 @@
  	
  	de_name_len = de->name_len;
  	de_name = de->name;
-+#define __ROCKRIDGE
 +#ifdef __ROCKRIDGE
 +	{
-+		char *name = NULL, *end;
-+		int n = (offset - de_len + de->name_len + 34) & -2;
-+		int len = data[n + 2];
-+		do {
-+			if (* (short *) (data + n) == 0x4D4E) { // NM
-+				name = data + n + 5;
-+				end = data + n + len;
-+			}
-+			n += len;
-+		} while (n + 2 < offset);
-+		if (name) {
-+			*end = 0;
++		char *name;
++		size_t len = rockname(de, &name);
++
++		if (len) {
++			name[len] = 0;
 +			if (!strcmp(name, dname)) {
 +				dprintf("Found rockridge.\n");
 +				return de;
@@ -29,28 +46,29 @@
  	if (iso_compare_name(de_name, de_name_len, dname)) {
  	    dprintf("Found.\n");
  	    return de;
-@@ -211,6 +233,24 @@
- 	    data = NULL;
- 	    continue;
- 	}
-+#ifdef __ROCKRIDGE2
+@@ -217,11 +249,22 @@
+     dirent->d_ino = 0;           /* Inode number is invalid to ISO fs */
+     dirent->d_off = file->offset;
+     dirent->d_type = get_inode_mode(de->flags);
+-    dirent->d_reclen = offsetof(struct dirent, d_name) + 1 +
+-	iso_convert_name(dirent->d_name, de->name, de->name_len);
++    iso_convert_name(dirent->d_name, de->name, de->name_len);
+ 
++#ifdef __ROCKRIDGE
 +	{
-+		char *name = NULL;
-+		int n = (offset + de->name_len + 34) & -2;
-+		int len = data[n + 2], delen;
-+		do {
-+			if (* (short *) (data + n) == 0x4D4E) { // NM
-+				name = data + n + 5;
-+				delen = len - 5;
-+			}
-+			n += len;
-+		} while (n + 2 < offset + de->length);
-+		if (name) {
-+			de->name_len = delen;
-+			strcpy(de->name, name, delen);
++		char *name;
++		size_t len = rockname(de, &name);
++
++		if (len) {
++			strcpy(dirent->d_name, name);
++			dirent->d_name[len] = 0;
 +		}
 +	}
 +#endif
- 	break;
-     }
-     
++    dirent->d_reclen = offsetof(struct dirent, d_name) + 1 + strlen(dirent->d_name);
+     file->offset += de->length;  /* Update for next reading */
+-    
++
+     return 0;
+ }
+ 
