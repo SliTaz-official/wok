@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="icewm-xdgmenu"
+VERSION="0.7.6"
+CATEGORY="x-window"
+SHORT_DESC="icewm App-Menu generator (pl/py-free version)"
+MAINTAINER="psychomaniak@xakep.ru"
+LICENSE="GPL2"
+WEB_SITE="http://bkhome.org/blog?viewDetailed=02680"
+SOURCE="xdg_puppy-0.7.6-9.tar.bz2"
+TARBALL=$SOURCE
+WGET_URL="http://distro.ibiblio.org/puppylinux/sources/x/$TARBALL"
+
+DEPENDS="gnome-menus slitaz-menus icewm"
+BUILD_DEPENDS="gnome-menus gnome-menus-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/$PACKAGE
+	sed -i 's|root0/.|usr/share/|g'	Makefile
+	sed -i '/tar -/d' Makefile	&& make
+	make PKGNAME=$install BINDIR=/usr/bin install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/usr $fs
+	cp -f $stuff/* $fs/usr/share/icewm
+}
+
+post_install()
+{
+	ico="/usr/share/icons/SliTaz"
+	IconPath="$ico/apps/22:/usr/share/pixmaps:$ico/categories/22:$ico/devices/22:$ico/mimetypes/32"
+	pref="$1/usr/share/icewm/preferences"
+	echo '	'>> $pref
+	echo 'IconPath="'$IconPath'"'	>> $pref
+	echo 'MenuMouseTracking=1'	>> $pref
+}
