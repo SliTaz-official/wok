@@ -127,36 +127,28 @@ halt:
 exestart:
 	cld
 	movw	$0x100, %si
-	movw	-127(%si), %ax
+	movw	-126(%si), %ax
 	cwd				// clear dx
 	pushw	%dx			// dos exit
-	cmpw	$0x2F20, %ax
-	movw	$0x1000+EXESTR(help), %ax
-	je	abort
-	pushfw			// save flags
-		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
-		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
-	// movb	$0x10, %ah
-	pushw	%ax
-	popfw			// < 286 : flags[12..15] are forced 1
-	pushfw			// = 286 : flags[12..15] are forced 0
-	popw	%cx		// > 286 : only flags[15] is forced 0
-	popfw			// restore flags
-	addb	%ah, %ch	// test F0 and 00 cases
-	cmpb	%ah, %ch
-	movb	$EXESTR(no386), %al
-	jbe	abort		// C=8086/80186, Z=80286
+	cmpb	$0x2F, %al
+	movw	$0x3000+EXESTR(help), %ax
+	jbe	abort
+	int	$0x21
+	cmpb	$3, %al
+	movb	$EXESTR(noDOS3), %al
+	jb	abort
 #if 1
-	movw	(%si), %cx
-	jcxz	is386
+	cmpw	(%si), %dx	// checksum not set
+	je	chked
 #endif
 	movw	$(EXELOC(0x8000))/2, %cx
 chklp:
 	lodsw
 	addw	%ax, %dx
 	loop	chklp
-	movb	$EXESTR(chkerr), %al
-	je	is386		// dx == 0 ?
+chked:
+	movw	$0x1000+EXESTR(chkerr), %ax
+	je	tst386		// dx == 0 ?
 abort:
 puts:
 	movb	$0x80, %ah
@@ -171,21 +163,37 @@ putslp:
 	int	$0x10
 	jmp	putslp
 
+tst386:
+	pushfw			// save flags
+		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
+	// movb	$0x10, %ah
+	pushw	%ax
+	popfw			// < 286 : flags[12..15] are forced 1
+	pushfw			// = 286 : flags[12..15] are forced 0
+	popw	%bx		// > 286 : only flags[15] is forced 0
+	popfw			// restore flags
+	addb	%ah, %bh	// test F0 and 00 cases
+	cmpb	%ah, %bh
+	movb	$EXESTR(no386), %al
+#undef NEED386
+#ifdef NEED386
+	jbe	abort		// C=8086/80186, Z=80286
+#else
+	jbe	is86		// C=8086/80186, Z=80286
+#endif
 is386:
-	movl	%cr0, %eax
+	smsww	%ax		// not privileged
 	andb	$1, %al
 	jne	tstvcpi
+	movl	%cr0, %eax	// privileged
 	incl	%eax
 	movb	$EXESTR(rmPaging), %al
 	js	abort
 	movb	$EXESTR(realmodemsg), %al
 realmode:
+is86:
 	call	puts
-	movb	$0x30, %ah
-	int	$0x21
-	cmpb	$3, %al
-	movb	$EXESTR(noDOS3), %al
-	jb	abort
 	movw	$0x0100, %di
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
@@ -202,7 +210,7 @@ VersionVCPI:
 	jmp	realmode
 tstvcpi:
 	pushw	%ds
-	movw	%cx, %ds		// %cx = 0
+	movw	%dx, %ds		// %dx = 0
 	movw	0x67*4+2, %ds
 	movw	$10, %si
 	lodsl
@@ -241,7 +249,7 @@ ERRvcpi:
 	.ascii	"No EMM386/VCPI 4"	// No EMM386/VCPI 4.0+
 	.byte	EXESTR(dot0)
 chkerr:
-	.ascii	"Broken ISO image fil"	// Broken ISO image file.
+	.ascii	"Broken ISO9660 fil"	// Broken ISO9660 file.
 	.byte	EXESTR(eeol)
 vm86modemsg:
 	.ascii	"vm86"			// vm86 mode.

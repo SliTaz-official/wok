@@ -7,6 +7,7 @@ all: isohybrid.exe iso2exe meminfo.exe tazboot.exe
 meminfo.exe: meminfo.S
 	cc -o meminfo.o -Wa,-a=meminfo.lst -c meminfo.S
 	objcopy -O binary meminfo.o meminfo.exe
+	chmod +x $@
 
 iso2exe: iso2exe.sh boot.com bootiso.bin init win32.exe
 	cp iso2exe.sh $@
@@ -32,6 +33,7 @@ isohybrid.exe: iso2exe.sh mvcom.bin iso2exe.com iso2exe.exe
 
 tazboot.exe: boot.com
 	com2exe $< > $@
+	chmod +x $@
 
 OBJS = boot.o iso9660.o libdos.o bootlinux.o
 boot.com: $(OBJS)

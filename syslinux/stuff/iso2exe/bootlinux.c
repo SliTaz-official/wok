@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include "libdos.h"
 #include "iso9660.h"
 
 static unsigned setup_version;
+#define ELKSSIG		0x1E6
 #define SETUPSECTORS	0x1F1
 #define ROFLAG		0x1F2
 #define SYSSIZE		0x1F4
@@ -39,11 +41,16 @@ static void die(char *msg)
 	while (1);
 }
 
+static int iselks;
 static int vm86(void)
 {
 #asm
-		smsw	ax
+		xor	ax, ax
+		cmp	ax, _iselks
+		jne	fakerealmode	// elks may run on a 8086
+		smsw	ax		// 286+
 		and	ax, #1		// 0:realmode	1:vm86
+fakerealmode:
 #endasm
 } 
 
@@ -55,13 +62,31 @@ static struct {
 static void movehi(void)
 {
 #asm
-		pusha
+		push	si
+		push	di
+
+		mov	si, #_mem
+		cmp	word ptr [si+2], #0x10
+		jnc	movehiz
+		mov	ax, [si+1]
+		mov	cl, #4
+		shl	ax, cl		// 8086 support for elks
+		mov	es, ax
+		mov	di, #0x00FF
+		and	di, [si]
+		mov	si, #_buffer
+		mov	cx, #BUFFERSZ/2
+		cld
+		rep
+		  movw
+		jmp	movedone
+movehiz:
 		xor	di, di		// 30
 		mov	cx, #9		// 2E..1E
 zero1:
 		push	di
 		loop	zero1
-		push	dword [_mem]	// 1A mem.base
+		push	dword [si]	// 1A mem.base
 		push	#-1		// 18
 		push	di		// 16
 		xor	eax, eax
@@ -86,15 +111,17 @@ zero2:
 		xchg	[si+0x1F], al	// bits 24..31
 		int	0x15
 		add	sp, #0x30
-		popa
+movedone:
+		pop	di
+		pop	si
 #endasm
 }
 
 #define ZIMAGE_SUPPORT
+#define FULL_ZIMAGE
 
 #ifdef ZIMAGE_SUPPORT
 static unsigned zimage = 0;
-#ifndef FULL_ZIMAGE 
 static unsigned getss(void)
 {
 #asm
@@ -102,18 +129,6 @@ static unsigned getss(void)
 #endasm
 }
 #endif
-#endif
-
-static int versiondos;
-static int dosversion(void)
-{
-#asm
-		mov	ah, #0x30
-		int	0x21
-		cbw
-		mov	_versiondos, ax
-#endasm
-}
 
 static unsigned extendedramsizeinkb(void)
 {
@@ -135,10 +150,12 @@ static void load(unsigned long size)
 		die("Need real mode");
 	switch (mem.align) {
 	case 0:	// kernel
+#ifdef __MSDOS__ 
 		if ((unsigned) (dosversion() - 3) > 7 - 3) {
 			printf("DOS %d not supported.\nTrying anyway...\n",
 				versiondos);
 		}
+#endif
 		mem.align = PAGE_SIZE;
 		break;
 	case PAGE_SIZE: // first initrd : keep 16M..48M for the kernel
@@ -165,21 +182,21 @@ static void load(unsigned long size)
 	mem.base &= - mem.align;
 }
 
+static unsigned setupseg = SETUP_SEGMENT;
 static unsigned setupofs = 0;
 
 void movesetup(void)
 {
 #asm
-		pusha
-		push	#SETUP_SEGMENT
-		pop	es
+		push	si
+		mov	es, _setupseg
 		mov	si, #_buffer
-		mov	di, _setupofs
+		xchg	di, _setupofs
 		mov	cx, #BUFFERSZ/2
 		rep
 		  movsw
-		mov	_setupofs, di
-		popa
+		xchg	_setupofs, di
+		pop	si
 #endasm
 }
 
@@ -190,23 +207,40 @@ static unsigned getcs(void)
 #endasm
 }
 
+static unsigned long kernel_version = 0;
 unsigned long loadkernel(void)
 {
 	unsigned setup, n = BUFFERSZ;
-	unsigned long syssize = 0, kernel_version = 0;
+	unsigned long syssize = 0;
 
 	do {
 		isoread(buffer, n);
 		if (setupofs == 0) {
 			if (* (unsigned short *) (buffer + BOOTFLAG) != 0xAA55)
 				die("The kernel is not bootable");
+#asm
+			int	0x12
+			jc	has640k
+			dec	ax
+			and	al, #0xC0
+			mov	cl, #6
+			shl	ax, cl
+			cmp	ax, _setupseg
+			jnc	has640k
+			mov	_setupseg, ax
+has640k:
+#endasm
 			setup = (1 + buffer[SETUPSECTORS]) << 9;
 			if (setup == 512) setup = 5 << 9;
 			syssize = * (unsigned long  *) (buffer + SYSSIZE) << 4;
+			if (!syssize) syssize = 0x7F000;
 			setup_version = * (unsigned short *) (buffer + VERSION);
 #define HDRS	0x53726448
 			if (* (unsigned long *) (buffer + HEADER) != HDRS)
 				setup_version = 0;
+#define ELKS	0x534B4C45
+			if (* (unsigned long *) (buffer + ELKSSIG) == ELKS)
+				iselks = 1;
 			if (setup_version < 0x204)
 				syssize &= 0x000FFFFFUL;
 			if (setup_version) {
@@ -237,16 +271,16 @@ end_realmode_switch:
 			}
 			if (!setup_version || !(buffer[LOADFLAGS] & 1)) {
 #ifdef ZIMAGE_SUPPORT
-#ifndef FULL_ZIMAGE 
 				zimage = getss() + 0x1000;
 				mem.base = zimage * 16L; 
-				if (mem.base + syssize > SETUP_SEGMENT*16L - 32)
-					die("Out of memory");
+				if (mem.base + syssize > setupseg*16L - 32) {
+#ifdef FULL_ZIMAGE
+					zimage = 0x11;
+					mem.base = 0x110000L;	// 1M + 64K HMA 
 #else
-				zimage = 0x11;
-				mem.base = 0x110000L;	// 1M + 64K HMA 
-
+					die("Out of memory");
 #endif
+				}
 #else
 				die("Not a bzImage format");
 #endif
@@ -258,17 +292,16 @@ end_realmode_switch:
 	} while (setup > 0);
 
 #asm
-		push	ds
-		push	#SETUP_SEGMENT
-		pop	ds
+		push	si
 		mov	si, #0x200
-		mov	eax, #0x53726448	// HdrS
+		cmp	si, _setup_version
+		jae	noversion
+		push	ds
+		mov	ds, _setupseg		// setup > 2.00 => 386+
+		xor	eax, eax
 		cdq				// clear edx
-		cmp	[si+2], eax
-		jne	noversion
 		add	si, [si+14]
 		mov	cx, #3
-		xor	ax, ax
 nextdigit:
 		shl	al, #4
 		shl	ax, #4
@@ -281,10 +314,9 @@ next:
 		shld	edx, eax, #8
 		loop	next
 		pop	ds
-		mov	.loadkernel.kernel_version[bp], edx
-		push	ds
+		mov	_kernel_version, edx
 noversion:
-		pop	ds
+		pop	si
 #endasm
 	load(syssize);
 	return kernel_version;
@@ -292,15 +324,15 @@ noversion:
 
 void loadinitrd(void)
 {
-	if (setup_version && zimage == 0)
+	if (setup_version)
 		load(isofilesize);
 }
 
 void bootlinux(char *cmdline)
 {
+	dosshutdown();
 #asm
-	push	#SETUP_SEGMENT
-	pop	es
+	mov	es, _setupseg
 #endasm
 	if (cmdline) {
 		if (setup_version <= 0x201) {
@@ -345,82 +377,111 @@ copy:
 #endasm
 #ifdef ZIMAGE_SUPPORT
 #asm
+	cld
+	mov	ax, _mem
+	mov	dx, _mem+2
 	mov	bx, _zimage
+	mov	bp, _iselks
+	mov	si, #sysmove
+	mov	di, #SETUP_END
+	mov	cx, #endsysmove-sysmove
 	or	bx, bx
 	jz	notzimage
-		mov	eax, _mem
-#ifndef FULL_ZIMAGE 
-		shr	eax, #4		// top
-		mov	dx, #SYSTEM_SEGMENT
-#else
-		dec	eax
-		shr	eax, #16
-		inc	ax
-		mov	dx, #SYSTEM_SEGMENT/0x1000
-#endif
 		push	cs
 		pop	ds
-		push	ss
-		pop	es
 		push	es
-		mov	si, #sysmove
-		mov	di, #SETUP_END
 		push	di
-		mov	cx, #endsysmove-sysmove
-		cld
 		rep
 		  movsb
 		retf
 sysmove:
-#ifndef FULL_ZIMAGE 
-		mov	ds, bx
-		mov	es, dx
-		xor	di, di
-		xor	si, si
-		mov	cl, #8
-		rep
-		  movsw
-		inc	bx
+#ifdef FULL_ZIMAGE
+		cmp	dx, #0x0010
+		jb	lowsys
+// bx first 64k page, dx:ax last byte+1
+		xchg	ax, cx			// clear ax
+		jcxz	aligned
 		inc	dx
-		cmp	ax, bx
-		jne	sysmove
-#else
-		xchg	ax, cx
+aligned:
 		mov	si, di
-		push	es
-		pop	ds
-		push	cx
 		mov	cx, #0x18
 		rep
 		  stosw
+		push	es
+		pop	ds
 		dec	cx
-		mov	[si+0x10], cx
-		mov	[si+0x18], cx
-		pop	cx
+		mov	[si+0x10], cx	// limit = -1
+		mov	[si+0x18], cx	// limit = -1
+		mov	cx, #0x9300+SYSTEM_SEGMENT/0x1000
 		mov	bh, #0x93
-		mov	dh, #0x93
 mvdown:
 		mov	[si+0x12+2], bx	// srce
-		mov	[si+0x1A+2], dx	// dest
-		pusha
+		mov	[si+0x1A+2], cx	// dest
+		pusha			// more than 1Mb => 286+
 		mov	cx, #0x8000
 		mov	ah, #0x87
-		int	0x15	// catched by himem.sys: may need dos=high,umb
+		int	0x15
 		popa
 		inc	bx
-		inc	dx
-		cmp	cl, bl
+		inc	cx
+		cmp	dl, bl
 		jne	mvdown
+		jmp	notzimage
 #endif
+lowsys:
+// bx first segment, dx:ax last byte+1 (paragraph aligned)
+		mov	cl, #4
+		shr	ax, cl
+		mov	cl, #12
+		shl	dx, cl
+		or	ax, dx		// last segment+1
+		mov	dx, #SYSTEM_SEGMENT
+		sub	ax, bx		// ax = paragraph count
+		sub	bx, dx
+		jnc	sysmovelp
+		add	dx, ax		// top down
+		dec	dx
+sysmovelp:		// move ax paragraphs from bx+dx:0 to dx:0
+		mov	es, dx
+		mov	cx, dx
+		add	cx, bx
+		mov	ds, cx
+		sbb	cx, cx		// cx = 0 : -1
+		cmc			// C  = 1 :  0
+		adc	dx, cx
+		xor	di, di
+		xor	si, si
+		mov	cx, #8
+		rep
+		  movsw
+		dec	ax
+		jne	sysmovelp
 notzimage:
+	or	bp, bp
+	jz	notelks
+	push	ss
+	pop	ds
+	mov	cx, #0x100
+	mov	es, cx
+	mov	ch, #0x78	// do not overload SYSTEM_SEGMENT
+	xor	si, si
+	xor	di, di
+	push	es
+	rep
+	  movsw
+	pop	ss
+notelks:
 #endasm
 #endif
 #asm
-	push	ss
-	pop	ds
-	push	ds
-	pop	es
-	jmpi	0, #0x9020
+	mov	ax, ss
+	mov	ds, ax
+	mov	es, ax
+	add	ax, #0x20
+	push	ax
+	xor	dx, dx
+	push	dx
+	retf
 endsysmove:
 #endasm
 }

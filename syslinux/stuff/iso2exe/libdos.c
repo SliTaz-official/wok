@@ -128,3 +128,58 @@ chdireturn:
 		sbb	ax, ax
 #endasm
 }
+
+void dosshutdown(void)
+{
+#asm
+		push	bp
+		push	si
+		push	di
+		push	ds
+		seg	cs
+		mov	stack+2, ss
+		seg	cs
+		mov	stack,sp
+		xor	bx, bx
+		mov	ds, bx		// ds = 0
+		mov	[bx+4], #step
+		mov	[bx+6], cs
+		pushf
+		pop	ax
+		or	ax, #0x100	// set TF
+		push	ax
+		popf
+		jmp	far [bx+4*0x19]
+stack:
+		.long	0
+stepagain:
+		iret
+step:
+		push	si
+		push	ds
+		mov	si, sp
+		seg	ss
+		lds	si, [si+4]
+		cmp	word ptr [si], #0x19CD
+		pop	ds
+		pop	si
+		jne	stepagain
+		seg	cs
+		lss	sp, stack
+		pop	ds
+		pop	di
+		pop	si
+		pop	bp
+#endasm
+}
+
+int versiondos;
+int dosversion(void)
+{
+#asm
+		mov	ah, #0x30
+		int	0x21
+		cbw
+		mov	_versiondos, ax
+#endasm
+}

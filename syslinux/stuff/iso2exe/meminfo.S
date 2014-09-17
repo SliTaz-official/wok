@@ -53,6 +53,20 @@ go:
 	popw	%ds
 	pushw	%cs
 	popw	%es
+#if 1
+	pushfw			// save flags
+		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
+	movb	$0x10, %ah
+	pushw	%ax
+	popfw			// < 286 : flags[12..15] are forced 1
+	pushfw			// = 286 : flags[12..15] are forced 0
+	popw	%bx		// > 286 : only flags[15] is forced 0
+	popfw			// restore flags
+	addb	%ah, %bh	// test F0 and 00 cases
+	cmpb	%ah, %bh
+	jbe	fail		// C=8086/80186, Z=80286
+#endif
 	xorl	%ebx, %ebx
 e820lp:
 	movl	$0xe820, %eax
@@ -104,13 +118,15 @@ fail:
 	movw	%bx, 24+2(%di)
 	incb	%dh
 	movw	%dx, 56+2(%di)
-	shrw	$6, %ax		// 1K -> 64K
+	movw	%cx, %dx
+	movb	$6, %cl
+	shrw	%cl, %ax		// 1K -> 64K
 	jz	e801_configured
-	shrw	$6, %cx		// 1K -> 64K
+	shrw	%cl, %dx		// 1K -> 64K
 	addw	$0x10, %ax
-	addw	$0x10, %cx
+	addw	$0x10, %dx
 	movw	%ax, 8+2(%di)
-	movw	%cx, 40+2(%di)
+	movw	%dx, 40+2(%di)
 	movw	$extended, %si
 	call	pute801
 	call	pute801
@@ -133,7 +149,8 @@ fail2:
 	popw	%di
 	jc	fail3
 	movb	$0x10, 0+2(%di)		// 1M
-	shrw	$6, %ax		// 1K -> 64K
+	movb	$6, %cl
+	shrw	%cl, %ax		// 1K -> 64K
 	jz	fail3
 	addw	$0x10, %ax
 	movw	%ax, 8+2(%di)
