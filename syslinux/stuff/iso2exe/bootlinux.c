@@ -425,7 +425,7 @@ mvdown:
 		inc	bx
 		inc	cx
 		cmp	dl, bl
-		jne	mvdown
+		ja	mvdown
 		jmp	notzimage
 #endif
 lowsys:

@@ -5,7 +5,7 @@
 static int a20buffer = 0;
 static void movehia20(void)
 {
-	if ((mem.base - 0x100000UL) >= 0x10000UL) {
+	if ((mem.base >> 16) != 0x10) {
 		movehi();
 		return;
 	}
@@ -25,10 +25,9 @@ static void movehia20(void)
 }
 #define movehi movehia20
 
-#define REALMODE_SWITCH _realmode_switch_a20
-static void realmode_switch_a20(void)
+static void dosshutdowna20(void)
 {
-	if (!a20buffer) return;
+	if (a20buffer) {
 #asm
 		pusha			// more than 1Mb => 286+
 		xor	di, di		// 30
@@ -59,6 +58,10 @@ a20z2:
 		add	sp, #0x30
 		popa
 #endasm
+	}
+	dosshutdown();
 }
+
+#define dosshutdown dosshutdowna20
 
 #endif
