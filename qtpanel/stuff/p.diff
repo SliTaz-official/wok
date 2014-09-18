@@ -1,0 +1,71 @@
+--- orig/applicationsmenuapplet.cpp
++++ edit/applicationsmenuapplet.cpp
+@@ -96 +96 @@
+-	return QSize(m_textItem->boundingRect().size().width() + 16, m_textItem->boundingRect().size().height());
++	return QSize(m_textItem->boundingRect().size().width() + 8, m_textItem->boundingRect().size().height());
+--- orig/clockapplet.cpp
++++ edit/clockapplet.cpp
+@@ -42 +42 @@
+-	m_text = dateTimeNow.toString();
++	m_text = dateTimeNow.toString("ddd ddMMM hh:mm");
+@@ -50 +50 @@
+-	return QSize(m_textItem->boundingRect().width() + 16, m_textItem->boundingRect().height() + 16);
++	return QSize(m_textItem->boundingRect().width() + 2, m_textItem->boundingRect().height() + 16);
+--- orig/dockapplet.cpp
++++ edit/dockapplet.cpp
+@@ -8,0 +9 @@
++#include <QtGui/QWheelEvent>
+@@ -56 +57 @@
+-	QString shortName = fontMetrics.elidedText(m_clients[0]->name(), Qt::ElideRight, m_targetSize.width() - adjustHardcodedPixelSize(36));
++	QString shortName = fontMetrics.elidedText(m_clients[0]->name(), Qt::ElideRight, m_targetSize.width() - adjustHardcodedPixelSize(25));
+@@ -60,2 +61,2 @@
+-	m_iconItem->setPixmap(m_clients[0]->icon().pixmap(adjustHardcodedPixelSize(16)));
+-	m_iconItem->setPos(adjustHardcodedPixelSize(8), m_targetSize.height()/2 - adjustHardcodedPixelSize(8));
++	m_iconItem->setPixmap(m_clients[0]->icon().pixmap(adjustHardcodedPixelSize(22)));
++	m_iconItem->setPos(adjustHardcodedPixelSize(4), m_targetSize.height()/8 + adjustHardcodedPixelSize(2));
+@@ -162 +163 @@
+-	return QRectF(0.0, 0.0, m_size.width() - 1, m_size.height() - 1);
++	return QRectF(0.0, 0.0, m_size.width() - 1, m_size.height());
+@@ -244,0 +246,24 @@
++		}
++	}
++}
++
++void DockItem::wheelEvent(QGraphicsSceneWheelEvent *event)
++{
++	int numDegrees = event->delta() / 8;
++	int numSteps = numDegrees / 15;
++
++	// Ignore accidental scroll events if currently dragging.
++	if(m_dragging)
++		return;
++
++	if (event->orientation() == Qt::Horizontal) { // Horizontal: switch between tasks
++		// scrollHorizontally(numSteps);
++	} else { // Vertical scroll: (un)roll the hovered task
++		if( numSteps > 0 )
++		{
++			X11Support::activateWindow(m_clients[0]->handle());
++		}
++		else
++		{
++			if(m_dockApplet->activeWindow() == m_clients[0]->handle())
++				X11Support::minimizeWindow(m_clients[0]->handle());
+--- orig/dockapplet.h
++++ edit/dockapplet.h
+@@ -7,0 +8 @@
++#include <QtGui/QWheelEvent>
+@@ -49,0 +51 @@
++	void wheelEvent(QGraphicsSceneWheelEvent *event);
+--- orig/dpisupport.cpp
++++ edit/dpisupport.cpp
+@@ -9 +9 @@
+-    return size*dpi/96;
++    return size*dpi/125;
+--- orig/panelapplication.cpp
++++ edit/panelapplication.cpp
+@@ -73,2 +73,2 @@
+-	setFontName(settings.value("fontName", "default").toString());
+-	setIconThemeName(settings.value("iconThemeName", "default").toString());
++	setFontName(settings.value("fontName", "Fixed 8").toString());
++	setIconThemeName(settings.value("iconThemeName", "SliTaz").toString());

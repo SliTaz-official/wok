@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="qtpanel"
+VERSION="548e4d3"
+CATEGORY="x-window"
+SHORT_DESC="Patched: size, scroll wheel min/max taskbar items. virt.desktops NOT supported"
+LICENSE="GPL"
+WEB_SITE="https://gitorious.org/qtpanel/qtpanel"
+MAINTAINER="psychomaniak@xakep.ru"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
+
+DEPENDS="libQtGui xorg-libXdamage xorg-libXcomposite"
+BUILD_DEPENDS="wget cacerts Qt4-dev qmake cmake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	patch -i $stuff/p.diff --merge		#sed -i 's|ddd ddMMM hh:mm||' clockapplet.cpp
+	mkdir b; cd b
+	cmake -DCMAKE_BUILD_TYPE=MinSizeRel ..;	make
+	mkdir -p $install/usr/bin
+	install	$src/b/$PACKAGE $install/usr/bin
+	rm -rf	$src/b
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+
+genpkg_rules()
+{
+	cp -a $install/*	$fs
+	mkdir -p		$fs/etc/xdg
+	cp -a $stuff/autostart	$fs/etc/xdg
+}
