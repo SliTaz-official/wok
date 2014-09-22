@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="copyq"
+VERSION="5ff5"
+CATEGORY="utilities"
+SHORT_DESC="Clipboard Manager with Advanced Features"
+WEB_SITE="http://hluk.github.io/CopyQ/"
+LICENSE="GPL3"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+MAINTAINER="psychomaniak@xakep.ru"
+WGET_URL="https://github.com/hluk/CopyQ/archive/$VERSION.tar.gz"
+
+DEPENDS="libQtGui libQtNetwork libQtScript libQtSvg libQtXml"
+BUILD_DEPENDS="wget Qt4-dev cmake qmake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cat > p.diff <<EOT
+--- o.cpp
++++ configurationmanager.cpp
+@@ -54 +54 @@
+-#   define DEFAULT_EDITOR "gedit %1"
++#   define DEFAULT_EDITOR "xterm +lc -e nano %1"
+@@ -484 +484 @@
+-    bind("check_selection", ui->checkBoxSel, false);
++    bind("check_selection", ui->checkBoxSel, true);
+EOT
+	patch $src/src/gui/configurationmanager.cpp p.diff
+	mkdir $src/b
+	cd $src/b && cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+	make &&	make install
+	rm -rf $src/b
+}
+
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
