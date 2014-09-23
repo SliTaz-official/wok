@@ -1,6 +1,6 @@
 --- compressed_loop.h
 +++ compressed_loop.h
-@@ -41,6 +41,74 @@
+@@ -41,6 +41,75 @@
  /* data_index (num_blocks 64bit pointers, network order)...      */
  /* compressed data (gzip block compressed format)...             */
  
@@ -60,7 +60,8 @@
 +		return (char *) "32BE v0.68";
 +	}
 +	else { /* V3.0 */
-+		int i, j;
++		int i;
++		loff_t j;
 +		
 +		for (i = n; i-- > 0; )
 +			offsets[i].size = ntohl(ofs32[i]); 
@@ -110,7 +111,7 @@
 +	len = ntohl(tail.table_size);
 +	toclen = (ntohl(tail.index_size) & 255) * c->numblocks;
 +	OP(lseek(c->fh, end - sizeof(tail) - len, SEEK_SET));
-+        ALLOC(c->toc,c->tocsize);
++        ALLOC(c->toc, sizeof(*c->toc) * c->numblocks);
 +        ALLOC(p,len);
 +        OP(read_all(c->fh,p,len));  /* read Data Index */
 +	if (uncompress((void *)c->toc,&toclen,p,len) != Z_OK)
