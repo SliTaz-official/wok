@@ -13,13 +13,7 @@ HOST_ARCH="i486 arm"
 
 DEPENDS="expat fontconfig freetype ncurses xorg-libXft xorg-libXt xorg-libXaw"
 BUILD_DEPENDS="expat-dev fontconfig-dev freetype-dev ncurses-dev \
-xorg-libXft-dev xorg-libXt-dev xorg-libXaw-dev imagemagick libltdl"
-
-# Handle cross compilation.
-case "$ARCH" in
-	arm) BUILD_DEPENDS="expat-dev fontconfig-dev freetype-dev ncurses-dev \
-xorg-libXft-dev xorg-libXt-dev xorg-libXaw-dev "
-esac
+xorg-libXft-dev xorg-libXt-dev xorg-libXaw-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -34,6 +28,15 @@ compile_rules()
 		--enable-freetype \
 		--enable-doublechars \
 		--enable-256-color \
+		--enable-meta-sends-esc \
+		--disable-delete-is-del \
+		--disable-sun-fkeys \
+		--disable-boxchars \
+		--disable-desktop \
+		--disable-tek4014 \
+		--disable-vt52 \
+		--disable-luit \
+		--with-icon-symlink \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -42,13 +45,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/pixmaps $fs/usr/share/applications
-	[ -x "/usr/bin/convert" ] &&
-		convert icons/xterm_32x32.xpm $DESTDIR/usr/share/pixmaps/xterm.png
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share $fs/usr
-	rm -rf $fs/usr/share/man
-	# cp $src/xterm.desktop $DESTDIR/usr/share/applications
+	cp -a $install/* $fs
+	find $fs -regex \
+	'.*\(2.\|U\|I\|8r\|ux\|man\).*' -delete
+	cd $fs/*/bin
+	ln -s xterm uxterm
 }
 
 # One of the first X apps cross compiled. Be sure all went well
