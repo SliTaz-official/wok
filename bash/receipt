@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="bash"
-VERSION="4.2"
+VERSION="4.2.53"
+BASEVERSION="${VERSION%.*}"
 CATEGORY="system-tools"
 SHORT_DESC="The GNU bourne SHell."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+TARBALL="$PACKAGE-$BASEVERSION.tar.gz"
 WEB_SITE="http://www.gnu.org/software/bash/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 BASHCHECKURL="https://raw.githubusercontent.com/hannob/bashcheck/master/bashcheck"
 BASHCHECK="$(basename $BASHCHECKURL)"
-BASHPATCHES="$(for i in $(seq 1 53); do printf "bash${VERSION/./}-%03d " $i; done)"
+BASHPATCHES="$(for i in $(seq 1 ${VERSION##*.}); do printf "bash${BASEVERSION/./}-%03d " $i; done)"
 EXTRA_SOURCE_FILES="$BASHCHECK $BASHPATCHES"
 
 DEPENDS="readline"
@@ -22,7 +23,7 @@ patch_bash()
 	for i in $BASHPATCHES ; do
 		[ -s "$SOURCES_REPOSITORY/$i" ] || 
 			wget -O "$SOURCES_REPOSITORY/$i" \
-			http://ftp.gnu.org/gnu/bash/bash-$VERSION-patches/$i
+			http://ftp.gnu.org/gnu/bash/bash-$BASEVERSION-patches/$i
 		echo "Apply $i ..."
 		patch -p0 < $SOURCES_REPOSITORY/$i
 	done
