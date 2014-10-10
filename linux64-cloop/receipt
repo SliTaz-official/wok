@@ -1,6 +1,6 @@
 # SliTaz package receipt.
 
-PACKAGE="linux-cloop"
+PACKAGE="linux64-cloop"
 SOURCE="cloop"
 VERSION="2.639-2"
 CATEGORY="base-system"
@@ -10,26 +10,29 @@ SHORT_DESC="The read-only compressed loop device kernel module."
 WEB_SITE="http://knoppix.net/wiki/Cloop"
 TARBALL="${SOURCE}_${VERSION}.tar.gz"
 WGET_URL="http://debian-knoppix.alioth.debian.org/packages/$SOURCE/$TARBALL"
+PROVIDE="linux-cloop:linux64"
 
-DEPENDS="linux"
-BUILD_DEPENDS="linux-module-headers xz"
+DEPENDS="linux64"
+BUILD_DEPENDS="linux-module-headers xz uclibc-cross-compiler-x86_64"
 SUGGESTED="cloop-utils"
+
+AUFS_NOT_RAMFS="uclibc-cross-compiler-x86_64 is not compatible with aufs+tmpfs 8("
 
 # Rules to configure and make the package.
 
 compile_rules()
 {
 	patch -p0 < $stuff/cloop.u
-	make KERNEL_DIR="/usr/src/linux" cloop.ko && xz cloop.ko
+	make ARCH=x86_64 CROSS_COMPILE=uclibc-x86_64- KERNEL_DIR="/usr/src/linux" cloop.ko && xz cloop.ko
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {	
 	EXTRAVERSION=_$kvers
-	mkdir -p $fs/lib/modules/$kvers-slitaz/kernel/misc $fs/dev $fs/usr/bin
+	mkdir -p $fs/lib/modules/$kvers-slitaz64/kernel/misc $fs/dev $fs/usr/bin
 	cp $src/cloop_suspend $fs/usr/bin
-	cp $src/cloop.ko.xz $fs/lib/modules/$kvers-slitaz/kernel/misc
+	cp $src/cloop.ko.xz $fs/lib/modules/$kvers-slitaz64/kernel/misc
 	mknod $fs/dev/cloop b 240 0
 	for i in $(seq 1 7); do
 		mknod $fs/dev/cloop$i b 240 $i
@@ -38,7 +41,7 @@ genpkg_rules()
 
 post_install()
 {
-	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz64
 }
 
 post_remove()
