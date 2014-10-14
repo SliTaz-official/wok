@@ -2,9 +2,6 @@ SYSSEG		= 0x1000
 INITSEG		= 0x9000
 SETUPSEG	= 0x9020
 
-setup_sects	= 497
-syssize		= 500
-
 	.text
 	.code16
 	.org	0
@@ -82,7 +79,6 @@ nocmdline:
 #ifdef CHECK_REALMODE
 #define PUTS
 	movw	$EXEADRS(realmode_expected), %si
-	pushfw			// save flags
 		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
 		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
 	//movb	$0x10, %ah	// DF = IF = TF = 0
@@ -90,18 +86,23 @@ nocmdline:
 	popfw			// < 286 : flags[12..15] are forced 1
 	pushfw			// = 286 : flags[12..15] are forced 0
 	popw	%dx		// > 286 : only flags[15] is forced 0
-	popfw			// restore flags
 	cmpb	%ah, %dh	// test Fx and 0x cases
 jsputs:
 	js	puts		// S= not 386+
 	smsww	%dx
 	shrw	$1, %dx
 	jc	puts
+	//movw	syssize-realmode_expected(%si), %bp
+	.byte	0x8B, 0x6C, syssize-realmode_expected
+	//movb	setup_sects-realmode_expected(%si), %ch
+	.byte	0x8A, 0x6C, setup_sects-realmode_expected
+#else
+	movw	EXEADRS(syssize), %bp
+	movb	EXEADRS(setup_sects), %ch
 #endif
+	movb	$(512-(end_header-_start))/2, %cl
 	movw	$0x100, %si
 	movw	$end_header, %di
-	movb	EXEADRS(setup_sects), %ch
-	movb	$(512-(end_header-_start))/2, %cl
 	rep
 	  movsw
 	ljmp	$INITSEG, $movesys
@@ -174,8 +175,9 @@ zeroed		= 12			# zeroed registers
 
 	popw	%bx			# clear %bx
 	movw	syssize, %di
-	addw	$(512/16)-1, %di
+	decw	%di
 	shrw	$9-4, %di
+	incw	%di
 	movw	$SYSSEG, %cx
 	call	read_sectorsCX
 
@@ -205,29 +207,27 @@ puts:
 	int	$0x20			// dos exit
 #endif
 #ifdef EXE_SUPPORT
-movesys:
+movesys:				// %ax = SYSSEG
 	pushw	%es
 	popw	%ss
-	movw	EXEADRS(syssize), %bp	// %ds untouched
 	movw	%ds, %bx
-	cwd
-	incw	%dx
-	cmpw	%ax, %bx
+	subw	%ax, %bx
 	jnc	forward
-	negw	%dx
 	addw	%bp, %ax
-	addw	%bp, %bx
 forward:
 	movw	%ax, %es
-	movw	%bx, %ds
+	movw	%ax, %dx
+	addw	%bx, %dx
+	movw	%dx, %ds
+	sbbw	%dx, %dx		// %dx = 0 : -1
+	cmc				//  C  = 1 :  0
+	adcw	%dx, %ax
 	xorw	%di, %di
 	movb	$8, %cl
 	pushw	%si
 	rep
 	  movsw
 	popw	%si
-	addw	%dx, %ax
-	addw	%dx, %bx
 	decw	%bp
 	jns	forward
 #ifndef NO_CURSOR_DEFINITION
@@ -380,15 +380,23 @@ read_first_sectors:
 bdendlp:
         jmp	read_sectorslp
 
-#ifdef CHECK_REALMODE
-realmode_expected:
-	.ascii	"386+ real mode only."
-	.byte	13,10,0
-#endif
 #ifdef HELP
 helpmsg:
 	.ascii	"No help available."
 	.byte	13,10
 	.byte	0
 #endif
+#ifdef CHECK_REALMODE
+	.org	475
+realmode_expected:
+helpend:
+	.ascii	"386 real mode only."
+	.byte	13,10,0
+#endif
 	.org	497
+setup_sects:
+	.byte	0
+	.org	500
+syssize:
+	.word	0
+

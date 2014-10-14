@@ -1,10 +1,6 @@
 #!/bin/sh
 if [ "$1" == "--build" ]; then
 	set -- ${2:-bootloader.bin} ${3:-unpack.bin}
-	cat >> $0 <<EOM
-$(dd if=$1 bs=512 count=1 conv=sync | cat - $2 | gzip -9 | uuencode -m -)
-EOT
-EOM
 	x=$(grep -s packed_syssize ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
 	[ -n "$x" ] && sed -i "s/XXXP/$((513+0x$x))/" $0 || sed -i s="/XXXP$/d" $0
 	x=$(grep -s original_syssize ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
@@ -12,8 +8,13 @@ EOM
 	x=$(grep -s original_setupsize ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
 	[ -n "$x" ] && sed -i "s/XXXS/$((516+0x$x))/" $0 || sed -i s="/XXXS$/d" $0
 	helpmsg=$(sed '/helpmsg:/!d{n;s/ [0-9]* \([^ ]*\).*/\1/}' ${1/.bin/.lst} | sed '$!d')
+	helpend=$(sed '/helpend:/!d{n;s/ [0-9]* \([^ ]*\).*/\1/}' ${1/.bin/.lst} | sed '$!d')
 	sed -i "s/YYY/$((0x$helpmsg))/" $0
-	sed -i "s/ZZZ/$((496-0x$helpmsg))/" $0
+	sed -i "s/ZZZ/$((0x$helpend-0x$helpmsg))/" $0
+	cat >> $0 <<EOM
+$(dd if=$1 bs=512 count=1 conv=sync | cat - $2 | gzip -9 | uuencode -m -)
+EOT
+EOM
 	sed -i '/--build/,/^fi/d' $0
 	exit
 fi
@@ -54,8 +55,8 @@ main()
 }
 
 HELP="$(unix2dos <<EOT
-Memtest86+ is an endless advanced memory diagnostic tool released under the
-terms of the Gnu Public License (GPL).
+Memtest86+ VERSION is an endless advanced memory diagnostic tool released under
+the terms of the free Gnu Public License (GPL).
 
 EOT
 )"
