@@ -18,7 +18,7 @@ compile_rules()
 {
 	cd $src
 	sed -i '/scp memtest.bin/d' Makefile
-	for i in array-size io O0; do
+	for i in array-size io ; do
 		patch -p1 < $stuff/$SOURCE-$VERSION-$i.patch
 	done
 	make
@@ -30,11 +30,13 @@ compile_rules()
 	sed -i "s/VERSION/$VERSION/" pack
 	./pack --build bootloader.bin unpack.bin
 	./pack memtest.bin memtest.packed
+	mv memtest.bin memtest.bin.console
 	sed -i  -e 's/SERIAL_CONSOLE_DEFAULT 0/SERIAL_CONSOLE_DEFAULT 1/' \
 		-e 's/SERIAL_BAUD_RATE 9600/SERIAL_BAUD_RATE 115200/' config.h
 	make clean
 	make
 	./pack memtest.bin memtest.packed-115200
+	mv memtest.bin memtest.bin.serial
 } 
 
 
