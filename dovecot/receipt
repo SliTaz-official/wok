@@ -63,14 +63,18 @@ genpkg_rules()
 	chmod 755 $fs/etc/ssl/misc/*
 	
 	# Customising config.
-	sed -i -e "s/^#default_vsz_limit.*/default_vsz_limit = 50M"/ \
+	sed -i -e "s/^#default_vsz_limit.*/default_vsz_limit = 50M/" \
 		$fs/etc/dovecot/conf.d/10-master.conf
 
-	sed -i -e "s!^#log_path =.*!log_path = /var/log/dovecot/dovecot.log"! \
+	sed -i -e "s!^#log_path =.*!log_path = /var/log/dovecot/dovecot.log!" \
 		$fs/etc/dovecot/conf.d/10-logging.conf
 	
-	sed -i -e "s/^#listen.*/listen = *"/ \
+	sed -i -e "s/^#listen.*/listen = */" \
 		$fs/etc/dovecot/dovecot.conf
+
+	# Unsafe, see CVE-2014-3566 POODLE
+	sed -i -e "s/^#ssl_protocols =.*/ssl_protocols = !SSLv2 !SSLv3/" \
+		$fs/etc/dovecot/conf.d/10-ssl.conf
 }
 
 #nd post install commands for Tazpkg.
