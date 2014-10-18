@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="lxqt"
+VERSION="0.8.0"
+CATEGORY="meta"
+SHORT_DESC="LXQt metapackage + userconfig slim-install."
+MAINTAINER="psychomaniak@xakep.ru"
+LICENSE="GPL2"
+WEB_SITE="http://lxqt.org"
+TAGS="LXQt"
+
+DEPENDS="gvfs lximage-qt libQtMimeTypes liblxqt liblxqt-mount lxqt-about \
+lxqt-admin lxqt-appswitcher lxqt-common lxqt-config lxqt-config-randr \
+lxqt-globalkeys lxqt-notificationd lxqt-openssh-askpass lxqt-panel \
+lxqt-policykit lxqt-powermanagement lxqt-qtplugin lxqt-runner lxqt-session \
+lxqt-themes openbox obconf-qt oxygen-icons qlipper qtconfig pcmanfm-qt \
+xorg-xprop xorg-xset"
+
+SUGGESTED="copyq juffed qterminal qps qupzilla"
+
+genpkg_rules()
+{
+	mkdir -p $fs/etc
+}
+
+post_install()
+{
+	for i in $(ls -d $1/root $1/home/* 2> /dev/null);
+	do [ -d $i ] && \
+	sed '/WINDOW_MANAGER=/s|"\([^"]*\)"|"startlxqt"|' -i \
+	$i/.config/slitaz/applications.conf \
+	$1/etc/slitaz/applications.conf
+	done
+	
+	for a in lxpanel pcmanfm tazpkg-notify xcompmgr; do
+	sed '/NotShowIn=/s|;$|&LXQt;|' -i $1/etc/xdg/autostart/$a.desktop
+	done
+}
+
+post_remove()
+{
+	for i in $(ls -d $1/root $1/home/* 2> /dev/null);
+	do [ -d $i ] && \
+	sed '/WINDOW_MANAGER=/s|"\([^"]*\)"|"lxde-session"|' -i \
+	$i/.config/slitaz/applications.conf \
+	$1/etc/slitaz/applications.conf
+	done
+}
