@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="gringotts"
+VERSION="1.2.10"
+CATEGORY="security"
+SHORT_DESC="An electronic strongbox."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://gringotts.shlomifish.org/"
+WGET_URL="$SF_MIRROR/$PACKAGE.berlios/$TARBALL"
+
+DEPENDS="gtk+ libgringotts popt"
+BUILD_DEPENDS="pkg-config gtk+-dev libgringotts-dev popt-dev libmcrypt-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure \
+		--prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make &&
+	make -j 1 DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/applications
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/pixmaps $fs/usr/share
+	cp -a install/usr/share/gnome/apps/Utilities/gringotts.desktop \
+		$fs/usr/share/applications
+	sed -i '/X-GNOME-DocPath/d' $fs/usr/share/applications/gringotts.desktop
+	echo "Categories=Office;" >> $fs/usr/share/applications/gringotts.desktop
+}
