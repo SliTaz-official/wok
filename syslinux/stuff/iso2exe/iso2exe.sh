@@ -27,7 +27,7 @@ add_rootfs()
 	grep -q mount.posixovl.iso2exe $TMP/init.exe &&
 	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe \
 		2> /dev/null && echo "Store mount.posixovl..."
-	find $TMP -type f | xargs chmod +x
+	find $TMP -type f -print0 | xargs -0 chmod +x
 	( cd $TMP ; find * | cpio -o -H newc ) | \
 		lzma e $TMP/rootfs.gz -si 2> /dev/null
 	SIZE=$(wc -c < $TMP/rootfs.gz)
