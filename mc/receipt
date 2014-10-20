@@ -14,10 +14,13 @@ HOST_ARCH="i486 arm"
 SUGGESTED="gpm"
 DEPENDS="ncursesw glib e2fsprogs"
 BUILD_DEPENDS="gpm-dev glib-dev ncursesw-dev"
+GENERIC_MENUS="no"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	sed 's#|profile|#&receipt|#' -i $src/misc/syntax/Syntax
+
 	./configure \
 		--prefix=/usr \
 		--with-gpm-mouse \
@@ -28,12 +31,15 @@ compile_rules()
 	make && make install
 }
 
-# Rules to gen a SliTaz package suitable for Tazpkg.
+# Rules to gen a SliTaz package suitable for Tazpkg. --enable-vfs-sftp
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/share/applications
 	cp -a $install/etc $fs/
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
 	cp -a $install/usr/share/mc $fs/usr/share
+
+	cp -a $stuff/*.desktop $fs/usr/share/applications
+	chown -R root:root $fs
 }

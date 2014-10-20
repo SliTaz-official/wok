@@ -10,7 +10,7 @@ WEB_SITE="http://qt-project.org/"
 TAGS="qt"
 
 DEPENDS="libQtCore libQtGui"
-BUILD_DEPENDS="Qt4-dev qmake cmake xorg-libX11-dev"
+BUILD_DEPENDS="Qt4-dev qmake"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -19,15 +19,17 @@ compile_rules()
 
 	for i in desktop/screenshot dialogs/findfiles widgets/charactermap;
 	do
-		cd $WOK/qt4/source/qt4-$VERSION/examples/$i
+                ii=$(basename $i) && cd $WOK/qt4/source/qt4-$VERSION/examples/$i
 		rm -rf Makefile moc* *.o
-		qmake ${i:8}.pro
+		qmake	$ii.pro
 		sed 's|-O2|'"$CFLAGS"'|' -i Makefile
 		make $MAKEFLAGS &&
-		install ${i:8} $DESTDIR/usr/bin
-		install ${i:8}.desktop $DESTDIR/usr/share/applications
+		install $ii $DESTDIR/usr/bin
+		install $ii.desktop $DESTDIR/usr/share/applications
+		find $install -name $ii.desktop \
+		-exec echo 'Categories=Utility;'>>$install/usr/share/applications/$ii.desktop \; \
+		-exec sed 's|/opt/|/|g' -i {} \;
 	done
-	find $install -name *.desktop -exec sed 's|/opt/|/|g' -i {} \;
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
