@@ -1,0 +1,144 @@
+--- genromfs.c
++++ genromfs.c
+@@ -164,6 +164,7 @@
+ 	uid_t nuid;
+ 	gid_t ngid;
+ 	time_t ntime;
++	nlink_t nlink;
+ 	unsigned int offset;
+ 	unsigned int realsize;
+ 	unsigned int prepad;
+@@ -178,6 +179,8 @@
+ 	int extlen;
+ };
+ 
++static int oldromfs = 1;
++
+ #define EXTTYPE_UNKNOWN 0
+ #define EXTTYPE_ALIGNMENT 1
+ #define EXTTYPE_EXCLUDE 2
+@@ -361,7 +364,9 @@
+ 	}
+ 	len+=16;
+ 	ri=(struct romfh *)bigbuf;
+-	if (n->offset)
++	if (!oldromfs) 
++		ri->checksum = ntohl(n->ntime);
++	else if (n->offset)
+ 		fixsum(ri, len);
+ 	dumpdata(bigbuf, len, f);
+ #if 0
+@@ -373,6 +378,9 @@
+ #endif
+ }
+ 
++#define SIGNED_OVERFLOW(x,m)  (((x) & (m)) != 0 && (((x) & (m)) | ~(m)) != ~0)
++#define SIGNED_EXTENTION(x,m) (((x) & (((m)+1)>>1)) ? (x) | ~(m) : (x) & (m))  
++
+ void dumpnode(struct filenode *node, FILE *f)
+ {
+ 	struct romfh ri;
+@@ -386,13 +394,33 @@
+ 
+ 	ri.nextfh = 0;
+ 	ri.spec = 0;
++	if (!oldromfs) {
++		ri.spec = node->modes & (0x0FFF ^ S_IXUSR);
++		ri.spec ^= S_IRUSR |S_IWUSR;
++		ri.spec |= node->nuid << 20;
++		ri.spec |= (node->ngid & 0xFF) << 12;
++		if (node->ngid & 0x100)
++			ri.spec |= S_IXUSR;  
++		if (SIGNED_OVERFLOW(node->nuid,0xF000)) {
++			printf("%-50s : uid=%04X -> %04X \n",
++				node->realname, node->nuid,
++				(uid_t) SIGNED_EXTENTION(node->nuid,0x0FFF));
++		}
++		if (SIGNED_OVERFLOW(node->ngid,0xFE00)) {
++			printf("%-50s : gid=%04X -> %04X \n",
++				node->realname, node->ngid,
++				(gid_t) SIGNED_EXTENTION(node->ngid,0x01FF));
++		}
++	}
++	ri.spec = htonl(ri.spec);
+ 	ri.size = htonl(node->realsize);
+ 	ri.checksum = htonl(0x55555555);
+ 
+ 	if (node->next && node->next->next)
+ 		ri.nextfh = htonl(node->next->offset);
+ 	if ((node->modes & 0111) &&
+-	    (S_ISDIR(node->modes) || S_ISREG(node->modes)))
++	    (S_ISDIR(node->modes) || S_ISREG(node->modes) ||
++	     (!oldromfs && (S_ISCHR(node->modes) || S_ISBLK(node->modes)))))
+ 		ri.nextfh |= htonl(ROMFH_EXEC);
+ 
+ 	if (node->orig_link) {
+@@ -403,11 +431,17 @@
+ 		dumpri(&ri, node, f);
+ 	} else if (S_ISDIR(node->modes)) {
+ 		ri.nextfh |= htonl(ROMFH_DIR);
++ 		if (!oldromfs)
++			ri.size = ri.spec;
+ 		if (listisempty(&node->dirlist)) {
+ 			ri.spec = htonl(node->offset);
+ 		} else {
+ 			ri.spec = htonl(node->dirlist.head->offset);
+ 		}
++		if (node->nlink > 0xf)
++			node->nlink = 0xf;
++		if (!oldromfs)
++			ri.spec |= htonl(node->nlink);
+ 		dumpri(&ri, node, f);
+ 	} else if (S_ISLNK(node->modes)) {
+ 		ri.nextfh |= htonl(ROMFH_LNK);
+@@ -464,10 +498,14 @@
+ 		}
+ 	} else if (S_ISCHR(node->modes)) {
+ 		ri.nextfh |= htonl(ROMFH_CHR);
++		if (!oldromfs)
++			ri.size = ri.spec;
+ 		ri.spec = htonl(major(node->devnode)<<16|minor(node->devnode));
+ 		dumpri(&ri, node, f);
+ 	} else if (S_ISBLK(node->modes)) {
+ 		ri.nextfh |= htonl(ROMFH_BLK);
++		if (!oldromfs)
++			ri.size = ri.spec;
+ 		ri.spec = htonl(major(node->devnode)<<16|minor(node->devnode));
+ 		dumpri(&ri, node, f);
+ 	} else if (S_ISFIFO(node->modes)) {
+@@ -522,6 +560,7 @@
+ 	n->nuid = sb->st_uid;
+ 	n->ngid = sb->st_gid;
+ 	n->ntime = sb->st_mtime;
++	n->nlink = sb->st_nlink;
+ 	n->realsize = 0;
+ 	/* only regular files and symlinks contain "data" in romfs */
+ 	if (S_ISREG(n->modes) || S_ISLNK(n->modes)) {
+@@ -574,6 +613,9 @@
+ 	node->ondev = -1;
+ 	node->onino = -1;
+ 	node->modes = -1;
++	node->realsize = 0;
++	node->devnode = 0;
++	node->orig_link = NULL;
+ 	node->offset = curroffset;
+ 	node->align = DEFALIGN;
+ 
+@@ -935,6 +977,7 @@
+ 	printf("\n");
+ 	printf("  -f IMAGE               Output the image into this file\n");
+ 	printf("  -d DIRECTORY           Use this directory as source\n");
++	printf("  -t                     Time, uid & gid support (backward compatible)\n");
+ 	printf("  -v                     (Too) verbose operation\n");
+ 	printf("  -V VOLUME              Use the specified volume name\n");
+ 	printf("  -a ALIGN               Align regular file data to ALIGN bytes\n");
+@@ -971,6 +1014,9 @@
+ 			break;
+ 		case 'V':
+ 			volname = optarg;
++			break;
++		case 't':
++		        oldromfs = 0;
+ 			break;
+ 		case 'v':
+ 			verbose = 1;
