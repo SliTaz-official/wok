@@ -1,0 +1,87 @@
+--- manServer.pl.orig
++++ manServer.pl
+@@ -175,7 +175,7 @@
+ 		listDir($request);
+ 		$processed = 1;
+ 	}
+-	elsif (-f $request || -f "$request.gz" || -f "$request.bz2")
++	elsif (-f $request || -f "$request.gz" || -f "$request.bz2" || -f "$request.xz")
+ 	{
+ 		# Only allow fully specified files if they're in our manpath
+ 		foreach $md (@manpath)
+@@ -270,7 +270,7 @@
+ 				foreach $f (@files)
+ 				{
+ 					next if ($f eq "." || $f eq ".." || $f !~ m/\./);
+-					$f =~ s/\.(gz|bz2)$//;
++					$f =~ s/\.(gz|bz2|xz)$//;
+ 					# ($name) = ($f =~ m,/([^/]*)$,);
+ 					print OUT "<A HREF=\"$root$request/$f\">$f</A>&nbsp;\n";
+ 				}
+@@ -322,6 +322,13 @@
+ 			$srcfile =~ m/^(.*)$/;
+ 			$srcfile = $1;	# untaint
+ 		}
++		elsif (-f "$file.xz")
++		{
++			$zfile = "$file.xz";
++			$srcfile = "/usr/bin/xzcat $zfile |";
++			$srcfile =~ m/^(.*)$/;
++			$srcfile = $1;	# untaint
++		}
+ 	}
+ 	print LOG "man2html $file\n";
+ 	$foundNroffTag = 0;
+@@ -2823,7 +2830,7 @@
+ 	@multipleMatches = ();
+ 
+ 	$file = $_[0];
+-	return $file if (-f $file || -f "$file.gz" || -f "$file.bz2");
++	return $file if (-f $file || -f "$file.gz" || -f "$file.bz2" || -f "$file.xz");
+ 
+ 	# Search the path for the requested man page, which may be of the form:
+ 	# "/usr/man/man1/ls.1", "ls.1" or "ls".
+@@ -2837,7 +2844,7 @@
+ 		{
+ 			$dir = $md;
+ 			$file = "$dir/man$sect/$page.$sect";
+-			push(@multipleMatches, $file) if (-f $file || -f "$file.gz" || -f "$file.bz2");
++			push(@multipleMatches, $file) if (-f $file || -f "$file.gz" || -f "$file.bz2" || -f "$file.xz");
+ 		}
+ 	}
+ 	else
+@@ -2855,13 +2862,13 @@
+ 	{
+ 		($s) = ($dir =~ m/man([0-9A-Za-z]+)$/);
+ 		$file = "$dir/$page.$s";
+-		push(@multipleMatches, $file) if (-f $file || -f "$file.gz" || -f "$file.bz2");
++		push(@multipleMatches, $file) if (-f $file || -f "$file.gz" || -f "$file.bz2" || -f "$file.xz");
+ 		$file = "$dir/$request";
+-		push(@multipleMatches, $file) if (-f $file || -f "$file.gz" || -f "$file.bz2");
++		push(@multipleMatches, $file) if (-f $file || -f "$file.gz" || -f "$file.bz2" || -f "$file.xz");
+ 		if ($sect && "$page.$sect" ne $request)
+ 		{
+ 			$file = "$dir/$page.$sect";
+-			push(@multipleMatches, $file) if (-f $file || -f "$file.gz" || -f "$file.bz2");
++			push(@multipleMatches, $file) if (-f $file || -f "$file.gz" || -f "$file.bz2" || -f "$file.xz");
+ 		}
+ 	}
+ 	if (@multipleMatches == 1)
+@@ -2882,7 +2889,7 @@
+ 		{
+ 			if ($f =~ m/^$page\./)
+ 			{
+-				$f =~ s/\.(gz|bz2)$//;
++				$f =~ s/\.(gz|bz2|xz)$//;
+ 				push(@multipleMatches, "$dir/$f");
+ 			}
+ 		}
+@@ -2908,7 +2915,7 @@
+ 			{
+ 				next if ($f eq "." || $f eq ".." || $f !~ m/\./);
+ 				next unless ("$dir/$f" =~ m/perl/);
+-				$f =~ s/\.(gz|bz2)$//;
++				$f =~ s/\.(gz|bz2|xz)$//;
+ 				($name) = ($f =~ m,(.+)\.[^.]*$,);
+ 				$perlPages{$name} = "$dir/$f";
+ 			}
