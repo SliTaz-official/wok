@@ -38,13 +38,17 @@ TAZPKG_EXTS="tazpkg spkg"
 ISO_EXTS="iso"
 SQUASHFS_EXTS="sfs sqfs squashfs"
 CROMFS_EXTS="cfs cromfs"
-FS_EXTS="ext2 ext3 dos fat vfat xfs fd fs loop"
+FAT_EXTS="dos fat vfat"
+EXT2_EXTS="ext2 ext3 ext4"
+FS_EXTS="$EXT2_EXTS $FAT_EXTS xfs fd fs loop"
 CLOOP_EXTS="cloop"
 RAR_EXTS="rar cbr"
 LHA_EXTS="lha lzh lzs"
 LZO_EXTS="lzo"
 ARJ_EXTS="arj pak arc j uc2 zoo"
-_7Z_EXTS="7z bcj bcj2"
+_7Z_EXTS="7z bcj bcj2 wim $BZIP2_EXTS $ZIP_EXTS $XZ_EXTS"
+_7Z_EXTS_X="chm cramfs dmg hfs mbr msi nsis ntfs udf vhd xar arj cab lzh rar \
+udf cpio $ISO_EXTS $FAT_EXTS $SQUASHFS_EXTS"
 
 while read var progs; do
 	eval $var=""
@@ -310,7 +314,7 @@ lrzip		$LRZIP_EXTS $CPIOLRZIP_EXTS
 rar		$RAR_EXTS
 unace		ace
 arj		$ARJ_EXTS
-7zr		$_7Z_EXTS
+7zr		$_7Z_EXTS $_7Z_EXTS_X
 lha		$LHA_EXTS
 lzop		$LZO_EXTS
 cabextract	cab
@@ -513,7 +517,7 @@ lha		x		N/A		$LHA_EXTS
 lzop		-x		N/A		$LZO_EXTS
 rar		x\ -o-\ -p-	x\ -o-		$RAR_EXTS
 arj		x\ -y		x\ -y\ -g?	$ARJ_EXTS
-7zr		x\ -y\ -p-	x\ -y		$_7Z_EXTS
+7zr		x\ -y\ -p-	x\ -y		$_7Z_EXTS $_7Z_EXTS_X
 unace		N/A		x\ -o\ -y	ace
 cabextract	-q		N/A		cab
 EOT
