@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="gzip"
-VERSION="1.5"
+VERSION="1.6"
 CATEGORY="system-tools"
-SHORT_DESC="Data compression program"
+SHORT_DESC="GNU compression utilities (gzip and gunzip)"
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.gnu.org/software/gzip/"
 WGET_URL="http://ftp.gnu.org/gnu/gzip/$TARBALL"
 
@@ -16,7 +16,6 @@ BUILD_DEPENDS="glibc-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
@@ -35,20 +34,17 @@ genpkg_rules()
 
 # Pre and post install commands for Tazpkg.
 # We must remove all Busybox symlink before installing.
-#
 pre_install()
 {
-	local root
-	root=$1
-	echo "Processing pre-install commands..."
-	echo -n "Removing all Busybox replaced utils... "
-	rm -f $root/bin/gzip
-	rm -f $root/bin/gunzip
+	echo -n "Removing Busybox gzip and gunzip utilities... "
+	rm -f $1/bin/gzip $1/bin/gunzip
 	status
 }
 
 post_remove()
 {
-	ln -s $1/bin/busybox $1/bin/gzip
-	ln -s $1/bin/busybox $1/bin/gunzip
+	echo -n "Restoring Busybox gzip and gunzip utilities... "
+	ln -s busybox $1/bin/gzip
+	ln -s busybox $1/bin/gunzip
+	status
 }
