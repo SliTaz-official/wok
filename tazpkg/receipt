@@ -29,7 +29,6 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	make && make DESTDIR=$DESTDIR install
 }
 
@@ -37,19 +36,22 @@ genpkg_rules()
 {
 	cp -a $install/* $fs
 	chown -R root.root $fs
+
 	# Default icon for mimetype (freedesktop standard compliant file
 	# manager will diplay a tazpkg icon for SliTaz packages).
 	mkdir -p $fs/usr/share/icons/hicolor/32x32/mimetypes
-	cd $fs/usr/share/icons/hicolor/32x32/mimetypes
-	ln -s /usr/share/pixmaps/tazpkg.png package-x-tazpkg.png
-	ln -s /usr/share/pixmaps/tazpkg.png application-x-tazpkg.png
+	ln -s /usr/share/pixmaps/tazpkg.png \
+		$fs/usr/share/icons/hicolor/32x32/mimetypes/application-x-tazpkg.png
+
+	rm -rf $fs/usr/share/mime
 }
 
 post_install()
 {
 	# Apply a fix to config file /etc/slitaz/slitaz.conf
-	[ -f /etc/slitaz/slitaz.conf ] && sed 's/LOCAL_STATE/LOCALSTATE/'\
-		-i /etc/slitaz/slitaz.conf
+	[ -f /etc/slitaz/slitaz.conf ] && \
+		sed -i 's/LOCAL_STATE/LOCALSTATE/' /etc/slitaz/slitaz.conf
+
 	# Make sure new config is present
 	if ! grep -q ^NOTIFY_GEOM "$root/etc/slitaz/tazpkg.conf"; then
 		cat >> "$root/etc/slitaz/tazpkg.conf" << "EOT"

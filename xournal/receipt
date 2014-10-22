@@ -18,7 +18,6 @@ poppler poppler-dev zlib-dev libart_lgpl-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	CFLAGS="$CFLAGS `pkg-config --cflags --libs gtk+-2.0` `pkg-config --libs x11` -lm -lz"
 #	wget http://people.slitaz.org/~naitsirhc/xournal.patch && \
 #	patch -p1 -i xournal.patch && 
@@ -33,17 +32,9 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr/share
+
 	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share $fs/usr
+	cp -a $install/usr/share/icons $fs/usr/share
+	cp -a $install/usr/share/xournal $fs/usr/share
 }
-
-post_install()
-{
-	echo -n "Updating databases..."
-	chroot "$1/" update-desktop-database
-	chroot "$1/" /usr/bin/update-mime-database /usr/share/mime
-	chroot "$1/" gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null	
-	status
-}
-

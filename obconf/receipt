@@ -17,11 +17,9 @@ startup-notification slitaz-boot-scripts desktop-file-utils"
 BUILD_DEPENDS="gtk+-dev libglade-dev openbox-dev gdk-pixbuf-dev \
 startup-notification-dev"
 
-#  
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure $CONFIGURE_ARGS &&
 	sed -i 's/^mkdir_p = .*/mkdir_p = mkdir -p/' po/Makefile &&
 	make && make install
@@ -31,25 +29,8 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/applications
-	cp -a $stuff/obconf.desktop $fs/usr/share/applications
+
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/share/obconf $fs/usr/share
-	cp -a stuff/mime $fs/usr/share
-	touch $fs/usr/share/mime/x-openbox-theme.xml
-	touch $fs/usr/share/mime/x-vbscript.xml
-	touch $fs/usr/share/mime/x-ms-win-installer.xml
-}
-
-# Update mime database.
-post_install()
-{
-	chroot "$1/" /usr/bin/update-mime-database /usr/share/mime
-	chroot "$1/" /usr/bin/update-desktop-database /usr/share/applications
-}
-
-# Update mime database.
-post_remove()
-{
-	chroot "$1/" /usr/bin/update-mime-database /usr/share/mime
-	chroot "$1/" /usr/bin/update-desktop-database /usr/share/applications
+	cp -a $stuff/obconf.desktop $fs/usr/share/applications
 }
