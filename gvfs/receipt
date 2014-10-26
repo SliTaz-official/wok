@@ -1,54 +1,40 @@
 # SliTaz package receipt.
 
 PACKAGE="gvfs"
-VERSION="1.13.0"
+VERSION="1.22.1"
 CATEGORY="system-tools"
-SHORT_DESC="Userspace virtual filesystem designed to work with gio."
+SHORT_DESC="Userspace virtual filesystem designed to work with gio"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.gnome.org/"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
-SUGGESTED="gvfs-smb"
-#gvfs-smb enables samba support
+SUGGESTED="gvfs-afp gvfs-archive gvfs-cdda gvfs-fuse gvfs-gphoto2 gvfs-http \
+gvfs-libmtp gvfs-obexftp gvfs-smb gvfs-udisks2"
 
-DEPENDS="dbus glib udev libgudev fuse udisks2"
+DEPENDS="dbus glib glibc-base libffi libgio pcre udev zlib"
 BUILD_DEPENDS="dbus-dev glib-dev udev-dev libgudev-dev fuse-dev \
-udisks2-dev samba-dev smbclient"
+udisks2-dev samba-dev smbclient expat-dev libarchive-dev libgcrypt-dev \
+libsoup-dev libxml2-dev libcdio-dev dbus-glib-dev bluez-dev expat-dev \
+libgphoto2-dev libmtp-dev gtk+3-dev glibc-dev sqlite-dev libtool"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	patch -p0 -i $stuff/allow-dropbear-ssh.patch
+
 	./configure \
 		--prefix=/usr \
 		--libexecdir=/usr/lib/$PACKAGE \
 		--sysconfdir=/etc \
-		--disable-gphoto2 \
-		--disable-avahi \
-		--disable-keyring \
-		--disable-hal \
-		--disable-afp \
-		--disable-bash-completion &&
-	make && make install
+		--disable-documentation \
+		--disable-bash-completion \
+		$CONFIGURE_ARGS && \
+		make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/dbus-1 $fs/usr/share
-	cp -a $install/usr/share/gvfs $fs/usr/share
-	cp -a $install/usr/share/glib-* $fs/usr/share
-	rm -f $(find ${fs} -name *.*a)
-	#following files are provided by gvfs-smb
-	rm $fs/usr/lib/gvfs/gvfsd-smb*
-	rm $fs/usr/share/gvfs/mounts/smb*
-	rm $fs/usr/share/glib-2.0/schemas/*smb*
-	##following files are provided by gvfs-udisks2
-	#rm $fs/usr/lib/gvfs/gvfs-udisks2-volume-monitor
-	#rm $fs/usr/share/dbus-1/services/org.gtk.Private.UDisks2VolumeMonitor.service
-	#rm $fs/usr/share/gvfs/remote-volume-monitors/udisks2.monitor
+	. $stuff/split
 }

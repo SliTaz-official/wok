@@ -1,33 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="udisks2"
-VERSION="1.94.0"
+VERSION="2.1.3"
 CATEGORY="system-tools"
-SHORT_DESC="D-Bus interfaces to query and manipulate storage devices."
+SHORT_DESC="D-Bus service to access and manipulate storage devices"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-SOURCE="udisks"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
+TARBALL="udisks-$VERSION.tar.bz2"
 WEB_SITE="http://www.freedesktop.org/wiki/Software/udisks"
 WGET_URL="http://udisks.freedesktop.org/releases/$TARBALL"
 
-DEPENDS="expat libatasmart libxslt udev libgudev polkit dbus util-linux-mount \
-dbus-helper"
-BUILD_DEPENDS="expat-dev libatasmart-dev libxslt-dev udev-dev libgudev-dev \
-polkit-dev dbus-dev dbus-glib-dev pcre-dev dbus-dev"
+DEPENDS="libatasmart libgudev polkit"
+BUILD_DEPENDS="libxslt-dev gobject-introspection-dev libgudev-dev polkit-dev \
+libatasmart-dev expat-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		--disable-static \
-		--disable-gtk-doc \
-		$CONFIGURE_ARGS &&
+		--disable-gtk-doc-html \
+		--with-udevdir=/etc/udev \
+		$CONFIGURE_ARGS
 	# Build fails when build doc even with docbook-xsl installed.
-	sed -i s'/SUBDIRS =.*/SUBDIRS = data udisks src tools po/' Makefile &&
+	sed -i '/^SUBDIRS/ s|doc||' Makefile
 	make && make install
 }
 
@@ -35,18 +33,19 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/etc/polkit-1/localauthority/90-mandatory.d \
-		$fs/usr/lib $fs/usr/share $fs/etc/udev
-	cp -a $install/etc/dbus-1 $fs/etc
-	cp -a $install/lib/udev $fs/etc
+		$fs/usr/lib $fs/usr/share
+
+	cp -a $install/etc $fs
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/sbin $fs/usr
 	cp -a $install/usr/lib/udisks2 $fs/usr/lib
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/share/*-1 $fs/usr/share
+	cp -a $install/usr/share/dbus-1 $fs/usr/share
+	cp -a $install/usr/share/polkit-1 $fs/usr/share
 	cp -a $install/var $fs
-	#we don't have consolekit and don't want systemd so we need
-	#a rule to give disk group complete access to udisks2
-	#methods without password.
-	cp $stuff/org.freedesktop.udisks2.pkla \
-		$fs/etc/polkit-1/localauthority/90-mandatory.d
+
+	# we don't have consolekit and don't want systemd, so we need
+	# a rule to give disk group complete access to udisks2
+	# methods without password.
+	cp $stuff/*.pkla $fs/etc/polkit-1/localauthority/90-mandatory.d
 }

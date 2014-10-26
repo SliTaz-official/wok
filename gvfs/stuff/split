@@ -1,0 +1,27 @@
+# Split full gvfs package into gvfs-* packages
+
+if [ "$PACKAGE" == "gvfs" ]; then
+	echo
+	echo "Check your gvfs upgrade!"
+	echo "========================"
+
+	echo 'Files not belongs any gvfs* package:'
+	for file in $(find $install -type f | sed "s|$install||g" | sort); do
+		[ -z "$(grep $file $WOK/gvfs/stuff/list)" ] && echo "  $file"
+	done
+
+	echo 'Absent files:'
+	for file in $(sed '/:/ s|[^/]*\(.*\)|\1|g' $WOK/gvfs/stuff/list); do
+		[ ! -f "$install/$file" ] && echo "  $file"
+	done
+
+	echo "========================"
+	echo
+fi
+
+echo -n "Copying files into package..."
+for file in $(grep "$PACKAGE:" $WOK/gvfs/stuff/list | sed 's|[^/]*\(.*\)|\1|g'); do
+	mkdir -p $fs/$(dirname $file)
+	cp $install/$file $fs/$file
+done
+status

@@ -1,0 +1,223 @@
+Gvfs itself is a module system, so let we compile as much modules as we can,
+and then break big gvfs package into modules packages.
+
+Here results of my reading of "./configure" script.
+We see what libs (and its versions) are checked.
+At the right "+" means that we have all needed libs and we'll compile that
+module. While "-" means that we'll not compile that module, among them:
+ - DNS-SD (Avahi) - SliTaz wok missed that packages;
+ - GDU Volume Monitor - too;
+ - libsystemd-login - wok includes "systemd" package, but missed "systemd-dev",
+   sorry, do we need it really?
+ - HAL Volume Monitor - HAL is deprecated;
+ - AFC - need to update libs (too many changes there, and I can't cope with
+   compilation, and have no one Apple device around me);
+ - GOA (GNOME Online Accounts) Volume Monitor - not on wok;
+ - GNOME Keyring - not on wok;
+ - Blu-ray metadata support - not on wok;
+ - BASH-completion - BASH isn't popular on SliTaz.
+
+
+# HTTP:    libsoup-2.4 (libsoup-dev); libxml-2.0 (libxml2-dev)   [HTTP/WebDAV]+
+
+# AVAHI:   avahi-glib >= 0.6; avahi-client >= 0.6 (ABSENT)            [DNS-SD]-
+
+# LIBXML:  libxml-2.0 (libxml2-dev)                                           ?
+
+# UDEV:    libudev >= 138 (udev-dev)                                          ?
+
+# FUSE:    fuse >= 2.8.0 (fuse-dev)                                     [FUSE]+
+
+# GDU:     gdu >= 3.0.2 (ABSENT)                                      [GDU VM]-
+
+# UDISKS2: udisks2 >= 1.97 (udisks2-dev)                          [udisks2 VM]+
+
+# LIBSYSTEMD_LOGIN: libsystemd-login >=44 (ABSENT "systemd-dev") \
+#                                                           [libsystemd-login]-
+
+# HAL:     hal >= 0.5.10 (hav-dev) (DEPRECATED)                       [HAL VM]-
+
+# GUDEV:   gudev-1.0 >= 147 (libgudev-dev)                             [gudev]+
+
+# CDDA:    libcdio_paranoia >= 0.78.2 (libcdio-dev)                     [CDDA]+
+
+# AFC:     libimobiledevice-1.0 >= 1.1.5 (libimobiledevice-dev-1.1.1 OLD); \
+#          libplist >= 0.15 (libplist-dev)                               [AFC]-
+
+# GOA:     goa-1.0 >= 3.7.1 (ABSENT)                                  [GOA VM]-
+
+# OBEXFTP: dbus-glib-1 (dbus-glib-dev); bluez >= 4.0 (bluez-dev); \
+#          -lexpat (expat-dev)                                       [ObexFTP]+
+
+# GPHOTO2: libgphoto2 >= 2.4.0 (libgphoto2-dev)                      [Gphoto2]+
+# GPHOTO25:libgphoto2 >= 2.5.0
+
+# KEYRING: libsecret-unstable (ABSENT)                         [GNOME Keyring]-
+
+# BLURAY:  libbluray (ABSENT)                                        [Blu-ray]-
+
+# LIBMTP:  libmtp >= 1.1.0 (libmtp-dev)
+#          libmtp >= 1.1.5 (libmtp-dev)
+#          libmtp >= 1.1.6 (libmtp-dev)                                  [MTP]+
+
+# SMBCLIENT: smbclient (ABSENT "smbclient-dev"); libsmbclient.h (samba-dev); \
+#          -lsmbclient (smbclient)
+#          samba >= 3.4.0                                              [Samba]+
+
+# GTK      gtk+-3.0 >= 3.0 (gtk+3-dev)                                  [GTK+]+
+
+# ARCHIVE: archive.h, -larchive (libarchive-dev); >= 3.0.22 (libarchive-dev) \
+#                                                                    [archive]+
+
+# LIBGCRYPT: */bin/libgcrypt-config (libgcrypt-dev); libgcrypt >= 1.2.2       ?
+
+# AFP:     ? langinfo.h (glibc-dev)                                      [AFP]+
+
+# BASHCOMP: -                                                [BASH-completion]-
+
+# GLIB_GENMARSHAL: glib
+# sys/statfs.h, sys/statvfs.h, sys/vfs.h, sys/mount.h, sys/param.h (glibc-dev)
+
+===============================================================================
+
+= --disable-nls           do not use Native Language Support
++ --disable-http          build without http/dav backend
+- --disable-avahi         build without avahi support
+= --disable-udev          build without libudev
++ --disable-fuse          build without FUSE support
+- --disable-gdu           build without GDU volume monitor
++ --disable-udisks2       build without libudisks2
+- --disable-libsystemd-login
+                          build without liblibsystemd-login
+- --disable-hal           build without HAL support
+= --disable-gudev         build without gudev support
++ --disable-cdda          build without CDDA backend
+- --disable-afc           build without AFC backend
+- --disable-goa           build without GOA backend
++ --disable-obexftp       build without ObexFTP backend
++ --disable-gphoto2       build without gphoto2 support
+- --disable-keyring       build without GNOME Keyring support
+- --disable-bluray        build without bluray metadata support
++ --disable-libmtp        build without libmtp support
++ --disable-samba         build without samba support
++ --disable-gtk           build without GTK+
++ --disable-archive       build without archive support
++ --disable-afp           build without AFP support
+- --disable-bash-completion
+                          build without bash-completion support
+  --enable-more-warnings  Maximum compiler warnings
+  --enable-installed-tests
+                          Enable installation of some test cases
+  --enable-always-build-tests
+                          Enable always building tests during 'make all'
+
+===============================================================================
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/$PACKAGE \
+		--sysconfdir=/etc \
+		--disable-documentation \
+		--disable-bash-completion \
+		--disable-gudev \
+		$CONFIGURE_ARGS && \
+
+gvfs configuration summary:
+
+		gio module directory : ${exec_prefix}/lib/gio/modules
+
+		hotplug backend:              none
+
+		Blu-ray metadata support:     no
+		HTTP/WebDAV support:          yes
+		ObexFTP support               yes
+		Samba support:	              yes
+		FUSE support:                 yes
+		CDDA support:                 no
+		Gphoto2 support:              no
+		MTP support:                  no
+		archive support:              yes
+		AFC support:                  no
+		AFP support:                  yes
+		DNS-SD support:               no
+		Build HAL volume monitor:     no (with fast init path: no)
+		Build GDU volume monitor:     no
+		Build udisks2 volume monitor: yes
+		Build GOA volume monitor:     no
+		Use libsystemd-login:         no
+		GNOME Keyring support:        no
+		GTK+ support:                 yes
+		Bash-completion support:      no
+		Installed tests:              no
+
+In file included from udisks2volumemonitordaemon.c:33:0:
+gvfsudisks2volumemonitor.h:32:25: fatal error: gudev/gudev.h: No such file or directory
+compilation terminated.
+make[3]: *** [gvfs_udisks2_volume_monitor-udisks2volumemonitordaemon.o] Error 1
+make[3]: *** Waiting for unfinished jobs....
+In file included from gvfsudisks2volumemonitor.c:38:0:
+gvfsudisks2volumemonitor.h:32:25: fatal error: gudev/gudev.h: No such file or directory
+compilation terminated.
+make[3]: *** [gvfs_udisks2_volume_monitor-gvfsudisks2volumemonitor.o] Error 1
+make[3]: Leaving directory `/home/slitaz/wok/gvfs/source/gvfs-1.22.1/monitor/udisks2'
+make[2]: *** [all-recursive] Error 1
+make[2]: Leaving directory `/home/slitaz/wok/gvfs/source/gvfs-1.22.1/monitor'
+make[1]: *** [all-recursive] Error 1
+make[1]: Leaving directory `/home/slitaz/wok/gvfs/source/gvfs-1.22.1'
+make: *** [all] Error 2
+
+SO, WE CAN'T DISABLE GUDEV IN ANY CASE.
+===============================================================================
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/$PACKAGE \
+		--sysconfdir=/etc \
+		--disable-documentation \
+		--disable-bash-completion \
+		--disable-udev \
+		$CONFIGURE_ARGS && \
+
+gvfs configuration summary:
+
+		gio module directory : ${exec_prefix}/lib/gio/modules
+
+		hotplug backend:              gudev
+
+		Blu-ray metadata support:     no
+		HTTP/WebDAV support:          yes
+		ObexFTP support               yes
+		Samba support:	              yes
+		FUSE support:                 yes
+		CDDA support:                 yes
+		Gphoto2 support:              yes
+		MTP support:                  yes
+		archive support:              yes
+		AFC support:                  no
+		AFP support:                  yes
+		DNS-SD support:               no
+		Build HAL volume monitor:     no (with fast init path: no)
+		Build GDU volume monitor:     no
+		Build udisks2 volume monitor: yes
+		Build GOA volume monitor:     no
+		Use libsystemd-login:         no
+		GNOME Keyring support:        no
+		GTK+ support:                 yes
+		Bash-completion support:      no
+		Installed tests:              no
+
+diff -r install-all install
+--- ./install-all/usr/lib/gio/modules/libgvfsdbus.la
++++ ./install/usr/lib/gio/modules/libgvfsdbus.la
+@@ -17,7 +17,7 @@
+ inherited_linker_flags=' -pthread'
+ 
+ # Libraries that this one depends upon.
+-dependency_libs=' /usr/lib/gvfs/libgvfscommon.la -L/usr/lib /usr/lib/libgio-2.0.la /usr/lib/libgmodule-2.0.la -ldl -lz -lresolv /usr/lib/libgobject-2.0.la /usr/lib/libffi.la /usr/lib/libglib-2.0.la /usr/lib/libpcre.la -lpthread /lib/libudev.la -lrt -lutil'
++dependency_libs=' /usr/lib/gvfs/libgvfscommon.la -L/usr/lib /usr/lib/libgio-2.0.la /usr/lib/libgmodule-2.0.la -ldl -lz -lresolv /usr/lib/libgobject-2.0.la /usr/lib/libffi.la /usr/lib/libglib-2.0.la /usr/lib/libpcre.la -lpthread -lrt -lutil'
+ 
+ # Names of additional weak libraries provided by this library
+ weak_library_names=''
+Files ./install-all/usr/lib/gio/modules/libgvfsdbus.so and ./install/usr/lib/gio/modules/libgvfsdbus.so differ
+Files ./install-all/usr/lib/gvfs/gvfsd-metadata and ../install/usr/lib/gvfs/gvfsd-metadata differ
+
+SO, LET I NOT DISABLE UDEV IN ANY CASE.
+===============================================================================
