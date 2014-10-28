@@ -1,9 +1,9 @@
 # SliTaz package receipt.
 
 PACKAGE="inkscape"
-VERSION="0.48.3.1"
+VERSION="0.48.5"
 CATEGORY="graphics"
-SHORT_DESC="Vector drawing application."
+SHORT_DESC="vector-based drawing program"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
@@ -14,19 +14,17 @@ TAGS="image vector editor svg"
 DEPENDS="gc gtk+ libxslt libsigc++ glibmm gtkmm libxml2 libpng popt \
 xorg-libXdamage gsl aspell libgiomm lcms gtkspell libgomp poppler gcc-lib-base"
 BUILD_DEPENDS="gc-dev gtk+-dev libxslt-dev libsigc++-dev glibmm-dev \
-gtkmm-dev atkmm-dev popt-dev libgiomm-dev gsl gsl-dev lcms-dev gtkspell gtkspell-dev \
-cairomm-dev libboost-dev libxml2-dev zlib-dev autoconf pkg-config intltool \
-xorg-libXau-dev xorg-libXdmcp-dev automake libtool"
+gtkmm-dev atkmm-dev popt-dev libgiomm-dev gsl gsl-dev lcms-dev gtkspell \
+gtkspell-dev cairomm-dev libboost-dev libxml2-dev zlib-dev autoconf pkg-config \
+intltool xorg-libXau-dev xorg-libXdmcp-dev automake libtool"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	find src -name '*.h' -o -name '*.c*' | xargs \
-		sed -i 's|glibmm/i18n|glib/gi18n|'
-	sed -i -e '\|^packaging/autopackage/default\.apspec$|d' configure.ac
-#	InkBoard is now disabled by default, --enable-inkboard now exists
-	
+	for patchfile in $(cat $stuff/patches/series); do
+		patch -p1 -i $stuff/patches/$patchfile
+	done
+
 	./configure \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
@@ -46,5 +44,14 @@ genpkg_rules()
 	rm -rf $fs/usr/share/inkscape/clipart
 	rm -rf $fs/usr/share/inkscape/tutorials
 	rm -rf $fs/usr/share/inkscape/examples
-	rm -rf $fs/usr/share/inkscape/screens/keys*
+
+	# Desktop file
+	cp -a $install/usr/share/applications $fs/usr/share
+	DESKTOP=$fs/usr/share/applications/inkscape.desktop
+	sed -i '/^Name/d; s|X-GNOME-Full||g' $DESKTOP
+	sdft $DESKTOP -g -tf -te -i
+
+	# Icons
+	cp -a $install/usr/share/icons $fs/usr/share
+	rm -rf $fs/usr/share/icons/hicolor/256x256
 }
