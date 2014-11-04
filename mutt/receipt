@@ -9,15 +9,14 @@ MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.mutt.org"
-WGET_URL="ftp://ftp.mutt.org/mutt/devel/$TARBALL"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="openssl ncurses zlib libidn"
-BUILD_DEPENDS="libidn-dev ncurses-dev openssl-dev perl"
+DEPENDS="openssl ncurses zlib libidn libsasl"
+BUILD_DEPENDS="libidn-dev ncurses-dev openssl-dev perl cyrus-sasl-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {	
-    cd $src
     addgroup mail
     sed -i 's/STACK \*/STACK_OF(X509) */' mutt_ssl.c
     ./configure \
@@ -28,7 +27,7 @@ compile_rules()
 		--sysconfdir=/etc \
 		--enable-pop \
 		--enable-smtp \
-		--enable-sasl \
+		--with-sasl \
 		$CONFIGURE_ARGS &&
 	make && make install &&
 	delgroup mail
@@ -47,10 +46,10 @@ genpkg_rules()
 
 post_install()
 {
-	addgroup mail
+	chroot $1/ addgroup mail
 }
 
 post_remove()
 {
-	delgroup mail
+	chroot $1/ delgroup mail
 }
