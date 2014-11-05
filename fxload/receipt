@@ -1,37 +1,26 @@
 # SliTaz package receipt.
 
 PACKAGE="fxload"
-VERSION="0.0.20020411"
+VERSION="2008_10_13"
 CATEGORY="system-tools"
-SHORT_DESC="Utility to load xorcom astribank channel bank."
+SHORT_DESC="Download firmware into FX, FX2, and FX2LP EZ-USB devices."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="${PACKAGE}_${VERSION}.orig.tar.gz"
-EXTRA_SOURCE_FILES="$PACKAGE"
-WEB_SITE="http://www.xorcom.com/"
-WGET_URL="http://updates.xorcom.com/astribank/$PACKAGE/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://sourceforge.net/projects/linux-hotplug/"
+WGET_URL="$SF_MIRROR/linux-hotplug/$PACKAGE/$VERSION/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	ln -s fxload-*_* $src
-	cd $src
-	mkdir -p $DESTDIR/usr/share/usb
-	cp a3load.hex $DESTDIR/usr/share/usb || return 1
-	[ -f $SOURCES_REPOSITORY/$PACKAGE ] && cp $SOURCES_REPOSITORY/$PACKAGE .
-	if [ ! -f $PACKAGE ]; then
-		wget http://updates.xorcom.com/astribank/$PACKAGE/$PACKAGE ||
-			 return 1
-		cp $PACKAGE $SOURCES_REPOSITORY
-	fi
-	chmod +x fxload
-	mkdir -p $DESTDIR/usr/bin
-	mv fxload $DESTDIR/usr/bin
+	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/usr $fs	
+	mkdir -p $fs/usr/bin $fs/usr/share/usb
+	install $src/fxload $fs/usr/bin
+	install -m 0644 $src/a3load.hex $fs/usr/share/usb
 }
 
