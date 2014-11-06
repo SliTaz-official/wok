@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="xgalaga"
+VERSION="2.1.1.0"
+CATEGORY="games"
+SHORT_DESC="A clone of the classic game Galaga for the X Window System."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://sourceforge.net/projects/xgalaga/"
+WGET_URL="$SF_MIRROR/$PACKAGE/$VERSION/$TARBALL"
+
+DEPENDS="xorg-libX11 xorg-libXmu xorg-libXt xorg-libXext xorg-libXpm libxcb \
+xorg-libXau xorg-libXdmcp xorg-libSM xorg-libICE util-linux-uuid"
+BUILD_DEPENDS="xorg-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $DESTDIR/usr/share/man/man6
+	sed -i	-e 's|\$(mandir)|$(DESTDIR)&|' \
+		-e 's|@prefix@|/usr/share/xgalaga|' \
+		-e 's|@exec_prefix@|/usr/bin|' \
+		-e 's|@CREDITSFILE@|/usr/share/xgalaga/CREDITS|' \
+			Makefile.in
+	./configure $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $install/usr/share/xgalaga $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+}
+
