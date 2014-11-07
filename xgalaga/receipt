@@ -23,7 +23,12 @@ compile_rules()
 		-e 's|@exec_prefix@|/usr/bin|' \
 		-e 's|@CREDITSFILE@|/usr/share/xgalaga/CREDITS|' \
 			Makefile.in
-	./configure $CONFIGURE_ARGS &&
+	./configure $CONFIGURE_ARGS
+	sed -i	-e 's|/usr/sounds/|/usr/share/xgalaga/sounds/|' \
+		-e 's|/usr/levels/|/usr/share/xgalaga/levels/|' \
+		-e 's|/usr/CREDITS|/usr/share/xgalaga/CREDITS|' \
+		-e 's|/usr/scores|/var/games/xgalaga/scores|' \
+			config.h
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -31,8 +36,9 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/share/applications $fs/var/games/xgalaga/scores
 	cp -a $install/usr/share/xgalaga $fs/usr/share
 	cp -a $install/usr/bin $fs/usr
+	cp $stuff/*.desktop $fs/usr/share/applications
 }
 
