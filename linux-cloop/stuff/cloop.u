@@ -225,7 +225,7 @@
       if (!clo->offsets)
        {
         printk(KERN_ERR "%s: out of kernel mem for offsets\n", cloop_name);
-@@ -521,19 +571,19 @@
+@@ -521,19 +571,22 @@
      }
     num_readable = MIN(total_offsets - offsets_read,
                        (clo->underlying_blksize - offset) 
@@ -247,12 +247,15 @@
      }
 -   printk(KERN_INFO "%s: %s: %u blocks, %u bytes/block, largest block is %lu bytes.\n",
 -          cloop_name, filename, ntohl(clo->head.num_blocks),
++   i = ntohl(clo->head.block_size);
++   i +=  i/1000 + 12 + 4;	/* max gzip block size */
++   if (clo->largest_block > i) clo->largest_block = i; /* broken index ? */
 +   printk(KERN_INFO "%s: %s: %s, %u blocks, %u bytes/block, largest block is %lu bytes.\n",
 +          cloop_name, filename, version, ntohl(clo->head.num_blocks),
            ntohl(clo->head.block_size), clo->largest_block);
    }
  /* Combo kmalloc used too large chunks (>130000). */
-@@ -565,16 +615,6 @@
+@@ -565,16 +618,6 @@
     error=-ENOMEM; goto error_release_free_all;
    }
   zlib_inflateInit(&clo->zstream);
@@ -269,7 +272,7 @@
   {
    int i;
    for(i=0; i<BUFFERED_BLOCKS; i++) clo->buffered_blocknum[i] = -1;
-@@ -653,7 +693,7 @@
+@@ -653,7 +696,7 @@
     }
   }
  error_release_free:
