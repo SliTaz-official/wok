@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="linux64-module-headers"
+VERSION="3.2.53"
+CATEGORY="development"
+SHORT_DESC="Header files and scripts for building modules for linux kernel."
+MAINTAINER="devel@slitaz.org"
+LICENSE="GPL2"
+DEPENDS="slitaz-toolchain"
+WANTED="linux"
+WEB_SITE="http://kernel.org/"
+KVERSION=$VERSION-slitaz64
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	local path
+	mkdir -p $fs/lib/modules/$KVERSION $fs/usr
+	ln -sf /$path $fs/lib/modules/$KVERSION/build
+	cp -a $install/linux64/usr/src $fs/usr
+}	
+
+pre_remove() {
+	if [ -e $1/usr/src/linux ]; then
+		rm -rf $1/usr/src/linux
+	fi
+}
+
+post_install() {
+	# Added soft link to make it easier to point to kernel folder
+	[ -L $1/usr/src/linux ] && rm -f $1/usr/src/linux 
+	ln -sf /usr/src/linux-$KVERSION $1/usr/src/linux
+}
