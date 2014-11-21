@@ -1,0 +1,287 @@
+--- a/src/main.c
++++ b/src/main.c
+@@ -17,7 +17,7 @@
+ 
+ void set_user_file ()
+ {
+-	user_filename = g_strdup_printf ("%s/.rgb.txt", getenv ("HOME"));
++	user_filename = g_strconcat (g_get_user_data_dir(), "/.rgb.txt", NULL);
+ }
+ 
+ gchar* get_user_file ()
+@@ -27,15 +27,9 @@
+ 
+ gboolean set_system_file ()
+ {
+-	/* try a couple locations to find rgb.txt */
++	/* try location to find rgb.txt */
+ 	if (g_file_test (SYSTEM_FILE_1, G_FILE_TEST_EXISTS))
+ 		sys_filename = SYSTEM_FILE_1;
+-	else if (g_file_test (SYSTEM_FILE_2, G_FILE_TEST_EXISTS))
+-		sys_filename = SYSTEM_FILE_2;
+-	else if (g_file_test (SYSTEM_FILE_3, G_FILE_TEST_EXISTS))
+-		sys_filename = SYSTEM_FILE_3;
+-	else if (g_file_test (SYSTEM_FILE_4, G_FILE_TEST_EXISTS))
+-		sys_filename = SYSTEM_FILE_4;
+ 	else
+ 		return FALSE;
+ 	return TRUE;
+@@ -151,7 +145,6 @@
+ 	gtk_set_locale ();
+ 	gtk_init (&argc, &argv);
+ 	
+-	add_pixmap_directory (PACKAGE_DATA_DIR "/pixmaps/" PACKAGE);
+ 
+ 	gcolor2 = create_gcolor2 ();
+ 	gtk_widget_show (gcolor2);
+@@ -164,7 +157,7 @@
+ 	gtk_tree_view_set_model (GTK_TREE_VIEW (treeview), GTK_TREE_MODEL (liststore));
+ 	
+ 	column = gtk_tree_view_column_new ();
+-	gtk_tree_view_column_set_title (column, "Color");
++	gtk_tree_view_column_set_title (column, _("Color"));
+ 	
+ 	renderer = gtk_cell_renderer_pixbuf_new ();
+ 	gtk_tree_view_column_pack_start (column, renderer, FALSE);
+@@ -179,7 +172,7 @@
+ 	
+ 	
+ 	renderer = gtk_cell_renderer_text_new ();
+-	column = gtk_tree_view_column_new_with_attributes ("Name", renderer,
++	column = gtk_tree_view_column_new_with_attributes (_("Name"), renderer,
+ 													   "text", COLOR_NAME, NULL);
+ 	gtk_tree_view_column_set_sort_column_id (column, COLOR_NAME);
+ 	gtk_tree_view_append_column (GTK_TREE_VIEW (treeview), column);
+
+--- a/src/callbacks.h
++++ b/src/callbacks.h
+@@ -8,10 +8,7 @@
+ #define FILE_WRITE         "write"
+ 
+ /* possible locations of the rgb file */
+-#define SYSTEM_FILE_1      "/usr/X11R6/lib/X11/rgb.txt"
+-#define SYSTEM_FILE_2      "/usr/lib/X11/rgb.txt"
+-#define SYSTEM_FILE_3      "/etc/X11/rgb.txt"
+-#define SYSTEM_FILE_4      "/usr/openwin/lib/X11/rgb.txt"
++#define SYSTEM_FILE_1      "/usr/share/X11/rgb.txt"
+ 
+ /* about dialog text */
+ #define ABOUT_CREDITS_TEXT "Developer:\n" \
+
+--- a/src/interface.c
++++ b/src/interface.c
+@@ -48,8 +48,6 @@
+   GtkWidget *about_button;
+   GtkWidget *alignment1;
+   GtkWidget *hbox2;
+-  GtkWidget *image3;
+-  GtkWidget *label5;
+   GtkWidget *quit_button;
+   GtkTooltips *tooltips;
+ 
+@@ -59,12 +57,7 @@
+   gtk_container_set_border_width (GTK_CONTAINER (gcolor2), 1);
+   gtk_window_set_title (GTK_WINDOW (gcolor2), _("gcolor2"));
+   gtk_window_set_resizable (GTK_WINDOW (gcolor2), FALSE);
+-  gcolor2_icon_pixbuf = create_pixbuf ("icon.png");
+-  if (gcolor2_icon_pixbuf)
+-    {
+-      gtk_window_set_icon (GTK_WINDOW (gcolor2), gcolor2_icon_pixbuf);
+-      gdk_pixbuf_unref (gcolor2_icon_pixbuf);
+-    }
++  gtk_window_set_icon_name (GTK_WINDOW (gcolor2), "gcolor2");
+ 
+   vbox1 = gtk_vbox_new (FALSE, 3);
+   gtk_widget_show (vbox1);
+@@ -75,6 +68,7 @@
+   gtk_widget_show (colorselection);
+   gtk_box_pack_start (GTK_BOX (vbox1), colorselection, FALSE, TRUE, 0);
+   gtk_color_selection_set_has_opacity_control (GTK_COLOR_SELECTION (colorselection), TRUE);
++  gtk_color_selection_set_has_palette (GTK_COLOR_SELECTION (colorselection), TRUE);
+ 
+   expander = gtk_expander_new (NULL);
+   gtk_widget_show (expander);
+@@ -136,12 +130,6 @@
+   gtk_widget_show (hbuttonbox3);
+   gtk_box_pack_start (GTK_BOX (vbox1), hbuttonbox3, FALSE, TRUE, 0);
+ 
+-  about_button = gtk_button_new ();
+-  gtk_widget_show (about_button);
+-  gtk_container_add (GTK_CONTAINER (hbuttonbox3), about_button);
+-  GTK_WIDGET_SET_FLAGS (about_button, GTK_CAN_DEFAULT);
+-  gtk_tooltips_set_tip (tooltips, about_button, _("About gcolor2"), NULL);
+-
+   alignment1 = gtk_alignment_new (0.5, 0.5, 0, 0);
+   gtk_widget_show (alignment1);
+   gtk_container_add (GTK_CONTAINER (about_button), alignment1);
+@@ -150,14 +138,11 @@
+   gtk_widget_show (hbox2);
+   gtk_container_add (GTK_CONTAINER (alignment1), hbox2);
+ 
+-  image3 = create_pixmap (gcolor2, "about_icon.png");
+-  gtk_widget_show (image3);
+-  gtk_box_pack_start (GTK_BOX (hbox2), image3, FALSE, FALSE, 0);
++  about_button = gtk_button_new_from_stock ("gtk-about");
++  gtk_widget_show (about_button);
++  gtk_tooltips_set_tip (tooltips, about_button, _("About gcolor2"), NULL);
++  gtk_container_add (GTK_CONTAINER (hbuttonbox3), about_button);
+ 
+-  label5 = gtk_label_new_with_mnemonic (_("_About"));
+-  gtk_widget_show (label5);
+-  gtk_box_pack_start (GTK_BOX (hbox2), label5, FALSE, FALSE, 0);
+-
+   quit_button = gtk_button_new_from_stock ("gtk-quit");
+   gtk_widget_show (quit_button);
+   gtk_container_add (GTK_CONTAINER (hbuttonbox3), quit_button);
+@@ -208,8 +193,6 @@
+   GLADE_HOOKUP_OBJECT (gcolor2, about_button, "about_button");
+   GLADE_HOOKUP_OBJECT (gcolor2, alignment1, "alignment1");
+   GLADE_HOOKUP_OBJECT (gcolor2, hbox2, "hbox2");
+-  GLADE_HOOKUP_OBJECT (gcolor2, image3, "image3");
+-  GLADE_HOOKUP_OBJECT (gcolor2, label5, "label5");
+   GLADE_HOOKUP_OBJECT (gcolor2, quit_button, "quit_button");
+   GLADE_HOOKUP_OBJECT_NO_REF (gcolor2, tooltips, "tooltips");
+ 
+@@ -238,12 +221,7 @@
+   gtk_window_set_modal (GTK_WINDOW (save_dialog), TRUE);
+   gtk_window_set_resizable (GTK_WINDOW (save_dialog), FALSE);
+   gtk_window_set_destroy_with_parent (GTK_WINDOW (save_dialog), TRUE);
+-  save_dialog_icon_pixbuf = create_pixbuf ("icon.png");
+-  if (save_dialog_icon_pixbuf)
+-    {
+-      gtk_window_set_icon (GTK_WINDOW (save_dialog), save_dialog_icon_pixbuf);
+-      gdk_pixbuf_unref (save_dialog_icon_pixbuf);
+-    }
++  gtk_window_set_icon_name (GTK_WINDOW (save_dialog), "gcolor2");
+   gtk_window_set_type_hint (GTK_WINDOW (save_dialog), GDK_WINDOW_TYPE_HINT_DIALOG);
+ 
+   dialog_vbox1 = GTK_DIALOG (save_dialog)->vbox;
+@@ -366,17 +344,13 @@
+   gtk_window_set_title (GTK_WINDOW (about_dialog), _("About gcolor2"));
+   gtk_window_set_resizable (GTK_WINDOW (about_dialog), FALSE);
+   gtk_window_set_destroy_with_parent (GTK_WINDOW (about_dialog), TRUE);
+-  about_dialog_icon_pixbuf = create_pixbuf ("icon.png");
+-  if (about_dialog_icon_pixbuf)
+-    {
+-      gtk_window_set_icon (GTK_WINDOW (about_dialog), about_dialog_icon_pixbuf);
+-      gdk_pixbuf_unref (about_dialog_icon_pixbuf);
+-    }
++  gtk_window_set_icon_name (GTK_WINDOW (about_dialog), "gcolor2");
+ 
+   dialog_vbox3 = GTK_DIALOG (about_dialog)->vbox;
+   gtk_widget_show (dialog_vbox3);
+ 
+-  about_image = create_pixmap (about_dialog, "icon.png");
++  //about_image = create_pixmap (about_dialog, "icon.png");
++  about_image = gtk_image_new_from_icon_name ("gcolor2", GTK_ICON_SIZE_DIALOG);
+   gtk_widget_show (about_image);
+   gtk_box_pack_start (GTK_BOX (dialog_vbox3), about_image, FALSE, FALSE, 0);
+ 
+@@ -483,12 +457,7 @@
+   gtk_window_set_modal (GTK_WINDOW (delete_dialog), TRUE);
+   gtk_window_set_resizable (GTK_WINDOW (delete_dialog), FALSE);
+   gtk_window_set_destroy_with_parent (GTK_WINDOW (delete_dialog), TRUE);
+-  delete_dialog_icon_pixbuf = create_pixbuf ("icon.png");
+-  if (delete_dialog_icon_pixbuf)
+-    {
+-      gtk_window_set_icon (GTK_WINDOW (delete_dialog), delete_dialog_icon_pixbuf);
+-      gdk_pixbuf_unref (delete_dialog_icon_pixbuf);
+-    }
++  gtk_window_set_icon_name (GTK_WINDOW (delete_dialog), "gcolor2");
+   gtk_window_set_type_hint (GTK_WINDOW (delete_dialog), GDK_WINDOW_TYPE_HINT_DIALOG);
+ 
+   vbox3 = GTK_DIALOG (delete_dialog)->vbox;
+
+--- a/src/support.c
++++ b/src/support.c
+@@ -42,90 +42,6 @@
+   return found_widget;
+ }
+ 
+-static GList *pixmaps_directories = NULL;
+-
+-/* Use this function to set the directory containing installed pixmaps. */
+-void
+-add_pixmap_directory                   (const gchar     *directory)
+-{
+-  pixmaps_directories = g_list_prepend (pixmaps_directories,
+-                                        g_strdup (directory));
+-}
+-
+-/* This is an internally used function to find pixmap files. */
+-static gchar*
+-find_pixmap_file                       (const gchar     *filename)
+-{
+-  GList *elem;
+-
+-  /* We step through each of the pixmaps directory to find it. */
+-  elem = pixmaps_directories;
+-  while (elem)
+-    {
+-      gchar *pathname = g_strdup_printf ("%s%s%s", (gchar*)elem->data,
+-                                         G_DIR_SEPARATOR_S, filename);
+-      if (g_file_test (pathname, G_FILE_TEST_EXISTS))
+-        return pathname;
+-      g_free (pathname);
+-      elem = elem->next;
+-    }
+-  return NULL;
+-}
+-
+-/* This is an internally used function to create pixmaps. */
+-GtkWidget*
+-create_pixmap                          (GtkWidget       *widget,
+-                                        const gchar     *filename)
+-{
+-  gchar *pathname = NULL;
+-  GtkWidget *pixmap;
+-
+-  if (!filename || !filename[0])
+-      return gtk_image_new ();
+-
+-  pathname = find_pixmap_file (filename);
+-
+-  if (!pathname)
+-    {
+-      g_warning (_("Couldn't find pixmap file: %s"), filename);
+-      return gtk_image_new ();
+-    }
+-
+-  pixmap = gtk_image_new_from_file (pathname);
+-  g_free (pathname);
+-  return pixmap;
+-}
+-
+-/* This is an internally used function to create pixmaps. */
+-GdkPixbuf*
+-create_pixbuf                          (const gchar     *filename)
+-{
+-  gchar *pathname = NULL;
+-  GdkPixbuf *pixbuf;
+-  GError *error = NULL;
+-
+-  if (!filename || !filename[0])
+-      return NULL;
+-
+-  pathname = find_pixmap_file (filename);
+-
+-  if (!pathname)
+-    {
+-      g_warning (_("Couldn't find pixmap file: %s"), filename);
+-      return NULL;
+-    }
+-
+-  pixbuf = gdk_pixbuf_new_from_file (pathname, &error);
+-  if (!pixbuf)
+-    {
+-      fprintf (stderr, "Failed to load pixbuf file: %s: %s\n",
+-               pathname, error->message);
+-      g_error_free (error);
+-    }
+-  g_free (pathname);
+-  return pixbuf;
+-}
+-
+ /* This is used to set ATK action descriptions. */
+ void
+ glade_set_atk_action_description       (AtkAction       *action,

@@ -9,16 +9,20 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://gcolor2.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+GENERIC_PIXMAPS="no"
 
-DEPENDS="gtk+ xorg-libXdamage"
-BUILD_DEPENDS="pkg-config gtk+ gtk+-dev perl-xml-parser file"
+DEPENDS="gtk+"
+SUGGESTED="xorg-rgb"
+BUILD_DEPENDS="gtk+-dev file"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	patch -p1 -i $stuff/gcolor2.patch
+	cp $stuff/*.po* $src/po
+	sed -i 's|@CATALOGS@|ru.gmo|' $src/po/Makefile.in.in
+
+	./configure $CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -26,12 +30,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/applications
-	cp -a $stuff/gcolor2.desktop $fs/usr/share/applications
+	mkdir -p $fs/usr
 	cp -a $install/usr/bin $fs/usr
-	
-	cp -a $install/usr/share $fs/usr
-	cd $fs/usr/share/pixmaps
-	ln -s gcolor2/icon.png gcolor2.png
 }
 
