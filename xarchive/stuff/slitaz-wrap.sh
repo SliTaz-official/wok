@@ -49,6 +49,7 @@ ARJ_EXTS="arj pak arc j uc2 zoo"
 _7Z_EXTS="7z bcj bcj2 wim $BZIP2_EXTS $ZIP_EXTS $XZ_EXTS"
 _7Z_EXTS_X="chm cramfs dmg hfs mbr msi nsis ntfs udf vhd xar arj cab lzh rar \
 udf cpio $ISO_EXTS $FAT_EXTS $SQUASHFS_EXTS"
+ZPAQ_EXTS="zpaq"
 
 while read var progs; do
 	eval $var=""
@@ -321,6 +322,7 @@ cabextract	cab
 cromfs-driver	$CROMFS_EXTS
 fs/squashfs/squashfs	$SQUASHFS_EXTS
 drivers/block/cloop	$CLOOP_EXTS
+zpaq		$ZPAQ_EXTS
 EOT
 	echo ""
 	exit
@@ -430,6 +432,18 @@ BEGIN { name="" }
 /^[\t ]+SymLink -> / { link=$3; attr="l"substr(attr, 2) }
 /^---/ { display() }
 '
+#  Ver  Date      Time (UT) Attr           Size Ratio  File
+# ----- ---------- -------- ------ ------------ ------ ----
+# >   1 2012-04-10 11:47:56 100644          576 0.2611 /etc/skel/.profile
+	in_exts $ZPAQ_EXTS && zpaq l "$archive" | awku '
+/^>/ {
+	date=$3
+	time=$4
+	attr=$5
+	size=$6
+	name=$8
+	display()
+}'
 # Desktop/up -> ..
 # lrwxrwxrwx     0/0           0       0 ****** -lhd- 0000 2009-05-03 16:59:03 [2]
 	in_exts $LHA_EXTS && lha v -q -v  "$archive" | awk0 '
@@ -472,6 +486,7 @@ rar	a		$RAR_EXTS
 arj	a		$ARJ_EXTS
 7zr	a\ -ms=off	$_7Z_EXTS
 lha	a		$LHA_EXTS
+zpaq	a		$ZPAQ_EXTS
 EOT
 	;;
     -r) # remove from archive passed files
@@ -489,6 +504,7 @@ rar	d	$RAR_EXTS
 arj	d	$ARJ_EXTS
 lha	d	$LHA_EXTS
 7zr	d	$_7Z_EXTS
+zpaq	d	$ZPAQ_EXTS
 EOT
 	;;
     -e) # extract from archive passed files
@@ -520,6 +536,7 @@ arj		x\ -y		x\ -y\ -g?	$ARJ_EXTS
 7zr		x\ -y\ -p-	x\ -y		$_7Z_EXTS $_7Z_EXTS_X
 unace		N/A		x\ -o\ -y	ace
 cabextract	-q		N/A		cab
+zpaq		x		x\ -key		$ZPAQ_EXTS
 EOT
 	loop_fs $opt "$@"
 	;;
