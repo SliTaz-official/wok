@@ -2,15 +2,23 @@ get_locale()
 {
 	[ "x$CHARMAP" == x ] && CHARMAP=UTF-8
 
-	# Get translated Openbox menu from SliTaz sub project slitaz-configs
-	obmenu=$WOK/slitaz-configs/install/etc/xdg/openbox/menu.$LOCALE.xml
-	if [ -f $obmenu ]; then
-		mkdir -p $fs/etc/xdg/openbox
-		echo "* Found $LOCALE translations for: openbox menu"
-		cp $obmenu $fs/etc/xdg/openbox
-	fi
+	case "$SLITAZ_ARCH" in
+		arm*) ;;
+		i?86)
+			# Get translated Openbox menu from SliTaz sub project slitaz-configs
+			obmenu=$WOK/slitaz-configs/install/etc/xdg/openbox/menu.$LOCALE.xml
+			if [ -f $obmenu ]; then
+				mkdir -p $fs/etc/xdg/openbox
+				echo "* Found $LOCALE translations for: openbox menu"
+				cp $obmenu $fs/etc/xdg/openbox
+			fi
+			;;
+	esac
 
 	# Get the core packages messages.
+	case "$SLITAZ_ARCH" in
+		arm*) CORE_PKGS="$CORE_PKGS_ARM" ;;
+	esac
 	mkdir -p $fs/usr/share/locale/$LOCALE
 	for app in $CORE_PKGS; do
 		app_locale=$WOK/$app/install/usr/share/locale/$LOCALE
@@ -67,6 +75,10 @@ get_locale()
 						$fs/usr/share/zoneinfo/$tz
 		done
 	done
+
+	case "$SLITAZ_ARCH" in
+		arm*) exit 0 ;;
+	esac
 
 	# Get country flags
 	echo "* Copy flag icons for countries: "$countries
