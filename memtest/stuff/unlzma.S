@@ -143,7 +143,7 @@ initlocals:
 #ifdef CHECK_LZMA_HEADER
 	cmp.w	$0x5A4C, (SI)	// lzip header ('LZIP' version:1 dicobits:1)
 	je	lzip_header
-	cmp.b	$0x5D, (SI)	// lzma header (0x5D dicosz:4 orgsz:8)
+	cmp.w	$0x5D, (SI)	// lzma header (0x5D dicosz:4 orgsz:8)
 	jne	no_header
 	add	$13-6, SI	// skip lzma header
 lzip_header:
