@@ -197,7 +197,7 @@ Fix hardlink on fifos, sockets, char & block devices and symlinks
  		kfree(vcollected);
  		eat(body_len);
  		state = SkipIt;
-@@ -353,13 +385,15 @@
+@@ -353,13 +385,18 @@
  
  static int __init do_symlink(void)
  {
@@ -206,9 +206,12 @@ Fix hardlink on fifos, sockets, char & block devices and symlinks
 -	sys_symlink(collected + N_ALIGN(name_len), collected);
 -	sys_lchown(collected, uid, gid);
 -	do_utime(collected, mtime);
++	char c = victim[body_len];
++
 +	victim[body_len] = '\0';
 +	clean_path(vcollected, 0);
 +	sys_symlink(victim, vcollected);
++	victim[body_len] = c;
 +	sys_lchown(vcollected, uid, gid);
 +	do_utime(vcollected, mtime);
 +	make_links(vcollected);
@@ -219,7 +222,7 @@ Fix hardlink on fifos, sockets, char & block devices and symlinks
  	return 0;
  }
  
-@@ -466,10 +500,9 @@
+@@ -466,10 +503,9 @@
  	int early_free_initrd = (buf == (char *) initrd_start);
  
  	header_buf = kmalloc(110, GFP_KERNEL);
@@ -231,7 +234,7 @@ Fix hardlink on fifos, sockets, char & block devices and symlinks
  		panic("can't allocate buffers");
  
  	state = Start;
-@@ -524,7 +557,6 @@
+@@ -524,7 +560,6 @@
  	}
  	dir_utime();
  	kfree(name_buf);
