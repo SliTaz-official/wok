@@ -11,29 +11,47 @@ TARBALL="${PACKAGE}_${VERSION}.tar.gz"
 WGET_URL="http://download.berlios.de/$PACKAGE/$TARBALL"
 TAGS="video movie editor avi mpeg mp4"
 
-DEPENDS="libsdl alsa-lib libsdl-gfx libxml2 xorg-libXv gtk+ cairo libQtGui \
-libxslt libvpx"
+DEPENDS="alsa-lib libxml2 xorg-libXv cairo libxslt libvpx libvorbis gtk+ \
+opencore-amr lame faac faad2 libsamplerate xvidcore x264"
 BUILD_DEPENDS="tar coreutils-file-special coreutils-file-format cmake yasm \
-gettext pkg-config zlib-dev bzip2 patch libxml2-dev Qt4-dev qmake \
+gettext pkg-config xorg-libXv-dev libxml2-dev libvorbis-dev lame-dev xvidcore-dev \
+opencore-amr-dev x264-dev faac-dev faad2-dev libsamplerate-dev alsa-lib-dev \
 libxslt-dev libvpx-dev gtk+-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src
-	grep -q ADM_CPU_X86_64 avidemux/ADM*/src/ADM_vidField[sA]*.cpp ||
-	sed -i 's/ADM_CPU_X86/ADM_CPU_X86_64/' \
-		avidemux/ADM_coreImage/src/ADM_vidField[sA]*.cpp 
+	# grep -q ADM_CPU_X86_64 avidemux/ADM*/src/ADM_vidField[sA]*.cpp ||
+	# sed -i 's/ADM_CPU_X86/ADM_CPU_X86_64/' \
+	#	avidemux/ADM_coreImage/src/ADM_vidField[sA]*.cpp 
 	mkdir built
 	cd built
-	cmake -DCMAKE_INSTALL_PREFIX=/usr ../
-	sed -i 's/\(find .*\) | xargs ln -sft/- ln -sf $(\1)/' \
-		avidemux/CMakeFiles/ffmpeg.dir/build.make
+	cmake -DCMAKE_INSTALL_PREFIX=/usr \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_SKIP_RPATH=ON \
+		-DGTK=1 \
+		-DQT4=0 \
+		.. &&
+	make -j 1  && make -j1 DESTDIR=$DESTDIR install
+
+	cd $src/built/lib
+	find ../avidemux -name '*.so*' | xargs ln -sft .
+	cd $src/plugins
+	mkdir build ; cd build
+	cmake -D CMAKE_INSTALL_PREFIX=/usr \
+		-D AVIDEMUX_SOURCE_DIR="${src}" \
+		-D AVIDEMUX_CORECONFIG_DIR="${src}/built/config" \
+		-D AVIDEMUX_INSTALL_PREFIX="${src}/built" \
+		-D CMAKE_BUILD_TYPE=Release \
+		-DCMAKE_SKIP_RPATH=ON \
+		.. &&
 	make -j 1  && make -j1 DESTDIR=$DESTDIR install
 
 	mkdir -p $DESTDIR/usr/share/pixmaps $DESTDIR/usr/share/applications
 	cp $src/avidemux_icon.png $DESTDIR/usr/share/pixmaps/avidemux.png
 	cp $src/avidemux2.desktop $DESTDIR/usr/share/applications
+	rm -rf $src/built $src/plugins/build
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -41,7 +59,7 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share/pixmaps $fs/usr/share/applications
 	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib $fs/usr
 	cp -a $install/usr/share/ADM_scripts $fs/usr/share
 
 }
