@@ -11,11 +11,21 @@ BASE_SITE="http://busybox.net/~vda/$PACKAGE"
 WEB_SITE="$BASE_SITE/README.txt"
 WGET_URL="$BASE_SITE/$TARBALL"
 
+BUILD_DEPENDS="dosbox"
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	mv DIST $src 2> /dev/null
 	cd $src
+	patch -p0 < $stuff/load.u
+	sed -i 's/^@pause/rem &/' LINLD097/*.BAT
+	unix2dos > MAKE.BAT <<EOT
+d:
+cd linld097
+!compile.bat
+EOT
+	SDL_VIDEODRIVER=dummy dosbox MAKE.BAT -exit -c "mount D $src"
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
