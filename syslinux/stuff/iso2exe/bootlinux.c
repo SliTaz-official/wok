@@ -2,7 +2,6 @@
 #include "libdos.h"
 #include "iso9660.h"
 
-static unsigned setup_version;
 #define ELKSSIG		0x1E6
 #define SETUPSECTORS	0x1F1
 #define ROFLAG		0x1F2
@@ -45,9 +44,9 @@ static int iselks;
 static int vm86(void)
 {
 #asm
-		xor	ax, ax
-		cmp	ax, _iselks
-		jne	fakerealmode	// elks may run on a 8086
+		mov	ax, _iselks
+		dec	ax
+		je	fakerealmode	// elks may run on a 8086
 		smsw	ax		// 286+
 		and	ax, #1		// 0:realmode	1:vm86
 fakerealmode:
@@ -59,37 +58,51 @@ static struct {
 	int align;
 } mem = { 0x100000, 0 };
 
+#ifdef __MSDOS__ 
+#define A20HOLDBUFFER	0x80000
+static int a20buffer = 0;
+#endif
+
 static void movehi(void)
 {
 #asm
 		push	si
 		push	di
 
+		xor	ax, ax
 		mov	si, #_mem
 		cmp	word ptr [si+2], #0x10
+#ifdef __MSDOS__ 
+		jne	nota20
+		mov	ax, #A20HOLDBUFFER/16
+		mov	_a20buffer, ax
+		mov	di, [si]	// mem.base & 0xFFFF
+		jmp	mvbuffer
+nota20:
+#endif
 		jnc	movehiz
-		mov	ax, [si+1]
+		lodsb
+		xchg	ax, di
+		lodsw
 		mov	cl, #4
 		shl	ax, cl		// 8086 support for elks
+mvbuffer:
 		mov	es, ax
-		mov	di, #0x00FF
-		and	di, [si]
 		mov	si, #_buffer
-		mov	cx, #BUFFERSZ/2
 		cld
+		mov	cx, #BUFFERSZ/2
 		rep
 		  movw
 		jmp	movedone
-movehiz:
-		xor	di, di		// 30
+movehiz:				// 30
 		mov	cx, #9		// 2E..1E
 zero1:
-		push	di
+		push	ax
 		loop	zero1
 		push	dword [si]	// 1A mem.base
 		push	#-1		// 18
-		push	di		// 16
-		xor	eax, eax
+		push	ax		// 16
+		cwde
 		cdq
 		mov	dx, ds
 		shl	edx, #4
@@ -99,7 +112,7 @@ zero1:
 		push	#-1		// 10
 		mov	cl, #8		// 0E..00
 zero2:
-		push	di
+		push	#0
 		loop	zero2
 		mov	ch, #BUFFERSZ/512
 		push	ss
@@ -117,10 +130,6 @@ movedone:
 #endasm
 }
 
-#define ZIMAGE_SUPPORT
-#define FULL_ZIMAGE
-
-#ifdef ZIMAGE_SUPPORT
 static unsigned zimage = 0;
 static unsigned getss(void)
 {
@@ -128,7 +137,6 @@ static unsigned getss(void)
 	mov	ax, ss
 #endasm
 }
-#endif
 
 static unsigned extendedramsizeinkb(void)
 {
@@ -190,12 +198,13 @@ void movesetup(void)
 #asm
 		push	si
 		mov	es, _setupseg
-		mov	si, #_buffer
 		xchg	di, _setupofs
+		mov	si, #_buffer
+		cld
 		mov	cx, #BUFFERSZ/2
 		rep
 		  movsw
-		xchg	_setupofs, di
+		xchg	di, _setupofs
 		pop	si
 #endasm
 }
@@ -207,16 +216,25 @@ static unsigned getcs(void)
 #endasm
 }
 
+#define WORD(x)	* (unsigned short *) (x)
+#define LONG(x)	* (unsigned long *) (x)
+static unsigned setup_version = 0;
 static unsigned long kernel_version = 0;
 unsigned long loadkernel(void)
 {
-	unsigned setup, n = BUFFERSZ;
+	unsigned setup;
+#define LINUX001_SUPPORT
+#ifdef LINUX001_SUPPORT
+	unsigned n = 512;
+#else
+	unsigned n = BUFFERSZ;
+#endif
 	unsigned long syssize = 0;
 
 	do {
 		isoread(buffer, n);
 		if (setupofs == 0) {
-			if (* (unsigned short *) (buffer + BOOTFLAG) != 0xAA55)
+			if (WORD(buffer + BOOTFLAG) != 0xAA55)
 				die("The kernel is not bootable");
 #asm
 			int	0x12
@@ -230,16 +248,25 @@ unsigned long loadkernel(void)
 			mov	_setupseg, ax
 has640k:
 #endasm
-			setup = (1 + buffer[SETUPSECTORS]) << 9;
-			if (setup == 512) setup = 5 << 9;
-			syssize = * (unsigned long  *) (buffer + SYSSIZE) << 4;
+			syssize = LONG(buffer + SYSSIZE) << 4;
 			if (!syssize) syssize = 0x7F000;
-			setup_version = * (unsigned short *) (buffer + VERSION);
+			setup = (1 + buffer[SETUPSECTORS]) << 9;
+			if (setup == 512) {
+#ifdef LINUX001_SUPPORT
+				if (WORD(buffer + 0x3F) == 0x3AE8) /* linux 0.01 */
+					goto linux001;
+#endif
+				setup = 5 << 9;
+			}
+#ifdef LINUX001_SUPPORT
+			n = BUFFERSZ;
+			isoread(buffer+512, BUFFERSZ-512);
+#endif
 #define HDRS	0x53726448
-			if (* (unsigned long *) (buffer + HEADER) != HDRS)
-				setup_version = 0;
+			if (LONG(buffer + HEADER) == HDRS)
+				setup_version = WORD(buffer + VERSION);
 #define ELKS	0x534B4C45
-			if (* (unsigned long *) (buffer + ELKSSIG) == ELKS)
+			if (LONG(buffer + ELKSSIG) == ELKS)
 				iselks = 1;
 			if (setup_version < 0x204)
 				syssize &= 0x000FFFFFUL;
@@ -256,34 +283,24 @@ _far_realmode_switch:
 				retf
 end_realmode_switch:
 #endasm
-				* (unsigned short *) (buffer + RMSWOFS) = 
-					far_realmode_switch;
-				* (unsigned short *) (buffer + RMSWSEG) = 
-					getcs();
+				WORD(buffer + RMSWOFS) =  far_realmode_switch;
+				WORD(buffer + RMSWSEG) =  getcs();
 #endif
-				mem.base =
-					* (unsigned long *) (buffer + SYSTEMCODE);
-				* (unsigned short *) (buffer + HEAPPTR) = 
-					0x9B00;
+				mem.base = LONG(buffer + SYSTEMCODE);
+				WORD(buffer + HEAPPTR) = 0x9B00;
 				// buffer[LOADFLAGS] |= 0x80;
-				* (unsigned short *) (buffer + LOADERTYPE) |= 
-					0x80FF;
+				WORD(buffer + LOADERTYPE) |= 0x80FF;
 			}
+#ifdef LINUX001_SUPPORT
+	linux001:
+#endif
 			if (!setup_version || !(buffer[LOADFLAGS] & 1)) {
-#ifdef ZIMAGE_SUPPORT
 				zimage = getss() + 0x1000;
 				mem.base = zimage * 16L; 
 				if (mem.base + syssize > setupseg*16L - 32) {
-#ifdef FULL_ZIMAGE
-					zimage = 0x11;
+					zimage = 0x9311;
 					mem.base = 0x110000L;	// 1M + 64K HMA 
-#else
-					die("Out of memory");
-#endif
 				}
-#else
-				die("Not a bzImage format");
-#endif
 			}
 		}
 		movesetup();
@@ -296,25 +313,24 @@ end_realmode_switch:
 		mov	si, #0x200
 		cmp	si, _setup_version
 		jae	noversion
-		push	ds
-		mov	ds, _setupseg		// setup > 2.00 => 386+
-		xor	eax, eax
-		cdq				// clear edx
+		mov	es, _setupseg
+		seg	es
 		add	si, [si+14]
-		mov	cx, #3
+		mov	bx, #2
+		mov	cl, #4
+nextnumber:
+		xor	ax, ax
 nextdigit:
-		shl	al, #4
-		shl	ax, #4
-next:
+		shl	al, cl
+		shl	ax, cl
+		seg	es
 		lodsb
 		sub	al, #0x30
 		cmp	al, #9
 		jbe	nextdigit
-		shl	eax, #16
-		shld	edx, eax, #8
-		loop	next
-		pop	ds
-		mov	_kernel_version, edx
+		mov	[bx+_kernel_version], ah
+		dec	bx
+		jns	nextnumber
 noversion:
 		pop	si
 #endasm
@@ -332,52 +348,48 @@ void bootlinux(char *cmdline)
 {
 	dosshutdown();
 #asm
+	cld
 	mov	es, _setupseg
-#endasm
-	if (cmdline) {
-		if (setup_version <= 0x201) {
-#asm
+	mov	ax, _setup_version
+	cmp	ax, #0x200
+	jb	noinitrd
+		mov	di, #0x218
+		mov	si, #_initrd_addr
+		movsw
+		movsw
+		mov	si, #_initrd_size
+		movsw
+		movsw
+noinitrd:
+	pop	si	// return address
+	pop	si	// .bootlinux.cmdline[bp]
+	or	si, si
+	jz	nocmdline
+		cmp	ax, #0x201
 		mov	di, #0x0020
 		mov	ax, #0xA33F
-		stosw
-		mov	ax, #CMDLINE_OFFSET
-		stosw
-#endasm
-		}
-		else {
-#asm
+		mov	bx, #CMDLINE_OFFSET
+		push	bx
+		jbe	oldcmdline
 		mov	di, #0x0228
-		mov	eax, #SETUP_SEGMENT*16+CMDLINE_OFFSET
-		stosd
-#endasm
-		}
-#asm
-		xchg	ax, di
-		mov	si, .bootlinux.cmdline[bp]
+		mov	ax, es
+		mov	cl, #12
+		shr	ax, cl
+		xchg	ax, bx
+oldcmdline:
+		stosw
+		xchg	ax, bx
+		stosw
+		pop	di
 copy:
 		lodsb
 		stosb
 		or	al,al
 		jne	copy
-#endasm
-	}
-	if (setup_version >= 0x200) {
-#asm
-		mov	eax, _initrd_addr
-		mov	di, #0x218
-		stosd
-		mov	eax, _initrd_size
-		stosd
-#endasm
-	}
-#asm
+nocmdline:
 	push	es
 	pop	ss
 	mov	sp, #CMDLINE_OFFSET
-#endasm
-#ifdef ZIMAGE_SUPPORT
-#asm
-	cld
 	mov	ax, _mem
 	mov	dx, _mem+2
 	mov	bx, _zimage
@@ -395,7 +407,6 @@ copy:
 		  movsb
 		retf
 sysmove:
-#ifdef FULL_ZIMAGE
 		cmp	dx, #0x0010
 		jb	lowsys
 // bx first 64k page, dx:ax last byte+1
@@ -413,7 +424,7 @@ aligned:
 		mov	[si+0x10], cx	// limit = -1
 		mov	[si+0x18], cx	// limit = -1
 		mov	cx, #0x9300+SYSTEM_SEGMENT/0x1000
-		mov	bh, #0x93
+		//mov	bh, #0x93
 mvdown:
 		mov	[si+0x12+2], bx	// srce
 		mov	[si+0x1A+2], cx	// dest
@@ -427,14 +438,12 @@ mvdown:
 		cmp	dl, bl
 		ja	mvdown
 		jmp	notzimage
-#endif
 lowsys:
 // bx first segment, dx:ax last byte+1 (paragraph aligned)
-		mov	cl, #4
+		mov	cl, #4		// elks may run on a 8086
 		shr	ax, cl
-		mov	cl, #12
 		shl	dx, cl
-		or	ax, dx		// last segment+1
+		or	ah, dl		// last segment+1
 		mov	dx, #SYSTEM_SEGMENT
 		sub	ax, bx		// ax = paragraph count
 		sub	bx, dx
@@ -443,44 +452,45 @@ lowsys:
 		dec	dx
 sysmovelp:		// move ax paragraphs from bx+dx:0 to dx:0
 		mov	es, dx
-		mov	cx, dx
-		add	cx, bx
-		mov	ds, cx
-		sbb	cx, cx		// cx = 0 : -1
+		mov	si, dx
+		add	si, bx
+		mov	ds, si
+		sbb	si, si		// si = 0 : -1
 		cmc			// C  = 1 :  0
-		adc	dx, cx
+		adc	dx, si
+		mov	cl, #8
 		xor	di, di
 		xor	si, si
-		mov	cx, #8
 		rep
 		  movsw
 		dec	ax
 		jne	sysmovelp
 notzimage:
-	or	bp, bp
-	jz	notelks
-	push	ss
-	pop	ds
-	mov	cx, #0x100
-	mov	es, cx
-	mov	ch, #0x78	// do not overload SYSTEM_SEGMENT
-	xor	si, si
-	xor	di, di
-	push	es
-	rep
-	  movsw
-	pop	ss
-notelks:
-#endasm
-#endif
-#asm
 	mov	ax, ss
 	mov	ds, ax
-	mov	es, ax
-	add	ax, #0x20
+	dec	bp
+	jnz	notelks
+	mov	ah, #0x1
+	mov	ss, ax
+notelks:
+	push	ss
+	pop	es
+	xor	di, di
+	xor	si, si
+#ifdef LINUX001_SUPPORT
+	mov	cx, #0x0042
+	cmp	word ptr [si+0x3F], #0x3AE8
+	je	islinux001
+#endif
+	mov	cx, #0x7800	// do not overload SYSTEM_SEGMENT
+	rep
+	  movsw
+	push	es
+	pop	ds
+	xor	al, #0x20
+islinux001:
 	push	ax
-	xor	dx, dx
-	push	dx
+	push	cx
 	retf
 endsysmove:
 #endasm
