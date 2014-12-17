@@ -114,17 +114,48 @@ EOM
 	add_doscom $DATA > /dev/null
 	add_fdbootstrap $DATA > /dev/null
 	name=${3:-bootiso}
+	BOOTISOSZ=$((0x8000 - $OFS + $HSZ))
 	cat <<EOT
 
-#define $(echo $name | tr '[a-z]' '[A-Z]')SZ $((0x8000 - $OFS + $HSZ))
+#define $(echo $name | tr '[a-z]' '[A-Z]')SZ $BOOTISOSZ
 
 #ifdef WIN32
 static char $name[] = {
 $(hexdump -v -n $HSZ -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
 $(hexdump -v -s $OFS -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
-};
-#endif
 EOT
+
+for mode in data offset ; do
+	ofs=0
+	while read tag str; do
+		if [ "$mode" == "data" ]; then
+			echo -en "$str\0" | hexdump -v -e '"    " 16/1 "0x%02X, "' \
+				-e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' | \
+				sed 's/ 0x  ,/      /g'
+		else
+			if [ $ofs -eq 0 ]; then
+				cat <<EOT
+};
+#else
+static char *$name;
+#endif
+#define ELTORITOOFS	3
+EOT
+			fi
+			echo "#define $tag	$(($BOOTISOSZ+$ofs))"
+			ofs=$(($(echo -en "$str\0" | wc -c)+$ofs))
+		fi
+	done <<EOT
+READSECTORERR	Read sector failure.
+USAGE		Usage: isohybrid.exe file.iso [--forced]
+OPENERR		Can't open r/w the iso file.
+ELTORITOERR	No EL TORITO SPECIFICATION signature.
+CATALOGERR	Invalid boot catalog.
+HYBRIDERR	No isolinux.bin hybrid signature.
+SUCCESSMSG	Now you can create a USB key with your .iso file.\\\\nSimply rename it to a .exe file and run it.
+FORCEMSG	You can add --forced to proceed anyway.
+EOT
+done
 	rm -rf $DATA
 	exit ;;
 --exe)
@@ -148,14 +179,24 @@ esac
 main()
 {
 	[ $(id -u) -ne 0 ] && exec su -c "$0 $@" < /dev/tty
-	case "$1" in
-	--get)	shift
+	case "${1/--/-}" in
+	-get)	shift
 		uudecode | unlzma | tar xOf - $@
 		exit ;;
 	*)	cat > /dev/null
 	esac
 	
-	[ ! -s "$1" ] && echo "usage: $0 image.iso" 1>&2 && exit 1
+	[ ! -s "$1" ] && echo "usage: $0 image.iso [--undo]" 1>&2 && exit 1
+	case "${2/--/-}" in
+	-u*|-r*|-w*)
+	    case "$(get 0 $1)" in
+	    23117)
+		ddq if=$1 bs=512 count=2 skip=$(get 69 $1 1) of=$1 conv=notrunc
+		ddq if=/dev/zero bs=1k seek=1 count=31 of=$1 conv=notrunc ;;
+	    *)  ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc ;;
+	    esac
+	    exit 0
+	esac
 	case "$(get 0 $1)" in
 	23117)	echo "The file $1 is already an EXE file." 1>&2 && exit 1;;
 	0)	[ -x /usr/bin/isohybrid ] && isohybrid $1 && echo "Do isohybrid"
