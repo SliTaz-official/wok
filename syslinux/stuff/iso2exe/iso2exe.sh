@@ -26,14 +26,15 @@ add_rootfs()
 	$0 --get init > $TMP/init.exe
 	grep -q mount.posixovl.iso2exe $TMP/init.exe &&
 	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe \
-		2> /dev/null && echo "Store mount.posixovl..."
+		2> /dev/null && echo "Store mount.posixovl ($(wc -c \
+			< /usr/sbin/mount.posixovl) bytes) ..."
 	find $TMP -type f -print0 | xargs -0 chmod +x
 	( cd $TMP ; find * | cpio -o -H newc ) | \
 		lzma e $TMP/rootfs.gz -si 2> /dev/null
 	SIZE=$(wc -c < $TMP/rootfs.gz)
 	store 24 $SIZE $1
 	OFS=$(( $OFS - $SIZE ))
-	printf "Adding rootfs.gz file at %04X...\n" $OFS
+	printf "Adding rootfs.gz file at %04X (%d bytes) ...\n" $OFS $SIZE
 	cat $TMP/rootfs.gz | ddq of=$1 bs=1 seek=$OFS conv=notrunc
 	rm -rf $TMP
 }
@@ -41,7 +42,7 @@ add_rootfs()
 add_dosexe()
 {
 	OFS=$((0x7EE0))
-	printf "Adding DOS/EXE at %04X...\n" $OFS
+	printf "Adding DOS/EXE at %04X (%d bytes) ...\n" $OFS $((0x8000 - $OFS))
 	$0 --get bootiso.bin 2> /dev/null | \
 	ddq bs=1 skip=$OFS of=$1 seek=$OFS conv=notrunc
 }
@@ -50,16 +51,16 @@ add_doscom()
 {
 	SIZE=$($0 --get boot.com | wc -c)
 	OFS=$(( $OFS - $SIZE ))
-	printf "Adding DOS boot file at %04X...\n" $OFS
+	printf "Adding DOS boot file at %04X (%d bytes) ...\n" $OFS $SIZE
 	$0 --get boot.com | ddq of=$1 bs=1 seek=$OFS conv=notrunc
 	store 66 $(($OFS+0xC0)) $1
 }
 
 add_win32exe()
 {
-	printf "Adding WIN32 file at %04X...\n" 0
 	ddq if=/tmp/exe$$ of=$1 conv=notrunc
 	SIZE=$($0 --get win32.exe 2> /dev/null | tee /tmp/exe$$ | wc -c)
+	printf "Adding WIN32 file at %04X (%d bytes) ...\n" 0 $SIZE
 	ddq if=/tmp/exe$$ of=$1 conv=notrunc
 	printf "Adding bootiso head at %04X...\n" 0
 	$0 --get bootiso.bin 2> /dev/null > /tmp/exe$$
@@ -73,7 +74,7 @@ add_win32exe()
 	store 69 $(($SIZE/512)) $1 8
 	store 510 $((0xAA55)) $1
 	rm -f /tmp/exe$$ /tmp/coff$$
-	printf "Moving syslinux hybrid boot record at %04X ...\n" $SIZE
+	printf "Moving syslinux hybrid boot record at %04X (512 bytes) ...\n" $SIZE
 	ddq if=$2 bs=1 count=512 of=$1 seek=$SIZE conv=notrunc
 	OFS=$(($SIZE+512))
 }
@@ -82,13 +83,14 @@ add_fdbootstrap()
 {
 	SIZE=$($0 --get bootfd.bin 2> /dev/null | wc -c)
 	if [ $SIZE -ne 0 ]; then
-		OFS=$(( $OFS - $SIZE + 512 ))
-		printf "Adding floppy bootstrap file at %04X...\n" $OFS
+		SIZE=$(( $SIZE -  512 )) # sector 2 is data
+		OFS=$(( $OFS - $SIZE ))
+		printf "Adding floppy bootstrap file at %04X (%d bytes) ...\n" $OFS $SIZE
 		$0 --get bootfd.bin | \
 		ddq of=$1 bs=1 count=512 seek=$OFS conv=notrunc
 		$0 --get bootfd.bin | \
 		ddq of=$1 bs=1 skip=1024 seek=$((512 + $OFS)) conv=notrunc
-		store 28 $(($SIZE/512 - 1)) $1 8
+		store 28 $(($SIZE/512)) $1 8
 	fi
 }
 case "$1" in
@@ -206,15 +208,17 @@ main()
 	ddq if=$1 bs=512 count=1 of=/tmp/hybrid$$
 	ddq if=$1 bs=512 skip=2 count=20 of=/tmp/tazlito$$
 	add_win32exe $1 /tmp/hybrid$$
-	printf "Moving tazlito data record at %04X ...\n" $OFS
+	printf "Moving tazlito data record at %04X (512 bytes) ...\n" $OFS
 	ddq if=/tmp/tazlito$$ bs=1 count=512 of=$1 seek=$OFS conv=notrunc
 	rm -f /tmp/tazlito$$ /tmp/hybrid$$
+	HOLE=$(($OFS+512))
 	
 	# keep the largest room for the tazlito info file
 	add_dosexe $1
 	add_rootfs $1
 	add_doscom $1
 	add_fdbootstrap $1
+	printf "%d free bytes in %04X..%04X\n" $(($OFS-$HOLE)) $HOLE $OFS
 	store 26 ${RANDOM:-0} $1
 	i=66
 	n=0

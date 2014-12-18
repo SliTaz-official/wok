@@ -2,6 +2,11 @@
 
 DIALOG=dialog
 
+ddq()
+{
+	dd $@ 2> /dev/null
+}
+
 get()
 {
 	od -j $1 -N ${3:-2} -t u${3:-2} -An $2 2> /dev/null ||
@@ -28,6 +33,14 @@ umount_proc()
 	umount /proc
 }
 
+words2bin()
+{
+	for i in $@ ; do
+		printf '\\\\x%02X\\\\x%02X' $(($i&255)) $((($i>>8)&255)) | \
+			xargs echo -en
+	done
+}
+
 gettazboot()
 {
 	echo "Creating $(basename $1) ..."
@@ -36,12 +49,9 @@ gettazboot()
 	S=$((32+$L))
 	P=$((($S+511)/512))
 	E=$((4096-(32*$P)))
-	for i in 0x5A4D $(($S%512)) $P 0 2 $E -1 $((${2:-0}-16)) \
-			-2 0 256 -16 28 0x6C53 0x5469 0x7A61; do 
-		printf '\\\\x%02X\\\\x%02X' $(($i&255)) $((($i>>8)&255)) | \
-			xargs echo -en
-	done > $1
-	dd bs=1 count=$L skip=$(echo $O) if=/mnt/$ISO >> $1 2> /dev/null
+	words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 $((${2:-0}-16)) \
+			-2 0 256 -16 28 0x6C53 0x5469 0x7A61 > $1
+	ddq bs=1 count=$L skip=$(echo $O) if=/mnt/$ISO >> $1
 }
 
 checkmagic()
@@ -82,7 +92,7 @@ getuuid()
 tazusbinitfs()
 {
 	PAD=$(($(stat -c %s $1) % 4))
-	[ $PAD -ne 0 ] && dd if=/dev/zero bs=1 count=$((4 - $PAD)) >> $1
+	[ $PAD -ne 0 ] && ddq if=/dev/zero bs=1 count=$((4 - $PAD)) >> $1
 	mkdir -p /tmp/fs/etc /tmp/fs/lib /tmp/fs/home
 	cp -a /etc/locale.conf /tmp/fs/etc 2> /dev/null
 	cp -a /etc/keymap.conf /tmp/fs/etc 2> /dev/null
@@ -163,7 +173,7 @@ mount \$( (blkid /dev/[sh]d* || blkid) | grep \$val | sed 's/:.*//;q') /mnt
 arg subroot "Change root to directory"
 mount.posixovl -F /mnt/\$val -- -oallow_other -odefault_permissions -osuid
 mount --bind /mnt /mnt/\$val/mnt/dos
-#mount -o size=0 -t tmpfs tmpfs /mnt/\$val/mnt/dos/\$val
+mount -o size=0 -t tmpfs tmpfs /mnt/\$val/mnt/dos/\$val
 LDSO=\$(ls /mnt/\$val/lib/ld-* | sed q)
 export LD_LIBRARY_PATH=\$val/lib:\$val/usr/lib:/lib
   [ "$debug" = "true" ] && sh
@@ -195,7 +205,7 @@ doinstall()
 		return 1
 	fi
 	echo "Install root filesystem in /slitaz..."
-	if [ -n "$1" ]; then
+	if [ "$1" ]; then
 		if [ -d /media/cdrom/fs ]; then
 			( cd /mnt/slitaz/fs; find | cpio -o -H newc ) | gzip -9
 		else
@@ -308,7 +318,7 @@ start SliTaz Live with 'SliTaz RAM boot' menu.\n
 		cp -a /media/cdrom/fs/. /
 	else
 		for i in $(ls_r /media/cdrom/boot/rootfs*); do
-			unlzma < $i | (cd / ; cpio -idmu )
+			uncpio $i
 		done
 	fi
 	cp /tmp/fs/etc/* /etc
@@ -394,7 +404,7 @@ miss many of the failures that are detected by Memtest86.\n\n
 Please insert a blank disk in floppy drive.\n
 " 12 70
 	[ $? -eq 0 ] || return
-	dd if=/media/cdrom/boot/memtest of=/dev/fd0
+	ddq if=/media/cdrom/boot/memtest of=/dev/fd0
 }
 
 pxe()
@@ -424,7 +434,7 @@ from the Web using PXE and HTTP protocols.\n\n
 Please insert a blank disk in floppy drive.\n
 " 12 70
 	[ $? -eq 0 ] || return
-	dd if=/media/cdrom/boot/?pxe of=/dev/fd0
+	ddq if=/media/cdrom/boot/?pxe of=/dev/fd0
 }
 
 gotposixovl()
@@ -435,7 +445,7 @@ gotposixovl()
 
 xfile()
 {
-	[ -n "$(which $1)" ] && echo -en "\"$2\"	\"$3\""
+	[ "$(which $1)" ] && echo -en "\"$2\"	\"$3\""
 }
 
 cdfile()
@@ -466,19 +476,20 @@ on your hard disk and will emulate a CD-ROM during the boot process.\n\n
 Please insert a floppy in drive now.\n 
 " 10 70
 	[ $? -eq 0 ] || return
-	dd if=/mnt/$ISO of=/dev/fd0 bs=1 count=512 \
+	ddq if=/mnt/$ISO of=/dev/fd0 bs=1 count=512 \
 		skip=$(( $(get 66 /mnt/$ISO) - $sz ))
-	echo "$ISO" | dd of=/dev/fd0 bs=512 seek=1 count=1
-	dd if=/mnt/$ISO of=/dev/fd0 bs=1 count=$sz seek=2 \
+	echo "$ISO" | ddq of=/dev/fd0 bs=512 seek=1 count=1
+	ddq if=/mnt/$ISO of=/dev/fd0 bs=1 count=$sz seek=2 \
 		skip=$(( $(get 66 /mnt/$ISO) - $sz + 512 ))
 }
 
 usbdev()
 {
+	echo "Wait 5 seconds for USB devices..."
 	sleep 5
 	DEV="$(grep -l 1 /sys/block/*/removable | \
 		sed 's|/sys/block/\(.*\)/removable|\1|')"
-	[ -n "$DEV" ] || return
+	[ "$DEV" ] || return
 	exec 3>&1
 	device=`$DIALOG  --clear \
 	--title " Select your USB key " \
@@ -499,14 +510,51 @@ usbbootkey()
 		--title " Create a USB boot key " \
 		--yes-label "Continue" --yesno \
 "\nThe USB key will be used like a CD-ROM. You will not be able to write
-any data on it.\n\n
+any data on the boot partition.\n\n
+An extra FAT32 partition will be created with the remaining free space.\n\n
 You should choose 'USB key read/write installation' to be
 able to save the package updates or your own configuration and data files.\n\n
 Please plug your USB stick in now.\n 
-" 13 70
+" 16 70
 	[ $? -eq 0 ] || return
 	usbdev || return
-	dd if=/mnt/$ISO of=$device
+	
+	# perform dd in progess bar
+	max=$(($(stat -c %s /mnt/$ISO)/1024/1024))
+	mkfifo /tmp/fifodd
+	dialog --gauge " The ISO image transfer can be long. Please wait..." \
+			6 70 0 < /tmp/fifodd &
+	i=0; ddq if=/mnt/$ISO bs=1024k | ( 
+		while ddq bs=1024k count=1 ; do 
+		i=$(($i + 1))
+		[ $i -gt $max ] && break
+		echo $((($i*100)/$max)) > /tmp/fifodd
+	done ) > $device
+
+	# partition + fat32 format for the remining space
+	od -j 466 -N 12 -t u2 -An $device | { read dx cx ol oh ll lh 
+	if [ $dx -eq $((0x3F17)) ]; then
+		cx=$(($cx & 0xFF00))
+		ofs=$(($ll+($lh<<16)))
+		n=$(($(cat /sys/block/${device#/dev/}/size)-$ofs))
+		m=$(($cx+($n/8)))
+		[ $m -gt $((0x3FF00)) ] && m=$((0x3FF00))
+		m=$((($m & 0xFF00)+(($m>>16)<<6)))
+		words2bin 0 $((0x101+$cx)) 0x3F0B $((32+$m)) \
+			$ll $lh $(($n & 0xFFFF)) $(($n >> 16)) | \
+			ddq bs=1 seek=446 of=$device
+		if [ "$(which mkdosfs 2> /dev/null)" ]; then
+			losetup -o $((512*$ofs)) /dev/loop0 $device
+			mkdosfs -n "SLITAZ BOOT" /dev/loop0
+			words2bin $(($ofs & 0xFFFF)) $(($ofs >> 16)) | \
+				ddq bs=1 seek=28 of=/dev/loop0
+			losetup -d /dev/loop0
+		fi
+ 	fi ; }
+ 	
+ 	# kill dialog --gauge
+	sleep 1
+	rm /tmp/fifodd
 }
 
 usbkey()
@@ -630,7 +678,7 @@ while true; do
 	cat > /tmp/dialog <<EOT
 $DIALOG  --clear \
 	--title " Welcome to SliTaz " \
-	--menu "" 21 70 15 \
+	--menu "" 23 70 17 \
 $(xfile tazkeymap	"tazkeymap"	"Select keyboard ($keymap)") \
 $(xfile tazlocale	"tazlocale"	"Select locale ($locale)") \
 $(cdfile boot/bzImage	"live"		"SliTaz RAM boot") \

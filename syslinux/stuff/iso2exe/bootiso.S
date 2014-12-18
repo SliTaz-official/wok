@@ -129,11 +129,11 @@ exestart:
 	movw	$0x100, %si
 	movw	-126(%si), %ax
 	cwd				// clear dx
-	pushw	%dx			// dos exit
+	pushw	%dx			// dos exit()
 	cmpb	$0x2F, %al
 	movw	$0x3000+EXESTR(help), %ax
-	jbe	abort
-	int	$0x21
+	je	abort
+	int	$0x21			// get DOS version
 	cmpb	$3, %al
 	movb	$EXESTR(noDOS3), %al
 	jb	abort
@@ -172,7 +172,7 @@ tst386:
 	popfw			// < 286 : flags[12..15] are forced 1
 	pushfw			// = 286 : flags[12..15] are forced 0
 	popw	%bx		// > 286 : only flags[15] is forced 0
-	popfw			// restore flags
+	popfw			// restore flags (IOPL)
 	addb	%ah, %bh	// test F0 and 00 cases
 	cmpb	%ah, %bh
 	movb	$EXESTR(no386), %al
