@@ -521,14 +521,13 @@ Please plug your USB stick in now.\n
 	
 	# perform dd in progess bar
 	max=$(($(stat -c %s /mnt/$ISO)/1024/1024))
-	mkfifo /tmp/fifodd
-	dialog --gauge " The ISO image transfer can be long. Please wait..." \
-			6 70 0 < /tmp/fifodd &
 	i=0; ddq if=/mnt/$ISO bs=1024k | ( 
-		while ddq bs=1024k count=1 ; do 
+	while ddq bs=1024k count=1 ; do 
 		i=$(($i + 1))
 		[ $i -gt $max ] && break
-		echo $((($i*100)/$max)) > /tmp/fifodd
+		echo $((($i*100)/$max)) | dialog --gauge \
+			" The ISO image transfer can be long. Please wait..." \
+			6 70 0 > /dev/tty 2>&1
 	done ) > $device
 
 	# partition + fat32 format for the remining space
@@ -551,10 +550,6 @@ Please plug your USB stick in now.\n
 			losetup -d /dev/loop0
 		fi
  	fi ; }
- 	
- 	# kill dialog --gauge
-	sleep 1
-	rm /tmp/fifodd
 }
 
 usbkey()
