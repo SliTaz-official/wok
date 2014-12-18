@@ -361,8 +361,7 @@ void bootlinux(char *cmdline)
 		movsw
 		movsw
 noinitrd:
-	pop	si	// return address
-	pop	si	// .bootlinux.cmdline[bp]
+	mov	si, [bp+4]	// .bootlinux.cmdline[bp]
 	or	si, si
 	jz	nocmdline
 		cmp	ax, #0x201
