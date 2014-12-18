@@ -127,10 +127,10 @@ halt:
 exestart:
 	cld
 	movw	$0x100, %si
-	movw	-126(%si), %ax
+	movw	-127(%si), %ax
 	cwd				// clear dx
 	pushw	%dx			// dos exit()
-	cmpb	$0x2F, %al
+	cmpw	$0x2F20, %ax
 	movw	$0x3000+EXESTR(help), %ax
 	je	abort
 	int	$0x21			// get DOS version

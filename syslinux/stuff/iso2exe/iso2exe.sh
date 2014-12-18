@@ -22,7 +22,7 @@ add_rootfs()
 {
 	TMP=/tmp/iso2exe$$
 	mkdir -p $TMP/bin $TMP/dev
-	cp -a /dev/?d?* $TMP/dev
+	cp -a /dev/?d?* /dev/tty $TMP/dev
 	$0 --get init > $TMP/init.exe
 	grep -q mount.posixovl.iso2exe $TMP/init.exe &&
 	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe \
