@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="xtron"
+VERSION="1.1a"
+CATEGORY="games"
+SHORT_DESC="Simple X game based on light-cycle race from the movie TRON."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WEB_SITE="ftp://ibiblio.org/pub/Linux/games/arcade/xtron-1.1a.lsm"
+WGET_URL="$(dirname $WEB_SITE)/$TARBALL"
+
+DEPENDS="xorg-libXpm xorg-libXau libxcb"
+BUILD_DEPENDS="xorg-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|/usr/X386|/usr|' Makefile
+	sed -i 's|./pixmaps/|/usr/share/games/xtron/|' xtronrc
+	sed -i 's|usr/X11/lib|etc|' resource.c xtronrc
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/games $fs/usr/share/games $fs/etc/X11/app-defaults
+	mkdir -p $fs/usr/share/applications
+	cp -a $src/xtron $fs/usr/games
+	cp -a $src/pixmaps $fs/usr/share/games/xtron
+	cp -a $src/xtronrc $fs/etc/X11/app-defaults/
+	cat > $fs/usr/share/applications/xtron.desktop <<EOT
+[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=xtron
+Exec=xtron
+Icon=/usr/share/games/xtron/Xtron_icon.xpm
+Terminal=false
+Categories=Application;Game;
+EOT
+}
