@@ -408,7 +408,7 @@ mkfloppy()
 	R=$((1 + $(get 497 $1 1) + 1 + ($(get 500 $1)-1)/32))
 	[ $R -lt 2500 ] || return
 	[ $((($(get 500 $file)-1) & 31)) -lt 30 ] &&
-	dd if=$file bs=32 count=1 seek=$(($R*16 - 1)) of=/dev/fd0
+	ddq if=$file bs=32 count=1 seek=$(($R*16 - 1)) of=/dev/fd0
 	G="18 0 2 0 0 0 0 0"
 	[ $J -gt 25 ] || G=""
 	F=0
@@ -506,11 +506,13 @@ on your hard disk and will emulate a CD-ROM during the boot process.\n\n
 Please insert a floppy in drive now.\n 
 " 10 70
 	[ $? -eq 0 ] || return
-	ddq if=/mnt/$ISO of=/dev/fd0 bs=1 count=512 \
+	ddq if=/mnt/$ISO of=/tmp/bootiso bs=1 count=512 \
 		skip=$(( $(get 66 /mnt/$ISO) - $sz ))
-	echo "$ISO" | ddq of=/dev/fd0 bs=512 seek=1 count=1
-	ddq if=/mnt/$ISO of=/dev/fd0 bs=1 count=$sz seek=2 \
+	echo "$ISO" | ddq of=/tmp/bootiso bs=512 seek=1 count=1
+	ddq if=/mnt/$ISO of=/tmp/bootiso bs=1 count=$sz seek=2 \
 		skip=$(( $(get 66 /mnt/$ISO) - $sz + 512 ))
+	mkfloppy /tmp/bootiso
+	rm -f /tmp/bootiso
 }
 
 usbdev()
