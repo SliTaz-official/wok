@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include "iso9660.h"
 #define __ROCKRIDGE
+#asm
+		use16	86
+#endasm
 
 char *isofilename;
 unsigned long isofileofs, isofilesize;
@@ -121,12 +124,56 @@ int isoreaddir(int restart)
 	return 0;
 }
 
+static int cpuhaslm(void)
+{
+#asm
+	pushf			// save flags
+		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
+	mov	ax, #0x1000
+	push	ax
+	popf			// < 286 : flags[12..15] are forced 1
+	pushf			// = 286 : flags[12..15] are forced 0
+	pop	bx		// > 286 : only flags[15] is forced 0
+	popf			// restore flags (IOPL)
+	add	bh, ah		// test F0 and 00 cases
+	cmp	bh, ah
+	cbw
+	jbe	not386		// C=8086/80186, Z=80286
+	use16	386
+	pushfd
+	pushfd
+	pop	ebx
+	mov	ecx, ebx
+	btc	ebx, #21	// toggle CPUID feature bit
+	push	ebx
+	popfd
+	pushfd
+	pop	ebx
+	popfd
+	xor	ebx, ecx
+	bt	ebx, #21	// CPUID feature bit ?
+	jnc	nocpuid
+	mov	eax, #0x80000001	// Extended Processor Info and Feature Bits
+	.byte	0x0F, 0xA2	// cpuid
+	xor	ax, ax
+	bt	edx, #29	// LM feature bit ?
+	adc	ax, ax
+	use16	86
+nocpuid:
+not386:
+#endasm
+}
+
 #define IS_DIR(x)( ((x) & ~0777) == 040000)
-int isoopen(char *name)
+int isoopen(char *filename)
 {
 	int restart;
-	char *s, c;
+	char *name, *s, c;
+	int _64bits = cpuhaslm();
 
+retry32:
+	name = filename;
 	while (*name == '/') {
 		name++;
 		isoreset(NULL);
@@ -137,7 +184,14 @@ int isoopen(char *name)
 		c = *s;
 		*s = 0;
 		for (restart = 1; isoreaddir(restart) == 0; restart = 0) {
-			if (strcmp(name, isofilename)) continue;
+			char *n = name, *i = isofilename;
+			if (_64bits) {
+				int len = strlen(name);
+				if (strncmp(name, isofilename), len) continue;
+				n = "64";
+				i += len;
+			}
+			if (strcmp(n, i)) continue;
 			if (IS_DIR(isofilemod)) {
 				isodirofs = isofileofs;
 				isodirsize = isofilesize;
@@ -148,6 +202,11 @@ int isoopen(char *name)
 				}
 			}
 			return 0;
+		}
+		if (_64bits) {
+			_64bits = 0;
+			*s = c;
+			goto retry32;
 		}
 		return -1;
 	  next: ;

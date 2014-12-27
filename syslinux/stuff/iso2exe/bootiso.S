@@ -90,9 +90,7 @@ next:
 dxfound:
 	movw	%dx, 10(%bp)
 	call	checkboot
-noboot:
 	.ascii	"No isolinux mbr."
-noboot_end:
 
 	.org	0x0080
 ////////////////////////////// EXE/PE header //////////////////////////////////
@@ -109,13 +107,12 @@ checkboot:
 	iret
 
 error:
-	movw	$noboot_end-noboot, %cx
-putsloop:
 	lodsb
 	movw	$7, %bx
 	movb	$0xE, %ah
 	int	$0x10
-	loop	putsloop
+	cmp	$'.', %al
+	jne	error
 halt:
 	hlt
 	jmp	halt
@@ -128,10 +125,13 @@ exestart:
 	cld
 	movw	$0x100, %si
 	movw	-127(%si), %ax
+	cmpb	$0x2F, %al
+	je	ishelp
+	cmpw	$0x2F20, %ax
+ishelp:
+	movw	$0x3000+EXESTR(help), %ax
 	cwd				// clear dx
 	pushw	%dx			// dos exit()
-	cmpw	$0x2F20, %ax
-	movw	$0x3000+EXESTR(help), %ax
 	je	abort
 	int	$0x21			// get DOS version
 	cmpb	$3, %al
@@ -197,9 +197,9 @@ is86:
 	movw	$0x0100, %di
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
-	movb	$0x7D, %ch
+	movb	$0x7C/2, %ch	// 31K-31.5K, > com length
 	rep
-	movsb
+	movsw
 moveret:
 	ret
 
@@ -213,12 +213,13 @@ tstvcpi:
 	movw	%dx, %ds		// %dx = 0
 	movw	0x67*4+2, %ds
 	movw	$10, %si
-	lodsl
+	lodsw
 	xorw	$0x4D45, %ax		// EM(MX) or EM(MQ)
-	lodsl
+	lodsw
+	lodsw
 	popw	%ds
 	jne	NoVCPI
-	xorl	$0x30585858, %eax	// XXX0
+	xorw	$0x5858, %ax		// XX(X0)
 	movw	$EXEADRS(CmdVCPI), %si
 ChkVCPI:
 NoVCPI:
@@ -237,11 +238,10 @@ CmdVCPI:
 	.byte	0x46			// version
 	.byte	0
 
-// -------------------------------------------------------------------
-
-help:
-	.ascii	"SliTaz GNU/L"		// SliTaz GNU/Linux boot loader
-	.byte	EXESTR(iloader)
+// --------------- Must be in 7F40 7FFF range ------------------------
+//noloader:
+//	.ascii	"No isol"		// No isolinux boot loader
+//	.byte	EXESTR(iloader)
 no386:
 	.ascii	"No 386"		// No 386+
 	.byte	EXESTR(plus)
@@ -258,20 +258,12 @@ rmPaging:
 	.ascii	"Invalid: paging + "	// Invalid: paging + real mode.
 realmodemsg:
 	.ascii	"real"			// real mode.
-// --------------- Must be in 00C0 013F range ------------------------
+// --------------- Must be in 7FC0 7FFF range ------------------------
 mode:
 	.ascii	" mod"
 eeol:
 	.ascii  "e"
 	.byte	EXESTR(eol)
-//noloader:
-//	.ascii	"No isol"		// No isolinux boot loader
-iloader:
-	.ascii	"inux boot loader"
-eol:
-	.ascii	"."
-eol2:
-	.asciz	"\r\n"
 noDOS3:
 	.ascii	"No DOS 3"		// No DOS 3.0+
 dot0:
@@ -279,6 +271,14 @@ dot0:
 plus:
 	.ascii	"+"
 	.byte	EXESTR(eol2)
+help:
+	.ascii	"SliTaz GNU/L"		// SliTaz GNU/Linux boot loader
+iloader:
+	.ascii	"inux boot loader"
+eol:
+	.ascii	"."
+eol2:
+	.asciz	"\r\n"
 
 	.org	0x8000
 ////////////////////////// ISO9660 header /////////////////////////////////////

@@ -101,6 +101,7 @@ init_ss:
 	.word	-( HEADER_SIZE / 16 )	// Initial (relative) CS value
 //	.word	0x001C			// File address of relocation table
 //	.word	0,0,0			// Overlay number
+	.ascii	"(SliTaz)"
 
 start:
 	pushw	%dx

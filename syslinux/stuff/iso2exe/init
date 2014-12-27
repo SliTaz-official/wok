@@ -33,6 +33,13 @@ umount_proc()
 	umount /proc
 }
 
+bytes2bin()
+{
+	for i in $@ ; do
+		printf '\\\\x%02X' $(($i&255)) | xargs echo -en
+	done
+}
+
 words2bin()
 {
 	for i in $@ ; do
@@ -218,7 +225,7 @@ doinstall()
 		if [ -d /media/cdrom/fs ]; then
 			cp -a /media/cdrom/fs/. /mnt/slitaz
 		elif is_loram ; then
-			for i in /media/cdrom/boot/rootfs?.* ; do
+			for i in /media/cdrom/boot/rootfs?*.* ; do
 				[ -s $(basename $i) ] && continue
 				cpio -i $i
 			done
@@ -393,6 +400,31 @@ miss many of the failures that are detected by Memtest86.\n
 	cp /media/cdrom/boot/memtest /mnt/memtest.exe
 }
 
+mkfloppy()
+{
+	ddq if=$1 of=/dev/fd0
+	[ $(($(get 0 $1) - 0x5A4D)) -eq 0 ] || return
+	J=$(($(get 3 $1 1) + 0x02))
+	R=$((1 + $(get 497 $1 1) + 1 + ($(get 500 $1)-1)/32))
+	[ $R -lt 2500 ] || return
+	[ $((($(get 500 $file)-1) & 31)) -lt 30 ] &&
+	dd if=$file bs=32 count=1 seek=$(($R*16 - 1)) of=/dev/fd0
+	G="18 0 2 0 0 0 0 0"
+	[ $J -gt 25 ] || G=""
+	F=0
+	for i in 1 2 3; do
+		F=$((((2880-$R-$F-$F)*3+1023)/1024))
+	done
+	bytes2bin 0xEB $J 0x90 0x20 0x20 0x20 0x20 0x20 0x20 0x20 0x20 \
+		0 2 2 $(($R%256)) $(($R/256)) 2 64 0 64 11 0xF0 $F 0 \
+		$G | ddq bs=1 of=/dev/fd0
+	ddq if=/dev/zero bs=512 count=$((4+$F+$F)) seek=$R of=/dev/fd0
+	for i in $R $(($R+$F)) ; do
+		bytes2bin 0xF0 0xFF 0xFF | ddq bs=512 seek=$i of=/dev/fd0
+	done
+	echo -n $(basename $1) | ddq bs=1 seek=3 count=8 of=/dev/fd0
+}
+
 fdmemtest()
 {
 	$DIALOG --clear \
@@ -403,8 +435,7 @@ computers. BIOS based memory tests are a quick, cursory check and often
 miss many of the failures that are detected by Memtest86.\n\n
 Please insert a blank disk in floppy drive.\n
 " 12 70
-	[ $? -eq 0 ] || return
-	ddq if=/media/cdrom/boot/memtest of=/dev/fd0
+	[ $? -eq 0 ] && mkfloppy /media/cdrom/boot/memtest
 }
 
 pxe()
@@ -433,8 +464,7 @@ and the complete SliTaz compressed root filesystem will be loaded into RAM
 from the Web using PXE and HTTP protocols.\n\n
 Please insert a blank disk in floppy drive.\n
 " 12 70
-	[ $? -eq 0 ] || return
-	ddq if=/media/cdrom/boot/?pxe of=/dev/fd0
+	[ $? -eq 0 ] && mkfloppy /media/cdrom/boot/?pxe
 }
 
 gotposixovl()

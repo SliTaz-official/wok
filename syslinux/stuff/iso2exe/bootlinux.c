@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include "libdos.h"
 #include "iso9660.h"
+#asm
+		use16	86
+#endasm
 
 #define ELKSSIG		0x1E6
 #define SETUPSECTORS	0x1F1
@@ -47,8 +50,10 @@ static int vm86(void)
 		mov	ax, _iselks
 		dec	ax
 		je	fakerealmode	// elks may run on a 8086
+		use16	286
 		smsw	ax		// 286+
 		and	ax, #1		// 0:realmode	1:vm86
+		use16	86
 fakerealmode:
 #endasm
 } 
@@ -95,20 +100,23 @@ mvbuffer:
 		  movw
 		jmp	movedone
 movehiz:				// 30
+		use16	286		// more than 1Mb => 286+
 		mov	cx, #9		// 2E..1E
 zero1:
 		push	ax
 		loop	zero1
-		push	dword [si]	// 1A mem.base
+		push	word [si+2]
+		push	word [si]	// 1A mem.base
 		push	#-1		// 18
 		push	ax		// 16
-		cwde
-		cdq
-		mov	dx, ds
-		shl	edx, #4
-		mov	ax, #_buffer
-		add	edx, eax
-		push	edx		// 12 linear_address(buffer)
+		mov	ax, ds
+		mov	dx, ax
+		shl	ax, #4
+		shr	dx, #12
+		add	ax, #_buffer
+		adc	dx, #0
+		push	dx
+		push	ax
 		push	#-1		// 10
 		mov	cl, #8		// 0E..00
 zero2:
@@ -124,6 +132,7 @@ zero2:
 		xchg	[si+0x1F], al	// bits 24..31
 		int	0x15
 		add	sp, #0x30
+		use16	86
 movedone:
 		pop	di
 		pop	si
@@ -427,11 +436,13 @@ aligned:
 mvdown:
 		mov	[si+0x12+2], bx	// srce
 		mov	[si+0x1A+2], cx	// dest
-		pusha			// more than 1Mb => 286+
+		use16	286		// more than 1Mb => 286+
+		pusha
 		mov	cx, #0x8000
 		mov	ah, #0x87
 		int	0x15
 		popa
+		use16	86
 		inc	bx
 		inc	cx
 		cmp	dl, bl

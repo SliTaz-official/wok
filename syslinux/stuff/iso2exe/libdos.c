@@ -1,4 +1,7 @@
 #include "libdos.h"
+#asm
+		use16	86
+#endasm
 
 char *progname(void)
 {
@@ -165,7 +168,10 @@ step:
 		pop	si
 		jne	stepagain
 		seg	cs
-		lss	sp, stack
+		lds	di, stack
+		push	ds
+		pop	ss
+		mov	sp, di
 		pop	ds
 		pop	di
 		pop	si
