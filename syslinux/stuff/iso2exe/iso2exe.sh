@@ -18,6 +18,15 @@ get()
 	echo $(od -j $(($1)) -N ${3:-2} -t u${3:-2} -An $2)
 }
 
+compress()
+{
+	if [ "$(which xz 2> /dev/null)" ]; then
+		xz -z -e --format=lzma --lzma1=mode=normal --stdout
+	else
+		lzma e -si -so
+	fi 2> /dev/null
+}
+
 add_rootfs()
 {
 	TMP=/tmp/iso2exe$$
@@ -29,8 +38,7 @@ add_rootfs()
 		2> /dev/null && echo "Store mount.posixovl ($(wc -c \
 			< /usr/sbin/mount.posixovl) bytes) ..."
 	find $TMP -type f -print0 | xargs -0 chmod +x
-	( cd $TMP ; find * | cpio -o -H newc ) | \
-		lzma e $TMP/rootfs.gz -si 2> /dev/null
+	( cd $TMP ; find * | cpio -o -H newc ) | compress > $TMP/rootfs.gz
 	SIZE=$(wc -c < $TMP/rootfs.gz)
 	store 24 $SIZE $1
 	OFS=$(( $OFS - $SIZE ))
@@ -98,7 +106,7 @@ case "$1" in
 	shift
 	ls -l $@
 	cat >> $0 <<EOM
-$(tar cf - $@ | lzma e -si -so | uuencode -m -)
+$(tar cf - $@ | compress | uuencode -m -)
 EOT
 EOM
 	sed -i '/^case/,/^esac/d' $0

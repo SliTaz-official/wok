@@ -82,12 +82,23 @@ getiso()
 
 uncpio()
 {
-	echo "Extracting $(basename $1) ..."
+	echo -en "\n Extracting $(basename $1) ..."
 	case $(get 0 $1) in
 	*35615)	( zcat || gunzip ) ;;
+	*14333) unxz ;;
 	*\ 93)	unlzma ;;
 	*)	cat ;;
 	esac < $1 | ( cd ${2:-/} ; cpio -idmu > /dev/null 2>&1 )
+}
+
+dotwait()
+{
+	echo -n "${1:-Install filesystem}.."
+	touch /tmp/wait
+	while [ -e /tmp/wait ]; do
+		echo -n "." > /dev/tty0
+		sleep 1
+	done &
 }
 
 getuuid()
@@ -140,12 +151,12 @@ EOT
 
 mkinitrd()
 {
-	echo "Creating $(basename $1) ..."
+	dotwait "Creating $(basename $1) "
 	for i in bin lib dev proc tmp mnt etc ; do
 		mkdir -p /tmp/fs/$i
 	done
-	for i in /dev/console /dev/null /dev/tty /dev/tty1 /dev/tty2 /dev/fuse \
-		 /dev/hd* /dev/sd* ; do
+	for i in /dev/console /dev/null /dev/tty /dev/tty0 /dev/tty1 /dev/tty2 \
+		 /dev/fuse /dev/hd* /dev/sd* ; do
 		cp -a $i /tmp/fs$i
 	done
 	for i in /bin/busybox $(which mount.posixovl) $(which blkid); do
@@ -189,7 +200,7 @@ exec /bin/switch_root /mnt \${LDSO#/mnt/} \$val/usr/sbin/chroot \$val /sbin/init
 EOT
 	chmod +x /tmp/fs/init
 	( cd /tmp/fs ; find * | cpio -o -H newc ) | lzma e $1 -si 2> /dev/null
-	rm -rf /tmp/fs
+	rm -rf /tmp/fs /tmp/wait
 }
 
 is_loram()
@@ -211,7 +222,7 @@ doinstall()
 		sleep 5
 		return 1
 	fi
-	echo "Install root filesystem in /slitaz..."
+	dowait "Install root filesystem in /slitaz.."
 	if [ "$1" ]; then
 		if [ -d /media/cdrom/fs ]; then
 			( cd /mnt/slitaz/fs; find | cpio -o -H newc ) | gzip -9
@@ -245,7 +256,7 @@ doinstall()
 		initrd=initrd
 		extraargs="mount=$(getuuid) subroot=slitaz"
 	fi
-	echo "Install boot files..."
+	echo -en "\nInstall boot files..."
 	for i in /media/cdrom/boot/bzImage /media/cdrom/boot/*pxe* \
 		/media/cdrom/boot/isolinux/he* /media/cdrom/boot/isolinux/opt* \
 		/media/cdrom/README /media/cdrom/boot/memtest* ; do
@@ -265,9 +276,10 @@ EOT
 		/mnt/slitaz/boot/README
 	[ -d /mnt/slitaz/usr/sbin -a ! -x /mnt/slitaz/usr/sbin/mount.posixovl ] &&
 	cp $(which mount.posixovl) /mnt/slitaz/usr/sbin
+	rm -f /tmp/wait
 false &&
-	! grep -qs tazboot /mnt/boot.ini && echo "Update boot.ini ..." &&
-	unix2dos >> /mnt/boot.ini <<EOT
+	[ -s /mnt/boot.ini ] && ! grep -qs tazboot /mnt/boot.ini &&
+	echo "Update boot.ini ..." && unix2dos >> /mnt/boot.ini <<EOT
 C:\\slitaz\\boot\\tazboot.exe="SliTaz"
 EOT
 false &&
@@ -321,6 +333,7 @@ start SliTaz Live with 'SliTaz RAM boot' menu.\n
 " 19 70
 	[ $? -eq 0 ] || return
 	doinstall tazusblike || return
+	dotwait 
 	if [ -d /media/cdrom/fs ]; then
 		cp -a /media/cdrom/fs/. /
 	else
@@ -330,6 +343,7 @@ start SliTaz Live with 'SliTaz RAM boot' menu.\n
 	fi
 	cp /tmp/fs/etc/* /etc
 	echo "/home=$(getuuid)/slitaz" > /cmdline
+	rm -f /tmp/wait
 	[ -x /init1 ] || return
 	umount -d /media/cdrom
 	umount /mnt/slitaz
@@ -346,7 +360,7 @@ tazboot()
 		--title " SliTaz bootloader for DOS " \
 		--yes-label "Install" --yesno \
 "\nThe file TAZBOOT.EXE will be created in the top directory. It supports
-a bzImage linux kernel, multiple initramfs, a kernel command line and
+any linux kernel, multiple initramfs, a kernel command line and
 an ISO image file loopback (retrieves files from an ISO file).\n\n
 Usage: tazboot.exe [[@commands]|[kernel=<bzimage>] 
 [initrd=<rootfs>[,<rootfs2>...]] [iso=<isofile>] cmdline args ...]\n\n
@@ -365,8 +379,9 @@ Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n
 
 md5()
 {
-	echo "Checking files..."
-	( cd /media/cdrom ; md5sum -c md5sum ) > /tmp/data
+	dotwait "Checking files"
+	( cd /media/cdrom ; md5sum -c md5sum* ) > /tmp/data
+	rm -f /tmp/wait
 	$DIALOG --clear \
 		--title " Checked files " \
 		--textbox /tmp/data 24 78
@@ -387,10 +402,23 @@ bootlog()
 		--textbox /tmp/dmesg 24 78
 }
 
+bzimage()
+{
+	$DIALOG --clear \
+		--title " Create linux.exe ? " \
+		--yes-label "Install" --yesno \
+"\nLinux.exe launches the linux kernel under DOS (in real mode only).
+The cmdline arguments are supported except initrd=, vga= (you can try 'rdev -v')
+and mem= (partially).\n\nExample:\nC:\\> linux.exe root=/dev/hda2 ro panic=60\n
+" 12 70
+	[ $? -eq 0 ] || return
+	cp /media/cdrom/boot/bzImage /mnt/linux.exe
+}
+
 memtest()
 {
 	$DIALOG --clear \
-		--title " Memtest86 " \
+		--title " Create memtest.exe ? " \
 		--yes-label "Install" --yesno \
 "\nMemtest86 is a thorough, stand alone memory test for x86 architecture
 computers. BIOS based memory tests are a quick, cursory check and often
@@ -402,12 +430,13 @@ miss many of the failures that are detected by Memtest86.\n
 
 mkfloppy()
 {
+	dotwait "Create a $(basename $1) boot floppy"
 	ddq if=$1 of=/dev/fd0
 	[ $(($(get 0 $1) - 0x5A4D)) -eq 0 ] || return
 	J=$(($(get 3 $1 1) + 0x02))
 	R=$((1 + $(get 497 $1 1) + 1 + ($(get 500 $1)-1)/32))
 	[ $R -lt 2500 ] || return
-	[ $((($(get 500 $file)-1) & 31)) -lt 30 ] &&
+	[ $((($(get 500 $1)-1) & 31)) -lt 30 ] &&
 	ddq if=$file bs=32 count=1 seek=$(($R*16 - 1)) of=/dev/fd0
 	G="18 0 2 0 0 0 0 0"
 	[ $J -gt 25 ] || G=""
@@ -423,6 +452,7 @@ mkfloppy()
 		bytes2bin 0xF0 0xFF 0xFF | ddq bs=512 seek=$i of=/dev/fd0
 	done
 	echo -n $(basename $1) | ddq bs=1 seek=3 count=8 of=/dev/fd0
+	rm -f /tmp/wait
 }
 
 fdmemtest()
@@ -440,8 +470,9 @@ Please insert a blank disk in floppy drive.\n
 
 pxe()
 {
+	pxe=$(ls /media/cdrom/boot/?pxe)
 	$DIALOG --clear \
-		--title " SliTaz Web boot " \
+		--title " Create $(basename $pxe).exe ? " \
 		--yes-label "Install" --yesno \
 "\nBoot your operating system from the internet and enjoy a full system
 working entirely in RAM with speed and stability in mind. The Linux Kernel
@@ -449,7 +480,6 @@ and the complete SliTaz compressed root filesystem will be loaded into RAM
 from the Web using PXE and HTTP protocols.\n
 " 12 70
 	[ $? -eq 0 ] || return
-	pxe=$(ls /media/cdrom/boot/?pxe)
 	cp $pxe /mnt/$(basename $pxe).exe
 }
 
@@ -480,7 +510,14 @@ xfile()
 
 cdfile()
 {
-	[ -s /media/cdrom/$1 ] && echo -en "\"$2\"	\"$3\""
+	for i in ${1//,/ }; do
+		[ -s /media/cdrom/$i ] && echo -en "\"$2\"	\"$3\"" && break
+	done
+}
+
+cdfilex()
+{
+	[ "$(which kexec)" ] && cdfile "$@"
 }
 
 cdexe()
@@ -517,8 +554,9 @@ Please insert a floppy in drive now.\n
 
 usbdev()
 {
-	echo "Wait 5 seconds for USB devices..."
+	dotwait "Wait 5 seconds for USB devices"
 	sleep 5
+	rm -f /tmp/wait
 	DEV="$(grep -l 1 /sys/block/*/removable | \
 		sed 's|/sys/block/\(.*\)/removable|\1|')"
 	[ "$DEV" ] || return
@@ -559,7 +597,7 @@ Please plug your USB stick in now.\n
 		[ $i -gt $max ] && break
 		echo $((($i*100)/$max)) | dialog --gauge \
 			" The ISO image transfer can be long. Please wait..." \
-			6 70 0 > /dev/tty 2>&1
+			6 70 0 > /dev/tty0 2>&1
 	done ) > $device
 
 	# partition + fat32 format for the remining space
@@ -659,24 +697,44 @@ text()
 live()
 {
 	n=0
-	for i in $(ls_r /media/cdrom/boot/rootfs* 2> /dev/null); do
+	dotwait "Extract filesystem..."
+	for i in $(ls_r /media/cdrom/boot/rootfs*); do
 		[ $((n++)) -eq 0 ] || uncpio $i
 	done
+	rm -f /tmp/wait
 	text
+}
+
+dosync()
+{
+	sync
+	[ ! -L /sqfs ] && umount -d /media/cdrom && umount /mnt
 }
 
 restart()
 {
-	sync
-	[ ! -L /sqfs ] && umount -d /media/cdrom && umount /mnt
+	dosync
 	reboot -f
 }
 
 stop()
 {
-	sync
-	[ ! -L /sqfs ] && umount -d /media/cdrom && umount /mnt
+	dosync
 	poweroff -f
+}
+
+runmemtest()
+{
+	kexec -l /media/cdrom/boot/memtest
+	dosync
+	kexec -e
+}
+
+runpxe()
+{
+	kexec -l /media/cdrom/boot/?pxe
+	dosync
+	kexec -e
 }
 
 shell()
@@ -711,19 +769,22 @@ $(xfile tazlocale	"tazlocale"	"Select locale ($locale)") \
 $(cdfile boot/bzImage	"live"		"SliTaz RAM boot") \
 			"text"		"SliTaz RAM boot (text mode only)" \
 $(cdfile README		"readme"	"Show the README file") \
-$(cdfile md5sum		"md5"		"Check ISO files") \
+$(cdfile md5sum*	"md5"		"Check ISO files") \
 $(gotposixovl		"install"	"Hard disk installation (UMSDOS way)") \
 $(gotposixovl		"installtaz"	"Hard disk installation (TAZUSB way)") \
 $(xfile tazusb		"usbkey"	"USB key read/write installation") \
 $(cdfile boot/bzImage	"usbbootkey"	"USB boot key (read only)") \
-$(fddata		"fdbootstrap"	"Floppy bootstrap") \
+$(fddata		"fdbootstrap"	"Create a floppy bootstrap") \
 $(cdfile boot/bzImage	"tazboot"	"Get tazboot.exe Linux loader") \
-$(cdexe boot/memtest	"memtest"	"Get Memtest86") \
-$(cdfile boot/memtest	"fdmemtest"	"Create a Memtest86 boot floppy") \
-$(cdexe boot/gpxe	"pxe"		"Get SliTaz Web boot utility") \
-$(cdfile boot/gpxe	"fdpxe"		"Create a SliTaz Web boot floppy") \
-$(cdexe boot/ipxe	"pxe"		"Get SliTaz Web boot utility") \
-$(cdfile boot/ipxe	"fdpxe"		"Create a SliTaz Web boot floppy") \
+$(cdexe boot/bzImage	"bzimage"	"Get linux DOS/EXE file") \
+$(cdexe boot/memtest	"memtest"	"Get Memtest86 DOS/EXE file") \
+$(cdfile boot/memtest,boot/isolinux/memtest \
+			"fdmemtest"	"Create a Memtest86 boot floppy") \
+$(cdfilex boot/memtest,boot/isolinux/memtest \
+			"runmemtest"	"Start Memtest86") \
+$(cdexe boot/?pxe	"pxe"		"Get SliTaz Web boot DOS/EXE utility") \
+$(cdfile boot/?pxe	"fdpxe"		"Create a SliTaz Web boot floppy") \
+$(cdfilex boot/?pxe	"runpxe"	"Start the SliTaz Web boot utility") \
 $(xfile reboot		"restart"	"Restart the computer") \
 $(xfile poweroff	"stop"		"Power off") \
 			"bootlog"	"Linux boot messages" \
