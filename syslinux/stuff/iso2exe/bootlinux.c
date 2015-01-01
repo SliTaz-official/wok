@@ -139,7 +139,7 @@ movedone:
 #endasm
 }
 
-static unsigned zimage = 0;
+static unsigned vgamode, zimage = 0;
 static unsigned getss(void)
 {
 #asm
@@ -260,6 +260,7 @@ has640k:
 			syssize = LONG(buffer + SYSSIZE) << 4;
 			if (!syssize) syssize = 0x7F000;
 			setup = (1 + buffer[SETUPSECTORS]) << 9;
+			vgamode = WORD(buffer + VIDEOMODE);
 			if (setup == 512) {
 #ifdef LINUX001_SUPPORT
 				if (WORD(buffer + 0x3F) == 0x3AE8) /* linux 0.01 */
@@ -355,10 +356,26 @@ void loadinitrd(void)
 
 void bootlinux(char *cmdline)
 {
+	char *s;
+	
+	s = strstr(cmdline," vga=");
+	if (s) {
+		vgamode = -1;
+		s += 5;
+		switch (*s | 0x20) {
+		case 'a' : vgamode--;
+		case 'e' : vgamode--;
+		case 'n' : break;
+		default  : vgamode = atoi(s);
+		}
+	}
 	dosshutdown();
 #asm
 	cld
 	mov	es, _setupseg
+	mov	ax, _vgamode
+	seg	es
+	mov	VIDEOMODE, ax
 	mov	ax, _setup_version
 	cmp	ax, #0x200
 	jb	noinitrd

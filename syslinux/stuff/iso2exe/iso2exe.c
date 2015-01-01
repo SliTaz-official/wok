@@ -12,7 +12,7 @@
 #include "iso2exe.h"
 
 static int fd, forced, status = 1;
-static char tazlitoinfo[10*1024];
+static char tazlitoinfo[0x8000U - BOOTISOSZ];
 #define buffer tazlitoinfo
 #define BUFFERSZ 2048
 #define WORD(n)	* (unsigned short *) (n)
@@ -31,7 +31,7 @@ static unsigned install(char *filename)
 {
 #define heads 64
 #define sectors 32
-#define partition 446
+#define partition (446+16)
 #define trksz (512UL * heads * sectors)
 	unsigned long size, catalog, lba;
 	int cylinders, i, j, isohybrid;
@@ -69,14 +69,23 @@ static unsigned install(char *filename)
 		LONG(bootiso + isohybrid + 440) = rand();
 		LONG(bootiso + isohybrid + partition) = 0x10080UL;
 		WORD(bootiso + isohybrid + 510) = 0xAA55U;
+#if 0
 		size = lseek(fd, 0UL, SEEK_END);
-		cylinders = (size + trksz - 1) / trksz;
+		size += 0x000FFFFFUL;
+		size &= 0xFFF00000UL;
+#else
+		for (size = 0x000FFFFFUL; /* 1M - 1 */
+		     read(fd, tazlitoinfo, 1024) == 1024;
+		     size += 1024);
+		size &= 0xFFF00000UL; /* round */    
+#endif
+		cylinders = (size >> 20) - 1;
 		bootiso[isohybrid + partition + 4] = 23; /* "Windows hidden IFS" */
 		bootiso[isohybrid + partition + 5] = heads - 1;
-		bootiso[isohybrid + partition + 6] = (((cylinders - 1) & 0x300) >> 2) + sectors;
-		bootiso[isohybrid + partition + 7] = (cylinders - 1) & 0xFF;
+		bootiso[isohybrid + partition + 6] = ((cylinders & 0x300) >> 2) + sectors;
+		bootiso[isohybrid + partition + 7] = cylinders & 0xFF;
 		LONG(bootiso + isohybrid + partition + 8) = 0;
-		LONG(bootiso + isohybrid + partition + 12) = cylinders * sectors * heads;
+		LONG(bootiso + isohybrid + partition + 12) = (size >> 9);
 
 		/* Copy the partition table */
 		memcpy(bootiso + 0x1BE, bootiso + isohybrid + 0x1BE, 66);
@@ -93,8 +102,7 @@ static unsigned install(char *filename)
 	n = (bootiso[69] + 1) * 512;
 	lseek(fd, 0UL, SEEK_SET);
 	write(fd, bootiso, n); /* EXE/PE + isohybrid mbr */
-	write(fd, tazlitoinfo, ((0x8000U - BOOTISOSZ) > sizeof(tazlitoinfo)) 
-		? sizeof(tazlitoinfo) : (0x8000U - BOOTISOSZ));
+	write(fd, tazlitoinfo, sizeof(tazlitoinfo));
 	write(fd, bootiso + n, BOOTISOSZ - n); /* COM + rootfs + EXE/DOS */
 
 	/* Compute the checksum */

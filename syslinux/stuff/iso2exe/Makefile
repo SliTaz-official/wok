@@ -9,17 +9,18 @@ meminfo.exe: meminfo.S
 	objcopy -O binary meminfo.o meminfo.exe
 	chmod +x $@
 
-iso2exe: iso2exe.sh boot.com bootiso.bin init win32.exe
+iso2exe: iso2exe.sh boot.com bootiso.bin init win32.exe ../mbr/isohdpfx.bin
+	cp ../mbr/isohdpfx.bin .
 	cp iso2exe.sh $@
 	chmod +x $@
-	./$@ --build boot.com bootiso.bin init win32.exe
+	./$@ --build boot.com bootiso.bin init win32.exe isohdpfx.bin
 
 isohybrid.res: isohybrid.rc isohybrid.ico
 	i586-pc-mingw32-windres $< -O coff -o $@
 
-iso2exe.h: iso2exe ../mbr/isohdpfx.bin
+iso2exe.h: iso2exe
 	chmod +x iso2exe.sh
-	./iso2exe.sh --array ../mbr/isohdpfx.bin > $@
+	./iso2exe.sh --array isohdpfx.bin > $@
 
 iso2exe.com: iso2exe.c iso2exe.h
 	$(BCC) $(BCCFLAGS) -o $@ iso2exe.c && upx --ultra-brute $@

@@ -20,7 +20,11 @@ get()
 
 compress()
 {
-	if [ "$(which xz 2> /dev/null)" ]; then
+	if [ "$1" ]; then
+		gzip -9 > $1
+		[ "$(which advdef 2> /dev/null)" ] &&
+		advdef -z4 $1 > /dev/null
+	elif [ "$(which xz 2> /dev/null)" ]; then
 		xz -z -e --format=lzma --lzma1=mode=normal --stdout
 	else
 		lzma e -si -so
@@ -33,12 +37,16 @@ add_rootfs()
 	mkdir -p $TMP/bin $TMP/dev
 	cp -a /dev/?d?* /dev/tty /dev/tty0 $TMP/dev
 	$0 --get init > $TMP/init.exe
-	grep -q mount.posixovl.iso2exe $TMP/init.exe &&
-	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe \
-		2> /dev/null && echo "Store mount.posixovl ($(wc -c \
-			< /usr/sbin/mount.posixovl) bytes) ..."
+#	mount -o loop,ro $1 $TMP
+#	oldslitaz="$(ls $TMP/boot/isolinux/splash.lss 2> /dev/null)"
+#	umount -d $TMP
+#	[ "$oldslitaz" ] && # for SliTaz <= 3.0 only...
+#	grep -q mount.posixovl.iso2exe $TMP/init.exe &&
+#	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe \
+#		2> /dev/null && echo "Store mount.posixovl ($(wc -c \
+#			< /usr/sbin/mount.posixovl) bytes) ..."
 	find $TMP -type f -print0 | xargs -0 chmod +x
-	( cd $TMP ; find * | cpio -o -H newc ) | compress > $TMP/rootfs.gz
+	( cd $TMP ; find * | cpio -o -H newc ) | compress $TMP/rootfs.gz
 	SIZE=$(wc -c < $TMP/rootfs.gz)
 	store 24 $SIZE $1
 	OFS=$(( $OFS - $SIZE ))
@@ -66,7 +74,6 @@ add_doscom()
 
 add_win32exe()
 {
-	ddq if=/tmp/exe$$ of=$1 conv=notrunc
 	SIZE=$($0 --get win32.exe 2> /dev/null | tee /tmp/exe$$ | wc -c)
 	printf "Adding WIN32 file at %04X (%d bytes) ...\n" 0 $SIZE
 	ddq if=/tmp/exe$$ of=$1 conv=notrunc
@@ -209,7 +216,7 @@ main()
 	esac
 	case "$(get 0 $1)" in
 	23117)	echo "The file $1 is already an EXE file." 1>&2 && exit 1;;
-	0)	[ -x /usr/bin/isohybrid ] && isohybrid $1 && echo "Do isohybrid"
+	0)	$0 --get isohdpfx.bin | ddq bs=512 count=1 of=$1 conv=notrunc
 	esac
 		
 	echo "Read hybrid & tazlito data..."

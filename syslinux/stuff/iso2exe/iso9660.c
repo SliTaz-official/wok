@@ -1,11 +1,14 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 #include "iso9660.h"
 #define __ROCKRIDGE
+#ifdef __AS386_16__
 #asm
 		use16	86
 #endasm
+#endif
 
 char *isofilename;
 unsigned long isofileofs, isofilesize;
@@ -69,7 +72,7 @@ int isoreaddir(int restart)
 		dirsize = isodirsize;
 		pos = SECTORSZ;
 	}
-	if (pos >= SECTORSZ) {
+	if (pos >= SECTORSZ || * (short *) (buffer + pos) == 0) {
 		if (dirsize < SECTORSZ) return -1;
 		readsector(dirofs);
 		dirofs += SECTORSZ;
@@ -124,6 +127,9 @@ int isoreaddir(int restart)
 	return 0;
 }
 
+#ifndef __AS386_16__
+#define cpuhaslm()	(0)
+#else
 static int cpuhaslm(void)
 {
 #asm
@@ -164,6 +170,7 @@ nocpuid:
 not386:
 #endasm
 }
+#endif
 
 #define IS_DIR(x)( ((x) & ~0777) == 040000)
 int isoopen(char *filename)
@@ -187,7 +194,7 @@ retry32:
 			char *n = name, *i = isofilename;
 			if (_64bits) {
 				int len = strlen(name);
-				if (strncmp(name, isofilename), len) continue;
+				if (strncmp(name, isofilename, len)) continue;
 				n = "64";
 				i += len;
 			}

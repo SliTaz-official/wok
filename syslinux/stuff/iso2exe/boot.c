@@ -10,10 +10,10 @@
 static void usage(char *iso)
 {
 	printf("Usage: %s [[@commands]|[kernel=<bzimage>] \
-[initrd=<rootfs>[,<rootfs2>...]] [iso=<isofile>] ...]\n\n\
+[initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] ...]\n\n\
 Defaults: %s @tazboot.cmd  or  %s kernel=bzImage auto\n\n\
 Examples for tazboot.cmd:\n\n\
-  iso=\\isos\\slitaz-4.0.iso\n\
+  bootfrom=\\isos\\slitaz-4.0.iso\n\
   kernel=boot/bzImage\n\
   initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz,\\slitaz\\extrafs.gz\n\
   rw root=/dev/null vga=normal autologin\n\n\
@@ -25,30 +25,52 @@ Examples for tazboot.cmd:\n\n\
 static void bootiso(char **iso)
 {
 	char *init = " rdinit=/init.exe", *mode="menu", *fmt="";
-	char c, rootfs[16], cmdline[256];
-	int restart;
+	char *s, c, rootfs[16], fallback[16], cmdline[256];
+	int restart, isknoppix = 0;
 	unsigned long magic;
 	
-	if (isoreset(*iso) || isoopen("boot")) return;
+	if (isoreset(*iso)) return;
+	!isoopen("boot") ||
+	!isoopen("live") ||	// debian
+	!isoopen("casper") ||	// ubuntu
+	!isoopen("isolinux");	// zeroshell
 	if (iso[1] && !strcmp(mode = iso[1], "text"))
 		init = "";
+	do {
+		if (!isoopen(mode)	||	// custom
+		    !isoopen("bzImage")	|| 	// SliTaz
+		    !isoopen("linux24")	||	// dsl
+		    !isoopen("vmlinuz")	||	// misc
+		    (!isoopen("linux") && ++isknoppix)) {
+			magic = loadkernel();
+			break;
+		}
+	} while (!isoopen("isolinux"));		// Knoppix
+	fallback[0] = 0;
 	for (c = 0, restart = 1; isoreaddir(restart) == 0; restart = 0) {
+		if (strstr(isofilename, ".gz"))
+			strcpy(fallback, isofilename);
 		if (strncmp(isofilename, "rootfs", 6) 
 			|| c > isofilename[6]) continue;
 		strcpy(rootfs, isofilename);
 		c = isofilename[6];
 	}
-	if (isoopen(mode))
-		isoopen("bzImage");
-	magic = loadkernel();
+
 	if (magic < 0x20630)
 		init = ""; // Does not support multiple initramfs
+
 	if (magic > 0) {
-		fmt = "rw root=/dev/null%s iso=%s magic=%lu mode=%s autologin";
-		if (rootfs[6] != '.' && !isoopen("rootfs.gz"))
-			loadinitrd();	// for loram
-		isoopen(rootfs);
-		loadinitrd();
+		char *initrd = fallback;
+
+		fmt = "rw root=/dev/null bootfrom=%s%s magic=%lu mode=%s autologin";
+		if (rootfs[0]) {
+			initrd = rootfs;
+			if (rootfs[6] != '.' && !isoopen("rootfs.gz"))
+				loadinitrd();	// for loram
+		}
+		if (!isoopen(initrd)) {
+			loadinitrd();
+		}
 		if (*init) {
 			lseek(isofd, 24L, SEEK_SET);
 			read(isofd, &magic, 4);
@@ -58,7 +80,13 @@ static void bootiso(char **iso)
 			else init="";
 		}
 	}
-	sprintf(cmdline, fmt, init, *iso, magic, mode);
+	if (isknoppix) {
+		if (iso[0][1] == ':')
+			*iso += 2;
+		for (s = *iso; *s; s++)
+			if (*s == '\\') *s = '/';
+	}
+	sprintf(cmdline, fmt, *iso, init, magic, mode);
 	close(isofd);
 	bootlinux(cmdline);
 }
@@ -159,7 +187,7 @@ int main(int argc, char *argv[])
 			kernel = s + 7;
 		else if (stricmp("initrd=", s) == 0)
 			initrd = s + 7;
-		else if (stricmp("iso=", s) == 0)
+		else if (stricmp("bootfrom=", s) == 0)
 			iso = s + 4;
 		else {
 			cmdline = s;
