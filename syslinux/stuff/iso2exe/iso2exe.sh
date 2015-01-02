@@ -235,14 +235,9 @@ main()
 	add_fdbootstrap $1
 	printf "%d free bytes in %04X..%04X\n" $(($OFS-$HOLE)) $HOLE $OFS
 	store 26 ${RANDOM:-0} $1
-	i=66
-	n=0
 	echo -n "Adding checksum..."
-	while [ $i -lt 32768 ]; do
-		n=$(($n + $(get $i $1) ))
-		i=$(($i + 2))
-	done
-	store 64 -$n $1
+	store 64 $(od -v -j 66 -N 32702 -t u2 -w2 -An $1 | \
+		   awk '{ i+= $0 } END { print -(i % 65536) }') $1
 	echo " done."
 }
 

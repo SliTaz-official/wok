@@ -17,8 +17,8 @@ Examples for tazboot.cmd:\n\n\
   kernel=boot/bzImage\n\
   initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz,\\slitaz\\extrafs.gz\n\
   rw root=/dev/null vga=normal autologin\n\n\
-  kernel=\\slitaz\\vmlinuz\n\
-  root=/dev/sda5 ro\n",iso,iso,iso);
+  kernel=\\slitaz\\elks\n\
+  root=/dev/bda1 ro\n",iso,iso,iso);
 	exit(1);
 }
 
@@ -39,7 +39,6 @@ static void bootiso(char **iso)
 	do {
 		if (!isoopen(mode)	||	// custom
 		    !isoopen("bzImage")	|| 	// SliTaz
-		    !isoopen("linux24")	||	// dsl
 		    !isoopen("vmlinuz")	||	// misc
 		    (!isoopen("linux") && ++isknoppix)) {
 			magic = loadkernel();
