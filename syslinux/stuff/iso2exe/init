@@ -1,6 +1,7 @@
 #!/bin/sh
 
 DIALOG=dialog
+ISOMD5=
 
 ddq()
 {
@@ -118,7 +119,7 @@ gettazboot()
 {
 	echo "Creating $(basename $1) ..."
 	O=$(($(get 66 /mnt/$ISO) - 0xC0))
-	L=$((0x7EE0 - $(get 24 /mnt/$ISO) - $O))
+	L=$(($(get 20 /mnt/$ISO) - 0xC0 - $(get 24 /mnt/$ISO) - $O))
 	S=$((32+$L))
 	P=$((($S+511)/512))
 	E=$((4096-(32*$P)))
@@ -635,6 +636,21 @@ ishybrid()
 	echo -en "\"$1\"	\"$2\""
 }
 
+gotisomd5()
+{
+	[ "$(which md5sum 2> /dev/null)" ] && [ "$ISOMD5" ] &&
+	echo -en "\"$1\"	\"$2\""
+}
+
+isomd5()
+{
+	dotwait "Checking iso image"
+	[ "$(ddq if=/dev/loop0 bs=32k skip=1 | md5sum)" == "$ISOMD5  -" ] &&
+	echo "OK" || echo "ERROR"
+	rm -f /tmp/wait
+	sleep 5
+}
+
 fdbootstrap()
 {
 	sz=$((512 * $(echo $(get 28 /mnt/$ISO 1))))
@@ -886,8 +902,9 @@ $(xfile tazlocale	"tazlocale"	"Select locale (${locale:-none})") \
 $(cdfile boot/bzImage	"live"		"Linux RAM boot (full desktop)") \
 			"text"		"Linux RAM boot" \
 $(cdfile README*	"readme"	"Show the README file") \
-$(cdfile md5sum*	"md5"		"Check ISO files") \
-$(cdfile sha*sum*	"sha"		"Check ISO files") \
+$(gotisomd5		"isomd5"	"Check the ISO image") \
+$(cdfile md5sum*	"md5"		"Check the ISO files") \
+$(cdfile sha*sum*	"sha"		"Check the ISO files") \
 $(gotposixovl		"install"	"Hard disk installation (UMSDOS way)") \
 $(gotposixovl		"installtaz"	"Hard disk installation (TAZUSB way)") \
 $(xfile tazusb		"usbkey"	"USB key read/write installation") \

@@ -71,10 +71,12 @@ static void bootiso(char **iso)
 			loadinitrd();
 		}
 		if (*init) {
-			lseek(isofd, 24L, SEEK_SET);
+			lseek(isofd, 20L, SEEK_SET);
+			read(isofd, &isofileofs, 4);
+			isofileofs &= 0xFFFFL;
 			read(isofd, &magic, 4);
 			isofilesize = magic & 0xFFFFL;
-			isofileofs = 0x7EE0L - isofilesize;
+			isofileofs -= 0xC0L + isofilesize;
 			if (isofilesize) loadinitrd();
 			else init="";
 		}

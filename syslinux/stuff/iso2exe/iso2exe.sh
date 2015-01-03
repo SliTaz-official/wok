@@ -37,6 +37,11 @@ add_rootfs()
 	mkdir -p $TMP/bin $TMP/dev
 	cp -a /dev/?d?* /dev/tty /dev/tty0 $TMP/dev
 	$0 --get init > $TMP/init.exe
+	if [ $(stat -c %s $1) -gt 32768 ]; then
+		echo "Compute ISO image md5 ..."
+		sed -i "s/^ISOMD5.*/ISOMD5=$(ddq if=$1 bs=32k skip=1 | \
+			md5sum | cut -c-32)/" $TMP/init.exe
+	fi
 #	mount -o loop,ro $1 $TMP
 #	oldslitaz="$(ls $TMP/boot/isolinux/splash.lss 2> /dev/null)"
 #	umount -d $TMP
@@ -57,10 +62,12 @@ add_rootfs()
 
 add_dosexe()
 {
-	OFS=$((0x7EE0))
-	printf "Adding DOS/EXE at %04X (%d bytes) ...\n" $OFS $((0x8000 - $OFS))
-	$0 --get bootiso.bin 2> /dev/null | \
-	ddq bs=1 skip=$OFS of=$1 seek=$OFS conv=notrunc
+	TMP=/tmp/bootiso$$
+	$0 --get bootiso.bin > $TMP 2> /dev/null 
+	OFS=$(($(get 20 $TMP) - 0xC0))
+	printf "Adding DOS/EXE stub at %04X (%d bytes) ...\n" $OFS $((0x8000 - $OFS))
+	ddq if=$TMP bs=1 skip=$OFS of=$1 seek=$OFS conv=notrunc
+	rm -f $TMP
 }
 
 add_doscom()
