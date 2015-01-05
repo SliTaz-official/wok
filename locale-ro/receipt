@@ -1,0 +1,40 @@
+# SliTaz package receipt
+
+PACKAGE="locale-ro"
+VERSION="4.2"
+CATEGORY="system-tools"
+SHORT_DESC="Romanian locale pack"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="http://www.slitaz.org/"
+HOST_ARCH="i486 arm"
+
+WANTED="glibc slitaz-i18n xorg-libX11"
+DEPENDS="glibc-base"
+
+LOCALE="ro"
+LOCALE_DEPENDS=""
+KB_FLAGS="RO:ro"
+GCONV="CP852 CP1250 ISO-8859-2 ISO-8859-16"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	. $WOK/slitaz-i18n/stuff/locale-pack.functions
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+	get_locale
+
+	# Copy X11 Compose Rules
+	mkdir -p $fs/usr/share/X11/locale
+	cp -a $WOK/xorg-libX11/install/usr/share/X11/locale/iso8859-2 $fs/usr/share/X11/locale
+
+	# Copy Kbd definitions
+	mkdir -p $fs/usr/share/kbd/keymaps/i386/qwerty
+	cp -a $WOK/kbd/usr/share/kbd/keymaps/i386/qwerty/ro* $fs/usr/share/kbd/keymaps/i386/qwerty
+}
+
+# Back to C if it's the last used locale.
+post_remove()
+{
+	echo -e "LANG=C\nLC_ALL=C" > /etc/locale.conf
+}
