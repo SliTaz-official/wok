@@ -37,11 +37,6 @@ add_rootfs()
 	mkdir -p $TMP/bin $TMP/dev
 	cp -a /dev/?d?* /dev/tty /dev/tty0 $TMP/dev
 	$0 --get init > $TMP/init.exe
-	if [ $(stat -c %s $1) -gt 32768 ]; then
-		echo "Compute ISO image md5 ..."
-		sed -i "s/^ISOMD5.*/ISOMD5=$(ddq if=$1 bs=32k skip=1 | \
-			md5sum | cut -c-32)/" $TMP/init.exe
-	fi
 #	mount -o loop,ro $1 $TMP
 #	oldslitaz="$(ls $TMP/boot/isolinux/splash.lss 2> /dev/null)"
 #	umount -d $TMP
@@ -242,9 +237,21 @@ main()
 	add_fdbootstrap $1
 	printf "%d free bytes in %04X..%04X\n" $(($OFS-$HOLE)) $HOLE $OFS
 	store 26 ${RANDOM:-0} $1
-	echo -n "Adding checksum..."
+	if [ $(stat -c %s $1) -gt 32768 ]; then
+		echo "Adding ISO image md5 ..."
+		echo -en "$(ddq if=$1 bs=32k skip=1 | md5sum | cut -c-32 | sed \
+		  's/\(..\)/\\x\1/g')" | ddq bs=16 seek=2047 conv=notrunc of=$1
+	fi
+	echo -n "Adding boot checksum..."
 	store 64 $(od -v -j 66 -N 32702 -t u2 -w2 -An $1 | \
 		   awk '{ i+= $0 } END { print -(i % 65536) }') $1
+	if [ $(stat -c %s $1) -gt 32768 ]; then
+		n=$(($(get 2 $1) - 1 + ($(get 4 $1) - 1)*512))
+		n=$(($(od -v -N $n -t u2 -w2 -An $1 | \
+		       awk '{ i+= $0 } END { print (i % 65536) }') \
+		     + $(get $(($n+1)) $1 1)))
+		store 18 $(( (-$n -1) % 65536 )) $1
+	fi
 	echo " done."
 }
 

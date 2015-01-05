@@ -1,7 +1,6 @@
 #!/bin/sh
 
 DIALOG=dialog
-ISOMD5=
 
 ddq()
 {
@@ -10,8 +9,8 @@ ddq()
 
 get()
 {
-	od -j $1 -N ${4:-${3:-2}} -t u${3:-2} -An $2 2> /dev/null ||
-	hexdump -v -s $1 -n ${4:-${3:-2}} -e "\"\" 1/${3:-2} \" %d\"" $2
+	od -v -j $1 -N ${4:-${3:-2}} -t u${3:-2} -w${3:-2} -An $2 2>/dev/null ||
+	hexdump -v -s $1 -n ${4:-${3:-2}} -e "\"\" 1/${3:-2} \" %d\n\"" $2
 }
 
 getarg()
@@ -638,17 +637,23 @@ ishybrid()
 
 gotisomd5()
 {
-	[ "$(which md5sum 2> /dev/null)" ] && [ "$ISOMD5" ] &&
-	echo -en "\"$1\"	\"$2\""
+	[ $(get 18 /dev/loop0) -ne 0 ] && echo -en "\"$1\"	\"$2\""
 }
 
 isomd5()
 {
 	dotwait "Checking iso image"
-	[ "$(ddq if=/dev/loop0 bs=32k skip=1 | md5sum)" == "$ISOMD5  -" ] &&
+	[ "$(ddq if=/dev/loop0 bs=32k skip=1 | md5sum)" == \
+	  "$(ddq if=/dev/loop0 bs=16 count=1 skip=2047 | od -N 16 -t x1 -An | \
+	     sed 's/ //g')  -" ] && echo "OK" || echo "ERROR"
+	echo -n "Checking iso hybrid boot"
+	n=$(($(get 2 /dev/loop0)-1+($(get 4 /dev/loop0)-1)*512))
+	s=$(get 0 /dev/loop0 2 $n | awk '{ i+= $0 } END { print i }')
+	[ $(((1+$s+$(get $(($n+1)) /dev/loop0 1)) % 65536)) -eq 0 ] &&
 	echo "OK" || echo "ERROR"
 	rm -f /tmp/wait
-	sleep 5
+	echo "Press RETURN to continue."
+	read n
 }
 
 fdbootstrap()
@@ -729,7 +734,7 @@ $(tazusbmsg)Please plug your USB stick in now.\n
 	done ) > $device
 
 	# partition + fat32 format for the remining space
-	get 446 $device 2 12 | { read dx cx ol oh ll lh 
+	get 446 $device 2 12 | xargs echo | { read dx cx ol oh ll lh 
 	if [ $dx -eq $((0x3F17)) ]; then
 		cx=$(($cx & 0xFF00))
 		ofs=$(($ll+($lh<<16)))

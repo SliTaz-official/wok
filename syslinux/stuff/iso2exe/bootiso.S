@@ -26,24 +26,23 @@ initramfssize:
 	.word	0			// File address of relocation table
 id:
 	.word	0			// Overlay number
-fdcnt:
+fdcnt:					// File address of relocation table
 	.byte	0			// Bootstrap floppy sector count
 
 /////////////////////// Master Boot Record code //////////////////////////////
 
-start0:					// File address of relocation table
-	pushw	%dx			// restore SP
+start0:
+	pushw	%dx			// restore %sp
 	incw	%bp			// restore %bp
-	pushw	$0
-	popw	%ds
-	movw	$0x7C00, %bx
-	pushfw
-	pushw	%ds
-	pushw	%bx
+	xorw	%bx, %bx
+	movw	%bx, %ds
+	movb	$0x7C, %bh
+	pushw	%bx			// return address
 	pushaw
 	movw	%sp, %bp
-	pushw	%es
+	pushw	%es			// save %es:%di
 	cld
+	sti
 	pushw	%ds
 	popw	%es
 	call	setreg
@@ -60,9 +59,11 @@ chksum:
 comstart:
 	.word	0
 	
-readsectorX:
-	movb	$0, %cl
+	.org	68
+readsectorX:				// read isolinux boot sector
+	movb	$0xA5, %cl		// patched by installer
 readsector1:
+	andb	$0x83, %dl		// disk and floppy disk
 	movw	%cx, (%bx)
 	incw	%cx
 	movw	$0x201, %ax
@@ -73,52 +74,52 @@ setreg:
 	movw	$0x0100, %cx
 return:
 	ret
-start2:
 dxloop:
-	call	readsector1
+start2:
+	call	readsector1		// look for the boot device
 	repe
 	cmpsw
 	je	dxfound
-next:
-	xorw	%cx, %cx
-	xchgw	%ax, %dx
-	addb	$0x7D, %al		// try every hard disk
-	andb	$0x83, %al		//   and floppy disk
-	cmpb	$0x80, %al
-	xchgw	%ax, %dx
-	jnz	dxloop
+	movb	$0, %cl			// ch = 0
+	addb	$0x7D, %dl		// try every hard disk
+	jno	dxloop
 dxfound:
+	call	readsectorX		// read isolinux boot sector
 	movw	%dx, 10(%bp)
 	call	checkboot
-	.ascii	"No isolinux mbr."
+	.asciz	"No isolinux bs"
 
 	.org	0x0080
 ////////////////////////////// EXE/PE header //////////////////////////////////
 
 	.org	0x01A0
 checkboot:
-	call	readsectorX
-	lodsw
+	cmpw	%cx, (%bx)
 	popw	%si
-	shrw	$1, %ax
-	jz	error			// read fail or not isohydrid
+	jc	error			// read fail or no isohydrid boot sector
 	popw	%es
 	popa
-	iret
-
-error:
-	lodsb
+putsret:
+	ret
+putstrlp:
 	movw	$7, %bx
 	movb	$0xE, %ah
 	int	$0x10
-	cmp	$'.', %al
-	jne	error
+error:
+	lodsb
+	cmp	$1, %al
+	jg	putstrlp
+	jz	putsret
+putstr:
+	movb	$0x80, %ah
+	xchgw	%ax, %si
+	jnc	error
 halt:
 	hlt
 	jmp	halt
 	.org	0x01BE
 
-	.org	0x7EE0
+	.org	0x7F10
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
 exestart:
@@ -137,10 +138,6 @@ ishelp:
 	cmpb	$3, %al
 	movb	$EXESTR(noDOS3), %al
 	jb	abort
-#if 1
-	cmpw	(%si), %dx	// checksum not set
-	je	chked
-#endif
 	movw	$(EXELOC(0x8000))/2, %cx
 chklp:
 	lodsw
@@ -151,17 +148,8 @@ chked:
 	je	tst386		// dx == 0 ?
 abort:
 puts:
-	movb	$0x80, %ah
-	xchgw	%ax, %si
-putslp:
-	lodsb
-	orb	%al, %al
-	jz	moveret
-	js	puts
-	movw	$7, %bx
-	movb	$0xE, %ah
-	int	$0x10
-	jmp	putslp
+	clc
+	jmp	putstr
 
 tst386:
 	pushfw			// save flags
@@ -200,13 +188,12 @@ is86:
 	movb	$0x7C/2, %ch	// 31K-31.5K, > com length
 	rep
 	movsw
-moveret:
 	ret
 
 VersionVCPI:
 	cmpb	$0x40, %dl		// >= 4.0 ?
 	jb	NoVCPI
-	movb	$EXESTR(vm86modemsg), %al
+	xchgw	%ax, %si		// movb	$EXESTR(vm86modemsg), %al
 	jmp	realmode
 tstvcpi:
 	pushw	%ds
@@ -238,48 +225,42 @@ CmdVCPI:
 	.byte	0x46			// version
 	.byte	0
 
-// --------------- Must be in 7F40 7FFF range ------------------------
-//noloader:
-//	.ascii	"No isol"		// No isolinux boot loader
-//	.byte	EXESTR(iloader)
-no386:
-	.ascii	"No 386"		// No 386+
-	.byte	EXESTR(plus)
-ERRvcpi:
-	.ascii	"No EMM386/VCPI 4"	// No EMM386/VCPI 4.0+
-	.byte	EXESTR(dot0)
-chkerr:
-	.ascii	"Broken ISO9660 fil"	// Broken ISO9660 file.
-	.byte	EXESTR(eeol)
 vm86modemsg:
-	.ascii	"vm86"			// vm86 mode.
-	.byte	EXESTR(mode)
+// --------------- Must be in 7F40 7FFF range ------------------------
+	.ascii	"vm"			// vm86
+	.byte	EXESTR(_86)
+ERRvcpi:
+	.ascii	"No VCPI-4.0/EMM"	// No VCPI-4.0/EMM386
+	.byte	EXESTR(_386)
+noDOS3:
+	.ascii	"No DOS 3"		// No DOS 3
+	.byte	EXESTR(eol)
+chkerr:
+	.ascii	"Broken c"		// Broken code
+	.byte	EXESTR(ode)
 rmPaging:
-	.ascii	"Invalid: paging + "	// Invalid: paging + real mode.
+	.ascii	"Un"			// Unreal mode
 realmodemsg:
-	.ascii	"real"			// real mode.
+	.ascii	"real m"		// real mode
 // --------------- Must be in 7FC0 7FFF range ------------------------
-mode:
-	.ascii	" mod"
+ode:
+	.ascii	"od"
 eeol:
 	.ascii  "e"
 	.byte	EXESTR(eol)
-noDOS3:
-	.ascii	"No DOS 3"		// No DOS 3.0+
-dot0:
-	.ascii	".0"
-plus:
-	.ascii	"+"
-	.byte	EXESTR(eol2)
+no386:
+	.ascii	"No "			// No 386
+_386:
+	.ascii	"3"
+_86:
+	.ascii	"86"
+	.byte	EXESTR(eol)
 help:
-	.ascii	"SliTaz GNU/L"		// SliTaz GNU/Linux boot loader
-iloader:
-	.ascii	"inux boot loader"
+	.ascii	"SliTaz boot loader"	// SliTaz boot loader
 eol:
-	.ascii	"."
-eol2:
-	.asciz	"\r\n"
+	.ascii	"\r\n"
+	.byte	1
 
+	.space	16,0			// ISO md5
 	.org	0x8000
 ////////////////////////// ISO9660 header /////////////////////////////////////
-
