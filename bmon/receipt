@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="bmon"
+VERSION="3.6"
+CATEGORY="network"
+SHORT_DESC="bandwidth monitor and rate estimator"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="MIT"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://github.com/tgraf/bmon"
+WGET_URL="$WEB_SITE/archive/v$VERSION.tar.gz"
+
+DEPENDS="libnl ncursesw"
+BUILD_DEPENDS="wget autoconf automake libconfuse glib libnl-dev ncursesw-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh
+	./configure --prefix=/usr \
+		--sysconfdir=/etc \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $fs/etc
+	cp -a $install/usr/share/doc/bmon/examples/bmon.conf $fs/etc
+	cp -a $install/usr/bin $fs/usr
+}
