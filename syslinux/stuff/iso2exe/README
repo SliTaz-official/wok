@@ -55,7 +55,7 @@ loader, a floppy bootstrap and an initramfs in the end of the first 32Kb.
     +-----------------+
     |    untouched    | ISO9660 files including /boot/bzImage and /boot/rootfs*
 32K +-----------------+
-    |       | iso md5 | ISO9660 image (except first 32K) md5 hash
+    |       | iso md5 | ISO9660 image (except first 32K) md5 hash (1)
     |       +---------+
     |  DOS .EXE stub  | Start DOS .COM loader
     +-----------------+
@@ -71,11 +71,16 @@ loader, a floppy bootstrap and an initramfs in the end of the first 32Kb.
     +-----------------+
     | isohybrid boot  | Starts isolinux.bin
     +-----------------+
-    |  iso2exe boot + | Boot starts isohybrid (*), .EXE starts DOS .COM loader
+    |  iso2exe boot + | Boot starts isohybrid (2), .EXE starts DOS .COM loader
     |  WIN32 PE .exe  | NT+ boot device creator / Win9x DOS .COM launcher.
   0 +-----------------+ 
 
-* Eltorito boot (i.e. bootable CD-ROM by BIOS) is not concerned by iso2exe.
+(1) The following script will show computed and stored md5 hash
+#!/bin/sh
+dd if=$1 bs=32k skip=1 2>/dev/null | md5sum
+od -j 32752 -N 16 -t x1 -An $1 | sed 's/ //g'
+
+(2) Eltorito boot (i.e. bootable CD-ROM by BIOS) is not concerned by iso2exe.
 
 
 Limitations:
