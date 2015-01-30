@@ -89,36 +89,32 @@ genpkg_rules()
 
 post_install()
 {
-	local root
-	root=$1
 	echo "Processing post-install commands..."
-		echo -n "Do you want to set Bash to default (y/N) ? : "
-		read -t 30 anser
-		if [ "$anser" == "y" ]; then
-			echo ""
-			echo "Setting bash as default for all users"
-			sed -i "s/:\/bin\/sh$/:\/bin\/bash/g"  /etc/passwd
-			sed -i "s/:\/bin\/ksh$/:\/bin\/bash/g" /etc/passwd
-			sed -i "s/:\/bin\/zsh$/:\/bin\/bash/g" /etc/passwd
-			sed -i "s/:\/bin\/csh$/:\/bin\/bash/g" /etc/passwd	
-			echo "Creating .bashrc file for all users"
-			for i in `ls -d /home/*`
-			    do
-			    cp /etc/bashrc $i/.bashrc
-			    done
-			cp /etc/bashrc /root/.bashrc
-			cp /etc/bashrc /etc/skel/.bashrc
-		fi
+	echo -n "Do you want to set Bash to default (y/N) ? : "
+	read -t 30 anser
+	if [ "$anser" == "y" ]; then
+		echo ""
+		echo "Setting bash as default for all users"
+		sed -i "s/:\/bin\/sh$/:\/bin\/bash/g"  $1/etc/passwd
+		sed -i "s/:\/bin\/ksh$/:\/bin\/bash/g" $1/etc/passwd
+		sed -i "s/:\/bin\/zsh$/:\/bin\/bash/g" $1/etc/passwd
+		sed -i "s/:\/bin\/csh$/:\/bin\/bash/g" $1/etc/passwd	
+		echo "Creating .bashrc file for all users"
+		for i in `ls -d $1/home/*`
+		    do
+		    cp $1/etc/bashrc $1$i/.bashrc
+		    done
+		cp $1/etc/bashrc $1/root/.bashrc
+		cp $1/etc/bashrc $1/etc/skel/.bashrc
+	fi
 }
 
 
 pre_remove()
 {
-	local root
-	root=$1
 	echo "Setting back sh as default for all users"
-	sed -i "s/:\/bin\/bash$/:\/bin\/sh/g"  /etc/passwd
-	if [ -f /etc/skel/.bashrc ]; then
-	rm /etc/skel/.bashrc
+	sed -i "s/:\/bin\/bash$/:\/bin\/sh/g"  $1/etc/passwd
+	if [ -f $1/etc/skel/.bashrc ]; then
+		rm $1/etc/skel/.bashrc
 	fi
 }

@@ -53,7 +53,7 @@ pre_install()
 {
 	INIT_FILE="/etc/init.d/$PACKAGE"
 	echo "Processing pre-install commands..."
-	[ -f $INIT_FILE ] && $INIT_FILE stop
+	[ -f $1$$INIT_FILE ] && chroot "$1/" $INIT_FILE stop
 	echo "Done..."
 }
 
@@ -68,13 +68,14 @@ post_install()
 
 	echo "Processing post-install commands..."
 
-	grep -q "$PACKAGE" /etc/group || addgroup -S $PACKAGE
+	grep -q "$PACKAGE" $1/etc/group || chroot "$1/" addgroup -S $PACKAGE
 
-	grep -q "$PACKAGE" /etc/passwd || adduser -S -D -H -h $LIBDIR \
-	        -G $PACKAGE -s /bin/sh -g "CouchDB Administrator" $PACKAGE
+	grep -q "$PACKAGE" $1/etc/passwd || chroot "$1/" adduser -S -D -H \
+	  -h $LIBDIR -G $PACKAGE -s /bin/sh -g "CouchDB Administrator" $PACKAGE
 
 	for DIR in $LIBDIR $ETCDIR $LOGDIR $RUNDIR; do
-		chown -R $PACKAGE:$PACKAGE $DIR && chmod -R 0770 $DIR
+		chroot "$1/" chown -R $PACKAGE:$PACKAGE $DIR &&
+		chroot "$1/" chmod -R 0770 $DIR
 	done
 
 	echo "Done..."
@@ -85,7 +86,7 @@ pre_remove()
 {
 	INIT_FILE="/etc/init.d/$PACKAGE"
 	echo "Processing pre-remove commands..."
-	[ -f $INIT_FILE ] && $INIT_FILE stop
+	[ -f $1$INIT_FILE ] && chroot "$1/" $INIT_FILE stop
 	echo "Done..."
 }
 
@@ -98,10 +99,10 @@ post_remove()
 
 	echo "Processing post-remove commands..."
 
-	deluser $PACKAGE
+	chroot "$1/" deluser $PACKAGE
 
 	for DIR in $LIBDIR $ETCDIR $LOGDIR $RUNDIR; do
-		rm -rf $DIR
+		rm -rf $1$DIR
 	done
 
 	echo "Done..."

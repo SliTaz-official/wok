@@ -51,11 +51,11 @@ genpkg_rules()
 post_install()
 {
 	# Check if boinc user already exists
-	if [ -n "`grep ^${BOINCUSER}: /etc/passwd`" ] ; then                       
-		adduser -g "BOINC User" -h /var/lib/boinc -s /bin/bash -S -H -D boinc
+	if [ -n "`grep ^${BOINCUSER}: $1/etc/passwd`" ] ; then                       
+		chroot "$1/" adduser -g "BOINC User" -h /var/lib/boinc -s /bin/bash -S -H -D boinc
 	else
 		# In case boinc was previously installed:
-		chown -R boinc /var/lib/boinc
+		chroot "$1/" chown -R boinc /var/lib/boinc
         fi  
                                         
 	echo -n "Start the boinc client with \"# /etc/init.d/boinc-client start\""
@@ -67,8 +67,8 @@ post_remove()
 	echo -n "Delete user boinc and /var/lib/boinc (yes/No) ? : "
 	read -t 30 answer
 	if [ "$answer" == "yes" ]; then
-		deluser boinc
-		rm -r /var/lib/boinc
+		chroot "$1/" deluser boinc
+		rm -r $1/var/lib/boinc
 	else
 		echo ""
 		echo "Leaving user boinc and /var/lib/boinc"
