@@ -23,6 +23,17 @@ clear()
 	echo -e "\x1B[1;1H\x1B[J"
 }
 
+xless()
+{
+	[ $(wc -l < "$1") -gt 22 ] &&
+	sed 's/..3.;4.m/===/g;$s/.*/&\n---\nPress q to continue/' "$1" | less ||
+	{	cat "$1"
+		[ "$2" ] || return
+		echo -e "$2"
+		read n
+	}
+}
+
 tinydialog()
 {
 	clear
@@ -33,7 +44,7 @@ tinydialog()
 			 echo -e $title; shift ;;
 		--yes-label) label="$2" ; shift ;;
 		--textbox)
-			less "$2" < /dev/tty0 > /dev/tty0
+			xless "$2" "\nPress RETURN to continue."
 			break;;
 		--gauge)
 			t="        "
@@ -70,9 +81,7 @@ tinydialog()
 			done >> /tmp/data
 			while ! grep -q "^$n	" /tmp/data ; do
 				clear
-				[ $(wc -l < /tmp/data) -gt 22 ] && 
-				sed 's/..3.;4.m/===/g;$aPress q to continue' \
-				/tmp/data | less || cat /tmp/data
+				xless /tmp/data
 				echo -en "\n   <- Enter the selection number\r"
 				read n
 			done 2> /dev/null
@@ -103,16 +112,15 @@ umount_proc()
 bytes2bin()
 {
 	for i in $@ ; do
-		printf '\\\\x%02X' $(($i&255)) | xargs echo -en
-	done
+		printf '\\\\x%02X' $(($i&255))
+	done | xargs echo -en
 }
 
 words2bin()
 {
 	for i in $@ ; do
-		printf '\\\\x%02X\\\\x%02X' $(($i&255)) $((($i>>8)&255)) | \
-			xargs echo -en
-	done
+		printf '\\\\x%02X\\\\x%02X' $(($i&255)) $((($i>>8)&255))
+	done | xargs echo -en
 }
 
 gettazboot()
@@ -493,8 +501,9 @@ bzimage()
 		--title " Create linux.exe ? " \
 		--yes-label "Install" --yesno \
 "\nLinux.exe launches the linux kernel under DOS (in real mode only).
-The cmdline arguments are supported except initrd=, vga= (you can try 'rdev -v')
-and mem= (partially).\n\nExample:\nC:\\> linux.exe root=/dev/hda2 ro panic=60\n
+The cmdline arguments are supported except initrd=,
+vga= (you can try 'rdev -v') and mem= (partially).
+\nExample:\nC:\\> linux.exe root=/dev/hda2 ro panic=60\n
 " 12 70
 	[ $? -eq 0 ] || return
 	cp /media/cdrom/boot/bzImage /mnt/linux.exe
@@ -820,13 +829,19 @@ umount_loram()
 	rmdir /sqfs
 }
 
-text()
+dosync()
 {
+	sync
 	umount_loram
 	umount -d /media/cdrom
 	rm -f /dev/cdrom
 	umount /mnt
 	umount_proc
+}
+
+text()
+{
+	dosync
 	exec /init
 }
 
@@ -840,12 +855,6 @@ live()
 	done
 	rm -f /tmp/wait
 	text
-}
-
-dosync()
-{
-	sync
-	[ ! -L /sqfs ] && umount -d /media/cdrom && umount /mnt
 }
 
 restart()
