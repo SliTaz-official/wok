@@ -119,7 +119,7 @@ halt:
 	jmp	halt
 	.org	0x01BE
 
-	.org	0x7F10
+	.org	0x7F26
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
 exestart:
@@ -134,14 +134,16 @@ ishelp:
 	cwd				// clear dx
 	pushw	%dx			// dos exit()
 	je	abort
+	pushw	%si
 	int	$0x21			// get DOS version
-	cmpb	$3, %al
+	popw	%di			// %di = 0x100: .COM start address
+	addb	$-3, %al
 	movb	$EXESTR(noDOS3), %al
-	jb	abort
+	jnc	abort
 	movw	$(EXELOC(0x8000))/2, %cx
 chklp:
 	lodsw
-	addw	%ax, %dx
+	addw	%ax, %dx	// break C
 	loop	chklp
 chked:
 	movw	$0x1000+EXESTR(chkerr), %ax
@@ -164,15 +166,11 @@ tst386:
 	addb	%ah, %bh	// test F0 and 00 cases
 	cmpb	%ah, %bh
 	movb	$EXESTR(no386), %al
-#undef NEED386
-#ifdef NEED386
-	jbe	abort		// C=8086/80186, Z=80286
-#else
 	jbe	is86		// C=8086/80186, Z=80286
-#endif
 is386:
 	smsww	%ax		// not privileged
 	andb	$1, %al
+	movw	$10, %si
 	jne	tstvcpi
 	movl	%cr0, %eax	// privileged
 	incl	%eax
@@ -182,7 +180,6 @@ is386:
 realmode:
 is86:
 	call	puts
-	movw	$0x0100, %di
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
 	movb	$0x7C/2, %ch	// 31K-31.5K, > com length
@@ -191,15 +188,13 @@ is86:
 	ret
 
 VersionVCPI:
-	cmpb	$0x40, %dl		// >= 4.0 ?
-	jb	NoVCPI
 	xchgw	%ax, %si		// movb	$EXESTR(vm86modemsg), %al
-	jmp	realmode
+	cmpb	$0x40, %cl		// EMM386 / VCPI 4.0 mini
+	jnc	realmode		// %si = 0
 tstvcpi:
 	pushw	%ds
 	movw	%dx, %ds		// %dx = 0
 	movw	0x67*4+2, %ds
-	movw	$10, %si
 	lodsw
 	xorw	$0x4D45, %ax		// EM(MX) or EM(MQ)
 	lodsw
@@ -217,7 +212,7 @@ NoVCPI:
 	je	VersionVCPI
 	int	$0x67
 	testb	%ah, %ah
-	xchgw	%ax, %dx
+	xchgw	%ax, %cx
 	jmp	ChkVCPI
 CmdVCPI:
 	.byte	0x40			// status
@@ -227,39 +222,36 @@ CmdVCPI:
 
 vm86modemsg:
 // --------------- Must be in 7F40 7FFF range ------------------------
-	.ascii	"vm"			// vm86
-	.byte	EXESTR(_86)
+	.ascii	"vm86"			// vm86 mode
+	.byte	EXESTR(mode)
 ERRvcpi:
-	.ascii	"No VCPI-4.0/EMM"	// No VCPI-4.0/EMM386
-	.byte	EXESTR(_386)
-noDOS3:
-	.ascii	"No DOS 3"		// No DOS 3
-	.byte	EXESTR(eol)
+	.ascii	"EMM"			// EMM386 need
+no386:
+	.ascii	"386"			// 386 need
+	.byte	EXESTR(need)
 chkerr:
-	.ascii	"Broken c"		// Broken code
+	.ascii	"Bad c"			// Bad code
 	.byte	EXESTR(ode)
 rmPaging:
 	.ascii	"Un"			// Unreal mode
 realmodemsg:
-	.ascii	"real m"		// real mode
+	.ascii	"real"			// real mode
 // --------------- Must be in 7FC0 7FFF range ------------------------
+mode:
+	.ascii	" m"
 ode:
-	.ascii	"od"
-eeol:
-	.ascii  "e"
+	.ascii	"ode"
 	.byte	EXESTR(eol)
-no386:
-	.ascii	"No "			// No 386
-_386:
-	.ascii	"3"
-_86:
-	.ascii	"86"
+noDOS3:
+	.ascii	"DOS3"			// DOS3 need
+need:
+	.ascii	" need"
 	.byte	EXESTR(eol)
 help:
-	.ascii	"SliTaz boot loader"	// SliTaz boot loader
+	.ascii	"SliTaz iso boot"	// SliTaz iso boot
 eol:
 	.ascii	"\r\n"
-	.byte	1
+	.byte	1			// putstr will return
 
 	.space	16,0			// ISO md5
 	.org	0x8000

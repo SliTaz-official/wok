@@ -158,16 +158,7 @@ int main(int argc, char *argv[])
 			cmdfile = argv[1] + 1;
 		else {
 			cmdfile = NULL;
-#asm
-		push	ds
-		pop	es
-		mov	si, #0x82
-		mov	di, #_args
-		mov	cx, #0x7E/2
-		rep
-		 seg	cs
-		  movsw
-#endasm
+			copycmdline(args);
 		}
 	}
 	if (cmdfile) {

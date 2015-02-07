@@ -205,7 +205,8 @@ main()
 	*)	cat > /dev/null
 	esac
 	
-	[ ! -s "$1" ] && echo "usage: $0 image.iso [--undo]" 1>&2 && exit 1
+	[ ! -s "$1" ] &&
+	echo "usage: $0 image.iso [--undo|\"DOS help message\"]" 1>&2 && exit 1
 	case "${2/--/-}" in
 	-u*|-r*|-w*)
 	    case "$(get 0 $1)" in
@@ -237,10 +238,13 @@ main()
 	add_fdbootstrap $1
 	printf "%d free bytes in %04X..%04X\n" $(($OFS-$HOLE)) $HOLE $OFS
 	store 26 ${RANDOM:-0} $1
-	if [ $(stat -c %s $1) -gt 32768 ]; then
-		echo "Adding ISO image md5 ..."
-		echo -en "$(ddq if=$1 bs=32k skip=1 | md5sum | cut -c-32 | sed \
-		  's/\(..\)/\\x\1/g')" | ddq bs=16 seek=2047 conv=notrunc of=$1
+	[ "$2" ] && echo "$2               " | \
+		ddq bs=1 seek=$((0x7FDE)) count=15 conv=notrunc of=$1
+	if [ $(stat -c %s $1) -gt 34816 ]; then
+		echo "Adding ISO image md5 at 7FF0 (16 bytes) ..."
+		echo -en "$(ddq if=$1 bs=2k skip=16 count=$(get 32848 $1) | \
+			md5sum | cut -c-32 | sed 's/\(..\)/\\x\1/g')" | \
+			ddq bs=16 seek=2047 conv=notrunc of=$1
 	fi
 	echo -n "Adding boot checksum..."
 	store 64 $(od -v -j 66 -N 32702 -t u2 -w2 -An $1 | \

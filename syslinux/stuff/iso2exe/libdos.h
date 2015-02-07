@@ -9,10 +9,18 @@ extern int chdirname(char *path);
 extern void dosshutdown(void);
 extern int versiondos;
 extern int dosversion(void);
+extern void copycmdline(char store[]);
 # else
 #define progname() (argv[0])
 #define chdirname(x) chdir(dirname(x))
 #define dosshutdown()
 #define dosversion() (0)
+#define copycmdline(x) { \
+	int n; \
+	char *s, *p; \
+	for (n = 1, s = x; n < argc; n++, *s++ = ' ') \
+		for (p = argv[n]; *p; *s++ = *p++); \
+	*s = 0; \
+}
 # endif
 #endif
