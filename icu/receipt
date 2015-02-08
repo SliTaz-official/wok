@@ -16,20 +16,24 @@ WGET_URL="http://download.icu-project.org/files/$SOURCE/$VERSION/$TARBALL"
 compile_rules()
 {
 	cd $src/source
-	sed -i 's/dirname -- /dirname/' configure
-	{
+	#sed -i 's/dirname -- /dirname/' configure
+	#{
 	./configure \
 		--disable-tests \
 		--disable-samples \
+		--enable-auto-cleanup \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
-	} 2>&1 | sed -e 's|\(./config.*\)No such file|\1no such file|'
+	#} 2>&1 | sed -e 's|\(./config.*\)No such file|\1no such file|'
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/lib $fs/usr/share
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr/
+	cp -a $install/usr/sbin $fs/usr/
+	cp -a $install/usr/share/icu $fs/usr/share
 }
