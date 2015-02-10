@@ -140,8 +140,49 @@ EOM
 
 #ifdef WIN32
 static char $name[] = {
+/* head */
 $(hexdump -v -n $HSZ -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
+/* tail */
 $(hexdump -v -s $OFS -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
+
+/* These strange constants are defined in RFC 1321 as
+   T[i] = (int)(4294967296.0 * fabs(sin(i))), i=1..64
+ */
+/* static const uint32_t C_array[64] */
+EOT
+	while read a b c d; do
+		for i in $a $b $c $d; do
+			echo $i | sed 's/0x\(..\)\(..\)\(..\)\(..\),/0x\4, 0x\3, 0x\2, 0x\1, /'
+		done
+	done <<EOT
+	0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
+	0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+	0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
+	0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+	0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
+	0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+	0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
+	0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+	0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
+	0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+	0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
+	0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+	0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
+	0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+	0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
+	0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391,
+EOT
+	cat <<EOT
+/* static const char P_array[64] */
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, /* 1 */
+	1, 6, 11, 0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12, /* 2 */
+	5, 8, 11, 14, 1, 4, 7, 10, 13, 0, 3, 6, 9, 12, 15, 2, /* 3 */
+	0, 7, 14, 5, 12, 3, 10, 1, 8, 15, 6, 13, 4, 11, 2, 9, /* 4 */
+/* static const char S_array[16] */
+	7, 12, 17, 22,
+	5, 9, 14, 20,
+	4, 11, 16, 23,
+	6, 10, 15, 21,
 EOT
 
 for mode in data offset ; do
@@ -158,21 +199,27 @@ for mode in data offset ; do
 #else
 static char *$name;
 #endif
+
+#define C_array (uint32_t *) ($name + $(($BOOTISOSZ)))
+#define P_array (char *)     ($name + $(($BOOTISOSZ+(64*4))))
+#define S_array (char *)     ($name + $(($BOOTISOSZ+(64*4)+64)))
 #define ELTORITOOFS	3
 EOT
 			fi
-			echo "#define $tag	$(($BOOTISOSZ+$ofs))"
+			echo "#define $tag	$(($BOOTISOSZ+(64*4)+64+16+$ofs))"
 			ofs=$(($(echo -en "$str\0" | wc -c)+$ofs))
 		fi
 	done <<EOT
 READSECTORERR	Read sector failure.
-USAGE		Usage: isohybrid.exe file.iso [--forced]
+USAGE		Usage: isohybrid.exe file.iso [--forced|--undo|--md5]
 OPENERR		Can't open r/w the iso file.
 ELTORITOERR	No EL TORITO SPECIFICATION signature.
 CATALOGERR	Invalid boot catalog.
 HYBRIDERR	No isolinux.bin hybrid signature.
 SUCCESSMSG	Now you can create a USB key with your .iso file.\\\\nSimply rename it to a .exe file and run it.
 FORCEMSG	You can add --forced to proceed anyway.
+MD5MSG		Computing md5sum...
+UNINSTALLMSG	Uninstall done.
 EOT
 done
 	rm -rf $DATA
@@ -242,7 +289,7 @@ main()
 		ddq bs=1 seek=$((0x7FDE)) count=15 conv=notrunc of=$1
 	if [ $(stat -c %s $1) -gt 34816 ]; then
 		echo "Adding ISO image md5 at 7FF0 (16 bytes) ..."
-		echo -en "$(ddq if=$1 bs=2k skip=16 count=$(get 32848 $1) | \
+		echo -en "$(ddq if=$1 bs=2k skip=16 count=$(get 32848 $1 4) | \
 			md5sum | cut -c-32 | sed 's/\(..\)/\\x\1/g')" | \
 			ddq bs=16 seek=2047 conv=notrunc of=$1
 	fi

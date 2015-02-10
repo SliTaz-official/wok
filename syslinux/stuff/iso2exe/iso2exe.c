@@ -9,9 +9,11 @@
 #ifdef WIN32
 #include <windows.h>
 #endif
+typedef unsigned char uint8_t;
+typedef unsigned long uint32_t;
 #include "iso2exe.h"
 
-static int fd, forced, status = 1;
+static int fd, forced, uninstall, status = 1;
 static char tazlitoinfo[0x8000U - BOOTISOSZ];
 #define buffer tazlitoinfo
 #define BUFFERSZ 2048
@@ -24,6 +26,217 @@ static void readsector(unsigned long sector)
 	    read(fd, buffer, BUFFERSZ) != BUFFERSZ) {
 		puts(bootiso+READSECTORERR);
 		exit(1);
+	}
+}
+
+static int domd5 = 0;
+#define ALIGN1
+
+typedef struct {
+	uint32_t l;
+	uint32_t h;
+} uint64_t;
+static uint8_t wbuffer[64]; /* always correctly aligned for uint64_t */
+static uint64_t total64;    /* must be directly before hash[] */
+static uint32_t hash[8];    /* 4 elements for md5, 5 for sha1, 8 for sha256 */
+
+//#define rotl32(x,n) (((x) << (n)) | ((x) >> (32 - (n))))
+static uint32_t rotl32(uint32_t x, unsigned n)
+{
+	return (x << n) | (x >> (32 - n));
+}
+
+static void md5_process_block64(void);
+
+/* Feed data through a temporary buffer.
+ * The internal buffer remembers previous data until it has 64
+ * bytes worth to pass on.
+ */
+static void common64_hash(const void *buffer, size_t len)
+{
+	unsigned bufpos = total64.l & 63;
+
+	total64.l += len; if (total64.l < len) total64.h++;
+
+	while (1) {
+		unsigned remaining = 64 - bufpos;
+		if (remaining > len)
+			remaining = len;
+		/* Copy data into aligned buffer */
+		memcpy(wbuffer + bufpos, buffer, remaining);
+		len -= remaining;
+		buffer = (const char *)buffer + remaining;
+		bufpos += remaining;
+		/* clever way to do "if (bufpos != 64) break; ... ; bufpos = 0;" */
+		bufpos -= 64;
+		if (bufpos != 0)
+			break;
+		/* Buffer is filled up, process it */
+		md5_process_block64();
+		/*bufpos = 0; - already is */
+	}
+}
+
+/* Process the remaining bytes in the buffer */
+static void common64_end(void)
+{
+	unsigned bufpos = total64.l & 63;
+	/* Pad the buffer to the next 64-byte boundary with 0x80,0,0,0... */
+	wbuffer[bufpos++] = 0x80;
+
+	/* This loop iterates either once or twice, no more, no less */
+	while (1) {
+		unsigned remaining = 64 - bufpos;
+		memset(wbuffer + bufpos, 0, remaining);
+		/* Do we have enough space for the length count? */
+		if (remaining >= 8) {
+			/* Store the 64-bit counter of bits in the buffer */
+			//uint64_t t = total64 << 3;
+			uint32_t *t = (uint32_t *) (&wbuffer[64 - 8]);
+			/* wbuffer is suitably aligned for this */
+			//*(uint64_t *) (&wbuffer[64 - 8]) = t;
+			t[0] = total64.l << 3;
+			t[1] = (total64.h << 3) | (total64.l >> 29);
+		}
+		md5_process_block64();
+		if (remaining >= 8)
+			break;
+		bufpos = 0;
+	}
+}
+
+/* These are the four functions used in the four steps of the MD5 algorithm
+ * and defined in the RFC 1321.  The first function is a little bit optimized
+ * (as found in Colin Plumbs public domain implementation).
+ * #define FF(b, c, d) ((b & c) | (~b & d))
+ */
+#undef FF
+#undef FG
+#undef FH
+#undef FI
+#define FF(b, c, d) (d ^ (b & (c ^ d)))
+#define FG(b, c, d) FF(d, b, c)
+#define FH(b, c, d) (b ^ c ^ d)
+#define FI(b, c, d) (c ^ (b | ~d))
+
+/* Hash a single block, 64 bytes long and 4-byte aligned */
+static void md5_process_block64(void)
+{
+	uint32_t *words = (void*) wbuffer;
+	uint32_t A = hash[0];
+	uint32_t B = hash[1];
+	uint32_t C = hash[2];
+	uint32_t D = hash[3];
+
+	const uint32_t *pc;
+	const char *pp;
+	const char *ps;
+	int i;
+	uint32_t temp;
+
+
+	pc = C_array;
+	pp = P_array;
+	ps = S_array - 4;
+
+	for (i = 0; i < 64; i++) {
+		if ((i & 0x0f) == 0)
+			ps += 4;
+		temp = A;
+		switch (i >> 4) {
+		case 0:
+			temp += FF(B, C, D);
+			break;
+		case 1:
+			temp += FG(B, C, D);
+			break;
+		case 2:
+			temp += FH(B, C, D);
+			break;
+		case 3:
+			temp += FI(B, C, D);
+		}
+		temp += words[(int) (*pp++)] + *pc++;
+		temp = rotl32(temp, ps[i & 3]);
+		temp += B;
+		A = D;
+		D = C;
+		C = B;
+		B = temp;
+	}
+	/* Add checksum to the starting values */
+	hash[0] += A;
+	hash[1] += B;
+	hash[2] += C;
+	hash[3] += D;
+
+}
+#undef FF
+#undef FG
+#undef FH
+#undef FI
+
+/* Initialize structure containing state of computation.
+ * (RFC 1321, 3.3: Step 3)
+ */
+static void md5_begin(void)
+{
+	hash[0] = 0x67452301;
+	hash[1] = 0xefcdab89;
+	hash[2] = 0x98badcfe;
+	hash[3] = 0x10325476;
+	total64.l = total64.h = 0;
+}
+
+/* Used also for sha1 and sha256 */
+#define md5_hash common64_hash
+
+/* Process the remaining bytes in the buffer and put result from CTX
+ * in first 16 bytes following RESBUF.  The result is always in little
+ * endian byte order, so that a byte-wise output yields to the wanted
+ * ASCII representation of the message digest.
+ */
+#define md5_end common64_end
+
+static void md5sum(void)
+{
+	unsigned long sectors = 0;
+	int count;
+
+	lseek(fd, 32768UL, SEEK_SET);
+
+	md5_begin();
+	while ((count = read(fd, buffer, BUFFERSZ)) > 0) {
+		if (sectors == 0)
+			sectors = LONG(buffer + 80);
+		md5_hash(buffer, count);
+		if (--sectors == 0)
+			break;
+	}
+
+	if (count < 0)
+		return;
+
+	md5_end();
+
+	lseek(fd, 32752UL, SEEK_SET);
+	write(fd, hash, 16);
+	memcpy(bootiso + BOOTISOSZ - 16, hash, 16);
+}
+
+static unsigned chksum(unsigned start, unsigned stop)
+{
+	unsigned i, n = 0;
+
+	lseek(fd, 0UL /* (unsigned long) (start / BUFFERSZ) */, SEEK_SET);
+	while (1) {
+		if (read(fd, buffer, BUFFERSZ) != BUFFERSZ)
+			return 0;
+		for (i = start % BUFFERSZ; i < BUFFERSZ; i += 2, start += 2) {
+			if (start >= stop)
+				return - n;
+			n += WORD(buffer + i);
+		}
 	}
 }
 
@@ -49,6 +262,23 @@ static unsigned install(char *filename)
 	fd = open(filename,O_RDWR|O_BINARY);
 	if (fd == -1)
 		return OPENERR;
+
+	if (uninstall) {
+		struct { char check[sizeof(tazlitoinfo) - BUFFERSZ - 1024]; };
+		readsector(0UL);
+		n = BUFFERSZ;
+		if (WORD(buffer) == 23117) {
+			readsector((unsigned long) buffer[69]);
+			n = 0;
+		}
+		lseek(fd, 0UL, SEEK_SET);
+		for (i = 0; i < 32; i++, n = BUFFERSZ) {
+			write(fd, buffer + n, 1024);
+		}
+		close(fd);
+		status = 0;
+		return UNINSTALLMSG;
+	}
 
 	if (forced == 0) {
 		status = 2;
@@ -105,18 +335,22 @@ static unsigned install(char *filename)
 	write(fd, tazlitoinfo, sizeof(tazlitoinfo));
 	write(fd, bootiso + n, BOOTISOSZ - n); /* COM + rootfs + EXE/DOS */
 
-	/* Compute the checksum */
-	lseek(fd, 0UL, SEEK_SET);
-	for (i = 66, n = 0, j = 0; j < 16; j++, i = 0) {
-		if (read(fd, buffer, BUFFERSZ) != BUFFERSZ)
-			goto nochksum;
-		for (; i < BUFFERSZ; i += 2)
-			n += WORD(buffer + i);
+	if (domd5) {
+		puts(bootiso + MD5MSG);
+		md5sum();
 	}
-	WORD(bootiso + 64) = -n;
-	lseek(fd, 0UL, SEEK_SET);
-	write(fd, bootiso, 512);
-nochksum:
+	
+	/* Compute the boot checksums */
+	if ((WORD(bootiso + 64) = chksum(66, 32768)) != 0) {
+		if (domd5) {
+			lseek(fd, 0UL, SEEK_SET);
+			write(fd, bootiso, 512);
+			n = WORD(bootiso + 2) - 512*(WORD(bootiso + 4) - 1);
+			WORD(bootiso + 18) = chksum(0, n) - 1;
+		}
+		lseek(fd, 0UL, SEEK_SET);
+		write(fd, bootiso, 512);
+	}
 	close(fd);
 	status = 0;
 	return SUCCESSMSG;
@@ -124,7 +358,16 @@ nochksum:
 
 int main(int argc, char *argv[])
 {
-	forced = (argc > 2);
+	int i;
+	for (i = 2; i < argc; i++) {
+		char *s = argv[i];
+		while ((unsigned)(*s - '-') <= ('/' - '-')) s++;
+		switch (*s | 0x20) {
+		case 'f' : forced++; break;
+		case 'm' : domd5++; break;
+		case 'u' : uninstall++; break;
+		}
+	}
 	puts(bootiso + install(argv[1]));
 	if (status > 1)
 		puts(bootiso + FORCEMSG);
