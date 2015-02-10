@@ -346,7 +346,7 @@ static unsigned install(char *filename)
 			lseek(fd, 0UL, SEEK_SET);
 			write(fd, bootiso, 512);
 			n = WORD(bootiso + 2) - 512*(WORD(bootiso + 4) - 1);
-			WORD(bootiso + 18) = chksum(0, n) - 1;
+			WORD(bootiso + 18) = chksum(0, (unsigned short) n) - 1;
 		}
 		lseek(fd, 0UL, SEEK_SET);
 		write(fd, bootiso, 512);
