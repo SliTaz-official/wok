@@ -365,7 +365,7 @@ mkzip()
 	$1 || return
 	wget -O $mnt/slitaz/boot/grldr http://mirror.slitaz.org/boot/grldr
 	readtazbootconf
-	cat > $mnt/slitaz/menu.lst <<EOT
+	cat > $mnt/slitaz/boot/menu.lst <<EOT
 title SliTaz
 	kernel $kernel $cmdline
 	initrd $initrd
@@ -382,7 +382,8 @@ EOT
 memtest	MemTest
 pxe	Web boot
 EOT
-	cat > $mnt/slitaz/install.txt <<EOT
+	unix2dos $mnt/slitaz/boot/menu.lst
+	unix2dos > $mnt/slitaz/boot/install.txt <<EOT
 For NT/2000/XP users:
 
 1- Move the files grldr and menu.lst into the root directory
@@ -404,8 +405,10 @@ C:\\> attrib +r +h +s boot.ini
 
 See http://diddy.boot-land.net/grub4dos/files/README_GRUB4DOS.txt
 EOT
-	( cd $mnt ; zip -r9 $(basename $ISO .iso) slitaz )
+	( cd $mnt ; zip -r9 $(basename $ISO .iso).zip slitaz )
 	mv $mnt/*.zip .
+	umount $mnt
+	rm -rf $mnt
 }
 
 install()
