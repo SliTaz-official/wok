@@ -1,5 +1,7 @@
 #!/bin/sh
 
+[ $(id -u) -eq 0 ] || exec su -c "$0 $@"
+
 DIALOG=dialog
 
 ddq()
@@ -11,102 +13,6 @@ get()
 {
 	od -v -j $1 -N ${4:-${3:-2}} -t u${3:-2} -w${3:-2} -An $2 2>/dev/null ||
 	hexdump -v -s $1 -n ${4:-${3:-2}} -e "\"\" 1/${3:-2} \" %d\n\"" $2
-}
-
-getarg()
-{
-	sed "/$1=/!d;s/.*$1=\\([^ ]*\\).*/\\1/" /proc/cmdline
-}
-
-clear()
-{
-	echo -e "\x1B[1;1H\x1B[J"
-}
-
-xless()
-{
-	[ $(wc -l < "$1") -gt 22 ] &&
-	sed 's/..3.;4.m/===/g;$s/.*/&\n---\nPress q to continue/' "$1" | less ||
-	{	cat "$1"
-		[ "$2" ] || return
-		echo -e "$2"
-		read n
-	}
-}
-
-tinydialog()
-{
-	clear
-	label=""
-	while [ "$1" ]; do
-		case "$1" in
-		--title) title="   \x1B[30;47m$2\x1B[37;40m\n"
-			 echo -e $title; shift ;;
-		--yes-label) label="$2" ; shift ;;
-		--textbox)
-			xless "$2" "\nPress RETURN to continue."
-			break;;
-		--gauge)
-			t="        "
-			echo -e "$t$2\n"
-			while read pct ; do
-				s="                              "
-				s="$s$pct%$s"
-				pct=$((($pct*63)/100))
-				echo -en "\r$t\x1B[30;47m$(echo "$s" | cut -c-$pct)\x1B[37;40m$(echo "$s" | cut -c$(($pct+1))-)"
-			done
-			break;;
-		--yesno)
-			while true; do
-				clear
-				echo "$2" | sed 's/\\n\\n/\\n/g;s/\\n/\n/g'
-				echo -en "  <-  1:${label:-Yes}  2:Cancel\r"
-				read x
-				case "$x" in
-				''|Y*|y*|1) return 0;;
-				N*|n*|2|0) return 1;;
-				esac
-			done ;;
-		--menu|--radiolist)
-			[ "$1" == "--menu" ] && shft=2 || shft=3
-			label=""
-			[ "$2" ] && label="\n$2" 
-			shift 5
-			echo -e "$title$label\n0	Cancel" > /tmp/data
-			n=1
-			while [ "$1" ]; do
-				eval key_$n='$1'
-				echo "$((n++))	$2"
-				shift $shft
-			done >> /tmp/data
-			while ! grep -q "^$n	" /tmp/data ; do
-				clear
-				xless /tmp/data
-				echo -en "\n   <- Enter the selection number\r"
-				read n
-			done 2> /dev/null
-			rm -f /tmp/data
-			[ $n -eq 0 ] && return 1
-			eval echo -n \$key_$n 1>&2
-			return 0;;
-		esac
-		shift
-	done
-}
-
-mount_proc()
-{
-	mount -t proc /proc /proc
-	mount -t sysfs /sys /sys
-	udevd --daemon 2> /dev/null && udevadm trigger && sleep 5
-}
-
-umount_proc()
-{
-	killall udevd 2> /dev/null
-	umount /sys/fs/fuse/connections 2> /dev/null
-	umount /sys
-	umount /proc
 }
 
 bytes2bin()
@@ -126,33 +32,18 @@ words2bin()
 gettazboot()
 {
 	echo "Creating $(basename $1) ..."
-	O=$(($(get 66 /mnt/$ISO) - 0xC0))
-	L=$(($(get 20 /mnt/$ISO) - 0xC0 - $(get 24 /mnt/$ISO) - $O))
-	S=$((32+$L))
-	P=$((($S+511)/512))
-	E=$((4096-(32*$P)))
-	words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 $((${2:-0}-16)) \
-			-2 0 256 -16 28 0x6C53 0x5469 0x7A61 > $1
-	ddq bs=1 count=$L skip=$(echo $O) if=/mnt/$ISO >> $1
-}
-
-checkmagic()
-{
-	[ -s $1 ] && [ $(getarg magic) == $(get 24 $1 4) ]
-}
-
-getiso()
-{
-	mkdir -p /media/cdrom
-	for dev in /sys/block/?d?/?d??* ; do
-		mount /dev/$(basename $dev) /mnt
-		if checkmagic /mnt/$ISO; then
-			mount -o loop,ro /mnt/$ISO /media/cdrom
-			echo "Found $ISO on $(basename $dev)"
-			break
-		fi
-		umount /mnt
-	done
+	if [ $(get 0 $ISO) -eq 23117 ]; then
+		O=$(($(get 66 $ISO) - 0xC0))
+		L=$(($(get 20 $ISO) - 0xC0 - $(get 24 $ISO) - $O))
+		S=$((32+$L))
+		P=$((($S+511)/512))
+		E=$((4096-(32*$P)))
+		words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 $((${2:-0}-16)) \
+				-2 0 256 -16 28 0x6C53 0x5469 0x7A61 > $1
+		ddq bs=1 count=$L skip=$(echo $O) if=$ISO >> $1
+	else
+		wget -O $1 http://mirror.slitaz.org/boot/tazboot.exe
+	fi
 }
 
 uncpio()
@@ -172,38 +63,35 @@ dotwait()
 	echo -n "${1:-Install filesystem}.."
 	touch /tmp/wait
 	while [ -e /tmp/wait ]; do
-		echo -n "." > /dev/tty0
+		echo -n "." > /dev/tty
 		sleep 1
 	done &
 }
 
 getuuid()
 {
-	dev=$(mount | sed '/ \/mnt /!d;s/ .*//;s|/dev/||;q')
-	blkid | sed "/$dev:/!d;s/.* UUID=.\\([^ ]*\\)\".*/\\1/"
+	dev=$(mount | sed "/ $(echo $mnt | sed 's|/|\\/|g') /!d;s/ .*//;s|/dev/||;q")
+	[ "$dev" ] &&
+	blkid | sed "/$dev:/!d;s/.* UUID=.\\([^ ]*\\)\".*/\\1/" ||
+	echo "/dev/hda1"
 }
 
 tazusbinitfs()
 {
 	PAD=$(($(stat -c %s $1) % 4))
 	[ $PAD -ne 0 ] && ddq if=/dev/zero bs=1 count=$((4 - $PAD)) >> $1
-	mkdir -p /tmp/fs/etc /tmp/fs/lib /tmp/fs/home
-	cp -a /etc/locale.conf /tmp/fs/etc 2> /dev/null
-	cp -a /etc/keymap.conf /tmp/fs/etc 2> /dev/null
-	sed 's/ .*//' /proc/modules | while read mod ; do
-		find /lib/modules/ | grep $mod.ko | \
-			sed 's|.*|cp & /tmp/fs/lib|' | sh
-	done
-	cat > /tmp/fs/init1 <<EOT
+	mkdir -p /tmp/fs$$/etc /tmp/fs$$/lib /tmp/fs$$/home
+	cp -a /etc/locale.conf /tmp/fs$$/etc 2> /dev/null
+	cp -a /etc/keymap.conf /tmp/fs$$/etc 2> /dev/null
+	cat > /tmp/fs$$/init1 <<EOT
 #!/bin/sh
 sed -i 's|sbin/init|init2|' /init
 exec /init
 EOT
-	cat > /tmp/fs/init2 <<EOT
+	cat > /tmp/fs$$/init2 <<EOT
 #!/bin/sh
 
 mount -t proc /proc /proc
-  grep -q debug /proc/cmdline && debug=true && set -x
 for i in /lib/*.ko* ; do insmod \$i 2> /dev/null ; done; sleep 2
 v=\$(sed '/\\/home=/!d;s|.*/home=\\([^ ]*\\).*|\\1|' /proc/cmdline /cmdline 2> /dev/null)
 mount / -o remount,rw
@@ -214,42 +102,54 @@ mnt=/mnt/dos/\${v#*/}
 dev=\$( (blkid /dev/[sh]d* || blkid) | grep \${v%%/*} | sed 's/:.*//;q')
 echo "Mount \$dev in /mnt/dos for \$v..." | tee -a /run/boot.log
 mount \$dev /mnt/dos
+if [ ! -d /mnt/dos/slitaz ]; then
+	umount /mnt/dos 2> /dev/null
+	(blkid /dev/[sh]d* || blkid) | while read dev line; do
+		case "\$line" in
+		*ntfs*|*vfat*|*msdos*) ;;
+		*) continue ;;
+		esac
+		mount \${dev%:} /mnt/dos
+		[ -d /mnt/dos/slitaz ] && break
+		umount /mnt/dos
+	done
+fi
 mount.posixovl -F \$mnt -- -oallow_other -odefault_permissions -osuid
 mount --bind \$mnt /home
-  [ "\$debug" = "true" ] && sh
 umount /proc
 exec /sbin/init
 EOT
-	chmod 755 /tmp/fs/init?
-	cp -a /tmp/fs/* /
-	( cd /tmp/fs ; find * | cpio -o -H newc ) | gzip -9 >> $1
+	chmod 755 /tmp/fs$$/init?
+	( cd /tmp/fs$$ ; find * | cpio -o -H newc ) | gzip -9 >> $1
+	rm -rf /tmp/fs$$
 }
 
 mkinitrd()
 {
-	dotwait "Creating $(basename $1) "
+	echo -en "\nCreating $(basename $1) "
+	fs=/tmp/fs$$
 	for i in bin lib dev proc tmp mnt etc ; do
-		mkdir -p /tmp/fs/$i
+		mkdir -p $fs/$i
 	done
 	for i in /dev/console /dev/null /dev/tty /dev/tty0 /dev/tty1 /dev/tty2 \
 		 /dev/fuse /dev/hd* /dev/sd* ; do
-		cp -a $i /tmp/fs$i
+		cp -a $2$i $fs/dev/
 	done
 	for i in /bin/busybox $(which mount.posixovl) $(which blkid); do
 		cp $(LD_TRACE_LOADED_OBJECTS=1 /lib/ld*.so $i | \
-		sed 's|.*=> \(.*/lib/l[^ ]*\).*|\1|;/^\//!d') /tmp/fs/lib
-		cp $i /tmp/fs/bin
+		sed 's|.*=> \(.*/lib/l[^ ]*\).*|\1|;/^\//!d') $fs/lib
+		cp $i $fs/bin
 	done
-	cp -a /lib/ld-* /tmp/fs/lib
+	cp -a /lib/ld-* $fs/lib
 	for i in $(busybox | sed '/Current/,$!d'); do
-		[ -e /tmp/fs/bin/${i%,} ] || ln -s busybox /tmp/fs/bin/${i%,}
+		[ -e $fs/bin/${i%,} ] || ln -s busybox $fs/bin/${i%,}
 	done
-	ln -s /proc/mounts /tmp/fs/etc/mtab
+	ln -s /proc/mounts $fs/etc/mtab
 	sed 's/ .*//' /proc/modules | while read mod ; do
 		find /lib/modules/ | grep $mod.ko | \
-			sed 's|.*|cp & /tmp/fs/lib|' | sh
+			sed 's|.*|cp & $fs/lib|' | sh
 	done
-	cat > /tmp/fs/init <<EOT
+	cat > $fs/init <<EOT
 #!/bin/sh
 
 arg()
@@ -265,6 +165,18 @@ for i in /lib/*.ko* ; do insmod \$i 2> /dev/null ; done; sleep 2
 arg mount "Mount device"
 mount \$( (blkid /dev/[sh]d* || blkid) | grep \$val | sed 's/:.*//;q') /mnt
 arg subroot "Change root to directory"
+if [ -d /mnt/\$val ]; then
+	umount /mnt 2> /dev/null
+	(blkid /dev/[sh]d* || blkid) | while read dev line; do
+		case "\$line" in
+		*ntfs*|*vfat*|*msdos*) ;;
+		*) continue ;;
+		esac
+		mount \${dev%:} /mnt
+		[ -d /mnt/\$val ] && break
+		umount /mnt
+	done
+fi
 mount.posixovl -F /mnt/\$val -- -oallow_other -odefault_permissions -osuid
 mount --bind /mnt /mnt/\$val/mnt/dos
 mount -o size=0 -t tmpfs tmpfs /mnt/\$val/mnt/dos/\$val
@@ -274,14 +186,9 @@ export LD_LIBRARY_PATH=\$val/lib:\$val/usr/lib:/lib
 umount /proc
 exec /bin/switch_root /mnt \${LDSO#/mnt/} \$val/usr/sbin/chroot \$val /sbin/init
 EOT
-	chmod +x /tmp/fs/init
-	( cd /tmp/fs ; find * | cpio -o -H newc ) | lzma e $1 -si 2> /dev/null
-	rm -rf /tmp/fs /tmp/wait
-}
-
-is_loram()
-{
-	[ -s /lib/squashfs.ko* ]
+	chmod +x $fs/init
+	( cd $fs ; find * | cpio -o -H newc ) | lzma e $1 -si 2> /dev/null
+	rm -rf $fs /tmp/wait
 }
 
 ls_r()
@@ -291,8 +198,8 @@ ls_r()
 
 doinstall()
 {
-	mkdir -p /mnt/slitaz/boot /mnt/slitaz/mnt/dos
-	if ! mount.posixovl -F /mnt/slitaz -- \
+	mkdir -p $mnt/slitaz/boot $mnt/slitaz/mnt/dos
+	if ! mount.posixovl -F $mnt/slitaz -- \
 		-oallow_other -odefault_permissions -osuid; then
 		echo "Can't install SliTaz. Abort."
 		sleep 5
@@ -300,35 +207,25 @@ doinstall()
 	fi
 	dotwait "Install root filesystem in /slitaz.."
 	if [ "$1" ]; then
-		if [ -d /media/cdrom/fs ]; then
-			( cd /mnt/slitaz/fs; find | cpio -o -H newc ) | gzip -9
-		else
-			ls_r /media/cdrom/boot/rootfs*gz | xargs cat
-		fi > /mnt/slitaz/boot/rootfs.gz
-		tazusbinitfs /mnt/slitaz/boot/rootfs.gz
+		ls_r /media/cdrom/boot/rootfs*gz | \
+		xargs cat > $mnt/slitaz/boot/rootfs.gz
+		tazusbinitfs $mnt/slitaz/boot/rootfs.gz
 		initrd=rootfs.gz
 		extraargs="/home=$(getuuid)/slitaz rdinit=/init1"
 	else
-		if [ -d /media/cdrom/fs ]; then
-			cp -a /media/cdrom/fs/. /mnt/slitaz
-		elif is_loram ; then
-			for i in /media/cdrom/boot/rootfs?*.* ; do
-				[ -s $(basename $i) ] && continue
-				cpio -i $i
-			done
-			for i in $(ls_r /media/cdrom/boot/rootfs*gz); do
-				mount -o loop,ro $i /sqfs/mnt
-				cp -a /sqfs/mnt/. /mnt/slitaz
-				umount -d /sqfs/mnt
-			done
-		else
-			for i in $(ls_r /media/cdrom/boot/rootfs*gz); do
-				uncpio $i /mnt/slitaz
-			done
-		fi
-		cp -a /etc/locale.conf /mnt/slitaz/etc 2> /dev/null
-		cp -a /etc/keymap.conf /mnt/slitaz/etc 2> /dev/null
-		mkinitrd /mnt/slitaz/boot/initrd
+		for i in $(ls_r /media/cdrom/boot/rootfs*gz); do
+			uncpio $i $mnt/slitaz
+		done
+		for i in $packages_list; do
+			tazpkg get-install $i --root=$mnt/slitaz
+		done
+		for i in $packages_dir/*.tazpkg; do
+			[ -s "$i" ] &&
+			tazpkg install $i --root=$mnt/slitaz
+		done
+		cp -a /etc/locale.conf $mnt/slitaz/etc 2> /dev/null
+		cp -a /etc/keymap.conf $mnt/slitaz/etc 2> /dev/null
+		mkinitrd $mnt/slitaz/boot/initrd $mnt/slitaz
 		initrd=initrd
 		extraargs="mount=$(getuuid) subroot=slitaz"
 	fi
@@ -336,41 +233,91 @@ doinstall()
 	for i in /media/cdrom/boot/bzImage /media/cdrom/boot/*pxe* \
 		/media/cdrom/boot/isolinux/he* /media/cdrom/boot/isolinux/opt* \
 		/media/cdrom/README /media/cdrom/boot/memtest* ; do
-		[ -s $i ] && cp $i /mnt/slitaz/boot
+		[ -s $i ] && cp $i $mnt/slitaz/boot
 	done
-	for i in /mnt/slitaz/boot/memtest /mnt/slitaz/boot/*pxe* ; do
+	for i in $mnt/slitaz/boot/memtest $mnt/slitaz/boot/*pxe* ; do
 		[ $(get 0 $i 2> /dev/null || echo 0) -eq 23117 ] &&
 		mv $i $i.exe
 	done
-	gettazboot /mnt/slitaz/boot/tazboot.exe
-	unix2dos > /mnt/slitaz/boot/tazboot.cmd <<EOT
+	gettazboot $mnt/slitaz/boot/tazboot.exe
+	unix2dos > $mnt/slitaz/boot/tazboot.cmd <<EOT
 kernel=/slitaz/boot/bzimage
 initrd=/slitaz/boot/$initrd
 rw root=/dev/null $extraargs autologin
 EOT
-	unix2dos /mnt/slitaz/boot/he* /mnt/slitaz/boot/opt* \
-		/mnt/slitaz/boot/README
-	[ -d /mnt/slitaz/usr/sbin -a ! -x /mnt/slitaz/usr/sbin/mount.posixovl ] &&
-	cp $(which mount.posixovl) /mnt/slitaz/usr/sbin
+	unix2dos $mnt/slitaz/boot/he* $mnt/slitaz/boot/opt* \
+		$mnt/slitaz/boot/README
+	[ -d $mnt/slitaz/usr/sbin -a ! -x $mnt/slitaz/usr/sbin/mount.posixovl ] &&
+	cp $(which mount.posixovl) $mnt/slitaz/usr/sbin
 	rm -f /tmp/wait
-false &&
-	[ -s /mnt/boot.ini ] && ! grep -qs tazboot /mnt/boot.ini &&
-	echo "Update boot.ini ..." && unix2dos >> /mnt/boot.ini <<EOT
-C:\\slitaz\\boot\\tazboot.exe="SliTaz"
-EOT
-false &&
-	grep -qis menuitem /mnt/config.sys && ! grep -qi tazboot /mnt/config.sys &&
-	echo "Update config.sys ..." &&
-	sed -i 's/menudefault/menuitem SLITAZ, SliTaz\r\n&/' /mnt/config.sys &&
-	unix2dos >> /mnt/config.sys <<EOT
-[SLITAZ]
-install=\\slitaz\\boot\\tazboot.exe
-EOT
+	umount $mnt/slitaz
 	return 0
 }
 
-install()
+windev()
 {
+	DEV="$(blkid | grep -iE "(msdos|vfat|ntfs)" | sed 's/:.*//;s|/dev/||')"
+	[ "$DEV" ] || return
+	cat > /tmp/dialog$$ <<EOT
+$DIALOG --clear \
+	--title " Select your Windows partition " \
+	--menu "\nPlease select the Windows partition according to its known size.
+The datas will be kept untouched.\n" \
+	17 70 8 \
+	$(for i in $DEV ; do
+		label="$(blkid | sed "/$i:/!d;s/.*://;s/[^ ]*UUID=[^ ]* //g;s/LABEL=//")"
+		echo -n "/dev/$i \"$(($(cat /sys/block/*/$i/size)/2048))MB $label\" "
+	done)
+EOT
+	exec 3>&1
+	[ $? -eq 0 ] || return
+	device=$(. /tmp/dialog$$ 2>&1 1>&3)
+	exec 3>&-
+	rm -f /tmp/dialog$$
+	mnt=/tmp/mnt$$
+	mkdir -p $mnt && mount $device $mnt
+}
+
+extra_packages()
+{
+	packages_list=
+	packages_dir=
+	$DIALOG --clear \
+		--title " Extra packages " \
+		--defaultno --yesno \
+"
+Do you want to add extra packages ?
+" 7 70
+	[ $? -eq 0 ] || return
+	[ -s /var/lib/tazpkg/packages.txt ] || tazpkg recharge
+	if [ -s /media/cdrom/boot/vmlinuz-$(uname -r) ]; then
+		cat > /tmp/dialog$$ <<EOT
+$DIALOG --clear \
+	--title " Select the packages " \
+	--separate-output \
+	--cancel-label "Skip" \
+	--checklist "Please select the packages you want to install. Try with the first letter." \
+	23 78 20 \\
+EOT
+		awk -F\| '{ printf "%s \"%s\" off ",$1,$3 }' \
+			/var/lib/tazpkg/packages.desc >> /tmp/dialog$$
+		sh /tmp/dialog$$ 2> /tmp/dialog.out$$
+		[ $? -eq 0 ] && packages_list="$(cat /tmp/dialog.out$$)"
+	fi
+	cat > /tmp/dialog$$ <<EOT
+$DIALOG --clear \
+	--title "Please select the directory with every custom packages to install." \
+	--cancel-label "Skip" \
+	--dselect $PWD 13 78
+EOT
+	sh /tmp/dialog$$ 2> /tmp/dialog.out$$
+	[ $? -eq 0 ] && packages_dir="$(cat /tmp/dialog.out$$)"
+	rm -f /tmp/dialog$$ /tmp/dialog.out$$
+}
+
+_install()
+{
+	extra_packages
 	$DIALOG --clear \
 		--title " SliTaz UMSDOS way installation " \
 		--yes-label "Install" --yesno \
@@ -385,14 +332,98 @@ To do a traditional installation with disk partitioning,
 start SliTaz Live with 'SliTaz RAM boot' menu.\n
 " 19 70
 	[ $? -eq 0 ] || return
-	doinstall || return
-	[ -x /mnt/slitaz/sbin/init ] || return
-	umount -d /media/cdrom
-	umount_proc
-	exec chroot /mnt/slitaz /sbin/init
+	doinstall
 }
 
-installtaz()
+readtazbootconf()
+{
+	kernel="$(sed '/^kernel=/!d;s/.*=//' $mnt/slitaz/boot/tazboot.cmd)"
+	initrd="$(sed '/^initrd=/!d;s/.*=//' $mnt/slitaz/boot/tazboot.cmd)"
+	cmdline="$(sed '/^kernel=/d;/^initrd=/d' $mnt/slitaz/boot/tazboot.cmd)"
+}
+
+bootinstalled()
+{
+	[ "$(which kexec)" ] || return
+	[ -x $mnt/slitaz$1 ] || return
+	[ -s $mnt/slitaz/boot/tazboot.cmd ] || return
+	readtazbootconf
+	kexec -l $kernel --initrd $initrd --command-line "$cmdline" --atags
+	umount $mnt
+	rm -rf $mnt
+	umount -d /media/cdrom
+	kexec -e
+}
+
+mkzip()
+{
+	device=
+	packages_list=
+	packages_dir=
+	mnt=/tmp/mnt$$
+	mkdir -p $mnt
+	$1 || return
+	wget -O $mnt/slitaz/boot/grldr http://mirror.slitaz.org/boot/grldr
+	readtazbootconf
+	cat > $mnt/slitaz/menu.lst <<EOT
+title SliTaz
+	kernel $kernel $cmdline
+	initrd $initrd
+
+EOT
+	while read file title; do
+		file=$(ls $mnt/slitaz/boot/*file* 2> /dev/null)
+		[ -s "$file" ] && cat >> $mnt/slitaz/menu.lst <<EOT
+title $title
+	kernel $file
+
+EOT
+	done <<EOT
+memtest	MemTest
+pxe	Web boot
+EOT
+	cat > $mnt/slitaz/install.txt <<EOT
+For NT/2000/XP users:
+
+1- Move the files grldr and menu.lst into the root directory
+
+C:\\> copy \\slitaz\\boot\\grldr \\
+C:\\> copy \\slitaz\\boot\\menu.lst \\
+
+2- Remove boot.ini attributes
+
+C:\\> attrib -r -h -s boot.ini
+
+3- Append the following line to boot.init
+
+C:\\grldr="slitaz"
+
+4- Restore boot.ini attributes
+
+C:\\> attrib +r +h +s boot.ini
+
+See http://diddy.boot-land.net/grub4dos/files/README_GRUB4DOS.txt
+EOT
+	( cd $mnt ; zip -r9 $(basename $ISO .iso) slitaz )
+	mv $mnt/*.zip .
+}
+
+install()
+{
+	windev || return
+	packages_list=
+	packages_dir=
+	_install && bootinstalled /sbin/init
+	umount $mnt
+	rm -rf $mnt
+}
+
+inst2zip()
+{
+	mkzip _install
+}
+
+_installtaz()
 {
 	$DIALOG --clear \
 		--title " SliTaz TAZUSB way installation " \
@@ -408,26 +439,39 @@ To do a traditional installation with disk partitioning,
 start SliTaz Live with 'SliTaz RAM boot' menu.\n
 " 19 70
 	[ $? -eq 0 ] || return
-	doinstall tazusblike || return
-	dotwait 
-	if [ -d /media/cdrom/fs ]; then
-		cp -a /media/cdrom/fs/. /
-	else
-		for i in $(ls_r /media/cdrom/boot/rootfs*gz); do
-			uncpio $i
-		done
-	fi
-	cp /tmp/fs/etc/* /etc
-	echo "/home=$(getuuid)/slitaz" > /cmdline
-	rm -f /tmp/wait
-	[ -x /init1 ] || return
+	doinstall tazusblike
+}
+
+installtaz()
+{
+	windev || return
+	packages_list=
+	packages_dir=
+	_installtaz && bootinstalled /boot/bzimage
+	umount $mnt
+	rm -rf $mnt
+}
+
+insttaz2zip()
+{
+	mkzip _installtaz
+}
+
+bootiso()
+{
+	for i in $(ls_r /media/cdrom/boot/rootfs*gz); do
+		grep -q ' lm ' /proc/cpuinfo && [ -s ${i}64 ] && i=${i}64
+		cat $i
+		n=$((4 - ($(stat -c %s $i) % 4)))
+		[ $n -eq 4 ] || dd if=/dev/zero bs=1 count=$n
+	done > /tmp/initrd$$
+	kernel=/media/cdrom/boot/bzImage
+	grep -q ' lm ' /proc/cpuinfo && [ -s ${kernel}64 ] && kernel=${kernel}64
+	. /etc/locale.conf
+	kexec -l $kernel --initrd /tmp/initrd$$ --atags --command-line \
+	   "root=/dev/null autologin lang=$LANG kmap=$(cat /etc/keymap.conf)"
 	umount -d /media/cdrom
-	umount /mnt/slitaz
-	rm -f /dev/cdrom
-	umount /mnt
-	mkdir /mnt/dos
-	umount_proc
-	exec /init1
+	kexec -e
 }
 
 tazboot()
@@ -450,7 +494,7 @@ Examples for tazboot.cmd:\n\n\
 Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n
 " 24 78
 	[ $? -eq 0 ] || return
-	gettazboot /mnt/tazboot.exe
+	gettazboot tazboot.exe
 }
 
 md5()
@@ -475,24 +519,17 @@ gotcdfile()
 
 sha()
 {
-	gotcdfile "sha*sum*"
+	gotcdfile 'sha*sum*'
 	sha=$(basename $file)
 	md5 "${sha%sum*}sum -c ${file#/media/cdrom/}"
 }
 
 readme()
 {
-	gotcdfile "README*"
+	gotcdfile 'README*'
 	$DIALOG --clear \
 		--title " Readme " \
 		--textbox $file 24 78
-}
-
-bootlog()
-{
-	$DIALOG --clear \
-		--title " Linux boot messages " \
-		--textbox /tmp/dmesg 24 78
 }
 
 bzimage()
@@ -506,7 +543,7 @@ vga= (you can try 'rdev -v') and mem= (partially).
 \nExample:\nC:\\> linux.exe root=/dev/hda2 ro panic=60\n
 " 12 70
 	[ $? -eq 0 ] || return
-	cp /media/cdrom/boot/bzImage /mnt/linux.exe
+	cp /media/cdrom/boot/bzImage linux.exe
 }
 
 memtest()
@@ -518,7 +555,7 @@ memtest()
 computers. BIOS based memory tests are a quick, cursory check and often
 miss many of the failures that are detected by Memtest86.\n
 " 12 70
-	[ $? -eq 0 ] && gotcdfile "memtest*" && cp $file /mnt/memtest.exe
+	[ $? -eq 0 ] && gotcdfile 'memtest*' && cp $file memtest.exe
 }
 
 mkfat12()
@@ -563,12 +600,12 @@ computers. BIOS based memory tests are a quick, cursory check and often
 miss many of the failures that are detected by Memtest86.\n\n
 Please insert a blank disk in floppy drive.\n
 " 12 70
-	[ $? -eq 0 ] && gotcdfile "memtest*" && mkfloppy $file
+	[ $? -eq 0 ] && gotcdfile 'memtest*' && mkfloppy $file
 }
 
 pxe()
 {
-	gotcdfile "?pxe"
+	gotcdfile '?pxe'
 	$DIALOG --clear \
 		--title " Create $(basename $file).exe ? " \
 		--yes-label "Install" --yesno \
@@ -578,7 +615,7 @@ and the complete SliTaz compressed root filesystem will be loaded into RAM
 from the Web using PXE and HTTP protocols.\n
 " 12 70
 	[ $? -eq 0 ] || return
-	cp $file /mnt/$(basename $file).exe
+	cp $file $(basename $file).exe
 }
 
 fdpxe()
@@ -592,13 +629,18 @@ and the complete SliTaz compressed root filesystem will be loaded into RAM
 from the Web using PXE and HTTP protocols.\n\n
 Please insert a blank disk in floppy drive.\n
 " 12 70
-	[ $? -eq 0 ] && gotcdfile "?pxe" && mkfloppy $file
+	[ $? -eq 0 ] && gotcdfile '?pxe' && mkfloppy $file
 }
 
 gotposixovl()
 {
 	mount.posixovl 2>&1 | grep -qi usage && 
 	echo -en "\"$1\"	\"$2\""
+}
+
+gotposixovlzip()
+{
+	[ "$(which zip)" ] && gotposixovl "$1" "$2"
 }
 
 xfile()
@@ -628,67 +670,61 @@ cdexe()
 	echo -en "\"$2\"	\"$3\""
 }
 
-fddata()
+misspkg()
 {
-	[ -e /sys/block/fd0 ] && 
-	[ $(get 28 /mnt/$ISO 1 2> /dev/null || echo 0) -ne 0 ] &&
-	echo -en "\"$1\"	\"$2\""
+	for i in zip kexec-tools posixovl ; do
+		[ -d /var/lib/tazpkg/installed/$i/ ] && continue
+		[ "$1" != "install" ] &&
+		echo -en "\"$1\"	\"$2\"" && return
+		tazpkg get-install $i
+	done
+}
+
+missing()
+{
+	misspkg install
 }
 
 ishybrid()
 {
-	C=$((2048*$(get $(((17*2048) + 71)) /mnt/$ISO 4)))
-	[ $(get $C /mnt/$ISO 4) -eq 1 ] || return
-	[ $(get $(($C+30)) /mnt/$ISO 4) -eq $((0x88AA55)) ] || return
-	C=$((2048*$(get $(($C+40)) /mnt/$ISO 4)))
-	[ $(get $(($C+64)) /mnt/$ISO 4) -eq 1886961915 ] &&
+	C=$((2048*$(get $(((17*2048) + 71)) $ISO 4)))
+	[ $(get $C $ISO 4) -eq 1 ] || return
+	[ $(get $(($C+30)) $ISO 4) -eq $((0x88AA55)) ] || return
+	C=$((2048*$(get $(($C+40)) $ISO 4)))
+	[ $(get $(($C+64)) $ISO 4) -eq 1886961915 ] &&
+	echo -en "\"$1\"	\"$2\""
+}
+
+isiso()
+{
+	[ $(get 32769 $ISO 4) -eq 808469571 ] &&
 	echo -en "\"$1\"	\"$2\""
 }
 
 gotisomd5()
 {
 	[ "$(which md5sum 2> /dev/null)" ] &&
-	[ $(get 0 /mnt/$ISO) -eq 23117 ] &&
-	[ $(get 18 /mnt/$ISO) -ne 0 ] && echo -en "\"$1\"	\"$2\""
+	[ $(get 0 $ISO) -eq 23117 ] &&
+	[ $(get 18 $ISO) -ne 0 ] && echo -en "\"$1\"	\"$2\""
 }
 
 isomd5()
 {
 	dotwait "Checking iso image"
-	[ "$(ddq if=/mnt/$ISO bs=2k skip=16 \
-	     count=$(echo $(get 32848 /mnt/$ISO 4)) | md5sum)" == \
-	  "$(ddq if=/mnt/$ISO bs=16 count=1 skip=2047 | od -N 16 -t x1 -An | \
+	[ "$(ddq if=$ISO bs=2k skip=16 \
+	     count=$(echo $(get 32848 $ISO 4)) | md5sum)" == \
+	  "$(ddq if=$ISO bs=16 count=1 skip=2047 | od -N 16 -t x1 -An | \
 	     sed 's/ //g')  -" ] && echo "OK" || echo "ERROR"
 	echo -en "\rChecking iso hybrid boot..."
-	n=$(($(get 2 /mnt/$ISO)-1+($(get 4 /mnt/$ISO)-1)*512))
+	n=$(($(get 2 $ISO)-1+($(get 4 $ISO)-1)*512))
 	if [ $n -lt 40000 -a $n -gt 32768 ]; then
-		s=$(get 0 /mnt/$ISO 2 $n | awk '{ i+= $0 } END { print i }')
-		[ $(((1+$s+$(get $(($n+1)) /mnt/$ISO 1)) % 65536)) -eq 0 ] &&
+		s=$(get 0 $ISO 2 $n | awk '{ i+= $0 } END { print i }')
+		[ $(((1+$s+$(get $(($n+1)) $ISO 1)) % 65536)) -eq 0 ] &&
 		echo "OK" || echo "ERROR"
 	fi
 	rm -f /tmp/wait
 	echo -e "\rPress RETURN to continue."
 	read n
-}
-
-fdbootstrap()
-{
-	sz=$((512 * $(echo $(get 28 /mnt/$ISO 1))))
-	$DIALOG --clear \
-		--title " Create a floppy bootstrap " \
-		--yes-label "Continue" --yesno \
-"\nThe floppy will install a driver to access the ISO file
-on your hard disk and will emulate a CD-ROM during the boot process.\n\n 
-Please insert a floppy in drive now.\n 
-" 10 70
-	[ $? -eq 0 ] || return
-	ddq if=/mnt/$ISO of=/tmp/bootiso bs=1 count=512 \
-		skip=$(( $(get 66 /mnt/$ISO) - $sz ))
-	echo "$ISO" | ddq of=/tmp/bootiso bs=512 seek=1 count=1
-	ddq if=/mnt/$ISO of=/tmp/bootiso bs=1 count=$sz seek=2 \
-		skip=$(( $(get 66 /mnt/$ISO) - $sz + 512 ))
-	mkfloppy /tmp/bootiso
-	rm -f /tmp/bootiso
 }
 
 usbdev()
@@ -700,7 +736,7 @@ usbdev()
 		sed 's|/sys/block/\(.*\)/removable|\1|')"
 	grep -qs 1 /sys/block/$DEV/ro && return
 	[ "$DEV" ] || return
-	cat > /tmp/dialog <<EOT
+	cat > /tmp/dialog$$ <<EOT
 $DIALOG  --clear \
 	--title " Select your USB key " \
 	--menu "\nPlease select the USB key according to its known size.\n\n" \
@@ -711,9 +747,11 @@ $DIALOG  --clear \
 
 EOT
 	exec 3>&1
-	device=$(. /tmp/dialog 2>&1 1>&3)
+	device=$(. /tmp/dialog$$ 2>&1 1>&3)
+	rm -f /tmp/dialog$$
 	retval=$?
 	exec 3>&-
+	rm -f /tmp/dialog$$
 	[ $retval -eq 0 ]
 }
 
@@ -738,14 +776,14 @@ $(tazusbmsg)Please plug your USB stick in now.\n
 	usbdev || return
 	
 	# perform dd in progess bar
-	max=$(($(cat /sys/block/loop0/size)/2048))
-	i=0; ddq if=/mnt/$ISO bs=1024k | ( 
+	max=$(($(stat -c %s $ISO)/2048))
+	i=0; ddq if=$ISO bs=1024k | ( 
 	while ddq bs=1024k count=1 ; do 
 		i=$(($i + 1))
 		[ $i -gt $max ] && break
 		echo $((($i*100)/$max)) | dialog --gauge \
 			" The ISO image transfer can be long. Please wait..." \
-			6 70 0 > /dev/tty0 2>&1
+			6 70 0 > /dev/tty 2>&1
 	done ) > $device
 
 	# partition + fat32 format for the remining space
@@ -804,151 +842,68 @@ in the USB key." 14 70 4 \
 	exec 3>&-
 	[ $retval -eq 0 ] || return
 	[ "$format" != "none" ] && tazusb format $device "SliTaz" $format
-	tazusb gen-iso2usb /mnt/$ISO $device
-}
-
-mount_loram()
-{
-	is_loram || return
-	insmod /lib/squashfs.ko* 2> /dev/null
-	if [ -d /media/cdrom/fs ]; then
-		ln -s /media/cdrom/fs /sqfs
-	else
-		mkdir /sqfs
-		mount -o loop,ro -t squashfs /rootfs*.gz /sqfs
-	fi
-	ln -s /sqfs/lib/* lib
-	ln -s /sqfs/usr /sqfs/var /
-	for i in dmesg basename tr od reboot poweroff getty sync ; do
-		ln -s /sqfs/bin/busybox /bin/$i
-	done
-}
-
-umount_loram()
-{
-	is_loram || return
-	rm  /var /usr
-	umount -d /sqfs
-	rmdir /sqfs
-}
-
-dosync()
-{
-	sync
-	umount_loram
-	umount -d /media/cdrom
-	rm -f /dev/cdrom
-	umount /mnt
-	umount_proc
-}
-
-text()
-{
-	dosync
-	exec /init
-}
-
-live()
-{
-	n=0
-	dotwait "Extract filesystem..."
-	for i in $(ls_r /media/cdrom/boot/rootfs*gz); do
-		grep -q ' lm ' /proc/cpuinfo && [ -s ${i}64 ] && i=${i}64
-		[ $((n++)) -eq 0 ] || uncpio $i
-	done
-	rm -f /tmp/wait
-	text
-}
-
-restart()
-{
-	dosync
-	reboot -f
-}
-
-stop()
-{
-	dosync
-	poweroff -f
+	tazusb gen-iso2usb $ISO $device
 }
 
 dokexec()
 {
 	kexec -l $file
-	dosync
+	umount -d /media/cdrom
 	kexec -e
 }
 
 runmemtest()
 {
-	gotcdfile "memtest*" && dokexec
+	gotcdfile 'memtest*' && dokexec
 }
 
 runpxe()
 {
-	gotcdfile "?pxe" && dokexec
+	gotcdfile '?pxe' && dokexec
 }
 
-shell()
+quit()
 {
-	trap text 2 
-	getty -n -l /bin/ash 38400 tty1 || sh
+	umount -d /media/cdrom
+	exit
 }
 
-BIN=bin/mount.posixovl
-[ -x /usr/s$BIN ] || mv /bin/mount.posixovl.iso2exe \
-/usr/s$BIN 2> /dev/null || mv /bin/mount.posixovl.iso2exe /$BIN 2> /dev/null
-mount_proc
-ISO="$(getarg bootfrom | sed 's/.://;s|\\|/|g')"
-getiso
-mount_loram
-case "${ISO##*/}$(getarg mode)" in
-*install*|*INSTALL*)	install ;;
-*live*|*LIVE*)		live ;;
-*text*|*TEXT*)		text ;;
-esac
-which $DIALOG 2> /dev/null || DIALOG=tinydialog
-dmesg > /tmp/dmesg
+ISO="$1"
+[ -z "$(isiso 2> /dev/null)" ] && echo "Usage : $0 file.iso" && exit 1
+mount -o loop,ro $ISO /media/cdrom
 
 while true; do
-	trap shell 2 
-	keymap="$(cat /etc/keymap.conf 2> /dev/null)"
-	locale="$(sed '/^LANG=/!d;s/.*=//' /etc/locale.conf 2> /dev/null)"
-	cat > /tmp/dialog <<EOT
+	cat > /tmp/dialog$$ <<EOT
 $DIALOG  --clear \
-	--title " Welcome to Linux " \
+	--title " SliTaz ISO tool " \
 	--menu "" 23 70 17 \
-$(xfile tazkeymap	"tazkeymap"	"Select keyboard (${keymap:-none})") \
-$(xfile tazlocale	"tazlocale"	"Select locale (${locale:-none})") \
-$(cdfile boot/bzImage	"live"		"Linux RAM boot (full desktop)") \
-			"text"		"Linux RAM boot" \
-$(cdfile "README*"	"readme"	"Show the README file") \
+$(cdfile 'README*'	"readme"	"Show the README file") \
 $(gotisomd5		"isomd5"	"Check the ISO image") \
-$(cdfile "md5sum*"	"md5"		"Check the ISO files") \
-$(cdfile "sha*sum*"	"sha"		"Check the ISO files") \
+$(cdfile 'md5sum*'	"md5"		"Check the ISO files") \
+$(cdfile 'sha*sum*'	"sha"		"Check the ISO files") \
+$(cdfilex boot/bzImage	"bootiso"	"Boot the ISO image") \
 $(gotposixovl		"install"	"Hard disk installation (UMSDOS way)") \
 $(gotposixovl		"installtaz"	"Hard disk installation (TAZUSB way)") \
+$(gotposixovlzip	"inst2zip"	"ZIP installation archive (UMSDOS way)") \
+$(gotposixovlzip	"insttaz2zip"	"ZIP installation archive (TAZUSB way)") \
 $(xfile tazusb		"usbkey"	"USB key read/write installation") \
 $(ishybrid		"usbbootkey"	"USB boot key (read only)") \
-$(fddata		"fdbootstrap"	"Create a floppy bootstrap") \
 			"tazboot"	"Get tazboot.exe Linux loader" \
 $(cdexe boot/bzImage	"bzimage"	"Get linux DOS/EXE file") \
-$(cdexe "memtest*"	"memtest"	"Get Memtest86 DOS/EXE file") \
-$(cdfilef "memtest*"	"fdmemtest"	"Create a Memtest86 boot floppy") \
-$(cdfilex "memtest*"	"runmemtest"	"Start Memtest86") \
-$(cdexe "?pxe"		"pxe"		"Get SliTaz Web boot DOS/EXE utility") \
-$(cdfilef "?pxe"	"fdpxe"		"Create a SliTaz Web boot floppy") \
-$(cdfilex "?pxe"	"runpxe"	"Start the SliTaz Web boot utility") \
-$(xfile reboot		"restart"	"Restart the computer") \
-$(xfile poweroff	"stop"		"Power off") \
-			"bootlog"	"Linux boot messages" \
-			"shell"		"Shell prompt" \
-
+$(cdexe 'memtest*'	"memtest"	"Get Memtest86 DOS/EXE file") \
+$(cdfilef 'memtest*'	"fdmemtest"	"Create a Memtest86 boot floppy") \
+$(cdfilex 'memtest*'	"runmemtest"	"Start Memtest86") \
+$(cdexe '?pxe'		"pxe"		"Get SliTaz Web boot DOS/EXE utility") \
+$(cdfilef '?pxe'	"fdpxe"		"Create a SliTaz Web boot floppy") \
+$(cdfilex '?pxe'	"runpxe"	"Start the SliTaz Web boot utility") \
+$(misspkg		"missing"	"Install packages to get more options") \
+			"quit"		"Quit this utility"
 EOT
 	exec 3>&1
-	value=$(. /tmp/dialog 2>&1 1>&3)
+	value=$(. /tmp/dialog$$ 2>&1 1>&3)
 	retval=$?
 	exec 3>&-
+	rm -f /tmp/dialog$$
 	[ $retval -eq 0 ] || continue
 	$value
 done
