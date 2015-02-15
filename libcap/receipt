@@ -23,35 +23,6 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Linux headers are now sanitized properly for userspace, so patch 
-	# libcap. Based on http://bugs.gentoo.org/265304 and 
-	# http://www.mail-archive.com/pld-cvs-commit@lists.pld-linux.org/msg183775.html
-	[ $(grep -c "#define __user" < libcap/include/sys/capability.h) -eq 0 ] \
-		|| patch -p1 << EOP
---- libcap-2.16/libcap/include/sys/capability.h.orig	2009-03-05 11:19:00.000000000 -0300
-+++ libcap-2.16/libcap/include/sys/capability.h	2009-03-05 11:19:38.000000000 -0300
-@@ -22,18 +22,6 @@ extern "C" {
- #include <sys/types.h>
- #include <stdint.h>
- 
--/*
-- * Make sure we can be included from userland by preventing
-- * capability.h from including other kernel headers
-- */
--#define _LINUX_TYPES_H
--#define _LINUX_FS_H
--#define __LINUX_COMPILER_H
--#define __user
--
--typedef unsigned int __u32;
--typedef __u32 __le32;
--
- #include <linux/capability.h>
- 
- /*
-EOP
-	sed -i -e 's/\} __user \*cap_user_/\} \*cap_user_/g' \
-		libcap/include/linux/capability.h
 	make DYNAMIC=yes ${ARCH_ARGS} &&
 	make RAISE_SETCAP=no DESTDIR=$DESTDIR install
 }
