@@ -611,9 +611,18 @@ cdfile()
 	gotcdfile "$1" && echo -en "\"$2\"	\"$3\""
 }
 
+isbzImage()
+{
+	[ $(get 514 $file 4) -eq 1400005704 ] &&
+	[ $(($(get 529 $file 1) & 1)) -eq 1 ]
+}
+
 cdfilex()
 {
-	[ "$(which kexec)" ] && cdfile "$@"
+	gotcdfile "$1" &&
+	[ "$(which kexec)" ] &&
+	isbzImage &&
+	echo -en "\"$2\"	\"$3\""
 }
 
 cdfilef()
@@ -874,7 +883,7 @@ stop()
 
 dokexec()
 {
-	kexec -l $file
+	kexec -l $file || return
 	dosync
 	kexec -e
 }

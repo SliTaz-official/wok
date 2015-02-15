@@ -348,7 +348,7 @@ bootinstalled()
 	[ -x $mnt/slitaz$1 ] || return
 	[ -s $mnt/slitaz/boot/tazboot.cmd ] || return
 	readtazbootconf
-	kexec -l $kernel --initrd $initrd --command-line "$cmdline" --atags
+	kexec -l $kernel --initrd $initrd --command-line "$cmdline" || return
 	umount $mnt
 	rm -rf $mnt
 	umount -d /media/cdrom
@@ -384,6 +384,11 @@ pxe	Web boot
 EOT
 	unix2dos $mnt/slitaz/boot/menu.lst
 	unix2dos > $mnt/slitaz/boot/install.txt <<EOT
+For DOS users (real mode only):
+
+Start SliTaz with \\slitaz\\boot\\tazboot.exe
+
+
 For NT/2000/XP users:
 
 1- Move the files grldr and menu.lst into the root directory
@@ -471,9 +476,10 @@ bootiso()
 	kernel=/media/cdrom/boot/bzImage
 	grep -q ' lm ' /proc/cpuinfo && [ -s ${kernel}64 ] && kernel=${kernel}64
 	. /etc/locale.conf
-	kexec -l $kernel --initrd /tmp/initrd$$ --atags --command-line \
-	   "root=/dev/null autologin lang=$LANG kmap=$(cat /etc/keymap.conf)"
+	kexec -l $kernel --initrd /tmp/initrd$$ --command-line \
+	   "root=/dev/null autologin lang=$LANG kmap=$(cat /etc/keymap.conf)" &&
 	umount -d /media/cdrom
+	rm -f /tmp/initrd$$
 	kexec -e
 }
 
@@ -656,9 +662,18 @@ cdfile()
 	gotcdfile "$1" && echo -en "\"$2\"	\"$3\""
 }
 
+isbzImage()
+{
+	[ $(get 514 $file 4) -eq 1400005704 ] &&
+	[ $(($(get 529 $file 1) & 1)) -eq 1 ]
+}
+
 cdfilex()
 {
-	[ "$(which kexec)" ] && cdfile "$@"
+	gotcdfile "$1" &&
+	[ "$(which kexec)" ] &&
+	isbzImage &&
+	echo -en "\"$2\"	\"$3\""
 }
 
 cdfilef()
@@ -850,7 +865,7 @@ in the USB key." 14 70 4 \
 
 dokexec()
 {
-	kexec -l $file
+	kexec -l $file || return
 	umount -d /media/cdrom
 	kexec -e
 }
