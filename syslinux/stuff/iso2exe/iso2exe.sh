@@ -216,7 +216,7 @@ OPENERR		Can't open r/w the iso file.
 ELTORITOERR	No EL TORITO SPECIFICATION signature.
 CATALOGERR	Invalid boot catalog.
 HYBRIDERR	No isolinux.bin hybrid signature.
-SUCCESSMSG	Now you can create a USB key with your .iso file.\\\\nSimply rename it to a .exe file and run it.
+SUCCESSMSG	Now you can create a USB key with your .iso file.\\\\nSimply rename it to an .exe file and run it.
 FORCEMSG	You can add --forced to proceed anyway.
 MD5MSG		Computing md5sum...
 UNINSTALLMSG	Uninstall done.
