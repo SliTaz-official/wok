@@ -1,5 +1,7 @@
 #!/bin/sh
 
+PERIOD=5	# minutes
+
 IP=$2
 PROT=$3
 PORT=$4
@@ -29,11 +31,11 @@ off)
 	[ -f /var/lib/knockd/$IP ] && disable /var/lib/knockd/$IP
 	;;
 check)
-	TIMEOUT=$(( 6 * 60 ))
+	TIMEOUT=$(( $PERIOD * 120 ))
 	for i in /var/lib/knockd/*.*.*.*; do
 		[ -f "$i" ] || continue
 		while read ip prot port msg; do
-			if grep -qe "^$prot.* src=$ip .* dport=$port" /proc/net/ip_conntrack ; then
+			if netstat -nut | grep -qe "^$prot .*:$port *$ip:[0-9]* " ; then
 				touch $i
 				break
 			fi
@@ -53,7 +55,7 @@ cron)
 $(crontab -l)
 
 # Close old connections opened by knockd
-*/5  * * * * $0 check > /dev/null 2>&1
+*/$PERIOD  * * * * $0 check > /dev/null 2>&1
 EOT
 		/etc/init.d/crond stop
 		/etc/init.d/crond start

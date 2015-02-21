@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="knock"
-VERSION="0.5"
+VERSION="0.7"
 CATEGORY="security"
 SHORT_DESC="Port knock sequence listener."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -17,11 +17,13 @@ BUILD_DEPENDS="libpcap-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	[ -f done.knock.u ] || patch -p1 < $stuff/knock.u
 	touch done.knock.u
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./configure --prefix=/usr \
+		--infodir=/usr/share/info \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -29,10 +31,9 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/etc $fs
+	cp -a $stuff/etc $fs
+	cp -a $stuff/usr $fs
 	cp -a $install/usr/sbin $fs/usr
 	cp -a $install/usr/bin $fs/usr
-	cp -a stuff/etc $fs
+	cp -a $install/etc $fs
 }
-
