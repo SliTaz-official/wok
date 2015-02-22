@@ -11,7 +11,7 @@ WEB_SITE="http://www.xrdp.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
 DEPENDS="libssl zlib xorg-libX11 xorg-libXfixes libxcb xorg-libXau \
-xorg-libXdmcp pam"
+xorg-libXdmcp pam procps"
 BUILD_DEPENDS="autoconf automake libtool pkg-config openssl-dev pam-dev \
 xorg-dev"
 
@@ -21,8 +21,8 @@ compile_rules()
 	./bootstrap &&
 	./configure --prefix=/usr \
 		--sysconfdir=/etc \
-		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
+		--localstatedir=/var \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -31,5 +31,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	mkdir -p $fs/etc/init.d
 	cp -a $install/* $fs/
+	mv $fs/etc/xrdp/xrdp.sh $fs/etc/init.d/xrdp
+	sed -i 's|/usr/local|/usr|;s|xrdp\.sh|xrdp|' $fs/etc/init.d/xrdp
 }
