@@ -11,7 +11,7 @@ WEB_SITE="http://www.xrdp.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
 DEPENDS="libssl zlib xorg-libX11 xorg-libXfixes libxcb xorg-libXau \
-xorg-libXdmcp pam procps"
+xorg-libXdmcp pam tightvnc"
 BUILD_DEPENDS="autoconf automake libtool pkg-config openssl-dev pam-dev \
 xorg-dev"
 
@@ -34,5 +34,9 @@ genpkg_rules()
 	mkdir -p $fs/etc/init.d
 	cp -a $install/* $fs/
 	mv $fs/etc/xrdp/xrdp.sh $fs/etc/init.d/xrdp
-	sed -i 's|/usr/local|/usr|;s|xrdp\.sh|xrdp|' $fs/etc/init.d/xrdp
+	sed -i	-e 's|/usr/local|/usr|;s|xrdp\.sh|xrdp|' \
+		-e 's|--noheading -C||' \
+		-e 's/grep -q -i/grep -v grep | &/' \
+		$fs/etc/init.d/xrdp
+	sed -i 's|gnome|lxde-session &|' $fs/etc/xrdp/startwm.sh
 }
