@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="dosbox-mb"
+VERSION="6"
+CATEGORY="system-tools"
+SHORT_DESC="DOS-emulator that uses the SDL-library with network support."
+INFO="http://home.arcor.de/h-a-l-9000/ne2kstuff/db_ne2000.html"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE$VERSION.tar.gz"
+WEB_SITE="http://www.dosbox.com/"
+WGET_URL="http://source.dosbox.com/mb$VERSION/$TARBALL"
+TAGS="emulator dos vm86 8086"
+
+DEPENDS="xorg-libX11 libsdl alsa-lib zlib mesa libpng libsdl-net libpng libpcap"
+BUILD_DEPENDS="xorg-libX11-dev libsdl-dev libsdl-net-dev freetype-dev \
+libpng libpng-dev libpcap libpcap-dev automake autoconf libtool"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's/define DOSBOX_DOS_INC_H/&\n#include <stddef.h>/' include/dos_inc.h
+	./autogen.sh
+	./configure \
+		--prefix=/usr \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/pixmaps \
+		$fs/usr/share/applications
+	cp -a $install/usr/bin $fs/usr
+	# Must be root to see the network interface
+	chmod 4755 $fs/usr/bin/dosbox
+}
