@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="mpv"
+VERSION="0.8.2"
+CATEGORY="multimedia"
+SHORT_DESC="Video player based on ffmpeg & mplayer2"
+MAINTAINER="psychomaniak@xakep.ru"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://mpv.io"
+WGET_URL="https://github.com/mpv-player/mpv/archive/v$VERSION.tar.gz"
+
+DEPENDS="xorg-server xorg-libXv xorg-libXinerama xorg-libXss util-linux-uuid \
+alsa-lib fribidi libass lua ffmpeg"
+BUILD_DEPENDS="wget xorg-dev xorg-libXv-dev xorg-libXss-dev lua-dev ffmpeg-dev \
+fribidi-dev libass-dev alsa-lib-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./bootstrap.py
+	./waf configure \
+		--prefix=/usr \
+		--confdir=/etc/mpv \
+		--enable-libmpv-shared
+	./waf build
+	./waf install --destdir=$DESTDIR
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
