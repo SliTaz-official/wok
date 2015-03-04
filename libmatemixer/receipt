@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="libmatemixer"
+VERSION="1.9.2"
+CATEGORY="utilities"
+LICENSE="GPL3"
+SHORT_DESC="Mixer library for MATE Desktop."
+MAINTAINER="yuripourre@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.mate-desktop.org/"
+WGET_URL="https://github.com/mate-desktop/$PACKAGE/archive/$TARBALL"
+
+DEPENDS="alsa-lib pulseaudio"
+BUILD_DEPENDS="wget alsa-lib-dev pulseaudio-dev gtk+-dev autoconf automake libtool itstool \
+mate-common-dev gtk-doc util-linux-uuid-dev libjson-c-dev libsndfile-dev flac-dev \
+libvorbis-dev dbus-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh                   \
+		--prefix=/usr          \
+		--sysconfdir=/etc      \
+		--localstatedir=/var   \
+		--disable-static       \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $install/usr/share $fs/usr
+}
