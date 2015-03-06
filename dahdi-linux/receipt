@@ -9,7 +9,11 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.asterisk.org/"
 WGET_URL="http://downloads.asterisk.org/pub/telephony/$PACKAGE/releases/$TARBALL"
-#PROVIDE="linux-misdn"
+EXTRA_SOURCE_FILES="dahdi-fw-hx8-2.06.tar.gz \
+dahdi-fw-oct6114-064-1.05.01.tar.gz	dahdi-fw-oct6114-128-1.05.01.tar.gz \
+dahdi-fw-oct6114-256-1.05.01.tar.gz	dahdi-fw-tc400m-MR6.12.tar.gz \
+dahdi-fw-te820-1.76.tar.gz		dahdi-fw-vpmoct032-1.12.0.tar.gz \
+dahdi-fwload-vpmadt032-1.25.0.tar.gz"
 
 DEPENDS="linux udev"
 BUILD_DEPENDS="linux-module-headers xz"
@@ -19,10 +23,18 @@ compile_rules()
 {
 	sed -i 's|/sbin/depmod|echo &|' Makefile
 	sed -i 's/tar -xof/tar -xf/' drivers/dahdi/firmware/Makefile
+	for i in $EXTRA_SOURCE_FILES ; do
+		[ -s $SOURCES_REPOSITORY/$i ] &&
+		cp $SOURCES_REPOSITORY/$i drivers/dahdi/firmware/
+	done
 	find -type f | xargs sed -i -e 's/DECLARE_MUTEX/DEFINE_SEMAPHORE/g' \
 		-e 's/init_MUTEX\([^)]*\)/sema_init\1, 1/g'
 	make KVERS="/usr/src/linux" install 2>&1 | grep -v 'slitaz/modules' &&
 	find $DESTDIR/lib/modules -name '*.ko' -exec xz {} \; 
+	for i in $EXTRA_SOURCE_FILES ; do
+		[ -s $SOURCES_REPOSITORY/$i ] ||
+		cp drivers/dahdi/firmware/$i $SOURCES_REPOSITORY/
+	done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
