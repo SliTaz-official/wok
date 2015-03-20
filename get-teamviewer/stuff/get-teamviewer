@@ -2,7 +2,7 @@
 
 PACKAGE="teamviewer"
 WEB_SITE="http://www.$PACKAGE.com/"
-URL=${WEB_SITE}download/${PACKAGE}_linux.deb
+URL=${WEB_SITE}en/download/linux.aspx
 DEPENDS="bash alsa-lib zlib xorg-libXext"
 ROOT="$1"
 [ -d "$ROOT" ] || ROOT=""
@@ -24,6 +24,7 @@ CUR_DIR=$(pwd)
 mkdir -p $TMP_DIR && cd $TMP_DIR
 
 # Download deb
+URL=$(wget -O - $URL | sed '/i386/!d;s/.*"\([^"]*i386[^"]*\).*/\1/')
 wget $URL
 FILE=$(basename $URL)
 
@@ -48,12 +49,15 @@ VERSION="$(sed '/^Version:/!d;s/.*: //' $PACKAGE/meta/control)"
 mv $PACKAGE $PACKAGE-$VERSION
 
 cd $PACKAGE-$VERSION/fs
-ln -s $(cd usr/bin ; ls $PACKAGE*) usr/bin/$PACKAGE 2> /dev/null || true
+[ -e usr/bin/$PACKAGE ] ||
+ln -s $(cd usr/bin ; ls $PACKAGE* 2> /dev/null) \
+	usr/bin/$PACKAGE 2> /dev/null || true
 mkdir -p usr/share/applications
 sed "s|EXEC|/usr/bin/$PACKAGE|g;s!ICON!/$(find opt | grep $PACKAGE.png)!g" \
 	< $(find opt | grep -E '(desktop.template|\.desktop$)') \
 	> usr/share/applications/$PACKAGE.desktop
-sed -i 's/readlink -e/readlink $0 || echo /' $(find opt | grep /$PACKAGE$)
+sed -i 's/readlink -e/readlink $0 || echo /' \
+	$(find opt -type f | grep /$PACKAGE$)
 cd ../..
 
 cat > $PACKAGE-$VERSION/receipt <<EOT
