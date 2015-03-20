@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="mate-settings-daemon"
+VERSION="1.9.1"
+CATEGORY="utilities"
+LICENSE="GPL3"
+SHORT_DESC="Settings daemon for MATE desktop."
+MAINTAINER="yuripourre@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.mate-desktop.org/"
+WGET_URL="https://github.com/mate-desktop/$PACKAGE/archive/$TARBALL"
+
+DEPENDS="gtk+ dconf fontconfig"
+BUILD_DEPENDS="wget autoconf automake libtool itstool gtk+-dev \
+mate-common-dev mate-desktop-dev dconf-dev gtk-doc dbus-glib-dev \
+libmatekbd-dev libmatemixer-dev fontconfig-dev libcanberra-dev \
+libnotify-dev xorg-libXt-dev nss-dev polkit-dev util-linux-uuid-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh              \
+		--prefix=/usr     \
+		--sysconfdir=/etc \
+		--disable-static  \
+		--enable-polkit   \
+		--disable-static  \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/libexec
+	cp -a $install/usr/etc $fs/usr
+	cp -a $install/usr/share $fs/usr
+	cp -a $install/usr/lib/$PACKAGE/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/$PACKAGE/*settings-plugin $fs/usr/lib
+	cp -a $install/usr/libexec $fs/usr
+}
