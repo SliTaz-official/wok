@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="libmatekbd"
+VERSION="1.9.1"
+CATEGORY="utilities"
+LICENSE="GPL3"
+SHORT_DESC="Keyboard library for MATE Desktop."
+MAINTAINER="yuripourre@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.mate-desktop.org/"
+WGET_URL="https://github.com/mate-desktop/$PACKAGE/archive/$TARBALL"
+
+DEPENDS="gtk+ iso-codes dconf"
+BUILD_DEPENDS="wget gtk+-dev autoconf automake libtool itstool gtk-doc \
+mate-common-dev dconf-dev libxklavier-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh                   \
+		--prefix=/usr          \
+		--sysconfdir=/etc      \
+		--localstatedir=/var   \
+		--disable-static       \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/usr/lib
+	cp -a $install/usr/share $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+}
