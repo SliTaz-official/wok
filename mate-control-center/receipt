@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="mate-control-center"
+VERSION="1.9.0"
+CATEGORY="utilities"
+LICENSE="GPL3"
+SHORT_DESC="The control center for MATE Desktop."
+MAINTAINER="yuripourre@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.mate-desktop.org/"
+WGET_URL="https://github.com/mate-desktop/$PACKAGE/archive/$TARBALL"
+
+DEPENDS="gtk+ caja desktop-file-utils libxklavier libgtop xorg-libICE xorg-libSM \
+xorg-libXt startup-notification gsettings-desktop-schemas mate-settings-daemon"
+BUILD_DEPENDS="wget gtk+-dev autoconf automake libtool itstool libunique-dev \
+dconf-dev mate-common-dev mate-desktop-dev mate-menus-dev mate-settings-daemon-dev \
+libxklavier-dev libmatekbd-dev marco-dev libgtop-dev librsvg-dev dbus-glib-dev \
+yelp-tools xorg-libXss-dev xorg-libXt-dev startup-notification-dev \
+util-linux-uuid-dev libcanberra-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh                   \
+		--prefix=/usr          \
+		--sysconfdir=/etc      \
+		--localstatedir=/var   \
+		--disable-static       \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/libexec
+	cp -a $install/etc $fs
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/share $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/window-manager-settings/*.so* $fs/usr/lib/window-manager-settings
+	cp -a $install/usr/libexec $fs/usr
+}
