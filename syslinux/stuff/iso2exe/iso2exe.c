@@ -29,7 +29,7 @@ static void readsector(unsigned long sector)
 	}
 }
 
-static int domd5 = 0;
+static int skipmd5 = 0;
 #define ALIGN1
 
 typedef struct {
@@ -268,7 +268,7 @@ static unsigned install(char *filename)
 		readsector(0UL);
 		n = BUFFERSZ;
 		if (WORD(buffer) == 23117) {
-			readsector((unsigned long) buffer[69]);
+			readsector((unsigned long) buffer[417]);
 			n = 0;
 		}
 		lseek(fd, 0UL, SEEK_SET);
@@ -294,7 +294,7 @@ static unsigned install(char *filename)
 		readsector(lba);
 		if (LONG(buffer + 64) != 1886961915UL)
 			return HYBRIDERR;
-		isohybrid = bootiso[69] * 512;
+		isohybrid = bootiso[417] * 512;
 		LONG(bootiso + isohybrid + 432) = lba * 4;
 		LONG(bootiso + isohybrid + 440) = rand();
 		LONG(bootiso + isohybrid + partition) = 0x10080UL;
@@ -322,35 +322,30 @@ static unsigned install(char *filename)
 	}
 
 	/* Install iso2exe boot sector */
-	WORD(bootiso + 26) = rand();
+	LONG(bootiso + 440) = time(NULL);
 
 	/* read tazlito flavor data */
 	lseek(fd, 1024UL, SEEK_SET);
 	read(fd, tazlitoinfo, sizeof(tazlitoinfo));
 
 	/* Update iso image */
-	n = (bootiso[69] + 1) * 512;
+	n = (bootiso[417] + 1) * 512;
 	lseek(fd, 0UL, SEEK_SET);
 	write(fd, bootiso, n); /* EXE/PE + isohybrid mbr */
 	write(fd, tazlitoinfo, sizeof(tazlitoinfo));
 	write(fd, bootiso + n, BOOTISOSZ - n); /* COM + rootfs + EXE/DOS */
 
-	if (domd5) {
+	/* Compute the boot checksums */
+	if (!skipmd5) {
 		puts(bootiso + MD5MSG);
 		md5sum();
-	}
-	
-	/* Compute the boot checksums */
-	if ((WORD(bootiso + 64) = chksum(66, 32768)) != 0) {
-		if (domd5) {
-			lseek(fd, 0UL, SEEK_SET);
-			write(fd, bootiso, 512);
-			n = WORD(bootiso + 2) - 512*(WORD(bootiso + 4) - 1);
-			WORD(bootiso + 18) = chksum(0, (unsigned short) n) - 1;
-		}
 		lseek(fd, 0UL, SEEK_SET);
 		write(fd, bootiso, 512);
+		n = WORD(bootiso + 2) - 512*(WORD(bootiso + 4) - 1);
+		WORD(bootiso + 18) = chksum(0, (unsigned short) n) - 1;
 	}
+	lseek(fd, 0UL, SEEK_SET);
+	write(fd, bootiso, 512);
 	close(fd);
 	status = 0;
 	return SUCCESSMSG;
@@ -364,7 +359,7 @@ int main(int argc, char *argv[])
 		while ((unsigned)(*s - '-') <= ('/' - '-')) s++;
 		switch (*s | 0x20) {
 		case 'f' : forced++; break;
-		case 'm' : domd5++; break;
+		case 'q' : skipmd5++; break;
 		case 'u' : uninstall++; break;
 		}
 	}

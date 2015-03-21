@@ -71,7 +71,7 @@ add_doscom()
 	OFS=$(( $OFS - $SIZE ))
 	printf "Adding DOS boot file at %04X (%d bytes) ...\n" $OFS $SIZE
 	$0 --get boot.com | ddq of=$1 bs=1 seek=$OFS conv=notrunc
-	store 66 $(($OFS+0xC0)) $1
+	store 64 $(($OFS+0xC0)) $1
 }
 
 add_win32exe()
@@ -86,9 +86,9 @@ add_win32exe()
 	store $((0xF4)) $((16 - 12)) $1
 	ddq if=$1 of=/tmp/coff$$ bs=1 skip=$((0x178)) count=$((0x88))
 	ddq if=/tmp/coff$$ of=$1 conv=notrunc bs=1 seek=$((0x178 - 12*8))
-	ddq if=/tmp/exe$$ of=$1 bs=1 count=30 seek=$((0x1A0)) skip=$((0x1A0)) conv=notrunc
-	ddq if=$2 bs=1 skip=$((0x1BE)) seek=$((0x1BE)) count=66 of=$1 conv=notrunc
-	store 69 $(($SIZE/512)) $1 8
+	ddq if=/tmp/exe$$ of=$1 bs=1 count=24 seek=$((0x1A0)) skip=$((0x1A0)) conv=notrunc
+	ddq if=$2 bs=1 skip=$((0x1B8)) seek=$((0x1B8)) count=72 of=$1 conv=notrunc
+	store 417 $(($SIZE/512)) $1 8
 	store 510 $((0xAA55)) $1
 	rm -f /tmp/exe$$ /tmp/coff$$
 	printf "Moving syslinux hybrid boot record at %04X (512 bytes) ...\n" $SIZE
@@ -107,7 +107,7 @@ add_fdbootstrap()
 		ddq of=$1 bs=1 count=512 seek=$OFS conv=notrunc
 		$0 --get bootfd.bin | \
 		ddq of=$1 bs=1 skip=1024 seek=$((512 + $OFS)) conv=notrunc
-		store 28 $(($SIZE/512)) $1 8
+		store 26 $(($SIZE/512)) $1 8
 	fi
 }
 case "$1" in
@@ -211,7 +211,7 @@ EOT
 		fi
 	done <<EOT
 READSECTORERR	Read sector failure.
-USAGE		Usage: isohybrid.exe file.iso [--forced|--undo|--md5]
+USAGE		Usage: isohybrid.exe file.iso [--forced|--undo|--quick]
 OPENERR		Can't open r/w the iso file.
 ELTORITOERR	No EL TORITO SPECIFICATION signature.
 CATALOGERR	Invalid boot catalog.
@@ -258,7 +258,7 @@ main()
 	-u*|-r*|-w*)
 	    case "$(get 0 $1)" in
 	    23117)
-		ddq if=$1 bs=512 count=2 skip=$(get 69 $1 1) of=$1 conv=notrunc
+		ddq if=$1 bs=512 count=2 skip=$(get 417 $1 1) of=$1 conv=notrunc
 		ddq if=/dev/zero bs=1k seek=1 count=31 of=$1 conv=notrunc ;;
 	    *)  ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc ;;
 	    esac
@@ -284,7 +284,7 @@ main()
 	add_doscom $1
 	add_fdbootstrap $1
 	printf "%d free bytes in %04X..%04X\n" $(($OFS-$HOLE)) $HOLE $OFS
-	store 26 ${RANDOM:-0} $1
+	store 440 $(date +%s) $1 32
 	[ "$2" ] && echo "$2               " | \
 		ddq bs=1 seek=$((0x7FDE)) count=15 conv=notrunc of=$1
 	if [ $(stat -c %s $1) -gt 34816 ]; then
@@ -294,8 +294,6 @@ main()
 			ddq bs=16 seek=2047 conv=notrunc of=$1
 	fi
 	echo -n "Adding boot checksum..."
-	store 64 $(od -v -j 66 -N 32702 -t u2 -w2 -An $1 | \
-		   awk '{ i+= $0 } END { print -(i % 65536) }') $1
 	if [ $(stat -c %s $1) -gt 32768 ]; then
 		n=$(($(get 2 $1) - 1 + ($(get 4 $1) - 1)*512))
 		n=$(($(od -v -N $n -t u2 -w2 -An $1 | \

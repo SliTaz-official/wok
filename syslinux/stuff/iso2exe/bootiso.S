@@ -24,13 +24,13 @@ _start:
 	.word	0xFFF0			// Initial (relative) CS value
 initramfssize:
 	.word	0			// File address of relocation table
-id:
-	.word	0			// Overlay number
-fdcnt:					// File address of relocation table
+fdcnt:					// Overlay number
 	.byte	0			// Bootstrap floppy sector count
+	.ascii	"slitaz"
 
 /////////////////////// Master Boot Record code //////////////////////////////
 
+moved	=	0x8000
 start0:
 	pushw	%dx			// restore %sp
 	incw	%bp			// restore %bp
@@ -49,17 +49,59 @@ start0:
 	rep
 	movsw
 	movw	$0x80, %dx
-	ljmp	$0, $0x0600+start2
-
-	.org	60
-	.long	0x0080			// PE header offset
+	ljmp	$0, $moved+start2
+	.byte	0
+//	.org	60
+//	.long	0x0080			// PE header offset
+	.org	64
 end_header:
-chksum:
-	.word	0
 comstart:
 	.word	0
 	
-	.org	68
+	.org	66
+dxloop:
+start2:
+	call	readsector1		// look for the boot device
+	repe
+	cmpsw
+	je	dxfound
+	movb	$0, %cl			// ch = 0
+	addb	$0x7D, %dl		// try every hard disk
+	jno	dxloop
+
+dxfound:
+	call	readsectorX		// read isolinux boot sector
+	movw	%dx, 10(%bp)
+	cmpw	(%bx), %cx
+	jnc	puts			// read fail or no isohydrid boot sector
+	popw	%es
+	popa
+putsret:
+	ret
+
+putstrlp:
+	movw	$7, %bx
+	movb	$0xE, %ah
+	int	$0x10
+error:
+	lodsb
+	cmp	$1, %al
+	jg	putstrlp
+	jz	putsret
+puts:
+	movb	$0x80, %ah
+	xchgw	%ax, %si
+	jnc	error
+halt:
+	hlt
+	jmp	halt
+nobsmsg:
+	.asciz	"No isolinux."
+
+	.org	0x0080
+////////////////////////////// EXE/PE header //////////////////////////////////
+
+	.org	0x01A0
 readsectorX:				// read isolinux boot sector
 	movb	$0xA5, %cl		// patched by installer
 readsector1:
@@ -70,62 +112,18 @@ readsector1:
 	int	$0x13
 setreg:
 	movw	%bx, %si
-	movw	$0x0600, %di
+	movw	$moved, %di
 	movw	$0x0100, %cx
-return:
+	movb	$nobsmsg, %al
 	ret
-dxloop:
-start2:
-	call	readsector1		// look for the boot device
-	repe
-	cmpsw
-	je	dxfound
-	movb	$0, %cl			// ch = 0
-	addb	$0x7D, %dl		// try every hard disk
-	jno	dxloop
-dxfound:
-	call	readsectorX		// read isolinux boot sector
-	movw	%dx, 10(%bp)
-	call	checkboot
-	.asciz	"No isolinux bs"
+	.org	0x01B8
 
-	.org	0x0080
-////////////////////////////// EXE/PE header //////////////////////////////////
-
-	.org	0x01A0
-checkboot:
-	cmpw	%cx, (%bx)
-	popw	%si
-	jc	error			// read fail or no isohydrid boot sector
-	popw	%es
-	popa
-putsret:
-	ret
-putstrlp:
-	movw	$7, %bx
-	movb	$0xE, %ah
-	int	$0x10
-error:
-	lodsb
-	cmp	$1, %al
-	jg	putstrlp
-	jz	putsret
-putstr:
-	movb	$0x80, %ah
-	xchgw	%ax, %si
-	jnc	error
-halt:
-	hlt
-	jmp	halt
-	.org	0x01BE
-
-	.org	0x7F26
+	.org	0x7F48
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
 exestart:
 	cld
-	movw	$0x100, %si
-	movw	-127(%si), %ax
+	movw	129, %ax
 	cmpb	$0x2F, %al
 	je	ishelp
 	cmpw	$0x2F20, %ax
@@ -134,24 +132,12 @@ ishelp:
 	cwd				// clear dx
 	pushw	%dx			// dos exit()
 	je	abort
-	pushw	%si
 	int	$0x21			// get DOS version
-	popw	%di			// %di = 0x100: .COM start address
 	addb	$-3, %al
-	movb	$EXESTR(noDOS3), %al
-	jnc	abort
-	movw	$(EXELOC(0x8000))/2, %cx
-chklp:
-	lodsw
-	addw	%ax, %dx	// break C
-	loop	chklp
-chked:
-	movw	$0x1000+EXESTR(chkerr), %ax
-	je	tst386		// dx == 0 ?
+	movw	$0x1000+EXESTR(noDOS3), %ax
+	jc	tst386
 abort:
-puts:
-	clc
-	jmp	putstr
+	jmp	puts
 
 tst386:
 	pushfw			// save flags
@@ -165,7 +151,7 @@ tst386:
 	popfw			// restore flags (IOPL)
 	addb	%ah, %bh	// test F0 and 00 cases
 	cmpb	%ah, %bh
-	movb	$EXESTR(no386), %al
+	movw	$0x100, %di
 	jbe	is86		// C=8086/80186, Z=80286
 is386:
 	smsww	%ax		// not privileged
@@ -176,10 +162,11 @@ is386:
 	incl	%eax
 	movb	$EXESTR(rmPaging), %al
 	js	abort
-	movb	$EXESTR(realmodemsg), %al
+	inc	%ax
+	//movb	$EXESTR(realmodemsg), %al
 realmode:
-is86:
 	call	puts
+is86:
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
 	movb	$0x7C/2, %ch	// 31K-31.5K, > com length
@@ -193,8 +180,8 @@ VersionVCPI:
 	jnc	realmode		// %si = 0
 tstvcpi:
 	pushw	%ds
-	movw	%dx, %ds		// %dx = 0
-	movw	0x67*4+2, %ds
+	movw	%si, %ds		// %si = 10
+	movw	(0x67*4)+2-(16*10)-0x100(%di), %ds
 	lodsw
 	xorw	$0x4D45, %ax		// EM(MX) or EM(MQ)
 	lodsw
@@ -222,18 +209,13 @@ CmdVCPI:
 
 vm86modemsg:
 // --------------- Must be in 7F40 7FFF range ------------------------
-	.ascii	"vm86"			// vm86 mode
+	.ascii	"86"			// 86 mode
 	.byte	EXESTR(mode)
 ERRvcpi:
-	.ascii	"EMM"			// EMM386 need
-no386:
-	.ascii	"386"			// 386 need
+	.ascii	"VCPI4"			// VCPI4?
 	.byte	EXESTR(need)
-chkerr:
-	.ascii	"Bad c"			// Bad code
-	.byte	EXESTR(ode)
 rmPaging:
-	.ascii	"Un"			// Unreal mode
+	.ascii	"X"			// Xreal mode
 realmodemsg:
 	.ascii	"real"			// real mode
 // --------------- Must be in 7FC0 7FFF range ------------------------
@@ -243,15 +225,15 @@ ode:
 	.ascii	"ode"
 	.byte	EXESTR(eol)
 noDOS3:
-	.ascii	"DOS3"			// DOS3 need
+	.ascii	"DOS3"			// DOS3?
 need:
-	.ascii	" need"
+	.ascii	"?"
 	.byte	EXESTR(eol)
 help:
 	.ascii	"SliTaz iso boot"	// SliTaz iso boot
 eol:
 	.ascii	"\r\n"
-	.byte	1			// putstr will return
+	.byte	1			// puts will return
 
 	.space	16,0			// ISO md5
 	.org	0x8000
