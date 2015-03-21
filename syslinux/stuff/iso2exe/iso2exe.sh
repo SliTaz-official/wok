@@ -266,7 +266,7 @@ main()
 	esac
 	case "$(get 0 $1)" in
 	23117)	echo "The file $1 is already an EXE file." 1>&2 && exit 1;;
-	0)	$0 --get isohdpfx.bin | ddq bs=512 count=1 of=$1 conv=notrunc
+	0)	[ -x /usr/bin/isohybrid ] && isohybrid $1;;
 	esac
 		
 	echo "Read hybrid & tazlito data..."
