@@ -19,7 +19,7 @@ isohybrid.res: isohybrid.rc isohybrid.ico
 
 iso2exe.h: iso2exe
 	chmod +x iso2exe.sh
-	./iso2exe.sh --array isohdpfx.bin > $@
+	./iso2exe.sh --array ../mbr/isohdpfx.bin > $@
 
 iso2exe.com: iso2exe.c iso2exe.h
 	$(BCC) $(BCCFLAGS) -o $@ iso2exe.c && upx --ultra-brute $@
