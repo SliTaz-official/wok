@@ -1,0 +1,50 @@
+#!/bin/sh
+# get Sublime Text 3
+WGET_URL="$(wget -O - http://www.sublimetext.com/3 | tr '"' '\n' | fgrep x32.tar)"
+VERSION=${WGET_URL%_x32*}; VERSION=${VERSION##*_}
+
+# download tarball and extract
+rm -rf $1/opt/sublime_text 2>/dev/null
+mkdir -p $1/opt; cd $1/opt; busybox wget -O - $WGET_URL | tar -xjf -
+cd $1/opt; mv sublime_text_3 sublime_text
+
+# move desktop file
+mv $1/opt/sublime_text/sublime_text.desktop $1/usr/share/applications
+
+# link icons
+for size in $(cd $1/opt/sublime_text/Icon; ls); do
+	mkdir -p $1/usr/share/icons/hicolor/$size/apps
+	ln -fs $1/opt/sublime_text/Icon/$size/sublime-text.png \
+		$1/usr/share/icons/hicolor/$size/apps/sublime-text.png
+done
+
+# make receipt
+PKGDIR="$1/var/lib/tazpkg/installed/sublime-text-3"
+mkdir -p "$PKGDIR"
+cat > "$PKGDIR/receipt" << EOR
+# SliTaz package receipt.
+
+PACKED_SIZE="6.1M"
+UNPACKED_SIZE="16.1M"
+PACKAGE="sublime-text-3"
+VERSION="$VERSION"
+CATEGORY="development"
+SHORT_DESC="Sophisticated text editor for code, markup and prose"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="non-free"
+WEB_SITE="http://www.sublimetext.com/3"
+
+DEPENDS=""
+EOR
+
+# make files.list
+cd $1/
+find opt/sublime_text -type f > "$PKGDIR/files.list"
+echo 'usr/share/applications/sublime_text.desktop' >> "$PKGDIR/files.list"
+find usr/share/icons/hicolor -name sublime-text.png >> "$PKGDIR/files.list"
+sed -i 's|.*|/\0|' $PKGDIR/files.list
+
+# make md5sum
+while read file; do
+	md5sum "$1$file" >> $PKGDIR/md5sum
+done < $PKGDIR/files.list
