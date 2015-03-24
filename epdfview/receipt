@@ -17,7 +17,7 @@ BUILD_DEPENDS="gtk+-dev poppler-dev poppler cairo-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	sed -i 's/FORMAT_RGB24/FORMAT_ARGB32/g' src/PDFDocument.cxx
 	sed -i 's/<config.h>/&\n#include <stdio.h>\n#define g_fopen fopen/' \
 		src/epdfview.h
 	find . -name '*.[ch]*' | xargs sed -i 's|<glib/.*h|<glib.h|'
@@ -31,10 +31,9 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr/share/pixmaps
-    cp -a $install/usr/bin $fs/usr
-    cp -a $install/usr/share/epdfview $fs/usr/share
-    cd $fs/usr/share/pixmaps
-    ln -sf /usr/share/epdfview/pixmaps/icon_epdfview-32.png epdfview.png
+	mkdir -p $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share/epdfview $fs/usr/share
+	find $fs -name 'icon*[83]*' -delete
 }
 
