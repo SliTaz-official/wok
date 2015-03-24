@@ -17,7 +17,8 @@ genpkg_rules()
 	cat > $fs/etc/init.d/pnp.sh <<EOT
 #!/bin/sh
 
-status="\\\\033[70G[ \\\\033[1;31mFailed\\\\033[0;39m ]"
+. /etc/init.d/rc.functions
+
 echo -n "Switching on isa pnp ethernet card "
 # io 0x360..0x250 by 0x10, irq 15 12 11 10 9 7 6 5 4 3
 for io in \$(seq 360 -10 250); do for irq in 15 12 11 10; do
@@ -31,16 +32,20 @@ pnpdump | busybox awk "BEGIN {s=0} \\
 }" > /etc/isapnp.conf
 if isapnp /etc/isapnp.conf > /dev/null 2>&1 ; then
   modprobe cs89x0 io=0x\$io irq=\$irq > /dev/null 2>&1
-  status="\\\\033[70G[ \\\\033[1;33mOK\\\\033[0;39m ]"
   break 2
 fi
 done ; done
-echo -e "\$status"
+status
 EOT
 	chmod +x $fs/etc/init.d/pnp.sh
 }
 
 # Pre and post install commands for Tazpkg.
+pre_remove()
+{
+	sed -i 's/pnp.sh //' $1/etc/rcS.conf
+}
+
 post_install()
 {
 	grep pnp.sh $1/etc/rcS.conf ||
