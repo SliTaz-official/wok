@@ -34,7 +34,7 @@ SSLDIR="${DESTDIR}/etc/ssl"
 
 mkdir "${TEMPDIR}/certs"
 
-# Get a list of staring lines for each cert
+# Get a list of starting lines for each cert
 CERTBEGINLIST=$(grep -n "^# Certificate" "${certdata}" | cut -d ":" -f1)
 
 # Get a list of ending lines for each cert
@@ -52,11 +52,10 @@ for certbegin in ${CERTBEGINLIST}; do
   sed -n "${certbegin},${certend}p" "${certdata}" > "${TEMPDIR}/certs/${certbegin}.tmp"
 done
 
-unset CERTBEGINLIST CERTDATA CERTENDLIST certebegin certend
+unset CERTBEGINLIST CERTDATA CERTENDLIST certbegin certend
 
 mkdir -p certs
-touch certs/dummy
-rm certs/*      # Make sure the directory is clean
+rm -f certs/*      # Make sure the directory is clean
 
 for tempfile in ${TEMPDIR}/certs/*.tmp; do
   # Make sure that the cert is trusted...

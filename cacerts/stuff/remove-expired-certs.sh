@@ -1,5 +1,5 @@
 #!/bin/sh
-# Begin /bin/remove-expired-certs.sh
+# Begin remove-expired-certs.sh
 #
 # Version 20120211
 
