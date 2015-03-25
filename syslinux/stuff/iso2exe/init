@@ -758,8 +758,10 @@ $(tazusbmsg)Please plug your USB stick in now.\n
 	done ) > $device
 
 	# partition + fat32 format for the remaining space
-	get 446 $device 2 12 | xargs echo | { read dx cx ol oh ll lh 
-	if [ $dx -eq $((0x3F17)) ]; then
+	for p in 0 16; do
+		get $((450+$p)) $device 2 12 | xargs echo | {
+		read dx cx ol oh ll lh
+		[ $dx -eq $((0x3F17)) ] || continue
 		cx=$(($cx & 0xFF00))
 		ofs=$(($ll+($lh<<16)))
 		n=$(($(cat /sys/block/${device#/dev/}/size)-$ofs))
@@ -768,15 +770,17 @@ $(tazusbmsg)Please plug your USB stick in now.\n
 		m=$((($m & 0xFF00)+(($m>>16)<<6)))
 		words2bin 0 $((0x101+$cx)) 0x3F0B $((32+$m)) \
 			$ll $lh $(($n & 0xFFFF)) $(($n >> 16)) | \
-			ddq bs=1 seek=446 of=$device
+			ddq bs=1 seek=$((462-$p)) of=$device
 		if [ "$(which mkdosfs 2> /dev/null)" ]; then
 			losetup -o $((512*$ofs)) /dev/loop2 $device
 			mkdosfs -n "SLITAZ BOOT" /dev/loop2
 			words2bin $(($ofs & 0xFFFF)) $(($ofs >> 16)) | \
 				ddq bs=1 seek=28 of=/dev/loop2
+			sync
 			losetup -d /dev/loop2
 		fi
- 	fi ; }
+ 		}
+ 	done
 }
 
 usbkey()
