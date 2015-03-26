@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="eom"
+VERSION="1.9.0"
+CATEGORY="utilities"
+LICENSE="GPL"
+SHORT_DESC="MATE's default image viewer."
+MAINTAINER="yuripourre@gmail.com"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.mate-desktop.org/"
+WGET_URL="https://github.com/mate-desktop/$PACKAGE/archive/$TARBALL"
+
+DEPENDS="gtk+ dconf jpeg pygtk desktop-file-utils exempi lcms libexif librsvg"
+BUILD_DEPENDS="wget autoconf automake libtool itstool mate-desktop-dev \
+mate-common-dev dconf-dev gtk-doc gtk+-dev yelp-tools mate-icon-theme \
+jpeg-dev gobject-introspection-dev shared-mime-info-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh                   \
+		--prefix=/usr          \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/$PACKAGE $fs/usr/share/$PACKAGE
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/$PACKAGE/* $fs/usr/lib/$PACKAGE
+	cp -a $install/usr/share/$PACKAGE/* $fs/usr/share/$PACKAGE
+}
+
