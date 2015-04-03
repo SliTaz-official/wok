@@ -16,8 +16,7 @@ HOST_ARCH="i486 arm"
 DEPENDS="glibc-base expat libxcb xcb-util zlib glib cairo pango atk libpng \
 jpeg tiff gdk-pixbuf fontconfig freetype pixman libgio xorg-libX11 xorg-libXau \
 xorg-libXcomposite xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext \
-xorg-libXfixes xorg-libXinerama xorg-libXrender xorg-libXrandr clearlooks \
-harfbuzz"
+xorg-libXfixes xorg-libXinerama xorg-libXrender xorg-libXrandr harfbuzz"
 
 BUILD_DEPENDS="atk-dev pango-dev gdk-pixbuf-dev dbus-dev dbus-glib-dev \
 xorg-inputproto libxcb-dev fontconfig-dev freetype-dev pixman-dev libxml2-dev \
@@ -83,16 +82,6 @@ post_install()
 {
 	local arg
 	echo "Processing post-install commands..."
-	if [ ! -d $1/etc/gtk-2.0 ]; then
-		mkdir -p $1/etc/gtk-2.0
-	fi
+	mkdir -p $1/etc/gtk-2.0
 	chroot $1/ /usr/bin/gtk-query-immodules-2.0 > $1/etc/gtk-2.0/gtk.immodules
-	# Force reinstall of clearlooks theme (1.0 compatibilty until
-	# clearlooks are updated)
-	if [ -d $1/usr/lib/gtk-2.0/2.4.0 ]; then
-		arg="--forced"
-		[ -n "$1" ] && arg="--forced --root=$1/"
-		tazpkg get-install clearlooks $arg
-		rm -rf $1/usr/lib/gtk-2.0/2.4.0
-	fi
 }
