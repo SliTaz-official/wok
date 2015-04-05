@@ -75,7 +75,7 @@ dxfound:
 	cmpw	(%bx), %cx
 	jnc	puts			// read fail or no isohydrid boot sector
 	popw	%es
-	popa
+	popa				// isolinux boot needs %es:%di and %dx
 putsret:
 	ret
 
@@ -140,25 +140,25 @@ abort:
 	jmp	puts
 
 tst386:
-	pushfw			// save flags
+	pushfw				// save flags
 		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
 		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
 	// movb	$0x10, %ah
 	pushw	%ax
-	popfw			// < 286 : flags[12..15] are forced 1
-	pushfw			// = 286 : flags[12..15] are forced 0
-	popw	%bx		// > 286 : only flags[15] is forced 0
-	popfw			// restore flags (IOPL)
-	addb	%ah, %bh	// test F0 and 00 cases
+	popfw				// < 286 : flags[12..15] are forced 1
+	pushfw				// = 286 : flags[12..15] are forced 0
+	popw	%bx			// > 286 : only flags[15] is forced 0
+	popfw				// restore flags (IOPL)
+	addb	%ah, %bh		// test F0 and 00 cases
 	cmpb	%ah, %bh
 	movw	$0x100, %di
-	jbe	is86		// C=8086/80186, Z=80286
+	jbe	is86			// C=8086/80186, Z=80286
 is386:
-	smsww	%ax		// not privileged
+	smsww	%ax			// not privileged
 	andb	$1, %al
 	movw	$10, %si
 	jne	tstvcpi
-	movl	%cr0, %eax	// privileged
+	movl	%cr0, %eax		// privileged
 	incl	%eax
 	movb	$EXESTR(rmPaging), %al
 	js	abort
@@ -169,7 +169,7 @@ realmode:
 is86:
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
-	movb	$0x7C/2, %ch	// 31K-31.5K, > com length
+	movb	$0x7C/2, %ch		// 31K-31.5K, > com length
 	rep
 	movsw
 	ret
