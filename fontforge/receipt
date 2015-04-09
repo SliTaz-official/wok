@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="fontforge"
+VERSION="20150330"
+CATEGORY="development"
+SHORT_DESC="An outline font editor"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="BSD GPL3"
+WEB_SITE="http://fontforge.github.io/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/fontforge/fontforge/releases/download/$VERSION/$TARBALL"
+TAGS="editor font"
+
+DEPENDS="gtk+ libuninameslist python libspiro libltdl"
+BUILD_DEPENDS="wget cacerts libtool git perl tar autoconf automake bash \
+coreutils-line xorg-libX11-dev zlib-dev freetype-dev jpeg-dev libpng-dev \
+readline-dev cairo-dev pango-dev xorg-libXft-dev gtk+-dev python-dev \
+libuninameslist-dev libspiro-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./bootstrap --skip-git --gnulib-srcdir $src/gnulib
+
+	./configure \
+	--enable-gtk2-use \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/python2.7/site-packages $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/python2.7/site-packages/*.so $fs/usr/lib/python2.7/site-packages
+	cp -a $install/usr/share/fontforge $fs/usr/share
+}
