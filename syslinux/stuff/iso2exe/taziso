@@ -258,6 +258,9 @@ windev()
 {
 	if [ -b "$1" ]; then
 		device=$1
+	elif [ "$1" ]; then
+		echo "Invalid Windows partition"
+		return 1
 	else
 		DEV="$(blkid | grep -iE "(msdos|vfat|ntfs)" | sed 's/:.*//;s|/dev/||')"
 		[ "$DEV" ] || return
@@ -506,9 +509,10 @@ bootiso()
 
 tazboot()
 {
-	$DIALOG --clear \
-		--title " SliTaz bootloader for DOS " \
-		--yes-label "Install" --yesno \
+	if [ -z "$1" ]; then
+		$DIALOG --clear \
+			--title " SliTaz bootloader for DOS " \
+			--yes-label "Install" --yesno \
 "\nThe file TAZBOOT.EXE will be created in the top directory. It supports
 any linux kernel, multiple initramfs, a kernel command line and
 an ISO image file loopback (retrieves files from an ISO file).\n\n
@@ -523,16 +527,18 @@ Examples for tazboot.cmd:\n\n\
   kernel=\\slitaz\\vmlinuz root=/dev/sda5 ro\n\n
 Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n
 " 24 78
-	[ $? -eq 0 ] || return
+		[ $? -eq 0 ] || return
+	fi
 	gettazboot tazboot.exe
 }
 
 md5()
 {
 	dotwait "Checking files"
-	( cd /media/cdrom ; ${1:-md5sum -c md5sum*} ) > /tmp/data
+	( cd /media/cdrom ; ${md5sum:-md5sum -c md5sum*} ) > /tmp/data
+	unset md5sum
 	rm -f /tmp/wait
-	if [ "$1 "]; then
+	if [ "$1" ]; then
 		cat /tmp/data
 	else
 		$DIALOG --clear \
@@ -555,7 +561,8 @@ sha()
 {
 	gotcdfile 'sha*sum*'
 	sha=$(basename $file)
-	md5 "${sha%sum*}sum -c ${file#/media/cdrom/}" $@
+	md5sum="${sha%sum*}sum -c ${file#/media/cdrom/}"
+	md5 $@
 }
 
 readme()
@@ -572,7 +579,7 @@ readme()
 
 bzimage()
 {
-	if [ "$1" ]; then
+	if [ -z "$1" ]; then
 		$DIALOG --clear \
 			--title " Create linux.exe ? " \
 			--yes-label "Install" --yesno \
@@ -652,15 +659,17 @@ Please insert a blank disk in floppy drive.\n
 pxe()
 {
 	gotcdfile '?pxe'
-	$DIALOG --clear \
-		--title " Create $(basename $file).exe ? " \
-		--yes-label "Install" --yesno \
+	if [ -z "$1" ]; then
+		$DIALOG --clear \
+			--title " Create $(basename $file).exe ? " \
+			--yes-label "Install" --yesno \
 "\nBoot your operating system from the internet and enjoy a full system
 working entirely in RAM with speed and stability in mind. The Linux Kernel
 and the complete SliTaz compressed root filesystem will be loaded into RAM
 from the Web using PXE and HTTP protocols.\n
 " 12 70
-	[ $? -eq 0 ] || return
+		[ $? -eq 0 ] || return
+	fi
 	cp $file $(basename $file).exe
 }
 
@@ -780,7 +789,7 @@ isomd5()
 		echo "OK" || echo "ERROR"
 	fi
 	rm -f /tmp/wait
-	[ "$1" ] || return 0
+	[ "$1" ] && return 0
 	echo -e "\rPress RETURN to continue."
 	read n
 }
@@ -824,6 +833,9 @@ usbbootkey()
 {
 	if [ -b "$1" ]; then
 		device=$1
+	elif [ "$1" ]; then
+		echo "Invalid USB key device"
+		return 1 
 	else
 		$DIALOG --clear \
 			--title " Create a USB boot key " \
@@ -938,6 +950,13 @@ ISO="$1"
 [ -z "$(isiso 2> /dev/null)" ] && echo "Usage : $0 file.iso" && exit 1
 mount -o loop,ro $ISO /media/cdrom
 
+if [ "$2" == "list" ]; then
+	sed '/^\$(.*") \\/!d;s/^\$(\(.*\)").*/\1"/' $0 | while read line; do
+		eval $line
+		echo
+	done | sed '/^$/d;/"usbkey"/d'
+	quit
+fi
 if grep -q "^$2()" $0; then
 	exe=$2
 	shift 2
