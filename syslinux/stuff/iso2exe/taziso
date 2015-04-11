@@ -249,6 +249,37 @@ EOT
 		$mnt/slitaz/boot/README
 	[ -d $mnt/slitaz/usr/sbin -a ! -x $mnt/slitaz/usr/sbin/mount.posixovl ] &&
 	cp $(which mount.posixovl) $mnt/slitaz/usr/sbin
+	if grep -qs " $mnt " /proc/mounts && [ ! -d $mnt/boot/grub ]; then
+		mkdir -p $mnt/boot/grub
+		cp -a /usr/lib/grub/*/* $mnt/boot/grub
+		cat > $mnt/boot/grub/menu.lst <<EOT
+# /boot/grub/menu.lst: GRUB boot loader configuration.
+
+# By default, boot the first entry.
+default 0
+
+# Boot automatically after 8 secs.
+timeout 8
+
+title Microsoft Windows
+	chainloader +1
+
+title SliTaz GNU/Linux $(cat $mnt/slitaz/etc/slitaz-release)
+	kernel /slitaz/boot/bzimage rw root=/dev/null $extraargs autologin
+	initrd /slitaz/boot/$initrd
+
+EOT
+		dev=$(grep " $mnt " /proc/mounts | awk '{ print $1 }')
+		base=${dev//[0-9]/}
+		dd if=$base bs=32k count=1 of=$mnt/boot/grub/$(basename $base)
+		cat > $mnt/boot/grub/uninstall-grub.sh <<EOT
+#!/bin/sh
+
+[ -s /boot/grub/$(basename $base) ] &&
+dd if=/boot/grub/$(basename $base) of=$base
+EOT
+		grub-install --no-floppy --root-directory=$mnt $base
+	fi
 	rm -f /tmp/wait
 	umount $mnt/slitaz
 	return 0
