@@ -62,6 +62,7 @@ dotwait()
 {
 	echo -n "${1:-Install filesystem}.."
 	touch /tmp/wait
+	[ "$REQUEST_URI" ] && return
 	while [ -e /tmp/wait ]; do
 		echo -n "." > /dev/tty
 		sleep 1
@@ -251,6 +252,7 @@ EOT
 	cp $(which mount.posixovl) $mnt/slitaz/usr/sbin
 	if grep -qs " $mnt " /proc/mounts && [ ! -d $mnt/boot/grub ]; then
 		mkdir -p $mnt/boot/grub
+		echo -en "\nInstall grub in /boot/grub..."
 		cp -a /usr/lib/grub/*/* $mnt/boot/grub
 		cat > $mnt/boot/grub/menu.lst <<EOT
 # /boot/grub/menu.lst: GRUB boot loader configuration.
@@ -400,7 +402,7 @@ mkzip()
 	packages_dir=
 	mnt=/tmp/mnt$$
 	mkdir -p $mnt
-	$1 || return
+	$1 $2 || return
 	wget -O $mnt/slitaz/boot/grldr http://mirror.slitaz.org/boot/grldr
 	readtazbootconf
 	cat > $mnt/slitaz/boot/menu.lst <<EOT
@@ -451,6 +453,7 @@ EOT
 	( cd $mnt ; zip -r9 $(basename $ISO .iso).zip slitaz )
 	[ "$(which advzip)" ] && advzip -z4 $mnt/*.zip
 	mv $mnt/*.zip .
+	ls -l $PWD/$(basename $ISO .iso).zip
 	umount $mnt
 	rm -rf $mnt
 }
@@ -472,7 +475,7 @@ install()
 inst2zip()
 {
 	if [ "$1" ]; then
-		doinstall
+		mkzip doinstall
 	else
 		mkzip _install
 	fi
@@ -514,7 +517,7 @@ installtaz()
 insttaz2zip()
 {
 	if [ "$1" ]; then
-		doinstall tazusblike
+		mkzip doinstall tazusblike
 	else
 		mkzip _installtaz
 	fi
@@ -561,6 +564,7 @@ Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n
 		[ $? -eq 0 ] || return
 	fi
 	gettazboot tazboot.exe
+	ls -l $PWD/tazboot.exe
 }
 
 md5()
@@ -622,6 +626,7 @@ vga= (you can try 'rdev -v') and mem= (partially).
 		[ $? -eq 0 ] || return
 	fi
 	cp /media/cdrom/boot/bzImage linux.exe
+	ls -l $PWD/linux.exe
 }
 
 memtest()
@@ -637,6 +642,7 @@ miss many of the failures that are detected by Memtest86.\n
 		[ $? -eq 0 ] || return
 	fi
 	gotcdfile 'memtest*' && cp $file memtest.exe
+	ls -l $PWD/memtest.exe
 }
 
 mkfat12()
@@ -702,6 +708,7 @@ from the Web using PXE and HTTP protocols.\n
 		[ $? -eq 0 ] || return
 	fi
 	cp $file $(basename $file).exe
+	ls -l $PWD/$(basename $file).exe
 }
 
 fdpxe()
