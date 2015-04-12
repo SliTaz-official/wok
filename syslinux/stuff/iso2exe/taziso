@@ -978,6 +978,38 @@ runpxe()
 	gotcdfile '?pxe' && dokexec
 }
 
+flavdata()
+{
+	dd if=$ISO bs=512 skip=$((1+$(get 417 $ISO 1))) count=20 2>/dev/null | \
+	zcat 2>/dev/null
+}
+
+hasflavinfo()
+{
+	[ "$(flavdata | dd bs=1 count=8 2> /dev/null | strings)" == \
+	  "07070100" ] && menuitem "$@"
+}
+
+showfavinfo()
+{
+	mkdir -p /tmp/data
+	flavdata | ( cd /tmp/data ; cpio -i )
+	file=/tmp/data/info
+	cat /tmp/data/*desc > $file
+	for i in /tmp/data/*list* ; do
+		echo "=== extra ${i#*list} files"
+		cat $i
+	done >> $file
+	if [ "$1" ]; then
+		cat $file
+	else
+		$DIALOG --clear \
+			--title " Flavor infos " \
+			--textbox $file 24 78
+	fi
+	rm -rf /tmp/data
+}
+
 quit()
 {
 	umount -d /media/cdrom
@@ -1022,6 +1054,7 @@ $(gotposixovlzip	"inst2zip"	"ZIP installation archive (UMSDOS way)") \
 $(gotposixovlzip	"insttaz2zip"	"ZIP installation archive (TAZUSB way)") \
 $(xfile tazusb		"usbkey"	"USB key read/write installation") \
 $(ishybrid		"usbbootkey"	"USB boot key (read only)") \
+$(hasflavinfo		"showfavinfo"	"Show flavor extra infos") \
 $(menuitem		"tazboot"	"Get tazboot.exe Linux loader") \
 $(cdexe boot/bzImage	"bzimage"	"Get linux DOS/EXE file") \
 $(cdexe 'memtest*'	"memtest"	"Get Memtest86 DOS/EXE file") \
