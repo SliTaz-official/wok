@@ -115,7 +115,7 @@ if [ ! -d /mnt/dos/slitaz ]; then
 		umount /mnt/dos
 	done
 fi
-mount.posixovl -F \$mnt -- -oallow_other -odefault_permissions -osuid
+$([ "$2" ] || echo '# ')mount.posixovl -F \$mnt -- -oallow_other -odefault_permissions -osuid
 mount --bind \$mnt /home
 umount /proc
 exec /sbin/init
@@ -178,7 +178,7 @@ if [ -d /mnt/\$val ]; then
 		umount /mnt
 	done
 fi
-mount.posixovl -F /mnt/\$val -- -oallow_other -odefault_permissions -osuid
+$([ "$3" ] || echo '# ')mount.posixovl -F /mnt/\$val -- -oallow_other -odefault_permissions -osuid
 mount --bind /mnt /mnt/\$val/mnt/dos
 mount -o size=0 -t tmpfs tmpfs /mnt/\$val/mnt/dos/\$val
 LDSO=\$(ls /mnt/\$val/lib/ld-* | sed q)
@@ -199,7 +199,12 @@ ls_r()
 
 doinstall()
 {
+	unset useposixovl
+	blkid | grep $(df /mnt | sed '$!d;s/ .*/:/') | \
+		grep -qiE "(msdos|vfat|ntfs)" && useposixovl=YES
+
 	mkdir -p $mnt/slitaz/boot $mnt/slitaz/mnt/dos
+	[ "$useposixovl" ] &&
 	if ! mount.posixovl -F $mnt/slitaz -- \
 		-oallow_other -odefault_permissions -osuid; then
 		echo "Can't install SliTaz. Abort."
@@ -210,7 +215,7 @@ doinstall()
 	if [ "$1" ]; then
 		ls_r /media/cdrom/boot/rootfs*gz | \
 		xargs cat > $mnt/slitaz/boot/rootfs.gz
-		tazusbinitfs $mnt/slitaz/boot/rootfs.gz
+		tazusbinitfs $mnt/slitaz/boot/rootfs.gz $useposixovl
 		initrd=rootfs.gz
 		extraargs="/home=$(getuuid)/slitaz rdinit=/init1"
 	else
@@ -226,7 +231,7 @@ doinstall()
 		done
 		cp -a /etc/locale.conf $mnt/slitaz/etc 2> /dev/null
 		cp -a /etc/keymap.conf $mnt/slitaz/etc 2> /dev/null
-		mkinitrd $mnt/slitaz/boot/initrd $mnt/slitaz
+		mkinitrd $mnt/slitaz/boot/initrd $mnt/slitaz $useposixovl
 		initrd=initrd
 		extraargs="mount=$(getuuid) subroot=slitaz"
 	fi
@@ -250,7 +255,8 @@ EOT
 		$mnt/slitaz/boot/README
 	[ -d $mnt/slitaz/usr/sbin -a ! -x $mnt/slitaz/usr/sbin/mount.posixovl ] &&
 	cp $(which mount.posixovl) $mnt/slitaz/usr/sbin
-	if grep -qs " $mnt " /proc/mounts && [ ! -d $mnt/boot/grub ]; then
+	if "$useposixovl" && grep -qs " $mnt " /proc/mounts &&
+	   [ ! -d $mnt/boot/grub ]; then
 		mkdir -p $mnt/boot/grub
 		echo -en "\nInstall grub in /boot/grub..."
 		cp -a /usr/lib/grub/*/* $mnt/boot/grub
@@ -266,10 +272,6 @@ timeout 8
 title Microsoft Windows
 	chainloader +1
 
-title SliTaz GNU/Linux $(cat $mnt/slitaz/etc/slitaz-release)
-	kernel /slitaz/boot/bzimage rw root=/dev/null $extraargs autologin
-	initrd /slitaz/boot/$initrd
-
 EOT
 		dev=$(grep " $mnt " /proc/mounts | awk '{ print $1 }')
 		base=${dev//[0-9]/}
@@ -282,8 +284,18 @@ dd if=/boot/grub/$(basename $base) of=$base
 EOT
 		grub-install --no-floppy --root-directory=$mnt $base
 	fi
+	if [ -s $mnt/boot/grub/menu.lst ] &&
+	   ! grep -q /slitaz/boot/bzimage $mnt/boot/grub/menu.lst; then
+		echo -en "\nUpdate /boot/grub/menu/lst..."
+		cat >> $mnt/boot/grub/menu.lst <<EOT
+title SliTaz GNU/Linux $(cat $mnt/slitaz/etc/slitaz-release)
+	kernel /slitaz/boot/bzimage rw root=/dev/null $extraargs autologin
+	initrd /slitaz/boot/$initrd
+
+EOT
+	fi
 	rm -f /tmp/wait
-	umount $mnt/slitaz
+	[ "$useposixovl" ] && umount $mnt/slitaz
 	return 0
 }
 
@@ -292,15 +304,15 @@ windev()
 	if [ -b "$1" ]; then
 		device=$1
 	elif [ "$1" ]; then
-		echo "Invalid Windows partition"
+		echo "Invalid Linux/Windows partition"
 		return 1
 	else
-		DEV="$(blkid | grep -iE "(msdos|vfat|ntfs)" | sed 's/:.*//;s|/dev/||')"
+		DEV="$(blkid | grep -iE "(msdos|vfat|ntfs|ext[234]|xfs|btrfs)" | sed 's/:.*//;s|/dev/||')"
 		[ "$DEV" ] || return
 	cat > /tmp/dialog$$ <<EOT
 $DIALOG --clear \
-	--title " Select your Windows partition " \
-	--menu "\nPlease select the Windows partition according to its known size.
+	--title " Select your Linux/Windows partition " \
+	--menu "\nPlease select the Linux/Windows partition according to its known size.
 The data will be kept untouched.\n" \
 	17 70 8 \
 	$(for i in $DEV ; do
@@ -362,7 +374,7 @@ _install()
 		--title " SliTaz UMSDOS way installation " \
 		--yes-label "Install" --yesno \
 "\nSliTaz will be installed in the subdirectory \\slitaz of the current
-DOS/Windows partition. You will see your files from /mnt/dos.\n\n
+Linux/DOS/Windows partition. You will see your files from /mnt/dos.\n\n
 You can start SliTaz with \\slitaz\\boot\\tazboot.exe\n\n
 To uninstall SliTaz, you have only to remove this directory.
 The file \\boot.ini or \\config.sys may be modified too.\n\n
@@ -487,7 +499,7 @@ _installtaz()
 		--title " SliTaz TAZUSB way installation " \
 		--yes-label "Install" --yesno \
 "\nSliTaz will be installed in the subdirectory \\slitaz of the current
-DOS/Windows partition. You will see your files from /mnt/dos.\n\n
+Linux/DOS/Windows partition. You will see your files from /mnt/dos.\n\n
 You can start SliTaz with \\slitaz\\boot\\tazboot.exe\n\n
 To uninstall SliTaz, you have only to remove this directory.
 The file \\boot.ini or \\config.sys may be modified too.\n\n
@@ -980,8 +992,8 @@ runpxe()
 
 flavdata()
 {
-	dd if=$ISO bs=512 skip=$((1+$(get 417 $ISO 1))) count=20 2>/dev/null | \
-	zcat 2>/dev/null
+	[ $(get 512 $ISO) -eq 35615 ] && n=1 || n=$((1+$(get 417 $ISO 1)))
+	dd if=$ISO bs=512 skip=$n count=20 2>/dev/null | zcat 2>/dev/null
 }
 
 hasflavinfo()
