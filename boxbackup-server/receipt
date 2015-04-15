@@ -62,8 +62,8 @@ pre_install()
 post_install()
 {
 	# default conf dir is now /etc/boxbackup
-	if [ ! -e /etc/box/bbstored.conf ]; then
-		mv /etc/box $CONF_DIR
+	if [ ! -e $1/etc/box/bbstored.conf ]; then
+		mv $1/etc/box $1$CONF_DIR
 	fi
 
 	# adduser BBUSER if needed
@@ -77,49 +77,55 @@ post_install()
 	fi
 
 	# Create config is needed
-	if [ ! -e $CONF_DIR ]; then
-		mkdir -p $CONF_DIR && chown $BBUSER $CONF_DIR && chmod 700 $CONF_DIR
+	if [ ! -e $1$CONF_DIR ]; then
+		mkdir -p $1$CONF_DIR &&
+		chroot $1/ chown $BBUSER $CONF_DIR &&
+		chmod 700 $1$CONF_DIR
 	fi
 
-	if [ ! -e $DATA_DIR/backup ]; then
+	if [ ! -e $1$DATA_DIR/backup ]; then
 		# Creating backup dir
 		echo -n "Creating backup directory..."
-		mkdir -p $DATA_DIR/backup && chown -R $BBUSER $DATA_DIR && chmod -R 700 $DATA_DIR
+		mkdir -p $1$DATA_DIR/backup &&
+		chroot $1/ chown -R $BBUSER $DATA_DIR &&
+		chmod -R 700 $1$DATA_DIR
 		status
 	fi
 
-	if [ ! -e $CONF_DIR/raidfile.conf ]; then
+	if [ ! -e $1$CONF_DIR/raidfile.conf ]; then
 		# RAID Setup
 		echo -n "Disabling deprecated userland RAID..."
-		/usr/bin/raidfile-config $CONF_DIR 2048 $DATA_DIR 2>1 > /dev/null
+		chroot $1/ /usr/bin/raidfile-config $CONF_DIR 2048 $DATA_DIR 2>1 > /dev/null
 		status
-		chown -R $BBUSER $CONF_DIR/raidfile.conf && chmod 700 -R $CONF_DIR/raidfile.conf
+		chroot $1/ chown -R $BBUSER $CONF_DIR/raidfile.conf &&
+		chmod 700 -R $1$CONF_DIR/raidfile.conf
 	fi
 
-	if [ ! -e $CONF_DIR/bbstored.conf ]; then
+	if [ ! -e $1$CONF_DIR/bbstored.conf ]; then
 		# Setting hostname
 		echo -n "Setting hostname... "
-		if [ $(hostname -f 2>1 > /dev/null;echo $?) -eq 0 ]; then
-		HOSTNAME=$(hostname -f)
+		if [ $(chroot $1/ hostname -f 2>1 > /dev/null;echo $?) -eq 0 ]; then
+			HOSTNAME=$(chroot $1/ hostname -f)
 		fi
 		if [ -z $HOSTNAME ]; then
 			HOSTNAME="127.0.0.1"
 		fi
+		export $HOSTNAME
 		echo $HOSTNAME
 
 		# Setting up the CA environment
 		echo -n "Creating certificates..."
-		/usr/bin/bbstored-certs $CA_DIR init 2>1 > /dev/null
+		chroot $1/ /usr/bin/bbstored-certs $CA_DIR init 2>1 > /dev/null
 		status
 
 		# Generate server certificate request
 		echo -n "Generate server certificate request..."
-		bbstored-config $CONF_DIR $HOSTNAME $BBUSER 2>1 > /dev/null
+		chroot $1/ bbstored-config $CONF_DIR $HOSTNAME $BBUSER 2>1 > /dev/null
 		status
 
 		# Sign the server certificate
 		echo -n "Sign the server certificate..."
-		openssl x509 -req -sha1 -extensions usr_crt \
+		chroot $1/ openssl x509 -req -sha1 -extensions usr_crt \
 			-in $CONF_DIR/$BBUSER/${HOSTNAME}-csr.pem \
 			-CA $CA_DIR/roots/serverCA.pem \
 			-CAkey $CA_DIR/keys/serverRootKey.pem \
@@ -129,14 +135,15 @@ post_install()
 
 		# Preparing the server certificates
 		echo -n "Installing server certificate..."
-	    cp -a $CA_DIR/servers/${HOSTNAME}-cert.pem $CONF_DIR/$BBUSER
+		cp -a $1$CA_DIR/servers/${HOSTNAME}-cert.pem $1$CONF_DIR/$BBUSER
 		status
 		echo -n "Installing client certificate..."
-		cp -a $CA_DIR/roots/clientCA.pem $CONF_DIR/$BBUSER
+		cp -a $1$CA_DIR/roots/clientCA.pem $1$CONF_DIR/$BBUSER
 		status
 
 		# Securing $CONF_DIR
-		chown -R $BBUSER $CONF_DIR/bbstored* && chmod 700 -R $CONF_DIR/bbstored*
+		chroot $1/ chown -R $BBUSER $CONF_DIR/bbstored* &&i
+		chmod 700 -R $1$CONF_DIR/bbstored*
 	fi
 
 	if [ -e $CA_DIR ]; then
