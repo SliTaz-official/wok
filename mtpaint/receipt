@@ -1,23 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="mtpaint"
-VERSION="3.40"
+VERSION="3.44.91"
+COMMIT="15ec7b65d09bff5372253f9568d06ea97487f9dc"
 CATEGORY="graphics"
-SHORT_DESC="Light paint programm and image manipulation."
+SHORT_DESC="Painting program to create pixel art and manipulate digital photos"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://mtpaint.sourceforge.net/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+#WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WGET_URL="https://github.com/wjaguar/mtPaint/archive/$COMMIT.tar.gz"
 #HOST_ARCH="i486 arm"
 
 DEPENDS="gtk+ libpng lcms"
-BUILD_DEPENDS="gtk+-dev libpng-dev lcms-dev"
+BUILD_DEPENDS="gtk+-dev libpng-dev lcms-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cp -a $stuff/icons/*.xpm $src/src/icons1
 	case "$ARCH" in
 		i?86)
 			./configure \
@@ -30,19 +31,14 @@ compile_rules()
 				--prefix=/usr \
 				--host=${HOST_SYSTEM} \
 				intl nogif
-	esac && make
-	# install mo files to the right place
-	for i in $(find $src/po/*.mo); do
-		LNG=$(basename $i .mo)
-		LFOLDER=$install/usr/share/locale/$LNG/LC_MESSAGES
-		mkdir -p $LFOLDER
-		cp -a $src/po/$LNG.mo $LFOLDER/mtpaint.mo
-	done
+	esac && make &&
+	make DESTDIR=$install install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
-	cp -a $src/src/mtpaint $fs/usr/bin
+	mkdir -p $fs/usr/share/applications
+	cp -a $install/usr/bin $fs/usr
+	cp $stuff/*.desktop $fs/usr/share/applications
 }
