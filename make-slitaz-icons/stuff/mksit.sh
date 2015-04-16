@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2015
 # (Started in November 2014)
 
-VERSION="150416"
+VERSION="150417"
 
 . /lib/libtaz.sh
 
@@ -42,7 +42,7 @@ EOT
 
 # Color output
 colored() {
-	if [ $color == 'yes' ]; then
+	if [ "$color" == 'yes' ]; then
 		colorize $@
 	else
 		echo $2
@@ -340,9 +340,11 @@ c tab-new
 c view-choose
 c view-filter
 c view-sidetree
+
 c gtk-execute			# LXPanel menu: run
 c system-shutdown-panel-restart	# LXPanel menu: logout
 c gtk-close			# Yad close button
+c gtk-go-forward gtk-go-forward-ltr # tazbox tz Yad dialog
 
 
 ############################
@@ -477,6 +479,13 @@ c scanner
 c video-display
 #---------------------------
 c camera camera-photo										# Matrilineare hack
+
+# Big drive icons on the PCManFM Desktop
+CATEGORY='devices'; SIZES='48'; echo_cat
+c drive-harddisk
+c drive-optical
+c drive-removable-media drive-harddisk-removable			# Matrilineare hack
+
 
 
 #########################
@@ -691,6 +700,7 @@ c folder-templates
 c folder-videos
 
 
+
 #########################
 # Standard Status Icons #
 #########################
@@ -756,10 +766,13 @@ c weather-showers-scattered
 c weather-snow
 c weather-storm
 #------------------
+c system-shutdown-restart-panel		# LXPanel logout icon (slitaz-logout.desktop)
+
 SIZES="48 16"
 c user-trash-full			# PCManFM desktop
-
-
+c dialog-password			# tazbox su default icon
+c dialog-error				# tazbox su error icon
+c 
 
 #####
 
