@@ -12,20 +12,26 @@ WGET_URL="http://dl.dropbox.com/u/9966975/$TARBALL"
 
 DEPENDS=""
 
-# Rules to gen a SliTaz package suitable for Tazpkg.
-genpkg_rules()
+# Rules to configure and make the package.
+compile_rules()
 {
-	mkdir -p $fs/usr/share/icons
-	cd $fs/usr/share/icons
+	mkdir -p $install/usr/share/icons
+	cd $install/usr/share/icons
 	tar xf $src/Faenza.tar.gz
 	tar xf $src/Faenza-Dark.tar.gz
 	tar xf $src/Faenza-Darkest.tar.gz
 	tar xf $src/Faenza-Darker.tar.gz
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
 	# remove big sizes and scalable
 	rm -rf $(find . -type d -regex '.*/\(64\|96\|scalable\)')
 	# remove emblems and extras
 	rm -rf $(find . -type d -regex '.*/\(emblems\|extras\)')
-#	sed -i '/Directories=/ s/\(.+\)\(,actions\/64.*\)/\1/' Faenza/index.theme
+	# sed -i '/Directories=/ s/\(.+\)\(,actions\/64.*\)/\1/' Faenza/index.theme
 
 	for name in Faenza Faenza-Dark Faenza-Darkest Faenza-Darker; do
 		cp -f $stuff/${name}-index.theme $fs/usr/share/icons/${name}/index.theme
