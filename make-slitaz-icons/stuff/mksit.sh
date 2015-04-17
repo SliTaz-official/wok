@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2015
 # (Started in November 2014)
 
-VERSION="150417"
+VERSION="150417-2"
 
 . /lib/libtaz.sh
 
@@ -481,7 +481,7 @@ c video-display
 c camera camera-photo										# Matrilineare hack
 
 # Big drive icons on the PCManFM Desktop
-CATEGORY='devices'; SIZES='48'; echo_cat
+SIZES='48'
 c drive-harddisk
 c drive-optical
 c drive-removable-media drive-harddisk-removable			# Matrilineare hack
@@ -772,7 +772,23 @@ SIZES="48 16"
 c user-trash-full			# PCManFM desktop
 c dialog-password			# tazbox su default icon
 c dialog-error				# tazbox su error icon
-c 
+
+# LXPanel status icons
+SIZES="22"
+c gnome-netstatus-0-24    nm-signal-25
+c gnome-netstatus-25-49   nm-signal-50
+c gnome-netstatus-50-74   nm-signal-75
+c gnome-netstatus-75-100  nm-signal-100
+c gnome-netstatus-disconn network-error
+c gnome-netstatus-error   network-error
+c gnome-netstatus-idle    network-idle
+c gnome-netstatus-rx      network-receive
+c gnome-netstatus-tx      network-transmit
+c gnome-netstatus-txrx    network-transmit-receive
+
+
+
+
 
 #####
 
