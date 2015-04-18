@@ -17,14 +17,37 @@ BUILD_DEPENDS="blas lapack libgfortran"
 # Rules to configure and make the package.
 compile_rules()
 {
+	cat > dynlink.sh <<EOT
+lib=\$1
+shift
+gcc -shared \$@ -lm -Wl,-soname -Wl,\$(basename \$lib) -o \$lib 
+EOT
+	for i in */Doc/ChangeLog ; do
+		VERSION=$(sed 's/.* version //;q' $i)
+		sed -i 's/\(.*cd Lib.*MAKE.\)\(.*\)/\1\2\n\1 -f Makefile.d\2/' \
+			${i%%/*}/Makefile
+		i=${i%%/*}/Lib
+		sed -e "/RANLIB/d;s/\.a/.so.$VERSION/" \
+		    -e 's/\.o/.oo/g;s/ -c / -fPIC&/' \
+		    -e 's|CC.*/\([^/]*\)c$|& -o \1oo|' -e 's|\$<$|$< -o $@|' \
+		    -e "s|\$(AR[A-Z]*)|sh $src/dynlink.sh|" \
+			< $i/Makefile > $i/Makefile.d
+	done
 	mkdir -p $DESTDIR/usr/lib $DESTDIR/usr/include
 	sed -i "s/lopenblas/lblas/;s|/usr/local|$DESTDIR/usr|" \
 		SuiteSparse_config/*.mk
 	make -j 1 && make install
+	for i in */Lib/*.so.* ; do
+		cp $i $DESTDIR/usr/lib
+		l=$(basename $i)
+		ln -s $l $DESTDIR/usr/lib/${l%.*.*}
+		ln -s $l $DESTDIR/usr/lib/${l%so*}so
+	done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/usr $fs/
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
