@@ -3,12 +3,13 @@
 PACKAGE="posixovl"
 VERSION="1.2"
 CATEGORY="system-tools"
-SHORT_DESC="A modern equivalent of the UMSDOS."
+SHORT_DESC="FUSE file system that provides POSIX functionality"
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://$PACKAGE.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+TAGS="filesystem"
 
 DEPENDS="fuse attr"
 BUILD_DEPENDS="autoconf automake fuse-dev attr-dev"
@@ -16,7 +17,7 @@ BUILD_DEPENDS="autoconf automake fuse-dev attr-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	mv $PACKAGE $src 2> /dev/null
+	mv $PACKAGE $src 2>/dev/null
 	cd $src
 	grep -q 'else if (!S_ISREG' posixovl.c ||
 	sed -i 's/if (!S_ISREG/if (S_ISLNK(cb->ll.mode))\n\t\tcb->sb.st_size = strlen(cb->ll.target);\n\telse &/' posixovl.c
@@ -27,8 +28,8 @@ compile_rules()
 	make
 }
 
-# Rules to gen a SliTaz package suitable for Tazpkg.   
-genpkg_rules()                                      
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
 {
 	mkdir -p $fs/usr/sbin
 	cp $src/mount.posixovl $fs/usr/sbin 
