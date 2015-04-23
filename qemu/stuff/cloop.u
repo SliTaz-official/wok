@@ -117,7 +117,7 @@
  }
  
  static int cloop_open(BlockDriverState *bs, QDict *options, int flags,
-@@ -91,79 +169,104 @@
+@@ -91,79 +169,97 @@
                     MAX_BLOCK_SIZE / (1024 * 1024));
          return -EINVAL;
      }
@@ -128,26 +128,14 @@
      }
      s->n_blocks = be32_to_cpu(s->n_blocks);
  
-+    /* initialize zlib engine */
-+    max_compressed_block_size =  s->block_size + s->block_size/1000 + 12 + 4;
-+    s->compressed_block = g_malloc(max_compressed_block_size + 1);
-+    s->uncompressed_block = g_malloc(s->block_size);
-+
-+    if (inflateInit(&s->zstream) != Z_OK) {
-+        ret = -EINVAL;
-+        goto fail;
-+    }
-+
-     /* read offsets */
+-    /* read offsets */
 -    if (s->n_blocks > (UINT32_MAX - 1) / sizeof(uint64_t)) {
-+    if (s->n_blocks > (UINT32_MAX - 1) / sizeof(block_info)) {
-         /* Prevent integer overflow */
-         error_setg(errp, "n_blocks %u must be %zu or less",
-                    s->n_blocks,
+-        /* Prevent integer overflow */
+-        error_setg(errp, "n_blocks %u must be %zu or less",
+-                   s->n_blocks,
 -                   (UINT32_MAX - 1) / sizeof(uint64_t));
-+                   (UINT32_MAX - 1) / sizeof(block_info));
-         return -EINVAL;
-     }
+-        return -EINVAL;
+-    }
 -    offsets_size = (s->n_blocks + 1) * sizeof(uint64_t);
 -    if (offsets_size > 512 * 1024 * 1024) {
 -        /* Prevent ridiculous offsets_size which causes memory allocation to
@@ -159,27 +147,40 @@
 -        return -EINVAL;
 -    }
 -    s->offsets = g_malloc(offsets_size);
++    /* initialize zlib engine */
++    max_compressed_block_size =  s->block_size + s->block_size/1000 + 12 + 4;
++    s->compressed_block = g_malloc(max_compressed_block_size + 1);
++    s->uncompressed_block = g_malloc(s->block_size);
+ 
+-    ret = bdrv_pread(bs->file, 128 + 4 + 4, s->offsets, offsets_size);
+-    if (ret < 0) {
++    if (inflateInit(&s->zstream) != Z_OK) {
++        ret = -EINVAL;
+         goto fail;
+     }
+ 
+-    for (i = 0; i < s->n_blocks + 1; i++) {
+-        uint64_t size;
++    /* read offsets */
 +    if (s->n_blocks + 1 == 0) {
 +        cloop_tail tail;
 +        int64_t end = bdrv_getlength(bs->file);
 +	void *p;
 +	uint32_t toclen, len; 
  
--    ret = bdrv_pread(bs->file, 128 + 4 + 4, s->offsets, offsets_size);
--    if (ret < 0) {
--        goto fail;
--    }
--
--    for (i = 0; i < s->n_blocks + 1; i++) {
--        uint64_t size;
-+        ret = bdrv_pread(bs->file, end - sizeof(tail), &tail, sizeof(tail));
-+        if (ret < 0) {
-+            goto fail;
-+        }
- 
 -        s->offsets[i] = be64_to_cpu(s->offsets[i]);
 -        if (i == 0) {
 -            continue;
++        ret = bdrv_pread(bs->file, end - sizeof(tail), &tail, sizeof(tail));
++        if (ret < 0) {
++            goto fail;
+         }
+ 
+-        if (s->offsets[i] < s->offsets[i - 1]) {
+-            error_setg(errp, "offsets not monotonically increasing at "
+-                       "index %u, image file is corrupt", i);
+-            ret = -EINVAL;
+-            goto fail;
 +        s->n_blocks = be32_to_cpu(tail.num_blocks);
 +        offsets_size = s->n_blocks * sizeof(block_info);
 +        if (offsets_size > 512 * 1024 * 1024) {
@@ -194,12 +195,18 @@
 +	len = be32_to_cpu(tail.table_size);
 +	toclen = (be32_to_cpu(tail.index_size) & 255) * s->n_blocks;
  
--        if (s->offsets[i] < s->offsets[i - 1]) {
--            error_setg(errp, "offsets not monotonically increasing at "
--                       "index %u, image file is corrupt", i);
+-        size = s->offsets[i] - s->offsets[i - 1];
 +        s->offsets = g_malloc(offsets_size);
 +	p = g_malloc(len);
-+
+ 
+-        /* Compressed blocks should be smaller than the uncompressed block size
+-         * but maybe compression performed poorly so the compressed block is
+-         * actually bigger.  Clamp down on unrealistic values to prevent
+-         * ridiculous s->compressed_block allocation.
+-         */
+-        if (size > 2 * MAX_BLOCK_SIZE) {
+-            error_setg(errp, "invalid compressed block size at index %u, "
+-                       "image file is corrupt", i);
 +        ret = bdrv_pread(bs->file, end - sizeof(tail) - len, p, len);
 +        if (ret < 0) {
 +            goto fail;
@@ -214,23 +221,15 @@
              goto fail;
          }
 -
--        size = s->offsets[i] - s->offsets[i - 1];
--
--        /* Compressed blocks should be smaller than the uncompressed block size
--         * but maybe compression performed poorly so the compressed block is
--         * actually bigger.  Clamp down on unrealistic values to prevent
--         * ridiculous s->compressed_block allocation.
--         */
--        if (size > 2 * MAX_BLOCK_SIZE) {
--            error_setg(errp, "invalid compressed block size at index %u, "
--                       "image file is corrupt", i);
+-        if (size > max_compressed_block_size) {
+-            max_compressed_block_size = size;
 +        ret = inflate(&s->zstream, Z_FINISH);
 +        if (ret != Z_STREAM_END || s->zstream.total_out != toclen) {
-             ret = -EINVAL;
-             goto fail;
++            ret = -EINVAL;
++            goto fail;
          }
 +	g_free(p);
-+    }
+     }
 +    else {
 +        offsets_size = s->n_blocks * sizeof(block_info);
 +        if (offsets_size > 512 * 1024 * 1024) {
@@ -244,18 +243,15 @@
 +        }
 +        s->offsets = g_malloc(offsets_size);
  
--        if (size > max_compressed_block_size) {
--            max_compressed_block_size = size;
-+        ret = bdrv_pread(bs->file, 128 + 4 + 4, s->offsets, offsets_size);
-+        if (ret < 0) {
-+            goto fail;
-         }
-     }
--
 -    /* initialize zlib engine */
 -    s->compressed_block = g_malloc(max_compressed_block_size + 1);
 -    s->uncompressed_block = g_malloc(s->block_size);
 -    if (inflateInit(&s->zstream) != Z_OK) {
++        ret = bdrv_pread(bs->file, 128 + 4 + 4, s->offsets, offsets_size);
++        if (ret < 0) {
++            goto fail;
++        }
++    }
 +    ret = build_index(s->offsets, s->n_blocks);
 +    if (ret) {
 +        error_setg(errp, "invalid compressed block size at index %u, "
@@ -267,7 +263,7 @@
      s->current_block = s->n_blocks;
  
      s->sectors_per_block = s->block_size/512;
-@@ -184,10 +287,10 @@
+@@ -184,10 +280,10 @@
  
      if (s->current_block != block_num) {
          int ret;
