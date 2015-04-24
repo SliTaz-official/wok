@@ -155,7 +155,7 @@
  	int handle;
  	struct cloop_head head;
  	unsigned int i;
-+	unsigned long num_blocks, block_size, zblock_maxsize;
++	unsigned long num_blocks, block_size, zblock_maxsize, lastlen = 0;
  	unsigned char *buffer, *clear_buffer;
 +	struct block_info *offsets;
  
@@ -171,7 +171,7 @@
  	if (handle < 0) {
  		perror("Opening compressed file\n");
  		exit(1);
-@@ -24,44 +28,99 @@
+@@ -24,44 +28,100 @@
  		exit(1);
  	}
  
@@ -209,6 +209,7 @@
 +		table_size = ntohl(tail.table_size);
 +		table = malloc(table_size);
 +		len = i = num_blocks * (ntohl(tail.index_size) & 255);
++		lastlen = ntohl(tail.index_size) / 256;
 +		offsets = malloc(num_blocks * sizeof(*offsets));
 +		if (!table || !offsets || 
 +		    read(handle, table, table_size) != table_size ||
@@ -297,7 +298,7 @@
  		if (i == 3) {
  			fprintf(stderr,
  				"Block head:%02X%02X%02X%02X%02X%02X%02X%02X\n",
-@@ -105,12 +164,12 @@
+@@ -105,12 +165,12 @@
  			fprintf(stderr, "Uncomp: unknown error %u\n", i);
  			exit(1);
  		}
@@ -310,7 +311,7 @@
  			exit(1);
  		}
 -		write(STDOUT_FILENO, clear_buffer, ntohl(head.block_size));
-+		write(STDOUT_FILENO, clear_buffer, block_size);
++		write(STDOUT_FILENO, clear_buffer, (lastlen != 0 && (i+1) == num_blocks) ? lastlen : block_size);
  	}
  	return 0;
  }
@@ -343,7 +344,7 @@
 
 --- create_compressed_fs.c
 +++ create_compressed_fs.c
-@@ -0,0 +1,147 @@
+@@ -0,0 +1,149 @@
 +#ifdef FIND_BEST_COMPRESSION
 +#include <compress.h>
 +extern "C" {
@@ -429,7 +430,7 @@
 +	unsigned char *compressed, *uncompressed;
 +	unsigned long *index;
 +	int n, indexmax, zlenmax;
-+	unsigned long len, pos;
++	unsigned long lastlen, len, pos;
 +	static char padding[512];
 +	
 +	if (argc > 1) {
@@ -455,7 +456,8 @@
 +	if (!compressed || !uncompressed || !index)
 +		quit("Malloc failed");
 +	
-+	for (n = 0; readblock(uncompressed, block_size); n++) {
++	for (n = 0; (len = readblock(uncompressed, block_size)) != 0; n++) {
++		if (len) lastlen = len;
 +		len = zlenmax;
 +		if (compress2(compressed, &len, uncompressed, block_size, 
 +				Z_BEST_COMPRESSION) != Z_OK)
@@ -472,7 +474,8 @@
 +		}
 +		index[n] = ntohl(len);
 +	}
-+	tail.index_size = ntohl(sizeof(*index));
++	if (block_size >= 0x1000000) lastlen = 0;
++	tail.index_size = ntohl(sizeof(*index) + 256*(lastlen % 0xFFffFF));
 +	tail.num_blocks = ntohl(n);
 +	n *= sizeof(*index);
 +	len = n + n/1000 + 12;
