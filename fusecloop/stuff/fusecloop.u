@@ -209,7 +209,7 @@
 +		table_size = ntohl(tail.table_size);
 +		table = malloc(table_size);
 +		len = i = num_blocks * (ntohl(tail.index_size) & 255);
-+		lastlen = ntohl(tail.index_size) / 256;
++		lastlen = ntohl(tail.index_size) & ~0x1FF;
 +		offsets = malloc(num_blocks * sizeof(*offsets));
 +		if (!table || !offsets || 
 +		    read(handle, table, table_size) != table_size ||
@@ -344,7 +344,7 @@
 
 --- create_compressed_fs.c
 +++ create_compressed_fs.c
-@@ -0,0 +1,149 @@
+@@ -0,0 +1,148 @@
 +#ifdef FIND_BEST_COMPRESSION
 +#include <compress.h>
 +extern "C" {
@@ -474,8 +474,7 @@
 +		}
 +		index[n] = ntohl(len);
 +	}
-+	if (block_size >= 0x1000000) lastlen = 0;
-+	tail.index_size = ntohl(sizeof(*index) + 256*(lastlen % 0xFFffFF));
++	tail.index_size = ntohl(sizeof(*index) + (lastlen & ~0x1FF));
 +	tail.num_blocks = ntohl(n);
 +	n *= sizeof(*index);
 +	len = n + n/1000 + 12;
