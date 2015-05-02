@@ -24,14 +24,16 @@ xdbclient()
 
 pppssh()
 {
-	[ -z "$DROPBEAR_PASSWORD" ] && echo -n "ssh password: " &&
-	read -s -t 30 DROPBEAR_PASSWORD && export DROPBEAR_PASSWORD
+	ssh="dbclient -y"
+	$ssh $1 true || {
+		[ -z "$DROPBEAR_PASSWORD" ] && echo -n "ssh password: " &&
+		read -s -t 30 DROPBEAR_PASSWORD && export DROPBEAR_PASSWORD
+		$ssh $1 true || exit 1
+	}
 	for i in $4 ; do
 		echo "route add -net $i dev \$1"
 	done > /etc/ppp/ip-up.d/pppssh$$
 	chmod +x /etc/ppp/ip-up.d/pppssh$$
-	ssh="dbclient -y"
-	$ssh $1 true || exit 1
 	n=10.$(($$%256)).$(($$/256))
 	ppp="/usr/sbin/pppd local noauth nodetach"
 	$ppp ${2:-$n.1:$n.2} passive pty "$ssh $1 $ppp ${3:-proxyarp} notty" \
