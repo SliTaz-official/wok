@@ -8,21 +8,20 @@ MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
 SOURCE="pptpd"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://www.poptop.org/"
+WEB_SITE="http://poptop.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="vpn tunnel"
-CONFIG_FILES="/etc/pptp.conf /etc/ppp"
+CONFIG_FILES="/etc/pptpd.conf /etc/ppp/options.pptpd"
 
 DEPENDS="ppp"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i "s|^LIBDIR.*|LIBDIR=$DESTDIR/usr/lib/pptpd|" plugins/Makefile
 	./configure --prefix=/usr \
-	--mandir=/usr/share/man \
-	$CONFIGURE_ARGS &&
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -30,7 +29,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr $fs/etc/ppp
 	cp -a $install/usr/sbin $fs/usr
+	cp $src/samples/pptpd.conf $fs/etc
+	cp $src/samples/options.pptpd $fs/etc/ppp
 }
-
