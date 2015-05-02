@@ -16,7 +16,7 @@ case "$1" in
 		export TEXTDOMAIN='ppp'
 
 		cat <<EOT
-<li><a data-icon="removable" href="ppp.cgi" data-root>$(_ 'PPP Modem')</a></li>
+<li><a data-icon="removable" href="ppp.cgi#ppprtc" data-root>$(_ 'PPP Modem')</a></li>
 <li><a data-icon="upgrade" href="ppp.cgi#pppnc" data-root>$(_ 'Route shortcut')</a></li>
 EOT
 		[ "$(which pptp 2>/dev/null)$(which pptpd 2>/dev/null)" ] && cat <<EOT
@@ -117,6 +117,8 @@ PASSWORD="$(awk -v key=$USERNAME "\$1==key{print \$3}" /etc/ppp/pap-secrets)"
 ACCOUNT="$(sed '/^ACCOUNT=/!d;s/^.*=\([^ \t]*\).*/\1/' /etc/ppp/scripts/ppp-on)"
 PASSRTC="$(sed '/^PASSWORD=/!d;s/^.*=\([^ \t]*\).*/\1/' /etc/ppp/scripts/ppp-on)"
 PHONE="$(sed '/^TELEPHONE=/!d;s/^.*=\([^ \t]*\).*/\1/' /etc/ppp/scripts/ppp-on)"
+busybox ps x | grep -v grep | grep -q pppnc_server || stops_disabled='disabled'
+busybox ps x | grep -v grep | grep -q pppnc_client || stopc_disabled='disabled'
 TITLE="$(_ 'TazPanel - Network') - $(_ 'PPP Connections')"
 header
 xhtml_header | sed 's/id="content"/id="content-sidebar"/'
@@ -169,12 +171,18 @@ if [ "$(busybox ps x | grep "pppd" | awk '/modem/{print $1}')" ]; then
 else
 	stop_disabled='disabled'
 fi
+if [ "$(busybox ps x | grep "pppd" | awk '/eth/{print $1}')" ]; then
+	startoe_disabled='disabled'
+else
+	stopoe_disabled='disabled'
+fi
 cat << EOT
 	<footer>
 	</footer>
 </section>
 </div>
 
+<a name="ppprtc"></a>
 <section>
 	<header>
 		<span data-icon="removable">$(_ 'RTC modem') -
@@ -202,10 +210,7 @@ cat << EOT
 		--><button form="conf" type="submit" name="stop_rtc"  data-icon="stop"  $stop_disabled >$(_ 'Stop'   )</button><!--
 	--></footer>
 </section>
-EOT
 
-if [ "$(which pppoe 2>/dev/null)" ]; then
-	cat <<EOT
 <a name="pppoe"></a>
 <section>
 	<header>
@@ -225,16 +230,11 @@ if [ "$(which pppoe 2>/dev/null)" ]; then
 	</table>
 </form>
 	<footer><!--
-		--><button form="conf" type="submit" name="start_pppoe" data-icon="start" >$(_ 'Start'  )</button><!--
-		--><button form="conf" type="submit" name="stop_pppoe"  data-icon="stop"  >$(_ 'Stop'   )</button><!--
+		--><button form="conf" type="submit" name="start_pppoe" data-icon="start" $startoe_disabled>$(_ 'Start'  )</button><!--
+		--><button form="conf" type="submit" name="stop_pppoe"  data-icon="stop"  $stopoe_disabled >$(_ 'Stop'   )</button><!--
 	--></footer>
 </section>
-EOT
-fi
 
-busybox ps x | grep -v grep | grep -q pppnc_server || stops_disabled='disabled'
-busybox ps x | grep -v grep | grep -q pppnc_client || stopc_disabled='disabled'
-cat <<EOT
 <a name="pppnc"></a>
 <section>
 	<header>
