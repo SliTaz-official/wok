@@ -1,40 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="ppp"
-VERSION="2.4.5"
+VERSION="2.4.7"
 CATEGORY="network"
 SHORT_DESC="Implements the Point-to-Point Protocol (PPP)."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="BSD GPL"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://ppp.samba.org/"
-WGET_URL="ftp://ftp.samba.org/pub/ppp/$TARBALL"
+WGET_URL="https://github.com/paulusmack/ppp/archive/$TARBALL"
 CONFIG_FILES="/etc/ppp"
 HOST_ARCH="i486 arm"
 
+DEPENDS="wget"
 SUGGESTED="tazpanel"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	if ! grep -qs pppol2tpv3_addr include/linux/if_pppol2tp.h ; then
-		sed -i /#endif/d include/linux/if_pppol2tp.h
-		cat >> include/linux/if_pppol2tp.h <<EOT
-/* The L2TPv3 protocol changes tunnel and session ids from 16 to 32
- * bits. So we need a different sockaddr structure.
- */
-struct pppol2tpv3_addr {
-	pid_t	pid;			/* pid that owns the fd. 0 => current */
-	int	fd;			/* FD of UDP or IP socket to use */
-	struct sockaddr_in addr;	/* IP address and port to send to */
-	__u32 s_tunnel, s_session;	/* For matching incoming packets */
-	__u32 d_tunnel, d_session;	/* For sending outgoing packets */
-};
-#endif
-EOT
-	fi
 	./configure --prefix=/usr \
-	$CONFIGURE_ARGS &&
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR/usr install
 }
