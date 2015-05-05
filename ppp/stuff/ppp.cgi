@@ -15,16 +15,23 @@ case "$1" in
 		TEXTDOMAIN_original=$TEXTDOMAIN
 		export TEXTDOMAIN='ppp'
 
-		cat <<EOT
-<li><a data-icon="removable" href="ppp.cgi#ppprtc" data-root>$(_ 'PPP Modem')</a></li>
-<li><a data-icon="upgrade" href="ppp.cgi#pppnc" data-root>$(_ 'Route shortcut')</a></li>
-EOT
+		case "$2" in
+		*VPN*)
 		[ "$(which pptp 2>/dev/null)$(which pptpd 2>/dev/null)" ] && cat <<EOT
-<li><a data-icon="eth" href="ppp.cgi#pptp" data-root>$(_ 'VPN PPTP')</a></li>
+<li><a data-icon="eth" href="ppp.cgi#pptp" data-root>$(_ 'PPTP')</a></li>
 EOT
 		[ "$(which pppssh 2>/dev/null)" ] && cat <<EOT
-<li><a data-icon="eth" href="ppp.cgi#pppssh" data-root>$(_ 'VPN PPP/SSH')</a></li>
+<li><a data-icon="eth" href="ppp.cgi#pppssh" data-root>$(_ 'PPP/SSH')</a></li>
 EOT
+		cat <<EOT
+<li><a data-icon="upgrade" href="ppp.cgi#pppnc" data-root>$(_ 'Route shortcut')</a></li>
+EOT
+		;;
+		*)
+		cat <<EOT
+<li><a data-icon="removable" href="ppp.cgi" data-root>$(_ 'PPP Modem')</a></li>
+EOT
+		esac
 		export TEXTDOMAIN=$TEXTDOMAIN_original
 		exit
 esac
@@ -35,8 +42,8 @@ esac
 #
 
 case " $(GET) " in
-*\ setppprtc\ *)
-	if [ "$(GET start_rtc)" -a "$(GET user)" ]; then
+*\ setppppstn\ *)
+	if [ "$(GET start_pstn)" -a "$(GET user)" ]; then
 		grep -s "$(GET user)" /etc/ppp/pap-secrets ||
 		echo "$(GET user)	*	$(GET pass)" >> /etc/ppp/pap-secrets
 		grep -s "$(GET user)" /etc/ppp/chap-secrets ||
@@ -46,7 +53,7 @@ case " $(GET) " in
 		/etc/ppp/scripts/ppp-off
 		/etc/ppp/scripts/ppp-on &
 	fi
-	if [ "$(GET stop_rtc)" ]; then
+	if [ "$(GET stop_pstn)" ]; then
 		/etc/ppp/scripts/ppp-off
 	fi
 	;;
@@ -115,7 +122,7 @@ esac
 USERNAME="$(sed '/^name/!d;s/^[^ ]* *//' /etc/ppp/options)"
 PASSWORD="$(awk -v key=$USERNAME "\$1==key{print \$3}" /etc/ppp/pap-secrets)"
 ACCOUNT="$(sed '/^ACCOUNT=/!d;s/^.*=\([^ \t]*\).*/\1/' /etc/ppp/scripts/ppp-on)"
-PASSRTC="$(sed '/^PASSWORD=/!d;s/^.*=\([^ \t]*\).*/\1/' /etc/ppp/scripts/ppp-on)"
+PASSPSTN="$(sed '/^PASSWORD=/!d;s/^.*=\([^ \t]*\).*/\1/' /etc/ppp/scripts/ppp-on)"
 PHONE="$(sed '/^TELEPHONE=/!d;s/^.*=\([^ \t]*\).*/\1/' /etc/ppp/scripts/ppp-on)"
 busybox ps x | grep -v grep | grep -q pppnc_server || stops_disabled='disabled'
 busybox ps x | grep -v grep | grep -q pppnc_client || stopc_disabled='disabled'
@@ -152,7 +159,7 @@ cat << EOT
 	<header>
 		$(_ 'Configuration')
 	</header>
-		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on" target="_blank">$(_ 'PPP RTC script')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on" target="_blank">$(_ 'PPP PSTN script')</a><p>
 		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on-dialer" target="_blank">$(_ 'PPP dailer chat')</a><p>
 		<a data-icon="conf" href="index.cgi?file=/etc/ppp/options" target="_blank">$(_ 'PPP options')</a><p>
 		<a data-icon="conf" href="index.cgi?file=/etc/ppp/chap-secrets" target="_blank">$(_ 'chap users')</a><p>
@@ -182,14 +189,14 @@ cat << EOT
 </section>
 </div>
 
-<a name="ppprtc"></a>
+<a name="ppppstn"></a>
 <section>
 	<header>
-		<span data-icon="removable">$(_ 'RTC modem') -
-		$(_ 'Manage RTC Internet connections')</span>
+		<span data-icon="removable">$(_ 'PSTN modem') -
+		$(_ 'Manage PSTN Internet connections')</span>
 	</header>
 <form action="index.cgi" id="indexform"></form>
-<form method="get" action="?setppprtc">
+<form method="get" action="?setppppstn">
 	<table>
 	<tr>
 		<td>$(_ 'Username')</td>
@@ -197,7 +204,7 @@ cat << EOT
 	</tr>
 	<tr>
 		<td>$(_ 'Password')</td>
-		<td><input type="text" name="pass" size="40" value="$PASSRTC" /></td>
+		<td><input type="text" name="pass" size="40" value="$PASSPSTN" /></td>
 	</tr>
 	<tr>
 		<td>$(_ 'Phone number')</td>
@@ -206,8 +213,8 @@ cat << EOT
 	</table>
 </form>
 	<footer><!--
-		--><button form="conf" type="submit" name="start_rtc" data-icon="start" $start_disabled>$(_ 'Start'  )</button><!--
-		--><button form="conf" type="submit" name="stop_rtc"  data-icon="stop"  $stop_disabled >$(_ 'Stop'   )</button><!--
+		--><button form="conf" type="submit" name="start_pstn" data-icon="start" $start_disabled>$(_ 'Start'  )</button><!--
+		--><button form="conf" type="submit" name="stop_pstn"  data-icon="stop"  $stop_disabled >$(_ 'Stop'   )</button><!--
 	--></footer>
 </section>
 
