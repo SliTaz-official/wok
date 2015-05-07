@@ -1,0 +1,94 @@
+# SliTaz package receipt.
+
+PACKAGE="hydroxygen-iconset"
+VERSION="20090119"
+CATEGORY="misc"
+SHORT_DESC="GTK+ port of the KDE4 Oxygen icon theme"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="CC GPL"
+WEB_SITE="http://deviantdark.deviantart.com/art/hydroxygen-iconset-100826865"
+TARBALL="$PACKAGE-$VERSION.zip"
+WGET_URL="http://fc04.deviantart.com/fs40/f/2009/019/8/7/hydroxygen_iconset_by_deviantdark.zip"
+
+DEPENDS=""
+BUILD_DEPENDS=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Source Zip zrchive contains Tar.Bz2 archive inside
+	echo 'Extract sources'
+	busybox tar -xjf hydroxygen_iconset.tar.bz2 || return 1
+	rm $src/*.tar.bz2
+
+	# Install all icons
+	echo 'Install all icons'
+	mkdir -p $install/usr/share/icons/hydroxygen
+	cd $src/hydroxygen
+	for i in $(ls -p | fgrep /) index.theme; do
+		cp -a $src/hydroxygen/$i $install/usr/share/icons/hydroxygen
+	done
+
+	# Stick to oxyblue style, remove other
+	echo 'Remove styles'
+	for i in acquamarine agua black blue brown darkgray deviantdark deviantlight \
+		dust gray green manilla minium orange oxyacquamarine oxyblack oxygreen \
+		oxyorange oxyred oxyviolet oxywhite pink red skyblue violet white yellow;
+		do
+		echo "  $i"
+		find $install -type f -name "$i-*.png" -delete
+		find $install -type f -name "*-$i.png" -delete
+	done
+	echo 'Apply oxyblue style'
+	for i in $(find $install -type f -name 'oxyblue-*'); do
+		mv -f $i ${i/oxyblue-/}
+	done
+
+	# Remove alternatives
+	echo 'Remove alternatives'
+	F="$install/usr/share/icons/hydroxygen"
+
+	echo '  wicd'
+	mv $F/128x128/apps/wicd-client01.png $F/128x128/apps/wicd-client.png
+
+	echo '  openoffice'
+	find $install -type f \( -name 'ooo-*-default.png' -o \
+		-name 'openofficeorg-*-default.png' \) -delete
+	for i in $(find $install -type f \( -name 'ooo-*-new.png' -o \
+		-name 'openofficeorg-*-new.png' \) ); do
+		mv -f $i ${i/-new/}
+	done
+
+	echo '  trash'
+	for i in $(find $install -type f -name 'trashcan_full-new.png'); do
+		mv -f $i ${i/-new/}
+	done
+
+	echo '  arrows'
+	find $install -type f -name 'minimal*' -delete
+
+	echo '  start-here'
+	find $install -type f -name 'start-here-*' -delete
+
+	echo '  misc'
+	for i in wicd-client user-trash trashcan_full amule emesene evolution \
+		exaile filezilla firefox rhythmbox solfege sunbird thunderbird totem \
+		applications-other; do
+		find $install -type f \( -name "${i}0*.png" -o -name "${i}1*.png" -o \
+		-name "$i-default.png" \) -delete
+	done
+
+	# Fix permissions and ownersheep
+	echo 'Fix permissions and ownersheep'
+	find $install -type f -exec chmod u=rw,g=r,o=r \{\} \;
+	find $install -type d -exec chmod u=rwx,g=rx,o=rx \{\} \;
+	chown -R root:root $install
+
+	echo 'All done! ;-)'
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}

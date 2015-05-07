@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2015
 # (Started in November 2014)
 
-VERSION="150417-2"
+VERSION="150506"
 
 . /lib/libtaz.sh
 
@@ -772,6 +772,10 @@ SIZES="48 16"
 c user-trash-full			# PCManFM desktop
 c dialog-password			# tazbox su default icon
 c dialog-error				# tazbox su error icon
+c dialog-information
+c dialog-password
+c dialog-question
+c dialog-warning
 
 # LXPanel status icons
 SIZES="22"
