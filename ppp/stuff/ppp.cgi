@@ -324,7 +324,7 @@ if [ "$(which pppssh 2>/dev/null)" ]; then
 	</tr>
 	<tr>
 		<td>$(_ 'Remote PPP options')</td>
-		<td><input type="text" name="remotepppopt" size="50" value="${REMOTEPPP:-proxyarp}" title="$(_ "You may 'proxyarp' to use the new routes")" /></td>
+		<td><input type="text" name="remotepppopt" size="50" value="${REMOTEPPP:-proxyarp}" title="$(_ "You may need 'proxyarp' to use the new routes")" /></td>
 	</tr>
 	<tr>
 		<td>$(_ 'Peer routes')</td>

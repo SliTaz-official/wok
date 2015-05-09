@@ -655,6 +655,29 @@ ishybrid()
 	echo -en "\"$1\"	\"$2\""
 }
 
+burnable()
+{
+	[ "$(sed '/Can wr.*1$/!d' /proc/sys/dev/cdrom/info)" ] &&
+	[ "$(which wodim)" ] && echo -en "\"$1\"	\"$2\""
+}
+
+blankable()
+{
+	[ "$(sed '/Can wr.*RW.*1$/!d' /proc/sys/dev/cdrom/info)" ] &&
+	[ "$(which wodim)" ] && echo -en "\"$1\"	\"$2\""
+}
+
+burniso()
+{
+	wodim -v speed=$(fgrep "drive speed" /proc/sys/dev/cdrom/info | cut -f3) \
+		-eject -multi "$ISO"
+}
+
+blankcd()
+{
+	wodim -v -blank=fast
+}
+
 gotisomd5()
 {
 	[ "$(which md5sum 2> /dev/null)" ] &&
@@ -968,6 +991,8 @@ $(cdfile "README*"	"readme"	"Show the README file") \
 $(gotisomd5		"isomd5"	"Check the ISO image") \
 $(cdfile "md5sum*"	"md5"		"Check the ISO files") \
 $(cdfile "sha*sum*"	"sha"		"Check the ISO files") \
+$(burnable		"burniso"	"Burn the ISO image") \
+$(blankable		"blankcd"	"Blank the CD/DVD") \
 $(gotposixovl		"install"	"Hard disk installation (UMSDOS way)") \
 $(gotposixovl		"installtaz"	"Hard disk installation (TAZUSB way)") \
 $(xfile tazusb		"usbkey"	"USB key read/write installation") \
