@@ -160,7 +160,7 @@ cat << EOT
 		$(_ 'Configuration')
 	</header>
 		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on" target="_blank">$(_ 'PPP PSTN script')</a><p>
-		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on-dialer" target="_blank">$(_ 'PPP dailer chat')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on-dialer" target="_blank">$(_ 'PPP dialer chat')</a><p>
 		<a data-icon="conf" href="index.cgi?file=/etc/ppp/options" target="_blank">$(_ 'PPP options')</a><p>
 		<a data-icon="conf" href="index.cgi?file=/etc/ppp/chap-secrets" target="_blank">$(_ 'chap users')</a><p>
 		<a data-icon="conf" href="index.cgi?file=/etc/ppp/pap-secrets" target="_blank">$(_ 'pap users')</a><p>
@@ -308,7 +308,7 @@ if [ "$(which pppssh 2>/dev/null)" ]; then
 	</tr>
 	<tr>
 		<td>$(_ 'Password')</td>
-		<td><input type="password" name="pass" size="50" title="Should be empty to use the SSH key ; useful to send the SSH key only" /></td>
+		<td><input type="password" name="pass" size="50" title="Should be empty to use the SSH key; useful to send the SSH key only" /></td>
 	</tr>
 	<tr>
 		<td>$(_ 'Local IP address')</td>
