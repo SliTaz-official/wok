@@ -30,14 +30,18 @@ pppssh()
 		read -s -t 30 DROPBEAR_PASSWORD && export DROPBEAR_PASSWORD
 		$ssh $1 true || exit 1
 	}
-	for i in $4 ; do
+	extra="$(route -n | awk -vd=${1#*@} \
+		'$1=="0.0.0.0"{ print d " gw " $2 " dev " $8 }')"
+	for i in ${4/default/128.0.0.0/1 0.0.0.0/1} ; do
 		echo "route add -net $i dev \$1"
 	done > /etc/ppp/ip-up.d/pppssh$$
+	[ "$4" ] && echo "route add $extra" >> /etc/ppp/ip-up.d/pppssh$
 	chmod +x /etc/ppp/ip-up.d/pppssh$$
 	n=10.$(($$%256)).$(($$/256))
 	ppp="/usr/sbin/pppd local noauth nodetach"
 	$ppp ${2:-$n.1:$n.2} passive pty "$ssh $1 $ppp ${3:-proxyarp} notty" \
 		ipparam pppssh$$
+	[ "$4" ] && route del $extra
 	rm -f /etc/ppp/ip-up.d/pppssh$$
 }
 
