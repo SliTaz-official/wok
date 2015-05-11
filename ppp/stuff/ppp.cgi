@@ -269,7 +269,7 @@ cat << EOT
 	</tr>
 	<tr>
 		<td>$(_ 'Server routes')</td>
-		<td><input type="text" name="routes" size="50" value="${ROUTES:-192.168.10.0/24 192.168.20.0/28}" title="$(_ 'Routes on peer network to import or "default" to redirect the default route')"/></td>
+		<td><input type="text" name="routes" size="50" value="${ROUTES:-192.168.10.0/24 192.168.20.0/28}" title="$(_ "Routes on peer network to import or 'default' to redirect the default route")"/></td>
 	</tr>
 	</table>
 </form>
@@ -328,7 +328,7 @@ if [ "$(which pppssh 2>/dev/null)" ]; then
 	</tr>
 	<tr>
 		<td>$(_ 'Peer routes')</td>
-		<td><input type="text" name="routes" size="50" value="${ROUTES:-192.168.10.0/24 192.168.20.0/28}" title="$(_ 'Routes on peer network to import or "default" to redirect the default route')"/></td>
+		<td><input type="text" name="routes" size="50" value="${ROUTES:-192.168.10.0/24 192.168.20.0/28}" title="$(_ "Routes on peer network to import or 'default' to redirect the default route")"/></td>
 	</tr>
 	</table>
 </form>
