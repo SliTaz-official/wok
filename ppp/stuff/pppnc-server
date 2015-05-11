@@ -11,11 +11,12 @@ case "$0" in
 esac
 
 [ -z "$1" ] && echo "Usage: $0 serverip [port] [routes]" && exit 1
-extra="$(route -n | awk -vd=$1 '$1=="0.0.0.0"{ print d " gw " $2 " dev " $8 }')"
+extra="$(route -n | awk -vd=$(nslookup ${1#*@} | sed \
+ '$!d;s/.*: \([^ ]*\).*/\1/') '$1=="0.0.0.0"{ print d " gw " $2 " dev " $8 }')"
 for i in ${3/default/128.0.0.0/1 0.0.0.0/1} ; do
 	echo "route add -net $i dev \$1"
 done > $ipupd/pppnc$$
-[ "$3" ] && echo "route add $extra" >> $ipupd/pppnc$
+[ "$3" ] && echo "route add $extra" >> $ipupd/pppnc$$
 chmod +x $ipupd/pppnc$$
 $ppp noipdefault pty "nc $1 ${2:-$port}" ipparam pppnc$$
 [ "$3" ] && route del $extra

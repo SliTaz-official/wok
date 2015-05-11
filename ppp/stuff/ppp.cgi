@@ -82,10 +82,10 @@ EOT
 *\ setpppnc\ *)
 	[ "$(GET stop_pppncs)" ] && killall pppnc-server
 	[ "$(GET start_pppncs)" ] &&
-		pppnc-server $(GET port) "$(GET localip):$(GET remoteip)" &
+		pppnc-server "$(GET port)" "$(GET localip):$(GET remoteip)" &
 	[ "$(GET stop_pppncc)" ] && killall pppnc-client
 	[ "$(GET start_pppncc)" ] &&
-		pppnc-client $(GET serverip) $(GET port) "$(GET routes)" &
+		pppnc-client "$(GET serverip)" "$(GET port)" "$(GET routes)" &
 	;;
 *\ setpppssh\ *)
 	cat > /etc/ppp/pppssh <<EOT
@@ -98,7 +98,8 @@ REMOTEPPP="$(GET remotepppopt)"
 ROUTES="$(GET routes)"
 EOT
 	[ "$(GET pass)" ] && export DROPBEAR_PASSWORD="$(GET pass)"
-	if [ "$(GET send_key)" ]; then
+	case " $(GET) " in
+	*\ send_key\ *)
 		( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key ;
 		  cat /etc/ssh/ssh_host_rsa_key.pub ) 2> /dev/null | \
 		grep ^ssh | dbclient $(echo $(GET send_key) | sed \
@@ -106,16 +107,18 @@ EOT
 		while read key; do for i in authorized_keys authorized_keys2; do \
 		grep -qs '\$key' .ssh/\$i || echo '\$key' >> .ssh/\$i ; done ; done ; \
 		chmod 700 .ssh ; chmod 600 .ssh/authorized_keys*"
-	fi
-	if [ "$(GET stop_pppssh)" ]; then
+		;;
+	*\ stop_pppssh\ *)
 		ppp="$(sed '/pppd/!d;s/.*="\([^"]*\).*/\1/' /usr/bin/pppssh)"
-		kill $(busybox ps x | grep "$ppp" | awk '/dbclient/{print $1}')
-	fi
-	if [ "$(GET start_pppssh)" ]; then
+		kill $(busybox ps x | grep "$ppp" | awk '/pty/{next}/dbclient/{print $1}')
+		;;
+	*\ start_pppssh\ *)
+EOT
 		pppssh	"$(GET ssharg) $(GET peer)" \
 			"$(GET localip):$(GET remoteip) $(GET localpppopt)" \
-			"$(GET remotepppopt)" &
-	fi
+			"$(GET remotepppopt)" "$(GET routes)" &
+		;;
+	esac
 	;;
 esac
 
@@ -196,7 +199,8 @@ cat << EOT
 		$(_ 'Manage PSTN Internet connections')</span>
 	</header>
 <form action="index.cgi" id="indexform"></form>
-<form method="get" action="?setppppstn">
+<form method="get">
+	<input type="hidden" name="setppppstn" />
 	<table>
 	<tr>
 		<td>$(_ 'Username')</td>
@@ -211,11 +215,11 @@ cat << EOT
 		<td><input type="text" name="phone" size="40" value="$PHONE" /></td>
 	</tr>
 	</table>
-</form>
 	<footer><!--
-		--><button form="conf" type="submit" name="start_pstn" data-icon="start" $start_disabled>$(_ 'Start'  )</button><!--
-		--><button form="conf" type="submit" name="stop_pstn"  data-icon="stop"  $stop_disabled >$(_ 'Stop'   )</button><!--
+		--><button type="submit" name="start_pstn" data-icon="start" $start_disabled>$(_ 'Start'  )</button><!--
+		--><button type="submit" name="stop_pstn"  data-icon="stop"  $stop_disabled >$(_ 'Stop'   )</button><!--
 	--></footer>
+</form>
 </section>
 
 <a name="pppoe"></a>
@@ -224,7 +228,8 @@ cat << EOT
 		<span data-icon="eth">$(_ 'Cable Modem') -
 		$(_ 'Manage PPPoE Internet connections')</span>
 	</header>
-<form method="get" action="?setpppoe">
+<form method="get">
+	<input type="hidden" name="setpppoe" />
 	<table>
 	<tr>
 		<td>$(_ 'Username')</td>
@@ -235,11 +240,11 @@ cat << EOT
 		<td><input type="text" name="pass" size="40" value="$PASSWORD" /></td>
 	</tr>
 	</table>
-</form>
 	<footer><!--
-		--><button form="conf" type="submit" name="start_pppoe" data-icon="start" $startoe_disabled>$(_ 'Start'  )</button><!--
-		--><button form="conf" type="submit" name="stop_pppoe"  data-icon="stop"  $stopoe_disabled >$(_ 'Stop'   )</button><!--
+		--><button type="submit" name="start_pppoe" data-icon="start" $startoe_disabled>$(_ 'Start'  )</button><!--
+		--><button type="submit" name="stop_pppoe"  data-icon="stop"  $stopoe_disabled >$(_ 'Stop'   )</button><!--
 	--></footer>
+</form>
 </section>
 
 <a name="pppnc"></a>
@@ -248,7 +253,8 @@ cat << EOT
 		<span data-icon="upgrade">$(_ 'Route shortcut') -
 		$(_ 'Reach unreachable networks')</span>
 	</header>
-<form method="get" action="?setppprc">
+<form method="get">
+	<input type="hidden" name="setppprc" />
 	<table>
 	<tr>
 		<td>$(_ 'TCP port')</td>
@@ -272,22 +278,22 @@ cat << EOT
 		<td><input type="text" name="routes" size="50" value="${ROUTES:-192.168.10.0/24 192.168.20.0/28}" title="$(_ "Routes on peer network to import or 'default' to redirect the default route")"/></td>
 	</tr>
 	</table>
-</form>
 	<footer><!--
-		--><button form="conf" type="submit" name="start_pppncs" data-icon="start" >$(_ 'Start server'  )</button><!--
-		--><button form="conf" type="submit" name="stop_pppncs"  data-icon="stop" $stops_disabled>$(_ 'Stop server'   )</button><!--
-		--><button form="conf" type="submit" name="start_pppncc" data-icon="start" >$(_ 'Start client'  )</button><!--
-		--><button form="conf" type="submit" name="stop_pppncc"  data-icon="stop" $stopc_disabled>$(_ 'Stop client'   )</button><!--
+		--><button type="submit" name="start_pppncs" data-icon="start" >$(_ 'Start server'  )</button><!--
+		--><button type="submit" name="stop_pppncs"  data-icon="stop" $stops_disabled>$(_ 'Stop server'   )</button><!--
+		--><button type="submit" name="start_pppncc" data-icon="start" >$(_ 'Start client'  )</button><!--
+		--><button type="submit" name="stop_pppncc"  data-icon="stop" $stopc_disabled>$(_ 'Stop client'   )</button><!--
 	--></footer>
+</form>
 </section>
 EOT
 if [ "$(which pppssh 2>/dev/null)" ]; then
 	[ -s /etc/ppp/pppssh ] && . /etc/ppp/pppssh
 	ppp="$(sed '/pppd/!d;s/.*="\([^"]*\).*/\1/' /usr/bin/pppssh)"
 	if [ "$(busybox ps x | grep "$ppp" | awk '/dbclient/{print $1}')" ]; then
-		start_disabled='disabled'
+		startssh_disabled='disabled'
 	else
-		stop_disabled='disabled'
+		stopssh_disabled='disabled'
 	fi
 	cat <<EOT
 <a name="pppssh"></a>
@@ -296,7 +302,8 @@ if [ "$(which pppssh 2>/dev/null)" ]; then
 		<span data-icon="eth">$(_ 'Virtual Private Network') -
 		$(_ 'Manage private TCP/IP connections')</span>
 	</header>
-<form method="get" action="?setpppssh">
+<form method="get">
+	<input type="hidden" name="setpppssh" />
 	<table>
 	<tr>
 		<td>$(_ 'Peer')</td>
@@ -331,12 +338,12 @@ if [ "$(which pppssh 2>/dev/null)" ]; then
 		<td><input type="text" name="routes" size="50" value="${ROUTES:-192.168.10.0/24 192.168.20.0/28}" title="$(_ "Routes on peer network to import or 'default' to redirect the default route")"/></td>
 	</tr>
 	</table>
-</form>
 	<footer><!--
-		--><button form="conf" type="submit" name="start_pppssh" data-icon="start" $start_disabled>$(_ 'Start'  )</button><!--
-		--><button form="conf" type="submit" name="stop_pppssh"  data-icon="stop"  $stop_disabled>$(_ 'Stop'   )</button><!--
-		--><button form="conf" type="submit" name="send_key"  data-icon="sync"  >$(_ 'Send SSH key'   )</button><!--
+		--><button type="submit" name="start_pppssh" data-icon="start" $startssh_disabled>$(_ 'Start'  )</button><!--
+		--><button type="submit" name="stop_pppssh"  data-icon="stop"  $stopssh_disabled>$(_ 'Stop'   )</button><!--
+		--><button type="submit" name="send_key"  data-icon="sync"  >$(_ 'Send SSH key'   )</button><!--
 	--></footer>
+</form>
 </section>
 EOT
 fi
