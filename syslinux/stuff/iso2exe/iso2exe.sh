@@ -74,6 +74,20 @@ add_doscom()
 	store 64 $(($OFS+0xC0)) $1
 }
 
+add_tazlito_info()
+{
+	HOLE=$OFS
+	[ $(get 0 $2) -eq 35615 ] || return
+	zcat $2 | gzip -9 > /tmp/rezipped$$.gz
+	[ "$(which advdef 2> /dev/null)" ] &&
+	advdef -z4 /tmp/rezipped$$.gz > /dev/null
+	n=$(stat -c %s /tmp/rezipped$$.gz)
+	printf "Moving tazlito data record at %04X ($n bytes) ...\n" $OFS
+	ddq if=/tmp/rezipped$$.gz bs=1 of=$1 seek=$OFS conv=notrunc
+	HOLE=$(($HOLE+$n))
+	rm -f /tmp/rezipped$$.gz
+}
+
 add_win32exe()
 {
 	SIZE=$($0 --get win32.exe 2> /dev/null | tee /tmp/exe$$ | wc -c)
@@ -273,10 +287,8 @@ main()
 	ddq if=$1 bs=512 count=1 of=/tmp/hybrid$$
 	ddq if=$1 bs=512 skip=2 count=20 of=/tmp/tazlito$$
 	add_win32exe $1 /tmp/hybrid$$
-	printf "Moving tazlito data record at %04X (512 bytes) ...\n" $OFS
-	ddq if=/tmp/tazlito$$ bs=1 count=512 of=$1 seek=$OFS conv=notrunc
+	add_tazlito_info $1 /tmp/tazlito$$
 	rm -f /tmp/tazlito$$ /tmp/hybrid$$
-	HOLE=$(($OFS+512))
 	
 	# keep the largest room for the tazlito info file
 	add_dosexe $1
