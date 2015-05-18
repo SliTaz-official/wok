@@ -195,7 +195,7 @@ cat << EOT
 <a name="ppppstn"></a>
 <section>
 	<header>
-		<span data-icon="removable">$(_ 'PSTN modem') -
+		<span data-icon="modem">$(_ 'PSTN modem') -
 		$(_ 'Manage PSTN Internet connections')</span>
 	</header>
 <form action="index.cgi" id="indexform"></form>
@@ -299,7 +299,7 @@ if [ "$(which pppssh 2>/dev/null)" ]; then
 <a name="pppssh"></a>
 <section>
 	<header>
-		<span data-icon="eth">$(_ 'Virtual Private Network') -
+		<span data-icon="vpn">$(_ 'Virtual Private Network') -
 		$(_ 'Manage private TCP/IP connections')</span>
 	</header>
 <form method="get">
