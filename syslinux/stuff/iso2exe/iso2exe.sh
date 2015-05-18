@@ -272,8 +272,12 @@ main()
 	-u*|-r*|-w*)
 	    case "$(get 0 $1)" in
 	    23117)
-		ddq if=$1 bs=512 count=2 skip=$(get 417 $1 1) of=$1 conv=notrunc
-		ddq if=/dev/zero bs=1k seek=1 count=31 of=$1 conv=notrunc ;;
+		b=$(get 417 $1 1)
+		n=$(($(get 64 $1) + 0xC0 - ($(get 26 $1 1)*512) - ($b+1)*512))
+		ddq if=$1 bs=512 count=1 skip=$b of=$1 conv=notrunc
+		ddq if=/dev/zero bs=512 seek=1 count=1 of=$1 conv=notrunc
+		ddq if=$1 bs=512 seek=2 count=30 skip=$(($b+1)) of=$1 conv=notrunc
+		ddq if=/dev/zero bs=1 seek=$n count=$((0x8000 - $n)) of=$1 conv=notrunc ;;
 	    *)  ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc ;;
 	    esac
 	    exit 0
