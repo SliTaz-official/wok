@@ -21,7 +21,7 @@ case "$1" in
 <li><a data-icon="vpn" href="ppp.cgi#pptp" data-root>$(_ 'PPTP')</a></li>
 EOT
 		[ "$(which pppssh 2>/dev/null)" ] && cat <<EOT
-<li><a data-icon="eth" href="ppp.cgi#pppssh" data-root>$(_ 'PPP/SSH')</a></li>
+<li><a data-icon="vpn" href="ppp.cgi#pppssh" data-root>$(_ 'PPP/SSH')</a></li>
 EOT
 		cat <<EOT
 <li><a data-icon="upgrade" href="ppp.cgi#pppnc" data-root>$(_ 'Route shortcut')</a></li>
