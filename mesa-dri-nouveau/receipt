@@ -7,14 +7,20 @@ SHORT_DESC="Mesa classic DRI + Gallium3D drivers for Nouveau."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="MIT"
 WEB_SITE="http://www.mesa3d.org/"
-DEPENDS="mesa mesa-dri libdrm-nouveau"
+DEPENDS="mesa libdrm-nouveau"
 WANTED="mesa"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/dri
+	mkdir -p $fs/usr/lib/dri $fs/etc/X11/xorg.conf.d
 	cp $install/usr/lib/dri/nouveau_vieux_dri.so $fs/usr/lib/dri
+	cat > $fs/etc/X11/xorg.conf.d/90-DRI.conf <<EOT
+Section "DRI"
+        Mode         0666
+EndSection
+EOT
+	chown -R root.root $fs
 }
 
 TAZBB_NO_INSTALL="because this is not hardware neutral"
