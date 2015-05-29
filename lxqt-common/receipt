@@ -36,3 +36,23 @@ genpkg_rules()
 	rm -rf $fs/usr/share/lxqt/themes/*
 	cp -a $install/usr/share/lxqt/themes/flat $fs/usr/share/lxqt/themes
 }
+
+post_install()
+{
+        res=$(cat $1/etc/slim.conf | grep ^session | sed s/"sessions. *"//)
+        # Adding WM to SLIM available sessions.
+        if ! echo "$res" | grep -q $PACKAGE; then
+                echo -n "Adding lxqt to /etc/slim.conf..."
+                sed -i "s/^sessions.*/sessions            ${res},lxqt/" $1/etc/slim.conf
+                status
+        fi
+}
+
+post_remove()
+{
+        # Remove WM from SLIM available sessions.
+        if grep -q lxqt $1/etc/slim.conf; then
+                sed -i s/,lxqt// $1/etc/slim.conf
+        fi
+}
+
