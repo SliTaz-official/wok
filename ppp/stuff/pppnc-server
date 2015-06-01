@@ -7,7 +7,7 @@ ipupd=/etc/ppp/ip-up.d
 case "$0" in
 *server) # Usage: pppnc-server [port] [localip:remoteip]
 	n=10.$(($$%256)).$(($$/256))
-	exec $ppp ${2:-$n.1:$n.2} passive proxyarp pty "nc -lp ${1:-$port}"
+	exec $ppp ${2:-$n.1:$n.2} passive proxyarp pty "nc -ulp ${1:-$port}"
 esac
 
 [ -z "$1" ] && echo "Usage: $0 serverip [port] [routes]" && exit 1
@@ -18,6 +18,6 @@ for i in ${3/default/128.0.0.0/1 0.0.0.0/1} ; do
 done > $ipupd/pppnc$$
 [ "$3" ] && echo "route add $extra" >> $ipupd/pppnc$$
 chmod +x $ipupd/pppnc$$
-$ppp noipdefault pty "nc $1 ${2:-$port}" ipparam pppnc$$
+$ppp noipdefault pty "nc -u $1 ${2:-$port}" ipparam pppnc$$
 [ "$3" ] && route del $extra
 rm -f $ipupd/pppnc$$
