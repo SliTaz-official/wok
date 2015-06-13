@@ -11,6 +11,7 @@ TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://poptop.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="vpn tunnel"
+WANTED="ppp"		# need VERSION
 CONFIG_FILES="/etc/pptpd.conf /etc/ppp/options.pptpd"
 
 DEPENDS="ppp bcrelay"
@@ -18,6 +19,9 @@ DEPENDS="ppp bcrelay"
 # Rules to configure and make the package.
 compile_rules()
 {
+	PPPVER=$(. $WOK/ppp/receipt ; echo $VERSION)
+	sed -i "s/#define VERSION.*/#define VERSION \"${PPPVER:-2.4.3}\"/" \
+		plugins/patchlevel.h
 	sed -i "s|^LIBDIR.*|LIBDIR=$DESTDIR/usr/lib/pptpd|" plugins/Makefile
 	./configure --prefix=/usr \
 		--mandir=/usr/share/man \
