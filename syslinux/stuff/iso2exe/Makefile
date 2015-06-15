@@ -2,7 +2,11 @@ GCC=gcc -m32
 BCC=bcc -ansi -O -0 -C-t
 BCCFLAGS=-D__MSDOS__ -Md
 
-all: isohybrid.exe iso2exe meminfo.exe tazboot.exe
+all: isohybrid.exe iso2exe meminfo.exe tazboot.exe taziso.built
+
+taziso.built: bootloader.bin
+	./taziso --build
+	touch taziso.built
 
 meminfo.exe: meminfo.S
 	cc -o meminfo.o -Wa,-a=meminfo.lst -c meminfo.S

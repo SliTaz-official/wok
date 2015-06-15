@@ -32,18 +32,14 @@ words2bin()
 gettazboot()
 {
 	echo "Creating $(basename $1) ..."
-	if [ $(get 0 "$ISO") -eq 23117 ]; then
-		O=$(($(get 64 "$ISO") - 0xC0))
-		L=$(($(get 20 "$ISO") - 0xC0 - $(get 24 "$ISO") - $O))
-		S=$((32+$L))
-		P=$((($S+511)/512))
-		E=$((4096-(32*$P)))
-		words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 $((${2:-0}-16)) \
-				-2 0 256 -16 28 0x6C53 0x5469 0x7A61 > $1
-		ddq bs=1 count=$L skip=$(echo $O) if="$ISO" >> $1
-	else
-		wget -O $1 http://mirror.slitaz.org/boot/tazboot.exe
-	fi
+	O=$(($(get 64 $ISO) - 0xC0))
+	L=$(($(get 20 $ISO) - 0xC0 - $(get 24 $ISO) - $O))
+	S=$((32+$L))
+	P=$((($S+511)/512))
+	E=$((4096-(32*$P)))
+	words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 $((${2:-0}-16)) \
+			-2 0 256 -16 28 0x6C53 0x5469 0x7A61 > $1
+	ddq bs=1 count=$L skip=$(echo $O) if=$ISO >> $1
 }
 
 uncpio()
@@ -415,7 +411,9 @@ mkzip()
 	mnt=/tmp/mnt$$
 	mkdir -p $mnt
 	$1 $2 || return
-	wget -O $mnt/slitaz/boot/grldr http://mirror.slitaz.org/boot/grldr
+	for i in bootlace.com grubinst.exe grldr ; do
+		wget -O $mnt/slitaz/boot/$i http://mirror.slitaz.org/boot/$i
+	done
 	readtazbootconf
 	cat > $mnt/slitaz/boot/menu.lst <<EOT
 title SliTaz
@@ -461,11 +459,13 @@ C:\\grldr="slitaz"
 C:\\> attrib +r +h +s boot.ini
 
 See http://diddy.boot-land.net/grub4dos/files/README_GRUB4DOS.txt
+and http://xpt.sourceforge.net/techdocs/nix/disk/boot/boot07-GrubForDosInfo/ar01s03.html
 EOT
-	( cd $mnt ; zip -r9 $(basename "$ISO" .iso).zip slitaz )
+	( cd $mnt ; echo 'See \slitaz\boot\install.txt to launch SliTaz.' | \
+	  zip -zr9 $(basename $ISO .iso).zip slitaz )
 	[ "$(which advzip)" ] && advzip -z4 $mnt/*.zip
 	mv $mnt/*.zip .
-	ls -l $PWD/$(basename "$ISO" .iso).zip
+	ls -l $PWD/$(basename $ISO .iso).zip
 	umount $mnt
 	rm -rf $mnt
 }
@@ -805,17 +805,22 @@ missing()
 
 ishybrid()
 {
-	[ $(get 510 "$ISO") -eq 43605 ] || return
-	C=$((2048*$(get $(((17*2048) + 71)) "$ISO" 4)))
-	[ $(get $C "$ISO" 4) -eq 1 ] || return
-	[ $(get $(($C+30)) "$ISO" 4) -eq $((0x88AA55)) ] || return
-	C=$((2048*$(get $(($C+40)) "$ISO" 4)))
-	[ $(get $(($C+64)) "$ISO" 4) -eq 1886961915 ] && menuitem "$@"
+	[ $(get 510 $ISO) -eq 43605 ] || return
+	C=$((2048*$(get $(((17*2048) + 71)) $ISO 4)))
+	[ $(get $C $ISO 4) -eq 1 ] || return
+	[ $(get $(($C+30)) $ISO 4) -eq $((0x88AA55)) ] || return
+	C=$((2048*$(get $(($C+40)) $ISO 4)))
+	[ $(get $(($C+64)) $ISO 4) -eq 1886961915 ] && menuitem "$@"
 }
 
 isiso()
 {
-	[ $(get 32769 "$ISO" 4) -eq 808469571 ] && menuitem "$@"
+	[ $(get 32769 $ISO 4) -eq 808469571 ] && menuitem "$@"
+}
+
+hastazboot()
+{
+	[ $(get 0 $ISO) -eq 23117 ] && menuitem "$@"
 }
 
 burnable()
@@ -842,22 +847,22 @@ blankcd()
 gotisomd5()
 {
 	[ "$(which md5sum 2> /dev/null)" ] &&
-	[ $(get 0 "$ISO") -eq 23117 ] &&
-	[ $(get 18 "$ISO") -ne 0 ] && menuitem "$@"
+	[ $(get 0 $ISO) -eq 23117 ] &&
+	[ $(get 18 $ISO) -ne 0 ] && menuitem "$@"
 }
 
 isomd5()
 {
 	dotwait "Checking iso image"
-	[ "$(ddq if="$ISO" bs=2k skip=16 \
-	     count=$(echo $(get 32848 "$ISO" 4)) | md5sum)" == \
-	  "$(ddq if="$ISO" bs=16 count=1 skip=2047 | od -N 16 -t x1 -An | \
+	[ "$(ddq if=$ISO bs=2k skip=16 \
+	     count=$(echo $(get 32848 $ISO 4)) | md5sum)" == \
+	  "$(ddq if=$ISO bs=16 count=1 skip=2047 | od -N 16 -t x1 -An | \
 	     sed 's/ //g')  -" ] && echo "OK" || echo "ERROR"
 	echo -en "\rChecking iso hybrid boot..."
-	n=$(($(get 2 "$ISO")-1+($(get 4 "$ISO")-1)*512))
+	n=$(($(get 2 $ISO)-1+($(get 4 $ISO)-1)*512))
 	if [ $n -lt 40000 -a $n -gt 32768 ]; then
-		s=$(get 0 "$ISO" 2 $n | awk '{ i+= $0 } END { print i }')
-		[ $(((1+$s+$(get $(($n+1)) "$ISO" 1)) % 65536)) -eq 0 ] &&
+		s=$(get 0 $ISO 2 $n | awk '{ i+= $0 } END { print i }')
+		[ $(((1+$s+$(get $(($n+1)) $ISO 1)) % 65536)) -eq 0 ] &&
 		echo "OK" || echo "ERROR"
 	fi
 	rm -f /tmp/wait
@@ -921,8 +926,8 @@ $(tazusbmsg)Please plug your USB stick in now.\n
 		usbdev || return
 	
 		# perform dd in progress bar
-		max=$(($(stat -c %s "$ISO")/2048))
-		i=0; ddq if="$ISO" bs=1024k | ( 
+		max=$(($(stat -c %s $ISO)/2048))
+		i=0; ddq if=$ISO bs=1024k | ( 
 		while ddq bs=1024k count=1 ; do 
 			i=$(($i + 1))
 			[ $i -gt $max ] && break
@@ -992,7 +997,7 @@ in the USB key." 14 70 4 \
 	exec 3>&-
 	[ $retval -eq 0 ] || return
 	[ "$format" != "none" ] && tazusb format $device "SliTaz" $format
-	tazusb gen-iso2usb "$ISO" $device
+	tazusb gen-iso2usb $ISO $device
 }
 
 dokexec()
@@ -1014,8 +1019,8 @@ runpxe()
 
 flavdata()
 {
-	[ $(get 512 "$ISO") -eq 35615 ] && n=1 || n=$((1+$(get 417 "$ISO" 1)))
-	dd if="$ISO" bs=512 skip=$n count=20 2>/dev/null | zcat 2>/dev/null
+	[ $(get 1024 $ISO) -eq 35615 ] && n=2 || n=$((1+$(get 417 $ISO 1)))
+	dd if=$ISO bs=512 skip=$n count=20 2>/dev/null | zcat 2>/dev/null
 }
 
 hasflavinfo()
@@ -1044,6 +1049,135 @@ showfavinfo()
 	rm -rf /tmp/data
 }
 
+if [ "$1" == "--build" ]; then	#install-begin
+	uuencode -m - < bootloader.bin | sed -e '/^bootloader$/r/dev/stdin' \
+	  -e '/^bootloader$/d' -e '/install-begin$/,/install-end$/d' -i $0
+	exit
+fi	#install-end
+parse_isolinux()
+{
+	awk 'BEGIN { IGNORECASE=1 }
+{
+	if ($1 == "LABEL") {
+		label=$2
+		if (auto == "") auto=label
+	}
+	if ($1 == "KERNEL" || $1 == "COM32") kernel[label]=$2
+	if ($1 == "INITRD") initrd[label]=$2
+	if ($1 == "APPEND") {
+		i=2
+		if (kernel[label] ~ "ifmem.c32") {
+			auto=$3
+			next
+		}
+		if (kernel[label] ~ "c32box.c32") {
+			if ($2 == "linux") { kernel[label]=$3; i=4 }
+			if ($2 == "ifmem") { auto=$4; next }
+		}
+		if (kernel[label] ~ "ifcpu64.c32") { auto=$4; next }
+		while (i <= NF) {
+			if ($i ~ "^initrd=") initrd[label]=substr($i,8)
+			else cmdline[label]=cmdline[label] " " $i
+			i++
+		}
+	}
+}
+END {
+	print "KERNEL=\"" kernel[auto] "\""
+	print "INITRD=\"" initrd[auto] "\""
+	print "CMDLINE=\"" substr(cmdline[auto],2) "\""
+}'
+}
+
+locase()
+{
+	echo "$1" | tr [A-Z] [a-z]
+}
+
+floppyset()
+{
+	gotcdfile isolinux.cfg
+	parse_isolinux < $file > /tmp/var$$
+	. /tmp/var$$
+	rm -f /tmp/var$$ 
+	[ -e /media/cdrom/$KERNEL ] || KERNEL=$(locase $KERNEL)
+	[ $(get 514 /media/cdrom/$KERNEL 4) -eq 1400005704 ] || return
+	n=$(($(get 497 /media/cdrom/$KERNEL 1)+1))
+	ddq bs=512 count=$n if=/media/cdrom/$KERNEL of=/tmp/fd$$
+	uudecode <<EOT | ddq of=/tmp/fd$$ conv=notrunc
+bootloader
+EOT
+	pos=$(($n*512))
+	if [ -n "$CMDLINE" ]; then
+		echo -n "$CMDLINE" | ddq bs=512 count=1 conv=sync >> /tmp/fd$$
+		bytes2bin $n | ddq conv=notrunc \
+			bs=1 seek=497 count=1 of=/tmp/fd$$
+		words2bin $pos | ddq conv=notrunc \
+			bs=1 seek=34 count=2 of=/tmp/fd$$
+		[ $(get 518 /media/cdrom/$KERNEL 4) -ge 514 ] &&
+		words2bin $pos 9 | ddq conv=notrunc \
+			bs=1 seek=552 count=4 of=/tmp/fd$$
+	fi
+	syssize=$(echo $(get 500 /tmp/fd$$ 4))
+	ddq bs=512 skip=$n if=/media/cdrom/$KERNEL | cat - /dev/zero | \
+	ddq bs=512 count=$((($syssize+31)/32)) >> /tmp/fd$$
+	base=$(stat -c %s /tmp/fd$$)
+	len=
+	if [ "$INITRD" ]; then
+		l=0
+		tot=0
+		for i in ${INITRD//,/ }; do
+			[ -e /media/cdrom/$i ] || i=$(locase $i)
+			ddq if=/media/cdrom/$i >> /tmp/fd$$
+			l=$(($l+$(stat -c %s /media/cdrom/$i)))
+			r=$((4 - ($l % 4)))
+			if [ $r -ne 4 ]; then
+				ddq if=/dev/zero bs=1 count=$r >> /tmp/fd$$
+				l=$(($l + $r))
+			fi
+			[ "$i" == "rootfs.gz" ] && case "$INITRD" in
+				rootfs.gz,rootfs*) continue	# loram
+			esac
+			len="$len $l"; l=0
+			tot=$(($tot+$l))
+		done
+		page=4096
+		rdadrs=$(((($syssize*16)+0x1F0000) & -$page))
+		words2bin $(($rdadrs & 0xFFFF)) $(($rdadrs >> 16)) | ddq \
+			conv=notrunc bs=1 seek=536 count=4 of=/tmp/fd$$
+	fi
+	n=$(echo $len | wc -w)
+	if [ $((494 - $(get 494 /tmp/fd$$))) -ge $(($n * 4)) ]; then
+		i=$(($(get 494 /tmp/fd$$)))
+		bytes2bin $(($i + ($n*4) - 256)) | ddq bs=1 conv=notrunc \
+			seek=496 count=1 of=/tmp/fd$$
+	else
+		i=$(($pos + 0x1FC - ($n*4)))
+		bytes2bin $(($i % 256)) $((i / 256)) 252 | ddq bs=1 \
+			conv=notrunc seek=494 count=3 of=/tmp/fd$$
+	fi
+	for r in $len ; do
+		words2bin $(($r & 0xFFFF)) $(($r >> 16)) | ddq conv=notrunc \
+			bs=1 seek=$i count=4 of=/tmp/fd$$
+		i=$(($i + 4))
+	done
+	split -b 1440k /tmp/fd$$ fd$$
+	rm -f /tmp/fd$$
+	n=1; i=0; r=0
+	set -- $len
+	ls fd$$* | while read file ; do
+		if [ $i -gt $(($1+$base)) ]; then
+			shift
+			r=$(($r+100)); n=0; i=0; base=0
+		fi
+		ddq of=$file bs=18k seek=80 count=0
+		i=$(($i+1474560))
+		printf "mv %s fd%03d.img\n" $file $(($r+$n))
+		n=$(($n+1))
+	done | sh
+	ls fd???.img
+}
+
 quit()
 {
 	umount -d /media/cdrom
@@ -1052,7 +1186,7 @@ quit()
 
 ISO="${1:-/dev/null}"
 [ -z "$(isiso 2> /dev/null)" ] && echo "Usage : $0 file.iso" && exit 1
-mount -o loop,ro "$ISO" /media/cdrom
+mount -o loop,ro $ISO /media/cdrom
 
 if [ "$2" == "list" ]; then
 	sed '/^\$(.*") \\/!d;s/^\$(\(.*\)").*/\1"/' $0 | while read line; do
@@ -1064,9 +1198,10 @@ fi
 if grep -q "^$2()" $0; then
 	exe=$2
 	shift 2
-	if [ "$(eval $(grep "\"$exe\"" $0 | \
-		sed '/^\$/!d;s/.(\(.*\)[\t ]*".*"[\t ]*".*/\1/'))" ]; then
+	if [ -n "$(eval $(grep "\"$exe\"" $0 | sed \
+		   '/^\$/!d;s/.(\(.*\)[\t ]*".*"[\t ]*".*/\1/'))" ]; then
 		grep "\"$exe\"" $0 | sed '/^\$/!d;s/.*"[\t ]*"\(.*\)".*/\1/'
+		echo ----
 		$exe "$@"
 	fi
 	quit
@@ -1091,7 +1226,8 @@ $(gotposixovlzip	"insttaz2zip"	"ZIP installation archive (TAZUSB way)") \
 $(xfile tazusb		"usbkey"	"USB key read/write installation") \
 $(ishybrid		"usbbootkey"	"USB boot key (read only)") \
 $(hasflavinfo		"showfavinfo"	"Show flavor extra info") \
-$(menuitem		"tazboot"	"Get tazboot.exe Linux loader") \
+$(cdfile isolinux.cfg	"floppyset"	"Boot floppy set") \
+$(hastazboot		"tazboot"	"Get tazboot.exe Linux loader") \
 $(cdexe boot/bzImage	"bzimage"	"Get linux DOS/EXE file") \
 $(cdexe 'memtest*'	"memtest"	"Get Memtest86 DOS/EXE file") \
 $(cdfilef 'memtest*'	"fdmemtest"	"Create a Memtest86 boot floppy") \
@@ -1107,6 +1243,6 @@ EOT
 	retval=$?
 	exec 3>&-
 	rm -f /tmp/dialog$$
-	[ $retval -eq 0 ] || continue
+	[ $retval -eq 0 ] || break
 	$value
 done
