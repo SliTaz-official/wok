@@ -1125,7 +1125,6 @@ EOT
 	len=
 	if [ "$INITRD" ]; then
 		l=0
-		tot=0
 		for i in ${INITRD//,/ }; do
 			[ -e /media/cdrom/$i ] || i=$(locase $i)
 			ddq if=/media/cdrom/$i >> /tmp/fd$$
@@ -1135,14 +1134,12 @@ EOT
 				ddq if=/dev/zero bs=1 count=$r >> /tmp/fd$$
 				l=$(($l + $r))
 			fi
-			[ "$i" == "rootfs.gz" ] && case "$INITRD" in
-				rootfs.gz,rootfs*) continue	# loram
+			case "$i:$INITRD" in
+				*rootfs.gz:*rootfs.gz,*) continue	# loram
 			esac
 			len="$len $l"; l=0
-			tot=$(($tot+$l))
 		done
-		page=4096
-		rdadrs=$(((($syssize*16)+0x1F0000) & -$page))
+		rdadrs=${RDADRS:-$(((($syssize*16)+0x1F0000) & -4096))}
 		words2bin $(($rdadrs & 0xFFFF)) $(($rdadrs >> 16)) | ddq \
 			conv=notrunc bs=1 seek=536 count=4 of=/tmp/fd$$
 	fi
