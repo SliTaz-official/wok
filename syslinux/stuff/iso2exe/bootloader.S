@@ -65,7 +65,7 @@ zeroed		= 48+10			# gdt + zeroed registers
 	movw	$zeroed+1, %cx		# clear gdt + offset, %ds, limits, cmdline=""
 	rep				# don't worry about cld
 	stosb				# already done above
-	decw	%di
+	//decw	%di
 #else
 	movw	$zeroed/2, %cx		# clear gdt + offset, %ds, limits
 	rep				# don't worry about cld
@@ -96,6 +96,7 @@ LOADSZ		= 0x10000
 #
 # High doesn't hurt.  Low does.  Let's use the max: 63
 
+	cli
 	ldsw	0x78(%bx), %si		# %ds:%bx+0x78 is parameter table address
 	popw	%di
 	pushw	%es
@@ -112,7 +113,6 @@ skipcmdline:
 	popw	%ds			# now %ds = %es = %ss = INITSEG
 	popl	%fs:0x78(%bx)		# update parameter table address
 	movb	$63, 0x4-12(%di)	# patch sector count, %di = stacktop
-	cli
 
 	xchg	%ax, %di		# sector count
 	popw	%ax			# limits = 0
@@ -138,9 +138,6 @@ heap_end_ptr	=	0x24
 	movw	$0xA33F, cmd_line_ptr-2-7(%bx)
 #endif
 	call	puts
-#if defined(MOVE_CMDLINE) || (defined(EDIT_CMDLINE) && defined(KEYBOARDLESS_SUPPORT))
-	pushw	%di
-#endif
 #ifdef	EDIT_CMDLINE
 cmdlp:
 	movb	$0x20, %al		# clear end of line
@@ -179,9 +176,6 @@ endcmdline:
 	rep
 	  movsb
 #endif
-#if defined(EDIT_CMDLINE) || (defined(MOVE_CMDLINE) && defined(KEYBOARD_TIMEOUT))
-	popw	%di
-#endif
 nocmdline:
 #endif
 
@@ -194,7 +188,7 @@ nocmdline:
 	movb	$0x88, %ah
 	int	$0x15
 	//jc	NeedMoreRAM			# error code 80 or 86
-	cmpw	$0xC000, %ax			# more than 49M ?
+	cmpw	$0xB000, %ax			# more than 45M ?
 	jb	NeedMoreRAM
 	movb	%ch, bootsect_dst_base_hi(%si)	# initramfs @ 32M
 	movb	%ch, ramdisk_image_ofs+3-\base
@@ -306,6 +300,7 @@ nextInitrd:
 	pushw	%bx
 	movl	-4(%bx), %ebx
 	addl	%ebx, ramdisk_size_ofs-cur_initrd_size_ofs(%di)
+	movb	$swap_floppy2-0x100, %cs:dpy_swap_floppy-2+0x7C00
 	popw	%bx
 	cmpb	2(%di), %bl
 	jb	initrdlp
@@ -409,6 +404,7 @@ next_floppy:
 	movb	$0,%ch			# first cylinder
 	pushaw
 	movw	$swap_floppy,%si
+dpy_swap_floppy:
 #ifdef KEYBOARDLESS_SUPPORT
 	pushw	%bx
 	call	puts
@@ -419,7 +415,10 @@ waitfloppy:
 	jne	waitfloppydone
 #ifdef MULTI_INITRD
 	decb	(%si)			# max_timeouts	
-	jz	gobootit
+gobootit:
+	//movw	ramdisk_size+2-max_timeouts(%si), %cx
+	.byte	0x8B, 0x4C, ramdisk_size+2-max_timeouts
+	jz	bootit
 #endif
 	pushw	%dx			# some bios break dx...
 	cbw
@@ -442,14 +441,9 @@ waitfloppydone:
 #ifdef MULTI_INITRD
 	orb	$0x20, %al
 	cmp	$'b', %al
-        jnz	read_sectorslp
-gobootit:
-	//movw	ramdisk_size+2-max_timeouts(%si), %cx
-	.byte	0x8B, 0x4C, ramdisk_size+2-max_timeouts
-	jmp	bootit
-#else
-        jmp	read_sectorslp
+        jz	gobootit
 #endif
+        jmp	read_sectorslp
 
 putcdot:
 	movb	$'.'+3, %al	// . = success, - = failure
@@ -496,10 +490,11 @@ putcs:
 	jg	putcs
 	ret	
 
-swap_floppy:
 #ifdef MULTI_INITRD
+swap_floppy2:
 	.ascii	"B or "
 #endif
+swap_floppy:
 	.ascii	"Next!"
 	.byte	7,13,0			# swap detection needs 13, 0
 #ifdef MULTI_INITRD

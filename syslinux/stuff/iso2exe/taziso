@@ -1057,6 +1057,17 @@ fi	#install-end
 parse_isolinux()
 {
 	awk 'BEGIN { IGNORECASE=1 }
+function multi(n)
+{
+	auto=$n
+	for (--n; n < NF; n+=2) {
+		s=$n
+		if (s ~ /M$/) s = substr(s,0,length(s)-1)
+		else s /= 1024
+		sizes=int(s) " " sizes
+	}
+	next
+}
 {
 	if ($1 == "LABEL") {
 		label=$2
@@ -1066,13 +1077,10 @@ parse_isolinux()
 	if ($1 == "INITRD") initrd[label]=$2
 	if ($1 == "APPEND") {
 		i=2
-		if (kernel[label] ~ "ifmem.c32") {
-			auto=$3
-			next
-		}
+		if (kernel[label] ~ "ifmem.c32") multi(3)
 		if (kernel[label] ~ "c32box.c32") {
 			if ($2 == "linux") { kernel[label]=$3; i=4 }
-			if ($2 == "ifmem") { auto=$4; next }
+			if ($2 == "ifmem") multi(4)
 		}
 		if (kernel[label] ~ "ifcpu64.c32") { auto=$4; next }
 		while (i <= NF) {
@@ -1086,6 +1094,7 @@ END {
 	print "KERNEL=\"" kernel[auto] "\""
 	print "INITRD=\"" initrd[auto] "\""
 	print "CMDLINE=\"" substr(cmdline[auto],2) "\""
+	print "SIZES=\"" sizes "\""
 }'
 }
 
