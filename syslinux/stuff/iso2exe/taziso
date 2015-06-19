@@ -1050,6 +1050,8 @@ showfavinfo()
 }
 
 if [ "$1" == "--build" ]; then	#install-begin
+	uuencode -m - < ifmem.bin | sed -e '/^ifmemcode$/r/dev/stdin' \
+	  -e '/^ifmemcode$/d' -i $0
 	uuencode -m - < bootloader.bin | sed -e '/^bootloader$/r/dev/stdin' \
 	  -e '/^bootloader$/d' -e '/install-begin$/,/install-end$/d' -i $0
 	exit
@@ -1101,6 +1103,13 @@ END {
 locase()
 {
 	echo "$1" | tr [A-Z] [a-z]
+}
+
+ifmemcode()
+{
+	uudecode <<EOT
+ifmemcode
+EOT
 }
 
 floppyset()
@@ -1161,6 +1170,12 @@ EOT
 		i=$(($pos + 0x1FC - ($n*4)))
 		bytes2bin $(($i % 256)) $((i / 256)) 252 | ddq bs=1 \
 			conv=notrunc seek=494 count=3 of=/tmp/fd$$
+		s=$(($i - 2*$(echo "$SIZES" | wc -w)))
+		p=$(($s - $(ifmemcode | wc -c)))
+		ifmemcode | ddq bs=1 conv=notrunc seek=$p of=/tmp/fd$$
+		words2bin $SIZES | ddq bs=1 conv=notrunc seek=$s of=/tmp/fd$$
+		bytes2bin 154 $(($p%256)) $(($p/256)) 0 144 | \
+		ddq bs=1 conv=notrunc seek=60 of=/tmp/fd$$
 	fi
 	for r in $len ; do
 		words2bin $(($r & 0xFFFF)) $(($r >> 16)) | ddq conv=notrunc \

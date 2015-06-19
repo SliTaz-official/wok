@@ -19,7 +19,6 @@ ASK_VGA		= -3
 /* some extra features */
 #define CMDLINE			kernel >= 2.4
 #define OLDCMDLINE		kernel  < 2.4
-#define HELP			display version for ? argument
 #define MORETHAN16M		up to 4Gb RAM, not 16Mb
 #define KEYBOARDLESS_SUPPORT	scan floppy swap each 5 seconds
 
@@ -28,7 +27,10 @@ ASK_VGA		= -3
 #define MOVE_CMDLINE
 #define INITRD_SUPPORT
 #define INITRD_AUTOADDR
-#define MULTI_INITRD		many in one support
+#ifndef MULTI_INITRD
+#define README_SUPPORT
+#define COUNTER
+#endif
 
 	.code16
 	.org	0
@@ -118,6 +120,18 @@ skipcmdline:
 	popw	%ax			# limits = 0
 	incw	%cx			# cylinder 0, sector 1, clear Z
 	call	read_first_sectors	# read setup
+#ifdef	README_SUPPORT
+	xorw	%si, %si
+	orw	readme, %si
+	jz	readmeend
+readmeloop:
+	call	puts
+	jz	readmeend
+	call	wait4key
+	cmpb	$27, %al
+	jne	readmeloop
+readmeend:
+#endif
 loadsys:
 	movw	$0x200,%si
 type_of_loader	=	0x10
@@ -348,6 +362,18 @@ kill_motor:
 #define FLOPPY_CYLINDERS	80	
 #define FLOPPY_HEADS		2	
 
+.macro	putsmsg
+#ifdef COUNTER
+	movw	$msgdigit+1-msg, %bx
+nextdigit:
+	decw	%bx
+	incb	(%bx,%si)
+	cmpb	$'9', (%bx,%si)
+	ja	nextdigit
+#endif
+	call	puts
+.endm
+
 check_limits:
 	popw	%dx
         cmpb    %al, %cl		# max sector known ?
@@ -407,7 +433,7 @@ next_floppy:
 dpy_swap_floppy:
 #ifdef KEYBOARDLESS_SUPPORT
 	pushw	%bx
-	call	puts
+	putsmsg
 	popw	%bx
 	movw	%si, %bp
 waitfloppy:
@@ -434,7 +460,7 @@ gobootit:
 	jne	waitfloppy
 waitfloppydone:
 #else
-	call	puts
+	putsmsg
 	cbw				# %ah = 0, get keyboard character
 	int	$0x16
 #endif
@@ -495,7 +521,14 @@ swap_floppy2:
 	.ascii	"B or "
 #endif
 swap_floppy:
+#ifdef COUNTER
+msg:
+	.ascii	"Insert floppy disk 00"
+msgdigit:
+	.ascii	"1."
+#else
 	.ascii	"Next!"
+#endif
 	.byte	7,13,0			# swap detection needs 13, 0
 #ifdef MULTI_INITRD
 max_timeouts:
@@ -505,5 +538,10 @@ table:
 cur_initrd_size:
 	.word	table
 	.byte	table+4-256
+#endif
+#ifdef	README_SUPPORT
+	.org	0x1EF
+readme:
+	.word	0
 #endif
 	.org	0x1F1

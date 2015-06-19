@@ -4,7 +4,7 @@ BCCFLAGS=-D__MSDOS__ -Md
 
 all: isohybrid.exe iso2exe meminfo.exe tazboot.exe taziso.built
 
-taziso.built: bootloader.bin
+taziso.built: bootloader.bin ifmem.bin
 	./taziso --build
 	touch taziso.built
 
@@ -61,7 +61,7 @@ win32.exe: win32.c win32.res
 	$(BCC) $(BCCFLAGS) -A-l -A$*.lst -c -o $@ $<
 
 %.bin: %.S
-	$(GCC) -D__ASSEMBLY__ -Wa,-acghlnm=$*.lst -c -o $*.o $<
+	$(GCC) -D__ASSEMBLY__ -DMULTI_INITRD -Wa,-acghlnm=$*.lst -c -o $*.o $<
 	objcopy -O binary $*.o $@
 	chmod +x $@
 
