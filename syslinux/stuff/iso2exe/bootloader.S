@@ -333,8 +333,8 @@ nextInitrd:
 #endif
 #endif
 #endif
-#ifdef MULTI_INITRD
 bootit:
+#ifdef MULTI_INITRD
         jcxz	read_sectorslp
 #endif
 
@@ -523,9 +523,9 @@ swap_floppy2:
 swap_floppy:
 #ifdef COUNTER
 msg:
-	.ascii	"Insert floppy disk 00"
+	.ascii	"Insert disk 00"
 msgdigit:
-	.ascii	"1."
+	.ascii	"1 and hit Enter."
 #else
 	.ascii	"Next!"
 #endif
