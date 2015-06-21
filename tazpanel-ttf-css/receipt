@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="tazpanel-ttf-css"
+VERSION="501"
+CATEGORY="misc"
+SHORT_DESC="Enables tazpanel.ttf icons in opera browser"
+MAINTAINER="psychomaniak@xakep.ru"
+LICENSE="BSD"
+SOURCE="tazpanel"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://www.slitaz.org/"
+WGET_URL="http://hg.slitaz.org/tazpanel/archive/$VERSION.tar.gz"
+
+DEPENDS="tazpanel"
+BUILD_DEPENDS="fontforge"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/styles/default
+	cat > ttf2svg.pe <<EOF
+#!/usr/bin/fontforge
+Open(\$1)
+Generate(\$1:r + ".svg")
+EOF
+	chmod +x ttf2svg.pe
+	fontforge --script ttf2svg.pe tazpanel.ttf
+
+	for i in $(fgrep 'glyph-name="uniF1' tazpanel.svg | sed 's/ //g'); do
+		name=$(expr ${i/;/}| cut -d'"' -f4 | sed 's|&#x3||; s|&#x7a|z|')
+		addr=$(expr ${i/uni/\\} | cut -d'"' -f2)
+		cat >> presto.css <<EOT
+[data-icon="${name}"]::before, [data-img="${name}"]::before {
+	content: '${addr}';
+}
+EOT
+	done
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	S="$fs/var/www/tazpanel/styles/default"
+	mkdir -p $S
+	cp $src/styles/default/presto.css $S
+}
+
