@@ -366,6 +366,7 @@ kill_motor:
 #ifdef COUNTER
 	movw	$msgdigit+1-msg, %bx
 nextdigit:
+	andb	$0xF0, (%bx,%si)
 	decw	%bx
 	incb	(%bx,%si)
 	cmpb	$'9', (%bx,%si)
@@ -525,7 +526,7 @@ swap_floppy:
 msg:
 	.ascii	"Insert disk 00"
 msgdigit:
-	.ascii	"1 and hit Enter."
+	.ascii	"1 and Enter."
 #else
 	.ascii	"Next!"
 #endif
