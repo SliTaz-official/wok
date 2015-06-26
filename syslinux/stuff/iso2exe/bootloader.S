@@ -320,14 +320,15 @@ nextInitrd:
 	jb	initrdlp
 #else
 	movw	$ramdisk_size, %bx
-	autoaddr	ramdisk_size_ofs(%bx)
-	movw	ramdisk_image+1,%ax
 #ifdef MORETHAN16M
 	cmpb	%cl, ramdisk_image+2-ramdisk_size(%bx)
 	jb	bootit
+	autoaddr	ramdisk_size_ofs(%bx)
+	movw	ramdisk_image+1,%ax
 	shrw	%cl, boot_flag-ramdisk_size(%bx)
 	jne	initrdlp
 #else
+	movw	ramdisk_image+1,%ax
 	cmpw	%ax, bootsect_dst_base+1(%si)
 	jb	initrdlp
 #endif
