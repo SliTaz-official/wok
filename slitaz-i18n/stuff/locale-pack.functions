@@ -1,13 +1,13 @@
 get_locale()
 {
-	[ "x$CHARMAP" == x ] && CHARMAP=UTF-8
+	[ -z "$CHARMAP" ] && CHARMAP='UTF-8'
 
 	case "$SLITAZ_ARCH" in
 		arm*) ;;
 		i?86)
 			# Get translated Openbox menu from SliTaz sub project slitaz-configs
-			obmenu=$WOK/slitaz-configs/install/etc/xdg/openbox/menu.$LOCALE.xml
-			if [ -f $obmenu ]; then
+			obmenu="$WOK/slitaz-configs/install/etc/xdg/openbox/menu.$LOCALE.xml"
+			if [ -f "$obmenu" ]; then
 				mkdir -p $fs/etc/xdg/openbox
 				echo "* Found $LOCALE translations for: openbox menu"
 				cp $obmenu $fs/etc/xdg/openbox
@@ -21,8 +21,8 @@ get_locale()
 	esac
 	mkdir -p $fs/usr/share/locale/$LOCALE
 	for app in $CORE_PKGS; do
-		app_locale=$WOK/$app/install/usr/share/locale/$LOCALE
-		if [ -d $app_locale ]; then
+		app_locale="$WOK/$app/install/usr/share/locale/$LOCALE"
+		if [ -d "$app_locale" ]; then
 			echo "* Found $LOCALE translations for: $app"
 			cp -a $app_locale $fs/usr/share/locale
 		fi
@@ -31,33 +31,42 @@ get_locale()
 	# List of available locales
 	cd $WOK/glibc/install/usr/share/i18n/locales
 	locales=$(ls -1 | sed -n '/^'$LOCALE'$/p; /^'$LOCALE'_.*/p' | sed '/translit/d')
-	[ "x$LOCALEDEF" != x ] && locales=$LOCALEDEF
+	[ -n "$LOCALEDEF" ] && locales="$LOCALEDEF"
 
 	# Get X11 locale
 	for def in $locales; do
-		x11_locale=$WOK/xorg-libX11/install/usr/share/X11/locale/$def.$CHARMAP
-		if [ -d $x11_locale ]; then
-			echo "* Found $def.$CHARMAP locale for: X11"
-			mkdir -p $fs/usr/share/X11/locale
-			cp -a $x11_locale $fs/usr/share/X11/locale
-		fi
+		x11_locale="$WOK/xorg-libX11/install/usr/share/X11/locale/$def.$CHARMAP"
+		case "$def.$CHARMAP" in
+			en_US.UTF-8)
+				# belongs to "xorg-libX11" package, skip it
+				;;
+			*)
+				if [ -d "$x11_locale" ]; then
+					echo "* Found $def.$CHARMAP locale for: X11"
+					mkdir -p $fs/usr/share/X11/locale
+					cp -a $x11_locale $fs/usr/share/X11/locale
+				fi
+				;;
+		esac
 	done
 
 	# Get locale definition files
-	usil=usr/share/i18n/locales
+	usil='usr/share/i18n/locales'
 	for def in $locales; do
 		echo "* Copying $def locale files"
 		mkdir -p $fs/$usil
 		cp -a $WOK/glibc/install/$usil/$def $fs/$usil
 	done
 
-	if [ "x$LOCALE_DEPENDS" != x ]; then
+	if [ -n "$LOCALE_DEPENDS" ]; then
 		for dep in $LOCALE_DEPENDS; do
 			echo "* Copying additional $dep locale files"
 			cp -a $WOK/glibc/install/usr/share/i18n/locales/$dep \
 			$fs/usr/share/i18n/locales
 		done
 	fi
+
+	#grep -r 'include' $fs/usr/share/i18n/locales	# test includes in locales
 
 	# Get timezones from tzdata
 	countries=$(echo $locales | \
@@ -82,7 +91,7 @@ get_locale()
 
 	# Get country flags
 	echo "* Copy flag icons for countries: "$countries
-	usih=usr/share/icons/hicolor
+	usih='usr/share/icons/hicolor'
 	for country in $countries; do
 		for size in 16x16 48x48; do
 			install -Dm644 \
@@ -91,22 +100,37 @@ get_locale()
 		done
 	done
 	# above icons credits
-	fusl=$fs/usr/share/licenses
+	fusl="$fs/usr/share/licenses"
 	mkdir -p $fusl
 	cp -a $WOK/flag-icons/source/*/LICENSE.txt $fusl/gosquared.txt
 
 	# Gconv modules for encodings other than default
-	if [ "x$GCONV" != x ]; then
+	if [ -n "$GCONV" ]; then
 		mkdir -p $fs/usr/lib/gconv
 		for enc in $GCONV; do
 			echo "* Copying $enc gconv module"
 			cp -a $WOK/glibc/install/usr/lib/gconv/$enc.so $fs/usr/lib/gconv
 		done
+		#ldd $fs/usr/lib/gconv/*	# test depends in gconv modules
+	fi
+
+	# Console keyboard layouts
+	if [ -n "$KBD" ]; then
+		uskki='usr/share/kbd/keymaps/i386'
+		cd $WOK/kbd/install
+		for map in $KBD; do
+			echo "* Copying $map kbd map"
+			mapfiles=$(find . -type f -name $map.map.gz)
+			for mapfile in $mapfiles; do
+				mkdir -p "$fs/$(dirname "${mapfile#./}")"
+				cp "$WOK/kbd/install/${mapfile#./}" "$fs/${mapfile#./}"
+			done
+		done
 	fi
 
 	# Keyboard flags for default lxpanel keyboard applet
-	if [ "x$KB_FLAGS" != x ]; then
-		uslix=usr/share/lxpanel/images/xkb-flags
+	if [ -n "$KB_FLAGS" ]; then
+		uslix='usr/share/lxpanel/images/xkb-flags'
 		mkdir -p $fs/$uslix
 		for i in $KB_FLAGS; do
 			install -Dm644 \
