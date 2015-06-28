@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="qtwebkit"
+VERSION="2.3.4"
+CATEGORY="network"
+SHORT_DESC="KDE version of Qt Webkit browser engine."
+MAINTAINER="psychomaniak@xakep.ru"
+LICENSE="GPL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://download.kde.org"
+WGET_URL="$WEB_SITE/stable/$PACKAGE-${VERSION:0:3}/$VERSION/src/$TARBALL"
+
+DEPENDS="libQtCore libQtDBus libQtGui libQtXml libQtNetwork libQtOpenGL \
+mesa sqlite gstreamer orc gst-plugins-base"
+BUILD_DEPENDS="Qt4-dev libQtDeclarative qmake bison flex gperf ruby-dev mesa-dev \
+sqlite-dev libpng-dev jpeg-dev gstreamer-dev gst-plugins-base-dev gst-plugins-base"
+
+compile_rules()
+{
+	QTDIR=/usr QMAKE_CXXFLAGS=$CFLAGS \
+	Tools/Scripts/build-webkit \
+		--qt \
+		--makeargs=$MAKEFLAGS \
+		--prefix=/usr \
+		--no-webkit2 \
+		--no-force-sse2 \
+		DEFINES+=ENABLE_JIT=0 \
+		DEFINES+=ENABLE_YARR_JIT=0 \
+		DEFINES+=ENABLE_ASSEMBLER=0 \
+		DEFINES+=ENABLE_SMOOTH_SCROLLING=1
+	make INSTALL_ROOT=$DESTDIR -C WebKitBuild/Release install
+
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/bin
+	cp -a $src/WebKitBuild/Release/bin/Qt* $fs/usr/bin
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+}
