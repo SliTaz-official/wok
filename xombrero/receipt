@@ -9,8 +9,10 @@ LICENSE="ISC"
 WEB_SITE="https://opensource.conformal.com/wiki/xombrero"
 TARBALL="$PACKAGE-$VERSION.tgz"
 WGET_URL="https://opensource.conformal.com/snapshots/$PACKAGE/$TARBALL"
+CONFIG_FILES="/etc/xombrero.conf"
 TAGS="web-browser"
 
+SUGGESTED="cacerts"
 DEPENDS="gtk+ libwebkit libbsd"
 BUILD_DEPENDS="gtk+-dev libwebkit-dev libsoup-dev gnutls-dev libbsd-dev \
 groff wget"
@@ -19,14 +21,21 @@ groff wget"
 compile_rules()
 {
 	find -type f -print0 | xargs -0 sed -i 's|/usr/local|/usr|'
-	sed -i "s|xombrero %u|xombrero -f /etc/xombrero.conf %u|" xombrero.desktop
+	cp -f $stuff/xombrero.desktop .
 	make PREFIX="/usr" -C linux GTK_VERSION="gtk2" install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir $fs/etc
+	mkdir -p $fs/etc
 	cp -a $install/* $fs
 	cp $stuff/xombrero.conf $fs/etc
+
+	# Link icons
+	for size in 16 32 48 64 128 256; do
+		mkdir -p $fs/usr/share/icons/hicolor/${size}x$size/apps
+		ln -s /usr/share/xombrero/xombreroicon$size.png \
+			$fs/usr/share/icons/hicolor/${size}x$size/apps/xombrero.png
+	done
 }
