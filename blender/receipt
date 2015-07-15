@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="blender"
-VERSION="2.73a"
+VERSION="2.75a"
 CATEGORY="graphics"
 SHORT_DESC="3D content creation suite."
 MAINTAINER="pankso@slitaz.org"
@@ -18,13 +18,12 @@ freetype openal zlib librsvg"
 BUILD_DEPENDS="cmake xorg-libXmu ilmbase-dev yasm pkg-config coreutils-file-format \
 gettext mesa-dev freeglut-dev librsvg-dev openexr-dev tiff-dev openal-dev \
 libglu-mesa libsdl-dev py3k-dev libsamplerate-dev ffmpeg-dev lcms-dev openjpeg-dev \
-libboost-dev libboost-math-dev libboost-tr1-dev libglu-mesa-dev"
+libboost-dev libboost-math-dev libboost-tr1-dev libboost-filesystem-dev \
+libglu-mesa-dev glew-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-
 	mkdir -p $WOK/$PACKAGE/source/build
 	cd $WOK/$PACKAGE/source/build
 	cmake $src \
@@ -34,13 +33,14 @@ compile_rules()
 		-DWITH_PYTHON_INSTALL:BOOL=OFF \
 		-DWITH_OPENCOLLADA:BOOL=OFF \
 		-DWITH_GAMEENGINE:BOOL=ON \
+		-DWITH_CYCLES:BOOL=OFF \
 		-DWITH_PLAYER:BOOL=ON \
-		-DPYTHON_VERSION:STRING=3.2 \
+		-DPYTHON_VERSION:STRING=3.4 \
 		-DPYTHON_LIBPATH:STRING=/usr/lib \
-		-DPYTHON_LIBRARY:STRING=python3.2m \
-		-DPYTHON_INCLUDE_DIRS:STRING=/usr/include/python3.2m
+		-DPYTHON_LIBRARY:STRING=python3.4m \
+		-DPYTHON_INCLUDE_DIRS:STRING=/usr/include/python3.4m
 	# build
-	make $MAKEFLAGS -j 1
+	make $MAKEFLAGS
 	make DESTDIR=$DESTDIR install
 	python3 -m compileall "$DESTDIR/usr/share/blender"
 	cp -rf $src/release/plugins/* $src/source/blender/blenpluginapi
