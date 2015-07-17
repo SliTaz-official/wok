@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="hfsprogs"
+VERSION="332.25"
+CATEGORY="system-tools"
+SHORT_DESC="HFS+ Filesystem user space tools."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="APLS"
+TARBALL="${PACKAGE}_$VERSION.orig.tar.gz"
+WEB_SITE="http://www.opensource.apple.com/darwinsource/10.4/"
+WGET_URL="http://http.debian.net/debian/pool/main/h/hfsprogs/$TARBALL"
+EXTRA_SOURCE_FILES="${PACKAGE}_$VERSION-11.debian.tar.gz"
+
+DEPENDS="libbsd libcrypto"
+BUILD_DEPENDS="libbsd-dev openssl-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] ||
+	  wget -P $SOURCES_REPOSITORY $(dirname $WGET_URL)/$EXTRA_SOURCE_FILES
+	tar xzf $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES
+	for i in $(cat debian/patches/series); do
+		patch -p1 -i debian/patches/$i
+	done
+	make -f Makefile.lnx LDFLAGS="$LDFLAGS -Wl,--as-needed" \
+		CFLAGS="$CFLAGS -DDEBUG_BUILD=0 -D_FILE_OFFSET_BITS=64 -D LINUX=1 -D BSD=1 -I$src/include"
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/sbin
+	install -m 755 $src/newfs_hfs.tproj/newfs_hfs $fs/sbin/mkfs.hfsplus
+	install -m 755 $src/fsck_hfs.tproj/fsck_hfs $fs/sbin/fsck.hfsplus
+}
