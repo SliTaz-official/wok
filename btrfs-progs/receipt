@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="btrfs-progs"
-VERSION="3.12"
+VERSION="4.1.2"
 CATEGORY="system-tools"
 SHORT_DESC="Btrfs Filesystem user space tools."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -10,16 +10,21 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://btrfs.wiki.kernel.org/"
 WGET_URL="git|git://git.kernel.org/pub/scm/linux/kernel/git/mason/btrfs-progs.git"
 TAGS="filesystem fault-tolerance"
+PROVIDES="btrfs-tools"
 
 DEPENDS="util-linux-uuid zlib acl util-linux-blkid lzo"
 BUILD_DEPENDS="util-linux-uuid-dev e2fsprogs e2fsprogs-dev zlib-dev acl-dev \
-git util-linux-blkid-dev lzo-dev"
+git util-linux-blkid-dev lzo-dev autoconf automake"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	make CFLAGS="${CFLAGS}" &&
+	./autogen.sh
+	./configure --prefix=/usr \
+		--sysconfdir=/etc \
+		--disable-documentation \
+		$CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$DESTDIR prefix=/usr install
 }
 
@@ -31,4 +36,3 @@ genpkg_rules()
 	# Split mkfs --> btrfs-mkfs
 	rm $fs/usr/bin/mkfs.btrfs
 }
-
