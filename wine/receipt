@@ -11,7 +11,7 @@ WEB_SITE="http://www.winehq.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="windows emulator" # wine is not an emulator
 
-DEPENDS="alsa-lib libxml2 libxslt mesa libglu-mesa xorg-dev lcms freetype"
+DEPENDS="alsa-lib libxml2 libxslt mesa libglu-mesa lcms freetype"
 BUILD_DEPENDS="alsa-lib-dev flex bison mesa-dev freetype-dev libtool \
 libglu-mesa-dev libxml2-dev libxslt-dev lcms-dev prelink \
 jpeg-dev libpng-dev libv4l-dev gnutls-dev libgphoto2-dev cups-dev dbus-dev"
@@ -37,4 +37,14 @@ genpkg_rules()
 post_install()
 {
 	[ "$1" ] || modprobe snd-seq 2>/dev/null
+
+	# Enable unicode filenames and localized keyboard layouts input
+	. $1/etc/locale.conf
+	case $LANG in
+		(C|POSIX) echo $LANG - skip modifying /etc/locale.conf ;;
+		(*)
+    		echo "$LANG changed to ${LANG}.UTF-8 in /etc/locale.conf"
+		echo "Restart/ReLogin required."
+		sed -i 's/$/&.UTF-8/' $1/etc/locale.conf ;;
+	esac
 }
