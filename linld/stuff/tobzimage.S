@@ -23,12 +23,15 @@ start:
 	pushaw
 	pushw	%ds
 	popw	%es
-	movw	$mover+0x200, %si
+	.byte	0x66, 0xB8	# movl $?, %eax
+	rep
+	  movsw
+	popaw
+	iret
 	xorw	%di, %di
 	pushw	%es
 	pushw	%di
-	movsw
-	movsw
+	stosl
 	movw	$0x200, %di
 	movw	%sp, %bp
 	movw	$9, %cx
@@ -57,7 +60,7 @@ mvlp:
 	int	$0x15
 	incw	20(%si)
 	incw	28(%si)
-	subb	$0x10, %dh
+	subw	$0x1000, %dx
 	ja	mvlp
 	movw	%bp, %sp
 	movw	$0x400, %si
@@ -65,12 +68,6 @@ mvlp:
 	decb	-15(%di)
 	movb	-15(%di), %ch
 	lret
-mover:
-	rep
-	  movsw
-	popaw
-	iret
-moverend:
 kernel_version:
 	.asciz	"zImage"
 	.org	512
