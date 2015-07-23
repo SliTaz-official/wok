@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ "$1" == "--build" ]; then	#install-begin
+	uuencode -m - < tobzimage.bin | sed -e '/^tobzimage$/r/dev/stdin' \
+	  -e '/^tobzimage$/d' -e '/install-begin$/,/install-end$/d' -i $0
+	exit
+fi	#install-end
 [ -s "$1" -a "$2" ] || {
 	cat << EOT
 Usage: $0 zImage-to-read bzImage-to-create [version-string]
@@ -63,9 +68,4 @@ EOT
 	ddq >> $1
 }
 
-if [ "$1" == "--build" ]; then	#install-begin
-	uuencode -m - < tobzimage.bin | sed -e '/^tobzimage$/r/dev/stdin' \
-	  -e '/^tobzimage$/d' -e '/install-begin$/,/install-end$/d' -i $0
-	exit
-fi	#install-end
 create_bzImage $2 "$3" < $1
