@@ -13,11 +13,11 @@ WGET_URL="ftp://ftp2.sane-project.org/pub/sane/$PACKAGE-$VERSION/$TARBALL"
 DEPENDS="libusb-compat jpeg tiff zlib libgphoto2 libv4l libltdl"
 BUILD_DEPENDS="libusb-compat-dev jpeg-dev tiff-dev zlib-dev libv4l-dev \
 libgphoto2-dev libtool"
+SUGGESTED="imagemagick gocr tesseract-ocr"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	patch -Np1 -i $stuff/libv4l-0.8.3.patch
 	# fix https://bugs.archlinux.org/task/26114
 	patch -Np1 -i $stuff/xerox_mfp_fix_usb_devices.patch
@@ -38,7 +38,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share \
-	         $fs/var/lock/sane $fs/etc/sane.d
+	         $fs/var/lock/sane $fs/etc/sane.d \
+	         $fs/var/www/tazpanel/lib \
+	         $fs/var/www/tazpanel/menu.d/hardware
 	
 	cp -a $install/etc/sane.d $fs/etc
 	cp -a $install/usr/bin $fs/usr
@@ -46,6 +48,9 @@ genpkg_rules()
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/lib/sane $fs/usr/lib
 	cp -a $install/usr/share/sane $fs/usr/share
+	cp $stuff/tazpanel/sane.cgi $fs/var/www/tazpanel/
+	cp $stuff/tazpanel/crop.js $fs/var/www/tazpanel/lib/
+	ln -s ../../sane.cgi $fs/var/www/tazpanel/menu.d/hardware/sane
 	
 	# fix groups/permissions on /var/lock/sane ; add it to scanner group
 	chmod 775 "$fs/var/lock/sane"
@@ -68,6 +73,9 @@ post_install()
 	fi
 	
 	echo " ADD yourself to group scanner to use sane: addgroup tux scanner"
+	
+	[ -e $root/var/www/tazpanel/tmp ] ||
+	ln -s /tmp $root/var/www/tazpanel/tmp
 }
 
 post_remove()
