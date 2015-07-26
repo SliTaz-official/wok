@@ -151,6 +151,9 @@ header
 xhtml_header
 [ -n "$error" ] && msg warn "$error"
 [ -n "$info" ] && msg tip "$info"
+[ "$(which convert 2> /dev/null)" ] ||
+msg tip "$(_ "You should install %s to preview images." \
+	     "<a href=\"/user/pkgs.cgi?info=imagemagick\">imagemagick</a>")"
 if [ -z "$device" ]; then
 	[ -s sane-fake.log ] && all="$(sed 's/|/\n/g' sane-fake.log)" ||
 	all="$(scanimage -f '%d,%v %m|' | sed 's/|/\n/g')"
