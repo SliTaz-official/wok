@@ -209,13 +209,13 @@ doinstall()
 	fi
 	dotwait "Install root filesystem in /slitaz.."
 	if [ "$1" ]; then
-		ls_r /media/cdrom/boot/rootfs*gz | \
+		ls_r $media/boot/rootfs*gz | \
 		xargs cat > $mnt/slitaz/boot/rootfs.gz
 		tazusbinitfs $mnt/slitaz/boot/rootfs.gz $useposixovl
 		initrd=rootfs.gz
 		extraargs="/home=$(getuuid)/slitaz rdinit=/init1"
 	else
-		for i in $(ls_r /media/cdrom/boot/rootfs*gz); do
+		for i in $(ls_r $media/boot/rootfs*gz); do
 			uncpio $i $mnt/slitaz
 		done
 		for i in $packages_list; do
@@ -232,9 +232,9 @@ doinstall()
 		extraargs="mount=$(getuuid) subroot=slitaz"
 	fi
 	echo -en "\nInstall boot files..."
-	for i in /media/cdrom/boot/bzImage /media/cdrom/boot/*pxe* \
-		/media/cdrom/boot/isolinux/he* /media/cdrom/boot/isolinux/opt* \
-		/media/cdrom/README /media/cdrom/boot/memtest* ; do
+	for i in $media/boot/bzImage $media/boot/*pxe* \
+		$media/boot/isolinux/he* $media/boot/isolinux/opt* \
+		$media/README $media/boot/memtest* ; do
 		[ -s $i ] && cp $i $mnt/slitaz/boot
 	done
 	for i in $mnt/slitaz/boot/memtest $mnt/slitaz/boot/*pxe* ; do
@@ -338,14 +338,14 @@ Do you want to add extra packages ?
 " 7 70
 	[ $? -eq 0 ] || return
 	[ -s /var/lib/tazpkg/packages.txt ] || tazpkg recharge
-	if [ -s /media/cdrom/boot/vmlinuz-$(uname -r) ]; then
+	if [ -s $media/boot/vmlinuz-$(uname -r) ]; then
 		cat > /tmp/dialog$$ <<EOT
 $DIALOG --clear \
 	--title " Select the packages " \
 	--separate-output \
 	--cancel-label "Skip" \
 	--checklist "Please select the packages you want to install. Try with the first letter." \
-	23 78 20 \\
+	0 0 0 \\
 EOT
 		awk -F\| '{ printf "%s \"%s\" off ",$1,$3 }' \
 			/var/lib/tazpkg/packages.desc >> /tmp/dialog$$
@@ -399,8 +399,7 @@ bootinstalled()
 	kexec -l $kernel --initrd $initrd --command-line "$cmdline" || return
 	umount $mnt
 	rm -rf $mnt
-	umount -d /media/cdrom
-	kexec -e
+	quit "kexec -e"
 }
 
 mkzip()
@@ -537,20 +536,19 @@ insttaz2zip()
 
 bootiso()
 {
-	for i in $(ls_r /media/cdrom/boot/rootfs*gz); do
+	for i in $(ls_r $media/boot/rootfs*gz); do
 		grep -q ' lm ' /proc/cpuinfo && [ -s ${i}64 ] && i=${i}64
 		cat $i
 		n=$((4 - ($(stat -c %s $i) % 4)))
 		[ $n -eq 4 ] || dd if=/dev/zero bs=1 count=$n
 	done > /tmp/initrd$$
-	kernel=/media/cdrom/boot/bzImage
+	kernel=$media/boot/bzImage
 	grep -q ' lm ' /proc/cpuinfo && [ -s ${kernel}64 ] && kernel=${kernel}64
 	. /etc/locale.conf
 	kexec -l $kernel --initrd /tmp/initrd$$ --command-line \
 	   "root=/dev/null autologin lang=$LANG kmap=$(cat /etc/keymap.conf)" &&
-	umount -d /media/cdrom
 	rm -f /tmp/initrd$$
-	kexec -e
+	quit "kexec -e"
 }
 
 tazboot()
@@ -572,7 +570,7 @@ Examples for tazboot.cmd:\n\n\
   rw root=/dev/null autologin\n\n\
   kernel=\\slitaz\\vmlinuz root=/dev/sda5 ro\n\n
 Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n
-" 24 78
+" 0 0
 		[ $? -eq 0 ] || return
 	fi
 	gettazboot tazboot.exe
@@ -582,7 +580,7 @@ Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n
 md5()
 {
 	dotwait "Checking files"
-	( cd /media/cdrom ; ${md5sum:-md5sum -c md5sum*} | sort ) > /tmp/data
+	( cd $media ; ${md5sum:-md5sum -c md5sum*} | sort ) > /tmp/data
 	unset md5sum
 	rm -f /tmp/wait
 	if [ "$1" ]; then
@@ -590,15 +588,14 @@ md5()
 	else
 		$DIALOG --clear \
 			--title " Checked files " \
-			--textbox /tmp/data 24 78
+			--textbox /tmp/data 0 0
 	fi
 	rm -f /tmp/data
 }
 
 gotcdfile()
 {
-	for i in "/media/cdrom/$1" "/media/cdrom/*/$1" \
-			"/media/cdrom/*/isolinux/$1" ; do
+	for i in "$media/$1" "$media/*/$1" "$media/*/isolinux/$1" ; do
 		file=$(ls $i 2> /dev/null | sed q)
 		[ -s "$file" ] && break
 	done
@@ -608,7 +605,7 @@ sha()
 {
 	gotcdfile 'sha*sum*'
 	sha=$(basename $file)
-	md5sum="${sha%sum*}sum -c ${file#/media/cdrom/}"
+	md5sum="${sha%sum*}sum -c ${file#$media/}"
 	md5 $@
 }
 
@@ -620,7 +617,7 @@ readme()
 	else
 		$DIALOG --clear \
 			--title " Readme " \
-			--textbox $file 24 78
+			--textbox $file 0 0
 	fi
 }
 
@@ -637,7 +634,7 @@ vga= (you can try 'rdev -v') and mem= (partially).
 " 12 70
 		[ $? -eq 0 ] || return
 	fi
-	cp /media/cdrom/boot/bzImage linux.exe
+	cp $media/boot/bzImage linux.exe
 	ls -l $PWD/linux.exe
 }
 
@@ -650,7 +647,7 @@ memtest()
 "\nMemtest86 is a thorough, stand alone memory test for x86 architecture
 computers. BIOS based memory tests are a quick, cursory check and often
 miss many of the failures that are detected by Memtest86.\n
-" 12 70
+" 0 0
 		[ $? -eq 0 ] || return
 	fi
 	gotcdfile 'memtest*' && cp $file memtest.exe
@@ -699,7 +696,7 @@ fdmemtest()
 computers. BIOS based memory tests are a quick, cursory check and often
 miss many of the failures that are detected by Memtest86.\n\n
 Please insert a blank disk in floppy drive.\n
-" 12 70
+" 0 0
 		[ $? -eq 0 ] || return
 	fi
 	gotcdfile 'memtest*' && mkfloppy $file
@@ -716,7 +713,7 @@ pxe()
 working entirely in RAM with speed and stability in mind. The Linux Kernel
 and the complete SliTaz compressed root filesystem will be loaded into RAM
 from the Web using PXE and HTTP protocols.\n
-" 12 70
+" 0 0
 		[ $? -eq 0 ] || return
 	fi
 	cp $file $(basename $file).exe
@@ -734,7 +731,7 @@ working entirely in RAM with speed and stability in mind. The Linux Kernel
 and the complete SliTaz compressed root filesystem will be loaded into RAM
 from the Web using PXE and HTTP protocols.\n\n
 Please insert a blank disk in floppy drive.\n
-" 12 70
+" 0 0
 		[ $? -eq 0 ] || return
 	fi
 	gotcdfile '?pxe' && mkfloppy $file
@@ -884,7 +881,7 @@ usbdev()
 $DIALOG  --clear \
 	--title " Select your USB key " \
 	--menu "\nPlease select the USB key according to its known size.\n\n" \
-	14 70 4 \
+	0 0 0 \
 	$(for i in $DEV ; do
 		echo -n "/dev/$i \"$(($(cat /sys/block/$i/size)/2048))MB $(cat /sys/block/$i/device/model 2> /dev/null)\" "
 	done) \
@@ -1003,8 +1000,7 @@ in the USB key." 14 70 4 \
 dokexec()
 {
 	kexec -l $file || return
-	umount -d /media/cdrom
-	kexec -e
+	quit "kexec -e"
 }
 
 runmemtest()
@@ -1044,7 +1040,7 @@ showfavinfo()
 	else
 		$DIALOG --clear \
 			--title " Flavor info " \
-			--textbox $file 24 78
+			--textbox $file 0 0
 	fi
 	rm -rf /tmp/data
 }
@@ -1117,11 +1113,14 @@ floppyset()
 	gotcdfile isolinux.cfg
 	parse_isolinux < $file > /tmp/var$$
 	. /tmp/var$$
+	for i in $media/$KERNEL $(dirname $file)/$KERNEL $media/$(locase $KERNEL) \
+		 $(dirname $file)/$(locase $KERNEL); do
+		[ -s $i ] && KERNEL=$i && break
+	done
 	rm -f /tmp/var$$ 
-	[ -e /media/cdrom/$KERNEL ] || KERNEL=$(locase $KERNEL)
-	[ $(get 514 /media/cdrom/$KERNEL 4) -eq 1400005704 ] || return
-	n=$(($(get 497 /media/cdrom/$KERNEL 1)+1))
-	ddq bs=512 count=$n if=/media/cdrom/$KERNEL of=/tmp/fd$$
+	[ $(get 514 $KERNEL 4) -eq 1400005704 ] || return
+	n=$(($(get 497 $KERNEL 1)+1))
+	ddq bs=512 count=$n if=$KERNEL of=/tmp/fd$$
 	uudecode <<EOT | ddq of=/tmp/fd$$ conv=notrunc
 bootloader
 EOT
@@ -1132,21 +1131,24 @@ EOT
 			bs=1 seek=497 count=1 of=/tmp/fd$$
 		words2bin $pos | ddq conv=notrunc \
 			bs=1 seek=34 count=2 of=/tmp/fd$$
-		[ $(get 518 /media/cdrom/$KERNEL 4) -ge 514 ] &&
+		[ $(get 518 $KERNEL 4) -ge 514 ] &&
 		words2bin 32768 9 | ddq conv=notrunc \
 			bs=1 seek=552 count=4 of=/tmp/fd$$
 	fi
 	syssize=$(echo $(get 500 /tmp/fd$$ 4))
-	ddq bs=512 skip=$n if=/media/cdrom/$KERNEL | cat - /dev/zero | \
+	ddq bs=512 skip=$n if=$KERNEL | cat - /dev/zero | \
 	ddq bs=512 count=$((($syssize+31)/32)) conv=sync >> /tmp/fd$$
 	base=$(stat -c %s /tmp/fd$$)
 	len=
 	if [ "$INITRD" ]; then
 		l=0
 		for i in ${INITRD//,/ }; do
-			[ -e /media/cdrom/$i ] || i=$(locase $i)
-			ddq if=/media/cdrom/$i >> /tmp/fd$$
-			l=$(($l+$(stat -c %s /media/cdrom/$i)))
+			for j in $media/$i $(dirname $KERNEL)/$i $media/$(locase $i) \
+				 $(dirname $KERNEL)/$(locase $i); do
+				[ -s $j ] && i=$j && break
+			done
+			ddq if=$i >> /tmp/fd$$
+			l=$(($l+$(stat -c %s $i)))
 			r=$((4 - ($l % 4)))
 			if [ $r -ne 4 ]; then
 				ddq if=/dev/zero bs=1 count=$r >> /tmp/fd$$
@@ -1201,13 +1203,16 @@ EOT
 
 quit()
 {
-	umount -d /media/cdrom
-	exit
+	umount -d $media
+	rmdir $media
+	${1:-exit}
 }
 
 ISO="${1:-/dev/null}"
 [ -z "$(isiso 2> /dev/null)" ] && echo "Usage : $0 file.iso" && exit 1
-mount -o loop,ro $ISO /media/cdrom
+media=/tmp/madia$$
+mkdir -p $media
+mount -o loop,ro $ISO $media
 
 if [ "$2" == "list" ]; then
 	sed '/^\$(.*") \\/!d;s/^\$(\(.*\)").*/\1"/' $0 | while read line; do
@@ -1231,8 +1236,8 @@ fi
 while true; do
 	cat > /tmp/dialog$$ <<EOT
 $DIALOG  --clear \
-	--title " SliTaz ISO tool " \
-	--menu "" 23 70 17 \
+	--title " $(basename $ISO)  $(stat -c %y $media/. | sed 's/ .*//') " \
+	--menu "" -2 70 0 \
 $(cdfile 'README*'	"readme"	"Show the README file") \
 $(gotisomd5		"isomd5"	"Check the ISO image") \
 $(cdfile 'md5sum*'	"md5"		"Check the ISO files") \
