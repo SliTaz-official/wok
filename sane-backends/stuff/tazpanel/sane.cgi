@@ -37,11 +37,12 @@ inrange() {
     
 getgeometry() {
 	CMD=""
-	for i in l t x y ; do
+	ARGS=""
+	for i in x y l t ; do
 		j=$(inrange $(xPOST geometry_$i) $(xPOST ${i}_min) $(xPOST ${i}_max))
 		eval "geometry_$i=$j"
 		CMD="$CMD -$i $j"
-# convert -crop XxY+L+T -resize XxY
+		ARGS="$ARGS $j"
 	done
 	for i in mode source contrast brightness ; do
 		[ "$(xPOST $i)" ] && CMD="$CMD --$i '$(xPOST $i)'"
@@ -55,10 +56,35 @@ getgeometry() {
 			resolution=$(($resolution * 2))
 		done
 	fi
+	case "$(xPOST mode)" in
+	*lack*|*ineart*) mode="-monochrome" ;;
+	*ray*) mode="-colorspace gray" ;;
+	*) mode="" ;;
+	esac
 	[ -d tmp ] || ln -s /tmp tmp
 	case "$device" in
-	fake*)	echo "cat /usr/share/images/slitaz-background.jpg" ;;
-	*)	echo "scanimage -d '$(echo $device | sed 's/,.*//')' --resolution '$(inrange $resolution $(xPOST res_min) $(xPOST res_max))dpi'$CMD"
+	fake*)	f=/usr/share/images/slitaz-banner.png
+		c="$(echo $ARGS $(identify $f | sed \
+		    's/.* \([0-9]*\)x.*/\1/') $(GET width) $(POST x_max) | awk '
+function a(x) { return int(($x * $5)/ $7); }
+{ printf "%dx%d+%d+%d -resize %dx%d",a(1),a(2),a(3),a(4),$6,int(($2*$6)/$1)}
+')"
+		cat <<EOT
+if convert -crop $c $mode $f /tmp/sane$$.png 2> /dev/null ; then
+	cat /tmp/sane$$.png
+	rm -f /tmp/sane$$.png
+else
+	cat $f
+fi
+EOT
+		;;
+	*)	echo -n "scanimage -d '$(echo $device | sed 's/,.*//')' --resolution '$(inrange $resolution $(xPOST res_min) $(xPOST res_max))dpi'$CMD"
+		if [ -z "$1" -a "$(which convert)" ]; then
+			echo -n "> /tmp/sane$$.pnm ; convert -resize "
+			echo $ARGS $(GET width) | awk '{ printf "%dx%d",$5,int(($2*$5)/$1)}'
+			echo -n " /tmp/sane$$.pnm /tmp/sane$$.png ;"
+			echo -n "cat /tmp/sane$$.png ; rm -f /tmp/sane$$.pn?"
+		fi
 	esac
 }
 
@@ -151,20 +177,31 @@ header
 xhtml_header
 [ -n "$error" ] && msg warn "$error"
 [ -n "$info" ] && msg tip "$info"
-[ "$(which convert 2> /dev/null)" ] ||
-msg tip "$(_ "You should install %s to preview images." \
-	     "<a href=\"/user/pkgs.cgi?info=imagemagick\">imagemagick</a>")"
 if [ -z "$device" ]; then
-	[ -s sane-fake.log ] && all="$(sed 's/|/\n/g' sane-fake.log)" ||
-	all="$(scanimage -f '%d,%v %m|' | sed 's/|/\n/g')"
+	all="$(scanimage -f '%d,%v %m|'|cat - sane-fake.log|sed 's/|/\n/g')"
 	case "$(echo "$all" | wc -l)" in
 	1)	if [ -z "$all" ]; then
-			msg warn 'No scanner found'
+			msg warn "$(_ "No scanner found")"
+			msg tip "$(_ "You can test this GUI with ")\
+<a href=\"/user/pkgs.cgi?info=fake-sane\">fake-sane</a>"
 			xhtml_footer
 			exit 0
 		fi
 		device="${all%|}" ;;
-	*)	cat <<EOT
+	*)
+		suggested=""
+		while read exe pkg msg; do
+			[ "$(which $exe 2> /dev/null)" ] && continue
+			suggested="$suggested
+<li><a href=\"/user/pkgs.cgi?info=$pkg\">$pkg</a>&nbsp;$msg</li>"
+		done <<EOT
+convert		imagemagick	$(_ "to preview images and support more image formats")
+gocr		gocr		$(_ "a basic optical character recognition")
+tesseract	tesseract-ocr	$(_ "a better optical character recognition")
+EOT
+		[ "$suggested" ] &&
+		msg tip "$(_ "You may need to install:") <ol>$suggested</ol>"
+		cat <<EOT
 <section>
 	<header>
 		<form name="scanner" method="post">
@@ -190,7 +227,7 @@ cat <<EOT
 <script language="JavaScript" type="text/javascript">
 <!--
 function new_width() {
-	document.parameters.action = "?width="+document.width
+	document.parameters.action = "?width="+(document.width-30)
 }
 
 window.onresize = new_width
@@ -202,7 +239,7 @@ new_width()
 $(echo $device | sed 's/.*,//')
 <div class="float-right">
 	<button name="scan" data-icon="start">$(_ "Scan")</button>
-	<button name="reset" data-icon="stop">$(_ "Reset")</button>
+	<button name="reset" data-icon="refresh">$(_ "Reset")</button>
 	<button name="preview" data-icon="view">$(_ "Preview")</button>
 </div>
 </header>
@@ -256,7 +293,8 @@ function enum()
 }
 ')"
 fi
-output="$(echo "$params" | while read name def min max ; do
+output="$(n=$(echo "$params" | wc -l); echo "$params" | \
+while read name def min max ; do
 	name="${name##*-}"
 	def="${def//=/ }"
 	if [ "$min" == "enum" ]; then
@@ -283,7 +321,7 @@ output="$(echo "$params" | while read name def min max ; do
 		[ "$(xPOST $name)" ] && def=$(xPOST $name)
 		[ $def -lt $min ] && def=$min
 		[ $def -gt $max ] && def=$max
-		f="$(_ "$name")<input name=\"$name\" value=\"$def\""
+		f="$(_ "$name") <input name=\"$name\" value=\"$def\""
 		u=""
 		case "$name" in
 		x|y|l|t) cat <<EOT
@@ -304,8 +342,6 @@ t	Y-Offset	y	0
 x	Width		width	$max
 y	Height		height	$max
 EOT
-			[ "$newline" ] || echo "</tr><tr>"
-			newline=$name
 		esac
 		[ "$name" == "resolution" ] && f="$f onchange=showGeometry()"
 		echo "<td>$f type=\"text\" title=\"$min .. $max\" size=4 maxlength=4>$u"
@@ -320,6 +356,10 @@ EOT
 EOT
 	esac
 	echo "</td>"
+	n=$(($n - 2))
+	case "$n" in
+	1|2) echo "</tr><tr>"
+	esac
 done)"
 echo "$output" | sed '/^:/d'
 
