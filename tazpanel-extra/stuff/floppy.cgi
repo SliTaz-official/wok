@@ -46,13 +46,14 @@ case " $(POST) " in
 	dd if=$(POST fromfd) of=$(POST toimage)
 	;;
 *\ build\ *)
-	cd $(POST workdir)
 	cmd=""
 	toremove=""
 	while read key file ; do
 		[ "$(FILE $file size)" ] || continue
-		cmd="$cmd $key $(FILE $file tmpname)"
-		toremove="$toremove $(FILE $file tmpname)"
+		for i in $(seq 1 $(FILE $file count)); do
+			cmd="$cmd $key $(FILE $file tmpname $i)"
+			toremove="$toremove $(FILE $file tmpname $i)"
+		done
 	done <<EOT
 bootloader	kernel
 --initrd	initrd
@@ -70,8 +71,10 @@ EOT
 		TITLE="$(_ 'TazPanel - floppy')"
 		header
 		xhtml_header
+		cd $(POST workdir)
 		eval $cmd 2>&1
-		[ "$toremove" ] && rm -f $toremove
+		echo "</pre>"
+		[ "$toremove" ] && rm -f $toremove && rmdir $(dirname $toremove)
 		xhtml_footer
 		exit 0
 	fi
@@ -141,11 +144,11 @@ cat <<EOT
 	</tr>
 	<tr>
 	<td>$(_ 'Initramfs / Initrd:')</td>
-	<td><input name="initrd" size="37" type="file"> <i>$(_ 'optional')</i></td>
+	<td><input name="initrd[]" size="37" type="file" multiple> <i>$(_ 'optional')</i></td>
 	</tr>
 	<tr>
 	<td>$(_ 'Extra initramfs:')</td>
-	<td><input name="initrd2" size="37" type="file"> <i>$(_ 'optional')</i></td>
+	<td><input name="initrd2[]" size="37" type="file" multiple> <i>$(_ 'optional')</i></td>
 	</tr>
 	<tr>
 	<td>$(_ 'Boot message:')</td>
@@ -158,7 +161,7 @@ cat <<EOT
 	</tr>
 	<tr>
 	<td>$(_ 'Root device:')</td>
-	<td><input name="rdev" size="8" value="/dev/fd0" type="text">
+	<td><input name="rdev" size="8" value="/dev/ram0" type="text">
 	&nbsp;&nbsp;$(_ 'Flags:') <select name="flags">
 		<option selected="selected" value="1">R/O</option>
 		<option value="0">R/W</option>
