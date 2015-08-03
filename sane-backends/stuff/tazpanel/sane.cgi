@@ -69,10 +69,11 @@ getgeometry() {
 function a(x) { return int(($x * $5)/ $7); }
 { printf "%dx%d+%d+%d -resize %dx%d",a(1),a(2),a(3),a(4),$6,int(($2*$6)/$1)}
 ')"
+		suf="png"; [ "$1" ] && suf="pnm"
 		cat <<EOT
-if convert -crop $c $mode $f /tmp/sane$$.png 2> /dev/null ; then
-	cat /tmp/sane$$.png
-	rm -f /tmp/sane$$.png
+if convert -crop $c $mode $f /tmp/sane$$.$suf 2> /dev/null ; then
+	cat /tmp/sane$$.$suf
+	rm -f /tmp/sane$$.$suf
 else
 	cat $f
 fi
