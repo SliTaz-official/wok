@@ -245,12 +245,14 @@ $(echo $device | sed 's/.*,//')
 </div>
 </header>
 
-<table class="wide" border="2" cellpadding="8" cellspacing="0">
+<table class="wide">
 <tr>
-<td>Format
+<td>
+<fieldset><legend>$(_ 'Format')</legend>
 <select name="format" size=1>
 $(imgformat list)
 </select>
+</fieldset>
 </td>
 EOT
 
@@ -301,7 +303,7 @@ while read name def min max ; do
 	if [ "$min" == "enum" ]; then
 		res_min=1000000
 		res_max=0
-		echo "<td>$name"
+		echo "<td><fieldset><legend>$name</legend>"
 		echo -n "<select name=\"$name\" size=1"
 		[ "$name" == "resolution" ] && echo -n " onchange=showGeometry()"
 		echo ">"
@@ -334,7 +336,7 @@ EOT
 				[ "$name" == "$name2" ] || continue
 				[ "$(xPOST geometry_$name)" ] &&
 				val="$(xPOST geometry_$name)"
-				f="$(_ "$n2")<input name=\"geometry_$name\" id=\"$id\" value=\"$val\""
+				f="<fieldset><legend>$(_ "$n2")</legend><input name=\"geometry_$name\" id=\"$id\" value=\"$val\""
 				u="&nbsp;mm"
 				break
 			done <<EOT
@@ -356,7 +358,7 @@ EOT
 &nbsp;dpi
 EOT
 	esac
-	echo "</td>"
+	echo "</filedset></td>"
 	n=$(($n - 2))
 	case "$n" in
 	1|2) echo "</tr><tr>"
