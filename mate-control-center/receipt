@@ -10,8 +10,9 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.mate-desktop.org/"
 WGET_URL="https://github.com/mate-desktop/$PACKAGE/archive/$TARBALL"
 TAGS="MATE"
-DEPENDS="gtk+ caja desktop-file-utils libxklavier libgtop xorg-libICE xorg-libSM \
-xorg-libXt startup-notification gsettings-desktop-schemas mate-settings-daemon"
+DEPENDS="gtk+ caja desktop-file-utils libxklavier libgtop librsvg xorg-libICE \
+xorg-libSM xorg-libXt startup-notification gsettings-desktop-schemas \
+mate-settings-daemon"
 BUILD_DEPENDS="wget gtk+-dev autoconf automake libtool itstool libunique-dev \
 dconf-dev mate-common-dev mate-desktop-dev mate-menus-dev mate-settings-daemon-dev \
 libxklavier-dev libmatekbd-dev marco-dev libgtop-dev librsvg-dev dbus-glib-dev \
@@ -45,6 +46,14 @@ genpkg_rules()
 # Post installation custom.
 post_install()
 {
+	echo "Processing post-install commands..."
 	[ -x $1/usr/bin/gtk-update-icon-cache ] &&
 	  chroot "$1/" gtk-update-icon-cache -f -t /usr/share/icons/hicolor
+	chroot $1/ /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	chroot $1/ /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
 }
