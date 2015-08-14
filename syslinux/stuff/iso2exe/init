@@ -975,13 +975,15 @@ esac
 which $DIALOG 2> /dev/null || DIALOG=tinydialog
 dmesg > /tmp/dmesg
 
+isotitle="$(basename $ISO)  $(stat -c %y /cdrom/media/. | sed 's/ .*//'\
+	  )  $(blkid /mnt/$ISO | sed 's/.*LABEL="\([^"]*\).*/\1/')"
 while true; do
 	trap shell 2 
 	keymap="$(cat /etc/keymap.conf 2> /dev/null)"
 	locale="$(sed '/^LANG=/!d;s/.*=//' /etc/locale.conf 2> /dev/null)"
 	cat > /tmp/dialog <<EOT
 $DIALOG  --clear \
-	--title " Welcome to Linux " \
+	--title " ${isotitle:-Welcome to Linux} " \
 	--menu "" 23 70 17 \
 $(xfile tazkeymap	"tazkeymap"	"Select keyboard (${keymap:-none})") \
 $(xfile tazlocale	"tazlocale"	"Select locale (${locale:-none})") \

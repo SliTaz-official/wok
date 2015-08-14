@@ -1208,6 +1208,12 @@ quit()
 	${1:-exit}
 }
 
+isotitle()
+{
+	echo "$(basename $ISO)  $(stat -c %y $media/.|sed 's/ .*//')  $(blkid \
+		$ISO | sed 's/.*LABEL="\([^"]*\).*/\1/')"
+}
+
 ISO="${1:-/dev/null}"
 [ -z "$(isiso 2> /dev/null)" ] && echo "Usage : $0 file.iso" && exit 1
 media=/tmp/madia$$
@@ -1226,6 +1232,7 @@ if grep -q "^$2()" $0; then
 	shift 2
 	if [ -n "$(eval $(grep "\"$exe\"" $0 | sed \
 		   '/^\$/!d;s/.(\(.*\)[\t ]*".*"[\t ]*".*/\1/'))" ]; then
+		isotitle
 		grep "\"$exe\"" $0 | sed '/^\$/!d;s/.*"[\t ]*"\(.*\)".*/\1/'
 		echo ----
 		$exe "$@"
@@ -1236,7 +1243,7 @@ fi
 while true; do
 	cat > /tmp/dialog$$ <<EOT
 $DIALOG  --clear \
-	--title " $(basename $ISO)  $(stat -c %y $media/. | sed 's/ .*//') " \
+	--title " $(isotitle) " \
 	--menu "" -2 70 0 \
 $(cdfile 'README*'	"readme"	"Show the README file") \
 $(gotisomd5		"isomd5"	"Check the ISO image") \
