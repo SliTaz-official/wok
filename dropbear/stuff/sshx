@@ -46,7 +46,20 @@ pppssh()
 	rm -f /etc/ppp/ip-up.d/pppssh$$
 }
 
+xfbvnc()
+{
+	p=5900
+	while netstat -tln | grep -q ":$p " ; do p=$(($p+1)); done
+	dbclient -f -N -L $p:127.0.0.1:${2:-5900} $1
+	fbvnc 127.0.0.1 $p
+	kill $(netstat -tlnp 2> /dev/null | \
+	       sed "/:$p /!d;s|.* \\([0-9]*\\)/[^ ]*|\\1|")
+}
+
 case "$(basename $0)" in
+*vnc)	[ -z "$1" ] && cat <<EOT || xfbvnc "$@" ;;
+Usage: $0 '[sshargs] user@remote' [vncport]
+EOT
 ppp*)	[ -z "$1" ] && cat <<EOT || pppssh "$@" ;;
 Usage: $0 '[sshargs] user@remote' '[localip:remoteip] [localpppargs]' 'remotepppargs' 'routes' 
 Example: $0 tux@slitaz.org '' '' '192.168.1.0/24 10.1.2.0/24'
