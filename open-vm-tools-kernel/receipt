@@ -1,6 +1,6 @@
 # SliTaz package receipt.
 
-PACKAGE="open-vm-tools"
+PACKAGE="open-vm-tools-kernel"
 VERSION="10.0.0-3000743"
 CATEGORY="utilities"
 TAGS="vmware kernel"
@@ -12,18 +12,19 @@ WEB_SITE="https://github.com/vmware/open-vm-tools"
 WGET_URL="https://github.com/vmware/open-vm-tools/archive/$TARBALL"
 HOST_ARCH="i486 x86_64"
 
-DEPENDS="shutdown glib libffi libmspack"
+DEPENDS="shutdown glib libffi libmspack open-vm-tools"
 BUILD_DEPENDS="autoconf automake libtool linux-source glib-dev libffi-dev libdnet-dev libmspack-dev slitaz-toolchain"
 
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	[ -d /lib/modules/$(uname -r)/source ] || get-linux-source
+
 	cd open-vm-tools
 	sed -i -e "s/-Werror//" configure.ac
 	autoreconf -i
         ./configure \
-		--without-kernel-modules \
 		--without-pam \
 		--without-x \
 		--without-icu \
@@ -38,33 +39,15 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	mkdir -p $fs/usr/share
-	mkdir -p $fs/sbin
-	mkdir -p $fs/etc
+	EXTRAVERSION=_${kvers}
+
 	mkdir -p $fs/lib
-	mkdir -p $fs/include
-	mkdir -p $fs/etc/init.d
+	cp -a $install/lib/modules $fs/lib
+}
 
-	cp $stuff/vmtoolsd $fs/etc/init.d
-	chmod 755 $fs/etc/init.d
-
-	cp -a $install/etc/vmware-tools $fs/etc
-
-	# Replace with slitaz customized default network script
-	cp $stuff/network $fs/etc/vmware-tools/scripts/vmware/network
-	chmod 755 $fs/etc/vmware-tools/scripts/vmware/network
-
-	cp -a $install/sbin $fs/sbin
-
-	cp -a $install/usr/include $fs/usr
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-
-	cp -a $install/usr/share/open-vm-tools $fs/usr/share
-
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/*.a $fs/usr/lib
-	cp -a $install/usr/lib/open-vm-tools $fs/usr/lib
-	cp -a $install/usr/lib/pkgconfig $fs/usr/lib
+post_install()
+{
+	echo -n "Processing post-install commands..."
+	chroot "$1/" depmod -a
+	status
 }
