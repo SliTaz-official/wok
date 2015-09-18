@@ -1,0 +1,81 @@
+# SliTaz package receipt.
+
+PACKAGE="open-vm-tools"
+VERSION="10.0.0-3000743"
+CATEGORY="utilities"
+TAGS="vmware kernel"
+SHORT_DESC="Open VMware Tools"
+MAINTAINER="nobody@slitaz.org"
+LICENSE="GPL"
+TARBALL="open-vm-tools-$VERSION.tar.gz"
+WEB_SITE="https://github.com/vmware/open-vm-tools"
+WGET_URL="https://github.com/vmware/open-vm-tools/archive/$TARBALL"
+HOST_ARCH="i486 x86_64"
+
+DEPENDS="shutdown glib libffi libmspack"
+BUILD_DEPENDS="autoconf automake libtool linux-source glib-dev libffi-dev libdnet-dev libmspack-dev slitaz-toolchain"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -d /lib/modules/$(uname -r)/source ] || get-linux-source
+
+	cd open-vm-tools
+	sed -i -e "s/-Werror//" configure.ac
+	autoreconf -i
+        ./configure \
+                --with-distro="SliTaz" \
+		--without-pam \
+		--without-x \
+		--without-icu \
+		--without-gtk2 \
+		--without-gtkmm \
+		--without-xmlsecurity \
+		--without-xerces \
+                $CONFIGURE_ARGS &&
+        make && make DESTDIR=$install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/sbin
+	mkdir -p $fs/etc
+	mkdir -p $fs/lib
+	mkdir -p $fs/include
+	mkdir -p $fs/etc/init.d
+
+	cp $stuff/vmtoolsd $fs/etc/init.d
+	chmod 755 $fs/etc/init.d
+
+	cp -a $install/etc/vmware-tools $fs/etc
+
+	# Replace with slitaz customized default network script
+	cp $stuff/network $fs/etc/vmware-tools/scripts/vmware/network
+	chmod 755 $fs/etc/vmware-tools/scripts/vmware/network
+
+	cp -a $install/sbin $fs/sbin
+
+	cp -a $install/lib/modules $fs/lib
+
+	cp -a $install/usr/include $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+
+	cp -a $install/usr/share/open-vm-tools $fs/usr/share
+
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/*.a $fs/usr/lib
+	cp -a $install/usr/lib/open-vm-tools $fs/usr/lib
+	cp -a $install/usr/lib/pkgconfig $fs/usr/lib
+}
+
+post_install()
+{
+	echo -n "Processing post-install commands..."
+	chroot "$1/" depmod -a
+	status
+}
