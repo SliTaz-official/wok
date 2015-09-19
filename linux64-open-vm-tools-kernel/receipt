@@ -15,13 +15,13 @@ HOST_ARCH="i486 x86_64"
 PROVIDE="open-vm-tools-kernel:linux64"
 
 DEPENDS="shutdown glib libffi libmspack open-vm-tools linux64"
-BUILD_DEPENDS="autoconf automake libtool linux-source linux64-module-headers glib-dev libffi-dev libdnet-dev libmspack-dev slitaz-toolchain"
+BUILD_DEPENDS="autoconf automake libtool linux-source linux-module-headers linux64-module-headers glib-dev libffi-dev libdnet-dev libmspack-dev slitaz-toolchain uclibc-cross-compiler-x86_64"
 
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	[ -d /lib/modules/$(uname -r)/source ] || get-linux-source
+	[ -d /lib/modules/${kvers}-slitaz/source ] || get-linux-source
 
 	cd open-vm-tools
 	sed -i -e "s/-Werror//" configure.ac
@@ -34,8 +34,11 @@ compile_rules()
 		--without-gtkmm \
 		--without-xmlsecurity \
 		--without-xerces \
-                $CONFIGURE_ARGS &&
-        make && make DESTDIR=$install install
+                $CONFIGURE_ARGS && \
+        make LINUXINCLUDE=/usr/src/linux-3.2.71-slitaz64/build/include && \
+	make LINUXINCLUDE=/usr/src/linux-3.2.71-slitaz64/build/include DESTDIR=$install install
+
+		#--with-linuxdir=/usr/src/linux-${kvers}-slitaz64 \
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
