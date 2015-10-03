@@ -10,6 +10,7 @@ TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://syslinux.zytor.com/"
 WGET_URL="https://www.kernel.org/pub/linux/utils/boot/syslinux/$TARBALL"
 CONFIG_FILES="/boot/isolinux"
+TAGS="boot"
 
 DEPENDS="ipxe memtest"
 BUILD_DEPENDS="wget kbd-base perl nasm dev86 lzma mingw32-gcc upx posixovl \
@@ -18,49 +19,49 @@ util-linux-uuid-dev advancecomp libidn"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 compile_rules()
 {
-    rm -f $src/core/isolinux.bin
-    patch -p 0 < $stuff/extra/iso9660.u
-    patch -p 0 < $stuff/extra/readconfig.u
-    #patch -p 0 < $stuff/extra/fs.u
-    cp $stuff/tools/isohybrid.sh .
-    cp $stuff/extra/md5sum.c com32/modules
-    grep -q md5sum.c32 com32/modules/Makefile ||
-	sed -i 's/ifcpu64.c32/ifcpu64.c32 md5sum.c32/' com32/modules/Makefile
-    export LDFLAGS=""
-    make clean
-    echo "make all: LDFLAGS=$LDFLAGS"
-    make all 2>&1 | sed 's/NO_WERROR=1/NO_Werror=1/;/syslinux64.exe/d'
-    echo "make core: LDFLAGS=$LDFLAGS"
-    make -C core
-    make -C com32
-    ./isohybrid.sh --build
-    sed -i 's/loadkeys -m/loadkeys -u -m/' utils/keytab-lilo	# for ru.kbd
-    for i in /usr/share/kbd/keymaps/i386/*/*.map.gz; do
-        [ "$(basename $(dirname $i))" = "include" ] && continue
-        j=$(basename $i)
-        j=${j%.map.gz}.kbd
-        utils/keytab-lilo /usr/share/kbd/keymaps/i386/qwerty/us.map.gz $i > $j
-    done
-    cp -a $stuff/iso2exe .
-    make -C iso2exe
+	rm -f $src/core/isolinux.bin
+	patch -p 0 < $stuff/extra/iso9660.u
+	patch -p 0 < $stuff/extra/readconfig.u
+	#patch -p 0 < $stuff/extra/fs.u
+	cp $stuff/tools/isohybrid.sh .
+	cp $stuff/extra/md5sum.c com32/modules
+	grep -q md5sum.c32 com32/modules/Makefile ||
+		sed -i 's/ifcpu64.c32/ifcpu64.c32 md5sum.c32/' com32/modules/Makefile
+	export LDFLAGS=''
+	make clean
+	echo "make all: LDFLAGS=$LDFLAGS"
+	make all 2>&1 | sed 's/NO_WERROR=1/NO_Werror=1/;/syslinux64.exe/d'
+	echo "make core: LDFLAGS=$LDFLAGS"
+	make -C core
+	make -C com32
+	./isohybrid.sh --build
+	sed -i 's/loadkeys -m/loadkeys -u -m/' utils/keytab-lilo	# for ru.kbd
+	for i in /usr/share/kbd/keymaps/i386/*/*.map.gz; do
+		[ "$(basename $(dirname $i))" == 'include' ] && continue
+		j=$(basename $i)
+		j=${j%.map.gz}.kbd
+		utils/keytab-lilo /usr/share/kbd/keymaps/i386/qwerty/us.map.gz $i > $j
+	done
+	cp -a $stuff/iso2exe .
+	make -C iso2exe
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/boot/isolinux
-    cp -a $src/core/isolinux.bin $fs/boot/isolinux
-    cp -a $src/com32/modules/md5sum.c32 $fs/boot/isolinux/c32box.c32
-    cp -a $src/com32/menu/vesamenu.c32 $fs/boot/isolinux
-    # $stuff/isolinux.msg is the old way the have a splash image.
-    cp $stuff/*.cfg $stuff/*.txt $stuff/help.* $stuff/opts.* $fs/boot/isolinux
-    rm -f $fs/boot/isolinux/common.cfg $fs/boot/isolinux/default.cfg
-    rm -f $fs/boot/isolinux/display.txt
-    ( cd $src ; ls *.kbd | cpio -o -H newc ) > $fs/boot/isolinux/cpio.kbd
-    while read label kbd loc menu; do
-        for i in ${kbd/,/ }; do
-	        [ -e $src/$i.kbd ] || continue
-		cat >> $fs/boot/isolinux/i18n.cfg <<EOT
+	mkdir -p $fs/boot/isolinux
+	cp -a $src/core/isolinux.bin $fs/boot/isolinux
+	cp -a $src/com32/modules/md5sum.c32 $fs/boot/isolinux/c32box.c32
+	cp -a $src/com32/menu/vesamenu.c32 $fs/boot/isolinux
+	# $stuff/isolinux.msg is the old way the have a splash image.
+	cp $stuff/*.cfg $stuff/*.txt $stuff/help.* $stuff/opts.* $fs/boot/isolinux
+	rm -f $fs/boot/isolinux/common.cfg $fs/boot/isolinux/default.cfg
+	rm -f $fs/boot/isolinux/display.txt
+	( cd $src ; ls *.kbd | cpio -o -H newc ) > $fs/boot/isolinux/cpio.kbd
+	while read label kbd loc menu; do
+		for i in ${kbd/,/ }; do
+			[ -e $src/$i.kbd ] || continue
+			cat >> $fs/boot/isolinux/i18n.cfg <<EOT
 
 # ${kbd/,/.kbd or }.kbd keyboard
 LABEL $label
@@ -68,9 +69,9 @@ LABEL $label
 	com32 c32box.c32
 	append kbdmap cpio.kbd $i.kbd lang=$loc kmap=${kbd#*,}
 EOT
-		break
-	done
-    done <<EOT
+			break
+		done
+	done <<EOT
 br		br-abnt2	pt_BR	Brasil (abnt2)
 br_ac\ brac	us-acentos	pt_BR	Brasil (us-acentos)
 cz		cz-lat2		cs_CZ	Cesky
@@ -104,24 +105,25 @@ fi		fi		fi_FI	Suomi
 se		se-lat6		sv_SE	Svenska
 tr		trq		tr_TR	Turkce
 EOT
-    cat >> $fs/boot/isolinux/i18n.cfg <<EOT
+
+	cat >> $fs/boot/isolinux/i18n.cfg <<EOT
 
 LABEL exit
 	MENU LABEL Back to main menu
 MENU EXIT
 MENU END
 EOT
-    sed -i 's/^LABEL us$/&\n	MENU DEFAULT/' $fs/boot/isolinux/i18n.cfg
-    for kbd in $(cd $src ; ls *.kbd); do
-    	[ -s $src/$kbd ] || echo "Invalid file $kbd"
-    	grep -q " $kbd " $fs/boot/isolinux/i18n.cfg && continue
-    	echo "Missing: file $kbd"
-    done
-    chown root.root $fs/boot/isolinux/*
+	sed -i 's/^LABEL us$/&\n	MENU DEFAULT/' $fs/boot/isolinux/i18n.cfg
+	for kbd in $(cd $src ; ls *.kbd); do
+		[ -s $src/$kbd ] || echo "Invalid file $kbd"
+		grep -q " $kbd " $fs/boot/isolinux/i18n.cfg && continue
+		echo "Missing: file $kbd"
+	done
+	chown root.root $fs/boot/isolinux/*
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-    sed -i "s/XXXXXXXX/$(date +%Y%m%d)/" $1/boot/isolinux/isolinux.cfg
+	sed -i "s/XXXXXXXX/$(date +%Y%m%d)/" $1/boot/isolinux/isolinux.cfg
 }
