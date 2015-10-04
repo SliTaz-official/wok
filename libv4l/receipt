@@ -8,7 +8,7 @@ LICENSE="GPL2"
 SHORT_DESC="Userspace library for Video 4 Linux (1 and 2)"
 WEB_SITE="http://freshmeat.net/projects/libv4l"
 SOURCE="v4l-utils"
-TARBALL="${SOURCE}-${VERSION}.tar.bz2"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
 WGET_URL="http://linuxtv.org/downloads/v4l-utils/$TARBALL"
 TAGS="webcam video"
 
@@ -18,11 +18,10 @@ BUILD_DEPENDS="jpeg-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	make &&
-	make install PREFIX="/usr" DESTDIR="$DESTDIR" 
+	make install PREFIX="/usr" DESTDIR="$DESTDIR"
 }
-	
+
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
@@ -33,10 +32,14 @@ genpkg_rules()
 
 post_install()
 {
-  echo "export LD_PRELOAD=/usr/lib/libv4l/v4l1compat.so" >> $1/etc/profile
+	lib='/usr/lib/libv4l/v4l1compat.so'
+	if [ -e "$1$lib" ]; then
+		grep -q "^export LD_PRELOAD=$lib$"   "$1/etc/profile" ||
+		echo     "export LD_PRELOAD=$lib" >> "$1/etc/profile"
+	fi
 }
 
 post_remove()
 {
-  sed -i 's/export LD_PRELOAD=\/usr\/lib\/libv4l\/v4l1compat.so/ /' $1/etc/profile	
+	sed -i '/export LD_PRELOAD=\/usr\/lib\/libv4l\/v4l1compat.so/d' "$1/etc/profile"
 }

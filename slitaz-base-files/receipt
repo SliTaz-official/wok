@@ -102,24 +102,25 @@ genpkg_rules()
 #
 pre_install()
 {
-	local root="$1"
-	cp -a $root/etc $root/tmp/etc.bak 2>/dev/null
+	cp -a "$1/etc" "$1/tmp/etc.bak" 2>/dev/null
+	[ -x "$1/usr/bin/sudo" ] && mv "$1/usr/bin/sudo" "$1/usr/bin/sudo.orig"
 	# Remove old /var/run symlink
-	rm -f $root/var/run
+	rm -f "$1/var/run"
 }
 
 post_install()
 {
-	local root="$1"
-	cp -a $root/tmp/etc.bak/* $root/etc 2>/dev/null
-	rm -rf $root/tmp/etc.bak
+	cp -a "$1/tmp/etc.bak"/* "$1/etc" 2>/dev/null
+	rm -r "$1/tmp/etc.bak"
+
+	[ -x "$1/usr/bin/sudo.orig" ] && mv -f "$1/usr/bin/sudo.orig" "$1/usr/bin/sudo"
 
 	# Reset permission.
-	chmod 640 $root/etc/shadow
-	chmod 640 $root/etc/gshadow
+	chmod 640 "$1/etc/shadow"
+	chmod 640 "$1/etc/gshadow"
 
-	if ! grep -q audio $root/etc/group; then
-		chroot $root/ /bin/addgroup -g 20 audio
+	if ! grep -q audio "$1/etc/group"; then
+		chroot "$1/" /bin/addgroup -g 20 audio
 	fi
 }
 
