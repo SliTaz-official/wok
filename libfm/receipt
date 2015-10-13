@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libfm"
-VERSION="7daeaf3"
+VERSION="87217a5"
 CATEGORY="system-tools"
 SHORT_DESC="File management support (core library)"
 MAINTAINER="pankso@slitaz.org"
@@ -10,6 +10,8 @@ TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://pcmanfm.sourceforge.net"
 #WGET_URL="$SF_MIRROR/pcmanfm/files/$TARBALL"
 WGET_URL="http://git.lxde.org/gitweb/?p=lxde/libfm.git;a=snapshot;h=$VERSION;sf=txz"
+EXTRA_SOURCE_FILES="$PACKAGE-reverse_patch.u" # Fix segfaults
+WGET_URL2="https://github.com/lxde/libfm/commit/113ea3c.diff"
 HOST_ARCH="i486 arm"
 GENERIC_MENUS="no"
 
@@ -17,15 +19,18 @@ SUGGESTED="gvfs"
 DEPENDS="glib glibc-base libffi libgio menu-cache pcre zlib"
 BUILD_DEPENDS="gtk+-dev dbus-glib-dev dbus-dev startup-notification-dev \
 libxcb-dev xcb-util-dev menu-cache-dev expat-dev libgio-dev \
-shared-mime-info-dev gtk-doc libtool"
+shared-mime-info-dev gtk-doc libtool automake"
 
 case "$ARCH" in
-	i?86) BUILD_DEPENDS="$BUILD_DEPENDS intltool gamin-dev vala"
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS intltool vala"
 esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] || \
+		wget -O $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES $WGET_URL2
+	patch -p1 -R -i $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES
 	./autogen.sh
 	./configure \
 		--sysconfdir=/etc \
@@ -42,7 +47,7 @@ genpkg_rules()
 	cp -a $install/usr/lib/libfm-extra.so* $fs/usr/lib
 	cp -a $install/usr/lib/libfm/modules/vfs* $fs/usr/lib/libfm/modules
 	cp -a $install/usr/share/libfm/*.list $fs/usr/share/libfm
-	sed "s|application/deb;|&application/x-xz-compressed-tar;|" -i \
+	sed "s|application/deb;$|&application/x-xz-compressed-tar;|" -i \
 		$fs/usr/share/libfm/archivers.list
 	# define terminal
 	sed -i 2i\ 'terminal=terminal' $fs/etc/xdg/libfm/libfm.conf
