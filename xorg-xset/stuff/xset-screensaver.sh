@@ -1,8 +1,12 @@
 #!/bin/sh
 #
+[ -z $(which yad) ] && exec yad && exit 0
+
 case $(id -u) in
 	0) path=/etc/xdg ;;
-	*) path=${XDG_CONFIG_HOME:-$HOME/.config} ;;
+	*) path=${XDG_CONFIG_HOME:-$HOME/.config}
+		[ -f "$path/autostart" ] && mv $path/autostart $path/autostart.bak
+		[ -d "$path/autostart" ] || mkdir -p $path/autostart ;;
 esac
 
 AutostartFile="$path/autostart/xset-screensaver.desktop"
@@ -17,12 +21,15 @@ exec_d()
 
 case $LC_ALL in
 	C|POSIX|en*) lang='=' ;;
-	*) lang='\['${LC_ALL%_*} ;;
+	*) lang='\['${LC_ALL%_*}
+	grep -q '\['${LC_ALL%_*} $launcher || lang='=' ;;
 esac
 
-val=$(yad --title="$(cat $launcher | grep Name$lang | cut -d= -f2)" \
-	--scale --max-value=18000 --mark=1h.:3600 \
-	--mark="$(cat $launcher | grep Comment$lang | cut -d= -f2)":0 \
+
+
+val=$(yad --title="$(cat $launcher | grep Name$lang | cut -d'=' -f2)" \
+	--scale --max-value=18000 --mark="1h.":3600 --buttons-layout=spread \
+	--mark="$(cat $launcher | grep Comment$lang | cut -d'=' -f2 | cut -d',' -f1)":0 \
 	--mark="120min.(2h.)":7200 --mark="180min.(3h.)":10800 \
 	--mark="240min.(4h.)":14400 --mark="300min.(5h.)":18000 \
 	--page=1800 --step=60 --geometry=630x42+10+100 \
