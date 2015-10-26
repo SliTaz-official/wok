@@ -1,26 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="poedit"
-VERSION="1.4.6.1"
+VERSION="1.8.6"
 CATEGORY="development"
-SHORT_DESC="Editor for i18n po files"
+SHORT_DESC="A cross-platform gettext catalogs editing tool"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
-WEB_SITE="http://www.poedit.net/"
+WEB_SITE="http://poedit.net/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WGET_URL="https://github.com/vslavik/$PACKAGE/archive/v$VERSION-oss.tar.gz"
 
 DEPENDS="xorg wxWidgets pango gettext-base libdb xorg-libXdamage \
-xorg-libXxf86vm gtkspell"
-BUILD_DEPENDS="wxWidgets-dev gettext"
+xorg-libXxf86vm gtkspell lucene++ libboost-chrono"
+BUILD_DEPENDS="automake gettext asciidoc libxslt xmlto util-linux-getopt \
+docbook-xsl gcc49 gcc-lib-base wxWidgets-dev icu-dev gtkspell-dev \
+lucene++-dev db-dev libdb libdb-cxx expat-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	export CXX=/usr/bin/i486-slitaz-linux-g++-49
+	#export CXXFLAGS="$CFLAGS -std=gnu++11"
+	./bootstrap &&
 	./configure \
 		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+		--sysconfdir=/etc \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -29,9 +33,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/pixmaps $fs/usr/share
-	cp -a $install/usr/share/poedit $fs/usr/share
+	cp -a $install/* $fs
+	rm -r $fs/usr/share/locale $fs/usr/share/man
 }
 
