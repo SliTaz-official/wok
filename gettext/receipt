@@ -13,7 +13,7 @@ HOST_ARCH="i486 arm"
 
 # Why deps on glib-dev ??? And glib build depends on gettext anyway...
 DEPENDS="gettext-base libgomp acl-dev gcc-lib-base glib-dev libxml2-dev m4 \
-ncurses"
+ncurses gettext-tools"
 BUILD_DEPENDS="acl attr-dev glib-dev libxml2-dev ncurses-dev"
 
 # Handle cross compilation. Glibc-locale are installed in cross chroot.
@@ -24,7 +24,6 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure $CONFIGURE_ARGS &&
 	make && make install
 }
@@ -38,9 +37,11 @@ genpkg_rules()
 	cp -a $install/usr/include $fs/usr
 	cp -a $install/usr/share/aclocal $fs/usr/share
 	cp -a $install/usr/share/gettext $fs/usr/share
-	# Remove gettext-base files.
-	rm $fs/usr/bin/gettext
-	rm $fs/usr/bin/gettext.sh
-	rm $fs/usr/bin/envsubst
-	rm $fs/usr/bin/ngettext
+
+	# Remove "gettext-base" and "gettext-tools" files.
+	for bin in gettext gettext.sh envsubst ngettext msgfmt msgmerge xgettext; do
+		rm $fs/usr/bin/$bin
+	done
+	rm $fs/usr/lib/libgettextlib*.so*
+	rm $fs/usr/lib/libgettextsrc*.so*
 }
