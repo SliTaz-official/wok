@@ -12,14 +12,13 @@ WEB_SITE="http://boinc.berkeley.edu/"
 WGET_URL="svn|http://boinc.berkeley.edu/svn/tags/boinc_core_release_${SVN_TAG}"
 
 # The init script requires bash.
-DEPENDS="openssl libcurl wxWidgets libnotify bash"
+DEPENDS="openssl libcurl wxWidgets28 libnotify bash"
 BUILD_DEPENDS="subversion openssl-dev autoconf automake curl-dev libidn-dev \
-wxWidgets-dev libnotify-dev sqlite-dev file"
+wxWidgets28-dev libnotify-dev sqlite-dev file"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's/AC_PROG_CPP/&\nAC_PROG_OBJCXX/' configure.ac
 	automake --add-missing
 	./_autosetup
@@ -50,20 +49,21 @@ genpkg_rules()
 
 post_install()
 {
+	echo
 	# Check if boinc user already exists
-	if [ -n "`grep ^${BOINCUSER}: $1/etc/passwd`" ] ; then                       
+	if grep -q ^${BOINCUSER}: $1/etc/passwd; then
 		chroot "$1/" adduser -g "BOINC User" -h /var/lib/boinc -s /bin/bash -S -H -D boinc
 	else
 		# In case boinc was previously installed:
 		chroot "$1/" chown -R boinc /var/lib/boinc
-        fi  
-                                        
-	echo -n "Start the boinc client with \"# /etc/init.d/boinc-client start\""
-	echo ""
+	fi
+
+	echo 'Start the boinc client with "# /etc/init.d/boinc-client start"'
 }
 
 post_remove()
 {
+	echo
 	echo -n "Delete user boinc and /var/lib/boinc (yes/No) ? : "
 	read -t 30 answer
 	if [ "$answer" == "yes" ]; then

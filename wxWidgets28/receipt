@@ -1,0 +1,54 @@
+# SliTaz package receipt.
+
+PACKAGE="wxWidgets28"
+VERSION="2.8.12.1"
+CATEGORY="x-window"
+SHORT_DESC="Cross-platform GUI Library (oldstable version)"
+MAINTAINER="pankso@slitaz.org"
+LICENSE="LGPL"
+TARBALL="wxPython-src-$VERSION.tar.bz2"
+WEB_SITE="http://www.wxwidgets.org/"
+WGET_URL="$SF_MIRROR/wxwindows/$TARBALL"
+
+DEPENDS="glib glibc-base gcc-lib-base libgio pkg-config expat zlib atk \
+gtk+ cairo fontconfig freetype jpeg libpng tiff pango pixman util-linux-uuid \
+xorg-libSM xorg-libICE xorg-libX11 xorg-libXau xorg-libXcomposite \
+xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext libglu-mesa \
+xorg-libXfixes xorg-libXinerama xorg-libXrender xorg-libXxf86vm mesa"
+BUILD_DEPENDS="gtk+-dev expat-dev zlib-dev \
+xorg-dev xorg-xineramaproto libglu-mesa mesa-dev libpng-dev tiff-dev \
+jpeg-dev xorg-libXpm-dev patch"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|/opt/wx/current/bin/||' wxPython/wx/build/build_options.py
+	./configure \
+		--enable-shared \
+		--enable-unicode \
+		--with-opengl \
+		--with-libpng=sys \
+		--with-libxpm=sys \
+		--with-libjpeg=sys \
+		--with-libtiff=sys \
+		--enable-graphics_ctx \
+		--enable-unicode \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install &&
+	cd $src/contrib &&
+	{
+	make &&
+	make DESTDIR=$DESTDIR  install
+	} 2>&1 | sed 's/h: No such/h: no such/'
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	# Copy libs and contrib libs.
+	cp -a $install/usr/lib/ $fs/usr/
+	# Remove devel files.
+	rm -rf $fs/usr/lib/wx/include
+}
