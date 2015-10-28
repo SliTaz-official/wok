@@ -27,19 +27,27 @@ compile_rules()
 		--without-gnome \
 		$CONFIGURE_ARGS &&
 	make && make install
+
+	sed -i 's|zz-application/zz-winassoc-xls;||' \
+		$install/usr/share/applications/gnumeric.desktop
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/$PACKAGE $fs/usr/lib
-	rm -rf $fs/usr/lib/$PACKAGE/$VERSION/include
-	rm -rf $fs/usr/lib/$PACKAGE/$VERSION/plugins/*/*.la
 
-	cp -a $install/usr/share/$PACKAGE $fs/usr/share
-	cp -a $install/usr/share/pixmaps $fs/usr/share
+	cp -a $install/usr/bin          $fs/usr
+
+	cp -a $install/usr/lib/*.so*    $fs/usr/lib
+	cp -a $install/usr/lib/gnumeric $fs/usr/lib
+	find $fs/usr/lib -name '*.la' -delete
+
+	cp -a $install/usr/share/applications $fs/usr/share
+	cp -a $install/usr/share/glib-2.0     $fs/usr/share
+	cp -a $install/usr/share/gnumeric     $fs/usr/share
+	cp -a $install/usr/share/icons        $fs/usr/share
+	rm -r $fs/usr/share/icons/hicolor/scalable
+	cp -a $install/usr/share/pixmaps      $fs/usr/share
+	find $fs/usr/share/pixmaps -name '*.ico' -delete
 }
-

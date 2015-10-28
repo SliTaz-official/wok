@@ -1,0 +1,43 @@
+memtester is a utility for testing the memory subsystem in a computer to
+determine if it is faulty.
+
+Usage is simple for the basic case. As root, run the resulting memtester binary
+with the following commandline:
+
+    memtester <memory> [runs]
+
+where `<memory>` is the amount of memory to test, in megabytes by default. You
+can optionally include a suffix of B, K, M, or G (for bytes, kilobytes,
+megabytes, and gigabytes respectively).
+
+`[runs]` is an optional limit to the number of runs through all tests.
+
+An optional `-p physaddr` argument available to cause memtester to test memory
+starting at a specific physical memory address (by mmap(2)ing a device file
+representing physical memory (/dev/mem by default, but can be specified with the
+`-d device` option) starting at an offset of `physaddr`, which is given in hex).
+
+Note: the memory specified will be overwritten during testing; you therefore
+*cannot* specify a region belonging to the kernel or other applications without
+causing the other process or entire system to crash). If you use this option, it
+is up to you to ensure the specified memory is safe to overwrite. That makes
+this option mostly of use for testing memory-mapped I/O devices and similar.
+Thanks to Allon Stern for the idea behind this feature. For example, if you want
+to test a bank of RAM or device which is 64kbytes in size and starts at physical
+address 0x0C0000 through the normal /dev/mem, you would run memtester as
+follows:
+
+    memtester -p 0x0c0000 64k [runs]
+
+If instead that device presented its memory as /dev/foodev at offset 0, you
+would run memtester instead as follows:
+
+    memtester -p 0 -d /dev/foodev 64k [runs]
+
+Note that the `-d` option can only be specified in combination with `-p`.
+
+memtester must run as user root so that it can lock its pages into memory. If
+memtester fails to lock its pages, it will issue a warning and continue
+regardless. Testing without the memory being locked is generally very slow and
+not particularly accurate, as you'll end up testing the same memory over and
+over as the system swaps the larger region.
