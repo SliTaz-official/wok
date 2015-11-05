@@ -33,7 +33,7 @@ case "$(GET)" in
 	</style>
 	<script type="text/javascript">
 	function inst(actpkg) {
-		document.getElementById("installer").src = "http://localhost:82/pkgs.cgi?do=" + actpkg
+		document.getElementById("installer").src = "http://127.0.0.1:82/user/pkgs.cgi?do=" + actpkg
 	}
 	function on_load(iframe) {
 		if (iframe.src !== "http://localhost/cgi-bin/xarchiver.cgi") {location.reload(false)}
@@ -63,7 +63,7 @@ EOT
 			else
 				img=not; act=Install; desc="$(_ Install)"
 			fi
-			echo "<tr><td><img src=\"?img=$img\" /> $pkg</td></td><td><button type=\"submit\" onclick='inst(\"${act}&${pkg2}\")'>$desc</button></td></tr>"
+			echo "<tr><td><img src=\"?img=$img\" /> $pkg</td></td><td><button type=\"submit\" onclick='inst(\"${act}&pkg=${pkg2}\")'>$desc</button></td></tr>"
 		done
 		cat << EOT
 	</tbody>

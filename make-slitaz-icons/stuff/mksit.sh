@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2015
 # (Started in November 2014)
 
-VERSION="150506"
+VERSION="151105"
 
 . /lib/libtaz.sh
 
@@ -103,7 +103,7 @@ c() {
 # Maybe copy stock icon
 
 s() {
-	if [ "$BASED_ON" != "Faenza" ]; then
+	if [ "${BASED_ON%%-*}" != "Faenza" ]; then
 		c $@
 	else
 		echo ". $1"
