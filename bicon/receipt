@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="bicon"
+VERSION="0.5"
+CATEGORY="localization"
+SHORT_DESC="BiCon - The Bidirectional Console"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="PSF BSD PublicDomain LGPL2.1"
+WEB_SITE="https://github.com/behdad/bicon"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
+
+DEPENDS="kbd fribidi xorg-setxkbmap xorg-xkbcomp"
+BUILD_DEPENDS="autoconf automake libtool fribidi-dev kbd"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh &&
+	./configure $CONFIGURE_ARGS &&
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	rm -r $fs/usr/include $fs/usr/lib/bicon/*.*a $fs/usr/lib/pkgconfig
+
+	# bash -> sh
+	sed -i 's|bash|sh|; s|function ||' $fs/usr/bin/bicon
+}
