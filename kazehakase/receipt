@@ -1,0 +1,57 @@
+# SliTaz package receipt.
+
+PACKAGE="kazehakase"
+VERSION="0.5.8"
+CATEGORY="network"
+SHORT_DESC="GTK+ web browser using Webkit rendering engine"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL2"
+WEB_SITE="http://kazehakase.sourceforge.jp/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://iij.dl.osdn.jp/kazehakase/43802/$TARBALL"
+PATCH_URL="http://http.debian.net/debian/pool/main/k/kazehakase/kazehakase_0.5.8-4.diff.gz"
+TAGS="web-browser"
+
+DEPENDS="libwebkit"
+BUILD_DEPENDS="libtool automake autoconf \
+gtk+-dev dbus-glib-dev libwebkit-dev gnutls-dev xorg-libSM-dev zlib-dev \
+util-linux-uuid-dev libxslt-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	PATCH_GZ="$(basename "$PATCH_URL")"
+	[ -e "$SRC/$PATCH_GZ" ] || wget -O "$SRC/$PATCH_GZ" "$PATCH_URL"
+	cp "$SRC/$PATCH_GZ" $src
+	gzip -d $PATCH_GZ
+	patch -p1 -i ${PATCH_GZ%.gz}
+	for i in $(cat $src/debian/patches/00list); do
+		patch -p1 -i $src/debian/patches/$i.dpatch
+	done
+
+	for i in $stuff/*.patch; do
+		patch -p1 -i $i
+	done
+
+	for i in codeset gettext glibc21 iconv isc-posix lcmessage progtest; do
+		[ -e "/usr/share/aclocal/$i.m4" ] &&
+		cp /usr/share/aclocal/$i.m4 $src/macros
+	done
+
+	cp -f /usr/share/automake-*/missing .
+	sed -i 's|G_CONST_RETURN|const|' $src/libegg/pixbufthumbnail/egg-pixbuf-thumbnail.h
+
+	./autogen.sh
+
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		$CONFIGURE_ARGS && make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	find $fs -name '*.la' -delete
+}

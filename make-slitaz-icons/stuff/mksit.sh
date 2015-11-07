@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2015
 # (Started in November 2014)
 
-VERSION="151105"
+VERSION="151106"
 
 . /lib/libtaz.sh
 
@@ -337,7 +337,7 @@ s zoom-out					# gtk_stock 16,24
 #---------------------------
 # PCManFM panel and menu
 c tab-new
-c view-choose
+c view-choose preferences-desktop
 c view-filter
 c view-sidetree
 
@@ -345,6 +345,7 @@ c gtk-execute			# LXPanel menu: run
 c system-shutdown-panel-restart	# LXPanel menu: logout
 c gtk-close			# Yad close button
 c gtk-go-forward gtk-go-forward-ltr # tazbox tz Yad dialog
+c bookmark-new		# Midori
 
 
 ############################
@@ -673,6 +674,7 @@ c text-x-python
 c text-x-readme
 c text-x-tazpkg-receipt text-x-script
 
+c application-x-shockwave-flash			# Midori
 
 
 ########################

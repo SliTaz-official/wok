@@ -1,0 +1,147 @@
+--- kazehakase-0.5.8-svn3873_trunk/configure.ac.ruby19	2010-05-04 00:38:45.000000000 +0900
++++ kazehakase-0.5.8-svn3873_trunk/configure.ac	2012-04-04 14:00:45.795119865 +0900
+@@ -421,14 +421,21 @@
+   rbconfig="$RUBY -rrbconfig -e "
+ 
+   changequote(<<, >>)
+-  for var_name in archdir sitearchdir CFLAGS LIBRUBYARG LIBS libdir; do
++  for var_name in archdir sitearchdir vendorarchdir CFLAGS LIBRUBYARG LIBS libdir; do
+     rbconfig_tmp=`$rbconfig "print Config::CONFIG['$var_name']"`
+     eval "rbconfig_$var_name=\"$rbconfig_tmp\""
+   done
+   changequote([, ])
+ 
++  changequote(<<, >>)
++  RUBY_CONFIGH_DIR=`$rbconfig "print Config::CONFIG['includedir']"`
++  RUBY_CONFIGH_DIR=${RUBY_CONFIGH_DIR}/`$rbconfig "print Config::CONFIG['arch']"`
++  changequote([, ])
++
+   RUBY_CFLAGS="$RUBY_CFLAGS -I$rbconfig_archdir "
+   RUBY_CFLAGS="$RUBY_CFLAGS -I$rbconfig_sitearchdir "
++  RUBY_CFLAGS="$RUBY_CFLAGS -I$rbconfig_vendorarchdir "
++  RUBY_CFLAGS="$RUBY_CFLAGS -I$RUBY_CONFIGH_DIR"
+   RUBY_CFLAGS="$RUBY_CFLAGS $rbconfig_CFLAGS "
+   RUBY_LIBS="$rbconfig_LIBRUBYARG $rbconfig_LIBS"
+   RUBY_LDFLAGS="-L$rbconfig_libdir"
+@@ -602,8 +609,8 @@
+ GENHTML_OPTIONS="--title 'Kazehakase Code Coverage'"
+ 
+ KAZEHAKASE_CFLAGS="$GTK_CFLAGS $LIBGNUTLS_CFLAGS $GIO_CFLAGS $DBUS_GLIB_CFLAGS"
+-KAZEHAKASE_CFLAGS="$KAZEHAKASE_CFLAGS -DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED"
+-KAZEHAKASE_CFLAGS="$KAZEHAKASE_CFLAGS -DG_DISABLE_DEPRECATED"
++KAZEHAKASE_CFLAGS="$KAZEHAKASE_CFLAGS -DGDK_NOTDISABLE_DEPRECATED -DGTK_NOTDISABLE_DEPRECATED"
++KAZEHAKASE_CFLAGS="$KAZEHAKASE_CFLAGS -DG_NOTDISABLE_DEPRECATED"
+ KAZEHAKASE_CFLAGS="$KAZEHAKASE_CFLAGS -DSYSDATADIR=\\\"\"\$(datadir)\"\\\""
+ KAZEHAKASE_CFLAGS="$KAZEHAKASE_CFLAGS -DLOCALEDIR=\\\"\"\$(localedir)\"\\\""
+ KAZEHAKASE_CFLAGS="$KAZEHAKASE_CFLAGS -DKZ_DATADIR=\\\"\"\$(datadir)/\$(PACKAGE)\"\\\""
+--- kazehakase-0.5.8-svn3873_trunk/ext/ruby/kz-rb-embed.c.ruby19	2009-09-27 22:18:07.000000000 +0900
++++ kazehakase-0.5.8-svn3873_trunk/ext/ruby/kz-rb-embed.c	2012-04-04 14:00:45.605121458 +0900
+@@ -112,7 +112,7 @@
+ rb_kz_embed_find(VALUE self, VALUE keyword, VALUE backward)
+ {
+     gboolean find;
+-    find = kz_embed_find(_SELF(self), STR2CSTR(keyword), RVAL2CBOOL(backward));
++    find = kz_embed_find(_SELF(self), StringValuePtr(keyword), RVAL2CBOOL(backward));
+     return CBOOL2RVAL(find);
+ }
+ 
+@@ -120,7 +120,7 @@
+ rb_kz_embed_incremental_search(VALUE self, VALUE keyword, VALUE backward)
+ {
+     gboolean search;
+-    search = kz_embed_incremental_search(_SELF(self), STR2CSTR(keyword),
++    search = kz_embed_incremental_search(_SELF(self), StringValuePtr(keyword),
+                                          RVAL2CBOOL(backward));
+     return CBOOL2RVAL(search);
+ }
+@@ -330,7 +330,7 @@
+ static VALUE
+ rb_kz_embed_set_encoding(VALUE self, VALUE encoding)
+ {
+-    kz_embed_set_encoding(_SELF(self), STR2CSTR(encoding));
++    kz_embed_set_encoding(_SELF(self), StringValuePtr(encoding));
+     return self;
+ }
+ 
+@@ -384,7 +384,7 @@
+ rb_kz_embed_save_with_content(VALUE self, VALUE rawfilename)
+ {
+     gboolean save;
+-    save = kz_embed_save_with_content(_SELF(self), STR2CSTR(rawfilename));
++    save = kz_embed_save_with_content(_SELF(self), StringValuePtr(rawfilename));
+     return RVAL2CBOOL(save);
+ }
+ 
+--- kazehakase-0.5.8-svn3873_trunk/ext/ruby/kz-rb-sidebar.c.ruby19	2009-01-28 04:25:13.000000000 +0900
++++ kazehakase-0.5.8-svn3873_trunk/ext/ruby/kz-rb-sidebar.c	2012-04-04 14:00:45.605121458 +0900
+@@ -69,16 +69,16 @@
+ 
+     entries = rb_funcall(mKzSidebarFactory, rb_intern("entries"), 0);
+ 
+-    len = RARRAY(entries)->len;
++    len = RARRAY_LEN(entries);
+     for (i = 0; i < len; i++) {
+         VALUE entry_info;
+         KzSidebarEntry *entry;
+ 
+-        entry_info = RARRAY(entries)->ptr[i];
++        entry_info = (RARRAY_PTR(entries))[i];
+         entry = g_new0(KzSidebarEntry, 1);
+-        entry->priority_hint = NUM2INT(RARRAY(entry_info)->ptr[0]);
+-        entry->label = RVAL2CSTR(RARRAY(entry_info)->ptr[1]);
+-        entry->icon = RVAL2CSTR2(RARRAY(entry_info)->ptr[2]);
++        entry->priority_hint = NUM2INT((RARRAY_PTR(entry_info))[0]);
++        entry->label = RVAL2CSTR((RARRAY_PTR(entry_info))[1]);
++        entry->icon = RVAL2CSTR2((RARRAY_PTR(entry_info))[2]);
+         entry->create = rb_kz_sidebar_entry_create;
+         kz_sidebar_append_entry(entry);
+     }
+--- kazehakase-0.5.8-svn3873_trunk/ext/ruby/kz-rb-web.c.ruby19	2009-09-27 22:18:07.000000000 +0900
++++ kazehakase-0.5.8-svn3873_trunk/ext/ruby/kz-rb-web.c	2012-04-04 14:05:41.973991342 +0900
+@@ -161,7 +161,7 @@
+ rb_kz_web_find(VALUE self, VALUE keyword, VALUE backward)
+ {
+     gboolean find;
+-    find = kz_web_find(_SELF(self), STR2CSTR(keyword), RVAL2CBOOL(backward));
++    find = kz_web_find(_SELF(self), StringValuePtr(keyword), RVAL2CBOOL(backward));
+     return CBOOL2RVAL(find);
+ }
+ 
+@@ -169,7 +169,7 @@
+ rb_kz_web_incremental_search(VALUE self, VALUE keyword, VALUE backward)
+ {
+     gboolean search;
+-    search = kz_web_incremental_search(_SELF(self), STR2CSTR(keyword),
++    search = kz_web_incremental_search(_SELF(self), StringValuePtr(keyword),
+                                          RVAL2CBOOL(backward));
+     return CBOOL2RVAL(search);
+ }
+@@ -409,7 +409,7 @@
+ static VALUE
+ rb_kz_web_set_encoding(VALUE self, VALUE encoding)
+ {
+-    kz_web_set_encoding(_SELF(self), STR2CSTR(encoding));
++    kz_web_set_encoding(_SELF(self), StringValuePtr(encoding));
+     return self;
+ }
+ 
+@@ -463,7 +463,7 @@
+ rb_kz_web_save_with_content(VALUE self, VALUE rawfilename)
+ {
+     gboolean save;
+-    save = kz_web_save_with_content(_SELF(self), STR2CSTR(rawfilename));
++    save = kz_web_save_with_content(_SELF(self), StringValuePtr(rawfilename));
+     return RVAL2CBOOL(save);
+ }
+ 
+--- kazehakase-0.5.8-svn3873_trunk/ext/ruby/kz-rb-window.c.ruby19	2009-09-27 22:18:07.000000000 +0900
++++ kazehakase-0.5.8-svn3873_trunk/ext/ruby/kz-rb-window.c	2012-04-04 14:00:45.605121458 +0900
+@@ -44,7 +44,7 @@
+ static VALUE
+ rb_kz_window_set_default(VALUE self, VALUE window)
+ {
+-    rb_cvar_set(self, id_default, window, Qfalse);
++    rb_cvar_set(self, id_default, window);
+     return Qnil;
+ }
+ 
