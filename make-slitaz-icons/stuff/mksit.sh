@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2015
 # (Started in November 2014)
 
-VERSION="151106"
+VERSION="151108"
 
 . /lib/libtaz.sh
 
@@ -249,7 +249,7 @@ s document-revert			# gtk_stock 16,24
 s document-save				# gtk_stock 16,24
 s document-save-as document-save		# gtk_stock 16,24		# elementary hack
 c document-send document-export									# elementary hack
-s edit-clear remove						# gtk_stock 16,24		# elementary hack
+c edit-clear remove						# gtk_stock 16,24; Yad:tazbox new-file needs it		# elementary hack
 s edit-copy					# gtk_stock 16,24
 s edit-cut					# gtk_stock 16,24
 s edit-delete				# gtk_stock 16,24
@@ -273,7 +273,7 @@ s format-text-italic		# gtk_stock 16,24
 s format-text-underline		# gtk_stock 16,24
 s format-text-strikethrough	# gtk_stock 16,24
 s go-bottom					# gtk_stock 16,24
-s go-down					# gtk_stock 16,24
+c go-down					# gtk_stock 16,24 but Yad:scp-box needs it
 s go-first					# gtk_stock 16,24
 s go-home					# gtk_stock 16,24
 s go-jump					# gtk_stock 16,24
@@ -281,7 +281,7 @@ s go-last					# gtk_stock 16,24
 s go-next					# gtk_stock 16,24
 s go-previous				# gtk_stock 16,24
 s go-top					# gtk_stock 16,24
-s go-up						# gtk_stock 16,24
+c go-up						# gtk_stock 16,24 but Yad:scp-box needs it
 s help-about				# gtk_stock 16,24
 s help-contents				# gtk_stock 16,24
 c help-faq help-hint											# elementary hack
@@ -324,7 +324,7 @@ c system-reboot system-run									# Matrilineare hack
 c system-shutdown system-shutdown-panel						# Matrilineare hack
 s tools-check-spelling		# gtk_stock 16,24
 s view-fullscreen			# gtk_stock 16,24
-s view-refresh				# gtk_stock 16,24
+c view-refresh				# gtk_stock 16,24 but Yad:tazbox manage-i18n needs it
 s view-restore				# gtk_stock 16,24
 s view-sort-ascending		# gtk_stock 16,24
 s view-sort-descending		# gtk_stock 16,24
@@ -346,6 +346,12 @@ c system-shutdown-panel-restart	# LXPanel menu: logout
 c gtk-close			# Yad close button
 c gtk-go-forward gtk-go-forward-ltr # tazbox tz Yad dialog
 c bookmark-new		# Midori
+c empty			# Yad:tazbox new-file
+
+SIZES='16 48'
+c document-new		# Yad:tazbox new-file
+c stock_bookmark	# Yad:tazbox all-apps
+c document-properties	# Yad:tazbox locale, tazbox manage-i18n
 
 
 ############################
@@ -416,7 +422,7 @@ c preferences-system-windows	# obconf.desktop
 c twitter						# twitter.desktop
 c network-server				# httpd.desktop
 c pcmanfm system-file-manager	# pcmanfm.desktop
-
+c preferences-desktop-default-applications	# tazbox tazapps
 
 
 ###########################
@@ -486,7 +492,7 @@ SIZES='48'
 c drive-harddisk
 c drive-optical
 c drive-removable-media drive-harddisk-removable			# Matrilineare hack
-
+c video-display		# LXPanel - About
 
 
 #########################
@@ -778,6 +784,7 @@ c dialog-information
 c dialog-password
 c dialog-question
 c dialog-warning
+c appointment-soon			# Yad:tazbox manage-i18n
 
 # LXPanel status icons
 SIZES="22"
@@ -792,7 +799,7 @@ c gnome-netstatus-rx      network-receive
 c gnome-netstatus-tx      network-transmit
 c gnome-netstatus-txrx    network-transmit-receive
 
-
+# c avatar-default	# 16x16 with canvas 22x22: for "slitaz-logout.desktop"
 
 
 
