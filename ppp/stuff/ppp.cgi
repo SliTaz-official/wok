@@ -257,7 +257,7 @@ cat << EOT
 	<input type="hidden" name="setppprc" />
 	<table>
 	<tr>
-		<td>$(_ 'TCP port')</td>
+		<td>$(_ 'UDP port')</td>
 		<td><input type="text" name="port" size="50" value="1111" /></td>
 	</tr>
 	<tr> <td colspan=2 align=center>--- $(_ 'Server only') ---</td> </tr>
