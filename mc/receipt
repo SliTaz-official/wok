@@ -31,21 +31,25 @@ compile_rules()
 		--sysconfdir=/etc \
 		$CONFIGURE_ARGS &&
 	make && make install
+
+	mkdir -p $install/usr/share/terminfo/s
+	cp -a /usr/share/terminfo/s/screen-256color $install/usr/share/terminfo/s
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/applications /usr/share/terminfo/s
+	mkdir -p $fs/usr/share/applications
 	cp -a $install/etc $fs/
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
 	cp -a $install/usr/share/mc $fs/usr/share
+	cp -a $install/usr/share/terminfo $fs/usr/share
 
 	sed 's#|profile|#&receipt|#' -i $fs/usr/share/mc/syntax/Syntax
 	sed 's/lzma -dc/lzcat/g' -i	$fs/usr/lib/mc/ext.d/archive.sh
 	cp -a $stuff/*.desktop $fs/usr/share/applications
-	cp -a /usr/share/terminfo/s/screen-256color /usr/share/terminfo/s
+
 	cat > $fs/usr/bin/mc.sh <<EOF
 case \$TERM in
 	linux*)
