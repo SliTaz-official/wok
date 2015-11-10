@@ -1,43 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="mupen64plus"
-VERSION="1.5"
+VERSION="2.5"
 CATEGORY="games"
 SHORT_DESC="Nintendo64 Emulator"
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL2"
-SOURCE="Mupen64Plus"
-TARBALL="$SOURCE-${VERSION//./-}-src.tar.gz"
-WEB_SITE="http://code.google.com/p/mupen64plus/"
-WGET_URL="http://mupen64plus.googlecode.com/files/$TARBALL"
+TARBALL="$PACKAGE-bundle-src-$VERSION.tar.gz"
+WEB_SITE="http://www.mupen64plus.org/"
+WGET_URL="https://github.com/mupen64plus/mupen64plus-core/releases/download/$VERSION/$TARBALL"
 TAGS="emulator nintendo64"
 
-DEPENDS="gtk+ mesa libglu-mesa libsamplerate libsdl-ttf"
-BUILD_DEPENDS="gtk+-dev mesa-dev libglu-mesa libglu-mesa-dev libsamplerate-dev \
-libsdl-dev libsdl-ttf-dev yasm pkg-config zlib-dev"
+DEPENDS="bzlib freetype libboost-filesystem libglu-mesa libsamplerate libsdl \
+speex"
+BUILD_DEPENDS="gtk+-dev libboost-filesystem-dev libglu-mesa libglu-mesa-dev \
+libsamplerate-dev libsdl-dev libsdl-ttf-dev mesa-dev speex-dev yasm zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-
-	# patching (provided by Yggdrasil) Thanks! Will remove when new version of mupen64plus comes out.
-	patch -Np1 -i $stuff/const.patch
-	patch -Np1 -i $stuff/blight-input-linking.patch
-	# thanks to debian for having a patch :) http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=577329
-	patch -Np1 -i $stuff/ftbfs-gvariant-type-conflicts.patch
-
-	make PREFIX=/usr all
-	mkdir -p $DESTDIR/usr/bin
-	make PREFIX=$DESTDIR/usr install
+	export PREFIX=/usr DESTDIR=$install
+	./m64p_build.sh &&
+	./m64p_install.sh
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/mupen64plus $fs/usr/share
-	cp -a $install/usr/share/applications $fs/usr/share
+	cp -a $install/* $fs
+	rm -r $fs/usr/include
+	find $fs -name '*.so*' -exec chmod a+x \{\} \;
 }
-
