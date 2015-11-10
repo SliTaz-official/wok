@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="mc"
-VERSION="4.8.14"
+VERSION="4.8.15"
 CATEGORY="system-tools"
 SHORT_DESC="Midnight Commander - ncurses based file manager."
 MAINTAINER="erjo@slitaz.org"
@@ -12,10 +12,10 @@ WGET_URL="http://www.midnight-commander.org/downloads/$TARBALL"
 TAGS="file-manager text-editor"
 HOST_ARCH="i486 arm"
 
-SUGGESTED="gpm"
+SUGGESTED="gpm xz cdrkit-isoinfo lynx w3m wv poppler-apps file "
 DEPENDS="ncursesw glib e2fsprogs util-linux-blkid"
 BUILD_DEPENDS="gpm-dev glib-dev ncursesw-dev util-linux-mount-dev \
- util-linux-blkid-dev util-linux-uuid-dev"
+ util-linux-blkid-dev util-linux-uuid-dev ncurses-extra"
 GENERIC_MENUS="no"
 
 # Rules to configure and make the package.
@@ -36,7 +36,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/applications
+	mkdir -p $fs/usr/share/applications /usr/share/terminfo/s
 	cp -a $install/etc $fs/
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
@@ -45,5 +45,32 @@ genpkg_rules()
 	sed 's#|profile|#&receipt|#' -i $fs/usr/share/mc/syntax/Syntax
 	sed 's/lzma -dc/lzcat/g' -i	$fs/usr/lib/mc/ext.d/archive.sh
 	cp -a $stuff/*.desktop $fs/usr/share/applications
+	cp -a /usr/share/terminfo/s/screen-256color /usr/share/terminfo/s
+	cat > $fs/usr/bin/mc.sh <<EOF
+case \$TERM in
+	linux*)
+		{
+		cat <<EOT
+shift   keycode  59 = F11
+shift   keycode  60 = F12
+shift   keycode  61 = F13
+shift   keycode  62 = F14
+shift   keycode  63 = F15
+shift   keycode  64 = F16
+shift   keycode  65 = F17
+shift   keycode  66 = F18
+shift   keycode  67 = F19
+shift   keycode  68 = F20
+EOT
+		} | loadkeys -uv ; sleep 1 ;;
+	xterm*)
+		export TERM='xterm-color'
+		[ -f '/usr/share/terminfo/s/screen-256color' ] && \\
+			export TERM='screen-256color'	;;
+esac
+mc $@
+
+EOF
+	chmod 755 $fs/usr/bin/mc.sh
 	chown -R root:root $fs
 }
