@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2015
 # (Started in November 2014)
 
-VERSION="151108"
+VERSION="151111"
 
 . /lib/libtaz.sh
 
@@ -681,6 +681,7 @@ c text-x-readme
 c text-x-tazpkg-receipt text-x-script
 
 c application-x-shockwave-flash			# Midori
+c unknown								# for unknown mimetypes in PCManFM
 
 
 ########################
