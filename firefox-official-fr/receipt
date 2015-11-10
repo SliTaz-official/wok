@@ -1,0 +1,53 @@
+# SliTaz package receipt.
+
+PACKAGE="firefox-official-fr"
+lang="fr"
+VERSION="42.0"
+CATEGORY="network"
+SHORT_DESC="Official Firefox build by the Mozilla foundation (French language)"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="MPL2"
+WEB_SITE="http://www.mozilla.org/firefox"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="http://ftp.mozilla.org/pub/firefox/releases/$VERSION/linux-i686/$lang/firefox-$VERSION.tar.bz2"
+TAGS="web-browser"
+PROVIDE="firefox-official"
+HOST_ARCH="i486"
+
+DEPENDS="gtk+"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p \
+		$install/usr/bin \
+		$install/usr/lib/firefox-$VERSION \
+		$install/usr/share/applications \
+		$install/usr/share/icons/hicolor/128x128/apps
+
+	cp -a $src/* $install/usr/lib/firefox-$VERSION
+
+	# /usr/bin/firefox-official
+	ln -s /usr/lib/firefox-$VERSION/firefox $install/usr/bin/firefox-official
+
+	# Icons
+	ln -s /usr/lib/firefox-$VERSION/browser/icons/mozicon128.png \
+		$install/usr/share/icons/hicolor/128x128/apps/firefox-official.png
+	for size in 16 32 48; do
+		icon_folder="$install/usr/share/icons/hicolor/${size}x$size/apps"
+		mkdir -p $icon_folder
+		ln -s /usr/lib/firefox-$VERSION/browser/chrome/icons/default/default$size.png \
+			$icon_folder/firefox-official.png
+	done
+
+	# Remove updater files (user can't upgrade anyway)
+	rm -f $install/usr/lib/firefox-$VERSION/update*
+
+	cp $stuff/firefox-official.desktop $install/usr/share/applications
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
