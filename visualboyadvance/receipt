@@ -3,34 +3,32 @@
 PACKAGE="visualboyadvance"
 VERSION="1.7.2"
 CATEGORY="games"
-SHORT_DESC="An emulator for Gameboy and Gameboy Advance systems."
+SHORT_DESC="An emulator for Gameboy and GameboyAdvance systems"
 MAINTAINER="gokhlayeh@slitaz.org"
 LICENSE="GPL2"
-SOURCE="VisualBoyAdvance"
-TARBALL="$SOURCE-src-$VERSION.tar.gz"
-CONFIG_FILES="'/etc/VisualBoyAdvance.cfg"
+TARBALL="VisualBoyAdvance-src-$VERSION.tar.gz"
+CONFIG_FILES="/etc/VisualBoyAdvance.cfg"
 WEB_SITE="http://vba.ngemu.com/"
 WGET_URL="http://downloads.sourceforge.net/sourceforge/vba/$TARBALL"
 TAGS="emulator gameboy"
 
 DEPENDS="libsdl"
-BUILD_DEPENDS="libglademm-dev libglademm libsdl-dev patch nasm gtk+-dev gtkmm-dev cairomm-dev libglade-dev libxml2-dev zlib-dev"
+BUILD_DEPENDS="libglademm-dev libglademm libsdl-dev patch nasm gtk+-dev gtkmm-dev \
+cairomm-dev libglade-dev libxml2-dev zlib-dev bison flex"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's/void \*,void \*/gzFile, void */' src/Util.cpp
 	for i in $stuff/$VERSION-*.patch; do
 		patch -Np0 < $i
 	done
 	./configure \
 		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
 		--sysconfdir=/etc \
-		--datadir=/usr/games \
+		--disable-profiling \
 		--enable-gtk=2.4 \
+		--disable-dev \
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS && make DESTDIR=$DESTDIR install
 }
@@ -38,10 +36,5 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
-	mkdir -p $fs/usr/games
-	cp -a $install/etc $fs
-	cp -a $install/usr/bin/VisualBoyAdvance $fs/usr/bin
-	cp -a $install/usr/games/VisualBoyAdvance $fs/usr/games
+	cp -a $install/* $fs
 }
-
