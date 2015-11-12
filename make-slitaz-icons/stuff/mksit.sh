@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2015
 # (Started in November 2014)
 
-VERSION="151111"
+VERSION="151113"
 
 . /lib/libtaz.sh
 
@@ -347,6 +347,8 @@ c gtk-close			# Yad close button
 c gtk-go-forward gtk-go-forward-ltr # tazbox tz Yad dialog
 c bookmark-new		# Midori
 c empty			# Yad:tazbox new-file
+c extract-archive	# tazpkg-box, xarchiver...
+c package-install	# tazpkg-box
 
 SIZES='16 48'
 c document-new		# Yad:tazbox new-file
