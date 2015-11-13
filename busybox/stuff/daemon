@@ -10,6 +10,13 @@
 NAME=$(basename $0)
 DESC="$NAME deamon"
 DAEMON=$(which $NAME)
+for p in ${PATH//:/ }; do
+	[ -L $p/$NAME ] || continue
+	case "$(readlink $p/$NAME)" in
+	*busybox)	DAEMON=$p/$NAME
+			break
+	esac
+done
 eval $(grep -i ^${NAME}_OPTIONS /etc/daemons.conf | sed 's/.*_OPT/OPT/')
 PIDFILE=/var/run/$NAME.pid
 
