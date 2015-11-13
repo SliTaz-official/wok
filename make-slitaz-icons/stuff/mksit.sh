@@ -352,7 +352,6 @@ c package-install	# tazpkg-box
 
 SIZES='16 48'
 c document-new		# Yad:tazbox new-file
-c stock_bookmark	# Yad:tazbox all-apps
 c document-properties	# Yad:tazbox locale, tazbox manage-i18n
 
 
@@ -434,7 +433,7 @@ CATEGORY='categories'; SIZES='16 48'; echo_cat
 
 c applications-accessories
 c applications-development
-c applications-engineering
+c applications-engineering gnome-do
 c applications-games
 c applications-graphics eog									# Matrilineare hack
 c applications-internet web-browser							# Matrilineare hack
@@ -450,7 +449,7 @@ c preferences-desktop-personal
 c preferences-other
 c preferences-system
 c preferences-system-network
-c system-help
+c system-help help-contents
 
 
 
@@ -460,8 +459,9 @@ c system-help
 CATEGORY='devices'; SIZES='16'; echo_cat
 
 c audio-card
-c audio-input-microphone
+c audio-input-microphone gnome-sound-recorder
 c battery
+c camera camera-photo
 c camera-photo
 c camera-video
 c camera-web
@@ -473,7 +473,7 @@ c input-gaming
 c input-keyboard
 c input-mouse
 c input-tablet
-c media-flash
+c media-flash drive-removable-media-usb
 s media-floppy					# gtk_stock 16,24
 s media-optical drive-optical	# gtk_stock 16,24			# Matrilineare hack
 c media-tape
@@ -482,7 +482,7 @@ c multimedia-player
 c network-wired
 c network-wireless
 c pda
-c phone
+c phone ekiga
 c printer
 c scanner
 c video-display
@@ -508,11 +508,11 @@ c emblem-downloads
 c emblem-favorite
 c emblem-important
 c emblem-mail
-c emblem-photos
+c emblem-photos image-jpeg
 c emblem-readonly
 c emblem-shared
 c emblem-symbolic-link
-c emblem-synchronized
+c emblem-synchronized emblem-ubuntuone-synchronized
 c emblem-system
 c emblem-unreadable
 
@@ -582,10 +582,10 @@ c x-office-spreadsheet
 #--------------------------------------
 # special types
 c $A-octet-stream
-c $A-x-zerosize
+c $A-x-zerosize empty
 
 # archives
-c $A-gzip
+c $A-gzip $A-x-gzip
 c $A-x-compressed-tar
 c $A-x-7z-compressed
 c $A-x-ace
@@ -594,20 +594,20 @@ c $A-x-archive
 c $A-x-rar
 c $A-x-tar
 c $A-zip
-c $A-vnd.ms-cab-compressed
-c $A-x-alz
+c $A-vnd.ms-cab-compressed $A-x-archive
+c $A-x-alz $A-x-archive
 c $A-x-arj
-c $A-x-bcpio
+c $A-x-bcpio $A-x-archive
 c $A-x-bzip
 c $A-x-bzip-compressed-tar
 c $A-x-lha
-c $A-x-lzma
-c $A-x-lzma-compressed-tar
-c $A-x-lzop
-c $A-x-tzo
-c $A-x-xar
-c $A-x-xz
-c $A-x-xz-compressed-tar
+c $A-x-lzma $A-x-archive
+c $A-x-lzma-compressed-tar $A-x-archive
+c $A-x-lzop $A-x-archive
+c $A-x-tzo $A-x-archive
+c $A-x-xar $A-x-archive
+c $A-x-xz $A-x-archive
+c $A-x-xz-compressed-tar $A-x-archive
 
 # packages
 c $A-vnd.android.package-archive
@@ -615,18 +615,18 @@ c $A-x-deb
 c $A-x-java-archive
 c $A-x-rpm
 c $A-x-source-rpm $A-x-rpm
-c $A-x-tazpkg
+c $A-x-tazpkg package-x-generic
 
 c $A-illustrator
 c $A-javascript
 c $A-mbox
 c $A-pdf
-c $A-pgp-signature
+c $A-pgp-signature $A-pgp-keys
 c $A-rtf
 c $A-x-apple-diskimage $A-x-cd-image
-c $A-x-cbr
+c $A-x-cbr comix
 c $A-x-cd-image
-c $A-x-core
+c $A-x-core emblem-danger
 c $A-x-designer
 c $A-x-desktop
 
@@ -634,37 +634,37 @@ c $A-x-theme
 c $A-x-emerald-theme $A-x-theme
 c $A-x-openbox-theme $A-x-theme
 
-c $A-x-generic
-c $A-x-object
-c $A-x-sharedlib
+c $A-x-generic $A-x-executable
+c $A-x-object $A-octet-stream
+c $A-x-sharedlib $A-octet-stream
 
-c $A-x-gettext-translation
-c text-x-gettext-translation
-c text-x-gettext-translation-template
+c $A-x-gettext-translation preferences-desktop-locale
+c text-x-gettext-translation preferences-desktop-locale
+c text-x-gettext-translation-template text-x-generic-template
 
-c $A-x-gtk-builder
+c $A-x-gtk-builder $A-x-glade
 c $A-x-m4
 c $A-xml
 c $A-x-ms-dos-executable
 
-c $A-x-perl
+c $A-x-perl text-x-script
 c $A-x-python-bytecode
 c $A-x-shellscript
 c $A-x-sqlite3
 c $A-x-trash
-c $A-x-x509-ca-cert
+c $A-x-x509-ca-cert $A-pgp-keys
 
 c audio-mpeg
 c audio-x-vorbis+ogg
 c audio-x-wav
 c image-x-eps
-c image-x-xcursor
+c image-x-xcursor ccsm
 c inode-blockdevice block-device
 c inode-chardevice chardevice
 c inode-directory
-c inode-mount-point
-c inode-symlink
-c inode-x-generic
+c inode-mount-point drive-removable-media
+c inode-symlink emblem-symbolic-link
+c inode-x-generic emblem-generic
 c text-css
 c text-plain
 c text-richtext
@@ -674,9 +674,9 @@ c text-x-chdr
 c text-x-copying
 c text-x-csrc
 c text-x-install
-c text-x-log
+c text-x-log text-x-changelog
 c text-x-makefile
-c text-x-markdown
+c text-x-markdown text-x-source
 c text-x-patch
 c text-x-python
 c text-x-readme
@@ -723,8 +723,8 @@ c audio-volume-high			# gtk_stock 24
 c audio-volume-low			# gtk_stock 24
 c audio-volume-medium		# gtk_stock 24
 c audio-volume-muted		# gtk_stock 24
-c battery-caution
-c battery-low
+c battery-caution notification-battery-empty
+c battery-low notification-battery-low
 c dialog-error				# gtk_stock 48
 c dialog-information		# gtk_stock 16,24,48
 c dialog-password			# gtk_stock 48
