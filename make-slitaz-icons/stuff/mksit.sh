@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2015
 # (Started in November 2014)
 
-VERSION="151113"
+VERSION="151119"
 
 . /lib/libtaz.sh
 
@@ -303,14 +303,14 @@ c mail-reply-sender
 c mail-send
 c mail-send-receive
 c media-eject list-remove									# Matrilineare hack
-s media-playback-pause		# gtk_stock 16,24
-s media-playback-start		# gtk_stock 16,24
-s media-playback-stop		# gtk_stock 16,24
+c media-playback-pause		# gtk_stock 16,24 but Audacious needs it
+c media-playback-start		# gtk_stock 16,24 but Audacious needs it
+c media-playback-stop		# gtk_stock 16,24 but Audacious needs it
 s media-record				# gtk_stock 16,24
 s media-seek-backward go-previous		# gtk_stock 16,24		# Matrilineare hack
 s media-seek-forward go-next			# gtk_stock 16,24		# Matrilineare hack
-s media-skip-backward		# gtk_stock 16,24
-s media-skip-forward		# gtk_stock 16,24
+c media-skip-backward		# gtk_stock 16,24 but Audacious needs it
+c media-skip-forward		# gtk_stock 16,24 but Audacious needs it
 c object-flip-horizontal
 c object-flip-vertical
 c object-rotate-left
