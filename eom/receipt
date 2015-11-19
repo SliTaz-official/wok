@@ -22,6 +22,7 @@ compile_rules()
 	sed -i 's|\$PYTHON_MAKEFILE|& 2> /dev/null|' configure*
 	./autogen.sh                   \
 		--prefix=/usr          \
+		--disable-introspection\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -34,4 +35,16 @@ genpkg_rules()
 	cp -a $install/usr/lib/$PACKAGE/plugins/*.so* $fs/usr/lib
 	cp -a $install/usr/lib/$PACKAGE/plugins/*.eom-plugin $fs/usr/lib/$PACKAGE/plugins
 	cp -a $install/usr/share/$PACKAGE/* $fs/usr/share/$PACKAGE
+}
+
+post_install()
+{
+	echo "Processing post-install commands..."
+	chroot $1/ /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
+}
+
+post_remove()
+{
+	echo "Processing post-remove commands..."
+	chroot $1/ /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas
 }
