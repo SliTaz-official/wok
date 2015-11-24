@@ -1045,6 +1045,14 @@ showfavinfo()
 	rm -rf /tmp/data
 }
 
+flavor()
+{
+	name="$(flavdata | cpio -t 2> /dev/null | sed 's/.[a-z]*$//;q')"
+	echo "Create ${name:=flavor}.flavor..."
+	tazlito iso2flavor $ISO $name
+	ls -l $name.flavor
+}
+
 if [ "$1" == "--build" ]; then	#install-begin
 	uuencode -m - < ifmem.bin | sed -e '/^ifmemcode$/r/dev/stdin' \
 	  -e '/^ifmemcode$/d' -i $0
@@ -1259,6 +1267,7 @@ $(gotposixovlzip	"insttaz2zip"	"ZIP installation archive (TAZUSB way)") \
 $(xfile tazusb		"usbkey"	"USB key read/write installation") \
 $(ishybrid		"usbbootkey"	"USB boot key (read only)") \
 $(hasflavinfo		"showfavinfo"	"Show flavor extra info") \
+$(xfile tazlito		"flavor"	"Get flavor file") \
 $(cdfile isolinux.cfg	"floppyset"	"Boot floppy set") \
 $(hastazboot		"tazboot"	"Get tazboot.exe Linux loader") \
 $(cdexe boot/bzImage	"bzimage"	"Get linux DOS/EXE file") \
