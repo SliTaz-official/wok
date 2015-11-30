@@ -10,37 +10,37 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://homepage3.nifty.com/tsato/xvkbd/"
 WGET_URL="${WEB_SITE}$TARBALL"
 
-DEPENDS="xorg-libXt xorg-libX11  xorg-xproto xorg-libSM xorg-libXaw \
-xorg-libICE xorg-libXp xorg-libXtst  xorg-libXmu xorg-libXpm xorg-libXext \
-xorg-libXau xorg-libXdmcp xorg-libXaw3d"
-BUILD_DEPENDS="xorg-imake xorg-cf-files xorg-libXt-dev xorg-libX11-dev \
-xorg-xproto xorg-libSM-dev xorg-libXaw-dev xorg-libICE-dev xorg-libXp-dev \
-xorg-libXtst-dev xorg-xextproto xorg-inputproto xorg-libXmu-dev xorg-libXaw3d-dev"
+DEPENDS="xorg-xproto xorg-libXaw xorg-libXp xorg-libXtst xorg-libXaw3d"
+BUILD_DEPENDS="xorg-imake xorg-libXaw-dev xorg-libXp-dev xorg-libXtst-dev \
+xorg-libXaw3d-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-
 	# delete Xaw3d
 	# sed -i '/#define XAW3D/d' Imakefile
 	xmkmf &&
 	make install
+
+	# Add .desktop file
+	mkdir -p $install/usr/share/applications
+	cp $stuff/usr/share/applications/xvkbd.desktop $install/usr/share/applications
+
+	# Add icon
+	mkdir -p $install/usr/share/icons/hicolor/32x32/apps
+	cp $stuff/usr/share/pixmaps/xvkbd.png $install/usr/share/icons/hicolor/32x32/apps
+
+	cp -f $stuff/etc/X11/app-defaults/XVkbd-russian $install/etc/X11/app-defaults
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/etc/X11 $fs/etc
-	# Add .desktop file
-	cp -a $stuff/* $fs
+	cp -a $install/* $fs
 }
 
 post_install()
-{ 
+{
 	# .Xdefaults file
 	lang=$(echo $LANG | awk '{FS="_"} {print $1}')
 	find $1/home -maxdepth 2 -name ".Xdefaults" > /tmp/listeXdefaults
@@ -53,9 +53,8 @@ post_install()
 !
 xvkbd*Font: -misc-fixed-medium-r-semicondensed--0-0-75-75-c-0-iso8859-1
 EOT
-echo "xvkbd.Layout : $lang" >> $line	
+echo "xvkbd.Layout : $lang" >> $line
 	fi
 	done </tmp/listeXdefaults
 	rm -f /tmp/listeXdefaults
 }
-
