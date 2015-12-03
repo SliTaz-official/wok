@@ -10,21 +10,21 @@ WEB_SITE="http://pypar2.silent-blade.org/"
 WGET_URL="$WEB_SITE/uploads/Main/$TARBALL"
 
 DEPENDS="pygtk par2 python-pyxml python-vte"
+BUILD_DEPENDS="findutils"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|/usr/local|/usr|' Makefile
-	make &&
-	make DESTDIR=$DESTDIR install
+	make prefix=/usr DESTDIR=$DESTDIR install
+	sdft $install/usr/share/applications/pypar2.desktop \
+		-i -s "Categories=GTK;Utility;"
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	cp -a $install/* $fs/
-	sed -i 's/Categories=.*/Categories=Utilities/' \
-		$fs/usr/share/applications/pypar2.desktop
 	rm -rf $fs/usr/share/man $fs/usr/bin/pypar2
 	ln -s /usr/share/pypar2/src/main.py $fs/usr/bin/pypar2
 }
+
