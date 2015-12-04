@@ -70,7 +70,6 @@ EOT
 # We stop the server by default in case of upgarde.
 pre_install()
 {
-	echo "Processing pre-install commands..."
 	[ -z "$1" ] && [ -f /etc/init.d/$PACKAGE ] && /etc/init.d/$PACKAGE stop
 }
 
@@ -79,7 +78,7 @@ post_install()
 	local lang=$(. /etc/locale.conf 2>/dev/null; echo ${LANG#*_})
 	local tz=$(cat /etc/TZ 2>/dev/null)
 	local hostname=$(cat /etc/hostname 2>/dev/null)
-	echo "Processing post-install commands..."
+
 	# Just in case.
 	chown www.www $1/var/log/$PACKAGE
 	ping -c 2 $(hostname) > /dev/null 2>&1 || 
@@ -95,11 +94,12 @@ ${hostname:-slitaz}
 
 
 EOT
+	[ -z "$quiet" ] && echo # Start new line
 	( cd $1/$INSTALLED/ ; grep -l /etc/apache/conf.d/ */receipt ) | \
 	while read file; do
 		pkg=$(dirname $file)
 		[ "$pkg" = "$PACKAGE" ] && continue
-		echo "Reconfiguring $pkg for $PACKAGE..."
+		[ -z "$quiet" ] && echo "Reconfiguring $pkg for $PACKAGE..."
 		tazpkg reconfigure $pkg
 	done
 	[ -f $1/etc/php.ini ] && tazpkg get-install php-apache --root=$1

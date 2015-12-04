@@ -61,7 +61,6 @@ genpkg_rules()
 
 post_install()
 {
-	echo "Processing post-install commands..."
 	# Set lighttpd or apache config
 	if [ -f $1/etc/apache/httpd.conf ]; then
 		if [ ! -f $1/etc/apache/conf.d/awstats.conf ]; then
@@ -87,7 +86,8 @@ post_install()
 			/etc/init.d/lighttpd restart
 		fi
 	fi
-	cat <<EOT
+	[ -z "$quiet" ] && cat <<EOT
+
 You should add in your crontab something like;
 
 0 0 * * * /usr/share/awstats/extras/update
@@ -99,11 +99,11 @@ post_remove()
 		echo "Remove orphan dirctories."
 		[ -d /usr/share/awstats ] && rm -rf /usr/share/awstats
 
-		# 
+		# FIXME
 		echo "All database and configuratoin files will be removed"
 		echo -n "Please confirm removing (y/N) : "; read answer
 
-		case $answer in 
+		case $answer in
 			y|Y)
 				rm -rf /var/lib/awstats
 				rm -rf /etc/awstats
