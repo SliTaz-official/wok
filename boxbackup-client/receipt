@@ -13,7 +13,7 @@ TAGS="backup automatic client"
 
 DEPENDS="db libedit libssl perl zlib gcc-lib-base"
 
-# Configuration variables                                                                                                    
+# Configuration variables
 CONF_DIR="/etc/boxbackup"
 DATA_DIR="/var/lib/bbackupd"
 RUN_DMON=0
@@ -33,7 +33,7 @@ genpkg_rules()
 pre_install()
 {
 	# Stop daemon
-	if [ -e /var/run/bbackupd.pid ]; then
+	if [ -z "$1" -a -e /var/run/bbackupd.pid ]; then
 		/etc/init.d/bbackupd stop
 		RUN_DMON=1
 	fi
@@ -42,13 +42,13 @@ pre_install()
 post_install()
 {
 	# Creating conf dir
-	if [ ! -e $1/$CONF_DIR ]; then
-	    mkdir -p $1/$CONF_DIR && chmod 755 $1/$CONF_DIR
+	if [ ! -e "$1/$CONF_DIR" ]; then
+		mkdir -p "$1/$CONF_DIR" && chmod 755 "$1/$CONF_DIR"
 	fi
-	if [ ! -e $1/$DATA_DIR ]; then
-	    mkdir -p $1/$DATA_DIR && chmod 700 $1/$DATA_DIR
+	if [ ! -e "$1/$DATA_DIR" ]; then
+	    mkdir -p "$1/$DATA_DIR" && chmod 700 "$1/$DATA_DIR"
 	fi
-	if [ -z $1 ]; then
+	if [ -z "$1" ]; then
 		# Start daemon (if stopped by install)
 		if [ $RUN_DMON -eq 1 ]; then
 			/etc/init.d/bbackupd start
@@ -60,8 +60,8 @@ post_install()
 
 pre_remove()
 {
-    # Stop daemon
-	if [ -z $1 ]; then
+	# Stop daemon
+	if [ -z "$1" ]; then
 		if [ -e /var/run/bbackupd.pid ]; then
 			/etc/init.d/bbackupd stop
 		fi
@@ -71,14 +71,15 @@ pre_remove()
 post_remove()
 {
 	# Delete DATA directory
-	rm -rf $1/$DATA_DIR
+	rm -rf "$1/$DATA_DIR"
 
 	# Delete Client config files
-	rm -rf $1/$CONF_DIR/bbackupd*
+	rm -rf "$1/$CONF_DIR"/bbackupd*
 
 	# Delete CONF dir (if empty)
 	if [ $(ls -lA $CONF_DIR | wc -l) -eq 0 ]; then
-		echo -n "Removing $CONF_DIR..."
+		echo
+		action "Removing $CONF_DIR..."
 		rm -rf $1/$CONF_DIR
 		status
 	fi

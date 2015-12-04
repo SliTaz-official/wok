@@ -16,38 +16,38 @@ BUILD_DEPENDS="libpcap-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --sysconfdir=/etc/barnyard2 $CONFIGURE_ARGS && make && make install
+	./configure \
+		--sysconfdir=/etc/barnyard2 \
+		$CONFIGURE_ARGS &&
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	
 	cp -a $install/* $fs
-	
-	mkdir -p /var/log/barnyard2
+	mkdir -p $fs/var/log/barnyard2
 }
 
 # Post install commands
 post_install()
 {
-        echo "Processing post install commands..."
+	[ -z "$quiet" ] && echo
 
-        # addgroup snort if needed
-    if ! grep -q 'snort:' $1/etc/group; then
-        echo -n "Adding group Snort..."
-        chroot $1/ /bin/addgroup snort
-        status
-    fi
-    # adduser snort if needed
-    if ! grep -q 'snort:' $1/etc/passwd; then
-        echo -n "Adding user Snort..."
-        chroot $1/ /bin/adduser -s /bin/false -h /dev/null \
-            -g "Snort Daemon user" -H -D -S -G snort snort
-        status
-    fi
+	# addgroup snort if needed
+	if ! grep -q 'snort:' "$1/etc/group"; then
+		action 'Adding group Snort...'
+		chroot "$1/" /bin/addgroup snort
+		status
+	fi
 
-        chroot $1/ chown snort.snort /var/log/barnyard2
+	# adduser snort if needed
+	if ! grep -q 'snort:' $1/etc/passwd; then
+		action 'Adding user Snort...'
+		chroot "$1/" /bin/adduser -s /bin/false -h /dev/null \
+			-g "Snort Daemon user" -H -D -S -G snort snort
+		status
+	fi
+
+	chroot "$1/" chown snort.snort /var/log/barnyard2
 }
-
