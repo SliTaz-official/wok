@@ -124,6 +124,30 @@ add_fdbootstrap()
 		store 26 $(($SIZE/512)) $1 8
 	fi
 }
+
+custom_config_sector()
+{
+	echo $(($(get 32848 "$1" 4)+16))
+}
+
+extract_custom_config()
+{
+	ISO="$1"
+	header=
+	ddq bs=2k skip=$(custom_config_sector "$ISO") if="$ISO" | \
+	while read line; do
+		case "$line" in
+		\#!boot*) header=1 ;;
+		append=*) [ "$header" ] &&
+			  echo "${line#append=}" > "$ISO.append" &&
+			  ls -l "$ISO.append" ;;
+		initrd:*) [ "$header" ] &&
+			  ddq bs=1 count=${line#initrd:} > "$ISO.initrd" &&
+			  ls -l "$ISO.initrd" ;;
+		esac
+		[ "$header" ] || break
+	done
+}
 case "$1" in
 --build)
 	shift
@@ -259,15 +283,26 @@ esac
 main()
 {
 	[ $(id -u) -ne 0 ] && exec su -c "$0 $@" < /dev/tty
-	case "${1/--/-}" in
-	-get)	shift
-		uudecode | unlzma | tar xOf - $@
-		exit ;;
-	*)	cat > /dev/null
-	esac
+	append=
+	initrd=
+	while [ "$1" ]; do
+		case "${1/--/-}" in
+		-get)	shift
+			uudecode | unlzma | tar xOf - $@
+			exit ;;
+		-a*)	append="$2" ; shift 2 ;;
+		-i*)	initrd="$2" ; shift 2 ;;
+		-e*)	extract_custom_config "$2"
+			exit ;;
+		*)	cat > /dev/null
+			break
+		esac
+	done
 	
-	[ ! -s "$1" ] &&
-	echo "usage: $0 image.iso [--undo|\"DOS help message\"]" 1>&2 && exit 1
+	[ ! -s "$1" ] && cat 1>&2 <<EOT && exit 1
+usage: $0 [--append custom_cmdline ] [ --initrd custom_initramfs ] image.iso [--undo|"DOS help message"]
+or: $0 --extract-custom-config image.iso
+EOT
 	case "${2/--/-}" in
 	-u*|-r*|-w*)
 	    case "$(get 0 $1)" in
@@ -318,6 +353,24 @@ main()
 		store 18 $(( (-$n -1) % 65536 )) $1
 	fi
 	echo " done."
+	if [ "$append$initrd" ]; then
+		echo -n "Adding custom config... "
+		DATA=/tmp/$0$$
+		rm -f $DATA > /dev/null
+		isosz=$(stat -c %s $ISO)
+		[ "$append" ] && echo "append=$append" >> $DATA
+		[ -s "$initrd" ] && echo "initrd:$(stat -c %s $initrd)" >> $DATA &&
+			cat $initrd >> $DATA
+		echo "#!boot $(md5sum $DATA | sed 's/ .*//')" | cat - $DATA | \
+		ddq bs=2k seek=$(custom_config_sector $ISO) of=$ISO conv=notrunc
+		if [ $(stat -c %s $ISO) -gt $isosz ]; then
+			echo "$(($isosz - $(stat -c %s $ISO))) extra bytes."
+		else
+			echo "$(($isosz - 32768 - 2048*$(get 32848 $ISO 4) 
+				 - $(stat -c %s $DATA) - 24)) bytes free."
+		fi
+		rm -f $DATA > /dev/null
+	fi
 }
 
 main $@ <<EOT
