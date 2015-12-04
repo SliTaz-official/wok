@@ -15,7 +15,6 @@ DEPENDS="glibc-base acl"
 #
 # This is a special package for installed system or developer. We only take
 # a few things, as Busybox provides all the basic utilities, but not for compiling.
-# But DO NOT erase a Busybox applet, remove it before with pre_install rules.
 #
 genpkg_rules()
 {
@@ -31,32 +30,14 @@ genpkg_rules()
 	cp -a $install/usr/bin/shred $fs/usr/bin
 }
 
-# Pre and post install commands for Tazpkg.
-# We must remove all Busybox symlink before installing.
-#
-pre_install()
-{
-	local root
-	root=$1
-	qaction "Removing all Busybox replaced utils... "
-	rm -f $root/bin/dd $root/bin/mv $root/bin/ln
-	rm -f $root/usr/bin/install $root/usr/bin/shred
-	# Dont remove cp/rm or the installation will fail because tazpkg use
-	# cp and rm during the process.
-	#
-	#rm -f $root/bin/cp $root/bin/rm
-	qstatus
-}
-
 post_remove()
 {
 	# use busybox ln applet directly since /bin/ln
 	# in this package is remove already
-	/bin/busybox ln -fs /bin/busybox $1/bin/cp
+#	/bin/busybox ln -fs /bin/busybox $1/bin/cp
 	/bin/busybox ln -fs /bin/busybox $1/bin/dd
 	/bin/busybox ln -fs /bin/busybox $1/bin/mv
 	/bin/busybox ln -fs /bin/busybox $1/bin/ln
-	/bin/busybox ln -fs /bin/busybox $1/bin/rm
+#	/bin/busybox ln -fs /bin/busybox $1/bin/rm
 	/bin/busybox ln -fs /bin/busybox $1/usr/bin/install
-	/bin/busybox ln -fs /bin/busybox $1/usr/bin/shred
 }

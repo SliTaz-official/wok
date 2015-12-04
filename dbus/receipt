@@ -45,28 +45,26 @@ genpkg_rules()
 
 pre_install()
 {
-	local root
-	root=$1
 	# Go for echoing on configuration files if any messagebus user
 	# was found.
-	if ! grep -qs 'messagebus' $root/etc/passwd; then
-		echo -n "Adding user: messagebus..."
-		echo 'messagebus:x:25:25:DBUS Daemon User:/dev/null:/bin/false' >> $root/etc/passwd
-		echo 'messagebus:!:14013:0:99999:7:::' >> $root/etc/shadow
-		echo 'messagebus:x:25:' >> $root/etc/group
-		echo 'messagebus:!::' >> $root/etc/gshadow
+	if ! grep -qs 'messagebus' "$1/etc/passwd"; then
+		action 'Adding user: messagebus...'
+		echo 'messagebus:x:25:25:DBUS Daemon User:/dev/null:/bin/false' >> "$1/etc/passwd"
+		echo 'messagebus:!:14013:0:99999:7:::' >> "$1/etc/shadow"
+		echo 'messagebus:x:25:' >> "$1/etc/group"
+		echo 'messagebus:!::' >> "$1/etc/gshadow"
 		status
 	fi
-	if ! grep -qs ^DBUS_OPTIONS $root/etc/daemons.conf; then
-		echo -n "Configuring $root/etc/daemons.conf..."
-		cat >> $root/etc/daemons.conf << "EOT"
+	if ! grep -qs ^DBUS_OPTIONS "$1/etc/daemons.conf"; then
+		action 'Configuring %s/etc/daemons.conf...' "$1"
+		cat >> "$1/etc/daemons.conf" << "EOT"
 # DBUS daemon options.
 DBUS_OPTIONS="--system"
 
 EOT
 		status
 	fi
-	[ -d $root/var/run ] || mkdir -p $root/var/run
+	[ -d "$1/var/run" ] || mkdir -p "$1/var/run"
 }
 
 pre_remove()

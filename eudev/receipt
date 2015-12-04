@@ -12,12 +12,12 @@ WGET_URL="${WEB_SITE}/${TARBALL}"
 PROVIDE="udev"
 
 DEPENDS="dbus util-linux-blkid pciids usbids acl kmod"
-BUILD_DEPENDS="util-linux-blkid-dev util-linux-uuid-dev pcre-dev kmod-dev dbus-dev gperf pkg-config acl-dev"
+BUILD_DEPENDS="util-linux-blkid-dev util-linux-uuid-dev pcre-dev kmod-dev \
+dbus-dev gperf pkg-config acl-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--sysconfdir=/etc \
 		--exec-prefix="" \
@@ -61,19 +61,22 @@ genpkg_rules()
 
 list_udev_group()
 {
-    object=$2
-    [ -n "$object" ] || object=GROUP
-    grep $object $1/etc/udev/rules.d/* | \
-        sed 's/.*GROUP="\([a-zA-Z0-9]*\)".*/\1/' | sort | uniq
+	object=$2
+	[ -n "$object" ] || object=GROUP
+	grep $object $1/etc/udev/rules.d/* | \
+		sed 's/.*GROUP="\([a-zA-Z0-9]*\)".*/\1/' | sort | uniq
 }
 
 post_install()
 {
-    # Sanity check for udev+ldap boot
-    list_udev_group "$1" GROUP | while read x ; do
-        grep -q ^$x: $1/etc/group || chroot $1/ addgroup -S $x
-    done
-    list_udev_group "$1" OWNER | while read x ; do
-        grep -q ^$x: $1/etc/passwd || chroot $1/ adduser -S -D -H $x
-    done
+	# Sanity check for udev+ldap boot
+	list_udev_group "$1" GROUP | \
+	while read x ; do
+		grep -q ^$x: "$1/etc/group" || chroot "$1/" addgroup -S $x
+	done
+
+	list_udev_group "$1" OWNER | \
+	while read x ; do
+		grep -q ^$x: "$1/etc/passwd" || chroot "$1/" adduser -S -D -H $x
+	done
 }
