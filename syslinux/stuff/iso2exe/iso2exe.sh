@@ -315,6 +315,10 @@ EOT
 		ddq if=/dev/zero bs=1 seek=$n count=$((0x8000 - $n)) of=$1 conv=notrunc ;;
 	    *)  ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc ;;
 	    esac
+	    start=$(custom_config_sector $1)
+	    cnt=$((512 - ($start % 512)))
+	    [ $cnt -ne 512 ] &&
+	    ddq if=/dev/zero of=$1 bs=2k seek=$start count=$cnt
 	    exit 0
 	esac
 	case "$(get 0 $1)" in
@@ -357,20 +361,20 @@ EOT
 		echo -n "Adding custom config... "
 		DATA=/tmp/$0$$
 		rm -f $DATA > /dev/null
-		isosz=$(stat -c %s $ISO)
+		isosz=$(stat -c %s $1)
 		[ "$append" ] && echo "append=$append" >> $DATA
 		[ -s "$initrd" ] && echo "initrd:$(stat -c %s $initrd)" >> $DATA &&
 			cat $initrd >> $DATA
 		echo "#!boot $(md5sum $DATA | sed 's/ .*//')" | cat - $DATA | \
-		ddq bs=2k seek=$(custom_config_sector $ISO) of=$ISO conv=notrunc
-		if [ $(stat -c %s $ISO) -gt $isosz ]; then
-			echo "$(($isosz - $(stat -c %s $ISO))) extra bytes."
+		ddq bs=2k seek=$(custom_config_sector $1) of=$1 conv=notrunc
+		if [ $(stat -c %s $1) -gt $isosz ]; then
+			echo "$(($isosz - $(stat -c %s $1))) extra bytes."
 		else
-			echo "$(($isosz - 32768 - 2048*$(get 32848 $ISO 4) 
+			echo "$(($isosz - 32768 - 2048*$(get 32848 $1 4) 
 				 - $(stat -c %s $DATA) - 24)) bytes free."
 		fi
 		rm -f $DATA > /dev/null
 	fi
 }
 
-main $@ <<EOT
+main "$@" <<EOT

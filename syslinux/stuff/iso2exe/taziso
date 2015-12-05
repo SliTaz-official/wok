@@ -864,10 +864,11 @@ isomd5()
 	fi
 	n=$(($(get 32848 "$ISO" 4)+16))
 	if [ "$(ddq bs=2k skip=$n if="$ISO" | ddq bs=1 count=6)" == "#!boot" ]; then
-		echo -en "\rChecking iso custum boot..."
+		echo -en "\rChecking iso custom config..."
+		TMP=/tmp/$(basename $0)$$md5
 		md5="$(ddq bs=2k skip=$n if="$ISO" | while read line; do
 			case "$line" in
-			\#!boot*) echo ${line#*boot } > /tmp/$0$$md5 ;;
+			\#!boot*) echo ${line#*boot } > $TMP ;;
 			append=*) echo $line ;;
 			initrd:*) echo $line
 				  ddq bs=1 count=${line#initrd:}
@@ -875,8 +876,8 @@ isomd5()
 			*)	  break ;;	  
 			esac
 		done | md5sum | cut -c1-32)"
-		[ "$md5" == "$(cat /tmp/$0$$md5)" ] && echo "OK" || echo "ERROR"
-		rm -f /tmp/$0$$md5
+		[ "$md5" == "$(cat $TMP)" ] && echo "OK" || echo "ERROR"
+		rm -f $TMP
 	fi
 	rm -f /tmp/wait
 	[ "$1" ] && return 0
