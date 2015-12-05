@@ -23,6 +23,8 @@
 #include <fcntl.h>
 #include <console.h>
 #include <com32.h>
+#include <syslinux/config.h>
+#include <syslinux/disk.h>
 
 #define ALIGN1
 
@@ -716,6 +718,73 @@ static int find_boolean(char **argv, const char *argument)
     return 0;
 }
 
+static int got_config;
+static char *custom_cmdline = "";
+static int custom_initrdlen;
+static char *custom_initrdbase;
+static char *custom_buffer;
+static struct disk_info diskinfo;
+
+static int has_custom_config(void)
+{
+    const union syslinux_derivative_info *sdi;
+    
+    if (got_config)
+    	goto done;
+    sdi = syslinux_derivative_info();
+    if (sdi->c.filesystem != SYSLINUX_FS_ISOLINUX)
+    	goto fail;
+    disk_get_params(sdi->iso.drive_number, &diskinfo);
+    custom_buffer = disk_read_sectors(&diskinfo, 32768 / diskinfo.bps, 1);
+    got_config = (16 + *(unsigned long *) (custom_buffer + 80)) 
+    		 * 2048 / diskinfo.bps;
+    free(custom_buffer);
+    custom_buffer = disk_read_sectors(&diskinfo, got_config, 1);
+    if (!memcmp(custom_buffer,"#!boot ",7)) {
+	char *p = custom_buffer+7+32+1;
+	
+    	if (!memcmp(p,"append=",7)) {
+	    custom_cmdline = p + 7;
+	    p = strchr(p,'\n');
+	    *p++ = 0;
+    	}
+    	if (!memcmp(p,"initrd:",7)) {
+    	    custom_initrdlen = strtoul(p + 7, &custom_initrdbase, 10);
+    	    custom_initrdbase++;
+    	}
+    	return 1;
+    }
+fail:
+    got_config = -1;
+done:
+    return got_config > 0;
+}
+
+static int loadcustominitrd(void **data)
+{
+    int n, len;
+    char *p;
+    
+    p = *data = malloc(custom_initrdlen);
+    if (!p) return 0;
+    len = custom_initrdlen;
+    while (1) {
+	n = 2048 + custom_buffer - custom_initrdbase;
+    	if (n > len)
+    	    n = len;
+	memcpy(p, custom_initrdbase, n);
+	p += n;
+	len -= n;
+	if (len == 0)
+	    break;
+	free(custom_buffer);
+	got_config += diskinfo.bps;
+	custom_initrdbase = custom_buffer = 
+		disk_read_sectors(&diskinfo, got_config, 2048 / diskinfo.bps);
+    }
+    return 1;
+}
+
 /* Stitch together the command line from a set of argv's */
 static char *make_cmdline(char **argv)
 {
@@ -731,6 +800,8 @@ static char *make_cmdline(char **argv)
     for (i = 0; i < 255; i++)
     	if (syslinux_getadv(i, &size))
     		bytes += ++size;
+    if (has_custom_config())
+    	bytes += strlen(custom_cmdline) + 1;
   
     p = cmdline = malloc(bytes);
     if (!cmdline)
@@ -754,6 +825,11 @@ static char *make_cmdline(char **argv)
     if (p > cmdline)
 	p--;			/* Remove the last space */
     *p = '\0';
+    
+    if (has_custom_config()) {
+    	*p++ = ' ';
+    	strcat(p, custom_cmdline);
+    }
 
     return cmdline;
 }
@@ -816,7 +892,7 @@ static char *extfilename(char *filename, char *ext, int feature)
 	return found;
 }
 
-static char *bestextfilename(char *filename)
+static const char *bestextfilename(char *filename)
 {
 	char *found;
 
@@ -962,6 +1038,15 @@ static int main_linux(int argc, char *argv[])
 	    fprintf(stderr, "Unable to add DHCP info: ");
 	    goto bail;
 	}
+    }
+
+    if (has_custom_config() && custom_initrdlen) {
+	void *data;
+
+	if (!opt_quiet)
+	    printf("Loading custom initrd... ");
+	if (loadcustominitrd(&data))
+	    initramfs_add_data(initramfs, data, custom_initrdlen, custom_initrdlen, 4);
     }
 
     /* Handle dtb and eventually other setup data */
