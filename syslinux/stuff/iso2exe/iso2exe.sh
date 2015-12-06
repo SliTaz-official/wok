@@ -368,7 +368,7 @@ EOT
 		echo "#!boot $(md5sum $DATA | sed 's/ .*//')" | cat - $DATA | \
 		ddq bs=2k seek=$(custom_config_sector $1) of=$1 conv=notrunc
 		if [ $(stat -c %s $1) -gt $isosz ]; then
-			echo "$(($isosz - $(stat -c %s $1))) extra bytes."
+			echo "$(($(stat -c %s $1) - $isosz)) extra bytes."
 		else
 			echo "$(($isosz - 32768 - 2048*$(get 32848 $1 4) 
 				 - $(stat -c %s $DATA) - 24)) bytes free."

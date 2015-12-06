@@ -841,11 +841,46 @@ blankcd()
 	wodim -v -blank=fast
 }
 
+customsector()
+{
+	echo $(($(get 32848 "$ISO" 4)+16))
+}
+
+hascustomconf()
+{
+	[ "$(ddq bs=2k skip=$(customsector) if="$ISO" | ddq bs=1 count=6)" \
+	  == "#!boot" ]
+}
+
+gotcustomconf()
+{
+	hascustomconf && menuitem "$@"
+}
+
 gotisomd5()
 {
 	[ "$(which md5sum 2> /dev/null)" ] &&
 	[ $(get 0 "$ISO") -eq 23117 ] &&
 	[ $(get 18 "$ISO") -ne 0 ] && menuitem "$@"
+}
+
+getcustomconf()
+{
+	ddq bs=2k skip=$(customsector) if="$ISO" | while read line; do
+		case "$line" in
+		\#!boot*) ;;
+		append=*) echo ${line#append=} > cmdline && ls -l $PWD/cmdline ;;
+		initrd:*) cnt=${line#initrd:}
+			  { ddq bs=512 count=$(($cnt / 512));
+			    ddq bs=1 count=$(($cnt % 512)); } > initrd &&
+			  ls -l $PWD/initrd
+			  break ;;
+		*)	  break ;;	  
+		esac
+	done
+	[ "$1" ] && return 0
+	echo -e "\rPress RETURN to continue."
+	read n
 }
 
 isomd5()
@@ -862,16 +897,17 @@ isomd5()
 		[ $(((1+$s+$(get $(($n+1)) "$ISO" 1)) % 65536)) -eq 0 ] &&
 		echo "OK" || echo "ERROR"
 	fi
-	n=$(($(get 32848 "$ISO" 4)+16))
-	if [ "$(ddq bs=2k skip=$n if="$ISO" | ddq bs=1 count=6)" == "#!boot" ]; then
+	if hascustomconf; then
 		echo -en "\rChecking iso custom config..."
 		TMP=/tmp/$(basename $0)$$md5
-		md5="$(ddq bs=2k skip=$n if="$ISO" | while read line; do
+		md5="$(ddq bs=2k skip=$(customsector) if="$ISO" | while read line; do
 			case "$line" in
 			\#!boot*) echo ${line#*boot } > $TMP ;;
 			append=*) echo $line ;;
 			initrd:*) echo $line
-				  ddq bs=1 count=${line#initrd:}
+				  cnt=${line#initrd:}
+				  ddq bs=512 count=$((cnt / 512))
+				  ddq bs=1 count=$((cnt % 512))
 				  break ;;
 			*)	  break ;;	  
 			esac
@@ -1275,6 +1311,7 @@ $DIALOG  --clear \
 	--title " $(isotitle) " \
 	--menu "" -2 70 0 \
 $(cdfile 'README*'	"readme"	"Show the README file") \
+$(gotcustomconf		"getcustomconf"	"Get custom config") \
 $(gotisomd5		"isomd5"	"Check the ISO image") \
 $(cdfile 'md5sum*'	"md5"		"Check the ISO files") \
 $(cdfile 'sha*sum*'	"sha"		"Check the ISO files") \

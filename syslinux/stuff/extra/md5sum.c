@@ -868,11 +868,11 @@ static bool __constfunc cpu_has_feature(int x)
     return cpu_has_level(level) && ((cpuid_edx(level) >> (x & 31) & 1));
 }
 
-static char *extfilename(char *filename, char *ext, int feature)
+static const char *extfilename(const char *filename, char *ext, int feature)
 {
 #define NEWFILENAMESZ 256
 	static char newfilename[NEWFILENAMESZ+1];
-	char *found = filename;
+	const char *found = filename;
 	char *new = newfilename;
 	int fd;
 
@@ -892,9 +892,9 @@ static char *extfilename(char *filename, char *ext, int feature)
 	return found;
 }
 
-static const char *bestextfilename(char *filename)
+static const char *bestextfilename(const char *filename)
 {
-	char *found;
+	const char *found;
 
 	//found = extfilename(filename, "fpu",   X86_FEATURE_FPU);
 	//found = extfilename(filename, "686",   X86_FEATURE_CMOV);
