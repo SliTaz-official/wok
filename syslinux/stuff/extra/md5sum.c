@@ -778,7 +778,7 @@ static int loadcustominitrd(void **data)
 	if (len == 0)
 	    break;
 	free(custom_buffer);
-	got_config += diskinfo.bps;
+	got_config += 2048 / diskinfo.bps;
 	custom_initrdbase = custom_buffer = 
 		disk_read_sectors(&diskinfo, got_config, 2048 / diskinfo.bps);
     }
