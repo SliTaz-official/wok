@@ -359,7 +359,7 @@ EOT
 	echo " done."
 	if [ "$append$initrd" ]; then
 		echo -n "Adding custom config... "
-		DATA=/tmp/$0$$
+		DATA=/tmp/$(basename $0)$$
 		rm -f $DATA > /dev/null
 		isosz=$(stat -c %s $1)
 		[ "$append" ] && echo "append=$append" >> $DATA
