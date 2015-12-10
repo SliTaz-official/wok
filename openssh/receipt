@@ -40,7 +40,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/init.d $fs/etc/ssh 
+	mkdir -p $fs/usr $fs/etc/init.d $fs/etc/ssh
 	cp -a $install/usr/sbin $install/usr/bin $fs/usr
 	rm -f $fs/usr/sbin/sftp-server
 	cp -a $install/etc $fs
@@ -51,22 +51,23 @@ genpkg_rules()
 
 post_install()
 {
-	grep -q ssh $1/etc/inetd.conf || cat >> $1/etc/inetd.conf <<EOT
+	grep -q ssh "$1/etc/inetd.conf" || cat >> "$1/etc/inetd.conf" <<EOT
 #ssh	stream	tcp	nowait	root	sshd	sshd	-i
 EOT
 	while read dropbear openssh ; do
-		[ -s $1$dropbear ] || continue
-		dropbearconvert dropbear openssh $1$dropbear $1$openssh
-		dropbearkey -y -f $1$dropbear | grep ssh > $1$openssh.pub
-		dropbearkey -y -f $1$dropbear | grep Fingerprint
+		[ -s "$1$dropbear" ] || continue
+		dropbearconvert dropbear openssh "$1$dropbear" "$1$openssh"
+		dropbearkey -y -f "$1$dropbear" | grep ssh > "$1$openssh.pub"
+		dropbearkey -y -f "$1$dropbear" | grep Fingerprint
 	done <<EOT
 /etc/dropbear/dropbear_rsa_host_key	/etc/ssh/ssh_host_rsa_key
 /etc/dropbear/dropbear_dss_host_key	/etc/ssh/ssh_host_dsa_key
 EOT
-ssh-keygen -A
+
+	chroot "$1/" ssh-keygen -A
 }
 
 post_remove()
 {
-	grep -q sshd $1/etc/inetd.conf && sed -i '/sshd/d' $1/etc/inetd.conf
+	grep -q sshd "$1/etc/inetd.conf" && sed -i '/sshd/d' "$1/etc/inetd.conf"
 }

@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/openssh : Start, stop and restart OpenSSH server on SliTaz, at 
+# /etc/init.d/openssh : Start, stop and restart OpenSSH server on SliTaz, at
 # boot time or with the command line.
 #
 # To start OpenSSH server at boot time, just put openssh in the $RUN_DAEMONS
@@ -15,55 +15,55 @@ OPTIONS=$OPENSSH_OPTIONS
 PIDFILE=/var/run/sshd.pid
 
 [ -d /var/run/sshd ] || mkdir -p /var/run/sshd
+
 case "$1" in
-  start)
-    # We need rsa and dsa host key file to start dropbear.
-    if [ ! -f /etc/ssh/ssh_host_rsa_key ] ; then
-      echo "Generating $NAME rsa key... "
-      ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
-    fi
-    if [ ! -f /etc/ssh/ssh_host_dsa_key ] ; then
-      echo "Generating $NAME dsa key... "
-      ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
-    fi
-    if [ ! -f /etc/ssh/ssh_host_ecdsa_key ] ; then
-      echo "Generating $NAME ecdsa key... "
-      ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -C '' -N ''
-    fi
-    if active_pidfile $PIDFILE sshd ; then
-      echo "$NAME already running."
-      exit 1
-    fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS
-    status
-    ;;
-  stop)
-    if ! active_pidfile $PIDFILE sshd ; then
-      echo "$NAME is not running."
-      exit 1
-    fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
-    status
-    ;;
-  restart)
-    if ! active_pidfile $PIDFILE sshd ; then
-      echo "$NAME is not running."
-      exit 1
-    fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
-    sleep 2
-    $DAEMON $OPTIONS
-    status
-    ;;
-  *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
-    exit 1
-    ;;
+	start)
+		# We need rsa and dsa host key file to start dropbear.
+		if [ ! -f /etc/ssh/ssh_host_rsa_key ] ; then
+			echo "Generating $NAME rsa key... "
+			ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
+		fi
+		if [ ! -f /etc/ssh/ssh_host_dsa_key ] ; then
+			echo "Generating $NAME dsa key... "
+			ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
+		fi
+		if [ ! -f /etc/ssh/ssh_host_ecdsa_key ] ; then
+			echo "Generating $NAME ecdsa key... "
+			ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -C '' -N ''
+		fi
+		if active_pidfile $PIDFILE sshd ; then
+			echo "$NAME already running."
+			exit 1
+		fi
+		action "Starting $DESC: $NAME... "
+		$DAEMON $OPTIONS
+		status
+		;;
+	stop)
+		if ! active_pidfile $PIDFILE sshd ; then
+			echo "$NAME is not running."
+			exit 1
+		fi
+		action "Stopping $DESC: $NAME... "
+		kill $(cat $PIDFILE)
+		status
+		;;
+	restart)
+		if ! active_pidfile $PIDFILE sshd ; then
+			echo "$NAME is not running."
+			exit 1
+		fi
+		action "Restarting $DESC: $NAME... "
+		kill $(cat $PIDFILE)
+		sleep 2
+		$DAEMON $OPTIONS
+		status
+		;;
+	*)
+		emsg "<n><b>Usage:</b> /etc/init.d/$(basename $0) [start|stop|restart]"
+		newline
+		exit 1
+		;;
 esac
 
 exit 0
