@@ -1,8 +1,8 @@
 #!/bin/sh
-# /etc/init.d/cups: Start, stop and restart Cups deamon on SliTaz, at boot
+# /etc/init.d/cups: Start, stop and restart CUPS deamon on SliTaz, at boot
 # time or with the command line.
 #
-# To start daemon at boot time, add cupsd to the $RUN_DAEMONS variable
+# To start daemon at boot time, add 'cupsd' to the $RUN_DAEMONS variable
 # of /etc/rcS.conf and configure options with /etc/daemons.conf.
 #
 . /etc/init.d/rc.functions
@@ -16,27 +16,25 @@ PIDFILE=/var/run/cups/cups.sock
 
 case "$1" in
 	stop)
-		echo -n "Stopping $DESC: $NAME... "
+		action 'Stopping $DESC: $NAME... '
 		kill $(pgrep -f cupsd)
 		sleep 2
 		[ -e /var/run/cups/cups.sock ] && rm -f $PIDFILE
 		status
 		;;
 	start)
-		if ! active_pidfile $PIDFILE cupsd 2> /dev/null ; then
-			echo -n "Starting $DESC: $NAME... "
+		if ! active_pidfile $PIDFILE cupsd 2>/dev/null; then
+			action 'Starting $DESC: $NAME... '
 			$DAEMON $OPTIONS
 			status
 		else
-			echo -n "Not starting $DESC: $DESC is already running"
-			false
-			status
+			action 'Not starting $DESC: $DESC is already running'
+			false; status
 		fi
 		;;
 	*)
-		echo ""
-		echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop]"
-		echo ""
+		emsg "<n><b>Usage:</b> /etc/init.d/$(basename $0) [start|stop]"
+		newline
 		exit 1
 		;;
 esac

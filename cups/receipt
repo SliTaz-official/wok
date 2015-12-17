@@ -11,9 +11,7 @@ WEB_SITE="http://www.cups.org/"
 WGET_URL="http://www.cups.org/software/$VERSION/$TARBALL"
 TAGS="printer printing"
 
-DEPENDS="libssl slitaz-base-files libgcrypt gnutls dbus jpeg libpng tiff zlib \
-libcomerr cups-doc libkrb5 libcomerr3 gcc-lib-base libusb-compat libtasn1 acl \
-poppler-apps cups-filters"
+DEPENDS="cups-filters libcups"
 BUILD_DEPENDS="libgcrypt-dev gnutls-dev dbus-dev jpeg-dev libpng-dev \
 tiff-dev zlib-dev libtasn1-dev openssl-dev libusb-compat-dev php-dev \
 acl-dev poppler-apps"
@@ -21,7 +19,6 @@ acl-dev poppler-apps"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	patch -Np1 -i $stuff/install-sh.u
 	./configure \
 		--prefix=/usr \
@@ -43,13 +40,13 @@ compile_rules()
 		$CONFIGURE_ARGS &&
 	make &&
 	make BUILDROOT=$DESTDIR install
-
+	cp -f $stuff/cups.desktop $install/usr/share/applications/cups.desktop
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share/pixmaps
+	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share
 
 	cp -a $install/etc/cups $fs/etc
 	cp -a $install/etc/dbus* $fs/etc
@@ -58,53 +55,46 @@ genpkg_rules()
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/lib/cups $fs/usr/lib
 	cp -a $install/usr/share/cups $fs/usr/share
-	cp -a $install/usr/share/icons/hicolor/32x32/apps/cups.png $fs/usr/share/pixmaps
+	cp -a $install/usr/share/icons $fs/usr/share
 	cp -a $install/var $fs
 
-        # Remove files provided by cups-filters
-        rm -f $fs/usr/share/cups/banners/*
-        rm -f $fs/usr/share/cups/data/testprint	
-	
+	# Remove files provided by cups-filters
+	rm -f $fs/usr/share/cups/banners/*
+	rm -f $fs/usr/share/cups/data/testprint
+
+	# Remove files provided by libcups
+	rm -f $fs/usr/lib/libcups.so*
+
 	# Daemon script
 	cp -a $stuff/etc $fs
 
-	# Tazpanel link
+	# TazPanel link
 	cp -a $stuff/var $fs
 }
 
-# Start cups daemon and edit daemons.conf.
 post_install()
 {
-	local root
-	root=$1
-	if [ -z "$root" -a ! -s /aufs-umount.sh ]; then
+	# Start CUPS daemon and edit daemons.conf
+	if [ -z "$1" -a ! -s /aufs-umount.sh ]; then
 		/etc/init.d/cupsd start || continue
 	fi
-	if ! grep -q ^CUPSD_OPTIONS $root/etc/daemons.conf; then
-		echo '# Cups printing daemon options.' >> $root/etc/daemons.conf
-		echo 'CUPSD_OPTIONS=""' >> $root/etc/daemons.conf
-		echo '' >> $root/etc/daemons.conf
+	if ! grep -q ^CUPSD_OPTIONS "$1/etc/daemons.conf"; then
+		cat >> "$1/etc/daemons.conf" <<EOT
+# CUPS printing daemon options.
+CUPSD_OPTIONS=""
+
+EOT
 	fi
 }
 
-# Stop cups daemon before rm.
 pre_remove()
 {
-	local root
-	root=$1
-	if [ -z "$root" ]; then
-		/etc/init.d/cupsd stop
-	fi
-}
-
-# Overlap busybox
-pre_install()
-{
-	rm -f $1/usr/bin/lpr
+	# Stop CUPS daemon before rm.
+	[ -z "$1" -a -x /etc/init.d/cupsd ] && /etc/init.d/cupsd stop
+	:
 }
 
 post_remove()
 {
-	ln -s /bin/busybox $1/usr/bin/lpr
+	ln -s /bin/busybox "$1/usr/bin/lpr"
 }
-
