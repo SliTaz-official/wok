@@ -84,26 +84,26 @@ genpkg_rules()
 
 post_install()
 {
-	if ! grep -q nagios $1/etc/passwd; then
+	if ! grep -q nagios "$1/etc/passwd"; then
 		echo -n "Adding user/group nagios..."
-		chroot $1/ addgroup -S nagios
-		chroot $1/ adduser -S -D -H -G nagios nagios
+		chroot "$1/" addgroup -S nagios
+		chroot "$1/" adduser -S -D -H -G nagios nagios
 		status
 	fi
 	
 	# Fix perms for files and directories
-	chroot $1/ chown -R nagios.nagios /var/log/nagios \
+	chroot "$1/" chown -R nagios.nagios /var/log/nagios \
 	  /var/spool/nagios \
 	  /var/lib/nagios \
 	  /usr/share/nagios \
 	  /etc/nagios/*
 	  
 	
-	chmod 2775 $1/var/lib/nagios/rw
-	chroot $1/ addgroup www nagios
+	chmod 2775 "$1/var/lib/nagios/rw"
+	chroot "$1/" addgroup www nagios
 	
 	# Start Nagios daemon if we are  on running system
-	[ -z $1 ] && /etc/init.d/nagios start
+	[ "$1" ] || /etc/init.d/nagios start
 	
 	# post_install messges
 	echo -e "\nTo starts $PACKAGE server you can run :\n"
@@ -114,5 +114,5 @@ post_install()
 
 pre_remove()
 {
-	[ -z $1 ] && /etc/init.d/nagios stop
+	[ "$1" ] || /etc/init.d/nagios stop
 }

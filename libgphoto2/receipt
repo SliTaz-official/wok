@@ -54,16 +54,14 @@ genpkg_rules()
 
 post_install()
 {
-	local root=$1
-
-	HAL_FDI="$root/usr/share/hal/fdi/information/20thirdparty/10-camera-libgphoto2.fdi"
-	UDEV_RULE="$root/etc/udev/rules.d/70-libgphoto2.rules"
-	CAM_LIST="$root/usr/lib/libgphoto2/print-camera-list"
+	HAL_FDI="$1/usr/share/hal/fdi/information/20thirdparty/10-camera-libgphoto2.fdi"
+	UDEV_RULE="$1/etc/udev/rules.d/70-libgphoto2.rules"
+	CAM_LIST="$1/usr/lib/libgphoto2/print-camera-list"
 
 	# Let print-camera-list find libgphoto2.so
-	export LD_LIBRARY_PATH="$root/usr/lib"
+	export LD_LIBRARY_PATH="$1/usr/lib"
 	# Let libgphoto2 find its camera-modules before running print-camera-list
-	export CAMLIBS="$root/usr/lib/libgphoto2/$VERSION"
+	export CAMLIBS="$1/usr/lib/libgphoto2/$VERSION"
 
 	# HAL file
 	"$CAM_LIST" hal-fdi > "$HAL_FDI" || return 1
@@ -71,10 +69,10 @@ post_install()
 	#udev rule
 	"$CAM_LIST" udev-rules version 0.98 group camera mode 0660 > "$UDEV_RULE" || return 1
 
-	tazpkg reconfigure udev --root=$root
+	tazpkg reconfigure udev --root="$1"
 
 	# add group camera
-	if ! grep -q camera $root/etc/group; then
+	if ! grep -q camera "$1/etc/group"; then
 		chroot "$1/" addgroup -g 97 camera
 	fi
 

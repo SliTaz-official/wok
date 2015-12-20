@@ -86,15 +86,15 @@ genpkg_rules()
 # Post message when installing.
 post_install()
 {
-	[ "$1" ] || while read dropbear openssh ; do
-		[ -s $openssh ] || continue
-		dropbearconvert openssh dropbear ${root}$openssh ${root}$dropbear
-		dropbearkey -y -f ${root}$dropbear | grep Fingerprint
+	while read dropbear openssh ; do
+		[ -s "$1/$openssh" ] || continue
+		chroot "$1/" dropbearconvert openssh dropbear $openssh $dropbear
+		chroot "$1/" dropbearkey -y -f $dropbear | grep Fingerprint
 	done <<EOT
 /etc/dropbear/dropbear_rsa_host_key	/etc/ssh/ssh_host_rsa_key
 /etc/dropbear/dropbear_dss_host_key	/etc/ssh/ssh_host_dsa_key
 EOT
-	grep -q ssh $1/etc/inetd.conf || cat >> $1/etc/inetd.conf <<EOT
+	grep -q ssh "$1/etc/inetd.conf" || cat >> "$1/etc/inetd.conf" <<EOT
 #ssh	stream	tcp	nowait	root	dropbear	dropbear	-i -b /etc/dropbear/banner
 EOT
 	echo -e "\nTo starts $PACKAGE server you can run :\n"
@@ -104,5 +104,5 @@ EOT
 
 post_remove()
 {
-	grep -q dropbear $1/etc/inetd.conf && sed -i '/dropbear/d' $1/etc/inetd.conf
+	grep -q dropbear "$1/etc/inetd.conf" && sed -i '/dropbear/d' "$1/etc/inetd.conf"
 }

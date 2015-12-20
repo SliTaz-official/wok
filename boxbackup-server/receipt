@@ -61,51 +61,51 @@ pre_install()
 post_install()
 {
 	# default conf dir is now /etc/boxbackup
-	if [ ! -e $1/etc/box/bbstored.conf ]; then
-		mv /etc/box $1$CONF_DIR
+	if [ ! -e "$1/etc/box/bbstored.conf" ]; then
+		mv /etc/box "$1$CONF_DIR"
 	fi
 
 	# adduser BBUSER if needed
-	if  ! grep -q $BBUSER $1/etc/passwd; then
+	if  ! grep -q $BBUSER "$1/etc/passwd"; then
 		echo
 		action "Adding user '$BBUSER'..."
-		echo $BBUSER':x:505:505:BoxBackup Network Backup:/dev/null:/bin/false' >> $1/etc/passwd
-		echo $BBUSER':!:14013:0:99999:7:::' >> $1/etc/shadow
-		echo $BBUSER':x:505:' >> $1/etc/group
-		echo $BBUSER':!::' >> $1/etc/gshadow
+		echo $BBUSER':x:505:505:BoxBackup Network Backup:/dev/null:/bin/false' >> "$1/etc/passwd"
+		echo $BBUSER':!:14013:0:99999:7:::' >> "$1/etc/shadow"
+		echo $BBUSER':x:505:' >> "$1/etc/group"
+		echo $BBUSER':!::' >> "$1/etc/gshadow"
 		status
 	fi
 
 	# Create config is needed
-	if [ ! -e $1$CONF_DIR ]; then
-		mkdir -p $1$CONF_DIR &&
-		chroot $1/ chown $BBUSER $CONF_DIR &&
-		chmod 700 $1$CONF_DIR
+	if [ ! -e "$1$CONF_DIR" ]; then
+		mkdir -p "$1$CONF_DIR" &&
+		chroot "$1/" chown $BBUSER $CONF_DIR &&
+		chmod 700 "$1$CONF_DIR"
 	fi
 
-	if [ ! -e $1$DATA_DIR/backup ]; then
+	if [ ! -e "$1$DATA_DIR/backup" ]; then
 		# Creating backup dir
 		action "Creating backup directory..."
-		mkdir -p $1$DATA_DIR/backup &&
-		chroot $1/ chown -R $BBUSER $DATA_DIR &&
-		chmod -R 700 $1$DATA_DIR
+		mkdir -p "$1$DATA_DIR/backup" &&
+		chroot "$1/" chown -R $BBUSER $DATA_DIR &&
+		chmod -R 700 "$1$DATA_DIR"
 		status
 	fi
 
-	if [ ! -e $1$CONF_DIR/raidfile.conf ]; then
+	if [ ! -e "$1$CONF_DIR/raidfile.conf" ]; then
 		# RAID Setup
 		action "Disabling deprecated userland RAID..."
-		chroot $1/ /usr/bin/raidfile-config $CONF_DIR 2048 $DATA_DIR 2>1 > /dev/null
+		chroot "$1/" /usr/bin/raidfile-config $CONF_DIR 2048 $DATA_DIR 2>1 > /dev/null
 		status
-		chroot $1/ chown -R $BBUSER $CONF_DIR/raidfile.conf &&
-		chmod 700 -R $1$CONF_DIR/raidfile.conf
+		chroot "$1/" chown -R $BBUSER $CONF_DIR/raidfile.conf &&
+		chmod 700 -R "$1$CONF_DIR/raidfile.conf"
 	fi
 
-	if [ ! -e $1$CONF_DIR/bbstored.conf ]; then
+	if [ ! -e "$1$CONF_DIR/bbstored.conf" ]; then
 		# Setting hostname
 		action "Setting hostname... "
-		if [ $(chroot $1/ hostname -f 2>1 > /dev/null;echo $?) -eq 0 ]; then
-			HOSTNAME=$(chroot $1/ hostname -f)
+		if [ $(chroot "$1/" hostname -f 2>1 > /dev/null;echo $?) -eq 0 ]; then
+			HOSTNAME=$(chroot "$1/" hostname -f)
 		fi
 		if [ -z $HOSTNAME ]; then
 			HOSTNAME="127.0.0.1"
@@ -115,17 +115,17 @@ post_install()
 
 		# Setting up the CA environment
 		action "Creating certificates..."
-		chroot $1/ /usr/bin/bbstored-certs $CA_DIR init 2>1 > /dev/null
+		chroot "$1/" /usr/bin/bbstored-certs $CA_DIR init 2>1 > /dev/null
 		status
 
 		# Generate server certificate request
 		action "Generate server certificate request..."
-		chroot $1/ bbstored-config $CONF_DIR $HOSTNAME $BBUSER 2>1 > /dev/null
+		chroot "$1/" bbstored-config $CONF_DIR $HOSTNAME $BBUSER 2>1 > /dev/null
 		status
 
 		# Sign the server certificate
 		action "Sign the server certificate..."
-		chroot $1/ openssl x509 -req -sha1 -extensions usr_crt \
+		chroot "$1/" openssl x509 -req -sha1 -extensions usr_crt \
 			-in $CONF_DIR/$BBUSER/${HOSTNAME}-csr.pem \
 			-CA $CA_DIR/roots/serverCA.pem \
 			-CAkey $CA_DIR/keys/serverRootKey.pem \
@@ -135,18 +135,18 @@ post_install()
 
 		# Preparing the server certificates
 		action "Installing server certificate..."
-		cp -a $1$CA_DIR/servers/${HOSTNAME}-cert.pem $1$CONF_DIR/$BBUSER
+		cp -a "$1$CA_DIR/servers/${HOSTNAME}-cert.pem" "$1$CONF_DIR/$BBUSER"
 		status
 		action "Installing client certificate..."
-		cp -a $1$CA_DIR/roots/clientCA.pem $1$CONF_DIR/$BBUSER
+		cp -a "$1$CA_DIR/roots/clientCA.pem" "$1$CONF_DIR/$BBUSER"
 		status
 
 		# Securing $CONF_DIR
-		chroot $1/ chown -R $BBUSER $CONF_DIR/bbstored* &&
-		chmod 700 -R $1$CONF_DIR/bbstored*
+		chroot "$1/" chown -R $BBUSER $CONF_DIR/bbstored* &&
+		chmod 700 -R "$1$CONF_DIR/bbstored"*
 	fi
 
-	if [ -e $1$CA_DIR ]; then
+	if [ -e "$1$CA_DIR" ]; then
 		# Warning
 		echo
 		echo "IMPORTANT NOTE:"
@@ -167,7 +167,7 @@ pre_remove()
 post_remove()
 {
 	echo
-	if  grep -q $BBUSER $1/etc/passwd; then
+	if  grep -q $BBUSER /etc/passwd; then
 		action "Removing $BBUSER user..."
 		deluser bbstored
 		status

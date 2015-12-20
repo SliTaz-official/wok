@@ -80,12 +80,12 @@ post_install()
 	local hostname=$(cat /etc/hostname 2>/dev/null)
 
 	# Just in case.
-	chown www.www $1/var/log/$PACKAGE
+	chown www.www "$1/var/log/$PACKAGE"
 	ping -c 2 $(hostname) > /dev/null 2>&1 || 
-		sed -i "s/localhost/$(hostname) localhost/" $1/etc/hosts
-	[ -s $1/etc/ssl/apache/apache.pem ] ||
-	openssl req -new -x509 -keyout $1/etc/ssl/apache/apache.pem \
-		-out $1/etc/ssl/apache/apache.pem -days 3650 -nodes <<EOT
+		sed -i "s/localhost/$(hostname) localhost/" "$1/etc/hosts"
+	[ -s "$1/etc/ssl/apache/apache.pem" ] ||
+	openssl req -new -x509 -keyout "$1/etc/ssl/apache/apache.pem" \
+		-out "$1/etc/ssl/apache/apache.pem" -days 3650 -nodes <<EOT
 ${lang:-us}
 ${tz:-UTC}
 
@@ -95,14 +95,14 @@ ${hostname:-slitaz}
 
 EOT
 	[ -z "$quiet" ] && echo # Start new line
-	( cd $1/$INSTALLED/ ; grep -l /etc/apache/conf.d/ */receipt ) | \
+	( cd "$1/$INSTALLED/" ; grep -l /etc/apache/conf.d/ */receipt ) | \
 	while read file; do
 		pkg=$(dirname $file)
 		[ "$pkg" = "$PACKAGE" ] && continue
 		[ -z "$quiet" ] && echo "Reconfiguring $pkg for $PACKAGE..."
 		tazpkg reconfigure $pkg
 	done
-	[ -f $1/etc/php.ini ] && tazpkg get-install php-apache --root=$1
+	[ -f "$1/etc/php.ini" ] && tazpkg get-install php-apache --root="$1"
 	[ "$1" ] || netstat -ltn 2> /dev/null | grep -q :80 ||
 	/etc/init.d/$PACKAGE start
 }

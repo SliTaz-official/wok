@@ -40,32 +40,39 @@ genpkg_rules()
 post_install()
 {
 	echo -n "Processing post-install commands..."
+	if [ "$1" ]; then
+		mv -f "$1/etc/resolv.conf" "$1/etc/recolv.conf.$$" 2> /dev/null
+		cp /etc/resolv.conf "$1/etc/resolv.conf"
+	fi
 
 	# Create a /etc/xml/catalog file
-	if [ ! -d $1/etc/xml ]; then install -v -m755 -d $1/etc/xml; fi &&
-	if [ ! -f $1/etc/xml/catalog ]; then
-    		xmlcatalog --noout --create $1/etc/xml/catalog
+	if [ ! -d "$1/etc/xml" ]; then install -v -m755 -d "$1/etc/xml"; fi &&
+	if [ ! -f "$1/etc/xml/catalog" ]; then
+    		chroot "$1/" xmlcatalog --noout --create /etc/xml/catalog
 	fi &&
 
-	xmlcatalog --noout --add "rewriteSystem" \
+	chroot "$1/" xmlcatalog --noout --add "rewriteSystem" \
 		"http://docbook.sourceforge.net/release/xsl-ns/$VERSION" \
 		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
-	$1/etc/xml/catalog &&
+	/etc/xml/catalog &&
 
-	xmlcatalog --noout --add "rewriteURI" \
+	chroot "$1/" xmlcatalog --noout --add "rewriteURI" \
 		"http://docbook.sourceforge.net/release/xsl-ns/$VERSION" \
 		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
-	$1/etc/xml/catalog &&
+	/etc/xml/catalog &&
 
-	xmlcatalog --noout --add "rewriteSystem" \
+	chroot "$1/" xmlcatalog --noout --add "rewriteSystem" \
 		"http://docbook.sourceforge.net/release/xsl-ns/current" \
 		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
-	$1/etc/xml/catalog &&
+	/etc/xml/catalog &&
 
-	xmlcatalog --noout --add "rewriteURI" \
+	chroot "$1/" xmlcatalog --noout --add "rewriteURI" \
 		"http://docbook.sourceforge.net/release/xsl-ns/current" \
 		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
-	$1/etc/xml/catalog
+	/etc/xml/catalog
 	status
+	if [ "$1" ]; then
+		mv -f "$1/etc/resolv.conf.$$" "$1/etc/recolv.conf" 2> /dev/null
+	fi
 }
 

@@ -101,20 +101,20 @@ post_install()
 	user=mysql
 	group=mysql
 	
-	if ! grep -q $user $1/etc/passwd; then
+	if ! grep -q $user "$1/etc/passwd"; then
 		echo -n "Adding user/group $user..."
-		chroot $1/ addgroup -S $group
-		chroot $1/ adduser -s /bin/false -S -D -H -G $group $user
+		chroot "$1/" addgroup -S $group
+		chroot "$1/" adduser -s /bin/false -S -D -H -G $group $user
 		status
 	fi
 	# adduser mysql if needed
-	if ! grep -q ${user} $1/etc/passwd; then
+	if ! grep -q ${user} "$1/etc/passwd"; then
 		echo -n "Adding user MySQL..."
-		chroot $1/ /bin/adduser -s /bin/false -h /dev/null \
+		chroot "$1/" /bin/adduser -s /bin/false -h /dev/null \
 			-g "MySQL Daemon user" -u 27 -H -D -S -G ${group} ${user}
 		status
 	fi
-	#chroot $1/ /bin/chown ${user}.${group} $(cat $1/$INSTALLED/$PACKAGE/files.list)
+	#chroot "$1/" /bin/chown ${user}.${group} $(cat $1/$INSTALLED/$PACKAGE/files.list)
 	chroot "$1/" /bin/chown -R ${user}.${group} /var/lib/mysql
 	chroot "$1/" mysql_install_db --user=${user} --basedir=/usr
 	cat <<EOF
@@ -131,9 +131,9 @@ EOF
 pre_install()
 {
 	# Cleanup old files
-	rm -f $1/usr/libexec/mysql*
+	rm -f "$1/usr/libexec/mysql"*
 	# Mv config
-	[ -f $1/etc/my.cnf ] && mv -f $1/etc/my.cnf $1/etc/mysql/my.cnf
+	[ -f "$1/etc/my.cnf" ] && mv -f "$1/etc/my.cnf" "$1/etc/mysql/my.cnf"
 }
 
 post_remove()

@@ -48,10 +48,8 @@ genpkg_rules()
 #
 post_install()
 {
-	local root
-	root=$1
 	echo "Processing post-install commands..."
-	sh=`readlink $root/bin/sh`
+	sh=$(readlink "$1/bin/sh")
 	if [ ! "$sh" = "/bin/zsh" ]; then
 		echo ""
 		echo "**** Actual SH link : $sh"
@@ -60,8 +58,8 @@ post_install()
 		read -t 30 answer < /dev/tty
 		if [ "$answer" == "y" ]; then
 			echo ""
-			echo -n "Removin sh link to make a new one pointing on /bin/zsh..."
-			rm $root/bin/sh && ln -s /bin/zsh $root/bin/sh
+			echo -n "Removing sh link to make a new one pointing on /bin/zsh..."
+			rm "$1/bin/sh" && ln -s /bin/zsh "$1/bin/sh"
 			status
 		else
 			echo ""
@@ -73,11 +71,9 @@ post_install()
 # Restore a valid sh link if needed.
 pre_remove()
 {
-        local root
-        root=$1
-        sh=`readlink $root/bin/sh`
+        sh=$(readlink "$1/bin/sh")
         if [ ! "$sh" = "busybox" ]; then
-                rm $root/bin/sh &&
-                ln -s /bin/busybox $root/bin/sh
+                rm "$1/bin/sh" &&
+                ln -s /bin/busybox "$1/bin/sh"
         fi
 }

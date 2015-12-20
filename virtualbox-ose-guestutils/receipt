@@ -65,39 +65,39 @@ genpkg_rules()
 
 pre_remove()
 {
-    if chroot $1/ lspci | grep -qi virtualbox; then
-		sed -i "s/vboxguest vboxsf vboxvideo //" $1/etc/rcS.conf
-		sed -i '/# VBoxService daemon options./{N;N;N;d}' $1/etc/daemons.conf
-		sed -i 's/VBoxService //' $1/etc/rcS.conf
-		chroot $1/ delgroup vboxsf
-		sed -i 's/^\tDriver.*$/\tDriver      "vesa"/' $1/etc/X11/xorg.conf.d/60-Device.conf
+    if chroot "$1/" lspci | grep -qi virtualbox; then
+		sed -i "s/vboxguest vboxsf vboxvideo //" "$1/etc/rcS.conf"
+		sed -i '/# VBoxService daemon options./{N;N;N;d}' "$1/etc/daemons.conf"
+		sed -i 's/VBoxService //' "$1/etc/rcS.conf"
+		chroot "$1/" delgroup vboxsf
+		sed -i 's/^\tDriver.*$/\tDriver      "vesa"/' "$1/etc/X11/xorg.conf.d/60-Device.conf"
     fi
 }
 
 post_install()
 {
-	if chroot $1/ lspci | grep -qi virtualbox; then
-		#chroot $1/ udevadm control --reload
-		grep -qs VBOXSERVICE_OPTIONS $1/etc/daemons.conf || 
-			cat >> $1/etc/daemons.conf << "EOT"
+	if chroot "$1/" lspci | grep -qi virtualbox; then
+		#chroot "$1/" udevadm control --reload
+		grep -qs VBOXSERVICE_OPTIONS "$1/etc/daemons.conf" || 
+			cat >> "$1/etc/daemons.conf" << "EOT"
 # VBoxService daemon options.
 VBOXSERVICE_OPTIONS=""
 
 EOT
-		KERNEL_VERSION=$( chroot $1/ uname -r) 
-		chroot $1/ depmod -a $KERNEL_VERSION 
-		#chroot $1/ modprobe -a vboxguest vboxsf vboxvideo
-		sed -i 's/^\tDriver.*$/\tDriver      "vboxvideo"/' $1/etc/X11/xorg.conf.d/60-Device.conf
-		grep -qs vboxguest $1/etc/rcS.conf || 	
-			sed -i 's/LOAD_MODULES="/&vboxguest vboxsf vboxvideo /' $1/etc/rcS.conf
-		grep -qs VBoxService $1/etc/rcS.conf ||
-			sed -i 's/RUN_DAEMONS="/&VBoxService /' $1/etc/rcS.conf
-		grep -qs vboxsf $1/etc/group || chroot $1/ addgroup -g 109 vboxsf
+		KERNEL_VERSION=$( chroot "$1/" uname -r) 
+		chroot "$1/" depmod -a $KERNEL_VERSION 
+		#chroot "$1/" modprobe -a vboxguest vboxsf vboxvideo
+		sed -i 's/^\tDriver.*$/\tDriver      "vboxvideo"/' "$1/etc/X11/xorg.conf.d/60-Device.conf"
+		grep -qs vboxguest "$1/etc/rcS.conf" || 	
+			sed -i 's/LOAD_MODULES="/&vboxguest vboxsf vboxvideo /' "$1/etc/rcS.conf"
+		grep -qs VBoxService "$1/etc/rcS.conf" ||
+			sed -i 's/RUN_DAEMONS="/&VBoxService /' "$1/etc/rcS.conf"
+		grep -qs vboxsf "$1/etc/group" || chroot "$1/" addgroup -g 109 vboxsf
 		echo "add yourself to vboxsf group if you want to access"
 		echo "host shared folder: addgroup $USER vboxsf"
 		#i can't get udev to do its work
 		#echo "then logout and login again"
-		#chroot $1/ /etc/init.d/VBoxService start &> /dev/null
+		#chroot "$1/" /etc/init.d/VBoxService start &> /dev/null
 		echo "then reboot"
 	else
 		echo "this is not a virtual machine," 

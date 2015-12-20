@@ -27,16 +27,16 @@ genpkg_rules()
 
 post_install()
 {
-	grep ^RUN_DAEMONS $1/etc/rcS.conf | grep -q "ajaxterm" || sed -i \
-	  's/RUN_DAEMONS="/RUN_DAEMONS="ajaxterm /' $1/etc/rcS.conf
+	grep ^RUN_DAEMONS "$1/etc/rcS.conf" | grep -q "ajaxterm" || sed -i \
+	  's/RUN_DAEMONS="/RUN_DAEMONS="ajaxterm /' "$1/etc/rcS.conf"
 	# Configure lighttpd server
-	if [ -f $1/usr/lib/lighttpd/mod_proxy.so ]; then
-			grep -q mod_proxy $1/etc/lighttpd/lighttpd.conf ||
-			cat >> $1/etc/lighttpd/lighttpd.conf <<EOT
+	if [ -f "$1/usr/lib/lighttpd/mod_proxy.so" ]; then
+			grep -q mod_proxy "$1/etc/lighttpd/lighttpd.conf" ||
+			cat >> "$1/etc/lighttpd/lighttpd.conf" <<EOT
 server.modules += ( "mod_proxy" )
 EOT
-			grep -q ajaxterm $1/etc/lighttpd/lighttpd.conf ||
-			cat >> $1/etc/lighttpd/lighttpd.conf <<EOT
+			grep -q ajaxterm "$1/etc/lighttpd/lighttpd.conf" ||
+			cat >> "$1/etc/lighttpd/lighttpd.conf" <<EOT
 proxy.server = ( "/ajaxterm/" =>
 	( ( "host" => "127.0.0.1", "port" => 8022 ) )
 )
@@ -48,9 +48,9 @@ EOT
 			fi
 	fi
 	# Configure apache server
-	if [ -f $1/etc/apache/httpd.conf ]; then
-		if [ ! -f $1/etc/apache/conf.d/ajaxterm ]; then
-			cat > $1/etc/apache/conf.d/ajaxterm <<EOT
+	if [ -f "$1/etc/apache/httpd.conf" ]; then
+		if [ ! -f "$1/etc/apache/conf.d/ajaxterm" ]; then
+			cat > "$1/etc/apache/conf.d/ajaxterm" <<EOT
 <IfModule mod_proxy.c>
     ProxyRequests Off
     <Proxy *>
@@ -70,8 +70,8 @@ EOT
 		fi
 	fi
 	[ -z "$1" ] && /etc/init.d/ajaxterm start
-	[ ! -f $1/usr/lib/lighttpd/mod_proxy.so -a \
-	  ! -f $1/etc/apache/httpd.conf ] &&
+	[ ! -f "$1/usr/lib/lighttpd/mod_proxy.so" -a \
+	  ! -f "$1/etc/apache/httpd.conf" ] &&
 	  [ -z "$quiet" ] && cat <<EOT
 --------
 You should install either lighttpd

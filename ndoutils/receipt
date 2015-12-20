@@ -72,22 +72,22 @@ genpkg_rules()
 
 post_install()
 {
-	if ! grep -q nagios $1/etc/passwd; then
+	if ! grep -q nagios "$1/etc/passwd"; then
 		echo -n "Adding user nagios..."
-		chroot $1/ adduser -S -D -H nagios
+		chroot "$1/" adduser -S -D -H nagios
 		status
 	fi
 		
-	if ! grep -q ndomod.cfg $1/etc/nagios/nagios.cfg; then
-		sed -i '/LOG ROTATION METHOD/i\broker_module=/usr/lib/ndoutils/ndomod.o config_file=/etc/nagios/ndomod.cfg' $1/etc/nagios/nagios.cfg
-		chroot $1/ chown nagios.nagios $1/etc/nagios/nagios.cfg
+	if ! grep -q ndomod.cfg "$1/etc/nagios/nagios.cfg"; then
+		sed -i '/LOG ROTATION METHOD/i\broker_module=/usr/lib/ndoutils/ndomod.o config_file=/etc/nagios/ndomod.cfg' "$1/etc/nagios/nagios.cfg"
+		chroot "$1/" chown nagios.nagios /etc/nagios/nagios.cfg
 	fi
 	
-	chroot $1/ chown nagios.nagios $fs/usr/lib/ndoutils/ndomod.o \
-	 $fs/etc/nagios/ndo2db.cfg $fs/etc/nagios/ndomod.cfg \
-	 $fs/etc/nagios
+	chroot "$1/" chown nagios.nagios /usr/lib/ndoutils/ndomod.o \
+	 /etc/nagios/ndo2db.cfg /etc/nagios/ndomod.cfg \
+	 /etc/nagios
 
-	sed -i "s/nagios/ndo2db nagios/" $1/etc/rcS.conf 
+	sed -i "s/nagios/ndo2db nagios/" "$1/etc/rcS.conf"
 	
 	if [ -z "$1" ]; then	
 		[ -f /var/run/mysqld/mysql.pid ] || /etc/init.d/mysql start
@@ -107,7 +107,7 @@ pre_remove()
 
 post_remove()
 {
-		sed -i "s/ndo2db//" $1/etc/rcS.conf 
+		sed -i "s/ndo2db//" "$1/etc/rcS.conf"
 		/etc/init.d/nagios restart
-		sed -i 's|broker_module=/usr/lib/ndoutils/ndomod.o config_file=/etc/nagios/ndomod.cfg||' $1/etc/nagios/nagios.cfg
+		sed -i 's|broker_module=/usr/lib/ndoutils/ndomod.o config_file=/etc/nagios/ndomod.cfg||' "$1/etc/nagios/nagios.cfg"
 }

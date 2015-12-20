@@ -84,28 +84,28 @@ post_install()
 	user=postfix
 	group=postdrop
 	
-	if ! grep -q $user $1/etc/passwd; then
+	if ! grep -q $user "$1/etc/passwd"; then
 		echo -n "Adding user/group $user..."
-		chroot $1/ addgroup -S $user
-		chroot $1/ adduser -S -D -H -G $user $user
-		chroot $1/ addgroup -S $group
+		chroot "$1/" addgroup -S $user
+		chroot "$1/" adduser -S -D -H -G $user $user
+		chroot "$1/" addgroup -S $group
 		status
 	fi
 
 	# addgroup postdrop if needed
-	if ! grep -q postdrop $1/etc/group; then
+	if ! grep -q postdrop "$1/etc/group"; then
 		echo -n "Adding group ${group}..."
-		chroot $1/ addgroup -S $group
+		chroot "$1/" addgroup -S $group
 		status
 	fi
 
-	chroot $1/ chown ${user} /var/spool/postfix/* /var/lib/postfix
-	chroot $1/ chgrp ${group} /var/spool/postfix/maildrop \
+	chroot "$1/" chown ${user} /var/spool/postfix/* /var/lib/postfix
+	chroot "$1/" chgrp ${group} /var/spool/postfix/maildrop \
 		/var/spool/postfix/public /usr/sbin/postdrop /usr/sbin/postqueue
-	chmod 2755 $1/usr/sbin/postdrop $1/usr/sbin/postqueue
-	chmod 2710 $1/var/spool/postfix/public
-	chmod 1730 $1/var/spool/postfix/maildrop
-	chroot $1/ postalias /etc/postfix/aliases
+	chmod 2755 "$1/usr/sbin/postdrop" "$1/usr/sbin/postqueue"
+	chmod 2710 "$1/var/spool/postfix/public"
+	chmod 1730 "$1/var/spool/postfix/maildrop"
+	chroot "$1/" postalias /etc/postfix/aliases
 	cat <<EOF
 	
 ----
@@ -125,7 +125,7 @@ EOF
 # Overlap busybox
 pre_install()
 {
-	rm -f $1/usr/sbin/sendmail
+	rm -f "$1/usr/sbin/sendmail"
 }
 
 post_remove()

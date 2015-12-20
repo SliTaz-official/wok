@@ -46,21 +46,21 @@ EOT
 
 pre_remove()
 {
-	sed -i '/iaxmodem/d' $1/etc/inittab
+	sed -i '/iaxmodem/d' "$1/etc/inittab"
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-	grep -q ^uucp: $1/etc/passwd || {
-		chroot $1/ adduser -s /bin/false -S -D -H uucp
-		sed -i 's/^uucp:x:[0-9]*:[0-9]*:/uucp:x:0:0:/' $1/etc/passwd 
+	grep -q ^uucp: "$1/etc/passwd" || {
+		chroot "$1/" adduser -s /bin/false -S -D -H uucp
+		sed -i 's/^uucp:x:[0-9]*:[0-9]*:/uucp:x:0:0:/' "$1/etc/passwd"
 	}
-	grep -q ^uucp: $1/etc/group  || chroot $1/ addgroup uucp
-	touch $1/var/log/iaxmodem/ttyIAX0 $1/var/log/iaxmodem/iaxmodem
-	grep iaxmodem $1/etc/inittab || cat >> $1/etc/inittab << EOT
+	grep -q ^uucp: "$1/etc/group"  || chroot "$1/" addgroup uucp
+	touch "$1/var/log/iaxmodem/ttyIAX0" "$1/var/log/iaxmodem/iaxmodem"
+	grep iaxmodem "$1/etc/inittab" || cat >> "$1/etc/inittab" << EOT
 ::respawn:/usr/bin/iaxmodem ttyIAX0 > /var/log/iaxmodem.log 2>&1
 ::respawn:/usr/sbin/faxgetty ttyIAX0
 EOT
-	[ -n "$1" ] || kill -1 1
+	[ "$1" ] || kill -1 1
 }

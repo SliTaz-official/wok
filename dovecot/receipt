@@ -86,17 +86,17 @@ post_install()
 	user=dovecot
 	group=dovecot
 	
-	if ! grep -q $user $1/etc/passwd; then
+	if ! grep -q $user "$1/etc/passwd"; then
 		echo -n "Adding user/group $user..."
-		chroot $1/ addgroup -g 76 -S $group
-		chroot $1/ adduser -u 76 -S -D -H -G $group $user
-		chroot $1/ adduser -u 74 -S -D -H -G nogroup dovenull 
+		chroot "$1/" addgroup -g 76 -S $group
+		chroot "$1/" adduser -u 76 -S -D -H -G $group $user
+		chroot "$1/" adduser -u 74 -S -D -H -G nogroup dovenull 
 		status
 	fi
 	
 
 	# Set perms for files and directories
-	chroot $1/ chown -R ${user}.${group} /var/log/${user} \
+	chroot "$1/" chown -R ${user}.${group} /var/log/${user} \
 
 	cat <<EOF
 ----
@@ -113,8 +113,8 @@ EOF
 post_remove()
 {
 	echo "Removing stalled files..."
-	test -d $1/var/log/dovecot && rm -rf $1/var/log/dovecot
-	test -d $1/var/run/dovecot && rm -rf $1/var/run/dovecot
+	test -d "$1/var/log/dovecot" && rm -rf "$1/var/log/dovecot"
+	test -d "$1/var/run/dovecot" && rm -rf "$1/var/run/dovecot"
 	
 	echo "Removing user/group daemon"
 	chroot "$1/" deluser dovecot 

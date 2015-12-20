@@ -51,22 +51,22 @@ genpkg_rules()
 post_install()
 {
         # adduser cyrus if needed
-	if ! grep -q cyrus $1/etc/passwd; then
+	if ! grep -q cyrus "$1/etc/passwd"; then
 		echo -n "Adding user cyrus..."
-		chroot $1/ adduser cyrus -D -H -S -h /tmp
-		chroot $1/ sh -c 'echo "cyrus:cyrus" | chpasswd -m > /dev/null'
+		chroot "$1/" adduser cyrus -D -H -S -h /tmp
+		chroot "$1/" sh -c 'echo "cyrus:cyrus" | chpasswd -m > /dev/null'
 		status
 	fi
 	# addgroup mail if needed
-	if ! grep -q mail $1/etc/group; then
+	if ! grep -q mail "$1/etc/group"; then
 		echo -n "Adding group mail..."
-		chroot $1/ sh -c 'addgroup mail && addgroup cyrus mail'
+		chroot "$1/" sh -c 'addgroup mail && addgroup cyrus mail'
 		status
 	fi
-	chroot $1/ chown -R cyrus.mail /var/spool/imap /var/imap
+	chroot "$1/" chown -R cyrus.mail /var/spool/imap /var/imap
 	while read name port end; do
-		grep -q $port $1/etc/services || \
-			echo "$name		$port	$end" >> $1/etc/services
+		grep -q $port "$1/etc/services" || \
+			echo "$name		$port	$end" >> "$1/etc/services"
 	done <<EOF
 pop3 110/tcp pop-3
 nntp 119/tcp readnews untp
@@ -81,28 +81,28 @@ sieve 2000/tcp
 lmtp 2003/tcp
 fud 4201/udp
 EOF
-	[ -z "$1" ] && /etc/init.d/$PACKAGE start
-	if [ -f $1/etc/init.d/postfix ]; then
-		if ! grep -v ^# $1/etc/postfix/main.cf | grep -q lmtp:unix; then
+	[ "$1" ] || /etc/init.d/$PACKAGE start
+	if [ -f "$1/etc/init.d/postfix" ]; then
+		if ! grep -v ^# "$1/etc/postfix/main.cf" | grep -q lmtp:unix; then
 			echo "Append to /etc/postfix/main.cf:"
 			echo -n "    "
 			echo "mailbox_transport = lmtp:unix:/var/imap/socket/lmtp" | \
-				tee -a $1/etc/postfix/main.cf
+				tee -a "$1/etc/postfix/main.cf"
 			if [ -z "$1" ]; then
 				/etc/init.d/postfix start || /etc/init.d/postfix reload
 			fi
 		fi
 	fi
 	msg="Creating mailbox for"
-	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < $1/etc/passwd); do
+	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < "$1/etc/passwd"); do
 		echo -n "$msg $i"
 		msg=","
 	done
 	echo ""
-	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < $1/etc/passwd); do
+	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < "$1/etc/passwd"); do
 		echo "createmailbox user.$i"
-	done | chroot $1/ cyradm -u cyrus -w cyrus 127.0.0.1 >/dev/null 2>&1
-	chroot $1/ su -c "/usr/lib/cyrus/bin/reconstruct" cyrus >/dev/null 2>&1
+	done | chroot "$1/" cyradm -u cyrus -w cyrus 127.0.0.1 >/dev/null 2>&1
+	chroot "$1/" su -c "/usr/lib/cyrus/bin/reconstruct" cyrus >/dev/null 2>&1
 	cat <<EOF
 ----
 Users must have a password to access the mailbox.
@@ -115,9 +115,9 @@ Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
 EOF
 
 	# A security hole with ssh...
-	[ -f $1/etc/ssh/sshd_config ] &&
-	! grep -q cyrus $1/etc/ssh/sshd_config &&
-	echo "DenyUsers cyrus" >> $1/etc/ssh/sshd_config
+	[ -f "$1/etc/ssh/sshd_config" ] &&
+	! grep -q cyrus "$1/etc/ssh/sshd_config" &&
+	echo "DenyUsers cyrus" >> "$1/etc/ssh/sshd_config"
 }
 
 post_remove()

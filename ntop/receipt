@@ -56,18 +56,18 @@ post_install()
 	user=ntop
 	group=ntop
 
-	if ! grep -q $user: $1/etc/passwd; then
+	if ! grep -q $user: "$1/etc/passwd"; then
 		echo -n "Adding user/group $user..."
-		chroot $1/ addgroup -S $user
-		chroot $1/ adduser -S -D -H -G $group $user
+		chroot "$1/" addgroup -S $user
+		chroot "$1/" adduser -S -D -H -G $group $user
 		status
 	fi
 
 	# Fix perms for files and directories
-	chroot $1/ chown -R ${user}.${group} /var/lib/ntop /var/log/ntop
+	chroot "$1/" chown -R ${user}.${group} /var/lib/ntop /var/log/ntop
 
 	# Start package daemon if we are  on running system
-	[ -z $1 ] && /etc/init.d/$PACKAGE start
+	[ "$1" ] || /etc/init.d/$PACKAGE start
 
 	# post_install messges
 	echo -e "\nTo starts $PACKAGE server you can run :\n"
@@ -77,7 +77,7 @@ post_install()
 
 pre_remove()
 {
-	[ -z $1 ] && /etc/init.d/$PACKAGE stop
+	[ "$1" ] || /etc/init.d/$PACKAGE stop
 }
 
 post_remove()
@@ -85,10 +85,10 @@ post_remove()
         user=ntop
         group=ntop
 
-	if ! grep -q $user: $1/etc/passwd; then
+	if ! grep -q $user: "$1/etc/passwd"; then
         	echo -n "Removing user/group $user..."
-                chroot $1/ delgroup $user
-                chroot $1/ deluser  $user
+                chroot "$1/" delgroup $user
+                chroot "$1/" deluser  $user
                 status
        	fi
 }

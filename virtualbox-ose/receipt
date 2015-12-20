@@ -124,19 +124,19 @@ genpkg_rules()
 
 pre_remove()
 {
-	sed -i "s/vboxdrv vboxnetadp vboxnetflt //" $1/etc/rcS.conf
-	chroot $1/ delgroup vboxusers
+	sed -i "s/vboxdrv vboxnetadp vboxnetflt //" "$1/etc/rcS.conf"
+	chroot "$1/" delgroup vboxusers
 }
 
 post_install()
 {
-	#chroot $1/ udevadm control --reload
-	KERNEL_VERSION=$( chroot $1/ uname -r)
-	chroot $1/ depmod -a $KERNEL_VERSION
-	chroot $1/ modprobe -a vboxdrv vboxnetadp vboxnetflt
-	grep -qs vboxdrv $1/etc/rcS.conf ||
-		sed -i 's/LOAD_MODULES="/&vboxdrv vboxnetadp vboxnetflt /' $1/etc/rcS.conf
-	grep -qs vboxuser $1/etc/group || chroot $1/ addgroup -g 199 vboxusers
+	#chroot "$1/" udevadm control --reload
+	KERNEL_VERSION=$( chroot "$1/" uname -r)
+	chroot "$1/" depmod -a $KERNEL_VERSION
+	chroot "$1/" modprobe -a vboxdrv vboxnetadp vboxnetflt
+	grep -qs vboxdrv "$1/etc/rcS.conf" ||
+		sed -i 's/LOAD_MODULES="/&vboxdrv vboxnetadp vboxnetflt /' "$1/etc/rcS.conf"
+	grep -qs vboxuser "$1/etc/group" || chroot "$1/" addgroup -g 199 vboxusers
 	echo "add yourself to vboxusers group if you want to access"
 	echo "host usb devices: addgroup $USER vboxusers"
 	#i can't get udev to do its work

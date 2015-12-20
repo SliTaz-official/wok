@@ -412,25 +412,25 @@ post_install()
 		grub_part="$(( $(echo $root_dev | grep -o '[0-9]*$')-1 ))"
 		# Use device.map to find grub device number
 		grub_dev="$(grep $(echo $root_dev | grep -o  '^/dev/.d.' ) \
-			$1/boot/grub/device.map | cut -f1 | sed "s/)$/.$grub_part)/g")" 
+			"$1/boot/grub/device.map" | cut -f1 | sed "s/)$/.$grub_part)/g")" 
     	
 		# Add and clean kernel entries in case of upgrade for installed system.
-		if ! grep -q vmlinuz-$VERSION-slitaz $1/boot/grub/menu.lst; then
+		if ! grep -q vmlinuz-$VERSION-slitaz "$1/boot/grub/menu.lst"; then
 		
 			# Clean the old entry
 			# TODO: old vmlinuz file is removed but the entry is still there.
 			# So grub error:15 when selected: http://bugs.slitaz.org/?id=74
 
 			# Add the new entry
-			cat >> $1/boot/grub/menu.lst << EOT
+			cat >> "$1/boot/grub/menu.lst" << EOT
 
 title SliTaz GNU/Linux (Kernel $VERSION-slitaz)
 $grub_dev 
 kernel /boot/vmlinuz-$VERSION-slitaz root=$root_dev quiet
 EOT
 			# Make it the default entry
-			last_entry=$(( $(grep -c '^title' $1/boot/grub/menu.lst)-1 ))
-			sed -e "s/^default.*/default $last_entry/g" -i $1/boot/grub/menu.lst
+			last_entry=$(( $(grep -c '^title' "$1/boot/grub/menu.lst")-1 ))
+			sed -e "s/^default.*/default $last_entry/g" -i "$1/boot/grub/menu.lst"
 		fi
 		
 		# Display information message.

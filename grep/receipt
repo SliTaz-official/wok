@@ -32,16 +32,14 @@ genpkg_rules()
 #
 post_install()
 {
-	local root
-	root=$1
 	echo "Processing pre-install commands..."
 	echo -n "Removing all Busybox replaced utils... "
 	for i in grep egrep fgrep ; do
-		bb=$root$(busybox grep bin/$i$ \
-		   $root/var/lib/tazpkg/installed/busybox*/files.list | sed q)
-		readlink $bb 2> /dev/null | grep -q busybox || continue
-		rm -f $bb
-		ln -s /usr/bin/$i $bb
+		bb="$1$(busybox grep bin/$i$ \
+		   "$1"/var/lib/tazpkg/installed/busybox*/files.list | sed q)"
+		readlink "$bb" 2> /dev/null | grep -q busybox || continue
+		rm -f "$bb"
+		ln -s /usr/bin/$i "$bb"
 	done
 	status
 }
@@ -49,10 +47,10 @@ post_install()
 post_remove()
 {
 	for i in grep egrep fgrep ; do
-		bb=$root$(busybox grep bin/$i$ \
-		   $root/var/lib/tazpkg/installed/busybox*/files.list | sed q)
-		rm -f $bb
-		ln -s /bin/busybox $bb
+		bb="$1$(busybox grep bin/$i$ \
+		   "$1"/var/lib/tazpkg/installed/busybox*/files.list | sed q)"
+		rm -f "$bb"
+		ln -s /bin/busybox "$bb"
 	done
 }
 

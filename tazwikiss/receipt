@@ -33,15 +33,15 @@ post_install()
 {
 	server=busybox
 	# Configure lighttpd server
-	if [ -f $1/etc/lighttpd/lighttpd.conf ]; then
+	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]; then
 		server=lighttpd
-		if ! grep -q '"/wiki/"'  $1/etc/lighttpd/lighttpd.conf; then
+		if ! grep -q '"/wiki/"' "$1/etc/lighttpd/lighttpd.conf"; then
 	    		sed -e 's|# Fast CGI|$HTTP["url"] =~ "/wiki/" {\
   cgi.assign = (\
     ".sh" => "/bin/sh"\
   )\
   index-file.names = ( "index.sh" )\
-}\n\n&|' -i $1/etc/lighttpd/lighttpd.conf
+}\n\n&|' -i "$1/etc/lighttpd/lighttpd.conf"
 			if [ -z "$1" ]; then
 				# Start Web server.
 				/etc/init.d/lighttpd stop
@@ -50,10 +50,10 @@ post_install()
 		fi
 	fi
 	# Configure apache server
-	if [ -f $1/etc/apache/httpd.conf ]; then
+	if [ -f "$1/etc/apache/httpd.conf" ]; then
 		server=apache
-		if [ ! -f $1/etc/apache/conf.d/tazwikiss ]; then
-			cat > $1/etc/apache/conf.d/tazwikiss <<EOT
+		if [ ! -f "$1/etc/apache/conf.d/tazwikiss" ]; then
+			cat > "$1/etc/apache/conf.d/tazwikiss" <<EOT
 <DirectoryMatch /var/www/wiki/>
     Options +ExecCGI
     AddHandler cgi-script .sh
@@ -73,9 +73,9 @@ EOT
 	fi
 	# Configure busybox/httpd server by default
 	if [ "$server" == "busybox" ]; then
-		sed -i 's/lighttpd/httpd/' $1/etc/rcS.conf
-		if [ ! -s $1/etc/httpd.conf ]; then
-			cat > $1/etc/httpd.conf <<EOT
+		sed -i 's/lighttpd/httpd/' "$1/etc/rcS.conf"
+		if [ ! -s "$1/etc/httpd.conf" ]; then
+			cat > "$1/etc/httpd.conf" <<EOT
 H:/var/www
 A:0.0.0.0/0
 .xml:text/xml
@@ -85,13 +85,13 @@ A:0.0.0.0/0
 EOT
 		fi
 		while read line; do
-			grep -q "$line" $1/etc/httpd.conf && continue
-			echo "$line" >> $1/etc/httpd.conf
+			grep -q "$line" "$1/etc/httpd.conf" && continue
+			echo "$line" >> "$1/etc/httpd.conf"
 		done <<EOT
 *.sh:/bin/sh
 EOT
-		grep -q ' httpd ' $1/etc/rcS.conf ||
-		sed -i 's/ slim"/ httpd slim"/' $1/etc/rcS.conf
+		grep -q ' httpd ' "$1/etc/rcS.conf" ||
+		sed -i 's/ slim"/ httpd slim"/' "$1/etc/rcS.conf"
 		if [ -z "$1" ]; then
 			# Start Web server.
 			/etc/init.d/httpd stop
@@ -99,7 +99,7 @@ EOT
 		fi
 	fi
 	while read line; do
-		[ -x $1/$line ] && continue
+		[ -x "$1/$line" ] && continue
 		echo "WARNING: $line not found, $PACKAGE will not work !"
 	done <<EOT
 /usr/sbin/httpd
