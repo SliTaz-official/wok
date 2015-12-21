@@ -21,7 +21,6 @@ compile_rules()
 	# Have to create clamav user/group to be able to compile
 	adduser -s /bin/false -H -D -u 64 clamav
 
-	cd $src
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc/clamav \
@@ -47,7 +46,7 @@ genpkg_rules()
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	# Copy daemon from /$stuff
 	cp $stuff/daemon-clamd $fs/etc/init.d/clamd
-	
+
 	# Customize config
 	sed -i -e "s/^Example/#Example/" \
 		-e "s|^#LogFile /tmp/clamd.log|LogFile /var/log/clamav/clamav.log|" \
@@ -59,24 +58,18 @@ genpkg_rules()
 
 post_install()
 {
-	
-	local user
-	local group
-	
-	user=clamav
-	group=clamav
-	
-	echo "Processing post-install commands..."
-	
+	local user=clamav
+	local group=clamav
+
 	# Enable freshclam update
-	echo -n "Enabling freshclam update..."
+	echo; action 'Enabling freshclam update...'
 	cd "$1/etc/clamav"
-	sed -i 's/^Example/#Example/' freshclam.conf 
+	sed -i 's/^Example/#Example/' freshclam.conf
 	status
 
 	# adduser clamav if needed
 	if ! grep -q "${user}:" "$1/etc/passwd"; then
-		echo -n "Adding user/group $user..."
+		action 'Adding user/group $user...'
 		chroot "$1/" addgroup -S $group
 		chroot "$1/" adduser -s /bin/false -S -D -H -G $group $user
 		status
@@ -84,15 +77,14 @@ post_install()
 
 	# Enable daily.cvd updates (sometimes needed for new version)
 	#chown -R ${user}:${group} "$1/var/lib/clamav"
-	
+
 	# Fix perms
 	chroot "$1/" chown -R ${user}.${group} /var/log/clamav \
 		/run/clamav /var/lib/clamav
-
 }
 
 # Del user clamav when pkg is removed.
 post_remove()
 {
-	chroot "$1/" deluser clamav	
+	chroot "$1/" deluser clamav
 }

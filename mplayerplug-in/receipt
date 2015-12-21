@@ -7,7 +7,7 @@ SHORT_DESC="a browser plugin that uses mplayer to play videos from websites"
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://mplayerplug-in.sourceforge.net/" 
+WEB_SITE="http://mplayerplug-in.sourceforge.net/"
 WGET_URL="http://downloads.sourceforge.net/mplayerplug-in/$TARBALL"
 TAGS="player audio video browser"
 
@@ -18,13 +18,12 @@ nspr-dev"
 get_firefox_version()
 {
 	FIREFOX_VER=$(cat "$1/var/lib/tazpkg/installed/firefox/receipt" | \
-			grep VERSION= | cut -d \" -f 2)
+		grep VERSION= | cut -d \" -f 2)
 }
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's/npupp\.h/npfunctions.h/' */np*
 	sed -i 's|char [\* ]*NP*_GetMIMEDescription(|const &|' \
 		plugingate/np_entry.cpp Source/plugin.cpp
@@ -65,23 +64,18 @@ genpkg_rules()
 	cp -a $install/usr/lib/mozilla $fs/usr/lib		
 	# change the default video output to xv,x11
 	sed -i "s/#vo=xv,x11/vo=xv,x11/" $fs/etc/$PACKAGE.conf
-	      
 }
 
 post_install()
 {
-	echo -n "Processing post install commands..."
 	get_firefox_version "$1"
 	cd "$1/"
 	for i in usr/lib/mozilla/plugins/$PACKAGE*.so ; do
 		ln -s "/$i" "$1/usr/lib/firefox-$FIREFOX_VER/plugins"
-	done 
-	status
+	done
 }
 
 post_remove()
 {
-	echo -n "Processing post remove commands..."
 	rm -f /usr/lib/firefox*/plugins/$PACKAGE*.so
-	status
 }

@@ -18,7 +18,6 @@ BUILD_DEPENDS="erlang openssl-dev spidermonkey-dev curl-dev icu-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -52,9 +51,7 @@ genpkg_rules()
 pre_install()
 {
 	INIT_FILE="/etc/init.d/$PACKAGE"
-	echo "Processing pre-install commands..."
 	[ -f "$1$INIT_FILE" ] && chroot "$1/" $INIT_FILE stop
-	echo "Done..."
 }
 
 # Post install commands for tazpkg
@@ -66,8 +63,6 @@ post_install()
 	LOGDIR="/var/log/$PACKAGE"
 	RUNDIR="/var/run/$PACKAGE"
 
-	echo "Processing post-install commands..."
-
 	grep -q "$PACKAGE" "$1/etc/group" || chroot "$1/" addgroup -S $PACKAGE
 
 	grep -q "$PACKAGE" "$1/etc/passwd" || chroot "$1/" adduser -S -D -H \
@@ -77,17 +72,13 @@ post_install()
 		chroot "$1/" chown -R $PACKAGE:$PACKAGE $DIR &&
 		chroot "$1/" chmod -R 0770 $DIR
 	done
-
-	echo "Done..."
 }
 
 # Pre and post remove commands for Tazpkg.
 pre_remove()
 {
 	INIT_FILE="/etc/init.d/$PACKAGE"
-	echo "Processing pre-remove commands..."
 	[ -f "$1$INIT_FILE" ] && chroot "$1/" $INIT_FILE stop
-	echo "Done..."
 }
 
 post_remove()
@@ -97,13 +88,9 @@ post_remove()
 	LOGDIR="/var/log/$PACKAGE"
 	RUNDIR="/var/run/$PACKAGE"
 
-	echo "Processing post-remove commands..."
-
 	chroot "$1/" deluser $PACKAGE
 
 	for DIR in $LIBDIR $ETCDIR $LOGDIR $RUNDIR; do
 		rm -rf "$1$DIR"
 	done
-
-	echo "Done..."
 }

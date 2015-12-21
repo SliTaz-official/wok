@@ -15,7 +15,6 @@ DEPENDS="ruby-enterprise sqlite3-ruby"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	# Apply patches
 	while read patch_file; do
 		if [ -f done.$patch_file ]; then
@@ -36,29 +35,28 @@ EOT
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share \
-		$fs/etc 
-				
+		$fs/etc
+
 	cp -a $install $fs/usr/share/$PACKAGE
 	cp -a $fs/usr/share/$PACKAGE/config/owp.conf.sample $fs/etc/owp.conf
 	cp -a $fs/usr/share/$PACKAGE/utils/hw-daemon/hw-daemon.ini.sample $fs/usr/share/$PACKAGE/utils/hw-daemon/hw-daemon.ini
-	
+
 	# Set secret key
 	sed -i 's/secret/2918b7aafc1f5f753ee232a7e7f78175/' \
 		$fs/usr/share/$PACKAGE/utils/hw-daemon/hw-daemon.ini
-	
+
 	# Set program homedir
 	sed -i 's!/opt!/usr/share!' $fs/etc/owp.conf
-	
+
 	# Fix perms
 	chmod 755 $fs/usr/share/$PACKAGE/script/owp
-	
+
 	# Cleaning.
 	rm -f $fs/usr/share/$PACKAGE/done.*.u
 }
 
 post_install()
 {
-	echo "Processing post-install commands..."	
 	chroot "$1/" ln -s /usr/share/$PACKAGE/script/owp /etc/init.d/owp
 }
 

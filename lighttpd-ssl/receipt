@@ -39,9 +39,9 @@ compile_rules()
 		--disable-ipv6 \
 		--with-openssl \
 		--prefix=/usr \
-    	--libdir=/usr/lib/lighttpd \
-    	--mandir=/usr/share/man \
-    	$CONFIGURE_ARGS &&
+		--libdir=/usr/lib/lighttpd \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -56,10 +56,10 @@ genpkg_rules()
 
 	# Modules.
 	mkdir -p $fs/usr/lib/lighttpd
-	for module in $BASE_MODULES
-	do
+	for module in $BASE_MODULES; do
+		action 'Copying : mod_${module}.so'
 		cp $install/usr/lib/lighttpd/mod_${module}.so $fs/usr/lib/lighttpd
-		echo -n "Copying : mod_${module}.so" && status
+		status
 	done
 
 	# Server root and config file.
@@ -95,13 +95,11 @@ testsuite()
 # We stop the server by default in case of upgarde.
 pre_install()
 {
-	echo "Processing pre-install commands..."
 	[ -f /etc/init.d/lighttpd ] && /etc/init.d/lighttpd stop
 }
 
 post_install()
 {
-	echo "Processing post-install commands..."
 	if [ ! -f "$1/etc/ssl/lighttpd/lighttpd.pem" ]; then
 		openssl req -new -x509 \
 			-keyout "$1/etc/ssl/lighttpd/lighttpd.pem" \

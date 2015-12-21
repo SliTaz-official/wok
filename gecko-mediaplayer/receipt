@@ -7,17 +7,16 @@ SHORT_DESC="Browser plugin that uses gnome-mplayer to play media in a web browse
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://code.google.com/p/gecko-mediaplayer/" 
+WEB_SITE="http://code.google.com/p/gecko-mediaplayer/"
 WGET_URL="http://gecko-mediaplayer.googlecode.com/files/$TARBALL"
 TAGS="player audio video browser"
 
 DEPENDS="gnome-mplayer dbus-glib gcc-lib-base"
 BUILD_DEPENDS="firefox-dev dbus-dev dbus-glib-dev nspr-dev"
- 
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src	
 	sed -i 's/utf8characters/UTF8Characters/g' src/*.cpp
 	sed -i 's|NPP_Initialize|//&|' src/np_entry.cpp
 	sed -i 's|char[\*\) ]*NP*_GetMIMEDescription(|const &|' src/npupp.h \
@@ -30,7 +29,6 @@ compile_rules()
 		$CONFIGURE_ARGS &&
 	make  &&
 	make DESTDIR=$DESTDIR install
-	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -38,21 +36,16 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
 	cp -a $install/usr/lib/mozilla $fs/usr/lib
-
 }
 
 post_install()
 {
-	echo -n "Processing post install commands..."
 	for i in "$1"/usr/lib/mozilla/plugins/$PACKAGE*.so ; do
 		ln -s "$i" "$1"/usr/lib/firefox*/plugins
-	done 
-	status
+	done
 }
 
 post_remove()
 {
-	echo -n "Processing post remove commands..."
 	rm -f /usr/lib/firefox*/plugins/$PACKAGE*.so
-	status
 }

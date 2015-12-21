@@ -17,42 +17,39 @@ BUILD_DEPENDS="openssl-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    sed -i 's|@LIBS@|& -lcrypto|' Makefile.in
-    ./configure --prefix=/usr \
-        --sysconfdir=/etc \
-        --mandir=/usr/share/man \
-        --enable-md5auth \
-        --enable-ssl \
-        $CONFIGURE_ARGS &&
-    make &&
+	sed -i 's|@LIBS@|& -lcrypto|' Makefile.in
+	./configure --prefix=/usr \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		--enable-md5auth \
+		--enable-ssl \
+		$CONFIGURE_ARGS &&
+	make
 
-    # Install
-    mkdir -p $DESTDIR/usr/sbin $DESTDIR/etc/ssmtp
-    cp ssmtp $DESTDIR/usr/sbin
-    cp revaliases ssmtp.conf $DESTDIR/etc/ssmtp
+	# Install
+	mkdir -p $DESTDIR/usr/sbin $DESTDIR/etc/ssmtp
+	cp ssmtp $DESTDIR/usr/sbin
+	cp revaliases ssmtp.conf $DESTDIR/etc/ssmtp
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr
-    cp -a $install/usr/sbin/ $fs/usr/
-    cp -a $install/etc/ $fs/
+	mkdir -p $fs/usr
+	cp -a $install/usr/sbin/ $fs/usr/
+	cp -a $install/etc/ $fs/
 }
 
-post_install() 
+post_install()
 {
-    echo "Processing post-install commands..."
-    ln -sf /usr/sbin/ssmtp "$1/usr/sbin/sendmail"
-    ln -sf /usr/sbin/ssmtp "$1/usr/sbin/newaliases"
-    ln -sf /usr/sbin/ssmtp "$1/usr/sbin/mailq"
+	ln -sf /usr/sbin/ssmtp "$1/usr/sbin/sendmail"
+	ln -sf /usr/sbin/ssmtp "$1/usr/sbin/newaliases"
+	ln -sf /usr/sbin/ssmtp "$1/usr/sbin/mailq"
 }
 
-post_remove() 
+post_remove()
 {
-    echo "Processing post-remove commands..."
-    rm -f "$1/usr/sbin/sendmail"
-    rm -f "$1/usr/sbin/newaliases"
-    rm -f "$1/usr/sbin/mailq"
+	rm -f "$1/usr/sbin/sendmail"
+	rm -f "$1/usr/sbin/newaliases"
+	rm -f "$1/usr/sbin/mailq"
 }

@@ -15,15 +15,14 @@ DEPENDS="libxml2-tools libxslt"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cd $src
 	pkgroot=$fs/usr/share/xml/docbook/stylesheet/$PACKAGE
 	install -dm755 $pkgroot/common
 	install -dm755 $pkgroot/params
-	
+
 	for fn in xml xsl dtd ent; do
 		install -m644 common/*.${fn} $pkgroot/common/
 	done
-	
+
 	for fn in fo highlighting html roundtrip; do
 		install -dm755 ${pkgroot}/${fn}
 		install -m644 ${fn}/*.xml ${pkgroot}/${fn}/
@@ -39,16 +38,15 @@ genpkg_rules()
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-	echo -n "Processing post-install commands..."
 	if [ "$1" ]; then
-		mv -f "$1/etc/resolv.conf" "$1/etc/recolv.conf.$$" 2> /dev/null
+		mv -f "$1/etc/resolv.conf" "$1/etc/recolv.conf.$$" 2>/dev/null
 		cp /etc/resolv.conf "$1/etc/resolv.conf"
 	fi
 
 	# Create a /etc/xml/catalog file
 	if [ ! -d "$1/etc/xml" ]; then install -v -m755 -d "$1/etc/xml"; fi &&
 	if [ ! -f "$1/etc/xml/catalog" ]; then
-    		chroot "$1/" xmlcatalog --noout --create /etc/xml/catalog
+		chroot "$1/" xmlcatalog --noout --create /etc/xml/catalog
 	fi &&
 
 	chroot "$1/" xmlcatalog --noout --add "rewriteSystem" \
@@ -70,9 +68,8 @@ post_install()
 		"http://docbook.sourceforge.net/release/xsl-ns/current" \
 		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
 	/etc/xml/catalog
-	status
+
 	if [ "$1" ]; then
-		mv -f "$1/etc/resolv.conf.$$" "$1/etc/recolv.conf" 2> /dev/null
+		mv -f "$1/etc/resolv.conf.$$" "$1/etc/recolv.conf" 2>/dev/null
 	fi
 }
-
