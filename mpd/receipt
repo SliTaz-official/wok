@@ -14,12 +14,12 @@ HOST_ARCH="i486 arm"
 DEPENDS="libid3tag libmad libogg libvorbis libsamplerate flac alsa-lib \
 audiofile faad2 lame sqlite libcurl glib libcrypto libwrap"
 BUILD_DEPENDS="alsa-lib-dev zlib-dev libid3tag-dev libsamplerate-dev \
-libmad-dev libogg-dev libvorbis-dev flac-dev audiofile-dev faad2-dev 
+libmad-dev libogg-dev libvorbis-dev flac-dev audiofile-dev faad2-dev \
 glib-dev lame-dev libwrap-dev curl-dev"
 
 # Handle SliTaz arch
 case "$SLITAZ_ARCH" in
-	arm) 
+	arm)
 		DEPENDS="alsa-lib zlib glib lame libmad libsamplerate libwrap \
 libogg libvorbis" ;;
 esac
@@ -34,7 +34,6 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's/<stdbool.h>/&\n#include <stdio.h>/' src/decoder_api.h
 	./configure \
 		--disable-jack \
@@ -60,10 +59,9 @@ genpkg_rules()
 
 post_install()
 {
-	echo "Processing post-install commands..." 
-
+	newline
 	# Drop root priviledges and enable pid file
-	echo -n "Enabling mpd.conf..."
+	action 'Enabling mpd.conf...'
 	cd $root/etc
 	sed -i 's/#music_directory/music_directory/; \
 	s/#playlist_directory/playlist_directory/; \
@@ -72,9 +70,9 @@ post_install()
 	s/#user				"nobody"/user				"tux"/; \
 	s/#bind_to_address		"any"/bind_to_address			"localhost"/' mpd.conf 
 	status
-	
+
 	# Make mpd directories and files
-	echo -n "Enabling mpd files and directories..."
+	action 'Enabling mpd files and directories...'
 	mkdir $root/etc/skel/music
 	mkdir -p $root/etc/skel/.mpd/playlists
 	touch $root/etc/skel/.mpd/mpd.log
@@ -82,4 +80,3 @@ post_install()
 	cp -f $root/etc/mpd.conf /etc/skel/.mpd
 	status
 }
-	

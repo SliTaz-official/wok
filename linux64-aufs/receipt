@@ -32,15 +32,15 @@ compile_rules()
 		-e 's|CONFIG_AUFS_BR_RAMFS =.*|CONFIG_AUFS_BR_RAMFS = y|' \
 		-e 's|CONFIG_AUFS_INO_T_64 =.*|CONFIG_AUFS_INO_T_64 = y|' \
 		-e 's|CONFIG_AUFS_DEBUG =.*|CONFIG_AUFS_DEBUG =|' config.mk
-		
+
 	# The sed fixes are from gentoo portage build.
 	sed -i "s:aufs.ko usr/include/linux/aufs_type.h:aufs.ko:g" Makefile
 	sed -i "s:__user::g" include/linux/aufs_type.h
-	
+
 	# Linux 3.2.71 support
 	sed -i 's/d_u.d_child/d_child/' fs/aufs/dcsub.c fs/aufs/hnotify.c
 	sed -i 's/ d_alias/ d_u.d_alias/' fs/aufs/hnotify.c fs/aufs/export.c
-	
+
 	make -j 1 KDIR=/usr/src/linux
 	xz -f fs/aufs/aufs.ko
 }
@@ -59,12 +59,10 @@ genpkg_rules()
 # Post install/remove commands for Tazpkg.
 post_install()
 {
-	echo "Processing post-install commands..."
 	chroot "$root/" depmod -a ${EXTRAVERSION#_}-slitaz64
 }
 
 post_remove()
 {
-	echo "Processing post-remove commands..."
 	chroot "$root/" depmod -a ${EXTRAVERSION#_}-slitaz64
 }

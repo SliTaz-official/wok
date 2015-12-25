@@ -28,14 +28,14 @@ compile_rules()
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
-{	
+{
 	cp -a $install/bin $fs
 
 	# Config files.
-	#
+
 	mkdir $fs/etc
 	cp $stuff/example.zshrc $fs/etc/zshrc
-	
+
 	#no way around this... gen_package will not automatically copy these
 	mkdir -p $fs/usr/share/zsh
 	cp -r $install/usr/share/zsh/functions $fs/usr/share/zsh
@@ -48,21 +48,20 @@ genpkg_rules()
 #
 post_install()
 {
-	echo "Processing post-install commands..."
 	sh=$(readlink "$1/bin/sh")
-	if [ ! "$sh" = "/bin/zsh" ]; then
-		echo ""
+	if [ "$sh" != '/bin/zsh' ]; then
+		echo ''
 		echo "**** Actual SH link : $sh"
-		echo ""
-		echo -n "Do you want Zsh for /bin/sh (y/N) ? : "
+		echo ''
+		echo -n 'Do you want Zsh for /bin/sh (y/N) ? : '
 		read -t 30 answer < /dev/tty
-		if [ "$answer" == "y" ]; then
-			echo ""
-			echo -n "Removing sh link to make a new one pointing on /bin/zsh..."
+		if [ "$answer" == 'y' ]; then
+			echo ''
+			action 'Removing sh link to make a new one pointing on /bin/zsh...'
 			rm "$1/bin/sh" && ln -s /bin/zsh "$1/bin/sh"
 			status
 		else
-			echo ""
+			echo ''
 			echo "Leaving /bin/sh to : $sh"
 		fi
 	fi
@@ -71,9 +70,6 @@ post_install()
 # Restore a valid sh link if needed.
 pre_remove()
 {
-        sh=$(readlink "$1/bin/sh")
-        if [ ! "$sh" = "busybox" ]; then
-                rm "$1/bin/sh" &&
-                ln -s /bin/busybox "$1/bin/sh"
-        fi
+	sh=$(readlink "$1/bin/sh")
+	[ "$sh" != 'busybox' ] && ln -sf /bin/busybox "$1/bin/sh"
 }

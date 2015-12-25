@@ -22,14 +22,14 @@ compile_rules()
 {
 	cd $src
 	CPPFLAGS="$CPPFLAGS -I/usr/include/nspr -I/usr/include/nss" ./configure \
-	--prefix=/usr  \
-	 --infodir=/usr/share/info \
-	 --with-selinux=no \
-	 --with-lua=no \
-	 --with-dmalloc=no \
-	 --with-efence=no \
-	 --with-external-db \
-	 --mandir=/usr/share/man $CONFIGURE_ARGS &&
+		--prefix=/usr  \
+		--infodir=/usr/share/info \
+		--with-selinux=no \
+		--with-lua=no \
+		--with-dmalloc=no \
+		--with-efence=no \
+		--with-external-db \
+		--mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
@@ -37,7 +37,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin \
+	mkdir -p \
+		$fs/usr/bin \
 		$fs/usr/lib \
 		$fs/var/lib/rpm \
 		$fs/usr/src/redhat/SOURCES \
@@ -45,7 +46,7 @@ genpkg_rules()
 		$fs/usr/src/redhat/RPMS \
 		$fs/usr/src/redhat/SPECS \
 		$fs/usr/src/redhat/SRPMS
-		
+
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/bin/* $fs/usr/bin
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
@@ -54,26 +55,25 @@ genpkg_rules()
 
 post_install()
 {
-	echo "Processing post install commands..."
-	cmd=`readlink $root/bin/rpm`
-    if [ ! "$cmd" = "/usr/bin/rpm" ]; then
-        echo ""
-        echo "**** Actual RPM link : $cmd"
-        echo ""
-        echo -n "Do you want rpm  for /bin/rpm (Y/n) ? : "; read -t 30 anser
-        if [ "$anser" != "n" ]; then
-            echo ""
-            echo -n "Removing rpm link to make a new one pointing on /usr/bin/rpm..."
-            rm $root/bin/rpm && ln -sf $root/usr/bin/rpm $root/bin/rpm
-            status
-        else
-            echo ""
-            echo "Leaving /bin/rpm to : $cmd"
-        fi
-    fi
-                
-    # Building rpm database.
-	$root/usr/bin/rpm --initdb --quiet
+	cmd=$(readlink $root/bin/rpm)
+	if [ "$cmd" != '/usr/bin/rpm' ]; then
+		echo ''
+		echo "**** Actual RPM link : $cmd"
+		echo ''
+		echo -n 'Do you want rpm for /bin/rpm (Y/n) ? : '; read -t 30 anser
+		if [ "$anser" != 'n' ]; then
+			echo ''
+			action 'Removing rpm link to make a new one pointing on /usr/bin/rpm...'
+			rm $root/bin/rpm && ln -sf $root/usr/bin/rpm $root/bin/rpm
+			status
+		else
+			echo ''
+			echo "Leaving /bin/rpm to : $cmd"
+		fi
+	fi
+
+	# Building rpm database.
+	$1/usr/bin/rpm --initdb --quiet
 }
 
 pre_remove()
@@ -85,10 +85,10 @@ pre_remove()
 
 post_remove()
 {
-	echo "Processing post remove commands..."
 	cmd=$(readlink "$1/bin/rpm")
-    	if [ ! "$cmd" = "/bin/rpm" ]; then
-		echo -n "Restore applets from busybox..."
+	if [ "$cmd" != '/bin/rpm' ]; then
+		newline
+		action 'Restore applets from busybox...'
 		ln -sf /bin/busybox "$1/bin/rpm"
 		ln -sf /bin/busybox "$1/usr/bin/rpm2cpio"
 		status

@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
-[ -f /etc/slitaz/slitaz.conf ] && . /etc/slitaz/slitaz.conf
-[ $INSTALLED ] || INSTALLED=/var/lib/tazpkg/installed
+[ -f '/etc/slitaz/slitaz.conf' ] && . /etc/slitaz/slitaz.conf
+[ -z "$INSTALLED" ] && INSTALLED='/var/lib/tazpkg/installed'
 
 PACKAGE="flash-plugin"
 WEB_SITE="http://www.adobe.com/products/flash/"
@@ -9,23 +9,23 @@ SHORT_DESC="Adobe Flash Player."
 ROOT="$1"
 [ -d "$ROOT" ] || ROOT=""
 
-if test $(id -u) != 0 ; then
+if [ $(id -u) -ne 0 ]; then
 	echo -e "\nYou must be root to run `basename $0`."
 	echo -e "Please type 'su' and root password to become super-user.\n"
 	exit 0
 fi
 
-if [ -d ${ROOT}${INSTALLED}/$PACKAGE ]; then
-  [ -n "$ROOT" ] && exit 1
-  tazpkg remove $PACKAGE
-  [ -d $INSTALLED/$PACKAGE ] && exit 1
+if [ -d $ROOT$INSTALLED/$PACKAGE ]; then
+	[ -n "$ROOT" ] && exit 1
+	tazpkg remove $PACKAGE
+	[ -d $INSTALLED/$PACKAGE ] && exit 1
 fi
 
 TARBALL="install_flash_player_11_linux.i386.tar.gz"
-URL=http://fpdownload.macromedia.com/get/flashplayer/current/licensing/linux/$TARBALL
-TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+URL="http://fpdownload.macromedia.com/get/flashplayer/current/licensing/linux/$TARBALL"
+TMP_DIR="$(mktemp -d)"
 CUR_DIR=$(pwd)
-mkdir -p $TMP_DIR && cd $TMP_DIR
+cd $TMP_DIR
 busybox wget -O $TARBALL $URL
 
 if [ ! -f $TARBALL ]; then
@@ -39,18 +39,18 @@ VERSION="$(strings libflashplayer.so | sed '/FlashPlayer_/!d;s/.*yer_\(.*\)_Flas
 # Install files
 chmod 755 libflashplayer.so
 chown root.root libflashplayer.so
-dir=$PACKAGE-$VERSION/fs
-mkdir -p $dir/usr/share/flash
-mv libflashplayer.so $dir/usr/share/flash
-mv usr/bin $dir/usr
-mv usr/share/icons $dir/usr/share
-mv usr/share/pixmaps $dir/usr/share
+fs=$PACKAGE-$VERSION/fs
+mkdir -p $fs/usr/share/flash
+mv libflashplayer.so $fs/usr/share/flash
+mv usr/bin $fs/usr
+mv usr/share/icons $fs/usr/share
+mv usr/share/pixmaps $fs/usr/share
 
 # Sanity Check: Reexport firefox libraries if they don't exist
 dir=$PACKAGE-$VERSION/fs/usr/lib
 mkdir -p $dir
 for i in /usr/lib/firefox/*.so ; do
-  	[ -f $i ] && [ -z "`ls /usr/lib/$(basename $i)`" ] && ln -s $i $dir	
+	[ -f $i ] && [ -z "$(ls /usr/lib/$(basename $i))" ] && ln -s $i $dir
 done
 
 # Create pseudo package
@@ -67,24 +67,19 @@ xorg-libXinerama xorg-libXrandr xorg-libXrender xorg-libXt zlib"
 
 post_install()
 {
-	echo -n "Processing post install commands..."
- 
 	[ -d \$1/usr/lib/mozilla/plugins ] || mkdir -p \$1/usr/lib/mozilla/plugins
 	ln -s /usr/share/flash/libflashplayer.so \$1/usr/lib/mozilla/plugins
 	[ -d \$1/opt/google/chrome/plugins ] || mkdir -p \$1/opt/google/chrome/plugins
 	ln -s /usr/share/flash/libflashplayer.so \$1/opt/google/chrome/plugins/libgcflashplayer.so
 	[ -d \$1/usr/lib/opera/plugins ] || mkdir -p \$1/usr/lib/opera/plugins
 	ln -s /usr/share/flash/libflashplayer.so \$1/usr/lib/opera/plugins/libflashplayer.so
-	status
 }
 
 post_remove()
 {
-	echo -n "Processing post remove commands..."
 	rm -f \$1/usr/lib/mozilla/plugins/libflashplayer.so
 	rm -f \$1/opt/google/chrome/plugins/libgcflashplayer.so
 	rm -f \$1/usr/lib/opera/plugins/libflashplayer.so
-	status
 }
 EOT
 
@@ -99,4 +94,4 @@ esac
 
 # Clean
 cd $CUR_DIR
-rm -rf $TMP_DIR
+rm -rf "$TMP_DIR"

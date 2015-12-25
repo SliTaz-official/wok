@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 
 # Get and install RealPlayer for Linux
 
@@ -6,32 +6,32 @@ PACKAGE="realplayer"
 VERSION="11"
 TARBALL="RealPlayer${VERSION}GOLD.bin"
 URL="http://www.real.com/realcom/R?href=http://forms.real.com/real/player/download.html?f=unix/$TARBALL"
-CUR_DIR=$(pwd)
-TEMP_DIR=/tmp/$PACKAGE-$VERSION-$$
+CUR_DIR="$(pwd)"
+TEMP_DIR="$(mktemp -d)"
 ROOT="$1"
 
 # Check if we are root
-if test $(id -u) != 0 ; then
-	echo -e "\nYou must be root to run `basename $0`."
+if [ $(id -u) -ne 0 ]; then
+	echo -e "\nYou must be root to run $(basename $0)."
 	echo -e "Please type 'su' and root password to become super-user.\n"
+	rm -rf "$TEMP_DIR"
 	exit 1
 fi
 
 # Avoid reinstall
-if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
+if [ -d "$ROOT/var/lib/tazpkg/installed/$PACKAGE" ]; then
 	echo -e "\n$PACKAGE package is already installed.\n"
+	rm -rf "$TEMP_DIR"
 	exit 1
 fi
 
-# Create a TEMP_DIR
-mkdir $TEMP_DIR
-cd $TEMP_DIR
+cd "$TEMP_DIR"
 
 # Download the file
-wget $URL 
+wget $URL
 if [ ! -f $TARBALL ]; then
 	cd $CUR_DIR
-	rm -rf $TEMP_DIR
+	rm -rf "$TEMP_DIR"
 	echo "Could not download $TARBALL. Exiting."
 	exit 1
 fi
@@ -60,16 +60,12 @@ WEB_SITE="http://www.real.com"
 
 post_install()
 {
-	echo -n "Processing post install commands..."
 	ln -s /usr/lib/RealPlayer/mozilla/nphelix.so /usr/lib/firefox*/plugins
-	status
 }
 
 post_remove()
 {
-	echo -n "Processing post remove commands..."
 	rm -f /usr/lib/firefox*/plugins/nphelix.so
-	status
 }
 EOT
 
@@ -90,4 +86,4 @@ yes y | tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
 
 # Clean
 cd $CUR_DIR
-rm -rf $TEMP_DIR
+rm -rf "$TEMP_DIR"

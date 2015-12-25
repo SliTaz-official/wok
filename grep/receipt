@@ -16,7 +16,7 @@ BUILD_DEPENDS="pcre-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS && 
+	./configure $CONFIGURE_ARGS &&
 	make && make install
 }
 
@@ -27,34 +27,9 @@ genpkg_rules()
 	cp -a $install/usr/bin $fs/usr
 }
 
-# Pre and post install commands for Tazpkg.
-# We must remove all Busybox symlink before installing.
-#
-post_install()
-{
-	echo "Processing pre-install commands..."
-	echo -n "Removing all Busybox replaced utils... "
-	for i in grep egrep fgrep ; do
-		bb="$1$(busybox grep bin/$i$ \
-		   "$1"/var/lib/tazpkg/installed/busybox*/files.list | sed q)"
-		readlink "$bb" 2> /dev/null | grep -q busybox || continue
-		rm -f "$bb"
-		ln -s /usr/bin/$i "$bb"
-	done
-	status
-}
-
 post_remove()
 {
-	for i in grep egrep fgrep ; do
-		bb="$1$(busybox grep bin/$i$ \
-		   "$1"/var/lib/tazpkg/installed/busybox*/files.list | sed q)"
-		rm -f "$bb"
-		ln -s /bin/busybox "$bb"
+	for i in grep egrep fgrep; do
+		ln -sf /bin/busybox "/usr/bin/$bb"
 	done
-}
-
-pre_remove()
-{
-	post_remove
 }

@@ -26,7 +26,7 @@ compile_rules()
 	make SYSSRC="/usr/src/linux" module 2>&1 | sed s'/ERROR:/error:/' &&
 	xz nvidia.ko
 }
-	
+
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
@@ -34,8 +34,8 @@ genpkg_rules()
 
 	mkdir -p $fs/usr/share $fs/usr/lib/X11 $fs/usr/share/licenses/$PACKAGE
 	mkdir -p $fs/lib/modules/$kvers-slitaz/kernel/drivers/video
-	mkdir -p $fs/usr/share/doc/$PACKAGE 
-	
+	mkdir -p $fs/usr/share/doc/$PACKAGE
+
 	# Compress and install module
 	cp $src/usr/src/nv/nvidia.ko.xz \
 	$fs/lib/modules/$kvers-slitaz/kernel/drivers/video/
@@ -53,55 +53,43 @@ genpkg_rules()
 	cp -a $src/usr/X11R6/lib/* $fs/usr/lib/X11	
 
 	# Links
-	for i in `find $fs -iname *.so*`; do
-		ln -s `basename $i` `dirname $i`/`basename ${i/so.${VERSION}/so/}`
-		ln -s `basename $i` `dirname $i`/`basename ${i/so.${VERSION}/so.1/}`
+	for i in $(find $fs -iname *.so*); do
+		ln -s $(basename $i) $(dirname $i)/$(basename ${i/so.${VERSION}/so/})
+		ln -s $(basename $i) $(dirname $i)/$(basename ${i/so.${VERSION}/so.1/})
 	done
 }
 
 pre_install()
 {
-	echo ""
-	echo -e "\033[1m PROPRIETARY LICENSE:\033[0m $2"
-	echo "================================================================================"
-	echo "You are installing a package with proprietary license."
-	echo "You must accept the license."
-    echo "================================================================================"
-    echo ""
+	title 'PROPRIETARY LICENSE'
+	echo 'You are installing a package with proprietary license.'
+	echo 'You must accept the license.'
+	footer
 }
 
 post_install()
 {
-	echo "Processing post-install commands..."
+	newline
 	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
 
 	# correct .desktop file file
 	sed -i 's:__UTILS_PATH__/::' "$1/usr/share/applications/nvidia-settings.desktop"
 	sed -i 's:__PIXMAP_PATH__/::' "$1/usr/share/applications/nvidia-settings.desktop"
 
-	echo ""
-	echo -e "\033[1m NVIDIA LICENSE INFORMATION:\033[0m $2"
-	echo "================================================================================"
+	title 'NVIDIA LICENSE INFORMATION'
 	echo "For installing this package, you have to accept the $PACKAGE license."
-	echo "The license is stored in /usr/share/licenses/$PACKAGE "    
+	echo "The license is stored in /usr/share/licenses/$PACKAGE "
 	echo -n "Would you like to read the license (y/N) : "; read anser
-	if [ "$anser" = "y" ]; then
-		cat /usr/share/licenses/"$PACKAGE"/LICENSE | more	
-		echo "" 		
+	if [ "$anser" == 'y' ]; then
+		more /usr/share/licenses/"$PACKAGE"/LICENSE
+		echo
 	fi
-	echo "================================================================================"
+	separator
 	echo -n "Do you accept the license (y/N) : "; read anser
-	if [ "$anser" = "N" ]; then
-		echo "You did not accept the license, Removing the pkg."	
-		tazpkg remove "$PACKAGE"		
+	if [ "$anser" == 'N' ]; then
+		echo "You did not accept the license, Removing the pkg."
+		tazpkg remove "$PACKAGE"
 	fi
-
-}
-
-post_remove()
-{
-	echo "Processing post-remove commands..."
-	depmod -a
 }
 
 TAZBB_NO_INSTALL="because this is not hardware neutral"

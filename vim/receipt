@@ -23,18 +23,19 @@ compile_rules()
 	# define the place for the global vimrc file (set to /etc/vim/vimrc)
 	# (patch from Arch Linux PKGBUILD)
 	sed -i 's|^.*\(#define SYS_VIMRC_FILE\).*$|\1 "/etc/vim/vimrc"|' $src/src/feature.h
-	
-	./configure --prefix=/usr \
-	 --cache-file=$PWD/config.cache \
-	 --infodir=/usr/share/info \
-	 --with-features=normal \
-	 --with-x=no \
-	 --disable-gui \
- 	 --enable-multibyte \
-	 --disable-motif-check \
-	 --disable-athena-check \
-	 --mandir=/usr/share/man $CONFIGURE_ARGS && 
-	 
+
+	./configure \
+		--prefix=/usr \
+		--cache-file=$PWD/config.cache \
+		--infodir=/usr/share/info \
+		--with-features=normal \
+		--with-x=no \
+		--disable-gui \
+		--enable-multibyte \
+		--disable-motif-check \
+		--disable-athena-check \
+		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+
 	make VIMRCLOC=/etc/vim VIMRUNTIMEDIR=/usr/share/vim/vim73 MAKE="make -e" &&
 	make DESTDIR=$DESTDIR install
 	mkdir -p $DESTDIR/etc/vim
@@ -53,28 +54,26 @@ genpkg_rules()
 
 post_install()
 {
-    echo "Processing post-install commands..."
-    cmd=$(readlink "$1/bin/vi")
-    if [ ! "$cmd" = "/usr/bin/vim" ]; then
-        echo ""
-        echo "**** Actual VI link : $cmd"
-        echo ""
-        echo -n "Do you want vim  for /bin/vi (y/N) ? : "; read -t 30 anser
-        if [ "$anser" == "y" ]; then
-            echo ""
-            echo -n "Removing vi link to make a new one pointing on /usr/bin/vim..."
-            rm "$1/bin/vi" && ln -sf /usr/bin/vim "$1/bin/vi"
-            status
-        else
-            echo ""
-            echo "Leaving /bin/vi to : $cmd"
-        fi
-    fi
+	cmd=$(readlink "$1/bin/vi")
+	if [ "$cmd" != '/usr/bin/vim' ]; then
+		echo ''
+		echo "**** Actual VI link : $cmd"
+		echo ''
+		echo -n 'Do you want vim  for /bin/vi (y/N) ? : '; read -t 30 anser
+		if [ "$anser" == 'y' ]; then
+			echo ''
+			echo -n 'Removing vi link to make a new one pointing on /usr/bin/vim...'
+			rm "$1/bin/vi" && ln -sf /usr/bin/vim "$1/bin/vi"
+			status
+		else
+			echo ''
+			echo "Leaving /bin/vi to : $cmd"
+		fi
+	fi
 }
 
 post_remove()
 {
 	# restore previous symlink
-	echo "Processing post-remove commands..."
 	ln -sf /bin/busybox "$1/bin/vi"
 }

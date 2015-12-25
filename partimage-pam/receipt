@@ -20,10 +20,13 @@ compile_rules()
 {
 	sed -i 's/gzFile \*m_gzImageFile/gzFile m_gzImageFile/' src/client/imagefile.h
 	sed -i 's/(gzFile \*) gzdopen/gzdopen/' src/client/imagefile.cpp
-	./configure --prefix=/usr --enable-pam \
-	 --sysconfdir=/etc \
-	 --infodir=/usr/share/info \
-	 --mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./configure \
+		--prefix=/usr \
+		--enable-pam \
+		--sysconfdir=/etc \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -40,28 +43,28 @@ genpkg_rules()
 
 post_install()
 {
-	echo "Processing post install commands..."
+	newline
 	echo "Adding user/group partimag..."
 	chroot "$1/" adduser -S -H -D partimag
 
 	echo "Setting permissions for config files"
 	chmod 0600 "$1"/etc/partimaged/*
 	chroot "$1/" chown partimag.partimag "$1"/etc/partimaged/*	
-	
-	echo " Creating image files directory"
+
+	echo "Creating image files directory"
 	chroot "$1/" install -g partimag -o partimag -m 0755 -d "$1/var/lib/partimaged"
-	
+
 	echo ""
 	echo -e "\nTo starts $SOURCE server you can run :\n"
-   	echo "/etc/init.d/partimaged start"
-   	echo -e "Or add partimaged to RUN_DAEMONS in /etc/rcS.conf\n"
+	echo "/etc/init.d/partimaged start"
+	echo -e "Or add partimaged to RUN_DAEMONS in /etc/rcS.conf\n"
 }
 
 post_remove()
 {
 	chroot "$1/" deluser partimag
 	chroot "$1/" delgroup partimag
-	
+
 	if [ -f "$1/etc/paritimaged" ]; then
 		rm -rf "$1/etc/partimaged"
 	fi

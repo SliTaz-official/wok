@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 # Get and install the SUN Java Runtime Environnement
 #
 # (C) 2007-2012 SliTaz - GNU General Public License v3.
@@ -10,22 +10,24 @@ WEB_SITE="http://www.java.com/"
 SHORT_DESC="SUN Java Runtime."
 DEPENDS="xorg-libXtst"
 TARBALL="jre.bin"
-TEMP_DIR="/tmp/$PACKAGE.$$"
+TEMP_DIR="$(mktemp -d)"
 ROOT="$1"
 
 URL="$(wget -O - ${WEB_SITE}en/download/manual_v6.jsp | \
        sed '/self-extracting/!d;s/.*href="\([^"]*\).*/\1/;q')"
 
 # Check if we are root starting anything
-if test $(id -u) != 0 ; then
+if [ $(id -u) -ne 0 ]; then
 	echo -e "\nYou must be root to run `basename $0`."
 	echo -e "Please type 'su' and root password to become super-user.\n"
+	rm -rf "$TEMP_DIR"
 	exit 1
 fi
 
 # Avoid reinstall
 if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
 	echo -e "\n$PACKAGE package is already installed.\n"
+	rm -rf "$TEMP_DIR"
 	exit 1
 fi
 
@@ -33,14 +35,13 @@ fi
 
 # Create TEMP_DIR
 CUR_DIR=$(pwd)
-test -d $TEMP_DIR || mkdir $TEMP_DIR
 cd $TEMP_DIR
 
 # Download the file
 test -f $TARBALL || wget $URL -O $TARBALL
 if [ ! -f $TARBALL ]; then
 	cd $CUR_DIR
-	rm -rf $TEMP_DIR
+	rm -rf "$TEMP_DIR"
 	echo "Could not download $TARBALL. Exiting."
 	exit 1
 fi
@@ -79,13 +80,11 @@ WEB_SITE="$WEB_SITE"
 
 post_install()
 {
-	echo -n "Processing post install commands..."
 	[ -d /usr/lib/mozilla/plugins ] || mkdir -p /usr/lib/mozilla/plugins 
 	ln -s /usr/lib/java/jre\$VERSION/lib/i386/libnpjp2.so /usr/lib/mozilla/plugins
 
 	cd /usr/bin
 	ln -s /usr/lib/java/jre\$VERSION/bin/java 
-	status
 }
 
 post_remove()
@@ -109,4 +108,4 @@ esac
 
 # Clean
 cd $CUR_DIR
-rm -rf $TEMP_DIR
+rm -rf "$TEMP_DIR"

@@ -15,47 +15,49 @@ BUILD_DEPENDS="gtk+-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    while read file; do
-        [ -f done.$file ] && continue
-        echo "Apply $file..."
-        patch -p1 < $stuff/$file || return 1
-        touch done.$file
-    done <<EOT
+	while read file; do
+		[ -f done.$file ] && continue
+		echo "Apply $file..."
+		patch -p1 -i $stuff/$file || return 1
+		touch done.$file
+	done <<EOT
 scim-glibc-2.10.patch
 EOT
-    ./configure --prefix=/usr \
-        --sysconfdir=/etc \
-        --with-x \
-        --with-gtk-im-module-dir=$(ls -d /usr/lib/gtk-2*/2*/immodules/) \
-        --mandir=/usr/share/man \
-        --infodir=/usr/share/info \
-        $CONFIGURE_ARGS 2>&1 | grep -v po/POTFILES &&
-    make $MAKEFLAGS &&
-    make DESTDIR=$DESTDIR install
+
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--with-x \
+		--with-gtk-im-module-dir=$(ls -d /usr/lib/gtk-2*/2*/immodules/) \
+		--mandir=/usr/share/man \
+		--infodir=/usr/share/info \
+		$CONFIGURE_ARGS 2>&1 | grep -v po/POTFILES &&
+	make $MAKEFLAGS &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr/share/pixmaps
-    cp -a $install/etc $fs/
-    cp -a $install/usr/bin $fs/usr
-    cp -a $install/usr/lib $fs/usr
-    cp -a $install/usr/share/scim $fs/usr/share
-    cp $install/usr/share/pixmaps/scim-setup.png $fs/usr/share/pixmaps
-    find $fs/usr/lib -name '*.la' -exec rm {} \;
-    find $fs/usr/lib -name '*.a' -exec rm {} \;
-    rm -rf $fs/usr/lib/pkgconfig
-    chmod +x $fs/usr/bin/scim-setup
+	mkdir -p $fs/usr/share/pixmaps
+	cp -a $install/etc $fs/
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/usr/share/scim $fs/usr/share
+	cp $install/usr/share/pixmaps/scim-setup.png $fs/usr/share/pixmaps
+	find $fs/usr/lib -name '*.la' -exec rm {} \;
+	find $fs/usr/lib -name '*.a' -exec rm {} \;
+	rm -rf $fs/usr/lib/pkgconfig
+	chmod +x $fs/usr/bin/scim-setup
 }
 
 post_install()
 {
-    echo "Processing post-install commands..."
-    echo -n "Updating gtk.immodules... "
-    chroot "$1/" /usr/bin/gtk-query-immodules-2.0 > $1/etc/gtk-2.0/gtk.immodules
-    echo "done."
+	newline
+	action 'Updating gtk.immodules... '
+	chroot "$1/" /usr/bin/gtk-query-immodules-2.0 > $1/etc/gtk-2.0/gtk.immodules
+	status
+
 cat <<EOT
 In order to start scim and use chinese after boot time,
 add the following code to your autostart.sh(openbox):
@@ -73,5 +75,5 @@ EOT
 
 post_remove()
 {
-    /usr/bin/gtk-query-immodules-2.0 > /etc/gtk-2.0/gtk.immodules
+	/usr/bin/gtk-query-immodules-2.0 > /etc/gtk-2.0/gtk.immodules
 }

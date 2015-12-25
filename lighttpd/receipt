@@ -55,8 +55,7 @@ genpkg_rules()
 
 	# Modules.
 	mkdir -p $fs/usr/lib/lighttpd
-	for module in $BASE_MODULES
-	do
+	for module in $BASE_MODULES; do
 		cp $install/usr/lib/lighttpd/mod_${module}.so $fs/usr/lib/lighttpd
 		echo -n "Copying : mod_${module}.so" && status
 	done
@@ -80,21 +79,21 @@ testsuite()
 # We stop the server by default in case of upgarde.
 pre_install()
 {
-	echo "Processing pre-install commands..."
 	[ -f /etc/init.d/$PACKAGE ] && /etc/init.d/$PACKAGE stop
 	# Backup config file.
 	if [ -d "$1/etc/lighttpd" ]; then
 		cp -a "$1/etc/lighttpd" "$1/etc/lighttpd.bak"
 	fi
 }
+
 post_install()
 {
-	echo "Processing post-install commands..."
 	# Restore original config.
 	if [ -d "$1/etc/lighttpd.bak" ]; then
 		rm -rf "$1/etc/lighttpd"
 		mv "$1/etc/lighttpd.bak" "$1/etc/lighttpd"
 	fi
+
 	# Just in case.
 	chown www.www "$1/var/log/$PACKAGE"
 	[ "$1" ] || netstat -ltn 2> /dev/null | grep -q :80 ||
