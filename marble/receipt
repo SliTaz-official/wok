@@ -23,23 +23,23 @@ compile_rules()
 		-DCMAKE_INSTALL_PREFIX=/usr .. &&
 	make &&
 	make install
+
+	# remove unwanted files
+	cd $DESTDIR/usr/share/applications
+	mv marble_osm.desktop marble.desktop
+	for i in $(sed '/MimeType/!d;s/.*=//' marble_*); do
+		sed -i "s|MimeType.*|&$i|" marble.desktop
+	done
+	rm -f marble_*.desktop marble-*.desktop
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	cp -a $install/usr $fs
-	cd $fs/usr/share/applications
-	mv marble_osm.desktop marble.desktop
-	for i in $(sed '/MimeType/!d;s/.*=//' marble_*); do
-		sed -i "s|MimeType.*|&$i|" marble.desktop
-	done
 
 	# remove unwanted files
 	rm -rf $fs/usr/include
 	rm -rf $fs/usr/share/marble/cmake
 	rm $fs/usr/bin/marble-mobile $fs/usr/bin/marble-touch
-	for i in '-mobile' '-touch' '-qt' '_gpx' '_kml'; do
-		rm $fs/usr/share/applications/marble$i.desktop
-	done
 }
