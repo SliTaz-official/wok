@@ -36,11 +36,11 @@ compile_rules()
 	make -C com32
 	./isohybrid.sh --build
 	sed -i 's/loadkeys -m/loadkeys -u -m/' utils/keytab-lilo	# for ru.kbd
+	mkdir kbd
 	for i in /usr/share/kbd/keymaps/i386/*/*.map.gz; do
 		[ "$(basename $(dirname $i))" == 'include' ] && continue
-		j=$(basename $i)
-		j=${j%.map.gz}.kbd
-		utils/keytab-lilo /usr/share/kbd/keymaps/i386/qwerty/us.map.gz $i > $j
+		utils/keytab-lilo /usr/share/kbd/keymaps/i386/qwerty/us.map.gz \
+			$i > kbd/$(basename $i .map.gz)
 	done
 	cp -a $stuff/iso2exe .
 	make -C iso2exe
@@ -57,17 +57,15 @@ genpkg_rules()
 	cp $stuff/*.cfg $stuff/*.txt $stuff/help.* $stuff/opts.* $fs/boot/isolinux
 	rm -f $fs/boot/isolinux/common.cfg $fs/boot/isolinux/default.cfg
 	rm -f $fs/boot/isolinux/display.txt
-	( cd $src ; ls *.kbd | cpio -o -H newc ) > $fs/boot/isolinux/cpio.kbd
 	while read label kbd loc menu; do
 		for i in ${kbd/,/ }; do
-			[ -e $src/$i.kbd ] || continue
+			[ -e $src/kbd/$i ] || continue
 			cat >> $fs/boot/isolinux/i18n.cfg <<EOT
-
-# ${kbd/,/.kbd or }.kbd keyboard
 LABEL $label
 	MENU LABEL $menu
 	com32 c32box.c32
-	append kbdmap cpio.kbd $i.kbd lang=$loc kmap=${kbd#*,}
+	append kbdmap kbd $i lang=$loc kmap=${kbd#*,}
+
 EOT
 			break
 		done
@@ -107,18 +105,23 @@ tr		trq		tr_TR	Turkce
 EOT
 
 	cat >> $fs/boot/isolinux/i18n.cfg <<EOT
-
 LABEL exit
 	MENU LABEL Back to main menu
+
 MENU EXIT
 MENU END
 EOT
 	sed -i 's/^LABEL us$/&\n	MENU DEFAULT/' $fs/boot/isolinux/i18n.cfg
-	for kbd in $(cd $src ; ls *.kbd); do
-		[ -s $src/$kbd ] || echo "Invalid file $kbd"
+	chown root.root $src/kbd/*
+	touch -r $src $src/kbd/*
+	for kbd in $(cd $src/kbd; ls | tee ../kbd.l); do
+		msg="Invalid file kbd/$kbd"
+		[ -s $src/kbd/$kbd ] && msg="Unused: file kbd/$kbd" &&
 		grep -q " $kbd " $fs/boot/isolinux/i18n.cfg && continue
-		echo "Missing: file $kbd"
+		sed -i "/^$kbd\$/d" $src/kbd.l
+		echo "$msg"
 	done
+	( cd $src/kbd; cat ../kbd.l | cpio -o -H newc ) >$fs/boot/isolinux/kbd
 	chown root.root $fs/boot/isolinux/*
 }
 
