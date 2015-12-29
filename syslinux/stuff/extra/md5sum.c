@@ -573,6 +573,7 @@ static void setlinuxarg(int slot, int argc, char *argv[])
 		syslinux_setadv(slot++, strlen(*argv), *argv);
 }
 
+#include "../../core/unlzma.c"
 static int main_kbdmap(int argc, char *argv[])
 {
     const struct syslinux_keyboard_map *const kmap = syslinux_keyboard_map();
@@ -592,8 +593,18 @@ static int main_kbdmap(int argc, char *argv[])
 
     msg = "Load error";
     if (kmap->version != 1 ||
-	loadfile(argv[1], (void **) &kbdmap, &map_size) || 
-	strncmp(kbdmap, "07070", 5))
+	loadfile(argv[1], (void **) &kbdmap, &map_size))
+    	goto kbdmap_error;
+    if (* (short *) kbdmap == 0x005D) {
+	void *p = malloc(map_size = * (long *) (kbdmap + 5));
+	void *heap = malloc(2*(1846 + (768 << (3 + 0))) + 16);
+
+	unlzma(kbdmap, p, heap);
+	free(heap);
+	free(kbdmap);
+	kbdmap = p;
+    }
+    if (strncmp(kbdmap, "07070", 5))
     	goto kbdmap_error;
 
     // search for mapfile in cpio archive
