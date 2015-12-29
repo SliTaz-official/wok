@@ -1,0 +1,554 @@
+--- core/fs/loadhigh.c
++++ core/fs/loadhigh.c
+@@ -36,6 +36,11 @@
+ #include <minmax.h>
+ #include "core.h"
+ #include "fs.h"
++#define LZLOAD	".c32 modules can be compressed with lz4 or lzma"
++#ifdef LZLOAD
++#include "../unlz4.c"
++#include "../unlzma.c"
++#endif
+ 
+ #define MAX_CHUNK	(1 << 20) /* 1 MB */
+ 
+@@ -51,6 +56,10 @@
+     uint32_t sector_mask;
+     size_t pad;
+     uint32_t retflags = 0;
++#ifdef LZLOAD
++    char *unpacked = (char *) regs->edi.l;
++    size_t unpackedsz;
++#endif
+ 
+     bytes     = regs->eax.l;
+     zero_mask = regs->edx.w[0];
+@@ -101,6 +110,27 @@
+ 	    break;
+ 	}
+     }
++
++#ifdef LZLOAD
++    unpackedsz = buf - unpacked;
++    switch (* (short *) unpacked) {
++	char *packed;
++    case 0x005D:
++	packed = unpacked + * (unsigned long *) (unpacked + 5)
++			- unpackedsz + 1024;
++
++	if (packed < unpacked + 1024)
++		packed = unpacked + 1024;
++	memmove(packed, unpacked, unpackedsz);
++	unlzma(packed, unpacked, packed + unpackedsz /* head */);
++	buf = packed;
++	break;
++    case 0x2204:
++    case 0x2102:
++	buf = unlz4(unpacked, buf);
++	break;
++    }
++#endif
+ 
+     pad = (size_t)buf & zero_mask;
+     if (pad)
+--- /dev/null
++++ core/unlzma.c
+@@ -0,0 +1,383 @@
++typedef unsigned char uint8_t;
++typedef unsigned short uint16_t;
++typedef unsigned uint32_t;
++typedef unsigned long long uint64_t;
++typedef unsigned size_t;
++#define SWAP_LE32(x)	(x)
++#define SWAP_LE64(x)	(x)
++/* vi: set sw=4 ts=4: */
++/*
++ * Small lzma deflate implementation.
++ * Copyright (C) 2006  Aurelien Jacobs <aurel@gnuage.org>
++ *
++ * Based on LzmaDecode.c from the LZMA SDK 4.22 (http://www.7-zip.org/)
++ * Copyright (C) 1999-2005  Igor Pavlov
++ *
++ * Licensed under GPLv2 or later, see file LICENSE in this source tree.
++ */
++
++#define PACKED __attribute__ ((packed))
++#define ALWAYS_INLINE inline
++#define speed_inline
++#define size_inline ALWAYS_INLINE
++
++
++typedef struct {
++	uint8_t *ptr;
++
++	uint32_t code;
++	uint32_t range;
++	uint32_t bound;
++} rc_t;
++
++#define RC_TOP_BITS 24
++#define RC_MOVE_BITS 5
++#define RC_MODEL_TOTAL_BITS 11
++
++/* Called twice, but one callsite is in speed_inline'd rc_is_bit_1() */
++static void rc_do_normalize(rc_t *rc)
++{
++	rc->range <<= 8;
++	rc->code = (rc->code << 8) | *rc->ptr++;
++}
++
++static ALWAYS_INLINE void rc_normalize(rc_t *rc)
++{
++	if (rc->range < (1 << RC_TOP_BITS)) {
++		rc_do_normalize(rc);
++	}
++}
++
++/* Called once */
++static void rc_init(rc_t *rc) /*, int buffer_size) */
++{
++	int i;
++
++	rc->range = 0;
++	for (i = 0; i < 5; i++) {
++		rc_do_normalize(rc);
++	}
++	rc->range = 0xffffffff;
++}
++
++/* rc_is_bit_1 is called 9 times */
++static speed_inline int rc_is_bit_1(rc_t *rc, uint16_t *p)
++{
++	rc_normalize(rc);
++	rc->bound = *p * (rc->range >> RC_MODEL_TOTAL_BITS);
++	if (rc->code < rc->bound) {
++		rc->range = rc->bound;
++		*p += ((1 << RC_MODEL_TOTAL_BITS) - *p) >> RC_MOVE_BITS;
++		return 0;
++	}
++	rc->range -= rc->bound;
++	rc->code -= rc->bound;
++	*p -= *p >> RC_MOVE_BITS;
++	return 1;
++}
++
++/* Called 4 times in unlzma loop */
++static ALWAYS_INLINE int rc_get_bit(rc_t *rc, uint16_t *p, int *symbol)
++{
++	int ret = rc_is_bit_1(rc, p);
++	*symbol = *symbol * 2 + ret;
++	return ret;
++}
++
++/* Called once */
++static ALWAYS_INLINE int rc_direct_bit(rc_t *rc)
++{
++	rc_normalize(rc);
++	rc->range >>= 1;
++	if (rc->code >= rc->range) {
++		rc->code -= rc->range;
++		return 1;
++	}
++	return 0;
++}
++
++/* Called twice */
++static speed_inline void
++rc_bit_tree_decode(rc_t *rc, uint16_t *p, int num_levels, int *symbol)
++{
++	int i = num_levels;
++
++	*symbol = 1;
++	while (i--)
++		rc_get_bit(rc, p + *symbol, symbol);
++	*symbol -= 1 << num_levels;
++}
++
++
++typedef struct {
++	uint8_t pos;
++	uint32_t dict_size;
++	uint64_t dst_size;
++} PACKED lzma_header_t;
++
++
++/* #defines will force compiler to compute/optimize each one with each usage.
++ * Have heart and use enum instead. */
++enum {
++	LZMA_BASE_SIZE = 1846,
++	LZMA_LIT_SIZE  = 768,
++
++	LZMA_NUM_POS_BITS_MAX = 4,
++
++	LZMA_LEN_NUM_LOW_BITS  = 3,
++	LZMA_LEN_NUM_MID_BITS  = 3,
++	LZMA_LEN_NUM_HIGH_BITS = 8,
++
++	LZMA_LEN_CHOICE     = 0,
++	LZMA_LEN_CHOICE_2   = (LZMA_LEN_CHOICE + 1),
++	LZMA_LEN_LOW        = (LZMA_LEN_CHOICE_2 + 1),
++	LZMA_LEN_MID        = (LZMA_LEN_LOW \
++	                      + (1 << (LZMA_NUM_POS_BITS_MAX + LZMA_LEN_NUM_LOW_BITS))),
++	LZMA_LEN_HIGH       = (LZMA_LEN_MID \
++	                      + (1 << (LZMA_NUM_POS_BITS_MAX + LZMA_LEN_NUM_MID_BITS))),
++	LZMA_NUM_LEN_PROBS  = (LZMA_LEN_HIGH + (1 << LZMA_LEN_NUM_HIGH_BITS)),
++
++	LZMA_NUM_STATES     = 12,
++	LZMA_NUM_LIT_STATES = 7,
++
++	LZMA_START_POS_MODEL_INDEX = 4,
++	LZMA_END_POS_MODEL_INDEX   = 14,
++	LZMA_NUM_FULL_DISTANCES    = (1 << (LZMA_END_POS_MODEL_INDEX >> 1)),
++
++	LZMA_NUM_POS_SLOT_BITS = 6,
++	LZMA_NUM_LEN_TO_POS_STATES = 4,
++
++	LZMA_NUM_ALIGN_BITS = 4,
++
++	LZMA_MATCH_MIN_LEN  = 2,
++
++	LZMA_IS_MATCH       = 0,
++	LZMA_IS_REP         = (LZMA_IS_MATCH + (LZMA_NUM_STATES << LZMA_NUM_POS_BITS_MAX)),
++	LZMA_IS_REP_G0      = (LZMA_IS_REP + LZMA_NUM_STATES),
++	LZMA_IS_REP_G1      = (LZMA_IS_REP_G0 + LZMA_NUM_STATES),
++	LZMA_IS_REP_G2      = (LZMA_IS_REP_G1 + LZMA_NUM_STATES),
++	LZMA_IS_REP_0_LONG  = (LZMA_IS_REP_G2 + LZMA_NUM_STATES),
++	LZMA_POS_SLOT       = (LZMA_IS_REP_0_LONG \
++	                      + (LZMA_NUM_STATES << LZMA_NUM_POS_BITS_MAX)),
++	LZMA_SPEC_POS       = (LZMA_POS_SLOT \
++	                      + (LZMA_NUM_LEN_TO_POS_STATES << LZMA_NUM_POS_SLOT_BITS)),
++	LZMA_ALIGN          = (LZMA_SPEC_POS \
++	                      + LZMA_NUM_FULL_DISTANCES - LZMA_END_POS_MODEL_INDEX),
++	LZMA_LEN_CODER      = (LZMA_ALIGN + (1 << LZMA_NUM_ALIGN_BITS)),
++	LZMA_REP_LEN_CODER  = (LZMA_LEN_CODER + LZMA_NUM_LEN_PROBS),
++	LZMA_LITERAL        = (LZMA_REP_LEN_CODER + LZMA_NUM_LEN_PROBS),
++};
++
++
++void unlzma(char *from, char *to, char *heap)
++{
++	lzma_header_t header;
++	int lc, pb, lp;
++	uint32_t pos_state_mask;
++	uint32_t literal_pos_mask;
++	uint16_t *p;
++	rc_t *rc = (rc_t *) heap;
++	int i;
++	uint8_t *buffer = (void *) to;
++	uint8_t previous_byte = 0;
++	size_t buffer_pos = 0;
++	int len = 0;
++	int state = 0;
++	uint32_t rep0 = 1, rep1 = 1, rep2 = 1, rep3 = 1;
++
++	memcpy(&header, from, sizeof(header));
++	from += sizeof(header);
++	heap += sizeof(*rc);
++	rc->ptr = (void *) from;
++
++	i = header.pos / 9;
++	lc = header.pos % 9;
++	pb = i / 5;
++	lp = i % 5;
++	pos_state_mask = (1 << pb) - 1;
++	literal_pos_mask = (1 << lp) - 1;
++
++	/* Example values from linux-3.3.4.tar.lzma:
++	 * dict_size: 64M, dst_size: 2^64-1
++	 */
++	header.dict_size = SWAP_LE32(header.dict_size);
++	header.dst_size = SWAP_LE64(header.dst_size);
++
++	//if (header.dict_size == 0)
++	//	header.dict_size++;
++
++	rc_init(rc);
++
++	{
++		int num_probs;
++
++		num_probs = LZMA_BASE_SIZE + (LZMA_LIT_SIZE << (lc + lp));
++		//p = xmalloc(num_probs * sizeof(*p));
++		p = (void *) heap;
++		num_probs += LZMA_LITERAL - LZMA_BASE_SIZE;
++		for (i = 0; i < num_probs; i++)
++			p[i] = (1 << RC_MODEL_TOTAL_BITS) >> 1;
++	}
++
++
++	while (buffer_pos < header.dst_size) {
++		int pos_state = buffer_pos & pos_state_mask;
++		uint16_t *prob = p + LZMA_IS_MATCH + (state << LZMA_NUM_POS_BITS_MAX) + pos_state;
++
++		if (!rc_is_bit_1(rc, prob)) {
++			static const char next_state[LZMA_NUM_STATES] =
++				{ 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 4, 5 };
++			int mi = 1;
++
++			prob = (p + LZMA_LITERAL
++			        + (LZMA_LIT_SIZE * (((buffer_pos & literal_pos_mask) << lc)
++			                            + (previous_byte >> (8 - lc))
++			                           )
++			          )
++			);
++
++			if (state >= LZMA_NUM_LIT_STATES) {
++				int match_byte;
++				uint32_t pos = buffer_pos - rep0;
++
++				while (pos >= header.dict_size)
++					pos += header.dict_size;
++				match_byte = buffer[pos];
++				do {
++					int bit;
++
++					match_byte <<= 1;
++					bit = match_byte & 0x100;
++					bit ^= (rc_get_bit(rc, prob + 0x100 + bit + mi, &mi) << 8); /* 0x100 or 0 */
++					if (bit)
++						break;
++				} while (mi < 0x100);
++			}
++			while (mi < 0x100) {
++				rc_get_bit(rc, prob + mi, &mi);
++			}
++
++			state = next_state[state];
++
++			previous_byte = (uint8_t) mi;
++			len = 1;
++			goto one_byte2;
++		} else {
++			int num_bits;
++			int offset;
++			uint16_t *prob2;
++#define prob_len prob2
++
++			prob2 = p + LZMA_IS_REP + state;
++			if (!rc_is_bit_1(rc, prob2)) {
++				rep3 = rep2;
++				rep2 = rep1;
++				rep1 = rep0;
++				state = state < LZMA_NUM_LIT_STATES ? 0 : 3;
++				prob2 = p + LZMA_LEN_CODER;
++			} else {
++				prob2 += LZMA_IS_REP_G0 - LZMA_IS_REP;
++				if (!rc_is_bit_1(rc, prob2)) {
++					prob2 = (p + LZMA_IS_REP_0_LONG
++					        + (state << LZMA_NUM_POS_BITS_MAX)
++					        + pos_state
++					);
++					if (!rc_is_bit_1(rc, prob2)) {
++						state = state < LZMA_NUM_LIT_STATES ? 9 : 11;
++						len = 1;
++						goto string;
++					}
++				} else {
++					uint32_t distance;
++
++					prob2 += LZMA_IS_REP_G1 - LZMA_IS_REP_G0;
++					distance = rep1;
++					if (rc_is_bit_1(rc, prob2)) {
++						prob2 += LZMA_IS_REP_G2 - LZMA_IS_REP_G1;
++						distance = rep2;
++						if (rc_is_bit_1(rc, prob2)) {
++							distance = rep3;
++							rep3 = rep2;
++						}
++						rep2 = rep1;
++					}
++					rep1 = rep0;
++					rep0 = distance;
++				}
++				state = state < LZMA_NUM_LIT_STATES ? 8 : 11;
++				prob2 = p + LZMA_REP_LEN_CODER;
++			}
++
++			prob_len = prob2 + LZMA_LEN_CHOICE;
++			num_bits = LZMA_LEN_NUM_LOW_BITS;
++			if (!rc_is_bit_1(rc, prob_len)) {
++				prob_len += LZMA_LEN_LOW - LZMA_LEN_CHOICE
++				            + (pos_state << LZMA_LEN_NUM_LOW_BITS);
++				offset = 0;
++			} else {
++				prob_len += LZMA_LEN_CHOICE_2 - LZMA_LEN_CHOICE;
++				if (!rc_is_bit_1(rc, prob_len)) {
++					prob_len += LZMA_LEN_MID - LZMA_LEN_CHOICE_2
++					            + (pos_state << LZMA_LEN_NUM_MID_BITS);
++					offset = 1 << LZMA_LEN_NUM_LOW_BITS;
++					num_bits += LZMA_LEN_NUM_MID_BITS - LZMA_LEN_NUM_LOW_BITS;
++				} else {
++					prob_len += LZMA_LEN_HIGH - LZMA_LEN_CHOICE_2;
++					offset = ((1 << LZMA_LEN_NUM_LOW_BITS)
++					          + (1 << LZMA_LEN_NUM_MID_BITS));
++					num_bits += LZMA_LEN_NUM_HIGH_BITS - LZMA_LEN_NUM_LOW_BITS;
++				}
++			}
++			rc_bit_tree_decode(rc, prob_len, num_bits, &len);
++			len += offset;
++
++			if (state < 4) {
++				int pos_slot;
++				uint16_t *prob3;
++
++				state += LZMA_NUM_LIT_STATES;
++				prob3 = p + LZMA_POS_SLOT +
++				       ((len < LZMA_NUM_LEN_TO_POS_STATES ? len :
++				         LZMA_NUM_LEN_TO_POS_STATES - 1)
++				         << LZMA_NUM_POS_SLOT_BITS);
++				rc_bit_tree_decode(rc, prob3,
++					LZMA_NUM_POS_SLOT_BITS, &pos_slot);
++				rep0 = pos_slot;
++				if (pos_slot >= LZMA_START_POS_MODEL_INDEX) {
++					int i2, mi2, num_bits2 = (pos_slot >> 1) - 1;
++					rep0 = 2 | (pos_slot & 1);
++					if (pos_slot < LZMA_END_POS_MODEL_INDEX) {
++						rep0 <<= num_bits2;
++						prob3 = p + LZMA_SPEC_POS + rep0 - pos_slot - 1;
++					} else {
++						for (; num_bits2 != LZMA_NUM_ALIGN_BITS; num_bits2--)
++							rep0 = (rep0 << 1) | rc_direct_bit(rc);
++						rep0 <<= LZMA_NUM_ALIGN_BITS;
++						prob3 = p + LZMA_ALIGN;
++					}
++					i2 = 1;
++					mi2 = 1;
++					while (num_bits2--) {
++						if (rc_get_bit(rc, prob3 + mi2, &mi2))
++							rep0 |= i2;
++						i2 <<= 1;
++					}
++				}
++				if (++rep0 == 0)
++					break;
++			}
++
++			len += LZMA_MATCH_MIN_LEN;
++ string:
++			do {
++				uint32_t pos = buffer_pos - rep0;
++				while (pos >= header.dict_size)
++					pos += header.dict_size;
++				previous_byte = buffer[pos];
++ one_byte2:
++				buffer[buffer_pos++] = previous_byte;
++				len--;
++			} while (len != 0 && buffer_pos < header.dst_size);
++		}
++	}
++}
+--- /dev/null
++++ core/unlz4.c
+@@ -0,0 +1,112 @@
++/*
++ * Copyright (C) 2015, pascal.bellard@slitaz.org
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#define LZ4_MAGIC	0x184D2204	/* Spec 1.5.0 */
++#define LZ4_LEGACY	0x184C2102
++#define LZ4_SKIP(n)	((((n) - 0x184D2A50) >> 4) == 0)
++
++static unsigned lz4cnt(unsigned char **p, unsigned n)
++{
++	int i;
++
++	if (n == 0xF) do {
++		i = *(*p)++;
++		n += i;
++	} while (i == 0xFF);
++	return n;
++}
++
++char *unlz4(unsigned char *from, unsigned char *end)
++{
++	unsigned char *p, *end_chunk, *to, flags, mask;
++	long magic;
++	unsigned i, n, size;
++
++	for (p = from, flags = size = 0; p < end;) {
++		while (1) {
++			magic = * (long *) p;
++			p += sizeof(long);
++			if (magic == LZ4_LEGACY) continue;
++			if (magic != LZ4_MAGIC) break;
++			flags = *p;
++			if (flags & 8) {
++				size = * (unsigned *) (p + 2);
++				goto sizefound;
++			}
++			p += 3; /* skip FLG BD HC */
++		}
++		if (LZ4_SKIP(magic)) {
++			p += 4 + * (long *) p;
++			continue;
++		}
++		mask = 4; /* Content checksum */
++		if (magic) {
++			if (magic > 0)
++			for (end_chunk = p + magic; p < end_chunk;) {
++				unsigned char token = *p++;
++
++				n = lz4cnt(&p, token >> 4);
++				size += n;
++				p += n;
++				if (p >= end_chunk) break;
++				p += sizeof(unsigned short);
++				size += 4 + lz4cnt(&p, token & 0xF);
++			}
++			else {
++				magic &= 0x7FffFFff;
++				p += magic;
++				size += magic;
++			}
++			mask = 0x10; /* Block checksum */
++		}
++		if (flags & mask) p += 4; /* skip block checksum */
++	}
++sizefound:
++	size += 16 - (p - from);
++	memmove(from + size, from, p - from);
++	for (to = from, p = from += size, end += size, flags = 0; p < end;) {
++		while (1) {
++			magic = * (long *) p;
++			p += sizeof(long);
++			if (magic == LZ4_LEGACY) continue;
++			if (magic != LZ4_MAGIC) break;
++			flags = *p;
++			if (flags & 8) p += 8; /* skip size */
++			p += 3; /* skip FLG BD HC */
++		}
++		if (LZ4_SKIP(magic)) {
++			p += 4 + * (long *) p;
++			continue;
++		}
++		mask = 4; /* Content checksum */
++		if (magic) {
++			if (magic > 0)
++			for (end_chunk = p + magic; p < end_chunk;) {
++				char *dico;
++				unsigned char token = *p++;
++
++				n = lz4cnt(&p, token >> 4);
++				for (i = 0; i < n; i++)
++					*to++ = *p++;
++				if (p >= end_chunk) break;
++				dico = to - (* (unsigned short *) p);
++				p += sizeof(unsigned short);
++				n = 4 + lz4cnt(&p, token & 0xF);
++				for (i = 0; i < n; i++)
++					*to++ = *dico++;
++			}
++			else for (end_chunk = p + (magic & 0x7FffFFff);
++				  p < end_chunk;) {
++				*to++ = *p++;
++			}
++			mask = 0x10; /* Block checksum */
++		}
++		if (flags & mask) p += 4; /* Skip checksum */
++	}
++	return to;
++}
