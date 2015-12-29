@@ -44,7 +44,7 @@
 +	break;
 +    case 0x2204:
 +    case 0x2102:
-+	buf = unlz4((unsigned char *) unpacked, (unsigned char *) buf);
++	buf = (char *) unlz4((unsigned char *) unpacked, (unsigned char *) buf);
 +	break;
 +    }
 +#endif
@@ -53,7 +53,7 @@
      if (pad)
 --- /dev/null
 +++ core/unlzma.c
-@@ -0,0 +1,383 @@
+@@ -0,0 +1,385 @@
 +typedef unsigned char uint8_t;
 +typedef unsigned short uint16_t;
 +typedef unsigned uint32_t;
@@ -71,6 +71,8 @@
 + *
 + * Licensed under GPLv2 or later, see file LICENSE in this source tree.
 + */
++
++#include <string.h>
 +
 +#define PACKED __attribute__ ((packed))
 +#define ALWAYS_INLINE inline
@@ -439,7 +441,7 @@
 +}
 --- /dev/null
 +++ core/unlz4.c
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,114 @@
 +/*
 + * Copyright (C) 2015, pascal.bellard@slitaz.org
 + *
@@ -447,6 +449,8 @@
 + * it under the terms of the GNU General Public License version 2 as
 + * published by the Free Software Foundation.
 + */
++
++#include <string.h>
 +
 +#define LZ4_MAGIC	0x184D2204	/* Spec 1.5.0 */
 +#define LZ4_LEGACY	0x184C2102
@@ -463,7 +467,7 @@
 +	return n;
 +}
 +
-+char *unlz4(unsigned char *from, unsigned char *end)
++unsigned char *unlz4(unsigned char *from, unsigned char *end)
 +{
 +	unsigned char *p, *end_chunk, *to, flags, mask;
 +	long magic;
