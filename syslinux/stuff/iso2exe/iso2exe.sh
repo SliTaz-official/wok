@@ -130,6 +130,14 @@ custom_config_sector()
 	echo $(($(get 32848 "$1" 4)+16))
 }
 
+clear_custom_config()
+{
+    start=$(custom_config_sector $1)
+    cnt=$((512 - ($start % 512)))
+    [ $cnt -ne 512 ] &&
+    ddq if=/dev/zero of=$1 bs=2k seek=$start count=$cnt
+}
+
 extract_custom_config()
 {
 	ISO="$1"
@@ -300,7 +308,7 @@ main()
 	done
 	
 	[ ! -s "$1" ] && cat 1>&2 <<EOT && exit 1
-usage: $0 [--append custom_cmdline ] [ --initrd custom_initramfs ] image.iso [--undo|"DOS help message"]
+usage: $0 [--append custom_cmdline ] [ --initrd custom_initramfs ] image.iso [--force|--undo|"DOS help message"]
 or: $0 --extract-custom-config image.iso
 EOT
 	case "${2/--/-}" in
@@ -315,11 +323,11 @@ EOT
 		ddq if=/dev/zero bs=1 seek=$n count=$((0x8000 - $n)) of=$1 conv=notrunc ;;
 	    *)  ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc ;;
 	    esac
-	    start=$(custom_config_sector $1)
-	    cnt=$((512 - ($start % 512)))
-	    [ $cnt -ne 512 ] &&
-	    ddq if=/dev/zero of=$1 bs=2k seek=$start count=$cnt
+	    clear_custom_config
 	    exit 0
+	-f*)
+	    ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc
+	    [ "$append$initrd" ] && clear_custom_config
 	esac
 	case "$(get 0 $1)" in
 	23117)	echo "The file $1 is already an EXE file." 1>&2 && exit 1;;
