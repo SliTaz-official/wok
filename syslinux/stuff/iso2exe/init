@@ -640,7 +640,7 @@ cdexe()
 fddata()
 {
 	[ -e /sys/block/fd0 ] && 
-	[ $(get 28 /mnt/$ISO 1 2> /dev/null || echo 0) -ne 0 ] &&
+	[ $(get 26 /mnt/$ISO 1 2> /dev/null || echo 0) -ne 0 ] &&
 	echo -en "\"$1\"	\"$2\""
 }
 
@@ -678,6 +678,42 @@ blankcd()
 	wodim -v -blank=fast
 }
 
+customsector()
+{
+	echo $(($(get 32848 "/mnt/$ISO" 4)+16))
+}
+
+hascustomconf()
+{
+	[ "$(ddq bs=2k skip=$(customsector) if="/mnt/$ISO" | ddq bs=1 count=6)" \
+	  == "#!boot" ]
+}
+
+gotcustomconf()
+{
+	hascustomconf && menuitem "$@"
+}
+
+getcustomconf()
+{
+	cd /mnt
+	ddq bs=2k skip=$(customsector) if="$ISO" | while read line; do
+		case "$line" in
+		\#!boot*) ;;
+		append=*) echo ${line#append=} > cmdline && ls -l cmdline ;;
+		initrd:*) cnt=${line#initrd:}
+			  { ddq bs=512 count=$(($cnt / 512));
+			    ddq bs=1 count=$(($cnt % 512)); } > initrd &&
+			  ls -l initrd
+			  break ;;
+		*)	  break ;;	  
+		esac
+	done
+	cd - > /dev/null
+	echo -e "\rPress RETURN to continue."
+	read n
+}
+
 gotisomd5()
 {
 	[ "$(which md5sum 2> /dev/null)" ] &&
@@ -699,14 +735,188 @@ isomd5()
 		[ $(((1+$s+$(get $(($n+1)) /mnt/$ISO 1)) % 65536)) -eq 0 ] &&
 		echo "OK" || echo "ERROR"
 	fi
+	if hascustomconf; then
+		echo -en "\rChecking iso custom config..."
+		TMP=/tmp/$(basename $0)$$md5
+		md5="$(ddq bs=2k skip=$(customsector) if=/mnt/$ISO | while read line; do
+			case "$line" in
+			\#!boot*) echo ${line#*boot } > $TMP ;;
+			append=*) echo $line ;;
+			initrd:*) echo $line
+				  cnt=${line#initrd:}
+				  ddq bs=512 count=$((cnt / 512))
+				  ddq bs=1 count=$((cnt % 512))
+				  break ;;
+			*)	  break ;;	  
+			esac
+		done | md5sum | cut -c1-32)"
+		[ "$md5" == "$(cat $TMP)" ] && echo "OK" || echo "ERROR"
+		rm -f $TMP
+	fi
 	rm -f /tmp/wait
 	echo -e "\rPress RETURN to continue."
 	read n
 }
 
+if [ "$1" == "--build" ]; then	#install-begin
+	uuencode -m - < ifmem.bin | sed -e '/^ifmemcode$/r/dev/stdin' \
+	  -e '/^ifmemcode$/d' -i $0
+	uuencode -m - < bootloader.bin | sed -e '/^bootloader$/r/dev/stdin' \
+	  -e '/^bootloader$/d' -e '/install-begin$/,/install-end$/d' -i $0
+	exit
+fi	#install-end
+parse_isolinux()
+{
+	awk 'BEGIN { IGNORECASE=1 }
+function multi(n)
+{
+	auto=$n
+	for (--n; n < NF; n+=2) {
+		s=$n
+		if (s ~ /M$/) s = substr(s,0,length(s)-1)
+		else s /= 1024
+		sizes=int(s) " " sizes
+	}
+	next
+}
+{
+	if ($1 == "LABEL") {
+		label=$2
+		if (auto == "") auto=label
+	}
+	if ($1 == "KERNEL" || $1 == "COM32") kernel[label]=$2
+	if ($1 == "INITRD") initrd[label]=$2
+	if ($1 == "APPEND") {
+		i=2
+		if (kernel[label] ~ "ifmem.c32") multi(3)
+		if (kernel[label] ~ "c32box.c32") {
+			if ($2 == "linux") { kernel[label]=$3; i=4 }
+			if ($2 == "ifmem") multi(4)
+		}
+		if (kernel[label] ~ "ifcpu64.c32") { auto=$4; next }
+		while (i <= NF) {
+			if ($i ~ "^initrd=") initrd[label]=substr($i,8)
+			else cmdline[label]=cmdline[label] " " $i
+			i++
+		}
+	}
+}
+END {
+	print "KERNEL=\"" kernel[auto] "\""
+	print "INITRD=\"" initrd[auto] "\""
+	print "CMDLINE=\"" substr(cmdline[auto],2) "\""
+	print "SIZES=\"" sizes "\""
+}'
+}
+
+locase()
+{
+	echo "$1" | tr [A-Z] [a-z]
+}
+
+ifmemcode()
+{
+	uudecode <<EOT
+ifmemcode
+EOT
+}
+
+floppyset()
+{
+	gotcdfile isolinux.cfg
+	parse_isolinux < $file > /tmp/var$$
+	. /tmp/var$$
+	for i in $media/$KERNEL $(dirname $file)/$KERNEL $media/$(locase $KERNEL) \
+		 $(dirname $file)/$(locase $KERNEL); do
+		[ -s $i ] && KERNEL=$i && break
+	done
+	rm -f /tmp/var$$ 
+	[ $(get 514 $KERNEL 4) -eq 1400005704 ] || return
+	n=$(($(get 497 $KERNEL 1)+1))
+	ddq bs=512 count=$n if=$KERNEL of=/tmp/fd$$
+	uudecode <<EOT | ddq of=/tmp/fd$$ conv=notrunc
+bootloader
+EOT
+	pos=$(($n*512))
+	if [ -n "$CMDLINE" ]; then
+		echo -n "$CMDLINE" | ddq bs=512 count=1 conv=sync >> /tmp/fd$$
+		bytes2bin $n | ddq conv=notrunc \
+			bs=1 seek=497 count=1 of=/tmp/fd$$
+		words2bin $pos | ddq conv=notrunc \
+			bs=1 seek=34 count=2 of=/tmp/fd$$
+		[ $(get 518 $KERNEL 4) -ge 514 ] &&
+		words2bin 32768 9 | ddq conv=notrunc \
+			bs=1 seek=552 count=4 of=/tmp/fd$$
+	fi
+	syssize=$(echo $(get 500 /tmp/fd$$ 4))
+	ddq bs=512 skip=$n if=$KERNEL | cat - /dev/zero | \
+	ddq bs=512 count=$((($syssize+31)/32)) conv=sync >> /tmp/fd$$
+	base=$(stat -c %s /tmp/fd$$)
+	len=
+	if [ "$INITRD" ]; then
+		l=0
+		for i in ${INITRD//,/ }; do
+			for j in $media/$i $(dirname $KERNEL)/$i $media/$(locase $i) \
+				 $(dirname $KERNEL)/$(locase $i); do
+				[ -s $j ] && i=$j && break
+			done
+			ddq if=$i >> /tmp/fd$$
+			l=$(($l+$(stat -c %s $i)))
+			r=$((4 - ($l % 4)))
+			if [ $r -ne 4 ]; then
+				ddq if=/dev/zero bs=1 count=$r >> /tmp/fd$$
+				l=$(($l + $r))
+			fi
+			case "$i:$INITRD" in
+				*rootfs.gz:*rootfs.gz,*) continue	# loram
+			esac
+			len="$len $l"; l=0
+		done
+		rdadrs=${RDADRS:-$(((($syssize*16)+0x1F0000) & -4096))}
+		words2bin $(($rdadrs & 0xFFFF)) $(($rdadrs >> 16)) | ddq \
+			conv=notrunc bs=1 seek=536 count=4 of=/tmp/fd$$
+	fi
+	n=$(echo $len | wc -w)
+	if [ $((494 - $(get 494 /tmp/fd$$))) -ge $(($n * 4)) ]; then
+		i=$(($(get 494 /tmp/fd$$)))
+		bytes2bin $(($i + ($n*4) - 256)) | ddq bs=1 conv=notrunc \
+			seek=496 count=1 of=/tmp/fd$$
+	else
+		i=$(($pos + 0x1FC - ($n*4)))
+		bytes2bin $(($i % 256)) $((i / 256)) 252 | ddq bs=1 \
+			conv=notrunc seek=494 count=3 of=/tmp/fd$$
+		s=$(($i - 2*$(echo "$SIZES" | wc -w)))
+		p=$(($s - $(ifmemcode | wc -c)))
+		ifmemcode | ddq bs=1 conv=notrunc seek=$p of=/tmp/fd$$
+		words2bin $SIZES | ddq bs=1 conv=notrunc seek=$s of=/tmp/fd$$
+		bytes2bin 154 $(($p%256)) $(($p/256)) 0 144 | \
+		ddq bs=1 conv=notrunc seek=60 of=/tmp/fd$$
+	fi
+	for r in $len ; do
+		words2bin $(($r & 0xFFFF)) $(($r >> 16)) | ddq conv=notrunc \
+			bs=1 seek=$i count=4 of=/tmp/fd$$
+		i=$(($i + 4))
+	done
+	split -b 1440k /tmp/fd$$ fd$$
+	rm -f /tmp/fd$$
+	n=1; i=0; r=0
+	set -- $len
+	ls fd$$* | while read file ; do
+		if [ $i -gt $(($1+$base)) ]; then
+			shift
+			r=$(($r+100)); n=0; i=0; base=0
+		fi
+		ddq of=$file bs=18k seek=80 count=0
+		i=$(($i+1474560))
+		printf "mv %s fd%03d.img\n" $file $(($r+$n))
+		n=$(($n+1))
+	done | sh
+	ls fd???.img
+}
+
 fdbootstrap()
 {
-	sz=$((512 * $(echo $(get 28 /mnt/$ISO 1))))
+	sz=$((512 * $(echo $(get 26 /mnt/$ISO 1))))
 	$DIALOG --clear \
 		--title " Create a floppy bootstrap " \
 		--yes-label "Continue" --yesno \
@@ -954,6 +1164,16 @@ showfavinfo()
 	rm -rf /tmp/data
 }
 
+flavor()
+{
+	cd /mnt
+	name="$(flavdata | cpio -t 2> /dev/null | sed 's/.[a-z]*$//;q')"
+	echo "Create ${name:=flavor}.flavor..."
+	tazlito iso2flavor "/mnt/$ISO" $name
+	ls -l $name.flavor 2> /dev/null || sleep 5
+	cd - > /dev/null
+}
+
 shell()
 {
 	trap text 2 
@@ -975,7 +1195,7 @@ esac
 which $DIALOG 2> /dev/null || DIALOG=tinydialog
 dmesg > /tmp/dmesg
 
-isotitle="$(basename $ISO)  $(stat -c %y /cdrom/media/. | sed 's/ .*//'\
+isotitle="$(basename $ISO)  $(stat -c %y /media/cdrom | sed 's/ .*//'\
 	  )  $(blkid /mnt/$ISO | sed 's/.*LABEL="\([^"]*\).*/\1/')"
 while true; do
 	trap shell 2 
@@ -990,6 +1210,7 @@ $(xfile tazlocale	"tazlocale"	"Select locale (${locale:-none})") \
 $(cdfile boot/bzImage	"live"		"Linux RAM boot (full desktop)") \
 			"text"		"Linux RAM boot" \
 $(cdfile "README*"	"readme"	"Show the README file") \
+$(gotcustomconf		"getcustomconf"	"Get custom config") \
 $(gotisomd5		"isomd5"	"Check the ISO image") \
 $(cdfile "md5sum*"	"md5"		"Check the ISO files") \
 $(cdfile "sha*sum*"	"sha"		"Check the ISO files") \
@@ -1000,15 +1221,17 @@ $(gotposixovl		"installtaz"	"Hard disk installation (TAZUSB way)") \
 $(xfile tazusb		"usbkey"	"USB key read/write installation") \
 $(ishybrid		"usbbootkey"	"USB boot key (read only)") \
 $(hasflavinfo		"showfavinfo"	"Show flavor extra info") \
+$(xfile tazlito		"flavor"	"Get flavor file") \
 $(fddata		"fdbootstrap"	"Create a floppy bootstrap") \
+$(cdfile isolinux.cfg	"floppyset"	"Boot floppy set") \
 			"tazboot"	"Get tazboot.exe Linux loader" \
 $(cdexe boot/bzImage	"bzimage"	"Get linux DOS/EXE file") \
 $(cdexe "memtest*"	"memtest"	"Get Memtest86 DOS/EXE file") \
 $(cdfilef "memtest*"	"fdmemtest"	"Create a Memtest86 boot floppy") \
-$(cdfilex "memtest*"	"runmemtest"	"Start Memtest86") \
+$(:||cdfilex "memtest*"	"runmemtest"	"Start Memtest86") \
 $(cdexe "?pxe"		"pxe"		"Get SliTaz Web boot DOS/EXE utility") \
 $(cdfilef "?pxe"	"fdpxe"		"Create a SliTaz Web boot floppy") \
-$(cdfilex "?pxe"	"runpxe"	"Start the SliTaz Web boot utility") \
+$(:||cdfilex "?pxe"	"runpxe"	"Start the SliTaz Web boot utility") \
 $(xfile reboot		"restart"	"Restart the computer") \
 $(xfile poweroff	"stop"		"Power off") \
 			"bootlog"	"Linux boot messages" \

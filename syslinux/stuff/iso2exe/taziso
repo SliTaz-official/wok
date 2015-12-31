@@ -1107,7 +1107,11 @@ flavor()
 	name="$(flavdata | cpio -t 2> /dev/null | sed 's/.[a-z]*$//;q')"
 	echo "Create ${name:=flavor}.flavor..."
 	tazlito iso2flavor "$ISO" $name
-	ls -l $name.flavor
+	ls -l $name.flavor 2> /dev/null && return
+	sleep 5
+	[ "$1" ] && return
+	echo -e "\rPress RETURN to continue."
+	read n
 }
 
 if [ "$1" == "--build" ]; then	#install-begin
@@ -1343,6 +1347,6 @@ EOT
 	retval=$?
 	exec 3>&-
 	rm -f /tmp/dialog$$
-	[ $retval -eq 0 ] || break
+	[ $retval -eq 0 ] || quit
 	$value
 done
