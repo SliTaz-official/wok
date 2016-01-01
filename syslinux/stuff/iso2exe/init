@@ -691,13 +691,13 @@ hascustomconf()
 
 gotcustomconf()
 {
-	hascustomconf && menuitem "$@"
+	hascustomconf && echo -en "\"$1\"	\"$2\""
 }
 
 getcustomconf()
 {
-	cd /mnt
-	ddq bs=2k skip=$(customsector) if="$ISO" | while read line; do
+	cd ${1:-/mnt}
+	ddq bs=2k skip=$(customsector) if="/mnt/$ISO" | while read line; do
 		case "$line" in
 		\#!boot*) ;;
 		append=*) echo ${line#append=} > cmdline && ls -l cmdline ;;
@@ -710,8 +710,7 @@ getcustomconf()
 		esac
 	done
 	cd - > /dev/null
-	echo -e "\rPress RETURN to continue."
-	read n
+	[ -z "$1" ] && echo -e "\rPress RETURN to continue." && read n
 }
 
 gotisomd5()
@@ -1091,8 +1090,17 @@ dosync()
 
 text()
 {
+	init=
+	cmdline="$(cat /proc/cmdline)"
+	if hascustomconf; then
+		getcustomconf /tmp > /dev/null
+		[ -s /tmp/cmdline ] &&
+			cmdline="$cmdline $(cat /tmp/cmdline)" &&
+			init="$(sed '/rdinit=/!d;s/.*rdinit=\([^ ]*\).*/\1/' < /tmp/cmdline)"
+		[ -s /tmp/initrd ] && uncpio /tmp/initrd
+	fi
 	dosync
-	exec /init
+	exec ${init:-/init} $cmdline
 }
 
 live()
