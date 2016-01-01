@@ -267,6 +267,7 @@ FORCEMSG	You can add --forced to proceed anyway.
 MD5MSG		Computing md5sum...
 UNINSTALLMSG	Uninstall done.
 OPENINITRDERR	Can't open the initrd file.
+ALREADYEXEERR	Already an EXE file.
 EOT
 done
 	rm -rf $DATA

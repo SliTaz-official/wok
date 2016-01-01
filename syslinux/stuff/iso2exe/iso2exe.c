@@ -22,7 +22,8 @@ typedef unsigned char uint8_t;
 typedef unsigned long uint32_t;
 #include "iso2exe.h"
 
-static int fd, forced, uninstall, status = 1;
+static int fd, forced, uninstall;
+static unsigned status = 1;
 static char *append, *initrd;
 static char tazlitoinfo[0x8000U - BOOTISOSZ];
 #define buffer tazlitoinfo
@@ -315,6 +316,59 @@ static unsigned install(char *filename)
 		return UNINSTALLMSG;
 	}
 
+	do {
+		readsector(0UL);
+		status = ALREADYEXEERR;
+		if (buffer[0] == 'M' && buffer[1] == 'Z')
+			break;
+
+		/* Install hybridiso boot sector */
+		readsector(17UL);
+		status = ELTORITOERR;
+		if (strncmp(buffer+7, bootiso+ELTORITOERR+ELTORITOOFS, 23))
+			break;
+		catalog = LONG(buffer + 71);
+		readsector(catalog);
+		status = CATALOGERR;
+		if (LONG(buffer) != 1 || LONG(buffer + 30) != 0x88AA55UL)
+			break;
+		lba = LONG(buffer + 40);
+		readsector(lba);
+		status = HYBRIDERR;
+		if (LONG(buffer + 64) != 1886961915UL)
+			break;
+		isohybrid = bootiso[417] * 512;
+		LONG(bootiso + isohybrid + 432) = lba * 4;
+		LONG(bootiso + isohybrid + 440) = rand();
+		LONG(bootiso + isohybrid + partition) = 0x10080UL;
+		WORD(bootiso + isohybrid + 510) = 0xAA55U;
+#if 0
+		size = lseek(fd, 0UL, SEEK_END);
+		size += 0x000FFFFFUL;
+		size &= 0xFFF00000UL;
+#else
+		for (size = 0x000FFFFFUL; /* 1M - 1 */
+		     read(fd, tazlitoinfo, 1024) == 1024;
+		     size += 1024);
+		size &= 0xFFF00000UL; /* round */    
+#endif
+		cylinders = (size >> 20) - 1;
+		bootiso[isohybrid + partition + 4] = 23; /* "Windows hidden IFS" */
+		bootiso[isohybrid + partition + 5] = heads - 1;
+		bootiso[isohybrid + partition + 6] = ((cylinders & 0x300) >> 2) + sectors;
+		bootiso[isohybrid + partition + 7] = cylinders & 0xFF;
+		LONG(bootiso + isohybrid + partition + 8) = 0;
+		LONG(bootiso + isohybrid + partition + 12) = (size >> 9);
+
+		/* Copy the partition table */
+		memcpy(bootiso + 0x1BE, bootiso + isohybrid + 0x1BE, 66);
+		status = 0;
+	} while (0);
+
+	if (forced == 0 && status)
+		return status;
+
+	status = 1;
 	if (append || initrd) {
 		unsigned long pos = getcustomsector() * 2048UL;
 		lseek(fd, pos, SEEK_SET);
@@ -374,47 +428,6 @@ static unsigned install(char *filename)
 			}
 			write(fd, string, 32);
 		}
-	}
-
-	if (forced == 0) {
-		status = 2;
-		/* Install hybridiso boot sector */
-		readsector(17UL);
-		if (strncmp(buffer+7, bootiso+ELTORITOERR+ELTORITOOFS, 23))
-			return ELTORITOERR;
-		catalog = LONG(buffer + 71);
-		readsector(catalog);
-		if (LONG(buffer) != 1 || LONG(buffer + 30) != 0x88AA55UL)
-		    	return CATALOGERR;
-		lba = LONG(buffer + 40);
-		readsector(lba);
-		if (LONG(buffer + 64) != 1886961915UL)
-			return HYBRIDERR;
-		isohybrid = bootiso[417] * 512;
-		LONG(bootiso + isohybrid + 432) = lba * 4;
-		LONG(bootiso + isohybrid + 440) = rand();
-		LONG(bootiso + isohybrid + partition) = 0x10080UL;
-		WORD(bootiso + isohybrid + 510) = 0xAA55U;
-#if 0
-		size = lseek(fd, 0UL, SEEK_END);
-		size += 0x000FFFFFUL;
-		size &= 0xFFF00000UL;
-#else
-		for (size = 0x000FFFFFUL; /* 1M - 1 */
-		     read(fd, tazlitoinfo, 1024) == 1024;
-		     size += 1024);
-		size &= 0xFFF00000UL; /* round */    
-#endif
-		cylinders = (size >> 20) - 1;
-		bootiso[isohybrid + partition + 4] = 23; /* "Windows hidden IFS" */
-		bootiso[isohybrid + partition + 5] = heads - 1;
-		bootiso[isohybrid + partition + 6] = ((cylinders & 0x300) >> 2) + sectors;
-		bootiso[isohybrid + partition + 7] = cylinders & 0xFF;
-		LONG(bootiso + isohybrid + partition + 8) = 0;
-		LONG(bootiso + isohybrid + partition + 12) = (size >> 9);
-
-		/* Copy the partition table */
-		memcpy(bootiso + 0x1BE, bootiso + isohybrid + 0x1BE, 66);
 	}
 
 	/* Install iso2exe boot sector */
