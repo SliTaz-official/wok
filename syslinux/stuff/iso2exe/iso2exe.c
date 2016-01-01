@@ -316,12 +316,24 @@ static unsigned install(char *filename)
 		return UNINSTALLMSG;
 	}
 
-	do {
-		readsector(0UL);
-		status = ALREADYEXEERR;
-		if (buffer[0] == 'M' && buffer[1] == 'Z')
-			break;
+	readsector(0UL);
+	if (buffer[0] == 'M' && buffer[1] == 'Z') {
+		if (forced == 0)
+			return ALREADYEXEERR;
+		n = (buffer[417] + 1) * 512;
+		i = 0x8000 - 1024;
+		if (i > sizeof(tazlitoinfo))
+			i = sizeof(tazlitoinfo);
+		if (lseek(fd, n, SEEK_SET) == -1 ||
+		    read(fd, tazlitoinfo, sizeof(tazlitoinfo)) != sizeof(tazlitoinfo) ||
+		    lseek(fd, 1024UL, SEEK_SET) == -1 ||
+		    write(fd, tazlitoinfo, i) != i) {
+			puts(bootiso+READSECTORERR);
+			exit(1);
+		}
+	}
 
+	do {
 		/* Install hybridiso boot sector */
 		readsector(17UL);
 		status = ELTORITOERR;
