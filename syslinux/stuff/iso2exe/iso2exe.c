@@ -262,6 +262,14 @@ static unsigned chksum(unsigned start, unsigned stop)
 	}
 }
 
+static void clear_config(unsigned i)
+{
+	for (;i % 512; i++) {
+		/* clear custom config */
+		write(fd, buffer + 2048, 2048);
+	}
+}
+
 static unsigned install(char *filename)
 {
 #define heads 64
@@ -300,10 +308,7 @@ static unsigned install(char *filename)
 		}
 		i = getcustomsector();
 		lseek(fd, i * 2048UL, SEEK_SET);
-		for (;i % 512; i++) {
-			/* clear custom config */
-			write(fd, buffer + 2048, 2048);
-		}
+		clear_config(i);
 		ftruncate(fd, i * 2048UL);
 		close(fd);
 		status = 0;
@@ -312,6 +317,8 @@ static unsigned install(char *filename)
 
 	if (append || initrd) {
 		unsigned long pos = getcustomsector() * 2048UL;
+		lseek(fd, pos, SEEK_SET);
+		clear_config(pos);
 		lseek(fd, pos, SEEK_SET);
 		write(fd, "#!boot 00000000000000000000000000000000\n", 40);
 		md5_begin();
@@ -356,7 +363,7 @@ static unsigned install(char *filename)
 		}
 		md5_end();
 		{
-			static char h[] = "0123456789ABCDEF";
+			static char h[] = "0123456789abcdef";
 			char string[32], *s = string + 30;
 			unsigned char *p = (void *) hash;
 
