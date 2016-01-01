@@ -9,11 +9,21 @@
 #ifdef WIN32
 #include <windows.h>
 #endif
+#ifdef __MSDOS__
+#define ftruncate(a,b)
+#endif
+#ifdef __MINGW32__
+#define ftruncate chsize
+#endif
+#if !defined(__MSDOS__) && !defined(WIN32)
+#define O_BINARY 0
+#endif
 typedef unsigned char uint8_t;
 typedef unsigned long uint32_t;
 #include "iso2exe.h"
 
 static int fd, forced, uninstall, status = 1;
+static char *append, *initrd;
 static char tazlitoinfo[0x8000U - BOOTISOSZ];
 #define buffer tazlitoinfo
 #define BUFFERSZ 2048
@@ -27,6 +37,12 @@ static void readsector(unsigned long sector)
 		puts(bootiso+READSECTORERR);
 		exit(1);
 	}
+}
+
+static unsigned long getcustomsector(void)
+{
+	readsector(16UL);
+	return 16UL + LONG(buffer + 80);
 }
 
 static int skipmd5 = 0;
@@ -198,6 +214,12 @@ static void md5_begin(void)
  */
 #define md5_end common64_end
 
+static int writenhash(void *buffer, size_t len)
+{
+	md5_hash(buffer, len);
+	return write(fd, buffer, len);
+}
+
 static void md5sum(void)
 {
 	unsigned long sectors = 0;
@@ -249,7 +271,7 @@ static unsigned install(char *filename)
 	unsigned long size, catalog, lba;
 	int cylinders, i, j, isohybrid;
 	unsigned n;
-#ifndef WIN32
+#ifdef __MSDOS__
 	for (bootiso = (char *) install;
 	     bootiso[0] != 'M' || bootiso[1] != 'Z' || bootiso[2] != '\xEB';
 	     bootiso++) if (bootiso < (char *) install) {
@@ -266,18 +288,85 @@ static unsigned install(char *filename)
 	if (uninstall) {
 		struct { char check[sizeof(tazlitoinfo) - BUFFERSZ - 1024]; };
 		readsector(0UL);
-		n = BUFFERSZ;
+		n = BUFFERSZ;		/* fill with zeros */
 		if (WORD(buffer) == 23117) {
+			/* restore isolinux hybrid boot */
 			readsector((unsigned long) buffer[417]);
-			n = 0;
+			n = 0;		/* fill with hybrid boot */
 		}
 		lseek(fd, 0UL, SEEK_SET);
 		for (i = 0; i < 32; i++, n = BUFFERSZ) {
 			write(fd, buffer + n, 1024);
 		}
+		i = getcustomsector();
+		lseek(fd, i * 2048UL, SEEK_SET);
+		for (;i % 512; i++) {
+			/* clear custom config */
+			write(fd, buffer + 2048, 2048);
+		}
+		ftruncate(fd, i * 2048UL);
 		close(fd);
 		status = 0;
 		return UNINSTALLMSG;
+	}
+
+	if (append || initrd) {
+		unsigned long pos = getcustomsector() * 2048UL;
+		lseek(fd, pos, SEEK_SET);
+		write(fd, "#!boot 00000000000000000000000000000000\n", 40);
+		md5_begin();
+		if (append) {
+			writenhash("append=", 7);
+			writenhash(append, strlen(append));
+			writenhash("\n", 1);
+		}
+		if (initrd) {
+			char number[16], *p;
+			unsigned long end, x;
+			int data = open(initrd,O_RDONLY|O_BINARY);
+			if (data == -1)
+				return OPENINITRDERR;
+			for (end = 0;; end += i) {
+				i = read(data, buffer, BUFFERSZ);
+				if (i <= 0)
+					break;
+			}
+			p = number + sizeof(number) -1;
+			x = end; *p-- = '\n';
+			do {
+			     *p-- = '0' + (x % 10);
+			     x /= 10;
+			} while (x);
+			if (*++p != '0') {
+				writenhash("initrd:", 7);
+				i = number - p + sizeof(number);
+				writenhash(p, i);
+				lseek(data, 0UL, SEEK_SET);
+				do {
+					i = read(data, buffer, BUFFERSZ);
+					if (i <= 0)
+						break;
+					if (i > end)
+						i = end;
+					writenhash(buffer, i);
+					end -= i;
+				} while (end != 0);
+			}
+			close(data);
+		}
+		md5_end();
+		{
+			static char h[] = "0123456789ABCDEF";
+			char string[32], *s = string + 30;
+			unsigned char *p = (void *) hash;
+
+			lseek(fd, 7 + pos, SEEK_SET);
+			for (p += 15; s >= string; p--, s -= 2) {
+				s[1] = h[ *p & 15 ];
+				s[0] = h[ *p >> 4 ];
+			}
+			write(fd, string, 32);
+		}
 	}
 
 	if (forced == 0) {
@@ -354,6 +443,19 @@ static unsigned install(char *filename)
 int main(int argc, char *argv[])
 {
 	int i;
+	char *s;
+	
+	while (argc > 2) {
+		s = argv[1];
+		if (*s != '-') break;
+		while (*s == '-') s++;
+		switch (*s | 0x20) {
+		case 'a' : append=argv[2]; break;
+		case 'i' : initrd=argv[2]; break;
+		}
+		argv += 2;
+		argc -= 2;
+	}
 	for (i = 2; i < argc; i++) {
 		char *s = argv[i];
 		while ((unsigned)(*s - '-') <= ('/' - '-')) s++;

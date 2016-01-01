@@ -184,7 +184,7 @@ EOM
 
 #define $(echo $name | tr '[a-z]' '[A-Z]')SZ $BOOTISOSZ
 
-#ifdef WIN32
+#ifndef __MSDOS__
 static char $name[] = {
 /* head */
 $(hexdump -v -n $HSZ -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
@@ -257,7 +257,7 @@ EOT
 		fi
 	done <<EOT
 READSECTORERR	Read sector failure.
-USAGE		Usage: isohybrid.exe file.iso [--forced|--undo|--quick]
+USAGE		Usage: isohybrid.exe [--append cmdline] [--initrd file] file.iso [--forced|--undo|--quick]
 OPENERR		Can't open r/w the iso file.
 ELTORITOERR	No EL TORITO SPECIFICATION signature.
 CATALOGERR	Invalid boot catalog.
@@ -266,6 +266,7 @@ SUCCESSMSG	Now you can create a USB key with your .iso file.\\\\nSimply rename i
 FORCEMSG	You can add --forced to proceed anyway.
 MD5MSG		Computing md5sum...
 UNINSTALLMSG	Uninstall done.
+OPENINITRDERR	Can't open the initrd file.
 EOT
 done
 	rm -rf $DATA
