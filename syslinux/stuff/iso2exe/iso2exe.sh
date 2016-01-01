@@ -325,7 +325,7 @@ EOT
 	    *)  ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc ;;
 	    esac
 	    clear_custom_config
-	    exit 0
+	    exit 0 ;;
 	-f*)
 	    ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc
 	    [ "$append$initrd" ] && clear_custom_config
