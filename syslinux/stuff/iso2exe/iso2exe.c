@@ -10,7 +10,12 @@
 #include <windows.h>
 #endif
 #ifdef __MSDOS__
-#define ftruncate(a,b)
+int ftruncate(int fd, long newsize)
+{
+	if (lseek(fd, newsize, SEEK_SET) != -1L)
+		return write(fd, NULL, 0);
+	return -1;
+}
 #endif
 #ifdef __MINGW32__
 #define ftruncate chsize
@@ -263,12 +268,13 @@ static unsigned chksum(unsigned start, unsigned stop)
 	}
 }
 
-static void clear_config(unsigned i)
+static unsigned clear_config(unsigned i)
 {
 	for (;i % 512; i++) {
 		/* clear custom config */
 		write(fd, buffer + 2048, 2048);
 	}
+	return i;
 }
 
 static unsigned install(char *filename)
@@ -309,7 +315,7 @@ static unsigned install(char *filename)
 		}
 		i = getcustomsector();
 		lseek(fd, i * 2048UL, SEEK_SET);
-		clear_config(i);
+		i = clear_config(i);
 		ftruncate(fd, i * 2048UL);
 		close(fd);
 		status = 0;
