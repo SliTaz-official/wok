@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define BOOTSTRAP_SECTOR_COUNT_OFFSET	28
+#define BOOTSTRAP_SECTOR_COUNT_OFFSET	26
 
 static int fullread(int fd, char *p, int n)
 {
