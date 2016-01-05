@@ -311,7 +311,7 @@ static unsigned install(char *filename)
 		}
 		lseek(fd, 0UL, SEEK_SET);
 		for (i = 0; i < 32; i++, n = BUFFERSZ) {
-			write(fd, buffer + n, 1024);
+			write(fd, buffer + n, BUFFERSZ);
 		}
 		i = getcustomsector();
 		lseek(fd, i * 2048UL, SEEK_SET);
@@ -393,11 +393,14 @@ static unsigned install(char *filename)
 		clear_config(pos);
 		lseek(fd, pos, SEEK_SET);
 		write(fd, "#!boot 00000000000000000000000000000000\n", 40);
+		n = pos + 40;
 		md5_begin();
 		if (append) {
+			i = strlen(append);
 			writenhash("append=", 7);
-			writenhash(append, strlen(append));
+			writenhash(append, i);
 			writenhash("\n", 1);
+			n += i + 8;
 		}
 		if (initrd) {
 			char number[16], *p;
@@ -420,6 +423,7 @@ static unsigned install(char *filename)
 				writenhash("initrd:", 7);
 				i = number - p + sizeof(number);
 				writenhash(p, i);
+				n += i + 7;
 				lseek(data, 0UL, SEEK_SET);
 				do {
 					i = read(data, buffer, BUFFERSZ);
@@ -428,11 +432,22 @@ static unsigned install(char *filename)
 					if (i > end)
 						i = end;
 					writenhash(buffer, i);
+					n += i;
 					end -= i;
 				} while (end != 0);
 			}
 			close(data);
 		}
+		while (n & 0x000FFFFFUL) {
+			unsigned long i = 0x100000UL - (n & 0x000FFFFFUL);
+			if (i > BUFFERSZ)
+				i = BUFFERSZ;
+			i = write(fd, buffer + BUFFERSZ, i);
+			if (i <= 0)
+				break;
+			n += i;
+		}
+		ftruncate(fd, n);
 		md5_end();
 		{
 			static char h[] = "0123456789abcdef";
