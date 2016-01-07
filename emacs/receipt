@@ -164,9 +164,10 @@ SERVICE copying.paper"
 	# Install specific site file
 	echo -n "Installing specific SliTaz file"
 	cp -a $install/usr/share/$PACKAGE/$VERSION/site-lisp \
-	   $fs/usr/share/$PACKAGE && \
+		$fs/usr/share/$PACKAGE && \
 	mkdir -p $fs/usr/share/$PACKAGE/site-lisp/site-start.d && \
-	cp -a $stuff/default.el $fs/usr/share/$PACKAGE/site-lisp && \
+	cp -a $stuff/default.el $stuff/site-start.el \
+		$fs/usr/share/$PACKAGE/site-lisp && \
 	cp -a $stuff/90-slitaz.el \
 		$fs/usr/share/$PACKAGE/site-lisp/site-start.d && \
 	status
@@ -184,21 +185,6 @@ SERVICE copying.paper"
 
 post_install()
 {
-	cd "$1/usr/share/$PACKAGE/$VERSION/site-lisp"
-	cat <<-EOF >site-start.el
-	;; site-start.el for SliTaz			-*- no-byte-compile: t -*-
-	;;
-	;; (C) GNU gpl v3 - SliTaz GNU/Linux 2009.
-	;;
-	;; This default site startup file for Emacs was created by tazpkg
-	;; reconfigure emacs. You may modify this file, replace it by your
-	;; own site initialisation, or even remove it completely.
-	;;
-	EOF
-	START_FILES="$(ls site-start.d/ | sort)"
-	for file in $START_FILES; do
-	    cat site-start.d/$file >> site-start.el
-	done
 	# linking /usr/bin/emacs to new version
 	[ -h "$1/usr/bin/emacs" ] && rm -f "$1/usr/bin/emacs"
 	ln -s /usr/bin/emacs-$VERSION "$1/usr/bin/emacs"
