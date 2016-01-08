@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2015
 # (Started in November 2014)
 
-VERSION="151119"
+VERSION="160108"
 
 . /lib/libtaz.sh
 
@@ -233,13 +233,13 @@ find $FROM -type f -o -type l > $ICONSLIST
 CATEGORY='actions'; SIZES='16'; echo_cat
 
 c address-book-new
-s application-exit dialog-close			# gtk_stock 16,24		# elementary hack
+c application-exit dialog-close			# gtk_stock 16,24; Transmission (GTK+3) needs it	# elementary hack
 c appointment-new
 c call-start
 c call-stop process-stop										# elementary hack
 c contact-new
 s document-new				# gtk_stock 16,24
-s document-open				# gtk_stock 16,24
+c document-open				# gtk_stock 16,24; Transmission (GTK+3) needs it
 s document-open-recent		# gtk_stock 16,24
 c document-page-setup
 s document-print			# gtk_stock 16,24
@@ -250,14 +250,14 @@ s document-save				# gtk_stock 16,24
 s document-save-as document-save		# gtk_stock 16,24		# elementary hack
 c document-send document-export									# elementary hack
 c edit-clear remove						# gtk_stock 16,24; Yad:tazbox new-file needs it		# elementary hack
-s edit-copy					# gtk_stock 16,24
+c edit-copy					# gtk_stock 16,24; Transmission (GTK+3) needs it
 s edit-cut					# gtk_stock 16,24
-s edit-delete				# gtk_stock 16,24
+c edit-delete				# gtk_stock 16,24; Transmission (GTK+3) needs it
 s edit-find					# gtk_stock 16,24
 s edit-find-replace edit-find			# gtk_stock 16,24		# elementary hack
 s edit-paste				# gtk_stock 16,24
 s edit-redo					# gtk_stock 16,24
-s edit-select-all			# gtk_stock 16,24
+c edit-select-all			# gtk_stock 16,24; Transmission (GTK+3) needs it
 s edit-undo					# gtk_stock 16,24
 c folder-new
 s format-indent-less		# gtk_stock 16,24
@@ -282,15 +282,15 @@ s go-next					# gtk_stock 16,24
 s go-previous				# gtk_stock 16,24
 s go-top					# gtk_stock 16,24
 c go-up						# gtk_stock 16,24 but Yad:scp-box needs it
-s help-about				# gtk_stock 16,24
-s help-contents				# gtk_stock 16,24
+c help-about				# gtk_stock 16,24; Transmission (GTK+3) needs it
+c help-contents				# gtk_stock 16,24; Transmission (GTK+3) needs it
 c help-faq help-hint											# elementary hack
 c insert-image
 c insert-link
 c insert-object
 c insert-text
-s list-add					# gtk_stock 16,24
-s list-remove				# gtk_stock 16,24
+c list-add					# gtk_stock 16,24; Transmission (GTK+3) needs it
+c list-remove				# gtk_stock 16,24; Transmission (GTK+3) needs it
 c mail-forward
 c mail-mark-important
 c mail-mark-junk
@@ -318,7 +318,7 @@ c object-rotate-right
 s process-stop				# gtk_stock 16,24
 c system-lock-screen lock									# Matrilineare hack
 c system-log-out contact-new								# Matrilineare hack
-s system-run				# gtk_stock 16,24
+c system-run				# gtk_stock 16,24; Transmission (GTK+3) needs it
 c system-search find										# Matrilineare hack
 c system-reboot system-run									# Matrilineare hack
 c system-shutdown system-shutdown-panel						# Matrilineare hack
@@ -328,7 +328,7 @@ c view-refresh				# gtk_stock 16,24 but Yad:tazbox manage-i18n needs it
 s view-restore				# gtk_stock 16,24
 s view-sort-ascending		# gtk_stock 16,24
 s view-sort-descending		# gtk_stock 16,24
-s window-close				# gtk_stock 16,20,24
+c window-close				# gtk_stock 16,20,24; Transmission (GTK+3) needs it
 c window-new
 s zoom-fit-best				# gtk_stock 16,24
 s zoom-in					# gtk_stock 16,24
