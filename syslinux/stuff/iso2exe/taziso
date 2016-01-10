@@ -536,18 +536,25 @@ insttaz2zip()
 
 bootiso()
 {
+	cd /tmp
 	for i in $(ls_r $media/boot/rootfs*gz); do
 		grep -q ' lm ' /proc/cpuinfo && [ -s ${i}64 ] && i=${i}64
 		cat $i
 		n=$((4 - ($(stat -c %s $i) % 4)))
 		[ $n -eq 4 ] || dd if=/dev/zero bs=1 count=$n
-	done > /tmp/initrd$$
+	done > initrd$$
+	cmdline="root=/dev/null autologin lang=$LANG"
+	[ -s /etc/keymap.conf ] && cmdline="$cmdline kmap=$(cat /etc/keymap.conf)"
+	[ -s /etc/TZ ] && cmdline="$cmdline tz=$(cat /etc/TZ)"
+	rm -f cmdline initrd 2> /dev/null
+	getcustomconf kexec >/dev/null
+	[ -s cmdline ] && cmdline="$cmdline $(cat cmdline)" && rm cmdline
+	[ -s initrd ] && cat initrd >> initrd$$ && rm initrd
 	kernel=$media/boot/bzImage
 	grep -q ' lm ' /proc/cpuinfo && [ -s ${kernel}64 ] && kernel=${kernel}64
 	. /etc/locale.conf
-	kexec -l $kernel --initrd /tmp/initrd$$ --command-line \
-	   "root=/dev/null autologin lang=$LANG kmap=$(cat /etc/keymap.conf)" &&
-	rm -f /tmp/initrd$$
+	kexec -l $kernel --initrd initrd$$ --command-line "$cmdline" &&
+	rm -f initrd$$
 	quit "kexec -e"
 }
 
