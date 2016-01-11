@@ -12,34 +12,33 @@
  
  #define MAX_CHUNK	(1 << 20) /* 1 MB */
  
-@@ -51,6 +56,10 @@
+@@ -51,6 +56,9 @@
      uint32_t sector_mask;
      size_t pad;
      uint32_t retflags = 0;
 +#ifdef LZLOAD
 +    char *unpacked = (char *) regs->edi.l;
-+    size_t unpackedsz;
 +#endif
  
      bytes     = regs->eax.l;
      zero_mask = regs->edx.w[0];
-@@ -101,6 +110,27 @@
+@@ -101,6 +109,27 @@
  	    break;
  	}
      }
 +
 +#ifdef LZLOAD
-+    unpackedsz = buf - unpacked;
 +    switch (* (short *) unpacked) {
 +	char *packed;
++	size_t packedsz, unpackedsz;
 +    case 0x005D:
-+	packed = unpacked + * (unsigned long *) (unpacked + 5)
-+			- unpackedsz + 1024;
-+
-+	if (packed < unpacked + 1024)
-+		packed = unpacked + 1024;
-+	memmove(packed, unpacked, unpackedsz);
-+	unlzma(packed, unpacked, packed + unpackedsz /* head */);
++  	packedsz = buf - unpacked;
++	unpackedsz = * (unsigned long *) (unpacked + 5);
++	if (unpackedsz > 1000000) break; /* no size? */
++	packed = unpacked + unpackedsz - packedsz + 1024;
++	if (packed < unpacked + 1024) packed = unpacked + 1024;
++	memmove(packed, unpacked, packedsz);
++	unlzma(packed, unpacked, packed + packedsz /* heap */);
 +	buf = packed;
 +	break;
 +    case 0x2204:
