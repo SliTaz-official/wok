@@ -19,30 +19,35 @@ DEPENDS="gtk+"
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Installation path
+	fx='/opt/mozilla/firefox'
+
 	mkdir -p \
+		$install$fx \
 		$install/usr/bin \
-		$install/usr/lib/firefox-$VERSION \
 		$install/usr/share/applications \
 		$install/usr/share/icons/hicolor/128x128/apps
 
-	cp -a $src/* $install/usr/lib/firefox-$VERSION
+	# Copy everything
+	cp -a $src/* $install$fx
 
-	# /usr/bin/firefox-official
-	ln -s /usr/lib/firefox-$VERSION/firefox $install/usr/bin/firefox-official
+	# Executable
+	ln -s $fx/firefox $install/usr/bin/firefox-official
 
 	# Icons
-	ln -s /usr/lib/firefox-$VERSION/browser/icons/mozicon128.png \
+	ln -s $fx/browser/icons/mozicon128.png \
 		$install/usr/share/icons/hicolor/128x128/apps/firefox-official.png
 	for size in 16 32 48; do
 		icon_folder="$install/usr/share/icons/hicolor/${size}x$size/apps"
 		mkdir -p $icon_folder
-		ln -s /usr/lib/firefox-$VERSION/browser/chrome/icons/default/default$size.png \
+		ln -s $fx/browser/chrome/icons/default/default$size.png \
 			$icon_folder/firefox-official.png
 	done
 
-	# Remove updater files (user can't upgrade anyway)
-	rm -f $install/usr/lib/firefox-$VERSION/update*
+	# Allow user updates (save user's and our traffic)
+	chmod -R a+w $install$fx
 
+	# Desktop shortcut
 	cp $stuff/firefox-official.desktop $install/usr/share/applications
 }
 
