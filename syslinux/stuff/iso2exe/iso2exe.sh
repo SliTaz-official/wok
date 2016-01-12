@@ -292,7 +292,7 @@ esac
 
 main()
 {
-	[ $(id -u) -ne 0 ] && exec su -c "$0 $@" < /dev/tty
+	[ $(id -u) -ne 0 ] && cmd="$0 $@" && exec su -c "$cmd" < /dev/tty
 	append=
 	initrd=
 	while [ "$1" ]; do
@@ -325,11 +325,11 @@ EOT
 		ddq if=/dev/zero bs=1 seek=$n count=$((0x8000 - $n)) of=$1 conv=notrunc ;;
 	    *)  ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc ;;
 	    esac
-	    clear_custom_config
+	    clear_custom_config $1
 	    exit 0 ;;
 	-f*)
 	    ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc
-	    [ "$append$initrd" ] && clear_custom_config
+	    [ "$append$initrd" ] && clear_custom_config $1
 	esac
 	case "$(get 0 $1)" in
 	23117)	echo "The file $1 is already an EXE file." 1>&2 && exit 1;;
