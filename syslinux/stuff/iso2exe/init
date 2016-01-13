@@ -1192,6 +1192,13 @@ BIN=bin/mount.posixovl
 [ -x /usr/s$BIN ] || mv /bin/mount.posixovl.iso2exe \
 /usr/s$BIN 2> /dev/null || mv /bin/mount.posixovl.iso2exe /$BIN 2> /dev/null
 mount_proc
+for i in /sys/block/*/dev /sys/block/*/*/dev ; do
+	[ -s "$i" ] || continue
+	n=${i%/dev}
+	n=/dev/${n##*/}
+	[ -e $n ] && continue
+	mknod $n b $(sed 's/:/ /' < $i)
+done
 ISO="$(getarg bootfrom | sed 's/.://;s|\\|/|g')"
 getiso
 mount_loram

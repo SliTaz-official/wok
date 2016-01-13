@@ -35,7 +35,7 @@ add_rootfs()
 {
 	TMP=/tmp/iso2exe$$
 	mkdir -p $TMP/bin $TMP/dev
-	cp -a /dev/?d?* /dev/tty /dev/tty0 $TMP/dev
+	cp -a /dev/tty /dev/tty0 $TMP/dev
 	$0 --get init > $TMP/init.exe
 #	mount -o loop,ro $1 $TMP
 #	oldslitaz="$(ls $TMP/boot/isolinux/splash.lss 2> /dev/null)"
@@ -123,6 +123,49 @@ add_fdbootstrap()
 		ddq of=$1 bs=1 skip=1024 seek=$((512 + $OFS)) conv=notrunc
 		store 26 $(($SIZE/512)) $1 8
 	fi
+}
+
+fileofs()
+{
+	[ $(get 1024 $ISO) -eq 35615 ] && i=1024 || i=$((512*(1+$(get 417 $ISO 1))))
+	stub=$(($(get 20 $ISO) - 0xC0))
+	SIZE=0; OFFSET=0
+	case "$1" in
+	win32.exe)	[ $i -eq 1024 ] || SIZE=$(($i - 512));;
+	syslinux.mbr)	[ $i -eq 1024 ] || OFFSET=$(($i - 512)); SIZE=512;;
+	flavor.info)	OFFSET=$i; SIZE=-1;;
+	floppy.boot)	SIZE=$(($(get 26 $ISO 1)*512))
+			OFFSET=$(($(get 64 $ISO) - 0xC0 - $SIZE));;
+	rootfs.gz)	SIZE=$(get 24 $ISO); OFFSET=$(($stub - $SIZE));;
+	tazboot.com)	OFFSET=$(($(get 64 $ISO) - 0xC0))
+			SIZE=$(($stub - $(get 24 $ISO) - $OFFSET));;
+	dosstub)	OFFSET=$stub; SIZE=$((0x8000 - $OFFSET));;
+	md5)		OFFSET=$((0x7FF0)); SIZE=16;;
+	esac
+}
+
+list()
+{
+	for f in win32.exe syslinux.mbr flavor.info floppy.boot \
+		 dosstub rootfs.gz tazboot.com md5 ; do
+		fileofs $f
+		[ $SIZE -eq 0 ] && continue
+		echo -n "$f at $(printf "%X\n" $OFFSET)"
+		[ $SIZE -eq -1 ] || echo -n " ($SIZE bytes)"
+		echo .
+	done
+}
+
+extract()
+{
+	for f in $@; do
+		fileofs $f
+		case "$SIZE" in
+		0) ;;
+		-1) ddq bs=1 count=20480 skip=$OFFSET if="$ISO" | zcat >$f ;;
+		*) ddq bs=1 count=$SIZE skip=$OFFSET if="$ISO" >$f ;;
+		esac
+	done
 }
 
 custom_config_sector()
@@ -303,6 +346,9 @@ main()
 		-a*)	append="$2" ; shift 2 ;;
 		-i*)	initrd="$2" ; shift 2 ;;
 		-e*)	extract_custom_config "$2"
+			exit ;;
+		-r*)	ISO="$2" ; shift 2
+			[ -z "$1" ] && list || extract $@
 			exit ;;
 		*)	cat > /dev/null
 			break

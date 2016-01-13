@@ -698,7 +698,7 @@ kbdmap_error:
 #include <syslinux/linux.h>
 #include <syslinux/pxe.h>
 
-const char *progname = "linux.c32";
+const char *progname = "c32box.c32";
 
 /* Find the last instance of a particular command line argument
    (which should include the final =; do not use for boolean arguments) */
