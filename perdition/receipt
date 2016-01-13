@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="perdition"
-VERSION="1.17.1"
+VERSION="2.1"
 CATEGORY="network"
 SHORT_DESC="IMAP/POP proxy."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -12,21 +12,20 @@ WGET_URL="$WEB_SITE/download/$VERSION/$TARBALL"
 CONFIG_FILES="/etc/perdition"
 BUGS="Very slow: more than 10 seconds for login with squirrelmail, why ?"
 
-BUILD_DEPENDS="vanessa_logger-dev vanessa_logger vanessa_adt-dev vanessa_adt vanessa_socket-dev vanessa_socket openldap-dev popt-dev cyrus-sasl-dev"
 DEPENDS="vanessa_logger vanessa_adt vanessa_socket libldap openssl cyrus-sasl \
  glibc-base libkrb5 libcomerr3 gdbm"
+BUILD_DEPENDS="vanessa_logger-dev vanessa_adt-dev vanessa_socket-dev \
+openldap-dev popt-dev cyrus-sasl-dev openssl-dev libidn-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	sed -i 's/pam=yes/pam=no/' configure
 	./configure --prefix=/usr --infodir=/usr/share/info \
-	--enable-openldap --disable-ldap-doc --disable-nis \
-	--disable-odbc --disable-mysql --disable-pg --disable-bdb \
-	--sysconfdir=/etc --localstatedir=/var \
-	--mandir=/usr/share/man $CONFIGURE_ARGS || return 1
-	sed -i 's/#define WITH_PAM_SUPPORT 1/#undef WITH_PAM_SUPPORT/' config.h
+		--disable-ldap-doc --disable-nis \
+		--disable-odbc --disable-mysql --disable-pg --disable-bdb \
+		--disable-cdb --disable-gdbm --disable-pam \
+		--sysconfdir=/etc --localstatedir=/var \
+		--mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -37,7 +36,7 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib $fs/etc/openldap/schema
 	cp -a $install/etc $fs
 	rm -f $fs/etc/perdition/perdition.conf
-	cp -a stuff/etc $fs
+	cp -a $stuff/etc $fs
 	cp -a $install/usr/sbin $fs/usr
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	for i in pop3 pop3s imap4 imap4s imaps; do
