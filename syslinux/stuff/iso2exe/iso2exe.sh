@@ -34,14 +34,14 @@ compress()
 add_rootfs()
 {
 	TMP=/tmp/iso2exe$$
-	mkdir -p $TMP/bin $TMP/dev
+	mkdir -p $TMP/dev
 	cp -a /dev/tty /dev/tty0 $TMP/dev
 	$0 --get init > $TMP/init.exe
 #	mount -o loop,ro $1 $TMP
 #	oldslitaz="$(ls $TMP/boot/isolinux/splash.lss 2> /dev/null)"
 #	umount -d $TMP
 #	[ "$oldslitaz" ] && # for SliTaz <= 3.0 only...
-#	grep -q mount.posixovl.iso2exe $TMP/init.exe &&
+#	grep -q mount.posixovl.iso2exe $TMP/init.exe && mkdir $TMP/bin &&
 #	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe \
 #		2> /dev/null && echo "Store mount.posixovl ($(wc -c \
 #			< /usr/sbin/mount.posixovl) bytes) ..."
