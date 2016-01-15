@@ -180,7 +180,7 @@ EOT
 pre_install()
 {
 	local i
-	cp -a /etc/resolv.conf /etc/resolv.conf-busybox-install
+	cp -a $1/etc/resolv.conf $1/etc/resolv.conf-busybox-install
 	answer=""
 	for i in $(cat "$1$INSTALLED/$PACKAGE/files.list"); do
 		[ -f "$1$i" ] || continue
@@ -204,27 +204,27 @@ pre_install()
 post_install()
 {
 	local i
-	[ -f /etc/resolv.conf-busybox-install ] &&
-	mv -f /etc/resolv.conf-busybox-install /etc/resolv.conf
+	[ -f $1/etc/resolv.conf-busybox-install ] &&
+	mv -f $1/etc/resolv.conf-busybox-install $1/etc/resolv.conf
 	while read i ; do
 		[ -f "$1$i-busybox-install" ] || continue
 		mv "$1$i-busybox-install" "$1$i"
 	done < "$1$INSTALLED/$PACKAGE/files.list"
 	chmod 4755 "$1/bin/busybox"
 
-	touch $root/etc/daemons.conf
+	touch $1/etc/daemons.conf
 	# /etc/daemons.conf (tftp + dnsd + httpd may not be present)
-	if ! grep -q ^DNSD_OPTIONS $root/etc/daemons.conf; then
-		echo '# Domain name server options.' >> $root/etc/daemons.conf
-		echo 'DNSD_OPTIONS="-d"' >> $root/etc/daemons.conf
-		echo '' >> $root/etc/daemons.conf
+	if ! grep -q ^DNSD_OPTIONS $1/etc/daemons.conf; then
+		echo '# Domain name server options.' >> $1/etc/daemons.conf
+		echo 'DNSD_OPTIONS="-d"' >> $1/etc/daemons.conf
+		echo '' >> $1/etc/daemons.conf
 	fi
-	if ! grep -q ^TFTPD_OPTIONS $root/etc/daemons.conf; then
-		echo '# Tftp daemon options.' >> $root/etc/daemons.conf
-		echo 'TFTPD_OPTIONS="-r /boot"' >> $root/etc/daemons.conf
-		echo '' >> $root/etc/daemons.conf
+	if ! grep -q ^TFTPD_OPTIONS $1/etc/daemons.conf; then
+		echo '# Tftp daemon options.' >> $1/etc/daemons.conf
+		echo 'TFTPD_OPTIONS="-r /boot"' >> $1/etc/daemons.conf
+		echo '' >> $1/etc/daemons.conf
 	fi
-	sed -i "s/copy; 20../copy; $(date +%Y)/" $root/var/www/httpd/404.html
+	sed -i "s/copy; 20../copy; $(date +%Y)/" $1/var/www/httpd/404.html
 }
 
 pre_remove()
