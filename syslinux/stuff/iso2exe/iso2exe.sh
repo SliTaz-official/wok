@@ -15,7 +15,7 @@ store()
 
 get()
 {
-	echo $(od -j $(($1)) -N ${3:-2} -t u${3:-2} -An $2)
+	echo $(od -j $(($1)) -N ${3:-2} -t u${3:-2} -An "$2")
 }
 
 compress()
@@ -125,20 +125,34 @@ add_fdbootstrap()
 	fi
 }
 
+gzsize()
+{
+	echo $(($(hexdump -C | awk ' {
+		for (i = 2; i < 18; i++) if ($i != "00") break;
+		if (i == 18) {
+			for (i = 17; i > 1; i--) if ($i != "00") break;
+			print "0x" $1 " + 2 - " (16 - i) 
+			exit
+		}
+	}')))
+}
+
 fileofs()
 {
-	[ $(get 1024 $ISO) -eq 35615 ] && i=1024 || i=$((512*(1+$(get 417 $ISO 1))))
-	stub=$(($(get 20 $ISO) - 0xC0))
+	[ $(get 1024 "$ISO") -eq 35615 ] && i=1024 ||
+	i=$((512*(1+$(get 417 "$ISO" 1))))
+	stub=$(($(get 20 "$ISO") - 0xC0))
 	SIZE=0; OFFSET=0
 	case "$1" in
 	win32.exe)	[ $i -eq 1024 ] || SIZE=$(($i - 512));;
 	syslinux.mbr)	[ $i -eq 1024 ] || OFFSET=$(($i - 512)); SIZE=512;;
-	flavor.info)	OFFSET=$i; SIZE=-1;;
-	floppy.boot)	SIZE=$(($(get 26 $ISO 1)*512))
-			OFFSET=$(($(get 64 $ISO) - 0xC0 - $SIZE));;
-	rootfs.gz)	SIZE=$(get 24 $ISO); OFFSET=$(($stub - $SIZE));;
-	tazboot.com)	OFFSET=$(($(get 64 $ISO) - 0xC0))
-			SIZE=$(($stub - $(get 24 $ISO) - $OFFSET));;
+	flavor.info)	OFFSET=$i
+			SIZE=$(ddq bs=512 skip=$(($i/512)) if="$ISO" | gzsize);;
+	floppy.boot)	SIZE=$(($(get 26 "$ISO" 1)*512))
+			OFFSET=$(($(get 64 "$ISO") - 0xC0 - $SIZE));;
+	rootfs.gz)	SIZE=$(get 24 "$ISO"); OFFSET=$(($stub - $SIZE));;
+	tazboot.com)	OFFSET=$(($(get 64 "$ISO") - 0xC0))
+			SIZE=$(($stub - $(get 24 "$ISO") - $OFFSET));;
 	dosstub)	OFFSET=$stub; SIZE=$((0x8000 - $OFFSET));;
 	md5)		OFFSET=$((0x7FF0)); SIZE=16;;
 	esac
@@ -146,28 +160,31 @@ fileofs()
 
 list()
 {
+	HEAP=0
+	TOP=32768
 	for f in win32.exe syslinux.mbr flavor.info floppy.boot \
-		 dosstub rootfs.gz tazboot.com md5 ; do
+		 tazboot.com rootfs.gz dosstub md5 ; do
 		fileofs $f
 		[ $SIZE -eq 0 ] && continue
-		[ -n "${OFFSET:6}" ] && continue
+		[ "${OFFSET:6}" ] && continue
 		[ $OFFSET -lt 0 ] && continue
-		[ $(get $OFFSET $ISO 2) -eq 0 ] && continue
-		echo -n "$f at $(printf "%X\n" $OFFSET)"
-		[ $SIZE -eq -1 ] || echo -n " ($SIZE bytes)"
-		echo .
+		[ $(get $OFFSET "$ISO") -eq 0 ] && continue
+		printf "$f at %04X ($SIZE bytes).\n" $OFFSET
+		if [ $OFFSET -le $i ]; then
+			[ $OFFSET -ge $HEAP ] && HEAP=$(($OFFSET+$SIZE))
+		else
+			[ $OFFSET -lt $TOP ] && TOP=$OFFSET
+		fi
 	done
+	printf "%d free bytes in %04X..%04X\n" $(($TOP - $HEAP)) $HEAP $TOP
 }
 
 extract()
 {
 	for f in $@; do
 		fileofs $f
-		case "$SIZE" in
-		0) ;;
-		-1) ddq bs=1 count=20480 skip=$OFFSET if="$ISO" | zcat >$f ;;
-		*) ddq bs=1 count=$SIZE skip=$OFFSET if="$ISO" >$f ;;
-		esac
+		[ $SIZE -eq 0 ] ||
+		ddq bs=1 count=$SIZE skip=$OFFSET if="$ISO" >$f
 	done
 }
 
