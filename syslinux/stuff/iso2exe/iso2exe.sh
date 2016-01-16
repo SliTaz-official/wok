@@ -150,6 +150,9 @@ list()
 		 dosstub rootfs.gz tazboot.com md5 ; do
 		fileofs $f
 		[ $SIZE -eq 0 ] && continue
+		[ -n "${OFFSET:6}" ] && continue
+		[ $OFFSET -lt 0 ] && continue
+		[ $(get $OFFSET $ISO 2) -eq 0 ] && continue
 		echo -n "$f at $(printf "%X\n" $OFFSET)"
 		[ $SIZE -eq -1 ] || echo -n " ($SIZE bytes)"
 		echo .
@@ -360,7 +363,7 @@ usage: $0 [--append custom_cmdline ] [ --initrd custom_initramfs ] image.iso [--
 or: $0 --extract-custom-config image.iso
 EOT
 	case "${2/--/-}" in
-	-u*|-r*|-w*)
+	-u*|-r*|-w*|-f*)
 	    case "$(get 0 $1)" in
 	    23117)
 		b=$(get 417 $1 1)
@@ -371,11 +374,13 @@ EOT
 		ddq if=/dev/zero bs=1 seek=$n count=$((0x8000 - $n)) of=$1 conv=notrunc ;;
 	    *)  ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc ;;
 	    esac
-	    clear_custom_config $1
-	    exit 0 ;;
-	-f*)
-	    ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc
-	    [ "$append$initrd" ] && clear_custom_config $1
+	    case "${2/--/-}" in
+	    -f*)
+		[ "$append$initrd" ] && clear_custom_config $1 ;;
+	    *)
+		clear_custom_config $1
+		exit 0 ;;
+	    esac
 	esac
 	case "$(get 0 $1)" in
 	23117)	echo "The file $1 is already an EXE file." 1>&2 && exit 1;;
