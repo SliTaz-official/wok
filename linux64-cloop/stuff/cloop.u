@@ -1,6 +1,6 @@
 --- cloop.h
 +++ cloop.h
-@@ -20,6 +20,75 @@
+@@ -20,6 +20,80 @@
  /* data_index (num_blocks 64bit pointers, network order)...      */
  /* compressed data (gzip block compressed format)...             */
  
@@ -67,7 +67,12 @@
 +			offsets[i].size = ntohl(ofs32[i]); 
 +		for (i = 0, j = sizeof(struct cloop_head); i < n; i++) {
 +			offsets[i].offset = j;
-+			j += offsets[i].size;
++			if (offsets[i].size & 0x80000000) {
++				unsigned long k = offset[i].size & 0x7FFFFFFF;
++				offsets[i].offset = offsets[k].offset;
++				offsets[i].size = offsets[k].size;
++			}
++			else j += offsets[i].size;
 +		}
 +		return (char *) "32BE v3.0";
 +	}

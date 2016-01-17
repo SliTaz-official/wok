@@ -1,6 +1,6 @@
 --- block/cloop.c
 +++ block/cloop.c
-@@ -29,11 +29,85 @@
+@@ -29,11 +29,90 @@
  /* Maximum compressed block size */
  #define MAX_BLOCK_SIZE (64 * 1024 * 1024)
  
@@ -72,7 +72,12 @@
 +		}
 +		for (i = 0, j = 128 + 4 + 4; i < n; i++) {
 +			offsets[i].offset = j;
-+			j += offsets[i].size;
++			if (offsets[i].size & 0x80000000) {
++				unsigned long k = offset[i].size & 0x7FFFFFFF;
++				offsets[i].offset = offsets[k].offset;
++				offsets[i].size = offsets[k].size;
++			}
++			else j += offsets[i].size;
 +		}
 +	}
 +	return 0;
