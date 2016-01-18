@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="mmv"
+VERSION="1.01b-18"
+CATEGORY="system-tools"
+SHORT_DESC="Move, copy, append, or link multiple files in one command"
+MAINTAINER="Lucas Levrel <llev@slitaz.org>"
+LICENSE="GPL"
+WEB_SITE="https://packages.debian.org/sid/mmv"
+TARBALL="${PACKAGE}_${VERSION%-*}.orig.tar.gz"
+WGET_URL="http://http.debian.net/debian/pool/main/m/mmv/$TARBALL"
+
+DEPENDS=""
+BUILD_DEPENDS=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	wget http://http.debian.net/debian/pool/main/m/mmv/${PACKAGE}_$VERSION.debian.tar.gz
+	tar -xzf ${PACKAGE}_$VERSION.debian.tar.gz debian/patches/
+	cat debian/patches/series | while read file; do
+		patch -p1 < debian/patches/$file
+	done
+	sed -i '/^CFLAGS/s/=-O2/+=/; /^LDFLAGS/s/-N//' Makefile
+	mkdir -p $install/usr/bin $install/usr/share/man/man1
+	make && make install
+	cd $install/usr/bin
+	ln -s mmv mcp
+	ln -s mmv mad
+	ln -s mmv mln
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	rm -r $fs/usr/share
+}
