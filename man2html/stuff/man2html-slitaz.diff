@@ -1,0 +1,2357 @@
+--- /dev/null
++++ b/Makefile
+@@ -0,0 +1,89 @@
++CFLAGS  += -Wall -Wstrict-prototypes -Wmissing-prototypes -DGUNZIP='"gunzip"' `pkg-config --cflags --libs glib-2.0`
++# -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -lglib-2.0
++OBJECTS  = man2html.o cgibase.o abbrev.o strdefs.o
++bindir   = $(DESTDIR)$(PREFIX)/usr/bin
++mandir   = $(DESTDIR)$(PREFIX)/usr/share/man
++vardir   = $(DESTDIR)$(PREFIX)/var
++httpdir  = $(DESTDIR)$(PREFIX)/home/httpd
++cgidir   = $(DESTDIR)$(PREFIX)/var/www
++sharedir = $(DESTDIR)$(PREFIX)/usr/share/man2html
++cgiowner = www
++cgigroup = www
++CC ?= gcc
++
++all: man2html hman
++
++man2html:	$(OBJECTS)
++	$(CC) -o man2html $(OBJECTS) $(CFLAGS)
++
++pot:
++	mkdir -p po
++	xgettext -o po/man2html.pot -k_ -kN_ \
++		--package-name="man2html" \
++		--from-code="UTF-8" \
++		cgibase.c man2html.c hman.sh man.sh
++
++msgmerge:
++	@for l in $(LINGUAS); do \
++		echo -n "Updating $$l po file."; \
++		msgmerge -U po/$$l.po po/man2html.pot; \
++	done;
++
++msgfmt:
++	@for l in $(LINGUAS); do \
++		echo "Compiling $$l mo file..."; \
++		mkdir -p po/mo/$$l/LC_MESSAGES; \
++		msgfmt -o po/mo/$$l/LC_MESSAGES/man2html.mo po/$$l.po; \
++	done;
++
++
++# man2html:	../src/version.h
++
++# This installs the man2html utility
++install:	man2html
++	mkdir -p $(bindir)
++	install -m 755 man2html $(bindir)
++	mkdir -p $(mandir)/man1
++	install -m 644 man2html.1 $(mandir)/man1/man2html.1
++
++install-scripts: install-man-scripts install-glimpse-stuff install-hman
++
++# These are the scripts that allow pointing a browser at
++#   http://localhost/cgi-bin/man/man2html
++# to work.
++install-man-scripts:
++	mkdir -p $(cgidir)
++	mkdir -p $(sharedir)
++	install -m 755 scripts/cgi-bin/man/* $(cgidir)
++	install -m 644 scripts/cgi-aux/man/* $(sharedir)
++	install -d -o $(cgiowner) -g $(cgigroup) -m 775 $(vardir)/man2html
++# (aux was renamed to cgi-aux since aux causes problems under DOS)
++
++# If you have installed glimpse, and have compressed man pages,
++# then perhaps you also want these filters.
++install-glimpse-stuff:
++	install -m 644 glimpse_filters $(vardir)/man2html/.glimpse_filters
++
++# In order not to have to type a long command like
++#   netscape http://localhost/cgi-bin/man/man2html?section+topic
++# or
++#   lynx lynxcgi:/home/httpd/cgi-bin/man/man2html?section+topic
++# it is convenient to have some shell script as a wrapper.
++# The script hman can be aliased to man. It uses an environment
++# variable MANHTMLPAGER to find out which browser you use, and
++# you can set MANHTMLHOST if the pages are not on localhost.
++hman: hman.sh
++	rm -f hman
++	sed -e 's,%version%,1.6g-7,' hman.sh > hman
++
++install-hman: hman
++	install -m 555 hman $(bindir)/hman
++	install -m 644 hman.1 $(mandir)/man1/hman.1
++
++clean:
++	rm -f core hman man2html $(OBJECTS) *~
++
++spotless:	clean
++	rm -f Makefile
++
++$(OBJECTS): defs.h
+--- a/abbrev.c
++++ b/abbrev.c
+@@ -27,7 +27,7 @@
+     "SSO", "System Services Overview",
+     "TEXT", "Editing Text Files",
+     "DOCS", "Formatting Documents",
+-    "TROFF", "Using <B>nroff</B> and <B>troff</B>",
++    "TROFF", "Using <b>nroff</b> and <b>troff</b>",
+     "INDEX", "Global Index",
+     "CPG", "C Programmer's Guide",
+     "CREF", "C Reference Manual",
+@@ -46,7 +46,7 @@
+     "CGI", "SunCGI Reference Manual",
+     "CORE", "SunCore Reference Manual",
+     "4ASSY", "Sun-4 Assembly Language Reference",
+-    "SARCH", "<FONT SIZE=\"-1\">SPARC</FONT> Architecture Manual",
++    "SARCH", "SPARC Architecture Manual",
+     "KR", "The C Programming Language",
+     0, 0 };
+ 
+--- a/cgibase.c
++++ b/cgibase.c
+@@ -8,6 +8,8 @@
+ #include <ctype.h>		/* tolower() */
+ #include <string.h>		/* strlen() */
+ #include "defs.h"
++#include <glib.h>
++#include <glib/gi18n.h>
+ 
+ /*
+  * The default is to use cgibase. With relative html style
+@@ -21,8 +23,8 @@
+  * and uses lynx, and we use lynxcgi:/usr/lib/cgi-bin.
+  */
+ 
+-static char *man2htmlpath = "/cgi-bin/man/man2html"; 	/* default */
+-static char *cgibase_format = "http://%s"; 		/* host.domain:port */
++static char *man2htmlpath = ""; 	/* default */
++static char *cgibase_format = "%s"; 		/* host.domain:port */
+ static char *cgibase_ll_format = "lynxcgi:%s"; 		/* directory */
+ static char *cgibase = "";				/* default */
+ 
+@@ -68,76 +70,46 @@
+      relat_html_style = 1;
+ }
+ 
+-/* What shall we say in case of relat_html_style? */
+-static char *signature = "<HR>\n"
+-"This document was created by\n"
+-"<A HREF=\"%s%s\">man2html</A>,\n"
+-"using the manual pages.<BR>\n"
+-"%s\n";
+-
+-#define TIMEFORMAT "%T GMT, %B %d, %Y"
+-#define TIMEBUFSZ	500
+-
+ void print_sig()
+ {
+-    char timebuf[TIMEBUFSZ];
+-    struct tm *timetm;
+-    time_t now;
+-
+-    timebuf[0] = 0;
+-#ifdef TIMEFORMAT
+-    sprintf(timebuf, "Time: ");
+-    now=time(NULL);
+-    timetm=gmtime(&now);
+-    strftime(timebuf+6, TIMEBUFSZ-6, TIMEFORMAT, timetm);
+-    timebuf[TIMEBUFSZ-1] = 0;
+-#endif
+-    printf(signature, cgibase, man2htmlpath, timebuf);
++	printf("</section>\n<footer>\n<p>%s</p>\n</footer>\n",
++		_("This document was created by <b>man2html</b> using the manual pages."));
+ }
+ 
+ void
+ include_file_html(char *g) {
+-     printf("<A HREF=\"file:///usr/include/%s\">%s</A>&gt;", g,g);
++     printf("<a href=\"file:///usr/include/%s\">%s</a>&gt;", g,g);
+ }
+ 
+ void
+ man_page_html(char *sec, char *h) {
+-	if (relat_html_style) {
+-		if (!h)
+-			printf("<A HREF=\"../index.html\">"
+-			       "Return to Main Contents</A>");
+-		else
+-			printf("<A HREF=\"../man%s/%s.%s.html\">%s</A>",
+-			       sec, h, sec, h);
+-	} else {
+-		if (!h)
+-			printf("<A HREF=\"%s%s\">Return to Main Contents</A>",
+-			       cgibase, man2htmlpath);
+-		else if (!sec)
+-			printf("<A HREF=\"%s%s%c%s\">%s</A>",
+-			       cgibase, man2htmlpath, sep, h, h);
+-		else
+-			printf("<A HREF=\"%s%s%c%s+%s\">%s</A>",
+-			       cgibase, man2htmlpath, sep, sec, h, h);
+-	}
++	if (!h)
++		printf("<a href=\"?\">%s</a>",
++			_("Return to Main Contents"));
++	else if (!sec)
++		printf("<a href=\"?%s\">%s</a>",
++			h, h);
++	else
++		printf("<a href=\"?%s+%s\">%s</a>",
++			sec, h, h);
+ }
+ 
+ void
+ ftp_html(char *f) {
+-     printf("<A HREF=\"ftp://%s\">%s</A>", f, f);
++     printf("<a href=\"ftp://%s\">%s</a>", f, f);
+ }
+ 
+ void
+ www_html(char *f) {
+-     printf("<A HREF=\"http://%s\">%s</A>", f, f);
++     printf("<a href=\"http://%s\">%s</a>", f, f);
+ }
+ 
+ void
+ mailto_html(char *g) {
+-     printf("<A HREF=\"mailto:%s\">%s</A>", g, g);
++     printf("<a href=\"mailto:%s\">%s</a>", g, g);
+ }
+ 
+ void
+ url_html(char *g) {
+-     printf("<A HREF=\"%s\">%s</A>", g, g);
++     printf("<a href=\"%s\">%s</a>", g, g);
+ }
+--- a/hman.sh
++++ b/hman.sh
+@@ -8,99 +8,83 @@
+ # Usage examples:
+ #        hman                    - get start page
+ #        hman man2html           - get man page for man2html
+-#        hman 7 locale           - get section 7 man page for locale 
++#        hman 7 locale           - get section 7 man page for locale
+ #        hman 1                  - section 1 index of names only
+ #        hman 3 index            - section 3 index names+descriptions
+ #        hman -k editor          - search all man pages for some string
+-#	 hman -P arena ./twm.man - specify browser; specify man page
++#        hman -P arena ./twm.man - specify browser; specify man page
+ #
+-# hman from %version%
++# hman from 1.6g-7
+ #
+ 
+-if [ x"$1" = x"-v" ] || [ x"$1" = x"-V" ]; then
+-	echo "`basename $0` from %version%"
++. /usr/lib/slitaz/httphelper.sh
++. /lib/libtaz.sh
++
++# Internationalization
++export TEXTDOMAIN='man2html'
++_()  { local T="$1"; shift; printf "$(gettext "$T")" "$@"; echo; }
++
++
++if [ "$1" == '-v' ] || [ "$1" == '-V' ]; then
++	echo "$(basename $0) v. 1.6g-slitaz"
+ 	exit 0
+ fi
+ 
+ # The user has to set MANHTMLPAGER (or he will get httpd-free lynx).
+ # Pick your favorite browser: lynx, xmosaic, netscape, arena, amaya, grail, ...
+-if [ x"$MANHTMLPAGER" = x ]  && ! which lynx > /dev/null ; then
+-	HMAN_BROWSER=sensible-browser
+-else
+-	HMAN_BROWSER=${MANHTMLPAGER-lynxcgi}
+-fi
++HMAN_BROWSER="${MANHTMLPAGER:-tazweb}"
+ 
+-#
+ # If the man pages are on a remote host, specify it in MANHTMLHOST.
+-HOST=${MANHTMLHOST-localhost}
++HOST=${MANHTMLHOST:-localhost}
+ 
+ # Perhaps the browser was specified on the command line?
+-if [ "$#" -gt 1 ] && [ x"$1" = x"-P" ]; then
+-    HMAN_BROWSER="$2"
+-    shift; shift
++if [ "$#" -gt 1 ] && [ "$1" == '-P' ]; then
++	HMAN_BROWSER="$2"
++	shift; shift
+ fi
+ 
+ # Perhaps the host was specified on the command line?
+-if [ "$#" -gt 1 ] && [ x"$1" = x"-H" ]; then
+-    HOST="$2"
+-    shift; shift
++if [ "$#" -gt 1 ] && [ "$1" == '-H' ]; then
++	HOST="$2"
++	shift; shift
+ fi
+ 
+-# Interface to a live (already running) netscape browser.
+-nsfunc () {
+-	if ( /bin/ps xc | grep -q 'netscape$' ) ; then
+-		if [ -x  netscape-remote ] ; then
+-			exec netscape-remote  -remote "openURL($1,new_window)"
+-		else
+-			exec netscape -remote "openURL($1,new_window)"
+-		fi
+-	else
+-		netscape $1 &
+-	fi
+-}
++CGI="http://$HOST/man.cgi"
+ 
+-urlencode() {
+-	echo "$@" | perl -pe 'chomp(); s/([^A-Za-z0-9\ \_\-\.\/])/"%" . unpack("H*", $1)/eg; tr/ /+/;'
++enc() {
++	echo "$@" | sed -e 's|+|%2B|g; s| |+|g';
+ }
+ 
+-
+-case "$HMAN_BROWSER" in
+-     lynxcgi)
+-	HMAN_BROWSER=lynx
+-	CG="lynxcgi:/usr/lib/cgi-bin/man"
+-	;;
+-     netscape)
+-        HMAN_BROWSER=nsfunc
+-        CG="http://$HOST/cgi-bin/man"
+-	;;
+-     *)
+-	CG="http://$HOST/cgi-bin/man"
+-	;;
++case "$#" in
++	0)
++		$HMAN_BROWSER "$CGI";;
++	1)
++		case "$1" in
++			1|2|3|4|5|6|7|8|l|n)
++				$HMAN_BROWSER "$CGI?$1";;
++			/*)
++				$HMAN_BROWSER "$CGI?$(enc "$1")";;
++			*/*)
++				$HMAN_BROWSER "$CGI?$(enc "$(realpath "$PWD/$1")")";;
++			*)
++				$HMAN_BROWSER "$CGI?$(enc "$1")";;
++		esac
++		;;
++	2)
++#		case "$1" in
++#			-k)
++#				$HMAN_BROWSER "$CGI?search=$(enc "$2")";;
++#			*)
++#				if [ "$2" == 'index' ]; then
++#					$HMAN_BROWSER "$CGI?whatis=$(enc "$1")"
++#				else
++					$HMAN_BROWSER "$CGI?$(enc "$1 $2")"
++#				fi
++#				;;
++#		esac
++		;;
++	*)
++		_ 'bad number of args';;
+ esac
+-
+-  case "$#" in
+-     0)   $HMAN_BROWSER "$CG/man2html" ;;
+-     1)   case "$1" in
+-	    1|2|3|4|5|6|7|8|l|n)
+-		$HMAN_BROWSER "$CG/mansec?query=$1" ;;
+-	    /*)
+-		$HMAN_BROWSER "$CG/man2html?query=`urlencode "$1"`" ;;
+-	    */*)
+-		$HMAN_BROWSER "$CG/man2html?query=`urlencode "$PWD/$1"`" ;;
+-	    *)
+-		$HMAN_BROWSER "$CG/man2html?query=`urlencode "$1"`" ;;
+-          esac ;;
+-     2)   case "$1" in
+-            -k)
+-                $HMAN_BROWSER "$CG/mansearch?query=`urlencode "$2"`" ;;
+-            *)
+-		if [ "$2" = index ]; then
+-		    $HMAN_BROWSER "$CG/manwhatis?query=`urlencode "$1"`"
+-                else
+-		    $HMAN_BROWSER "$CG/man2html?query=`urlencode "$1 $2"`"
+-                fi ;;
+-          esac ;;
+-     *)   echo "bad number of args" ;;
+-  esac
+ 
+ exit 0
+--- /dev/null
++++ b/man.sh
+@@ -0,0 +1,292 @@
++#!/bin/sh
++# man2html cgi script - uses /usr/bin/man2html to format man pages
++# aeb@cwi.nl - 980109
++# Aleksej Bobylev <al.bobylev@gmail.com>, 2015-2016
++
++. /usr/lib/slitaz/httphelper.sh
++. /lib/libtaz.sh
++
++# Internationalization.
++[ -e /etc/locale.conf ] && . /etc/locale.conf
++export TEXTDOMAIN='man2html'
++export LANG LC_ALL
++_()  { local T="$1"; shift; printf "$(gettext "$T")" "$@"; echo; }
++
++
++SECTIONS="$(_ 'User Commands'):$(_ 'System Calls'):$(_ 'C Library Functions'):\
++$(_ 'Devices and Network Interfaces'):$(_ 'File Formats'):\
++$(_ 'Games and Demos'):$(_ 'Environments, Tables, and Troff Macros'):\
++$(_ 'Maintenance Commands'):$(_ 'All available manual pages')"
++
++query="$(GET query)"
++if [ -z "$query" ]; then
++	set -- $(echo $(GET) | tr '+' ' ')
++else
++	set -- $(echo $(GET query) | tr '+' ' ')
++fi
++
++
++if [ $1 == 'css' ]; then
++	# post css file on query
++	header 'Content-Type: text/css'
++	cat /usr/share/doc/slitaz-doc.css
++fi
++
++if [ $# -eq 1 ]; then
++	case $1 in
++		1|2|3|4|5|6|7|8|all)
++			if [ "$1" == 'all' ]; then
++				sec_n='9'; sec_folder='man?'
++			else
++				sec_n="$1"; sec_folder="man$1"
++			fi
++			sec_desc=$(echo "$SECTIONS" | cut -d':' -f $sec_n)
++			header
++			cat <<EOT
++<!DOCTYPE html>
++<html>
++<head>
++	<title>$1. $sec_desc</title>
++	<link rel="stylesheet" href="?css">
++</head>
++<body><header><h1>$(_ 'Section %s: %s' $1 "$sec_desc")</h1></header>
++	<section><header>$(_ 'Manual Pages')</header>
++	<p>
++EOT
++
++			case $1 in
++				1) _ "Section 1 of the manual describes user commands and tools, for example, file \
++manipulation tools, shells, compilers, web browsers, file and image viewers and editors, and so \
++on.";;
++				2) _ "Section 2 of the manual describes the Linux system calls. A system call is \
++an entry point into the Linux kernel.";;
++				3) _ "Section 3 of the manual describes all library functions excluding the \
++library functions (system call wrappers) described in Section 2, which implement system calls.";;
++				4) _ "Section 4 of the manual describes special files (devices).";;
++				5) _ "Section 5 of the manual describes various file formats, as well as the \
++corresponding C structures, if any.";;
++				6) _ "Section 6 of the manual describes all the games and funny little programs \
++available on the system.";;
++				7) _ "Section 7 of the manual provides overviews on various topics, and describes \
++conventions and protocols, character set standards, the standard filesystem layout, and \
++miscellaneous other things.";;
++				8) _ "Section 8 of the manual describes commands which either can be or are used \
++only by the superuser, like system-administration commands, daemons, and hardware-related \
++commands.";;
++			esac
++
++			[ "$1" != 'all' ] && echo "<b><a href=\"?intro.$1\">intro</a></b>($1)"
++			echo '</p>'
++
++			temp="$(mktemp)"; temp2="$(mktemp)"
++			for dir in $(find /usr/share/man -type d -name "$sec_folder"); do
++				ls $dir | sed 's|\.\([0-9]\)\.*[bgx]*z*2*$|:\1|'
++				# fix sorting 'feature': leading '_' always ignored by `sort`
++			done | sed 's|_|zzzzzzzz|g' | sort -fu | sed 's|zzzzzzzz|_|g' | \
++			awk -F' ' -vtemp="$temp" -vtemp2="$temp2" '
++			{
++				split($1, man, ":");
++
++				letter = tolower(substr(man[1], 1, 1));
++				if (letter != last_letter) {
++					last_letter = letter;
++					letter_index[++num_letters] = letter;
++					print "<h3 id=\"l" letter "\">" toupper(letter) "</h3>" > temp;
++				}
++				lnk = man[1]; gsub("+", "%2b", lnk);
++				printf "<b><a href=\"?%s.%s\">%s</a></b>(%s) ", lnk, man[2], man[1], man[2] > temp;
++			}
++			END {
++				# Print out alphabetic quick index and other links
++				for (i = 1; i <= num_letters; i++) {
++					print "<a href=\"#l" letter_index[i] section "\">" toupper(letter_index[i]) "</a>" > temp2;
++				}
++			}
++			'
++			if [ -s "$temp" ]; then
++				echo '<hr>'; cat "$temp2"; echo '<hr>'
++				cat "$temp"
++				echo '<hr>'; cat "$temp2"; echo '<hr>'
++			fi
++
++			rm -f "$temp" "$temp2"
++
++			cat <<EOT
++	</section>
++	<section><header>$(_ 'Sections')</header>
++		<ol>
++EOT
++			for i in $(seq 8); do
++				sec_desc=$(echo "$SECTIONS" | cut -d':' -f $i)
++				echo "<li><a href=\"?$i\">$sec_desc</a></li>"
++			done
++			cat <<EOT
++	</ol>
++	<p><a href="?all">$(_ 'All Sections')</a></p>
++</section>
++
++</body>
++</html>
++EOT
++			exit 0
++			;;
++	esac
++fi
++
++# Find the required page - expect to be called with "man2html [sec] page".
++# There may a prefixed "-M manpath" option.
++
++if [ $# -ge 2 -a "$1" == '-M' ]; then
++	MANPATH="$2"
++	export MANPATH
++	shift; shift
++	MP=' using the given MANPATH'
++else
++	MP=''
++fi
++
++
++# If no arguments given, show a start page.
++
++if [ $# -eq 0 ]; then
++	header
++	cat <<EOT
++<!DOCTYPE html>
++<html>
++<head>
++	<meta charset="UTF-8">
++	<title>$(_ 'Manual Pages - Main Contents')</title>
++	<link rel="stylesheet" href="?css">
++</head>
++<body>
++<header><h1>$(_ 'Manual Pages - Main Contents')</h1></header>
++<section><header>$(_ 'Name and Section lookup')</header>
++	<form method="GET">
++		<input name="query" size="40">
++		<button type="submit">$(_ 'Search')</button>
++	</form>
++	<p>$(_ "You can enter a program name, possibly preceded by the section, the directories to search \
++(with -M) or a full name. For example:")</p>
++
++	<ul>
++		<li><tt>find</tt></li>
++		<li><tt>1 find</tt></li>
++		<li><tt>-M /usr/share/man:/opt/man:/usr/local/share/man find</tt></li>
++		<li><tt>/usr/share/man/man1/gperf.1</tt></li>
++	</ul>
++</section>
++
++<section><header>$(_ 'Index of pages')</header>
++
++	<ol>
++EOT
++	for i in $(seq 8); do
++		sec_desc=$(echo "$SECTIONS" | cut -d':' -f $i)
++		echo "<li><a href=\"?$i\">$sec_desc</a></li>"
++	done
++	cat <<EOT
++	</ol>
++	<p><a href="?all">$(_ 'All Sections')</a></p>
++</section>
++
++<footer>
++	<p>$(_ 'The original man2html program and scripts are due to %s and %s.' \
++	'<a href="http://wsinwp01.win.tue.nl:1234/index.html">Richard Verhoeven</a>' \
++	'<a href="mailto:michael@actrix.gen.nz">Michael Hamilton</a>')
++	$(_ 'This version is from %s maintained by %s.' 'man-1.6g' \
++	'<a href="mailto:flucifredi@acm.org">Federico Lucifredi</a>')</p>
++</footer>
++</body>
++</html>
++EOT
++	exit 0
++fi
++
++if [ $# -gt 2 ]; then
++	man2html -E "man2html: bad invocation: too many arguments"
++	exit 0
++fi
++
++# A single argument may be an explicitly give path name
++# Otherwise, find it
++
++if [ $# -eq 1 ]; then
++	arg=${1//%2b/+}
++	case "$arg" in
++		/*)  PAGE="$arg";;
++		*.*) PAGE=$(find /usr/share/man \( -type f -o -type l \) \( -name "$arg"   -o -name "$arg.gz"   -o -name "$arg.bz2"   -o -name "$arg.xz" \));;
++		*)   PAGE=$(find /usr/share/man \( -type f -o -type l \) \( -name "$arg.*" -o -name "$arg.*.gz" -o -name "$arg.*.bz2" -o -name "$arg.*.xz" \));;
++	esac
++else
++	arg=${2//%2b/+}
++	PAGE="$(
++		for dir in $(find /usr/share/man -type d -name man$1); do
++			find $dir \( -type f -o -type l \) -name "$arg.$1*"
++		done)"
++fi
++
++if [ -z "$PAGE" ]; then
++	complaint="$(_ 'Cannot find a page')"
++	if [ $# -eq 1 ]; then
++		complaint="$(_ 'Cannot find a page for <b>%s</b> %s' $1 $MP)"
++	else
++		complaint="$(_ 'Cannot find a page for <b>%s</b> in section <b>%s</b> %s') $2 $1 $MP"
++	fi
++	man2html -E "<p>$complaint</p>"
++	exit 0
++fi
++
++if [ "$(echo "$PAGE" | wc -l)" -gt 1 ]; then
++	header
++	cat <<EOT
++<!DOCTYPE html>
++<html><head><title>$(_ 'Multiple pages')</title>
++<link rel="stylesheet" href="?css"></link></head>
++<body><header><h1>$(_ 'Multiple pages found')</h1></header>
++	<section>
++	<ul>
++EOT
++	echo "$PAGE" | awk -F'/' '{
++		if ($5 ~ "man") {
++			split($6, man, ".");
++			printf "<li><a href=\"?%s\">%s</a> (%s)</li>\n", $0, man[1], man[2];
++		} else {
++			split($7, man, ".");
++			printf "<li><a href=\"?%s\">%s</a> (%s) — %s</li>\n", $0, man[1], man[2], $5;
++		}
++	}'
++	sed 's|^.*$|<li><a href="?&">&</a></li>|'
++	echo '</ul></section></body></html>'
++	exit 0
++fi
++
++if [ -r "$PAGE" ]; then
++	tmpman="$(mktemp)"
++	# Unpack man page
++	case "$PAGE" in
++		*.gz)   zcat "$PAGE" > "$tmpman";;
++		*.bz2) bzcat "$PAGE" > "$tmpman";;
++		*.xz)  xzcat "$PAGE" > "$tmpman";;
++		*)        cp "$PAGE"   "$tmpman";;
++	esac
++
++	# Check for link
++	line="$(fgrep -v '.\"' "$tmpman" | head -n1)"
++	case "$line" in
++		.so*)
++			link="$(echo "$line" | cut -d'/' -f2)"
++			header	"HTTP/1.1 301 Moved Permanently" \
++					"Location: ?$link"
++			;;
++		*)
++			# Convert page to HTML
++			man2html "$tmpman"
++			;;
++	esac
++
++	# Clean
++	rm "$tmpman"
++else
++	man2html -E "Strange... Cannot find (or read) $PAGE."
++fi
++exit 0
+--- a/man2html.c
++++ b/man2html.c
+@@ -21,14 +21,17 @@
+ #include <ctype.h>
+ #include <sys/stat.h>
+ #include "defs.h"
+-#include "../src/version.h"
++#include "version.h"
++#include <glib.h>
++#include <glib/gi18n.h>
++#define GETTEXT_PACKAGE "man2html"
+ 
+ /* BSD mandoc Bd/Ed example(?) blocks */
+ #define BD_LITERAL  1
+ #define BD_INDENT   2
+ 
+ #define SIZE(a)	(sizeof(a)/sizeof(*a))
+-#define DOCTYPE "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n"
++#define DOCTYPE "<!DOCTYPE html>\n"
+ #define CONTENTTYPE "Content-type: text/html; charset=UTF-8\n\n"
+ 
+ static char NEWLINE[2]="\n";
+@@ -58,28 +61,13 @@
+ 
+ static char charb[3];
+ 
+-#ifdef GUNZIP
+-/* from src/utils.c */
+-static int
+-is_shell_safe(const char *ss, int quoted) {
+-	char *bad = " ;'\\\"<>|";
+-	char *p;
+ 
+-	if (quoted)
+-		bad++;			/* allow a space inside quotes */
+-	for (p = bad; *p; p++)
+-		if (strchr(ss, *p))
+-			return 0;
+-	return 1;
+-}
+-#endif
+-
+ /* reads the entire manpage into buffer *buf and returns number of chars read */
+ static int
+ read_manpage_into_buffer(char *path, char **buf) {
+ 	int compressed = 0;
+ 	FILE * f = NULL;
+-	char * ext;
++	/* char * ext; */
+ 	int l = 0;
+ 	struct stat stbuf;
+ 
+@@ -94,26 +82,6 @@
+ 		char * tmp = NULL;
+ 		char * command = NULL;
+ 		char * openpath = path;
+-#ifdef GUNZIP
+-
+-		if (is_shell_safe(openpath, 1)) {
+-			ext = strrchr(openpath, '.');
+-			compressed = (ext && !strcmp(ext, ".gz"));
+-
+-			if (!compressed && stat(openpath, &stbuf)) {
+-				tmp = (char*) xmalloc(strlen(path) + 4);
+-				sprintf(tmp, "%s.gz", path);
+-				if ((compressed = !stat(tmp, &stbuf)))
+-					openpath = tmp;
+-			}
+-		}
+-
+-		if (compressed) {
+-			command = (char*) xmalloc(strlen(openpath) + sizeof(GUNZIP) + 4);
+-			sprintf(command, GUNZIP " '%s'", openpath);
+-			f = popen(command, "r");
+-		} else
+-#endif
+ 			f = fopen(openpath, "r");
+ 
+ 		if (tmp) free(tmp);
+@@ -170,7 +138,7 @@
+ 
+ 	h = chardef;
+ 	if (h->nr != V('*','*')) {
+-		printf("chardef corrupted\n");
++		printf("%s\n", _("chardef corrupted"));
+ 		exit(1);
+ 	}
+ 
+@@ -216,7 +184,7 @@
+     ** Add the links to the output.
+     ** At the moment the following are recognized:
+     **
+-    ** name(*)                 -> ../man?/name.*
++    ** name(*)                 -> ?name.*
+     ** method://string         -> method://string
+     ** www.host.name           -> http://www.host.name
+     ** ftp.host.name           -> ftp://ftp.host.name
+@@ -453,8 +421,8 @@
+ #define DL	1
+ #define	UL	2
+ #define	OL	3
+-static char *dl_open[4] = { "", "<DL COMPACT>\n", "<UL>", "<OL>" };
+-static char *dl_close[4] = { "", "</DL>\n", "</UL>", "</OL>" };
++static char *dl_open[4] = { "", "<dl compact>\n", "<ul>", "<ol>" };
++static char *dl_close[4] = { "", "</dl>\n", "</ul>", "</ol>" };
+ 
+ static inline void
+ dl_begin(void) {
+@@ -462,7 +430,7 @@
+ 	  out_html(dl_open[DL]);
+ 	  dl_set[itemdepth]=DL;
+      }
+-     out_html("<DT>");
++     out_html("<dt>");
+ }
+ 
+ static inline void
+@@ -481,14 +449,14 @@
+      itemdepth++;
+      if (itemdepth < SIZE(dl_set))
+ 	  dl_set[itemdepth]=noDL;
+-     out_html("<DL COMPACT><DT><DD>");
++     out_html("<dl compact><dt><dd>");
+ }
+ 
+ static inline void
+ dl_endlevel(void) {
+      if (itemdepth) {
+ 	  dl_end();
+-	  out_html("</DL>\n");
++	  out_html("</dl>\n");
+ 	  itemdepth--;
+      }
+ }
+@@ -538,12 +506,12 @@
+ 
+ #define FO0 ""
+ #define FC0 ""
+-#define FO1 "<I>"
+-#define FC1 "</I>"
+-#define FO2 "<B>"
+-#define FC2 "</B>"
+-#define FO3 "<TT>"
+-#define FC3 "</TT>"
++#define FO1 "<i>"
++#define FC1 "</i>"
++#define FO2 "<b>"
++#define FC2 "</b>"
++#define FO3 "<tt>"
++#define FC3 "</tt>"
+ 
+ char *switchfont[16] = { ""     , FC0 FO1, FC0 FO2, FC0 FO3,
+ 			 FC1 FO0, ""     , FC1 FO2, FC1 FO3,
+@@ -588,14 +556,16 @@
+   i=current_font;
+   sizebuf[0]=0;
+   strcat(sizebuf, change_to_font(0));
+-  if (current_size) strcat(sizebuf, "</FONT>");
++  if (current_size) strcat(sizebuf, "</span>");
+   current_size=nr;
+   if (nr) {
+     int l;
+-    strcat(sizebuf, "<FONT SIZE=\"");
++    strcat(sizebuf, "<span style=\"font-size: ");
+     l=strlen(sizebuf);
+     if (nr>0) sizebuf[l++]='+'; else sizebuf[l++]='-',nr=-nr;
+     sizebuf[l++]=nr+'0';
++    sizebuf[l++]='p';
++    sizebuf[l++]='t';
+     sizebuf[l++]='"';
+     sizebuf[l++]='>';
+     sizebuf[l]=0;
+@@ -775,7 +745,7 @@
+ 	skip_escape=exskipescape;
+ 	intresult=j;
+ 	break;
+-    case 'l': h="<HR>"; curpos=0;
++    case 'l': h="<hr>"; curpos=0;
+     case 'b':
+     case 'v':
+     case 'x':
+@@ -812,7 +782,7 @@
+     case 'c': no_newline_output=1; break;
+     case '{': newline_for_fun++; h="";break;
+     case '}': if (newline_for_fun) newline_for_fun--; h="";break;
+-    case 'p': h="<BR>\n";curpos=0; break;
++    case 'p': h="<br>\n";curpos=0; break;
+     case 't': h="\t";curpos=(curpos+8)&0xfff8; break;
+     case '<': h="&lt;";curpos++; break;
+     case '>': h="&gt;";curpos++; break;
+@@ -1021,7 +991,7 @@
+     out_html(change_to_size(0));
+     if (!fillout) {
+ 	fillout=1;
+-	out_html("</PRE>");
++	out_html("</pre>");
+     }
+     while (*h && *h!='\n') h++;
+     if (h[-1]==';') {
+@@ -1197,45 +1167,45 @@
+ 	currow=currow->prev;
+     }
+     /* produce html output */
+-    if (center) out_html("<CENTER>");
+-    if (box==2) out_html("<TABLE BORDER><TR><TD>");
+-    out_html("<TABLE");
++    if (center) out_html("<div style=\"margin: 0 auto\">");
++    if (box==2) out_html("<table border><tr><td>");
++    out_html("<table");
+     if (box || border) {
+-	out_html(" BORDER");
+-	if (!border) out_html("><TR><TD><TABLE");
+-	if (expand) out_html(" WIDTH=100%");
++	out_html(" border");
++	if (!border) out_html("><tr><td><table");
++	if (expand) out_html(" width=100%");
+     }
+     out_html(">\n");
+     currow=layout;
+     while (currow) {
+ 	j=0;
+-	out_html("<TR VALIGN=top>");
++	out_html("<tr style=\"vertical-align: top\">");
+ 	curfield=currow->first;
+ 	while (curfield) {
+ 	    if (curfield->align!='S' && curfield->align!='^') {
+-		out_html("<TD");
++		out_html("<td");
+ 		switch (curfield->align) {
+ 		case 'N':
+ 		    curfield->space+=4;
+ 		case 'R':
+-		    out_html(" ALIGN=right");
++		    out_html(" style=\"text-align: right\"");
+ 		    break;
+ 		case 'C':
+-		    out_html(" ALIGN=center");
++		    out_html(" style=\"text-align: center\"");
+ 		default:
+ 		    break;
+ 		}
+ 		if (!curfield->valign && curfield->rowspan>1)
+-		    out_html(" VALIGN=center");
++		    out_html(" style=\"vertical-align: center\"");
+ 		if (curfield->colspan>1) {
+ 		    char buf[5];
+-		    out_html(" COLSPAN=");
++		    out_html(" colspan=");
+ 		    sprintf(buf, "%i", curfield->colspan);
+ 		    out_html(buf);
+ 		}
+ 		if (curfield->rowspan>1) {
+ 		    char buf[5];
+-		    out_html(" ROWSPAN=");
++		    out_html(" rowspan=");
+ 		    sprintf(buf, "%i", curfield->rowspan);
+ 		    out_html(buf);
+ 		}
+@@ -1244,8 +1214,8 @@
+ 		if (curfield->size) out_html(change_to_size(curfield->size));
+ 		if (curfield->font) out_html(change_to_font(curfield->font));
+ 		switch (curfield->align) {
+-		case '=': out_html("<HR><HR>"); break;
+-		case '_': out_html("<HR>"); break;
++		case '=': out_html("<hr><hr>"); break;
++		case '_': out_html("<hr>"); break;
+ 		default:
+ 		    if (curfield->contents) out_html(curfield->contents);
+ 		    break;
+@@ -1255,20 +1225,20 @@
+ 		if (curfield->font) out_html(change_to_font(0));
+ 		if (curfield->size) out_html(change_to_size(0));
+ 		if (j>=maxcol && curfield->align>'@' && curfield->align!='_')
+-		    out_html("<BR>");
+-		out_html("</TD>");
++		    out_html("<br>");
++		out_html("</td>");
+ 	    }
+ 	    curfield=curfield->next;
+ 	}
+-	out_html("</TR>\n");
++	out_html("</tr>\n");
+ 	currow=currow->next;
+     }
+-    if (box && !border) out_html("</TABLE>");
+-    out_html("</TABLE>");
+-    if (box==2) out_html("</TABLE>");
+-    if (center) out_html("</CENTER>\n");
++    if (box && !border) out_html("</table>");
++    out_html("</table>");
++    if (box==2) out_html("</table>");
++    if (center) out_html("</div>\n");
+     else out_html("\n");
+-    if (!oldfillout) out_html("<PRE>");
++    if (!oldfillout) out_html("<pre>");
+     fillout=oldfillout;
+     out_html(change_to_size(oldsize));
+     out_html(change_to_font(oldfont));
+@@ -1401,7 +1371,7 @@
+ 		case '&': value = (value && value2); break;
+ 		case ':': value = (value || value2); break;
+ 		default: fprintf(stderr,
+-				 "man2html: Unknown operator %c.\n", oper);
++				_("man2html: Unknown operator %c.\n"), oper);
+ 		}
+ 		oper=0;
+ 	    }
+@@ -1489,42 +1459,42 @@
+ 
+ 
+ char *section_list[] = {
+-    "1", "User Commands ",
+-    "1C", "User Commands",
+-    "1G", "User Commands",
+-    "1S", "User Commands",
+-    "1V", "User Commands ",
+-    "2", "System Calls",
+-    "2V", "System Calls",
+-    "3", "C Library Functions",
+-    "3C", "Compatibility Functions",
+-    "3F", "Fortran Library Routines",
+-    "3K", "Kernel VM Library Functions",
+-    "3L", "Lightweight Processes Library",
+-    "3M", "Mathematical Library",
+-    "3N", "Network Functions",
+-    "3R", "RPC Services Library",
+-    "3S", "Standard I/O Functions",
+-    "3V", "C Library Functions",
+-    "3X", "Miscellaneous Library Functions",
+-    "4", "Devices and Network Interfaces",
+-    "4F", "Protocol Families",
+-    "4I", "Devices and Network Interfaces",
+-    "4M", "Devices and Network Interfaces",
+-    "4N", "Devices and Network Interfaces",
+-    "4P", "Protocols",
+-    "4S", "Devices and Network Interfaces",
+-    "4V", "Devices and Network Interfaces",
+-    "5", "File Formats",
+-    "5V", "File Formats",
+-    "6", "Games and Demos",
+-    "7", "Environments, Tables, and Troff Macros",
+-    "7V", "Environments, Tables, and Troff Macros",
+-    "8", "Maintenance Commands",
+-    "8C", "Maintenance Commands",
+-    "8S", "Maintenance Commands",
+-    "8V", "Maintenance Commands",
+-    "L", "Local Commands",
++    "1",  N_("User Commands"),
++    "1C", N_("User Commands"),
++    "1G", N_("User Commands"),
++    "1S", N_("User Commands"),
++    "1V", N_("User Commands"),
++    "2",  N_("System Calls"),
++    "2V", N_("System Calls"),
++    "3",  N_("C Library Functions"),
++    "3C", N_("Compatibility Functions"),
++    "3F", N_("Fortran Library Routines"),
++    "3K", N_("Kernel VM Library Functions"),
++    "3L", N_("Lightweight Processes Library"),
++    "3M", N_("Mathematical Library"),
++    "3N", N_("Network Functions"),
++    "3R", N_("RPC Services Library"),
++    "3S", N_("Standard I/O Functions"),
++    "3V", N_("C Library Functions"),
++    "3X", N_("Miscellaneous Library Functions"),
++    "4",  N_("Devices and Network Interfaces"),
++    "4F", N_("Protocol Families"),
++    "4I", N_("Devices and Network Interfaces"),
++    "4M", N_("Devices and Network Interfaces"),
++    "4N", N_("Devices and Network Interfaces"),
++    "4P", N_("Protocols"),
++    "4S", N_("Devices and Network Interfaces"),
++    "4V", N_("Devices and Network Interfaces"),
++    "5",  N_("File Formats"),
++    "5V", N_("File Formats"),
++    "6",  N_("Games and Demos"),
++    "7",  N_("Environments, Tables, and Troff Macros"),
++    "7V", N_("Environments, Tables, and Troff Macros"),
++    "8",  N_("Maintenance Commands"),
++    "8C", N_("Maintenance Commands"),
++    "8S", N_("Maintenance Commands"),
++    "8V", N_("Maintenance Commands"),
++    "L",  N_("Local Commands"),
+ /* for Solaris: 
+     "1", "User Commands",
+     "1B", "SunOS/BSD Compatibility Package Commands",
+@@ -1593,7 +1563,7 @@
+     "9s", "DDI and DKI Data Structures",
+     "L", "Local Commands",
+ */
+-    NULL, "Misc. Reference Manual Pages",
++    NULL, N_("Misc. Reference Manual Pages"),
+     NULL, NULL
+ };
+ 
+@@ -1604,7 +1574,7 @@
+ 
+     if (!c) return "";
+     while (section_list[i] && strcmp(c,section_list[i])) i=i+2;
+-    if (section_list[i+1]) return section_list[i+1];
++    if (section_list[i+1]) return _(section_list[i+1]);
+     else return c;
+ }
+ 
+@@ -1636,10 +1606,10 @@
+     if (level != subs) {
+ 	manidx_need(6);
+ 	if (subs) {
+-	    strcpy(manidx+mip, "</DL>\n");
++	    strcpy(manidx+mip, "</dl>\n");
+ 	    mip += 6;
+ 	} else {
+-	    strcpy(manidx+mip, "<DL>\n");
++	    strcpy(manidx+mip, "<dl>\n");
+ 	    mip += 5;
+ 	}
+     }
+@@ -1647,7 +1617,7 @@
+ 
+     scan_troff(item, 1, &c);
+     manidx_need(100 + strlen(c));
+-    sprintf(manidx+mip, "<DT><A HREF=\"#%s\">%s</A><DD>\n", label, c);
++    sprintf(manidx+mip, "<dt><a href=\"#%s\">%s</a></dt><dd>\n", label, c);
+     if (c) free(c);
+     while (manidx[mip]) mip++;
+ }
+@@ -1834,8 +1804,8 @@
+ 	    }
+ 	    break;
+ 	case V('b','r'):
+-	    if (still_dd) out_html("<DD>");
+-	    else out_html("<BR>\n");
++	    if (still_dd) out_html("<dd>");
++	    else out_html("<br>\n");
+ 	    curpos=0;
+ 	    c=c+j;
+ 	    if (c[0] == escapesym) { c=scan_escape(c+1); }
+@@ -1865,17 +1835,17 @@
+ 	    c=skip_till_newline(c);
+ 	    /* center next i lines */
+ 	    if (i>0) {
+-		out_html("<CENTER>\n");
++		out_html("<div style=\"margin: 0 auto\">\n");
+ 		while (i && *c) {
+ 		    char *line=NULL;
+ 		    c=scan_troff(c,1, &line);
+-		    if (line && strncmp(line, "<BR>", 4)) {
++		    if (line && strncmp(line, "<br>", 4)) {
+ 			out_html(line);
+-			out_html("<BR>\n");
++			out_html("<br>\n");
+ 			i--;
+ 		    }
+ 		}
+-		out_html("</CENTER>\n");
++		out_html("</div>\n");
+ 		curpos=0;
+ 	    }
+ 	    break;
+@@ -1906,7 +1876,7 @@
+ 	    if (!fillout) {
+ 		out_html(change_to_font(0));
+ 		out_html(change_to_size('0'));
+-		out_html("</PRE>\n");
++		out_html("</pre>\n");
+ 	    }
+ 	    curpos=0;
+ 	    fillout=1;
+@@ -1981,7 +1951,7 @@
+ 	    if (fillout) {
+ 		out_html(change_to_font(0));
+ 		out_html(change_to_size('0'));
+-		out_html("<PRE>\n");
++		out_html("<pre>\n");
+ 	    }
+ 	    curpos=0;
+ 	    fillout=0;
+@@ -2002,7 +1972,7 @@
+ 	    break;
+ 	case V('s','p'):
+ 	    c=c+j;
+-	    if (fillout) out_html("<P>"); else {
++	    if (fillout) out_html("<p>"); else {
+ 		out_html(NEWLINE);
+ 		NEWLINE[0]='\n';
+ 	    }
+@@ -2033,30 +2003,15 @@
+ 		*c = 0;
+ 		scan_troff(h,1, &name);
+ 		if (name[3] == '/') h=name+3; else h=name;
+-#if NOCGI
+-                if (!out_length) {
+-		    char *t,*s;
+-		    t=strrchr(fname, '/');
+-		    if (!t) t=fname;
+-		    fprintf(stderr, "ln -s %s.html %s.html\n", h, t);
+-		    s=strrchr(t, '.');if (!s) s=t;
+-		    printf(CONTENTTYPE DOCTYPE);
+-		    printf("<HTML><HEAD><TITLE> Man page of %s</TITLE>\n"
+-			   "</HEAD><BODY>\n"
+-			   "See the man page for <A HREF=\"%s.html\">%s</A>.\n"
+-			   "</BODY></HTML>\n",
+-			   s, h, h);
+-		} else
+-#endif
+                 {
+ 		    /* this works alright, except for section 3 */
+ 		    if ((l = read_manpage_into_buffer(h, &buf)) < 0) {
+ 			 fprintf(stderr,
+-				"man2html: unable to open or read file %s\n", h);
+-			 out_html("<BLOCKQUOTE>"
+-				  "man2html: unable to open or read file\n");
++				_("man2html: unable to open or read file %s\n"), h);
++			 out_html("<blockquote>");
++			 out_html(_("man2html: unable to open or read file\n"));
+ 			 out_html(h);
+-			 out_html("</BLOCKQUOTE>\n");
++			 out_html("</blockquote>\n");
+ 		    } else {
+ 			buf[0]=buf[l]='\n';
+ 			buf[l+1]=buf[l+2]=0;
+@@ -2085,7 +2040,7 @@
+ #if 0
+ 	    dl_down();
+ #endif
+-	    out_html("<BR>\n");
++	    out_html("<br>\n");
+ 	    c=c+j;
+ 	    c=scan_expression(c, &j);
+ 	    for (i=0; i<j; i++) out_html("&nbsp;");
+@@ -2163,7 +2118,7 @@
+             if (words) {
+ 		scan_troff(wordlist[0], 1,NULL);
+ 	    }
+-	    out_html("<DD>");
++	    out_html("<dd>");
+ 	    curpos = 0;
+ 	    break;
+ 	case V('T','P'):
+@@ -2172,7 +2127,7 @@
+ 	    /* somewhere a definition ends with '.TP' */
+ 	    if (!*c) still_dd=1; else {
+ 		c=scan_troff(c,1,NULL);
+-		out_html("<DD>");
++		out_html("<dd>");
+ 	    }
+ 	    curpos=0;
+ 	    break;
+@@ -2195,20 +2150,20 @@
+ 		 fprintf(idxfile,"\n");
+ 	    }
+ #endif
+-            out_html("<A NAME=\"");
++            out_html("<span id=\"");
+ 	    out_html(idxlabel);
+ 	    /* this will not work in mosaic (due to a bug).
+ 	    ** Adding '&nbsp;' between '>' and '<' solves it, but creates
+ 	    ** some space. A normal space does not work.
+ 	    */
+-	    out_html("\"></A>");
++	    out_html("\"></span>");
+ 	    break;
+ 	case V('P',' '):
+ 	case V('P','\n'):
+ 	case V('L','P'):
+ 	case V('P','P'):
+ 	    dl_end();
+-	    if (fillout) out_html("<P>\n"); else {
++	    if (fillout) out_html("<p>\n"); else {
+ 		out_html(NEWLINE);
+ 		NEWLINE[0]='\n';
+ 	    }
+@@ -2272,19 +2227,29 @@
+ 	    out_html(change_to_size(0));
+ 	    if (!fillout) {
+ 		fillout=1;
+-		out_html("</PRE>");
++		out_html("</pre>");
+ 	    }
+ 	    trans_char(c,'"', '\a');
+ 	    add_to_index(mode, c);
+-	    out_html("<A NAME=\"");
+-	    out_html(label);
+-	    /* &nbsp; for mosaic users */
+-	    if (mode) out_html("\">&nbsp;</A>\n<H3>");
+-	    else out_html("\">&nbsp;</A>\n<H2>");
++
++		if (mode) {
++			out_html("<h3 id=\"");
++			out_html(label);
++			out_html("\">");
++		} else {
++			out_html("</section>\n\n<section id=\"");
++			out_html(label);
++			out_html("\">\n<h2>");
++		}
++
+ 	    mandoc_synopsis = (strncmp(c, "SYNOPSIS", 8) == 0);
+ 	    c = (mandoc_command ? scan_troff_mandoc : scan_troff)(c,1,NULL);
+-	    if (mode) out_html("</H3>\n");
+-	    else out_html("</H2>\n");
++
++		if (mode)
++			out_html("</h3>\n");
++		else
++			out_html("</h2>\n");
++
+ 	    curpos=0;
+ 	    break;
+ 	case V('T','S'):
+@@ -2315,7 +2280,7 @@
+ 		    int skip=0;
+ 		    output_possible=1;
+ 		    printf(CONTENTTYPE DOCTYPE);
+-		    out_html("<HTML><HEAD><TITLE>Man page of ");
++		    out_html("<html><head>\n<meta charset=\"UTF-8\">\n<title>");
+ 		    scan_troff(wordlist[0], 0, &t);
+ 		    /* we need to remove all html tags */
+ 		    for (s=q=t; *s; s++) {
+@@ -2324,11 +2289,14 @@
+ 		      else if (!skip) *q++ = *s;
+ 		    }
+ 		    *q = '\0';
+-		    out_html(t);
++		    char buff[256];
++		    sprintf(buff, _("Man page of %s"), t);
++		    out_html(buff);
+ 		    free(t);
+-		    out_html("</TITLE>\n</HEAD><BODY>\n<H1>");
++		    out_html("</title>\n<link rel=\"stylesheet\" href=\"?css\">\n</head><body>\n<header><h1>");
+ 		    scan_troff(wordlist[0], 0, NULL);
+-		    out_html("</H1>\nSection: ");
++		    out_html("</h1></header>\n<section>\n");
++		    out_html(_("Section: "));
+ 		    if (words>4)
+ 		    	scan_troff(wordlist[4], 0, NULL);
+ 		    else
+@@ -2336,14 +2304,17 @@
+ 		    out_html(" (");
+ 		    scan_troff(wordlist[1], 0, NULL);
+ 		    if (words>2) {
+-			out_html(")<BR>Updated: ");
++			out_html(")<br>");
++			out_html(_("Updated: "));
+ 			scan_troff(wordlist[2], 1, NULL);
+ 		    } else out_html(")");
+-		    out_html("<BR><A HREF=\"#index\">Index</A>\n");
++		    out_html("<br><a href=\"#index\">");
++		    out_html(_("Index"));
++		    out_html("</a>\n");
+ 		    man_page_html(0,0);	/* Return to Main Contents */
+ 		    *sl='\n';
+-		    out_html("<HR>\n");
+-		    if (mandoc_command) out_html("<BR>BSD mandoc<BR>");
++		    out_html("<hr>\n");
++		    if (mandoc_command) out_html("<br>\nBSD mandoc<br>");
+ 		}
+ 		c = sl+1;
+ 	    } else
+@@ -2507,7 +2478,7 @@
+ 		 dl_newlevel_type(DL);
+ 	    if (nl)
+ 		 *nl = t;
+-	    if (fillout) out_html("<P>\n"); else {
++	    if (fillout) out_html("<p>\n"); else {
+ 		 out_html(NEWLINE);
+ 		 NEWLINE[0]='\n';
+ 	    }
+@@ -2518,7 +2489,7 @@
+ 	case V('E','l'):	/* BSD mandoc */
+ 	     c=c+j;
+ 	     dl_endlevel_type();
+-	     if (fillout) out_html("<P>\n"); else {
++	     if (fillout) out_html("<p>\n"); else {
+ 		  out_html(NEWLINE);
+ 		  NEWLINE[0]='\n';
+ 	     }
+@@ -2528,7 +2499,7 @@
+ 	case V('I','t'):	/* BSD mandoc */
+ 	     c=c+j;
+ 	     if (dl_type(DL)) {
+-		  out_html("<DT>");
++		  out_html("<dt>");
+ 		  out_html(change_to_font('B'));
+ 		  if (*c == '\n') {
+ 		       /* Don't allow embedded comms after a newline */
+@@ -2543,9 +2514,9 @@
+ 		  if (inXo)
+ 		       still_dd = 1;
+ 		  else
+-		       out_html("<DD>");
++		       out_html("<dd>");
+ 	     } else if (dl_type(UL) || dl_type(OL)) {
+-		  out_html("<LI>");
++		  out_html("<li>");
+ 		  c=scan_troff_mandoc(c,1,NULL);
+ 		  out_html(NEWLINE);
+ 	     }
+@@ -2559,7 +2530,7 @@
+ 	     c=c+j;
+ 	     if (inXo) {
+ 		  if (still_dd)
+-		       out_html("<DD>");
++		       out_html("<dd>");
+ 		  inXo = 0;
+ 	     }
+ 	     break;
+@@ -2594,12 +2565,12 @@
+ 	case V('D','l'):	/* BSD mandoc */
+ 	     c=c+j;
+ 	     out_html(NEWLINE);
+-	     out_html("<BLOCKQUOTE>");	    
++	     out_html("<blockquote>");	    
+ 	     out_html(change_to_font('L'));
+ 	     if (*c == '\n') c++;
+ 	     c=scan_troff_mandoc(c, 1, NULL);	    
+ 	     out_html(change_to_font('R'));
+-	     out_html("</BLOCKQUOTE>");	    
++	     out_html("</blockquote>");	    
+ 	     if (fillout) curpos++; else curpos=0;
+ 	     break;
+ 	case V('B','d'):	/* BSD mandoc */
+@@ -2615,14 +2586,14 @@
+ 	     mandoc_bd_options = 0; /* Remember options for terminating Bl */
+ 	     if (strstr(c, "-offset indent")) {
+ 		  mandoc_bd_options |= BD_INDENT;
+-		  out_html("<BLOCKQUOTE>\n");
++		  out_html("<blockquote>\n");
+ 	     }
+ 	     if (strstr(c, "-literal") || strstr(c, "-unfilled")) {
+ 		  if (fillout) {
+ 		       mandoc_bd_options |= BD_LITERAL;
+ 		       out_html(change_to_font(0));
+ 		       out_html(change_to_size('0'));
+-		       out_html("<PRE>\n");
++		       out_html("<pre>\n");
+ 		  }
+ 		  curpos=0;
+ 		  fillout=0;
+@@ -2637,18 +2608,18 @@
+ 		  if (!fillout) {
+ 		       out_html(change_to_font(0));
+ 		       out_html(change_to_size('0'));
+-		       out_html("</PRE>\n");
++		       out_html("</pre>\n");
+ 		  }
+ 	     }
+ 	     if (mandoc_bd_options & BD_INDENT)
+-		  out_html("</BLOCKQUOTE>\n");
++		  out_html("</blockquote>\n");
+ 	     curpos=0;
+ 	     fillout=1;
+ 	     c=skip_till_newline(c);
+ 	     break;
+ 	case V('B','e'):	/* BSD mandoc */
+ 	     c=c+j;
+-	     if (fillout) out_html("<P>"); else {
++	     if (fillout) out_html("<p>"); else {
+ 		  out_html(NEWLINE);
+ 		  NEWLINE[0]='\n';
+ 	     }
+@@ -2715,7 +2686,7 @@
+ 	     if (fillout) curpos++; else curpos=0;
+ 	     break;
+ 	case V('P','p'):	/* BSD mandoc */
+-	     if (fillout) out_html("<P>\n"); else {
++	     if (fillout) out_html("<p>\n"); else {
+ 		  out_html(NEWLINE);
+ 		  NEWLINE[0]='\n';
+ 	     }
+@@ -2726,9 +2697,9 @@
+ 	     trans_char(c,'"','\a');
+ 	     c=c+j;
+ 	     if (*c == '\n') c++;
+-	     out_html("``");
++	     out_html("“");
+ 	     c=scan_troff_mandoc(c, 1, NULL);
+-	     out_html("''");
++	     out_html("”");
+ 	     out_html(NEWLINE);
+ 	     if (fillout) curpos++; else curpos=0;
+ 	     break;
+@@ -2800,12 +2771,22 @@
+ 	     trans_char(c,'"','\a');
+ 	     c=c+j;
+ 	     if (*c == '\n') c++;
+-	     out_html("`");
++	     out_html("‘");
+ 	     c=scan_troff_mandoc(c, 1, NULL);
+-	     out_html("'");
++	     out_html("’");
+ 	     out_html(NEWLINE);
+ 	     if (fillout) curpos++; else curpos=0;
+ 	     break;
++	case V('A','q'):	/* BSD mandoc */
++	     trans_char(c,'"','\a');
++	     c=c+j;
++	     if (*c == '\n') c++;
++	     out_html("⟨");
++	     c=scan_troff_mandoc(c, 1, NULL);
++	     out_html("⟩");
++	     out_html(NEWLINE);
++	     if (fillout) curpos++; else curpos=0;
++	     break;
+ 	case V('A','r'):	/* BSD mandoc */
+ 	     /* parse one line in italics */
+ 	     out_html(change_to_font('I'));
+@@ -2855,7 +2836,7 @@
+ 		   */
+ 		  static int count = 0; /* Don't break on the first Nm */
+ 		  if (count) {
+-		       out_html("<BR>");
++		       out_html("<br>");
+ 		  } else {
+ 		       char *end, t=0 /* just for gcc */;
+ 		       end = strchr(c, '\n');
+@@ -3038,7 +3019,7 @@
+ 	    if (h[-1] == '\n' && still_dd && isalnum(*h)) {
+ 		/* sometimes a .HP request is not followed by a .br request */
+ 		FLUSHIBP;
+-		out_html("<DD>");
++		out_html("<dd>");
+ 		curpos=0;
+ 		still_dd=0;
+ 	    }
+@@ -3108,12 +3089,12 @@
+ 				curpos++;
+ 			    }
+ 			} else {
+-			    out_html("<TT>");
++			    out_html("<tt>");
+ 			    while (curpos < tabstops[curtab]) {
+ 				out_html("&nbsp;");
+ 				curpos++;
+ 			    }
+-			    out_html("</TT>");
++			    out_html("</tt>");
+ 			}
+ 		    }
+ 		}
+@@ -3122,7 +3103,7 @@
+ 		if (*h == ' ' && (h[-1] == '\n' || usenbsp)) {
+ 		    FLUSHIBP;
+ 		    if (!usenbsp && fillout) {
+-			out_html("<BR>");
++			out_html("<br>");
+ 			curpos=0;
+ 		    }
+ 		    usenbsp=fillout;
+@@ -3196,13 +3177,13 @@
+ 
+      switch(status) {
+ 	case 403:
+-		printf("Status: 403 Forbidden\n");
++		printf("HTTP/1.1 403 Forbidden\n");
+ 		break;
+ 	case 404:
+-		printf("Status: 404 Not Found\n");
++		printf("HTTP/1.1 404 Not Found\n");
+ 		break;
+ 	case 500:
+-		printf("Status: 500 Internal Server Error\n");
++		printf("HTTP/1.1 500 Internal Server Error\n");
+ 		break;
+ 	case 0:
+ 	default:
+@@ -3210,12 +3191,13 @@
+      }
+ 	     
+      printf(CONTENTTYPE DOCTYPE);
+-     printf("<HTML><HEAD><TITLE>%s</TITLE></HEAD>\n"
+-	    "<BODY>\n<H1>%s</H1>\n", s, s);
++     printf("<html>\n<head>\n<meta charset=\"UTF-8\">\n<title>%s</title>\n"
++     	"<link rel=\"stylesheet\" href=\"?css\">\n</head>\n"
++	    "<body>\n<header><h1>%s</h1></header>\n<section>\n", s, s);
+      va_start(p, t);
+      vfprintf(stdout, t, p);
+      va_end(p);
+-     printf("</BODY></HTML>\n");
++     printf("</section>\n</body></html>\n");
+      exit(0);
+ }
+ 
+@@ -3223,8 +3205,8 @@
+ xstrdup(const char *s) {
+      char *p = strdup(s);
+      if (p == NULL)
+-	  error_page(500, "Out of memory",
+-			 "Sorry, out of memory, aborting...\n");
++	  error_page(500, _("Out of memory"),
++			_("Sorry, out of memory, aborting...\n"));
+      return p;
+ }
+ 
+@@ -3232,8 +3214,8 @@
+ xmalloc(size_t size) {
+      void *p = malloc(size);
+      if (p == NULL)
+-	  error_page(500, "Out of memory",
+-			 "Sorry, out of memory, aborting...\n");
++	  error_page(500, _("Out of memory"),
++			_("Sorry, out of memory, aborting...\n"));
+      return p;
+ }
+ 
+@@ -3241,16 +3223,16 @@
+ xrealloc(void *ptr, size_t size) {
+      void *p = realloc(ptr,size);
+      if (p == NULL)
+-	  error_page(500, "Out of memory",
+-			 "Sorry, out of memory, aborting...\n");
++	  error_page(500, _("Out of memory"),
++			_("Sorry, out of memory, aborting...\n"));
+      return p;
+ }
+ 
+ static void
+ usage(void) {
+-     error_page(500, "man2html: bad invocation",
+-	"Call: man2html [-l|-h host.domain:port] [-p|-q] [filename]\n"
+-	"or:   man2html -r [filename]\n");
++     error_page(500, _("man2html: bad invocation"),
++	_("Call: man2html [-l|-h host.domain:port] [-p|-q] [filename]\n"
++	"or:   man2html -r [filename]\n"));
+ }
+ 
+ static void
+@@ -3273,7 +3255,7 @@
+ 	       }
+ #if 0
+ 	       else  /* complain or not - this need not be fatal */
+-		    error_page("Error", "man2html: could not chdir to %s", s);
++		    error_page(_("Error"), _("man2html: could not chdir to %s"), s);
+ #endif
+ 	  }
+      }
+@@ -3291,6 +3273,11 @@
+  */
+ int
+ main(int argc, char **argv) {
++	setlocale (LC_ALL, "");
++	bindtextdomain (GETTEXT_PACKAGE, "/usr/share/locale");
++	bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
++	textdomain (GETTEXT_PACKAGE);
++
+     int l, c;
+     char *buf, *filename, *fnam = NULL;
+ 
+@@ -3309,7 +3296,7 @@
+ 	 case 'D':
+ 	      goto_dir(optarg, 0, 0); break;
+ 	 case 'E':
+-	      error_page(0, "Error", "%s", optarg); break;
++	      error_page(0, _("Error"), "%s", optarg); break;
+ 	 case 'h':
+ 	      set_cgibase("localhost"); break;
+ 	 case 'H':
+@@ -3362,7 +3349,7 @@
+ 
+     l = read_manpage_into_buffer(fnam, &buf);
+     if (l < 0)
+-    	error_page(404, "File not found", "Could not open %s\n", fname);
++    	error_page(404, _("File not found"), _("Could not open %s\n"), fname);
+ 
+     buf[0] = '\n';
+     buf[l+1] = '\n';
+@@ -3379,34 +3366,34 @@
+     out_html(change_to_size(0));
+     if (!fillout) {
+ 	fillout=1;
+-	out_html("</PRE>");
++	out_html("</pre>");
+     }
+     out_html(NEWLINE);
+     if (output_possible) {
+ 	/* &nbsp; for mosaic users */
+ 	if (manidx) {
+-	    printf("<HR>\n<A NAME=\"index\">&nbsp;</A><H2>Index</H2>\n<DL>\n");
++	    printf("</section>\n\n<section id=\"index\">\n<h2>%s</h2>\n\n<dl>\n", _("Index"));
+ 	    manidx[mip]=0;
+ 	    printf("%s", manidx);
+-	    if (subs) printf("</DL>\n");
+-	    printf("</DL>\n");
++	    if (subs) printf("</dl>\n");
++	    printf("</dl>\n");
+ 	}
+ 	print_sig();
+-	printf("</BODY>\n</HTML>\n");
++	printf("</body>\n</html>\n");
+     } else {
+ 	if (!filename)
+ 	     filename = fname;
+ 	if (*filename == '/')
+-	     error_page(403, "Invalid Man Page",
+-		   "The requested file %s is not a valid (unformatted) "
++	     error_page(403, _("Invalid Man Page"),
++		 _("The requested file %s is not a valid (unformatted) "
+ 		   "man page.\nIf the file is a formatted man page, "
+ 		   "you could try to load the\n"
+-		   "<A HREF=\"file://%s\">plain file</A>.\n",
++		   "<a href=\"file://%s\">plain file</a>.\n"),
+ 		   filename, filename);
+ 	else
+-	     error_page(403, "Invalid Man Page",
+-		   "The requested file %s is not a valid (unformatted) "
+-		   "man page.", filename);
++	     error_page(403, _("Invalid Man Page"),
++		 _("The requested file %s is not a valid (unformatted) "
++		   "man page."), filename);
+     }
+     if (idxfile)
+ 	 fclose(idxfile);
+--- a/scripts/cgi-bin/man/man2html
++++ b/scripts/cgi-bin/man/man2html
+@@ -8,11 +8,11 @@
+ 
+ # Do we need lynxcgi URLs? For the moment our criterion is
+ # 1) HTTP_USER_AGENT=Lynx*  and 2) HTTP_HOST is unset.
+-AGENT="${HTTP_USER_AGENT-unknown}"
++AGENT="${HTTP_USER_AGENT:-unknown}"
+ 
+ case "$AGENT" in
+     Lynx*|lynx*)
+-	HH="${HTTP_HOST-nohh}"
++	HH="${HTTP_HOST:-nohh}"
+ 	SED="s/%lynx //"
+ 	;;
+     *)
+@@ -21,7 +21,7 @@
+ 	;;
+ esac
+ 
+-SERVER="${SERVER_NAME-localhost}"
++SERVER="${SERVER_NAME:-localhost}"
+ case "$HH" in
+     nohh)
+ 	LL="-l"
+--- a/scripts/cgi-bin/man/mansearch
++++ b/scripts/cgi-bin/man/mansearch
+@@ -7,11 +7,11 @@
+ 
+ # Do we need lynxcgi URLs? For the moment our criterion is
+ # 1) HTTP_USER_AGENT=Lynx*  and 2) HTTP_HOST is unset.
+-AGENT="${HTTP_USER_AGENT-unknown}"
++AGENT="${HTTP_USER_AGENT:-unknown}"
+ 
+ case "$AGENT" in
+     Lynx*|lynx*)
+-	HH="${HTTP_HOST-nohh}"
++	HH="${HTTP_HOST:-nohh}"
+ 	SED="s/%lynx //"
+ 	;;
+     *)
+@@ -20,7 +20,7 @@
+ 	;;
+ esac
+ 
+-SERVER="${SERVER_NAME-localhost}"
++SERVER="${SERVER_NAME:-localhost}"
+ case "$HH" in
+     nohh)
+ 	CG="lynxcgi:/usr/lib/cgi-bin/man"
+--- a/scripts/cgi-bin/man/mansearchhelp
++++ b/scripts/cgi-bin/man/mansearchhelp
+@@ -4,17 +4,17 @@
+ 
+ # Do we need lynxcgi URLs? For the moment our criterion is
+ # 1) HTTP_USER_AGENT=Lynx*  and 2) HTTP_HOST is unset.
+-AGENT="${HTTP_USER_AGENT-unknown}"
++AGENT="${HTTP_USER_AGENT:-unknown}"
+ case "$AGENT" in
+     Lynx*|lynx*)
+-	HH="${HTTP_HOST-nohh}"
++	HH="${HTTP_HOST:-nohh}"
+ 	;;
+     *)
+ 	HH=nolynx
+ 	;;
+ esac
+ 
+-SERVER="${SERVER_NAME-localhost}"
++SERVER="${SERVER_NAME:-localhost}"
+ case "$HH" in
+     nohh)
+ 	CG="lynxcgi:/usr/lib/cgi-bin/man"
+--- a/strdefs.c
++++ b/strdefs.c
+@@ -27,266 +27,333 @@
+     { V('.','V'), 1,     0, NULL }, /* the me package tests for this */
+     { 0, 0, 0, NULL } };
+ 
++
++/* Characters written according to http://mdocml.bsd.lv/man/mandoc_char.7.html */
++
+ static STRDEF standardstring[] = {
+-    { V('<','='), 2, "&lt;=", NULL  }, /* less equal */
+-    { V('>','='), 2, "&gt=;", NULL  }, /* greather equal */
+-    { V('A','m'), 1, "&amp;", NULL  }, /* infinity */
+-    { V('B','a'), 1, "|", NULL  }, /* vartical bar */
+-    { V('G','e'), 2, "&gt=;", NULL  }, /* greather equal */
+-    { V('G','t'), 1, "&gt;", NULL  }, /* greather than */
+-    { V('I','f'), 1, "&infin;", NULL  }, /* infinity */
+-    { V('L','e'), 2, "&lt;=", NULL  }, /* less equal */
+-    { V('L','q'), 1, "&ldquo;", NULL  }, /* left double quote  */
+-    { V('L','t'), 1, "&lt;", NULL  }, /* less than */
+-    { V('N','a'), 3, "NaN", NULL  }, /* not a number */
+-    { V('N','e'), 2, "!=", NULL  }, /* not equal */
+-    { V('P','i'), 2, "Pi", NULL  }, /* pi */
+-    { V('P','m'), 1, "&plusmn;", NULL  }, /* plus minus */
+-    { V('R',' '), 1, "&#174;", NULL },
+-    { V('R','q'), 1, "&rdquo;", NULL  }, /* right double quote  */
+-    { V('a','a'), 1, "'", NULL  }, /* accute accent  */
+-    { V('g','a'), 1, "`", NULL  }, /* grave accent  */
+-    { V('l','q'), 2, "``", NULL },
+-    { V('q',' '), 1, "&quot;", NULL  }, /* straight double quote  */
+-    { V('r','q'), 2, "''", NULL },
+-    { V('u','a'), 1, "^", NULL  }, /* upwards arrow  */
++    { V('<','='), 1, "≤",        NULL },	/* less-than-equal */
++    { V('>','='), 1, "≥",        NULL },	/* greater-than-equal */
++    { V('A','i'), 4, "ANSI",     NULL },	/* ANSI standard name */
++    { V('A','m'), 1, "&amp;",    NULL },	/* ampersand */
++    { V('B','a'), 1, "|",        NULL },	/* vertical bar */
++    { V('G','e'), 1, "≥",        NULL },	/* greater-than-equal */
++    { V('G','t'), 1, "&gt;",     NULL },	/* greater-than */
++    { V('I','f'), 8, "infinity", NULL },	/* infinity */
++    { V('L','e'), 1, "≤",        NULL },	/* less-than-equal */
++    { V('L','q'), 1, "“",        NULL },	/* left-double-quote */
++    { V('L','t'), 1, "&lt;",     NULL },	/* less-than */
++    { V('N','a'), 3, "NaN",      NULL },	/* NaN  */
++    { V('N','e'), 1, "≠",        NULL },	/* not equal */
++    { V('P','i'), 2, "pi",       NULL },	/* pi */
++    { V('P','m'), 1, "±",        NULL },	/* plus-minus */
++    { V('P','x'), 5, "POSIX",    NULL },	/* POSIX standard name */
++    { V('R',' '), 1, "®",        NULL },	/* restricted mark */
++    { V('R','q'), 1, "”",        NULL },	/* right-double-quote */
++    { V('T','m'), 4, "(Tm)",     NULL },	/* trade mark */
++    { V('a','a'), 1, "´",        NULL },	/* acute */
++    { V('g','a'), 1, "`",        NULL },	/* grave */
++    { V('l','p'), 1, "(",        NULL },	/* left-parenthesis */
++    { V('l','q'), 1, "“",        NULL },	/* left double-quote */
++    { V('q',' '), 1, "&quot;",   NULL },	/* double-quote */
++    { V('r','p'), 1, ")",        NULL },	/* right-parenthesis */
++    { V('r','q'), 1, "”",        NULL },	/* right double-quote */
++    { V('u','a'), 1, "↑",        NULL },	/* up-arrow */
++    { V('v','a'), 1, "↕",        NULL },	/* up-down arrow */
+     { 0, 0, NULL, NULL}
+ };
+ 
+ static STRDEF standardchar[] = {
+-    { V('*','*'), 1, "*", NULL  },	/* math star */
+-    { V('*','A'), 1, "&Alpha;", NULL },
+-    { V('*','B'), 1, "&Beta;", NULL },
+-    { V('*','C'), 1, "&Xi;", NULL },
+-    { V('*','D'), 1, "&Delta;", NULL },
+-    { V('*','E'), 1, "&Epsilon;", NULL },
+-    { V('*','F'), 1, "&Phi;", NULL },
+-    { V('*','G'), 1, "&Gamma;", NULL },
+-    { V('*','H'), 1, "&Theta;", NULL },
+-    { V('*','I'), 1, "&Iota;", NULL },
+-    { V('*','K'), 1, "&Kappa;", NULL },
+-    { V('*','L'), 1, "&Lambda;", NULL },
+-    { V('*','M'), 1, "&Mu;", NULL },
+-    { V('*','N'), 1, "&Nu;", NULL },
+-    { V('*','O'), 1, "&Omicron;", NULL },
+-    { V('*','P'), 1, "&Pi;", NULL },
+-    { V('*','Q'), 1, "&Psi;", NULL },
+-    { V('*','R'), 1, "&Rho;", NULL },
+-    { V('*','S'), 1, "&Sigma;", NULL },
+-    { V('*','T'), 1, "&Tau;", NULL },
+-    { V('*','U'), 1, "&Upsilon;", NULL },
+-    { V('*','W'), 1, "&Omega;", NULL },
+-    { V('*','X'), 1, "&Chi;", NULL },
+-    { V('*','Y'), 1, "&Eta;", NULL },
+-    { V('*','Z'), 1, "&Zeta;", NULL },
+-    { V('*','a'), 1, "&alpha;", NULL },
+-    { V('*','b'), 1, "&beta;", NULL },
+-    { V('*','c'), 1, "&xi;", NULL },
+-    { V('*','d'), 1, "&delta;", NULL },
+-    { V('*','e'), 1, "&epsilon;", NULL },
+-    { V('*','f'), 1, "&phi;", NULL },
+-    { V('*','g'), 1, "&gamma;", NULL },
+-    { V('*','h'), 1, "&theta;", NULL },
+-    { V('*','i'), 1, "&iota;", NULL },
+-    { V('*','k'), 1, "&kappa;", NULL },
+-    { V('*','l'), 1, "&lambda;", NULL },
+-    { V('*','m'), 1, "&mu;", NULL },
+-    { V('*','n'), 1, "&nu;", NULL },
+-    { V('*','o'), 1, "&omicron;", NULL },
+-    { V('*','p'), 1, "&pi;", NULL },
+-    { V('*','q'), 1, "&psi;", NULL },
+-    { V('*','r'), 1, "&rho;", NULL },
+-    { V('*','s'), 1, "&sigma;", NULL },
+-    { V('*','t'), 1, "&tau;", NULL },
+-    { V('*','u'), 1, "&upsilon;", NULL },
+-    { V('*','w'), 1, "&omega;", NULL },
+-    { V('*','x'), 1, "&chi;", NULL },
+-    { V('*','y'), 1, "&eta;", NULL },
+-    { V('*','z'), 1, "&zeta;", NULL },
+-    { V('\'','A'), 1, "&Aacute;", NULL },
+-    { V('\'','E'), 1, "&Eacute;", NULL },
+-    { V('\'','I'), 1, "&Iacute;", NULL },
+-    { V('\'','O'), 1, "&Oacute;", NULL },
+-    { V('\'','U'), 1, "&Uacute;", NULL },
+-    { V('\'','Y'), 1, "&Yacute;", NULL },
+-    { V('\'','a'), 1, "&aacute;", NULL },
+-    { V('\'','e'), 1, "&eacute;", NULL },
+-    { V('\'','i'), 1, "&iacute;", NULL },
+-    { V('\'','o'), 1, "&oacute;", NULL },
+-    { V('\'','u'), 1, "&uacute;", NULL },
+-    { V('\'','y'), 1, "&yacute;", NULL },
+-    { V('!','='), 1, "&ne;", NULL },
+-    { V('%','0'), 1, "&permil;", NULL },
+-    { V('+','-'), 1, "&plusmn;", NULL },
+-    { V(',','C'), 1, "&Ccedil;", NULL },
+-    { V(',','c'), 1, "&ccedil;", NULL },
+-    { V('-','>'), 1, "&rarr;", NULL },
+-    { V('-','D'), 1, "&ETH;", NULL },
+-    { V('.','i'), 1, "&#x131;", NULL },
+-    { V('/','L'), 1, "&#x141;", NULL },
+-    { V('/','O'), 1, "&Oslash;", NULL },
+-    { V('/','l'), 1, "&#x142;", NULL },
+-    { V('/','o'), 1, "&oslash;", NULL },
+-    { V('1','2'), 1, "&#189;", NULL  },
+-    { V('1','4'), 1, "&#188;", NULL  },
+-    { V('3','4'), 1, "&#190;", NULL  },
+-    { V(':','A'), 1, "&Auml;", NULL },
+-    { V(':','E'), 1, "&Euml;", NULL },
+-    { V(':','I'), 1, "&Iuml;", NULL },
+-    { V(':','O'), 1, "&Ouml;", NULL },
+-    { V(':','U'), 1, "&Uuml;", NULL },
+-    { V(':','a'), 1, "&auml;", NULL },
+-    { V(':','e'), 1, "&euml;", NULL },
+-    { V(':','i'), 1, "&iuml;", NULL },
+-    { V(':','o'), 1, "&ouml;", NULL },
+-    { V(':','u'), 1, "&uuml;", NULL },
+-    { V(':','y'), 1, "&yuml;", NULL },
+-    { V('<','-'), 1, "&larr;", NULL },
+-    { V('<','='), 1, "&le;", NULL },
+-    { V('<','>'), 1, "&harr;", NULL },
+-    { V('=','='), 1, "&equiv;", NULL },
+-    { V('=','~'), 1, "&cong;", NULL },
+-    { V('>','='), 1, "&ge;", NULL },
+-    { V('A','E'), 1, "&AElig;", NULL },
+-    { V('A','h'), 1, "&alepfsym;", NULL },
+-    { V('C','R'), 1, "&#x240d;", NULL },
+-    { V('C','s'), 1, "&curren;", NULL },
+-    { V('D','o'), 1, "$", NULL },
+-    { V('E','u'), 1, "&euro;", NULL },
+-    { V('F','c'), 1, "&raquo;", NULL  },
+-    { V('F','i'), 3, "ffi", NULL  },
+-    { V('F','l'), 3, "ffl", NULL  },
+-    { V('F','o'), 1, "&laquo;", NULL  },
+-    { V('O','E'), 1, "&OElig;", NULL },
+-    { V('P','o'), 1, "&pound;", NULL },
+-    { V('S','1'), 1, "&sup1;", NULL },
+-    { V('S','2'), 1, "&sup2;", NULL },
+-    { V('S','3'), 1, "&sup3;", NULL },
+-    { V('S','d'), 1, "&eth;", NULL },
+-    { V('T','P'), 1, "&THORN;", NULL },
+-    { V('T','p'), 1, "&thorn;", NULL },
+-    { V('Y','e'), 1, "&yen;", NULL },
+-    { V('^','A'), 1, "&Acirc;", NULL },
+-    { V('^','E'), 1, "&Ecirc;", NULL },
+-    { V('^','I'), 1, "&Icirc;", NULL },
+-    { V('^','O'), 1, "&Ocirc;", NULL },
+-    { V('^','U'), 1, "&Ucirc;", NULL },
+-    { V('^','a'), 1, "&acirc;", NULL },
+-    { V('^','e'), 1, "&ecirc;", NULL },
+-    { V('^','i'), 1, "&icirc;", NULL },
+-    { V('^','o'), 1, "&ocirc;", NULL },
+-    { V('^','u'), 1, "&ucirc;", NULL },
+-    { V('`','A'), 1, "&Agrave;", NULL },
+-    { V('`','E'), 1, "&Egrave;", NULL },
+-    { V('`','I'), 1, "&Igrave;", NULL },
+-    { V('`','O'), 1, "&Ograve;", NULL },
+-    { V('`','U'), 1, "&Ugrave;", NULL },
+-    { V('`','a'), 1, "&agrave;", NULL },
+-    { V('`','e'), 1, "&egrave;", NULL },
+-    { V('`','i'), 1, "&igrave;", NULL },
+-    { V('`','o'), 1, "&ograve;", NULL },
+-    { V('`','u'), 1, "&ugrave;", NULL },
+-    { V('a','a'), 1, "&acute;", NULL },
+-    { V('a','e'), 1, "&aelig;", NULL },
+-    { V('a','p'), 1, "&asymp;", NULL },
+-    { V('a','q'), 1, "'", NULL },
+-    { V('a','t'), 1, "@", NULL },
+-    { V('a','~'), 1, "~", NULL },
+-    { V('b','a'), 1, "|", NULL },
+-    { V('b','b'), 1, "|", NULL },
+-    { V('b','r'), 1, "|", NULL  },
+-    { V('b','r'), 1, "|", NULL },
+-    { V('b','u'), 1, "&bull;", NULL },
+-    { V('b','v'), 1, "|", NULL  },
+-    { V('c','*'), 1, "&otimes;", NULL },
+-    { V('c','+'), 1, "&oplus;", NULL },
+-    { V('c','i'), 1, "&#x25cb;", NULL },
+-    { V('c','o'), 1, "&#169;", NULL  },
+-    { V('c','q'), 1, "'", NULL },
+-    { V('c','t'), 1, "&#162;", NULL  },
+-    { V('d','A'), 1, "&dArr;", NULL },
+-    { V('d','a'), 1, "&darr;", NULL },
+-    { V('d','d'), 1, "=", NULL },
+-    { V('d','e'), 1, "&#176;", NULL  },
+-    { V('d','g'), 1, "-", NULL },
+-    { V('d','i'), 1, "&#247;", NULL  },
+-    { V('d','q'), 1, "&quot;", NULL  },
+-    { V('e','m'), 3, "---", NULL  }, 	/* em dash */
+-    { V('e','n'), 1, "-", NULL }, 	/* en dash */
+-    { V('e','q'), 1, "=", NULL },
+-    { V('e','s'), 1, "&#216;", NULL  },
+-    { V('e','u'), 1, "&euro;", NULL },
+-    { V('f','/'), 1, "&frasl;", NULL },
+-    { V('f','c'), 1, "&rsaquo;", NULL  },
+-    { V('f','f'), 2, "ff", NULL  },
+-    { V('f','i'), 2, "fi", NULL  },
+-    { V('f','l'), 2, "fl", NULL  },
+-    { V('f','m'), 1, "&#180;", NULL  },
+-    { V('f','o'), 1, "&lsaquo;", NULL  },
+-    { V('g','a'), 1, "`", NULL  },
+-    { V('h','A'), 1, "&hArr;", NULL },
+-    { V('h','y'), 1, "-", NULL  },
+-    { V('i','f'), 1, "&infin;", NULL },
+-    { V('i','s'), 8, "Integral", NULL }, /* integral sign */
+-    { V('l','A'), 1, "&lArr;", NULL },
+-    { V('l','B'), 1, "[", NULL },
+-    { V('l','C'), 1, "{", NULL },
+-    { V('l','a'), 1, "&lt;", NULL },
+-    { V('l','b'), 1, "[", NULL  },
+-    { V('l','c'), 2, "|&#175;", NULL  },
+-    { V('l','f'), 2, "|_", NULL  },
+-    { V('l','h'), 1, "&#x261a;", NULL },
+-    { V('l','k'), 1, "<FONT SIZE=\"+2\">{</FONT>", NULL  },
+-    { V('l','q'), 1, "\"", NULL },
+-    { V('l','z'), 1, "&loz;", NULL },
+-    { V('m','c'), 1, "&micro;", NULL },
+-    { V('m','i'), 1, "-", NULL  },
+-    { V('m','u'), 1, "&#215;", NULL  },
+-    { V('n','o'), 1, "&#172;", NULL  },
+-    { V('o','A'), 1, "&Aring;", NULL },
+-    { V('o','a'), 1, "&aring;", NULL },
+-    { V('o','e'), 1, "&oelig;", NULL },
+-    { V('o','q'), 1, "'", NULL },
+-    { V('o','r'), 1, "|", NULL },
+-    { V('p','d'), 1, "d", NULL }, 	/* partial derivative */
+-    { V('p','l'), 1, "+", NULL },
+-    { V('p','s'), 1, "&para;", NULL },
+-    { V('r','!'), 1, "&iexcl;", NULL },
+-    { V('r','?'), 1, "&iquest;", NULL },
+-    { V('r','A'), 1, "&rArr;", NULL },
+-    { V('r','B'), 1, "]", NULL },
+-    { V('r','C'), 1, "}", NULL },
+-    { V('r','a'), 1, "&gt;", NULL },
+-    { V('r','c'), 2, "&#175;|", NULL  },
+-    { V('r','f'), 2, "_|", NULL  },
+-    { V('r','g'), 1, "&#174;", NULL  },
+-    { V('r','h'), 1, "&#x261b;", NULL },
+-    { V('r','k'), 1, "<FONT SIZE=\"+2\">}</FONT>", NULL  },
+-    { V('r','n'), 1, "&#175;", NULL  },
+-    { V('r','q'), 1, "\"", NULL },
+-    { V('r','s'), 1, "\\", NULL },
+-    { V('r','u'), 1, "_", NULL },
+-    { V('s','c'), 1, "&#167;", NULL  },
+-    { V('s','h'), 1, "#", NULL },
+-    { V('s','l'), 1, "/", NULL },
+-    { V('s','q'), 1, "&#x25a1;", NULL },
+-    { V('s','s'), 1, "&szlig;", NULL },
+-    { V('t','f'), 1, "&there4;", NULL },
+-    { V('t','i'), 1, "~", NULL },
+-    { V('t','m'), 1, "&trade;", NULL },
+-    { V('t','s'), 1, "s", NULL }, 	/* should be terminal sigma */
+-    { V('u','A'), 1, "&uArr;", NULL },
+-    { V('u','a'), 1, "&uarr;", NULL },
+-    { V('u','l'), 1, "_", NULL },
+-    { V('~','A'), 1, "&Atilde;", NULL },
+-    { V('~','N'), 1, "&Ntilde;", NULL },
+-    { V('~','O'), 1, "&Otilde;", NULL },
+-    { V('~','a'), 1, "&atilde;", NULL },
+-    { V('~','n'), 1, "&ntilde;", NULL },
+-    { V('~','o'), 1, "&otilde;", NULL },
++    { V('*','*'), 1, "∗", NULL },	/* asterisk */
++    { V('*','A'), 1, "Α", NULL },	/* Alpha */
++    { V('*','B'), 1, "Β", NULL },	/* Beta */
++    { V('*','C'), 1, "Ξ", NULL },	/* Xi */
++    { V('*','D'), 1, "Δ", NULL },	/* Delta */
++    { V('*','E'), 1, "Ε", NULL },	/* Epsilon */
++    { V('*','F'), 1, "Φ", NULL },	/* Phi */
++    { V('*','G'), 1, "Γ", NULL },	/* Gamma */
++    { V('*','H'), 1, "Θ", NULL },	/* Theta */
++    { V('*','I'), 1, "Ι", NULL },	/* Iota */
++    { V('*','K'), 1, "Κ", NULL },	/* Kappa */
++    { V('*','L'), 1, "Λ", NULL },	/* Lambda */
++    { V('*','M'), 1, "Μ", NULL },	/* Mu */
++    { V('*','N'), 1, "Ν", NULL },	/* Nu */
++    { V('*','O'), 1, "Ο", NULL },	/* Omicron */
++    { V('*','P'), 1, "Π", NULL },	/* Pi */
++    { V('*','Q'), 1, "Ψ", NULL },	/* Psi */
++    { V('*','R'), 1, "Ρ", NULL },	/* Rho */
++    { V('*','S'), 1, "Σ", NULL },	/* Sigma */
++    { V('*','T'), 1, "Τ", NULL },	/* Tau */
++    { V('*','U'), 1, "Υ", NULL },	/* Upsilon */
++    { V('*','W'), 1, "Ω", NULL },	/* Omega */
++    { V('*','X'), 1, "Χ", NULL },	/* Chi */
++    { V('*','Y'), 1, "Η", NULL },	/* Eta */
++    { V('*','Z'), 1, "Ζ", NULL },	/* Zeta */
++    { V('*','a'), 1, "α", NULL },	/* alpha */
++    { V('*','b'), 1, "β", NULL },	/* beta */
++    { V('*','c'), 1, "ξ", NULL },	/* xi */
++    { V('*','d'), 1, "δ", NULL },	/* delta */
++    { V('*','e'), 1, "ε", NULL },	/* epsilon */
++    { V('*','f'), 1, "φ", NULL },	/* phi */
++    { V('*','g'), 1, "γ", NULL },	/* gamma */
++    { V('*','h'), 1, "θ", NULL },	/* theta */
++    { V('*','i'), 1, "ι", NULL },	/* iota */
++    { V('*','k'), 1, "κ", NULL },	/* kappa */
++    { V('*','l'), 1, "λ", NULL },	/* lambda */
++    { V('*','m'), 1, "μ", NULL },	/* mu */
++    { V('*','n'), 1, "ν", NULL },	/* nu */
++    { V('*','o'), 1, "ο", NULL },	/* omicron */
++    { V('*','p'), 1, "π", NULL },	/* pi */
++    { V('*','q'), 1, "ψ", NULL },	/* psi */
++    { V('*','r'), 1, "ρ", NULL },	/* rho */
++    { V('*','s'), 1, "σ", NULL },	/* sigma */
++    { V('*','t'), 1, "τ", NULL },	/* tau */
++    { V('*','u'), 1, "υ", NULL },	/* upsilon */
++    { V('*','w'), 1, "ω", NULL },	/* omega */
++    { V('*','x'), 1, "χ", NULL },	/* chi */
++    { V('*','y'), 1, "η", NULL },	/* eta */
++    { V('*','z'), 1, "ζ", NULL },	/* zeta */
++    { V('\'','A'), 1, "Á", NULL },	/* acute A */
++    { V('\'','E'), 1, "É", NULL },	/* acute E */
++    { V('\'','I'), 1, "Í", NULL },	/* acute I */
++    { V('\'','O'), 1, "Ó", NULL },	/* acute O */
++    { V('\'','U'), 1, "Ú", NULL },	/* acute U */
++    { V('\'','Y'), 1, "Ý", NULL },	/* Yacute (*) */
++    { V('\'','a'), 1, "á", NULL },	/* acute a */
++    { V('\'','e'), 1, "é", NULL },	/* acute e */
++    { V('\'','i'), 1, "í", NULL },	/* acute i */
++    { V('\'','o'), 1, "ó", NULL },	/* acute o */
++    { V('\'','u'), 1, "ú", NULL },	/* acute u */
++    { V('\'','y'), 1, "ý", NULL },	/* yacute (*) */
++    { V('!','='), 1, "≠", NULL },	/* not equal */
++    { V('%','0'), 1, "‰", NULL },	/* per-thousand */
++    { V('+','-'), 1, "±", NULL },	/* plus-minus */
++    { V('+','e'), 1, "ϵ", NULL },	/* epsilon variant */
++    { V('+','f'), 1, "φ", NULL },	/* phi variant */
++    { V('+','h'), 1, "ϑ", NULL },	/* theta variant */
++    { V('+','p'), 1, "ϖ", NULL },	/* pi variant */
++    { V(',','C'), 1, "Ç", NULL },	/* cedilla C */
++    { V(',','c'), 1, "ç", NULL },	/* cedilla c */
++    { V('-','+'), 1, "∓", NULL },	/* minus-plus */
++    { V('-','>'), 1, "→", NULL },	/* right arrow */
++    { V('-','D'), 1, "Ð", NULL },	/* Eth */
++    { V('-','h'), 1, "ℏ", NULL },	/* Planck constant over 2π */
++    { V('.','i'), 1, "ı", NULL },	/* dotless i */
++    { V('.','j'), 1, "ȷ", NULL },	/* dotless j */
++    { V('/','L'), 1, "Ł", NULL },	/* stroke L */
++    { V('/','O'), 1, "Ø", NULL },	/* stroke O */
++    { V('/','_'), 1, "∠", NULL },	/* angle */
++    { V('/','l'), 1, "ł", NULL },	/* stroke l */
++    { V('/','o'), 1, "ø", NULL },	/* stroke o */
++    { V('1','2'), 1, "½", NULL },	/* 1/2 (*) */
++    { V('1','4'), 1, "¼", NULL },	/* 1/4 (*) */
++    { V('3','4'), 1, "¾", NULL },	/* 3/4 (*) */
++    { V('3','d'), 1, "∴", NULL },	/* therefore */
++    { V(':','A'), 1, "Ä", NULL },	/* dieresis A */
++    { V(':','E'), 1, "Ë", NULL },	/* dieresis E */
++    { V(':','I'), 1, "Ï", NULL },	/* dieresis I */
++    { V(':','O'), 1, "Ö", NULL },	/* dieresis O */
++    { V(':','U'), 1, "Ü", NULL },	/* dieresis U */
++    { V(':','a'), 1, "ä", NULL },	/* dieresis a */
++    { V(':','e'), 1, "ë", NULL },	/* dieresis e */
++    { V(':','i'), 1, "ï", NULL },	/* dieresis i */
++    { V(':','o'), 1, "ö", NULL },	/* dieresis o */
++    { V(':','u'), 1, "ü", NULL },	/* dieresis u */
++    { V(':','y'), 1, "ÿ", NULL },	/* dieresis y */
++    { V('<','-'), 1, "←", NULL },	/* left arrow */
++    { V('<','<'), 1, "≪", NULL },	/* much less */
++    { V('<','='), 1, "≤", NULL },	/* less-than-equal */
++    { V('<','>'), 1, "↔", NULL },	/* left-right arrow */
++    { V('=','='), 1, "≡", NULL },	/* equivalent */
++    { V('=','~'), 1, "≅", NULL },	/* approximately equal */
++    { V('>','='), 1, "≥", NULL },	/* greater-than-equal */
++    { V('>','>'), 1, "≫", NULL },	/* much greater */
++    { V('A','E'), 1, "Æ", NULL },	/* AE ligature */
++    { V('A','N'), 1, "∧", NULL },	/* logical and */
++    { V('A','h'), 1, "ℵ", NULL },	/* aleph */
++    { V('B','q'), 1, "„", NULL },	/* right low double-quote */
++    { V('C','R'), 1, "↵", NULL },	/* carriage return */
++    { V('C','s'), 1, "¤", NULL },	/* Scandinavian */
++    { V('D','o'), 1, "$", NULL },	/* dollar */
++    { V('E','u'), 1, "€", NULL },	/* Euro symbol */
++    { V('F','c'), 1, "»", NULL },	/* right guillemet */
++    { V('F','i'), 1, "ﬃ", NULL },	/* ffi ligature */
++    { V('F','l'), 1, "ﬄ", NULL },	/* ffl ligature */
++    { V('F','n'), 1, "ƒ", NULL },	/* florin */
++    { V('F','o'), 1, "«", NULL },	/* left guillemet */
++    { V('I','J'), 1, "Ĳ", NULL },	/* IJ ligature */
++    { V('I','m'), 1, "ℑ", NULL },	/* imaginary */
++    { V('O','E'), 1, "Œ", NULL },	/* OE ligature */
++    { V('O','K'), 1, "✓", NULL },	/* check mark */
++    { V('O','R'), 1, "∨", NULL },	/* logical or */
++    { V('P','o'), 1, "£", NULL },	/* pound */
++    { V('R','e'), 1, "ℜ", NULL },	/* real */
++    { V('S','1'), 1, "¹", NULL },	/* sup1 (*) */
++    { V('S','2'), 1, "²", NULL },	/* sup2 (*) */
++    { V('S','3'), 1, "³", NULL },	/* sup3 (*) */
++    { V('S','d'), 1, "ð", NULL },	/* eth */
++    { V('T','P'), 1, "Þ", NULL },	/* Thorn */
++    { V('T','p'), 1, "þ", NULL },	/* thorn */
++    { V('Y','e'), 1, "¥", NULL },	/* yen */
++    { V('^','A'), 1, "Â", NULL },	/* circumflex A */
++    { V('^','E'), 1, "Ê", NULL },	/* circumflex E */
++    { V('^','I'), 1, "Î", NULL },	/* circumflex I */
++    { V('^','O'), 1, "Ô", NULL },	/* circumflex O */
++    { V('^','U'), 1, "Û", NULL },	/* circumflex U */
++    { V('^','a'), 1, "â", NULL },	/* circumflex a */
++    { V('^','e'), 1, "ê", NULL },	/* circumflex e */
++    { V('^','i'), 1, "î", NULL },	/* circumflex i */
++    { V('^','o'), 1, "ô", NULL },	/* circumflex o */
++    { V('^','u'), 1, "û", NULL },	/* circumflex u */
++    { V('`','A'), 1, "À", NULL },	/* grave A */
++    { V('`','E'), 1, "È", NULL },	/* grave E */
++    { V('`','I'), 1, "Ì", NULL },	/* grave I */
++    { V('`','O'), 1, "Ò", NULL },	/* grave O */
++    { V('`','U'), 1, "Ù", NULL },	/* grave U */
++    { V('`','a'), 1, "à", NULL },	/* grave a */
++    { V('`','e'), 1, "è", NULL },	/* grave e */
++    { V('`','i'), 1, "ì", NULL },	/* grave i */
++    { V('`','o'), 1, "ò", NULL },	/* grave o */
++    { V('`','u'), 1, "ù", NULL },	/* grave u */
++    { V('a','"'), 1, "˝", NULL },	/* Hungarian umlaut */
++    { V('a','-'), 1, "¯", NULL },	/* macron */
++    { V('a','.'), 1, "˙", NULL },	/* dotted */
++    { V('a','^'), 1, "^", NULL },	/* circumflex */
++    { V('a','a'), 1, "´", NULL },	/* acute */
++    { V('a','b'), 1, "˘", NULL },	/* breve */
++    { V('a','c'), 1, "¸", NULL },	/* cedilla */
++    { V('a','d'), 1, "¨", NULL },	/* dieresis */
++    { V('a','e'), 1, "æ", NULL },	/* ae ligature */
++    { V('a','h'), 1, "ˇ", NULL },	/* caron */
++    { V('a','o'), 1, "˚", NULL },	/* ring */
++    { V('a','p'), 1, "∼", NULL },	/* tilde operator */
++    { V('a','q'), 1, "'", NULL },	/* apostrophe quote (text) */
++    { V('a','t'), 1, "@", NULL },	/* at */
++    { V('a','~'), 1, "~", NULL },	/* tilde */
++    { V('b','a'), 1, "|", NULL },	/* bar */
++    { V('b','b'), 1, "¦", NULL },	/* broken bar */
++    { V('b','r'), 1, "│", NULL },	/* box rule */
++    { V('b','q'), 1, "‚", NULL },	/* right low single-quote */
++    { V('b','u'), 1, "•", NULL },	/* bullet */
++    { V('b','v'), 1, "⎪", NULL },	/* brace extension */
++    { V('c','*'), 1, "⊗", NULL },	/* circle-multiply */
++    { V('c','+'), 1, "⊕", NULL },	/* circle-plus */
++    { V('c','a'), 1, "∩", NULL },	/* intersection */
++    { V('c','i'), 1, "○", NULL },	/* circle */
++    { V('c','o'), 1, "©", NULL },	/* copyright */
++    { V('c','q'), 1, "’", NULL },	/* right single-quote */
++    { V('c','t'), 1, "¢", NULL },	/* cent */
++    { V('c','u'), 1, "∪", NULL },	/* union */
++    { V('d','A'), 1, "⇓", NULL },	/* down double-arrow */
++    { V('d','a'), 1, "↓", NULL },	/* down arrow */
++    { V('d','d'), 1, "‡", NULL },	/* double dagger */
++    { V('d','e'), 1, "°", NULL },	/* degree */
++    { V('d','g'), 1, "†", NULL },	/* dagger */
++    { V('d','i'), 1, "÷", NULL },	/* divide */
++    { V('d','q'), 1, "\"", NULL },	/* double quote (text) */
++    { V('e','m'), 1, "—", NULL },	/* em-dash */
++    { V('e','n'), 1, "–", NULL },	/* en-dash */
++    { V('e','q'), 1, "=", NULL },	/* equal */
++    { V('e','s'), 1, "∅", NULL },	/* empty set */
++    { V('e','u'), 1, "€", NULL },	/* Euro symbol */
++    { V('f','/'), 1, "⁄", NULL },	/* fraction */
++    { V('f','a'), 1, "∀", NULL },	/* universal quantifier */
++    { V('f','c'), 1, "›", NULL },	/* right single guillemet */
++    { V('f','f'), 1, "ﬀ", NULL },	/* ff ligature */
++    { V('f','i'), 1, "ﬁ", NULL },	/* fi ligature */
++    { V('f','l'), 1, "ﬂ", NULL },	/* fl ligature */
++    { V('f','m'), 1, "′", NULL },	/* minute */
++    { V('f','o'), 1, "‹", NULL },	/* left single guillemet */
++    { V('g','a'), 1, "`", NULL },	/* grave */
++    { V('g','r'), 1, "∇", NULL },	/* gradient */
++    { V('h','A'), 1, "⇔", NULL },	/* left-right double-arrow */
++    { V('h','a'), 1, "^", NULL },	/* hat (text) */
++    { V('h','o'), 1, "˛", NULL },	/* ogonek */
++    { V('h','y'), 1, "‐", NULL },	/* hyphen */
++    { V('i','b'), 1, "⊆", NULL },	/* reflexive subset */
++    { V('i','f'), 1, "∞", NULL },	/* infinity */
++    { V('i','j'), 1, "ĳ", NULL },	/* ij ligature */
++    { V('i','p'), 1, "⊇", NULL },	/* reflexive superset */
++    { V('i','s'), 1, "∫", NULL },	/* integral */
++    { V('l','A'), 1, "⇐", NULL },	/* left double-arrow */
++    { V('l','B'), 1, "[", NULL },	/* left bracket */
++    { V('l','C'), 1, "{", NULL },	/* left brace */
++    { V('l','a'), 1, "⟨", NULL },	/* left angle */
++    { V('l','b'), 1, "⎩", NULL },	/* bottom-left hooked brace */
++    { V('l','c'), 1, "⌈", NULL },	/* left-ceiling */
++    { V('l','f'), 1, "⌊", NULL },	/* left-floor */
++    { V('l','h'), 1, "☜", NULL },	/* left hand */
++    { V('l','k'), 1, "⎨", NULL },	/* mid-left hooked brace */
++    { V('l','q'), 1, "“", NULL },	/* left double-quote */
++    { V('l','t'), 1, "⎧", NULL },	/* top-left hooked brace */
++    { V('l','z'), 1, "◊", NULL },	/* lozenge */
++    { V('m','c'), 1, "µ", NULL },	/* micro */
++    { V('m','i'), 1, "−", NULL },	/* minus */
++    { V('m','o'), 1, "∈", NULL },	/* element */
++    { V('m','u'), 1, "×", NULL },	/* multiply */
++    { V('n','b'), 1, "⊄", NULL },	/* not subset */
++    { V('n','c'), 1, "⊅", NULL },	/* not superset */
++    { V('n','e'), 1, "≢", NULL },	/* not equivalent */
++    { V('n','m'), 1, "∉", NULL },	/* not element */
++    { V('n','o'), 1, "¬", NULL },	/* logical not */
++    { V('o','A'), 1, "Å", NULL },	/* ring A */
++    { V('o','a'), 1, "å", NULL },	/* ring a */
++    { V('o','e'), 1, "œ", NULL },	/* oe ligature */
++    { V('o','q'), 1, "‘", NULL },	/* left single-quote */
++    { V('o','r'), 1, "|", NULL },	/* bitwise or */
++    { V('p','c'), 1, "·", NULL },	/* center-dot */
++    { V('p','d'), 1, "∂", NULL },	/* partial differential */
++    { V('p','l'), 1, "+", NULL },	/* plus */
++    { V('p','p'), 1, "⊥", NULL },	/* perpendicular */
++    { V('p','s'), 1, "¶", NULL },	/* paragraph */
++    { V('p','t'), 1, "∝", NULL },	/* proportionate */
++    { V('r','!'), 1, "¡", NULL },	/* upside-down exclamation */
++    { V('r','?'), 1, "¿", NULL },	/* upside-down question */
++    { V('r','A'), 1, "⇒", NULL },	/* right double-arrow */
++    { V('r','B'), 1, "]", NULL },	/* right bracket */
++    { V('r','C'), 1, "}", NULL },	/* right brace */
++    { V('r','a'), 1, "⟩", NULL },	/* right angle */
++    { V('r','b'), 1, "⎭", NULL },	/* bottom-right hooked brace */
++    { V('r','c'), 1, "⌉", NULL },	/* right-ceiling */
++    { V('r','f'), 1, "⌋", NULL },	/* right-floor */
++    { V('r','g'), 1, "®", NULL },	/* registered */
++    { V('r','h'), 1, "☞", NULL },	/* right hand */
++    { V('r','k'), 1, "⎬", NULL },	/* mid-right hooked brace */
++    { V('r','l'), 1, "‾", NULL },	/* overline */
++    { V('r','n'), 1, "‾", NULL },	/* overline */
++    { V('r','q'), 1, "”", NULL },	/* right double-quote */
++    { V('r','s'), 1, "\\", NULL },	/* backward slash */
++    { V('r','t'), 1, "⎫", NULL },	/* top-left hooked brace */
++    { V('r','u'), 1, "_", NULL },	/* (*) */
++    { V('s','b'), 1, "⊂", NULL },	/* proper subset */
++    { V('s','c'), 1, "§", NULL },	/* section */
++    { V('s','d'), 1, "″", NULL },	/* second */
++    { V('s','h'), 1, "#", NULL },	/* hash (pound) */
++    { V('s','l'), 1, "/", NULL },	/* forward slash */
++    { V('s','p'), 1, "⊃", NULL },	/* proper superset */
++    { V('s','q'), 1, "□", NULL },	/* white square */
++    { V('s','r'), 1, "√", NULL },	/* square root */
++    { V('s','s'), 1, "ß", NULL },	/* German eszett */
++    { V('s','t'), 1, "∋", NULL },	/* such that */
++    { V('t','e'), 1, "∃", NULL },	/* existential quantifier */
++    { V('t','f'), 1, "∴", NULL },	/* therefore */
++    { V('t','i'), 1, "~", NULL },	/* tilde (text) */
++    { V('t','m'), 1, "™", NULL },	/* trademarked */
++    { V('t','s'), 1, "ς", NULL },	/* sigma terminal */
++    { V('u','A'), 1, "⇑", NULL },	/* up double-arrow */
++    { V('u','a'), 1, "↑", NULL },	/* up arrow */
++    { V('u','l'), 1, "_", NULL },	/* underscore */
++    { V('v','A'), 1, "⇕", NULL },	/* up-down double-arrow */
++    { V('v','a'), 1, "↕", NULL },	/* up-down arrow */
++    { V('|','='), 1, "≃", NULL },	/* asymptotically equal */
++    { V('~','='), 1, "≈", NULL },	/* almost equal */
++    { V('~','A'), 1, "Ã", NULL },	/* tilde A */
++    { V('~','N'), 1, "Ñ", NULL },	/* tilde N */
++    { V('~','O'), 1, "Õ", NULL },	/* tilde O */
++    { V('~','a'), 1, "ã", NULL },	/* tilde a */
++    { V('~','n'), 1, "ñ", NULL },	/* tilde n */
++    { V('~','o'), 1, "õ", NULL },	/* tilde o */
++    { V('~','~'), 1, "≈", NULL },	/* almost equal */
+     { 0, 0, NULL, NULL  }
+-
+-    
+ };
+ 
+ void stdinit(void) {
+--- /dev/null
++++ b/version.h
+@@ -0,0 +1 @@
++#define version "1.6g-7-slitaz"

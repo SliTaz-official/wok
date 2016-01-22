@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="man2html"
+VERSION="1.6g-7-slitaz"
+CATEGORY="utilities"
+SHORT_DESC="Man pages to HTML convertor written in C"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="BSD"
+WEB_SITE="https://github.com/man-pages-zh/man2html"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/man-pages-zh/man2html/archive/$VERSION.tar.gz"
+
+DEPENDS="glib"
+BUILD_DEPENDS="glib-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	patch -p1 -i $stuff/man2html-slitaz.diff
+	make && make install
+
+	# translations
+	make pot
+	cp $stuff/ru.po $src/po
+	make LINGUAS=ru msgfmt
+	mkdir -p $install/usr/share/locale
+	cp -a $src/po/mo/* $install/usr/share/locale
+
+	# compress man page
+	gzip $install/usr/share/man/man1/man2html.1
+
+	# install scripts
+	cp -a $src/hman.sh $install/usr/bin/hman
+	mkdir -p $install/var/www
+	cp -a $src/man.sh $install/var/www/man.cgi
+	chown www:www $install/var/www/man.cgi
+	chmod a+x $install/var/www/man.cgi
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}

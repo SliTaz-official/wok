@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="html2text"
+VERSION="1.3.2a"
+CATEGORY="utilities"
+SHORT_DESC="Command line utility that converts HTML into plain text"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL"
+WEB_SITE="http://www.mbayer.de/html2text/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://ftp.ibiblio.org/pub/linux/apps/www/converters/$TARBALL"
+
+DEPENDS=""
+BUILD_DEPENDS=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# http://www.mbayer.de/html2text/downloads/patch-utf8-html2text-1.3.2a.diff
+	patch -p1 -i $stuff/patch-utf8-html2text-1.3.2a.diff
+
+	./configure $CONFIGURE_ARGS
+	sed -i 's|/usr/local/bin|/usr/bin|; s|/usr/local/man|/usr/share/man|;
+		s|$(BINDIR)|$(DESTDIR)&|; s|$(MANDIR)|$(DESTDIR)&|; s|$(DOCDIR)|$(DESTDIR)&|' \
+		$src/Makefile
+	make
+	mkdir -p $install/usr/bin $install/usr/share/man/man1 \
+		$install/usr/share/man/man5
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	rm -r $fs/usr/share/doc
+}
