@@ -32,12 +32,12 @@ set weburl http://mirror.switch.ch/ftp/mirror/slitaz/pxe/
 chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
 set weburl http://download.tuxfamily.org/slitaz/pxe/
 chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
-set weburl http://mirror.slitaz.org/pxe/
-set 210:string ${weburl} && chain ${weburl}pxelinux.0 && boot ||
-set weburl http://mirror.switch.ch/ftp/mirror/slitaz/pxe/
-set 210:string ${weburl} && chain ${weburl}pxelinux.0 && boot ||
-set weburl http://download.tuxfamily.org/slitaz/pxe/
-set 210:string ${weburl} && chain ${weburl}pxelinux.0 && boot ||
+set weburl http://mirror1.slitaz.org/pxe/
+chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
+set weburl http://mirror2.slitaz.org/pxe/
+chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
+set weburl http://mirror3.slitaz.org/pxe/
+chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
 goto menu
 
 :lan
