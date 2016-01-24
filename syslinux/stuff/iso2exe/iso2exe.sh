@@ -142,6 +142,7 @@ fileofs()
 	[ $(get 1024 "$ISO") -eq 35615 ] && i=1024 ||
 	i=$((512*(1+$(get 417 "$ISO" 1))))
 	stub=$(($(get 20 "$ISO") - 0xC0))
+	c=$(custom_config_sector "$ISO")
 	SIZE=0; OFFSET=0
 	case "$1" in
 	win32.exe)	[ $i -eq 1024 ] || SIZE=$(($i - 512));;
@@ -154,29 +155,42 @@ fileofs()
 	tazboot.com)	OFFSET=$(($(get 64 "$ISO") - 0xC0))
 			SIZE=$(($stub - $(get 24 "$ISO") - $OFFSET));;
 	dosstub)	OFFSET=$stub; SIZE=$((0x8000 - $OFFSET));;
-	md5)		OFFSET=$((0x7FF0)); SIZE=16;;
+	boot.md5)	OFFSET=$((0x7FF0)); SIZE=16;;
+	fs.iso)		OFFSET=$((0x8000))
+			SIZE=$((2048*$c - $OFFSET));;
+	custom.magic)	ddq bs=2k skip=$c if="$ISO" | ddq bs=1 count=6 | \
+				grep -q '#!boot' && OFFSET=$((2048*$c)) &&
+			SIZE=39 ;;
+	custom.append)  OFFSET=$((2048*$c+47)) &&
+			SIZE=$(ddq bs=2k skip=$c if="$ISO" count=1 | \
+				sed '/^append=/!d;s/^[^=]*=.//' | wc -c);;
+	custom.initrd)  i=$(ddq bs=2k skip=$c if="$ISO" count=1 | \
+				sed '/^append=\|^initrd:/!d' | wc -c)
+			OFFSET=$((2048*$c+$i+40))
+			SIZE=$(($(ddq bs=2k skip=$c if="$ISO" count=1 | \
+				sed '/^initrd:/!d;s/.*://') + 0));;
 	esac
 }
 
 list()
 {
 	HEAP=0
-	TOP=32768
-	for f in win32.exe syslinux.mbr flavor.info floppy.boot \
-		 tazboot.com rootfs.gz dosstub md5 ; do
+	for f in win32.exe syslinux.mbr flavor.info floppy.boot tazboot.com \
+		 rootfs.gz dosstub boot.md5 fs.iso custom.magic custom.append \
+		 custom.initrd; do
 		fileofs $f
-		[ $SIZE -eq 0 ] && continue
-		[ "${OFFSET:6}" ] && continue
+		[ $SIZE -le 0 ] && continue
+		[ "${OFFSET:8}" ] && continue
 		[ $OFFSET -lt 0 ] && continue
 		[ $(get $OFFSET "$ISO") -eq 0 ] && continue
+		[ $OFFSET -gt $HEAP ] && [ $(($OFFSET - $HEAP)) -gt 16 ] &&
+		printf "%d free bytes in %04X..%04X\n" $(($OFFSET - $HEAP)) $HEAP $OFFSET
+		[ $OFFSET -ge $HEAP ] && HEAP=$(($OFFSET+$SIZE))
 		printf "$f at %04X ($SIZE bytes).\n" $OFFSET
-		if [ $OFFSET -le $i ]; then
-			[ $OFFSET -ge $HEAP ] && HEAP=$(($OFFSET+$SIZE))
-		else
-			[ $OFFSET -lt $TOP ] && TOP=$OFFSET
-		fi
 	done
-	printf "%d free bytes in %04X..%04X\n" $(($TOP - $HEAP)) $HEAP $TOP
+	OFFSET=$(stat -c %s "$ISO")
+	[ $OFFSET -gt $HEAP ] &&
+	printf "%d free bytes in %04X..%04X\n" $(($OFFSET - $HEAP)) $HEAP $OFFSET
 }
 
 extract()
@@ -199,25 +213,6 @@ clear_custom_config()
     cnt=$((512 - ($start % 512)))
     [ $cnt -ne 512 ] &&
     ddq if=/dev/zero of=$1 bs=2k seek=$start count=$cnt
-}
-
-extract_custom_config()
-{
-	ISO="$1"
-	header=
-	ddq bs=2k skip=$(custom_config_sector "$ISO") if="$ISO" | \
-	while read line; do
-		case "$line" in
-		\#!boot*) header=1 ;;
-		append=*) [ "$header" ] &&
-			  echo "${line#append=}" > "$ISO.append" &&
-			  ls -l "$ISO.append" ;;
-		initrd:*) [ "$header" ] &&
-			  ddq bs=1 count=${line#initrd:} > "$ISO.initrd" &&
-			  ls -l "$ISO.initrd" ;;
-		esac
-		[ "$header" ] || break
-	done
 }
 case "$1" in
 --build)
@@ -365,9 +360,8 @@ main()
 			exit ;;
 		-a*)	append="$2" ; shift 2 ;;
 		-i*)	initrd="$2" ; shift 2 ;;
-		-e*)	extract_custom_config "$2"
-			exit ;;
-		-r*)	ISO="$2" ; shift 2
+		-r*|-l*)
+			ISO="$2" ; shift 2
 			[ -z "$1" ] && list || extract $@
 			exit ;;
 		*)	cat > /dev/null
@@ -376,8 +370,7 @@ main()
 	done
 	
 	[ ! -s "$1" ] && cat 1>&2 <<EOT && exit 1
-usage: $0 [--append custom_cmdline ] [ --initrd custom_initramfs ] image.iso [--force|--undo|"DOS help message"]
-or: $0 --extract-custom-config image.iso
+usage: $0 [--list|--read] [--append custom_cmdline ] [ --initrd custom_initrd ] image.iso [--force|--undo|"DOS help message"|filename...]
 EOT
 	case "${2/--/-}" in
 	-u*|-r*|-w*|-f*)
