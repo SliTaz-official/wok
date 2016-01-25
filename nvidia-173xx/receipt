@@ -12,7 +12,7 @@ TARBALL="${SOURCE}.run"
 WGET_URL="http://download.nvidia.com/XFree86/Linux-x86/$VERSION/$TARBALL"
 RUN_OPTS="--extract-only"
 TAGS="driver graphic video"
-PROVIDE="nvidia"
+PROVIDE="nvidia mesa"
 
 DEPENDS="linux xorg-server gtk+ cairo linux-agp xorg-libXv"
 BUILD_DEPENDS="linux-module-headers coreutils-file-summarize xz"
@@ -61,6 +61,10 @@ genpkg_rules()
 	ln -s libcuda.so.$VERSION $fs/usr/lib/libcuda.so.1
 	ln -s libGL.so.$VERSION $fs/usr/lib/libGL.so
 	ln -s libGL.so.$VERSION $fs/usr/lib/libGL.so.1
+	# exclude from files.list (for tazpkg's "find-depends")
+        cd $fs/usr/lib
+        for i in $(ls libGL.so*) ; do mv -f $i ${i//./-.-} ; done
+
 	ln -s libGLcore.so.$VERSION $fs/usr/lib/libGLcore.so.1
 	ln -s libnvidia-cfg.so.$VERSION $fs/usr/lib/libnvidia-cfg.so
 	ln -s libnvidia-cfg.so.$VERSION $fs/usr/lib/libnvidia-cfg.so.1
@@ -85,6 +89,10 @@ pre_install()
 
 post_install()
 {
+	# Restore excluded from files.list (for tazpkg's "find-depends")
+        cd $1/usr/lib
+	for i in $(ls libGL.so*) ; do mv -f $i ${i//-.-/.} ; done
+
 	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
 
 	# correct .desktop file file

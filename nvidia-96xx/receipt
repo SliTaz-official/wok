@@ -12,6 +12,7 @@ TARBALL="${SOURCE}.run"
 WGET_URL="http://download.nvidia.com/XFree86/Linux-x86/$VERSION/$TARBALL"
 RUN_OPTS="--extract-only"
 TAGS="drivers graphic video"
+PROVIDE="mesa"
 
 DEPENDS="linux xorg-server gtk+ cairo linux-agp linux-drm"
 BUILD_DEPENDS="linux-module-headers coreutils-file-summarize xz"
@@ -57,6 +58,10 @@ genpkg_rules()
 		ln -s $(basename $i) $(dirname $i)/$(basename ${i/so.${VERSION}/so/})
 		ln -s $(basename $i) $(dirname $i)/$(basename ${i/so.${VERSION}/so.1/})
 	done
+	
+	# exclude from files.list (for tazpkg's "find-depends")
+	cd $fs/usr/lib
+	for i in $(ls libGL.so*) ; do mv -f $i ${i//./-.-} ; done
 }
 
 pre_install()
@@ -69,6 +74,10 @@ pre_install()
 
 post_install()
 {
+	# Restore excluded from files.list (for tazpkg's "find-depends")
+	cd $1/usr/lib
+	for i in $(ls libGL.so*) ; do mv -f $i ${i//-.-/.} ; done
+
 	newline
 	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
 
