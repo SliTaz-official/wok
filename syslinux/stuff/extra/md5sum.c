@@ -1103,6 +1103,9 @@ bail:
 	fprintf(stderr, "Error %d\n", errno);
 	break;
     }
+    fprintf(stderr, "%luM RAM found on this %s bits machine.\n",
+		    memory_size() >> 10,
+    		    cpu_has_feature(X86_FEATURE_LM) ? "64": "32");
     fprintf(stderr, "%s: Boot aborted!\n", progname);
     return 1;
 }
