@@ -1,0 +1,103 @@
+#!/bin/sh
+
+services="/"
+
+mkexe()
+{
+exe=$0
+while true; do
+	cd $(dirname $exe)
+	exe=$(basename $exe)
+	[ -L $exe ] || break
+	exe=$(readlink $exe)
+done
+echo $(pwd)/$exe
+}
+exe=$(mkexe)
+
+services_arg()
+{
+for i in $services ; do
+	echo -n "-s '$i:root:root:/tmp:LINES=25 /bin/sh -c \"$exe service $i "
+	echo -n "\${peer} \${url} \${columns} \${lines}\"' "
+done
+}
+
+launch_ssh()
+{
+	server=""
+	sequence=""
+	for i in $(echo "$2" | sed 's/[?&,]/ /g'); do
+		case "$i" in
+		host=*)		server=${i#host=};;
+		knock=*)	sequence=${i#knock=};;
+		esac
+	done
+	if [ -z "$server" ]; then
+		# Get SSH server
+		echo "Expected format [!][telnet/][user@][host][:port], default local login."
+		echo -n "TELNET/SSH server: "
+		read -t 300 server
+	fi
+	[ -n "$server" ] || exec /bin/login
+
+	# Allow non default SSH port with format server:port
+	port=""
+	sshport=""
+	case "$server" in
+	*:*)	port="${server#*:}"
+		sshport="-p $port"
+		server=${server%:*};;
+	esac
+
+	# heading ! in server name means open remote ssh port with a knock sequence
+	if which knock > /dev/null; then
+		case "$server" in
+		!*)	server=${server#*!}
+			if [ -z "$sequence" ]; then
+				echo -n "Knock sequence (port[:proto]...): "
+				read -t 30 sequence && 
+				knock ${server#*@} ${sequence//-/ }
+			else
+				knock ${server#*@} ${sequence//-/ }
+			fi
+		esac
+	fi
+
+	# Get SSH user if missing
+	case "$server" in
+	*/*|*@*)	;;
+	*)	echo -n "$server login: "
+		read -t 30 user || exit 1
+		[ -n "$user" ] || exit 1
+		server="$user@$server";;
+	esac
+
+	# Launch OpenSSH or Dropbear
+	sshargs="-oPreferredAuthentications=keyboard-interactive,password -oNoHostAuthenticationForLocalhost=yes -oLogLevel=FATAL -F/dev/null";
+	[ -L /usr/bin/ssh ] && sshargs=""
+	case "$server" in
+	*/*)	exec ${server%/*} ${server#*/} $port ;;
+	*)	exec ssh $sshport $sshargs $server ;;
+	esac
+}
+
+pidfile=/var/run/shellinaboxd.pid
+case "$1" in
+service)
+	case "$2" in
+	/)	shift 2; launch_ssh "$@" ;;
+	esac
+	;;
+start)
+	dir=$(dirname $exe)
+	eval shellinaboxd --background=$pidfile --user=0 \
+		--css=/usr/share/shellinabox/object.css \
+		--user-css 10px:-/usr/share/shellinabox/10px.css,12px:+/usr/share/shellinabox/12px.css,14px:-/usr/share/shellinabox/14px.css,16px:-/usr/share/shellinabox/16px.css \
+		--user-css Normal:+/usr/share/shellinabox/black-on-white.css,Reverse:-/usr/share/shellinabox/white-on-black.css \
+		-s /login:LOGIN $(services_arg)
+	;;
+stop)
+	[ -s $pidfile ] && kill $(cat $pidfile)
+	;;
+esac

@@ -13,13 +13,14 @@ TAGS="web application"
 
 DEPENDS="zlib"
 BUILD_DEPENDS="zlib-dev"
+SUGGESTED="ssh knock"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	./configure --prefix=/usr \
-	--mandir=/usr/share/man \
-	$CONFIGURE_ARGS &&
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -27,6 +28,26 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/bin $fs/usr/share/shellinabox $fs/etc/init.d
 	cp -a $install/usr/bin $fs/usr
+	cp $install/usr/share/doc/shellinabox/*black*.css $fs/usr/share/shellinabox
+	cp $stuff/*.css $fs/usr/share/shellinabox
+	cp $stuff/shellinabox $fs/etc/init.d/
+}
+
+# Pre and post install commands for Tazpkg.
+# We stop the server by default in case of upgarde.
+pre_install()
+{
+	[ -z "$1" ] && [ -f /etc/init.d/$PACKAGE ] && /etc/init.d/$PACKAGE stop
+}
+
+post_install()
+{
+	[ "$1" ] || /etc/init.d/$PACKAGE start
+}
+
+pre_remove()
+{
+	[ "$1" ] || /etc/init.d/$PACKAGE stop
 }
