@@ -23,21 +23,21 @@ mkdir -p $TMP_DIR && cd $TMP_DIR
 # Download tarball
 WEB_SITE="http://www.skype.com/"
 TARBALL="getskype-linux-beta-dynamic"
-wget ${WEB_SITE}go/$TARBALL
-if [ ! -f $TARBALL ]; then
-	echo "Could not download $TARBALL. Exiting."
+busybox wget -O $TARBALL.tar.bz2 ${WEB_SITE}go/$TARBALL
+if [ ! -f $TARBALL.tar.bz2 ]; then
+	echo "Could not download tarball. Exiting."
 	exit 1
 fi
 
 # Extract
-TARBALL=$(ls $TARBALL skype*.tar.bz2 2> /dev/null || true)
-tar xjf $TARBALL
+#TARBALL=$(ls $TARBALL skype*.tar.bz2 2> /dev/null || true)
+tar -xjf $TARBALL.tar.bz2
 VERSION=$(ls -d skype-*)
 VERSION=${VERSION%/}
 VERSION=${VERSION#skype-*}
 
 # extracted pkg can be removed: Save RAM
-rm -f $TARBALL
+rm -f $TARBALL.tar.bz2
 
 cd skype-$VERSION
 
@@ -53,7 +53,7 @@ mv icons skype-$VERSION/fs/usr/share/skype
 mv avatars skype-$VERSION/fs/usr/share/skype
 mv sounds skype-$VERSION/fs/usr/share/skype
 mv skype.conf skype-$VERSION/fs/etc
-mv skype.desktop skype-$VERSION/fs/usr/share/applications
+cp skype.desktop skype-$VERSION/fs/usr/share/applications
 cp skype.desktop skype-$VERSION/fs/usr/share/applications/skype.desktop
 mv skype.desktop skype-$VERSION/fs/usr/share/applications/skype-pulse.desktop
 sed 's|Exec=|TryExec=apulse\nExec=apulse |' -i skype-$VERSION/fs/usr/share/applications/skype.desktop
@@ -98,7 +98,7 @@ pre_remove()
 EOT
 
 # Pack
-tazpkg pack skype-$VERSION
+tazpkg pack skype-$VERSION gzip
 
 # Clean to save RAM memory
 rm -rf $PACKAGE-$VERSION
