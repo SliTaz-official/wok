@@ -389,8 +389,8 @@ next_cylinder:
 #endif
 # NOTE : support 256 cylinders max
         incb    %ch			# next cylinder
-read_first_sectors:
         movb    $0,%dh			# first head
+read_first_sectors:
 bdendlp:
         jmp	read_sectorslp
 
