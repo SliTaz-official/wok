@@ -1,0 +1,106 @@
+# SliTaz package receipt.
+
+PACKAGE="madeirado-theme"
+VERSION="20130702"
+CATEGORY="misc"
+SHORT_DESC="Madeirado theme for GTK2, Openbox, SLiM, and wallparer"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="http://holkfoor.deviantart.com/art/Madeirado-Pack-Theme-382214228"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://dl.dropboxusercontent.com/s/ax6iqx6aa344fsu/Madeirado_GTK2_Openbox_Slim_Wallpaper.tar.bz2"
+
+DEPENDS="gtk-clearlooks openbox slim"
+BUILD_DEPENDS="imagemagick"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	M=Madeirado
+	s=$install/usr/share/slim/themes
+	t=$install/usr/share/themes
+	i=$install/usr/share/images
+	mkdir -p $s $t $i
+
+	# SLiM theme
+	cp -a $src/slim/$M $s
+	(
+		cd $s/$M
+		convert background.png background.jpg
+		rm background.png
+	)
+
+	# GTK theme
+	cp -a $src/theme/$M $t
+	# (fix warnings about unsupported options)
+	sed -i 's|^.*menuitemstyle|#&|; s|^.*listviewitemstyle|#&|;
+		s|^.*progressbarstyle|#&|' $t/$M/gtk-2.0/gtkrc
+
+	# wallpaper
+	ln -s ../slim/themes/$M/background.jpg $i/$M.jpg
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
+
+post_install()
+{
+	# Set GTK+ Theme
+	for i in $1/etc/xdg/lxsession/*/desktop.conf \
+		$1/home/*/.config/lxsession/*/desktop.conf; do
+		[ -f "$i" ] && sed -i 's|sNet/ThemeName=.*|sNet/ThemeName=Madeirado|' $i
+	done
+	pgrep lxsession && lxsession -r
+
+	# Set Openbox theme
+	for i in /etc/xdg/openbox/rc.xml /home/*/.config/openbox/rc.xml; do
+		[ -f $i ] && sed -i '/<theme>/,/<name>/ s|>[^<]*<|>Madeirado<|' $i
+	done
+	pgrep openbox && openbox --reconfigure
+
+	# Set SLiM theme
+	chroot "$1/" slim-theme -s Madeirado
+
+	# Set PCManFM wallpaper
+	for i in $1/etc/xdg/pcmanfm/default/pcmanfm.conf \
+		$1/home/*/.config/pcmanfm/*/*.conf; do
+		[ -f "$i" ] && sed -i 's|wallpaper[0-9]*=.*|wallpaper=/usr/share/images/Madeirado.jpg|' $i
+	done
+	if [ -z "$1" -a -n "$(pgrep pcmanfm)" ]; then
+		# Change wallpaper for current PCManFM session right now
+		su -c 'pcmanfm -w /usr/share/images/Madeirado.jpg' \
+			$(ps aux | grep '[p]cmanfm' | awk 'END{print $2}')
+	fi
+}
+
+pre_remove() {
+	# Restore GTK+ Theme (Clearlooks Human)
+	for i in $1/etc/xdg/lxsession/*/desktop.conf \
+		$1/home/*/.config/lxsession/*/desktop.conf; do
+		[ -f "$i" ] && sed -i 's|sNet/ThemeName=.*|sNet/ThemeName=Clearlooks Human|' $i
+	done
+	pgrep lxsession && lxsession -r
+
+	# Restore Openbox theme (SliTaz)
+	for i in /etc/xdg/openbox/rc.xml /home/*/.config/openbox/rc.xml; do
+		[ -f $i ] && sed -i '/<theme>/,/<name>/ s|>[^<]*<|>SliTaz<|' $i
+	done
+	pgrep openbox && openbox --reconfigure
+
+	# Restore SLiM theme
+	chroot "$1/" slim-theme -f Madeirado
+
+	# Restore PCManFM wallpaper (slitaz-background.jpg)
+	for i in $1/etc/xdg/pcmanfm/default/pcmanfm.conf \
+		$1/home/*/.config/pcmanfm/*/*.conf; do
+		[ -f "$i" ] && sed -i 's|wallpaper[0-9]*=.*|wallpaper=/usr/share/images/slitaz-background.jpg|' $i
+	done
+	if [ -z "$1" -a -n "$(pgrep pcmanfm)" ]; then
+		# Change wallpaper for current PCManFM session right now
+		su -c 'pcmanfm -w /usr/share/images/slitaz-background.jpg' \
+			$(ps aux | grep '[p]cmanfm' | awk 'END{print $2}')
+	fi
+}
