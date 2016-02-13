@@ -176,7 +176,7 @@
  	if (handle < 0) {
  		perror("Opening compressed file\n");
  		exit(1);
-@@ -24,44 +28,100 @@
+@@ -24,66 +28,100 @@
  		exit(1);
  	}
  
@@ -214,7 +214,7 @@
 +		table_size = ntohl(tail.table_size);
 +		table = malloc(table_size);
 +		len = i = num_blocks * (ntohl(tail.index_size) & 255);
-+		lastlen = ntohl(tail.index_size) & ~0x1FF;
++		lastlen = ntohl(tail.index_size) / 256;
 +		offsets = malloc(num_blocks * sizeof(*offsets));
 +		if (!table || !offsets || 
 +		    read(handle, table, table_size) != table_size ||
@@ -298,19 +298,42 @@
  
 -		fprintf(stderr, "Block %u length %u => %lu\n",
 -			i, size, destlen);
-+		fprintf(stderr, "Block %u at %llu length %u => %lu\n",
-+			i, offsets[i].offset, size, destlen);
- 		if (i == 3) {
- 			fprintf(stderr,
- 				"Block head:%02X%02X%02X%02X%02X%02X%02X%02X\n",
-@@ -105,12 +165,12 @@
+-		if (i == 3) {
+-			fprintf(stderr,
+-				"Block head:%02X%02X%02X%02X%02X%02X%02X%02X\n",
+-				buffer[0],
+-				buffer[1],
+-				buffer[2],
+-				buffer[3],
+-				buffer[4],
+-				buffer[5],
+-				buffer[6],
+-				buffer[7]);
+-			fprintf(stderr,
+-				"Block tail:%02X%02X%02X%02X%02X%02X%02X%02X\n",
+-				buffer[3063],
+-				buffer[3064],
+-				buffer[3065],
+-				buffer[3066],
+-				buffer[3067],
+-				buffer[3068],
+-				buffer[3069],
+-				buffer[3070]);
+-		}
++		fprintf(stderr, "Block %u at %llu length %u",
++			i, offsets[i].offset, size);
+ 		switch (uncompress(clear_buffer, &destlen,
+ 				   buffer, size)) {
+ 		case Z_OK:
+@@ -105,12 +143,13 @@
  			fprintf(stderr, "Uncomp: unknown error %u\n", i);
  			exit(1);
  		}
 -		if (destlen != ntohl(head.block_size)) {
 -			fprintf(stderr, "Uncomp: bad len %u (%lu not %u)\n", i,
 -				destlen, ntohl(head.block_size));
-+		if (destlen != block_size) {
++		fprintf(stderr, " => %lu\n", destlen);
++		if (destlen != block_size && i != num_blocks - 1) {
 +			fprintf(stderr, "Uncomp: bad len %u (%lu not %lu)\n", i,
 +				destlen, block_size);
  			exit(1);
@@ -320,7 +343,6 @@
  	}
  	return 0;
  }
-
 --- Makefile
 +++ Makefile
 @@ -1,16 +1,19 @@
@@ -339,7 +361,7 @@
  extract_compressed_fs: extract_compressed_fs.c
  	${CC} ${CFLAGS} ${LDFLAGS} -lz extract_compressed_fs.c -o extract_compressed_fs
  
-+create_compressed_fs: create_compressed_fs.c
++create_compressed_fs: create_compressed_fs.c md5sum.c
 +	${CC} ${CFLAGS} ${LDFLAGS} -lz create_compressed_fs.c -o create_compressed_fs
 +
  fusecloop: fusecloop.c cloopreader.o strver debug.o
@@ -347,9 +369,258 @@
  
 
 
+--- md5sum.c
++++ md5sum.c
+@@ -0,0 +1,246 @@
++/*
++ * Based on busybox code.
++ *
++ * Compute MD5 checksum of strings according to the
++ * definition of MD5 in RFC 1321 from April 1992.
++ *
++ * Written by Ulrich Drepper <drepper@gnu.ai.mit.edu>, 1995.
++ *
++ * Copyright (C) 1995-1999 Free Software Foundation, Inc.
++ * Copyright (C) 2001 Manuel Novoa III
++ * Copyright (C) 2003 Glenn L. McGrath
++ * Copyright (C) 2003 Erik Andersen
++ * Copyright (C) 2010 Denys Vlasenko
++ * Copyright (C) 2012 Pascal Bellard
++ *
++ * Licensed under GPLv2 or later
++ */
++
++#define ALIGN1
++
++static uint8_t wbuffer[64]; /* always correctly aligned for uint64_t */
++static uint64_t total64;    /* must be directly before hash[] */
++static uint32_t hash[8];    /* 4 elements for md5, 5 for sha1, 8 for sha256 */
++
++/* Emit a string of hex representation of bytes */
++static char* bin2hex(char *p)
++{
++	static const char bb_hexdigits_upcase[] ALIGN1 = "0123456789abcdef";
++	int count = 16;
++	const char *cp = (const char *) hash;
++	while (count) {
++		unsigned char c = *cp++;
++		/* put lowercase hex digits */
++		*p++ = bb_hexdigits_upcase[c >> 4];
++		*p++ = bb_hexdigits_upcase[c & 0xf];
++		count--;
++	}
++	return p;
++}
++
++//#define rotl32(x,n) (((x) << (n)) | ((x) >> (32 - (n))))
++static uint32_t rotl32(uint32_t x, unsigned n)
++{
++	return (x << n) | (x >> (32 - n));
++}
++
++static void md5_process_block64(void);
++
++/* Feed data through a temporary buffer.
++ * The internal buffer remembers previous data until it has 64
++ * bytes worth to pass on.
++ */
++static void common64_hash(const void *buffer, size_t len)
++{
++	unsigned bufpos = total64 & 63;
++
++	total64 += len;
++
++	while (1) {
++		unsigned remaining = 64 - bufpos;
++		if (remaining > len)
++			remaining = len;
++		/* Copy data into aligned buffer */
++		memcpy(wbuffer + bufpos, buffer, remaining);
++		len -= remaining;
++		buffer = (const char *)buffer + remaining;
++		bufpos += remaining;
++		/* clever way to do "if (bufpos != 64) break; ... ; bufpos = 0;" */
++		bufpos -= 64;
++		if (bufpos != 0)
++			break;
++		/* Buffer is filled up, process it */
++		md5_process_block64();
++		/*bufpos = 0; - already is */
++	}
++}
++
++/* Process the remaining bytes in the buffer */
++static void common64_end(void)
++{
++	unsigned bufpos = total64 & 63;
++	/* Pad the buffer to the next 64-byte boundary with 0x80,0,0,0... */
++	wbuffer[bufpos++] = 0x80;
++
++	/* This loop iterates either once or twice, no more, no less */
++	while (1) {
++		unsigned remaining = 64 - bufpos;
++		memset(wbuffer + bufpos, 0, remaining);
++		/* Do we have enough space for the length count? */
++		if (remaining >= 8) {
++			/* Store the 64-bit counter of bits in the buffer */
++			uint64_t t = total64 << 3;
++			/* wbuffer is suitably aligned for this */
++			*(uint64_t *) (&wbuffer[64 - 8]) = t;
++		}
++		md5_process_block64();
++		if (remaining >= 8)
++			break;
++		bufpos = 0;
++	}
++}
++
++/* These are the four functions used in the four steps of the MD5 algorithm
++ * and defined in the RFC 1321.  The first function is a little bit optimized
++ * (as found in Colin Plumbs public domain implementation).
++ * #define FF(b, c, d) ((b & c) | (~b & d))
++ */
++#undef FF
++#undef FG
++#undef FH
++#undef FI
++#define FF(b, c, d) (d ^ (b & (c ^ d)))
++#define FG(b, c, d) FF(d, b, c)
++#define FH(b, c, d) (b ^ c ^ d)
++#define FI(b, c, d) (c ^ (b | ~d))
++
++/* Hash a single block, 64 bytes long and 4-byte aligned */
++static void md5_process_block64(void)
++{
++	/* Before we start, one word to the strange constants.
++	   They are defined in RFC 1321 as
++	   T[i] = (int)(4294967296.0 * fabs(sin(i))), i=1..64
++	 */
++	static const uint32_t C_array[] = {
++		/* round 1 */
++		0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
++		0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
++		0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
++		0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
++		/* round 2 */
++		0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
++		0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
++		0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
++		0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
++		/* round 3 */
++		0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
++		0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
++		0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x4881d05,
++		0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
++		/* round 4 */
++		0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
++		0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
++		0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
++		0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
++	};
++	static const char P_array[] ALIGN1 = {
++		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, /* 1 */
++		1, 6, 11, 0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12, /* 2 */
++		5, 8, 11, 14, 1, 4, 7, 10, 13, 0, 3, 6, 9, 12, 15, 2, /* 3 */
++		0, 7, 14, 5, 12, 3, 10, 1, 8, 15, 6, 13, 4, 11, 2, 9  /* 4 */
++	};
++	uint32_t *words = (void*) wbuffer;
++	uint32_t A = hash[0];
++	uint32_t B = hash[1];
++	uint32_t C = hash[2];
++	uint32_t D = hash[3];
++
++	static const char S_array[] ALIGN1 = {
++		7, 12, 17, 22,
++		5, 9, 14, 20,
++		4, 11, 16, 23,
++		6, 10, 15, 21
++	};
++	const uint32_t *pc;
++	const char *pp;
++	const char *ps;
++	int i;
++	uint32_t temp;
++
++
++	pc = C_array;
++	pp = P_array;
++	ps = S_array - 4;
++
++	for (i = 0; i < 64; i++) {
++		if ((i & 0x0f) == 0)
++			ps += 4;
++		temp = A;
++		switch (i >> 4) {
++		case 0:
++			temp += FF(B, C, D);
++			break;
++		case 1:
++			temp += FG(B, C, D);
++			break;
++		case 2:
++			temp += FH(B, C, D);
++			break;
++		case 3:
++			temp += FI(B, C, D);
++		}
++		temp += words[(int) (*pp++)] + *pc++;
++		temp = rotl32(temp, ps[i & 3]);
++		temp += B;
++		A = D;
++		D = C;
++		C = B;
++		B = temp;
++	}
++	/* Add checksum to the starting values */
++	hash[0] += A;
++	hash[1] += B;
++	hash[2] += C;
++	hash[3] += D;
++
++}
++#undef FF
++#undef FG
++#undef FH
++#undef FI
++
++/* Initialize structure containing state of computation.
++ * (RFC 1321, 3.3: Step 3)
++ */
++static void md5_begin(void)
++{
++	hash[0] = 0x67452301;
++	hash[1] = 0xefcdab89;
++	hash[2] = 0x98badcfe;
++	hash[3] = 0x10325476;
++	total64 = 0;
++}
++
++/* Used also for sha1 and sha256 */
++#define md5_hash common64_hash
++
++/* Process the remaining bytes in the buffer and put result from CTX
++ * in first 16 bytes following RESBUF.  The result is always in little
++ * endian byte order, so that a byte-wise output yields to the wanted
++ * ASCII representation of the message digest.
++ */
++#define md5_end common64_end
++
++typedef struct { char hash[16]; } md5hash;
++
++static md5hash md5sum(uint8_t *buffer, int len) 
++{
++	md5hash val;
++
++	md5_begin();
++	md5_hash(buffer, len);
++	md5_end();
++	memcpy(&val, hash, 16);
++
++	return val;
++}
 --- create_compressed_fs.c
 +++ create_compressed_fs.c
-@@ -0,0 +1,148 @@
+@@ -0,0 +1,203 @@
 +#ifdef FIND_BEST_COMPRESSION
 +#include <compress.h>
 +extern "C" {
@@ -400,6 +671,8 @@
 +#define compress2(a,b,c,d,e) best_compress(a,b,c,d)
 +#endif
 +                        
++#include <signal.h>
++
 +/* Creates a compressed file */
 +#include "common_header.h"
 +
@@ -427,16 +700,49 @@
 +	return i;
 +}
 +
++#ifdef FIND_BEST_COMPRESSION
++#include "md5sum.c"
++#endif
++
++static unsigned n;
++static unsigned long lastlen, pos, *block_index;
++static unsigned char *compressed;
++static unsigned long block_size = 0;
++static void flush_index(int sig)
++{
++	static char padding[512];
++	struct cloop_tail tail;
++	unsigned long len;
++
++	fprintf(stderr, "Write index for %lu blocks\n", n);
++	if (block_size >= 0x1000000) lastlen = 0;
++	tail.index_size = ntohl(sizeof(*block_index) + 256*(lastlen % 0xFFffFF));
++	tail.num_blocks = ntohl(n);
++	n *= sizeof(*block_index);
++	len = n + n/1000 + 12;
++	compressed = (unsigned char *) realloc(compressed, len);
++	if (!compressed || compress2(compressed, &len, (unsigned char *) block_index,
++				     n, Z_BEST_SPEED) != Z_OK)
++		quit("Index compression failed");
++	tail.table_size = ntohl(len);
++	pos += len + sizeof(tail);
++	n = pos & 511;
++	if (n) write(STDOUT_FILENO, padding, 512 - n);
++	write(STDOUT_FILENO, compressed, len);
++	write(STDOUT_FILENO, &tail, sizeof(tail));
++	exit(sig != 0);
++}
++
 +int main(int argc, char *argv[])
 +{
 +	struct cloop_head head;
-+	struct cloop_tail tail;
-+	unsigned long  block_size = 0;
-+	unsigned char *compressed, *uncompressed;
-+	unsigned long *index;
-+	int n, indexmax, zlenmax;
-+	unsigned long lastlen, len, pos;
-+	static char padding[512];
++	unsigned char *uncompressed;
++	unsigned long len;
++	unsigned indexmax, zlenmax;
++#ifdef FIND_BEST_COMPRESSION
++	unsigned i, j, hashmax;
++	md5hash *hash;
++#endif
 +	
 +	if (argc > 1) {
 +		if (argv[1][0] < '0' || argv[1][0] > '9')
@@ -457,48 +763,67 @@
 +	
 +	compressed = (unsigned char *) malloc(zlenmax);
 +	uncompressed = (unsigned char *) malloc(block_size);
-+	index = (unsigned long *) malloc(indexmax = CHUNK);
-+	if (!compressed || !uncompressed || !index)
++	block_index = (unsigned long *) malloc(indexmax = CHUNK);
++#ifdef FIND_BEST_COMPRESSION
++	hash = (md5hash *) malloc(hashmax = CHUNK);
++	if (!compressed || !uncompressed || !block_index || !hash)
++#else
++	if (!compressed || !uncompressed || !block_index)
++#endif
 +		quit("Malloc failed");
 +	
++	signal(SIGINT,flush_index);
++	signal(SIGQUIT,flush_index);
++	signal(SIGTERM,flush_index);
++
 +	for (n = 0; (len = readblock(uncompressed, block_size)) != 0; n++) {
 +		lastlen = len;
-+		len = zlenmax;
-+		if (compress2(compressed, &len, uncompressed, block_size, 
-+				Z_BEST_COMPRESSION) != Z_OK)
-+			quit("Compression failed");
-+		fprintf(stderr, "Block %u length %lu => %lu\n",
-+			n, block_size, len);
-+		write(STDOUT_FILENO, compressed, len);
-+		pos += len;
-+		if (n * sizeof(*index) >= indexmax) {
-+			index = (unsigned long *) realloc(index,
++		if (n * sizeof(*block_index) >= indexmax) {
++			block_index = (unsigned long *) realloc(block_index,
 +							  indexmax += CHUNK);
-+			if (!index)
++			if (!block_index)
 +				quit("Realloc");
 +		}
-+		index[n] = ntohl(len);
++#ifdef FIND_BEST_COMPRESSION
++		if (n * sizeof(*hash) >= hashmax) {
++			hash = (md5hash *) realloc(hash, hashmax += CHUNK);
++			if (!ihash)
++				quit("Realloc hash");
++		}
++		hash[n] = md5sum(uncompressed, len);
++		j = 0x7FFFFFFF;
++		if (n < j)
++			j = n;
++		for (i = 0; i < j; i++) {
++			if (* (uint32_t *) &hash[i] == * (uint32_t *) &hash[n]
++			    && !memcmp(&hash[i],&hash[n],sizeof(*hash)))
++				break;
++		}
++		if (i != j) {
++			block_index[n] = ntohl(0x80000000 | i);
++			fprintf(stderr, "Block %u length %lu => duplicate %lu\n",
++				n, block_size, i);
++		}
++		else
++#endif
++		{
++			len = zlenmax;
++			if (compress2(compressed, &len, uncompressed, lastlen, 
++					Z_BEST_SPEED) != Z_OK)
++				quit("Compression failed");
++			fprintf(stderr, "Block %u length %lu => %lu\n",
++				n, block_size, len);
++			write(STDOUT_FILENO, compressed, len);
++			pos += len;
++			block_index[n] = ntohl(len);
++		}
 +	}
-+	tail.index_size = ntohl(sizeof(*index) + (lastlen & ~0x1FF));
-+	tail.num_blocks = ntohl(n);
-+	n *= sizeof(*index);
-+	len = n + n/1000 + 12;
-+	compressed = (unsigned char *) realloc(compressed, len);
-+	if (!compressed || compress2(compressed, &len, (unsigned char *) index,
-+				     n, Z_BEST_COMPRESSION) != Z_OK)
-+		quit("Index compression failed");
-+	tail.table_size = ntohl(len);
-+	pos += len + sizeof(tail);
-+	n = pos & 511;
-+	if (n) write(STDOUT_FILENO, padding, 512 - n);
-+	write(STDOUT_FILENO, compressed, len);
-+	write(STDOUT_FILENO, &tail, sizeof(tail));
++	flush_index(0);
 +	return 0;
 +}
 +#ifdef FIND_BEST_COMPRESSION
 +}
 +#endif
-
 --- fusecloop.c
 +++ fusecloop.c
 @@ -65,7 +65,7 @@
