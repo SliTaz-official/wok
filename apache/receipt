@@ -75,23 +75,29 @@ pre_install()
 
 post_install()
 {
-	local lang=$(. /etc/locale.conf 2>/dev/null; echo ${LANG#*_})
-	local tz=$(cat /etc/TZ 2>/dev/null)
-	local hostname=$(cat /etc/hostname 2>/dev/null)
+	local lang=$(. $1/etc/locale.conf 2>/dev/null; echo ${LANG#*_})
+	local tz=$(cat $1/etc/TZ 2>/dev/null)
+	local hostname=$(cat $1/etc/hostname 2>/dev/null)
 
 	# Just in case.
 	chown www.www "$1/var/log/$PACKAGE"
 	ping -c 2 $(hostname) > /dev/null 2>&1 || 
 		sed -i "s/localhost/$(hostname) localhost/" "$1/etc/hosts"
+	sed -i -e "s/^#\(LoadModule.*slotmem_shm.*\)$/\1/" \
+	    -e "s/.*ServerName www.example.*/ServerName ${hostname:-slitaz}/" \
+		$1/etc/apache/httpd.conf $1/etc/apache/ssl/httpd-ssl.conf
+	grep -qs Apache $1/var/www/index.html &&
+	sed -i 's|^LighTTPD.*|&\nApache configs      : /etc/apache|' \
+		$1/var/www/index.html
 	[ -s "$1/etc/ssl/apache/apache.pem" ] ||
 	openssl req -new -x509 -keyout "$1/etc/ssl/apache/apache.pem" \
 		-out "$1/etc/ssl/apache/apache.pem" -days 3650 -nodes <<EOT
-${lang:-us}
-${tz:-UTC}
+${lang:-US}
+${tz:-Somewhere}
+
+
 
 ${hostname:-slitaz}
-
-
 
 EOT
 	[ -z "$quiet" ] && echo # Start new line
