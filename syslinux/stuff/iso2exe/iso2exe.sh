@@ -315,7 +315,7 @@ EOT
 		fi
 	done <<EOT
 READSECTORERR	Read sector failure.
-USAGE		Usage: isohybrid.exe [--append cmdline] [--initrd file] file.iso [--forced|--undo|--quick]
+USAGE		Usage: isohybrid.exe [--list|--read] [--append cmdline] [--initrd file] file.iso [--forced|--undo|--quick|filename...]
 OPENERR		Can't open r/w the iso file.
 ELTORITOERR	No EL TORITO SPECIFICATION signature.
 CATALOGERR	Invalid boot catalog.
@@ -326,6 +326,18 @@ MD5MSG		Computing md5sum...
 UNINSTALLMSG	Uninstall done.
 OPENINITRDERR	Can't open the initrd file.
 ALREADYEXEERR	Already an EXE file.
+WIN32_EXE	win32.exe
+SYSLINUX_MBR	syslinux.mbr
+FLAVOR_INFO	flavor.info
+FLOPPY_BOOT	floppy.boot
+TAZBOOT_COM	tazboot.com
+ROOTFS_GZ	rootfs.gz
+DOSSTUB		dosstub
+BOOT_MD5	boot.md5
+FS_ISO		fs.iso
+CUSTOM_MAGIC	custom.magic
+CUSTOM_APPEND	custom.append
+CUSTOM_INITRD	custom.initrd
 EOT
 done
 	rm -rf $DATA

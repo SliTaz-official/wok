@@ -33,6 +33,7 @@ static char *append, *initrd;
 static char tazlitoinfo[0x8000U - BOOTISOSZ];
 #define buffer tazlitoinfo
 #define BUFFERSZ 2048
+#define BYTE(n) * (unsigned char *)  (n)
 #define WORD(n)	* (unsigned short *) (n)
 #define LONG(n)	* (unsigned long *)  (n)
 
@@ -493,21 +494,143 @@ static unsigned install(char *filename)
 	return SUCCESSMSG;
 }
 
+static unsigned short files[] = { // to move to iso2exe.sh ....
+	WIN32_EXE,		/*  0 */
+	SYSLINUX_MBR,		/*  1 */
+	FLAVOR_INFO,		/*  2 */
+	FLOPPY_BOOT,		/*  3 */
+	TAZBOOT_COM,		/*  4 */
+	ROOTFS_GZ,		/*  5 */
+	DOSSTUB,		/*  6 */
+	BOOT_MD5,		/*  7 */
+	FS_ISO,			/*  8 */
+	CUSTOM_MAGIC,		/*  9 */
+	CUSTOM_APPEND,		/* 10 */
+	CUSTOM_INITRD		/* 11 */
+};
+
+static long file_offset, file_size;
+static void fileofs(int number)
+{
+	unsigned long i, c, stub;
+	char *s;
+
+	c = getcustomsector();
+	readsector(0);
+	i = 1024;
+	if (WORD(buffer+1024) != 35615) i = 512 * (1 + BYTE(buffer+417));
+	stub = WORD(buffer+20) - 0xC0;
+	file_size = file_offset = 0;
+	switch (files[number]) {
+	case WIN32_EXE:		/* win32.exe */
+		if (i != 1024) file_size = i - 512; break;
+	case SYSLINUX_MBR:	/* syslinux.mbr */
+		if (i != 1024) file_offset = i - 512;
+		file_size = 512; break;
+	case FLAVOR_INFO:	/* flavor.info */
+		file_offset = i; file_size = 0; break;
+	case FLOPPY_BOOT:	/* floppy.boot */
+		file_size = BYTE(buffer+26)*512;
+		file_offset = WORD(buffer+64) - 0xC0 - file_size; break;
+	case TAZBOOT_COM:	/* tazboot.com */
+		file_offset = WORD(buffer+64) - 0xC0;
+		file_size = stub - WORD(buffer+24) - file_offset; break;
+	case ROOTFS_GZ:		/* rootfs.gz */
+		file_size = WORD(buffer+24);
+		file_offset = stub - file_size; break;
+	case DOSSTUB:		/* dosstub */
+		file_offset = stub;
+		file_size = 0x8000U - file_offset; break;
+	case BOOT_MD5:		/* boot.md5 */
+		file_offset = 0x7FF0U; file_size = 16; break;
+	case FS_ISO:		/* fs.iso */
+		file_offset = 0x8000U; file_size = 2048*c - file_offset; break;
+	case CUSTOM_MAGIC:	/* custom.magic */
+		readsector(c);
+		if (!strncmp(buffer, "#!boot", 6)) {
+			file_size = 39; file_offset = 2048*c;
+		}; break;
+	case CUSTOM_APPEND:	/* custom.append */
+		readsector(c);
+		file_offset = 2048*c + 47; s = strstr(buffer, "append=");
+		if (s) file_size = strchr(s,'\n') - s - 7;
+		break;
+	case CUSTOM_INITRD:	/* custom.initrd */
+		readsector(c);
+		s = strstr(buffer,"initrd:");
+		if (!s) break;
+		file_size = atoi(s + 7);
+		s = strchr(s,'\n') + 1;
+		file_offset = 2048*c + (s - buffer);
+	}
+}
+
+static void list(void)
+{
+	int num, heap = 0;
+
+	for (num = 0; num < sizeof(files)/sizeof(files[0]); num++) {
+		fileofs(num);
+		if (file_size <= 0 || file_offset > 0x3FFFFFFFUL) continue;
+		readsector(file_offset / 2048);
+		if (WORD(buffer + file_offset % 2048) == 0) continue;
+		if (file_offset > heap && (file_offset - heap) > 16)
+			printf("%d free bytes in %04X..%04X\n",
+				file_offset - heap, heap, file_offset);
+		if (file_offset >= heap) heap = file_offset + file_size;
+		printf("%s at %04X (%d bytes).\n", bootiso + files[num],
+			file_offset, file_size);
+	}
+	file_offset=lseek(fd, 0UL, SEEK_END);	
+	if (file_offset > heap)
+		printf("%d free bytes in %04X..%04X\n",
+			file_offset - heap, heap, file_offset);
+}
+
+static void extract(char *name)
+{
+	int num;
+
+	for (num = sizeof(files)/sizeof(files[0]) - 1;
+	     strcmp(name,bootiso + files[num]); num--) if (num <= 0) return;
+	fileofs(num);
+	if (file_size == 0) return;
+	lseek(fd, file_offset, SEEK_SET);
+	num = open(name, O_WRONLY|O_BINARY|O_CREAT, 0x644);
+	while (file_size > 0) {
+		int n = read(fd, buffer, BUFFERSZ);
+		if (n <= 0) break;
+		if (n > file_size) n = file_size;
+		write(num,buffer,n);
+		file_size -= n;
+	}
+	close(num);
+}
+
 int main(int argc, char *argv[])
 {
 	int i;
 	char *s;
 	
-	while (argc > 2) {
+	for (i = 0; argc > 2;) {
 		s = argv[1];
 		if (*s != '-') break;
 		while (*s == '-') s++;
 		switch (*s | 0x20) {
 		case 'a' : append=argv[2]; break;
 		case 'i' : initrd=argv[2]; break;
+		case 'r' : case 'l' :
+			i++; argv++; argc--; continue;
 		}
 		argv += 2;
 		argc -= 2;
+	}
+	if (i != 0) {
+		fd = open(argv[i],O_RDONLY|O_BINARY);
+		if (fd == -1) puts(bootiso + OPENERR);
+		else if (argc <= 2) list();
+		else for (i = 2; i < argc; i++) extract(argv[i]);
+		return 0;
 	}
 	for (i = 2; i < argc; i++) {
 		char *s = argv[i];
