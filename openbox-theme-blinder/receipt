@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="openbox-theme-blinder"
+VERSION="20150606"
+CATEGORY="x-window"
+SHORT_DESC="Blinder - theme for Openbox 3"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="PublicDomain"
+WEB_SITE="http://desktopstylish.tumblr.com/post/120897023300/blinder-the-openbox-3-theme-download"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://drive.google.com/uc?export=download&id=0B4Re2DvqOMqlQURSR3V5dzB4aXc"
+TAGS="hackdorte openbox"
+
+DEPENDS="openbox"
+BUILD_DEPENDS=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $install/usr/share/themes/Blinder
+	cp -a $src/* $install/usr/share/themes/Blinder
+	chown -R root:root $install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
+
+post_install()
+{
+	# Set Openbox theme
+	for i in /etc/xdg/openbox/rc.xml /home/*/.config/openbox/rc.xml; do
+		[ -f $i ] && sed -i '/<theme>/,/<name>/ s|>[^<]*<|>Blinder<|' $i
+	done
+	pgrep openbox >/dev/null && openbox --reconfigure
+}
+
+pre_remove()
+{
+	# Restore Openbox theme (SliTaz)
+	for i in /etc/xdg/openbox/rc.xml /home/*/.config/openbox/rc.xml; do
+		[ -f $i ] && sed -i '/<theme>/,/<name>/ s|>[^<]*<|>SliTaz<|' $i
+	done
+	pgrep openbox >/dev/null && openbox --reconfigure
+}

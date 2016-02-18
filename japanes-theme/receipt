@@ -1,0 +1,63 @@
+# SliTaz package receipt.
+
+PACKAGE="japanes-theme"
+VERSION="20130705"
+CATEGORY="misc"
+SHORT_DESC="Japanes Openbox and GTK2 Theme"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="http://holkfoor.deviantart.com/art/Japanes-Openbox-and-GTK2-Theme-382947891"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://www.dropbox.com/s/2ronvzzogtdlmbt/Japanes_GTK2_and_Openbox.tar.bz2"
+TAGS="holkfoor openbox"
+
+DEPENDS="gtk-clearlooks openbox"
+BUILD_DEPENDS="wget"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $install/usr/share/themes
+	cp -a $src/Japanes $install/usr/share/themes
+
+	# (fix warnings about unsupported options)
+	sed -i 's|^.*menuitemstyle|#&|; s|^.*listviewitemstyle|#&|;
+		s|^.*progressbarstyle|#&|' $install/usr/share/themes/Japanes/gtk-2.0/gtkrc
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
+
+post_install()
+{
+	# Set GTK+ Theme
+	for i in $1/etc/xdg/lxsession/*/desktop.conf \
+		$1/home/*/.config/lxsession/*/desktop.conf; do
+		[ -f "$i" ] && sed -i 's|sNet/ThemeName=.*|sNet/ThemeName=Japanes|' $i
+	done
+	pgrep lxsession >/dev/null && lxsession -r
+
+	# Set Openbox theme
+	for i in /etc/xdg/openbox/rc.xml /home/*/.config/openbox/rc.xml; do
+		[ -f $i ] && sed -i '/<theme>/,/<name>/ s|>[^<]*<|>Japanes<|' $i
+	done
+	pgrep openbox >/dev/null && openbox --reconfigure
+}
+
+pre_remove() {
+	# Restore GTK+ Theme (Clearlooks Human)
+	for i in $1/etc/xdg/lxsession/*/desktop.conf \
+		$1/home/*/.config/lxsession/*/desktop.conf; do
+		[ -f "$i" ] && sed -i 's|sNet/ThemeName=.*|sNet/ThemeName=Clearlooks Human|' $i
+	done
+	pgrep lxsession && lxsession -r
+
+	# Restore Openbox theme (SliTaz)
+	for i in /etc/xdg/openbox/rc.xml /home/*/.config/openbox/rc.xml; do
+		[ -f $i ] && sed -i '/<theme>/,/<name>/ s|>[^<]*<|>SliTaz<|' $i
+	done
+	pgrep openbox && openbox --reconfigure
+}

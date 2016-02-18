@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="openbox-theme-chrommo"
+VERSION="20150601"
+CATEGORY="x-window"
+SHORT_DESC="Chrommo - theme for Openbox 3"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="PublicDomain"
+WEB_SITE="http://desktopstylish.tumblr.com/post/120497586780/chrommo-openbox-3-theme-download"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://drive.google.com/uc?export=download&id=0B4Re2DvqOMqlcms4OHBWTVBWMmc"
+TAGS="hackdorte openbox"
+
+DEPENDS="openbox"
+BUILD_DEPENDS=""
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $install/usr/share/themes/Chrommo
+	cp -a $src/chrommo/* $install/usr/share/themes/Chrommo
+	chmod a-x $install/usr/share/themes/Chrommo/openbox-3/themerc
+	chown -R root:root $install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
+
+post_install()
+{
+	# Set Openbox theme
+	for i in /etc/xdg/openbox/rc.xml /home/*/.config/openbox/rc.xml; do
+		[ -f $i ] && sed -i '/<theme>/,/<name>/ s|>[^<]*<|>Chrommo<|' $i
+	done
+	pgrep openbox >/dev/null && openbox --reconfigure
+}
+
+pre_remove()
+{
+	# Restore Openbox theme (SliTaz)
+	for i in /etc/xdg/openbox/rc.xml /home/*/.config/openbox/rc.xml; do
+		[ -f $i ] && sed -i '/<theme>/,/<name>/ s|>[^<]*<|>SliTaz<|' $i
+	done
+	pgrep openbox >/dev/null && openbox --reconfigure
+}

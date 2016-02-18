@@ -9,9 +9,10 @@ LICENSE="GPL3"
 WEB_SITE="http://holkfoor.deviantart.com/art/Madeirado-Pack-Theme-382214228"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="https://dl.dropboxusercontent.com/s/ax6iqx6aa344fsu/Madeirado_GTK2_Openbox_Slim_Wallpaper.tar.bz2"
+TAGS="holkfoor openbox slim wallpaper"
 
 DEPENDS="gtk-clearlooks openbox slim"
-BUILD_DEPENDS="imagemagick"
+BUILD_DEPENDS="wget imagemagick"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -53,13 +54,13 @@ post_install()
 		$1/home/*/.config/lxsession/*/desktop.conf; do
 		[ -f "$i" ] && sed -i 's|sNet/ThemeName=.*|sNet/ThemeName=Madeirado|' $i
 	done
-	pgrep lxsession && lxsession -r
+	pgrep lxsession >/dev/null && lxsession -r
 
 	# Set Openbox theme
 	for i in /etc/xdg/openbox/rc.xml /home/*/.config/openbox/rc.xml; do
 		[ -f $i ] && sed -i '/<theme>/,/<name>/ s|>[^<]*<|>Madeirado<|' $i
 	done
-	pgrep openbox && openbox --reconfigure
+	pgrep openbox >/dev/null && openbox --reconfigure
 
 	# Set SLiM theme
 	chroot "$1/" slim-theme -s Madeirado
@@ -82,13 +83,13 @@ pre_remove() {
 		$1/home/*/.config/lxsession/*/desktop.conf; do
 		[ -f "$i" ] && sed -i 's|sNet/ThemeName=.*|sNet/ThemeName=Clearlooks Human|' $i
 	done
-	pgrep lxsession && lxsession -r
+	pgrep lxsession >/dev/null && lxsession -r
 
 	# Restore Openbox theme (SliTaz)
 	for i in /etc/xdg/openbox/rc.xml /home/*/.config/openbox/rc.xml; do
 		[ -f $i ] && sed -i '/<theme>/,/<name>/ s|>[^<]*<|>SliTaz<|' $i
 	done
-	pgrep openbox && openbox --reconfigure
+	pgrep openbox >/dev/null && openbox --reconfigure
 
 	# Restore SLiM theme
 	chroot "$1/" slim-theme -f Madeirado
