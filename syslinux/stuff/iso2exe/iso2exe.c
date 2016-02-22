@@ -63,7 +63,7 @@ static uint8_t wbuffer[64]; /* always correctly aligned for uint64_t */
 static uint64_t total64;    /* must be directly before hash[] */
 static uint32_t hash[8];    /* 4 elements for md5, 5 for sha1, 8 for sha256 */
 
-//#define rotl32(x,n) (((x) << (n)) | ((x) >> (32 - (n))))
+/* #define rotl32(x,n) (((x) << (n)) | ((x) >> (32 - (n)))) */
 static uint32_t rotl32(uint32_t x, unsigned n)
 {
 	return (x << n) | (x >> (32 - n));
@@ -114,10 +114,10 @@ static void common64_end(void)
 		/* Do we have enough space for the length count? */
 		if (remaining >= 8) {
 			/* Store the 64-bit counter of bits in the buffer */
-			//uint64_t t = total64 << 3;
+			/* uint64_t t = total64 << 3; */
 			uint32_t *t = (uint32_t *) (&wbuffer[64 - 8]);
 			/* wbuffer is suitably aligned for this */
-			//*(uint64_t *) (&wbuffer[64 - 8]) = t;
+			/* *(uint64_t *) (&wbuffer[64 - 8]) = t; */
 			t[0] = total64.l << 3;
 			t[1] = (total64.h << 3) | (total64.l >> 29);
 		}
@@ -287,14 +287,6 @@ static unsigned install(char *filename)
 	unsigned long size, catalog, lba;
 	int cylinders, i, j, isohybrid;
 	unsigned n;
-#ifdef __MSDOS__
-	for (bootiso = (char *) install;
-	     bootiso[0] != 'M' || bootiso[1] != 'Z' || bootiso[2] != '\xEB';
-	     bootiso++) if (bootiso < (char *) install) {
-		bootiso = "No bootiso data";
-		return 0;
-	}
-#endif
 	if (!filename)
 		return USAGE;
 	fd = open(filename,O_RDWR|O_BINARY);
@@ -314,8 +306,7 @@ static unsigned install(char *filename)
 		for (i = 0; i < 32; i++, n = BUFFERSZ) {
 			write(fd, buffer + n, BUFFERSZ);
 		}
-		i = getcustomsector();
-		lseek(fd, i * 2048UL, SEEK_SET);
+		lseek(fd, getcustomsector() << 11, SEEK_SET);
 		i = clear_config(i);
 		ftruncate(fd, i * 2048UL);
 		close(fd);
@@ -393,12 +384,12 @@ static unsigned install(char *filename)
 		lseek(fd, pos, SEEK_SET);
 		clear_config(pos);
 		lseek(fd, pos, SEEK_SET);
-		write(fd, "#!boot 00000000000000000000000000000000\n", 40);
+		write(fd, bootiso+CUSTOM_HEADER, 40);
 		n = pos + 40;
 		md5_begin();
 		if (append) {
 			i = strlen(append);
-			writenhash("append=", 7);
+			writenhash(bootiso+CMDLINE_TAG, 7);
 			writenhash(append, i);
 			writenhash("\n", 1);
 			n += i + 8;
@@ -421,7 +412,7 @@ static unsigned install(char *filename)
 			     x /= 10;
 			} while (x);
 			if (*++p != '0') {
-				writenhash("initrd:", 7);
+				writenhash(bootiso+INITRD_TAG, 7);
 				i = number - p + sizeof(number);
 				writenhash(p, i);
 				n += i + 7;
@@ -494,7 +485,7 @@ static unsigned install(char *filename)
 	return SUCCESSMSG;
 }
 
-static unsigned short files[] = { // to move to iso2exe.sh ....
+static unsigned short files[] = {
 	WIN32_EXE,		/*  0 */
 	SYSLINUX_MBR,		/*  1 */
 	FLAVOR_INFO,		/*  2 */
@@ -516,7 +507,7 @@ static void fileofs(int number)
 	char *s;
 
 	c = getcustomsector();
-	readsector(0);
+	readsector(0UL);
 	i = 1024;
 	if (WORD(buffer+1024) != 35615) i = 512 * (1 + BYTE(buffer+417));
 	stub = WORD(buffer+20) - 0xC0;
@@ -547,7 +538,7 @@ static void fileofs(int number)
 		file_offset = 0x8000U; file_size = 2048*c - file_offset; break;
 	case CUSTOM_MAGIC:	/* custom.magic */
 		readsector(c);
-		if (!strncmp(buffer, "#!boot", 6)) {
+		if (!strncmp(buffer, bootiso+CUSTOM_HEADER, 6)) {
 			file_size = 39; file_offset = 2048*c;
 		}; break;
 	case CUSTOM_APPEND:	/* custom.append */
@@ -565,26 +556,34 @@ static void fileofs(int number)
 	}
 }
 
+static long heap = 0;
+static void show_free(void)
+{
+	if (file_offset > heap && (file_offset - heap) > 16)
+		printf(bootiso + FREE_FORMAT, file_offset - heap,
+		       heap, file_offset);
+}
+
 static void list(void)
 {
-	int num, heap = 0;
+	int num;
 
 	for (num = 0; num < sizeof(files)/sizeof(files[0]); num++) {
 		fileofs(num);
 		if (file_size <= 0 || file_offset > 0x3FFFFFFFUL) continue;
 		readsector(file_offset / 2048);
 		if (WORD(buffer + file_offset % 2048) == 0) continue;
-		if (file_offset > heap && (file_offset - heap) > 16)
-			printf("%d free bytes in %04X..%04X\n",
-				file_offset - heap, heap, file_offset);
+		show_free();
 		if (file_offset >= heap) heap = file_offset + file_size;
-		printf("%s at %04X (%d bytes).\n", bootiso + files[num],
-			file_offset, file_size);
+		printf(bootiso + USED_FORMAT, bootiso + files[num],
+			 file_offset, file_size);
 	}
-	file_offset=lseek(fd, 0UL, SEEK_END);	
-	if (file_offset > heap)
-		printf("%d free bytes in %04X..%04X\n",
-			file_offset - heap, heap, file_offset);
+#ifdef  __MSDOS__
+	file_offset = (heap + 0xFFFFFUL) & 0xFFF00000UL;
+#else
+	file_offset=lseek(fd, 0UL, SEEK_END);
+#endif
+	show_free();
 }
 
 static void extract(char *name)
@@ -612,6 +611,7 @@ int main(int argc, char *argv[])
 	int i;
 	char *s;
 	
+	data_fixup();
 	for (i = 0; argc > 2;) {
 		s = argv[1];
 		if (*s != '-') break;

@@ -7,41 +7,35 @@ ORGCOM	=	0x100
 
 	.globl	_start
 _start:
-	movw	$0, %si		// .com size
-	movw	$0, %bx		// .com loc
-#if 1
-// Move up EXE/PE and DOS/COM to ensure that bootiso[]
-// in EXE/PE will not be affected by the DOS/COM move.
-	pushw	%si
-	leaw	1-64-256(%bx,%si), %cx
-	leaw	(%bx,%si), %si
-	movw	$0xF000, %di	// Keep 4K for stack
-	cmpw	%si, %di
-	jc	skip
+	movw	$0, %cx		// .com size
+	movw	$0, %si		// .com loc
+	movw	$0x100, %bx
+	leaw	15(%bx,%si), %di
+	andw	$-16, %di
+	addw	%cx, %si
+	addw	%cx, %di
+	incw	%cx
 	std
 	rep
 	  movsb
-	subw	%si, %di
-	addw	%di, %bx
-skip:
-	popw	%si
-#endif
-	movw	$done-install, %cx
-	leaw	(%bx,%si), %di
-	pushw	%si
-	call	move
-install:
-	popw	%cx
-	movw	$ORGCOM, %di
-	pushw	%bx
-move:
-	popw	%si
-	pushw	%di
-	cld
+	incb	%ch
+	movw	%cx, %si	
+	decw	%si
 	rep
 	  movsb
-	ret
-done:
-	.ascii	"(www.slitaz.org)"
+	cld
+	incw	%di
+	shrw	$4, %di		// 186
+	movw	%cs, %ax
+	addw	%di, %ax
+	movw	%ax, %ds
+	movw	%ax, %es
+	movw	%ax, %ss
+	popw	%dx
+	pushw	%cx
+	pushw	%ax
+	pushw	%bx
+	retf
+	.ascii	"www.slitaz.org"
 	
 //	.org	64

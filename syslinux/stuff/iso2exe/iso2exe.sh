@@ -46,7 +46,8 @@ add_rootfs()
 #		2> /dev/null && echo "Store mount.posixovl ($(wc -c \
 #			< /usr/sbin/mount.posixovl) bytes) ..."
 	find $TMP -type f -print0 | xargs -0 chmod +x
-	( cd $TMP ; find * | cpio -o -H newc ) | compress $TMP/rootfs.gz
+	( cd $TMP ; find * | grep -v rootfs.gz | cpio -o -H newc ) | \
+		compress $TMP/rootfs.gz
 	SIZE=$(wc -c < $TMP/rootfs.gz)
 	store 24 $SIZE $1
 	OFS=$(( $OFS - $SIZE ))
@@ -245,9 +246,9 @@ EOM
 #ifndef __MSDOS__
 static char $name[] = {
 /* head */
-$(hexdump -v -n $HSZ -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
+$(hexdump -v -n $HSZ -e '"    " 16/1 "0x%02X, "' -e '"  /* %04.4_ax */ \n"' $DATA | sed 's/ 0x  ,/      /g')
 /* tail */
-$(hexdump -v -s $OFS -e '"    " 16/1 "0x%02X, "' -e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' $DATA | sed 's/ 0x  ,/      /g')
+$(hexdump -v -s $OFS -e '"    " 16/1 "0x%02X, "' -e '"  /* %04.4_ax */ \n"' $DATA | sed 's/ 0x  ,/      /g')
 
 /* These strange constants are defined in RFC 1321 as
    T[i] = (int)(4294967296.0 * fabs(sin(i))), i=1..64
@@ -294,14 +295,12 @@ for mode in data offset ; do
 	while read tag str; do
 		if [ "$mode" == "data" ]; then
 			echo -en "$str\0" | hexdump -v -e '"    " 16/1 "0x%02X, "' \
-				-e '"  // %04.4_ax |" 16/1 "%_p" "| \n"' | \
+				-e '"  /* %04.4_ax */ \n"' | \
 				sed 's/ 0x  ,/      /g'
 		else
 			if [ $ofs -eq 0 ]; then
 				cat <<EOT
 };
-#else
-static char *$name;
 #endif
 
 #define C_array (uint32_t *) ($name + $(($BOOTISOSZ)))
@@ -316,7 +315,7 @@ EOT
 	done <<EOT
 READSECTORERR	Read sector failure.
 USAGE		Usage: isohybrid.exe [--list|--read] [--append cmdline] [--initrd file] file.iso [--forced|--undo|--quick|filename...]
-OPENERR		Can't open r/w the iso file.
+OPENERR		Can't open the iso file.
 ELTORITOERR	No EL TORITO SPECIFICATION signature.
 CATALOGERR	Invalid boot catalog.
 HYBRIDERR	No isolinux.bin hybrid signature.
@@ -338,8 +337,51 @@ FS_ISO		fs.iso
 CUSTOM_MAGIC	custom.magic
 CUSTOM_APPEND	custom.append
 CUSTOM_INITRD	custom.initrd
+CUSTOM_HEADER	#!boot 00000000000000000000000000000000\\\\n
+FREE_FORMAT	%ld free bytes in %04lX..%04lX\\\\n
+USED_FORMAT	%s at %04lX (%ld bytes).\\\\n
+CMDLINE_TAG	append=
+INITRD_TAG	initrd:
 EOT
 done
+	cat <<EOT
+#ifdef __MSDOS__
+#define BOOTISOFULLSIZE	$(($BOOTISOSZ+(64*4)+64+16+$ofs))
+static char bootiso[BOOTISOFULLSIZE];
+static data_fixup(void)
+{
+#asm
+	push	ds
+	push	ds
+	pop	es
+	mov	ax,ds
+	sub	ax,#0x1000
+	mov	ds,ax
+	xor	si,si
+scanlp:
+	dec	si
+	jz	copydone
+	cmp	byte ptr [si+2],#0xEB
+	jne	scanlp
+	cmp	word ptr [si],#0x5A4D
+	jne	scanlp
+	mov	cx,#BOOTISOFULLSIZE
+	mov	di,#_bootiso
+	cld
+	rep
+	  movsb
+copydone:
+	pop	ds	
+#endasm
+	if (!bootiso[0]) {
+		puts("No bootiso data");
+		exit(-1);
+	}
+}
+#else
+#define data_fixup()
+#endif
+EOT
 	rm -rf $DATA
 	exit ;;
 --exe)
