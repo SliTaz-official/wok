@@ -24,15 +24,15 @@ _start:
 	rep
 	  movsb
 	cld
-	incw	%di
-	shrw	$4, %di		// 186
 	movw	%cs, %ax
-	addw	%di, %ax
+	movb	$4, %cl
+	shrw	%cl, %di
+	adcw	%di, %ax
 	movw	%ax, %ds
 	movw	%ax, %es
-	movw	%ax, %ss
 	popw	%dx
-	pushw	%cx
+	movw	%ax, %ss
+	pushw	%dx
 	pushw	%ax
 	pushw	%bx
 	retf
