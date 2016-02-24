@@ -11,7 +11,7 @@ WEB_SITE="https://github.com/google/brotli"
 WGET_URL="$WEB_SITE/archive/v$VERSION.tar.gz"
 TAGS="compression"
 
-DEPENDS="python"
+DEPENDS="gcc-lib-base"
 BUILD_DEPENDS="python-dev setuptools"
 
 # Rules to configure and make the package.
@@ -19,12 +19,14 @@ compile_rules()
 {
 	python setup.py build &&
 	python setup.py install --root=$DESTDIR
+	sed -i 's/ -std=c++11//' shared.mk
+	cd tools
+	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $install/usr $fs/
-	cp -a $src/python/bro.py $fs/usr/bin/bro
+	cp -a $src/tools/bro $fs/usr/bin/
 }
