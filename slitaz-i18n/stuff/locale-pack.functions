@@ -53,9 +53,16 @@ get_locale()
 	# Get locale definition files
 	usil='usr/share/i18n/locales'
 	for def in $locales; do
-		echo "* Copying $def locale files"
-		mkdir -p $fs/$usil
-		cp -a $WOK/glibc/install/$usil/$def $fs/$usil
+		case def in
+			en_US|en_GB)
+				# already in glibc-base
+				;;
+			*)
+				echo "* Copying $def locale files"
+				mkdir -p $fs/$usil
+				cp -a $WOK/glibc/install/$usil/$def $fs/$usil
+				;;
+		esac
 	done
 
 	if [ -n "$LOCALE_DEPENDS" ]; then
@@ -108,8 +115,15 @@ get_locale()
 	if [ -n "$GCONV" ]; then
 		mkdir -p $fs/usr/lib/gconv
 		for enc in $GCONV; do
-			echo "* Copying $enc gconv module"
-			cp -a $WOK/glibc/install/usr/lib/gconv/$enc.so $fs/usr/lib/gconv
+			case enc in
+				ISO8859-1|ISO8859-15)
+					# already in glibc-base
+					;;
+				*)
+					echo "* Copying $enc gconv module"
+					cp -a $WOK/glibc/install/usr/lib/gconv/$enc.so $fs/usr/lib/gconv
+					;;
+			esac
 		done
 		#ldd $fs/usr/lib/gconv/*	# test depends in gconv modules
 	fi
