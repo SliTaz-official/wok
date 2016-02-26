@@ -10,6 +10,7 @@ LICENSE="PublicDomain"
 TARBALL="$PACKAGE-src-${_realver}.zip"
 WEB_SITE="http://www.sqlite.org/"
 WGET_URL="http://www.sqlite.org/2015/$TARBALL"
+EXTRA_SOURCE_FILES="mysql2sqlite.sh"
 HOST_ARCH="i486 arm"
 
 DEPENDS="libsqlite"
@@ -18,6 +19,9 @@ BUILD_DEPENDS="tcl-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
+	[ -s "$SOURCES_REPOSITORY/mysql2sqlite.sh" ] ||
+		wget -O "$SOURCES_REPOSITORY/mysql2sqlite.sh" \
+			https://gist.github.com/esperlu/943776/raw/dd87f4088f6d5ec7563478f7a28a37ba02cf26e2/mysql2sqlite.sh
 	export CFLAGS="$CFLAGS -DSQLITE_ENABLE_FTS3=1 -DSQLITE_ENABLE_COLUMN_METADATA=1 -DSQLITE_ENABLE_UNLOCK_NOTIFY -DSQLITE_SECURE_DELETE"
 	./configure \
 		--prefix=/usr \
@@ -45,9 +49,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	mkdir -p $fs/usr/bin
 	
 	cp -a $install/usr/bin $fs/usr
+	cp "$SOURCES_REPOSITORY/mysql2sqlite.sh" $fs/usr/bin
+	chmod +x $fs/usr/bin/mysql2sqlite.sh
 	if [ -f $fs/usr/bin/lemon ]; then
 		rm -f $fs/usr/bin/lemon
 	fi
