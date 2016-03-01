@@ -10,7 +10,7 @@ WEB_SITE="http://humdi.net/vnstat/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="${WEB_SITE}$TARBALL"
 
-DEPENDS=""
+DEPENDS="busybox"
 SUGGESTED="libgd"
 BUILD_DEPENDS="libgd-dev"
 
@@ -23,10 +23,34 @@ compile_rules()
 	$CONFIGURE_ARGS &&
 	make && make install
 	find $install/usr/share/man -type f -exec gzip \{\} \;
+	mkdir -p $install/etc/init.d
+	ln -s daemon $install/etc/init.d/vnstatd
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	cp -a $install/* $fs
+}
+
+post_install()
+{
+	# Start vnstat daemon and edit daemons.conf
+	if [ -z "$1" -a ! -s /aufs-umount.sh ]; then
+		/etc/init.d/vnstatd start || continue
+	fi
+	if ! grep -q ^VNSTATD_OPTIONS "$1/etc/daemons.conf"; then
+		cat >> "$1/etc/daemons.conf" <<EOT
+# vnstat daemon options.
+VNSTATD_OPTIONS="-d -p /var/run/vnstatd.pid"
+
+EOT
+	fi
+}
+
+pre_remove()
+{
+	# Stop vnstat daemon before rm.
+	[ -z "$1" -a -x /etc/init.d/vnstatd ] && /etc/init.d/vnstatd stop
+	:
 }
