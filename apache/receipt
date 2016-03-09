@@ -36,7 +36,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/apache $fs/etc/init.d $fs/etc/apache/conf.d
-	mkdir -p $fs/etc/ssl/apache $fs/etc/apache/ssl
+	mkdir -p $fs/etc/ssl/apache
 	cp -a $install/usr/share/apache/icons $fs/usr/share/apache
 	cp -a $install/usr/share/apache/error $fs/usr/share/apache
 	cp -a $install/usr/share/apache/modules $fs/usr/share/apache
@@ -64,7 +64,6 @@ genpkg_rules()
 # Unsafe, see CVE-2014-3566 POODLE
 SSLProtocol All -SSLv2 -SSLv3
 EOT
-	ln -s ../extra/httpd-ssl.conf $fs/etc/apache/ssl/httpd-ssl.conf
 }
 
 # Pre and post install commands for Tazpkg.
@@ -86,7 +85,7 @@ post_install()
 		sed -i "s/localhost/$(hostname) localhost/" "$1/etc/hosts"
 	sed -i -e "s/^#\(LoadModule.*slotmem_shm.*\)$/\1/" \
 	    -e "s/.*ServerName www.example.*/ServerName ${hostname:-slitaz}/" \
-		$1/etc/apache/httpd.conf $1/etc/apache/ssl/httpd-ssl.conf
+		$1/etc/apache/httpd.conf $1/etc/apache/extra/httpd-ssl.conf
 	grep -qs Apache $1/var/www/index.html &&
 	sed -i 's|^LighTTPD.*|&\nApache configs      : /etc/apache|' \
 		$1/var/www/index.html
