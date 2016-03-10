@@ -1,48 +1,45 @@
 # SliTaz package receipt.
 
 PACKAGE="ntpclient"
-VERSION="2010_365"
+VERSION="2015_365"
 CATEGORY="system-tools"
 SHORT_DESC="Tiny NTP Client"
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-TARBALL="${PACKAGE}_${VERSION}.tar.gz"
-WEB_SITE="http://www.busybox.net/tinyutils.html"
-WGET_URL="http://doolittle.icarus.com/ntpclient/$TARBALL"
+TARBALL="${PACKAGE}_$VERSION.tar.gz"
+WEB_SITE="http://doolittle.icarus.com/ntpclient/"
+WGET_URL="${WEB_SITE}$TARBALL"
 HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# disable debug
-	sed -i 's/\(^CFLAGS += -DENABLE_DEBUG\)/#\1/' Makefile && 
-	make 
+	sed -i 's/\(^CFLAGS += -DENABLE_DEBUG\)/#\1/' Makefile &&
+	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
-{	
+{
 	mkdir -p $fs/usr/bin
 	cp -a $src/ntpclient  $fs/usr/bin
 }
 
 post_install()
 {
-    [ -n "$1" ] && return
-    echo ""
-    echo -n "Do you want to run ntpclient in automatic mode (y/N): "; read -t 30 anser
-    	if [ "$anser" == "y" ]; then
-    		srv="fr.pool.ntp.org"
-            echo ""
-            echo -n "Setting up crontab for ntpclient..."
-            crontab -l  2> /dev/null | grep -q '/usr/bin/ntpclient -s -h' || 
-	    crontab - -u root << EOT
-$(crontab -l 2> /dev/null)
+	[ -n "$1" -o -n "$quiet" ] && return
+	echo -en '\nDo you want to run ntpclient in automatic mode (y/N): '
+	read -t 30 anser
+		if [ "$anser" == 'y' ]; then
+			srv='fr.pool.ntp.org'
+			action 'Setting up crontab for ntpclient...'
+			crontab -l  2>/dev/null | grep -q '/usr/bin/ntpclient -s -h' ||
+			crontab - -u root <<EOT
+$(crontab -l 2>/dev/null)
 0 0 * * * /usr/bin/ntpclient -s -h $srv
 EOT
-            status
-        else
-        	echo "Don't forget to run ntpclient -s -h <NTP Server>"
-        fi
+		else
+			echo "Don't forget to run ntpclient -s -h <NTP Server>"
+		fi
 }
-
