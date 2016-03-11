@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="mate-notification-daemon"
+VERSION="1.13.0"
+CATEGORY="x-window"
+SHORT_DESC="Fork of gnome-notification-daemon"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL2"
+WEB_SITE="https://github.com/mate-desktop/mate-notification-daemon/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}archive/v$VERSION.tar.gz"
+PROVIDE="notification-daemon"
+TAGS="MATE"
+
+DEPENDS="gtk+ libcanberra libltdl libnotify libwnck"
+BUILD_DEPENDS="autoconf automake libtool gtk+-dev dbus-dev dbus-glib-dev \
+libcanberra-dev libwnck-dev libnotify-dev intltool"
+GENERIC_MENUS="no"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i '/^MATE_/d' configure.ac	# build standalone without MATE
+
+	mkdir macros; autoreconf --install --force
+	intltoolize;  autoreconf
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+	$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	find $fs/usr/lib -name '*.*a' -delete
+	rm -r $fs/usr/share/locale
+	sed -i '/^OnlyShowIn/d' $fs/usr/share/applications/mate-notification-properties.desktop
+	find $fs/usr/share/man -type f -exec gzip \{\} \;
+}
