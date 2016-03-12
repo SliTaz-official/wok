@@ -3,27 +3,28 @@
 PACKAGE="splashutils"
 VERSION="1.5.4.4"
 CATEGORY="system-tools"
-SHORT_DESC="Graphical boot utilities (fbsplash)."
+SHORT_DESC="Framebuffer boot splash screen"
 MAINTAINER="devel@slitaz.org"
-LICENSE="GPL2"
+LICENSE="LGPL2 GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://fbsplash.alanhaggai.org/"
-WGET_URL="http://fbsplash.alanhaggai.org/tarballs/files/$TARBALL"
+WEB_SITE="https://sourceforge.net/projects/fbsplash.berlios/"
+WGET_URL="$SF_MIRROR/fbsplash.berlios/$TARBALL"
 
 DEPENDS="libjpeg libpng gpm"
-BUILD_DEPENDS="jpeg-dev libpng-dev gpm-dev freetype-dev"
+BUILD_DEPENDS="autoconf automake libtool jpeg-dev gpm-dev libpng-dev \
+freetype-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	autoreconf
+	autoreconf --install --force
 	LIBS="-lbz2"
 	./configure \
 		--sysconfdir=/etc \
 		--without-klibc \
-		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+		$CONFIGURE_ARGS || exit 1
+	sed -i 's|-all-static||' $src/src/Makefile
+	make -j 1 && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
