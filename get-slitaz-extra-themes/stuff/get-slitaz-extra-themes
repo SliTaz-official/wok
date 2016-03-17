@@ -1,0 +1,79 @@
+#!/bin/sh -e
+
+[ -f '/etc/slitaz/slitaz.conf' ] && . /etc/slitaz/slitaz.conf
+[ -z "$INSTALLED" ] && INSTALLED='/var/lib/tazpkg/installed'
+
+PACKAGE="get-slitaz-extra-themes"
+PKGNAME="slitaz-extra-themes"
+PKGSRC="slitaz-themes"
+VERSION="001"
+CATEGORY="x-window"
+SHORT_DESC="Additional themes for Slitaz GNU/Linux."
+MAINTAINER="hackdorte@sapo.pt"
+LICENSE="BSD"
+WEB_SITE="https://github.com/hackdorte/slitaz-themes"
+TAGS="artwork gtk openbox theme"
+
+ROOT="$1"
+[ -d "$ROOT" ] || ROOT=""
+
+if [ $(id -u) -ne 0 ]; then
+  echo -e "\nYou must be root to run `basename $0`."
+  echo -e "Please type 'su' and root password to become super-user.\n"
+  exit 0
+fi
+
+if [ -d $ROOT$INSTALLED/$PKGNAME ]; then
+  [ -n "$ROOT" ] && exit 1
+  tazpkg remove $PKGNAME
+  [ -d $INSTALLED/$PKGNAME ] && exit 1
+fi
+
+# Source Download
+TARBALL="master.zip"
+URL="${WEB_SITE}/archive/$TARBALL"
+TMP_DIR="$(mktemp -d)"
+CUR_DIR=$(pwd)
+cd $TMP_DIR
+busybox wget -O $TARBALL $URL
+
+if [ ! -f $TARBALL ]; then
+  echo "Could not download $TARBALL. Exiting."
+  exit 1
+fi
+
+# Unzip Package
+busybox unzip $TARBALL
+
+# Building Base
+mkdir -p $PKGNAME-$VERSION/fs/usr/share/themes
+mv $PKGSRC-master/* $PKGNAME-$VERSION/fs/usr/share/themes
+rm -irf $PKGNAME-$VERSION/fs/usr/share/themes/README.md
+rm -irf $PKGSRC-master
+rm -irf $TARBALL
+
+
+# Writing The Receipt
+cat > $PKGNAME-$VERSION/receipt <<EOT
+PACKAGE="$PKGNAME"
+VERSION="$VERSION"
+CATEGORY="x-window"
+SHORT_DESC="$SHORT_DESC"
+WEB_SITE="$WEB_SITE"
+MAINTAINER="$MAINTAINER"
+TAGS="$TAGS"
+
+EOT
+
+# Creating The Tazpkg Package
+tazpkg pack $PKGNAME-$VERSION
+
+# Install Package
+tazpkg -i $PKGNAME-$VERSION.tazpkg --root=$ROOT
+case " $@ " in
+*\ --k*) mv $PKGNAME-$VERSION.tazpkg $CUR_DIR ;;
+esac
+
+# Clean
+cd $CUR_DIR
+rm -rf "$TMP_DIR"
