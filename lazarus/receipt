@@ -1,0 +1,90 @@
+# SliTaz package receipt.
+
+PACKAGE="lazarus"
+VERSION="1.6.0-0"
+CATEGORY="development"
+SHORT_DESC="Lazarus Component Library and IDE for Freepascal"
+MAINTAINER="shevtsov.anton@gmail.com"
+LICENSE="GPL LGPL"
+WEB_SITE="http://www.lazarus-ide.org"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://sourceforge.net/projects/lazarus/files/Lazarus%20Zip%20_%20GZip/Lazarus%201.6/$PACKAGE-$VERSION.tar.gz"
+TAGS="lazarus ide pascal"
+
+DEPENDS="fpc fpc-src gdb make"
+BUILD_DEPENDS="gtk+-dev fpc fpc-src "
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src && make clean bigide 
+	#&& make INSTALL_PREFIX=/usr install
+
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cd $src
+	#strip lazarus
+	#strip startlazarus	
+	#strip lazbuild
+	#strip tools/lazres
+	#strip tools/updatepofiles
+	#strip tools/lrstolfm
+	#strip tools/svn2revisioninc
+
+	install -m 755 -d $fs/usr/share
+	install -m 755 -d $fs/usr/share/lazarus
+	install -m 755 -d $fs/usr/share/applications
+	install -m 755 -d $fs/usr/share/pixmaps
+	install -m 755 -d $fs/usr/share/mime/packages
+	install -m 755 -d $fs/usr/share/icons/hicolor/48x48/mimetypes
+	install -m 755 -d $fs/usr/bin
+	install -m 755 -d $fs/usr/share/man
+	install -m 755 -d $fs/usr/share/man/man1
+	
+	cd $src
+	cp -Rfp packager debugger designer converter ide images languages lazarus.app units $fs/usr/share/lazarus
+	cp -Rfp components docs doceditor examples lcl test tools $fs/usr/share/lazarus
+	cp -Rfp Makefile* *.txt $fs/usr/share/lazarus
+
+	install -c -m 755 lazarus startlazarus lazbuild $fs/usr/share/lazarus
+
+	ln -sf ../share/lazarus/lazarus $fs/usr/bin/lazarus-ide
+	ln -sf ../share/lazarus/startlazarus $fs/usr/bin/startlazarus
+	ln -sf ../share/lazarus/lazbuild $fs/usr/bin/lazbuild
+	ln -sf ../share/lazarus/tools/lazres $fs/usr/bin/lazres
+	ln -sf ../share/lazarus/tools/lrstolfm $fs/usr/bin/lrstolfm
+	ln -sf ../share/lazarus/tools/updatepofiles $fs/usr/bin/updatepofiles
+
+	make -C $src/install/man install PREFIX=/usr GINSTALL=/usr/bin/install
+
+	cd $src/install/man/
+
+	cat man1/lrstolfm.1 | gzip > man1/lrstolfm.1.gz
+	cat man1/lazarus-ide.1 | gzip > man1/lazarus-ide.1.gz
+	cat man1/lazbuild.1 | gzip > man1/lazbuild.1.gz
+	cat man1/lazres.1 | gzip > man1/lazres.1.gz
+	cat man1/updatepofiles.1 | gzip > man1/updatepofiles.1.gz
+	cat man1/svn2revisioninc.1 | gzip > man1/svn2revisioninc.1.gz
+	cat man1/startlazarus.1 | gzip > man1/startlazarus.1.gz
+
+	install -m 644 man1/lrstolfm.1.gz man1/lazarus-ide.1.gz man1/lazres.1.gz man1/lazbuild.1.gz man1/startlazarus.1.gz man1/updatepofiles.1.gz man1/svn2revisioninc.1.gz $fs/usr/share/man/man1
+
+	rm -f man1/lrstolfm.1.gz man1/lazarus-ide.1.gz man1/lazres.1.gz man1/lazbuild.1.gz man1/startlazarus.1.gz man1/updatepofiles.1.gz man1/svn2revisioninc.1.gz
+
+	
+	install -c -m 644 $src/install/lazarus.desktop $fs/usr/share/applications/lazarus.desktop
+	install -c -m 644 $src/images/icons/lazarus128x128.png $fs/usr/share/pixmaps/lazarus.png
+	install -c -m 644 $src/install/lazarus-mime.xml $fs/usr/share/mime/packages/lazarus.xml
+	install -c -m 644 $src/images/mimetypes/*.png $fs/usr/share/icons/hicolor/48x48/mimetypes/
+
+	install -m 755 -d $fs/usr/share/lazarus/units/i386-linux/nogui
+	install -m 755 -d $fs/usr/share/lazarus/units/i386-linux/gtk
+	install -m 755 -d $fs/usr/share/lazarus/units/i386-linux/gtk2
+	install -m 755 -d $fs/usr/share/lazarus/units/i386-linux/qt
+	install -m 755 -d $fs/usr/share/lazarus/components/synedit/design/languages
+
+	#cp -a $install/* $fs
+}
