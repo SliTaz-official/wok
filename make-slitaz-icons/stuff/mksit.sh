@@ -1,9 +1,9 @@
 #!/bin/sh
 # Make SliTaz icon theme
-# Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2015
+# Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2016
 # (Started in November 2014)
 
-VERSION="160108"
+VERSION="160325"
 
 . /lib/libtaz.sh
 
@@ -684,6 +684,9 @@ c text-x-tazpkg-receipt text-x-script
 
 c application-x-shockwave-flash			# Midori
 c unknown								# for unknown mimetypes in PCManFM
+
+SIZES='16'
+c package package-x-generic				# for Midori: Sidepanel
 
 
 ########################
