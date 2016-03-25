@@ -21,15 +21,14 @@ settings=$(LC_NUMERIC=C yad --form --columns=2 --title="xsnow settings" $icon \
 	--field="Check this if snow layering doesn't work":CHK \
 	--field="Duration (min) (0 = unlimited)":NUM \
 	-- '100!1..1000' "$colors" 'true' SkyBlue3\!"$colors" \
-	chartreuse\!"${colors/chartreuse/}" '2!0..2' '-1!-1..inf' '3!1..inf' \
-	50 true 3 2 '10!1..inf' true 30 15 50 0 true true true true true false 0)
+	chartreuse\!"${colors/chartreuse!/}" '2!0..2' '-1!-1..inf' '3!1..inf' \
+	50 true '3!1..inf' 2 10 true 30 15 50 0 true true true true true false 0)
 [ $? -eq 0 ] || exit 1
 pid1=$(pgrep -fl 'spacefm --desktop'|cut -f1 -d' ')
 pid2=$(pgrep -fl 'pcmanfm --desktop'|cut -f1 -d' ')
-[ -n "$pid1" -o -n "$pid2" ] && yad --title=Warning $icon \
+[ -n "$pid1" -o -n "$pid2" ] && { yad --title=Warning $icon \
 	--text="Your file manager windows will be closed, and your desktop icons \
-temporarily removed. Continue?"
-[ $? -eq 0 ] || exit 2
+temporarily removed. Continue?" || exit 2 ;}
 [ -n "$pid1" ] && kill $pid1
 [ -n "$pid2" ] && kill $pid2
 # add dummy var to gobble last |
