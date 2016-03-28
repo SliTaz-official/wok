@@ -1,8 +1,8 @@
    text    data     bss     dec     hex filename
-   3118       0       0    3118     c2e util-linux/fbvnc.o
+   3119       0       0    3119     c2f util-linux/fbvnc.o
 --- /dev/null
 +++ busybox/util-linux/fbvnc.c
-@@ -0,0 +1,562 @@
+@@ -0,0 +1,549 @@
 +/* vi: set sw=4 ts=4: */
 +/*
 + * A small linux framebuffer VNC viewer
@@ -30,8 +30,7 @@
 +//usage:	"[VNC_SERVER] [PORT]"
 +//usage:#define fbvnc_full_usage "\n\n"
 +//usage:     "A linux framebuffer VNC viewer."
-+//usage:     "\nTo exit, move mouse to upper left corner and press ESC."
-+//usage:     "\nor press any mouse button and press ESC or press ESC ^C."
++//usage:     "\nTo exit, press any mouse button and press ESC."
 +
 +#include "libbb.h"
 +#include "vnc.h"
@@ -146,6 +145,7 @@
 +#define srv_rows	scroll[1].srv_size
 +#define or		scroll[1].offset
 +#define mr		scroll[1].pos
++	char rat_buttons;
 +	int fb_fd;
 +	void *fb_ptr;
 +	int bpp;
@@ -401,32 +401,30 @@
 +	return status;
 +}
 +
-+static char rat_buttons;
 +static void rat_event(void)
 +{
++	static u8 btn2vnc[8] = {
++		0, VNC_BUTTON1_MASK, VNC_BUTTON3_MASK, 
++		VNC_BUTTON1_MASK + VNC_BUTTON3_MASK, VNC_BUTTON2_MASK, 
++		VNC_BUTTON1_MASK + VNC_BUTTON2_MASK,
++		VNC_BUTTON2_MASK + VNC_BUTTON3_MASK,
++		VNC_BUTTON1_MASK + VNC_BUTTON2_MASK + VNC_BUTTON3_MASK
++	};
 +	signed char ie[4];
 +	struct vnc_client_ratevent me = {VNC_CLIENT_RATEVENT};
-+	int mask = 0;
 +	int refresh;
 +
 +	xread(G.rat_fd, &ie, sizeof(ie));
 +	G.mc += ie[1];
 +	G.mr -= ie[2];
 +	refresh = 2 - update_scroll(&G.scroll[0]) - update_scroll(&G.scroll[1]);
-+	rat_buttons = ie[0] & 7;
-+	if (ie[0] & 0x01)
-+		mask |= VNC_BUTTON1_MASK;
-+	if (ie[0] & 0x04)
-+		mask |= VNC_BUTTON2_MASK;
-+	if (ie[0] & 0x02)
-+		mask |= VNC_BUTTON3_MASK;
++	me.mask = btn2vnc[G.rat_buttons = ie[0] & 7];
 +	if (ie[3] > 0)		/* wheel up */
-+		mask |= VNC_BUTTON4_MASK;
++		me.mask |= VNC_BUTTON4_MASK;
 +	if (ie[3] < 0)		/* wheel down */
-+		mask |= VNC_BUTTON5_MASK;
++		me.mask |= VNC_BUTTON5_MASK;
 +	me.y = htons(G.mr);
 +	me.x = htons(G.mc);
-+	me.mask = mask;
 +	write(G.vnc_fd, &me, sizeof(me));
 +	if (refresh)
 +		vnc_refresh(0);
@@ -448,51 +446,43 @@
 +	if ((nr = read(0, key, sizeof(key))) <= 0 )
 +		killed(1);
 +	for (i = 0; i < nr; i++) {
-+		int k = -1;
++		int j, k;
 +		int mod[4];
-+		int nmod = 0;
++		int nmod;
++
++		k = nmod = 0;
 +		switch (key[i]) {
 +		case 0x08:
 +		case 0x7f:
 +			k = 0xff08;
 +			break;
-+		case 0x09:
-+			k = 0xff09;
-+			break;
 +		case 0x1b:
-+			if (G.oc + G.mc + G.or + G.mr == 0 || rat_buttons)
++			if (G.rat_buttons)
 +				killed(0);
 +			if (i + 2 < nr && key[i + 1] == '[') {
-+				if (key[i + 2] == 'A')
-+					k = 0xff52;
-+				if (key[i + 2] == 'B')
-+					k = 0xff54;
-+				if (key[i + 2] == 'C')
-+					k = 0xff53;
-+				if (key[i + 2] == 'D')
-+					k = 0xff51;
-+				if (key[i + 2] == 'H')
-+					k = 0xff50;
-+				if (k > 0) {
++				static const char arr2vnc[] = "HDACB";
++				char *p = strchr(arr2vnc, key[i + 2]);
++
++				if (p) {
++					k = p - arr2vnc + 0xff50;
 +					i += 2;
 +					break;
 +				}
 +			}
-+			k = 0xff1b;
 +			if (i + 1 < nr) {
 +				mod[nmod++] = 0xffe9;
-+				k = key[++i];
-+				if (k == 0x03) /* esc-^C quit */
-+					killed(0);
++				i++;
 +			}
-+			break;
++		case 0x09:
 +		case 0x0d:
-+			k = 0xff0d;
-+			break;
-+		case 0x0c:	/* ^L: redraw */
-+			vnc_refresh(0);
++			k = 0xff00;
++			goto getkey;
++		case 0x0c:	/* Mouse button + ^L: redraw */
++			if (G.rat_buttons)
++				vnc_refresh(0);
 +		default:
-+			k = (unsigned char) key[i];
++		getkey:
++			k += (unsigned char) key[i];
 +		}
 +		if ((k >= 'A' && k <= 'Z') || strchr(":\"<>?{}|+_()*&^%$#@!~", k))
 +			mod[nmod++] = 0xffe1;
@@ -500,15 +490,12 @@
 +			k += 'a' - 1;
 +			mod[nmod++] = 0xffe3;
 +		}
-+		if (k > 0) {
-+			int j;
-+			mod[nmod] = k;
-+			for (j = 0; j <= nmod; j++)
-+				press(mod[j], 1);
-+			press(k, 0);
-+			for (j = 0; j < nmod; j++)
-+				press(mod[j], 0);
-+		}
++		mod[nmod] = k;
++		for (j = 0; j <= nmod; j++)
++			press(mod[j], 1);
++		press(k, 0);
++		for (j = 0; j < nmod; j++)
++			press(mod[j], 0);
 +	}
 +}
 +
