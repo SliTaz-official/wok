@@ -304,10 +304,10 @@
 +
 +static void cleanup(void)
 +{
-+	const char *reset = "\x1b[?25h" "\x1b[2J\x1b[H";
++#define RESETSTR "\x1b[?25h\x1b[2J\x1b[H"
 +	fb_free();
 +	tcsetattr_stdin_TCSANOW(&G.term_orig);
-+	write(STDOUT_FILENO, reset, strlen(reset));
++	write(STDOUT_FILENO, RESETSTR, sizeof(RESETSTR));
 +	if (ENABLE_FEATURE_CLEAN_UP) {
 +		close(G.vnc_fd);
 +		close(G.rat_fd);
@@ -515,9 +515,9 @@
 +static void term_setup(void)
 +{
 +	struct termios termios;
-+	const char *init = "\x1b[?25l" "\x1b[2J\x1b[H" "** fbvnc **";
++#define INITSTR	"\x1b[?25l\x1b[2J\x1b[H** fbvnc **"
 +
-+	write(STDOUT_FILENO, init, strlen(init));
++	write(STDOUT_FILENO, INITSTR, sizeof(INITSTR));
 +	tcgetattr (STDIN_FILENO, &termios);
 +	G.term_orig = termios;
 +	cfmakeraw(&termios);
@@ -537,8 +537,8 @@
 +	G.vnc_fd = create_and_connect_stream_or_die(host, port);
 +	vnc_init();
 +	G.rat_fd = open("/dev/input/mice", O_RDWR);
-+	write(rat_fd, "\xf3\xc8\xf3\x64\xf3\x50", 6);	/* for using mouse wheel */
-+	read(rat_fd, buf, 1);
++	write(G.rat_fd, "\xf3\xc8\xf3\x64\xf3\x50", 6);	/* for using mouse wheel */
++	read(G.rat_fd, buf, 1);
 +	term_setup();
 +	atexit(cleanup);
 +	bb_signals(BB_FATAL_SIGS, killed);
