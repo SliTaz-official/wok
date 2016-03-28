@@ -28,8 +28,16 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/lib $fs/var/lib/unbound
 	cp -a $install/etc $fs
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/sbin $fs/usr
+}
+
+# Post message when installing.
+post_install()
+{
+	chroot "$1/" adduser -S -H -h /var/lib/unbound -D unbound
+	chroot "$1/" chown unbound /var/lib/unbound
+	chroot "$1/" unbound-anchor -a /var/lib/unbound/root.key
 }

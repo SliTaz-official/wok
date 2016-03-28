@@ -21,6 +21,8 @@ get()
 compress()
 {
 	if [ "$1" ]; then
+		[ "$(which zopfli 2> /dev/null)" ] &&
+		zopfli --i100 -c /dev/stdin > $1 ||
 		gzip -9 > $1
 		[ "$(which advdef 2> /dev/null)" ] &&
 		advdef -z4 $1 > /dev/null
@@ -79,9 +81,7 @@ add_tazlito_info()
 {
 	HOLE=$OFS
 	[ $(get 0 $2) -eq 35615 ] || return
-	zcat $2 | gzip -9 > /tmp/rezipped$$.gz
-	[ "$(which advdef 2> /dev/null)" ] &&
-	advdef -z4 /tmp/rezipped$$.gz > /dev/null
+	zcat $2 | compress /tmp/rezipped$$.gz
 	n=$(stat -c %s /tmp/rezipped$$.gz)
 	printf "Moving tazlito data record at %04X ($n bytes) ...\n" $OFS
 	ddq if=/tmp/rezipped$$.gz bs=1 of=$1 seek=$OFS conv=notrunc

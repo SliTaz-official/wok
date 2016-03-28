@@ -1284,6 +1284,23 @@ quit()
 	${1:-exit}
 }
 
+infoiso()
+{
+	isoinfo -d -i "$ISO" > /tmp/isoinfo$$
+	if [ -x "$(which iso2exe)" ]; then
+		echo "----"
+		iso2exe -l "$ISO"
+	fi >> /tmp/isoinfo$$
+	if [ "$1" ]; then
+		cat /tmp/isoinfo$$
+	else
+		$DIALOG --clear \
+			--title " Info ISO " \
+			--textbox /tmp/isoinfo$$ 0 0
+	fi
+	rm -f /tmp/isoinfo$$
+}
+
 isotitle()
 {
 	echo "$(blkid "$ISO" | sed 's/.*LABEL="\([^"]*\).*/\1/')  $(stat \
@@ -1326,6 +1343,7 @@ $(gotcustomconf		"getcustomconf"	"Get custom config") \
 $(gotisomd5		"isomd5"	"Check the ISO image") \
 $(cdfile 'md5sum*'	"md5"		"Check the ISO files") \
 $(cdfile 'sha*sum*'	"sha"		"Check the ISO files") \
+$(xfile isoinfo		"infoiso"	"ISO image info") \
 $(cdfilex boot/bzImage	"bootiso"	"Boot the ISO image") \
 $(burnable		"burniso"	"Burn the ISO image") \
 $(blankable		"blankcd"	"Blank the CD/DVD") \

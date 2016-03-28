@@ -2,7 +2,7 @@
    3118       0       0    3118     c2e util-linux/fbvnc.o
 --- /dev/null
 +++ busybox/util-linux/fbvnc.c
-@@ -0,0 +1,551 @@
+@@ -0,0 +1,562 @@
 +/* vi: set sw=4 ts=4: */
 +/*
 + * A small linux framebuffer VNC viewer
@@ -31,6 +31,7 @@
 +//usage:#define fbvnc_full_usage "\n\n"
 +//usage:     "A linux framebuffer VNC viewer."
 +//usage:     "\nTo exit, move mouse to upper left corner and press ESC."
++//usage:     "\nor press any mouse button and press ESC or press ESC ^C."
 +
 +#include "libbb.h"
 +#include "vnc.h"
@@ -400,9 +401,10 @@
 +	return status;
 +}
 +
++static char rat_buttons;
 +static void rat_event(void)
 +{
-+	signed char ie[3];
++	signed char ie[4];
 +	struct vnc_client_ratevent me = {VNC_CLIENT_RATEVENT};
 +	int mask = 0;
 +	int refresh;
@@ -411,12 +413,17 @@
 +	G.mc += ie[1];
 +	G.mr -= ie[2];
 +	refresh = 2 - update_scroll(&G.scroll[0]) - update_scroll(&G.scroll[1]);
++	rat_buttons = ie[0] & 7;
 +	if (ie[0] & 0x01)
 +		mask |= VNC_BUTTON1_MASK;
 +	if (ie[0] & 0x04)
 +		mask |= VNC_BUTTON2_MASK;
 +	if (ie[0] & 0x02)
 +		mask |= VNC_BUTTON3_MASK;
++	if (ie[3] > 0)		/* wheel up */
++		mask |= VNC_BUTTON4_MASK;
++	if (ie[3] < 0)		/* wheel down */
++		mask |= VNC_BUTTON5_MASK;
 +	me.y = htons(G.mr);
 +	me.x = htons(G.mc);
 +	me.mask = mask;
@@ -453,7 +460,7 @@
 +			k = 0xff09;
 +			break;
 +		case 0x1b:
-+			if (G.oc + G.mc + G.or + G.mr == 0)
++			if (G.oc + G.mc + G.or + G.mr == 0 || rat_buttons)
 +				killed(0);
 +			if (i + 2 < nr && key[i + 1] == '[') {
 +				if (key[i + 2] == 'A')
@@ -475,6 +482,8 @@
 +			if (i + 1 < nr) {
 +				mod[nmod++] = 0xffe9;
 +				k = key[++i];
++				if (k == 0x03) /* esc-^C quit */
++					killed(0);
 +			}
 +			break;
 +		case 0x0d:
@@ -527,7 +536,9 @@
 +	port = bb_lookup_port((argc >= 3) ?  argv[2] : "vnc", "tcp", 5900);
 +	G.vnc_fd = create_and_connect_stream_or_die(host, port);
 +	vnc_init();
-+	G.rat_fd = open("/dev/input/mice", O_RDONLY);
++	G.rat_fd = open("/dev/input/mice", O_RDWR);
++	write(rat_fd, "\xf3\xc8\xf3\x64\xf3\x50", 6);	/* for using mouse wheel */
++	read(rat_fd, buf, 1);
 +	term_setup();
 +	atexit(cleanup);
 +	bb_signals(BB_FATAL_SIGS, killed);
@@ -556,7 +567,7 @@
 +}
 --- /dev/null
 +++ busybox/util-linux/vnc.h
-@@ -0,0 +1,122 @@
+@@ -0,0 +1,124 @@
 +#define VNC_CONN_FAILED		0
 +#define VNC_CONN_NOAUTH		1
 +#define VNC_CONN_AUTH		2
@@ -584,9 +595,11 @@
 +#define VNC_ENC_CORRE		4
 +#define VNC_ENC_HEXTILE		5
 +
-+#define VNC_BUTTON1_MASK	0x1
-+#define VNC_BUTTON2_MASK	0x2
-+#define VNC_BUTTON3_MASK	0x4
++#define VNC_BUTTON1_MASK	0x01
++#define VNC_BUTTON2_MASK	0x02
++#define VNC_BUTTON3_MASK	0x04
++#define VNC_BUTTON4_MASK	0x10
++#define VNC_BUTTON5_MASK	0x08
 +
 +typedef unsigned char u8;
 +typedef unsigned short u16;
