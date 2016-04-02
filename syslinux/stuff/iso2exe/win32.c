@@ -128,7 +128,7 @@ static int rawrite(unsigned long drive, char *isoFileName)
 		drive >>= 1;
 	fdiso = open(isoFileName, O_RDONLY|O_BINARY);
 	for (s = 0;; s++) {
-		int s, n = read(fdiso, buffer, sizeof(buffer));
+		int n = read(fdiso, buffer, sizeof(buffer));
 		if (n <= 0) break;
 		rdwrsector(MODE_WRITE, dev, s);
 	}
