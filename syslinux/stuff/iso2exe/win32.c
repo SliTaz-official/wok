@@ -102,7 +102,7 @@ static int rdwrsector(int mode, int drive, unsigned long startingsector)
 		strcpy(devname, "\\\\.\\A:");
 		devname[4] += drive;
 	}
-	hDevice = CreateFile (devname, GENERIC_READ, 
+	hDevice = CreateFile (devname, (mode == MODE_READ) ? GENERIC_READ : GENERIC_WRITE, 
 		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 	if (hDevice == INVALID_HANDLE_VALUE)
 		return -1;
