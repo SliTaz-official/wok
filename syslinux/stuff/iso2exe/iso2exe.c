@@ -453,6 +453,13 @@ static unsigned install(char *filename)
 			}
 			write(fd, string, 32);
 		}
+
+		/* Update partition size */
+		n = 1+((n - 1) >> 20);
+		BYTE(bootiso + partition + 7) = 
+		BYTE(bootiso + isohybrid + partition + 7) = n -1;
+		LONG(bootiso + partition + 12) =
+		LONG(bootiso + isohybrid + partition + 12) = n * 2048;
 	}
 
 	/* Install iso2exe boot sector */

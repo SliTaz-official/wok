@@ -473,15 +473,6 @@ EOT
 			md5sum | cut -c-32 | sed 's/\(..\)/\\x\1/g')" | \
 			ddq bs=16 seek=2047 conv=notrunc of=$1
 	fi
-	echo -n "Adding boot checksum..."
-	if [ $(stat -c %s $1) -gt 32768 ]; then
-		n=$(($(get 2 $1) - 1 + ($(get 4 $1) - 1)*512))
-		n=$(($(od -v -N $n -t u2 -w2 -An $1 | \
-		       awk '{ i+= $0 } END { print (i % 65536) }') \
-		     + $(get $(($n+1)) $1 1)))
-		store 18 $(( (-$n -1) % 65536 )) $1
-	fi
-	echo " done."
 	if [ "$append$initrd" ]; then
 		echo -n "Adding custom config... "
 		DATA=/tmp/$(basename $0)$$
@@ -492,14 +483,33 @@ EOT
 			cat $initrd >> $DATA
 		echo "#!boot $(md5sum $DATA | sed 's/ .*//')" | cat - $DATA | \
 		ddq bs=2k seek=$(custom_config_sector $1) of=$1 conv=notrunc
-		if [ $(stat -c %s $1) -gt $isosz ]; then
-			echo "$(($(stat -c %s $1) - $isosz)) extra bytes."
+		newsz=$(stat -c %s $1)
+		for i in 1 2 3 4 ; do
+			[ $(get $((0x1BE+16*i)) $1 4) -eq $((0x00010080)) ] || continue
+			mb=$(((($newsz -1)/1024/1024)+1))
+			h=$((512*$(get 417 "$1" 1)))
+			store $(($mb-1)) $((0x1C5+16*i)) $1 8
+			store $(($mb-1)) $(($h+0x1C5+16*i)) $1 8
+			store $(($mb*2048)) $((0x1D2+16*i)) $1 32
+			store $(($mb*2048)) $(($h+0x1D2+16*i)) $1 32
+		done
+		if [ $newsz -gt $isosz ]; then
+			echo "$(($newsz - $isosz)) extra bytes."
 		else
 			echo "$(($isosz - 32768 - 2048*$(get 32848 $1 4) 
 				 - $(stat -c %s $DATA) - 24)) bytes free."
 		fi
 		rm -f $DATA > /dev/null
 	fi
+	echo -n "Adding boot checksum..."
+	if [ $(stat -c %s $1) -gt 32768 ]; then
+		n=$(($(get 2 $1) - 1 + ($(get 4 $1) - 1)*512))
+		n=$(($(od -v -N $n -t u2 -w2 -An $1 | \
+		       awk '{ i+= $0 } END { print (i % 65536) }') \
+		     + $(get $(($n+1)) $1 1)))
+		store 18 $(( (-$n -1) % 65536 )) $1
+	fi
+	echo " done."
 }
 
 main "$@" <<EOT
