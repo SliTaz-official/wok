@@ -198,7 +198,9 @@ doinstall()
 	unset useposixovl
 	blkid | grep $(df $mnt | sed '$!d;s/ .*/:/') | \
 		grep -qiE "(msdos|vfat|ntfs)" && useposixovl=YES
-
+	case "$mnt" in
+	*mkzip*) useposixovl=YES
+	esac
 	mkdir -p $mnt/slitaz/boot $mnt/slitaz/mnt/dos
 	[ "$useposixovl" ] &&
 	if ! mount.posixovl -F $mnt/slitaz -- \
@@ -407,7 +409,7 @@ mkzip()
 	device=
 	packages_list=
 	packages_dir=
-	mnt=/tmp/mnt$$
+	mnt=/tmp/mkzipmnt$$
 	mkdir -p $mnt
 	$1 $2 || return
 	for i in bootlace.com grubinst.exe grldr ; do
@@ -464,7 +466,7 @@ EOT
 	  zip -zr9 $(basename "$ISO" .iso).zip slitaz )
 	[ "$(which advzip)" ] && advzip -z4 $mnt/*.zip
 	mv $mnt/*.zip .
-	ls -l $PWD/$(basename "$ISO" .iso).zip
+	du -h $PWD/$(basename "$ISO" .iso).zip
 	umount $mnt
 	rm -rf $mnt
 }
@@ -581,7 +583,7 @@ Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n
 		[ $? -eq 0 ] || return
 	fi
 	gettazboot tazboot.exe
-	ls -l $PWD/tazboot.exe
+	du -h $PWD/tazboot.exe
 }
 
 md5()
@@ -642,7 +644,7 @@ vga= (you can try 'rdev -v') and mem= (partially).
 		[ $? -eq 0 ] || return
 	fi
 	cp $media/boot/bzImage linux.exe
-	ls -l $PWD/linux.exe
+	du -h $PWD/linux.exe
 }
 
 memtest()
@@ -658,7 +660,7 @@ miss many of the failures that are detected by Memtest86.\n
 		[ $? -eq 0 ] || return
 	fi
 	gotcdfile 'memtest*' && cp $file memtest.exe
-	ls -l $PWD/memtest.exe
+	du -h $PWD/memtest.exe
 }
 
 mkfat12()
@@ -724,7 +726,7 @@ from the Web using PXE and HTTP protocols.\n
 		[ $? -eq 0 ] || return
 	fi
 	cp $file $(basename $file).exe
-	ls -l $PWD/$(basename $file).exe
+	du -h $PWD/$(basename $file).exe
 }
 
 fdpxe()
@@ -795,7 +797,7 @@ cdexe()
 
 misspkg()
 {
-	for i in zip kexec-tools posixovl cdrkit ; do
+	for i in zip kexec-tools posixovl cdrkit cdrkit-isoinfo ; do
 		[ -d /var/lib/tazpkg/installed/$i/ ] && continue
 		[ "$1" != "install" ] && menuitem "$@" && return
 		tazpkg get-install $i
@@ -1274,7 +1276,7 @@ EOT
 		printf "mv %s fd%03d.img\n" $file $(($r+$n))
 		n=$(($n+1))
 	done | sh
-	ls fd???.img
+	du -ch $PWD/fd???.img
 }
 
 quit()
