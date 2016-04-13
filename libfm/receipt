@@ -1,17 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="libfm"
-VERSION="87217a5"
+VERSION="1.2.4"
 CATEGORY="system-tools"
 SHORT_DESC="File management support (core library)"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://pcmanfm.sourceforge.net"
-#WGET_URL="$SF_MIRROR/pcmanfm/files/$TARBALL"
-WGET_URL="http://git.lxde.org/gitweb/?p=lxde/libfm.git;a=snapshot;h=$VERSION;sf=txz"
-EXTRA_SOURCE_FILES="$PACKAGE-reverse_patch.u" # Fix segfaults
-WGET_URL2="https://github.com/lxde/libfm/commit/113ea3c.diff"
+WGET_URL="$SF_MIRROR/pcmanfm/files/$TARBALL"
+EXTRA_SOURCE_FILES="$PACKAGE-reversepatch_SF949_7daeaf3.u" # Really fix segfault
+WGET_URL2="https://github.com/lxde/libfm/commit/7daeaf3.patch"
+#WGETURL3="https://github.com/lxde/libfm/commit/113ea3c.diff" # wide icon cell
 HOST_ARCH="i486 arm"
 GENERIC_MENUS="no"
 
@@ -19,7 +19,7 @@ SUGGESTED="gvfs"
 DEPENDS="glib glibc-base libffi libgio menu-cache pcre zlib"
 BUILD_DEPENDS="gtk+-dev dbus-glib-dev dbus-dev startup-notification-dev \
 libxcb-dev xcb-util-dev menu-cache-dev expat-dev libgio-dev \
-shared-mime-info-dev gtk-doc libtool automake"
+shared-mime-info-dev" # git-version deps: gtk-doc libtool automake
 
 case "$ARCH" in
 	i?86) BUILD_DEPENDS="$BUILD_DEPENDS intltool vala"
@@ -31,7 +31,8 @@ compile_rules()
 	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] || \
 		wget -O $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES $WGET_URL2
 	patch -p1 -R -i $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES
-	./autogen.sh
+	# fix freeze when using custom action with "inode/directory":
+	sed 's|TRUE, 0.5, 0.0|FALSE, 0.0f, 0.0f|' -i src/gtk/fm-standard-view.c
 	./configure \
 		--sysconfdir=/etc \
 		$CONFIGURE_ARGS &&
