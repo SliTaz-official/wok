@@ -1,0 +1,59 @@
+# SliTaz package receipt.
+
+PACKAGE="webian-shell"
+VERSION="0.1"
+CATEGORY="network"
+SHORT_DESC="A full screen web browser."
+MAINTAINER="hackdorte@sapo.pt"
+LICENSE="MPL2"
+WEB_SITE="http://webian.org/shell/"
+
+# Please, this receipt need improvements in the variables. Thank you.
+GITHUB="https://github.com/downloads"
+SOURCE="webian_shell_0.1-linux_32"
+
+TARBALL="$SOURCE.tar.gz"
+WGET_URL="$GITHUB/webianproject/shell/$TARBALL"
+
+DEPENDS="gtk+ nss"
+
+compile_rules()
+{
+
+mkdir -p $install/usr/share/applications
+mkdir -p $install/usr/share/pixmaps
+mkdir -p $install/usr/lib/webian-shell
+
+cp -a $src/xulrunner/chrome/icons/default/default32.png $install/usr/share/pixmaps/webian-shell.png
+cp -a $src/* $install/usr/lib/webian-shell
+
+}
+
+genpkg_rules()
+{
+
+cat > $install/usr/share/applications/webian-shell.desktop <<EOT
+[Desktop Entry]
+Type=Application
+Name=Webian Shell
+Comment=A full screen web browser.
+Exec=webian-shell
+Icon=webian-shell
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;application/vnd.mozilla.xul+xml;text/mml;x-scheme-handler/http;x-scheme-handler/https;
+EOT
+
+cp -a $install/* $fs
+
+}
+
+post_install()
+{
+  cd /usr/bin
+  ln -s /usr/lib/webian-shell/Webian\ Shell webian-shell
+}
+
+post_remove()
+{
+  rm -rf /usr/bin/webian-shell
+}
