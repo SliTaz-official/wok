@@ -1,0 +1,46 @@
+# SliTaz package receipt.
+
+PACKAGE="waterline-plugin-multiload"
+VERSION="f8b592a"
+CATEGORY="x-window"
+SHORT_DESC="multiload-nandhp is a port of the GNOME multiload applet to SDE waterline panel"
+MAINTAINER="psychomaniak@xakep.ru"
+LICENSE="GPL2"
+WEB_SITE="http://git.make-linux.org/sde/waterline-plugin-multiload"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="http://git.make-linux.org/sde/$PACKAGE.git/snapshot/$TARBALL"
+TAGS="desktop panel"
+
+DEPENDS="waterline libgtop"
+BUILD_DEPENDS="automake libtool gtk+-dev jansson-dev libsde-utils \
+libsde-utils-x11 libsde-utils-jansson libsde-utils-gtk \
+xorg-libXcomposite-dev menu-cache-dev alsa-lib-dev xz \
+libgtop-dev lxpanel-dev waterline-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	rm -rf $src/.git
+	./autogen.sh || return 1
+	./configure \
+		--prefix=/usr \
+		--libexec=/usr/lib \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--disable-static \
+		--disable-maintainer-mode \
+		--enable-silent-rules \
+		--with-waterline \
+		--with-lxpanel \
+		--without-xfce4 \
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/waterline/plugins
+	cp -a $install/usr/lib/waterline/plugins/*.so $fs/usr/lib/waterline/plugins
+}

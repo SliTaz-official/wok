@@ -1,0 +1,53 @@
+# SliTaz package receipt.
+
+PACKAGE="waterline"
+VERSION="ed8ddef"
+CATEGORY="x-window"
+SHORT_DESC="A lightweight framework for desktop widgets and applets"
+MAINTAINER="psychomaniak@xakep.ru"
+LICENSE="GPL2"
+WEB_SITE="http://git.make-linux.org/sde/waterline.git"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="http://git.make-linux.org/sde/$PACKAGE.git/snapshot/$TARBALL"
+TAGS="desktop panel taskbar"
+
+DEPENDS="libsde-utils-jansson libsde-utils-x11"
+BUILD_DEPENDS="automake libtool gtk+-dev jansson-dev libsde-utils \
+libsde-utils-x11 libsde-utils-jansson libsde-utils-gtk \
+xorg-libXcomposite-dev menu-cache-dev alsa-lib-dev"
+# libsde-utils-dev libsde-utils-x11-dev libsde-utils-jansson-dev libsde-utils-gtk-dev
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	rm -rf $src/.git
+	sed 's/lxsession-logout/tazbox logout/' -i src/defaultapplications.c
+	./autogen.sh || return 1
+	./configure \
+		--prefix=/usr \
+		--libexec=/usr/lib \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--disable-static \
+		--disable-maintainer-mode \
+		--enable-silent-rules \
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	mkdir -p $fs/etc/xdg/autostart
+	cat > $fs/etc/xdg/autostart/waterline.desktop <<EOT
+[Desktop Entry]
+Type=Application
+Name=Waterline Desktop panel
+Exec=waterline
+EOT
+	rm -rf $fs/usr/include
+	rm -rf $fs/usr/lib/pkgconfig
+	rm -r $fs/usr/lib/waterline/internals/*.la
+}
