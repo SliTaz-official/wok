@@ -16,6 +16,9 @@ netfs()
 
 logger "$0 interface=$interface ip=$ip broadcast=$broadcast subnet=$subnet router=$router domain=$domain dns=$dns $@"
 
+skip=$(sed "/skipdhcpip=/!d;s/.*skipdhcpip=\([^ ]*\).*/\1/" </proc/cmdline)
+[ -n "$skip" ] && case "$ip" in $skip*) exit 0;; esac
+
 case "$1" in
 	deconfig)
 		netfs || /sbin/ifconfig $interface 0.0.0.0
