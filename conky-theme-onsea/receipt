@@ -1,0 +1,110 @@
+# SliTaz package receipt.
+
+PACKAGE="conky-theme-onsea"
+VERSION="0.1"
+CATEGORY="x-window"
+SHORT_DESC="A smooth theme for conky with smoke color."
+MAINTAINER="hackdorte@sapo.pt"
+LICENSE="PublicDomain"
+SOURCE="onsea"
+WEB_SITE="http://people.slitaz.org/~leonardolaporte"
+STUFF_DIR="lab.slitaz/5.0/pkg/conky/1.9.0"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}/$STUFF_DIR/$TARBALL"
+TAGS="conky theme"
+
+DEPENDS="conky"
+BUILD_DEPENDS="wget"
+
+BAK_DIR=".conky-backups"
+BAK_FILE="DEwioa80aejskDFPels0" # I do not know how to improve it. I write it manually. There is an automatic method?
+
+# Rules to configure and make the package.
+compile_rules()
+{
+  mkdir -p $install/usr/share/conky/themes/$SOURCE
+  cp -a $src/.conkyrc $install/usr/share/conky/themes/$SOURCE/.conkyrc
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+  cp -a $install/* $fs
+}
+
+pre_install()
+{
+
+# Build current ".conkyrc" backup.
+
+if [ -e /home/$USER/.conkyrc ]; then
+mkdir -p /home/$USER/$BAK_DIR/$BAK_FILE
+mv /home/$USER/.conkyrc /home/$USER/$BAK_DIR/$BAK_FILE
+
+# README (Alert file only).
+cat > /home/$USER/$BAK_DIR/README <<EOT
+
+  $PACKAGE Backup
+  ==============================================
+  $(date)
+
+  Please do not remove this directory manually.
+
+  Run: tazpkg remove $PACKAGE
+
+EOT
+
+else
+  echo "No .conkyrc file for backup.";
+fi
+
+}
+
+post_install()
+{
+
+# Install new ".conkyrc" to (home/user).
+# And create a link to the original file.
+
+  cd /home/$USER
+  ln -s /usr/share/conky/themes/$SOURCE/.conkyrc .conkyrc
+  chmod u+r /home/$USER/.conkyrc
+
+# Check the conky process and run new theme.
+
+  if busybox pidof conky >>/dev/null 2>&1; then
+    su - $USER -c "killall conky" && su - $USER -c "conky &";
+  else
+    su - $USER -c "conky &";
+  fi
+
+}
+
+pre_remove()
+{
+
+# Restore old ".conkyrc" backup.
+
+  if [ -e /home/$USER/$BAK_DIR/$BAK_FILE/.conkyrc ]; then
+    mv /home/$USER/$BAK_DIR/$BAK_FILE/.conkyrc /home/$USER
+    chmod 777 /home/$USER/.conkyrc
+    rm -rf /home/$USER/$BAK_DIR/$BAK_FILE
+    rm -rf /home/$USER/$BAK_DIR/README
+  else
+    echo "Empty! No backup files.";
+  fi
+
+}
+
+post_remove()
+{
+
+# Check the conky process and run old theme.
+
+  if busybox pidof conky >>/dev/null 2>&1; then
+    su - $USER -c "killall conky" && su - $USER -c "conky &";
+  else
+    su - $USER -c "conky &";
+  fi
+
+}
