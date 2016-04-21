@@ -37,12 +37,12 @@ pre_install()
 
 # Build current ".conkyrc" backup.
 
-if [ -e /home/$USER/.conkyrc ]; then
-mkdir -p /home/$USER/$BAK_DIR/$BAK_FILE
-mv /home/$USER/.conkyrc /home/$USER/$BAK_DIR/$BAK_FILE
+if [ -e $1/home/$USER/.conkyrc ]; then
+mkdir -p $1/home/$USER/$BAK_DIR/$BAK_FILE
+mv $1/home/$USER/.conkyrc $1/home/$USER/$BAK_DIR/$BAK_FILE
 
 # README (Alert file only).
-cat > /home/$USER/$BAK_DIR/README <<EOT
+cat > $1/home/$USER/$BAK_DIR/README <<EOT
 
   $PACKAGE Backup
   ==============================================
@@ -66,12 +66,13 @@ post_install()
 # Install new ".conkyrc" to (home/user).
 # And create a link to the original file.
 
-  cd /home/$USER
-  ln -s /usr/share/conky/themes/$SOURCE/.conkyrc .conkyrc
-  chmod 755 /home/$USER/.conkyrc
+  cd $1/home/$USER
+  ln -s /usr/share/conky/themes/$SOURCE/.conkyrc $1/home/$USER/.conkyrc
+  chmod 755 $1/home/$USER/.conkyrc
 
 # Check the conky process and run new theme.
 
+  [ "$1" ] ||
   if busybox pidof conky >>/dev/null 2>&1; then
     su - $USER -c "killall conky" && su - $USER -c "conky &";
   else
@@ -85,11 +86,11 @@ pre_remove()
 
 # Restore old ".conkyrc" backup.
 
-  if [ -e /home/$USER/$BAK_DIR/$BAK_FILE/.conkyrc ]; then
-    mv /home/$USER/$BAK_DIR/$BAK_FILE/.conkyrc /home/$USER
-    chmod 777 /home/$USER/.conkyrc
-    rm -rf /home/$USER/$BAK_DIR/$BAK_FILE
-    rm -rf /home/$USER/$BAK_DIR/README
+  if [ -e $1/home/$USER/$BAK_DIR/$BAK_FILE/.conkyrc ]; then
+    mv $1/home/$USER/$BAK_DIR/$BAK_FILE/.conkyrc $1/home/$USER
+    chmod 777 $1/home/$USER/.conkyrc
+    rm -rf $1/home/$USER/$BAK_DIR/$BAK_FILE
+    rm -rf $1/home/$USER/$BAK_DIR/README
   else
     echo "Empty! No backup files.";
   fi
@@ -101,6 +102,7 @@ post_remove()
 
 # Check the conky process and run old theme.
 
+  [ "$1" ] ||
   if busybox pidof conky >>/dev/null 2>&1; then
     su - $USER -c "killall conky" && su - $USER -c "conky &";
   else
