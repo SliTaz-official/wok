@@ -440,7 +440,8 @@ EOT
 	    esac
 	    case "${2/--/-}" in
 	    -f*)
-		[ "$append$initrd" ] && clear_custom_config $1 ;;
+		[ "$append$initrd" ] && clear_custom_config $1
+		set -- "$1" "$3" ;;
 	    *)
 		clear_custom_config $1
 		exit 0 ;;
