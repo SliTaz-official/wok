@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="inxi"
+VERSION="2.3.0"
+COMMIT="ebf6ff7"
+CATEGORY="utilities"
+SHORT_DESC="Full featured CLI system information tool"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="http://smxi.org/docs/inxi.htm"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/smxi/inxi/archive/$COMMIT.tar.gz"
+
+DEPENDS="bash gawk sed coreutils-disk pciutils procps"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share/man/man1
+	install -m0755 $src/inxi $fs/usr/bin
+	install -m0644 $src/inxi.1.gz $fs/usr/share/man/man1
+
+	# Configure inxi to work with SliTaz
+
+	inxi="$fs/usr/bin/inxi"
+	sed -i 's|/var/run/dmesg.boot|/var/log/dmesg.log|' $inxi
+	# SliTaz packages
+	sed -i 's|df:coreutils|df:coreutils-disk|' $inxi
+	sed -i 's|readlink:coreutils|readlink:coreutils-file-special|' $inxi
+	sed -i 's|tr:coreutils|tr:coreutils-character|' $inxi
+	sed -i 's|uname:uname|uname:coreutils-context-system|' $inxi
+	sed -i 's|wc:coreutils|wc:coreutils-file-summarize|' $inxi
+	sed -i 's|glxinfo:mesa-utils|glxinfo:mesa-demos|' $inxi
+	sed -i 's|xdpyinfo:X11-utils|xdpyinfo:xorg-xdpyinfo|' $inxi
+	sed -i 's|xprop:X11-utils|xprop:xorg-xprop|' $inxi
+	sed -i 's|xrandr:x11-xserver-utils|xrandr:xorg-xrandr|' $inxi
+	sed -i 's|dig:dnsutils|dig:bind-client|' $inxi
+	sed -i 's|hddtemp:hddtemp|hddtemp:|' $inxi # no package
+	sed -i 's|ip:iproute|ip:iproute2|' $inxi
+	sed -i 's|strings:binutils|strings:busybox|' $inxi
+	sed -i 's|runlevel:sysvinit|runlevel:|' $inxi # no package
+	sed -i 's|print_lines_basic "0" "" "Debian/Ubuntu:.*$|print_lines_basic "0" "" "SliTaz:^$package_deb"|' $inxi
+}
