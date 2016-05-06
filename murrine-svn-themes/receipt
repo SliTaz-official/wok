@@ -3,17 +3,25 @@
 PACKAGE="murrine-svn-themes"
 VERSION="0.6.2"
 CATEGORY="x-window"
-SHORT_DESC=" some murrine themes"
+SHORT_DESC="Some murrine themes"
 MAINTAINER="jozee@slitaz.org"
 LICENSE="LGPL3"
-DEPENDS="murrine"
-WEB_SITE="http://www.cimitan.com/murrine" 
+WEB_SITE="http://www.cimitan.com/murrine"
 
+DEPENDS="murrine"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/themes
 	tar -xzf stuff/murrine-themes.tar.gz -C $fs/usr/share/themes
+
+	# Fix warnings:
+	# .../gtkrx:*: Murrine configuration option "*" in no longer supported and
+	# will be ignored.
+	IFS=$'\n' # care about filenames with spaces
+	for gtkrc in $(find $fs/usr/share/themes -name gtkrc); do
+		sed -i 's|^[ \t]*gradients|#\0|' "$gtkrc"
+		sed -i 's|^[ \t]*scrollbar_color|#\0|' "$gtkrc"
+	done
 }
-	
