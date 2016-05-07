@@ -12,6 +12,7 @@ LICENSE="zlib/libpng"
 WEB_SITE="http://www.libpng.org/pub/png/libpng.html"
 TARBALL="$SOURCE-$VERSION.tar.xz"
 WGET_URL="$SF_MIRROR/$SOURCE/$TARBALL"
+HOST_ARCH="i486 arm"
 
 PATCH="$SOURCE-$VERSION-apng.patch.gz"
 PATCH_URL="$SF_MIRROR/apng/$SOURCE/$SERIES/$PATCH"
@@ -29,8 +30,13 @@ compile_rules()
 		--disable-static \
 		$CONFIGURE_ARGS &&
 	make &&
-	make check | tr [A-Z] [a-z] &&
-	make DESTDIR=$DESTDIR install
+	case "$ARCH" in
+	arm*)
+		make DESTDIR=$DESTDIR install ;;
+	*)
+		make check | tr [A-Z] [a-z] &&
+		make DESTDIR=$DESTDIR install ;;
+	esac
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
