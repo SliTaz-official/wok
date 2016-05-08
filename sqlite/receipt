@@ -19,6 +19,9 @@ BUILD_DEPENDS="tcl-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
+	case "$ARCH" in
+		arm*) ARCH_ARGS="--with-tcl=/cross/arm/sysroot/usr/lib" ;;
+	esac
 	[ -s "$SOURCES_REPOSITORY/mysql2sqlite.sh" ] ||
 		wget -O "$SOURCES_REPOSITORY/mysql2sqlite.sh" \
 			https://gist.github.com/esperlu/943776/raw/dd87f4088f6d5ec7563478f7a28a37ba02cf26e2/mysql2sqlite.sh
@@ -28,6 +31,7 @@ compile_rules()
 		--disable-readline \
 		--enable-load-extension \
 		LDFLAGS="$LDFLAGS -ldl" \
+		$ARCH_ARGS \
 		$CONFIGURE_ARGS &&
 	sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' libtool &&
   	sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool &&
