@@ -1,0 +1,68 @@
+Pngrewrite is command-line utility that reduces the unnecessarily large
+palettes that some programs write into PNG files. It also optimizes
+transparency data, and reduces the bits-per-pixel if possible. Handy for
+post-processing PNG files before putting them on a web site.
+
+Pngrewrite will:
+
+ * Remove any unused palette entries, and write a palette that is only as large
+   as needed.
+ * Remove (collapse) any duplicate palette entries.
+ * Convert non-palette image to palette images, provided they contain no more
+   than 256 different colors.
+ * Move any colors with transparency to the beginning of the palette, and write
+   a tRNS chunk that is a small as possible.
+ * Reduce the bit-depth (bits per pixel) as much as possible.
+ * Write images as grayscale when possible, if that is compatible with the goal
+   of using the minimum possible bit depth.
+
+Under no circumstances does pngrewrite change the actual pixel colors, or
+background color, or transparency of the image. If it ever does, that's a bug.
+
+--WARNING--
+
+pngrewrite removes most extra (ancillary) information from the PNG file, such
+as text comments. Although this does make the file size smaller, the removed
+information may sometimes be important.
+
+The only ancillary chunks that are NOT removed are:
+
+  * gAMA - Image gamma setting
+  * sRGB - srgb color space indicator
+  * tIME - creation time
+  * pHYs - physical pixel size
+  * bKGD and tRNS - Background color and transparency are maintained. The
+    actual chunk may be modified according to the new color structure.
+
+If the original image was interlaced, the new one will also be interlaced.
+
+Pngrewrite will not work at all on images that have more than 256 colors.
+Colors with the same RGB values but a different level of transparency count as
+different colors. The background color counts as an extra color if it does not
+occur in the image.
+
+It will also not work at all on images that have a color depth of 16 bits,
+since they cannot have a palette.
+
+-----------------
+
+This is a very inefficient program. It is (relatively) slow, and may use a lot
+of memory. To be specific, it uses about 5 bytes per pixel, no matter what the
+bit depth of the image is.
+
+This program is (hopefully) reasonably portable, and should compile without too
+much effort on most C compilers. It requires the libpng and zlib libraries.
+
+The pngrewrite code is structured as a library that could be used in other
+applications, but I have not documented the interface.
+
+-----------------
+
+How to use:
+
+From a command-line, run
+
+    pngrewrite.exe <input-file.png> <output-file.png>
+
+To read from standard-input, or write to standard-output, use "-" for the
+filename.

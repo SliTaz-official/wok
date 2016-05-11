@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="gnome-alsamixer"
+VERSION="0.9.7~cvs.20060916.ds.1"
+CATEGORY="sound"
+SHORT_DESC="ALSA sound mixer for GNOME"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL2"
+WEB_SITE="https://packages.debian.org/en/sid/gnome-alsamixer"
+TARBALL="${PACKAGE}_$VERSION.orig.tar.gz"
+WGET_URL="http://http.debian.net/debian/pool/main/g/$PACKAGE/$TARBALL"
+EXTRA_URL="${WGET_URL/.orig/-5.debian}"
+
+DEPENDS="gtk+ libgnomeui libgnome-keyring"
+BUILD_DEPENDS="automake autoconf glib dbus-dev libgnomeui-dev libgnome-dev \
+GConf-dev alsa-lib-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	if [ ! -f "$SRC/$(basename "$EXTRA_URL")" ]; then
+		wget $EXTRA_URL -P $SRC
+	fi
+
+	tar -xzf $SRC/$(basename "$EXTRA_URL")
+
+	while read i; do
+		patch -p1 -i $src/debian/patches/$i
+	done < $src/debian/patches/series
+
+	cp $stuff/ru.po $src/po
+	sed -i 's|pt_BR|& ru|' $src/configure.ac
+
+	./autogen.sh
+	make && make install
+
+	mkdir -p $install/usr/share/applications $install/usr/share/man/man1
+	cp -a $src/debian/$PACKAGE.desktop $install/usr/share/applications
+	cp -a $src/debian/$PACKAGE.1 $install/usr/share/man/man1
+	gzip -9 $install/usr/share/man/man1/$PACKAGE.1
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	find $fs -name '*.xpm' -delete
+}
