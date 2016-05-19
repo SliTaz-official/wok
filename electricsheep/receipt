@@ -16,7 +16,6 @@ BUILD_DEPENDS="curl-dev expat-dev ffmpeg-dev libglade-dev gtk+-dev flam3-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i	-e 's/CODEC_TYPE_VIDEO/AVMEDIA_TYPE_VIDEO/' \
 		-e 's/guess_format/av_guess_format/' \
 		-e 's/PKT_FLAG_KEY/AV_PKT_FLAG_KEY/' \
@@ -26,6 +25,9 @@ compile_rules()
 		-e 's/av\(_write_header(output_ctx\)/avformat\1, NULL/' \
 		-e 's/av_alloc_format_context/avformat_alloc_context/' \
 		-e '/GNOME_SCREENSAVER/d' \
+		-e 's/av_new_stream(output_ctx, /avformat_new_stream(output_ctx, NULL); st->id = (/' \
+		-e 's/av_close_input_file(/avformat_close_input(\&/' \
+		-e 's/av_find_stream_info(ictx/avformat_find_stream_info(ictx,NULL/' \
 			electricsheep.c
 	mkdir -p $DESTDIR/usr/share/gconf/defaults
 	sed -i	-e '/update-gconf-defaults/d' \
@@ -47,4 +49,3 @@ genpkg_rules()
 	rm -r $fs/usr/share/man
 	rm $fs/usr/share/electricsheep/electricsheep-wait.avi
 }
-
