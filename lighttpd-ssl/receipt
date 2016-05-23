@@ -95,7 +95,13 @@ testsuite()
 # We stop the server by default in case of upgarde.
 pre_install()
 {
-	[ -f /etc/init.d/lighttpd ] && /etc/init.d/lighttpd stop
+	[ -z "$1" ] && for i in httpd lighttpd ngnix apache cherokee $PACKAGE ; do
+		[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
+	done
+	# Backup config file.
+	if [ -d "$1/etc/lighttpd" ]; then
+		cp -a "$1/etc/lighttpd" "$1/etc/lighttpd.bak"
+	fi
 }
 
 post_install()
