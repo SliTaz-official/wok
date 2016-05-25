@@ -1,0 +1,50 @@
+# SliTaz package receipt.
+
+PACKAGE="unetbootin"
+VERSION="625"
+SYSTEM="linux"
+CATEGORY="system-tools"
+SHORT_DESC="Allows you to create bootable Live USB drives. Binary version."
+MAINTAINER="hackdorte@sapo.pt"
+LICENSE="GPLv3"
+WEB_SITE="https://launchpad.net/unetbootin"
+
+TARBALL="${PACKAGE}-$SYSTEM-${VERSION}.bin"
+WGET_URL="${WEB_SITE}/trunk/${VERSION}/+download/${TARBALL}"
+
+SUGGESTED="bash gparted xz"
+DEPENDS="dosfstools libQtCore libQtGui mtools p7zip-full"
+BUILD_DEPENDS="wget"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+  mkdir -p $install/usr/lib/$PACKAGE
+  cp -a $src/* $install/usr/lib/$PACKAGE
+  chmod +x $install/usr/lib/$PACKAGE/$PACKAGE-$SYSTEM-$VERSION.bin
+
+  mkdir -p $install/usr/bin
+  cp -a $stuff/* $install/usr/bin
+  chmod +x $install/usr/bin/unetbootin
+
+  mkdir -p $install/usr/share/applications
+
+cat > $install/usr/share/applications/$PACKAGE.desktop <<EOT
+[Desktop Entry]
+Type=Application
+Name=Unetbootin
+Comment=UNetbootin allows you to create bootable Live USB drives.
+Categories=GTK;System;Filesystem;
+StartupNotify=false
+Terminal=false
+Icon=drive-harddisk-usb
+Exec=unetbootin
+
+EOT
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+  cp -a $install/* $fs
+}
