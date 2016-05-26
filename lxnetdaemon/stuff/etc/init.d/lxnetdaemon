@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/lxnetdaemon: Start, stop and restart LXnetdaemon deamon on 
+# /etc/init.d/lxnetdaemon: Start, stop and restart LXnetdaemon deamon on
 # SliTaz, at boot time or with the command line.
 #
 # To start daemon at boot time, just put the right name in the $RUN_DAEMONS
@@ -9,38 +9,38 @@
 . /etc/daemons.conf
 
 NAME=LXnetdaemon
-DESC="Network daemon"
+DESC="$(_ 'Network daemon')"
 DAEMON=/usr/bin/lxnetdaemon
 PIDFILE=/var/run/lxnetdaemon.pid
 
 case "$1" in
   start)
     if active_pidfile $PIDFILE lxnetdaemon ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS 
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS
     status
     pidof lxnetdaemon > $PIDFILE
     ;;
   stop)
     if ! active_pidfile $PIDFILE lxnetdaemon ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     rm $PIDFILE
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE lxnetdaemon ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     rm $PIDFILE
     sleep 2
     $DAEMON $OPTIONS
@@ -48,9 +48,8 @@ case "$1" in
     pidof lxnetdaemon > $PIDFILE
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

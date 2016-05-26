@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/nrpe : Start, stop and restart NRPE Server on SliTaz, at 
+# /etc/init.d/nrpe : Start, stop and restart NRPE Server on SliTaz, at
 # boot time or with the command line.
 #
 # To start SSH server at boot time, just put nagios in the $RUN_DAEMONS
@@ -9,50 +9,49 @@
 . /etc/daemons.conf
 
 NAME=NRPE
-DESC="NRPE daemon"
+DESC="$(_ '%s daemon' NRPE)"
 DAEMON=/usr/bin/nrpe
 CONFIG_FILE="/etc/nagios/nrpe.cfg"
 OPTIONS="-n -c $CONFIG_FILE -d"
 PIDFILE=/var/run/nagios/nrpe.pid
 
 if [ ! -d /var/run/nagios ]; then
-	mkdir -p /var/run/nagios
-	chown nagios.nagios /var/run/nagios
+  mkdir -p /var/run/nagios
+  chown nagios.nagios /var/run/nagios
 fi
 case "$1" in
   start)
     if active_pidfile $PIDFILE nrpe ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-	$DAEMON $OPTIONS
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE nrpe ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     status
     ;;
   restart|reload)
     if ! active_pidfile $PIDFILE nrpe ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     sleep 2
     $DAEMON $OPTIONS
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart|reload]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart|reload]"
+    newline
     exit 1
     ;;
 esac

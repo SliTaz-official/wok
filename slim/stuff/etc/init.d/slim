@@ -8,7 +8,7 @@
 . /etc/init.d/rc.functions
 
 NAME=SLiM
-DESC="Simple login manager"
+DESC="$(_ 'Simple login manager')"
 DAEMON=/usr/bin/slim
 OPTION="-d"
 LOCK_FILE=/var/lock/slim.lock
@@ -16,29 +16,29 @@ LOCK_FILE=/var/lock/slim.lock
 case "$1" in
   start)
     if active_pidfile $LOCK_FILE slim ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTION
     status
     ;;
   stop)
     if ! active_pidfile $LOCK_FILE slim ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     killall slim
     rm $LOCK_FILE
     status
     ;;
   restart)
     if ! active_pidfile $LOCK_FILE slim ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
+    action 'Restarting %s: %s...' "$DESC" $NAME
     killall slim
     rm $LOCK_FILE
     sleep 2
@@ -46,9 +46,8 @@ case "$1" in
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

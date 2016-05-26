@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/samba : Start, stop and restart Samba server on SliTaz, at 
+# /etc/init.d/samba : Start, stop and restart Samba server on SliTaz, at
 # boot time or with the command line.
 #
 # To start Samba server at boot time, just put samba in the $RUN_DAEMONS
@@ -9,43 +9,44 @@
 . /etc/daemons.conf
 
 NAME=Samba
-DESC="Samba server"
+DESC="$(_ '%s server' Samba)"
 SMBD=/usr/sbin/smbd
 NMBD=/usr/sbin/nmbd
 NMBPIDFILE=/var/run/samba/nmbd.pid
 SMBPIDFILE=/var/run/samba/smbd.pid
 
 [ -d /var/run/samba ] || mkdir -p /var/run/samba
+
 case "$1" in
   start)
     if active_pidfile $SMBPIDFILE smbd ; then
-      echo "$NAME: $SMBD already running."
+      _ '%s is already running.' "$NAME ($SMBD)"
     else
-      echo -n "Starting $DESC: $SMBD... "
+      action 'Starting %s: %s...' "$DESC" $SMBD
       $SMBD -D
       status
     fi
     if active_pidfile $NMBPIDFILE nmbd ; then
-      echo "$NAME: $NMBD already running."
+      _ '%s is already running.' "$NAME ($NMBD)"
     else
-      echo -n "Starting $DESC: $NMBD... "
+      action 'Starting %s: %s...' "$DESC" $NMBD
       $NMBD -D
       status
     fi
     ;;
   stop)
     if ! active_pidfile $SMBPIDFILE smbd ; then
-      echo "$NAME: $SMBD is not running."
+      _ '%s is not running.' "$NAME ($SMBD)"
     else
-      echo -n "Stopping $DESC: $SMBD... "
-      kill `cat $SMBPIDFILE`
+      action 'Stopping %s: %s...' "$DESC" $SMBD
+      kill $(cat $SMBPIDFILE)
       status
     fi
     if ! active_pidfile $NMBPIDFILE nmbd ; then
-      echo "$NAME: $NMBD is not running."
+      _ '%s is not running.' "$NAME ($NMBD)"
     else
-      echo -n "Stopping $DESC: $NMBD... "
-      kill `cat $NMBPIDFILE`
+      action 'Stopping %s: %s...' "$DESC" $NMBD
+      kill $(cat $NMBPIDFILE)
       status
     fi
     ;;
@@ -55,17 +56,16 @@ case "$1" in
     ;;
   reload)
     if ! active_pidfile $SMBPIDFILE smbd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Reloading $DESC: $SMBD... "
-    kill -HUP `cat $SMBPIDFILE`
+    action 'Reloading %s: %s...' "$DESC" $SMBD
+    kill -HUP $(cat $SMBPIDFILE)
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart!reload]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart!reload]"
+    newline
     exit 1
     ;;
 esac

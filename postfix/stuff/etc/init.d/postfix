@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=Postfix
-DESC="SMTP server"
+DESC="$(_ '%s server' SMTP)"
 DAEMON=/usr/lib/postfix/master
 OPTIONS=$POSTFIX_OPTIONS
 PIDFILE=/var/spool/postfix/pid/master.pid
@@ -17,47 +17,46 @@ PIDFILE=/var/spool/postfix/pid/master.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE master ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS &
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE master ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE` && rm -f $PIDFILE
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE) && rm -f $PIDFILE
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE master ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE` && rm -f $PIDFILE
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE) && rm -f $PIDFILE
     sleep 2
     $DAEMON $OPTIONS &
     status
     ;;
   reload)
     if ! active_pidfile $PIDFILE master ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
     postsuper active || exit 1
-    kill -HUP `cat $PIDFILE`
+    kill -HUP $(cat $PIDFILE)
     postsuper &
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart|reload]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart|reload]"
+    newline
     exit 1
     ;;
 esac

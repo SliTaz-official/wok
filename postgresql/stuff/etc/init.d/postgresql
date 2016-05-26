@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=Postgresql
-DESC="PostgreSQL server"
+DESC="$(_ '%s server' PostgreSQL)"
 OPTIONS=$PGSQL_OPTIONS
 INIT_OPTIONS=$PGSQLINIT_OPTIONS
 [ -n "$OPTIONS" ] || OPTIONS="-D /var/lib/pgsql -s"
@@ -18,42 +18,41 @@ INIT_OPTIONS=$PGSQLINIT_OPTIONS
 case "$1" in
   start)
     if [ ! -f /var/lib/pgsql/PG_VERSION ]; then
-        echo "Initializing $DESC database"
-	rm -rf /var/lib/pgsql/* 2> /dev/null
-        su -c "initdb $INIT_OPTIONS" - postgres
+      _ 'Initializing PostgreSQL server database'
+      rm -rf /var/lib/pgsql/* 2>/dev/null
+      su -c "initdb $INIT_OPTIONS" - postgres
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     su -c "pg_ctl start -w $OPTIONS -l /var/log/postgresql/postgresql.log" - postgres
     status
     sleep 2
     for i in /etc/pgsql.d/* ; do
-      	    [ -x $i ] || continue
-      	    echo -n "Running $i..."
-      	    $i
-      	    status
+      [ -x $i ] || continue
+      action 'Running %s...' $i
+      $i
+      status
     done
-# su -c "createdb test" - postgres
-# su -c "psql test" - postgres
+    # su -c "createdb test" - postgres
+    # su -c "psql test" - postgres
     ;;
   stop)
-    echo -n "Stopping $DESC: $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     su -c "pg_ctl stop $OPTIONS -m smart" - postgres
     status
     ;;
   restart)
-    echo -n "Restarting $DESC: $NAME... "
+    action 'Restarting %s: %s...' "$DESC" $NAME
     su -c "pg_ctl restart $OPTIONS -m smart" - postgres
     status
     ;;
   reload)
-    echo -n "Reloading $DESC: $NAME... "
+    action 'Reloading %s: %s...' "$DESC" $NAME
     su -c "pg_ctl reload $OPTIONS" - postgres
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart|reload]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart|reload]"
+    newline
     exit 1
     ;;
 esac

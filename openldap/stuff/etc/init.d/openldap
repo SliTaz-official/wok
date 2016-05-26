@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/openldap : Start, stop and restart LDAP server on SliTaz, at 
+# /etc/init.d/openldap : Start, stop and restart LDAP server on SliTaz, at
 # boot time or with the command line.
 #
 # To start LDAP server at boot time, just put openldap in the $RUN_DAEMONS
@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=Openldap
-DESC="LDAP server"
+DESC="$(_ '%s server' LDAP)"
 DAEMON=/usr/lib/openldap/slapd
 OPTIONS=$LDAP_OPTIONS
 PIDFILE=/var/lib/openldap/run/slapd.pid
@@ -17,43 +17,42 @@ PIDFILE=/var/lib/openldap/run/slapd.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE slapd ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS && sleep 2
     status
     for i in /etc/ldap.d/* ; do
-      	[ -x $i ] || continue
-      	echo -n "Running $i..."
-      	$i
-      	status
+      [ -x $i ] || continue
+      action 'Running %s...' $i
+      $i
+      status
     done
     ;;
   stop)
     if ! active_pidfile $PIDFILE slapd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE slapd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     sleep 2
     $DAEMON $OPTIONS && sleep 2
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

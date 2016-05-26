@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/nagios : Start, stop and restart Nagios server on SliTaz, at 
+# /etc/init.d/nagios : Start, stop and restart Nagios server on SliTaz, at
 # boot time or with the command line.
 #
 # To start Nagios at boot time, just put nagios in the $RUN_DAEMONS
@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=Nagios
-DESC="Network Monitoring Server"
+DESC="$(_ 'Network Monitoring Server')"
 DAEMON=/usr/bin/nagios
 CONFIG_FILE="/etc/nagios/nagios.cfg"
 OPTIONS="-d $CONFIG_FILE"
@@ -17,50 +17,50 @@ PIDFILE=/var/run/nagios/nagios.pid
 
 configtest()
 {
-		$DAEMON -v $CONFIG_FILE
+  $DAEMON -v $CONFIG_FILE
 }
 
 if [ ! -d /var/run/nagios ]; then
-	mkdir -p /var/run/nagios
-	chown nagios.nagios /var/run/nagios
+  mkdir -p /var/run/nagios
+  chown nagios.nagios /var/run/nagios
 fi
 case "$1" in
   start)
     if active_pidfile $PIDFILE nagios ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-	$DAEMON $OPTIONS
-	#/usr/bin/nagios -d /etc/nagios/nagios.cfg
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS
+    #/usr/bin/nagios -d /etc/nagios/nagios.cfg
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE nagios ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    status 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     status
     ;;
   restart|reload)
     if ! active_pidfile $PIDFILE nagios ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     sleep 2
     $DAEMON $OPTIONS
     status
     ;;
   test)
-	configtest ;;
+    configtest
+    ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart|reload]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart|reload|test]"
+    newline
     exit 1
     ;;
 esac

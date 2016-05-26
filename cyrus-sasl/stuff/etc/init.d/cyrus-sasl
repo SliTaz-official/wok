@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/cyrus-sasl : Start, stop and restart SASL server on SliTaz, at 
+# /etc/init.d/cyrus-sasl : Start, stop and restart SASL server on SliTaz, at
 # boot time or with the command line.
 #
 # To start SASL server at boot time, just put cyrus-sasl in the $RUN_DAEMONS
@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=cyrus-sasl
-DESC="SASL server"
+DESC="$(_ '%s server' SASL)"
 DAEMON=/usr/sbin/saslauthd
 OPTIONS=$CYRUS_OPTIONS
 PIDFILE=/var/state/saslauthd/saslauthd.pid
@@ -18,37 +18,36 @@ PIDFILE=/var/state/saslauthd/saslauthd.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE saslauthd ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE saslauthd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE saslauthd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     sleep 2
     $DAEMON $OPTIONS
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

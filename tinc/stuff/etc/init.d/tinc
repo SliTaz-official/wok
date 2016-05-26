@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=tinc
-DESC="tinc deamon"
+DESC="$(_ '%s daemon' tinc)"
 DAEMON=/usr/sbin/tincd
 OPTIONS=$TINC_OPTIONS
 PIDFILE=/var/run/tinc.pid
@@ -17,37 +17,36 @@ PIDFILE=/var/run/tinc.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE tincd ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS 
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE tincd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    $DAEMON -k 
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    $DAEMON -k
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE tincd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.'
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    $DAEMON -k 
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    $DAEMON -k
     sleep 2
     $DAEMON $OPTIONS
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|reload|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|reload|restart]"
+    newline
     exit 1
     ;;
 esac

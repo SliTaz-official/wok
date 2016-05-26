@@ -10,7 +10,7 @@
 . /etc/daemons.conf
 
 NAME=Ofono
-DESC="Mobile telephony Manager"
+DESC="$(_ 'Mobile telephony Manager')"
 DAEMON=/usr/sbin/ofonod
 OPTIONS=$OFONO_OPTIONS
 PIDFILE=/var/run/ofono.pid
@@ -18,30 +18,30 @@ PIDFILE=/var/run/ofono.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE ofonod ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS
     status
     pidof ofonod > $PIDFILE
     ;;
   stop)
     if ! active_pidfile $PIDFILE ofonod ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     rm -rf $PIDFILE
     kill $(pidof ofonod)
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE ofonod ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
+    action 'Restarting %s: %s...' "$DESC" $NAME
     rm -rf $PIDFILE
     kill $(pidof ofonod) &&
     sleep 2 &&
@@ -49,9 +49,8 @@ case "$1" in
     status
     ;;
   *)
-    printf "\n\033[1mUsage:\033[0m /etc/init.d/%b [start|stop|restart]\n" \
-		"$(basename $0)"
-    exit 1
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     ;;
 esac
 

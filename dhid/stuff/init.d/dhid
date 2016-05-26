@@ -2,47 +2,52 @@
 #
 # /etc/init.d/dhid: Start, stop and restart dhis daemon on SliTaz
 #
-. /lib/libtaz.sh
+. /etc/init.d/rc.functions
 #. /etc/daemons.conf
 
 NAME=DHID
-DESC="dyn ip"
+DESC="$(_ 'DHIS client daemon')"
 DAEMON=/usr/sbin/dhid
 PIDFILE=/run/dhid.pid
 OPTIONS="-P $PIDFILE"
 
 case "$1" in
-		start)
+	start)
 		if active_pidfile $PIDFILE dhid; then
-			echo "$NAME already running."; §exit 1
+			_ '%s is already running.' $NAME
+			exit 1
 		fi
-		echo -n "Starting $DESC: $NAME... "
-		$DAEMON $OPTIONS 
-		status ;;
-	
+		action 'Starting %s: %s...' "$DESC" $NAME
+		$DAEMON $OPTIONS
+		status
+		;;
 	stop)
 		if ! active_pidfile $PIDFILE dhid; then
-			echo "$NAME is not running."; exit 1
+			_ '%s is not running.' $NAME
+			exit 1
 		fi
-		echo -n "Stopping $DESC: $NAME... "
+		action 'Stopping %s: %s...' "$DESC" $NAME
 		kill $(cat $PIDFILE)
 		rm $PIDFILE
-		status ;;
-	
+		status
+		;;
 	restart)
 		if ! active_pidfile $PIDFILE dhid; then
-			echo "$NAME is not running."; exit 1
+			_ '%s is not running.' $NAME
+			exit 1
 		fi
-		echo -n "Restarting $DESC: $NAME... "
+		action 'Restarting %s: %s...' "$DESC" $NAME
 		kill $(cat $PIDFILE)
 		rm $PIDFILE
 		sleep 2
 		$DAEMON $OPTIONS
-		status ;;
-	
-	*) 
-		echo "Usage: /etc/init.d/$(basename $0) [start|stop|restart]"
-		exit 1 ;;
+		status
+		;;
+	*)
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
+		exit 1
+		;;
 esac
 
 exit 0

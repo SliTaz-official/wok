@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/nginx: Start, stop and restart web server on SliTaz, 
+# /etc/init.d/nginx: Start, stop and restart web server on SliTaz,
 # at boot time or with the command line. Daemons options are configured
 # with /etc/daemons.conf
 #
@@ -7,7 +7,7 @@
 . /etc/daemons.conf
 
 NAME=Nginx
-DESC="web server"
+DESC="$(_ 'web server')"
 DAEMON=/usr/sbin/nginx
 OPTIONS=$NGINX_OPTIONS
 PIDFILE=/var/run/nginx.pid
@@ -15,39 +15,38 @@ PIDFILE=/var/run/nginx.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE nginx ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS 
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE nginx ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     rm $PIDFILE
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE nginx ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     rm $PIDFILE
     sleep 2
     $DAEMON $OPTIONS
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

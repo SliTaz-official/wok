@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=OpenVPN
-DESC="VPN daemon"
+DESC="$(_ '%s daemon' VPN)"
 DAEMON=/usr/sbin/openvpn
 OPTIONS=$OPENVPN_OPTIONS
 PIDFILE=/var/run/openvpni-client.pid
@@ -17,60 +17,60 @@ PIDFILE=/var/run/openvpni-client.pid
 checktundevice() {
 	if [ ! -e /dev/net/tun ]; then
 		if ! modprobe tun ; then
-			echo -n "TUN/TAP support is not available in this kernel"
+			_ 'TUN/TAP support is not available in this Kernel'
 			return 1
 		fi
 	fi
-	if [ -h /dev/net/tun ] && [ -c /dev/misc/net/tun ]; then
-		echo -n "Detected broken /dev/net/tun symlink, fixing..."
+	if [ -h /dev/net/tun -a -c /dev/misc/net/tun ]; then
+		_ 'Detected broken %s symlink, fixing...' '/dev/net/tun'
 		rm -f /dev/net/tun
 		ln -s /dev/misc/net/tun /dev/net/tun
 	fi
 }
 
 [ -d /var/run/openvpn ] || mkdir -p /var/run/openvpn
+
 case "$1" in
   start)
     checktundevice
 
     if [ ! -e /etc/openvpn/client.conf ]; then
-	echo "Missing OpenVPN client config."
+      _ 'Missing OpenVPN client config.'
     exit 1
     fi
     if active_pidfile $PIDFILE openvpn ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON --client $OPTIONS
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE openvpn ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     rm $PIDFILE
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE openvpn ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     rm $PIDFILE
     sleep 2
     $DAEMON --client $OPTIONS
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=OpenSSH
-DESC="OpenSSH server"
+DESC="$(_ '%s server' OpenSSH)"
 DAEMON=/usr/sbin/sshd
 OPTIONS=$OPENSSH_OPTIONS
 PIDFILE=/var/run/sshd.pid
@@ -20,47 +20,47 @@ case "$1" in
 	start)
 		# We need rsa and dsa host key file to start dropbear.
 		if [ ! -f /etc/ssh/ssh_host_rsa_key ] ; then
-			echo "Generating $NAME rsa key... "
+			_ 'Generating OpenSSH %s key... ' rsa
 			ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
 		fi
 		if [ ! -f /etc/ssh/ssh_host_dsa_key ] ; then
-			echo "Generating $NAME dsa key... "
+			_ 'Generating OpenSSH %s key... ' dsa
 			ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
 		fi
 		if [ ! -f /etc/ssh/ssh_host_ecdsa_key ] ; then
-			echo "Generating $NAME ecdsa key... "
+			_ 'Generating OpenSSH %s key... ' ecdsa
 			ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -C '' -N ''
 		fi
 		if active_pidfile $PIDFILE sshd ; then
-			echo "$NAME already running."
+			_ '%s is already running.' $NAME
 			exit 1
 		fi
-		action "Starting $DESC: $NAME... "
+		action 'Starting %s: %s...' "$DESC" $NAME
 		$DAEMON $OPTIONS
 		status
 		;;
 	stop)
 		if ! active_pidfile $PIDFILE sshd ; then
-			echo "$NAME is not running."
+			_ '%s is not running.' $NAME
 			exit 1
 		fi
-		action "Stopping $DESC: $NAME... "
+		action 'Stopping %s: %s...' "$DESC" $NAME
 		kill $(cat $PIDFILE)
 		status
 		;;
 	restart)
 		if ! active_pidfile $PIDFILE sshd ; then
-			echo "$NAME is not running."
+			_ '%s is not running.' $NAME
 			exit 1
 		fi
-		action "Restarting $DESC: $NAME... "
+		action 'Restarting %s: %s...' "$DESC" $NAME
 		kill $(cat $PIDFILE)
 		sleep 2
 		$DAEMON $OPTIONS
 		status
 		;;
 	*)
-		emsg "<n><b>Usage:</b> /etc/init.d/$(basename $0) [start|stop|restart]"
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
 		newline
 		exit 1
 		;;

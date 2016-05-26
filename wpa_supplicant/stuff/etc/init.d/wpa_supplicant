@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=wpa_supplicant
-DESC="wpa_supplicant deamon"
+DESC="$(_ '%s daemon' wpa_supplicant)"
 DAEMON=/usr/bin/wpa_supplicant
 OPTIONS=$WPA_OPTIONS
 PIDFILE=/var/run/wpa_supplicant.pid
@@ -17,37 +17,36 @@ PIDFILE=/var/run/wpa_supplicant.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE $NAME ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS 
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE $NAME ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE $NAME ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     sleep 2
     $DAEMON $OPTIONS
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

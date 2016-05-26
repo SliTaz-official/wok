@@ -9,14 +9,14 @@
 . /etc/daemons.conf
 
 NAME=Cupsd
-DESC="cups deamon"
+DESC="$(_ '%s daemon' CUPS)"
 DAEMON=/usr/sbin/cupsd
 OPTIONS=$CUPSD_OPTIONS
 PIDFILE=/var/run/cups/cups.sock
 
 case "$1" in
 	stop)
-		action 'Stopping $DESC: $NAME... '
+		action 'Stopping %s: %s...' "$DESC" $NAME
 		kill $(pgrep -f cupsd)
 		sleep 2
 		[ -e /var/run/cups/cups.sock ] && rm -f $PIDFILE
@@ -24,16 +24,15 @@ case "$1" in
 		;;
 	start)
 		if ! active_pidfile $PIDFILE cupsd 2>/dev/null; then
-			action 'Starting $DESC: $NAME... '
+			action 'Starting %s: %s...' "$DESC" $NAME
 			$DAEMON $OPTIONS
 			status
 		else
-			action 'Not starting $DESC: $DESC is already running'
-			false; status
+			_ '%s is already running.' $NAME
 		fi
 		;;
 	*)
-		emsg "<n><b>Usage:</b> /etc/init.d/$(basename $0) [start|stop]"
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop]"
 		newline
 		exit 1
 		;;

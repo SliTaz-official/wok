@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=Named
-DESC="Named deamon"
+DESC="$(_ '%s daemon' Named)"
 DAEMON=/usr/sbin/named
 OPTIONS=$NAMED_OPTIONS
 PIDFILE=/var/run/named.pid
@@ -19,19 +19,19 @@ PIDFILE=/var/run/named.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE named ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS 
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE named ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     /usr/sbin/rndc stop
     status
     ;;
@@ -41,19 +41,18 @@ case "$1" in
     ;;
   restart)
     if ! active_pidfile $PIDFILE named ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
+    action 'Restarting %s: %s...' "$DESC" $NAME
     /usr/sbin/rndc stop
     sleep 2
     $DAEMON $OPTIONS
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|reload|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart|reload]"
+    newline
     exit 1
     ;;
 esac

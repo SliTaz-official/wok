@@ -1,5 +1,5 @@
 #!/bin/sh
-# Start, stop and restart the netatalk deamons on SliTaz, at boot time or 
+# Start, stop and restart the netatalk deamons on SliTaz, at boot time or
 # with the command line.
 #
 # To start netatalk at boot time, just put the right name in the $RUN_DAEMONS
@@ -8,7 +8,7 @@
 . /etc/init.d/rc.functions
 
 NAME=atalkd
-DESC="netatalk deamons"
+DESC="$(_ 'Netatalk daemons')"
 PIDFILE=/var/run/$NAME.pid
 AFPD_UAMLIST="-U uams_dhx.so,uams_clrtxt.so,uams_randnum.so"
 AFPD_GUEST=nobody
@@ -22,7 +22,7 @@ ATALK_BGROUND=no
 # Start Netatalk servers.
 atalk_startup()
 {
-	if [ "$ATALKD_RUN" = "yes" ]; then
+	if [ "$ATALKD_RUN" == "yes" ]; then
 		modprobe appletalk
 		atalkd
 		pidof atalkd > $PIDFILE
@@ -31,8 +31,8 @@ atalk_startup()
 		nbprgstr -p 4 "$ATALK_NAME:Workstation$ATALK_ZONE"
 		nbprgstr -p 4 "$ATALK_NAME:netatalk$ATALK_ZONE"
 
-		[ "$PAPD_RUN" = "yes" ] && papd
-		[ "$TIMELORD_RUN" = "yes" ] && timelord
+		[ "$PAPD_RUN" == "yes" ] && papd
+		[ "$TIMELORD_RUN" == "yes" ] && timelord
 	fi
 
 	[ "$AFPD_RUN" = "yes" ] && afpd $AFPD_UAMLIST -g $AFPD_GUEST \
@@ -40,42 +40,41 @@ atalk_startup()
 }
 
 case "$1" in
-start)
-	if active_pidfile $PIDFILE $NAME ; then
-		echo "$NAME is already running."
+	start)
+		if active_pidfile $PIDFILE $NAME ; then
+			_ '%s is already running.' $NAME
+			exit 1
+		fi
+		action 'Starting %s: %s...' "$DESC" $NAME
+		if [ "$ATALK_BGROUND" == "yes" ]; then
+			atalk_startup >/dev/null &
+		else
+			atalk_startup
+		fi
+		status
+		;;
+	stop)
+		if ! active_pidfile $PIDFILE $NAME ; then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Stopping %s: %s...' "$DESC" $NAME
+		killall afpd
+		killall papd
+		killall timelord
+		killall atalkd
+		status
+		;;
+	restart)
+		$0 start
+		sleep 2
+		$0 stop
+		;;
+	*)
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
 		exit 1
-	fi
-	echo -n "Starting $DESC: $NAME... "
-	if [ "$ATALK_BGROUND" == "yes" ]; then
-		atalk_startup >/dev/null &
-	else
-		atalk_startup
-	fi
-	status
-	;;
-stop)
-	if ! active_pidfile $PIDFILE $NAME ; then
-		echo "$NAME is not running."
-		exit 1
-	fi
-	echo -n "Stopping $DESC: $NAME... "
-	killall afpd
-	killall papd
-	killall timelord
-	killall atalkd
-	status
-	;;
-restart)
-	$0 start
-	sleep 2
-	$0 stop
-	;;
-*)
-	echo ""
-	echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-	echo ""
-	exit 1
-	;;
+		;;
 esac
 
 exit 0

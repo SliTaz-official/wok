@@ -8,43 +8,43 @@
 . /etc/init.d/rc.functions
 
 NAME=LXDM
-DESC="LXDE login manager"
+DESC="$(_ 'LXDE login manager')"
 DAEMON=/usr/sbin/lxdm
 PIDFILE=/var/run/lxdm.pid
 
 case "$1" in
 	start)
 		if active_pidfile $PIDFILE lxdm ; then
-			echo "$NAME already running."
+			_ '%s is already running.' $NAME
 			exit 1
 		fi
-		echo -n "Starting $DESC: $NAME... "
+		action 'Starting %s: %s...' "$DESC" $NAME
 		$DAEMON $OPTION
 		status ;;
 	stop)
 		if ! active_pidfile $PIDFILE lxdm ; then
-			echo "$NAME is not running."
+			_ '%s is not running.' $NAME
 			exit 1
 		fi
-		echo -n "Stopping $DESC: $NAME... "
+		action 'Stopping %s: %s...' "$DESC" $NAME
 		killall lxdm
 		rm $PIDFILE
 		status ;;
 	restart)
 		if ! active_pidfile $PIDFILE lxdm ; then
-			echo "$NAME is not running."
+			_ '%s is not running.'
 			exit 1
 		fi
-		echo -n "Restarting $DESC: $NAME... "
+		action 'Restarting %s: %s...' "$DESC" $NAME
 		killall lxdm
 		rm $PIDFILE
 		sleep 2
 		$DAEMON $OPTION
 		status ;;
 	*)
-		echo ""
-		echo -e "\033[1mUsage:\033[0m /etc/init.d/$(basename $0) [start|stop|restart]"
-		echo "" && exit 1 ;;
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
+		exit 1 ;;
 esac
 
 exit 0

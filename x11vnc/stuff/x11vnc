@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/x11vnc: Start, stop and restart web server on SliTaz, 
+# /etc/init.d/x11vnc: Start, stop and restart web server on SliTaz,
 # at boot time or with the command line. Daemons options are configured
 # with /etc/daemons.conf
 #
@@ -7,44 +7,43 @@
 . /etc/daemons.conf
 
 NAME=x11vnc
-DESC="VNC server"
+DESC="$(_ '%s server' VNC)"
 DAEMON=/usr/bin/x11vnc
 OPTIONS=$X11VNC_OPTIONS
 
 case "$1" in
   start)
     if ps x | grep -v grep | grep -q $DAEMON; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS &
     status
     ;;
   stop)
     if ! ps x | grep -v grep | grep -q $DAEMON; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     killall $(basename $DAEMON)
     status
     ;;
   restart)
     if ! ps x | grep -v grep | grep -q $DAEMON; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
+    action 'Restarting %s: %s...' "$DESC" $NAME
     killall $(basename $DAEMON)
     sleep 2
     $DAEMON $OPTIONS &
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

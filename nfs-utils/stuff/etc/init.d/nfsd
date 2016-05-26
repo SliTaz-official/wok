@@ -8,7 +8,7 @@
 . /etc/init.d/rc.functions
 
 NAME=NFSd
-DESC="NFS Daemon"
+DESC="$(_ '%s daemon' NFS)"
 DAEMON=/usr/sbin/rpc.nfsd
 PID_FILE=/var/run/nfsd.pid
 OPTION="8"
@@ -16,24 +16,24 @@ OPTION="8"
 
 stop_warning()
 {
-echo "Warning: filesystems are unexported but nfsd and lockd processes are still alive..."
+  echo "Warning: filesystems are unexported but nfsd and lockd processes are still alive..."
 }
 
 case "$1" in
   start)
     if active_pidfile $PID_FILE nfsd ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     portmap="$(pidof portmap)"
     if [ -n "$portmap" ]; then
-    	kill $portmap
-    	sleep 2
+      kill $portmap
+      sleep 2
     fi
     [ -n "$(pidof rpcbind)" ] || rpcbind
     modprobe nfsd
-    mount -t nfsd nfsd /proc/fs/nfsd 2> /dev/null
+    mount -t nfsd nfsd /proc/fs/nfsd 2>/dev/null
     /usr/sbin/exportfs -r
     $DAEMON $OPTION
     pidof nfsd | awk '{print $1}' > $PID_FILE
@@ -42,10 +42,10 @@ case "$1" in
     ;;
   stop)
     if ! active_pidfile $PID_FILE nfsd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     killall rpc.mountd
     killall nfsd
     killall lockd
@@ -57,10 +57,10 @@ case "$1" in
     ;;
   restart)
     if ! active_pidfile $PID_FILE nfsd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
+    action 'Restarting %s: %s...' "$DESC" $NAME
     killall rpc.mountd
     killall nfsd
     killall lockd
@@ -74,9 +74,8 @@ case "$1" in
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

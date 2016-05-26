@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/ntop : Start, stop and restart ntop daemon on SliTaz, at 
+# /etc/init.d/ntop : Start, stop and restart ntop daemon on SliTaz, at
 # boot time or with the command line.
 #
 # To start SSH server at boot time, just put ntop in the $RUN_DAEMONS
@@ -9,7 +9,7 @@
 
 
 NAME=ntop
-DESC="ntop server"
+DESC="$(_ '%s server' ntop)"
 DAEMON=/usr/bin/ntop
 
 HTTP_PORT="3000"
@@ -23,41 +23,40 @@ OPTIONS="-w $HTTP_PORT -L -u $NTOP_USER -d"
 case "$1" in
   start)
     if active_pidfile $PIDFILE $NAME ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
     # We need to set ntop admin password.
     if [ ! -f /var/ntop/ntop_pw.db ] ; then
-		ntop -A || exit
+      ntop -A || exit
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS >> $LOGFILE
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE $NAME ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE` && rm -f $PIDFILE
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE) && rm -f $PIDFILE
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE $NAME ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE` && rm -f $PIDFILE
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE) && rm -f $PIDFILE
     sleep 2
     $DAEMON $OPTIONS
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

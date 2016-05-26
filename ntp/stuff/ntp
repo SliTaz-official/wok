@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/ntp : Start, stop and restart ntp server on SliTaz, at 
+# /etc/init.d/ntp : Start, stop and restart ntp server on SliTaz, at
 # boot time or with the command line.
 #
 # To start ntp server at boot time, just put ntp in the $RUN_DAEMONS
@@ -9,49 +9,47 @@
 . /etc/daemons.conf
 
 NAME=ntp
-DESC="ntp server"
+DESC="$(_ '%s server' NTP)"
 DAEMON=/usr/bin/ntpd
 OPTIONS=$NTP_OPTIONS
 PIDFILE=/var/run/ntpd.pid
 [ -n "$OPTIONS" ] || OPTIONS="-p $PIDFILE -c /etc/ntp.conf"
- 
 
 case "$1" in
   start)
     if active_pidfile $PIDFILE ntpd ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS
     status
     pgrep $DAEMON > $PIDFILE	# it seems that -p doesn't work ?
     ;;
   stop)
     if ! active_pidfile $PIDFILE ntpd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     rm $PIDFILE
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE ntpd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     $DAEMON $OPTIONS
     status
     pgrep $DAEMON > $PIDFILE	# it seems that -p doesn't work ?
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

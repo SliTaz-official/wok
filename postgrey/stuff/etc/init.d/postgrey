@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/postgrey : Start, stop and restart Grey list server on SliTaz, at 
+# /etc/init.d/postgrey : Start, stop and restart Grey list server on SliTaz, at
 # boot time or with the command line.
 #
 # To start Grey list server at boot time, just put postgrey in the $RUN_DAEMONS
@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=Postgrey
-DESC="Grey list server"
+DESC="$(_ 'Postfix Greylisting Policy Server')"
 DAEMON=/usr/bin/postgrey
 OPTIONS=$POSTGREY_OPTIONS
 PIDFILE=/var/run/postgrey.pid
@@ -18,11 +18,11 @@ PIDFILE=/var/run/postgrey.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE postgrey ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
     if ! grep -q ^smtpd_recipient_restrictions /etc/postfix/main.cf; then
-      echo -n "Updating /etc/postfix/main.cf"
+      _ 'Updating %s' '/etc/postfix/main.cf'
       cat >> /etc/postfix/main.cf <<EOF
 
 # Add by $0
@@ -33,34 +33,33 @@ smtpd_recipient_restrictions = permit_mynetworks, reject_unauth_destination,
 EOF
       /etc/init.d/postfix reload
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE postgrey ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE postgrey ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     sleep 2
     $DAEMON $OPTIONS
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart|reload]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

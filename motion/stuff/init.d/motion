@@ -6,42 +6,46 @@
 . /etc/init.d/rc.functions
 
 NAME=Motion
-DESC="Video detection"
+DESC="$(_ 'Video detection daemon')"
 DAEMON=/usr/bin/motion
 PIDFILE=/run/motion/motion.pid
 
 case "$1" in
 	start)
 		if active_pidfile $PIDFILE motion ; then
-			echo "$NAME already running."
+			_ '%s is already running.' $NAME
 			exit 1
 		fi
-		echo "Starting $DESC: $NAME... "
+		action 'Starting %s: %s...' "$DESC" $NAME
 		mkdir -p $(dirname $PIDFILE)
-		$DAEMON -p $PIDFILE ;;
+		$DAEMON -p $PIDFILE
+		status
+		;;
 	stop)
 		if ! active_pidfile $PIDFILE motion ; then
-			echo "$NAME is not running."
+			_ '%s is not running.' $NAME
 			exit 1
 		fi
-		echo -n "Stopping $DESC: $NAME... "
+		action 'Stopping %s: %s...' "$DESC" $NAME
 		kill $(cat $PIDFILE)
 		rm $PIDFILE
-		status ;;
+		status
+		;;
 	restart)
 		if ! active_pidfile $PIDFILE motion ; then
 			echo "$NAME is not running."
 			exit 1
 		fi
-		echo "Restarting $DESC: $NAME... "
+		_ 'Restarting %s: %s...' "$DESC" $NAME
 		kill $(cat $PIDFILE)
 		rm $PIDFILE
 		sleep 2
-		$DAEMON -p $PIDFILE ;;
+		$DAEMON -p $PIDFILE
+		status
+		;;
 	*)
-		echo ""
-		echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-		echo ""
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
 		exit 1 ;;
 esac
 

@@ -10,7 +10,7 @@
 . /etc/daemons.conf
 
 NAME=Perdition
-DESC="IMAP/POP3 proxy server"
+DESC="$(_ 'IMAP/POP3 proxy server')"
 DAEMON=/usr/sbin/perdition
 OPTIONS=$PERDITION_OPTIONS
 PIDFILE=/var/run/perdition
@@ -22,12 +22,12 @@ case "$1" in
     for i in $PROTOCOLS; do
       [ -s /etc/perdition/perdition.$i.conf ] || continue
       if active_pidfile $PIDFILE.$i/perdition.$i.pid perdition.$i ; then
-        echo "$NAME ($i) already running."
-	continue
+        _ '%s is already running.' "$NAME ($i)"
+        continue
       fi
-      echo -n "Starting $DESC: $NAME ($i)... "
+      action 'Starting %s: %s...' "$DESC" "$NAME ($i)"
       $DAEMON.$i -f /etc/perdition/perdition.$i.conf $OPTIONS \
-		--pid_file $PIDFILE.$i/perdition.$i.pid
+        --pid_file $PIDFILE.$i/perdition.$i.pid
       status
     done
     ;;
@@ -35,11 +35,11 @@ case "$1" in
     for i in $PROTOCOLS; do
       [ -s /etc/perdition/perdition.$i.conf ] || continue
       if ! active_pidfile $PIDFILE.$i/perdition.$i.pid perdition.$i ; then
-        echo "$NAME ($i) is not running."
-	continue
+        _ '%s is not running.' "$NAME ($i)"
+        continue
       fi
-      echo -n "Stopping $DESC: $NAME ($i)... "
-      kill `cat $PIDFILE.$i/perdition.$i.pid`
+      action 'Stopping %s: %s...' "$DESC" "$NAME ($i)"
+      kill $(cat $PIDFILE.$i/perdition.$i.pid)
       status
     done
     ;;
@@ -47,14 +47,14 @@ case "$1" in
     for i in $PROTOCOLS; do
       [ -s /etc/perdition/perdition.$i.conf ] || continue
       if ! active_pidfile $PIDFILE.$i/perdition.$i.pid perdition.$i ; then
-        echo "$NAME ($i) is not running."
-	continue
+        _ '%s is not running.' "$NAME ($i)"
+        continue
       fi
-      echo -n "Restarting $DESC: $NAME ($i)... "
-      kill `cat $PIDFILE.$i/perdition.$i.pid`
+      action 'Restarting %s: %s...' "$DESC" "$NAME ($i)"
+      kill $(cat $PIDFILE.$i/perdition.$i.pid)
       sleep 2
       $DAEMON.$i -f /etc/perdition/perdition.$i.conf $OPTIONS \
-		--pid_file $PIDFILE.$i/perdition.$i.pid
+        --pid_file $PIDFILE.$i/perdition.$i.pid
       status
     done
     ;;
@@ -62,14 +62,13 @@ case "$1" in
     for i in $PROTOCOLS; do
       [ -s /etc/perdition/perdition.$i.conf ] || continue
       active_pidfile $PIDFILE.$i/perdition.$i.pid perdition.$i && \
-		kill -1 `cat $PIDFILE.$i/perdition.$i.pid`
+        kill -1 $(cat $PIDFILE.$i/perdition.$i.pid)
       status
     done
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart|reload]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart|reload]"
+    newline
     exit 1
     ;;
 esac

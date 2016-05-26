@@ -7,39 +7,39 @@
 source /etc/compcache.conf
 
 NAME="compcache"
-EXIST=`cat /proc/swaps | grep zram0`
+DESC="$(_ '%s daemon' compcache)"
+EXIST=$(cat /proc/swaps | grep zram0)
 
 case "$1" in
   start)
-    if [ ! "$EXIST" = "" ] ; then
-      echo "$NAME already running."
+    if [ -n "$EXIST" ] ; then
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Loading module"
+    action 'Loading module...'
     modprobe zram zram_num_devices=1 &&
     [ -n "$SIZE_KB" ] && echo $(($SIZE_KB * 1024)) > /sys/block/zram0/disksize
     status
 
-    echo -n "Starting $NAME..."
+    action 'Starting %s: %s...' "$DESC" $NAME
     mkswap /dev/zram0 && swapon /dev/zram0 -p 100
     status
     ;;
   stop)
-    if [ "$EXIST" = "" ] ; then
-      echo "$NAME is not running."
+    if [ -z "$EXIST" ] ; then
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     swapoff /dev/zram0 && echo 1 > /sys/block/zram0/reset
     status
-    echo -n "Unloading module"
+    action 'Unloading module...'
     rmmod zram
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop]"
+    newline
     exit 1
     ;;
 esac

@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/squid : Start, stop and restart Squid proxy server on SliTaz, at 
+# /etc/init.d/squid : Start, stop and restart Squid proxy server on SliTaz, at
 # boot time or with the command line.
 #
 # To start Squid proxy server at boot time, just put squid in the $RUN_DAEMONS
@@ -9,38 +9,38 @@
 . /etc/daemons.conf
 
 NAME=Squid
-DESC="Squid proxy server"
+DESC="$(_ 'Squid proxy server')"
 DAEMON=/usr/sbin/squid
 OPTIONS=$SQUID_OPTIONS
 PIDFILE=/var/run/squid.pid
-http_port=$(grep ^http_port /etc/squid/squid.conf | awk '{ print $2 }')
+http_port=$(grep ^http_port /etc/squid/squid.conf | awk '{print $2}')
 [ -n "$http_port" ] || http_port=3128
 [ -n "$OPTIONS" ] || OPTIONS="-a $http_port"
 
 case "$1" in
   start)
     if active_pidfile $PIDFILE squid ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    cache_dir=$(grep ^cache_dir /etc/squid/squid.conf | awk '{ print $3 }')
+    cache_dir=$(grep ^cache_dir /etc/squid/squid.conf | awk '{print $3}')
     [ -n "$cache_dir" ] || cache_dir=/var/cache
     if [ -d "$cache_dir" -a ! -d "$cache_dir/00" ]; then
-      echo -n "Creating squid spool directory structure"
-      $DAEMON -z > /dev/null 2>&1
+      action 'Creating squid spool directory structure'
+      $DAEMON -z >/dev/null 2>&1
       status
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS
     status
     sleep 2
     ;;
   stop)
     if ! active_pidfile $PIDFILE squid ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     $DAEMON -k kill
     status
     rm -f $PIDFILE
@@ -48,27 +48,26 @@ case "$1" in
     ;;
   reload)
     if ! active_pidfile $PIDFILE squid ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Reloading $DESC configuration... "
+    action 'Reloading %s configuration...' $NAME
     $DAEMON -k reconfigure
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE squid ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-	$DAEMON -k kill &&  $DAEMON $OPTIONS
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    $DAEMON -k kill && $DAEMON $OPTIONS
     status
     sleep 2
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|reload|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart|reload]"
+    newline
     exit 1
     ;;
 esac

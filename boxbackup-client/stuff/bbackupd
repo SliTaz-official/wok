@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=BBackupd
-DESC="BoxBackup deamon"
+DESC="$(_ '%s daemon' BoxBackup)"
 DAEMON=/usr/bin/bbackupd
 OPTIONS=$BBSTORED_OPTIONS
 PIDFILE=/var/run/bbackupd.pid
@@ -17,39 +17,38 @@ PIDFILE=/var/run/bbackupd.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE bbackupd ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS > /dev/null
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS >/dev/null
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE bbackupd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
-	rm -f $PIDFILE
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
+    rm -f $PIDFILE
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE bbackupd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
-	rm -f $PIDFILE
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
+    rm -f $PIDFILE
     sleep 2
-    $DAEMON $OPTIONS > /dev/null
+    $DAEMON $OPTIONS >/dev/null
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

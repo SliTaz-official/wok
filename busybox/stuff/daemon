@@ -1,5 +1,5 @@
 #!/bin/sh
-# Start, stop and restart a busybox deamon on SliTaz, at boot time or 
+# Start, stop and restart a busybox deamon on SliTaz, at boot time or
 # with the command line.
 #
 # To start daemon at boot time, just put the right name in the $RUN_DAEMONS
@@ -8,12 +8,13 @@
 . /etc/init.d/rc.functions
 
 NAME=$(basename $0)
-DESC="$NAME deamon"
+DESC="$(_ '%s daemon' $NAME)"
 DAEMON=$(which $NAME)
 for p in ${PATH//:/ }; do
 	[ -L $p/$NAME ] || continue
 	case "$(readlink $p/$NAME)" in
-	*busybox)	DAEMON=$p/$NAME
+		*busybox)
+			DAEMON=$p/$NAME
 			break
 	esac
 done
@@ -24,10 +25,10 @@ active_inetd()
 {
 if grep $DAEMON /etc/inetd.conf | grep -q ^\#; then
     sed -i "s,^#\(.*$DAEMON.*\)$,\1," /etc/inetd.conf
-    /etc/init.d/inetd stop > /dev/null
+    /etc/init.d/inetd stop >/dev/null
     exec /etc/init.d/inetd start
 else
-    echo "$NAME is already active."
+    _ '%s is already active.' $NAME
     exit 1
 fi
 }
@@ -35,11 +36,11 @@ fi
 inactive_inetd()
 {
 if grep $DAEMON /etc/inetd.conf | grep -q ^\#; then
-    echo "$NAME is not active."
+    _ '%s is not active.' $NAME
     exit 1
 else
     sed -i "s,^.*$DAEMON.*$,#&," /etc/inetd.conf
-    /etc/init.d/inetd stop > /dev/null
+    /etc/init.d/inetd stop >/dev/null
     exec /etc/init.d/inetd start
 fi
 }
@@ -48,43 +49,42 @@ case "$1" in
   start)
     grep -qs $DAEMON /etc/inetd.conf && active_inetd
     if active_pidfile $PIDFILE $NAME ; then
-      echo "$NAME is already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS 
-    [ -f $PIDFILE ] || pidof $NAME | awk '{ print $1 }' > $PIDFILE
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS
+    [ -f $PIDFILE ] || pidof $NAME | awk '{print $1}' > $PIDFILE
     active_pidfile $PIDFILE $NAME
     status
     ;;
   stop)
     grep -qs $DAEMON /etc/inetd.conf && inactive_inetd
     if ! active_pidfile $PIDFILE $NAME ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     status
     ;;
   restart)
     grep -qs $DAEMON /etc/inetd.conf && exit 0
     if ! active_pidfile $PIDFILE $NAME ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     sleep 2
     $DAEMON $OPTIONS
-    [ -f $PIDFILE ] || pidof $NAME | awk '{ print $1 }' > $PIDFILE
+    [ -f $PIDFILE ] || pidof $NAME | awk '{print $1}' > $PIDFILE
     active_pidfile $PIDFILE $NAME
     status
     ;;
-*)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+  *)
+    emsg "<n><b>$(_ 'Usage:')</b> /etc/init.d/$(basename $0) [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

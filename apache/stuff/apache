@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/apache: Start, stop and restart Apache web server on SliTaz, 
+# /etc/init.d/apache: Start, stop and restart Apache web server on SliTaz,
 # at boot time or with the command line. Daemons options are configured
 # with /etc/daemons.conf
 #
@@ -7,7 +7,7 @@
 . /etc/daemons.conf
 
 NAME=Apache
-DESC="Apache Web Server"
+DESC="$(_ 'Apache Web Server')"
 DAEMON=/usr/bin/apachectl
 OPTIONS=$APACHE_OPTIONS
 PIDFILE=/var/run/apache/httpd.pid
@@ -15,45 +15,44 @@ PIDFILE=/var/run/apache/httpd.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE httpd ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS -k start 
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS -k start
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE httpd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS -k stop
     rm $PIDFILE
     status
     ;;
   reload)
     if ! active_pidfile $PIDFILE httpd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS -k graceful
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE httpd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
+    action 'Restarting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS -k restart
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|reload|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|reload|restart]"
+    newline
     exit 1
     ;;
 esac

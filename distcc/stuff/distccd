@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/distccd: Start, stop and restart Distcc daemon on SliTaz, 
+# /etc/init.d/distccd: Start, stop and restart Distcc daemon on SliTaz,
 # at boot time or with the command line. Daemons options are configured
 # with /etc/daemons.conf
 #
@@ -10,7 +10,7 @@ get_hosts_list()
 {
 	if [ -s /etc/distcc/hosts.allow ]; then
 		for i in $(cat /etc/distcc/clients.allow); do
-			( echo $i | grep -q '^#' ) && continue 
+			( echo $i | grep -q '^#' ) && continue
 			ALLOW_HOST="$ALLOW_HOST --allow $i"
 		done
 	else
@@ -20,7 +20,7 @@ get_hosts_list()
 }
 
 NAME=Distccd
-DESC="Distcc daemon"
+DESC="$(_ '%s daemon' Distcc)"
 DAEMON="/usr/bin/distccd"
 LOGFILE="/var/log/distccd/distccd.log"
 PIDFILE="/var/run/distccd/distccd.pid"
@@ -35,35 +35,34 @@ fi
 case "$1" in
   start)
     if active_pidfile $PIDFILE distccd ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS 
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE distccd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     kill -15 $(cat $PIDFILE)
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE distccd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
+    action 'Restarting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS -k restart
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

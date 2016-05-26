@@ -10,7 +10,7 @@
 . /etc/daemons.conf
 
 NAME=Connman
-DESC="Connection Manager"
+DESC="$(_ 'Connection Manager')"
 DAEMON=connmand
 OPTIONS=$CONNMAN_OPTIONS
 PIDFILE="$(pidof $DAEMON)"
@@ -18,30 +18,30 @@ PIDFILE="$(pidof $DAEMON)"
 case "$1" in
   start)
     if [ -n "$PIDFILE" ] ; then
-      echo "$NAME is already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
     pkill udhcpc 2>/dev/null
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS
     status
     ;;
   stop)
     if [ -z "$PIDFILE" ] ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
+    action 'Stopping %s: %s...' "$DESC" $NAME
     pkill $DAEMON
     pkill wpa_supplicant
     status
     ;;
   restart)
     if [ -z "$PIDFILE" ] ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
+    action 'Restarting %s: %s...' "$DESC" $NAME
     pkill $DAEMON &&
     pkill wpa_supplicant &&
     sleep 2 &&
@@ -50,15 +50,14 @@ case "$1" in
     ;;
   status)
     if [ -n "$PIDFILE" ] ; then
-      echo "$NAME is running."  
+      _ '%s is running.' $NAME
     else
-      echo "$NAME is not running."
-    fi  
+      _ '%s is not running.' $NAME
+    fi
     ;;
   *)
-	printf "\n\033[1mUsage:\033[0m /etc/init.d/%b [start|stop|restart|status]\n" \
-		"$(basename $0)"
-    exit 1
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart|status]"
+    newline
     ;;
 esac
 

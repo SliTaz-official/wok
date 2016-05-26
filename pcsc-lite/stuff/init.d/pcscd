@@ -7,25 +7,26 @@
 . /etc/daemons.conf
 
 NAME=Pcscd
-DESC="PC/SC smart card daemon"
+DESC="$(_ 'PC/SC smart card daemon')"
 DAEMON=/usr/sbin/pcscd
 PIDFILE=/run/pcscd/pcscd.pid
 
 case "$1" in
 	start)
 		if active_pidfile $PIDFILE pcscd ; then
-			echo "$NAME already running."
+			_ '%s is already running.' $NAME
 			exit 1
 		fi
-		echo "Starting $DESC: $NAME... "
+		action 'Starting %s: %s...' "$DESC" $NAME
 		mkdir -p $(dirname $PIDFILE)
-		$DAEMON $PCSCD_OPTIONS ;;
+		$DAEMON $PCSCD_OPTIONS
+		status ;;
 	stop)
 		if ! active_pidfile $PIDFILE pcscd ; then
-			echo "$NAME is not running."
+			_ '%s is not running.' $NAME
 			exit 1
 		fi
-		echo -n "Stopping $DESC: $NAME... "
+		action 'Stopping %s: %s...' "$DESC" $NAME
 		kill $(cat $PIDFILE)
 		[ -e $PIDFILE ] && rm -f $PIDFILE
 		status ;;
@@ -34,9 +35,8 @@ case "$1" in
 		sleep 2
 		$0 start ;;
 	*)
-		echo ""
-		echo -e "\033[1mUsage:\033[0m /etc/init.d/$(basename $0) [start|stop|restart]"
-		echo ""
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
 		exit 1 ;;
 esac
 

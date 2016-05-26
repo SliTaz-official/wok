@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/mysql : Start, stop and restart MySQL server on SliTaz, at 
+# /etc/init.d/mysql : Start, stop and restart MySQL server on SliTaz, at
 # boot time or with the command line.
 #
 # To start MySQL server at boot time, just put mysql in the $RUN_DAEMONS
@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=Mysql
-DESC="MySQL server"
+DESC="$(_ '%s server' MySQL)"
 DAEMON=/usr/bin/mysqld_safe
 OPTIONS=$MYSQL_OPTIONS
 PIDFILE=/var/run/mysqld/mysql.pid
@@ -22,51 +22,51 @@ fi
 case "$1" in
   start)
     if active_pidfile $PIDFILE mysqld ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
     if [ ! -d /var/lib/mysql/mysql ]; then
-      echo "Initializing $DESC: "
-      rm -rf /var/lib/mysql/* 2> /dev/null
+      action 'Initializing %s...' "$DESC"
+      rm -rf /var/lib/mysql/* 2>/dev/null
       mysql_install_db --user=mysql --datadir=/var/lib/mysql
+      status
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS  > /dev/null &
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS  >/dev/null &
     status
     sleep 2
     for i in /etc/mysql.d/* ; do
-    	[ -x $i ] || continue
-	echo -n "Running $i..."
-	$i
-	status
+      [ -x $i ] || continue
+      action 'Running %s...' $i
+      $i
+      status
     done
     ;;
   stop)
     if ! active_pidfile $PIDFILE mysqld ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`> /dev/null
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE) >/dev/null
     status
     sleep 2
     ;;
   restart)
     if ! active_pidfile $PIDFILE mysqld ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     sleep 2
     $DAEMON $OPTIONS &
     status
     sleep 2
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

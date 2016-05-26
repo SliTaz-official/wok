@@ -8,48 +8,47 @@
 . /etc/init.d/rc.functions
 
 NAME=mpd
-DESC="Music Player Daemon"
+DESC="$(_ 'Music Player Daemon')"
 DAEMON=/usr/sbin/mpd
 OPTION="/etc/mpd.conf"
 PIDFILE="/var/run/mpd.pid"
 
 case "$1" in
-start)
-	if active_pidfile $PIDFILE mpd ; then
-		echo "$NAME already running."
+	start)
+		if active_pidfile $PIDFILE mpd ; then
+			_ '%s is already running.' $NAME
+			exit 1
+		fi
+		action 'Starting %s: %s...' "$DESC" $NAME
+		$DAEMON $OPTION 2>/dev/null
+		status
+		pidof $NAME > $PIDFILE
+		;;
+	stop)
+		if ! active_pidfile $PIDFILE mpd ; then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Stopping %s: %s...' "$DESC" $NAME
+		kill $(pidof $NAME)
+		status
+		;;
+	restart)
+		if ! active_pidfile $PIDFILE mpd ; then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Restarting %s: %s...' "$DESC" $NAME
+		kill $(pidof $NAME)
+		sleep 2
+		$DAEMON $OPTION 2>/dev/null
+		status
+		;;
+	*)
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
 		exit 1
-	fi
-	echo -n "Starting $DESC: $NAME... "
-	$DAEMON $OPTION 2> /dev/null
-	status
-	pidof $NAME > $PIDFILE
-	;;
-stop)
-	if ! active_pidfile $PIDFILE mpd ; then
-		echo "$NAME is not running."
-		exit 1
-	fi
-	echo -n "Stopping $DESC: $NAME... "
-	kill $(pidof $NAME)
-	status
-	;;
-restart)
-	if ! active_pidfile $PIDFILE mpd ; then
-		echo "$NAME is not running."
-		exit 1
-	fi
-	echo -n "Restarting $DESC: $NAME... "
-	kill $(pidof $NAME)
-	sleep 2
-	$DAEMON $OPTION 2> /dev/null
-	status
-	;;
-*)
-	echo ""
-	echo -e "\033[1mUsage:\033[0m /etc/init.d/$(basename $0) [start|stop|restart]"
-	echo ""
-	exit 1
-	;;
+		;;
 esac
 
 exit 0

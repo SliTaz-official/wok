@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/cyrus-imapd : Start, stop and restart IMAP server on SliTaz, at 
+# /etc/init.d/cyrus-imapd : Start, stop and restart IMAP server on SliTaz, at
 # boot time or with the command line.
 #
 # To start IMAP server at boot time, just put cyrus-imapd in the $RUN_DAEMONS
@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=cyrus-imapd
-DESC="IMAP server"
+DESC="$(_ '%s server' IMAP)"
 DAEMON=/usr/lib/cyrus/master
 OPTIONS=$CYRUS_OPTIONS
 PIDFILE=/var/run/cyrus.master.pid
@@ -18,12 +18,12 @@ PIDFILE=/var/run/cyrus.master.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE master ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    dir=$(grep ^configdirectory /etc/imapd.conf | awk '{ print $2 }')
+    dir=$(grep ^configdirectory /etc/imapd.conf | awk '{print $2}')
     if [ ! -f $dir/mailboxes.db ]; then
-      echo -n "Initialize $DESC: "
+      action 'Initialize %s...' "$DESC"
       #/usr/cyrus/bin/mkimap
       for i in db proc socket log msg user quota; do
         [ -d $dir/$i ] || mkdir -p -m 700 $dir/$i
@@ -43,7 +43,7 @@ case "$1" in
             [ -d $i/$j ] || mkdir -p $i/$j
           done ;;
         esac
-        [ -d $i/stage. ] || mkdir $i/stage. 
+        [ -d $i/stage. ] || mkdir $i/stage.
         chown -R cyrus:mail $i
       done
       case "$(grep ^sieveusehomedir /etc/imapd.conf | awk '{ print $2 }')" in
@@ -60,44 +60,43 @@ case "$1" in
       su cyrus -c "/usr/cyrus/bin/reconstruct"
       status
     fi
-    if ! pidof saslauthd > /dev/null; then
+    if ! pidof saslauthd >/dev/null; then
       /etc/init.d/cyrus-sasl start
     fi
-    echo -n "Starting $DESC: $NAME... "
+    action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS
     status
     sleep 2
     ;;
   stop)
     if ! active_pidfile $PIDFILE master ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
-    ps x | grep -q `cat $PIDFILE` || rm -f $PIDFILE
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
+    ps x | grep -q $(cat $PIDFILE) || rm -f $PIDFILE
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE master ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
-    if ps x | grep -q `cat $PIDFILE`; then
-    	false
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
+    if ps x | grep -q $(cat $PIDFILE); then
+      false
     else
-    	rm -f $PIDFILE
-    	sleep 2
-    	$DAEMON $OPTIONS
+      rm -f $PIDFILE
+      sleep 2
+      $DAEMON $OPTIONS
     fi
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac

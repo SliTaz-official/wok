@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/daemon-name: Start, stop and restart daemon 
+# /etc/init.d/daemon-name: Start, stop and restart daemon
 # on SliTaz, at boot time or with the command line.
 #
 # To start daemon at boot time, just put the right name in the $RUN_DAEMONS
@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME=Privoxy
-DESC="Web proxy daemon"
+DESC="$(_ 'Web proxy daemon')"
 DAEMON=/usr/sbin/privoxy
 OPTIONS="--pidfile /var/run/privoxy.pid"
 USER="--user privoxy"
@@ -19,39 +19,38 @@ PIDFILE=/var/run/privoxy.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE privoxy ; then
-      echo "$NAME already running."
+      _ '%s is already running.' $NAME
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS $USER $CONFIG 2> /dev/null
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS $USER $CONFIG 2>/dev/null
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE privoxy ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
     rm $PIDFILE
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE privoxy ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' $NAME
       exit 1
     fi
-    kill `cat $PIDFILE`
+    kill $(cat $PIDFILE)
     rm $PIDFILE
     sleep 2
-    echo -n "Restarting $DESC: $NAME... "
-    $DAEMON $OPTIONS $USER $CONFIG 2> /dev/null
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS $USER $CONFIG 2>/dev/null
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac
