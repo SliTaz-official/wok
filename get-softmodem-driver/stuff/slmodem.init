@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/slmodem: Start, stop and restart slmodemd deamon on SliTaz, at boot
+# /etc/init.d/slmodem: Start, stop and restart slmodemd daemon on SliTaz, at boot
 # time or with the command line.
 #
 # To start daemon at boot time, just put the right name in the $RUN_DAEMONS
@@ -9,7 +9,7 @@
 . /etc/daemons.conf
 
 NAME="Smartlink modem"
-DESC="Smart Link Modem deamon"
+DESC="$(_ 'Smart Link Modem daemon')"
 DAEMON=/usr/sbin/slmodemd
 OPTIONS=$SLMODEM_OPTIONS
 PIDFILE=/var/run/slmodemd.pid
@@ -17,37 +17,36 @@ PIDFILE=/var/run/slmodemd.pid
 case "$1" in
   start)
     if active_pidfile $PIDFILE slmodemd ; then
-      echo "$NAME already running."
+      _ '%s is already running.' "$NAME"
       exit 1
     fi
-    echo -n "Starting $DESC: $NAME... "
-    $DAEMON $OPTIONS &&  echo `/bin/pidof $DAEMON` > $PIDFILE
+    action 'Starting %s: %s...' "$DESC" "$NAME"
+    $DAEMON $OPTIONS && echo $(/bin/pidof $DAEMON) > $PIDFILE
     status
     ;;
   stop)
     if ! active_pidfile $PIDFILE slmodemd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' "$NAME"
       exit 1
     fi
-    echo -n "Stopping $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Stopping %s: %s...' "$DESC" "$NAME"
+    kill $(cat $PIDFILE)
     status
     ;;
   restart)
     if ! active_pidfile $PIDFILE slmodemd ; then
-      echo "$NAME is not running."
+      _ '%s is not running.' "$NAME"
       exit 1
     fi
-    echo -n "Restarting $DESC: $NAME... "
-    kill `cat $PIDFILE`
+    action 'Restarting %s: %s...' "$DESC" "$NAME"
+    kill $(cat $PIDFILE)
     sleep 2
-    $DAEMON $OPTIONS &&  echo `/bin/pidof $DAEMON` > $PIDFILE
+    $DAEMON $OPTIONS && echo $(/bin/pidof $DAEMON) > $PIDFILE
     status
     ;;
   *)
-    echo ""
-    echo -e "\033[1mUsage:\033[0m /etc/init.d/`basename $0` [start|stop|restart]"
-    echo ""
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
     exit 1
     ;;
 esac
