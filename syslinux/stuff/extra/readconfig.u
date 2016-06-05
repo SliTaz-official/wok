@@ -1,14 +1,41 @@
 --- com32/menu/readconfig.c
 +++ com32/menu/readconfig.c
-@@ -874,6 +874,12 @@
+@@ -23,6 +23,7 @@
+ #include <com32.h>
+ #include <syslinux/adv.h>
+ #include <syslinux/config.h>
++#include <syslinux/disk.h>
+ 
+ #include "menu.h"
+ 
+@@ -874,6 +875,31 @@
  		}
  	    } else if (looking_at(p, "start")) {
  		start_menu = m;
 +	    } else if ((ep = looking_at(p, "startifnoarg"))) {
++		const union syslinux_derivative_info *sdi;
++		int custom = 0;
 +	    	size_t size;
 +	    	int slot;
++		sdi = syslinux_derivative_info();
++		if (sdi->c.filesystem == SYSLINUX_FS_ISOLINUX) {
++			struct disk_info diskinfo;
++			char *custom_buffer;
++			int got_config;
++
++			disk_get_params(sdi->iso.drive_number, &diskinfo);
++			custom_buffer = disk_read_sectors(&diskinfo, 32768 / diskinfo.bps, 1);
++			got_config = (16 + *(unsigned long *) (custom_buffer + 80))
++				* 2048 / diskinfo.bps;
++			free(custom_buffer);
++			custom_buffer = disk_read_sectors(&diskinfo, got_config, 1);
++			if (!memcmp(custom_buffer,"#!boot ",7)) {
++				custom++;
++			}
++			free(custom_buffer);
++		}
 +	    	slot = strtoul(ep, &ep, 0);
-+	    	if (!syslinux_getadv(slot, &size))
++	    	if (!custom && !syslinux_getadv(slot, &size))
 +			start_menu = m;
  	    } else if (looking_at(p, "help")) {
  		if (ld.label) {
