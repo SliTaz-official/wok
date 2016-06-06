@@ -211,6 +211,8 @@ movesys:				// %ax = SYSSEG
 	pushw	%es
 	popw	%ss
 	movw	%ds, %bx
+	shrw	$4, %si
+	addw	%si, %bx
 	subw	%ax, %bx
 	jnc	forward
 	addw	%bp, %ax
@@ -222,12 +224,11 @@ forward:
 	sbbw	%dx, %dx		// %dx = 0 : -1
 	cmc				//  C  = 1 :  0
 	adcw	%dx, %ax
+	xorw	%si, %si
 	xorw	%di, %di
 	movb	$8, %cl
-	pushw	%si
 	rep
 	  movsw
-	popw	%si
 	decw	%bp
 	jns	forward
 #ifndef NO_CURSOR_DEFINITION
