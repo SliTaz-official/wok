@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="gucharmap3"
+VERSION="3.18.2"
+CATEGORY="utilities"
+SHORT_DESC="GNOME Character Map (GTK+3)"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+TARBALL="gucharmap-$VERSION.tar.xz"
+WEB_SITE="https://wiki.gnome.org/action/show/Apps/Gucharmap"
+WGET_URL="$GNOME_MIRROR/gucharmap/${VERSION%.*}/$TARBALL"
+
+DEPENDS="gtk+3 xorg-libXdamage"
+BUILD_DEPENDS="automake gtk-doc libtool  itstool libxml2-tools glib-dev \
+libgio-dev gtk+3-dev desktop-file-utils-extra gobject-introspection-dev vala"
+SPLIT="gucharmap3-i18n"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Idea is to have two nonintersecting packages:
+	# gucharmap (for GTK+2) and gucharmap3 (for GTK+3)
+	sed -i '/AC_INIT/s|gucharmap|&3|3; s|GETTEXT_PACKAGE=.*$|&3|' \
+		$src/configure.ac
+	# Disable stuff we never had
+	sed -i '/GNOME_DEBUG_CHECK/d; /YELP/d' $src/configure.ac
+	sed -i '/YELP/d' $src/help/Makefile.am
+
+	./autogen.sh --program-suffix=3
+	make && make install
+
+	find $install/usr/bin -type l -delete
+	mv  $install/usr/share/applications/gucharmap.desktop \
+		$install/usr/share/applications/gucharmap3.desktop
+	sed -i 's|Exec=gucharmap|&3|' \
+		$install/usr/share/applications/gucharmap3.desktop
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/share/applications
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/share/applications $fs/usr/share
+	cp -a $install/usr/share/glib-2.0 $fs/usr/share
+}

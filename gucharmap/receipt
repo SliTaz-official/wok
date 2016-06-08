@@ -3,21 +3,22 @@
 PACKAGE="gucharmap"
 VERSION="3.0.1"
 CATEGORY="utilities"
-SHORT_DESC="GNOME Character Map"
+SHORT_DESC="GNOME Character Map (GTK+2)"
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="https://live.gnome.org/Gucharmap"
+WEB_SITE="https://wiki.gnome.org/action/show/Apps/Gucharmap"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
 
-DEPENDS="atk bzlib cairo expat fontconfig freetype gcc-lib-base gdk-pixbuf glib glibc-base gtk+ libffi libgio libpng libxcb pango pixman xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXinerama xorg-libXrandr xorg-libXrender zlib"
+DEPENDS="gtk+ xorg-libXdamage"
 BUILD_DEPENDS="itstool libxml2-tools glib-dev libgio-dev gtk+-dev"
+SPLIT="gucharmap-i18n"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
+		--sysconfdir=/etc \
 		--disable-maintainer-mode \
 		--disable-gconf \
 		--disable-schemas-install \
@@ -30,8 +31,10 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/lib usr/share
+	mkdir -p $fs/usr/bin $fs/usr/lib $fs/usr/share
+	cp -a $install/etc $fs
 	cp -a $install/usr/bin/$PACKAGE $fs/usr/bin
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/share/applications $fs/usr/share
+	cp -a $install/usr/share/glib-2.0 $fs/usr/share
 }
