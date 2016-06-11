@@ -1,6 +1,10 @@
+#define REALMODE_SWITCH
+#define SHUTDOWNDOS
+
 	.code16
 	.org	0
 
+#define CODE32_START	0x100000
 	jmp	start
 	.ascii	"HdrS"
 	.word	0x200		# version
@@ -10,51 +14,99 @@
 	.byte	0		# type of loader
 	.byte	1		# loadflags
 	.word	0x8000		# setup_move_size
-	.long	0x100000	# code32_start
+	.long	CODE32_START	# code32_start
  	.long	0		# ramdisk_image
 	.long	0		# ramdisk_size
 	.long 	0		# bootsect_kludge
 	.word	0		# heap_end_ptr	2.01+, patched by bootloader
+
 start:
-	pushf
+	cli
 	cld
+	pushf
 	pushw	%cs
 	pushw	$0
 	pushaw
-	pushw	%ds
-	popw	%es
-	.byte	0x66, 0xB8	# movl $?, %eax
+	xorw	%di, %di
+	.byte	0x66, 0xC7, 0x05	# movl $?, (%di)
 	rep
 	  movsw
 	popaw
 	iret
-	xorw	%di, %di
-	pushw	%es
+	pushw	%ds
 	pushw	%di
-	stosl
-	movw	$0x200, %di
-	movw	%sp, %bp
+#ifdef REALMODE_SWITCH
+	movw	$0x0208, %si
+	lodsw
+	orw	(%si), %ax
+	jz	norealmode_switch
+	lcallw	*-2(%si)
+norealmode_switch:
+#endif
+
+#ifdef SHUTDOWNDOS
+	xorw	%si, %si
+	movw	%sp, loadsp19+0x201
+        movw	%si, %ds		# %ds = 0
+	pushl	4(%si)
+	cmpw	$0xF000, 6(%si)
+	jnb	notdos
+        movw	$step19, 4(%si)
+        movw	%cs, 6(%si)
+        pushfw
+        popw	%ax
+        incb	%ah			# set TF
+        pushw	%ax
+        popfw
+        ljmp	*4*0x19(%si)
+stepagain19:
+        iret
+step19:
+        pushw	%si
+        pushw	%ds
+        movw	%sp, %si
+        ldsw	%ss:4(%si), %si
+        cmpw	$0x19CD, (%si)
+        popw    %ds
+        popw    %si
+	jne	stepagain19
+	xorw	%si, %si
+	mov	%si, %ds
+	popl	4*0x19(%si)
+notdos:
+loadsp19:
+	movw	$0, %bp
+	leaw	-4(%bp), %sp
+	popl	4(%si)
+	pushw	%ss
+	popw	%ds
+#endif
+
+//	xorw	%si, %si
 	movw	$9, %cx
 z1:
-	pushw	$0
+	pushw	%si		# 0000 0000 0000 0000 0000 0000 0000 0000 0000
 	loop	z1
 	movw	$0x9301, %ax
-	cwd			# %dx = -1
-	pushw	%ax
-	pushw	%cx
-	pushw	%dx
-	pushw	%cx
+	cwd
+	pushw	%ax		# 9301
+	pushw	%cx		# 0000
+	pushw	%dx		# FFFF
+	pushw	%cx		# 0000
 	movb	0x216, %al
-	pushw	%ax
-	pushw	%cx
-	pushw	%dx
+	pushw	%ax		# 93xx
+	pushw	%cx		# 0000
+	pushw	%dx		# FFFF
 	movb	$8, %cl
 z2:
-	pushw	$0
+	pushw	%si		# 0000 0000 0000 0000 0000 0000 0000 0000
 	loop	z2
+	movw	$0x200, %di
 	movw	-12(%di), %dx
-mvlp:
+	pushw	%ss
+	popw	%es
 	movw	%sp, %si
+mvlp:
 	movw	$0x8000, %cx
 	movb	$0x87, %ah
 	int	$0x15
@@ -62,14 +114,20 @@ mvlp:
 	incw	28(%si)
 	subw	$0x1000, %dx
 	ja	mvlp
-	movw	%bp, %sp
+	addw	$48, %sp
+	decb	-15(%di)
+sysmoved:
 	movw	$0x400, %si
 	xorw	%cx, %cx
-	decb	-15(%di)
 	movb	-15(%di), %ch
 	lret
+endcode:
+	
+	.org	256
 kernel_version:
 	.asciz	"zImage"
 	.org	512
 oldsetup:
+
+
 

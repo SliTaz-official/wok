@@ -1,0 +1,47 @@
+--- LINLD097/JUMP.ASM
++++ LINLD097/JUMP.ASM
+@@ -24,33 +24,22 @@
+                         jmpseg  :word,  \
+                         jmpofs  :word   = PARAM_SIZE
+ 
+-                push    bp      ;TODO: kinda useless, isn't it?
+-		mov	bp,sp
+-
+-              ;;mov     ax,[jmpseg]     ;Move data to CS segment var
+-              ;;mov     [seg2],ax       ;  we cannot use any other seg!
+-              ;;mov     ax,[jmpofs]     ;
+-              ;;mov     [ofs2],ax       ;
+-                mov     cx,[jmpofs]     ;Do NOT load in r32:
+-                mov     dx,[jmpseg]     ;  wrong order!
+-
+-                mov     ax,[sreg]
+-                mov     sp,[stk]        ;Do not use [bp+n] after this...
+-                mov     ds,ax
+-                mov     es,ax
+-                mov     ss,ax
+-                mov     fs,ax
+-                mov     gs,ax
++		pop	bx		;caller return address
++		pop	bx		; sreg
++		pop	ax		; stk
++		pop	dx		; jmpseg
++		pop	cx		; jmpofs
++                mov     ds,bx
++                mov     es,bx
++                mov     fs,bx
++                mov     gs,bx
++                mov     ss,bx
++                xchg	sp,ax
+ 		assume	nothing
+ 		assume	cs:DGROUP
+ 
+-              ;;jmp     [dword ofs2]
+-
+                 push    dx cx
+                 retf
+-; Data
+-;;ofs2            dw      ?
+-;;seg2            dw      ?
+         endp    _set_sregs_jump_seg_ofs
+ 
+         ends    _TEXT
