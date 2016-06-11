@@ -5,15 +5,15 @@
      if(first1k->boot_flag != 0xAA55)
          die("No boot signature (55,AA). It's not a kernel");
 -    if(first1k->header != HdrS)
-+    if(first1k->header != HdrS) // starting linux 1.3.73
 -        die("No 'HdrS' signature (kernel is too old)");
-+        die("No 'HdrS' signature (kernel is too old, try /usr/bin/tobzimage)");
 -    if(first1k->version < 0x202)
 -        die("Loader protocol version is less than 2.02 (kernel is too old)");
++    if(first1k->header != HdrS) // starting linux 1.3.73
++        die("No 'HdrS' signature (kernel is too old, try /usr/bin/tobzimage)");
      if(!(first1k->loadflags & 0x01))
          die("I can't load bzImages low");
  
-@@ -414,7 +412,13 @@
+@@ -414,15 +412,23 @@
      // Tell rm loader some info
  
      first1k->vid_mode = vid_mode;
@@ -28,3 +28,17 @@
      first1k->type_of_loader = 0xff; // kernel do not know us (yet :-)
      // * will be called just before rm -> pm
      first1k->realmode_switch_ofs = ofs(last_ditch);
+     first1k->realmode_switch_seg = seg(last_ditch);
+-    // * offset limit of the setup heap
+-    //   heap_end_ptr appears to be relative to the start of setup (ofs 0x0200)
+-    first1k->heap_end_ptr = _32k-0x0200;
+-    first1k->loadflags |= 0x80; // says to rm loader it's ok to use heap
++    if(first1k->version >= 0x201) {
++        // * offset limit of the setup heap
++        //   heap_end_ptr appears to be relative to the start of setup (ofs 0x0200)
++        first1k->heap_end_ptr = _32k-0x0200;
++        first1k->loadflags |= 0x80; // says to rm loader it's ok to use heap
++    }
+     // * if we will ever stop moving ourself to 0x90000
+     //   we must say setup.S how much to move
+     //first1k->setup_move_size = _32k;
