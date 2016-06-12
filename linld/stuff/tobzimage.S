@@ -1,5 +1,8 @@
+
 #define REALMODE_SWITCH
 #define SHUTDOWNDOS
+#define ELKS_SUPPORT
+#define LINUX001_SUPPORT
 
 	.code16
 	.org	0
@@ -21,8 +24,6 @@
 	.word	0		# heap_end_ptr	2.01+, patched by bootloader
 
 start:
-	cli
-	cld
 	pushf
 	pushw	%cs
 	pushw	$0
@@ -32,6 +33,7 @@ start:
 	rep
 	  movsw
 	popaw
+doiret:
 	iret
 	pushw	%ds
 	pushw	%di
@@ -46,10 +48,10 @@ norealmode_switch:
 
 #ifdef SHUTDOWNDOS
 	xorw	%si, %si
-	movw	%sp, loadsp19+0x201
         movw	%si, %ds		# %ds = 0
 	pushl	4(%si)
-	cmpw	$0xF000, 6(%si)
+	movw	%sp, %cs:loadsp19+1(%si)
+	cmpb	$0xF0, 7(%si)
 	jnb	notdos
         movw	$step19, 4(%si)
         movw	%cs, 6(%si)
@@ -59,8 +61,6 @@ norealmode_switch:
         pushw	%ax
         popfw
         ljmp	*4*0x19(%si)
-stepagain19:
-        iret
 step19:
         pushw	%si
         pushw	%ds
@@ -69,20 +69,22 @@ step19:
         cmpw	$0x19CD, (%si)
         popw    %ds
         popw    %si
-	jne	stepagain19
+	jne	doiret
 	xorw	%si, %si
 	mov	%si, %ds
 	popl	4*0x19(%si)
 notdos:
 loadsp19:
-	movw	$0, %bp
-	leaw	-4(%bp), %sp
+	movw	$0, %sp
 	popl	4(%si)
 	pushw	%ss
 	popw	%ds
+#else
+	xorw	%si, %si
 #endif
-
-//	xorw	%si, %si
+#if defined(ELKS_SUPPORT) || defined(LINUX001_SUPPORT)
+	movw	%sp, %bx
+#endif
 	movw	$9, %cx
 z1:
 	pushw	%si		# 0000 0000 0000 0000 0000 0000 0000 0000 0000
@@ -90,12 +92,12 @@ z1:
 	movw	$0x9301, %ax
 	cwd
 	pushw	%ax		# 9301
-	pushw	%cx		# 0000
+	pushw	%si		# 0000
 	pushw	%dx		# FFFF
-	pushw	%cx		# 0000
+	pushw	%si		# 0000
 	movb	0x216, %al
 	pushw	%ax		# 93xx
-	pushw	%cx		# 0000
+	pushw	%si		# 0000
 	pushw	%dx		# FFFF
 	movb	$8, %cl
 z2:
@@ -112,14 +114,41 @@ mvlp:
 	int	$0x15
 	incw	20(%si)
 	incw	28(%si)
-	subw	$0x1000, %dx
+	subb	$0x10, %dh
 	ja	mvlp
 	addw	$48, %sp
-	decb	-15(%di)
-sysmoved:
+#ifdef ELKS_SUPPORT
+	//cmpl	$0x534B4C45, -26(%di)
+elks_patch:
+	jmp	notelks
+	movw	$0x100, %cx
+	movb	%ch, 23(%bx)
+	movw	%cx, %es
+	pushw	%di
+	xorw	%di, %di
+	xorw	%si, %si
+	movb	$0x6, %ch
+	rep
+	  movsw
+	popw	%di
+	pushw	%es
+	popw	%ds
+notelks:
+#endif
 	movw	$0x400, %si
-	xorw	%cx, %cx
+	decb	-15(%di)
 	movb	-15(%di), %ch
+#ifdef LINUX001_SUPPORT
+	//cmpw	$0x3AE8, 0x3F(%si)
+linux001_patch:
+	jmp	notlnx001
+	movb	$0x42, (%bx)
+	xorw	%di, %di
+	movw	$0x100, %cx
+	rep
+	  movsw
+notlnx001:
+#endif
 	lret
 endcode:
 	

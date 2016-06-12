@@ -1,6 +1,11 @@
 #!/bin/sh
 
 if [ "$1" == "--build" ]; then	#install-begin
+	for i in elks linux001 ; do
+		i=${i}_patch
+		n=$(sed "/$i\$/!d;s/.*text:0*\\([^ ]*\\).*/\\1/" tobzimage.lst)
+		[ -n "$n" ] && sed -i "s/$i/$((0x200 + 0x$n))/" $0
+	done
 	cat tobzimage.bin | gzip -9 | uuencode -m - | sed \
 	  -e '/^tobzimage$/r/dev/stdin' -e '/^tobzimage$/d' \
 	  -e '/install-begin$/,/install-end$/d' -i $0
@@ -35,6 +40,8 @@ store()
 create_bzImage()
 {
 	ddq bs=512 count=1 of=$1
+	[ " $(get 0x1E6 $1 4)" == " 1397443653" ] && iselks=1
+	[ " $(get 0x3F $1 2)" == " 15080" ] && islinux001=1 && cp $1 $1$$
 	# from http://hg.slitaz.org/wok/file/7184ec55b1aa/linux/stuff/linux-header.u
 	uudecode <<EOT | ddq of=$1 conv=notrunc
 begin-base64 644 -
@@ -56,17 +63,28 @@ EOT
 	uudecode <<EOT | gunzip >> $1
 tobzimage
 EOT
-	if [ "$2" ]; then
-		s="$2"
-		[ -s "$2" ] && s="$(cat "$2")"
-		echo -e "\n$2" | tr '\n' '\r' | cat - /dev/zero | \
-		dd conv=notrunc of=$1 bs=1 seek=768 count=255
-	fi
+	s="$2"
+	[ -s "$s" ] && s="$(cat "$s")"
+	[ -z "$s" ] && s="$(basename "$1")"
+	echo -e "\n$s" | tr '\n' '\r' | cat - /dev/zero | \
+	ddq conv=notrunc of=$1 bs=1 seek=768 count=255
 	setupsz=$(get 497 $1 1)
 	[ $setupsz -eq 0 ] && setupsz=4
-	ddq bs=512 count=$setupsz >> $1
+	if [ "$islinux001" == "1" ]; then
+		cat $1$$ /dev/zero | ddq bs=512 count=$setupsz >> $1
+		rm -f $1$$
+	else
+		ddq bs=512 count=$setupsz >> $1
+	fi
 	store 8 497 $(($setupsz+1)) $1
+	syssz=$(get 500 $1 2)
+	[ $syssz -eq 0 ] && syssz=$((($filesz+15-512)/16-($setupsz*32)))
+	[ "$islinux001" == "1" ] && syssz=$((($filesz+15-512)/16))
+	store 16 500 $syssz $1
+	[ "$iselks" == "1" ] && store 16 elks_patch 37008 $1
+	[ "$islinux001" == "1" ] && store 16 linux001_patch 37008 $1
 	ddq >> $1
 }
 
+filesz=$(stat -c %s $1)
 create_bzImage $2 "$3" < $1
