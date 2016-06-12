@@ -114,14 +114,14 @@ mvlp:
 	int	$0x15
 	incw	20(%si)
 	incw	28(%si)
-	subb	$0x10, %dh
+	subw	$0x1000, %dx
 	ja	mvlp
 	addw	$48, %sp
 #ifdef ELKS_SUPPORT
 	//cmpl	$0x534B4C45, -26(%di)
+	movw	$0x100, %cx
 elks_patch:
 	jmp	notelks
-	movw	$0x100, %cx
 	movb	%ch, 23(%bx)
 	movw	%cx, %es
 	pushw	%di
@@ -137,18 +137,20 @@ notelks:
 #endif
 	movw	$0x400, %si
 	decb	-15(%di)
-	movb	-15(%di), %ch
 #ifdef LINUX001_SUPPORT
 	//cmpw	$0x3AE8, 0x3F(%si)
 linux001_patch:
 	jmp	notlnx001
 	movb	$0x42, (%bx)
 	xorw	%di, %di
+# ifndef ELKS_SUPPORT
 	movw	$0x100, %cx
+# endif
 	rep
 	  movsw
 notlnx001:
 #endif
+	movb	-15(%di), %ch
 	lret
 endcode:
 	
