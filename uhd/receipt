@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="uhd"
+VERSION="release_003_009_003"
+CATEGORY="network"
+SHORT_DESC="The USRP(tm) Hardware Driver."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://github.com/EttusResearch/uhd"
+WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
+
+DEPENDS="libboost-date-time libboost-filesystem libboost-program-options \
+libboost-regex libboost-system libboost-test libboost-serialization \
+libboost_thread libboost-tr1 udev python"
+BUILD_DEPENDS="wget cmake python python-mako libboost-date-time-dev \
+libboost-filesystem-dev libboost-program-options-dev libboost-regex-dev \
+libboost-system-dev libboost-test-dev libboost-serialization-dev \
+libboost-thread-dev libboost-tr1-dev libusb-dev udev-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src/host
+	mkdir build
+	cd build
+	cmake .. -DENABLE_MANUAL=OFF -DENABLE_DOXYGEN=OFF \
+		-DENABLE_MAN_PAGES=OFF -DENABLE_B200=ON -DENABLE_USB=ON \
+		-DCMAKE_INSTALL_PREFIX=/usr
+	make && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/uhd $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/share $fs/usr
+}
