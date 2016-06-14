@@ -40,7 +40,7 @@ store()
 create_bzImage()
 {
 	ddq bs=512 count=1 of=$1
-	[ " $(get 0x1E6 $1 4)" == " 1397443653" ] && iselks=1
+	[ "$(od -j 486 $1 -An -N 4 -a|sed 's/ //g')" == "ELKS" ] && iselks=1
 	[ " $(get 0x3F $1 2)" == " 15080" ] && islinux001=1 && cp $1 $1$$
 	# from http://hg.slitaz.org/wok/file/7184ec55b1aa/linux/stuff/linux-header.u
 	uudecode <<EOT | ddq of=$1 conv=notrunc
@@ -75,6 +75,12 @@ EOT
 		rm -f $1$$
 	else
 		ddq bs=512 count=$setupsz >> $1
+		if [ "$(od -j 1026 $1 -An -N 4 -a|sed 's/ //g')" == "HdrS" ] &&
+		   [ $(($(get 1041 $1 1) & 1)) -eq 1 ]; then
+			echo "Already a bzImage file, abort."
+			rm -f $1
+			exit 1
+		fi
 	fi
 	store 8 497 $(($setupsz+1)) $1
 	syssz=$(get 500 $1 2)
