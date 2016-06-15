@@ -1,0 +1,92 @@
+# SliTaz package receipt.
+
+PACKAGE="coreutils-multicall"
+VERSION="8.25"
+CATEGORY="system-tools"
+SHORT_DESC="Utilities for using and setting the basic system."
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="https://www.gnu.org/software/coreutils/coreutils.html"
+TARBALL="coreutils-$VERSION.tar.xz"
+WGET_URL="$GNU_MIRROR/coreutils/$TARBALL"
+
+SIBLINGS="coreutils"
+DEPENDS="glibc-base acl attr libcap gmp"
+BUILD_DEPENDS="automake xz libcap-dev gmp-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# LFS: Coreutils Internationalization Fixes Patch
+	patch -Np1 -i $WOK/coreutils/stuff/coreutils-8.25-i18n-2.patch
+	# SliTaz: show extended info touching CPU via uname
+	patch  -p1 -i $WOK/coreutils/stuff/uname.u
+
+	autoreconf -fi
+
+	FORCE_UNSAFE_CONFIGURE=1 \
+	./configure \
+		--enable-single-binary=symlinks \
+		$CONFIGURE_ARGS &&
+	make && make install
+
+	# LFS: Move programs to the locations specified by the FHS
+	mkdir -p $install/bin $install/usr/sbin $install/usr/share/man/man8
+	for i in cat chgrp chmod chown cp date dd df echo false ln ls mkdir \
+		mknod mv pwd rm rmdir stty sync true uname; do
+		rm $install/usr/bin/$i
+		ln -s /usr/bin/coreutils $install/bin/$i
+	done
+	rm $install/usr/bin/chroot
+	ln -s /usr/bin/coreutils $install/usr/sbin/chroot
+	mv  $install/usr/share/man/man1/chroot.1 \
+		$install/usr/share/man/man8/chroot.8
+	sed -i 's|"1"|"8"|' $install/usr/share/man/man8/chroot.8
+
+	find $install/usr/share/man -type f -exec gzip -9 \{\} \;
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	rm -r $fs/usr/share/info $fs/usr/share/locale
+}
+
+post_install()
+{
+	# Remove Busybox applets in order to not clash with ("/bin", "/sbin",
+	# "/usr/bin" and "/usr/sbin" conflicts with the same filename)
+	rm "$1/bin/base64"   # /usr/bin/base64
+	rm "$1/bin/kill"     # /usr/bin/kill
+	rm "$1/bin/mktemp"   # /usr/bin/mktemp
+	rm "$1/bin/nice"     # /usr/bin/nice
+	rm "$1/bin/printenv" # /usr/bin/printenv
+	rm "$1/bin/sleep"    # /usr/bin/sleep
+	rm "$1/bin/stat"     # /usr/bin/stat
+	rm "$1/bin/touch"    # /usr/bin/touch
+}
+
+post_remove()
+{
+	# Restore all Busybox applets that have been replaced
+
+	# /bin:
+	for i in base64 cat chgrp chmod chown cp date dd df echo false kill ln ls \
+		mkdir mknod mktemp mv nice printenv pwd rm rmdir sleep stat stty sync \
+		touch true uname; do
+		busybox ln -s busybox "$1/bin/$i"
+	done
+
+	# /usr/bin:
+	for i in '[' basename cksum comm cut dirname du env expand expr fold \
+		groups head hostid id install logname md5sum mkfifo nohup od printf \
+		readlink realpath seq sha1sum sha256sum sha512sum sort split sum tac \
+		tail tee test timeout tr tty unexpand uniq uptime users wc who whoami \
+		yes; do
+		busybox ln -s /bin/busybox "$1/usr/bin/$i"
+	done
+
+	# /usr/sbin:
+	busybox ln -s /bin/busybox "$1/usr/sbin/chroot"
+}
