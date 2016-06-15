@@ -1,38 +1,51 @@
 # SliTaz package receipt.
 
 PACKAGE="coreutils-disk"
-VERSION="8.12"
+VERSION="8.25"
 CATEGORY="system-tools"
 SHORT_DESC="GNU utilities that work with disks."
 MAINTAINER="rcx@zoominternet.net"
 LICENSE="GPL3"
-WEB_SITE="http://www.gnu.org/software/coreutils/"
-WANTED="coreutils"
+WEB_SITE="https://www.gnu.org/software/coreutils/coreutils.html"
 
+WANTED="coreutils"
 DEPENDS="glibc-base"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
-#
-# This is a special package for installed system or developer. We only take
-# a few things, as Busybox provides all the basic utilities, but not for compiling.
-# But DO NOT erase a Busybox applet, remove it before with pre_install rules.
-#
 genpkg_rules()
 {
-	mkdir -p $fs/bin
-	cp -a $install/usr/bin/df $fs/bin
-	cp -a $install/usr/bin/stat $fs/bin
-	cp -a $install/usr/bin/sync $fs/bin
+	mandir="$fs/usr/share/man/man1"
+	mkdir -p $mandir
 
-	mkdir -p $fs/usr/bin
-	cp -a $install/usr/bin/du $fs/usr/bin
-	cp -a $install/usr/bin/truncate $fs/usr/bin
+	while read i; do
+		mkdir -p $fs$(dirname $i)
+		cp -a $install$i $fs$i
+		find $install -name "$(basename $i).*" -exec cp -a \{\} $mandir \;
+	done <<EOT
+/bin/df
+/bin/sync
+/usr/bin/du
+/usr/bin/stat
+/usr/bin/truncate
+EOT
+}
+
+post_install()
+{
+	# Remove Busybox applets in order to not clash with ("/bin", "/sbin",
+	# "/usr/bin" and "/usr/sbin" conflicts with the same filename)
+	rm "$1/bin/stat"     # /usr/bin/stat
 }
 
 post_remove()
 {
-	ln -s /bin/busybox "$1/bin/df"
-	ln -s /bin/busybox "$1/bin/stat"
-	ln -s /bin/busybox "$1/bin/sync"
-	ln -s /bin/busybox "$1/usr/bin/du"
+	# Restore all Busybox applets that have been replaced
+	while read i; do
+		busybox ln -s /bin/busybox "$1$i"
+	done <<EOT
+/bin/df
+/bin/stat
+/bin/sync
+/usr/bin/du
+EOT
 }

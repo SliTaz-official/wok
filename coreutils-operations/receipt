@@ -1,43 +1,44 @@
 # SliTaz package receipt.
 
 PACKAGE="coreutils-operations"
-VERSION="8.12"
+VERSION="8.25"
 CATEGORY="system-tools"
 SHORT_DESC="GNU utilities that perform basic operations."
 MAINTAINER="rcx@zoominternet.net"
 LICENSE="GPL3"
-WEB_SITE="http://www.gnu.org/software/coreutils/"
-WANTED="coreutils"
+WEB_SITE="https://www.gnu.org/software/coreutils/coreutils.html"
 
-DEPENDS="glibc-base acl"
+WANTED="coreutils"
+DEPENDS="glibc-base acl attr"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
-#
-# This is a special package for installed system or developer. We only take
-# a few things, as Busybox provides all the basic utilities, but not for compiling.
-#
 genpkg_rules()
 {
-	mkdir -p $fs/bin
-	#cp -a $install/usr/bin/cp $fs/bin
-	cp -a $install/usr/bin/dd $fs/bin
-	cp -a $install/usr/bin/mv $fs/bin
-	cp -a $install/usr/bin/ln $fs/bin
-	#cp -a $install/usr/bin/rm $fs/bin
+	mandir="$fs/usr/share/man/man1"
+	mkdir -p $mandir
 
-	mkdir -p $fs/usr/bin
-	cp -a $install/usr/bin/install $fs/usr/bin
-	cp -a $install/usr/bin/shred $fs/usr/bin
+	while read i; do
+		mkdir -p $fs$(dirname $i)
+		cp -a $install$i $fs$i
+		find $install -name "$(basename $i).*" -exec cp -a \{\} $mandir \;
+	done <<EOT
+/bin/cp
+/bin/dd
+/bin/mv
+/usr/bin/install
+/usr/bin/shred
+EOT
 }
 
 post_remove()
 {
-	# use busybox ln applet directly since /bin/ln
-	# in this package is remove already
-#	/bin/busybox ln -fs /bin/busybox "$1/bin/cp"
-	/bin/busybox ln -fs /bin/busybox "$1/bin/dd"
-	/bin/busybox ln -fs /bin/busybox "$1/bin/mv"
-	/bin/busybox ln -fs /bin/busybox "$1/bin/ln"
-#	/bin/busybox ln -fs /bin/busybox "$1/bin/rm"
-	/bin/busybox ln -fs /bin/busybox "$1/usr/bin/install"
+	# Restore all Busybox applets that have been replaced
+	while read i; do
+		busybox ln -s /bin/busybox "$1$i"
+	done <<EOT
+/bin/cp
+/bin/dd
+/bin/mv
+/usr/bin/install
+EOT
 }

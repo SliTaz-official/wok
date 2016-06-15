@@ -1,90 +1,84 @@
 # SliTaz package receipt.
 
 PACKAGE="coreutils"
-VERSION="8.12"
+VERSION="8.25"
 CATEGORY="system-tools"
 SHORT_DESC="Utilities for using and setting the basic system."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
+WEB_SITE="https://www.gnu.org/software/coreutils/coreutils.html"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://www.gnu.org/software/coreutils/"
-WGET_URL="ftp://ftp.gnu.org/gnu/$PACKAGE/$TARBALL"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="glibc-base gmp libcap"
-BUILD_DEPENDS="slitaz-toolchain libcap-dev gmp-dev m4 autoconf automake"
+SIBLINGS="coreutils-multicall"
+SPLIT="coreutils-character coreutils-command coreutils-conditions coreutils-\
+context-system coreutils-context-user coreutils-context-working coreutils-\
+directory coreutils-disk coreutils-file-attributes coreutils-file-format \
+coreutils-file-output-full coreutils-file-output-part coreutils-file-sort \
+coreutils-file-special coreutils-file-summarize coreutils-line coreutils-\
+numeric coreutils-operations coreutils-path coreutils-print coreutils-\
+redirection"
+DEPENDS="glibc-base acl attr gmp"
+BUILD_DEPENDS="automake xz libcap-dev gmp-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	# NOTE: There does not seem to be a problem with sigcontext.h in Linux 2.6.29.3
+	# LFS: Coreutils Internationalization Fixes Patch
+	patch -Np1 -i $stuff/coreutils-8.25-i18n-2.patch
+	# SliTaz: show extended info touching CPU via uname
+	patch  -p1 -i $stuff/uname.u
 
-	# Hack to fix ls: expected specifier-qualifier-list before '__u64'
-	# Hack to change uname: so can see the cpu type your running on with uname
-	while read patch_file; do
-		if [ -f done.$patch_file ]; then
-			echo "Skipping $patch_file"
-			continue
-		fi
-		echo "Apply $patch_file"
-		patch -p1 < $stuff/$patch_file || return 1
-		touch done.$patch_file
-	done <<EOT
-ls.u
-uname.u
-EOT
+	autoreconf -fi
 
-	sed -i 's/1.10a/1.10.2/' configure.ac || return 1
-	sed -i 's/dist-xz/dist-lzma/' configure.ac || return 1
-
-	./configure $CONFIGURE_ARGS &&
+	FORCE_UNSAFE_CONFIGURE=1 ./configure $CONFIGURE_ARGS &&
 	make && make install
 
-	# Restore original sigcontext.h
-	# mv -f /usr/include/asm/sigcontext.h.bak /usr/include/asm/sigcontext.h
+	# LFS: Move programs to the locations specified by the FHS
+	mkdir -p \
+		$install/bin \
+		$install/usr/sbin \
+		$install/usr/share/man/man8
+	for i in cat chgrp chmod chown cp date dd df echo false ln ls mkdir \
+		mknod mv pwd rm rmdir stty sync true uname; do
+		mv $install/usr/bin/$i $install/bin
+	done
+	mv  $install/usr/bin/chroot $install/usr/sbin
+	mv  $install/usr/share/man/man1/chroot.1 \
+		$install/usr/share/man/man8/chroot.8
+	sed -i 's|"1"|"8"|' $install/usr/share/man/man8/chroot.8
+
+	find $install/usr/share/man -type f -exec gzip -9 \{\} \;
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
-#
-# This is a special package for installed system or developer. We only take
-# a fiew things, Busybox provide all the basic utilitie, but not for compiling.
-# But DO NOT ecrase a Busybox applet, remove it before with pre_install rules.
-#
 genpkg_rules()
 {
+	# A set of binaries looks intriguing, isn't it?
+	# For what is this package with exactly these binaries?
+
 	mkdir -p $fs/usr/bin $fs/bin
-	# Utils...
-	cp -a $install/usr/bin/base64 $fs/usr/bin
-	cp -a $install/usr/bin/csplit $fs/usr/bin
-	cp -a $install/usr/bin/factor $fs/usr/bin
-	cp -a $install/usr/bin/fmt $fs/usr/bin
-	cp -a $install/usr/bin/join $fs/usr/bin
-	cp -a $install/usr/bin/od $fs/usr/bin
-	cp -a $install/usr/bin/paste $fs/usr/bin
-	cp -a $install/usr/bin/ptx $fs/usr/bin
-	cp -a $install/usr/bin/shred $fs/usr/bin
-	cp -a $install/usr/bin/shuf $fs/usr/bin
-	cp -a $install/usr/bin/split $fs/usr/bin
-	cp -a $install/usr/bin/users $fs/usr/bin
-	cp -a $install/usr/bin/groups $fs/usr/bin
-	cp -a $install/usr/bin/cp $fs/usr/bin
+
+	cd $install/usr/bin
+	cp -a base64 csplit factor fmt join od paste ptx shred shuf split users \
+		groups $fs/usr/bin
+
+	cp -a $install/bin/cp $fs/bin
 }
 
 post_install()
 {
-	rm "$1/bin/cp" &&
-	mv "$1/usr/bin/cp" "$1/bin"
+	# Remove Busybox applet in order to not clash with
+	# /usr/bin/base64 from this package.
+	rm "$1/bin/base64"
 }
 
 post_remove()
 {
-	ln -s ../../bin/busybox "$1/usr/bin/od"
-	ln -s ../../bin/busybox "$1/usr/bin/split"
-	rm -f "$1/bin/cp"
-	ln -s busybox "$1/bin/cp"
-}
-
-clean_wok()
-{
-	rm -rf $WOK/$PACKAGE-*/taz
-	rm -rf $WOK/$PACKAGE-*/process.log
+	ln -s      busybox "$1/bin/base64"
+	ln -s      busybox "$1/bin/cp"
+	ln -s /bin/busybox "$1/usr/bin/groups"
+	ln -s /bin/busybox "$1/usr/bin/od"
+	ln -s /bin/busybox "$1/usr/bin/split"
+	ln -s /bin/busybox "$1/usr/bin/users"
 }
