@@ -1,29 +1,26 @@
 # SliTaz package receipt.
 
 PACKAGE="compiz"
-VERSION="0.9.4"
+VERSION="0.8.12"
 CATEGORY="meta"
 SHORT_DESC="Compiz 3D effect support on SliTaz."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT GPL LGPL"
 WEB_SITE="http://www.compiz.org/"
-SUGGESTED="compiz-ccsm compiz-compizconfig-python"
 TAGS="window-manager"
 
 DEPENDS="emerald compiz-core compiz-plugins-main compiz-libcompizconfig \
 slitaz-configs"
 BUILD_DEPENDS=""
+SUGGESTED="compiz-ccsm compiz-plugins-extra emerald-themes"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p \
-		$fs/usr/bin \
-		$fs/usr/share/doc/slitaz
-	echo "See: http://doc.slitaz.org/" > \
-		$fs/usr/share/doc/slitaz/compiz.txt
+	mkdir -p $fs/usr/bin
 	cp -r $stuff/xsessions $fs/usr/share
 	install -m 0777 $stuff/compiz-session $fs/usr/bin
+	install -m 0777 $stuff/compiz-startwm $fs/usr/bin
 	chown -R 0.0 $fs
 }
 
@@ -36,6 +33,12 @@ post_install()
 		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" $root/etc/slim.conf
 		status
 	fi
+	for i in $(ls -d "$1"/home/* 2> /dev/null);
+	do	[ -d "$i" ] && \
+		sed '/WINDOW_MANAGER=/s|"\([^"]*\)"|"compiz"|' -i \
+		"$i/.config/slitaz/applications.conf" \
+		"$1/etc/slitaz/applications.conf"
+	done
 }
 
 post_remove()
@@ -44,4 +47,10 @@ post_remove()
 	if grep -q $PACKAGE $root/etc/slim.conf; then
 		sed -i s/,$PACKAGE// $root/etc/slim.conf
 	fi
+	for i in $(ls -d "$1"/home/* 2> /dev/null);
+	do [ -d "$i" ] && \
+		sed '/WINDOW_MANAGER=/s|"\([^"]*\)"|"lxde-session"|' -i \
+		"$i/.config/slitaz/applications.conf" \
+		"$1/etc/slitaz/applications.conf"
+	done
 }

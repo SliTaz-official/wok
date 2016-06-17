@@ -1,35 +1,34 @@
 # SliTaz package receipt.
 
 PACKAGE="compiz-plugins-main"
-VERSION="0.9.4"
+VERSION="0.8.12.2"
 CATEGORY="x-window"
 SHORT_DESC="Compiz main plugins."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.compiz.org/"
-WGET_URL="http://releases.compiz.org/$VERSION/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="https://github.com/compiz-reloaded"
+WGET_URL="$WEB_SITE/$PACKAGE/releases/download/v$VERSION/$TARBALL"
 
-DEPENDS="xorg-libX11 compiz-core compiz-libcompizconfig gtk+ librsvg"
-BUILD_DEPENDS="xorg-dev compiz-core-dev compiz-libcompizconfig-dev cmake \
-glibmm-dev libxslt-dev startup-notification-dev libboost-dev mesa-dev \
-gtk+-dev libboost-serialization-dev intltool librsvg-dev"
+DEPENDS="xorg-libX11 compiz-core librsvg"
+BUILD_DEPENDS="xorg-dev compiz-core-dev libnotify-dev libxslt-dev \
+startup-notification-dev mesa-dev gtk+-dev intltool librsvg-dev \
+compiz-libcompizconfig compiz-libcompizconfig-dev compiz-bcop \
+util-linux-uuid-dev libtool"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir build && cd build &&
-	cmake \
-		-DCMAKE_INSTALL_PREFIX="/usr" \
-		-DCOMPIZ_DESTDIR="../../install" \
-		-DCOMPIZ_PLUGIN_INSTALL_TYPE="compiz" .. &&
+	./configure --prefix=/usr --sysconfdir=/etc
 	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
+	mkdir -p $fs/usr/lib $fs/usr/share/locale
 	cp -a $install/usr/lib/compiz $fs/usr/lib
 	cp -a $install/usr/share/compiz $fs/usr/share
+	cp -a $install/usr/share/locale/ru $fs/usr/share/locale
+	cd $fs/usr/lib/compiz; rm -f *.a *.la
 }

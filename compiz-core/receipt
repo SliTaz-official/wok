@@ -1,49 +1,40 @@
 # SliTaz package receipt.
 
 PACKAGE="compiz-core"
-VERSION="0.9.4"
+VERSION="0.8.12.3"
 CATEGORY="x-window"
 SHORT_DESC="Compiz is an OpenGL compositing manager for 3D effect."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT GPL LGPL"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.compiz.org/"
-WGET_URL="http://releases.compiz.org/$VERSION/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="https://github.com/compiz-reloaded"
+WGET_URL="$WEB_SITE/compiz/releases/download/v$VERSION/compiz-$VERSION.tar.xz"
 
-DEPENDS="librsvg libxslt startup-notification libboost-serialization \
-glibmm mesa emerald dbus dbus-glib"
-BUILD_DEPENDS="xorg-dev cmake intltool librsvg-dev libxslt-dev \
-startup-notification-dev libboost-dev libboost-serialization-dev \
-glibmm-dev mesa-dev file dbus-dev dbus-glib-dev"
+DEPENDS="librsvg libxslt mesa libglu-mesa dbus dbus-glib startup-notification \
+compiz-bcop compiz-libcompizconfig"
+BUILD_DEPENDS="xorg-dev intltool librsvg-dev libxslt-dev pango-dev libtool \
+startup-notification-dev mesa-dev file dbus-dev dbus-glib-dev cairo-dev \
+util-linux-uuid-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
-	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries"
-
-	patch $src/include/compiz.h <<EOT
---- compiz.h
-+++ compiz.h
-@@ -0,0 +1 @@
-+#include <dirent.h>
-EOT
-	mkdir build && cd build
-	cmake \
-		-DCMAKE_INSTALL_PREFIX="/usr" \
-		-DCOMPIZ_DISABLE_PLUGIN_KDE=ON \
-		-DCOMPIZ_DESTDIR="../../install" .. &&
-	make -j 1 && make install &&
-	make findcompiz_install
+	./configure --prefix=/usr --enable-shared --enable-librsvg \
+		--enable-dbus --enable-dbus-glib --enable-glib \
+		--disable-static --disable-inotify
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
+	mkdir -p $fs/usr/lib $fs/usr/share/locale
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib/compiz $fs/usr/lib
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 	cp -a $install/usr/share/compiz $fs/usr/share
-	rm -rf $fs/usr/share/compiz/cmake
+	cp -a $install/usr/share/icons $fs/usr/share
+	cp -a $install/usr/share/locale/ru $fs/usr/share
+	rm -rf $fs/usr/lib/compiz/*.la
+	sed 's|bash|sh|' -i $fs/usr/bin/compiz-decorator
 }

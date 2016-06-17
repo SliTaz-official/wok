@@ -7,7 +7,8 @@
 export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_CURRENT_DESKTOP=LXDE
-export DESKTOP_SESSION=compiz
+export XDG_MENU_PREFIX="lxde-"
+export DESKTOP_SESSION=LXDE
 
 # Start DBUS session.
 if [ ! "$DBUS_SESSION_BUS_ADDRESS" ]; then
@@ -15,20 +16,44 @@ if [ ! "$DBUS_SESSION_BUS_ADDRESS" ]; then
 fi
 
 # Compiz configuration files from slitaz-configs.
-if [ ! -f "$XDG_CONFIG_HOME/compiz-1/compizconfig/config" ]; then
-	mkdir -p $XDG_CONFIG_HOME/compiz-1/compizconfig
-	cp -r /usr/share/slitaz/compiz/* $XDG_CONFIG_HOME/compiz-1/compizconfig
+if [ ! -f "$XDG_CONFIG_HOME/compiz/compizconfig/config" ]; then
+	mkdir -p $XDG_CONFIG_HOME/compiz/compizconfig
+	cp -r /usr/share/slitaz/compiz/* $XDG_CONFIG_HOME/compiz/compizconfig
+		sed 's|imgpng|scale;scaleaddon;animation|; s|s0_|as_|; \
+	s|composite;opengl|ccp;commands;text;png|; s|as_sens|s0_sens|; \
+	s|decor;|decoration;|;s|\[decor|\[decoration|; s|as_zo|s0_zo|; \
+	s|as_acc|s0_acc|;s|as_top|s0_top|;s|as_bot|s0_bot|;s|as_sky|s0_sky|; \
+	/opacity/s/as/s0/; s|Shift>Button1|Shift>Button3|' \
+	-i $XDG_CONFIG_HOME/compiz/compizconfig/Default.ini
+	echo "
+[animation]
+s0_all_random = true
+
+[resize]
+as_mode = 2
+
+[commands]
+as_run_command0_key = <Shift>Print
+as_command0 = mtpaint -s
+as_run_command1_key = <Alt>F1
+as_command1 = lxpanelctl menu
+as_run_command2_key = <Alt>F2
+as_command2 = xterm
+
+[winrules]
+!s0_maximize_match = (name=Navigator) | name=mtpaint | class=TazWeb
+!| role = browser
+" >> $XDG_CONFIG_HOME/compiz/compizconfig/Default.ini
 fi
 
-# PCmanFM config file. NOTE: We dont need a user config file
-#if [ ! -f "$XDG_CONFIG_HOME/pcmanfm/main" ]; then
-	#mkdir -p $XDG_CONFIG_HOME/pcmanfm/default
-	#cp /etc/xdg/pcmanfm/default/pcmanfm.conf \
-		#$XDG_CONFIG_HOME/pcmanfm/default
-#fi
-
 # Start some LXDE componment.
-lxpanel -p slitaz &
-pcmanfm --desktop &
-emerald &
-exec compiz ccp --indirect-rendering
+if [ ! -d $XDG_CONFIG_HOME/lxsession/Compiz ]; then
+	cp -a $XDG_CONFIG_HOME/lxsession/LXDE \
+		$XDG_CONFIG_HOME/lxsession/Compiz
+	sed -i 's|window_manager=.*|window_manager=compiz-startwm|' \
+		$XDG_CONFIG_HOME/lxsession/Compiz/desktop.conf
+fi
+
+exec lxsession -e LXDE -s Compiz
+
+#hsetroot -solid '#012345'

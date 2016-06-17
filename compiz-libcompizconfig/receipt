@@ -1,37 +1,34 @@
 # SliTaz package receipt.
 
 PACKAGE="compiz-libcompizconfig"
-VERSION="0.9.4"
+SOURCE="libcompizconfig"
+VERSION="0.8.12.1"
 CATEGORY="x-window"
 SHORT_DESC="Compiz configuration library."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.compiz.org/"
-WGET_URL="http://releases.compiz.org/$VERSION/$TARBALL"
+TARBALL="$SOURCE-$VERSION.tar.xz"
+WEB_SITE="https://github.com/compiz-reloaded"
+WGET_URL="$WEB_SITE/$SOURCE/releases/download/v$VERSION/$TARBALL"
 
 DEPENDS="compiz-core protobuf glib libgio libxml2"
-BUILD_DEPENDS="xorg-dev compiz-core-dev cmake glibc-dev libxml2-dev \
-libxslt-dev glibmm-dev startup-notification-dev libboost-dev \
-protobuf-dev glib-dev libgio-dev"
+BUILD_DEPENDS="xorg-dev compiz-core-dev glibc-dev libxml2-dev mesa-dev \
+libxslt-dev startup-notification-dev protobuf-dev glib-dev libgio-dev libtool"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir build && cd build
-	cmake \
-		-DCMAKE_INSTALL_PREFIX="/usr" \
-		-DCMAKE_MINIMUM_REQUIRED_VERSION="1.0" \
-		-DCOMPIZ_DESTDIR="../../install" .. &&
-	make && make install &&
-	make findcompizconfig_install
+	./configure --sysconfdir=/etc
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share
-	#cp -a $install/etc $fs
+	cp -a $install/etc $fs
 	cp -a $install/usr/lib/compiz* $fs/usr/lib
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/share/compiz $fs/usr/share
+	find $fs -name 'lib*a' -delete
 }
