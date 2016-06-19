@@ -839,7 +839,7 @@ static char *make_cmdline(char **argv)
     
     if (has_custom_config()) {
     	*p++ = ' ';
-    	strcat(p, custom_cmdline);
+    	strcpy(p, custom_cmdline);
     }
 
     return cmdline;
