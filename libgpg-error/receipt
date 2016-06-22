@@ -1,14 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="libgpg-error"
-VERSION="1.10"
+VERSION="1.23"
 CATEGORY="security"
 SHORT_DESC="Commons error messages for GnuPG."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://www.gnupg.org/related_software/libgpg-error/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.gnupg.org/related_software/libgpg-error/"
-WGET_URL="ftp://ftp.gnupg.org/gcrypt/libgpg-error/$TARBALL"
+WGET_URL="https://www.gnupg.org/ftp/gcrypt/libgpg-error/$TARBALL"
 HOST_ARCH="i486 arm"
 
 DEPENDS=""
@@ -16,18 +16,22 @@ DEPENDS=""
 # Rules to configure and make the package.
 compile_rules()
 {
-	touch src/extra-h.in
+	# Integrity check: https://www.gnupg.org/download/integrity_check.html
+	echo "c6a0c49211955e924593527b32e4b2736cafcda5  $SRC/$TARBALL" | sha1sum -c || exit 1
+
+#	touch src/extra-h.in
 	./configure $CONFIGURE_ARGS &&
 	make && make DESTDIR=$DESTDIR install
+
+	find $install/usr/share/man -type f -exec gzip -9 \{\} \;
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin $fs/usr/lib $fs/usr/share
-	
+
 	cp -a $install/usr/bin/gpg-error $fs/usr/bin
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/share/common-lisp $fs/usr/share
+	cp -a $install/usr/share/man $fs/usr/share
 }
-

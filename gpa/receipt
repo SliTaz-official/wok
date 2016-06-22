@@ -1,36 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="gpa"
-VERSION="0.9.7"
+VERSION="0.9.9"
 CATEGORY="security"
 SHORT_DESC="Gnu Privacy Assistant"
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL3"
+WEB_SITE="https://www.gnupg.org/related_software/gpa/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.gnupg.org/"
-WGET_URL="http://mirror.tje.me.uk/pub/mirrors/ftp.gnupg.org/gpa/$TARBALL"
+WGET_URL="https://www.gnupg.org/ftp/gcrypt/gpa/$TARBALL"
 
-DEPENDS="gnupg gpgme libgpg-error gtk+ xorg-libXdamage pinentry-gtk"
-BUILD_DEPENDS="gnupg autoconf automake gpgme-dev libgpg-error-dev \
-libassuan-dev gtk+-dev"
+DEPENDS="gpgme gtk+ pinentry-gtk"
+BUILD_DEPENDS="gtk+-dev libgpg-error-dev libassuan-dev gpgme-dev"
+SPLIT="gpa-langpack"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch -p0 < $stuff/gpa-0.9.0-libassuan2.patch &&
-	autoreconf
-	automake --add-missing &&
+	# Integrity check: https://www.gnupg.org/download/integrity_check.html
+	echo "1cf86c9e38aa553fdb880c55cbc6755901ad21a4  $SRC/$TARBALL" | sha1sum -c || exit 1
+
 	./configure $CONFIGURE_ARGS && make && make install
+
+	find $install/usr/share/man -type f -exec gzip -9 \{\} \;
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/locale
-	
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/applications $fs/usr/share
-	cp -a $install/usr/share/pixmaps $fs/usr/share
-	cp -a $install/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $install/* $fs
+	rm -r $fs/usr/share/locale
 }
-

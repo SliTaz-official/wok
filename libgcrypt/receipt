@@ -1,14 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="libgcrypt"
-VERSION="1.5.3"
+VERSION="1.7.1"
 CATEGORY="security"
 SHORT_DESC="Cryptographic library based on GnuPG"
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2 LGPL2.1"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.gnupg.org/"
-WGET_URL="ftp://ftp.gnupg.org/gcrypt/libgcrypt/$TARBALL"
+WEB_SITE="https://www.gnupg.org/related_software/libgcrypt/"
+WGET_URL="https://www.gnupg.org/ftp/gcrypt/libgcrypt/$TARBALL"
 HOST_ARCH="i486 arm"
 
 DEPENDS="libgpg-error"
@@ -17,6 +17,9 @@ BUILD_DEPENDS="libgpg-error-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Integrity check: https://www.gnupg.org/download/integrity_check.html
+	echo "b688add52b622bb96bbd823ba21aa05a116d442f  $SRC/$TARBALL" | sha1sum -c || exit 1
+
 	case "$ARCH" in
 		arm)
 			#LIBS="-L/cross/arm/sysroot/usr/lib -lgpg-error"
@@ -30,6 +33,8 @@ compile_rules()
 				--host=$HOST_SYSTEM ;;
 	esac &&
 	make && make install
+
+	find $install/usr/share/man -type f -exec gzip -9 \{\} \;
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
