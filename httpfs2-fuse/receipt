@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="httpfs2-fuse"
+VERSION="0.1.5"
+SOURCE="httpfs2"
+CATEGORY="system-tools"
+SHORT_DESC="HTTP/HTTPS Filesystem implemented with FUSE."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://httpfs.sourceforge.net/"
+WGET_URL="$SF_MIRROR/httpfs/$TARBALL"
+PROVIDE="httpfs-fuse"
+TAGS="filesystem"
+
+DEPENDS="fuse libgnutls"
+BUILD_DEPENDS="fuse-dev gnutls-dev libgnutls pkg-config"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i "s/^package = .*/package = $SOURCE/" Makefile
+	sed -i "s/^version = .*/version = $VERSION/" Makefile
+	sed -i "s/^revision = .*/revision = 1/" Makefile
+	sed -i "s/a2x -f/echo skip/" Makefile
+	sed -i "s/MAIN_LDFLAGS := /&-ldl -lpthread -lrt /" Makefile
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $src/httpfs2-ssl-mt $fs/usr/bin/httpfs
+}
