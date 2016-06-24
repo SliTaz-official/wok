@@ -21,11 +21,15 @@ freerdp-dev libvncserver-dev libgnome-keyring-dev gettext telepathy-glib-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Here `sed -i '/external_tools/d' ...` because cmake (make install)
+	# produce error trying to install "external tools" to
+	# "$install/root/.remmina/external_tools/"
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lX11"
 	mkdir build
 	cmake -DCMAKE_INSTALL_PREFIX=/usr -DWITH_TELEPATHY=OFF \
 		-DWITH_AVAHI=OFF &&
 	make &&
+	sed -i '/external_tools/d' $src/remmina/cmake_install.cmake &&
 	make DESTDIR=$DESTDIR install
 	cp -a remmina/include $DESTDIR/usr
 }
