@@ -1,0 +1,75 @@
+--- httpfs.c
++++ httpfs.c
+@@ -313,6 +313,7 @@
+     struct timeval timeout;
+     int bytes, status;
+ 
++moved:
+ #ifdef USE_SSL
+     if (protocol == PROTO_HTTPS) {
+ 	/* Make SSL connection. */
+@@ -371,6 +372,27 @@
+ #endif
+ 
+     (void) sscanf(buf, "HTTP/1.1 %d ", &status);
++    if (status == 301 || status == 302) {
++	static int movedcnt = 0;
++	b = strstr(buf,"Location:");
++	if (b != NULL && ++movedcnt < 5) {
++	    char *eol = strchr(b, '\r');
++	    b = strstr(b,"http");
++	    if (eol == NULL || b == NULL)
++		goto notmoved;
++	    *eol = 0;
++	    fprintf(stderr, "%s: HEAD (read) Status %d moved to %s\n",
++			argv0, status, b);
++	    protocol = parseURL(b, host, &file_name, &port);
++	    if (protocol == -1) 
++		goto notmoved;
++	    close(sockfd);
++	    sockfd = open_client_socket(host, port);
++	    if (sockfd >= 0)
++		goto moved;
++	}
++    }
++notmoved:
+     if (status != 200) {
+ 	fprintf(stderr, "%s: HEAD (read) failed with Status %d\n", argv0, status);
+ 	return -1;
+@@ -892,6 +914,7 @@
+     struct stat mpstat;
+     int sr;
+     char* ri;
++    char* s;
+     char* fusev[4];
+ 	
+     argv0 = argv[0];
+@@ -911,6 +934,14 @@
+     if (sockfd < 0)
+ 	return 1;
+ 
++    s = httpfs_path;
++    ri = rindex(file_name, '/');
++    if (ri == (char *) 0) {
++	ri = file_name;
++	*s++ = '/';
++    }
++    strcpy(s, ri);
++
+     if (getSize() != 0) 
+ 	return 1;
+ 
+@@ -930,13 +961,6 @@
+ 	return 1;
+     }
+     
+-    ri = rindex(file_name, '/');
+-    if (ri == (char *) 0) {
+-	httpfs_path[0] = '/';
+-	strcpy(&httpfs_path[1], file_name);
+-    } else
+-	strcpy(httpfs_path, ri);
+-
+     fusev[0] = argv0;
+     fusev[1] = "-o";
+     fusev[2] = "nonempty";
