@@ -20,11 +20,18 @@ compile_rules()
 {
 	patch -p0 < $stuff/httpfs.u
 	mkdir -p $DESTDIR/usr/bin $DESTDIR/usr/share/boot
-	sed 's/lpthread/& -ldl -lrt/' static_uclibc/make_httpfs | sh &&
-	cp -a httpfs $DESTDIR/usr/share/boot/httpfs-static &&
+	# keep uclibc prebuilt. Glibc version is 10x bigger !
+	if true; then
+		cp -a static_uclibc/httpfs $DESTDIR/usr/share/boot/httpfs-static
+		upx -d $DESTDIR/usr/share/boot/httpfs-static
+	else
+		sed 's/lpthread/& -ldl -lrt/' static_uclibc/make_httpfs | sh
+		cp -a httpfs $DESTDIR/usr/share/boot/httpfs-static
+	fi
 	. ./make_httpfs && cp -a httpfs $DESTDIR/usr/bin
-	cp -a static_uclibc/fusermount $DESTDIR/usr/share/boot/fusermount-static
+	install -m 755 static_uclibc/fusermount $DESTDIR/usr/share/boot/fusermount-static
 	upx -d $DESTDIR/usr/share/boot/fusermount-static
+	chmod 4755 $DESTDIR/usr/share/boot/fusermount-static
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
