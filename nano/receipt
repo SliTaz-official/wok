@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="nano"
-VERSION="2.4.3"
+VERSION="2.6.1"
 CATEGORY="utilities"
 SHORT_DESC="GNU Nano Text Editor"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-WEB_SITE="http://www.nano-editor.org/"
+WEB_SITE="https://nano-editor.org/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="${WEB_SITE}dist/v${VERSION%.*}/$TARBALL"
 TAGS="text-editor"
@@ -27,21 +27,22 @@ compile_rules()
 	./configure \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
+		--disable-wrapping-as-root \
 		--enable-utf8 \
 		$CONFIGURE_ARGS $ARCH_ARGS &&
 	make && make install
+
+	find $install/usr/share/man -type f -exec gzip -9 \{\} \;
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p \
-		$fs/etc \
-		$fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/nano $fs/usr/share
+	cp -a $install/* $fs
+	rm -r $fs/usr/share/doc $fs/usr/share/locale
 
 	# Config file.
+	mkdir -p $fs/etc
 	cp $src/doc/nanorc.sample $fs/etc/nanorc
 	cd $fs; patch -p0 < $stuff/nano.patch
 }
