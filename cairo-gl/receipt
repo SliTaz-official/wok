@@ -3,21 +3,25 @@
 PACKAGE="cairo-gl"
 VERSION="1.14.4"
 CATEGORY="x-window"
-SHORT_DESC="2D graphics library with GL support."
+SHORT_DESC="2D graphics library with GL support"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MPL LGPL2.1"
 SOURCE="cairo"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="http://www.cairographics.org/"
-WGET_URL="http://cairographics.org/releases/$TARBALL"
+WEB_SITE="https://www.cairographics.org/"
+WGET_URL="${WEB_SITE}releases/$TARBALL"
 #HOST_ARCH="arm i486"
 
-DEPENDS="glib pixman libpng zlib expat fontconfig freetype xorg-libX11 \
-xorg-libXau xorg-libXdmcp xorg-libXrender xcb-util libxcb mesa-wayland"
+DEPENDS="bzlib fontconfig freetype glib glibc-base harfbuzz libdrm libffi \
+libpng libxcb libxml2 mesa mesa-wayland pcre pixman udev xorg-libX11 \
+xorg-libXau xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes \
+xorg-libXrender xorg-libXxf86vm zlib"
 BUILD_DEPENDS="pkg-config glib-dev libpng-dev zlib-dev fontconfig-dev \
 freetype-dev xorg-libX11-dev pixman-dev xorg-libXau-dev xorg-libXdmcp-dev \
 xorg-libXrender-dev xcb-util-dev libxcb-dev expat-dev libxml2-dev \
 mesa-wayland-dev wayland-dev udev-dev xorg-libXxf86vm-dev libdrm-dev"
+SPLIT="cairo-gl-tools"
+SIBLINGS="cairo"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -27,17 +31,14 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch -Np1 -i $stuff/cairo-1.10.0-buggy_gradients.patch
-	# https://bugs.freedesktop.org/show_bug.cgi?id=50852
-	patch -Np1 -i $stuff/cairo-1.12.2-reduce-broken-stopped-edge-continuation.patch
 	./configure \
 		--prefix=/usr \
-		--with-html-dir=/usr/share/doc \
 		--enable-xcb \
+		--enable-xlib-xcb \
 		--enable-tee \
 		--enable-gl \
 		--disable-static \
- 		$CONFIGURE_ARGS &&
+		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
@@ -48,4 +49,3 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
-
