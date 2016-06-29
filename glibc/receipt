@@ -128,6 +128,9 @@ compile_rules()
 		--target=$BUILD_SYSTEM &&
 	make -j1 && make install_root=$DESTDIR install
 	} || return 1
+	for i in $DESTDIR/usr/share/i18n/charmaps/*.gz ; do
+		advdef -z4 $i
+	done
 
 	# If temporary toolchain was previously used, switch to regular toolchain.
 	[ -d /tools ] || return
@@ -139,9 +142,6 @@ compile_rules()
 		-e '/\*startfile_prefix_spec:/{n;s@.*@/usr/lib/ @}' \
 		-e '/\*cpp:/{n;s@$@ -isystem /usr/include@}' > \
 		`dirname $(gcc --print-libgcc-file-name)`/specs
-	for i in $DESTDIR/usr/share/i18n/charmaps/*.gz ; do
-		advdef -z4 $i
-	done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
