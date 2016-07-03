@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="openspades"
+VERSION="0.0.12"
+CATEGORY="games"
+SHORT_DESC="Compatible client of Ace of Spades 0.75"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="http://openspades.yvt.jp/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/yvt/openspades/archive/v$VERSION.tar.gz"
+
+DEPENDS="gcc49-lib-base glew glibc-base libcurl libglu-mesa libsdl2 \
+libsdl2-image libxcb mesa util-linux-uuid xorg-libICE xorg-libSM xorg-libX11 \
+xorg-libXau xorg-libXdmcp xorg-libXext zlib"
+BUILD_DEPENDS="gcc49 cmake libsdl2-dev libsdl2-image-dev freealut-dev mesa-dev \
+glew-dev curl-dev imagemagick grep unzip"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	patch -p1 -i $stuff/$PACKAGE-$VERSION.patch
+	export CXX=/usr/bin/i486-slitaz-linux-g++-49
+
+	mkdir build; cd build
+	cmake .. \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DOPENSPADES_RESDIR=/usr/share/openspades/Resources \
+		-DOPENSPADES_INSTALL_RESOURCES=share/openspades/Resources \
+		-DOPENSPADES_INSTALL_BINARY=bin \
+		&&
+	make -j1 &&
+	make DESTDIR=$install install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
