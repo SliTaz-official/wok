@@ -15,6 +15,7 @@ HOST_ARCH="i486 arm"
 DEPENDS="ncursesw zlib"
 SUGGESTED="gpm"
 BUILD_DEPENDS="ncursesw-dev zlib-dev groff"
+SPLIT="nano-doc"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -32,17 +33,22 @@ compile_rules()
 		$CONFIGURE_ARGS $ARCH_ARGS &&
 	make && make install
 
-	find $install/usr/share/man -type f -exec gzip -9 \{\} \;
+	cook_compress_manpages
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	cp -a $install/* $fs
-	rm -r $fs/usr/share/doc $fs/usr/share/locale
+	rm -r $fs/usr/share/doc $fs/usr/share/locale $fs/usr/share/man
 
 	# Config file.
 	mkdir -p $fs/etc
 	cp $src/doc/nanorc.sample $fs/etc/nanorc
 	cd $fs; patch -p0 < $stuff/nano.patch
+
+	# Shrink
+	for i in $fs/usr/share/nano/*.nanorc; do
+		sed -i '/^#/d;/^$/d' $i
+	done
 }
