@@ -69,12 +69,14 @@ compile_rules()
 			make && make install || return 1
 		    strip --strip-unneeded -R .eh_frame -R .eh_frame_hdr \
 				$src/_install/bin/busybox
+		    mv docs/busybox.1 docs/busybox.base.1
 
 			# prepare busybox-pam package
 		    sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
 		    make oldconfig && make || return 1
 		    strip --strip-unneeded -R .eh_frame -R .eh_frame_hdr busybox
 		    mv busybox busybox-pam
+		    mv docs/busybox.1 docs/busybox.pam.1
 
 		    # prepare busybox-static package
 		    if [ -x /usr/bin/uclibc-i486-gcc ]; then
@@ -82,6 +84,7 @@ compile_rules()
 			make oldconfig && make || return 1
 			cp busybox busybox-static
 			mv busybox busybox-uclibc
+			mv -f docs/busybox.1 docs/busybox.static.1
 		    fi
 
 		    if [ -x /usr/bin/musl-gcc ]; then
@@ -90,6 +93,7 @@ compile_rules()
 			sed -i 's|uclibc-i486-||' .config
 			make oldconfig && make CC=musl-gcc || return 1
 			mv busybox busybox-musl
+			mv -f docs/busybox.1 docs/busybox.static.1
 		    fi
 
 		    if [ -x /usr/lib/diet/bin/diet ]; then
@@ -98,6 +102,7 @@ compile_rules()
 			sed -i 's|uclibc-i486-||;s|CFLAGS="|&-D_BSD_SOURCE |;s|LDFLAGS="|&-Wl,--allow-multiple-definition |;s|LDLIBS="|&compat rpc |' .config
 			make oldconfig && make CC="/usr/lib/diet/bin/diet gcc" || return 1
 			mv busybox busybox-diet
+			mv -f docs/busybox.1 docs/busybox.static.1
 		    fi
 
 		    # prepare ssfs-busybox package
@@ -113,6 +118,7 @@ compile_rules()
 
 			# Compile translations
 			make -C $stuff/po install
+			cp docs/busybox.base.1 docs/busybox.1
 
 			;;
 
