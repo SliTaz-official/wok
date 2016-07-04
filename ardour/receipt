@@ -11,7 +11,7 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="ftp://ftp.archlinux.org/other/ardour/$TARBALL"
 TAGS="audio recorder mixer"
 
-DEPENDS="liblrdf ladspa liblo libgnomecanvas libusb-compat aubio libsndfile 
+DEPENDS="liblrdf ladspa liblo libgnomecanvas libusb-compat aubio libsndfile \
 libsamplerate raptor fftw libxslt libgnomecanvasmm soundtouch"
 BUILD_DEPENDS="scons libboost-dev libboost-thread-dev libboost-math-dev \
 jack-audio-connection-kit-dev alsa-lib-dev liblo-dev aubio-dev libxslt-dev \
@@ -23,12 +23,11 @@ libboost-system-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-  cd $src
-  sed -i '/-O3/d' SConstruct 
-  mkdir -p $DESTDIR
-  
-  CFLAGS="$CFLAGS -Wl,--copy-dt-needed-entries -lboost_system"
-  scons ${MAKEFLAGS} ARCH="${CFLAGS}" \
+	sed -i '/-O3/d' SConstruct
+	mkdir -p $DESTDIR
+
+	CFLAGS="$CFLAGS -Wl,--copy-dt-needed-entries -lboost_system"
+	scons ${MAKEFLAGS} ARCH="${CFLAGS}" \
 		PREFIX=/usr \
 		NLS=1 \
 		FREEDESKTOP=0 \
@@ -40,9 +39,9 @@ compile_rules()
 		LIBLO=1 \
 		AUBIO=1 \
 		TRANZPORT=1 \
-		DIST_LIBDIR=lib 
-			
-  scons ${MAKEFLAGS} ARCH="${CFLAGS}" \
+		DIST_LIBDIR=lib
+
+	scons ${MAKEFLAGS} ARCH="${CFLAGS}" \
 		PREFIX=/usr \
 		NLS=1 \
 		FREEDESKTOP=0 \
@@ -55,8 +54,15 @@ compile_rules()
 		AUBIO=1 \
 		TRANZPORT=1 \
 		DIST_LIBDIR=lib \
-		DESTDIR=$DESTDIR install 
+		DESTDIR=$DESTDIR install
 
+	mkdir -p $install/usr/share/man/man1
+	cp -a $src/ardour.1 $install/usr/share/man/man1
+	for i in es fr ru; do
+		mkdir -p $install/usr/share/man/$i/man1
+		cp -a $src/ardour.1.$i $install/usr/share/man/$i/man1
+	done
+	cook_compress_manpages
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -66,5 +72,4 @@ genpkg_rules()
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib/ardour2/*so* $fs/usr/lib/ardour2
 	cp -a $install/usr/share/ardour2 $fs/usr/share
-	
 }
