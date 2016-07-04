@@ -16,14 +16,19 @@ BUILD_DEPENDS="expat-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure --prefix=/usr --sysconfdir=/etc $CONFIGURE_ARGS &&
 	make &&
 	make prefix=$DESTDIR/usr install
+
+	for i in 1 3 4; do
+		mkdir -p $install/usr/share/man/man$i
+		cp -a $src/man/*.$i $install/usr/share/man/man$i
+	done
+	cook_compress_manpages
 }
 
-# Rules to gen a SliTaz package suitable for Tazpkg.   
-genpkg_rules()                                      
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/etc
 	cp $src/etc/antinat.xml $fs/etc

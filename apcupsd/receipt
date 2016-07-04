@@ -15,7 +15,6 @@ BUILD_DEPENDS="slitaz-dev-pkgs libgd-dev libgd"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's/src platforms doc/src platforms/' Makefile
 	SHUTDOWN=/sbin/poweroff ac_cv_func_setpgrp_void=yes ./configure \
 		--enable-usb \
@@ -30,6 +29,12 @@ compile_rules()
 		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
 	make && make install
+
+	for i in 5 8; do
+		mkdir -p $install/usr/share/man/man$i
+		cp -a $src/doc/*.$i $install/usr/share/man/man$i
+	done
+	cook_compress_manpages
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

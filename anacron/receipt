@@ -16,14 +16,17 @@ BUILD_DEPENDS=""
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i "s|^PREFIX =.*|PREFIX = $DESTDIR|" Makefile
 	sed -i 's/const int isleap/int isleap/' gregor.c
 	make 2>&1 | grep -v Makefile:57 && make install
+
+	mkdir -p $install/usr/share
+	mv $install/usr/man $install/usr/share
+	cook_compress_manpages
 }
 
-# Rules to gen a SliTaz package suitable for Tazpkg.   
-genpkg_rules()                                      
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
 {
 	cp -a $install/* $fs
 	find $fs/usr/man -type f -exec chmod a-x \{\} \;
