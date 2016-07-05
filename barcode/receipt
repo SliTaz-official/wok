@@ -6,23 +6,23 @@ CATEGORY="utilities"
 SHORT_DESC="barcode generator"
 MAINTAINER="devl547@gmail.com"
 LICENSE="GPL2"
+WEB_SITE="https://www.gnu.org/software/barcode/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.gnu.org/software/barcode/"
 WGET_URL="ftp://ftp.gnu.org/gnu/$PACKAGE/$TARBALL"
+
+BUILD_DEPENDS="automake texinfo"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure $CONFIGURE_ARGS 2>&1 | grep -v 'sed: confdefs' &&
-	make &&
-	make prefix=$DESTDIR install
+	patch -p1 -i $stuff/barcode.patch
+	autoreconf -fi
+
+	./configure $CONFIGURE_ARGS && make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/bin $fs/usr
-	cp -a $install/lib $fs/usr
+	cook_copy_files barcode
 }

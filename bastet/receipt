@@ -1,31 +1,34 @@
 # SliTaz package receipt.
 
 PACKAGE="bastet"
-VERSION="0.43"
+VERSION="0.43.1"
 CATEGORY="games"
 SHORT_DESC="Bastard tetris clone."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-DEPENDS="ncurses libboost-program-options"
-BUILD_DEPENDS="ncurses-dev libboost-dev libboost-program-options-dev"
-TARBALL="$PACKAGE-$VERSION.tgz"
-WEB_SITE="http://fph.altervista.org/prog/bastet.shtml"
-WGET_URL="http://fph.altervista.org/prog/files/$TARBALL"
+WEB_SITE="http://fph.altervista.org/prog/bastet.html"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/fph/bastet/archive/$VERSION.tar.gz"
 TAGS="tetris"
+GENERIC_MENUS="no"
+
+DEPENDS="gcc-lib-base glibc-base libboost-program-options libtinfo ncurses"
+BUILD_DEPENDS="ncurses-dev libboost-dev libboost-program-options-dev \
+libboost-tr1-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	export LDFLAGS="$LDFLAGS -ltinfo"
-	make depend 2> /dev/null
-	make
+	cp -a $stuff/bastet* $src
+	patch -p1 -i $stuff/install.patch
+
+	make 2>/dev/null && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/games $fs/var/games
-	cp -a $src/bastet $fs/usr/games
-	touch $fs/var/games/bastet.scores2
-	chmod 666 $fs/var/games/bastet.scores2
+	cook_copy_files bastet
+	cook_copy_icons
+	cp -a $install/var $fs
 }

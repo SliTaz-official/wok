@@ -2,41 +2,40 @@
 
 PACKAGE="beaver"
 VERSION="0.4.1"
-CATEGORY="development"
-SHORT_DESC="Simple and very light advanced text editor."
+CATEGORY="text"
+SHORT_DESC="Simple and very light advanced text editor"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="http://beaver-editor.sourceforge.net/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://beaver-editor.sf.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE-editor/$TARBALL"
 TAGS="text-editor"
 HOST_ARCH="i486 arm"
-
 GENERIC_PIXMAPS="no"
+
 DEPENDS="gtk+ xorg-libXdamage"
 BUILD_DEPENDS="gtk+-dev xorg-xproto expat-dev"
+SPLIT="beaver-plugins"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	sed -i 's|dir/po/\*\.po|& 2>/dev/null|' configure
-	./configure \
-		$CONFIGURE_ARGS &&
-	make && make install
+	patch -p1 -i $stuff/icon.patch
+
+	./configure $CONFIGURE_ARGS && make && make install
+
+	cook_compress_png
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p \
-		$fs/usr/share/beaver \
-		$fs/usr/share/icons/hicolor/32x32/ 
-		
-	cp -a $install/usr/bin $fs/usr
+	cook_copy_files beaver
+	cook_copy_icons
+	mkdir -p $fs/usr/share/beaver
 	cp -a $install/usr/share/beaver/resource $fs/usr/share/beaver
-	cp -a $install/usr/share/icons/hicolor/32x32/apps \
-		$fs/usr/share/icons/hicolor/32x32/
-	
+
 	# Custom default configuration
 	cp -a $stuff/beaver.conf.default $fs/usr/share/beaver/resource
 }
