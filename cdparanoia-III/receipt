@@ -6,23 +6,27 @@ CATEGORY="multimedia"
 SHORT_DESC="CMDline CD ripper used by Asunder."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2 LGPL2.1"
-TARBALL="$PACKAGE-$VERSION.src.tgz"
 WEB_SITE="http://www.xiph.org/paranoia/"
+TARBALL="$PACKAGE-$VERSION.src.tgz"
 WGET_URL="http://downloads.xiph.org/releases/cdparanoia/$TARBALL"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	fgrep -qs 'define u8' interface/low_interface.h ||
 	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
 		interface/low_interface.h
+
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
 	make -j1
+
+	cook_pick_manpages cdparanoia.1
+	mkdir -p $install/usr/share/man/jp/man1
+	cp -a cdparanoia.1.jp $install/usr/share/man/jp/man1/cdparanoia.1
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
