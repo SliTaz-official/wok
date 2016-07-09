@@ -1,0 +1,52 @@
+#!/bin/sh
+# Install/repack DejaVu fonts and conf files
+# Aleksei Bobylev <al.bobylev@gmail.com>, 2016
+
+
+# Install/repack fonts
+
+f=$install/usr/share/fonts/truetype/ttf-dejavu
+mkdir -p $f
+for font in $src/ttf/*.ttf; do
+	a="$a\n$(printf "%-32s" $(basename $font .ttf)): $(ls -l $font | awk '{print $5}') B -> "
+	echo "Processing $(basename $font):"
+	# About FontForge scripting and this command, see:
+	# https://fontforge.github.io/scripting-alpha.html#Generate
+	fontforge -quiet -lang=ff -c 'Open($1); Generate($2,"",0x90)' \
+		$font $f/$(basename $font)
+	a="$a$(ls -l $f/$(basename $font) | awk '{print $5}') B"
+	echo
+done
+echo -e "\nResults:\n========\n$a"
+
+
+# Install available configurations
+
+f=$install/usr/share/fontconfig/conf.avail
+mkdir -p $f
+cp $src/fontconfig/*.conf $f
+
+tmp=$(mktemp)
+
+# Strip *.conf files
+for i in $install/usr/share/fontconfig/conf.avail/*; do
+	# <?xml version="1.0" encoding="UTF-8"?>
+	sed -i 's| encoding="UTF-8"||' $i # remove needless encoding
+	#  <!DOCTYPE fontconfig SYSTEM "../fonts.dtd">
+	sed -i 's|\.\./||' $i # remove "../"
+
+	tr -d '\n' < $i | sed 's|[ \t][ \t]*| |g' | \
+	sed 's|<!--|\n&|g; s|-->|&\n|g' | sed '/<!--/d' | \
+	tr -d '\n' | sed 's|>  *<|><|g' > $tmp
+	cat $tmp > $i
+done
+
+rm $tmp
+
+
+# Use the configurations
+f=$install/etc/fonts/conf.d
+mkdir -p $f
+for i in $src/fontconfig/*.conf; do
+	ln -s /usr/share/fontconfig/conf.avail/$(basename $i) $f/$(basename $i)
+done
