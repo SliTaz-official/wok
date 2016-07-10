@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="noto-serif"
+VERSION="1.06"
+COMMIT="0af3d5f"
+CATEGORY="fonts"
+SHORT_DESC="Noto Serif TrueType fonts"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="OFL"
+WEB_SITE="http://www.google.com/get/noto/"
+TAGS="font"
+
+SIBLINGS="noto-serif"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# The Noto font web site provides downloads:
+	# https://noto-website-2.storage.googleapis.com/pkgs/NotoSerif-hinted.zip
+	# But these files are not versioned, so we never know which version we are
+	# currently to package.
+
+	# In other hand, Github project provides versioned downloads, but only in
+	# form of "all in one" huge file.
+
+	# Solution: download individual versioned font files from Github project.
+	# This commit "0af3d5f" bumped version of "NotoSerif-*" fonts to "1.06"
+	# (NotoSerif-Italic was bumped to 1.07):
+	# https://github.com/googlei18n/noto-fonts/commit/0af3d5fd0830eaeb1825044b2f4c04125eacf08f
+
+	mkdir -p $src
+	for variant in Regular Bold Italic BoldItalic; do
+		 get_file="NotoSerif-$variant.ttf"
+		save_file="NotoSerif-$variant-$VERSION.ttf"
+		url="https://github.com/googlei18n/noto-fonts/raw/$COMMIT/hinted/$get_file"
+		[ -e "$SRC/$save_file" ] || wget -T 30 -O "$SRC/$save_file" $url
+		[ -e "$SRC/$save_file" ] || exit 1
+		cp "$SRC/$save_file" "$src/$get_file"
+	done
+
+	# Install
+
+	f=$install/usr/share/fonts/truetype/noto
+	mkdir -p $f
+	cp -a $src/*.ttf $f
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cook_copy_files *.ttf
+}
