@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="freetype"
-VERSION="2.6.1"
+VERSION="2.6.4"
 CATEGORY="x-window"
 SHORT_DESC="A free, high-quality, and portable font engine"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="FTL GPL2"
+WEB_SITE="https://www.freetype.org/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.freetype.org/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 HOST_ARCH="i486 arm"
 
@@ -17,18 +17,8 @@ BUILD_DEPENDS="automake libtool autoconf bzip2-dev libpng-dev harfbuzz-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Fix make install for version 2.6.1
-	patch -p1 -i $stuff/freetype261-install.patch
+	patch -p1 -i $stuff/freetype-2.6.4.patch
 
-	# Optional old style fonts
-	patch -p1 -i $stuff/NO_SUBPIXEL_HINTING.env.patch
-
-	# Directives from LFS
-	sed -e "/AUX.*.gxvalid/s@^# @@" \
-	    -e "/AUX.*.otvalid/s@^# @@" \
-	    -i modules.cfg              &&
-	sed -e 's:.*\(#.*SUBPIXEL.*\) .*:\1:' \
-	    -i include/freetype/config/ftoption.h &&
 	./autogen.sh &&
 	./configure \
 		--sysconfdir=/etc \
@@ -40,7 +30,5 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cook_copy_files *.so
 }

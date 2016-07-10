@@ -1,0 +1,104 @@
+--- a/modules.cfg
++++ b/modules.cfg
+@@ -110,7 +110,7 @@ RASTER_MODULES += smooth
+ AUX_MODULES += cache
+ 
+ # TrueType GX/AAT table validation.  Needs ftgxval.c below.
+-# AUX_MODULES += gxvalid
++AUX_MODULES += gxvalid
+ 
+ # Support for streams compressed with gzip (files with suffix .gz).
+ #
+@@ -129,7 +129,7 @@ AUX_MODULES += bzip2
+ 
+ # OpenType table validation.  Needs ftotval.c below.
+ #
+-# AUX_MODULES += otvalid
++AUX_MODULES += otvalid
+ 
+ # Auxiliary PostScript driver component to share common code.
+ #
+--- a/include/freetype/config/ftoption.h
++++ b/include/freetype/config/ftoption.h
+@@ -92,7 +92,7 @@ FT_BEGIN_HEADER
+   /* This is done to allow FreeType clients to run unmodified, forcing     */
+   /* them to display normal gray-level anti-aliased glyphs.                */
+   /*                                                                       */
+-/* #define FT_CONFIG_OPTION_SUBPIXEL_RENDERING */
++#define FT_CONFIG_OPTION_SUBPIXEL_RENDERING
+ 
+ 
+   /*************************************************************************/
+--- a/include/freetype/config/ftoption.h
++++ b/include/freetype/config/ftoption.h
+@@ -631,8 +631,8 @@ FT_BEGIN_HEADER
+   /* [1] http://www.microsoft.com/typography/cleartype/truetypecleartype.aspx */
+   /*                                                                       */
+ /* #define TT_CONFIG_OPTION_SUBPIXEL_HINTING  1     */
+-#define TT_CONFIG_OPTION_SUBPIXEL_HINTING     2
+-/* #define TT_CONFIG_OPTION_SUBPIXEL_HINTING  ( 1 | 2 ) */
++/* #define TT_CONFIG_OPTION_SUBPIXEL_HINTING  2     */
++#define TT_CONFIG_OPTION_SUBPIXEL_HINTING     ( 1 | 2 )
+ 
+ 
+   /*************************************************************************/
+--- a/src/truetype/ttobjs.c
++++ b/src/truetype/ttobjs.c
+@@ -36,6 +36,9 @@
+ #include "ttgxvar.h"
+ #endif
+ 
++#include <stdlib.h>
++#include <errno.h>
++
+   /*************************************************************************/
+   /*                                                                       */
+   /* The macro FT_COMPONENT is used in trace mode.  It is an implicit      */
+@@ -1286,6 +1289,7 @@
+ #ifdef TT_USE_BYTECODE_INTERPRETER
+ 
+     TT_Driver  driver = (TT_Driver)ttdriver;
++    const char *envval;
+ 
+     driver->interpreter_version = TT_INTERPRETER_VERSION_35;
+ #ifdef TT_SUPPORT_SUBPIXEL_HINTING_INFINALITY
+@@ -1295,6 +1299,39 @@
+     driver->interpreter_version = TT_INTERPRETER_VERSION_40;
+ #endif
+ 
++    errno = 0;
++    envval = getenv( "FT2_SUBPIXEL_HINTING" );
++    if ( envval )
++    {
++      char *endptr = NULL;
++      unsigned long value = strtoul( envval, &endptr, 10 );
++
++      if ( !errno && endptr && !*endptr )
++      {
++        switch( value )
++        {
++        case 0:
++          driver->interpreter_version = TT_INTERPRETER_VERSION_35;
++          break;
++
++#ifdef TT_SUPPORT_SUBPIXEL_HINTING_INFINALITY
++        case 1:
++          driver->interpreter_version = TT_INTERPRETER_VERSION_38;
++          break;
++#endif
++
++#ifdef TT_SUPPORT_SUBPIXEL_HINTING_MINIMAL
++        case 2:
++          driver->interpreter_version = TT_INTERPRETER_VERSION_40;
++          break;
++#endif
++
++        default:
++          break;
++        }
++      }
++    }
++
+ #else /* !TT_USE_BYTECODE_INTERPRETER */
+ 
+     FT_UNUSED( ttdriver );
