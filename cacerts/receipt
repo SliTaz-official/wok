@@ -1,26 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="cacerts"
-VERSION="20150429"
+VERSION="20160512"
 CATEGORY="security"
 SHORT_DESC="Certificate Authority Certificates"
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="MPL2"
 WEB_SITE="http://www.linuxfromscratch.org/blfs/view/svn/postlfs/cacerts.html"
 TARBALL="$PACKAGE-$VERSION.txt"
-#WGET_URL="http://mxr.mozilla.org/mozilla/source/security/nss/lib/ckfw/builtins/certdata.txt?raw=1"
-WGET_URL="http://anduin.linuxfromscratch.org/sources/other/certdata.txt"
+#WGET_URL="https://hg.mozilla.org/releases/mozilla-release/file/default/security/nss/lib/ckfw/builtins/certdata.txt"
+WGET_URL="http://anduin.linuxfromscratch.org/BLFS/other/certdata.txt"
 HOST_ARCH="any"
 
 DEPENDS="openssl"
-BUILD_DEPENDS="openssl"
+BUILD_DEPENDS="openssl locale-en"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	mv -f *.txt certdata.txt &&
-	patch -p1 < $stuff/remove_cnnic.patch &&
-	cp -a $stuff/* $src &&
+	mv -f *.txt certdata.txt
+	cp -a $stuff/* $src
 	./make-ca.sh &&
 	./remove-expired-certs.sh $src/certs
 }
@@ -31,19 +30,27 @@ genpkg_rules()
 	mkdir -p $fs/etc/ssl/certs
 	cp -a $src/certs/*.pem $fs/etc/ssl/certs
 	cp -a $src/ca-bundle.crt $fs/etc/ssl
+	ln -s ../ca-bundle.crt $fs/etc/ssl/certs/ca-certificates.crt
 }
 
 post_install()
 {
 	case "$1" in
-	/cross*) return
+		/cross*) return
 	esac
 
-	echo "Rehash certificates:"
+	# Keep silence, for example, when installed on cook as build dependency
+	if [ -z "$quiet" ]; then
+		echo "Rehash certificates:"
+		out='&1'
+	else
+		out='/dev/null'
+	fi
+
 	if [ -d "$1/$INSTALLED/perl" ]; then
-		chroot "$1/" c_rehash
+		chroot "$1/" c_rehash >$out
 	else
 		tazpkg -gi microperl --root="${1:-/}"
-		chroot "$1/" microperl /usr/bin/c_rehash
+		chroot "$1/" microperl /usr/bin/c_rehash >$out
 	fi
 }

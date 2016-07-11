@@ -10,6 +10,9 @@
 #
 # Version 20120211
 
+# Some data in the certs have UTF-8 characters
+export LANG=en_US.utf8
+
 certdata="certdata.txt"
 
 if [ ! -r $certdata ]; then
