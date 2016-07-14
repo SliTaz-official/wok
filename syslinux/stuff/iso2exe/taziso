@@ -854,12 +854,13 @@ blankcd()
 
 customsector()
 {
-	echo $(($(get 32848 "$ISO" 4)+16))
+	local c=$(echo $(get 32848 "$ISO" 4))
+	hascustomconf $(($c+16)) && echo $(($c+16)) || echo $c
 }
 
 hascustomconf()
 {
-	[ "$(ddq bs=2k skip=$(customsector) if="$ISO" | ddq bs=1 count=6)" \
+	[ "$(ddq bs=2k skip=${1:-$(customsector)} if="$ISO" | ddq bs=1 count=6)" \
 	  == "#!boot" ]
 }
 

@@ -49,7 +49,7 @@ static void readsector(unsigned long sector)
 static unsigned long getcustomsector(void)
 {
 	readsector(16UL);
-	return 16UL + LONG(buffer + 80);
+	return LONG(buffer + 80);
 }
 
 static int skipmd5 = 0;

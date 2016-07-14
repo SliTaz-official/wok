@@ -205,7 +205,7 @@ extract()
 
 custom_config_sector()
 {
-	echo $(($(get 32848 "$1" 4)+16))
+	get 32848 "$1" 4
 }
 
 clear_custom_config()
@@ -497,7 +497,7 @@ EOT
 		if [ $newsz -gt $isosz ]; then
 			echo "$(($newsz - $isosz)) extra bytes."
 		else
-			echo "$(($isosz - 32768 - 2048*$(get 32848 $1 4) 
+			echo "$(($isosz - 2048*$(get 32848 $1 4) 
 				 - $(stat -c %s $DATA) - 24)) bytes free."
 		fi
 		rm -f $DATA > /dev/null
