@@ -1,8 +1,7 @@
 #!ipxe
 
 set menu-timeout 3000
-dhcp || echo No DHCP
-console --picture http://mirror.slitaz.org/pxe/ipxe/slitaz.png
+dhcp && console --picture http://mirror.slitaz.org/pxe/ipxe/slitaz.png ||
 
 :menu
 menu SliTaz net boot menu ${ip} ${gateway} ${dns}
@@ -40,7 +39,7 @@ echo -n DNS server: ${} && read dns
 goto menu
 
 :web
-isset $(ip} || dhcp || echo No DHCP again
+isset $(ip} || dhcp || echo No DHCP
 imgfree
 set weburl http://mirror.slitaz.org/pxe/
 chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
@@ -57,12 +56,12 @@ chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
 goto menu
 
 :lan
-isset $(ip} || dhcp || echo No DHCP again
+isset $(ip} || dhcp || echo No DHCP
 autoboot ||
 goto menu
 
 :rolling
-isset $(ip} || dhcp || echo No DHCP again
+isset $(ip} || dhcp || echo No DHCP
 sanboot http://mirror.slitaz.org/iso/rolling/slitaz-rolling.iso ||
 goto menu
 
