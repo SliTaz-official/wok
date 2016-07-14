@@ -739,6 +739,7 @@ static struct disk_info diskinfo;
 static int has_custom_config(void)
 {
     const union syslinux_derivative_info *sdi;
+    int retry=0;
     
     if (got_config)
     	goto done;
@@ -747,24 +748,27 @@ static int has_custom_config(void)
     	goto fail;
     disk_get_params(sdi->iso.drive_number, &diskinfo);
     custom_buffer = disk_read_sectors(&diskinfo, 32768 / diskinfo.bps, 1);
-    got_config = (16 + *(unsigned long *) (custom_buffer + 80)) 
-    		 * 2048 / diskinfo.bps;
-    free(custom_buffer);
-    custom_buffer = disk_read_sectors(&diskinfo, got_config, 1);
-    if (!memcmp(custom_buffer,"#!boot ",7)) {
-	char *p = custom_buffer+7+32+1;
+    got_config = (*(unsigned long *) (custom_buffer + 80) * 2048) / diskinfo.bps;
+    do {
+	free(custom_buffer);
+	custom_buffer = disk_read_sectors(&diskinfo, got_config, 1);
+	if (!memcmp(custom_buffer,"#!boot ",7)) {
+	    char *p = custom_buffer+7+32+1;
 	
-    	if (!memcmp(p,"append=",7)) {
-	    custom_cmdline = p + 7;
-	    p = strchr(p,'\n');
-	    *p++ = 0;
-    	}
-    	if (!memcmp(p,"initrd:",7)) {
-    	    custom_initrdlen = strtoul(p + 7, &custom_initrdbase, 10);
-    	    custom_initrdbase++;
-    	}
-    	return 1;
-    }
+    	    if (!memcmp(p,"append=",7)) {
+		custom_cmdline = p + 7;
+		p = strchr(p,'\n');
+		*p++ = 0;
+    	    }
+    	    if (!memcmp(p,"initrd:",7)) {
+    		custom_initrdlen = strtoul(p + 7, &custom_initrdbase, 10);
+    		custom_initrdbase++;
+    	    }
+    	    return 1;
+	}
+	got_config += 16UL;
+	retry = 1 - retry;
+    } while (retry);
 fail:
     got_config = -1;
 done:

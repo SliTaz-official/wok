@@ -237,7 +237,7 @@ static void md5sum(void)
 	md5_begin();
 	while ((count = read(fd, buffer, BUFFERSZ)) > 0) {
 		if (sectors == 0)
-			sectors = LONG(buffer + 80);
+			sectors = LONG(buffer + 80) - 16UL;
 		md5_hash(buffer, count);
 		if (--sectors == 0)
 			break;

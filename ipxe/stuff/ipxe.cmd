@@ -1,18 +1,20 @@
 #!ipxe
 
 set menu-timeout 3000
-dhcp ||
+dhcp || echo No DHCP
 
 :menu
-menu SliTaz net boot menu
+menu SliTaz net boot menu ${ip} ${gateway} ${dns}
 item --key b boot	Local boot
-item --key l lan	Your PXE boot
+item --key l lan	Your PXE boot ${filename}
 item --key w web	SliTaz WEB boot
 item --key r rolling	SliTaz development version
 item --key c config	iPXE configuration
 item --key e exit	iPXE command line
 choose --timeout ${menu-timeout} --default web target || goto exit
 set menu-timeout 0
+isset $(ip} || dhcp || echo No DHCP again
+isset ${dns} || set dns 8.8.8.8
 goto ${target}
 
 :boot

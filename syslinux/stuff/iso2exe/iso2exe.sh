@@ -470,7 +470,7 @@ EOT
 		ddq bs=1 seek=$((0x7FDE)) count=15 conv=notrunc of=$1
 	if [ $(stat -c %s $1) -gt 34816 ]; then
 		echo "Adding ISO image md5 at 7FF0 (16 bytes) ..."
-		echo -en "$(ddq if=$1 bs=2k skip=16 count=$(get 32848 $1 4) | \
+		echo -en "$(ddq if=$1 bs=2k skip=16 count=$(($(get 32848 "$1" 4)-16)) | \
 			md5sum | cut -c-32 | sed 's/\(..\)/\\x\1/g')" | \
 			ddq bs=16 seek=2047 conv=notrunc of=$1
 	fi
