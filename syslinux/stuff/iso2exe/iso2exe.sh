@@ -48,7 +48,7 @@ add_rootfs()
 #		2> /dev/null && echo "Store mount.posixovl ($(wc -c \
 #			< /usr/sbin/mount.posixovl) bytes) ..."
 	find $TMP -type f -print0 | xargs -0 chmod +x
-	find $TMP -print0 | xargs -0 touch -r $1
+	find $TMP -print0 | xargs -0 touch -t 197001010100.00 
 	( cd $TMP ; find * | grep -v rootfs.gz | cpio -o -H newc ) | \
 		compress $TMP/rootfs.gz
 	SIZE=$(wc -c < $TMP/rootfs.gz)
