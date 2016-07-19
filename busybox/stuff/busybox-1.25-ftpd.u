@@ -1,6 +1,6 @@
 Keep anonynous default usage, need -a for authentication check
---- busybox-1.23.0/networking/ftpd.c
-+++ busybox-1.23.0/networking/ftpd.c
+--- busybox-1.25/networking/ftpd.c
++++ busybox-1.25/networking/ftpd.c
 @@ -13,7 +13,7 @@
   */
  
@@ -18,7 +18,7 @@ Keep anonynous default usage, need -a for authentication check
  //usage:     "\n	-t,-T	Idle and absolute timeouts"
  //usage:     "\n	DIR	Change root to this directory"
  
-@@ -1106,7 +1107,8 @@
+@@ -1108,7 +1109,8 @@
  #endif
  	OPT_v = (1 << ((!BB_MMU) * 3 + 0)),
  	OPT_S = (1 << ((!BB_MMU) * 3 + 1)),
@@ -28,7 +28,7 @@ Keep anonynous default usage, need -a for authentication check
  };
  
  int ftpd_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
-@@ -1127,9 +1129,9 @@
+@@ -1132,9 +1134,9 @@
  	G.timeout = 2 * 60;
  	opt_complementary = "t+:T+:vv:SS";
  #if BB_MMU
@@ -40,24 +40,21 @@ Keep anonynous default usage, need -a for authentication check
  	if (opts & (OPT_l|OPT_1)) {
  		/* Our secret backdoor to ls */
  /* TODO: pass --group-directories-first? would be nice, but ls doesn't do that yet */
-@@ -1193,7 +1195,8 @@
+@@ -1198,7 +1200,7 @@
  	signal(SIGALRM, timeout_handler);
  
  #if ENABLE_FEATURE_FTP_AUTHENTICATION
--	{
-+	if (opts & OPT_a) {
-+	  {
- 		struct passwd *pw = NULL;
- 
- 		while (1) {
-@@ -1216,8 +1219,9 @@
- 			}
- 		}
- 		change_identity(pw);
-+	  }
-+	  WRITE_OK(FTP_LOGINOK);
+-	while (1) {
++	if (opts & OPT_a) while (1) {
+ 		uint32_t cmdval = cmdio_get_cmd_and_arg();
+ 			if (cmdval == const_USER) {
+ 			pw = getpwnam(G.ftp_arg);
+@@ -1248,7 +1250,7 @@
  	}
--	WRITE_OK(FTP_LOGINOK);
+ 
+ #if ENABLE_FEATURE_FTP_AUTHENTICATION
+-	change_identity(pw);
++	if (opts & OPT_a) change_identity(pw);
  #endif
  
- 	/* Do this after auth, else /etc/passwd is not accessible */
+ 	/* RFC-959 Section 5.1
