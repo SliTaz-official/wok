@@ -1,6 +1,6 @@
 --- busybox-1.25/util-linux/scriptreplay.c
 +++ busybox-1.25/util-linux/scriptreplay.c
-@@ -8,6 +8,13 @@
+@@ -8,10 +8,20 @@
   *
   */
  
@@ -9,12 +9,19 @@
 +//config:	default n
 +//config:	depends on SCRIPTREPLAY
 +//config:	help
-+//config:	  Tune replay speed with +, -, =, space or return keys.
++//config:	  Tune replay speed with + - = space return hotkeys.
 +
  //usage:#define scriptreplay_trivial_usage
  //usage:       "timingfile [typescript [divisor]]"
  //usage:#define scriptreplay_full_usage "\n\n"
-@@ -21,6 +28,10 @@
+ //usage:       "Play back typescripts, using timing information"
++//usage:	IF_SCRIPTREPLAY_HOTKEYS(
++//usage:       " and + - = space return hotkeys"
++//usage:	)
+ 
+ #include "libbb.h"
+ 
+@@ -21,6 +31,10 @@
  	const char *script = "typescript";
  	double delay, factor = 1000000.0;
  	int fd;
@@ -25,7 +32,7 @@
  	unsigned long count;
  	FILE *tfp;
  
-@@ -38,6 +49,21 @@
+@@ -38,6 +52,21 @@
  	while (fscanf(tfp, "%lf %lu\n", &delay, &count) == 2) {
  		usleep(delay * factor);
  		bb_copyfd_exact_size(fd, STDOUT_FILENO, count);
