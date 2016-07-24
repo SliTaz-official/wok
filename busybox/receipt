@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="busybox"
-VERSION="1.25.0"
+VERSION="1.23.2"
 CATEGORY="base-system"
 SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -12,7 +12,7 @@ WGET_URL="http://www.busybox.net/downloads/$TARBALL"
 HOST_ARCH="i486 arm"
 
 DEPENDS="slitaz-base-files glibc-base ncurses-common"
-BUILD_DEPENDS="bzip2 pam pam-dev gettext-tools uclibc-cross-compiler-i486 \
+BUILD_DEPENDS="bzip2 pam pam-dev uclibc-cross-compiler-i486 \
 musl-libc-dev dietlibc"
 
 CONFIG_FILES="/etc/dnsd.conf /etc/inetd.conf /etc/udhcpd.conf \
@@ -45,13 +45,10 @@ losetup.u
 fbvnc.u
 cpio.u
 ftpd.u
-scriptreplay.u
+dpkgxz.u
 shutdown.u
 EOT
     cp $stuff/$PACKAGE-${VERSION%.*}.config .config
-
-    # Tmp hack: we may need to fix some slitaz scripts...
-    sed -i 's/_and_raise_error\(."not in a function\)/\1/' shell/ash.c
 }
 
 # Rules to configure and make the package.
@@ -139,7 +136,7 @@ genpkg_rules()
 {
 	mkdir -p $install/usr/share/man/man1 $install/usr/share/doc/busybox
 	cp -a $src/_install/* $fs
-	cp -a $src/docs/busybox.1 $install/usr/share/man/man1/busybox.1
+	cp -a $src/docs/busybox.base.1 $install/usr/share/man/man1/busybox.1
 	cp -a $src/docs/*.txt $install/usr/share/doc/busybox
 	cp -a $src/docs/*.htm* $install/usr/share/doc/busybox
 	cp -a $src/docs/cgi $install/usr/share/doc/busybox
@@ -165,7 +162,7 @@ genpkg_rules()
 		grep -qi config_$i=y $stuff/$PACKAGE-${VERSION%.*}.config &&
 		ln -s daemon $fs/etc/init.d/$i
 	done
-	rm $fs/linuxrc 2> /dev/null
+	rm $fs/linuxrc
 	mkdir -p $fs/etc/modprobe.d
 
 	# Udhcpc stuff.
