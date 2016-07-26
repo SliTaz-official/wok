@@ -96,6 +96,7 @@ REMOTEIP="$(GET remoteip)"
 LOCALPPP="$(GET localpppopt)"
 REMOTEPPP="$(GET remotepppopt)"
 ROUTES="$(GET routes)"
+UDP="$(GET udp)"
 EOT
 	[ "$(GET pass)" ] && export DROPBEAR_PASSWORD="$(GET pass)"
 	case " $(GET) " in
@@ -116,7 +117,7 @@ EOT
 EOT
 		pppssh	"$(GET ssharg) $(GET peer)" \
 			"$(GET localip):$(GET remoteip) $(GET localpppopt)" \
-			"$(GET remotepppopt)" "$(GET routes)" &
+			"$(GET remotepppopt)" "$(GET routes)" "$(GET udp)" &
 		;;
 	esac
 	;;
@@ -336,6 +337,10 @@ if [ "$(which pppssh 2>/dev/null)" ]; then
 	<tr>
 		<td>$(_ 'Peer routes')</td>
 		<td><input type="text" name="routes" size="50" value="${ROUTES:-192.168.10.0/24 192.168.20.0/28}" title="$(_ "Routes on peer network to import or 'default' to redirect the default route")"/></td>
+	</tr>
+	<tr>
+		<td>$(_ 'UDP port')</td>
+		<td><input type="text" name="udp" size="50" value="$UDP" title="$(_ "Optional UDP port for a real-time but unencrypted link")"/></td>
 	</tr>
 	</table>
 	<footer><!--

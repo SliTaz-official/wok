@@ -30,7 +30,7 @@ pppssh()
 		read -s -t 30 DROPBEAR_PASSWORD && export DROPBEAR_PASSWORD
 		$ssh $1 true || exit 1
 	}
-	extra="$(route -n | awk -vd=$(nslookup ${1#*@} | \
+	extra="$(route -n | awk -vd=$(nslookup ${1#*@} | sed '/::/d' | \
 		 sed '$!d;s/.*: \([^ ]*\).*/\1/') \
 		'$1=="0.0.0.0"{ print d " gw " $2 " dev " $8 }')"
 	for i in ${4/default/128.0.0.0/1 0.0.0.0/1} ; do
@@ -39,11 +39,14 @@ pppssh()
 	[ "$4" ] && echo "route add $extra" >> /etc/ppp/ip-up.d/pppssh$$
 	chmod +x /etc/ppp/ip-up.d/pppssh$$
 	n=10.$(($$%256)).$(($$/256))
+	n="${2:-$n.1:$n.2} passive"
 	ppp="/usr/sbin/pppd local noauth nodetach"
-	$ppp ${2:-$n.1:$n.2} passive pty "$ssh $1 $ppp ${3:-proxyarp} notty" \
-		ipparam pppssh$$
+	arg="$n pty '$ssh $1 $ppp ${3:-proxyarp} notty'"
+	[ -n "$5" ] && arg="noipdefault pty 'nc -u ${1#*@} $5'" && $ssh -f $1 \
+		"$ppp $n ${3:-proxyarp} pty 'nc -ulp $5' >/dev/null"
+	eval $ppp $arg ipparam pppssh$$
 	[ "$4" ] && route del $extra
-	rm -f /etc/ppp/ip-up.d/pppssh$$
+	rm -f /etc/ppp/ip-up.d/pppssh$$ 2> /dev/null
 }
 
 xfbvnc()
@@ -63,7 +66,7 @@ Usage: $0 '[sshargs] user@remote' [vncport]
 $(fbvnc --help 2>&1 | sed '1,/Usage:/d')
 EOT
 ppp*)	[ -z "$1" ] && cat <<EOT || pppssh "$@" ;;
-Usage: $0 '[sshargs] user@remote' '[localip:remoteip] [localpppargs]' 'remotepppargs' 'routes' 
+Usage: $0 '[sshargs] user@remote' '[localip:remoteip] [localpppargs]' 'remotepppargs' 'routes' [udp-port]
 Example: $0 tux@slitaz.org '' '' '192.168.1.0/24 10.1.2.0/24'
 EOT
 *)	[ -z "$DISPLAY" ] && exec dbclient "$@"
