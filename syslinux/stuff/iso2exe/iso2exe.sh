@@ -490,10 +490,10 @@ EOT
 			[ $(get $((0x1BE+16*i)) $1 4) == $((0x00010080)) ] || continue
 			mb=$(((($newsz -1)/1024/1024)+1))
 			h=$((512*$(get 417 "$1" 1)))
-			store $(($mb-1)) $((0x1C5+16*i)) $1 8
-			store $(($mb-1)) $(($h+0x1C5+16*i)) $1 8
-			store $(($mb*2048)) $((0x1D2+16*i)) $1 32
-			store $(($mb*2048)) $(($h+0x1D2+16*i)) $1 32
+			store $((0x1C5+16*i)) $(($mb-1)) $1 8
+			store $(($h+0x1C5+16*i)) $(($mb-1)) $1 8
+			store $((0x1CA+16*i)) $(($mb*2048)) $1 32
+			store $(($h+0x1CA+16*i)) $(($mb*2048)) $1 32
 		done
 		if [ $newsz -gt $isosz ]; then
 			echo "$(($newsz - $isosz)) extra bytes."
