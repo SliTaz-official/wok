@@ -1,0 +1,56 @@
+#!/bin/sh
+# /etc/init.d/freeradius : Start, stop and restart freeradius server on SliTaz, at 
+# boot time or with the command line.
+#
+# To start freeradius server at boot time, just put freeradius in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=freeradius
+DESC="freeradius server"
+DAEMON=/usr/sbin/radiusd
+OPTIONS=$FREERADIUS_OPTIONS
+PIDFILE=/var/run/radiusd/radiusd.pid
+[ -n "$OPTIONS" ] || OPTIONS="-d /etc/raddb -i 0.0.0.0 -p 1812"
+
+case "$1" in
+  start)
+    if active_pidfile $PIDFILE radiusd ; then
+      echo "$NAME already running."
+      exit 1
+    fi
+    echo -n "Starting $DESC: $NAME... "
+    $DAEMON $OPTIONS
+    status
+    ;;
+  stop)
+    if ! active_pidfile $PIDFILE radiusd ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Stopping $DESC: $NAME... "
+    kill $(cat $PIDFILE)
+    status
+    ;;
+  restart)
+    if ! active_pidfile $PIDFILE radiusd ; then
+      echo "$NAME is not running."
+      exit 1
+    fi
+    echo -n "Restarting $DESC: $NAME... "
+    kill $(cat $PIDFILE)
+    sleep 2
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+    echo ""
+    echo -e "\033[1mUsage:\033[0m /etc/init.d/$(basename $0) [start|stop|restart]"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
