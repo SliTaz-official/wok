@@ -23,9 +23,6 @@ EOT
 		[ "$(which pppssh 2>/dev/null)" ] && cat <<EOT
 <li><a data-icon="vpn" href="ppp.cgi#pppssh" data-root>$(_ 'PPP/SSH')</a></li>
 EOT
-		cat <<EOT
-<li><a data-icon="upgrade" href="ppp.cgi#pppnc" data-root>$(_ 'Route shortcut')</a></li>
-EOT
 		;;
 		*)
 		cat <<EOT
@@ -79,14 +76,6 @@ EOT
 		killall pppd
 	fi
 	;;
-*\ setpppnc\ *)
-	[ "$(GET stop_pppncs)" ] && killall pppnc-server
-	[ "$(GET start_pppncs)" ] &&
-		pppnc-server "$(GET port)" "$(GET localip):$(GET remoteip)" &
-	[ "$(GET stop_pppncc)" ] && killall pppnc-client
-	[ "$(GET start_pppncc)" ] &&
-		pppnc-client "$(GET serverip)" "$(GET port)" "$(GET routes)" &
-	;;
 *\ setpppssh\ *)
 	cat > /etc/ppp/pppssh <<EOT
 PEER="$(GET peer)"
@@ -128,8 +117,6 @@ PASSWORD="$(awk -v key=$USERNAME "\$1==key{print \$3}" /etc/ppp/pap-secrets)"
 ACCOUNT="$(sed '/^ACCOUNT=/!d;s/^.*=\([^ \t]*\).*/\1/' /etc/ppp/scripts/ppp-on)"
 PASSPSTN="$(sed '/^PASSWORD=/!d;s/^.*=\([^ \t]*\).*/\1/' /etc/ppp/scripts/ppp-on)"
 PHONE="$(sed '/^TELEPHONE=/!d;s/^.*=\([^ \t]*\).*/\1/' /etc/ppp/scripts/ppp-on)"
-busybox ps x | grep -v grep | grep -q pppnc_server || stops_disabled='disabled'
-busybox ps x | grep -v grep | grep -q pppnc_client || stopc_disabled='disabled'
 TITLE="$(_ 'TazPanel - Network') - $(_ 'PPP Connections')"
 header
 xhtml_header | sed 's/id="content"/id="content-sidebar"/'
@@ -244,46 +231,6 @@ cat << EOT
 	<footer><!--
 		--><button type="submit" name="start_pppoe" data-icon="start" $startoe_disabled>$(_ 'Start'  )</button><!--
 		--><button type="submit" name="stop_pppoe"  data-icon="stop"  $stopoe_disabled >$(_ 'Stop'   )</button><!--
-	--></footer>
-</form>
-</section>
-
-<a name="pppnc"></a>
-<section>
-	<header>
-		<span data-icon="upgrade">$(_ 'Route shortcut') -
-		$(_ 'Reach unreachable networks')</span>
-	</header>
-<form method="get">
-	<input type="hidden" name="setppprc" />
-	<table>
-	<tr>
-		<td>$(_ 'UDP port')</td>
-		<td><input type="text" name="port" size="50" value="1111" /></td>
-	</tr>
-	<tr> <td colspan=2 align=center>--- $(_ 'Server only') ---</td> </tr>
-	<tr>
-		<td>$(_ 'Local IP address')</td>
-		<td><input type="text" name="localip" size="50" value="${LOCALIP:-192.168.254.1}" /></td>
-	</tr>
-	<tr>
-		<td>$(_ 'Remote IP address')</td>
-		<td><input type="text" name="remoteip" size="50" value="${REMOTEIP:-192.168.254.2}" /></td>
-	<tr> <td colspan=2 align=center>--- $(_ 'Client only') ---</td> </tr>
-	<tr>
-		<td>$(_ 'Server IP address')</td>
-		<td><input type="text" name="serverip" size="50" value="1.2.3.4" /></td>
-	</tr>
-	<tr>
-		<td>$(_ 'Server routes')</td>
-		<td><input type="text" name="routes" size="50" value="${ROUTES:-192.168.10.0/24 192.168.20.0/28}" title="$(_ "Routes on peer network to import or 'default' to redirect the default route")"/></td>
-	</tr>
-	</table>
-	<footer><!--
-		--><button type="submit" name="start_pppncs" data-icon="start" >$(_ 'Start server'  )</button><!--
-		--><button type="submit" name="stop_pppncs"  data-icon="stop" $stops_disabled>$(_ 'Stop server'   )</button><!--
-		--><button type="submit" name="start_pppncc" data-icon="start" >$(_ 'Start client'  )</button><!--
-		--><button type="submit" name="stop_pppncc"  data-icon="stop" $stopc_disabled>$(_ 'Stop client'   )</button><!--
 	--></footer>
 </form>
 </section>
