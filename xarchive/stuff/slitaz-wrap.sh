@@ -46,6 +46,7 @@ RAR_EXTS="rar cbr"
 LHA_EXTS="lha lzh lzs"
 LZO_EXTS="lzo"
 ARJ_EXTS="arj pak arc j uc2 zoo"
+NZ_EXTS="nz"
 _7Z_EXTS="7z bcj bcj2 wim $BZIP2_EXTS $ZIP_EXTS $XZ_EXTS"
 _7Z_EXTS_X="chm cramfs dmg hfs mbr msi nsis ntfs udf vhd xar arj cab lzh rar \
 udf cpio $ISO_EXTS $FAT_EXTS $SQUASHFS_EXTS"
@@ -315,6 +316,7 @@ lrzip		$LRZIP_EXTS $CPIOLRZIP_EXTS
 rar		$RAR_EXTS
 unace		ace
 arj		$ARJ_EXTS
+nz		$NZ_EXTS
 7zr		$_7Z_EXTS $_7Z_EXTS_X
 lha		$LHA_EXTS
 lzop		$LZO_EXTS
@@ -432,6 +434,25 @@ BEGIN { name="" }
 /^[\t ]+SymLink -> / { link=$3; attr="l"substr(attr, 2) }
 /^---/ { display() }
 '
+# Archive: nz.nz
+# checksum perm yyyy-mmm-dd hh:mm:ss     size  file
+# 387b9923 0755 2016-Aug-10 13:29:41  1144 KB  nz
+# a52758fb 0644 2016-Aug-10 13:29:41   371 B   readme.txt
+# Total of 3 files, 1 181 184 bytes.
+	in_exts $NZ_EXTS && nz l "$archive" | awku '
+{
+	if ($1 == "checksum") show=1
+	else if ($1 == "Total") exit
+	else {
+		attr=$2
+		date=$3
+		time=$4
+		size=$5 $6
+		name=$7
+		display()
+	}
+}
+'
 #  Ver  Date      Time (UT) Attr           Size Ratio  File
 # ----- ---------- -------- ------ ------------ ------ ----
 # >   1 2012-04-10 11:47:56 100644          576 0.2611 /etc/skel/.profile
@@ -484,6 +505,7 @@ BEGIN { name="" }
 zip	-g\ -r		$ZIP_EXTS
 rar	a		$RAR_EXTS
 arj	a		$ARJ_EXTS
+nz	a		$NZ_EXTS
 7zr	a\ -ms=off	$_7Z_EXTS
 lha	a		$LHA_EXTS
 zpaq	a		$ZPAQ_EXTS
@@ -533,6 +555,7 @@ lha		x		N/A		$LHA_EXTS
 lzop		-x		N/A		$LZO_EXTS
 rar		x\ -o-\ -p-	x\ -o-		$RAR_EXTS
 arj		x\ -y		x\ -y\ -g?	$ARJ_EXTS
+nz		x		N/A		$NZ_EXTS
 7zr		x\ -y\ -p-	x\ -y		$_7Z_EXTS $_7Z_EXTS_X
 unace		N/A		x\ -o\ -y	ace
 cabextract	-q		N/A		cab
