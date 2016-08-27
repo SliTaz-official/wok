@@ -10,6 +10,9 @@
 #define HARDCODED_SYSSIZE	1
 #define HARDCODED_SETUPSIZE	1
 #define HARDCODED_IP		1
+#define SHUTDOWNDOS		0
+#define FLAT16			1
+//#define FLAT16OUT		0
 
 	.text
 	.code16
@@ -42,11 +45,48 @@ start2:
 getip:
 #endif
 	pushal
+#if SHUTDOWNDOS
+	xorw	%si, %si
+        movw	%si, %ds		# %ds = 0
+	pushl	4(%si)
+	movw	%sp, %cs:loadsp19+1(%si)
+	cmpb	$0xF0, 7(%si)
+	jnb	notdos
+        movw	$step19, 4(%si)
+        movw	%cs, 6(%si)
+        pushfw
+        popw	%ax
+        incb	%ah			# set TF
+        pushw	%ax
+        popfw
+        ljmp	*4*0x19(%si)
+step19:
+        pushw	%si
+        pushw	%ds
+        movw	%sp, %si
+        ldsw	%ss:4(%si), %si
+        cmpw	$0x19CD, (%si)
+        popw    %ds
+        popw    %si
+	jne	doiret
+	xorw	%si, %si
+	mov	%si, %ds
+	popl	4*0x19(%si)
+notdos:
+loadsp19:
+	movw	$0, %sp
+	popl	4(%si)
+	pushw	%ss
+	popw	%ds
+#endif
+#if !FLAT16
+#undef FLAT16
 #if HARDCODED_SYSSIZE
 packed_syssize:
 	movw	$0, %bx		// system size
 #else
 	movw	SYSSIZE, %bx
+#endif
 #endif
 #if HARDCODED_SETUPSIZE == 0
 	xorw	%dx, %dx
@@ -64,6 +104,39 @@ packed_syssize:
 	pushw	%es
 
 	cld
+
+#if FLAT16
+flat16mv:
+#if CHANGE_STACK
+STKSZ=0x9000-0x0990
+	pushw	$(TOP-STKSZ)/16-0x1000
+#else
+	pushw	$TOP/16-0x1000
+#endif
+	popw	%es
+	pushw	%es			// moved
+	.byte	0x6A, moved-_start	//   unpack code
+	pushw	%cs
+	popw	%ds	
+	xorw	%di, %di
+#if HARDCODED_SETUPSIZE
+	movw	$SETUP*256, %cx
+#else
+	xorw	%cx, %cx
+	movw	SETUPSIZE, %ch
+#endif
+	pushw	%si
+	rep
+	movsw			// move header part
+	movw	$0x1000, %bp
+	movw	%bp, %ds
+	xorw	%si, %si
+	subw	%di, %cx
+	rep
+	movsb			// move system part
+	popw	%di
+	movw	$end-_start, %si
+#else	
 #if CHANGE_STACK
 STKSZ=0x9000-0x0990
 	movw	$(TOP-STKSZ)/16, %ax
@@ -77,6 +150,7 @@ STKSZ=0x9000-0x0990
 	popw	%ds	
 	xorw	%di, %di
 	movw	$end-_start, %cx
+	pushw	%cx
 	pushw	%si
 	rep
 	movsb			// move upack code to $TOP
@@ -111,13 +185,13 @@ movlp:
 	pushw	%si
 	rep
 	movsw			// move header part
-
+	popw	%di
+	popw	%si
+#endif
 	pushw	%es
 	popw	%ds
-	movw	$end-_start, %si
 	pushw	%cs
 	popw	%es		// restore setup seg
-	popw	%di
 	retf
 
 moved:

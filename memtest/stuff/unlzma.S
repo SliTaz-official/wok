@@ -115,7 +115,7 @@ initlocals:
 	pushl	$1
 	loop	initlocals
 
-#ifndef FLAT32
+#if !defined(FLAT32) && !defined(FLAT16OUT)
 	movb	$4, %cl
 	movw	%es, %bx
 	shrw	%cl, %bx
@@ -127,7 +127,7 @@ initlocals:
 	incw	%cx
 #else
 	movb	$5, %cl
-	movl	%edi, outStream(%ebp)
+	mov	DI, outStream(BP)
 #endif
 
 //   Byte previousByte = 0;
@@ -609,7 +609,7 @@ DicoRep02ESDI:
  */
  
 Dico2ESDI:
-#ifndef FLAT32
+#if !defined(FLAT32) && !defined(FLAT16OUT)
 	movl	nowPos(%bp), %ebx
 	jnc	Dico2ESDIz
 	subl	rep0(%bp), %ebx
@@ -618,13 +618,16 @@ Dico2ESDIz:
 	xorw	%bx, %bx
 	shrl	$4, %ebx
 	movw	%bx, %es
-	movb	%es:(%di), %bl
 #else
-	movl	nowPos(%bp), %edi
+	mov	nowPos(%bp), DI
 	jnc	Dico2ESDIz
-	subl	rep0(%bp), %edi
+	sub	rep0(%bp), DI
 Dico2ESDIz:
-	movb	(%edi), %bl
+#endif
+#ifdef FLAT32
+	movb	(DI), %bl
+#else
+	movb	%es:(%di), %bl
 #endif
 	ret
 
@@ -689,7 +692,7 @@ RC_LOAD_BYTE:
 	push	AX
 	shll	$8, Range(BP)
 	shll	$8, Code(BP)
-#ifndef FLAT32
+#if !defined(FLAT16) && !defined(FLAT32)
 	testw	%si, %si
 	jns	RC_READ_BYTE
 	movw	%ds, %ax
