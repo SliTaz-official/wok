@@ -619,9 +619,9 @@ Dico2ESDIz:
 	shrl	$4, %ebx
 	movw	%bx, %es
 #else
-	mov	nowPos(%bp), DI
+	mov	nowPos(BP), DI
 	jnc	Dico2ESDIz
-	sub	rep0(%bp), DI
+	sub	rep0(BP), DI
 Dico2ESDIz:
 #endif
 #ifdef FLAT32
