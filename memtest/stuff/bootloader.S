@@ -236,9 +236,7 @@ step19:
 	popw    %si
 	jne	doiret
 	xorw	%si, %si
-	mov	%si, %ds
-	popl	4*0x19(%si)
-loadsp19:
+	movw	%si, %ds
 	pushw	%cs
 	popw	%ss
 	movw	$stacktop-4-16, %sp
@@ -337,7 +335,7 @@ read_sectorslp:
 	movb	$1, %al			# 1 sector mini
 tolastsect:
 #else
-	mov	$FLOPPY_SECTORS+1, %al
+	movb	$FLOPPY_SECTORS+1, %al
 	subb	%cl, %al		# sectors remaining in track
 #endif
 	cbw
