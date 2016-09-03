@@ -44,7 +44,7 @@ end_header:
 comstart:
 	cld				# assume nothing
 #ifdef CMDLINE
-	movw	$stacktop, %di
+	movw	%sp, %di
 #else
 #undef HELP
 #endif
@@ -77,9 +77,15 @@ skipspace:
 nocmdline:
 #endif
 	movw	$SYSSEG, %ax
+	movb	$(512-(end_header-_start))/2, %cl
+	movw	$end_header, %di
 #ifdef CHECK_REALMODE
 #define PUTS
 	movw	$EXEADRS(realmode_expected), %si
+	//movw	syssize-realmode_expected(%si), %bp
+	.byte	0x8B, 0x6C, syssize-realmode_expected
+	//movb	setup_sects-realmode_expected(%si), %ch
+	.byte	0x8A, 0x6C, setup_sects-realmode_expected
 		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
 		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
 	//movb	$0x10, %ah	// DF = IF = TF = 0
@@ -93,36 +99,29 @@ jsputs:
 	smsww	%dx
 	shrw	$1, %dx
 	jc	puts
-	//movw	syssize-realmode_expected(%si), %bp
-	.byte	0x8B, 0x6C, syssize-realmode_expected
-	//movb	setup_sects-realmode_expected(%si), %ch
-	.byte	0x8A, 0x6C, setup_sects-realmode_expected
 #else
 	movw	EXEADRS(syssize), %bp
 	movb	EXEADRS(setup_sects), %ch
 #endif
-	movb	$(512-(end_header-_start))/2, %cl
 	movw	$0x100, %si
-	movw	$end_header, %di
 	rep
 	  movsw
+	movw	%ds, %bx
 #ifndef SHUTDOWNDOS
 	ljmp	$INITSEG, $movesys
 #else
 	pushaw
-	pushw	%es
-	xorw	%si, %si
-	movw	%si, %ds		# %ds = 0
-	pushl	4(%si)
-	movw	%sp, %es:loadsp19+1(%si)
-	movw	$step19, 4(%si)
-	movw	%es, 6(%si)
+	movw	%cx, %ds		# %ds = 0
+	movw	$4, %si
+	pushl	(%si)
+	movw	$step19, (%si)
+	movw	%es, 2(%si)
 	pushfw
 	popw	%ax
 	incb	%ah			# set TF
 	pushw	%ax
 	popfw
-	ljmp	*4*0x19(%si)
+	ljmp	*4*0x19-4(%si)
 #endif
 start:
 	pushw	%dx
@@ -240,16 +239,13 @@ step19:
 	xorw	%si, %si
 	mov	%si, %ds
 	popl	4*0x19(%si)
-loadsp19:
-	movw	$0, %sp
+	movw	$stacktop-4-16, %sp
 	popl	4(%si)
-	popw	%es
 	popaw
 #endif
 movesys:				// %ax = SYSSEG
-	pushw	%es
+	pushw	%cs
 	popw	%ss
-	movw	%ds, %bx
 	shrw	$4, %si
 	addw	%si, %bx
 	subw	%ax, %bx
