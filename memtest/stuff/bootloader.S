@@ -8,20 +8,21 @@ SETUPSEG	= 0x9020
 	.globl	_start
 _start:
 
-#define CODESZ 512
+#define CODESZ 512		/* patched by installer */
 
 /* some extra features */
 #define EXE_SUPPORT		real mode dos .exe file support
 #define CMDLINE	0x9E00
 #define HELP			store help message for /? argument
 #define CHECK_REALMODE		does not support vm86
+#define SHUTDOWNDOS		shutdown DOS services
 
 /* some contraints to reduce the size */
 //#define FLOPPY_1440K_ONLY	1.44M floppies support only
 #define NO_CURSOR_DEFINITION
 
 #ifdef EXE_SUPPORT
-#define EXEADRS(x)	x+0xE0
+#define EXEADRS(x)	(x+0xE0)
 stacktop	= 0x9E00		# in 0x8000 .. 0xA000
 	decw	%bp			// Magic number: MZ
 	popw	%dx
@@ -105,7 +106,24 @@ jsputs:
 	movw	$end_header, %di
 	rep
 	  movsw
+#ifndef SHUTDOWNDOS
 	ljmp	$INITSEG, $movesys
+#else
+	pushaw
+	pushw	%es
+	xorw	%si, %si
+	movw	%si, %ds		# %ds = 0
+	pushl	4(%si)
+	movw	%sp, %es:loadsp19+1(%si)
+	movw	$step19, 4(%si)
+	movw	%es, 6(%si)
+	pushfw
+	popw	%ax
+	incb	%ah			# set TF
+	pushw	%ax
+	popfw
+	ljmp	*4*0x19(%si)
+#endif
 start:
 	pushw	%dx
 #else
@@ -207,6 +225,27 @@ puts:
 	int	$0x20			// dos exit
 #endif
 #ifdef EXE_SUPPORT
+#ifdef SHUTDOWNDOS
+doiret:
+	iret
+step19:
+	pushw	%si
+	pushw	%ds
+	movw	%sp, %si
+	ldsw	%ss:4(%si), %si
+	cmpw	$0x19CD, (%si)
+	popw    %ds
+	popw    %si
+	jne	doiret
+	xorw	%si, %si
+	mov	%si, %ds
+	popl	4*0x19(%si)
+loadsp19:
+	movw	$0, %sp
+	popl	4(%si)
+	popw	%es
+	popaw
+#endif
 movesys:				// %ax = SYSSEG
 	pushw	%es
 	popw	%ss

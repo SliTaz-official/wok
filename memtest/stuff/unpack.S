@@ -10,7 +10,6 @@
 #define HARDCODED_SYSSIZE	1
 #define HARDCODED_SETUPSIZE	1
 #define HARDCODED_IP		1
-#define SHUTDOWNDOS		0
 #define FLAT16			1
 //#define FLAT16OUT		0
 
@@ -45,40 +44,6 @@ start2:
 getip:
 #endif
 	pushal
-#if SHUTDOWNDOS
-	xorw	%si, %si
-        movw	%si, %ds		# %ds = 0
-	pushl	4(%si)
-	movw	%sp, %cs:loadsp19+1(%si)
-	cmpb	$0xF0, 7(%si)
-	jnb	notdos
-        movw	$step19, 4(%si)
-        movw	%cs, 6(%si)
-        pushfw
-        popw	%ax
-        incb	%ah			# set TF
-        pushw	%ax
-        popfw
-        ljmp	*4*0x19(%si)
-step19:
-        pushw	%si
-        pushw	%ds
-        movw	%sp, %si
-        ldsw	%ss:4(%si), %si
-        cmpw	$0x19CD, (%si)
-        popw    %ds
-        popw    %si
-	jne	doiret
-	xorw	%si, %si
-	mov	%si, %ds
-	popl	4*0x19(%si)
-notdos:
-loadsp19:
-	movw	$0, %sp
-	popl	4(%si)
-	pushw	%ss
-	popw	%ds
-#endif
 #if !FLAT16
 #undef FLAT16
 #if HARDCODED_SYSSIZE
