@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
 	}
 	if (cmdline) {
 		char *last;
-		for (s = cmdline; *s && *s != '\r' && *s != '\n'; s++)
+		for (s = last = cmdline; *s && *s != '\r' && *s != '\n'; s++)
 			if (*s != ' ') last = s;
 		*++last = 0;
 	}

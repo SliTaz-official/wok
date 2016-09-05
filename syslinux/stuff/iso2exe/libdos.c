@@ -193,18 +193,22 @@ int dosversion(void)
 void copycmdline(char store[])
 {
 #asm
+		pop	cx
+		pop	ax
+		push	ax
+		push	cx
 		push	si
 		push	di
 		push	ds
 		pop	es
 		mov	si, #0x81
+		xchg	ax, di
 space:
 		seg	cs
 		lodsb
 		cmp	al, #0x20
 		je	space
 		dec	si
-		mov	di, [bp+4]
 		mov	cx, #0x80/2
 		rep
 		 seg	cs

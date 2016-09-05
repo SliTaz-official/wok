@@ -204,6 +204,7 @@ original_setupsize:
 	iret
 
 unpack:
+#define NO_LZMA_HEADER
 #include "unlzma.S"
 
 end:

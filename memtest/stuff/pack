@@ -7,6 +7,7 @@ if [ "$1" == "--build" ]; then
 	[ -n "$x" ] && sed -i "s/XXXO/$((513+0x$x))/" $0 || sed -i "/XXXO$/d" $0
 	x=$(grep -s original_setupsize$ ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
 	[ -n "$x" ] && sed -i "s/XXXS/$((516+0x$x))/" $0 || sed -i "/XXXS$/d" $0
+	grep -q 83C60D ${3/.bin/.lst} && sed -i 's/ | dd bs=1 skip=13//' $0
 	helpmsg=$(sed '/helpmsg:/!d{n;s/ [0-9]* \([^ ]*\).*/\1/}' ${1/.bin/.lst} | sed '$!d')
 	helpend=$(sed '/helpend:/!d{n;s/ [0-9]* \([^ ]*\).*/\1/}' ${1/.bin/.lst} | sed '$!d')
 	sed -i "s/YYY/$((0x$helpmsg))/" $0
@@ -30,7 +31,7 @@ store()
 
 compress()
 {
-	xz -z -e --format=lzma --lzma1=mf=bt2 --stdout
+	xz -z -e --format=lzma --lzma1=mf=bt2 --stdout | dd bs=1 skip=13
 }
 
 main()
