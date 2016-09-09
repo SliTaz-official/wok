@@ -1,17 +1,16 @@
 #define TOP		(0x90000+_start-end)
 #define SYSTEM		0x10000
-#define SETUP		4
+#define SETUP		14
 #define SYSSIZE		0x1F4
 #define SETUPSIZE	0x1F1
 
-#define CHANGE_STACK		0
 #define LINUX_HEADER		0
 #define UPDATE_SYSSIZE		1
 #define HARDCODED_SYSSIZE	1
 #define HARDCODED_SETUPSIZE	1
-#define HARDCODED_IP		1
 #define FLAT16			1
 //#define FLAT16OUT		0
+#define SAVEREGS		0 
 
 	.text
 	.code16
@@ -35,173 +34,176 @@ _start:
 	.long	0		// 220 bootsect_kludge
 start2:
 #endif
-	pushf
+#if SAVEREGS
+	pushfw
 	pushw	%cs
-#if HARDCODED_IP
 	pushw	$0
-#else
-	call	getip
-getip:
-#endif
 	pushal
-#if !FLAT16
-#undef FLAT16
-#if HARDCODED_SYSSIZE
-packed_syssize:
-	movw	$0, %bx		// system size
-#else
-	movw	SYSSIZE, %bx
-#endif
-#endif
-#if HARDCODED_SETUPSIZE == 0
-	xorw	%dx, %dx
-	movb	SETUPSIZE, %dh
-#endif
-#if HARDCODED_IP
-	xorw	%si, %si
-#else
-	movw	%sp, %bp
-#define START_IP	32(%bp)
-	subw	$getip-_start, START_IP
-	movw	START_IP, %si
-#endif
 	pushw	%ds
-	pushw	%es
-
-	cld
-
-#if FLAT16
-flat16mv:
-#if CHANGE_STACK
-STKSZ=0x9000-0x0990
-	pushw	$(TOP-STKSZ)/16-0x1000
 #else
-	pushw	$TOP/16-0x1000
-#endif
-	popw	%es
-	pushw	%es			// moved
-	.byte	0x6A, moved-_start	//   unpack code
 	pushw	%cs
-	popw	%ds	
-	xorw	%di, %di
-#if HARDCODED_SETUPSIZE
-	movw	$SETUP*256, %cx
-#else
-	xorw	%cx, %cx
-	movw	SETUPSIZE, %ch
+	pushw	$0
 #endif
-	pushw	%si
+#if UPDATE_SYSSIZE
+	pushw	%ds
+#else
+	pushw	%es
+	pushw	%cs
+#endif
+	cld
+#if FLAT16
+# 1- move 9020..9020+stp -> 8000
+# if HARDCODED_SETUPSIZE
+setup_word:
+	movw	$SETUP*256, %cx
+# else
+	xorw	%cx, %cx
+	movb	SETUPSIZE, %ch
+	movw	%cx, %dx
+# endif
+	pushw	%cx
+	pushw	$0x8000
+	popw	%es
+	xorw	%si, %si
+	xorw	%di, %di
 	rep
-	movsw			// move header part
-	movw	$0x1000, %bp
-	movw	%bp, %ds
+	  movsw	%cs:(%si),%es:(%di)
+	pushw	%es
+	// pushw	$cont
+	.byte	0x6A, cont
+	lret
+cont:
+# 2- move 1000..1000+sys -> 8000+stp
+	pushw	$0x1000
+	popw	%ds
 	xorw	%si, %si
 	subw	%di, %cx
 	rep
-	movsb			// move system part
-	popw	%di
-	movw	$end-_start, %si
-#else	
-#if CHANGE_STACK
-STKSZ=0x9000-0x0990
-	movw	$(TOP-STKSZ)/16, %ax
+	  movsb
+# 3- unlz(8000+stp:end, 1000-stp:0)
+	pushw	%es
+# if HARDCODED_SETUPSIZE
+setup_seg:
+#  if UPDATE_SYSSIZE
+	pushw	$0x1000-(SETUP*32)-32
+#  else
+	pushw	$0x1000-(SETUP*32)
+#  endif
+	popw	%es
+# else
+#  if UPDATE_SYSSIZE
+	incb	%dh
+#  endif
+	shrw	$3, %dx
+	movw	%ds, %ax
+	subw	%dx, %ax
+	movw	%ax, %es
+# endif
 #else
-	movw	$TOP/16, %ax
-#endif
-	movw	%ax, %es
-	pushw	%es			// moved
-	.byte	0x6A, moved-_start	//   unpack code
-	pushw	%cs
-	popw	%ds	
-	xorw	%di, %di
-	movw	$end-_start, %cx
-	pushw	%cx
-	pushw	%si
-	rep
-	movsb			// move upack code to $TOP
-
-	leaw	SYSTEM/16(%bx), %bp
-movlp:
-	decw	%bp
-	movw	%bp, %ds
+# 1- move 1000..1000+sys -> 9000-sys
+# if HARDCODED_SYSSIZE
+packed_syssize:
+	movw	$0x1000+0, %ax
+# else
+	movw	SYSSIZE, %ax
+	addw	$0x1000, %ax
+# endif
+	movw	%ds, %dx
+mvsys:
 	decw	%ax
-	movw	%ax, %es
+	decw	%dx
+	movw	%ax, %ds
+	movw	%dx, %es
 	xorw	%si, %si
 	xorw	%di, %di
-	movb	$8, %cl
+	movw	$8, %cx
 	rep
-	movsw			// move system part
-	decw	%bx
-	jnz	movlp
-
-	pushw	%cs
-	popw	%ds
-	popw	%si
-	xorw	%di, %di
-#if HARDCODED_SETUPSIZE
-	movb	$SETUP, %ch
-	subw	$SETUP*32, %ax
-#else
-	movb	%dh, %ch
-	shrw	$3, %dx
-	subw	%dx, %ax
-#endif
-	movw	%ax, %es
-	pushw	%si
-	rep
-	movsw			// move header part
-	popw	%di
-	popw	%si
-#endif
-	pushw	%es
-	popw	%ds
-	pushw	%cs
-	popw	%es		// restore setup seg
-	retf
-
-moved:
-#if CHANGE_STACK
-	movw	$STKSZ, %ax	// trick: %ss = %sp
-	movw	%ss, %bx
-	pushw	%ax
-	popw	%ss
-	xchgw	%ax, %sp
-	pushw	%bx		// %ss
-	pushw	%ax		// %sp
-#endif
-	pushw	%bp		// SYSTEM/16
-	call	unpack		// unpack setup
-	popw	%es
-	xorw	%di,%di
-	call	unpack		// unpack system
-#if CHANGE_STACK
-	popw	%ax		// %sp
-	popw	%ss
-	xchgw	%ax, %sp
-#endif
-#if UPDATE_SYSSIZE
-# if HARDCODED_SYSSIZE
-original_syssize:
-	movw	$0, %ax
-# else
-	addw	$15, %di
-	shrw	$4, %di
-	movw	%es, %ax
-	addw	%di, %ax
-	subw	$SYSTEM/16, %ax
-# endif
-#endif
-	popw	%es
-	popw	%ds
-#if UPDATE_SYSSIZE
-	movw	%ax, SYSSIZE
+	  movsw
+	cmpw	$0x1000, %ax
+	jne	mvsys
+# 2- move 9020..9020+stp -> 9000-sys-stp
+	
 # if HARDCODED_SETUPSIZE
-original_setupsize:
-	movb	$4, SETUPSIZE
+setup_byte:
+	movb	$SETUP, %ch
+setup_para:
+	subw	$SETUP*32, %dx
+# else
+	movb	%ss:SETUPSIZE, %ch
+	movw	%cx, %ax
+	shrw	$3, %ax
+	subw	%ax, %dx
+# endif
+	pushw	%cx
+	movw	%dx, %es
+	xorw	%si, %si
+	xorw	%di, %di
+	rep
+	  movsw	%cs:(%si),%es:(%di)
+	pushw	%es
+# 3- reloc itself in 0x7C00
+	pushw	$0x07C0
+	popw	%es
+	xorw	%si, %si
+	xorw	%di, %di
+	movw	$end-_start, %cx
+	rep
+	  movsb	%cs:(%si),%es:(%di)
+	pushw	%es
+	// pushw	$cont
+	.byte	0x6A, cont
+	lret
+cont:
+# 4- unlz(9000-sys-stp:end, 1000-stp:0)
+# if HARDCODED_SETUPSIZE
+setup_seg:
+#  if UPDATE_SYSSIZE
+	pushw	$0x1000-(SETUP*32)-32
+#  else
+	pushw	$0x1000-(SETUP*32)
+#  endif
+	popw	%es
+# else
+	negw	%ax
+#  if UPDATE_SYSSIZE
+	addw	$0x1000-32, %ax
+#  else
+	addw	$0x1000, %ax
+#  endif
+	movw	%ax, %es
 # endif
 #endif
+	popw	%ds
+	movw	$end-_start, %si
+#if UPDATE_SYSSIZE
+	movw	$SYSSIZE, %di
+#else
+	xorw	%di, %di
+#endif
+	pushw	%di
+	pushw	%es
+	call	unpack
+	popw	%ds
+	popw	%si
+	movw	%si, %di
+	popw	%cx
+#if UPDATE_SYSSIZE
+// not need with memtest	movb	$(512-SYSSIZE)/2, %cl
+#endif
+	popw	%es
+# 5- move 1000-stp..1000 -> 9020
+	rep
+	  movsw
+#if UPDATE_SYSSIZE == 0
+	popw	%es
+#endif
+#if SAVEREGS
+	popw	%ds
 	popal
 	iret
+#else
+	lret
+#endif
 
 unpack:
 #define NO_LZMA_HEADER

@@ -3,17 +3,22 @@ if [ "$1" == "--build" ]; then
 	set -- ${2:-bootloader.bin} ${3:-unpack.bin}
 	x=$(grep -s packed_syssize$ ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
 	[ -n "$x" ] && sed -i "s/XXXP/$((513+0x$x))/" $0 || sed -i "/XXXP$/d" $0
-	x=$(grep -s original_syssize$ ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
-	[ -n "$x" ] && sed -i "s/XXXO/$((513+0x$x))/" $0 || sed -i "/XXXO$/d" $0
-	x=$(grep -s original_setupsize$ ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
-	[ -n "$x" ] && sed -i "s/XXXS/$((516+0x$x))/" $0 || sed -i "/XXXS$/d" $0
-	grep -q 83C60D ${3/.bin/.lst} && sed -i 's/ | dd bs=1 skip=13//' $0
+	x=$(grep -s setup_byte$ ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
+	[ -n "$x" ] && sed -i "s/XXXSB/$((513+0x$x))/" $0 || sed -i "/XXXSB/d" $0
+	x=$(grep -s setup_word$ ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
+	[ -n "$x" ] && sed -i "s/XXXSW/$((514+0x$x))/" $0 || sed -i "/XXXSW/d" $0
+	x=$(grep -s setup_para$ ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
+	[ -n "$x" ] && sed -i "s/XXXSP/$((514+0x$x))/" $0 || sed -i "/XXXSP/d" $0
+	x=$(grep -s setup_seg$ ${2/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
+	[ -n "$x" ] && sed -i "s/XXXSS/$((513+0x$x))/" $0 || sed -i "/XXXSS/d" $0
+	grep -q BFF401 ${2/.bin/.lst} && sed -i 's/512 skip/500 skip/;s/1000 -/&32 - /' $0
+	grep -q 83C60D ${2/.bin/.lst} && sed -i 's/ | dd bs=1 skip=13//' $0
 	helpmsg=$(sed '/helpmsg:/!d{n;s/ [0-9]* \([^ ]*\).*/\1/}' ${1/.bin/.lst} | sed '$!d')
 	helpend=$(sed '/helpend:/!d{n;s/ [0-9]* \([^ ]*\).*/\1/}' ${1/.bin/.lst} | sed '$!d')
 	sed -i "s/YYY/$((0x$helpmsg))/" $0
 	sed -i "s/ZZZ/$((0x$helpend-0x$helpmsg-1))/" $0
 	cat >> $0 <<EOM
-$(dd if=$1 bs=512 count=1 conv=sync | cat - $2 | gzip -9 | uuencode -m -)
+$(dd if=$1 bs=512 count=1 conv=sync 2> /dev/null | cat - $2 | gzip -9 | uuencode -m -)
 EOT
 EOM
 	sed -i '/--build/,/^fi/d' $0
@@ -42,12 +47,13 @@ main()
 	[ $setup -eq 0 ] && setup=4
 	syssize="$(echo $(od -j 500 -N 2 -dAn $1))"
 	[ $syssize -eq 0 ] && syssize=$((($(stat -c %s $1) + 15 - 512*($setup + 1))/16))
-	store $syssize $2 XXXO
-	store $setup $2 XXXS 1
-	dd if=$1 bs=512 count=$setup skip=1 | compress >>$2
-	dd if=$1 bs=16 count=$syssize skip=$((32*(1+$setup))) | compress >>$2
+	store $setup $2 XXXSB 1
+	store $setup $2 XXXSW 1
+	store $((32 * $setup)) $2 XXXSP
+	store $((0x1000 - 32*$setup)) $2 XXXSS 
+	dd if=$1 bs=512 skip=1 | compress >>$2
 	size=$(stat -c %s $2)
-	store $((($size-2560+15)/16)) $2 XXXP
+	store $((($size-2560+15)/16 + 0x1000)) $2 XXXP
 	store $((($size-2560+15)/16)) $2 500
 	store 4 $2 497 1
 	store $((($size+511)/512)) $2 4
