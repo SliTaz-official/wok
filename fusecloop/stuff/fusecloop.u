@@ -620,13 +620,15 @@
 +}
 --- create_compressed_fs.c
 +++ create_compressed_fs.c
-@@ -0,0 +1,203 @@
+@@ -0,0 +1,223 @@
 +#ifdef FIND_BEST_COMPRESSION
 +#include <compress.h>
 +extern "C" {
 +#include <stdlib.h>
 +#include <string.h>
 +
++static shrink_t level;
++static int pass, iter;
 +static int best_compress(unsigned char *compressed,
 +			 unsigned long *compressed_len,
 +			 unsigned char *uncompressed,
@@ -646,13 +648,14 @@
 +	}
 +	buf[0] = compressed;
 +	buf[1] = buffer;
-+	for (i = j = 0; i <= 10; i++) {
++	for (i = j = 0; i <= 11 && (pass == 0 || i < pass); i++) {
 +		llen = len = *compressed_len;
-+		if (i == 10) 
-+			err = (compress_zlib(shrink_extreme, buf[j],
++		if (i >= 10) {
++			level.level = (i == 10) ? shrink_extra : shrink_insane;
++			err = (compress_zlib(level, buf[j],
 +		     		len, uncompressed,
 +		     		uncompressed_len)) ? Z_OK : Z_DATA_ERROR;
-+		else {
++		} else {
 +			err = compress2(buf[j], &llen, uncompressed,
 +				     uncompressed_len, i);
 +			len = llen;
@@ -744,9 +747,26 @@
 +	md5hash *hash;
 +#endif
 +	
++#ifdef FIND_BEST_COMPRESSION
++	while (argc > 1) {
++		if (argv[1][0] == '-') {
++			int *p = &pass;
++			switch (argv[1][1]) {
++			case 'i' : p = &iter;
++			case 'n' : *p = atoi(argv[2]);
++				argc -= 2;
++				argv += 2;
++				continue;
++			}
++		}
++		argc--;
++		if (argv[1][0] < '0' || argv[1][0] > '9')
++			quit("Usage : create_compressed_fs [-n <pass>][ -i <iter>] [block size] < input > output");
++#else
 +	if (argc > 1) {
 +		if (argv[1][0] < '0' || argv[1][0] > '9')
 +			quit("Usage : create_compressed_fs [block size] < input > output");
++#endif
 +		block_size = atoi(argv[1]);
 +	}
 +	if (block_size < 4096)
