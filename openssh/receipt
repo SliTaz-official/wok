@@ -50,8 +50,17 @@ genpkg_rules()
 	sed -i 's|/usr/libexec/sftp-server|/usr/sbin/sftp-server|' \
 		$fs/etc/ssh/sshd_config
 
-	# client bug CVE-2016-0777 and CVE-2016-0778
-	echo -e '\nHost *\n  UseRoaming no' >> $fs/etc/ssh/ssh_config
+	cat >> $fs/etc/ssh/ssh_config <<EOT
+
+# client bug CVE-2016-0777 and CVE-2016-0778
+Host *
+  UseRoaming no
+
+# From https://wiki.gentoo.org/wiki/SSH_jump_host  
+Host *+*
+  ProxyCommand ssh $(echo %h | sed 's/+[^+]*$//;s/\([^+%%]*\)%%\([^+]*\)$/\2 -l \1/;s/:/ -p /') exec nc -w1 $(echo %h | sed 's/^.*+//;/:/!s/$/ %p/;s/:/ /')
+
+EOT
 }
 
 post_install()
