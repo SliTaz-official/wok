@@ -6,12 +6,13 @@ CATEGORY="system-tools"
 SHORT_DESC="Boot loader for DOS/Win9x."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL"
-TARBALL="${PACKAGE}$(echo $VERSION | sed 's/[^0-9]//')devel.tar.bz2"
+SUFFIX="$(echo $VERSION | sed 's/[^0-9]//')"
+TARBALL="${PACKAGE}${SUFFIX}devel.tar.bz2"
 BASE_SITE="http://busybox.net/~vda/$PACKAGE"
 WEB_SITE="$BASE_SITE/README.txt"
 WGET_URL="$BASE_SITE/$TARBALL"
 
-BUILD_DEPENDS="dosbox"
+BUILD_DEPENDS="dosbox upx"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,13 +21,15 @@ compile_rules()
 	cd $src
 	patch -p0 < $stuff/load.u
 	patch -p0 < $stuff/jump.u
-	sed -i 's/^@pause/rem &/' LINLD097/*.BAT
+	sed -i 's/^@pause/rem &/' LINLD$SUFFIX/*.BAT
 	unix2dos > MAKE.BAT <<EOT
 d:
-cd linld097
+cd linld$SUFFIX
 !compile.bat
 EOT
 	SDL_VIDEODRIVER=dummy dosbox MAKE.BAT -exit -c "mount D $src"
+	cp LINLD$SUFFIX/LINLD.COM linld.com
+	upx linld.com
 	cc -o tobzimage.o -Wa,-algms=tobzimage.lst -c $stuff/tobzimage.S
 	objcopy -O binary tobzimage.o tobzimage.bin
 	cp $stuff/tobzimage .
@@ -37,8 +40,6 @@ EOT
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/boot $fs/usr/bin
-	cp $src/LINLD$(echo $VERSION | sed 's/[^0-9]//')/LINLD.COM \
-		$fs/usr/share/boot/linld.com
-	cp $stuff/linld.txt $fs/usr/share/boot/
+	cp $src/linld.com $stuff/linld.txt $fs/usr/share/boot/
 	cp $src/tobzimage $fs/usr/bin
 }
