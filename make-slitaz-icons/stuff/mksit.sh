@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2016
 # (Started in November 2014)
 
-VERSION="160325"
+VERSION="160924"
 
 . /lib/libtaz.sh
 
@@ -424,6 +424,7 @@ c twitter						# twitter.desktop
 c network-server				# httpd.desktop
 c pcmanfm system-file-manager	# pcmanfm.desktop
 c preferences-desktop-default-applications	# tazbox tazapps
+c multimedia-video-player mplayer	# tazbox-video.desktop tazbox-video-fullscreen.desktop
 
 
 ###########################
