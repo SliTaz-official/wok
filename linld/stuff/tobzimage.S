@@ -72,7 +72,6 @@ step19:
 	jne	doiret
 	xorw	%si, %si
 	mov	%si, %ds
-	popl	4*0x19(%si)
 notdos:
 loadsp19:
 	movw	$0, %sp
