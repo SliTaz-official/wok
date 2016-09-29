@@ -137,6 +137,7 @@ ishelp:
 	movw	$0x1000+EXESTR(noDOS3), %ax
 	jc	tst386
 abort:
+jputs:
 	jmp	puts
 
 tst386:
@@ -165,7 +166,7 @@ is386:
 	inc	%ax
 	//movb	$EXESTR(realmodemsg), %al
 realmode:
-	call	puts
+	call	jputs
 is86:
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di

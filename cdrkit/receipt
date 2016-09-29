@@ -9,6 +9,7 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.cdrkit.org/"
 WGET_URL="http://cdrkit.org/releases/$TARBALL"
+EXTRA_SOURCE_FILES="cdrkit-1.1.9-efi-boot.patch"
 
 DEPENDS="libcap zlib bzlib attr"
 BUILD_DEPENDS="cmake libcap-dev zlib-dev bzip2-dev attr-dev"
@@ -16,12 +17,11 @@ BUILD_DEPENDS="cmake libcap-dev zlib-dev bzip2-dev attr-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i -e '/USE_MAGIC/d' -e '/(MAGICLIBS magic)/d' \
 		genisoimage/CMakeLists.txt
-	#patch -p1 < $stuff/$PACKAGE-1.1.9-glibc-2.10.patch || return 1
-	#grep -qs 'define u8' libusal/scsi-linux-sg.c ||
-	#sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' libusal/scsi-linux-sg.c
+	[ -s $SOURCES_REPOSITORY/cdrkit-1.1.9-efi-boot.patch ] ||
+		wget -P $SOURCES_REPOSITORY https://github.com/NixOS/nixpkgs/raw/master/pkgs/tools/cd-dvd/cdrkit/cdrkit-1.1.9-efi-boot.patch
+	patch -p1 < $SOURCES_REPOSITORY/cdrkit-1.1.9-efi-boot.patch
 	make PREFIX=/usr && make install PREFIX=/usr
 }
 
