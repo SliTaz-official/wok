@@ -9,16 +9,16 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.cipherdyne.org/fwknop/"
 WGET_URL="${WEB_SITE}download/$TARBALL"
+CONFIG_FILES="/etc/fwknop"
 
-DEPENDS="iptables"
-BUILD_DEPENDS="libpcap-dev iptables"
+DEPENDS="iptables gpgme gnupg libgpg-error"
+BUILD_DEPENDS="libpcap-dev gpgme-dev gnupg iptables"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	./configure --prefix=/usr --infodir=/usr/share/info \
 		--sysconfdir=/etc \
-		--localstatedir=/var \
 		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
 	make &&
@@ -28,7 +28,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/lib $install/usr/share/doc
+	cp $src/README $install/usr/share/doc
+	cp $src/CREDITS $install/usr/share/doc
+	cp $src/AUTHORS $install/usr/share/doc
+	cp $src/ChangLog $install/usr/share/doc
 	cp -a $install/etc $fs
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/sbin $fs/usr
