@@ -756,7 +756,8 @@ menuitem()
 
 gotposixovl()
 {
-	mount.posixovl 2>&1 | grep -qi usage && menuitem "$@"
+	mount.posixovl 2>&1 | grep -qi usage && gotcdfile 'rootfs*.gz' &&
+	menuitem "$@"
 }
 
 gotposixovlzip()
@@ -772,6 +773,11 @@ xfile()
 cdfile()
 {
 	gotcdfile "$1" && menuitem "$@"
+}
+
+gottazusb()
+{
+	gotcdfile 'rootfs*.gz' && xfile tazusb "$@"
 }
 
 isbzImage()
@@ -867,6 +873,11 @@ hascustomconf()
 gotcustomconf()
 {
 	hascustomconf && menuitem "$@"
+}
+
+hasflavor()
+{
+	[ -x /usr/bin/tazlito ] && [ -s $media/boot/bzImage ] && menuitem "$@"
 }
 
 gotisomd5()
@@ -1081,6 +1092,7 @@ runpxe()
 flavdata()
 {
 	[ $(get 1024 "$ISO") -eq 35615 ] && n=2 || n=$((1+$(get 417 "$ISO" 1)))
+	[ $n -eq 4 ] && n=20
 	dd if="$ISO" bs=512 skip=$n count=20 2>/dev/null | zcat 2>/dev/null
 }
 
@@ -1191,9 +1203,10 @@ EOT
 
 floppyset()
 {
-	gotcdfile isolinux.cfg
+	gotcdfile 'isolinux.cfg'
 	parse_isolinux < $file > /tmp/var$$
 	. /tmp/var$$
+	[ -z "$KERNEL" ] && echo "Can't parse isolinux.cfg" && return
 	for i in $media/$KERNEL $(dirname $file)/$KERNEL $media/$(locase $KERNEL) \
 		 $(dirname $file)/$(locase $KERNEL); do
 		[ -s $i ] && KERNEL=$i && break
@@ -1356,10 +1369,10 @@ $(gotposixovl		"install"	"Hard disk installation (UMSDOS way)") \
 $(gotposixovl		"installtaz"	"Hard disk installation (TAZUSB way)") \
 $(gotposixovlzip	"inst2zip"	"ZIP installation archive (UMSDOS way)") \
 $(gotposixovlzip	"insttaz2zip"	"ZIP installation archive (TAZUSB way)") \
-$(xfile tazusb		"usbkey"	"USB key read/write installation") \
+$(gottazusb 		"usbkey"	"USB key read/write installation") \
 $(ishybrid		"usbbootkey"	"USB boot key (read only)") \
 $(hasflavinfo		"showfavinfo"	"Show flavor extra info") \
-$(xfile tazlito		"flavor"	"Get flavor file") \
+$(hasflavor		"flavor"	"Get flavor file") \
 $(cdfile isolinux.cfg	"floppyset"	"Boot floppy set") \
 $(hastazboot		"tazboot"	"Get tazboot.exe Linux loader") \
 $(cdexe boot/bzImage	"bzimage"	"Get linux DOS/EXE file") \
