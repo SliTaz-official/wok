@@ -202,12 +202,10 @@ main()
 		store32 $((446+16+12)) $efi_len
 		uudecode <<EOT | unlzma | ddq bs=512 seek=1 of=$iso conv=notrunc
 begin-base64 644 -
-XQAAgAD//////////wAikYVN1N2VY3JXMnUMJn1RCdQOHHdkT27O1I77zn8t
-AiDDPDQv3ovn0t2ksyOkm/KVCwPcaMYXgukPNUeg8Tbavo+kXx/HVFkHHHB+
-c4gUdeTmJ31kL/btVwMG38di4lFL7bpUU61H7P0wJfcUrv0LYsPoW28D5f8s
-kaLvWB73gnnsIUYI9VNL4S9txwz2cCL67LZYGGAqMBdtdnp8Jv9qm36wvqJZ
-Bne0qEprzeTBrUFK74YLSrVbxK/fa6rz5pQxkLvyOVz4VfRMsVEA1G9IjF//
-BXwoAA==
+XQAAgAD//////////wAikYVN1N2VY3JXMnUMJn1RCdQOHN33EegtIBhrUQ7Q
+JNaW37NYVuUAmqtISPiCdgAxPRlBS0xDlmAPPOCSZXmEFz9jEkXSzmsGn6+o
+7SMAKMfvpMa3U1bJv/napT+/NFttJSJSx0xJA3em3KJcZsO66vaYeJC5tE+3
+T0p9AJtSH6X8SMic3vU3hYWwHsYnsmeoGmsy4EJba9Wf/0liMQA=
 ====
 EOT
 		lastlba=$((($cylinders * $heads * $sectors) -1))
@@ -223,6 +221,10 @@ EOT
 		store32 $((0x210)) $(crc32 0x200 $(read32 0 $((0x20C))))
 		store32sw $((0x1008)) $(($efi_ofs/4))
 		store32sw $((0x1054)) $(($efi_len/4))
+		for i in 238 410 490 ; do
+			ddq if=/dev/urandom count=16 bs=1 conv=notrunc \
+			    of=$iso seek=$((0x$i))
+		done
 	fi
 }
 

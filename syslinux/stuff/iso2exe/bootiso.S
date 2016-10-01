@@ -123,6 +123,7 @@ setreg:
 
 exestart:
 	cld
+	movw	$EXEADRS(puts), %bp	
 	movw	129, %ax
 	cmpb	$0x2F, %al
 	je	ishelp
@@ -137,8 +138,7 @@ ishelp:
 	movw	$0x1000+EXESTR(noDOS3), %ax
 	jc	tst386
 abort:
-jputs:
-	jmp	puts
+	jmp	%bp
 
 tst386:
 	pushfw				// save flags
@@ -166,7 +166,7 @@ is386:
 	inc	%ax
 	//movb	$EXESTR(realmodemsg), %al
 realmode:
-	call	jputs
+	call	%bp
 is86:
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
@@ -175,6 +175,20 @@ is86:
 	movsw
 	ret
 
+CallVPCI:
+	int	$0x67
+	testb	%ah, %ah
+	xchgw	%ax, %cx
+	pusw	%si
+ScanVCPI:
+	popw	%si
+ChkVCPI:
+NoVCPI:
+	movb	$EXESTR(ERRvcpi), %al
+	jne	abort
+	lodsb
+	shlw	$8, %ax
+	jne	CallVCPI
 VersionVCPI:
 	xchgw	%ax, %si		// movb	$EXESTR(vm86modemsg), %al
 	cmpb	$0x40, %cl		// EMM386 / VCPI 4.0 mini
@@ -189,19 +203,8 @@ tstvcpi:
 	lodsw
 	popw	%ds
 	jne	NoVCPI
-	xorw	$0x5858, %ax		// XX(X0)
-	movw	$EXEADRS(CmdVCPI), %si
-ChkVCPI:
-NoVCPI:
-	movb	$EXESTR(ERRvcpi), %al
-	jne	abort
-	lodsb
-	shlw	$8, %ax
-	je	VersionVCPI
-	int	$0x67
-	testb	%ah, %ah
-	xchgw	%ax, %cx
-	jmp	ChkVCPI
+	xorb	$0x58, %al		// X(XX0)
+	call	ScanVCPI
 CmdVCPI:
 	.byte	0x40			// status
 	.byte	0xDE			// vcpi present ?
