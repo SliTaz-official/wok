@@ -138,7 +138,7 @@ ishelp:
 	movw	$0x1000+EXESTR(noDOS3), %ax
 	jc	tst386
 abort:
-	jmp	%bp
+	jmp	*%bp
 
 tst386:
 	pushfw				// save flags
@@ -166,7 +166,7 @@ is386:
 	inc	%ax
 	//movb	$EXESTR(realmodemsg), %al
 realmode:
-	call	%bp
+	call	*%bp
 is86:
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
@@ -175,11 +175,11 @@ is86:
 	movsw
 	ret
 
-CallVPCI:
+CallVCPI:
 	int	$0x67
 	testb	%ah, %ah
 	xchgw	%ax, %cx
-	pusw	%si
+	pushw	%si
 ScanVCPI:
 	popw	%si
 ChkVCPI:
