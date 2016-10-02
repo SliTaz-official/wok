@@ -1209,7 +1209,8 @@ floppyset()
 	[ -z "$KERNEL" ] && echo "Can't parse isolinux.cfg" && return
 	for i in $media/$KERNEL $(dirname $file)/$KERNEL $media/$(locase $KERNEL) \
 		 $(dirname $file)/$(locase $KERNEL); do
-		[ -s $i ] && KERNEL=$i && break
+		i="$(ls $i* | sed q)"
+		[ -n "$i" ] && KERNEL=$i && break
 	done
 	rm -f /tmp/var$$ 
 	[ $(get 514 $KERNEL 4) -eq 1400005704 ] || return
@@ -1239,7 +1240,8 @@ EOT
 		for i in ${INITRD//,/ }; do
 			for j in $media/$i $(dirname $KERNEL)/$i $media/$(locase $i) \
 				 $(dirname $KERNEL)/$(locase $i); do
-				[ -s $j ] && i=$j && break
+				j="$(ls $j* | sed q)"
+				[ -n "$j" ] && i=$j && break
 			done
 			ddq if=$i >> /tmp/fd$$
 			l=$(($l+$(stat -c %s $i)))
