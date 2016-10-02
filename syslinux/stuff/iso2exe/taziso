@@ -591,7 +591,7 @@ Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n
 md5()
 {
 	dotwait "Checking files"
-	( cd $media ; ${md5sum:-md5sum -c md5sum*} | sort ) > /tmp/data
+	( cd $media ; ${md5sum:-md5sum -c md5sum*} 2>&1 | sort ) > /tmp/data
 	unset md5sum
 	rm -f /tmp/wait
 	if [ "$1" ]; then
@@ -1204,7 +1204,7 @@ EOT
 floppyset()
 {
 	gotcdfile 'isolinux.cfg'
-	parse_isolinux < $file > /tmp/var$$
+	$0 include $file | parse_isolinux > /tmp/var$$
 	. /tmp/var$$
 	[ -z "$KERNEL" ] && echo "Can't parse isolinux.cfg" && return
 	for i in $media/$KERNEL $(dirname $file)/$KERNEL $media/$(locase $KERNEL) \
@@ -1325,6 +1325,11 @@ isotitle()
 		-c %y $media/.|sed 's/ .*//')  $(basename "$ISO")"
 }
 
+if [ "$1" == "include" ]; then
+	[ -s "$2" ] && cd $(dirname "$2") && awk -v exe=$0 \
+	'{ if ($1 == "include") system(exe " include " $2); else print }' <"$2"
+	exit
+fi
 ISO="${1:-/dev/null}"
 [ -z "$(isiso 2> /dev/null)" ] && echo "Usage : $0 file.iso" && exit 1
 media=/tmp/media$$
