@@ -523,9 +523,9 @@ EOT
 	gpt= ; [ $(get 466 $1) -eq 65263 ] && gpt=1
 	mac= ; [ $(get 2048 $1) -eq 19792 ] && mac=1
 	echo "Read hybrid & tazlito data..."
-	if [ -n "gpt" ]; then
+	if [ -n "$gpt" ]; then
 		echo "GUID Partition Table..."
-		n=3; [ -n "mac" ] && n=9 && echo "Apple Partition Table..."
+		n=3; [ -n "$mac" ] && n=9 && echo "Apple Partition Table..."
 		ddq if=$1 bs=512 count=$n of=/tmp/hybrid$$
 		ddq if=$1 bs=512 skip=44 count=20 of=/tmp/tazlito$$
 	else
