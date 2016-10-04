@@ -154,9 +154,12 @@ int main(int argc, char *argv[])
 	initrd  = NULL;
 	cmdline = "auto";
 	if (argc > 1) {
-		if (argv[1][0] == '@')
-			cmdfile = argv[1] + 1;
-		else {
+		switch (argv[1][0]) {
+		case '-' : case '/' : case '?' :
+			usage(argv[0]); break;
+		case '@' :
+			cmdfile = argv[1] + 1; break;
+		default :
 			cmdfile = NULL;
 			copycmdline(args);
 		}
