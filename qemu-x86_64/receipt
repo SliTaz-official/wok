@@ -7,6 +7,8 @@ SHORT_DESC="General-purpose full virtualizer for X86_64 CPU."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="http://qemu.org"
+UEFIZIP="OVMF-X64-r15214.zip"
+EXTRA_SOURCE_FILES="$UEFIZIP"
 TAGS="virtualization"
 WANTED="qemu"
 
@@ -15,8 +17,11 @@ DEPENDS="qemu"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/etc
+	mkdir -p $fs/usr/bin $fs/usr/share/qemu/x64 $fs/etc
 	cp -a $install/etc/qemu $fs/etc
 	cp -a $install/usr/bin/qemu-*${PACKAGE#qemu-} $fs/usr/bin
 	cd $fs/usr/bin && ln -s qemu-system-${PACKAGE#qemu-} $PACKAGE
+	[ -s $SOURCES_REPOSITORY/$UEFIZIP ] || wget -P $SOURCES_REPOSITORY \
+		http://netassist.dl.sourceforge.net/project/edk2/OVMF/$UEFIZIP
+	unzip $SOURCES_REPOSITORY/$UEFIZIP OVMF.fd -d $fs/usr/share/qemu/x64
 }

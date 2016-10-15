@@ -9,6 +9,8 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://qemu.org"
 WGET_URL="http://wiki.qemu.org/download/$TARBALL"
+UEFIZIP="OVMF-IA32-r15214.zip"
+EXTRA_SOURCE_FILES="$UEFIZIP"
 TAGS="virtualization emulator"
 
 DEPENDS="alsa-lib gnutls libsdl bluez libtasn1 libsasl vde2 libcurl ncurses \
@@ -20,6 +22,12 @@ glib-dev autoconf automake libtool bison flex libusb-dev ncurses-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
+	mkdir -p $DESTIDR/usr/share/qemu/ia32
+
+	[ -s $SOURCES_REPOSITORY/$UEFIZIP ] || wget -P $SOURCES_REPOSITORY \
+		http://netassist.dl.sourceforge.net/project/edk2/OVMF/$UEFIZIP
+	unzip $SOURCES_REPOSITORY/$UEFIZIP OVMF.fd -d $DESTIDR/usr/share/qemu/ia32
+
 	patch -p0 < $stuff/cloop.u
 
 	TARGET="i386-softmmu, x86_64-softmmu, \
