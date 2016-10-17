@@ -185,7 +185,7 @@ fileofs()
 	custom.append)  OFFSET=$((2048*$c+47)) &&
 			SIZE=$(ddq bs=2k skip=$c if="$ISO" count=1 | \
 				sed '/^append=/!d;s/^[^=]*=.//' | wc -c);;
-	custom.initrd)  i=$(ddq bs=2k skip=$c if="$ISO" count=1 | \
+	custom.initrd)  x=$(ddq bs=2k skip=$c if="$ISO" count=1 | \
 				sed '/^append=\|^initrd:/!d' | wc -c)
 			OFFSET=$((2048*$c+$x+40))
 			SIZE=$(($(ddq bs=2k skip=$c if="$ISO" count=1 | \
