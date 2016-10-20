@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="fasm"
-VERSION="1.71.21"
+VERSION="1.71.57"
 CATEGORY="development"
-SHORT_DESC="Assembly language programming for x86 and x86-64 systems."
+SHORT_DESC="Assembly language programming for x86, x86-64 and ARM systems."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="other"
 TARBALL="$PACKAGE-$VERSION.tgz"
-WEB_SITE="http://www.flatassembler.net/"
+EXTRA_SOURCE_FILES="FASMARM_small.ZIP"
+WEB_SITE="http://flatassembler.net/"
 WGET_URL="$WEB_SITE$TARBALL"
 
 DEPENDS=""
@@ -16,16 +17,26 @@ BUILD_DEPENDS=""
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir -p $DESTDIR/usr/bin
+	[ -s $SOURCES_REPOSITORY/FASMARM_small.ZIP ] ||
+		wget -P $SOURCES_REPOSITORY \
+		http://arm.flatassembler.net/FASMARM_small.ZIP
+	unzip $SOURCES_REPOSITORY/FASMARM_small.ZIP
+	mv ReadMe.txt fasmarm.txt
+	sed 's/^character.*/&\npreprocessing_done db ?/' \
+		< $src/SOURCE/LINUX/FASMARM.ASM > $src/source/Linux/fasmarm.asm
+	for i in $src/SOURCE/*.INC ; do
+		cp $i $src/source/$(basename $i | tr [A-Z] [a-z])
+	done
+	mkdir -p $DESTDIR/usr/bin $DESTDIR/usr/share/doc/fasm
 	cd $src/source/Linux
 	../../fasm fasm.asm $DESTDIR/usr/bin/fasm
+	../../fasm fasmarm.asm $DESTDIR/usr/bin/fasmarm
+	cp ../../*.txt $DESTDIR/usr/share/doc/fasm
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/usr/bin
-	cp -a $install/usr/bin/fasm $fs/usr/share
-	ln -s ../share/fasm $fs/usr/bin
-	
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
 }
