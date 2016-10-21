@@ -126,21 +126,21 @@ cat << EOT
 	<header>
 		$(_ 'Documentation')
 	</header>
-		<a data-icon="web" href="http://ppp.samba.org/" target="_blank">$(_ 'PPP web page')</a><p>
-		<a data-icon="help" href="index.cgi?exec=pppd%20--help" target="_blank">$(_ 'PPP help')</a><p>
-		<a data-icon="help" href="index.cgi?exec=man%20pppd" target="_blank">$(_ 'PPP Manual')</a><p>
+		<a data-icon="web" href="http://ppp.samba.org/" target="_blank" rel="noopener">$(_ 'PPP web page')</a><p>
+		<a data-icon="help" href="index.cgi?exec=pppd%20--help" target="_blank" rel="noopener">$(_ 'PPP help')</a><p>
+		<a data-icon="help" href="index.cgi?exec=man%20pppd" target="_blank" rel="noopener">$(_ 'PPP Manual')</a><p>
 EOT
 [ "$(which pptp 2>/dev/null)" ] && cat <<EOT
-		<a data-icon="web" href="http://pptpclient.sourceforge.net/" target="_blank">$(_n 'PPTP web page')</a><p>
-		<a data-icon="help" href="index.cgi?exec=pptp" target="_blank">$(_ 'PPTP Help')</a><p>
+		<a data-icon="web" href="http://pptpclient.sourceforge.net/" target="_blank" rel="noopener">$(_n 'PPTP web page')</a><p>
+		<a data-icon="help" href="index.cgi?exec=pptp" target="_blank" rel="noopener">$(_ 'PPTP Help')</a><p>
 EOT
 [ "$(which pptpd 2>/dev/null)" ] && cat <<EOT
-		<a data-icon="web" href="http://poptop.sourceforge.net/" target="_blank">$(_n 'PPTPD web page')</a><p>
-		<a data-icon="help" href="index.cgi?exec=pptpd%20--help" target="_blank">$(_ 'PPTPD Help')</a><p>
+		<a data-icon="web" href="http://poptop.sourceforge.net/" target="_blank" rel="noopener">$(_n 'PPTPD web page')</a><p>
+		<a data-icon="help" href="index.cgi?exec=pptpd%20--help" target="_blank" rel="noopener">$(_ 'PPTPD Help')</a><p>
 EOT
 [ "$(which pppssh 2>/dev/null)" ] && cat <<EOT
-		<a data-icon="web" href="http://doc.slitaz.org/en:guides:vpn" target="_blank">$(_n 'VPN Wiki')</a><p>
-		<a data-icon="help" href="index.cgi?exec=dbclient" target="_blank">$(_ 'SSH Help')</a><p>
+		<a data-icon="web" href="http://doc.slitaz.org/en:guides:vpn" target="_blank" rel="noopener">$(_n 'VPN Wiki')</a><p>
+		<a data-icon="help" href="index.cgi?exec=dbclient" target="_blank" rel="noopener">$(_ 'SSH Help')</a><p>
 EOT
 cat << EOT
 	<footer>
@@ -150,19 +150,19 @@ cat << EOT
 	<header>
 		$(_ 'Configuration')
 	</header>
-		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on" target="_blank">$(_ 'PPP PSTN script')</a><p>
-		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on-dialer" target="_blank">$(_ 'PPP dialer chat')</a><p>
-		<a data-icon="conf" href="index.cgi?file=/etc/ppp/options" target="_blank">$(_ 'PPP options')</a><p>
-		<a data-icon="conf" href="index.cgi?file=/etc/ppp/chap-secrets" target="_blank">$(_ 'chap users')</a><p>
-		<a data-icon="conf" href="index.cgi?file=/etc/ppp/pap-secrets" target="_blank">$(_ 'pap users')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on" target="_blank" rel="noopener">$(_ 'PPP PSTN script')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on-dialer" target="_blank" rel="noopener">$(_ 'PPP dialer chat')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/options" target="_blank" rel="noopener">$(_ 'PPP options')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/chap-secrets" target="_blank" rel="noopener">$(_ 'chap users')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/pap-secrets" target="_blank" rel="noopener">$(_ 'pap users')</a><p>
 EOT
 for i in /etc/ppp/peers/* ; do
 	[ -s "$i" ] && cat << EOT
-		<a data-icon="conf" href="index.cgi?file=$i" target="_blank">$(basename $i)</a><p>
+		<a data-icon="conf" href="index.cgi?file=$i" target="_blank" rel="noopener">$(basename $i)</a><p>
 EOT
 done
 [ "$(which pptpd 2>/dev/null)" ] && cat <<EOT
-		<a data-icon="conf" href="index.cgi?file=/etc/pptpd.conf" target="_blank">$(_ 'pptpd.conf')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/pptpd.conf" target="_blank" rel="noopener">$(_ 'pptpd.conf')</a><p>
 EOT
 if [ "$(busybox ps x | grep "pppd" | awk '/modem/{print $1}')" ]; then
 	start_disabled='disabled'
