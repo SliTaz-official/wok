@@ -1,0 +1,117 @@
+--- LINLD097/MEMCPY32.ASM
++++ LINLD097/MEMCPY32.ASM
+@@ -22,70 +22,34 @@
+         global  _is_rm32:near
+         proc    _is_rm32 near
+ 
+-                pushf
+-                cli
++		pushf
++                push    dx
+ ; Check for oldies
+-                push    sp
+-                pop     ax
+-                cmp     ax,sp
+-                jne     @@bad   ;it is a 86/186, not a 286+
++		mov	ax, 0F000h
++		push	ax		; < 286 : flags[12..15] are forced 1
++		popf			; = 286 : flags[12..15] are forced 0
++		pushf			; > 286 : only flags[15] is forced 0
++		pop	dx
++		add	dh,ah		; NS=386+, NC=286
++		stc
++                js     @@bad   		;it is a 86/186/286, not a 386+
+ ; Check for vm
+                 smsw    ax      ;SMSW cannot be trapped! :-)
+                 test    al,1	;MSW_PE
+-
+-; We're in vm, this is 386+ (there is no vm in 286)
++; We're in vm
+                 jnz     check_vcpi
+ 
+-; We're in rm, chk for 386+
+-                push    ds dx
+-                push    0
+-                pop     ds
+-                mov     ax,offset excp6
+-		mov	dx,cs
+-                xchg    [06h*4  ],ax
+-                xchg    [06h*4+2],dx
+-               ;cmp     sp,sp           ;sets ZF - already done
+-                xchg    eax,eax         ;triggers excp6 on 286 - clears ZF
+-                mov     [06h*4  ],ax
+-                mov     [06h*4+2],dx
+-                pop     dx ds
+-                jnz     @@bad   ;it's a 286
+-
+ ; It's a 386 in real mode, chk for paging (crazy but possible)
+-                push    eax
+                 mov     eax,cr0
+                 shl     eax,1   ;CR0_PG to CF
+-                pop     eax
+-                jc      @@bad   ;CR0_PG was set - real mode paging
+-@@386rm:
+-                mov     ax,1
+-                popf
+-                ret
+-@@bad:          xor     ax,ax
+-                popf
+-                ret
++@@bad:		sbb	ax,ax	; ax=0h+!CF
++		inc	ax
++		jmp	@@end
+ 
+ ;***************************************************************
+-;****** Helper int 6 handler: clears ZF, moves IP by 2 bytes
+-;***************************************************************
+-label   excp6 near
+-@@oldFlags      =       (word bp+6)
+-@@oldCS         =       (word bp+4)
+-@@oldIP         =       (word bp+2)
+-@@oldBP         =       (word bp+0)
+-@@Flags_ZF      =       0040h
+-                push	bp
+-		mov	bp,sp
+-                add     [@@oldIP],2
+-                and     [byte low @@oldFlags],not @@Flags_ZF
+-                pop     bp
+-                iret
+-
+-;***************************************************************
+ ;****** Helper: checks for vcpi
+ ;***************************************************************
+ label   check_vcpi near
+-                push    dx
+                 push    ds
+ ; Check whether it is safe to call 67h (we trust only known EMM managers)
+                 push    0
+@@ -119,6 +83,7 @@
+               ;;push    dx              ;$ save handle
+                 mov     ax,0DE00h       ; check for vcpi present
+                 int     67h
++                mov     al,2
+                 test    ah,ah
+                 jz      @@386vcpi
+               ;;pop     dx              ;$ handle
+@@ -126,11 +91,10 @@
+               ;;int     67h
+ @@no_vcpi:
+                 xor     ax,ax
+-                jmp     @@ret
+ @@386vcpi:
+-                mov     ax,2
+ @@ret:
+                 pop     ds
++@@end:
+                 pop     dx
+                 popf
+                 ret
+@@ -214,7 +178,7 @@
+                 jmp     short $+2
+ 
+ ;****** Return *************************************************
+-@@ret:          lgdt    [oldGDTR]
++                lgdt    [oldGDTR]
+                 pop     edi esi ecx eax ds es
+                 popf
+                 leave

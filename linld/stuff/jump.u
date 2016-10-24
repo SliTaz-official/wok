@@ -1,9 +1,32 @@
 --- LINLD097/JUMP.ASM
 +++ LINLD097/JUMP.ASM
-@@ -24,33 +24,22 @@
-                         jmpseg  :word,  \
-                         jmpofs  :word   = PARAM_SIZE
+@@ -7,9 +7,16 @@
+                 %nomacs
+                 p386
  
+-        group   DGROUP  _TEXT
++        group   DGROUP  _TEXT,_DATA
+         assume  cs:DGROUP,ds:DGROUP
+ 
++        segment _DATA byte public use16 'DATA'
++
++        global  _saved15:dword
++	global	_first1k:word
++
++        ends    _DATA
++
+         segment _TEXT byte public use16 'CODE'
+ 
+ ;***************************************************************
+@@ -19,38 +26,102 @@
+         global  _set_sregs_jump_seg_ofs:near
+         proc    _set_sregs_jump_seg_ofs near
+ 
+-                arg     sreg    :word,  \
+-                        stk     :word,  \
+-                        jmpseg  :word,  \
+-                        jmpofs  :word   = PARAM_SIZE
+-
 -                push    bp      ;TODO: kinda useless, isn't it?
 -		mov	bp,sp
 -
@@ -21,27 +44,108 @@
 -                mov     ss,ax
 -                mov     fs,ax
 -                mov     gs,ax
-+		pop	bx		;caller return address
-+		pop	bx		; sreg
-+		pop	ax		; stk
++		mov	bx, 202h
++		add	bx,[_first1k]
++		cmp	[dword bx],'SrdH'	; head version >= 2 ?
++		jne	oldzimage
++		test	[byte bx+0Fh],1		; load high ? (clear C)
++		jne	isbzimage
++oldzimage:
++		; finish loading
++		extrn   @last_ditch$qv
++		push	cs
++		call	near @last_ditch$qv
++		; self move
++		cld
++		push	9820h			; 512 bytes for cmdline
++		pop	es
++		xor	di,di
++		mov	si,di
++		extrn	_bss_end
++		mov	cx,offset _bss_end
++		rep
++		  movsb
++		push	es
++		call	near doretf
++		stc
++isbzimage:
++		pop	ax		;caller return address
 +		pop	dx		; jmpseg
-+		pop	cx		; jmpofs
-+                mov     ds,bx
-+                mov     es,bx
-+                mov     fs,bx
-+                mov     gs,bx
-+                mov     ss,bx
++		pop	bx		; jmpofs
++		pop	ax		; stk
++		pop	ss		; sseg
 +                xchg	sp,ax
++                push    dx bx
++		jnc	nomove
++		; DOS shutdown
++		xor	si,si
++		mov	ds,si
++		push	[dword si+4]
++		mov	[word cs:loadsp19+1],sp
++		;cmp	[byte si+7],0F0h
++		;jnc	notdos
++		mov	[word si+4],offset step19
++		mov	[si+6],cs
++		pushf
++		pop	ax
++		inc	ah
++		push	ax
++		popf
++		jmp	small [dword si+4*19h]
++doiret:
++		iret
++step19:
++		push	si
++		push	ds
++		mov	si,sp
++		lds	si,[dword ss:si+4]
++		cmp	[word si],19CDh
++		pop	ds
++		pop	si
++		jne	doiret
++		xor	si,si
++		mov	ds,si
++notdos:
++loadsp19:
++		mov	sp,0
++		pop	[dword si+4]
++		; move zImage system
++		; memcpy32(dstseg=0, dstofs=10000h, srcseg=0, srcofs=100000h, size=80000h)
++		push	cs
++		pop	ds
++		push	8
++		push	si		; size
++		push	10h		; src
++		push	si		;    ofs
++		push	si		; srcseg
++		push	1		; dst
++		push	si		;    ofs
++		push	si		; dstseg
++		extrn   _memcpy32
++		call	near _memcpy32
++		add	sp,16
++nomove:
++		push	ss
++		pop	ds
++		push	ss
++		pop	es
++		push	ss
++		pop	fs
++		push	ss
++		pop	gs
  		assume	nothing
  		assume	cs:DGROUP
  
 -              ;;jmp     [dword ofs2]
 -
-                 push    dx cx
+-                push    dx cx
++doretf:
                  retf
 -; Data
 -;;ofs2            dw      ?
 -;;seg2            dw      ?
++		
++movedend:
          endp    _set_sregs_jump_seg_ofs
  
          ends    _TEXT

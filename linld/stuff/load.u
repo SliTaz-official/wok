@@ -1,6 +1,135 @@
 --- LINLD097/LOAD.CPP
 +++ LINLD097/LOAD.CPP
-@@ -400,10 +400,8 @@
+@@ -10,12 +10,21 @@
+     if(cnt != size) die(msg);
+ }
+ 
+-static char* read_cmdline_or_die(const char* fn, u16 maxsz, const char* msg) {
+-    int fd = open(fn, O_RDONLY|O_BINARY);
+-    if(fd == -1) die(msg);
+-    u32 size = lseek(fd,0,SEEK_END);
+-    if(s32(size)==-1L) die(msg);
++static int openimage(const char *name, const char *failmsg, u32 *size) {
++    int fd = open(name, O_RDONLY|O_BINARY);
++    if(fd != -1) {
++        *size = lseek(fd,0,SEEK_END);
++        if(s32(*size)!=-1L) goto gotimage;
++    }
++    die(failmsg);
++  gotimage:
+     lseek(fd,0,SEEK_SET);
++    return fd;
++}
++
++static char* read_cmdline_or_die(const char* fn, u16 maxsz, const char* msg) {
++    u32 size;
++    int fd = openimage(fn, msg, &size);
+     if(size>=maxsz) die(msg);
+     char *buf = malloc_or_die(size+1, msg); // +1 for '\0'
+     read_or_die(fd, buf, size, msg);
+@@ -188,7 +197,7 @@
+     u8      pad30[0x400-0x22c]; // 022C
+                             // 02D0 up to 32 20-byte mem info structs from
+                             // int 0x15 fn 0xe820
+-}; //__attribute((packed));
++} *first1k; //__attribute((packed));
+ 
+ #if sizeof(first1k_t)!=0x400
+ #error BUG: Bad first1k
+@@ -219,7 +228,7 @@
+ 
+ // Called from inside kernel just before rm->pm
+ // _loadds _saveregs: done by hand
+-static void far last_ditch() {
++void far last_ditch() {
+     cli();  // we start doing *really* destructive things to DOS/BIOS
+             // it means: do not even try to enable ints
+             // or call BIOS services after this
+@@ -296,6 +305,11 @@
+         "\tvga=0" NL
+         "Use quotes: \"cl=...\" if you need spaces in cmdline" NL
+         "Use cl=@filename to take cmdline from file"
++#if 0
++        NL NL "Example" NL
++        "\tcopy/b rootfs4.gz+rootfs3.gz+rootfs2.gz+rootfs1.gz rootfs.gz" NL
++        "\tlinld initrd=rootfs.gz \"cl=rw root=/dev/null video=-32\""
++#endif
+     );
+ }
+ 
+@@ -331,7 +345,10 @@
+ 
+     // Parse command line
+ 
+-    if(argc<2) syntax();
++    if(argc<2) {
++dosyntax:
++        syntax();
++    }
+ #define STRNCMP(a,b) strncmp((a),(b),sizeof(b)-1)
+     {for(int i=1;i<argc;i++) {
+         if(STRNCMP(argv[i],"image=") == 0) {
+@@ -340,28 +357,23 @@
+         else if(STRNCMP(argv[i],"initrd=") == 0) {
+             initrd_name=argv[i]+7;
+         }
+-        else if(STRNCMP(argv[i],"cl=@") == 0) {
+-            cmdline=read_cmdline_or_die(argv[i]+4,PAGE_SIZE-1,"Error reading cl=@file");
+-            puts("Kernel command line:");
+-            puts(cmdline);
+-        }
+         else if(STRNCMP(argv[i],"cl=") == 0) {
+             cmdline=argv[i]+3;
++            if (cmdline[0] == '@') {
++                cmdline=read_cmdline_or_die(argv[i]+4,PAGE_SIZE-1,"Error reading cl=@file");
++                puts("Kernel command line:");
++                puts(cmdline);
++            }
+         }
+-        else if(strcmp(argv[i],"vga=ask") == 0) {
+-            vid_mode = -3;
+-        }
+-        else if(strcmp(argv[i],"vga=extended") == 0) {
+-            vid_mode = -2;
+-        }
+-        else if(strcmp(argv[i],"vga=normal") == 0) {
+-            vid_mode = -1;
+-        }
+         else if(STRNCMP(argv[i],"vga=") == 0) {
+-            vid_mode = strtoul(argv[i]+4);
++	    const char *s=argv[i]+4;
++            if (*s == 'a') vid_mode = -3;
++            else if (*s == 'e') vid_mode = -2;
++            else if (*s == 'n') vid_mode = -1;
++            else vid_mode = strtoul(s);
+         }
+         else
+-            syntax();
++            goto dosyntax;
+     }}
+ #undef STRNCMP
+ 
+@@ -384,15 +396,12 @@
+ 
+     rm_buf = malloc_or_die(_32k, "Can't allocate rm buf");
+     // Do not use malloc below until heap_top adjustment (see <*>)
+-    int fd = open(kernel_name, O_RDONLY|O_BINARY);
+-    if(fd == -1) die("Can't open kernel file");
+-    u32 image_size = lseek(fd,0,SEEK_END);
+-    if(s32(image_size)==-1L) die("Can't seek kernel file");
+-    lseek(fd,0,SEEK_SET);
++    u32 image_size;
++    int fd = openimage(kernel_name, "Can't use kernel file", &image_size);
+     read_or_die(fd, rm_buf, 0x400, "Can't read first kb");
+ 
+-    struct first1k_t* first1k = (first1k_t*)rm_buf;
+-    // new kernels never need: if(!first1k->setup_sects) first1k->setup_sects=4;
++    first1k = (first1k_t*)rm_buf;
++    if(!first1k->setup_sects) first1k->setup_sects=4;
+     rm_size = 0x200*(first1k->setup_sects+1); // 0th sector is not counted there
+     if(rm_size>_32k)
+         die("rm_size is too big");
+@@ -400,33 +409,46 @@
  
      if(first1k->boot_flag != 0xAA55)
          die("No boot signature (55,AA). It's not a kernel");
@@ -8,37 +137,89 @@
 -        die("No 'HdrS' signature (kernel is too old)");
 -    if(first1k->version < 0x202)
 -        die("Loader protocol version is less than 2.02 (kernel is too old)");
-+    if(first1k->header != HdrS) // starting linux 1.3.73
-+        die("No 'HdrS' signature (kernel is too old, try /usr/bin/tobzimage)");
-     if(!(first1k->loadflags & 0x01))
-         die("I can't load bzImages low");
+-    if(!(first1k->loadflags & 0x01))
+-        die("I can't load bzImages low");
  
-@@ -414,15 +412,23 @@
+-    // Read remaining rm loader
+-
+-    read_or_die(fd, rm_buf+0x400, rm_size-0x400, "Can't read rm loader");
+-
      // Tell rm loader some info
  
      first1k->vid_mode = vid_mode;
 -    first1k->cmd_line_ptr = 0x98000;
-+    if(first1k->version >= 0x202) { // starting linux 2.4.0-test3-pre3
-+        first1k->cmd_line_ptr = 0x98000;
-+    }
-+    else {
-+        first1k->cl_magic = 0xA33F;
-+        first1k->cl_ofs   = 0x8000;
-+    }
-     first1k->type_of_loader = 0xff; // kernel do not know us (yet :-)
-     // * will be called just before rm -> pm
-     first1k->realmode_switch_ofs = ofs(last_ditch);
-     first1k->realmode_switch_seg = seg(last_ditch);
+-    first1k->type_of_loader = 0xff; // kernel do not know us (yet :-)
+-    // * will be called just before rm -> pm
+-    first1k->realmode_switch_ofs = ofs(last_ditch);
+-    first1k->realmode_switch_seg = seg(last_ditch);
 -    // * offset limit of the setup heap
 -    //   heap_end_ptr appears to be relative to the start of setup (ofs 0x0200)
 -    first1k->heap_end_ptr = _32k-0x0200;
 -    first1k->loadflags |= 0x80; // says to rm loader it's ok to use heap
-+    if(first1k->version >= 0x201) {
-+        // * offset limit of the setup heap
-+        //   heap_end_ptr appears to be relative to the start of setup (ofs 0x0200)
-+        first1k->heap_end_ptr = _32k-0x0200;
-+        first1k->loadflags |= 0x80; // says to rm loader it's ok to use heap
+-    // * if we will ever stop moving ourself to 0x90000
+-    //   we must say setup.S how much to move
+-    //first1k->setup_move_size = _32k;
++#if 1
++    if(first1k->header == HdrS) { // starting linux 1.3.73
++	if(first1k->loadflags & 1) {
++#else
++    if((first1k->header != HdrS) || (first1k->loadflags & 1) == 0)
++        die("I can't load bzImage low");
++    {
++        {
++#endif
++            first1k->realmode_switch_ofs = ofs(last_ditch);
++            first1k->realmode_switch_seg = seg(last_ditch);
++        }
++        first1k->type_of_loader = 0xff; // kernel do not know us (yet :-)
++        // * will be called just before rm -> pm
++        if(first1k->version >= 0x201) {
++            // * offset limit of the setup heap
++            //   heap_end_ptr appears to be relative to the start of setup (ofs 0x0200)
++            first1k->heap_end_ptr = _32k-0x0200;
++            first1k->loadflags |= 0x80; // says to rm loader it's ok to use heap
++        }
++        // * if we will ever stop moving ourself to 0x90000
++        //   we must say setup.S how much to move
++        //first1k->setup_move_size = _32k;
++        if(first1k->version >= 0x202) { // starting linux 2.4.0-test3-pre3
++            first1k->cmd_line_ptr = 0x98000;
++            goto cmd_line_ok;
++        }
 +    }
-     // * if we will ever stop moving ourself to 0x90000
-     //   we must say setup.S how much to move
-     //first1k->setup_move_size = _32k;
++    first1k->cl_magic = 0xA33F;
++    first1k->cl_ofs   = 0x8000;
+ 
++cmd_line_ok:
++    // Read remaining rm loader
++
++    read_or_die(fd, rm_buf+0x400, rm_size-0x400, "Can't read rm loader");
++
+     // Read remaining kernel (pm part)
+     // Try to load kernel high, maybe even blindly storing it
+     // in unallocated memory as a last resort
+@@ -449,11 +471,7 @@
+     // Read initrd if needed
+ 
+     if(initrd_name) {
+-        int fd = open(initrd_name, O_RDONLY|O_BINARY);
+-        if(fd == -1) die("Can't open initrd file");
+-        initrd_size = lseek(fd,0,SEEK_END);
+-        if(s32(initrd_size)==-1L) die("Can't seek initrd file");
+-        lseek(fd,0,SEEK_SET);
++        int fd = openimage(initrd_name, "Can't use initrd file", &initrd_size);
+         initrd_target_addr = (memtop()-initrd_size) & (~PAGE_MASK);
+       //not needed: kernel detects this and drops initrd
+       //// assume 2:1 decompression ratio
+@@ -520,9 +538,9 @@
+ 
+     // Jump to kernel rm code
+     set_sregs_jump_seg_ofs(
+-        0x9000,     //sregs
++        0x9020,0,   //cs,ip
+         0xA000,     //sp
+-        0x9020,0    //cs,ip
++        0x9000      //sregs
+     );
+ 
+     // Let compiler be happy
