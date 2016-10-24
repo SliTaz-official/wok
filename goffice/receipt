@@ -1,40 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="goffice"
-VERSION="0.8.17"
-CATEGORY="x-window"
-SHORT_DESC="GOffice is a library of document-centric objects and utilities."
+VERSION="0.10.32"
+CATEGORY="libs"
+SHORT_DESC="GOffice is a library of document-centric objects and utilities"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://freshmeat.net/projects/goffice/"
+WEB_SITE="https://developer.gnome.org/goffice/"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
 
-DEPENDS="gtk+ libgsf libglade libart_lgpl xorg-libXdamage"
-BUILD_DEPENDS="gtk+-dev libxml2-dev libgsf libgsf-dev libglade-dev intltool \
-expat-dev bzip2-dev librsvg-dev"
+DEPENDS="at-spi2 at-spi2-atk atk bzlib cairo dbus fontconfig freetype \
+gdk-pixbuf glib glibc-base gtk+3 harfbuzz libcroco libffi libgio libgsf libpng \
+librsvg libxcb libxml2 libxslt pango pcre pixman util-linux-uuid xorg-libICE \
+xorg-libSM xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor \
+xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXi \
+xorg-libXinerama xorg-libXrandr xorg-libXrender zlib"
+BUILD_DEPENDS="cairo-dev gtk+3-dev libgsf-dev librsvg-dev libxslt-dev gtk-doc"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	# remove a reference to pcre_info, a deprecated function
-	# that was removed from PCRE-8.30
-	sed -i 's#info (r, NULL#full&, 0#' goffice/utils/regutf8.c &&
-	./configure \
-		--with-html-dir=/usr/share/doc \
-		--disable-static \
-		$CONFIGURE_ARGS &&
-	make &&	make install
+	./configure $CONFIGURE_ARGS && make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/goffice $fs/usr/lib
-	cp -a $install/usr/share/goffice $fs/usr/share
-	cp -a $install/usr/share/pixmaps $fs/usr/share
+	cook_copy_files *.so* *.xml *.xsl README
 }
-
