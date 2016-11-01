@@ -1,25 +1,26 @@
 # SliTaz package receipt.
 
 PACKAGE="librsvg"
-VERSION="2.34.2"
+VERSION="2.40.16"
 CATEGORY="x-window"
 SHORT_DESC="SVG Rendering Library"
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://librsvg.sourceforge.net/"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="https://wiki.gnome.org/LibRsvg"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
 HOST_ARCH="i486 arm"
 
-DEPENDS="cairo freetype libxml2 pango fontconfig libcroco xcb-util libgsf \
-libgio gdk-pixbuf xorg-libXinerama xorg-libXcursor xorg-libXcomposite \
-xorg-libXext xorg-libXdamage"
+DEPENDS="bzlib cairo fontconfig freetype gdk-pixbuf glib glibc-base harfbuzz \
+libcroco libffi libgio libpng libxcb libxml2 pango pcre pixman xorg-libX11 \
+xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXrender zlib"
 BUILD_DEPENDS="libffi-dev cairo-dev freetype-dev libxml2-dev pango-dev \
 fontconfig-dev gdk-pixbuf-dev libcroco-dev glib-dev libpng-dev expat-dev"
 
 # Handle cross compilation
 case "$ARCH" in
-	i?86) BUILD_DEPENDS="gtk+-dev perl libgsf" ;;
+	i?86) BUILD_DEPENDS="gtk-doc perl libgsf libcroco-dev \
+	gobject-introspection-dev gtk+3-dev" ;;
 esac
 
 # Rules to configure and make the package.
@@ -27,23 +28,15 @@ compile_rules()
 {
 	./configure \
 		--disable-static \
-		$CONFIGURE_ARGS LIBCROCO_CFLAGS="-I/cross/$ARCH/sysroot/usr/include" &&
+		LIBCROCO_CFLAGS="-I/cross/$ARCH/sysroot/usr/include" \
+		$CONFIGURE_ARGS &&
 	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	[ -d "$install/usr/lib/gtk-2.0" ] && \
-		cp -a $install/usr/lib/gtk-2.0 $fs/usr/lib
-	cp -a $install/usr/lib/gdk-pixbuf-2.0 $fs/usr/lib
-
-	# remove *.*a files
-	[ -d "$install/usr/lib/gtk-2.0" ] && \
-		find $fs/usr/lib/gtk-2.0 -name "*.*a" -exec rm -f {} \;
-	find $fs/usr/lib/gdk-pixbuf-2.0 -name "*.*a" -exec rm -f {} \;
+	cook_copy_files *.so*
 }
 
 # Pre and post install commands for Tazpkg.
