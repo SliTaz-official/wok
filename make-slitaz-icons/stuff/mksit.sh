@@ -3,7 +3,7 @@
 # Aleksej Bobylev <al.bobylev@gmail.com>, 2014-2016
 # (Started in November 2014)
 
-VERSION="160924"
+VERSION="161031"
 
 . /lib/libtaz.sh
 
@@ -274,12 +274,12 @@ s format-text-underline		# gtk_stock 16,24
 s format-text-strikethrough	# gtk_stock 16,24
 s go-bottom					# gtk_stock 16,24
 c go-down					# gtk_stock 16,24 but Yad:scp-box needs it
-s go-first					# gtk_stock 16,24
+c go-first					# gtk_stock 16,24
 s go-home					# gtk_stock 16,24
 s go-jump					# gtk_stock 16,24
-s go-last					# gtk_stock 16,24
-s go-next					# gtk_stock 16,24
-s go-previous				# gtk_stock 16,24
+c go-last					# gtk_stock 16,24
+c go-next					# gtk_stock 16,24
+c go-previous				# gtk_stock 16,24
 s go-top					# gtk_stock 16,24
 c go-up						# gtk_stock 16,24 but Yad:scp-box needs it
 c help-about				# gtk_stock 16,24; Transmission (GTK+3) needs it
