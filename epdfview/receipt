@@ -23,18 +23,19 @@ compile_rules()
 		src/epdfview.h
 	find . -name '*.[ch]*' | xargs sed -i 's|<glib/.*h|<glib.h|'
 	patch -Np1 -i $stuff/0001-When-using-Poppler-0.17.0-I-needed-to-swap-the-blue-.patch
+	patch -p1 -i $stuff/no-stock-icons.patch
 	./configure \
 		--without-cups \
 		$CONFIGURE_ARGS &&
 	make && make install
+	cp -f $stuff/*.desktop $install/usr/share/applications
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/epdfview $fs/usr/share
-	find $fs -name 'icon*[83]*' -delete
+	cook_copy_files epdfview *.desktop *.xml
+	mkdir -p $fs/usr/share/icons/hicolor/48x48/apps
+	cp $install/usr/share/epdfview/pixmaps/icon_epdfview-48.png \
+		$fs/usr/share/icons/hicolor/48x48/apps/epdfview.png
 }
-

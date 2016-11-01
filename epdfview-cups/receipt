@@ -28,24 +28,19 @@ compile_rules()
 	    -e 's/location->values\[0\].string.text/ippGetString(location, 0, NULL)/' \
 	    -e 's/.*IPP_TAG_KEYWORD.*/    ipp_t *request = ippNewRequest(IPP_GET_PRINTER_ATTRIBUTES);\n&/' \
 		src/PrintPter.cxx
+	patch -p1 -i $stuff/no-stock-icons.patch
 	./configure \
 		--with-cups \
 		$CONFIGURE_ARGS &&
 	make &&	make install
+	cp -f $stuff/*.desktop $install/usr/share/applications
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/pixmaps
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/epdfview $fs/usr/share
-	cd $fs/usr/share/pixmaps
-	ln -sf /usr/share/epdfview/pixmaps/icon_epdfview-32.png epdfview.png
-}
-
-# Pre install commands for Tazpkg.
-pre_install()
-{
-	[ -x "$1/usr/bin/epdfview" ] && yes y | tazpkg remove epdfview
+	cook_copy_files epdfview *.desktop *.xml
+	mkdir -p $fs/usr/share/icons/hicolor/48x48/apps
+	cp $install/usr/share/epdfview/pixmaps/icon_epdfview-48.png \
+		$fs/usr/share/icons/hicolor/48x48/apps/epdfview.png
 }
