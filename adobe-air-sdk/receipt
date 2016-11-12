@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="adobe-air-sdk"
+VERSION="2.6"
+CATEGORY="non-free"
+SHORT_DESC="Adobe Air Software Development Kit and Runtime Environment"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="custom"
+WEB_SITE="http://get.adobe.com/air"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="http://airdownload.adobe.com/air/lin/download/$VERSION/AdobeAIRSDK.tbz2"
+
+DEPENDS="nss gtk+ libxslt"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p \
+		$fs/opt/$PACKAGE \
+		$fs/usr/share/licenses/$PACKAGE \
+		$fs/usr/share/doc/$PACKAGE
+	cp -a $src/* $fs/opt/$PACKAGE
+	ln -s "../../../../opt/$PACKAGE/AIR SDK license.pdf" $fs/usr/share/licenses/$PACKAGE
+	ln -s "../../../../opt/$PACKAGE/AIR SDK Readme.txt"  $fs/usr/share/doc/$PACKAGE
+	ln -s "../../../../opt/$PACKAGE/samples"             $fs/usr/share/doc/$PACKAGE
+	ln -s "../../../../opt/$PACKAGE/templates"           $fs/usr/share/doc/$PACKAGE
+}
+
+post_install()
+{
+	cat >> $1/etc/profile <<EOT
+export AIR_HOME=/opt/$PACKAGE
+export PATH="\$PATH:\$AIR_HOME/bin"
+EOT
+}
+
+post_remove()
+{
+	sed -i '/AIR_HOME/d' $1/etc/profile
+}
