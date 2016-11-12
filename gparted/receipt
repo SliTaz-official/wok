@@ -1,9 +1,9 @@
 # SliTaz package receipt.
 
 PACKAGE="gparted"
-VERSION="0.26.0"
+VERSION="0.27.0"
 CATEGORY="system-tools"
-SHORT_DESC="GTK partition editor."
+SHORT_DESC="A partition editor to graphically manage disk partitions"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 SUGGESTED="e2fsprogs dosfstools mtools ntfs-3g ntfsprogs jfsutils xfsprogs \
@@ -35,20 +35,15 @@ compile_rules()
 		--build=$HOST_SYSTEM \
 		--host=$HOST_SYSTEM &&
 	make && make install
+
+	cook_compress_png
+	cook_compress_svg
+	cp -f $stuff/*.desktop $install/usr/share/applications/
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/pixmaps
-	cp $install/usr/share/icons/hicolor/48x48/apps/gparted.png \
-		$fs/usr/share/pixmaps/gparted.png
-	cp -a $install/usr/sbin $fs/usr
-	sed -i s/'#!\/bin\/bash'/'#!\/bin\/sh'/ $fs/usr/sbin/gparted
-}
-
-# Version 0.3.7 - Binary has moved to /usr/sbin
-post_install()
-{
-	rm -f $root/usr/bin/gparted 2> /dev/null
+	cook_copy_files gparted gpartedbin
+	cook_copy_icons
 }
