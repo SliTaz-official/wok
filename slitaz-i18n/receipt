@@ -27,19 +27,19 @@ esac
 genpkg_rules()
 {
 	# Allow to build the packages who want me...
-	sed -i "/^$PACKAGE\$/d" $CACHE/broken 2> /dev/null || true
+	sed -i "/^$PACKAGE\$/d" $CACHE/broken 2>/dev/null || true
 
 	mkdir -p $fs/usr/share/doc/slitaz
 	. $stuff/locale-pack.conf
 	for p in $CORE_PKGS; do
-		if [ ! -d "$WOK/$p/install" ]; then
-			cook $p
-		fi
+		[ ! -d "$WOK/$p/install" ] && cook $p
 	done
-	# Cook all locale pack.
+
+	# Cook all locale-* packages
 	for i in $LOCALE_PACK; do
-		cook locale-$i
+		[ -d "$WOK/locale-$i" ] && cook locale-$i
 	done
+
 	# Recook tzdata package: we move files from tzdata to locale-* packages
 	cook tzdata
 
