@@ -149,10 +149,11 @@ getiso()
 		if checkmagic /mnt/$ISO; then
 			mount -o loop,ro /mnt/$ISO /media/cdrom
 			echo "Found $ISO on $(basename $dev)"
-			break
+			return 0
 		fi
 		umount /mnt
-	done
+	done 2> /dev/null
+	return 1
 }
 
 uncpio()
@@ -646,7 +647,7 @@ fddata()
 
 ishybrid()
 {
-	[ $(get 510 $ISO) -eq 43605 ] || return
+	[ $(get 510 $ISO 2> /dev/null || echo 0) -eq 43605 ] || return
 	C=$((2048*$(get $(((17*2048) + 71)) /mnt/$ISO 4)))
 	[ $(get $C /mnt/$ISO 4) -eq 1 ] || return
 	[ $(get $(($C+30)) /mnt/$ISO 4) -eq $((0x88AA55)) ] || return
@@ -657,13 +658,13 @@ ishybrid()
 
 burnable()
 {
-	[ "$(sed '/Can wr.*1$/!d' /proc/sys/dev/cdrom/info)" ] &&
+	[ "$(sed '/Can wr.*1$/!d' /proc/sys/dev/cdrom/info 2> /dev/null)" ] &&
 	[ "$(which wodim)" ] && echo -en "\"$1\"	\"$2\""
 }
 
 blankable()
 {
-	[ "$(sed '/Can wr.*RW.*1$/!d' /proc/sys/dev/cdrom/info)" ] &&
+	[ "$(sed '/Can wr.*RW.*1$/!d' /proc/sys/dev/cdrom/info 2> /dev/null)" ] &&
 	[ "$(which wodim)" ] && echo -en "\"$1\"	\"$2\""
 }
 
@@ -1146,14 +1147,14 @@ runpxe()
 
 flavdata()
 {
-	dd if=/mnt/$ISO bs=512 skip=$((1+$(get 417 /mnt/$ISO 1))) \
-		count=20 2>/dev/null | zcat 2>/dev/null
+	ddq if=/mnt/$ISO bs=512 skip=$((1+$(get 417 /mnt/$ISO 1))) \
+		count=20 | zcat 2>/dev/null
 }
 
 hasflavinfo()
 {
-	[ "$(flavdata | dd bs=1 count=8 2> /dev/null | strings)" == \
-	  "07070100" ] && echo -en "\"$1\"	\"$2\""
+	[ "$(flavdata | ddq bs=1 count=8)" == "07070100" ] &&
+	echo -en "\"$1\"	\"$2\""
 }
 
 showfavinfo()
@@ -1200,7 +1201,7 @@ for i in /sys/block/*/dev /sys/block/*/*/dev ; do
 	mknod $n b $(sed 's/:/ /' < $i)
 done
 ISO="$(getarg bootfrom | sed 's/.://;s|\\|/|g')"
-getiso
+getiso || text 2> /dev/null
 mount_loram
 case "${ISO##*/}$(getarg mode)" in
 *install*|*INSTALL*)	install ;;

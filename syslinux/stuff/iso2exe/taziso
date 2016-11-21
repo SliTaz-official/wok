@@ -839,12 +839,14 @@ hastazboot()
 
 burnable()
 {
-	[ "$(sed '/Can wr.*1$/!d' /proc/sys/dev/cdrom/info)" ] && menuitem "$@"
+	[ "$(sed '/Can wr.*1$/!d' /proc/sys/dev/cdrom/info 2> /dev/null)" ] &&
+	menuitem "$@"
 }
 
 blankable()
 {
-	[ "$(sed '/Can wr.*RW.*1$/!d' /proc/sys/dev/cdrom/info)" ] && menuitem "$@"
+	[ "$(sed '/Can wr.*RW.*1$/!d' /proc/sys/dev/cdrom/info 2> /dev/null)" ] &&
+	menuitem "$@"
 }
 
 burniso()
@@ -1093,12 +1095,12 @@ flavdata()
 {
 	[ $(get 1024 "$ISO") -eq 35615 ] && n=2 || n=$((1+$(get 417 "$ISO" 1)))
 	[ $n -eq 4 ] && n=20
-	dd if="$ISO" bs=512 skip=$n count=20 2>/dev/null | zcat 2>/dev/null
+	ddq if="$ISO" bs=512 skip=$n count=20 | zcat 2>/dev/null
 }
 
 hasflavinfo()
 {
-	[ "$(flavdata | dd bs=1 count=8 2> /dev/null | strings)" == \
+	[ "$(flavdata | ddq bs=1 count=8 | strings)" == \
 	  "07070100" ] && menuitem "$@"
 }
 
