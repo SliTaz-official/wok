@@ -19,21 +19,25 @@ compile_rules()
 {
 	mv DIST $src 2> /dev/null
 	cd $src
-	patch -p0 < $stuff/load.u
-	patch -p0 < $stuff/jump.u
-	patch -p0 < $stuff/a20.u
-	patch -p0 < $stuff/memcpy32.u
-	sed -i 's/^@pause/rem &/;s|^tasm|& /l|' LINLD$SUFFIX/*.BAT
+	rm LINLD$SUFFIX/CRTL.CPP
+	cp $stuff/src/* LINLD$SUFFIX/
+	cp -a LINLD$SUFFIX TAZBOOT
+	sed -i 's/-3/-DNO386/' TAZBOOT/BCCOPT.OPT
 	unix2dos > MAKE.BAT <<EOT
 d:
 cd linld$SUFFIX
-!compile.bat
+$(cat LINLD$SUFFIX/!COMPILE.BAT)
+cd ..
+cd tazboot
+$(cat TAZBOOT/!COMPILEX.BAT)
 EOT
 	SDL_VIDEODRIVER=dummy dosbox MAKE.BAT -exit -c "mount D $src"
 	cp LINLD$SUFFIX/LINLD.COM linld.com
+	cp TAZBOOT/TAZBOOT.COM tazboot.com
 	objdump -D -b binary -mi386 -Maddr16,data16 --adjust-vma=0x100 \
 		linld.com > linld.lst
 	upx linld.com
+	upx tazboot.com
 	cc -o tobzimage.o -Wa,-algms=tobzimage.lst -c $stuff/tobzimage.S
 	objcopy -O binary tobzimage.o tobzimage.bin
 	cp $stuff/tobzimage .
