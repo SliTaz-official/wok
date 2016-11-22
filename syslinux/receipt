@@ -9,12 +9,13 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://syslinux.zytor.com/"
 WGET_URL="https://www.kernel.org/pub/linux/utils/boot/syslinux/$TARBALL"
+LINLD="$WOK/linld/source"
 CONFIG_FILES="/boot/isolinux/*.cfg /boot/isolinux/kbd"
 TAGS="boot"
 
 DEPENDS="ipxe memtest"
 BUILD_DEPENDS="wget kbd-base perl nasm dev86 lzma mingw32-gcc upx posixovl \
-util-linux-uuid-dev advancecomp libidn"
+util-linux-uuid-dev advancecomp libidn linld"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 compile_rules()
@@ -44,6 +45,7 @@ compile_rules()
 			$i > kbd/$(basename $i .map.gz)
 	done
 	cp -a $stuff/iso2exe .
+	cp $LINLD/*/tazboot.com iso2exe/boot.com
 	make -C iso2exe
 }
 
@@ -51,6 +53,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/boot/isolinux
+	cp $LINLD/*/linld.com $fs/boot
 	cp -a $src/core/isolinux.bin $fs/boot/isolinux
 	lzma e $src/com32/modules/md5sum.c32 $fs/boot/isolinux/c32box.c32
 	lzma e $src/com32/menu/vesamenu.c32 $fs/boot/isolinux/vesamenu.c32

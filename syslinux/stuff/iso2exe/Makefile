@@ -43,18 +43,6 @@ tazboot.exe: boot.com
 	com2exe $< > $@
 	chmod +x $@
 
-OBJS = boot.o iso9660.o libdos.o bootlinux.o
-boot.com: $(OBJS)
-	$(BCC) $(BCCFLAGS) -o $@ $(OBJS) &&  upx --ultra-brute $@
-
-boot.o: boot.c iso9660.h bootlinux.h libdos.h
-
-bootlinux.o: bootlinux.c iso9660.h bootlinux.h
-
-iso9660.o: iso9660.c iso9660.h
-
-libdos.o: libdos.c libdos.h
-
 win32.res: win32.rc win32.ico
 	i586-pc-mingw32-windres $< -O coff -o $@
 
