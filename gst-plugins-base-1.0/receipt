@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="gst-plugins-base-1.0"
-VERSION="1.2.3"
+VERSION="1.10.1"
 SERIES="1.0"
 CATEGORY="multimedia"
 SHORT_DESC="GStreamer Base Plugins"
@@ -14,10 +14,10 @@ WGET_URL="${WEB_SITE}src/gst-plugins-base/$TARBALL"
 HOST_ARCH="i486 arm"
 
 DEPENDS="gstreamer-1.0 pango alsa-lib libogg libtheora libtheora-enc \
-libvorbis vorbis-tools udev xorg xorg-libXv xorg-libXvMC orc"
+libvorbis vorbis-tools udev xorg xorg-libXv xorg-libXvMC orc opus"
 BUILD_DEPENDS="gstreamer-1.0-dev pango-dev alsa-lib-dev libogg-dev \
 libtheora-dev libtheora-enc libvorbis-dev udev-dev xorg-libXv-dev \
-xorg-libXvMC-dev util-linux-uuid-dev orc-dev"
+xorg-libXvMC-dev util-linux-uuid-dev orc-dev opus-dev"
 
 # Arch install
 case "$SLITAZ_ARCH" in
@@ -35,6 +35,7 @@ compile_rules()
 	sysroot="/cross/arm/sysroot"
 	libs="/usr/lib"
 	incl="/usr/include"
+	sed '/set ERROR_C/d' -i configure
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
@@ -44,11 +45,12 @@ compile_rules()
 		--disable-debug \
 		--disable-gnome-vfs \
 		--disable-libvisual \
+		--disable-vorbisidec \
 		--enable-introspection=no \
 		--with-package-name="GStreamer Base Plugins ($SERIES)" \
 		--with-package-origin="http://www.slitaz.org/" \
-		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS && make install
+		$CONFIGURE_ARGS | grep -v 'vorbisidec' &&
+	make $MAKEFLAGS && make install 2>/dev/null
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
