@@ -1,0 +1,44 @@
+#!/bin/sh
+# Live status of the publishing on the Yandex.Disk
+# Aleksei Bobylev <al.bobylev@gmail.com>, 2016
+
+# i18n
+_() { gettext 'yandex-disk-helper' "$1"; }
+
+title="$(_ 'Yandex.Disk')"
+message="$(_ 'Please wait...')"
+tmpid='/tmp/yandex-disk-notify.id'
+
+# Display initial notification
+notify_id=$(notify-send -i 'yandex-disk' -p "$title" "$message")
+
+# Put the (filename and) notification id to tmp file
+echo -e "$1\t$notify_id" >> $tmpid
+
+# Wait a bit (max 3s: avoid endless loop) before `yandex-disk status` will
+# show 'Sync progress'
+while [ wait != '###' ]; do
+	LC_ALL=C yandex-disk status | fgrep -q 'Sync progress' && break
+	sleep 1
+	wait="$wait#"
+done
+
+# Update notification in loop
+while true; do
+	# Exit loop if 'Sync progress' (probably) gone
+	LC_ALL=C yandex-disk status | fgrep -q 'Sync progress' || break
+
+	# Get localized progress
+	progress=$(yandex-disk status | head -n1)
+	# Replace notification with the new info
+	notify-send -i 'yandex-disk' -r "$notify_id" "$title" "$progress"
+	sleep 1
+done
+
+# Wait 5s: after that default time notification will gone
+sleep 5
+
+# Remove id from tmp file
+sed -i "/\t$notify_id$/d" $tmpid
+# Remove file if it empty
+[ -s "$tmpid" ] || rm $tmpid

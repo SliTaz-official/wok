@@ -1,0 +1,19 @@
+#!/bin/sh
+# Unpublish file from Yandex.Disk: revoke sharing of the selected file
+# Aleksei Bobylev <al.bobylev@gmail.com>, 2016
+
+# i18n
+_() { gettext 'yandex-disk-helper' "$1"; }
+
+title="$(_ 'Yandex.Disk')"
+name=$(basename "$1")
+
+# Unpublish file/folder using yandex-disk CLI
+answer=$(yandex-disk unpublish "$1")
+
+# Display localized notification
+notify-send -i 'yandex-disk' "$title" "$name:\n$answer"
+
+# Reset GVFS attributes
+gvfs-set-attribute "$1" -t stringv metadata::emblems         none
+gvfs-set-attribute "$1" -t string  metadata::yandex-disk-uri ''

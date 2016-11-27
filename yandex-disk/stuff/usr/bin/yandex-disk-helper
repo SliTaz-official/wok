@@ -1,0 +1,210 @@
+#!/bin/sh
+# yandex-disk-helper - simple Yandex.Disk maintenance app
+# Aleksei Bobylev <al.bobylev@gmail.com>, 2016
+
+
+# Settings for usage statistics bar:
+
+barw='48'					# bar width in symbols
+bars=' '					# bar symbol
+barf='10'					# bar font (Pango markup)
+baru='background="#4277CA"'	# style for 'used' part (Pango markup)
+bart='background="#CA9342"'	# style for 'trash' part (Pango markup)
+bara='background="#CACACA"'	# style for 'available' part (Pango markup)
+
+
+# i18n
+_() { gettext 'yandex-disk-helper' "$1"; }
+
+tmpid='/tmp/yandex-disk-notify.id'
+
+title="$(_ 'Yandex.Disk')"
+
+# Get untranslated status
+statusC=$(LC_ALL=C yandex-disk status)
+
+
+# Draw colored bar: used, trash, available, and print used %
+
+bar() {
+	echo "$statusC" | awk -vwidth="$barw" -vsym="$bars" -vfont="$barf" \
+	-vusedstyle="$baru" -vtrashstyle="$bart" -vavailstyle="$bara" '
+	# Convert argument in human-readable form like "23.7 MB" into bytes
+	function bytes() {
+		split($0, a, ": ");
+		split(a[2], s, " ");
+		if (s[2] == "KB") { return (sprintf("%.0f", s[1] * 1024)); }
+		if (s[2] == "MB") { return (sprintf("%.0f", s[1] * 1024 * 1024)); }
+		if (s[2] == "GB") { return (sprintf("%.0f", s[1] * 1024 * 1024 * 1024)); }
+	}
+
+	# Draw bar using specified symbol
+	function bar(n) {
+		num = 1 * sprintf("%.0f", n);
+		out = "";
+		if (num > 0)
+			for (i = 1; i <= num; i++) out = out sym;
+		return out;
+	}
+
+	# Get sizes
+	/Total:/      { total = bytes(); }
+	/Used:/       { used  = bytes(); }
+	/Trash size:/ { trash = bytes(); }
+	/Available:/  { avail = bytes(); }
+
+	END {
+		# If daemon stopped, we got no values, then skip
+		if (total) {
+			# Calculate bar parts width in symbols
+			usedbar  = width * (used - trash) / total;
+			trashbar = width *      trash     / total;
+			availbar = width *      avail     / total;
+
+			usedpct  =  100  *       used     / total;
+
+			# Print complete bar
+			printf("<span font=\"%s\"><tt>", font);
+			printf("<span %s>%s</span>",     usedstyle,  bar(usedbar));
+			printf("<span %s>%s</span>",     trashstyle, bar(trashbar));
+			printf("<span %s>%s</span>",     availstyle, bar(availbar));
+			printf("</tt></span>");
+			printf(" %.1f %%", usedpct);
+		}
+	}
+'
+}
+
+
+# Localize 'GB' and 'MB' at the end of line
+
+gbmb() {
+	local GB=$(_ 'GB') MB=$(_ 'MB')
+	sed "s|GB$|$GB|;s|MB$|$MB|"
+}
+
+
+# Display Yad window with Yandex.Disk status
+
+status() {
+	version=$(yandex-disk -v | head -n1)
+	copyright=$(yandex-disk -v | tail -n1)
+
+	yandex-disk status | gbmb | \
+	yad --window-icon='yandex-disk' --center \
+		--title="$title" --width='500' --height='300' \
+		--image='yandex-disk' \
+		--text="\
+<span size='4000'> </span>
+<span size='x-large'>$version</span>
+<small>$copyright</small>
+
+$(bar)" \
+		--text-align='center' \
+		--text-info \
+		--button='gtk-preferences:2' \
+		--button='gtk-close'
+}
+
+
+# Display Yad window with Yandex.Disk preferences
+
+preferences() {
+	# Get the value of variable $dir
+	. "$HOME/.config/yandex-disk/config.cfg"
+
+	yad --window-icon='yandex-disk' --center \
+		--title="$title" --image='yandex-disk' --fixed \
+		--form --columns="2" \
+		--field="$(_ 'Reconfigure')!system-run:FBTN"           "$0 configure" \
+		--field="$(_ 'Start')!media-playback-start:FBTN"       "$0 start" \
+		--field="$(_ 'Stop')!media-playback-stop:FBTN"         "$0 stop" \
+		--field=" :LBL" "" \
+		--field="$(_ 'Open local folder')!folder:FBTN"         "pcmanfm $dir" \
+		--field="$(_ 'Open online folder')!folder-remote:FBTN" "$BROWSER https://disk.yandex.ru/" \
+		--button='gtk-close' \
+		>/dev/null
+}
+
+
+# Display Yad window when Yandex.Disk not configured yet
+
+firstrun() {
+	yad --window-icon='yandex-disk' --center \
+		--title="$title" --width='300' --image='yandex-disk' \
+		--text="<b>$(_ 'Welcome to Yandex.Disk!')</b>
+
+$(_ 'To use Yandex.Disk on this computer, you must first configure it.')" || exit 0
+
+	$0 configure
+	exit 0
+}
+
+
+# Check commands: start, stop, and configure
+
+case $1 in
+	start|stop)
+		answer=$(yandex-disk $1)
+		if [ -e "$tmpid" ]; then
+			# Replace existing notification
+			notify_id=$(head -n1 $tmpid)
+			notify-send -i 'yandex-disk' -r "${notify_id:-1}" -a tazweb "$title" "$answer"
+		else
+			# Make new notification
+			notify-send -i 'yandex-disk' -p -a tazweb "$title" "$answer" > "$tmpid"
+		fi
+
+		# Remove tmpid if it expired 5 sec (notification closed by timeout);
+		# leave it if it updated (new notification was replaced the existing)
+		# For example: press Stop, wait a second, press Start: there should be the single notification
+		touch "$tmpid"; sleep 1; tmp_anchor=$(mktemp); sleep 4
+		[ "$tmpid" -ot "$tmp_anchor" ] && rm "$tmpid"
+		rm "$tmp_anchor"
+
+		exit 0
+		;;
+
+	configure)
+		# Stop daemon before, because it will not get the same path instead
+		yandex-disk stop
+
+		# Run configuration in the terminal window
+		answer=$(terminal -t "$title" -e yandex-disk setup)
+
+		# Additional configuration in the YAD window
+		# Add bookmark if: checkbox checked and Finish pressed and bookmark absent yet
+		answer=$(yad --window-icon='yandex-disk' --center \
+			--title="$title" --image='yandex-disk' --fixed \
+			--form --always-print-result \
+			--field="$(_ 'Add folder to bookmarks'):CHK" "true" \
+			--button="$(_ 'Finish')")
+		[ $? -eq 0 ] || exit 0
+
+		case "$answer" in
+			*TRUE*)
+				. "$HOME/.config/yandex-disk/config.cfg"
+				bookmarks="$HOME/.config/gtk-3.0/bookmarks"
+				fgrep -q "$dir" "$bookmarks" && exit 0
+				echo "file://$dir $title" >> "$bookmarks"
+				;;
+		esac
+
+		exit 0
+		;;
+esac
+
+
+# Run without commands
+
+# Is Yandex.Disk already configured?
+[ ! -e "$HOME/.config/yandex-disk/iid" ] && firstrun
+
+# Display status
+status
+[ $? -ne 2 ] && exit 0
+
+# Button Preferences pressed
+preferences
+
+exit 0

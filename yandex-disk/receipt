@@ -1,0 +1,59 @@
+# SliTaz package receipt.
+
+PACKAGE="yandex-disk"
+VERSION="0.1.5.978"
+CATEGORY="misc"
+SHORT_DESC="Yandex.Disk keeps your files with you at all times"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="custom"
+WEB_SITE="https://disk.yandex.ru/"
+#TARBALL="$PACKAGE-$VERSION.deb"
+COOKOPTS="!extradesktops"
+
+DEPENDS="gcc-lib-base glibc-base zlib"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Get current (and the one) version
+	repo='http://repo.yandex.ru/yandex-disk/deb/pool/main/y/yandex-disk/'
+	url=$(wget -q -T10 -O- $repo | fgrep i386 | cut -d'"' -f2)
+	# for example, url='yandex-disk_0.1.5.978_i386.deb'
+
+	version=$(echo $url | cut -d'_' -f2)
+	# for example, version='0.1.5.978'
+	[ -n "$version" ] || exit 1
+
+	# Hot changing VERSION in this receipt
+	sed -i "/^VERSION=/s/.*$/VERSION=\"$version\"/" $WOK/$PACKAGE/receipt
+
+	TARBALL="$PACKAGE-$version.deb"
+
+	# Get current package
+	[ -s $SRC/$TARBALL ] || wget -O $SRC/$TARBALL "$repo$url"
+
+	# Extract filesystem from package
+	mkdir -p $install
+	dpkg-deb -x $SRC/$TARBALL $install
+
+	# Add SliTaz desktop integration
+	cp -a $stuff/usr $install
+
+	# Add translations for desktop integration
+	cd $stuff/po
+	make DESTDIR=$install install
+	make clean
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cook_copy_files yandex-disk copyright *.mo \
+		publish unpublish test status *.desktop yandex-disk-helper
+	cook_copy_icons
+}
+
+pre_remove()
+{
+	killall -q yandex-disk
+}

@@ -1,0 +1,62 @@
+#!/bin/sh
+# Publish file on the Yandex.Disk
+# Aleksei Bobylev <al.bobylev@gmail.com>, 2016
+
+# i18n
+_() { gettext 'yandex-disk-helper' "$1"; }
+
+# Read configuration
+. $HOME/.config/yandex-disk/config.cfg
+
+title="$(_ 'Yandex.Disk')"
+if [ -d "$1" ]; then
+	type="$(_ 'Folder:')"
+else
+	type="$(_ 'File:')"
+fi
+name=$(basename "$1")
+tmpid='/tmp/yandex-disk-notify.id'
+
+# Start notification in background
+/usr/libexec/yandex-disk/status "$1" &
+
+# Publish the file/folder using yandex-disk CLI
+answer=$(yandex-disk publish "$1")
+case $? in
+	0)	# OK
+		;;
+	*)	# Error
+		# Wait a bit for notification to share its id
+		sleep 1
+		# Get notification id
+		notify_id=$(fgrep "$1" $tmpid | cut -d$'\t' -f2)
+		# Replace the notification with the error message
+		notify-send --icon='dialog-error' -r ${notify_id:-999} \
+			"$title" "<b>$name:</b>\n$answer"
+		exit 1
+		;;
+esac
+
+# New file that copied to synced Yandex.Disk folder
+y="$dir/$(basename "$1")"
+# Set GVFS attributes
+gvfs-set-attribute "$1" -t stringv metadata::emblems            yandex-disk
+gvfs-set-attribute "$y" -t stringv metadata::emblems            emblem-shared
+gvfs-set-attribute "$y" -t string  metadata::yandex-disk-origin "$1"
+gvfs-set-attribute "$y" -t string  metadata::yandex-disk-uri    "$answer"
+
+# FIXME: PCManFM currently not update the emblem
+
+# Display YAD dialog where user can copy share URI or open it in default browser
+echo $answer | \
+yad \
+	--title="$title" \
+	--window-icon='yandex-disk' \
+	--image='yandex-disk' \
+	--center \
+	--width=400 \
+	--text="<b>$type</b> $name
+<b>$(gettext 'yandex-disk-helper' 'Share URL:')</b>" \
+	--text-info --show-url \
+	--button='gtk-open' --button='gtk-close' &&
+$BROWSER $answer
