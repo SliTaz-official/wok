@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="rhythmcat2"
+VERSION="1.9.5"
+COMMIT="cca12d7"
+CATEGORY="multimedia"
+SHORT_DESC="RhythmCat2 music player"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="https://github.com/supercatexpert/RhythmCat2"
+TARBALL="$PACKAGE-$COMMIT.tar.gz"
+WGET_URL="$WEB_SITE/archive/$COMMIT.tar.gz"
+
+DEPENDS="gst-plugins-base gtk+3 xorg-libXdamage"
+BUILD_DEPENDS="gstreamer-dev gst-plugins-base-dev gtk+3-dev curl-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	patch -p1 -i $stuff/rhythmcat2.patch
+	cp $stuff/ru.po $src/po
+
+	./configure \
+		--disable-gtk-doc-html \
+		--disable-introspection \
+		--with-native-plugins \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cook_copy_files RhythmCat2 *.so* *.PNG *.desktop *.mo
+}
