@@ -7,21 +7,6 @@
 #include "common.h"
 #include "iso9660.h"
 
-static void usage()
-{
-	puts("Usage: tazboot [[@commands]|[kernel=<bzimage>] \
-[initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] ...]\r\n\n\
-Defaults: tazboot kernel=bzImage auto\r\n\n\
-Examples for tazboot.cmd:\r\n\n\
-  bootfrom=\\isos\\slitaz-4.0.iso\r\n\
-  kernel=boot/bzImage\r\n\
-  initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz,\\slitaz\\extrafs.gz\r\n\
-  rw root=/dev/null vga=normal autologin\r\n\n\
-  kernel=\\slitaz\\elks\r\n\
-  root=/dev/bda1 ro\r\n");
-	exit(1);
-}
-
 #define MAXINITRD 10
 static struct initrd_state {
 	u32 ofs[MAXINITRD];
@@ -38,35 +23,38 @@ static void next_chunk(struct image_himem *m)
 	m->state++;
 }
 
+static u32 isofilesize4round()
+{
+	return (isofilesize+3)&-4;
+}
+
 static void addinitrd()
 {
-	if (initrd_state.cnt >= MAXINITRD) return;
-	initrd_state.size[initrd_state.cnt] = isofilesize;
-	initrd_state.ofs[initrd_state.cnt] = isofileofs;
-	initrd_state.cnt++;
-	initrd.size += (isofilesize+3)&-4;
+	struct initrd_state *p = &initrd_state;
+	if (p->cnt >= MAXINITRD) return;
+	p->size[p->cnt] = isofilesize;
+	p->ofs[p->cnt] = isofileofs;
+	p->cnt++;
+	initrd.size += isofilesize4round();
 }
 
 static void load_initrds()
 {
-	if (!initrd.size) return;
-	initrd.next_chunk = next_chunk;
-	initrd.fd = isofd;
-	initrd.state = 0;
-	next_chunk(&initrd);
+	struct image_himem *m = &initrd;
+	if (!m->size) return;
+	m->next_chunk = next_chunk;
+	m->fd = isofd;
+	m->state = 0;
+	next_chunk(m);
 	load_initrd();
 }
 
-static void pm_next_chunk(struct image_himem *m)
+static char *isokernel()
 {
-	if (!m->state++) m->chunk_size = m->size;
-}
-
-static void isokernel()
-{
-	pm.size = (isofilesize+3)&-4;
-	pm.fd = isofd;
-	pm.next_chunk = pm_next_chunk;
+	struct image_himem *m = &pm;
+	m->chunk_size = m->size = isofilesize4round();
+	m->fd = isofd;
+	return load_kernel();
 }
 
 char _cmdline[256];
@@ -91,8 +79,7 @@ static void bootiso(char **iso)
 		    isoopen("bzImage") >= 0	|| 	// SliTaz
 		    isoopen("vmlinuz") >= 0	||	// misc
 		    (isoopen("linux") >= 0 && ++isknoppix)) {
-			isokernel();
-			magic = kver2ul(load_kernel());
+			magic = kver2ul(isokernel());
 			break;
 		}
 	} while (isoopen("isolinux") >= 0);		// Knoppix
@@ -122,9 +109,9 @@ static void bootiso(char **iso)
 		if (isoopen(initrd) >= 0) {
 			addinitrd();
 		}
-		if (*init && lseek(isofd, 20L, SEEK_SET) != -1 &&
-		    read(isofd, &isofileofs, 4) == 4 &&
-		    read(isofd, &magic, 4) == 4) {
+		if (*init && lseek(isofd, 20L, SEEK_SET) != -1) {
+			read(isofd, &isofileofs, 4);
+			read(isofd, &magic, 4);
 			isofileofs &= 0xFFFFL;
 			isofilesize = magic & 0xFFFFL;
 			isofileofs -= 0xC0L + isofilesize;
@@ -133,9 +120,9 @@ static void bootiso(char **iso)
 		}
 		load_initrds();
 		strcat(_cmdline,init);
-		strcat(_cmdline," mode=");
+		strcatb(_cmdline,"mode=");
 		strcat(_cmdline,mode);
-		strcat(_cmdline," magic=");
+		strcatb(_cmdline,"magic=");
 		strcat(_cmdline,ultoa(magic));
 	}
 	if (isknoppix) {
@@ -163,47 +150,69 @@ int main(int argc, char *argv[])
 	chdirname(*argv);
 	if (argc < 2) {
 dousage:
-		usage();
+		die("Usage: tazboot [[@commands]|[-f][kernel=<bzimage>] \
+[initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] ...]\r\n\n\
+Defaults: tazboot kernel=bzImage auto\r\n\n\
+Examples for tazboot.cmd:\r\n\n\
+  bootfrom=\\isos\\slitaz-4.0.iso\r\n\
+  kernel=boot/bzImage\r\n\
+  initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz,\\slitaz\\extrafs.gz\r\n\
+  rw root=/dev/null vga=normal autologin\r\n\n\
+  kernel=\\slitaz\\elks\r\n\
+  root=/dev/bda1 ro\r\n");
 	}
-	for (int i=1; i < argc; i++) {
-		char *s=argv[i];
-		if (strhead(s,"kernel=") == 0)
-			kernel_name = s + 7;
-		if (strhead(s,"image=") == 0)
-			kernel_name = s + 6;
-		else if (strhead(s,"initrd=") == 0)
-			initrd_name = s + 7;
-		else if (strhead(s,"bootfrom=") == 0)
-			iso = s + 9;
-		else if (strhead(s,"iso=") == 0)
-			iso = s + 4;
-		else if(strhead(s,"vga=") == 0) {
-			s+=4;
-			const char c = *s|0x20;
-			if (c == 'a') vid_mode = -3;
-			else if (c == 'e') vid_mode = -2;
-			else if (c == 'n') vid_mode = -1;
-			else vid_mode = strtol(s);
+	for (int i=0;;) {
+		char *s=*++argv;
+		i++;
+		if (!s) break;
+		if (strhead(s,"kernel=") == 0) {
+			s += 7;
+	set_kernel:
+			kernel_name = s;
 		}
-		else if(strhead(s,"-f") == 0) {
+		else if (strhead(s,"image=") == 0) {
+			s += 6;
+			goto set_kernel;
+		}
+		else if (strhead(s,"initrd=") == 0) {
+			s += 7;
+			initrd_name = s;
+		}
+		else if (strhead(s,"bootfrom=") == 0) {
+			s += 9;
+	set_iso:
+			iso = s;
+		}
+		else if (strhead(s,"iso=") == 0) {
+			s += 4;
+			goto set_iso;
+		}
+		else if(strhead(s,"vga=") == 0) {
+			s += 4;
+			vid_mode = strtol(s);	// support normal, extended & ask
+		}
+		else if((*(u16 *)s|0x2002) == 0x662F) { // -F /f
 			skip_xmmalloc++;
+		}
+		else if(i == 1 && fileattr(s) != -1) {
+			goto set_kernel;
 		}
 		else {
 			if(strhead(s,"root=") == 0) {
-				root_dev = strtol(s+5);
+				s += 5;
+				root_dev = strtol(s);
 			}
 			if(strhead(s,"mem=") == 0) {
-				topmem = strtol(s+4);
+				s += 4;
+				topmem = strtol(s);
 			}
-			if (_cmdline[0]) strcat(_cmdline," ");
-			strcat(_cmdline,s);
+			strcatb(_cmdline,*argv);
 		}
 	}
 	if (iso && isoreset(iso) >= 0) {
 		char *s = (char *) initrd_name;
 		if (isoopen((char *) kernel_name) >= 0) {
 			isokernel();
-			load_kernel();
 		}
 		if (s) {
 			while (*s) {

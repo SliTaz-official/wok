@@ -12,6 +12,7 @@
 
         segment _DATA byte public use16 'DATA'
 msg_badcpu      db      "I need 386+ CPU in real mode or under VCPI manager",0
+msg_badmapping  db      "VCPI: low 640k: need 1:1 mapping",0
         ends    _DATA
 
         segment _TEXT byte public use16 'CODE'
@@ -27,7 +28,7 @@ msg_badcpu      db      "I need 386+ CPU in real mode or under VCPI manager",0
         proc    _is_vm86 near
 
 ; Check for oldies
-		mov	ax, 0F000h
+		mov	ah, 0F0h
 		pushf
 		push	ax		; < 286 : flags[12..15] are forced 1
 		popf			; = 286 : flags[12..15] are forced 0
@@ -64,14 +65,14 @@ label   check_vcpi near
                 mov     ds,[word 67h*4+2]
                 cmp     [dword 10+4],'0XXX'
                 jne     @@skip
-                mov     eax,[dword 10]
-                cmp     eax,'XMME'
-                je      @@skip
-        ; this also works (as told by <J.S.Peatfield@damtp.cambridge.ac.uk>)
-                cmp     eax,'QMME'
+                mov     eax,'XMME'
+                xor     eax,[dword 10]
+        ; QMME also works (as told by <J.S.Peatfield@damtp.cambridge.ac.uk>)
+                shl     eax,8
 @@skip:
                 pop     ds
                 jne     @@no_vcpi
+
 ; Check emm manager status and version
                 mov     ah,40h          ; get status
                 int     67h
@@ -101,11 +102,18 @@ label   check_vcpi near
 @@no_vcpi:
 		mov	bx,offset msg_badcpu
                 extrn   die:near
+godie:
 		jmp	near die
 @@386vcpi:
 		mov	[_vcpi],al
-                extrn	@init_vcpi$qv:near
-                jmp	near @init_vcpi$qv
+                extrn   prepare_vcpi:near
+		call	prepare_vcpi
+;    get_vcpi_interface() || die("VCPI: low 640k: need 1:1 mapping");
+                ;extrn   _get_vcpi_interface:near
+		;call	_get_vcpi_interface
+		mov	bx,offset msg_badmapping
+		jz	godie
+		ret
 
         endp    _is_vm86
 
@@ -116,16 +124,26 @@ label   check_vcpi near
         global  dos_shutdown:near
         proc    dos_shutdown near
 
-;TODO NO386
 dos_shutdown:
-		pusha
+		ifndef	NO386
+		;pusha
+		else
+		;push	bp si di
+		endif
 		xor	bx,bx
 		mov	ds,bx
+		ifndef	NO386
 		push	[dword bx+4]		; save step
 		mov	ax,sp
 		push	ss
 		push	ax
 		pop	[dword cs:sssp]
+		else
+		push	[word bx+6]	
+		push	[word bx+4]		; save step
+		mov	[word cs:sssp],sp
+		mov	[word cs:sssp+2],ss
+		endif
 		;cmp	[byte bx+7],0F0h
 		;jnc	notdos
 		mov	[word bx+4],offset step19
@@ -150,11 +168,24 @@ step19:
 		pop	bx
 		jne	doiret
 notdos:
+		ifndef	NO386
 		lss	sp,[dword cs:sssp]
+		else
+		lds	bx,[dword cs:sssp]
+		push	ds
+		pop	ss
+		mov	sp,bx
+		endif
 		xor	bx,bx
 		mov	ds,bx
+		ifndef	NO386
 		pop	[dword bx+4]		; restore step
-		popa
+		;popa
+		else
+		pop	[word bx+4]		; restore step
+		pop	[word bx+6]
+		;pop	di si bp
+		endif
 		push	cs
 		pop	ds
 		ret
@@ -163,22 +194,20 @@ notdos:
 
 
 ;***************************************************************
-;void memcpy32(u16 dstseg,u32 dstofs,u16 srcseg,u32 srcofs,u32 size);
+;void memcpy32(u32 dstofs,u16 srcseg,u32 srcofs,u32 size);
 ;***************************************************************
 ;****** Uses:   Flags
 ;***************************************************************
         global  _memcpy32:near
         proc    _memcpy32 near
 
-;TODO NO386
 ; rm32,imm16 helper
 macro   addzx_e rm,i
         db      66h
         add     rm,i
         dw      0
 endm
-                arg     dstseg  :word,  \
-                        dstofs  :dword, \
+                arg     dstofs  :dword, \
                         srcseg  :word,  \
                         srcofs  :dword, \
                         sz      :dword  = PARAM_SIZE
@@ -187,97 +216,114 @@ endm
                         oldGDTR :pword  = TEMP_SIZE
 
 ;****** Init ***************************************************
-                enter   TEMP_SIZE,0
+		push	bp
+		mov	bp,sp
+		sub	sp,TEMP_SIZE
                 pushf
-                push    es ds esi edi
+		cld
+                push    ds es
+
+			ifndef	NO386
+
+                pushad
                 movzx   esi,[srcseg]
                 shl     esi,4
-                add     esi,[srcofs]
-                movzx   edi,[dstseg]
-                shl     edi,4
-                add     edi,[dstofs]
+                add     [srcofs],esi
+                mov     esi,[srcofs]
+                mov     edi,[dstofs]
+
 	ifndef	pm_only
-		mov	eax,00100000h
-		cmp	esi,eax
-                jnb     pmcopy
-		cmp	edi,eax
-                jnb     pmcopy
+		mov	eax,esi
+		or	eax,edi
+		shr	eax,20			; >1mb ?
+                jnz     pmcopy
 		mov	eax,esi
 		shr	eax,4
-		mov	ds,ax
 		mov	edx,edi
 		shr	edx,4
 @@movlp:
 		mov	ds,ax
 		mov	es,dx
-		and	si,0Fh
-		and	di,0Fh
-		mov	cx,08h
-		cld
-            rep movsw
 		inc	ax
 		inc	dx
-                sub     [sz],10h
+		xor	ecx,ecx
+		mov	cl,0Fh
+		and	si,cx
+		and	di,cx
+		inc	cx
+                sub     [sz],ecx
+            rep movsb
                 ja	@@movlp
 		jmp	done
 	endif
 pmcopy:
+			else
+
+		push	si
+		xor	bx,bx
+		xor	dx,dx
+		xor	si,si
+		mov	ax,[bp+si+8]		; srcseg
+		call	near N_LXLSH@4
+		add	[bp+si+10],ax		; srcofs lo
+		adc	[bp+si+10+2],dx		; srcofs hi
+@@2flat:
+		mov	ax,[bp+si+10]		; srcofs, dstofs lo
+		mov	dx,[bp+si+10+2]		; srcofs, dstofs hi
+		call	near N_LXURSH@4
+		or	bx,dx			; >=1mb flag
+		push	ax			; srcseg, dstseg
+		xor	si,-6
+		jnz	@@2flat
+		pop	dx			; dstseg
+		pop	ax			; srcseg
+		or	bx,bx			; <1mb ?
+                jnz     pmcopy
+		push	di
+@@movlp:
+		mov	ds,ax
+		mov	es,dx
+		inc	ax
+		inc	dx
+		mov	cl,0Fh
+		mov	si,cx
+		mov	di,cx
+		and	si,[word srcofs]
+		and	di,[word dstofs]
+		inc	cx
+                sub     [word sz],cx
+            rep movsb
+		jae	@@movlp
+		dec	[word sz+2]
+                jns	@@movlp			; mov 1-16 more bytes...
+		pop	di si
+		jmp	done16
+pmcopy:
+		pop	si
+                pushad
+                mov     esi,[srcofs]
+                mov     edi,[dstofs]
+
+			endif
+
                 mov     ecx,[sz]
+                jecxz   done
+
+		smsw	ax
+		test	al,1
+		jz	@@real_mode
+; Note: bp points to std stack frame now. bp will be passed to
+; pm routine. This allows params to be passed on stack
+		extrn	do_memcpy_vcpi:near
+                push    offset do_memcpy_vcpi
+		extrn	call_pm_routine:near
+                call    near call_pm_routine ; Call pm copy routine via vcpi pm
+                pop     ax
+		jmp	done
+@@real_mode:
 		mov	dx,-1
 
-	ifdef	keep_int15
-                jecxz   godone
-		test	[_vcpi],dl
-		jne	with_movsw
-
-		push	ss
-		pop	es
-		inc	ecx
-		shr	ecx,1
-		mov	bx,9318h
-clear:
-		push	0
-		dec	bl
-		jnz	clear
-  		xchg	eax,esi
-  		mov	si,sp
-		mov	[si+12h],eax
-		mov	[si+1Ah],edi
-		mov	[si+10h],dx
-		mov	[si+18h],dx
-		mov	edi,ecx
-		mov	dh,93h
-		xchg	bx,[si+14h]
-		xchg	dx,[si+1Ch]
-mvlp:
-		mov	[si+14h],bl
-		mov	[si+17h],bh
-		mov	[si+1Ch],dl
-		mov	[si+1Fh],dh
-		xor	ecx,ecx
-		mov	ch,80h
-		sub	edi,ecx
-		pushf
-		jnc	domv
-		add	ecx,edi
-domv:
-	;push	bx dx si edi
-		mov	ah,87h
-		int	15h
-	;pop	edi si dx bx
-		inc	bx
-		inc	dx
-		popf
-		jnc	mvlp
-		add	sp,30h
-godone:
-		jmp	done
-	else
-                jecxz   done
-	endif
-
 with_movsw:
-                cld
                 cmp     esi,edi
                 jae     @@do_copy
                 add     esi,ecx         ;src<dst: we must do
@@ -311,7 +357,6 @@ with_movsw:
                 db      66h     ;operand width override for ecx
                 db      67h     ;address width override for esi/edi
             rep movsb
-                cld
 
 ;****** Return to rm *******************************************
                 dec     ax              ;CR0_PE off
@@ -322,10 +367,12 @@ with_movsw:
 ;****** Return *************************************************
                 lgdt    [oldGDTR]
 done:
-                cld
-                pop     edi esi ds es
+                popad
+done16:
+                pop     es ds
                 popf
-                leave
+		mov	sp,bp
+		pop	bp
                 ret
 
 ;****** Const data *********************************************
@@ -343,6 +390,39 @@ GDT             dd      ?,?
 _vcpi		db	0
 
         endp    _memcpy32
+
+		ifdef	NO386
+        global  N_LXURSH@:near
+        global  N_LXURSH@4:near
+        proc    N_LXURSH@4 near
+
+		mov	cl,4
+N_LXURSH@:
+		mov	ch,0
+@@loop:
+		shr	dx,1
+		rcr	ax,1
+		loop	@@loop
+		ret
+
+        endp    N_LXURSH@4
+
+        global  N_LXLSH@:near
+        global  N_LXLSH@4:near
+        proc    N_LXLSH@4 near
+
+		mov	cl,4
+N_LXLSH@:
+		mov	ch,0
+@@loop:
+		shl	ax,1
+		rcl	dx,1
+		loop	@@loop
+		ret
+
+        endp    N_LXLSH@4
+
+		endif
 
         ends    _TEXT
 

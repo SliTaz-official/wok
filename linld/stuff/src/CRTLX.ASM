@@ -22,74 +22,31 @@ ultoabuf	db	12	dup (?)
         segment _TEXT byte public use16 'CODE'
 
 ;***************************************************************
-;char* strcpy(const char* a,const char* b);
-;***************************************************************
-        global  _strcpy:near
-        proc    _strcpy near
-
-		mov	dl,0
-cat:
-		pop	cx			;caller return address
-                pop	ax			; a
-                pop	bx			; b
-                push	bx
-                push	ax
-                push	cx
-                push	ax si
-                xchg	ax,si
-		shr	dl,1
-		jnc	@@nocat
-@@catlp:
-		lodsb
-		cmp	al,0
-                jne	@@catlp
-		dec	si
-@@nocat:
-                sub	bx,si
-@@cpylp:
-                mov	al,[bx+si]
-		test	dl,1
-		jnz	@@nocpy
-                mov	[si],al
-                inc	si
-		cmp	al,0
-                jne	@@cpylp
-                pop	si ax
-                ret
-@@nocpy:
-                sub	al,[si]
-		jnz	@@out
-                lodsb
-		cmp	al,0
-                jne	@@cpylp
-@@out:
-		cbw
-                pop	si dx
-                ret
-
-        endp    _strcpy
-
-
-;***************************************************************
-;char* strcat(const char* a,const char* b);
-;***************************************************************
-        global  _strcat:near
-        proc    _strcat near
-
-		mov	dl,1
-                jmp	cat
-
-        endp    _strcat
-
-
-;***************************************************************
 ;int strcmp(const char* a,const char* b);
 ;***************************************************************
         global  _strcmp:near
         proc    _strcmp near
 
-		mov	dl,2
-                jmp	cat
+		pop	ax			;caller return address
+                pop	cx			; a
+                pop	bx			; b
+                push	bx
+                push	cx
+                push	ax
+                push	si
+                mov	si,cx
+                sub	bx,si
+@@lp:
+                mov	al,[bx+si]
+                sub	al,[si]
+		jnz	@@out
+                lodsb
+		cmp	al,0
+                jne	@@lp
+@@out:
+		cbw
+                pop	si
+                ret
 
         endp    _strcmp
 
@@ -101,31 +58,31 @@ cat:
         proc    _strstr near
 
 		pop	ax			;caller return address
-                pop	bx			; a
+                pop	cx			; a
                 pop	dx			; b
                 push	dx
-                push	bx
+                push	cx
                 push	ax
-                push	di
+                push	si
 @@loop:
 		xor	ax,ax
-		cmp	[bx],al
-		jz	@@end
-		mov	cx,bx
-		mov	di,dx
-		sub	di,bx
+		mov	si,cx
+		cmp	[si],al			; *a
+		jz	@@end			; return ax = NULL
+		mov	bx,dx
+		sub	bx,si
 @@match:
-		mov	al,[bx+di]
-		or	al,al
+		or	ah,[bx+si]		; *b
 		jz	@@found
-		inc	bx
-		cmp	al,[bx-1]
-		jnz	@@loop
-		jmp	@@match
+		lodsb
+		sub	ah,al
+		jz	@@match
+		inc	cx
+		jmp	@@loop
 @@found:
 		xchg	ax,cx
 @@end:
-                pop	di
+                pop	si
 		ret
 
         endp    _strstr
@@ -369,30 +326,6 @@ chdir:
 		ret
 
         endp    _kver2ul
-
-        global  N_LXURSH@:near
-        proc    N_LXURSH@ near
-
-		mov	ch,0
-@@loop:
-		shr	dx,1
-		rcr	ax,1
-		loop	@@loop
-		ret
-
-        endp    N_LXURSH@
-
-        global  N_LXLSH@:near
-        proc    N_LXLSH@ near
-
-		mov	ch,0
-@@loop:
-		shl	ax,1
-		rcl	dx,1
-		loop	@@loop
-		ret
-
-        endp    N_LXLSH@
 
         ends    _TEXT
 

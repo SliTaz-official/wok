@@ -5,28 +5,6 @@
 #include "crtl.h"
 #include "common.h"
 
-static struct image_himem image;
-static const char msg_cmdline[] = "Error reading cl=@file";
-static char* read_cmdline_or_die(const char* fn) {
-    image.errmsg = msg_cmdline;
-    open_image(fn, &image);
-    u16 size=image.size;
-    char *cmdline_buf;
-    if(size>=PAGE_SIZE ||
-       !(cmdline_buf=(char *)malloc(size)) ||
-       read(image.fd, cmdline_buf, size) != size)
-        die(msg_cmdline);
-    // Strip any trailing cr/lf
-    char *p=cmdline_buf+size;
-    char c='\0';
-    do {
-        // Replace all other cr/lfs with spaces
-        if(*--p>=' ') c=' ';
-	else *p = c;
-    } while (p>cmdline_buf);
-    return cmdline_buf;
-}
-
 const char* kernel_name = "bzImage";
 const char* initrd_name;
 const char* cmdline = "auto";
@@ -40,13 +18,14 @@ inline void syntax() {
     die("Syntax:" NL
         "LINLD [image=file] [initrd=files] [vga=mode] [root=num] [mem=max] [cl=cmdline]" NL
         "vga mode: ask,extended,normal or dec/oct/hex number" NL
+        "-f force" NL
         "Defaults:" NL
         "\timage=bzImage" NL
         "\tinitrd,vga,root=(void)" NL
         "\tmem=256m" NL
         "\tcl=auto" NL
         "Use quotes: \"cl=...\" if you need spaces in cmdline" NL
-        "Use cl=@filename to take cmdline from file"
+        "Use cl=@filename to get it from a file"
 #if 1
         NL NL "Examples:" NL
         "\tlinld initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz \"cl=rw root=/dev/null video=-32\""
@@ -55,59 +34,88 @@ inline void syntax() {
     );
 }
 
+static char _cmdline[256];
 int main(int argc, char *argv[]) {
     // Believe it or not - this enables A20
     // on my box! Must be DOS in HMA...   -vda
     puts("LINLD v" VERSION_STR "+");
 
-    // Parse command line
-
     if(argc<2) {
 dosyntax:
         syntax();
     }
-    {for(int i=1;i<argc;i++) {
-	char *s=argv[i];
+
+    // Parse command line
+    {for (char i=0;;) {
+	char *s=*++argv;
+	i++;
+	if (!s) {
+	    puts(load_kernel());
+	    load_initrd();
+	    boot_kernel();
+	}
         if(strhead(s,"image=") == 0) {
-            kernel_name=s+6;
+	    s+=6;
+            kernel_name=s;
         }
         else if(strhead(s,"initrd=") == 0) {
-            initrd_name = s+7;
+	    s+=7;
+            initrd_name=s;
+        }
+        else if((*(u16 *)s|0x2002) == 0x662F) { // -F /f
+            extern int skip_xmmalloc;
+            skip_xmmalloc++;
+        }
+        else if(strhead(s,"vga=") == 0) {
+	    s+=4;
+            vid_mode = strtol(s);	// support normal, extended & ask
         }
         else if(strhead(s,"cl=") == 0) {
-            cmdline=s+3;
-            if (cmdline[0] == '@') {
-                cmdline=read_cmdline_or_die(cmdline+1);
+            cmdline=s+=3;
+            if (*s == '@') {
+		static struct image_himem image;
+		char c;
+
+		s++;
+		image.errmsg = "Error in cl=@file";
+		open_image(s, &image);
+		cmdline=s=(char *)malloc_or_die(image.size);
+		s+=image.size;
+		read(image.fd, (void *)cmdline, image.size);
+		// Strip any trailing cr/lf
+		c='\0';
+		do {
+			// Replace all other cr/lfs with spaces
+			s--;
+			if(*s>=' ') c=' ';
+			else *s = c;
+		} while (s>cmdline);
                 puts("Kernel command line:");
                 puts(cmdline);
             }
         }
-        else if(strhead(s,"vga=") == 0) {
-	    s+=4;
-	    const char c = *s|0x20;
-            if (c == 'a') vid_mode = -3;
-            else if (c == 'e') vid_mode = -2;
-            else if (c == 'n') vid_mode = -1;
-            else vid_mode = strtol(s);
-        }
         else if(strhead(s,"root=") == 0) {
-            root_dev = strtol(s+5);
+	    s+=5;
+            root_dev = strtol(s);
+	    goto addincmdline;
         }
         else if(strhead(s,"mem=") == 0) {
-            topmem = strtol(s+4);
+	    s+=4;
+            topmem = strtol(s);
+	    goto addincmdline;
         }
-        else if(strhead(s,"-f") == 0) {
-            extern int skip_xmmalloc;
-            skip_xmmalloc++;
+        else if(cmdline == (const char *) _cmdline) {
+addincmdline:
+	    strcatb(_cmdline,*argv);
         }
-        else
-            goto dosyntax;
+	else if(i == 1 && fileattr(s) != -1) {
+            kernel_name = s;
+	    cmdline = (const char *) _cmdline;
+        }
+	else
+	    goto dosyntax;
     }}
 
-    puts(load_kernel());
-    load_initrd();
-    boot_kernel();
-
     // Let compiler be happy
-    return _AX;
+    // return _AX;
 }

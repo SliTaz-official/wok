@@ -39,14 +39,14 @@
 		mov	bx,[word _pm+2+2]	; get pm->fallback high word
 		; self move
 		cld
-	;	push	9940h			; 5120 bytes for cmdline
-	push	9820h			; 512 bytes for cmdline
-		pop	es			; min 1024 bytes for stack
-		xor	si,si			;  A000 -9400 -0800(>movedend)
+		push	9900h			; 4096 bytes for cmdline
+	;push	9820h			; 512 bytes for cmdline
+		pop	es			; min 2048 bytes for stack
+		xor	si,si			;  A000 -9000 -0800(>movedend)
 		xor	di,di			; set ZF
-	;	mov	cx,offset movedend
+		mov	cx,offset movedend
         global  _bss_end:byte
-	mov	cx,offset _bss_end
+	;mov	cx,offset _bss_end
 		rep
 		  movsb
 		push	es
@@ -62,12 +62,17 @@ isbzimage:
 		jnc	nomove
 		push	cs
 		pop	ds
+		push	bx
 		call	near dos_shutdown
+		;in	al,70h
+		;or	al,80h			; disable NMI
+		;out	70h,al
+		pop	bx
 		; move zImage pm
 		mov	ax,8
 		cwd
 		cmp	bx,ax
-		jnb	bufhigh
+		ja	bufhigh
 		sub	ax,bx
 		inc	ax
 bufhigh:
@@ -78,10 +83,9 @@ bufhigh:
 		push	dx			; srcseg=0
 		push	1			; dst
 		push	dx			;    ofs=64k
-		push	dx			; dstseg=0
 		extrn   _memcpy32:near
 		call	_memcpy32
-		add	sp,16
+		add	sp,14
 
 		ifndef  noelks
 		push	ss

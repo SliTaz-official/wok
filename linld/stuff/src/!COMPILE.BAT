@@ -1,9 +1,9 @@
 path ..\BC31;%PATH%
 call !clean.bat
-tasm > help.log
-bcc > help2.log
-tlink > help3.log
-tasm /l /m *.asm > asm.log
+tasm /h > helptasm.log
+bcc > helpbcc.log
+tlink > helptlink.log
+tasm /la /m *.asm > asm.log
 rem @pause
 bcc @bccopt.opt -S -mt *.cpp
 tasm /l /m load.asm

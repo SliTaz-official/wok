@@ -60,26 +60,44 @@ xmm_handler	dd	?
 @@gotit:
 		call	[xmm_handler]
                 ret
+xmm_fail:
+                xor     ax,ax
+                cwd
+                retf
+
         endp    xmm_driver
 
 
 ;***************************************************************
-;u32 xmm_alloc(void* drv, u32 size)
+;void xmm_alloc(struct image_himem *m)
+;struct image_himem {
+; 0    int fd;
+; 2    u32 fallback;
+; 6    u32 size;
+;10    u32 remaining;
+;14    u32 buf;
+;18    u32 *bufv;
+;20    char *errmsg;
+;22    u32 chunk_size;
+;26    void (*next_chunk)(struct image_himem *);
+;28    u16 state;
+;30    u16 fd2close;
+;};
 ;***************************************************************
         global  _xmm_alloc:near
         proc    _xmm_alloc near
 
+                pop     ax
                 pop     bx
+                push    bx
+                push    ax
 		ifndef	NO386
-                pop     edx
-                push    edx
+		mov	edx,[bx+6]		; m->size
                 dec     edx
                 shr     edx,10          ; to Kb
 		else
-                pop     ax
-                pop     dx
-                push    dx
-                push    ax
+		mov	ax,[bx+6]		; lo m->size
+		mov	dx,[bx+8]		; hi m->size
 		sub	ax,1
 		sbb	dx,0
 		mov	cx,10
@@ -89,25 +107,25 @@ xmm_handler	dd	?
 		loop	@@tokblp
 		endif
                 inc     dx
-                push    cs
-                push    bx
+		push	bx
                 mov     ah,09h          ;allocate blk
                 call    xmm_driver      ;
                 dec     ax
-                jnz     @@err
+                jnz     @@goerr
                                         ;now: dx=handle of the blk
                 mov     ah,0Ch          ;lock blk
                 call    xmm_driver      ;
                 dec     ax
                                         ;now: dx:bx=addr of blk
                 xchg    ax,bx
-                jz      @@ok
+@@goerr:
+		pop	bx
+                jnz     @@err
+		mov	[bx+14],ax	; lo m->buf
+		mov	[bx+16],dx	; hi m->buf
 @@err:
-xmm_fail:
-                xor     ax,ax
-                cwd
-@@ok:
-                retf
+                ret
+
         endp    _xmm_alloc
 
         ends    _TEXT

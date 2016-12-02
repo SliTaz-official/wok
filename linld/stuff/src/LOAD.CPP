@@ -43,23 +43,8 @@
 00000000+------------------------+
 */
 
-struct first1k_t {
-                            // these two set by rm setup:
-    u16     curr_curs;      // 0000 saved cursor position
-    u16     ext_mem_size;   // 0002 extended memory size in Kb (from int 0x15 fn 0x88)
-    u8      pad00[0x20-4];
-                            // old-style cmdline (not used in LINLD (yet?))
-    u16     cl_magic;       // 0020 commandline magic number (=0xA33F)
-    u16     cl_ofs;         // 0022 commandline offset
-    u8      pad10[0x80-0x24];
-                            // these two set by rm setup:
-    u8      hd0_disk_par[16]; // 0080 hd0-disk-parameter from intvector 0x41
-    u8      hd1_disk_par[16]; // 0090 hd1-disk-parameter from intvector 0x46
-    u8      pad20[0x01e0-0xa0];
-                            // this is set by rm setup:
-    u32     alt_mem_size;   // 01E0 extended memory size in Kb (from int 0x15 fn 0xe801)
-    u8      pad28[0x01f1-0x1e4];
-
+struct kernelparams_t {
+    u8      pad0;
     u8      setup_sects;    // 01F1 The size of the setup in sectors
                             //      boot sector is NOT included here
     u16     ro_flag;        // 01F2 If set, the root is mounted readonly
@@ -101,6 +86,25 @@ struct first1k_t {
                             // int 0x15 fn 0xe820
 }; //__attribute((packed));
 
+struct first1k_t {
+                            // these two set by rm setup:
+    u16     curr_curs;      // 0000 saved cursor position
+    u16     ext_mem_size;   // 0002 extended memory size in Kb (from int 0x15 fn 0x88)
+    u8      pad00[0x20-4];
+                            // old-style cmdline (not used in LINLD (yet?))
+    u16     cl_magic;       // 0020 commandline magic number (=0xA33F)
+    u16     cl_ofs;         // 0022 commandline offset
+    u8      pad10[0x80-0x24];
+                            // these two set by rm setup:
+    u8      hd0_disk_par[16]; // 0080 hd0-disk-parameter from intvector 0x41
+    u8      hd1_disk_par[16]; // 0090 hd1-disk-parameter from intvector 0x46
+    u8      pad20[0x01e0-0xa0];
+                            // this is set by rm setup:
+    u32     alt_mem_size;   // 01E0 extended memory size in Kb (from int 0x15 fn 0xe801)
+    u8      pad28[0x01f0-0x1e4];
+    struct kernelparams_t params;
+}; //__attribute((packed));
+
 #if sizeof(first1k_t)!=0x400
 #error BUG: Bad first1k
 #endif
@@ -116,7 +120,7 @@ struct image_himem initrd;
 static void memcpy_image(struct image_himem *m) {
     if (m->fallback != m->buf)
         memcpy32(
-            0, m->fallback, // dst seg,ofs
+            m->fallback,    // dst seg,ofs
             0, m->buf,      // src seg,ofs
             m->size         // size
         );
@@ -152,7 +156,7 @@ void far last_ditch() {
         // Move kernel
         // 'Gathering' copy in chunks of PAGE_SIZE
         // No risk of overlapping: kernel is copied from above to 1m mark
-        pm.size = PAGE_SIZE;
+        pm.size = initrd.size = PAGE_SIZE;
         u32 *p = pm.bufv;
         if (p) while(*p) {
             pm.buf = *p;
@@ -167,7 +171,6 @@ void far last_ditch() {
             // (overlapping still can happen with more than 256mb ram)
             // (generic solution for this overwrite problem, anyone?)
             p=initrd.bufv;
-            initrd.size = PAGE_SIZE;
             do {
                 p++; initrd.fallback+=PAGE_SIZE;
             } while(*p);
@@ -216,7 +219,9 @@ char* load_kernel() {
     char *version_string;
   {
     struct first1k_t *first1k;
+    struct kernelparams_t *kernelparams;
     first1k = (first1k_t*) (rm_buf = malloc_or_die(_32k));
+    kernelparams = &first1k->params;
    {
     u16 rm_seek;
 
@@ -226,7 +231,7 @@ char* load_kernel() {
         die(kernel_file_error);
     }
 
-    if(!first1k->setup_sects) {
+    if(!kernelparams->setup_sects) {
 #if 1
         if(* (int *) &first1k->pad10[0x3F-0x24] == 0x3AE8) {
             lseek(pm.fd,rm_seek=0x200,SEEK_SET);
@@ -234,10 +239,10 @@ char* load_kernel() {
         }
         else
 #endif
-        first1k->setup_sects=4;
+        kernelparams->setup_sects=4;
     }
-    rm_size = 0x200*(first1k->setup_sects+1); // 0th sector is not counted there
-    if(rm_size>_32k || first1k->boot_flag != 0xAA55)
+    rm_size = 0x200*(kernelparams->setup_sects+1); // 0th sector is not counted there
+    if(rm_size>_32k || kernelparams->boot_flag != 0xAA55)
         die("It's not a kernel");
     heap_top = rm_buf+rm_size;  // <*>
 
@@ -251,15 +256,15 @@ char* load_kernel() {
 
     // Tell rm loader some info
 
-    if(vid_mode) first1k->vid_mode = vid_mode;
-    if(root_dev) first1k->root_dev = root_dev;
+    if(vid_mode) kernelparams->vid_mode = vid_mode;
+    if(root_dev) kernelparams->root_dev = root_dev;
     version_string = 0;
 
 #if 1
-    if(first1k->header == HdrS) { // starting linux 1.3.73
-	if(first1k->loadflags & 1) {
+    if(kernelparams->header == HdrS) { // starting linux 1.3.73
+	if(kernelparams->loadflags & 1) {
 #else
-    if((first1k->header != HdrS) || (first1k->loadflags & 1) == 0)
+    if((kernelparams->header != HdrS) || (kernelparams->loadflags & 1) == 0)
         die("I can't load bzImage low");
     {
         {
@@ -270,23 +275,23 @@ char* load_kernel() {
             hook_int15_88();
 
             // * will be called just before rm -> pm
-            first1k->realmode_switch_ofs = ofs(last_ditch);
-            first1k->realmode_switch_seg = seg(last_ditch);
+            kernelparams->realmode_switch_ofs = ofs(last_ditch);
+            kernelparams->realmode_switch_seg = seg(last_ditch);
         }
-        if(first1k->kernel_version)
-            version_string = (char *) first1k+first1k->kernel_version+0x200;
-        first1k->type_of_loader = 0xff; // kernel do not know us (yet :-)
-        if(first1k->version >= 0x201) {
+        if(kernelparams->kernel_version)
+            version_string = (char *) first1k+kernelparams->kernel_version+0x200;
+        kernelparams->type_of_loader = 0xff; // kernel do not know us (yet :-)
+        if(kernelparams->version >= 0x201) {
             // * offset limit of the setup heap
             //   heap_end_ptr appears to be relative to the start of setup (ofs 0x0200)
-            first1k->heap_end_ptr = _32k-0x0200;
-            first1k->loadflags |= 0x80; // says to rm loader it's ok to use heap
+            kernelparams->heap_end_ptr = _32k-0x0200;
+            kernelparams->loadflags |= 0x80; // says to rm loader it's ok to use heap
         }
         // * if we will ever stop moving ourself to 0x90000
         //   we must say setup.S how much to move
-        //first1k->setup_move_size = _32k;
-        if(first1k->version >= 0x202) { // starting linux 2.4.0-test3-pre3
-            first1k->cmd_line_ptr = (((u32)(topseg()+0x0800))<<4);
+        //kernelparams->setup_move_size = _32k;
+        if(kernelparams->version >= 0x202) { // starting linux 2.4.0-test3-pre3
+            kernelparams->cmd_line_ptr = (((u32)(topseg()+0x0800))<<4);
             goto cmd_line_ok;
         }
     }
@@ -304,6 +309,7 @@ cmd_line_ok:
 
     pm.fallback = (u32((u16(_CS)+0x1FFF)&0xF000)<<4);
     pm.size -= rm_size;
+    pm.chunk_size -= rm_size;
     if(pm.fallback+pm.size > (((u32)topseg())<<4) || pm_high) {
         pm.fallback = _1m+_64k;
     }
@@ -314,16 +320,15 @@ cmd_line_ok:
 
 // Read initrd if needed
 
-static const char msg_initrd[] = "Can't use initrd file";
 void load_initrd() {
     struct image_himem *m = &initrd;
     if (!initrd_name && !initrd.fd) return;
-    if (!pm.fd) {
+    m->errmsg = "Can't use initrd file";
+    if (!pm.errmsg) {
 noinitrd:
-        puts(msg_initrd);
+        puts(m->errmsg);
         return;
     }
-    m->errmsg = msg_initrd;
     open_image(initrd_name, m);
 
     m->fallback = (memtop()-m->size) & (~PAGE_MASK);
@@ -333,10 +338,10 @@ noinitrd:
     }
 
     load_image(m);
-    struct first1k_t *first1k = (first1k_t*)rm_buf;
-    if(first1k->header == HdrS) {
-        first1k->initrd_buf  = m->fallback;
-        first1k->initrd_size = m->size;
+    struct kernelparams_t *kernelparams = (kernelparams_t *)(rm_buf+0x1F0);
+    if(kernelparams->header == HdrS) {
+        kernelparams->initrd_buf  = m->fallback;
+        kernelparams->initrd_size = m->size;
     }
 }
 
@@ -355,29 +360,8 @@ void boot_kernel() {
     cli(); // we start doing destructive things to DOS
 
     // Move rm loader & commandline to 0x90000
-    if(vcpi==0) {
-        memcpy32(
-            topseg(),0,
-            seg(rm_buf),ofs(rm_buf),
-            rm_size //_32k
-        );
-        memcpy32(
-            topseg()+0x0800,0,
-            seg(cmdline),ofs(cmdline),
-            PAGE_SIZE
-        );
-    } else { //vcpi
-        u32 dst=((u32)topseg()<<4);
-        u16 pos=ofs(rm_buf);
-        do {
-            memcpy_vcpi(dst,seg(rm_buf),pos);
-            dst+=PAGE_SIZE;
-            pos+=PAGE_SIZE;
-            rm_size-=PAGE_SIZE;
-          } while(s16(rm_size) > 0);
-        // overkill: copy PAGE_SIZE bytes
-        memcpy_vcpi(((u32)(topseg()+0x0800)<<4),seg(cmdline),ofs(cmdline));
-    }
+    // overkill: copy PAGE_SIZE bytes
+    rmcpy(rm_buf, rm_size);
 
     // Jump to kernel rm code
     set_sregs_jump_seg_ofs(csip, sssp);

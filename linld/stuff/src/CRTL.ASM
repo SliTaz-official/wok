@@ -13,8 +13,7 @@
         segment _DATA byte public use16 'DATA'
 
 msg_hang	db      "High mem corrupted - not exiting to DOS",0
-        global  _vcpi_alloc_err:byte
-_vcpi_alloc_err	db	"vcpi "
+vcpi_alloc_err	db	"vcpi "
 msg_malloc      db      "malloc() failure",0
 msg_crlf	db	13,10,0
 
@@ -32,6 +31,104 @@ nextfilename	dw	?
         ends    _BSS
 
         segment _TEXT byte public use16 'CODE'
+
+;***************************************************************
+;char* strcpy(const char* a, const char* b);
+;***************************************************************
+        global  _strcpy:near
+        proc    _strcpy near
+
+		mov	dl,0
+cat:
+		pop	ax			;caller return address
+                pop	cx			; a
+                pop	bx			; b
+                push	bx
+                push	cx
+                push	ax
+                push	si
+                mov	si,cx
+		shr	dl,1
+		jnc	@@nocat
+@@catlp:
+		lodsb
+		cmp	al,0
+                jne	@@catlp
+		dec	si
+		shr	dl,1
+		jnc	@@nocat
+		cmp	cx,si
+		jz	@@nocat
+		mov	[word si],20h
+		inc	si
+@@nocat:
+                sub	bx,si
+@@cpylp:
+                mov	al,[bx+si]
+                mov	[si],al
+                inc	si
+		cmp	al,0
+                jne	@@cpylp
+		mov	ax,cx
+                pop	si
+                ret
+
+        endp    _strcpy
+
+
+;***************************************************************
+;char* strcat(const char* a,const char* b);
+;***************************************************************
+        global  _strcat:near
+        proc    _strcat near
+
+		mov	dl,1
+                jmp	cat
+
+        endp    _strcat
+
+
+;***************************************************************
+;char* strcatb(const char* a,const char* b);
+;***************************************************************
+        global  _strcatb:near
+        proc    _strcatb near
+
+		mov	dl,3
+                jmp	cat
+
+        endp    _strcatb
+
+
+;***************************************************************
+;void* malloc(unsigned sz);
+;***************************************************************
+        global  _malloc:near
+        proc    _malloc near
+
+		pop	ax			;caller return address
+                pop	cx			; sz
+		push	cx
+		push	ax
+        global  malloc:near			; malloc(cx)
+malloc:
+		mov	ax,[_heap_top]
+		mov	bx,offset msg_malloc
+		mov	dx,-1400h		; MIN_STACK=_1k+PAGE_SIZE
+		add	dx,sp
+		sub	dx,ax			; can't overflow
+		cmp	dx,cx
+		jb	puts
+		add	[_heap_top],cx		; _BEG has zero'd heap
+		;mov	bx,ax
+@@zalloc:
+		;mov	[byte bx],0
+		;inc	bx			; ZF=0
+		;loop	@@zalloc
+		ret
+
+        endp    _malloc
+
 
 ;***************************************************************
 ;void puts(const char* s):
@@ -64,9 +161,29 @@ putsz:
 		xchg	ax,cx
 		mov	bx,1
                 mov	ah,40h
-		jmp	dos
+                int	21h
+		xor	ax,ax			; ZF=1	(for malloc failure)
+		ret
 
         endp    _puts
+
+
+;***************************************************************
+;int fileattr(const char* name);
+;***************************************************************
+        global  _fileattr:near
+        proc    _fileattr near
+
+		pop	ax			;caller return address
+                pop	dx			; name
+                push	dx
+                push	ax
+                mov	ax,4300h
+                int	21h
+		xchg	ax,cx
+		jmp	chkc
+
+        endp    _fileattr
 
 
 ;***************************************************************
@@ -87,15 +204,16 @@ open:
                 mov	ah,3dh
 dos:
                 int	21h
+chkc:
                 jnc	doret
 fail:
                 sbb	ax,ax			; ax=-1 CF
 		cwd
 doret:
 		ifndef	NO386
-                push	dx
-                push	ax
-                pop	eax
+		push	dx			; see next_chunk:lseek
+		push	ax
+		pop	eax
 		endif
                 ret
 
@@ -170,7 +288,6 @@ rwioz:
 
 ;***************************************************************
 ;long lseek(int fd, long sz, int dir);
-;long rewind(int fd);
 ;***************************************************************
         global  _lseek:near
         proc    _lseek near
@@ -200,23 +317,6 @@ lseek:
                 pop	cx
 		endif
 		jmp	dos
-
-        global  _rewind:near
-_rewind:
-		pop	ax			;caller return address
-                pop	bx			; fd
-                push	bx
-                push	ax
-rewind:
-		ifndef	NO386
-		xor	ecx,ecx
-		xor	dx,dx
-		else
-		xor	ax,ax
-		xor	cx,cx
-		cwd
-		endif
-		jmp	lseek
 
         endp    _lseek
 
@@ -290,7 +390,7 @@ strlen:
         global  malloc_or_die:near		; malloc_or_die(cx)
 malloc_or_die:
 		call	malloc
-		jz	_diez
+		jz	_exit
 		ret
 
         endp    _malloc_or_die
@@ -298,7 +398,7 @@ malloc_or_die:
 
 ;***************************************************************
 ;int die(const char* msg);
-;int diez();
+;int exit();
 ;int abort();
 ;***************************************************************
         global  _die:near
@@ -311,8 +411,8 @@ malloc_or_die:
         global  die:near			; die(bx)
 die:
 		call	puts
-        global  _diez:near
-_diez:
+        global  _exit:near
+_exit:
 		mov	al,[_no_exit]
 		cmp	al,0
 		jne	@@hang
@@ -333,6 +433,87 @@ _abort:
 
 
 ;***************************************************************
+;u32* malloc_bufv_or_die(struct image_himem *m);
+;***************************************************************
+        global  _malloc_bufv_or_die:near
+        proc    _malloc_bufv_or_die near
+
+		pop	bx			;caller return address
+		pop	ax
+		push	ax
+		push	bx
+		push	si
+		xchg	ax,si
+		mov	ecx,[si+6]		; m->size
+		dec	ecx
+		shr	ecx,12
+		inc	cx			; cnt = (m->size+PAGE_MASK)/PAGE_SIZE;
+		push	cx
+		inc	cx			; cnt+1
+		shl	cx,2			; bufv => vcpi => vm86
+; our malloc zeroes allocated mem: bufv[cnt]=0;
+; Allocate pages, storing addrs in addrbuf
+		call	malloc_or_die
+                pop	cx
+		push	cx			; _sort:nel
+		push	ax			; _sort:base
+		mov	[si+18],ax		; m->bufv
+		xchg	ax,bx
+@@vcpi_alloc:
+                xor     edx,edx
+                mov     ax,0DE04h
+                int     67h
+		or	ah,ah
+		jz	@@ok
+		mov	bx,offset vcpi_alloc_err
+		jmp	die
+@@ok:
+		mov	[bx],edx
+		add	bx,4
+		loop	@@vcpi_alloc
+@@again:
+		call	_sort
+		extrn	_initrd
+		cmp	si,offset _initrd
+		jne	@@quit
+		pop	ax
+		pop	cx
+		push	cx			; _sort:nel
+		push	ax			; _sort:base = m->bufv
+;again:
+; for (i = cnt-1; i >= 0; i--) {
+@@chkloop:
+		mov	bx,cx
+		dec	bx
+;   if  (m->bufv[i] > m->fallback+i*_4k && m->bufv[i] < m->fallback+m->size) {
+		shl	bx,2
+		add	bx,ax			; m->bufv
+		mov	edx,[bx]		; m->bufv[i]
+		sub	edx,[si+2]		; m->fallback
+		cmp	edx,[si+6]		; m->size
+		jae	@@chknext
+		shr	edx,12
+		cmp	dx,cx
+		jb	@@chknext
+;     m->bufv[i] = vcpi_alloc_or_die();
+;     sort(m->bufv,cnt);
+;     goto again;
+		mov	cx,1
+		jmp	@@vcpi_alloc
+;   }
+; }
+@@chknext:
+		loop	@@chkloop
+@@quit:
+		pop	ax
+		pop	cx
+		pop	si
+		ret
+
+        endp    _malloc_bufv_or_die
+
+
+;***************************************************************
 ;void next_chunk(struct image_himem *m);
 ;***************************************************************
         proc    _next_chunk near
@@ -341,7 +522,7 @@ _abort:
 		pop	ax
 		push	ax
 		push	bx
-		push	di
+		push	si di
 		xchg	ax,di
 		mov	bx,[di]			; m->fd
 		call	close
@@ -355,7 +536,6 @@ _abort:
 		mov	bx,[di+28]		; m->state
 		cmp	al,[bx]			; ""
 		jz	@@end
-		push	si
 		mov	si,bx
 @@scan:
 		lodsb
@@ -373,9 +553,9 @@ _abort:
 		xchg	ax,dx			; O_RDONLY
 		call	open
 		pop	[word si]		; restore string
-		pop	si
 		jc	@@die
 		mov	[di],ax			; m->fd
+		mov	[di+30],ax		; m->fd2close
 		mov	dx,2			; SEEK_END
 		xchg	ax,bx
 		ifndef	NO386
@@ -391,21 +571,26 @@ _abort:
 		mov	bx,[di]			; m->fd
 		ifndef	NO386
 		push	eax
-		call	rewind
+		xor	ecx,ecx
+		xor	dx,dx
+		call	lseek			; rewind
 		pop	eax
 @@end:
 		mov	[di+22],eax		; m->chunk_size
 		else
 		push	ax
 		push	dx
-		call	rewind
+		xor	ax,ax
+		xor	cx,cx
+		cwd
+		call	lseek			; rewind
 		pop	dx
 		pop	ax
 @@end:
 		mov	[di+22],ax		; m->chunk_size
 		mov	[di+24],dx
 		endif
-		pop	di
+		pop	di si
 		ret
 
         endp    _next_chunk
@@ -424,6 +609,7 @@ _abort:
 ;22    u32 chunk_size;
 ;26    void (*next_chunk)(struct image_himem *);
 ;28    u16 state;
+;30    u16 fd2close;
 ;};
 ;***************************************************************
         global  _open_image:near
@@ -470,7 +656,7 @@ _abort:
 		and	al,0FCh
 		add	[di+6],ax		; m->size += m->chunk_size
 		adc	[di+8],dx
-		inc	cx
+		inc	cx			; jcxnz
 		loop	@@next
 		endif
                 mov	[di+28],si		; m->state
@@ -508,49 +694,76 @@ image_done:
 		endif
 		mov	di,[m]
 @@loop:
-		mov	ax,[word sz]
-		mov	cx,[di+22]	; m->chunk_size
-		cmp	ax,cx
+		ifndef	NO386
+		xor	ecx,ecx
+		mov	cx,[word sz]
+@@chksz:
+		mov	eax,[di+22]	; m->chunk_size
+		cmp	ecx,eax
+		jb	@@szok
+		xchg	eax,ecx
+		else
+		mov	cx,[word sz]
+@@chksz:
+		mov	ax,[di+22]	; lo m->chunk_size
+		cmp	cx,ax
 		jb	@@szok
 		cmp	[word di+24],0	; hi m->chunk_size
 		jne	@@szok
 		xchg	ax,cx
+		endif
 @@szok:
-		push	ax
+		jcxz	image_done
+		push	cx
 		push	[word data]
 		push	[word di]
 		call	_read
-		pop	cx
+		pop	dx
 		pop	bx
+		pop	dx
+		jc	image_done
 		add	bx,ax
-		pop	cx
 		xor	cx,cx
+		ifndef	NO386
+		cwde				; ax < 8000h
+		cwd
+		sub	[di+22],eax
+		else
+		cwd				; ax < 8000h
 		sub	[di+22],ax
-		sbb	[di+24],cx
+		sbb	[di+24],dx
+		jnz	@@fill
+		cmp	[di+22],dx
+		endif
+		jnz	@@fill
+		dec	cx
 @@fill:
 		test	al,3
 		je	@@filled
-		mov	[bx],cl
+		mov	[bx],dl
 		inc	bx
 		inc	ax
 		jmp	@@fill
 @@filled:
+		ifndef	NO386
+		sub	[di+10],eax		; m->remaining
+		else
+		sub	[di+10],ax		; m->remaining
+		sbb	[di+12],dx
+		endif
 		add	[bp-4-2],ax
 		add	[word data],ax
 		sub	[word sz],ax
-		jz	image_done
-		mov	cx,[di+22]		; lo m->chunk_size
-		or	cx,[di+24]		; hi m->chunk_size
-		jnz	image_done
-                or	cx,[di+26]		; m->next_chunk
-		jz	image_done
+		pushf
+                and	cx,[di+26]		; m->next_chunk
+		jz	@@same_chunk
 		push	di
                 call	cx			; m->next_chunk()
 		pop	di
-		mov	cx,[di+22]		; lo m->chunk_size
-		or	cx,[di+24]		; hi m->chunk_size
-		jz	image_done
-		jmp	@@loop
+@@same_chunk:
+		popf
+		jnz	@@loop
+		jmp	image_done
 
         endp    _read_image
 
@@ -561,20 +774,35 @@ image_done:
         global  _strtol:near
         proc    _strtol near
 
-;TODO NO386
 		ifndef	NO386
 		pop	ax			;caller return address
                 pop	cx			; s
 		push	cx
 		push	ax
 		xor	ebx,ebx
-		jcxz	@@end
+		jcxz	@@jncend
 		push	si
 		mov	si,cx
 		xor	ecx,ecx
 		xor	eax,eax
-		mov	cl,10			; radix
 		lodsb
+		mov	dl,20h
+		or	dl,al
+		cmp	dl,'n'			; vga=normal
+		je	@@vga
+		dec	cx
+		cmp	dl,'e'			; vga=extended
+		je	@@vga
+		dec	cx
+		cmp	dl,'a'			; vga=ask
+		jne	@@notvga
+@@vga:
+		dec	cx
+		xchg	ax,cx
+		cwd
+		jmp	popsiret
+@@notvga:
+		mov	cx,10			; radix
 		cmp	al,'+'
 		je	@@radixskip
 		cmp	al,'-'
@@ -627,6 +855,7 @@ image_done:
 		shl	ebx,cl
 @@noshift:
 		popf
+@@jncend:
 		jnc	@@end
 		neg	ebx
 @@end:
@@ -645,10 +874,28 @@ popsiret:
 		xor	ax,ax
 		cwd
 		xchg	ax,di
-		jcxz	@@end
+		jcxz	@@goend
 		mov	si,cx
-		mov	cx,10			; radix
 		lodsb
+		mov	dl,20h
+		or	dl,al
+		mov	cx,-1
+		cmp	dl,'n'			; vga=normal
+		je	@@vga
+		dec	cx
+		cmp	dl,'e'			; vga=extended
+		je	@@vga
+		dec	cx
+		cmp	dl,'a'			; vga=ask
+		jne	@@notvga
+@@vga:
+		xchg	ax,cx
+		cwd
+		jmp	popsiret
+@@goend:
+		jmp	@@end
+@@notvga:
+		mov	cx,10			; radix
 		cmp	al,'+'
 		je	@@radixskip
 		cmp	al,'-'
@@ -752,13 +999,12 @@ sort:
 	ifndef	fastsort
 ;  bubble sort
 		push	si
-		cmp	cx,2
-		jl	popsiret
 		shl	cx,2
 @@loop:
 		xor	ax,ax
-		jcxz	popsiret
 		mov	si,4
+		cmp	cx,si
+		jbe	popsiret
 @@next:
 		mov	edx,[bx+si-4]
 		cmp	edx,[bx+si]
@@ -859,41 +1105,6 @@ endif
         endp    _sort
 
 
-;***************************************************************
-;void* malloc(unsigned sz);
-;***************************************************************
-        global  _malloc:near
-        proc    _malloc near
-
-		pop	ax			;caller return address
-                pop	cx			; sz
-		push	cx
-		push	ax
-        global  malloc:near			; malloc(cx)
-malloc:
-		mov	ax,[_heap_top]
-		mov	bx,sp
-		sub	bh,14h			; MIN_STACK=_1k+PAGE_SIZE
-		sub	bx,cx
-		jb	@@outofmem
-		cmp	bx,ax
-		jb	@@outofmem
-		add	[_heap_top],cx		; _BEG has zero'd heap
-		;mov	bx,ax
-@@zalloc:
-		;mov	[byte bx],0
-		;inc	bx			; ZF=0
-		;loop	@@zalloc
-		ret
-@@outofmem:
-		mov	bx,offset msg_malloc
-		call	puts
-		xor	ax,ax			; ZF=1
-		ret
-
-        endp    _malloc
-
-
 		ifdef	NO386
 ;***************************************************************
 ;u16 topseg();
@@ -905,7 +1116,7 @@ malloc:
 		jnc	@@max640k
 		mov	ax,640			; 9000
 @@max640k:
-		sub	al,040h
+		sub	ax,028h
 		and	al,0C0h
 		mov	cl,6
 		shl	ax,cl
@@ -914,6 +1125,41 @@ malloc:
         endp    _topseg
 		endif
 
+;***************************************************************
+;void rmcpy(void* rmbuf, u16 rmsize);
+;***************************************************************
+        global  _rmcpy:near
+        proc    _rmcpy near
+
+		pop	bx			;caller return address
+                pop	ax			; rmbuf
+		pop	cx			; rmsize
+		push	cx
+		push	ax
+		push	bx
+		push	si di es
+		xchg	ax,si
+		xor	di,di
+		ifdef	NO386
+		call	_topseg
+		mov	es,ax
+		else
+		push	9000h
+		pop	es
+		endif
+		cld
+		rep
+		  movsb
+		extrn	_cmdline:word
+		mov	si,[_cmdline]
+		mov	di,8000h
+		mov	ch,10h			; 4k
+		rep
+		  movsb
+		pop	es di si
+		ret
+
+        endp    _rmcpy
 
         ends    _TEXT
 

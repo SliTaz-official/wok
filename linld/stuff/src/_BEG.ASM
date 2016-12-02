@@ -109,16 +109,9 @@ argend:
 ;***************************************************************
                 extrn   _main:near
                 call    _main
-                push	ax
-                push	ax
+
 ;***************************************************************
-;void exit(int n);
-;***************************************************************
-	        global  _exit:near
 	        global  exit:near
-_exit:
-		pop	bx			;caller return address
-                pop	ax			; n
 exit:
                 mov	ah,4Ch
                 int	21h

@@ -1,6 +1,6 @@
 path ..\BC31;%PATH%
 call !clean.bat
-tasm /l /m /dNO386 *.asm > asm.log
+tasm /la /m /dNO386 *.asm > asm.log
 rem @pause
 bcc @bccopt.opt -S -mt *.cpp
 tasm /l /m load.asm
