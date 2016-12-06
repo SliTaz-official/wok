@@ -24,7 +24,7 @@ void load_image(struct image_himem *m) {
 	u8 xfer_buf[PAGE_SIZE];
         u16 size = read_image(m, xfer_buf, PAGE_SIZE);
         if(s16(size) <= 0) break;
-        memcpy32(*bufv, seg(xfer_buf), ofs(xfer_buf), size);
+        memcpy32(*bufv, seg(xfer_buf), ofs(xfer_buf), PAGE_SIZE);
 	if (bufv != &buf) bufv++;
         buf += size;
     } while (*bufv);

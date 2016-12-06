@@ -12,17 +12,18 @@
 
         segment _DATA byte public use16 'DATA'
 
-msg_hang	db      "High mem corrupted - not exiting to DOS",0
+        global  _heap_top:word
+	extrn	_bss_end
+_heap_top	dw	_bss_end
+msg_hang	db      "High mem corrupted - not exiting to DOS"
+msg_crlf	db	13,10,0
 vcpi_alloc_err	db	"vcpi "
 msg_malloc      db      "malloc() failure",0
-msg_crlf	db	13,10,0
 
         ends    _DATA
 
         segment _BSS byte public use16 'BSS'
 
-        global  _heap_top:word
-_heap_top	dw	?
         global  _no_exit:byte
 _no_exit	db	?
 filecnt		db	?		; in fact 0 minus file count...
@@ -187,21 +188,19 @@ putsz:
 
 
 ;***************************************************************
-;int open(const char* name, int flags);
+;int open(const char* name, int flags=O_RDONLY);
 ;***************************************************************
         global  _open:near
         proc    _open near
 
-		pop	cx			;caller return address
+		pop	ax			;caller return address
                 pop	bx			; name
-                pop	ax			; flags
-                push	ax
                 push	bx
-                push	cx
-        global  open:near			; open(bx,al)
+                push	ax
+        global  open:near			; open(bx)
 open:
                 mov	dx,bx
-                mov	ah,3dh
+                mov	ax,3d00h
 dos:
                 int	21h
 chkc:
@@ -431,6 +430,19 @@ _abort:
 
         endp    _die
 
+struc   image_himem		;struct image_himem {
+fd		dw	?	; 0    int fd;
+fallback	dd	?	; 2    u32 fallback;
+size		dd	?	; 6    u32 size;
+remaining	dd	?	;10    u32 remaining;
+buf		dd	?	;14    u32 buf;
+bufv		dw	?	;18    u32 *bufv;
+errmsg		dw	?	;20    char *errmsg;
+chunk_size	dd	?	;22    u32 chunk_size;
+next_chunk	dw	?	;26    void (*next_chunk)(struct image_himem *);
+state		dw	?	;28    u16 state;
+fd2close	dw	?	;30    u16 fd2close;
+ends				;};
 
 ;***************************************************************
 ;u32* malloc_bufv_or_die(struct image_himem *m);
@@ -444,7 +456,7 @@ _abort:
 		push	bx
 		push	si
 		xchg	ax,si
-		mov	ecx,[si+6]		; m->size
+		mov	ecx,[(image_himem si).size]
 		dec	ecx
 		shr	ecx,12
 		inc	cx			; cnt = (m->size+PAGE_MASK)/PAGE_SIZE;
@@ -457,7 +469,7 @@ _abort:
                 pop	cx
 		push	cx			; _sort:nel
 		push	ax			; _sort:base
-		mov	[si+18],ax		; m->bufv
+		mov	[(image_himem si).bufv],ax
 		xchg	ax,bx
 @@vcpi_alloc:
                 xor     edx,edx
@@ -489,8 +501,8 @@ _abort:
 		shl	bx,2
 		add	bx,ax			; m->bufv
 		mov	edx,[bx]		; m->bufv[i]
-		sub	edx,[si+2]		; m->fallback
-		cmp	edx,[si+6]		; m->size
+		sub	edx,[(image_himem si).fallback]
+		cmp	edx,[(image_himem si).size]
 		jae	@@chknext
 		shr	edx,12
 		cmp	dx,cx
@@ -524,7 +536,7 @@ _abort:
 		push	bx
 		push	si di
 		xchg	ax,di
-		mov	bx,[di]			; m->fd
+		mov	bx,[(image_himem di).fd]
 		call	close
 		ifndef	NO386
 		xor	eax,eax
@@ -532,8 +544,8 @@ _abort:
 		xor	ax,ax
 		endif
 		cwd
-		mov	[di],ax			; m->fd
-		mov	bx,[di+28]		; m->state
+		mov	[(image_himem di).fd],ax
+		mov	bx,[(image_himem di).state]
 		cmp	al,[bx]			; ""
 		jz	@@end
 		mov	si,bx
@@ -546,16 +558,15 @@ _abort:
 		jnz	@@scan
 		dec	cx
 @@eos:
-		mov	[di+28],cx		; m->state
+		mov	[(image_himem di).state],cx
 		dec	si
 		push	[word si]
 		mov	[byte si],dl		; set temp eos
-		xchg	ax,dx			; O_RDONLY
 		call	open
 		pop	[word si]		; restore string
 		jc	@@die
-		mov	[di],ax			; m->fd
-		mov	[di+30],ax		; m->fd2close
+		mov	[(image_himem di).fd],ax
+		mov	[(image_himem di).fd2close],ax
 		mov	dx,2			; SEEK_END
 		xchg	ax,bx
 		ifndef	NO386
@@ -566,9 +577,9 @@ _abort:
 		endif
 		call	lseek
 @@die:
-		mov	bx,[di+20]		; m->errmsg
+		mov	bx,[(image_himem di).errmsg]
 		jc	die
-		mov	bx,[di]			; m->fd
+		mov	bx,[(image_himem di).fd]
 		ifndef	NO386
 		push	eax
 		xor	ecx,ecx
@@ -576,7 +587,7 @@ _abort:
 		call	lseek			; rewind
 		pop	eax
 @@end:
-		mov	[di+22],eax		; m->chunk_size
+		mov	[(image_himem di).chunk_size],eax
 		else
 		push	ax
 		push	dx
@@ -587,8 +598,8 @@ _abort:
 		pop	dx
 		pop	ax
 @@end:
-		mov	[di+22],ax		; m->chunk_size
-		mov	[di+24],dx
+		mov	[word (image_himem di).chunk_size],ax
+		mov	[word ((image_himem di).chunk_size)+2],dx
 		endif
 		pop	di si
 		ret
@@ -598,19 +609,6 @@ _abort:
 
 ;***************************************************************
 ;void open_image(const char *name, struct image_himem *m);
-;struct image_himem {
-; 0    int fd;
-; 2    u32 fallback;
-; 6    u32 size;
-;10    u32 remaining;
-;14    u32 buf;
-;18    u32 *bufv;
-;20    char *errmsg;
-;22    u32 chunk_size;
-;26    void (*next_chunk)(struct image_himem *);
-;28    u16 state;
-;30    u16 fd2close;
-;};
 ;***************************************************************
         global  _open_image:near
         proc    _open_image near
@@ -627,25 +625,25 @@ _abort:
                 xor	ax,ax			; 1st loop flag + eos
 		endif
                 mov	di,[m]
-                cmp	[di],ax			; m->fd
+		cmp	[(image_himem di).fd],ax
                 jnz	@@alreadydone
 		ifndef	NO386
-		mov	[di+6],eax		; m->size = 0L
+		mov	[(image_himem di).size],eax	; m->size = 0L
 		else
-		mov	[di+6],ax		; m->size = 0L
-		mov	[di+8],ax
+		mov	[word (image_himem di).size],ax	; m->size = 0L
+		mov	[word ((image_himem di).size)+2],ax
 		endif
-		mov	[word di+26],offset _next_chunk
+		mov	[(image_himem di).next_chunk],offset _next_chunk
                 mov	si,[fname]
-                mov	[di+28],si		; m->state
+                mov	[(image_himem di).state],si
 @@next:
 		push	di
-                call	[word di+26]		; m->next_chunk()
+                call	[(image_himem di).next_chunk]	; m->next_chunk()
 		pop	di
 		ifndef	NO386
 		add	eax,3
 		and	al,0FCh
-		add	[di+6],eax		; m->size += m->chunk_size
+		add	[(image_himem di).size],eax	; m->size += m->chunk_size
 		or	eax,eax
 		jnz	@@next
 		else
@@ -654,14 +652,14 @@ _abort:
 		add	ax,3
 		adc	dx,0
 		and	al,0FCh
-		add	[di+6],ax		; m->size += m->chunk_size
-		adc	[di+8],dx
+		add	[word (image_himem di).size],ax	; m->size += m->chunk_size
+		adc	[word ((image_himem di).size)+2],dx
 		inc	cx			; jcxnz
 		loop	@@next
 		endif
-                mov	[di+28],si		; m->state
+                mov	[(image_himem di).state],si
 		push	di
-                call	[word di+26]		; m->next_chunk()
+                call	[(image_himem di).next_chunk]	; m->next_chunk()
 		pop	di
 @@alreadydone:
                 push	ax
@@ -698,17 +696,17 @@ image_done:
 		xor	ecx,ecx
 		mov	cx,[word sz]
 @@chksz:
-		mov	eax,[di+22]	; m->chunk_size
+		mov	eax,[(image_himem di).chunk_size]
 		cmp	ecx,eax
 		jb	@@szok
 		xchg	eax,ecx
 		else
 		mov	cx,[word sz]
 @@chksz:
-		mov	ax,[di+22]	; lo m->chunk_size
+		mov	ax,[word (image_himem di).chunk_size]
 		cmp	cx,ax
 		jb	@@szok
-		cmp	[word di+24],0	; hi m->chunk_size
+		cmp	[word ((image_himem di).chunk_size)+2],0	; hi m->chunk_size
 		jne	@@szok
 		xchg	ax,cx
 		endif
@@ -727,13 +725,13 @@ image_done:
 		ifndef	NO386
 		cwde				; ax < 8000h
 		cwd
-		sub	[di+22],eax
+		sub	[(image_himem di).chunk_size],eax
 		else
 		cwd				; ax < 8000h
-		sub	[di+22],ax
-		sbb	[di+24],dx
+		sub	[word (image_himem di).chunk_size],ax
+		sbb	[word ((image_himem di).chunk_size)+2],dx
 		jnz	@@fill
-		cmp	[di+22],dx
+		cmp	[word (image_himem di).chunk_size],dx
 		endif
 		jnz	@@fill
 		dec	cx
@@ -746,16 +744,16 @@ image_done:
 		jmp	@@fill
 @@filled:
 		ifndef	NO386
-		sub	[di+10],eax		; m->remaining
+		sub	[(image_himem di).remaining],eax
 		else
-		sub	[di+10],ax		; m->remaining
-		sbb	[di+12],dx
+		sub	[word (image_himem di).remaining],ax
+		sbb	[word ((image_himem di).remaining)+2],dx
 		endif
 		add	[bp-4-2],ax
 		add	[word data],ax
 		sub	[word sz],ax
 		pushf
-                and	cx,[di+26]		; m->next_chunk
+                and	cx,[(image_himem di).next_chunk]
 		jz	@@same_chunk
 		push	di
                 call	cx			; m->next_chunk()

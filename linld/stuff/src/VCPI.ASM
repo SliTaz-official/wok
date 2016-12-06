@@ -203,6 +203,9 @@ prepare_vcpi:
                 mov     [bx+pagedir_ofs-page0_laddr],ax
                 sub     ax,si   ;ax-=1000
                 mov     [bx+page0_ofs-page0_laddr],ax
+                push    ds
+                pop     es
+                mov     di,ax          ;ES:DI => page0
 ; Return
                 ;pop     es
                 ;pop     esi
@@ -227,9 +230,9 @@ prepare_vcpi:
 
 ; Get and save VCPI pm interface
                 mov     si,offset gdt_vcpi      ;DS:DI => 3 GDT entries for VCPI
-                mov     di,[si+page0_ofs-gdt_vcpi]          ;ES:DI => page0
-                push    ds
-                pop     es
+                ;mov     di,[si+page0_ofs-gdt_vcpi]          ;ES:DI => page0
+                ;push    ds
+                ;pop     es
                 mov     ax,0DE01h               ;get vcpi pm interface
                 int     67h
                 mov     [vcpi_pm_entry],ebx

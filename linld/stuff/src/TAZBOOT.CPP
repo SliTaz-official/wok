@@ -144,11 +144,9 @@ int main(int argc, char *argv[])
 	char *iso = NULL;
 	argv[0] = progname();
 	bootiso(argv);	// iso ? parsing is /init.exe stuff !
-	if (argc >= 2)
-		bootiso(argv + 1);
 
-	chdirname(*argv);
 	if (argc < 2) {
+		try_default_args();
 dousage:
 		die("Usage: tazboot [[@commands]|[-f][kernel=<bzimage>] \
 [initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] ...]\r\n\n\
@@ -161,8 +159,12 @@ Examples for tazboot.cmd:\r\n\n\
   kernel=\\slitaz\\elks\r\n\
   root=/dev/bda1 ro\r\n");
 	}
+	bootiso(argv + 1);
+	chdirname(*argv);
 	for (int i=0;;) {
-		char *s=*++argv;
+		char *s;
+		argv++;
+		s=*argv;
 		i++;
 		if (!s) break;
 		if (strhead(s,"kernel=") == 0) {

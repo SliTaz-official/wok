@@ -42,7 +42,8 @@ static unsigned long isodirofs, isodirsize;
 int isoreset(char *name)
 {
 	if (name)
-		isofd = open(name, O_RDONLY);
+		//isofd = open(name, O_RDONLY);
+		isofd = open(name);
 	if (!readsector(16UL * 2048) || strhead(buffer+1,"CD001")) {
 		//close(isofd);
 		return -1;

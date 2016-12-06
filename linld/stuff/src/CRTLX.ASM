@@ -11,6 +11,9 @@
         assume  cs:DGROUP,ds:DGROUP
 
         segment _DATA byte public use16 'DATA'
+
+tazboot_cmd	db	"tazboot.cmd",0
+
         ends    _DATA
 
         segment _BSS byte public use16 'BSS'
@@ -96,14 +99,13 @@ ultoabuf	db	12	dup (?)
 
 		pushf
 ; Check for oldies
-		mov	ax, 0F000h
-		push	ax		; < 286 : flags[12..15] are forced 1
+		mov	bh, 0F0h
+		push	bx		; < 286 : flags[12..15] are forced 1
 		popf			; = 286 : flags[12..15] are forced 0
 		pushf			; > 286 : only flags[15] is forced 0
 		pop	dx
 		popf
-		add	dh,ah		; NS=386+, NC=286
-		cbw
+		add	dh,bh		; NS=386+, NC=286
 		clc
                 js     @@bad   		;it is a 86/186/286, not a 386+
 		pushfd
@@ -121,7 +123,6 @@ ultoabuf	db	12	dup (?)
 		jnc	@@bad
 		mov	eax,80000001h	; Extended Processor Info and Feature Bits
 		db	0Fh,0A2h	; cpuid
-		xor	ax,ax
 		shr	edx,1+29	; LM feature bit ?
 @@bad:
 		sbb	ax,ax
@@ -323,9 +324,30 @@ chdir:
 		pop	ax
 		pop	dx
 		pop	di si bp
+kver2ulret:
 		ret
 
         endp    _kver2ul
+
+
+;***************************************************************
+;void try_default_args();
+;***************************************************************
+        global  _try_default_args:near
+        proc    _try_default_args near
+
+		mov	bx,offset tazboot_cmd
+		extrn	open:near
+		call	near open
+		jc	kver2ulret
+		mov	cx,4096
+		extrn	_heap_top:word
+		mov	di,[_heap_top]
+		push	cx
+		extrn	read_cmdline:near
+		jmp	near read_cmdline	; read_cmdline(ax,di,cx)
+		
+        endp    _try_default_args
 
         ends    _TEXT
 

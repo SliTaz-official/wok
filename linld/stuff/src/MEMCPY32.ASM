@@ -11,112 +11,9 @@
         assume  cs:DGROUP,ds:DGROUP
 
         segment _DATA byte public use16 'DATA'
-msg_badcpu      db      "I need 386+ CPU in real mode or under VCPI manager",0
-msg_badmapping  db      "VCPI: low 640k: need 1:1 mapping",0
         ends    _DATA
 
         segment _TEXT byte public use16 'CODE'
-
-;***************************************************************
-;int _is_vm86();
-;****** Return: AX=1 - it is a 386+ in virtual86 mode with vcpi
-;******         AX=0 - it is a 386+ in real mode
-;******         otherwise abort program
-;****** Uses:   Flags
-;***************************************************************
-        global  _is_vm86:near
-        proc    _is_vm86 near
-
-; Check for oldies
-		mov	ah, 0F0h
-		pushf
-		push	ax		; < 286 : flags[12..15] are forced 1
-		popf			; = 286 : flags[12..15] are forced 0
-		pushf			; > 286 : only flags[15] is forced 0
-		pop	dx
-		popf
-		add	dh,ah		; NS=386+, NC=286
-		ifndef	NO386
-                js	@@no_vcpi   	;it is a 86/186/286, not a 386+
-		else
-		js	@@ret
-		endif
-; Check for vm
-                smsw    ax      ;SMSW cannot be trapped! :-)
-                and     ax,1	;MSW_PE
-; We're in vm
-                jnz     check_vcpi
-
-; It's a 386 in real mode, chk for paging (crazy but possible)
-                mov     edx,cr0
-                shl     edx,1   ;CR0_PG to CF
-		jc	@@no_vcpi
-@@ret:
-                ret
-
-;***************************************************************
-;****** Helper: checks for vcpi
-;***************************************************************
-label   check_vcpi near
-                push    ds
-; Check whether it is safe to call 67h (we trust only known EMM managers)
-                push    0
-                pop     ds
-                mov     ds,[word 67h*4+2]
-                cmp     [dword 10+4],'0XXX'
-                jne     @@skip
-                mov     eax,'XMME'
-                xor     eax,[dword 10]
-        ; QMME also works (as told by <J.S.Peatfield@damtp.cambridge.ac.uk>)
-                shl     eax,8
-@@skip:
-                pop     ds
-                jne     @@no_vcpi
-
-; Check emm manager status and version
-                mov     ah,40h          ; get status
-                int     67h
-                test    ah,ah
-                jnz     @@no_vcpi
-                mov     ah,46h          ; get version
-                int     67h
-                test    ah,ah
-                jnz     @@no_vcpi
-                cmp     al,40h          ; version must be >= 4.0
-                jb      @@no_vcpi
-; Check vcpi manager status
-              ;;mov     ax,5A01h        ; ALLOCATE RAW PAGES
-              ;;mov     bx,4
-              ;;int     67h
-              ;;test    ah,ah
-              ;;jnz     @@no_vcpi
-              ;;push    dx              ;$ save handle
-                mov     ax,0DE00h       ; check for vcpi present
-                int     67h
-                mov     al,1
-                test    ah,ah
-                jz      @@386vcpi
-              ;;pop     dx              ;$ handle
-              ;;mov     ax,4500h        ; DEALLOCATE PAGES
-              ;;int     67h
-@@no_vcpi:
-		mov	bx,offset msg_badcpu
-                extrn   die:near
-godie:
-		jmp	near die
-@@386vcpi:
-		mov	[_vcpi],al
-                extrn   prepare_vcpi:near
-		call	prepare_vcpi
-;    get_vcpi_interface() || die("VCPI: low 640k: need 1:1 mapping");
-                ;extrn   _get_vcpi_interface:near
-		;call	_get_vcpi_interface
-		mov	bx,offset msg_badmapping
-		jz	godie
-		ret
-
-        endp    _is_vm86
-
 
 ;***************************************************************
 ;void dos_shutdown()
@@ -385,9 +282,6 @@ GDT             dd      ?,?
                 db      00000000b,10010010b,10001111b,00000000b
                 ;       base_med  P  S D A  G ??l_hi  base_hi
                 ;                  Pl E W    D
-
-        global  _vcpi:byte
-_vcpi		db	0
 
         endp    _memcpy32
 

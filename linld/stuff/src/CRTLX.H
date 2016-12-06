@@ -10,3 +10,5 @@ extern "C" int chdir(char *path);
 extern "C" int chdirname(char *path);
 extern "C" unsigned long kver2ul(char *kernel_version);
 extern "C" char *ultoa(unsigned long n);
+extern "C" void try_default_args();
+
