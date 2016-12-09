@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="cacerts"
-VERSION="20160512"
+VERSION="20161124"
 CATEGORY="security"
 SHORT_DESC="Certificate Authority Certificates"
 MAINTAINER="al.bobylev@gmail.com"
@@ -13,7 +13,7 @@ WGET_URL="http://anduin.linuxfromscratch.org/BLFS/other/certdata.txt"
 HOST_ARCH="any"
 
 DEPENDS="openssl"
-BUILD_DEPENDS="openssl locale-en"
+BUILD_DEPENDS="perl openssl locale-en"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -35,22 +35,19 @@ genpkg_rules()
 
 post_install()
 {
-	case "$1" in
-		/cross*) return
-	esac
+	# Rehash certificates.
+	# Use simplified plain shell equivalent to the Perl `c_rehash`
+	# (see openssl package). Normal no output here.
+	cd "$1/etc/ssl/certs"
+	find . -type l -delete
+	for i in $(ls *.pem); do
+		j="$(openssl x509 -hash -noout -in $i)"
+		[ -n "$j" ] && ln -s $i $j.0
+	done
+}
 
-	# Keep silence, for example, when installed on cook as build dependency
-	if [ -z "$quiet" ]; then
-		echo "Rehash certificates:"
-		out='&1'
-	else
-		out='/dev/null'
-	fi
-
-	if [ -d "$1/$INSTALLED/perl" ]; then
-		chroot "$1/" c_rehash >$out
-	else
-		tazpkg -gi microperl --root="${1:-/}"
-		chroot "$1/" microperl /usr/bin/c_rehash >$out
-	fi
+post_remove()
+{
+	# Remove broken symlinks
+	find "$1/etc/ssl/certs" -type l ! -exec test -e \{\} \; -delete
 }
