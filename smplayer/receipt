@@ -1,41 +1,43 @@
 # SliTaz package receipt.
 
 PACKAGE="smplayer"
-VERSION="0.6.9"
+VERSION="16.11.0"
 CATEGORY="multimedia"
-SHORT_DESC="QT-based front-end for MPlayer"
-MAINTAINER="jozee@slitaz.org"
+SHORT_DESC="QT-based front-end for MPlayer or mpv"
+MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://smplayer.sourceforge.net/" 
+WEB_SITE="http://smplayer.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="player audio video movie"
 
-DEPENDS="mplayer-opt libQtCore libQtGui libQtXml gcc-lib-base"
-BUILD_DEPENDS="qt4 Qt4-dev qmake libQtNetwork libegl-mesa"
+DEPENDS="mplayer-opt libQtCore libQtGui libQtXml libQtScript libQtDBus"
+BUILD_DEPENDS="Qt4-dev qmake"
+SUGGESTED="smplayer-themes mpv"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src	
+	# Some default setting incompatible with minimal mplayer
+	sed '/use_ass_subtitles/s/true/false/' -i src/preferences.cpp
 	make PREFIX=/usr &&
 	make PREFIX=/usr DESTDIR=$DESTDIR install
-	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/usr/share/applications
+	mkdir -p $fs/usr/share
 	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/$PACKAGE $fs/usr/share	
-	
-	# Remove extra translations  or locales
+	cp -a $install/usr/share/$PACKAGE $fs/usr/share
+	cp -a $install/usr/share/icons $fs/usr/share
 	rm $fs/usr/share/$PACKAGE/translations/*
-	cp -a $install/usr/share/$PACKAGE/translations/smplayer_en_US.qm \
-		  $install/usr/share/$PACKAGE/translations/smplayer_fr.qm \
-		  $fs/usr/share/$PACKAGE/translations/
-		  
-	# copy .desktop file.
-	cp -a $stuff/smplayer_enqueue.desktop $fs/usr/share/applications/
+
+	for i in de en_US es fr it pt_BR ru_RU
+	do cp -a $install/usr/share/$PACKAGE/translations/smplayer_$i.qm \
+		$fs/usr/share/$PACKAGE/translations/
+	done
+	for size in 64 128 192 256 512 scalable; do
+		rm -rf $fs/usr/share/icons/hicolor/${size}*
+	done
 }
