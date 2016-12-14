@@ -620,13 +620,14 @@
 +}
 --- create_compressed_fs.c
 +++ create_compressed_fs.c
-@@ -0,0 +1,223 @@
+@@ -0,0 +1,224 @@
 +#ifdef FIND_BEST_COMPRESSION
 +#include <compress.h>
 +extern "C" {
 +#include <stdlib.h>
 +#include <string.h>
 +
++#define ZMAX 12	/* 12 compression levels with libdeflate, not 9 */
 +static shrink_t level;
 +static int pass, iter;
 +static int best_compress(unsigned char *compressed,
@@ -648,10 +649,10 @@
 +	}
 +	buf[0] = compressed;
 +	buf[1] = buffer;
-+	for (i = j = 0; i <= 11 && (pass == 0 || i < pass); i++) {
++	for (i = j = 0; i <= ZMAX+2 && (pass == 0 || i < pass); i++) {
 +		llen = len = *compressed_len;
-+		if (i >= 10) {
-+			level.level = (i == 10) ? shrink_extra : shrink_insane;
++		if (i >= ZMAX+1) {
++			level.level = (i == ZMAX+1) ? shrink_extra : shrink_insane;
 +			err = (compress_zlib(level, buf[j],
 +		     		len, uncompressed,
 +		     		uncompressed_len)) ? Z_OK : Z_DATA_ERROR;
