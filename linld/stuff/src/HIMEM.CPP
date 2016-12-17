@@ -10,16 +10,18 @@ int skip_xmmalloc;
 void load_image(struct image_himem *m) {
     no_exit++;       // die() won't return to DOS
     m->remaining = m->size;
-    u32 buf= m->buf = m->fallback;
+    m->buf = m->fallback;
+    u32 buf;
     u32* bufv= &buf;
-    if(m->fallback >= _1m) {
+    if(((u16 *)&m->fallback)[1] >= 0x10) { // >= _1m ?
 	if(vcpi) {
-	    bufv = malloc_bufv_or_die(m);
+	    bufv = malloc_bufv_or_die(m);	// update m->bufv
 	}
 	else if (!skip_xmmalloc) {
-            xmm_alloc(m);
+            xmm_alloc(m);			// update m->buf
 	}
     }
+    buf = m->buf;
     do {
 	u8 xfer_buf[PAGE_SIZE];
         u16 size = read_image(m, xfer_buf, PAGE_SIZE);

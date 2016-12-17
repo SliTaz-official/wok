@@ -36,10 +36,34 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/X11/mgp $install/usr/share/doc $install/usr/share/man
+	mkdir -p $fs/usr/lib/X11/mgp $fs/usr/share/applications
+	mkdir -p $install/usr/share/doc $install/usr/share/man
 	cp -f $install/usr/lib/X11/mgp/default.mgp $fs/usr/lib/X11/mgp
 	cp -a $install/usr/bin $fs/usr
 	cp $src/*.man $install/usr/share/man/
 	cp $src/COPYRIGHT $src/FAQ $src/RE* $src/SYNTAX $install/usr/share/doc
 	cp $src/USAGE $install/usr/share/doc
+	cat > $fs/usr/share/applications/magicpoint.desktop <<EOT
+[Desktop Entry]
+Type=Application
+Name=MagicPoint Presentation
+Name[fr]=Présentation Magicpoint
+Icon=x-office-presentation
+Exec=mgp %f
+MimeType=application/x-magicpoint
+Categories=GTK;Office;Viewer;
+EOT
+}
+
+post_install()
+{
+	for i in magicpoint mgp ; do
+		grep -q application/x-$i $1/usr/share/applications/defaults.list ||
+		echo "application/x-$i=magicpoint.desktop" >> $1/usr/share/applications/defaults.list
+	done
+}
+
+post_remove()
+{
+	sed -i '/=magicpoint.desktop/' $1/usr/share/applications/defaults.list 
 }
