@@ -13,7 +13,7 @@ void load_image(struct image_himem *m) {
     m->buf = m->fallback;
     u32 buf;
     u32* bufv= &buf;
-    if(((u16 *)&m->fallback)[1] >= 0x10) { // >= _1m ?
+    if(m->fallback >= _1m) {
 	if(vcpi) {
 	    bufv = malloc_bufv_or_die(m);	// update m->bufv
 	}
