@@ -24,12 +24,15 @@ freetype-dev gettext glib-dev jpeg-dev libIDL libcap-dev libpng-dev libtool \
 libxml2-dev linux-api-headers m4 make mercurial ncurses-dev openssl-dev \
 pango-dev patch pcre-dev perl perl-xml-parser perl-xml-simple pixman-dev \
 pkg-config tiff-dev xorg-dev-proto xorg-dev zip unzip gtk+-dev alsa-lib-dev \
-xorg-libXv-dev sqlite-dev  wayland-dev libQtClucene " # ?
+xorg-libXv-dev sqlite-dev" # wayland-dev libQtClucene
 
 # Rules to configure and make the package.
 compile_rules()
 {
-		./configure\
+	# sed -i "s|-O2|${CXXFLAGS}|" mkspecs/common/{g++,gcc}-base.conf
+	sed -i "/^QMAKE_LFLAGS_RPATH/s| -Wl,-rpath,||g" mkspecs/common/gcc-base-unix.conf
+	sed -i "/^QMAKE_LFLAGS\s/s|+=|+= ${LDFLAGS}|g" mkspecs/common/gcc-base.conf
+	./configure\
 		-silent \
 		-prefix /usr \
 		-confirm-license -opensource \
@@ -60,9 +63,11 @@ compile_rules()
 		-no-reduce-relocations \
 		-no-phonon \
 		-no-phonon-backend \
+		-no-rpath \
 		-graphicssystem raster \
 		-continue \
-		2>&1 | sed 's/such file or directory/file/' &&
+		2>&1 | grep -v 'wayland-client' | \
+		sed 's/such file or directory/file/' &&
 	make $MAKEFLAGS &&
 	make INSTALL_ROOT=$DESTDIR install
 }
