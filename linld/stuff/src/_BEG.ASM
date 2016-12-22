@@ -24,6 +24,7 @@ clearbss:
 		mov	[byte bx],0		; clear bss + heap + sp
 		inc	bx
 		jne	clearbss
+                cld
 
 ;***************************************************************
 ; check CPU
@@ -38,6 +39,7 @@ clearbss:
 		pop	dx
 		popf
 		add	dh,bh		; NS=386+, NC=286
+		mov	bx,offset msg_badcpu
 		ifndef	NO386
                 js	no_vcpi   	;it is a 86/186/286, not a 386+
 		else
@@ -45,15 +47,9 @@ clearbss:
 		endif
 ; Check for vm
                 smsw    ax      ;SMSW cannot be trapped! :-)
-                and     ax,1	;MSW_PE
+                and     al,1	;MSW_PE
 ; We're in vm
-                jnz     check_vcpi
-
-; It's a 386 in real mode, chk for paging (crazy but possible)
-                mov     edx,cr0
-                shl     edx,1   ;CR0_PG to CF
-		jc	no_vcpi
-		jmp	endcpu
+		jz	check_rm_paging
 
 ;***************************************************************
 ; checks for vcpi
@@ -75,10 +71,10 @@ skip:
                 jne     no_vcpi
 
 ; Check emm manager status and version
-                mov     ah,40h          ; get status
-                int     67h
-                test    ah,ah
-                jnz     no_vcpi
+                ;mov     ah,40h          ; get status
+                ;int     67h
+                ;test    ah,ah
+                ;jnz     no_vcpi
                 mov     ah,46h          ; get version
                 int     67h
                 test    ah,ah
@@ -94,26 +90,29 @@ skip:
               ;;push    dx              ;$ save handle
                 mov     ax,0DE00h       ; check for vcpi present
                 int     67h
-                mov     al,1
                 test    ah,ah
-                jz      is386vcpi
-              ;;pop     dx              ;$ handle
-              ;;mov     ax,4500h        ; DEALLOCATE PAGES
-              ;;int     67h
-no_vcpi:
-		mov	bx,offset msg_badcpu
-                extrn   die:near
-godie:
-		jmp	near die
+		jnz	no_vcpi
 is386vcpi:
-		mov	[_vcpi],al
+		inc	[_vcpi]
                 extrn   prepare_vcpi:near
 		call	prepare_vcpi
 ;    get_vcpi_interface() || die("VCPI: low 640k: need 1:1 mapping");
                 ;extrn   _get_vcpi_interface:near
 		;call	_get_vcpi_interface
 		mov	bx,offset msg_badmapping
-		jz	godie
+		jnz	endcpu
+no_vcpi:
+              ;;pop     dx              ;$ handle
+              ;;mov     ax,4500h        ; DEALLOCATE PAGES
+              ;;int     67h
+                extrn   die:near
+godie:
+		jmp	near die
+check_rm_paging:
+; It's a 386 in real mode, chk for paging (crazy but possible)
+                mov     edx,cr0
+                shl     edx,1   ;CR0_PG to CF
+		jc	no_vcpi
 endcpu:
 
 ;***************************************************************
@@ -125,7 +124,6 @@ endcpu:
                 ;push	ax			; envp (already cleared)
                 ;mov	[word di],ax		; argv[0] = 0 (idem)
                 mov	si,80h
-                cld
                 lodsb
                 cmp	al,7Eh
                 jbe	alok

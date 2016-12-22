@@ -18,7 +18,7 @@ static void next_chunk(struct image_himem *m)
 {
 	m->chunk_size = 0;
 	if (m->state >= initrd_state.cnt) return;
-	lseek(m->fd,initrd_state.ofs[m->state],SEEK_SET);
+	lseekset(m->fd,initrd_state.ofs[m->state]);
 	m->chunk_size = initrd_state.size[m->state];
 	m->state++;
 }
@@ -63,9 +63,10 @@ extern int skip_xmmalloc;
 static void bootiso(char **iso)
 {
 	char *init = " rdinit=/init.exe", *mode="menu";
-	char *s, c, rootfs[16], fallback[16];
+	char c, rootfs[16], fallback[16];
 	int restart, isknoppix = 0;
 	unsigned long magic;
+	struct isostate *x=&isostate;
 	
 	if (!*iso || isoreset(*iso) < 0) return;
 	skip_xmmalloc++;
@@ -85,12 +86,12 @@ static void bootiso(char **iso)
 	} while (isoopen("isolinux") >= 0);		// Knoppix
 	fallback[0] = 0;
 	for (c = 0, restart = 1; isoreaddir(restart) == 0; restart = 0) {
-		if (strstr(isofilename, ".gz"))
-			strcpy(fallback, isofilename);
-		if (strhead(isofilename, "rootfs") 
-			|| c > isofilename[6]) continue;
-		strcpy(rootfs, isofilename);
-		c = isofilename[6];
+		if (strstr(x->filename, ".gz"))
+			strcpy(fallback, x->filename);
+		if (strhead(x->filename, "rootfs") 
+			|| c > x->filename[6]) continue;
+		strcpy(rootfs, x->filename);
+		c = x->filename[6];
 	}
 
 	strcpy(_cmdline,"rw root=/dev/null autologin bootfrom=");
@@ -109,13 +110,13 @@ static void bootiso(char **iso)
 		if (isoopen(initrd) >= 0) {
 			addinitrd();
 		}
-		if (*init && lseek(isofd, 20L, SEEK_SET) != -1) {
-			read(isofd, &isofileofs, 4);
-			read(isofd, &magic, 4);
-			isofileofs &= 0xFFFFL;
-			isofilesize = magic & 0xFFFFL;
-			isofileofs -= 0xC0L + isofilesize;
-			if (isofilesize) addinitrd();
+		if (*init && isolseek(20L) != -1) {
+			read(x->fd, &x->fileofs, 4);
+			read(x->fd, &magic, 4);
+			x->fileofs &= 0xFFFFL;
+			x->filesize = magic & 0xFFFFL;
+			x->fileofs -= 0xC0L + x->filesize;
+			if (x->filesize) addinitrd();
 			else init="";
 		}
 		load_initrds();
@@ -126,12 +127,13 @@ static void bootiso(char **iso)
 		strcat(_cmdline,ultoa(magic));
 	}
 	if (isknoppix) {
+		char *s;
 		if (iso[0][1] == ':')
 			*iso += 2;
 		for (s = *iso; *s; s++)
 			if (*s == '\\') *s = '/';
 	}
-	close(isofd);
+	close(x->fd);
 	boot_kernel();
 }
 

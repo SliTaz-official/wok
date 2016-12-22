@@ -36,18 +36,18 @@ inline void syntax() {
 
 static char _cmdline[256];
 int main(int argc, char *argv[]) {
+
+    (void) argc;
+
     // Believe it or not - this enables A20
     // on my box! Must be DOS in HMA...   -vda
     puts("LINLD v" VERSION_STR "+");
 
-    if(argc<2) {
-dosyntax:
-        syntax();
-    }
-
     // Parse command line
-    {for (char i=0;;) {
-	char *s=*++argv;
+    if (argv[1]) {for (char i=0;;) {
+	char *s;
+	argv++;
+	s=*argv;
 	i++;
 	if (!s) {
 	    puts(load_kernel());
@@ -113,9 +113,10 @@ addincmdline:
 	    cmdline = (const char *) _cmdline;
         }
 	else
-	    goto dosyntax;
+	    break;
     }}
+    syntax();
 
     // Let compiler be happy
-    // return _AX;
+    return _AX;
 }

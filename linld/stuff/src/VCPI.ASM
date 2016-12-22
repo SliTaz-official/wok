@@ -240,7 +240,7 @@ prepare_vcpi:
 ; Check that mapping for low 640k is 1:1
                 mov     si,[page0_ofs]
                 xor     bx,bx
-                cld
+                ;cld
 @@map_chk:
                 lodsd
                 shr     eax,12
@@ -373,7 +373,7 @@ label   do_memcpy_vcpi near
 
         ; Do copying
                 mov     ecx,4096/2
-                cld
+                ;cld
 ;;              cmp     esi,edi
 ;;              jae     @@do_copy
 ;;              add     esi,ecx         ;src<dst: we must do
@@ -413,6 +413,7 @@ label   do_memcpy_vcpi near
               ;;pushad
                 push    cs      ;*
                 push    ds
+                push    es
                 mov     [saved_ss],ss
                 mov     [saved_sp],sp
 
@@ -429,8 +430,8 @@ label   do_memcpy_vcpi near
                 mov     ss,ax           ;   or you may get limit violations
                 mov     ds,ax           ;   later in rm
                 mov     es,ax           ;   (actually I prefer 4gig limits :-)
-                mov     fs,ax           ;
-                mov     gs,ax           ;
+                ;mov     fs,ax           ;
+                ;mov     gs,ax           ;
 
 ; Black magic here
                 mov     eax,cr0
@@ -442,6 +443,7 @@ label   do_memcpy_vcpi near
 
 ; Now we are in rm, but not yet: have to restore sregs:
                 lss     sp,[saved_ss_sp]; SS
+                pop     es              ; ES
                 pop     ds              ; DS
                ;push    cs      ;* done earlier
                 push    offset @@next
@@ -450,7 +452,8 @@ label   do_memcpy_vcpi near
               ;;popad
               ;;popf
                 pop	esi
-                ret             ; We don't care much about rest (ES/FS/GS)
+                ret             ; We don't care much about rest (FS/GS)
+
         endp    _vm2rm
 
         ends    _TEXT

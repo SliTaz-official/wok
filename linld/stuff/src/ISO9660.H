@@ -1,9 +1,21 @@
 #ifndef __ISO9660_H
 #define __ISO9660_H
-extern char *isofilename;
-extern unsigned long isofileofs, isofilesize;
-extern unsigned short isofilemod;
-extern int isofd;
+extern struct isostate {
+	int fd;
+	unsigned long fileofs;
+	unsigned long filesize;
+	unsigned short filemod;
+	char *filename;
+//private
+	unsigned long dirofs, dirsize;
+	unsigned long curdirofs, curdirsize, curpos;
+} isostate;
+#define isofd isostate.fd
+#define	isofileofs isostate.fileofs
+#define	isofilesize isostate.filesize
+#define	isofilemod isostate.filemod
+#define	isofilename isostate.filename
+extern "C" int unsigned long isolseek(unsigned long offset);
 extern int isoreset(char *name);
 extern int isoopen(char *name);
 extern int isoreaddir(int restart);

@@ -18,7 +18,7 @@ _heap_top	dw	_bss_end
 msg_hang	db      "High mem corrupted - not exiting to DOS"
 msg_crlf	db	13,10,0
 vcpi_alloc_err	db	"vcpi "
-msg_malloc      db      "malloc() failure",0
+msg_malloc      db      "malloc failure",0
 
         ends    _DATA
 
@@ -28,6 +28,9 @@ msg_malloc      db      "malloc() failure",0
 _no_exit	db	?
 filecnt		db	?		; in fact 0 minus file count...
 nextfilename	dw	?
+	ifdef	LARGE_IMAGES
+curdata		dw	?
+	endif
 
         ends    _BSS
 
@@ -112,13 +115,13 @@ cat:
 		push	cx
 		push	ax
         global  malloc:near			; malloc(cx)
-malloc:
+malloc:						; keep CX, use AX,BX
 		mov	ax,[_heap_top]
+		mov	bx,-1400h		; MIN_STACK=_1k+PAGE_SIZE
+		add	bx,sp
+		sub	bx,ax			; can't overflow
+		cmp	bx,cx
 		mov	bx,offset msg_malloc
-		mov	dx,-1400h		; MIN_STACK=_1k+PAGE_SIZE
-		add	dx,sp
-		sub	dx,ax			; can't overflow
-		cmp	dx,cx
 		jb	puts
 		add	[_heap_top],cx		; _BEG has zero'd heap
 		;mov	bx,ax
@@ -286,38 +289,32 @@ rwioz:
 
 
 ;***************************************************************
-;long lseek(int fd, long sz, int dir);
+;long lseekset(int fd, long sz);
 ;***************************************************************
-        global  _lseek:near
-        proc    _lseek near
+        global  _lseekset:near
+        proc    _lseekset near
 
-		ifndef	NO386
 		pop	ax			;caller return address
                 pop	bx			; fd
-                pop	ecx			; sz
-                pop	dx			; dir
+                pop	dx			; sz lo
+                pop	cx			; sz hi
+                push	cx
                 push	dx
-                push	ecx
                 push	bx
                 push	ax
-		else
-		mov	bx,sp
-		mov	dx,[bx+8]
-		mov	cx,[bx+6]
-		mov	ax,[bx+4]
-		mov	bx,[bx+2]
-		endif
-lseek:
-		xchg	ax,dx			; dir
-                mov	ah,42h
-		ifndef	NO386
-                push	ecx
-                pop	dx
-                pop	cx
-		endif
+        global  lseekset:near
+lseekset:
+		clc
+        global  rewind:near
+rewind:						; rewind(bx,C=1)
+		mov	ax,4200h
+		jnc	dos
+lseek0:						; lseek0(bx,ax=dir)
+		cwd
+		xor	cx,cx
 		jmp	dos
 
-        endp    _lseek
+        endp    _lseekset
 
 
 ;***************************************************************
@@ -444,6 +441,16 @@ state		dw	?	;28    u16 state;
 fd2close	dw	?	;30    u16 fd2close;
 ends				;};
 
+	ifdef	LARGE_IMAGES
+struc   data_himem			;struct data_himem {
+first		dd	?		;   0  u32 first;
+cacheidx	dw	?		;   4  int cacheidx;
+pageidx		dw	?		;   6  int pageidx;
+cache		dd	1024 dup(?)	;   8  int cache;
+page		dd	1024 dup(?)	;4104  int page;
+ends					;}; // size=8200
+	endif
+
 ;***************************************************************
 ;u32* malloc_bufv_or_die(struct image_himem *m);
 ;***************************************************************
@@ -456,6 +463,16 @@ ends				;};
 		push	bx
 		push	si
 		xchg	ax,si
+	ifdef	LARGE_IMAGES
+		mov	cx,[word ((image_himem si).size) + 2]
+		shr	cx,4			; pages index size = size >> 20
+		add	cx,8+4096+8
+		call	malloc_or_die
+		mov	ecx,4096+4095		; cnt = 1+(m->size+PAGE_MASK)/PAGE_SIZE;
+		add	ecx,[(image_himem si).size]
+		shr	ecx,12
+		mov	[curdata],ax
+	else
 		mov	ecx,[(image_himem si).size]
 		dec	ecx
 		shr	ecx,12
@@ -466,59 +483,88 @@ ends				;};
 ; our malloc zeroes allocated mem: bufv[cnt]=0;
 ; Allocate pages, storing addrs in addrbuf
 		call	malloc_or_die
-                pop	cx
-		push	cx			; _sort:nel
-		push	ax			; _sort:base
+		pop	cx
+		push	ax
+	endif
 		mov	[(image_himem si).bufv],ax
-		xchg	ax,bx
+		xchg	ax,si
 @@vcpi_alloc:
                 xor     edx,edx
                 mov     ax,0DE04h
                 int     67h
 		or	ah,ah
-		jz	@@ok
 		mov	bx,offset vcpi_alloc_err
-		jmp	die
-@@ok:
-		mov	[bx],edx
-		add	bx,4
-		loop	@@vcpi_alloc
-@@again:
-		call	_sort
+		jnz	die
+; for (i = cnt-1; i >= 0; i--)
+	ifdef	LARGE_IMAGES
+		mov	eax,ecx
+		dec	eax
+	else
+		mov	ax,cx
+		dec	ax
+		cwde
+	endif
+		shl	eax,12		; i*_4k
+; if (edx < pm.fallback+i*_4k && edx >= pm.fallback) again
+		extrn	_pm
+		mov	bx,offset _pm+2
+		push	eax
+		add	eax,[bx-2+2]
+		cmp	eax,edx		; pm.fallback+i*_4k <= edx ?
+		pop	eax		; i*_4k
+		jbe	@@pmok
+		cmp	edx,[bx-2+2]	; edx >= pm.fallback ?
+		jae	@@vcpi_alloc
+@@pmok:
+; if (edx >= initrd.fallback+i*_4k && edx < initrd.fallback+initrd.size) again
 		extrn	_initrd
-		cmp	si,offset _initrd
-		jne	@@quit
-		pop	ax
-		pop	cx
-		push	cx			; _sort:nel
-		push	ax			; _sort:base = m->bufv
-;again:
-; for (i = cnt-1; i >= 0; i--) {
-@@chkloop:
-		mov	bx,cx
-		dec	bx
-;   if  (m->bufv[i] > m->fallback+i*_4k && m->bufv[i] < m->fallback+m->size) {
+		mov	bx,offset _initrd+2
+		add	eax,[bx-2+2]	; +initrd.fallback
+		cmp	eax,edx		; initrd.fallback+i*_4k > edx ?
+		ja	@@initrdok
+		mov	eax,[bx-2+6]	; initrd.size
+		add	eax,[bx-2+2]	; +initrd.fallback
+		cmp	eax,edx		; initrd.fallback+initrd.size > edx ?
+@@jnc_vcpi_alloc:
+		ja	@@vcpi_alloc
+@@initrdok:
+	ifdef	LARGE_IMAGES
+		cmp	[(data_himem si).first],0
+		jne	@@notfirst
+		mov	[(data_himem si).first],edx
+@@notfirst:
+		mov	bx,[(data_himem si).cacheidx]
+		cmp	bh,4
+		jae	@@nextpage
 		shl	bx,2
-		add	bx,ax			; m->bufv
-		mov	edx,[bx]		; m->bufv[i]
-		sub	edx,[(image_himem si).fallback]
-		cmp	edx,[(image_himem si).size]
-		jae	@@chknext
-		shr	edx,12
-		cmp	dx,cx
-		jb	@@chknext
-;     m->bufv[i] = vcpi_alloc_or_die();
-;     sort(m->bufv,cnt);
-;     goto again;
-		mov	cx,1
-		jmp	@@vcpi_alloc
-;   }
-; }
-@@chknext:
-		loop	@@chkloop
-@@quit:
+		inc	[(data_himem si).cacheidx]
+		mov	[(data_himem bx+si).cache],edx
+		loopd	@@vcpi_alloc
+		mov	[(data_himem bx+si).cache],ecx	; last is 0
+@@nextpage:
+		and	[(data_himem si).cacheidx],0
+		mov	bx,[(data_himem si).pageidx]
+		mov	[(data_himem bx+si).page],edx
+		add	[(data_himem si).pageidx],4
+		push	cx
+		lea	cx,[(data_himem si).cache]
+		ifdef	NO386
+		push	edx
+		pop	dx
 		pop	ax
+		endif
+		call	storepage		; storepage(edx,cx)	
 		pop	cx
+		or	ecx,ecx			; clear C
+		jnz	@@jnc_vcpi_alloc
+		mov	[dword (data_himem si).cacheidx],ecx
+		xchg	ax,si
+	else
+		mov	[si],edx
+		lodsd				; si=+4
+		loop	@@vcpi_alloc
+		pop	ax
+	endif
 		pop	si
 		ret
 
@@ -526,16 +572,189 @@ ends				;};
 
 
 ;***************************************************************
-;void next_chunk(struct image_himem *m);
+; void memcpy_image(struct image_himem *m);
 ;***************************************************************
-        proc    _next_chunk near
+        global  _memcpy_image:near
+        proc    _memcpy_image near
 
+		pop	ax			;caller return address
 		pop	bx
+		push	bx
+		push	ax
+		ifndef	NO386
+		mov	edx,[(image_himem bx).fallback]
+		mov	eax,[(image_himem bx).buf]
+		cmp	eax,edx			; if (m->fallback != m->buf)
+		jz	@@skip			;   memcpy32(m->fallback,0,m->buf,m->size)
+	ifdef	LARGE_IMAGES
+		mov	ecx,[(image_himem bx).size]
+memcpy_imagez:
+		push	ecx
+	else
+		push	[(image_himem bx).size]
+	endif
+		push	eax
+		push	0
+call_memcpy32:
+		push	edx
+		else
+		mov	ax,[word ((image_himem bx).fallback)]
+		mov	dx,[word ((image_himem bx).fallback)+2]
+		mov	cx,[word ((image_himem bx).buf)]
+		cmp	ax,cx			; if (m->fallback != m->buf)
+		jnz	@@do
+		cmp	dx,[word ((image_himem bx).buf)+2]
+		jz	@@skip			;   memcpy32(m->fallback,0,m->buf,m->size)
+@@do:
+		push	[word ((image_himem bx).size)+2]
+		push	[word ((image_himem bx).size)]
+		push	[word ((image_himem bx).buf)+2]
+		push	cx
+		xor	cx,cx
+		push	cx
+call_memcpy32:
+		push	dx
+		push	ax
+	ifdef	LARGE_IMAGES
+		jmp	@@memcpy
+memcpy_imagez:
+		push	ecx
+		push	eax
+		push	0
+		push	edx
+	endif
+		endif
+@@memcpy:
+		extrn	_memcpy32:near
+		call	near _memcpy32
+		add	sp,14
+@@skip:
+		ret
+
+        endp    _memcpy_image
+
+;***************************************************************
+;void storepage(u32 *dst, u16 src);
+;***************************************************************
+        global  _storepage:near
+        proc    _storepage near
+
+		pop	ax			;caller return address
+		pop	bx
+		pop	cx
+		push	cx
+		push	bx
+		push	ax
+		ifndef	NO386
+		mov	edx,[bx]
+		else
+		mov	ax,[bx]
+		mov	dx,[bx+2]
+		endif
+storepage:
+		ifndef	NO386
+		push	0
+		push	4096
+		push	0
+		else
+		xor	bx,bx
+		push	bx
+		mov	bh,4096/256
+		push	bx
+		xor	bx,bx
+		push	bx
+		endif
+		push	cx
+		push	ds
+		jmp	call_memcpy32
+
+        endp    _storepage
+
+
+	ifdef	LARGE_IMAGES
+;***************************************************************
+;void reset_bufv(u32 *p);
+;***************************************************************
+        global  _reset_bufv:near
+        proc    _reset_bufv near
+
+		pop	bx			;caller return address
 		pop	ax
 		push	ax
 		push	bx
-		push	si di
-		xchg	ax,di
+		mov	[curdata],ax
+		xchg	ax,bx
+		and	[dword (data_himem bx).cacheidx],0
+		ret
+
+        endp    _reset_bufv
+
+;***************************************************************
+;u32* prev_bufv();
+;u32* prev_bufv();
+;***************************************************************
+        global  _prev_bufv:near
+        global  _next_bufv:near
+        proc    _prev_bufv near
+
+		stc
+		db	73h			; jnc
+_next_bufv:
+		clc
+		sbb	ax,ax
+		stc
+		rcl	ax,1			; -1/+1
+		xor	ecx,ecx
+		push	si
+		mov	si,[curdata]
+		add	ax,[(data_himem si).cacheidx]
+		test	ax,0fc00h
+		jz	@@gotpage
+		push	ax			; FFFF / 0400
+		sar	ax,8			; FFFC / 0004
+		and	al,0fch
+		add	[(data_himem si).pageidx],ax
+		mov	bx,[(data_himem si).pageidx]
+		lea	bx,[(data_himem bx+si).page]
+		mov	edx,ds
+		shl	edx,4
+		lea	cx,[(data_himem si).cache]		
+		add	edx,ecx
+		mov	eax,[bx]
+		or	eax,eax
+		jnz	@@pageok
+		pop	ax
+		xchg	ax,bx
+		pop	si
+		ret
+@@pageok:
+		mov	cx,4096
+		call	memcpy_imagez		; get page
+		pop	ax			; FFFF / 0400
+		cbw
+		shr	ax,6			; 03FF / 0000
+@@gotpage:
+		mov	[(data_himem si).cacheidx],ax
+		shl	ax,2
+		xchg	ax,bx
+		lea	ax,[(data_himem bx+si).cache]		
+		or	bx,[(data_himem si).pageidx]	; !pageidx && !cacheidx
+		jnz	@@notfirst2
+		xchg	ax,si				; &first
+@@notfirst2:
+		pop	si
+		ret
+
+        endp    _prev_bufv
+	endif
+
+
+;***************************************************************
+;void next_chunk(struct image_himem *m);
+;***************************************************************
+        proc    next_chunk near
+
+		push	si
 		mov	bx,[(image_himem di).fd]
 		call	close
 		ifndef	NO386
@@ -567,44 +786,35 @@ ends				;};
 		jc	@@die
 		mov	[(image_himem di).fd],ax
 		mov	[(image_himem di).fd2close],ax
-		mov	dx,2			; SEEK_END
 		xchg	ax,bx
-		ifndef	NO386
-		xor	ecx,ecx
-		else
-		xor	ax,ax
-		xor	cx,cx
-		endif
-		call	lseek
+		mov	ax,4202h		; SEEK_END
+		call	lseek0
 @@die:
 		mov	bx,[(image_himem di).errmsg]
 		jc	die
 		mov	bx,[(image_himem di).fd]
 		ifndef	NO386
 		push	eax
-		xor	ecx,ecx
-		xor	dx,dx
-		call	lseek			; rewind
+		stc
+		call	rewind
 		pop	eax
 @@end:
 		mov	[(image_himem di).chunk_size],eax
 		else
 		push	ax
 		push	dx
-		xor	ax,ax
-		xor	cx,cx
-		cwd
-		call	lseek			; rewind
+		stc
+		call	rewind
 		pop	dx
 		pop	ax
 @@end:
 		mov	[word (image_himem di).chunk_size],ax
 		mov	[word ((image_himem di).chunk_size)+2],dx
 		endif
-		pop	di si
+		pop	si
 		ret
 
-        endp    _next_chunk
+        endp    next_chunk
 
 
 ;***************************************************************
@@ -633,7 +843,7 @@ ends				;};
 		mov	[word (image_himem di).size],ax	; m->size = 0L
 		mov	[word ((image_himem di).size)+2],ax
 		endif
-		mov	[(image_himem di).next_chunk],offset _next_chunk
+		mov	[(image_himem di).next_chunk],offset next_chunk
                 mov	si,[fname]
                 mov	[(image_himem di).state],si
 @@next:
@@ -979,130 +1189,6 @@ popsiret:
         endp    _strtol
 
 
-;***************************************************************
-;>void sort(unsigned long  *base:BX!, size_t nel:CX)
-;NO386 safe: only used by VCPI
-;***************************************************************
-        global  _sort:near
-        proc    _sort near
-
-		pop	ax			;caller return address
-                pop	bx			; base
-		pop	cx			; nel
-		push	cx
-		push	bx
-		push	ax
-        global  sort:near
-sort:
-	ifndef	fastsort
-;  bubble sort
-		push	si
-		shl	cx,2
-@@loop:
-		xor	ax,ax
-		mov	si,4
-		cmp	cx,si
-		jbe	popsiret
-@@next:
-		mov	edx,[bx+si-4]
-		cmp	edx,[bx+si]
-		jbe	@@ok
-		xchg	edx,[bx+si]
-		mov	[bx+si-4],edx
-		mov	ax,si
-@@ok:
-		add	si,4
-		cmp	si,cx
-		jb	@@next
-		xchg	ax,cx
-		jmp	@@loop
-	else
-;  shell sort (c) uclibc GPL
-		push	si di
-; {
-;>	size_t wgap:SI;
-;
-;	if (nel > 1) {
-		cmp	cx,1
-		jbe	@@end
-;		wgap = 0;
-		xor	ax,ax
-;		do {
-@@wgaplp:
-		mov	si,ax
-;			wgap = 3 * wgap + 1;
-		mov	dx,3
-		mul	dx
-		inc	ax
-;		} while (wgap < (nel-1)/3);
-		cmp	ax,cx
-		jb	@@wgaplp
-;		/* From the above, we know that either wgap == 1 < nel or */
-;		/* ((wgap-1)/3 < (int) ((nel-1)/3) <= (nel-1)/3 ==> wgap <  nel. */
-;		wgap *= 4;			/* So this can not overflow if wnel doesn't. */
-		shl	si,2
-;		nel *= 4;			/* Convert nel to 'wnel' */
-		shl	cx,2
-;		do {
-@@lp1:
-;>	                size_t i:DI;
-;			i = wgap;
-		mov	di,si
-;			do {
-@@lp2:
-;>	                	size_t j:DX;
-;				j = i;
-		mov	dx,di
-;				do {
-@@lp3:
-;>					register char *a:BX!;
-;
-;					j -= wgap;
-		sub	dx,si
-;					a = j + ((char *)base);
-		push	bx
-		add	bx,dx
-;					if (cmp(a, a + wgap) <= 0) {
-		mov	eax,[bx]
-		cmp	eax,[bx+si]
-		jbe	@@brk3
-;						break;
-;					}
-		xchg	eax,[bx+si]
-		mov	[bx],eax
-;					swap(a, a + wgap);
-		pop	bx
-;				} while (j >= wgap);
-		cmp	dx,si
-		jae	@@lp3
-		push	bx
-@@brk3:
-		pop	bx
-;				i += 4;
-		add	di,4
-;			} while (i < nel);
-		cmp	di,cx
-		jb	@@lp2
-;			wgap = (wgap - 4)/3;
-		sub	si,4
-		xchg	ax,si
-		cwd
-		mov	si,3
-		div	si	; kill dx
-		xchg	ax,si
-;		} while (wgap);
-		or	si,si
-		jnz	@@lp1
-@@end:
-;	}
-;}
-		pop	di si
-		ret
-endif
-
-        endp    _sort
-
-
 		ifdef	NO386
 ;***************************************************************
 ;u16 topseg();
@@ -1122,42 +1208,6 @@ endif
 
         endp    _topseg
 		endif
-
-;***************************************************************
-;void rmcpy(void* rmbuf, u16 rmsize);
-;***************************************************************
-        global  _rmcpy:near
-        proc    _rmcpy near
-
-		pop	bx			;caller return address
-                pop	ax			; rmbuf
-		pop	cx			; rmsize
-		push	cx
-		push	ax
-		push	bx
-		push	si di es
-		xchg	ax,si
-		xor	di,di
-		ifdef	NO386
-		call	_topseg
-		mov	es,ax
-		else
-		push	9000h
-		pop	es
-		endif
-		cld
-		rep
-		  movsb
-		extrn	_cmdline:word
-		mov	si,[_cmdline]
-		mov	di,8000h
-		mov	ch,10h			; 4k
-		rep
-		  movsb
-		pop	es di si
-		ret
-
-        endp    _rmcpy
 
         ends    _TEXT
 

@@ -141,12 +141,11 @@ ultoabuf	db	12	dup (?)
 		mov	ah,30h
 		int	21h
 		cmp	al,3
-		mov	ax,0
 		jb	@@skip
+		xor	di,di
 		mov	es,[cs:2Ch]
 		mov	cx,-1
-		xor	di,di
-		xor	al,al
+		mov	ax,di
 @@loop1:
 		repne
 		  scasb
@@ -348,6 +347,38 @@ kver2ulret:
 		jmp	near read_cmdline	; read_cmdline(ax,di,cx)
 		
         endp    _try_default_args
+
+struc		isostate	; struct isostate {
+fd		dw	?	; 0	int fd;
+fileofs		dd	?	; 2	unsigned long fileofs;
+filesize	dd	?	; 6	unsigned long filesize;
+filemod		dw	?	;10	unsigned short filemod;
+filename	dw	?	;12	char *filename;
+dirofs		dd	?	;14	unsigned long dirofs;
+dirsize		dd	?	;16	unsigned long dirsize;
+curdirofs	dd	?	;20	unsigned long curdirofs;
+curdirsize	dd	?	;24	unsigned long curdirsize;
+curpos		dd	?	;28	unsigned long curpos;
+ends				; } isostate;
+;***************************************************************
+;unsigned long isolseek(unsigned long offset);
+;***************************************************************
+        global  _isolseek:near
+        proc    _isolseek near
+
+		pop	ax
+		pop	dx
+		pop	cx
+		push	cx
+		push	dx
+		push	ax
+		xor	ax,ax
+		extrn	_isostate:isostate
+		mov	bx,[_isostate.fd]
+		extrn	lseekset:near
+		jmp	near lseekset		; (bx=fd, sz=cx:dx)
+		
+        endp    _isolseek
 
         ends    _TEXT
 

@@ -21,7 +21,7 @@
         segment _TEXT byte public use16 'CODE'
 
 ;***************************************************************
-;void set_sregs_jump_seg_ofs(u32 csip, u32 sssp);
+;void set_sregs_jump_seg_ofs(u32 csip);
 ;****** Never returns
 ;***************************************************************
         global  _set_sregs_jump_seg_ofs:near
@@ -30,15 +30,43 @@
 		extrn	dos_shutdown:near
 
 		pop	ax			;caller return address
-		test	[byte _pm_high],-1	; load high ? clear CF
+		ifdef	NO386
+		extrn	_topseg:near
+		call	near _topseg
+		mov	es,ax
+		else
+		push	9000h
+		pop	es
+		endif
+		pop	cx			; ip
+		pop	dx			; cs
+		push	es
+		pop	ss
+		mov	sp,0A000h
+		push	dx cx
+		extrn	_rm_buf:word
+		mov	si,[_rm_buf]
+		xor	di,di
+		extrn	_rm_size:word
+		mov	cx,[_rm_size]
+		;cld
+		rep
+		  movsb
+		extrn	_cmdline:word
+		mov	si,[_cmdline]
+		mov	di,8000h
+		mov	ch,10h			; 4k
+		rep
+		  movsb
+		cmp	[_pm_high],cl		; load high ?
 		jne	isbzimage
 		; finish loading
 		extrn   @last_ditch$qv:near
 		push	cs
 		call	@last_ditch$qv
-		mov	bx,[word _pm+2+2]	; get pm->fallback high word
+		mov	ax,[word _pm+2+2]	; get pm->fallback high word
 		; self move
-		cld
+		;cld
 		push	9900h			; 4096 bytes for cmdline
 	;push	9820h			; 512 bytes for cmdline
 		pop	es			; min 2048 bytes for stack
@@ -51,18 +79,11 @@
 		  movsb
 		push	es
 		call	near doretf		; mov cs,es
-		stc
-isbzimage:
-		pop	cx			; ip
-		pop	dx			; cs
-		pop	ax			; sp
-		pop	ss			; ss
-		xchg	sp,ax
-		push	dx cx
-		jnc	nomove
+		push	ss
+		pop	es
 		push	cs
 		pop	ds
-		push	bx
+		push	ax
 		call	near dos_shutdown
 		;in	al,70h
 		;or	al,80h			; disable NMI
@@ -112,11 +133,11 @@ bufhigh:
 notelks:
 		endif
 
-nomove:
+isbzimage:
 		push	ss
 		pop	ds
-		push	ss
-		pop	es
+		;push	ss
+		;pop	es
 		push	ss
 		pop	fs
 		push	ss

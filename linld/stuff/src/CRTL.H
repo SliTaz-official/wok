@@ -20,10 +20,6 @@ const A_ARCHIVE   = 32;
 const O_RDONLY = 0;     // for open()
 const O_BINARY = 0;
 
-const SEEK_SET = 0;     // for lseek()
-const SEEK_CUR = 1;
-const SEEK_END = 2;
-
 extern char text_start; extern char text_end;
 extern char data_start; extern char data_end;
 extern char bss_start;  extern char bss_end;
@@ -44,7 +40,7 @@ extern "C" void exit(int n);
 extern "C" void abort();
 extern "C" int read(int fd, void* data, int sz);
 extern "C" int write(int fd, const void* data, int sz);
-extern "C" long lseek(int fd, long sz, int dir);
+extern "C" long lseekset(int fd, long sz);
 extern "C" void* malloc(unsigned sz);
 extern "C" void puts(const char* s);
 extern "C" void putsz(const char* s);

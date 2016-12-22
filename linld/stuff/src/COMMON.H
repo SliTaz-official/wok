@@ -49,6 +49,19 @@ extern struct image_himem {
     u16 fd2close;
 } pm, initrd;
 
+extern "C" void memcpy_image(struct image_himem *m);
+extern "C" void storepage(u32 *dst, u16 src);
+#ifdef LARGE_IMAGES
+extern "C" void reset_bufv(unsigned long *p);
+extern "C" unsigned long* prev_bufv();
+extern "C" unsigned long* next_bufv();
+#define next(p)	 p = next_bufv()
+#define prev(p)	 p = prev_bufv()
+#else
+#define reset_bufv(p)
+#define next(p)	 ++p
+#define prev(p)	 --p
+#endif
 extern char vcpi;
 extern const char* kernel_name;
 extern const char* initrd_name;
@@ -57,8 +70,8 @@ extern u16 root_dev;
 extern u16 vid_mode;
 // External asm helpers
 extern "C" void memcpy32(u32, u16,u32, u32);
-extern "C" void rmcpy(void* rmbuf, u16 rmsize);
-extern "C" void set_sregs_jump_seg_ofs(u32 csip, u32 sssp);
+extern "C" void rmcpy();
+extern "C" void set_sregs_jump_seg_ofs(u32 csip);
 extern "C" void xmm_alloc(struct image_himem *m);
 extern u32 topmem;
 extern "C" u32 memtopz();

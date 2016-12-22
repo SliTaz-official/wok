@@ -116,34 +116,34 @@ endm
 		push	bp
 		mov	bp,sp
 		sub	sp,TEMP_SIZE
+		;cld
                 pushf
-		cld
                 push    ds es
 
 			ifndef	NO386
 
                 pushad
+		mov	cl,4
                 movzx   esi,[srcseg]
-                shl     esi,4
-                add     [srcofs],esi
-                mov     esi,[srcofs]
+                shl     esi,cl
+                add     esi,[srcofs]
+                mov     [srcofs],esi		; for memcpy_vcpi
                 mov     edi,[dstofs]
 
 	ifndef	pm_only
 		mov	eax,esi
-		or	eax,edi
-		shr	eax,20			; >1mb ?
-                jnz     pmcopy
-		mov	eax,esi
-		shr	eax,4
+		shr	eax,cl
 		mov	edx,edi
-		shr	edx,4
+		shr	edx,cl
+		mov	ecx,esi
+		or	ecx,edi
+		shr	ecx,20			; >1mb ?
+                jnz     @@pmcopy
 @@movlp:
 		mov	ds,ax
 		mov	es,dx
 		inc	ax
 		inc	dx
-		xor	ecx,ecx
 		mov	cl,0Fh
 		and	si,cx
 		and	di,cx
@@ -151,19 +151,19 @@ endm
                 sub     [sz],ecx
             rep movsb
                 ja	@@movlp
-		jmp	done
+		jmp	@@done
 	endif
-pmcopy:
+@@pmcopy:
 			else
 
 		push	si
 		xor	bx,bx
 		xor	dx,dx
 		xor	si,si
-		mov	ax,[bp+si+8]		; srcseg
+		mov	ax,[bp+8]		; srcseg
 		call	near N_LXLSH@4
-		add	[bp+si+10],ax		; srcofs lo
-		adc	[bp+si+10+2],dx		; srcofs hi
+		add	[bp+10],ax		; srcofs lo
+		adc	[bp+10+2],dx		; srcofs hi
 @@2flat:
 		mov	ax,[bp+si+10]		; srcofs, dstofs lo
 		mov	dx,[bp+si+10+2]		; srcofs, dstofs hi
@@ -174,8 +174,8 @@ pmcopy:
 		jnz	@@2flat
 		pop	dx			; dstseg
 		pop	ax			; srcseg
-		or	bx,bx			; <1mb ?
-                jnz     pmcopy
+		test	bx,bx			; <1mb ? (clear C)
+                jnz     @@pmcopy
 		push	di
 @@movlp:
 		mov	ds,ax
@@ -190,13 +190,13 @@ pmcopy:
 		inc	cx
                 sub     [word sz],cx
             rep movsb
-		jae	@@movlp
+		ja	@@movlp
 		dec	[word sz+2]
-                jns	@@movlp			; mov 1-16 more bytes...
-		pop	di si
-		jmp	done16
-pmcopy:
+		jns	@@movlp			; mov 1-16 more bytes...
+		pop	di
+@@pmcopy:
 		pop	si
+		js	@@done16
                 pushad
                 mov     esi,[srcofs]
                 mov     edi,[dstofs]
@@ -204,7 +204,7 @@ pmcopy:
 			endif
 
                 mov     ecx,[sz]
-                jecxz   done
+                jecxz   @@done
 
 		smsw	ax
 		test	al,1
@@ -216,11 +216,8 @@ pmcopy:
 		extrn	call_pm_routine:near
                 call    near call_pm_routine ; Call pm copy routine via vcpi pm
                 pop     ax
-		jmp	done
+		jmp	@@done
 @@real_mode:
-		mov	dx,-1
-
-with_movsw:
                 cmp     esi,edi
                 jae     @@do_copy
                 add     esi,ecx         ;src<dst: we must do
@@ -236,13 +233,13 @@ with_movsw:
                 mov     eax,cs
                 shl     eax,4
                 addzx_e ax,<offset GDT>
-                mov     [word GDTR],dx          ;GDT limit = 0FFFFh
+                mov     [word GDTR],-1          ;GDT limit = 0FFFFh
                 mov     [dword GDTR+2],eax      ;GDT base
                 lgdt    [GDTR]
 
 ;****** Go into pm *********************************************
                 mov     eax,cr0
-                or      al,01h          ;CR0_PE on
+                inc     ax		;CR0_PE on
                 mov     cr0,eax
                 jmp     short $+2       ;*Required*!
                                         ;3+ NOPs also work fine (chkd on 386)
@@ -254,6 +251,7 @@ with_movsw:
                 db      66h     ;operand width override for ecx
                 db      67h     ;address width override for esi/edi
             rep movsb
+		cld
 
 ;****** Return to rm *******************************************
                 dec     ax              ;CR0_PE off
@@ -263,9 +261,9 @@ with_movsw:
 
 ;****** Return *************************************************
                 lgdt    [oldGDTR]
-done:
+@@done:
                 popad
-done16:
+@@done16:
                 pop     es ds
                 popf
 		mov	sp,bp

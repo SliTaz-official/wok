@@ -1,13 +1,16 @@
 path ..\BC31;%PATH%
 call !clean.bat
-tasm /la /m /dNO386 *.asm > asm.log
+rem tasm /la /m /dNO386 *.asm > asm.log
+tasm /la /m /dNO386 /dLARGE_IMAGES *.asm > asm.log
 rem @pause
-bcc @bccopt.opt -S -mt *.cpp
+rem bcc @bccopt.opt -S -mt *.cpp
+bcc @bccopt.opt -S -mt -DLARGE_IMAGES *.cpp
 tasm /l /m load.asm
 tasm /l /m himem.asm
 tasm /l /m tazboot.asm
 tasm /l /m iso9660.asm
-bcc @bccopt.opt -c -mt *.cpp > cpp.log
+rem bcc @bccopt.opt -c -mt *.cpp > cpp.log
+bcc @bccopt.opt -c -mt -DLARGE_IMAGES *.cpp > cpp.log
 rem @pause
 tlink /m /s /t @linkx.cmd > lnk.log
 rem @pause
