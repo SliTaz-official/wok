@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="phonon-backend-gstreamer"
+VERSION="4.7.2"
+CATEGORY="multimedia"
+LICENSE="LGPL2.1"
+SHORT_DESC="gstreamer lib for phonon"
+MAINTAINER="psychomaniak@xakep.ru"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="http://phonon.kde.org/"
+WGET_URL="http://download.kde.org/stable/phonon/$PACKAGE/$VERSION/src/$TARBALL"
+
+DEPENDS="phonon gst-plugins-base gst-plugins-good gst-ffmpeg"
+BUILD_DEPENDS="phonon phonon-dev cmake qmake automoc4 Qt4-dev \
+gst-plugins-base gst-plugins-base-dev"
+
+PROVIDE="qt4-phonon"
+
+compile_rules()
+{
+	mkdir build; cd build
+	cmake	-DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_SKIP_RPATH=ON \
+		-DCMAKE_INSTALL_LIBDIR=lib \
+		-DPHONON_INSTALL_QT_EXTENSIONS_INTO_SYSTEM_QT=ON .. &&
+	make && make DESTDIR=$DESTDIR install
+}
+genpkg_rules()
+{
+	cp -a $install/* $fs
+	rm -fr $fs/usr/share/icons
+	mkdir -p $fs/usr/lib/qt/plugins
+	ln -s /usr/lib/kde4/plugins/phonon_backend $fs/usr/lib/qt/plugins/
+}

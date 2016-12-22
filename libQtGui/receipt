@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libQtGui"
-VERSION="4.8.6"
+VERSION="4.8.7"
 CATEGORY="development"
 SHORT_DESC="Qt Gui Library"
 MAINTAINER="allan316@gmail.com"
@@ -23,8 +23,9 @@ genpkg_rules()
 	cp -a $install/usr/lib/qt/plugins/imageformats/libqjpeg.so $fs/usr/lib/qt/plugins/imageformats
 	cp -a $install/usr/lib/qt/plugins/imageformats/libqgif.so $fs/usr/lib/qt/plugins/imageformats
 
-	mkdir -p $fs/etc/skel/.config
-	cp -a $stuff/Trolltech.conf $fs/etc/skel/.config
+	mkdir -p $fs/etc/skel/.config $fs/etc/xdg
+	cp $stuff/Trolltech.conf $fs/etc/skel/.config/
+	cp $stuff/Trolltech.conf $fs/etc/xdg/
 }
 
 post_install()
@@ -32,6 +33,7 @@ post_install()
         for i in $(ls "$1/home" 2> /dev/null); do
                 [ -f "$1/home/$i/.config/Trolltech.conf" ] && continue
                 cp "$1/etc/skel/.config/Trolltech.conf" "$1/home/$i/.config"
+		[ -d $PKGS_DB/gtk+ ] && sed 's|Cleanlooks|gtk|' -i "$1/home/$i/.config/Trolltech.conf"
                 chroot "$1/" chown -R $(stat -c "%u.%g" "$1/home/$i") "/home/$i/.config"
         done
 }

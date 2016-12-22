@@ -2,58 +2,38 @@
 
 PACKAGE="qt4"
 SOURCE="qt-everywhere-opensource-src"
-VERSION="4.8.6"
+VERSION="4.8.7"
 CATEGORY="meta"
 SHORT_DESC="qt x11 toolkit"
 MAINTAINER="allan316@gmail.com"
 LICENSE="GPL3 LGPL2.1"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://qt-project.org/"
-WGET_URL="http://download.qt-project.org/archive/qt/${VERSION%.*}/$VERSION/$TARBALL"
+WGET_URL="http://download.qt.io/official_releases/qt/${VERSION%.*}/$VERSION/$TARBALL"
 PROVIDE="qt-x11-opensource-src Qt4"
 TAGS="qt"
 
 DEPENDS="glibc-locale libQtCore libQtGui libQtNetwork libQtSvg libQtXml \
 libQtDesigner libQtScript libQt3Support libQtClucene libQtDBus libQtHelp \
-libQtOpenGL libQtSql libQtWebkit gstreamer"
-BUILD_DEPENDS="xorg-libX11-dev dbus-dev gstreamer-dev gst-python-dev libmng-dev \
-cups-dev mysql-dev unixODBC-dev mesa-dev fontconfig-dev libegl-mesa libglu-mesa \
-libglw-mesa postgresql-dev gst-plugins-base-dev atk-dev autoconf automake bash \
+libQtOpenGL libQtSql libQtWebkit qtconfig"
+SUGGESTED="libQtPlugins libQtScriptTools libQtDeclarative"
+BUILD_DEPENDS="xorg-libX11-dev dbus-dev mesa-dev libmng-dev cups-dev mysql-dev \
+unixODBC-dev fontconfig-dev postgresql-dev atk-dev autoconf automake bash \
 binutils bison bzip2-dev cairo-dev coreutils expat-dev flex fontconfig-dev \
 freetype-dev gettext glib-dev jpeg-dev libIDL libcap-dev libpng-dev libtool \
 libxml2-dev linux-api-headers m4 make mercurial ncurses-dev openssl-dev \
 pango-dev patch pcre-dev perl perl-xml-parser perl-xml-simple pixman-dev \
 pkg-config tiff-dev xorg-dev-proto xorg-dev zip unzip gtk+-dev alsa-lib-dev \
-sqlite-dev libglu-mesa-dev libglw-mesa-dev libQtClucene wayland-dev"
+xorg-libXv-dev sqlite-dev "
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	
-	#ugly fix for missing files, you probably could do better
-	
-	mkdir -p $src/src/3rdparty/webkit/Source/WebKit2/generated
-
-	for i in $(grep MessageReceiver.cpp $stuff/missinglist); do
-	fileprefix=${i%MessageReceiver.cpp}
-	cppfilename=$(find $src/src/3rdparty/webkit/Source/WebKit2  -name $fileprefix.cpp)
-	dname=$(dirname $cppfilename)
-	/usr/bin/python $src/src/3rdparty/webkit/Source/WebKit2/Scripts/generate-message-receiver.py $dname/$fileprefix.messages.in > $src/src/3rdparty/webkit/Source/WebKit2/generated/$i
-	done
-	
-	for i in $(grep Messages.h $stuff/missinglist); do
-	fileprefix=${i%Messages.h}
-	hfilename=$(find $src/src/3rdparty/webkit/Source/WebKit2  -name $fileprefix.h)
-	dname=$(dirname $hfilename)
-	/usr/bin/python $src/src/3rdparty/webkit/Source/WebKit2/Scripts/generate-messages-header.py $dname/$fileprefix.messages.in > $src/src/3rdparty/webkit/Source/WebKit2/generated/$i
-	done
-	
 		./configure\
 		-silent \
 		-prefix /usr \
 		-confirm-license -opensource \
-		-sysconfdir /etc \
+		-sysconfdir /etc/xdg \
 		-plugindir /usr/lib/qt/plugins \
 		-importdir /usr/lib/qt/imports \
 		-translationdir /usr/share/qt/translations \
@@ -73,10 +53,15 @@ compile_rules()
 		-system-sqlite \
 		-scripttools \
 		-glib \
-		-phonon \
 		-optimized-qmake \
 		-opengl \
 		-gtkstyle \
+		-no-openvg \
+		-no-reduce-relocations \
+		-no-phonon \
+		-no-phonon-backend \
+		-graphicssystem raster \
+		-continue \
 		2>&1 | sed 's/such file or directory/file/' &&
 	make $MAKEFLAGS &&
 	make INSTALL_ROOT=$DESTDIR install
