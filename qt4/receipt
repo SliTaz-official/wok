@@ -29,6 +29,7 @@ xorg-libXv-dev sqlite-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
+	export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${src}/lib"
 	./configure\
 		-silent \
 		-prefix /usr \
@@ -60,13 +61,10 @@ compile_rules()
 		-no-reduce-relocations \
 		-no-phonon \
 		-no-phonon-backend \
-		-no-rpath \
 		-graphicssystem raster \
 		-continue \
 		2>&1 | grep -v 'wayland-client' | \
 		sed 's/such file or directory/file/' &&
-	mkdir $src/bin ; ln -s ../lib/libQtCLucene.so.4 $src/bin/libQtCLucene.so.4
-	find $src/tools -name Makefile | xargs sed -i 's|(MAKE)|& -j1|' ;cd $src
 	make $MAKEFLAGS &&
 	make INSTALL_ROOT=$DESTDIR install
 }
