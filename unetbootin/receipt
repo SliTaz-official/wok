@@ -11,18 +11,23 @@ WEB_SITE="http://unetbootin.github.io/"
 WGET_URL="https://github.com/unetbootin/unetbootin/archive/$VERSION.tar.gz"
 
 DEPENDS="syslinux p7zip-full libQtCore libQtGui libQtNetwork"
-BUILD_DEPENDS="qmake Qt4-dev"
+BUILD_DEPENDS="qmake Qt4-dev upx"
 SUGGESTED="bash gparted xz"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src/src/unetbootin
+	sed -i 's/Cooking/Rolling/' distrover*.cpp
+	#sed -i 's/gpxe/ipxe/'distrolst.cpp
+	sed -i 's/"rootfs.gz"/& << "rootfs1.gz" << "rootfs2.gz" << "rootfs3.gz" << "rootfs4.gz"/' unetbootin.cpp
+	sed -i '/^RESOURCES/d' unetbootin.pro
 	sed -i '/^RESOURCES/d' unetbootin.pro
 	lupdate unetbootin.pro
 	lrelease unetbootin.pro
 	qmake "DEFINES += NOSTATIC" "RESOURCES -= unetbootin.qrc"
 	make
+	upx unetbootin
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
