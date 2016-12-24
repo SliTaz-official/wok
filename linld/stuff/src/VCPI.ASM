@@ -407,6 +407,9 @@ label   do_memcpy_vcpi near
         global  _vm2rm:near
         proc    _vm2rm near
 
+		extrn	_vcpi:byte
+		test	[_vcpi],-1
+		jz	@@ret
                 push	esi
               ;;pushf
               ;;cli
@@ -452,6 +455,7 @@ label   do_memcpy_vcpi near
               ;;popad
               ;;popf
                 pop	esi
+@@ret:
                 ret             ; We don't care much about rest (FS/GS)
 
         endp    _vm2rm

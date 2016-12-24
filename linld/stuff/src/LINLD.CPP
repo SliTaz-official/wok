@@ -24,11 +24,12 @@ inline void syntax() {
         "\tinitrd,vga,root=(void)" NL
         "\tmem=256m" NL
         "\tcl=auto" NL
+        "\t-b 1088k" NL
         "Use quotes: \"cl=...\" if you need spaces in cmdline" NL
         "Use cl=@filename to get it from a file"
 #if 1
         NL NL "Examples:" NL
-        "\tlinld initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz \"cl=rw root=/dev/null video=-32\""
+        "\tlinld -f -b 64m initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz \"cl=rw root=/dev/null video=-32\""
 	NL NL "\tlinld image=memtest"
 #endif
     );
@@ -46,6 +47,7 @@ int main(int argc, char *argv[]) {
     // Parse command line
     if (argv[1]) {for (char i=0;;) {
 	char *s;
+    next:
 	argv++;
 	s=*argv;
 	i++;
@@ -62,15 +64,20 @@ int main(int argc, char *argv[]) {
 	    s+=7;
             initrd_name=s;
         }
-        else if((*(u16 *)s|0x2002) == 0x662F) { // -F /f
-            extern int skip_xmmalloc;
-            skip_xmmalloc++;
-        }
         else if(strhead(s,"vga=") == 0) {
 	    s+=4;
             vid_mode = strtol(s);	// support normal, extended & ask
         }
-        else if(strhead(s,"cl=") == 0) {
+        else switch (*(u16 *)s|0x2002) {
+	case 0x662F:	// -F /f
+	    skip_alloc++;
+	    goto next;
+	case 0x622F:	// -B /b
+	    argv++;
+	    base_himem = strtol(*argv);
+	    goto next;
+	default:
+        if(strhead(s,"cl=") == 0) {
             cmdline=s+=3;
             if (*s == '@') {
 		static struct image_himem image;
@@ -114,6 +121,7 @@ addincmdline:
         }
 	else
 	    break;
+	}
     }}
     syntax();
 

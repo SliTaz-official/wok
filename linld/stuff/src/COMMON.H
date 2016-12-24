@@ -22,6 +22,8 @@ const u16 _16k = 16*1024u;
 const u16 _32k = 32*1024u;
 const u32 _64k = 64*1024ul;
 const u32 _1m = 1024ul*1024ul;
+const u32 _32m = 32*1024ul*1024ul;
+const u32 _64m = 64*1024ul*1024ul;
 
 const PAGE_BITS = 12;
 const PAGE_SIZE = 1<<PAGE_BITS;
@@ -48,6 +50,9 @@ extern struct image_himem {
     u16 state;
     u16 fd2close;
 } pm, initrd;
+
+extern int skip_alloc;
+extern u32 base_himem;
 
 extern "C" void memcpy_image(struct image_himem *m);
 extern "C" void storepage(u32 *dst, u16 src);

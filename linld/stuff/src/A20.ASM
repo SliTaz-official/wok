@@ -15,7 +15,7 @@
         global  die:near
 enable_a20_methods:
 		dw	_enable_a20_fast, _enable_a20_kbd, _enable_a20_xmm, die
-msg_a20		db	"Can't enable A20",0
+msg_a20		db	"Can't use A20",0
 
         ends    _DATA
 
@@ -51,16 +51,14 @@ msg_a20		db	"Can't enable A20",0
                 xor     cx,cx           ; 64K iterations
 @@loop:
                 call    @@delay         ; 8042 status port
-                in      al,64h          ; output buffer?
+                in      al,64h
+                test    al,3            ; is output or input full?
+                jz      @@break         ; no - break loop
                 test    al,1            ;
                 jz      @@no_output
                 call    @@delay         ; yes: read it
                 in      al,60h          ;
-                jmp     @@cont          ;
 @@no_output:
-                test    al,2            ; is input buffer full?
-                jz      @@break         ; no - break loop
-@@cont:
                 loop    @@loop
 @@break:
                 ret
@@ -86,9 +84,24 @@ msg_a20		db	"Can't enable A20",0
         endp    _enable_a20_fast
 
 ;***************************************************************
+;void enable_a20_or_die();
+;***************************************************************
+        global  _enable_a20_or_die:near
+        proc    _enable_a20_or_die near
+
+		push	si
+		mov	si,offset enable_a20_methods
+		jmp	@@check
+@@loop:
+		lodsw
+		mov	bx,offset msg_a20
+		call	ax
+@@check:
+		;call	_check_a20
+;***************************************************************
 ;int check_a20();
 ;***************************************************************
-        proc    _check_a20 near
+        ;proc    _check_a20 near
 
 ; From linux kernel setup.S:
 ; wait until a20 really *is* enabled; it can take a fair amount of
@@ -113,25 +126,10 @@ a20ko:
 		loopne	a20lp
 		xchg	ax,cx
                 pop     es ds
-                ret
+                ;ret
 
-        endp    _check_a20
+        ;endp    _check_a20
 
-;***************************************************************
-;void enable_a20_or_die();
-;***************************************************************
-        global  _enable_a20_or_die:near
-        proc    _enable_a20_or_die near
-
-		push	si
-		mov	si,offset enable_a20_methods
-		jmp	@@check
-@@loop:
-		lodsw
-		mov	bx,offset msg_a20
-		call	ax
-@@check:
-		call	_check_a20
 		jne	@@loop
 		pop	si
                 ret

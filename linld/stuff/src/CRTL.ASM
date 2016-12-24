@@ -38,11 +38,16 @@ curdata		dw	?
 
 ;***************************************************************
 ;char* strcpy(const char* a, const char* b);
+;char* strcat(const char* a, const char* b);
 ;***************************************************************
         global  _strcpy:near
         proc    _strcpy near
 
 		mov	dl,0
+		db	0bbh			; mov	bx,imm opcode
+        global  _strcat:near
+_strcat:
+		mov	dl,1
 cat:
 		pop	ax			;caller return address
                 pop	cx			; a
@@ -81,19 +86,7 @@ cat:
 
 
 ;***************************************************************
-;char* strcat(const char* a,const char* b);
-;***************************************************************
-        global  _strcat:near
-        proc    _strcat near
-
-		mov	dl,1
-                jmp	cat
-
-        endp    _strcat
-
-
-;***************************************************************
-;char* strcatb(const char* a,const char* b);
+;char* strcatb(const char* a, const char* b);
 ;***************************************************************
         global  _strcatb:near
         proc    _strcatb near
@@ -244,48 +237,30 @@ close:
 
 ;***************************************************************
 ;int read(int fd, void* data, int sz);
+;int write(int fd, const void* data, int sz);
 ;***************************************************************
         global  _read:near
         proc    _read near
 
-                mov	ah,3fh
-rwio:
-		ifndef	NO386
-		pop	dx			;caller return address
-                pop	ebx			; fd & data
+                stc
+		db	73h			; jnc
+        global  _write:near
+                clc
+		pop	ax			;caller return address
+                pop	bx			; fd
+                pop	dx			; data
                 pop	cx			; sz
                 push	cx
-                push	ebx
                 push	dx
-		else
-		mov	bx,sp
-		mov	cx,[bx+6]
-		mov	dx,[bx+4]
-		mov	bx,[bx+2]
-		endif
+                push	bx
+                push	ax
+                mov	ah,40h
+		sbb	ah,0
                 clc
                 jcxz	fail
-rwioz:
-		ifndef	NO386
-                push	ebx
-                pop	bx
-                pop	dx
-		endif
 		jmp	dos
 
         endp    _read
-
-
-;***************************************************************
-;int write(int fd, const void* data, int sz);
-;***************************************************************
-        global  _write:near
-        proc    _write near
-
-                mov	ah,40h
-		jmp	rwio
-
-        endp    _write
 
 
 ;***************************************************************

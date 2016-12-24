@@ -113,6 +113,7 @@ const u32 HdrS = 'H' + ('d'<<8) + (u32('r')<<16) + (u32('S')<<24);
 u8* rm_buf;
 u16 rm_size;
 u8 pm_high;
+u32 base_himem = _1m+_64k;
 extern struct image_himem pm, initrd;
 
 // register value to launch the kernel real mode code
@@ -232,7 +233,7 @@ cmd_line_ok:
     m->size -= rm_size;
     m->chunk_size -= rm_size;
     if(m->fallback+m->size > (((u32)topseg())<<4) || pm_high) {
-        m->fallback = _1m+_64k;
+        m->fallback = base_himem;
     }
 
     load_image(m);

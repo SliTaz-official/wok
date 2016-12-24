@@ -59,7 +59,6 @@ static char *isokernel()
 
 char _cmdline[256];
 const char *cmdline = (const char *) _cmdline;
-extern int skip_xmmalloc;
 static void bootiso(char **iso)
 {
 	char *init = " rdinit=/init.exe", *mode="menu";
@@ -69,7 +68,9 @@ static void bootiso(char **iso)
 	struct isostate *x=&isostate;
 	
 	if (!*iso || isoreset(*iso) < 0) return;
-	skip_xmmalloc++;
+	skip_alloc++;
+	base_himem = memtop() /2;
+	if (base_himem > _64m) base_himem = _64m;
 	isoopen("boot") >= 0 ||
 	isoopen("live") >= 0 ||	// debian
 	isoopen("casper") >= 0;	// ubuntu
@@ -150,7 +151,7 @@ int main(int argc, char *argv[])
 	if (argc < 2) {
 		try_default_args();
 dousage:
-		die("Usage: tazboot [[@commands]|[-f][kernel=<bzimage>] \
+		die("Usage: tazboot [[@commands]|[-f][-b base_himem][kernel=<bzimage>] \
 [initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] ...]\r\n\n\
 Defaults: tazboot kernel=bzImage auto\r\n\n\
 Examples for tazboot.cmd:\r\n\n\
@@ -165,7 +166,7 @@ Examples for tazboot.cmd:\r\n\n\
 	chdirname(*argv);
 	for (int i=0;;) {
 		char *s;
-		argv++;
+	next:	argv++;
 		s=*argv;
 		i++;
 		if (!s) break;
@@ -195,10 +196,20 @@ Examples for tazboot.cmd:\r\n\n\
 			s += 4;
 			vid_mode = strtol(s);	// support normal, extended & ask
 		}
-		else if((*(u16 *)s|0x2002) == 0x662F) { // -F /f
-			skip_xmmalloc++;
-		}
-		else if(i == 1 && fileattr(s) != -1) {
+	        else switch (*(u16 *)s|0x2002) {
+		case 0x662F:	// -F /f
+			skip_alloc++;
+			goto next;
+		case 0x652F:	// -E /e
+			argv++;
+			topmem = strtol(*argv);
+			goto next;
+		case 0x622F:	// -B /b
+			argv++;
+			base_himem = strtol(*argv);
+			goto next;
+		default:
+		if(i == 1 && fileattr(s) != -1) {
 			goto set_kernel;
 		}
 		else {
@@ -211,7 +222,7 @@ Examples for tazboot.cmd:\r\n\n\
 				topmem = strtol(s);
 			}
 			strcatb(_cmdline,*argv);
-		}
+		}}
 	}
 	if (iso && isoreset(iso) >= 0) {
 		char *s = (char *) initrd_name;

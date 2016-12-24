@@ -8,6 +8,7 @@
 
 struct image_himem pm;
 struct image_himem initrd;
+int skip_alloc;
 
 // Called from inside kernel just before rm->pm
 // _loadds _saveregs: done by hand
@@ -29,14 +30,14 @@ void far last_ditch() {
 #endif
     }
     struct image_himem *m = &pm;
+    vm2rm();
     if(((u16 *)&m->fallback)[1] >= 0x10) m->fallback = _1m; // >= _1m ?
-    if(vcpi==0) {
+    if(m->bufv==0) {
         // Move kernel
         memcpy_image(m);
         // Move initrd
         memcpy_image(&initrd);
     } else { //vcpi
-        vm2rm();
         // Move kernel
         // 'Gathering' copy in chunks of PAGE_SIZE
         // No risk of overlapping: kernel is copied from above to 1m mark
@@ -81,18 +82,17 @@ void far last_ditch() {
     }
 }
 
-int skip_xmmalloc;
 void load_image(struct image_himem *m) {
     no_exit++;       // die() won't return to DOS
     m->remaining = m->size;
     m->buf = m->fallback;
     u32 buf;
     u32* bufv= &buf;
-    if(((u16 *)&m->fallback)[1] >= 0x10) { // >= _1m ?
+    if(((u16 *)&m->fallback)[1] >= 0x10 && !skip_alloc) { // >= _1m ?
 	if(vcpi) {
 	    bufv = malloc_bufv_or_die(m);	// update m->bufv
 	}
-	else if (!skip_xmmalloc) {
+	else {
             xmm_alloc(m);			// update m->buf
 	}
     }
