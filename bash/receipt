@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="bash"
-VERSION="4.3.42"
+VERSION="4.4.5"
 BASEVERSION="${VERSION%.*}"
 CATEGORY="system-tools"
 SHORT_DESC="The GNU bourne SHell."
@@ -25,7 +25,8 @@ patch_bash()
 {
 	for i in $BASHPATCHES ; do
 		[ -s "$SOURCES_REPOSITORY/$i" ] || 
-			wget -O "$SOURCES_REPOSITORY/$i" \
+			echo  "Downloading $i"
+			busybox wget -O "$SOURCES_REPOSITORY/$i" \
 			http://ftp.gnu.org/gnu/bash/bash-$BASEVERSION-patches/$i
 		echo "Apply $i ..."
 		patch -p0 < $SOURCES_REPOSITORY/$i
@@ -74,7 +75,7 @@ EOF
 	# Bash doesn't care about DESTDIR in environnment variable.
 	make DESTDIR=$DESTDIR install
 	[ -s "$SOURCES_REPOSITORY/$BASHCHECK" ] || 
-		wget --no-check-certificate -O "$SOURCES_REPOSITORY/$BASHCHECK" $BASHCHECKURL
+		busybox wget --no-check-certificate -O "$SOURCES_REPOSITORY/$BASHCHECK" $BASHCHECKURL
 	$DESTDIR/bin/bash $SOURCES_REPOSITORY/$BASHCHECK $DESTDIR/bin/bash | tee bashcheck.log
 	grep Vulnerable bashcheck.log && echo "ERROR: Vulnerable"
 }
