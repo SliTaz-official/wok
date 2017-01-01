@@ -17,17 +17,22 @@ BUILD_DEPENDS="zlib-dev attr-dev liblzma-dev lzo-dev lz4-dev"
 compile_rules()
 {
 	cd $src/squashfs-tools
+	sed -i	-e 's/int file_size/off_t file_size/' \
+		-e 's/source_path.index ++./strdup(&)/' mksquashfs.c
+	sed -i 	-e 's/~S_IFMT/S_IFMT/' -e 's/MOVE_ACTION, -2/MOVE_ACTION, 1/' action.c
 	for i in XZ LZMA_XZ LZO LZ4 ; do
 		sed -i "s|^#\\(${i}_SUPPORT = 1\\)|\\1|g" Makefile
 	done
 	mkdir -p $DESTDIR/usr/sbin $DESTDIR/sbin
 	make || return 1
-	cp -a mksquashfs  $DESTDIR/usr/sbin
+	cp -a mksquashfs $DESTDIR/usr/sbin
 	cp -a unsquashfs $DESTDIR/sbin
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	mkdir -p $install/usr/share/doc
 	cp -a $install/usr $install/sbin $fs
+	cp $src/README* $src/[CP]* $src/*example $install/usr/share/doc
 }
