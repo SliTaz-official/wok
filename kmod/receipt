@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="kmod"
-VERSION="16"
+VERSION="23"
 CATEGORY="base-system"
 SHORT_DESC="Linux kernel modules tools."
 MAINTAINER="pankso@slitaz.org"
@@ -23,6 +23,11 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Add lzma support
+	sed -i -e 's/stream_decoder/auto_decoder/' \
+	 -e 's/.*c_xz\[.*/&\nstatic const char magic_lz[] = {0x5d, 0};/' \
+	 -e 's/.*c_xz,.*/&\n\t{sizeof(magic_lz), magic_lz, {load_xz, unload_xz}},/' \
+			libkmod/libkmod-file.c
 	./configure \
 		--bindir=/sbin \
 		--with-rootlibdir=/lib \
