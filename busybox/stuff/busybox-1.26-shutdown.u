@@ -1,14 +1,14 @@
---- busybox-1.25/init/halt.c
-+++ busybox-1.25/init/halt.c
-@@ -10,6 +10,7 @@
+--- busybox-1.26/init/halt.c
++++ busybox-1.26/init/halt.c
+@@ -48,6 +48,7 @@
  //applet:IF_HALT(APPLET(halt, BB_DIR_SBIN, BB_SUID_DROP))
- //applet:IF_HALT(APPLET_ODDNAME(poweroff, halt, BB_DIR_SBIN, BB_SUID_DROP, poweroff))
- //applet:IF_HALT(APPLET_ODDNAME(reboot, halt, BB_DIR_SBIN, BB_SUID_DROP, reboot))
-+//applet:IF_HALT(APPLET_ODDNAME(shutdown, halt, BB_DIR_SBIN, BB_SUID_DROP, shutdown))
+ //applet:IF_POWEROFF(APPLET_ODDNAME(poweroff, halt, BB_DIR_SBIN, BB_SUID_DROP, poweroff))
+ //applet:IF_REBOOT(APPLET_ODDNAME(reboot, halt, BB_DIR_SBIN, BB_SUID_DROP, reboot))
++//applet:IF_REBOOT(APPLET_ODDNAME(shutdown, halt, BB_DIR_SBIN, BB_SUID_DROP, shutdown))
  
  //kbuild:lib-$(CONFIG_HALT) += halt.o
- 
-@@ -65,6 +66,15 @@
+ //kbuild:lib-$(CONFIG_POWEROFF) += halt.o
+@@ -79,6 +80,15 @@
  //usage:     "\n	-d SEC	Delay interval"
  //usage:     "\n	-n	Do not sync"
  //usage:     "\n	-f	Force (don't go through init)"
@@ -24,7 +24,7 @@
  
  #include "libbb.h"
  #include "reboot.h"
-@@ -98,6 +108,7 @@
+@@ -112,6 +122,7 @@
  int halt_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
  int halt_main(int argc UNUSED_PARAM, char **argv)
  {
@@ -32,10 +32,10 @@
  	static const int magic[] = {
  		RB_HALT_SYSTEM,
  		RB_POWER_OFF,
-@@ -109,9 +120,19 @@
- 	int which, flags, rc;
- 
- 	/* Figure out which applet we're running */
+@@ -132,15 +143,26 @@
+ 	if (!ENABLE_HALT && !ENABLE_POWEROFF && ENABLE_REBOOT)
+ 		which = 2;
+ 	else
 -	for (which = 0; "hpr"[which] != applet_name[0]; which++)
 +	for (which = 0; "hprs"[which] != applet_name[0]; which++)
  		continue;
@@ -51,12 +51,11 @@
 +	}
 +	else {
  	/* Parse and handle arguments */
- 	opt_complementary = "d+"; /* -d N */
  	/* We support -w even if !ENABLE_FEATURE_WTMP,
-@@ -119,6 +140,7 @@
+ 	 * in order to not break scripts.
  	 * -i (shut down network interfaces) is ignored.
  	 */
- 	flags = getopt32(argv, "d:nfwi", &delay);
+ 	flags = getopt32(argv, "d:+nfwi", &delay);
 +	}
  
  	sleep(delay);

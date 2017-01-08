@@ -1,25 +1,23 @@
 Add support for the Windows Remote Installation Service
---- busybox-1.25/networking/Config.src
-+++ busybox-1.25/networking/Config.src
-@@ -846,6 +846,15 @@
- comment "Common options for tftp/tftpd"
- 	depends on TFTP || TFTPD
- 
-+config FEATURE_TFTPD_RIS
-+	bool "Enable \"RIS\" support"
-+	default y
-+	depends on TFTPD
-+	help
-+	  Add support for the Windows Remote Installation Service. This allows
-+	  a client to get files starting with \ without respecting case.
-+	  Each \ will be replaced by a /.
-+
- config FEATURE_TFTP_GET
- 	bool "Enable 'tftp get' and/or tftpd upload code"
- 	default y
---- busybox-1.25/networking/tftp.c
-+++ busybox-1.25/networking/tftp.c
-@@ -673,6 +673,59 @@
+--- busybox-1.26/networking/tftp.c
++++ busybox-1.26/networking/tftp.c
+@@ -39,6 +39,15 @@
+ //config:comment "Common options for tftp/tftpd"
+ //config:	depends on TFTP || TFTPD
+ //config:
++//config:config FEATURE_TFTPD_RIS
++//config:	bool "Enable \"RIS\" support"
++//config:	default y
++//config:	depends on TFTPD
++//config:	help
++//config:	  Add support for the Windows Remote Installation Service. This allows
++//config:	  a client to get files starting with \ without respecting case.
++//config:	  Each \ will be replaced by a /.
++//config:
+ //config:config FEATURE_TFTP_GET
+ //config:	bool "Enable 'tftp get' and/or tftpd upload code"
+ //config:	default y
+@@ -745,6 +754,59 @@
  #undef remote_file
  }
  
@@ -79,7 +77,7 @@ Add support for the Windows Remote Installation Service
  #if ENABLE_TFTP
  
  int tftp_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
-@@ -821,6 +874,10 @@
+@@ -893,6 +955,10 @@
  	G.block_buf_tail[0] = '\0';
  
  	local_file = G.block_buf + 2;
