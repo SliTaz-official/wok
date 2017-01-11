@@ -1,0 +1,69 @@
+# SliTaz package receipt.
+
+PACKAGE="gcc63"
+SOURCE="gcc"
+VERSION="6.3.0"
+CATEGORY="development"
+SHORT_DESC="The GNU Compiler Collection."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://gcc.gnu.org/"
+WGET_URL="ftp://gcc.gnu.org/pub/gcc/releases/gcc-$VERSION/$TARBALL"
+TAGS="compiler C C++"
+
+# We need gawk since busybox awk is not sufficient. We have BUILD_DEPENDS
+# for cookutils that are not used by tazwok/cook-toolchain since it installs
+# and uses its own copy.
+DEPENDS="binutils libgomp libobjc gcc-lib-base mpc-library elfutils"
+BUILD_DEPENDS="mpc-library mpfr-dev gmp-dev elfutils-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	ARCH_ARGS="--with-tune=$ARCH"
+	pkgversion="SliTaz"
+	languages="c,c++"
+
+	# Use libiberty.a from binutils.
+	sed -i 's/install_to_$(INSTALL_DEST) //' libiberty/Makefile.in || return 1
+
+	sed -i 's/^T_CFLAGS =$/& -fomit-frame-pointer/' gcc/Makefile.in
+
+	mkdir -p ../gcc-build && cd ../gcc-build
+
+	$src/configure \
+		--libexecdir=/usr/lib \
+		--enable-nls \
+		--enable-languages=${languages} \
+		--enable-shared \
+		--with-system-zlib \
+		--enable-clocale=gnu \
+		--enable-objc-gc \
+		--enable-__cxa_atexit \
+		--enable-lto \
+		--enable-threads=posix \
+		--disable-bootstrap \
+		--program-suffix=-63 \
+		--libdir=/usr/libgcc63 \
+		--with-pkgversion="$pkgversion" \
+		${CONFIGURE_ARGS} ${ARCH_ARGS} &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p  $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+
+	# Copy all libs. Do not hide gcc-lib-base.
+	cp -a $install/usr/lib* $fs/usr
+
+	# Include files.
+	cp -a $install/usr/include $fs/usr
+
+	# Remove build directory.
+	rm -rf $WOK/$PACKAGE/source/$PACKAGE-build
+	rm -rf $WOK/$PACKAGE/$PACKAGE-build
+}
