@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="pjsip"
+SOURCE="pjproject"
+VERSION="2.5.5"
+CATEGORY="network"
+SHORT_DESC="library SIP, SDP, RTP, STUN, TURN, and ICE."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.pjsip.org/"
+WGET_URL="${WEB_SITE}release/$VERSION/$TARBALL"
+
+DEPENDS="libssl opus"
+BUILD_DEPENDS="python-dev openssl-dev opus-dev alsa-lib-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure --prefix=/usr --infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--enable-shared --disable-static --enable-memalign-hack \
+		--disable-sound --disable-sdl --disable-v4l2 \
+		--disable-ffmpeg --disable-openh264 --disable-libyuv \
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
+	make DESTDIR=$DESTDIR install
+	cd pjsip-apps/src/py_pjsua
+	python setup.py install --root=$DESTDIR
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+}
