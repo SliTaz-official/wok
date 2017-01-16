@@ -113,15 +113,13 @@ endm
                         oldGDTR :pword  = TEMP_SIZE
 
 ;****** Init ***************************************************
-		push	bp
-		mov	bp,sp
-		sub	sp,TEMP_SIZE
-		;cld
-                pushf
-                push    ds es
 
 			ifndef	NO386
 
+		enter	TEMP_SIZE,0
+		;cld
+                pushf
+                push    ds es
                 pushad
 		mov	cl,4
                 movzx   esi,[srcseg]
@@ -156,6 +154,12 @@ endm
 @@pmcopy:
 			else
 
+		push	bp
+		mov	bp,sp
+		sub	sp,TEMP_SIZE
+		;cld
+                pushf
+                push    ds es
 		push	si
 		xor	bx,bx
 		xor	dx,dx
@@ -233,7 +237,7 @@ endm
                 mov     eax,cs
                 shl     eax,4
                 addzx_e ax,<offset GDT>
-                mov     [word GDTR],-1          ;GDT limit = 0FFFFh
+                or      [word GDTR],-1          ;GDT limit = 0FFFFh
                 mov     [dword GDTR+2],eax      ;GDT base
                 lgdt    [GDTR]
 
@@ -248,7 +252,7 @@ endm
                 pop     ds              ;base=0, lim = 4gb
                 push    ds              ;
                 pop     es              ;
-                db      66h     ;operand width override for ecx
+                ;db      66h     ;operand width override for ecx
                 db      67h     ;address width override for esi/edi
             rep movsb
 		cld
@@ -266,8 +270,12 @@ endm
 @@done16:
                 pop     es ds
                 popf
+			ifndef	NO386
+		leave
+			else
 		mov	sp,bp
 		pop	bp
+			endif
                 ret
 
 ;****** Const data *********************************************

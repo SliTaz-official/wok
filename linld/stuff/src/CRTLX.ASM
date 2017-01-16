@@ -30,18 +30,18 @@ ultoabuf	db	12	dup (?)
         global  _strcmp:near
         proc    _strcmp near
 
-		pop	ax			;caller return address
-                pop	cx			; a
-                pop	bx			; b
+		pop	cx			;caller return address
+                pop	bx			; a
+                pop	ax			; b
+                push	ax
                 push	bx
                 push	cx
-                push	ax
                 push	si
-                mov	si,cx
+		xchg	ax,si
                 sub	bx,si
 @@lp:
-                mov	al,[bx+si]
-                sub	al,[si]
+                mov	al,[si]
+                sub	al,[bx+si]
 		jnz	@@out
                 lodsb
 		cmp	al,0
@@ -295,16 +295,16 @@ chdir:
         global  _kver2ul:near
         proc    _kver2ul near
 
+		pop	bx
 		pop	ax
-		pop	dx
-		push	dx
 		push	ax
+		push	bx
 		push	bp si di
+		xchg	ax,si
 		xor	di,di
 		push	di
 		push	di
 		mov	bp,sp
-		mov	si,dx
 		inc	di
 		inc	di
 		mov	cl,4
@@ -372,7 +372,6 @@ ends				; } isostate;
 		push	cx
 		push	dx
 		push	ax
-		xor	ax,ax
 		extrn	_isostate:isostate
 		mov	bx,[_isostate.fd]
 		extrn	lseekset:near

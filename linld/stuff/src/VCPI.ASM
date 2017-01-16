@@ -65,11 +65,6 @@ use_16          = 00000000b
 use_32          = 01000000b
 
 ;****** rm32,imm16 helpers
-macro   movzx_e rm,i
-        db      66h
-        mov     rm,i
-        dw      0
-endm
 macro   addzx_e rm,i
         db      66h
         add     rm,i
@@ -77,12 +72,10 @@ macro   addzx_e rm,i
 endm
 
 
-        group   DGROUP  _TEXT,_DATA
+        group   DGROUP  _TEXT,_DATA,_BSS
         assume  cs:DGROUP,ds:DGROUP
 
         segment _DATA byte public use16 'DATA'
-
-tss             dd      0,0     ;enough, we'll never use it anyway
 
 label   gdt     byte
 gdt_null        descr   <?>     ;0000
@@ -104,39 +97,42 @@ SEL_DATA        = (gdt_data - gdt_null)
 label   gdtr    pword
 gdt_lim         dw      0ffffh
 gdt_base        dw      offset gdt,0
-label   idtr    pword
-idt_lim         dw      03ffh   ;we won't enable ints,
-idt_base        dd      0       ;  so let's leave it the same as for rm
 
 ;Note: layout dictated by vcpi api, don't rearrange!
 label sw2pm_params byte
 ;Note: base addrs will be fixed up in prepare_vcpi()
+label	pagedir_laddr   dword
 sw2pm_cr3       dd      ?
 sw2pm_gdtr_ptr  dw      offset gdtr,0
 sw2pm_idtr_ptr  dw      offset idtr,0
 sw2pm_ldtr      dw      0       ;we don't need it
 sw2pm_tr        dw      SEL_TSS ;vcpi thinks we need it... can't set to 0
-sw2pm_jumpaddr  dd      ?
+sw2pm_jumpaddr  dd      0
                 dw      SEL_CODE
 
-;Pagedir/page0 addrs: linear, seg:0 and cs:ofs
-pagedir_laddr   dd      ?
-page0_laddr     dd      ?
-;;pagedir_seg     dw      ?
-;;page0_seg       dw      ?
-pagedir_ofs     dw      ?
-page0_ofs       dw      ?
-
-vcpi_pm_entry   dd      ?
+vcpi_pm_entry   dd      0
                 dw      SEL_VCPI
+
+label   idtr    pword
+idt_lim         dw      03ffh   ;we won't enable ints,
+idt_base        dd      0       ;  so let's leave it the same as for rm
+
+        ends    _DATA
+
+        segment _BSS byte public use16 'BSS'
+
+;Pagedir/page0 addrs: linear, seg:0 and cs:ofs
+page0_laddr     dd      ?
+;pagedir_ofs     dw      ?
+;page0_ofs       dw      ?
 
 label   saved_ss_sp dword
 saved_sp        dw      ?
 saved_ss        dw      ?
 
+tss             dd      ?,?     ;enough, we'll never use it anyway
 
-        ends    _DATA
-
+        ends    _BSS
 
         segment _TEXT byte public use16 'CODE'
 
@@ -166,45 +162,51 @@ prepare_vcpi:
 
 		mov	cl,4
                 mov     edx,cs
-                shl     edx,cl          ;ebx = linear addr of CS
-                mov     bx, offset page0_laddr
+                shl     edx,cl          ;edx = linear addr of CS
+                mov     si,offset gdt_vcpi
 ; Fix up base of some gdt descriptors
 ; Note: 'add [dword xx.base0],edx' actually updates 24 bit quantity!
 ; Do NOT replace with mov!
-                add     [dword bx+gdt_base-page0_laddr],edx
-                add     [dword bx+sw2pm_gdtr_ptr-page0_laddr],edx
-                add     [dword bx+sw2pm_idtr_ptr-page0_laddr],edx
-                add     [dword bx+(gdt_code.base0)-page0_laddr],edx
-                add     [dword bx+(gdt_data.base0)-page0_laddr],edx
-                add     [dword bx+(gdt_tss.base0)-page0_laddr],edx
+		xor	ebx,ebx
+                add     [dword bx+si+sw2pm_idtr_ptr-gdt_vcpi],edx
+@@fixup:
+                add     [dword bx+si+(gdt_code.base0)-gdt_vcpi],edx
+		add	bl,8
+		cmp	bl,28h
+		jb	@@fixup
+                ;add     [dword si+(gdt_data.base0)-gdt_vcpi],edx
+                ;add     [dword si+(gdt_tss.base0)-gdt_vcpi],edx
+                ;add     [dword si+gdt_base-gdt_vcpi],edx
+                ;add     [dword si+sw2pm_gdtr_ptr-gdt_vcpi],edx
+                ;add     [dword si+sw2pm_idtr_ptr-gdt_vcpi],edx
                 add     eax,edx
-                mov     esi,0FFFh
-                add     eax,esi
-		inc	si		;esi=00001000h
+                mov     bx,0FFFh
+                add     eax,ebx
+		inc	bx		;ebx=00001000h
 
                 shr     eax,cl
                 mov     al,0   ;eax = 4k aligned linear addr of pagebuf
                 mov     es,ax           ;es:0->page0,es:1000h->pagedir
                 shl     eax,cl          ;eax=page0 linear addr
-                mov     [bx+page0_laddr-page0_laddr],eax
                 mov     al,3            ;add present+writable bits
-                mov     [es:si],eax     ;stuff it into pagedir[0]
+                mov     [es:bx],eax     ;stuff it into pagedir[0]
+                push    ds
+                pop     es
 
-                add     eax,esi
 		mov	al,0
-                mov     [bx+pagedir_laddr-page0_laddr],eax
+                mov     [page0_laddr],eax
+                add     eax,ebx
+                ;mov     [pagedir_laddr],eax
                         ;page directory will use only one entry (4 bytes):
                         ;cr3 => pagedir => page0  => ########
                         ;      (1 entry)  (1024   => #  4M  #
                         ;                 entries)=> # page #
                         ;                         => ########
-                mov     [bx+sw2pm_cr3-page0_laddr],eax
+                mov     [sw2pm_cr3],eax
                 sub     eax,edx         ;ax = offset in CS of pagedir
-                mov     [bx+pagedir_ofs-page0_laddr],ax
-                sub     ax,si   ;ax-=1000
-                mov     [bx+page0_ofs-page0_laddr],ax
-                push    ds
-                pop     es
+                ;mov     [pagedir_ofs],ax
+                sub     ax,bx   ;ax-=1000
+                ;mov     [page0_ofs],ax
                 mov     di,ax          ;ES:DI => page0
 ; Return
                 ;pop     es
@@ -219,8 +221,8 @@ prepare_vcpi:
 
 ;***************************************************************
 ;int get_vcpi_interface();
-;****** Return: AX=1 - page mapping for low 640k is 1:1
-;******         AX=0 - otherwise (it's bad)
+;****** Return: Z  - page mapping for low 640k is 1:1
+;******         NZ - otherwise (it's bad)
 ;****** Uses:   Flags
 ;***************************************************************
         global  _get_vcpi_interface:near
@@ -229,32 +231,29 @@ prepare_vcpi:
                 ;push    si di
 
 ; Get and save VCPI pm interface
-                mov     si,offset gdt_vcpi      ;DS:DI => 3 GDT entries for VCPI
+                ;mov     si,offset gdt_vcpi      ;DS:DI => 3 GDT entries for VCPI
                 ;mov     di,[si+page0_ofs-gdt_vcpi]          ;ES:DI => page0
                 ;push    ds
                 ;pop     es
+                push    di
                 mov     ax,0DE01h               ;get vcpi pm interface
                 int     67h
-                mov     [vcpi_pm_entry],ebx
+                xchg    [vcpi_pm_entry],ebx	;clear ebx
+                ;xor     bx,bx
 
 ; Check that mapping for low 640k is 1:1
-                mov     si,[page0_ofs]
-                xor     bx,bx
+                pop     si			; [page0_ofs]
                 ;cld
 @@map_chk:
                 lodsd
                 shr     eax,12
                 cmp     ax,bx
-                stc
                 jne     @@bad
                 inc     bx
-                cmp     ax,((640*1024) shr 12)-1
+                cmp     al,((640*1024) shr 12)-1
                 jne     @@map_chk
 ; Return
 @@bad:
-                sbb     ax,ax
-                inc	ax			; update Z
-                ;pop     di si
                 ret
         endp    _get_vcpi_interface
 
@@ -302,17 +301,10 @@ ends
                 push    ax              ;\eip
                 push    offset @@vm_ret ;/
 
-                cli
               ;;mov     [saved_xx],xx   ;use if your vcpi trashes bp/etc
 
-                movzx_e <[word sw2pm_jumpaddr]>,<offset @@pm_entry>
-               ;mov     [word sw2pm_jumpaddr+4],SEL_CODE
-                mov     esi,cs
-                shl     esi,4
-                addzx_e si,<offset sw2pm_params>
-                mov     ax,0DE0Ch       ; vcpi: switch to pm
-                int     67h
-@@pm_entry:
+		call	switch_to_pm
+
 ; Now we are in 16-bit protected mode
                 mov     ax,SEL_DATA
                 mov     ss,ax
@@ -332,15 +324,28 @@ ends
                 call    ax
 
 ; Ok, let's return to vm
+                mov     ax,0DE0Ch       ; maybe we need whole eax?
                 cli     ; to be safe
                 clts    ;
                 push    SEL_ABS         ; vcpi wants ds=all_addrspace
                 pop     ds              ;
-                mov     ax,0DE0Ch       ; maybe we need whole eax?
                 call    [pword cs:vcpi_pm_entry]
 @@vm_ret:
 ; Now we are in vm86 mode. Sregs, esp, eflags (IF) restored from IRET stack
                 ret
+
+;***************************************************************
+switch_to_pm:
+                assume  cs:DGROUP,ds:DGROUP
+                pop	[word sw2pm_jumpaddr]
+               ;mov     [word sw2pm_jumpaddr+2],0
+               ;mov     [word sw2pm_jumpaddr+4],SEL_CODE
+                mov     esi,cs
+                shl     esi,4
+                addzx_e si,<offset sw2pm_params>
+                mov     ax,0DE0Ch       ; vcpi: switch to pm
+                cli
+                int     67h
 
 ;***************************************************************
 ;****** Helper: This is where real copy is done
@@ -350,29 +355,27 @@ label   do_memcpy_vcpi near
 
 ; Note: ss:bp => params
 ; Move data
-                mov     cx,SEL_ABS
-                mov     ds,cx
-                mov     es,cx
+                mov     ax,SEL_ABS
+                mov     ds,ax
+                mov     es,ax
                 assume  nothing
                 assume  cs:DGROUP
 
         ; Set up target addr:
         ; replace page mapping for page at 0 so
         ; that it points to dstofs
-                mov     esi,[cs:page0_laddr]
                 mov     eax,[dstofs]
                 mov     al,03h          ; writeable, present
-                xchg    [esi],eax       ; replace page0[0]
+		call	@@set_mapping
                ;push    eax             ;X we'll need to restore mapping...
-                mov     ecx,cr3         ; reload TLB cache
-                mov     cr3,ecx         ;
                 xor     edi,edi         ;es:edi => remapped page
 
         ; Set up source addr
                 mov     esi,[srcofs]
 
         ; Do copying
-                mov     ecx,4096/2
+		xor	ecx,ecx
+                mov     ch,4096/256
                 ;cld
 ;;              cmp     esi,edi
 ;;              jae     @@do_copy
@@ -383,13 +386,14 @@ label   do_memcpy_vcpi near
 ;;              std                     ;
 ;;@@do_copy:
                 db      67h     ;address width override for esi/edi
-            rep movsw
+            rep movsb
 ;;              cld
 
         ; Restore page mapping for page at 0
                ;pop     eax             ;X
+@@set_mapping:
                 mov     esi,[cs:page0_laddr]
-                mov     [esi],eax       ; restore page0[0]
+                xchg    [esi],eax       ; restore page0[0]
                 mov     ecx,cr3         ; reload TLB cache
                 mov     cr3,ecx         ;
 ; Return
@@ -410,29 +414,22 @@ label   do_memcpy_vcpi near
 		extrn	_vcpi:byte
 		test	[_vcpi],-1
 		jz	@@ret
-                push	esi
+                push	si
               ;;pushf
-              ;;cli
               ;;pushad
                 push    cs      ;*
                 push    ds
-                push    es
+                ;push    es
                 mov     [saved_ss],ss
                 mov     [saved_sp],sp
 
-                movzx_e <[word sw2pm_jumpaddr]>,<offset @@pm_entry>
-               ;mov     [word sw2pm_jumpaddr+4],SEL_CODE
-                mov     esi,cs
-                shl     esi,4
-                addzx_e si,<offset sw2pm_params>
-                mov     ax,0DE0Ch       ; vcpi: switch to pm
-                int     67h
+		call	switch_to_pm
+
 ; Now we are in 16-bit protected mode
-@@pm_entry:
                 mov     ax,SEL_DATA     ; load data sregs with limit >=64k
                 mov     ss,ax           ;   or you may get limit violations
                 mov     ds,ax           ;   later in rm
-                mov     es,ax           ;   (actually I prefer 4gig limits :-)
+                ;mov     es,ax           ;   (actually I prefer 4gig limits :-)
                 ;mov     fs,ax           ;
                 ;mov     gs,ax           ;
 
@@ -446,7 +443,7 @@ label   do_memcpy_vcpi near
 
 ; Now we are in rm, but not yet: have to restore sregs:
                 lss     sp,[saved_ss_sp]; SS
-                pop     es              ; ES
+                ;pop     es              ; ES
                 pop     ds              ; DS
                ;push    cs      ;* done earlier
                 push    offset @@next
@@ -454,7 +451,7 @@ label   do_memcpy_vcpi near
 @@next:
               ;;popad
               ;;popf
-                pop	esi
+                pop	si
 @@ret:
                 ret             ; We don't care much about rest (FS/GS)
 

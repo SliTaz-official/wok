@@ -100,7 +100,7 @@ is386vcpi:
                 ;extrn   _get_vcpi_interface:near
 		;call	_get_vcpi_interface
 		mov	bx,offset msg_badmapping
-		jnz	endcpu
+		jz	endcpu
 no_vcpi:
               ;;pop     dx              ;$ handle
               ;;mov     ax,4500h        ; DEALLOCATE PAGES

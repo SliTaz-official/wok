@@ -43,7 +43,6 @@ extern "C" int write(int fd, const void* data, int sz);
 extern "C" long lseekset(int fd, long sz);
 extern "C" void* malloc(unsigned sz);
 extern "C" void puts(const char* s);
-extern "C" void putsz(const char* s);
 extern "C" unsigned long strtol(const char *s);
 
 // Extensions

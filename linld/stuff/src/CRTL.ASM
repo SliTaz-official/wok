@@ -39,6 +39,7 @@ curdata		dw	?
 ;***************************************************************
 ;char* strcpy(const char* a, const char* b);
 ;char* strcat(const char* a, const char* b);
+;char* strcatb(const char* a, const char* b);
 ;***************************************************************
         global  _strcpy:near
         proc    _strcpy near
@@ -48,7 +49,10 @@ curdata		dw	?
         global  _strcat:near
 _strcat:
 		mov	dl,1
-cat:
+		db	0bbh			; mov	bx,imm opcode
+        global  _strcatb:near
+_strcatb:
+		mov	dl,3
 		pop	ax			;caller return address
                 pop	cx			; a
                 pop	bx			; b
@@ -86,18 +90,6 @@ cat:
 
 
 ;***************************************************************
-;char* strcatb(const char* a, const char* b);
-;***************************************************************
-        global  _strcatb:near
-        proc    _strcatb near
-
-		mov	dl,3
-                jmp	cat
-
-        endp    _strcatb
-
-
-;***************************************************************
 ;void* malloc(unsigned sz);
 ;***************************************************************
         global  _malloc:near
@@ -129,7 +121,6 @@ malloc:						; keep CX, use AX,BX
 
 ;***************************************************************
 ;void puts(const char* s):
-;void putsz(const char* s):
 ;***************************************************************
         global  _puts:near
         proc    _puts near
@@ -142,14 +133,7 @@ malloc:						; keep CX, use AX,BX
 puts:
 		call	putsz
                 mov	bx,offset msg_crlf
-		jmp	putsz
 
-        global  _putsz:near
-_putsz:
-		pop	ax			;caller return address
-                pop	bx			; s
-                push	bx
-                push	ax
         global  putsz:near			; putsz(bx)
 putsz:
                 push	bx
@@ -243,7 +227,7 @@ close:
         proc    _read near
 
                 stc
-		db	73h			; jnc
+		db	0B0h			; mov al,im
         global  _write:near
                 clc
 		pop	ax			;caller return address
@@ -256,7 +240,6 @@ close:
                 push	ax
                 mov	ah,40h
 		sbb	ah,0
-                clc
                 jcxz	fail
 		jmp	dos
 
@@ -280,8 +263,10 @@ close:
         global  lseekset:near
 lseekset:
 		clc
+		db	0B0h			; mov al,im
         global  rewind:near
-rewind:						; rewind(bx,C=1)
+rewind:						; rewind(bx)
+		stc
 		mov	ax,4200h
 		jnc	dos
 lseek0:						; lseek0(bx,ax=dir)
@@ -326,24 +311,23 @@ strlen:
         proc    _strhead near
 
 		pop	cx			;caller return address
-                pop	ax			; a
-                pop	bx			; b
-                push	bx
+                pop	bx			; a
+                pop	ax			; b
                 push	ax
+                push	bx
                 push	cx
 @@loop:
+		xchg	ax,bx
                 mov	cl,[bx]			; cl = *b++
                 inc	bx
 		or	cl,cl			; clear C
 		jz	fail			; return 0
 		xchg	ax,bx
                 xor	cl,[bx]			; cl -= *a++
-		and	cl,0dfh			; case insensitive
-		stc
-		jnz	fail			; return -1
                 inc	bx
-		xchg	ax,bx
-                jmp	@@loop
+		and	cl,0dfh			; case insensitive
+                jz	@@loop
+		ret				; return b (is not 0)
 
         endp    _strhead
 
@@ -653,12 +637,11 @@ storepage:
         global  _reset_bufv:near
         proc    _reset_bufv near
 
-		pop	bx			;caller return address
-		pop	ax
-		push	ax
+		pop	ax			;caller return address
+		pop	bx
 		push	bx
-		mov	[curdata],ax
-		xchg	ax,bx
+		push	ax
+		mov	[curdata],bx
 		and	[dword (data_himem bx).cacheidx],0
 		ret
 
@@ -725,7 +708,7 @@ _next_bufv:
 
 
 ;***************************************************************
-;void next_chunk(struct image_himem *m);
+;void next_chunk(struct image_himem *di);
 ;***************************************************************
         proc    next_chunk near
 
@@ -770,7 +753,6 @@ _next_bufv:
 		mov	bx,[(image_himem di).fd]
 		ifndef	NO386
 		push	eax
-		stc
 		call	rewind
 		pop	eax
 @@end:
@@ -778,7 +760,6 @@ _next_bufv:
 		else
 		push	ax
 		push	dx
-		stc
 		call	rewind
 		pop	dx
 		pop	ax
@@ -909,7 +890,6 @@ image_done:
 		xor	cx,cx
 		ifndef	NO386
 		cwde				; ax < 8000h
-		cwd
 		sub	[(image_himem di).chunk_size],eax
 		else
 		cwd				; ax < 8000h
@@ -963,29 +943,30 @@ image_done:
 		push	cx
 		push	ax
 		xor	ebx,ebx
-		jcxz	@@jncend
 		push	si
+		jcxz	@@end
 		mov	si,cx
 		xor	ecx,ecx
 		xor	eax,eax
 		lodsb
-		mov	dl,20h
-		or	dl,al
-		cmp	dl,'n'			; vga=normal
+		mov	dx,ax
+		or	al,20h
+		cmp	al,'n'			; vga=normal
 		je	@@vga
 		dec	cx
-		cmp	dl,'e'			; vga=extended
+		cmp	al,'e'			; vga=extended
 		je	@@vga
 		dec	cx
-		cmp	dl,'a'			; vga=ask
+		cmp	al,'a'			; vga=ask
 		jne	@@notvga
 @@vga:
 		dec	cx
 		xchg	ax,cx
 		cwd
-		jmp	popsiret
+		jmp	@@popsiret
 @@notvga:
 		mov	cx,10			; radix
+		xchg	ax,dx
 		cmp	al,'+'
 		je	@@radixskip
 		cmp	al,'-'
@@ -1000,19 +981,18 @@ image_done:
 		jne	@@radixok
 		mov	cl,8
 		lodsb
-		mov	dl,20h
-		or	dl,al
-		cmp	dl,'x'
+		or	al,20h
+		cmp	al,'x'
 		jne	@@radixok
 		mov	cl,16
 @@strtollp:
 		lodsb
 @@radixok:
+		or	al,20h
 		sub	al,'0'
 		jb	@@endstrtol
 		cmp	al,9
 		jbe	@@digitok
-		or	al,20h
 		cmp	al,'a'-'0'
 		jb	@@endstrtol
 		sub	al,'a'-'0'-10
@@ -1038,14 +1018,13 @@ image_done:
 		shl	ebx,cl
 @@noshift:
 		popf
-@@jncend:
 		jnc	@@end
 		neg	ebx
 @@end:
 		push	ebx
 		pop	ax
 		pop	dx
-popsiret:
+@@popsiret:
 		pop	si
 		else
 		pop	ax			;caller return address
@@ -1056,29 +1035,28 @@ popsiret:
 		push	di
 		xor	ax,ax
 		cwd
-		xchg	ax,di
 		jcxz	@@goend
+		xchg	ax,di
 		mov	si,cx
 		lodsb
-		mov	dl,20h
-		or	dl,al
+		mov	bx,ax
+		or	al,20h
 		mov	cx,-1
-		cmp	dl,'n'			; vga=normal
+		cmp	al,'n'			; vga=normal
 		je	@@vga
 		dec	cx
-		cmp	dl,'e'			; vga=extended
+		cmp	al,'e'			; vga=extended
 		je	@@vga
 		dec	cx
-		cmp	dl,'a'			; vga=ask
+		cmp	al,'a'			; vga=ask
 		jne	@@notvga
 @@vga:
 		xchg	ax,cx
-		cwd
-		jmp	popsiret
 @@goend:
-		jmp	@@end
+		jmp	@@popdisiret
 @@notvga:
 		mov	cx,10			; radix
+		xchg	ax,bx
 		cmp	al,'+'
 		je	@@radixskip
 		cmp	al,'-'
@@ -1093,19 +1071,18 @@ popsiret:
 		jne	@@radixok
 		mov	cl,8
 		lodsb
-		mov	ah,20h
-		or	ah,al
-		cmp	ah,'x'
+		mov	al,20h
+		cmp	al,'x'
 		jne	@@radixok
 		mov	cl,16
 @@strtollp:
 		lodsb
 @@radixok:
+		or	al,20h
 		sub	al,'0'
 		jb	@@endstrtol
 		cmp	al,9
 		jbe	@@digitok
-		or	al,20h
 		cmp	al,'a'-'0'
 		jb	@@endstrtol
 		sub	al,'a'-'0'-10
@@ -1155,8 +1132,8 @@ popsiret:
 		inc	dx
 @@end:
 		xchg	ax,di
+@@popdisiret:
 		pop	di
-popsiret:
 		pop	si
 		endif
 		ret
@@ -1175,7 +1152,7 @@ popsiret:
 		jnc	@@max640k
 		mov	ax,640			; 9000
 @@max640k:
-		sub	ax,028h
+		dec	ax
 		and	al,0C0h
 		mov	cl,6
 		shl	ax,cl

@@ -78,10 +78,11 @@ saved15		dd	?
                 jnc     @@ok            ;  error: cf=1 or ax=0
                 xor     ax,ax           ;
 @@ok:
-                xor     dx,dx
+;                xor     dx,dx
                 test    ax,ax           ;happens on big mem systems
                 jz      @@fail
 tokb:
+                xor     dx,dx
                 add     ah,4h           ;account for 1024 low kb
                 adc     dx,dx           ;  (optimized to death)
 		ifndef	NO386
@@ -117,7 +118,6 @@ tokb:
                 cli
                 call	rdcmos17
                 popf
-		xor     dx,dx
 		jmp	tokb
 
 rdcmos17:       mov     al,18h		; read bytes 17-18 from CMOS
