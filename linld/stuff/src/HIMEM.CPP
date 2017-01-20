@@ -30,8 +30,8 @@ void far last_ditch() {
 #endif
     }
     struct image_himem *m = &pm;
-    if(((u16 *)&m->fallback)[1] >= 0x10) m->fallback = _1m; // >= _1m ?
     vm2rm();
+    if(((u16 *)&m->fallback)[1] >= 0x10) m->fallback = _1m; // >= _1m ?
     if(m->bufv==0) {
         // Move kernel
         memcpy_image(m);

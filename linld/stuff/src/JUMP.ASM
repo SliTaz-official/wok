@@ -37,6 +37,7 @@
 		extrn	_topseg:near
 		call	near _topseg
 		mov	es,ax
+		xchg	ax,bx
 		else
 		push	9000h
 		pop	es
@@ -66,6 +67,13 @@
 		  movsb
 		cmp	al,cl			; load high ?
 		jne	isbzimage
+		ifdef	NO386
+		add	bh,9
+		push	bx			; topseg()+0x0900
+		else
+		push	9900h			; 4096 bytes for cmdline
+	;push	9820h			; 512 bytes for cmdline
+		endif
 		; finish loading
 		extrn   @last_ditch$qv:near
 		push	cs
@@ -73,13 +81,6 @@
 		mov	ax,[word _pm+2+2]	; get pm->fallback high word
 		; self move
 		;cld
-		ifdef	NO386
-		mov	cx,9900h
-		push	cx
-		else
-		push	9900h			; 4096 bytes for cmdline
-	;push	9820h			; 512 bytes for cmdline
-		endif
 		pop	es			; min 2048 bytes for stack
 		xor	si,si			;  A000 -9000 -0800(>movedend)
 		xor	di,di			; set ZF
