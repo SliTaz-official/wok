@@ -5,7 +5,11 @@
                 %crefref
                 %noincl
                 %nomacs
+		ifdef	NO386
+                p8086
+		else
                 p386
+		endif
 
         group   DGROUP  _TEXT,_BSS
         assume  cs:DGROUP,ds:DGROUP
@@ -39,7 +43,12 @@ xmm_handler	dd	?
         global  xmm_driver:near
         proc    xmm_driver near
 
+		ifndef	NO386
 		cmp	[xmm_handler],0
+		else
+		mov	ax,[word xmm_handler]
+		or	ax,[word xmm_handler+2]
+		endif
 		jne	@@gotit
 
 		xchg	ax,cx			; save cmd

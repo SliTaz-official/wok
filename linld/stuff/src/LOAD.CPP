@@ -91,8 +91,9 @@ struct first1k_t {
     u16     ext_mem_size;   // 0002 extended memory size in Kb (from int 0x15 fn 0x88)
     u8      pad00[0x20-4];
                             // old-style cmdline (not used in LINLD (yet?))
-    u16     cl_magic;       // 0020 commandline magic number (=0xA33F)
-    u16     cl_ofs;         // 0022 commandline offset
+    u32     cl_magic_ofs;
+    //u16     cl_magic;       // 0020 commandline magic number (=0xA33F)
+    //u16     cl_ofs;         // 0022 commandline offset
     u8      pad10[0x80-0x24];
                             // these two set by rm setup:
     u8      hd0_disk_par[16]; // 0080 hd0-disk-parameter from intvector 0x41
@@ -110,9 +111,9 @@ struct first1k_t {
 
 const u32 HdrS = 'H' + ('d'<<8) + (u32('r')<<16) + (u32('S')<<24);
 
-u8* rm_buf;
 u16 rm_size;
-u8 pm_high;
+u8 pm_high;	// @ = @rm_size + 2, see JUMP.ASM
+u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
 u32 base_himem = _1m+_64k;
 extern struct image_himem pm, initrd;
 
@@ -128,24 +129,25 @@ static u32 csip=0x90200000;
 static const char kernel_file_error[] = "Can't use kernel file";
 char* load_kernel() {
 
+    struct	image_himem *m = &pm;
 #ifdef NO386
-    csip=((u32)(topseg()+0x20)<<16);
+    *((u16 *)&csip+1)=topseg()+0x20;
 #endif
     // Open kernel, read first kb, check it
-    pm.errmsg = kernel_file_error;
-    open_image(kernel_name, &pm);
+    m->errmsg = kernel_file_error;
+    open_image(kernel_name, m);
 
     char *version_string;
   {
     struct first1k_t *first1k;
     struct kernelparams_t *kernelparams;
-    first1k = (first1k_t*) (rm_buf = malloc_or_die(_32k));
-    kernelparams = &first1k->params;
+    kernelparams = &(((first1k_t*) (rm_buf = malloc_or_die(_32k)))->params);
+#define first1k		((first1k_t*)((u8 *)kernelparams-0x1F1))
    {
     u16 rm_seek;
 
     // Do not use malloc below until heap_top adjustment (see <*>)
-    if (read(pm.fd, rm_buf, rm_seek=0x400) != 0x400) {
+    if (read(m->fd, rm_buf, rm_seek=0x400) != 0x400) {
   readfail:
         die(kernel_file_error);
     }
@@ -154,22 +156,22 @@ char* load_kernel() {
 #if 1
         if(* (int *) &first1k->pad10[0x3F-0x24] == 0x3AE8) {
             lseekset(pm.fd,rm_seek=0x200);
-            csip=((u32)topseg()<<16)+0x0042;
+            csip+=0xFFE00042;
         }
         else
 #endif
         kernelparams->setup_sects=4;
     }
-    rm_size = 0x200*(kernelparams->setup_sects+1); // 0th sector is not counted there
-    if(rm_size>_32k || kernelparams->boot_flag != 0xAA55)
+    if((kernelparams->setup_sects)>=(_32k/512) || // 0th sector not counted
+	 kernelparams->boot_flag != 0xAA55)
         die("It's not a kernel");
-    heap_top = rm_buf+rm_size;  // <*>
+    heap_top = rm_buf+(rm_size=0x200*(kernelparams->setup_sects+1));  // <*>
 
     // Read remaining rm loader
 
     {
     u16 cnt = rm_size-rm_seek;
-    if (read(pm.fd, rm_buf+rm_seek, cnt) != cnt) goto readfail;
+    if (read(m->fd, rm_buf+rm_seek, cnt) != cnt) goto readfail;
     }
    }
 
@@ -215,8 +217,7 @@ char* load_kernel() {
             goto cmd_line_ok;
         }
     }
-    first1k->cl_magic = 0xA33F;
-    first1k->cl_ofs   = 0x8000;
+    first1k->cl_magic_ofs = 0x8000A33F;
   }
 
 cmd_line_ok:
@@ -232,7 +233,7 @@ cmd_line_ok:
     m->fallback = (u32((u16(_CS)+0x1FFF)&0xF000)<<4);
     m->size -= rm_size;
     m->chunk_size -= rm_size;
-    if(m->fallback+m->size > (((u32)topseg())<<4) || pm_high) {
+    if((u16)((m->fallback+m->size)>>4) > topseg() || pm_high) {
         m->fallback = base_himem;
     }
 
@@ -245,19 +246,15 @@ cmd_line_ok:
 
 void load_initrd() {
     struct image_himem *m = &initrd;
-    if (!initrd_name && !m->fd) return;
     m->errmsg = "Can't use initrd file";
-    if (!pm.errmsg) {
-noinitrd:
-        puts(m->errmsg);
-        return;
-    }
+    if (!initrd_name && !m->fd) return;
+
     open_image(initrd_name, m);
 
-    m->fallback = (memtop()-m->size) & (~PAGE_MASK);
-    if (m->fallback < pm.fallback + pm.size) {
+    if ((m->fallback=(memtop()-m->size)&(~PAGE_MASK)) < pm.fallback+pm.size) {
         close(m->fd);
-	goto noinitrd;
+        puts(m->errmsg);
+        return;
     }
 
     load_image(m);
@@ -279,8 +276,6 @@ void boot_kernel() {
         // Oops! We can stomp on our toes... better stop now
         die("Loaded too close to 9000:0");
     }
-
-    cli(); // we start doing destructive things to DOS
 
     // Move rm loader & commandline to 0x90000, Jump to kernel rm code
     set_sregs_jump_seg_ofs(csip);

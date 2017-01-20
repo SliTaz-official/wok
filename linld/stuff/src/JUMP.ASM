@@ -5,14 +5,17 @@
                 %crefref
                 %noincl
                 %nomacs
+		ifdef	NO386
+                p8086
+		else
                 p386
+		endif
 
         group   DGROUP  _TEXT,_BSS
         assume  cs:DGROUP,ds:DGROUP
 
         segment _BSS byte public use16 'BSS'
 
-        global  _pm_high:byte
         global  _pm:dword
 
         ends    _BSS
@@ -29,7 +32,7 @@
 
 		extrn	dos_shutdown:near
 
-		pop	ax			;caller return address
+		pop	ax			; caller return address
 		ifdef	NO386
 		extrn	_topseg:near
 		call	near _topseg
@@ -40,15 +43,18 @@
 		endif
 		pop	cx			; ip
 		pop	dx			; cs
+		cli				; we start doing destructive things to DOS
 		push	es
 		pop	ss
 		mov	sp,0A000h
 		push	dx cx
-		extrn	_rm_buf:word
-		mov	si,[_rm_buf]
-		xor	di,di
 		extrn	_rm_size:word
-		mov	cx,[_rm_size]
+		mov	si,offset _rm_size	; _rm_size, _pm_high, _rm_buf
+		lodsw
+		xchg	ax,cx			; _rm_size
+		lodsb				; _pm_high
+		mov	si,[si]			; _rm_buf
+		xor	di,di
 		;cld
 		rep
 		  movsb
@@ -58,7 +64,7 @@
 		mov	ch,10h			; 4k
 		rep
 		  movsb
-		cmp	[_pm_high],cl		; load high ?
+		cmp	al,cl			; load high ?
 		jne	isbzimage
 		; finish loading
 		extrn   @last_ditch$qv:near
@@ -67,8 +73,13 @@
 		mov	ax,[word _pm+2+2]	; get pm->fallback high word
 		; self move
 		;cld
+		ifdef	NO386
+		mov	cx,9900h
+		push	cx
+		else
 		push	9900h			; 4096 bytes for cmdline
 	;push	9820h			; 512 bytes for cmdline
+		endif
 		pop	es			; min 2048 bytes for stack
 		xor	si,si			;  A000 -9000 -0800(>movedend)
 		xor	di,di			; set ZF
@@ -102,7 +113,13 @@ bufhigh:
 		push	bx			; src ofs= pm.fallback
 		push	dx
 		push	dx			; srcseg=0
-		push	1			; dst
+		ifdef	NO386
+		inc	dx
+		push	dx			; dst
+		dec	dx
+		else
+		push	1			; dst	
+		endif
 		push	dx			;    ofs=64k
 		extrn   _memcpy32:near
 		call	_memcpy32
@@ -119,7 +136,15 @@ bufhigh:
 		cmp	[word 1E8h],'SK'
 		endif
 		jne	notelks
+		ifdef	NO386
+		mov	cx,120h
+		push	cx
+		mov	cl,0h
+		push	cx
+		else
+		push	120h
 		push	100h
+		endif
 		pop	es
 		xor	si,si
 		xor	di,di
@@ -128,8 +153,7 @@ bufhigh:
 		  movsw
 		push	es
 		pop	ss
-		push	120h
-		push	0
+		push	cx
 notelks:
 		endif
 
@@ -138,10 +162,12 @@ isbzimage:
 		pop	ds
 		;push	ss
 		;pop	es
+		ifndef	NO386
 		push	ss
 		pop	fs
 		push	ss
 		pop	gs
+		endif
 		assume	nothing
 		assume	cs:DGROUP
 

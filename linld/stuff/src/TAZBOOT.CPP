@@ -16,10 +16,11 @@ static struct initrd_state {
 
 static void next_chunk(struct image_himem *m)
 {
+	struct initrd_state *p = &initrd_state;
 	m->chunk_size = 0;
-	if (m->state >= initrd_state.cnt) return;
-	lseekset(m->fd,initrd_state.ofs[m->state]);
-	m->chunk_size = initrd_state.size[m->state];
+	if (m->state >= p->cnt) return;
+	lseekset(m->fd,p->ofs[m->state]);
+	m->chunk_size = p->size[m->state];
 	m->state++;
 }
 

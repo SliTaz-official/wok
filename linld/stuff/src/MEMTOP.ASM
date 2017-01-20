@@ -5,7 +5,11 @@
                 %crefref
                 %noincl
                 %nomacs
+		ifdef	NO386
+                p8086
+		else
                 p386
+		endif
 
         group   DGROUP  _TEXT,_DATA,_BSS
         assume  cs:DGROUP,ds:DGROUP

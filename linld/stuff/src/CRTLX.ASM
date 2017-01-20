@@ -5,7 +5,7 @@
                 %crefref
                 %noincl
                 %nomacs
-                p386
+                p8086
 
         group   DGROUP  _TEXT,_DATA,_BSS
         assume  cs:DGROUP,ds:DGROUP
@@ -108,6 +108,7 @@ ultoabuf	db	12	dup (?)
 		add	dh,bh		; NS=386+, NC=286
 		clc
                 js     @@bad   		;it is a 86/186/286, not a 386+
+                p386
 		pushfd
 		pushfd
 		pop	ebx
@@ -125,6 +126,7 @@ ultoabuf	db	12	dup (?)
 		db	0Fh,0A2h	; cpuid
 		shr	edx,1+29	; LM feature bit ?
 @@bad:
+                p8086
 		sbb	ax,ax
 		ret
 

@@ -5,7 +5,7 @@
                 %crefref
                 %noincl
                 %nomacs
-                p386
+                p8086
 
         group   DGROUP  _TEXT,_DATA,_BSS
         assume  cs:DGROUP,ds:DGROUP
@@ -31,8 +31,8 @@ clearbss:
 ;***************************************************************
 
 ; Check for oldies
-		mov	bh, 0F0h
 		pushf
+		mov	bh, 0F0h
 		push	bx		; < 286 : flags[12..15] are forced 1
 		popf			; = 286 : flags[12..15] are forced 0
 		pushf			; > 286 : only flags[15] is forced 0
@@ -45,6 +45,7 @@ clearbss:
 		else
 		js	endcpu
 		endif
+                p386
 ; Check for vm
                 smsw    ax      ;SMSW cannot be trapped! :-)
                 and     al,1	;MSW_PE
@@ -102,6 +103,7 @@ is386vcpi:
 		mov	bx,offset msg_badmapping
 		jz	endcpu
 no_vcpi:
+                p8086
               ;;pop     dx              ;$ handle
               ;;mov     ax,4500h        ; DEALLOCATE PAGES
               ;;int     67h
@@ -110,10 +112,12 @@ godie:
 		jmp	near die
 check_rm_paging:
 ; It's a 386 in real mode, chk for paging (crazy but possible)
+                p386
                 mov     edx,cr0
                 shl     edx,1   ;CR0_PG to CF
 		jc	no_vcpi
 endcpu:
+                p8086
 
 ;***************************************************************
 ; build argv & argc

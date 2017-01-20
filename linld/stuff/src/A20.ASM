@@ -5,7 +5,7 @@
                 %crefref
                 %noincl
                 %nomacs
-                p386
+                p8086
 
         group   DGROUP  _TEXT,_DATA
         assume  cs:DGROUP,ds:DGROUP

@@ -5,7 +5,11 @@
                 %crefref
                 %noincl
                 %nomacs
+		ifdef	NO386
+                p8086
+		else
                 p386
+		endif
 
         group   DGROUP  _TEXT,_DATA
         assume  cs:DGROUP,ds:DGROUP
@@ -50,7 +54,7 @@ dos_shutdown:
 		inc	ah			; set TF
 		push	ax
 		popf
-		jmp	small [dword bx+4*19h]
+		jmp	[dword bx+4*19h]
 doiret:
 		iret
 sssp:
@@ -201,6 +205,7 @@ endm
 @@pmcopy:
 		pop	si
 		js	@@done16
+                p386
                 pushad
                 mov     esi,[srcofs]
                 mov     edi,[dstofs]
@@ -267,10 +272,12 @@ endm
                 lgdt    [oldGDTR]
 @@done:
                 popad
+                p8086
 @@done16:
                 pop     es ds
                 popf
 			ifndef	NO386
+                p386
 		leave
 			else
 		mov	sp,bp

@@ -19,10 +19,10 @@ int isoread(char *data, unsigned size)
 	int get, n;
 	
 	struct isostate *x=&isostate;
-	if (size > x->filesize)
-		size = x->filesize;
 	if (isolseek(x->fileofs) == -1)
 		return -1;
+	if (size < x->filesize)
+		size = x->filesize;
 	for (get = size; get; get -= n, data += n) {
 		n = read(x->fd,data,get);
 		if (n < 0)
@@ -54,16 +54,17 @@ int isoreset(char *name)
 int isoreaddir(int restart)
 {
 	static char dots[] = "..";
-	int size, n;
+	int size;
+	char *p;
 #ifdef __ROCKRIDGE
 	char *endname;
 #endif
 	struct isostate *x=&isostate;
 
 	if (restart) {
+		x->curpos = SECTORSZ;
 		x->curdirofs = x->dirofs;
 		x->curdirsize = x->dirsize;
-		x->curpos = SECTORSZ;
 	}
 	if (x->curpos >= SECTORSZ || * (short *) (buffer + x->curpos) == 0) {
 		if (x->curdirsize < SECTORSZ) return -1;
@@ -72,36 +73,39 @@ int isoreaddir(int restart)
 		x->curdirsize -= SECTORSZ;
 		x->curpos = 0;
 	}
-	size = * (short *) (buffer + x->curpos);
+	p = buffer + x->curpos;
+	size = * (short *) p;
 	if (size == 0)
 		return -1;
-	x->fileofs = (* (unsigned long *) (buffer + x->curpos + 2)) << SECTORBITS;
-	x->filesize = * (unsigned long *) (buffer + x->curpos + 10);
-	x->filemod = (buffer[x->curpos + 25] & 2) ? 0040755 : 0100755;
+	x->fileofs = (* (unsigned long *) (p + 2)) << SECTORBITS;
+	x->filesize = * (unsigned long *) (p + 10);
+	x->filemod = (p[25] & 2) ? 0040755 : 0100755;
 #ifdef __ROCKRIDGE
 	endname = NULL;
-	n = (buffer[x->curpos + 32] + x->curpos + 34) & -2;
+	// p += 34 + (p[32] & -2); ?
+	p = buffer + 34 + ((p[32] + x->curpos) & -2);
 	do {
-		int len = buffer[n + 2];
-		switch (* (short *) (buffer + n)) {
+		int len = p[2];
+		switch (* (short *) p) {
 		case 0x4D4E: // NM
-			x->filename = buffer + n + 5;
-			endname = buffer + n + len;
+			x->filename = p + 5;
+			endname = p + len;
 			break;
 		case 0x5850: // PX
-			x->filemod = * (short *) (buffer + n + 4);
+			x->filemod = * (short *) (p + 4);
 			break;
 		}
-		n += len;
+		p += len;
 	}
-	while (n + 2 < x->curpos + size);
+	while (buffer + x->curpos + size > p + 2);
 	if (endname)
 		*endname = 0;
 	else
 #endif
 	{
-		x->filename = buffer + x->curpos + 33;
-		switch (* (short *) (x->filename - 1)) {
+		p = x->filename = buffer + x->curpos + 33;
+		p--;
+		switch (* (short *) p) {
 		case 0x0101:
 			x->filename = dots;
 			break;
@@ -109,11 +113,12 @@ int isoreaddir(int restart)
 			x->filename = dots + 1;
 			break;
 		default:
-			n = x->filename[-1];
-			if (* (short *) (x->filename + n - 2) == 0x313B)
-				n -= 2; // remove ;1
-			if (x->filename[n - 1] == '.') n--;
-			x->filename[n] = 0;
+			p += *p; p--;
+			if (* (short *) (p) != 0x313B) {
+				p++; p++; // no ;1 to remove
+			}
+			if (p[-1] == '.') p--;
+			*p = 0;
 		}
 	}
 	x->curpos += size;
@@ -124,7 +129,7 @@ int isoreaddir(int restart)
 int isoopen(char *filename)
 {
 	int restart;
-	char *name, *s, c;
+	char *name, *s;
 	int _64bits = cpuhaslm();
 	struct isostate *x=&isostate;
 
@@ -136,16 +141,16 @@ retry32:
 	}
 	s = name;
 	while (1) {
+		char c;
 		while (*s && *s != '/') s++;
 		c = *s;
 		*s = 0;
 		for (restart = 1; isoreaddir(restart) == 0; restart = 0) {
-			char *n = name, *i = x->filename;
+			const char *n = name, *i = x->filename;
 			if (_64bits) {
-				int len = strlen(name);
 				if (strhead(x->filename, name)) continue;
 				n = "64";
-				i += len;
+				i += strlen(name);
 			}
 			if (strcmp(n, i)) continue;
 			if (IS_DIR(x->filemod)) {

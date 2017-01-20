@@ -8,14 +8,15 @@ extern struct isostate {
 	char *filename;
 //private
 	unsigned long dirofs, dirsize;
-	unsigned long curdirofs, curdirsize, curpos;
+	unsigned long curdirofs, curdirsize;
+	unsigned curpos;
 } isostate;
 #define isofd isostate.fd
 #define	isofileofs isostate.fileofs
 #define	isofilesize isostate.filesize
 #define	isofilemod isostate.filemod
 #define	isofilename isostate.filename
-extern "C" int unsigned long isolseek(unsigned long offset);
+extern "C" unsigned long isolseek(unsigned long offset);
 extern int isoreset(char *name);
 extern int isoopen(char *name);
 extern int isoreaddir(int restart);

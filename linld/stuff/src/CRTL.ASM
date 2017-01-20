@@ -5,7 +5,11 @@
                 %crefref
                 %noincl
                 %nomacs
+		ifdef	NO386
+                p8086
+		else
                 p386
+		endif
 
         group   DGROUP  _TEXT,_DATA,_BSS
         assume  cs:DGROUP,ds:DGROUP
@@ -400,6 +404,72 @@ state		dw	?	;28    u16 state;
 fd2close	dw	?	;30    u16 fd2close;
 ends				;};
 
+;***************************************************************
+;void next_chunk(struct image_himem *di);
+;***************************************************************
+        proc    next_chunk near
+
+		push	si
+		mov	bx,[(image_himem di).fd]
+		call	close
+		ifndef	NO386
+		xor	eax,eax
+		else
+		xor	ax,ax
+		endif
+		cwd
+		mov	[(image_himem di).fd],ax
+		mov	bx,[(image_himem di).state]
+		cmp	al,[bx]			; ""
+		jz	@@end
+		mov	si,bx
+@@scan:
+		lodsb
+		mov	cx,si
+		cmp	al,','
+		jz	@@eos
+		cmp	al,0
+		jnz	@@scan
+		dec	cx
+@@eos:
+		mov	[(image_himem di).state],cx
+		dec	si
+		push	[word si]
+		mov	[byte si],dl		; set temp eos
+		call	open
+		pop	[word si]		; restore string
+		jc	@@die
+		mov	[(image_himem di).fd],ax
+		mov	[(image_himem di).fd2close],ax
+		xchg	ax,bx
+		mov	ax,4202h		; SEEK_END
+		call	lseek0
+@@die:
+		mov	bx,[(image_himem di).errmsg]
+		jc	die
+		mov	bx,[(image_himem di).fd]
+		ifndef	NO386
+		push	eax
+		call	rewind
+		pop	eax
+@@end:
+		mov	[(image_himem di).chunk_size],eax
+		else
+		push	ax
+		push	dx
+		call	rewind
+		pop	dx
+		pop	ax
+@@end:
+		mov	[word (image_himem di).chunk_size],ax
+		mov	[word ((image_himem di).chunk_size)+2],dx
+		endif
+		pop	si
+		ret
+
+        endp    next_chunk
+
+
 	ifdef	LARGE_IMAGES
 struc   data_himem			;struct data_himem {
 first		dd	?		;   0  u32 first;
@@ -416,6 +486,7 @@ ends					;}; // size=8200
         global  _malloc_bufv_or_die:near
         proc    _malloc_bufv_or_die near
 
+                p386
 		pop	bx			;caller return address
 		pop	ax
 		push	ax
@@ -526,6 +597,9 @@ ends					;}; // size=8200
 	endif
 		pop	si
 		ret
+		ifdef	NO386
+                p8086
+		endif
 
         endp    _malloc_bufv_or_die
 
@@ -577,10 +651,14 @@ call_memcpy32:
 	ifdef	LARGE_IMAGES
 		jmp	@@memcpy
 memcpy_imagez:
+		p386
 		push	ecx
 		push	eax
 		push	0
 		push	edx
+		ifdef	NO386
+                p8086
+		endif
 	endif
 		endif
 @@memcpy:
@@ -631,6 +709,7 @@ storepage:
 
 
 	ifdef	LARGE_IMAGES
+                p386
 ;***************************************************************
 ;void reset_bufv(u32 *p);
 ;***************************************************************
@@ -702,75 +781,12 @@ _next_bufv:
 @@notfirst2:
 		pop	si
 		ret
+		ifdef	NO386
+                p8086
+		endif
 
         endp    _prev_bufv
 	endif
-
-
-;***************************************************************
-;void next_chunk(struct image_himem *di);
-;***************************************************************
-        proc    next_chunk near
-
-		push	si
-		mov	bx,[(image_himem di).fd]
-		call	close
-		ifndef	NO386
-		xor	eax,eax
-		else
-		xor	ax,ax
-		endif
-		cwd
-		mov	[(image_himem di).fd],ax
-		mov	bx,[(image_himem di).state]
-		cmp	al,[bx]			; ""
-		jz	@@end
-		mov	si,bx
-@@scan:
-		lodsb
-		mov	cx,si
-		cmp	al,','
-		jz	@@eos
-		cmp	al,0
-		jnz	@@scan
-		dec	cx
-@@eos:
-		mov	[(image_himem di).state],cx
-		dec	si
-		push	[word si]
-		mov	[byte si],dl		; set temp eos
-		call	open
-		pop	[word si]		; restore string
-		jc	@@die
-		mov	[(image_himem di).fd],ax
-		mov	[(image_himem di).fd2close],ax
-		xchg	ax,bx
-		mov	ax,4202h		; SEEK_END
-		call	lseek0
-@@die:
-		mov	bx,[(image_himem di).errmsg]
-		jc	die
-		mov	bx,[(image_himem di).fd]
-		ifndef	NO386
-		push	eax
-		call	rewind
-		pop	eax
-@@end:
-		mov	[(image_himem di).chunk_size],eax
-		else
-		push	ax
-		push	dx
-		call	rewind
-		pop	dx
-		pop	ax
-@@end:
-		mov	[word (image_himem di).chunk_size],ax
-		mov	[word ((image_himem di).chunk_size)+2],dx
-		endif
-		pop	si
-		ret
-
-        endp    next_chunk
 
 
 ;***************************************************************

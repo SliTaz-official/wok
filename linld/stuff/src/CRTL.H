@@ -9,16 +9,16 @@
 const unsigned MIN_STACK = 0x400;
 const unsigned MAX_MALLOC = 0xF000;
 
-const A_RDONLY    = 1;     // for fileattr()
-const A_HIDDEN    = 2;
-const A_SYSTEM    = 4;
-const A_LABEL     = 8;
-const A_DIRECTORY = 16;
-const A_ARCHIVE   = 32;
+const char A_RDONLY    = 1;     // for fileattr()
+const char A_HIDDEN    = 2;
+const char A_SYSTEM    = 4;
+const char A_LABEL     = 8;
+const char A_DIRECTORY = 16;
+const char A_ARCHIVE   = 32;
 
 
-const O_RDONLY = 0;     // for open()
-const O_BINARY = 0;
+const char O_RDONLY = 0;     // for open()
+const char O_BINARY = 0;
 
 extern char text_start; extern char text_end;
 extern char data_start; extern char data_end;
@@ -42,7 +42,7 @@ extern "C" int read(int fd, void* data, int sz);
 extern "C" int write(int fd, const void* data, int sz);
 extern "C" long lseekset(int fd, long sz);
 extern "C" void* malloc(unsigned sz);
-extern "C" void puts(const char* s);
+extern "C" int puts(const char* s);
 extern "C" unsigned long strtol(const char *s);
 
 // Extensions
