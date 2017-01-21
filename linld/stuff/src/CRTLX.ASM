@@ -91,6 +91,9 @@ ultoabuf	db	12	dup (?)
         endp    _strstr
 
 
+macro   cpuid
+        db      0fh,0A2h
+endm
 ;***************************************************************
 ;int cpuhaslm(void)
 ;***************************************************************
@@ -110,20 +113,18 @@ ultoabuf	db	12	dup (?)
                 js     @@bad   		;it is a 86/186/286, not a 386+
                 p386
 		pushfd
-		pushfd
 		pop	ebx
 		mov	ecx,ebx
-		xor	ebx,00100000h	; toggle CPUID feature bit 21
+		btc	ebx,21		; toggle CPUID feature bit 21
 		push	ebx
 		popfd
 		pushfd
 		pop	ebx
-		popfd
 		xor	ebx,ecx
-		shr	ebx,1+21	; CPUID feature bit ?
+		shr	ebx,1+21	; CPUID feature bit changed ?
 		jnc	@@bad
 		mov	eax,80000001h	; Extended Processor Info and Feature Bits
-		db	0Fh,0A2h	; cpuid
+		cpuid
 		shr	edx,1+29	; LM feature bit ?
 @@bad:
                 p8086
