@@ -113,16 +113,18 @@ endm
                 js     @@bad   		;it is a 86/186/286, not a 386+
                 p386
 		pushfd
-		pop	ebx
-		mov	ecx,ebx
-		btc	ebx,21		; toggle CPUID feature bit 21
-		push	ebx
+		pop	dx
+		pop	ax
+		mov	bl,al
+		xor	al,20h		; toggle CPUID feature bit 21
+		push	ax
+		push	dx
 		popfd
 		pushfd
-		pop	ebx
-		xor	ebx,ecx
-		shr	ebx,1+21	; CPUID feature bit changed ?
-		jnc	@@bad
+		pop	dx
+		pop	ax
+		xor	al,bl		; clear C
+		je	@@bad 		; CPUID feature bit changed ?
 		mov	eax,80000001h	; Extended Processor Info and Feature Bits
 		cpuid
 		shr	edx,1+29	; LM feature bit ?
