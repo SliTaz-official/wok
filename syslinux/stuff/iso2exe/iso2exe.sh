@@ -144,12 +144,12 @@ add_fdbootstrap()
 gzsize()
 {
 	echo $(($(hexdump -C | awk ' {
-		for (i = 2; i < 18; i++) if ($i != "00") break;
-		if (i == 18) {
-			for (i = 17; i > 1; i--) if ($i != "00") break;
-			print "0x" $1 " + 7 - " (16 - i) 
+		for (i = 17; i > 1; i--) if ($i != "00") break;
+		if (i == 1) {
+			print "0x" $1 " + 1 + 1 - " n
 			exit
 		}
+		n = 17 - i
 	}')))
 }
 
