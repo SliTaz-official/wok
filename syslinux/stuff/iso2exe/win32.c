@@ -226,8 +226,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 			exit(0);
 		base = drives();
 		if (MessageBox(NULL,"Step 2: plug the USB stick in, "
-				    "wait for Windows to mount it and "
-				    "dismount it",
+				    "wait for Windows to mount it",
 				"Drive detection 2/2",
 				MB_OKCANCEL|MB_ICONEXCLAMATION) == IDCANCEL)
 			exit(0);
