@@ -105,7 +105,7 @@ add_win32exe()
 		i=3; [ -n "$mac" ] && i=9
 		ddq if=/tmp/exe$$ bs=512 skip=1 of=$1 seek=$i conv=notrunc
 		for i in 12C 154 17C ; do	# always 3 UPX sections
-			store $((0x$i)) $((1024 + $(get 0x$i $1))) $1 2
+			store $((0x$i)) $((1024 + $(get 0x$i $1))) $1
 		done
 	fi
 	printf "Adding bootiso head at %04X...\n" 0
@@ -124,6 +124,11 @@ add_win32exe()
 	store 417 $(($i/512)) $1 8
 	printf "Moving syslinux hybrid boot record at %04X (512 bytes) ...\n" $i
 	ddq if=$2 bs=1 count=512 of=$1 seek=$i conv=notrunc
+	if [ -z "$RECURSIVE_PARTITION" ]; then
+		store 464 $((1+$i/512)) $1 8
+		store 470 $(($i/512)) $1 8
+		store 474 $(($(get 474 $1 4) - $i/512)) $1 32
+	fi
 }
 
 add_fdbootstrap()
@@ -568,8 +573,9 @@ EOT
 			h=$((512*$(get 417 "$1" 1)))
 			store $((0x1C5+16*i)) $(($mb-1)) $1 8
 			store $(($h+0x1C5+16*i)) $(($mb-1)) $1 8
-			store $((0x1CA+16*i)) $(($mb*2048)) $1 32
 			store $(($h+0x1CA+16*i)) $(($mb*2048)) $1 32
+			[ -z "$RECURSIVE_PARTITION" ] || h=0
+			store $((0x1CA+16*i)) $(($mb*2048-$h)) $1 32
 		done
 		if [ $newsz -gt $isosz ]; then
 			echo "$(($newsz - $isosz)) extra bytes."
