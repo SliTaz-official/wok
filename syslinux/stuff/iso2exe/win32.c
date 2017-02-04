@@ -169,7 +169,7 @@ static void writefloppy(char *isoFileName)
 	}
 }
 
-//TODO #define VCPI_LINUX_LOADER The DOS/EXE loader can boot in VM86 using VCPI API
+#define VCPI_LINUX_LOADER The DOS/EXE loader can boot in VM86 using VCPI API
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		   LPSTR lpCmdLine, int nCmdShow)
 {
