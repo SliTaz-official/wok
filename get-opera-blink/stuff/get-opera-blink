@@ -1,0 +1,136 @@
+#!/bin/sh -e
+
+PACKAGE="opera-blink"
+WEB_SITE="https://www.opera.com/"
+CATEGORY="non-free"
+DEPENDS="alsa-lib GConf gtk+ libcups libcurl libnotify nss xorg-libXScrnSaver xorg-libXtst"
+URL="http://download1.operacdn.com/pub/opera/desktop/"
+
+. /lib/libtaz.sh
+
+while [ "${1:0:2}" == '--' ]; do shift; done
+VERSION="$1"
+
+check_root
+
+
+title "Welcome to $PACKAGE installer!"
+
+[ -z "$VERSION" ] && version_desc="latest"
+if [ -z "$noinstall" ]; then
+	install_desc='yes'
+else
+	install_desc='no'; keep='yes'
+fi
+[ -z "$keep" ] && keep_desc="no"
+
+cat <<EOT
+Continue with the next options:
+  root           : $root/
+  version        : $VERSION$version_desc
+  install package: $install_desc
+  keep package   : $keep$keep_desc
+
+You can change the options in the commandline:
+  $0 <version> --root=/path/to/root --noinstall --keep
+EOT
+
+separator; newline
+
+if [ -d "$root/var/lib/tazpkg/installed/$PACKAGE" ]; then
+	echo "Removing previous version..."
+	tazpkg -r $PACKAGE --root="$root/"
+	[ -d "$root/var/lib/tazpkg/installed/$PACKAGE" ] &&
+		die "Can't remove previous version. Exiting."
+fi
+
+TMP_DIR=$(mktemp -d)
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR
+
+if [ -z $VERSION ]; then
+	echo -n "Determining latest release... "
+	VERSION=$(wget -qO- "$URL" | sed -n 's|.*href="[0-9.]*/">\(.*\)/<.*|\1|p' | tail -n1)
+	echo "$VERSION"
+fi
+FILE=$(wget -qO- "$URL$VERSION/linux" | sed -n 's|.*href=".*_i386.deb">\(.*\)<.*|\1|p' | tail -n1)
+SIZE=$(wget -qO- "$URL$VERSION/linux" | fgrep $FILE | awk '{print $NF}')
+
+echo "Download size: $SIZE Bytes"
+echo
+
+cd $TMP_DIR
+wget $URL$VERSION/linux/$FILE
+echo
+if [ ! -f $FILE ]; then
+	cd $CUR_DIR
+	rm -rf $TMP_DIR
+	die "Could not download $FILE from $URL. Exiting."
+fi
+
+action "Extracting the archive"
+mkdir $PACKAGE
+dpkg-deb -e $FILE $PACKAGE/meta
+dpkg-deb -x $FILE $PACKAGE/fs
+status
+
+rm -f $FILE
+sed '/^Description:/,$!d; /^Description:/d' $PACKAGE/meta/control > $PACKAGE/description.txt
+
+SHORT_DESC="$(sed '/^Description:/!d; s/.*: //' $PACKAGE/meta/control)"
+MAINTAINER="$(sed '/^Maintainer:/!d;  s/.*: //' $PACKAGE/meta/control)"
+VERSION="$(   sed '/^Version:/!d;     s/.*: //' $PACKAGE/meta/control)"
+mv $PACKAGE $PACKAGE-$VERSION
+
+
+cd $PACKAGE-$VERSION
+
+cat > receipt <<EOT
+# SliTaz package receipt.
+
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="$CATEGORY"
+SHORT_DESC="$SHORT_DESC"
+MAINTAINER="$MAINTAINER"
+LICENSE="non-free"
+WEB_SITE="$WEB_SITE"
+TAGS="browser"
+
+DEPENDS="$DEPENDS"
+
+post_install() {
+	chmod 4755 "$1/usr/lib/i386-linux-gnu/opera/opera_sandbox"
+}
+EOT
+
+action "Cleaning..."
+# Remove unwanted locales and folders
+mv       fs/usr/lib/i386-linux-gnu/opera/localization \
+         fs/usr/lib/i386-linux-gnu/opera/localization-full
+mkdir -p fs/usr/lib/i386-linux-gnu/opera/localization
+. /etc/locale.conf
+LANG=${LANG%.*} # remove trailing ".UTF-8"
+for i in $LANG ${LANG/_/-} ${LANG:0:2} en-GB en-US; do
+	[ -f fs/usr/lib/i386-linux-gnu/opera/localization-full/$i.pak ] &&
+	cp -a fs/usr/lib/i386-linux-gnu/opera/localization-full/$i.pak \
+		fs/usr/lib/i386-linux-gnu/opera/localization
+done
+rm -rf fs/usr/lib/i386-linux-gnu/opera/localization-full
+rm -rf fs/usr/share/doc fs/usr/share/icons/hicolor/32x32 usr/share/icons/hicolor/128x128 \
+fs/usr/share/icons/hicolor/256x256 fs/usr/share/lintian fs/usr/share/menu fs/usr/share/pixmaps
+status
+
+cd $TMP_DIR
+
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+rm -rf $PACKAGE-$VERSION
+
+[ -z "$noinstall" ] && tazpkg -i $PACKAGE-$VERSION.tazpkg --root="$root"
+[ -n "$keep" ] && mv $PACKAGE-$VERSION.tazpkg $CUR_DIR
+
+# Clean
+cd $CUR_DIR
+rm -rf $TMP_DIR
+
