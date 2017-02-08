@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#define VCPI_LINUX_LOADER The DOS/EXE loader can boot in VM86 using VCPI API
 #define BOOTSTRAP_SECTOR_COUNT_OFFSET	26
 
 static int fullread(int fd, char *p, int n)
@@ -28,6 +29,7 @@ static int fullwrite(int fd, char *p, int n)
 #define write fullwrite
 }
 
+#ifdef VCPI_LINUX_LOADER
 static void exec16bits(char *isoFileName)
 {
 	int fdiso, fdtmp, i;
@@ -49,6 +51,7 @@ static void exec16bits(char *isoFileName)
 	close(fdtmp);
 	execl(tmpFileName, isoFileName);
 }
+#endif
 
 static int iswinnt(void)
 {
@@ -58,6 +61,7 @@ static int iswinnt(void)
 	    Version.dwPlatformId != VER_PLATFORM_WIN32_WINDOWS); // not Win9x
 }
 
+#define LONG(x)	* (unsigned long *) (x)
 static int ishybrid(char *isoFileName)
 {
 	int fdiso;
@@ -68,16 +72,15 @@ static int ishybrid(char *isoFileName)
 	if (lseek(fdiso, 17 * 2048L, SEEK_SET) != -1 &&
 	    read(fdiso, buffer, 2048) == 2048 &&
 	    strncmp(buffer+7,"EL TORITO SPECIFICATION",23) == 0) {
-		unsigned long lba = * (unsigned long *) (buffer + 71);
+		unsigned long lba = LONG(buffer + 71);
 		
 		if (lseek(fdiso, lba * 2048L, SEEK_SET) != -1 &&
 		    read(fdiso, buffer, 2048) == 2048 &&
-		    * (unsigned long *) (buffer + 0) == 1 &&
-		    * (unsigned long *) (buffer + 30) == 0x88AA55) {
-			lba = * (unsigned long *) (buffer + 40);
+		    LONG(buffer + 0) == 1 && LONG(buffer + 30) == 0x88AA55) {
+			lba = LONG(buffer + 40);
 			if (lseek(fdiso, lba * 2048L, SEEK_SET) != -1 &&
 			    read(fdiso, buffer, 2048) == 2048)
-				magic = * (unsigned long *) (buffer + 64);
+				magic = LONG(buffer + 64);
 		}
 	}
 	close(fdiso);
@@ -169,7 +172,6 @@ static void writefloppy(char *isoFileName)
 	}
 }
 
-#define VCPI_LINUX_LOADER The DOS/EXE loader can boot in VM86 using VCPI API
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		   LPSTR lpCmdLine, int nCmdShow)
 {
@@ -213,7 +215,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	}
 	if (header[BOOTSTRAP_SECTOR_COUNT_OFFSET] == 0) { // No floppy bootstrap available
 		usbkeyicon = MB_ICONQUESTION;
-		usbkeymsg = "Do you want to create a boot key ?";
+		usbkeymsg =
+		"You can create a SliTaz USB boot key or\n"
+		"a boot memory card.\n"
+		"(note that this will be read only like\n"
+		"a CDROM. The Slitaz utility 'tazusb'\n"
+		"can be used later to create a true\n"
+		"read/write USB key).\n"
+		"\nDo you want to create a boot key now ?";
 	}
 	if (MessageBox(NULL,usbkeymsg, "Create a boot stick ?",
 			MB_YESNO|usbkeyicon) == IDYES) {
