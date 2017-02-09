@@ -13,11 +13,12 @@ WGET_URL="ftp://metalab.unc.edu/pub/Linux/system/hardware/$TARBALL"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	sed -i 's/pnpdump_main.$(OBJEXT)/isapnp_main.$(OBJEXT) &/' src/Makefile.*
+	sed -i 's/return/if (!strcmp(basename(argv[0]),"isapnp")) return (isapnp_main(argc, argv));\n&/' src/pnpdump.c
 	./configure --prefix=/usr --bindir=/bin \
-	--libexecdir=/usr/bin --mandir=/usr/share/man \
-	$CONFIGURE_ARGS
-	make
+		--libexecdir=/usr/bin --mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -25,5 +26,7 @@ compile_rules()
 genpkg_rules()
 {
 	# move /usr/sbin/* /sbin to use pnptools *before* mounting /usr
-	cp -a $install/usr/sbin $fs
+	mkdir -p $fs/sbin
+	cp -a $install/usr/sbin/pnpdump $fs/sbin
+	ln $fs/sbin/pnpdump $fs/sbin/isapnp
 }
