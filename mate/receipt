@@ -1,0 +1,53 @@
+# SliTaz package receipt.
+
+PACKAGE="mate"
+VERSION="1.9.3"
+CATEGORY="meta"
+SHORT_DESC="MATE X11 Desktop Environement"
+MAINTAINER="pankso@gmail.com"
+LICENSE="GPL3"
+WEB_SITE="http://www.mate-desktop.org/"
+TAGS="MATE"
+
+SUGGESTED="mate-screensaver"
+DEPENDS="mate-desktop mate-common mate-menus caja mate-panel \
+mate-system-monitor mate-session-manager mate-control-center \
+yuyo-gtk-theme mate-icon-theme"
+
+#
+# This is a package to install a working MATE environment for users. They
+# just should have to logout current session, use F1 in Slim and select 
+# MATE to login. They must change WINDOW_MANAGER in applications.conf to
+# make it persitent, manually or with GTK box from standard menu.
+#
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $stuff/xsessions $fs/usr/share
+	chown -R 0.0 $fs
+}
+
+# Add WM to SLIM available sessions.
+post_install()
+{
+	local root
+	root=$1
+	res=$(cat $root/etc/slim.conf | grep ^session | sed s/"sessions. *"//)
+	if ! echo "$res" | grep -q $PACKAGE; then
+		echo -n "Adding $PACKAGE to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" $root/etc/slim.conf
+		status
+	fi
+}
+
+# Remove WM from SLIM available sessions.
+post_remove()
+{
+	local root
+	root=$1
+	if grep -q $PACKAGE $root/etc/slim.conf; then
+		sed -i s/,$PACKAGE// $root/etc/slim.conf
+	fi
+}
