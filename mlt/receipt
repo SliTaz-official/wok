@@ -18,15 +18,20 @@ libxml2-dev gtk+-dev ffmpeg-dev frei0r-plugins-dev"
 
 # Rules to configure and make the package.
 
-compile_rules() {
-  ./configure --prefix=/usr \
-			  --enable-gpl \
-			  --disable-mmx \
-			  --qimage-libdir=/usr/lib/ \
-			  --qimage-includedir=/usr/include/Qt \
-			  --avformat-swscale &&
-  make &&
-  make install 
+compile_rules()
+{
+	# update to ffmpeg 2.0
+	sed -i	-e 's/AVCODEC_MAX_AUDIO_FRAME_SIZE/MAX_AUDIO_FRAME_SIZE/' \
+		-e 's/avcodec_decode_audio3/avcodec_decode_audio4/' \
+		src/modules/avformat/*.c
+	./configure --prefix=/usr \
+			--enable-gpl \
+			--disable-mmx \
+			--qimage-libdir=/usr/lib/ \
+			--qimage-includedir=/usr/include/Qt \
+			--avformat-swscale &&
+	make &&
+	make install 
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
