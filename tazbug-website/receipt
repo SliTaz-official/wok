@@ -1,39 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="tazbug-website"
-VERSION="95"
+VERSION="2.0"
 CATEGORY="misc"
-SHORT_DESC="SliTaz Bug Tracker website"
+SHORT_DESC="SliTaz Bug Tracker web interface"
 MAINTAINER="fredericguilbault@live.ca"
 LICENSE="BSD"
 WEB_SITE="http://bugs.slitaz.org"
-TARBALL="tazbug-$VERSION.tar.gz"
-WGET_URL="http://hg.slitaz.org/tazbug/archive/$VERSION.tar.gz"
+WANTED="tazbug"
 
 DEPENDS="busybox gettext-base slitaz-base-files"
 BUILD_DEPENDS="gettext"
 SIBLINGS="tazbug"
 
-# Use compile_rules with: make && make DESTDIR=$DESTDIR install-server
+# Use compile_rules with: make && make DESTDIR=$DESTDIR install-web
+compile_rules() 
+{
+	make && make install-web
+}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	#create path
-	mkdir -pm0755 $fs/etc/slitaz
-	mkdir -pm0755 $fs/var/www/bugs
-	mkdir -pm0755 $fs/var/lib/slitaz/auth/
-	mkdir -pm0700 $fs/var/lib/slitaz/people/
-
-	#copy to package
-	touch $fs/var/lib/slitaz/auth/people
-	cp -a $src/web/* $fs/var/www/bugs/
-	cp -a $src/bugs.conf $fs/etc/slitaz
-	#mv  $src/web/bugs.conf $fs/etc/slitaz/bugs.conf
-
-	#set prem & owner
-	chown -R 80.80 $fs/var/www/bugs
-	chown -R 80.80 $fs/var/lib/slitaz/people/
-	chmod 0700 $fs/var/lib/slitaz/auth/people
-	chown -R 80.80 $fs/var/lib/slitaz/auth/people
+	cp -a ${WOK}/${pkg}/install/* ${fs}
+	# Will run without tweaking configs in cgi-bin/
+	mkdir -p ${fs}/var/www/cgi-bin
+	mv ${fs}/var/www/bugs ${fs}/var/www/cgi-bin
 }
