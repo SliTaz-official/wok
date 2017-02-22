@@ -139,6 +139,10 @@ testsuite()
 	readelf -h $src/_install/bin/busybox
 }
 
+# Keep kmod & util-linux-mount files
+REMOVED_SYMLINKS="/bin/mount /bin/mountpoint /bin/umount /sbin/depmod \
+/sbin/insmod /sbin/modinfo /sbin/modprobe /sbin/rmmod"
+
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
@@ -186,18 +190,9 @@ genpkg_rules()
 		sed -i "s/copy; [0-9]*/copy; $(date +%Y)/"
 
 	# Remove kmod & util-linux-mount links
-	while read link; do
+	for link in $REMOVED_SYMLINKS; do
 		rm -f $fs$link
 	done <<EOT
-/bin/mount
-/bin/mountpoint
-/bin/umount
-/sbin/depmod
-/sbin/insmod
-/sbin/modinfo
-/sbin/modprobe
-/sbin/rmmod
-EOT
 }
 
 # GNU utils stuff.
@@ -250,6 +245,9 @@ post_install()
 		echo '' >> $1/etc/daemons.conf
 	fi
 	sed -i "s/copy; 20../copy; $(date +%Y)/" $1/var/www/httpd/404.html
+	for link in $REMOVED_SYMLINKS; do
+		[ -e $1$link ] || ln -s /bin/busybox $1$link
+	done
 }
 
 pre_remove()
