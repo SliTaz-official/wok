@@ -13,7 +13,7 @@ WGET_URL="http://www.fsfla.org/svnwiki/selibre/linux-libre/download/releases/$VE
 CONFIG_FILES="/lib/modules/$VERSION-slitaz/modules.dep"
 
 DEPENDS="depmod"
-BUILD_DEPENDS="slitaz-toolchain perl git lzma patch"
+BUILD_DEPENDS="slitaz-toolchain perl git lzma patch aufs"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -29,12 +29,7 @@ compile_rules()
 	# Check for Aufs and cook it if unbuilt.
 	echo "Checking for Aufs packages..."
 	_AUFSVER=`grep  ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-	if [ ! -d "$AUFSDIR" ] && [ -x /usr/bin/cook ]; then
-		# Give info an redirect to /dev/null since aufs got it own log.
-		AUFSDIR=$WOK/aufs/source/aufs-${_AUFSVER}
-		echo "Cook: aufs $_AUFSVER"
-		cook aufs > /dev/null
-	elif [ ! -x /usr/bin/cook ]; then
+	if [ ! -x /usr/bin/cook ]; then
 		# We only need aufs source. Also cooking now is a bad idea since it
 		# needs linux-module-headers.
 		AUFSDIR=$WOK/aufs/aufs-${_AUFSVER}
