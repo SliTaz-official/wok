@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="goffice-gtk2"
+SOURCE="goffice"
+VERSION="0.8.17"
+CATEGORY="libs"
+SHORT_DESC="GOffice is a library of document-centric objects and utilities"
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$SOURCE-$VERSION.tar.xz"
+WEB_SITE="https://developer.gnome.org/goffice/"
+WGET_URL="$GNOME_MIRROR/$SOURCE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="gtk+ libgsf libglade libart_lgpl xorg-libXdamage"
+BUILD_DEPENDS="gtk+-dev libxml2-dev libgsf libgsf-dev libglade-dev intltool \
+expat-dev bzip2-dev librsvg-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# remove a reference to pcre_info, a deprecated function
+	# that was removed from PCRE-8.30
+	sed -i 's#info (r, NULL#full&, 0#' goffice/utils/regutf8.c &&
+	./configure \
+		--with-html-dir=/usr/share/doc \
+		--disable-static \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cook_copy_files *.so* *.xml *.xsl README
+}
