@@ -1,7 +1,7 @@
 path ..\BC31;%PATH%
 call !clean.bat
-rem tasm /la /m /dNO386 *.asm > asm.log
-tasm /la /m /dNO386 /dLARGE_IMAGES *.asm > asm.log
+rem tasm /la /m /dEXTRA /dNO386 *.asm > asm.log
+tasm /la /m /dEXTRA /dNO386 /dLARGE_IMAGES *.asm > asm.log
 rem @pause
 rem bcc @bccopt.opt -S -mt *.cpp
 bcc @bccopt.opt -S -mt -DLARGE_IMAGES *.cpp

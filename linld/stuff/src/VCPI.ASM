@@ -411,9 +411,11 @@ label   do_memcpy_vcpi near
         global  _vm2rm:near
         proc    _vm2rm near
 
+                p8086
 		extrn	_vcpi:byte
 		test	[_vcpi],-1
 		jz	@@ret
+                p386
                 push	si
               ;;pushf
               ;;pushad

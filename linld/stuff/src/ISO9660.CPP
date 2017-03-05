@@ -8,45 +8,24 @@
 static char buffer[SECTORSZ];
 struct isostate isostate;
 
-static int readsector(unsigned long offset)
+static int readsector(const unsigned long *offset)
 {
 	return (isolseek(offset) != -1
 		    && read(isostate.fd, buffer, SECTORSZ) == SECTORSZ);
 }
 
-int isoread(char *data, unsigned size)
-{
-	int get, n;
-	
-	struct isostate *x=&isostate;
-	if (isolseek(x->fileofs) == -1)
-		return -1;
-	if (size < x->filesize)
-		size = x->filesize;
-	for (get = size; get; get -= n, data += n) {
-		n = read(x->fd,data,get);
-		if (n < 0)
-			return n;
-		if (n == 0)
-			break;
-		x->fileofs += n;
-		x->filesize -= n;
-	}
-	return size - get;
-}
-
 int isoreset(char *name)
 {
+	static const unsigned long root = 16UL * 2048;
 	struct isostate *x=&isostate;
 	if (name)
 		//x->fd = open(name, O_RDONLY);
 		x->fd = open(name);
-	if (!readsector(16UL * 2048) || strhead(buffer+1,"CD001")) {
+	if (!readsector(&root) || strhead(buffer+1,"CD001")) {
 		//close(x->fd);
 		return -1;
 	}
-	x->dirofs = * (unsigned long *) (buffer + 0x9E);
-	x->dirofs <<= SECTORBITS;
+	x->dirofs = (* (unsigned long *) (buffer + 0x9E)) << SECTORBITS;
 	x->dirsize = * (unsigned long *) (buffer + 0xA6);
 	return 0;
 }
@@ -68,7 +47,7 @@ int isoreaddir(int restart)
 	}
 	if (x->curpos >= SECTORSZ || * (short *) (buffer + x->curpos) == 0) {
 		if (x->curdirsize < SECTORSZ) return -1;
-		readsector(x->curdirofs);
+		readsector(&x->curdirofs);
 		x->curdirofs += SECTORSZ;
 		x->curdirsize -= SECTORSZ;
 		x->curpos = 0;
@@ -125,52 +104,44 @@ int isoreaddir(int restart)
 	return 0;
 }
 
-#define IS_DIR(x)( ((x) & ~0777) == 040000)
-int isoopen(char *filename)
+//#define IS_DIR(x)( ((x) & ~0777) == 040000)
+#define IS_DIR(x)( (char)((x) >> 9) == (char)040)
+int isoopen(const char *filename)
 {
 	int restart;
-	char *name, *s;
-	int _64bits = cpuhaslm();
+	char *name, *s, c;
+	char _64bits = cpuhaslm();
 	struct isostate *x=&isostate;
 
 retry32:
-	name = filename;
-	while (*name == '/') {
-		name++;
+	for (s = (char *) filename; *s == '/' ; s++) {
 		isoreset(NULL);
 	}
-	s = name;
-	while (1) {
-		char c;
-		while (*s && *s != '/') s++;
-		c = *s;
-		*s = 0;
-		for (restart = 1; isoreaddir(restart) == 0; restart = 0) {
-			const char *n = name, *i = x->filename;
-			if (_64bits) {
-				if (strhead(x->filename, name)) continue;
-				n = "64";
-				i += strlen(name);
-			}
-			if (strcmp(n, i)) continue;
-			if (IS_DIR(x->filemod)) {
-				x->dirofs = x->fileofs;
-				x->dirsize = x->filesize;
-				if (c) {
-					*s++ = c;
-					name = s;
-					goto next;
-				}
-			}
-			isolseek(x->fileofs);
-			return 0;
-		}
+  next:
+	name = s;
+	do s++; while (*s && *s != '/');
+	c = *s;
+	*s = 0;
+	for (restart = 1; isoreaddir(restart) == 0; restart = 0) {
+		const char *n = name, *i = x->filename;
 		if (_64bits) {
-			_64bits = 0;
-			*s = c;
-			goto retry32;
+			if (strhead(i, n)) continue;
+			n = "64";
+			i += s - name; // strlen(name);
 		}
-		return -1;
-	  next: ;
+		if (strcmp(i, n)) continue;
+		*s++ = c;
+		if (IS_DIR(x->filemod)) {
+			x->dirofs = x->fileofs;
+			x->dirsize = x->filesize;
+			if (c) goto next;
+		}
+		isolseek(&x->fileofs);
+		return 0;
 	}
+	if (_64bits) {
+		_64bits = 0;
+		goto retry32;
+	}
+	return -1;
 }

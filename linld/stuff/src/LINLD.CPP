@@ -58,6 +58,7 @@ int main(int argc, char *argv[]) {
 	}
         if(strhead(s,"image=") == 0) {
 	    s+=6;
+	set_kernel_name:
             kernel_name=s;
         }
         else if(strhead(s,"initrd=") == 0) {
@@ -116,8 +117,8 @@ addincmdline:
 	    strcatb(_cmdline,*argv);
         }
 	else if(i == 1 && fileattr(s) != -1) {
-            kernel_name = s;
 	    cmdline = (const char *) _cmdline;
+	    goto set_kernel_name;
         }
 	else
 	    break;

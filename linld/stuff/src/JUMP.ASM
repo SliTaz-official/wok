@@ -42,13 +42,13 @@
 		push	9000h
 		pop	es
 		endif
-		pop	cx			; ip
-		pop	dx			; cs
+		pop	dx			; ip
+		pop	cx			; cs
 		cli				; we start doing destructive things to DOS
 		push	es
 		pop	ss
 		mov	sp,0A000h
-		push	dx cx
+		push	cx dx
 		extrn	_rm_size:word
 		mov	si,offset _rm_size	; _rm_size, _pm_high, _rm_buf
 		lodsw

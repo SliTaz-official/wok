@@ -12,6 +12,10 @@
 
         segment _TEXT byte public use16 'CODE'
 
+	macro   cpuid
+        	db      0fh,0A2h
+	endm
+
                 org     100h
         global  _text_start:byte
         label   _text_start byte
@@ -46,6 +50,25 @@ clearbss:
 		js	endcpu
 		endif
                 p386
+		ifdef	EXTRA
+		pushfd
+		pop	dx
+		pop	ax
+		mov	bl,al
+		xor	al,20h		; toggle CPUID feature bit 21
+		push	ax
+		push	dx
+		popfd
+		pushfd
+		pop	dx
+		pop	ax
+		xor	al,bl		; clear C
+		je	@@check_vm	; CPUID feature bit changed ?
+		mov	eax,80000001h	; Extended Processor Info and Feature Bits
+		cpuid
+		mov	[_cpu_features],edx
+@@check_vm:
+		endif
 ; Check for vm
                 smsw    ax      ;SMSW cannot be trapped! :-)
                 and     al,1	;MSW_PE
@@ -58,15 +81,18 @@ clearbss:
 label   check_vcpi near
                 push    ds
 ; Check whether it is safe to call 67h (we trust only known EMM managers)
-                push    0
+		xor	bx,bx
+                push    bx
                 pop     ds
                 mov     ds,[word 67h*4+2]
-                cmp     [dword 10+4],'0XXX'
+                cmp     [dword bx+10+4],'0XXX'
                 jne     skip
-                mov     eax,'XMME'
-                xor     eax,[dword 10]
+		;mov	eax,'XMME'
+		;xor	eax,[dword bx+10]
         ; QMME also works (as told by <J.S.Peatfield@damtp.cambridge.ac.uk>)
-                shl     eax,8
+		;shl	eax,8
+		mov	ax,'ME'
+		xor	ax,[word bx+10]
 skip:
                 pop     ds
                 jne     no_vcpi
@@ -222,6 +248,10 @@ msg_badmapping  db      "VCPI: low 640k: need 1:1 mapping",0
         segment _BSS byte public use16 'BSS'
         global  _bss_start:byte
         label   _bss_start byte
+		ifdef	EXTRA
+        global  _cpu_features:dword
+_cpu_features	dd	?
+		endif
         ends    _BSS
 
         end     _text_start
