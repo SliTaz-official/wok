@@ -1,5 +1,11 @@
 #ifndef __ISO9660_H
 #define __ISO9660_H
+//typedef unsigned long dirsizetype;
+//#define filesize2dirsize(x)	(x)
+//#define DIRSECTORSZ	SECTORSZ
+typedef unsigned dirsizetype;
+#define filesize2dirsize(x)	(*(unsigned *)((char *)&(x)+1))
+#define DIRSECTORSZ	(SECTORSZ/256)
 extern struct isostate {
 	int fd;
 	unsigned long fileofs;
@@ -7,8 +13,8 @@ extern struct isostate {
 	unsigned short filemod;
 	char *filename;
 //private
-	unsigned long dirofs, dirsize;
-	unsigned long curdirofs, curdirsize;
+	dirsizetype curdirsize, dirsize;
+	unsigned long curdirofs, dirofs;
 	unsigned curpos;
 } isostate;
 #define isofd isostate.fd

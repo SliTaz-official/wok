@@ -35,7 +35,7 @@ inline void syntax() {
     );
 }
 
-static char _cmdline[256];
+static char _cmdline[128];
 int main(int argc, char *argv[]) {
 
     (void) argc;
@@ -112,12 +112,12 @@ int main(int argc, char *argv[]) {
             topmem = strtol(s);
 	    goto addincmdline;
         }
-        else if(cmdline == (const char *) _cmdline) {
+        else if(cmdline == (const char *) _cmdline + 1) {
 addincmdline:
 	    strcatb(_cmdline,*argv);
         }
 	else if(i == 1 && fileattr(s) != -1) {
-	    cmdline = (const char *) _cmdline;
+	    cmdline = (const char *) _cmdline + 1;
 	    goto set_kernel_name;
         }
 	else

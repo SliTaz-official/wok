@@ -25,11 +25,7 @@ extern char data_start; extern char data_end;
 extern char bss_start;  extern char bss_end;
 extern char* heap_top;
 
-extern int ximage_size, ximage_fd;
-
 void parse_cmdline();
-extern "C" char* strcpy(const char* a,const char* b);
-extern "C" char* strcat(const char* a,const char* b);
 extern "C" char* strcatb(const char* a,const char* b);
 extern "C" int strhead(const char* a,const char* b);
 extern "C" int fileattr(const char* name);
@@ -46,10 +42,6 @@ extern "C" int puts(const char* s);
 extern "C" unsigned long strtol(const char *s);
 
 // Extensions
-//static void barrier() {}
-//static void cli() { asm { cli } }
-//static void sti() { asm { sti } }
-#define barrier() do {} while(0)
 #define cli() do { asm { cli } } while(0)
 #define sti() do { asm { sti } } while(0)
 #define int3() do { asm { db 0cch } } while(0)

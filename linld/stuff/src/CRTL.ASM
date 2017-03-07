@@ -51,18 +51,20 @@ ultoabuf	db	12	dup (?)
 ;char* strcat(const char* a, const char* b);
 ;char* strcatb(const char* a, const char* b);
 ;***************************************************************
-        global  _strcpy:near
-        proc    _strcpy near
+        global  _strcatb:near
+        proc    _strcatb near
 
-		mov	dl,0
+	ifdef	EXTRA
+		mov	dl,3
 		db	0bbh			; mov	bx,imm opcode
         global  _strcat:near
 _strcat:
 		mov	dl,1
 		db	0bbh			; mov	bx,imm opcode
-        global  _strcatb:near
-_strcatb:
-		mov	dl,3
+        global  _strcpy:near
+_strcpy:
+		mov	dl,0
+	endif
 		pop	ax			;caller return address
                 pop	cx			; a
                 pop	bx			; b
@@ -71,15 +73,19 @@ _strcatb:
                 push	ax
                 push	si
                 mov	si,cx
+	ifdef	EXTRA
 		shr	dl,1
 		jnc	@@nocat
+	endif
 @@catlp:
 		lodsb
 		cmp	al,0
                 jne	@@catlp
 		dec	si
+	ifdef	EXTRA
 		shr	dl,1
 		jnc	@@nocat
+	endif
 		cmp	cx,si
 		jz	@@nocat
 		mov	[word si],20h
@@ -96,7 +102,7 @@ _strcatb:
                 pop	si
                 ret
 
-        endp    _strcpy
+        endp    _strcatb
 
 
 ;***************************************************************
@@ -157,6 +163,29 @@ putsz:
 		ret
 
         endp    _puts
+
+
+		ifdef	EXTRA
+;***************************************************************
+;int chdir(char *path);
+;***************************************************************
+        global  _chdir:near
+        proc    _chdir near
+
+		pop	ax
+		pop	dx
+		push	dx
+		push	ax
+chdir:
+		stc
+		mov	ax,713Bh
+		int	21h
+		jnc	chkc
+		mov	ah,3Bh
+		jmp	dos
+
+        endp    _chdir
+		endif
 
 
 ;***************************************************************
@@ -1349,30 +1378,6 @@ image_done:
 		ret
 
         endp    _progname
-
-
-;***************************************************************
-;int chdir(char *path);
-;***************************************************************
-        global  _chdir:near
-        proc    _chdir near
-
-		pop	ax
-		pop	dx
-		push	dx
-		push	ax
-chdir:
-		stc
-		mov	ax,713Bh
-		int	21h
-		jnc	@@end
-		mov	ah,3Bh
-		int	21h
-@@end:
-		sbb	ax,ax
-		ret
-
-        endp    _chdir
 
 
 ;***************************************************************

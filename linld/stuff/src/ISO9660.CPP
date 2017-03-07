@@ -5,13 +5,13 @@
 
 #define SECTORSZ 2048
 #define SECTORBITS 11
-static char buffer[SECTORSZ];
+static char buffer[SECTORSZ+512];	// RR overflow
 struct isostate isostate;
 
 static int readsector(const unsigned long *offset)
 {
 	return (isolseek(offset) != -1
-		    && read(isostate.fd, buffer, SECTORSZ) == SECTORSZ);
+		    && read(isostate.fd, buffer, sizeof(buffer)) >= SECTORSZ);
 }
 
 int isoreset(char *name)
@@ -26,7 +26,7 @@ int isoreset(char *name)
 		return -1;
 	}
 	x->dirofs = (* (unsigned long *) (buffer + 0x9E)) << SECTORBITS;
-	x->dirsize = * (unsigned long *) (buffer + 0xA6);
+	x->dirsize = filesize2dirsize(* (unsigned long *) (buffer + 0xA6));
 	return 0;
 }
 
@@ -41,20 +41,20 @@ int isoreaddir(int restart)
 	struct isostate *x=&isostate;
 
 	if (restart) {
-		x->curpos = SECTORSZ;
-		x->curdirofs = x->dirofs;
 		x->curdirsize = x->dirsize;
+		x->curdirofs = x->dirofs;
+		goto restarted;
 	}
 	if (x->curpos >= SECTORSZ || * (short *) (buffer + x->curpos) == 0) {
-		if (x->curdirsize < SECTORSZ) return -1;
+		if (x->curdirsize < DIRSECTORSZ) return -1;
+	restarted:
 		readsector(&x->curdirofs);
 		x->curdirofs += SECTORSZ;
-		x->curdirsize -= SECTORSZ;
+		x->curdirsize -= DIRSECTORSZ;
 		x->curpos = 0;
 	}
 	p = buffer + x->curpos;
-	size = * (short *) p;
-	if (size == 0)
+	if ((size = * (short *) p) == 0)
 		return -1;
 	x->fileofs = (* (unsigned long *) (p + 2)) << SECTORBITS;
 	x->filesize = * (unsigned long *) (p + 10);
@@ -113,13 +113,12 @@ int isoopen(const char *filename)
 	char _64bits = cpuhaslm();
 	struct isostate *x=&isostate;
 
-retry32:
+  retry32:
 	for (s = (char *) filename; *s == '/' ; s++) {
 		isoreset(NULL);
 	}
   next:
-	name = s;
-	do s++; while (*s && *s != '/');
+	for (name = s; *s && *s != '/'; s++);
 	c = *s;
 	*s = 0;
 	for (restart = 1; isoreaddir(restart) == 0; restart = 0) {
@@ -133,7 +132,7 @@ retry32:
 		*s++ = c;
 		if (IS_DIR(x->filemod)) {
 			x->dirofs = x->fileofs;
-			x->dirsize = x->filesize;
+			x->dirsize = filesize2dirsize(x->filesize);
 			if (c) goto next;
 		}
 		isolseek(&x->fileofs);
