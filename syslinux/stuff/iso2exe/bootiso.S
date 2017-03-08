@@ -32,14 +32,16 @@ fdcnt:					// Overlay number
 
 moved	=	0x8000
 start0:
-	pushw	%dx			// restore %sp
-	incw	%bp			// restore %bp
+	//pushw	%dx			// restore %sp
+	//incw	%bp			// restore %bp
 	xorw	%bx, %bx
 	movw	%bx, %ds
 	movb	$0x7C, %bh
+	pushw	%ds
+	popw	%ss
+	movw	%bx, %sp
 	pushw	%bx			// return address
-	pushaw
-	movw	%sp, %bp
+	pushw	%di
 	pushw	%es			// save %es:%di
 	cld
 	sti
@@ -47,7 +49,7 @@ start0:
 	popw	%es
 	call	setreg
 	rep
-	movsw
+	  movsw
 	movw	$0x80, %dx
 	ljmp	$0, $moved+start2
 	.byte	0
@@ -71,11 +73,11 @@ start2:
 
 dxfound:
 	call	readsectorX		// read isolinux boot sector
-	movw	%dx, 10(%bp)
 	cmpw	(%bx), %cx
 	jnc	puts			// read fail or no isohydrid boot sector
+	movw	$patch,%si
 	popw	%es
-	popa				// isolinux boot needs %es:%di and %dx
+	popw	%di			// isolinux boot needs %es:%di and %dx
 putsret:
 	ret
 
@@ -117,6 +119,58 @@ setreg:
 	movb	$nobsmsg, %al
 	ret
 	.org	0x01B8
+
+////////////////////////// partition boot code ////////////////////////////////
+// assume CS=DS=SS=0 BX=7C00 DL=<drive> SI=7DBE
+
+	.org	0x7C00
+	jmp	bootpartition
+	.org	0x7C03
+	.org	0x7DBE
+table	=	moved+0x1BE
+patch:
+	.byte	0,0,0			// head of original bs
+partcode:
+	popw	%di
+	movw	$table,%si
+	call	movepartition
+	movb	$4,%cl
+	movw	$table-16,%di
+next:
+	addw	$16,%di
+	cmpb	%ch,(%di)		// boot flag ?
+	loope	next
+	pushw	%ds
+	pushw	%ds
+	pushl	8(%di)
+	pushw	%ds
+	pushw	%bx
+	pushw	$1
+	pushw	$0x10
+	movw	%sp,%si			// assume %ds = %ss
+	movb	$0x42,%ah
+	pushw	%bx
+	cmpw	$63,2(%di)		// empty or isolinux partition ?
+	jbe	default
+	int	$0x13
+default:
+	ret
+	.org	0x7DEF
+bootpartition:
+	pushw	%ds
+	popw	%es
+	pushw	%si
+	movw	%bx,%di
+	movsw
+	movsb
+	movw	$partcode+0x100,%di
+	pushw	%di
+movepartition:
+	movw	$66/2,%cx
+	rep
+	  movsw
+	ret
+	.org	0x7E00
 
 	.org	0x7F48
 ////////////////////////////// DOS EXE code ///////////////////////////////////

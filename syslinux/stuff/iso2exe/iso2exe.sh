@@ -118,12 +118,17 @@ add_win32exe()
 	ddq if=/tmp/exe$$ of=$1 bs=1 count=24 seek=$((0x1A0)) skip=$((0x1A0)) conv=notrunc
 	ddq if=$2 bs=1 skip=$((0x1B8)) seek=$((0x1B8)) count=72 of=$1 conv=notrunc
 	store 510 $((0xAA55)) $1
-	rm -f /tmp/exe$$ /tmp/coff$$
 	i=$SIZE; OFS=$(($SIZE+512))
 	[ -n "$mac" ] && OFS=$SIZE && i=1536
 	store 417 $(($i/512)) $1 8
 	printf "Moving syslinux hybrid boot record at %04X (512 bytes) ...\n" $i
 	ddq if=$2 bs=1 count=512 of=$1 seek=$i conv=notrunc
+	if [ $(get $((0x7C00)) /tmp/exe$$) -eq 60649 ]; then
+		ddq if=/tmp/exe$$ bs=1 count=66 skip=$((0x7DBE)) of=$1 seek=$(($i + 0x1BE)) conv=notrunc
+		ddq if=$1 bs=1 count=3 skip=$i of=$1 seek=$(($i + 0x1BE)) conv=notrunc
+		ddq if=/tmp/exe$$ bs=1 count=3 skip=$((0x7C00)) of=$1 seek=$i conv=notrunc
+	fi
+	rm -f /tmp/exe$$ /tmp/coff$$
 	if [ -z "$RECURSIVE_PARTITION" ]; then
 		store 464 $((1+$i/512)) $1 8
 		store 470 $(($i/512)) $1 8
@@ -265,6 +270,11 @@ extract()
 		fileofs $f
 		[ $SIZE -eq 0 ] ||
 		ddq bs=1 count=$SIZE skip=$OFFSET if="$ISO" >$f
+		if [ "$f" == "syslinux.mbr" ] && [ $(get 0 "$f") -eq 60649 ]; then
+			ddq bs=1 conv=notrunc if="$f" of="$f" skip=$((0x1BE)) seek=0 count=3
+			ddq bs=1 skip=$((0x1BE)) count=66 if="$ISO" | \
+				ddq bs=1 seek=$((0x1BE)) count=66 of="$f" conv=notrunc
+		fi
 	done
 }
 
@@ -522,7 +532,7 @@ EOT
 	esac
 	case "$(get 0 $1)" in
 	23117)	echo "The file $1 is already an EXE file." 1>&2 && exit 1;;
-	0)	[ -x /usr/bin/isohybrid ] && isohybrid $1;;
+	0)	[ -x /usr/bin/isohybrid ] && isohybrid -entry 2 $1;;
 	esac
 
 	gpt= ; [ $(get 466 $1) -eq 65263 ] && gpt=1
