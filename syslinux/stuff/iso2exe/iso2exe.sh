@@ -123,7 +123,7 @@ add_win32exe()
 	store 417 $(($i/512)) $1 8
 	printf "Moving syslinux hybrid boot record at %04X (512 bytes) ...\n" $i
 	ddq if=$2 bs=1 count=512 of=$1 seek=$i conv=notrunc
-	if [ $(get $((0x7C00)) /tmp/exe$$) -eq 60649 ]; then
+	if [ $(get $((0x7C00)) /tmp/exe$$) -eq 60905 ]; then
 		ddq if=/tmp/exe$$ bs=1 count=66 skip=$((0x7DBE)) of=$1 seek=$(($i + 0x1BE)) conv=notrunc
 		ddq if=$1 bs=1 count=3 skip=$i of=$1 seek=$(($i + 0x1BE)) conv=notrunc
 		ddq if=/tmp/exe$$ bs=1 count=3 skip=$((0x7C00)) of=$1 seek=$i conv=notrunc
@@ -270,7 +270,7 @@ extract()
 		fileofs $f
 		[ $SIZE -eq 0 ] ||
 		ddq bs=1 count=$SIZE skip=$OFFSET if="$ISO" >$f
-		if [ "$f" == "syslinux.mbr" ] && [ $(get 0 "$f") -eq 60649 ]; then
+		if [ "$f" == "syslinux.mbr" ] && [ $(get 0 "$f") -eq 60905 ]; then
 			ddq bs=1 conv=notrunc if="$f" of="$f" skip=$((0x1BE)) seek=0 count=3
 			ddq bs=1 skip=$((0x1BE)) count=66 if="$ISO" | \
 				ddq bs=1 seek=$((0x1BE)) count=66 of="$f" conv=notrunc

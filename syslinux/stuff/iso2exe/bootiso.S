@@ -1,5 +1,6 @@
 	.text
 	.code16
+	.arch	i8086
 	.org	0
 
 CODESZ	=	0x8000			// 16 sectors = 32Kb
@@ -121,7 +122,7 @@ setreg:
 	.org	0x01B8
 
 ////////////////////////// partition boot code ////////////////////////////////
-// assume CS=DS=SS=0 BX=7C00 DL=<drive> SI=7DBE
+// assume CS=DS=SS=0 AH=00 BX=7C00 CX=0100 DL=<drive> SI=7DBE
 
 	.org	0x7C00
 	jmp	bootpartition
@@ -134,28 +135,31 @@ partcode:
 	popw	%di
 	movw	$table,%si
 	call	movepartition
+	movw	$patch-16,%di
 	movb	$4,%cl
-	movw	$table-16,%di
+	movb	$16,%al
 next:
-	addw	$16,%di
+	addw	%ax,%di
 	cmpb	%ch,(%di)		// boot flag ?
 	loope	next
 	pushw	%ds
 	pushw	%ds
-	pushl	8(%di)
+	pushw	10(%di)
+	pushw	8(%di)
 	pushw	%ds
 	pushw	%bx
-	pushw	$1
-	pushw	$0x10
+	movb	$1,%cl
+	pushw	%cx
+	pushw	%ax
 	movw	%sp,%si			// assume %ds = %ss
-	movb	$0x42,%ah
 	pushw	%bx
-	cmpw	$63,2(%di)		// empty or isolinux partition ?
+	cmpw	%ax,2(%di)		// empty or isolinux partition ?
 	jbe	default
+	movb	$0x42,%ah
 	int	$0x13
 default:
 	ret
-	.org	0x7DEF
+	.org	0x7DF0
 bootpartition:
 	pushw	%ds
 	popw	%es
@@ -163,12 +167,12 @@ bootpartition:
 	movw	%bx,%di
 	movsw
 	movsb
-	movw	$partcode+0x100,%di
+	movw	$0x7E00,%di
 	pushw	%di
 movepartition:
-	movw	$66/2,%cx
+	movb	$66,%cl			// 0142 and 0042
 	rep
-	  movsw
+	  movsb
 	ret
 	.org	0x7E00
 
@@ -207,6 +211,7 @@ tst386:
 	popfw				// restore flags (IOPL)
 	addb	%ah, %bh		// test F0 and 00 cases
 	js	is86			// NS=386+, NC=286
+	.arch	i486
 is386:
 	smsww	%ax			// not privileged
 	andb	$1, %al
@@ -220,6 +225,7 @@ is386:
 	//movb	$EXESTR(realmodemsg), %al
 realmode:
 	call	*%bp
+	.arch	i8086
 is86:
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
@@ -228,6 +234,7 @@ is86:
 	movsw
 	ret
 
+	.arch	i486
 CallVCPI:
 	int	$0x67
 	testb	%ah, %ah
