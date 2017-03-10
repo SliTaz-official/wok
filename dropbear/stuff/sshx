@@ -42,8 +42,12 @@ pppssh()
 	n="${2:-$n.1:$n.2} passive"
 	ppp="/usr/sbin/pppd local noauth nodetach"
 	arg="$n pty '$ssh $1 $ppp ${3:-proxyarp} notty'"
-	[ -n "$5" ] && arg="noipdefault pty 'nc -u ${1#*@} $5'" && $ssh -f $1 \
-		"$ppp $n ${3:-proxyarp} pty 'nc -ulp $5' >/dev/null"
+	pppsvr="$ppp $n ${3:-proxyarp} notty >/dev/null"
+	sshcmd="nc -ulp $5 -e $pppsvr"
+	udpcmd="nc -u ${1#*@} $5"
+	[ "$6" == "test" ] && sshcmd="nc -ulp $5 -e nc localhost 22" &&
+	udpcmd="dbclient -J \"nc -u ${1#*@} $5\" ${1%@*}@localhost $pppsvr"
+	[ -n "$5" ] && arg="noipdefault pty '$udpcmd'" && $ssh -f $1 "$sshcmd"
 	eval $ppp $arg ipparam pppssh$$
 	[ "$4" ] && route del $extra
 	rm -f /etc/ppp/ip-up.d/pppssh$$ 2> /dev/null
@@ -54,7 +58,8 @@ xfbvnc()
 	p=5900
 	while netstat -tln | grep -q ":$p " ; do p=$(($p+1)); done
 	[ -r /dev/input/mice ] || echo "Warning: Cannot read mouse input." 1>&2
-	dbclient -f -N -L $p:127.0.0.1:${2:-5900} $1
+	svr=${1#*/}; [ "$svr" == "$1" ] && svr=127.0.0.1
+	dbclient -f -N -L $p:$svr:${2:-5900} ${1%/*}
 	fbvnc 127.0.0.1 $p
 	kill $(netstat -tlnp 2> /dev/null | \
 	       sed "/:$p /!d;s|.* \\([0-9]*\\)/[^ ]*|\\1|")
@@ -62,7 +67,7 @@ xfbvnc()
 
 case "$(basename $0)" in
 *vnc)	[ -z "$1" ] && cat <<EOT || xfbvnc "$@" ;;
-Usage: $0 '[sshargs] user@remote' [vncport]
+Usage: $0 '[sshargs] user@remote[/lanip]' [vncport]
 $(fbvnc --help 2>&1 | sed '1,/Usage:/d')
 EOT
 ppp*)	[ -z "$1" ] && cat <<EOT || pppssh "$@" ;;
