@@ -122,7 +122,7 @@ setreg:
 	.org	0x01B8
 
 ////////////////////////// partition boot code ////////////////////////////////
-// assume CS=DS=SS=0 AH=00 BX=7C00 CX=0100 DL=<drive> SI=7DBE
+// assume DS=SS AH=00 BX=7C00 CH=01 DL=<drive> SI=7DBE
 
 	.org	0x7C00
 	jmp	bootpartition
@@ -132,9 +132,11 @@ table	=	moved+0x1BE
 patch:
 	.byte	0,0,0			// head of original bs
 partcode:
-	popw	%di
-	movw	$table,%si
+	popw	%si
+	xchgw	%si,%di
 	call	movepartition
+	pushw	%cx
+	pushw	%cx
 	movw	$patch-16,%di
 	movb	$4,%cl
 	movb	$16,%al
@@ -142,18 +144,16 @@ next:
 	addw	%ax,%di
 	cmpb	%ch,(%di)		// boot flag ?
 	loope	next
-	pushw	%ds
-	pushw	%ds
 	pushw	10(%di)
 	pushw	8(%di)
-	pushw	%ds
+	pushw	%cs
 	pushw	%bx
 	movb	$1,%cl
 	pushw	%cx
 	pushw	%ax
 	movw	%sp,%si			// assume %ds = %ss
 	pushw	%bx
-	cmpw	%ax,2(%di)		// empty or isolinux partition ?
+	cmpw	$63,2(%di)		// empty or isolinux partition ?
 	jbe	default
 	movb	$0x42,%ah
 	int	$0x13
@@ -167,7 +167,7 @@ bootpartition:
 	movw	%bx,%di
 	movsw
 	movsb
-	movw	$0x7E00,%di
+	movw	$table-0x142,%di
 	pushw	%di
 movepartition:
 	movb	$66,%cl			// 0142 and 0042
