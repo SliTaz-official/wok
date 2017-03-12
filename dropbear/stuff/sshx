@@ -18,7 +18,7 @@ xdbclient()
 	done
 	xhost +localhost > /dev/null 2>&1
 	[ -n "$1" ] || set -- "${TERM:-xterm} -ls || ${TERM:-sakura} -l || xterm -ls"
-	exec dbclient -y -f -R $((6000+$n)):localhost:$((6000+${svr%.*})) $r \
+	exec dbclient -f -R $((6000+$n)):localhost:$((6000+${svr%.*})) $r \
 	   "xauth add $dpy $data; export DISPLAY=$scr; $@ ; xauth remove $dpy" \
 	   </dev/null >/dev/null
 }
@@ -47,7 +47,7 @@ pppssh()
 	sshcmd="nc -ulp $5 -e $pppsvr"
 	udpcmd="nc -u ${1#*@} $5"
 	[ "$6" == "test" ] && sshcmd="nc -ulp $5 -e nc localhost 22" &&
-	udpcmd="dbclient -J \"nc -u ${1#*@} $5\" ${1%@*}@localhost $pppsvr"
+	udpcmd="dbclient -y -J \"nc -u ${1#*@} $5\" ${1%@*}@localhost $pppsvr"
 	[ -n "$5" ] && arg="noipdefault pty '$udpcmd'" && $ssh -f $1 "$sshcmd"
 	eval $ppp $arg ipparam pppssh$$
 	[ "$4" ] && route del $extra
@@ -60,7 +60,7 @@ xfbvnc()
 	while netstat -tln | grep -q ":$p " ; do p=$(($p+1)); done
 	[ -r /dev/input/mice ] || echo "Warning: Cannot read mouse input." 1>&2
 	svr=${1#*/}; [ "$svr" == "$1" ] && svr=127.0.0.1
-	dbclient -f -N -L $p:$svr:${2:-5900} ${1%/*}
+	dbclient -y -f -N -L $p:$svr:${2:-5900} ${1%/*}
 	fbvnc 127.0.0.1 $p
 	kill $(netstat -tlnp 2> /dev/null | \
 	       sed "/:$p /!d;s|.* \\([0-9]*\\)/[^ ]*|\\1|")
@@ -75,6 +75,6 @@ ppp*)	[ -z "$1" ] && cat <<EOT || pppssh "$@" ;;
 Usage: $0 '[sshargs] user@remote' '[localip:remoteip] [localpppargs]' 'remotepppargs' 'routes' [udp-port]
 Example: $0 tux@slitaz.org '' '' '192.168.1.0/24 10.1.2.0/24'
 EOT
-*)	[ -z "$DISPLAY" ] && exec dbclient "$@"
-	xauth list $DISPLAY | xdbclient "$@"
+*)	[ -z "$DISPLAY" ] && exec dbclient -y "$@"
+	xauth list $DISPLAY | xdbclient -y "$@"
 esac
