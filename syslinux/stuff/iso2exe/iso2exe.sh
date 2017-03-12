@@ -264,17 +264,22 @@ list()
 	fi
 }
 
+restore_hybrid_mbr()
+{
+	if [ $(get 0 "$1") -eq 60905 ]; then
+		ddq bs=1 conv=notrunc if="$1" of="$1" skip=$((0x1BE)) seek=0 count=3
+		ddq bs=1 skip=$((0x1BE)) count=66 if="$2" | \
+			ddq bs=1 seek=$((0x1BE)) count=66 of="$1" conv=notrunc
+	fi
+}
+
 extract()
 {
 	for f in $@; do
 		fileofs $f
 		[ $SIZE -eq 0 ] ||
 		ddq bs=1 count=$SIZE skip=$OFFSET if="$ISO" >$f
-		if [ "$f" == "syslinux.mbr" ] && [ $(get 0 "$f") -eq 60905 ]; then
-			ddq bs=1 conv=notrunc if="$f" of="$f" skip=$((0x1BE)) seek=0 count=3
-			ddq bs=1 skip=$((0x1BE)) count=66 if="$ISO" | \
-				ddq bs=1 seek=$((0x1BE)) count=66 of="$f" conv=notrunc
-		fi
+		[ "$f" == "syslinux.mbr" ] && restore_hybrid_mbr "$f" "$ISO"
 	done
 }
 
@@ -508,7 +513,10 @@ EOT
 	    23117)
 		b=$(get 417 $1 1)
 		n=$(($(get 64 $1) + 0xC0 - ($(get 26 $1 1)*512) - ($b+1)*512))
-		ddq if=$1 bs=512 count=1 skip=$b of=$1 conv=notrunc
+		ddq if=$1 bs=512 count=1 skip=$b of=/tmp/hymbr$$
+		restore_hybrid_mbr /tmp/hymbr$$ $1
+		ddq if=/tmp/hymbr$$ of=$1 conv=notrunc
+		rm -f /tmp/hymbr$$
 		if [ $(get 512 $1) -eq 17989 ]; then
 			n=$(($(get 0x25C $1)/512))
 			ddq if=$1 bs=512 seek=44 count=20 skip=$n of=$1 conv=notrunc
