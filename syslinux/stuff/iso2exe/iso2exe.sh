@@ -586,7 +586,7 @@ EOT
 		ddq bs=2k seek=$(custom_config_sector $1) of=$1 conv=notrunc
 		newsz=$(stat -c %s $1)
 		for i in 0 1 2 3 ; do
-			[ $(get $((0x1BE+16*i)) $1 4) == $((0x00010080)) ] || continue
+			[ $(get $((0x1BE+16*i)) $1 2) == $((0x0080)) ] || continue
 			mb=$(((($newsz -1)/1024/1024)+1))
 			h=$((512*$(get 417 "$1" 1)))
 			store $((0x1C5+16*i)) $(($mb-1)) $1 8
