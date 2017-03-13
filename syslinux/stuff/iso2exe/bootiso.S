@@ -122,7 +122,7 @@ setreg:
 	.org	0x01B8
 
 ////////////////////////// partition boot code ////////////////////////////////
-// assume DS=SS AH=00 BX=7C00 CH=01 DL=<drive> SI=7DBE
+// assume DS=SS BX=7C00 CH=01 DL=<drive> SI=7DBE
 
 	.org	0x7C00
 	jmp	bootpartition
@@ -137,11 +137,12 @@ partcode:
 	call	movepartition
 	pushw	%cx
 	pushw	%cx
-	movw	$patch-16,%di
+	decw	%di
+	decw	%di
 	movb	$4,%cl
-	movb	$16,%al
+	movw	$16,%ax
 next:
-	addw	%ax,%di
+	subw	%ax,%di
 	cmpb	%ch,(%di)		// boot flag ?
 	loope	next
 	pushw	10(%di)
