@@ -34,21 +34,8 @@ compress()
 add_rootfs()
 {
 	TMP=/tmp/iso2exe$$
-	mkdir -p $TMP/dev
-	cp -a /dev/tty /dev/tty0 $TMP/dev
-	$0 --get init > $TMP/init.exe
-#	mount -o loop,ro $1 $TMP
-#	oldslitaz="$(ls $TMP/boot/isolinux/splash.lss 2> /dev/null)"
-#	umount -d $TMP
-#	[ "$oldslitaz" ] && # for SliTaz <= 3.0 only...
-#	grep -q mount.posixovl.iso2exe $TMP/init.exe && mkdir $TMP/bin &&
-#	cp /usr/sbin/mount.posixovl $TMP/bin/mount.posixovl.iso2exe \
-#		2> /dev/null && echo "Store mount.posixovl ($(wc -c \
-#			< /usr/sbin/mount.posixovl) bytes) ..."
-	find $TMP -type f -print0 | xargs -0 chmod +x
-	find $TMP -print0 | xargs -0 touch -t 197001010100.00 
-	( cd $TMP ; find * | grep -v rootfs.gz | cpio -o -H newc ) | \
-		compress $TMP/rootfs.gz
+	mkdir -p $TMP
+	$0 --get rootfs.gz > $TMP/rootfs.gz
 	SIZE=$(wc -c < $TMP/rootfs.gz)
 	store 24 $SIZE $1
 	OFS=$(( $OFS - $SIZE ))
@@ -203,6 +190,53 @@ fileofs()
 	esac
 }
 
+trailer()
+{
+	OFFSET=$(stat -c %s "$1")
+	[ $OFFSET -gt $HEAP ] &&
+	printf "%d free bytes in %04X..%04X\n" $(($OFFSET - $HEAP)) $HEAP $OFFSET
+	if [ $(get 510 "$1") -eq 43605 ]; then
+		echo "MBR partitions :"
+		for i in 0 1 2 3; do
+			SIZE=$(get $((446+12+16*i)) "$1" 4)
+			[ $SIZE -eq 0 ] && continue
+			OFFSET=$(get $((446+8+16*i)) "$1" 4)
+			printf " $i:%08X  %08X  %02X\n" $OFFSET $SIZE \
+				$(get $((446+4+16*i)) "$1" 1)
+		done
+		if [ $(get 466 "$1") -eq 65263 ]; then
+			echo "EFI partitions :"
+			n=$(get 584 "$1" 1)
+			s=$(get 596 "$1")
+			o=$((($(get 552 "$1" 1)*512)-($(get 592 "$1")*$s)))
+			i=0
+			while [ $n -gt $i ]; do
+				f=$(get $(($o+0x20)) "$1" 4)
+				l=$(($(get $(($o+0x28)) "$1" 4)-$f))
+				[ $l -eq 0 ] && break
+				printf " $i:%08X  %08X  %s\n" $f $(($l+1)) \
+				"$(od -An -N 36 -w -j $(($o+0x38)) -t a "$1" \
+				 | sed 's/\( nul\)*//g;s/   //g;s/ sp//')"
+				o=$(($o+$s))
+				i=$(($i+1))
+			done
+		fi
+	fi
+	o=2048
+	if [ $(get $o "$1") -eq 19792 ]; then
+		echo "Apple partitions :"
+		i=0
+		while [ $(get $o "$1") -eq 19792 ]; do
+			f=$((0x$(od -An -N 4 -j $(($o+8)) -t x1 "$1" | sed 's/ //g')))
+			l=$((0x$(od -An -N 4 -j $(($o+0x54)) -t x1 "$1" | sed 's/ //g')))
+			printf " $i:%08X  %08X  %s\n" $f $l \
+			"$(ddq bs=1 skip=$(($o+16)) count=32 if="$1")"
+			o=$(($o+2048))
+			i=$(($i+1))
+		done
+	fi
+}
+
 list()
 {
 	HEAP=0
@@ -219,49 +253,7 @@ list()
 		[ $OFFSET -ge $HEAP ] && HEAP=$(($OFFSET+$SIZE))
 		printf "$f at %04X ($SIZE bytes).\n" $OFFSET
 	done
-	OFFSET=$(stat -c %s "$ISO")
-	[ $OFFSET -gt $HEAP ] &&
-	printf "%d free bytes in %04X..%04X\n" $(($OFFSET - $HEAP)) $HEAP $OFFSET
-	if [ $(get 510 "$ISO") -eq 43605 ]; then
-		echo "MBR partitions :"
-		for i in 0 1 2 3; do
-			SIZE=$(get $((446+12+16*i)) "$ISO" 4)
-			[ $SIZE -eq 0 ] && continue
-			OFFSET=$(get $((446+8+16*i)) "$ISO" 4)
-			printf " $i:%08X  %08X  %02X\n" $OFFSET $SIZE \
-				$(get $((446+4+16*i)) "$ISO" 1)
-		done
-		if [ $(get 466 "$ISO") -eq 65263 ]; then
-			echo "EFI partitions :"
-			n=$(get 584 "$ISO" 1)
-			s=$(get 596 "$ISO")
-			o=$((($(get 552 "$ISO" 1)*512)-($(get 592 "$ISO")*$s)))
-			i=0
-			while [ $n -gt $i ]; do
-				f=$(get $(($o+0x20)) "$ISO" 4)
-				l=$(($(get $(($o+0x28)) "$ISO" 4)-$f))
-				[ $l -eq 0 ] && break
-				printf " $i:%08X  %08X  %s\n" $f $(($l+1)) \
-				"$(od -An -N 36 -w -j $(($o+0x38)) -t a "$ISO" \
-				 | sed 's/\( nul\)*//g;s/   //g;s/ sp//')"
-				o=$(($o+$s))
-				i=$(($i+1))
-			done
-		fi
-	fi
-	o=2048
-	if [ $(get $o "$ISO") -eq 19792 ]; then
-		echo "Apple partitions :"
-		i=0
-		while [ $(get $o "$ISO") -eq 19792 ]; do
-			f=$((0x$(od -An -N 4 -j $(($o+8)) -t x1 "$ISO" | sed 's/ //g')))
-			l=$((0x$(od -An -N 4 -j $(($o+0x54)) -t x1 "$ISO" | sed 's/ //g')))
-			printf " $i:%08X  %08X  %s\n" $f $l \
-			"$(ddq bs=1 skip=$(($o+16)) count=32 if="$ISO")"
-			o=$(($o+2048))
-			i=$(($i+1))
-		done
-	fi
+	trailer $ISO
 }
 
 restore_hybrid_mbr()
@@ -298,9 +290,18 @@ clear_custom_config()
 case "$1" in
 --build)
 	shift
-	ls -l $@
+	TMP=/tmp/iso2exe$$
+	mkdir -p $TMP/dev
+	cp -a /dev/tty /dev/tty0 $TMP/dev
+	cat init > $TMP/init.exe
+	find $TMP -type f -print0 | xargs -0 chmod +x
+	find $TMP -print0 | xargs -0 touch -t 197001010100.00 
+	( cd $TMP ; find * | grep -v rootfs.gz | cpio -o -H newc ) | \
+		compress rootfs.gz
+	rm -rf $TMP
+	ls -l $@ rootfs.gz
 	cat >> $0 <<EOM
-$(tar cf - $@ | compress | uuencode -m -)
+$(tar cf - ${@/init/rootfs.gz} | compress | uuencode -m -)
 EOT
 EOM
 	sed -i '/^case/,/^esac/d' $0
@@ -574,6 +575,7 @@ EOT
 			md5sum | cut -c-32 | sed 's/\(..\)/\\x\1/g')" | \
 			ddq bs=16 seek=2047 conv=notrunc of=$1
 	fi
+	HEAP=$(($(custom_config_sector $1)*2048))
 	if [ "$append$initrd" ]; then
 		echo -n "Adding custom config... "
 		DATA=/tmp/$(basename $0)$$
@@ -583,16 +585,15 @@ EOT
 		[ -s "$initrd" ] && echo "initrd:$(stat -c %s $initrd)" >> $DATA &&
 			cat $initrd >> $DATA
 		echo "#!boot $(md5sum $DATA | sed 's/ .*//')" | cat - $DATA | \
-		ddq bs=2k seek=$(custom_config_sector $1) of=$1 conv=notrunc
+		ddq bs=2k seek=$(custom_config_sector $1) of=$1
 		newsz=$(stat -c %s $1)
+		mb=$(((($newsz -1)/1048576)+1))
+		HEAP=$(($mb*1048576))
+		ddq bs=1048576 seek=$mb count=0 of=$1
+		h=$(get 417 "$1" 1)
+		[ -z "$RECURSIVE_PARTITION" ] || h=0
 		for i in 0 1 2 3 ; do
 			[ $(get $((0x1BE+16*i)) $1 2) == $((0x0080)) ] || continue
-			mb=$(((($newsz -1)/1024/1024)+1))
-			h=$((512*$(get 417 "$1" 1)))
-			store $((0x1C5+16*i)) $(($mb-1)) $1 8
-			store $(($h+0x1C5+16*i)) $(($mb-1)) $1 8
-			store $(($h+0x1CA+16*i)) $(($mb*2048)) $1 32
-			[ -z "$RECURSIVE_PARTITION" ] || h=0
 			store $((0x1CA+16*i)) $(($mb*2048-$h)) $1 32
 		done
 		if [ $newsz -gt $isosz ]; then
@@ -612,6 +613,7 @@ EOT
 		store 18 $(( (-$n -1) % 65536 )) $1
 	fi
 	echo " done."
+	trailer $1
 }
 
 main "$@" <<EOT

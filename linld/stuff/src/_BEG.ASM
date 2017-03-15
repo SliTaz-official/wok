@@ -35,19 +35,14 @@ clearbss:
 ;***************************************************************
 
 ; Check for oldies
-		pushf
-		mov	bh, 0F0h
-		push	bx		; < 286 : flags[12..15] are forced 1
-		popf			; = 286 : flags[12..15] are forced 0
-		pushf			; > 286 : only flags[15] is forced 0
-		pop	dx
-		popf
-		add	dh,bh		; NS=386+, NC=286
+		push	sp
+		pop	ax
 		mov	bx,offset msg_badcpu
+		sub	ax,sp
 		ifndef	NO386
-                js	no_vcpi   	;it is a 86/186/286, not a 386+
+                jnz	no_vcpi   	;it is a 86/186 not a 286+
 		else
-		js	endcpu
+		jnz	endcpu
 		endif
                 p386
 		ifdef	EXTRA
