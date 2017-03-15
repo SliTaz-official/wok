@@ -177,12 +177,11 @@ movepartition:
 	ret
 	.org	0x7E00
 
-	.org	0x7F48
+	.org	0x7F4E
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
 exestart:
 	cld
-	movw	$EXEADRS(puts), %bp	
 	movw	129, %ax
 	cmpb	$0x2F, %al
 	je	ishelp
@@ -194,24 +193,18 @@ ishelp:
 	je	abort
 	int	$0x21			// get DOS version
 	addb	$-3, %al
-	movw	$0xF000+EXESTR(noDOS3), %ax
+	movb	$EXESTR(noDOS3), %al
 	movw	$0x100, %di
 	jc	tst386
 abort:
-	jmp	*%bp
+goputs:
+	jmp	puts
 
 tst386:
-	pushfw				// save flags
-		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
-		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
-	// movb	$0xF0, %ah
-	pushw	%ax
-	popfw				// < 286 : flags[12..15] are forced 1
-	pushfw				// = 286 : flags[12..15] are forced 0
-	popw	%bx			// > 286 : only flags[15] is forced 0
-	popfw				// restore flags (IOPL)
-	addb	%ah, %bh		// test F0 and 00 cases
-	js	is86			// NS=386+, NC=286
+	pushw	%sp
+	popw	%ax
+	subw	%sp, %ax
+	jnz	is86			// 86/186 not a 286+
 	.arch	i486
 is386:
 	smsww	%ax			// not privileged
@@ -225,7 +218,7 @@ is386:
 	inc	%ax
 	//movb	$EXESTR(realmodemsg), %al
 realmode:
-	call	*%bp
+	call	goputs
 	.arch	i8086
 is86:
 	movw	comstart-end_header(%di), %si		// .com address

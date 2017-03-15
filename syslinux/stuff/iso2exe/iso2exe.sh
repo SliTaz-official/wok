@@ -595,6 +595,7 @@ EOT
 		for i in 0 1 2 3 ; do
 			[ $(get $((0x1BE+16*i)) $1 2) == $((0x0080)) ] || continue
 			store $((0x1CA+16*i)) $(($mb*2048-$h)) $1 32
+			store $((0x1C5+16*i)) $(($mb-1)) $1 8
 		done
 		if [ $newsz -gt $isosz ]; then
 			echo "$(($newsz - $isosz)) extra bytes."
