@@ -116,7 +116,7 @@ add_win32exe()
 		ddq if=/tmp/exe$$ bs=1 count=3 skip=$((0x7C00)) of=$1 seek=$i conv=notrunc
 	fi
 	rm -f /tmp/exe$$ /tmp/coff$$
-	if [ -z "$RECURSIVE_PARTITION" ]; then
+	if [ -z "$RECURSIVE_PARTITION" -a $(get 470 $1 4) -eq 0 ]; then
 		store 464 $((1+$i/512)) $1 8
 		store 470 $(($i/512)) $1 8
 		store 474 $(($(get 474 $1 4) - $i/512)) $1 32
@@ -262,6 +262,15 @@ restore_hybrid_mbr()
 		ddq bs=1 conv=notrunc if="$1" of="$1" skip=$((0x1BE)) seek=0 count=3
 		ddq bs=1 skip=$((0x1BE)) count=66 if="$2" | \
 			ddq bs=1 seek=$((0x1BE)) count=66 of="$1" conv=notrunc
+		if [ -n "$RECURSIVE_PARTITION" ]; then
+			for i in 0 1 2 3 ; do
+				n=$(get $((0x1C6+16*i)) $1 4)
+				[ $n -eq 0 -o $n -gt 64 ] && continue
+				store $((0x1C0+16*i)) 1 $1 8
+				store $((0x1C6+16*i)) 0 $1 32
+				store $((0x1CA+16*i)) $(($(get $((0x1CA+16*i)) $1 4)+$n)) $1 32
+			done
+		fi
 	fi
 }
 
