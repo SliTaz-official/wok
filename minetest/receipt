@@ -1,39 +1,50 @@
 # SliTaz package receipt.
 
 PACKAGE="minetest"
-VERSION="0.4.12"
+VERSION="0.4.15"
 CATEGORY="games"
 SHORT_DESC="An InfiniMiner/Minecraft inspired game."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="MIT"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://minetest.net/"
+
 WGET_URL="https://github.com/minetest/minetest/archive/$VERSION.tar.gz"
 TARBALL2="minetest_game-$VERSION.tar.gz"
 WGET_URL2="https://github.com/minetest/minetest_game/archive/$VERSION.tar.gz"
 EXTRA_SOURCE_FILES="$WGET_URL2"
 
-DEPENDS="libssl libpng jpeg sqlite libvorbis openal libglu-mesa curl \
-mesa irrlicht"
+DEPENDS="minetest-common libssl libpng jpeg sqlite libvorbis openal \
+libglu-mesa curl mesa irrlicht luajit libspatialindex"
 BUILD_DEPENDS="wget cmake libpng-dev jpeg-dev sqlite-dev libogg-dev \
 libvorbis-dev openal-dev freetype-dev xorg-libXxf86vm-dev libglu-mesa-dev \
-curl-dev mesa-dev irrlicht-dev"
+curl-dev mesa-dev irrlicht-dev luajit-dev libspatialindex-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	[ -s "$SOURCES_REPOSITORY/$TARBALL2" ] || wget --no-check-certificate \
-		-O "$SOURCES_REPOSITORY/$TARBALL2" $WGET_URL2
-	cd games/
-	tar xf $SOURCES_REPOSITORY/$TARBALL2
-	cd ..
-	cmake -DCMAKE_INSTALL_PREFIX=/usr . 
-	make &&
-	make DESTDIR=$DESTDIR install
+		-O "$SOURCES_REPOSITORY/$TARBALL2" ${EXTRA_SOURCE_FILES}
+	{ 
+		cd games/
+		tar xf $SOURCES_REPOSITORY/$TARBALL2
+		cd ..
+	}
+	cd build && cmake \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DBUILD_CLIENT=TRUE \
+		-DBUILD_SERVER=TRUE \
+		-DENABLE_SPATIAL=TRUE \
+		-DENABLE_GETTEXT=TRUE \
+		-DVERSION_EXTRA="SliTaz" \
+		.. 
+	make && make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs/
+	mkdir -p ${fs}/usr/bin ${fs}/usr/share
+	cp -a ${install}/usr/bin/${PACKAGE} ${fs}/usr/bin
+	cp -a ${install}/usr/share/icons $fs/usr/share
 }
