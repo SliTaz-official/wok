@@ -177,7 +177,7 @@ movepartition:
 	ret
 	.org	0x7E00
 
-	.org	0x7F4E
+	.org	0x7F85
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
 exestart:
@@ -209,17 +209,17 @@ tst386:
 is386:
 	smsww	%ax			// not privileged
 	andb	$1, %al
-	movw	$10, %si
-	jne	tstvcpi
+	movb	$EXESTR(vm86modemsg), %al
+	jne	isvm86
 	movl	%cr0, %eax		// privileged
 	incl	%eax
+	.arch	i8086
 	movb	$EXESTR(rmPaging), %al
 	js	abort
 	inc	%ax
 	//movb	$EXESTR(realmodemsg), %al
-realmode:
+isvm86:
 	call	goputs
-	.arch	i8086
 is86:
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
@@ -228,50 +228,10 @@ is86:
 	movsw
 	ret
 
-	.arch	i486
-CallVCPI:
-	int	$0x67
-	testb	%ah, %ah
-	xchgw	%ax, %cx
-	pushw	%si
-ScanVCPI:
-	popw	%si
-ChkVCPI:
-NoVCPI:
-	movb	$EXESTR(ERRvcpi), %al
-	jne	abort
-	lodsb
-	shlw	$8, %ax
-	jne	CallVCPI
-VersionVCPI:
-	xchgw	%ax, %si		// movb	$EXESTR(vm86modemsg), %al
-	cmpb	$0x40, %cl		// EMM386 / VCPI 4.0 mini
-	jnc	realmode		// %si = 0
-tstvcpi:
-	pushw	%ds
-	movw	%si, %ds		// %si = 10
-	movw	(0x67*4)+2-(16*10)-0x100(%di), %ds
-	lodsw
-	xorw	$0x4D45, %ax		// EM(MX) or EM(MQ)
-	lodsw
-	lodsw
-	popw	%ds
-	jne	NoVCPI
-	xorw	$0x5858, %ax		// XX(X0)
-	call	ScanVCPI
-CmdVCPI:
-	.byte	0x40			// status
-	.byte	0xDE			// vcpi present ?
-	.byte	0x46			// version
-	.byte	0
-
 vm86modemsg:
 // --------------- Must be in 7F40 7FFF range ------------------------
 	.ascii	"86"			// 86 mode
 	.byte	EXESTR(mode)
-ERRvcpi:
-	.ascii	"VCPI4"			// VCPI4?
-	.byte	EXESTR(need)
 rmPaging:
 	.ascii	"X"			// Xreal mode
 realmodemsg:
