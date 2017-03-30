@@ -49,7 +49,7 @@ add_dosexe()
 	TMP=/tmp/bootiso$$
 	$0 --get bootiso.bin > $TMP 2> /dev/null 
 	OFS=$(($(get 20 $TMP) - 0xC0))
-	printf "Adding DOS/EXE stub at %04X (%d bytes) ...\n" $OFS $((0x8000 - $OFS))
+	printf "Adding DOS/EXE stub at %04X (%d bytes) ...\n" $OFS $((0x7FF0 - $OFS))
 	ddq if=$TMP bs=1 skip=$OFS of=$1 seek=$OFS conv=notrunc
 	rm -f $TMP
 }
@@ -172,7 +172,7 @@ fileofs()
 	rootfs.gz)	SIZE=$(get 24 "$ISO"); OFFSET=$(($stub - $SIZE));;
 	tazboot.com)	OFFSET=$(($(get 64 "$ISO") - 0xC0))
 			SIZE=$(($stub - $(get 24 "$ISO") - $OFFSET));;
-	dosstub)	OFFSET=$stub; SIZE=$((0x8000 - $OFFSET));;
+	dosstub)	OFFSET=$stub; SIZE=$((0x7FF0 - $OFFSET));;
 	boot.md5)	OFFSET=$((0x7FF0)); SIZE=16;;
 	fs.iso)		OFFSET=$((0x8000))
 			SIZE=$((2048*$c - $OFFSET));;

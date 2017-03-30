@@ -1343,35 +1343,33 @@ image_done:
 		mov	ah,30h
 		int	21h
 		cmp	al,3
+		mov	ax,0
 		jb	@@skip
 		xor	di,di
 		mov	es,[cs:2Ch]
 		mov	cx,-1
 		mov	ax,di
-@@loop1:
+@@loop:
 		repne
 		  scasb
 		scasb
-		jne	@@loop1
-		lea	si,[di+2]
-		mov	bx, si
-		call	strlen
-		xchg	ax,cx
-		inc	cx
-		call	malloc_or_die
-		xchg	ax,di
-		push	ds
+		jne	@@loop
+		inc	di
+		inc	di
+		mov	si,di			; progname @es:di
+		repne
+		  scasb
+		mov	cx,di
+		sub	cx,si
+		call	malloc_or_die		; keep cx
+		mov	di,ax
 		push	ds
 		push	es
 		pop	ds
 		pop	es
-		push	di
-@@loop2:
-		lodsb
-		stosb
-		or	al,al
-		jnz	@@loop2
-		pop	ax
+		rep
+		  movsb
+		push	es
 		pop	ds
 @@skip:
 		pop	es di si

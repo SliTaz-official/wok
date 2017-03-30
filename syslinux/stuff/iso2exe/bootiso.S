@@ -177,7 +177,7 @@ movepartition:
 	ret
 	.org	0x7E00
 
-	.org	0x7F85
+	.org	0x7F83
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
 exestart:
@@ -203,24 +203,24 @@ goputs:
 tst386:
 	pushw	%sp
 	popw	%ax
-	subw	%sp, %ax
+	xorw	%sp, %ax		// clear C
+	movb	$EXESTR(vm86modemsg), %al
 	jnz	is86			// 86/186 not a 286+
 	.arch	i486
 is386:
-	smsww	%ax			// not privileged
-	andb	$1, %al
-	movb	$EXESTR(vm86modemsg), %al
+	smsww	%bx			// not privileged
+	andb	$1, %bl			// clear C
 	jne	isvm86
-	movl	%cr0, %eax		// privileged
-	incl	%eax
+	movl	%cr0, %ebx		// privileged
+	incl	%ebx
 	.arch	i8086
 	movb	$EXESTR(rmPaging), %al
 	js	abort
-	inc	%ax
+is86:
+	incw	%ax
 	//movb	$EXESTR(realmodemsg), %al
 isvm86:
 	call	goputs
-is86:
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
 	movb	$0x7C/2, %ch		// 31K-31.5K, > com length
@@ -230,6 +230,7 @@ is86:
 
 vm86modemsg:
 // --------------- Must be in 7F40 7FFF range ------------------------
+	.ascii	"V"			// V86 mode
 	.ascii	"86"			// 86 mode
 	.byte	EXESTR(mode)
 rmPaging:
