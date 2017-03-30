@@ -230,7 +230,7 @@ isvm86:
 
 vm86modemsg:
 // --------------- Must be in 7F40 7FFF range ------------------------
-	.ascii	"V"			// V86 mode
+	.ascii	"v"			// v86 mode
 	.ascii	"86"			// 86 mode
 	.byte	EXESTR(mode)
 rmPaging:
