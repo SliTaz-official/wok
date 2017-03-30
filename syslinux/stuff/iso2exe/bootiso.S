@@ -20,6 +20,7 @@ _start:
 	.word	4064-(CODESZ/16)	// Maximum extra paragraphs needed
 	.word	0xFFF0			// Initial (relative) SS value
 	.word	0xFFFE			// Initial SP value
+magic:
 	.word	0			// Checksum
 	.word	EXEADRS(exestart)	// Initial IP value
 	.word	0xFFF0			// Initial (relative) CS value

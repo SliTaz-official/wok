@@ -8,9 +8,9 @@ typedef unsigned dirsizetype;
 #define DIRSECTORSZ	(SECTORSZ/256)
 extern struct isostate {
 	int fd;
+	unsigned short filemod;
 	unsigned long fileofs;
 	unsigned long filesize;
-	unsigned short filemod;
 	char *filename;
 //private
 	dirsizetype curdirsize, dirsize;

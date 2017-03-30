@@ -118,7 +118,7 @@ static void bootiso(char **iso)
 	}
 	else if (magic > 0) {
 		char *initrd = fallback;
-		static const unsigned long initrddesc = 20L;
+		static const unsigned long initrddesc = 18L;
 
 		if (rootfs[0]) {
 			initrd = rootfs;
@@ -129,8 +129,8 @@ static void bootiso(char **iso)
 			addinitrd();
 		}
 		if (*init && isolseek(&initrddesc) != -1) {
-			read(x->fd, &x->fileofs, 8); // and x->filesize
-			magic = x->filesize;
+			read(x->fd, &x->filemod, 10); // + x->fileofs & x->filesize
+			magic = x->filemod;
 			x->fileofs &= 0xFFFFL;
 			x->fileofs -= 0xC0L + (x->filesize &= 0xFFFF);
 			if (((short *) &x->fileofs)[1] == 0) addinitrd();
