@@ -35,14 +35,31 @@ clearbss:
 ;***************************************************************
 
 ; Check for oldies
+		ifndef	EXTRA
 		push	sp
 		pop	ax
-		mov	bx,offset msg_badcpu
 		sub	ax,sp
-		ifndef	NO386
+		 ifndef	NO386
+		mov	bx,offset msg_badcpu
                 jnz	no_vcpi   	;it is a 86/186 not a 286+
+		 else
+                jnz	endcpu   	;it is a 86/186 not a 286+
+		 endif
 		else
-		jnz	endcpu
+		pushf
+		mov	bh, 0F0h
+		push	bx		; < 286 : flags[12..15] are forced 1
+		popf			; = 286 : flags[12..15] are forced 0
+		pushf			; > 286 : only flags[15] is forced 0
+		pop	dx
+		popf
+		add	dh,bh		; NS=386+, NC=286
+		 ifndef	NO386
+		mov	bx,offset msg_badcpu
+                js	no_vcpi   	;it is a 386+
+		 else
+                js	endcpu   	;it is a 386+
+		 endif
 		endif
                 p386
 		ifdef	EXTRA
@@ -233,7 +250,9 @@ exit:
         segment _DATA byte public use16 'DATA'
         global  _data_start:byte
         label   _data_start byte
+		ifndef	NO386
 msg_badcpu      db      "I need 386+ CPU in real mode or under VCPI manager"
+		endif
         global  _vcpi:byte
 _vcpi		db	0
 msg_badmapping  db      "VCPI: low 640k: need 1:1 mapping",0

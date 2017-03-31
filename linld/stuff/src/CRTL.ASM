@@ -1340,13 +1340,14 @@ image_done:
         proc    _progname near
 
 		push	si di es
+		xor	di,di
 		mov	ah,30h
 		int	21h
 		cmp	al,3
-		mov	ax,0
+		xchg	ax,di
 		jb	@@skip
-		xor	di,di
-		mov	es,[cs:2Ch]
+		;mov	es,[cs:2Ch]
+		mov	es,[2Ch]
 		mov	cx,-1
 		mov	ax,di
 @@loop:
