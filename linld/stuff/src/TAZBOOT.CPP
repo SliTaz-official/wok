@@ -100,7 +100,7 @@ static void bootiso(char **iso)
 		c = x->filename[6];
 	}
 
-	strcatb(_cmdline,"rw root=/dev/null autologin bootfrom=");
+	strcatb(_cmdline," rw root=/dev/null autologin bootfrom=");
 	strcat(_cmdline,*iso);
 	if (magic < 0x20630)
 		init = ""; // Does not support multiple initramfs
