@@ -173,38 +173,44 @@ _memtop:
 
 		ifndef  xmm_hook
                 mov     ax,4300h
-		ifdef	NO386
 		cwd
-		endif
+		mov	es,dx
                 int     2fh
                 cmp     al,80h			; 80h = XMS driver installed
                 je      @@skip
 		endif
 		ifndef	NO386
+		 ifdef  xmm_hook
 		push	0
 		pop	es
-		mov	bx,15*4
-		mov	eax,[bx]
+		 endif
+		push	cs
+		push	offset int15_88
+		pop	eax
+		xchg	eax,[es:15*4]
 		mov	[saved15],eax
 		else
-		mov	es,dx
-		mov	bx,15*4
-		mov	ax,[bx]
+		 ifdef  xmm_hook
+		xor	ax,ax
+		mov	es,ax
+		 endif
+		mov	ax,offset int15_88
+		xchg	ax,[es:15*4]
 		mov	[word saved15],ax
-		mov	ax,[bx+2]
+		mov	ax,cs
+		xchg	ax,[es:15*4+2]
 		mov	[word saved15+2],ax
 		endif
-		mov	[word bx],offset int15_88
-		mov	[bx+2],cs
 @@skip:
 		ret
 int15_88:
                 cmp     ah,88h
                 je      @@do88
+@@jmp_saved15:
                 jmp     [saved15]
 @@do88:
                 pushf
-                call    [saved15]
+                call    @@jmp_saved15
                 test    ax,ax
                 jnz     @@iret
 
