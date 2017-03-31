@@ -165,29 +165,6 @@ putsz:
         endp    _puts
 
 
-		ifdef	EXTRA
-;***************************************************************
-;int chdir(char *path);
-;***************************************************************
-        global  _chdir:near
-        proc    _chdir near
-
-		pop	ax
-		pop	dx
-		push	dx
-		push	ax
-chdir:
-		stc
-		mov	ax,713Bh
-		int	21h
-		jnc	chkc
-		mov	ah,3Bh
-		jmp	dos
-
-        endp    _chdir
-		endif
-
-
 ;***************************************************************
 ;int fileattr(const char* name);
 ;***************************************************************
@@ -1340,9 +1317,9 @@ image_done:
         proc    _progname near
 
 		push	si di es
-		xor	di,di
 		mov	ah,30h
 		int	21h
+		xor	di,di
 		cmp	al,3
 		mov	ax,di
 		jb	@@skip
@@ -1379,7 +1356,7 @@ image_done:
 
 
 ;***************************************************************
-;int chdirname(char *path)
+;void chdirname(char *path)
 ;***************************************************************
         global  _chdirname:near
         proc    _chdirname near
@@ -1391,35 +1368,36 @@ image_done:
 
 		cmp	[byte bx+1],3Ah
 		jne	@@nodisk
-		mov	dl,[bx]
-		or	dl,20h
+		mov	dl,20h
+		or	dl,[bx]
 		sub	dl,61h
 		mov	ah,0Eh
-		push	bx
 		int	21h
-		pop	bx
 		inc	bx
 		inc	bx
 @@nodisk:
-		mov	dx,bx
 		xor	cx,cx
 @@next:
 		mov	al,[bx]
 		cmp	al,5Ch
 		jne	@@tsteos
-		mov	cx,bx
+		mov	dx,bx
+		inc	cx
 @@tsteos:
 		inc	bx
 		or	al,al
 		jnz	@@next
-		cbw
 		jcxz	@@end
-		mov	bx,cx
+		mov	bx,dx
 		push	[word bx]
 		mov	[bx],al
-		push	bx
-		call	chdir
-		pop	bx
+		stc
+		mov	ax,713Bh		; chdir long filename
+		int	21h
+		mov	ah,3Bh			; chdir
+		jnc	chdirdone
+		int	21h
+chdirdone:
 		pop	[word bx]
 @@end:
 		ret
