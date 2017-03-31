@@ -56,9 +56,9 @@ clearbss:
 		add	dh,bh		; NS=386+, NC=286
 		 ifndef	NO386
 		mov	bx,offset msg_badcpu
-                js	no_vcpi   	;it is a 386+
+                js	no_vcpi   	;it is not a 386+
 		 else
-                js	endcpu   	;it is a 386+
+                js	endcpu   	;it is not a 386+
 		 endif
 		endif
                 p386

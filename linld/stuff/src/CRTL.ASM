@@ -1344,12 +1344,11 @@ image_done:
 		mov	ah,30h
 		int	21h
 		cmp	al,3
-		xchg	ax,di
+		mov	ax,di
 		jb	@@skip
 		;mov	es,[cs:2Ch]
-		mov	es,[2Ch]
+		mov	es,[di+2Ch]
 		mov	cx,-1
-		mov	ax,di
 @@loop:
 		repne
 		  scasb
@@ -1361,7 +1360,7 @@ image_done:
 		repne
 		  scasb
 		mov	cx,di
-		sub	cx,si
+		sub	cx,si			; progname len
 		call	malloc_or_die		; keep cx
 		mov	di,ax
 		push	ds
