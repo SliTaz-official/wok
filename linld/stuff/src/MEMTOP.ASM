@@ -54,7 +54,8 @@ saved15		dd	?
                 test    dx,dx           ;  memory in AX/BX rather than
                 jnz     @@use_cxdx      ;  CX/DX.  The spec I have read
 @@use_axbx:     mov     dx,bx           ;  seems to indicate AX/BX
-                jmp     @@end_kludge    ;  are more reasonable anyway...
+                ;jmp     @@end_kludge    ;  are more reasonable anyway...
+		db	0a8h	; test al,im opcode
 @@use_cxdx:     xchg    ax,cx
 @@end_kludge:                   ;now: dx=64k units above 16m
                                 ;     ax=1k units above 1m below 16m (max 3c00h)
@@ -84,7 +85,17 @@ saved15		dd	?
 @@ok:
 ;                xor     dx,dx
                 test    ax,ax           ;happens on big mem systems
-                jz      @@fail
+                jnz      tokb
+
+;***************************************************************
+;u32 memtop_cmos()
+;***************************************************************
+
+;memtop_cmos:
+                pushf
+                cli
+                call	rdcmos17
+                popf
 tokb:
                 xor     dx,dx
                 add     ah,4h           ;account for 1024 low kb
@@ -105,24 +116,13 @@ tokb:
                 ret
 ;        endp    _memtop_88
 
-@@fail:
-
 ;        proc    _memtopz near
 
 ;                call	_memtop_e801
 ;		jnz	@@ok
 ;                call	_memtop_88
 ;		jnz	@@ok
-
-;***************************************************************
-;u32 memtop_cmos()
-;***************************************************************
-
-                pushf
-                cli
-                call	rdcmos17
-                popf
-		jmp	tokb
+;		jmp	memtop_cmos
 
 rdcmos17:       mov     al,18h		; read bytes 17-18 from CMOS
                 call    @@rdcmos
