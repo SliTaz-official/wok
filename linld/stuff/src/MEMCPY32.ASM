@@ -169,7 +169,9 @@ endm
 		xor	dx,dx
 		xor	si,si
 		mov	ax,[bp+8]		; srcseg
-		call	near N_LXLSH@4
+		mov	cl,4
+		extrn	N_LXLSH@:near
+		call	near N_LXLSH@
 		add	[bp+10],ax		; srcofs lo
 		adc	[bp+10+2],dx		; srcofs hi
 @@2flat:
@@ -260,7 +262,7 @@ endm
                 ;db      66h     ;operand width override for ecx
                 db      67h     ;address width override for esi/edi
             rep movsb
-		cld
+		;cld
 
 ;****** Return to rm *******************************************
                 dec     ax              ;CR0_PE off
@@ -313,21 +315,6 @@ N_LXURSH@:
 		ret
 
         endp    N_LXURSH@4
-
-        global  N_LXLSH@:near
-        global  N_LXLSH@4:near
-        proc    N_LXLSH@4 near
-
-		mov	cl,4
-N_LXLSH@:
-		mov	ch,0
-@@loop:
-		shl	ax,1
-		rcl	dx,1
-		loop	@@loop
-		ret
-
-        endp    N_LXLSH@4
 
 		endif
 

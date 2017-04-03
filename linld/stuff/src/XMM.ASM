@@ -112,11 +112,9 @@ xmm_fail:
 		mov	dx,[bx+8]		; hi m->size
 		sub	ax,1
 		sbb	dx,0
-		mov	cx,10
-@@tokblp:
-		shr	dx,1
-		rcr	ax,1
-		loop	@@tokblp
+		mov	cl,10
+		extrn	N_LXURSH@:near
+		call	N_LXURSH@
 		endif
                 inc     dx
 		push	bx

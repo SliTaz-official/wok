@@ -97,20 +97,21 @@ tokb:
                 xor     dx,dx
                 add     ah,4h           ;account for 1024 low kb
                 adc     dx,dx           ;  (optimized to death)
+		mov	cl,10		;multiply by 1024
+        global  N_LXLSH@:near
+N_LXLSH@:
 		ifndef	NO386
-                shld    dx,ax,10        ;multiply by 1024
-                shl     ax,10           ;  (kbytes -> bytes)
+		shld    dx,ax,cl
+		shl     ax,cl		;  (kbytes -> bytes)
 		else
+		mov	ch,0
 @@lp:
-		mov	cx,10
-                shl     ax,1            ;multiply by 1024
+		shl	ax,1
 		rcl	dx,1
 		loop	@@lp
 		endif
-;		mov	cx,ax
-;		or	cx,dx		;update ZF
-;@@fail:
-                ret
+		ret
+
 ;        endp    _memtop_88
 
 ;        proc    _memtopz near
@@ -170,32 +171,24 @@ _memtop:
 
 		ifndef  xmm_hook
                 mov     ax,4300h
-		cwd
-		mov	es,dx
                 int     2fh
                 cmp     al,80h			; 80h = XMS driver installed
                 je      @@skip
 		endif
+		xor	bx,bx
+		mov	es,bx
 		ifndef	NO386
-		 ifdef  xmm_hook
-		push	0
-		pop	es
-		 endif
 		push	cs
 		push	offset int15_88
 		pop	eax
-		xchg	eax,[es:15*4]
+		xchg	eax,[es:bx+15*4]
 		mov	[saved15],eax
 		else
-		 ifdef  xmm_hook
-		xor	ax,ax
-		mov	es,ax
-		 endif
 		mov	ax,offset int15_88
-		xchg	ax,[es:15*4]
+		xchg	ax,[es:bx+15*4]
 		mov	[word saved15],ax
 		mov	ax,cs
-		xchg	ax,[es:15*4+2]
+		xchg	ax,[es:bx+15*4+2]
 		mov	[word saved15+2],ax
 		endif
 @@skip:
