@@ -48,15 +48,14 @@ saved15		dd	?
                 mov     ax,0E801h
                 int     15h
                 jc      @@err
-                push    cx              ;kludge to handle BIOSes
-                or      cx,dx           ;  which report their extended
-		pop	cx		;  memory in AX/BX rather than
+		xchg	ax,cx
+                push    ax              ;kludge to handle BIOSes
+                or      ax,dx           ;  which report their extended
+		pop	ax		;  memory in AX/BX rather than
                 jnz     @@use_cxdx      ;  CX/DX.  The spec I have read
 @@use_axbx:     mov     dx,bx           ;  seems to indicate AX/BX
-                ;jmp     @@end_kludge    ;  are more reasonable anyway...
-		db	0a8h	; test al,im opcode
-@@use_cxdx:     xchg    ax,cx
-@@end_kludge:                   ;now: dx=64k units above 16m
+                xchg	ax,cx		;  are more reasonable anyway...
+@@use_cxdx:                     ;now: dx=64k units above 16m
                                 ;     ax=1k units above 1m below 16m (max 3c00h)
                 test    dx,dx
                 jz      tokb            ;dx=0 here, ax=kbs above 1m
