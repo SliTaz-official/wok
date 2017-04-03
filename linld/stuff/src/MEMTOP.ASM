@@ -42,16 +42,15 @@ saved15		dd	?
 ;***************************************************************
 ;        proc    _memtop_e801 near
 
-                ;push    cx bx
                 xor     cx,cx           ;fix to work around buggy
                 xor     dx,dx           ;  BIOSes which dont clear/set
                 stc                     ;  carry on pass/error of
                 mov     ax,0E801h
                 int     15h
                 jc      @@err
-                test    cx,cx           ;kludge to handle BIOSes
-                jnz     @@use_cxdx      ;  which report their extended
-                test    dx,dx           ;  memory in AX/BX rather than
+                push    cx              ;kludge to handle BIOSes
+                or      cx,dx           ;  which report their extended
+		pop	cx		;  memory in AX/BX rather than
                 jnz     @@use_cxdx      ;  CX/DX.  The spec I have read
 @@use_axbx:     mov     dx,bx           ;  seems to indicate AX/BX
                 ;jmp     @@end_kludge    ;  are more reasonable anyway...
@@ -59,7 +58,6 @@ saved15		dd	?
 @@use_cxdx:     xchg    ax,cx
 @@end_kludge:                   ;now: dx=64k units above 16m
                                 ;     ax=1k units above 1m below 16m (max 3c00h)
-                ;pop     bx cx
                 test    dx,dx
                 jz      tokb            ;dx=0 here, ax=kbs above 1m
                 xor     ax,ax           ;ignore info on low 16M (assume full)
