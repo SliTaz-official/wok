@@ -114,6 +114,25 @@ N_LXLSH@:
 
 ;        endp    _memtop_88
 
+		ifdef	NO386
+        global  N_LXURSH@:near
+        global  N_LXURSH@4:near
+;        proc    N_LXURSH@4 near
+N_LXURSH@4:
+		mov	cl,4
+N_LXURSH@:
+		mov	ch,0
+@@loop:
+		shr	dx,1
+		rcr	ax,1
+		loop	@@loop
+		ret
+
+;        endp    N_LXURSH@4
+
+		endif
+
+
 ;        proc    _memtopz near
 
 ;                call	_memtop_e801

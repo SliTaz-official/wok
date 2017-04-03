@@ -63,3 +63,14 @@ genpkg_rules()
 	cp -a $src/test/simple-agent $fs/usr/bin/bluez-simple-agent
 	cp  $src/audio/audio.conf $fs/etc/bluetooth
 }
+
+# Post message when installing.
+post_install()
+{
+	[ -s $1/usr/bin/bluepin ] || cat > $1/usr/bin/bluepin <<EOT
+#!/bin/sh
+
+PIN:\$(printf "%04d\n" \${1:-$(($RANDOM%10000))})
+EOT
+	chmod +x $1/usr/bin/bluepin
+}

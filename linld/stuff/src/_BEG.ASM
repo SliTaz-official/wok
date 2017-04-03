@@ -195,7 +195,8 @@ arglp:
                 or	dl,dl
                 je	arglp			; not start of string
                 dec	si
-                jmp	newarg
+                ;jmp	newarg
+		db	0B9h			; mov cx,im opcode
 isargstr:
                 mov	ah,al			; expected eos
 newarg:

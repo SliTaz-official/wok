@@ -177,6 +177,7 @@ endm
 @@2flat:
 		mov	ax,[bp+si+10]		; srcofs, dstofs lo
 		mov	dx,[bp+si+10+2]		; srcofs, dstofs hi
+		extrn	N_LXURSH@4:near
 		call	near N_LXURSH@4
 		or	bx,dx			; >=1mb flag
 		push	ax			; srcseg, dstseg
@@ -299,24 +300,6 @@ GDT             dd      ?,?
                 ;                  Pl E W    D
 
         endp    _memcpy32
-
-		ifdef	NO386
-        global  N_LXURSH@:near
-        global  N_LXURSH@4:near
-        proc    N_LXURSH@4 near
-
-		mov	cl,4
-N_LXURSH@:
-		mov	ch,0
-@@loop:
-		shr	dx,1
-		rcr	ax,1
-		loop	@@loop
-		ret
-
-        endp    N_LXURSH@4
-
-		endif
 
         ends    _TEXT
 
