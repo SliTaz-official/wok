@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="transcode"
+VERSION="1.1.7"
+CATEGORY="multimedia"
+SHORT_DESC="A text-console utility for video stream processing."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="https://bitbucket.org/france/transcode-tcforge"
+WGET_URL="$WEB_SITE/downloads/$TARBALL"
+EXTRA_SOURCE_FILES="http://www.linuxfromscratch.org/patches/blfs/7.6/transcode-1.1.7-ffmpeg2-1.patch"
+
+DEPENDS="libav lame ibdvdread jpeg libvorbis alsa-lib"
+BUILD_DEPENDS="ffmpeg-dev lame-dev libdvdread-dev jpeg-dev libvorbis-dev \
+imagemagick-dev alsa-lib-dev xorg-libXv-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	[ -s "$SOURCES_REPOSITORY/$(basename $EXTRA_SOURCE_FILES)" ] ||
+		wget -P $SOURCES_REPOSITORY $EXTRA_SOURCE_FILES
+	patch -p1 < $SOURCES_REPOSITORY/$(basename $EXTRA_SOURCE_FILES)
+	sed -i 's/av_close_input_file(/avformat_close_input(\&/' import/probe_ffmpeg.c
+	./configure --prefix=/usr --infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+}
