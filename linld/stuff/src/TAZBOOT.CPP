@@ -190,6 +190,7 @@ Examples for tazboot.cmd:\r\n\n\
 			s++;
 	set_kernel:
 			s += 6;
+	set_kernelz:
 			kernel_name = s;
 		}
 		else if (strhead(s,"image=") == 0) {
@@ -226,7 +227,7 @@ Examples for tazboot.cmd:\r\n\n\
 			goto next;
 		default:
 		if(i == 1 && fileattr(s) != -1) {
-			goto set_kernel;
+			goto set_kernelz;
 		}
 		else {
 			if(strhead(s,"root=") == 0) {
