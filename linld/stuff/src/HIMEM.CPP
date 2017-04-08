@@ -6,8 +6,7 @@
 #include "crtl.h"
 #include "common.h"
 
-struct image_himem pm;
-struct image_himem initrd;
+struct image_himem imgs[2];
 int skip_alloc;
 
 // Called from inside kernel just before rm->pm

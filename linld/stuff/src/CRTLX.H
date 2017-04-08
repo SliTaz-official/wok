@@ -11,7 +11,5 @@ extern "C" void chdirname(char *path);
 extern "C" unsigned long kver2ul(char *kernel_version);
 extern "C" char *ultoa(unsigned long n);
 extern "C" void try_default_args();
-extern "C" long lseekset(int fd, unsigned long sz);
-#define seekset(fd,sz)	lseekset(fd,(unsigned long) sz)
 extern char cpu_features[];
 #define cpuhaslm() (cpu_features[3]&0x20)

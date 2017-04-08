@@ -261,10 +261,10 @@ close:
 
         endp    _read
 
-		ifdef	EXTRA 
 ;***************************************************************
 ;long lseekset(int fd, unsigned long sz);
 ;***************************************************************
+
         global  _lseekset:near
         proc    _lseekset near
 
@@ -273,22 +273,6 @@ close:
                 pop	dx			; sz lo
                 pop	cx			; sz hi
                 push	cx
-                push	dx
-
-		else
-;***************************************************************
-;long seekset(int fd, unsigned sz);
-;***************************************************************
-        global  _seekset:near
-        proc    _seekset near
-
-		xor	cx,cx
-		pop	ax			;caller return address
-                pop	bx			; fd
-                pop	dx			; sz
-                push	dx
-		endif
-
                 push	bx
                 push	ax
         global  lseekset:near
@@ -305,11 +289,7 @@ lseek0:						; lseek0(bx,ax=dir)
 		xor	cx,cx
 		jmp	dos
 
-		ifdef	EXTRA 
         endp    _lseekset
-		else
-        endp    _seekset
-		endif
 
 		ifdef	EXTRA
 struc		isostate	; struct isostate {
@@ -599,8 +579,8 @@ ends					;}; // size=8200
 	endif
 		shl	eax,12		; i*_4k
 ; if (edx < pm.fallback+i*_4k && edx >= pm.fallback) again
-		extrn	_pm
-		mov	bx,offset _pm+2
+		extrn	_imgs
+		mov	bx,offset _imgs+2
 		push	eax
 		add	eax,[bx-2+2]
 		cmp	eax,edx		; pm.fallback+i*_4k <= edx ?
@@ -610,8 +590,8 @@ ends					;}; // size=8200
 		jae	@@vcpi_alloc
 @@pmok:
 ; if (edx >= initrd.fallback+i*_4k && edx < initrd.fallback+initrd.size) again
-		extrn	_initrd
-		mov	bx,offset _initrd+2
+		extrn	_imgs
+		mov	bx,offset _imgs+32+2
 		add	eax,[bx-2+2]	; +initrd.fallback
 		cmp	eax,edx		; initrd.fallback+i*_4k > edx ?
 		ja	@@initrdok

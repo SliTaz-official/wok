@@ -16,7 +16,7 @@
 
         segment _BSS byte public use16 'BSS'
 
-        global  _pm:dword
+        global  _imgs:dword
 
         ends    _BSS
 
@@ -78,7 +78,7 @@
 		extrn   @last_ditch$qv:near
 		push	cs
 		call	@last_ditch$qv
-		mov	ax,[word _pm+2+2]	; get pm->fallback high word
+		mov	ax,[word _imgs+2+2]	; get pm->fallback high word
 		; self move
 		;cld
 		pop	es			; min 2048 bytes for stack

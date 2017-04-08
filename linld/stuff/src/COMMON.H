@@ -49,7 +49,9 @@ extern struct image_himem {
     void (*next_chunk)(struct image_himem *);
     u16 state;
     u16 fd2close;
-} pm, initrd;
+} imgs[2];
+#define pm (imgs[0])
+#define initrd (imgs[1])
 
 extern int skip_alloc;
 extern u32 base_himem;

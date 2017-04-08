@@ -83,10 +83,10 @@ static void bootiso(char **iso)
 	if (iso[1] && !strcmp(mode = iso[1], "text"))
 		init = "";
 	do {
-		if ((isoopen(mode) >= 0 && ++noauto)	||	// custom
+		if ((isoopen(mode) >= 0 && ++noauto != 0) ||	// custom
 		    isoopen("bzImage") >= 0		|| 	// SliTaz
 		    isoopen("vmlinuz") >= 0		||	// misc
-		    (isoopen("linux") >= 0 && ++isknoppix)) {
+		    (isoopen("linux") >= 0 && ++isknoppix != 0)) {
 			magic = kver2ul(isokernel());
 			break;
 		}
@@ -117,15 +117,15 @@ static void bootiso(char **iso)
 		}
 	}
 	else if (magic > 0) {
-		char *initrd = fallback;
+		char *initrdfilename = fallback;
 		static const unsigned long initrddesc = 18L;
 
 		if (rootfs[0]) {
-			initrd = rootfs;
+			initrdfilename = rootfs;
 			if (rootfs[6] != '.' && isoopen("rootfs.gz") >= 0)
 				addinitrd();	// for loram
 		}
-		if (isoopen(initrd) >= 0) {
+		if (isoopen(initrdfilename) >= 0) {
 			addinitrd();
 		}
 		if (*init && isolseek(&initrddesc) != -1) {
