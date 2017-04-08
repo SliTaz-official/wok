@@ -78,7 +78,7 @@ extern u16 vid_mode;
 // External asm helpers
 extern "C" void memcpy32(u32, u16,u32, u32);
 extern "C" void rmcpy();
-extern "C" void set_sregs_jump_seg_ofs(u32 csip);
+extern "C" void set_sregs_jump_seg_ofs();
 extern "C" void xmm_alloc(struct image_himem *m);
 extern u32 topmem;
 extern "C" u32 memtopz();

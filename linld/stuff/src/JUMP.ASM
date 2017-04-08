@@ -32,7 +32,6 @@
 
 		extrn	dos_shutdown:near
 
-		pop	ax			; caller return address
 		ifdef	NO386
 		extrn	_topseg:near
 		call	near _topseg
@@ -42,13 +41,12 @@
 		push	9000h
 		pop	es
 		endif
-		pop	dx			; ip
-		pop	cx			; cs
 		cli				; we start doing destructive things to DOS
 		push	es
 		pop	ss
 		mov	sp,0A000h
-		push	cx dx
+		extrn	_csip:dword
+		push	[dword _csip]
 		extrn	_rm_size:word
 		mov	si,offset _rm_size	; _rm_size, _pm_high, _rm_buf
 		lodsw
@@ -103,7 +101,7 @@
 		pop	bx
 		; move zImage pm
 		mov	ax,8
-		cwd
+		cwd				; clear dx
 		cmp	bx,ax
 		ja	bufhigh
 		sub	ax,bx

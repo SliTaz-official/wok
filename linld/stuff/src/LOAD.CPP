@@ -118,10 +118,10 @@ u32 base_himem = _1m+_64k;
 
 // register value to launch the kernel real mode code
 #ifdef NO386
-static u32 csip;
+u32 csip;
 extern "C" u16 topseg();
 #else
-static u32 csip=0x90200000;
+u32 csip=0x90200000;
 #define topseg() 0x9000
 #endif
 
@@ -277,5 +277,5 @@ void boot_kernel() {
     }
 
     // Move rm loader & commandline to 0x90000, Jump to kernel rm code
-    set_sregs_jump_seg_ofs(csip);
+    set_sregs_jump_seg_ofs();
 }

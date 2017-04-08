@@ -39,15 +39,17 @@ dos_shutdown:
 		push	ss
 		push	ax
 		pop	[dword cs:sssp]
+		mov	[word bx+4],offset step19
 		else
+		mov	ax,offset step19
+		xchg	ax,[word bx+4]
 		push	[word bx+6]	
-		push	[word bx+4]		; save step
+		push	ax			; save step
 		mov	[word cs:sssp],sp
 		mov	[word cs:sssp+2],ss
 		endif
 		;cmp	[byte bx+7],0F0h
 		;jnc	notdos
-		mov	[word bx+4],offset step19
 		mov	[bx+6],cs
 		pushf
 		pop	ax
@@ -72,10 +74,10 @@ notdos:
 		ifndef	NO386
 		lss	sp,[dword cs:sssp]
 		else
-		lds	bx,[dword cs:sssp]
+		lds	ax,[dword cs:sssp]
 		push	ds
 		pop	ss
-		mov	sp,bx
+		xchg	ax,sp
 		endif
 		xor	bx,bx
 		mov	ds,bx
@@ -118,7 +120,8 @@ endm
 
 ;****** Init ***************************************************
 
-			ifndef	NO386
+			ifndef	FIXME_NO386
+                p386
 
 		enter	TEMP_SIZE,0
 		;cld
