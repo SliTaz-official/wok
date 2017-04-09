@@ -263,19 +263,3 @@ void load_initrd() {
         kernelparams->initrd_size = m->size;
     }
 }
-
-void boot_kernel() {
-
-    // Shrink stack: we won't need much of it now and have no malloc() plans
-    {
-        u16 new_SP=u16(heap_top)+0x100;
-        if(_SP>new_SP) _SP=new_SP;
-    }
-    if( (u16(_SP)>>4)+u16(_CS) >= topseg() ) {
-        // Oops! We can stomp on our toes... better stop now
-        die("Loaded too close to 9000:0");
-    }
-
-    // Move rm loader & commandline to 0x90000, Jump to kernel rm code
-    set_sregs_jump_seg_ofs();
-}

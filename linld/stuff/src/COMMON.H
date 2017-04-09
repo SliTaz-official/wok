@@ -101,4 +101,4 @@ extern "C" void open_image(const char *name, struct image_himem *m);
 extern "C" int read_image(struct image_himem *m, void* data, int sz);
 char* load_kernel();
 void load_initrd();
-void boot_kernel();
+extern "C" void boot_kernel();

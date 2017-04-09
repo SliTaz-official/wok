@@ -11,8 +11,14 @@
                 p386
 		endif
 
-        group   DGROUP  _TEXT,_BSS
+        group   DGROUP  _TEXT,_DATA,_BSS
         assume  cs:DGROUP,ds:DGROUP
+
+        segment _DATA byte public use16 'DATA'
+
+overflow	db	"Loaded too close to 9000:0",0
+
+        ends    _DATA
 
         segment _BSS byte public use16 'BSS'
 
@@ -23,6 +29,39 @@
 
         segment _TEXT byte public use16 'CODE'
 
+	global	_boot_kernel:near
+_boot_kernel:
+; Shrink stack: we won't need much of it now and have no malloc() plans
+		extrn	_heap_top:word
+		mov	ax,[_heap_top]
+		inc	ah
+		cmp	ax,sp
+		ja	samesp
+		xchg	ax,sp
+samesp:
+		ifdef	NO386
+		extrn	_topseg:near
+		call	near _topseg
+		mov	es,ax
+		xchg	ax,bx
+		mov	cl,4
+		mov	ax,sp
+		shr	ax,cl
+		else
+		mov	bx,9000h
+		mov	es,bx
+		mov	ax,sp
+		shr	ax,4
+		endif
+		mov	dx,cs
+		add	ax,dx
+		cmp	ax,bx
+		jb	nooverflow
+; Oops! We can stomp on our toes... better stop now
+		mov	bx,offset overflow
+		extrn	die:near
+		jmp	near die
+nooverflow:
 ;***************************************************************
 ;void set_sregs_jump_seg_ofs(u32 csip);
 ;****** Never returns
@@ -32,15 +71,6 @@
 
 		extrn	dos_shutdown:near
 
-		ifdef	NO386
-		extrn	_topseg:near
-		call	near _topseg
-		mov	es,ax
-		xchg	ax,bx
-		else
-		push	9000h
-		pop	es
-		endif
 		cli				; we start doing destructive things to DOS
 		push	es
 		pop	ss

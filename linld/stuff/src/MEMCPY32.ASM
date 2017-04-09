@@ -120,8 +120,7 @@ endm
 
 ;****** Init ***************************************************
 
-			ifndef	FIXME_NO386
-                p386
+			ifndef	NO386
 
 		enter	TEMP_SIZE,0
 		;cld
@@ -171,15 +170,15 @@ endm
 		xor	bx,bx
 		xor	dx,dx
 		xor	si,si
-		mov	ax,[bp+8]		; srcseg
+		mov	ax,[srcseg]
 		mov	cl,4
 		extrn	N_LXLSH@:near
 		call	near N_LXLSH@
-		add	[bp+10],ax		; srcofs lo
-		adc	[bp+10+2],dx		; srcofs hi
+		add	[word srcofs],ax
+		adc	[word srcofs+2],dx
 @@2flat:
-		mov	ax,[bp+si+10]		; srcofs, dstofs lo
-		mov	dx,[bp+si+10+2]		; srcofs, dstofs hi
+		mov	ax,[word si+srcofs]	; srcofs, dstofs lo
+		mov	dx,[word si+srcofs+2]	; srcofs, dstofs hi
 		extrn	N_LXURSH@4:near
 		call	near N_LXURSH@4
 		or	bx,dx			; >=1mb flag
@@ -188,8 +187,8 @@ endm
 		jnz	@@2flat
 		pop	dx			; dstseg
 		pop	ax			; srcseg
-		test	bx,bx			; <1mb ? (clear C)
-                jnz     @@pmcopy
+		dec	bx			; <1mb ?
+                jns     @@pmcopy
 		push	di
 @@movlp:
 		mov	ds,ax
