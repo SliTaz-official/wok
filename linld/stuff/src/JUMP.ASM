@@ -29,16 +29,21 @@ overflow	db	"Loaded too close to 9000:0",0
 
         segment _TEXT byte public use16 'CODE'
 
+;***************************************************************
+;void boot_kernel();
+;****** Never returns
+;***************************************************************
 	global	_boot_kernel:near
-_boot_kernel:
+        proc    _boot_kernel near
+        
 ; Shrink stack: we won't need much of it now and have no malloc() plans
 		extrn	_heap_top:word
 		mov	ax,[_heap_top]
 		inc	ah
 		cmp	ax,sp
-		ja	samesp
+		ja	@@samesp
 		xchg	ax,sp
-samesp:
+@@samesp:
 		ifdef	NO386
 		extrn	_topseg:near
 		call	near _topseg
@@ -56,21 +61,12 @@ samesp:
 		mov	dx,cs
 		add	ax,dx
 		cmp	ax,bx
-		jb	nooverflow
+		jb	@@nooverflow
 ; Oops! We can stomp on our toes... better stop now
 		mov	bx,offset overflow
 		extrn	die:near
 		jmp	near die
-nooverflow:
-;***************************************************************
-;void set_sregs_jump_seg_ofs(u32 csip);
-;****** Never returns
-;***************************************************************
-        global  _set_sregs_jump_seg_ofs:near
-        proc    _set_sregs_jump_seg_ofs near
-
-		extrn	dos_shutdown:near
-
+@@nooverflow:
 		cli				; we start doing destructive things to DOS
 		push	es
 		pop	ss
@@ -94,13 +90,12 @@ nooverflow:
 		rep
 		  movsb
 		cmp	al,cl			; load high ?
-		jne	isbzimage
+		jne	@@isbzimage
 		ifdef	NO386
 		add	bh,9
 		push	bx			; topseg()+0x0900
 		else
-		push	9900h			; 4096 bytes for cmdline
-	;push	9820h			; 512 bytes for cmdline
+		push	9800h+(4096/16)		; 4096 bytes for cmdline
 		endif
 		; finish loading
 		extrn   @last_ditch$qv:near
@@ -113,17 +108,16 @@ nooverflow:
 		xor	si,si			;  A000 -9000 -0800(>movedend)
 		xor	di,di			; set ZF
 		mov	cx,offset movedend
-        global  _bss_end:byte
-	;mov	cx,offset _bss_end
 		rep
 		  movsb
 		push	es
-		call	near doretf		; mov cs,es
+		call	near @@doretf		; mov cs,es
 		push	ss
 		pop	es
 		push	cs
 		pop	ds
 		push	ax
+		extrn	dos_shutdown:near
 		call	near dos_shutdown
 		;in	al,70h
 		;or	al,80h			; disable NMI
@@ -133,10 +127,10 @@ nooverflow:
 		mov	ax,8
 		cwd				; clear dx
 		cmp	bx,ax
-		ja	bufhigh
+		ja	@@bufhigh
 		sub	ax,bx
 		inc	ax
-bufhigh:
+@@bufhigh:
 		push	ax
 		push	dx			; size=up to 512k
 		push	bx			; src ofs= pm.fallback
@@ -161,10 +155,10 @@ bufhigh:
 		cmp	[dword 1E6h],'SKLE'
 		else
 		cmp	[word 1E6h],'LE'
-		jne	notelks
+		jne	@@notelks
 		cmp	[word 1E8h],'SK'
 		endif
-		jne	notelks
+		jne	@@notelks
 		ifdef	NO386
 		mov	cx,120h
 		push	cx
@@ -183,10 +177,9 @@ bufhigh:
 		push	es
 		pop	ss
 		push	cx
-notelks:
+@@notelks:
 		endif
-
-isbzimage:
+@@isbzimage:
 		push	ss
 		pop	ds
 		;push	ss
@@ -199,12 +192,11 @@ isbzimage:
 		endif
 		assume	nothing
 		assume	cs:DGROUP
-
-doretf:
+@@doretf:
                 retf
 
 movedend:
-        endp    _set_sregs_jump_seg_ofs
+        endp    _boot_kernel
 
         ends    _TEXT
 
