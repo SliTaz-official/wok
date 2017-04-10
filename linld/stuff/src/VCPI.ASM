@@ -102,7 +102,7 @@ gdt_base        dw      offset gdt,0
 label sw2pm_params byte
 ;Note: base addrs will be fixed up in prepare_vcpi()
 label	pagedir_laddr   dword
-sw2pm_cr3       dd      ?
+sw2pm_cr3       dd      1000h
 sw2pm_gdtr_ptr  dw      offset gdtr,0
 sw2pm_idtr_ptr  dw      offset idtr,0
 sw2pm_ldtr      dw      0       ;we don't need it
@@ -120,11 +120,6 @@ idt_base        dd      0       ;  so let's leave it the same as for rm
         ends    _DATA
 
         segment _BSS byte public use16 'BSS'
-
-;Pagedir/page0 addrs: linear, seg:0 and cs:ofs
-page0_laddr     dd      ?
-;pagedir_ofs     dw      ?
-;page0_ofs       dw      ?
 
 label   saved_ss_sp dword
 saved_sp        dw      ?
@@ -167,51 +162,35 @@ prepare_vcpi:
 ; Fix up base of some gdt descriptors
 ; Note: 'add [dword xx.base0],edx' actually updates 24 bit quantity!
 ; Do NOT replace with mov!
-		xor	ebx,ebx
-                add     [dword bx+si+sw2pm_idtr_ptr-gdt_vcpi],edx
+		mov	bx,-28h
+                add     [dword bx+si+sw2pm_idtr_ptr-gdt_vcpi+28h],edx
 @@fixup:
-                add     [dword bx+si+(gdt_code.base0)-gdt_vcpi],edx
+                add     [dword bx+si+(gdt_code.base0)-gdt_vcpi+28h],edx
 		add	bl,8
-		cmp	bl,28h
-		jb	@@fixup
-                ;add     [dword si+(gdt_data.base0)-gdt_vcpi],edx
-                ;add     [dword si+(gdt_tss.base0)-gdt_vcpi],edx
-                ;add     [dword si+gdt_base-gdt_vcpi],edx
-                ;add     [dword si+sw2pm_gdtr_ptr-gdt_vcpi],edx
-                ;add     [dword si+sw2pm_idtr_ptr-gdt_vcpi],edx
+		js	@@fixup
                 add     eax,edx
-                mov     bx,0FFFh
-                add     eax,ebx
-		inc	bx		;ebx=00001000h
-
+		dec	eax
                 shr     eax,cl
+		inc	ah
                 mov     al,0   ;eax = 4k aligned linear addr of pagebuf
                 mov     es,ax           ;es:0->page0,es:1000h->pagedir
                 shl     eax,cl          ;eax=page0 linear addr
+                add     [si+sw2pm_cr3-gdt_vcpi],eax
+                mov     di,ax
                 mov     al,3            ;add present+writable bits
-                mov     [es:bx],eax     ;stuff it into pagedir[0]
+                mov     [es:1000h],eax     ;stuff it into pagedir[0]
                 push    ds
                 pop     es
-
-		mov	al,0
-                mov     [page0_laddr],eax
-                add     eax,ebx
-                ;mov     [pagedir_laddr],eax
+                sub     di,dx           ;ES:DI => page0
                         ;page directory will use only one entry (4 bytes):
                         ;cr3 => pagedir => page0  => ########
                         ;      (1 entry)  (1024   => #  4M  #
                         ;                 entries)=> # page #
                         ;                         => ########
-                mov     [sw2pm_cr3],eax
-                sub     eax,edx         ;ax = offset in CS of pagedir
-                ;mov     [pagedir_ofs],ax
-                sub     ax,bx   ;ax-=1000
-                ;mov     [page0_ofs],ax
-                mov     di,ax          ;ES:DI => page0
 ; Return
                 ;pop     es
                 ;pop     esi
-                add     ax,1004h
+                lea     ax,[di+1004h]
 		extrn	_heap_top:word
 		mov	[_heap_top],ax
                 ;ret
@@ -392,8 +371,8 @@ label   do_memcpy_vcpi near
         ; Restore page mapping for page at 0
                ;pop     eax             ;X
 @@set_mapping:
-                mov     esi,[cs:page0_laddr]
-                xchg    [esi],eax       ; restore page0[0]
+                mov     esi,[cs:sw2pm_cr3]
+                xchg    [esi-1000h],eax ; restore page0[0]
                 mov     ecx,cr3         ; reload TLB cache
                 mov     cr3,ecx         ;
 ; Return
