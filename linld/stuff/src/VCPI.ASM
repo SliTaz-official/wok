@@ -376,6 +376,7 @@ label   do_memcpy_vcpi near
                 mov     ecx,cr3         ; reload TLB cache
                 mov     cr3,ecx         ;
 ; Return
+vcpi_ret:
                 ret
 
         endp    call_pm_routine
@@ -393,14 +394,13 @@ label   do_memcpy_vcpi near
                 p8086
 		extrn	_vcpi:byte
 		test	[_vcpi],-1
-		jz	@@ret
+		jz	vcpi_ret
                 p386
-                push	si
-              ;;pushf
-              ;;pushad
+                pop	ax
                 push    cs      ;*
+                push	ax
+                push	si
                 push    ds
-                ;push    es
                 mov     [saved_ss],ss
                 mov     [saved_sp],sp
 
@@ -418,23 +418,13 @@ label   do_memcpy_vcpi near
                 mov     eax,cr0
                 and     eax,7ffffffeh   ; clear PG,P bits
                 mov     cr0,eax         ; look mommy, we're in rm now!
-              ;;jmp     short $+2
-              ;;xor     eax,eax
                 mov     cr3,eax         ; flush TLB cache
 
 ; Now we are in rm, but not yet: have to restore sregs:
                 lss     sp,[saved_ss_sp]; SS
-                ;pop     es              ; ES
                 pop     ds              ; DS
-               ;push    cs      ;* done earlier
-                push    offset @@next
-                retf                    ; CS
-@@next:
-              ;;popad
-              ;;popf
                 pop	si
-@@ret:
-                ret             ; We don't care much about rest (FS/GS)
+                retf                    ; CS
 
         endp    _vm2rm
 
