@@ -1,0 +1,59 @@
+# SliTaz package receipt.
+
+PACKAGE="ussp-push"
+VERSION="0.11"
+CATEGORY="system-tools"
+SHORT_DESC="a OBEX object pusher."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://xmailserver.org/ussp-push.html"
+WGET_URL="http://xmailserver.org/$TARBALL"
+TAGS="bluetooth"
+
+DEPENDS="bluez openobex"
+BUILD_DEPENDS="bluez-dev openobex-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i	-e 's/OBEX_TRANS_CUST/OBEX_TRANS_CUSTOM/' \
+		-e '/^int bt_debug;$/r/dev/stdin' src/obex_main.c <<EOT
+
+static int OBEX_CharToUnicode(uint8_t *uc, const uint8_t *c, int size)
+{
+	int len, n;
+
+	if (uc == NULL || c == NULL)
+		return -1;
+
+	len = n = strlen((char *) c);
+	if (n*2+2 > size)
+		return -1;
+
+	uc[n*2+1] = uc[n*2] = 0;
+	while (n--) {
+		uc[n*2+1] = c[n];
+		uc[n*2] = 0;
+	}
+
+	return (len * 2) + 2;
+}
+EOT
+	sed -i 's/hci_remote_name/hci_read_remote_name/' src/obex_socket.c
+	./configure --prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/doc
+	cp -a $src/doc/ussp-push.html $fs/usr/share/doc
+	cp -a $src/README $fs/usr/share/doc
+	cp -a $install/usr/bin $fs/usr
+}
+
