@@ -27,6 +27,12 @@ compile_rules()
 		cc -o $i.o -Wa,-a=$i.lst -c $i.S
 		objcopy -O binary $i.o $i.bin
 	done
+	for n in pm_code gdt_abs pagebuf ; do
+		for f in bootloader unpack ; do
+			printf "%-20s" $f
+			sed "/:[0-9a-f]* $n\$/!d;s/.*://" $f.lst
+		done
+	done
 	sed -i "s/VERSION/$VERSION/" pack
 	./pack --build bootloader.bin unpack.bin
 	./pack memtest.bin memtest.packed
