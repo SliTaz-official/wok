@@ -14,7 +14,9 @@ _start:
 #define EXE_SUPPORT		real mode dos .exe file support
 #define CMDLINE	0x9E00
 #define HELP			store help message for /? argument
-#define CHECK_REALMODE		does not support vm86
+#define TINYSYSTEM		the full file in one segment
+#define CHECK_CPU		need a 386+
+#define VM2RM			(0x3C+0x19B)
 #define SHUTDOWNDOS		shutdown DOS services
 
 /* some contraints to reduce the size */
@@ -26,7 +28,7 @@ _start:
 stacktop	= 0x9E00		# in 0x8000 .. 0xA000
 	decw	%bp			// Magic number: MZ
 	popw	%dx
-	jmp	start			// Bytes on last page of file
+	jmp	startz			// Bytes on last page of file
 	.word	(CODESZ+511)/512	// Pages in file
 	.word	0			// Relocations
 	.word	(end_header-_start)/16	// Size of header in paragraphs
@@ -39,7 +41,9 @@ stacktop	= 0x9E00		# in 0x8000 .. 0xA000
 	.word	0xFFF0			// Initial (relative) CS value
 //	.word	0x001C			// File address of relocation table
 //	.word	0,0,0			// Overlay number
-	.ascii  "(SliTaz)"
+	.ascii  "SliTaz"
+startz:
+	jmp	start
 end_header:
 comstart:
 	cld				# assume nothing
@@ -68,7 +72,7 @@ skipspace:
 # define PUTS
 	movw	$EXEADRS(helpmsg), %si
 	cmpb	$'/'+1, %al
-#  ifdef CHECK_REALMODE
+#  ifdef CHECK_CPU
 	js	jsputs
 #  else
 	js	puts
@@ -79,7 +83,7 @@ nocmdline:
 	movw	$SYSSEG, %ax
 	movb	$(512-(end_header-_start))/2, %cl
 	movw	$end_header, %di
-#ifdef CHECK_REALMODE
+#ifdef CHECK_CPU
 #define PUTS
 	movw	$EXEADRS(realmode_expected), %si
 	//movb	setup_sects-realmode_expected(%si), %ch
@@ -96,7 +100,14 @@ jsputs:
 	js	puts		// S= not 386+
 	smsww	%dx
 	shrw	$1, %dx
+# ifdef VM2RM
+	jnc	isrm
+	push	%cs
+	call	VM2RM
+isrm:
+# else
 	jc	puts		// protected mode: vm86
+# endif
 #else
 	movb	EXEADRS(setup_sects), %ch
 #endif
@@ -127,7 +138,7 @@ start:
 #else
 #undef HELP
 #undef CMDLINE
-#undef CHECK_REALMODE
+#undef CHECK_CPU
 #endif
 	cld				# assume nothing
 stacktop	= 0x9E00		# in 0x8000 .. 0xA000
@@ -244,6 +255,28 @@ step19:
 	popaw
 #endif
 movesys:				// %ax = SYSSEG
+#ifdef TINYSYSTEM
+	movw	%si, %cx
+	negw	%cx
+	xorw	%di, %di
+	movw	%ax, %es
+	movw	%si, %dx
+	shrw	$4, %dx
+# ifdef SHUTDOWNDOS
+	movw	%bx, %ds
+# endif
+	addw	%dx, %bx
+	subw	%ax, %bx
+	jnc	forward
+	addw	%cx, %di
+	addw	%cx, %si
+	incw	%cx
+	std
+forward:
+	rep
+	  movsb
+	cld
+#else
 	movw	%cs:syssize, %bp
 	shrw	$4, %si
 	addw	%si, %bx
@@ -265,6 +298,7 @@ forward:
 	  movsw
 	decw	%bp
 	jns	forward
+#endif
 #ifndef NO_CURSOR_DEFINITION
 	movb	$1, %ah
 	movb	$0, %bh
@@ -415,17 +449,77 @@ read_first_sectors:
 bdendlp:
         jmp	read_sectorslp
 
+#ifdef VM2RM
+pagebuf		=	0x96000
+saved_ss_sp	=	gdt_abs-44
+saved_sp	=	gdt_abs-44
+saved_ss	=	gdt_abs-42
+tss		=	gdt_abs-40
+gdt		=	gdt_abs-32
+gdt_null	=	gdt_abs-32
+gdt_vcpi	=	gdt_abs-24
+gdt_vcpi2	=	gdt_abs-16
+gdt_vcpi3	=	gdt_abs-8
+gdt_abs:
+	.word	0xFFFF,0
+	.byte	0,0x92,0xCF,0
+gdt_code:
+	.word	0xFFFF
+gdt_code_base:
+	.long	0x9A000000
+	.byte	0x8F,0
+gdt_tss:
+	.word	0x00FF
+gdt_tss_base:
+	.long	0x89000000+EXEADRS(tss)
+	.byte	0,0
+gdtr:
+gdt_lim:
+	.word	0xFFFF
+gdt_base:
+	.long	EXEADRS(gdt)
+sw2pm_params:
+sw2pm_cr3:
+	.long	pagebuf+0x1000
+sw2pm_gdtr_ptr:
+	.long	EXEADRS(gdtr)
+sw2pm_idtr_ptr:
+	.long	EXEADRS(idtr)
+sw2pm_ldtr:
+	.word	0
+sw2pm_tr:
+SEL_TSS		= gdt_tss-gdt_null
+	.word	SEL_TSS
+sw2pm_jumpaddr:
+#define SETUPEXEADRS(x)	(x+0x2E0)
+pm_code		=	0x0084
+	.long	SETUPEXEADRS(pm_code)
+SEL_CODE	= gdt_code-gdt_null
+	.word	SEL_CODE
+idtr:
+idt_lim:
+	.word	0x03FF
+idt_base:
+	.long	0
+#endif
 #ifdef HELP
 helpmsg:
-	.ascii	"No help available."
+	.ascii	"No help."
 	.byte	13,10
 	.byte	0
 #endif
-#ifdef CHECK_REALMODE
+#ifdef CHECK_CPU
+# if VM2RM
+	.org	484
+realmode_expected:
+helpend:
+	.ascii	"386+ only."
+# else
 	.org	475
 realmode_expected:
 helpend:
 	.ascii	"386 real mode only."
+# endif
 	.byte	13,10,0
 #endif
 	.org	497
