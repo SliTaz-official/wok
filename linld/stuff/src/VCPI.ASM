@@ -145,52 +145,44 @@ tss             dd      ?,?     ;enough, we'll never use it anyway
                 ;push    bx
                 ;push    ax
 prepare_vcpi:
-                ;push    esi
-                ;push    es
 
 ;Calculate pagedir/page0 addrs, initialize cr3 and pagedir[0]
                 xor     eax,eax
 ;    heap_top = prepare_vcpi(malloc_or_die(8*1024+4)); 
 		mov	cx,8*1024+4
                 extrn   malloc_or_die:near
-		call	malloc_or_die
+		call	malloc_or_die	;keep cx
 
-		mov	cl,4
                 mov     edx,cs
                 shl     edx,cl          ;edx = linear addr of CS
                 mov     si,offset gdt_vcpi
 ; Fix up base of some gdt descriptors
 ; Note: 'add [dword xx.base0],edx' actually updates 24 bit quantity!
 ; Do NOT replace with mov!
-		mov	bx,-28h
+		mov	ebx,10000h-28h
                 add     [dword bx+si+sw2pm_idtr_ptr-gdt_vcpi+28h],edx
 @@fixup:
                 add     [dword bx+si+(gdt_code.base0)-gdt_vcpi+28h],edx
-		add	bl,8
+		add	bx,8
 		js	@@fixup
+		mov	bh,10h
                 add     eax,edx
-		dec	eax
-                shr     eax,cl
-		inc	ah
-                mov     al,0   ;eax = 4k aligned linear addr of pagebuf
-                mov     es,ax           ;es:0->page0,es:1000h->pagedir
-                shl     eax,cl          ;eax=page0 linear addr
+		and	ax,0f000h       ;eax = 4k aligned linear addr of pagebuf
+                add     eax,ebx         ;eax=page0 linear addr
                 add     [si+sw2pm_cr3-gdt_vcpi],eax
-                mov     di,ax
+                mov     edi,eax
+                sub     edi,edx
                 mov     al,3            ;add present+writable bits
-                mov     [es:1000h],eax     ;stuff it into pagedir[0]
+                mov     [bx+di],eax     ;stuff it into pagedir[0]
                 push    ds
-                pop     es
-                sub     di,dx           ;ES:DI => page0
+                pop     es              ;es:di->page0,es:di+1000h->pagedir
                         ;page directory will use only one entry (4 bytes):
                         ;cr3 => pagedir => page0  => ########
                         ;      (1 entry)  (1024   => #  4M  #
                         ;                 entries)=> # page #
                         ;                         => ########
 ; Return
-                ;pop     es
-                ;pop     esi
-                lea     ax,[di+1004h]
+                lea     ax,[bx+di+4]
 		extrn	_heap_top:word
 		mov	[_heap_top],ax
                 ;ret
