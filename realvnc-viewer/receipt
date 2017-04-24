@@ -15,12 +15,16 @@ BUILD_DEPENDS="xorg-libXaw-dev xorg-libXt-dev xorg-xproto xorg-libXau-dev \
 xorg-libXdmcp-dev xorg-libXmu-dev xorg-xextproto xorg-libXtst-dev"
 PROVIDE="vncviewer"
 TAGS="remote-desktop vnc"
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	mv vnc4* $src 2> /dev/null
 	cd $src
+	case "$ARCH" in
+	arm*) sed -i 's/(AR)/& rc/' common/zlib/Makefile.in ;;
+	esac
 	for i in unix/tx/TXImage.cxx unix/x0vncserver/Image.cxx \
 		 common/network/TcpSocket.cxx ; do
 		grep -q stdlib $i || sed -i '1i#include <stdlib.h>' $i
