@@ -18,25 +18,25 @@ BUILD_DEPENDS="alsa-lib alsa-lib-dev libpng-dev gtk+-dev procps expat-dev perl"
 #
 compile_rules()
 {
-  cd $src
-  ./configure \
-    --prefix=/usr \
-    --disable-jack \
-    $CONFIGURE_ARGS &&
-  make &&
-  make DESTDIR=$DESTDIR install 2>&1 | \
-  sed "s/gmo': No such file/gmo': no such file/"
+	sed -i 's|\$(LN_S) \$(DESTDIR)\$(bindir)/lives-exe|$(LN_S) lives-exe|' Makefile*
+	./configure \
+		--prefix=/usr \
+		--disable-jack \
+	$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install 2>&1 | \
+	sed "s/gmo': No such file/gmo': no such file/"
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-  mkdir -p $fs/usr/lib $fs/usr/share
-  cp -a $install/usr/bin $fs/usr
-  cp -a $install/usr/lib/*.so* $fs/usr/lib
-  cp -a $install/usr/lib/lives $fs/usr/lib
-  cp -a $install/usr/share/lives $fs/usr/share
-  find $fs/usr/lib/lives -name "*.la" -exec rm '{}' \;
-  # Fix the name (.desktop) file.
-  sed -i 's/^Exec=.*/Exec=lives-exe/' $install/usr/share/applications/LiVES.desktop
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/lives $fs/usr/lib
+	cp -a $install/usr/share/lives $fs/usr/share
+	find $fs/usr/lib/lives -name "*.la" -exec rm '{}' \;
+	# Fix the name (.desktop) file.
+	sed -i 's/^Exec=.*/Exec=lives-exe/' $install/usr/share/applications/LiVES.desktop
 }
