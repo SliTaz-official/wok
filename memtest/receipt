@@ -16,7 +16,6 @@ BUILD_DEPENDS="xz"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i '/scp memtest.bin/d' Makefile
 	for i in array-size io setup ; do
 		patch -p1 < $stuff/$SOURCE-$VERSION-$i.patch
@@ -26,12 +25,6 @@ compile_rules()
 	for i in bootloader unpack ; do
 		cc -o $i.o -Wa,-a=$i.lst -c $i.S
 		objcopy -O binary $i.o $i.bin
-	done
-	for n in pm_code gdt_abs pagebuf ; do
-		for f in bootloader unpack ; do
-			printf "%-20s" $f
-			sed "/:[0-9a-f]* $n\$/!d;s/.*://" $f.lst
-		done
 	done
 	sed -i "s/VERSION/$VERSION/" pack
 	./pack --build bootloader.bin unpack.bin

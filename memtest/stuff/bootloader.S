@@ -1,6 +1,10 @@
+// Image/zImage boot sector
+
 SYSSEG		= 0x1000
 INITSEG		= 0x9000
 SETUPSEG	= 0x9020
+setup_sects	= 497
+syssize		= 500
 
 	.text
 	.code16
@@ -12,144 +16,72 @@ _start:
 
 /* some extra features */
 #define EXE_SUPPORT		real mode dos .exe file support
-#define CMDLINE	0x9E00
-#define HELP			store help message for /? argument
-#define TINYSYSTEM		the full file in one segment
-#define CHECK_CPU		need a 386+
-#define VM2RM			(0x3C+0x19B)
+#define CMDLINE		0x9E00
+#define VCPI			VCPI 4.0 support
 #define SHUTDOWNDOS		shutdown DOS services
 
 /* some contraints to reduce the size */
-//#define FLOPPY_1440K_ONLY	1.44M floppies support only
-#define NO_CURSOR_DEFINITION
+//#define FLOPPY_1440K_ONLY	1.44M floppies support only	-33
+//#define FLOPPY_HAS_2_SIDES	hardcoded heads count to 2	-13
+//#define MOVE_MAX_SYSSIZE	always memcpy 512Kb		-2
+//#define NO_CURSOR_DEFINITION					-8
+//#define NO_CMDLINE_SHRINK	remove heading spaces ?		-6
+//#define NO_DOTS		show progression dots ?		-8
 
 #ifdef EXE_SUPPORT
 #define EXEADRS(x)	(x+0xE0)
-stacktop	= 0x9E00		# in 0x8000 .. 0xA000
-	decw	%bp			// Magic number: MZ
-	popw	%dx
-	jmp	startz			// Bytes on last page of file
-	.word	(CODESZ+511)/512	// Pages in file
-	.word	0			// Relocations
-	.word	(end_header-_start)/16	// Size of header in paragraphs
-	.word	4096			// Minimum extra paragraphs needed
-	.word	-1			// Maximum extra paragraphs needed
-	.word	(CODESZ+15)/16		// Initial (relative) SS value
-	.word	stacktop		// Initial SP value
-	.word	0			// Checksum
-	.word	EXEADRS(comstart)	// Initial IP value
-	.word	0xFFF0			// Initial (relative) CS value
-//	.word	0x001C			// File address of relocation table
-//	.word	0,0,0			// Overlay number
-	.ascii  "SliTaz"
-startz:
-	jmp	start
-end_header:
-comstart:
-	cld				# assume nothing
-#ifdef CMDLINE
-	movw	$stacktop, %di		# cmdline offset at 0x22
-#else
-#undef HELP
-#endif
-	pushw	$INITSEG
-	popw	%es
-#ifdef CMDLINE
-	movw	$0x80, %si
-	lodsb
-	cbw
-	xchgw	%ax, %cx
-	jcxz	nocmdline
-	movw	$0xA33F, 0x7F(%si)
-skipspace:
-	lodsb
-	cmpb	$0x20, %al
-	je	skipspace
-	decw	%si
-	rep
-	  movsb
-# ifdef HELP
-# define PUTS
-	movw	$EXEADRS(helpmsg), %si
-	cmpb	$'/'+1, %al
-#  ifdef CHECK_CPU
-	js	jsputs
-#  else
-	js	puts
-#  endif
-# endif
-nocmdline:
-#endif
-	movw	$SYSSEG, %ax
-	movb	$(512-(end_header-_start))/2, %cl
-	movw	$end_header, %di
-#ifdef CHECK_CPU
-#define PUTS
-	movw	$EXEADRS(realmode_expected), %si
-	//movb	setup_sects-realmode_expected(%si), %ch
-	.byte	0x8A, 0x6C, setup_sects-realmode_expected
-		// bits  15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
-		// flags  0 NT  IOPL OF DF IF TF SF ZF  0 AF  0 PF  1 CF
-	//movb	$0x10, %ah	// DF = IF = TF = 0
-	pushw	%ax
-	popfw			// < 286 : flags[12..15] are forced 1
-	pushfw			// = 286 : flags[12..15] are forced 0
-	popw	%dx		// > 286 : only flags[15] is forced 0
-	cmpb	%ah, %dh	// test Fx and 0x cases: S= < 386, C= < 286
-jsputs:
-	js	puts		// S= not 386+
-	smsww	%dx
-	shrw	$1, %dx
-# ifdef VM2RM
-	jnc	isrm
-	push	%cs
-	call	VM2RM
-isrm:
-# else
-	jc	puts		// protected mode: vm86
-# endif
-#else
-	movb	EXEADRS(setup_sects), %ch
-#endif
-	movw	$0x100, %si
-	rep
-	  movsw
-	movw	%ds, %bx
-	pushw	%es
-	popw	%ss
-#ifndef SHUTDOWNDOS
-	ljmp	$INITSEG, $movesys
-#else
-	pushaw
-	movw	%cx, %ds		# %ds = 0
-	movw	$4, %si
+#define FLAT20(x)	(x+16*INITSEG)
+
+.macro	trace_int19
+	pushl	$4
+	popw	%si
+	popw	%ds
 	pushl	(%si)
-	movw	$step19, (%si)
-	movw	%es, 2(%si)
+	movl	$step19+(INITSEG<<16), (%si)
 	pushfw
 	popw	%ax
 	incb	%ah			# set TF
 	pushw	%ax
 	popfw
 	ljmp	*4*0x19-4(%si)
+.endm
+
+stacktop	= 0x9E00		# in 0x8000 .. 0xA000
+	decw	%bp			// Magic number: MZ
+	popw	%dx
+	jmp	start			// Bytes on last page of file
+	.word	(CODESZ+511)/512	// Pages in file			INSTALLER
+	.word	0			// Relocations
+	.word	(end_header-_start)/16	// Size of header in paragraphs
+	.word	(CODESZ+stacktop+15)/16	// Minimum extra paragraphs needed	INSTALLER
+	.word	-1			// Maximum extra paragraphs needed
+	.word	(CODESZ+15)/16		// Initial (relative) SS value		INSTALLER
+	.word	stacktop		// Initial SP value
+	.word	0			// Checksum				INSTALLER?
+	.word	EXEADRS(comstart)	// Initial IP value
+	.word	0xFFF0			// Initial (relative) CS value
+//	.word	0x001C			// File address of relocation table
+//	.word	0,0,0			// Overlay number
 #endif
 start:
-	pushw	%dx
-#else
-#undef HELP
-#undef CMDLINE
-#undef CHECK_CPU
-#endif
 	cld				# assume nothing
-stacktop	= 0x9E00		# in 0x8000 .. 0xA000
+	xorw	%ax, %ax		# %ax = 0
 zeroed		= 12			# zeroed registers
-	movw	$stacktop-12-zeroed, %di	# stacktop is an arbitrary value >=
+stacktop	= 0x9E00		# in 0x8000 .. 0xA000 (+zeroed+12)
+	pushw	$INITSEG
+	popw	%ss			# %ss contain INITSEG
+	pushw	%ss
+end_header:
+	popw	%es			# %es = %ss = INITSEG
+					# cmdline offset at 0x22
+	movw	$stacktop, %di		# stacktop is an arbitrary value >=
 					# length of bootsect + length of
 					# setup + room for stack;
 					# 12 is disk parm size.
-	pushw	$INITSEG
-	popw	%ss			# %ss contain INITSEG
 	movw	%di, %sp		# put stack at INITSEG:stacktop-...
+#ifdef EXE_SUPPORT
+	cwd				# %dx = 0
+#endif
 
 # Many BIOS's default disk parameter tables will not recognize
 # multi-sector reads beyond the maximum sector number specified
@@ -163,12 +95,6 @@ zeroed		= 12			# zeroed registers
 #
 # High doesn't hurt.  Low does.  Let's use the max: 63
 
-	pushw	%ss
-	popw	%es			# %es = %ss = INITSEG
-	xorw	%ax, %ax		# %ax = 0
-#ifdef EXE_SUPPORT
-	cwd				# %dx = 0
-#endif
 	movw	$zeroed/2, %cx		# clear gdt + offset, %ds, limits
 	rep				# don't worry about cld
 	stosw				# already done above
@@ -200,7 +126,9 @@ zeroed		= 12			# zeroed registers
 # no 64kB boundaries are crossed. We try to load it as fast as
 # possible, loading whole tracks whenever we can.
 
+#ifndef NO_DOTS
 	popw	%bx			# clear %bx
+#endif
 	movw	syssize, %di
 	decw	%di
 	shrw	$9-4, %di
@@ -223,16 +151,6 @@ kill_motor:
 jmp_setup:
 	ljmp	$SETUPSEG, $0
 
-#ifdef PUTS
-#define PUTC
-putslp:
-	call	putc
-puts:
-	lodsb
-	orb	%al, %al
-	jne	putslp	
-	int	$0x20			// dos exit
-#endif
 #ifdef EXE_SUPPORT
 #ifdef SHUTDOWNDOS
 doiret:
@@ -254,30 +172,9 @@ step19:
 	popl	4(%si)
 	popaw
 #endif
-movesys:				// %ax = SYSSEG
-#ifdef TINYSYSTEM
-	movw	%si, %cx
-	negw	%cx
-	xorw	%di, %di
-	movw	%ax, %es
-	movw	%si, %dx
-	shrw	$4, %dx
-# ifdef SHUTDOWNDOS
-	movw	%bx, %ds
-# endif
-	addw	%dx, %bx
-	subw	%ax, %bx
-	jnc	forward
-	addw	%cx, %di
-	addw	%cx, %si
-	incw	%cx
-	std
-forward:
-	rep
-	  movsb
-	cld
-#else
-	movw	%cs:syssize, %bp
+movesys:				// %ax = SYSSEG, %bx = DS, %si
+	//movw	%cs:syssize, %bp
+	movw	$0x8000, %bp
 	shrw	$4, %si
 	addw	%si, %bx
 	subw	%ax, %bx
@@ -298,7 +195,6 @@ forward:
 	  movsw
 	decw	%bp
 	jns	forward
-#endif
 #ifndef NO_CURSOR_DEFINITION
 	movb	$1, %ah
 	movb	$0, %bh
@@ -308,17 +204,87 @@ forward:
 	pushw	%ss
 	popw	%ds
 	jmp	jmp_setup
+comstart:
+	cld				# assume nothing
+	pushw	$INITSEG
+	popw	%es
+#ifdef CMDLINE
+	movw	%sp, %di
+	movw	$0x80, %si
+	lodsb
+	cbw
+	xchgw	%ax, %cx
+	jcxz	nocmdline
+	movw	$0xA33F, 0x7F(%si)
+# ifndef NO_CMDLINE_SHRINK
+skipspace:
+	lodsb
+	cmpb	$0x20, %al
+	je	skipspace
+	decw	%si
+# endif
+	rep
+	  movsb
+nocmdline:
 #endif
-putcdot:
-#ifdef PUTC
-	movb	$0x2E, %al
-putc:
-	movb	$0xE, %ah
-	movw	$7, %bx
-	int	$0x10
+	movb	$(512-(end_header-_start))/2, %cl
+	movb	EXEADRS(setup_sects), %ch
+	movw	$0x100, %si
+	movw	$end_header, %di
+	rep
+	  movsw
+	movw	$SYSSEG, %ax
+	movw	%ds, %bx
+	pushw	%es
+	popw	%ss
+#ifndef SHUTDOWNDOS
+	pushw	%es
+	pushw	$movesys
 #endif
-	ret
-
+#ifdef VCPI
+# ifndef SHUTDOWNDOS
+	pushw	%es
+	pushw	%ds
+# endif
+	pushaw
+	smsww	%ax
+	andb	$1, %al
+	je	isrm
+	movw	$EXEADRS(gdt_vcpi),%si
+	pushw	$pagebuf/16
+	popw	%es
+	movl	$pagebuf+3,%es:0x1000
+	xorw	%di,%di
+call_vcpi:
+	movb	$0xDE,%ah	// DE01, EBX = getiface(DS:SI, ES:DI)
+	int	$0x67
+	movl	$FLAT20(sw2pm_params),%esi
+	movb	$0x0C,%al	// DE0C switchpm(ESI)
+	cli
+	jmp	call_vcpi
+pm_code:
+	movl	%cr0,%eax
+	andl	$0x7FFFFFFE,%eax
+	movl	%eax,%cr0
+	movl	%eax,%cr3
+isrm:
+# ifdef SHUTDOWNDOS
+	trace_int19
+# else
+	lssw	%cs:EXEADRS(saved_ss_sp),%sp	
+	popaw
+	popw	%ds
+	popw	%es
+	retf
+# endif
+#else
+# ifdef SHUTDOWNDOS
+	pushaw
+	trace_int19
+# endif
+	retf
+#endif
+#endif
 
 # read_sectors reads %di sectors into %es:0 buffer.
 # %es:0 is updated to the next memory location.
@@ -328,12 +294,20 @@ putc:
 # Assume no error on first track.
 
 #ifdef FLOPPY_1440K_ONLY
-#define FLOPPY_HEADS		2	/* 2 heads */
+#define FLOPPY_HAS_2_SIDES	hardcore heads count to 2
 #define FLOPPY_SECTORS		18	/* 18 sectors */
 #else
 #define FLOPPY_HEADS		2	/* 2 heads minimum */
 #define FLOPPY_SECTORS		9	/* 9 sectors minimum */
 #endif
+
+return:
+#ifndef NO_DOTS
+	movw	$0xE2E,%ax
+	movb	$7,%bl
+	int	$0x10
+#endif
+	ret
 
 check_limits:
 #ifndef FLOPPY_1440K_ONLY
@@ -344,6 +318,7 @@ check_limits:
 #endif
         cmpb    %al, %cl		# max sector known ?
         ja	next_head		#   no -> store it
+#ifndef FLOPPY_HAS_2_SIDES
 check_head:
 #ifdef FLOPPY_HEADS
 	cmpb	$FLOPPY_HEADS, %dh	# 2 heads minimum
@@ -352,6 +327,7 @@ check_head:
         cmpb    %ah, %dh		# max head known ?
         ja	next_cylinder		#   no -> store it
 check_cylinder:
+#endif
 #endif
 	pushaw
 #ifndef FLOPPY_1440K_ONLY
@@ -399,9 +375,6 @@ more1trk:
 	popw	%dx
 	subw	%dx,%di			# update sector counter
 	popw	%dx
-read_sectorsCX:
-	movw	%cx, %es		# next location
-	jz	putcdot
 #else
 	addw	%ax,%cx			# next sector
 	movw	%cx, %gs
@@ -411,10 +384,10 @@ read_sectorsCX:
 	addw	%ax, %cx
 	popw	%ax
 	subw	%ax,%di			# update sector counter
+#endif
 read_sectorsCX:
 	movw	%cx, %es		# next location
-	jz	putcdot
-#endif
+	jz	return
 read_sectors:
 	movw	%gs, %cx
 #ifndef FLOPPY_1440K_ONLY
@@ -431,29 +404,26 @@ next_head:
         cmpb    $FLOPPY_SECTORS+1,%cl	# reach sector limit ?
         jne     bdendlp
 #endif
-        incb    %dh			# next head
         movb    $1,%cl			# first sector
-#ifndef FLOPPY_1440K_ONLY
+#ifndef FLOPPY_HAS_2_SIDES
+        incb    %dh			# next head
         cmpb    %ah, %dh		# reach head limit ?
         jne     bdendlp
 next_cylinder:
         movb    %dh,%ah
+        movb    $0,%dh			# first head
 #else
-        cmpb    %cl,%dh			# reach head limit ?
-        je	bdendlp
+        xorb    %cl,%dh			# next head
+        jne	bdendlp			# reach head limit ?
 #endif
 # NOTE : support 256 cylinders max
         incb    %ch			# next cylinder
-        movb    $0,%dh			# first head
 read_first_sectors:
 bdendlp:
         jmp	read_sectorslp
 
-#ifdef VM2RM
-pagebuf		=	0x96000
-saved_ss_sp	=	gdt_abs-44
-saved_sp	=	gdt_abs-44
-saved_ss	=	gdt_abs-42
+#ifdef VCPI
+pagebuf		=	0x98000
 tss		=	gdt_abs-40
 gdt		=	gdt_abs-32
 gdt_null	=	gdt_abs-32
@@ -461,39 +431,38 @@ gdt_vcpi	=	gdt_abs-24
 gdt_vcpi2	=	gdt_abs-16
 gdt_vcpi3	=	gdt_abs-8
 gdt_abs:
-	.word	0xFFFF,0
-	.byte	0,0x92,0xCF,0
+	.word	0xFFFF
+	.long	0x92000000
+	.byte	0xCF,0
 gdt_code:
 	.word	0xFFFF
 gdt_code_base:
-	.long	0x9A000000
+	.long	0x9A000000+FLAT20(0)
 	.byte	0x8F,0
 gdt_tss:
 	.word	0x00FF
 gdt_tss_base:
-	.long	0x89000000+EXEADRS(tss)
+	.long	0x89000000+FLAT20(tss)
 	.byte	0,0
 gdtr:
 gdt_lim:
 	.word	0xFFFF
 gdt_base:
-	.long	EXEADRS(gdt)
+	.long	FLAT20(gdt)
 sw2pm_params:
 sw2pm_cr3:
 	.long	pagebuf+0x1000
 sw2pm_gdtr_ptr:
-	.long	EXEADRS(gdtr)
+	.long	FLAT20(gdtr)
 sw2pm_idtr_ptr:
-	.long	EXEADRS(idtr)
+	.long	FLAT20(idtr)
 sw2pm_ldtr:
 	.word	0
 sw2pm_tr:
 SEL_TSS		= gdt_tss-gdt_null
 	.word	SEL_TSS
 sw2pm_jumpaddr:
-#define SETUPEXEADRS(x)	(x+0x2E0)
-pm_code		=	0x0084
-	.long	SETUPEXEADRS(pm_code)
+	.long	pm_code
 SEL_CODE	= gdt_code-gdt_null
 	.word	SEL_CODE
 idtr:
@@ -501,31 +470,13 @@ idt_lim:
 	.word	0x03FF
 idt_base:
 	.long	0
-#endif
-#ifdef HELP
-helpmsg:
-	.ascii	"No help."
-	.byte	13,10
-	.byte	0
-#endif
-#ifdef CHECK_CPU
-# if VM2RM
-	.org	484
-realmode_expected:
-helpend:
-	.ascii	"386+ only."
-# else
-	.org	475
-realmode_expected:
-helpend:
-	.ascii	"386 real mode only."
+# ifndef SHUTDOWNDOS
+saved_ss_sp:
+	.word	stacktop-4-16-4,INITSEG
 # endif
-	.byte	13,10,0
 #endif
-	.org	497
-setup_sects:
-	.byte	0
-	.org	500
-syssize:
-	.word	0
 
+helpmsg:
+	.ascii	"SliTaz zImage boot"
+	.org 497
+helpend:

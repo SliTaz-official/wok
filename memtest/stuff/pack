@@ -17,7 +17,7 @@ if [ "$1" == "--build" ]; then
 	helpend=$(grep -s helpend$ ${1/.bin/.lst}|sed '$!d;s/.*t:\([^ ]*\).*/\1/')
 	if [ -n "$helpmsg" ]; then
 		sed -i "s/YYY/$((0x$helpmsg))/" $0
-		sed -i "s/ZZZ/$((0x$helpend-0x$helpmsg-1))/" $0
+		sed -i "s/ZZZ/$((0x$helpend-0x$helpmsg))/" $0
 	else
 		sed -i '/YYY/d' $0
 	fi
@@ -49,24 +49,24 @@ main()
 	dd if=$1 bs=1 skip=497 seek=497 count=15 of=$2 conv=notrunc
 	setup="$(echo $(od -j 497 -N 1 -dAn $1))"
 	[ $setup -eq 0 ] && setup=4
-	syssize="$(echo $(od -j 500 -N 2 -dAn $1))"
-	[ $syssize -eq 0 ] && syssize=$((($(stat -c %s $1) + 15 - 512*($setup + 1))/16))
 	store $setup $2 XXXSB 1
 	store $setup $2 XXXSW 1
 	store $((32 * $setup)) $2 XXXSP
 	store $((0x1000 - 32*$setup)) $2 XXXSS 
 	dd if=$1 bs=512 skip=1 | compress >>$2
 	size=$(stat -c %s $2)
-	store $((($size-2560+15)/16 + 0x1000)) $2 XXXP
-	store $((($size-2560+15)/16)) $2 500
+	syssize=$((($size-512*($setup+1)+15)/16))
+	store $(($syssize + 0x1000)) $2 XXXP
+	store $syssize $2 500
 	store 4 $2 497 1
 	store $((($size+511)/512)) $2 4
+	store $((($size+15)/16+0x9E0)) $2 10
 	store $((($size+15)/16)) $2 14
 	echo -e "$3" | dd conv=notrunc bs=1 seek=YYY of=$2 count=ZZZ
 }
 
 HELP="$(unix2dos <<EOT
-Memtest86+ VERSION GPL endless
+Memtest86+ VERSION GPLv2
 EOT
 )"
 main $1 ${2:-$1.packed} "${3:-$HELP}" 2>/dev/null <<EOT

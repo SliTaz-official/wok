@@ -206,63 +206,6 @@ setup_seg:
 	lret
 #endif
 
-#if VM2RM
-#define EXEADRS(x)	(x+0x2E0)
-#define BOOTEXEADRS(x)	(x+0xE0)
-vm2rm:
-pagebuf		=	0x96000
-gdt_abs		=	0x18e		// see bootloader.lst
-sw2pm_params	=	gdt_abs+30
-sw2pm_cr3	=	sw2pm_params
-sw2pm_idtr_ptr	=	sw2pm_params+8
-saved_ss_sp	=	gdt_abs-44
-saved_sp	=	gdt_abs-44
-saved_ss	=	gdt_abs-42
-tss		=	gdt_abs-40
-gdt		=	gdt_abs-32
-gdt_null	=	gdt_abs-32
-gdt_vcpi	=	gdt_abs-24
-gdt_vcpi2	=	gdt_abs-16
-gdt_vcpi3	=	gdt_abs-8
-gdt_code_base	=	gdt_abs+10
-fixuprange	=	0x20
-	pushaw
-	pushw	%es
-	pushw	%ds
-	movl	%cs,%edx
-	shll	$4,%edx
-	movw	$BOOTEXEADRS(gdt_vcpi),%si
-	movw	$-fixuprange,%bx
-	addl	%edx,sw2pm_idtr_ptr-gdt_vcpi(%si)
-fixup:
-	addl	%edx,fixuprange+gdt_code_base-gdt_vcpi(%bx,%si)
-	addw	$8,%bx
-	jne	fixup
-	pushw	$pagebuf/16
-	popw	%es
-	movl	$pagebuf+3,%es:0x1000
-	xorw	%di,%di
-	movw	$0xDE01,%ax	// EBX = getiface(DS:SI, ES:DI)
-	int	$0x67
-	movw	$BOOTEXEADRS(saved_sp),%bx
-	movw	%ss,2(%bx)
-	movw	%sp,(%bx)
-	leal	BOOTEXEADRS(sw2pm_params)(%edx),%esi
-	movw	$0xDE0C, %ax	// switchpm(ESI)
-	cli
-	int	$0x67
-pm_code:
-	movl	%cr0,%eax
-	andl	$0x7FFFFFFE,%eax
-	movl	%eax,%cr0
-	movl	%eax,%cr3
-	lssw	%cs:(%bx),%sp	
-	popw	%ds
-	popw	%es
-	popaw
-	retf
-#endif
-
 unpack:
 #define NO_LZMA_HEADER
 #include "unlzma.S"
