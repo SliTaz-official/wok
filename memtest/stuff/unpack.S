@@ -11,7 +11,6 @@
 #define FLAT16			1
 //#define FLAT16OUT		0
 #define SAVEREGS		0 
-#define VM2RM			1
 
 	.text
 	.code16
@@ -41,19 +40,32 @@ start2:
 	pushw	$0
 	pushal
 	pushw	%ds
+	cld
 #else
 	pushw	%cs
+# if FLAT16
+	xorw	%di, %di
+	pushw	%di
+# else
 	pushw	$0
+# endif
 #endif
 #if UPDATE_SYSSIZE
-	pushw	%ds
+	pushw	%ds			// <A>
 #else
-	pushw	%es
-	pushw	%cs
+	pushw	%cs			// <A>
 #endif
-	cld
 #if FLAT16
 # 1- move 9020..9020+stp -> 8000
+	pushw	$0x8000
+	popw	%es
+	movw	$0x200, %si
+#if SAVEREGS == 0
+	pushw	%es
+	// pushw	$cont
+	.byte	0x6A, cont
+	jmp	jumpinto
+#else
 # if HARDCODED_SETUPSIZE
 setup_word:
 	movw	$SETUP*256, %cx
@@ -62,17 +74,13 @@ setup_word:
 	movb	SETUPSIZE, %ch
 	movw	%cx, %dx
 # endif
-	pushw	%cx
-	pushw	$0x8000
-	popw	%es
-	xorw	%si, %si
-	xorw	%di, %di
-	rep
-	  movsw	%cs:(%si),%es:(%di)
+	pushw	%cx			// <B>
 	pushw	%es
-	// pushw	$cont
-	.byte	0x6A, cont
+	pushw	%di
+	rep
+	  movsw
 	lret
+#endif
 cont:
 # 2- move 1000..1000+sys -> 8000+stp
 	pushw	$0x1000
@@ -82,7 +90,7 @@ cont:
 	rep
 	  movsb
 # 3- unlz(8000+stp:end, 1000-stp:0)
-	pushw	%es
+	pushw	%es		// <C>
 # if HARDCODED_SETUPSIZE
 setup_seg:
 #  if UPDATE_SYSSIZE
@@ -100,7 +108,7 @@ setup_seg:
 	subw	%dx, %ax
 	movw	%ax, %es
 # endif
-#else
+#else		// FLAT16
 # 1- move 1000..1000+sys -> 9000-sys
 # if HARDCODED_SYSSIZE
 packed_syssize:
@@ -135,7 +143,7 @@ setup_para:
 	shrw	$3, %ax
 	subw	%ax, %dx
 # endif
-	pushw	%cx
+	pushw	%cx			// <B>
 	movw	%dx, %es
 	xorw	%si, %si
 	xorw	%di, %di
@@ -145,14 +153,13 @@ setup_para:
 # 3- reloc itself in 0x7C00
 	pushw	$0x07C0
 	popw	%es
-	xorw	%si, %si
-	xorw	%di, %di
+	movw	$cont, %si
+	movw	%si, %di
 	movw	$end-_start, %cx
+	pushw	%es
+	pushw	%di
 	rep
 	  movsb	%cs:(%si),%es:(%di)
-	pushw	%es
-	// pushw	$cont
-	.byte	0x6A, cont
 	lret
 cont:
 # 4- unlz(9000-sys-stp:end, 1000-stp:0)
@@ -173,8 +180,8 @@ setup_seg:
 #  endif
 	movw	%ax, %es
 # endif
-#endif
-	popw	%ds
+#endif		// FLAT16
+	popw	%ds			// <C>
 	movw	$end-_start, %si
 #if UPDATE_SYSSIZE
 	movw	$SYSSIZE, %di
@@ -187,17 +194,27 @@ setup_seg:
 	popw	%ds
 	popw	%si
 	movw	%si, %di
-	popw	%cx
+#   if SAVEREGS != 0
+	popw	%cx			// <B>
 #if UPDATE_SYSSIZE
 // not need with memtest	movb	$(512-SYSSIZE)/2, %cl
 #endif
-	popw	%es
+	popw	%es			// <A>
 # 5- move 1000-stp..1000 -> 9020
+#   else
+	popw	%es			// <A>
+jumpinto:
+# if HARDCODED_SETUPSIZE
+setup_word:
+	movw	$SETUP*256, %cx
+# else
+	xorw	%cx, %cx
+	movb	%ss:SETUPSIZE, %ch
+	movw	%cx, %dx
+# endif
+#  endif
 	rep
 	  movsw
-#if UPDATE_SYSSIZE == 0
-	popw	%es
-#endif
 #if SAVEREGS
 	popw	%ds
 	popal
