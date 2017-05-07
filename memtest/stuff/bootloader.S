@@ -26,6 +26,7 @@ _start:
 //#define MOVE_MAX_SYSSIZE	always memcpy 512Kb		-2
 //#define NO_CURSOR_DEFINITION					-8
 //#define NO_CMDLINE_SHRINK	remove heading spaces ?		-6
+//#define NO_CMDLINE_FILE	remove @cmdline file support ?	-20
 //#define NO_DOTS		show progression dots ?		-8
 
 #ifdef EXE_SUPPORT
@@ -53,7 +54,7 @@ stacktop	= 0x9E00		# in 0x8000 .. 0xA000
 	.word	(CODESZ+511)/512	// Pages in file			INSTALLER
 	.word	0			// Relocations
 	.word	(end_header-_start)/16	// Size of header in paragraphs
-	.word	(CODESZ+stacktop+15)/16	// Minimum extra paragraphs needed	INSTALLER
+	.word	4096			// Minimum extra paragraphs needed
 	.word	-1			// Maximum extra paragraphs needed
 	.word	(CODESZ+15)/16		// Initial (relative) SS value		INSTALLER
 	.word	stacktop		// Initial SP value
@@ -221,7 +222,24 @@ skipspace:
 	lodsb
 	cmpb	$0x20, %al
 	je	skipspace
+#  ifndef NO_CMDLINE_FILE
+	movw	%si,%dx
 	decw	%si
+	subb	$'@',%al
+	jne	notafile
+	movb	$0x3D,%ah
+	int	$0x21
+	jc	notafile
+	xchgw	%ax,%bx
+	//movw	%si,%dx		// ~320 bytes max
+	movw	$EXEADRS(notafile)-130,%cx
+	movb	$0x3F,%ah
+	int	$0x21
+	xchgw	%ax,%cx
+notafile:
+#  else
+	decw	%si
+#  endif
 # endif
 	rep
 	  movsb
@@ -475,8 +493,3 @@ saved_ss_sp:
 	.word	stacktop-4-16-4,INITSEG
 # endif
 #endif
-
-helpmsg:
-	.ascii	"SliTaz zImage boot"
-	.org 497
-helpend:
