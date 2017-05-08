@@ -17,6 +17,7 @@ BUILD_DEPENDS="curl-dev cryptopp"
 # Rules to configure and make the package.
 compile_rules()
 {
+	sed -i 's/chown/echo &/' Makefile*
 	./configure --prefix=/usr \
 		--localstatedir=/var \
 		$CONFIGURE_ARGS &&
@@ -30,4 +31,31 @@ genpkg_rules()
 	cp -a $install/* $fs
 	mkdir -p $install/usr/share/man
 	cp $src/docs/* $install/usr/share/man
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	
+	local user
+	local group
+	
+	user=urbackup
+	group=urbackup
+	
+	if ! grep -q $user "$1/etc/passwd"; then
+		echo -n "Adding user/group $user..."
+		chroot "$1/" addgroup -S $group
+		chroot "$1/" adduser -s /bin/false -S -D -H -G $group $user
+		status
+	fi
+	chroot "$1/" chown urbackup:urbackup /usr/share/urbackup /usr/share/urbackup/urbackup_ecdsa409k1.pub
+	chroot "$1/" chown -R urbackup:urbackup /usr/share/urbackup/www
+	chroot "$1/" chmod +s /usr/bin/urbackup_snapshot_helper /usr/bin/urbackup_mount_helper
+}
+
+post_remove()
+{
+	echo "Removing user/group urbackup"
+	chroot "$1/" deluser urbackup
 }
