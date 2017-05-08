@@ -17,7 +17,7 @@ BUILD_DEPENDS="curl-dev cryptopp"
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's/chown/echo &/' Makefile*
+	sed -i 's/chown/echo &/;s/adduser/echo &/g' Makefile*
 	./configure --prefix=/usr \
 		--localstatedir=/var \
 		$CONFIGURE_ARGS &&
@@ -46,7 +46,7 @@ post_install()
 	if ! grep -q $user "$1/etc/passwd"; then
 		echo -n "Adding user/group $user..."
 		chroot "$1/" addgroup -S $group
-		chroot "$1/" adduser -s /bin/false -S -D -H -G $group $user
+		chroot "$1/" adduser -s /bin/false -S -D -h /var/urbackup -G $group $user
 		status
 	fi
 	chroot "$1/" chown urbackup:urbackup /usr/share/urbackup /usr/share/urbackup/urbackup_ecdsa409k1.pub
