@@ -11,8 +11,10 @@ WEB_SITE="http://mosh.mit.edu/"
 WGET_URL="${WEB_SITE}$TARBALL"
 TAGS="ssh"
 
-DEPENDS="gcc-lib-base perl protobuf libssl libcrypto zlib ncursesw ssh"
-BUILD_DEPENDS="pkg-config protobuf-dev openssl-dev libcrypto-dev zlib-dev ncursesw-dev"
+DEPENDS="gcc-lib-base glibc-base perl protobuf libssl libcrypto libtinfo \
+zlib ncursesw ssh"
+BUILD_DEPENDS="pkg-config protobuf-dev openssl-dev libcrypto-dev zlib-dev \
+ncursesw-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -39,6 +41,8 @@ EOT
 
 post_install()
 {
+	[ -d "$1/usr/lib/locale/$LC_ALL" ] ||
+	chroot "$1/" localedef -i ${LC_ALL%.*} -c -f UTF-8 /usr/lib/locale/$LC_ALL
 	if ! grep ^DROPBEAR_OPTIONS "$1/etc/daemons.conf" | grep -q -- -a; then
 		cat <<EOT
 The mosh server needs dropbear to allow connections to forwarded ports
