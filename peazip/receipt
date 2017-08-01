@@ -1,77 +1,121 @@
 # SliTaz package receipt.
 
 PACKAGE="peazip"
-VERSION="6.0.0"
+VERSION="6.4.1"
 SYSTEM="LINUX"
 ENV="GTK2"
 CATEGORY="x-window"
 SHORT_DESC="Open Source archive manager and data compression utility."
-MAINTAINER="hackdorte@sapo.pt"
-LICENSE="LGPL3"
+MAINTAINER="hackdorte@yandex.com"
+LICENSE="LGPLv3"
 WEB_SITE="http://peazip.org/peazip-linux.html"
+SUGGESTED="aescrypt gnupg"
+TAGS="archiver bzip2 encryption gzip rar split tar unrar xz zip 7zip"
 
 TARBALL="$PACKAGE-$VERSION.$SYSTEM.$ENV.tgz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="xorg-libX11 atk glibc-base cairo gtk+ gdk-pixbuf glib pango"
-
-# Rules to configure and make the package.
-compile_rules()
-{
-
-mkdir -p $install/
-cp -a $src/* $install/
-
-}
+DEPENDS="busybox desktop-file-utils xorg-libX11 atk glibc-base cairo gtk+ \
+gdk-pixbuf glib gmp pango ncurses upx zpaq xdg-utils"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 
-  # Build Tree
-    mkdir -p $install/usr/share/applications
-    mkdir -p $install/usr/share/pixmaps
-    cp -a $install/usr/local/share/applications/* $install/usr/share/applications
-    cp -a $install/usr/local/share/icons/* $install/usr/share/pixmaps
+# Make Directories For SliTaz GNU/Linux ...
 
+mkdir -p $fs/usr/bin
+mkdir -p $fs/usr/lib/peazip
+mkdir -p $fs/usr/share/applications
+mkdir -p $fs/usr/share/pixmaps
 
-# Writing (pea.desktop) File
-cat > $install/usr/share/applications/pea.desktop <<EOT
+cp -a $src/opt $fs/
+
+# Creating hierarchies for SliTaz GNU/Linux ...
+
+cp -a $src/usr/local/share/PeaZip/res $fs/usr/lib/peazip/
+cp -a $src/usr/local/share/PeaZip/peazip $fs/usr/lib/peazip/
+cp -a $src/usr/local/share/PeaZip/copying.txt $fs/usr/lib/peazip/
+cp -a $src/usr/local/share/PeaZip/peazip_help.pdf $fs/usr/lib/peazip/
+cp -a $src/usr/local/share/icons/peazip.png $fs/usr/share/pixmaps/
+
+# Creating the launchers ...
+
+# Desktop Entry For Pea
+cat > $fs/usr/share/applications/pea.desktop <<EOT
 [Desktop Entry]
 Version=1.0
 Encoding=UTF-8
-Name=Pea Checksum and Hash
-MimeType=application/x-gzip;application/x-lha;application/x-tar;application/x-tgz;application/x-tbz;application/x-tbz2;application/x-zip;application/zip;application/x-bzip;application/x-rar;application/x-tarz;application/x-archive;application/x-bzip2;application/x-jar;application/x-deb;application/x-ace;application/x-7z;application/x-arc;application/x-arj;application/x-compress;application/x-cpio;
-Exec=pea
-Icon=peazip
+Name=Pea
+GenericName=Archiving Tool
+Icon=peazip.png
 Type=Application
 Terminal=false
 X-KDE-HasTempFileOption=true
 Categories=GTK;KDE;Utility;System;Archiving;
-Name[en_US]=Pea Checksum and Hash
-Comment=Peazip Checksum and Hash
+MimeType=application/x-gzip;application/x-lha;application/x-tar;application/x-tgz;application/x-tbz;application/x-tbz2;application/x-zip;application/zip;application/x-bzip;application/x-rar;application/x-tarz;application/x-archive;application/x-bzip2;application/x-jar;application/x-deb;application/x-ace;application/x-7z;application/x-arc;application/x-arj;application/x-compress;application/x-cpio;
+Exec=pea
 
 EOT
 
-# Writing (pealauncher.desktop) File
-cat > $install/usr/share/applications/pealauncher.desktop <<EOT
+# Desktop Entry For Pealauncher
+cat > $fs/usr/share/applications/pealaucher.desktop <<EOT
 [Desktop Entry]
 Version=1.0
 Encoding=UTF-8
 Name=Pealauncher
-MimeType=application/x-gzip;application/x-lha;application/x-tar;application/x-tgz;application/x-tbz;application/x-tbz2;application/x-zip;application/zip;application/x-bzip;application/x-rar;application/x-tarz;application/x-archive;application/x-bzip2;application/x-jar;application/x-deb;application/x-ace;application/x-7z;application/x-arc;application/x-arj;application/x-compress;application/x-cpio;
-Exec=pealauncher
-Icon=peazip
+GenericName=Archiving Tool
+Icon=peazip.png
 Type=Application
 Terminal=false
 X-KDE-HasTempFileOption=true
 Categories=GTK;KDE;Utility;System;Archiving;
-Name[en_US]=Pealauncher
-Comment=Drag here the archive to extract.
+MimeType=application/x-gzip;application/x-lha;application/x-tar;application/x-tgz;application/x-tbz;application/x-tbz2;application/x-zip;application/zip;application/x-bzip;application/x-rar;application/x-tarz;application/x-archive;application/x-bzip2;application/x-jar;application/x-deb;application/x-ace;application/x-7z;application/x-arc;application/x-arj;application/x-compress;application/x-cpio;
+Exec=pealauncher
 
 EOT
 
-# All Done!
-cp -a $install/* $fs
+# Desktop Entry For Peazip
+cat > $fs/usr/share/applications/peazip.desktop <<EOT
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Peazip
+GenericName=Archiving Tool
+Icon=peazip.png
+Type=Application
+Terminal=false
+X-KDE-HasTempFileOption=true
+Categories=GTK;KDE;Utility;System;Archiving;
+MimeType=application/x-gzip;application/x-lha;application/x-tar;application/x-tgz;application/x-tbz;application/x-tbz2;application/x-zip;application/zip;application/x-bzip;application/x-rar;application/x-tarz;application/x-archive;application/x-bzip2;application/x-jar;application/x-deb;application/x-ace;application/x-7z;application/x-arc;application/x-arj;application/x-compress;application/x-cpio;
+Exec=peazip %F
 
+EOT
+
+# Creating the symbolic links ...
+
+cd $fs/usr/bin
+ln -s $fs/usr/lib/peazip/res/pea pea
+ln -s $fs/usr/lib/peazip/res/pealauncher
+ln -s $fs/usr/lib/peazip/peazip peazip
+
+echo ""
+echo ""
+echo "# ------------------------------------------------------------------------------"
+echo "#"
+echo "# ___________________________ SliTaz GNU/Linux _________________________________"
+echo "#"
+echo "# !! Please, report bug's to (http://bugs.slitaz.org)."
+echo "#"
+echo "# !! Improvements and suggestions please visit our forum and leave your "
+echo "#    comment. (http://forum.slitaz.org) Thank you."
+echo "#"
+echo "# !! Need help? See: (http://www.slitaz.org/en/support.php)"
+echo "#"
+echo "# && The SliTaz GNU/Linux DevTeam. (http://people.slitaz.org)"
+echo "# && The SliTaz GNU/Linux Association. (http://www.slitaz.org)"
+echo "#"
+echo "# ------------------------------------------------------------------------------"
+echo ""
+echo ""
 }
