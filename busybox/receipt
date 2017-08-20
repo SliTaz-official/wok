@@ -70,6 +70,7 @@ compile_rules()
 			make && make install || return 1
 		    strip --strip-unneeded -R .eh_frame -R .eh_frame_hdr \
 				$src/_install/bin/busybox
+		    mv busybox_unstripped.map busybox-glibc.map
 		    mv docs/busybox.1 docs/busybox.base.1
 
 			# prepare busybox-pam package
@@ -78,6 +79,7 @@ compile_rules()
 		    make oldconfig && make || return 1
 		    strip --strip-unneeded -R .eh_frame -R .eh_frame_hdr busybox
 		    mv busybox busybox-pam
+		    mv busybox_unstripped.map busybox-pam.map
 		    mv docs/busybox.1 docs/busybox.pam.1
 
 		    # prepare busybox-static package
@@ -88,6 +90,7 @@ compile_rules()
 			make oldconfig && make || return 1
 			cp busybox busybox-static
 			mv busybox busybox-uclibc
+			mv busybox_unstripped.map busybox-uclibc.map
 			mv -f docs/busybox.1 docs/busybox.static.1
 		    fi
 
@@ -98,6 +101,7 @@ compile_rules()
 			sed -i 's|uclibc-i486-||' .config
 			make oldconfig && make CC=musl-gcc || return 1
 			mv busybox busybox-musl
+			mv busybox_unstripped.map busybox-musl.map
 			mv -f docs/busybox.1 docs/busybox.static.1
 		    fi
 
@@ -108,6 +112,7 @@ compile_rules()
 			sed -i 's|uclibc-i486-||;s|CFLAGS="|&-D_BSD_SOURCE |;s|LDFLAGS="|&-Wl,--allow-multiple-definition |;s|LDLIBS="|&compat rpc |' .config
 			make oldconfig && make CC="/usr/lib/diet/bin/diet gcc" || return 1
 			mv busybox busybox-diet
+			mv busybox_unstripped.map busybox-diet.map
 			mv -f docs/busybox.1 docs/busybox.static.1
 		    fi
 
@@ -118,6 +123,7 @@ compile_rules()
 		    cp $stuff/$PACKAGE-${VERSION%.*}.config-ssfs .config
 		    make oldconfig && make busybox &&
 		    make CONFIG_PREFIX=$rootfs install || return 1
+		    mv busybox_unstripped.map busybox-ssfs.map
 		    cp $stuff/busybox.conf-ssfs $rootfs/etc/busybox.conf
 		    chown -R 0.0 $rootfs/etc
 		    chmod 0600 $rootfs/etc/busybox.conf
