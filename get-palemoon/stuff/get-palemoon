@@ -1,9 +1,11 @@
 #!/bin/sh
 # get Pale Moon web browser
-VERSION="27.4.2"
 
-WGET_URL="http://linux.palemoon.org/datastore/release/\
-palemoon-$VERSION.en-US.linux-i686.tar.bz2"
+WGET_URL="http://linux.palemoon.org$(wget -O - \
+http://linux.palemoon.org/download/mainline/ 2> /dev/null | \
+sed '/686/!d;s/.*href="\([^"]*\).*/\1/;q')"
+VERSION="$(echo $WGET_URL | sed 's/.*palemoon-\(.*\).en-US.*/\1/')"
+
 mkdir -p $1/opt; cd $1/opt; busybox wget -O - $WGET_URL | tar -xjf -
 
 ################
@@ -11,7 +13,7 @@ DESKTOP=usr/share/applications/palemoon-opt.desktop
 cat > $1/$DESKTOP << EOA
 [Desktop Entry]
 Type=Application
-Name=Palemoon v27.4
+Name=Palemoon v${VERSION%.*}
 Exec=/opt/palemoon/palemoon %u
 Icon=/opt/palemoon/browser/icons/mozicon128.png
 StartupNotify=true
@@ -24,8 +26,7 @@ mkdir -p "$PKGDIR"
 cat > "$PKGDIR/receipt" << EOR
 # SliTaz package receipt.
 
-PACKED_SIZE="28.8MB"
-UNPACKED_SIZE="60.9MB"
+UNPACKED_SIZE="$(du -hs $1/opt/palemoon | awk '{ print $1 }')"
 PACKAGE="palemoon-opt"
 VERSION="$VERSION"
 CATEGORY="network"
