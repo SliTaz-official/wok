@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="ipset"
+VERSION="6.32"
+CATEGORY="security"
+SHORT_DESC="Hi speed match for an entry against a set of firewall rules."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://ipset.netfilter.org/"
+WGET_URL="${WEB_SITE}$TARBALL"
+
+DEPENDS="libmnl"
+BUILD_DEPENDS="linux-module-headers libltdl libmnl-dev pkg-config"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	KVERSION=$(grep ^VERSION= $WOK/linux/receipt | cut -d '"' -f 2)-slitaz
+	sed -i "s/uname -r/echo $KVERSION/" configure
+	./configure --prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/sbin $fs/usr
+}

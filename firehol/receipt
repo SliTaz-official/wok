@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="firehol"
+VERSION="3.1.4"
+CATEGORY="security"
+SHORT_DESC="A firewall for humans..."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="http://firehol.org/"
+WGET_URL="https://github.com/firehol/firehol/releases/download/v$VERSION/$TARBALL"
+CONFIG_FILES="/etc/firehol"
+
+BUILD_DEPENDS="iproute2 iprange ipset"
+DEPENDS="$BUILD_DEPENDS bash"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure --prefix=/usr \
+		--sysconfdir=/etc \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/usr/sbin
+	cp -a $install/etc $fs
+	for i in $(ls $install/usr/sbin); do
+		ln -s /usr/libexec/firehol/$VERSION/$i $fs/usr/sbin
+	done
+	cp -a $install/usr/libexec $fs/usr
+	cp -a $install/usr/share/update-ipsets $fs/usr/share
+}
