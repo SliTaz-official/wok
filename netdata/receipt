@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="netdata"
+VERSION="1.7.0"
+CATEGORY="system-tools"
+SHORT_DESC="Real-time performance monitoring, done right"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL3"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="https://my-netdata.io/"
+WGET_URL="https://github.com/firehol/netdata/releases/download/v$VERSION/$TARBALL"
+TAGS="monitoring"
+CONFIG_FILES="/etc/netdata"
+
+DEPENDS="python-pyyaml util-linux-uuid zlib"
+BUILD_DEPENDS="pkg-config util-linux-uuid-dev"
+SUGGESTED="psycopg2 python-mysql lm-sensors curl node iproute2 gnu-netcat"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure --prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--with-zlib \
+		--with-math \
+		--with-user=netdata \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $install/usr/share/doc $fs/etc/logrotate.d $fs/etc/init.d
+	cp $src/README* $install/usr/share/doc
+	cp -a $install/* $fs/
+	cp $src/system/netdata.conf $fs/etc/netdata
+	cp $src/system/netdata.logrotate $fs/etc/logrotate.d/netdata
+	ln -s daemon $fs/etc/init.d/netdata
+}
