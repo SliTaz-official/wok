@@ -12,7 +12,7 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="https://git.ipxe.org/ipxe.git/snapshot/$GIT_TAG.tar.bz2"
 
 DEPENDS=""
-BUILD_DEPENDS="perl wget liblzma-dev"
+BUILD_DEPENDS="perl wget liblzma-dev syslinux"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -26,6 +26,9 @@ compile_rules()
 	    -e 's|//\(#define.*CONSOLE_CMD\)|\1|' \
 	    -e 's|//\(#define.*REBOOT_CMD\)|\1|' config/general.h
 	cp $stuff/lkrnprefix.S arch/i386/prefix
+	pxelinux="$(ls $WOK/syslinux/source/*/core/pxelinux.0)"
+	make bin/undionly.kkkpxe EMBED=$stuff/ipxelinux.ipxe,$pxelinux &&
+		mv bin/undionly.kkkpxe bin/ipxelinux.0
 	make bin/undionly.pxe bin/undionly.kpxe bin/undionly.kkpxe \
 	     bin/undionly.kkkpxe bin/ipxe.pxe bin/ipxe.kpxe bin/ipxe.kkpxe \
 	     bin/ipxe.kkkpxe bin/ipxe.nbi bin/ipxe.lkrn EMBED=$stuff/ipxe.cmd
