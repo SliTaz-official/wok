@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="kleanny"
+VERSION="1.0"
+CATEGORY="system-tools"
+SHORT_DESC="The Cache Cleaner for SliTaz."
+MAINTAINER="devel@slitaz.org"
+LICENSE="GPLv3"
+WEB_SITE="http://people.slitaz.org/~leonardolaporte/sh/kleanny"
+
+DEPENDS="bash librsvg yad-gtk2-html"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+
+local_dir="var/www/cgi-bin/kleanny"
+launcher_dir="usr/share/applications"
+
+	mkdir -p $fs/$local_dir $fs/$launcher_dir
+
+	cp -a stuff/* $fs/$local_dir
+	cp -a stuff/res/desktop/kleanny.desktop $fs/$launcher_dir
+
+}
+
+post_install()
+{
+
+startup_app="$1/var/www/cgi-bin/kleanny/kleanny"
+quit_app="$1/var/www/cgi-bin/kleanny/res/base/quit"
+
+	chmod +x $startup_app $quit_app
+	cd $1/usr/bin && ln -s $startup_app kleanny
+	exit
+
+}
+
+post_remove()
+{
+
+	# Remove the symbolic link.
+	rm -rf $1/usr/bin/kleanny && exit
+
+}
