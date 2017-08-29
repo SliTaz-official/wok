@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="snapper"
+VERSION="0.5.0"
+CATEGORY="base-system"
+SHORT_DESC="The ultimate snapshot tool for Linux."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://snapper.io/"
+WGET_URL="ftp://ftp.suse.com/pub/projects/snapper/$TARBALL"
+CONFIG_FILES="/etc/snapper"
+
+DEPENDS="gcc49-lib-base libboost-thread libboost-system libxml2 acl attr zlib \
+util-linux-mount util-linux-blkid util-linux-uuid dbus"
+BUILD_DEPENDS="util-linux-mount-dev lvm2 btrfs-dev pkg-config dbus-dev gcc49 \
+libboost-dev libboost-thread-dev e2fsprogs-dev docbook-xsl"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure CC=gcc-49 CXX=g++-49 --prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		--disable-pam \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/zypp $fs/usr/lib
+	cp -a $install/usr/lib/snapper $fs/usr/lib
+	cp -a $install/usr/share/dbus* $fs/usr/share
+	cp -a $install/usr/share/locale $fs/usr/share
+	cp -a $install/etc $fs
+}
