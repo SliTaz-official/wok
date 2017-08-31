@@ -1,0 +1,211 @@
+# Turbine Scheme File.
+# Please use HTML5 only.
+# Javascript and CSS are available.
+# ----------------------------------------------------------------------------
+#           Provided By The SliTaz Development Team.
+#          Copyright (C) 2017 The SliTaz Association.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# ----------------------------------------------------------------------------
+
+# @@ Library and functions by SliTaz OS.
+. /usr/lib/slitaz/httphelper.sh
+. /etc/slitaz/slitaz.conf
+. /lib/libtaz.sh
+
+# @@ The output header with the meta-info.
+appMETAINFO(){
+cat <<OUTPUT
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="$APP_ENCODING"/>
+<title>$APP_TITLE - $APP_DESC</title>
+
+<style type="text/css">
+<!--
+$(cat $APP_DESIGN)
+-->
+</style>
+
+<script type="text/javascript">
+$(cat $APP_SCRIPT)
+</script>
+
+</head>
+<body>
+<div id="panel">
+
+<p title="$USER" id="user-id" data-icon=" ">$USER</p>
+
+<header class="textup">
+  <h1><img src="?img=lg" alt="" />$APP_TITLE</h1>
+  <h3>$(_ "$APP_DESC")</h3>
+</header>
+
+OUTPUT
+}
+
+appSTATUS(){
+cat <<OUTPUT
+
+<section id="pc">
+  <h1>
+  $(awk -F: '/model name/ {print $2;exit}' /proc/cpuinfo) <br>
+  <small class="date">$(date)</small>
+  </h1>
+</section>
+
+<div id="display">
+
+<aside class="panel">
+<span class="info textup"><small>Active</small></span><br>
+  <h2 class="rs">$(awk -F"[: ]+" '/Active/ {print $2;exit}' /proc/meminfo)</h2>
+</aside>
+<aside class="panel">
+<span class="info textup"><small>Mem Total</small></span><br>
+  <h2 class="rs">$(awk -F"[: ]+" '/MemTotal/ {print $2;exit}' /proc/meminfo)</h2>
+</aside>
+<aside class="panel">
+<span class="info textup"><small>Inactive</small></span><br>
+  <h2 class="rs">$(awk -F"[: ]+" '/Inactive/ {print $2;exit}' /proc/meminfo)</h2>
+</aside>
+<br /> <!-- @@ breakpoint -->
+
+<aside class="panel" data="left">
+<section>
+  <table>
+    <tr>
+      <td>Buffers</td>
+      <td class="rs tr">$(awk -F"[: ]+" '/Buffers/ {print $2;exit}' /proc/meminfo)</td>
+    </tr>
+    <tr>
+      <td>Cached</td>
+      <td class="rs tr">$(awk -F"[: ]+" '/Cached/ {print $2;exit}' /proc/meminfo)</td>
+    </tr>
+    <tr>
+      <td>Mapped</td>
+      <td class="rs tr">$(awk -F"[: ]+" '/Mapped/ {print $2;exit}' /proc/meminfo)</td>
+    </tr>
+    <tr>
+      <td>Slab</td>
+      <td class="rs tr">$(awk -F"[: ]+" '/Slab/ {print $2;exit}' /proc/meminfo)</td>
+    </tr>
+  </table>
+</section>
+</aside>
+
+<aside class="panel" data="center">
+<section>
+  <aside class="l">
+    <p><small>Free<br><span style="color:lightgreen">$(free | grep Mem | awk '{print ($4/$2)*100.0}')</span></small></p>
+  </aside>
+  <aside class="r">
+    <p><small>Used<br><span style="color:orange">$(free | grep Mem | awk '{print ($3/$2)*100.0}')</span></small></p>
+  </aside>
+  <br /><hr />
+  <form method="POST" action="freeup.cgi">
+    <button type="submit">$(_ 'FREE UP!')</button>
+  </form>
+</section>
+</aside>
+
+<aside class="panel" data="right">
+<section>
+  <table>
+    <tr>
+      <td>HighTotal</td>
+      <td class="rs tr">$(awk -F"[: ]+" '/HighTotal/ {print $2;exit}' /proc/meminfo)</td>
+    </tr>
+    <tr>
+      <td>HighFree</td>
+      <td class="rs tr">$(awk -F"[: ]+" '/HighFree/ {print $2;exit}' /proc/meminfo)</td>
+    </tr>
+    <tr>
+      <td>LowTotal</td>
+      <td class="rs tr">$(awk -F"[: ]+" '/LowTotal/ {print $2;exit}' /proc/meminfo)</td>
+    </tr>
+    <tr>
+      <td>LowFree</td>
+      <td class="rs tr">$(awk -F"[: ]+" '/LowFree/ {print $2;exit}' /proc/meminfo)</td>
+    </tr>
+  </table>
+</section>
+</aside>
+<br /> <!-- @@ breakpoint -->
+
+OUTPUT
+}
+
+# @@ The action and animation
+appFREEUP(){
+cat <<OUTPUT
+
+<div class="anibox">
+  <img class="ani spin" src="?img=ani2" alt="">
+  <img class="gear" src="?img=ani3" alt="">
+  <img class="fix spin" src="?img=turbine" alt=""/>
+</div><!-- // anibox -->
+
+<!--
+<section>
+  <div class="linescan"></div>
+</section>
+-->
+
+OUTPUT
+}
+
+# @@ The footer with additional information.
+appFOOTER(){
+cat <<OUTPUT
+
+</div> <!-- # display -->
+
+<footer class="textup">
+  <h4>$APP_NAME $APP_VERSION - $APP_LICENSE</h4><hr>
+  <h5>SliTaz GNU/Linux $SLITAZ_RELEASE ~ Kernel $(uname -r) ~ Machine $(uname -m)<br>
+    Provided by The SliTaz DevTeam - Copyright (C) 2017 The SliTaz Association
+  </h5>
+</footer>
+
+</div>
+</body>
+</html>
+OUTPUT
+}
+
+textRELOAD(){
+cat <<OUTPUT
+<p title="Reload" id="reload"><a href="?"></a></p>
+OUTPUT
+}
+
+appCLOSE(){
+cat <<OUTPUT
+
+<form id="close" method="POST" action="quit">
+  <button type="submit" title="$(_ 'Exit')">X</button>
+</form>
+
+OUTPUT
+}
+
+appRETURN(){
+cat <<OUTPUT
+<html><head>
+<meta http-equiv="refresh" content="1;url=status.cgi" />
+</head></html>
+OUTPUT
+}

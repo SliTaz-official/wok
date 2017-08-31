@@ -1,0 +1,77 @@
+#!/bin/bash
+#
+#           Provided By The SliTaz Development Team.
+#          Copyright (C) 2017 The SliTaz Association.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Import Turbine Database.
+source /var/www/cgi-bin/turbine/res/base/data
+
+export turbine="/usr/bin/turbine"
+
+# Check DEPENDS
+# -------------
+CHK_BASH="/var/lib/tazpkg/installed/bash"          # Check Bash
+CHK_YAD="/var/lib/tazpkg/installed/yad-gtk2-html"  # Check Yad with HTML.
+CHK_SVG="/var/lib/tazpkg/installed/librsvg"        # Check Librsvg.
+CHK_FAIL="file:///$localdata/base/deps.fail.html"  # Report missing DEPS.
+
+# ----------------------------------------------------------------------------
+# It is important to check if any dependencies have been removed by user.
+
+checkDEPS(){
+if [ -e "$CHK_BASH" ] && [ -e "$CHK_YAD" ] && [ -e "$CHK_SVG" ]
+then
+  # OK! Let's check the logs now...
+  checkROOT
+else
+  # Oops! Let's report the problem in the default browser.
+  browser $CHK_FAIL
+exit
+fi
+}
+
+# Check Root
+# ----------
+
+checkROOT(){
+
+user=$(id -u)
+if [ "$user" == "0" ]
+then
+  turbine
+else
+  tazbox su turbine
+fi
+
+exit
+
+}
+
+# Start Turbine
+# -------------
+
+turbine(){
+
+yad --gtkrc="$localtheme/gtkrc" --undecorated \
+  --window-icon="$localicons/48/turbine.svg" \
+  --title="$APP_TITLE - $APP_DESC" --center \
+  --width="760" --height="520" --no-buttons \
+  --browser --html --mime="text/html" \
+  --borders="0" --uri="$localwww/res/base/status.cgi"
+
+}
+
+checkDEPS
