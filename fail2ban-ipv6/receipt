@@ -1,14 +1,19 @@
 # SliTaz package receipt.
 
-PACKAGE="fail2ban"
+PACKAGE="fail2ban-ipv6"
+SOURCE="fail2ban"
 VERSION="0.9.0"
 CATEGORY="network"
-SHORT_DESC="Scans log files to bans IP that makes too many password failures."
+SHORT_DESC="Scans log files to bans IPv4 & IPv6 that makes too many password failures."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+EXTRA_SOURCE_FILES="fail2ban-ipv6.tar.xz"
 WEB_SITE="http://www.fail2ban.org/wiki/index.php/Main_Page"
+WEB_SITE2="https://blog.tetsumaki.net/articles/2014/03/ajout-du-support-ipv6-sur-fail2ban.html"
 WGET_URL="https://codeload.github.com/$PACKAGE/$PACKAGE/tar.gz/$VERSION"
+PATCH="https://data.tetsumaki.net/divers/fail2ban-ipv6.tar.xz"
+PROVIDE="fail2ban"
 TAGS="monitor network"
 CONFIG_FILES="/etc/fail2ban"
 
@@ -18,14 +23,23 @@ BUILD_DEPENDS="python wget"
 # Rules to configure and make the package.
 compile_rules()
 {
+	[ -s $SOURCES_REPOSITORY/$(basename $PATCH) ] ||
+		wget --no-check-certificate -P $SOURCES_REPOSITORY $PATCH
+	tar xf $SOURCES_REPOSITORY/$(basename $PATCH)
+	for i in fail2ban-ipv6/*.patch ; do
+		patch -p0 < $i
+	done
 	python setup.py install --root=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc/logrotate.d $fs/etc/init.d
+	mkdir -p $fs/etc/logrotate.d $fs/etc/init.d $fs/usr/bin
 	cp -a $install/* $fs
+	cp -a $src/fail2ban-ipv6/*.sh $fs/usr/bin
+	cp -a $src/fail2ban-ipv6/*.conf $fs/etc/fail2ban/action.d
+	sed -i 's/^.DEFAULT*/&\njailaction = iptable46-multiport/' $fs/etc/fail2ban/jail.conf
 	sed -i 's/= \\s\*/= \\s*\\S+\\s\*/'  $fs/etc/fail2ban/filter.d/common.conf
 	sed -i -e 's|127.0.0.1.*|& 192.168.0.0/16|;s|sshd.log|messages|' \
 		-e '/ssh-iptables/{nn;s/false/true/}' $fs/etc/fail2ban/jail.conf
