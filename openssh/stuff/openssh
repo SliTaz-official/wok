@@ -19,21 +19,21 @@ PIDFILE=/var/run/sshd.pid
 case "$1" in
 	start)
 		# We need rsa and dsa host key file to start dropbear.
-		if [ ! -f /etc/ssh/ssh_host_rsa_key ] ; then
-			_ 'Generating OpenSSH %s key... ' rsa
-			ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
-		fi
-		if [ ! -f /etc/ssh/ssh_host_dsa_key ] ; then
-			_ 'Generating OpenSSH %s key... ' dsa
-			ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
-		fi
-		if [ ! -f /etc/ssh/ssh_host_ecdsa_key ] ; then
-			_ 'Generating OpenSSH %s key... ' ecdsa
-			ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -C '' -N ''
-		fi
+		for type in rsa dsa ecdsa ; do
+			[ -f /etc/ssh/ssh_host_${type}_key ] && continue
+			_ 'Generating OpenSSH %s key... ' $type
+			ssh-keygen -t $type -f /etc/ssh/ssh_host_${type}_key -C '' -N ''
+		done
 		if active_pidfile $PIDFILE sshd ; then
 			_ '%s is already running.' $NAME
 			exit 1
+		fi
+		if [ -n "$(which iptables)" ] && ! iptables -L | grep 'tcp dpt:ssh ' ; then
+		    	tcp22new='iptables -A INPUT -p tcp -m tcp --dport 22 -m state --state NEW -m recent'
+			$tcp22new --set --name DEFAULT --rsource
+			limit='--seconds 300 --hitcount 5 --name DEFAULT --rsource'
+			$tcp22new --update $limit -j LOG --log-prefix "SSH-Bruteforce : "
+			$tcp22new --update $limit -j DROP
 		fi
 		action 'Starting %s: %s...' "$DESC" $NAME
 		$DAEMON $OPTIONS

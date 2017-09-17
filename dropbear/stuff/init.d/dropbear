@@ -17,30 +17,24 @@ PIDFILE=/var/run/dropbear.pid
 case "$1" in
   start)
     # We need rsa and dss host key file to start dropbear.
-    if [ ! -s /etc/dropbear/dropbear_rsa_host_key ] ; then
-      action 'Generating Dropbear %s key...' RSA
-      # Need to delete key before creating it.
-      rm -f /etc/dropbear/dropbear_rsa_host_key
-      dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key >/dev/null 2>&1
-      status
-    fi
-    if [ ! -s /etc/dropbear/dropbear_dss_host_key ] ; then
-      action 'Generating Dropbear %s key...' DSS
-      # Need to delete key before creating it.
-      rm -f /etc/dropbear/dropbear_dss_host_key
-      dropbearkey -t dss -f /etc/dropbear/dropbear_dss_host_key >/dev/null 2>&1
-      status
-    fi
-    if [ ! -s /etc/dropbear/dropbear_ecdsa_host_key ] ; then
-      action 'Generating Dropbear %s key...' ECDSA
-      # Need to delete key before creating it.
-      rm -f /etc/dropbear/dropbear_ecdsa_host_key
-      dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key >/dev/null 2>&1
-      status
-    fi
+    for type in rsa dss ecdsa ; do
+	[ -f /etc/dropbear/dropbear_${type}_host_key ] && continue
+	action 'Generating Dropbear %s key... ' $type
+	# Need to delete key before creating it.
+	rm -f /etc/dropbear/dropbear_${type}_host_key
+	dropbearkey -t $type /etc/dropbear/dropbear_${type}_host_key >/dev/null 2>&1
+	status
+    done
     if active_pidfile $PIDFILE dropbear ; then
       _ '%s is already running.' $NAME
       exit 1
+    fi
+    if [ -n "$(which iptables)" ] && ! iptables -L | grep 'tcp dpt:ssh ' ; then
+    	tcp22new='iptables -A INPUT -p tcp -m tcp --dport 22 -m state --state NEW -m recent'
+	$tcp22new --set --name DEFAULT --rsource
+	limit='--seconds 300 --hitcount 5 --name DEFAULT --rsource'
+	$tcp22new --update $limit -j LOG --log-prefix "SSH-Bruteforce : "
+	$tcp22new --update $limit -j DROP
     fi
     action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS
