@@ -248,6 +248,10 @@ static void md5_begin(void)
  * Licensed under GPLv2 or later, see file LICENSE in this source tree.
  */
 
+#ifdef EXTRA
+#define WITH_UNROCKRIDGE
+#endif
+#ifdef WITH_UNROCKRIDGE
 static char *unrockridge(const char *name)
 {
 	static char buffer[256];
@@ -270,6 +274,7 @@ static char *unrockridge(const char *name)
 	buffer[i] = 0;
 	return buffer;
 }
+#endif
 
 static uint8_t *hash_file(const char *filename)
 {
@@ -278,9 +283,12 @@ static uint8_t *hash_file(const char *filename)
 	static uint8_t hash_value[16*2+1];
 
 	src_fd = open(filename, O_RDONLY);
+#ifdef WITH_UNROCKRIDGE
 	if (src_fd < 0) {
 		src_fd = open(unrockridge(filename), O_RDONLY);
 	}
+#endif
+
 	if (src_fd < 0) {
 		return NULL;
 	}
@@ -301,6 +309,7 @@ static uint8_t *hash_file(const char *filename)
 	return hash_value;
 }
 
+#ifdef EXTRA
 static int main_say(int argc, char **argv)
 {
 	int i;
@@ -310,6 +319,7 @@ static int main_say(int argc, char **argv)
 	sleep(5);
 	return 0;
 }
+#endif
 
 static int main_md5sum(int argc, char **argv)
 {
@@ -323,8 +333,10 @@ static int main_md5sum(int argc, char **argv)
 		FILE *fp;
 		char eol, *line, buffer[4096];
 		fp = fopen(*argv,"r");
+#ifdef WITH_UNROCKRIDGE
 		if (fp == NULL)
 			fp = fopen(unrockridge(*argv),"r");
+#endif
 
 		while ((line = fgets(buffer,sizeof(buffer),fp)) != NULL) {
 			uint8_t *hash_value;
@@ -732,14 +744,13 @@ static int find_boolean(char **argv, const char *argument)
 static int got_config;
 static char *custom_cmdline = "";
 static int custom_initrdlen;
-static char *custom_initrdbase;
+static int custom_initrdbase;
 static char *custom_buffer;
 static struct disk_info diskinfo;
 
 static int has_custom_config(void)
 {
     const union syslinux_derivative_info *sdi;
-    int retry=0;
     
     if (got_config)
     	goto done;
@@ -748,27 +759,24 @@ static int has_custom_config(void)
     	goto fail;
     disk_get_params(sdi->iso.drive_number, &diskinfo);
     custom_buffer = disk_read_sectors(&diskinfo, 32768 / diskinfo.bps, 1);
-    got_config = (*(unsigned long *) (custom_buffer + 80) * 2048) / diskinfo.bps;
-    do {
-	free(custom_buffer);
-	custom_buffer = disk_read_sectors(&diskinfo, got_config, 1);
-	if (!memcmp(custom_buffer,"#!boot ",7)) {
-	    char *p = custom_buffer+7+32+1;
+    got_config = (16 + *(unsigned long *) (custom_buffer + 80)) 
+    		 * 2048 / diskinfo.bps;
+    free(custom_buffer);
+    custom_buffer = disk_read_sectors(&diskinfo, got_config, 1);
+    if (!memcmp(custom_buffer,"#!boot ",7)) {
+	char *p = custom_buffer+7+32+1;
 	
-    	    if (!memcmp(p,"append=",7)) {
-		custom_cmdline = p + 7;
-		p = strchr(p,'\n');
-		*p++ = 0;
-    	    }
-    	    if (!memcmp(p,"initrd:",7)) {
-    		custom_initrdlen = strtoul(p + 7, &custom_initrdbase, 10);
-    		custom_initrdbase++;
-    	    }
-    	    return 1;
-	}
-	got_config += 16UL;
-	retry = 1 - retry;
-    } while (retry);
+    	if (!memcmp(p,"append=",7)) {
+	    custom_cmdline = p + 7;
+	    p = strchr(p,'\n');
+	    *p++ = 0;
+    	}
+    	if (!memcmp(p,"initrd:",7)) {
+    	    custom_initrdlen = strtoul(p + 7, &custom_initrdbase, 10);
+    	    custom_initrdbase += (got_config << 11) + 1 - (int) custom_buffer;
+    	}
+    	return 1;
+    }
 fail:
     got_config = -1;
 done:
@@ -780,22 +788,17 @@ static int loadcustominitrd(void **data)
     int n, len;
     char *p;
     
-    p = *data = malloc(custom_initrdlen);
+    p = *data = malloc(len = custom_initrdlen);
     if (!p) return 0;
-    len = custom_initrdlen;
-    while (1) {
-	n = 2048 + custom_buffer - custom_initrdbase;
+    for (len = custom_initrdlen; len != 0; len -= n, p += n) {
+	free(custom_buffer);
+	custom_buffer = disk_read_sectors(&diskinfo, custom_initrdbase >> 11,
+					  2048 / diskinfo.bps);
+	n = 2048 - (custom_initrdbase & 2047);
     	if (n > len)
     	    n = len;
-	memcpy(p, custom_initrdbase, n);
-	p += n;
-	len -= n;
-	if (len == 0)
-	    break;
-	free(custom_buffer);
-	got_config += 2048 / diskinfo.bps;
-	custom_initrdbase = custom_buffer = 
-		disk_read_sectors(&diskinfo, got_config, 2048 / diskinfo.bps);
+	memcpy(p, custom_buffer + (custom_initrdbase & 2047), n);
+	custom_initrdbase += n;
     }
     return 1;
 }
@@ -849,10 +852,7 @@ static char *make_cmdline(char **argv)
     return cmdline;
 }
 
-static bool __constfunc cpu_has_cpuid(void)
-{
-    return cpu_has_eflag(X86_EFLAGS_ID);
-}
+#define cpu_has_cpuid() cpu_has_eflag(X86_EFLAGS_ID)
 
 static bool __constfunc cpu_has_level(uint32_t level)
 {
@@ -896,8 +896,10 @@ static const char *extfilename(const char *filename, char *ext, int feature)
 		if (cpu_has_feature(feature)) {
 			strcat(newfilename, ext);
 			fd = open(new, O_RDONLY);
+#ifdef WITH_UNROCKRIDGE
 			if (fd < 0)
 				fd = open(new = unrockridge(new), O_RDONLY);
+#endif
 			if (fd >= 0) {
 				found = new;
 				close(fd);
@@ -1114,6 +1116,7 @@ bail:
     return 1;
 }
 
+#ifdef EXTRA
 static int main_setarg(int argc, char *argv[])
 {
 	if (argc < 3) {
@@ -1191,6 +1194,7 @@ static int main_listarg(int argc, char *argv[])
     sleep(5);
     return 0;
 }
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -1199,16 +1203,18 @@ int main(int argc, char *argv[])
 		char *name;
 		int (*main)(int argc, char *argv[]);
 	} bin[] = {
+#ifdef EXTRA
 		{ "say",	main_say      },
-		{ "md5sum",	main_md5sum   },
-		{ "ifmem",	main_ifmem    },
-		{ "reboot",	main_reboot   },
-		{ "poweroff",	main_poweroff },
-		{ "kbdmap",	main_kbdmap   },
-		{ "linux",	main_linux    },
 		{ "setarg",	main_setarg   },
 		{ "ifarg",	main_ifarg    },
-		{ "listarg",	main_listarg  }
+		{ "listarg",	main_listarg  },
+#endif
+		{ "kbdmap",	main_kbdmap   },
+		{ "ifmem",	main_ifmem    },
+		{ "linux",	main_linux    },
+		{ "md5sum",	main_md5sum   },
+		{ "reboot",	main_reboot   },
+		{ "poweroff",	main_poweroff }
 	};
 
 	openconsole(&dev_null_r, &dev_stdcon_w);
