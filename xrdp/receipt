@@ -1,19 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="xrdp"
-VERSION="0.6.1"
+VERSION="0.9.3.1"
 CATEGORY="network"
 SHORT_DESC="An open source remote desktop protocol(rdp) server."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-v$VERSION.tar.gz"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.xrdp.org/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WGET_URL="https://github.com/neutrinolabs/xrdp/releases/download/v$VERSION/$TARBALL"
 
 DEPENDS="libssl zlib xorg-libX11 xorg-libXfixes libxcb xorg-libXau \
-xorg-libXdmcp pam tightvnc"
+xorg-libXdmcp pam tightvnc util-linux-uuid"
 BUILD_DEPENDS="autoconf automake libtool pkg-config openssl-dev pam-dev \
-xorg-dev"
+xorg-dev util-linux-uuid-dev nasm"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,6 +23,7 @@ compile_rules()
 		--sysconfdir=/etc \
 		--mandir=/usr/share/man \
 		--localstatedir=/var \
+		--enable-ipv6 \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -31,12 +32,18 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc/init.d
-	cp -a $install/* $fs/
+	mkdir -p $fs/usr/lib/xrdp $fs/usr/share
+	cp -a $install/etc $fs/
+	cp -a $install/usr/lib/xrdp/*.so* $fs/usr/lib/xrdp/
+	cp -a $install/usr/sbin $fs/usr/
+	cp -a $install/usr/bin $fs/usr/
+	cp -a $install/usr/share/xrdp $fs/usr/share/
 	mv $fs/etc/xrdp/xrdp.sh $fs/etc/init.d/xrdp
 	sed -i	-e 's|/usr/local|/usr|;s|xrdp\.sh|xrdp|' \
 		-e 's|--noheading -C||' \
 		-e 's,grep -q -i,grep /usr/sbin | &,' \
 		$fs/etc/init.d/xrdp
-	sed -i 's|gnome|lxde-session &|' $fs/etc/xrdp/startwm.sh
+	SESSION="/usr/bin/lxde-session"
+	sed -i "s|xterm|[ -x $SESSION ] \\&\\& exec $SESSION\\n &|" \
+		$fs/etc/xrdp/startwm.sh
 }
