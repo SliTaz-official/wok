@@ -15,10 +15,12 @@ netfs()
 	grep -qe '\(:.* /\|httpfs\|nfs\|smbfs\|ncp\|coda\)' /proc/mounts
 }
 
-logger "$0 interface=$interface ip=$ip ipv6=$ipv6 broadcast=$broadcast subnet=$subnet ipv6prefix=$ipv6prefix router=$router domain=$domain dns=$dns fqdn=$fqdn $@"
+logger "$0 interface=$interface ip=$ip ipv6=$ipv6 broadcast=$broadcast \
+subnet=$subnet ipv6prefix=$ipv6prefix router=$router domain=$domain dns=$dns \
+fqdn=$fqdn mask=$mask lease=$lease tz=$tz tz_name=$tz_name sname=$sname $@"
 
 skip="$(sed "/skipdhcpip=/!d;s/.*skipdhcpip=\([^ ]*\).*/\1/" </proc/cmdline)"
-case " $skip " in *\ ${ip:-$ipv6}\ *) exit 0;; esac
+case ",${skip:-X}," in *,${ip:-$ipv6},*) exit 0;; esac
 
 case "$1" in
 	deconfig)
@@ -36,17 +38,18 @@ case "$1" in
 		ip=${ip:-$ipv6}
 		if [ ${ip/:/} == $ip ]; then
 			ifconfig $interface $ip $BROADCAST $NETMASK
+			v6=""
 		else
 			ip -6 addr add $ip/${ipv6mask:-64} $DEV
+			v6="-A inet6"
 		fi
 
 		if [ -n "$router" ] ; then
 			while route del default gw 0.0.0.0 $DEV ; do :; done
-			t=
-			[ ${ip/:/} != $ip ] && t="-A inet6" && ip -6 route flush $DEV
-			metric=0
+			[ -n "$v6" ] && ip -6 route flush $DEV
+			m=0
 			for i in $router ; do
-				route $t add default gw $i $DEV metric $((metric++))
+				route $v6 add default gw $i $DEV metric $((m++))
 			done
 		fi 2>/dev/null
 
