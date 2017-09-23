@@ -31,11 +31,13 @@ case "$1" in
 		;;
 
 	renew|bound)
-		if [ ${ip/:/} == $ip ];	then
+		ipv6prefix=${ipv6prefix:-/64}
+		[ -n "$ip" ] && if [ ${ip/:/} == $ip ]; then
 			ifconfig $interface $ip $BROADCAST $NETMASK
 		else
 			ip -6 addr add ${ip}/${ipv6prefix#*/} dev $interface
 		fi
+		[ -n "$ipv6" ] && ip -6 addr add ${ipv6}/${ipv6prefix#*/} dev $interface
 
 		if [ -n "$router" ] ; then
 			echo "deleting routers"
