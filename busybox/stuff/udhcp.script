@@ -11,35 +11,47 @@ RESOLV_CONF="/etc/resolv.conf"
 
 netfs()
 {
-	/bin/grep -qe '\(:.* /\|httpfs\|nfs\|smbfs\|ncp\|coda\)' /proc/mounts
+	grep -qe '\(:.* /\|httpfs\|nfs\|smbfs\|ncp\|coda\)' /proc/mounts
 }
 
-logger "$0 interface=$interface ip=$ip broadcast=$broadcast subnet=$subnet router=$router domain=$domain dns=$dns $@"
+logger "$0 interface=$interface ip=$ip ipv6=$ipv6 broadcast=$broadcast subnet=$subnet ipv6prefix=$ipv6prefix router=$router domain=$domain dns=$dns fqdn=$fqdn $@"
 
 skip=$(sed "/skipdhcpip=/!d;s/.*skipdhcpip=\([^ ]*\).*/\1/" </proc/cmdline)
 [ -n "$skip" ] && case "$ip" in $skip*) exit 0;; esac
 
 case "$1" in
 	deconfig)
-		netfs || /sbin/ifconfig $interface 0.0.0.0
+		if !netfs; then
+			ifconfig $interface 0.0.0.0
+			ip -6 addr flush dev $interface
+		fi
 		for i in /etc/ipdown.d/*; do
 			[ -x $i ] && $i $interface
 		done
 		;;
 
 	renew|bound)
-		/sbin/ifconfig $interface $ip $BROADCAST $NETMASK
+		if [ ${ip/:/} == $ip ];
+			ifconfig $interface $ip $BROADCAST $NETMASK
+		else
+			ip -6 addr add ${ip}/${ipv6prefix#*/} dev $interface
+		fi
 
 		if [ -n "$router" ] ; then
 			echo "deleting routers"
 			while route del default gw 0.0.0.0 dev $interface 2>/dev/null; do
 				:
 			done
+			[ ${ip/:/} != $ip ] && ip -6 route flush dev $interface
 
 			metric=0
 			for i in $router ; do
-				route add default gw $i dev $interface metric $((metric++)) 2>/dev/null
-			done
+				if [ ${ip/:/} == $ip ]; then
+					route add default gw $i dev $interface metric $((metric++))
+				else
+					route -A inet6 add default gw $i dev $interface metric $((metric++))
+				fi
+			done 2>/dev/null
 		fi
 
 		echo -n > $RESOLV_CONF
