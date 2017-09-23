@@ -8,6 +8,7 @@
 RESOLV_CONF="/etc/resolv.conf"
 [ -n "$broadcast" ] && BROADCAST="broadcast $broadcast"
 [ -n "$subnet" ] && NETMASK="netmask $subnet"
+DEV="dev $interface"
 
 netfs()
 {
@@ -16,14 +17,14 @@ netfs()
 
 logger "$0 interface=$interface ip=$ip ipv6=$ipv6 broadcast=$broadcast subnet=$subnet ipv6prefix=$ipv6prefix router=$router domain=$domain dns=$dns fqdn=$fqdn $@"
 
-skip=$(sed "/skipdhcpip=/!d;s/.*skipdhcpip=\([^ ]*\).*/\1/" </proc/cmdline)
-[ -n "$skip" ] && case "$ip" in $skip*) exit 0;; esac
+skip="$(sed "/skipdhcpip=/!d;s/.*skipdhcpip=\([^ ]*\).*/\1/" </proc/cmdline)"
+case " $skip " in *\ $ip\ *) exit 0;; esac
 
 case "$1" in
 	deconfig)
 		if !netfs; then
 			ifconfig $interface 0.0.0.0
-			ip -6 addr flush dev $interface
+			ip -6 addr flush $DEV
 		fi
 		for i in /etc/ipdown.d/*; do
 			[ -x $i ] && $i $interface
@@ -31,37 +32,30 @@ case "$1" in
 		;;
 
 	renew|bound)
-		ipv6prefix=${ipv6prefix:-/64}
-		[ -n "$ip" ] && if [ ${ip/:/} == $ip ]; then
+		ipv6mask=${ipv6prefix#*/}
+		[ -n "$ip" ] || ip=$ipv6
+		if [ ${ip/:/} == $ip ]; then
 			ifconfig $interface $ip $BROADCAST $NETMASK
 		else
-			ip -6 addr add ${ip}/${ipv6prefix#*/} dev $interface
+			ip -6 addr add $ip/${ipv6mask:-64} $DEV
 		fi
-		[ -n "$ipv6" ] && ip -6 addr add ${ipv6}/${ipv6prefix#*/} dev $interface
 
 		if [ -n "$router" ] ; then
-			echo "deleting routers"
-			while route del default gw 0.0.0.0 dev $interface 2>/dev/null; do
+			while route del default gw 0.0.0.0 $DEV ; do
 				:
 			done
-			[ ${ip/:/} != $ip ] && ip -6 route flush dev $interface
-
+			t=
+			[ ${ip/:/} != $ip ] && t="-A inet6" && ip -6 route flush $DEV
 			metric=0
 			for i in $router ; do
-				if [ ${ip/:/} == $ip ]; then
-					route add default gw $i dev $interface metric $((metric++))
-				else
-					route -A inet6 add default gw $i dev $interface metric $((metric++))
-				fi
-			done 2>/dev/null
-		fi
+				route $t add default gw $i $DEV metric $((metric++))
+			done
+		fi 2>/dev/null
 
-		echo -n > $RESOLV_CONF
-		[ -n "$domain" ] && echo search $domain >> $RESOLV_CONF
+		echo -en ${domain:+search $domain \\n} > $RESOLV_CONF
 		for i in $dns ; do
-			echo adding dns $i
-			echo nameserver $i >> $RESOLV_CONF
-		done
+			echo nameserver $i
+		done >> $RESOLV_CONF
 		[ "$1" == "bound" ] && for i in /etc/ipup.d/*; do
 			[ -x $i ] && $i $interface $ip $dns
 		done
