@@ -253,7 +253,7 @@ size=$(stat -c "%s" $iso)
 trksz=$(( 512 * $heads * $sectors ))
 cylinders=$(( ($size + $trksz - 1) / $trksz ))
 pad=$(( (($cylinders * $trksz) - $size) / 512 ))
-[ $pad -eq 0 ] || ddq bs=512 count=$pad if=/dev/zero >> $iso
+#[ $pad -eq 0 ] || ddq bs=512 count=$pad if=/dev/zero >> $iso
 if [ $cylinders -gt 1024 ]; then
 	cat 1>&2 <<EOT
 Warning: more than 1024 cylinders ($cylinders).
