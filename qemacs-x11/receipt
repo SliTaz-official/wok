@@ -14,14 +14,15 @@ PROVIDE="qemacs"
 TAGS="editor"
 
 DEPENDS="xorg-libX11 xorg-libXext xorg-libXv libxcb xorg-libXau xorg-libXdmcp"
-BUILD_DEPENDS="gcc3 xorg-libX11-dev xorg-libXext-dev xorg-libXv-dev"
+BUILD_DEPENDS="xorg-libX11-dev xorg-libXext-dev xorg-libXv-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	export CFLAGS="-Wno-error=unused-but-set-variable -O2"
+	sed -i 's/\(define SAVED_DATA_SIZE \).*/\1 __builtin_offsetof(EditState,end_of_saved_data)/' qe.h
 	./configure --prefix=/usr $CONFIGURE_ARGS &&
-	make CC=gcc-3 -j 1
+	make -j 1
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.

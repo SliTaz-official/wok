@@ -12,13 +12,15 @@ WGET_URL="${WEB_SITE}$TARBALL"
 TAGS="editor"
 
 DEPENDS=""
-BUILD_DEPENDS="gcc3"
+BUILD_DEPENDS=""
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	export CFLAGS="-Wno-error=unused-but-set-variable -O2"
+	sed -i 's/\(define SAVED_DATA_SIZE \).*/\1 __builtin_offsetof(EditState,end_of_saved_data)/' qe.h
 	./configure --prefix=/usr --disable-x11 $CONFIGURE_ARGS &&
-	make CC=gcc-3 -j 1
+	make -j 1
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
