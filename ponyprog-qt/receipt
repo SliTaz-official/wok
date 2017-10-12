@@ -10,21 +10,30 @@ WEB_SITE="http://www.lancos.com/prog.html"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/lancos/ponyprog/archive/v${VERSION}.tar.gz"
 
-DEPENDS="libQtGui gcc49-lib-base"
-BUILD_DEPENDS="Qt4-dev qmake cmake gcc49"
+EXTRA_SOURCE_FILES="qhexedit2-5f3ca79.tar.gz"
+WGET_URL2="https://github.com/lancos/qhexedit2/archive/5f3ca79.tar.gz"
+
+DEPENDS="libQtGui"
+BUILD_DEPENDS="Qt4-dev qmake cmake"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	export LD_LIBRARY_PATH="/usr/libgcc49:$LD_LIBRARY_PATH"
-        export CXX=/usr/bin/i486-slitaz-linux-g++-49
-        export CC=/usr/bin/i486-slitaz-linux-gcc-49
+	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] || \
+                wget -O $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES $WGET_URL2
+	busybox tar -xf $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES
+	rm -rf qhexedit2
+	mv -f  qhexedit2-* qhexedit2
+	sed 's|c++11|c++0x|g' -i ponyprog.pro Makefile CMakeLists.txt 
 
-	qmake && make && make install
+	qmake && make && make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-        cp -a $install/* $fs
+	mkdir -p $fs/usr/bin		$fs/usr/share/applications
+	cp -a $src/build/ponyprog	$fs/usr/bin
+	cp -a $src/desktop/*.desktop	$fs/usr/share/applications
+	chown -r root:root $fs
 }
