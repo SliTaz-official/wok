@@ -1,0 +1,60 @@
+# SliTaz package receipt.
+
+PACKAGE="mesa7"
+VERSION="7.10.2"
+CATEGORY="x-window"
+SHORT_DESC="3D Graphics Library that is an open-source implementaton of OpenGL."
+MAINTAINER="pascal.bellard@slitaz.org"
+SOURCE="Mesa"
+TARBALL="${SOURCE}Lib-$VERSION.tar.bz2"
+WEB_SITE="http://www.mesa3d.org/"
+WGET_URL="ftp://ftp.freedesktop.org/pub/mesa/older-versions/7.x/${VERSION}/$TARBALL"
+PROVIDE="mesa"
+
+DEPENDS="expat libdrm xorg-libXdamage xorg-libXxf86vm xorg-libXt udev"	#libpthread-stubs
+
+BUILD_DEPENDS="expat-dev libdrm-dev xorg-libXdamage-dev pkg-config \
+xorg-libXxf86vm-dev xorg-libXt-dev xorg-dri2proto xorg-glproto \
+talloc xorg-makedepend lesstif libxml2-python xorg-imake lesstif-dev \
+xorg-server-dev udev-dev file libtool automake autoconf"
+# libpthread-stubs-dev llvm  xorg-dri3proto xorg-presentproto
+# --with-gallium-drivers= \
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	autoreconf -vfi
+	./configure \
+		--prefix=/usr \
+		--with-x \
+		--with-dri-driverdir=/usr/lib/dri \
+		--with-dri-drivers=unichrome,i810,mach64,mga,r128,savage,sis,tdfx \
+		--disable-gallium-llvm \
+		--enable-glx-tls \
+		--with-driver=dri \
+		--enable-xcb \
+		--disable-glut \
+		--enable-gles1 \
+		--enable-gles2 \
+		--enable-egl \
+		--enable-texture-float \
+		--disable-shared-dricore \
+        $CONFIGURE_ARGS &&
+	(make $MAKEFLAGS && make install) 2>/dev/null | sed '/No such file or directory/d'
+}
+        
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/lib//libGLE*.so* $fs/usr/lib
+
+	# libGLU is included in the package libglu-mesa
+	rm -r -f $fs/usr/lib/libGLU*
+
+	#libGLw is included in the package libglw-mesa
+	rm -r -f $fs/usr/lib/libGLw*
+
+	#libEGL is included in the package libegl-mesa
+	rm -r -f $fs/usr/lib/libEGL*
+}
