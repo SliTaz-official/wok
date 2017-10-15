@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="udisks2-kitless"
+VERSION="2.1.8"
+CATEGORY="system-tools"
+SHORT_DESC="D-Bus service to access and manipulate storage devices"
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL2"
+WEB_SITE="https://github.com/ehegnes/udisks-kitless/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}archive/v${TARBALL/*-/}"
+
+DEPENDS="libatasmart libgudev"
+BUILD_DEPENDS="docbook-xsl gtk-doc libgudev-dev libatasmart-dev \
+gobject-introspection-dev intltool"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--enable-fhs-media \
+		--with-udevdir=/etc/udev \
+		--with-systemdsystemunitdir=no \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	copy etc/ bin/ sbin/ libexec/ dbus-1/ polkit-1/ var/ *.so*
+
+	sed '/lang=/d' -i \
+		$fs/usr/share/polkit-1/actions/org.freedesktop.udisks2.policy
+
+	# Please, note:
+	# Package:  slitaz-configs-base
+	# File:     /etc/polkit-1/localauthority/50-local.d/55-storage.pkla
+	# Provides: complete access to udisks2 methods
+
+	# mount to "/media" instead of "/media/<user>"
+	cp $stuff/99-udisks2.rules $fs/etc/udev/rules.d/
+}
