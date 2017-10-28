@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="wpa_supplicant"
-VERSION="2.1"
+VERSION="2.6"
 CATEGORY="utilities"
 SHORT_DESC="WPA Supplicant with support for WPA and WPA2"
 MAINTAINER="0dddba11@googlemail.com"
@@ -29,7 +29,15 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src/$PACKAGE
+	for i in  $stuff/*.patch
+	do
+     		if [ -f done.$(basename $i) ]; then
+     			continue
+		else
+     			patch -p1 < $i && touch done.$(basename $i) || return 1
+		fi
+	done
+	cd $src/$PACKAGE 
 	cp -a ./defconfig ./.config
 	sed 's/-lnl/-lnl-3/g' -i ../src/drivers/drivers.mak
 	sed 's/-lnl-3-genl/-lnl-genl-3/g' -i ../src/drivers/drivers.mak
