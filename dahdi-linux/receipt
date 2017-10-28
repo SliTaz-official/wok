@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="dahdi-linux"
-VERSION="2.6.1"
+VERSION="2.11.1"
 CATEGORY="network"
 SHORT_DESC="Digium Asterisk Hardware Device Interface: kernel modules."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -9,27 +9,29 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.asterisk.org/"
 WGET_URL="http://downloads.asterisk.org/pub/telephony/$PACKAGE/releases/$TARBALL"
-EXTRA_SOURCE_FILES="dahdi-fw-hx8-2.06.tar.gz \
+EXTRA_SOURCE_FILES="dahdi-fw-hx8-2.06.tar.gz dahdi-fw-oct6114-032-1.05.01.tar.gz \
 dahdi-fw-oct6114-064-1.05.01.tar.gz	dahdi-fw-oct6114-128-1.05.01.tar.gz \
 dahdi-fw-oct6114-256-1.05.01.tar.gz	dahdi-fw-tc400m-MR6.12.tar.gz \
 dahdi-fw-te820-1.76.tar.gz		dahdi-fw-vpmoct032-1.12.0.tar.gz \
+dahdi-fw-te133-7a001e.tar.gz		dahdi-fw-te134-780017.tar.gz \
+dahdi-fw-te435-13001e.tar.gz		dahdi-fw-te436-10017.tar.gz \
+dahdi-fw-a8b-1f001e.tar.gz		dahdi-fw-a8a-1d0017.tar.gz \
+dahdi-fw-a4b-d001e.tar.gz		dahdi-fw-a4a-a0017.tar.gz \
 dahdi-fwload-vpmadt032-1.25.0.tar.gz"
 
 DEPENDS="linux udev"
-BUILD_DEPENDS="linux-module-headers xz"
+BUILD_DEPENDS="linux-module-headers xz perl"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 compile_rules()
 {
-	sed -i 's|/sbin/depmod|echo &|' Makefile
-	sed -i 's/tar -xof/tar -xf/' drivers/dahdi/firmware/Makefile
+	FIRMWARE_URL=http://downloads.digium.com/pub/telephony/firmware/releases
 	for i in $EXTRA_SOURCE_FILES ; do
-		[ -s $SOURCES_REPOSITORY/$i ] || continue
+		[ -s $SOURCES_REPOSITORY/$i ] ||
+		  wget -P $SOURCES_REPOSITORY $FIRMWARE_URL/$i
 		cp $SOURCES_REPOSITORY/$i drivers/dahdi/firmware/
 		tar xzf $SOURCES_REPOSITORY/$i -C drivers/dahdi/firmware/
 	done
-	find -type f | xargs sed -i -e 's/DECLARE_MUTEX/DEFINE_SEMAPHORE/g' \
-		-e 's/init_MUTEX\([^)]*\)/sema_init\1, 1/g'
 	make KVERS="/usr/src/linux" install 2>&1 | grep -v 'slitaz/modules' &&
 	find $DESTDIR/lib/modules -name '*.ko' -exec xz {} \; 
 	for i in $EXTRA_SOURCE_FILES ; do
