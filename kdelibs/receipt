@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="kdelibs"
+VERSION="4.14.3"
+CATEGORY="x-window"
+SHORT_DESC="The KDE library."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WEB_SITE="http://www.kde.org/"
+WGET_URL="http://download.kde.org/stable/$VERSION/src/$TARBALL"
+
+DEPENDS="phonon libQtCore libQtGui libQtScript giflib libxslt qca \
+strigi attica dbus polkit-qt openssl udev libdbusmenu-qt enchant mesa librsvg \
+soprano shared-mime-info"
+BUILD_DEPENDS="cmake qmake automoc4 Qt4-dev giflib-dev libxslt-dev strigi-dev \
+attica-dev docbook-xml docbook-xsl dbus-dev polkit-qt-dev openssl-dev udev-dev \
+libdbusmenu-qt-dev enchant-dev mesa-dev librsvg-dev qca-dev soprano-dev \
+shared-mime-info-dev phonon phonon-dev udisks2-dev udisks2 libQtDeclarative"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p build && cd build
+	cmake	-DCMAKE_BUILD_TYPE=Release \
+		-DKDE_DISTRIBUTION_TEXT='SliTaz GNU/Linux' \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DSYSCONF_INSTALL_DIR=/etc/kde \
+		-DKDE_DEFAULT_HOME=.config/kde \
+		-DCMAKE_SKIP_RPATH=ON \
+		-DKAUTH_BACKEND=PolkitQt-1 \
+		-DWITH_SOLID_UDISKS2=TRUE \
+		.. &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	strip -s $fs/usr/lib/kde4/libexec/* 2>/dev/null
+	for d in apps config dbus-1 icons kde4 locale mime
+	do
+		cp -a $install/usr/share/$d $fs/usr/share
+	done
+}
