@@ -55,27 +55,26 @@ ultoabuf	db	12	dup (?)
         proc    _strcatb near
 
 	ifdef	EXTRA
-		mov	dl,3
+		mov	cl,7Fh
 		db	0bbh			; mov	bx,imm opcode
         global  _strcat:near
 _strcat:
-		mov	dl,1
+		mov	cl,80h
 		db	0bbh			; mov	bx,imm opcode
         global  _strcpy:near
 _strcpy:
-		mov	dl,0
+		xor	cx,cx
 	endif
 		pop	ax			;caller return address
-                pop	cx			; a
+                pop	dx			; a
                 pop	bx			; b
                 push	bx
-                push	cx
+                push	dx
                 push	ax
                 push	si
-                mov	si,cx
+                mov	si,dx
 	ifdef	EXTRA
-		shr	dl,1
-		jnc	@@nocat
+		jcxz	@@nocat
 	endif
 @@catlp:
 		lodsb
@@ -83,24 +82,25 @@ _strcpy:
                 jne	@@catlp
 		dec	si
 	ifdef	EXTRA
-		shr	dl,1
-		jnc	@@nocat
+		cmp	dx,si
+		adc	al,cl		; set S when dx != si or cl = 80
+		mov	al,20h
+		jns	@@cpyhead
 	endif
-		cmp	cx,si
-		jz	@@nocat
-		mov	[word si],20h
-		inc	si
 @@nocat:
-                sub	bx,si
 @@cpylp:
-                mov	al,[bx+si]
+                mov	al,[bx]
+                inc	bx
+@@cpyhead:
                 mov	[si],al
                 inc	si
 		cmp	al,0
                 jne	@@cpylp
-		mov	ax,cx
+strfound:
+		xchg	ax,dx
+strend:
                 pop	si
-                ret
+		ret
 
         endp    _strcatb
 

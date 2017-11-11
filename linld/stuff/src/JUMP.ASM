@@ -36,6 +36,7 @@ overflow	db	"Loaded too close to 9000:0",0
 	global	_boot_kernel:near
         proc    _boot_kernel near
         
+                p8086
 ; Shrink stack: we won't need much of it now and have no malloc() plans
 		extrn	_heap_top:word
 		mov	ax,[_heap_top]
@@ -53,6 +54,7 @@ overflow	db	"Loaded too close to 9000:0",0
 		mov	ax,sp
 		shr	ax,cl
 		else
+                p386
 		mov	bx,9000h
 		mov	es,bx
 		mov	ax,sp

@@ -77,12 +77,10 @@ saved15		dd	?
 
                 mov     ah,88h
                 int     15h             ;ax=kbs above 1m
-                jnc     @@ok            ;  error: cf=1 or ax=0
-                xor     ax,ax           ;
-@@ok:
-;                xor     dx,dx
-                test    ax,ax           ;happens on big mem systems
-                jnz      tokb
+                cmc                     ;  error: cf=1 or ax=0
+		sbb	dx,dx
+                and     ax,dx           ;
+                jnz     tokb            ;happens on big mem systems
 
 ;***************************************************************
 ;u32 memtop_cmos()
@@ -90,7 +88,6 @@ saved15		dd	?
 
 ;memtop_cmos:
                 pushf
-                cli
                 call	rdcmos17
                 popf
 tokb:
@@ -98,12 +95,12 @@ tokb:
                 add     ah,4h           ;account for 1024 low kb
                 adc     dx,dx           ;  (optimized to death)
 		mov	cl,10		;multiply by 1024
-        global  N_LXLSH@:near
-N_LXLSH@:
 		ifndef	NO386
 		shld    dx,ax,cl
 		shl     ax,cl		;  (kbytes -> bytes)
 		else
+        global  N_LXLSH@:near
+N_LXLSH@:
 		mov	ch,0
 @@lp:
 		shl	ax,1
@@ -141,7 +138,8 @@ N_LXURSH@:
 ;		jnz	@@ok
 ;		jmp	memtop_cmos
 
-rdcmos17:       mov     al,18h		; read bytes 17-18 from CMOS
+rdcmos17:       cli
+                mov     al,18h		; read bytes 17-18 from CMOS
                 call    @@rdcmos
                 mov     ah,al
                 mov     al,17h

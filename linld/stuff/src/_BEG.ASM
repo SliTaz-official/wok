@@ -151,9 +151,9 @@ godie:
 check_rm_paging:
 ; It's a 386 in real mode, chk for paging (crazy but possible)
                 p386
-                mov     edx,cr0
-                shl     edx,1   ;CR0_PG to CF
-		jc	no_vcpi
+                mov     eax,cr0
+                inc     eax             ;CR0_PG to S
+		js	no_vcpi
 endcpu:
                 p8086
 
@@ -175,6 +175,14 @@ alok:
 		xchg	ax,bx
                 mov	[bx+si],bh		; set eos
 argbuild:
+		;ifdef	DEBUG
+                p386
+		pusha
+		mov	bx,si
+		extrn	puts:near
+		call	puts
+		popa
+		;endif
                 mov	bx,2			; argc * 2
 argeos:
                 mov	dl,1			; look for a start of string
