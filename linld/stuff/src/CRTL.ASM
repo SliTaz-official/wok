@@ -333,7 +333,7 @@ close:
         endp    _read
 
         proc    _lseekset near
-		ifdef EXTRA
+		;ifdef EXTRA
 ;***************************************************************
 ;long lseekset(int fd, unsigned long sz);
 ;***************************************************************
@@ -348,7 +348,7 @@ close:
                 push	dx
                 push	bx
                 push	ax
-		endif
+		;endif
         global  lseekset:near
 lseekset:
 		clc
