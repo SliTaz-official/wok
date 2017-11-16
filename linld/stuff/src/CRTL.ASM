@@ -105,6 +105,71 @@ strend:
         endp    _strcatb
 
 
+	ifdef	EXTRA
+                p8086
+;***************************************************************
+;char strstr(const char* a,const char* b);
+;***************************************************************
+        global  _strstr:near
+        proc    _strstr near
+
+		pop	ax			;caller return address
+                pop	dx			; a
+                pop	cx			; b
+                push	cx
+                push	dx
+                push	ax
+                push	si
+@@loop:
+		xor	ax,ax
+		mov	si,dx
+		cmp	[si],al			; *a
+		jz	strend			; return ax = NULL
+		mov	bx,cx
+@@match:
+		or	ah,[bx]			; *b
+		jz	strfound
+		inc	bx
+		lodsb
+		sub	ah,al
+		jz	@@match
+		inc	dx
+		jmp	@@loop
+
+        endp    _strstr
+
+
+;***************************************************************
+;int strcmp(const char* a,const char* b);
+;***************************************************************
+        global  _strcmp:near
+        proc    _strcmp near
+
+		pop	cx			;caller return address
+                pop	bx			; a
+                pop	ax			; b
+                push	ax
+                push	bx
+                push	cx
+                push	si
+		xchg	ax,si
+		dec	bx
+@@lp:
+		inc	bx
+		lodsb
+		sub	al,[bx]
+		jnz	@@out
+		sub	al,[bx]
+		jnz	@@lp
+@@out:
+		cbw
+                pop	si
+                ret
+
+        endp    _strcmp
+	endif
+
+
 ;***************************************************************
 ;void* malloc(unsigned sz);
 ;***************************************************************
@@ -149,17 +214,16 @@ malloc:						; keep CX, use AX,BX
 puts:
 		call	putsz
                 mov	bx,offset msg_crlf
-
+		jmp	putsz
+putcz:
+		mov	ah,9
+		int	21h
         global  putsz:near			; putsz(bx)
 putsz:
-                push	bx
-		call	strlen
-		pop	dx
-		xchg	ax,cx
-		mov	bx,1
-                mov	ah,40h
-                int	21h
-		xor	ax,ax			; ZF=1	(for malloc failure)
+		mov	al,[bx]
+		inc	bx
+		or	al,al
+		jne	putcz			; ZF=1  (for malloc failure)
 		ret
 
         endp    _puts
@@ -196,7 +260,8 @@ putsz:
         global  open:near			; open(bx)
 open:
                 mov	dx,bx
-                mov	ax,3d00h
+		;mov	cl,0			; attribute mask
+                mov	ax,3d00h		; read-only+compatibility
 dos:
                 int	21h
 chkc:
@@ -242,10 +307,12 @@ close:
         global  _read:near
         proc    _read near
 
+		ifdef	WRITE
                 stc
 		db	0B0h			; mov al,im
         global  _write:near
                 clc
+		endif
 		pop	ax			;caller return address
                 pop	bx			; fd
                 pop	dx			; data
@@ -254,27 +321,34 @@ close:
                 push	dx
                 push	bx
                 push	ax
+		ifdef	WRITE
                 mov	ah,40h
 		sbb	ah,0
+		else
+                mov	ah,3Fh
+		endif
                 jcxz	fail
 		jmp	dos
 
         endp    _read
 
+        proc    _lseekset near
+		ifdef EXTRA
 ;***************************************************************
 ;long lseekset(int fd, unsigned long sz);
 ;***************************************************************
 
         global  _lseekset:near
-        proc    _lseekset near
 
 		pop	ax			;caller return address
                 pop	bx			; fd
                 pop	dx			; sz lo
                 pop	cx			; sz hi
                 push	cx
+                push	dx
                 push	bx
                 push	ax
+		endif
         global  lseekset:near
 lseekset:
 		clc
@@ -337,14 +411,13 @@ ends				; } isostate;
         global  strlen:near			; strlen(bx)
 strlen:
                 mov	cx,bx
-                jcxz	@@end
                 dec	bx
 @@lenlp:
+		inc	cx
                 inc	bx
                 cmp	[byte bx],0
-                jne	@@lenlp
+                loopne	@@lenlp			; until eos or s == NULL
                 sub	bx,cx
-@@end:
                 xchg	ax,bx
                 ret
 
@@ -664,7 +737,7 @@ ends					;}; // size=8200
 		jz	@@skip			;   memcpy32(m->fallback,0,m->buf,m->size)
 	ifdef	LARGE_IMAGES
 		mov	ecx,[(image_himem bx).size]
-memcpy_imagez:
+memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
 		push	ecx
 	else
 		push	[(image_himem bx).size]
@@ -693,7 +766,7 @@ call_memcpy32:
 		push	ax
 	ifdef	LARGE_IMAGES
 		jmp	@@memcpy
-memcpy_imagez:
+memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
 		p386
 		push	ecx
 		push	eax
@@ -731,7 +804,7 @@ memcpy_imagez:
 		mov	ax,[bx]
 		mov	dx,[bx+2]
 		endif
-storepage:
+storepage:					; storepage(edx,cx)
 		ifndef	NO386
 		push	0
 		push	4096
@@ -824,13 +897,13 @@ _next_bufv:
 @@notfirst2:
 		pop	si
 		ret
-		ifdef	NO386
-                p8086
-		endif
 
         endp    _prev_bufv
 	endif
 
+		ifdef	NO386
+                p8086
+		endif
 
 ;***************************************************************
 ;void open_image(const char *name, struct image_himem *m);
@@ -1130,7 +1203,7 @@ image_done:
 		jne	@@radixok
 		mov	cl,8
 		lodsb
-		mov	al,20h
+		or	al,20h
 		cmp	al,'x'
 		jne	@@radixok
 		mov	cl,16
@@ -1222,74 +1295,6 @@ image_done:
 
 		ifdef	EXTRA
                 p8086
-
-;***************************************************************
-;int strcmp(const char* a,const char* b);
-;***************************************************************
-        global  _strcmp:near
-        proc    _strcmp near
-
-		pop	cx			;caller return address
-                pop	bx			; a
-                pop	ax			; b
-                push	ax
-                push	bx
-                push	cx
-                push	si
-		xchg	ax,si
-                sub	bx,si
-@@lp:
-                mov	al,[si]
-                sub	al,[bx+si]
-		jnz	@@out
-                lodsb
-		cmp	al,0
-                jne	@@lp
-@@out:
-		cbw
-                pop	si
-                ret
-
-        endp    _strcmp
-
-
-;***************************************************************
-;char strstr(const char* a,const char* b);
-;***************************************************************
-        global  _strstr:near
-        proc    _strstr near
-
-		pop	ax			;caller return address
-                pop	cx			; a
-                pop	dx			; b
-                push	dx
-                push	cx
-                push	ax
-                push	si
-@@loop:
-		xor	ax,ax
-		mov	si,cx
-		cmp	[si],al			; *a
-		jz	@@end			; return ax = NULL
-		mov	bx,dx
-		sub	bx,si
-@@match:
-		or	ah,[bx+si]		; *b
-		jz	@@found
-		lodsb
-		sub	ah,al
-		jz	@@match
-		inc	cx
-		jmp	@@loop
-@@found:
-		xchg	ax,cx
-@@end:
-                pop	si
-		ret
-
-        endp    _strstr
-
-
 ;***************************************************************
 ;char *progname(void)
 ;***************************************************************
@@ -1305,7 +1310,7 @@ image_done:
 		jb	@@skip
 		;mov	es,[cs:2Ch]
 		mov	es,[di+2Ch]
-		mov	cx,-1
+		mov	cx,sp			; big enough
 @@loop:
 		repne
 		  scasb
@@ -1346,7 +1351,7 @@ image_done:
 		push	bx
 		push	ax
 
-		cmp	[byte bx+1],3Ah
+		cmp	[byte bx+1],3Ah		; ':'
 		jne	@@nodisk
 		mov	dl,20h
 		or	dl,[bx]
@@ -1372,9 +1377,9 @@ image_done:
 		push	[word bx]
 		mov	[bx],al
 		stc
-		mov	ax,713Bh		; chdir long filename
+		mov	ax,713Bh		; chdir long filename (ds:dx)
 		int	21h
-		mov	ah,3Bh			; chdir
+		mov	ah,3Bh			; chdir(ds:dx)
 		jnc	chdirdone
 		int	21h
 chdirdone:
@@ -1431,17 +1436,13 @@ chdirdone:
 		pop	ax
 		push	ax
 		push	bx
-		push	bp si di
+		push	si
 		xchg	ax,si
-		xor	di,di
-		push	di
-		push	di
-		mov	bp,sp
-		inc	di
-		inc	di
-		mov	cl,4
+		xor	bx,bx
+		mov	cx,304h
 @@number:
 		xor	ax,ax
+		cwd
 @@digit:
 		shl	al,cl
 		shl	ax,cl
@@ -1449,12 +1450,13 @@ chdirdone:
 		sub	al,30h
 		cmp	al,9
 		jbe	@@digit
-		mov	[bp+di],ah
-		dec	di
-		jns	@@number
-		pop	ax
-		pop	dx
-		pop	di si bp
+		mov	dl,bh
+		mov	bh,bl
+		mov	bl,ah
+		dec	ch
+		jnz	@@number
+		xchg	ax,bx
+		pop	si
 kver2ulret:
 		ret
 
