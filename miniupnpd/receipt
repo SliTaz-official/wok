@@ -11,20 +11,19 @@ WEB_SITE="http://miniupnp.tuxfamily.org/"
 WGET_URL="$WEB_SITE/files/$TARBALL"
 TAGS="upnp"
 
-DEPENDS="iptables"
-BUILD_DEPENDS="iptables-dev libnfnetlink-dev"
+DEPENDS="iptables libssl"
+BUILD_DEPENDS="iptables-dev libnfnetlink-dev openssl-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries" 
 	mkdir -p $DESTDIR/usr/share/man/man8
 	sed -i 's,^EXTIF=eth0,EXTIF=$(route -n | awk ''/^0.0.0.0/ { print $8 }''),' netfilter/iptables_init.sh
 	make -f Makefile.linux config.h
 	KERNEL_VERSION=$(grep -s ^VERSION= $WOK/linux/receipt | cut -d '"' -f 2)
 	sed -i "s,OS_VERSION.*,OS_VERSION \"Linux/$KERNEL_VERSION\"," config.h
 	make CFLAGS="-DIPTABLES_143" -f Makefile.linux &&
-	PREFIX=$DESTDIR make -f Makefile.linux install
+	make -f Makefile.linux DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
