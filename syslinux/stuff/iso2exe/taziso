@@ -234,7 +234,7 @@ doinstall()
 		extraargs="mount=$(getuuid) subroot=slitaz"
 	fi
 	echo -en "\nInstall boot files..."
-	for i in $media/boot/bzImage $media/boot/*pxe* \
+	for i in $media/boot/bzImage* $media/boot/*pxe* \
 		$media/boot/isolinux/he* $media/boot/isolinux/opt* \
 		$media/README $media/boot/memtest* ; do
 		[ -s $i ] && cp $i $mnt/slitaz/boot
@@ -243,7 +243,8 @@ doinstall()
 		[ $(get 0 $i 2> /dev/null || echo 0) -eq 23117 ] &&
 		mv $i $i.exe
 	done
-	gettazboot $mnt/slitaz/boot/tazboot.exe
+	bzimage=$(cd $mnt/slitaz/boot ; ls bzimage*)
+	gettazboot $mnt/slitaz/boot/tazboot.exe	# autoappend 64 suffix
 	unix2dos > $mnt/slitaz/boot/tazboot.cmd <<EOT
 kernel=/slitaz/boot/bzimage
 initrd=/slitaz/boot/$initrd
@@ -283,11 +284,11 @@ EOT
 		grub-install --no-floppy --root-directory=$mnt $base
 	fi
 	if [ -s $mnt/boot/grub/menu.lst ] &&
-	   ! grep -q /slitaz/boot/bzimage $mnt/boot/grub/menu.lst; then
-		echo -en "\nUpdate /boot/grub/menu/lst..."
+	   ! grep -q /slitaz/boot/$bzimage $mnt/boot/grub/menu.lst; then
+		echo -en "\nUpdate /boot/grub/menu.lst..."
 		cat >> $mnt/boot/grub/menu.lst <<EOT
 title SliTaz GNU/Linux $(cat $mnt/slitaz/etc/slitaz-release)
-	kernel /slitaz/boot/bzimage rw root=/dev/null $extraargs autologin
+	kernel /slitaz/boot/$bzimage rw root=/dev/null $extraargs autologin
 	initrd /slitaz/boot/$initrd
 
 EOT
