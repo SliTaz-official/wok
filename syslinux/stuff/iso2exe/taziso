@@ -1312,6 +1312,20 @@ infoiso()
 	isoinfo -d -i "$ISO" > /tmp/isoinfo$$
 	if [ -x "$(which iso2exe)" ]; then
 		echo "----"
+		blkid "$ISO" | while read args; do
+			set -- $args
+			while [ -n "$2" ]; do
+				case "$2" in
+				*UUID*|PT*) echo $2;;
+				esac
+				shift
+			done
+		done
+		if ! fdisk -l "$ISO" | grep -q 'valid partition'; then
+			fdisk -l "$ISO" | grep heads
+			fdisk -l "$ISO" | sed 's/^ *[^ ]* *//;s/  */ /g;$!d'
+		fi
+		echo "----"
 		iso2exe -l "$ISO"
 	fi >> /tmp/isoinfo$$
 	if [ "$1" ]; then
