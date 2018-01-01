@@ -175,14 +175,14 @@ alok:
 		xchg	ax,bx
                 mov	[bx+si],bh		; set eos
 argbuild:
-		;ifdef	DEBUG
+		ifdef	DEBUG
                 p386
 		pusha
 		mov	bx,si
 		extrn	puts:near
 		call	puts
 		popa
-		;endif
+		endif
                 mov	bx,2			; argc * 2
 argeos:
                 mov	dl,1			; look for a start of string

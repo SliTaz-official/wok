@@ -216,13 +216,13 @@ puts:
                 mov	bx,offset msg_crlf
 		jmp	putsz
 putcz:
-		mov	ah,9
+		mov	ah,2
 		int	21h
         global  putsz:near			; putsz(bx)
 putsz:
-		mov	al,[bx]
+		mov	dl,[bx]
 		inc	bx
-		or	al,al
+		or	dl,dl
 		jne	putcz			; ZF=1  (for malloc failure)
 		ret
 
