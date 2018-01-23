@@ -63,7 +63,8 @@ getgeometry() {
 	esac
 	[ -d tmp ] || ln -s /tmp tmp
 	case "$device" in
-	fake*)	f=/usr/share/images/slitaz-banner.png
+	fake*)	f=$(ls fake-sane/*.png | sed q)
+		[ -s "$f" ] || f=/usr/share/images/slitaz-banner.png
 		c="$(echo $ARGS $(identify $f | sed \
 		    's/.* \([0-9]*\)x.*/\1/') $(GET width) $(POST x_max) | awk '
 function a(x) { return int(($x * $5)/ $7); }
@@ -179,7 +180,8 @@ xhtml_header
 [ -n "$error" ] && msg warn "$error"
 [ -n "$info" ] && msg tip "$info"
 if [ -z "$device" ]; then
-	all="$(scanimage -f '%d,%v %m|'|cat - sane-fake.log|sed 's/|/\n/g')"
+	all="$(scanimage -f '%d,%v %m|'|\
+		cat - sane-fake.log fake-sane/sane-fake.log |sed 's/|/\n/g')"
 	case "$(echo "$all" | wc -l)" in
 	1)	if [ -z "$all" ]; then
 			msg warn "$(_ "No scanner found")"
@@ -224,17 +226,7 @@ fi
 
 cat <<EOT
 <section>
-<form name="parameters" method="post">
-<script language="JavaScript" type="text/javascript">
-<!--
-function new_width() {
-	document.parameters.action = "?width="+(document.width-30)
-}
-
-window.onresize = new_width
-new_width()
--->
-</script>
+<form name="parameters" method="post" style="width:100%">
 
 <header>
 $(echo $device | sed 's/.*,//')
@@ -245,7 +237,7 @@ $(echo $device | sed 's/.*,//')
 </div>
 </header>
 
-<table class="wide">
+<table style="width:100%">
 <tr>
 <td>
 <fieldset><legend>$(_ 'Format')</legend>

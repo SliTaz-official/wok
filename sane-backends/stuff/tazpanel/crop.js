@@ -31,7 +31,7 @@ function cropCreateDiv(e)
 function cropCreateDragImg(id)
 {
 	var div = document.createElement('IMG');
-	div.src = 'drag.gif';
+	div.src = 'styles/default/images/drag.gif';
 	div.width = 12;
 	div.style.position = 'absolute';
 	div.style.cursor = div.id = id;
