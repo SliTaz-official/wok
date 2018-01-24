@@ -316,7 +316,7 @@ while read name def min max ; do
 		[ "$(xPOST $name)" ] && def=$(xPOST $name)
 		[ $def -lt $min ] && def=$min
 		[ $def -gt $max ] && def=$max
-		f="$(_ "$name") <input name=\"$name\" value=\"$def\""
+		f="<fieldset><legend>$(_ "$name")</legend><input name=\"$name\" value=\"$def\""
 		u=""
 		case "$name" in
 		x|y|l|t) cat <<EOT
