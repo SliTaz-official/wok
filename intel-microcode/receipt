@@ -1,0 +1,33 @@
+# SliTaz package receipt v2.
+
+PACKAGE="intel-microcode"
+VERSION="20180108" # version hidden by Intel, redirected to -> 20171117
+CATEGORY="kernel"
+SHORT_DESC="Intel processor microcode update for Linux"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="other"
+WEB_SITE="https://downloadcenter.intel.com/search?keyword=processor+microcode+data+file"
+# See also: https://wiki.archlinux.org/index.php/Microcode
+# and https://www.archlinux.org/packages/extra/any/intel-ucode/
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://downloadmirror.intel.com/27431/eng/microcode-$VERSION.tgz"
+TARBALL_SHA1="2392dcf585a9d6313cd00d8b21cb2f54ae1d8ce3"
+
+compile_rules() {
+	mkdir -p $install/lib/firmware/
+	cp -r $src/intel-ucode/ $install/lib/firmware/
+
+	install -Dm644 $stuff/LICENSE $install/usr/share/licenses/$PACKAGE/LICENSE
+}
+
+genpkg_rules() {
+	copy @std
+	DEPENDS="linux"
+}
+
+post_install() {
+	if [ -z "$1" -a -e /sys/devices/system/cpu/microcode/reload ]; then
+		echo 1 > /sys/devices/system/cpu/microcode/reload
+	fi
+}
