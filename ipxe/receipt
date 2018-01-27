@@ -25,13 +25,27 @@ compile_rules()
 	sed -i -e 's|//\(#define.*IMAGE_PNG\)|\1|' \
 	    -e 's|//\(#define.*CONSOLE_CMD\)|\1|' \
 	    -e 's|//\(#define.*REBOOT_CMD\)|\1|' config/general.h
-	cp $stuff/lkrnprefix.S arch/i386/prefix
+	sed -i 's|//\(#define.*CPUID_SETTINGS\)|\1|' config/settings.h
 	pxelinux="$(ls $WOK/syslinux/source/*/core/pxelinux.0)"
 	make bin/undionly.kkkpxe EMBED=$stuff/ipxelinux.ipxe,$pxelinux &&
 		mv bin/undionly.kkkpxe bin/ipxelinux.0
+	make bin-i386-efi/snponly.efi EMBED=$stuff/ipxelinux.ipxe,$pxelinux &&
+		mv bin-i386-efi/snponly.efi bin-i386-efi/ipxelinux.efi
 	make bin/undionly.pxe bin/undionly.kpxe bin/undionly.kkpxe \
 	     bin/undionly.kkkpxe bin/ipxe.pxe bin/ipxe.kpxe bin/ipxe.kkpxe \
-	     bin/ipxe.kkkpxe bin/ipxe.nbi bin/ipxe.lkrn EMBED=$stuff/ipxe.cmd
+	     bin/ipxe.kkkpxe bin/ipxe.nbi bin/ipxe.lkrn bin-i386-efi/ipxe.efi \
+	     bin-i386-efi/snponly.efi EMBED=$stuff/ipxe.cmd
+	cp $stuff/bootloader.S .
+	cc -o bootloader.o -Wa,-a=bootloader.lst -c bootloader.S
+	objcopy -O binary bootloader.o bootloader.bin
+	size=$(stat -c %s bin/ipxe.lkrn)
+	while read ofs val ; do
+		printf '\\\\x%02X\\\\x%02X' $(($val & 255)) $(($val / 256)) | \
+		xargs echo -en|dd bs=1 conv=notrunc of=bootloader.bin seek=$ofs
+	done 2> /dev/null <<EOT
+4	$((($size+511)/512))
+14	$((($size+15)/16))
+EOT
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -40,9 +54,5 @@ genpkg_rules()
 	mkdir -p $fs/boot $install/usr/share
 	cp -a $src/src/doc $install/usr/share
 	cp -a $src/src/bin/ipxe.lkrn $fs/boot/ipxe
-	OFS=$((0x156))
-	unix2dos <<EOT | dd bs=1 of=$fs/boot/ipxe conv=notrunc \
-		seek=$OFS count=$((0x1F0-$OFS))
-$SHORT_DESC
-EOT
+	dd if=$src/src/bootloader.bin of=$fs/boot/ipxe conv=notrunc
 }

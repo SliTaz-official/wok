@@ -15,7 +15,7 @@ _start:
 
 #define CODESZ 512		/* patched by installer */
 
-//#define BZIMAGE 0x207		/* setup version ; for bzImage < 512 Kb only */
+#define BZIMAGE 0x207		/* setup version ; for bzImage < 512 Kb only */
 
 /* some extra features */
 #define EXE_SUPPORT		real mode dos .exe file support
@@ -28,7 +28,7 @@ _start:
 //#define FLOPPY_HAS_2_SIDES	hardcoded heads count to 2	-13
 //#define NO_CMDLINE_SHRINK	remove heading spaces ?		-6-20
 //#define NO_CMDLINE_FILE	remove @cmdline file support ?	-20
-//#define NO_DOTS		show progression dots ?		-8
+#define NO_DOTS		show progression dots ?		-8
 #ifndef BZIMAGE
 //#defime NO_MINSETUP		default setup (dos only) ?	-4
 //#define NO_CURSOR_DEFINITION					-8
