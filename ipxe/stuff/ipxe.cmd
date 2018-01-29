@@ -39,7 +39,7 @@ echo -n DNS server: ${} && read dns
 goto menu
 
 :web
-isset $(ip} || dhcp || echo No DHCP
+isset ${ip} || dhcp || echo No DHCP
 imgfree
 set weburl http://mirror.slitaz.org/pxe/
 chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
@@ -56,12 +56,12 @@ chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
 goto menu
 
 :lan
-isset $(ip} || dhcp || echo No DHCP
+isset ${ip} || dhcp || echo No DHCP
 autoboot ||
 goto menu
 
 :rolling
-isset $(ip} || dhcp || echo No DHCP
+isset ${ip} || dhcp || echo No DHCP
 sanboot http://mirror.slitaz.org/iso/rolling/slitaz-rolling.iso ||
 goto menu
 
