@@ -1,8 +1,6 @@
 // Image/zImage & tiny bzImage linux kernel boot sector, (C) SliTaz, GPL2.
 
 SYSSEG		= 0x1000
-INITSEG		= 0x9000
-SETUPSEG	= 0x9020
 setup_sects	= 497
 syssize		= 500
 cmd_line_ptr	= 0x228
@@ -15,35 +13,77 @@ _start:
 
 #define CODESZ 512		/* patched by installer */
 
+// Default kernel format is 386 Image/zImage
 //#define BZIMAGE 0x207		/* setup version ; for bzImage < 512 Kb only */
+//#define ELKS			/* 8086/286 linux port */
 
 /* some extra features */
-#define EXE_SUPPORT		real mode dos .exe file support
-#define CMDLINE			kernel cmdline support	
-#define VCPI			VCPI 4.0 support
-#define SHUTDOWNDOS		shutdown DOS services
+#define EXE_SUPPORT		real mode dos .exe file support	+208/264
+#define  CMDLINE		dos kernel cmdline support	+45
+#define  VCPI			VCPI 4.0 support (386+)		+109
+#define  SHUTDOWNDOS		shutdown DOS services		+29
 
 /* some contraints to reduce the code size */
-//#define FLOPPY_1440K_ONLY	1.44M floppies support only	-33
-//#define FLOPPY_HAS_2_SIDES	hardcoded heads count to 2	-13
-//#define NO_CMDLINE_SHRINK	remove heading spaces ?		-6-20
-//#define NO_CMDLINE_FILE	remove @cmdline file support ?	-20
-//#define NO_DOTS		show progression dots ?		-8
+//#define FLOPPY_1440K_ONLY	1.44M floppies support only	-26
+//#define FLOPPY_HAS_2_SIDES	hardcoded heads count to 2	-15
+//#define NO_CMDLINE_SHRINK	remove heading spaces ?		-6-21
+//#define  NO_CMDLINE_FILE	remove @cmdline file support ?	-21
+//#define NO_DOTS		show progression dots ?		-5
 #ifndef BZIMAGE
+//#define TINY_ZIMAGE		system < 64Kb ?			-11
 //#defime NO_MINSETUP		default setup (dos only) ?	-4
 //#define NO_CURSOR_DEFINITION					-8
 #endif
+
+#ifdef ELKS
+	.arch	i8086
+INITSEG		= 0x0100
+SETUPSEG	= 0x0120
+#define ONLY8086
+#undef BZIMAGE
+#undef VCPI
+#else
+INITSEG		= 0x9000
+SETUPSEG	= 0x9020
+#endif
+
+.macro	shlclw cnt,obj
+#ifdef ONLY8086
+	movb	\cnt,%cl
+	shlw	%cl,\obj
+#else
+	shlw	\cnt,\obj
+#endif
+.endm
+
+.macro	shrclw cnt,obj
+#ifdef ONLY8086
+	movb	\cnt,%cl
+	shrw	%cl,\obj
+#else
+	shrw	\cnt,\obj
+#endif
+.endm
 
 #ifdef EXE_SUPPORT
 #define EXEADRS(x)	(x+0xE0)
 #define FLAT20(x)	(x+16*INITSEG)
 
 .macro	trace_int19
+#ifdef ONLY8086
+	xorw	%si, %si
+	movw	%si, %ds
+	pushw	4+2(%si)
+	pushw	4(%si)
+	movw	$step19, 4(%si)
+	movw	$INITSEG, 4+2(%si)
+#else
 	pushl	$4
 	popw	%si
 	popw	%ds
 	pushl	(%si)
 	movl	$step19+(INITSEG<<16), (%si)
+#endif
 	pushfw
 	popw	%ax
 	incb	%ah			# set TF
@@ -68,17 +108,19 @@ stacktop	= 0x9E00		# in 0x8000 .. 0xA000
 	.word	0xFFF0			// Initial (relative) CS value
 //	.word	0x001C			// File address of relocation table
 //	.word	0,0,0			// Overlay number
+#else
+#undef VCPI
 #endif
 start:
 	xorw	%ax, %ax		# %ax = 0
-#ifdef BZIMAGE
-zeroed		= 14			# zeroed registers
-#else
 zeroed		= 12			# zeroed registers
-#endif
 	movw	$zeroed/2, %cx		# clear gdt + offset, %ds, limits
 stacktop	= 0x9E00		# in 0x8000 .. 0xA000 (+zeroed+12)
+#ifdef ONLY8086
+	movw	$INITSEG, %bx
+#else
 	pushw	$INITSEG
+#endif
 end_header:
 	cld				# assume nothing
 #if defined(BZIMAGE) && BZIMAGE >= 0x202
@@ -90,6 +132,9 @@ end_header:
 					# length of bootsect + length of
 					# setup + room for stack;
 					# 12 is disk parm size.
+# ifdef ONLY8086
+	pushw	%bx
+# endif
 	popw	%es			# %es contain INITSEG
 #endif
 	pushw	%es
@@ -115,7 +160,6 @@ end_header:
 	stosw				# already done above
 	popw	%bx			# offset = 0
 	popw	%ds			# %ds = 0
-	popw	%fs			# %fs = 0
 
 	movb	setup_sects+0x7C00, %al	# read bootsector + setup (%ds = 0)
 	incw	%ax
@@ -123,14 +167,20 @@ end_header:
 	ldsw	0x78(%bx), %si		# %ds:%bx+0x78 is parameter table address
 	pushw	%es
 	pushw	%di
+	pushw	%ds
 	movb	$6, %cl			# copy 12 bytes
 	rep				# don't worry about cld
 	movsw				# already done above
+	popw	%ds
+#ifdef ONLY8086
+	popw	0x78(%bx)		# update parameter table address
+	popw	0x78+2(%bx)
+#else
+	popl	0x78(%bx)		# update parameter table address
+#endif
 	pushw	%ss
 	popw	%ds			# now %ds = %es = %ss = INITSEG
-	popl	%fs:0x78(%bx)		# update parameter table address
 	movb	$63, 0x4-12(%di)	# patch sector count, %di = stacktop
-	cli
 
 	xchg	%ax, %di		# sector count
 	popw	%ax			# limits = 0
@@ -141,12 +191,9 @@ end_header:
 # no 64kB boundaries are crossed. We try to load it as fast as
 # possible, loading whole tracks whenever we can.
 
-#ifndef NO_DOTS
-	popw	%bx			# clear %bx
-#endif
 	movw	syssize, %di
 	decw	%di
-	shrw	$9-4, %di
+	shrclw	$9-4, %di
 	incw	%di
 	movw	$SYSSEG, %cx
 #ifdef BZIMAGE
@@ -206,6 +253,7 @@ syslp:
 	jne	syslp
 #endif
 jmp_setup:
+	cli
 	ljmp	$SETUPSEG, $0
 
 #ifdef EXE_SUPPORT
@@ -226,16 +274,44 @@ step19:
 	pushw	%cs
 	popw	%ss
 	movw	$stacktop-4-16, %sp
+#ifdef ONLY8086
+	popw	4(%si)
+	popw	4+2(%si)
+	popw	%bp
+	popw	%di
+	popw	%si
+	popw	%dx
+	popw	%cx
+	popw	%bx
+	popw	%ax
+#else
 	popl	4(%si)
 	popaw
+#endif
 #ifdef BZIMAGE
 	jmp	movesys
 #endif
 #endif
 #ifndef BZIMAGE
 movesys:				// %ax = SYSSEG, %bx = DS, %si
-	shrw	$4, %si
+	shrclw	$4, %si
 	addw	%si, %bx
+#ifdef TINY_ZIMAGE
+	movw	$0xFFFF, %cx
+	xorw	%si, %si
+	xorw	%di, %di
+	cmpw	%ax, %bx
+	jc	forward
+	decw	%si
+	decw	%di
+	std
+forward:
+	movw	%ax, %es
+	movw	%bx, %ds
+	rep
+	  movsb
+	cld
+#else
 	subw	%ax, %bx
 	jnc	forward
 	movb	$0x90, %ah
@@ -255,6 +331,7 @@ forward:
 	rep
 	  movsb
 	jns	forward
+#endif
 #ifndef NO_CURSOR_DEFINITION
 	movb	$1, %ah
 	movb	$0, %bh
@@ -267,7 +344,12 @@ forward:
 #endif
 comstart:
 	cld				# assume nothing
+#ifdef ONLY8086
+	movw	$INITSEG, %ax
+	pushw	%ax
+#else
 	pushw	$INITSEG
+#endif
 	popw	%es
 #ifdef CMDLINE
 	movw	%sp, %di
@@ -345,7 +427,6 @@ call_vcpi:
 	int	$0x67
 	movl	$FLAT20(sw2pm_params),%esi
 	movb	$0x0C,%al	// DE0C switchpm(ESI)
-	cli
 	jmp	call_vcpi
 pm_code:
 	movl	%cr0,%eax
@@ -362,7 +443,17 @@ isrm:
 # endif
 #else
 # ifdef SHUTDOWNDOS
+#  ifdef ONLY8086
+	pushw	%ax
+	pushw	%bx
+	pushw	%cx
+	pushw	%dx
+	pushw	%si
+	pushw	%di
+	pushw	%bp
+#  else
 	pushaw
+#  endif
 	trace_int19
 # endif
 	retf
@@ -386,7 +477,6 @@ isrm:
 return:
 #ifndef NO_DOTS
 	movw	$0xE2E,%ax
-	movb	$7,%bl
 	int	$0x10
 #endif
 	ret
@@ -405,21 +495,26 @@ check_limits:
         ja	next_cylinder		#   no -> store it
 check_cylinder:
 #endif
-#endif
-	pushaw
-#ifndef FLOPPY_1440K_ONLY
+	pushw	%ax
 	cbw				# %ah = 0
+#else
+	pushw	%dx
 #endif
         int     $0x13			# reset controler
-	popaw
+#ifndef FLOPPY_1440K_ONLY
+	popw	%ax
 	movb	$1, %al			# sector by sector...
+#else
+	movw	$1, %ax
+	jmp	more1trk
+#endif
 read_sectorslp:
 	pushw	%dx			# some bios break dx...
 #ifndef FLOPPY_1440K_ONLY
         pushw   %ax			# limits
 	subb	%cl, %al		# sectors remaining in track
 	ja	tolastsect
-	movb	$1, %al			# 1 sector mini
+	movb	$1, %al			# first track sector by sector
 tolastsect:
 #else
 	movb	$FLOPPY_SECTORS+1, %al
@@ -444,20 +539,20 @@ more1trk:
 #ifndef FLOPPY_1440K_ONLY
 	xchgw	%ax, %bp
 	addw	%dx,%cx			# next sector
-	movw	%cx, %gs
-	movw	%es, %cx
+	movw	%cx, %si
 	pushw	%dx
-	shlw	$5, %dx
+	shlclw	$5, %dx
+	movw	%es, %cx
 	addw	%dx, %cx
 	popw	%dx
 	subw	%dx,%di			# update sector counter
 	popw	%dx
 #else
 	addw	%ax,%cx			# next sector
-	movw	%cx, %gs
-	movw	%es, %cx
+	movw	%cx, %si
 	pushw	%ax
-	shlw	$5, %ax
+	shlclw	$5, %ax
+	movw	%es, %cx
 	addw	%ax, %cx
 	popw	%ax
 	subw	%ax,%di			# update sector counter
@@ -466,10 +561,10 @@ read_sectorsCX:
 	movw	%cx, %es		# next location
 	jz	return
 read_sectors:
-	movw	%gs, %cx
+	movw	%si, %cx
 #ifndef FLOPPY_1440K_ONLY
 #   al is last sector+1
-#   ah is last cylinder+1
+#   ah is last head+1
 	xchgw	%ax, %bp
 #endif
 #ifndef FLOPPY_1440K_ONLY
@@ -551,4 +646,9 @@ idt_base:
 saved_ss_sp:
 	.word	stacktop-4-16-4,INITSEG
 # endif
+#endif
+#ifdef ELKS
+	.org	0x1E3
+	.byte	13,10,7
+	.asciz	"ELKS Boot"
 #endif

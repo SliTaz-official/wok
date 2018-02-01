@@ -1,4 +1,3 @@
-#define TOP		(0x90000+_start-end)
 #define SYSTEM		0x10000
 #define SETUP		14
 #define SYSSIZE		0x1F4
@@ -11,10 +10,21 @@
 #define FLAT16			1
 //#define FLAT16OUT		0
 #define SAVEREGS		0 
+#define ELKS			1
 
 	.text
 	.code16
 	.org	0
+
+#if ELKS
+	.arch	i8086
+#define FLAT16			1
+#define LINUX_HEADER		0
+#define SAVEREGS		0 
+#define TOPSEG		0x2000
+#else
+#define TOPSEG		0x8000
+#endif
 
 	.globl	_start
 _start:
@@ -50,20 +60,35 @@ start2:
 	pushw	$0
 # endif
 #endif
+#if ELKS
+	movw	$0x100, %ax
+	pushw	%ax
+#else
 #if UPDATE_SYSSIZE
 	pushw	%ds			// <A>
 #else
 	pushw	%cs			// <A>
 #endif
+#endif
 #if FLAT16
-# 1- move 9020..9020+stp -> 8000
-	pushw	$0x8000
+# 1- move 9020..9020+stp -> TOPSEG
+#if ELKS
+	movb	$TOPSEG/256, %ah
+	movw	%ax, %es
+#else
+	pushw	$TOPSEG
 	popw	%es
+#endif
 	movw	$0x200, %si
 #if SAVEREGS == 0
 	pushw	%es
+#if ELKS
+	movw	$cont, %ax
+	pushw	%ax
+#else
 	// pushw	$cont
 	.byte	0x6A, cont
+#endif
 	jmp	jumpinto
 #else
 # if HARDCODED_SETUPSIZE
@@ -82,28 +107,48 @@ setup_word:
 	lret
 #endif
 cont:
-# 2- move 1000..1000+sys -> 8000+stp
+# 2- move 1000..1000+sys -> TOPSEG+stp
+#if ELKS
+	movw	$0x1000, %ax
+	movw	%ax, %ds
+#else
 	pushw	$0x1000
 	popw	%ds
+#endif
 	xorw	%si, %si
 	subw	%di, %cx
 	rep
 	  movsb
-# 3- unlz(8000+stp:end, 1000-stp:0)
+# 3- unlz(TOPSEG+stp:end, 1000-stp:0)
 	pushw	%es		// <C>
 # if HARDCODED_SETUPSIZE
 setup_seg:
+#if ELKS
+#  if UPDATE_SYSSIZE
+	movw	$0x1000-(SETUP*32)-32, %ax
+#  else
+	movw	$0x1000-(SETUP*32), %ax
+#  endif
+	movw	%ax, %es
+#else
 #  if UPDATE_SYSSIZE
 	pushw	$0x1000-(SETUP*32)-32
 #  else
 	pushw	$0x1000-(SETUP*32)
 #  endif
 	popw	%es
+#endif
 # else
 #  if UPDATE_SYSSIZE
 	incb	%dh
 #  endif
+#if ELKS
+	shrw	$1, %dx
+	shrw	$1, %dx
+	shrw	$1, %dx
+#else
 	shrw	$3, %dx
+#endif
 	movw	%ds, %ax
 	subw	%dx, %ax
 	movw	%ax, %es
@@ -140,7 +185,13 @@ setup_para:
 # else
 	movb	%ss:SETUPSIZE, %ch
 	movw	%cx, %ax
+#if ELKS
+	shrw	$1, %ax
+	shrw	$1, %ax
+	shrw	$1, %ax
+#else
 	shrw	$3, %ax
+#endif
 	subw	%ax, %dx
 # endif
 	pushw	%cx			// <B>
@@ -225,6 +276,9 @@ setup_word:
 
 unpack:
 #define NO_LZMA_HEADER
+#if ELKS
+#define ONLY8086	1
+#endif
 #include "unlzma.S"
 
 end:

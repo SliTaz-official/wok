@@ -106,13 +106,27 @@ ws	=	ws2+LOCALS+15
  */
  
 	mov	$ws1, CX
+#ifdef ONLY8086
+	movw	$2048/2, %ax
+lzd1:
+	pushw	%ax
+#else
 lzd1:
 	pushw	$2048/2
+#endif
 	loop	lzd1
 	mov	SP, BP
 	movb	$((LOCALS+3)/4)*2, %cl
+#ifdef ONLY8086
+	movw	$1, %ax
+	cwd
+initlocals:
+	pushw	%dx
+	pushw	%ax
+#else
 initlocals:
 	pushl	$1
+#endif
 	loop	initlocals
 
 #if !defined(FLAT32) && !defined(FLAT16OUT)
@@ -175,12 +189,22 @@ lzdmainlp:
 // 	((((nowPos) & literalPosMask) << lc) + (previousByte >> (8 - lc))));
 
 #if PROP_LC != 0
+# ifdef ONLY8086
+	movb	$8-PROP_LC, %cl
+	shrb	%cl, %bl
+# else
 	shrb	$8-PROP_LC, %bl
+# endif
 #endif
 
 #if PROP_LP != 0
 	movb	posState2(BP), %dl
+# ifdef ONLY8086
+	movb	$PROP_LC, %cl
+	shl	%cl, DX
+# else
 	shl	$PROP_LC, DX
+# endif
 	movb	$0, %bh
 	add	BX, DX
 #endif
@@ -338,6 +362,23 @@ lzd11a:
 //           rep1 = rep0; rep0 = distance;
 
 lzd11z:
+# ifdef ONLY8086
+	shl	$1, CX
+	shl	$1, CX		// 8->32 bits
+	sub	CX, DI		// &rep[cx]
+	movw	(BP, DI), %ax
+	pushw	2(BP, DI)
+rotreplp:
+	movb	4(BP, DI), %bl
+	movb	%bl, (BP, DI)
+	inc	DI
+	loop	rotreplp
+	popw	%bx
+	testb	%dh, %dh
+	jnz	lzd10
+	movw	%ax, (BP, DI)
+	movw	%bx, 2(BP, DI)
+# else
 	shl	$2, CX		// 8->32 bits
 	sub	CX, DI		// &rep[cx]
 	movl	(BP, DI), %eax
@@ -349,6 +390,7 @@ rotreplp:
 	testb	%dh, %dh
 	jnz	lzd10
 	movl	%eax, (BP, DI)
+# endif
 
 //         }
 lzd12:
@@ -497,7 +539,17 @@ lzd21:
 //             rep0 <<= numDirectBits;
 
 	neg	AX
+# ifdef ONLY8086
+	pushw	%cx
+	movb	$0, %ch
+shllrep0:
+	shlw	$1, (BP, DI)
+	rclw	$1, 2(BP, DI)
+	loop	shllrep0
+	popw	%cx
+# else
 	shll	%cl, (BP, DI)
+# endif
 	add	(BP, DI), AX
 
 //             prob = p + SpecPos /*688*/ + rep0 - posSlot - 1;
@@ -515,6 +567,26 @@ lzd23:
 
 lzd23z:
 	call	RC_NORMALIZE
+# ifdef ONLY8086
+	pushw	%dx
+	shrw	$1, Range+2(BP)
+	rcrw	$1, Range(BP)
+	movw	Range(BP), %ax
+	movw	Range+2(BP), %dx
+	cmpw	Code+2(BP), %dx
+	ja	lzd25
+	jb	lzd25x
+	cmpw	Code(BP), %ax
+	ja	lzd25
+lzd25x:
+	subw	%ax, Code(BP)
+	sbbw	%dx, Code+2(BP)
+	stc
+lzd25:
+	popw	%dx
+	rclw	$1, (BP, DI)
+	rclw	$1, 2(BP, DI)
+# else
 	shrl	$1, Range(BP)
 	movl	Range(BP), %eax
 	cmpl	Code(BP), %eax
@@ -523,6 +595,7 @@ lzd23z:
 	stc
 lzd25:
 	rcll	$1, (BP, DI)
+# endif
 
 //             } while (--numDirectBits != 0);
 
@@ -532,7 +605,17 @@ lzd25:
 //             prob = p + Align /* 802 */; numDirectBits = kNumAlignBits /*4*/;
 //             rep0 <<= numDirectBits;
 
+# ifdef ONLY8086
+	pushw	%cx
+	movb	$0, %ch
+shlrep0:
+	shlw	$1, (BP, DI)
+	rclw	$1, 2(BP, DI)
+	loop	shlrep0
+	popw	%cx
+# else
 	shll	%cl, (BP, DI)
+# endif
 	mov	$802, AX
 //           }
 
@@ -554,7 +637,13 @@ lzd24:
 lzd22:
 //         if (++rep0 == (UInt32)(0)) break; /* EOF */
 
+# ifdef ONLY8086
+	incw	(BP, DI)
+	jnz	lzd19
+	incw	2(BP, DI)
+# else
 	incl	(BP, DI)
+# endif
 
 lzd19:
 	pop	CX
@@ -610,6 +699,24 @@ DicoRep02ESDI:
  
 Dico2ESDI:
 #if !defined(FLAT32) && !defined(FLAT16OUT)
+# ifdef ONLY8086
+	pushw	%ax
+	movw	nowPos(%bp), %bx
+	movw	nowPos+2(%bp), %ax
+	jnc	Dico2ESDIz
+	subw	rep0(%bp), %bx
+	sbbw	rep0+2(%bp), %ax
+Dico2ESDIz:
+	movw	$0xF, %di
+	andw	%bx, %di
+	pushw	%cx
+	movb	$4, %cl
+	shrw	%cl, %bx
+	shlw	%cl, %ax
+	popw	%cx
+	addb	%al, %bh
+	popw	%ax
+# else
 	movl	nowPos(%bp), %ebx
 	jnc	Dico2ESDIz
 	subl	rep0(%bp), %ebx
@@ -617,6 +724,7 @@ Dico2ESDIz:
 	movw	%bx, %di
 	xorw	%bx, %bx
 	shrl	$4, %ebx
+# endif
 	movw	%bx, %es
 #else
 	mov	nowPos(BP), DI
@@ -673,7 +781,14 @@ outchar:
 	andb	$((1 << PROP_LP) -1), posState2(BP)
 # endif
 #endif
+#ifdef ONLY8086
+	incw	nowPos(BP)
+	jnz	incnowPosDone
+	incw	nowPos+2(BP)
+incnowPosDone:
+#else
 	incl	nowPos(BP)
+#endif
 	ret
 
 //  
@@ -690,8 +805,20 @@ RC_NORMALIZE:
 	jne	RC_NORMALIZE_1
 RC_LOAD_BYTE:
 	push	AX
+#ifdef ONLY8086
+	movw	Range+1(BP), %ax
+	movw	%ax, Range+2(BP)
+	movw	Code+1(BP), %ax
+	movw	%ax, Code+2(BP)
+	xorw	%ax, %ax
+	movb	Range(BP), %ah
+	movw	%ax, Range(BP)
+	movb	Code(BP), %ah
+	movw	%ax, Code(BP)
+#else
 	shll	$8, Range(BP)
 	shll	$8, Code(BP)
+#endif
 #if !defined(FLAT16) && !defined(FLAT32)
 	testw	%si, %si
 	jns	RC_READ_BYTE
@@ -741,7 +868,14 @@ Bit1:
 
 	call  RC_NORMALIZE		// kill %ax, update %si
 
+#ifdef ONLY8086
+	pushw	%ax
+	pushw	%cx
+	pushw	%dx
+	pushw	%di
+#else
 	pushal
+#endif
 
 	xchg	AX, DI
 	add	DI, DI			// short *
@@ -749,19 +883,48 @@ Bit1:
 
 // 	bound = (Range>>kNumBitModelTotalBits /*11*/) * *(p);
 
+#ifdef ONLY8086
+	movw	Range(BP), %dx
+	movw	Range+2(BP), %ax
+	movw	$11, %cx
+shr11lp:
+	shrw	$1, %ax
+	rcrw	$1, %dx
+	loop	shr11lp
+	movw	%dx, %cx
+	mulw	(BP, DI)
+	xchgw	%ax, %cx
+	mulw	(BP, DI)
+	addw	%cx, %dx
+#else
 	movl	Range(BP), %eax
 	shrl	$11, %eax
 	movzwl	(BP, DI), %edx
 	mull	%edx
+#endif
 
 // 	if (Code < bound) {
 
+#ifdef ONLY8086
+	cmpw	Code+2(BP), %dx
+	jb	Bit1_1
+	ja	Bit1_1x
+	cmpw	Code(BP), %ax
+	jbe	Bit1_1
+Bit1_1x:
+
+//    		Range = bound;
+
+	movw	%ax, Range(BP)
+	movw	%dx, Range+2(BP)
+#else
 	cmpl	Code(BP), %eax
 	jbe	Bit1_1
 
 //    		Range = bound;
 
 	movl	%eax, Range(BP)
+#endif
 
 // 		*(p) += (kBitModelTotal /*2048*/ - *(p)) >> kNumMoveBits /*5*/;
 
@@ -778,8 +941,15 @@ Bit1_1:
 
 //    		Range -= bound; Code -= bound;
 
+#ifdef ONLY8086
+	subw	%ax, Range(BP)
+	sbbw	%dx, Range+2(BP)
+	subw	%ax, Code(BP)
+	sbbw	%dx, Code+2(BP)
+#else
 	subl	%eax, Range(BP)
 	subl	%eax, Code(BP)
+#endif
 
 // 		*(p) -= (*(p)) >> kNumMoveBits /*5*/;
 
@@ -791,10 +961,22 @@ Bit1_1:
 Bit1_2:
 	pushf
 	subw	(BP, DI), %ax
+#ifdef ONLY8086
+	movb	$5, %cl
+	sarw	%cl, %ax
+#else
 	sarw	$5, %ax
+#endif
 	addw	%ax, (BP, DI)
 	popf
+#ifdef ONLY8086
+	popw	%di
+	popw	%dx
+	popw	%cx
+	popw	%ax
+#else
 	popal
+#endif
 	sbb	AX, AX
 
 // 	}
