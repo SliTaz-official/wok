@@ -10,7 +10,7 @@
 #define FLAT16			1
 //#define FLAT16OUT		0
 #define SAVEREGS		0 
-#define ELKS			1
+#define ELKS			0
 
 	.text
 	.code16
