@@ -1,14 +1,15 @@
 #!ipxe
 
 set menu-timeout 3000
-dhcp && console --picture http://mirror.slitaz.org/pxe/ipxe/slitaz.png ||
+dhcp && isset ${filename} && autoboot ||
+console --picture http://mirror.slitaz.org/pxe/ipxe/slitaz.png ||
 
 :menu
 menu SliTaz net boot menu
 item --key b boot	Local boot
 item --gap
 item --gap Network boot
-item --key l lan	Your PXE boot ${filename}
+isset ${filename} && item --key l lan	Your PXE boot ${filename}
 item --key w web	SliTaz WEB boot
 item --key r rolling	SliTaz development version
 item --gap
