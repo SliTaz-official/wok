@@ -24,7 +24,7 @@ CUR_DIR=$(pwd)
 mkdir -p $TMP_DIR && cd $TMP_DIR
 
 # Download deb
-URL=$(wget -O - $URL | sed '/i386/!d;s/.*"\([^"]*i386[^"]*\).*/\1/')
+URL=$(wget -O - $URL | sed '/i386/!d;s/.*"\([^"]*i386[^"]*\).*/\1/;q')
 wget $URL
 FILE=$(basename $URL)
 
@@ -38,6 +38,7 @@ fi
 mkdir $PACKAGE
 dpkg-deb -e $FILE $PACKAGE/meta
 dpkg-deb -x $FILE $PACKAGE/fs
+find $PACKAGE/fs | grep /script/ | xargs sed -i 's|--append|-a|'
 # extracted pkg can be removed: Save RAM
 rm -f $FILE
 sed '/^Description:/,$!d;s/^Description://' \
