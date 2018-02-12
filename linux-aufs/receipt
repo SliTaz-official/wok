@@ -1,6 +1,6 @@
 # SliTaz package receipt.
 
-PACKAGE="linux64-aufs"
+PACKAGE="linux-aufs"
 SOURCE="aufs"
 VERSION="20130311"
 CATEGORY="base-system"
@@ -11,12 +11,9 @@ WEB_SITE="http://aufs.sf.net/"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WGET_URL="git|git://aufs.git.sourceforge.net/gitroot/aufs/aufs3-standalone.git"
 BRANCH="origin/${PACKAGE}3.2"
-PROVIDE="linux-aufs:linux64"
 
-DEPENDS="linux64"
-BUILD_DEPENDS="linux64-module-headers git xz uclibc-cross-compiler-x86_64"
-
-AUFS_NOT_RAMFS="uclibc-cross-compiler-x86_64 is not compatible with aufs+tmpfs 8("
+DEPENDS="linux"
+BUILD_DEPENDS="linux-module-headers git xz"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -30,7 +27,6 @@ compile_rules()
 		-e 's|CONFIG_AUFS_SHWH =.*|CONFIG_AUFS_SHWH = y|' \
 		-e 's|CONFIG_AUFS_BDEV_LOOP =.*|CONFIG_AUFS_BDEV_LOOP = y|' \
 		-e 's|CONFIG_AUFS_BR_RAMFS =.*|CONFIG_AUFS_BR_RAMFS = y|' \
-		-e 's|CONFIG_AUFS_INO_T_64 =.*|CONFIG_AUFS_INO_T_64 = y|' \
 		-e 's|CONFIG_AUFS_DEBUG =.*|CONFIG_AUFS_DEBUG =|' config.mk
 
 	# The sed fixes are from gentoo portage build.
@@ -49,18 +45,18 @@ compile_rules()
 genpkg_rules()
 {
 	EXTRAVERSION=_${kvers}
-	mkdir -p $fs/lib/modules/${kvers}-slitaz64/kernel/fs/aufs
+	mkdir -p $fs/lib/modules/${kvers}-slitaz/kernel/fs/aufs
 	install -o root -m 0644 $src/fs/aufs/aufs.ko.xz \
-		$fs/lib/modules/${kvers}-slitaz64/kernel/fs/aufs/aufs.ko.xz
+		$fs/lib/modules/${kvers}-slitaz/kernel/fs/aufs/aufs.ko.xz
 }
 
 # Post install/remove commands for Tazpkg.
 post_install()
 {
-	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz64
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
 }
 
 post_remove()
 {
-	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz64
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz
 }
