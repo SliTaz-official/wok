@@ -1,8 +1,8 @@
 Add non standard stat -m support to display file block list
 Useful to patch read-only filesystems such as ISO9660, for defragmentation
 tools or boot loaders
---- busybox-1.26/coreutils/stat.c
-+++ busybox-1.26/coreutils/stat.c
+--- busybox-1.28/coreutils/stat.c
++++ busybox-1.28/coreutils/stat.c
 @@ -54,6 +54,7 @@
  //usage:	)
  //usage:     "\n	-L	Follow links"
@@ -55,22 +55,24 @@ tools or boot loaders
  #if ENABLE_FEATURE_STAT_FILESYSTEM
  /* Stat the file system and print what we find.  */
  #if !ENABLE_FEATURE_STAT_FORMAT
-@@ -763,7 +785,7 @@
- 	statfunc_ptr statfunc = do_stat;
- 
- 	opt_complementary = "-1"; /* min one arg */
--	opts = getopt32(argv, "tL"
-+	opts = getopt32(argv, "tLm"
+@@ -766,7 +788,7 @@
+ 	opts =
+ #endif
+ 	getopt32(argv, "^"
+-		"tL"
++		"tLm"
  		IF_FEATURE_STAT_FILESYSTEM("f")
  		IF_SELINUX("Z")
- 		IF_FEATURE_STAT_FORMAT("c:", &format)
-@@ -777,6 +799,9 @@
+ 		IF_FEATURE_STAT_FORMAT("c:")
+@@ -782,6 +804,11 @@
  		selinux_or_die();
  	}
  #endif
++#if ENABLE_FEATURE_STAT_FILESYSTEM
 + 	if (opts & OPT_MAP) { /* -m */
 + 		statfunc = do_mapfile;
 +	}
++#endif
  	ok = 1;
  	argv += optind;
  	for (i = 0; argv[i]; ++i)
