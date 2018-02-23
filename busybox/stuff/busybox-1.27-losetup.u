@@ -1,0 +1,28 @@
+keep previous default behaviour and display cloop devices
+--- busybox-1.26/util-linux/losetup.c
++++ busybox-1.26/util-linux/losetup.c
+@@ -82,17 +82,21 @@
+ 	}
+ 
+ 	/* -a */
+-	if (opt == OPT_a) {
+-		int n;
++	if (opt == OPT_a || (!opt && !argv[0])) {
++		int i, n;
++		static const char *fmt[3] = { LOOP_FORMAT, "/dev/cloop", "/dev/cloop%u" };
++		
++		for (i = 0; i < 3; i++)
+ 		for (n = 0; n < MAX_LOOP_NUM; n++) {
+ 			char *s;
+ 
+-			sprintf(dev, LOOP_FORMAT, n);
++			sprintf(dev, fmt[i], n);
+ 			s = query_loop(dev);
+ 			if (s) {
+ 				printf("%s: %s\n", dev, s);
+ 				free(s);
+ 			}
++			if (i == 1) break; /* /dev/cloop */
+ 		}
+ 		return EXIT_SUCCESS;
+ 	}

@@ -1,0 +1,35 @@
+--- busybox-1.27/util-linux/mkfs_vfat.c
++++ busybox-1.27/util-linux/mkfs_vfat.c
+@@ -239,6 +239,7 @@
+ 	char *device_name;
+ 	uoff_t volume_size_bytes;
+ 	uoff_t volume_size_sect;
++	uint32_t hidden;
+ 	uint32_t total_clust;
+ 	uint32_t volume_id;
+ 	int dev;
+@@ -287,6 +288,7 @@
+ 	// Get image size and sector size
+ 	//
+ 	bytes_per_sect = SECTOR_SIZE;
++	hidden = 0;
+ 	if (!S_ISBLK(st.st_mode)) {
+ 		if (!S_ISREG(st.st_mode)) {
+ 			if (!argv[1])
+@@ -343,6 +345,7 @@
+ 			// hard drive
+ 			sect_per_track = geometry.sectors;
+ 			heads = geometry.heads;
++			hidden = geometry.start;
+ 
+  set_cluster_size:
+ 			/* For FAT32, try to do the same as M$'s format command
+@@ -510,7 +513,7 @@
+ 		//STORE_LE(boot_blk->sect_per_fat, 0);
+ 		STORE_LE(boot_blk->sect_per_track, sect_per_track);
+ 		STORE_LE(boot_blk->heads, heads);
+-		//STORE_LE(boot_blk->hidden, 0);
++		STORE_LE(boot_blk->hidden, hidden);
+ 		STORE_LE(boot_blk->fat32_volume_size_sect, volume_size_sect);
+ 		STORE_LE(boot_blk->fat32_sect_per_fat, sect_per_fat);
+ 		//STORE_LE(boot_blk->fat32_flags, 0);
