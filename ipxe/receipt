@@ -53,6 +53,17 @@ genpkg_rules()
 {
 	mkdir -p $fs/boot $install/usr/share
 	cp -a $src/src/doc $install/usr/share
-	cp -a $src/src/bin/ipxe.lkrn $fs/boot/ipxe
-	dd if=$src/src/bootloader.bin of=$fs/boot/ipxe conv=notrunc
+	cp -a $src/src/bin/ipxe.lkrn $fs/boot/ipxe.exe
+	dd if=$src/src/bootloader.bin of=$fs/boot/ipxe.exe conv=notrunc
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	[ -s $1/boot/isolinux/isolinux.cfg ] &&
+	! grep -qs 'Web Boot' $1/boot/isolinux/isolinux.cfg &&
+	sed -i 's|i18n.cfg|&\n\
+LABEL web zeb\
+	MENU LABEL Web Boot\
+	KERNEL /boot/ipxe.exe|' $1/boot/isolinux/isolinux.cfg
 }

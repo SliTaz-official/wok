@@ -8,18 +8,26 @@ MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="http://www.memtest.org/"
 WANTED="memtest"
+PROVIDE="memtest"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/boot
-	cp $src/memtest.packed-115200 $fs/boot/memtest
+	cp $src/memtest.packed-115200 $fs/boot/memtest.exe
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
 	cat <<EOT
+
 Output to vga and serial port. Default kernel cmdline: console=ttyS0,115200e8
 EOT
+	[ -s $1/boot/isolinux/isolinux.cfg ] &&
+	! grep -qs 'Check memory' $1/boot/isolinux/isolinux.cfg && sed -i \
+'s|LABEL md5|LABEL memtest mem ram\
+	MENU LABEL Check memory\
+	KERNEL /boot/memtest.exe\
+\n&|' $1/boot/isolinux/isolinux.cfg
 }

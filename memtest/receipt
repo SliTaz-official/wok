@@ -45,5 +45,16 @@ genpkg_rules()
 	mkdir -p $fs/boot $install/usr/share/doc
 	cp $src/README* $install/usr/share/doc
 	cp $src/FAQ $install/usr/share/doc
-	cp $src/memtest.packed $fs/boot/memtest
+	cp $src/memtest.packed $fs/boot/memtest.exe
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	[ -s $1/boot/isolinux/isolinux.cfg ] &&
+	! grep -qs 'Check memory' $1/boot/isolinux/isolinux.cfg && sed -i \
+'s|LABEL md5|LABEL memtest mem ram\
+	MENU LABEL Check memory\
+	KERNEL /boot/memtest.exe\
+\n&|' $1/boot/isolinux/isolinux.cfg
 }

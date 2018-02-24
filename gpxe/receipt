@@ -39,3 +39,14 @@ http://mirror.switch.ch/ftp/mirror/pxe/pxelinux.0,\
 http://download.tuxfamily.org/slitaz/pxe/pxelinux.0" | cat - /dev/zero | \
 		dd bs=1 seek=519 count=255 conv=notrunc of=$fs/boot/gpxe
 }
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	[ -s $1/boot/isolinux/isolinux.cfg ] &&
+	! grep -qs 'Web Boot' $1/boot/isolinux/isolinux.cfg &&
+	sed -i 's|i18n.cfg|&\n\
+LABEL web zeb\
+	MENU LABEL Web Boot\
+	KERNEL /boot/gpxe|' $1/boot/isolinux/isolinux.cfg
+}
