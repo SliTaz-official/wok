@@ -13,7 +13,6 @@ LINLD="$WOK/linld/source"
 CONFIG_FILES="/boot/isolinux/*.cfg /boot/isolinux/kbd"
 TAGS="boot"
 
-DEPENDS="ipxe memtest"
 BUILD_DEPENDS="wget kbd-base perl nasm dev86 lzma mingw32-gcc upx posixovl \
 util-linux-uuid-dev advancecomp libidn linld"
 
@@ -149,7 +148,9 @@ post_install()
 	sed '/MENU TITLE/!d;s/MENU TITLE //' > $1/etc/slitaz-version \
 		< "$1/boot/isolinux/isolinux.cfg"
 	for i in $(grep -ls boot/isolinux/isolinux.cfg \
-			"$1/var/lib/tazpkg/install/*/receipt"); do
-		chroot "$1" tazpkg reconfigure $(basename ${i%/*})
+			$1/var/lib/tazpkg/installed/*/receipt); do
+		pkg=$(basename ${i%/*})
+		[ "$pkg" == "$PACKAGE" ] ||
+		root=/ chroot "$1" tazpkg reconfigure $pkg
 	done
 }
