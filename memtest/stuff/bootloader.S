@@ -167,11 +167,10 @@ end_header:
 	ldsw	0x78(%bx), %si		# %ds:%bx+0x78 is parameter table address
 	pushw	%es
 	pushw	%di
-	pushw	%ds
 	movb	$6, %cl			# copy 12 bytes
 	rep				# don't worry about cld
 	movsw				# already done above
-	popw	%ds
+	movw	%cx, %ds		# %ds = 0
 #ifdef ONLY8086
 	popw	0x78(%bx)		# update parameter table address
 	popw	0x78+2(%bx)
