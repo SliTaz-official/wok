@@ -40,7 +40,7 @@
      __u32 s_inodes_per_group;	/* # Inodes per group */
      __u32 s_mtime;		/* Mount time */
      __u32 s_wtime;		/* Write time */
-@@ -72,13 +86,14 @@
+@@ -72,17 +86,63 @@
      __u16 s_magic;		/* Magic signature */
      __u16 s_state;		/* File system state */
      __u16 s_errors;		/* Behaviour when detecting errors */
@@ -52,50 +52,54 @@
      __u32 s_rev_level;		/* Revision level */
      __u16 s_def_resuid;		/* Default uid for reserved blocks */
      __u16 s_def_resgid;		/* Default gid for reserved blocks */
+-    __u32 s_reserved[235];	/* Padding to the end of the block */
 +    //__u32 s_reserved[235];	/* Padding to the end of the block */
-     /*
-      * These fields are for EXT2_DYNAMIC_REV superblocks only.
-      *
-@@ -98,16 +113,16 @@
-     __u32 s_feature_compat;	/* compatible feature set */
-     __u32 s_feature_incompat;	/* incompatible feature set */
-     __u32 s_feature_ro_compat;	/* readonly-compatible feature set */
--    __u8  s_uuid[16];		/* 128-bit uuid for volume */
--    char  s_volume_name[16];	/* volume name */
--    char  s_last_mounted[64];	/* directory where last mounted */
--    __u32 s_algorithm_usage_bitmap; /* For compression */
++    /*
++     * These fields are for EXT2_DYNAMIC_REV superblocks only.
++     *
++     * Note: the difference between the compatible feature set and
++     * the incompatible feature set is that if there is a bit set
++     * in the incompatible feature set that the kernel doesn't
++     * know about, it should refuse to mount the filesystem.
++     *
++     * e2fsck's requirements are more strict; if it doesn't know
++     * about a feature in either the compatible or incompatible
++     * feature set, it must abort and not try to meddle with
++     * things it doesn't understand...
++     */
++    __u32 s_first_ino;		/* First non-reserved inode */
++    __u16 s_inode_size;		/* size of inode structure */
++    __u16 s_block_group_nr;	/* block group # of this superblock */
++    __u32 s_feature_compat;	/* compatible feature set */
++    __u32 s_feature_incompat;	/* incompatible feature set */
++    __u32 s_feature_ro_compat;	/* readonly-compatible feature set */
 +    __u8 s_uuid[16];		/* 128-bit uuid for volume */
 +    char s_volume_name[16];	/* volume name */
 +    char s_last_mounted[64];	/* directory where last mounted */
 +    __u32 s_algorithm_usage_bitmap;	/* For compression */
-     /*
--     * Performance hints.  Directory preallocation should only
++    /*
 +     * Performance hints. Directory preallocation should only
-      * happen if the EXT2_FEATURE_COMPAT_DIR_PREALLOC flag is on.
-      */
--    __u8  s_prealloc_blocks;	/* Nr of blocks to try to preallocate*/
--    __u8  s_prealloc_dir_blocks;	/* Nr to preallocate for dirs */
++     * happen if the EXT2_FEATURE_COMPAT_DIR_PREALLOC flag is on.
++     */
 +    __u8 s_prealloc_blocks;	/* Nr of blocks to try to preallocate*/
 +    __u8 s_prealloc_dir_blocks;	/* Nr to preallocate for dirs */
-     __u16 s_reserved_gdt_blocks;/* Per group table for online growth */
-     /*
-      * Journaling support valid if EXT2_FEATURE_COMPAT_HAS_JOURNAL set.
-@@ -117,17 +132,17 @@
-     __u32 s_journal_dev;	/* device number of journal file */
-     __u32 s_last_orphan;	/* start of list of inodes to delete */
-     __u32 s_hash_seed[4];	/* HTREE hash seed */
--    __u8  s_def_hash_version;	/* Default hash version to use */
--    __u8  s_jnl_backup_type; 	/* Default type of journal backup */
--    __u16 s_reserved_word_pad;
++    __u16 s_reserved_gdt_blocks;/* Per group table for online growth */
++    /*
++     * Journaling support valid if EXT2_FEATURE_COMPAT_HAS_JOURNAL set.
++     */
++    __u8 s_journal_uuid[16];	/* uuid of journal superblock */
++    __u32 s_journal_inum;	/* inode number of journal file */
++    __u32 s_journal_dev;	/* device number of journal file */
++    __u32 s_last_orphan;	/* start of list of inodes to delete */
++    __u32 s_hash_seed[4];	/* HTREE hash seed */
 +    __u8 s_def_hash_version;	/* Default hash version to use */
 +    __u8 s_jnl_backup_type;	/* Default type of journal backup */
 +    __u16 s_desc_size;		/* size of group descriptor */
-     __u32 s_default_mount_opts;
-     __u32 s_first_meta_bg;	/* First metablock group */
-     __u32 s_mkfs_time;		/* When the filesystem was created */
--    __u32 s_jnl_blocks[17]; 	/* Backup of the journal inode */
++    __u32 s_default_mount_opts;
++    __u32 s_first_meta_bg;	/* First metablock group */
++    __u32 s_mkfs_time;		/* When the filesystem was created */
 +    __u32 s_jnl_blocks[17];	/* Backup of the journal inode */
-     __u32 s_reserved[172];	/* Padding to the end of the block */
++    __u32 s_reserved[172];	/* Padding to the end of the block */
    };
  
 -struct ext2_group_desc
@@ -103,7 +107,7 @@
    {
      __u32 bg_block_bitmap;	/* Blocks bitmap block */
      __u32 bg_inode_bitmap;	/* Inodes bitmap block */
-@@ -135,8 +150,18 @@
+@@ -90,8 +150,18 @@
      __u16 bg_free_blocks_count;	/* Free blocks count */
      __u16 bg_free_inodes_count;	/* Free inodes count */
      __u16 bg_used_dirs_count;	/* Directories count */
@@ -124,7 +128,7 @@
    };
  
  struct ext2_inode
-@@ -174,22 +199,22 @@
+@@ -129,22 +199,22 @@
      __u32 i_block[EXT2_N_BLOCKS];	/* 40: Pointers to blocks */
      __u32 i_version;		/* File version (for NFS) */
      __u32 i_file_acl;		/* File ACL */
@@ -155,7 +159,7 @@
  	    __u16 h_i_mode_high;
  	    __u16 h_i_uid_high;
  	    __u16 h_i_gid_high;
-@@ -198,16 +223,36 @@
+@@ -153,16 +223,36 @@
  	hurd2;
  	struct
  	  {
@@ -195,7 +199,7 @@
  /* linux/limits.h */
  #define NAME_MAX         255	/* # chars in a file name */
  
-@@ -225,6 +270,57 @@
+@@ -180,6 +270,57 @@
      char name[EXT2_NAME_LEN];	/* File name */
    };
  
@@ -253,7 +257,7 @@
  /* linux/ext2fs.h */
  /*
   * EXT2_DIR_PAD defines the directory entries boundaries
-@@ -238,7 +334,7 @@
+@@ -193,7 +334,7 @@
  
  
  /* ext2/super.c */
@@ -262,7 +266,7 @@
  
  #define EXT2_SUPER_MAGIC      0xEF53	/* include/linux/ext2_fs.h */
  #define EXT2_ROOT_INO              2	/* include/linux/ext2_fs.h */
-@@ -247,11 +343,12 @@
+@@ -202,11 +343,12 @@
  
  /* made up, these are pointers into FSYS_BUF */
  /* read once, always stays there: */
@@ -277,7 +281,7 @@
  #define INODE \
      ((struct ext2_inode *)((int)GROUP_DESC + EXT2_BLOCK_SIZE(SUPERBLOCK)))
  #define DATABLOCK1 \
-@@ -261,14 +358,19 @@
+@@ -216,15 +358,37 @@
  
  /* linux/ext2_fs.h */
  #define EXT2_ADDR_PER_BLOCK(s)          (EXT2_BLOCK_SIZE(s) / sizeof (__u32))
@@ -285,12 +289,8 @@
 +#define EXT2_ADDR_PER_BLOCK_BITS(s)	(log2_tmp(EXT2_ADDR_PER_BLOCK(s)))
  
 +/* Revision levels */
- #define EXT2_GOOD_OLD_REV	0	/* The good old (original) format */
- #define EXT2_DYNAMIC_REV	1	/* V2 format w/ dynamic inode sizes */
--#define EXT2_GOOD_OLD_INODE_SIZE 128
--#define EXT2_INODE_SIZE(s)	(((s)->s_rev_level == EXT2_GOOD_OLD_REV) ? \
--				EXT2_GOOD_OLD_INODE_SIZE : \
--				(s)->s_inode_size)
++#define EXT2_GOOD_OLD_REV	0	/* The good old (original) format */
++#define EXT2_DYNAMIC_REV	1	/* V2 format w/ dynamic inode sizes */
 +
 +#define EXT2_CURRENT_REV	EXT2_GOOD_OLD_REV
 +#define EXT2_MAX_SUPP_REV	EXT2_DYNAMIC_REV
@@ -299,10 +299,10 @@
 +
 +#define EXT2_INODE_SIZE(s)	(((s)->s_rev_level == EXT2_GOOD_OLD_REV) ? EXT2_GOOD_OLD_INODE_SIZE : (s)->s_inode_size)
 +//#define EXT2_INODE_SIZE(s)		(SUPERBLOCK->s_inode_size)
- #define EXT2_INODES_PER_BLOCK(s)	(EXT2_BLOCK_SIZE(s)/EXT2_INODE_SIZE(s))
- 
++#define EXT2_INODES_PER_BLOCK(s)	(EXT2_BLOCK_SIZE(s)/EXT2_INODE_SIZE(s))
++
  /* linux/ext2_fs.h */
-@@ -276,8 +378,17 @@
+ #define EXT2_BLOCK_SIZE_BITS(s)        ((s)->s_log_block_size + 10)
  /* kind of from ext2/super.c */
  #define EXT2_BLOCK_SIZE(s)	(1 << EXT2_BLOCK_SIZE_BITS(s))
  /* linux/ext2fs.h */
@@ -321,7 +321,7 @@
  /* linux/stat.h */
  #define S_IFMT  00170000
  #define S_IFLNK  0120000
-@@ -287,38 +398,82 @@
+@@ -234,38 +398,82 @@
  #define S_ISREG(m)      (((m) & S_IFMT) == S_IFREG)
  #define S_ISDIR(m)      (((m) & S_IFMT) == S_IFDIR)
  
@@ -424,7 +424,7 @@
  }
  
  /* Takes a file system block number and reads it into BUFFER. */
-@@ -329,7 +484,7 @@
+@@ -276,7 +484,7 @@
    printf ("fsblock %d buffer %d\n", fsblock, buffer);
  #endif /* E2DEBUG */
    return devread (fsblock * (EXT2_BLOCK_SIZE (SUPERBLOCK) / DEV_BSIZE), 0,
@@ -433,7 +433,7 @@
  }
  
  /* from
-@@ -338,7 +493,7 @@
+@@ -285,7 +493,7 @@
  /* Maps LOGICAL_BLOCK (the file offset divided by the blocksize) into
     a physical block (the location in the file system) via an inode. */
  static int
@@ -442,7 +442,7 @@
  {
  
  #ifdef E2DEBUG
-@@ -412,13 +567,16 @@
+@@ -359,13 +567,16 @@
    /* else */
    mapblock2 = -1;
    logical_block -= (1 << (EXT2_ADDR_PER_BLOCK_BITS (SUPERBLOCK) * 2));
@@ -459,7 +459,7 @@
    if (!ext2_rdfsb (((__u32 *) DATABLOCK1)
  		   [logical_block >> (EXT2_ADDR_PER_BLOCK_BITS (SUPERBLOCK)
  				      * 2)],
-@@ -427,7 +585,8 @@
+@@ -374,7 +585,8 @@
        errnum = ERR_FSYS_CORRUPT;
        return -1;
      }
@@ -469,7 +469,7 @@
  		   [(logical_block >> EXT2_ADDR_PER_BLOCK_BITS (SUPERBLOCK))
  		    & (EXT2_ADDR_PER_BLOCK (SUPERBLOCK) - 1)],
  		   DATABLOCK2))
-@@ -435,30 +594,148 @@
+@@ -382,30 +594,148 @@
        errnum = ERR_FSYS_CORRUPT;
        return -1;
      }
@@ -627,7 +627,7 @@
  	{
  	  printf ("\n");
  	}
-@@ -469,41 +746,53 @@
+@@ -416,41 +746,53 @@
      }
  #endif /* E2DEBUG */
    while (len > 0)
@@ -694,7 +694,7 @@
  
    return ret;
  }
-@@ -557,10 +846,10 @@
+@@ -504,10 +846,10 @@
    int desc;			/* index within that group */
    int ino_blk;			/* fs pointer of the inode's information */
    int str_chk = 0;		/* used to hold the results of a string compare */
@@ -707,7 +707,7 @@
    int link_count = 0;
  
    char *rest;
-@@ -590,7 +879,7 @@
+@@ -537,7 +879,7 @@
  
        /* look up an inode */
        group_id = (current_ino - 1) / (SUPERBLOCK->s_inodes_per_group);
@@ -716,7 +716,7 @@
        desc = group_id & (EXT2_DESC_PER_BLOCK (SUPERBLOCK) - 1);
  #ifdef E2DEBUG
        printf ("ipg=%d, dpb=%d\n", SUPERBLOCK->s_inodes_per_group,
-@@ -603,10 +892,17 @@
+@@ -550,10 +892,17 @@
  	{
  	  return 0;
  	}
@@ -732,25 +732,30 @@
 +	}
 +      ino_blk = ext4_gdp->bg_inode_table + 
  	(((current_ino - 1) % (SUPERBLOCK->s_inodes_per_group))
--	 >> log2 (EXT2_INODES_PER_BLOCK (SUPERBLOCK)));
+-	 >> log2 (EXT2_BLOCK_SIZE (SUPERBLOCK) / sizeof (struct ext2_inode)));
 +	 >> log2_tmp (EXT2_INODES_PER_BLOCK (SUPERBLOCK)));
  #ifdef E2DEBUG
        printf ("inode table fsblock=%d\n", ino_blk);
  #endif /* E2DEBUG */
-@@ -620,10 +916,10 @@
+@@ -565,13 +914,12 @@
+       /* reset indirect blocks! */
+       mapblock2 = mapblock1 = -1;
  
-       raw_inode = (struct ext2_inode *)((char *)INODE +
- 	((current_ino - 1) & (EXT2_INODES_PER_BLOCK (SUPERBLOCK) - 1)) *
--	EXT2_INODE_SIZE (SUPERBLOCK));
+-      raw_inode = INODE +
+-	((current_ino - 1)
+-	 & (EXT2_BLOCK_SIZE (SUPERBLOCK) / sizeof (struct ext2_inode) - 1));
++      raw_inode = (struct ext2_inode *)((char *)INODE +
++	((current_ino - 1) & (EXT2_INODES_PER_BLOCK (SUPERBLOCK) - 1)) *
 +	 EXT2_INODE_SIZE (SUPERBLOCK));
  #ifdef E2DEBUG
        printf ("ipb=%d, sizeof(inode)=%d\n",
--	      EXT2_INODES_PER_BLOCK (SUPERBLOCK), EXT2_INODE_SIZE (SUPERBLOCK));
+-	      (EXT2_BLOCK_SIZE (SUPERBLOCK) / sizeof (struct ext2_inode)),
+-	      sizeof (struct ext2_inode));
 +	     EXT2_INODES_PER_BLOCK (SUPERBLOCK), EXT2_INODE_SIZE (SUPERBLOCK));
        printf ("inode=%x, raw_inode=%x\n", INODE, raw_inode);
        printf ("offset into inode table block=%d\n", (int) raw_inode - (int) INODE);
        for (i = (unsigned char *) INODE; i <= (unsigned char *) raw_inode;
-@@ -661,13 +957,22 @@
+@@ -609,13 +957,22 @@
  	    }
  
  	  /* Find out how long our remaining name is. */
@@ -777,7 +782,7 @@
  	    {
  	      errnum = ERR_FILELENGTH;
  	      return 0;
-@@ -681,18 +986,23 @@
+@@ -629,18 +986,23 @@
  	    }
  	  linkbuf[filemax + len] = '\0';
  
@@ -804,7 +809,7 @@
  	      len = filemax;
  	      memmove (linkbuf, (char *) INODE->i_block, len);
  	    }
-@@ -726,6 +1036,13 @@
+@@ -674,6 +1036,13 @@
  	      errnum = ERR_BAD_FILETYPE;
  	      return 0;
  	    }
@@ -818,7 +823,7 @@
  
  	  filemax = (INODE->i_size);
  	  return 1;
-@@ -746,8 +1063,17 @@
+@@ -694,8 +1063,17 @@
  	}
  
        /* skip to next slash or end of filename (space) */
@@ -838,7 +843,7 @@
  
        /* look through this directory and find the next filename component */
        /* invariant: rest points to slash after the next filename component */
-@@ -765,32 +1091,45 @@
+@@ -713,32 +1091,45 @@
  	     give up */
  	  if (loc >= INODE->i_size)
  	    {
@@ -891,7 +896,7 @@
  	    {
  	      errnum = ERR_FSYS_CORRUPT;
  	      *rest = ch;
-@@ -811,22 +1150,36 @@
+@@ -759,22 +1150,36 @@
  
  	  if (dp->inode)
  	    {
