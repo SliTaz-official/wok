@@ -378,7 +378,7 @@
 -		   (char *) SUPERBLOCK)
 -      || SUPERBLOCK->s_magic != EXT2_SUPER_MAGIC)
 -      retval = 0;
-+  if (!devread(SBLOCK, 0, sizeof(struct ext2_super_block), (char *)SUPERBLOCK, 0xedde0d90))
++  if (!devread(SBLOCK, 0, sizeof(struct ext2_super_block), (char *)SUPERBLOCK))
 +      return 0;
  
 -  return retval;
@@ -424,15 +424,6 @@
  }
  
  /* Takes a file system block number and reads it into BUFFER. */
-@@ -276,7 +484,7 @@
-   printf ("fsblock %d buffer %d\n", fsblock, buffer);
- #endif /* E2DEBUG */
-   return devread (fsblock * (EXT2_BLOCK_SIZE (SUPERBLOCK) / DEV_BSIZE), 0,
--		  EXT2_BLOCK_SIZE (SUPERBLOCK), (char *) buffer);
-+		  EXT2_BLOCK_SIZE (SUPERBLOCK), (char *) buffer, 0xedde0d90);
- }
- 
- /* from
 @@ -285,7 +493,7 @@
  /* Maps LOGICAL_BLOCK (the file offset divided by the blocksize) into
     a physical block (the location in the file system) via an inode. */
@@ -596,10 +587,8 @@
 +}
 +
  /* preconditions: all preconds of ext2fs_block_map */
--int
--ext2fs_read (char *buf, int len)
-+unsigned long
-+ext2fs_read (char *buf, unsigned long len, unsigned long write)
+ int
+ ext2fs_read (char *buf, int len)
  {
 -  int logical_block;
 -  int offset;
@@ -672,7 +661,7 @@
 -        devread (map * (EXT2_BLOCK_SIZE (SUPERBLOCK) / DEV_BSIZE),
 -	         offset, size, buf);
 +          devread (map * (EXT2_BLOCK_SIZE (SUPERBLOCK) / DEV_BSIZE),
-+		 offset, size, buf, write);
++		 offset, size, buf);
  
 -        disk_read_func = NULL;
 +          disk_read_func = NULL;
@@ -920,7 +909,7 @@
 +	      tmp_name[k] = 0;
  
 +	      //dp->name[dp->name_len] = 0;
-+	      str_chk = substring (dirname, tmp_name, 0);
++	      str_chk = substring (dirname, tmp_name);
 +
  # ifndef STAGE1_5
  	      if (print_possibilities && ch != '/'
