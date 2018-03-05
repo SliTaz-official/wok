@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="amd-microcode"
+VERSION="20180125" # just date of creating the receipt
+CATEGORY="kernel"
+SHORT_DESC="AMD processor microcode update for Linux"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="unknown"
+WEB_SITE="http://linuxfromscratch.org/blfs/view/svn/postlfs/firmware.html#and-microcode" # yes, "and" is typo
+# See also: https://wiki.gentoo.org/wiki/AMD_microcode
+
+DEPENDS="linux"
+
+compile_rules() {
+	mkdir -p $install/lib/firmware/amd-ucode
+
+	for i in  microcode_amd.bin microcode_amd_fam15h.bin microcode_amd_fam16h.bin; do
+		[ -f "$SRC/$i" ] ||
+		wget -O "$SRC/$i" http://anduin.linuxfromscratch.org/BLFS/linux-firmware/amd-ucode/$i
+		if [ ! -f "$SRC/$i" ]; then
+			echo "ERROR: can't get $i"
+			return 1
+		fi
+		cp "$SRC/$i" $install/lib/firmware/amd-ucode/
+	done
+}
+
+genpkg_rules() {
+	cp -r $install/* $fs
+}
+
+post_install() {
+	if [ -z "$1" -a -e /sys/devices/system/cpu/microcode/reload ]; then
+		echo 1 > /sys/devices/system/cpu/microcode/reload
+	fi
+}
