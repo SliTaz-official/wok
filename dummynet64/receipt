@@ -1,6 +1,6 @@
 # SliTaz package receipt.
 
-PACKAGE="dummynet"
+PACKAGE="dummynet64"
 VERSION="20120812"
 CATEGORY="network"
 SHORT_DESC="Network testing/emulation tool."
@@ -9,14 +9,18 @@ LICENSE="BSD"
 WEB_SITE="http://info.iet.unipi.it/~luigi/dummynet/"
 TARBALL="$VERSION-ipfw3.tgz"
 WGET_URL="http://info.iet.unipi.it/~luigi/doc/$TARBALL"
+PROVIDE="dummynet:linux64"
 
-BUILD_DEPENDS="linux-module-headers"
+BUILD_DEPENDS="linux64-module-headers uclibc-cross-compiler-x86_64"
+
+# Aufs enable chroot
+AUFS_NOT_RAMFS="uclibc-cross-compiler-x86_64 is not compatible with aufs+tmpfs 8("
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	installed=/var/lib/tazpkg/installed
-	kvers=$(. $installed/linux-module-headers/receipt ; echo $VERSION)
+	kvers=$(. $installed/linux64-module-headers/receipt ; echo $VERSION)
 	sed -i "s/WARN := -O1 -Wall -Werror/WARN := -O1 -Wall/" kipfw/Makefile
 	sed -i "s/uname -r/echo $kvers-slitaz/" Makefile.inc
 	make
@@ -34,10 +38,10 @@ genpkg_rules()
 # Post install/remove commands for Tazpkg.
 post_install()
 {
-	chroot "$root/" depmod -a ${EXTRAVERSION#_}-slitaz
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz64
 }
 
 post_remove()
 {
-	chroot "$root/" depmod -a ${EXTRAVERSION#_}-slitaz
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz64
 }

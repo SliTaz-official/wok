@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="tp_smapi64"
+SOURCE="tp_smapi"
+VERSION="0.41"
+CATEGORY="base-system"
+SHORT_DESC="IBM ThinkPad SMAPI BIOS driver"
+MAINTAINER="domcox@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="https://github.com/evgeni/tp_smapi"
+WGET_URL="https://github.com/downloads/evgeni/$SOURCE/$TARBALL"
+PROVIDE="tp_smapi:linux64"
+
+BUILD_DEPENDS="linux64-module-headers linux-source wget \
+uclibc-cross-compiler-x86_64"
+
+# Aufs enable chroot
+AUFS_NOT_RAMFS="uclibc-cross-compiler-x86_64 is not compatible with aufs+tmpfs 8("
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i "s/uname -r/echo $kvers-slitaz64/" Makefile
+	make modules HDAPS=1
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	MOD_DIR=lib/modules/$kvers-slitaz64/extra
+	mkdir -p $fs/$MOD_DIR
+	cp -a $src/*.ko $fs/$MOD_DIR
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz64
+}
+
+post_remove()
+{
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz64
+}
