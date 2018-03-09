@@ -30,4 +30,18 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr
 	cp -a $install/usr/* $fs/usr
+	sed -i 's|\$libdir|/usr/lib/postgresql|' \
+		$fs/usr/share/postgresql/extension/*.sql
+}
+
+post_install_example()
+{
+	database=test
+	chroot "$1/" createdb -U postgres -h localhost $database
+	chroot "$1/" psql -U postgres -U postgres $database <<EOT
+create extension pgrouting;
+\q
+EOT
+	sed 1d $1/usr/share/postgresql/extension/pgrouting--$VERSION.sql |
+	chroot "$1/" psql -U postgres $database
 }
