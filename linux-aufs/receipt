@@ -2,7 +2,7 @@
 
 PACKAGE="linux-aufs"
 SOURCE="aufs"
-VERSION="20130311"
+VERSION="20150928"
 CATEGORY="base-system"
 SHORT_DESC="aufs3 kernel module"
 MAINTAINER="godane@slitaz.org"
@@ -10,7 +10,7 @@ LICENSE="GPL2"
 WEB_SITE="http://aufs.sf.net/"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WGET_URL="git|git://aufs.git.sourceforge.net/gitroot/aufs/aufs3-standalone.git"
-BRANCH="origin/${PACKAGE}3.2"
+BRANCH="origin/${PACKAGE}3.16"
 
 DEPENDS="linux"
 BUILD_DEPENDS="linux-module-headers git xz"
@@ -28,15 +28,15 @@ compile_rules()
 		-e 's|CONFIG_AUFS_BDEV_LOOP =.*|CONFIG_AUFS_BDEV_LOOP = y|' \
 		-e 's|CONFIG_AUFS_BR_RAMFS =.*|CONFIG_AUFS_BR_RAMFS = y|' \
 		-e 's|CONFIG_AUFS_DEBUG =.*|CONFIG_AUFS_DEBUG =|' config.mk
-
+		
 	# The sed fixes are from gentoo portage build.
+	sed -i "s:aufs.ko usr/include/uapi/linux/aufs_type.h:aufs.ko:g" Makefile
 	sed -i "s:aufs.ko usr/include/linux/aufs_type.h:aufs.ko:g" Makefile
-	sed -i "s:__user::g" include/linux/aufs_type.h
-
-	# Linux 3.2.71 support
+	sed -i "s:__user::g" include/uapi/linux/aufs_type.h
+	
 	sed -i 's/d_u.d_child/d_child/' fs/aufs/dcsub.c fs/aufs/hnotify.c
 	sed -i 's/ d_alias/ d_u.d_alias/' fs/aufs/hnotify.c fs/aufs/export.c
-
+	
 	make -j 1 KDIR=/usr/src/linux
 	xz -f fs/aufs/aufs.ko
 }
@@ -48,8 +48,8 @@ genpkg_rules()
 	mkdir -p $fs/lib/modules/${kvers}-slitaz/kernel/fs/aufs
 	install -o root -m 0644 $src/fs/aufs/aufs.ko.xz \
 		$fs/lib/modules/${kvers}-slitaz/kernel/fs/aufs/aufs.ko.xz
-	mkdir -p $install/usr/include/linux
-	cp $src/include/linux/aufs_type.h $install/usr/include/linux
+	install -o root -m 0644 $src/include/uapi/linux/aufs_type.h \
+		$install/usr/include/linux/aufs_type.h
 }
 
 # Post install/remove commands for Tazpkg.

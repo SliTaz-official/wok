@@ -1,18 +1,6 @@
---- linux-3.2.98/arch/x86/mm/init.c
-+++ linux-3.2.98/arch/x86/mm/init.c
-@@ -391,7 +391,7 @@
- 	set_memory_nx(begin, (end - begin) >> PAGE_SHIFT);
- 	set_memory_rw(begin, (end - begin) >> PAGE_SHIFT);
- 
--	printk(KERN_INFO "Freeing %s: %luk freed\n", what, (end - begin) >> 10);
-+	if (what && *what) printk(KERN_INFO "Freeing %s: %luk freed\n", what, (end - begin) >> 10);
- 
- 	for (; addr < end; addr += PAGE_SIZE) {
- 		ClearPageReserved(virt_to_page(addr));
-
---- linux-3.2.14/init/initramfs.c
-+++ linux-3.2.14/init/initramfs.c
-@@ -374,6 +374,52 @@
+--- linux-3.16.53/init/initramfs.c
++++ linux-3.16.53/init/initramfs.c
+@@ -384,6 +384,52 @@
  	[Reset]		= do_reset,
  };
  
@@ -65,7 +53,7 @@
  static int __init write_buffer(char *buf, unsigned len)
  {
  	count = len;
-@@ -417,6 +463,7 @@
+@@ -427,6 +473,7 @@
  	decompress_fn decompress;
  	const char *compress_name;
  	static __initdata char msg_buf[64];
@@ -73,7 +61,7 @@
  
  	header_buf = kmalloc(110, GFP_KERNEL);
  	symlink_buf = kmalloc(PATH_MAX + N_ALIGN(PATH_MAX) + 1, GFP_KERNEL);
-@@ -430,11 +477,16 @@
+@@ -440,11 +487,16 @@
  	message = NULL;
  	while (!message && len) {
  		loff_t saved_offset = this_header;
@@ -90,9 +78,9 @@
  			continue;
  		}
  		if (!*buf) {
-@@ -446,7 +498,12 @@
- 		this_header = 0;
+@@ -457,7 +509,12 @@
  		decompress = decompress_method(buf, len, &compress_name);
+ 		pr_debug("Detected %s compressed data\n", compress_name);
  		if (decompress) {
 -			res = decompress(buf, len, NULL, flush_buffer, NULL,
 +			if (early_free_initrd) {
@@ -104,7 +92,7 @@
  				   &my_inptr, error);
  			if (res)
  				error("decompressor failed");
-@@ -488,7 +545,8 @@
+@@ -499,7 +556,8 @@
  #include <linux/initrd.h>
  #include <linux/kexec.h>
  
@@ -114,7 +102,7 @@
  {
  #ifdef CONFIG_KEXEC
  	unsigned long crashk_start = (unsigned long)__va(crashk_res.start);
-@@ -516,6 +574,12 @@
+@@ -527,6 +585,12 @@
  #endif
  		free_initrd_mem(initrd_start, initrd_end);
  skip:

@@ -1,25 +1,6 @@
---- linux-3.2.53/arch/x86/vdso/Makefile
-+++ linux-3.2.53/arch/x86/vdso/Makefile
-@@ -118,10 +118,12 @@
- 	   $(foreach H,$(filter-out FORCE,$^),\
- 		     if grep -q VDSO32_SYSENTER_RETURN $H; \
- 		     then diff -u $(@D)/.tmp_$(@F) $H; \
--		     else sed /VDSO32_SYSENTER_RETURN/d $(@D)/.tmp_$(@F) | \
--			  diff -u - $H; fi &&) : ;\
-+		     else sed /VDSO32_SYSENTER_RETURN/d $(@D)/.tmp_$(@F) > \
-+		     	  $(@D)/.tmp_$(@F).$$ ; \
-+			  diff -u $(@D)/.tmp_$(@F).$$ $H; fi &&) : ;\
- 	then mv -f $(@D)/.tmp_$(@F) $@; \
--	else rm -f $(@D)/.tmp_$(@F); exit 1; \
-+	else rm -f $(@D)/.tmp_$(@F)*; exit 1; \
-+	rm -f $(@D)/.tmp_$(@F)*; \
- 	fi
- endef
- 
-
---- linux-3.2.53/scripts/Makefile.lib
-+++ linux-3.2.53/scripts/Makefile.lib
-@@ -239,7 +239,8 @@
+--- linux-3.16.53/scripts/Makefile.lib
++++ linux-3.16.53/scripts/Makefile.lib
+@@ -238,7 +238,8 @@
  # ---------------------------------------------------------------------------
  
  quiet_cmd_gzip = GZIP    $@
@@ -29,7 +10,7 @@
  	(rm -f $@ ; false)
  
  # DTC
-@@ -296,7 +297,7 @@
+@@ -316,7 +317,7 @@
  
  quiet_cmd_lzma = LZMA    $@
  cmd_lzma = (cat $(filter-out FORCE,$^) | \

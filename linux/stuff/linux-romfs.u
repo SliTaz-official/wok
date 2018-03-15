@@ -1,5 +1,5 @@
---- linux-3.2.53/fs/romfs/super.c
-+++ linux-3.2.53/fs/romfs/super.c
+--- linux-3.16.53/fs/romfs/super.c
++++ linux-3.16.53/fs/romfs/super.c
 @@ -74,6 +74,8 @@
  #include <linux/uaccess.h>
  #include "internal.h"
@@ -9,7 +9,7 @@
  static struct kmem_cache *romfs_inode_cachep;
  
  static const umode_t romfs_modemap[8] = {
-@@ -302,6 +304,7 @@
+@@ -299,6 +301,7 @@
  	unsigned nextfh;
  	int ret;
  	umode_t mode;
@@ -17,7 +17,7 @@
  
  	/* we might have to traverse a chain of "hard link" file entries to get
  	 * to the actual file */
-@@ -312,11 +315,12 @@
+@@ -309,11 +312,12 @@
  
  		/* XXX: do romfs_checksum here too (with name) */
  
@@ -31,7 +31,7 @@
  	}
  
  	/* determine the length of the filename */
-@@ -352,6 +356,12 @@
+@@ -349,6 +353,12 @@
  		i->i_fop = &romfs_dir_operations;
  		if (nextfh & ROMFH_EXEC)
  			mode |= S_IXUGO;
@@ -44,7 +44,7 @@
  		break;
  	case ROMFH_REG:
  		i->i_fop = &romfs_ro_fops;
-@@ -367,16 +377,40 @@
+@@ -364,16 +374,40 @@
  		i->i_data.a_ops = &romfs_aops;
  		mode |= S_IRWXUGO;
  		break;
@@ -69,10 +69,10 @@
 +
 +	        int signed_spec = spec;
 +
-+		i->i_uid  = signed_spec >> 20;
-+		i->i_gid  = (spec >> 12) & 0xFF;
++		i->i_uid.val  = signed_spec >> 20;
++		i->i_gid.val  = (spec >> 12) & 0xFF;
 +		if (spec & 0100) 
-+			i->i_gid |= ~0xFF;	/* sign extention */
++			i->i_gid.val |= ~0xFF;	/* sign extention */
 +		i->i_mode &= ~07677;
 +		i->i_mode |= spec & 07677;
 +
@@ -88,7 +88,7 @@
  	unlock_new_inode(i);
  	return i;
  
-@@ -428,6 +462,7 @@
+@@ -424,6 +458,7 @@
  		(romfs_maxsize(dentry->d_sb) + ROMBSIZE - 1) >> ROMBSBITS;
  	buf->f_fsid.val[0] = (u32)id;
  	buf->f_fsid.val[1] = (u32)(id >> 32);

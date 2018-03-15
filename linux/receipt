@@ -1,19 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="linux"
-VERSION="3.2.98"
+VERSION="3.16.55"
 CATEGORY="base-system"
 SHORT_DESC="The Linux kernel and modules."
 MAINTAINER="devel@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.kernel.org/"
-WGET_URL="http://www.kernel.org/pub/linux/kernel/v3.0/$TARBALL"
+WGET_URL="https://cdn.kernel.org/pub/linux/kernel/v${VERSION%%.*}.x/$TARBALL"
 HOST_ARCH="i486 arm x86_64"
 
 DEPENDS="kmod"
-BUILD_DEPENDS="slitaz-toolchain perl git xz lzma patch kmod \
-uclibc-cross-compiler-x86_64"
+BUILD_DEPENDS="perl git xz lzma patch kmod uclibc-cross-compiler-x86_64 bc"
 
 #
 # The Linux receipt handle cross compilation. For x86_64 we actually use
@@ -58,10 +57,8 @@ install_module_headers()
 		$1/$path/.config
 	mkdir -p $1/$path/include
 
-	for i in acpi asm-generic config crypto drm generated linux math-emu \
-		media net pcmcia scsi sound trace video xen; do
-		cp -a $src/include/$i $1/$path/include/
-	done
+	cp -a $src/include/* $1/$path/include/
+	rm -f $1/$path/include/Kbuild
 
 	# copy arch includes for external modules
 	mkdir -p $1/$path/arch/x86
@@ -80,13 +77,9 @@ install_module_headers()
 	cp -a $src/arch/x86/kernel/asm-offsets.s $1/$path/arch/x86/kernel/
 
 	# add headers for lirc package
-	mkdir -p $1/$path/drivers/media/video
-	cp -a $src/drivers/media/video/*.h  $1/$path/drivers/media/video/
-
-	for i in bt8xx cpia2 cx25840 cx88 em28xx et61x251 pwc saa7134 sn9c102 ; do
-   		mkdir -p $1/$path/drivers/media/video/$i
-   		cp -a $src/drivers/media/video/$i/*.h $1/$path/drivers/media/video/$i
-	done
+	mkdir -p $1/$path/drivers/media
+	( cd $src/drivers/media ; find i2c -name '*.h' | cpio -o -H newc ) | \
+	( cd $1/$path/drivers/media ; cpio -idmu )
 
 	# add docbook makefile
 	install -D -m644 $src/Documentation/DocBook/Makefile \
@@ -107,8 +100,8 @@ install_module_headers()
 	# add dvb headers for external modules
 	# in reference to:
 	# http://bugs.archlinux.org/task/9912
-	mkdir -p $1/$path/drivers/media/dvb/dvb-core
-	cp -a $src/drivers/media/dvb/dvb-core/*.h $1/$path/drivers/media/dvb/dvb-core/
+	mkdir -p $1/$path/drivers/media/dvb-core
+	cp -a $src/drivers/media/dvb-core/*.h $1/$path/drivers/media/dvb-core/
 
 	# add dvb headers for external modules
 	# in reference to:
@@ -121,24 +114,25 @@ install_module_headers()
 	# add dvb headers for http://mcentral.de/hg/~mrec/em28xx-new
 	# in reference to:
 	# http://bugs.archlinux.org/task/13146
-	mkdir -p $1/$path/drivers/media/dvb/frontends/
-	cp -a $src/drivers/media/dvb/frontends/lgdt330x.h $1/$path/drivers/media/dvb/frontends/
-	cp -a $src/drivers/media/video/msp3400-driver.h $1/$path/drivers/media/dvb/frontends/
+	mkdir -p $1/$path/drivers/media/dvb-frontends/
+	cp -a $src/drivers/media/dvb-frontends/lgdt330x.h $1/$path/drivers/media/dvb-frontends/
+	cp -a $src/drivers/media/i2c/msp3400-driver.h $1/$path/drivers/media/dvb-frontends/
 
 	# add dvb headers  
 	# in reference to:
 	# http://bugs.archlinux.org/task/20402
-	mkdir -p $1/$path/drivers/media/dvb/dvb-usb
-	cp -a $src/drivers/media/dvb/dvb-usb/*.h $1/$path/drivers/media/dvb/dvb-usb/
-	mkdir -p $1/$path/drivers/media/dvb/frontends
-	cp -a $src/drivers/media/dvb/frontends/*.h $1/$path/drivers/media/dvb/frontends/
-	mkdir -p $1/$path/drivers/media/common/tuners
-	cp -a $src/drivers/media/common/tuners/*.h $1/$path/drivers/media/common/tuners/
+	mkdir -p $1/$path/drivers/media/usb/dvb-usb
+	cp -a $src/drivers/media/usb/dvb-usb/*.h $1/$path/drivers/media/usb/dvb-usb/
+	mkdir -p $1/$path/drivers/media/dvb-frontends
+	cp -a $src/drivers/media/dvb-frontends/*.h $1/$path/drivers/media/dvb-frontends/
+	mkdir -p $1/$path/drivers/media/tuners
+	cp -a $src/drivers/media/tuners/*.h $1/$path/drivers/media/tuners/
 
 	# add xfs and shmem for aufs building
 	mkdir -p $1/$path/fs/xfs
 	mkdir -p $1/$path/mm
 	cp -a $src/fs/xfs/xfs_sb.h $1/$path/fs/xfs/xfs_sb.h
+	cp -a $src/fs/*.h $1/$path/fs/
 	
 	# copy in Kconfig files
 	for i in $(find . -name "Kconfig*"); do 
@@ -197,6 +191,8 @@ compile_rules()
 
 	echo "Copying Aufs files and patches..."
 	cp -a $AUFSDIR/Documentation $AUFSDIR/fs $AUFSDIR/include $src
+
+	# Use fixed patchs from stuff
 	cp -a $AUFSDIR/aufs3-*.patch $stuff
 
 	# SliTaz db stuff
@@ -219,7 +215,6 @@ compile_rules()
 		touch done.$patch_file
 	done <<EOT
 $PACKAGE-diff.u
-$PACKAGE-header.u
 $PACKAGE-freeinitrd.u
 $PACKAGE-subroot.u
 $PACKAGE-romfs.u
@@ -227,14 +222,12 @@ aufs3-base.patch
 aufs3-standalone.patch
 aufs3-loopback.patch
 aufs3-mmap.patch
-channel-negative-one-maxim.patch
-mac80211.compat08082009.wl_frag+ack_v1.patch
 EOT
 	
 	# Mrproper and lguest
 	echo "Make kernel proper and then build lguest..."
 	make mrproper
-	cd Documentation/virtual/lguest
+	cd tools/lguest
 	make lguest || return 1
 	cd $src
 	
@@ -248,10 +241,6 @@ EOT
 		if [ ! "$nonomods" ]; then
 			cp -f $stuff/$PACKAGE-slitaz.config64 .config
 			sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
-			# We can't keep every driver in staging ???
-			sed -i -e 's/^CONFIG_RTL8192/#&/' \
-				-e 's/^CONFIG_R8187SE/#&/' \
-				-e 's/^CONFIG_RT2870/#&/' .config
 			echo -e "\n* Configure bzImage64 without modules...\n"
 			yes '' | make ARCH=x86_64 oldconfig
 			echo -e "\n* Building bzImage64 without modules...\n"
@@ -295,10 +284,6 @@ EOT
 	if [ ! "$nonomods" ]; then
 		cp -f $stuff/$PACKAGE-slitaz.config .config
 		sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
-		# We can't keep every driver in staging ???
-		sed -i -e 's/^CONFIG_RTL8192/#&/' \
-			-e 's/^CONFIG_R8187SE/#&/' \
-			-e 's/^CONFIG_RT2870/#&/' .config
 		echo -e "\n* Configure bzImage without modules...\n"
 		yes '' | make ARCH=i386 oldconfig
 		echo -e "\n* Building bzImage without modules...\n"
@@ -394,7 +379,9 @@ genpkg_rules()
 	# Check any module in kernel .config that's not added to a linux-* pkgs
 	# and remove aufs patches: we dont need them in HG wok.
 	$stuff/check_modules.sh
-	rm -f $stuff/aufs3-*
+
+	# Keep fixed patches !
+	#rm -f $stuff/aufs3-*
 }
 
 # Pre and post install commands for Tazpkg.
