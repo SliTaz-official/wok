@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="tinyssh"
+VERSION="20180201"
+CATEGORY="network"
+SHORT_DESC="a small SSH server"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="PublicDomain"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://tinyssh.org/"
+WGET_URL="https://github.com/janmojzis/tinyssh/archive/$VERSION.tar.gz"
+CONFIG_FILES="/etc/tinyssh"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	mkdir -p $fs/etc/tinyssh/sshkeydir
+}
+
+post_install()
+{
+	# openssh: sh-keygen -t ed25519 or ssh-keygen -t ecdsa -b 256 => ~/.ssh/authorized_keys
+	chroot $1/ tinysshd-makekey /etc/tinyssh/sshkeydir
+	grep -q ^ssh $1/etc/inetd.conf || cat >> $1/etc/inetd.conf <<EOT
+ssh stream tcp nowait root /usr/sbin/tinysshd tinysshd -l -v /etc/tinyssh/sshkeydir
+EOT
+}
+
+pre_remove()
+{
+	sed -i '/tinysshd/d' $1/etc/inetd.conf
+}
