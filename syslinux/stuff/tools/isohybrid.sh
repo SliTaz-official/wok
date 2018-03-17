@@ -244,7 +244,7 @@ if [ $(read8 $cat 65) -eq 239 ]; then
 	[ -n "$entry" ] && echo "$iso: efi boot ignore --entry $entry" && entry=
 	partype=0
 	efi_len=$(read16 $cat 102)
-	efi_ofs=$((4*$(read32 $cat 106)))
+	efi_ofs=$((4*$(read32 $cat 104)))
 	efi_len=$(((($efi_ofs+$efi_len+0xFFF)&0xFFF000)-$efi_ofs))
 fi
 lba=$(read32 $cat 40)
