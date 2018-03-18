@@ -1,39 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="usbip"
-VERSION="0.1.7"
+VERSION="3.16.55"
 CATEGORY="system-tools"
 SHORT_DESC="general USB device sharing system over IP network."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://usbip.sourceforge.net/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WANTED="linux"
 TAGS="usb"
 
-DEPENDS="sysfsutils glib libwrap linux-usbip"
-BUILD_DEPENDS="sysfsutils-dev lzma libtool glib-dev libwrap libwrap-dev"
-
-# Rules to configure and make the package.
-compile_rules()
-{
-	cd $src/drivers
-	KERNEL_VERSION=`grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g'`
-
-	cd $src/src
-	./autogen.sh
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$DESTDIR install
-}
+DEPENDS="sysfsutils glib libwrap linux-usbip udev"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	mkdir -p $fs/usr/lib $install/usr/share
+	cp -a $install/usbip/usr/share/man $install/usr/share
+	cp -a $install/usbip/usr/sbin $fs/usr
+	cp -a $install/usbip/usr/lib/*.so* $fs/usr/lib
 }
 
