@@ -12,7 +12,8 @@ WGET_URL="https://cdn.kernel.org/pub/linux/kernel/v${VERSION%%.*}.x/$TARBALL"
 HOST_ARCH="i486 arm x86_64"
 
 DEPENDS="kmod"
-BUILD_DEPENDS="perl git xz lzma patch kmod uclibc-cross-compiler-x86_64 bc"
+BUILD_DEPENDS="perl git xz lzma patch kmod uclibc-cross-compiler-x86_64 bc \
+sysfsutils-dev libtool glib-dev libwrap libwrap-dev udev-dev"
 
 #
 # The Linux receipt handle cross compilation. For x86_64 we actually use
@@ -229,6 +230,15 @@ EOT
 	make mrproper
 	cd tools/lguest
 	make lguest || return 1
+
+	echo "Build usbip..."
+	cd $src/drivers/staging/usbip/userspace
+	./autogen.sh
+	./configure CFLAGS="$CFLAGS -Wno-error=uninitialized" \
+		--with-usbids-dir=/usr/share/misc \
+		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make && DESTDIR=$DESTDIR/usbip install || return 1
+
 	cd $src
 	
 	#
