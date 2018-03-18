@@ -249,13 +249,14 @@ EOT
 		
 		# Build bzImage64 without modules first
 		if [ ! "$nonomods" ]; then
+			[ -d $DESTDIR/linux64 ] || mkdir -p $DESTDIR/linux64 ||
+				return 1
 			cp -f $stuff/$PACKAGE-slitaz.config64 .config
 			sed -i 's/CONFIG_MODULES=y/# CONFIG_MODULES is not set/' .config
 			echo -e "\n* Configure bzImage64 without modules...\n"
 			yes '' | make ARCH=x86_64 oldconfig
 			echo -e "\n* Building bzImage64 without modules...\n"
 			make -j 4 ARCH=x86_64 CROSS_COMPILE=uclibc-x86_64- bzImage || exit 1
-			[ -d $DESTDIR ] || mkdir -p $DESTDIR/linux64
 			mv arch/x86/boot/bzImage $DESTDIR/linux64
 			mv System.map System.map-without-modules64
 			mv vmlinux vmlinux-without-modules64
@@ -381,6 +382,7 @@ genpkg_rules()
 		$fs/lib/modules/$VERSION-slitaz
 
 	# Pack all packages with a kernel module
+	sed -i "/^$PACKAGE\$/d" $CACHE/broken 2>/dev/null || true
 	for i in $(cd $WOK; grep -l '^WANTED="linux"' */receipt); do
 		[ ! -d "$install/lib/modules/$VERSION-slitaz" ] && return 1
 		cook ${i%/receipt}
