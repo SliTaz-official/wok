@@ -16,15 +16,19 @@ BUILD_DEPENDS="gnu-efi"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	make -j1
+	mkdir -p $install/usr/share $install/usr/lib $install/usr/sbin
+	cp -a docs $install/usr/share/doc
+	cp README* $install/usr/share/doc
+	make -j1 && mv elilo.efi elilo.efi.x86_64
+	make clean
+	sed -i 's|uname -m|echo i686|' Make.defaults
+	make -j1 &&
+	cp elilo.efi $install/usr/lib/elilo &&
+	cp eliloalt $install/usr/sbin
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/elilo $fs/usr/sbin
-	cp -a $src/elilo.efi $fs/usr/lib/elilo
-	cp -a $src/tools/eliloalt $fs/usr/sbin
+	cp -a $install/usr $fs
 }
-
