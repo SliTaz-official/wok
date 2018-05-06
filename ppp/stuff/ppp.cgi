@@ -15,18 +15,19 @@ case "$1" in
 		TEXTDOMAIN_original=$TEXTDOMAIN
 		export TEXTDOMAIN='ppp'
 
+		groups | grep -q dialout && dialout="" || dialout=" data-root"
 		case "$2" in
 		*VPN*)
 		[ "$(which pptp 2>/dev/null)$(which pptpd 2>/dev/null)" ] && cat <<EOT
-<li><a data-icon="vpn" href="ppp.cgi#pptp" data-root>$(_ 'PPTP')</a></li>
+<li><a data-icon="vpn" href="ppp.cgi#pptp"$dialout>$(_ 'PPTP')</a></li>
 EOT
 		[ "$(which pppssh 2>/dev/null)" ] && cat <<EOT
-<li><a data-icon="vpn" href="ppp.cgi#pppssh" data-root>$(_ 'PPP/SSH')</a></li>
+<li><a data-icon="vpn" href="ppp.cgi#pppssh"$dialout>$(_ 'PPP/SSH')</a></li>
 EOT
 		;;
 		*)
 		cat <<EOT
-<li><a data-icon="modem" href="ppp.cgi" data-root>$(_ 'PPP Modem')</a></li>
+<li><a data-icon="modem" href="ppp.cgi"$dialout>$(_ 'PPP Modem')</a></li>
 EOT
 		esac
 		export TEXTDOMAIN=$TEXTDOMAIN_original
