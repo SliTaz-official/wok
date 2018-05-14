@@ -194,15 +194,13 @@ main()
 	store32 $(($e + 4)) $(($partype + $epart))
 	store32 $(($e + 8)) $offset
 	sectorcount=$(($cylinders * $heads * $sectors))
-	store32 $(($e + 12)) $sectsize
-	efi_len=$(($sectorcount - $efi_ofs))
+	store32 $(($e + 12)) $sectorcount
 	if [ -n "$efi_ofs" ]; then
+		efi_len=$(($sectorcount - $efi_ofs))
 		[ $(read16 0 1024) -eq 35615 -a $(read16 11 0) -ne 35615 ] &&
 		ddq bs=512 conv=notrunc skip=2 seek=44 count=20 if=$iso of=$iso
-		store32 $((446+16)) $(((($efi_ofs / $sectors / $heads) << 24) +
-				(($efi_ofs % $sectors + 1) << 16) +
-				(($efi_ofs / $sectors % $heads) << 8)))
-		store32 $((446+16+4)) $((0xEF + $epart))
+		store32 $((446+16)) $((0xFFFFFE00))
+		store32 $((446+16+4)) $((0xFFFFFEEF))
 		store32 $((446+16+8)) $efi_ofs
 		store32 $((446+16+12)) $efi_len
 		uudecode <<EOT | unlzma | ddq bs=512 seek=1 of=$iso conv=notrunc
