@@ -190,16 +190,19 @@ main()
 	store32 $e 0x10080
 	esect=$(( ($sectors + ((($cylinders -1) & 0x300) >>2)) <<16))
 	ecyl=$(( (($cylinders -1) & 0xff) <<24))
-	store32 $(($e + 4)) $(($partype + (($heads - 1) <<8) +$esect +$ecyl))
+	epart=$(((($heads - 1) <<8) +$esect +$ecyl))
+	store32 $(($e + 4)) $(($partype + $epart))
 	store32 $(($e + 8)) $offset
-	sectsize=$(($cylinders * $heads * $sectors))
+	sectorcount=$(($cylinders * $heads * $sectors))
 	store32 $(($e + 12)) $sectsize
-	efi_len=$(($sectsize - $efi_ofs))
+	efi_len=$(($sectorcount - $efi_ofs))
 	if [ -n "$efi_ofs" ]; then
 		[ $(read16 0 1024) -eq 35615 -a $(read16 11 0) -ne 35615 ] &&
 		ddq bs=512 conv=notrunc skip=2 seek=44 count=20 if=$iso of=$iso
-		store32 $((446+16)) $((0xFFFFFE00))
-		store32 $((446+16+4)) $((0xFFFFFEEF))
+		store32 $((446+16)) $(((($efi_ofs / $sectors / $heads) << 24) +
+				(($efi_ofs % $sectors + 1) << 16) +
+				(($efi_ofs / $sectors % $heads) << 8)))
+		store32 $((446+16+4)) $((0xEF + $epart))
 		store32 $((446+16+8)) $efi_ofs
 		store32 $((446+16+12)) $efi_len
 		uudecode <<EOT | unlzma | ddq bs=512 seek=1 of=$iso conv=notrunc
@@ -210,7 +213,7 @@ JNaW37NYVuUAmqtISPiCdgAxPRlBS0xDlmAPPOCSZXmEFz9jEkXSzmsGn6+o
 T0p9AJtSH6X8SMic3vU3hYWwHsYnsmeoGmsy4EJba9Wf/0liMQA=
 ====
 EOT
-		lastlba=$((($cylinders * $heads * $sectors) -1))
+		lastlba=$(($sectorcount -1))
 		usablelba=34
 		store32 $((0x218)) 1
 		store32 $((0x220)) $lastlba
