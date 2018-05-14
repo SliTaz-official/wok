@@ -192,7 +192,9 @@ main()
 	ecyl=$(( (($cylinders -1) & 0xff) <<24))
 	store32 $(($e + 4)) $(($partype + (($heads - 1) <<8) +$esect +$ecyl))
 	store32 $(($e + 8)) $offset
-	store32 $(($e + 12)) $(($cylinders * $heads * $sectors))
+	sectsize=$(($cylinders * $heads * $sectors))
+	store32 $(($e + 12)) $sectsize
+	efi_len=$(($sectsize - $efi_ofs))
 	if [ -n "$efi_ofs" ]; then
 		[ $(read16 0 1024) -eq 35615 -a $(read16 11 0) -ne 35615 ] &&
 		ddq bs=512 conv=notrunc skip=2 seek=44 count=20 if=$iso of=$iso
@@ -243,9 +245,7 @@ efi_ofs=
 if [ $(read8 $cat 65) -eq 239 ]; then
 	[ -n "$entry" ] && echo "$iso: efi boot ignore --entry $entry" && entry=
 	partype=0
-	efi_len=$(read16 $cat 102)
 	efi_ofs=$((4*$(read32 $cat 104)))
-	efi_len=$(((($efi_ofs+$efi_len+0xFFF)&0xFFF000)-$efi_ofs))
 fi
 lba=$(read32 $cat 40)
 [ $(read32 $lba 64) -eq 1886961915 ] ||
