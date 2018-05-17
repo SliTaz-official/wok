@@ -196,7 +196,6 @@ main()
 	sectorcount=$(($cylinders * $heads * $sectors))
 	store32 $(($e + 12)) $sectorcount
 	if [ -n "$efi_ofs" ]; then
-		efi_len=$(($sectorcount - $efi_ofs))
 		[ $(read16 0 1024) -eq 35615 -a $(read16 11 0) -ne 35615 ] &&
 		ddq bs=512 conv=notrunc skip=2 seek=44 count=20 if=$iso of=$iso
 		store32 $((446+16)) $((0xFFFFFE00))
@@ -247,6 +246,8 @@ if [ $(read8 $cat 65) -eq 239 ]; then
 	[ -n "$entry" ] && echo "$iso: efi boot ignore --entry $entry" && entry=
 	partype=0
 	efi_ofs=$((4*$(read32 $cat 104)))
+	efi_len=$(($(read16 $(($efi_ofs/4)) 19)))
+	[ $efi_len -eq 0 ] && efi_len=$(($(read32 $(($efi_ofs/4)) 32)))
 fi
 lba=$(read32 $cat 40)
 [ $(read32 $lba 64) -eq 1886961915 ] ||
