@@ -1,0 +1,57 @@
+--- src/wl/sys/wl_linux.c
++++ src/wl/sys/wl_linux.c
+@@ -3180,6 +3180,7 @@
+ {
+ 	char tmp[32];
+ 	sprintf(tmp, "%s%d", HYBRID_PROC, wl->pub->unit);
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
+ 	if ((wl->proc_entry = create_proc_entry(tmp, 0644, NULL)) == NULL) {
+ 		WL_ERROR(("%s: create_proc_entry %s failed\n", __FUNCTION__, tmp));
+ 		ASSERT(0);
+@@ -3188,5 +3189,17 @@
+ 	wl->proc_entry->read_proc = wl_proc_read;
+ 	wl->proc_entry->write_proc = wl_proc_write;
+ 	wl->proc_entry->data = wl;
++#else
++	static const struct file_operations wl_proc_fops = {
++		.owner = THIS_MODULE,
++		.read = wl_proc_read,
++		.write = wl_proc_write,
++	};
++	if ((wl->proc_entry = proc_create(tmp, 0644, NULL,&wl_proc_fops)) == NULL) {
++		WL_ERROR(("%s: create_proc_entry %s failed\n", __FUNCTION__, tmp));
++		ASSERT(0);
++		return -1;
++	}
++#endif
+ 	return 0;
+ }
+--- src/wl/sys/wl_cfg80211.c
++++ src/wl/sys/wl_cfg80211.c
+@@ -1892,7 +1892,11 @@
+                        wl_get_assoc_ies(wl);
+                        memcpy(&wl->bssid, &e->addr, ETHER_ADDR_LEN);
+                        wl_update_bss_info(wl);
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0)
+                        cfg80211_ibss_joined(ndev, (u8 *)&wl->bssid, GFP_KERNEL
+);
++#else
++                       cfg80211_ibss_joined(ndev, (u8 *)&wl->bssid, channel, G
+FP_KERNEL);
++#endif
+                        set_bit(WL_STATUS_CONNECTED, &wl->status);
+                        wl->profile->active = true;
+                }
+@@ -2112,7 +2116,11 @@
+                rcu_read_unlock();
+ #endif
+                beacon_interval = bss->beacon_interval;
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0)
+                cfg80211_put_bss(bss);
++#else
++               cfg80211_put_bss(wl_to_wiphy(wl), bss);
++#endif
+        }
+ 
+        tim = bcm_parse_tlvs(ie, ie_len, WLAN_EID_TIM);
+
