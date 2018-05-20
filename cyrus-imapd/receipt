@@ -52,6 +52,7 @@ post_install()
 {
         # adduser cyrus if needed
 	if ! grep -q cyrus "$1/etc/passwd"; then
+		echo
 		echo -n "Adding user cyrus..."
 		chroot "$1/" adduser cyrus -D -H -S -h /tmp
 		chroot "$1/" sh -c 'echo "cyrus:cyrus" | chpasswd -m > /dev/null'
@@ -59,6 +60,7 @@ post_install()
 	fi
 	# addgroup mail if needed
 	if ! grep -q mail "$1/etc/group"; then
+		echo
 		echo -n "Adding group mail..."
 		chroot "$1/" sh -c 'addgroup mail && addgroup cyrus mail'
 		status
@@ -84,6 +86,7 @@ EOF
 	[ "$1" ] || /etc/init.d/$PACKAGE start
 	if [ -f "$1/etc/init.d/postfix" ]; then
 		if ! grep -v ^# "$1/etc/postfix/main.cf" | grep -q lmtp:unix; then
+			echo
 			echo "Append to /etc/postfix/main.cf:"
 			echo -n "    "
 			echo "mailbox_transport = lmtp:unix:/var/imap/socket/lmtp" | \
@@ -93,9 +96,9 @@ EOF
 			fi
 		fi
 	fi
-	msg="Creating mailbox for"
+	msg="\\nCreating mailbox for"
 	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < "$1/etc/passwd"); do
-		echo -n "$msg $i"
+		echo -en "$msg $i"
 		msg=","
 	done
 	echo ""
