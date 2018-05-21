@@ -179,13 +179,15 @@ compile_rules()
 
 	# Check for Aufs and get source/patches if needed
 	echo "Checking for Aufs packages..."
-	AUFSVER=$(grep ^VERSION= $WOK/aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g')
-	AUFSDIR="$WOK/aufs/source/aufs-${AUFSVER}"
+	AUFSVER=$(grep ^VERSION= $WOK/linux-aufs/receipt | cut -d "=" -f2 | sed -e 's/"//g')
+	AUFSSRCDIR="$WOK/linux-aufs/source"
+	AUFSDIR="$AUFSSRCDIR/linux-aufs-${AUFSVER}"
 	if [ ! -d "$AUFSDIR" ]; then
 		[ ! -f "$SRC/aufs-${AUFSVER}.tar.bz2" ] && cook aufs --getsrc
-		mkdir -p $WOK/aufs/source/
+		mkdir -p $AUFSSRCDIR
 		echo "Extracting: aufs-${AUFSVER}.tar.bz2"
-		tar xjf $SRC/aufs-${AUFSVER}.tar.bz2 -C $WOK/aufs/source/
+		tar xjf $SRC/aufs-${AUFSVER}.tar.bz2 -C $AUFSSRCDIR/
+		( cd $AUFSDIR ; [ -d fs ] || git checkout origin/aufs${VERSION%.*} )
 	fi
 	
 	echo "cook:linux" > $command
