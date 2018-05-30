@@ -196,20 +196,20 @@ main()
 	sectorcount=$(($cylinders * $heads * $sectors))
 	store32 $(($e + 12)) $sectorcount
 	if [ -n "$efi_ofs" ]; then
+		lastlba=$(($sectorcount -1))
 		[ $(read16 0 1024) -eq 35615 -a $(read16 11 0) -ne 35615 ] &&
 		ddq bs=512 conv=notrunc skip=2 seek=44 count=20 if=$iso of=$iso
 		store32 $((446)) $((0x10000))
 		store32 $((446+4)) $((0xFFFFFEEE))
-		store32 $((446+8)) $efi_ofs
-		store32 $((446+12)) $efi_len
+		store32 $((446+8)) 1
+		store32 $((446+12)) $lastlba
 		uudecode <<EOT | unlzma | ddq bs=512 seek=1 of=$iso conv=notrunc
 begin-base64 644 -
-XQAAgAD//////////wAikYVN1N2VY3JXMnUMJn1RCdQOHN33EegtIBhrUQ7P
-3PVRrH5+fynx2ZfhIpUTKFVouVH5CEgkcBOQqiTCVX7AsRmUkli6MUo+x+TC
-9ftViSMiaEWDb8bI73GU3XCMZsZaT5nFwi6NqzhBI9sfRJz5i6cK7kSsPjxN
-bK6ivatF20do2T7S8NSju5FOCCwMuMHuIcU+Ic8JzCvfjdjkHSkUjA6wIcQi
-48FNYYyKv58kxngpmoy32Xc7rZ4cKAXJl3LmsFkYdw7QuZ7Rqv5sP3Z8St8D
-krjcZVJf//Pj90o=
+XQAAgAD//////////wAikYVN1N2VY3JXMnUMJn1TblyFehfeJH+D4/XPYFjO
+OzQluqM2w0L9b1dJMfZHJbnNnBFhYprW0PWPY1UOgQJkhF/W2Z0lXvaSrZ7t
+yEtpmE3Go6qt6FetOfWNMJZhtBdE0TjxFZCvh5z8hy/kRQb1XOkLxeb5VHT3
+H4JI5S76wY0TueXYsBOJwlwW9fZ8IXP72cDO3JArS4ZhUGxbOOF2oDuf/hFM
+zQ==
 ====
 EOT
 		lastlba=$(($sectorcount -1))
@@ -220,15 +220,13 @@ EOT
 		store32 $((0x230)) $(($lastlba-$usablelba+1))
 		store32 $((0x420)) $efi_ofs
 		store32 $((0x428)) $(($efi_ofs+$efi_len-1))
-		store32 $((0x4A8)) $(($lastlba-0x800))
-		store32 $((0x4B0)) 5
 		store32sw $((0x1008)) $(($efi_ofs/4))
 		store32sw $((0x1054)) $(($efi_len/4))
 		for i in 238 410 490 ; do
 			ddq if=/dev/urandom count=16 bs=1 conv=notrunc \
 			    of=$iso seek=$((0x$i))
 		done
-		store32 $((0x258)) $(crc32 0x400 0x4000)
+		store32 $((0x258)) $(crc32 0x400 $((128*$(read32 0 $((0x250))))))
 		store32 $((0x210)) $(crc32 0x200 $(read32 0 $((0x20C))))
 	fi
 }
@@ -246,7 +244,7 @@ cat=$(read32 17 71)
 	abort "invalid boot catalog."
 efi_ofs=
 if [ $(read8 $cat 65) -eq 239 ]; then
-	[ -n "$entry" ] && echo "$iso: efi boot ignore --entry $entry"
+	[ ${entry:-2} != 2 ] && echo "$iso: efi boot ignore --entry $entry"
 	entry=2
 	partype=0
 	efi_ofs=$((4*$(read32 $cat 104)))

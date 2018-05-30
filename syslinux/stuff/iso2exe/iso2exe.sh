@@ -116,10 +116,10 @@ add_win32exe()
 		ddq if=/tmp/exe$$ bs=1 count=3 skip=$((0x7C00)) of=$1 seek=$i conv=notrunc
 	fi
 	rm -f /tmp/exe$$ /tmp/coff$$
-	if [ -z "$RECURSIVE_PARTITION" -a $(get 470 $1 4) -eq 0 ]; then
-		store 464 $((1+$i/512)) $1 8
-		store 470 $(($i/512)) $1 8
-		store 474 $(($(get 474 $1 4) - $i/512)) $1 32
+	if [ -z "$RECURSIVE_PARTITION" -a $(get 454 $1 4) -eq 0 ]; then
+		store 448 $((1+$i/512)) $1 8
+		store 454 $(($i/512)) $1 8
+		store 458 $(($(get 458 $1 4) - $i/512)) $1 32
 	fi
 }
 
@@ -204,19 +204,19 @@ trailer()
 			printf " $i:%08X  %08X  %02X\n" $OFFSET $SIZE \
 				$(get $((446+4+16*i)) "$1" 1)
 		done
-		if [ $(get 466 "$1") -eq 65263 ]; then
+		if [ $(get 450 "$1") -eq 65262 ]; then
 			echo "EFI partitions :"
-			n=$(get 584 "$1" 1)
+			n=$(get 592 "$1")
 			s=$(get 596 "$1")
-			o=$((($(get 552 "$1" 1)*512)-($(get 592 "$1")*$s)))
+			o=$(($(get 584 "$1")*512))
 			i=0
-			while [ $n -gt $i ]; do
+			while [ $i -lt $n ]; do
 				f=$(get $(($o+0x20)) "$1" 4)
 				l=$(($(get $(($o+0x28)) "$1" 4)-$f))
 				[ $l -eq 0 ] && break
 				printf " $i:%08X  %08X  %s\n" $f $(($l+1)) \
-				"$(od -An -N 36 -w -j $(($o+0x38)) -t a "$1" \
-				 | sed 's/\( nul\)*//g;s/   //g;s/ sp//')"
+				"$(od -An -N 72 -w72 -j $(($o+0x38)) -t a "$1" \
+				 | sed 's/ nul//g;s/   //g;s/ sp//g')"
 				o=$(($o+$s))
 				i=$(($i+1))
 			done
@@ -552,7 +552,7 @@ EOT
 	0)	[ -x /usr/bin/isohybrid ] && isohybrid -entry 2 $1;;
 	esac
 
-	gpt= ; [ $(get 466 $1) -eq 65263 ] && gpt=1
+	gpt= ; [ $(get 450 $1) -eq 65262 ] && gpt=1
 	mac= ; [ $(get 2048 $1) -eq 19792 ] && mac=1
 	echo "Read hybrid & tazlito data..."
 	if [ -n "$gpt" ]; then
