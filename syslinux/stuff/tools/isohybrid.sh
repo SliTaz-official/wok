@@ -187,16 +187,17 @@ main()
 	store32 440 $id
 	store32 508 0xAA550000
 	e=$(( ((${entry:-1} -1) % 4) *16 +446))
-	store32 $e 0x10080
 	esect=$(( ($sectors + ((($cylinders -1) & 0x300) >>2)) <<16))
 	ecyl=$(( (($cylinders -1) & 0xff) <<24))
 	epart=$(((($heads - 1) <<8) +$esect +$ecyl))
-	store32 $(($e + 4)) $(($partype + $epart))
-	store32 $(($e + 8)) $offset
 	sectorcount=$(($cylinders * $heads * $sectors))
-	store32 $(($e + 12)) $sectorcount
-	if [ -n "$efi_ofs" ]; then
-		lastlba=$(($sectorcount -1))
+	lastlba=$(($sectorcount -1))
+	if [ -z "$efi_ofs" ]; then
+		store32 $e 0x10080
+		store32 $(($e + 4)) $(($partype + $epart))
+		store32 $(($e + 8)) $offset
+		store32 $(($e + 12)) $sectorcount
+	else
 		[ $(read16 0 1024) -eq 35615 -a $(read16 11 0) -ne 35615 ] &&
 		ddq bs=512 conv=notrunc skip=2 seek=44 count=20 if=$iso of=$iso
 		store32 $((446)) $((0x10000))
@@ -244,8 +245,8 @@ cat=$(read32 17 71)
 	abort "invalid boot catalog."
 efi_ofs=
 if [ $(read8 $cat 65) -eq 239 ]; then
-	[ ${entry:-2} != 2 ] && echo "$iso: efi boot ignore --entry $entry"
-	entry=2
+	[ ${entry:-1} != 1 ] && echo "$iso: efi boot ignore --entry $entry"
+	entry=1
 	partype=0
 	efi_ofs=$((4*$(read32 $cat 104)))
 	efi_len=$(($(read16 $(($efi_ofs/4)) 19)))

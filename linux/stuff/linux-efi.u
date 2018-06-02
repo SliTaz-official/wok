@@ -103,20 +103,9 @@
  		if (status != EFI_SUCCESS)
  			goto close_handles;
  
-@@ -433,8 +500,6 @@
- 	}
+@@ -456,28 +523,11 @@
  
- 	if (file_size_total) {
--		unsigned long addr;
--
- 		/*
- 		 * Multiple files need to be at consecutive addresses in memory,
- 		 * so allocate enough memory for all the files.  This is used
-@@ -454,30 +519,10 @@
- 			goto free_file_total;
- 		}
- 
--		addr = file_addr;
+ 		addr = file_addr;
  		for (j = 0; j < nr_files; j++) {
 -			unsigned long size;
 -
@@ -140,13 +129,15 @@
 -			}
 -
 -			efi_file_close(files[j].handle);
-+			status = read_efi_file(sys_table_arg, &files[j], file_addr, files[j].size);
++			status = read_efi_file(sys_table_arg, &files[j], addr, files[j].size);
 +			if (status != EFI_SUCCESS)
 +				goto free_file_total;
++			addr += files[j].size + 3;
++			addr &= 0xFFFFFFFCUL;
  		}
  
  	}
-@@ -649,6 +694,30 @@
+@@ -649,6 +699,30 @@
  	}
  
  	if (!options_chars) {
@@ -177,7 +168,7 @@
  		/* No command line options, so return empty string*/
  		options = &zero;
  	}
-@@ -665,6 +734,7 @@
+@@ -665,6 +739,7 @@
  	s1 = efi_utf16_to_utf8(s1, s2, options_chars);
  	*s1 = '\0';
  
