@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="xorg-xf86-video-modesetting"
+VERSION="0.9.0"
+CATEGORY="x-window"
+SHORT_DESC="Xorg generic modesetting video driver."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="MIT"
+SOURCE="xf86-video-modesetting"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WEB_SITE="http://www.x.org/"
+WGET_URL="$XORG_MIRROR/driver/$TARBALL"
+HOST_ARCH="i486 arm"
+
+# We can use xorg-server-light with evdev and fbdev driver.
+#DEPENDS="xorg-server"
+BUILD_DEPENDS="xorg-server-dev"
+
+# ARM use build system xorg-server-dev or manually install it in sysroot
+case "$ARCH" in
+	arm) BUILD_DEPENDS="" ;;
+esac
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--with-xorg-module-dir=/usr/lib/X11/modules \
+		$CONFIGURE_ARGS &&
+	make && make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/X11/modules/drivers/
+    cp -a $install/usr/lib/X11/modules/drivers/*.so \
+    	$fs/usr/lib/X11/modules/drivers/
+}
+
