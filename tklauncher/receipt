@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="tklauncher"
+VERSION="0.31"
+CATEGORY="x-window"
+SHORT_DESC="TkLauncher desktop launcher"
+MAINTAINER="pasquale_frega@tiscali.it"
+LICENSE="BSD"
+WEB_SITE="http://web.tiscali.it/pas80/tklauncher.htm"
+TAGS="amiwm AmiDock Amiga"
+SUGGESTED="amiwm"
+CONFIG_FILES="/etc/tklauncher"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://web.tiscali.it/pas80/$TARBALL"
+
+DEPENDS="tcl tk libtkimg"
+BUILD_DEPENDS="tcl-dev tk-dev libtkimg-dev tcl2c"
+
+compile_rules() {
+	sed -i 's|/usr/local|/usr|; s|8\.5|8.6|g' Makefile
+
+	tcl2c -o tklauncher.c tklauncher.tcl -tcl -tk &&
+	make &&
+	make INSTALLDIR=$install/usr install || return 1
+
+	chmod 755 $install/usr/lib/amiwm/TkLauncher # was 751
+	mkdir -p $install/usr/share/doc
+	cp README LICENSE $install/usr/share/doc
+}
+
+genpkg_rules() {
+	mkdir -p $fs/usr/share $fs/etc
+	cp -a $install/usr/bin $install/usr/lib $fs/usr
+	cp -a $install/usr/share/tklauncher $fs/etc
+	ln -s /etc/tklauncher $fs/usr/share/tklauncher
+}
