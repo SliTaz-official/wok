@@ -1,0 +1,932 @@
+http://web.tiscali.it/pas80/tklauncher.htm
+http://web.tiscali.it/pas80/tcl2c.tar.gz
+@@ -1,26 +1,10 @@
+-//tcl2c @ 1997-2016 (04/2016) - Under G.P.L. License
+-//Based on tcl2c.c written by: Jan Nijtmans
+-//Cyril BARBATO 
+-//tcl2c.sourceforge.net
+-//cyril.barbato@gmx.com
++#include <tcl.h>
+ 
+-#include "tcl.h"
+-#include <stdio.h>
+-#include <stdlib.h>
+-
+-#ifdef _APPLICATION_IS_ROOT_PATH_
+-#include <string.h>
+-#include <limits.h>
+-#include <unistd.h>
+-#endif
+-
+ #ifdef __cplusplus
+ extern C {
+ #endif
+ 
+ extern void exit _ANSI_ARGS_((int status));
+-extern int isupper _ANSI_ARGS_((int ch));
+-extern int tolower _ANSI_ARGS_((int ch));
+ 
+ #ifdef __cplusplus
+ }
+@@ -44,55 +28,48 @@
+ 
+ static tableitem table[] = {
+ {"Tcl"  ,"-tcl"  ,  1},
+-{"Tk"   ,"-tk"   ,  3},
+-{"Tclx" ,"-tclx" ,  5},
+-{"Itcl" ,"-itcl" ,  9},
+-{"Otcl" ,"-otcl" , 17},	/* not tested yet */
+-{"Pvm"  ,"-pvm"  , 33},
+-{"Tkx"  ,"-tkx"  , 71},
+-{"Itk"  ,"-itk" ,  139},
+-{"Iwidgets" ,"-iwidgets" ,  395},
+-{"Img"  ,"-img"  ,515},
+-{"Tix"  ,"-tix"  ,1027}, /* not tested yet */
+-{"Blt"  ,"-blt"  ,2051}, /* not tested yet */
+-{"Vtcl" ,"-vtcl" ,4103}, /* not tested yet */
++{"Tclx" ,"-tclx" ,  3},
++{"Itcl" ,"-itcl" ,  5},
++{"Otcl" ,"-otcl" ,  9},	/* not tested yet */
++{"Pvm"  ,"-pvm"  , 17},
++{"Tk"   ,"-tk"   , 33},
++{"Tkx"  ,"-tkx"  , 99},
++{"Itk"  ,"-itk" ,  165},
++{"Iwidgets" ,"-iwidgets" ,  421},
++{"Img"  ,"-img"  ,545},
++{"Tix"  ,"-tix"  ,1057},  /* not tested yet */
++{"Blt"  ,"-blt"  ,2081}, /* not tested yet */
++{"Vtcl" ,"-vtcl" ,4261}, /* not tested yet */
+ };
+ 
+-static char verbose[] = "\n\
++static char *verbose = "\n\
+ *************************** tcl2c ********************************\n\
+-Based on tcl2c.c written by: Jan Nijtmans\n\
+-            CMG (Computer Management Group) Arnhem B.V.\n\
+-	    email: Jan.Nijtmans@wxs.nl (private)\n\
+-	           Jan.Nijtmans@cmg.nl (work)\n\
+-	    url:   http://home.wxs.nl/~nijtmans/\n\n\
+-    new options for gcc by:  Cyril Barbato (cyril.barbato@gmx.com)\n\
+-            -D__MALLOC__ : for using malloc()\n\
+-            -D__LIBPATH__=\"your lib\" : change tcl lib path\n\
+-            -D_APPLICATION_IS_ROOT_PATH_ : for application is root path\n\\n\
+-			-D_CONSOLEWOZHIDE_ : Hide windows console\n\\n\
+-	new, add 2 tcl commands for windows console :\n\
+-			_tcl2c_consoleWOZHide for Hide windows console\n\
+-			_tcl2c_consoleWOZShow for Show windows console\n\\n\
+-	url :   http://tcl2c.sourceforge.net/\n\n\
+-	usage:	tcl2c -o file source1 source2 ... ?options?\n\
++written by: Jan Nijtmans\n\
++            NICI (Nijmegen Institute of Cognition and Information)\n\
++	    email: nijtmans@nici.kun.nl\n\
++	    url:   http://www.cogsci.kun.nl/~nijtmans/\n\n\
++usage:	tcl2c -o file source1 source2 ... ?options?\n\
+ 			tcl2c -help\n\
+ ";
+ 
+-static char help[] = "\n\
++static char *help = "\n\
+ available options:\n\
+         -a              use character array instead of string for script\n\
+         -n script_name  name of script variable\n\
+         -o filename	output file (default is stdout)\n\
+ 	-tcl		use Tcl\n\
+ 	-tclx		use Tclx\n\
++	-itcl		use Itcl\n\
+ 	-otcl		use Otcl (not tested yet)\n\
+ 	-pvm		use tkPvm\n\
+ 	-tk		use Tk\n\
+-	-tkx		use Tkx (not really useful)\n\
+-	-img		use Img\n\
++	-tkx		use Tkx (not really usefull)\n\
++	-itk		use Itk\n\
++	-iwidgets	use Iwidgets\n\
+ 	-tix		use Tix (not tested yet)\n\
+ 	-blt		use Blt (not tested yet)\n\
+ 	-vtcl		use Vtcl (not tested yet)\n\
++	-index		convert tclIndex files\n\n\
+ Other command line arguments are assumed to be tcl script-files. It is \n\
+ possible to include C-files (with the extension .c), which are already\n\
+ converted tcl-scripts. These are included using the \"#include\".\n\n\
+@@ -101,7 +78,7 @@
+ 
+ static char *part1 = "\n\
+ /* This file is created by the \"tcl2c\" utility, which is included in\n\
+- * most \"plus\"-patches (e.g. for Tcl8.6). Standalone\n\
++ * most \"plus\"-patches (e.g. for Tcl7.6 and Tcl8.0). Standalone\n\
+  * executables can be made by providing alternative initialization\n\
+  * functions which don't read files any more. Sometimes, small\n\
+  * adaptations to the original libraries are needed to get the\n\
+@@ -111,68 +88,29 @@
+  * easyly extend the \"tcl2c\" utility to your own requirements.\n\
+  *\n\
+  *	Jan Nijtmans\n\
+- *	CMG (Computer Management Group) Arnhem B.V.\n\
+- *	email: Jan.Nijtmans@wxs.nl (private)\n\
+- *	       Jan.Nijtmans@cmg.nl (work)\n\
+- *	url:   http://home.wxs.nl/~nijtmans/\n\
+- *\n\
+- *new options for gcc by:  Cyril Barbato (cyril.barbato@gmx.com)\n\
+- *          -D__MALLOC__ : for using malloc()\n\
+- *          -D__LIBPATH__=\"your lib\" : change tcl lib path\n\
+- *			-D_APPLICATION_IS_ROOT_PATH_ : for application is root path\n\\n\
+-			-D_CONSOLEWOZHIDE_ : Hide windows console\n\
+- *\n\
+-	new, add 2 tcl commands for windows console :\n\
+-			_tcl2c_consoleWOZHide for Hide windows console\n\
+-			_tcl2c_consoleWOZShow for Show windows console\n\\n\
+- *\n\
+- *	    url:   http://tcl2c.sourceforge.net/\n\
+- *\n\
+- * usage:	tcl2c -o file source1 source2 ... ?options?\n\
+- *			tcl2c -help\n\
++ *	NICI (Nijmegen Institute of Cognition and Information)\n\
++ *	email: nijtmans@nici.kun.nl\n\
++ *	url:   http://www.cogsci.kun.nl/~nijtmans/\n\
+  */\n\
++#define USE_INTERP_RESULT 1\n\
+ #include \"tcl.h\"\n\
+-#ifdef _MACOSX_APP_\n\
+-#import <crt_externs.h>\n\
+-#endif\n\
+-#ifdef __WIN32__\n\
+-#define _WIN32_WINNT 0x0500\n\
+-#define WIN32_LEAN_AND_MEAN\n\
+-#include <windows.h>\n\
+-#undef WIN32_LEAN_AND_MEAN\n\
+-#ifndef __MALLOC_H__\n\
+-#include <malloc.h>\n\
+-#endif\n\
+-#include <locale.h>\n\
+-#ifndef __LIBPATH__\n\
+-#define __LIBPATH__ \"lib\"\n\
+-#endif\n\
+-#include <unistd.h>\n\
+-#ifdef _APPLICATION_IS_ROOT_PATH_\n\
+-#include <string.h>\n\
+-#include <limits.h>\n\
+-#include <unistd.h>\n\
+-#endif\n\
+ \n\
+-static int setargv _ANSI_ARGS_((char ***argvPtr));\n\
+-static void TclshPanic _ANSI_ARGS_(TCL_VARARGS(char *,format));\n\
+-extern void TclWinInit(HINSTANCE instance);\n\
+-extern int  Registry_Init _ANSI_ARGS_((Tcl_Interp *interp));\n\
+-\n\
+-#endif\n\
+-\n\
+ /*\n\
+  * Defines to replace the standard Xxx_Init calls to Xxx_InitStandAlone.\n\
+  * If you don't have this function, just delete the corresponding\n\
+  * define such that the normal initialization function is used.\n\
+- * If no Xxx_SafeInit function exists, use NULL pointers instead\n\
+- * by commenting out the appropriate lines below.\n\
++ * Similar: If SafeInit functions exists, you can use these\n\
++ * by commenting out the corresponding lines below.\n\
+  */\n\
+ \n\
+-#if defined(TCL_ACTIVE) && !defined(SHARED)\n\
++#ifdef TCL_ACTIVE\n\
+ ";
+ 
+-static char *part2 = "\n\
++static char *part2 = "#endif\n\
++\n\
++";
++
++static char *part3 = "\n\
+ /*\n\
+  * Prototypes of all initialization functions and the free() function.\n\
+  * So, only \"tcl.h\" needs to be included now.\n\
+@@ -182,27 +120,8 @@
+ extern \"C\" {\n\
+ #endif\n\
+ \n\
+-#ifndef USE_TCLALLOC\n\
+-#   define USE_TCLALLOC 0\n\
+-#endif\n\
+-#if USE_TCLALLOC == 0\n\
+ extern void free _ANSI_ARGS_((void *));\n\
+-extern VOID *malloc _ANSI_ARGS_((int));\n\
+-#endif\n\
+-extern int  Tcl_Init _ANSI_ARGS_((Tcl_Interp *interp));\n\
+-\n\
+ ";
+-
+-static char *part3 = "\n\
+-extern void Tk_MainLoop _ANSI_ARGS_((void));\n\
+-#define HAS_TK\n\
+-#ifdef __WIN32__\n\
+-extern void TkWinXInit _ANSI_ARGS_((HINSTANCE hinstance));\n\
+-extern void TkWinXCleanup _ANSI_ARGS_((HINSTANCE hinstance));\n\
+-#endif\n\
+-\n\
+-";
+-
+ static char *part4 = "\n\
+ #ifdef __cplusplus\n\
+ }\n\
+@@ -213,64 +132,10 @@
+  * It will be executed in tclAppInit() after the other initializations.\n\
+  */\n\
+ \n\
+-";
+-
+-static char *part4a = "\
+-static char *lineformat = \"%%.0s%%d\";\n\
+ static int line = (__LINE__ + 1);\n\
+ ";
+ 
+-static char *part4b = "\
+-static char *lineformat = \"%%s_line%%d\";\n\
+-static int line = 0;\n\
+-";
+-
+ static char *part5 = "\
+-#ifdef _APPLICATION_IS_ROOT_PATH_\n\
+-#define PATH_MAX 1024\n\
+-char abs_exe_path[PATH_MAX];\n\
+-char *\n\
+-#ifdef _USING_PROTOTYPES_\n\
+-app_GetPath(\n\
+-	int argc,\n\
+-	char *argv[])\n\
+-#else\n\
+-app_GetPath(argc, argv)\n\
+-	int argc;\n\
+-	char *argv[];\n\
+-#endif\n\
+-{\n\
+-  char path_save[PATH_MAX];\n\
+-  char *p;\n\
+-  if(!(p = strrchr(argv[0], '/')))\n\
+-    getcwd(abs_exe_path, sizeof(abs_exe_path));\n\
+-  else\n\
+-  {\n\
+-    *p = '\\0';\n\
+-    getcwd(path_save, sizeof(path_save));\n\
+-    chdir(argv[0]);\n\
+-    getcwd(abs_exe_path, sizeof(abs_exe_path));\n\
+-    chdir(path_save);\n\
+-  }\n\
+-  //printf(\"Absolute path to executable is: %s\\n\", abs_exe_path);\n\
+-  return abs_exe_path;\n\
+-};\n\
+-#endif\n\
+-#ifdef __WIN32__\n\
+-HWND hConsoleWnd=NULL;\n\
+-int _tcl2c_consoleWOZHideCmd(ClientData clientData, Tcl_Interp *interp, int argc, char **argv) {\n\
+-	if (hConsoleWnd==NULL) {hConsoleWnd = GetConsoleWindow();};\n\
+-	if (hConsoleWnd==NULL) {return TCL_OK;};\n\
+-	SetWindowPos(hConsoleWnd,HWND_NOTOPMOST,0,0,320,240,SWP_HIDEWINDOW);\n\
+-	return TCL_OK;\n\
+-};\n\
+-int _tcl2c_consoleWOZShowCmd(ClientData clientData, Tcl_Interp *interp, int argc, char **argv) {\n\
+-	if (hConsoleWnd==NULL) {hConsoleWnd = GetConsoleWindow();};\n\
+-	if (hConsoleWnd==NULL) {return TCL_OK;};\n\
+-	ShowWindow(hConsoleWnd,SW_SHOW);\n\
+-	return TCL_OK;\n\
+-};\n\
+-#endif\n\
+ /*\n\
+  *----------------------------------------------------------------------\n\
+  *\n\
+@@ -287,18 +152,7 @@
+  *----------------------------------------------------------------------\n\
+  */\n\
+ \n\
+-#if defined(__WIN32__) && defined(HAS_TK)\n\
+-int APIENTRY\n\
+-WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance,\n\
+-    LPSTR lpszCmdLine, int nCmdShow)\n\
+-{\n\
+-    char **argv;\n\
+-    int argc;\n\
+-#else\n\
+-";
+-//MAIN Tcl App
+-static char *part5a = "\
+-int\n\
++void\n\
+ #ifdef _USING_PROTOTYPES_\n\
+ main (int    argc,		/* Number of command-line arguments. */\n\
+       char **argv)		/* Values of command-line arguments. */\n\
+@@ -308,78 +162,12 @@
+     char **argv;		/* Values of command-line arguments. */\n\
+ #endif\n\
+ {\n\
+-#endif\n\
+     Tcl_Interp *interp;\n\
+     char **p = %s;\n\
+-    char *q, buffer[16];\n\
++    char *q, buffer[10];\n\
+     Tcl_DString data;\n\
+     Tcl_Channel inChannel, outChannel, errChannel;\n\
+ \n\
+-#ifdef __LIBPATH__\n\
+-	////char _cwd[1024];\n\
+-	char _libpath[2048];\n\
+-#endif\n\
+-#ifdef __WIN32__\n\
+-    char argv0[128];\n\
+-#endif\n\
+-#ifdef _MACOSX_APP_\n\
+-argc = *_NSGetArgc();\n\
+-char *progname = *_NSGetProgname();\n\
+-char **envp = *_NSGetEnviron();\n\
+-argv = *_NSGetArgv();\n\
+-#endif\n\
+-#ifdef _APPLICATION_IS_ROOT_PATH_\n\
+-	/* GOTO APPLICATION PATH FOR MAC OS*/\n\
+-	chdir(app_GetPath(argc, argv));\n\
+-#endif\n\
+-#ifdef __WIN32__\n\
+-#ifdef _CONSOLEWOZHIDE_\n\
+-_tcl2c_consoleWOZHideCmd(NULL, NULL, NULL, (char **) NULL);\n\
+-#endif\n\
+-#if defined(TCL_ACTIVE) && !defined(SHARED) && defined(HAS_TK)\n\
+-    TclWinInit(hInstance);\n\
+-    TkWinXInit(hInstance);\n\
+-    Tcl_CreateExitHandler((Tcl_ExitProc *) TkWinXCleanup, (ClientData) hInstance);\n\
+-#endif\n\
+-\n\
+-    Tcl_SetPanicProc(TclshPanic);\n\
+-\n";
+-
+-static char *part5b = "\n\
+-    /*\n\
+-     * Set up the default locale to be standard \"C\" locale so parsing\n\
+-     * is performed correctly.\n\
+-     */\n\
+-\n\
+-    setlocale(LC_ALL, \"C\");\n\
+-\n\
+-    /*\n\
+-     * Increase the application queue size from default value of 8.\n\
+-     * At the default value, cross application SendMessage of WM_KILLFOCUS\n\
+-     * will fail because the handler will not be able to do a PostMessage!\n\
+-     * This is only needed for Windows 3.x, since NT dynamically expands\n\
+-     * the queue.\n\
+-     */\n\
+-    SetMessageQueue(64);\n\
+-\n\
+-    argc = setargv(&argv);\n\
+-\n\
+-    /*\n\
+-     * Replace argv[0] with full pathname of executable, and forward\n\
+-     * slashes substituted for backslashes.\n\
+-     */\n\
+-\n\
+-";
+-static char *part5c = "\
+-    GetModuleFileName(NULL, argv0, sizeof(argv0));\n\
+-    argv[0] = argv0;\n\
+-    for (q = argv0; *q != '\\0'; q++) {\n\
+-	if (*q == '\\\\') {\n\
+-	    *q = '/';\n\
+-	}\n\
+-    }\n\
+-\n\
+-#endif\n\
+     Tcl_FindExecutable(argv[0]);\n\
+     interp = Tcl_CreateInterp();\n\
+ \n\
+@@ -391,32 +179,8 @@
+     Tcl_SetVar(interp, \"argv0\", argv[0],TCL_GLOBAL_ONLY);\n\
+     Tcl_SetVar(interp, \"tcl_interactive\",\"0\", TCL_GLOBAL_ONLY);\n\
+ \n\
+-#ifdef __LIBPATH__\n\
+-	////chdir(__LIBPATH__);\n\
+-	////getcwd(_cwd,sizeof(_cwd));\n\
+-	////printf(\"libpath:%%s\\n\", _cwd);\n\
+-	sprintf(_libpath, \"set env(PWD) [pwd]\");\n\
+-	Tcl_Eval(interp, _libpath);\n\
+-	sprintf(_libpath, \"%%s/%%s/tcl%%s\", Tcl_GetVar2(interp, \"env\", \"PWD\", TCL_GLOBAL_ONLY),__LIBPATH__, Tcl_GetVar(interp,\"tcl_version\", TCL_GLOBAL_ONLY));\n\
+-	Tcl_SetVar2(interp, \"env\", \"TCL_LIBRARY\", _libpath, TCL_GLOBAL_ONLY);\n\
+-	Tcl_SetVar2(interp, \"env\", \"TK_LIBRARY\", _libpath, TCL_GLOBAL_ONLY);\n\
+-	Tcl_SetVar(interp, \"auto_path\", _libpath, TCL_GLOBAL_ONLY);\n\
+-	Tcl_SetVar(interp, \"tcl_libPath\", _libpath, TCL_GLOBAL_ONLY);\n\
+-#endif\n\
+-\n\
+-if (Tcl_Init(interp) != TCL_OK) {\n\
+-        goto error;\n\
+-    }\n\
+-\n\
+-#ifdef __WIN32__\n\
+-	Tcl_StaticPackage((Tcl_Interp *) NULL, \"registry\", Registry_Init,\n\
+-	    (Tcl_PackageInitProc *) NULL);\n\n\
+-	//Create commands _tcl2c_consoleWOZHide and _tcl2c_consoleWOZShow\n\
+-	Tcl_CreateCommand(interp, \"_tcl2c_consoleWOZHide\", _tcl2c_consoleWOZHideCmd, NULL, NULL);\n\
+-	Tcl_CreateCommand(interp, \"_tcl2c_consoleWOZShow\", _tcl2c_consoleWOZShowCmd, NULL, NULL);\n\n\
+-#endif\n\
+-\n\
+ ";
++
+ static char *part6 = "\n\
+     /*\n\
+      * Execute the script that is compiled in.\n\
+@@ -436,17 +200,27 @@
+ 		}\n\
+ 		line++;\n\
+ 	    }\n\
+-	    sprintf(buffer,lineformat,\"%s\",line);\n\
+-		printf(\"ERROR : (line %%s) : %%s\\n\", buffer, Tcl_GetVar(interp, \"errorInfo\", TCL_GLOBAL_ONLY));\n\
++	    sprintf(buffer,\"%%d\",line);\n\
++	    Tcl_AddErrorInfo(interp,\"\\n	( Error in file: \\\"\");\n\
++	    Tcl_AddErrorInfo(interp,__FILE__);\n\
++	    Tcl_AddErrorInfo(interp,\"\\\", line: \");\n\
++	    Tcl_AddErrorInfo(interp,buffer);\n\
++	    Tcl_AddErrorInfo(interp,\")\");\n\
++	    errChannel = Tcl_GetStdChannel(TCL_STDERR);\n\
++	    if (errChannel) {\n\
++		Tcl_Write(errChannel,\n\
++			Tcl_GetVar(interp, \"errorInfo\", TCL_GLOBAL_ONLY), -1);\n\
++		Tcl_Write(errChannel, \"\\n\", 1);\n\
++	    }\n\
++	    sprintf(buffer, \"exit %%d\", 1);\n\
+ 	    Tcl_Eval(interp, buffer);\n\
+-	}};\n\
+-";
+-
+-static char *part6a = "\
+-    Tk_MainLoop();\n\
+-";
+-
+-static char *part6b = "\
++	}\n\
++    }\n\
++    Tcl_DStringFree(&data);\n\
++\n\
++    while (Tcl_DoOneEvent(0)) {\n\
++	/* empty loop body */ ;\n\
++    }\n\
+     sprintf(buffer, \"exit %%d\", 0);\n\
+     Tcl_Eval(interp, buffer);\n\
+ \n\
+@@ -455,185 +229,20 @@
+     if (errChannel) {\n\
+ 	Tcl_Write(errChannel,\n\
+ 		\"application-specific initialization failed: \", -1);\n\
+-	Tcl_Write(errChannel, Tcl_GetStringResult(interp), -1);\n\
++	Tcl_Write(errChannel, interp->result, -1);\n\
+ 	Tcl_Write(errChannel, \"\\n\", 1);\n\
+     }\n\
+-#ifdef __WIN32__\n\
+-    TclshPanic(Tcl_GetStringResult(interp));\n\
+-#endif\n\
+     sprintf(buffer, \"exit %%d\", 1);\n\
+     Tcl_Eval(interp, buffer);\n\
+-    return 0;\n\
+ }\n\
+-\n\
+-#ifdef __WIN32__\n\
+-/*\n\
+- *----------------------------------------------------------------------\n\
+- *\n\
+- * TclshPanic --\n\
+- *\n\
+- *	Display a message and exit.\n\
+- *\n\
+- * Results:\n\
+- *	None.\n\
+- *\n\
+- * Side effects:\n\
+- *	Exits the program.\n\
+- *\n\
+- *----------------------------------------------------------------------\n\
+- */\n\
+-\n\
+-void\n\
+-TclshPanic TCL_VARARGS_DEF(char *,arg1)\n\
+-{\n\
+-    va_list argList;\n\
+-    char buf[1024];\n\
+-    char *format;\n\
+-\n\
+-    format = TCL_VARARGS_START(char *,arg1,argList);\n\
+-    vsprintf(buf, format, argList);\n\
+-\n\
+-    MessageBeep(MB_ICONEXCLAMATION);\n\
+-    MessageBox(NULL, buf, \"Fatal Error in Tclsh\",\n\
+-	    MB_ICONSTOP | MB_OK | MB_TASKMODAL | MB_SETFOREGROUND);\n\
+-#ifdef _MSC_VER\n\
+-    DebugBreak();\n\
+-#endif\n\
+-    ExitProcess(1);\n\
+-}\n\
+ ";
+ 
+-static char *part6c = "\
+-\n\
+-/*\n\
+- *-------------------------------------------------------------------------\n\
+- *\n\
+- * setargv --\n\
+- *\n\
+- *	Parse the Windows command line string into argc/argv.  Done here\n\
+- *	because we don't trust the builtin argument parser in crt0.  \n\
+- *	Windows applications are responsible for breaking their command\n\
+- *	line into arguments.\n\
+- *\n\
+- *	2N backslashes + quote -> N backslashes + begin quoted string\n\
+- *	2N + 1 backslashes + quote -> literal\n\
+- *	N backslashes + non-quote -> literal\n\
+- *	quote + quote in a quoted string -> single quote\n\
+- *	quote + quote not in quoted string -> empty string\n\
+- *	quote -> begin quoted string\n\
+- *\n\
+- * Results:\n\
+- *	returns the number of arguments and fill argvPtr with the\n\
+- *	array of arguments.\n\
+- *\n\
+- * Side effects:\n\
+- *	Memory allocated.\n\
+- *\n\
+- *--------------------------------------------------------------------------\n\
+- */\n\
+-\n\
+-";
+-
+-static char *part6d = "\
+-static int\n\
+-setargv(argvPtr)\n\
+-    char ***argvPtr;		/* Filled with argument strings (malloc'd). */\n\
+-{\n\
+-    char *cmdLine, *p, *arg, *argSpace;\n\
+-    char **argv;\n\
+-    int argc, size, inquote, copy, slashes;\n\
+-\n\
+-    cmdLine = GetCommandLine();\n\
+-\n\
+-    /*\n\
+-     * Precompute an overly pessimistic guess at the number of arguments\n\
+-     * in the command line by counting non-space spans.\n\
+-     */\n\
+-\n\
+-    size = 2;\n\
+-    for (p = cmdLine; *p != '\\0'; p++) {\n\
+-	if (isspace(*p)) {\n\
+-	    size++;\n\
+-	    while (isspace(*p)) {\n\
+-		p++;\n\
+-	    }\n\
+-	    if (*p == '\\0') {\n\
+-		break;\n\
+-	    }\n\
+-	}\n\
+-    }\n\
+-    argSpace = (char *) ckalloc((unsigned) (size * sizeof(char *)\n\
+-	    + strlen(cmdLine) + 1));\n\
+-    argv = (char **) argSpace;\n\
+-    argSpace += size * sizeof(char *);\n\
+-    size--;\n\
+-\n\
+-    p = cmdLine;\n\
+-    for (argc = 0; argc < size; argc++) {\n\
+-	argv[argc] = arg = argSpace;\n\
+-	while (isspace(*p)) {\n\
+-	    p++;\n\
+-	}\n\
+-	if (*p == '\\0') {\n\
+-	    break;\n\
+-	}\n\
+-\n\
+-";
+-
+-static char *part6e = "\
+-	inquote = 0;\n\
+-	slashes = 0;\n\
+-	while (1) {\n\
+-	    copy = 1;\n\
+-	    while (*p == '\\\\') {\n\
+-		slashes++;\n\
+-		p++;\n\
+-	    }\n\
+-	    if (*p == '\"') {\n\
+-		if ((slashes & 1) == 0) {\n\
+-		    copy = 0;\n\
+-		    if ((inquote) && (p[1] == '\"')) {\n\
+-			p++;\n\
+-			copy = 1;\n\
+-		    } else {\n\
+-			inquote = !inquote;\n\
+-		    }\n\
+-                }\n\
+-                slashes >>= 1;\n\
+-            }\n\
+-\n\
+-            while (slashes) {\n\
+-		*arg = '\\\\';\n\
+-		arg++;\n\
+-		slashes--;\n\
+-	    }\n\
+-\n\
+-	    if ((*p == '\\0') || (!inquote && isspace(*p))) {\n\
+-		break;\n\
+-	    }\n\
+-	    if (copy != 0) {\n\
+-		*arg = *p;\n\
+-		arg++;\n\
+-	    }\n\
+-	    p++;\n\
+-        }\n\
+-	*arg = '\\0';\n\
+-	argSpace = arg + 1;\n\
+-    }\n\
+-    argv[argc] = NULL;\n\
+-\n\
+-    *argvPtr = argv;\n\
+-    return argc;\n\
+-}\n\
+-#endif /* __WIN32__ */\n\
+-";
+-
+-static char *defineproto = "\
++static char *defineproto1 = "\
+ #define %s_Init %s_InitStandAlone\n\
+ ";
+ 
+ static char *defineproto2 = "\
+-/*#define %s_SafeInit ((Tcl_PackageInitProc *) NULL)*/\n\
++#define %s_SafeInit (Tcl_PackageInitProc *) NULL\n\
+ ";
+ 
+ static char *initproto = "\
+@@ -653,9 +262,8 @@
+     }\n\
+ ";
+ 
+-static char *buffer;
++static char buffer[32768];
+ static unsigned int max_buffer = 0;
+-static unsigned int buffer_size = MAX_STRING_LEN;
+ static char max_buffer_content[80];
+ 
+ static char array_instead_of_string = 0;
+@@ -663,23 +271,25 @@
+ 
+ static char script_name[256];
+ 
+-int printline _ANSI_ARGS_((FILE *f, char *dir, int flags));
++int printline _ANSI_ARGS_((FILE *f, char *buf, char *dir, int flags));
+ int printfile _ANSI_ARGS_((FILE *fout, char *filename, char *dir, int flags));
+ 
+ int
+ #ifdef _USING_PROTOTYPES_
+ printline (
+     FILE *f,
++    char *buf,
+     char *dir,
+     int flags)
+ #else
+-printline(f, dir, flags)
++printline(f,buf,dir,flags)
+     FILE *f;
++    char *buf;
+     char *dir;
+     int flags;
+ #endif
+ {
+-    char *p, *q, *buf = buffer;
++    char *p,*q;
+     char path[128];
+     unsigned int l;
+ 
+@@ -730,7 +340,7 @@
+ 	    *q='}';
+ 	}
+     }
+-    p = buffer;
++    p = buf;
+     while ((p = strstr(p, "[list source [file join $dir")) != NULL) {
+ 	q = strstr(p,".tcl]]");
+ 	if (q != NULL) {
+@@ -805,14 +415,6 @@
+     p = q = buffer;
+     while ((c=fgetc(fin))!=EOF) {
+ 	*p = 0;
+-        if (p + 10 > buffer + buffer_size) {
+-	    char *new;
+-	    buffer_size += MAX_STRING_LEN;
+-	    new = (char *) realloc(buffer, buffer_size);
+-	    p = new + (p - buffer);
+-	    q = new + (q - buffer);
+-	    buffer = new;
+-        }
+ 	if (c=='\n') {
+ 	    if (!strncmp(buffer,"if {[info exists tk_library] && [string compare $tk_library {}]} {",66)) {
+ 		int flag = 1;
+@@ -823,6 +425,7 @@
+ 			flag--;
+ 		    }
+ 		}
++		flag=0;
+ 		p=q=buffer;
+ 	    } else if ((p==buffer)||(*q=='\n')||(*q=='#')) {
+ 		if ((*q=='#') && (*(p-1)=='\\')) {
+@@ -833,54 +436,23 @@
+ 	    } else {
+ 		*p++ = '\n'; *p=0;
+ 		if (Tcl_CommandComplete(buffer)) {
+-		    p--; *p = 0; printline(fout,dir,flags);
++		    p--; *p = 0; printline(fout,buffer,dir,flags);
+ 		    p = q = buffer;
+ 		} else {
+ 		    q=p;
+ 		}
+ 	    }
+ 	} else {
+-	    *p++ = (char) c;
++	    *p++ = c;
+ 	}
+     }
+     if (p!=buffer) {
+-	*p=0; printline(fout, dir, flags);
++	*p=0; printline(fout,buffer,dir,flags);
+     }
+     fclose(fin);
+     return 0; /* O.K. */
+ }
+ 
+-#ifdef _APPLICATION_IS_ROOT_PATH_
+-char abs_exe_path[PATH_MAX];
+-char *
+-#ifdef _USING_PROTOTYPES_
+-app_GetPath(
+-	int argc,
+-	char *argv[])
+-#else
+-app_GetPath(argc, argv)
+-	int argc;
+-	char *argv[];
+-#endif
+-{
+-  char path_save[PATH_MAX];
+-  char *p;
+-  if(!(p = strrchr(argv[0], '/')))
+-    getcwd(abs_exe_path, sizeof(abs_exe_path));
+-  else
+-  {
+-    *p = '\0';
+-    getcwd(path_save, sizeof(path_save));
+-    chdir(argv[0]);
+-    getcwd(abs_exe_path, sizeof(abs_exe_path));
+-    chdir(path_save);
+-  }
+-  //printf("Absolute path to executable is: %s\n", abs_exe_path);
+-  return abs_exe_path;
+-};
+-#endif
+-
+-/* MAIN */
+ int
+ #ifdef _USING_PROTOTYPES_
+ main (
+@@ -898,11 +470,6 @@
+     tableitem *t;
+     int c,i, flags=0;
+ 
+-#ifdef _APPLICATION_IS_ROOT_PATH_
+-	/* GOTO APPLICATION PATH */
+-	chdir(app_GetPath(argc, argv));
+-#endif
+-
+     if (argc==1) {
+ 	printf(verbose);
+ 	exit(0);
+@@ -921,6 +488,8 @@
+ 	    i++; strcpy(script_name,argv[i]);
+ 	} else if (!strcmp(argv[i],"-o")) {
+ 	    i++; filename = argv[i];
++	} else if (!strcmp(argv[i],"-index")) {
++	    flags = -1;
+ 	} else {
+ 	    for (t=table;t<table+(sizeof(table)/sizeof(tableitem));t++) {
+ 		if (!strcmp(argv[i],t->option)) {
+@@ -950,61 +519,41 @@
+ 	p = q+1;
+     }
+     strcpy(script_name,p);
+-    q = script_name;
+-    while (*q) {
+-	if (*q == '.') {
+-	    *q = '_';
+-	} else if (isupper(*q)) {
+-	    *q = tolower(*q);
+-	}
+-	q++;
+-    }
+     while ((q = strchr(script_name,'.')) != NULL) {
+ 	*q = '_';
+     }
+ /* create prototypes for all initialization functions that are used */
+-    if (flags) {
++    if (flags  && (flags != -1)) {
+ 	if (script_name[0] == 0) {
+ 	    strcpy(script_name,"script");
+ 	}
+ 	fprintf(fout, part1);
+ 	for (i=0,c=1;i<(sizeof(table)/sizeof(tableitem));i++,c<<=1) {
+ 	    if (flags & c) {
+-		fprintf(fout,defineproto,table[i].package,
++		fprintf(fout,defineproto1,table[i].package,
+ 			table[i].package);
+ 	    }
+ 	}
+-	fprintf(fout, "#endif\n\n");
+-	for (i=1,c=2;i<(sizeof(table)/sizeof(tableitem));i++,c<<=1) {
++	fprintf(fout, part2);
++	for (i=0,c=1;i<(sizeof(table)/sizeof(tableitem));i++,c<<=1) {
+ 	    if (flags & c) {
+ 		fprintf(fout,defineproto2,table[i].package);
+ 	    }
+ 	}
+-	fprintf(fout, part2);
+-
+-	if (flags & 2) {
+ 	    fprintf(fout, part3);
+-	}
+-	for (i=1,c=2;i<(sizeof(table)/sizeof(tableitem));i++,c<<=1) {
++	for (i=0,c=1;i<(sizeof(table)/sizeof(tableitem));i++,c<<=1) {
+ 	    if (flags & c) {
+ 		fprintf(fout,initproto,table[i].package,
+ 			table[i].package,table[i].package);
+ 	    }
+ 	}
+ 	fprintf(fout, part4, script_name);
+-	if (array_instead_of_string) {
+-	    fprintf(fout, part4b);
+-	} else {
+-	    fprintf(fout, part4a);
+ 	}
+-    }
+     if ( !array_instead_of_string && script_name[0]) {
+ 	fprintf(fout, "static char *%s[] = {\n", script_name);
+     }
+ /* handle all remaining arguments */
+     if (argc) {argc--; argv++;}
+-    buffer = (char *) malloc(4*MAX_STRING_LEN);
+-    buffer_size = 4*MAX_STRING_LEN;
+     while(argc) {
+ 	if ((*argv)[0]=='-') {
+ 	    if ((((*argv)[1]=='o')||((*argv)[1]=='n'))&&((*argv)[2]==0)) {
+@@ -1021,7 +570,6 @@
+ 	}
+ 	argc--; argv++;
+     }
+-    free(buffer);
+     if ( array_instead_of_string ) {
+       fprintf(fout, "static char *%s[] = {\n", script_name);
+       for (i = 0; (unsigned int)i < num_lines;)
+@@ -1031,39 +579,34 @@
+       fprintf(fout, "(char *) NULL\n};\n\n");
+     }
+ /* end of scripts, finally the functions main() and tclAppInit()  */
+-    if (flags) {
++    if (flags  && (flags != -1)) {
+ 	fprintf(fout, part5, script_name);
+-	fprintf(fout, part5a, script_name);
+-	fprintf(fout, part5b);
+-	fprintf(fout, part5c);
+-	for (i=1,c=2;i<(sizeof(table)/sizeof(tableitem));i++,c<<=1) {
+-	    if (flags & c) {
+-		fprintf(fout,callinit,table[i].package);
++	fprintf(fout,callinit,table[0].package);
++	if (flags & 0x20) {
++	    fprintf(fout,callinit,table[5].package);
++	}
++	for (i=0,c=1;i<(sizeof(table)/sizeof(tableitem));i++,c<<=1) {
++	    if ((flags & c) && (i!=0))
+ 		fprintf(fout,packageproto,table[i].package,table[i].package,table[i].package);
+ 	    }
++	for (i=0,c=1;i<(sizeof(table)/sizeof(tableitem));i++,c<<=1) {
++	    if ((flags & c) && (i!=0) && (i!=5))
++		fprintf(fout,callinit,table[i].package);
+ 	}
+ 	p=filename?filename:"app";
+ 	if ((q=strrchr(p,'/')) != NULL) p=q+1;
+ 	if ((q=strchr(p,'.')) != NULL) *q=0;
+ 	if (!*p) p="app";
+-	fprintf(fout, part6,script_name,script_name,p,p);
+-	if (flags & 2) {
+-	    fprintf(fout, part6a);
++	fprintf(fout, part6,script_name,p,p);
+ 	}
+-	fprintf(fout, part6b);
+-	fprintf(fout, part6c);
+-	fprintf(fout, part6d);
+-	fprintf(fout, part6e);
+-    }
+ /* close output-file, if not stdout */
+     if (fout!=stdout) {
+ 	fclose(fout);
+     }
+     if (max_buffer>MAX_STRING_LEN) {
+-	fprintf(stderr,"warning: largest sting in output file is %d bytes\n\
++	fprintf(stderr,"warning: largest string in output file is %d bytes\n\
+          many compilers can only handle %d characters in a string\n\
+ 	 first line: %s\n",max_buffer,MAX_STRING_LEN,max_buffer_content);
+     }
+     exit(0);
+-    return 0;
+ }
