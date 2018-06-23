@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="amiwm"
+VERSION="0.21pl2"
+CATEGORY="x-window"
+SHORT_DESC="Amiga look alike window manager"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="other"
+WEB_SITE="http://www.lysator.liu.se/~marcus/amiwm.html"
+
+TARBALL="$PACKAGE$VERSION.tar.gz"
+WGET_URL="ftp://ftp.lysator.liu.se/pub/X11/wm/amiwm/$TARBALL"
+
+DEPENDS="xorg-libICE xorg-libSM xorg-libX11 xorg-libXext xorg-libXmu"
+BUILD_DEPENDS="xorg-libX11-dev xorg-libXext-dev xorg-libICE-dev xorg-libXt-dev \
+xorg-libXmu-dev"
+
+compile_rules() {
+	patch -p1 < $stuff/patches/amiwm-man.patch
+	./configure $CONFIGURE_ARGS &&
+	make gram.h &&
+	make &&
+	make prefix=$install/usr mandir='${prefix}/share/man' install || return 1
+
+	ln -sf ../lib/amiwm/requestchoice $install/usr/bin/requestchoice
+	install -Dm644 $stuff/amiwm.xdesktop $install/usr/share/xsessions/amiwm.desktop
+
+	install -Dm644 $stuff/*.1 $install/usr/share/man/man1 # from Debian
+	gzip -9 $install/usr/share/man/man1/*
+	install -Dm644 README* LICENSE $install/usr/share/doc
+}
+
+genpkg_rules() {
+	cp -a $install/usr $fs
+}
