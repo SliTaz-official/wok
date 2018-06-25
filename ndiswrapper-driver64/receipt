@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="ndiswrapper-driver64"
+VERSION="1.61"
+CATEGORY="system-tools"
+SHORT_DESC="Add Windows network drivers support to Linux kernel."
+MAINTAINER="erjo@slitaz.org"
+LICENSE="GPL"
+SOURCE="ndiswrapper"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WEB_SITE="http://ndiswrapper.sourceforge.net/joomla/"
+WGET_URL="$SF_MIRROR/$SOURCE/stable/$TARBALL"
+TAGS="windows wireless network"
+
+DEPENDS="linux"
+BUILD_DEPENDS="linux64-module-headers xz uclibc-cross-compiler-x86_64"
+
+AUFS_NOT_RAMFS="uclibc-cross-compiler-x86_64 is not compatible with aufs+tmpfs 8("
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|error Multiple|echo Multiple|' driver/Makefile
+	make KBUILD=/usr/src/linux KVER=linux-${kvers}-slitaz64
+	xz driver/ndiswrapper.ko
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	EXTRAVERSION=_${kvers}
+	mkdir -p $fs/usr/sbin $fs/sbin $fs/lib/modules/${kvers}-slitaz64/kernel/misc
+
+	# Install utilities
+	install -o root -m 0755 $src/utils/loadndisdriver $fs/sbin/
+	install -o root -m 0644 $src/driver/ndiswrapper.ko.xz \
+		$fs/lib/modules/${kvers}-slitaz64/kernel/misc/ndiswrapper.ko.xz
+}
