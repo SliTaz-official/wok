@@ -1,0 +1,103 @@
+--- a/amd64/src/wl/sys/wl_linux.c
++++ a/amd64/src/wl/sys/wl_linux.c
+@@ -1192,7 +1192,11 @@
+ #else
+ #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29))
+ 
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0))
+ 	dev = alloc_netdev(sizeof(wl_if_t), name, ether_setup);
++#else
++	dev = alloc_netdev(sizeof(wl_if_t), name, NET_NAME_UNKNOWN, ether_setup);
++#endif
+ 	wlif = netdev_priv(dev);
+ 	if (!dev) {
+ #else
+@@ -3180,6 +3184,7 @@
+ {
+ 	char tmp[32];
+ 	sprintf(tmp, "%s%d", HYBRID_PROC, wl->pub->unit);
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
+ 	if ((wl->proc_entry = create_proc_entry(tmp, 0644, NULL)) == NULL) {
+ 		WL_ERROR(("%s: create_proc_entry %s failed\n", __FUNCTION__, tmp));
+ 		ASSERT(0);
+@@ -3188,5 +3193,17 @@
+ 	wl->proc_entry->read_proc = wl_proc_read;
+ 	wl->proc_entry->write_proc = wl_proc_write;
+ 	wl->proc_entry->data = wl;
++#else
++	static const struct file_operations wl_proc_fops = {
++		.owner = THIS_MODULE,
++		.read = wl_proc_read,
++		.write = wl_proc_write,
++	};
++	if ((wl->proc_entry = proc_create(tmp, 0644, NULL,&wl_proc_fops)) == NULL) {
++		WL_ERROR(("%s: create_proc_entry %s failed\n", __FUNCTION__, tmp));
++		ASSERT(0);
++		return -1;
++	}
++#endif
+ 	return 0;
+ }
+--- a/amd64/src/wl/sys/wl_cfg80211.c
++++ a/amd64/src/wl/sys/wl_cfg80211.c
+@@ -1838,8 +1838,13 @@
+ 		mgmt->u.beacon.capab_info, &bi->BSSID));
+ 
+ 	signal = notif_bss_info->rssi * 100;
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)
+ 	if (!cfg80211_inform_bss_frame(wiphy, channel, mgmt,
+ 	    le16_to_cpu(notif_bss_info->frame_len), signal, GFP_KERNEL)) {
++#else
++	if (!cfg80211_inform_bss_frame(wiphy, channel, CFG80211_BSS_FTYPE_UNKNOWN, mgmt,
++	    le16_to_cpu(notif_bss_info->frame_len), signal, GFP_KERNEL)) {
++#endif
+ 		WL_ERR(("cfg80211_inform_bss_frame error\n"));
+ 		kfree(notif_bss_info);
+ 		return -EINVAL;
+@@ -1857,6 +1862,12 @@
+ 	u32 event = EVENT_TYPE(e);
+ 	u16 flags = EVENT_FLAGS(e);
+ 	u32 status = EVENT_STATUS(e);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
++	struct ieee80211_channel *channel = NULL;
++	struct wiphy *wiphy;
++	u32 chanspec, chan;
++	u32 freq, band;
++#endif
+ 
+ 	WL_DBG(("\n"));
+ 
+@@ -1868,7 +1879,11 @@
+ 		}
+ 		else if ((event == WLC_E_LINK && ~(flags & WLC_EVENT_MSG_LINK)) ||
+ 			event == WLC_E_DEAUTH_IND || event == WLC_E_DISASSOC_IND) {
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0)
+ 			cfg80211_disconnected(ndev, 0, NULL, 0, GFP_KERNEL);
++#else
++			cfg80211_disconnected(ndev, 0, NULL, 0, false, GFP_KERNEL);
++#endif
+ 			clear_bit(WL_STATUS_CONNECTED, &wl->status);
+ 			wl_link_down(wl);
+ 			wl_init_prof(wl->profile);
+@@ -1892,7 +1907,21 @@
+ 			wl_get_assoc_ies(wl);
+ 			memcpy(&wl->bssid, &e->addr, ETHER_ADDR_LEN);
+ 			wl_update_bss_info(wl);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
++			wiphy = wl_to_wiphy(wl);
++			err = wl_dev_intvar_get(ndev, "chanspec", &chanspec);
++			if (err) {
++				WL_ERR(("Could not get chanspec, err %d\n", err));
++				return err;
++			}
++			chan = wf_chspec_ctlchan(chanspec);
++			band = (chan <= CH_MAX_2G_CHANNEL) ? IEEE80211_BAND_2GHZ : IEEE80211_BAND_5GHZ;
++			freq = ieee80211_channel_to_frequency(chan, band);
++			channel = ieee80211_get_channel(wiphy, freq);
++			cfg80211_ibss_joined(ndev, (u8 *)&wl->bssid, channel, GFP_KERNEL);
++#else
+ 			cfg80211_ibss_joined(ndev, (u8 *)&wl->bssid, GFP_KERNEL);
++#endif
+ 			set_bit(WL_STATUS_CONNECTED, &wl->status);
+ 			wl->profile->active = true;
+ 		}
