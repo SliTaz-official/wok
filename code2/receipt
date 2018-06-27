@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="code2"
+VERSION="3723"
+CATEGORY="multimedia"
+SHORT_DESC="An open source low bit rate speech codec"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="LGPL2.1"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://rowetel.com/codec2.html"
+WGET_URL="subversion|svn://svn.code.sf.net/p/freetel/code/codec2-dev/"
+
+BUILD_DEPENDS="subversion cmake libsamplerate-dev speex-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's| -no-pie||' unittest/CMakeLists.txt
+	mkdir build_linux
+	cd build_linux
+	cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib*.so* $fs/usr/lib
+}
