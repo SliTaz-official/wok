@@ -4,7 +4,7 @@ xdbclient()
 {
 	read host data
 	svr=${DISPLAY#*:}
-	n=$((10+($RANDOM % 90))); dpy=localhost:$n
+	n=$((10+($RANDOM % 90))); dpy=127.0.0.1:$n
 	scr=${DISPLAY/${DISPLAY%.*}/$dpy}
 	r="" ; p="22"; k=""
 	while true; do
@@ -20,10 +20,10 @@ xdbclient()
 		*)		break ;;
 		esac
 	done
-	xhost +localhost > /dev/null 2>&1
+	xhost +127.0.0.1 > /dev/null 2>&1
 	pxypass="${DBPROXY_PASSWORD:+export DROPBEAR_PASSWORD=$DBPROXY_PASSWORD; }"
-	[ -n "$1" ] || set -- "${TERM:-xterm} -ls || ${TERM:-sakura} -l || xterm -ls"
-	exec dbclient -f -R $((6000+$n)):localhost:$((6000+${svr%.*})) ${r/:/ -p } \
+	[ -n "$1" ] || set -- "${TERMINAL:-sakura} -l || ${TERM:-xterm} -ls || xterm -ls"
+	exec dbclient -f -R $((6000+$n)):127.0.0.1:$((6000+${svr%.*})) ${r/:/ -p } \
 	   ${DBPROXY:+-J "sh -c '${pxypass}dbclient ${k}-B ${a#*@}:$p ${DBPROXY/:/ -p }'"} \
 	   "xauth add $dpy $data; export DISPLAY=$scr; $@ ; xauth remove $dpy" \
 	   </dev/null >/dev/null
@@ -53,8 +53,8 @@ pppssh()
 	pppsvr="$ppp $n ${3:-proxyarp} notty >/dev/null"
 	sshcmd="nc -ulp $5 -e $pppsvr"
 	udpcmd="nc -u $ipsvr $5"
-	[ "$6" == "test" ] && sshcmd="nc -ulp $5 -e nc localhost 22" &&
-	udpcmd="dbclient -y -J \"nc -u $ipsvr $5\" ${1%@*}@localhost $pppsvr"
+	[ "$6" == "test" ] && sshcmd="nc -ulp $5 -e nc 127.0.0.1 22" &&
+	udpcmd="dbclient -y -J \"nc -u $ipsvr $5\" ${1%@*}@127.0.0.1 $pppsvr"
 	[ -n "$5" ] && arg="noipdefault pty '$udpcmd'" && $ssh -f ${1/:/ -p } "$sshcmd"
 	eval $ppp $arg ipparam pppssh$$
 	[ "$4" ] && route del $extra
