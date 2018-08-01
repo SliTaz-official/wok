@@ -10,6 +10,79 @@
 get_config
 
 
+set_secrets()
+{
+	grep -qs "^$1	" /etc/ppp/pap-secrets ||
+	echo "$1	*	$2" >> /etc/ppp/pap-secrets
+	grep -qs "^$1	" /etc/ppp/chap-secrets ||
+	echo "$1	*	$2" >> /etc/ppp/chap-secrets
+}
+
+
+create_gsm_conf()
+{
+	local provider="${1:-myGSMprovider}"
+	set_secrets "$provider" "$provider"
+	[ -s /etc/ppp/scripts/gsm.chat ] ||
+	cat > /etc/ppp/scripts/gsm.chat <<EOT
+ABORT 'BUSY'
+ABORT 'NO CARRIER'
+ABORT 'VOICE'
+ABORT 'NO DIALTONE'
+ABORT 'NO DIAL TONE'
+ABORT 'NO ANSWER'
+ABORT 'DELAYED'
+REPORT CONNECT
+TIMEOUT 6
+'' 'ATQ0'
+'OK-AT-OK' 'ATZ'
+TIMEOUT 3
+'OK' 'ATI'
+'OK' 'ATZ'
+'OK' 'ATQ0 V1 E1 S0=0 &C1 &D2 +FCLASS=0'
+'OK' 'AT+CGDCONT=1,"IP","$provider"'
+'OK' 'ATDT*99#'
+TIMEOUT 30
+CONNECT ''
+EOT
+	[ -s /etc/ppp/options-gsm ] ||
+	cat > /etc/ppp/options-gsm << EOT
+rfcomm0
+460800
+lock
+crtscts
+modem
+passive
+novj
+defaultroute
+noipdefault
+usepeerdns
+noauth
+hide-password
+persist
+holdoff 10
+maxfail 0
+debug
+EOT
+	[ -s /etc/ppp/peers/gsm ] ||
+	cat > /etc/ppp/peers/gsm << EOT
+file /etc/ppp/options-gsm
+user "$provider"
+password "$provider"
+connect "/usr/sbin/chat -v -t15 -f /etc/ppp/scripts/gsm.chat"
+EOT
+}
+
+
+phone_names()
+{
+	rfcomm | awk '/connected/{print $2}' | while read mac; do
+		grep -A2 $mac /etc/bluetooth/rfcomm.conf | \
+			sed '/comment/!d;s/.* "\(.*\) modem";/ \1/'
+	done
+}
+
+
 case "$1" in
 	menu)
 		TEXTDOMAIN_original=$TEXTDOMAIN
@@ -25,7 +98,7 @@ EOT
 <li><a data-icon="vpn" href="ppp.cgi#pppssh"$dialout>$(_ 'PPP/SSH')</a></li>
 EOT
 		;;
-		*)
+	*)
 		cat <<EOT
 <li><a data-icon="modem" href="ppp.cgi"$dialout>$(_ 'PPP Modem')</a></li>
 EOT
@@ -40,27 +113,56 @@ esac
 #
 
 case " $(GET) " in
-*\ setppppstn\ *)
-	if [ "$(GET start_pstn)" -a "$(GET user)" ]; then
-		grep -s "$(GET user)" /etc/ppp/pap-secrets ||
-		echo "$(GET user)	*	$(GET pass)" >> /etc/ppp/pap-secrets
-		grep -s "$(GET user)" /etc/ppp/chap-secrets ||
-		echo "$(GET user)	*	$(GET pass)" >> /etc/ppp/chap-secrets
+*\ start_pstn\ *)
+	if [ "$(GET user)" ]; then
+		set_secrets "$(GET user)" "$(GET pass)"
 		sed -i 's/^name /d' /etc/ppp/options
 		echo "name $(GET user)" >> /etc/ppp/options
 		/etc/ppp/scripts/ppp-off
 		/etc/ppp/scripts/ppp-on &
-	fi
-	if [ "$(GET stop_pstn)" ]; then
-		/etc/ppp/scripts/ppp-off
-	fi
-	;;
-*\ setpppoe\ *)
-	if [ "$(GET start_pppoe)" -a "$(GET user)" ]; then
-		grep -s "$(GET user)" /etc/ppp/pap-secrets ||
-		echo "$(GET user)	*	$(GET pass)" >> /etc/ppp/pap-secrets
-		grep -s "$(GET user)" /etc/ppp/chap-secrets ||
-		echo "$(GET user)	*	$(GET pass)" >> /etc/ppp/chap-secrets
+	fi ;;
+*\ start_gsm\ *)
+	if [ "$(GET gsmprovider)" ]; then
+		[ -n "$(pidof dbus-daemon)" ] || /etc/init.d/dbus start
+		[ -n "$(pidof bluetoothd)" ] || bluetoothd
+		grep -qs btusb /proc/modules || modprobe btusb
+		hcitool scan | grep : | while read dev name; do
+			set -- $dev "$name" $(sdptool browse $dev | awk '
+/Service Class ID List/	{n=0}
+/Dialup Networking/	{n=1}
+/RFCOMM/		{n++}
+/Channel/		{if (n==2) { print $2; exit } }')
+			[ -n "$3" ] || continue
+			grep -qs $1 /etc/bluetooth/rfcomm.conf ||
+			cat >> /etc/bluetooth/rfcomm.conf <<EOT
+rfcomm0 {
+	bind yes;
+	device $1;
+	channel $3;
+	comment "$2 modem";
+}
+EOT
+			rfcomm bind all || rfcomm bind 0 $1 $3
+			break
+		done
+		create_gsm_conf "$(GET gsmprovider)"
+		[ -n "$(GET gsmprovider)" ] &&
+		sed -i "s|\"IP\",\".*\"|\"IP\",\"$(GET gsmprovider)\"|" \
+			/etc/ppp/scripts/gsm.chat &&
+		sed -i "s|myGSMprovider|$(GET gsmprovider)|g" \
+			/etc/ppp/chap-secrets /etc/ppp/pap-secrets
+		pppd call gsm
+		host=$(hcitool dev | sed '/hci0/!d;s/.*hci0\t//')
+		pin=$(GET gsmpin)
+		hcitool scan | grep "$1" | while read adrs name ; do
+			echo ${pin:-0000} | bluez-simple-agent $host $adrs
+		done
+	fi ;;
+*\ stop_pstn\ *|*\ stop_gsm\ *)
+	/etc/ppp/scripts/ppp-off ;;
+*\ start_pppoe\ *)
+	if [ "$(GET user)" ]; then
+		set_secrets "$(GET user)" "$(GET pass)"
 		grep -qs pppoe /etc/ppp/options || cat > /etc/ppp/options <<EOT
 plugin rp-pppoe.so
 noipdefault
@@ -72,11 +174,9 @@ EOT
 		sed -i 's/^name /d' /etc/ppp/options
 		echo "name $(GET user)" >> /etc/ppp/options
 		( . /etc/network.conf ; pppd $INTERFACE & )
-	fi
-	if [ "$(GET stop_pppoe)" ]; then
-		killall pppd
-	fi
-	;;
+	fi ;;
+*\ stop_pppoe\ *)
+	killall pppd ;;
 *\ setpppssh\ *)
 	cat > /etc/ppp/pppssh <<EOT
 PEER="$(GET peer)"
@@ -151,14 +251,22 @@ cat << EOT
 	<header>
 		$(_ 'Configuration')
 	</header>
+EOT
+[ "$(which sdptool 2>/dev/null)" ] && create_gsm_conf && cat <<EOT
+		<a data-icon="conf" href="index.cgi?file=/etc/bluetooth/rfcomm.conf" target="_blank" rel="noopener">$(_ 'GSM device')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/peers/gsm" target="_blank" rel="noopener">$(_ 'PPP GSM script')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/gsm.chat" target="_blank" rel="noopener">$(_ 'PPP GSM chat')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/options-gsm" target="_blank" rel="noopener">$(_ 'PPP GSM options')</a><p>
+EOT
+cat << EOT
 		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on" target="_blank" rel="noopener">$(_ 'PPP PSTN script')</a><p>
-		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on-dialer" target="_blank" rel="noopener">$(_ 'PPP dialer chat')</a><p>
-		<a data-icon="conf" href="index.cgi?file=/etc/ppp/options" target="_blank" rel="noopener">$(_ 'PPP options')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/scripts/ppp-on-dialer" target="_blank" rel="noopener">$(_ 'PPP PSTN chat')</a><p>
+		<a data-icon="conf" href="index.cgi?file=/etc/ppp/options" target="_blank" rel="noopener">$(_ 'PPP PSTN options')</a><p>
 		<a data-icon="conf" href="index.cgi?file=/etc/ppp/chap-secrets" target="_blank" rel="noopener">$(_ 'chap users')</a><p>
 		<a data-icon="conf" href="index.cgi?file=/etc/ppp/pap-secrets" target="_blank" rel="noopener">$(_ 'pap users')</a><p>
 EOT
 for i in /etc/ppp/peers/* ; do
-	[ -s "$i" ] && cat << EOT
+	[ -s "$i" ] && [ "$i" != "/etc/ppp/peers/gsm" ] && cat << EOT
 		<a data-icon="conf" href="index.cgi?file=$i" target="_blank" rel="noopener">$(basename $i)</a><p>
 EOT
 done
@@ -175,12 +283,65 @@ if [ "$(busybox ps x | grep "pppd" | awk '/eth/{print $1}')" ]; then
 else
 	stopoe_disabled='disabled'
 fi
+if [ "$(busybox ps x | grep "pppd" | awk '/gsm/{print $1}')" ]; then
+	startgsm_disabled='disabled'
+else
+	stopgsm_disabled='disabled'
+fi
+head="	<footer>
+	</footer>
+</section>
+<section>
+	<header>
+		$(_ 'Install extra')
+	</header>"
+while read file pkg name ; do
+	[ -z "$(which $file 2>/dev/null)" ] && echo $head && head="" &&
+	echo "	<a href='pkgs.cgi?do=Install&amp;pkg=$pkg'>$name</a>"
+done <<EOT
+sdptool	bluez		GSM / Bluetooth
+pppssh	dropbear	SSH / VPN
+EOT
+#pptp	pptpclient	PPTP client
+#pptpd	poptop		PPTP server
 cat << EOT
 	<footer>
 	</footer>
 </section>
 </div>
 
+EOT
+if [ "$(which sdptool 2>/dev/null)" ]; then
+	cat <<EOT
+<a name="pppgsm"></a>
+<section>
+	<header>
+		<span data-icon="modem">$(_ 'GSM modem') -
+		$(_ 'Manage Bluetooth GSM Internet connections')</span>
+	</header>
+<form method="get">
+	<input type="hidden" name="setpppgsm" />
+	<table>
+	<tr>
+		<td>$(_ 'GSM provider')</td>
+		<td><input type="text" name="gsmprovider" size="40" value="$(sed \
+			'/AT+CGDCONT/!d;s|.*IP","\(.*\)".|\1|' \
+			/etc/ppp/scripts/gsm.chat 2> /dev/null)" /></td>
+	</tr>
+	<tr>
+		<td>$(_ 'Bluetooth PIN')</td>
+		<td><input type="text" name="gsmpin" size="40" value="0000" /></td>
+	</tr>
+	</table>
+	<footer><!--
+		--><button type="submit" name="start_gsm" data-icon="start" $startgsm_disabled>$(_ 'Start'  )</button><!--
+		--><button type="submit" name="stop_gsm"  data-icon="stop"  $stopgsm_disabled>$(_ 'Stop'   )</button><!--
+	-->$(phone_names)</footer>
+</form>
+</section>
+EOT
+fi
+cat << EOT
 <a name="ppppstn"></a>
 <section>
 	<header>
