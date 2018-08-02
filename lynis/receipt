@@ -22,11 +22,15 @@ genpkg_rules()
 	cp $src/[A-Z]* $install/usr/share/doc
 	cp $src/lynis.8 $install/usr/share/man
 	cp -a $src $fs/usr/share/lynis
+	sed -i "s!| grep \"\\^GNU Wget\" | awk '{ print \$3 !\
+2>\\&1 | awk '/^GNU Wget/{ print $3 }/^BusyBox/{ print \$1 \"/\" substr(\$2,2)!\
+" $fs/usr/share/lynis/include/binaries
 	cat > $fs/usr/sbin/lynis <<EOT
 #!/bin/sh
 
 cd /usr/share/lynis
-exec ./lynis "$@"
+exec ./lynis "\$@"
 EOT
 	chown -R root.root $fs/usr/s*/lynis 
+	chmod +x $fs/usr/sbin/lynis
 }
