@@ -9,12 +9,12 @@ LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://sourceforge.net/projects/$PACKAGE/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+CONFIG_FILES="/etc/l2tp"
 TAGS="vpn tunnel"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's/dont know how to handle mandatory attribute.*"$/&,/' avp.c
 	sed -i 's/static struct addr_ent/struct addr_ent/' aaa.c
 	sed -i 's/recv packet from.*,$/&\\n \\/' network.c
@@ -25,7 +25,10 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/sbin
+	mkdir -p $fs/usr/sbin $fs/etc/ldap $fs/var/run/l2tp-control
+	mkdir -p $install/usr/share/man
+	touch $fs/etc/ldap/l2tp-secrets $fs/etc/l2tp/l2tpd.conf
+	cp -a $src/?[A-Z]* $src/doc $install/usr/share
+	mv $install/usr/share/doc/*.? $install/usr/share/man
 	cp -a $src/l2tpd $fs/usr/sbin
 }
-
