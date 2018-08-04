@@ -12,7 +12,7 @@ WGET_URL="https://downloads.cisofy.com/lynis/$TARBALL"
 
 DEPENDS=""
 BUILD_DEPENDS=""
-SUGGESTED="wget procps perl findutils rpm4"
+SUGGESTED="wget procps perl findutils grep rpm4 groff"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -25,6 +25,11 @@ genpkg_rules()
 	sed -i "s!| grep \"\\^GNU Wget\" | awk '{ print \$3 !\
 2>\\&1 | awk '/^GNU Wget/{ print $3 }/^BusyBox/{ print \$1 \"/\" substr(\$2,2)!\
 " $fs/usr/share/lynis/include/binaries
+	sed -i '/Generic/a\
+	    [ -s /etc/slitaz-release ] && LINUX_VERSION="SliTaz GNU/Linux" &&\
+		OS_VERSION="$(cat /etc/slitaz-release)" &&\
+		OS_FULLNAME="$LINUX_VERSION $OS_VERSION"' \
+			$fs/usr/share/lynis/include/osdetection
 	cat > $fs/usr/sbin/lynis <<EOT
 #!/bin/sh
 
