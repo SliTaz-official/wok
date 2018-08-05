@@ -230,6 +230,7 @@ cat << EOT
 		<a data-icon="web" href="http://ppp.samba.org/" target="_blank" rel="noopener">$(_ 'PPP web page')</a><p>
 		<a data-icon="help" href="index.cgi?exec=pppd%20--help" target="_blank" rel="noopener">$(_ 'PPP help')</a><p>
 		<a data-icon="help" href="index.cgi?exec=man%20pppd" target="_blank" rel="noopener">$(_ 'PPP Manual')</a><p>
+		<a data-icon="web" href="https://en.wikipedia.org/wiki/Hayes_command_set" target="_blank" rel="noopener">$(_ 'Hayes codes')</a><p>
 EOT
 [ "$(which pptp 2>/dev/null)" ] && cat <<EOT
 		<a data-icon="web" href="http://pptpclient.sourceforge.net/" target="_blank" rel="noopener">$(_n 'PPTP web page')</a><p>
