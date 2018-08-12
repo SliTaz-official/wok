@@ -23,10 +23,10 @@
 ;***************************************************************
 ; clear bss
 ;***************************************************************
-		mov	bx,offset _bss_start
+		mov	si,offset _bss_start
 clearbss:
-		mov	[byte bx],0		; clear bss + heap + sp
-		inc	bx
+		mov	[byte si],0		; clear bss + heap + sp
+		inc	si
 		jne	clearbss
                 cld
 
@@ -93,18 +93,17 @@ clearbss:
 label   check_vcpi near
                 push    ds
 ; Check whether it is safe to call 67h (we trust only known EMM managers)
-		xor	bx,bx
-                push    bx
+                push    si
                 pop     ds
                 mov     ds,[word 67h*4+2]
-                cmp     [dword bx+10+4],'0XXX'
+                cmp     [dword si+10+4],'0XXX'
                 jne     skip
 		;mov	eax,'XMME'
-		;xor	eax,[dword bx+10]
+		;xor	eax,[dword si+10]
         ; QMME also works (as told by <J.S.Peatfield@damtp.cambridge.ac.uk>)
 		;shl	eax,8
 		mov	ax,'ME'
-		xor	ax,[word bx+10]
+		xor	ax,[word si+10]
 skip:
                 pop     ds
                 jne     no_vcpi

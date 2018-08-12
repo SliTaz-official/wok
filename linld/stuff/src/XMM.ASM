@@ -48,8 +48,8 @@ xmm_handler	dd	?
 		ifndef	NO386
 		cmp	[dword si],0
 		else
-		mov	ax,[word si]
-		or	ax,[word si+2]
+		mov	cx,[word si]
+		or	cx,[word si+2]
 		endif
 		jne	@@gotit
 
@@ -65,11 +65,10 @@ xmm_handler	dd	?
                 int     2fh
 @@err:
 		xchg	ax,cx			; restore cmd
-		push	es
-		push	bx
-		pop	[dword si]
+		mov	[si],bx
+		mov	[si+2],es
 @@gotit:
-		call	[dword si]
+		call	[dword si]		; far ptr [si]
                 dec     ax			; Z=1=OK
 		pop	si
                 ret
