@@ -67,7 +67,7 @@ overflow	db	"Loaded too close to 9000:0",0
 ; Oops! We can stomp on our toes... better stop now
 		mov	bx,offset overflow
 		extrn	die:near
-		jmp	near die
+		call	near die
 @@nooverflow:
 		cli				; we start doing destructive things to DOS
 		push	es

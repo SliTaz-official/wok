@@ -399,32 +399,6 @@ ends				; } isostate;
 
 
 ;***************************************************************
-;int strlen(const char* s);
-;***************************************************************
-        global  _strlen:near
-        proc    _strlen near
-
-		pop	ax			;caller return address
-                pop	bx			; s
-                push	bx
-                push	ax
-        global  strlen:near			; strlen(bx)
-strlen:
-                mov	cx,bx
-                dec	bx
-@@lenlp:
-		inc	cx
-                inc	bx
-                cmp	[byte bx],0
-                loopne	@@lenlp			; until eos or s == NULL
-                sub	bx,cx
-                xchg	ax,bx
-                ret
-
-        endp    _strlen
-
-
-;***************************************************************
 ;int strhead(const char* a,const char* b);
 ;***************************************************************
         global  _strhead:near

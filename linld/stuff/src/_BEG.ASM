@@ -146,7 +146,7 @@ no_vcpi:
               ;;int     67h
                 extrn   die:near
 godie:
-		jmp	near die
+		call	near die
 check_rm_paging:
 ; It's a 386 in real mode, chk for paging (crazy but possible)
                 p386
