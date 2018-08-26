@@ -1,0 +1,30 @@
+# SliTaz package receipt.
+
+PACKAGE="gphotofs"
+VERSION="0.5.0"
+CATEGORY="base-system"
+SHORT_DESC="a FUSE filesystem module to mount your camera as a filesystem"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-${VERSION%.*}.tar.bz2"
+WEB_SITE="http://www.gphoto.org/proj/gphotofs/"
+WGET_URL="$SF_MIRROR/project/gphoto/$PACKAGE/$VERSION/$TARBALL"
+
+DEPENDS="fuse libgphoto2 glib"
+BUILD_DEPENDS="fuse-dev libgphoto2-dev glib-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure --prefix=/usr $CONFIGURE_ARGS 2>&1 | grep -v POTFILES
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/usr $fs
+	mkdir -p $install/usr/share/doc
+	cp $src/README $install/usr/share/doc
+}
