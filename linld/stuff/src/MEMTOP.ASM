@@ -11,17 +11,9 @@
                 p386
 		endif
 
-        group   DGROUP  _TEXT,_DATA,_BSS
+        group   DGROUP  _TEXT,_BSS
         assume  cs:DGROUP,ds:DGROUP
 
-
-        segment _DATA byte public use16 'DATA'
-
-        global  _topmem:dword
-
-_topmem		dd	10000000h	; max 256m
-
-        ends    _DATA
 
         segment _BSS byte public use16 'BSS'
 
@@ -161,6 +153,7 @@ _memtop:
 ; we had trouble detecting memory size
 		cmp	dx,cx
 		jb	@@set
+		extrn	_topmem:dword
 		mov	cx,[word _topmem+2]	; max 256m ?
 ; Kernel can have trouble with initrd at very high addr:
 ; limit mem top to 256m

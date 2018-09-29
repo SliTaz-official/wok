@@ -16,13 +16,13 @@
 
         segment _DATA byte public use16 'DATA'
 
-        global  _heap_top:word
-	extrn	_bss_end
+		global	_heap_top
+		extrn	_bss_end
 _heap_top	dw	_bss_end
 msg_hang	db      "High mem corrupted - not exiting to DOS"
 msg_crlf	db	13,10,0
-vcpi_alloc_err	db	"vcpi "
-msg_malloc      db      "malloc failure",0
+vcpi_alloc_err	db	"VCPI "
+msg_malloc      db      "malloc error",0
 	ifdef	EXTRA
 tazboot_cmd	db	"tazboot.cmd",0
 	endif
@@ -159,7 +159,7 @@ strend:
 		lodsb
 		sub	al,[bx]
 		jnz	@@out
-		sub	al,[bx]
+		sub	al,al
 		jnz	@@lp
 @@out:
 		cbw
@@ -183,8 +183,8 @@ strend:
         global  malloc:near			; malloc(cx)
 malloc:						; keep CX, use AX,BX
 		mov	ax,[_heap_top]
-		mov	bx,-1400h		; MIN_STACK=_1k+PAGE_SIZE
-		add	bx,sp
+		mov	bx,sp
+		add	bh,-14h			; MIN_STACK=_1k+PAGE_SIZE
 		sub	bx,ax			; can't overflow
 		cmp	bx,cx
 		mov	bx,offset msg_malloc

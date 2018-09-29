@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 	if (argc < 2) {
 		try_default_args();
 dousage:
-		die("Usage: tazboot [[@commands]|[-f][-b base_himem][kernel=<bzimage>] \
+		die("Usage: tazboot [[@commands]|[-f][-b base_himem][kernel=<bzImage>] \
 [initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] ...]\r\n\n\
 Defaults: tazboot kernel=bzImage auto\r\n\n\
 Examples for tazboot.cmd:\r\n\n\

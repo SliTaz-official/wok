@@ -11,6 +11,32 @@
         assume  cs:DGROUP,ds:DGROUP
 
         segment _TEXT byte public use16 'CODE'
+        ends    _TEXT
+
+        segment _DATA byte public use16 'DATA'
+        global  _data_start:byte
+        label   _data_start byte
+		ifndef	NO386
+msg_badcpu      db      "I need 386+ CPU in real mode or under VCPI manager"
+		endif
+        global  _vcpi:byte
+_vcpi		db	0
+msg_badmapping  db      "VCPI: low 640k: need 1:1 mapping"
+        global  _topmem:dword
+_topmem		dd	10000000h	; max 256m
+
+        ends    _DATA
+
+        segment _BSS byte public use16 'BSS'
+        global  _bss_start:byte
+        label   _bss_start byte
+		ifdef	EXTRA
+        global  _cpu_features:dword
+_cpu_features	dd	?
+		endif
+        ends    _BSS
+
+        segment _TEXT byte public use16 'CODE'
 
 	macro   cpuid
         	db      0fh,0A2h
@@ -24,42 +50,27 @@
 ; clear bss
 ;***************************************************************
 		mov	si,offset _bss_start
+		mov	bx, 0F000h	; cld ; cli
 clearbss:
-		mov	[byte si],0		; clear bss + heap + sp
+		mov	[si],bl		; clear bss + heap + sp
 		inc	si
 		jne	clearbss
-                cld
 
 ;***************************************************************
 ; check CPU
 ;***************************************************************
 
 ; Check for oldies
-		ifndef	EXTRA
-		push	sp
-		pop	ax
-		sub	ax,sp
-		 ifndef	NO386
-		mov	bx,offset msg_badcpu
-                jnz	no_vcpi   	;it is a 86/186 not a 286+
-		 else
-                jnz	endcpu   	;it is a 86/186 not a 286+
-		 endif
-		else
-		pushf
-		mov	bh, 0F0h
 		push	bx		; < 286 : flags[12..15] are forced 1
 		popf			; = 286 : flags[12..15] are forced 0
 		pushf			; > 286 : only flags[15] is forced 0
 		pop	dx
-		popf
-		add	dh,bh		; NS=386+, NC=286
-		 ifndef	NO386
+		add	dh,bh		; NS=386+, S+NC=286, S+C=86/186
+		ifndef	NO386
 		mov	bx,offset msg_badcpu
                 js	no_vcpi   	;it is not a 386+
-		 else
+		else
                 js	endcpu   	;it is not a 386+
-		 endif
 		endif
                 p386
 		ifdef	EXTRA
@@ -131,7 +142,6 @@ skip:
                 test    ah,ah
 		jnz	no_vcpi
 is386vcpi:
-		inc	[_vcpi]
                 extrn   prepare_vcpi:near
 		call	prepare_vcpi
 ;    get_vcpi_interface() || die("VCPI: low 640k: need 1:1 mapping");
@@ -139,6 +149,7 @@ is386vcpi:
 		;call	_get_vcpi_interface
 		mov	bx,offset msg_badmapping
 		jz	endcpu
+		inc	[byte bx+_vcpi-msg_badmapping]
 no_vcpi:
                 p8086
               ;;pop     dx              ;$ handle
@@ -184,7 +195,7 @@ argbuild:
 		endif
                 mov	bx,2			; argc * 2
 argeos:
-                mov	dl,1			; look for a start of string
+                mov	cx,1			; look for a start of string
                 mov	[byte si-1],bh		; mark eos
                 mov	ah,20h			; space will be eos
 arglp:
@@ -199,18 +210,17 @@ arglp:
                 je	isargstr
                 cmp	al,22h
                 je	isargstr
-                or	dl,dl
-                je	arglp			; not start of string
+                jcxz	arglp			; not start of string
                 dec	si
                 ;jmp	newarg
-		db	0B9h			; mov cx,im opcode
+		db	0BAh			; mov dx,im opcode
 isargstr:
                 mov	ah,al			; expected eos
 newarg:
                 mov	[word bx+di],si		; argv[argc++] = si
                 inc	bx
                 inc	bx
-                dec	dx
+                dec	cx
                 jmp	arglp
 argdone:
                 ;mov	[word bx+di],0		; argv[argc] = 0
@@ -255,26 +265,6 @@ exit:
                 int	21h
         ends    _TEXT
 
-        segment _DATA byte public use16 'DATA'
-        global  _data_start:byte
-        label   _data_start byte
-		ifndef	NO386
-msg_badcpu      db      "I need 386+ CPU in real mode or under VCPI manager"
-		endif
-        global  _vcpi:byte
-_vcpi		db	0
-msg_badmapping  db      "VCPI: low 640k: need 1:1 mapping",0
-
-        ends    _DATA
-
-        segment _BSS byte public use16 'BSS'
-        global  _bss_start:byte
-        label   _bss_start byte
-		ifdef	EXTRA
-        global  _cpu_features:dword
-_cpu_features	dd	?
-		endif
-        ends    _BSS
 
         end     _text_start
 

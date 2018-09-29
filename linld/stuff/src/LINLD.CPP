@@ -29,8 +29,8 @@ inline void syntax() {
         "Use cl=@filename to get it from a file"
 #if 1
         NL NL "Examples:" NL
-        "\tlinld -f -b 64m initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz \"cl=rw root=/dev/null video=-32\""
-	NL NL "\tlinld image=memtest"
+        "\tLINLD -f -b 64m initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz \"cl=rw root=/dev/null video=-32\""
+	NL NL "\tLINLD image=memtest"
 #endif
     );
 }
