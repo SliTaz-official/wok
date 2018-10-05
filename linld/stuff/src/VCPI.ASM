@@ -121,10 +121,6 @@ idt_base        dd      0       ;  so let's leave it the same as for rm
 
         segment _BSS byte public use16 'BSS'
 
-label   saved_ss_sp dword
-saved_sp        dw      ?
-saved_ss        dw      ?
-
 tss             dd      ?,?     ;enough, we'll never use it anyway
 
         ends    _BSS
@@ -393,8 +389,9 @@ vcpi_ret:
                 push	ax
                 push	si
                 push    ds
-                mov     [saved_ss],ss
-                mov     [saved_sp],sp
+		extrn	sssp:word
+                mov     [sssp],sp
+                mov     [sssp+2],ss
 
 		call	switch_to_pm
 
@@ -413,7 +410,7 @@ vcpi_ret:
                 mov     cr3,eax         ; flush TLB cache
 
 ; Now we are in rm, but not yet: have to restore sregs:
-                lss     sp,[saved_ss_sp]; SS
+                lss     sp,[dword sssp]; SS
                 pop     ds              ; DS
                 pop	si
                 retf                    ; CS

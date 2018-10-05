@@ -32,7 +32,6 @@ int isoreset(char *name)
 
 int isoreaddir(int restart)
 {
-	static char dots[] = "..";
 	int size;
 	char *p;
 #ifdef __ROCKRIDGE
@@ -49,9 +48,10 @@ int isoreaddir(int restart)
 		if (x->curdirsize < DIRSECTORSZ) return -1;
 	restarted:
 		readsector(&x->curdirofs);
-		x->curdirofs += SECTORSZ;
+		//x->curdirofs += SECTORSZ;
+		*(int *)((char *) &x->curdirofs+1) += SECTORSZ/256;
 		x->curdirsize -= DIRSECTORSZ;
-		x->curpos = 0;
+		x->curpos &= 0;
 	}
 	p = buffer + x->curpos;
 	if ((size = * (short *) p) == 0)
@@ -59,6 +59,7 @@ int isoreaddir(int restart)
 	x->fileofs = (* (unsigned long *) (p + 2)) << SECTORBITS;
 	x->filesize = * (unsigned long *) (p + 10);
 	x->filemod = (p[25] & 2) ? 0040755 : 0100755;
+	//x->filemod = 0100755 - ((p[25] & (char)2) << 13);
 #ifdef __ROCKRIDGE
 	endname = NULL;
 	// p += 34 + (p[32] & -2); ?
@@ -75,8 +76,7 @@ int isoreaddir(int restart)
 			break;
 		}
 		p += len;
-	}
-	while (buffer + x->curpos + size > p + 2);
+	} while (buffer + x->curpos + size - p > 2);
 	if (endname)
 		*endname = 0;
 	else
@@ -84,14 +84,12 @@ int isoreaddir(int restart)
 	{
 		p = x->filename = buffer + x->curpos + 33;
 		p--;
-		switch (* (short *) p) {
-		case 0x0101:
-			x->filename = dots;
-			break;
-		case 0x0001:
-			x->filename = dots + 1;
-			break;
-		default:
+		if (((* (short *) p) & 0xFEFF) -1 == 0) {
+			x->filename = "..";
+			if ((* (short *) p) == 1)
+				x->filename++;
+		}
+		else {
 			p += *p; p--;
 			if (* (short *) (p) != 0x313B) {
 				p++; p++; // no ;1 to remove

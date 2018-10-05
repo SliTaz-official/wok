@@ -21,7 +21,7 @@ msg_badcpu      db      "I need 386+ CPU in real mode or under VCPI manager"
 		endif
         global  _vcpi:byte
 _vcpi		db	0
-msg_badmapping  db      "VCPI: low 640k: need 1:1 mapping"
+msg_badmapping  db      "VCPI: low 640k need 1:1 mapping"
         global  _topmem:dword
 _topmem		dd	10000000h	; max 256m
 
@@ -142,6 +142,7 @@ skip:
                 test    ah,ah
 		jnz	no_vcpi
 is386vcpi:
+		inc	[byte _vcpi]
                 extrn   prepare_vcpi:near
 		call	prepare_vcpi
 ;    get_vcpi_interface() || die("VCPI: low 640k: need 1:1 mapping");
@@ -149,7 +150,6 @@ is386vcpi:
 		;call	_get_vcpi_interface
 		mov	bx,offset msg_badmapping
 		jz	endcpu
-		inc	[byte bx+_vcpi-msg_badmapping]
 no_vcpi:
                 p8086
               ;;pop     dx              ;$ handle

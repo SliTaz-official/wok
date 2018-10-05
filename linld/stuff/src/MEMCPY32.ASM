@@ -11,11 +11,16 @@
                 p386
 		endif
 
-        group   DGROUP  _TEXT,_DATA
+        group   DGROUP  _TEXT,_DATA,_BSS
         assume  cs:DGROUP,ds:DGROUP
 
         segment _DATA byte public use16 'DATA'
         ends    _DATA
+
+        segment _BSS byte public use16 'BSS'
+		global	sssp:dword
+sssp 		dd	?
+        ends    _BSS
 
         segment _TEXT byte public use16 'CODE'
 
@@ -35,19 +40,15 @@ dos_shutdown:
 		mov	ds,bx
 		ifndef	NO386
 		push	[dword bx+4]		; save step
-		mov	ax,sp
-		push	ss
-		push	ax
-		pop	[dword cs:sssp]
 		mov	[word bx+4],offset step19
 		else
 		mov	ax,offset step19
 		xchg	ax,[word bx+4]
 		push	[word bx+6]	
 		push	ax			; save step
-		mov	[word cs:sssp],sp
-		mov	[word cs:sssp+2],ss
 		endif
+		mov	[word sssp],sp
+		mov	[word sssp+2],ss
 		;cmp	[byte bx+7],0F0h
 		;jnc	notdos
 		mov	[bx+6],cs
@@ -59,8 +60,6 @@ dos_shutdown:
 		jmp	[dword bx+4*19h]
 doiret:
 		iret
-sssp:
-		dd	0
 step19:
 		push	bx
 		push	ds
@@ -221,7 +220,7 @@ endm
                 jecxz   @@done
 
 		smsw	ax
-		test	al,1
+                and     al,1	;MSW_PE
 		jz	@@real_mode
 ; Note: bp points to std stack frame now. bp will be passed to
 ; pm routine. This allows params to be passed on stack

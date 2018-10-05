@@ -20,7 +20,7 @@ static struct initrd_state {
 static void next_chunk(struct image_himem *m)
 {
 	struct initrd_info *i = &initrd_state.info[m->state];
-	m->chunk_size = 0;
+	m->chunk_size &= 0;
 	if (m->state >= initrd_state.cnt) return;
 	lseekset(m->fd,i->ofs);
 	m->chunk_size = i->size;
@@ -49,7 +49,7 @@ static void load_initrds()
 	if (!m->size) return;
 	m->next_chunk = next_chunk;
 	m->fd = isofd;
-	m->state = 0;
+	m->state &= 0;
 	next_chunk(m);
 	load_initrd();
 }
@@ -76,7 +76,8 @@ static void bootiso(char **iso)
 	if (!*iso || isoreset(*iso) < 0) return;
 	skip_alloc++;
 	base_himem = memtop() /2;
-	if (base_himem > _64m) base_himem = _64m;
+	//if (base_himem > _64m) base_himem = _64m;
+	if (* ((char *) &base_himem +3) >= 4) base_himem = _64m;
 	isoopen("boot") >= 0 ||
 	isoopen("live") >= 0 ||	// debian
 	isoopen("casper") >= 0;	// ubuntu
