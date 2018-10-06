@@ -37,7 +37,6 @@ extern "C" void abort();
 extern "C" int read(int fd, void* data, int sz);
 extern "C" int write(int fd, const void* data, int sz);
 extern "C" long lseekset(int fd, unsigned long sz);
-extern "C" void* malloc(unsigned sz);
 extern "C" int puts(const char* s);
 extern "C" unsigned long strtol(const char *s);
 

@@ -1,29 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="upx"
-VERSION="3.91"
+VERSION="3.95"
 CATEGORY="system-tools"
 SHORT_DESC="Ultimate Packer for eXecutables (free version using UCL compression)"
 MAINTAINER="devl547@gmail.com"
 LICENSE="GPL2"
-WEB_SITE="http://upx.sourceforge.net/"
-TARBALL="$PACKAGE-$VERSION-src.tar.bz2"
-WGET_URL="http://upx.sourceforge.net/download/$TARBALL"
-PATCH="http://downloads.sourceforge.net/sevenzip/lzma465.tar.bz2"
-EXTRA_SOURCE_FILES="$PATCH"
+WEB_SITE="https://upx.github.io/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/upx/upx/archive/v$VERSION.tar.gz"
+PATCH="https://github.com/upx/upx-lzma-sdk/archive/v$VERSION.tar.gz"
+EXTRA_SOURCE_FILES="lzma-$TARBALL"
 
 DEPENDS="ucl zlib"
-BUILD_DEPENDS="ucl-dev zlib-dev"
+BUILD_DEPENDS="ucl-dev zlib-dev perl"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	[ -s $SOURCES_REPOSITORY/$(basename $PATCH) ] ||
-		wget -P $SOURCES_REPOSITORY $PATCH
-	tar -xjpf $SOURCES_REPOSITORY/$(basename $PATCH)
-	CXXFLAGS="$CXXFLAGS -DWITH_ZLIB=1"
-	cd $src
-	UPX_LZMADIR=$src make all
+	[ -s $SOURCES_REPOSITORY/lzma-$TARBALL ] ||
+		wget -O $SOURCES_REPOSITORY/lzma-$TARBALL $PATCH
+	tar -xf $SOURCES_REPOSITORY/lzma-$TARBALL
+	rm -r $src/src/lzma-sdk
+	mv    $src/upx-lzma-sdk-$VERSION $src/src/lzma-sdk
+	make CHECK_WHITESPACE=/bin/true all
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -40,6 +40,5 @@ genpkg_rules()
 	cp $src/THANKS $install/usr/share/doc
 	cp $src/NEWS $install/usr/share/doc
 	cp $src/BUGS $install/usr/share/doc
-	cp $src/*.txt $install/usr/share/doc
 	cp $src/doc/*.1 $install/usr/share/man
 }

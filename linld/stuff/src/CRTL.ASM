@@ -171,36 +171,6 @@ strend:
 
 
 ;***************************************************************
-;void* malloc(unsigned sz);
-;***************************************************************
-        global  _malloc:near
-        proc    _malloc near
-
-		pop	ax			;caller return address
-                pop	cx			; sz
-		push	cx
-		push	ax
-        global  malloc:near			; malloc(cx)
-malloc:						; keep CX, use AX,BX
-		mov	ax,[_heap_top]
-		mov	bx,sp
-		add	bh,-14h			; MIN_STACK=_1k+PAGE_SIZE
-		sub	bx,ax			; can't overflow
-		cmp	bx,cx
-		mov	bx,offset msg_malloc
-		jb	puts
-		add	[_heap_top],cx		; _BEG has zero'd heap
-		;mov	bx,ax
-@@zalloc:
-		;mov	[byte bx],0
-		;inc	bx			; ZF=0
-		;loop	@@zalloc
-		ret
-
-        endp    _malloc
-
-
-;***************************************************************
 ;void puts(const char* s):
 ;***************************************************************
         global  _puts:near
@@ -438,8 +408,14 @@ ends				; } isostate;
                 push	ax
         global  malloc_or_die:near		; malloc_or_die(cx)
 malloc_or_die:
-		call	malloc
-		jz	_exit
+		mov	ax,[_heap_top]		; return value
+		mov	bx,sp
+		add	bh,-14h			; MIN_STACK=_1k+PAGE_SIZE
+		sub	bx,ax			; can't overflow
+		cmp	bx,cx
+		mov	bx,offset msg_malloc
+		jb	die
+		add	[_heap_top],cx		; _BEG has zero'd heap
 		ret
 
         endp    _malloc_or_die
