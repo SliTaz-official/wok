@@ -103,7 +103,9 @@ int isoreaddir(int restart)
 }
 
 //#define IS_DIR(x)( ((x) & ~0777) == 040000)
-#define IS_DIR(x)( (char)((x) >> 9) == (char)040)
+//#define IS_DIR(x)( (char)((x) >> 9) == (char)040)
+//#define IS_DIR(x)( (*((char*) &x + 1) & (char)0776) == (char)0100)
+#define IS_DIR(x)( (*((char*) &x + 1) & (char)0676) == (char)0)
 int isoopen(const char *filename)
 {
 	int restart;

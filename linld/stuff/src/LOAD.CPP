@@ -163,7 +163,7 @@ char* load_kernel() {
     }
     if((kernelparams->setup_sects)>=(_32k/512) || // 0th sector not counted
 	 kernelparams->boot_flag != 0xAA55)
-        die("It's not a kernel");
+        die("Not a kernel");
     heap_top = rm_buf+(rm_size=0x200*(kernelparams->setup_sects+1));  // <*>
 
     // Read remaining rm loader

@@ -132,8 +132,11 @@ static void bootiso(char **iso)
 		if (*init && isolseek(&initrddesc) != -1) {
 			read(x->fd, &x->filemod, 10); // + x->fileofs & x->filesize
 			magic = x->filemod;
-			x->fileofs &= 0xFFFFL;
-			x->fileofs -= 0xC0L + (x->filesize &= 0xFFFF);
+			//x->fileofs &= 0xFFFFL;
+			* ((short *) &x->fileofs + 1) &= 0;
+			//x->fileofs -= 0xC0L + (x->filesize &= 0xFFFF);
+			* ((short *) &x->filesize + 1) &= 0;
+			x->fileofs -= 0xC0L + x->filesize;
 			if (((short *) &x->fileofs)[1] == 0) addinitrd();
 			else init="";
 		}
