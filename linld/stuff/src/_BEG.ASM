@@ -50,7 +50,7 @@ _cpu_features	dd	?
 ; clear bss
 ;***************************************************************
 		mov	si,offset _bss_start
-		mov	bx, 0F000h	; cld ; cli
+		mov	bx, 0F000h	; cld ; cli & empty string
 clearbss:
 		mov	[si],bl		; clear bss + heap + sp
 		inc	si
@@ -68,40 +68,33 @@ clearbss:
 		add	dh,bh		; NS=386+, S+NC=286, S+C=86/186
 		ifndef	NO386
 		mov	bx,offset msg_badcpu
-                js	no_vcpi   	;it is not a 386+
+                js	godie   	;it is not a 386+
 		else
-                js	endcpu   	;it is not a 386+
+                js	endcpu86   	;it is not a 386+
 		endif
                 p386
-		ifdef	EXTRA
-		pushfd
-		pop	dx
-		pop	ax
-		mov	bl,al
-		xor	al,20h		; toggle CPUID feature bit 21
-		push	ax
-		push	dx
-		popfd
-		pushfd
-		pop	dx
-		pop	ax
-		xor	al,bl		; clear C
-		je	@@check_vm	; CPUID feature bit changed ?
-		mov	eax,80000001h	; Extended Processor Info and Feature Bits
-		cpuid
-		mov	[_cpu_features],edx
-@@check_vm:
-		endif
 ; Check for vm
                 smsw    ax      ;SMSW cannot be trapped! :-)
                 and     al,1	;MSW_PE
 ; We're in vm
-		jz	check_rm_paging
+		jnz	check_vcpi
+
+check_rm_paging:
+; It's a 386 in real mode, chk for paging (crazy but possible)
+                mov     eax,cr0
+                inc     eax             ;CR0_PG to S
+		jns	endcpu386
+no_vcpi:
+                p8086
+                extrn   die:near
+godie:
+		call	near die
 
 ;***************************************************************
 ; checks for vcpi
 ;***************************************************************
 label   check_vcpi near
+                p386
                 push    ds
 ; Check whether it is safe to call 67h (we trust only known EMM managers)
                 push    si
@@ -142,29 +135,35 @@ skip:
                 test    ah,ah
 		jnz	no_vcpi
 is386vcpi:
-		inc	[byte _vcpi]
                 extrn   prepare_vcpi:near
 		call	prepare_vcpi
 ;    get_vcpi_interface() || die("VCPI: low 640k: need 1:1 mapping");
                 ;extrn   _get_vcpi_interface:near
 		;call	_get_vcpi_interface
 		mov	bx,offset msg_badmapping
-		jz	endcpu
-no_vcpi:
-                p8086
-              ;;pop     dx              ;$ handle
-              ;;mov     ax,4500h        ; DEALLOCATE PAGES
-              ;;int     67h
-                extrn   die:near
-godie:
-		call	near die
-check_rm_paging:
-; It's a 386 in real mode, chk for paging (crazy but possible)
-                p386
-                mov     eax,cr0
-                inc     eax             ;CR0_PG to S
-		js	no_vcpi
-endcpu:
+		jnz	no_vcpi
+		inc	[byte bx+_vcpi-msg_badmapping]
+endcpu386:
+		ifdef	EXTRA
+		pushfd
+		pop	dx
+		pop	ax
+		mov	bl,al
+		xor	al,20h		; toggle CPUID feature bit 21
+		push	ax
+		push	dx
+		popfd
+		pushfd
+		pop	dx
+		pop	ax
+		xor	al,bl		; clear C
+		je	@@no_cpuid	; CPUID feature bit changed ?
+		mov	eax,80000001h	; Extended Processor Info and Feature Bits
+		cpuid
+		mov	[_cpu_features],edx
+@@no_cpuid:
+		endif
+endcpu86:
                 p8086
 
 ;***************************************************************
