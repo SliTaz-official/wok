@@ -51,7 +51,7 @@ int isoreaddir(int restart)
 		//x->curdirofs += SECTORSZ;
 		*(int *)((char *) &x->curdirofs+1) += SECTORSZ/256;
 		x->curdirsize -= DIRSECTORSZ;
-		x->curpos &= 0;
+		x->curpos = 0;
 	}
 	p = buffer + x->curpos;
 	if ((size = * (short *) p) == 0)

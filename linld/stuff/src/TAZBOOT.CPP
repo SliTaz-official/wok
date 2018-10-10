@@ -20,7 +20,7 @@ static struct initrd_state {
 static void next_chunk(struct image_himem *m)
 {
 	struct initrd_info *i = &initrd_state.info[m->state];
-	m->chunk_size &= 0;
+	m->chunk_size = 0;
 	if (m->state >= initrd_state.cnt) return;
 	lseekset(m->fd,i->ofs);
 	m->chunk_size = i->size;
@@ -49,7 +49,7 @@ static void load_initrds()
 	if (!m->size) return;
 	m->next_chunk = next_chunk;
 	m->fd = isofd;
-	m->state &= 0;
+	m->state = 0;
 	next_chunk(m);
 	load_initrd();
 }
@@ -133,9 +133,9 @@ static void bootiso(char **iso)
 			read(x->fd, &x->filemod, 10); // + x->fileofs & x->filesize
 			magic = x->filemod;
 			//x->fileofs &= 0xFFFFL;
-			* ((short *) &x->fileofs + 1) &= 0;
+			* ((short *) &x->fileofs + 1) = 0;
 			//x->fileofs -= 0xC0L + (x->filesize &= 0xFFFF);
-			* ((short *) &x->filesize + 1) &= 0;
+			* ((short *) &x->filesize + 1) = 0;
 			x->fileofs -= 0xC0L + x->filesize;
 			if (((short *) &x->fileofs)[1] == 0) addinitrd();
 			else init="";

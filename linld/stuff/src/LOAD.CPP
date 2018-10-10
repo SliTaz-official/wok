@@ -44,7 +44,7 @@
 */
 
 struct kernelparams_t {
-    u8      setup_sects;    // 01F1 The size of the setup in sectors
+    s8      setup_sects;    // 01F1 The size of the setup in sectors
                             //      boot sector is NOT included here
     u16     ro_flag;        // 01F2 If set, the root is mounted readonly
     u16     syssize;        // 01F4 DO NOT USE - for bootsect.S use only:

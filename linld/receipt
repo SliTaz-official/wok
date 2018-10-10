@@ -11,14 +11,20 @@ TARBALL="${PACKAGE}${SUFFIX}devel.tar.bz2"
 BASE_SITE="http://busybox.net/~vda/$PACKAGE"
 WEB_SITE="$BASE_SITE/README.txt"
 WGET_URL="$BASE_SITE/$TARBALL"
+EXTRA_TOOL_URL="ftp://ftp.ibiblio.org/pub/micro/pc-stuff/freedos/gnuish/mawk122x.zip"
+EXTRA_TOOL="$(basename $EXTRA_TOOL_URL)"
+EXTRA_SOURCE_FILES="$EXTRA_TOOL"
 
 BUILD_DEPENDS="dosbox upx"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	[ -s $SRC/$EXTRA_TOOL ] ||
+	busybox wget -O $SRC/$EXTRA_TOOL $EXTRA_TOOL_URL
 	mv DIST $src 2> /dev/null
 	cd $src
+	unzip $SRC/$EXTRA_TOOL
 	rm LINLD$SUFFIX/CRTL.CPP LINLD$SUFFIX/INT15_88.ASM
 	cp $stuff/src/* LINLD$SUFFIX/
 	cp -a LINLD$SUFFIX TAZBOOT
