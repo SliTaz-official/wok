@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="py3k7"
+VERSION="3.7.0"
+CATEGORY="development"
+SHORT_DESC="The Python 3000 programming language."
+MAINTAINER="nneul@neulinger.org"
+LICENSE="GPL"
+SOURCE="Python"
+TARBALL="$SOURCE-$VERSION.tgz"
+WEB_SITE="https://www.python.org/download/releases/"
+WGET_URL="https://www.python.org/ftp/python/$VERSION/$TARBALL"
+PROVIDE="py3k"
+
+DEPENDS="openssl bzlib readline sqlite zlib xorg-libXss ncursesw gdbm tk \
+xorg-libXext"
+BUILD_DEPENDS="readline-dev gdbm-dev openssl-dev sqlite-dev zlib-dev tk-dev \
+ncursesw-dev liblzma-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $DESTDIR/usr/lib/pkgconfig
+	./configure --enable-shared \
+	--prefix=/usr --infodir=/usr/share/info \
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	python_version=${VERSION:0:3}
+	mkdir -p $fs/usr/include/python${python_version}m
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	# needed for python3 to work
+	cp -a $install/usr/include/python${python_version}m/pyconfig.h \
+		$fs/usr/include/python${python_version}m
+	rm -f $fs/usr/bin/*-config
+}

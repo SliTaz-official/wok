@@ -81,7 +81,7 @@ if (0) {
 	}
 	if (/^	and	[abcd]x,/) {
 		split($2,args,",")
-		if (isnum(args[2]) && args[2] >= -255 && args[2] < 0) {
+		if (isnum(args[2]) && args[2] >= -256 && args[2] < 0) {
 			print "	and	" substr(args[1],1,1) "l," args[2]; next
 		}
 	}
@@ -95,7 +95,7 @@ if (0) {
 	if (/^	and	e[abcd]x,/) {
 		split($2,args,",")
 		if (args[2] == "large") { args[2] = $3 }
-		if (isnum(args[2]) && args[2] >= -255 && args[2] < 0) {
+		if (isnum(args[2]) && args[2] >= -256 && args[2] < 0) {
 			print "	and	" substr(args[1],2,1) "l," args[2]; next
 		}
 	}
@@ -109,7 +109,7 @@ if (0) {
 	if (/^	and	e[abcds][ix],/) {
 		split($2,args,",")
 		if (args[2] == "large") { args[2] = $3 }
-		if (isnum(args[2]) && args[2] >= -65535 && args[2] < 0) {
+		if (isnum(args[2]) && args[2] >= -65536 && args[2] < 0) {
 			print "	and	" substr(args[1],2) "," args[2]; next
 		}
 	}

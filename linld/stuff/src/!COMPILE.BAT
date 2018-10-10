@@ -7,8 +7,8 @@ bcc @bccopt.opt -S -mt -DLARGE_IMAGES *.cpp > cpp.log
 ren LINLD.ASM LINLD.ASO
 ren LOAD.ASM LOAD.ASO
 ren HIMEM.ASM HIMEM.ASO
-mawk -f pipehole.awk < LINLD.ASO > LINLD.ASM
-mawk -f pipehole.awk < LOAD.ASO > LOAD.ASM
-mawk -f pipehole.awk < HIMEM.ASO > HIMEM.ASM
+mawk -f pipehole.awk LINLD.ASO > LINLD.ASM
+mawk -f pipehole.awk LOAD.ASO > LOAD.ASM
+mawk -f pipehole.awk HIMEM.ASO > HIMEM.ASM
 tasm /la /m /dLARGE_IMAGES *.asm > asm.log
 tlink /m /s /t @link.cmd > lnk.log
