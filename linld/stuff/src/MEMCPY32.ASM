@@ -11,89 +11,13 @@
                 p386
 		endif
 
-        group   DGROUP  _TEXT,_DATA,_BSS
+        group   DGROUP  _TEXT,_DATA
         assume  cs:DGROUP,ds:DGROUP
 
         segment _DATA byte public use16 'DATA'
         ends    _DATA
 
-        segment _BSS byte public use16 'BSS'
-		global	sssp:dword
-sssp 		dd	?
-        ends    _BSS
-
         segment _TEXT byte public use16 'CODE'
-
-;***************************************************************
-;void dos_shutdown()
-;***************************************************************
-        global  dos_shutdown:near
-        proc    dos_shutdown near
-
-dos_shutdown:
-		ifndef	NO386
-		;pusha
-		else
-		;push	bp si di
-		endif
-		xor	bx,bx
-		mov	ds,bx
-		ifndef	NO386
-		push	[dword bx+4]		; save step
-		mov	[word bx+4],offset step19
-		else
-		mov	ax,offset step19
-		xchg	ax,[word bx+4]
-		push	[word bx+6]	
-		push	ax			; save step
-		endif
-		mov	[word sssp],sp
-		mov	[word sssp+2],ss
-		;cmp	[byte bx+7],0F0h
-		;jnc	notdos
-		mov	[bx+6],cs
-		pushf
-		pop	ax
-		inc	ah			; set TF
-		push	ax
-		popf
-		jmp	[dword bx+4*19h]
-doiret:
-		iret
-step19:
-		push	bx
-		push	ds
-		mov	bx,sp
-		lds	bx,[dword ss:bx+4]	; read cs:ip
-		cmp	[word bx],19CDh		; int 19h ?
-		pop	ds
-		pop	bx
-		jne	doiret
-notdos:
-		ifndef	NO386
-		lss	sp,[dword cs:sssp]
-		else
-		lds	ax,[dword cs:sssp]
-		push	ds
-		pop	ss
-		xchg	ax,sp
-		endif
-		xor	bx,bx
-		mov	ds,bx
-		ifndef	NO386
-		pop	[dword bx+4]		; restore step
-		;popa
-		else
-		pop	[word bx+4]		; restore step
-		pop	[word bx+6]
-		;pop	di si bp
-		endif
-		push	cs
-		pop	ds
-		ret
-
-        endp    dos_shutdown
-
 
 ;***************************************************************
 ;void memcpy32(u32 dstofs,u16 srcseg,u32 srcofs,u32 size);

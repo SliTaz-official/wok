@@ -76,7 +76,7 @@ static void bootiso(char **iso)
 	if (!*iso || isoreset(*iso) < 0) return;
 	skip_alloc++;
 	base_himem = memtop() /2;
-	//if (base_himem > _64m) base_himem = _64m;
+	//if (base_himem >= _64m) base_himem = _64m;
 	if (* ((char *) &base_himem +3) >= 4) base_himem = _64m;
 	isoopen("boot") >= 0 ||
 	isoopen("live") >= 0 ||	// debian
@@ -132,8 +132,7 @@ static void bootiso(char **iso)
 		if (*init && isolseek(&initrddesc) != -1) {
 			read(x->fd, &x->filemod, 10); // + x->fileofs & x->filesize
 			magic = x->filemod;
-			//x->fileofs &= 0xFFFFL;
-			* ((short *) &x->fileofs + 1) = 0;
+			x->fileofs &= 0xFFFFL;
 			//x->fileofs -= 0xC0L + (x->filesize &= 0xFFFF);
 			* ((short *) &x->filesize + 1) = 0;
 			x->fileofs -= 0xC0L + x->filesize;

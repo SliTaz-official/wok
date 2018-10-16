@@ -379,9 +379,15 @@ vcpi_ret:
         global  _vm2rm:near
         proc    _vm2rm near
 
+                ifdef NO386
                 p8086
 		extrn	_vcpi:byte
 		test	[_vcpi],-1
+                else
+                p386
+                smsw    ax      ;SMSW cannot be trapped! :-)
+                and     al,1	;MSW_PE
+                endif
 		jz	vcpi_ret
                 p386
                 pop	ax
@@ -391,7 +397,7 @@ vcpi_ret:
                 push    ds
 		extrn	sssp:word
                 mov     [sssp],sp
-                mov     [sssp+2],ss
+                ;mov     [sssp+2],ss
 
 		call	switch_to_pm
 

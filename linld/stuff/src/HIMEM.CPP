@@ -12,7 +12,7 @@ int skip_alloc;
 // Called from inside kernel just before rm->pm
 // _loadds _saveregs: done by hand
 void far last_ditch() {
-    cli();  // we start doing *really* destructive things to DOS/BIOS
+//    cli();  // we start doing *really* destructive things to DOS/BIOS
             // it means: do not even try to enable ints
             // or call BIOS services after this
     asm {
