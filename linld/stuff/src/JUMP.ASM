@@ -97,9 +97,12 @@ step19:
         
                 p8086
 		extrn	_heap_top:word
+		global	sssp
 		ifdef	NO386
+sssp:
 		extrn	_topseg:near
 		call	near _topseg
+		mov	[word sssp+2],ax
 		xchg	ax,bx
 		mov	ax,[_heap_top]
 		inc	ah
@@ -107,18 +110,19 @@ step19:
 		shr	ax,cl
 		else
                 p386
-		mov	bx,9000h
 		mov	ax,[_heap_top]
 		inc	ah
-		shr	ax,4
+		;shr	ax,4
+		db	0C1h,0E8h
+sssp:
+		db	4
+		mov	bx,9000h
 		endif
 		mov	es,bx
 		mov	dx,cs
 		add	ax,dx
 		cmp	ax,bx
 		jb	@@nooverflow
-		global	sssp
-sssp:
 ; Oops! We can stomp on our toes... better stop now
 		mov	bx,offset overflow
 		extrn	die:near
@@ -128,7 +132,6 @@ sssp:
 		push	es
 		pop	ss
 		mov	sp,0A000h
-		mov	[word sssp+2],ss
 		extrn	_csip:dword
 		push	[dword _csip]
 		extrn	_rm_size:word
@@ -175,19 +178,17 @@ sssp:
 		push	ax
 		push	es
 		dos_shutdown			; clear bx
-		call	near @@doretf		; pop cs
-		push	cs
-		pop	ds
+		call	near @@isbzimage	; pop cs ; ds=es=ss
 		;in	al,70h
 		;or	al,80h			; disable NMI
 		;out	70h,al
 		pop	dx
 		; move zImage pm
 		mov	ax,8
-		cmp	dx,ax
+		cmp	dx,ax			; buf > 80000h ?
 		ja	@@bufhigh
 		sub	ax,dx
-		inc	ax
+		inc	ax			; up to 90000h-1
 @@bufhigh:
 		push	ax
 		push	bx			; size=up to 512k
@@ -207,8 +208,6 @@ sssp:
 		add	sp,14
 
 		ifndef  noelks
-		push	ss
-		pop	ds
 		ifndef	NO386
 		cmp	[dword 1E6h],'SKLE'
 		jne	@@notelks
@@ -222,29 +221,29 @@ sssp:
 		cmp	[word 1E8h],'SK'
 		jne	@@notelks
 		endif
-		ifdef	NO386
-		mov	cx,120h		; CS=0120
-		push	cx
-		mov	cl,0h		; DS=ES=SS=0100
-		push	cx
-		else
-		push	120h		; CS=0120
-		push	100h		; DS=ES=SS=0100
-		endif
-		pop	es
+		mov	cx,100h		; DS=ES=SS=0100
+		mov	es,cx
+		mov	ch,05h		; 500h mini
 		xor	si,si
 		xor	di,di
-		mov	ch,05h		; 500h mini
 		rep
 		  movsw
 		push	es
 		pop	ss
+		ifdef	NO386
+		mov	ax,120h		; CS=0120
+		push	ax
+		else
+		push	120h		; CS=0120
+		endif
 		push	cx		; IP=0000
 @@notelks:
 		endif
 @@isbzimage:
 		push	ss
 		pop	ds
+		push	ss
+		pop	es
 		ifndef	NO386
 		push	ss
 		pop	fs
@@ -253,9 +252,6 @@ sssp:
 		endif
 		assume	nothing
 		assume	cs:DGROUP
-@@doretf:
-		push	ss
-		pop	es
                 retf
 
 		step19code
