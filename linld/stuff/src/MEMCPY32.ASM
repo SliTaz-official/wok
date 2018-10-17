@@ -11,11 +11,8 @@
                 p386
 		endif
 
-        group   DGROUP  _TEXT,_DATA
+        group   DGROUP  _TEXT
         assume  cs:DGROUP,ds:DGROUP
-
-        segment _DATA byte public use16 'DATA'
-        ends    _DATA
 
         segment _TEXT byte public use16 'CODE'
 

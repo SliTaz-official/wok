@@ -166,7 +166,6 @@ sssp:
 		extrn   @last_ditch$qv:near
 		push	cs
 		call	@last_ditch$qv
-		mov	ax,[word _imgs+2+2]	; get pm->fallback high word
 		; self move
 		;cld
 		pop	es			; min 2048 bytes for stack
@@ -175,34 +174,36 @@ sssp:
 		mov	cx,offset movedend
 		rep
 		  movsb
-		push	ax
+		mov	ax,[word _imgs+2+2]	; get pm->fallback high word
+
+		; prepare memcpy32 size & srcofs param to move zImage pm
+		mov	dx,8
+		cmp	ax,dx			; buf > 80000h ?
+		ja	@@bufhigh
+		sub	dx,ax
+		inc	dx			; up to 90000h-1
+@@bufhigh:
+		push	dx			; size hi
+		push	cx			; size lo=up to 512k
+		push	ax			; src ofs ho = pm.fallback
+
 		push	es
 		dos_shutdown			; clear bx
 		call	near @@isbzimage	; pop cs ; ds=es=ss
 		;in	al,70h
 		;or	al,80h			; disable NMI
 		;out	70h,al
-		pop	dx
-		; move zImage pm
-		mov	ax,8
-		cmp	dx,ax			; buf > 80000h ?
-		ja	@@bufhigh
-		sub	ax,dx
-		inc	ax			; up to 90000h-1
-@@bufhigh:
-		push	ax
-		push	bx			; size=up to 512k
-		push	dx			; src ofs= pm.fallback
-		push	bx
-		push	bx			; srcseg=0
+
+		push	bx			; src ofs lo
+		push	bx			; src seg=0
 		ifdef	NO386
 		inc	bx
-		push	bx			; dst
+		push	bx			; dst ofs hi
 		dec	bx
 		else
-		push	1			; dst	
+		push	1			; dst ofs hi
 		endif
-		push	bx			;    ofs=64k
+		push	bx			; dst ofs lo : 64k
 		extrn   _memcpy32:near
 		call	_memcpy32
 		add	sp,14
@@ -255,8 +256,10 @@ sssp:
                 retf
 
 		step19code
-movedend:
+
         endp    _boot_kernel
+
+movedend:
 
         ends    _TEXT
 

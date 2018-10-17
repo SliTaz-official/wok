@@ -17,6 +17,7 @@ PROVIDE="microperl"
 cook_tmp_toolchain()
 {
 	cd $src
+	grep -rl 'uname -m' | xargs sed -i 's|uname -m|echo i686|'
 	{ sh Configure -des -Dprefix=/tools \
 		-Dstatic_ext='Data/Dumper Fcntl IO' &&
 	
@@ -24,8 +25,8 @@ cook_tmp_toolchain()
 	make perl utilities ext/Errno/pm_to_blib
 	} || return 1
 	cp perl pod/pod2man /tools/bin
-	mkdir -p /tools/lib/perl5/5.12.3
-	cp -R lib/* /tools/lib/perl5/5.12.3
+	mkdir -p /tools/lib/perl5/$VERSION
+	cp -R lib/* /tools/lib/perl5/$VERSION
 }
 
 
@@ -33,7 +34,7 @@ cook_tmp_toolchain()
 #
 compile_rules()
 {
-	cd $src
+	grep -rl 'uname -m' | xargs sed -i 's|uname -m|echo i686|'
 	./configure.gnu --prefix=/usr &&
 	make &&
 	make install
@@ -44,7 +45,7 @@ compile_rules()
 	# Install in /usr (default is /usr/local).
 	sed -i s/'usr\/local'/'usr'/ uconfig.sh
 	# Sed to search mods in /usr/lib/perl5.
-	sed -i s/'perl5\/5.12'/'perl5'/ uconfig.sh
+	sed -i s/'perl5\/${VERSION%.*}'/'perl5'/ uconfig.sh
 	# Optimisation.
 	sed -i s/'unknown'/'$HOST_SYSTEM'/ uconfig.sh
 	# Make it!
