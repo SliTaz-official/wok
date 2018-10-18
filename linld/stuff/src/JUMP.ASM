@@ -34,28 +34,28 @@ overflow	db	"Loaded too close to 9000:0",0
 ;***************************************************************
 
 	macro	dos_shutdown
-		xor	bx,bx
-		mov	ds,bx
+		xor	di,di
+		mov	ds,di
 		ifndef	NO386
-		push	[dword bx+4]		; save step
-		mov	[word bx+4],offset step19
+		push	[dword di+4]		; save step
+		mov	[word di+4],offset step19
 		else
 		mov	ax,offset step19
-		xchg	ax,[word bx+4]
-		push	[word bx+6]	
+		xchg	ax,[word di+4]
+		push	[word di+6]	
 		push	ax			; save step
 		endif
 		mov	[word cs:sssp],sp
-		;cmp	[byte bx+7],0F0h
+		;cmp	[byte di+7],0F0h
 		;jnc	notdos
-		mov	[bx+6],cs
+		mov	[di+6],cs
 		pushf
 		pushf
 		pop	ax
 		inc	ah			; set TF
 		push	ax
 		popf
-		call	[dword bx+4*19h]
+		call	[dword di+4*19h]
 notdos:
 		ifndef	NO386
 		lss	sp,[dword cs:sssp]
@@ -65,24 +65,24 @@ notdos:
 		pop	ss
 		xchg	ax,sp
 		endif
-		xor	bx,bx
-		mov	ds,bx
+		xor	di,di
+		mov	ds,di
 		ifndef	NO386
-		pop	[dword bx+4]		; restore step
+		pop	[dword di+4]		; restore step
 		else
-		pop	[word bx+4]		; restore step
-		pop	[word bx+6]
+		pop	[word di+4]		; restore step
+		pop	[word di+6]
 		endif
 	endm
 	macro	step19code
 step19:
-		push	bx
+		push	di
 		push	ds
-		mov	bx,sp
-		lds	bx,[dword ss:bx+4]	; read cs:ip
-		cmp	[word bx],19CDh		; int 19h ?
+		mov	di,sp
+		lds	di,[dword ss:di+4]	; read cs:ip
+		cmp	[word di],19CDh		; int 19h ?
 		pop	ds
-		pop	bx
+		pop	di
 		je	notdos
 		iret
 	endm
@@ -105,13 +105,11 @@ sssp:
 		mov	[word sssp+2],ax
 		xchg	ax,bx
 		mov	ax,[_heap_top]
-		inc	ah
 		mov	cl,4
 		shr	ax,cl
 		else
                 p386
 		mov	ax,[_heap_top]
-		inc	ah
 		;shr	ax,4
 		db	0C1h,0E8h
 sssp:
@@ -150,6 +148,9 @@ sssp:
 		mov	ch,10h			; 4k
 		rep
 		  movsb
+		ifdef	NO386
+		add	bh,9
+		endif
 		cmp	al,cl			; load high ?
 		ifdef  noelks
 		jne	@@isbzimage
@@ -157,7 +158,6 @@ sssp:
 		jne	@@isbzimagez
 		endif
 		ifdef	NO386
-		add	bh,9
 		push	bx			; topseg()+0x0900
 		else
 		push	9800h+(4096/16)		; 4096 bytes for cmdline
@@ -169,9 +169,9 @@ sssp:
 		; self move
 		;cld
 		pop	es			; min 2048 bytes for stack
+		mov	cx,offset movedend
 		xor	si,si			;  A000 -9000 -0800(>movedend)
 		xor	di,di			; set ZF
-		mov	cx,offset movedend
 		rep
 		  movsb
 		mov	ax,[word _imgs+2+2]	; get pm->fallback high word
@@ -188,22 +188,22 @@ sssp:
 		push	ax			; src ofs ho = pm.fallback
 
 		push	es
-		dos_shutdown			; clear bx
+		dos_shutdown			; clear di
 		call	near @@isbzimage	; pop cs ; ds=es=ss
 		;in	al,70h
 		;or	al,80h			; disable NMI
 		;out	70h,al
 
-		push	bx			; src ofs lo
-		push	bx			; src seg=0
+		push	di			; src ofs lo
+		push	di			; src seg=0
 		ifdef	NO386
-		inc	bx
-		push	bx			; dst ofs hi
-		dec	bx
+		inc	di
+		push	di			; dst ofs hi
+		dec	di
 		else
 		push	1			; dst ofs hi
 		endif
-		push	bx			; dst ofs lo : 64k
+		push	di			; dst ofs lo : 64k
 		extrn   _memcpy32:near
 		call	_memcpy32
 		add	sp,14
@@ -212,32 +212,28 @@ sssp:
 		ifndef	NO386
 		cmp	[dword 1E6h],'SKLE'
 		jne	@@notelks
-@@isbzimagez:
-		jne	@@isbzimage
-		else
-		cmp	[word 1E6h],'LE'
-		jne	@@notelks
-@@isbzimagez:
-		jne	@@isbzimage
-		cmp	[word 1E8h],'SK'
-		jne	@@notelks
-		endif
-		mov	cx,100h		; DS=ES=SS=0100
-		mov	es,cx
-		mov	ch,05h		; 500h mini
 		xor	si,si
-		xor	di,di
-		rep
-		  movsw
+		else
+		mov	si,1E6h
+		lodsw
+		cmp	ax,'LE'
+		jne	@@notelks
+		lodsw
+		xor	ax,'SK'
+		jne	@@notelks
+		xchg	ax,si
+		endif
 		push	es
 		pop	ss
-		ifdef	NO386
-		mov	ax,120h		; CS=0120
-		push	ax
-		else
-		push	120h		; CS=0120
-		endif
-		push	cx		; IP=0000
+		mov	cx,120h		; CS=0120
+		push	cx
+		push	si		; IP=0000
+		mov	cl,0		; DS=ES=SS=0100
+		mov	es,cx
+		mov	ch,05h		; 500h mini
+		rep
+@@isbzimagez:
+		  movsw
 @@notelks:
 		endif
 @@isbzimage:
