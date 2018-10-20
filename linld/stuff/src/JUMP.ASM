@@ -67,12 +67,7 @@ notdos:
 		endif
 		xor	di,di
 		mov	ds,di
-		ifndef	NO386
 		pop	[dword di+4]		; restore step
-		else
-		pop	[word di+4]		; restore step
-		pop	[word di+6]
-		endif
 	endm
 	macro	step19code
 step19:
@@ -102,10 +97,10 @@ step19:
 sssp:
 		extrn	_topseg:near
 		call	near _topseg
+		mov	cl,4
 		mov	[word sssp+2],ax
 		xchg	ax,bx
 		mov	ax,[_heap_top]
-		mov	cl,4
 		shr	ax,cl
 		else
                 p386
