@@ -143,23 +143,16 @@ sssp:
 		mov	ch,10h			; 4k
 		rep
 		  movsb
+		cmp	al,cl			; load high ?
+		pushf
 		ifdef	NO386
 		add	bh,9
-		endif
-		cmp	al,cl			; load high ?
-		ifdef  noelks
-		jne	@@isbzimage
-		else
-		jne	@@isbzimagez
-		endif
-		ifdef	NO386
 		push	bx			; topseg()+0x0900
 		else
 		push	9800h+(4096/16)		; 4096 bytes for cmdline
 		endif
 		; finish loading
 		extrn   @last_ditch$qv:near
-		push	cs
 		call	@last_ditch$qv
 		; self move
 		;cld
@@ -169,7 +162,14 @@ sssp:
 		xor	di,di			; set ZF
 		rep
 		  movsb
-		mov	ax,[word _imgs+2+2]	; get pm->fallback high word
+		push	es
+		dos_shutdown			; clear di; ds=0
+		pop	es
+		popf
+		jne	@@isbzimage
+		mov	ax,[word cs:_imgs+2+2]	; get pm->fallback high word
+		push	es
+		call	near @@isbzimage	; pop cs ; ds=es=ss
 
 		; prepare memcpy32 size & srcofs param to move zImage pm
 		mov	dx,8
@@ -182,9 +182,6 @@ sssp:
 		push	cx			; size lo=up to 512k
 		push	ax			; src ofs ho = pm.fallback
 
-		push	es
-		dos_shutdown			; clear di
-		call	near @@isbzimage	; pop cs ; ds=es=ss
 		;in	al,70h
 		;or	al,80h			; disable NMI
 		;out	70h,al
@@ -227,7 +224,6 @@ sssp:
 		mov	es,cx
 		mov	ch,05h		; 500h mini
 		rep
-@@isbzimagez:
 		  movsw
 @@notelks:
 		endif

@@ -471,7 +471,7 @@ fd2close	dw	?	;30    u16 fd2close;
 ends				;};
 
 ;***************************************************************
-;void next_chunk(struct image_himem *di);
+;long next_chunk(struct image_himem *di);
 ;***************************************************************
         proc    next_chunk near
 
@@ -861,29 +861,22 @@ _next_bufv:
         global  _open_image:near
         proc    _open_image near
 
-		arg	fname	:word,	\
-			m	:word	= PARAM_SIZE
-
-		push	bp
-		mov	bp,sp
-                push	si di
+		pop	ax			;caller return address
+		pop	bx			; name
+		pop	cx			; m
+		push	cx
+		push	bx
+		push	ax
+                push	di
+		mov	di,cx
 		ifndef	NO386
                 xor	eax,eax			; 1st loop flag + eos
 		else
                 xor	ax,ax			; 1st loop flag + eos
 		endif
-                mov	di,[m]
-		cmp	[(image_himem di).fd],ax
-                jnz	@@alreadydone
-		ifndef	NO386
-		mov	[(image_himem di).size],eax	; m->size = 0L
-		else
-		mov	[word (image_himem di).size],ax	; m->size = 0L
-		mov	[word ((image_himem di).size)+2],ax
-		endif
 		mov	[(image_himem di).next_chunk],offset next_chunk
-                mov	si,[fname]
-                mov	[(image_himem di).state],si
+                mov	[(image_himem di).state],bx
+		push	bx
 @@next:
 		push	di
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
@@ -905,22 +898,16 @@ _next_bufv:
 		inc	cx			; jcxnz
 		loop	@@next
 		endif
-                mov	[(image_himem di).state],si
-		push	di
+                pop	[(image_himem di).state]
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
-		pop	di
-@@alreadydone:
-                push	ax
-image_done:
-                pop	ax
-                pop	di si bp
+                pop	di
 		ret
 
         endp    _open_image
 
 
 ;***************************************************************
-;int read_image(struct image_himem *m, void* data, int sz);
+;int read_image(struct image_himem *m, char* data, int sz);
 ;***************************************************************
         global  _read_image:near
         proc    _read_image near
@@ -931,7 +918,7 @@ image_done:
 
 		push	bp
 		mov	bp,sp
-		push	si di
+		push	di
 		ifndef	NO386
 		push	0		; return value
 		else
@@ -941,23 +928,19 @@ image_done:
 		mov	di,[m]
 @@loop:
 		ifndef	NO386
-		xor	ecx,ecx
-		mov	cx,[word sz]
-@@chksz:
+		movzx	ecx,[word sz]
 		mov	eax,[(image_himem di).chunk_size]
 		cmp	ecx,eax
 		jb	@@szok
-		xchg	eax,ecx
 		else
 		mov	cx,[word sz]
-@@chksz:
 		mov	ax,[word (image_himem di).chunk_size]
 		cmp	cx,ax
 		jb	@@szok
 		cmp	[word ((image_himem di).chunk_size)+2],0	; hi m->chunk_size
 		jne	@@szok
-		xchg	ax,cx
 		endif
+		xchg	ax,cx
 @@szok:
 		jcxz	image_done
 		push	cx
@@ -966,7 +949,7 @@ image_done:
 		call	_read
 		pop	dx
 		pop	bx
-		pop	dx
+		pop	cx
 		jc	image_done
 		add	bx,ax
 		xor	cx,cx
@@ -985,7 +968,7 @@ image_done:
 @@fill:
 		test	al,3
 		je	@@filled
-		mov	[bx],dl
+		mov	[bx],dh
 		inc	bx
 		inc	ax
 		jmp	@@fill
@@ -996,19 +979,21 @@ image_done:
 		sub	[word (image_himem di).remaining],ax
 		sbb	[word ((image_himem di).remaining)+2],dx
 		endif
-		add	[bp-4-2],ax
+		add	[bp-2-2],ax
 		add	[word data],ax
 		sub	[word sz],ax
 		pushf
-                and	cx,[(image_himem di).next_chunk]
-		jz	@@same_chunk
+		jcxz	@@same_chunk
 		push	di
-                call	cx			; m->next_chunk()
+                call	[(image_himem di).next_chunk]
 		pop	di
 @@same_chunk:
 		popf
 		jnz	@@loop
-		jmp	image_done
+image_done:
+                pop	ax
+                pop	di bp
+		ret
 
         endp    _read_image
 

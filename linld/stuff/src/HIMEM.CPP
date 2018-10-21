@@ -9,25 +9,8 @@
 struct image_himem imgs[2];
 int skip_alloc;
 
-// Called from inside kernel just before rm->pm
-// _loadds _saveregs: done by hand
-void far last_ditch() {
-//    cli();  // we start doing *really* destructive things to DOS/BIOS
-            // it means: do not even try to enable ints
-            // or call BIOS services after this
-    asm {
-        push    ds
-        push    cs
-        pop     ds
-#ifndef NO386
-        pusha
-#else
-        push	ax
-        push	bx
-        push	cx
-        push	dx
-#endif
-    }
+// Called just before rm->pm
+void last_ditch() {
     struct image_himem *m = &pm;
     vm2rm();
     if(((u16 *)&m->fallback)[1] >= 0x10) m->fallback = _1m; // >= _1m ?
@@ -67,17 +50,6 @@ void far last_ditch() {
                 memcpy_image(m);
             } while(p != m->bufv);
         }
-    }
-    asm {
-#ifndef NO386
-        popa
-#else
-        pop	dx
-        pop	cx
-        pop	bx
-        pop	ax
-#endif
-        pop     ds
     }
 }
 

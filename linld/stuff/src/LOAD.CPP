@@ -193,11 +193,6 @@ char* load_kernel() {
 
             // Hook on int15 to work around fn 88 DOS breakage
             hook_int15_88();
-
-            // * will be called just before rm -> pm
-	    extern void far last_ditch();
-            kernelparams->realmode_switch_ofs = ofs((void *)last_ditch);
-            kernelparams->realmode_switch_seg = seg(last_ditch);
         }
         if(kernelparams->kernel_version)
             version_string = (char *) first1k+kernelparams->kernel_version+0x200;
