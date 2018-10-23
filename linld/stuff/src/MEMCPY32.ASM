@@ -123,7 +123,7 @@ endm
 		inc	cx
                 sub     [word sz],cx
             rep movsb
-		ja	@@movlp
+		jae	@@movlp
 		dec	[word sz+2]
 		jns	@@movlp			; mov 1-16 more bytes...
 		pop	di

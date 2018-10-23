@@ -482,8 +482,8 @@ ends				;};
 		xor	eax,eax
 		else
 		xor	ax,ax
-		endif
 		cwd
+		endif
 		mov	[(image_himem di).fd],ax
 		mov	bx,[(image_himem di).state]
 		cmp	al,[bx]			; ""
@@ -501,7 +501,7 @@ ends				;};
 		mov	[(image_himem di).state],cx
 		dec	si
 		push	[word si]
-		mov	[byte si],dl		; set temp eos
+		mov	[byte si],ah		; set temp eos
 		call	open
 		pop	[word si]		; restore string
 		jc	@@die
@@ -861,26 +861,19 @@ _next_bufv:
         global  _open_image:near
         proc    _open_image near
 
-		pop	ax			;caller return address
+		pop	cx			;caller return address
 		pop	bx			; name
-		pop	cx			; m
-		push	cx
-		push	bx
+		pop	ax			; m
 		push	ax
+		push	bx
+		push	cx
                 push	di
-		mov	di,cx
-		ifndef	NO386
-                xor	eax,eax			; 1st loop flag + eos
-		else
-                xor	ax,ax			; 1st loop flag + eos
-		endif
+		xchg	ax,di
 		mov	[(image_himem di).next_chunk],offset next_chunk
                 mov	[(image_himem di).state],bx
 		push	bx
 @@next:
-		push	di
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
-		pop	di
 		ifndef	NO386
 		add	eax,3
 		and	al,0FCh
@@ -984,9 +977,7 @@ _next_bufv:
 		sub	[word sz],ax
 		pushf
 		jcxz	@@same_chunk
-		push	di
                 call	[(image_himem di).next_chunk]
-		pop	di
 @@same_chunk:
 		popf
 		jnz	@@loop

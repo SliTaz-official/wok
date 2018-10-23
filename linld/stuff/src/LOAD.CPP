@@ -178,7 +178,7 @@ char* load_kernel() {
 
     if(vid_mode) kernelparams->vid_mode = vid_mode;
     if(root_dev) kernelparams->root_dev = root_dev;
-    version_string = 0;
+    version_string = "";
 
 #if 1
     if(kernelparams->header == HdrS) { // starting linux 1.3.73

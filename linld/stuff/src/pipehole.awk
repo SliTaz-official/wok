@@ -65,7 +65,9 @@ if (0) {
 	}
 	s=$0
 	# These optimisation may break ZF or CF
-	if (/^	add	sp,4/) { print "	pop	cx"; print "	pop	cx"; next }
+	if (/^	sub	sp,2$/) { print "	push	ax"; next }
+	if (/^	sub	sp,4$/) { print "	push	ax"; print "	push	ax"; next }
+	if (/^	add	sp,4$/) { print "	pop	cx"; print "	pop	cx"; next }
 	if (/^	mov	d*word ptr .*,0$/ || /^	mov	dword ptr .*,large 0$/) {
 		sub(/mov/,"and",s); print s; next	# slower
 	}

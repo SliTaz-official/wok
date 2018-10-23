@@ -143,31 +143,30 @@ sssp:
 		mov	ch,10h			; 4k
 		rep
 		  movsb
-		cmp	al,cl			; load high ?
-		pushf
 		ifdef	NO386
 		add	bh,9
 		push	bx			; topseg()+0x0900
 		else
 		push	9800h+(4096/16)		; 4096 bytes for cmdline
 		endif
+		cmp	al,cl			; load high ?
+		pushf
 		; finish loading
 		extrn   @last_ditch$qv:near
 		call	@last_ditch$qv
+		dos_shutdown			; clear di; ds=0
+		push	cs
+		pop	ds
+		popf
 		; self move
 		;cld
 		pop	es			; min 2048 bytes for stack
+		jne	@@isbzimage
 		mov	cx,offset movedend
 		xor	si,si			;  A000 -9000 -0800(>movedend)
-		xor	di,di			; set ZF
 		rep
 		  movsb
-		push	es
-		dos_shutdown			; clear di; ds=0
-		pop	es
-		popf
-		jne	@@isbzimage
-		mov	ax,[word cs:_imgs+2+2]	; get pm->fallback high word
+		mov	ax,[word _imgs+2+2]	; get pm->fallback high word
 		push	es
 		call	near @@isbzimage	; pop cs ; ds=es=ss
 
@@ -186,6 +185,7 @@ sssp:
 		;or	al,80h			; disable NMI
 		;out	70h,al
 
+		xor	di,di
 		push	di			; src ofs lo
 		push	di			; src seg=0
 		ifdef	NO386
