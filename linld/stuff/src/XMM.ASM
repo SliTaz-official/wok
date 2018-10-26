@@ -16,7 +16,6 @@
 
         segment _BSS byte public use16 'BSS'
 
-        global  xmm_handler:dword
 xmm_handler	dd	?
 
         ends    _BSS
@@ -40,7 +39,6 @@ xmm_handler	dd	?
 ;Call xmm driver addr or 0 if no xmm
 ;void xmm_driver(ah)
 ;***************************************************************
-        global  xmm_driver:near
         proc    xmm_driver near
 
 		push	si
@@ -100,6 +98,7 @@ ends				;};
         global  _xmm_alloc:near
         proc    _xmm_alloc near
 
+	ret	; TO BE FIXED
                 pop     ax
                 pop     bx
                 push    bx
@@ -108,6 +107,8 @@ ends				;};
 		mov	edx,[(image_himem bx).size]		; m->size
                 ;dec     edx
                 shr     edx,10          ; to Kb
+                inc     edx
+                mov     ah,89h          ;allocate blk of EDX kilobytes
 		else
 		;mov	ax,-1
 		;cwd
@@ -118,10 +119,10 @@ ends				;};
 		mov	cl,16-10
 		extrn	N_LXLSH@:near
 		call	N_LXLSH@
-		endif
                 inc     dx
+                mov     ah,9h          ;allocate blk of DX kilobytes (<64Mb)
+		endif
 		push	bx
-                mov     ah,09h          ;allocate blk of DX kilobytes
                 call    xmm_driver      ;
                 jnz     @@goerr
                                         ;now: dx=handle of the blk

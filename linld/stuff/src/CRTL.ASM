@@ -180,7 +180,7 @@ strend:
                 pop	bx			; s
                 push	bx
                 push	ax
-        global  puts:near			; puts(bx)
+;        global  puts:near			; puts(bx)
 puts:
 		call	putsz
                 mov	bx,offset msg_crlf
@@ -188,7 +188,6 @@ puts:
 putcz:
 		mov	ah,2
 		int	21h
-        global  putsz:near			; putsz(bx)
 putsz:
 		mov	dl,[bx]
 		inc	bx
@@ -319,11 +318,11 @@ close:
                 push	bx
                 push	ax
 		;endif
-        global  lseekset:near
+;        global  lseekset:near
 lseekset:
 		clc
 		db	0B0h			; mov al,im
-        global  rewind:near
+;        global  rewind:near
 rewind:						; rewind(bx)
 		stc
 		mov	ax,4200h
@@ -436,7 +435,7 @@ malloc_or_die:
         global  die:near			; die(bx)
 die:
 		call	puts
-        global  _exit:near
+;        global  _exit:near
 _exit:
 		mov	al,[_no_exit]
 		cmp	al,0
@@ -447,7 +446,7 @@ _exit:
 @@hang:
 		mov	bx, offset msg_hang
 		call	puts
-        global  _abort:near
+;        global  _abort:near
 _abort:
 		cli
 @@stop:

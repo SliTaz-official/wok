@@ -132,15 +132,13 @@ tss             dd      ?,?     ;enough, we'll never use it anyway
 ;****** Return: AX=>first unused byte in pagebuf
 ;****** Uses:   Flags
 ;***************************************************************
-        global  _prepare_vcpi:near
         global  prepare_vcpi:near
-        proc    _prepare_vcpi near
+        proc    prepare_vcpi near
 
                 ;pop     ax
                 ;pop     bx		;pgbuf
                 ;push    bx
                 ;push    ax
-prepare_vcpi:
 
 ;Calculate pagedir/page0 addrs, initialize cr3 and pagedir[0]
                 xor     eax,eax
@@ -183,7 +181,7 @@ prepare_vcpi:
 		mov	[_heap_top],ax
                 ;ret
 
-        endp    _prepare_vcpi
+        endp    prepare_vcpi
 
 
 ;***************************************************************
@@ -192,7 +190,7 @@ prepare_vcpi:
 ;******         NZ - otherwise (it's bad)
 ;****** Uses:   Flags
 ;***************************************************************
-        global  _get_vcpi_interface:near
+        ;global  _get_vcpi_interface:near
         proc    _get_vcpi_interface near
 
                 ;push    si di

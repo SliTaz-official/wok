@@ -62,8 +62,8 @@ static char *isokernel()
 	return load_kernel();
 }
 
-char _cmdline[4096];
-const char *cmdline = (const char *) _cmdline+1;
+static char buf_cmdline[4096];
+const char *cmdline = (const char *) buf_cmdline+1;
 static void bootiso(char **iso)
 {
 	const char *init = " rdinit=/init.exe", *mode="menu";
@@ -101,18 +101,18 @@ static void bootiso(char **iso)
 		c = x->filename[6];
 	}
 
-	strcatb(_cmdline," rw root=/dev/null autologin bootfrom=");
-	strcat(_cmdline,*iso);
+	strcatb(buf_cmdline," rw root=/dev/null autologin bootfrom=");
+	strcat(buf_cmdline,*iso);
 	if (magic < 0x20630)
 		init = ""; // Does not support multiple initramfs
 
 	if (noauto) {
 		char *s;
-		* (int *) _cmdline = 0;
+		* (int *) buf_cmdline = 0;
 		iso++;
 		while ((s = *++iso) != NULL) {
 			if (strhead(s,"initrd=")) 
-				strcatb(_cmdline,s);
+				strcatb(buf_cmdline,s);
 			else if (isoopen(s+7) >= 0)
 				addinitrd();
 		}
@@ -139,11 +139,11 @@ static void bootiso(char **iso)
 			if (((short *) &x->fileofs)[1] == 0) addinitrd();
 			else init="";
 		}
-		strcat(_cmdline,init);
-		strcatb(_cmdline,"mode=");
-		strcat(_cmdline,mode);
-		strcatb(_cmdline,"magic=");
-		strcat(_cmdline,ultoa(magic));
+		strcat(buf_cmdline,init);
+		strcatb(buf_cmdline,"mode=");
+		strcat(buf_cmdline,mode);
+		strcatb(buf_cmdline,"magic=");
+		strcat(buf_cmdline,ultoa(magic));
 	}
 	load_initrds();
 	if (isknoppix) {
@@ -241,7 +241,7 @@ Examples for tazboot.cmd:\r\n\n\
 				s += 4;
 				topmem = strtol(s);
 			}
-			strcatb(_cmdline,*argv);
+			strcatb(buf_cmdline,*argv);
 		}}
 	}
 	if (iso && isoreset(iso) >= 0) {

@@ -237,7 +237,9 @@ argdone:
 		call	near open
 		jc	argend
 		pop	bx			; trash argc,  argv >> 1Kb !
+		ifdef	EXTRA
 	global	read_cmdline:near
+		endif
 read_cmdline:
 		push	di
 		push	ax

@@ -112,8 +112,8 @@ struct first1k_t {
 const u32 HdrS = 'H' + ('d'<<8) + (u32('r')<<16) + (u32('S')<<24);
 
 u16 rm_size;
-u8 pm_high;	// @ = @rm_size + 2, see JUMP.ASM
-u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
+static u8 pm_high;	// @ = @rm_size + 2, see JUMP.ASM
+static u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
 u32 base_himem = _1m+_64k;
 
 // register value to launch the kernel real mode code
