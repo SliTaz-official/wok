@@ -36,15 +36,12 @@ compile_rules()
 			$CONFIGURE_ARGS &&
 		make &&
 		DIST_ROOT=$DESTDIR \
-		make install install-lib install-dev
+		make install install-dev
 	} || {
 		mv -f /bin/sh.bak /bin/sh; return 1
 	}
 
 	mv -f /bin/sh.bak /bin/sh
-	# .so and .la files must be executable
-	find $install -type f -name '*.[sl][oa]*' -exec chmod a+x \{\} \;
-	sed -i "s|libdir='/lib'|libdir='/usr/lib'|" $install/usr/lib/libacl.la
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -52,6 +49,6 @@ genpkg_rules()
 {
 	mkdir -p $fs/lib $fs/usr/lib
 	cp -a $install/lib/*.so* $fs/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	ln -s /lib/libacl.so $fs/usr/lib/libacl.so
 	cp -a $install/usr/bin $fs/usr
 }
