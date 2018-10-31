@@ -76,17 +76,10 @@ extern const char* cmdline;
 extern u16 root_dev;
 extern u16 vid_mode;
 // External asm helpers
-extern "C" void memcpy32(u32, u16,u32, u32);
-extern "C" void rmcpy();
 extern "C" void xmm_alloc(struct image_himem *m);
 extern u32 topmem;
-extern "C" u32 memtopz();
 extern "C" u32 memtop();
 extern "C" void enable_a20_or_die();
-extern "C" int get_vcpi_interface();
-extern "C" char* prepare_vcpi(void *pagebuf);
-//extern "C" int call_pm_routine(void* f);
-extern "C" void memcpy_vcpi(u32 dstofs,u16 srcseg,u32 srcofs);
 extern "C" void vm2rm();
 extern "C" void hook_int15_88();
 

@@ -145,11 +145,9 @@ char* load_kernel() {
    {
     u16 rm_seek;
 
+do {
     // Do not use malloc below until heap_top adjustment (see <*>)
-    if (read(m->fd, rm_buf, rm_seek=0x400) != 0x400) {
-  readfail:
-        die(kernel_file_error);
-    }
+ if (read(m->fd, rm_buf, rm_seek=0x400) == 0x400) {
 
     if(kernelparams->setup_sects == 0) {
 #if 1
@@ -170,8 +168,11 @@ char* load_kernel() {
 
     {
     u16 cnt = rm_size-rm_seek;
-    if (read(m->fd, rm_buf+rm_seek, cnt) != cnt) goto readfail;
+    if (read(m->fd, rm_buf+rm_seek, cnt) == cnt) break;
     }
+ }
+        die(kernel_file_error);
+} while (0);
    }
 
     // Tell rm loader some info

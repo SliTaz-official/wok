@@ -159,7 +159,7 @@ strend:
 		lodsb
 		sub	al,[bx]
 		jnz	@@out
-		sub	al,al
+		or	al,al
 		jnz	@@lp
 @@out:
 		cbw
@@ -182,17 +182,17 @@ strend:
                 push	ax
 ;        global  puts:near			; puts(bx)
 puts:
-		call	putsz
+		call	@@putsz
                 mov	bx,offset msg_crlf
-		jmp	putsz
-putcz:
+		jmp	@@putsz
+@@putcz:
 		mov	ah,2
 		int	21h
-putsz:
+@@putsz:
 		mov	dl,[bx]
 		inc	bx
 		or	dl,dl
-		jne	putcz			; ZF=1  (for malloc failure)
+		jne	@@putcz			; ZF=1  (for malloc failure)
 		ret
 
         endp    _puts
@@ -781,11 +781,11 @@ storepage:					; storepage(edx,cx)
         global  _reset_bufv:near
         proc    _reset_bufv near
 
-		pop	ax			;caller return address
-		pop	bx
-		push	bx
+		pop	bx			;caller return address
+		pop	ax
 		push	ax
-		mov	[curdata],bx
+		push	bx
+		mov	[curdata],ax
 		and	[dword (data_himem bx).cacheidx],0
 		ret
 
@@ -1305,9 +1305,9 @@ image_done:
 		mov	ax,713Bh		; chdir long filename (ds:dx)
 		int	21h
 		mov	ah,3Bh			; chdir(ds:dx)
-		jnc	chdirdone
+		jnc	@@chdirdone
 		int	21h
-chdirdone:
+@@chdirdone:
 		pop	[word bx]
 @@end:
 		ret

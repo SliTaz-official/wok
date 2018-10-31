@@ -48,7 +48,7 @@ saved15		dd	?
                 xchg	ax,cx		;  are more reasonable anyway...
 @@use_cxdx:				;now: dx=64k units above 16m
 					;     ax=1k units above 1m below 16m (max 3c00h)
-                test    dx,dx
+                or	dx,dx
                 jz      tokb            ;dx=0 here, ax=kbs above 1m
                 xor     ax,ax           ;ignore info on low 16M (assume full)
                ;add     dx,100h         ;account for low 16M
@@ -210,7 +210,7 @@ int15_88:
 @@do88:
                 pushf
                 call    @@jmp_saved15
-                test    ax,ax
+                or	ax,ax
                 jnz     @@iret
 
 ;****** Read extended mem size (CMOS bytes 17h,18h (lo,hi))
