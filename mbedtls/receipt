@@ -1,0 +1,30 @@
+# SliTaz package receipt v2.
+
+PACKAGE="mbedtls"
+VERSION="2.6.0"
+CATEGORY="security"
+SHORT_DESC="Portable cryptographic and SSL/TLS library (ex polarssl)"
+MAINTAINER="al.bobylev@gmail.com"
+LICENSE="Apache"
+WEB_SITE="https://tls.mbed.org/"
+
+TARBALL="$PACKAGE-$VERSION-gpl.tgz"
+WGET_URL="https://tls.mbed.org/download/$TARBALL"
+
+compile_rules() {
+	sed \
+		-e 's|//\(#define MBEDTLS_THREADING_C\)|\1|' \
+		-e 's|//\(#define MBEDTLS_THREADING_PTHREAD\)|\1|' \
+		-i include/mbedtls/config.h
+	sed -i 's|<time.h>|"platform.h"|' include/mbedtls/ssl.h
+
+	LDFLAGS="$LDFLAGS -I../include " \
+	make SHARED=1 no_test &&
+	make DESTDIR=$install/usr install
+}
+
+genpkg_rules() {
+	mkdir -p $fs/usr/lib/
+	cp -a $install/usr/bin/      $fs/usr/
+	cp -a $install/usr/lib/*.so* $fs/usr/lib/
+}
