@@ -105,11 +105,10 @@ sssp:
 		else
                 p386
 		mov	ax,[_heap_top]
-		;shr	ax,4
-		db	0C1h,0E8h
-sssp:
-		db	4
+		shr	ax,4
 		mov	bx,9000h
+		org	$-4
+sssp		dd	?
 		endif
 		mov	es,bx
 		mov	dx,cs

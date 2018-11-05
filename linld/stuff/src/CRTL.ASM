@@ -430,8 +430,8 @@ malloc_or_die:
 
 		pop	ax			;caller return address
                 pop	bx			; s
-                push	bx
-                push	ax
+                ;push	bx
+                ;push	ax
         global  die:near			; die(bx)
 die:
 		call	puts
@@ -878,18 +878,15 @@ _next_bufv:
 		and	al,0FCh
 		add	[(image_himem di).size],eax	; m->size += m->chunk_size
 		or	eax,eax
-		jnz	@@next
 		else
-		mov	cx,ax
-		or	cx,dx
 		add	ax,3
 		adc	dx,0
 		and	al,0FCh
 		add	[word (image_himem di).size],ax	; m->size += m->chunk_size
 		adc	[word ((image_himem di).size)+2],dx
-		inc	cx			; jcxnz
-		loop	@@next
+		or	ax,dx
 		endif
+		jnz	@@next
                 pop	[(image_himem di).state]
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
                 pop	di

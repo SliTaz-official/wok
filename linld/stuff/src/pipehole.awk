@@ -4,6 +4,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (hold == 0) {
 		s=$0
 		if (/^	mov	.x,bx$/ || /^	mov	.x,.i$/) {
+			r=$2
 			hold=1; split($2,regs,","); next
 		}
 		if (/^	inc	e?.[ix]/ || /^	dec	e?.[ix]/) {
@@ -13,11 +14,10 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			hold=3; split($2,regs,","); next
 		}
 		if (/^	movzx	eax,ax$/) { hold=4; next }
-if (0) {
-		if (/^	cmp	dx,-1$/) { hold=10; next }
-}
+		if (/^	mov	cl,4$/)   { hold=8; next }
 	}
 	else if (hold == 1) {
+		if (/^   ;/) { print; next }
 		hold=0; split($2,args,","); op=""
 		if ($1 == "add") op="+"
 		if ($1 == "sub") op="-"
@@ -25,7 +25,10 @@ if (0) {
 			print "\tlea\t" regs[1] ",[" regs[2] op args[2] "]"
 			next
 		}
-		print "\tmov\t" regs[1] "," regs[2]
+		if (/^	pop	[ds]i/ && regs[2] ~ /^[ds]i$/) {
+			print "	xchg	" r
+		}
+		else print "\tmov\t" regs[1] "," regs[2]
 	}
 	else if (hold == 2) {
 		hold=0; split($2,args,","); print s
@@ -49,19 +52,14 @@ if (0) {
 			print "	push	0"; print "	push	ax"; next
 		} else { print s }
 	}
-	else if (hold == 10) {
-		if ($1 == "je" || $1 == "jne") { s2=$0; cmp=$1; hold++; next }
-		hold=0; print s
-	}
-	else if (hold == 11) {
-		if (/^	cmp	ax,-1$/) { s3=$0; hold++; next }
-		hold=0; print s; print s2
-	}
-	else if (hold == 12) {
-		if (($1 == "je" || $1 == "jne") && $1 != cmp) {
-			print "	and	ax,dx"; print "	inc	ax"
-		} else { print s; print s2; print s3 }
+	else if (hold == 8) {
 		hold=0
+		if (/^	call	near ptr N_LXURSH@$/) {
+			print "	extrn	N_LXURSH@4:near"
+			print "	call	near ptr N_LXURSH@4"
+			next
+		}
+		print s
 	}
 	s=$0
 	# These optimisation may break ZF or CF

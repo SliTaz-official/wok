@@ -122,10 +122,15 @@ endm
 		and	di,[word dstofs]
 		inc	cx
                 sub     [word sz],cx
+		;jae	@@movpara
+		sbb	[word sz+2],0
+		jae	@@movpara
+		add	cx,[word sz]
+		;stc
+@@movpara:
             rep movsb
 		jae	@@movlp
-		dec	[word sz+2]
-		jns	@@movlp			; mov 1-16 more bytes...
+		dec	cx			; set S
 		pop	di
 @@pmcopy:
 		pop	si
