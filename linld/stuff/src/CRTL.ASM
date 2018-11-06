@@ -781,11 +781,11 @@ storepage:					; storepage(edx,cx)
         global  _reset_bufv:near
         proc    _reset_bufv near
 
-		pop	bx			;caller return address
-		pop	ax
-		push	ax
+		pop	ax			;caller return address
+		pop	bx
 		push	bx
-		mov	[curdata],ax
+		push	ax
+		mov	[curdata],bx
 		and	[dword (data_himem bx).cacheidx],0
 		ret
 
