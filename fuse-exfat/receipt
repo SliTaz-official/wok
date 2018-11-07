@@ -1,29 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="fuse-exfat"
-VERSION="1.0.0"
+VERSION="1.3.0"
 CATEGORY="base-system"
 SHORT_DESC="Full-featured exFAT file system implementation."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL3"
 WEB_SITE="http://code.google.com/p/exfat/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="http://exfat.googlecode.com/files/$TARBALL"
+WGET_URL="https://github.com/relan/exfat/archive/v$VERSION.tar.gz"
 
 DEPENDS="fuse"
-BUILD_DEPENDS="scons fuse-dev"
+BUILD_DEPENDS="autoconf automake perl-getopt-long fuse-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	scons PREFIX=/usr
-	scons -k DESTDIR=$DESTDIR install
+	autoreconf --install
+	./configure --prefix=/usr $CONFIGURE_ARGS &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/sbin
-	cp -a $install/* $fs/sbin
+	mkdir -p $fs/usr/
+	cp -a $install/usr/sbin $fs/usr
 }
