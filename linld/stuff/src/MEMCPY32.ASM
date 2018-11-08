@@ -88,9 +88,9 @@ endm
                 push    ds es
 		push	si
 		xor	bx,bx
-		xor	dx,dx
 		xor	si,si
 		mov	ax,[srcseg]
+		xor	dx,dx
 		mov	cl,4
 		extrn	N_LXLSH@:near
 		call	near N_LXLSH@

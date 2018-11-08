@@ -92,12 +92,13 @@ step19:
         
                 p8086
 		extrn	_heap_top:word
-		global	sssp
+		global	sssp:dword
 		ifdef	NO386
-sssp:
 		extrn	_topseg:near
 		call	near _topseg
 		mov	cl,4
+		org	$-4
+sssp		dd	?
 		mov	[word sssp+2],ax
 		xchg	ax,bx
 		mov	ax,[_heap_top]

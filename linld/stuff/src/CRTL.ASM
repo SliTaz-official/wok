@@ -20,7 +20,7 @@
 		extrn	_bss_end
 _heap_top	dw	_bss_end
 msg_hang	db      "High mem corrupted - not exiting to DOS"
-msg_crlf	db	13,10,0
+msg_lf		db	10,0
 vcpi_alloc_err	db	"VCPI "
 msg_malloc      db      "malloc error",0
 	ifdef	EXTRA
@@ -78,7 +78,7 @@ _strcpy:
 	endif
 @@catlp:
 		lodsb
-		cmp	al,0
+		or	al,al
                 jne	@@catlp
 		dec	si
 	ifdef	EXTRA
@@ -94,7 +94,7 @@ _strcpy:
 @@cpyhead:
                 mov	[si],al
                 inc	si
-		cmp	al,0
+		or	al,al
                 jne	@@cpylp
 strfound:
 		xchg	ax,dx
@@ -183,8 +183,8 @@ strend:
 ;        global  puts:near			; puts(bx)
 puts:
 		call	@@putsz
-                mov	bx,offset msg_crlf
-		jmp	@@putsz
+                mov	bx,offset msg_lf
+		mov	dl,13
 @@putcz:
 		mov	ah,2
 		int	21h
@@ -438,7 +438,7 @@ die:
 ;        global  _exit:near
 _exit:
 		mov	al,[_no_exit]
-		cmp	al,0
+		or	al,al
 		jne	@@hang
 		extrn	exit:near
 		inc	ax
@@ -493,7 +493,7 @@ ends				;};
 		mov	cx,si
 		cmp	al,','
 		jz	@@eos
-		cmp	al,0
+		or	al,al
 		jnz	@@scan
 		dec	cx
 @@eos:
@@ -559,11 +559,11 @@ ends					;}; // size=8200
 		push	si
 		xchg	ax,si
 	ifdef	LARGE_IMAGES
-		mov	cx,[word ((image_himem si).size) + 2]
+		movzx	ecx,[word ((image_himem si).size) + 2]
 		shr	cx,4			; pages index size = size >> 20
 		add	cx,8+4096+8
 		call	malloc_or_die
-		mov	ecx,4096+4095		; cnt = 1+(m->size+PAGE_MASK)/PAGE_SIZE;
+		mov	cx,4096+4095		; cnt = 1+(m->size+PAGE_MASK)/PAGE_SIZE;
 		add	ecx,[(image_himem si).size]
 		shr	ecx,12
 		mov	[curdata],ax
@@ -804,12 +804,11 @@ storepage:					; storepage(edx,cx)
 _next_bufv:
 		clc
 		sbb	ax,ax
-		stc
-		rcl	ax,1			; -1/+1
+		cmc
+		adc	ax,[(data_himem si).cacheidx]	; -1/+1
 		xor	ecx,ecx
 		push	si
 		mov	si,[curdata]
-		add	ax,[(data_himem si).cacheidx]
 		test	ax,0fc00h
 		jz	@@gotpage
 		push	ax			; FFFF / 0400
