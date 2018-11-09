@@ -129,7 +129,7 @@ static void bootiso(char **iso)
 		if (isoopen(initrdfilename) >= 0) {
 			addinitrd();
 		}
-		if (*init && isolseek(&initrddesc) != -1) {
+		if (*init && isolseek(&initrddesc) != 0) {
 			read(x->fd, &x->filemod, 10); // + x->fileofs & x->filesize
 			magic = x->filemod;
 			x->fileofs &= 0xFFFFL;
@@ -143,7 +143,7 @@ static void bootiso(char **iso)
 		strcatb(buf_cmdline,"mode=");
 		strcat(buf_cmdline,mode);
 		strcatb(buf_cmdline,"magic=");
-		strcat(buf_cmdline,ultoa(magic));
+		strcat(buf_cmdline,(char *)ultoa(magic));
 	}
 	load_initrds();
 	if (isknoppix) {
@@ -157,13 +157,15 @@ static void bootiso(char **iso)
 	boot_kernel();
 }
 
-u16 root_dev;
-u16 vid_mode;
+u32 root_dev;
+u32 vid_mode;
+u32 topmem;
 const char* kernel_name = "bzImage";
 const char* initrd_name;
+char* iso;
+
 int main(int argc, char *argv[])
 {
-	char *iso = NULL;
 	argv[0] = progname();
 	bootiso(argv);	// iso ? parsing is /init.exe stuff !
 

@@ -47,29 +47,27 @@ ultoabuf	db	12	dup (?)
         segment _TEXT byte public use16 'CODE'
 
 ;***************************************************************
-;char* strcpy(const char* a, const char* b);
-;char* strcat(const char* a, const char* b);
-;char* strcatb(const char* a, const char* b);
+;pascal void strcpy(const char* a, const char* b);
+;pascal void  strcat(const char* a, const char* b);
+;pascal void  strcatb(const char* a, const char* b);
 ;***************************************************************
-        global  _strcatb:near
-        proc    _strcatb near
+        global  @strcatb$qpxzct1:near
+        proc	@strcatb$qpxzct1 near
 
 	ifdef	EXTRA
 		mov	cl,7Fh
 		db	0bbh			; mov	bx,imm opcode
-        global  _strcat:near
-_strcat:
+        global  @strcat$qpxzct1:near
+@strcat$qpxzct1:
 		mov	cl,80h
 		db	0bbh			; mov	bx,imm opcode
-        global  _strcpy:near
-_strcpy:
+        global	@strcpy$qpxzct1:near
+@strcpy$qpxzct1:
 		xor	cx,cx
 	endif
 		pop	ax			;caller return address
-                pop	dx			; a
                 pop	bx			; b
-                push	bx
-                push	dx
+                pop	dx			; a
                 push	ax
                 push	si
                 mov	si,dx
@@ -102,22 +100,20 @@ strend:
                 pop	si
 		ret
 
-        endp    _strcatb
+        endp	@strcatb$qpxzct1
 
 
 	ifdef	EXTRA
                 p8086
 ;***************************************************************
-;char strstr(const char* a,const char* b);
+;pascal char strstr(const char* a,const char* b);
 ;***************************************************************
-        global  _strstr:near
-        proc    _strstr near
+        global  @strstr$qpxzct1:near
+        proc    @strstr$qpxzct1 near
 
 		pop	ax			;caller return address
-                pop	dx			; a
                 pop	cx			; b
-                push	cx
-                push	dx
+                pop	dx			; a
                 push	ax
                 push	si
 @@loop:
@@ -136,20 +132,18 @@ strend:
 		inc	dx
 		jmp	@@loop
 
-        endp    _strstr
+        endp    @strstr$qpxzct1
 
 
 ;***************************************************************
-;int strcmp(const char* a,const char* b);
+;pascal int strcmp(const char* a,const char* b);
 ;***************************************************************
-        global  _strcmp:near
-        proc    _strcmp near
+        global  @strcmp$qpxzct1:near
+        proc    @strcmp$qpxzct1 near
 
 		pop	cx			;caller return address
-                pop	bx			; a
                 pop	ax			; b
-                push	ax
-                push	bx
+                pop	bx			; a
                 push	cx
                 push	si
 		xchg	ax,si
@@ -166,19 +160,18 @@ strend:
                 pop	si
                 ret
 
-        endp    _strcmp
+        endp    @strcmp$qpxzct1
 	endif
 
 
 ;***************************************************************
-;void puts(const char* s):
+;pascal void puts(const char* s):
 ;***************************************************************
-        global  _puts:near
-        proc    _puts near
+        global  @puts$qpxzc:near
+        proc    @puts$qpxzc near
 
 		pop	ax			;caller return address
                 pop	bx			; s
-                push	bx
                 push	ax
 ;        global  puts:near			; puts(bx)
 puts:
@@ -195,36 +188,34 @@ puts:
 		jne	@@putcz			; ZF=1  (for malloc failure)
 		ret
 
-        endp    _puts
+        endp    @puts$qpxzc
 
 
 ;***************************************************************
-;int fileattr(const char* name);
+;pascal int fileattr(const char* name);
 ;***************************************************************
-        global  _fileattr:near
-        proc    _fileattr near
+        global  @fileattr$qpxzc:near
+        proc    @fileattr$qpxzc near
 
 		pop	ax			;caller return address
                 pop	dx			; name
-                push	dx
                 push	ax
                 mov	ax,4300h
                 int	21h
 		xchg	ax,cx
 		jmp	chkc
 
-        endp    _fileattr
+        endp    @fileattr$qpxzc
 
 
 ;***************************************************************
-;int open(const char* name, int flags=O_RDONLY);
+;pascal int open(const char* name, int flags=O_RDONLY);
 ;***************************************************************
-        global  _open:near
-        proc    _open near
+        global  @open$qpxzc:near
+        proc    @open$qpxzc near
 
 		pop	ax			;caller return address
                 pop	bx			; name
-                push	bx
                 push	ax
         global  open:near			; open(bx)
 open:
@@ -246,18 +237,25 @@ doret:
 		endif
                 ret
 
-        endp    _open
+        global  openargs:near			; openargs(bx)
+openargs:
+		cmp	[byte bx],'@'
+		stc
+		jne	fail
+		inc	bx
+		jmp	open
+
+        endp    @open$qpxzc
 
 
 ;***************************************************************
-;int close(int fd);
+;pascal int close(int fd);
 ;***************************************************************
-        global  _close:near
-        proc    _close near
+        global  @close$qi:near
+        proc    @close$qi near
 
 		pop	ax			;caller return address
                 pop	bx			; fd
-                push	bx
                 push	ax
         global  close:near			; close(bx)
 close:
@@ -266,56 +264,53 @@ close:
 		jnz	dos
 		ret
 
-        endp    _close
+        endp    @close$qi
 
 
 ;***************************************************************
-;int read(int fd, void* data, int sz);
-;int write(int fd, const void* data, int sz);
+;pascal int read(int fd, void* data, int sz);
+;pascal int write(int fd, const void* data, int sz);
 ;***************************************************************
-        global  _read:near
-        proc    _read near
+        global  @read$qipvi:near
+        proc    @read$qipvi near
 
 		ifdef	WRITE
                 stc
 		db	0B0h			; mov al,im
-        global  _write:near
+        global  @write$qipvi:near
+@write$qipvi:
                 clc
 		endif
 		pop	ax			;caller return address
-                pop	bx			; fd
-                pop	dx			; data
                 pop	cx			; sz
-                push	cx
-                push	dx
-                push	bx
+                pop	dx			; data
+                pop	bx			; fd
                 push	ax
 		ifdef	WRITE
                 mov	ah,40h
 		sbb	ah,0
 		else
+	global	@read$cxdxbx:near
+@read$cxdxbx:
                 mov	ah,3Fh
 		endif
                 jcxz	fail
 		jmp	dos
 
-        endp    _read
+        endp    @read$qipvi
 
-        proc    _lseekset near
 		;ifdef EXTRA
 ;***************************************************************
-;long lseekset(int fd, unsigned long sz);
+;pascal long lseekset(int fd, unsigned long sz);
 ;***************************************************************
 
-        global  _lseekset:near
+        global  @lseekset$qiul:near
+        proc    @lseekset$qiul near
 
 		pop	ax			;caller return address
-                pop	bx			; fd
                 pop	dx			; sz lo
                 pop	cx			; sz hi
-                push	cx
-                push	dx
-                push	bx
+                pop	bx			; fd
                 push	ax
 		;endif
 ;        global  lseekset:near
@@ -332,7 +327,7 @@ lseek0:						; lseek0(bx,ax=dir)
 		xor	cx,cx
 		jmp	dos
 
-        endp    _lseekset
+        endp    @lseekset$qiul
 
 		ifdef	EXTRA
 struc		isostate	; struct isostate {
@@ -348,36 +343,36 @@ curdirsize	dd	?	;24	unsigned long curdirsize;
 curpos		dd	?	;28	unsigned long curpos;
 ends				; } isostate;
 ;***************************************************************
-;unsigned long isolseek(const unsigned long *offset);
+;pascal int isolseek(const unsigned long *offset);
 ;***************************************************************
-        global  _isolseek:near
-        proc    _isolseek near
+        global  @isolseek$qpxul:near
+        proc    @isolseek$qpxul near
 
 		pop	ax
 		pop	bx
-		push	bx
 		push	ax
 		mov	dx,[bx]
 		mov	cx,[bx+2]
 		extrn	_isostate:isostate
 		mov	bx,[_isostate.fd]
-		jmp	lseekset		; (bx=fd, sz=cx:dx)
+		call	lseekset		; (bx=fd, sz=cx:dx)
+		and	ax,dx
+		inc	ax
+		ret
 		
-        endp    _isolseek
+        endp    @isolseek$qpxul
 		endif
 
 
 ;***************************************************************
-;int strhead(const char* a,const char* b);
+;pascal int strhead(const char* a,const char* b);
 ;***************************************************************
-        global  _strhead:near
-        proc    _strhead near
+        global  @strhead$qpxzct1:near
+        proc    @strhead$qpxzct1 near
 
 		pop	cx			;caller return address
-                pop	bx			; a
                 pop	ax			; b
-                push	ax
-                push	bx
+                pop	bx			; a
                 push	cx
 @@loop:
 		xchg	ax,bx
@@ -392,18 +387,17 @@ ends				; } isostate;
                 jz	@@loop
 		ret				; return b (is not 0)
 
-        endp    _strhead
+	endp	@strhead$qpxzct1
 
 
 ;***************************************************************
-;char* malloc_or_die(unsigned size);
+;pascal char* malloc_or_die(unsigned size);
 ;***************************************************************
-        global  _malloc_or_die:near
-        proc    _malloc_or_die near
+        global  @malloc_or_die$qui:near
+        proc    @malloc_or_die$qui near
 
 		pop	ax			;caller return address
                 pop	cx			; size
-                push	cx
                 push	ax
         global  malloc_or_die:near		; malloc_or_die(cx)
 malloc_or_die:
@@ -417,20 +411,19 @@ malloc_or_die:
 		add	[_heap_top],cx		; _BEG has zero'd heap
 		ret
 
-        endp    _malloc_or_die
+        endp    @malloc_or_die$qui
 
 
 ;***************************************************************
-;int die(const char* msg);
+;pascal int die(const char* msg);
 ;int exit();
 ;int abort();
 ;***************************************************************
-        global  _die:near
-        proc    _die near
-
+	global	@die$qpxzc:near
+	proc	@die$qpxzc near
+@die$qpxzc:
 		pop	ax			;caller return address
                 pop	bx			; s
-                ;push	bx
                 ;push	ax
         global  die:near			; die(bx)
 die:
@@ -453,7 +446,7 @@ _abort:
 		hlt
 		jmp	@@stop
 
-        endp    _die
+	endp	@die$qpxzc
 
 struc   image_himem		;struct image_himem {
 fd		dw	?	; 0    int fd;
@@ -546,15 +539,14 @@ ends					;}; // size=8200
 	endif
 
 ;***************************************************************
-;u32* malloc_bufv_or_die(struct image_himem *m);
+;pascal u32* malloc_bufv_or_die(struct image_himem *m);
 ;***************************************************************
-        global  _malloc_bufv_or_die:near
-        proc    _malloc_bufv_or_die near
+        global  @malloc_bufv_or_die$qp11image_himem:near
+        proc    @malloc_bufv_or_die$qp11image_himem near
 
                 p386
 		pop	bx			;caller return address
 		pop	ax
-		push	ax
 		push	bx
 		push	si
 		xchg	ax,si
@@ -666,18 +658,17 @@ ends					;}; // size=8200
                 p8086
 		endif
 
-        endp    _malloc_bufv_or_die
+        endp    @malloc_bufv_or_die$qp11image_himem
 
 
 ;***************************************************************
-; void memcpy_image(struct image_himem *m);
+;pascal void memcpy_image(struct image_himem *m);
 ;***************************************************************
-        global  _memcpy_image:near
-        proc    _memcpy_image near
+        global  @memcpy_image$qp11image_himem:near
+        proc    @memcpy_image$qp11image_himem near
 
 		pop	ax			;caller return address
 		pop	bx
-		push	bx
 		push	ax
 		ifndef	NO386
 		mov	edx,[(image_himem bx).fallback]
@@ -727,25 +718,22 @@ memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
 	endif
 		endif
 @@memcpy:
-		extrn	_memcpy32:near
-		call	near _memcpy32
-		add	sp,14
+		extrn	memcpy32:near
+		call	near memcpy32
 @@skip:
 		ret
 
-        endp    _memcpy_image
+        endp    @memcpy_image$qp11image_himem
 
 ;***************************************************************
-;void storepage(u32 *dst, u16 src);
+;pascal void storepage(u32 *dst, u16 src);
 ;***************************************************************
-        global  _storepage:near
-        proc    _storepage near
+        global  @storepage$qpulus:near
+        proc    @storepage$qpulus near
 
 		pop	ax			;caller return address
-		pop	bx
 		pop	cx
-		push	cx
-		push	bx
+		pop	bx
 		push	ax
 		ifndef	NO386
 		mov	edx,[bx]
@@ -770,26 +758,25 @@ storepage:					; storepage(edx,cx)
 		push	ds
 		jmp	call_memcpy32
 
-        endp    _storepage
+        endp    @storepage$qpulus
 
 
 	ifdef	LARGE_IMAGES
                 p386
 ;***************************************************************
-;void reset_bufv(u32 *p);
+;pascal void reset_bufv(u32 *p);
 ;***************************************************************
-        global  _reset_bufv:near
-        proc    _reset_bufv near
+        global  @reset_bufv$qpul:near
+        proc    @reset_bufv$qpul near
 
 		pop	ax			;caller return address
 		pop	bx
-		push	bx
 		push	ax
 		mov	[curdata],bx
 		and	[dword (data_himem bx).cacheidx],0
 		ret
 
-        endp    _reset_bufv
+        endp    @reset_bufv$qpul
 
 ;***************************************************************
 ;u32* prev_bufv();
@@ -803,12 +790,12 @@ storepage:					; storepage(edx,cx)
 		db	73h			; jnc
 _next_bufv:
 		clc
+		push	si
+		mov	si,[curdata]
 		sbb	ax,ax
 		cmc
 		adc	ax,[(data_himem si).cacheidx]	; -1/+1
 		xor	ecx,ecx
-		push	si
-		mov	si,[curdata]
 		test	ax,0fc00h
 		jz	@@gotpage
 		push	ax			; FFFF / 0400
@@ -854,16 +841,14 @@ _next_bufv:
 		endif
 
 ;***************************************************************
-;void open_image(const char *name, struct image_himem *m);
+;pascal void open_image(const char *name, struct image_himem *m);
 ;***************************************************************
-        global  _open_image:near
-        proc    _open_image near
+        global  @open_image$qpxzcp11image_himem:near
+        proc    @open_image$qpxzcp11image_himem near
 
 		pop	cx			;caller return address
-		pop	bx			; name
 		pop	ax			; m
-		push	ax
-		push	bx
+		pop	bx			; name
 		push	cx
                 push	di
 		xchg	ax,di
@@ -891,37 +876,34 @@ _next_bufv:
                 pop	di
 		ret
 
-        endp    _open_image
+        endp    @open_image$qpxzcp11image_himem
 
 
 ;***************************************************************
-;int read_image(struct image_himem *m, char* data, int sz);
+;pascal int read_image(struct image_himem *m, char* data, int sz);
 ;***************************************************************
-        global  _read_image:near
-        proc    _read_image near
+        global  @read_image$qp11image_himempvi:near
+        proc    @read_image$qp11image_himempvi near
 
-		arg	m	:word,	\
+		arg	sz	:word,	\
 			data	:word,	\
-			sz	:word	= PARAM_SIZE
+			m	:word	= PARAM_SIZE
 
 		push	bp
 		mov	bp,sp
-		push	di
-		ifndef	NO386
-		push	0		; return value
-		else
-		xor	ax,ax
-		push	ax
-		endif
+		push	si di
 		mov	di,[m]
+		mov	si,[data]
+		mov	bp,[sz]
+		push	bp		; original size
 @@loop:
 		ifndef	NO386
-		movzx	ecx,[word sz]
+		movzx	ecx,bp
 		mov	eax,[(image_himem di).chunk_size]
 		cmp	ecx,eax
 		jb	@@szok
 		else
-		mov	cx,[word sz]
+		mov	cx,bp
 		mov	ax,[word (image_himem di).chunk_size]
 		cmp	cx,ax
 		jb	@@szok
@@ -931,15 +913,11 @@ _next_bufv:
 		xchg	ax,cx
 @@szok:
 		jcxz	image_done
-		push	cx
-		push	[word data]
-		push	[word di]
-		call	_read
-		pop	dx
-		pop	bx
-		pop	cx
+		mov	dx,si
+		mov	bx,[word di]
+		call	@read$cxdxbx
 		jc	image_done
-		add	bx,ax
+		add	si,ax
 		xor	cx,cx
 		ifndef	NO386
 		cwde				; ax < 8000h
@@ -952,12 +930,12 @@ _next_bufv:
 		cmp	[word (image_himem di).chunk_size],dx
 		endif
 		jnz	@@fill
-		dec	cx
+		inc	cx
 @@fill:
 		test	al,3
 		je	@@filled
-		mov	[bx],dh
-		inc	bx
+		mov	[si],ch
+		inc	si
 		inc	ax
 		jmp	@@fill
 @@filled:
@@ -967,9 +945,7 @@ _next_bufv:
 		sub	[word (image_himem di).remaining],ax
 		sbb	[word ((image_himem di).remaining)+2],dx
 		endif
-		add	[bp-2-2],ax
-		add	[word data],ax
-		sub	[word sz],ax
+		sub	bp,ax
 		pushf
 		jcxz	@@same_chunk
                 call	[(image_himem di).next_chunk]
@@ -977,24 +953,24 @@ _next_bufv:
 		popf
 		jnz	@@loop
 image_done:
-                pop	ax
-                pop	di bp
-		ret
+                pop	ax		; original size
+		sub	ax,bp
+                pop	di si bp
+		ret	6
 
-        endp    _read_image
+        endp    @read_image$qp11image_himempvi
 
 
 ;***************************************************************
-;unsigned long strtol(const char *s);
+;pascal unsigned long strtol(const char *s);
 ;***************************************************************
-        global  _strtol:near
-        proc    _strtol near
+	global	@strtol$qpxzc:near
+	proc	@strtol$qpxzc near
 
-		ifndef	NO386
 		pop	ax			;caller return address
                 pop	cx			; s
-		push	cx
 		push	ax
+		ifndef	NO386
 		xor	ebx,ebx
 		push	si
 		jcxz	@@end
@@ -1080,10 +1056,6 @@ image_done:
 @@popsiret:
 		pop	si
 		else
-		pop	ax			;caller return address
-                pop	cx			; s
-		push	cx
-		push	ax
 		push	si
 		push	di
 		xor	ax,ax
@@ -1189,9 +1161,10 @@ image_done:
 		pop	di
 		pop	si
 		endif
+strtol_ret:
 		ret
 
-        endp    _strtol
+	endp	@strtol$qpxzc
 
 
 		ifdef	NO386
@@ -1262,14 +1235,13 @@ image_done:
 
 
 ;***************************************************************
-;void chdirname(char *path)
+;pascal void chdirname(char *path)
 ;***************************************************************
-        global  _chdirname:near
-        proc    _chdirname near
+        global  @chdirname$qpzc:near
+        proc    @chdirname$qpzc near
 
 		pop	ax
 		pop	bx
-		push	bx
 		push	ax
 
 		cmp	[byte bx+1],3Ah		; ':'
@@ -1308,54 +1280,50 @@ image_done:
 @@end:
 		ret
 
-        endp    _chdirname
+        endp    @chdirname$qpzc
 
 
 ;***************************************************************
-;char *ultoa(unsigned long n);
+;pascal char *ultoa(unsigned long n);
 ;***************************************************************
-        global  _ultoa:near
-        proc    _ultoa near
+        global  @ultoa$qul:near
+        proc    @ultoa$qul near
 
-		pop	ax
-		pop	cx
 		pop	dx
-		push	dx
-		push	cx
-		push	ax		; DX:CX = n
+		pop	cx
+		pop	ax
+		push	dx		; AX:CX = n
 		push	si
 		mov	si,10
 		mov	bx,offset ultoabuf+11
 @@loop:
 		dec	bx
-		xchg	ax,dx
 		xor	dx,dx
 		div	si		; DX:AX = 0000:hi(n)
 		xchg	ax,cx		; CX = hi(n)/10
 		div	si		; DX:AX = hi(n)%10:lo(n)
 		xchg	ax,cx		; CX = lo(n/10)
-		xchg	ax,dx		; DX = hi(n)/10 = hi(n/10)
-		add	al,'0'
-		mov	[bx],al
-		mov	ax,cx
-		or	ax,dx
+					; AX = hi(n)/10 = hi(n/10)
+		mov	[byte bx],'0'
+		add	[bx],dl		; DL = n%10
+		mov	dx,ax
+		or	dx,cx
 		jnz	@@loop
 		xchg	ax,bx
 		pop	si
 		ret
 
-        endp    _ultoa
+        endp    @ultoa$qul
 
 
 ;***************************************************************
-;unsigned long kver2ul(char *kernel_version);
+;pascal unsigned long kver2ul(char *kernel_version);
 ;***************************************************************
-        global  _kver2ul:near
-        proc    _kver2ul near
+        global  @kver2ul$qpzc:near
+        proc    @kver2ul$qpzc near
 
 		pop	bx
 		pop	ax
-		push	ax
 		push	bx
 		push	si
 		xchg	ax,si
@@ -1381,12 +1349,16 @@ image_done:
 kver2ulret:
 		ret
 
-        endp    _kver2ul
+        endp    @kver2ul$qpzc
 
+			endif
 
 ;***************************************************************
 ;void try_default_args();
+;pascal void set_cmdline(const char *filename);
 ;***************************************************************
+	ifdef	EXTRA
+
         global  _try_default_args:near
         proc    _try_default_args near
 
@@ -1395,13 +1367,12 @@ kver2ulret:
 		jc	kver2ulret
 		mov	cx,4096
 		mov	di,[_heap_top]
-		push	cx
 		extrn	read_cmdline:near
 		jmp	near read_cmdline	; read_cmdline(ax,di,cx)
 		
         endp    _try_default_args
 
-			endif
+	endif
 
         ends    _TEXT
 

@@ -140,7 +140,7 @@ char* load_kernel() {
   {
     struct first1k_t *first1k;
     struct kernelparams_t *kernelparams;
-    kernelparams = &(((first1k_t*) (rm_buf = malloc_or_die(_32k)))->params);
+    kernelparams = &(((first1k_t*) (rm_buf = (u8 *)malloc_or_die(_32k)))->params);
 #define first1k		((first1k_t*)((u8 *)kernelparams-0x1F1))
    {
     u16 rm_seek;
@@ -177,8 +177,8 @@ do {
 
     // Tell rm loader some info
 
-    if(vid_mode) kernelparams->vid_mode = vid_mode;
-    if(root_dev) kernelparams->root_dev = root_dev;
+    if((int)vid_mode) kernelparams->vid_mode = vid_mode;
+    if((int)root_dev) kernelparams->root_dev = root_dev;
     version_string = "";
 
 #if 1

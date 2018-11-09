@@ -196,9 +196,8 @@ sssp		dd	?
 		push	1			; dst ofs hi
 		endif
 		push	di			; dst ofs lo : 64k
-		extrn   _memcpy32:near
-		call	_memcpy32
-		add	sp,14
+		extrn   memcpy32:near
+		call	memcpy32
 
 		ifndef  noelks
 		ifndef	NO386

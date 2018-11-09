@@ -22,7 +22,7 @@ extern struct isostate {
 #define	isofilesize isostate.filesize
 #define	isofilemod isostate.filemod
 #define	isofilename isostate.filename
-extern "C" unsigned long isolseek(const unsigned long *offset);
+extern pascal int isolseek(const unsigned long *offset);
 extern int isoreset(char *name);
 extern int isoopen(const char *name);
 extern int isoreaddir(int restart);

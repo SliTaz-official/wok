@@ -21,9 +21,7 @@ msg_badcpu      db      "I need 386+ CPU in real mode or under VCPI manager"
 		endif
         global  _vcpi:byte
 _vcpi		db	0
-msg_badmapping  db      "VCPI: low 640k need 1:1 mapping"
-        global  _topmem:dword
-_topmem		dd	10000000h	; max 256m
+msg_badmapping  db      "VCPI: low 640k need 1:1 mapping",0
 
         ends    _DATA
 
@@ -230,25 +228,22 @@ argdone:
                 push	bx			; argc
 	ifndef	filearg
                 mov	bx,[di+2]		; argv[1]
-                cmp	[byte bx],'@'
-		jne	argend
-                inc	bx
-		extrn	open:near
-		call	near open
+		extrn	openargs:near
+		call	near openargs
 		jc	argend
 		pop	bx			; trash argc,  argv >> 1Kb !
-		ifdef	EXTRA
 	global	read_cmdline:near
-		endif
+                pop	cx			; sizemax=argv
 read_cmdline:
-		push	di
+		mov	dx,di
+		push	dx
 		push	ax
-		extrn	_read:near
-		call	near _read
+		xchg	ax,bx
+		extrn	@read$cxdxbx:near	; read(fd=bx,buffer=dx,size=cx)
+		call	near @read$cxdxbx
                 pop	bx			; fd for close
                 pop	si			; si=buffer=argv
                 add	di,ax
-                pop	ax			; trash sizemax=argv
 		extrn	close:near
 		call	near close
                 jmp	argbuild

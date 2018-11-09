@@ -10,7 +10,7 @@ struct isostate isostate;
 
 static int readsector(const unsigned long *offset)
 {
-	return (isolseek(offset) != -1
+	return (isolseek(offset) != 0
 		    && read(isostate.fd, buffer, sizeof(buffer)) >= SECTORSZ);
 }
 
@@ -113,7 +113,7 @@ int isoopen(const char *filename)
 	char _64bits = cpuhaslm();
 	struct isostate *x=&isostate;
 
-  retry32:
+    do {
 	for (s = (char *) filename; *s == '/' ; s++) {
 		isoreset(NULL);
 	}
@@ -138,9 +138,6 @@ int isoopen(const char *filename)
 		isolseek(&x->fileofs);
 		return 0;
 	}
-	if (_64bits) {
-		_64bits = 0;
-		goto retry32;
-	}
+    } while ((_64bits ^= CPUMASKLM) == 0);
 	return -1;
 }

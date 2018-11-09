@@ -21,8 +21,8 @@
 ;***************************************************************
 ;****** Uses:   Flags
 ;***************************************************************
-        global  _memcpy32:near
-        proc    _memcpy32 near
+        global  memcpy32:near
+        proc    memcpy32 near
 
 ; rm32,imm16 helper
 macro   addzx_e rm,i
@@ -91,9 +91,8 @@ endm
 		xor	si,si
 		mov	ax,[srcseg]
 		xor	dx,dx
-		mov	cl,4
-		extrn	N_LXLSH@:near
-		call	near N_LXLSH@
+		extrn	N_LXLSH@4:near
+		call	near ptr N_LXLSH@4
 		add	[word srcofs],ax
 		adc	[word srcofs+2],dx
 @@2flat:
@@ -213,7 +212,7 @@ endm
 		mov	sp,bp
 		pop	bp
 			endif
-                ret
+                ret	14
 
 ;****** Const data *********************************************
                 org     $-8     ;save 8 bytes - they are unused anyway
@@ -226,7 +225,7 @@ GDT             dd      ?,?
                 ;       base_med  P  S D A  G ??l_hi  base_hi
                 ;                  Pl E W    D
 
-        endp    _memcpy32
+        endp    memcpy32
 
         ends    _TEXT
 

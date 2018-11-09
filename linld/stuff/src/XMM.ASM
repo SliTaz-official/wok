@@ -93,16 +93,15 @@ fd2close	dw	?	;30    u16 fd2close;
 ends				;};
 
 ;***************************************************************
-;void xmm_alloc(struct image_himem *m)
+;pascal void xmm_alloc(struct image_himem *m)
 ;***************************************************************
-        global  _xmm_alloc:near
-        proc    _xmm_alloc near
+        global  @xmm_alloc$qp11image_himem:near
+        proc    @xmm_alloc$qp11image_himem near
 
-	ret	; TO BE FIXED
                 pop     ax
                 pop     bx
-                push    bx
                 push    ax
+	ret	; TO BE FIXED
 		ifndef	NO386
 		mov	edx,[(image_himem bx).size]		; m->size
                 ;dec     edx
@@ -138,7 +137,7 @@ ends				;};
 @@err:
                 ret
 
-        endp    _xmm_alloc
+        endp    @xmm_alloc$qp11image_himem
 
         ends    _TEXT
 

@@ -8,11 +8,12 @@
 const char* kernel_name = "bzImage";
 const char* initrd_name;
 const char* cmdline = "auto";
-u16 root_dev;
-u16 vid_mode;           // -3 = ask
-                        // -2 = Extended VGA
-                        // -1 = Normal VGA
-                        //  n = as "n" was pressed
+u32 root_dev;
+u32 vid_mode;		// -3 = ask
+			// -2 = Extended VGA
+			// -1 = Normal VGA
+			//  n = as "n" was pressed
+u32 topmem;
 
 inline void syntax() {
     die("Syntax:" NL

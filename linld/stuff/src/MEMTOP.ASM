@@ -90,6 +90,10 @@ tokb:
 		shld    dx,ax,cl
 		shl     ax,cl		;  (kbytes -> bytes)
 		else
+		db	0A9h		; test ax,04B1h
+        global  N_LXLSH@4:near
+N_LXLSH@4:
+		mov	cl,4
         global  N_LXLSH@:near
 N_LXLSH@:
 		mov	ch,0
@@ -153,7 +157,11 @@ _memtop:
 		cmp	dx,cx
 		jb	@@set
 		extrn	_topmem:dword
-		mov	cx,[word _topmem+2]	; max 256m ?
+		mov	cx,[word _topmem+2]
+		inc	cx			; jcxnz
+		loop	@@topmemset
+		mov	ch,10h			; default = max 256m
+@@topmemset:
 ; Kernel can have trouble with initrd at very high addr:
 ; limit mem top to 256m
 		cmp	dh,ch

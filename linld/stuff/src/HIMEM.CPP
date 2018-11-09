@@ -61,7 +61,7 @@ void load_image(struct image_himem *m) {
     u32* bufv= &buf;
     if(((u16 *)&m->fallback)[1] >= 0x10 && !skip_alloc) { // >= _1m ?
 	if(vcpi) {
-	    bufv = malloc_bufv_or_die(m);	// update m->bufv
+	    bufv = (u32 *)malloc_bufv_or_die(m);	// update m->bufv
 	}
 	else {
             xmm_alloc(m);			// update m->buf

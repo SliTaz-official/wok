@@ -59,6 +59,11 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			print "	call	near ptr N_LXURSH@4"
 			next
 		}
+		if (/^	call	near ptr N_LXLSH@$/) {
+			print "	extrn	N_LXLSH@4:near"
+			print "	call	near ptr N_LXLSH@4"
+			next
+		}
 		print s
 	}
 	s=$0
