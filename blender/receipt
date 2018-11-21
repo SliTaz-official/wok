@@ -27,8 +27,14 @@ libglu-mesa-dev glew-dev"
 compile_rules()
 {
 	sed -i 's|uname -m|echo i486|' GNUmakefile
+	sed -i -e 's|\(PyModule_GetFilename\)(mod|_PyUnicode_AsString(\1Object(mod)|' \
+		-e 's|(.*_Py_atomic_load_relaxed(.*t)|(PyThreadState_GetDict(|' \
+			$src/source/blender/python/generic/py_capi_utils.c
+	sed -i 's|char. chars = _PyUnicode_AsString|const &|' \
+		$src/source/gameengine/Ketsji/KX_FontObject.cpp
 	mkdir -p $WOK/$PACKAGE/source/build
 	cd $WOK/$PACKAGE/source/build
+	PY3K_VER=$(ls -d /usr/include/python3.?m | sed 's|.*python\(.*\)m|\1|')
 	cmake $src \
 		-DCMAKE_INSTALL_PREFIX:PATH=/usr \
 		-DCMAKE_BUILD_TYPE:STRING=Release \
@@ -38,13 +44,13 @@ compile_rules()
 		-DWITH_GAMEENGINE:BOOL=ON \
 		-DWITH_CYCLES:BOOL=OFF \
 		-DWITH_PLAYER:BOOL=ON \
-		-DPYTHON_VERSION:STRING=3.4 \
+		-DPYTHON_VERSION:STRING=$PY3K_VER \
 		-DPYTHON_LIBPATH:STRING=/usr/lib \
-		-DPYTHON_LIBRARY:STRING=python3.4m \
-		-DPYTHON_INCLUDE_DIRS:STRING=/usr/include/python3.4m
+		-DPYTHON_LIBRARY:STRING=python${PY3K_VER}m \
+		-DPYTHON_INCLUDE_DIRS:STRING=/usr/include/python${PY3K_VER}m
 	# build
-	make $MAKEFLAGS
-	make DESTDIR=$DESTDIR install
+	make $MAKEFLAGS &&
+	make DESTDIR=$DESTDIR install &&
 	python3 -m compileall "$DESTDIR/usr/share/blender"
 }
 
