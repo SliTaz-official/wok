@@ -152,7 +152,7 @@ do {
     if(kernelparams->setup_sects == 0) {
 #if 1
         if(* (int *) &first1k->pad10[0x3F-0x24] == 0x3AE8) {
-            lseekset(pm.fd,rm_seek=0x200);
+            lseekset(m->fd,rm_seek=0x200);
             csip+=0xFFE00042;
         }
         else

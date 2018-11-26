@@ -46,7 +46,7 @@ endm
 		;cld
                 pushf
                 push    ds es
-                pushad
+		pushad				; struct declared in VCPI.ASM
 		mov	cl,4
                 movzx   esi,[srcseg]
                 shl     esi,cl
@@ -73,6 +73,9 @@ endm
 		and	di,cx
 		inc	cx
                 sub     [sz],ecx
+		jae	@@movpara
+		add	ecx,[sz]
+@@movpara:
             rep movsb
                 ja	@@movlp
 		jmp	@@done
@@ -135,7 +138,7 @@ endm
 		pop	si
 		js	@@done16
                 p386
-                pushad
+		pushad				; struct declared in VCPI.ASM
                 mov     esi,[srcofs]
                 mov     edi,[dstofs]
 
@@ -149,11 +152,8 @@ endm
 		jz	@@real_mode
 ; Note: bp points to std stack frame now. bp will be passed to
 ; pm routine. This allows params to be passed on stack
-		extrn	do_memcpy_vcpi:near
-                push    offset do_memcpy_vcpi
-		extrn	call_pm_routine:near
-                call    near call_pm_routine ; Call pm copy routine via vcpi pm
-                pop     ax
+		extrn	vcpi_pm_copy_routine:near
+                call    near vcpi_pm_copy_routine ; Call pm copy routine via vcpi pm
 		jmp	@@done
 @@real_mode:
                 cmp     esi,edi
@@ -204,7 +204,7 @@ endm
                 p8086
 @@done16:
                 pop     es ds
-                popf
+		popf			; restore I & D
 			ifndef	NO386
                 p386
 		leave

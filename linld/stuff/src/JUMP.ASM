@@ -162,7 +162,8 @@ sssp		dd	?
 		;cld
 		pop	es			; min 2048 bytes for stack
 		jne	@@isbzimage
-		mov	cx,offset movedend
+		extrn	gdt_data
+		mov	cx,offset gdt_data+8
 		xor	si,si			;  A000 -9000 -0800(>movedend)
 		rep
 		  movsb

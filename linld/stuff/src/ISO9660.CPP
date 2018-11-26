@@ -3,16 +3,7 @@
 #include "iso9660.h"
 #define __ROCKRIDGE
 
-#define SECTORSZ 2048
-#define SECTORBITS 11
-static char buffer[SECTORSZ+512];	// RR overflow
 struct isostate isostate;
-
-static int readsector(const unsigned long *offset)
-{
-	return (isolseek(offset) != 0
-		    && read(isostate.fd, buffer, sizeof(buffer)) >= SECTORSZ);
-}
 
 int isoreset(char *name)
 {
@@ -21,12 +12,12 @@ int isoreset(char *name)
 	if (name)
 		//x->fd = open(name, O_RDONLY);
 		x->fd = open(name);
-	if (!readsector(&root) || strhead(buffer+1,"CD001")) {
+	if (isoreadsector(&root) < 0 || strhead(x->buffer+1,"CD001")) {
 		//close(x->fd);
 		return -1;
 	}
-	x->dirofs = (* (unsigned long *) (buffer + 0x9E)) << SECTORBITS;
-	x->dirsize = filesize2dirsize(* (unsigned long *) (buffer + 0xA6));
+	x->dirofs = (* (unsigned long *) (x->buffer + 0x9E)) << SECTORBITS;
+	x->dirsize = filesize2dirsize(* (unsigned long *) (x->buffer + 0xA6));
 	return 0;
 }
 
@@ -44,16 +35,16 @@ int isoreaddir(int restart)
 		x->curdirofs = x->dirofs;
 		goto restarted;
 	}
-	if (x->curpos >= SECTORSZ || * (short *) (buffer + x->curpos) == 0) {
+	if (x->curpos >= SECTORSZ || * (short *) (x->buffer + x->curpos) == 0) {
 		if (x->curdirsize < DIRSECTORSZ) return -1;
 	restarted:
-		readsector(&x->curdirofs);
+		isoreadsector(&x->curdirofs);
 		//x->curdirofs += SECTORSZ;
 		*(int *)((char *) &x->curdirofs+1) += SECTORSZ/256;
 		x->curdirsize -= DIRSECTORSZ;
 		x->curpos = 0;
 	}
-	p = buffer + x->curpos;
+	p = x->buffer; p += x->curpos;
 	if ((size = * (short *) p) == 0)
 		return -1;
 	x->fileofs = (* (unsigned long *) (p + 2)) << SECTORBITS;
@@ -63,7 +54,7 @@ int isoreaddir(int restart)
 #ifdef __ROCKRIDGE
 	endname = NULL;
 	// p += 34 + (p[32] & -2); ?
-	p = buffer + 34 + ((p[32] + x->curpos) & -2);
+	p = x->buffer + 34 + ((p[32] + x->curpos) & -2);
 	do {
 		int len = p[2];
 		switch (* (short *) p) {
@@ -76,13 +67,13 @@ int isoreaddir(int restart)
 			break;
 		}
 		p += len;
-	} while (buffer + x->curpos + size - p > 2);
+	} while (x->buffer + x->curpos + size - p > 2);
 	if (endname)
 		*endname = 0;
 	else
 #endif
 	{
-		p = x->filename = buffer + x->curpos + 33;
+		p = x->buffer + 33; x->filename = p += x->curpos;
 		p--;
 		if (((* (short *) p) & 0xFEFF) -1 == 0) {
 			x->filename = "..";

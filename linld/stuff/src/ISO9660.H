@@ -16,13 +16,17 @@ extern struct isostate {
 	dirsizetype curdirsize, dirsize;
 	unsigned long curdirofs, dirofs;
 	unsigned curpos;
+#define SECTORSZ 2048
+#define SECTORBITS 11
+	char buffer[SECTORSZ+512];	// RR overflow
 } isostate;
 #define isofd isostate.fd
 #define	isofileofs isostate.fileofs
 #define	isofilesize isostate.filesize
 #define	isofilemod isostate.filemod
 #define	isofilename isostate.filename
-extern pascal int isolseek(const unsigned long *offset);
+extern pascal long isolseek(const unsigned long *offset);
+extern pascal int isoreadsector(const unsigned long *offset);
 extern int isoreset(char *name);
 extern int isoopen(const char *name);
 extern int isoreaddir(int restart);
