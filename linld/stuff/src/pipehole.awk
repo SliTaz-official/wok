@@ -3,7 +3,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 {
 	if (hold == 0) {
 		s=$0
-		if (/^	mov	.x,bx$/ || /^	mov	.x,.i$/) {
+		if (/^	mov	.[ix],bx$/ || /^	mov	.[ix],.i$/) {
 			r=$2
 			hold=1; split($2,regs,","); next
 		}

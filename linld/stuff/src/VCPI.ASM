@@ -72,10 +72,16 @@ macro   addzx_e rm,i
 endm
 
 
-        group   DGROUP  _TEXT,_DATA,_BSS
+        group   DGROUP  _TEXT,_BSS
         assume  cs:DGROUP,ds:DGROUP
 
-        segment _DATA byte public use16 'DATA'
+        segment _BSS byte public use16 'BSS'
+
+tss             dd      ?,?     ;enough, we'll never use it anyway
+
+        ends    _BSS
+
+        segment _TEXT byte public use16 'CODE'
 
 label   gdt     byte
 gdt_null        descr   <?>     ;0000
@@ -86,6 +92,7 @@ descriptor      gdt_abs ,(data_seg+writable),priv0,is_present,0fffffh,(gran_page
 ;Note: code/data segs must be flagged use16 (i.e. use ip/sp, not eip/esp)
 ;Note: base addrs will be fixed up in prepare_vcpi()
 descriptor      gdt_code,(code_seg+readable),priv0,is_present,0fffffh,(gran_page+use_16),0
+	global	gdt_data
 descriptor      gdt_data,(data_seg+writable),priv0,is_present,0fffffh,(gran_page+use_16),0
 descriptor      gdt_tss ,tss386_avail       ,priv0,is_present,0ffh   ,gran_byte         ,<offset tss>
 SEL_VCPI        = (gdt_vcpi - gdt_null)
@@ -117,15 +124,6 @@ label   idtr    pword
 idt_lim         dw      03ffh   ;we won't enable ints,
 idt_base        dd      0       ;  so let's leave it the same as for rm
 
-        ends    _DATA
-
-        segment _BSS byte public use16 'BSS'
-
-tss             dd      ?,?     ;enough, we'll never use it anyway
-
-        ends    _BSS
-
-        segment _TEXT byte public use16 'CODE'
 
 ;***************************************************************
 ;char* prepare_vcpi(void *pagebuf);
@@ -229,8 +227,8 @@ tss             dd      ?,?     ;enough, we'll never use it anyway
 ;****** Copies PAGE_SIZE bytes
 ;****** Uses:   Flags
 ;***************************************************************
-        global  call_pm_routine:near
-        proc    call_pm_routine near
+        global  vcpi_pm_copy_routine:near
+        proc    vcpi_pm_copy_routine near
 
               arg     dstofs  :dword, \
                       srcseg  :word,  \
@@ -238,7 +236,6 @@ tss             dd      ?,?     ;enough, we'll never use it anyway
 
 struc   pm_regs
 $$retaddr       dw      ?
-$$f             dw      ?
 $$edi           dd      ?
 $$esi           dd      ?
 $$ebp           dd      ?
@@ -284,16 +281,15 @@ ends
                 lea     sp,[bp-9*4]     ;else we can do this trick with bp
 
 ; Call the routine (bp points to params on stack if any)
-                mov     ax,[(pm_regs bp).$$f]   ; ss:bp => struct pm_regs
                 mov     bp,[word (pm_regs bp).$$ebp]    ;ss:bp => params
-                call    ax
+                call    do_memcpy_vcpi
 
 ; Ok, let's return to vm
                 mov     ax,0DE0Ch       ; maybe we need whole eax?
                 cli     ; to be safe
                 clts    ;
-                push    SEL_ABS         ; vcpi wants ds=all_addrspace
-                pop     ds              ;
+              ;;push    SEL_ABS         ; vcpi wants ds=all_addrspace
+              ;;pop     ds              ;
                 call    [pword cs:vcpi_pm_entry]
 @@vm_ret:
 ; Now we are in vm86 mode. Sregs, esp, eflags (IF) restored from IRET stack
@@ -320,7 +316,7 @@ label   do_memcpy_vcpi near
 
 ; Note: ss:bp => params
 ; Move data
-                mov     ax,SEL_ABS
+                mov     al,SEL_ABS
                 mov     ds,ax
                 mov     es,ax
                 assume  nothing
@@ -365,8 +361,8 @@ label   do_memcpy_vcpi near
 vcpi_ret:
                 ret
 
-        endp    call_pm_routine
-                assume  cs:DGROUP,ds:DGROUP
+        endp    vcpi_pm_copy_routine
+               assume  cs:DGROUP,ds:DGROUP
 
 
 ;***************************************************************

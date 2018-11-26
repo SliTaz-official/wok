@@ -101,7 +101,7 @@ static void bootiso(char **iso)
 		c = x->filename[6];
 	}
 
-	strcatb(buf_cmdline," rw root=/dev/null autologin bootfrom=");
+	strcatb(buf_cmdline,"rw root=/dev/null autologin bootfrom=");
 	strcat(buf_cmdline,*iso);
 	if (magic < 0x20630)
 		init = ""; // Does not support multiple initramfs
@@ -133,9 +133,7 @@ static void bootiso(char **iso)
 			read(x->fd, &x->filemod, 10); // + x->fileofs & x->filesize
 			magic = x->filemod;
 			x->fileofs &= 0xFFFFL;
-			//x->fileofs -= 0xC0L + (x->filesize &= 0xFFFF);
-			* ((short *) &x->filesize + 1) = 0;
-			x->fileofs -= 0xC0L + x->filesize;
+			x->fileofs -= 0xC0L + (x->filesize &= 0xFFFF);
 			if (((short *) &x->fileofs)[1] == 0) addinitrd();
 			else init="";
 		}

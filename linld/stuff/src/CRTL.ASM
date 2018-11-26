@@ -330,20 +330,22 @@ lseek0:						; lseek0(bx,ax=dir)
         endp    @lseekset$qiul
 
 		ifdef	EXTRA
-struc		isostate	; struct isostate {
-fd		dw	?	; 0	int fd;
-fileofs		dd	?	; 2	unsigned long fileofs;
-filesize	dd	?	; 6	unsigned long filesize;
-filemod		dw	?	;10	unsigned short filemod;
-filename	dw	?	;12	char *filename;
-dirofs		dd	?	;14	unsigned long dirofs;
-dirsize		dd	?	;16	unsigned long dirsize;
-curdirofs	dd	?	;20	unsigned long curdirofs;
-curdirsize	dd	?	;24	unsigned long curdirsize;
-curpos		dd	?	;28	unsigned long curpos;
-ends				; } isostate;
+;typedef unsigned dirsizetype;
+struc		isostate		; struct isostate {
+fd		dw	?		; 0	int fd;
+filemod		dw	?		; 2	unsigned short filemod;
+fileofs		dd	?		; 4	unsigned long fileofs;
+filesize	dd	?		; 8	unsigned long filesize;
+filename	dw	?		;12	char *filename;
+curdirsize	dw	?		;14	dirsizetype curdirsize;
+dirsize		dw	?		;16	dirsizetype dirsize;
+curdirofs	dd	?		;18	unsigned long curdirofs;
+dirofs		dd	?		;22	unsigned long dirofs;
+curpos		dw	?		;26	unsigned curpos;
+buffer		db	2560	dup(?)	;28	char buffer[2048+512];
+ends					; } isostate;
 ;***************************************************************
-;pascal int isolseek(const unsigned long *offset);
+;pascal long isolseek(const unsigned long *offset);
 ;***************************************************************
         global  @isolseek$qpxul:near
         proc    @isolseek$qpxul near
@@ -351,16 +353,40 @@ ends				; } isostate;
 		pop	ax
 		pop	bx
 		push	ax
+isolseek:
 		mov	dx,[bx]
 		mov	cx,[bx+2]
 		extrn	_isostate:isostate
 		mov	bx,[_isostate.fd]
-		call	lseekset		; (bx=fd, sz=cx:dx)
-		and	ax,dx
-		inc	ax
-		ret
+		jmp	lseekset		; (bx=fd, sz=cx:dx)
 		
         endp    @isolseek$qpxul
+
+
+;***************************************************************
+;pascal int isoreadsector(const unsigned long *offset);
+;***************************************************************
+        global  @isoreadsector$qpxul:near
+        proc    @isoreadsector$qpxul near
+
+		pop	ax
+		pop	bx
+		push	ax
+		call	isolseek
+		and	ax,dx
+		inc	ax
+		jz	@@fail
+		mov	cx,2560
+		mov	dx,offset _isostate.buffer
+		mov	bx,[_isostate.fd]
+		call	@read$cxdxbx		; read(fd,buffer,2560)
+@@fail:
+		cmp	ax,2048
+		sbb	ax,ax
+		ret
+
+        endp    @isoreadsector$qpxul
+
 		endif
 
 
@@ -852,9 +878,14 @@ _next_bufv:
 		push	cx
                 push	di
 		xchg	ax,di
-		mov	[(image_himem di).next_chunk],offset next_chunk
                 mov	[(image_himem di).state],bx
 		push	bx
+		ifdef	EXTRA
+		xor	ax,ax
+		or	ax,[(image_himem di).next_chunk]
+		jne	@@next
+		endif
+		mov	[(image_himem di).next_chunk],offset next_chunk
 @@next:
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
 		ifndef	NO386
