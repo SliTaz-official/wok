@@ -52,14 +52,15 @@ extern struct image_himem {
 } imgs[2];
 #define pm (imgs[0])
 #define initrd (imgs[1])
+#define pm2initrd(p) (p+1)
 
 extern int skip_alloc;
 extern u32 base_himem;
 
-extern pascal void memcpy_image(struct image_himem *m);
-extern pascal void storepage(u32 *dst, u16 src);
+extern _fastcall void memcpy_image(struct image_himem *m);
+extern _fastcall void storepage(u32 *dst);
 #ifdef LARGE_IMAGES
-extern pascal void reset_bufv(unsigned long *p);
+extern _fastcall void reset_bufv(unsigned long *p);
 extern "C" unsigned long* prev_bufv();
 extern "C" unsigned long* next_bufv();
 #define next(p)	 p = next_bufv()
@@ -76,7 +77,7 @@ extern const char* cmdline;
 extern u32 root_dev;
 extern u32 vid_mode;
 // External asm helpers
-extern pascal void xmm_alloc(struct image_himem *m);
+extern _fastcall void xmm_alloc(struct image_himem *m);
 extern u32 topmem;
 extern "C" u32 memtop();
 extern "C" void enable_a20_or_die();
@@ -89,8 +90,8 @@ extern "C" void hang();
 #endif
 
 void load_image(struct image_himem *m);
-extern pascal void open_image(const char *name, struct image_himem *m);
-extern pascal int read_image(struct image_himem *m, void* data, int sz);
+extern _fastcall void open_image(const char *name, struct image_himem *m);
+extern _fastcall int read_image(struct image_himem *m);
 char* load_kernel();
 void load_initrd();
 extern "C" void boot_kernel();

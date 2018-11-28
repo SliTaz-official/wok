@@ -25,17 +25,18 @@ extern char text_start; extern char text_end;
 extern char data_start; extern char data_end;
 extern char bss_start;  extern char bss_end;
 extern char* heap_top;
+extern char xfer_buf[4096];
 
 void parse_cmdline();
-extern pascal void strcatb(const char* a,const char* b);
-extern pascal int strhead(const char* a,const char* head);
-extern pascal int fileattr(const char* name);
+extern _fastcall void strcatb(const char* a,const char* b);
+extern _fastcall int strhead(const char* a,const char* head);
+extern _fastcall int fileattr(const char* name);
 //extern "C" int open(const char* name, int flags);
-extern pascal int open(const char* name);
-extern pascal int close(int fd);
-extern pascal int read(int fd, void* data, int sz);
-extern pascal long lseekset(int fd, unsigned long sz);
-extern pascal int puts(const char* s);
+extern _fastcall int open(const char* name);
+extern _fastcall int close(int fd);
+extern _fastcall int read(int fd, void* data, int sz);
+extern _fastcall long lseekset(int fd, unsigned sz);
+extern _fastcall int puts(const char* s);
 extern pascal unsigned long strtol(const char *s);
 
 // Extensions
@@ -44,9 +45,9 @@ extern pascal unsigned long strtol(const char *s);
 #define int3() do { asm { db 0cch } } while(0)
 #define nop() do { asm { db 90h } } while(0)
 extern char no_exit;
-extern pascal int die(const char* msg);
+extern _fastcall int die(const char* msg);
 //extern "C" char* malloc_or_die(unsigned size);
 //extern "C" unsigned long* malloc_bufv_or_die(struct image_himem *m);
-extern pascal int malloc_or_die(unsigned size);
-extern pascal int malloc_bufv_or_die(struct image_himem *m);
-extern pascal void set_cmdline(const char *filename);
+extern _fastcall int malloc_or_die(unsigned size);
+extern _fastcall int malloc_bufv_or_die(struct image_himem *m);
+extern _fastcall void set_cmdline(const char *filename);

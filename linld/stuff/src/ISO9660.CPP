@@ -9,9 +9,10 @@ int isoreset(char *name)
 {
 	static const unsigned long root = 16UL * 2048;
 	struct isostate *x=&isostate;
-	if (name)
+	if (name) {
 		//x->fd = open(name, O_RDONLY);
 		x->fd = open(name);
+	}
 	if (isoreadsector(&root) < 0 || strhead(x->buffer+1,"CD001")) {
 		//close(x->fd);
 		return -1;
@@ -36,8 +37,8 @@ int isoreaddir(int restart)
 		goto restarted;
 	}
 	if (x->curpos >= SECTORSZ || * (short *) (x->buffer + x->curpos) == 0) {
-		if (x->curdirsize < DIRSECTORSZ) return -1;
 	restarted:
+		if (x->curdirsize < DIRSECTORSZ) return -1;
 		isoreadsector(&x->curdirofs);
 		//x->curdirofs += SECTORSZ;
 		*(int *)((char *) &x->curdirofs+1) += SECTORSZ/256;
@@ -45,8 +46,9 @@ int isoreaddir(int restart)
 		x->curpos = 0;
 	}
 	p = x->buffer; p += x->curpos;
-	if ((size = * (short *) p) == 0)
+	if ((size = * (short *) p) == 0) {
 		return -1;
+	}
 	x->fileofs = (* (unsigned long *) (p + 2)) << SECTORBITS;
 	x->filesize = * (unsigned long *) (p + 10);
 	x->filemod = (p[25] & 2) ? 0040755 : 0100755;

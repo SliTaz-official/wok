@@ -93,14 +93,11 @@ fd2close	dw	?	;30    u16 fd2close;
 ends				;};
 
 ;***************************************************************
-;pascal void xmm_alloc(struct image_himem *m)
+;_fastcall void xmm_alloc(struct image_himem *m)
 ;***************************************************************
         global  @xmm_alloc$qp11image_himem:near
         proc    @xmm_alloc$qp11image_himem near
 
-                pop     ax
-                pop     bx
-                push    ax
 	ret	; TO BE FIXED
 		ifndef	NO386
 		mov	edx,[(image_himem bx).size]		; m->size

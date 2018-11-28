@@ -31,6 +31,7 @@ tazboot_cmd	db	"tazboot.cmd",0
 
         segment _BSS byte public use16 'BSS'
 
+_xfer_buf	db	4096	dup (?)
         global  _no_exit:byte
 _no_exit	db	?
 filecnt		db	?		; in fact 0 minus file count...
@@ -47,9 +48,9 @@ ultoabuf	db	12	dup (?)
         segment _TEXT byte public use16 'CODE'
 
 ;***************************************************************
-;pascal void strcpy(const char* a, const char* b);
-;pascal void  strcat(const char* a, const char* b);
-;pascal void  strcatb(const char* a, const char* b);
+;_fastcall void strcpy(const char* a, const char* b);
+;_fastcall void  strcat(const char* a, const char* b);
+;_fastcall void  strcatb(const char* a, const char* b);
 ;***************************************************************
         global  @strcatb$qpxzct1:near
         proc	@strcatb$qpxzct1 near
@@ -65,12 +66,9 @@ ultoabuf	db	12	dup (?)
 @strcpy$qpxzct1:
 		xor	cx,cx
 	endif
-		pop	ax			;caller return address
-                pop	bx			; b
-                pop	dx			; a
-                push	ax
                 push	si
-                mov	si,dx
+                mov	si,bx			; a
+		xchg	ax,dx			; b
 	ifdef	EXTRA
 		jcxz	@@nocat
 	endif
@@ -106,15 +104,13 @@ strend:
 	ifdef	EXTRA
                 p8086
 ;***************************************************************
-;pascal char strstr(const char* a,const char* b);
+;_fastcall char strstr(const char* a,const char* b);
 ;***************************************************************
         global  @strstr$qpxzct1:near
         proc    @strstr$qpxzct1 near
 
-		pop	ax			;caller return address
-                pop	cx			; b
-                pop	dx			; a
-                push	ax
+                xchg	ax,cx			; b
+                mov	dx,bx			; a
                 push	si
 @@loop:
 		xor	ax,ax
@@ -136,15 +132,11 @@ strend:
 
 
 ;***************************************************************
-;pascal int strcmp(const char* a,const char* b);
+;_fastcall int strcmp(const char* a,const char* b);
 ;***************************************************************
         global  @strcmp$qpxzct1:near
         proc    @strcmp$qpxzct1 near
 
-		pop	cx			;caller return address
-                pop	ax			; b
-                pop	bx			; a
-                push	cx
                 push	si
 		xchg	ax,si
 		dec	bx
@@ -165,14 +157,11 @@ strend:
 
 
 ;***************************************************************
-;pascal void puts(const char* s):
+;_fastcall void puts(const char* s):
 ;***************************************************************
         global  @puts$qpxzc:near
         proc    @puts$qpxzc near
 
-		pop	ax			;caller return address
-                pop	bx			; s
-                push	ax
 ;        global  puts:near			; puts(bx)
 puts:
 		call	@@putsz
@@ -192,16 +181,13 @@ puts:
 
 
 ;***************************************************************
-;pascal int fileattr(const char* name);
+;_fastcall int fileattr(const char* name);
 ;***************************************************************
         global  @fileattr$qpxzc:near
         proc    @fileattr$qpxzc near
 
-		pop	ax			;caller return address
-                pop	dx			; name
-                push	ax
                 mov	ax,4300h
-                int	21h
+		call	dos_filename
 		xchg	ax,cx
 		jmp	chkc
 
@@ -209,19 +195,24 @@ puts:
 
 
 ;***************************************************************
-;pascal int open(const char* name, int flags=O_RDONLY);
+;_fastcall int open(const char* name, int flags=O_RDONLY);
 ;***************************************************************
+        global  openargs:near			; openargs(bx)
+openargs:
+		cmp	[byte bx],'@'
+		stc
+		jne	fail
+		inc	bx
+
         global  @open$qpxzc:near
         proc    @open$qpxzc near
 
-		pop	ax			;caller return address
-                pop	bx			; name
-                push	ax
         global  open:near			; open(bx)
 open:
-                mov	dx,bx
-		;mov	cl,0			; attribute mask
                 mov	ax,3d00h		; read-only+compatibility
+		;mov	cl,0			; attribute mask
+dos_filename:
+                mov	dx,bx
 dos:
                 int	21h
 chkc:
@@ -237,26 +228,15 @@ doret:
 		endif
                 ret
 
-        global  openargs:near			; openargs(bx)
-openargs:
-		cmp	[byte bx],'@'
-		stc
-		jne	fail
-		inc	bx
-		jmp	open
-
         endp    @open$qpxzc
 
 
 ;***************************************************************
-;pascal int close(int fd);
+;_fastcall int close(int fd);
 ;***************************************************************
         global  @close$qi:near
         proc    @close$qi near
 
-		pop	ax			;caller return address
-                pop	bx			; fd
-                push	ax
         global  close:near			; close(bx)
 close:
 		mov	ah,3Eh
@@ -268,8 +248,8 @@ close:
 
 
 ;***************************************************************
-;pascal int read(int fd, void* data, int sz);
-;pascal int write(int fd, const void* data, int sz);
+;_fastcall int read(int fd, void* data, int sz);
+;_fastcall int write(int fd, const void* data, int sz);
 ;***************************************************************
         global  @read$qipvi:near
         proc    @read$qipvi near
@@ -281,11 +261,9 @@ close:
 @write$qipvi:
                 clc
 		endif
-		pop	ax			;caller return address
-                pop	cx			; sz
-                pop	dx			; data
-                pop	bx			; fd
-                push	ax
+		xchg	ax,bx			; fd
+		xchg	ax,dx			; data
+		xchg	ax,cx			; sz
 		ifdef	WRITE
                 mov	ah,40h
 		sbb	ah,0
@@ -299,21 +277,15 @@ close:
 
         endp    @read$qipvi
 
-		;ifdef EXTRA
 ;***************************************************************
-;pascal long lseekset(int fd, unsigned long sz);
+;_fastcall long lseekset(int fd, unsigned sz);
 ;***************************************************************
 
-        global  @lseekset$qiul:near
-        proc    @lseekset$qiul near
+        global  @lseekset$qiui:near
+        proc    @lseekset$qiui near
 
-		pop	ax			;caller return address
-                pop	dx			; sz lo
-                pop	cx			; sz hi
-                pop	bx			; fd
-                push	ax
-		;endif
-;        global  lseekset:near
+		xchg	ax,bx			; fd
+		xor	cx,cx			; sz hi
 lseekset:
 		clc
 		db	0B0h			; mov al,im
@@ -327,9 +299,10 @@ lseek0:						; lseek0(bx,ax=dir)
 		xor	cx,cx
 		jmp	dos
 
-        endp    @lseekset$qiul
+        endp    @lseekset$qiui
 
-		ifdef	EXTRA
+		ifdef EXTRA
+
 ;typedef unsigned dirsizetype;
 struc		isostate		; struct isostate {
 fd		dw	?		; 0	int fd;
@@ -345,33 +318,26 @@ curpos		dw	?		;26	unsigned curpos;
 buffer		db	2560	dup(?)	;28	char buffer[2048+512];
 ends					; } isostate;
 ;***************************************************************
-;pascal long isolseek(const unsigned long *offset);
+;_fastcall long isolseek(const unsigned long *offset);
 ;***************************************************************
         global  @isolseek$qpxul:near
         proc    @isolseek$qpxul near
 
-		pop	ax
-		pop	bx
-		push	ax
 isolseek:
 		mov	dx,[bx]
 		mov	cx,[bx+2]
 		extrn	_isostate:isostate
 		mov	bx,[_isostate.fd]
-		jmp	lseekset		; (bx=fd, sz=cx:dx)
-		
-        endp    @isolseek$qpxul
+		jmp	lseekset
 
+	endp	@isolseek$qpxul
 
 ;***************************************************************
-;pascal int isoreadsector(const unsigned long *offset);
+;_fastcall int isoreadsector(const unsigned long *offset);
 ;***************************************************************
         global  @isoreadsector$qpxul:near
         proc    @isoreadsector$qpxul near
 
-		pop	ax
-		pop	bx
-		push	ax
 		call	isolseek
 		and	ax,dx
 		inc	ax
@@ -391,15 +357,11 @@ isolseek:
 
 
 ;***************************************************************
-;pascal int strhead(const char* a,const char* b);
+;_fastcall int strhead(const char* a,const char* b);
 ;***************************************************************
         global  @strhead$qpxzct1:near
         proc    @strhead$qpxzct1 near
 
-		pop	cx			;caller return address
-                pop	ax			; b
-                pop	bx			; a
-                push	cx
 @@loop:
 		xchg	ax,bx
                 mov	cl,[bx]			; cl = *b++
@@ -417,14 +379,12 @@ isolseek:
 
 
 ;***************************************************************
-;pascal char* malloc_or_die(unsigned size);
+;_fastcall char* malloc_or_die(unsigned size);
 ;***************************************************************
         global  @malloc_or_die$qui:near
         proc    @malloc_or_die$qui near
 
-		pop	ax			;caller return address
-                pop	cx			; size
-                push	ax
+                mov	cx,bx			; size
         global  malloc_or_die:near		; malloc_or_die(cx)
 malloc_or_die:
 		mov	ax,[_heap_top]		; return value
@@ -441,16 +401,13 @@ malloc_or_die:
 
 
 ;***************************************************************
-;pascal int die(const char* msg);
+;_fastcall int die(const char* msg);
 ;int exit();
 ;int abort();
 ;***************************************************************
 	global	@die$qpxzc:near
 	proc	@die$qpxzc near
 @die$qpxzc:
-		pop	ax			;caller return address
-                pop	bx			; s
-                ;push	ax
         global  die:near			; die(bx)
 die:
 		call	puts
@@ -565,17 +522,14 @@ ends					;}; // size=8200
 	endif
 
 ;***************************************************************
-;pascal u32* malloc_bufv_or_die(struct image_himem *m);
+;_fastcall u32* malloc_bufv_or_die(struct image_himem *m);
 ;***************************************************************
         global  @malloc_bufv_or_die$qp11image_himem:near
         proc    @malloc_bufv_or_die$qp11image_himem near
 
                 p386
-		pop	bx			;caller return address
-		pop	ax
-		push	bx
 		push	si
-		xchg	ax,si
+		mov	si,bx
 	ifdef	LARGE_IMAGES
 		movzx	ecx,[word ((image_himem si).size) + 2]
 		shr	cx,4			; pages index size = size >> 20
@@ -688,14 +642,11 @@ ends					;}; // size=8200
 
 
 ;***************************************************************
-;pascal void memcpy_image(struct image_himem *m);
+;_fastcall void memcpy_image(struct image_himem *m);
 ;***************************************************************
         global  @memcpy_image$qp11image_himem:near
         proc    @memcpy_image$qp11image_himem near
 
-		pop	ax			;caller return address
-		pop	bx
-		push	ax
 		ifndef	NO386
 		mov	edx,[(image_himem bx).fallback]
 		mov	eax,[(image_himem bx).buf]
@@ -752,21 +703,18 @@ memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
         endp    @memcpy_image$qp11image_himem
 
 ;***************************************************************
-;pascal void storepage(u32 *dst, u16 src);
+;_fastcall void storepage(u32 *dst);
 ;***************************************************************
-        global  @storepage$qpulus:near
-        proc    @storepage$qpulus near
+        global  @storepage$qpul:near
+        proc    @storepage$qpul near
 
-		pop	ax			;caller return address
-		pop	cx
-		pop	bx
-		push	ax
 		ifndef	NO386
 		mov	edx,[bx]
 		else
 		mov	ax,[bx]
 		mov	dx,[bx+2]
 		endif
+		mov	cx,offset _xfer_buf
 storepage:					; storepage(edx,cx)
 		ifndef	NO386
 		push	0
@@ -784,20 +732,17 @@ storepage:					; storepage(edx,cx)
 		push	ds
 		jmp	call_memcpy32
 
-        endp    @storepage$qpulus
+        endp    @storepage$qpul
 
 
 	ifdef	LARGE_IMAGES
                 p386
 ;***************************************************************
-;pascal void reset_bufv(u32 *p);
+;_fastcall void reset_bufv(u32 *p);
 ;***************************************************************
         global  @reset_bufv$qpul:near
         proc    @reset_bufv$qpul near
 
-		pop	ax			;caller return address
-		pop	bx
-		push	ax
 		mov	[curdata],bx
 		and	[dword (data_himem bx).cacheidx],0
 		ret
@@ -867,23 +812,22 @@ _next_bufv:
 		endif
 
 ;***************************************************************
-;pascal void open_image(const char *name, struct image_himem *m);
+;_fastcall void open_image(const char *name, struct image_himem *m);
 ;***************************************************************
         global  @open_image$qpxzcp11image_himem:near
         proc    @open_image$qpxzcp11image_himem near
 
-		pop	cx			;caller return address
-		pop	ax			; m
-		pop	bx			; name
-		push	cx
                 push	di
 		xchg	ax,di
+		ifdef	EXTRA
+		cmp	[(image_himem di).fd],0		; iso image/kernel ?
+		jnz	@@alreadydone
+		endif
                 mov	[(image_himem di).state],bx
 		push	bx
 		ifdef	EXTRA
-		xor	ax,ax
-		or	ax,[(image_himem di).next_chunk]
-		jne	@@next
+		cmp	[(image_himem di).next_chunk],0	; iso image/initrd ?
+		jnz	@@next
 		endif
 		mov	[(image_himem di).next_chunk],offset next_chunk
 @@next:
@@ -904,6 +848,7 @@ _next_bufv:
 		jnz	@@next
                 pop	[(image_himem di).state]
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
+@@alreadydone:
                 pop	di
 		ret
 
@@ -911,21 +856,15 @@ _next_bufv:
 
 
 ;***************************************************************
-;pascal int read_image(struct image_himem *m, char* data, int sz);
+;_fastcall int read_image(struct image_himem *m);
 ;***************************************************************
-        global  @read_image$qp11image_himempvi:near
-        proc    @read_image$qp11image_himempvi near
+        global  @read_image$qp11image_himem:near
+        proc    @read_image$qp11image_himem near
 
-		arg	sz	:word,	\
-			data	:word,	\
-			m	:word	= PARAM_SIZE
-
-		push	bp
-		mov	bp,sp
-		push	si di
-		mov	di,[m]
-		mov	si,[data]
-		mov	bp,[sz]
+		push	bp si di
+		mov	di,bx
+		mov	si,offset _xfer_buf
+		mov	bp,4096
 		push	bp		; original size
 @@loop:
 		ifndef	NO386
@@ -945,7 +884,7 @@ _next_bufv:
 @@szok:
 		jcxz	image_done
 		mov	dx,si
-		mov	bx,[word di]
+		mov	bx,[di]
 		call	@read$cxdxbx
 		jc	image_done
 		add	si,ax
@@ -987,9 +926,9 @@ image_done:
                 pop	ax		; original size
 		sub	ax,bp
                 pop	di si bp
-		ret	6
+		ret
 
-        endp    @read_image$qp11image_himempvi
+        endp    @read_image$qp11image_himem
 
 
 ;***************************************************************
@@ -998,8 +937,8 @@ image_done:
 	global	@strtol$qpxzc:near
 	proc	@strtol$qpxzc near
 
-		pop	ax			;caller return address
-                pop	cx			; s
+		pop	ax
+                pop	bx			; s
 		push	ax
 		ifndef	NO386
 		xor	ebx,ebx
@@ -1266,14 +1205,10 @@ strtol_ret:
 
 
 ;***************************************************************
-;pascal void chdirname(char *path)
+;_fastcall void chdirname(char *path)
 ;***************************************************************
         global  @chdirname$qpzc:near
         proc    @chdirname$qpzc near
-
-		pop	ax
-		pop	bx
-		push	ax
 
 		cmp	[byte bx+1],3Ah		; ':'
 		jne	@@nodisk
@@ -1315,15 +1250,13 @@ strtol_ret:
 
 
 ;***************************************************************
-;pascal char *ultoa(unsigned long n);
+;_fastcall char *ultoa(unsigned long n);
 ;***************************************************************
         global  @ultoa$qul:near
         proc    @ultoa$qul near
 
-		pop	dx
-		pop	cx
-		pop	ax
-		push	dx		; AX:CX = n
+		xchg	ax,cx
+		xchg	ax,dx		; AX:CX = n
 		push	si
 		mov	si,10
 		mov	bx,offset ultoabuf+11
@@ -1348,16 +1281,13 @@ strtol_ret:
 
 
 ;***************************************************************
-;pascal unsigned long kver2ul(char *kernel_version);
+;_fastcall unsigned long kver2ul(char *kernel_version);
 ;***************************************************************
         global  @kver2ul$qpzc:near
         proc    @kver2ul$qpzc near
 
-		pop	bx
-		pop	ax
-		push	bx
 		push	si
-		xchg	ax,si
+		mov	si,bx
 		xor	bx,bx
 		mov	cx,304h
 @@number:
@@ -1386,7 +1316,7 @@ kver2ulret:
 
 ;***************************************************************
 ;void try_default_args();
-;pascal void set_cmdline(const char *filename);
+;_fastcall void set_cmdline(const char *filename);
 ;***************************************************************
 	ifdef	EXTRA
 

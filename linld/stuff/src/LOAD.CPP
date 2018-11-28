@@ -242,6 +242,12 @@ cmd_line_ok:
 void load_initrd() {
     struct image_himem *m = &initrd;
     if (!initrd_name && !m->fd) return;
+#if defined(__BORLANDC__) && defined(NO386)
+#pragma option -3
+    asm{
+	.386p
+    }
+#endif
     m->errmsg = "Can't use initrd file";
 
     open_image(initrd_name, m);
