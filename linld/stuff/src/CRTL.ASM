@@ -892,7 +892,7 @@ _next_bufv:
 		ifndef	NO386
 		cwde				; ax < 8000h
 		sub	[(image_himem di).chunk_size],eax
-		mov	bx,ax
+		xchg	eax,ebx
 		else
 		sub	[word (image_himem di).chunk_size],ax
 		xchg	ax,bx
@@ -910,12 +910,12 @@ _next_bufv:
 		jmp	@@fill
 @@filled:
 		ifndef	NO386
-		sub	[(image_himem di).remaining],eax
+		sub	[(image_himem di).remaining],ebx
 		else
 		sub	[word (image_himem di).remaining],bx
 		sbb	[word ((image_himem di).remaining)+2],dx
 		endif
-		sub	si,ax
+		sub	si,bx
 		pushf
                 and	cx,[(image_himem di).next_chunk]
 		jcxz	@@same_chunk
