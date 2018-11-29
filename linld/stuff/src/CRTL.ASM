@@ -237,8 +237,9 @@ doret:
         global  @close$qi:near
         proc    @close$qi near
 
-        global  close:near			; close(bx)
+        global  close:near			; close(ax)
 close:
+		xchg	ax,bx
 		mov	ah,3Eh
 		or	bx,bx
 		jnz	dos
@@ -384,7 +385,7 @@ isolseek:
         global  @malloc_or_die$qui:near
         proc    @malloc_or_die$qui near
 
-                mov	cx,bx			; size
+                xchg	ax,cx			; size
         global  malloc_or_die:near		; malloc_or_die(cx)
 malloc_or_die:
 		mov	ax,[_heap_top]		; return value
@@ -451,7 +452,7 @@ ends				;};
         proc    next_chunk near
 
 		push	si
-		mov	bx,[(image_himem di).fd]
+		mov	ax,[(image_himem di).fd]
 		call	close
 		ifndef	NO386
 		xor	eax,eax
