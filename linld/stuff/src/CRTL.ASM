@@ -49,19 +49,19 @@ ultoabuf	db	12	dup (?)
 
 ;***************************************************************
 ;_fastcall void strcpy(const char* a, const char* b);
-;_fastcall void  strcat(const char* a, const char* b);
-;_fastcall void  strcatb(const char* a, const char* b);
+;_fastcall void strcat(const char* a, const char* b);
+;_fastcall void strcatb(const char* a, const char* b);
 ;***************************************************************
         global  @strcatb$qpxzct1:near
         proc	@strcatb$qpxzct1 near
 
 	ifdef	EXTRA
 		mov	cl,7Fh
-		db	0bbh			; mov	bx,imm opcode
+		db	0bah			; mov	dx,imm opcode
         global  @strcat$qpxzct1:near
 @strcat$qpxzct1:
 		mov	cl,80h
-		db	0bbh			; mov	bx,imm opcode
+		db	0bah			; mov	dx,imm opcode
         global	@strcpy$qpxzct1:near
 @strcpy$qpxzct1:
 		xor	cx,cx
@@ -861,19 +861,18 @@ _next_bufv:
         global  @read_image$qp11image_himem:near
         proc    @read_image$qp11image_himem near
 
-		push	bp si di
+		push	si di
 		mov	di,bx
-		mov	si,offset _xfer_buf
-		mov	bp,4096
-		push	bp		; original size
+		mov	si,4096
+		push	si		; original size
 @@loop:
 		ifndef	NO386
-		movzx	ecx,bp
+		movzx	ecx,si
 		mov	eax,[(image_himem di).chunk_size]
 		cmp	ecx,eax
 		jb	@@szok
 		else
-		mov	cx,bp
+		mov	cx,si
 		mov	ax,[word (image_himem di).chunk_size]
 		cmp	cx,ax
 		jb	@@szok
@@ -883,49 +882,50 @@ _next_bufv:
 		xchg	ax,cx
 @@szok:
 		jcxz	image_done
-		mov	dx,si
+		mov	dx,offset _xfer_buf
 		mov	bx,[di]
 		call	@read$cxdxbx
 		jc	image_done
-		add	si,ax
 		xor	cx,cx
+		cwd				; ax < 8000h
 		ifndef	NO386
 		cwde				; ax < 8000h
 		sub	[(image_himem di).chunk_size],eax
+		mov	bx,ax
 		else
-		cwd				; ax < 8000h
 		sub	[word (image_himem di).chunk_size],ax
+		xchg	ax,bx
 		sbb	[word ((image_himem di).chunk_size)+2],dx
 		jnz	@@fill
 		cmp	[word (image_himem di).chunk_size],dx
 		endif
 		jnz	@@fill
-		inc	cx
+		dec	cx
 @@fill:
-		test	al,3
+		test	bl,3
 		je	@@filled
-		mov	[si],ch
-		inc	si
-		inc	ax
+		mov	[bx+_xfer_buf],dh
+		inc	bx
 		jmp	@@fill
 @@filled:
 		ifndef	NO386
 		sub	[(image_himem di).remaining],eax
 		else
-		sub	[word (image_himem di).remaining],ax
+		sub	[word (image_himem di).remaining],bx
 		sbb	[word ((image_himem di).remaining)+2],dx
 		endif
-		sub	bp,ax
+		sub	si,ax
 		pushf
+                and	cx,[(image_himem di).next_chunk]
 		jcxz	@@same_chunk
-                call	[(image_himem di).next_chunk]
+		call	cx
 @@same_chunk:
 		popf
 		jnz	@@loop
 image_done:
                 pop	ax		; original size
-		sub	ax,bp
-                pop	di si bp
+		sub	ax,si
+                pop	di si
 		ret
 
         endp    @read_image$qp11image_himem
