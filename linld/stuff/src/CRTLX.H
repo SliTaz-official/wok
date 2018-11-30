@@ -1,5 +1,6 @@
 // This file is distributed under GPL
 //
+extern _fastcall long lseekset(int fd, unsigned sz);
 extern _fastcall void strcpy(const char* a,const char* b);
 extern _fastcall void strcat(const char* a,const char* b);
 extern _fastcall int strcmp(const char* a,const char* b);

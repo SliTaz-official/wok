@@ -142,17 +142,15 @@ char* load_kernel() {
     struct kernelparams_t *kernelparams;
     kernelparams = &(((first1k_t*) (rm_buf = (u8 *)malloc_or_die(_32k)))->params);
 #define first1k		((first1k_t*)((u8 *)kernelparams-0x1F1))
-   {
-    u16 rm_seek;
 
 do {
     // Do not use malloc below until heap_top adjustment (see <*>)
- if (read(m->fd, rm_buf, rm_seek=0x400) == 0x400) {
+ if (read(m->fd, rm_buf, 0x200) == 0x200) {
 
+    lseekcur(m->fd,-0x200);
     if(kernelparams->setup_sects == 0) {
 #if 1
         if(* (int *) &first1k->pad10[0x3F-0x24] == 0x3AE8) {
-            lseekset(m->fd,rm_seek=0x200);
             csip+=0xFFE00042;
         }
         else
@@ -163,17 +161,14 @@ do {
 	 kernelparams->boot_flag != 0xAA55)
         die("Not a kernel");
     heap_top = rm_buf+(rm_size=0x200*(kernelparams->setup_sects+1));  // <*>
+    m->size -= rm_size;
+    m->chunk_size -= rm_size;
 
     // Read remaining rm loader
-
-    {
-    u16 cnt = rm_size-rm_seek;
-    if (read(m->fd, rm_buf+rm_seek, cnt) == cnt) break;
-    }
+    if (read(m->fd, rm_buf, rm_size) == rm_size) break;
  }
         die(kernel_file_error);
 } while (0);
-   }
 
     // Tell rm loader some info
 
@@ -225,10 +220,8 @@ cmd_line_ok:
 
   {
     struct image_himem *m = &pm;
-    m->fallback = (u32((u16(_CS)+0x1FFF)&0xF000)<<4);
-    m->size -= rm_size;
-    m->chunk_size -= rm_size;
-    if((u16)((m->fallback+m->size)>>4) > topseg() || pm_high) {
+    if((u16)(((m->fallback=(u32((u16(_CS)+0x1FFF)&0xF000)<<4))+m->size)>>4) >
+		 topseg() || pm_high) {
         m->fallback = base_himem;
     }
 
@@ -252,7 +245,7 @@ void load_initrd() {
 
     open_image(initrd_name, m);
 
-    if ((m->fallback=(memtop()-m->size)&(~PAGE_MASK)) < m[-1].fallback+m[-1].size) {
+    if ((m->fallback=(memtop()-m->size)&(~PAGE_MASK))-m[-1].fallback < m[-1].size) {
         close(m->fd);
         puts(m->errmsg);
         return;

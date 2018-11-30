@@ -35,7 +35,7 @@ extern _fastcall int fileattr(const char* name);
 extern _fastcall int open(const char* name);
 extern _fastcall int close(int fd);
 extern _fastcall int read(int fd, void* data, int sz);
-extern _fastcall long lseekset(int fd, unsigned sz);
+extern _fastcall long lseekcur(int fd, int where);
 extern _fastcall int puts(const char* s);
 extern pascal unsigned long strtol(const char *s);
 

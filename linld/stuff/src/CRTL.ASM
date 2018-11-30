@@ -280,27 +280,41 @@ close:
 
 ;***************************************************************
 ;_fastcall long lseekset(int fd, unsigned sz);
+;_fastcall long lseekcur(int fd, int while);
 ;***************************************************************
 
-        global  @lseekset$qiui:near
-        proc    @lseekset$qiui near
+        global  @lseekcur$qii:near
+        proc    @lseekcur$qii near
 
-		xchg	ax,bx			; fd
-		xor	cx,cx			; sz hi
-lseekset:
-		clc
-		db	0B0h			; mov al,im
-;        global  rewind:near
-rewind:						; rewind(bx)
-		stc
-		mov	ax,4200h
-		jnc	dos
-lseek0:						; lseek0(bx,ax=dir)
+		xchg	ax,bx
+		xchg	ax,dx
 		cwd
+		xchg	ax,dx
+		xchg	ax,cx
+		mov	al,1
+		jmp	lseek
+		ifdef EXTRA
+        global  @lseekset$qiui:near
+@lseekset$qiui:
+		mov	bl,0
+		jmp	lseek0x
+lseekset:
+		mov	bl,0
+		jmp	lseekx
+		endif
+rewind:						; rewind(ax)
+		mov	bl,0
+lseek0:						; lseek0(bx,ax=dir)
+		xor	dx,dx
+lseek0x:
 		xor	cx,cx
+lseekx:
+		xchg	ax,bx
+lseek:
+		mov	ah,42h
 		jmp	dos
 
-        endp    @lseekset$qiui
+        endp    @lseekcur$qii
 
 		ifdef EXTRA
 
@@ -483,8 +497,7 @@ ends				;};
 		jc	@@die
 		mov	[(image_himem di).fd],ax
 		mov	[(image_himem di).fd2close],ax
-		xchg	ax,bx
-		mov	ax,4202h		; SEEK_END
+		mov	bl,02h			; SEEK_END
 		call	lseek0
 @@die:
 		mov	bx,[(image_himem di).errmsg]

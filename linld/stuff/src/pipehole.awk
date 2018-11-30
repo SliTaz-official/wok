@@ -36,7 +36,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	else if (hold == 3) {
 		hold=0
-		if (/^	add	[abcds][ix],/ || /^	sub	[abcds][ix],/) {
+		if (/^	add	[abcds][ix],/) {
 			split($2,regs2,",")
 			if (regs[1] == regs2[1] && (regs2[2] == "offset" || isnum(regs2[2]))) {
 				t=$0; sub(/mov/,$1,s)
@@ -116,6 +116,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (args[2] == "large") { args[2] = $3 }
 		if (isnum(args[2]) && args[2] >= -65536 && args[2] < 0) {
 			print "	and	" substr(args[1],2) "," args[2]; next
+		}
+	}
+	if (/^	add	[bcd]x,/ || /^	sub	[bcd]x,/) {
+		split($0,args,",")
+		if (isnum(args[2]) && (args[2] % 256 == 0)) {
+			sub(/x,/,"h,",s)
+			print s "/256"; next
 		}
 	}
 	if (/^	add	word ptr/ || /^	sub	word ptr/) {
