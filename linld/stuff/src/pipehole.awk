@@ -151,18 +151,17 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			print s "/256"; next
 		}
 	}
-	if (/^	add	dword ptr/ || /^	sub	dword ptr/ ||
-	    /^	add	e[abcd]x,/ || /^	sub	e[abcd]x,/) {
+	if (/^	add	dword ptr/ || /^	sub	dword ptr/) {
 		split($0,args,",")
 		if (args[2] == "large") { args[2] = $3 }
 		if (isnum(args[2])) {
-			if (/dword ptr/ && args[2] % 16777216 == 0) {
-				sub(/dword/,"byte",s);
+			if (args[2] % 16777216 == 0) {
+				sub(/dword/,"byte",s)
 				sub(/\],/,"+3],",s) || sub(/,/,"+3,",s)
 				print s "/16777216"; next
 			}
 			if (args[2] % 65536 == 0) {
-				sub(/dword/,"word",s); sub(/	e/,"",s)
+				sub(/dword/,"word",s)
 				sub(/\],/,"+2],",s) || sub(/,/,"+2,",s)
 				print s "/65536"; next
 			}
