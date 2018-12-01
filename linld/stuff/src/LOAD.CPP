@@ -138,7 +138,6 @@ char* load_kernel() {
 
     char *version_string;
   {
-    struct first1k_t *first1k;
     struct kernelparams_t *kernelparams;
     kernelparams = &(((first1k_t*) (rm_buf = (u8 *)malloc_or_die(_32k)))->params);
 #define first1k		((first1k_t*)((u8 *)kernelparams-0x1F1))

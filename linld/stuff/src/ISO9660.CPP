@@ -51,7 +51,8 @@ int isoreaddir(int restart)
 	}
 	x->fileofs = (* (unsigned long *) (p + 2)) << SECTORBITS;
 	x->filesize = * (unsigned long *) (p + 10);
-	x->filemod = (p[25] & 2) ? 0040755 : 0100755;
+	x->filemod = 0x81ED; if (p[25] & 2) ((char *)&(x->filemod))[1] = 0x41;
+	//x->filemod = (p[25] & 2) ? 0040755 : 0100755;
 	//x->filemod = 0100755 - ((p[25] & (char)2) << 13);
 #ifdef __ROCKRIDGE
 	endname = NULL;

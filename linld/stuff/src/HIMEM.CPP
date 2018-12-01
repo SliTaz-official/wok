@@ -58,11 +58,13 @@ void last_ditch() {
         // 'Gathering' copy in chunks of PAGE_SIZE
         // No risk of overlapping: kernel is copied from above to 1m mark
         m->size = pm2initrd(m)->size = PAGE_SIZE;
+#define ADD_PAGE(x)	(*(unsigned long *)(((char *)&x)+1)+=PAGE_SIZE/256)
+#define SUB_PAGE(x)	(*(unsigned long *)(((char *)&x)+1)-=PAGE_SIZE/256)
 	reset_bufv(q);
 	do {
             m->buf = *q;
             memcpy_image(m);
-            next(q); m->fallback+=PAGE_SIZE;
+            next(q); ADD_PAGE(m->fallback);
         } while(*q);
         // Move initrd
 	m = pm2initrd(m);
@@ -75,10 +77,10 @@ void last_ditch() {
             q=m->bufv;
 	    reset_bufv(q);
             do {
-                next(q); m->fallback+=PAGE_SIZE;
+                next(q); ADD_PAGE(m->fallback);
             } while(*q);
             do {
-                prev(q); m->fallback-=PAGE_SIZE;
+                prev(q); SUB_PAGE(m->fallback);
                 m->buf = *q;
                 memcpy_image(m);
             } while(q != m->bufv);
