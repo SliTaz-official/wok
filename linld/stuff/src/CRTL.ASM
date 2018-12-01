@@ -279,11 +279,11 @@ close:
         endp    @read$qipvi
 
 ;***************************************************************
-;_fastcall long lseekset(int fd, unsigned sz);
-;_fastcall long lseekcur(int fd, int while);
+;_fastcall long lseekset(int fd, unsigned whence);
+;_fastcall long lseekcur(int fd, int whence);
 ;***************************************************************
 
-        global  @lseekcur$qii:near
+        global  @lseekcur$qii:near		; fd=ax whence=dx
         proc    @lseekcur$qii near
 
 		xchg	ax,bx
@@ -311,7 +311,7 @@ lseek0x:
 lseekx:
 		xchg	ax,bx
 lseek:
-		mov	ah,42h
+		mov	ah,42h			; bx=fd cx:dx=offset al=whence
 		jmp	dos
 
         endp    @lseekcur$qii
@@ -342,7 +342,7 @@ isolseek:
 		mov	dx,[bx]
 		mov	cx,[bx+2]
 		extrn	_isostate:isostate
-		mov	bx,[_isostate.fd]
+		mov	ax,[_isostate.fd]
 		jmp	lseekset
 
 	endp	@isolseek$qpxul
@@ -502,9 +502,9 @@ ends				;};
 @@die:
 		mov	bx,[(image_himem di).errmsg]
 		jc	die
-		mov	bx,[(image_himem di).fd]
 		ifndef	NO386
 		push	eax
+		mov	ax,[(image_himem di).fd]
 		call	rewind
 		pop	eax
 @@end:
@@ -512,6 +512,7 @@ ends				;};
 		else
 		push	ax
 		push	dx
+		mov	ax,[(image_himem di).fd]
 		call	rewind
 		pop	dx
 		pop	ax
