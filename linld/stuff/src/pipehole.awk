@@ -14,7 +14,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			hold=3; split($2,regs,","); next
 		}
 		if (/^	movzx	eax,ax$/) { hold=4; next }
-		if (/^	cmp	word ptr/ || /^  cmp     [abcd]x,/) {
+		if (/^	cmp	word ptr/ || /^  cmp     [bcd]x,/) {
 			split($0,regs,",")
 			if (isnum(regs[2]) && regs[2] != 0 &&
 				 (regs[2] % 256) == 0) {
@@ -70,7 +70,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	else if (hold == 5) {
 		hold=0
 		if ($1 == "jae" || $1 == "jb") {
-			sub(/word ptr/,"byte ptr",s); sub(/x,/,"h,",s)
+			sub(/word ptr/,"byte ptr",s); sub(/x,/,"h,",s) ||
 			sub(/\],/,"+1],",s) || sub(/,/,"+1,",s)
 			s = s "/256"
 		}
@@ -143,10 +143,10 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		}
 	}
 	if (/^	add	word ptr/ || /^	sub	word ptr/ ||
-	    /^	add	[abcd]x,/ || /^	sub	[abcd]x,/) {
+	    /^	add	[bcd]x,/ || /^	sub	[bcd]x,/) {
 		split($0,args,",")
 		if (isnum(args[2]) && (args[2] % 256 == 0)) {
-			sub(/word ptr/,"byte ptr",s); sub(/x,/,"h,",s)
+			sub(/word ptr/,"byte ptr",s); sub(/x,/,"h,",s) ||
 			sub(/\],/,"+1],",s) || sub(/,/,"+1,",s)
 			print s "/256"; next
 		}
@@ -158,7 +158,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (isnum(args[2])) {
 			if (args[2] % 16777216 == 0) {
 				sub(/dword/,"byte",s);
-				sub(/	e/,"",s); sub(/x,/,"h,",s)
+				sub(/	e/,"",s); sub(/x,/,"h,",s) ||
 				sub(/\],/,"+3],",s) || sub(/,/,"+3,",s)
 				print s "/16777216"; next
 			}
