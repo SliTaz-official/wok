@@ -156,9 +156,8 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		split($0,args,",")
 		if (args[2] == "large") { args[2] = $3 }
 		if (isnum(args[2])) {
-			if (args[2] % 16777216 == 0) {
+			if (/dword ptr/ && args[2] % 16777216 == 0) {
 				sub(/dword/,"byte",s);
-				sub(/	e/,"",s); sub(/x,/,"h,",s) ||
 				sub(/\],/,"+3],",s) || sub(/,/,"+3,",s)
 				print s "/16777216"; next
 			}
