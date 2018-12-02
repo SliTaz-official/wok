@@ -18,8 +18,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			split($0,regs,",")
 			if (isnum(regs[2]) && regs[2] != 0 &&
 				 (regs[2] % 256) == 0) {
-				hold=5
-				next
+				hold=5; next
 			}
 		}
 		if (/^	mov	cl,4$/)   { hold=8; next }
@@ -54,8 +53,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/^	add	[abcds][ix],/) {
 			split($2,regs2,",")
 			if (regs[1] == regs2[1] && (regs2[2] == "offset" || isnum(regs2[2]))) {
-				t=$0; sub(/mov/,$1,s)
-				if ($1 == "add") sub(/add/,"mov",t); else sub(/sub/,"mov",t)
+				t=$0; sub(/mov/,$1,s); sub(/add/,"mov",t)
 				print t; print s; next
 			}
 		}
