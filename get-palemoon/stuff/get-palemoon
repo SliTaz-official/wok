@@ -1,46 +1,47 @@
 #!/bin/sh
 # get Pale Moon web browser
 
-WGET_URL="http://linux.palemoon.org$(wget -O - \
-http://linux.palemoon.org/download/mainline/ 2> /dev/null | \
+PACKAGE="palemoon-opt"
+WEB_SITE="http://linux.palemoon.org"
+PKGROOT="/opt/palemoon"
+################
+WGET_URL="$WEB_SITE$(wget -O - $WEB_SITE/download/mainline/ 2> /dev/null | \
 sed '/686/!d;s/.*href="\([^"]*\).*/\1/;q')"
-VERSION="$(echo $WGET_URL | sed 's/.*palemoon-\(.*\).en-US.*/\1/')"
+VERSION="$(echo $WGET_URL | sed 's/.*palemoon-\([0-9\.]*\)\..*/\1/')"
 
 mkdir -p $1/opt; cd $1/opt; busybox wget -O - $WGET_URL | tar -xjf -
 
 ################
-DESKTOP=usr/share/applications/palemoon-opt.desktop
+DESKTOP=usr/share/applications/$PACKAGE.desktop
 cat > $1/$DESKTOP << EOA
 [Desktop Entry]
 Type=Application
 Name=Palemoon v${VERSION%.*}
-Exec=/opt/palemoon/palemoon %u
-Icon=/opt/palemoon/browser/icons/mozicon128.png
+Exec=$PKGROOT/palemoon %u
+Icon=$PKGROOT/browser/icons/mozicon128.png
 StartupNotify=true
 Categories=GTK;Network;WebBrowser;
 MimeType=text/html;text/xml;application/xhtml+xml;application/xml;
 EOA
 ################
-PKGDIR="$1/var/lib/tazpkg/installed/palemoon-opt"
+PKGDIR="$1/var/lib/tazpkg/installed/$PACKAGE"
 mkdir -p "$PKGDIR"
 cat > "$PKGDIR/receipt" << EOR
 # SliTaz package receipt.
 
-UNPACKED_SIZE="$(du -hs $1/opt/palemoon | awk '{ print $1 }')"
-PACKAGE="palemoon-opt"
+UNPACKED_SIZE="$(du -hs $1$PKGROOT | awk '{ print $1 }')"
+PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="network"
 SHORT_DESC="Browser based on Firefox that's optimised for performance"
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="MPL2"
-WEB_SITE="http://linux.palemoon.org"
+WEB_SITE="$WEB_SITE"
 
 DEPENDS="dbus-glib"
+SUGGESTED="ffmpeg"
 EOR
 ################
-find $1/opt/palemoon -type f > "$PKGDIR/files.list"
-echo "/$DESKTOP" >> "$PKGDIR/files.list"
-################
-find $1/opt/palemoon -type f -exec md5sum \{\} \; > "$PKGDIR/md5sum"
-md5sum "/$DESKTOP" >> "$PKGDIR/md5sum"
+find $1$PKGROOT /$DESKTOP -type f | tee "$PKGDIR/files.list" | \
+	xargs md5sum > "$PKGDIR/md5sum"
 ################
