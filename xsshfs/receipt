@@ -17,8 +17,31 @@ SUGGESTED="pcmanfm"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $src/usr $fs/
-	sed -i 's|/bin/bash|/bin/sh|' $fs/usr/bin/xsshfs
+	mkdir -p $fs/usr/share/icons/hicolor/scalable/apps $fs/usr/share/xsshfs
+	mkdir -p $fs/usr/share/applications $fs/usr/bin $fs/usr/share/pixmaps
+	cat > $fs/usr/bin/xsshfs <<EOT
+#!/bin/sh
+
+cd /usr/share/xsshfs
+exec ./xsshfs.pl $@
+EOT
+	cat > $fs/usr/share/applications/xsshfs.desktop <<EOT
+[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=Xsshfs
+GenericName=xsshfs
+Icon=/usr/share/pixmaps/xsshfs.svg
+Exec=xsshfs
+Terminal=false
+StartupNotify=false
+Categories=Network;
+EOT
+	chmod +x $fs/usr/bin/xsshfs
+	cp $src/xsshfs* $fs/usr/share/xsshfs
+	cp -a $src/locale $fs/usr/share
+	ln -s ../xsshfs/xsshfs.svg $fs/usr/share/pixmaps
+	ln -s ../../../../xsshfs/xsshfs.svg $fs/usr/share/icons/hicolor/scalable/apps
 	sed -i 's|"/bin/fusermount|"/usr/bin/fusermount|' $fs/usr/share/xsshfs/xsshfs.pm
 	sed -i 's|xdg-open|pcmanfm|' $fs/usr/share/xsshfs/xsshfs.pm
 }
