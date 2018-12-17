@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="linux-libre-acpi"
-VERSION="2.6.37-gnu"
+VERSION="3.18.129-gnu"
 CATEGORY="base-system"
 SHORT_DESC="The Linux Libre kernel acpi modules."
 DEPENDS="linux-libre"
@@ -17,14 +17,8 @@ genpkg_rules()
     local path
     path=lib/modules/$VERSION-slitaz/kernel
     mkdir -p $fs/$path
-    export src
-    export _pkg
-    $wanted_stuff/list_modules.sh drivers/acpi drivers/platform/x86/thinkpad_acpi.ko.gz \
-    drivers/platform/x86/asus-laptop.ko.gz drivers/platform/x86/eeepc-wmi.ko.gz \
-    drivers/platform/x86/msi-laptop.ko.gz drivers/platform/x86/panasonic-laptop.ko.gz \
-    drivers/platform/x86/sony-laptop.ko.gz drivers/platform/x86/acer-wmi.ko.gz \
-    drivers/platform/x86/hp-wmi.ko.gz drivers/platform/x86/wmi.ko.gz \
-    drivers/platform/x86/classmate-laptop.ko.gz drivers/platform/x86/topstar-laptop.ko.gz | \
+    export src install
+    $wanted_stuff/list_modules.sh drivers/acpi drivers/platform/x86 | \
     while read module; do
     	dir=$path/$(dirname $module)
     	[ -d $fs/$dir ] || mkdir -p $fs/$dir
@@ -32,9 +26,9 @@ genpkg_rules()
     done
 
     for i in $(cat $wanted_stuff/modules-$VERSION.list); do
-        if [ $fs/lib/modules/$VERSION-slitaz/kernel/$i ]; then
-	    rm -f $fs/lib/modules/$VERSION-slitaz/kernel/$i
-	fi
+        if [ -f $fs/$path/$i ]; then
+			rm -f $fs/$path/$i
+		fi
     done
 }
 

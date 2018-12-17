@@ -1,30 +1,31 @@
 # SliTaz package receipt.
 
-PACKAGE="linux-libre-usbip"
-VERSION="2.6.37-gnu"
+PACKAGE="linux-libre-overlayfs"
+VERSION="3.18.129-gnu"
 CATEGORY="base-system"
-SHORT_DESC="The Linux Libre kernel usbip module."
+SHORT_DESC="The Linux Libre kernel overlayfs module."
 MAINTAINER="gokhlayeh@slitaz.org"
 LICENSE="GPL2"
-PROVIDE="linux-usbip"
+PROVIDE="linux-overlayfs"
 DEPENDS="linux-libre"
 WANTED="linux-libre"
 WEB_SITE="http://www.fsfla.org/svnwiki/selibre/linux-libre/"
-PROVIDE="usbip-module"
+CONFIG_FILES="/etc/filesystems"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
     local path
     path=lib/modules/$VERSION-slitaz/kernel
-    mkdir -p $fs/$path
+    mkdir -p $fs/$path $fs/etc
     export src
     export _pkg
-    $wanted_stuff/list_modules.sh drivers/staging/usbip | while read module; do
+    $wanted_stuff/list_modules.sh fs/${PACKAGE##*-} | while read module; do
     	dir=$path/$(dirname $module)
     	[ -d $fs/$dir ] || mkdir -p $fs/$dir
         cp -a $install/$path/$module $fs/$dir
     done
+    touch $fs/etc/filesystems
 }
 
 # Post install/remove commands for Tazpkg.
