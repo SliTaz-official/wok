@@ -1,0 +1,204 @@
+--- virtualbox-ose-4.2.6/src/VBox/Additions/linux/sharedfolders/dirops.c
++++ virtualbox-ose-4.2.6/src/VBox/Additions/linux/sharedfolders/dirops.c
+@@ -233,7 +233,11 @@
+  * b. failure to compute fake inode number
+  * c. filldir returns an error (see comment on that)
+  */
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++static int sf_dir_iterate (struct file *dir, struct dir_context *ctx)
++#else
+ static int sf_dir_read (struct file *dir, void *opaque, filldir_t filldir)
++#endif
+ {
+     TRACE();
+     for (;;)
+@@ -257,12 +261,19 @@
+                 /* skip erroneous entry and proceed */
+                 LogFunc(("sf_getdent error %d\n", err));
+                 dir->f_pos += 1;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++                ctx->pos += 1;
++#endif
+                 continue;
+         }
+ 
+         /* d_name now contains a valid entry name */
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++        sanity = ctx->pos + 0xbeef;
++#else
+         sanity = dir->f_pos + 0xbeef;
++#endif
+         fake_ino = sanity;
+         if (sanity - fake_ino)
+         {
+@@ -270,8 +281,12 @@
+             return -EINVAL;
+         }
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++        err = dir_emit(ctx, d_name, strlen(d_name), fake_ino, DT_UNKNOWN);
++#else
+         err = filldir(opaque, d_name, strlen(d_name),
+                       dir->f_pos, fake_ino, DT_UNKNOWN);
++#endif
+         if (err)
+         {
+             LogFunc(("filldir returned error %d\n", err));
+@@ -281,6 +296,9 @@
+         }
+ 
+         dir->f_pos += 1;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++	ctx->pos += 1;
++#endif
+     }
+ 
+     BUG();
+@@ -289,7 +307,11 @@
+ struct file_operations sf_dir_fops =
+ {
+     .open    = sf_dir_open,
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++    .iterate = sf_dir_iterate,
++#else
+     .readdir = sf_dir_read,
++#endif
+     .release = sf_dir_release,
+     .read    = generic_read_dir
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)
+--- virtualbox-ose-4.2.6/src/VBox/Additions/linux/drm/vboxvideo_drv.c
++++ virtualbox-ose-4.2.6/src/VBox/Additions/linux/drm/vboxvideo_drv.c
+@@ -88,7 +88,6 @@
+ #endif
+         .mmap = drm_mmap,
+         .poll = drm_poll,
+-        .fasync = drm_fasync,
+     },
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
+     .pci_driver =
+--- virtualbox-ose-4.2.6/src/VBox/Additions/linux/drm/vboxvideo_drm.c
++++ virtualbox-ose-4.2.6/src/VBox/Additions/linux/drm/vboxvideo_drm.c
+@@ -98,7 +98,6 @@
+         .unlocked_ioctl = drm_ioctl,
+         .mmap = drm_mmap,
+         .poll = drm_poll,
+-        .fasync = drm_fasync,
+ };
+ #endif
+ 
+@@ -129,7 +128,6 @@
+ #endif
+         .mmap = drm_mmap,
+         .poll = drm_poll,
+-        .fasync = drm_fasync,
+     },
+ #else /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0) || defined(DRM_RHEL63) */
+     .fops = &driver_fops,
+--- virtualbox-ose-4.2.6/src/VBox/Additions/linux/sharedfolders/utils.c
++++ virtualbox-ose-4.2.6/src/VBox/Additions/linux/sharedfolders/utils.c
+@@ -144,8 +144,13 @@
+ #endif
+     }
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
+     inode->i_uid = sf_g->uid;
+     inode->i_gid = sf_g->gid;
++#else
++    inode->i_uid.val = sf_g->uid;
++    inode->i_gid.val = sf_g->gid;
++#endif
+     inode->i_size = info->cbObject;
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 19) && !defined(KERNEL_FC6)
+     inode->i_blksize = 4096;
+--- virtualBbx-ose-4.2.6/src/VBox/Additions/common/VBoxGuest/VBoxGuest-linux.c
++++ virtualbox-ose-4.2.6/src/VBox/Additions/common/VBoxGuest/VBoxGuest-linux.c
+@@ -196,7 +196,7 @@
+ 
+ 
+ /** PCI hotplug structure. */
+-static const struct pci_device_id __devinitdata g_VBoxGuestPciId[] =
++static const struct pci_device_id g_VBoxGuestPciId[] =
+ {
+     {
+         vendor:     VMMDEV_VENDORID,
+--- virtualbox-ose-4.2.6/src/VBox/Additions/linux/sharedfolders/regops.c
++++ virtualbox-ose-4.2.6/src/VBox/Additions/linux/sharedfolders/regops.c
+@@ -574,8 +574,13 @@
+ # else
+     .sendfile    = generic_file_sendfile,
+ # endif
++# if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0)
++    .read_iter   = generic_file_read_iter,
++    .write_iter  = generic_file_write_iter,
++# else
+     .aio_read    = generic_file_aio_read,
+     .aio_write   = generic_file_aio_write,
++# endif
+ # if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
+     .fsync       = noop_fsync,
+ # else
+--- virtualbox-ose-4.2.6/src/VBox/HostDrivers/VBoxPci/linux/VBoxPci-linux.c
++++ virtualbox-ose-4.2.6/src/VBox/HostDrivers/VBoxPci/linux/VBoxPci-linux.c
+@@ -429,7 +429,11 @@
+         if (!pNewCreds)
+                 goto done;
+ 
++# if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++        pNewCreds->fsuid.val = 0;
++# else
+         pNewCreds->fsuid = 0;
++# endif
+         pOldCreds = override_creds(pNewCreds);
+ #endif
+ 
+@@ -539,7 +543,11 @@
+         if (!pNewCreds)
+             goto done;
+ 
++# if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++        pNewCreds->fsuid.val = 0;
++# else
+         pNewCreds->fsuid = 0;
++# endif
+         pOldCreds = override_creds(pNewCreds);
+ #endif
+         RTStrPrintf(szFileBuf, cMaxBuf,
+--- virtualbox-ose-4.2.6/src/VBox/HostDrivers/Support/linux/SUPDrv-linux.c
++++ virtualbox-ose-4.2.6/src/VBox/HostDrivers/Support/linux/SUPDrv-linux.c
+@@ -223,7 +223,11 @@
+ DECLINLINE(RTUID) vboxdrvLinuxUid(void)
+ {
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
++# if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++    return current->cred->uid.val;
++# else
+     return current->cred->uid;
++# endif
+ #else
+     return current->uid;
+ #endif
+@@ -232,7 +236,11 @@
+ DECLINLINE(RTGID) vboxdrvLinuxGid(void)
+ {
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
++# if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++    return current->cred->gid.val;
++# else
+     return current->cred->gid;
++# endif
+ #else
+     return current->gid;
+ #endif
+@@ -241,7 +249,11 @@
+ DECLINLINE(RTUID) vboxdrvLinuxEuid(void)
+ {
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
++# if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
++    return current->cred->euid.val;
++# else
+     return current->cred->euid;
++# endif
+ #else
+     return current->euid;
+ #endif
