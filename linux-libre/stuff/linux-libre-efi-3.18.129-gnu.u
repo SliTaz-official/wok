@@ -1,0 +1,220 @@
+--- linux-3.16.53/drivers/firmware/efi/libstub/efi-stub-helper.c
++++ linux-3.16.53/drivers/firmware/efi/libstub/efi-stub-helper.c
+@@ -341,6 +341,79 @@
+ }
+ 
+ /*
++ *
++ */
++static efi_status_t get_file_size(efi_system_table_t *sys_table_arg,
++				  efi_loaded_image_t *image,
++				  efi_char16_t *filename_16,
++				  struct file_info *file)
++{
++	efi_status_t status;
++	efi_file_handle_t *fh = NULL;
++#ifdef CONFIG_X86_64
++	efi_char16_t *p, c;
++#endif
++
++	/* Only open the volume once. */
++	if (!fh) {
++		status = efi_open_volume(sys_table_arg, image,
++					 (void **)&fh);
++		if (status != EFI_SUCCESS)
++			return status;
++	}
++#ifdef CONFIG_X86_64
++	for (p = filename_16; *p != '\0'; p++);
++	c = p[-2];
++	file->size = EFI_FILE_SIZE_MUTE;
++	while (1) {
++#endif
++		status = efi_file_size(sys_table_arg, fh, filename_16,
++				       (void **)&file->handle, &file->size);
++#ifdef CONFIG_X86_64
++		if (status != EFI_SUCCESS && p[-2] != '\0') {
++			p[-2] = '\0';
++			file->size++;
++			continue;
++		}
++		break;
++	}
++	p[-2] = c;
++#endif
++	return status;
++}
++
++/*
++ *
++ */
++static efi_status_t read_efi_file(efi_system_table_t *sys_table_arg,
++			      struct file_info *file,
++			      unsigned long addr,
++			      unsigned long size)
++{
++	efi_status_t status;
++
++	while (size) {
++		unsigned long chunksize;
++		if (size > __chunk_size)
++			chunksize = __chunk_size;
++		else
++			chunksize = size;
++
++		status = efi_file_read(file->handle,
++				       &chunksize,
++				       (void *)addr);
++		if (status != EFI_SUCCESS) {
++			pr_efi_err(sys_table_arg, "Failed to read file\n");
++			break;
++		}
++		addr += chunksize;
++		size -= chunksize;
++	}
++	efi_file_close(file->handle);
++	return status;
++}
++
++/*
+  * Check the cmdline for a LILO-style file= arguments.
+  *
+  * We only support loading a file from the same filesystem as
+@@ -434,18 +507,14 @@
+ 			}
+ 		}
+ 
++#ifdef CONFIG_X86_64
++		*p++ = '6';
++		*p++ = '4';
++#endif
+ 		*p = '\0';
+ 
+-		/* Only open the volume once. */
+-		if (!i) {
+-			status = efi_open_volume(sys_table_arg, image,
+-						 (void **)&fh);
+-			if (status != EFI_SUCCESS)
+-				goto free_files;
+-		}
+-
+-		status = efi_file_size(sys_table_arg, fh, filename_16,
+-				       (void **)&file->handle, &file->size);
++		status = get_file_size(sys_table_arg,image,filename_16,file);
++	
+ 		if (status != EFI_SUCCESS)
+ 			goto close_handles;
+ 
+@@ -476,28 +545,11 @@
+ 
+ 		addr = file_addr;
+ 		for (j = 0; j < nr_files; j++) {
+-			unsigned long size;
+-
+-			size = files[j].size;
+-			while (size) {
+-				unsigned long chunksize;
+-				if (size > __chunk_size)
+-					chunksize = __chunk_size;
+-				else
+-					chunksize = size;
+-
+-				status = efi_file_read(files[j].handle,
+-						       &chunksize,
+-						       (void *)addr);
+-				if (status != EFI_SUCCESS) {
+-					pr_efi_err(sys_table_arg, "Failed to read file\n");
+-					goto free_file_total;
+-				}
+-				addr += chunksize;
+-				size -= chunksize;
+-			}
+-
+-			efi_file_close(files[j].handle);
++			status = read_efi_file(sys_table_arg, &files[j], addr, files[j].size);
++			if (status != EFI_SUCCESS)
++				goto free_file_total;
++			addr += files[j].size + 3;
++			addr &= 0xFFFFFFFCUL;
+ 		}
+ 
+ 	}
+@@ -669,6 +721,30 @@
+ 	}
+ 
+ 	if (!options_chars) {
++		/* No command line options, look for linux.cmdline */
++#ifdef CONFIG_X86_64
++#define cmdline_name L"EFI\\BOOT\\linux.cmdline64"
++#else
++#define cmdline_name L"EFI\\BOOT\\linux.cmdline"
++#endif
++		struct file_info file;
++		efi_char16_t filename_16[sizeof(cmdline_name)];
++
++		memcpy((void *)filename_16, (void *)cmdline_name, sizeof(cmdline_name));
++		if (get_file_size(sys_table_arg, image, filename_16, &file) != EFI_SUCCESS)
++			goto no_cmdline_file;
++
++		options_bytes = file.size+1;
++		if (efi_low_alloc(sys_table_arg, options_bytes, 0, &cmdline_addr) != EFI_SUCCESS)
++			goto no_cmdline_file;
++
++		*((u8 *)cmdline_addr + file.size) = '\0';
++		if (read_efi_file(sys_table_arg, &file, cmdline_addr, file.size) == EFI_SUCCESS)
++			goto return_cmdline;
++	}
++	no_cmdline_file:
++
++	if (!options_chars) {
+ 		/* No command line options, so return empty string*/
+ 		options = &zero;
+ 	}
+@@ -685,6 +761,7 @@
+ 	s1 = efi_utf16_to_utf8(s1, s2, options_chars);
+ 	*s1 = '\0';
+ 
++return_cmdline:
+ 	*cmd_line_len = options_bytes;
+ 	return (char *)cmdline_addr;
+ }
+--- linux-3.16.53/arch/x86/boot/compressed/eboot.c
++++ linux-3.16.53/arch/x86/boot/compressed/eboot.c
+@@ -50,6 +50,7 @@
+ 
+ void efi_char16_printk(efi_system_table_t *, efi_char16_t *);
+ 
++#define EFI_FILE_SIZE_MUTE	0x4554554d20525245LL
+ static efi_status_t
+ __file_size32(void *__fh, efi_char16_t *filename_16,
+ 	      void **handle, u64 *file_sz)
+@@ -63,9 +64,11 @@
+ 	status = efi_early->call((unsigned long)fh->open, fh, &h, filename_16,
+ 				 EFI_FILE_MODE_READ, (u64)0);
+ 	if (status != EFI_SUCCESS) {
+-		efi_printk(sys_table, "Failed to open file: ");
+-		efi_char16_printk(sys_table, filename_16);
+-		efi_printk(sys_table, "\n");
++		if (*file_sz != EFI_FILE_SIZE_MUTE) {
++			efi_printk(sys_table, "Failed to open file: ");
++			efi_char16_printk(sys_table, filename_16);
++			efi_printk(sys_table, "\n");
++		}
+ 		return status;
+ 	}
+ 
+@@ -116,9 +119,11 @@
+ 	status = efi_early->call((unsigned long)fh->open, fh, &h, filename_16,
+ 				 EFI_FILE_MODE_READ, (u64)0);
+ 	if (status != EFI_SUCCESS) {
+-		efi_printk(sys_table, "Failed to open file: ");
+-		efi_char16_printk(sys_table, filename_16);
+-		efi_printk(sys_table, "\n");
++		if (*file_sz != EFI_FILE_SIZE_MUTE) {
++			efi_printk(sys_table, "Failed to open file: ");
++			efi_char16_printk(sys_table, filename_16);
++			efi_printk(sys_table, "\n");
++		}
+ 		return status;
+ 	}
+ 
