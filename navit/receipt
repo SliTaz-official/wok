@@ -9,6 +9,7 @@ LICENSE="GPL2"
 WEB_SITE="http://www.navit-project.org/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+EXTRA_SOURCE_FILES="osm_bbox_11.3,47.9,11.7,48.2.osm.bz2"
 
 DEPENDS="glib glibc-base libpostgresqlclient zlib"
 BUILD_DEPENDS="mesa-dev freeglut-dev quesoglc-dev freeimage-dev \
@@ -19,9 +20,13 @@ xorg-libXi-dev openssl-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
+	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] &&
+		cp $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES navit/maps/
 	./configure $CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
+	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] ||
+		cp navit/maps/$EXTRA_SOURCE_FILES $SOURCES_REPOSITORY/
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
