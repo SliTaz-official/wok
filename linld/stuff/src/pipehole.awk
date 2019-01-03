@@ -21,7 +21,11 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 				hold=5; next
 			}
 		}
-		if (/^	mov	cl,4$/)   { hold=8; next }
+		if (/^	mov	ax,cs$/)  { hold=6; kept=0; next }
+		if (/^	mov	cl,4$/)   { hold=7; next }
+		if (/^	cmp	word ptr DGROUP:.*,0$/)  {
+			hold=8; split($2,regs,","); next
+		}
 	}
 	else if (hold == 1) {
 		if (/^   ;/) { line[kept++]=$0; next }
@@ -30,9 +34,9 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if ($1 == "sub") op="-"
 		if (op != "" && regs[1] == args[1]) {
 			if (isnum(args[2])) {
-				print "\tlea\t" regs[1] ",[" regs[2] op args[2] "]"
-				for (i = 0; i < kept; i++) print line[i]; kept=0
-				next
+				for (i = kept++; i > 0; i--) line[i] = line[i-1]
+				line[0] = "\tlea\t" regs[1] ",[" regs[2] op args[2] "]"
+				hold=10; next
 			}
 			line[kept++]=$0
 			hold=1
@@ -74,7 +78,21 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		}
 		print s
 	}
-	else if (hold == 8) {
+	else if (hold == 6) {
+		if (($1 == "and" || $1 == "add") && $2 ~ /^ax,/) {
+			line[kept++]=$0
+			next
+		}
+		p=$0
+		if (/^	movzx	eax,ax$/) {
+			s="	mov	eax,cs"; p=""
+		}
+		print s
+		for (i = 0; i < kept; i++) print line[i]; kept=0
+		if (p != "") print p
+		hold=0; next
+	}
+	else if (hold == 7) {
 		hold=0
 		if (/^	call	near ptr N_LXURSH@$/) {
 			print "	extrn	N_LXURSH@4:near"
@@ -87,6 +105,29 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			next
 		}
 		print s
+	}
+	else if (hold == 8) {
+		if ($1 == "je" || $1 == "jne") { p=$0; hold=9; next }
+		hold=0
+		print s
+	}
+	else if (hold == 9) {
+		hold=0; split($2,args,",")
+		if (/^	mov	ax,/ && args[2] == regs[1]) {
+			print; print "	or	ax,ax"; print p; next
+		}
+		print s; print p;
+	}
+	else if (hold == 10) {
+		hold=0
+		if (/^	mov	[sd]i,ax$/) {
+			split($2,args,",")
+			for (i = 0; i < kept; i++) {
+				sub(/ax/,args[1],line[i]); print line[i]
+			}
+			next
+		}
+		for (i = 0; i < kept; i++) print line[i]
 	}
 	s=$0
 	# These optimisation may break ZF or CF

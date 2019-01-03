@@ -9,5 +9,5 @@ mawk -f pipehole.awk TAZBOOT.ASO > TAZBOOT.ASM
 mawk -f pipehole.awk LOAD.ASO > LOAD.ASM
 mawk -f pipehole.awk HIMEM.ASO > HIMEM.ASM
 mawk -f pipehole.awk ISO9660.ASO > ISO9660.ASM
-tasm /la /m /dEXTRA /dNO386 /dLARGE_IMAGES *.asm > asm.log
+tasm /la /m /dEXTRA /dNO386 /dLARGE_IMAGES /dLONG_FILENAME *.asm > asm.log
 tlink /m /s /t @linkx.cmd > lnk.log

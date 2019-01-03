@@ -48,9 +48,9 @@ ultoabuf	db	12	dup (?)
         segment _TEXT byte public use16 'CODE'
 
 ;***************************************************************
-;_fastcall void strcpy(const char* a, const char* b);
-;_fastcall void strcat(const char* a, const char* b);
-;_fastcall void strcatb(const char* a, const char* b);
+;_fastcall void strcpy(bx:const char* a, ax:const char* b);
+;_fastcall void strcat(bx:const char* a, ax:const char* b);
+;_fastcall void strcatb(bx:const char* a, ax:const char* b);
 ;***************************************************************
         global  @strcatb$qpxzct1:near
         proc	@strcatb$qpxzct1 near
@@ -67,19 +67,19 @@ ultoabuf	db	12	dup (?)
 		xor	cx,cx
 	endif
                 push	si
-                mov	si,bx			; a
-		xchg	ax,dx			; b
+                xchg	ax,bx			; b
+                xchg	ax,si			; a
 	ifdef	EXTRA
 		jcxz	@@nocat
 	endif
 @@catlp:
-		lodsb
+		lodsb				; a=si
 		or	al,al
                 jne	@@catlp
 		dec	si
 	ifdef	EXTRA
-		cmp	dx,si
-		adc	al,cl		; set S when dx != si or cl = 80
+		cmp	bx,si
+		adc	al,cl		; set S when bx != si or cl = 80
 		mov	al,20h
 		jns	@@cpyhead
 	endif
@@ -104,7 +104,7 @@ strend:
 	ifdef	EXTRA
                 p8086
 ;***************************************************************
-;_fastcall char strstr(const char* a,const char* b);
+;_fastcall char strstr(bx:const char* a, ax:const char* b);
 ;***************************************************************
         global  @strstr$qpxzct1:near
         proc    @strstr$qpxzct1 near
@@ -132,7 +132,7 @@ strend:
 
 
 ;***************************************************************
-;_fastcall int strcmp(const char* a,const char* b);
+;_fastcall int strcmp(bx:const char* a, ax:const char* b);
 ;***************************************************************
         global  @strcmp$qpxzct1:near
         proc    @strcmp$qpxzct1 near
@@ -145,7 +145,7 @@ strend:
 		lodsb
 		sub	al,[bx]
 		jnz	@@out
-		or	al,al
+		or	al,[bx]
 		jnz	@@lp
 @@out:
 		cbw
@@ -157,7 +157,7 @@ strend:
 
 
 ;***************************************************************
-;_fastcall void puts(const char* s):
+;_fastcall void puts(bx:const char* s):
 ;***************************************************************
         global  @puts$qpxzc:near
         proc    @puts$qpxzc near
@@ -181,7 +181,7 @@ puts:
 
 
 ;***************************************************************
-;_fastcall int fileattr(const char* name);
+;_fastcall int fileattr(bx:const char* name);
 ;***************************************************************
         global  @fileattr$qpxzc:near
         proc    @fileattr$qpxzc near
@@ -195,7 +195,7 @@ puts:
 
 
 ;***************************************************************
-;_fastcall int open(const char* name, int flags=O_RDONLY);
+;_fastcall int open(bx:const char* name, int flags=O_RDONLY);
 ;***************************************************************
         global  openargs:near			; openargs(bx)
 openargs:
@@ -209,6 +209,18 @@ openargs:
 
         global  open:near			; open(bx)
 open:
+	ifdef	LONG_FILENAME
+		mov	ax,716Ch
+		push	bx si di
+		mov	di,di			; alias hint
+		mov	si,bx
+		xor	bx,bx			; R/O
+		xor	cx,cx			; attributes
+		cwd				; action = open
+                int	21h
+		pop	di si bx
+                jnc	doret
+	endif
                 mov	ax,3d00h		; read-only+compatibility
 		;mov	cl,0			; attribute mask
 dos_filename:
@@ -232,7 +244,7 @@ doret:
 
 
 ;***************************************************************
-;_fastcall int close(int fd);
+;_fastcall int close(ax:int fd);
 ;***************************************************************
         global  @close$qi:near
         proc    @close$qi near
@@ -249,8 +261,8 @@ close:
 
 
 ;***************************************************************
-;_fastcall int read(int fd, void* data, int sz);
-;_fastcall int write(int fd, const void* data, int sz);
+;_fastcall int read(ax:int fd, bx:void* data, dx:int sz);
+;_fastcall int write(ax:int fd, bx:const void* data, dx:int sz);
 ;***************************************************************
         global  @read$qipvi:near
         proc    @read$qipvi near
@@ -279,8 +291,8 @@ close:
         endp    @read$qipvi
 
 ;***************************************************************
-;_fastcall long lseekset(int fd, unsigned whence);
-;_fastcall long lseekcur(int fd, int whence);
+;_fastcall long lseekset(ax:int fd, dx:unsigned whence);
+;_fastcall long lseekcur(ax:int fd, dx:int whence);
 ;***************************************************************
 
         global  @lseekcur$qii:near		; fd=ax whence=dx
@@ -333,7 +345,7 @@ curpos		dw	?		;26	unsigned curpos;
 buffer		db	2560	dup(?)	;28	char buffer[2048+512];
 ends					; } isostate;
 ;***************************************************************
-;_fastcall long isolseek(const unsigned long *offset);
+;_fastcall long isolseek(bx:const unsigned long *offset);
 ;***************************************************************
         global  @isolseek$qpxul:near
         proc    @isolseek$qpxul near
@@ -348,7 +360,7 @@ isolseek:
 	endp	@isolseek$qpxul
 
 ;***************************************************************
-;_fastcall int isoreadsector(const unsigned long *offset);
+;_fastcall int isoreadsector(bx:const unsigned long *offset);
 ;***************************************************************
         global  @isoreadsector$qpxul:near
         proc    @isoreadsector$qpxul near
@@ -372,7 +384,7 @@ isolseek:
 
 
 ;***************************************************************
-;_fastcall int strhead(const char* a,const char* b);
+;_fastcall int strhead(bx:const char* a, ax:const char* b);
 ;***************************************************************
         global  @strhead$qpxzct1:near
         proc    @strhead$qpxzct1 near
@@ -394,7 +406,7 @@ isolseek:
 
 
 ;***************************************************************
-;_fastcall char* malloc_or_die(unsigned size);
+;_fastcall char* malloc_or_die(ax:unsigned size);
 ;***************************************************************
         global  @malloc_or_die$qui:near
         proc    @malloc_or_die$qui near
@@ -416,7 +428,7 @@ malloc_or_die:
 
 
 ;***************************************************************
-;_fastcall int die(const char* msg);
+;_fastcall int die(bx:const char* msg);
 ;int exit();
 ;int abort();
 ;***************************************************************
@@ -461,7 +473,7 @@ fd2close	dw	?	;30    u16 fd2close;
 ends				;};
 
 ;***************************************************************
-;long next_chunk(struct image_himem *di);
+;static long next_chunk(struct image_himem *di);
 ;***************************************************************
         proc    next_chunk near
 
@@ -537,7 +549,7 @@ ends					;}; // size=8200
 	endif
 
 ;***************************************************************
-;_fastcall u32* malloc_bufv_or_die(struct image_himem *m);
+;_fastcall u32* malloc_bufv_or_die(bx:struct image_himem *m);
 ;***************************************************************
         global  @malloc_bufv_or_die$qp11image_himem:near
         proc    @malloc_bufv_or_die$qp11image_himem near
@@ -657,7 +669,7 @@ ends					;}; // size=8200
 
 
 ;***************************************************************
-;_fastcall void memcpy_image(struct image_himem *m);
+;_fastcall void memcpy_image(bx:struct image_himem *m);
 ;***************************************************************
         global  @memcpy_image$qp11image_himem:near
         proc    @memcpy_image$qp11image_himem near
@@ -718,7 +730,7 @@ memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
         endp    @memcpy_image$qp11image_himem
 
 ;***************************************************************
-;_fastcall void storepage(u32 *dst);
+;_fastcall void storepage(bx:u32 *dst);
 ;***************************************************************
         global  @storepage$qpul:near
         proc    @storepage$qpul near
@@ -753,7 +765,7 @@ storepage:					; storepage(edx,cx)
 	ifdef	LARGE_IMAGES
                 p386
 ;***************************************************************
-;_fastcall void reset_bufv(u32 *p);
+;_fastcall void reset_bufv(bx:u32 *p);
 ;***************************************************************
         global  @reset_bufv$qpul:near
         proc    @reset_bufv$qpul near
@@ -827,7 +839,7 @@ _next_bufv:
 		endif
 
 ;***************************************************************
-;_fastcall void open_image(const char *name, struct image_himem *m);
+;_fastcall void open_image(bx:const char *name, ax:struct image_himem *m);
 ;***************************************************************
         global  @open_image$qpxzcp11image_himem:near
         proc    @open_image$qpxzcp11image_himem near
@@ -871,7 +883,7 @@ _next_bufv:
 
 
 ;***************************************************************
-;_fastcall int read_image(struct image_himem *m);
+;_fastcall int read_image(bx:struct image_himem *m);
 ;***************************************************************
         global  @read_image$qp11image_himem:near
         proc    @read_image$qp11image_himem near
@@ -1220,7 +1232,7 @@ strtol_ret:
 
 
 ;***************************************************************
-;_fastcall void chdirname(char *path)
+;_fastcall void chdirname(bx:char *path)
 ;***************************************************************
         global  @chdirname$qpzc:near
         proc    @chdirname$qpzc near
@@ -1250,11 +1262,13 @@ strtol_ret:
 		mov	bx,dx
 		push	[word bx]
 		mov	[bx],al
+	ifdef	LONG_FILENAME
 		stc
 		mov	ax,713Bh		; chdir long filename (ds:dx)
 		int	21h
-		mov	ah,3Bh			; chdir(ds:dx)
 		jnc	@@chdirdone
+	endif
+		mov	ah,3Bh			; chdir(ds:dx)
 		int	21h
 @@chdirdone:
 		pop	[word bx]
@@ -1265,7 +1279,7 @@ strtol_ret:
 
 
 ;***************************************************************
-;_fastcall char *ultoa(unsigned long n);
+;_fastcall char *ultoa(axdx:unsigned long n);
 ;***************************************************************
         global  @ultoa$qul:near
         proc    @ultoa$qul near
@@ -1296,7 +1310,7 @@ strtol_ret:
 
 
 ;***************************************************************
-;_fastcall unsigned long kver2ul(char *kernel_version);
+;_fastcall unsigned long kver2ul(bx:char *kernel_version);
 ;***************************************************************
         global  @kver2ul$qpzc:near
         proc    @kver2ul$qpzc near
@@ -1331,7 +1345,6 @@ kver2ulret:
 
 ;***************************************************************
 ;void try_default_args();
-;_fastcall void set_cmdline(const char *filename);
 ;***************************************************************
 	ifdef	EXTRA
 
