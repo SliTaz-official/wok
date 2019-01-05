@@ -22,7 +22,7 @@ static void next_chunk(struct image_himem *m)
 	struct initrd_info *i = &initrd_state.info[m->state];
 	m->chunk_size = 0;
 	if (m->state >= initrd_state.cnt) return;
-	lseekset(m->fd,i->ofs);
+	lseekset2(m->fd,&i->ofs);
 	m->chunk_size = i->size;
 	m->state++;
 }
