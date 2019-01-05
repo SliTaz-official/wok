@@ -10,14 +10,6 @@
 const unsigned MIN_STACK = 0x400;
 const unsigned MAX_MALLOC = 0xF000;
 
-const char A_RDONLY    = 1;     // for fileattr()
-const char A_HIDDEN    = 2;
-const char A_SYSTEM    = 4;
-const char A_LABEL     = 8;
-const char A_DIRECTORY = 16;
-const char A_ARCHIVE   = 32;
-
-
 const char O_RDONLY = 0;     // for open()
 const char O_BINARY = 0;
 
@@ -30,7 +22,7 @@ extern char xfer_buf[4096];
 void parse_cmdline();
 extern _fastcall void strcatb(const char* a,const char* b);
 extern _fastcall int strhead(const char* a,const char* head);
-extern _fastcall int fileattr(const char* name);
+extern _fastcall int fileexist(const char* name);
 //extern "C" int open(const char* name, int flags);
 extern _fastcall int open(const char* name);
 extern _fastcall int close(int fd);

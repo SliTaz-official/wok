@@ -6,7 +6,6 @@
 #include "crtl.h"
 #include "common.h"
 
-struct image_himem imgs[2];
 int skip_alloc;
 
 void load_image(struct image_himem *m) {

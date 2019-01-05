@@ -115,6 +115,7 @@ u16 rm_size;
 static u8 pm_high;	// @ = @rm_size + 2, see JUMP.ASM
 static u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
 u32 base_himem = _1m+_64k;
+struct image_himem imgs[2];
 
 // register value to launch the kernel real mode code
 #ifdef NO386
@@ -129,8 +130,15 @@ static const char kernel_file_error[] = "Can't use kernel file";
 char* load_kernel() {
 
     struct	image_himem *m = &pm;
+#define _base_himem	(((u32*)(m))[-1])
+#define _rm_buf(m)	(((u8**)(m))[-3])
+#define _pm_high	(((u8*)(m))[-7])
+#define _rm_size	(*(u16*)((u8*)(m)-9))
 #ifdef NO386
+#define _csip		(*(u32*)(m+2))
     *((u16 *)&csip+1)=topseg()+0x20;
+#else
+#define _csip		csip
 #endif
     // Open kernel, read first kb, check it
     m->errmsg = kernel_file_error;
@@ -139,7 +147,7 @@ char* load_kernel() {
     char *version_string;
   {
     struct kernelparams_t *kernelparams;
-    kernelparams = &(((first1k_t*) (rm_buf = (u8 *)malloc_or_die(_32k)))->params);
+    kernelparams = &(((first1k_t*) (_rm_buf(m) = (u8 *)malloc_or_die(_32k)))->params);
 #define first1k		((first1k_t*)((u8 *)kernelparams-0x1F1))
 
 do {
@@ -150,7 +158,7 @@ do {
     if(kernelparams->setup_sects == 0) {
 #if 1
         if(* (int *) &first1k->pad10[0x3F-0x24] == 0x3AE8) {
-            csip+=0xFFE00042;
+            _csip+=0xFFE00042;
         }
         else
 #endif
@@ -159,12 +167,12 @@ do {
     if((kernelparams->setup_sects)>=(_32k/512) || // 0th sector not counted
 	 kernelparams->boot_flag != 0xAA55)
         die("Not a kernel");
-    heap_top = rm_buf+(rm_size=0x200*(kernelparams->setup_sects+1));  // <*>
-    m->size -= rm_size;
-    m->chunk_size -= rm_size;
+    heap_top = _rm_buf(m)+(_rm_size=0x200*(kernelparams->setup_sects+1));  // <*>
+    m->size -= _rm_size;
+    m->chunk_size -= _rm_size;
 
     // Read remaining rm loader
-    if (read(m->fd, rm_buf, rm_size) == rm_size) break;
+    if (read(m->fd, rm_buf, _rm_size) == _rm_size) break;
  }
         die(kernel_file_error);
 } while (0);
@@ -220,8 +228,8 @@ cmd_line_ok:
   {
     struct image_himem *m = &pm;
     if((u16)(((m->fallback=(u32((u16(_CS)+0x1FFF)&0xF000)<<4))+m->size)>>4) >
-		 topseg() || pm_high) {
-        m->fallback = base_himem;
+		 topseg() || _pm_high) {
+        m->fallback = _base_himem;
     }
 
     load_image(m);
@@ -251,7 +259,7 @@ void load_initrd() {
     }
 
     load_image(m);
-    struct kernelparams_t *kernelparams = &(((first1k_t*) rm_buf)->params);
+    struct kernelparams_t *kernelparams = &(((first1k_t*) _rm_buf(m-1))->params);
     if(kernelparams->header == HdrS) {
         kernelparams->initrd_buf  = m->fallback;
         kernelparams->initrd_size = m->size;

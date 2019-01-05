@@ -229,7 +229,7 @@ Examples for tazboot.cmd:\r\n\n\
 			base_himem = strtol(*argv);
 			goto next;
 		default:
-		if(i == 1 && fileattr(s) != -1) {
+		if(i == 1 && fileexist(s) != -1) {
 			goto set_kernelz;
 		}
 		else {

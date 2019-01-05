@@ -1,6 +1,7 @@
 BEGIN { hold=0 }
 function isnum(n) { return match(n,/^[0-9+-]/) }
 {
+	sub(/segment word public/,"segment byte public")
 	if (hold == 0) {
 		s=$0
 		if (/^	mov	.[ix],bx$/ || /^	mov	.[ix],.i$/) {

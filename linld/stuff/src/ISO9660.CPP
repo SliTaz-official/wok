@@ -17,8 +17,8 @@ int isoreset(char *name)
 		//close(x->fd);
 		return -1;
 	}
-	x->dirofs = (* (unsigned long *) (x->buffer + 0x9E)) << SECTORBITS;
-	x->dirsize = filesize2dirsize(* (unsigned long *) (x->buffer + 0xA6));
+	x->dirofs = (* (unsigned long *) (isostate.buffer + 0x9E)) << SECTORBITS;
+	x->dirsize = filesize2dirsize(* (unsigned long *) (isostate.buffer + 0xA6));
 	return 0;
 }
 

@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
 addincmdline:
 	    strcatb(buf_cmdline,*argv);
         }
-	else if(i == 1 && fileattr(s) != -1) {
+	else if(i == 1 && fileexist(s) != -1) {
 	    cmdline = (const char *) buf_cmdline + 1;
 	    goto set_kernel_name;
         }

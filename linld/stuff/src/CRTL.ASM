@@ -180,19 +180,6 @@ puts:
         endp    @puts$qpxzc
 
 
-;***************************************************************
-;_fastcall int fileattr(bx:const char* name);
-;***************************************************************
-        global  @fileattr$qpxzc:near
-        proc    @fileattr$qpxzc near
-
-                mov	ax,4300h
-		call	dos_filename
-		xchg	ax,cx
-		jmp	chkc
-
-        endp    @fileattr$qpxzc
-
 
 ;***************************************************************
 ;_fastcall int open(bx:const char* name, int flags=O_RDONLY);
@@ -211,19 +198,18 @@ openargs:
 open:
 	ifdef	LONG_FILENAME
 		mov	ax,716Ch
-		push	bx si di
-		mov	di,di			; alias hint
+		push	bx di si
 		mov	si,bx
 		xor	bx,bx			; R/O
 		xor	cx,cx			; attributes
+		xor	di,di			; alias hint
 		cwd				; action = open
                 int	21h
-		pop	di si bx
+		pop	si di bx
                 jnc	doret
 	endif
                 mov	ax,3d00h		; read-only+compatibility
 		;mov	cl,0			; attribute mask
-dos_filename:
                 mov	dx,bx
 dos:
                 int	21h
@@ -242,6 +228,14 @@ doret:
 
         endp    @open$qpxzc
 
+
+;***************************************************************
+;_fastcall int fileexist(bx:const char* name);
+;***************************************************************
+	global	@fileexist$qpxzc:near
+@fileexist$qpxzc:
+		call	@open$qpxzc
+		jc	fail
 
 ;***************************************************************
 ;_fastcall int close(ax:int fd);
@@ -274,6 +268,7 @@ close:
 @write$qipvi:
                 clc
 		endif
+@read$dxbxax:
 		xchg	ax,bx			; fd
 		xchg	ax,dx			; data
 		xchg	ax,cx			; sz
@@ -291,36 +286,25 @@ close:
         endp    @read$qipvi
 
 ;***************************************************************
-;_fastcall long lseekset(ax:int fd, dx:unsigned whence);
 ;_fastcall long lseekcur(ax:int fd, dx:int whence);
 ;***************************************************************
 
         global  @lseekcur$qii:near		; fd=ax whence=dx
         proc    @lseekcur$qii near
 
+		mov	cl,1
 		xchg	ax,bx
 		xchg	ax,dx
 		cwd
 		xchg	ax,dx
 		xchg	ax,cx
-		mov	al,1
 		jmp	lseek
-		ifdef EXTRA
-        global  @lseekset$qiui:near
-@lseekset$qiui:
-		mov	bl,0
-		jmp	lseek0x
-lseekset:
-		mov	bl,0
-		jmp	lseekx
-		endif
 rewind:						; rewind(ax)
 		mov	bl,0
-lseek0:						; lseek0(bx,ax=dir)
+lseek0:						; lseek0(ax,bl=dir)
 		xor	dx,dx
-lseek0x:
 		xor	cx,cx
-lseekx:
+lseekset:
 		xchg	ax,bx
 lseek:
 		mov	ah,42h			; bx=fd cx:dx=offset al=whence
@@ -346,15 +330,19 @@ buffer		db	2560	dup(?)	;28	char buffer[2048+512];
 ends					; } isostate;
 ;***************************************************************
 ;_fastcall long isolseek(bx:const unsigned long *offset);
+;_fastcall long lseekset2(ax:int fd, bx:unsigned long* whence);
 ;***************************************************************
         global  @isolseek$qpxul:near
         proc    @isolseek$qpxul near
 
 isolseek:
-		mov	dx,[bx]
-		mov	cx,[bx+2]
 		extrn	_isostate:isostate
 		mov	ax,[_isostate.fd]
+	global	@lseekset2$qipul
+@lseekset2$qipul:
+		mov	dx,[bx]
+		mov	cx,[bx+2]
+		mov	bl,0
 		jmp	lseekset
 
 	endp	@isolseek$qpxul
@@ -366,17 +354,11 @@ isolseek:
         proc    @isoreadsector$qpxul near
 
 		call	isolseek
-		and	ax,dx
-		inc	ax
-		jz	@@fail
-		mov	cx,2560
-		mov	dx,offset _isostate.buffer
-		mov	bx,[_isostate.fd]
-		call	@read$cxdxbx		; read(fd,buffer,2560)
-@@fail:
-		cmp	ax,2048
-		sbb	ax,ax
-		ret
+		jc	doret
+		mov	dx,2560
+		mov	bx,offset _isostate.buffer
+		mov	ax,[_isostate.fd]
+		jmp	@read$dxbxax		; read(fd,buffer,2560)
 
         endp    @isoreadsector$qpxul
 
