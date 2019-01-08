@@ -114,7 +114,6 @@ const u32 HdrS = 'H' + ('d'<<8) + (u32('r')<<16) + (u32('S')<<24);
 u16 rm_size;
 static u8 pm_high;	// @ = @rm_size + 2, see JUMP.ASM
 static u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
-u32 base_himem = _1m+_64k;
 struct image_himem imgs[2];
 
 // register value to launch the kernel real mode code
@@ -125,15 +124,15 @@ extern "C" u16 topseg();
 u32 csip=0x90200000;
 #define topseg() 0x9000
 #endif
+u32 base_himem = _1m+_64k;
 
 static const char kernel_file_error[] = "Can't use kernel file";
 char* load_kernel() {
 
     struct	image_himem *m = &pm;
-#define _base_himem	(((u32*)(m))[-1])
-#define _rm_buf(m)	(((u8**)(m))[-3])
-#define _pm_high	(((u8*)(m))[-7])
-#define _rm_size	(*(u16*)((u8*)(m)-9))
+#define _rm_buf(m)	(((u8**)(m))[-1])
+#define _pm_high	(((u8*)(m))[-3])
+#define _rm_size	(*(u16*)((u8*)(m)-5))
 #ifdef NO386
 #define _csip		(*(u32*)(m+2))
     *((u16 *)&csip+1)=topseg()+0x20;
@@ -229,7 +228,7 @@ cmd_line_ok:
     struct image_himem *m = &pm;
     if((u16)(((m->fallback=(u32((u16(_CS)+0x1FFF)&0xF000)<<4))+m->size)>>4) >
 		 topseg() || _pm_high) {
-        m->fallback = _base_himem;
+        m->fallback = base_himem;
     }
 
     load_image(m);
@@ -237,8 +236,22 @@ cmd_line_ok:
     return version_string;
 }
 
-// Read initrd if needed
+struct initrdparams_t {
+    u32     header;         // 0202 Magic signature "HdrS"
+    u16     version;        // 0206 Boot protocol version supported
+    u16     realmode_switch_ofs; // 0208 Hook called just before rm->pm
+    u16     realmode_switch_seg;
+    u16     start_sys_seg;  // 020E
+    u16     kernel_version; // 020C Points to kernel version string
+    u8      type_of_loader; // 0210 Boot loader identifier
+    u8      loadflags;      // 0211 Boot protocol option flags
+    u16     setup_move_size;// 0212 Move to high memory size (used with hooks)
+    u32     code32_start;   // 0214 Boot loader hook (see below)
+    u32     initrd_buf;     // 0218 initrd load address (set by boot loader)
+    u32     initrd_size;    // 021C initrd size (set by boot loader)
+};
 
+// Read initrd if needed
 void load_initrd() {
     struct image_himem *m = &initrd;
     if (!initrd_name && !m->fd) return;
@@ -259,9 +272,10 @@ void load_initrd() {
     }
 
     load_image(m);
-    struct kernelparams_t *kernelparams = &(((first1k_t*) _rm_buf(m-1))->params);
-    if(kernelparams->header == HdrS) {
-        kernelparams->initrd_buf  = m->fallback;
-        kernelparams->initrd_size = m->size;
+
+    struct initrdparams_t *initrdparams = ((struct initrdparams_t *)&(((first1k_t*) _rm_buf(m-1))->params.header));
+    if(initrdparams->header == HdrS) {
+        initrdparams->initrd_buf  = m->fallback;
+        initrdparams->initrd_size = m->size;
     }
 }

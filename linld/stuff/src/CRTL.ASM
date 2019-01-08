@@ -204,6 +204,7 @@ open:
 		xor	cx,cx			; attributes
 		xor	di,di			; alias hint
 		cwd				; action = open
+		stc
                 int	21h
 		pop	si di bx
                 jnc	doret
@@ -338,7 +339,7 @@ ends					; } isostate;
 isolseek:
 		extrn	_isostate:isostate
 		mov	ax,[_isostate.fd]
-	global	@lseekset2$qipul
+	global	@lseekset2$qipul:near
 @lseekset2$qipul:
 		mov	dx,[bx]
 		mov	cx,[bx+2]

@@ -2,6 +2,7 @@ BEGIN { hold=0 }
 function isnum(n) { return match(n,/^[0-9+-]/) }
 {
 	sub(/segment word public/,"segment byte public")
+
 	if (hold == 0) {
 		s=$0
 		if (/^	mov	.[ix],bx$/ || /^	mov	.[ix],.i$/) {
@@ -26,6 +27,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/^	mov	cl,4$/)   { hold=7; next }
 		if (/^	cmp	word ptr DGROUP:.*,0$/)  {
 			hold=8; split($2,regs,","); next
+		}
+		if (/^	cbw/)		  { hold=11; kept=0; next }
+		if (/^	add	[abcds][ix],2$/) {
+			split($2,regs,","); hold=12; next
+		}
+		if (/^	sub	[abcds][ix],2$/) {
+			split($2,regs,","); hold=13; next
 		}
 	}
 	else if (hold == 1) {
@@ -129,6 +137,39 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			next
 		}
 		for (i = 0; i < kept; i++) print line[i]
+	}
+	else if (hold == 11) {
+		if (/^	inc	ax$/ || /^	dec	ax$/) {
+			line[kept++]=$0; next
+		}
+		split($2,args,",")
+		if (/^	mov	cl,/) {
+			split($2,args,",")
+			if (args[2] >= 8) {
+				line[kept++]=$0; next
+			}
+		}
+		if (!/^	shl	ax,/ || (args[2] != "cl" && args[2] < 8)) {
+			print "	cbw	"
+		}
+		for (i = 0; i < kept; i++) print line[i]
+		hold=kept=0
+	}
+	else if (hold == 12) {
+		hold=0
+		if ($1 != "adc" && $1 != "sbb" && ! /^	jn?[abc]/) {
+			print "	inc	" regs[1]
+			print "	inc	" regs[1]
+		}
+		else	print "	add	" regs[1] ",2"
+	}
+	else if (hold == 13) {
+		hold=0
+		if ($1 != "adc" && $1 != "sbb" && ! /^	jn?[abc]/) {
+			print "	dec	" regs[1]
+			print "	dec	" regs[1]
+		}
+		else	print "	sub	" regs[1] ",2"
 	}
 	s=$0
 	# These optimisation may break ZF or CF
