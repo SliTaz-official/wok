@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="linux64-ecryptfs"
+VERSION="3.16.55"
+CATEGORY="base-system"
+SHORT_DESC="The Linux kernel ecryptfs module."
+MAINTAINER="devel@slitaz.org"
+LICENSE="GPL2"
+DEPENDS="linux64"
+WANTED="linux"
+PROVIDE="linux-ecryptfs:linux64"
+WEB_SITE="https://www.kernel.org/"
+CONFIG_FILES="/etc/filesystems"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    src=$WOK/linux64/source/tmp
+    install=$install/linux64
+    path=lib/modules/$VERSION-slitaz64/kernel
+    mkdir -p $fs/$path $fs/etc
+    export src
+    export install
+    $wanted_stuff/list_modules.sh fs/${PACKAGE#*-} | while read module; do
+    	dir=$path/$(dirname $module)
+    	[ -d $fs/$dir ] || mkdir -p $fs/$dir
+        cp -a $install/$path/$module $fs/$dir
+    done
+    touch $fs/etc/filesystems
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	grep -qs ^${PACKAGE#*-}$ "$1/etc/filesystems" || \
+		echo "${PACKAGE#*-}" >> "$1/etc/filesystems"
+	chroot "$1/" depmod -a $VERSION-slitaz64
+}
+
+post_remove()
+{
+	sed -i "/^${PACKAGE#*-}\$/d" "$1/etc/filesystems"
+	chroot "$1/" depmod -a $VERSION-slitaz64
+}

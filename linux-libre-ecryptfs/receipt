@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="linux-libre-ecryptfs"
+VERSION="3.18.129-gnu"
+CATEGORY="base-system"
+SHORT_DESC="The Linux Libre kernel ecryptfs module."
+MAINTAINER="gokhlayeh@slitaz.org"
+LICENSE="GPL2"
+PROVIDE="linux-ecryptfs"
+DEPENDS="linux-libre"
+WANTED="linux-libre"
+WEB_SITE="http://www.fsfla.org/svnwiki/selibre/linux-libre/"
+CONFIG_FILES="/etc/filesystems"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+    local path
+    path=lib/modules/$VERSION-slitaz/kernel
+    mkdir -p $fs/$path $fs/etc
+    export src
+    export _pkg
+    $wanted_stuff/list_modules.sh fs/${PACKAGE##*-} | while read module; do
+    	dir=$path/$(dirname $module)
+    	[ -d $fs/$dir ] || mkdir -p $fs/$dir
+        cp -a $install/$path/$module $fs/$dir
+    done
+    touch $fs/etc/filesystems
+}
+
+# Post install/remove commands for Tazpkg.
+post_install()
+{
+	grep -qs ^${PACKAGE##*-}$ "$1/etc/filesystems" || \
+		echo "${PACKAGE##*-}" >> "$1/etc/filesystems"
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
+
+post_remove()
+{
+	sed -i "/^${PACKAGE##*-}\$/d" "$1/etc/filesystems"
+	chroot "$1/" depmod -a $VERSION-slitaz
+}
