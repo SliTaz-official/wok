@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="keyutils"
+VERSION="1.6"
+CATEGORY="security"
+SHORT_DESC="Control the key management system built into the Linux kernel"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2 LGPL2.1"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://people.redhat.com/~dhowells/keyutils/"
+WGET_URL="${WEB_SITE}$TARBALL"
+CONFIG_FILES="/etc/request-key.conf /etc/request-key.d"
+TAGS="cryptography"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|/etc/rpm /usr/lib/rpm|/dev/null|' Makefile
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share $fs/lib
+	cp -a $install/usr/share/keyutils $fs/usr/share
+	cp -a $install/etc $fs
+	cp -a $install/bin $fs
+	cp -a $install/sbin $fs
+	cp -a $install/lib/*.so* $fs/lib
+}
