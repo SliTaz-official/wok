@@ -13,11 +13,17 @@ TAGS="web-browser"
 HOST_ARCH="i486 arm"
 
 DEPENDS="ncurses libtinfo openssl"
-BUILD_DEPENDS="ncurses-dev libtinfo openssl-dev"
+BUILD_DEPENDS="ncurses-dev gettext-dev libtinfo openssl-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	# regenerate *.mo files (shipped ones are missed headers that lead to
+	# thousand of errors when compressor normalize catalogs)
+	for i in i18n/*.mo ; do
+		rm $i && msgfmt -o $i ${i/mo/po}
+	done
+	
 	export LDFLAGS="-ltinfo"
 	# We have no locale support on ARM actually
 	case "$ARCH" in
