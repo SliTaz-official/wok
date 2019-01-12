@@ -2,14 +2,13 @@
 
 PACKAGE="boinc"
 VERSION="6.10.58"
-SVN_TAG="6_10_58"
 CATEGORY="network"
 SHORT_DESC="Open-source software for volunteer computing and grid computing."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://boinc.berkeley.edu/"
-WGET_URL="svn|http://boinc.berkeley.edu/svn/tags/boinc_core_release_${SVN_TAG}"
+WGET_URL="svn|http://boinc.berkeley.edu/svn/tags/boinc_core_release_${VERSION//./_}"
 
 # The init script requires bash.
 DEPENDS="openssl libcurl wxWidgets28 libnotify bash"
@@ -27,7 +26,12 @@ compile_rules()
 		--enable-unicode \
 		--enable-optimize \
 		$CONFIGURE_ARGS &&
-		make && make install
+	make
+	for i in locale/*/*.mo; do
+		[ -s $(dirname $i)/$(basename ${i%mo})po ] &&
+		rm $i && msgfmt -o $i $(dirname $i)/$(basename ${i%mo})po
+	done
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
