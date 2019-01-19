@@ -1,0 +1,64 @@
+Parallel execution of pkgdb detected on cooking host.
+It is necessary to avoid this, as it leads to incorrect databases.
+
+--- a/modules/pkgdb
++++ b/modules/pkgdb
+@@ -22,7 +22,15 @@
+ 
+ 
+ 
++# Avoid parallel execution
+ 
++BLOCK=$PKGS/pkgdb.block
++if [ -e "$BLOCK" ]; then
++	echo "pkgdb already executed - exiting now" | dblog
++	exit 1
++fi
++touch $BLOCK
++
+ # Create suitable packages list for TazPkg and only for built packages
+ # as well as flavors files for TazLiTo. We don't need logs since we do it
+ # manually to ensure everything is fine before syncing the mirror.
+@@ -35,6 +43,7 @@
+ 		[ -n "$1" ] && PKGS="$1"
+ 		if [ ! -d "$PKGS" ]; then
+ 			{ newline; _ "Packages directory \"%s\" doesn't exist" "$PKGS"; newline; } | dblog
++			rm $BLOCK
+ 			exit 1
+ 		fi ;;
+ esac
+@@ -212,10 +221,14 @@
+ # Create all flavors files at once. Do we really need code to monitor
+ # flavors changes? Let's just build them with packages lists before
+ # syncing the mirror.
+-[ "$1" != '--flavors' ] && exit 1
++if [ "$1" != '--flavors' ]; then
++	rm $BLOCK
++	exit 1
++fi
+ 
+ if [ ! -d "$flavors" ]; then
+ 	{ _ 'Missing flavors folder "%s"' "$flavors"; newline; } | dblog
++	rm $BLOCK
+ 	exit 1
+ fi
+ 
+@@ -246,7 +259,10 @@
+ for i in $flavors/*; do
+ 	fl=$(basename $i)
+ 	_ 'Packing flavor "%s"' "$fl" | dblog
+-	tazlito pack-flavor $fl >/dev/null || exit 1
++	if ! tazlito pack-flavor $fl >/dev/null; then
++		rm $BLOCK
++		exit 1
++	fi
+ 	tazlito show-flavor $fl --brief --noheader 2>/dev/null >> flavors.list
+ done
+ cp -f $live/*.flavor $live/flavors.list $PKGS
+@@ -257,5 +273,5 @@
+ 
+ > $command
+ 
+-
++rm $BLOCK
+ exit 0
