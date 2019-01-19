@@ -1,0 +1,119 @@
+Using the absolute paths is safer than using the relative ones,
+or using no paths at all.
+
+--- a/modules/pkgdb
++++ b/modules/pkgdb
+@@ -50,8 +50,8 @@
+ { _ 'Cook pkgdb started: %s' "$(date "$(_ '+%%F %%R')")"; newline; } | dblog
+ 
+ cd $PKGS
+-rm -f packages.* extra.list
+-touch packages.equiv
++rm -f $PKGS/packages.* $PKGS/extra.list
++touch $PKGS/packages.equiv
+ 
+ _n 'Creating file "%s"' 'packages.list' | dblog
+ ls -1 *.tazpkg | sed s'/.tazpkg//' > $PKGS/packages.list
+@@ -62,16 +62,16 @@
+ echo " ($(filesize $PKGS/packages.md5))" | dblog
+ cp $PKGS/packages.md5 $PKGS/packages.toremove			# list of unnecessary packages
+ 
+-md5sum packages.md5 | cut -d' ' -f1 > ID
+-( cat ./ID | tr $'\n' ' '; date -ur ./ID +%s ) > IDs	# md5 and timestamp
++md5sum $PKGS/packages.md5 | cut -d' ' -f1 > $PKGS/ID
++( cat $PKGS/ID | tr $'\n' ' '; date -ur $PKGS/ID +%s ) > $PKGS/IDs	# md5 and timestamp
+ 
+ _n 'Creating file "%s"' 'descriptions.txt' | dblog
+ rm $PKGS/descriptions.txt 2>/dev/null
+ for i in $(ls $WOK | sort); do
+ 	if [ -e "$WOK/$i/description.txt" ]; then
+-		echo "$i" >> descriptions.txt
+-		cat "$WOK/$i/description.txt" | sed 's|^$| |' >> descriptions.txt
+-		echo >> descriptions.txt
++		echo "$i" >> $PKGS/descriptions.txt
++		cat "$WOK/$i/description.txt" | sed 's|^$| |' >> $PKGS/descriptions.txt
++		echo >> $PKGS/descriptions.txt
+ 	fi
+ done
+ echo " ($(filesize $PKGS/descriptions.txt))" | dblog
+@@ -81,9 +81,9 @@
+ cd $WOK
+ for pkg in *; do
+ 	unset_receipt
+-	. $pkg/receipt
++	. $WOK/$pkg/receipt
+ 	# PACKED_SIZE and UNPACKED_SIZE are only in built receipt
+-	[ -s $pkg/taz/*/receipt ] && . $pkg/taz/*/receipt
++	[ -s $WOK/$pkg/taz/*/receipt ] && . $WOK/$pkg/taz/*/receipt
+ 
+ 	if [ -f "$PKGS/$PACKAGE-$VERSION$EXTRAVERSION.tazpkg" ] || \
+ 	   [ -f "$PKGS/$PACKAGE-$VERSION$EXTRAVERSION-$ARCH.tazpkg" ]; then
+@@ -125,7 +125,7 @@
+ 		done
+ 
+ 		# files.list provides a list of all packages files.
+-		cat $pkg/taz/*/files.list | sed s/^/"$pkg: \0"/ >> \
++		cat $WOK/$pkg/taz/*/files.list | sed s/^/"$pkg: \0"/ >> \
+ 			$PKGS/files.list
+ 
+ 		# list of unnecessary packages
+@@ -167,38 +167,38 @@
+ 
+ # files.list.lzma
+ _n 'Creating file "%s"' 'files.list.lzma' | dblog
+-touch files.list
++touch $PKGS/files.list
+ # pkgs.slitaz.org strongly depends on list sorted by packages names
+-lzma e files.list files.list.lzma
++lzma e $PKGS/files.list $PKGS/files.list.lzma
+ echo " ($(filesize $PKGS/files.list.lzma))" | dblog
+ 
+ # Pre-sorting filenames causes 10% smaller resulting lzma file
+ _n 'Creating file "%s"' 'files-list.lzma' | dblog
+-cat files.list | sort -k2 -o files.list.sorted
+-lzma e files.list.sorted files-list.lzma
+-rm -f files.list files.list.sorted
++cat $PKGS/files.list | sort -k2 -o $PKGS/files.list.sorted
++lzma e $PKGS/files.list.sorted $PKGS/files-list.lzma
++rm -f $PKGS/files.list $PKGS/files.list.sorted
+ echo " ($(filesize $PKGS/files-list.lzma))" | dblog
+ 
+-[ -e files.list.md5 ] && rm files.list.md5
+-md5sum files-list.lzma | cut -d' ' -f1 | tr -d $'\n' > files-list.md5
++[ -e $PKGS/files.list.md5 ] && rm $PKGS/files.list.md5
++md5sum $PKGS/files-list.lzma | cut -d' ' -f1 | tr -d $'\n' > $PKGS/files-list.md5
+ 
+ # Make bundle to fast recharge
+ _n 'Creating file "%s"' 'bundle.tar.lzma' | dblog
+-[ -f bundle.tar.lzma ] && rm bundle.tar.lzma
++[ -f $PKGS/bundle.tar.lzma ] && rm $PKGS/bundle.tar.lzma
+ # Make sure to get "mirrors" file
+ until [ -e 'mirrors' ]; do
+ 	wget -q http://mirror1.slitaz.org/mirrors
+ 	echo -n '.' | dblog; sleep 5
+ done
+ # Make sure to get "extra.list" file
+-until [ -e 'extra.list' ]; do
+-	wget -q -O extra.list http://mirror1.slitaz.org/packages/get.list
++until [ -e $PKGS/extra.list ]; do
++	wget -q -O $PKGS/extra.list http://mirror1.slitaz.org/packages/get.list
+ 	echo -n '.' | dblog; sleep 5
+ done
+-busybox tar -chaf bundle.tar.lzma \
++busybox tar -chaf $PKGS/bundle.tar.lzma \
+ 	mirrors extra.list files-list.md5 packages.info descriptions.txt \
+ 	packages.desc packages.md5 packages.txt packages.list packages.equiv
+-rm ./mirrors
++rm $PKGS/mirrors
+ echo " ($(filesize $PKGS/bundle.tar.lzma))" | dblog
+ 
+ # Display some info.
+@@ -242,7 +242,7 @@
+ 
+ cd $live
+ _ 'Starting to generate flavors...' | dblog
+-rm -f flavors.list *.flavor
++rm -f $live/flavors.list $live/*.flavor
+ for i in $flavors/*; do
+ 	fl=$(basename $i)
+ 	_ 'Packing flavor "%s"' "$fl" | dblog
