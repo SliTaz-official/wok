@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="cdrtools"
-VERSION="3.01"
+VERSION="3.00"
 CATEGORY="multimedia"
 SHORT_DESC="Command line programs to record CD/DVD/BluRay media."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2 LGPL2.1"
 WEB_SITE="http://cdrtools.sourceforge.net/private/cdrecord.html"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 CONFIG_FILES="/etc/default/cdrecord /etc/default/rscsi"
 
@@ -18,15 +18,14 @@ BUILD_DEPENDS="acl-dev libcap-dev"
 compile_rules()
 {
 	sed -i 's|uname -m|echo i686|' RULES/*
-	sed -i 's|/opt/schily|/usr|g; s|DEFINSGRP=.*|DEFINSGRP=root|' \
-		DEFAULTS/Defaults.linux
-	# install rscsi to /usr/bin instead of /usr/sbin
-	sed -i 's|INSDIR=.*|INSDIR=bin|' rscsi/Makefile
+	sed -i 's/DEFINSGRP=.*/DEFINSGRP=root/' DEFAULTS/Defaults.linux
+	{
+		./configure
+		make && make DESTDIR=$DESTDIR install
+	} 2>&1 | sed 's/: No such/:  no such/'
 
-	export GMAKE_NOWARN=true INS_BASE=/usr INS_RBASE=/
-	cp cdda2wav/lconfig.h.in cdda2wav/lconfig.h
-
-	{ make && make install; } 2>&1 | sed 's/: No such/:  no such/'
+	mkdir -p $install/usr
+	mv $install/opt/schily/* $install/usr
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -35,12 +34,7 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib $fs/usr/share
 	cp -a $install/etc $fs
 	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
 	cp -a $install/usr/lib/siconv $fs/usr/lib
 	cp -a $install/usr/share/doc $fs/usr/share
-
-	# cdrkit compatibility
-	ln -s cdrecord $fs/usr/bin/wodim
-	ln -s readcd   $fs/usr/bin/readom
-	ln -s mkisofs  $fs/usr/bin/genisoimage
-	ln -s cdda2wav $fs/usr/bin/icedax
 }
