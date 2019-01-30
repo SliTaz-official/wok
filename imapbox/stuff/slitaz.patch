@@ -1,0 +1,254 @@
+--- imapbox/mailboxresource.py
++++ imapbox/mailboxresource.py
+@@ -9,6 +9,8 @@
+ import hashlib
+ from message import Message
+ import datetime
++import time
++import rfc822
+ 
+ 
+ 
+@@ -16,10 +18,22 @@
+     """Operations on a mailbox"""
+ 
+     def __init__(self, host, port, username, password, remote_folder):
++        if port == '143':
++	    self.mailbox = imaplib.IMAP4(host, port)                                                                                      
++        elif port == '993':                                                                                                                 
+         self.mailbox = imaplib.IMAP4_SSL(host, port)
+         self.mailbox.login(username, password)
+         self.mailbox.select(remote_folder, readonly=True)
+ 
++        if remote_folder=='INBOX':
++            self.remote_folder=''
++        else
++            r_f=re.sub('INBOX','',remote_folder)
++            if re.findall('^\.',r_f):
++                self.remote_folder=re.sub('\.','/',rf)
++            else:
++                self.remote_folder='/'+r_f
++
+     def copy_emails(self, days, local_folder, wkhtmltopdf):
+ 
+         n_saved = 0
+@@ -50,9 +64,19 @@
+ 
+ 
+     def getEmailFolder(self, msg, data):
+-        if msg['Message-Id']:
+-            foldername = re.sub('[^a-zA-Z0-9_\-\.()\s]+', '', msg['Message-Id'])
++        if msg['To'] and re.findall('Sent',self.remote_folder):
++            foldername = re.findall("<.*>", msg['To'])
++            if foldername:
++                foldername = re.sub('[\<\>]+', '', foldername[0])
+         else:
++                foldername=msg['To']
++        elif msg['From']:
++	    foldername = re.findall("<.*>", msg['From'])
++	    if foldername:
++		foldername = re.sub('[\<\>]+', '', foldername[0])
++	    else:
++		foldername=msg['From']
++        else:
+             foldername = hashlib.sha224(data).hexdigest()
+ 
+         year = 'None'
+@@ -62,20 +86,33 @@
+                 year = match.group(1)
+ 
+ 
+-        return os.path.join(self.local_folder, year, foldername)
++        return os.path.join(self.local_folder+self.remote_folder, self.normalizeDate(msg['Date'])+'_'+foldername)
+ 
++    def normalizeDate(self, datestr):
++        t = email.utils.parsedate_tz(datestr)
++        timeval = time.mktime(t[:-1])
++        date = email.utils.formatdate(timeval, True)
++        utc = time.gmtime(email.utils.mktime_tz(t))
++#        rfc2822 = '{} {:+03d}00'.format(date[:-6], t[9]//3600)
++        iso8601 = time.strftime('%Y%m%dT%H%M%SZ', utc)
+ 
++        return (iso8601)
+ 
++
+     def saveEmail(self, data):
+         for response_part in data:
+             if isinstance(response_part, tuple):
+-                msg = email.message_from_string(response_part[1].decode("utf-8"))
++                try:
++                    msg = email.message_from_string(re.sub('^>', '', response_part[1]).decode("utf-8")) # supprime '>' dans l'email
++                except UnicodeError:
++                    msg = email.message_from_string(re.sub('^>', '', response_part[1]).decode('latin1').encode('utf-8'))  # supprime '>' dans l'email
+                 directory = self.getEmailFolder(msg, data[0][1])
+ 
+                 if os.path.exists(directory):
+                     return False
+ 
+                 os.makedirs(directory)
++                os.utime(directory,(time.mktime(rfc822.parsedate(msg['Date'])), time.mktime(rfc822.parsedate(msg['Date']))))
+ 
+                 try:
+                     message = Message(directory, msg)
+@@ -86,9 +123,12 @@
+                     if self.wkhtmltopdf:
+                         message.createPdfFile(self.wkhtmltopdf)
+ 
++                    os.utime(directory,(time.mktime(rfc822.parsedate(msg['Date'])), time.mktime(rfc822.parsedate(msg['Date']))))
++
+                 except Exception as e:
+                     # ex: Unsupported charset on decode
+                     print(directory)
++		    os.utime(directory,(time.mktime(rfc822.parsedate(msg['Date'])), time.mktime(rfc822.parsedate(msg['Date']))))
+                     if hasattr(e, 'strerror'):
+                         print("MailboxClient.saveEmail() failed:", e.strerror)
+                     else:
+--- imapbox/message.py
++++ imapbox/message.py
+@@ -15,6 +15,8 @@
+ import cgi
+ import time
+ import pkgutil
++import rfc822
++import sys
+ 
+ from six.moves import html_parser
+ 
+@@ -82,14 +84,15 @@
+         except email.Errors.HeaderParseError:
+             # This already append in email.base64mime.decode()
+             # instead return a sanitized ascii string
+-            return header_text.encode('ascii', 'replace').decode('ascii')
++            return header_text.encode('ascii', 'replace').decode(default)
+         else:
+             for i, (text, charset) in enumerate(headers):
+                 headers[i]=text
+                 if charset:
+-                    headers[i]=str(text, charset)
++                    text = unicode(text,charset)
++                    headers[i]=text
+                 else:
+-                    headers[i]=str(text)
++                    headers[i]=text.decode('utf-8')
+             return u"".join(headers)
+ 
+ 
+@@ -102,21 +105,27 @@
+                 # use the same for both and see later
+                 name=addr
+ 
++            headers=decode_header(name)
+             try:
+-                # address must be ascii only
+-                addr=addr.encode('ascii')
++                addr = addr.encode("ascii")
+             except UnicodeError:
+-                addr=''
++                addr = ''
+             else:
+                 # address must match adress regex
+                 if not email_address_re.match(addr.decode("utf-8")):
+                     addr=''
+-            addrs[i]=(self.getmailheader(name), addr.decode("utf-8"))
++            addrs[i]=(self.getmailheader(name), "utf-8")
+         return addrs
+ 
+     def getSubject(self):
+-        if not hasattr(self, 'subject'):
+-            self.subject = self.getmailheader(self.msg.get('Subject', ''))
++#        if not hasattr(self, 'subject'):
++#            self.subject = self.getmailheader(self.msg.get('Subject'),'')
++        headers=decode_header(self.msg.get('Subject'))
++        for i, (text, charset) in enumerate(headers):
++            if charset:
++                self.subject = unicode(text,charset)
++            else:
++                self.subject=text.decode('utf-8')
+         return self.subject
+ 
+     def getFrom(self):
+@@ -172,6 +181,7 @@
+             json_file.write(data)
+ 
+             json_file.close()
++            os.utime('%s/metadata.json' %(self.directory),(time.mktime(rfc822.parsedate(self.msg['Date'])), time.mktime(rfc822.parsedate(self.msg['Date']))))
+ 
+ 
+ 
+@@ -180,6 +190,7 @@
+         f = gzip.open('%s/raw.eml.gz' %(self.directory), 'wb')
+         f.write(data)
+         f.close()
++        os.utime('%s/raw.eml.gz' %(self.directory),(time.mktime(rfc822.parsedate(self.msg['Date'])), time.mktime(rfc822.parsedate(self.msg['Date']))))
+ 
+ 
+     def getPartCharset(self, part):
+@@ -192,14 +203,23 @@
+         if not hasattr(self, 'text_content'):
+             self.text_content = ''
+             for part in parts:
++                raw_content_0 = part.get_payload()
+                 raw_content = part.get_payload(decode=True)
+                 charset = self.getPartCharset(part)
+                 self.text_content += raw_content.decode(charset, "replace")
++                if charset!='utf-8' and self.text_content:
++                    try:
++                        self.text_content=self.text_content.encode('raw_unicode_escape').decode('utf-8')    #   Double-decoding unicode
++                    except UnicodeError:
++                        self.text_content=raw_content_0.decode('utf_8')
+         return self.text_content
+ 
+ 
+     def createTextFile(self, parts):
+-        utf8_content = self.getTextContent(parts)
++        intro=''
++        if self.getSubject():
++            intro='==> ' + self.getSubject() + '\r\n\r\n'
++        utf8_content = intro + self.getTextContent(parts)
+         with open(os.path.join(self.directory, 'message.txt'), 'wb') as fp:
+             fp.write(bytearray(utf8_content, 'utf-8'))
+ 
+@@ -208,9 +228,15 @@
+             self.html_content = ''
+ 
+             for part in parts:
++                raw_content_0 = part.get_payload()
+                 raw_content = part.get_payload(decode=True)
+                 charset = self.getPartCharset(part)
+                 self.html_content += raw_content.decode(charset, "replace")
++                if charset!='utf-8' and self.html_content:
++                    try:
++                        self.html_content.encode('raw_unicode_escape').decode('utf-8')  #  Double-decoding unicode
++                    except UnicodeError:
++                        self.html_content=raw_content_0.decode('utf_8')
+ 
+             m = re.search('<body[^>]*>(.+)<\/body>', self.html_content, re.S | re.I)
+             if (m != None):
+@@ -304,9 +330,11 @@
+ 
+         if message_parts['text']:
+             self.createTextFile(message_parts['text'])
++            os.utime('%s/message.txt' %(self.directory),(time.mktime(rfc822.parsedate(self.msg['Date'])), time.mktime(rfc822.parsedate(self.msg['Date']))))
+ 
+         if message_parts['html']:
+             self.createHtmlFile(message_parts['html'], message_parts['embed_images'])
++            os.utime('%s/message.html' %(self.directory),(time.mktime(rfc822.parsedate(self.msg['Date'])), time.mktime(rfc822.parsedate(self.msg['Date']))))
+ 
+         if message_parts['files']:
+             attdir = os.path.join(self.directory, 'attachments')
+@@ -317,6 +345,8 @@
+                     payload = afile[0].get_payload(decode=True)
+                     if payload:
+                         fp.write(payload)
++                os.utime('%s/attachments/%s' %(self.directory,afile[1]),(time.mktime(rfc822.parsedate(self.msg['Date'])), time.mktime(rfc822.parsedate(self.msg['Date']))))
++            os.utime('%s/attachments' %(self.directory),(time.mktime(rfc822.parsedate(self.msg['Date'])), time.mktime(rfc822.parsedate(self.msg['Date']))))
+ 
+ 
+     def createPdfFile(self, wkhtmltopdf):
+@@ -325,5 +355,6 @@
+             pdf_path = os.path.join(self.directory, 'message.pdf')
+             config = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf)
+             pdfkit.from_file(html_path, pdf_path, configuration=config)
++            os.utime('%s/message.pdf' %(self.directory),(time.mktime(rfc822.parsedate(self.msg['Date'])), time.mktime(rfc822.parsedate(self.msg['Date']))))
+         else:
+             print("Couldn't create PDF message, since \"pdfkit\" module isn't installed.")
