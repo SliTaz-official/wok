@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="sgmixer"
+VERSION="0.3"
+CATEGORY="multimedia"
+SHORT_DESC="sGmixer is simple audio mixer with an easy-to-use GTK 2 interface"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+#WEB_SITE="https://web.archive.org/web/20120617124707/http://openfmi.net/projects/sgmixer/"
+WEB_SITE="http://freshmeat.sourceforge.net/projects/sgmixer/"
+#WGET_URL="http://openfmi.net/frs/download.php/2/$TARBALL"
+WGET_URL="https://crux.ster.zone/distfiles/$TARBALL"
+TAGS="mixer"
+
+DEPENDS="gtk+"
+BUILD_DEPENDS="gtk+-dev pkg-config"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|\$(prefix)|$(DESTDIR)&|' Makefile.in
+	[ -e /usr/lib/pkgconfig/libpng.pc ] ||
+		ln -s libpng12.pc /usr/lib/pkgconfig/libpng.pc
+	./configure --prefix=/usr \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+}
