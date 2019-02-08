@@ -154,6 +154,7 @@ fileofs()
 {
 	[ $(get 1024 "$ISO") -eq 35615 ] && x=1024 ||
 	x=$((512*(1+$(get 417 "$ISO" 1))))
+	[ $x -gt 32768 ] && x=6656
 	stub=$(($(get 20 "$ISO") - 0xC0))
 	c=$(custom_config_sector "$ISO")
 	SIZE=0; OFFSET=0
