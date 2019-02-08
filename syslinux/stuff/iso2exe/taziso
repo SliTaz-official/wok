@@ -1096,13 +1096,14 @@ flavdata()
 {
 	[ $(get 1024 "$ISO") -eq 35615 ] && n=2 || n=$((1+$(get 417 "$ISO" 1)))
 	[ $n -eq 4 ] && n=20
+	[ $(get $(($n*512)) "$ISO") -eq 35615 ] || n=13
 	ddq if="$ISO" bs=512 skip=$n count=20 | zcat 2>/dev/null
 }
 
 hasflavinfo()
 {
-	[ "$(flavdata | ddq bs=1 count=8 | strings)" == \
-	  "07070100" ] && menuitem "$@"
+	[ "$(flavdata | ddq bs=1 count=7 | strings)" == \
+	  "0707010" ] && menuitem "$@"
 }
 
 showfavinfo()
@@ -1404,9 +1405,9 @@ $(cdexe boot/bzImage	"bzimage"	"Get linux DOS/EXE file") \
 $(cdexe 'memtest*'	"memtest"	"Get Memtest86 DOS/EXE file") \
 $(cdfilef 'memtest*'	"fdmemtest"	"Create a Memtest86 boot floppy") \
 $(cdfilex 'memtest*'	"runmemtest"	"Start Memtest86") \
-$(cdexe '?pxe'		"pxe"		"Get SliTaz Web boot DOS/EXE utility") \
-$(cdfilef '?pxe'	"fdpxe"		"Create a SliTaz Web boot floppy") \
-$(cdfilex '?pxe'	"runpxe"	"Start the SliTaz Web boot utility") \
+$(cdexe '?pxe*'		"pxe"		"Get SliTaz Web boot DOS/EXE utility") \
+$(cdfilef '?pxe*'	"fdpxe"		"Create a SliTaz Web boot floppy") \
+$(cdfilex '?pxe*'	"runpxe"	"Start the SliTaz Web boot utility") \
 $(misspkg		"missing"	"Install packages to get more options") \
 $(menuitem		"quit"		"Quit this utility")
 EOT

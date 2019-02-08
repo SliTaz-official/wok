@@ -173,7 +173,9 @@ fileofs()
 	tazboot.com)	OFFSET=$(($(get 64 "$ISO") - 0xC0))
 			SIZE=$(($stub - $(get 24 "$ISO") - $OFFSET));;
 	dosstub)	OFFSET=$stub; SIZE=$((0x7FF0 - $OFFSET));;
-	boot.md5)	OFFSET=$((0x7FF0)); SIZE=16;;
+	boot.md5)	[ $(get 0 "$ISO") -eq 23117 ] &&
+			[ $(get 18 "$ISO") -ne 0 ] &&
+			OFFSET=$((0x7FF0)) && SIZE=16;;
 	fs.iso)		OFFSET=$((0x8000))
 			SIZE=$((2048*$c - $OFFSET));;
 	custom.magic)	ddq bs=2k skip=$c if="$ISO" | ddq bs=1 count=6 | \
