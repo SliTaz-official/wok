@@ -5,6 +5,14 @@
 
 struct isostate isostate;
 
+#if 1
+#define setdirofs(to,sec)	(*(int*)((char*)&(to)+1) = *(int*)&(sec)<<(SECTORBITS-8))
+#define cpydirofs(to,from)	(*(int*)((char*)&(to)+1) = *(int*)((char*)&(from)+1))
+#else
+#define setdirofs(to,sec)	(to = (sec)<<SECTORBITS)
+#define cpydirofs(to,from)	((to) = (from))
+#endif
+
 int isoreset(char *name)
 {
 	static const unsigned long root = 16UL * 2048;
@@ -17,12 +25,12 @@ int isoreset(char *name)
 		//close(x->fd);
 		return -1;
 	}
-	x->dirofs = (* (unsigned long *) (isostate.buffer + 0x9E)) << SECTORBITS;
+	setdirofs(x->dirofs, (* (unsigned long *) (isostate.buffer + 0x9E)));
 	x->dirsize = filesize2dirsize(* (unsigned long *) (isostate.buffer + 0xA6));
 	return 0;
 }
 
-int isoreaddir(int restart)
+int isoreaddir(void)
 {
 	int size;
 	char *p;
@@ -31,9 +39,9 @@ int isoreaddir(int restart)
 #endif
 	struct isostate *x=&isostate;
 
-	if (restart) {
+	if (x->curdirsize == 0xFFFF) {
 		x->curdirsize = x->dirsize;
-		x->curdirofs = x->dirofs;
+		cpydirofs(x->curdirofs, x->dirofs);
 		goto restarted;
 	}
 	if (x->curpos >= SECTORSZ || * (short *) (x->buffer + x->curpos) == 0) {
@@ -102,7 +110,6 @@ int isoreaddir(int restart)
 #define IS_DIR(x)( (*((char*) &x + 1) & (char)0676) == (char)0)
 int isoopen(const char *filename)
 {
-	int restart;
 	char *name, *s, c;
 	char _64bits = cpuhaslm();
 	struct isostate *x=&isostate;
@@ -115,7 +122,7 @@ int isoopen(const char *filename)
 	for (name = s; *s && *s != '/'; s++);
 	c = *s;
 	*s = 0;
-	for (restart = 1; isoreaddir(restart) == 0; restart = 0) {
+	for (x->curdirsize = 0xFFFF; isoreaddir() == 0;) {
 		const char *n = name, *i = x->filename;
 		if (_64bits) {
 			if (strhead(i, n)) continue;
@@ -125,7 +132,7 @@ int isoopen(const char *filename)
 		if (strcmp(i, n)) continue;
 		*s++ = c;
 		if (IS_DIR(x->filemod)) {
-			x->dirofs = x->fileofs;
+			cpydirofs(x->dirofs, x->fileofs);
 			x->dirsize = filesize2dirsize(x->filesize);
 			if (c) goto next;
 		}

@@ -69,7 +69,6 @@ static void bootiso(char **iso)
 	const char *init = " rdinit=/init.exe", *mode="menu";
 	char c;
 	static char rootfs[16], fallback[16], isknoppix, noauto;
-	int restart;
 	unsigned long magic;
 	struct isostate *x=&isostate;
 	
@@ -92,7 +91,7 @@ static void bootiso(char **iso)
 			break;
 		}
 	} while (isoopen("isolinux") >= 0);		// Knoppix
-	for (c = 0, restart = 1; isoreaddir(restart) == 0; restart = 0) {
+	for (c = 0, x->curdirsize = 0xFFFF; isoreaddir() == 0;) {
 		if (strstr(x->filename, ".gz"))
 			strcpy(fallback, x->filename);
 		if (strhead(x->filename, "rootfs") 

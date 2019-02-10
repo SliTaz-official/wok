@@ -2,25 +2,26 @@
 
 PACKAGE="par2"
 SOURCE="par2cmdline"
-VERSION="0.4"
+VERSION="0.8.0"
 CATEGORY="system-tools"
 SHORT_DESC="Utility for posting and recovery of multi-part archives."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://parchive.sourceforge.net/"
-WGET_URL="$SF_MIRROR/parchive/$TARBALL"
+WGET_URL="https://github.com/Parchive/par2cmdline/archive/v$VERSION.tar.gz"
+PROVIDE="par2cmdline"
 
 DEPENDS="gcc-lib-base"
+BUILD_DEPENDS="automake"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	#http://sources.gentoo.org/viewcvs.py/gentoo-x86/app-arch/par2cmdline/files/par2cmdline-0.4-gcc4.patch
-	patch -p1 < $stuff/par2cmdline-0.4-gcc4.patch || true
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man \
-	$CONFIGURE_ARGS &&
+	./automake.sh
+	./configure --prefix=/usr \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -28,7 +29,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/usr $fs
-	mkdir -p $install/usr/share/doc
-	cp $src/README $src/ROADMAP $install/usr/share/doc
+	mkdir -p $fs/usr/share/doc
+	cp $src/README $fs/usr/share/doc
+	cp -a $install/usr/bin $fs/usr
 }
