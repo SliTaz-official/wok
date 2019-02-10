@@ -111,11 +111,6 @@ struct first1k_t {
 
 const u32 HdrS = 'H' + ('d'<<8) + (u32('r')<<16) + (u32('S')<<24);
 
-u16 rm_size;
-static u8 pm_high;	// @ = @rm_size + 2, see JUMP.ASM
-static u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
-struct image_himem imgs[2];
-
 // register value to launch the kernel real mode code
 #ifdef NO386
 u32 csip;
@@ -124,6 +119,11 @@ extern "C" u16 topseg();
 u32 csip=0x90200000;
 #define topseg() 0x9000
 #endif
+u16 rm_size;
+static u8 pm_high;	// @ = @rm_size + 2, see JUMP.ASM
+static u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
+struct image_himem imgs[2];
+
 u32 base_himem = _1m+_64k;
 
 static const char kernel_file_error[] = "Can't use kernel file";
@@ -134,7 +134,7 @@ char* load_kernel() {
 #define _pm_high	(((u8*)(m))[-3])
 #define _rm_size	(*(u16*)((u8*)(m)-5))
 #ifdef NO386
-#define _csip		(*(u32*)(m+2))
+#define _csip		(*(u32*)((u8*)(m)-9))
     *((u16 *)&csip+1)=topseg()+0x20;
 #else
 #define _csip		csip

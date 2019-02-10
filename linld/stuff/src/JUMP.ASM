@@ -125,10 +125,17 @@ sssp		dd	?
 		push	es
 		pop	ss
 		mov	sp,0A000h
-		extrn	_csip:dword
-		push	[dword _csip]
 		extrn	_rm_size:word
+		ifdef NO386
+		mov	si,offset _rm_size-2	; _rm_size, _pm_high, _rm_buf
+		lodsw
+		push	ax			; _csip high
+		push	[word si-4]		; _csip low
+		else
+		extrn	_csip:dword;
+		push	[dword _csip]		; _csip
 		mov	si,offset _rm_size	; _rm_size, _pm_high, _rm_buf
+		endif
 		lodsw
 		xchg	ax,cx			; _rm_size
 		lodsb				; _pm_high
