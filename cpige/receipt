@@ -1,0 +1,57 @@
+# SliTaz package receipt.
+
+PACKAGE="cpige"
+VERSION="1.5"
+CATEGORY="multimedia"
+TAGS="audio stream"
+SHORT_DESC="A shoutcast and icecast stream downloader"
+MAINTAINER="devel@slitaz.org"
+LICENSE="GNU/GPL v2"
+WEB_SITE="http://old.ed.zehome.com/?page=cpige-en"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://old.ed.zehome.com/$PACKAGE/$TARBALL"
+
+DEPENDS="gtk+"
+BUILD_DEPENDS="gdk-pixbuf-dev gettext-tools gtk+-dev"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+
+	# build CLI program
+	make clean &&
+	make
+
+	# build GUI program
+	cd gui
+	sed -i 's/gdk-2.0/gdk-pixbuf-2.0/' configure
+	./configure &&
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $src/cpige $fs/usr/bin
+	cp -a $src/gui/cpigeGUI $fs/usr/bin
+
+	mkdir -p $fs/usr/share/doc/cpige
+	cp -a $src/cpige.conf.example $fs/usr/share/doc/cpige
+#	cp -a $src/cpige.1.gz $fs/usr/share/doc/cpige
+
+	# Because there is no label msgfmt in Makefile:
+	mkdir -p $fs/usr/share/locale/fr/LC_MESSAGES
+	# only french texts available
+	msgfmt -o $fs/usr/share/locale/fr/LC_MESSAGES/cpige.mo \
+		$src/gui/cpige-fr.po
+
+	mkdir -p $fs/usr/share/icons/SliTaz/apps/22
+	cp $src/gui/cpigeGUI.ico $fs/usr/share/icons/SliTaz/apps/22
+
+	mkdir -p $fs/usr/share/applications
+	cp $stuff/cpige.desktop $fs/usr/share/applications
+
+}
