@@ -92,7 +92,7 @@ descriptor      gdt_abs ,(data_seg+writable),priv0,is_present,0fffffh,(gran_page
 ;Note: code/data segs must be flagged use16 (i.e. use ip/sp, not eip/esp)
 ;Note: base addrs will be fixed up in prepare_vcpi()
 descriptor      gdt_code,(code_seg+readable),priv0,is_present,0fffffh,(gran_page+use_16),0
-	global	gdt_data
+	global	gdt_data:descr
 descriptor      gdt_data,(data_seg+writable),priv0,is_present,0fffffh,(gran_page+use_16),0
 descriptor      gdt_tss ,tss386_avail       ,priv0,is_present,0ffh   ,gran_byte         ,<offset tss>
 SEL_VCPI        = (gdt_vcpi - gdt_null)

@@ -132,9 +132,8 @@ sssp		dd	?
 		push	ax			; _csip high
 		push	[word si-4]		; _csip low
 		else
-		extrn	_csip:dword;
-		push	[dword _csip]		; _csip
 		mov	si,offset _rm_size	; _rm_size, _pm_high, _rm_buf
+		push	[dword si-4]		; _csip
 		endif
 		lodsw
 		xchg	ax,cx			; _rm_size

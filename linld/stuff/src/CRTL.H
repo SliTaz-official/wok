@@ -21,11 +21,19 @@ extern char xfer_buf[4096];
 
 void parse_cmdline();
 extern _fastcall void strcatb(const char* a,const char* b);
+#ifdef USE_ARGSTR
+extern _fastcall int argstr(const char *s, const char keywords[], const char **var);
+extern _fastcall int argnum(char *s, const char keywords[], unsigned long *var);
+extern _fastcall void set_cmdline(const char *filename);
+#define strhead(a,b)	(strstr(a,b) != (int) a)
+#else
 extern _fastcall int strhead(const char* a,const char* head);
+#endif
 extern _fastcall int fileexist(const char* name);
 //extern "C" int open(const char* name, int flags);
 extern _fastcall int open(const char* name);
 extern _fastcall int close(int fd);
+extern _fastcall int readrm(struct image_himem *m, int sz);
 extern _fastcall int read(int fd, void* data, int sz);
 extern _fastcall long lseekcur(int fd, int whence);
 extern _fastcall int puts(const char* s);
@@ -42,4 +50,3 @@ extern _fastcall int die(const char* msg);
 //extern "C" unsigned long* malloc_bufv_or_die(struct image_himem *m);
 extern _fastcall int malloc_or_die(unsigned size);
 extern _fastcall int malloc_bufv_or_die(struct image_himem *m);
-extern _fastcall void set_cmdline(const char *filename);

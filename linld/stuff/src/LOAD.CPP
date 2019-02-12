@@ -112,11 +112,10 @@ struct first1k_t {
 const u32 HdrS = 'H' + ('d'<<8) + (u32('r')<<16) + (u32('S')<<24);
 
 // register value to launch the kernel real mode code
+static u32 csip;
 #ifdef NO386
-u32 csip;
 extern "C" u16 topseg();
 #else
-u32 csip=0x90200000;
 #define topseg() 0x9000
 #endif
 u16 rm_size;
@@ -133,25 +132,21 @@ char* load_kernel() {
 #define _rm_buf(m)	(((u8**)(m))[-1])
 #define _pm_high	(((u8*)(m))[-3])
 #define _rm_size	(*(u16*)((u8*)(m)-5))
-#ifdef NO386
 #define _csip		(*(u32*)((u8*)(m)-9))
-    *((u16 *)&csip+1)=topseg()+0x20;
-#else
-#define _csip		csip
-#endif
-    // Open kernel, read first kb, check it
-    m->errmsg = kernel_file_error;
-    open_image(kernel_name, m);
-
     char *version_string;
   {
     struct kernelparams_t *kernelparams;
     kernelparams = &(((first1k_t*) (_rm_buf(m) = (u8 *)malloc_or_die(_32k)))->params);
 #define first1k		((first1k_t*)((u8 *)kernelparams-0x1F1))
 
+    *((u16 *)&_csip+1)=topseg()|0x20;
+    // Open kernel, read first kb, check it
+    m->errmsg = kernel_file_error;
+    open_image(kernel_name, m);
+
 do {
     // Do not use malloc below until heap_top adjustment (see <*>)
- if (read(m->fd, rm_buf, 0x200) == 0x200) {
+ if (readrm(m, 0x200) == 0x200) {
 
     lseekcur(m->fd,-0x200);
     if(kernelparams->setup_sects == 0) {
@@ -171,7 +166,7 @@ do {
     m->chunk_size -= _rm_size;
 
     // Read remaining rm loader
-    if (read(m->fd, rm_buf, _rm_size) == _rm_size) break;
+    if (readrm(m, _rm_size) == _rm_size) break;
  }
         die(kernel_file_error);
 } while (0);

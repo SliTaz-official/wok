@@ -41,6 +41,8 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		hold=0; split($2,args,","); op=""
 		if ($1 == "add") op="+"
 		if ($1 == "sub") op="-"
+		if ($1 == "inc") { op="+"; args[2]="1"; }
+		if ($1 == "dec") { op="-"; args[2]="1"; }
 		if (op != "" && regs[1] == args[1]) {
 			if (isnum(args[2])) {
 				for (i = kept++; i > 0; i--) line[i] = line[i-1]
@@ -128,6 +130,18 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		print s; print p;
 	}
 	else if (hold == 10) {
+		split($2,args,","); op=""
+		if ($1 == "add") op="+"
+		if ($1 == "sub") op="-"
+		if ($1 == "inc") { op="+"; args[2]="1"; }
+		if ($1 == "dec") { op="-"; args[2]="1"; }
+		if (op != "" && isnum(args[2])) {
+			split(line[0],reg,",")
+			if (substr(reg[1],length(reg[1])-1,2) == args[1]) {
+				line[0] = substr(line[0],1,length(line[0])-1) op args[2] "]"
+				next
+			}
+		}
 		hold=0
 		if (/^	mov	[sd]i,ax$/) {
 			split($2,args,",")

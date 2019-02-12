@@ -188,6 +188,19 @@ Examples for tazboot.cmd:\r\n\n\
 		s=*argv;
 		i++;
 		if (!s) break;
+#ifdef USE_ARGSTR
+	        if ((*(u16 *)s|0x2002) == 0x662F) {	// -F /f
+			skip_alloc++;
+			goto next;
+		}
+		if (argstr(s,"kernel/image|initrd|bootfrom/iso",&kernel_name) == 0);
+		else if (argnum(s,"root|vga|mem/-e|-b",&root_dev) == 0);
+		else if(i == 1 && fileexist(s) != -1) {
+			kernel_name = s;
+		}
+		else strcatb(buf_cmdline,*argv);
+	}
+#else
 		if (strhead(s,"kernel=") == 0) {
 			s++;
 	set_kernel:
@@ -243,6 +256,7 @@ Examples for tazboot.cmd:\r\n\n\
 			strcatb(buf_cmdline,*argv);
 		}}
 	}
+#endif
 	if (iso && isoreset(iso) >= 0) {
 		char *s = (char *) initrd_name;
 		if (isoopen((char *) kernel_name) >= 0) {

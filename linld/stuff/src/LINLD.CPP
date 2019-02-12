@@ -25,12 +25,20 @@ inline void syntax() {
         "\tinitrd,vga,root=(void)" NL
         "\tmem=256m" NL
         "\tcl=auto" NL
+#ifdef	USE_ARGSTR
+        "\t-b=1088k" NL
+#else
         "\t-b 1088k" NL
+#endif
         "Use quotes: \"cl=...\" if you need spaces in cmdline" NL
         "Use cl=@filename to get it from a file"
 #if 1
         NL NL "Examples:" NL
+#ifdef	USE_ARGSTR
+        "\tLINLD -f -b=64m initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz \"cl=rw root=/dev/null video=-32\""
+#else
         "\tLINLD -f -b 64m initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz \"cl=rw root=/dev/null video=-32\""
+#endif
 	NL NL "\tLINLD image=memtest"
 #endif
     );
@@ -46,6 +54,35 @@ int main(int argc, char *argv[]) {
     puts("LINLD v" VERSION_STR "+");
 
     // Parse command line
+#ifdef	USE_ARGSTR
+    if (argv[1]) {for (;;) {
+	const char **clp = &cmdline;
+    next:
+	argv++;
+	if (!*argv) {
+            puts(*clp);
+	    set_cmdline(*clp);
+	    puts(load_kernel());
+	    load_initrd();
+	    boot_kernel();
+	}
+        if ((*(u16 *)*argv|0x2002) == 0x662F) {	// -F /f
+	    skip_alloc++;
+	    goto next;
+	}
+	if (argstr(*argv,"cl|image|initrd",clp) == 0);
+	else if (fileexist(*argv) >= 0)
+            kernel_name=*argv;
+	else if (*argv) {
+	    argnum(*argv,"root|vga|mem|-b",&root_dev);
+	    *clp = (const char *) buf_cmdline + 1;
+	    strcatb((const char *) buf_cmdline,*argv);
+	}
+	else
+	    break;
+        }
+    }
+#else
     if (argv[1]) {for (char i=0;;) {
 	char *s;
     next:
@@ -125,6 +162,7 @@ addincmdline:
 	    break;
 	}
     }}
+#endif
     syntax();
 
     // Let compiler be happy

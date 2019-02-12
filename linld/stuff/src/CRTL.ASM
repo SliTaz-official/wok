@@ -256,9 +256,15 @@ close:
 
 
 ;***************************************************************
+;_fastcall int readrm(bx:struct himem *m, ax:int sz);
 ;_fastcall int read(ax:int fd, bx:void* data, dx:int sz);
 ;_fastcall int write(ax:int fd, bx:const void* data, dx:int sz);
 ;***************************************************************
+        global  @readrm$qp11image_himemi:near
+@readrm$qp11image_himemi:
+		xchg	ax,dx		; sz
+		mov	ax,[bx]		; fd
+		mov	bx,[bx-2]	; data
         global  @read$qipvi:near
         proc    @read$qipvi near
 
@@ -366,6 +372,81 @@ isolseek:
 		endif
 
 
+		ifdef	USE_ARGSTR
+;***************************************************************
+;_fastcall int argstr(bx:const char *s, ax:const char keywords[], dx:const char **var);
+;_fastcall int argnum(bx:char *s, ax:const char keywords[], dx:unsigned long *var);
+;***************************************************************
+	global	@argstr$qpxzcxt1ppxzc:near
+	proc	@argstr$qpxzcxt1ppxzc near
+
+		stc
+		db	73h			; jnc
+	global	@argnum$qpzcxpxzcpul:near
+@argnum$qpzcxpxzcpul:
+		clc
+
+		xchg	ax,bx			; keywords
+		xchg	ax,cx			; s
+		xchg	ax,dx			; vars
+		sbb	dx,dx			; str:-1	num:0
+		sbb	dx,-4			; str:2		num:4
+		push	si di
+		xchg	ax,di			; vars
+		dec	bx
+		mov	al,0
+@@testalt:
+		sub	di,dx
+@@test:
+		cmp	al,'='
+		je	@@found
+		mov	si,cx			; s
+		add	di,dx
+@@match:
+		inc	bx
+		lodsb
+		or	al,20h
+		cmp	al,[bx]
+		je	@@match
+		cmp	al,'/'			; 2f
+		jne	@@notopt
+		cmp	[byte bx],'-'
+		je	@@match
+@@notopt:
+		ifdef	EXTRA
+		add	di,dx
+		cmp	[byte bx],'/'
+		je	@@testalt
+		sub	di,dx
+		endif
+		cmp	[byte bx],'|'
+		je	@@test
+		mov	al,0
+		inc	bx
+		cmp	[bx-1],al
+		jne	@@notopt
+		stc
+		jmp	@@nokeyword
+@@found:
+		mov	[di],si
+		dec	dx
+		dec	dx
+		je	@@done
+		push	si
+		call	@strtol$qpxzc
+		mov	[di],ax
+		mov	[di+2],dx
+@@done:
+		clc
+@@nokeyword:
+		sbb	ax,ax
+		pop	di si
+		ret
+
+	endp	@argstr$qpxzcxt1ppxzc
+
+		else
+
 ;***************************************************************
 ;_fastcall int strhead(bx:const char* a, ax:const char* b);
 ;***************************************************************
@@ -387,6 +468,7 @@ isolseek:
 
 	endp	@strhead$qpxzct1
 
+		endif
 
 ;***************************************************************
 ;_fastcall char* malloc_or_die(ax:unsigned size);
@@ -1145,6 +1227,23 @@ strtol_ret:
 		ret
 
 	endp	@strtol$qpxzc
+
+
+		ifdef	USE_ARGSTR
+;***************************************************************
+;_fastcall void set_cmdline(bx:const char *filename);
+;***************************************************************
+        global  @set_cmdline$qpxzc:near
+        proc	@set_cmdline$qpxzc near
+		call	openargs
+		jc	strtol_ret
+		mov	cx,4096
+		mov	di,[_heap_top]
+		extrn	read_cmdline:near
+		jmp	near read_cmdline	; read_cmdline(ax,di,cx)
+
+        endp	@set_cmdline$qpxzc
+		endif
 
 
 		ifdef	NO386

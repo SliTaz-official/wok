@@ -68,14 +68,17 @@ int isoreaddir(void)
 	p = x->buffer + 34 + ((p[32] + x->curpos) & -2);
 	do {
 		int len = p[2];
+# if 0
 		switch (* (short *) p) {
-		case 0x4D4E: // NM
-			x->filename = p + 5;
-			endname = p + len;
-			break;
 		case 0x5850: // PX
 			x->filemod = * (short *) (p + 4);
 			break;
+		case 0x4D4E: // NM
+# else
+		if (* (short *) p == 0x4D4E) {
+# endif
+			x->filename = p + 5;
+			endname = p + len;
 		}
 		p += len;
 	} while (x->buffer + x->curpos + size - p > 2);
@@ -119,7 +122,8 @@ int isoopen(const char *filename)
 		isoreset(NULL);
 	}
   next:
-	for (name = s; *s && *s != '/'; s++);
+	name = s;
+	do s++; while (*s != '/' && *s);
 	c = *s;
 	*s = 0;
 	for (x->curdirsize = 0xFFFF; isoreaddir() == 0;) {
