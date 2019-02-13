@@ -25,7 +25,7 @@ extern _fastcall void strcatb(const char* a,const char* b);
 extern _fastcall int argstr(const char *s, const char keywords[], const char **var);
 extern _fastcall int argnum(char *s, const char keywords[], unsigned long *var);
 extern _fastcall void set_cmdline(const char *filename);
-#define strhead(a,b)	(strstr(a,b) != (int) a)
+#define strhead(a,b)	(strstr(a,b) != (int) (a))
 #else
 extern _fastcall int strhead(const char* a,const char* head);
 #endif

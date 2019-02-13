@@ -569,7 +569,7 @@ Please insert a blank disk in floppy drive.\n
 
 pxe()
 {
-	gotcdfile "?pxe"
+	gotcdfile "?pxe*"
 	$DIALOG --clear \
 		--title " Create $(basename $file).exe ? " \
 		--yes-label "Install" --yesno \
@@ -593,7 +593,7 @@ and the complete SliTaz compressed root filesystem will be loaded into RAM
 from the Web using PXE and HTTP protocols.\n\n
 Please insert a blank disk in floppy drive.\n
 " 12 70
-	[ $? -eq 0 ] && gotcdfile "?pxe" && mkfloppy $file
+	[ $? -eq 0 ] && gotcdfile "?pxe*" && mkfloppy $file
 }
 
 gotposixovl()
@@ -868,7 +868,7 @@ EOT
 				l=$(($l + $r))
 			fi
 			case "$i:$INITRD" in
-				*rootfs.gz:*rootfs.gz,*) continue	# loram
+				*rootfs.gz:*rootfs.gz,*) continue	### loram
 			esac
 			len="$len $l"; l=0
 		done
@@ -951,8 +951,7 @@ $DIALOG  --clear \
 	14 70 4 \
 	$(for i in $DEV ; do
 		echo -n "/dev/$i \"$(($(cat /sys/block/$i/size)/2048))MB $(cat /sys/block/$i/device/model 2> /dev/null)\" "
-	done) \
-
+	done)
 EOT
 	exec 3>&1
 	device=$(. /tmp/dialog 2>&1 1>&3)
@@ -981,7 +980,7 @@ $(tazusbmsg)Please plug your USB stick in now.\n
 	[ $? -eq 0 ] || return
 	usbdev || return
 	
-	# perform dd in progress bar
+	### perform dd in progress bar
 	max=$(($(cat /sys/block/loop0/size)/2048))
 	i=0; ddq if=/mnt/$ISO bs=1024k | ( 
 	while ddq bs=1024k count=1 ; do 
@@ -992,7 +991,7 @@ $(tazusbmsg)Please plug your USB stick in now.\n
 			6 70 0 > /dev/tty0 2>&1
 	done ) > $device
 
-	# partition + fat32 format for the remaining space
+	### partition + fat32 format for the remaining space
 	for p in 0 16; do
 		get $((450+$p)) $device 2 12 | xargs echo | {
 		read dx cx ol oh ll lh
@@ -1143,18 +1142,21 @@ runmemtest()
 
 runpxe()
 {
-	gotcdfile "?pxe" && dokexec
+	gotcdfile "?pxe*" && dokexec
 }
 
 flavdata()
 {
-	ddq if=/mnt/$ISO bs=512 skip=$((1+$(get 417 /mnt/$ISO 1))) \
-		count=20 | zcat 2>/dev/null
+	[ $(get 1024 /mnt/$ISO) -eq 35615 ] && n=2 ||
+	n=$((1+$(get 417 /mnt/$ISO 1)))
+	[ $n -eq 4 ] && n=20
+	[ $(get $(($n*512)) /mnt/$ISO) -eq 35615 ] || n=13
+	ddq if=/mnt/$ISO bs=512 skip=$n count=20 | zcat 2>/dev/null
 }
 
 hasflavinfo()
 {
-	[ "$(flavdata | ddq bs=1 count=8)" == "07070100" ] &&
+	[ "$(flavdata | ddq bs=1 count=7)" == "0707010" ] &&
 	echo -en "\"$1\"	\"$2\""
 }
 
@@ -1246,14 +1248,13 @@ $(cdexe boot/bzImage	"bzimage"	"Get linux DOS/EXE file") \
 $(cdexe "memtest*"	"memtest"	"Get Memtest86 DOS/EXE file") \
 $(cdfilef "memtest*"	"fdmemtest"	"Create a Memtest86 boot floppy") \
 $(:||cdfilex "memtest*"	"runmemtest"	"Start Memtest86") \
-$(cdexe "?pxe"		"pxe"		"Get SliTaz Web boot DOS/EXE utility") \
-$(cdfilef "?pxe"	"fdpxe"		"Create a SliTaz Web boot floppy") \
-$(:||cdfilex "?pxe"	"runpxe"	"Start the SliTaz Web boot utility") \
+$(cdexe "?pxe*"		"pxe"		"Get SliTaz Web boot DOS/EXE utility") \
+$(cdfilef "?pxe*"	"fdpxe"		"Create a SliTaz Web boot floppy") \
+$(:||cdfilex "?pxe*"	"runpxe"	"Start the SliTaz Web boot utility") \
 $(xfile reboot		"restart"	"Restart the computer") \
 $(xfile poweroff	"stop"		"Power off") \
 			"bootlog"	"Linux boot messages" \
-			"shell"		"Shell prompt" \
-
+			"shell"		"Shell prompt"
 EOT
 	exec 3>&1
 	value=$(. /tmp/dialog 2>&1 1>&3)
