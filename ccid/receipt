@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="ccid"
-VERSION="1.4.8"
+VERSION="1.4.30"
 CATEGORY="base-system"
 SHORT_DESC="Chip/Smart Card Interface Devices driver."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="LGPL2.1"
 WEB_SITE="https://ccid.apdu.fr/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="https://alioth.debian.org/frs/download.php/3768/$TARBALL"
+WGET_URL="$WEB_SITE/files/$TARBALL"
 
 DEPENDS="libusb pcsc-lite"
 BUILD_DEPENDS="wget pcsc-lite-dev libusb-dev"
@@ -16,13 +17,14 @@ BUILD_DEPENDS="wget pcsc-lite-dev libusb-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr \
+	./configure \
+		--prefix=/usr \
 		--sysconfdir=/etc \
 		--enable-usbdropdir=/usr/lib/pcsc/drivers \
 		--enable-twinserial \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install &&
+	make &&
+	make DESTDIR=$DESTDIR install &&
 	make DESTDIR=$DESTDIR -C src install_ccidtwin
 }
 
@@ -30,7 +32,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/etc/udev/rules.d/ $fs/usr/bin $fs/usr/sbin
-	cp -a $install/* $fs/
+	mkdir -p $fs/etc/reader.conf.d
+	cp -a $install/* $fs/$fs/etc/reader.conf.d
+	mv $fs/libccidtwin 
 	cp $src/src/92_pcscd_ccid.rules $fs/etc/udev/rules.d/
 	mv $fs/usr/lib/pcsc/drivers/ifd-ccid.bundle/Contents/Info.plist \
 		$fs/etc/libccid_Info.plist
