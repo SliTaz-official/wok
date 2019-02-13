@@ -309,11 +309,9 @@ windev()
 		DEV="$(blkid | grep -iE "(msdos|vfat|ntfs|ext[234]|xfs|btrfs)" | sed 's/:.*//;s|/dev/||')"
 		[ "$DEV" ] || return
 	cat > /tmp/dialog$$ <<EOT
-$DIALOG --clear \
-	--title " Select your Linux/Windows partition " \
+$DIALOG --clear --title " Select your Linux/Windows partition " \
 	--menu "\nPlease select the Linux/Windows partition according to its known size.
-The data will be kept untouched.\n" \
-	17 70 8 \
+The data will be kept untouched.\n" 17 70 8 \
 	$(for i in $DEV ; do
 		label="$(blkid | sed "/$i:/!d;s/.*://;s/[^ ]*UUID=[^ ]* //g;s/LABEL=//")"
 		echo -n "/dev/$i \"$(($(cat /sys/block/*/$i/size)/2048))MB $label\" "
@@ -333,18 +331,14 @@ extra_packages()
 {
 	packages_list=
 	packages_dir=
-	$DIALOG --clear \
-		--title " Extra packages " \
+	$DIALOG --clear --title " Extra packages " \
 		--defaultno --yesno \
-"
-Do you want to add extra packages ?
-" 7 70
+"Do you want to add extra packages ?" 7 70
 	[ $? -eq 0 ] || return
 	[ -s /var/lib/tazpkg/packages.txt ] || tazpkg recharge
 	if [ -s $media/boot/vmlinuz-$(uname -r) ]; then
 		cat > /tmp/dialog$$ <<EOT
-$DIALOG --clear \
-	--title " Select the packages " \
+$DIALOG --clear --title " Select the packages " \
 	--separate-output \
 	--cancel-label "Skip" \
 	--checklist "Please select the packages you want to install. Try with the first letter." \
@@ -358,8 +352,7 @@ EOT
 	cat > /tmp/dialog$$ <<EOT
 $DIALOG --clear \
 	--title "Please select the directory with every custom package to install." \
-	--cancel-label "Skip" \
-	--dselect $PWD 13 78
+	--cancel-label "Skip" --dselect $PWD 13 78
 EOT
 	sh /tmp/dialog$$ 2> /tmp/dialog.out$$
 	[ $? -eq 0 ] && packages_dir="$(cat /tmp/dialog.out$$)"
@@ -369,19 +362,17 @@ EOT
 _install()
 {
 	extra_packages
-	$DIALOG --clear \
-		--title " SliTaz UMSDOS way installation " \
+	$DIALOG --clear --title " SliTaz UMSDOS way installation " \
 		--yes-label "Install" --yesno \
 "\nSliTaz will be installed in the subdirectory \\slitaz of the current
 Linux/DOS/Windows partition. You can see your files from /mnt/dos.\n\n
 You can start SliTaz with \\slitaz\\boot\\tazboot.exe\n\n
 To uninstall SliTaz, you have only to remove this directory.
 The file \\boot.ini or \\config.sys may be modified too.\n\n
-SliTaz may run slowly on the 'UMSDOS way' installation due to the 
+SliTaz may run slowly on the 'UMSDOS way' installation due to the
 posixovl filesystem. The 'TAZUSB way' installation runs faster.\n\n
 To do a traditional installation with disk partitioning,
-start SliTaz Live with the 'SliTaz RAM boot' menu.\n
-" 19 70
+start SliTaz Live with the 'SliTaz RAM boot' menu.\n" 19 70
 	[ $? -eq 0 ] || return
 	doinstall
 }
@@ -499,8 +490,7 @@ inst2zip()
 
 _installtaz()
 {
-	$DIALOG --clear \
-		--title " SliTaz TAZUSB way installation " \
+	$DIALOG --clear --title " SliTaz TAZUSB way installation " \
 		--yes-label "Install" --yesno \
 "\nSliTaz will be installed in the subdirectory \\slitaz of the current
 Linux/DOS/Windows partition. You can see your files from /mnt/dos.\n\n
@@ -510,8 +500,7 @@ The file \\boot.ini or \\config.sys may be modified too.\n\n
 The filesystem is loaded entirely into memory upon boot to
 increase responsiveness. Only /home lands on the hard disk.\n\n
 To do a traditional installation with disk partitioning,
-start SliTaz Live with the 'SliTaz RAM boot' menu.\n
-" 19 70
+start SliTaz Live with the 'SliTaz RAM boot' menu.\n" 19 70
 	[ $? -eq 0 ] || return
 	doinstall tazusblike
 }
@@ -566,13 +555,12 @@ bootiso()
 tazboot()
 {
 	if [ -z "$1" ]; then
-		$DIALOG --clear \
-			--title " SliTaz bootloader for DOS " \
+		$DIALOG --clear --title " SliTaz bootloader for DOS " \
 			--yes-label "Install" --yesno \
 "\nThe file TAZBOOT.EXE will be created in the top directory. It supports
 any linux kernel, multiple initramfs, a kernel command line and
 an ISO image file loopback (retrieves files from an ISO file).\n\n
-Usage: tazboot.exe [[@commands]|[kernel=<bzimage>] 
+Usage: tazboot.exe [[@commands]|[kernel=<bzimage>]
 [initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] cmdline args ...]\n\n
 Defaults: tazboot @tazboot.cmd or tazboot kernel=bzImage auto\n\n\
 Examples for tazboot.cmd:\n\n\
@@ -581,8 +569,7 @@ Examples for tazboot.cmd:\n\n\
   initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz\n\
   rw root=/dev/null autologin\n\n\
   kernel=\\slitaz\\vmlinuz root=/dev/sda5 ro\n\n
-Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n
-" 0 0
+Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n" 0 0
 		[ $? -eq 0 ] || return
 	fi
 	gettazboot tazboot.exe
@@ -598,8 +585,7 @@ md5()
 	if [ "$1" ]; then
 		cat /tmp/data
 	else
-		$DIALOG --clear \
-			--title " Checked files " \
+		$DIALOG --clear --title " Checked files " \
 			--textbox /tmp/data 0 0
 	fi
 	rm -f /tmp/data
@@ -627,23 +613,19 @@ readme()
 	if [ "$1" ]; then
 		cat $file
 	else
-		$DIALOG --clear \
-			--title " Readme " \
-			--textbox $file 0 0
+		$DIALOG --clear --title " Readme " --textbox $file 0 0
 	fi
 }
 
 bzimage()
 {
 	if [ -z "$1" ]; then
-		$DIALOG --clear \
-			--title " Create linux.exe ? " \
+		$DIALOG --clear --title " Create linux.exe ? " \
 			--yes-label "Install" --yesno \
 "\nLinux.exe launches the linux kernel under DOS (in real mode only).
 The cmdline arguments are supported except initrd=,
 vga= (you can try 'rdev -v') and mem= (partially).
-\nExample:\nC:\\> linux.exe root=/dev/hda2 ro panic=60\n
-" 12 70
+\nExample:\nC:\\> linux.exe root=/dev/hda2 ro panic=60\n" 12 70
 		[ $? -eq 0 ] || return
 	fi
 	cp $media/boot/bzImage linux.exe
@@ -653,13 +635,11 @@ vga= (you can try 'rdev -v') and mem= (partially).
 memtest()
 {
 	if [ -z "$1" ]; then
-		$DIALOG --clear \
-			--title " Create memtest.exe ? " \
+		$DIALOG --clear --title " Create memtest.exe ? " \
 			--yes-label "Install" --yesno \
 "\nMemtest86 is a thorough, stand alone memory test for x86 architecture
 computers. BIOS based memory tests are a quick, cursory check and often
-miss many of the failures that are detected by Memtest86.\n
-" 0 0
+miss many of the failures that are detected by Memtest86.\n" 0 0
 		[ $? -eq 0 ] || return
 	fi
 	gotcdfile 'memtest*' && cp $file memtest.exe
@@ -701,14 +681,12 @@ mkfloppy()
 fdmemtest()
 {
 	if [ -z "$1" ]; then
-		$DIALOG --clear \
-			--title " Create a Memtest86 boot floppy " \
+		$DIALOG --clear --title " Create a Memtest86 boot floppy " \
 			--yes-label "Create floppy" --yesno \
 "\nMemtest86 is a thorough, stand alone memory test for x86 architecture
 computers. BIOS based memory tests are a quick, cursory check and often
 miss many of the failures that are detected by Memtest86.\n\n
-Please insert a blank disk in floppy drive.\n
-" 0 0
+Please insert a blank disk in floppy drive.\n" 0 0
 		[ $? -eq 0 ] || return
 	fi
 	gotcdfile 'memtest*' && mkfloppy $file
@@ -718,14 +696,12 @@ pxe()
 {
 	gotcdfile '?pxe*'
 	if [ -z "$1" ]; then
-		$DIALOG --clear \
-			--title " Create $(basename $file).exe ? " \
+		$DIALOG --clear --title " Create $(basename $file).exe ? " \
 			--yes-label "Install" --yesno \
 "\nBoot your operating system from the internet and enjoy a full system
 working entirely in RAM with speed and stability in mind. The Linux Kernel
 and the complete SliTaz compressed root filesystem will be loaded into RAM
-from the Web using PXE and HTTP protocols.\n
-" 0 0
+from the Web using PXE and HTTP protocols.\n" 0 0
 		[ $? -eq 0 ] || return
 	fi
 	cp $file $(basename $file).exe
@@ -735,15 +711,13 @@ from the Web using PXE and HTTP protocols.\n
 fdpxe()
 {
 	if [ -z "$1" ]; then
-		$DIALOG --clear \
-			--title " Create a SliTaz Web boot floppy " \
+		$DIALOG --clear --title " Create a SliTaz Web boot floppy " \
 			--yes-label "Create floppy" --yesno \
 "\nBoot your operating system from the internet and enjoy a full system
 working entirely in RAM with speed and stability in mind. The Linux Kernel
 and the complete SliTaz compressed root filesystem will be loaded into RAM
 from the Web using PXE and HTTP protocols.\n\n
-Please insert a blank disk in floppy drive.\n
-" 0 0
+Please insert a blank disk in floppy drive.\n" 0 0
 		[ $? -eq 0 ] || return
 	fi
 	gotcdfile '?pxe*' && mkfloppy $file
@@ -901,7 +875,7 @@ getcustomconf()
 			    ddq bs=1 count=$(($cnt % 512)); } > initrd &&
 			  ls -l $PWD/initrd
 			  break ;;
-		*)	  break ;;	  
+		*)	  break ;;
 		esac
 	done
 	[ "$1" ] && return 0
@@ -935,7 +909,7 @@ isomd5()
 				  ddq bs=512 count=$((cnt / 512))
 				  ddq bs=1 count=$((cnt % 512))
 				  break ;;
-			*)	  break ;;	  
+			*)	  break ;;
 			esac
 		done | md5sum | cut -c1-32)"
 		[ "$md5" == "$(cat $TMP)" ] && echo "OK" || echo "ERROR"
@@ -957,8 +931,7 @@ usbdev()
 	grep -qs 1 /sys/block/$DEV/ro && return
 	[ "$DEV" ] || return
 	cat > /tmp/dialog$$ <<EOT
-$DIALOG  --clear \
-	--title " Select your USB key " \
+$DIALOG  --clear --title " Select your USB key " \
 	--menu "\nPlease select the USB key according to its known size.\n\n" \
 	0 0 0 \
 	$(for i in $DEV ; do
@@ -988,23 +961,21 @@ usbbootkey()
 		device=$1
 	elif [ "$1" ]; then
 		echo "Invalid USB key device"
-		return 1 
+		return 1
 	else
-		$DIALOG --clear \
-			--title " Create a USB boot key " \
+		$DIALOG --clear --title " Create a USB boot key " \
 			--yes-label "Continue" --yesno \
 "\nThe USB key will be used like a CD-ROM. You will not be able to write
 any data on the boot partition.\n\n
 An extra FAT32 partition will be created with the remaining free space.\n\n
-$(tazusbmsg)Please plug your USB stick in now.\n 
-" 16 70
+$(tazusbmsg)Please plug your USB stick in now.\n" 16 70
 		[ $? -eq 0 ] || return
 		usbdev || return
 	
 		# perform dd in progress bar
 		max=$(($(stat -c %s "$ISO")/2048))
-		i=0; ddq if="$ISO" bs=1024k | ( 
-		while ddq bs=1024k count=1 ; do 
+		i=0; ddq if="$ISO" bs=1024k | (
+		while ddq bs=1024k count=1 ; do
 			i=$(($i + 1))
 			[ $i -gt $max ] && break
 			echo $((($i*100)/$max)) | dialog --gauge \
@@ -1041,29 +1012,26 @@ $(tazusbmsg)Please plug your USB stick in now.\n
 
 usbkey()
 {
-	$DIALOG --clear \
-		--title " Create a SliTaz USB key " \
+	$DIALOG --clear --title " Create a SliTaz USB key " \
 		--yes-label "Continue" --yesno \
 "\nUnlike a hard drive install, the filesystem is kept in a compressed
 rootfs.gz. The filesystem is loaded entirely into memory upon boot.
 This should increase responsiveness, protect the filesystem against
 accidental corruption and reduce read/writes to the USB drive.
 Once setup, the tazusb utility can rewrite the root filesystem
-with any changes you have made since booting up, 
+with any changes you have made since booting up,
 giving the effective benefits of a hard drive install.\n\n
 /home is mounted on boot using the UUID of your particular flash drive.
 Unlike a device name, the UUID has the benefit of never changing from machine
 to machine.\n\n
-Please plug your USB stick in now.\n 
-" 19 70
+Please plug your USB stick in now.\n" 19 70
 	[ $? -eq 0 ] || return
 	usbdev || return
 	exec 3>&1
 	format=`$DIALOG  --clear \
 	--title " Select the filesystem " \
 	--radiolist "\nPlease select the filesystem type to create.\n\n\
-The filesystem creation will erase all the data \
-in the USB key." 14 70 4 \
+The filesystem creation will erase all the data in the USB key." 14 70 4 \
 		"none"	"Do not erase the USB key" on \
 		"ext3"	"Ext3 journaling filesystem" off \
 		"ext2"	"Ext2 filesystem" off \
@@ -1123,8 +1091,7 @@ showfavinfo()
 	if [ "$1" ]; then
 		cat $file
 	else
-		$DIALOG --clear \
-			--title " Flavor info " \
+		$DIALOG --clear --title " Flavor info " \
 			--textbox $file 0 0
 	fi
 	rm -rf /tmp/data
@@ -1216,7 +1183,7 @@ floppyset()
 		i="$(ls $i* | sed q)"
 		[ -n "$i" ] && KERNEL=$i && break
 	done
-	rm -f /tmp/var$$ 
+	rm -f /tmp/var$$
 	[ $(get 514 $KERNEL 4) -eq 1400005704 ] || return
 	n=$(($(get 497 $KERNEL 1)+1))
 	ddq bs=512 count=$n if=$KERNEL of=/tmp/fd$$
@@ -1332,8 +1299,7 @@ infoiso()
 	if [ "$1" ]; then
 		cat /tmp/isoinfo$$
 	else
-		$DIALOG --clear \
-			--title " Info ISO " \
+		$DIALOG --clear --title " Info ISO " \
 			--textbox /tmp/isoinfo$$ 0 0
 	fi
 	rm -f /tmp/isoinfo$$
@@ -1379,9 +1345,7 @@ fi
 
 while true; do
 	cat > /tmp/dialog$$ <<EOT
-$DIALOG  --clear \
-	--title " $(isotitle) " \
-	--menu "" -2 70 0 \
+$DIALOG  --clear --title " $(isotitle) " --menu "" -2 70 0 \
 $(cdfile 'README*'	"readme"	"Show the README file") \
 $(gotcustomconf		"getcustomconf"	"Get custom config") \
 $(gotisomd5		"isomd5"	"Check the ISO image") \
