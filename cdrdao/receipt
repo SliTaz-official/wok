@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="cdrdao"
-VERSION="1.2.3"
+VERSION="1.2.4"
 CATEGORY="multimedia"
 SHORT_DESC="Records audio/data CD-Rs using toc files"
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="http://cdrdao.sourceforge.net/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="https://sourceforge.net/projects/cdrdao/"
-WGET_URL="$WEB_SITE/$TARBALL"
+WGET_URL="https://downloads.sourceforge.net/$PACKAGE/$TARBALL"
 
 DEPENDS="gcc-lib-base lame libmad libvorbis libao"
 BUILD_DEPENDS="lame-dev libmad-dev libvorbis-dev libao-dev libao libogg-dev"
@@ -16,7 +17,6 @@ BUILD_DEPENDS="lame-dev libmad-dev libvorbis-dev libao-dev libao libogg-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	for i in trackdb/*.cc ; do
 		grep -q string.h $i && continue
 		grep -q util.h $i || continue
@@ -27,8 +27,12 @@ compile_rules()
 	grep -qs 'define u8' scsilib/libscg/scsi-linux-sg.c ||
 	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
 		scsilib/libscg/scsi-linux-sg.c
-	patch -Np1 -i $stuff/$PACKAGE-$VERSION-stat.patch || return 1
-	./configure --prefix=/usr --with-lame $CONFIGURE_ARGS &&
+#	patch -Np1 -i $stuff/$PACKAGE-$VERSION-stat.patch || return 1
+
+	./configure \
+		--prefix=/usr \
+		--with-lame \
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
