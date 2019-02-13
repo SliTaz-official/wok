@@ -759,11 +759,12 @@ isomd5()
 }
 
 if [ "$1" == "--build" ]; then	#install-begin
-	uuencode -m - < ifmem.bin | sed -e '/^ifmemcode$/r/dev/stdin' \
-	  -e '/^ifmemcode$/d' -i $0
+	cp $0 $0.tmp
+	uuencode -m - < ifmem.bin | sed -e 's|^[ \t]*||;s|[ \t]*###.*||' \
+	  -e '/^ifmemcode$/r/dev/stdin' -e '/^ifmemcode$/d' -i $0.tmp
 	uuencode -m - < bootloader.bin | sed -e '/^bootloader$/r/dev/stdin' \
-	  -e '/^bootloader$/d' -e '/install-begin$/,/install-end$/d' -i $0
-	exit
+	  -e '/^bootloader$/d' -e '/install-begin$/,/install-end$/d' -i $0.rmp
+	mv -f $0.tmp $0; exit
 fi	#install-end
 parse_isolinux()
 {

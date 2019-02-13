@@ -19,7 +19,6 @@ iso2exe: iso2exe.sh boot.com bootiso.bin init.built win32.exe
 	./$@ --build boot.com bootiso.bin init win32.exe
 
 init.built: bootloader.bin ifmem.bin init
-	sed -i 's|^[ \t]*||;s|[ \t]*###.*||;s|^$||' init
 	./init --build
 	touch init.built
 
