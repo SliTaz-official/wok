@@ -47,7 +47,7 @@ add_rootfs()
 add_dosexe()
 {
 	TMP=/tmp/bootiso$$
-	$0 --get bootiso.bin > $TMP 2> /dev/null 
+	$0 --get bootiso.bin > $TMP 2> /dev/null
 	OFS=$(($(get 20 $TMP) - 0xC0))
 	printf "Adding DOS/EXE stub at %04X (%d bytes) ...\n" $OFS $((0x7FF0 - $OFS))
 	ddq if=$TMP bs=1 skip=$OFS of=$1 seek=$OFS conv=notrunc
@@ -307,7 +307,7 @@ case "$1" in
 	cp -a /dev/tty /dev/tty0 $TMP/dev
 	cat init > $TMP/init.exe
 	find $TMP -type f -print0 | xargs -0 chmod +x
-	find $TMP -print0 | xargs -0 touch -t 197001010100.00 
+	find $TMP -print0 | xargs -0 touch -t 197001010100.00
 	( cd $TMP; find dev init.exe | cpio -o -H newc ) | compress rootfs.gz
 	rm -rf $TMP
 	ls -l $@ rootfs.gz
@@ -611,7 +611,7 @@ EOT
 		if [ $newsz -gt $isosz ]; then
 			echo "$(($newsz - $isosz)) extra bytes."
 		else
-			echo "$(($isosz - 2048*$(get 32848 $1 4) 
+			echo "$(($isosz - 2048*$(get 32848 $1 4)
 				 - $(stat -c %s $DATA) - 24)) bytes free."
 		fi
 		rm -f $DATA > /dev/null
