@@ -52,15 +52,17 @@ ultoabuf	db	12	dup (?)
 ;_fastcall void strcat(bx:const char* a, ax:const char* b);
 ;_fastcall void strcatb(bx:const char* a, ax:const char* b);
 ;***************************************************************
+	ifdef	EXTRA
+        global  @strcat$qpxzct1:near
+@strcat$qpxzct1:
+		mov	cx,1h
+		db	0bah			; mov	dx,imm opcode
+	endif
         global  @strcatb$qpxzct1:near
         proc	@strcatb$qpxzct1 near
 
 	ifdef	EXTRA
 		mov	cl,7Fh
-		db	0bah			; mov	dx,imm opcode
-        global  @strcat$qpxzct1:near
-@strcat$qpxzct1:
-		mov	cl,80h
 		db	0bah			; mov	dx,imm opcode
         global	@strcpy$qpxzct1:near
 @strcpy$qpxzct1:
@@ -77,13 +79,10 @@ ultoabuf	db	12	dup (?)
 		or	al,al
                 jne	@@catlp
 		dec	si
+		mov	al,20h
 	ifdef	EXTRA
-		cmp	bx,si
-		adc	al,cl		; set S when bx != si or cl = 80
-		mov	al,20h
-		jns	@@cpyhead
+		loop	@@cpyhead
 	else
-		mov	al,20h
 		jmp	@@cpyhead
 	endif
 @@nocat:

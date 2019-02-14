@@ -83,12 +83,11 @@ int main(int argc, char *argv[]) {
         }
     }
 #else
-    if (argv[1]) {for (char i=0;;) {
+    if (argv[1]) while (1) {
 	char *s;
     next:
 	argv++;
 	s=*argv;
-	i++;
 	if (!s) {
 	    puts(load_kernel());
 	    load_initrd();
@@ -116,52 +115,53 @@ int main(int argc, char *argv[]) {
 	    base_himem = strtol(*argv);
 	    goto next;
 	default:
-        if(strhead(s,"cl=") == 0) {
-            cmdline=s+=3;
-            if (*s == '@') {
-		static struct image_himem image;
-		char c;
+	    if(strhead(s,"cl=") == 0) {
+		cmdline=s+=3;
+		if (*s == '@') {
+		    static struct image_himem image;
+		    char c;
 
-		s++;
-		image.errmsg = "Error in cl=@file";
-		open_image(s, &image);
-		cmdline=s=(char *)malloc_or_die(image.size);
-		s+=image.size;
-		read(image.fd, (void *)cmdline, image.size);
-		// Strip any trailing cr/lf
-		c='\0';
-		do {
+		    s++;
+		    image.errmsg = "Error in cl=@file";
+		    open_image(s, &image);
+		    cmdline=s=(char *)malloc_or_die(image.size);
+		    s+=image.size;
+		    read(image.fd, (void *)cmdline, image.size);
+		    // Strip any trailing cr/lf
+		    c='\0';
+		    do {
 			// Replace all other cr/lfs with spaces
 			s--;
 			if(*s>=' ') c=' ';
 			else *s = c;
-		} while (s>cmdline);
-                puts("Kernel command line:");
-                puts(cmdline);
-            }
-        }
-        else if(strhead(s,"root=") == 0) {
-	    s+=5;
-            root_dev = strtol(s);
-	    goto addincmdline;
-        }
-        else if(strhead(s,"mem=") == 0) {
-	    s+=4;
-            topmem = strtol(s);
-	    goto addincmdline;
-        }
-        else if(cmdline == (const char *) buf_cmdline + 1) {
-addincmdline:
-	    strcatb(buf_cmdline,*argv);
-        }
-	else if(i == 1 && fileexist(s) != -1) {
-	    cmdline = (const char *) buf_cmdline + 1;
-	    goto set_kernel_name;
-        }
-	else
-	    break;
+		    } while (s>cmdline);
+		    puts("Kernel command line:");
+		    puts(cmdline);
+		}
+	    }
+            else if(strhead(s,"root=") == 0) {
+		s+=5;
+		root_dev = strtol(s);
+		goto addincmdline;
+	    }
+	    else if(strhead(s,"mem=") == 0) {
+		s+=4;
+		topmem = strtol(s);
+		goto addincmdline;
+	    }
+	    else {
+	addincmdline:
+		if(cmdline == (const char *) buf_cmdline + 1) {
+		    strcatb(buf_cmdline,*argv);
+		}
+		else {
+		    if(fileexist(s) != -1) goto set_kernel_name;
+		    cmdline = (const char *) buf_cmdline + 1;
+		    goto addincmdline;
+		}
+	    }
 	}
-    }}
+    }
 #endif
     syntax();
 
