@@ -82,6 +82,9 @@ ultoabuf	db	12	dup (?)
 		adc	al,cl		; set S when bx != si or cl = 80
 		mov	al,20h
 		jns	@@cpyhead
+	else
+		mov	al,20h
+		jmp	@@cpyhead
 	endif
 @@nocat:
 @@cpylp:
@@ -104,7 +107,7 @@ strend:
 	ifdef	EXTRA
                 p8086
 ;***************************************************************
-;_fastcall char strstr(bx:const char* a, ax:const char* b);
+;_fastcall int strstr(bx:const char* a, ax:const char* b);
 ;***************************************************************
         global  @strstr$qpxzct1:near
         proc    @strstr$qpxzct1 near
@@ -517,9 +520,8 @@ _exit:
 ;        global  _abort:near
 _abort:
 		cli
-@@stop:
 		hlt
-		jmp	@@stop
+		jmp	_abort
 
 	endp	@die$qpxzc
 
@@ -920,10 +922,13 @@ _next_bufv:
 		ifdef	EXTRA
 		cmp	[(image_himem di).next_chunk],0	; iso image/initrd ?
 		jnz	@@next
-		endif
 		mov	[(image_himem di).next_chunk],offset next_chunk
 @@next:
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
+		else
+@@next:
+		call	next_chunk
+		endif
 		ifndef	NO386
 		add	eax,3
 		and	al,0FCh
@@ -939,7 +944,11 @@ _next_bufv:
 		endif
 		jnz	@@next
                 pop	[(image_himem di).state]
+		ifdef	EXTRA
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
+		else
+		call	next_chunk
+		endif
 @@alreadydone:
                 pop	di
 		ret
@@ -974,7 +983,8 @@ _next_bufv:
 		xchg	ax,cx
 @@szok:
 		jcxz	image_done
-		mov	dx,offset _xfer_buf
+		mov	dx,offset _xfer_buf+4096
+		sub	dx,si
 		mov	bx,[di]
 		call	@read$cxdxbx
 		jc	image_done
@@ -1008,9 +1018,16 @@ _next_bufv:
 		endif
 		sub	si,bx
 		pushf
+		ifdef	EXTRA
                 and	cx,[(image_himem di).next_chunk]
 		jcxz	@@same_chunk
+		push	di
 		call	cx
+		pop	cx
+		else
+		jcxz	@@same_chunk
+		call	next_chunk
+		endif
 @@same_chunk:
 		popf
 		jnz	@@loop
