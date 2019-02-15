@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="ifplugd"
+VERSION="0.28"
+CATEGORY="network"
+SHORT_DESC="Configure your ethernet device when a cable is plugged"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://0pointer.de/lennart/projects/ifplugd/"
+WGET_URL="${WEB_SITE}$TARBALL"
+
+BUILD_DEPENDS="libdaemon-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure --prefix=/usr \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		--disable-lynx \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/etc $fs
+	sed -i 's|/bin/bash|/bin/sh|' $fs/etc/init.d/ifplugd
+}
