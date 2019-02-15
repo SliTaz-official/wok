@@ -69,29 +69,27 @@ ultoabuf	db	12	dup (?)
 		xor	cx,cx
 	endif
                 push	si
-                xchg	ax,bx			; b
-                xchg	ax,si			; a
+                xchg	ax,si			; b
 	ifdef	EXTRA
 		jcxz	@@nocat
 	endif
+		dec	bx
 @@catlp:
-		lodsb				; a=si
-		or	al,al
+                inc	bx
+                cmp	[byte bx],0		; a=bx
                 jne	@@catlp
-		dec	si
-		mov	al,20h
 	ifdef	EXTRA
+		mov	al,20h
 		loop	@@cpyhead
 	else
-		jmp	@@cpyhead
+		db	0b8h,20h		; mov	ax,??20h
 	endif
 @@nocat:
 @@cpylp:
-                mov	al,[bx]
-                inc	bx
+		lodsb
 @@cpyhead:
-                mov	[si],al
-                inc	si
+                mov	[bx],al
+                inc	bx
 		or	al,al
                 jne	@@cpylp
 strfound:

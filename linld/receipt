@@ -45,7 +45,8 @@ EOT
 	cp TAZBOOT/TAZBOOT.COM tazboot.com
 	objdump -D -b binary -mi386 -Maddr16,data16 --adjust-vma=0x100 \
 		linld.com > linld.lst
-	for f in linld.com tazboot.com ; do
+	[ $(stat -c %s linld.com) -gt 4096 ] && linld=linld.com || linld=
+	for f in $linld tazboot.com ; do
 		cp $f tmp.com
 		for i in $(seq 1 9); do
 			upx -$i --8086 tmp.com
@@ -55,7 +56,7 @@ EOT
 		done > /dev/null 2>&1
 		rm tmp.com
 	done
-	upx -l linld.com tazboot.com
+	upx -l $linld tazboot.com
 	cc -o tobzimage.o -Wa,-algms=tobzimage.lst -c $stuff/tobzimage.S
 	objcopy -O binary tobzimage.o tobzimage.bin
 	cp $stuff/tobzimage .
