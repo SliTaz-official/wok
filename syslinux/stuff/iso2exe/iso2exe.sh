@@ -7,6 +7,7 @@ ddq()
 
 store()
 {
+	local i
 	n=$2; for i in $(seq 8 8 ${4:-16}); do
 		printf '\\\\x%02X' $(($n & 255))
 		n=$(($n >> 8))
@@ -91,8 +92,9 @@ add_win32exe()
 		ddq if=$2 bs=512 skip=1 of=$1 seek=1 conv=notrunc
 		i=3; [ -n "$mac" ] && i=9
 		ddq if=/tmp/exe$$ bs=512 skip=1 of=$1 seek=$i conv=notrunc
-		for i in 12C 154 17C ; do	# always 3 UPX sections
-			store $((0x$i)) $((1024 + $(get 0x$i $1))) $1
+		OFS=$((512*($i-1)))
+		for i in 18C 1B4 1DC ; do	# always 3 UPX sections
+			store $((0x$i)) $(($OFS + $(get 0x$i $1))) $1
 		done
 	fi
 	printf "Adding bootiso head at %04X...\n" 0
