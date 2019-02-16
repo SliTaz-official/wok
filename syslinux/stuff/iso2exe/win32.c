@@ -191,13 +191,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	GetModuleFileName(hInstance, isoFileName, MAX_PATH);
 	if (!iswinnt()) {
 #ifdef VCPI_LINUX_LOADER
-		exec16bits(isoFileName);
+		if (MessageBox(NULL,"This program must be run in DOS mode.\n"
+			"I can try to launch it, but it more safe\n"
+			"to reboot in DOS mode and run it at DOS prompt.",
+			"Boot SliTaz in DOS mode ?",
+			MB_YESNO|MB_ICONQUESTION) == IDYES) {
+			exec16bits(isoFileName);
+		}
 #else
 		MessageBox(NULL,"No support for Win9x yet.\n"
 				"Retry in DOS mode without emm386.\n",
 			   "Sorry", MB_OK|MB_ICONERROR);
-		exit(1);
 #endif
+		exit(1);
 	}
 	if (!ishybrid(isoFileName)) {
 		if (MessageBox(NULL,"Not an isolinux hybrid ISO.\n"
