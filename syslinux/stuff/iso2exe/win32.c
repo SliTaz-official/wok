@@ -192,9 +192,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	if (!iswinnt()) {
 #ifdef VCPI_LINUX_LOADER
 		if (MessageBox(NULL,"This program must be run in DOS mode.\n"
-			"I can try to launch it, but it more safe\n"
-			"to reboot in DOS mode and run it at DOS prompt.",
-			"Boot SliTaz in DOS mode ?",
+			"I can try to launch it, but it's safer to\n"
+			"reboot in DOS mode and run it at DOS prompt.",
+			"Launch SliTaz now ?",
 			MB_YESNO|MB_ICONQUESTION) == IDYES) {
 			exec16bits(isoFileName);
 		}
