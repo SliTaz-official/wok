@@ -1,18 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="dialog"
-VERSION="1.3-20160424"
+VERSION="1.3_20190211"
 CATEGORY="base-system"
 SHORT_DESC="Script-interpreter which provides a set of curses widgets."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="LGPL2.1"
+
 TARBALL="$PACKAGE-$VERSION.tgz"
 WEB_SITE="https://invisible-island.net/dialog/"
-WGET_URL="ftp://invisible-island.net/$PACKAGE/$TARBALL"
-HOST_ARCH="i486 arm"
 
+WGET_URL="ftp://invisible-mirror.net/archives/$PACKAGE/$PACKAGE-${VERSION/_/-}.tgz"
 DEPENDS="ncursesw"
 BUILD_DEPENDS="ncursesw-dev"
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -25,7 +26,8 @@ compile_rules()
 		--enable-nls \
 		--enable-widec \
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -33,6 +35,14 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr $fs/etc
 	cp -a $install/usr/bin $fs/usr
+
 	# Config file.
 	cp $stuff/dialogrc $fs/etc
+
+	# Localisations:
+	for lang in da de fr id it pt_BR ro ru; do
+		mkdir -p $fs/usr/share/locale/$lang/LC_MESSAGES
+		cp -a $install/usr/share/locale/$lang/LC_MESSAGES/dialog.mo \
+			$fs/usr/share/locale/$lang/LC_MESSAGES/dialog.mo
+	done
 }
