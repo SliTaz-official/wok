@@ -113,9 +113,9 @@ add_win32exe()
 	fi
 	rm -f /tmp/exe$$ /tmp/coff$$
 	if [ -z "$RECURSIVE_PARTITION" -a $(get 454 $1 4) -eq 0 ]; then
-		store 448 $((1+$i/512)) $1 8
-		store 454 $(($i/512)) $1 8
-		store 458 $(($(get 458 $1 4) - $i/512)) $1 32
+		store 448 $((1+$i/512)) $1 8			### 446+2 SECTOR
+		store 454 $(($i/512)) $1 32			### 446+8 OFFSET
+		store 458 $(($(stat -c %s $1)/512)) $1 32	### 446+12 SIZE
 	fi
 }
 
