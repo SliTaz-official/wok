@@ -1,26 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="e2tools"
-VERSION="0.0.16"
+VERSION="0.0.16.4"
 CATEGORY="base-system"
-SHORT_DESC="Read, write, and manipulate files in an ext2/ext3 filesystem."
+SHORT_DESC="Read, write, and manipulate files in an ext2 or ext3 filesystem."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://github.com/ndim/$PACKAGE"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$WEB_SITE/archive/v$VERSION.tar.gz"
 
 DEPENDS="e2fsprogs"
-BUILD_DEPENDS="e2fsprogs-dev wget"
+BUILD_DEPENDS="autoconf e2fsprogs-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries"
+	autoreconf -vis . &&
 	./configure \
 		--prefix=/usr \
-		$CONFIGURE_ARGS
-	make && make DESTDIR=$DESTDIR install
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
