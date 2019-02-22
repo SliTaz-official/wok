@@ -16,7 +16,7 @@ meminfo.exe: meminfo.S
 iso2exe: iso2exe.sh boot.com bootiso.bin init.built win32.exe
 	cp iso2exe.sh $@
 	chmod +x $@
-	./$@ --build boot.com bootiso.bin init win32.exe
+	./$@ --build boot.com bootiso.bin win32.exe init
 
 init.built: bootloader.bin ifmem.bin init
 	./init --build

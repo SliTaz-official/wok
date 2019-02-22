@@ -178,7 +178,7 @@ movepartition:
 	ret
 	.org	0x7E00
 
-	.org	0x7F81
+	.org	0x7F83
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
 exestart:
@@ -199,8 +199,7 @@ ishelp:
 	jc	tst386
 abort:
 goputs:
-	mov	$EXEADRS(puts), %si
-	jmp	%si
+	jmp	puts
 
 tst386:
 	pushw	%sp

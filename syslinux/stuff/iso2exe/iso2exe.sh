@@ -152,7 +152,8 @@ fileofs()
 	x=$((512*(1+$(get 417 "$ISO" 1))))
 	[ $x -gt 32768 ] && x=6656
 	stub=$(($(get 20 "$ISO") - 0xC0))
-	[ $stub -gt 30000] && dosstub=$stub || dosstub=
+	dosstub=$stub
+	[ $stub -lt 30000 ] && stub=$((0x7FF0)) && dosstub=
 	c=$(custom_config_sector "$ISO")
 	SIZE=0; OFFSET=0
 	case "$1" in
