@@ -152,6 +152,7 @@ fileofs()
 	x=$((512*(1+$(get 417 "$ISO" 1))))
 	[ $x -gt 32768 ] && x=6656
 	stub=$(($(get 20 "$ISO") - 0xC0))
+	[ $stub -gt 30000] && dosstub=$stub || dosstub=
 	c=$(custom_config_sector "$ISO")
 	SIZE=0; OFFSET=0
 	case "$1" in
@@ -169,7 +170,7 @@ fileofs()
 	rootfs.gz)	SIZE=$(get 24 "$ISO"); OFFSET=$(($stub - $SIZE));;
 	tazboot.com)	OFFSET=$(($(get 64 "$ISO") - 0xC0))
 			SIZE=$(($stub - $(get 24 "$ISO") - $OFFSET));;
-	dosstub)	OFFSET=$stub; SIZE=$((0x7FF0 - $OFFSET));;
+	dosstub)	[ "$dosstub" ] && OFFSET=$stub && SIZE=$((0x7FF0 - $OFFSET));;
 	boot.md5)	[ $(get 0 "$ISO") -eq 23117 ] &&
 			[ $(get 18 "$ISO") -ne 0 ] &&
 			OFFSET=$((0x7FF0)) && SIZE=16;;
@@ -307,12 +308,13 @@ case "$1" in
 	( cd $TMP; find dev init.exe | cpio -o -H newc ) | compress rootfs.gz
 	rm -rf $TMP
 	ls -l $@ rootfs.gz
-	cat >> $0 <<EOM
+	cp $0 $0.$$
+	cat >> $0.$$ <<EOM
 $(tar cf - ${@/init/rootfs.gz} | compress | uuencode -m -)
 EOT
 EOM
-	sed -i 's|[ \t]*###.*||;/^case/,/^esac/d' $0
-	exit ;;
+	sed -i 's|[ \t]*###.*||;/^case/,/^esac/d' $0.$$
+	mv -f $0.$$ $0; exit ;;
 --get)
 	cat $2
 	exit ;;
