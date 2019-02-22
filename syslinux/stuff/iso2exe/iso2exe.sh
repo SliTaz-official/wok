@@ -8,6 +8,7 @@ ddq()
 store()
 {
 	local i
+	local n
 	n=$2; for i in $(seq 8 8 ${4:-16}); do
 		printf '\\\\x%02X' $(($n & 255))
 		n=$(($n >> 8))
@@ -83,36 +84,29 @@ add_tazlito_info()
 add_win32exe()
 {
 	SIZE=$($0 --get win32.exe 2> /dev/null | tee /tmp/exe$$ | wc -c)
-	[ -n "$gpt" ] && SIZE=$(($SIZE+1024))
-	[ -n "$mac" ] && SIZE=$(($SIZE+3072))
+	[ -n "$gpt" ] && n=1536 || n=512
+	SIZE=$(($SIZE+$n))
 	printf "Adding WIN32 file at %04X (%d bytes) ...\n" 0 $SIZE
-	ddq if=/tmp/exe$$ of=$1 conv=notrunc
-	if [ -n "$gpt" ]; then
-		printf "Adding GPT at %04X (1024 bytes) ...\n" 512
-		ddq if=$2 bs=512 skip=1 of=$1 seek=1 conv=notrunc
-		i=3; [ -n "$mac" ] && i=9
-		ddq if=/tmp/exe$$ bs=512 skip=1 of=$1 seek=$i conv=notrunc
-		OFS=$((512*($i-1)))
-		for i in 18C 1B4 1DC ; do	# always 3 UPX sections
-			store $((0x$i)) $(($OFS + $(get 0x$i $1))) $1
-		done
-	fi
+	[ -n "$gpt" ] && printf "Adding GPT at %04X (1024 bytes) ...\n" 512
+	for i in $(seq 396 40 $((356+$(get 0x86 /tmp/exe$$)*40))); do
+		x=$(($n + $(get $i /tmp/exe$$)))
+		store $(($i)) $x /tmp/exe$$	### section offset
+	done
+	cut=$((0x98+$(get 0x94 /tmp/exe$$)))	### end of header
+	store $((0x94)) $(($n + $cut - 0x98)) /tmp/exe$$
+	ddq if=/tmp/exe$$ of=$1 conv=notrunc bs=1 count=$cut
+	ddq if=/tmp/exe$$ of=$1 conv=notrunc bs=1 skip=$cut seek=$(($n+$cut))
 	printf "Adding bootiso head at %04X...\n" 0
 	$0 --get bootiso.bin 2> /dev/null > /tmp/exe$$
-	ddq if=/tmp/exe$$ of=$1 bs=128 count=1 conv=notrunc
-	store $((0x94)) $((0xE0 - 12*8)) $1
-	store $((0xF4)) $((16 - 12)) $1
-	ddq if=$1 of=/tmp/coff$$ bs=1 skip=$((0x178)) count=$((0x88))
-	ddq if=/tmp/coff$$ of=$1 conv=notrunc bs=1 seek=$((0x178 - 12*8))
+	ddq if=/tmp/exe$$ of=$1 bs=128 count=1 conv=notrunc	### DOS stub
 	ddq if=/tmp/exe$$ of=$1 bs=1 count=24 seek=$((0x1A0)) skip=$((0x1A0)) conv=notrunc
 	ddq if=$2 bs=1 skip=$((0x1B8)) seek=$((0x1B8)) count=72 of=$1 conv=notrunc
 	store 510 $((0xAA55)) $1
 	i=$SIZE; OFS=$(($SIZE+512))
-	[ -n "$mac" ] && OFS=$SIZE && i=1536
-	store 417 $(($i/512)) $1 8
+	store 417 $(($i/512)) $1 8	### isolinux boot sector
 	printf "Moving syslinux hybrid boot record at %04X (512 bytes) ...\n" $i
 	ddq if=$2 bs=1 count=512 of=$1 seek=$i conv=notrunc
-	if [ $(get $((0x7C00)) /tmp/exe$$) -eq 60905 ]; then
+	if [ $(get $((0x7C00)) /tmp/exe$$) -eq 60905 ]; then	# partition boot code
 		ddq if=/tmp/exe$$ bs=1 count=66 skip=$((0x7DBE)) of=$1 seek=$(($i + 0x1BE)) conv=notrunc
 		ddq if=$1 bs=1 count=3 skip=$i of=$1 seek=$(($i + 0x1BE)) conv=notrunc
 		ddq if=/tmp/exe$$ bs=1 count=3 skip=$((0x7C00)) of=$1 seek=$i conv=notrunc
@@ -317,7 +311,7 @@ case "$1" in
 $(tar cf - ${@/init/rootfs.gz} | compress | uuencode -m -)
 EOT
 EOM
-	sed -i '/^case/,/^esac/d' $0
+	sed -i 's|[ \t]*###.*||;/^case/,/^esac/d' $0
 	exit ;;
 --get)
 	cat $2
