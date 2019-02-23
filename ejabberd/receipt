@@ -1,31 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="ejabberd"
-VERSION="2.1.6"
+VERSION="18.12.1"
 CATEGORY="network"
+TAGS="im instant-messaging server"
 SHORT_DESC="Jabber/XMPP instant messaging server (real-time communication)."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://www.ejabberd.im/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://www.process-one.net/downloads/$PACKAGE/$VERSION/$TARBALL"
-CONFIG_FILES="/etc/ejabberd"
-TAGS="im instant-messaging server"
 
 DEPENDS="erlang expat openssl zlib"
 BUILD_DEPENDS="erlang expat-dev openssl-dev zlib-dev"
+CONFIG_FILES="/etc/ejabberd"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src/src
-	./configure --prefix=/usr \
+	./configure \
+		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -36,4 +38,3 @@ genpkg_rules()
 	cp -a $install/* $fs
 	ln -s /usr/sbin/ejabberdctl $fs/etc/init.d/ejabberd
 }
-
