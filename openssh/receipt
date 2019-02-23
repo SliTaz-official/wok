@@ -15,7 +15,8 @@ HOST_ARCH="i486 arm"
 
 PROVIDE="ssh"
 DEPENDS="sftp-server libcrypto zlib"
-BUILD_DEPENDS="libcrypto-dev zlib-dev openssl-dev"
+BUILD_DEPENDS="libcrypto-dev zlib-dev openssl-dev gtk+-dev"
+SUGGESTED="gtk+"
 TAZPANEL_DAEMON="man::sshd|edit::/etc/ssh/sshd_config|options|web::$WEB_SITE"
 
 # Rules to configure and make the package.
@@ -37,6 +38,10 @@ compile_rules()
 	make DESTDIR=$DESTDIR install
 	install -d -m 755 $DESTDIR/usr/share/doc &&
 	install -m 644 $src/[A-Z][A-Z]* $DESTDIR/usr/share/doc
+	cd contrib &&
+	cc -Wall $(pkg-config --cflags gtk+-2.0) gnome-ssh-askpass2.c \
+		-o gnome-ssh-askpass $(pkg-config --libs gtk+-2.0) &&
+	cp gnome-ssh-askpass $DESTDIR/usr/bin/ssh-askpass
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -45,6 +50,8 @@ genpkg_rules()
 	mkdir -p $fs/usr $fs/etc/init.d $fs/etc/ssh
 	cp -a $install/usr/sbin $install/usr/bin $fs/usr
 	rm -f $fs/usr/sbin/sftp-server
+	install -m 755 -oroot -groot $src/contrib/ssh-copy-id $fs/usr/bin
+	cp $src/contrib/ssh-copy-id.1 $install/usr/share/man/cat1
 	cp -a $install/etc $fs
 	cp $stuff/openssh $fs/etc/init.d
 	sed -i 's|/usr/libexec/sftp-server|/usr/sbin/sftp-server|' \
