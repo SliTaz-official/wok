@@ -178,7 +178,7 @@ movepartition:
 	ret
 	.org	0x7E00
 
-	.org	0x7F81
+	.org	0x7F78
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
 exestart:
@@ -200,7 +200,7 @@ ishelp:
 abort:
 goputs:
 	mov	$EXEADRS(puts), %si
-	jmp	%si
+	jmp	*%si
 
 tst386:
 	pushw	%sp
@@ -226,9 +226,10 @@ isvm86:
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
 	movb	$0x7C/2, %ch		// 31K-31.5K, > com length
-	rep
-	movsw
-	ret
+	movb	$0x80, %bh
+	movw	$0xA5F3, (%bx)		// rep movsw
+	movb	$0xC3, 2(%bx)		// ret
+	jmp	*%bx
 
 vm86modemsg:
 // --------------- Must be in 7F40 7FFF range ------------------------

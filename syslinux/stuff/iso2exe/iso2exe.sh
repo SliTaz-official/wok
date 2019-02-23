@@ -5,6 +5,11 @@ ddq()
 	dd $@ 2> /dev/null
 }
 
+ddn()
+{
+	ddq $@ conv=notrunc
+}
+
 store()
 {
 	local i
@@ -12,7 +17,7 @@ store()
 	n=$2; for i in $(seq 8 8 ${4:-16}); do
 		printf '\\\\x%02X' $(($n & 255))
 		n=$(($n >> 8))
-	done | xargs echo -en | ddq bs=1 conv=notrunc of=$3 seek=$(($1))
+	done | xargs echo -en | ddn bs=1 of=$3 seek=$(($1))
 }
 
 get()
@@ -40,20 +45,10 @@ add_rootfs()
 	$0 --get rootfs.gz > $TMP/rootfs.gz
 	SIZE=$(wc -c < $TMP/rootfs.gz)
 	store 24 $SIZE $1
-	OFS=$(( $OFS - $SIZE ))
+	OFS=$(( 0x7FF0 - $SIZE ))
 	printf "Adding rootfs.gz file at %04X (%d bytes) ...\n" $OFS $SIZE
-	cat $TMP/rootfs.gz | ddq of=$1 bs=1 seek=$OFS conv=notrunc
+	cat $TMP/rootfs.gz | ddn of=$1 bs=1 seek=$OFS
 	rm -rf $TMP
-}
-
-add_dosexe()
-{
-	TMP=/tmp/bootiso$$
-	$0 --get bootiso.bin > $TMP 2> /dev/null
-	OFS=$(($(get 20 $TMP) - 0xC0))
-	printf "Adding DOS/EXE stub at %04X (%d bytes) ...\n" $OFS $((0x7FF0 - $OFS))
-	ddq if=$TMP bs=1 skip=$OFS of=$1 seek=$OFS conv=notrunc
-	rm -f $TMP
 }
 
 add_doscom()
@@ -61,7 +56,7 @@ add_doscom()
 	SIZE=$($0 --get boot.com | wc -c)
 	OFS=$(( $OFS - $SIZE ))
 	printf "Adding DOS boot file at %04X (%d bytes) ...\n" $OFS $SIZE
-	$0 --get boot.com | ddq of=$1 bs=1 seek=$OFS conv=notrunc
+	$0 --get boot.com | ddn of=$1 bs=1 seek=$OFS
 	store 64 $(($OFS+0xC0)) $1
 }
 
@@ -72,7 +67,7 @@ add_tazlito_info()
 	zcat $2 | compress /tmp/rezipped$$.gz
 	n=$(stat -c %s /tmp/rezipped$$.gz)
 	printf "Moving tazlito data record at %04X ($n bytes) ...\n" $OFS
-	ddq if=/tmp/rezipped$$.gz bs=1 of=$1 seek=$OFS conv=notrunc
+	ddn if=/tmp/rezipped$$.gz bs=1 of=$1 seek=$OFS
 	HOLE=$(($HOLE+$n))
 	rm -f /tmp/rezipped$$.gz
 	if [ -n "$gpt" ]; then
@@ -94,22 +89,28 @@ add_win32exe()
 	done
 	cut=$((0x98+$(get 0x94 /tmp/exe$$)))	### end of header
 	store $((0x94)) $(($n + $cut - 0x98)) /tmp/exe$$
-	ddq if=/tmp/exe$$ of=$1 conv=notrunc bs=1 count=$cut
-	ddq if=/tmp/exe$$ of=$1 conv=notrunc bs=1 skip=$cut seek=$(($n+$cut))
+	ddn if=/tmp/exe$$ of=$1 bs=1 count=$cut
+	ddn if=/tmp/exe$$ of=$1 bs=1 skip=$cut seek=$(($n+$cut))
 	printf "Adding bootiso head at %04X...\n" 0
 	$0 --get bootiso.bin 2> /dev/null > /tmp/exe$$
-	ddq if=/tmp/exe$$ of=$1 bs=128 count=1 conv=notrunc	### DOS stub
-	ddq if=/tmp/exe$$ of=$1 bs=1 count=24 seek=$((0x1A0)) skip=$((0x1A0)) conv=notrunc
-	ddq if=$2 bs=1 skip=$((0x1B8)) seek=$((0x1B8)) count=72 of=$1 conv=notrunc
+	x=$(($(get 0x14 /tmp/exe$$ 1)+0x40))
+	printf "Adding bootiso DOS stub at %04X...\n" $(($n+$x))
+	ddn if=/tmp/exe$$ of=$1 bs=1 seek=$(($n+$x)) skip=$((0x7F00+$x)) count=$((256-$x))
+	x=$(($n/256+1))
+	store $((0x15)) $x /tmp/exe$$ 8		### exe IP 
+	store $((0x6c)) $x /tmp/exe$$ 8		### puts data 
+	ddn if=/tmp/exe$$ of=$1 bs=128 count=1	### DOS header
+	ddn if=/tmp/exe$$ of=$1 bs=1 count=24 seek=$((0x1A0)) skip=$((0x1A0))
+	ddn if=$2 bs=1 skip=$((0x1B8)) seek=$((0x1B8)) count=72 of=$1
 	store 510 $((0xAA55)) $1
 	i=$SIZE; OFS=$(($SIZE+512))
 	store 417 $(($i/512)) $1 8	### isolinux boot sector
 	printf "Moving syslinux hybrid boot record at %04X (512 bytes) ...\n" $i
-	ddq if=$2 bs=1 count=512 of=$1 seek=$i conv=notrunc
+	ddn if=$2 bs=1 count=512 of=$1 seek=$i
 	if [ $(get $((0x7C00)) /tmp/exe$$) -eq 60905 ]; then	# partition boot code
-		ddq if=/tmp/exe$$ bs=1 count=66 skip=$((0x7DBE)) of=$1 seek=$(($i + 0x1BE)) conv=notrunc
-		ddq if=$1 bs=1 count=3 skip=$i of=$1 seek=$(($i + 0x1BE)) conv=notrunc
-		ddq if=/tmp/exe$$ bs=1 count=3 skip=$((0x7C00)) of=$1 seek=$i conv=notrunc
+		ddn if=/tmp/exe$$ bs=1 count=66 skip=$((0x7DBE)) of=$1 seek=$(($i + 0x1BE))
+		ddn if=$1 bs=1 count=3 skip=$i of=$1 seek=$(($i + 0x1BE))
+		ddn if=/tmp/exe$$ bs=1 count=3 skip=$((0x7C00)) of=$1 seek=$i
 	fi
 	rm -f /tmp/exe$$ /tmp/coff$$
 	if [ -z "$RECURSIVE_PARTITION" -a $(get 454 $1 4) -eq 0 ]; then
@@ -127,9 +128,9 @@ add_fdbootstrap()
 		OFS=$(( $OFS - $SIZE ))
 		printf "Adding floppy bootstrap file at %04X (%d bytes) ...\n" $OFS $SIZE
 		$0 --get bootfd.bin | \
-		ddq of=$1 bs=1 count=512 seek=$OFS conv=notrunc
+		ddn of=$1 bs=1 count=512 seek=$OFS
 		$0 --get bootfd.bin | \
-		ddq of=$1 bs=1 skip=1024 seek=$((512 + $OFS)) conv=notrunc
+		ddn of=$1 bs=1 skip=1024 seek=$((512 + $OFS))
 		store 26 $(($SIZE/512)) $1 8
 	fi
 }
@@ -260,9 +261,9 @@ list()
 restore_hybrid_mbr()
 {
 	if [ $(get 0 "$1") -eq 60905 ]; then
-		ddq bs=1 conv=notrunc if="$1" of="$1" skip=$((0x1BE)) seek=0 count=3
-		ddq bs=1 skip=$((0x1BE)) count=66 if="$2" | \
-			ddq bs=1 seek=$((0x1BE)) count=66 of="$1" conv=notrunc
+		ddn bs=1 if="$1" of="$1" skip=$((0x1BE)) seek=0 count=3
+		ddn bs=1 skip=$((0x1BE)) count=66 if="$2" | \
+			ddq bs=1 seek=$((0x1BE)) count=66 of="$1"
 		if [ -n "$RECURSIVE_PARTITION" ]; then
 			for i in 0 1 2 3 ; do
 				n=$(get $((0x1C6+16*i)) $1 4)
@@ -324,7 +325,6 @@ EOM
 	ddq if=/dev/zero bs=32k count=1 of=$DATA
 	add_win32exe $DATA $2 > /dev/null
 	HSZ=$OFS
-	add_dosexe $DATA > /dev/null
 	add_rootfs $DATA > /dev/null
 	add_doscom $DATA > /dev/null
 	add_fdbootstrap $DATA > /dev/null
@@ -485,7 +485,7 @@ EOT
 	store 16 -2 /tmp/exe$$
 	store 20 256 /tmp/exe$$
 	store 22 -16 /tmp/exe$$
-	ddq if=$2 bs=1 seek=64 of=/tmp/exe$$ conv=notrunc
+	ddn if=$2 bs=1 seek=64 of=/tmp/exe$$
 	store 65 $(stat -c %s $3) /tmp/exe$$
 	store 68 $((0x100-0x40+$(stat -c %s $4))) /tmp/exe$$
 	cat /tmp/exe$$
@@ -526,19 +526,19 @@ EOT
 		n=$(($(get 64 $1) + 0xC0 - ($(get 26 $1 1)*512) - ($b+1)*512))
 		ddq if=$1 bs=512 count=1 skip=$b of=/tmp/hymbr$$
 		restore_hybrid_mbr /tmp/hymbr$$ $1
-		ddq if=/tmp/hymbr$$ of=$1 conv=notrunc
+		ddn if=/tmp/hymbr$$ of=$1
 		rm -f /tmp/hymbr$$
 		if [ $(get 512 $1) -eq 17989 ]; then
 			n=$(($(get 0x25C $1)/512))
-			ddq if=$1 bs=512 seek=44 count=20 skip=$n of=$1 conv=notrunc
-			ddq if=/dev/zero bs=512 seek=9 count=35 of=$1 conv=notrunc
-			ddq if=/dev/zero bs=512 seek=3 count=1 of=$1 conv=notrunc
+			ddn if=$1 bs=512 seek=44 count=20 skip=$n of=$1
+			ddn if=/dev/zero bs=512 seek=9 count=35 of=$1
+			ddn if=/dev/zero bs=512 seek=3 count=1 of=$1
 		else
-			ddq if=/dev/zero bs=512 seek=1 count=1 of=$1 conv=notrunc
-			ddq if=$1 bs=512 seek=2 count=30 skip=$(($b+1)) of=$1 conv=notrunc
-			ddq if=/dev/zero bs=1 seek=$n count=$((0x8000 - $n)) of=$1 conv=notrunc
+			ddn if=/dev/zero bs=512 seek=1 count=1 of=$1
+			ddn if=$1 bs=512 seek=2 count=30 skip=$(($b+1)) of=$1
+			ddn if=/dev/zero bs=1 seek=$n count=$((0x8000 - $n)) of=$1
 		fi ;;
-	    *)  ddq if=/dev/zero bs=1k count=32 of=$1 conv=notrunc ;;
+	    *)  ddn if=/dev/zero bs=1k count=32 of=$1 ;;
 	    esac
 	    case "${2/--/-}" in
 	    -f*)
@@ -571,19 +571,18 @@ EOT
 	rm -f /tmp/tazlito$$ /tmp/hybrid$$
 	
 	# keep the largest room for the tazlito info file
-	add_dosexe $1
 	add_rootfs $1
 	add_doscom $1
 	add_fdbootstrap $1
 	printf "%d free bytes in %04X..%04X\n" $(($OFS-$HOLE)) $HOLE $OFS
 	store 440 $(date +%s) $1 32
 	[ "$2" ] && echo "$2               " | \
-		ddq bs=1 seek=$((0x7FDE)) count=15 conv=notrunc of=$1
+		ddn bs=1 seek=$((0x7FDE)) count=15 of=$1
 	if [ $(stat -c %s $1) -gt 34816 ]; then
 		echo "Adding ISO image md5 at 7FF0 (16 bytes) ..."
 		echo -en "$(ddq if=$1 bs=2k skip=16 count=$(($(get 32848 "$1" 4)-16)) | \
 			md5sum | cut -c-32 | sed 's/\(..\)/\\x\1/g')" | \
-			ddq bs=16 seek=2047 conv=notrunc of=$1
+			ddn bs=16 seek=2047 of=$1
 	fi
 	HEAP=$(($(custom_config_sector $1)*2048))
 	if [ "$append$initrd" ]; then
