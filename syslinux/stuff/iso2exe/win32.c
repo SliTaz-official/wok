@@ -33,7 +33,7 @@ static int fullwrite(int fd, char *p, int n)
 static void exec16bits(char *isoFileName)
 {
 	int fdiso, fdtmp, i;
-	long buffer[512/4];
+	char buffer[512];
 	char tmpFileName[MAX_PATH], *p;
 
 	strcpy(tmpFileName, isoFileName);
@@ -44,7 +44,11 @@ static void exec16bits(char *isoFileName)
 	fdtmp = open(tmpFileName, O_WRONLY|O_BINARY|O_CREAT,0555);
 	for (i = 0; i < 0x8000; i += sizeof(buffer)) {
 		read(fdiso, (char *) buffer, sizeof(buffer));
-		if (i == 0) buffer[15] = 0;	// kill PE header
+		if (i == 0) {
+			buffer[2] =  buffer[3]  =	// reset last page size
+			buffer[18] = buffer[19] = 0;	// reset checksum
+			buffer[63]++;			// kill PE header
+		}
 		write(fdtmp, (char *) buffer, sizeof(buffer));
 	}
 	close(fdiso);
