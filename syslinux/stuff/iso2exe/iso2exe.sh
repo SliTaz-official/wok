@@ -282,7 +282,7 @@ extract()
 		fileofs $f
 		[ $SIZE -eq 0 ] ||
 		ddq bs=1 count=$SIZE skip=$OFFSET if="$ISO" >$f
-		[ "$f" == "syslinux.mbr" ] && restore_hybrid_mbr "$f" "$ISO"
+		[ "$f" = "syslinux.mbr" ] && restore_hybrid_mbr "$f" "$ISO"
 	done
 }
 
@@ -384,7 +384,7 @@ EOT
 for mode in data offset ; do
 	ofs=0
 	while read tag str; do
-		if [ "$mode" == "data" ]; then
+		if [ "$mode" = "data" ]; then
 			echo -en "$str\0" | hexdump -v -e '"    " 16/1 "0x%02X, "' \
 				-e '"  /* %04.4_ax */ \n"' | \
 				sed 's/ 0x  ,/      /g'
@@ -602,7 +602,7 @@ EOT
 		h=$(get 417 "$1" 1)
 		[ -z "$RECURSIVE_PARTITION" ] || h=0
 		for i in 0 1 2 3 ; do
-			[ $(get $((0x1BE+16*i)) $1 2) == $((0x0080)) ] || continue
+			[ $(get $((0x1BE+16*i)) $1 2) = $((0x0080)) ] || continue
 			store $((0x1CA+16*i)) $(($mb*2048-$h)) $1 32
 			store $((0x1C5+16*i)) $(($mb-1)) $1 8
 		done
