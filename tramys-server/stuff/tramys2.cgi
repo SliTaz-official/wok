@@ -70,9 +70,9 @@ copy_translations() {
 			for line in $(grep -e "^$P	" $DATADIR/$PREFIX$list_type.list); do
 				locales=$(echo $line | cut -d'	' -f2)
 				names=$(echo $line | cut -d'	' -f3)
-					[ "x$names" = "x" ] && names=$P
+					[ -z "$names" ] && names=$P
 				paths=$(echo $line | cut -d'	' -f4)
-					[ "x$paths" = "x" ] && paths="$US/locale/%/$LC"
+					[ -z "$paths" ] && paths="$US/locale/%/$LC"
 
 				IFS=' '
 				# for all valid locale variants

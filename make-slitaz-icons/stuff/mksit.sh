@@ -180,7 +180,7 @@ while [ "x$1" != "x" ]; do
 	shift
 done
 
-if [ "x$FROM" = "x" -o "x$TO" = "x" ]; then
+if [ -z "$FROM" -o -z "$TO" ]; then
 	echo "There are no required parameters (-f or -t)!"; exit 1
 fi
 
