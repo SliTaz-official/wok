@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ "$1" == "--build" ]; then
+if [ "$1" = "--build" ]; then
 	cat >> $0 <<EOM
 $(for i in fx fx_f fx_c px px_f px_c ; do
      cat mbr/isohdp$i.bin /dev/zero | dd bs=1 count=512 2> /dev/null
@@ -238,7 +238,7 @@ abort()
 	[ $always -eq 0 ] && exit 1
 }
 
-[ "$(readiso 17 7 23)" == "EL TORITO SPECIFICATION" ] ||
+[ "$(readiso 17 7 23)" = "EL TORITO SPECIFICATION" ] ||
 	abort "no boot record found."
 cat=$(read32 17 71)
 [ $(read32 $cat 0) -eq 1 -a $(read32 $cat 30) -eq $(( 0x88AA55 )) ] ||

@@ -39,7 +39,7 @@ locales_list() {
 	EE=$(echo $1 | sed -n '/./s|^[^\.]*\(\.[^@]*\).*$|\1|p')
 	VV=$(echo $1 | sed -n '/@/s|^[^@]*\(@.*\)$|\1|p')
 	ee=$(echo $EE | tr A-Z a-z | tr -cd a-z0-9); [ "$ee" ] && ee=.$ee
-	[ "x$EE" == "x$ee" ] && ee=''
+	[ "x$EE" = "x$ee" ] && ee=''
 
 	[ "$CC" -a "$EE" -a "$VV" ]	&& echo -n "$LL$CC$EE$VV "
 	[ "$CC" -a "$ee" -a "$VV" ]	&& echo -n "$LL$CC$ee$VV "
@@ -70,9 +70,9 @@ copy_translations() {
 			for line in $(grep -e "^$P	" $DATADIR/$PREFIX$list_type.list); do
 				locales=$(echo $line | cut -d'	' -f2)
 				names=$(echo $line | cut -d'	' -f3)
-					[ "x$names" == "x" ] && names=$P
+					[ "x$names" = "x" ] && names=$P
 				paths=$(echo $line | cut -d'	' -f4)
-					[ "x$paths" == "x" ] && paths="$US/locale/%/$LC"
+					[ "x$paths" = "x" ] && paths="$US/locale/%/$LC"
 
 				IFS=' '
 				# for all valid locale variants

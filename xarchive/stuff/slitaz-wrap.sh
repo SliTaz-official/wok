@@ -97,7 +97,7 @@ DECOMPRESS="cat"
 COMPRESS="cat"
 while read d c exts; do
 	in_exts $exts || continue
-	[ "$d" == "${d% *}" -o "$(which ${d% *})" ] || exit $UNSUPPORTED
+	[ "$d" = "${d% *}" -o "$(which ${d% *})" ] || exit $UNSUPPORTED
 	DECOMPRESS="$d"
 	COMPRESS="$c"
 	[ "$(which ${c% *})" ] || COMPRESS="false"

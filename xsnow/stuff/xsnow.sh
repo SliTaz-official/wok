@@ -36,18 +36,18 @@ IFS='|' read sf sc back bc tc ssiz ssp suf delay smooth wf xs ys wind wtimer \
 winsd scrsd off trees santa rud winsn scrsn popupsn duration dummy<<EOT
 $settings
 EOT
-[ $back == FALSE ] && back=''
+[ $back = FALSE ] && back=''
 flags=''
-[ $smooth == FALSE ] && flags=$flags" -unsmooth"
-[ $wind == FALSE ] && flags=$flags" -nowind"
-[ $trees == FALSE ] && flags=$flags" -notrees"
-[ $santa == FALSE ] && flags=$flags" -nosanta"
-[ $rud == FALSE ] && flags=$flags" -norudolf"
-if [ $winsn == FALSE -a $scrsn == FALSE ]; then flags=$flags" -nokeepsnow"
-elif [ $winsn == FALSE ]; then flags=$flags" -nokeepsnowonwindows"
-elif [ $scrsn == FALSE ]; then flags=$flags" -nokeepsnowonscreen"
+[ $smooth = FALSE ] && flags=$flags" -unsmooth"
+[ $wind = FALSE ] && flags=$flags" -nowind"
+[ $trees = FALSE ] && flags=$flags" -notrees"
+[ $santa = FALSE ] && flags=$flags" -nosanta"
+[ $rud = FALSE ] && flags=$flags" -norudolf"
+if [ $winsn = FALSE -a $scrsn = FALSE ]; then flags=$flags" -nokeepsnow"
+elif [ $winsn = FALSE ]; then flags=$flags" -nokeepsnowonwindows"
+elif [ $scrsn = FALSE ]; then flags=$flags" -nokeepsnowonscreen"
 fi
-[ $popupsn == TRUE ] && flags=$flags" -nonopopup"
+[ $popupsn = TRUE ] && flags=$flags" -nonopopup"
 xsnow -snowflakes ${sf%.*} -sc "$sc" ${back:+-solidbg -bg "$bc"} -tc "$tc" \
 	-santa ${ssiz%.*} -santaspeed ${ssp%.*} -santaupdatefactor ${suf%.*} \
 	-delay ${delay%.*} -whirl ${wf%.*} -xspeed ${xs%.*} -yspeed ${ys%.*} \

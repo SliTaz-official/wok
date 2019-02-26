@@ -32,10 +32,10 @@ IFS='|' read delay number nopopup noblood noangel squish duration dummy<<EOT
 $settings
 EOT
 flags=''
-[ $nopopup == TRUE ] && flags=$flags" -p"
-[ $noblood == TRUE ] && flags=$flags" -b"
-[ $noangel == TRUE ] && flags=$flags" -a"
-[ $squish == TRUE ] && flags=$flags" -s"
+[ $nopopup = TRUE ] && flags=$flags" -p"
+[ $noblood = TRUE ] && flags=$flags" -b"
+[ $noangel = TRUE ] && flags=$flags" -a"
+[ $squish = TRUE ] && flags=$flags" -s"
 printf '%s' "$themes" | xargs xpenguins -m ${delay%.*} -n ${number%.*} $flags \
 	>/dev/null 2>&1 &
 yad --button=gtk-stop --title='Stop xpenguins' $icon \

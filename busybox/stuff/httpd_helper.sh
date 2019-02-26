@@ -111,7 +111,7 @@ tmp=$(($count / $page))
 dd bs=1 count=$(($count - ($tmp * $page) ))
 }
 
-if [ "$REQUEST_METHOD$POST__NAMES" == "POST" ]; then
+if [ "$REQUEST_METHOD$POST__NAMES" = "POST" ]; then
 	prefix=/tmp/httpd_post
 	mkdir $prefix$$
 	now=$(stat -c %Y $prefix$$)

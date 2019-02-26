@@ -42,7 +42,7 @@ EOT
 
 # Color output
 colored() {
-	if [ "$color" == 'yes' ]; then
+	if [ "$color" = 'yes' ]; then
 		colorize $@
 	else
 		echo $2
@@ -80,7 +80,7 @@ c() {
 				BASE_FINDICON="$(basename $FINDICON .png)"
 				BASE_FINDICON="$(basename $BASE_FINDICON .svg)"
 
-				if [ "$1" == "$BASE_FINDICON" ]; then
+				if [ "$1" = "$BASE_FINDICON" ]; then
 					colored 32 "+ $1($SIZE)"
 				else
 					colored 34 "+ $1($SIZE) <= $(basename $FINDICON)"
@@ -180,12 +180,12 @@ while [ "x$1" != "x" ]; do
 	shift
 done
 
-if [ "x$FROM" == "x" -o "x$TO" == "x" ]; then
+if [ "x$FROM" = "x" -o "x$TO" = "x" ]; then
 	echo "There are no required parameters (-f or -t)!"; exit 1
 fi
 
 echo "Check components..."
-if [ $IS == 'yes' ]; then
+if [ $IS = 'yes' ]; then
 	echo -n "Inkscape: "
 	if [ -x "$(which inkscape)" ]; then
 		echo "$(which inkscape)"
@@ -193,7 +193,7 @@ if [ $IS == 'yes' ]; then
 		colored 31 "not found! Force '-is'"; IS='no'
 	fi
 fi
-if [ $OP == 'yes' ]; then
+if [ $OP = 'yes' ]; then
 	echo -n "Optipng:  "
 	if [ -x "$(which optipng)" ]; then
 		echo "$(which optipng)"
@@ -816,7 +816,7 @@ echo -n "Original     "; size
 
 #####
 
-if [ "$IS" == "yes" ]; then
+if [ "$IS" = "yes" ]; then
 		echo -n "Inkscape...  "
 	# convert svg to png
 	# rarely inkscape may fail, good that we leave original file
@@ -826,7 +826,7 @@ fi
 
 #####
 
-if [ "$OP" == "yes" ]; then
+if [ "$OP" = "yes" ]; then
 	echo -n "Optipng...   "
 	# re-compress png files
 	find $TO -type f -iname '*.png' -exec optipng -quiet -strip all $PNGOPT {} \;
@@ -835,7 +835,7 @@ fi
 
 #####
 
-if [ "$SL" == "yes" ]; then
+if [ "$SL" = "yes" ]; then
 	echo -n "Symlinks...  "
 	MD5FILE=$(mktemp); find $TO -type f -exec md5sum {} \; | sort > $MD5FILE
 	# substitute repeated files by symlinks
