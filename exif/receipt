@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="exif"
-VERSION="0.6.20"
+VERSION="0.6.21"
 CATEGORY="graphics"
 SHORT_DESC="Read exif data from images"
 MAINTAINER="sygne@ombres.eu"
 LICENSE="LGPL2.1"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://libexif.sourceforge.net/"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="$SF_MIRROR/libexif/$TARBALL"
 
 DEPENDS="libexif popt"
@@ -16,10 +17,13 @@ BUILD_DEPENDS="libexif libexif-dev popt-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS && \
-	make && make DESTDIR=$DESTDIR install
+	./configure \
+		--prefix=/usr \
+		--infodir=/usr/share/info \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -27,9 +31,13 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr
 	cp -a $install/usr/bin $fs/usr
+
+	# localisation
 	mkdir -p $fs/usr/share/locale
-	for LOCALE in de es fr
+	LOCALES="da de es fr id it zh_CN"
+	for locale in $LOCALES
 		do
-		cp -a -r  $install/usr/share/locale/$LOCALE $fs/usr/share/locale
+		cp -a -r  $install/usr/share/locale/$locale \
+				$fs/usr/share/locale
 		done
 }
