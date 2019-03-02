@@ -1,16 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="freeglut"
-VERSION="2.6.0"
+VERSION="3.0.0"
 CATEGORY="x-window"
 SHORT_DESC="OpenGL utility toolkit."
 MAINTAINER="b1+slitaz@nagel.org"
 LICENSE="GPL"
-SUGGESTED="nvidia"
+WEB_SITE="https://freeglut.sourceforge.io/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://freeglut.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
+SUGGESTED="nvidia"
 DEPENDS="glibc-base libdrm mesa libglu-mesa \
 xorg-libX11 xorg-libXau xorg-libXdamage xorg-libXdmcp \
 xorg-libXext xorg-libXi xorg-libXfixes xorg-libXxf86vm"
@@ -23,18 +24,14 @@ compile_rules()
 	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries"
 	
-	if [ ! -d $src ] ; then mv $PACKAGE-2.6.0 $src ; fi
-
-	cd $src
 	# fixes an issue with the radeon[hd] ATI opensource drivers
 	# ref: http://bugs.gentoo.org/show_bug.cgi?id=295163
-	patch -p0 -i $stuff/2.6.0-GFX_radeon.patch
+#	patch -p0 -i $stuff/2.6.0-GFX_radeon.patch
 #	sed -i 's/-Werror//' configure
-	./configure \
-		--prefix=/usr \
-		$CONFIGURE_ARGS &&
+
+	cmake . -DCMAKE_INSTALL_PREFIX=/usr &&
 #	sed -i '/XF86VMODE/d' config.status
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
