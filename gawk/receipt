@@ -1,43 +1,52 @@
 # SliTaz package receipt.
 
 PACKAGE="gawk"
-VERSION="4.0.1"
+VERSION="4.2.1"
 CATEGORY="development"
 SHORT_DESC="GNU awk to handle simple data-reformatting."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
+WEB_SITE="https://www.gnu.org/software/gawk/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.gnu.org/software/gawk/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS=""
 BUILD_DEPENDS=""
+HOST_ARCH="i486 arm"
 
 # Rules to compile & install the temporary toolchain.
 cook_tmp_toolchain()
 {
-	cd $src
-	./configure && make && make install
+	./configure &&
+	make -j 1 &&
+	make install
 }
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --libexecdir=/usr/lib \
+	./configure \
+		--libexecdir=/usr/lib \
 		$CONFIGURE_ARGS &&
-	make &&	make install
+	make -j 1 &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	# locales
 	mkdir -p $fs/usr/share/locale
-	cp -a $install/usr/bin $fs/usr
+	LOCALES="da de es fr id it pt_BR zh_CN"
+	for locale in $LOCALES
+		do
+		cp -a $install/usr/share/locale/$locale $fs/usr/share/locale
+		done
+
+	cp -a $install/usr/bin		$fs/usr
 	
-	cp -a $install/usr/share/awk $fs/usr/share
-	cp -a $install/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $install/usr/share/awk	$fs/usr/share
 }
 
 # Pre and post install commands for Tazpkg.
