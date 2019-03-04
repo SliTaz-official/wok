@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="gcc83-lib-base"
+VERSION="8.3.0"
+CATEGORY="development"
+SHORT_DESC="GCC base libraries, libgcc_s and libstdc++."
+WEB_SITE="https://gcc.gnu.org/"
+MAINTAINER="developer@slitaz.org"
+LICENSE="GPL2"
+
+WANTED="gcc83"
+PROVIDE="gcc-lib-base"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/libgcc83/libgcc_s.so*	$fs/usr/lib
+	cp -a $install/usr/libgcc83/libstdc++.so*	$fs/usr/lib
+	rm -f $fs/usr/lib/*-gdb.py
+}
+
+pre_install()
+{
+	cd "$1/usr/lib"
+	[ -s libgcc_s.so.1 ] && cp -a libgcc_s.so.1 libgcc_s.so.1.prev 
+	cd - >/dev/null
+}
+
+post_remove()
+{
+	cd "$1/usr/lib"
+	ln -s libstdc++.so.8.*.* libstdc++.so.8
+	ln -s libstdc++.so.8.*.* libstdc++.so
+	[ -s libgcc_s.so.1.prev ] && mv libgcc_s.so.1.prev libgcc_s.so.1
+	cd - >/dev/null
+}
