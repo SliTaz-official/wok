@@ -1,28 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="gcompris"
-VERSION="11.12"
+VERSION="17.05"
 CATEGORY="games"
 SHORT_DESC="Education games."
 MAINTAINER="pankso@slitaz.org"
-LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+LICENSE="GPLv3+"
 WEB_SITE="https://www.gcompris.net/"
-WGET_URL="$SF_MIRROR/project/$PACKAGE/$VERSION/$TARBALL"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://www.gcompris.net/download/gtk/src/$TARBALL"
 
 DEPENDS="pygtk libsdl-mixer librsvg libxml2 gnuchess gnet sqlite \
-libcroco"
+        libcroco"
 BUILD_DEPENDS="pygtk-dev libsdl-mixer-dev librsvg-dev libxml2-dev gnuchess \
-gnet-dev sqlite-dev libcroco-dev intltool perl perl-texi2html optipng file"
+        gnet-dev sqlite-dev libcroco-dev intltool perl perl-texi2html optipng file"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	sed -i 's/g_memmove/memmove/' src/goocanvas/src/goocanvastable.c
+
 	./configure \
 		--enable-sdlmixer &&
-	make LDFLAGS="-Wl,--copy-dt-needed-entries -lgmodule-2.0" \
-	     CFLAGS="-DG_CONST_RETURN=const" && make install &&
+	make -j 1 \
+		LDFLAGS="-Wl,--copy-dt-needed-entries -lgmodule-2.0" \
+		CFLAGS="-DG_CONST_RETURN=const" &&
+	make install &&
 	find | grep .png | xargs optipng -o7 > /dev/null
 }
 
@@ -34,7 +38,8 @@ genpkg_rules()
 	cp -a $install/usr/lib/gcompris/*.so* \
 		$fs/usr/lib/gcompris
 	cp -a $install/usr/share/gcompris $fs/usr/share
-	# Music and voices are splited (gcompris-music, gcompris-fr, etc)
+
+	# Music and voices are splitted (gcompris-music, gcompris-voices-fr, etc)
 	rm -rf $fs/usr/share/gcompris/boards/music
 	rm -rf $fs/usr/share/gcompris/boards/voices
 }
