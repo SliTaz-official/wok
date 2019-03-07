@@ -1,33 +1,35 @@
 # SliTaz package receipt.
 
 PACKAGE="gource"
-VERSION="0.38"
+VERSION="0.49"
 CATEGORY="development"
-SHORT_DESC="software version control visualization"
+SHORT_DESC="Software version control visualization."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://gource.io/"
-WGET_URL="http://gource.googlecode.com/files/$TARBALL"
 
-DEPENDS="ftgl libsdl libsdl-image pcre glew freetype libboost-filesystem"
-BUILD_DEPENDS="mesa-dev ftgl-dev libsdl-image-dev pcre-dev glew-dev \
-libsdl-dev freetype-dev libboost-filesystem-dev glm"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/acaudwell/Gource/releases/download/$PACKAGE-$VERSION/$TARBALL"
+
+DEPENDS="freetype ftgl glew libboost-filesystem libsdl2 libsdl2-image pcre"
+BUILD_DEPENDS="freetype-dev ftgl-dev glew-dev glm libboost-filesystem-dev \
+	libsdl2-dev libsdl2-image-dev mesa-dev pcre-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	sed -i 's/boost::filesystem3::/boost::filesystem::/' src/logmill.cpp
+	# By now (0.49) changed in source file:
+	# sed -i 's/boost::filesystem3::/boost::filesystem::/' src/logmill.cpp
+
 	./configure $CONFIGURE_ARGS && 
-	make && make install
+	make -j 1 &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/gource $fs/usr/share
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/gource	$fs/usr/share
 }
-
