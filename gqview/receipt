@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="gqview"
-VERSION="2.0.4"
+VERSION="2.1.5"
 CATEGORY="graphics"
 SHORT_DESC="Images viewer and manager using GTK+."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://gqview.sourceforge.io/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://gqview.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
 DEPENDS="gtk+ xorg-libXdamage"
@@ -16,11 +17,13 @@ BUILD_DEPENDS="pkg-config gtk+ gtk+-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lm"
-	./configure --prefix=/usr --mandir=/usr/share/man \
-	$CONFIGURE_ARGS &&
-	make &&
+
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -28,7 +31,18 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/locale
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/pixmaps $fs/usr/share
-	cp -a $install/usr/share/locale/fr $fs/usr/share/locale
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/pixmaps	$fs/usr/share
+
+	# locales
+	LOCALE="ca da de es fr id it pl pt_BR ru sv uk zh_CN"
+	for locale in $LOCALE
+		do
+		if [ -e $install/usr/share/locale/$locale/gqview.mo ]
+			then
+			mkdir -p $fs/usr/share/locale/$locale/LC_MESSAGES
+			cp -a	$install/usr/share/locale/$locale/gqview.mo \
+				$fs/usr/share/locale/$locale/LC_MESSAGES
+			fi
+		done
 }
