@@ -1,12 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="automake"
-VERSION="1.14.1"
+VERSION="1.16.1"
 CATEGORY="development"
-SHORT_DESC="A GNU tool for automatically creating Makefiles"
+SHORT_DESC="A GNU tool for automatically creating Makefiles."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://www.gnu.org/software/automake/"
+WEB_SITE="https://www.gnu.org/software/automake/"
+
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 
@@ -16,22 +17,29 @@ BUILD_DEPENDS="autoconf bison flex"
 # Rules to compile & install the temporary toolchain.
 cook_tmp_toolchain()
 {
-	./configure && make && make install
+	./configure &&
+	make -j 1 &&
+	make install
 }
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	./configure $CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
-	ln -sf aclocal-${VERSION%.*} $fs/usr/bin/aclocal
-	ln -sf automake-${VERSION%.*} $fs/usr/bin/automake
-	rm -rf $fs/usr/share/doc $fs/usr/share/info $fs/usr/share/man
+	cp -a $install/*		$fs
+
+	ln -sf aclocal-${VERSION%.*}	$fs/usr/bin/aclocal
+	ln -sf automake-${VERSION%.*}	$fs/usr/bin/automake
+
+	rm -rf				\
+		$fs/usr/share/doc	\
+		$fs/usr/share/info	\
+		$fs/usr/share/man
 }
