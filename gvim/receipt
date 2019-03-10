@@ -1,20 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="gvim"
-VERSION="7.3"
+VERSION="8.1"
 CATEGORY="editors"
-SHORT_DESC="Advanced text editor, with gtk+ GUI"
+TAGS="text-editor"
+SHORT_DESC="Advanced text editor, with gtk+ GUI."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="other"
+WEB_SITE="https://www.vim.org/"
+
 SOURCE="vim"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="http://www.vim.org/"
 WGET_URL="ftp://ftp.vim.org/pub/vim/unix/$TARBALL"
-CONFIG_FILES="/etc/vim/vimrc"
-TAGS="text-editor"
 
-DEPENDS="ncurses gtk+ xorg-libXt xorg-libXau xorg-libXdmcp"
+DEPENDS="gtk+ ncurses xorg-libXau xorg-libXdmcp xorg-libXt"
 BUILD_DEPENDS="gtk+-dev"
+CONFIG_FILES="/etc/vim/vimrc"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,39 +24,45 @@ compile_rules()
 
 	# define the place for the global vimrc file (set to /etc/vim/vimrc)
 	# (patch from Arch Linux PKGBUILD)
-	sed -i 's|^.*\(#define SYS_VIMRC_FILE\).*$|\1 "/etc/vim/vimrc"|' $src/src/feature.h
+	sed -i 's|^.*\(#define SYS_VIMRC_FILE\).*$|\1 "/etc/vim/vimrc"|' \
+		$src/src/feature.h
 	# and global gvimrc file (set to /etc/vim/gvimrc)
-	sed -i 's|^.*\(#define SYS_GVIMRC_FILE\).*$|\1 "/etc/vim/gvimrc"|' $src/src/feature.h
+	sed -i 's|^.*\(#define SYS_GVIMRC_FILE\).*$|\1 "/etc/vim/gvimrc"|' \
+		$src/src/feature.h
 
-	./configure \
-		--prefix=/usr \
-		--cache-file=$PWD/config.cache \
-		--infodir=/usr/share/info \
-		--with-features=normal \
-		--with-x=yes \
-		--enable-gui=gtk2 \
-		--enable-multibyte \
-		--disable-motif-check \
-		--disable-athena-check \
-		--mandir=/usr/share/man \
+	./configure				\
+		--prefix=/usr			\
+		--cache-file=$PWD/config.cache	\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--with-features=normal		\
+		--with-x=yes			\
+		--enable-gui=gtk2		\
+		--enable-multibyte		\
+		--disable-athena-check		\
+		--disable-motif-check		\
 		$CONFIGURE_ARGS &&
 
-	make VIMRCLOC=/etc/vim VIMRUNTIMEDIR=/usr/share/vim/vim73 MAKE="make -e" &&
+	make VIMRCLOC=/etc/vim VIMRUNTIMEDIR=/usr/share/vim/vim81 MAKE="make -e" &&
 	make DESTDIR=$DESTDIR install
+
 	mkdir -p $DESTDIR/etc/vim
-	cp -a $src/runtime/vimrc_example.vim $DESTDIR/etc/vim/vimrc
+	cp -a $src/runtime/vimrc_example.vim	$DESTDIR/etc/vim/vimrc
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/icons/hicolor/16x16/apps $fs/usr/share/applications $fs/etc
+	mkdir -p					\
+		$fs/usr/share/icons/hicolor/16x16/apps	\
+		$fs/usr/share/applications		\
+		$fs/etc
 
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/vim $fs/usr/share
-	cp -a $src/runtime/vim16x16.png $fs/usr/share/icons/hicolor/16x16/apps/gvim.png
-	cp -a stuff/gvim.desktop $fs/usr/share/applications
-	cp -a $install/etc/vim $fs/etc
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/vim	$fs/usr/share
+	cp -a $src/runtime/vim16x16.png	$fs/usr/share/icons/hicolor/16x16/apps/gvim.png
+	cp -a stuff/gvim.desktop	$fs/usr/share/applications
+	cp -a $install/etc/vim		$fs/etc
 }
 
 post_install()
