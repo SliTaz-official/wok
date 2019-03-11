@@ -18,7 +18,7 @@ The slitaz.exe program boots the SliTaz ISO image with a text menu:
 - to start SliTaz in RAM (live) in graphics mode or text mode.
 
 - to install SliTaz "a la UMSDOS" in the \slitaz\ subdirectory. The easiest
-  way to install SliTaz. No partitioning. No questions. But (very) slow.
+  way to install SliTaz. No partitioning. No questions. But (very?) slow.
 
 - to create a SliTaz USB Key.
 
@@ -52,13 +52,15 @@ The iso2exe tool moves the isolinux boot sector, installs its own boot sector
 with a DOS .EXE header, and adds a WIN32 .EXE installer, a DOS .COM Linux
 loader, a floppy bootstrap and an initramfs in the end of the first 32Kb.
 
-    +-----------------+
+The taziso tool is iso2exe aware and can handle iso image modified by iso2exe.
+
+    + - - - - - - - - +
+    |   user extras   | [optional] Customization files see README.custom
+xxM +-----------------+ --------------- Official ISO image end ---------------
     |    untouched    | ISO9660 files including /boot/bzImage and /boot/rootfs*
 32K +-----------------+
     |       | iso md5 | ISO9660 image (except first 32K) md5 hash (1)
     |       +---------+
-    |  DOS .EXE stub  | Start DOS .COM loader
-    +-----------------+
     |  ISO initramfs  | Live loader and UMSDOS like install script
     +-----------------+
     | DOS .COM loader | Load bzImage, the last rootfs*.gz and the ISO initramfs
@@ -67,13 +69,15 @@ loader, a floppy bootstrap and an initramfs in the end of the first 32Kb.
     +-----------------+
            unused
     +-----------------+
+    |  WIN32 sections | Code, data and ressources
+    +-----------------+
     |  tazlito info   | Flavor missing data for 'tazlito iso2flavor'
     +-----------------+
     | isohybrid boot  | Starts isolinux.bin
     +-----------------+
     |  iso2exe boot + | Boot starts isohybrid (2), .EXE starts DOS .COM loader
     |  WIN32 PE .exe  | NT+ boot device creator / Win9x DOS .COM launcher.
-  0 +-----------------+
+  0 +-----------------+ ------------------------------------------------------
 
 (1) The following script will show computed and stored md5 hash
 #!/bin/sh
