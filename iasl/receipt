@@ -1,15 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="iasl"
-VERSION="20100915"
+VERSION="20190215"
 CATEGORY="development"
-SHORT_DESC="Intel ACPI Source Language compiler"
+SHORT_DESC="Intel ACPI Source Language compiler."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="other"
+WEB_SITE="https://acpica.org"
+
 SOURCE="acpica-unix"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="https://acpica.org"
-WGET_URL="$WEB_SITE/download/$TARBALL"
+WGET_URL="$WEB_SITE/sites/acpica/files/$TARBALL"
 
 BUILD_DEPENDS="flex bison"
 
@@ -17,13 +18,9 @@ BUILD_DEPENDS="flex bison"
 compile_rules()
 {
 	# Fix building.
-	sed -i -e 's/-Werror//g' compiler/Makefile tools/acpisrc/Makefile
+	sed -i -e 's/-Werror//g'	generate/unix/Makefile.config \
+					generate/unix/iasl/Makefile
 
-	cd $src/compiler
-	make -j1 || return 1
-	cd $src/tools/acpisrc
-	make || return 1
-	cd $src/tools/acpixtract
 	make || return 1
 }
 
@@ -31,8 +28,8 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $src/compiler/iasl $fs/usr/bin
-	cp -a $src/tools/acpisrc/acpisrc $fs/usr/bin
-	cp -a $src/tools/acpixtract/acpixtract $fs/usr/bin
-}
 
+	cp -a $src/generate/unix/bin/iasl	$fs/usr/bin
+	cp -a $src/generate/unix/bin/acpisrc	$fs/usr/bin
+	cp -a $src/generate/unix/bin/acpixtract	$fs/usr/bin
+}
