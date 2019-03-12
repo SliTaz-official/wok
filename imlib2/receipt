@@ -1,49 +1,55 @@
 # SliTaz package receipt.
 
 PACKAGE="imlib2"
-VERSION="1.4.6"
+VERSION="1.5.1"
 CATEGORY="graphics"
 SHORT_DESC="Imlib graphic library."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL LGPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://sourceforge.net/projects/enlightenment/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/enlightenment/$TARBALL"
+
+DEPENDS="bzlib jpeg freetype giflib libid3tag libpng tiff \
+	xorg-libICE xorg-libSM xorg-libX11 xorg-libXau \
+	xorg-libXdmcp xorg-libXext xorg-libXpm"
+BUILD_DEPENDS="bzip2-dev freetype-dev giflib-dev jpeg-dev \
+	libid3tag-dev libpng-dev pkg-config tiff-dev \
+	util-linux-uuid-dev xorg-libXpm-dev xorg-xextproto \
+	zlib-dev"
+
 HOST_ARCH="i486 arm"
-
-DEPENDS="libpng tiff jpeg xorg-libXpm bzlib freetype libid3tag \
-xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext giflib xorg-libSM \
-xorg-libICE"
-BUILD_DEPENDS="libpng-dev tiff-dev jpeg-dev giflib-dev bzip2-dev \
-xorg-libXpm-dev xorg-xextproto libid3tag-dev pkg-config freetype-dev \
-zlib-dev util-linux-uuid-dev"
-
 # ARM: jpeg-dev must be installed in build chroot and libjpeg.la must
 # be modified manually
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--with-x \
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--with-x			\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make -j 1 &&
+	make install
+
 	sed -i 's| @my_libs@||' $install/usr/bin/imlib2-config
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin \
-		$fs/usr/lib/imlib2/filters \
+	mkdir -p				\
+		$fs/usr/bin			\
+		$fs/usr/lib/imlib2/filters	\
 		$fs/usr/lib/imlib2/loaders
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 	cp -a $install/usr/lib/imlib2/filters/*.so* \
 		$fs/usr/lib/imlib2/filters
 	cp -a $install/usr/lib/imlib2/loaders/*.so* \
 		$fs/usr/lib/imlib2/loaders
-	cp -a $install/usr/bin/imlib2_* $fs/usr/bin
+	cp -a $install/usr/bin/imlib2_*	$fs/usr/bin
 }
