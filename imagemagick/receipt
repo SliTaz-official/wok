@@ -1,56 +1,60 @@
 # SliTaz package receipt.
 
 PACKAGE="imagemagick"
-VERSION="6.8.4-10"
-SHORT_VERSION="${VERSION%-*}"
+VERSION="7.0.8.33"
+SHORT_VERSION="${VERSION%.*}"
 CATEGORY="graphics"
+TAGS="image photo toolkit"
 SHORT_DESC="Images manipulation programs."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="Apache"
-SOURCE="ImageMagick"
-TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="http://www.imagemagick.org/"
-WGET_URL="http://mirror.checkdomain.de/$PACKAGE/$TARBALL"
-TAGS="image photo toolkit"
+WEB_SITE="https://www.imagemagick.org/"
 
-DEPENDS="xorg-libXext jpeg libpng tiff libxml2 freetype libgomp bzlib expat \
-fontconfig lcms jasper ilmbase openexr graphviz librsvg libgsf libgio cairo \
-pango gcc-lib-base jbigkit libcroco fftw libltdl"
-BUILD_DEPENDS="xorg-libXext-dev jpeg-dev libpng-dev tiff-dev libxml2-dev \
-freetype-dev bzip2-dev expat-dev fontconfig-dev lcms-dev jasper-dev \
-ilmbase-dev openexr-dev graphviz-dev librsvg-dev libgsf-dev libgio-dev \
-perl cairo-dev pango-dev libcroco-dev fftw-dev util-linux-uuid-dev libtool"
+SOURCE="ImageMagick"
+TARBALL="$SOURCE-${VERSION%8./8-}.tar.xz"
+WGET_URL="${WEB_SITE}download/releases/$TARBALL"
+
+DEPENDS="bzlib cairo expat fftw fontconfig freetype gcc-lib-base \
+	graphviz ilmbase jasper jbigkit jpeg lcms libcroco libgio \
+	libgomp libgsf libltdl libpng librsvg libxml2 openexr \
+	pango tiff xorg-libXext"
+BUILD_DEPENDS="bzip2-dev cairo-dev expat-dev fftw-dev fontconfig-dev \
+	freetype-dev graphviz-dev ilmbase-dev jasper-dev jpeg-dev \
+	lcms-dev libcroco-dev libgio-dev libgsf-dev libpng-dev \
+	librsvg-dev libtool libxml2-dev openexr-dev pango-dev perl \
+	tiff-dev util-linux-uuid-dev xorg-libXext-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--sysconfdir=/etc \
-		--with-perl \
-		--with-magick-plus-plus \
-		--with-modules \
-		--enable-hdri \
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--sysconfdir=/etc		\
+		--with-magick-plus-plus		\
+		--with-modules			\
+		--with-perl			\
+		--enable-hdri			\
 		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS &&
+	make $MAKEFLAGS -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/etc $fs
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/$SOURCE-$SHORT_VERSION $fs/usr/lib
-	cp -a $install/usr/share/$SOURCE-* $fs/usr/share
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	cp -a $install/etc				$fs
+	cp -a $install/usr/bin				$fs/usr
+	cp -a $install/usr/lib/*.so*			$fs/usr/lib
+	cp -a $install/usr/lib/$SOURCE-$SHORT_VERSION	$fs/usr/lib
+	cp -a $install/usr/share/$SOURCE-*		$fs/usr/share
 
 	# CVE-2016-3714 work around v5
-	sed -i '/<policymap>/r/dev/stdin' $fs/etc/ImageMagick-6/policy.xml <<EOT
+	sed -i '/<policymap>/r/dev/stdin' $fs/etc/ImageMagick-7/policy.xml <<EOT
   <policy domain="coder" rights="none" pattern="EPHEMERAL" />
   <policy domain="coder" rights="none" pattern="URL" />
   <policy domain="coder" rights="none" pattern="HTTPS" />
@@ -62,4 +66,3 @@ genpkg_rules()
   <policy domain="coder" rights="none" pattern="PLT" />
 EOT
 }
-
