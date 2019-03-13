@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="ipset"
-VERSION="6.32"
+VERSION="7.1"
 CATEGORY="security"
-SHORT_DESC="Hi speed match for an entry against a set of firewall rules."
+SHORT_DESC="High speed match for an entry against a set of firewall rules."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://ipset.netfilter.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="${WEB_SITE}$TARBALL"
 
 DEPENDS="libmnl"
@@ -18,9 +19,11 @@ compile_rules()
 {
 	KVERSION=$(grep ^VERSION= $WOK/linux/receipt | cut -d '"' -f 2)-slitaz
 	sed -i "s/uname -r/echo $KVERSION/" configure
-	./configure --prefix=/usr \
+
+	./configure		\
+		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -28,6 +31,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/sbin $fs/usr
+
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/sbin		$fs/usr
 }
