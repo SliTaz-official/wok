@@ -1,28 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="input-utils"
-VERSION="20081014-101501"
+VERSION="1.3"
 CATEGORY="system-tools"
-SHORT_DESC="Small collection of linux input layer tools"
+TAGS="kernel input utilities"
+SHORT_DESC="Small collection of linux input layer tools."
 MAINTAINER="domcox@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://www.kraxel.org/blog/linux/input/"
+
 SOURCE="input"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://dl.bytesex.org/cvs-snapshots/"
-WGET_URL="http://dl.bytesex.org/cvs-snapshots/$TARBALL"
-TAGS="kernel input utilities"
+WGET_URL="https://www.kraxel.org/releases/$SOURCE/$TARBALL"
 
 DEPENDS=""
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	sed -i 's/input-recv lircd.conf/input-recv/' GNUmakefile
-	prefix="/usr"
-	CFLAGS="$CFLAGS -O3 -march=$ARCH"
-	export prefix CFLAGS
-	make && make DESTDIR=$DESTDIR install
+	patch --input $stuff/remove-target-lircd.conf.patch GNUmakefile
+
+	export	prefix="/usr"
+	export	CFLAGS="$CFLAGS -O3 -march=$ARCH"
+
+	make -j 1 &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -31,4 +33,3 @@ genpkg_rules()
 	mkdir -p $fs/usr
 	cp -a $install/usr/bin $fs/usr
 }
-
