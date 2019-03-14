@@ -1,0 +1,32 @@
+# SliTaz package receipt.
+
+PACKAGE="duc"
+VERSION="1.4.4"
+CATEGORY="base-system"
+SHORT_DESC="Tools for inspecting and visualizing disk usage"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE=""
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://duc.zevv.nl/"
+WGET_URL="https://github.com/zevv/duc/releases/download/$VERSION/$TARBALL"
+
+DEPENDS="ncursesw pango tokyocabinet"
+BUILD_DEPENDS="ncursesw-dev pango-dev tokyocabinet-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|ncursesw/ncurses.h|ncurses.h|' src/duc/cmd-ui.c
+	./configure --prefix=/usr \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+}
