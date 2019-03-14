@@ -1,27 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="jasper"
-VERSION="1.900.1"
+VERSION="2.0.16"
 CATEGORY="graphics"
-SHORT_DESC="implementation of JPEG-2000 codec"
+TAGS="jpeg jpg photo"
+SHORT_DESC="Implementation of JPEG-2000 codec."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.zip"
 WEB_SITE="http://www.ece.uvic.ca/~mdadams/$PACKAGE/" 
-WGET_URL="$WEB_SITE/software/$TARBALL"
-TAGS="jpeg jpg photo"
-HOST_ARCH="i486 arm"
 
-DEPENDS="xorg-libXi xorg-libXmu jpeg freeglut libglu-mesa util-linux-uuid"
-BUILD_DEPENDS="jpeg-dev xorg-libXi-dev xorg-libXmu-dev autoconf"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/mdadams/$PACKAGE/archive/version-$VERSION.tar.gz"
+
+DEPENDS="freeglut jpeg libglu-mesa util-linux-uuid xorg-libXi xorg-libXmu"
+BUILD_DEPENDS="jpeg-dev xorg-libXi-dev xorg-libXmu-dev"
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-   	cd $src
-	chmod +x configure
-	./configure --prefix=/usr --mandir=/usr/share/man --enable-shared $CONFIGURE_ARGS &&
-	make &&
+	mkdir	builddir
+	cmake	.				\
+		-G "Unix Makefiles"		\
+		-Bbuilddir			\
+		-DCMAKE_INSTALL_PREFIX=/usr	\
+		-DJAS_ENABLE_SHARED=yes	&&
+	cd	builddir
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 	
 }
@@ -29,8 +34,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*so* $fs/usr/lib	
-	
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*so*	$fs/usr/lib	
 }
