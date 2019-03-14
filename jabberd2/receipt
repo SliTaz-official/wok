@@ -1,35 +1,38 @@
 # SliTaz package receipt.
 
 PACKAGE="jabberd2"
-VERSION="2.2.16"
+VERSION="2.7.0"
 CATEGORY="network"
+TAGS="im instant-messaging server"
 SHORT_DESC="XMPP server (real-time communication)."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-SOURCE="jabberd"
-TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="https://jabberd2.org/"
-WGET_URL="https://github.com/downloads/Jabberd2/$PACKAGE/$TARBALL"
-CONFIG_FILES="/etc/jabberd"
-TAGS="im instant-messaging server"
 
-DEPENDS="expat gsasl udns libidn zlib openssl libkrb5 libcomerr3 perl"
-BUILD_DEPENDS="expat gsasl gsasl-dev udns udns-dev libidn-dev openssl-dev \
-zlib-dev db-dev openldap-dev postgresql mysql sqlite sqlite-dev expat-dev wget
-cppunit-dev"
+SOURCE="jabberd"
+TARBALL="$SOURCE-$VERSION.tar.xz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/releases/download/$SOURCE-$VERSION/$TARBALL"
+
+DEPENDS="expat gsasllibidn libcomerr3 libkrb5 openssl perl udns zlib"
+BUILD_DEPENDS="cppunit-dev db-dev expat expat-dev gsasl gsasl-dev \
+	libidn-dev mysql openldap-dev openssl-dev postgresql \
+	sqlite sqlite-dev udns udns-dev zlib-dev"
+CONFIG_FILES="/etc/jabberd"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's|#else /.*|&\nint set_debug_log_from_config(config_t c){}|' util/log.c
 	CFLAGS="-march=$ARCH -O2 -pipe -fomit-frame-pointer"
-	./configure --prefix=/usr \
-		--infodir=/usr/share/info \
-		--enable-sqlite \
-		--sysconfdir=/etc/jabberd \
-		 --mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make &&
+
+	./configure
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--enable-sqlite			\
+		--sysconfdir=/etc/jabberd	\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -37,8 +40,8 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/jabberd
-	cp -a $install/etc $fs
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/jabberd/*so* $fs/usr/lib/jabberd
-}
 
+	cp -a $install/etc			$fs
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/jabberd/*so*	$fs/usr/lib/jabberd
+}
