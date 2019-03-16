@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="lame"
-VERSION="3.99.4"
+VERSION="3.100"
 CATEGORY="multimedia"
+TAGS="audio encoder mp3"
 SHORT_DESC="MPEG Audio Layer III (MP3) encoder."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="LGPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://lame.sourceforge.net/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS="ncurses"
 BUILD_DEPENDS="gtk+-dev ncurses-dev libtinfo"
+HOST_ARCH="i486 arm"
 
 case "$ARCH" in
 	arm) BUILD_DEPENDS="ncurses-dev libtinfo" ;;
@@ -23,12 +25,13 @@ compile_rules()
 {
 	sed -i 's|uname -m|echo i486|' Makefile.unix
 	export LDFLAGS="$LDFLAGS -ltinfo"
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -36,6 +39,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
+
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/bin		$fs/usr
 }
