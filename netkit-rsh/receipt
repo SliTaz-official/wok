@@ -9,6 +9,7 @@ LICENSE="BSD"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="ftp://ftp.uk.linux.org/pub/linux/Networking/netkit"
 WGET_URL="http://ibiblio.org/pub/linux/system/network/netkit/$TARBALL"
+PROVIDE="rsh rshd"
 
 DEPENDS=""
 BUILD_DEPENDS="ncurses-dev"
@@ -32,4 +33,24 @@ genpkg_rules()
 	mkdir $fs/usr
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/sbin $fs/usr
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	if ! grep -qs rlogind $1/etc/inetd.conf; then
+		cat >> $1/etc/inetd.conf <<EOT
+exec	stream  tcp     nowait  root    /usr/sbin/in.execd	execd
+login	stream  tcp     nowait  root    /usr/sbin/in.rlogind	rlogind
+shell	stream  tcp     nowait  root    /usr/sbin/in.rshd	rshd
+EOT
+		[ -n "$1" ] || killall -HUP inetd
+	fi
+}
+
+# Pre and post install commands for Tazpkg.
+pre_remove()
+{
+	sed -i '/rlogind/d;/rshd/d;/rexec/d' $1/etc/inetd.conf
+	[ -n "$1" ] || killall -HUP inetd
 }

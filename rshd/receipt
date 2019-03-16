@@ -18,3 +18,22 @@ genpkg_rules()
 	cp -a $install/usr/sbin $fs/usr
 	cp -a $install/usr/etc $fs
 }
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	if ! grep -qs rlogind $1/etc/inetd.conf; then
+		cat >> $1/etc/inetd.conf <<EOT
+login	stream  tcp     nowait  root    /usr/sbin/in.rlogind	rlogind
+shell	stream  tcp     nowait  root    /usr/sbin/in.rshd	rshd
+EOT
+		[ -n "$1" ] || killall -HUP inetd
+	fi
+}
+
+# Pre and post install commands for Tazpkg.
+pre_remove()
+{
+	sed -i '/rlogind/d;/rshd/d' $1/etc/inetd.conf
+	[ -n "$1" ] || killall -HUP inetd
+}
