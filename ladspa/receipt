@@ -1,15 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="ladspa"
-VERSION="1.13"
+VERSION="1.15"
 CATEGORY="multimedia"
+TAGS="audio multimedia"
 MAINTAINER="jozee@slitaz.org"
 LICENSE="LGPL2.1"
-SHORT_DESC="Linux Audio Developer's Simple Plugin API (LADSPA)"
+SHORT_DESC="Linux Audio Developer's Simple Plugin API (LADSPA)."
 WEB_SITE="http://www.ladspa.org/"
+
 TARBALL="${PACKAGE}_sdk_$VERSION.tgz"
-WGET_URL="$WEB_SITE/download/$TARBALL"
-TAGS="multimedia"
+WGET_URL="${WEB_SITE}download/$TARBALL"
 
 DEPENDS="gcc-lib-base"
 BUILD_DEPENDS=""
@@ -18,17 +19,22 @@ BUILD_DEPENDS=""
 compile_rules()
 {
 	cd $src/src
-	sed -i -e 's/mkdirhier/mkdir -p/' makefile 
-	make targets 
-	make INSTALL_PLUGINS_DIR=$DESTDIR/usr/lib/ladspa/ \
-		INSTALL_INCLUDE_DIR=$DESTDIR/usr/include/  \
-		INSTALL_BINARY_DIR=$DESTDIR/usr/bin/ install 
+
+	# not applicable in version 1.15:
+	# sed -i -e 's/mkdirhier/mkdir -p/' makefile 
+
+	make -j 1 targets &&
+	make install						\
+		INSTALL_PLUGINS_DIR=$DESTDIR/usr/lib/ladspa/	\
+		INSTALL_INCLUDE_DIR=$DESTDIR/usr/include/	\
+		INSTALL_BINARY_DIR=$DESTDIR/usr/bin/
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/$PACKAGE
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/$PACKAGE/*so* $fs/usr/lib/$PACKAGE	
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/$PACKAGE/*so*	$fs/usr/lib/$PACKAGE	
 }
