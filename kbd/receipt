@@ -1,23 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="kbd"
-VERSION="2.0.2"
+VERSION="2.0.4"
 CATEGORY="system-tools"
-SHORT_DESC="Keyboard maping definitions and tools."
+TAGS="keyboard"
+SHORT_DESC="Keyboard mapping definitions and tools."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://kbd-project.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="https://www.kernel.org/pub/linux/utils/kbd/$TARBALL"
-TAGS="keyboard"
-HOST_ARCH="i486 arm"
 
 DEPENDS="kbd-base"
-BUILD_DEPENDS="wget flex pam-dev check-dev advancecomp"
+BUILD_DEPENDS="advancecomp check-dev flex pam-dev"
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation.
 case "$ARCH" in
-	arm) BUILD_DEPENDS="flex check-dev" ;;
+	arm) BUILD_DEPENDS="check-dev flex" ;;
 esac
 
 # Rules to configure and make the package.
@@ -25,22 +26,26 @@ compile_rules()
 {
 	# standard locale placement
 	sed 's|localedir = .*|localedir = @localedir@|' -i $src/po/Makefile.in.in
+
 	# Handle cross compilation.
 	case "$ARCH" in
 		arm)
 			# No PAM support for ARM
-			./configure \
-				--datadir=/usr/share/kbd \
-				--localedir=/usr/share/locale \
-				--disable-vlock \
+			./configure				\
+				--datadir=/usr/share/kbd	\
+				--localedir=/usr/share/locale	\
+				--disable-vlock			\
 				$CONFIGURE_ARGS ;;
 		i486)
-			./configure \
-				--datadir=/usr/share/kbd \
-				--localedir=/usr/share/locale \
+			./configure				\
+				--datadir=/usr/share/kbd	\
+				--localedir=/usr/share/locale	\
 				$CONFIGURE_ARGS ;;
 	esac &&
-	make && make install &&
+
+	make -j 1 &&
+	make install &&
+
 	find $DESTDIR/usr/share/kbd -name '*gz' -exec advdef -z4 {} \;
 }
 
@@ -62,7 +67,9 @@ genpkg_rules()
 	done
 	rm -rf $fs/usr/share/kbd/keymaps/include
 	rm -rf $fs/usr/share/kbd/keymaps/i386/include
-	rm -f $fs/usr/bin/loadkeys $fs/usr/bin/setfont $fs/usr/bin/vlock
+	rm -f $fs/usr/bin/loadkeys
+	rm -f $fs/usr/bin/setfont
+	rm -f $fs/usr/bin/vlock
 }
 
 # Overlap busybox
