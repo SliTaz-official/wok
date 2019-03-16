@@ -1,51 +1,62 @@
 # SliTaz package receipt.
 
 PACKAGE="krb5"
-VERSION="1.10.3"
+VERSION="1.17"
 CATEGORY="security"
 SHORT_DESC="Network authentication protocol with strong authentication."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION-signed.tar"
-WEB_SITE="http://web.mit.edu/Kerberos/"
-WGET_URL="${WEB_SITE}dist/$PACKAGE/${VERSION:0:4}/$TARBALL"
-CONFIG_FILES="/etc/krb5"
-CFLAGS="-march=$ARCH -O2 -pipe -fomit-frame-pointer"
-CXXFLAGS="$CFLAGS"
+WEB_SITE="https://web.mit.edu/kerberos/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}dist/$PACKAGE/$VERSION/$TARBALL"
+
 
 DEPENDS="libkrb5"
-BUILD_DEPENDS="perl bison"
+BUILD_DEPENDS="bison openssl-dev perl"
+CONFIG_FILES="/etc/krb5"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	srcdir=$PACKAGE-$VERSION
-	[ -d $src/src ] || tar xzf $src/$srcdir.tar.gz 
+#	srcdir=$PACKAGE-$VERSION
+#	[ -d $src/src ] || tar xzf $src/$srcdir.tar.gz 
 	# This is for cookutils. If more than one file was extracted it create
 	# $PACKAGE-$VERSION to move files in it. Krb5 is the only package like
 	# that so we do the trick here.
-	if [ -d "$srcdir" -a -x /usr/bin/cook ]; then
-		mv $srcdir $CACHE && cd .. && rm -rf * && mv -f $CACHE/$srcdir .
-	else
-		mv $srcdir/* .
-	fi
+#	if [ -d "$srcdir" -a -x /usr/bin/cook ]; then
+#		mv $srcdir $CACHE && cd .. && rm -rf * && mv -f $CACHE/$srcdir .
+#	else
+#		mv $srcdir/* .
+#	fi
+
 	cd $src/src
 
 	# FS#25384
-	sed -i "/KRB5ROOT=/s/\/local//" util/ac_check_krb5.m4
+#	sed -i "/KRB5ROOT=/s/\/local//" util/ac_check_krb5.m4
+	patch --input=$stuff/krb5-1.17-ac_check_krb5.m4.patch	\
+		util/ac_check_krb5.m4
 
-	./configure --localstatedir=/var $CONFIGURE_ARGS &&
-	make $MAKEFLAGS && make install
+	CFLAGS="-march=$ARCH -O2 -pipe -fomit-frame-pointer"
+	CXXFLAGS="$CFLAGS"
+
+	./configure			\
+		--localstatedir=/var	\
+		$CONFIGURE_ARGS &&
+	make $MAKEFLAGS -j 1 &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr $fs/etc
-	cp -a $install/usr/share/examples/krb5 $fs/etc
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib $fs/usr
+
+	cp -a $install/usr/share/examples/krb5	$fs/etc
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/sbin			$fs/usr
+	cp -a $install/usr/lib			$fs/usr
+
 	cat $stuff/*.files-list | while read file; do
 		rm -rf ${fs}$file
 	done
