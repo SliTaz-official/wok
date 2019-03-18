@@ -7,7 +7,7 @@ SHORT_DESC="Remote connexion tools."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="ftp://ftp.uk.linux.org/pub/linux/Networking/netkit"
+WEB_SITE="http://ftp.linux.org.uk/pub/linux/Networking/netkit/"
 WGET_URL="http://ibiblio.org/pub/linux/system/network/netkit/$TARBALL"
 PROVIDE="rsh rshd"
 
@@ -30,9 +30,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir $fs/usr
+	mkdir $fs/usr $fs/etc/skel
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/sbin $fs/usr
+	touch $fs/etc/skel/.rhosts
+	chmod 600 $fs/etc/skel/.rhosts
 }
 
 # Pre and post install commands for Tazpkg.
@@ -41,8 +43,8 @@ post_install()
 	if ! grep -qs rlogind $1/etc/inetd.conf; then
 		cat >> $1/etc/inetd.conf <<EOT
 exec	stream  tcp     nowait  root    /usr/sbin/in.execd	execd
-login	stream  tcp     nowait  root    /usr/sbin/in.rlogind	rlogind
-shell	stream  tcp     nowait  root    /usr/sbin/in.rshd	rshd
+login	stream  tcp     nowait  root    /usr/sbin/in.rlogind	rlogind -hl
+shell	stream  tcp     nowait  root    /usr/sbin/in.rshd	rshd -hl
 EOT
 		[ -n "$1" ] || killall -HUP inetd
 	fi
