@@ -1,24 +1,27 @@
 # SliTaz package receipt.
 
 PACKAGE="lensfun"
-VERSION="0.2.5"
+VERSION="0.3.2"
 CATEGORY="multimedia"
-SHORT_DESC="Database of photographic lenses and a library that allows advanced access to the database"
+SHORT_DESC="Database of photographic lenses and a library that allows advanced access to the database."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="LGPL3 GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://lensfun.sourceforge.net/"
-WGET_URL="http://download.berlios.de/$PACKAGE/$TARBALL"
+WEB_SITE="https://sourceforge.net/projects/lensfun/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
 DEPENDS="glib"
-BUILD_DEPENDS="python libpng glib-dev"
+BUILD_DEPENDS="cmake glib-dev libpng python"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's/.*GNU Make*/# &/' configure
-	./configure --prefix=/usr --libdir=/usr/lib && 
-	make all && 
+	mkdir	build
+	cd	build
+	cmake	..				\
+		-DCMAKE_INSTALL_PREFIX=/usr &&
+	make -j 1 all && 
 	make INSTALL_PREFIX="$DESTDIR" install
 }
 
@@ -26,6 +29,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/share/lensfun $fs/usr/share
+
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/share/lensfun	$fs/usr/share
 }
