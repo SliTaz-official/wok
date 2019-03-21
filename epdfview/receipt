@@ -3,13 +3,14 @@
 PACKAGE="epdfview"
 VERSION="0.1.8"
 CATEGORY="office"
+TAGS="pdf viewer"
 SHORT_DESC="Lightweight PDF document viewer using Poppler."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://github.com/jristz/epdfview"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://trac.emma-soft.com/epdfview/chrome/site/releases/$TARBALL"
-TAGS="pdf viewer"
 
 DEPENDS="gtk+ poppler glib libpng xorg-libXdamage gcc-lib-base"
 BUILD_DEPENDS="gtk+-dev poppler-dev poppler cairo-dev"
@@ -24,10 +25,13 @@ compile_rules()
 	find . -name '*.[ch]*' | xargs sed -i 's|<glib/.*h|<glib.h|'
 	patch -Np1 -i $stuff/0001-When-using-Poppler-0.17.0-I-needed-to-swap-the-blue-.patch
 	patch -p1 -i $stuff/no-stock-icons.patch
-	./configure \
-		--without-cups \
+
+	./configure		\
+		--without-cups	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make -j 1 &&
+	make install
+
 	cp -f $stuff/*.desktop $install/usr/share/applications
 }
 
@@ -35,7 +39,9 @@ compile_rules()
 genpkg_rules()
 {
 	cook_copy_files epdfview *.desktop *.xml
+
 	mkdir -p $fs/usr/share/icons/hicolor/48x48/apps
+
 	cp $install/usr/share/epdfview/pixmaps/icon_epdfview-48.png \
 		$fs/usr/share/icons/hicolor/48x48/apps/epdfview.png
 }
