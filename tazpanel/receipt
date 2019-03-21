@@ -1,26 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="tazpanel"
-VERSION="625"
+VERSION="626"
 CATEGORY="system-tools"
 SHORT_DESC="SliTaz administration and configuration panel."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.slitaz.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://hg.slitaz.org/tazpanel/archive/$VERSION.tar.gz"
 CONFIG_FILES="/etc/slitaz/tazpanel.conf /etc/slitaz/httpd.conf"
-HOST_ARCH="i486 arm"
 
 SUGGESTED="tazinst-gui tazinst"
-DEPENDS="busybox gettext-base sundown"
+DEPENDS="busybox gettext-base libjpeg sundown"
 BUILD_DEPENDS="gettext jsmin tidy-html5"
 SIBLINGS="tazpanel-extra"
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	make && make DESTDIR=$DESTDIR VERSION=$VERSION install
+	make -j 1 &&
+	make DESTDIR=$DESTDIR VERSION=$VERSION install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -28,6 +30,7 @@ genpkg_rules()
 {
 	mkdir -p $fs/etc/init.d
 	cp -a $install/* $fs
+
 	# Init script use tazpanel cmdline
 	cd $fs/etc/init.d && ln -s ../../usr/bin/tazpanel .
 }
