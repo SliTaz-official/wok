@@ -1,29 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="libbonoboui"
-VERSION="2.24.3"
+VERSION="2.24.5"
 CATEGORY="x-window"
 SHORT_DESC="The libbonoboui package contains libbonoboui libraries."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://developer.gnome.org/libbonobo/"
-WGET_URL="http://ftp.gnome.org/pub/gnome/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
 
-DEPENDS="glib gtk+ libgnome libgnomecanvas libglade GConf alsa-lib popt \
-libbonobo"
-BUILD_DEPENDS="glib-dev gtk+-dev libgnome-dev libgnomecanvas-dev libglade-dev \
-GConf-dev alsa-lib-dev popt-dev libbonobo-dev util-linux-uuid-dev intltool \
-dbus-glib-dev audiofile esound libffi"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="alsa-lib GConf glib gtk+ libbonobo libglade libgnome \
+	libgnomecanvas popt"
+BUILD_DEPENDS="alsa-lib-dev audiofile dbus-glib-dev esound \
+	GConf-dev glib-dev gtk+-dev intltool libbonobo-dev \
+	libffi libglade-dev libgnome-dev libgnomecanvas-dev \
+	popt-dev util-linux-uuid-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure $CONFIGURE_ARGS \
-		--sysconfdir=/etc/gnome \
-		--libexecdir=/usr/lib/bonobo &&
-	make && make install
+	./configure				\
+		--sysconfdir=/etc/gnome		\
+		--libexecdir=/usr/lib/bonobo	\
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -31,12 +34,13 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/bonobo* $fs/usr/lib
-	cp -a $install/usr/lib/libglade $fs/usr/lib
-	cp -a $install/usr/share/applications $fs/usr/share
-	cp -a $install/usr/share/gnome-2.0 $fs/usr/share
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/bonobo*		$fs/usr/lib
+	cp -a $install/usr/lib/libglade		$fs/usr/lib
+	cp -a $install/usr/share/applications	$fs/usr/share
+	cp -a $install/usr/share/gnome-2.0	$fs/usr/share
 
 	# remove archive lib
 	find $fs/usr/lib -name "*.*a" -exec rm -f {} \;
