@@ -4,23 +4,25 @@ PACKAGE="mtpaint"
 VERSION="3.44.91"
 COMMIT="15ec7b65d09bff5372253f9568d06ea97487f9dc"
 CATEGORY="graphics"
-SHORT_DESC="Painting program to create pixel art and manipulate digital photos"
+SHORT_DESC="Painting program to create pixel art and manipulate digital photos."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://mtpaint.sourceforge.net/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 #WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 WGET_URL="https://github.com/wjaguar/mtPaint/archive/$COMMIT.tar.gz"
-#HOST_ARCH="i486 arm"
 
 DEPENDS="gtk+ libpng lcms2"
 BUILD_DEPENDS="gtk+-dev libpng-dev lcms2-dev zlib-dev cairo-dev"
+#HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	patch -p0 < $stuff/mtpaint.patch
 	sed 's/mem_undo_limit,\t32/mem_undo_limit,\t256/' -i $src/src/mainwindow.c
+
 	case "$ARCH" in
 		i?86)
 			export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lpng12"
@@ -34,18 +36,24 @@ compile_rules()
 				--prefix=/usr \
 				--host=${HOST_SYSTEM} \
 				intl nogif
-	esac && make &&
+	esac &&
+	make -j 1 &&
 	make DESTDIR=$install install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/applications $fs/usr/share/pixmaps $fs/etc/mtpaint $fs/usr/share/thumbnailers
-	cp -a $install/usr/bin $fs/usr
-	install -m755 -oroot -groot $stuff/mtpaint-doc $fs/usr/bin
-	cp $stuff/*.desktop $fs/usr/share/applications
-	cp $src/doc/mtpaint.png $fs/usr/share/pixmaps
-	cp $stuff/mtpaintrc $fs/etc/mtpaint
-	cp $stuff/mtpaint.thumbnailer $fs/usr/share/thumbnailers
+	mkdir -p				\
+		$fs/usr/share/applications	\
+		$fs/usr/share/pixmaps		\
+		$fs/etc/mtpaint			\
+		$fs/usr/share/thumbnailers
+
+	cp -a $install/usr/bin				$fs/usr
+	install -m755 -oroot -groot $stuff/mtpaint-doc	$fs/usr/bin
+	cp $stuff/*.desktop				$fs/usr/share/applications
+	cp $src/doc/mtpaint.png				$fs/usr/share/pixmaps
+	cp $stuff/mtpaintrc				$fs/etc/mtpaint
+	cp $stuff/mtpaint.thumbnailer			$fs/usr/share/thumbnailers
 }
