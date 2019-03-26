@@ -23,6 +23,12 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Do not use 64-bit feature by default on ext4 because syslinux and grub4dos-linux 
+	# bootloaders used by the slitaz-installer(tazinst) will fail to boot. 
+	# Add "auto_64-bit_support = 1" to enable 64-bit if the number of blocks for the file system 
+	# require the feature to be enabled.
+	zcat $stuff/e2fsprogs.no.64bit.by.default.diff.gz | patch -p1 || exit 1
+
 	sed -i 's|\$ac_MKDIR_P&|mkdir -p\&|' configure
 	mkdir ../build && cd ../build
 	$src/configure \
@@ -42,8 +48,6 @@ genpkg_rules()
 	cp -a $install/sbin $fs
 	cp -a $install/lib $fs
 	cp -a $install/etc $fs
-	# legacy grub & syslinux don't support 64bit feature
-	sed -i 's|small = {|&\n\t\tfeatures = ^64bit|' $fs/etc/mke2fs.conf
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/sbin $fs/usr
 	( cd $fs ; for i in lib/*.so.?; do ln -s /$i usr/$i ; done )
