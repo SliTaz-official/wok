@@ -1,33 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="git"
-VERSION="2.17.1"
+VERSION="2.21.0"
 CATEGORY="development"
-SHORT_DESC="Fast version control system"
+SHORT_DESC="Fast version control system."
 MAINTAINER="b1+slitaz@nagel.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://git-scm.com/"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="https://www.kernel.org/pub/software/scm/git/$TARBALL"
+
+DEPENDS="cacerts curl expat openssl zlib"
+BUILD_DEPENDS="curl-dev expat-dev openssl-dev perl python-dev zlib-dev"
 
 # NO_NSEC=1
 CROSS_BUGS="bug: can't run test and make package."
 #HOST_ARCH="i486 arm"
 
-DEPENDS="zlib openssl curl expat"
-BUILD_DEPENDS="wget zlib-dev openssl-dev curl-dev expat-dev perl python-dev \
-tar bzip2"
-
 # Rules to configure and make the package.
 compile_rules()
 {
-	[ -L /bin/tar ] && tazpkg get-install tar --forced
-	./configure \
-		--prefix=/usr \
-		--libexecdir=/usr/lib \
-		--without-tcltk \
+	./configure			\
+		--prefix=/usr		\
+		--libexecdir=/usr/lib	\
+		--without-tcltk		\
 		$CONFIGURE_ARGS &&
-	make THREADED_DELTA_SEARCH=1 &&
+	make -j 1 THREADED_DELTA_SEARCH=1 &&
 	make THREADED_DELTA_SEARCH=1 DESTDIR=$DESTDIR install
 }
 
@@ -35,8 +34,10 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/etc/init.d
-	cp -a $stuff/git-daemon $fs/etc/init.d
-	cp -a $install/usr $fs/
+
+	cp -a $stuff/git-daemon	$fs/etc/init.d
+	cp -a $install/usr	$fs/
+
 	strip -s $fs/usr/lib/git-core/* 2>/dev/null || true
 }
 
