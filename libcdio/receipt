@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="libcdio"
-VERSION="0.83"
+VERSION="2.0.0"
 CATEGORY="multimedia"
-SHORT_DESC="GNU Compact Disc Input and Control Library"
+SHORT_DESC="GNU Compact Disk Input and Control Library."
 MAINTAINER="rj.rohit@gmail.com"
 LICENSE="GPL3"
+WEB_SITE="https://www.gnu.org/software/libcdio/" 
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.gnu.org/software/libcdio/" 
 WGET_URL="http://ftp.gnu.org/gnu/libcdio/$TARBALL"
 
-DEPENDS="libcddb ncurses gcc-lib-base"
-BUILD_DEPENDS="libcddb libcddb-dev ncurses-dev gcc-lib-base"
+DEPENDS="gcc-lib-base libcddb ncurses"
+BUILD_DEPENDS="gcc-lib-base libcddb libcddb-dev ncurses-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,9 +21,12 @@ compile_rules()
 	grep -qs 'define u8' lib/driver/gnu_linux.c ||
 	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
 		lib/driver/gnu_linux.c
-	./configure --prefix=/usr --disable-vcd-info \
+
+	./configure			\
+		--prefix=/usr		\
+		--disable-vcd-info	\
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
