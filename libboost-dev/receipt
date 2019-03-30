@@ -6,26 +6,25 @@
 # installation steps. These will be relocated and have their own two 
 # packages : libboost-name and libboost-name-dev.
 
-# We have to do it this way because of the underscores
-# to get a package with the slitaz version numbering
 PACKAGE="libboost-dev"
-SOURCE="boost"
-VERSION="1.50.0"
-WGET_SOURCE="boost_1_50_0"
-
+VERSION="1.69.0"
 CATEGORY="development"
 SHORT_DESC="Free peer-reviewed portable C++ source libraries."
 MAINTAINER="chadi.elahmad@gmail.com"
 LICENSE="MIT"
-
-TARBALL="$WGET_SOURCE.tar.bz2"
-EXTRA_SOURCE_FILES="boost_changeset_75540.u"
 WEB_SITE="https://www.boost.org/"
+
+# We have to do it this way because of the underscores
+# to get a package with the slitaz version numbering
+SOURCE="boost"
+WGET_SOURCE="boost_1_69_0"
+TARBALL="$WGET_SOURCE.tar.bz2"
+#EXTRA_SOURCE_FILES="boost_changeset_75540.u"
 WGET_URL="$SF_MIRROR/$SOURCE/$TARBALL"
 
-DEPENDS="gcc-lib-base libboost-math-dev libboost-date-time-dev \
-libboost-chrono-dev"
-BUILD_DEPENDS="python python-dev expat-dev expat zlib-dev bzip2-dev"
+DEPENDS="gcc-lib-base libboost-chrono-dev libboost-date-time-dev \
+	libboost-math-dev"
+BUILD_DEPENDS="bzip2-dev expat expat-dev python python-dev zlib-dev"
 RELOCATE_LIBS="{ date_time filesystem graph iostreams \
 	math program_options python regex serialization \
 	signal system test thread tr1 wave }"
@@ -44,25 +43,25 @@ compile_rules()
 		TOOLPREFIX=$ARCH-pc-linux-gnu-
 	fi
 
-	cd $src
-	[ -s $SOURCES_REPOSITORY/boost_changeset_75540.u ] ||
-	wget -O $SOURCES_REPOSITORY/boost_changeset_75540.u --no-check-certificate \
-	  'https://svn.boost.org/trac/boost/changeset/75540?format=diff&new=75540'
-	patch -p2 < $SOURCES_REPOSITORY/boost_changeset_75540.u || return 1
-	./bootstrap.sh \
-		--prefix=$DESTDIR/usr \
-		--exec-prefix=$DESTDIR/usr \
-		--libdir=$DESTDIR/usr/lib \
-		--includedir=$DESTDIR/usr/include \
+#	[ -s $SOURCES_REPOSITORY/boost_changeset_75540.u ] ||
+#	wget -O $SOURCES_REPOSITORY/boost_changeset_75540.u --no-check-certificate \
+#	  'https://svn.boost.org/trac/boost/changeset/75540?format=diff&new=75540'
+#	patch -p2 < $SOURCES_REPOSITORY/boost_changeset_75540.u || return 1
+
+	./bootstrap.sh					\
+		--prefix=$DESTDIR/usr			\
+		--exec-prefix=$DESTDIR/usr		\
+		--libdir=$DESTDIR/usr/lib		\
+		--includedir=$DESTDIR/usr/include	\
 		--without-icu &&
 	EXPAT_INCLUDE=/usr/include \
 	EXPAT_LIBPATH=/usr/lib \
-	./bjam \
-		--prefix=$DESTDIR/usr \
-		--exec-prefix=$DESTDIR/usr \
-		--libdir=$DESTDIR/usr/lib \
-		--includedir=$DESTDIR/usr/include \
-		--build-type=minimal \
+	./bjam						\
+		--prefix=$DESTDIR/usr			\
+		--exec-prefix=$DESTDIR/usr		\
+		--libdir=$DESTDIR/usr/lib		\
+		--includedir=$DESTDIR/usr/include	\
+		--build-type=minimal			\
 		install
 	
 	# create the missing links to the shared libs
@@ -85,12 +84,15 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/include $fs/usr
+
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/usr/include	$fs/usr
+
 	for i in $RELOCATE_LIBS; do
 		rm -f $fs/usr/lib/*$i*
 		rm -r -f $fs/usr/include/boost/*$i*
 	done
+
 	# libboost-chrono{-dev}
 	rm $fs/usr/lib/libboost_chrono*
 	rm $fs/usr/include/boost/chrono*
