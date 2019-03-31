@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="ufraw"
-VERSION="0.18"
+VERSION="0.22"
 CATEGORY="graphics"
 SHORT_DESC="Utility to read and manipulate raw images from digital cameras."
 MAINTAINER="pankso@slitaz.org"
@@ -18,7 +18,11 @@ libgtkimageview-dev bzip2-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	sed -i 's|.*Exiv2::Error(1.*|//#if EXIV2_TEST_VERSION(0,27,0)\
+	    throw Exiv2::Error(Exiv2::kerErrorMessage, error);\
+//#else\n//&\n//#endif|' ufraw_exiv2.cc
+	sed -i	-e 's|return TRUE|return boolean(TRUE)|' \
+		-e 's|\(jpeg_.*\)TRUE|\1boolean(TRUE)|' dcraw.cc
 	./configure \
 		$CONFIGURE_ARGS &&
 	make && make install
