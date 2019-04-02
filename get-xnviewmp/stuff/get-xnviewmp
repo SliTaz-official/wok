@@ -2,6 +2,7 @@
 
 ROOT="$1"
 
+# Test for administrator privilege
 if test $(id -u) != 0 ; then
 	echo -e "\nYou must be root to run `basename $0`."
 	echo -e "Please type 'su' and root password to become super-user.\n"
@@ -13,11 +14,12 @@ if [ -d $ROOT/var/lib/tazpkg/installed/xnviewmp ]; then
   tazpkg remove xnviewmp
   [ -d /var/lib/tazpkg/installed/xnviewmp ] && exit 1
 fi
+
 [ -d $ROOT/usr/share/xnviewmp ] && rm -rf $ROOT/usr/share/xnviewmp
 
 # Download tarball
-WEB_SITE="http://download.xnview.com"
-wget ${WEB_SITE}/XnViewMP-linux.tgz
+WEB_SITE="https://download.xnview.com"
+wget --no-check-certificate ${WEB_SITE}/XnViewMP-linux.tgz
 if [ ! -f $TARBALL ]; then
 	rm -rf XnViewMP
 	echo "Could not download $TARBALL. Exiting."
@@ -27,27 +29,31 @@ fi
 # Extract
 TARBALL=$(ls XnView*.tgz 2> /dev/null || true)
 tar xzf $TARBALL
-cd XnViewMP
 
-# Install files
+cd XnView
+
+# Create directories for packaging
 mkdir -p xnviewmp/fs/usr/bin
 mkdir -p xnviewmp/fs/usr/lib/xnviewmp/
 mkdir -p xnviewmp/fs/usr/share/xnviewmp/
 mkdir -p xnviewmp/fs/usr/share/applications
 mkdir -p xnviewmp/fs/usr/share/pixmaps
 
-# use mv instead of 'cp -a' to save RAM
-mv lib xnviewmp/fs/usr/lib/xnviewmp/
-mv language xnviewmp/fs/usr/share/xnviewmp/
-mv AddOn xnviewmp/fs/usr/lib/xnviewmp/
-mv Plugins xnviewmp/fs/usr/lib/xnviewmp/
-mv UI xnviewmp/fs/usr/lib/xnviewmp/
-mv xnview xnviewmp/fs/usr/share/xnviewmp/
-mv *.png xnviewmp/fs/usr/share/xnviewmp/
-mv country.txt xnviewmp/fs/usr/lib/xnviewmp/
-mv qt.conf xnviewmp/fs/usr/lib/xnviewmp/
-cp -a xnviewmp/fs/usr/share/xnviewmp/xnview.png xnviewmp/fs/usr/share/pixmaps
+# Install files
+# use mv instead of 'cp -a' to save space
+mv lib		xnviewmp/fs/usr/lib/xnviewmp/
+mv language	xnviewmp/fs/usr/share/xnviewmp/
+mv AddOn	xnviewmp/fs/usr/lib/xnviewmp/
+mv Plugins	xnviewmp/fs/usr/lib/xnviewmp/
+mv UI		xnviewmp/fs/usr/lib/xnviewmp/
+mv XnView	xnviewmp/fs/usr/share/xnviewmp/xnview
+mv *.png	xnviewmp/fs/usr/share/xnviewmp/
+mv country.txt	xnviewmp/fs/usr/lib/xnviewmp/
+mv qt.conf	xnviewmp/fs/usr/lib/xnviewmp/
+cp -a xnviewmp/fs/usr/share/xnviewmp/xnview.png	\
+		xnviewmp/fs/usr/share/pixmaps
 
+# Create command procedure
 cat > xnviewmp/fs/usr/bin/xnview <<EOT
 #!/bin/sh
 LD_LIBRARY_PATH=/usr/lib/xnviewmp/lib
@@ -56,6 +62,7 @@ export LD_LIBRARY_PATH
 EOT
 chmod +x xnviewmp/fs/usr/bin/xnview
 
+# Create desktop file
 cat > xnviewmp/fs/usr/share/applications/XnView.desktop <<EOT
 [Desktop Entry]
 Encoding=UTF-8
@@ -69,13 +76,14 @@ Name=XnView Multi Platform
 GenericName=XnViewMP
 EOT
 
-# Create pseudo package
+# Create pseudo package recipe
+# Version is correct as on 2019-04-02
 cat > xnviewmp/receipt <<EOT
 PACKAGE="xnviewmp"
-VERSION="0.39"
+VERSION="0.93.1"
 CATEGORY="non-free"
-SHORT_DESC="XnViewMP"
-WEB_SITE="http://www.xnview.com"
+SHORT_DESC="An Efficient Multimedia Viewer, Browser and Converter."
+WEB_SITE="https://www.xnview.com"
 DEPENDS=""
 CONFIG_FILES=""
 EOT
