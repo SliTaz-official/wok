@@ -9,6 +9,7 @@ if test $(id -u) != 0 ; then
 	exit 0
 fi
 
+# Already installed?
 if [ -d $ROOT/var/lib/tazpkg/installed/xnviewmp ]; then
   [ -n "$ROOT" ] && exit 1
   tazpkg remove xnviewmp
@@ -21,7 +22,7 @@ fi
 WEB_SITE="https://download.xnview.com"
 wget --no-check-certificate ${WEB_SITE}/XnViewMP-linux.tgz
 if [ ! -f $TARBALL ]; then
-	rm -rf XnViewMP
+	rm -rf XnView
 	echo "Could not download $TARBALL. Exiting."
 	exit 1
 fi
@@ -52,12 +53,16 @@ mv country.txt	xnviewmp/fs/usr/lib/xnviewmp/
 mv qt.conf	xnviewmp/fs/usr/lib/xnviewmp/
 cp -a xnviewmp/fs/usr/share/xnviewmp/xnview.png	\
 		xnviewmp/fs/usr/share/pixmaps
+# Not all files from the tarball are owned by root
+chown -R root:root xnviewmp/fs
+# Not all libraries from the tarball are executable
+find xnviewmp/fs -name "*.so*" -exec chmod +x {} ';'
 
 # Create command procedure
 cat > xnviewmp/fs/usr/bin/xnview <<EOT
 #!/bin/sh
-LD_LIBRARY_PATH=/usr/lib/xnviewmp/lib
-export LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/usr/lib/xnviewmp/lib
+export QT_PLUGIN_PATH=/usr/lib/xnviewmp/lib
 /usr/share/xnviewmp/xnview
 EOT
 chmod +x xnviewmp/fs/usr/bin/xnview
@@ -77,14 +82,15 @@ GenericName=XnViewMP
 EOT
 
 # Create pseudo package recipe
-# Version is correct as on 2019-04-02
+# Version is correct as on 2019-04-03
+# Is there no way to retrieve the version from the tarball?
 cat > xnviewmp/receipt <<EOT
 PACKAGE="xnviewmp"
-VERSION="0.93.1"
+VERSION="0.89"
 CATEGORY="non-free"
 SHORT_DESC="An Efficient Multimedia Viewer, Browser and Converter."
 WEB_SITE="https://www.xnview.com"
-DEPENDS=""
+DEPENDS="mesa-wayland"
 CONFIG_FILES=""
 EOT
 
