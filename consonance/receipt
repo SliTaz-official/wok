@@ -3,36 +3,43 @@
 PACKAGE="consonance"
 VERSION="0.5"
 CATEGORY="multimedia"
-SHORT_DESC="A lightwight music manager"
+TAGS="player audio music mp3 ogg"
+SHORT_DESC="A lightwight music manager."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://sites.google.com/site/consonancemanager/" 
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://cloud.github.com/downloads/sujith/consonance/$TARBALL"
-TAGS="player audio music mp3 ogg"
 
 DEPENDS="libao taglib libmad sqlite dbus-glib libnotify flac libsndfile libvorbis \
-curl libmodplug libcdio libcddb xcb-util"
+	curl libmodplug libcdio-paranoia libcddb xcb-util"
 BUILD_DEPENDS="libao-dev taglib taglib-dev libmad-dev sqlite-dev dbus-glib-dev \
-libnotify-dev flac-dev libsndfile-dev libvorbis-dev curl-dev libmodplug-dev \
-libcdio-dev libcddb-dev libidn-dev libidn libao libsndfile libmodplug libcdio \
-alsa-lib-dev libogg-dev gtk+-dev"
+	libnotify-dev flac-dev libsndfile-dev libvorbis-dev curl-dev libmodplug-dev \
+	libcdio-dev libcddb-dev libidn-dev libidn libao libsndfile libmodplug libcdio \
+	libcdio-paranoia-dev alsa-lib-dev libogg-dev gtk+-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	sed -i 's/.*= notify_notification_new_with_status_icon/#define notify_notification_new_with_status_icon(a,b,c,d) notify_notification_new(a,b,gtk_status_icon_get_icon_name(c))\n&/' src/statusicon.c
-	./configure --prefix=/usr $CONFIGURE_ARGS &&
-	make &&
+
+	./configure		\
+		--prefix=/usr	\
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
-	
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share $fs/usr/share/pixmaps
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/$PACKAGE $fs/usr/share
-	cp -a $install/usr/share/$PACKAGE/data/consonance.png $fs/usr/share/pixmaps
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/share/pixmaps
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/$PACKAGE	$fs/usr/share
+	cp -a $install/usr/share/$PACKAGE/data/consonance.png \
+		$fs/usr/share/pixmaps
 }
