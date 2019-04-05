@@ -1,80 +1,194 @@
-#!/bin/sh -e
+#!/bin/sh
+#
+# get-google-earth - create and install SliTaz package google-earth
+#
+# (C) 2019 SliTaz - GNU General Public License v3.
+# Author : unknown
+# modified by HGT on 2019-04-05
+#
 
-DEPENDS="mesa"
-ROOT="$1"
-PACKAGE="google-earth"
+#	=== Initialisations ===
 
-if test $(id -u) != 0 ; then
-	echo -e "\nYou must be root to run `basename $0`."
-	echo -e "Please type 'su' and root password to become super-user.\n"
-	exit 0
-fi
-
-if [ -d $ROOT/var/lib/tazpkg/installed/google-earth ]; then
-  [ -n "$ROOT" ] && exit 1
-  tazpkg remove google-earth
-  [ -d /var/lib/tazpkg/installed/google-earth ] && exit 1
-fi
-
-TMP_DIR=/tmp/get-google-earth-$$-$RANDOM
-CUR_DIR=$(pwd)
-mkdir -p $TMP_DIR && cd $TMP_DIR
-
-# Download tarball
-wget http://dl.google.com/earth/client/current/GoogleEarthLinux.bin
-if [ ! -f GoogleEarthLinux.bin ]; then
-	cd $CUR_DIR
-	rm -rf $TMP_DIR
-	echo "Could not download GoogleEarthLinux.bin. Exiting."
-	exit 1
-fi
-
-chmod +x GoogleEarthLinux.bin
-sed -i 's/bzip2 -d/bunzip2/g' GoogleEarthLinux.bin
-
-VERSION=$(head GoogleEarthLinux.bin | grep ^label | sed 's/.*Linux \(.*\)"/\1/')
-
-# Add depends
-for i in $DEPENDS; do
-	yes y | tazpkg get-install $i
-done
-
-# Extract
-./GoogleEarthLinux.bin
-
-# extracted pkg can be removed: Save RAM
-rm -rf GoogleEarthLinux.bin
-
-# Create pseudo package
-while read file; do
-	dest=google-earth-$VERSION/fs$(dirname $file)
-	[ -d $dest ] || mkdir -p $dest
-	cp -a $file $dest
-done <<EOT
-$(ls /*bin/googleearth /usr/*bin/googleearth 2> /dev/null)
-$(ls /usr/share/applications/*googleearth*.desktop)
-/usr/share/applications/defaults.list
-$(ls -d /usr/*/google-earth)
-EOT
-cat > google-earth-$VERSION/receipt <<EOT
-PACKAGE="google-earth"
-VERSION="$VERSION"
+PKGS_DB="/var/lib/tazpkg"	# packages database directory
+PACKAGE="google-earth"		# package to create and install
+WEB_SITE="https://google.com/earth/"
 CATEGORY="non-free"
-SHORT_DESC="3D planet viewer."
-WEB_SITE="http://earth.google.com/"
-DEPENDS="$DEPENDS"
+DEPENDS="libglu-mesa"
+
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
+
+is_installed()
+{
+	 if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then	#package is deemed to be installed
+	 	return 0
+	  else
+	 	return 1
+	 fi
+}
+
+
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+	then
+	echo "Commandline options:
+  $0
+	--version=<version>
+	--root=<path-to-root>
+	--install=yes|no
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>"
+	exit
+fi
+
+# Check for system administrator privileges
+check_root
+
+title "Package $PACKAGE will be build as SliTaz package and installed"
+
+# Fetch latest version, unless version is set by option --version
+[ -z "$version" ] && version="latest"
+
+# Install SliTaz package, unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
+
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
+
+# Directory for temporary files
+[ -z "$tempdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+
+# Logging file (unused by now)
+LOG=$TMP_DIR/get-$PACKAGE.log
+
+cat <<EOT
+Options in use:
+  root           : $root/
+  version        : $version
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
+
 EOT
 
+separator; newline
+
+#	=== Remove package, if installed ===
+if [ is_installed ]
+	then
+		action "Removing installed version..."
+		tazpkg remove $PACKAGE --root="$root/"
+		[ ! is_installed ] &&
+		die "Can't remove installed version. Exiting."
+fi
+
+#	=== Fetch archive file, if not existing ===
+
+if [ "$version" == "latest" ]
+	then
+	  FILE="google-earth-stable_current_i386.deb"
+	  WGET_URL="https://dl.google.com/dl/earth/client/current/$FILE"
+	else
+		# only available version is 7.3.0.3832-r0
+	  FILE="google-earth-pro-stable_${version}_i386.deb"
+	  V1=${version%%.*}
+	  V3=${version%.*}
+	  WGET_URL="https://dl.google.com/dl/earth/client/GE$V1/release_${V3//./_}/$FILE"
+fi
+
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR
+cd $TMP_DIR
+if [ -f $FILE ]
+	then
+		echo "Using existing archive file $FILE"
+	else
+		action "Fetching the archive"
+		newline
+		wget	--no-check-certificate $WGET_URL
+		if [ ! -f $FILE ]
+		  then
+			cd $CUR_DIR
+			rm -rf $TMP_DIR
+			echo "Could not transfer $FILE from $URL. Exiting."
+			exit 1
+		fi
+fi
+
+#	=== Extract files from archive ===
+action "Extracting the archive"
+
+mkdir $PACKAGE
+# Extract metadata
+dpkg-deb -e $FILE $PACKAGE/meta
+# Extract files
+dpkg-deb -x $FILE $PACKAGE/fs
+status
+
+# Remove archive file
+rm -f $FILE
+
+#	=== Create SliTaz package ===
+
+# Prepare metadata for SliTaz package
+sed '/^Description:/,$!d; /^Description:/d' $PACKAGE/meta/control \
+	> $PACKAGE/description.txt
+
+SHORT_DESC="$(sed '/^Description:/!d; s/.*: //' $PACKAGE/meta/control)"
+MAINTAINER="$(sed '/^Maintainer:/!d;  s/.*: //' $PACKAGE/meta/control)"
+VERSION="$(   sed '/^Version:/!d;     s/.*: //' $PACKAGE/meta/control)"
+VERSION=${VERSION%-*}	# remove -r* suffix
+ 
+mv $PACKAGE $PACKAGE-$VERSION
+
+cd $PACKAGE-$VERSION
+
+# Create recipe for SliTaz package
+cat > receipt <<EOT
+# SliTaz package receipt.
+
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="$CATEGORY"
+TAGS="maps"
+SHORT_DESC="$SHORT_DESC"
+MAINTAINER="$MAINTAINER"
+LICENSE="non-free"
+WEB_SITE="$WEB_SITE"
+
+DEPENDS="$DEPENDS"
+
+post_install()
+{
+	# Due to different conventions in Debian
+	[ -L /lib/ld-lsb.so.3 ] || ln -s ld-2.14.1.so /lib/ld-lsb.so.3
+}
+EOT
+
+# Copy desktop file
+cp 	fs/opt/google/earth/pro/google-earth-pro.desktop \
+	fs/usr/share/applications/$PACKAGE.desktop
+
+cd $TMP_DIR
+
+action "Creating the package $PACKAGE..."
 # Pack
 tazpkg pack $PACKAGE-$VERSION
 
-# Clean to save RAM memory
+# Remove package tree
 rm -rf $PACKAGE-$VERSION
 
-# Install pseudo package
-tazpkg install google-earth-$VERSION.tazpkg --root=$ROOT
+#	=== Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
 
-# Clean
+#	=== Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] && mv $PACKAGE-$VERSION.tazpkg $CUR_DIR
+
+# Remove temporary build directory
 cd $CUR_DIR
 rm -rf $TMP_DIR
-
