@@ -1,41 +1,52 @@
 # SliTaz package receipt.
 
 PACKAGE="deadbeef"
-VERSION="0.5.6"
+VERSION="1.8.0"
 CATEGORY="multimedia"
+TAGS="music audio player mp3 ogg ape"
 SHORT_DESC="Simple to use GTK+ audio player with systray support."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2 LGPL2.1"
-SUGGESTED="deadbeef-plugins"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://deadbeef.sourceforge.net/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="music audio player mp3 ogg ape"
 
-DEPENDS="gtk+ alsa-lib libogg libvorbis libsamplerate libmad"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
 BUILD_DEPENDS="gtk+-dev alsa-lib-dev libogg-dev libvorbis-dev libmad-dev \
 libsndfile-dev libsamplerate-dev flac-dev curl-dev libcdio-dev \
-libcddb-dev intltool libsndfile libcurl yasm libzip-dev util-linux-uuid-dev"
+libcddb-dev intltool libsndfile libcurl yasm libzip-dev util-linux-uuid-dev \
+gettext jansson-dev zlib-dev"
+
+DEPENDS="alsa-lib atk cairo fontconfig freetype gdk-pixbuf glib gtk+ jansson \
+libgio libmad libvorbis pango xorg-libX11"
+SUGGESTED="deadbeef-plugins"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's/zip_file_t/ddb_&/g' plugins/vfs_zip/vfs_zip.c
-	./configure CFLAGS="-I/usr/lib/libzip/include" $CONFIGURE_ARGS && 
-	make && make install
+	./configure $CONFIGURE_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/$PACKAGE $fs/usr/share/pixmaps $fs/usr/share/doc
-	cp -a $install/usr/bin $fs/usr
-	for l in alsa ddb_gui_GTK2 hotkeys vorbis mpgmad
-	do
-		cp -a $install/usr/lib/$PACKAGE/$l.so* $fs/usr/lib/$PACKAGE
+	mkdir -p $fs/usr/
+	cp -a $install/usr/bin/ $fs/usr/
+
+	mkdir -p $fs/usr/lib/deadbeef/
+	for i in alsa ddb_gui_GTK2 hotkeys vorbis mp3; do
+		cp -a $install/usr/lib/deadbeef/$i.so $fs/usr/lib/deadbeef/
 	done
-	cp -a $install/usr/share/$PACKAGE $fs/usr/share
-	cp -a $install/usr/share/doc/$PACKAGE $fs/usr/share/doc
-	cp -a $install/usr/share/icons/hicolor/32x32/apps/*.png \
-		$fs/usr/share/pixmaps
+
+	mkdir -p $fs/usr/share/
+	for i in applications doc deadbeef; do
+		cp -a $install/usr/share/$i/ $fs/usr/share/
+	done
+
+	mkdir -p $fs/usr/share/icons/hicolor/
+	for i in 16 48; do
+		cp -a $install/usr/share/icons/hicolor/${i}x$i/ $fs/usr/share/icons/hicolor/
+	done
 }
