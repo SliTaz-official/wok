@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="scim-pinyin"
-VERSION="0.5.91"
+VERSION="0.5.92"
 CATEGORY="utilities"
 SHORT_DESC="Chinese PinYin input for SCIM."
 MAINTAINER="rocky@slitaz.org"
 LICENSE="LGPL2.1"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.scim-im.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/scim/$TARBALL"
 #WGET_URL="http://kent.dl.sourceforge.net/sourceforge/scim/$TARBALL"
 
@@ -17,29 +18,32 @@ BUILD_DEPENDS="scim-dev gtk+-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    while read file; do
-        [ -f done.$file ] && continue
-        echo "Apply $file..."
-        patch -p1 < $stuff/$file || return 1
-        touch done.$file
-    done <<EOT
-cstring-gcc43.patch
-EOT
-    ./configure --prefix=/usr \
-        --mandir=/usr/share/man \
-        --infodir=/usr/share/info \
-        --disable-static \
-        $CONFIGURE_ARGS &&
-    make &&
-    make DESTDIR=$DESTDIR install
+#    while read file; do
+#        [ -f done.$file ] && continue
+#        echo "Apply $file..."
+#        patch -p1 < $stuff/$file || return 1
+#        touch done.$file
+#    done <<EOT
+#cstring-gcc43.patch
+#EOT
+
+	./configure				\
+		--prefix=/usr			\
+		--mandir=/usr/share/man		\
+		--infodir=/usr/share/info	\
+		--disable-static		\
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-    mkdir -p $fs/usr/share
-    cp -a $install/usr/lib $fs/usr
-    cp -a $install/usr/share/scim $fs/usr/share
-    find $fs/usr/lib -name '*.la' -exec rm {} \;
+	mkdir -p $fs/usr/share
+
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/usr/share/scim	$fs/usr/share
+
+	find $fs/usr/lib -name '*.la' -exec rm {} \;
 }
