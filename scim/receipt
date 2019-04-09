@@ -1,38 +1,42 @@
+# SliTaz package receipt.
+
 PACKAGE="scim"
-VERSION="1.4.9"
+VERSION="1.4.18"
 CATEGORY="utilities"
 SHORT_DESC="Smart Common Input Method (SCIM)."
 MAINTAINER="rocky@slitaz.org"
 LICENSE="LGPL2.1"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.scim-im.org/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-CONFIG_FILES="/etc/scim/config /etc/scim/global"
 
-DEPENDS="gtk+ gcc-lib-base"
-BUILD_DEPENDS="gtk+-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https:/github.com/scim-im/$PACKAGE/archive/$VERSION.tar.gz"
+
+DEPENDS="gcc-lib-base gtk+"
+BUILD_DEPENDS="autoconf automake gtk+-dev"
+CONFIG_FILES="/etc/scim/config /etc/scim/global"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	while read file; do
-		[ -f done.$file ] && continue
-		echo "Apply $file..."
-		patch -p1 -i $stuff/$file || return 1
-		touch done.$file
-	done <<EOT
-scim-glibc-2.10.patch
-EOT
+#	while read file; do
+#		[ -f done.$file ] && continue
+#		echo "Apply $file..."
+#		patch -p1 -i $stuff/$file || return 1
+#		touch done.$file
+#	done <<EOT
+#scim-glibc-2.10.patch
+#EOT
 
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--with-x \
+	./bootstrap &&
+	./configure				\
+		--prefix=/usr			\
+		--sysconfdir=/etc		\
+		--with-x			\
 		--with-gtk-im-module-dir=$(ls -d /usr/lib/gtk-2*/2*/immodules/) \
-		--mandir=/usr/share/man \
-		--infodir=/usr/share/info \
+		--mandir=/usr/share/man		\
+		--infodir=/usr/share/info	\
 		$CONFIGURE_ARGS 2>&1 | grep -v po/POTFILES &&
-	make $MAKEFLAGS &&
+	make $MAKEFLAGS -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -40,14 +44,18 @@ EOT
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/pixmaps
-	cp -a $install/etc $fs/
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/scim $fs/usr/share
-	cp $install/usr/share/pixmaps/scim-setup.png $fs/usr/share/pixmaps
+
+	cp -a $install/etc		$fs/
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/usr/share/scim	$fs/usr/share
+	cp $install/usr/share/pixmaps/scim-setup.png \
+					$fs/usr/share/pixmaps
+
 	find $fs/usr/lib -name '*.la' -exec rm {} \;
 	find $fs/usr/lib -name '*.a' -exec rm {} \;
 	rm -rf $fs/usr/lib/pkgconfig
+
 	chmod +x $fs/usr/bin/scim-setup
 }
 
