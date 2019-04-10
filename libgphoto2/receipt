@@ -1,30 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="libgphoto2"
-VERSION="2.5.14"
+VERSION="2.5.22"
 CATEGORY="graphics"
-SHORT_DESC="core library of gphoto2 to access photos from digital camera"
+TAGS="camera photo"
+SHORT_DESC="Core library of gphoto2 to access photos from digital camera."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="LGPL2.1"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://www.gphoto.org" 
-WGET_URL="$SF_MIRROR/gphoto/$TARBALL"
-TAGS="camera photo"
 
-DEPENDS="libexif jpeg libusb libusb-compat libltdl hal"
-BUILD_DEPENDS="jpeg-dev libexif-dev libtool libexif jpeg libusb libusb-dev \
-libusb-compat libusb-compat-dev pkg-config"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$SF_MIRROR/gphoto/$TARBALL"
+
+DEPENDS="hal jpeg libexif libltdl libusb libusb-compat"
+BUILD_DEPENDS="jpeg jpeg-dev libexif libexif-dev libtool \
+	libusb libusb-compat libusb-compat-dev libusb-dev pkg-config"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		udevscriptdir=/lib/udev \
-		--with-exif \
-		--disable-static \
+	./configure			\
+		--prefix=/usr		\
+		udevscriptdir=/lib/udev	\
+		--with-exif		\
+		--disable-static	\
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make install
 }
 
@@ -37,14 +38,15 @@ genpkg_rules()
 		$fs/lib \
 		$fs/usr/share/hal/fdi/information/20thirdparty \
 		$fs/etc/udev/rules.d
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/$PACKAGE $fs/usr/lib
-	cp -a $install/usr/lib/${PACKAGE}_port $fs/usr/lib
-	cp -a $install/usr/lib/*so* $fs/usr/lib
-	cp -a $install/usr/share/$PACKAGE $fs/usr/share
-	cp -a $install/lib/udev $fs/lib
 
-	# rm all archive files
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/$PACKAGE		$fs/usr/lib
+	cp -a $install/usr/lib/${PACKAGE}_port	$fs/usr/lib
+	cp -a $install/usr/lib/*so*		$fs/usr/lib
+	cp -a $install/usr/share/$PACKAGE	$fs/usr/share
+	cp -a $install/lib/udev			$fs/lib
+
+	# remove all archive files
 	find $fs/usr/lib -name "*.*a" -exec rm -f {} \; 2> /dev/null
 
 	# fix permissions
@@ -77,8 +79,8 @@ post_install()
 	fi
 
 	echo
-	echo "Don't forget to add yourself to group camera to use libgphoto2:"
-	echo "    # addgroup tux camera"
+	echo "Don't forget to add your user id to group camera to use libgphoto2:"
+	echo "    # addgroup <user id> camera"
 }
 
 post_remove()
