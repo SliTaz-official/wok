@@ -1,27 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="libical"
-VERSION="0.44"
+VERSION="3.0.4"
 CATEGORY="system-tools"
-SHORT_DESC="Opensource ICalendar implementation"
+SHORT_DESC="Opensource ICalendar implementation."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="MPL LGPL"
+WEB_SITE="https://github.com/libical/libical/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="https://sourceforge.net/projects/freeassociation/"
-WGET_URL="http://downloads.sourceforge.net/project/freeassociation/$PACKAGE/$PACKAGE-$VERSION/$TARBALL"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/releases/download/v$VERSION/$TARBALL"
 
 DEPENDS=""
+BUILD_DEPENDS="cmake"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	mkdir	build
+	cd	build
+	cmake	..				\
+		-DCMAKE_INSTALL_PREFIX=/usr
+#	./configure \
+#		--prefix=/usr \
+#		--infodir=/usr/share/info \
+#		--mandir=/usr/share/man \
+#		$CONFIGURE_ARGS &&
+	make -j 1 &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -30,4 +36,3 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
-
