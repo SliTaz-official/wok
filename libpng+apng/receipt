@@ -2,16 +2,16 @@
 
 PACKAGE="libpng+apng"
 SOURCE="libpng"
-VERSION="1.6.28"
+VERSION="1.6.36"
 SERIES="libpng16"
 CATEGORY="x-window"
-SHORT_DESC="Loads and saves PNG files (with APNG support)"
+SHORT_DESC="Loads and saves PNG files (with APNG support)."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="zlib/libpng"
 WEB_SITE="http://www.libpng.org/pub/png/libpng.html"
+
 TARBALL="$SOURCE-$VERSION.tar.xz"
 WGET_URL="$SF_MIRROR/$SOURCE/$TARBALL"
-HOST_ARCH="i486 arm"
 
 PATCH="$SOURCE-$VERSION-apng.patch.gz"
 PATCH_URL="$SF_MIRROR/apng/$SOURCE/$SERIES/$PATCH"
@@ -19,16 +19,20 @@ PATCH_URL="$SF_MIRROR/apng/$SOURCE/$SERIES/$PATCH"
 DEPENDS="zlib"
 BUILD_DEPENDS="gawk zlib-dev"
 
+HOST_ARCH="i486 arm"
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	[ -s "$SRC/$PATCH" ] || wget -O "$SRC/$PATCH" $PATCH_URL
 	gzip -cd $SRC/$PATCH | patch -p0
-	./configure \
-		--prefix=/usr \
-		--disable-static \
+
+	./configure			\
+		--prefix=/usr		\
+		--disable-static	\
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
+
 	case "$ARCH" in
 	arm*)
 		make DESTDIR=$DESTDIR install ;;
