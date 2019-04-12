@@ -1,26 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="liboping"
-VERSION="1.9.0"
+VERSION="1.10.0"
 CATEGORY="network"
 SHORT_DESC="Library to ping IPv4 and IPv6 hosts in parallel."
 MAINTAINER="paul@slitaz.org"
 LICENSE="LGPL2.1"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://noping.cc/"
-WGET_URL="http://noping.cc/files/$TARBALL"
+WEB_SITE="https://noping.cc/"
 
-DEPENDS="ncurses libcap"
-BUILD_DEPENDS="ncurses-dev perl libcap-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://noping.cc/files/$TARBALL"
+
+DEPENDS="libcap ncurses"
+BUILD_DEPENDS="libcap-dev ncurses-dev perl"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -lrt"	# for clock_gettime
-	./configure \
-		--prefix=/usr \
+
+	./configure		\
+		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -28,8 +30,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib	
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib	
 }
 
 post_install()
@@ -37,4 +40,3 @@ post_install()
 	chroot "$1/" setcap cap_net_raw=ep /usr/bin/oping
 	chroot "$1/" setcap cap_net_raw=ep /usr/bin/noping
 }
-
