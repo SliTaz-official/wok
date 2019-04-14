@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="libqcow"
-VERSION="20120225"
+VERSION="20181227"
 CATEGORY="misc"
 SHORT_DESC="Tools for reading QEMU Copy-On-Write (QCOW) image files."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="LGPL3"
-TARBALL="$PACKAGE-alpha-$VERSION.tar.gz"
 WEB_SITE="https://github.com/libyal/libqcow"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+TARBALL="$PACKAGE-alpha-$VERSION.tar.gz"
+WGET_URL="https://github.com/libyal/$PACKAGE/releases/download/$VERSION/$TARBALL"
 
 DEPENDS="fuse libcrypto"
 BUILD_DEPENDS="fuse-dev openssl-dev"
@@ -16,11 +17,12 @@ BUILD_DEPENDS="fuse-dev openssl-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr --mandir=/usr/share/man \
-		--localstatedir=/var \
-	$CONFIGURE_ARGS &&
-	make &&
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
+		--localstatedir=/var	\
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -28,6 +30,7 @@ compile_rules()
 genpkg_rules()                                      
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
