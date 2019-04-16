@@ -1,39 +1,47 @@
 # SliTaz package receipt.
 
 PACKAGE="cyrus-sasl-pam"
-VERSION="2.1.23"
+VERSION="2.1.27"
 CATEGORY="network"
 SHORT_DESC="SASL authentication server using PAM."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
+WEB_SITE="https://cyrusimap.org/sasl"
+
 SOURCE="cyrus-sasl"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://cyrusimap.web.cmu.edu/"
-WGET_URL="ftp://ftp.andrew.cmu.edu/pub/cyrus-mail/$TARBALL"
-PROVIDE="cyrus-sasl:pam"
+WGET_URL="http://cyrusimap.org/releases/$SOURCE-$VERSION.tar.gz"
 
-DEPENDS="libldap openssl libdb pam libkrb5 libcomerr3"
-BUILD_DEPENDS="openldap-dev pam pam-dev openssl-dev"
+PROVIDE="cyrus-sasl:pam"
+DEPENDS="libcomerr3 libdb libkrb5 libldap openssl pam"
+BUILD_DEPENDS="openldap-dev openssl-dev pam pam-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--with-ldap=/usr --with-pam=/usr --with-devrandom=/dev/urandom \
-	--mandir=/usr/share/man $CONFIGURE_ARGS
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--with-ldap=/usr		\
+		--with-pam=/usr			\
+		--with-devrandom=/dev/urandom	\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS
 	sed -i 's/WITH_DES/WITH_DES 1/' config.h
-	make &&
+	make -j1 &&
 	make -j1 DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/sasl2 $fs/var/state/saslauthd
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/sasl2/*.so* $fs/usr/lib/sasl2
-	cp -a ../$SOURCE/stuff/etc $fs
+	mkdir -p $fs/usr/lib/sasl2
+	mkdir -p $fs/var/state/saslauthd
+
+	cp -a $install/usr/sbin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/sasl2/*.so*	$fs/usr/lib/sasl2
+	cp -a ../$SOURCE/stuff/etc		$fs
+
 	sed -i 's/shadow/pam/' $fs/etc/init.d/cyrus-sasl
 }
