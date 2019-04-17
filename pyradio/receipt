@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="pyradio"
-VERSION="0.4"
+VERSION="0.7.4"
 CATEGORY="multimedia"
 SHORT_DESC="Ncurses internet radio player."
 MAINTAINER="paul@slitaz.org"
@@ -12,21 +12,20 @@ WGET_URL="git|git://github.com/coderholic/pyradio.git"
 BRANCH="$VERSION"
 
 DEPENDS="ncurses mplayer python"
-BUILD_DEPENDS="git"
+BUILD_DEPENDS="git setuptools"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i '1a\# -*- coding: utf-8 -*-' pyradio/radio.py 
+	python setup.py build
+	python setup.py install --root=$DESTDIR
+}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/pyradio
-	cp -a $src/pyradio $fs/usr/bin
-	cp -a $src/stations.csv $fs/usr/share/pyradio
-	cp -a $src/README $fs/usr/share/pyradio
-	#cp -a $src/LICENCE $fs/usr/share/pyradio
+	cp -a $install/* $fs
 }
 
-post_install()
-{
-	# hack for path to stations file
-	sed -i 's|__file__|"/usr/share/pyradio/"|g' "$1/usr/bin/pyradio"
-}
 
