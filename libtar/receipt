@@ -1,34 +1,37 @@
 # SliTaz package receipt.
 
 PACKAGE="libtar"
-VERSION="1.2.11"
+VERSION="1.2.20"
 CATEGORY="development"
 SHORT_DESC="C library for manipulating POSIX tar files."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="BSD"
+WEB_SITE="https://directory.fsf.org/wiki/Libtar"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="https://repo.or.cz/w/libtar.git/"
-WGET_URL="ftp://ftp.feep.net/pub/software/$PACKAGE/$TARBALL"
+WGET_URL="http://pkgbuild.com/~giovanni/$PACKAGE/$TARBALL"
 
 DEPENDS="zlib"
-BUILD_DEPENDS="zlib-dev"
+BUILD_DEPENDS="automake libtool zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+	autoreconf --force --install
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make -j 1 &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
-}
+	mkdir -p $fs/usr/lib
 
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+}
