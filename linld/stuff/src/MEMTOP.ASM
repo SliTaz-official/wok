@@ -213,11 +213,10 @@ _memtop:
 int15_88:
                 cmp     ah,88h
                 je      @@do88
-@@jmp_saved15:
                 jmp     [saved15]
 @@do88:
                 pushf
-                call    @@jmp_saved15
+                call    [saved15]
                 or	ax,ax
                 jnz     @@iret
 
