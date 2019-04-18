@@ -1,13 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="lxpanel"
-VERSION="0.6.2"
+VERSION="0.10.0"
 CATEGORY="x-window"
 SHORT_DESC="LXDE panel"
-MAINTAINER="pankso@slitaz.org"
+MAINTAINER="devel@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="http://www.lxde.org/"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$SF_MIRROR/lxde/$TARBALL"
 CONFIG_FILES="/etc/lxpanel/default"
 TAGS="LXDE gtk2 panel"
@@ -15,8 +15,8 @@ HOST_ARCH="i486 arm"
 
 SUGGESTED="lxde lxsession slitaz-icon"
 DEPENDS="alsa-lib gtk+ menu-cache wireless_tools libxml2 slitaz-menus"
-BUILD_DEPENDS="gtk+-dev menu-cache-dev alsa-lib-dev wireless_tools-dev \
-libxml2-dev lxmenu-data"
+BUILD_DEPENDS="intltool libfm-dev libkeybinder-dev curl-dev \
+gtk+-dev menu-cache-dev alsa-lib-dev wireless_tools-dev libxml2-dev lxmenu-data"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -32,7 +32,7 @@ compile_rules()
 {
 	# Match default desktop colors
 	sed -i s'/gdk_color_parse("green"/gdk_color_parse("#cfcfcf"/' \
-		src/plugins/cpu/cpu.c || return 1
+		$src/plugins/cpu/cpu.c || return 1
 	./configure \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
@@ -45,7 +45,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p \
-		$fs/usr/lib \
+		$fs/usr/lib/lxpanel \
 		$fs/usr/share/lxpanel/images \
 		$fs/etc/lxpanel \
 		$fs/etc/xdg
@@ -53,7 +53,8 @@ genpkg_rules()
 	cp -a $install/usr/bin $fs/usr
 
 	# Plugins (kbled -> lxpanel-extra)
-	cp -a $install/usr/lib/lxpanel $fs/usr/lib
+	cp -a $install/usr/lib/lxpanel/*.so*   $fs/usr/lib/lxpanel/
+	cp -a $install/usr/lib/lxpanel/plugins $fs/usr/lib/lxpanel/
 	find $fs -name kbled.so -delete
 	find $fs -name wnckpager.so -delete
 
@@ -64,11 +65,10 @@ genpkg_rules()
 	done
 
 	# Move profile to /etc/lxpanel (/usr maybe read-only) and default config
-	cp -a $install/usr/share/lxpanel/profile/* $fs/etc/lxpanel
-	ln -sf /etc/lxpanel $fs/usr/share/lxpanel/profile
-	mv -f $fs/etc/lxpanel/default $fs/etc/lxpanel/original
-	cp -a $stuff/default $fs/etc/lxpanel
-	rm -rf $fs/etc/lxpanel/two_panels
+	cp -a $install/etc $fs/
+	mv -f $fs/etc/xdg/lxpanel/default $fs/etc/xdg/lxpanel/original
+	cp -a $stuff/default $fs/etc/xdg/lxpanel
+	rm -rf $fs/etc/xdg/lxpanel/two_panels
 
 	# XDG autostart desktop file (lxsession will use it automaticaly)
 	cp -a $stuff/autostart $fs/etc/xdg
