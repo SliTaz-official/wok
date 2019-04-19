@@ -1,32 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="libtorrent-rasterbar"
-VERSION="0.16.13"
+VERSION="1.2.0"
 CATEGORY="development"
-SHORT_DESC="A C++ library that aims to be a good alternative to all the other bittorrent implementations around"
+SHORT_DESC="A C++ library that aims to be a good alternative to all the other bittorrent implementations around."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://www.rasterbar.com/products/libtorrent/"
-WGET_URL="http://libtorrent.googlecode.com/files/$TARBALL"
 
-DEPENDS="libboost-thread libboost-math libboost-filesystem libboost-python openssl python"
-BUILD_DEPENDS="libboost-thread-dev libboost-math-dev libboost-filesystem-dev libboost-python-dev openssl-dev zlib-dev python-dev"
+SOURCE="libtorrent"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/arvidn/$SOURCE/releases/download/${SOURCE}_${VERSION//./_}/$TARBALL"
+
+DEPENDS="libboost-filesystem libboost-math libboost-python libboost-thread \
+	openssl python"
+BUILD_DEPENDS="gcc83 libboost-filesystem-dev libboost-math-dev libboost-python-dev \
+	libboost-thread-dev openssl-dev python-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --enable-python-binding \
+	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		--enable-python-binding \
 		$CONFIGURE_ARGS &&
-	make && make install
+	make -j 1 &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/python* $fs/usr/lib
-}
 
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/python*	$fs/usr/lib
+}
