@@ -98,7 +98,6 @@ ends				;};
         global  @xmm_alloc$qp11image_himem:near
         proc    @xmm_alloc$qp11image_himem near
 
-ifdef TO_BE_FIXED
 		ifndef	NO386
 		mov	edx,[(image_himem bx).size]		; m->size
                 ;dec     edx
@@ -131,7 +130,6 @@ ifdef TO_BE_FIXED
                 jnz     @@err
 		mov	[word (image_himem bx).buf],ax		; lo m->buf
 		mov	[word (image_himem bx+2).buf],dx	; hi m->buf
-endif	; TO_BE_FIXED
 @@err:
                 ret
 
