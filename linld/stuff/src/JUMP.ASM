@@ -159,10 +159,17 @@ sssp		dd	?
 		pushf
 		; finish loading
 		extrn   @last_ditch$qv:near
+		mov	ax,[ss:024Ch]
+		jne	@@notzimage
+@@isipxe:
+		push	cs
 		call	@last_ditch$qv
 		dos_shutdown			; clear di; ds=0
 		push	cs
 		pop	ds
+@@notzimage:
+		xor	ax,2b30h
+		je	@@isipxe
 		popf
 		; self move
 		;cld

@@ -35,7 +35,21 @@ void load_image(struct image_himem *m) {
 }
 
 // Called just before rm->pm
-void last_ditch() {
+void far last_ditch() {
+    asm {
+	cli
+	push	ds
+	push	cs
+	pop	ds
+# ifdef NO386
+	push	ax
+	push	bx
+	push	cx
+	push	dx
+# else
+	pusha
+# endif
+    }
     struct image_himem *m = &pm;
     u32 *q;
     vm2rm();
@@ -84,5 +98,16 @@ void last_ditch() {
                 memcpy_image(m);
             } while(q != m->bufv);
         }
+    }
+    asm {
+# ifdef NO386
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
+# else
+	popa
+# endif
+	pop	ds
     }
 }

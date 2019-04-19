@@ -186,6 +186,9 @@ do {
     {
         {
 #endif
+	    extern void far last_ditch();
+	    kernelparams->realmode_switch_ofs = (u16) last_ditch;
+	    kernelparams->realmode_switch_seg = _CS;
             pm_high++;
 
             // Hook on int15 to work around fn 88 DOS breakage
