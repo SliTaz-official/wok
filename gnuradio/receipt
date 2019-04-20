@@ -1,44 +1,49 @@
 # SliTaz package receipt.
 
 PACKAGE="gnuradio"
-VERSION="3.7.10.1"
+VERSION="3.7.13.4"
 CATEGORY="development"
 MAINTAINER="pascal.bellard@slitaz.org"
 SHORT_DESC="Signal processing blocks to implement software radios."
 LICENSE="GPL3"
 WEB_SITE="https://gnuradio.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$WEB_SITE/releases/$PACKAGE/$TARBALL"
 
-DEPENDS="python libboost-date-time libboost-program-options \
-libboost-filesystem libboost-system libboost-thread orc alsa-lib \
-gsl fftw jack-audio-connection-kit portaudio"
-BUILD_DEPENDS="cmake fftw-dev python-numpy python-cheetah python-lxml \
-libboost-filesystem-dev libboost-system-dev libboost-test-dev libboost-dev \
-libboost-program-options-dev libboost-thread-dev libboost-tr1-dev \
-libboost-regex-dev pygtk-dev libsdl-dev \
-pkg-config swig cppunit-dev orc-dev python-sphinx gsl-dev libusb-dev \
-alsa-lib-dev jack-audio-connection-kit-dev portaudio-dev log4c-dev"
+DEPENDS="alsa-lib fftw gsl jack-audio-connection-kit \
+	libboost-date-time libboost-filesystem libboost-program-options \
+	libboost-system libboost-thread orc portaudio python"
+BUILD_DEPENDS="alsa-lib-dev cmake cppunit-dev fftw-dev gsl-dev \
+	jack-audio-connection-kit-dev libboost-dev libboost-filesystem-dev \
+	libboost-program-options-dev libboost-regex-dev libboost-system-dev \
+	libboost-test-dev libboost-thread-dev libboost-tr1-dev \
+	libsdl-dev libusb-dev log4c-dev orc-dev pkg-config portaudio-dev \
+	pygtk-dev python-cheetah python-lxml python-numpy python-sphinx swig"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	mkdir build
 	cd build
-	cmake -Wno-dev -DCMAKE_INSTALL_PREFIX=/usr .. &&
-	make &&
+	cmake ..				\
+		-Wno-dev			\
+		-DCMAKE_INSTALL_PREFIX=/usr &&
+	make -j 1 &&
 	sed -i 's,bin/ctest.*,& || true,' Makefile &&
-	make test &&
+	make -j 1 test &&
 	make DESTDIR=$DESTDIR install
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/usr/lib
-	cp -a $install/etc $fs
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/gnuradio $fs/usr/share
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/python* $fs/usr/lib
+	mkdir -p $fs/usr/share
+	mkdir -p  $fs/usr/lib
+
+	cp -a $install/etc			$fs
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/gnuradio	$fs/usr/share
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/python*		$fs/usr/lib
 }
