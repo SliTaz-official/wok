@@ -34,28 +34,28 @@ overflow	db	"Loaded too close to 9000:0",0
 ;***************************************************************
 
 	macro	dos_shutdown
-		xor	di,di
-		mov	ds,di
+		xor	si,si
+		mov	ds,si
 		ifndef	NO386
-		push	[dword di+4]		; save step
-		mov	[word di+4],offset step19
+		push	[dword si+4]		; save step
+		mov	[word si+4],offset step19
 		else
 		mov	ax,offset step19
-		xchg	ax,[word di+4]
-		push	[word di+6]	
+		xchg	ax,[word si+4]
+		push	[word si+6]	
 		push	ax			; save step
 		endif
 		mov	[word cs:sssp],sp
-		;cmp	[byte di+7],0F0h
+		;cmp	[byte si+7],0F0h
 		;jnc	notdos
-		mov	[di+6],cs
+		mov	[si+6],cs
 		pushf
 		pushf
 		pop	ax
 		inc	ah			; set TF
 		push	ax
 		popf
-		call	[dword di+4*19h]
+		call	[dword si+4*19h]
 notdos:
 		ifndef	NO386
 		lss	sp,[dword cs:sssp]
@@ -65,19 +65,19 @@ notdos:
 		pop	ss
 		xchg	ax,sp
 		endif
-		xor	di,di
-		mov	ds,di
-		pop	[dword di+4]		; restore step
+		xor	si,si
+		mov	ds,si
+		pop	[dword si+4]		; restore step
 	endm
 	macro	step19code
 step19:
-		push	di
+		push	si
 		push	ds
-		mov	di,sp
-		lds	di,[dword ss:di+4]	; read cs:ip
-		cmp	[word di],19CDh		; int 19h ?
+		mov	si,sp
+		lds	si,[dword ss:si+4]	; read cs:ip
+		cmp	[word si],19CDh		; int 19h ?
 		pop	ds
-		pop	di
+		pop	si
 		je	notdos
 		iret
 	endm
@@ -164,7 +164,7 @@ sssp		dd	?
 @@isipxe:
 		push	cs
 		call	@last_ditch$qv
-		dos_shutdown			; clear di; ds=0
+		dos_shutdown			; clear si; ds=0
 		push	cs
 		pop	ds
 @@notzimage:
@@ -177,7 +177,7 @@ sssp		dd	?
 		jne	@@isbzimage
 		extrn	gdt_data
 		mov	cx,offset gdt_data+8
-		xor	si,si			;  A000 -9000 -0800(>movedend)
+		xor	di,di			;  A000 -9000 -0800(>movedend)
 		rep
 		  movsb
 		mov	ax,[word _imgs+2+2]	; get pm->fallback high word
