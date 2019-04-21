@@ -1,23 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="lighttpd"
-VERSION="1.4.35"
+VERSION="1.4.53"
 CATEGORY="network"
 SHORT_DESC="Fast and light HTTP Web server."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="BSD"
-SUGGESTED="lighttpd-modules php perl python"
+WEB_SITE="https://www.lighttpd.net/"
+
 TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://www.lighttpd.net/"
-WGET_URL="http://download.lighttpd.net/lighttpd/releases-${VERSION%.*}.x/$TARBALL"
+WGET_URL="https://download.lighttpd.net/$PACKAGE/releases-${VERSION%.*}.x/$TARBALL"
+
+SUGGESTED="lighttpd-modules perl php python"
+DEPENDS="pcre"
+BUILD_DEPENDS="bzip2-dev pcre-dev"
 CONFIG_FILES="/etc/lighttpd/vhosts.conf /etc/lighttpd/lighttpd.conf"
+
 HOST_ARCH="i486 arm"
 
-DEPENDS="pcre"
-BUILD_DEPENDS="pcre-dev bzip2-dev"
-
-# Modules include in this package. Other modules are splited in
-# the lighttpd-modules packages.
+# Modules to be included in this package. Other modules are split in
+# the lighttpd-modules package.
 BASE_MODULES="
 access
 accesslog
@@ -34,14 +36,15 @@ userdir"
 compile_rules()
 {
 	sed -i '/addrs_left/d' src/mod_extforward.c
-	./configure \
-		--enable-shared \
-		--disable-ipv6 \
-		--prefix=/usr \
-		--libdir=/usr/lib/lighttpd \
-		--mandir=/usr/share/man \
-	$CONFIGURE_ARGS &&
-	make &&
+
+	./configure				\
+		--enable-shared			\
+		--disable-ipv6			\
+		--prefix=/usr			\
+		--libdir=/usr/lib/lighttpd	\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -60,7 +63,7 @@ genpkg_rules()
 		echo -n "Copying : mod_${module}.so" && status
 	done
 
-	# Config file.
+	# Configuration file.
 	cp -a $stuff/etc $fs
 	chown -R 0.0 $fs/etc
 
@@ -69,20 +72,20 @@ genpkg_rules()
 	chown 80.80 $fs/var/log/lighttpd
 }
 
-# Make sur it as cross compile properly
+# Make sure it is cross compiled properly
 testsuite()
 {
 	readelf -h $install/usr/sbin/$PACKAGE
 }
 
 # Pre and post install commands for Tazpkg.
-# We stop the server by default in case of upgarde.
+# We stop the server by default in case of upgrade.
 pre_install()
 {
 	[ -z "$1" ] && for i in httpd ngnix apache cherokee $PACKAGE ; do
 		[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
 	done
-	# Backup config file.
+	# Backup configuration file.
 	if [ -d "$1/etc/lighttpd" ]; then
 		cp -a "$1/etc/lighttpd" "$1/etc/lighttpd.bak"
 	fi
@@ -90,7 +93,7 @@ pre_install()
 
 post_install()
 {
-	# Restore original config.
+	# Restore original configuration file.
 	if [ -d "$1/etc/lighttpd.bak" ]; then
 		rm -rf "$1/etc/lighttpd"
 		mv "$1/etc/lighttpd.bak" "$1/etc/lighttpd"
