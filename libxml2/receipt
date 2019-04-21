@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="libxml2"
-VERSION="2.8.0"
+VERSION="2.9.9"
 CATEGORY="system-tools"
-SHORT_DESC="Libxml2 is the XML C parser and toolkit."
+SHORT_DESC="XML C parser and toolkit."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://xmlsoft.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="ftp://xmlsoft.org/libxml2/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS="zlib"
-BUILD_DEPENDS="zlib-dev python-dev autoconf automake libtool"
+BUILD_DEPENDS="autoconf automake libtool python-dev zlib-dev"
+
+HOST_ARCH="i486 arm"
 
 # When cross compiling Python is installed in chroot and is used
 # by cross tools, cook dont need to install it in /usr/cross/arm
@@ -30,15 +32,15 @@ esac
 compile_rules()
 {
 	autoreconf -fi
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--with-html-dir=/usr/share/doc \
-		--with-threads \
-		--with-history \
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--with-html-dir=/usr/share/doc	\
+		--with-threads			\
+		--with-history			\
 	$CONFIGURE_ARGS $ARCH_ARGS &&
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install 2>&1 | grep -v "can't stat './..html':"
 }
 
