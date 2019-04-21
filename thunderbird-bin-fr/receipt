@@ -1,0 +1,52 @@
+# SlitTaz package receipt.
+
+PACKAGE="thunderbird-bin-fr"
+lang="fr"
+VERSION="60.6.1"
+CATEGORY="network"
+SHORT_DESC="Mozilla's Thunderbird email application (French language)."
+MAINTAINER="mojo@slitaz.org"
+LICENSE="MPL"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+SOURCE="thunderbird"
+WEB_SITE="http://www.mozilla.org/"
+WGET_URL="https://ftp.mozilla.org/pub/thunderbird/releases/$VERSION/linux-i686/$lang/$TARBALL"
+
+DEPENDS="alsa-lib dbus-glib gtk+ gtk+3 libatomic xorg-libXt"
+HOST_ARCH="i486"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Installation path
+	fx='/opt/mozilla/thunderbird-bin'
+
+	mkdir -p				\
+		$install$fx			\
+		$install/usr/bin		\
+		$install/usr/share/applications	\
+		$install/usr/share/pixmaps
+	
+	# Copy everything
+	cp -a $src/* $install$fx
+
+	# Executable
+	ln -s $fx/thunderbird $install/usr/bin/thunderbird-bin
+
+	# Icon
+	cp -a $stuff/thunderbird-bin.png \
+		$install/usr/share/pixmaps
+	
+	# Allow user updates
+	chmod -R a+w $install$fx
+                   
+	# Desktop shortcut
+	cp $stuff/thunderbird-bin.desktop \
+		$install/usr/share/applications
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs
+}
