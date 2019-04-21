@@ -1,19 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="libxslt"
-VERSION="1.1.26"
+VERSION="1.1.33"
 CATEGORY="system-tools"
 SHORT_DESC="XSLT support for libxml2."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.xmlsoft.org/XSLT/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="ftp://xmlsoft.org/libxslt/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS="libgcrypt libgpg-error libxml2 zlib"
-BUILD_DEPENDS="libgcrypt-dev libgpg-error-dev libxml2-dev zlib-dev \
-python-dev"
+BUILD_DEPENDS="libgcrypt-dev libgpg-error-dev libxml2-dev \
+	python-dev zlib-dev"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -24,7 +26,7 @@ esac
 compile_rules()
 {
 	./configure $CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make install 2>&1 | grep -v 'html/index.sgml'
 }
 
@@ -32,7 +34,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/libxslt-plugins
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
+
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/bin		$fs/usr
+
 	rm $fs/usr/bin/xslt-config
 }
