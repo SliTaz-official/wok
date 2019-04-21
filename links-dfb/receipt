@@ -1,35 +1,38 @@
 # SliTaz package receipt.
 
 PACKAGE="links-dfb"
-VERSION="2.14"
+VERSION="2.19"
 CATEGORY="network"
 SHORT_DESC="Light and fast web browser using Ncurses, X or DirectFB."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="http://links.twibright.com/"
+
 SOURCE="links"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://links.twibright.com/"
 WGET_URL="http://links.twibright.com/download/$TARBALL"
-HOST_ARCH="i486 arm"
-PROVIDE="links"
 
+PROVIDE="links"
 DEPENDS="ncurses openssl jpeg libpng tiff zlib libgomp directfb"
 BUILD_DEPENDS="openssl-dev ncurses-dev jpeg-dev libpng-dev tiff-dev \
-zlib-dev directfb-dev"
+	zlib-dev directfb-dev"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	sed -i 's/\*last_val/last_val/' dip.c
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--mandir=/usr/share/man \
-		--with-directfb \
-		--without-bzip2 \
-		--enable-graphics \
+
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		--mandir=/usr/share/man	\
+		--with-directfb		\
+		--without-bzip2		\
+		--enable-graphics	\
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -37,6 +40,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/pixmaps
-	cp -a $install/usr/bin $fs/usr
-	cp $src/graphics/links.xpm $fs/usr/share/pixmaps
+
+	cp -a $install/usr/bin		$fs/usr
+	cp $src/graphics/links.xpm	$fs/usr/share/pixmaps
 }
