@@ -1,42 +1,48 @@
 # SliTaz package receipt.
 
 PACKAGE="lives"
-VERSION="1.3.4"
+VERSION="2.10.2"
 CATEGORY="multimedia"
 SHORT_DESC="Simple to use, yet powerful video editor and VJ tool."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
+WEB_SITE="http://lives.sourceforge.net/"
+
 SOURCE="LiVES"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="http://lives.sourceforge.net/"
-WGET_URL="http://www.xs4all.nl/%7Esalsaman/lives/current/$TARBALL"
+WGET_URL="http://lives-video.com/releases/$TARBALL"
 
-DEPENDS="alsa-lib libpng gtk+ sox mjpegtools libavc1394 liboil libtheora"
-BUILD_DEPENDS="alsa-lib alsa-lib-dev libpng-dev gtk+-dev procps expat-dev perl"
+DEPENDS="alsa-lib gtk+ libavc1394 liboil libpng libtheora mjpegtools sox"
+BUILD_DEPENDS="alsa-lib alsa-lib-dev expat-dev gtk+-dev libpng-dev perl procps"
 
 # Rules to configure and make the package.
 #
 compile_rules()
 {
 	sed -i 's|\$(LN_S) \$(DESTDIR)\$(bindir)/lives-exe|$(LN_S) lives-exe|' Makefile*
-	./configure \
-		--prefix=/usr \
-		--disable-jack \
-	$CONFIGURE_ARGS &&
-	make &&
+
+	./configure		\
+		--prefix=/usr	\
+		--disable-jack	\
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install 2>&1 | \
-	sed "s/gmo': No such file/gmo': no such file/"
+		sed "s/gmo': No such file/gmo': no such file/"
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/lives $fs/usr/lib
-	cp -a $install/usr/share/lives $fs/usr/share
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/lives	$fs/usr/lib
+	cp -a $install/usr/share/lives	$fs/usr/share
+
 	find $fs/usr/lib/lives -name "*.la" -exec rm '{}' \;
+
 	# Fix the name (.desktop) file.
 	sed -i 's/^Exec=.*/Exec=lives-exe/' $install/usr/share/applications/LiVES.desktop
 }
