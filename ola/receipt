@@ -17,6 +17,11 @@ libmicrohttpd-dev libftdi-dev libusb-dev liblo-dev ncurses-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
+	sed -i 's|libusb_set_debug(m_context,\(.*\);|#if LIBUSB_API_VERSION >= 0x01000106\
+    libusb_set_option(m_context, LIBUSB_OPTION_LOG_LEVEL,\1;\
+#else\
+    \0\
+#endif|' tools/ja-rule/USBDeviceManager.cpp plugins/usbdmx/*yncPluginImpl.cpp
 	export LDFLAGS="$LDFLAGS -ltinfo"
 	autoreconf -i
 	./configure \
