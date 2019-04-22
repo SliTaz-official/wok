@@ -1,29 +1,38 @@
 # SliTaz package receipt.
 
 PACKAGE="logrotate"
-VERSION="3.8.2"
+VERSION="3.15.0"
 CATEGORY="system-tools"
-SHORT_DESC="Automatic rotation compression, removal of log files."
+SHORT_DESC="Automatic rotation, compression, and removal of log files."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://github.com/logrotate/logrotate/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="https://fedorahosted.org/logrotate/"
-WGET_URL="https://fedorahosted.org/releases/l/o/logrotate/$TARBALL"
-CONFIG_FILES="/etc/logrotate.conf"
+WGET_URL="${WEB_SITE}releases/download/$VERSION/$TARBALL"
 
 DEPENDS="popt"
-BUILD_DEPENDS="popt-dev wget"
+BUILD_DEPENDS="automake popt-dev"
+CONFIG_FILES="/etc/logrotate.conf"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	make && make PREFIX=$DESTDIR MANDIR=/usr/share/man install
+	autoreconf -fiv &&
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
+	make PREFIX=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc
+
 	echo -e "#Logrotate Config file\n\ninclude /etc/logrotate.d" \
 	  > $fs/etc/logrotate.conf
 	cp -a $install/usr/sbin $fs/usr
