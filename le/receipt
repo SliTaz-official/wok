@@ -1,30 +1,34 @@
 # SliTaz package receipt.
 
 PACKAGE="le"
-VERSION="1.14.2"
+VERSION="1.16.5"
 CATEGORY="utilities"
-SHORT_DESC="Small editor using ncurses"
+TAGS="text-editor"
+SHORT_DESC="Small editor using ncurses."
 MAINTAINER="mimas@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="ftp://ftp.yar.ru/pub/source/le/"
-WGET_URL="ftp://ftp.yar.ru/pub/source/le/$TARBALL"
-TAGS="text-editor"
+WEB_SITE="https://github.com/lavv17/le"
 
-DEPENDS="ncurses gcc-lib-base"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="$WEB_SITE/releases/download/v$VERSION/$TARBALL"
+
+DEPENDS="gcc-lib-base ncurses"
 BUILD_DEPENDS="ncurses-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries"
-	patch -p 0 < $stuff/gcc-4.patch || return 1
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+
+# 1.16.5 no longer required
+#	patch -p 0 < $stuff/gcc-4.patch || return 1
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -32,7 +36,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/le $fs/usr/share
-}
 
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/le	$fs/usr/share
+}
