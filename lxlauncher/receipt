@@ -1,19 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="lxlauncher"
-VERSION="0.2.4"
+VERSION="0.2.5"
 CATEGORY="x-window"
-SHORT_DESC="LXDE launcher for netbooks"
+TAGS="LXDE netbook"
+SHORT_DESC="LXDE launcher for netbooks."
 LICENSE="GPL3"
 MAINTAINER="pankso@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="https://lxde.org/"
-WGET_URL="$SF_MIRROR/lxde/$TARBALL"
-TAGS="LXDE netbook"
+WEB_SITE="https://wiki.lxde.org/en/LXLauncher"
 
-DEPENDS="xorg-libX11 gtk+ gnome-menus startup-notification menu-cache xorg-libXdamage"
-BUILD_DEPENDS="xorg-libX11-dev gtk+-dev gnome-menus gnome-menus-dev \
-menu-cache-dev startup-notification-dev startup-notification libxcb-dev"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="$SF_MIRROR/lxde/$TARBALL"
+
+DEPENDS="gnome-menus gtk+ menu-cache startup-notification \
+	xorg-libX11 xorg-libXdamage"
+BUILD_DEPENDS="gnome-menus gnome-menus-dev gtk+-dev libxcb-dev \
+	menu-cache-dev startup-notification \
+	startup-notification-dev xorg-libX11-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -24,11 +27,12 @@ compile_rules()
 	## Default icons to 32
 	#sed -i s/'120'/'100'/ src/lxlauncher.c
 	#sed -i s/'48'/'32'/ src/lxlauncher.c
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
+
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -37,11 +41,11 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share
 
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin	$fs/usr
 
 	# SliTaz home make config files
-	cp -a $install/etc $fs
-	cp -a $stuff/gtkrc $fs/etc/xdg/lxlauncher
+	cp -a $install/etc	$fs
+	cp -a $stuff/gtkrc	$fs/etc/xdg/lxlauncher
 
 	cp -a $install/usr/share/desktop-directories $fs/usr/share
 
