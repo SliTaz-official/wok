@@ -1,18 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="lm-sensors"
-SOURCE="lm_sensors"
-VERSION="3.3.3"
+VERSION="3.5.0"
 CATEGORY="system-tools"
 SHORT_DESC="Linux hardware monitoring."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
-SUGGESTED="rrdtool"
-WEB_SITE="https://github.com/lm-sensors/lm-sensors/issues/3"
-WGET_URL="http://dl.lm-sensors.org/lm-sensors/releases/$TARBALL"
+WEB_SITE="https://hwmon.wiki.kernel.org/lm_sensors"
 
-DEPENDS="perl linux-hwmon"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/archive/v${VERSION//./-}.tar.gz"
+
+SUGGESTED="rrdtool"
+DEPENDS="linux-hwmon perl"
 BUILD_DEPENDS="bison flex rrdtool-dev"
 
 # Rules to configure and make the package.
@@ -20,17 +20,23 @@ compile_rules()
 {
 	sed -i 's|uname -m|echo i486|' Makefile
 	sed -i 's|/man|/share&|' Makefile
-	patch -p0 < $stuff/linux-3.0.patch &&
-	make PREFIX=/usr PROG_EXTRA=sensord DESTDIR=$DESTDIR install 2>&1 | \
-	sed 's/d: No such file/d: no such file/'
+# no longer required with kernel 3.16.55
+#	patch -p0 < $stuff/linux-3.0.patch &&
+
+	make	install			\
+		PREFIX=/usr		\
+		PROG_EXTRA=sensord	\
+		DESTDIR=$DESTDIR 2>&1 | \
+		sed 's/d: No such file/d: no such file/'
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/etc $fs
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+
+	cp -a $install/etc		$fs
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
