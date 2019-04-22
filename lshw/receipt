@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="lshw"
-VERSION="B.02.15"
+VERSION="B.02.18"
 CATEGORY="system-tools"
-SHORT_DESC="Hardware Lister"
+SHORT_DESC="Hardware Lister."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://ezix.org/project/wiki/HardwareLiSter"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://ezix.org/software/files/$TARBALL"
 
 DEPENDS="gcc-lib-base"
@@ -15,12 +16,13 @@ DEPENDS="gcc-lib-base"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	cd $PACKAGE-$VERSION
 	sed -i 's/hwNode::hwNode/hwNode/' src/core/scsi.cc
 	grep -qs 'define u8' src/core/scsi.cc src/core/burner.cc ||
 	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
 		src/core/scsi.cc src/core/burner.cc
-	make &&
+
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -28,7 +30,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/share/lshw $fs/usr/share
-}
 
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/share/lshw	$fs/usr/share
+}
