@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="readline"
-VERSION="6.3"
+VERSION="8.0"
 CATEGORY="system-tools"
 SHORT_DESC="GNU readline."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://www.gnu.org/software/readline/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS=""
 BUILD_DEPENDS="ncursesw-dev"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,11 +22,13 @@ compile_rules()
 	case "$ARCH" in
 		arm*) export bash_cv_wcwidth_broken=true ;;
 	esac
-	cd $src
-	patch -Np1 -i $stuff/readline-6.3-upstream_fixes-3.patch
+
+#	patch -Np1 -i $stuff/readline-6.3-upstream_fixes-3.patch
 	sed -i '/(MV)/d' Makefile*
-	./configure $CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+
+	./configure --disable-install-examples $CONFIGURE_ARGS &&
+	make -j 1 &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -33,4 +37,3 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
-
