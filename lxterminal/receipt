@@ -1,37 +1,40 @@
 # SliTaz package receipt.
 
 PACKAGE="lxterminal"
-VERSION="0.2.0"
+VERSION="0.3.2"
 CATEGORY="utilities"
-SHORT_DESC="LXDE terminal emulator"
+TAGS="LXDE terminal"
+SHORT_DESC="LXDE terminal emulator."
 MAINTAINER="gokhlayeh@slitaz.org"
 LICENSE="GPL2"
-SUGGESTED="lxterminal-locales"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="https://lxde.org"
-WGET_URL="$SF_MIRROR/lxde/$TARBALL"
-TAGS="LXDE terminal"
+WEB_SITE="https://wiki.lxde.org/en/LXTerminal"
 
-DEPENDS="vte gtk+"
-BUILD_DEPENDS="intltool vte-dev vte-terminal gtk+-dev"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="$SF_MIRROR/lxde/$TARBALL"
+
+SUGGESTED="lxterminal-locales"
+DEPENDS="gtk+ vte"
+BUILD_DEPENDS="gtk+-dev intltool vte-dev vte-terminal"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make -j 1 &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share $fs/usr
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share	$fs/usr
 
 	# Remove man & locales
 	rm -rf $fs/usr/share/man
