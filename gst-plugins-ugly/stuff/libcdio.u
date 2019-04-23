@@ -1,0 +1,96 @@
+--- ext/cdio/gstcdio.h
++++ ext/cdio/gstcdio.h
+@@ -28,11 +28,20 @@
+ GST_DEBUG_CATEGORY_EXTERN (gst_cdio_debug);
+ #define GST_CAT_DEFAULT gst_cdio_debug
+ 
++#if LIBCDIO_VERSION_NUM >= 90
+ void     gst_cdio_add_cdtext_field (GstObject      * src,
+                                     cdtext_t       * cdtext,
+                                     cdtext_field_t   field,
+                                     const gchar    * gst_tag,
++                                    GstTagList    ** p_tags,
++				    track_t	     track);
++#else
++void     gst_cdio_add_cdtext_field (GstObject      * src,
++                                    cdtext_t       * cdtext,
++                                    cdtext_field_t   field,
++                                    const gchar    * gst_tag,
+                                     GstTagList    ** p_tags);
++#endif
+ 
+ GstTagList  * gst_cdio_get_cdtext  (GstObject      * src,
+                                     CdIo           * cdio,
+--- ext/cdio/gstcdio.c
++++ ext/cdio/gstcdio.c
+@@ -30,12 +30,21 @@
+ GST_DEBUG_CATEGORY (gst_cdio_debug);
+ 
+ void
++#if LIBCDIO_VERSION_NUM >= 90
+ gst_cdio_add_cdtext_field (GstObject * src, cdtext_t * cdtext,
++    cdtext_field_t field, const gchar * gst_tag, GstTagList ** p_tags, track_t track)
++#else
++gst_cdio_add_cdtext_field (GstObject * src, cdtext_t * cdtext,
+     cdtext_field_t field, const gchar * gst_tag, GstTagList ** p_tags)
++#endif
+ {
+   const gchar *txt;
+ 
++#if LIBCDIO_VERSION_NUM >= 90
++  txt = cdtext_get_const (cdtext, field, track);
++#else
+   txt = cdtext_get_const (field, cdtext);
++#endif
+   if (txt == NULL || *txt == '\0') {
+     GST_DEBUG_OBJECT (src, "empty CD-TEXT field %u (%s)", field, gst_tag);
+     return;
+@@ -62,14 +71,23 @@
+   GstTagList *tags = NULL;
+   cdtext_t *t;
+ 
++#if LIBCDIO_VERSION_NUM >= 90
++  t = cdio_get_cdtext (cdio);
++#else
+   t = cdio_get_cdtext (cdio, track);
++#endif
+   if (t == NULL) {
+     GST_DEBUG_OBJECT (src, "no CD-TEXT for track %u", track);
+     return NULL;
+   }
+ 
++#if LIBCDIO_VERSION_NUM >= 90
++  gst_cdio_add_cdtext_field (src, t, CDTEXT_FIELD_PERFORMER, GST_TAG_ARTIST, &tags, track);
++  gst_cdio_add_cdtext_field (src, t, CDTEXT_FIELD_TITLE, GST_TAG_TITLE, &tags, track);
++#else
+   gst_cdio_add_cdtext_field (src, t, CDTEXT_PERFORMER, GST_TAG_ARTIST, &tags);
+   gst_cdio_add_cdtext_field (src, t, CDTEXT_TITLE, GST_TAG_TITLE, &tags);
++#endif
+ 
+   return tags;
+ }
+@@ -79,15 +97,24 @@
+ {
+   cdtext_t *t;
+ 
++#if LIBCDIO_VERSION_NUM >= 90
++  t = cdio_get_cdtext (cdio);
++#else
+   t = cdio_get_cdtext (cdio, 0);
++#endif
+   if (t == NULL) {
+     GST_DEBUG_OBJECT (src, "no CD-TEXT for album");
+     return;
+   }
+ 
+   /* FIXME: map CDTEXT_PERFORMER to GST_TAG_ALBUM_ARTIST once we have that */
++#if LIBCDIO_VERSION_NUM >= 90
++  gst_cdio_add_cdtext_field (src, t, CDTEXT_FIELD_TITLE, GST_TAG_ALBUM, &tags, 0);
++  gst_cdio_add_cdtext_field (src, t, CDTEXT_FIELD_GENRE, GST_TAG_GENRE, &tags, 0);
++#else
+   gst_cdio_add_cdtext_field (src, t, CDTEXT_TITLE, GST_TAG_ALBUM, &tags);
+   gst_cdio_add_cdtext_field (src, t, CDTEXT_GENRE, GST_TAG_GENRE, &tags);
++#endif
+ 
+   GST_DEBUG ("CD-TEXT album tags: %" GST_PTR_FORMAT, tags);
+ }
