@@ -1,36 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="mc"
-VERSION="4.8.15"
+VERSION="4.8.22"
 CATEGORY="system-tools"
+TAGS="file-manager text-editor"
 SHORT_DESC="Midnight Commander - ncurses based file manager."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL3"
+WEB_SITE="https://www.midnight-commander.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://www.midnight-commander.org/"
-WGET_URL="http://www.midnight-commander.org/downloads/$TARBALL"
-TAGS="file-manager text-editor"
-HOST_ARCH="i486 arm"
+WGET_URL="http://ftp.midnight-commander.org/$TARBALL"
 
 SUGGESTED="gpm xz cdrkit-isoinfo lynx w3m wv poppler-apps file "
-DEPENDS="ncursesw glib e2fsprogs util-linux-blkid"
-BUILD_DEPENDS="gpm-dev glib-dev ncursesw-dev util-linux-mount-dev \
- util-linux-blkid-dev util-linux-uuid-dev ncurses-extra"
+DEPENDS="e2fsprogs glib ncursesw util-linux-blkid"
+BUILD_DEPENDS="glib-dev gpm-dev ncursesw-dev ncurses-extra \
+	util-linux-blkid-dev util-linux-mount-dev util-linux-uuid-dev "
 GENERIC_MENUS="no"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	sed -i 's/lzma -cd/lzcat/' $src/src/editor/edit.c
 
-	./configure \
-		--prefix=/usr \
-		--with-gpm-mouse \
-		--with-screen=ncurses \
-		--libexecdir=/usr/lib \
-		--sysconfdir=/etc \
+	./configure			\
+		--prefix=/usr		\
+		--with-gpm-mouse	\
+		--with-screen=ncurses	\
+		--libexecdir=/usr/lib	\
+		--sysconfdir=/etc	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make -j 1 &&
+	make install
 
 	mkdir -p $install/usr/share/terminfo/s
 	cp -a /usr/share/terminfo/s/screen-256color $install/usr/share/terminfo/s
@@ -40,11 +43,12 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/applications
-	cp -a $install/etc $fs/
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/mc $fs/usr/share
-	cp -a $install/usr/share/terminfo $fs/usr/share
+
+	cp -a $install/etc			$fs/
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib			$fs/usr
+	cp -a $install/usr/share/mc		$fs/usr/share
+	cp -a $install/usr/share/terminfo	$fs/usr/share
 
 	sed 's#&) ||#) ||#' -i $fs/usr/lib/mc/ext.d/*.sh
 	sed 's#|profile|#&receipt|#' -i $fs/usr/share/mc/syntax/Syntax
@@ -76,6 +80,7 @@ esac
 mc \$@
 
 EOF
+
 	chmod 755 $fs/usr/bin/mc.sh
 	chown -R root:root $fs
 }
