@@ -1,25 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="mediawiki"
-VERSION="1.19.0"
+VERSION="1.32.0"
 CATEGORY="network"
-SHORT_DESC="MediaWiki engine"
+SHORT_DESC="MediaWiki engine."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL2"
 WEB_SITE="https://www.mediawiki.org/wiki/MediaWiki"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="http://download.wikimedia.org/mediawiki/${VERSION:0:4}/$TARBALL"
+WGET_URL="http://download.wikimedia.org/mediawiki/${VERSION%.*}/$TARBALL"
 
 DEPENDS="php"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/webapps $fs/etc/webapps/mediawiki
+	mkdir -p $fs/usr/share/webapps
+	mkdir -p $fs/etc/webapps/mediawiki
+
 	cp -a $src $fs/usr/share/webapps/mediawiki
-	sed -i -e 's#is_executable#is_file#' -e 's#is_executable#is_file#'$fs/includes/Math.php
+	sed -i -e 's#is_executable#is_file#' $fs/includes/Math.php
 	echo "deny from all" >> $fs/etc/webapps/mediawiki/.htaccess
 	ln -sf /etc/webapps/mediawiki/.htaccess $fs/usr/share/webapps/mediawiki/.htaccess
+
 	# move cache and images to /var
 	install -vdm0755 -o www -g www $fs/var/cache/mediawiki
 	install -vdm0755 -o www -g www $fs/var/lib/mediawiki
