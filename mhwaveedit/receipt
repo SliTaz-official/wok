@@ -1,43 +1,47 @@
 # SliTaz package receipt.
 
 PACKAGE="mhwaveedit"
-VERSION="1.4.23"
+VERSION="1.4.24"
 CATEGORY="multimedia"
 SHORT_DESC="Lightweight sound files editor, recorder and player."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://github.com/magnush/mhwaveedit/"
-WGET_URL="http://download.gna.org/mhwaveedit/$TARBALL"
-HOST_ARCH="i486 arm"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}archive/v$VERSION/$TARBALL"
 
 DEPENDS="alsa-lib libxml2 expat gtk+ xorg-libX11 xorg-libXau \
-xorg-libXcomposite xorg-libXcursor xorg-libXdmcp xorg-libXext \
-xorg-libXfixes xorg-libXinerama xorg-libXrandr xorg-libXrender \
-xorg-libXdamage"
+	xorg-libXcomposite xorg-libXcursor xorg-libXdmcp xorg-libXext \
+	xorg-libXfixes xorg-libXinerama xorg-libXrandr xorg-libXrender \
+	xorg-libXdamage"
 BUILD_DEPENDS="alsa-lib-dev libxml2-dev xorg-libX11-dev gtk+-dev"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	chmod +x install-sh
-	./configure \
-		--prefix=/usr \
-		--without-sdl \
-		--without-libsamplerate \
-		--without-portaudio \
-		--without-libsndfile \
-		--without-esound \
+	./configure			\
+		--prefix=/usr		\
+		--without-sdl		\
+		--without-libsamplerate	\
+		--without-portaudio	\
+		--without-libsndfile	\
+		--without-esound	\
 		$CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc
-	cp -a $install/usr/bin $fs/usr
-	cp -a $stuff/skel $fs/etc
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc
+
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $stuff/skel	$fs/etc
 	chown -R 0.0 $fs
 }
