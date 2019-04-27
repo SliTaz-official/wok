@@ -1,25 +1,27 @@
 # SliTaz package receipt.
 
 PACKAGE="mercurial"
-VERSION="3.5.1"
+VERSION="4.9.1"
 CATEGORY="development"
 SHORT_DESC="Revision tools system."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://mercurial.selenic.com/"
-WGET_URL="http://www.selenic.com/mercurial/release/$TARBALL"
-CONFIG_FILES="/etc/mercurial/hgweb.config"
-HOST_ARCH="i486 arm"
+WEB_SITE="https://www.mercurial-scm.org/"
 
-DEPENDS="python patch libssl"
-BUILD_DEPENDS="python-dev patch openssl-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}release/$TARBALL"
+
 PROVIDE="hg"
+DEPENDS="libssl patch python"
+BUILD_DEPENDS="openssl-dev patch python-dev"
+CONFIG_FILES="/etc/mercurial/hgweb.config"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Cross compilation hack to avoid using compiler wich build python 
+	# Cross compilation hack to avoid using compiler which build python 
 	# itself.
 	case "$ARCH" in
 		arm*)
@@ -27,9 +29,13 @@ compile_rules()
 			ln -s /cross/${ARCH}/tools/bin/${HOST_SYSTEM}-gcc \
 				/usr/bin/i486-slitaz-linux-gcc ;;
 	esac &&
-	python setup.py install --root="$DESTDIR" --optimize=1 &&
+
+	python setup.py install		\
+		--root="$DESTDIR"	\
+		--optimize=1 &&
 	mkdir -p $DESTDIR/usr/share/examples/mercurial &&
 	cp -a $src/hgweb.cgi $DESTDIR/usr/share/examples/mercurial &&
+
 	case "$ARCH" in
 		arm*) 
 			rm /usr/bin/i486-slitaz-linux-gcc &&
@@ -41,12 +47,15 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/examples/mercurial
+
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
 
 	# Examples
-	cp -a $stuff/hgwebdir.cgi $fs/usr/share/examples/mercurial
-	cp -a $stuff/lighttpd-hg-vhost.conf $fs/usr/share/examples/mercurial
+	cp -a $stuff/hgwebdir.cgi \
+		$fs/usr/share/examples/mercurial
+	cp -a $stuff/lighttpd-hg-vhost.conf \
+		$fs/usr/share/examples/mercurial
 
 	# Config file for hgweb
 	mkdir -p $fs/etc/mercurial
