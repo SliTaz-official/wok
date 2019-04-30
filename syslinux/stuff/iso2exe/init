@@ -126,14 +126,16 @@ words2bin()
 gettazboot()
 {
 	echo "Creating $(basename $1) ..."
+	X=$(($(get 20 /mnt/$ISO) - 0xC0))
+	[ $X -lt 30000 ] && X=$((0x7FF0))
 	O=$(($(get 64 /mnt/$ISO) - 0xC0))
-	L=$(($(get 20 /mnt/$ISO) - 0xC0 - $(get 24 /mnt/$ISO) - $O))
+	L=$(($X - $(get 24 /mnt/$ISO) - $O))
 	S=$((32+$L))
 	P=$((($S+511)/512))
 	E=$((4096-(32*$P)))
 	words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 $((${2:-0}-16)) \
 			-2 0 256 -16 28 0x6C53 0x5469 0x7A61 > $1
-	ddq bs=1 count=$L skip=$(echo $O) if=/mnt/$ISO >> $1
+	ddq bs=1 count=$(echo $L) skip=$(echo $O) if=/mnt/$ISO >> $1
 }
 
 checkmagic()
@@ -228,6 +230,7 @@ EOT
 
 mkinitrd()
 {
+	echo
 	dotwait "Creating $(basename $1) "
 	for i in bin lib dev proc tmp mnt etc ; do
 		mkdir -p /tmp/fs/$i
@@ -268,7 +271,7 @@ mount \$( (blkid /dev/[sh]d* || blkid) | grep \$val | sed 's/:.*//;q') /mnt
 arg subroot "Change root to directory"
 mount.posixovl -F /mnt/\$val -- -oallow_other -odefault_permissions -osuid
 mount --bind /mnt /mnt/\$val/mnt/dos
-mount -o size=0 -t tmpfs tmpfs /mnt/\$val/mnt/dos/\$val
+mount -o size=0,ro -t tmpfs tmpfs /mnt/\$val/mnt/dos/\$val
 LDSO=\$(ls /mnt/\$val/lib/ld-* | sed q)
 export LD_LIBRARY_PATH=\$val/lib:\$val/usr/lib:/lib
   [ "$debug" = "true" ] && sh
@@ -339,7 +342,7 @@ doinstall()
 		/media/cdrom/README /media/cdrom/boot/memtest* ; do
 		[ -s $i ] && cp $i /mnt/slitaz/boot
 	done
-	for i in /mnt/slitaz/boot/memtest /mnt/slitaz/boot/*pxe* ; do
+	for i in /mnt/slitaz/boot/memtest /mnt/slitaz/boot/*pxe ; do
 		[ $(get 0 $i 2> /dev/null || echo 0) -eq 23117 ] &&
 		mv $i $i.exe
 	done
