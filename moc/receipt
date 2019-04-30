@@ -1,21 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="moc"
-VERSION="2.5.0"
+VERSION="2.5.2"
 CATEGORY="multimedia"
 SHORT_DESC="Music on console."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://moc.daper.net/"
-WGET_URL="http://ftp.daper.net/pub/soft/moc/stable/$TARBALL"
-#HOST_ARCH="i486 arm"
+WEB_SITE="https://moc.daper.net/"
 
-DEPENDS="alsa-lib libvorbis libogg libmad libid3tag flac curl \
-libsamplerate libsndfile libltdl ffmpeg ncursesw db libmagic"
-BUILD_DEPENDS="libvorbis-dev libogg-dev libmad-dev libid3tag-dev flac-dev db-dev \
-curl-dev libsamplerate-dev alsa-lib-dev ncurses-dev libsndfile-dev libsamplerate \
-libtool libmagic-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="http://ftp.daper.net/pub/soft/$PACKAGE/stable/$TARBALL"
+
+DEPENDS="alsa-lib curl db ffmpeg flac libid3tag libltdl libmad libmagic \
+	libogg libsamplerate libsndfile libvorbis ncursesw"
+BUILD_DEPENDS="alsa-lib-dev curl-dev db-dev flac-dev libid3tag-dev \
+	libmad-dev libmagic-dev libogg-dev libsamplerate libsamplerate-dev \
+	libsndfile-dev libtool libvorbis-dev ncurses-dev"
+
+#HOST_ARCH="i486 arm"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -26,23 +28,27 @@ esac
 compile_rules()
 {
 	export LIBTOOL=${HOST_SYSTEM}-libtool
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make -j 1 &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/moc $fs/usr/share/doc $fs/usr/share/moc
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/moc/* $fs/usr/lib/moc
-	cp -a $install/usr/share/doc/* $fs/usr/share/doc
-	cp -a $install/usr/share/moc/* $fs/usr/share/moc
+	mkdir -p $fs/usr/lib/moc
+	mkdir -p $fs/usr/share/doc
+	mkdir -p $fs/usr/share/moc
 
-	# strip unneeded libraries
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/moc/*	$fs/usr/lib/moc
+	cp -a $install/usr/share/doc/*	$fs/usr/share/doc
+	cp -a $install/usr/share/moc/*	$fs/usr/share/moc
+
+	# delete unneeded libraries
 	rm $fs/usr/lib/moc/decoder_plugins/*.*a
 }
