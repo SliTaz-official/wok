@@ -1,60 +1,68 @@
 # SliTaz package receipt.
 
 PACKAGE="mpd"
-VERSION="0.17.2"
+VERSION="0.21.8"
 CATEGORY="multimedia"
 SHORT_DESC="Music Player Daemon (MPD)."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://www.musicpd.org/"
-WGET_URL="$SF_MIRROR/musicpd/$TARBALL"
-HOST_ARCH="i486 arm"
 
-DEPENDS="libid3tag libmad libogg libvorbis libsamplerate flac alsa-lib \
-audiofile faad2 lame sqlite libcurl glib libcrypto libwrap"
-BUILD_DEPENDS="alsa-lib-dev zlib-dev libid3tag-dev libsamplerate-dev \
-libmad-dev libogg-dev libvorbis-dev flac-dev audiofile-dev faad2-dev \
-glib-dev lame-dev libwrap-dev curl-dev"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="${WEB_SITE}download/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="alsa-lib audiofile faad2 flac glib lame libboost \
+	libcrypto libcurl libid3tag libmad libogg libsamplerate \
+	libvorbis libwrap sqlite"
+BUILD_DEPENDS="alsa-lib-dev audiofile-dev curl-dev faad2-dev flac-dev \
+	gcc83 glib-dev lame-dev libboost-dev libid3tag-dev \
+	libmad-dev libogg-dev libsamplerate-dev libvorbis-dev \
+	libwrap-dev meson zlib-dev"
+
+HOST_ARCH="i486 arm"
 
 # Handle SliTaz arch
 case "$SLITAZ_ARCH" in
 	arm)
 		DEPENDS="alsa-lib zlib glib lame libmad libsamplerate libwrap \
-libogg libvorbis" ;;
+		libogg libvorbis" ;;
 esac
 
 # Handle cross comilation
 case "$ARCH" in
 	arm) 
 		BUILD_DEPENDS="alsa-lib-dev zlib-dev glib-dev libgio-dev lame-dev \
-libmad-dev libsamplerate-dev libwrap-dev libogg-dev libvorbis-dev" ;;
+		libmad-dev libsamplerate-dev libwrap-dev libogg-dev libvorbis-dev" ;;
 esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's/<stdbool.h>/&\n#include <stdio.h>/' src/decoder_api.h
-	./configure \
-		--disable-jack \
-		--disable-ao \
-		--disable-modplug \
-		--disable-mms \
-		--disable-ffmpeg \
-		--disable-wavpack \
-		--disable-systemd-daemon \
-		--with-zeroconf=no \
-		$CONFIGURE_ARGS &&
-	make && make install
+#	sed -i 's/<stdbool.h>/&\n#include <stdio.h>/' src/decoder_api.h
+	export	CC=gcc-83
+	export	CXX=g++-83
+	meson . output			\
+		-Djack=disabled		\
+		-Dao=disabled		\
+		-Dmodplug=disabled	\
+		-Dmms=disabled		\
+		-Dffmpeg=disabled	\
+		-Dwavpack=disabled	\
+		-Dsystemd=disabled	\
+		-Dzeroconf=disabled &&
+	ninja	-C output &&
+	ninja	-C output install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/sbin $fs/etc
-	cp -a $install/usr/bin/mpd $fs/usr/sbin
-	cp $install/usr/share/doc/mpd/mpdconf.example $fs/etc/mpd.conf
-	cp -a $stuff/* $fs
+	mkdir -p $fs/usr/sbin
+	mkdir -p $fs/etc
+	cp -a $install/usr/bin/mpd	$fs/usr/sbin
+	cp $install/usr/share/doc/mpd/mpdconf.example \
+		$fs/etc/mpd.conf
+	cp -a $stuff/*			$fs
 }
 
 post_install()
