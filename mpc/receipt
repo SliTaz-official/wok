@@ -1,28 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="mpc"
-VERSION="0.25"
+VERSION="0.31"
 CATEGORY="multimedia"
 SHORT_DESC="A command line tool to interface MPD."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://www.musicpd.org/clients/mpc/"
-WGET_URL="https://www.musicpd.org/download/mpc/0/$TARBALL"
-HOST_ARCH="i486 arm"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://www.musicpd.org/download/mpc/${VERSION%.*}/$TARBALL"
 
 DEPENDS="mpd libmpdclient"
-BUILD_DEPENDS="libmpdclient-dev"
+BUILD_DEPENDS="libmpdclient-dev meson"
+
+HOST_ARCH="i486 arm"
 
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS
-	make && make install
+	meson . output --prefix=/usr
+	ninja -C output
+	ninja -C output install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/mpc
+	mkdir -p $fs/usr
 	cp -a $install/usr/bin $fs/usr
 }
