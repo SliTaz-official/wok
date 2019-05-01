@@ -307,7 +307,7 @@ case "$1" in
 	cat init > $TMP/init.exe
 	find $TMP -type f -print0 | xargs -0 chmod +x
 	find $TMP -print0 | xargs -0 touch -t 197001010100.00
-	( cd $TMP; find dev init.exe | cpio -o -H newc ) | compress rootfs.gz
+	( cd $TMP; find dev init.exe | cpio -o -H newc ) | compress > rootfs.gz
 	rm -rf $TMP
 	ls -l $@ rootfs.gz
 	cp $0 $0.$$
