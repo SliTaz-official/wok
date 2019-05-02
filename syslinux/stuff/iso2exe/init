@@ -125,7 +125,7 @@ words2bin()
 
 gettazboot()
 {
-	echo "Creating $(basename $1) ..."
+	echo -e "\nCreating $(basename $1) ..."
 	X=$(($(get 20 /mnt/$ISO) - 0xC0))
 	[ $X -lt 30000 ] && X=$((0x7FF0))
 	O=$(($(get 64 /mnt/$ISO) - 0xC0))
@@ -206,7 +206,6 @@ EOT
 #!/bin/sh
 
 mount -t proc /proc /proc
-  grep -q debug /proc/cmdline && debug=true && set -x
 for i in /lib/*.ko* ; do insmod \$i 2> /dev/null ; done; sleep 2
 v=\$(sed '/\\/home=/!d;s|.*/home=\\([^ ]*\\).*|\\1|' /proc/cmdline /cmdline 2> /dev/null)
 mount / -o remount,rw
@@ -219,7 +218,7 @@ echo "Mount \$dev in /mnt/dos for \$v..." | tee -a /run/boot.log
 mount \$dev /mnt/dos
 mount.posixovl -F \$mnt -- -oallow_other -odefault_permissions -osuid
 mount --bind \$mnt /home
-  [ "\$debug" = "true" ] && sh
+mount -o size=0,ro -t tmpfs tmpfs \$mnt
 umount /proc
 exec /sbin/init
 EOT
@@ -235,8 +234,7 @@ mkinitrd()
 	for i in bin lib dev proc tmp mnt etc ; do
 		mkdir -p /tmp/fs/$i
 	done
-	for i in /dev/console /dev/null /dev/tty /dev/tty0 /dev/tty1 /dev/tty2 \
-		 /dev/fuse /dev/hd* /dev/sd* ; do
+	for i in /dev/console /dev/null /dev/tty /dev/tty[012] /dev/fuse /dev/[hs]d* ; do
 		cp -a $i /tmp/fs$i
 	done
 	for i in /bin/busybox $(which mount.posixovl) $(which blkid); do
@@ -264,7 +262,6 @@ arg()
 }
 
 mount -t proc /proc /proc
-  arg debug "shell" && debug=true && set -x
 for i in /lib/*.ko* ; do insmod \$i 2> /dev/null ; done; sleep 2
 arg mount "Mount device"
 mount \$( (blkid /dev/[sh]d* || blkid) | grep \$val | sed 's/:.*//;q') /mnt
@@ -274,7 +271,6 @@ mount --bind /mnt /mnt/\$val/mnt/dos
 mount -o size=0,ro -t tmpfs tmpfs /mnt/\$val/mnt/dos/\$val
 LDSO=\$(ls /mnt/\$val/lib/ld-* | sed q)
 export LD_LIBRARY_PATH=\$val/lib:\$val/usr/lib:/lib
-  [ "$debug" = "true" ] && sh
 umount /proc
 exec /bin/switch_root /mnt \${LDSO#/mnt/} \$val/usr/sbin/chroot \$val /sbin/init
 EOT
@@ -316,22 +312,18 @@ doinstall()
 		if [ -d /media/cdrom/fs ]; then
 			cp -a /media/cdrom/fs/. /mnt/slitaz
 		elif is_loram ; then
-			for i in /media/cdrom/boot/rootfs?*.* ; do
-				[ -s $(basename $i) ] && continue
-				cpio -i $i
-			done
 			for i in $(ls_r /media/cdrom/boot/rootfs*gz); do
-				mount -o loop,ro $i /sqfs/mnt
+				losetup -o 124 /dev/loop7 $i
+				mount -t squashfs -o ro /dev/loop7 /sqfs/mnt
 				cp -a /sqfs/mnt/. /mnt/slitaz
-				umount -d /sqfs/mnt
+				umount /sqfs/mnt
+				losetup -d /dev/loop7
 			done
 		else
 			for i in $(ls_r /media/cdrom/boot/rootfs*gz); do
 				uncpio $i /mnt/slitaz
 			done
 		fi
-		cp -a /etc/locale.conf /mnt/slitaz/etc 2> /dev/null
-		cp -a /etc/keymap.conf /mnt/slitaz/etc 2> /dev/null
 		mkinitrd /mnt/slitaz/boot/initrd
 		initrd=initrd
 		extraargs="mount=$(getuuid) subroot=slitaz"
@@ -346,6 +338,7 @@ doinstall()
 		[ $(get 0 $i 2> /dev/null || echo 0) -eq 23117 ] &&
 		mv $i $i.exe
 	done
+	cp /etc/keymap.conf /etc/locale.conf /mnt/slitaz/etc 2> /dev/null
 	gettazboot /mnt/slitaz/boot/tazboot.exe
 	unix2dos > /mnt/slitaz/boot/tazboot.cmd <<EOT
 kernel=/slitaz/boot/bzimage
@@ -1041,6 +1034,7 @@ mount_loram()
 		mkdir /sqfs
 		mount -o loop,ro -t squashfs /rootfs*.gz /sqfs
 	fi
+	cp -a /sqfs/dev/fuse /sqfs/dev/tty[12] /sqfs/dev/[hs]d* /dev
 	ln -s /sqfs/lib/* lib
 	ln -fs /sqfs/usr /sqfs/var /
 	mkdir /etc && cp /sqfs/etc/dialogrc /etc 2> /dev/null
