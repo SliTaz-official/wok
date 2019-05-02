@@ -1,46 +1,52 @@
-
 # SliTaz package receipt
 
 PACKAGE="mutt"
-VERSION="1.6.1"
+VERSION="1.11.4"
 CATEGORY="network"
-SHORT_DESC="Small and powerful text-based mail client"
+SHORT_DESC="Small and powerful text-based mail client."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.mutt.org"
-WGET_URL="ftp://ftp.mutt.org/pub/mutt/$TARBALL"
-CONFIG_FILES="/etc/Muttrc /etc/mime.types"
 
-DEPENDS="openssl ncurses zlib libidn libsasl"
-BUILD_DEPENDS="libidn-dev ncurses-dev openssl-dev perl cyrus-sasl-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="ftp://ftp.mutt.org/pub/mutt/$TARBALL"
+
+DEPENDS="libidn libsasl ncurses openssl zlib"
+BUILD_DEPENDS="cyrus-sasl-dev libidn-dev ncurses-dev openssl-dev perl"
+CONFIG_FILES="/etc/Muttrc /etc/mime.types"
 
 # Rules to configure and make the package.
 compile_rules()
-{	
-    addgroup mail
-    sed -i 's/STACK \*/STACK_OF(X509) */' mutt_ssl.c
-    ./configure \
-		--prefix=/usr \
-		--enable-imap \
-		--with-ssl=/usr \
-		--with-mailpath=/var/mail \
-		--sysconfdir=/etc \
-		--enable-pop \
-		--enable-smtp \
-		--with-sasl \
+{
+	addgroup mail
+	sed -i 's/STACK \*/STACK_OF(X509) */' mutt_ssl.c
+
+	./configure				\
+		--prefix=/usr			\
+		--enable-imap			\
+		--with-ssl=/usr			\
+		--with-mailpath=/var/mail	\
+		--sysconfdir=/etc		\
+		--enable-pop			\
+		--enable-smtp			\
+		--with-sasl			\
 		$CONFIGURE_ARGS &&
-	make && make install &&
+	make &&
+	make install
+
 	delgroup mail
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/etc/* $fs/etc	
-	cp -a $install/usr/share $fs/usr
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/etc/*		$fs/etc	
+	cp -a $install/usr/share	$fs/usr
+
 	rm -r $fs/usr/share/doc
 	rm -r $fs/usr/share/man
 }
