@@ -1,23 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="nagvis"
-VERSION="1.5.7"
+VERSION="1.9.11"
 CATEGORY="network"
 SHORT_DESC="Visualization addon for nagios."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.nagvis.org/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}share/$TARBALL"
+
 SUGGESTED="graphviz"
-
-DEPENDS="nagios php-mysql php-gd ndoutils mk-livestatus"
-
-# Rules to configure and make the package.
-compile_rules()
-{
-	cd $src
-}
+DEPENDS="mk-livestatus nagios ndoutils php-gd php-mysql"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
@@ -28,20 +23,20 @@ genpkg_rules()
 		$fs/var/lib/nagvis/var/tmpl/compile \
 		$fs/usr/share/doc/nagvis
 	
-	cp -a $src/share $fs/usr/share/nagvis
-	cp -a $src/etc $fs/etc/nagvis
+	cp -a $src/share	$fs/usr/share/nagvis
+	cp -a $src/etc		$fs/etc/nagvis
 	
 	# copy demo maps.
 	#~ cp $fs/usr/share/nagios/nagvis/nagvis/images/maps/nagvis-demo.png \
 		#~ $fs/var/lib/nagvis/automap.png
-	
-	# link  var direcxtory (FHS)	
+
+	# link  var directory (FHS)	
 	ln -s /var/lib/nagvis/var  $fs/usr/share/nagvis/var
-	
-	# move config files
+
+	# move configuration files
 	ln -s /etc/nagvis $fs/usr/share/nagvis/etc
-	
-	# nagvis config
+
+	# nagvis configuration
 	mv $fs/etc/nagvis/nagvis.ini.php-sample $fs/etc/nagvis/nagvis.ini.php
 	sed -i  -e 's|;language=|language=|' \
 		-e 's|;dateformat="Y-m-d H:i:s"|dateformat="d-m-Y H:i:s"|' \
@@ -67,9 +62,9 @@ logonenvcreateuser="0"
 	sed -i -e '/;socket/ a\socket="unix:/var/lib/nagios/rw/live"' $fs/etc/nagvis/nagvis.ini.php
 	sed -i -e 's/;showautomaps=1/showautomaps=0/' $fs/etc/nagvis/nagvis.ini.php
 	
-	# Apache config
-	mv $fs/etc/nagvis/apache2-nagvis.conf-sample $fs/etc/nagvis/apache2-nagvis.conf
-	ln -s /etc/nagvis/apache2-nagvis.conf $fs/etc/apache/conf.d/nagvis.conf
+	# Apache configuration
+	mv $fs/etc/nagvis/apache2-nagvis.conf-sample	$fs/etc/nagvis/apache2-nagvis.conf
+	ln -s /etc/nagvis/apache2-nagvis.conf		$fs/etc/apache/conf.d/nagvis.conf
 	sed -i -e 's|@NAGVIS_WEB@|/nagvis|' \
 		-e 's|@NAGVIS_PATH@|/usr/share/nagvis|' \
 		-e 's|#AuthName|AuthName|' \
@@ -78,7 +73,7 @@ logonenvcreateuser="0"
 		-e 's|@NAGIOS_PATH@.*|/etc/nagios/htpasswd.users|' \
 		-e 's| #Require|Require|' $fs/etc/nagvis/apache2-nagvis.conf
 	
-	# Fix perms
+	# Fix permissions
 	chown -R www.www $fs/usr/share/nagvis $fs/var/lib/nagvis
 	chown -R root.www $fs/etc/nagvis
 	
@@ -86,7 +81,7 @@ logonenvcreateuser="0"
 	chmod 775 $fs/etc/nagvis/maps
 	chmod 664 $fs/etc/nagvis/maps/*
 	chmod 664 $fs/etc/nagvis/geomap/*
-	chmod 664 $fs/etc/nagvis/automaps/*
+#	chmod 664 $fs/etc/nagvis/automaps/*
 	chmod 775 $fs/var/lib/nagvis
 
 	# Cleanup
@@ -97,7 +92,6 @@ logonenvcreateuser="0"
 	chmod 775 $fs/var/lib/nagvis/maps
 	chmod 664 $fs/var/lib/nagvis/maps/*
 	ln -s /var/lib/nagvis/maps $fs/usr/share/nagvis/share/userfiles/images/
-
 }
 
 post_install()
