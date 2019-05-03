@@ -1,56 +1,60 @@
 # SliTaz package receipt.
 
 PACKAGE="nagios"
-VERSION="3.5.1"
+VERSION="4.4.3"
 CATEGORY="network"
-SHORT_DESC="Host and network monitoring"
+SHORT_DESC="Host and network monitoring."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://www.nagios.org/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-SUGGESTED="nagios-nrpe"
 
-DEPENDS="apache nagios-plugins libpng libjpeg libltdl"
-BUILD_DEPENDS="libgd-dev libpng-dev jpeg-dev libtool"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+SUGGESTED="nagios-nrpe"
+DEPENDS="apache libjpeg libltdl libpng nagios-plugins"
+BUILD_DEPENDS="jpeg-dev libgd-dev libpng-dev libtool procps unzip"
+# busybox ps and unzip do not supply the required options
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	while read patch_file; do
+	while read patch_file
+	 do
 		if [ ! -f done.$patch_file ]; then
 			patch -p1 < $stuff/$patch_file || return 1
 			touch done.$patch_file
 		fi
-	done <<EOT
+	 done <<EOT
 $PACKAGE-Makefiles.u
 EOT
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--with-nagios-user=nagios \
-		--with-nagios-group=nagios \
-		--with-lockfile=/var/run/nagios/nagios.pid \
-		--with-checkresult-dir=/var/spool/nagios/checkresults \
-		--sysconfdir=/etc/nagios \
-		--with-httpd-conf=/etc/apache/conf.d \
-		--libexecdir=/usr/lib/nagios/plugins \
-		--sbindir=/usr/lib/nagios/cgi \
-		--datadir=/usr/share/nagios \
-		--localstatedir=/var/lib/nagios \
+
+	./configure							\
+		--prefix=/usr						\
+		--infodir=/usr/share/info				\
+		--mandir=/usr/share/man					\
+		--with-nagios-user=nagios				\
+		--with-nagios-group=nagios				\
+		--with-lockfile=/var/run/nagios/nagios.pid		\
+		--with-checkresult-dir=/var/spool/nagios/checkresults	\
+		--sysconfdir=/etc/nagios				\
+		--with-httpd-conf=/etc/apache/conf.d			\
+		--libexecdir=/usr/lib/nagios/plugins			\
+		--sbindir=/usr/lib/nagios/cgi				\
+		--datadir=/usr/share/nagios				\
+		--localstatedir=/var/lib/nagios				\
 		$CONFIGURE_ARGS 
 		
 	sed -i s!HTMLDIR=.*!HTMLDIR=/usr/share/nagios! html/Makefile
 	
 	#~ make all && make DESTDIR=$DESTDIR fullinstall \
 	#~ && make DESTDIR=$DESTDIR install-config
-	make all && make install \
-	&& make install-config \
-	&& make install-commandmode \
-	&& make install-webconf \
-	&& make install-classicui 
-	
+	make all &&
+	make install &&
+	make install-config &&
+	make install-commandmode &&
+	make install-webconf &&
+	make install-classicui
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -62,21 +66,21 @@ genpkg_rules()
 	  $fs/var/spool/nagios/checkresults \
 	  $fs/etc/apache
 		
-	cp -a $install/etc/apache $fs/etc
-	cp -a $install/etc/nagios $fs/etc
-	cp -a $stuff/nagios  $fs/etc/init.d
+	cp -a $install/etc/apache	$fs/etc
+	cp -a $install/etc/nagios	$fs/etc
+	cp -a $stuff/nagios		$fs/etc/init.d
 	install -o root -g root -m 644 $stuff/htpasswd.users  $fs/etc/nagios/
 	
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share $fs/usr
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/usr/share	$fs/usr
 	
-	# Put doc in separate package
+	# Put documentation in a separate package
 	rm -rf $fs/usr/share/nagios/docs
 	
-	# Fix Apache config for Nagvis
+	# Mofify Apache config for nagvis
 	sed -i 's/Options None/Options FollowSymLinks/' $fs/etc/apache/conf.d/nagios.conf
-	
+
 	# Fix permissions 
 	chmod 755 $fs/usr/bin/nagios*
 }
@@ -90,13 +94,13 @@ post_install()
 		status
 	fi
 	
-	# Fix perms for files and directories
-	chroot "$1/" chown -R nagios.nagios /var/log/nagios \
-	  /var/spool/nagios \
-	  /var/lib/nagios \
-	  /usr/share/nagios \
+	# Fix permissions for files and directories
+	chroot "$1/" chown -R nagios.nagios \
+	  /var/log/nagios	\
+	  /var/spool/nagios	\
+	  /var/lib/nagios	\
+	  /usr/share/nagios	\
 	  /etc/nagios/*
-	  
 	
 	chmod 2775 "$1/var/lib/nagios/rw"
 	chroot "$1/" addgroup www nagios
