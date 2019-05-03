@@ -1,31 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="nagios-plugins"
-VERSION="1.4.16"
+VERSION="2.2.1"
 CATEGORY="network"
-SHORT_DESC="Plugins for host, service and network monitoring program."
+SHORT_DESC="Plugins for host, service and network monitoring program nagios."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="https://www.nagios.org/"
-WGET_URL="$SF_MIRROR/nagiosplug/$TARBALL"
+WEB_SITE="https://www.nagios-plugins.org/"
 
-DEPENDS="libssl fping"
-BUILD_DEPENDS="openssl-dev radiusclient-ng-dev radiusclient-ng openldap-dev
- mysql-dev libmysqlclient"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://www.nagios-plugins.org//$TARBALL"
+
+DEPENDS="fping libssl"
+BUILD_DEPENDS="libmysqlclient mysql-dev openldap-dev openssl-dev \
+	radiusclient-ng radiusclient-ng-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr \
-	--libexecdir=/usr/lib/nagios/plugins \
-	--with-nagios-user=nobody \
-	--with-nagios-group=nogroup \
-	--with-ping-command="/bin/ping -w %d -c %d %s" \
-	--with-fping-command="/usr/sbin/fping" \
-	--mandir=/usr/share/man $CONFIGURE_ARGS
-	
+	./configure						\
+		--prefix=/usr					\
+		--libexecdir=/usr/lib/nagios/plugins		\
+		--with-nagios-user=nobody			\
+		--with-nagios-group=nogroup			\
+		--with-ping-command="/bin/ping -w %d -c %d %s"	\
+		--with-fping-command="/usr/sbin/fping"		\
+		--mandir=/usr/share/man				\
+		$CONFIGURE_ARGS
 	make &&
 	make DESTDIR=$DESTDIR install &&
 	make DESTDIR=$DESTDIR install-root
@@ -34,16 +35,16 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/etc/nagios/objects
-	
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/etc/nagios/objects
+
 	cp -a $install/usr/lib/nagios/ $fs/usr/lib
 
 	# 
 	stuff/convertcfg $src/command.cfg commands > $fs/etc/nagios/objects/command.cfg
 	
-	# Move mySQL plugins in separate package.
+	# Move mySQL plugins in a separate package.
 	rm -f $fs/usr/lib/nagios/plugins/*mysql*
-
 }
 
 post_install()
@@ -60,7 +61,8 @@ post_install()
 		sed -i 's|/usr/lib/nagios|/usr/lib/nagios/plugins|' \
 		   "$1/etc/nagios/resource.cfg"
 	fi
-	# Set perms for files and directories
+
+	# Set permissions for files and directories
 	chroot "$1/" chown -R nagios.nagios /usr/lib/nagios/plugins 
 	chroot "$1/" chown -R nagios.nagios /etc/nagios/objects
 }
