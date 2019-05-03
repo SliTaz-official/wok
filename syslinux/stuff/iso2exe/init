@@ -191,12 +191,7 @@ tazusbinitfs()
 	PAD=$(($(stat -c %s $1) % 4))
 	[ $PAD -ne 0 ] && ddq if=/dev/zero bs=1 count=$((4 - $PAD)) >> $1
 	mkdir -p /tmp/fs/etc /tmp/fs/lib /tmp/fs/home
-	cp -a /etc/locale.conf /tmp/fs/etc 2> /dev/null
-	cp -a /etc/keymap.conf /tmp/fs/etc 2> /dev/null
-	sed 's/ .*//' /proc/modules | while read mod ; do
-		find /lib/modules/ | grep $mod.ko | \
-			sed 's|.*|cp & /tmp/fs/lib|' | sh
-	done
+	cp /etc/keymap.conf /etc/locale.conf /tmp/fs/etc 2> /dev/null
 	cat > /tmp/fs/init1 <<EOT
 #!/bin/sh
 sed -i 's|sbin/init|init2|' /init
@@ -206,7 +201,7 @@ EOT
 #!/bin/sh
 
 mount -t proc /proc /proc
-for i in /lib/*.ko* ; do insmod \$i 2> /dev/null ; done; sleep 2
+for i in /lib/modules/*.ko* ; do insmod \$i 2> /dev/null ; done; sleep 2
 v=\$(sed '/\\/home=/!d;s|.*/home=\\([^ ]*\\).*|\\1|' /proc/cmdline /cmdline 2> /dev/null)
 mount / -o remount,rw
 mkdir /mnt/dos
@@ -224,6 +219,7 @@ exec /sbin/init
 EOT
 	chmod 755 /tmp/fs/init?
 	cp -a /tmp/fs/* /
+	ln -s /sqfs/bin/gzip /bin 2> /dev/null
 	( cd /tmp/fs ; find * | cpio -o -H newc ) | gzip -9 >> $1
 }
 
@@ -242,6 +238,7 @@ mkinitrd()
 		sed 's|.*=> \(.*/lib/l[^ ]*\).*|\1|;/^\//!d') /tmp/fs/lib
 		cp $i /tmp/fs/bin
 	done
+	cp -a /sqfs/lib/ld-* /tmp/fs/lib 2> /dev/null ||
 	cp -a /lib/ld-* /tmp/fs/lib
 	for i in $(busybox | sed '/Current/,$!d'); do
 		[ -e /tmp/fs/bin/${i%,} ] || ln -s busybox /tmp/fs/bin/${i%,}
@@ -410,7 +407,7 @@ start SliTaz Live with the 'SliTaz RAM boot' menu.\n" 19 70
 			uncpio $i
 		done
 	fi
-	cp /tmp/fs/etc/* /etc
+	cp /tmp/fs/etc/* /etc 2> /dev/null
 	echo "/home=$(getuuid)/slitaz" > /cmdline
 	rm -f /tmp/wait
 	[ -x /init1 ] || return

@@ -19,6 +19,22 @@ zlib-dev automake"
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Add dropbear support
+	patch -p0 <<EOT || return 1
+--- scripts/mosh.pl
++++ scripts/mosh.pl
+@@ -397,2 +397,10 @@
+     my \$quoted_proxy_command = shell_quote( \$0, "--family=\$family" );
++    my \$ssh = join ' ', @ssh;
++    if (\`\$ssh -V 2>&1\` =~ m{Dropbear}) {
++      my \$host = \$userhost; \$host = \$1 if (\$userhost =~ m{@(.*)});
++      my \$port = 22; \$port = \$1 if (\$ssh =~ m{-p *(\d+)});
++      exec "\$ssh " . shell_quote( '-J', 
++	"\$quoted_proxy_command --fake-proxy -- \$host \$port",
++	'-t', \$userhost, "\$server " . shell_quote( @server ) );
++    }
+     push @sshopts, ( '-S', 'none', '-o', "ProxyCommand=\$quoted_proxy_command --fake-proxy -- %h %p" );
+EOT
 	./autogen.sh
 	./configure			\
 		--prefix=/usr		\
@@ -33,28 +49,6 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr
 	cp -a $install/usr/bin $fs/usr
- 
-	cd $fs/usr/bin
-	patch -p0 <<EOT
---- mosh
-+++ mosh
-@@ -395,6 +395,14 @@
-     # proxy to break mysteriously.
-     $ENV{ 'SHELL' } = '/bin/sh';
-     my $quoted_proxy_command = shell_quote( $0, "--family=$family" );
-+    my $ssh = 'ssh';
-+    if (`$ssh -V 2>&1` =~ m{Dropbear}) {
-+      my $host = $userhost; $host = $1 if ($userhost =~ m{@(.*)});
-+      my $port = 22; $port = $1 if ($ssh =~ m{-p *(\d+)});
-+      my $quoted_self = shell_quote( $0, "--family=$family" );
-+      exec "$ssh " . shell_quote( '-J', "$quoted_self --fake-proxy -- $host $port",
-+	'-t', $userhost, "$server " .  shell_quote( @server ) );
-+    }
-     push @sshopts, ( '-S', 'none', '-o', "ProxyCommand=$quoted_proxy_command --fake-proxy -- %h %p" );
-   }
-   my @exec_argv = ( @ssh, @sshopts, $userhost, '--', $ssh_connection . "$server " . shell_quote( @server ) );
-EOT
-	cd - > /dev/null
 }
 
 post_install()
