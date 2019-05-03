@@ -1,21 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="nano"
-VERSION="2.6.1"
+VERSION="4.2"
 CATEGORY="utilities"
-SHORT_DESC="Nano Text Editor"
+TAGS="text-editor"
+SHORT_DESC="Nano Text Editor."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
 WEB_SITE="https://nano-editor.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="${WEB_SITE}dist/v${VERSION%.*}/$TARBALL"
-TAGS="text-editor"
-HOST_ARCH="i486 arm"
 
-DEPENDS="ncursesw zlib"
 SUGGESTED="gpm"
-BUILD_DEPENDS="ncursesw-dev zlib-dev groff"
+DEPENDS="ncursesw zlib"
+BUILD_DEPENDS="groff ncursesw-dev zlib-dev"
 SPLIT="nano-doc"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -25,13 +27,14 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--disable-wrapping-as-root \
-		--enable-utf8 \
+#		--disable-wrapping-as-root no longer supported in 4.2
+	./configure			\
+		--sysconfdir=/etc	\
+		--localstatedir=/var	\
+		--enable-utf8		\
 		$CONFIGURE_ARGS $ARCH_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -40,10 +43,15 @@ genpkg_rules()
 	cp -a $install/* $fs
 	rm -r $fs/usr/share/doc $fs/usr/share/locale $fs/usr/share/man
 
-	# Config file.
+	# Configuration file.
 	mkdir -p $fs/etc
 	cp $src/doc/nanorc.sample $fs/etc/nanorc
-	cd $fs; patch -p0 < $stuff/nano.patch
+
+	cd $fs
+	patch --input=$stuff/patches/nanorc.patch \
+		etc/nanorc
+	patch --input=$stuff/patches/sh.nanorc.patch \
+		usr/share/nano/sh.nanorc
 
 	# Shrink
 	for i in $fs/usr/share/nano/*.nanorc; do
