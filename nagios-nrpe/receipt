@@ -1,60 +1,67 @@
 # SliTaz package receipt.
 
 PACKAGE="nagios-nrpe"
-VERSION="2.14"
+VERSION="3.2.1"
 CATEGORY="network"
 SHORT_DESC="Service and network monitoring program, remote monitoring."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://www.nagios.org/"
+
 SOURCE="nrpe"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="https://www.nagios.org/"
 WGET_URL="$SF_MIRROR/nagios/$TARBALL"
 
-BUILD_DEPENDS="libcrypto-dev openssl-dev openssl libwrap-dev"
-DEPENDS="nagios-plugins libssl libcrypto"
+BUILD_DEPENDS="libcrypto-dev libwrap-dev openssl openssl-dev"
+DEPENDS="libcrypto libssl nagios-plugins"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	while read patch_file; do
+	while read patch_file
+	 do
 		if [ ! -f done.$patch_file ]; then
 			patch -p1 < $stuff/$patch_file || return 1
 			touch done.$patch_file
 		fi
-	done <<EOT
+	 done <<EOT
 $PACKAGE-$VERSION-Makefile.u
 EOT
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--localstatedir=/var \
-	--datadir=/usr/share/nagios \
-	--sysconfdir=/etc/nagios \
-	--sbindir=/usr/lib/nagios \
-	--bindir=/usr/bin \
-	--libexecdir=/usr/lib/nagios/plugins \
-	--enable-ssl \
-	--with-nagios-user=nagios \
-	--with-nagios-group=nagios \
-	--with-nrpe-user=nagios \
-	--with-nrpe-group=nagios \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+
+	./configure					\
+		--prefix=/usr				\
+		--infodir=/usr/share/info		\
+		--localstatedir=/var			\
+		--datadir=/usr/share/nagios		\
+		--sysconfdir=/etc/nagios		\
+		--sbindir=/usr/lib/nagios		\
+		--bindir=/usr/bin			\
+		--libexecdir=/usr/lib/nagios/plugins	\
+		--enable-ssl				\
+		--with-nagios-user=nagios		\
+		--with-nagios-group=nagios		\
+		--with-nrpe-user=nagios			\
+		--with-nrpe-group=nagios		\
+		--mandir=/usr/share/man			\
+		$CONFIGURE_ARGS &&
 	make all &&
-	make  install
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc/nagios/objects \
-		$fs/etc/init.d
-	
-	cp -a $install/usr $fs
-	install -m 0644 $src/sample-config/nrpe.cfg $fs/etc/nagios
+	mkdir -p $fs/etc/nagios/objects
+	mkdir -p $fs/etc/init.d
+
+	cp -a $install/usr				$fs
+	install -m 0644 $src/sample-config/nrpe.cfg	$fs/etc/nagios
+
 	sed -i 's|/var/run|/var/run/nagios|' $fs/etc/nagios/nrpe.cfg
-	
-	# Install config file nd init script
-	install -o root -g root -m 644 $stuff/nrpe.cfg $fs/etc/nagios/objects
-	install -o root -g root -m 755 $stuff/nrpe $fs/etc/init.d
+
+	# Install configuration file and init script
+	install -o root -g root -m 644 $stuff/nrpe.cfg	$fs/etc/nagios/objects
+	install -o root -g root -m 755 $stuff/nrpe	$fs/etc/init.d
 }
 
 post_install()
@@ -66,11 +73,11 @@ post_install()
 		status
 	fi
 	
-	# Set perms for files and directories
-	chroot "$1/" chown -R nagios.nagios /usr/lib/nagios/plugins
-	chroot "$1/" chown  nagios.nagios /etc/nagios/* 
+	# Set permissions for files and directories
+	chroot "$1/" chown -R nagios.nagios	/usr/lib/nagios/plugins
+	chroot "$1/" chown  nagios.nagios	/etc/nagios/* 
 	
-	# Add check_nrpe in nagios config file
+	# Add check_nrpe in nagios configuration file
 	echo "cfg_file=/etc/nagios/objects/nrpe.cfg" >> "$1/etc/nagios/nagios.cfg"
 }
 
