@@ -1,25 +1,27 @@
 # SliTaz package receipt.
 
 PACKAGE="ncurses"
-VERSION="5.9"
+VERSION="6.1"
 CATEGORY="base-system"
 SHORT_DESC="Library of functions to manage display on terminals."
 MAINTAINER="pankso@slitaz.org"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 LICENSE="MIT"
-WEB_SITE="https://invisible-island.net/ncurses/"
-WGET_URL="ftp://invisible-island.net/ncurses/$TARBALL"
-HOST_ARCH="i486 arm"
+WEB_SITE="https://www.gnu.org/software/ncurses/ncurses.html"
 
-DEPENDS="ncurses-common libtinfo libtic"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="libtic libtinfo ncurses-common"
 BUILD_DEPENDS=""
-SPLIT="ncurses-common ncurses-extra ncurses-dev ncurses-man libform libmenu \
-libpanel libtic libtinfo"
+SPLIT="libform libmenu libpanel libtic libtinfo ncurses-common \
+	ncurses-dev ncurses-extra ncurses-man"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Ncurses need an installed /usr/bin/tic witch is in ncursesw-extra. And
+	# Ncurses need an installed /usr/bin/tic which is in ncursesw-extra. And
 	# when cross compiling we can't use the freshly cooked binary. See cook log:
 	#
 	#** Building terminfo database, please wait...
@@ -29,22 +31,26 @@ compile_rules()
 		echo "Installing: ncursesw-extra"
 		tazpkg get-install ncursesw-extra 2>/dev/null 1>/dev/null
 	fi
-	cd $src
+
 	mkdir -p $DESTDIR/usr/lib/terminfo
-	sed -i 's|\tsh $(srcdir)/MKhashsize.sh|\tash $(srcdir)/MKhashsize.sh|' \
-		include/Makefile.in
-	./configure \
-		--libdir=/lib \
-		--sysconfdir=/etc \
-		--with-shared \
-		--without-debug \
-		--without-ada \
-		--with-build-cc="gcc -D_GNU_SOURCE" \
-		--with-termlib \
-		--with-ticlib \
-		--enable-pc-files \
+
+# search string not in file (6.1)
+#	sed -i 's|\tsh $(srcdir)/MKhashsize.sh|\tash $(srcdir)/MKhashsize.sh|' \
+#		include/Makefile.in
+
+	./configure					\
+		--libdir=/lib				\
+		--sysconfdir=/etc			\
+		--with-shared				\
+		--without-debug				\
+		--without-ada				\
+		--with-build-cc="gcc -D_GNU_SOURCE"	\
+		--with-termlib				\
+		--with-ticlib				\
+		--enable-pc-files			\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
