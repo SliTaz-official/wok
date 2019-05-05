@@ -1,0 +1,69 @@
+# SliTaz package receipt.
+
+PACKAGE="consolekit2"
+VERSION="1.2.1"
+CATEGORY="system-tools"
+SHORT_DESC="ConsoleKit framework."
+MAINTAINER="developer@slitaz.org"
+LICENSE="GPL2"
+WEB_SITE="https://github.com/Consolekit2/ConsoleKit2"
+LFS="http://www.linuxfromscratch.org/blfs/view/svn/postlfs/consolekit.html"
+REPOLOGY="consolekit"
+
+SOURCE="ConsoleKit2"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+WGET_URL="https://github.com/$SOURCE/$SOURCE/releases/download/$VERSION/$TARBALL"
+TARBALL_SHA1="28869807eed0cc4a7a1d98030be1f2c7e5700d0e"
+
+
+DEPENDS="acl dbus eudev glib polkit xorg-libX11 zlib"
+BUILD_DEPENDS="acl-dev dbus-dev docbook-xsl eudev-dev gettext-base \
+	glib-dev libtool libxml2-tools libxslt polkit-dev \
+	util-linux-uuid-dev xmlto xorg-libX11-dev"
+
+compile_rules()
+{
+	./configure							\
+		--localstatedir=/var					\
+		--enable-udev-acl					\
+		--enable-polkit						\
+		--with-xinitrc-dir=/etc/X11/app-defaults/xinitrc.d	\
+		--with-systemdsystemunitdir=no				\
+		--enable-docbook-docs					\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install || return 1
+
+	mv -v $install/etc/X11/app-defaults/xinitrc.d/90-consolekit	\
+		$install/etc/X11/app-defaults/xinitrc.d/90-consolekit.sh
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/etc/X11/app-defaults
+	mkdir -p $fs/lib
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/var/log/ConsoleKit
+	mkdir -p $fs/var/run/ConsoleKit
+
+	cp -a $install/etc/X11/app-defaults/xinitrc.d \
+		$fs/etc/X11/app-defaults
+	cp -a $install/usr/etc			$fs
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/lib/udev			$fs/lib
+	cp -a $install/usr/lib/ConsoleKit	$fs/usr/lib
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/libexec		$fs/usr
+	cp -a $install/usr/sbin			$fs/usr
+	cp -a $install/usr/share/dbus-1 	$fs/usr/share
+	cp -a $install/usr/share/polkit-1 	$fs/usr/share
+
+	# modify symbolic links
+	rm $fs/lib/udev/udev-acl
+	ln -s ../../usr/libexec/udev-acl \
+		$fs/lib/udev/udev-acl
+	rm $fs/usr/lib/ConsoleKit/run-seat.d/udev-acl.ck
+	ln -s ../../../libexec/udev-acl	\
+		$fs/usr/lib/ConsoleKit/run-seat.d/udev-acl.ck
+}
