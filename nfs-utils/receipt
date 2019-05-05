@@ -1,21 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="nfs-utils"
-VERSION="1.3.0"
+VERSION="2.3.3"
 CATEGORY="system-tools"
+TAGS="filesystem"
 SHORT_DESC="Network FileSystem tools."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://nfs.sourceforge.net/"
-WGET_URL="$SF_MIRROR/nfs/$PACKAGE/$VERSION/$TARBALL"
-CONFIG_FILES="/etc/exports"
-TAGS="filesystem"
-HOST_ARCH="i486 arm"
 
-DEPENDS="libtirpc libwrap libcap util-linux-blkid util-linux-uuid rpcbind"
-BUILD_DEPENDS="libtirpc-dev libcap-dev libwrap-dev util-linux-blkid-dev \
-util-linux-uuid-dev util-linux-blkid"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$SF_MIRROR/nfs/$PACKAGE/$VERSION/$TARBALL"
+
+DEPENDS="libcap libtirpc libwrap rpcbind util-linux-blkid util-linux-uuid"
+BUILD_DEPENDS="libcap-dev libtirpc-dev libwrap-dev util-linux-blkid \
+	util-linux-blkid-dev util-linux-uuid-dev"
+CONFIG_FILES="/etc/exports"
+
+HOST_ARCH="i486 arm"
 
 # Handle SliTaz arch.
 case "$SLITAZ_ARCH" in
@@ -33,21 +35,23 @@ esac
 compile_rules()
 {
 	#sh autogen.sh
-	./configure \
-		--disable-nfsv4 \
-		--disable-gss \
+	./configure		\
+		--disable-nfsv4	\
+		--disable-gss	\
 		$CONFIGURE_ARGS ${ARCH_ARGS} &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a stuff/* $fs
-	cp -a $install/var $fs
-	cp -a $install/sbin $fs
-	cp -a $install/usr/sbin $fs/usr
+
+	cp -a stuff/*		$fs
+	cp -a $install/var	$fs
+	cp -a $install/sbin	$fs
+	cp -a $install/usr/sbin	$fs/usr
 }
 
 post_install()
