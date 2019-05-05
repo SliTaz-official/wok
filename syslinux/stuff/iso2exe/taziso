@@ -12,7 +12,7 @@ ddq()
 get()
 {
 	od -v -j $1 -N ${4:-${3:-2}} -t u${3:-2} -w${3:-2} -An "$2" 2>/dev/null ||
-	hexdump -v -s $1 -n ${4:-${3:-2}} -e "\"\" 1/${3:-2} \" %d\n\"" "$2"
+	hexdump -v -s $1 -n ${4:-${3:-2}} -e "\"\" 1/${3:-2} \" %u\n\"" "$2"
 }
 
 bytes2bin()
@@ -31,15 +31,17 @@ words2bin()
 
 gettazboot()
 {
-	echo "Creating $(basename $1) ..."
+	echo -e "\nCreating $(basename $1) ..."
+	X=$(($(get 20 /mnt/$ISO) - 0xC0))
+	[ $X -lt 30000 ] && X=$((0x7FF0))
 	O=$(($(get 64 "$ISO") - 0xC0))
-	L=$(($(get 20 "$ISO") - 0xC0 - $(get 24 "$ISO") - $O))
+	L=$(($X - $(get 24 "$ISO") - $O))
 	S=$((32+$L))
 	P=$((($S+511)/512))
 	E=$((4096-(32*$P)))
 	words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 $((${2:-0}-16)) \
 			-2 0 256 -16 28 0x6C53 0x5469 0x7A61 > $1
-	ddq bs=1 count=$L skip=$(echo $O) if="$ISO" >> $1
+	ddq bs=1 count=$(echo $L) skip=$(echo $O) if="$ISO" >> $1
 }
 
 uncpio()
@@ -78,8 +80,7 @@ tazusbinitfs()
 	PAD=$(($(stat -c %s $1) % 4))
 	[ $PAD -ne 0 ] && ddq if=/dev/zero bs=1 count=$((4 - $PAD)) >> $1
 	mkdir -p /tmp/fs$$/etc /tmp/fs$$/lib /tmp/fs$$/home
-	cp -a /etc/locale.conf /tmp/fs$$/etc 2> /dev/null
-	cp -a /etc/keymap.conf /tmp/fs$$/etc 2> /dev/null
+	cp -a /etc/locale.conf /etc/locale.conf /tmp/fs$$/etc 2> /dev/null
 	cat > /tmp/fs$$/init1 <<EOT
 #!/bin/sh
 sed -i 's|sbin/init|init2|' /init
@@ -89,7 +90,7 @@ EOT
 #!/bin/sh
 
 mount -t proc /proc /proc
-for i in /lib/*.ko* ; do insmod \$i 2> /dev/null ; done; sleep 2
+for i in /lib/modules/*.ko* ; do insmod \$i 2> /dev/null ; done; sleep 2
 v=\$(sed '/\\/home=/!d;s|.*/home=\\([^ ]*\\).*|\\1|' /proc/cmdline /cmdline 2> /dev/null)
 mount / -o remount,rw
 mkdir /mnt/dos
@@ -113,10 +114,12 @@ if [ ! -d /mnt/dos/slitaz ]; then
 fi
 $([ "$2" ] || echo '# ')mount.posixovl -F \$mnt -- -oallow_other -odefault_permissions -osuid
 mount --bind \$mnt /home
+mount -o size=0,ro -t tmpfs tmpfs \$mnt
 umount /proc
 exec /sbin/init
 EOT
 	chmod 755 /tmp/fs$$/init?
+	ln -s /sqfs/bin/gzip /bin 2> /dev/null
 	( cd /tmp/fs$$ ; find * | cpio -o -H newc ) | gzip -9 >> $1
 	rm -rf /tmp/fs$$
 }
@@ -128,8 +131,8 @@ mkinitrd()
 	for i in bin lib dev proc tmp mnt etc ; do
 		mkdir -p $fs/$i
 	done
-	for i in /dev/console /dev/null /dev/tty /dev/tty0 /dev/tty1 /dev/tty2 \
-		 /dev/fuse /dev/hd* /dev/sd* ; do
+	for i in /dev/null /dev/tty /dev/tty[012] /dev/fuse /dev/[hs]d* \
+			/dev/console ; do
 		cp -a $2$i $fs/dev/
 	done
 	for i in /bin/busybox $(which mount.posixovl) $(which blkid); do
@@ -137,6 +140,7 @@ mkinitrd()
 		sed 's|.*=> \(.*/lib/l[^ ]*\).*|\1|;/^\//!d') $fs/lib
 		cp $i $fs/bin
 	done
+	cp -a /sqfs/lib/ld-* /tmp/fs/lib 2> /dev/null ||
 	cp -a /lib/ld-* $fs/lib
 	for i in $(busybox | sed '/Current/,$!d'); do
 		[ -e $fs/bin/${i%,} ] || ln -s busybox $fs/bin/${i%,}
@@ -176,7 +180,7 @@ if [ -d /mnt/\$val ]; then
 fi
 $([ "$3" ] || echo '# ')mount.posixovl -F /mnt/\$val -- -oallow_other -odefault_permissions -osuid
 mount --bind /mnt /mnt/\$val/mnt/dos
-mount -o size=0 -t tmpfs tmpfs /mnt/\$val/mnt/dos/\$val
+mount -o size=0,ro -t tmpfs tmpfs /mnt/\$val/mnt/dos/\$val
 LDSO=\$(ls /mnt/\$val/lib/ld-* | sed q)
 export LD_LIBRARY_PATH=\$val/lib:\$val/usr/lib:/lib
   [ "$debug" = "true" ] && sh
@@ -239,11 +243,12 @@ doinstall()
 		$media/README $media/boot/memtest* ; do
 		[ -s $i ] && cp $i $mnt/slitaz/boot
 	done
-	for i in $mnt/slitaz/boot/memtest $mnt/slitaz/boot/*pxe* ; do
+	for i in $mnt/slitaz/boot/memtest $mnt/slitaz/boot/*pxe ; do
 		[ $(get 0 $i 2> /dev/null || echo 0) -eq 23117 ] &&
 		mv $i $i.exe
 	done
 	bzimage=$(cd $mnt/slitaz/boot ; ls bzimage*)
+	cp /etc/keymap.conf /etc/locale.conf $mnt/slitaz/etc 2> /dev/null
 	gettazboot $mnt/slitaz/boot/tazboot.exe	# autoappend 64 suffix
 	unix2dos > $mnt/slitaz/boot/tazboot.cmd <<EOT
 kernel=/slitaz/boot/bzimage
@@ -672,7 +677,7 @@ mkfat12()
 
 mkfloppy()
 {
-	dotwait "Create a $(basename $1) boot floppy"
+	dotwait "Create a $(basename $1 .exe) boot floppy"
 	ddq if=$1 of=/dev/fd0
 	mkfat12 $1
 	rm -f /tmp/wait
@@ -696,7 +701,7 @@ pxe()
 {
 	gotcdfile '?pxe*'
 	if [ -z "$1" ]; then
-		$DIALOG --clear --title " Create $(basename $file).exe ? " \
+		$DIALOG --clear --title " Create $(basename $file .exe).exe ? " \
 			--yes-label "Install" --yesno \
 "\nBoot your operating system from the internet and enjoy a full system
 working entirely in RAM with speed and stability in mind. The Linux Kernel
@@ -704,8 +709,8 @@ and the complete SliTaz compressed root filesystem will be loaded into RAM
 from the Web using PXE and HTTP protocols.\n" 0 0
 		[ $? -eq 0 ] || return
 	fi
-	cp $file $(basename $file).exe
-	du -h $PWD/$(basename $file).exe
+	cp $file $(basename $file .exe).exe
+	du -h $PWD/$(basename $file .exe).exe
 }
 
 fdpxe()
