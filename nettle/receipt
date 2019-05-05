@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="nettle"
-VERSION="3.1.1"
+VERSION="3.4.1"
 CATEGORY="security"
-SHORT_DESC="Nettle is a cryptographic library that is designed to fit easily in more or less any context."
+SHORT_DESC="A cryptographic library that is designed to fit easily in more or less any context."
 MAINTAINER="devl547@gmail.com"
 LICENSE="LGPL2.1"
+WEB_SITE="https://www.lysator.liu.se/~nisse/nettle/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.lysator.liu.se/~nisse/nettle/"
-WGET_URL="http://www.lysator.liu.se/~nisse/archive/$TARBALL"
-HOST_ARCH="i486 arm"
+WGET_URL="https://www.lysator.liu.se/~nisse/archive/$TARBALL"
 
 DEPENDS="gmp"
-BUILD_DEPENDS="gmp-dev"
+BUILD_DEPENDS="gcc83 gmp-dev"
+
+HOST_ARCH="i486 arm"
 		
 # Handle cross compilation.
 case "$ARCH" in
@@ -23,17 +25,22 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--libdir=/usr/lib \
-		--enable-shared \
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	./configure			\
+		--libdir=/usr/lib	\
+		--enable-shared		\
 		$CONFIGURE_ARGS ${ARCH_ARGS} && 
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
