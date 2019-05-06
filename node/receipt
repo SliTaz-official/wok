@@ -1,34 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="node"
-VERSION="6.9.2"
+VERSION="10.15.3"
 CATEGORY="network"
 SHORT_DESC="Node.js is a platform for easily building network applications."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-v$VERSION.tar.gz"
 WEB_SITE="https://nodejs.org/"
-WGET_URL="http://nodejs.org/dist/v$VERSION/$TARBALL"
-#HOST_ARCH="i486 arm"
 
-DEPENDS="python libssl gcc49-lib-base"
-BUILD_DEPENDS="python-dev openssl-dev gcc49"
+TARBALL="$PACKAGE-v$VERSION.tar.gz"
+WGET_URL="http://nodejs.org/dist/v$VERSION/$TARBALL"
+
+DEPENDS="python libssl"
+BUILD_DEPENDS="gcc83 python-dev openssl-dev"
+
+#HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	sed -i 's|uname -m|echo i486|' Makefile
-	export LD_LIBRARY_PATH="/usr/libgcc49:$LD_LIBRARY_PATH"
-	export CXX=/usr/bin/i486-slitaz-linux-g++-49
-	export CC=/usr/bin/i486-slitaz-linux-gcc-49
+	export	LD_LIBRARY_PATH="/usr/libgcc83:$LD_LIBRARY_PATH"
+	export	CC=gcc-83
+	export	CXX=g++-83
+
 	./configure --prefix=/usr &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/node* $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/node*	$fs/usr/lib
 }
