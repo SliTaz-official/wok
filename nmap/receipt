@@ -1,27 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="nmap"
-VERSION="6.25"
+VERSION="7.70"
 CATEGORY="security"
+TAGS="network"
 SHORT_DESC="The Network Mapper."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://nmap.org/"
-WGET_URL="http://download.insecure.org/nmap/dist/$TARBALL"
-TAGS="network"
-HOST_ARCH="i486 arm"
 
-DEPENDS="openssl libpcap pcre gcc-lib-base"
-BUILD_DEPENDS="libpcap-dev python-dev openssl-dev pcre-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="${WEB_SITE}dist/$TARBALL"
+
+DEPENDS="gcc-lib-base libpcap openssl pcre"
+BUILD_DEPENDS="libpcap-dev openssl-dev pcre-dev python-dev"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch -p1 < $stuff/$PACKAGE-$VERSION-nolua.patch
-	./configure \
-		--cache-file=$PWD/config.cache \
-	 	--without-liblua \
+#	patch -p1 < $stuff/$PACKAGE-$VERSION-nolua.patch
+
+	./configure				\
+		--cache-file=$PWD/config.cache	\
+	 	--without-liblua		\
 		$CONFIGURE_ARGS &&
 	make 2>&1 | grep -v makefile.dep &&
 	make DESTDIR=$DESTDIR install-nmap
@@ -30,8 +33,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/nmap $fs/usr/share
-}
+	mkdir -p $fs/usr/share
 
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/nmap	$fs/usr/share
+}
