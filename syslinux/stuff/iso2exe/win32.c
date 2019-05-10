@@ -311,10 +311,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	
 	GetModuleFileName(hInstance, isoFileName, MAX_PATH);
 	if (!iswinnt()) {
-		if (MessageBox(NULL,"This program must be run in DOS mode.\n"
-			"I can create the file slitaz.pif to launch it, "
-			"but you can reboot in DOS mode and\n"
-			"run it at DOS prompt.",
+		if (MessageBox(NULL,
+			"This program must be run in DOS mode.\n"
+			"I can create the file slitaz.pif to launch it,\n"
+			"but you can reboot in DOS mode to run it\n",
 			"Create slitaz.pif now ?",
 			MB_YESNO|MB_ICONQUESTION) == IDYES) {
 			exec16bits(isoFileName);
