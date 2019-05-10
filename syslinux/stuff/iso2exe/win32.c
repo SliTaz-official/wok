@@ -4,7 +4,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define VCPI_LINUX_LOADER The DOS/EXE loader can boot in VM86 using VCPI API
 #define BOOTSTRAP_SECTOR_COUNT_OFFSET	26
 
 static int fullread(int fd, char *p, int n)
@@ -29,33 +28,151 @@ static int fullwrite(int fd, char *p, int n)
 #define write fullwrite
 }
 
-#ifdef VCPI_LINUX_LOADER
+#pragma pack(push,1)
+struct PIF_section_header {
+	char name[16];
+	short next_header_offset;
+	short data_offset;
+	short data_length;
+};
+
+struct PIF_basic_section {
+	unsigned char unused;
+	unsigned char checksum;
+	char window_title[30];
+	unsigned short max_mem;
+	unsigned short min_mem;
+	char program_filename[63];
+	unsigned short bitmask;
+	char working_directory[64];
+	char parameters_string[64];
+	unsigned char video_mode;
+	unsigned char video_pages;
+	unsigned char first_interrupt;
+	unsigned char last_interrupt;
+	unsigned char height_screen;
+	unsigned char width_screen;
+	unsigned char horizontal_pos;
+	unsigned char vertical_pos;
+	unsigned short last_text_page;
+	char unused2[128];
+	unsigned short bitmask2;
+};
+
+struct PIF_section_win_386_3_0 {
+	unsigned short max_mem;
+	unsigned short min_mem;
+	unsigned short active_priority;
+	unsigned short background_priority;
+	unsigned short max_ems;
+	unsigned short required_ems;
+	unsigned short max_xms;
+	unsigned short required_xms;
+	unsigned long bitmask;
+	unsigned short bitmask2;
+	unsigned short unknown;
+	unsigned short shortcut_key_code;
+	unsigned short shortcut_key_modifier;
+	unsigned short shortcut_key_use;
+	unsigned short shortcut_key_scan;
+	unsigned short unknown2;
+	unsigned short unknown3;
+	unsigned long unknown4;
+	char parameters_string[64];
+};
+
+struct PIF_section_win_vmm_4_0 {
+	char unknown[88];
+	char iconfile[80];
+	unsigned short icon_number;
+	unsigned short bitmask;
+	char unknown2[10];
+	unsigned short priority;
+	unsigned short bitmask2; // video
+	char unknown3[8];
+	unsigned short text_lines;
+	unsigned short bitmask3; // Key modifiers
+	unsigned short unknown4;
+	unsigned short unknown5;
+	unsigned short unknown6;
+	unsigned short unknown7;
+	unsigned short unknown8;
+	unsigned short unknown9;
+	unsigned short unknown10;
+	unsigned short unknown11;
+	unsigned short bitmask4; // Mouse
+	char unknown12[6];
+	unsigned short bitmask5; // Fonts
+	unsigned short unknown13;
+	unsigned short rasterfontHsize;
+	unsigned short rasterfontVsize;
+	unsigned short fontHsize;
+	unsigned short fontVsize;
+	char raster_name[32];
+	char truetype_name[32];
+	unsigned short unknown14;
+	unsigned short bitmask6;
+	unsigned short restore_settings;
+	unsigned short Hsize;
+	unsigned short Vsize;
+	unsigned short HsizePixelsClient;
+	unsigned short VsizePixelsClient;
+	unsigned short HsizePixels;
+	unsigned short VsizePixels;
+	unsigned short unknown15;
+	unsigned short bitmask7;
+	unsigned short maximized;
+	char unknown16[4];
+	char window_geom[16];
+	char bat_file_name[80];
+	unsigned short env_size;
+	unsigned short dpmi_size;
+	unsigned short unknown17;
+};
+
+static struct {
+	struct PIF_basic_section s0;
+	struct PIF_section_header h0;
+	struct PIF_section_header h1;
+	struct PIF_section_win_386_3_0 s1;
+	struct PIF_section_header h2;
+	struct PIF_section_win_vmm_4_0 s2;
+} PIF_content = {
+	{ 0, 0x78, "MS-DOS Prompt                 ", 640, 0, "" /*slitaz.exe*/,
+	  0x10, "", "", 0, 1, 0, 255, 25, 80, 0, 0, 7, "", 0 },
+	{ "MICROSOFT PIFEX", sizeof(struct PIF_basic_section)
+		+ sizeof(struct PIF_section_header), 0,
+		sizeof(struct PIF_basic_section) },
+	{ "WINDOWS 386 3.0", sizeof(struct PIF_basic_section)
+		+ 2*sizeof(struct PIF_section_header)
+		+ sizeof(struct PIF_section_win_386_3_0),
+		sizeof(struct PIF_basic_section)
+		+ 2*sizeof(struct PIF_section_header),
+		sizeof(struct PIF_section_win_386_3_0) },
+	{ 640, 0, 100, 50, 65535, 0, 65535, 0, 0x10821002, 31, 0, 0, 0, 0, 0, 0,
+	  0, 0, "" },
+	{ "WINDOWS VMM 4.0", 65535, sizeof(struct PIF_basic_section)
+		+ 3*sizeof(struct PIF_section_header)
+		+ sizeof(struct PIF_section_win_386_3_0),
+		sizeof(struct PIF_section_win_vmm_4_0) },
+	{ "", "PIFMGR.DLL", 0, 2, "", 50, 1, "", 0, 1, 0, 5, 25, 3, 0xC8,
+	  0x3E8, 2, 10, 1, "", 28, 0, 0, 0, 7, 12, "Terminal", "Courier New",
+	  0, 3, 0, 80, 25, 0x250, 0x140, 0, 0, 22, 0, 0, "", "", "", 0, 0, 1 }
+};
+#pragma pack(pop)
+
 static void exec16bits(char *isoFileName)
 {
-	int fdiso, fdtmp, i;
-	char buffer[512];
-	char tmpFileName[MAX_PATH], *p;
+	int fd;
+	const char pifFileName[] = "slitaz.pif";
 
-	strcpy(tmpFileName, isoFileName);
-	p = strrchr(tmpFileName, '\\');
-	if (!p++) p = tmpFileName;
-	strcpy(p, "tazboot.exe");
-	fdiso = open(isoFileName, O_RDONLY|O_BINARY);
-	fdtmp = open(tmpFileName, O_WRONLY|O_BINARY|O_CREAT,0555);
-	for (i = 0; i < 0x8000; i += sizeof(buffer)) {
-		read(fdiso, (char *) buffer, sizeof(buffer));
-		if (i == 0) {
-			buffer[2] =  buffer[3]  =	// reset last page size
-			buffer[18] = buffer[19] = 0;	// reset checksum
-			buffer[63]++;			// kill PE header
-		}
-		write(fdtmp, (char *) buffer, sizeof(buffer));
-	}
-	close(fdiso);
-	close(fdtmp);
-	execl(tmpFileName, isoFileName);
+	strcpy(PIF_content.s0.program_filename, isoFileName);
+	fd = open(pifFileName, O_WRONLY|O_BINARY|O_CREAT,0555);
+	write(fd,&PIF_content,sizeof(PIF_content));
+	close(fd);
+	WinExec(pifFileName, SW_MINIMIZE);
+	exit(0);
 }
-#endif
 
 static int iswinnt(void)
 {
@@ -194,19 +311,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	
 	GetModuleFileName(hInstance, isoFileName, MAX_PATH);
 	if (!iswinnt()) {
-#ifdef VCPI_LINUX_LOADER
 		if (MessageBox(NULL,"This program must be run in DOS mode.\n"
-			"I can try to launch it, but it's safer to\n"
-			"reboot in DOS mode and run it at DOS prompt.",
-			"Launch SliTaz now ?",
+			"I can create the file slitaz.pif to launch it, "
+			"but you can reboot in DOS mode and\n"
+			"run it at DOS prompt.",
+			"Create slitaz.pif now ?",
 			MB_YESNO|MB_ICONQUESTION) == IDYES) {
 			exec16bits(isoFileName);
 		}
-#else
-		MessageBox(NULL,"No support for Win9x yet.\n"
-				"Retry in DOS mode without emm386.\n",
-			   "Sorry", MB_OK|MB_ICONERROR);
-#endif
 		exit(1);
 	}
 	if (!ishybrid(isoFileName)) {
