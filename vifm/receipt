@@ -6,28 +6,35 @@ CATEGORY="utilities"
 SHORT_DESC="Vi File Manager."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-DEPENDS="ncurses libmagic xorg-libX11 vim file"
-BUILD_DEPENDS="ncurses-dev libmagic-dev xorg-libX11-dev util-linux-whereis vim file"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://vifm.sourceforge.net/"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="file libmagic ncurses vim xorg-libX11"
+BUILD_DEPENDS="file gcc83 libmagic-dev ncurses-dev util-linux-whereis \
+	vim xorg-libX11-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
+	export	CC=gcc-83
+	export	CXX=g++-83
+	./configure		\
+		--prefix=/usr	\
 	 	$CONFIGURE_ARGS &&
-	make && make -j 1 DESTDIR=$DESTDIR install
+	make &&
+	make -j 1 DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share $fs/usr
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share	$fs/usr
+
 	# rm stuff
 	rm -rf $fs/usr/share/man
 }
-
