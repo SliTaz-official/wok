@@ -380,31 +380,31 @@ isolseek:
 	global	@argstr$qpxzcxt1ppxzc:near
 	proc	@argstr$qpxzcxt1ppxzc near
 
-		stc
-		db	73h			; jnc
+		mov	cl,2
+		db	0a9h			; test	ax,#
 	global	@argnum$qpzcxpxzcpul:near
 @argnum$qpzcxpxzcpul:
-		clc
-
-		xchg	ax,bx			; keywords
-		xchg	ax,cx			; s
-		xchg	ax,dx			; vars
-		sbb	dx,dx			; str:-1	num:0
-		sbb	dx,-4			; str:2		num:4
+		mov	cl,4
+		xchg	ax,bx			; keywords -> bx
+		xchg	ax,cx			; s -> cx
+		cbw				; argstr:0002 argnum:0004
+		xchg	ax,dx			; vars -> ax
 		push	si di
-		xchg	ax,di			; vars
+		xchg	ax,di			; vars => di
 		dec	bx
-		mov	al,0
 @@testalt:
+		mov	al,-1
 		sub	di,dx
 @@test:
 		cmp	al,'='
 		je	@@found
+		cmp	al,0			; eos, si=next argv
+		je	@@found
 		mov	si,cx			; s
 		add	di,dx
 @@match:
-		inc	bx
-		lodsb
+		inc	bx			; keywords++
+		lodsb				; *s++
 		or	al,20h
 		cmp	al,[bx]
 		je	@@match
@@ -414,10 +414,8 @@ isolseek:
 		je	@@match
 @@notopt:
 		ifdef	EXTRA
-		add	di,dx
 		cmp	[byte bx],'/'
 		je	@@testalt
-		sub	di,dx
 		endif
 		cmp	[byte bx],'|'
 		je	@@test
@@ -432,7 +430,7 @@ isolseek:
 		dec	dx
 		dec	dx
 		je	@@done
-		push	si
+		mov	bx,si
 		call	@strtol$qpxzc
 		mov	[di],ax
 		mov	[di+2],dx
@@ -1038,21 +1036,19 @@ image_done:
 
 
 ;***************************************************************
-;pascal unsigned long strtol(const char *s);
+;_fastcall unsigned long strtol(const char *s);
 ;***************************************************************
 	global	@strtol$qpxzc:near
 	proc	@strtol$qpxzc near
 
-		pop	ax
-                pop	bx			; s
-		push	ax
 		ifndef	NO386
-		xor	ebx,ebx
 		push	si
-		jcxz	@@end
-		mov	si,cx
+		mov	si,bx
 		xor	ecx,ecx
 		xor	eax,eax
+		xor	ebx,ebx
+		or	si,si
+		jz	@@end
 		lodsb
 		mov	dx,ax
 		or	al,20h
@@ -1136,9 +1132,10 @@ image_done:
 		push	di
 		xor	ax,ax
 		cwd
-		jcxz	@@goend
+		or	bx,bx
+		jz	@@goend
 		xchg	ax,di
-		mov	si,cx
+		mov	si,bx
 		lodsb
 		mov	bx,ax
 		or	al,20h

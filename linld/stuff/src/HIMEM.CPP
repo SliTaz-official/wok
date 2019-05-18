@@ -53,7 +53,8 @@ void far last_ditch() {
     struct image_himem *m = &pm;
     u32 *q;
     vm2rm();
-    if(((u16 *)&m->fallback)[1] >= 0x10) m->fallback = _1m; // >= _1m ?
+    if(((u16 *)&m->fallback)[1] >= 0x10) // >=	_1m ?
+	((u16 *)&m->fallback)[1] = 0x10;
     q = m->bufv;
     if(q==0) {
         // Move kernel

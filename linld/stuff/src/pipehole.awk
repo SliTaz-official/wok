@@ -35,6 +35,9 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/^	sub	[abcds][ix],2$/) {
 			split($2,regs,","); hold=13; next
 		}
+		if (/^	push	dx$/) {
+			hold=14; next;
+		}
 	}
 	else if (hold == 1) {
 		if (/^   ;/) { line[kept++]=$0; next }
@@ -185,6 +188,29 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		}
 		else	print "	sub	" regs[1] ",2"
 	}
+	else if (hold == 14) {
+		if (/^	push	ax$/) { hold++; next; }
+		print	"	push	dx";
+		hold=0;
+	}
+	else if (hold == 15) {
+		if (/^	pop	eax$/) { hold++; next; }
+		print	"	push	dx";
+		print	"	push	ax";
+		hold=0;
+	}
+	else if (hold == 16) {
+		hold=0;
+		if (/^	shr	eax,16$/) { print "	xchg	ax,dx"; next; }
+		print	"	push	dx";
+		print	"	push	ax";
+		print	"	pop	eax";
+	}
+	else if (hold == 17) {
+		hold=0;
+		if (/^	cmp	ax,-1$/) { print "	inc	ax"; next; }
+	}
+	if (/^	call	near ptr @fileexist\$/) { print; hold=17; next; }
 	s=$0
 	# These optimisation may break ZF or CF
 	if (/^	sub	sp,2$/) { print "	push	ax"; next }

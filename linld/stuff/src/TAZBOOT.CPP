@@ -156,12 +156,14 @@ static void bootiso(char **iso)
 u32 root_dev;
 u32 vid_mode;
 u32 topmem;
+u32 base_himem;
 const char* kernel_name = "bzImage";
 const char* initrd_name;
 char* iso;
 
 int main(int argc, char *argv[])
 {
+	((u16*) &base_himem)[1] |= (_1m+_64k)>>16;	// base_himem = _1m+_64k
 	argv[0] = progname();
 	bootiso(argv);	// iso ? parsing is /init.exe stuff !
 
@@ -197,7 +199,7 @@ Examples for tazboot.cmd:\r\n\n\
 		else if(i == 1 && fileexist(s) != -1) {
 			kernel_name = s;
 		}
-		else strcatb(buf_cmdline,*argv);
+		else strcatb(buf_cmdline,*argv);	// FIXME mem ?
 	}
 #else
 		if (strhead(s,"kernel=") == 0) {
@@ -224,35 +226,33 @@ Examples for tazboot.cmd:\r\n\n\
 			goto set_iso;
 		}
 		else if(strhead(s,"vga=") == 0) {
-			s += 4;
-			vid_mode = strtol(s);	// support normal, extended & ask
+			*(u16*)&vid_mode = (u16)strtol(s+4);	// support normal, extended & ask
 		}
 	        else switch (*(u16 *)s|0x2002) {
 		case 0x662F:	// -F /f
 			skip_alloc++;
 			goto next;
 		case 0x652F:	// -E /e
-			argv++;
-			topmem = strtol(*argv);
-			goto next;
+			s=*++argv;
+			goto set_topmem;
 		case 0x622F:	// -B /b
 			argv++;
-			base_himem = strtol(*argv);
+			((u16 *)&base_himem)[1] = (u16)(strtol(*argv)>>16);
 			goto next;
 		default:
 		if(i == 1 && fileexist(s) != -1) {
 			goto set_kernelz;
 		}
 		else {
+			strcatb(buf_cmdline,*argv);
 			if(strhead(s,"root=") == 0) {
-				s += 5;
-				root_dev = strtol(s);
+				*(u16*)&root_dev = (u16)strtol(s+5);
 			}
 			if(strhead(s,"mem=") == 0) {
 				s += 4;
-				topmem = strtol(s);
+			set_topmem:
+				((u16 *)&topmem)[1] = (u16)(strtol(s)>>16);
 			}
-			strcatb(buf_cmdline,*argv);
 		}}
 	}
 #endif

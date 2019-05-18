@@ -123,8 +123,6 @@ static u8 pm_high;	// @ = @rm_size + 2, see JUMP.ASM
 static u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
 struct image_himem imgs[2];
 
-u32 base_himem = _1m+_64k;
-
 static const char kernel_file_error[] = "Can't use kernel file";
 char* load_kernel() {
 

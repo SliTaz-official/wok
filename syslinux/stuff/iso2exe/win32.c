@@ -167,7 +167,7 @@ static void exec16bits(char *isoFileName)
 	const char pifFileName[] = "slitaz.pif";
 
 	strcpy(PIF_content.s0.program_filename, isoFileName);
-	fd = open(pifFileName, O_WRONLY|O_BINARY|O_CREAT,0555);
+	fd = open(pifFileName, O_WRONLY|O_BINARY|O_CREAT|O_TRUNC,0555);
 	write(fd,&PIF_content,sizeof(PIF_content));
 	close(fd);
 	WinExec(pifFileName, SW_MINIMIZE);

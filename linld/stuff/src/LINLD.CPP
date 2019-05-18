@@ -14,6 +14,7 @@ u32 vid_mode;		// -3 = ask
 			// -1 = Normal VGA
 			//  n = as "n" was pressed
 u32 topmem;
+u32 base_himem;
 
 inline void syntax() {
     die("Syntax:" NL
@@ -25,20 +26,14 @@ inline void syntax() {
         "\tinitrd,vga,root=(void)" NL
         "\tmem=256m" NL
         "\tcl=auto" NL
-#ifdef	USE_ARGSTR
-        "\t-b=1088k" NL
-#else
         "\t-b 1088k" NL
-#endif
         "Use quotes: \"cl=...\" if you need spaces in cmdline" NL
         "Use cl=@filename to get it from a file"
 #if 1
         NL NL "Examples:" NL
-#ifdef	USE_ARGSTR
-        "\tLINLD -f -b=64m initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz \"cl=rw root=/dev/null video=-32\""
-#else
-        "\tLINLD -f -b 64m initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz \"cl=rw root=/dev/null video=-32\""
-#endif
+	"\tLINLD -f -b 64m "
+        "initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz "
+	"\"cl=rw root=/dev/null video=-32\""
 	NL NL "\tLINLD image=memtest"
 #endif
     );
@@ -49,8 +44,7 @@ int main(int argc, char *argv[]) {
 
     (void) argc;
 
-    // Believe it or not - this enables A20
-    // on my box! Must be DOS in HMA...   -vda
+    ((u16*) &base_himem)[1] |= (_1m+_64k)>>16;	// base_himem = _1m+_64k
     puts("LINLD v" VERSION_STR "+");
 
     // Parse command line
@@ -99,12 +93,10 @@ int main(int argc, char *argv[]) {
             kernel_name=s;
         }
         else if(strhead(s,"initrd=") == 0) {
-	    s+=7;
-            initrd_name=s;
+            initrd_name=s+7;
         }
         else if(strhead(s,"vga=") == 0) {
-	    s+=4;
-            vid_mode = strtol(s);	// support normal, extended & ask
+            *(u16*)&vid_mode = (u16)strtol(s+7);	// support normal, extended & ask
         }
         else switch (*(u16 *)s|0x2002) {
 	case 0x662F:	// -F /f
@@ -112,7 +104,7 @@ int main(int argc, char *argv[]) {
 	    goto next;
 	case 0x622F:	// -B /b
 	    argv++;
-	    base_himem = strtol(*argv);
+	    ((u16 *)&base_himem)[1] = (u16)(strtol(*argv)>>16);
 	    goto next;
 	default:
 	    if(strhead(s,"cl=") == 0) {
@@ -124,9 +116,8 @@ int main(int argc, char *argv[]) {
 		    s++;
 		    image.errmsg = "Error in cl=@file";
 		    open_image(s, &image);
-		    cmdline=s=(char *)malloc_or_die(image.size);
-		    s+=image.size;
-		    read(image.fd, (void *)cmdline, image.size);
+		    s+=read(image.fd, (void *)cmdline=s=
+			(char *)malloc_or_die(image.size), image.size);
 		    // Strip any trailing cr/lf
 		    c='\0';
 		    do {
@@ -140,13 +131,11 @@ int main(int argc, char *argv[]) {
 		}
 	    }
             else if(strhead(s,"root=") == 0) {
-		s+=5;
-		root_dev = strtol(s);
+		*(u16*)&root_dev = (u16)strtol(s+5);
 		goto addincmdline;
 	    }
 	    else if(strhead(s,"mem=") == 0) {
-		s+=4;
-		topmem = strtol(s);
+		((u16 *)&topmem)[1] = (u16)(strtol(s+4)>>16);
 		goto addincmdline;
 	    }
 	    else {
