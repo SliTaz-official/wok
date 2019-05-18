@@ -3,22 +3,30 @@
 PACKAGE="tmate"
 VERSION="2.2.1"
 CATEGORY="network"
-SHORT_DESC="Instant Terminal Sharing"
+SHORT_DESC="Instant Terminal Sharing."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://tmate.io/"
-WGET_URL="https://github.com/tmate-io/tmate/archive/$VERSION.tar.gz"
 
-DEPENDS="ncurses libevent msgpack libssh"
-BUILD_DEPENDS="automake ncurses-dev libevent-dev msgpack-dev libssh-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/tmate-io/$PACKAGE/archive/$VERSION.tar.gz"
+
+DEPENDS="libevent libssh msgpack ncurses"
+BUILD_DEPENDS="automake libevent-dev libssh-dev msgpack-dev ncurses-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	./autogen.sh
-	./configure --prefix=/usr --infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+
+	export	LIBNCURSES_LIBS="/lib/libncurses.so"
+	export	LIBNCURSES_FLAGS=" "
+	export	LIBS="/lib/libtinfo.so"
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
