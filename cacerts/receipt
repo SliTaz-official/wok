@@ -1,19 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="cacerts"
-VERSION="20170224"
+VERSION="20190517"
 CATEGORY="security"
-SHORT_DESC="Certificate Authority Certificates"
+SHORT_DESC="Certificate Authority Certificates."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="MPL2"
 WEB_SITE="http://www.linuxfromscratch.org/blfs/view/svn/postlfs/make-ca.html"
+
 TARBALL="$PACKAGE-$VERSION.txt"
 #WGET_URL="https://hg.mozilla.org/releases/mozilla-release/file/default/security/nss/lib/ckfw/builtins/certdata.txt"
 WGET_URL="http://anduin.linuxfromscratch.org/BLFS/other/certdata.txt"
-HOST_ARCH="any"
 
 DEPENDS="openssl"
-BUILD_DEPENDS="perl openssl locale-en"
+BUILD_DEPENDS="locale-en openssl perl"
+
+HOST_ARCH="any"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -28,8 +30,10 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/etc/ssl/certs
-	cp -a $src/certs/*.pem $fs/etc/ssl/certs
-	cp -a $src/ca-bundle.crt $fs/etc/ssl
+
+	cp -a $src/certs/*.pem		$fs/etc/ssl/certs
+	cp -a $src/ca-bundle.crt	$fs/etc/ssl
+
 	ln -s ../ca-bundle.crt $fs/etc/ssl/certs/ca-certificates.crt
 }
 
@@ -40,10 +44,11 @@ post_install()
 	# (see openssl package). Normal no output here.
 	cd "$1/etc/ssl/certs"
 	find . -type l -delete
-	for i in $(ls *.pem); do
+	for i in $(ls *.pem)
+	  do
 		j="$(openssl x509 -hash -noout -in $i)"
 		[ -n "$j" ] && ln -s $i $j.0
-	done
+	  done
 }
 
 post_remove()
