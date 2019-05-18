@@ -1,35 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="lua"
-VERSION="5.2.1"
+VERSION="5.2.4"
 CATEGORY="development"
 SHORT_DESC="Powerful, fast, light-weight, embeddable scripting language."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.lua.org/"
-WGET_URL="http://www.lua.org/ftp/$TARBALL"
-HOST_ARCH="i486 arm"
+WEB_SITE="https://www.lua.org/"
 
-DEPENDS="readline ncurses"
-BUILD_DEPENDS="readline-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://www.lua.org/ftp/$TARBALL"
+
+DEPENDS="libtic ncurses readline"
+BUILD_DEPENDS="libtic ncurses-dev readline-dev"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	sed -i "s#/usr/local/#/usr/#" src/luaconf.h
+
 	case "$ARCH" in
 		arm)
 			make CC=${HOST_SYSTEM}-gcc posix ;;
 		i486)
 			sed -i s"/-O2/-Os -march=$ARCH/" src/Makefile
-			make linux ;;
+			make linux MYLIBS=/lib/libtic.so ;;
 	esac &&
+
 	# lua.pc
 	make pc > lua.pc &&
 	sed -i "s#/local##g" lua.pc &&
-	make install \
-		INSTALL_TOP=$DESTDIR/usr \
+	make	install				\
+		INSTALL_TOP=$DESTDIR/usr	\
 		INSTALL_MAN=$DESTDIR/usr/share/man/man1
 }
 
@@ -37,7 +41,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin	$fs/usr
 }
 
 testsuite()
