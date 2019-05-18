@@ -1,30 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="ffmpeg"
-VERSION="2.8.10"
+VERSION="4.1.3"
 CATEGORY="multimedia"
+TAGS="audio video convert stream"
 SHORT_DESC="Record, convert and stream audio and video."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2 LGPL2.1"
-WEB_SITE="http://ffmpeg.org/"
+WEB_SITE="https://ffmpeg.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="${WEB_SITE}releases/$TARBALL"
-HOST_ARCH="i486 arm"
 
 SUGGESTED="ffplay"
-TAGS="audio video convert stream"
+DEPENDS="alsa-lib bzip2 gnutls harfbuzz lame libsdl2 libtasn1 libvorbis \
+	libvpx nettle opus pcre rtmpdump x264 x265 xorg-libXau \
+	xorg-libXdmcp zlib"
+BUILD_DEPENDS="bzip2-dev coreutils-file-format coreutils-file-special \
+	gnutls-dev harfbuzz-dev lame-dev libgnutls libsdl2-dev \
+	libvorbis-dev libvpx-dev nettle-dev opus-dev pcre-dev \
+	rtmpdump-dev x264-dev x265-dev xorg-libXau-dev xorg-libXdmcp-dev \
+	yasm zlib-dev"
 
-DEPENDS="alsa-lib libsdl bzip2 zlib libvorbis x264 x265 gnutls libvpx opus \
-lame rtmpdump harfbuzz xorg-libXau xorg-libXdmcp pcre libtasn1 nettle"
-BUILD_DEPENDS="libsdl-dev zlib-dev bzip2-dev coreutils-file-format \
-libvorbis-dev x264-dev x265-dev gnutls-dev libvpx-dev opus-dev lame-dev \
-rtmpdump-dev harfbuzz-dev xorg-libXau-dev xorg-libXdmcp-dev pcre-dev \
-nettle-dev coreutils-file-special yasm libgnutls"
+HOST_ARCH="i486 arm"
 
 case "$SLITAZ_ARCH" in
-	arm*) DEPENDS="alsa-lib libsdl bzip2 zlib libvorbis x264 x265 gnutls \
-		libvpx opus lame rtmpdump harfbuzz xorg-libXau xorg-libXdmcp \
-		pcre libtasn1 nettle" ;;
+	arm*) DEPENDS="alsa-lib bzip2 gnutls harfbuzz lame libsdl2 libvorbis \
+		libtasn1 libvpx nettle opus pcre rtmpdump x264 x265 \
+		xorg-libXau xorg-libXdmcp zlib" ;;
 esac
 
 # Handle cross compilation. Host coreutils-file-* are used
@@ -32,7 +35,7 @@ case "$ARCH" in
 	i?86) 
 		ARCH_ARGS="--arch=$ARCH --cpu=$ARCH" ;;
 	arm*) 
-		BUILD_DEPENDS="zlib-dev bzip2-dev yasm" 
+		BUILD_DEPENDS="bzip2-dev yasm zlib-dev" 
 		ARCH_ARGS="--enable-cross-compile --arch=armel --target-os=linux \
 		--cross-prefix=$HOST_SYSTEM-" ;;
 esac
@@ -40,23 +43,24 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--enable-gpl \
-		--enable-nonfree \
-		--enable-shared \
-		--disable-static \
-		--disable-doc \
-		--enable-libfreetype \
-		--enable-libmp3lame \
-		--enable-libopus \
-		--enable-libvorbis \
-		--enable-libvpx \
-		--enable-libx264 \
-		--enable-libx265 \
-		--enable-gnutls \
+	./configure			\
+		--prefix=/usr		\
+		--enable-gpl		\
+		--enable-nonfree	\
+		--enable-shared		\
+		--disable-static	\
+		--disable-doc		\
+		--enable-libfreetype	\
+		--enable-libmp3lame	\
+		--enable-libopus	\
+		--enable-libvorbis	\
+		--enable-libvpx		\
+		--enable-libx264	\
+		--enable-libx265	\
+		--enable-gnutls		\
 		${ARCH_ARGS} &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -66,8 +70,10 @@ genpkg_rules()
 		$fs/usr/bin \
 		$fs/usr/lib \
 		$fs/usr/share
-	cp -a $install/usr/lib/*so* $fs/usr/lib
-	cp -a $install/usr/bin/ffmpeg $fs/usr/bin
-	cp -a $install/usr/share/$PACKAGE $fs/usr/share
+
+	cp -a $install/usr/lib/*so*		$fs/usr/lib
+	cp -a $install/usr/bin/ffmpeg		$fs/usr/bin
+	cp -a $install/usr/share/$PACKAGE	$fs/usr/share
+
 	rm -rf $fs/usr/share/$PACKAGE/examples
 }
