@@ -237,8 +237,8 @@ struct initrdparams_t {
     u16     version;        // 0206 Boot protocol version supported
     u16     realmode_switch_ofs; // 0208 Hook called just before rm->pm
     u16     realmode_switch_seg;
-    u16     start_sys_seg;  // 020E
-    u16     kernel_version; // 020C Points to kernel version string
+    u16     start_sys_seg;  // 020C
+    u16     kernel_version; // 020E Points to kernel version string
     u8      type_of_loader; // 0210 Boot loader identifier
     u8      loadflags;      // 0211 Boot protocol option flags
     u16     setup_move_size;// 0212 Move to high memory size (used with hooks)

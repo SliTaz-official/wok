@@ -126,7 +126,7 @@ int isoopen(const char *filename)
 	do s++; while (*s != '/' && *s);
 	c = *s;
 	*s = 0;
-	for (x->curdirsize = 0xFFFF; isoreaddir() == 0;) {
+	for (x->curdirsize = 0xFFFF; isoreaddir() != -1;) {
 		const char *n = name, *i = x->filename;
 		if (_64bits) {
 			if (strhead(i, n)) continue;

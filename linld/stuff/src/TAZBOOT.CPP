@@ -91,7 +91,7 @@ static void bootiso(char **iso)
 			break;
 		}
 	} while (isoopen("isolinux") >= 0);		// Knoppix
-	for (c = 0, x->curdirsize = 0xFFFF; isoreaddir() == 0;) {
+	for (c = 0, x->curdirsize = 0xFFFF; isoreaddir() != -1;) {
 		if (strstr(x->filename, ".gz"))
 			strcpy(fallback, x->filename);
 		if (strhead(x->filename, "rootfs") 
@@ -194,8 +194,8 @@ Examples for tazboot.cmd:\r\n\n\
 			skip_alloc++;
 			goto next;
 		}
-		if (argstr(s,"kernel/image|initrd|bootfrom/iso",&kernel_name) == 0);
-		else if (argnum(s,"root|vga|mem/-e|-b",&root_dev) == 0);
+		if (argstr(s,"kernel/image|initrd|bootfrom/iso",&kernel_name) != -1);
+		else if (argnum(s,"root|vga|mem/-e|-b",&root_dev) != -1);
 		else if(i == 1 && fileexist(s) != -1) {
 			kernel_name = s;
 		}

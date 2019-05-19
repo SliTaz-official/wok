@@ -49,7 +49,8 @@ int main(int argc, char *argv[]) {
 
     // Parse command line
 #ifdef	USE_ARGSTR
-    if (argv[1]) {for (;;) {
+    if (!argv[1]) syntax();
+    {for (;;) {
 	const char **clp = &cmdline;
     next:
 	argv++;
@@ -64,8 +65,8 @@ int main(int argc, char *argv[]) {
 	    skip_alloc++;
 	    goto next;
 	}
-	if (argstr(*argv,"cl|image|initrd",clp) == 0);
-	else if (fileexist(*argv) >= 0)
+	if (argstr(*argv,"cl|image|initrd",clp) != -1);
+	else if (fileexist(*argv) != -1)
             kernel_name=*argv;
 	else if (*argv) {
 	    argnum(*argv,"root|vga|mem|-b",&root_dev);
@@ -77,7 +78,8 @@ int main(int argc, char *argv[]) {
         }
     }
 #else
-    if (argv[1]) while (1) {
+    if (!argv[1]) syntax();
+    while (1) {
 	char *s;
     next:
 	argv++;
@@ -152,7 +154,6 @@ int main(int argc, char *argv[]) {
 	}
     }
 #endif
-    syntax();
 
     // Let compiler be happy
     return _AX;

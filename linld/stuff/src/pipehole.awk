@@ -3,6 +3,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 {
 	sub(/segment word public/,"segment byte public")
 
+	if (/^@.*:$/ || /	endp$/) afterjmp=0
 	if (hold == 0) {
 		s=$0
 		if (/^	mov	.[ix],bx$/ || /^	mov	.[ix],.i$/) {
@@ -68,6 +69,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	else if (hold == 3) {
 		hold=0
+		if (/^	call	/ && regs[2] == "ax") s="	xchg	ax," regs[1]
 		if (/^	add	[abcds][ix],/) {
 			split($2,regs2,",")
 			if (regs[1] == regs2[1] && (regs2[2] == "offset" || isnum(regs2[2]))) {
@@ -210,7 +212,10 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		hold=0;
 		if (/^	cmp	ax,-1$/) { print "	inc	ax"; next; }
 	}
-	if (/^	call	near ptr @fileexist\$/) { print; hold=17; next; }
+	if (/^	call	near ptr @fileexist\$/ || 	# return boolean :
+	    /^	call	near ptr @isoreaddir\$/ ||	#  0=true, -1=false
+	    /^	call	near ptr @argstr\$/ ||
+	    /^	call	near ptr @argnum\$/) { print; hold=17; next; }
 	s=$0
 	# These optimisation may break ZF or CF
 	if (/^	sub	sp,2$/) { print "	push	ax"; next }
@@ -305,5 +310,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			}
 		}
 	}
-	print
+	if (afterjmp) print ";" $0
+	else print
+	if (/^	jmp	/) afterjmp=1
 }
