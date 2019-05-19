@@ -1,0 +1,64 @@
+# SliTaz package receipt.
+
+PACKAGE="wesnoth"
+VERSION="1.10.3"
+CATEGORY="games"
+SHORT_DESC="Turn based strategy game"
+MAINTAINER="mimas@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://www.wesnoth.org/"
+WGET_URL="$SF_MIRROR/wesnoth/$TARBALL"
+TAGS="strategy"
+
+DEPENDS="libsdl libsdl-mixer libsdl-ttf libsdl-net libsdl-image zlib pango \
+cairo fontconfig libboost-regex libboost-iostreams libpng fribidi gcc-lib-base \
+xcb-util libboost-system libboost-program-options"
+BUILD_DEPENDS="cairo-dev pango-dev libboost-regex-dev libboost-iostreams-dev libsdl-dev libsdl-mixer-dev libsdl-ttf-dev \
+libsdl-ttf libsdl-image-dev libsdl-net-dev libpng-dev freetype-dev fontconfig-dev findutils \
+lua-dev libboost-serialization-dev autoconf automake fribidi-dev \
+libboost-system-dev libboost-program-options-dev cmake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd $src
+	cmake -DCMAKE_INSTALL_PREFIX=/usr .
+	make $MAKEFLAGS && make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	# programs
+	mkdir -p $fs/usr/bin
+	cp $install/usr/bin/wesnoth $fs/usr/bin/
+
+	# data
+	mkdir -p $fs/usr/share/wesnoth/
+	cp -a $install/usr/share/wesnoth/data $fs/usr/share/wesnoth/
+	cp -a $install/usr/share/wesnoth/fonts $fs/usr/share/wesnoth/
+	cp -a $install/usr/share/wesnoth/images $fs/usr/share/wesnoth/
+	cp -a $install/usr/share/wesnoth/sounds $fs/usr/share/wesnoth/
+
+	mkdir $fs/usr/share/wesnoth/translations
+	if [ ! "$LOCALE" = "" ]; then
+		for i in $LOCALE
+		do
+			cp -a $install/usr/share/wesnoth/translations/$i \
+				$fs/usr/share/wesnoth/translations
+		done		
+	else
+		cp -a $install/usr/share/wesnoth/translations \
+			$fs/usr/share/wesnoth/
+	fi
+	
+	# Remove music
+	rm $fs/usr/share/wesnoth/data/core/music/*.ogg 2> /dev/null
+
+	# finalize
+	cp -a $install/usr/share/applications $fs/usr/share
+	cp -a $install/usr/share/pixmaps $fs/usr/share
+
+}
+
