@@ -1,42 +1,50 @@
 # SliTaz package receipt.
 
 PACKAGE="ntp"
-VERSION="4.2.6p5"
+VERSION="4.2.8p13"
 CATEGORY="network"
 SHORT_DESC="Network Time Protocol daemon."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.ntp.org/"
-WGET_URL="http://archive.ntp.org/ntp4/$TARBALL"
-HOST_ARCH="i486 arm"
 
-DEPENDS="libcrypto readline libcap attr"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://archive.ntp.org/ntp4/$TARBALL"
+
+DEPENDS="attr libcap libcrypto readline"
 CONFIG_FILES="/etc/ntp.conf"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's/MOD_NANO/0/' ntpd/ntp_loopfilter.c
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--sysconfdir=/etc --localstatedir=/var \
-	--mandir=/usr/share/man $CONFIGURE_ARGS && \
-	make && make DESTDIR=$DESTDIR install
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--sysconfdir=/etc		\
+		--localstatedir=/var		\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS && \
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/init.d
-	cp -a $install/usr/bin $fs/usr
-	cp stuff/ntp $fs/etc/init.d
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc/init.d
+
+	cp -a $install/usr/bin	$fs/usr
+	cp stuff/ntp		$fs/etc/init.d
 	cat > $fs/etc/ntp.conf <<EOT
 restrict default noquery
 restrict 192.168.0.0 mask 255.255.0.0
 restrict 127.0.0.1
-server fr.pool.ntp.org
-server de.pool.ntp.org
+server europe.pool.ntp.org
+server pool.ntp.org
 EOT
 }
-
