@@ -1,29 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="nut"
-VERSION="2.6.5"
+VERSION="2.7.4"
 CATEGORY="system-tools"
 SHORT_DESC="Network UPS Tools."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://www.networkupstools.org"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.networkupstools.org"
 WGET_URL="$WEB_SITE/source/${VERSION%.*}/$TARBALL"
 CONFIG_FILES="/etc/nut.conf /etc/ups.conf /etc/upsd.conf /etc/upsd.users \
-/etc/upsmon.conf /etc/upssched.conf"
+	/etc/upsmon.conf /etc/upssched.conf"
 
-DEPENDS="libusb libusb-compat expat neon zlib libssl libwrap"
-BUILD_DEPENDS="libusb-dev libusb-compat-dev expat-dev neon-dev zlib-dev \
-openssl-dev libwrap-dev"
+DEPENDS="expat libssl libusb libusb-compat libwrap neon zlib"
+BUILD_DEPENDS="expat-dev libusb-dev libusb-compat-dev libwrap-dev \
+	neon-dev openssl-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--sysconfdir=/etc \
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--sysconfdir=/etc		\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -32,13 +33,16 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/etc
-	for i in $install/etc/*.sample ; do
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/etc
+
+	for i in $install/etc/*.sample
+	 do
 		cp -a $i $fs/etc/$(basename $i .sample)
-	done
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp $install/usr/share/cmdvartab $fs/usr/share
-	cp $install/usr/share/driver.list $fs/usr/share
+	 done
+	cp -a $install/usr/lib			$fs/usr
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/sbin			$fs/usr
+	cp $install/usr/share/cmdvartab		$fs/usr/share
+	cp $install/usr/share/driver.list	$fs/usr/share
 }
