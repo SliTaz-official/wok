@@ -1,28 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="ocaml"
-VERSION="3.12.1"
+VERSION="4.07.1"
 CATEGORY="system-tools"
+TAGS="language programming"
 SHORT_DESC="General-purpose programming language designed for safety and reliability."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="QPL LGPL2"
+WEB_SITE="https://ocaml.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://caml.inria.fr/"
-WGET_URL="${WEB_SITE}pub/distrib/$PACKAGE-${VERSION%.*}/$TARBALL"
-TAGS="language programming"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/archive/$VERSION.tar.gz"
 
 DEPENDS="xorg-libX11 xorg-libXau xorg-libXdmcp"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|PREFIX)/man|PREFIX)/share/man|' configure
-	grep -q true build/camlp4-targets.sh ||
-		sed -i 's/base=.*/& || true/' build/camlp4-targets.sh
-	./configure --prefix /usr \
-	$(echo $CONFIGURE_ARGS | sed 's/--build=[^ ]*//' | sed 's/=/ /g') &&
+	./configure				\
+		--prefix /usr			\
+		--bindir /usr/bin		\
+		--libdir /usr/lib		\
+		--mandir /usr/share/man/man1	\
+		$(echo $CONFIGURE_ARGS | sed 's/--build=[^ ]*//' | sed 's/=/ /g') &&
 	make -j1 world opt &&
-	sed -i "s|^PREFIX=.*|PREFIX=$DESTDIR/usr|" config/Makefile &&
 	make install
 }
 
@@ -30,7 +31,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
+
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/lib $fs/usr
 }
-
