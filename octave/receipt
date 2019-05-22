@@ -1,37 +1,43 @@
 # SliTaz package receipt.
 
 PACKAGE="octave"
-VERSION="4.0.0"
+VERSION="5.1.0"
 CATEGORY="development"
+TAGS="programming language"
 SHORT_DESC="Language for numerical computations."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://www.gnu.org/software/octave/"
-WGET_URL="ftp://ftp.gnu.org/gnu/$PACKAGE/$TARBALL"
-TAGS="programming language"
+WEB_SITE="https://www.gnu.org/software/octave/"
 
-DEPENDS="libgfortran zlib ncurses readline freetype gcc-lib-base expat \
-mesa libglu-mesa xorg-libX11 xorg-libXext xorg-libXxf86vm xorg-libXdamage \
-xorg-libXfixes libdrm xorg-libXau xorg-libXdmcp pcre libcurl lapack bash \
-gcc fltk gnuplot"
-BUILD_DEPENDS="gfortran zlib-dev ncurses-dev readline-dev freetype-dev xorg-dev \
-fltk-dev perl texinfo lapack tar gawk pcre-dev mesa-dev curl-dev \
-libdrm-dev expat-dev libxml2-dev $DEPENDS"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="http://ftp.gnu.org/gnu/$PACKAGE/$TARBALL"
+
+DEPENDS="bash expat fltk freetype gcc83 gcc-lib-base gnuplot lapack libcurl libdrm \
+	libgfortran libglu-mesa mesa ncurses pcre readline xorg-libX11 \
+	xorg-libXau xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXxf86vm \
+	xorg-libXfixes zlib"
+BUILD_DEPENDS="$DEPENDS curl-dev expat-dev fltk-dev freetype-dev gawk gfortran \
+	lapack libdrm-dev libxml2-dev mesa-dev ncurses-dev pcre-dev perl \
+	readline-dev tar texinfo xorg-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	export	CC=gcc-83
+	export	CXX=g++-83
 	export LDFLAGS="$LDFLAGS -ltinfo"
-	cd $src
 
 	# http://www.nabble.com/Random-rounding-errors-td16010966.html
-	FFLAGS="-O -ffloat-store" \
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--libexecdir=/usr/lib/$PACKAGE \
-	--mandir=/usr/share/man \
-	--enable-shared --disable-static --disable-docs \
-	$CONFIGURE_ARGS &&
+	FFLAGS="-O -ffloat-store"		\
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--libexecdir=/usr/lib/$PACKAGE	\
+		--mandir=/usr/share/man		\
+		--enable-shared			\
+		--disable-static		\
+		--disable-docs			\
+		$CONFIGURE_ARGS &&
 	LANG=C make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
@@ -41,5 +47,3 @@ genpkg_rules()
 {
 	cp -a $install/* $fs
 }
-
-
