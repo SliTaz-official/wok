@@ -1,23 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="opencv"
-VERSION="3.4.6"
+VERSION="4.1.0"
 CATEGORY="development"
-SHORT_DESC="Open source computer vision library"
+SHORT_DESC="Open source computer vision library."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://opencv.org/"
-WGET_URL="https://github.com/Itseez/opencv/archive/$VERSION.tar.gz"
 
-DEPENDS="gtk+ ffmpeg jpeg tiff libpng"
-BUILD_DEPENDS="wget cmake gtk+-dev ffmpeg-dev jpeg-dev tiff-dev libpng-dev \
-libgnutls"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/archive/$VERSION/$TARBALL"
+
+DEPENDS="ffmpeg gtk+ jpeg libpng tiff"
+BUILD_DEPENDS="cmake ffmpeg-dev gcc83 gtk+-dev jpeg-dev libgnutls \
+	libpng-dev tiff-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir build; cd build 
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	mkdir build
+	cd build 
 	cmake .. -DCMAKE_INSTALL_PREFIX=/usr &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -27,7 +32,8 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share	$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
