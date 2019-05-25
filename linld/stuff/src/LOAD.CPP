@@ -175,15 +175,8 @@ do {
     if((int)root_dev) kernelparams->root_dev = root_dev;
     version_string = "";
 
-#if 1
     if(kernelparams->header == HdrS) { // starting linux 1.3.73
 	if(kernelparams->loadflags & 1) {
-#else
-    if((kernelparams->header != HdrS) || (kernelparams->loadflags & 1) == 0)
-        die("I can't load bzImage low");
-    {
-        {
-#endif
 	    extern void far last_ditch();
 	    kernelparams->realmode_switch_ofs = (u16) last_ditch;
 	    kernelparams->realmode_switch_seg = _CS;
@@ -192,8 +185,7 @@ do {
             // Hook on int15 to work around fn 88 DOS breakage
             hook_int15_88();
         }
-        if(kernelparams->kernel_version)
-            version_string = (char *) first1k+kernelparams->kernel_version+0x200;
+        version_string = (char *) first1k+kernelparams->kernel_version+0x200;
         kernelparams->type_of_loader = 0xff; // kernel do not know us (yet :-)
         if(kernelparams->version >= 0x201) {
             // * offset limit of the setup heap
@@ -222,7 +214,7 @@ cmd_line_ok:
 
   {
     struct image_himem *m = &pm;
-    if((u16)(((m->fallback=(u32((u16(_CS)+0x1FFF)&0xF000)<<4))+m->size)>>4) >
+    if((u16)(((m->fallback=(u32(u16(_CS)+0x1001)<<4))+m->size)>>4) >
 		 topseg() || _pm_high) {
         m->fallback = base_himem;
     }
