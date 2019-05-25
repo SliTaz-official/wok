@@ -214,7 +214,7 @@ cmd_line_ok:
 
   {
     struct image_himem *m = &pm;
-    if((u16)(((m->fallback=(u32(u16(_CS)+0x1001)<<4))+m->size)>>4) >
+    if((u16)(((m->fallback=(u32(u16(_CS)+0x1001)<<4))+m->size)>>4) >=
 		 topseg() || _pm_high) {
         m->fallback = base_himem;
     }
