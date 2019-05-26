@@ -152,7 +152,7 @@ do {
         if(* (int *) &first1k->pad10[0x3F-0x24] == 0x3AE8) {
             _csip+=0xFFE00042;
         }
-        else
+        //else
 #endif
         kernelparams->setup_sects=4;
     }
@@ -185,7 +185,8 @@ do {
             // Hook on int15 to work around fn 88 DOS breakage
             hook_int15_88();
         }
-        version_string = (char *) first1k+kernelparams->kernel_version+0x200;
+        if (kernelparams->kernel_version)
+            version_string = (char *) first1k+kernelparams->kernel_version+0x200;
         kernelparams->type_of_loader = 0xff; // kernel do not know us (yet :-)
         if(kernelparams->version >= 0x201) {
             // * offset limit of the setup heap
@@ -242,7 +243,7 @@ struct initrdparams_t {
 // Read initrd if needed
 void load_initrd() {
     struct image_himem *m = &initrd;
-    if (!initrd_name && !m->fd) return;
+    if (((int)initrd_name | m->fd) == 0) return; // !initrd_name && !m->fd
 #if defined(__BORLANDC__) && defined(NO386)
 #pragma option -3
     asm{

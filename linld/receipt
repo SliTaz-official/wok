@@ -39,6 +39,8 @@ $(cat TAZBOOT/!COMPILEX.BAT)
 EOT
 	SDL_VIDEODRIVER=dummy dosbox MAKE.BAT -exit -c "mount D $src" \
 		2>&1 | grep -v 'ALSA lib'
+	grep '^Fatal[ :]' */LNK.LOG */CPP.LOG && return 1
+	grep '*Fatal*' */*.LST && return 1
 	grep '^Error[ :]' */LNK.LOG */CPP.LOG && return 1
 	grep '*Error*' */*.LST && return 1
 	grep '^Warning[ :]' */LNK.LOG */CPP.LOG
@@ -47,7 +49,8 @@ EOT
 	cp TAZBOOT/TAZBOOT.COM tazboot.com
 	objdump -D -b binary -mi386 -Maddr16,data16 --adjust-vma=0x100 \
 		linld.com > linld.lst
-	[ $(stat -c %s linld.com) -gt 4096 ] && linld=linld.com || linld=
+	linld=linld.com
+	[ $(stat -c %s $linld) -le 4096 ] && ls -l $linld && linld=
 	for f in $linld tazboot.com ; do
 		cp $f tmp.com
 		for i in $(seq 1 9); do
