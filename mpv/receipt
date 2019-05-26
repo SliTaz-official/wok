@@ -1,31 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="mpv"
-VERSION="0.18.1"
+VERSION="0.29.1"
 CATEGORY="multimedia"
-SHORT_DESC="Video player based on ffmpeg & mplayer2"
+SHORT_DESC="Video player based on ffmpeg and mplayer2."
 MAINTAINER="devel@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://mpv.io"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/mpv-player/mpv/archive/v$VERSION.tar.gz"
 WAFTOOL="waf-1.8.12"
 EXTRA_SOURCE_FILES="$WAFTOOL"
 
-DEPENDS="lcms xorg-libXv xorg-libX11 xorg-libXext glibc-base libxcb alsa-lib \
-libsdl liblzma bzlib zlib libjpeg libv4l libdrm xorg-libXinerama \
-xorg-libXrandr mesa libegl-mesa xorg-libXau xorg-libXdmcp libpng glib pcre \
-libxml2 libtasn1 nettle gmp libtinfo xorg-libXrender xorg-libXdamage \
-xorg-libXfixes libxcb xorg-libXxf86vm udev lua ffmpeg lame"
-BUILD_DEPENDS="slitaz-base-files slitaz-toolchain busybox cookutils tazpkg \
-cacerts openssl pkg-config wget libguess file sed yasm lcms2-dev \
-xorg-libXv-dev xorg-libX11-dev xorg-libXext-dev glibc-dev libxcb-dev \
-alsa-lib-dev libsdl-dev liblzma-dev bzlib zlib-dev jpeg-dev libv4l-dev \
-libdrm-dev xorg-libXinerama-dev xorg-libXrandr-dev mesa-dev libegl-mesa \
-xorg-libXau-dev xorg-libXdmcp-dev libpng-dev glib-dev pcre-dev libxml2-dev \
-libtasn1-dev nettle-dev gmp-dev libtinfo xorg-libXrender-dev \
-xorg-libXdamage-dev xorg-libXfixes-dev libxcb-dev xorg-libXxf86vm-dev udev-dev \
-ffmpeg-dev lame-dev libgnutls"
+DEPENDS="alsa-lib bzlib ffmpeg glib glibc-base gmp lame lcms libdrm \
+	libegl-mesa libjpeg liblzma libpng libsdl libtasn1 libtinfo \
+	libv4l libxcb libxml2 lua mesa nettle pcre udev xorg-libX11 \
+	xorg-libXau xorg-libXdamage xorg-libXdmcp xorg-libXext \
+	xorg-libXxf86vm xorg-libXfixes xorg-libXinerama \
+	xorg-libXrandr xorg-libXrender xorg-libXv zlib"
+BUILD_DEPENDS="alsa-lib-dev bzlib cacerts ffmpeg-compat-dev ffmpeg-dev \
+	file glib-dev glibc-dev gmp-dev jpeg-dev lame-dev lcms2-dev \
+	libdrm-dev libegl-mesa libguess liblzma-dev libpng-dev \
+	libsdl-dev libtasn1-dev libtinfo libv4l-dev libxcb-dev \
+	libxml2-dev mesa-dev nettle-dev openssl pcre-dev pkg-config \
+	udev-dev xorg-libX11-dev xorg-libXau-dev xorg-libXdamage-dev \
+	xorg-libXdmcp-dev xorg-libXext-dev xorg-libXfixes-dev \
+	xorg-libXinerama-dev xorg-libXrandr-dev xorg-libXrender-dev \
+	xorg-libXv-dev xorg-libXxf86vm-dev yasm zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -34,24 +36,25 @@ compile_rules()
 		http://www.freehackers.org/~tnagy/release/$WAFTOOL
 	install -m 755 $SOURCES_REPOSITORY/$WAFTOOL waf
 	./bootstrap.py
-	./waf configure \
-		--prefix=/usr \
-		--confdir=/etc/mpv \
-		--disable-debug \
-		--disable-debug-build \
-		--disable-oss-audio \
-		--disable-manpage-build \
-		--disable-libass
-
-	./waf build
+	./waf configure			\
+		--prefix=/usr		\
+		--confdir=/etc/mpv	\
+		--disable-debug		\
+		--disable-debug-build	\
+		--disable-gl		\
+		--disable-oss-audio	\
+		--disable-manpage-build	\
+		--disable-libass &&
+	./waf build &&
 	./waf install --destdir=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir $install/etc
-	mkdir $install/etc/mpv
-	cp $WOK/$PACKAGE/source/$PACKAGE-$VERSION/etc/*.conf $install/etc/mpv
-	cp -a $install/* $fs
+#	mkdir $install/etc
+#	mkdir $install/etc/mpv
+	cp $WOK/$PACKAGE/source/$PACKAGE-$VERSION/etc/*.conf \
+		$install/etc/mpv
+	cp -a $install/*	$fs
 }
