@@ -187,7 +187,6 @@ puts:
         global  openargs:near			; openargs(bx)
 openargs:
 		cmp	[byte bx],'@'
-		stc
 		jne	fail
 		inc	bx
 
@@ -212,20 +211,7 @@ open:
                 mov	ax,3d00h		; read-only+compatibility
 		;mov	cl,0			; attribute mask
                 mov	dx,bx
-dos:
-                int	21h
-chkc:
-                jnc	doret
-fail:
-                sbb	ax,ax			; ax=-1 CF
-		cwd
-doret:
-		ifndef	NO386
-		push	dx			; see next_chunk:lseek
-		push	ax
-		pop	eax
-		endif
-                ret
+		jmp	dos
 
         endp    @open$qpxzc
 
@@ -288,7 +274,22 @@ close:
                 mov	ah,3Fh
 		endif
                 jcxz	fail
-		jmp	dos
+dos:
+                int	21h
+chkc:
+                jnc	doret
+fail:
+		stc
+failifc:
+                sbb	ax,ax			; ax=-1 CF
+		cwd
+doret:
+		ifndef	NO386
+		push	dx			; see next_chunk:lseek
+		push	ax
+		pop	eax
+		endif
+                ret
 
         endp    @read$qipvi
 
@@ -333,7 +334,8 @@ dirsize		dw	?		;16	dirsizetype dirsize;
 curdirofs	dd	?		;18	unsigned long curdirofs;
 dirofs		dd	?		;22	unsigned long dirofs;
 curpos		dw	?		;26	unsigned curpos;
-buffer		db	2560	dup(?)	;28	char buffer[2048+512];
+filename2open	dw	?		;28	char *filename2open;
+buffer		db	2560	dup(?)	;30	char buffer[2048+512];
 ends					; } isostate;
 ;***************************************************************
 ;_fastcall long isolseek(bx:const unsigned long *offset);
@@ -368,6 +370,35 @@ isolseek:
 		jmp	@read$dxbxax		; read(fd,buffer,2560)
 
         endp    @isoreadsector$qpxul
+
+
+;***************************************************************
+;_fastcall int isoreset(bx:const char *name);
+;***************************************************************
+        global  @isoreset$qpzc:near
+        proc    @isoreset$qpzc near
+
+		or	bx,bx
+		jz	fail
+		call	near ptr @open$qpxzc
+		mov	[_isostate.fd],ax
+		extrn	@isoroot$qv:near
+		jmp	@isoroot$qv
+
+	endp	@isoreset$qpzc
+
+
+;***************************************************************
+;_fastcall int isoopen(bx:const char *name);
+;***************************************************************
+        global  @isoopen$qpxzc:near
+        proc    @isoopen$qpxzc near
+
+		extrn	@_isoopen$qv:near
+		mov	[_isostate.filename2open],bx
+		jmp	@_isoopen$qv
+
+	endp	@isoopen$qpxzc
 
 		endif
 
@@ -456,13 +487,13 @@ isolseek:
                 mov	cl,[bx]			; cl = *b++
                 inc	bx
 		or	cl,cl			; clear C
-		jz	fail			; return 0
+		jz	failifc			; return 0
 		xchg	ax,bx
                 xor	cl,[bx]			; cl -= *a++
                 inc	bx
 		and	cl,0dfh			; case insensitive
-                jz	@@loop
-		ret				; return b (is not 0)
+		jne	fail			; return -1
+                jmp	@@loop
 
 	endp	@strhead$qpxzct1
 

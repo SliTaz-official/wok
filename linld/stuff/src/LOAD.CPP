@@ -152,7 +152,7 @@ do {
         if(* (int *) &first1k->pad10[0x3F-0x24] == 0x3AE8) {
             _csip+=0xFFE00042;
         }
-        //else
+        else
 #endif
         kernelparams->setup_sects=4;
     }
@@ -215,8 +215,8 @@ cmd_line_ok:
 
   {
     struct image_himem *m = &pm;
-    if((u16)(((m->fallback=(u32(u16(_CS)+0x1001)<<4))+m->size)>>4) >=
-		 topseg() || _pm_high) {
+    if((u16)(((m->fallback=(u32(u16(_CS)+0x1000)<<4))+m->size)>>16) >=
+		 (u16)(topseg()>>12) || _pm_high) {
         m->fallback = base_himem;
     }
 

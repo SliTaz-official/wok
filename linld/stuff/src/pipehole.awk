@@ -214,6 +214,10 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/^	call	near ptr @fileexist\$/ || 	# return boolean :
 	    /^	call	near ptr @isoreaddir\$/ ||	#  0=true, -1=false
+	    /^	call	near ptr @isoreset\$/ ||
+	    /^	call	near ptr @isoopen\$/ ||
+	    /^	call	near ptr @isoreadsector\$/ ||
+	    /^	call	near ptr @strhead\$/ ||
 	    /^	call	near ptr @argstr\$/ ||
 	    /^	call	near ptr @argnum\$/) { print; hold=17; next; }
 	s=$0

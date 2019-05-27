@@ -180,7 +180,10 @@ sssp		dd	?
 		xor	di,di			;  A000 -9000 -0800(>movedend)
 		rep
 		  movsb
-		mov	ax,[word _imgs+2+2]	; get pm->fallback high word
+		mov	si,offset _imgs+2
+		lodsw
+		xchg	ax,bx			; get pm->fallback low word
+		lodsw				; get pm->fallback high word
 		push	es
 		call	near @@isbzimage	; pop cs ; ds=es=ss
 
@@ -193,22 +196,17 @@ sssp		dd	?
 @@bufhigh:
 		push	dx			; size hi
 		push	cx			; size lo=up to 512k
-		push	ax			; src ofs ho = pm.fallback
+		push	ax			; src ofs hi = pm.fallback
 
 		;in	al,70h
 		;or	al,80h			; disable NMI
 		;out	70h,al
 
+		push	bx			; src ofs lo
 		xor	di,di
-		push	di			; src ofs lo
 		push	di			; src seg=0
-		ifdef	NO386
-		inc	di
-		push	di			; dst ofs hi
-		dec	di
-		else
-		push	1			; dst ofs hi
-		endif
+		inc	cx
+		push	cx			; dst ofs hi
 		push	di			; dst ofs lo : 64k
 		extrn   memcpy32:near
 		call	memcpy32

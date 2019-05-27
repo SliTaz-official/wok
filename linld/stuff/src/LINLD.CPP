@@ -89,15 +89,15 @@ int main(int argc, char *argv[]) {
 	    load_initrd();
 	    boot_kernel();
 	}
-        if(strhead(s,"image=") == 0) {
+        if(strhead(s,"image=") != -1) {
 	    s+=6;
 	set_kernel_name:
             kernel_name=s;
         }
-        else if(strhead(s,"initrd=") == 0) {
+        else if(strhead(s,"initrd=") != -1) {
             initrd_name=s+7;
         }
-        else if(strhead(s,"vga=") == 0) {
+        else if(strhead(s,"vga=") != -1) {
             *(u16*)&vid_mode = (u16)strtol(s+7);	// support normal, extended & ask
         }
         else switch (*(u16 *)s|0x2002) {
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
 	    ((u16 *)&base_himem)[1] = (u16)(strtol(*argv)>>16);
 	    goto next;
 	default:
-	    if(strhead(s,"cl=") == 0) {
+	    if(strhead(s,"cl=") != -1) {
 		cmdline=s+=3;
 		if (*s == '@') {
 		    static struct image_himem image;
@@ -132,11 +132,11 @@ int main(int argc, char *argv[]) {
 		    puts(cmdline);
 		}
 	    }
-            else if(strhead(s,"root=") == 0) {
+            else if(strhead(s,"root=") != -1) {
 		*(u16*)&root_dev = (u16)strtol(s+5);
 		goto addincmdline;
 	    }
-	    else if(strhead(s,"mem=") == 0) {
+	    else if(strhead(s,"mem=") != -1) {
 		((u16 *)&topmem)[1] = (u16)(strtol(s+4)>>16);
 		goto addincmdline;
 	    }

@@ -16,6 +16,7 @@ extern struct isostate {
 	dirsizetype curdirsize, dirsize;
 	unsigned long curdirofs, dirofs;
 	unsigned curpos;
+	char *filename2open;
 #define SECTORSZ 2048
 #define SECTORBITS 11
 	char buffer[SECTORSZ+512];	// RR overflow
@@ -27,8 +28,8 @@ extern struct isostate {
 #define	isofilename isostate.filename
 extern _fastcall long isolseek(const unsigned long *offset);
 extern _fastcall int isoreadsector(const unsigned long *offset);
-extern int isoreset(char *name);
-extern int isoopen(const char *name);
+extern _fastcall int isoreset(char *name);
+extern _fastcall int isoopen(const char *name);
 extern int isoreaddir(void);
 #define isolabel() do { isofileofs=0x8028; isofilesize=32; } while (0)
 #endif

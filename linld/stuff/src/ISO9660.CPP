@@ -13,15 +13,11 @@ struct isostate isostate;
 #define cpydirofs(to,from)	((to) = (from))
 #endif
 
-int isoreset(char *name)
+int isoroot(void)
 {
 	static const unsigned long root = 16UL * 2048;
 	struct isostate *x=&isostate;
-	if (name) {
-		//x->fd = open(name, O_RDONLY);
-		x->fd = open(name);
-	}
-	if (isoreadsector(&root) < 0 || strhead(x->buffer+1,"CD001")) {
+	if (isoreadsector(&root) == -1 || strhead(x->buffer+1,"CD001") == -1) {
 		//close(x->fd);
 		return -1;
 	}
@@ -111,15 +107,15 @@ int isoreaddir(void)
 //#define IS_DIR(x)( (char)((x) >> 9) == (char)040)
 //#define IS_DIR(x)( (*((char*) &x + 1) & (char)0776) == (char)0100)
 #define IS_DIR(x)( (*((char*) &x + 1) & (char)0676) == (char)0)
-int isoopen(const char *filename)
+int _isoopen(void)
 {
 	char *name, *s, c;
 	char _64bits = cpuhaslm();
 	struct isostate *x=&isostate;
 
     do {
-	for (s = (char *) filename; *s == '/' ; s++) {
-		isoreset(NULL);
+	for (s = (char *) x->filename2open; *s == '/' ; s++) {
+		isoroot();
 	}
   next:
 	name = s;
@@ -129,7 +125,7 @@ int isoopen(const char *filename)
 	for (x->curdirsize = 0xFFFF; isoreaddir() != -1;) {
 		const char *n = name, *i = x->filename;
 		if (_64bits) {
-			if (strhead(i, n)) continue;
+			if (strhead(i, n) == -1) continue;
 			n = "64";
 			i += s - name; // strlen(name);
 		}
