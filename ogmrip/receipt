@@ -1,35 +1,43 @@
+# SliTaz package receipt.
 
 PACKAGE="ogmrip"
-VERSION="0.13.7"
+VERSION="1.0.1"
 CATEGORY="multimedia"
 SHORT_DESC="Libraries and GTK2 interface for DVD ripping using mencoder."
-WEB_SITE="http://ogmrip.sourceforge.net/en/index.html"
 MAINTAINER="fredericguilbault@live.ca"
 LICENSE="LGPL2.1"
+WEB_SITE="http://ogmrip.sourceforge.net/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="libdvdread enca libxml2 mplayer mencoder libglade libnotify acl GConf"
-BUILD_DEPENDS="libglade-dev libnotify-dev glib-dev libgio-dev enca-dev libxml2-dev mplayer mencoder tiff-dev zlib-dev intltool acl libdvdread-dev GConf-dev pkg-config" 
+DEPENDS="acl enca GConf libdvdread libglade libnotify libxml2 mencoder mplayer"
+BUILD_DEPENDS="acl enca-dev GConf-dev glib-dev intltool libdvdread-dev libgio-dev \
+	libglade-dev libnotify-dev libxml2-dev mencoder mplayer pkg-config \
+	tiff-dev zlib-dev" 
 
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr --sysconfdir=/etc  $CONFIGURE_ARGS \
-		&& make \
-		&& make -j1 DESTDIR=$DESTDIR install
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		$CONFIGURE_ARGS &&
+		make &&
+		make -j1 DESTDIR=$DESTDIR install
 }
 
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
 
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/applications $fs/usr/share
-	cp -a $install/usr/share/ogmrip $fs/usr/share
-	cp -a $install/usr/share/pixmaps $fs/usr/share
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/ogmrip $fs/usr/lib
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/applications	$fs/usr/share
+	cp -a $install/usr/share/ogmrip		$fs/usr/share
+	cp -a $install/usr/share/pixmaps	$fs/usr/share
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/ogmrip		$fs/usr/lib
+	cp -a $install/etc			$fs
+
 	find $fs/usr/lib/ogmrip -name "*.*a" -type f -delete
-	cp -a $install/etc $fs
 }
