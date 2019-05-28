@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="openmpi"
-VERSION="1.5.3"
+VERSION="4.0.1"
 CATEGORY="development"
-SHORT_DESC="High performance message passing library (MPI)"
+SHORT_DESC="High performance message passing library (MPI)."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="BSD"
+WEB_SITE="https://www.open-mpi.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.open-mpi.org"
-WGET_URL="http://www.open-mpi.org/software/ompi/v${VERSION%.*}/downloads/$TARBALL"
+WGET_URL="${WEB_SITE}software/ompi/v${VERSION%.*}/downloads/$TARBALL"
 
 DEPENDS="gcc gfortran libtool openssh valgrind"
 BUILD_DEPENDS="$DEPENDS valgrind-dev file"
@@ -16,28 +17,31 @@ BUILD_DEPENDS="$DEPENDS valgrind-dev file"
 # Rules to configure and make the package.
 compile_rules()
 {
-   ./configure --sysconfdir=/etc/${PACKAGE} \
-               --enable-mpi-f90 \
-               --libdir=/usr/lib/${pkgname} \
-               --with-threads=posix \
-               --enable-mpi-threads \
-               --enable-smp-locks \
-               --with-valgrind \
-               --enable-pretty-print-stacktrace \
-               --without-slurm \
-               --with-libltdl=/usr \
-               FC=/usr/bin/gfortran \
-               LDFLAGS='-Wl,-z,noexecstack' &&
-	make && make install
+	./configure					\
+		--sysconfdir=/etc/${PACKAGE}		\
+		--enable-mpi-f90			\
+		--libdir=/usr/lib/${pkgname}		\
+		--with-threads=posix			\
+		--enable-mpi-threads			\
+		--enable-smp-locks			\
+		--with-valgrind				\
+		--enable-pretty-print-stacktrace	\
+		--without-slurm				\
+		--with-libltdl=/usr			\
+		FC=/usr/bin/gfortran			\
+		LDFLAGS='-Wl,-z,noexecstack' &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/$PACKAGE
-	cp -a $install/etc $fs
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/$PACKAGE/*.so* $fs/usr/lib/$PACKAGE
-	cp -a $install/usr/lib/mpi.mod $fs/usr/lib
+
+	cp -a $install/etc			$fs
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/$PACKAGE/*.so*	$fs/usr/lib/$PACKAGE
+	cp -a $install/usr/lib/mpi.mod		$fs/usr/lib
 }
