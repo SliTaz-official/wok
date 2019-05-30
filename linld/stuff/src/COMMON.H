@@ -90,7 +90,7 @@ extern "C" void hang();
 #endif
 
 void load_image(struct image_himem *m);
-extern _fastcall void open_image(const char *name, struct image_himem *m);
+extern _fastcall void open_image(struct image_himem *m, const char *name);
 extern _fastcall int read_image(struct image_himem *m);
 char* load_kernel();
 void load_initrd();

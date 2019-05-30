@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
 
 		    s++;
 		    image.errmsg = "Error in cl=@file";
-		    open_image(s, &image);
+		    open_image(&image, s);
 		    s+=read(image.fd, (void *)cmdline=s=
 			(char *)malloc_or_die(image.size), image.size);
 		    // Strip any trailing cr/lf

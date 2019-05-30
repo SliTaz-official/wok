@@ -932,12 +932,14 @@ _next_bufv:
 		endif
 
 ;***************************************************************
-;_fastcall void open_image(bx:const char *name, ax:struct image_himem *m);
+;_fastcall void open_image(bx:struct image_himem *m, ax:const char *name);
 ;***************************************************************
-        global  @open_image$qpxzcp11image_himem:near
-        proc    @open_image$qpxzcp11image_himem near
+
+        global  @open_image$qp11image_himempxzc:near
+        proc    @open_image$qp11image_himempxzc near
 
                 push	di
+		xchg	ax,bx
 		xchg	ax,di
 		ifdef	EXTRA
 		cmp	[(image_himem di).fd],0		; iso image/kernel ?
@@ -979,7 +981,7 @@ _next_bufv:
                 pop	di
 		ret
 
-        endp    @open_image$qpxzcp11image_himem
+        endp    @open_image$qp11image_himempxzc
 
 
 ;***************************************************************

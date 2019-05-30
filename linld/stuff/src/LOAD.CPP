@@ -140,7 +140,7 @@ char* load_kernel() {
     *((u16 *)&_csip+1)=topseg()|0x20;
     // Open kernel, read first kb, check it
     m->errmsg = kernel_file_error;
-    open_image(kernel_name, m);
+    open_image(m, kernel_name);
 
 do {
     // Do not use malloc below until heap_top adjustment (see <*>)
@@ -252,7 +252,7 @@ void load_initrd() {
 #endif
     m->errmsg = "Can't use initrd file";
 
-    open_image(initrd_name, m);
+    open_image(m, initrd_name);
 
     if ((m->fallback=(memtop()-m->size)&(~PAGE_MASK))-m[-1].fallback < m[-1].size) {
         close(m->fd);
