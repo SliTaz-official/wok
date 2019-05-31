@@ -1,35 +1,41 @@
 # SliTaz package receipt
 
 PACKAGE="parcellite"
-VERSION="0.9.3"
+VERSION="1.2.1"
 CATEGORY="utilities"
-SHORT_DESC="Lightweight GTK+ clipboard manager"
+SHORT_DESC="Lightweight GTK+ clipboard manager."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://parcellite.sourceforge.net/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS="gtk+ xorg-libX11 xorg-libXdamage"
 BUILD_DEPENDS="xorg-libX11-dev gtk+-dev"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {	
 	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lX11"
-	find . -name '*.[ch]*' | xargs sed -i 's|<glib/.*h|<glib.h|'
+#	find . -name '*.[ch]*' | xargs sed -i 's|<glib/.*h|<glib.h|'
 	./configure \
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/applications $fs/etc
-	cp -a $install/usr/bin $fs/usr
-	cp -a $stuff/skel $fs/etc
+	mkdir -p $fs/usr/share/applications
+	mkdir -p $fs/etc
+
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $stuff/skel	$fs/etc
+
 	chown -R 0.0 $fs
 }
