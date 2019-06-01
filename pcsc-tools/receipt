@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="pcsc-tools"
-VERSION="1.4.20"
+VERSION="1.5.4"
 CATEGORY="system-tools"
 SHORT_DESC="PC/SC Architecture smartcard tools."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="http://ludovic.rousseau.free.fr/softwares/pcsc-tools/"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="http://ludovic.rousseau.free.fr/softwares/$PACKAGE/$TARBALL"
 
 DEPENDS="pcsc-lite perl-glib perl-gtk2 perl-pcsc"
@@ -16,15 +17,19 @@ BUILD_DEPENDS="pcsc-lite-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	sed -i -e 's:-Wall -O2:${CFLAGS}:g' Makefile
-	make && make DESTDIR=$DESTDIR/usr install
+#	sed -i -e 's:-Wall -O2:${CFLAGS}:g' Makefile
+	./configure		\
+		--prefix=/usr	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/pcsc $fs/usr/share
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/pcsc	$fs/usr/share
 }
