@@ -1,25 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="pekwm"
-VERSION="0.1.13"
+VERSION="0.1.17"
 CATEGORY="x-window"
+TAGS="window-manager"
 SHORT_DESC="Very light, configurable and themable window manager for X."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
-SUGGESTED="hsetroot tint2 lxpanel wbar xorg-xprop xorg-xev xdotool wmctrl"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.pekwm.org/projects/pekwm"
-WGET_URL="$WEB_SITE/files/$TARBALL"
-TAGS="window-manager"
+WEB_SITE="http://www.pekwm.org/"
 
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/pekdon/$PACKAGE/archive/release-$VERSION.tar.gz"
+
+SUGGESTED="hsetroot tint2 lxpanel wbar xorg-xprop xorg-xev xdotool wmctrl"
 DEPENDS="xorg-libX11 xorg-libXinerama xorg-libXft xorg-libXrandr xorg-libXpm"
-BUILD_DEPENDS="xorg-dev xorg-dev-proto zlib-dev"
+BUILD_DEPENDS="automake xorg-dev xorg-dev-proto zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr --sysconfdir=/etc $CONFIGURE_ARGS &&
+	./autogen.sh &&
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -27,14 +31,19 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/pekwm $fs/etc
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/pekwm $fs/usr/share
-	cp -a $install/etc $fs
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/pekwm
+	mkdir -p $fs/etc
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/pekwm	$fs/usr/share
+	cp -a $install/etc		$fs
+
 	# Custom configuration files and scripts
-	cp -a $stuff/etc $fs
-	cp -a $stuff/scripts $fs/usr/share/pekwm
-	# Set perms.
+	cp -a $stuff/etc		$fs
+	cp -a $stuff/scripts		$fs/usr/share/pekwm
+
+	# Set permissions
 	chown -R root.root $fs
 	chmod +x $fs/etc/pekwm/start
 	chmod +x $fs/usr/share/pekwm/scripts/*
@@ -43,7 +52,7 @@ genpkg_rules()
 
 post_install()
 {
-	# Pekwm searches for default font path (100dpi folder) for xsever to render 
+	# Pekwm searches for default font path (100dpi folder) for xserver to render 
 	# menus; either manually set it in .xinitrc or fake 100dpi folder fonts 
 	# by linking to ttf-dejavu
 	if [ ! -d "$1/usr/share/fonts/X11/100dpi/" ]; then
