@@ -1,32 +1,42 @@
 # SliTaz package receipt.
 
 PACKAGE="perdition-pam"
-VERSION="2.1"
+VERSION="2.2"
 CATEGORY="network"
-SHORT_DESC="IMAP/POP proxy."
+SHORT_DESC="Fully featured POP3 and IMAP4 proxy server."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="http://www.vergenet.net/linux/perdition"
+
 SOURCE="perdition"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://www.vergenet.net/linux/$SOURCE"
 WGET_URL="$WEB_SITE/download/$VERSION/$TARBALL"
-CONFIG_FILES="/etc/perdition"
-PROVIDE="perdition:pam"
 
+PROVIDE="perdition:pam"
 DEPENDS="vanessa_logger vanessa_adt vanessa_socket libldap openssl cyrus-sasl \
-pam glibc-base libkrb5 libcomerr3 gdbm"
+	pam glibc-base libkrb5 libcomerr3 gdbm"
 BUILD_DEPENDS="vanessa_logger-dev vanessa_adt-dev vanessa_socket-dev \
-openldap-dev pam pam-dev popt-dev cyrus-sasl-dev openssl-dev libidn-dev"
+	openldap-dev pam pam-dev popt-dev cyrus-sasl-dev openssl-dev libidn-dev"
+CONFIG_FILES="/etc/perdition"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr --infodir=/usr/share/info \
-		--disable-ldap-doc --disable-nis \
-		--disable-odbc --disable-mysql --disable-pg --disable-bdb \
-		--disable-cdb --disable-gdbm \
-		--sysconfdir=/etc --localstatedir=/var \
-		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--disable-ldap-doc		\
+		--disable-nis			\
+		--disable-odbc			\
+		--disable-mysql			\
+		--disable-pg			\
+		--disable-bdb			\
+		--disable-cdb			\
+		--disable-gdbm			\
+		--sysconfdir=/etc		\
+		--localstatedir=/var		\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -34,16 +44,21 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/etc/openldap/schema
-	cp -a $install/etc $fs
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/etc/openldap/schema
+
+	cp -a $install/etc		$fs
 	rm -f $fs/etc/perdition/perdition.conf
-	cp -a ../$SOURCE/stuff/etc $fs
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+
+	cp -a ../$SOURCE/stuff/etc	$fs
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+
 	for i in pop3 pop3s imap4 imap4s imaps; do
 		mkdir -p $fs/var/run/perdition.$i
 	done
-	cp $src/perdition/db/ldap/perdition.schema $fs/etc/openldap/schema
+	cp $src/perdition/db/ldap/perdition.schema \
+		$fs/etc/openldap/schema
 }
 
 # Pre and post install commands for Tazpkg.
