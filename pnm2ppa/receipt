@@ -1,37 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="pnm2ppa"
-VERSION="1.12" 
+VERSION="1.13"
 CATEGORY="system-tools"
-SHORT_DESC="Ghostscript print filter and color driver for some HP DeskJet printers"
+SHORT_DESC="Ghostscript print filter and color driver for some HP DeskJet printers."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://pnm2ppa.sourceforge.net/"
-WGET_URL="http://downloads.sourceforge.net/pnm2ppa/$TARBALL"
 
-DEPENDS="ghostscript cups foomatic-filters"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="cups foomatic-filters ghostscript"
 BUILD_DEPENDS="ghostscript-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	make BINDIR="/usr/bin" CONFDIR="/etc" &&
-	make BINDIR=$DESTDIR/usr/bin  CONFDIR=$DESTDIR/etc install
-	
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p  $fs/usr/share
+	mkdir -p  $fs/usr
 	
-	cp -a $install/etc   $fs
-	cp -a $install/usr/bin $fs/usr
-	
+	cp -a $install/etc	$fs
+	cp -a $install/usr/bin	$fs/usr
+
 	# Still needs ppd file download for the specific printer from 
 	# http://www.linuxprinting.org/show_driver.cgi?driver=pnm2ppa&fromprinter=HP-DeskJet_710C
-		
-}
 
+}
