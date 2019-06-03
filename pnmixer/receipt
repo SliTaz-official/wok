@@ -1,29 +1,35 @@
 # SliTaz package receipt.
 
 PACKAGE="pnmixer"
-VERSION="0.5.1"
+VERSION="0.7.2"
 CATEGORY="utilities"
-SHORT_DESC="System tray sound mixer"
+SHORT_DESC="System tray sound mixer."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL3"
 WEB_SITE="https://github.com/nicklan/pnmixer/wiki"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="http://cloud.github.com/downloads/nicklan/$PACKAGE/$TARBALL"
+WGET_URL="https://github.com/nicklan/$PACKAGE/archive/v$VERSION/$TARBALL"
 
 DEPENDS="alsa-lib atk bzlib cairo expat fontconfig freetype gcc-lib-base \
-gdk-pixbuf glib glibc-base gtk+ libffi libgio libpng libxcb pango pixman \
-xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor xorg-libXdamage \
-xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXinerama xorg-libXrandr \
-xorg-libXrender zlib"
-BUILD_DEPENDS="automake glib-dev alsa-lib-dev gettext xorg-libX11-dev gtk+-dev"
+	gdk-pixbuf glib glibc-base gtk+3 libffi libgio libnotify libpng \
+	libxcb pango pixman xorg-libX11 xorg-libXau xorg-libXcomposite \
+	xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext \
+	xorg-libXfixes xorg-libXinerama xorg-libXrandr xorg-libXrender zlib"
+BUILD_DEPENDS="alsa-lib-dev cmake gettext glib-dev gtk+3-dev libnotify-dev \
+	xorg-libX11-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cp $stuff/ru.po $src/po; echo "ru" >> $src/po/LINGUAS
-	sed -i 's|\(ALL_LINGUAS="de fr\)"|\1 ru"|' $src/configure.in
-	cd $src
-	./autogen.sh $CONFIGURE_ARGS && make && make install
+	cp $stuff/LINGUAS po/LINGUAS
+
+	mkdir	build
+	cd	build
+	cmake	..				\
+		-DCMAKE_INSTALL_PREFIX=/usr &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
