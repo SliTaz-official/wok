@@ -1,20 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="potamus"
-VERSION="15"
+VERSION="17"
 CATEGORY="multimedia"
+TAGS="music audio player mp3 ogg flac"
 SHORT_DESC="Unbloated and easy to use GTK+ Audio player."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://offog.org/code/potamus/"
-WGET_URL="http://offog.org/files/$TARBALL"
-TAGS="music audio player mp3 ogg flac"
-HOST_ARCH="i486 arm"
 
-DEPENDS="gtk+ libglade alsa-lib libmad libogg libvorbis libsamplerate" 
-BUILD_DEPENDS="gtk+-dev libglade-dev alsa-lib-dev libmad-dev \
-libogg-dev libvorbis-dev libsamplerate-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://offog.org/files/$TARBALL"
+
+DEPENDS="alsa-lib gtk+ libglade libmad libogg libsamplerate libvorbis" 
+BUILD_DEPENDS="alsa-lib-dev gtk+-dev libglade-dev libmad-dev \
+	libogg-dev libsamplerate-dev libvorbis-dev"
+
+HOST_ARCH="i486 arm"
 
 # Handle arch install
 case "$SLTAZ_ARCH" in
@@ -32,14 +34,15 @@ esac
 compile_rules()
 {
 	# libmad for MP3
-	./configure \
-		--disable-input-modplug \
-		--disable-input-audiofile \
-		--disable-input-opus \
-		--disable-output-ao \
-		--disable-output-jack \
+	./configure				\
+		--disable-input-modplug		\
+		--disable-input-audiofile	\
+		--disable-input-opus		\
+		--disable-output-ao		\
+		--disable-output-jack		\
 		$CONFIGURE_ARGS ${ARCH_ARGS} &&
-	make && make install &&
+	make &&
+	make install &&
 	sed -i s'/Name=.*/Name=Potamus Audio Player/' \
 		${DESTDIR}/usr/share/applications/*.desktop
 }
@@ -47,11 +50,10 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share/pixmaps
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/${PACKAGE} $fs/usr/share
+	mkdir -p $fs/usr/share/pixmaps
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/${PACKAGE}	$fs/usr/share
 	cp -a $install/usr/share/icons/hicolor/48x48/*/${PACKAGE}.png \
 		$fs/usr/share/pixmaps
-	
 }
-
