@@ -1,18 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="posixovl"
-VERSION="1.2"
+VERSION="1.3"
 CATEGORY="system-tools"
-SHORT_DESC="FUSE file system that provides POSIX functionality"
+TAGS="filesystem"
+SHORT_DESC="FUSE file system that provides POSIX functionality."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://$PACKAGE.sourceforge.net/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="filesystem"
+WEB_SITE="https://sourceforge.net/projects/posixovl/"
 
-DEPENDS="fuse attr"
-BUILD_DEPENDS="autoconf automake fuse-dev attr-dev"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="attr fuse"
+BUILD_DEPENDS="attr-dev autoconf automake fuse-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,16 +24,21 @@ compile_rules()
 	sed -i 's/if (!S_ISREG/if (S_ISLNK(cb->ll.mode))\n\t\tcb->sb.st_size = strlen(cb->ll.target);\n\telse &/' posixovl.c
 	sed -i 's/cb->ll.size/0/' posixovl.c
 	sed -i 's|attr/xattr.h|sys/xattr.h|' posixovl.c configure*
+
 	sh autogen.sh
-	./configure --prefix=/usr --mandir=/usr/share/man \
-	$CONFIGURE_ARGS &&
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
+		$CONFIGURE_ARGS &&
 	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/sbin $install/usr/share/man/man1
-	cp $src/mount.posixovl $fs/usr/sbin
-	cp $src/posixovl.1 $install/usr/share/man/man1
+	mkdir -p $fs/usr/sbin
+	mkdir -p $install/usr/share/man/man1
+
+	cp $src/mount.posixovl	$fs/usr/sbin
+	cp $src/posixovl.1	$install/usr/share/man/man1
 }
