@@ -1,19 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="privoxy"
-VERSION="3.0.26-stable"
+VERSION="3.0.28"
 CATEGORY="network"
 SHORT_DESC="Non-caching web privacy proxy."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION-src.tar.gz"
-WEB_SITE="http://www.privoxy.org/"
-WGET_URL="http://downloads.sourceforge.net/ijbswa/$TARBALL"
+WEB_SITE="https://www.privoxy.org/"
 
+TARBALL="$PACKAGE-$VERSION-stable-src.tar.gz"
+WGET_URL="$SF_MIRROR/ijbswa/$TARBALL"
+
+DEPENDS="pcre zlib"
+BUILD_DEPENDS="autoconf coreutils m4 perl zlib-dev"
 CONFIG_FILES="/etc/privoxy/config"
-
-DEPENDS="zlib pcre"
-BUILD_DEPENDS="zlib-dev autoconf perl m4 coreutils"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -22,29 +22,30 @@ compile_rules()
 	adduser -s /bin/false -H -D -u 42 privoxy
 	addgroup -g 42 privoxy
 	
-	cd $src
-
 	# Needs autoconf
 	autoheader
 	autoconf
 
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc/privoxy \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--localstatedir=/var \
+	./configure				\
+		--prefix=/usr			\
+		--sysconfdir=/etc/privoxy	\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--localstatedir=/var		\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc/init.d $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/var $fs
-	cp -a $install/etc $fs
+	mkdir -p $fs/etc/init.d
+	mkdir -p $fs/usr
+
+	cp -a $install/usr/sbin	$fs/usr
+	cp -a $install/var	$fs
+	cp -a $install/etc	$fs
 
 	# Copy daemon from stuff
 	cp $stuff/daemon-privoxy $fs/etc/init.d/privoxy
