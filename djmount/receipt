@@ -12,19 +12,21 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 TAGS="upnp"
 
 DEPENDS="fuse readline"
-BUILD_DEPENDS="fuse-dev readline-dev libupnp libupnp-dev"
+BUILD_DEPENDS="automake fuse-dev libupnp libupnp-dev readline-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's|upnptools.h>|&\n#include <upnp/upnp.h>|' djmount/upnp_util.h
-	./configure LDFLAGS="-lupnp" \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+
+	./configure				\
+		LDFLAGS="-lupnp"		\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS 2>&1 | grep -v /config.rpath: &&
-	make -j1 && make -j1 install
+	make -j1 &&
+	make -j1 install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -33,4 +35,3 @@ genpkg_rules()
 	mkdir -p $fs/usr
 	cp -a $install/usr/bin $fs/usr
 }
-
