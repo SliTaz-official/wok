@@ -3,24 +3,38 @@
 PACKAGE="djmount"
 VERSION="0.71"
 CATEGORY="multimedia"
+TAGS="upnp"
 SHORT_DESC="Mount uPnP mediaservers content as a Linux filesystem."
 MAINTAINER="slitaz@kacper.se"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://djmount.sourceforge.net"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="upnp"
 
 DEPENDS="fuse readline"
-BUILD_DEPENDS="automake fuse-dev libupnp libupnp-dev readline-dev"
+BUILD_DEPENDS="automake bash fuse-dev readline-dev"	# libupnp libupnp-dev
+							# included in source archive
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|upnptools.h>|&\n#include <upnp/upnp.h>|' djmount/upnp_util.h
+#	sed -i 's|upnptools.h>|&\n#include <upnp/upnp.h>|' \
+#		djmount/upnp_util.h
 
-	./configure				\
-		LDFLAGS="-lupnp"		\
+	# to satisfy #include <upnp/....h>
+	ln -s $src/libupnp/ixml/inc		libupnp/ixml/upnp
+	ln -s $src/libupnp/upnp/inc		libupnp/upnp/upnp
+	ln -s $src/libupnp/threadutil/inc	libupnp/threadutil/upnp
+
+	ln -s $src/libupnp/ixml/inc/ixml.h	libupnp/upnp/ixml.h
+	ln -s $src/libupnp/threadutil/inc/ithread.h djmount/ithread.h
+
+	export	LIBUPNP_CFLAGS="-I$src/libupnp/threadutil \
+			-I$src/libupnp/upnp -I$src/libupnp/ixml"
+
+	./configure 				\
+		CONFIG_SHELL=/bin/bash		\
 		--prefix=/usr			\
 		--infodir=/usr/share/info	\
 		--mandir=/usr/share/man		\
