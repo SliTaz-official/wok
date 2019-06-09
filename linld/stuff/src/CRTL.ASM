@@ -952,7 +952,9 @@ _next_bufv:
 		jnz	@@next
 		mov	[(image_himem di).next_chunk],offset next_chunk
 @@next:
+		push	di
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
+                pop	di
 		else
 @@next:
 		call	next_chunk
@@ -973,7 +975,9 @@ _next_bufv:
 		jnz	@@next
                 pop	[(image_himem di).state]
 		ifdef	EXTRA
+		push	di
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
+                pop	di
 		else
 		call	next_chunk
 		endif
