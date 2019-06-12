@@ -1,43 +1,46 @@
 # SliTaz package receipt.
 
 PACKAGE="pulseaudio"
-VERSION="8.0"
+VERSION="12.2"
 CATEGORY="multimedia"
-SHORT_DESC="A sound system for POSIX OSes"
+SHORT_DESC="A sound system for POSIX OSes."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="LGPL2.1 GPL2 MIT"
 WEB_SITE="https://www.freedesktop.org/wiki/Software/PulseAudio/"
 
 TARBALL="$PACKAGE-$VERSION.tar.xz"
-WGET_URL="http://freedesktop.org/software/pulseaudio/releases/$TARBALL"
-CONFIG_FILES="/etc/pulse/client.conf /etc/pulse/daemon.conf \
-/etc/pulse/default.pa"
+WGET_URL="http://freedesktop.org/software/$PACKAGE/releases/$TARBALL"
 
-DEPENDS="libcap libjson-c libsndfile flac libvorbis dbus gdbm libcap attr \
-speex libsamplerate libltdl jack-audio-connection-kit"
-BUILD_DEPENDS="pkg-config libtool automake autoconf intltool m4 libcap-dev \
-libjson-c-dev libsndfile-dev flac-dev libvorbis-dev util-linux-uuid-dev \
-dbus-dev speex-dev udev-dev libsamplerate-dev alsa-lib-dev file \
-jack-audio-connection-kit-dev"
+DEPENDS="attr dbus flac gcc83-lib-base gdbm jack-audio-connection-kit \
+	libcap libjson-c libsamplerate libsndfile libltdl libvorbis \
+	speex"
+BUILD_DEPENDS="alsa-lib-dev autoconf automake dbus-dev file flac-dev \
+	gcc83 intltool jack-audio-connection-kit-dev libcap-dev \
+	libjson-c-dev libsamplerate-dev libsndfile-dev libtool libvorbis-dev \
+	m4 pkg-config speex-dev udev-dev util-linux-uuid-dev"
 SPLIT="pulseaudio-locale pulseaudio-man pulseaudio-vala pulseaudio-dev"
+CONFIG_FILES="/etc/pulse/client.conf /etc/pulse/daemon.conf \
+	/etc/pulse/default.pa"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	grep -rsl 'uname -m' $src | xargs sed -i 's|uname -m|echo i686|'
 	./bootstrap.sh
-	./configure \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--disable-bluez4 \
-		--disable-systemd-daemon \
-		--disable-systemd-login \
-		--disable-systemd-journal \
-		--disable-oss-output \
-		--disable-oss-wrapper \
-		--disable-esound \
-		--disable-rpath \
-		--with-udev-rules-dir=/etc/udev/rules.d \
+	./configure					\
+		CC=gcc-83				\
+		CXX=g++-83				\
+		--sysconfdir=/etc			\
+		--localstatedir=/var			\
+		--disable-bluez4			\
+		--disable-systemd-daemon		\
+		--disable-systemd-login			\
+		--disable-systemd-journal		\
+		--disable-oss-output			\
+		--disable-oss-wrapper			\
+		--disable-esound			\
+		--disable-rpath				\
+		--with-udev-rules-dir=/etc/udev/rules.d	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make -j1 install
@@ -46,7 +49,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cook_copy_folders bin
-	cook_copy_files *.pa *.conf *.rules *.desktop *.so*
+	cook_copy_folders	bin
+	cook_copy_files		*.pa *.conf *.rules *.desktop *.so*
+
 	find $fs -name '*console-kit*' -delete
 }
