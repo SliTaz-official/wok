@@ -1,28 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="putty"
-VERSION="0.67"
+VERSION="0.71"
 CATEGORY="utilities"
-SHORT_DESC="A free telnet/SSH client."
+TAGS="ssh telnet"
+SHORT_DESC="A free telnet and SSH client."
 MAINTAINER="rcx@zoominternet.net"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://www.chiark.greenend.org.uk/~sgtatham/putty/"
-WGET_URL="http://the.earth.li/~sgtatham/putty/latest/$TARBALL"
-TAGS="ssh"
 
-DEPENDS="glibc-base expat zlib gtk+ atk cairo freetype fontconfig glib \
-libgio pango pixman libpng libxcb xcb-util xorg-libX11 xorg-libXau \
-xorg-libXcomposite xorg-libXcursor xorg-libXdamage xorg-libXdmcp \
-xorg-libXext xorg-libXfixes xorg-libXinerama xorg-libXrender krb5 libcomerr3"
-BUILD_DEPENDS="gtk+-dev imagemagick python perl krb5-dev openexr libltdl"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://the.earth.li/~sgtatham/putty/latest/$TARBALL"
+
+DEPENDS="atk cairo expat fontconfig freetype glib glibc-base gtk+ krb5 \
+	libcomerr3 libgio libpng libxcb pango pixman xcb-util xorg-libX11 \
+	xorg-libXau xorg-libXcomposite xorg-libXcursor xorg-libXdamage \
+	xorg-libXdmcp xorg-libXext xorg-libXfixes xorg-libXinerama \
+	xorg-libXrender zlib"
+BUILD_DEPENDS="gtk+-dev imagemagick krb5-dev libltdl openexr perl python"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-
 	cd $src/icons &&
 	sed -i 's|:- %s|& 2>/dev/null|' mkicon.py
+
 	make &&
 	make install &&
 	mkdir -p $DESTDIR/usr/share/pixmaps &&
@@ -30,7 +32,6 @@ compile_rules()
 	cp $src/icons/putty-48.png $DESTDIR/usr/share/pixmaps/putty.png &&
 	
 	cd $src/unix &&
-
 	sed -e 's/-Werror//g' -i configure &&
 	./configure $CONFIGURE_ARGS &&
 	make XFLAGS=-DTELNET_DEFAULT &&
@@ -40,10 +41,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/usr/share/pixmaps
-	
-	cp -a $stuff/applications $install/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/applications $fs/usr/share
-	cp -a $install/usr/share/pixmaps $fs/usr/share
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/share/pixmaps
+
+	cp -a $stuff/applications		$install/usr/share
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/applications	$fs/usr/share
+	cp -a $install/usr/share/pixmaps	$fs/usr/share
 }
