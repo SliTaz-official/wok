@@ -1,29 +1,37 @@
 # SliTaz package receipt.
 
 PACKAGE="protobuf"
-VERSION="2.4.1"
+VERSION="3.8.0"
 CATEGORY="network"
-SHORT_DESC="Encode structured data in an efficient yet extensible format."
+SHORT_DESC="Protocol buffers - Google's data interchange format."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="https://developers.google.com/protocol-buffers/"
-WGET_URL="http://protobuf.googlecode.com/files/$TARBALL"
+WEB_SITE="https://github.com/protocolbuffers/protobuf/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}archive/v$VERSION.tar.gz"
+
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="automakegcc83 libtool"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure \
-		--prefix=/usr \
+	./autogen.sh &&
+	./configure		\
+		CC=gcc-83	\
+		CXX=g++-83	\
+		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
