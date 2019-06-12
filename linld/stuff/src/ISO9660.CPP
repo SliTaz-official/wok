@@ -77,7 +77,7 @@ int isoreaddir(void)
 			endname = p + len;
 		}
 		p += len;
-	} while (x->buffer + x->curpos + size - p > 2);
+	} while (x->buffer + x->curpos + size - 2 > p);
 	if (endname)
 		*endname = 0;
 	else

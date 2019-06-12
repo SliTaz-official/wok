@@ -1,16 +1,51 @@
-BEGIN { hold=0 }
+BEGIN { hold=0; is386=0; isload=0; wascall=0 }
 function isnum(n) { return match(n,/^[0-9+-]/) }
 {
 	sub(/segment word public/,"segment byte public")
 
 	if (/^@.*:$/ || /	endp$/) afterjmp=0
+	if (/dword ptr/) is386=1
+	if (/heap_top = _rm_buf/) isload=1
+	if (isload) {  # LOAD.LST
+		if (/mov	al,byte ptr/ && is386) {
+			print "	movzx	eax,byte ptr [si]"
+			next
+		}
+		if (/ax,word ptr/) next
+		if (/^	call/) isload=0
+	}
+	if (/const char \*n = name, \*i = x->filename;/) isiso=1
+	if (isiso) { # ISO9660.LST
+		if ((/mov	word ptr \[bp-6\],ax/ ) ||
+		    (/mov	ax,word ptr \[bp-2\]/) ||
+		    (/bx,word ptr \[bp-6\]/) || (/ax,dx/)) next
+		if (/dx,/) sub(/dx/,"ax")
+		if ((/sub	ax,word ptr \[bp-2\]/) ||
+		    (/\[di\+12\]/) || (/ax,si/)) sub(/ax/,"bx")
+		if (/add	word ptr \[bp-6\],ax/) $0="	add	bx,word ptr [di+12]"
+		if (/@strcmp\$qpxzct1/) isiso=0
+	}
+	if (wascall) {
+		if (rcall != "") {
+			if (/,ax$/) 	print "	mov	" rcall ",ax"
+			else		print "	xchg	ax," rcall
+			wascall=0
+		}
+		else if (/^	mov	.i,ax$/) {
+			split($2,y,",")
+			rcall=y[1]
+			next
+		}
+		else wascall=0
+	}
+	if (/^	call	/) { wascall=1; rcall="" }
 	if (hold == 0) {
 		s=$0
 		if (/^	mov	.[ix],bx$/ || /^	mov	.[ix],.i$/) {
 			r=$2; kept=0
 			hold=1; split($2,regs,","); next
 		}
-		if (/^	inc	e?.[ix]/ || /^	dec	e?.[ix]/) {
+		if (/^	inc	e?.[ixhl]/ || /^	dec	e?.[ixhl]/) {
 			hold=2; r=$2; next
 		}
 		if (/^	mov	[abcds][ix],/ && ! /,.s/) {
@@ -64,7 +99,10 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		for (i = 0; i < kept; i++) print line[i]; kept=0
 	}
 	else if (hold == 2) {
-		hold=0; split($2,args,","); print s
+		split($0,args,",")
+		if (/^	mov	/ && r == args[2]) { print s; s=$0; next }
+		split($2,args,",")
+		hold=0; print s
 		if ($1 == "or" && r == args[1] && r == args[2]) next	# don't clear C ...
 	}
 	else if (hold == 3) {
