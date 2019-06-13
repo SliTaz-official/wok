@@ -335,7 +335,9 @@ curdirofs	dd	?		;18	unsigned long curdirofs;
 dirofs		dd	?		;22	unsigned long dirofs;
 curpos		dw	?		;26	unsigned curpos;
 filename2open	dw	?		;28	char *filename2open;
-buffer		db	2560	dup(?)	;30	char buffer[2048+512];
+entrysize	dw	?		;30	int entrysize;
+tmp		dw	?		;32	const char *tmp;
+buffer		db	2560	dup(?)	;34	char buffer[2048+512];
 ends					; } isostate;
 ;***************************************************************
 ;_fastcall long isolseek(bx:const unsigned long *offset);
@@ -954,7 +956,7 @@ _next_bufv:
 @@next:
 		push	di
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
-                pop	di
+		pop	di
 		else
 @@next:
 		call	next_chunk
@@ -977,7 +979,7 @@ _next_bufv:
 		ifdef	EXTRA
 		push	di
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
-                pop	di
+		pop	di
 		else
 		call	next_chunk
 		endif

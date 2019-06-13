@@ -25,7 +25,7 @@ void load_image(struct image_himem *m) {
     buf = m->buf;
     do {
         u16 size;
-	if(s16(size = read_image(m)) <= 0) break;
+	if(s16(size = read_image(m)) -1 < 0) break;
         storepage(bufv);
 	if (bufv != &buf) next(bufv);
         buf += size;

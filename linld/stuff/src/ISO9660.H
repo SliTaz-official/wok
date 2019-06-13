@@ -17,6 +17,8 @@ extern struct isostate {
 	unsigned long curdirofs, dirofs;
 	unsigned curpos;
 	char *filename2open;
+	int entrysize;
+	const char *tmp;
 #define SECTORSZ 2048
 #define SECTORBITS 11
 	char buffer[SECTORSZ+512];	// RR overflow

@@ -1,4 +1,4 @@
-BEGIN { hold=0; is386=0; isload=0; wascall=0 }
+BEGIN { hold=0; is386=0; isload=0; isiso=0; wascall=0 }
 function isnum(n) { return match(n,/^[0-9+-]/) }
 {
 	sub(/segment word public/,"segment byte public")
@@ -14,16 +14,42 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/ax,word ptr/) next
 		if (/^	call/) isload=0
 	}
-	if (/const char \*n = name, \*i = x->filename;/) isiso=1
-	if (isiso) { # ISO9660.LST
-		if ((/mov	word ptr \[bp-6\],ax/ ) ||
-		    (/mov	ax,word ptr \[bp-2\]/) ||
-		    (/bx,word ptr \[bp-6\]/) || (/ax,dx/)) next
+	if (/x->curdirsize == 0xFFFF/) isiso=4
+	if (isiso == 4) { # ISO9660.LST
+		if (/DGROUP:_isostate\+14,-1/) {
+			sub(/DGROUP:_isostate\+14/,"[si+14]")
+			isiso=0
+		}
+	}
+	if (/c = \*s;/) isiso=3
+	if (isiso == 3) { # ISO9660.LST
+		if (/al,byte ptr/) {
+			print "	mov	al,0"
+			sub(/mov/,"xchg")
+		}
+		if (/byte ptr \[di\],0/) {
+			isiso=0
+			next
+		}
+	}
+	if (/endname = NULL/) isiso=2
+	if (isiso == 2) { # ISO9660.LST
+		if (/mov	bx,cx/) next
+		gsub(/cx/,"bx")
+	}
+	if (/const char \*n = name/) isiso=1
+	if (isiso == 1) { # ISO9660.LST
+		if ((/mov	word ptr \[si\+32\],ax/ ) ||
+		    (/mov	ax,word ptr \[si\+28\]/) ||
+		    (/bx,word ptr \[si\+32\]/) || (/ax,dx/)) next
 		if (/dx,/) sub(/dx/,"ax")
-		if ((/sub	ax,word ptr \[bp-2\]/) ||
-		    (/\[di\+12\]/) || (/ax,si/)) sub(/ax/,"bx")
-		if (/add	word ptr \[bp-6\],ax/) $0="	add	bx,word ptr [di+12]"
-		if (/@strcmp\$qpxzct1/) isiso=0
+		if ((/sub	ax,word ptr \[si\+28\]/) ||
+		    (/\[si\+12\]/) || (/ax,di/)) sub(/ax/,"bx")
+		if (/add	word ptr \[si\+32\],ax/) $0="	add	bx,word ptr [si+12]"
+		if (/al,/ || /,al/) sub(/al/,"cl")
+		if (/cmp	byte ptr \[si\+30\],0/) $0="	or	cl,cl"
+		if (/jne	@@0$/) next
+		if (/jmp	@3@58$/) $0="	je	@3@58"
 	}
 	if (wascall) {
 		if (rcall != "") {

@@ -28,7 +28,6 @@ int isoroot(void)
 
 int isoreaddir(void)
 {
-	int size;
 	char *p;
 #ifdef __ROCKRIDGE
 	char *endname;
@@ -50,7 +49,7 @@ int isoreaddir(void)
 		x->curpos = 0;
 	}
 	p = x->buffer; p += x->curpos;
-	if ((size = * (short *) p) == 0) {
+	if ((x->entrysize = * (short *) p) == 0) {
 		return -1;
 	}
 	x->fileofs = (* (unsigned long *) (p + 2)) << SECTORBITS;
@@ -77,7 +76,7 @@ int isoreaddir(void)
 			endname = p + len;
 		}
 		p += len;
-	} while (x->buffer + x->curpos + size - 2 > p);
+	} while (x->buffer + x->curpos + x->entrysize - 2 > p);
 	if (endname)
 		*endname = 0;
 	else
@@ -99,7 +98,7 @@ int isoreaddir(void)
 			*p = 0;
 		}
 	}
-	x->curpos += size;
+	x->curpos += x->entrysize;
 	return 0;
 }
 
@@ -109,10 +108,15 @@ int isoreaddir(void)
 #define IS_DIR(x)( (*((char*) &x + 1) & (char)0676) == (char)0)
 int _isoopen(void)
 {
-	char *name, *s, c;
-	char _64bits = cpuhaslm();
+//	char *name, *s, c;
+//	char _64bits = cpuhaslm();
 	struct isostate *x=&isostate;
+#define name (x->filename2open)
+#define c (((char *)&x->entrysize)[0])
+#define _64bits (((char *)&x->entrysize)[1])
+	char *s;
 
+	_64bits = cpuhaslm();
     do {
 	for (s = (char *) x->filename2open; *s == '/' ; s++) {
 		isoroot();
@@ -123,7 +127,9 @@ int _isoopen(void)
 	c = *s;
 	*s = 0;
 	for (x->curdirsize = 0xFFFF; isoreaddir() != -1;) {
-		const char *n = name, *i = x->filename;
+		const char *n = name;
+#define i (x->tmp)
+		i = x->filename;
 		if (_64bits) {
 			if (strhead(i, n) == -1) continue;
 			n = "64";
