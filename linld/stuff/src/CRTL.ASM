@@ -31,6 +31,27 @@ tazboot_cmd	db	"tazboot.cmd",0
 
         segment _BSS byte public use16 'BSS'
 
+		ifdef EXTRA
+;typedef unsigned dirsizetype;
+struc		isostate		; struct isostate {
+fd		dw	?		; 0	int fd;
+filemod		dw	?		; 2	unsigned short filemod;
+fileofs		dd	?		; 4	unsigned long fileofs;
+filesize	dd	?		; 8	unsigned long filesize;
+filename	dw	?		;12	char *filename;
+curdirsize	dw	?		;14	dirsizetype curdirsize;
+dirsize		dw	?		;16	dirsizetype dirsize;
+curdirofs	dd	?		;18	unsigned long curdirofs;
+dirofs		dd	?		;22	unsigned long dirofs;
+curpos		dw	?		;26	unsigned curpos;
+filename2open	dw	?		;28	char *filename2open;
+entrysize	dw	?		;30	int entrysize;
+tmp		dw	?		;32	const char *tmp;
+;buffer		label			;34	char buffer[2048+512];
+ends					; } isostate;
+		public	_isostate
+_isostate	isostate	<?>
+		endif
 _xfer_buf	db	4096	dup (?)
         global  _no_exit:byte
 _no_exit	db	?
@@ -321,24 +342,6 @@ lseek:
         endp    @lseekcur$qii
 
 		ifdef EXTRA
-
-;typedef unsigned dirsizetype;
-struc		isostate		; struct isostate {
-fd		dw	?		; 0	int fd;
-filemod		dw	?		; 2	unsigned short filemod;
-fileofs		dd	?		; 4	unsigned long fileofs;
-filesize	dd	?		; 8	unsigned long filesize;
-filename	dw	?		;12	char *filename;
-curdirsize	dw	?		;14	dirsizetype curdirsize;
-dirsize		dw	?		;16	dirsizetype dirsize;
-curdirofs	dd	?		;18	unsigned long curdirofs;
-dirofs		dd	?		;22	unsigned long dirofs;
-curpos		dw	?		;26	unsigned curpos;
-filename2open	dw	?		;28	char *filename2open;
-entrysize	dw	?		;30	int entrysize;
-tmp		dw	?		;32	const char *tmp;
-buffer		db	2560	dup(?)	;34	char buffer[2048+512];
-ends					; } isostate;
 ;***************************************************************
 ;_fastcall long isolseek(bx:const unsigned long *offset);
 ;_fastcall long lseekset2(ax:int fd, bx:unsigned long* whence);
@@ -347,7 +350,6 @@ ends					; } isostate;
         proc    @isolseek$qpxul near
 
 isolseek:
-		extrn	_isostate:isostate
 		mov	ax,[_isostate.fd]
 	global	@lseekset2$qipul:near
 @lseekset2$qipul:
@@ -367,7 +369,8 @@ isolseek:
 		call	isolseek
 		jc	doret
 		mov	dx,2560
-		mov	bx,offset _isostate.buffer
+		;mov	bx,offset _isostate.buffer
+		mov	bx,offset _xfer_buf
 		mov	ax,[_isostate.fd]
 		jmp	@read$dxbxax		; read(fd,buffer,2560)
 

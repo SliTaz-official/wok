@@ -16,10 +16,9 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/x->curdirsize == 0xFFFF/) isiso=4
 	if (isiso == 4) { # ISO9660.LST
-		if (/DGROUP:_isostate\+14,-1/) {
-			sub(/DGROUP:_isostate\+14/,"[si+14]")
-			isiso=0
-		}
+		sub(/DGROUP:_isostate\+14/,"[si+14]")
+		sub(/DGROUP:_isostate\+16/,"[si+16]")
+		if (/goto restarted/) isiso=0
 	}
 	if (/c = \*s;/) isiso=3
 	if (isiso == 3) { # ISO9660.LST
@@ -36,6 +35,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isiso == 2) { # ISO9660.LST
 		if (/mov	bx,cx/) next
 		gsub(/cx/,"bx")
+		sub(/DGROUP:_isostate\+31/,"[si+31]")
 	}
 	if (/const char \*n = name/) isiso=1
 	if (isiso == 1) { # ISO9660.LST

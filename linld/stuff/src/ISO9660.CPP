@@ -3,8 +3,6 @@
 #include "iso9660.h"
 #define __ROCKRIDGE
 
-struct isostate isostate;
-
 #if 1
 #define setdirofs(to,sec)	(*(int*)((char*)&(to)+1) = *(int*)&(sec)<<(SECTORBITS-8))
 #define cpydirofs(to,from)	(*(int*)((char*)&(to)+1) = *(int*)((char*)&(from)+1))
