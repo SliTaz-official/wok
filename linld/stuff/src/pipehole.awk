@@ -110,8 +110,14 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/DGROUP:_base_himem,/,"[bx],")
 		sub(/DGROUP:_base_himem\+2,/,"[bx+2],")
 		sub(/DGROUP:_base_himem\+3,/,"[bx+3],")
-		if (/ax,word ptr \[bx\+2\]/ || /\[bp-4\],ax/) sub(/ax/,"bx")
-		if (/bx,ax/) next
+		if (/word ptr \[bx\+2\],0/) {
+			print s
+			hold=0
+			print "	mov	bx,word ptr [bx+2]"
+			$0="	or	bx,bx"
+		}
+		if (/\[bp-4\],ax/) sub(/ax/,"bx")
+		if (/ax,word ptr \[bx\+2\]/ || /bx,ax/) next
 		if (/@strcmp\$qpxzct1/) isotazboot=0
 	}
 	if (/static void addinitrd/) isotazboot=100
