@@ -114,20 +114,35 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/bx,ax/) next
 		if (/@strcmp\$qpxzct1/) isotazboot=0
 	}
-	if (/static void addinitrd/) isotazboot=1
-	if (isotazboot == 1 || isotazboot == 100) { # TAZBOOT.LST
-		if (/m->next_chunk = next_chunk/) isotazboot=100
-		if (/load_initrd/) isotazboot=1
-		if (/push	si/ && isotazboot == 1) next
-		if (/pop	si/) next
+	if (/static void addinitrd/) isotazboot=100
+	if (isotazboot == 100) { # TAZBOOT.LST
+		if (/cx,ax/) {
+			print "	xchg	ax,si"
+			print "	push	di"
+			print "	mov	di,offset _isostate+4"
+			print "	movsw"
+			print "	movsw"
+			print "	movsw"
+			print "	movsw"
+			$0="	pop	di"
+		}
+		if (/mov/ && !/si/ && !/cl/) next
+		if (/initrd.size \+=/) isotazboot=101
+	}
+	if (isotazboot > 100) { # TAZBOOT.LST
+		if (/m->next_chunk = next_chunk/) isotazboot=101
+		if (/load_initrd/) isotazboot=102
+		if (/push	si/ && isotazboot == 102) next
+		if (/pop	si/ && isotazboot == 102) next
 		sub(/\[si\]/,"[bx]")
+		sub(/push	si$/,"push	bx")
 		sub(/si,/,"bx,")
 		sub(/si\+/,"bx+")
 		if (/mov	cx,ax/) $0="	xchg	ax,bx"
 		if (/bx,cx/) next
 		sub(/cx/,"bx")
-		sub(/DGROUP:_imgs\+38/,"[bx+38]")
-		sub(/DGROUP:_imgs\+40/,"[bx+40]")
+		sub(/DGROUP:_imgs\+38$/,"[bx+38-32]")
+		sub(/DGROUP:_imgs\+40$/,"[bx+40-32]")
 		if (/static void bootiso/) isotazboot=0
 	}
 	if (wascall) {
