@@ -19,12 +19,12 @@ static struct initrd_state {
 
 static void next_chunk(struct image_himem *m)
 {
+	if (m->state >= initrd_state.cnt) return;
 	struct initrd_info *i = &initrd_state.info[m->state];
 	m->chunk_size = 0;
-	if (m->state >= initrd_state.cnt) return;
-	lseekset2(m->fd,&i->ofs);
 	m->chunk_size = i->size;
 	m->state++;
+	lseekset2(m->fd,&i->ofs);
 }
 
 static u32 isofilesize4round()
@@ -35,9 +35,8 @@ static u32 isofilesize4round()
 static void addinitrd()
 {
 	u16 *pcnt = &initrd_state.cnt;
-	struct initrd_info *i = &initrd_state.info[*pcnt];
 	if (*pcnt >= MAXINITRD) return;
-	++*pcnt;
+	struct initrd_info *i = &initrd_state.info[(*pcnt)++];
 	i->size = isofilesize;
 	i->ofs = isofileofs;
 	initrd.size += isofilesize4round();
@@ -76,7 +75,7 @@ static void bootiso(char **iso)
 	skip_alloc++;
 	base_himem = memtop() /2;
 	//if (base_himem >= _64m) base_himem = _64m;
-	if (* ((char *) &base_himem +3) >= 4) base_himem = _64m;
+	if (* ((char *) &base_himem +3) >= 4) ((short *)&base_himem)[1] = _64m/_64k;
 	isoopen("boot") != -1 ||
 	isoopen("live") != -1 ||	// debian
 	isoopen("casper") != -1;	// ubuntu
@@ -96,8 +95,8 @@ static void bootiso(char **iso)
 			strcpy(fallback, x->filename);
 		if (strhead(x->filename, "rootfs") == -1
 			|| c > x->filename[6]) continue;
-		strcpy(rootfs, x->filename);
 		c = x->filename[6];
+		strcpy(rootfs, x->filename);
 	}
 
 	strcatb(buf_cmdline,"rw root=/dev/null autologin bootfrom=");

@@ -1,12 +1,20 @@
-BEGIN { hold=0; is386=0; isload=0; isiso=0; wascall=0 }
+BEGIN { hold=0; is386=0; isload=0; isiso=0; istazboot=0; wascall=0 }
 function isnum(n) { return match(n,/^[0-9+-]/) }
 {
 	sub(/segment word public/,"segment byte public")
 
 	if (/^@.*:$/ || /	endp$/) afterjmp=0
 	if (/dword ptr/) is386=1
+	if (/vid_mode = vid_mode/) isload=2
+	if (isload == 2) {  # LOAD.LST
+		sub(/,0/,""); sub(/cmp	/,"mov	cx,")
+		sub(/je/,"jcxz")
+		if (/ax,word/) next
+		sub(/,ax/,",cx")
+		if (/version_string/) isload=0
+	}
 	if (/heap_top = _rm_buf/) isload=1
-	if (isload) {  # LOAD.LST
+	if (isload == 1) {  # LOAD.LST
 		if (/mov	al,byte ptr/ && is386) {
 			print "	movzx	eax,byte ptr [si]"
 			next
@@ -20,13 +28,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/DGROUP:_isostate\+16/,"[si+16]")
 		if (/goto restarted/) isiso=0
 	}
-	if (/c = \*s;/) isiso=3
-	if (isiso == 3) { # ISO9660.LST
+	if (/c = \*s; \*s = 0;/) isiso=3
+	if (isiso == 3) { # ISO9660.LST, TAZBOOT.LST
 		if (/al,byte ptr/) {
 			print "	mov	al,0"
 			sub(/mov/,"xchg")
 		}
-		if (/byte ptr \[di\],0/) {
+		if (/byte ptr \[.*\],0/) {
 			isiso=0
 			next
 		}
@@ -50,6 +58,77 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/cmp	byte ptr \[si\+30\],0/) $0="	or	cl,cl"
 		if (/jne	@@0$/) next
 		if (/jmp	@3@58$/) $0="	je	@3@58"
+	}
+	if (/isoopen\(s\+7\) != -1/) isotazboot=8
+	if (isotazboot == 8) { # TAZBOOT.LST
+		if (/ax,si/) next
+		sub(/ax,ax/,"si,si")
+		if (/magic/) isotazboot=0
+	}
+	if (/\+\+isknoppix/) isotazboot=7
+	if (isotazboot == 7) { # TAZBOOT.LST
+		if (/al,byte/) sub (/al,byte ptr DGROUP:/,"bx,offset ")
+		if (/inc/) sub (/al/,"word ptr [bx]")
+		if (/,al/) next
+		if (/isokernel/) isotazboot=0
+	}
+	if (/if \(c\) s\+\+;/) isotazboot=6
+	if (isotazboot == 6) { # TAZBOOT.LST
+		if (/cmp/) {
+			$0="	cmp	al,0"
+			isotazboot=0
+		}
+	}
+	if (/initrd_state.info\[m->state\]/) isotazboot=5
+	if (isotazboot == 5) { # TAZBOOT.LST
+		if (/cx,ax/) $0="	xchg	ax,bx"
+		if (/mov	ax,word ptr \[si\]/) $0="	lodsw"
+		if (/ax,word ptr \[si\+28\]/) next
+		if (/bx,cx/) next
+		if (/endp/) isotazboot=0
+	}
+	if (/0x7FF0/) isotazboot=4
+	if (isotazboot == 4) { # TAZBOOT.LST
+		if (/ax,word ptr/) {
+			print "	mov	ax,32752"
+			sub(/mov/,"sub")
+		}
+		if (/bx,/ || /cx,/ || /dx,/) next
+		sub(/,bx/,",0")
+		sub(/,cx/,",ax")
+		if (/short/) isotazboot=0
+	}
+	if (/c = x->filename/) isotazboot=3
+	if (isotazboot == 3) { # TAZBOOT.LST
+		if (/ax,/) $0="	xchg	ax,bx"
+		if (/\]$/) next
+		if (/@strcpy\$qpxzct1/) isotazboot=0
+	}
+	if (/memtop/) isotazboot=2
+	if (isotazboot == 2) { # TAZBOOT.LST
+		if (/DGROUP:_base_himem\+2,dx/) print "	mov	bx,offset _base_himem"
+		sub(/DGROUP:_base_himem,/,"[bx],")
+		sub(/DGROUP:_base_himem\+2,/,"[bx+2],")
+		sub(/DGROUP:_base_himem\+3,/,"[bx+3],")
+		if (/ax,word ptr \[bx\+2\]/ || /\[bp-4\],ax/) sub(/ax/,"bx")
+		if (/bx,ax/) next
+		if (/@strcmp\$qpxzct1/) isotazboot=0
+	}
+	if (/static void addinitrd/) isotazboot=1
+	if (isotazboot == 1 || isotazboot == 100) { # TAZBOOT.LST
+		if (/m->next_chunk = next_chunk/) isotazboot=100
+		if (/load_initrd/) isotazboot=1
+		if (/push	si/ && isotazboot == 1) next
+		if (/pop	si/) next
+		sub(/\[si\]/,"[bx]")
+		sub(/si,/,"bx,")
+		sub(/si\+/,"bx+")
+		if (/mov	cx,ax/) $0="	xchg	ax,bx"
+		if (/bx,cx/) next
+		sub(/cx/,"bx")
+		sub(/DGROUP:_imgs\+38/,"[bx+38]")
+		sub(/DGROUP:_imgs\+40/,"[bx+40]")
+		if (/static void bootiso/) isotazboot=0
 	}
 	if (wascall) {
 		if (rcall != "") {

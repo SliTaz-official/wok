@@ -122,8 +122,7 @@ int _isoopen(void)
   next:
 	name = s;
 	do s++; while (*s != '/' && *s);
-	c = *s;
-	*s = 0;
+	c = *s; *s = 0;
 	for (x->curdirsize = 0xFFFF; isoreaddir() != -1;) {
 		const char *n = name;
 #define i (x->tmp)
