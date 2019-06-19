@@ -34,23 +34,27 @@ tazboot_cmd	db	"tazboot.cmd",0
 		ifdef EXTRA
 ;typedef unsigned dirsizetype;
 struc		isostate		; struct isostate {
-fd		dw	?		; 0	int fd;
-filemod		dw	?		; 2	unsigned short filemod;
-fileofs		dd	?		; 4	unsigned long fileofs;
-filesize	dd	?		; 8	unsigned long filesize;
-filename	dw	?		;12	char *filename;
-curdirsize	dw	?		;14	dirsizetype curdirsize;
-dirsize		dw	?		;16	dirsizetype dirsize;
-curdirofs	dd	?		;18	unsigned long curdirofs;
-dirofs		dd	?		;22	unsigned long dirofs;
-curpos		dw	?		;26	unsigned curpos;
-filename2open	dw	?		;28	char *filename2open;
+curpos		dw	?		; 0	unsigned curpos;
+filename2open	dw	?		; 2	char *filename2open;
+fd		dw	?		; 4	int fd;
+filemod		dw	?		; 6	unsigned short filemod;
+fileofs		dd	?		; 8	unsigned long fileofs;
+filesize	dd	?		;12	unsigned long filesize;
+filename	dw	?		;16	char *filename;
+curdirsize	dw	?		;18	dirsizetype curdirsize;
+dirsize		dw	?		;20	dirsizetype dirsize;
+curdirofs	dd	?		;22	unsigned long curdirofs;
+dirofs		dd	?		;26	unsigned long dirofs;
+;overlap
 entrysize	dw	?		;30	int entrysize;
 tmp		dw	?		;32	const char *tmp;
-;buffer		label			;34	char buffer[2048+512];
+c		db	?		;34	char c;
+_64bits		db	?		;35	char _64bits;
+buffer		db	?		;36	char buffer[2048+512];
 ends					; } isostate;
 		public	_isostate
 _isostate	isostate	<?>
+		org	$-7
 		endif
 _xfer_buf	db	4096	dup (?)
         global  _no_exit:byte
@@ -369,8 +373,7 @@ isolseek:
 		call	isolseek
 		jc	doret
 		mov	dx,2560
-		;mov	bx,offset _isostate.buffer
-		mov	bx,offset _xfer_buf
+		mov	bx,offset _isostate.buffer
 		mov	ax,[_isostate.fd]
 		jmp	@read$dxbxax		; read(fd,buffer,2560)
 
@@ -957,9 +960,9 @@ _next_bufv:
 		jnz	@@next
 		mov	[(image_himem di).next_chunk],offset next_chunk
 @@next:
-		push	di
+		;push	di
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
-		pop	di
+		;pop	di
 		else
 @@next:
 		call	next_chunk
@@ -980,9 +983,9 @@ _next_bufv:
 		jnz	@@next
                 pop	[(image_himem di).state]
 		ifdef	EXTRA
-		push	di
+		;push	di
                 call	[(image_himem di).next_chunk]	; m->next_chunk()
-		pop	di
+		;pop	di
 		else
 		call	next_chunk
 		endif
@@ -1024,7 +1027,7 @@ _next_bufv:
 		sub	dx,si
 		mov	bx,[di]
 		call	@read$cxdxbx
-		jc	image_done
+		jbe	image_done
 		xor	cx,cx
 		cwd				; ax < 8000h
 		ifndef	NO386

@@ -110,8 +110,8 @@ int _isoopen(void)
 //	char _64bits = cpuhaslm();
 	struct isostate *x=&isostate;
 #define name (x->filename2open)
-#define c (((char *)&x->entrysize)[0])
-#define _64bits (((char *)&x->entrysize)[1])
+#define c (x->c)
+#define _64bits (x->_64bits)
 	char *s;
 
 	_64bits = cpuhaslm();
@@ -121,7 +121,7 @@ int _isoopen(void)
 	}
   next:
 	name = s;
-	do s++; while (*s != '/' && *s);
+	do s++; while (*s && *s != '/');
 	c = *s; *s = 0;
 	for (x->curdirsize = 0xFFFF; isoreaddir() != -1;) {
 		const char *n = name;

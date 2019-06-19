@@ -7,18 +7,19 @@ typedef unsigned dirsizetype;
 #define filesize2dirsize(x)	(*(dirsizetype *)((char *)&(x)+1))
 #define DIRSECTORSZ	(SECTORSZ/256)
 extern struct isostate {
+	unsigned curpos;
+	char *filename2open;
 	int fd;
 	unsigned short filemod;
 	unsigned long fileofs;
 	unsigned long filesize;
 	char *filename;
-//private
 	dirsizetype curdirsize, dirsize;
 	unsigned long curdirofs, dirofs;
-	unsigned curpos;
-	char *filename2open;
 	int entrysize;
 	const char *tmp;
+	char c;
+	char _64bits;
 #define SECTORSZ 2048
 #define SECTORBITS 11
 	char buffer[SECTORSZ+512];	// RR overflow

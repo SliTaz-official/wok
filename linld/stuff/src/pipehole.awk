@@ -1,10 +1,16 @@
-BEGIN { hold=0; is386=0; isload=0; isiso=0; istazboot=0; wascall=0 }
+BEGIN { hold=0; is386=0; isload=0; isiso=0; istazboot=0; wascall=0; label="none"; xlabel="" }
 function isnum(n) { return match(n,/^[0-9+-]/) }
 {
 	sub(/segment word public/,"segment byte public")
 
 	if (/^@.*:$/ || /	endp$/) afterjmp=0
 	if (/dword ptr/) is386=1
+	if (/void load_initrd\(\)/) isload=3
+	if (isload == 3) {  # LOAD.LST
+		if(/push	di/ || /pop	di/) next
+		sub(/\[di/,"[bx")
+		sub(/\di,/,"bx,")
+	}
 	if (/vid_mode = vid_mode/) isload=2
 	if (isload == 2) {  # LOAD.LST
 		sub(/,0/,""); sub(/cmp	/,"mov	cx,")
@@ -22,42 +28,102 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/ax,word ptr/) next
 		if (/^	call/) isload=0
 	}
+	if (/CD001/) isiso=7
+	if (isiso == 7) { # ISO9660.LST
+		sub(/mov	ax,-1/,"dec	ax")
+		if (/jmp/) isiso=0
+	}
+	if (/int len =/) isiso=6
+	if (isiso == 6) { # ISO9660.LST
+		if (/dx,ax/) next
+		sub(/ax/,"dx")
+		sub(/cx,di/,"bx,di")
+		sub(/cx,dx/,"bx,ax")
+		sub(/di,dx/,"di,ax")
+		if (/while/) isiso=2
+	}
+	if (/entrysize =/) isiso=5
+	if (isiso == 5) { # ISO9660.LST
+		if (/ax,ax/) next
+		sub(/ax/,"cx")
+		sub(/je/,"jcxz")
+		if (/return/) isiso=0
+	}
 	if (/x->curdirsize == 0xFFFF/) isiso=4
 	if (isiso == 4) { # ISO9660.LST
-		sub(/DGROUP:_isostate\+14/,"[si+14]")
-		sub(/DGROUP:_isostate\+16/,"[si+16]")
+		sub(/DGROUP:_isostate\+18/,"[si+18]")
+		sub(/DGROUP:_isostate\+20/,"[si+20]")
 		if (/goto restarted/) isiso=0
 	}
-	if (/c = \*s; \*s = 0;/) isiso=3
+	if (/do s\+\+; while/) isiso=3
+	if (/for \(p = s; \*s && \*s \!=/) isiso=3
 	if (isiso == 3) { # ISO9660.LST, TAZBOOT.LST
-		if (/al,byte ptr/) {
-			print "	mov	al,0"
-			sub(/mov/,"xchg")
-		}
-		if (/byte ptr \[.*\],0/) {
-			isiso=0
-			next
-		}
+		sub(/cmp	byte ptr \[.i\]/,"sub	al")
+		if (/mov	byte ptr \[bp-5\],al/) $0="	push	ax"
+		if (/mov	al,byte ptr \[bp-5\]/) $0="	pop	ax"
+		if (/inc	/) { r=$2; print; next }
+		if (/al,0/) print "	mov	al,[" r "]"
+		if (/al,byte ptr/) sub(/mov/,"xchg")
+		if (/byte ptr \[.*\],0/) next
+		if (/jmp/) print "	mov	bx,si"
+		if (/word ptr \[bp-4\]/) next
+		if (/\) s\+\+;/ || /\],-1/) isiso=0
 	}
 	if (/endname = NULL/) isiso=2
 	if (isiso == 2) { # ISO9660.LST
 		if (/mov	bx,cx/) next
 		gsub(/cx/,"bx")
-		sub(/DGROUP:_isostate\+31/,"[si+31]")
+		sub(/DGROUP:_isostate\+35/,"[si+35]")
 	}
 	if (/const char \*n = name/) isiso=1
 	if (isiso == 1) { # ISO9660.LST
 		if ((/mov	word ptr \[si\+32\],ax/ ) ||
-		    (/mov	ax,word ptr \[si\+28\]/) ||
+		    (/mov	ax,word ptr \[si\+2\]/) ||
 		    (/bx,word ptr \[si\+32\]/) || (/ax,dx/)) next
 		if (/dx,/) sub(/dx/,"ax")
-		if ((/sub	ax,word ptr \[si\+28\]/) ||
-		    (/\[si\+12\]/) || (/ax,di/)) sub(/ax/,"bx")
-		if (/add	word ptr \[si\+32\],ax/) $0="	add	bx,word ptr [si+12]"
+		if ((/sub	ax,word ptr \[si\+2\]/) ||
+		    (/\[si\+16\]/) || (/ax,di/)) sub(/ax/,"bx")
+		if (/add	word ptr \[si\+32\],ax/) $0="	add	bx,word ptr [si+16]"
 		if (/al,/ || /,al/) sub(/al/,"cl")
-		if (/cmp	byte ptr \[si\+30\],0/) $0="	or	cl,cl"
+		if (/cmp	byte ptr \[si\+34\],0/) $0="	or	cl,cl"
 		if (/jne	@@0$/) next
 		if (/jmp	@3@58$/) $0="	je	@3@58"
+		sub(/mov	ax,-1/,"dec	ax")
+	}
+	if (/endp/) { xlabel = ""; goto2=0 }
+	if (/isoopen\(s\+7\)/ && xlabel == "") goto2=1
+	if (/_vid_mode,ax/ && xlabel == "") goto2=1
+	if (/_base_himem\+2,/ && xlabel == "@") goto2=1
+	if (/puts\(cmdline\)/ && xlabel == "@@") goto2=1
+	if (goto2 == 1 && /jmp/) { # TAZBOOT.LST && LINLD.LST
+		print $NF xlabel "@:"
+		label=$NF
+	}
+	if (goto2 > 0 && label == $NF) {
+		$0=$0 xlabel
+		if (goto2++ == 1) xlabel=xlabel "@"
+	}
+	if (/cmdline=s\+=3/ || /magic \!= 0/ || /&root_dev =/) { isotazboot=10; j="" }
+	if (isotazboot == 10) { # TAZBOOT.LST && LINLD.LST
+		if (/je/ || /jne/) { j=$1; next }
+		if (/jmp/) {
+			if (j=="jne") sub(/jmp/,"je")
+			else if (j=="je") sub(/jmp/,"jne")
+			isotazboot=0
+		}
+	}
+	if (/static const unsigned long initrddesc = 18L/) isotazboot=9
+	if (isotazboot == 9) { # TAZBOOT.LST
+		if (/,0/) {
+			split($4,y,",")
+			print "	mov	bx,offset " y[1]
+		}
+		if (/DGROUP:.*\+6,46/) {
+			sub(/DGROUP:.*\+6,/,"[bx+6],")
+			isotazboot=0
+		}
+		if (/mov/) $0="	mov	si,bx"
+		sub(/DGROUP:.*,/,"[bx],")
 	}
 	if (/isoopen\(s\+7\) != -1/) isotazboot=8
 	if (isotazboot == 8) { # TAZBOOT.LST
@@ -79,24 +145,28 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			isotazboot=0
 		}
 	}
-	if (/initrd_state.info\[m->state\]/) isotazboot=5
-	if (isotazboot == 5) { # TAZBOOT.LST
+	if (/static void next_chunk/) isotazboot=5
+	if (isotazboot == 5 || isotazboot == 500) { # TAZBOOT.LST
 		if (/cx,ax/) $0="	xchg	ax,bx"
-		if (/mov	ax,word ptr \[si\]/) $0="	lodsw"
-		if (/ax,word ptr \[si\+28\]/) next
+		if (/ax,word ptr \[si\+28\]/ && isotazboot == 500) next
 		if (/bx,cx/) next
+		if (/push/ || /pop/ || /bp,sp/ || /si,/) next
+		sub(/\[si/,"[di")
+		if (/initrd_info/) isotazboot=500
 		if (/endp/) isotazboot=0
 	}
 	if (/0x7FF0/) isotazboot=4
 	if (isotazboot == 4) { # TAZBOOT.LST
 		if (/ax,word ptr/) {
 			print "	mov	ax,32752"
+			print "	cwd"
 			sub(/mov/,"sub")
 		}
 		if (/bx,/ || /cx,/ || /dx,/) next
-		sub(/,bx/,",0")
+		sub(/,0/,",dx")
+		sub(/,bx/,",dx")
 		sub(/,cx/,",ax")
-		if (/short/) isotazboot=0
+		if (/@addinitrd\$qv/) isotazboot=0
 	}
 	if (/c = x->filename/) isotazboot=3
 	if (isotazboot == 3) { # TAZBOOT.LST
@@ -104,15 +174,11 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/\]$/) next
 		if (/@strcpy\$qpxzct1/) isotazboot=0
 	}
-	if (/memtop/) isotazboot=2
+	if (/base_himem = memtop/) isotazboot=2
 	if (isotazboot == 2) { # TAZBOOT.LST
-		if (/DGROUP:_base_himem\+2,dx/) print "	mov	bx,offset _base_himem"
-		sub(/DGROUP:_base_himem,/,"[bx],")
-		sub(/DGROUP:_base_himem\+2,/,"[bx+2],")
-		sub(/DGROUP:_base_himem\+3,/,"[bx+3],")
+		if (/@6@226/ || /mov	ax,1/ || /@6@254/ || /xor	ax,ax/) next
 		if (/word ptr \[bx\+2\],0/) {
-			print s
-			hold=0
+			print s; hold=0
 			print "	mov	bx,word ptr [bx+2]"
 			$0="	or	bx,bx"
 		}
@@ -123,32 +189,31 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/static void addinitrd/) isotazboot=100
 	if (isotazboot == 100) { # TAZBOOT.LST
 		if (/cx,ax/) {
-			print "	xchg	ax,si"
-			print "	push	di"
-			print "	mov	di,offset _isostate+4"
+			print "	mov	si,offset _isostate+8"
+			print "	xchg	ax,di"
 			print "	movsw"
 			print "	movsw"
 			print "	movsw"
 			print "	movsw"
-			$0="	pop	di"
+			$0="	xchg	ax,di"
 		}
 		if (/mov/ && !/si/ && !/cl/) next
-		if (/initrd.size \+=/) isotazboot=101
+		if (/void load_initrds/) isotazboot=101
 	}
-	if (isotazboot > 100) { # TAZBOOT.LST
-		if (/m->next_chunk = next_chunk/) isotazboot=101
-		if (/load_initrd/) isotazboot=102
-		if (/push	si/ && isotazboot == 102) next
-		if (/pop	si/ && isotazboot == 102) next
-		sub(/\[si\]/,"[bx]")
-		sub(/push	si$/,"push	bx")
+	if (isotazboot == 101 || isotazboot == 102) { # TAZBOOT.LST
+		sub(/\[si/,"[di"); sub(/si,/,"di,"); sub(/si$/,"di")
+		sub(/DGROUP:_imgs\+38$/,"[di+38-32]")
+		sub(/DGROUP:_imgs\+40$/,"[di+40-32]")
+		if (/isofd/) isotazboot=102
+		if (/push/ && isotazboot == 102) next
+		if (/pop/ && isotazboot == 102) next
+		if (/load_initrd/) isotazboot=101
+		if (/isokernel/) isotazboot=103
+	}
+	if (isotazboot > 102) { # TAZBOOT.LST
+		if (/push/ || /pop/) next
+		sub(/\[si/,"[bx")
 		sub(/si,/,"bx,")
-		sub(/si\+/,"bx+")
-		if (/mov	cx,ax/) $0="	xchg	ax,bx"
-		if (/bx,cx/) next
-		sub(/cx/,"bx")
-		sub(/DGROUP:_imgs\+38$/,"[bx+38-32]")
-		sub(/DGROUP:_imgs\+40$/,"[bx+40-32]")
 		if (/static void bootiso/) isotazboot=0
 	}
 	if (wascall) {
@@ -480,5 +545,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (afterjmp) print ";" $0
 	else print
-	if (/^	jmp	/) afterjmp=1
+	if (/^	jmp	/ || /^	call	near ptr _boot_kernel/ ||
+	    /^	call	near ptr @die$qpxzc/) afterjmp=1
 }

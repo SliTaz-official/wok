@@ -115,7 +115,7 @@ static void bootiso(char **iso)
 				addinitrd();
 		}
 	}
-	else if (magic > 0) {
+	else if (magic != 0) {
 		char *initrdfilename = fallback;
 		static const unsigned long initrddesc = 18L;
 
