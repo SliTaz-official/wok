@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="chromaprint"
+VERSION="1.4.3"
+CATEGORY="multimedia"
+SHORT_DESC="Library that implements a custom algorithm for extracting fingerprints from any audio source."
+MAINTAINER="developer@slitaz.org"
+LICENSE="LGPLv2+"
+WEB_SITE="https://acoustid.org/chromaprint"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/acoustid/$PACKAGE/releases/download/v$VERSION/$TARBALL"
+
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="cmake ffmpeg-dev gcc83"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	cmake	.				\
+		-DCMAKE_BUILD_TYPE=Release	\
+		-DBUILD_TOOLS=ON		\
+		-DCMAKE_INSTALL_PREFIX=/usr &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+}
