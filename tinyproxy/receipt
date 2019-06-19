@@ -6,36 +6,35 @@ CATEGORY="network"
 SHORT_DESC="A light-weight HTTP proxy daemon for POSIX operating systems."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://tinyproxy.github.io/"
 WGET_URL="https://github.com/tinyproxy/tinyproxy/archive/$VERSION.tar.gz"
 
-BUILD_DEPENDS="wget"
+BUILD_DEPENDS="wget automake"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch -Np1 -i $stuff/no-docs-and-tests.diff
+	sed -i '/docs/d;/tests$/d;s|m4macros \\|m4macros|' Makefile.*
+	./autogen.sh
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
 		--mandir=/usr/share/man \
-		--sysconfdir=/etc/tinyproxy \
+		--sysconfdir=/etc \
 		--localstatedir=/var \
 		$CONFIGURE_ARGS &&
 	make && make DESTDIR=$DESTDIR install
 	# Provide sane defaults
   	sed -i '/^#Listen/a\Listen 127.0.0.1' "$DESTDIR/etc/tinyproxy/tinyproxy.conf"
-
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share $fs/etc/init.d
-	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/share/tinyproxy $fs/usr/share
 	cp -a $install/etc/tinyproxy $fs/etc
 	cp -a $stuff/tinyproxy $fs/etc/init.d
 }
-
