@@ -2,7 +2,7 @@
 //
 // Common defs not belonging to CRTL
 
-#define NL "\r\n"
+#define NL "\n"
 #define VERSION_STR "0.97"
 
 #if 0       // DEBUG

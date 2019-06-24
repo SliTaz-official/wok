@@ -5,6 +5,70 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 
 	if (/^@.*:$/ || /	endp$/) afterjmp=0
 	if (/dword ptr/) is386=1
+	sub(/DGROUP:_imgs\+65534/,"[di-2]")
+	if (/cmd_line_ptr =/ && is386 == 0) isload=7
+	if (isload == 7) {  # LOAD.LST
+		if (/add/ || /xor/ || /extrn/ || /N_LXLSH@/ || /cl,4/) next
+		if (/,ax/) {
+			sub(/ax/,"8000h")
+			isload=0
+		}
+		if (/,dx/) {
+			print "	mov	cl,12"
+			print "	shr	ax,cl"
+			sub(/dx/,"ax")
+		}
+	}
+	if (/\[0\] = m-\>fallback/) isload=6
+	if (isload == 6) {  # LOAD.LST
+		if (/si\+2/) {
+			print "	inc	si"
+			$0="	inc	si"
+		}
+		if (/les/) sub(/bx,/,"ax,")
+		if (/bx\+4/ || /es:/) {
+			if (/bx\+4/) isload=0
+			next
+		}
+		if (/si\+6/) {
+			print "	xchg	ax,di"
+			print "	movsw"
+			print "	movsw"
+			print "	movsw"
+			print "	movsw"
+			print "	xchg	ax,di"
+			next
+		}
+	}
+	if (/version_string = /) isload=5
+	if (isload == 5) {  # LOAD.LST
+		sub(/ax,/,"bx,")
+		if (/_version_string,/) isload=0
+		if (/mov	bx,ax/) next
+	}
+	if (/topseg\(\)>>12/) isload=4
+	if (isload == 4 && is386 == 0) {  # LOAD.LST
+		if (/push/ || /pop/) next
+		if (/ax,cs/) {
+			print "	cwd"
+			sub(/ax,cs/,"bx,cs")
+		}
+		if (/dx,dx/) next
+		sub(/ax,dx/,"ax,bx")
+		if (/call/) isload=400
+	}
+	if (isload == 400 && /,0/) {
+		sub(/,0/,",dh")
+		isload=0
+	}
+	if (isload == 4 && is386) {  # LOAD.LST
+		sub(/dx,cs/,"edx,cs")
+		sub(/eax/,"edx")
+		sub(/ax,9/,"dx,9")
+		if (/,0/) sub(/,0/,",dh")
+		if (/movzx/) next
+		if (/fallback = base_himem/) { isload=0 }
+	}
 	if (/void load_initrd\(\)/) isload=3
 	if (isload == 3) {  # LOAD.LST
 		if(/push	di/ || /pop	di/) next
@@ -17,9 +81,9 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/je/,"jcxz")
 		if (/ax,word/) next
 		sub(/,ax/,",cx")
-		if (/version_string/) isload=0
+		if (/version_string/ || /starting linux 1\.3\.73/) isload=0
 	}
-	if (/heap_top = _rm_buf/) isload=1
+	if (/_rm_size=0x200/ || /heap_top = _rm_buf/) isload=1
 	if (isload == 1) {  # LOAD.LST
 		if (/mov	al,byte ptr/ && is386) {
 			print "	movzx	eax,byte ptr [si]"
@@ -190,6 +254,8 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isotazboot == 100) { # TAZBOOT.LST
 		if (/cx,ax/) {
 			print "	mov	si,offset _isostate+8"
+			print "	push	ds"
+			print "	pop	es"
 			print "	xchg	ax,di"
 			print "	movsw"
 			print "	movsw"

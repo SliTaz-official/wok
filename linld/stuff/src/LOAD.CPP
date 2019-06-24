@@ -122,8 +122,10 @@ u16 rm_size;
 static u8 pm_high;	// @ = @rm_size + 2, see JUMP.ASM
 static u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
 struct image_himem imgs[2];
+u32 far *initrd_desc = (u32 far *) MK_FP(0x9000,0x218);
 
 static const char kernel_file_error[] = "Can't use kernel file";
+char *version_string="";
 char* load_kernel() {
 
     struct	image_himem *m = &pm;
@@ -131,10 +133,9 @@ char* load_kernel() {
 #define _pm_high	(((u8*)(m))[-3])
 #define _rm_size	(*(u16*)((u8*)(m)-5))
 #define _csip		(*(u32*)((u8*)(m)-9))
-    char *version_string;
   {
     struct kernelparams_t *kernelparams;
-    kernelparams = &(((first1k_t*) (_rm_buf(m) = (u8 *)malloc_or_die(_32k)))->params);
+    kernelparams = &(((first1k_t*) (_rm_buf(m) = (u8 *)heap_top))->params);
 #define first1k		((first1k_t*)((u8 *)kernelparams-0x1F1))
 
     *((u16 *)&_csip+1)=topseg()|0x20;
@@ -143,7 +144,6 @@ char* load_kernel() {
     open_image(m, kernel_name);
 
 do {
-    // Do not use malloc below until heap_top adjustment (see <*>)
  if (readrm(m, 0x200) == 0x200) {
 
     lseekcur(m->fd,-0x200);
@@ -159,7 +159,7 @@ do {
     if((kernelparams->setup_sects)>=(_32k/512) || // 0th sector not counted
 	 kernelparams->boot_flag != 0xAA55)
         die("Not a kernel");
-    heap_top = _rm_buf(m)+(_rm_size=0x200*(kernelparams->setup_sects+1));  // <*>
+    _rm_size=0x200*(kernelparams->setup_sects+1);
     m->size -= _rm_size;
     m->chunk_size -= _rm_size;
 
@@ -173,7 +173,6 @@ do {
 
     if((int)vid_mode) kernelparams->vid_mode = vid_mode;
     if((int)root_dev) kernelparams->root_dev = root_dev;
-    version_string = "";
 
     if(kernelparams->header == HdrS) { // starting linux 1.3.73
 	if(kernelparams->loadflags & 1) {
@@ -183,10 +182,10 @@ do {
             pm_high++;
 
             // Hook on int15 to work around fn 88 DOS breakage
-            hook_int15_88();
+            hook_int15_88(); // break _ES
         }
         if (kernelparams->kernel_version)
-            version_string = (char *) first1k+kernelparams->kernel_version+0x200;
+            version_string = (char *) strdup((char *) first1k+kernelparams->kernel_version+0x200);
         kernelparams->type_of_loader = 0xff; // kernel do not know us (yet :-)
         if(kernelparams->version >= 0x201) {
             // * offset limit of the setup heap
@@ -206,39 +205,22 @@ do {
   }
 
 cmd_line_ok:
-    // Check and enable A20 if needed
-    enable_a20_or_die();
+
+    // Move setup & Check and enable A20 if needed
+    moverm(m); // break _ES
 
     // Read remaining kernel (pm part)
     // Try to load kernel high, maybe even blindly storing it
     // in unallocated memory as a last resort
 
-  {
-    struct image_himem *m = &pm;
-    if((u16)(((m->fallback=(u32(u16(_CS)+0x1000)<<4))+m->size)>>16) >=
+    if((u16)(((m->fallback=(u32(u16(_CS)+(u16(heap_top)>>4)+1)<<4))+m->size)>>16) >=
 		 (u16)(topseg()>>12) || _pm_high) {
         m->fallback = base_himem;
     }
 
     load_image(m);
-  }
     return version_string;
 }
-
-struct initrdparams_t {
-    u32     header;         // 0202 Magic signature "HdrS"
-    u16     version;        // 0206 Boot protocol version supported
-    u16     realmode_switch_ofs; // 0208 Hook called just before rm->pm
-    u16     realmode_switch_seg;
-    u16     start_sys_seg;  // 020C
-    u16     kernel_version; // 020E Points to kernel version string
-    u8      type_of_loader; // 0210 Boot loader identifier
-    u8      loadflags;      // 0211 Boot protocol option flags
-    u16     setup_move_size;// 0212 Move to high memory size (used with hooks)
-    u32     code32_start;   // 0214 Boot loader hook (see below)
-    u32     initrd_buf;     // 0218 initrd load address (set by boot loader)
-    u32     initrd_size;    // 021C initrd size (set by boot loader)
-};
 
 // Read initrd if needed
 void load_initrd() {
@@ -262,9 +244,8 @@ void load_initrd() {
 
     load_image(m);
 
-    struct initrdparams_t *initrdparams = ((struct initrdparams_t *)&(((first1k_t*) _rm_buf(m-1))->params.header));
-    if(initrdparams->header == HdrS) {
-        initrdparams->initrd_buf  = m->fallback;
-        initrdparams->initrd_size = m->size;
+    if (*version_string) {
+        initrd_desc[0] = m->fallback;
+        initrd_desc[1] = m->size;
     }
 }

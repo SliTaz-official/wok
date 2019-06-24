@@ -82,14 +82,16 @@ saved15		dd	?
                 call	rdcmos17
                 popf
 tokb:
-                xor     dx,dx
-                add     ah,4h           ;account for 1024 low kb
-                adc     dx,dx           ;  (optimized to death)
 		mov	cl,10		;multiply by 1024
 		ifndef	NO386
+                add     ah,4h           ;account for 1024 low kb
+                setc    dl              ;  (optimized to death)
 		shld    dx,ax,cl
 		shl     ax,cl		;  (kbytes -> bytes)
 		else
+                xor     dx,dx
+                add     ah,4h           ;account for 1024 low kb
+                adc     dx,dx           ;  (optimized to death)
 		db	0A9h		; test ax,04B1h
         global  N_LXLSH@4:near
 N_LXLSH@4:
@@ -208,6 +210,8 @@ _memtop:
 		xchg	ax,[es:bx+15*4+2]
 		mov	[word saved15+2],ax
 		endif
+		;push	ds
+		;pop	es
 @@skip:
 		ret
 int15_88:

@@ -51,18 +51,18 @@ xmm_handler	dd	?
 		endif
 		jne	@@gotit
 
-		xchg	ax,cx			; save cmd
+		push	ax			; save cmd
                 mov     ax,4300h		; installation check in al
                 int     2fh
                 mov     bx,offset xmm_fail
-                push    cs
+                push    ds
                 pop     es
                 cmp     al,80h
                 jne     @@err
                 mov     ax,4310h		; get driver address in es:bx
                 int     2fh
 @@err:
-		xchg	ax,cx			; restore cmd
+		pop	ax			; restore cmd
 		mov	[si],bx
 		mov	[si+2],es
 @@gotit:

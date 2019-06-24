@@ -11,14 +11,8 @@
                 p386
 		endif
 
-        group   DGROUP  _TEXT,_DATA,_BSS
+        group   DGROUP  _TEXT,_BSS
         assume  cs:DGROUP,ds:DGROUP
-
-        segment _DATA byte public use16 'DATA'
-
-overflow	db	"Loaded too close to 9000:0",0
-
-        ends    _DATA
 
         segment _BSS byte public use16 'BSS'
 
@@ -90,38 +84,14 @@ step19:
 	global	_boot_kernel:near
         proc    _boot_kernel near
         
-                p8086
-		extrn	_heap_top:word
-		global	sssp:dword
 		ifdef	NO386
-		extrn	_topseg:near
-		call	near _topseg
-		mov	cl,4
-		org	$-4
-sssp		dd	?
-		mov	[word sssp+2],ax
-		xchg	ax,bx
-		mov	ax,[_heap_top]
-		shr	ax,cl
+                p8086
 		else
                 p386
-		mov	ax,[_heap_top]
-		shr	ax,4
-		mov	bx,9000h
-		org	$-4
-sssp		dd	?
 		endif
-		mov	es,bx
-		mov	dx,cs
-		add	ax,dx
-		cmp	ax,bx
-		jb	@@nooverflow
-; Oops! We can stomp on our toes... better stop now
-		mov	bx,offset overflow
-		extrn	die:near
-		call	near die
-@@nooverflow:
 		;cli				; we start doing destructive things to DOS
+		extrn	sssp:word
+		mov	es,[sssp+2]
 		push	es
 		pop	ss
 		mov	sp,0A000h
@@ -131,18 +101,12 @@ sssp		dd	?
 		lodsw
 		push	ax			; _csip high
 		push	[word si-4]		; _csip low
-		else
-		mov	si,offset _rm_size	; _rm_size, _pm_high, _rm_buf
-		push	[dword si-4]		; _csip
-		endif
 		lodsw
-		xchg	ax,cx			; _rm_size
+		else
+		mov	si,offset _rm_size+2	; _rm_size, _pm_high, _rm_buf
+		push	[dword si-6]		; _csip
+		endif
 		lodsb				; _pm_high
-		mov	si,[si]			; _rm_buf
-		xor	di,di
-		;cld
-		rep
-		  movsb
 		extrn	_cmdline:word
 		mov	si,[_cmdline]
 		mov	di,8000h

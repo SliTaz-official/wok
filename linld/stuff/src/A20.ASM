@@ -16,6 +16,7 @@
 enable_a20_methods:
 		dw	_enable_a20_fast, _enable_a20_kbd, _enable_a20_xmm, die
 msg_a20		db	"Can't use A20",0
+overflow	db	"Loaded too close to 9000:0",0
 
         ends    _DATA
 
@@ -84,12 +85,59 @@ msg_a20		db	"Can't use A20",0
         endp    _enable_a20_fast
 
 ;***************************************************************
+;_fastcall void moverm(bx:struct himem *m);
+;***************************************************************
+
+	global	@moverm$qp11image_himem:near
+@moverm$qp11image_himem:
+		push	si di
+		global	sssp:dword
+		extrn	_heap_top:word
+		ifdef	NO386
+		extrn	_topseg:near
+		call	near _topseg
+		mov	cl,4
+		org	$-4
+sssp		dd	?
+		mov	[word sssp+2],ax
+		;extrn	_initrd_desc:dword
+		;mov	[word _initrd_desc+2],ax
+		xchg	ax,dx
+		mov	ax,[_heap_top]
+		shr	ax,cl
+		else
+                p386
+		mov	ax,[_heap_top]
+		shr	ax,4
+		mov	dx,9000h
+		org	$-4
+sssp		dd	?
+		endif
+		mov	es,dx
+		mov	cx,cs
+		add	ax,cx
+		cmp	ax,dx
+		jb	@@nooverflow
+; Oops! We can stomp on our toes... better stop now
+		mov	bx,offset overflow
+		call	near die
+@@nooverflow:
+		mov	cx,[bx-5]	; size
+		mov	si,[bx-2]	; data
+		xor	di,di
+		rep
+		  movsb
+		;push	ds
+		;pop	es
+		;pop	di si
+		pop	di
+
+;***************************************************************
 ;void enable_a20_or_die();
 ;***************************************************************
-        global  _enable_a20_or_die:near
         proc    _enable_a20_or_die near
 
-		push	si
+		;push	si
 		mov	si,offset enable_a20_methods
 		jmp	@@check
 @@loop:
@@ -108,7 +156,7 @@ msg_a20		db	"Can't use A20",0
 ; time on certain systems; Toshiba Tecras are known to have this
 ; problem.
 
-                push    ds es
+                push    ds
 		xor	bx,bx
 		mov	ds,bx
 		mov	cx,0FFFFh
@@ -124,13 +172,15 @@ a20lp:
 		sti
 a20ko:
 		loopne	a20lp
-		xchg	ax,cx
-                pop     es ds
+		;xchg	ax,cx
+                pop     ds
                 ;ret
 
         ;endp    _check_a20
 
 		jne	@@loop
+		;push	ds
+		;pop	es
 		pop	si
                 ret
 

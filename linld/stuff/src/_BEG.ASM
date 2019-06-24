@@ -26,8 +26,13 @@ msg_badmapping  db      "VCPI: low 640k need 1:1 mapping",0
         ends    _DATA
 
         segment _BSS byte public use16 'BSS'
+
+STACK_SIZE = 1024
+
         global  _bss_start:byte
         label   _bss_start byte
+		db	STACK_SIZE-2 dup(?)
+stktop		dw	?
 		ifdef	EXTRA
         global  _cpu_features:dword
 _cpu_features	dd	?
@@ -47,7 +52,8 @@ _cpu_features	dd	?
 ;***************************************************************
 ; clear bss
 ;***************************************************************
-		mov	si,offset _bss_start
+		mov	sp,offset stktop
+		mov	si,sp
 		mov	bx, 0F000h	; cld ; cli & empty string
 clearbss:
 		mov	[si],bl		; clear bss + heap + sp
@@ -140,7 +146,7 @@ is386vcpi:
 		;call	_get_vcpi_interface
 		mov	bx,offset msg_badmapping
 		jnz	no_vcpi
-		inc	[byte bx+_vcpi-msg_badmapping]
+		inc	[word bx+_vcpi-msg_badmapping]
 endcpu386:
 		ifdef	EXTRA
 		pushfd
@@ -251,14 +257,12 @@ argend:
 	endif
 
 ;***************************************************************
-                extrn   _main:near
-                call    _main
+                extrn	_main:near
+                call	_main
+		;never return
 
 ;***************************************************************
-	        global  exit:near
-exit:
-                mov	ah,4Ch
-                int	21h
+
         ends    _TEXT
 
 

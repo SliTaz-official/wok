@@ -19,8 +19,7 @@
 		global	_heap_top
 		extrn	_bss_end
 _heap_top	dw	_bss_end
-msg_hang	db      "High mem corrupted - not exiting to DOS"
-msg_lf		db	10,0
+msg_hang	db      "High mem corrupted - not exiting to DOS",0
 vcpi_alloc_err	db	"VCPI "
 msg_malloc      db      "malloc error",0
 	ifdef	EXTRA
@@ -86,18 +85,14 @@ ultoabuf	db	12	dup (?)
         global  @strcatb$qpxzct1:near
         proc	@strcatb$qpxzct1 near
 
-	ifdef	EXTRA
 		mov	cl,7Fh
 		db	0bah			; mov	dx,imm opcode
         global	@strcpy$qpxzct1:near
 @strcpy$qpxzct1:
 		xor	cx,cx
-	endif
                 push	si
                 xchg	ax,si			; b
-	ifdef	EXTRA
 		jcxz	@@nocat
-	endif
 		dec	bx
 @@catlp:
                 inc	bx
@@ -185,29 +180,32 @@ strend:
 ;_fastcall void puts(bx:const char* s):
 ;***************************************************************
         global  @puts$qpxzc:near
-        proc    @puts$qpxzc near
 
 ;        global  puts:near			; puts(bx)
+@putsz:
+		call	@putc
+@puts$qpxzc:
 puts:
-		call	@@putsz
-                mov	bx,offset msg_lf
-		mov	dl,13
-@@putcz:
-		mov	ah,2
-		int	21h
-@@putsz:
 		mov	dl,[bx]
 		inc	bx
 		or	dl,dl
-		jne	@@putcz			; ZF=1  (for malloc failure)
+		jne	@putsz
+		mov	dl,10
+@putc:
+		cmp	dl,10
+		jne	@putcz
+		call	@putcz2
+@putcz2:
+		xor	dl,7		; 10^13  1010^1101
+@putcz:
+		mov	ah,2
+		int	21h
 		ret
-
-        endp    @puts$qpxzc
-
 
 
 ;***************************************************************
 ;_fastcall int open(bx:const char* name, int flags=O_RDONLY);
+;_fastcall int openargs(bx:const char* name, int flags=O_RDONLY);
 ;***************************************************************
         global  openargs:near			; openargs(bx)
 openargs:
@@ -508,8 +506,19 @@ isolseek:
 		endif
 
 ;***************************************************************
+;_fastcall char* strdup(bx:const char* a);
 ;_fastcall char* malloc_or_die(ax:unsigned size);
 ;***************************************************************
+	global	@strdup$qpxzc:near
+@strdup$qpxzc:
+		mov	ax,[_heap_top]
+		xchg	ax,bx
+		call	@strcpy$qpxzct1
+		xchg	ax,bx
+xchg_heap_top:
+		xchg	ax,[_heap_top]
+		ret
+
         global  @malloc_or_die$qui:near
         proc    @malloc_or_die$qui near
 
@@ -520,11 +529,10 @@ malloc_or_die:
 		mov	bx,sp
 		add	bh,-14h			; MIN_STACK=_1k+PAGE_SIZE
 		sub	bx,ax			; can't overflow
+		add	ax,cx
 		cmp	bx,cx
 		mov	bx,offset msg_malloc
-		jb	die
-		add	[_heap_top],cx		; _BEG has zero'd heap
-		ret
+		ja	xchg_heap_top
 
         endp    @malloc_or_die$qui
 
@@ -545,9 +553,8 @@ _exit:
 		mov	al,[_no_exit]
 		or	al,al
 		jne	@@hang
-		extrn	exit:near
-		inc	ax
-		jmp	near exit
+                mov	ah,4Ch
+                int	21h
 @@hang:
 		mov	bx, offset msg_hang
 		call	puts
@@ -1330,7 +1337,7 @@ strtol_ret:
         global  _progname:near
         proc    _progname near
 
-		push	si di es
+		push	si di
 		mov	ah,30h
 		int	21h
 		xor	di,di
@@ -1363,7 +1370,7 @@ strtol_ret:
 		push	es
 		pop	ds
 @@skip:
-		pop	es di si
+		pop	di si
 		ret
 
         endp    _progname

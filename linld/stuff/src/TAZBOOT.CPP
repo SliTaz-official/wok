@@ -170,15 +170,15 @@ int main(int argc, char *argv[])
 		try_default_args();
 dousage:
 		die("Usage: tazboot [[@commands]|[-f][-b base_himem][kernel=<bzImage>] \
-[initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] ...]\r\n\n\
-Defaults: tazboot kernel=bzImage auto\r\n\n\
-Examples for tazboot.cmd:\r\n\n\
-  bootfrom=\\isos\\slitaz-4.0.iso\r\n\
-  kernel=boot/bzImage\r\n\
-  initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz,\\slitaz\\extrafs.gz\r\n\
-  rw root=/dev/null vga=normal autologin\r\n\n\
-  kernel=\\slitaz\\elks\r\n\
-  root=/dev/bda1 ro\r\n");
+[initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] ...]\n\n\
+Defaults: tazboot kernel=bzImage auto\n\n\
+Examples for tazboot.cmd:\n\n\
+  bootfrom=\\isos\\slitaz-4.0.iso\n\
+  kernel=boot/bzImage\n\
+  initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz,\\slitaz\\extrafs.gz\n\
+  rw root=/dev/null vga=normal autologin\n\n\
+  kernel=\\slitaz\\elks\n\
+  root=/dev/bda1 ro\n");
 	}
 	bootiso(argv + 1);
 	chdirname(*argv);
