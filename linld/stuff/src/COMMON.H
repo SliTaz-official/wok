@@ -56,6 +56,7 @@ extern struct image_himem {
 
 extern int skip_alloc;
 extern u32 base_himem;
+extern u32 far *initrd_desc;
 
 extern _fastcall void memcpy_image(struct image_himem *m);
 extern _fastcall void storepage(u32 *dst);

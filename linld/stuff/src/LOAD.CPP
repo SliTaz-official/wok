@@ -122,7 +122,6 @@ u16 rm_size;
 static u8 pm_high;	// @ = @rm_size + 2, see JUMP.ASM
 static u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
 struct image_himem imgs[2];
-u32 far *initrd_desc = (u32 far *) MK_FP(0x9000,0x218);
 
 static const char kernel_file_error[] = "Can't use kernel file";
 char *version_string="";

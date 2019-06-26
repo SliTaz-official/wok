@@ -65,7 +65,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/dx,cs/,"edx,cs")
 		sub(/eax/,"edx")
 		sub(/ax,9/,"dx,9")
-		if (/,0/) sub(/,0/,",dh")
+		if (/,0$/) sub(/,0/,",dh")
 		if (/movzx/) next
 		if (/fallback = base_himem/) { isload=0 }
 	}

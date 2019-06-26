@@ -17,6 +17,11 @@ enable_a20_methods:
 		dw	_enable_a20_fast, _enable_a20_kbd, _enable_a20_xmm, die
 msg_a20		db	"Can't use A20",0
 overflow	db	"Loaded too close to 9000:0",0
+	global	sssp:dword
+	global	_initrd_desc:dword
+_initrd_desc	dd	90000218h
+		org	$-4
+sssp		dd	?
 
         ends    _DATA
 
@@ -91,17 +96,12 @@ overflow	db	"Loaded too close to 9000:0",0
 	global	@moverm$qp11image_himem:near
 @moverm$qp11image_himem:
 		push	si di
-		global	sssp:dword
 		extrn	_heap_top:word
 		ifdef	NO386
 		extrn	_topseg:near
 		call	near _topseg
 		mov	cl,4
-		org	$-4
-sssp		dd	?
 		mov	[word sssp+2],ax
-		;extrn	_initrd_desc:dword
-		;mov	[word _initrd_desc+2],ax
 		xchg	ax,dx
 		mov	ax,[_heap_top]
 		shr	ax,cl
@@ -110,8 +110,6 @@ sssp		dd	?
 		mov	ax,[_heap_top]
 		shr	ax,4
 		mov	dx,9000h
-		org	$-4
-sssp		dd	?
 		endif
 		mov	es,dx
 		mov	cx,cs

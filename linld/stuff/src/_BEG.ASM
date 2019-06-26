@@ -146,7 +146,7 @@ is386vcpi:
 		;call	_get_vcpi_interface
 		mov	bx,offset msg_badmapping
 		jnz	no_vcpi
-		inc	[word bx+_vcpi-msg_badmapping]
+		inc	[byte bx+_vcpi-msg_badmapping]
 endcpu386:
 		ifdef	EXTRA
 		pushfd
