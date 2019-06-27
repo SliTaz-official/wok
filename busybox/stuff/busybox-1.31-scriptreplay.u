@@ -1,0 +1,56 @@
+--- busybox-1.31/util-linux/scriptreplay.c
++++ busybox-1.31/util-linux/scriptreplay.c
+@@ -17,10 +17,20 @@
+ 
+ //kbuild:lib-$(CONFIG_SCRIPTREPLAY) += scriptreplay.o
+ 
++//config:config SCRIPTREPLAY_HOTKEYS
++//config:	bool "speed control hotkeys"
++//config:	default n
++//config:	depends on SCRIPTREPLAY
++//config:	help
++//config:	  Tune replay speed with + - = space return hotkeys.
++
+ //usage:#define scriptreplay_trivial_usage
+ //usage:       "TIMINGFILE [TYPESCRIPT [DIVISOR]]"
+ //usage:#define scriptreplay_full_usage "\n\n"
+ //usage:       "Play back typescripts, using timing information"
++//usage:	IF_SCRIPTREPLAY_HOTKEYS(
++//usage:       " and + - = space return hotkeys"
++//usage:	)
+ 
+ #include "libbb.h"
+ 
+@@ -30,6 +40,10 @@
+ 	const char *script = "typescript";
+ 	double delay, factor = 1000000.0;
+ 	int fd;
++#if ENABLE_SCRIPTREPLAY_HOTKEYS
++	int timeout = -1;
++	char buffer[KEYCODE_BUFFER_SIZE];
++#endif
+ 	unsigned long count;
+ 	FILE *tfp;
+ 
+@@ -47,6 +61,21 @@
+ 	while (fscanf(tfp, "%lf %lu\n", &delay, &count) == 2) {
+ 		usleep(delay * factor);
+ 		bb_copyfd_exact_size(fd, STDOUT_FILENO, count);
++#if ENABLE_SCRIPTREPLAY_HOTKEYS
++		switch (read_key(0, buffer, timeout)) {
++		case ' ':
++			timeout = INT_MAX;
++			break;
++		case '=':
++			factor = 1000000.0/2;
++		case '-':
++			factor *= 4;
++		case '+':
++			factor /= 2;
++		default :
++			timeout = -1;
++		}
++#endif
+ 	}
+ 	if (ENABLE_FEATURE_CLEAN_UP) {
+ 		close(fd);

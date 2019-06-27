@@ -1,0 +1,90 @@
+Add support for the Windows Remote Installation Service
+--- busybox-1.31.0/networking/tftp.c
++++ busybox-1.31.0/networking/tftp.c
+@@ -46,6 +46,15 @@
+ //config:	In other words: it should be run from inetd in nowait mode,
+ //config:	or from udpsvd. Example: "udpsvd -E 0 69 tftpd DIR"
+ //config:
++//config:config FEATURE_TFTPD_RIS
++//config:	bool "Enable \"RIS\" support"
++//config:	default y
++//config:	depends on TFTPD
++//config:	help
++//config:	  Add support for the Windows Remote Installation Service. This allows
++//config:	  a client to get files starting with \ without respecting case.
++//config:	  Each \ will be replaced by a /.
++//config:
+ //config:config FEATURE_TFTP_GET
+ //config:	bool "Enable 'tftp get' and/or tftpd upload code"
+ //config:	default y
+@@ -747,6 +756,59 @@
+ #undef remote_file
+ }
+ 
++#if ENABLE_FEATURE_TFTPD_RIS
++#include <dirent.h>
++
++static int lookup_entry(const char *search, char *unixpath);
++static void unixfilename(char *filename);
++
++// lookup search and concat real filename to unixpath
++static int lookup_entry(const char *search, char *unixpath)
++{
++ 	int status = 0;
++	DIR *dirp = opendir(unixpath[0] ? unixpath : ".");
++ 
++ 	if (dirp != NULL) {
++		struct dirent *entry;
++
++		while ((entry = readdir(dirp))) {
++			if (!strcasecmp(entry->d_name, search)) {
++				if (unixpath[0]) strcat(unixpath, "/");
++				strcat(unixpath, entry->d_name);
++				status++;
++				break;
++			}
++		}
++		closedir(dirp);
++ 	}
++	return status;
++}
++
++// update filename with real file path found
++static void unixfilename(char *filename)
++{
++	char unixpath[PATH_MAX];
++	char *s = unixpath + 1;
++	char *check = filename + 1;
++	int len;
++
++	for (unixpath[0] = 0; *check; len++, s += len, check += len) {
++		char *seek = strchr(check, '\\');
++
++		if (!seek) { // basename of filename
++			if (lookup_entry(check, unixpath))
++				strcpy(filename, unixpath); // found
++			break;
++		}
++		len = seek - check;
++		memcpy(s, check, len);
++		s[len] = '\0';
++		if (!lookup_entry(s, unixpath))
++			break; // path mismatch
++	}
++}
++#endif
++
+ #if ENABLE_TFTP
+ 
+ int tftp_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
+@@ -935,6 +997,10 @@
+ 	G.block_buf_tail[0] = '\0';
+ 
+ 	local_file = G.block_buf + 2;
++#if ENABLE_FEATURE_TFTPD_RIS
++	if (local_file[0] == '\\')
++		unixfilename(local_file);
++#endif
+ 	if (local_file[0] == '.' || strstr(local_file, "/.")) {
+ 		error_msg = "dot in file name";
+ 		goto err;
