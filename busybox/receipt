@@ -60,7 +60,7 @@ compile_rules()
 			echo "cook: CROSS_COMPILE=$CROSS_COMPILE"
 			apply_bb_patchs &&
 			cp $stuff/arm/$PACKAGE.config .config
-			make oldconfig &&
+			make oldconfig | sed 's|ERROR|error|' &&
 			make && make install || return 1
 			chmod 4755 $src/_install/bin/busybox ;;
 		x86_64) echo "TODO" ;;
@@ -68,7 +68,7 @@ compile_rules()
 			echo "=== Build busybox ==="
 			sed -i 's|uname -m|echo i486|' Makefile
 			apply_bb_patchs &&
-			make oldconfig &&
+			make oldconfig | sed 's|ERROR|error|' &&
 			make && make install || return 1
 		    strip --strip-unneeded -R .eh_frame -R .eh_frame_hdr \
 				$src/_install/bin/busybox
@@ -78,7 +78,7 @@ compile_rules()
 			# prepare busybox-pam package
 			echo "=== Build busybox-pam ==="
 		    sed -i 's/# CONFIG_PAM is not set/CONFIG_PAM=y/' .config
-		    make oldconfig && make || return 1
+		    make oldconfig | sed 's|ERROR|error|' && make || return 1
 		    strip --strip-unneeded -R .eh_frame -R .eh_frame_hdr busybox
 		    mv busybox busybox-pam
 		    mv busybox_unstripped.map busybox-pam.map
@@ -89,7 +89,7 @@ compile_rules()
 			echo "=== Build busybox-uclibc ==="
 			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
 			sed -i 's/# CONFIG_ASH_INTERNAL_GLOB is not set/CONFIG_ASH_INTERNAL_GLOB=y/' .config
-			make oldconfig && make || return 1
+			make oldconfig | sed 's|ERROR|error|' && make || return 1
 			cp busybox busybox-static
 			mv busybox busybox-uclibc
 			mv busybox_unstripped.map busybox-uclibc.map
@@ -101,7 +101,8 @@ compile_rules()
 			# prepare busybox-musl package
 			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
 			sed -i 's|uclibc-i486-||' .config
-			make oldconfig && make CC=musl-gcc || return 1
+			make oldconfig | sed 's|ERROR|error|' &&
+			make CC=musl-gcc || return 1
 			mv busybox busybox-musl
 			mv busybox_unstripped.map busybox-musl.map
 			mv -f docs/busybox.1 docs/busybox.static.1
@@ -112,7 +113,8 @@ compile_rules()
 			# prepare busybox-diet package
 			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
 			sed -i 's|uclibc-i486-||;s|CFLAGS="|&-D_BSD_SOURCE |;s|LDFLAGS="|&-Wl,--allow-multiple-definition |;s|LDLIBS="|&compat rpc |' .config
-			make oldconfig && make CC="/usr/lib/diet/bin/diet gcc" || return 1
+			make oldconfig | sed 's|ERROR|error|' &&
+			make CC="/usr/lib/diet/bin/diet gcc" || return 1
 			mv busybox busybox-diet
 			mv busybox_unstripped.map busybox-diet.map
 			mv -f docs/busybox.1 docs/busybox.static.1
@@ -123,7 +125,7 @@ compile_rules()
 		    rootfs=$src/ssfs-busybox/usr/share/ssfs/rootfs
 		    mkdir -p $rootfs/etc
 		    cp $stuff/$PACKAGE-${VERSION%.*}.config-ssfs .config
-		    make oldconfig && make busybox &&
+		    make oldconfig | sed 's|ERROR|error|' && make busybox &&
 		    make CONFIG_PREFIX=$rootfs install || return 1
 		    mv busybox_unstripped.map busybox-ssfs.map
 		    cp $stuff/busybox.conf-ssfs $rootfs/etc/busybox.conf
