@@ -286,7 +286,7 @@ function enum()
 	if (match("-l-t-x-y", $1)) minmax()
 	if (match("--resolution--brightness--contrast--source--mode", $1)) enum()
 }
-')"
+' | sed 's/||/|/g')"
 fi
 output="$(n=$(echo "$params" | wc -l); echo "$params" | \
 while read name def min max ; do
