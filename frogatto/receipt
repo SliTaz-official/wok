@@ -1,36 +1,42 @@
 # SliTaz package receipt.
 
 PACKAGE="frogatto"
-VERSION="1.1.1"
+VERSION="1.3.1"
 CATEGORY="games"
-SHORT_DESC="An old-school 2d platformer game, starring a certain quixotic frog."
+SHORT_DESC="An old-school 2d platform game, starring a certain quixotic frog."
 MAINTAINER="gokhlayeh@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.frogatto.com"
-WGET_URL="$WEB_SITE/files/$TARBALL"
+WEB_SITE="https://www.frogatto.com"
 
-DEPENDS="xorg-server mesa glew libsdl libsdl-image libsdl-ttf libsdl-mixer libpng \
-libboost-regex libboost-system libboost-date-time libboost-thread libboost-iostreams \
-frogatto-data"
-BUILD_DEPENDS="${DEPENDS/frogatto-data/} ccache xorg-server-dev mesa-dev libsdl-dev libsdl-image-dev \
-libsdl-ttf-dev libsdl-mixer-dev libpng-dev libboost-regex-dev libboost-system-dev \
-libboost-date-time-dev libboost-thread-dev libboost-iostreams-dev glew-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/archive/$VERSION/$TARBALL"
+
+DEPENDS="frogatto-data glew libboost-date-time libboost-iostreams \
+	libboost-regex libboost-system libboost-thread libpng \
+	libsdl libsdl-image libsdl-mixer libsdl-ttf mesa xorg-server"
+BUILD_DEPENDS="${DEPENDS/frogatto-data/} ccache core-utils glew-dev \
+	libboost-date-time-dev libboost-iostreams-dev libboost-regex-dev \
+	libboost-system-dev libboost-thread-dev libpng-dev libsdl-dev \
+	libsdl-image-dev libsdl-mixer-dev libsdl-ttf-dev mesa-dev \
+	xorg-server-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	patch --input=$stuff/patches/server.cpp-1.3.1 
+		src/server.cpp
 
 	# Frogatto look for multithread libbost (*-mt.so) but we don't use
 	# them in SliTaz, let's lure it.
-	for lib in $(ls /usr/lib/libboost*); do
+	for lib in $(ls /usr/lib/libboost*)
+	  do
 		link=$(echo $lib | sed 's/\./-mt./')
 		ln -s $lib $link
-	done
+	  done
 
 	# http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=652756#19
-	sed -i 's/io_service()/get_io_service()/' $src/src/server.cpp
+#	sed -i 's/io_service()/get_io_service()/' $src/src/server.cpp
+#	not required with version 1.3.1
 
 	make $MAKEFLAGS game server
 
@@ -41,8 +47,12 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/games/frogatto $fs/usr/bin $fs/usr/share/pixmaps
-	cp -a $src/game $src/server $fs/usr/games/frogatto
-	cp -a $src/images/window-icon.png $fs/usr/share/pixmaps
-	cp -a $stuff/frogatto $fs/usr/bin
+	mkdir -p $fs/usr/games/frogatto
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/pixmaps
+
+	cp -a $src/game				$fs/usr/games/frogatto
+	cp -a $src/server			$fs/usr/games/frogatto
+	cp -a $src/images/window-icon.png	$fs/usr/share/pixmaps
+	cp -a $stuff/frogatto			$fs/usr/bin
 }
