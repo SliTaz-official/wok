@@ -44,8 +44,18 @@ getgeometry() {
 		CMD="$CMD -$i $j"
 		ARGS="$ARGS $j"
 	done
-	for i in mode source contrast brightness ; do
-		[ "$(xPOST $i)" ] && CMD="$CMD --$i '$(xPOST $i)'"
+	for i in $(POST) ; do
+		case $i in
+		preview|format|resolution|res_min|res_max|l_min|l_max);;
+		geometry_l|t_min|t_max|geometry_t|x_min|x_max|geometry_x);;
+		y_min|y_max|geometry_y|tmpreview|device|params);;
+		*)  v="$(xPOST $i)"; i="--${i//_/-}"
+		    case "$v" in
+			'')	;;
+			yes|no) CMD="$CMD $i=$v" ;;
+			*)	CMD="$CMD $i '$v'" ;;
+		    esac
+		esac
 	done
 	resolution=${1:-0}
 	if [ $resolution -eq 0 ]; then
@@ -72,12 +82,12 @@ function a(x) { return int(($x * $5)/ $7); }
 ')"
 		suf="png"; [ "$1" ] && suf="pnm"
 		cat <<EOT
-if convert -crop $c $mode $f /tmp/sane$$.$suf 2> /dev/null ; then
+if convert -crop $c $mode $f /tmp/sane$$.$suf ; then
 	cat /tmp/sane$$.$suf
 	rm -f /tmp/sane$$.$suf
 else
 	cat $f
-fi
+fi 2> /dev/null
 EOT
 		;;
 	*)	echo -n "scanimage -d '$(echo $device | sed 's/,.*//')' --resolution '$(inrange $resolution $(xPOST res_min) $(xPOST res_max))dpi'$CMD"
@@ -165,6 +175,7 @@ case " $(POST) " in
 	eval "$(getgeometry)" > $tmp.pnm 2> $tmp.err
 	if [ -s "$tmp.pnm" ]; then
 		convert $tmp.pnm $tmpreview > /dev/null 2>&1 ||
+		pnm2png < $tmp.pnm > $tmpreview ||
 		cp $tmp.pnm $tmpreview
 	else
 		error="$(sed 's|$|<br />|' $tmp.err)"
@@ -180,6 +191,18 @@ xhtml_header
 [ -n "$error" ] && msg warn "$error"
 [ -n "$info" ] && msg tip "$info"
 if [ -z "$device" ]; then
+	suggested=""
+	while read exe pkg msg; do
+		[ "$(which $exe 2> /dev/null)" ] && continue
+		suggested="$suggested
+<li><a href=\"/user/pkgs.cgi?info=$pkg\">$pkg</a>&nbsp;$msg</li>"
+	done <<EOT
+convert		imagemagick	$(_ "to preview images and support more image formats (recommended)")
+gocr		gocr		$(_ "a basic optical character recognition")
+tesseract	tesseract-ocr	$(_ "a better optical character recognition")
+EOT
+	[ "$suggested" ] &&
+	msg tip "$(_ "You may need to install:") <ol>$suggested</ol>"
 	all="$(scanimage -f '%d,%v %m|'|\
 		cat - sane-fake.log fake-sane/sane-fake.log |sed 's/|/\n/g')"
 	case "$(echo "$all" | wc -l)" in
@@ -190,20 +213,23 @@ if [ -z "$device" ]; then
 			xhtml_footer
 			exit 0
 		fi
+		if [ "$suggested" ]; then
+			cat <<EOT
+<section>
+	<header>
+		<form name="scanner" method="post">
+			<input type="hidden" name="device" value="$all">
+			Scanner ${all#*,}
+			<button data-icon="start">Continue</button>
+		</form>
+	</header>
+</section>
+EOT
+			xhtml_footer
+		exit 0
+		fi
 		device="${all%|}" ;;
 	*)
-		suggested=""
-		while read exe pkg msg; do
-			[ "$(which $exe 2> /dev/null)" ] && continue
-			suggested="$suggested
-<li><a href=\"/user/pkgs.cgi?info=$pkg\">$pkg</a>&nbsp;$msg</li>"
-		done <<EOT
-convert		imagemagick	$(_ "to preview images and support more image formats")
-gocr		gocr		$(_ "a basic optical character recognition")
-tesseract	tesseract-ocr	$(_ "a better optical character recognition")
-EOT
-		[ "$suggested" ] &&
-		msg tip "$(_ "You may need to install:") <ol>$suggested</ol>"
 		cat <<EOT
 <section>
 	<header>
@@ -239,7 +265,7 @@ $(echo $device | sed 's/.*,//')
 
 <table style="width:100%">
 <tr>
-<td>
+<td title="Sets the file format for the scanned image">
 <fieldset><legend>$(_ 'Format')</legend>
 <select name="format" size=1>
 $(imgformat list)
@@ -254,48 +280,63 @@ else
 	params="$({
 cat "$(echo $device | sed 's/,.*//').log" 2> /dev/null ||
 scanimage --help -d "$(echo $device | sed 's/,.*//')"
-} | awk '
+} | dos2unix | sed 's|\[=| [|;s/||/|/g' | awk '
 function minmax()
 {
+	inactive=1
 	if (match($2,"[0-9]")) {
 		i=$2; sub(/\.\..*/,"",i)
 		j=$2; sub(/.*\.\./,"",j)
 		sub(/\..*/,"",j); sub(/[dm%].*/,"",j)
 		k=$0; sub(/.* \[/,"",k); sub(/\].*/,"",k)
-		print $1 " " int(k) " " int(i) " " int(j)
+		printf("\n%s",$1 " " int(k) " " int(i) " " int(j))
+		inactive=0
 	}
 }
 
 function enum()
 {
 	i=$0
+	inactive=1
 	if (index(i,"|")) {
-		sub(/^ *--*[a-z]* */,"",i)
+		sub(/^ *--*[a-z-]* */,"",i)
+		sub(/\[\(/,"",i); sub(/\)\]/,"",i)
 		sub(/dpi .*/,"",i); gsub(/ \[.*\].*/,"",i)
 		k=$0; sub(/.* \[/,"",k); sub(/\].*/,"",k)
 		gsub(/ /,"=",k)
-		print $1 " " k " enum " i
+		gsub(/ /,"=",i)
+		printf("\n%s",$1 " " k " enum " i)
+		inactive=0
 	}
 	else minmax()
 }
 
-/Options specific to device/ { parse=1 }
 {
+	if (/scanimage --help/) end=1
+	if (end != 0) next
+	if (/:$/) parse=0
+	if (/Scan mode/ || /Mode/ || /Advanced/ || /Geometry/) parse=1
 	if (parse != 1) next
-	if (/\[inactive\]/) next
+	if (/\[inactive\]/) { inactive=1; next }
 	if (match("-l-t-x-y", $1)) minmax()
-	if (match("--resolution--brightness--contrast--source--mode", $1)) enum()
-}
-' | sed 's/||/|/g')"
+	else if (/^    --/) enum()
+	else if (!/:$/ && inactive == 0) printf(" %s",$0)
+} END { print "" }
+' | sed 1d)"
 fi
+echo "<!-- $params -->"
 output="$(n=$(echo "$params" | wc -l); echo "$params" | \
-while read name def min max ; do
-	name="${name##*-}"
+while read name def min max help; do
+	name="${name#-}"
+	name="${name#-}"
+	name="${name//-/_}"
+	help="$(echo $help | sed 's|  | |g;s|"|\&#34|g')"
 	def="${def//=/ }"
+	max="${max//=/ }"
 	if [ "$min" == "enum" ]; then
 		res_min=1000000
 		res_max=0
-		echo "<td><fieldset><legend>$name</legend>"
+		echo "<td title=\"$help\"><fieldset><legend>$name</legend>"
 		echo -n "<select name=\"$name\" size=1"
 		[ "$name" == "resolution" ] && echo -n " onchange=showGeometry()"
 		echo ">"
@@ -339,7 +380,7 @@ y	Height		height	$max
 EOT
 		esac
 		[ "$name" == "resolution" ] && f="$f onchange=showGeometry()"
-		echo "<td>$f type=\"text\" title=\"$min .. $max\" size=4 maxlength=4>$u"
+		echo "<td>$f type=\"text\" title=\"$min .. $max. $help\" size=4 maxlength=4>$u"
 		res_min=$min
 		res_max=$max
 	fi
