@@ -93,7 +93,7 @@ EOT
 	*)	echo -n "scanimage -d '$(echo $device | sed 's/,.*//')' --resolution '$(inrange $resolution $(xPOST res_min) $(xPOST res_max))dpi'$CMD"
 		if [ -z "$1" -a "$(which convert)" ]; then
 			echo -n "> /tmp/sane$$.pnm ; convert -resize "
-			echo $ARGS $(GET width) | awk '{ printf "%dx%d",$5,int(($2*$5)/$1)}'
+			echo $ARGS 1024 | awk '{ printf "%dx%d",$5,int(($2*$5)/$1)}'
 			echo -n " /tmp/sane$$.pnm /tmp/sane$$.png ;"
 			echo -n "cat /tmp/sane$$.png ; rm -f /tmp/sane$$.pn?"
 		fi
@@ -109,8 +109,12 @@ while read key name type exe pkg cmd ; do
 	case "$1" in
 	list)
 		echo -n "<option value=\"$key\""
-		[ "$(which $exe 2> /dev/null)" ] || 
-		echo -n " disabled title=\"$exe not found: install $pkg\""
+		disabled=""
+		for i in ${exe//|/ }; do
+			[ "$(which $i 2> /dev/null)" ] || 
+			disabled=" disabled title=\"$i not found: install package $pkg\""
+		done
+		echo -n "$disabled"
 		[ "$key" == "pnm" ] &&
 		echo -n " title=\"not supported by most browsers\""
 		echo ">$key" ;;
@@ -141,6 +145,7 @@ while read key name type exe pkg cmd ; do
 		esac ;;
 	esac
 done <<EOT
+#png		tazsane.png		image/png		pnm2png|convert		imagemagick 	> $tmp.pnm; [ "$(which pnm2png)" ] && pnm2png < $tmp.pnm || convert $tmp.pnm png:-
 png		tazsane.png		image/png		convert		imagemagick 	> $tmp.pnm; convert $tmp.pnm png:-
 jpeg		tazsane.jpg		image/jpeg		convert		imagemagick 	> $tmp.pnm; convert $tmp.pnm jpg:-
 jpeg2000	tazsane.jp2		image/jpeg2000-image	convert		imagemagick 	> $tmp.pnm; convert $tmp.pnm jp2:-
@@ -324,7 +329,6 @@ function enum()
 } END { print "" }
 ' | sed 1d)"
 fi
-echo "<!-- $params -->"
 output="$(n=$(echo "$params" | wc -l); echo "$params" | \
 while read name def min max help; do
 	name="${name#-}"
@@ -357,7 +361,7 @@ while read name def min max help; do
 		[ "$(xPOST $name)" ] && def=$(xPOST $name)
 		[ $def -lt $min ] && def=$min
 		[ $def -gt $max ] && def=$max
-		f="<fieldset><legend>$(_ "$name")</legend><input name=\"$name\" value=\"$def\""
+		f="<fieldset><legend>$(_ "$name")</legend><input type=\"range\" min=\"$min\" max=\"$max\" name=\"$name\" value=\"$def\""
 		u=""
 		case "$name" in
 		x|y|l|t) cat <<EOT
@@ -455,7 +459,7 @@ EOT
 [ -s "$tmpreview" ] && cat <<EOT
 <div margin="15px" style="overflow-x: auto">
 	<script type="text/javascript" src="lib/crop.js"></script>
-	<img src="$tmpreview" onload=cropInit(this,'x','y','width','height')>
+	<img src="$tmpreview" style="width:100%" onload=cropInit(this,'x','y','width','height')>
 </div>
 EOT
 xhtml_footer
