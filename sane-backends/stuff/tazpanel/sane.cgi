@@ -102,6 +102,8 @@ EOT
 
 imgformat() {
 tmp=$(mktemp -u -t tazsane.XXXXXX)
+pnm2png=convert; pnm2png_cmd="> $tmp.pnm; convert $tmp.pnm png:-"
+[ "$(which pnm2png)" ] && pnm2png=pnm2png && pnm2png_cmd="|pnm2png"
 while read key name type exe pkg cmd ; do
 	case "$key" in
 	\#*)	continue
@@ -145,8 +147,7 @@ while read key name type exe pkg cmd ; do
 		esac ;;
 	esac
 done <<EOT
-#png		tazsane.png		image/png		pnm2png|convert		imagemagick 	> $tmp.pnm; [ "$(which pnm2png)" ] && pnm2png < $tmp.pnm || convert $tmp.pnm png:-
-png		tazsane.png		image/png		convert		imagemagick 	> $tmp.pnm; convert $tmp.pnm png:-
+png		tazsane.png		image/png		$pnm2png	imagemagick 	$pnm2png_cmd
 jpeg		tazsane.jpg		image/jpeg		convert		imagemagick 	> $tmp.pnm; convert $tmp.pnm jpg:-
 jpeg2000	tazsane.jp2		image/jpeg2000-image	convert		imagemagick 	> $tmp.pnm; convert $tmp.pnm jp2:-
 tiff		tazsane.tiff		image/tiff		convert		imagemagick 	> $tmp.pnm; convert $tmp.pnm tiff:-
@@ -384,7 +385,7 @@ y	Height		height	$max
 EOT
 		esac
 		[ "$name" == "resolution" ] && f="$f onchange=showGeometry()"
-		echo "<td>$f type=\"text\" title=\"$min .. $max. $help\" size=4 maxlength=4>$u"
+		echo "<td>$f type=\"text\" title=\"$min .. $max. $help\" size=5 maxlength=5>$u"
 		res_min=$min
 		res_max=$max
 	fi
