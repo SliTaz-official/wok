@@ -1,0 +1,65 @@
+# SliTaz package receipt.
+
+PACKAGE="grub2-efi-x64"
+SOURCE="grub"
+VERSION="2.02"
+CATEGORY="base-system"
+SHORT_DESC="GRUB2 boot loader."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL3"
+TARBALL="$SOURCE-$VERSION.tar.xz"
+WEB_SITE="http://www.gnu.org/software/grub/"
+WGET_URL="ftp://ftp.gnu.org/gnu/grub/$TARBALL"
+
+DEPENDS="zlib freetype ncurses libusb-compat grep libusb libdevmapper"
+BUILD_DEPENDS="flex bison zlib-dev xz-dev freetype-dev ncurses-dev \
+libusb-compat-dev libusb-dev libdevmapper-dev uclibc-cross-compiler-x86_64"
+
+AUFS_NOT_RAMFS="uclibc-cross-compiler-x86_64 is not compatible with aufs+tmpfs 8("
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|sys/types.h>|&\n#include <sys/sysmacros.h>|' \
+		util/getroot.c grub-core/kern/emu/hostdisk.c
+
+	# CVE-2015-8370
+	sed -i "s/'.b'/& \\&\\& cur_len/" grub-core/lib/crypto.c \
+		grub-core/normal/auth.c
+
+	# Fixes for flex 2.5.37
+	export CFLAGS="-Wno-error=sign-compare -Wno-error=unused-value"
+	sed -i '/#undef gets/{N;s/.*/#ifdef gets\n&\n#endif/}' \
+		grub-core/gnulib/stdio*h
+	sed -i 's/YY_FATAL_ERROR/REMOVED_&/' grub-core/script/yylex.l
+
+	export EFI_ARCH=x86_64
+	sed -i 's/is_symbol_local /type == 2 || /' util/grub-module-verifier*.c*
+	sed -i 's/.*unsupported relocation.*/continue;/' util/grub-module-verifier*.c*
+	sed -i 's|.*add fixup entry for R_X86_64_32|// &|' util/grub-mkimage*.c*
+	./configure BUILD_CC=gcc CFLAGS="${CFLAGS/-march=i486/-g0}" \
+		TARGET_CC=uclibc-x86_64-gcc TARGET_OBJCOPY=uclibc-x86_64-objcopy \
+		TARGET_NM=uclibc-x86_64-nm TARGET_STRIP=uclibc-x86_64-strip \
+		TARGET_RANLIB='uclibc-x86_64-ranlib' \
+		--prefix=/usr --sysconfdir=/etc \
+		--with-platform=efi --target=${EFI_ARCH} --program-prefix="" \
+		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make $MAKEFLAGS &&
+	cd grub-core &&
+	../grub-mkimage -d . -o ../bootx64.efi -O x86_64-efi -p /boot/grub \
+		-c $stuff/grub.cfg \
+		lsefisystab lssal lsefimmap lsacpi ls \
+		ntfs hfs appleldr boot cat efi_gop efi_uga elf fat hfsplus \
+		iso9660 linux keylayouts memdisk minicmd part_apple ext2 extcmd \
+		xfs xnu part_bsd part_gpt search search_fs_file chain btrfs \
+		loadbios loadenv lvm minix minix2 reiserfs memrw mmap msdospart \
+		scsi loopback normal configfile gzio all_video efi_gop efi_uga \
+		gfxterm gettext echo boot chain
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/boot/efi/boot
+	cp $src/bootx64.efi $fs/boot/efi/boot
+}
