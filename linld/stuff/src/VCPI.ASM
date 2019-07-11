@@ -141,12 +141,12 @@ idt_base        dd      0       ;  so let's leave it the same as for rm
 ;Calculate pagedir/page0 addrs, initialize cr3 and pagedir[0]
                 xor     eax,eax
 ;    heap_top = prepare_vcpi(malloc_or_die(8*1024+4)); 
-		mov	cx,8*1024+4
+		mov	ah,8*1024/256
                 extrn   malloc_or_die:near
-		call	malloc_or_die	;keep cx
+		call	malloc_or_die
 
                 mov     edx,cs
-                shl     edx,cl          ;edx = linear addr of CS
+                shl     edx,4           ;edx = linear addr of CS
                 mov     si,offset gdt_vcpi
 ; Fix up base of some gdt descriptors
 ; Note: 'add [dword xx.base0],edx' actually updates 24 bit quantity!

@@ -511,28 +511,23 @@ isolseek:
 ;***************************************************************
 	global	@strdup$qpxzc:near
 @strdup$qpxzc:
-		call	xchg_heap_top
-		call	@strcpy$qpxzct1
+strdup:						; ax = strdup(bx)
+		mov	ax,[_heap_top]
+		xchg	ax,bx
+		call	@strcpy$qpxzct1		; bx = strcpy(bx, ax) end +1
 		xchg	ax,bx
 xchg_heap_top:
 		xchg	ax,[_heap_top]
-		xchg	ax,bx
 		ret
 
         global  @malloc_or_die$qui:near
         proc    @malloc_or_die$qui near
 
-                xchg	ax,cx			; size
-        global  malloc_or_die:near		; malloc_or_die(cx)
+        global  malloc_or_die:near		; ax = malloc_or_die(ax)
 malloc_or_die:
-		mov	ax,[_heap_top]		; return value
-		mov	bx,sp
-		add	bh,-14h			; MIN_STACK=_1k+PAGE_SIZE
-		sub	bx,ax			; can't overflow
-		add	ax,cx
-		cmp	bx,cx
 		mov	bx,offset msg_malloc
-		ja	xchg_heap_top
+		add	ax,[_heap_top]
+		jnc	xchg_heap_top
 
         endp    @malloc_or_die$qui
 
@@ -666,22 +661,22 @@ ends					;}; // size=8200
 		push	si
 		mov	si,bx
 	ifdef	LARGE_IMAGES
-		movzx	ecx,[word ((image_himem si).size) + 2]
-		shr	cx,4			; pages index size = size >> 20
-		add	cx,8+4096+8
+		movzx	eax,[word ((image_himem si).size) + 2]
+		shr	ax,4			; pages index size = size >> 20
+		add	ax,8+4096+8
 		call	malloc_or_die
 		mov	cx,4096+4095		; cnt = 1+(m->size+PAGE_MASK)/PAGE_SIZE;
 		add	ecx,[(image_himem si).size]
 		shr	ecx,12
 		mov	[curdata],ax
 	else
-		mov	ecx,[(image_himem si).size]
-		dec	ecx
-		shr	ecx,12
-		inc	cx			; cnt = (m->size+PAGE_MASK)/PAGE_SIZE;
-		push	cx
-		inc	cx			; cnt+1
-		shl	cx,2			; bufv => vcpi => vm86
+		mov	eax,[(image_himem si).size]
+		dec	eax
+		shr	eax,12
+		inc	ax			; cnt = (m->size+PAGE_MASK)/PAGE_SIZE;
+		push	ax
+		inc	ax			; cnt+1
+		shl	ax,2			; bufv => vcpi => vm86
 ; our malloc zeroes allocated mem: bufv[cnt]=0;
 ; Allocate pages, storing addrs in addrbuf
 		call	malloc_or_die
@@ -1354,13 +1349,16 @@ strtol_ret:
 		jne	@@loop
 		inc	di
 		inc	di
+; ax = strdup(bx) ?
 		mov	si,di			; progname @es:di
 		repne
 		  scasb
-		mov	cx,di
-		sub	cx,si			; progname len
-		call	malloc_or_die		; keep cx
-		mov	di,ax
+		mov	ax,di
+		sub	ax,si			; progname len
+		push	ax
+		call	malloc_or_die
+		xchg	ax,di
+		pop	cx
 		push	ds
 		push	es
 		pop	ds
