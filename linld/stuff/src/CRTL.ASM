@@ -511,12 +511,12 @@ isolseek:
 ;***************************************************************
 	global	@strdup$qpxzc:near
 @strdup$qpxzc:
-		mov	ax,[_heap_top]
-		xchg	ax,bx
+		call	xchg_heap_top
 		call	@strcpy$qpxzct1
 		xchg	ax,bx
 xchg_heap_top:
 		xchg	ax,[_heap_top]
+		xchg	ax,bx
 		ret
 
         global  @malloc_or_die$qui:near
