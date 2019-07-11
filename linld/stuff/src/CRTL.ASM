@@ -1357,7 +1357,7 @@ strtol_ret:
 		sub	ax,si			; progname len
 		push	ax
 		call	malloc_or_die
-		mov	ax,di
+		mov	di,ax
 		pop	cx
 		push	ds
 		push	es
