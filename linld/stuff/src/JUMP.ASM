@@ -152,13 +152,12 @@ step19:
 		call	near @@isbzimage	; pop cs ; ds=es=ss
 
 		; prepare memcpy32 size & srcofs param to move zImage pm
+		ifndef	NO386
+		push	8			; size hi
+		else
 		mov	dx,8
-		cmp	ax,dx			; buf > 80000h ?
-		ja	@@bufhigh
-		sub	dx,ax
-		inc	dx			; up to 90000h-1
-@@bufhigh:
 		push	dx			; size hi
+		endif
 		push	cx			; size lo=up to 512k
 		push	ax			; src ofs hi = pm.fallback
 

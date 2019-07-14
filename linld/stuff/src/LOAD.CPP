@@ -216,6 +216,10 @@ cmd_line_ok:
 		 (u16)(topseg()>>12) || _pm_high) {
         m->fallback = base_himem;
     }
+    if (((u16 *)&m->fallback)[1] == 0) {
+	((u16 *)&m->fallback)[0] &= 0;
+	((u16 *)&m->fallback)[1]++;	// m->fallback = _64k;
+    }
 
     load_image(m);
     return version_string;
