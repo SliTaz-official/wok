@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="gksu"
+VERSION="2.0.2"
+CATEGORY="admin"
+SHORT_DESC="A GTK+ frontend to su and sudo"
+MAINTAINER="devel@slitaz.org"
+LICENSE="GPL2"
+WEB_SITE="https://www.nongnu.org/gksu/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://people.debian.org/~kov/gksu/$TARBALL"
+
+BUILD_DEPENDS="gfortran intltool GConf-dev libgksu-dev gtk+-dev \
+startup-notification-dev libgnome-keyring-dev libgtop-dev"
+
+DEPENDS="atk bzlib cairo fontconfig freetype GConf gdk-pixbuf glib gtk+ \
+harfbuzz libffi libgio libgksu libgnome-keyring libpng libxcb libxml2 pango \
+pcre pixman startup-notification xorg-libX11 xorg-libXau xorg-libXdmcp \
+xorg-libXext xorg-libXrender zlib"
+
+compile_rules() {
+	patch -p1 -i $stuff/gksu.patch
+
+	./configure \
+		--sysconfdir=/etc \
+		--disable-nautilus-extension \
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
+}
+
+genpkg_rules() {
+	mkdir -p $fs/usr/lib $fs/usr/share
+
+	cp -a $install/usr/bin                $fs/usr
+	cp -a $install/usr/share/applications $fs/usr/share
+	cp -a $install/usr/share/gksu         $fs/usr/share
+	cp -a $install/usr/share/pixmaps      $fs/usr/share
+}

@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="libgksu"
+VERSION="2.0.12"
+CATEGORY="admin"
+SHORT_DESC="Library that provides a GTK+ frontend to su and sudo"
+MAINTAINER="devel@slitaz.org"
+LICENSE="GPL2"
+WEB_SITE="https://www.nongnu.org/gksu/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://people.debian.org/~kov/gksu/$TARBALL"
+
+BUILD_DEPENDS="cairo gtk+-dev GConf-dev startup-notification-dev \
+libgnome-keyring-dev libgtop-dev intltool xcb-util-dev dbus-dev libgcrypt-dev \
+gtk-doc libxslt docbook-xsl"
+
+DEPENDS="atk bzlib cairo fontconfig freetype GConf gdk-pixbuf glib gtk+ \
+harfbuzz libffi libgio libgnome-keyring libgtop libpng libxcb libxml2 ORBit2 \
+pango pcre pixman startup-notification xorg-libX11 xorg-libXau xorg-libXdmcp \
+xorg-libXext xorg-libXrender zlib"
+
+compile_rules() {
+	patch -p1 -i $stuff/libgksu.patch
+
+	./configure \
+		--sysconfdir=/etc \
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
+}
+
+genpkg_rules() {
+	mkdir -p $fs/usr/lib $fs/usr/share
+	cp -a $install/etc                    $fs
+	cp -a $install/usr/bin                $fs/usr
+	cp -a $install/usr/lib/libgksu        $fs/usr/lib
+	cp -a $install/usr/lib/*.so*          $fs/usr/lib
+	cp -a $install/usr/share/applications $fs/usr/share
+	cp -a $install/usr/share/libgksu      $fs/usr/share
+	cp -a $install/usr/share/pixmaps      $fs/usr/share
+}
