@@ -6,6 +6,11 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/^@.*:$/ || /	endp$/) afterjmp=0
 	if (/dword ptr/) is386=1
 	sub(/DGROUP:_imgs\+65534/,"[di-2]")
+	if (/fallback\)\[1\] == 0/) isload=8
+	if (isload == 8) {  # LOAD.LST
+		if (/load_image/) isload=0
+		else next
+	}
 	if (/cmd_line_ptr =/ && is386 == 0) isload=7
 	if (isload == 7) {  # LOAD.LST
 		if (/add/ || /xor/ || /extrn/ || /N_LXLSH@/ || /cl,4/) next
@@ -55,7 +60,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		}
 		if (/dx,dx/) next
 		sub(/ax,dx/,"ax,bx")
-		if (/call/) isload=400
+		if (/call/) {
+			print	"	cmp	ax,0fffh"
+			print	"	jae	@sys@ok"
+			print	"	mov	ax,0fffh"
+			print	"@sys@ok:"
+			isload=400
+		}
 	}
 	if (isload == 400 && /,0/) {
 		sub(/,0/,",dh")
@@ -64,6 +75,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isload == 4 && is386) {  # LOAD.LST
 		sub(/dx,cs/,"edx,cs")
 		sub(/eax/,"edx")
+		if (/shl/) {
+			print	"	mov	ax,0fffh"
+			print	"	cmp	dx,ax"
+			print	"	jae	@sys@ok"
+			print	"	xchg	ax,dx"
+			print	"@sys@ok:"
+		}
 		sub(/ax,9/,"dx,9")
 		if (/,0$/) sub(/,0/,",dh")
 		if (/movzx/) next

@@ -4,23 +4,20 @@ PACKAGE="powermanga"
 VERSION="0.93.1"
 CATEGORY="games"
 SHORT_DESC="Space War."
-MAINTAINER="arca2@hotmail.com"
+MAINTAINER="arca1085@gmail.com <Rene Rivero>"
 LICENSE="GPL2"
 WEB_SITE="http://linux.tlk.fr/games/Powermanga/"
 
 TARBALL="$PACKAGE-$VERSION.tgz"
 WGET_URL="${WEB_SITE}download/$TARBALL"
 
-DEPENDS="libsdl-mixer zlib"
-BUILD_DEPENDS="automake libsdl-dev libsdl-mixer-dev zlib-dev"
-
-# Packaging for SliTaz by Rene Rivero.
+DEPENDS="libsdl-mixer zlib libogg"
+BUILD_DEPENDS="automake libsdl-dev libsdl-mixer-dev zlib-dev libogg-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	sed -i 's|SDL_mixer.h|SDL/SDL_mixer.h|' src/sdl_mixer.c
-#	sed -i '239,243 s|^|// |' src/sdl_mixer.cpp
 
 	./bootstrap &&
 	./configure &&
@@ -33,12 +30,19 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share/applications
 
+	rm $install/usr/share/games/powermanga/sounds/*.zik
+	cp -a $install/usr/share/games/powermanga/sound/handheld_console/*.ogg $install/usr/share/games/powermanga/sounds/
+	mv $install/usr/share/games/powermanga/sounds/music_congratulations.ogg $install/usr/share/games/powermanga/sounds/music_congratulations.zik
+	mv $install/usr/share/games/powermanga/sounds/music_game.ogg $install/usr/share/games/powermanga/sounds/music_game.zik
+	mv $install/usr/share/games/powermanga/sounds/music_menu.ogg $install/usr/share/games/powermanga/sounds/music_menu.zik
 	cp -a $install/var		$fs
 	cp -a $install/usr/games	$fs/usr
 	cp -a $install/usr/share/games	$fs/usr/share
 	cp -a $src/texts		$fs/usr/share/games/powermanga
 	cp $stuff/power-manga.png	$fs/usr/share/games/powermanga
 	cp $stuff/powermanga.desktop	$fs/usr/share/applications
+	mkdir -p $fs/var/games/powermanga
+	chmod -R 777 $fs/var/games/powermanga
 
 	chown -R root.root $fs
 }
