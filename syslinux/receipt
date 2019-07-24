@@ -126,7 +126,7 @@ MENU END
 EOT
 	sed -i 's/^LABEL us$/&\n	MENU DEFAULT/' $fs/boot/isolinux/i18n.cfg
 	chown root.root $src/kbd/*
-	touch -r $src $src/kbd/*
+	touch -t 197001010100.00 $src/kbd/*
 	for kbd in $(cd $src/kbd; ls | tee ../kbd.l); do
 		msg="Invalid file kbd/$kbd"
 		[ -s $src/kbd/$kbd ] && msg="Unused: file kbd/$kbd" &&
@@ -134,9 +134,7 @@ EOT
 		sed -i "/^$kbd\$/d" $src/kbd.l
 		echo "$msg"
 	done
-	( cd $src/kbd; cat ../kbd.l | cpio -o -H newc ) >$fs/boot/isolinux/kbd
-	lzma e $fs/boot/isolinux/kbd $fs/boot/isolinux/kbd.lzma
-	mv -f $fs/boot/isolinux/kbd.lzma $fs/boot/isolinux/kbd
+	(cd $src/kbd;cpio -o -H newc<../kbd.l)|lzma e $fs/boot/isolinux/kbd -si
 	chown root.root $fs/boot/isolinux/*
 }
 

@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="voxelands"
+VERSION="v1602.00"
+CATEGORY="games"
+SHORT_DESC="Voxelands sandbox construction game 3D based on Minetest"
+MAINTAINER="arca1085@gmail.com <René Rivero>"
+LICENSE="GPLv3"
+WEB_SITE="https://gitlab.com/voxelands/voxelands"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://gitlab.com/$PACKAGE/$PACKAGE/-/archive/$VERSION/$PACKAGE-$VERSION.tar.gz --no-check-certificate"
+
+DEPENDS="curl irrlicht jpeg libglu-mesa libpng libspatialindex libssl \
+	libvorbis luajit mesa openal sqlite"
+BUILD_DEPENDS="curl-dev freetype-dev gcc83 irrlicht-dev jpeg-dev \
+	libglu-mesa-dev libogg-dev libpng-dev libspatialindex-dev \
+	libvorbis-dev luajit-dev mesa-dev openal-dev sqlite-dev \
+	xorg-libXxf86vm-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# As gcc-4.6.3 is insufficient, the most recent version of gcc
+	# available in the cooking repository is used
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	cmake					\
+		-DCMAKE_INSTALL_PREFIX=/usr	\
+		-DBUILD_SERVER=1		\
+		-DBUILD_CLIENT=1		\
+		-DENABLE_AUDIO=1		\
+		-DENABLE_GETTEXT=1		\
+
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p ${fs}/usr/bin
+	mkdir -p ${fs}/usr/share
+
+	cp -a ${install}/usr/bin/*		${fs}/usr/bin
+	cp -a ${install}/usr/share		$fs/usr
+}
