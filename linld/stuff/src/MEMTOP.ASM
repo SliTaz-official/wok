@@ -88,14 +88,15 @@ tokb:
                 setc    dl              ;  (optimized to death)
 		shld    dx,ax,cl
 		shl     ax,cl		;  (kbytes -> bytes)
+		ret
 		else
                 xor     dx,dx
                 add     ah,4h           ;account for 1024 low kb
                 adc     dx,dx           ;  (optimized to death)
-		db	0A9h		; test ax,04B1h
-        global  N_LXLSH@4:near
-N_LXLSH@4:
-		mov	cl,4
+		db	0A9h		; test ax,0C28Ch
+        global  N_LXLSH@ES:near
+N_LXLSH@ES:
+		mov	dx,es
         global  N_LXLSH@:near
 N_LXLSH@:
 		mov	ch,0
@@ -103,29 +104,15 @@ N_LXLSH@:
 		shl	ax,1
 		rcl	dx,1
 		loop	@@lp
-		endif
 		ret
+        global  N_LXLSH@4:near
+N_LXLSH@4:
+		xor	dx,dx
+		mov	cl,4
+		jmp	N_LXLSH@
+		endif
 
 ;        endp    _memtop_88
-
-		ifdef	NO386
-        global  N_LXURSH@:near
-        global  N_LXURSH@4:near
-;        proc    N_LXURSH@4 near
-N_LXURSH@4:
-		mov	cl,4
-N_LXURSH@:
-		mov	ch,0
-@@loop:
-		shr	dx,1
-		rcr	ax,1
-		loop	@@loop
-		ret
-
-;        endp    N_LXURSH@4
-
-		endif
-
 
 ;        proc    _memtopz near
 

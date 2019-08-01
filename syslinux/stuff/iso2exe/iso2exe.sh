@@ -309,6 +309,9 @@ case "$1" in
 	find $TMP -print0 | xargs -0 touch -t 197001010100.00
 	( cd $TMP; find dev init.exe | cpio -o -H newc ) | compress > rootfs.gz
 	rm -rf $TMP
+	chmod 644 ${@/init/rootfs.gz}
+	chown root.root ${@/init/rootfs.gz}
+	touch -t 197001010100.00 ${@/init/rootfs.gz}
 	ls -l $@ rootfs.gz
 	cp $0 $0.$$
 	cat >> $0.$$ <<EOM

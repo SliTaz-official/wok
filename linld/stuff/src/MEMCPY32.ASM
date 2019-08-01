@@ -93,16 +93,18 @@ endm
 		xor	bx,bx
 		xor	si,si
 		mov	ax,[srcseg]
-		xor	dx,dx
 		extrn	N_LXLSH@4:near
 		call	near ptr N_LXLSH@4
 		add	[word srcofs],ax
 		adc	[word srcofs+2],dx
 @@2flat:
-		mov	ax,[word si+srcofs]	; srcofs, dstofs lo
-		mov	dx,[word si+srcofs+2]	; srcofs, dstofs hi
-		extrn	N_LXURSH@4:near
-		call	near N_LXURSH@4
+		les	ax,[dword si+srcofs]	; srcofs, dstofs
+		mov	dx,es
+		mov	cl,4
+@@loop:
+		shr	dx,1
+		rcr	ax,1
+		loop	@@loop
 		or	bx,dx			; >=1mb flag
 		push	ax			; srcseg, dstseg
 		xor	si,-6

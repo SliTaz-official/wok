@@ -1,11 +1,35 @@
-BEGIN { hold=0; is386=0; isload=0; isiso=0; istazboot=0; wascall=0; label="none"; xlabel="" }
+BEGIN { hold=0; is386=0; isload=0; isiso=0; istazboot=0; wascall=0; ishimem=0; label="none"; xlabel=""; file="" }
 function isnum(n) { return match(n,/^[0-9+-]/) }
 {
 	sub(/segment word public/,"segment byte public")
 
 	if (/^@.*:$/ || /	endp$/) afterjmp=0
-	if (/dword ptr/) is386=1
+	if (/^	\.386p$/) is386=1
+	if (file == "" && /debug	S/) { file=$3; gsub(/\"/,"",file) }
+	 if (file == "himem.cpp") {
+	if (/remaining = m-/) ishimem=1
+	if (ishimem == 1 && is386 == 0) {
+		if (/si\+8\]$/ || /si\+4\]$/ || /si\+16\]$/) next
+		if (/si\+6\]$/ || /si\+2\]$/ || /si\+14\]$/) sub(/mov	dx,/,"les	dx,d")
+		if (/si\+12\],ax/ || /si\+16\],ax/ || /bp-2\],ax/) sub(/,ax/,",es")
+		if (/do \{/) ishimem=0
+	}
+	 } # file == "himem.cpp"
+	 if (file == "load.cpp") {
 	sub(/DGROUP:_imgs\+65534/,"[di-2]")
+	if (/short @1@366$/) isload=10
+	if (isload == 10) {  # LOAD.LST
+		if (/^	je	/) next
+		if (/ptr @die\$qpxzc/) {
+			$0="	jne	@die@"
+			isload=0
+		}
+	}
+	if (/setup_sects == 0/) isload=9
+	if (isload == 9) {  # LOAD.LST
+		sub(/,0/,",al")
+		if (/jne/) isload=0
+	}
 	if (/fallback\)\[1\] == 0/) isload=8
 	if (isload == 8) {  # LOAD.LST
 		if (/load_image/) isload=0
@@ -14,10 +38,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/cmd_line_ptr =/ && is386 == 0) isload=7
 	if (isload == 7) {  # LOAD.LST
 		if (/add/ || /xor/ || /extrn/ || /N_LXLSH@/ || /cl,4/) next
-		if (/,ax/) {
-			sub(/ax/,"8000h")
+		if (/enable A20 if needed/) {
+			print "	mov	word ptr [bx+si],8000h"
 			isload=0
 		}
+		if (/,ax/) $0="	mov	bx,55"
+		if (/si-463/) $0="	mov	bx,-463"
+		if (/si-465/) $0="	mov	word ptr [bx+si-2],-23745"
 		if (/,dx/) {
 			print "	mov	cl,12"
 			print "	shr	ax,cl"
@@ -55,7 +82,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isload == 4 && is386 == 0) {  # LOAD.LST
 		if (/push/ || /pop/) next
 		if (/ax,cs/) {
-			print "	cwd"
 			sub(/ax,cs/,"bx,cs")
 		}
 		if (/dx,dx/) next
@@ -68,9 +94,21 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			isload=400
 		}
 	}
-	if (isload == 400 && /,0/) {
+	if (isload == 400) {
+		if (/call/) {
+			print	"	extrn	N_LXLSH@4:near"
+			sub(/N_LXLSH@/,"N_LXLSH@4")
+		}
 		sub(/,0/,",dh")
-		isload=0
+		if (/_base_himem\+2/ || /pop/ || /push/) next
+		if (/_base_himem$/) {
+			sub(/mov	dx,/,"les	dx,d")
+			isload++
+		}
+	}
+	if (isload == 401) {
+		sub(/,ax/,",es")
+		if (/load_image/) isload=0
 	}
 	if (isload == 4 && is386) {  # LOAD.LST
 		sub(/dx,cs/,"edx,cs")
@@ -101,14 +139,38 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/,ax/,",cx")
 		if (/version_string/ || /starting linux 1\.3\.73/) isload=0
 	}
-	if (/_rm_size=0x200/ || /heap_top = _rm_buf/) isload=1
+	if (/Not a kernel/ || /_rm_size=0x200/ || /heap_top = _rm_buf/) isload=1
 	if (isload == 1) {  # LOAD.LST
+		if (/ptr .die\$qpxzc/) $0="@die@:\n" $0
 		if (/mov	al,byte ptr/ && is386) {
 			print "	movzx	eax,byte ptr [si]"
 			next
 		}
+		if (is386 == 0) {
+			if (/di-5\],ax/) print "	cwd"
+			sub(/,0$/,",dx")
+		}
 		if (/ax,word ptr/) next
 		if (/^	call/) isload=0
+	}
+	 } # file == "load.cpp"
+	 if (file == "iso9660.cpp") {
+	if (/<< SECTORBITS/) isiso=9
+	if (isiso == 9) { # ISO9660.LST
+		if (/dx,/) next
+		sub(/mov	ax,/,"les	ax,d")
+		if (/^	call/) {
+			print "	extrn	N_LXLSH@ES:near"
+			sub(/N_LXLSH@/,"N_LXLSH@ES")
+			isiso=0
+		}
+	}
+	if (/filesize =/) isiso=8
+	if (isiso == 8) { # ISO9660.LST
+		if (/ax,/) next
+		sub(/mov	dx,/,"les	dx,d")
+		sub(/,ax/,",es")
+		if (/filemod/) isiso=0
 	}
 	if (/CD001/) isiso=7
 	if (isiso == 7) { # ISO9660.LST
@@ -137,6 +199,8 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/DGROUP:_isostate\+20/,"[si+20]")
 		if (/goto restarted/) isiso=0
 	}
+	 } # file == "iso9660.cpp"
+	 if (file == "iso9660.cpp" || file == "tazboot.cpp") {
 	if (/do s\+\+; while/) isiso=3
 	if (/for \(p = s; \*s && \*s \!=/) isiso=3
 	if (isiso == 3) { # ISO9660.LST, TAZBOOT.LST
@@ -147,10 +211,15 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/al,0/) print "	mov	al,[" r "]"
 		if (/al,byte ptr/) sub(/mov/,"xchg")
 		if (/byte ptr \[.*\],0/) next
-		if (/jmp/) print "	mov	bx,si"
+		if (/jmp/) {
+			print "	mov	bx,si"
+			$0="	db	0A8h	; test al,xx instead of " $0
+		}
 		if (/word ptr \[bp-4\]/) next
 		if (/\) s\+\+;/ || /\],-1/) isiso=0
 	}
+	 } # file == "iso9660.cpp" || file == "tazboot.cpp"
+	 if (file == "iso9660.cpp") {
 	if (/endname = NULL/) isiso=2
 	if (isiso == 2) { # ISO9660.LST
 		if (/mov	bx,cx/) next
@@ -172,10 +241,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/jmp	@3@58$/) $0="	je	@3@58"
 		sub(/mov	ax,-1/,"dec	ax")
 	}
+	 } # file == "iso9660.cpp"
 	if (/endp/) { xlabel = ""; goto2=0 }
 	if (/isoopen\(s\+7\)/ && xlabel == "") goto2=1
 	if (/_vid_mode,ax/ && xlabel == "") goto2=1
+	if (/_initrd_name,si/ && xlabel == "") goto2=1
 	if (/_base_himem\+2,/ && xlabel == "@") goto2=1
+	if (/DGROUP:_skip_alloc/ && xlabel == "@") goto2=1
 	if (/puts\(cmdline\)/ && xlabel == "@@") goto2=1
 	if (goto2 == 1 && /jmp/) { # TAZBOOT.LST && LINLD.LST
 		print $NF xlabel "@:"
@@ -184,6 +256,30 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (goto2 > 0 && label == $NF) {
 		$0=$0 xlabel
 		if (goto2++ == 1) xlabel=xlabel "@"
+	}
+	if (/if\(\*s>=/) isotazboot=14
+	if (isotazboot == 14) { # LINLD.LST
+		if (/jmp/) {
+			$0="	db	0A9h	; test ax,xxxx instead of " $0
+			isotazboot=0
+		}
+	}
+	if (file == "tazboot.cpp" && /;					s \+= 4/) isotazboot=13
+	if (isotazboot == 13) { # TAZBOOT.LST
+		if (/si,4/) $0="	lea	bx,[si+4]"
+		if (/bx,si/) next
+		if (/DGROUP:_topmem/ || /set_iso/) isotazboot=0
+	}
+	if (file == "tazboot.cpp" && /case 0x652F:/) isotazboot=12
+	if (isotazboot == 12) { # TAZBOOT.LST
+		sub(/si,word/,"bx,word")
+		if (/short/) isotazboot=0
+	}
+	if (/return load_kernel/) isotazboot=11
+	if (isotazboot == 11) { # TAZBOOT.LST
+		sub(/call/,"jmp")
+		if (/ret/ || /pop/) next
+		if (/endp/) isotazboot=0
 	}
 	if (/cmdline=s\+=3/ || /magic \!= 0/ || /&root_dev =/) { isotazboot=10; j="" }
 	if (isotazboot == 10) { # TAZBOOT.LST && LINLD.LST
@@ -215,9 +311,8 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/\+\+isknoppix/) isotazboot=7
 	if (isotazboot == 7) { # TAZBOOT.LST
-		if (/al,byte/) sub (/al,byte ptr DGROUP:/,"bx,offset ")
-		if (/inc/) sub (/al/,"word ptr [bx]")
-		if (/,al/) next
+		if (/inc/ || /,al/) next
+		if (/al,byte/) sub (/mov	al,/,"inc	")
 		if (/isokernel/) isotazboot=0
 	}
 	if (/if \(c\) s\+\+;/) isotazboot=6
@@ -228,6 +323,12 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		}
 	}
 	if (/static void next_chunk/) isotazboot=5
+	if (isotazboot == 501) {
+		if (/ret/) {
+			print "@1@86:"
+			isotazboot=0
+		}
+	}
 	if (isotazboot == 5 || isotazboot == 500) { # TAZBOOT.LST
 		if (/cx,ax/) $0="	xchg	ax,bx"
 		if (/ax,word ptr \[si\+28\]/ && isotazboot == 500) next
@@ -235,7 +336,19 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/push/ || /pop/ || /bp,sp/ || /si,/) next
 		sub(/\[si/,"[di")
 		if (/initrd_info/) isotazboot=500
-		if (/endp/) isotazboot=0
+		if (/bx\+6\]/) next
+		if (/bx\+4\]/) sub(/mov	dx,/,"les	dx,d")
+		sub(/di\+24\],ax/,"di+24],es")
+		sub(/call/,"jmp")
+		if (/ret/ || /pop/ || /^@1@86:/) next
+		if (/_isostate\+14/) next
+		if (/_isostate\+12/) {
+			sub(/mov	ax,/,"les	ax,d")
+			print
+			print "	mov	dx,es"
+			next
+		}
+		if (/ax,-4/) isotazboot++
 	}
 	if (/0x7FF0/) isotazboot=4
 	if (isotazboot == 4) { # TAZBOOT.LST
@@ -266,6 +379,12 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		}
 		if (/\[bp-4\],ax/) sub(/ax/,"bx")
 		if (/ax,word ptr \[bx\+2\]/ || /bx,ax/) next
+		if (/_base_himem\+2,dx/) {
+			print "	mov	bx,offset DGROUP:_base_himem+2"
+		}
+		sub(/DGROUP:_base_himem,/,"[bx-2],")
+		sub(/DGROUP:_base_himem\+2,/,"[bx],")
+		sub(/DGROUP:_base_himem\+3,/,"[bx+1],")
 		if (/@strcmp\$qpxzct1/) isotazboot=0
 	}
 	if (/static void addinitrd/) isotazboot=100

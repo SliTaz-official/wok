@@ -163,8 +163,6 @@ char* iso;
 int main(int argc, char *argv[])
 {
 	((u16*) &base_himem)[1] |= (_1m+_64k)>>16;	// base_himem = _1m+_64k
-	argv[0] = progname();
-	bootiso(argv);	// iso ? parsing is /init.exe stuff !
 
 	if (argc < 2) {
 		try_default_args();
@@ -180,14 +178,38 @@ Examples for tazboot.cmd:\n\n\
   kernel=\\slitaz\\elks\n\
   root=/dev/bda1 ro\n");
 	}
-	bootiso(argv + 1);
-	chdirname(*argv);
+	bootiso(argv + 1);	// iso ? parsing is /init.exe stuff !
 	for (int i=0;;) {
 		char *s;
 	next:	argv++;
 		s=*argv;
 		i++;
-		if (!s) break;
+		if (!s) {
+			if (isoreset(iso) != -1) {
+				s = (char *) initrd_name;
+				if (isoopen((char *) kernel_name) != -1) {
+					isokernel();
+				}
+				if (s) {
+					do {
+						char *p, c;
+						for (p = s; *s && *s != ','; s++);
+						c = *s; *s = 0;
+						if (isoopen(p) != -1) {
+							addinitrd();
+						}
+						*s = c;
+						if (c) s++;
+					} while (*s);
+					load_initrds();
+				}
+			}
+			else {
+				load_kernel();
+				load_initrd();
+			}
+			boot_kernel();
+		}
 #ifdef USE_ARGSTR
 	        if ((*(u16 *)s|0x2002) == 0x662F) {	// -F /f
 			skip_alloc++;
@@ -201,31 +223,31 @@ Examples for tazboot.cmd:\n\n\
 		else strcatb(buf_cmdline,*argv);	// FIXME mem ?
 	}
 #else
-		if (strhead(s,"kernel=") != -1) {
-			s++;
-	set_kernel:
-			s += 6;
-	set_kernelz:
-			kernel_name = s;
-		}
-		else if (strhead(s,"image=") != -1) {
-			goto set_kernel;
-		}
-		else if (strhead(s,"initrd=") != -1) {
+		if (strhead(s,"initrd=") != -1) {
 			s += 7;
 			initrd_name = s;
 		}
 		else if (strhead(s,"bootfrom=") != -1) {
 			s += 9;
-	set_iso:
-			iso = s;
+			goto set_iso;
 		}
 		else if (strhead(s,"iso=") != -1) {
 			s += 4;
-			goto set_iso;
+	set_iso:
+			iso = s;
+		}
+		else if (strhead(s,"image=") != -1) {
+			goto set_kernel;
 		}
 		else if(strhead(s,"vga=") != -1) {
 			*(u16*)&vid_mode = (u16)strtol(s+4);	// support normal, extended & ask
+		}
+		else if (strhead(s,"kernel=") != -1) {
+			s++;
+	set_kernel:
+			s += 6;
+	set_kernelz:
+			kernel_name = s;
 		}
 	        else switch (*(u16 *)s|0x2002) {
 		case 0x662F:	// -F /f
@@ -255,29 +277,4 @@ Examples for tazboot.cmd:\n\n\
 		}}
 	}
 #endif
-	if (isoreset(iso) != -1) {
-		char *s = (char *) initrd_name;
-		if (isoopen((char *) kernel_name) != -1) {
-			isokernel();
-		}
-		if (s) {
-			while (*s) {
-				char *p, c;
-				for (p = s; *s && *s != ','; s++);
-				c = *s; *s = 0;
-				if (isoopen(p) != -1) {
-					addinitrd();
-				}
-				*s = c;
-				if (c) s++;
-			}
-			load_initrds();
-		}
-	}
-	else {
-		load_kernel();
-		load_initrd();
-	}
-	boot_kernel();
-	return _AX;
 }

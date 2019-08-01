@@ -89,12 +89,7 @@ int main(int argc, char *argv[]) {
 	    load_initrd();
 	    boot_kernel();
 	}
-        if(strhead(s,"image=") != -1) {
-	    s+=6;
-	set_kernel_name:
-            kernel_name=s;
-        }
-        else if(strhead(s,"initrd=") != -1) {
+        if(strhead(s,"initrd=") != -1) {
             initrd_name=s+7;
         }
         else if(strhead(s,"vga=") != -1) {
@@ -140,6 +135,11 @@ int main(int argc, char *argv[]) {
 		((u16 *)&topmem)[1] = (u16)(strtol(s+4)>>16);
 		goto addincmdline;
 	    }
+            else if(strhead(s,"image=") != -1) {
+	        s+=6;
+	    set_kernel_name:
+                kernel_name=s;
+            }
 	    else {
 	addincmdline:
 		if(cmdline == (const char *) buf_cmdline + 1) {

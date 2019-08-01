@@ -177,12 +177,10 @@ movepartition:
 	  movsb
 	ret
 	.org	0x7E00
-
-	.org	0x7F78
+	.org	0x7F40
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
 exestart:
-	cld
 	movw	129, %ax
 	cmpb	$0x2F, %al
 	je	ishelp
@@ -223,6 +221,51 @@ is86:
 	//movb	$EXESTR(realmodemsg), %al
 isvm86:
 	call	goputs
+//----------
+	pushw	%di
+//------------- insert argv[0] in cmdline -----------------------
+	xchgw	%ax,%dx			// %ax = 0
+	movw	%ax,%di
+	movw	0x2C(%di),%es
+	movw	%sp,%cx			// big enough
+scalp:
+	repne
+	  scasb
+	scasb
+	jne	scalp
+	incw	%di
+	movw	%di,%bx
+	incw	%di
+	pushw	%di			// %es:%di = programme pathname
+	repne
+	  scasb
+	subw	%di,%bx
+	negw	%bx
+	movw	$128,%si
+	addw	%bx,(%si)
+	lodsb	
+	xchgw	%ax,%cx
+	incw	%cx
+	pushw	%si
+p2lp:
+	lodsb
+	movb	%al,-2(%bx,%si)
+	loop	p2lp
+	popw	%si
+	popw	%bx
+	movb	$0x20,%al
+p1lp:
+	movb	%al,(%si)
+	incw	%si
+	movb	%es:(%bx),%al
+	incw	%bx
+	cmpw	%bx,%di
+	ja	p1lp
+//----------
+	popw	%di
+	pushw	%cs
+	popw	%es
+//----------
 	movw	comstart-end_header(%di), %si		// .com address
 	pushw	%di
 	movb	$0x7C/2, %ch		// 31K-31.5K, > com length
@@ -242,17 +285,13 @@ realmodemsg:
 	.ascii	"real"			// real mode
 // --------------- Must be in 7FC0 7FFF range ------------------------
 mode:
-	.ascii	" m"
-ode:
-	.ascii	"ode"
+	.ascii	" mode"
 	.byte	EXESTR(eol)
 noDOS3:
-	.ascii	"DOS3"			// DOS3?
-need:
-	.ascii	"?"
+	.ascii	"DOS3?"			// DOS3?
 	.byte	EXESTR(eol)
 help:
-	.ascii	"SliTaz iso boot."	// SliTaz iso boot.
+	.ascii	"SliTaz iso boot"	// SliTaz iso boot
 eol:
 	.ascii	"\r\n"
 	.byte	1			// puts will return

@@ -109,11 +109,10 @@ ends				;};
 		;cwd
 		;add	ax,[word (image_himem bx).size]		; lo m->size
 		;adc	dx,[word (image_himem bx+2).size]	; hi m->size
-		mov	ax,[word (image_himem bx).size]		; lo m->size
-		mov	dx,[word (image_himem bx+2).size]	; hi m->size
+		les	ax,[dword (image_himem bx).size]	; m->size
 		mov	cl,16-10
-		extrn	N_LXLSH@:near
-		call	N_LXLSH@
+		extrn	N_LXLSH@ES:near
+		call	N_LXLSH@ES
                 inc     dx
                 mov     ah,9h          ;allocate blk of DX kilobytes (<64Mb)
 		endif
