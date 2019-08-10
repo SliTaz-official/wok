@@ -11,12 +11,16 @@ WEB_SITE="https://acoustid.org/chromaprint"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/acoustid/$PACKAGE/releases/download/v$VERSION/$TARBALL"
 
-DEPENDS="gcc83-lib-base"
-BUILD_DEPENDS="cmake ffmpeg-dev gcc83"
+DEPENDS="libav gcc83-lib-base"
+BUILD_DEPENDS="cmake ffmpeg-dev libgnutls gcc83"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	#lavc 55.28.1 (2013-12-11)
+	sed -i	-e 's|avcodec_alloc_frame|av_frame_alloc|' \
+		-e 's|avcodec_free_frame|av_frame_free|' \
+			src/audio/ffmpeg_audio_reader.h
 	export	CC=gcc-83
 	export	CXX=g++-83
 
