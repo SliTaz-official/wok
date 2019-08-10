@@ -67,7 +67,7 @@ static void bootiso(char **iso)
 {
 	const char *init = " rdinit=/init.exe", *mode="menu";
 	char c;
-	static char rootfs[16], fallback[16], isknoppix, noauto;
+	static char rootfs[16], fallback[16], noauto;
 	unsigned long magic;
 	struct isostate *x=&isostate;
 	
@@ -76,20 +76,12 @@ static void bootiso(char **iso)
 	base_himem = memtop() /2;
 	//if (base_himem >= _64m) base_himem = _64m;
 	if (* ((char *) &base_himem +3) >= 4) ((short *)&base_himem)[1] = _64m/_64k;
-	isoopen("boot") != -1 ||
-	isoopen("live") != -1 ||	// debian
-	isoopen("casper") != -1;	// ubuntu
+	isoopen("boot");
 	if (iso[1] && !strcmp(mode = iso[1], "text"))
 		init = "";
-	do {
-		if ((isoopen(mode) != -1 && ++noauto != 0) ||	// custom
-		    isoopen("bzImage") != -1		|| 	// SliTaz
-		    isoopen("vmlinuz") != -1		||	// misc
-		    (isoopen("linux") != -1 && ++isknoppix != 0)) {
-			magic = kver2ul(isokernel());
-			break;
-		}
-	} while (isoopen("isolinux") != -1);		// Knoppix
+	if (isoopen(mode) == -1 || ++noauto == 0)	// custom
+		isoopen("bzImage");			// SliTaz
+	magic = kver2ul(isokernel());
 	for (c = 0, x->curdirsize = 0xFFFF; isoreaddir() != -1;) {
 		if (strstr(x->filename, ".gz"))
 			strcpy(fallback, x->filename);
@@ -99,7 +91,7 @@ static void bootiso(char **iso)
 		strcpy(rootfs, x->filename);
 	}
 
-	strcatb(buf_cmdline,"rw root=/dev/null autologin bootfrom=");
+	strcatb(buf_cmdline,"autologin bootfrom=");
 	strcat(buf_cmdline,*iso);
 	if (magic < 0x20630)
 		init = ""; // Does not support multiple initramfs
@@ -116,15 +108,10 @@ static void bootiso(char **iso)
 		}
 	}
 	else if (magic != 0) {
-		char *initrdfilename = fallback;
 		static const unsigned long initrddesc = 18L;
 
-		if (rootfs[0]) {
-			initrdfilename = rootfs;
-			if (rootfs[6] != '.' && isoopen("rootfs.gz") != -1)
-				addinitrd();	// for loram
-		}
-		if (isoopen(initrdfilename) != -1) {
+		if (isoopen("rootfs.gz") != -1 ||
+		    isoopen(rootfs[0] ? rootfs : fallback) != -1) {
 			addinitrd();
 		}
 		if (*init && isolseek(&initrddesc) != 0) {
@@ -141,13 +128,6 @@ static void bootiso(char **iso)
 		strcat(buf_cmdline,(char *)ultoa(magic));
 	}
 	load_initrds();
-	if (isknoppix) {
-		char *s = *iso;
-		if (s[1] == ':')
-			s += 2;
-		for (; *s; s++)
-			if (*s == '\\') *s = '/';
-	}
 	close(x->fd);
 	boot_kernel();
 }

@@ -202,7 +202,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	 } # file == "iso9660.cpp"
 	 if (file == "iso9660.cpp" || file == "tazboot.cpp") {
 	if (/do s\+\+; while/) isiso=3
-	if (/for \(p = s; \*s && \*s \!=/) isiso=3
+	if (/for \(p = s; \*s && \*s \!=/) isiso=3	# tazboot/main
 	if (isiso == 3) { # ISO9660.LST, TAZBOOT.LST
 		sub(/cmp	byte ptr \[.i\]/,"sub	al")
 		if (/mov	byte ptr \[bp-5\],al/) $0="	push	ax"
@@ -243,11 +243,11 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	 } # file == "iso9660.cpp"
 	if (/endp/) { xlabel = ""; goto2=0 }
-	if (/isoopen\(s\+7\)/ && xlabel == "") goto2=1
-	if (/_vid_mode,ax/ && xlabel == "") goto2=1
-	if (/_initrd_name,si/ && xlabel == "") goto2=1
-	if (/_base_himem\+2,/ && xlabel == "@") goto2=1
-	if (/DGROUP:_skip_alloc/ && xlabel == "@") goto2=1
+	if (/isoopen\(s\+7\)/ && xlabel == "") goto2=1		# tazboot/bootiso
+	if (/_vid_mode,ax/ && xlabel == "") goto2=1		# tazboot/main
+	if (/_initrd_name,si/ && xlabel == "") goto2=1		# tazboot/main
+	if (/_base_himem\+2,/ && xlabel == "@") goto2=1		# tazboot/bootiso tazboot/main
+	if (/DGROUP:_skip_alloc/ && xlabel == "@") goto2=1	# tazboot/bootiso tazboot/main
 	if (/puts\(cmdline\)/ && xlabel == "@@") goto2=1
 	if (goto2 == 1 && /jmp/) { # TAZBOOT.LST && LINLD.LST
 		print $NF xlabel "@:"
@@ -257,6 +257,29 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		$0=$0 xlabel
 		if (goto2++ == 1) xlabel=xlabel "@"
 	}
+	if (file == "tazboot.cpp" && /close\(x/) isotazboot=16
+	if (isotazboot == 160) { # TAZBOOT.LST
+		$0="; " $0
+		if (/ret/) isotazboot=0
+	}
+	if (isotazboot == 16) { # TAZBOOT.LST
+		if (/@.@/) {
+			isotazboot=160
+			next
+		}
+	}
+	if (file == "tazboot.cpp" && /jne	@@2/) isotazboot=15
+	if (isotazboot == 15) { # TAZBOOT.LST
+		if (/@.@/) {
+			print	"	pop	di"
+			print	"	pop	si"
+			print	"	mov	sp,bp"
+			print	"	pop	bp"
+			print	"	ret"
+			next
+		}
+		if (/skip_alloc/) isotazboot=0
+	}
 	if (/if\(\*s>=/) isotazboot=14
 	if (isotazboot == 14) { # LINLD.LST
 		if (/jmp/) {
@@ -264,24 +287,24 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			isotazboot=0
 		}
 	}
-	if (file == "tazboot.cpp" && /;					s \+= 4/) isotazboot=13
+	if (file == "tazboot.cpp" && /;					s \+= 4/) isotazboot=13	# tazboot/main
 	if (isotazboot == 13) { # TAZBOOT.LST
 		if (/si,4/) $0="	lea	bx,[si+4]"
 		if (/bx,si/) next
 		if (/DGROUP:_topmem/ || /set_iso/) isotazboot=0
 	}
-	if (file == "tazboot.cpp" && /case 0x652F:/) isotazboot=12
+	if (file == "tazboot.cpp" && /case 0x652F:/) isotazboot=12	# tazboot/main
 	if (isotazboot == 12) { # TAZBOOT.LST
 		sub(/si,word/,"bx,word")
 		if (/short/) isotazboot=0
 	}
-	if (/return load_kernel/) isotazboot=11
+	if (/return load_kernel/) isotazboot=11	# tazboot/isokernel
 	if (isotazboot == 11) { # TAZBOOT.LST
 		sub(/call/,"jmp")
 		if (/ret/ || /pop/) next
 		if (/endp/) isotazboot=0
 	}
-	if (/cmdline=s\+=3/ || /magic \!= 0/ || /&root_dev =/) { isotazboot=10; j="" }
+	if (/cmdline=s\+=3/ || /magic \!= 0/ || /&root_dev =/) { isotazboot=10; j="" }	# ,tazboot/bootiso,tazboot/main
 	if (isotazboot == 10) { # TAZBOOT.LST && LINLD.LST
 		if (/je/ || /jne/) { j=$1; next }
 		if (/jmp/) {
@@ -290,39 +313,39 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			isotazboot=0
 		}
 	}
-	if (/static const unsigned long initrddesc = 18L/) isotazboot=9
+	if (/static const unsigned long initrddesc = 18L/) isotazboot=9	# tazboot/bootiso
 	if (isotazboot == 9) { # TAZBOOT.LST
 		if (/,0/) {
 			split($4,y,",")
 			print "	mov	bx,offset " y[1]
+			sub(/DGROUP:.*,/,"[bx],")
 		}
-		if (/DGROUP:.*\+6,46/) {
-			sub(/DGROUP:.*\+6,/,"[bx+6],")
-			isotazboot=0
-		}
-		if (/mov/) $0="	mov	si,bx"
-		sub(/DGROUP:.*,/,"[bx],")
+		if (/mov/ && $3 == y[1]) next
+		if (/je/) next
+		if (/jmp/) sub(/jmp/,"jne")
+		sub(/ax,offset/,"bx,offset")
+		if (/bx,ax/) { isotazboot=0; next }
 	}
-	if (/isoopen\(s\+7\) != -1/) isotazboot=8
+	if (/isoopen\(s\+7\) != -1/) isotazboot=8	# tazboot/bootiso
 	if (isotazboot == 8) { # TAZBOOT.LST
-		if (/ax,si/) next
-		sub(/ax,ax/,"si,si")
+		sub(/\[bx/,"[si")
+		if (/bx,si/) next
 		if (/magic/) isotazboot=0
 	}
-	if (/\+\+isknoppix/) isotazboot=7
+	if (/isoopen\(\"bzImage\"\)/) isotazboot=7		# tazboot/bootiso
 	if (isotazboot == 7) { # TAZBOOT.LST
 		if (/inc/ || /,al/) next
 		if (/al,byte/) sub (/mov	al,/,"inc	")
 		if (/isokernel/) isotazboot=0
 	}
-	if (/if \(c\) s\+\+;/) isotazboot=6
+	if (/if \(c\) s\+\+;/) isotazboot=6		# tazboot/main
 	if (isotazboot == 6) { # TAZBOOT.LST
 		if (/cmp/) {
 			$0="	cmp	al,0"
 			isotazboot=0
 		}
 	}
-	if (/static void next_chunk/) isotazboot=5
+	if (/static void next_chunk/) isotazboot=5	# tazboot/next_chunk
 	if (isotazboot == 501) {
 		if (/ret/) {
 			print "@1@86:"
@@ -350,7 +373,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		}
 		if (/ax,-4/) isotazboot++
 	}
-	if (/0x7FF0/) isotazboot=4
+	if (/0x7FF0/) isotazboot=4		# tazboot/bootiso
 	if (isotazboot == 4) { # TAZBOOT.LST
 		if (/ax,word ptr/) {
 			print "	mov	ax,32752"
@@ -363,22 +386,21 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/,cx/,",ax")
 		if (/@addinitrd\$qv/) isotazboot=0
 	}
-	if (/c = x->filename/) isotazboot=3
+	if (/c = x->filename/) isotazboot=3	# tazboot/bootiso
 	if (isotazboot == 3) { # TAZBOOT.LST
 		if (/ax,/) $0="	xchg	ax,bx"
 		if (/\]$/) next
 		if (/@strcpy\$qpxzct1/) isotazboot=0
 	}
-	if (/base_himem = memtop/) isotazboot=2
+	if (/base_himem = memtop/) isotazboot=2	# tazboot/bootiso
 	if (isotazboot == 2) { # TAZBOOT.LST
-		if (/@6@226/ || /mov	ax,1/ || /@6@254/ || /xor	ax,ax/) next
-		if (/word ptr \[bx\+2\],0/) {
+		if (/word ptr \[si\+2\],0/) {
 			print s; hold=0
-			print "	mov	bx,word ptr [bx+2]"
+			print "	mov	bx,word ptr [si+2]"
 			$0="	or	bx,bx"
 		}
 		if (/\[bp-4\],ax/) sub(/ax/,"bx")
-		if (/ax,word ptr \[bx\+2\]/ || /bx,ax/) next
+		if (/ax,word ptr \[si\+2\]/ || /bx,ax/) next
 		if (/_base_himem\+2,dx/) {
 			print "	mov	bx,offset DGROUP:_base_himem+2"
 		}
@@ -387,7 +409,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/DGROUP:_base_himem\+3,/,"[bx+1],")
 		if (/@strcmp\$qpxzct1/) isotazboot=0
 	}
-	if (/static void addinitrd/) isotazboot=100
+	if (/static void addinitrd/) isotazboot=100	# tazboot/addinitrd
 	if (isotazboot == 100) { # TAZBOOT.LST
 		if (/cx,ax/) {
 			print "	mov	si,offset _isostate+8"
