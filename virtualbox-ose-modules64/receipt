@@ -1,0 +1,50 @@
+# SliTaz package receipt.
+
+PACKAGE="virtualbox-ose-modules64"
+VERSION="4.2.6"
+CATEGORY="base-system"
+SHORT_DESC="virtualbox-ose kernel module."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+WEB_SITE="https://www.virtualbox.org/"
+TAGS="virtualization"
+WANTED="virtualbox-ose"
+PROVIDE="virtualbox-ose-modules:linux64"
+
+DEPENDS="linux64"
+BUILD_DEPENDS="linux64-module-headers xz uclibc-cross-compiler-x86_64"
+SUGGESTED="virtualbox-ose"
+
+AUFS_NOT_RAMFS="uclibc-cross-compiler-x86_64 is not compatible with aufs+tmpfs 8("
+
+# Rules to configure and make the package.
+
+compile_rules()
+{
+	KERN_DIR=/usr/src/linux make -C "$src/out/linux.amd64/release/bin/src" &&
+	xz $src/out/linux.amd64/release/bin/src/*.ko
+}
+	
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{	
+	EXTRAVERSION=_$kvers
+	mkdir -p $fs/lib/modules/$kvers-slitaz64/kernel/misc
+	cp $src/out/linux.amd64/release/bin/src/*.ko.xz \
+		$fs/lib/modules/$kvers-slitaz64/kernel/misc
+}
+
+post_install()
+{
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz64
+	chroot "$1/" modprobe -a vboxdrv vboxnetadp vboxnetflt
+	grep -qs vboxdrv "$1/etc/rcS.conf" ||
+		sed -i 's/LOAD_MODULES="/&vboxdrv vboxnetadp vboxnetflt /' \
+			"$1/etc/rcS.conf"
+}
+
+post_remove()
+{
+	sed -i "s/vboxdrv vboxnetadp vboxnetflt //" "$1/etc/rcS.conf"
+	chroot "$1/" depmod -a ${EXTRAVERSION#_}-slitaz64
+}

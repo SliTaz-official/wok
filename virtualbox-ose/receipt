@@ -15,7 +15,8 @@ PROVIDE="virtualbox"
 
 DEPENDS="libxml2 xorg-libXcursor libIDL xorg-libXinerama libsdl \
 xorg-libXmu curl libvncserver libpng jpeg mesa libglu-mesa vde2 \
-python libQtCore libQtGui libQtNetwork libQtOpenGL"
+python libQtCore libQtGui libQtNetwork libQtOpenGL \
+virtualbox-ose-modules"
 BUILD_DEPENDS="bin86 dev86 iasl libIDL libsdl-dev mesa-dev libxslt-dev \
 libglu-mesa-dev Qt4-dev libsdl-ttf-dev alsa-lib-dev hal-dev xorg-libXtst-dev \
 xorg-libXrandr-dev python python-dev xalan-c curl-dev xalan-c-dev \
@@ -28,6 +29,10 @@ compile_rules()
 {
 	grep -rl 'uname -m' $src | xargs sed -i 's|\(.\)uname -m|\1echo i486|'
 	patch -p1 < $stuff/virtualbox-linux.patch
+	cp $stuff/vbox-cpuhotplug.dsl src/VBox/Devices/PC/
+	sed -i '/Wake up on LAN/{NNNNNd};s|S2BF, 1|&, Serialized|' \
+		src/VBox/Devices/PC/vbox.dsl
+	sed -i '/soapvbox\*\.h/d' src/VBox/Main/webservice/Makefile.kmk
 	cp $stuff/LocalConfig.kmk .
 	./configure \
 		--disable-pulse \
@@ -39,8 +44,10 @@ compile_rules()
 	source ./env.sh
 	kmk all 2>&1 | grep -v 'kmk: No such'
 
-	# build modules.
-	KERN_DIR=/usr/src/linux make -C "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/src"
+	# Prepare modules tree.
+	mkdir -p $src/out/linux.amd64/release/bin
+	cp -a $src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/src \
+		$src/out/linux.amd64/release/bin/src
 	# build guest additions modules
 	KERN_DIR=/usr/src/linux make -C "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/additions/src"
 }
@@ -113,31 +120,16 @@ genpkg_rules()
 	chmod 644 $fs/usr/lib/virtualbox/sdk/bindings/xpcom/python/xpcom/*.py
 	chmod 644 $fs/usr/lib/virtualbox/sdk/bindings/xpcom/python/xpcom/server/*.py
 	chmod 644 $fs/usr/lib/virtualbox/sdk/bindings/xpcom/python/xpcom/client/*.py
-	cd $src/out/linux.$BUILD_PLATFORM_ARCH/release/bin
-
-	# virtualbox-ose-modules
-	KERNEL_VERSION=$(grep  ^VERSION= $WOK/linux/receipt | cut -d "=" -f2 | sed -e 's/"//g')
-
-	cd "$src/out/linux.$BUILD_PLATFORM_ARCH/release/bin/src"
-	install -D -m644 vboxdrv.ko "$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxdrv.ko"
-	install -D -m644 vboxnetflt.ko "$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxnetflt.ko"
-	install -D -m644 vboxnetadp.ko "$fs/lib/modules/$KERNEL_VERSION-slitaz/misc/vboxnetadp.ko"
 }
 
 pre_remove()
 {
-	sed -i "s/vboxdrv vboxnetadp vboxnetflt //" "$1/etc/rcS.conf"
 	chroot "$1/" delgroup vboxusers
 }
 
 post_install()
 {
 	#chroot "$1/" udevadm control --reload
-	KERNEL_VERSION=$( chroot "$1/" uname -r)
-	chroot "$1/" depmod -a $KERNEL_VERSION
-	chroot "$1/" modprobe -a vboxdrv vboxnetadp vboxnetflt
-	grep -qs vboxdrv "$1/etc/rcS.conf" ||
-		sed -i 's/LOAD_MODULES="/&vboxdrv vboxnetadp vboxnetflt /' "$1/etc/rcS.conf"
 	grep -qs vboxuser "$1/etc/group" || chroot "$1/" addgroup -g 199 vboxusers
 	echo "add yourself to vboxusers group if you want to access"
 	echo "host usb devices: addgroup $USER vboxusers"
