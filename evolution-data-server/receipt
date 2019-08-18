@@ -17,7 +17,26 @@ BUILD_DEPENDS="libglade-dev libsoup-dev gtk+-dev ORBit2-dev libbonobo-dev GConf-
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	sed -i 's|\([idt].*\)->is_utc = \(.*\);|icaltime_set_timezone(\1,\2 ? icaltimezone_get_utc_timezone() : NULL);|' \
+		calendar/libecal/e-cal-*.c
+	sed -i 's|\([idt].*\)\.is_utc = \(.*\);|icaltime_set_timezone(\&\1,\2 ? icaltimezone_get_utc_timezone() : NULL);|' \
+		calendar/libecal/e-cal-*.c
+	sed -i 's|dt->value->is_utc)$|icaltime_is_utc(*dt->value))|' \
+		calendar/libecal/e-cal-component.c
+	sed -i -e 's|buf->buffer->content|xmlOutputBufferGetContent(buf)|' \
+		-e 's|buf->conv->content|xmlBufferContent(buf->conv)|' \
+		-e 's|buf->buffer->use|xmlOutputBufferGetSize(buf)|' \
+			servers/google/libgdata/gdata-entry.c \
+			calendar/backends/caldav/e-cal-backend-caldav.c
+	sed -i 's|icaltime_from_timet\([ (].*\))|icaltime_from_timet_with_zone\1, NULL)|' \
+		calendar/libecal/e-cal*.c
+	sed -i 's|ret.is_utc = FALSE|icaltime_set_timezone(\&ret,NULL)|' \
+		calendar/backends/contacts/e-cal-backend-contacts.c
+	sed -i 's|itt.is_utc = itt_u->is_utc|icaltime_set_timezone(\&itt,icaltime_is_utc(*itt_u) ? icaltimezone_get_utc_timezone() : NULL)|' \
+		calendar/backends/google/e-cal-backend-google-utils.c
+	sed -i 's|icalproperty_remove_parameter|&_by_kind|' \
+		calendar/backends/groupwise/e-cal-backend-groupwise-utils.c \
+		calendar/libecal/e-cal-component.c
 	./configure \
 		--prefix=/usr \
 		--infodir=/usr/share/info \
@@ -53,4 +72,3 @@ genpkg_rules()
 	find . -name "*.so" -exec strip -s {} \;
 	
 }
-
