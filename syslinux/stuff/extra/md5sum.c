@@ -626,10 +626,10 @@ static int main_kbdmap(int argc, char *argv[])
 	loadfile(kbdfile, (void **) &kbdmap, &map_size))
     	goto kbdmap_error;
     if (* (short *) kbdmap == 0x005D) {
-	void *heap = malloc(2*(1846 + (768 << (3 + 0))) + 16);
 	void *p = malloc(map_size = * (long *) (kbdmap + 5));
 
 	if (p) {
+		void *heap = malloc(2*(1846 + (768 << (3 + 0))) + 16);
 		unlzma(kbdmap, p, heap);
 		free(heap);
 		free(kbdmap);
