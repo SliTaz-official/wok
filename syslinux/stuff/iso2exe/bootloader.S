@@ -146,10 +146,10 @@ heap_end_ptr	=	0x24
 # Only characters before the cursor are passed to the kernel.
 
 	xorw	%si, %si
-	orw	cmd_line_ptr-7(%bx), %si
+	orw	(%bx), %si
 	jz	nocmdline
 #ifdef OLDCMDLINE
-	movw	$0xA33F, cmd_line_ptr-2-7(%bx)
+	movw	$0xA33F, -2(%bx)
 #endif
 	call	puts
 #ifdef	EDIT_CMDLINE
@@ -165,14 +165,14 @@ cmdget:
 	call	wait4key
 #else
 	int	$0x16
-#endif
 	cbw				# %ah = 0, get keyboard character
+#endif
 	cmpb	$8, %al			# BackSpace ?
 	je	cmdbs
 	movb	%al, (%si)		# store char
 	lodsw				# %si += 2
 cmdbs:
-	cmpw	%si, cmd_line_ptr-7(%bx)
+	cmpw	%si, (%bx)
 	je	cmdget
 	call	putc
 	cmpb	$10, %al		# Enter/linefeed ?
@@ -185,7 +185,7 @@ endcmdline:
 	popw	%es
 	movw	$0x8000, %di
 	movw	%di, %si
-	xchgw	%si, cmd_line_ptr-7(%bx)
+	xchgw	%si, (%bx)
 	movb	$0x2, %ch
 	rep
 	  movsb
@@ -378,8 +378,10 @@ nextdigit:
 
 check_limits:
 	popw	%dx
-        cmpb    %al, %cl		# max sector known ?
-        ja	next_head		#   no -> store it
+        cmpb    %cl, %al		# max sector known ?
+        jbe	next_head		#   no -> store it
+	#.byte	0xd6	# SALC		# sector by sector
+	movb	$0, %al			# sector by sector
 	pushaw
         int     $0x13			# reset controler
 	stc
@@ -483,6 +485,9 @@ putc:
  	int	$0x10
 	cmp	$0xd, %al		# CR ?
 	je	putclf
+#ifdef	CMDLINE_SUPPORT
+	movb	$cmd_line_ptr, %bl
+#endif
 	ret
 
 #ifdef KEYBOARDLESS_SUPPORT
