@@ -1,34 +1,37 @@
 # SliTaz package receipt.
 
 PACKAGE="remind"
-VERSION="03.01.15"
+VERSION="03.01.16"
 CATEGORY="utilities"
 SHORT_DESC="Sophisticated calendar and alarm program."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://dianne.skoll.ca/projects/remind/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.roaringpenguin.com/products/remind"
-WGET_URL="http://www.roaringpenguin.com/files/download/$TARBALL"
+WGET_URL="${WEB_SITE}download/$TARBALL"
 TAGS="office calendar"
 
-DEPENDS="tk tcl tcllib xorg-libXss"
+DEPENDS="tcl tcllib tk xorg-libXss"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/skel
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc/skel
+
 	touch $fs/etc/skel/.reminders
 	cp -a $install/usr/bin $fs/usr
 }
@@ -37,13 +40,14 @@ post_install()
 {
 	# Check for ~/.reminders file - needed for wyrd
 	nl="\\n"
-	for i in $(ls "$1/home" 2> /dev/null); do
+	for i in $(ls "$1/home" 2> /dev/null)
+	  do
 		[ -f "$1/home/$i/.reminders" ] && continue
 		echo -en "${nl}Creating config file for $i ..."
 		touch "$1/home/$i/.reminders" 
 		chroot "$1/" chown $(stat -c "%u.%g" "$1/home/$i") "/home/$i/.reminders"
 		status
-	done
+	  done
 }
 
 post_remove()
