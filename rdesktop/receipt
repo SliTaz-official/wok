@@ -1,25 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="rdesktop"
-VERSION="1.8.3"
+VERSION="1.8.6"
 CATEGORY="network"
-SHORT_DESC="Remote Desktop Protocol (RDP) client for Windows terminal server"
+TAGS="rdp remote-desktop"
+SHORT_DESC="Remote Desktop Protocol (RDP) client for Windows terminal server."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://rdesktop.sourceforge.net/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="rdp remote-desktop"
+WEB_SITE="https://www.rdesktop.org/"
 
-DEPENDS="libcrypto xorg-libX11 glibc-base xorg-libXau xorg-libXdmcp \
-alsa-lib libsamplerate libao pcsc-lite"
-BUILD_DEPENDS="openssl-dev xorg-dev pcsc-lite-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/archive/v$VERSION.tar.gz"
+
+DEPENDS="alsa-lib glibc-base libao libcrypto libsamplerate pcsc-lite \
+	xorg-libX11 xorg-libXau xorg-libXdmcp"
+BUILD_DEPENDS="openssl-dev pcsc-lite-dev xorg-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr --mandir=/usr/share/man \
-		--disable-credssp \
+	./bootstrap &&
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
+		--disable-credssp	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -28,10 +32,13 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/rdesktop/keymaps
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/rdesktop/keymaps
+
 	cp -a $install/usr/bin/rdesktop $fs/usr/bin
-	for i in fr de en es it ja common modifiers; do
+	for i in common de en es fr it ja modifiers
+	  do
 		cp -a $install/usr/share/rdesktop/keymaps/$i* \
 			$fs/usr/share/rdesktop/keymaps
-	done
+	  done
 }
