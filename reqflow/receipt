@@ -1,29 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="reqflow"
-VERSION="1.2.1"
+VERSION="1.6.0"
 CATEGORY="office"
 SHORT_DESC="Tool for traceability of requirements across documents."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://goeb.github.io/reqflow/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/goeb/reqflow/archive/v$VERSION.tar.gz"
 
-DEPENDS="zlib libzip libxml2 poppler pcre"
-BUILD_DEPENDS="wget zlib-dev libzip-dev libxml2-dev poppler-dev pcre-dev"
+DEPENDS="libxml2 libzip pcre poppler zlib"
+BUILD_DEPENDS="libxml2-dev libzip-dev pcre-dev poppler-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	CFLAGS=$(pkg-config --cflags libzip)
-	make 2>&1 | sed 's/\.d: No such file/.d: no such file/'
+	./configure &&
+	make &&
+	make install
+#	make 2>&1 | sed 's/\.d: No such file/.d: no such file/'
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $src/req $fs/usr/bin
+	cp -a $install/usr/bin/reqflow $fs/usr/bin
 }
-
