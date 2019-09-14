@@ -1,33 +1,43 @@
 # SliTaz package receipt.
 
 PACKAGE="reaver"
-VERSION="1.6.1"
+VERSION="1.6.5"
 CATEGORY="network"
 SHORT_DESC="Brute force attack against Wifi Protected Setup."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="https://github.com/t6x/reaver-wps-fork-t6x"
+
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$WEB_SITE/releases/download/v$VERSION/$TARBALL"
 
-DEPENDS="libpcap aircrack-ng pixiewps"
+DEPENDS="aircrack-ng libpcap pixiewps"
 BUILD_DEPENDS="libpcap-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src/src
-	./configure --prefix=/usr --localstatedir=/var $CONFIGURE_ARGS &&
-	make && make cleanbin
+	./configure			\
+		--prefix=/usr		\
+		--localstatedir=/var	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
+#	make cleanbin
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/var/lib/reaver $fs/usr/bin
-	mkdir -p $install/usr/share/doc $install/usr/share/man
-	cp -a $src/src/wash $fs/usr/bin
-	cp -a $src/src/reaver $fs/usr/bin
-	cp -a $src/README.md $src/docs/* $install/usr/share/doc
-	mv $install/usr/share/doc/reaver.1.gz $install/usr/share/man
+	mkdir -p $fs/var/lib/reaver
+	mkdir -p $fs/usr/bin
+	mkdir -p $install/usr/share/doc
+	mkdir -p $install/usr/share/man
+
+	cp -a $src/src/wash			$fs/usr/bin
+	cp -a $src/src/reaver			$fs/usr/bin
+	cp -a $src/README.md			$install/usr/share/doc
+	cp -a $src/docs/*			$install/usr/share/doc
+	mv $install/usr/share/doc/reaver.1	$install/usr/share/man
 }
