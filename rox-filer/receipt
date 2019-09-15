@@ -3,55 +3,56 @@
 PACKAGE="rox-filer"
 VERSION="2.8"
 CATEGORY="system-tools"
-SHORT_DESC="user friendly filer."
+TAGS="file-manager"
+SHORT_DESC="User friendly file manager."
 MAINTAINER="sygne@ombres.eu"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://rox.sourceforge.net/desktop/ROX-Filer"
-WGET_URL="http://downloads.sourceforge.net/rox/$TARBALL"
-TAGS="file-manager"
 
-DEPENDS="gtk+ libglade libxml2 xorg-libXdamage shared-mime-info xorg-libSM"
-BUILD_DEPENDS="libglade-dev libxml2-dev gtk+-dev shared-mime-info-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$SF_MIRROR/rox/$TARBALL"
+
+DEPENDS="gtk+ libglade libxml2 shared-mime-info xorg-libSM xorg-libXdamage"
+BUILD_DEPENDS="gtk+-dev libglade-dev libxml2-dev shared-mime-info-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lm"
-	echo "patch"
-	[ -f done.menu.diff ] ||
-		patch $src/ROX-Filer/src/menu.c $stuff/menu.diff
-	touch done.menu.diff
+#	echo "patch 2.8"
+#	[ -f done.menu.diff ] ||
+#		patch $src/ROX-Filer/src/menu.c $stuff/menu.diff
+#	touch done.menu.diff
 	echo "compile"
 	# If missing dep compile will block on a read.
 	echo -e "\t" | $src/ROX-Filer/AppRun --compile
 	echo "mkdir"
 	mkdir $DESTDIR
-	cp $src/ROX-Filer/ROX-Filer $DESTDIR/rox-filer
-	cp $src/ROX-Filer/.DirIcon $DESTDIR/
+	cp $src/ROX-Filer/ROX-Filer	$DESTDIR/rox-filer
+	cp $src/ROX-Filer/.DirIcon	$DESTDIR/
 
 	mkdir $DESTDIR/Messages
 	for locale in de es fr it
-	do
+	  do
 		cp -r $src/ROX-Filer/Messages/$locale $DESTDIR/Messages
-	done
+	  done
 		
-	cp -r $src/ROX-Filer/images $DESTDIR/
+	cp -r $src/ROX-Filer/images	$DESTDIR/
 	
 	mkdir $DESTDIR/Help
-	cp $src/ROX-Filer/Help/*.html $DESTDIR/Help/
-	cp $src/ROX-Filer/style.css $DESTDIR/
+	cp $src/ROX-Filer/Help/*.html	$DESTDIR/Help/
+	cp $src/ROX-Filer/style.css	$DESTDIR/
 	
-	cp $src/ROX-Filer/Options.xml $DESTDIR/
-	cp $src/ROX-Filer/Templates.glade $DESTDIR/
+	cp $src/ROX-Filer/Options.xml	$DESTDIR/
+	cp $src/ROX-Filer/Templates.ui	$DESTDIR/
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/rox-filer
-	cp -r $install/* $fs/usr/share/rox-filer/
-	cp $install/.DirIcon $fs/usr/share/rox-filer/
+	cp -r $install/*	$fs/usr/share/rox-filer/
+	cp $install/.DirIcon	$fs/usr/share/rox-filer/
 	
 	mkdir -p $fs/usr/bin
 	cp -r $stuff/rox-filer $fs/usr/bin/
