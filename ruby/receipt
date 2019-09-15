@@ -1,21 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="ruby"
-VERSION="1.9.2-p180"
+VERSION="2.6.4"
 CATEGORY="development"
+TAGS="ruby language programming"
 SHORT_DESC="Dynamic programming language focused on simplicity and productivity."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.ruby-lang.org/"
-WGET_URL="ftp://ftp.ruby-lang.org/pub/ruby/${VERSION%.*}/$TARBALL"
-TAGS="ruby language programming"
-HOST_ARCH="i486 arm"
+WEB_SITE="https://www.ruby-lang.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://cache.ruby-lang.org/pub/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="gcc83-lib-base gdbm libdb libruby ncurses openssl readline zlib"
+BUILD_DEPENDS="db-dev gcc83 openssl-dev readline-dev tcl-dev zlib-dev"
 
 SUGGESTED="tk"
 RELATED="libruby libruby-extras ruby-dev"
-DEPENDS="libruby libdb ncurses openssl readline zlib gdbm"
-BUILD_DEPENDS="zlib-dev tcl-dev openssl-dev db-dev readline-dev"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation.
 case "$ARCH" in
@@ -33,9 +36,13 @@ esac
 compile_rules()
 {
 	#patch -Np1 < $stuff/openssl-1.0.patch
-	./configure \
-		--prefix=/usr \
-		--enable-shared \
+
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	./configure			\
+		--prefix=/usr		\
+		--enable-shared		\
 		$CONFIGURE_ARGS ${ARCH_ARGS} &&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
@@ -44,6 +51,6 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr
 	cp -a $install/usr/bin $fs/usr
 }
