@@ -1,28 +1,42 @@
 # SliTaz package receipt.
 
 PACKAGE="scilab"
-VERSION="5.5.2"
+VERSION="6.0.2"
 CATEGORY="office"
 SHORT_DESC="Open source software for numerical computation."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="CECILL"
+WEB_SITE="https://www.scilab.org/"
+
 TARBALL="$PACKAGE-$VERSION-src.tar.gz"
-WEB_SITE="http://www.scilab.org/"
 WGET_URL="${WEB_SITE}download/$VERSION/$TARBALL"
 
-DEPENDS="libgfortran tk curl blas lapack hdf5 pcre fftw libxml2 gcc-lib-math \
-arpack-ng matio"
-BUILD_DEPENDS="pkg-config gfortran hdf5-dev ocaml fftw-dev libxml2-dev \
-gettext blas lapack curl-dev tcl-dev tk-dev xorg-dev ncursesw-dev \
-arpack-ng-dev matio-dev"
+DEPENDS="arpack-ng blas curl eigen fftw gcc83-lib-base gcclib-math hdf5 \
+	lapack libgfortran libxml2 matio pcre tk"
+BUILD_DEPENDS="arpack-ng-dev blas curl-dev eigen fftw-dev gcc83 gfortran \
+	hdf5-dev gettext lapack libxml2-dev matio-dev ncursesw-dev \
+	ocaml pkg-config tcl-dev tk-dev xorg-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	export LDFLAGS="$LDFLAGS -ltinfo"
-	./configure --prefix=/usr \
-		--without-javasci --without-gui --disable-build-help \
-		--without-umfpack \
+	export	CC=gcc-83
+	export	CXX=g++-83
+	export	LDFLAGS="$LDFLAGS -ltinfo"
+	export	BLAS_LIBS="/usr/lib/libblas.so"
+	export	BLAS_CFLAGS=" "
+
+	# 6.0.2 without-arpack-ng to avoid configure error:
+	# ARPACK library found, but seems not to work properly.
+	# Please make sure you are using arpack-ng
+	./configure				\
+		--prefix=/usr			\
+		--without-arpack-ng		\
+		--with-blas-library=/usr/lib	\
+		--without-javasci		\
+		--without-gui			\
+		--disable-build-help		\
+		--without-umfpack		\
 		$CONFIGURE_ARGS &&
 	make all &&
 	make DESTDIR=$DESTDIR install
