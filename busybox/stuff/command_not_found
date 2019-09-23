@@ -2,25 +2,20 @@
 
 ZLIST=/var/lib/tazpkg/files.list.lzma
 LIST=/tmp/command-list
+[ ! $LIST -nt $ZLIST ] && unlzma <$ZLIST | grep -E '(usr/games/|bin/)' >$LIST && chmod 666 $LIST
 
-lookup()
-{
+lookup() {
 	grep -s "/$2$1$" $LIST | while read pkg file; do
 		cat <<EOT
 Command '$1' not found, but can be installed as root with:
 
 tazpkg -gi ${pkg%:}
-${2+$2$1}
-
+${2:+$2$1}
 EOT
 		break
 	done
 }
 
-if [ ! -s $LIST ] || [ $ZLIST -nt $LIST ]; then
-	unlzma < $ZLIST | grep -E '(/usr/games/|bin/)' > $LIST
-fi
 MSG="$(lookup "$1")"
 [ "$MSG" ] || MSG="$(lookup "$1" get-)"
-[ "$MSG" ] || MSG="${SHELL##*/}: $1: not found"
-echo "$MSG"
+echo "${MSG:-${SHELL##*/}: $1: not found}"
