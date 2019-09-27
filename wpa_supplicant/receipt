@@ -29,18 +29,8 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	for i in  $stuff/*.patch
-	do
-     		if [ -f done.$(basename $i) ]; then
-     			continue
-		else
-     			patch -p1 < $i && touch done.$(basename $i) || return 1
-		fi
-	done
 	cd $src/$PACKAGE 
 	cp -a ./defconfig ./.config
-	sed 's/-lnl/-lnl-3/g' -i ../src/drivers/drivers.mak
-	sed 's/-lnl-3-genl/-lnl-genl-3/g' -i ../src/drivers/drivers.mak
 	# Main build configs
 	cat >> .config << EOT
 CONFIG_AP=y
@@ -73,6 +63,9 @@ EOT
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	mkdir -p $install/usr/share/man
+	cp $src/wpa_supplicant/doc/docbook/*.? $install/usr/share/man
+
 	# commands
 	mkdir -p $fs/usr/bin
 	install -v -m755 $src/$PACKAGE/wpa_cli $fs/usr/bin
@@ -81,9 +74,6 @@ genpkg_rules()
 
 	# D-Bus control
 	mkdir -p $fs/usr/share/dbus-1/system-services
-	install -v -m644 \
-		$src/wpa_supplicant/dbus/fi.epitest.hostap.WPASupplicant.service \
-		$fs/usr/share/dbus-1/system-services
 	install -v -m644 \
 		$src/wpa_supplicant/dbus/fi.w1.wpa_supplicant1.service \
 		$fs/usr/share/dbus-1/system-services
