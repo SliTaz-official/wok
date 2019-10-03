@@ -1,22 +1,26 @@
 # SliTaz package receipt.
 
 PACKAGE="scite"
-VERSION="3.2.0"
+VERSION="4.2.0"
 CATEGORY="utilities"
+TAGS="text-editor"
 SHORT_DESC="Editor with syntax highlighting and source code editing features."
 MAINTAINER="rcx@zoominternet.net"
 LICENSE="PSL"
-TARBALL="${PACKAGE}${VERSION//./}.tgz"
 WEB_SITE="https://www.scintilla.org/"
-WGET_URL="$SF_MIRROR/scintilla/$TARBALL"
-TAGS="text-editor"
 
-DEPENDS="gtk+ xorg-libXdamage gcc-lib-base"
-BUILD_DEPENDS="gtk+-dev"
+TARBALL="${PACKAGE}${VERSION//./}.tgz"
+WGET_URL="$SF_MIRROR/scintilla/$TARBALL"
+
+DEPENDS="gcc83-lib-base gtk+ xorg-libXdamage"
+BUILD_DEPENDS="gcc83 gtk+-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	export	CC=gcc-83
+	export	CXX=g++-83
+
 	# Build scintilla
 	cd $src/scintilla/gtk
 	make GTK2=1 prefix=/usr
@@ -24,20 +28,25 @@ compile_rules()
 	# Build SciTE
 	cd $src/scite/gtk
 	make GTK2=1 prefix=/usr &&
-	make prefix=/usr install && {
-		# Desktop file and icon
-		mkdir -p $DESTDIR/usr/share/applications $DESTDIR/usr/share/pixmaps
-		cp SciTE.desktop $DESTDIR/usr/share/applications
-		cp Sci48M.png $DESTDIR/usr/share/pixmaps
+	make prefix=/usr install &&
+	{
+	# Desktop file and icon
+	mkdir -p $DESTDIR/usr/share/applications
+	mkdir -p $DESTDIR/usr/share/pixmaps
+	cp SciTE.desktop	$DESTDIR/usr/share/applications
+	cp Sci48M.png		$DESTDIR/usr/share/pixmaps
 	}
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/applications $fs/usr/share/pixmaps
+	mkdir -p $fs/usr/share/applications
+	mkdir -p $fs/usr/share/pixmaps
+
 	cp -a $install/usr $fs
-	# Save space ~100kb
+
+	# Save space ~100kB
 	rm $fs/usr/share/scite/*.html
 	rm $fs/usr/share/scite/*.png
 }
