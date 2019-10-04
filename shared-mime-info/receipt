@@ -1,18 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="shared-mime-info"
-VERSION="1.6"
+VERSION="1.14"
 CATEGORY="system-tools"
 SHORT_DESC="Core database of common types and the *update-mime-database*."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://freedesktop.org/wiki/Software/shared-mime-info"
-WGET_URL="http://freedesktop.org/~hadess/$TARBALL"
+WEB_SITE="https://freedesktop.org/wiki/Software/shared-mime-info"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/xdg-$PACKAGE/archive/Release-${VERSION/./-}.tar.gz"
 HOST_ARCH="i486 arm"
 
 DEPENDS="glib"
-BUILD_DEPENDS="intltool"
+BUILD_DEPENDS="bash intltool itstool"
 
 # Handle cross compilation. Host perl/intltool are used
 case "$ARCH" in
@@ -23,17 +24,22 @@ esac
 compile_rules()
 {
 	#patch -Np1 -i $stuff/pbm.patch
+
+	sed -i '1d' ./autogen.sh &&
+	bash -c ./autogen.sh &&
 	./configure $CONFIGURE_ARGS &&
-	make -j1 && make -j1 DESTDIR=$DESTDIR install
+	make -j1 &&
+	make -j1 DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/mime
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/mime/packages $fs/usr/share/mime
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/mime/packages	$fs/usr/share/mime
 
 	# Additional MIME-types supported by SliTaz
-	cp $stuff/*.xml $fs/usr/share/mime/packages
+	cp $stuff/*.xml				$fs/usr/share/mime/packages
 }
