@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="pcem"
+VERSION="15"
+CATEGORY="misc"
+SHORT_DESC="An IBM PC emulator"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://pcem-emulator.co.uk/"
+WGET_URL="${WEB_SITE}files/PCemV${VERSION}Linux.tar.gz"
+TAGS="virtualization emulator"
+
+DEPENDS="wxWidgets libsdl2 openal alsa-lib"
+BUILD_DEPENDS="wxWidgets-dev libsdl2-dev openal-dev alsa-lib-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries"
+	./configure --prefix=/usr \
+		--enable-networking \
+		--enable-alsa \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/* $fs/
+}
