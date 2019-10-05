@@ -17,12 +17,18 @@ case "$1" in
       exit 1
     fi
     action 'Loading module...'
-    modprobe zram zram_num_devices=1 &&
-    [ -n "$SIZE_KB" ] && echo $(($SIZE_KB * 1024)) > /sys/block/zram0/disksize
+    devices=$(awk '/cpu cores/{c=$4} /processor/{p++}
+	END { if (c>0) p=c; if (p==0) p++; print p }' /proc/cpuinfo)
+    modprobe zram zram_num_devices=$devices &&
+    [ -n "$SIZE_KB" ] && for i in $(seq 0 $(($devices-1))); do
+	echo $(($SIZE_KB * 1024 / $devices)) > /sys/block/zram$i/disksize
+    done
     status
 
     action 'Starting %s: %s...' "$DESC" $NAME
-    mkswap /dev/zram0 && swapon /dev/zram0 -p 100
+    for i in $(seq 0 $(($devices-1))); do
+	mkswap /dev/zram$i && swapon /dev/zram$i -p 100
+    done
     status
     ;;
   stop)
@@ -31,7 +37,9 @@ case "$1" in
       exit 1
     fi
     action 'Stopping %s: %s...' "$DESC" $NAME
-    swapoff /dev/zram0 && echo 1 > /sys/block/zram0/reset
+    for i in $(cd /sys/block/; ls -d zram*); do
+	swapoff /dev/$i && echo 1 > /sys/block/$i/reset
+    done
     status
     action 'Unloading module...'
     rmmod zram
