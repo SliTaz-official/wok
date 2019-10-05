@@ -1,23 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="smartmontools"
-VERSION="5.41"
+VERSION="7.0"
 CATEGORY="system-tools"
 SHORT_DESC="Monitors disk and tape health via S.M.A.R.T."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://smartmontools.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://smartmontools.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="gcc-lib-base"
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="gcc83"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr \
-	 --sysconfdir=/etc $CONFIGURE_ARGS &&
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		--with-nvme-devicescan	\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -25,9 +32,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/init.d
-	cp -a $install/usr/sbin $fs/usr
-	cp $install/etc/smartd.conf $fs/etc/smartd.conf
-	install -g root -o root -m 755 $stuff/etc/init.d/smartd $fs/etc/init.d
-}
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc/init.d
 
+	cp -a $install/usr/sbin		$fs/usr
+	cp $install/etc/smartd.conf	$fs/etc/smartd.conf
+	install -g root -o root -m 755	\
+	  $stuff/etc/init.d/smartd	$fs/etc/init.d
+}
