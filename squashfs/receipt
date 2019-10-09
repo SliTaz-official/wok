@@ -1,30 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="squashfs"
-VERSION="4.3"
+VERSION="4.4"
 CATEGORY="base-system"
 SHORT_DESC="Linux squashfs userland tools."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://$PACKAGE.sourceforge.net/"
-TARBALL="squashfs$VERSION.tar.gz"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WEB_SITE="https://github.com/plougher/squashfs-tools"
 
-DEPENDS="zlib liblzma linux-squashfs lzo lz4-lib"
-BUILD_DEPENDS="zlib-dev attr-dev liblzma-dev lzo-dev lz4-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
+
+DEPENDS="liblzma linux-squashfs lz4-lib lzo zlib"
+BUILD_DEPENDS="attr-dev liblzma-dev lz4-dev lzo-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src/squashfs-tools
-	sed -i	-e 's/int file_size/off_t file_size/' \
-		-e 's/source_path.index ++./strdup(&)/' mksquashfs.c
-	sed -i 	-e 's/~S_IFMT/S_IFMT/' -e 's/MOVE_ACTION, -2/MOVE_ACTION, 1/' action.c
-	for i in XZ LZMA_XZ LZO LZ4 ; do
+	# 4.3
+#	sed -i	-e 's/int file_size/off_t file_size/' \
+#		-e 's/source_path.index ++./strdup(&)/' mksquashfs.c
+#	sed -i 	-e 's/~S_IFMT/S_IFMT/' -e 's/MOVE_ACTION, -2/MOVE_ACTION, 1/' action.c
+
+	sed -i 	-e 's/~S_IFMT/S_IFMT/' action.c
+	for i in XZ LZMA_XZ LZO LZ4
+	  do
 		sed -i "s|^#\\(${i}_SUPPORT = 1\\)|\\1|g" Makefile
-	done
-	mkdir -p $DESTDIR/usr/sbin $DESTDIR/sbin
+	  done
+
+	mkdir -p $DESTDIR/usr/sbin
+	mkdir -p  $DESTDIR/sbin
+
 	make || return 1
+
 	cp -a mksquashfs $DESTDIR/usr/sbin
 	cp -a unsquashfs $DESTDIR/sbin
 }
@@ -33,6 +42,10 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $install/usr/share/doc
-	cp -a $install/usr $install/sbin $fs
-	cp $src/README* $src/[CP]* $src/*example $install/usr/share/doc
+
+	cp -a $install/usr	$fs
+	cp -a $install/sbin	$fs
+	cp $src/README*		$install/usr/share/doc
+	cp $src/[CP]*		$install/usr/share/doc
+#	cp $src/*example	$install/usr/share/doc	# 4.3
 }
