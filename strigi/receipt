@@ -1,39 +1,43 @@
 # SliTaz package receipt.
 
 PACKAGE="strigi"
-VERSION="0.7.2"
+VERSION="0.7.5"
 CATEGORY="system-tools"
-SHORT_DESC="Strigi is a fast and light desktop search engine."
+SHORT_DESC="A fast and light desktop search engine."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="LGPL2"
-SUGGESTED="strigi-client"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="https://www.vandenoever.info/software/strigi/"
-WGET_URL="https://www.vandenoever.info/software/strigi/$TARBALL"
+WEB_SITE="https://sourceforge.net/projects/strigi/"
 
-DEPENDS="libxml2 expat sqlite dbus libQtDBus libQtXml libQtCore"
-BUILD_DEPENDS="$DEPENDS libxml2-dev cmake Qt4-dev bzlib expat-dev sqlite-dev \
-dbus-dev libQtCore libQtDBus qmake bzip2-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+SUGGESTED="strigi-client"
+DEPENDS="dbus expat libQtCore libQtDBus libQtXml libxml2 sqlite"
+BUILD_DEPENDS="$DEPENDS bzip2-dev bzlib cmake dbus-dev expat-dev \
+	libQtCore libQtDBus libxml2-dev qmake Qt4-dev sqlite-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	mkdir -p build && cd build
+	mkdir -p build &&
+	cd build
 	cmake \
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		.. &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/$PACKAGE
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/$PACKAGE/*.so* $fs/usr/lib/$PACKAGE
-	cp -a $install/usr/share $fs/usr
-	cp -a $install/usr/bin $fs/usr
+
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/$PACKAGE/*.so*	$fs/usr/lib/$PACKAGE
+	cp -a $install/usr/share		$fs/usr
+	cp -a $install/usr/bin			$fs/usr
+
 	# QT GUI split into strigi-client
 	rm -f $fs/usr/bin/strigiclient	
 }
