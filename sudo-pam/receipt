@@ -1,30 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="sudo-pam"
-VERSION="1.8.20p2"
+VERSION="1.8.27"
 CATEGORY="security"
-SHORT_DESC="Sudo (su \"do\") allows a system administrator to delegate authority using PAM."
+SHORT_DESC="Allows command execution as root for specified users using PAM."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="ISC"
+WEB_SITE="https://www.sudo.ws/"
+
 SOURCE="sudo"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="https://www.sudo.ws/"
-WGET_URL="http://www.gratisoft.us/sudo/dist/$TARBALL"
-PROVIDE="sudo:pam"
+WGET_URL="${WEB_SITE}sudo/dist/$TARBALL"
 
+PROVIDE="sudo:pam"
 DEPENDS="pam"
 BUILD_DEPENDS="pam-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--sysconfdir=/etc \
-		--with-pam \
-		--with-editor=/bin/vi \
-		--libexecdir=/usr/lib \
+	./configure			\
+		--sysconfdir=/etc	\
+		--with-pam		\
+		--with-editor=/bin/vi	\
+		--libexecdir=/usr/lib	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -32,26 +34,29 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
 	mkdir -p $fs/etc/pam.d
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/etc/sudoers $fs/etc/
-	cp -a $stuff/sudo $fs/etc/pam.d/
-	cp -a $install/usr/lib $fs/usr
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/etc/sudoers	$fs/etc/
+	cp -a $stuff/sudo		$fs/etc/pam.d/
+	cp -a $install/usr/lib		$fs/usr
 }
 
 pre_install()
 {
-	if [ -f "$1/etc/sudoers" ]; then
+	if [ -f "$1/etc/sudoers" ]
+	  then
 		cp "$1/etc/sudoers" "$1/etc/sudoers.bak"
 	fi
 }
 
 post_install()
 {
-	if [ -f "$1/etc/sudoers.bak" ]; then
+	if [ -f "$1/etc/sudoers.bak" ]
+	  then
 		rm -f "$1/etc/sudoers"
 		mv "$1/etc/sudoers.bak" "$1/etc/sudoers"
-	else
+	  else
 		chown root.root "$1/etc/sudoers"
 		chmod 0440 "$1/etc/sudoers"
 	fi
