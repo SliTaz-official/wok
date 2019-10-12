@@ -31,7 +31,7 @@ _start:
 //#define NO_DOTS		show progression dots ?		-5
 #ifndef BZIMAGE
 //#define TINY_ZIMAGE		system < 64Kb ?			-11
-//#defime NO_MINSETUP		default setup (dos only) ?	-4
+//#define NO_MINSETUP		default setup (dos only) ?	-4
 //#define NO_CURSOR_DEFINITION					-8
 #endif
 
@@ -300,7 +300,7 @@ movesys:				// %ax = SYSSEG, %bx = DS, %si
 	xorw	%si, %si
 	xorw	%di, %di
 	cmpw	%ax, %bx
-	jc	forward
+	jnc	forward
 	decw	%si
 	decw	%di
 	std
