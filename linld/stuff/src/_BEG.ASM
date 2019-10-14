@@ -2,6 +2,7 @@
 ;****** This file is distributed under GPL
 ;***************************************************************
                 ideal
+		%PAGESIZE 1000
                 %crefref
                 %noincl
                 %nomacs
@@ -33,10 +34,8 @@ STACK_SIZE = 1024
         label   _bss_start byte
 		db	STACK_SIZE-2 dup(?)
 stktop		dw	?
-		ifdef	EXTRA
         global  _cpu_features:dword
 _cpu_features	dd	?
-		endif
         ends    _BSS
 
         segment _TEXT byte public use16 'CODE'
@@ -148,7 +147,6 @@ is386vcpi:
 		jnz	no_vcpi
 		inc	[byte bx+_vcpi-msg_badmapping]
 endcpu386:
-		ifdef	EXTRA
 		pushfd
 		pop	dx
 		pop	ax
@@ -166,7 +164,6 @@ endcpu386:
 		cpuid
 		mov	[_cpu_features],edx
 @@no_cpuid:
-		endif
 endcpu86:
                 p8086
 

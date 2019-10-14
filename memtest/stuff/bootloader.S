@@ -467,7 +467,9 @@ isrm:
 # Assume no error on first track.
 
 #ifdef FLOPPY_1440K_ONLY
+#ifndef FLOPPY_HAS_2_SIDES
 #define FLOPPY_HAS_2_SIDES	hardcore heads count to 2
+#endif
 #define FLOPPY_SECTORS		18	/* 18 sectors */
 #else
 #define FLOPPY_HEADS		2	/* 2 heads minimum */

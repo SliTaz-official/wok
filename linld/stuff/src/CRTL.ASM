@@ -2,6 +2,7 @@
 ;****** This file is distributed under GPL
 ;***************************************************************
                 ideal
+		%PAGESIZE 1000
                 %crefref
                 %noincl
                 %nomacs
@@ -220,7 +221,7 @@ openargs:
 open:
 	ifdef	LONG_FILENAME
 		mov	ax,716Ch
-		push	bx di si
+		push	bx si di
 		mov	si,bx
 		xor	bx,bx			; R/O
 		xor	cx,cx			; attributes
@@ -228,7 +229,7 @@ open:
 		cwd				; action = open
 		stc
                 int	21h
-		pop	si di bx
+		pop	di si bx
                 jnc	doret
 	endif
                 mov	ax,3d00h		; read-only+compatibility
@@ -355,8 +356,8 @@ isolseek:
 		mov	ax,[_isostate.fd]
 	global	@lseekset2$qipul:near
 @lseekset2$qipul:
-		mov	dx,[bx]
-		mov	cx,[bx+2]
+		les	dx,[dword bx]
+		mov	cx,es
 		mov	bl,0
 		jmp	lseekset
 
@@ -456,9 +457,8 @@ isolseek:
 		endif
 		cmp	[byte bx],'|'
 		je	@@test
-		mov	al,0
 		inc	bx
-		cmp	[bx-1],al
+		cmp	[byte bx-1],0
 		jne	@@notopt
 		stc
 		jmp	@@nokeyword
@@ -543,7 +543,8 @@ malloc_or_die:
         global  die:near			; die(bx)
 die:
 		call	puts
-;        global  _exit:near
+        global  @exit$qv:near
+@exit$qv:
 _exit:
 		mov	al,[_no_exit]
 		or	al,al
@@ -794,8 +795,8 @@ memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
 call_memcpy32:
 		push	edx
 		else
-		mov	ax,[word ((image_himem bx).fallback)]
-		mov	dx,[word ((image_himem bx).fallback)+2]
+		les	ax,[dword ((image_himem bx).fallback)]
+		mov	dx,es
 		mov	cx,[word ((image_himem bx).buf)]
 		cmp	ax,cx			; if (m->fallback != m->buf)
 		jnz	@@do
@@ -841,8 +842,8 @@ memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
 		ifndef	NO386
 		mov	edx,[bx]
 		else
-		mov	ax,[bx]
-		mov	dx,[bx+2]
+		les	ax,[dword bx]
+		mov	dx,es
 		endif
 		mov	cx,offset _xfer_buf
 storepage:					; storepage(edx,cx)
@@ -1097,16 +1098,14 @@ image_done:
 		or	si,si
 		jz	@@end
 		lodsb
-		mov	dx,ax
 		or	al,20h
-		cmp	al,'n'			; vga=normal
-		je	@@vga
+		cmp	al,'a'
+		jb	@@notvga
+		sub	al,'n'
+@@vgaloop:
 		dec	cx
-		cmp	al,'e'			; vga=extended
-		je	@@vga
-		dec	cx
-		cmp	al,'a'			; vga=ask
-		jne	@@notvga
+		add	al,6
+		jb	@@vgaloop		; vga=normal,extended,ask
 @@vga:
 		dec	cx
 		xchg	ax,cx
@@ -1114,14 +1113,9 @@ image_done:
 		jmp	@@popsiret
 @@notvga:
 		mov	cx,10			; radix
-		xchg	ax,dx
-		cmp	al,'+'
-		je	@@radixskip
 		cmp	al,'-'
-		clc
-		jne	@@radixkeep
-		stc
-@@radixskip:
+		ja	@@radixkeep
+		cmc				; '+'=2B:C=0 '-'=2D:C=1
 		lodsb
 @@radixkeep:
 		pushf
@@ -1175,8 +1169,7 @@ image_done:
 @@popsiret:
 		pop	si
 		else
-		push	si
-		push	di
+		push	si di
 		xor	ax,ax
 		cwd
 		or	bx,bx
@@ -1184,31 +1177,24 @@ image_done:
 		xchg	ax,di
 		mov	si,bx
 		lodsb
-		mov	bx,ax
 		or	al,20h
-		mov	cx,-1
-		cmp	al,'n'			; vga=normal
-		je	@@vga
+		cmp	al,'a'
+		jb	@@notvga
+		xor	cx,cx
+		sub	al,'n'
+@@vgaloop:
 		dec	cx
-		cmp	al,'e'			; vga=extended
-		je	@@vga
-		dec	cx
-		cmp	al,'a'			; vga=ask
-		jne	@@notvga
+		add	al,6
+		jb	@@vgaloop		; vga=normal,extended,ask
 @@vga:
 		xchg	ax,cx
 @@goend:
 		jmp	@@popdisiret
 @@notvga:
 		mov	cx,10			; radix
-		xchg	ax,bx
-		cmp	al,'+'
-		je	@@radixskip
 		cmp	al,'-'
-		clc
-		jne	@@radixkeep
-		stc
-@@radixskip:
+		ja	@@radixkeep
+		cmc				; '+'=2B:C=0 '-'=2D:C=1
 		lodsb
 @@radixkeep:
 		pushf
@@ -1236,21 +1222,19 @@ image_done:
 		jae	@@endstrtol
 
 		push	ax
-		push	si
 		push	dx
-		xchg	ax,di
+		xchg	ax,bx
 		mul	cx
-		xchg	ax,di
+		xchg	ax,bx
 		xchg	ax,dx
-		xchg	ax,si
+		xchg	ax,di
 		pop	ax
 		mul	cx
-		add	ax,si
-		pop	si
+		add	ax,di
 		xchg	ax,dx
 		pop	ax
 		mov	ah,0
-		add	di,ax
+		add	bx,ax
 		adc	dx,0
 
 		jmp	@@strtollp
@@ -1272,14 +1256,13 @@ image_done:
 		popf
 		jnc	@@end
 		not	dx
-		neg	di
+		neg	bx
 		jne	@@end
 		inc	dx
 @@end:
-		xchg	ax,di
+		xchg	ax,bx
 @@popdisiret:
-		pop	di
-		pop	si
+		pop	di si
 		endif
 strtol_ret:
 		ret

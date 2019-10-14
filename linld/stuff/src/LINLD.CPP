@@ -5,9 +5,13 @@
 #include "crtl.h"
 #include "common.h"
 
-const char* kernel_name = "bzImage";
-const char* initrd_name;
 const char* cmdline = "auto";
+const char* kernel_name = "bzImage";
+#ifdef	USE_ARGSTR
+const char* initrd_name = NULL;
+#else
+const char* initrd_name;
+#endif
 u32 root_dev;
 u32 vid_mode;		// -3 = ask
 			// -2 = Extended VGA
@@ -21,6 +25,7 @@ inline void syntax() {
         "LINLD [image=file] [initrd=files] [vga=mode] [root=num] [mem=max] [cl=cmdline]" NL
         "vga mode: ask,extended,normal or dec/oct/hex number" NL
         "-f force" NL
+        "-64 for cpu64 only" NL
         "Defaults:" NL
         "\timage=bzImage" NL
         "\tinitrd,vga,root=(void)" NL
@@ -50,31 +55,29 @@ int main(int argc, char *argv[]) {
     // Parse command line
 #ifdef	USE_ARGSTR
     if (!argv[1]) syntax();
-    {for (;;) {
+    for (;;) {
 	const char **clp = &cmdline;
-    next:
 	argv++;
-	if (!*argv) {
+	if (!*argv) goto boot;
+        if ((*(u16 *)*argv|2) == 0x362F) {	// -64 /64
+	    if (cpuhaslm() == 0) exit();
+	}
+        if ((*(u16 *)*argv|0x2002) == 0x662F) {	// -F /f
+	    skip_alloc++;
+	}
+	else if (argstr(*argv,"cl|image|initrd",clp) != -1);
+	else if (fileexist(*argv) != -1)
+            kernel_name=*argv;
+	else if (argnum(*argv,"root|vga|mem|-b",&root_dev) != -1);
+	else {
+	    *clp = (const char *) buf_cmdline + 1;
+	    strcatb((const char *) buf_cmdline,*argv);
+	boot:
             puts(*clp);
 	    set_cmdline(*clp);
 	    puts(load_kernel());
 	    load_initrd();
 	    boot_kernel();
-	}
-        if ((*(u16 *)*argv|0x2002) == 0x662F) {	// -F /f
-	    skip_alloc++;
-	    goto next;
-	}
-	if (argstr(*argv,"cl|image|initrd",clp) != -1);
-	else if (fileexist(*argv) != -1)
-            kernel_name=*argv;
-	else if (*argv) {
-	    argnum(*argv,"root|vga|mem|-b",&root_dev);
-	    *clp = (const char *) buf_cmdline + 1;
-	    strcatb((const char *) buf_cmdline,*argv);
-	}
-	else
-	    break;
         }
     }
 #else
@@ -96,6 +99,9 @@ int main(int argc, char *argv[]) {
             *(u16*)&vid_mode = (u16)strtol(s+7);	// support normal, extended & ask
         }
         else switch (*(u16 *)s|0x2002) {
+        case 0x362F:	// -64 /64
+	    if (cpuhaslm() == 0) exit();
+	    goto next;
 	case 0x662F:	// -F /f
 	    skip_alloc++;
 	    goto next;

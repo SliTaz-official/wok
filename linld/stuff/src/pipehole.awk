@@ -6,16 +6,85 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/^@.*:$/ || /	endp$/) afterjmp=0
 	if (/^	\.386p$/) is386=1
 	if (file == "" && /debug	S/) { file=$3; gsub(/\"/,"",file) }
+	if (/debug	S/) print "	%PAGESIZE 1000"
+	 if (file == "tazboot.cpp") {
+	if (/add	si,2/) $0="	lodsw	; " $0
+	if (/add	si,4/) { print "	lodsw"; $0="	lodsw	; " $0 }
+	if (/add	di,2/) $0="	scasw	; " $0
+	 } # file == "tazboot.cpp"
+	 if (file == "linld.cpp") {
+	if (/add	si,2/) $0="	lodsw	; " $0
+	if (/add	di,2/) $0="	scasw	; " $0
+	if (/bx,offset DGROUP:s@\+26/) sub(/mov/,";mov")
+	if (islinld==1) {
+		print "; " $0
+		if (!/word ptr/) next
+		islinld=0
+		sub(/,word.*/,",di	; argv")
+		if (/di,di/) { print "; " $0; next }
+	}
+	if (/^_main	proc/) islinld=1
+	if (/== 0x662F/) islinld=2
+	if (islinld==2) {
+		if (/cpuhaslm/) islinld=0
+		if (/mov/) { print "; " $0; next }
+	}
+	if (/image\|initrd/) islinld=3
+	if (islinld==3) {
+		if (/bx,word ptr/) { islinld=0; print "; " $0; next }
+	}
+	if (/fileexist\$qpxzc/) islinld=4
+	if (islinld==4) {
+		if (/ax,-1/) print "	mov	bx,word ptr [si]"
+		if (/ax,word ptr/) $0="	xchg	ax,bx"
+		if (/\[si\]$/) { islinld=0; print "; " $0; next }
+	}
+	 } # file == "linld.cpp"
 	 if (file == "himem.cpp") {
-	if (/remaining = m-/) ishimem=1
+	if (/void load_image/) ishimem=1
 	if (ishimem == 1 && is386 == 0) {
 		if (/si\+8\]$/ || /si\+4\]$/ || /si\+16\]$/) next
 		if (/si\+6\]$/ || /si\+2\]$/ || /si\+14\]$/) sub(/mov	dx,/,"les	dx,d")
 		if (/si\+12\],ax/ || /si\+16\],ax/ || /bp-2\],ax/) sub(/,ax/,",es")
-		if (/do \{/) ishimem=0
+	}
+	if (ishimem == 1) {
+		if (/do \{/) ishimem=2
+		if (/byte ptr DGROUP:_vcpi,0/) print "	mov	bx,si"
+		if (/bx,si/) next
+		if (/sp,6/) {
+			print "	push	si"
+			print "	push	si"
+			next
+		}
+	}
+	if (ishimem == 2) {
+		if (/movzx/) print "	cwde"
+		if (/bp-6/) next
+		if (/storepage.bufv/) {
+			print "	inc	ax"
+			print "	push	ax"
+		}
+		if (/buf \+= size;/) {
+			print "	pop	ax"
+		}
+		if (/Read error/) ishimem=0
 	}
 	 } # file == "himem.cpp"
 	 if (file == "load.cpp") {
+	if (/word ptr \[si\+21\],513$/) isload=11
+	if (isload == 12) {  # LOAD.LST
+		if (/cmp/) next
+		if (/jb/) isload=0
+		sub(/jb/,"jcxz")
+	}
+	if (isload == 11) {  # LOAD.LST
+		if (/cmp/) {
+			print "	mov	cx,513"
+			$0="	sub	cx,word ptr [si+21]"
+		}
+		if (/jb/) isload=12
+		sub(/jb/,"ja")
+	}
 	sub(/DGROUP:_imgs\+65534/,"[di-2]")
 	if (/short @1@366$/) isload=10
 	if (isload == 10) {  # LOAD.LST
@@ -53,10 +122,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/\[0\] = m-\>fallback/) isload=6
 	if (isload == 6) {  # LOAD.LST
-		if (/si\+2/) {
-			print "	inc	si"
-			$0="	inc	si"
-		}
+		if (/si\+2/) $0="	lodsw"
 		if (/les/) sub(/bx,/,"ax,")
 		if (/bx\+4/ || /es:/) {
 			if (/bx\+4/) isload=0

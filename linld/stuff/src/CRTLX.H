@@ -9,6 +9,3 @@ extern _fastcall unsigned long kver2ul(char *kernel_version);
 //extern "C" char *ultoa(unsigned long n);
 extern _fastcall int ultoa(unsigned long n);
 extern "C" void try_default_args();
-extern char cpu_features[];
-#define CPUMASKLM  (0x20)
-#define cpuhaslm() (cpu_features[3]&CPUMASKLM)

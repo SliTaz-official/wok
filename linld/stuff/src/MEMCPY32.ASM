@@ -2,6 +2,7 @@
 ;****** This file is distributed under GPL
 ;***************************************************************
                 ideal
+		%PAGESIZE 1000
                 %crefref
                 %noincl
                 %nomacs

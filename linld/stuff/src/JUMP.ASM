@@ -2,6 +2,7 @@
 ;****** This file is distributed under GPL
 ;***************************************************************
                 ideal
+		%PAGESIZE 1000
                 %crefref
                 %noincl
                 %nomacs
@@ -114,6 +115,7 @@ step19:
 		rep
 		  movsb
 		ifdef	NO386
+		mov	bx,ss
 		add	bh,9
 		push	bx			; topseg()+0x0900
 		else

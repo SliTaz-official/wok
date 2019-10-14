@@ -191,13 +191,13 @@ do {
             //   heap_end_ptr appears to be relative to the start of setup (ofs 0x0200)
             kernelparams->heap_end_ptr = _32k-0x0200;
             kernelparams->loadflags |= 0x80; // says to rm loader it's ok to use heap
-        }
-        // * if we will ever stop moving ourself to 0x90000
-        //   we must say setup.S how much to move
-        //kernelparams->setup_move_size = _32k;
-        if(kernelparams->version >= 0x202) { // starting linux 2.4.0-test3-pre3
-            kernelparams->cmd_line_ptr = (((u32)(topseg()+0x0800))<<4);
-            goto cmd_line_ok;
+            // * if we will ever stop moving ourself to 0x90000
+            //   we must say setup.S how much to move
+            //kernelparams->setup_move_size = _32k;
+            if(kernelparams->version >= 0x202) { // starting linux 2.4.0-test3-pre3
+                kernelparams->cmd_line_ptr = (((u32)(topseg()+0x0800))<<4);
+                goto cmd_line_ok;
+            }
         }
     }
     first1k->cl_magic_ofs = 0x8000A33F;

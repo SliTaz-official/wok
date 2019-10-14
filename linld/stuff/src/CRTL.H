@@ -48,8 +48,12 @@ extern _fastcall unsigned long strtol(const char *s);
 #define int3() do { asm { db 0cch } } while(0)
 #define nop() do { asm { db 90h } } while(0)
 extern char no_exit;
+extern void exit();
 extern _fastcall int die(const char* msg);
 //extern "C" char* malloc_or_die(unsigned size);
 //extern "C" unsigned long* malloc_bufv_or_die(struct image_himem *m);
 extern _fastcall int malloc_or_die(unsigned size);
 extern _fastcall int malloc_bufv_or_die(struct image_himem *m);
+extern char cpu_features[];
+#define CPUMASKLM  (0x20)
+#define cpuhaslm() (cpu_features[3]&CPUMASKLM)
