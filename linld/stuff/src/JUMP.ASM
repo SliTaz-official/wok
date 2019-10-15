@@ -191,14 +191,13 @@ step19:
 		jne	@@notelks
 		xchg	ax,si
 		endif
-		push	es
-		pop	ss
-		mov	cx,120h		; CS=0120
-		push	cx
-		push	si		; IP=0000
-		mov	cl,0		; DS=ES=SS=0100
+		mov	cx,100h		; DS=ES=SS=0100
+		mov	ss,cx
 		mov	es,cx
-		mov	ch,05h		; 500h mini
+		mov	ax,120h		; CS=0120
+		push	ax
+		push	si		; IP=0000
+		mov	ch,040h		; 500h mini
 		rep
 		  movsw
 @@notelks:
