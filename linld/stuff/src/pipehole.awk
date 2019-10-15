@@ -11,6 +11,11 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/add	si,2/) $0="	lodsw	; " $0
 	if (/add	si,4/) { print "	lodsw"; $0="	lodsw	; " $0 }
 	if (/add	di,2/) $0="	scasw	; " $0
+	if (/int argc/) istazboot=1
+	if (istazboot == 1) {
+		if (/push.*i$/) $0="; " $0
+		if (/word ptr/) { istazboot=0; $0="; " $0 }
+	}
 	 } # file == "tazboot.cpp"
 	 if (file == "linld.cpp") {
 	if (/add	si,2/) $0="	lodsw	; " $0
