@@ -194,10 +194,10 @@ step19:
 		mov	cx,100h		; DS=ES=SS=0100
 		mov	ss,cx
 		mov	es,cx
-		mov	ax,120h		; CS=0120
-		push	ax
+		mov	cl,20h		; CS=0120
+		push	cx
 		push	si		; IP=0000
-		mov	ch,040h		; 500h mini
+		mov	ch,3Fh		; 05h min, 3Fh max
 		rep
 		  movsw
 @@notelks:

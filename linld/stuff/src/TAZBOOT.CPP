@@ -138,7 +138,7 @@ u32 topmem;
 u32 base_himem;
 const char* kernel_name = "bzImage";
 const char* initrd_name;
-char* iso;
+static char* iso;
 
 int main(int argc, char *argv[])
 {

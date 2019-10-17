@@ -312,7 +312,6 @@ switch_to_pm:
 ;***************************************************************
 ;****** Helper: This is where real copy is done
 ;***************************************************************
-	global	do_memcpy_vcpi:near
 label   do_memcpy_vcpi near
 
 ; Note: ss:bp => params

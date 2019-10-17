@@ -217,8 +217,7 @@ openargs:
         global  @open$qpxzc:near
         proc    @open$qpxzc near
 
-        global  open:near			; open(bx)
-open:
+open:						; open(bx)
 	ifdef	LONG_FILENAME
 		mov	ax,716Ch
 		push	bx si di
@@ -467,7 +466,7 @@ isolseek:
 		dec	dx
 		dec	dx
 		je	@@done
-		mov	bx,si
+		;mov	bx,si
 		call	@strtol$qpxzc
 		mov	[di],ax
 		mov	[di+2],dx
@@ -1086,12 +1085,16 @@ image_done:
 ;***************************************************************
 ;_fastcall unsigned long strtol(const char *s);
 ;***************************************************************
+		ifndef	USE_ARGSTR
 	global	@strtol$qpxzc:near
+		endif
 	proc	@strtol$qpxzc near
 
 		ifndef	NO386
+		ifndef	USE_ARGSTR
 		push	si
 		mov	si,bx
+		endif
 		xor	ecx,ecx
 		xor	eax,eax
 		xor	ebx,ebx
@@ -1167,15 +1170,26 @@ image_done:
 		pop	ax
 		pop	dx
 @@popsiret:
+		ifndef	USE_ARGSTR
 		pop	si
+		endif
 		else
+		ifndef	USE_ARGSTR
 		push	si di
 		xor	ax,ax
 		cwd
 		or	bx,bx
+		else
+		push	di
+		xor	ax,ax
+		cwd
+		or	si,si
+		endif
 		jz	@@goend
 		xchg	ax,di
+		ifndef	USE_ARGSTR
 		mov	si,bx
+		endif
 		lodsb
 		or	al,20h
 		cmp	al,'a'
@@ -1262,7 +1276,11 @@ image_done:
 @@end:
 		xchg	ax,bx
 @@popdisiret:
+		ifndef	USE_ARGSTR
 		pop	di si
+		else
+		pop	di
+		endif
 		endif
 strtol_ret:
 		ret
