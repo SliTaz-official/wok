@@ -1,19 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="taglib"
-VERSION="1.7"
+VERSION="1.11.1"
 CATEGORY="multimedia"
+TAGS="multimedia music tag"
 SHORT_DESC="Audio tag library."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="LGPL2.1"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://developer.kde.org/~wheeler/taglib.html"
-WGET_URL="http://developer.kde.org/~wheeler/files/src/$TARBALL"
-TAGS="multimedia music tag"
-HOST_ARCH="i486 arm"
+WEB_SITE="https://taglib.org/"
 
-DEPENDS="zlib gcc-lib-base"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}releases/$TARBALL"
+
+DEPENDS="gcc-lib-base zlib"
 BUILD_DEPENDS="zlib-dev"
+
+HOST_ARCH="i486 arm"
 
 case $ARCH in 
 	i?86) BUILD_DEPENDS="$BUILD_DEPENDS cmake" ;;
@@ -22,20 +24,21 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir build && cd build
-	cmake \
-		-DCMAKE_INSTALL_PREFIX=/usr \
-		-DCMAKE_BUILD_TYPE=Release \
-		-DENABLE_STATIC=OFF \
-		-DWITH_MP4=ON \
-		-DWITH_ASF=ON \
-		.. &&
-	make VERBOSE=1 && make install
+	mkdir build &&
+	cd build &&
+	cmake	..				\
+		-DCMAKE_INSTALL_PREFIX=/usr	\
+		-DCMAKE_BUILD_TYPE=Release	\
+		-DBUILD_SHARED_LIBS=ON		\
+		-DWITH_MP4=ON			\
+		-DWITH_ASF=ON &&
+	make VERBOSE=1 &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
