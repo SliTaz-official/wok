@@ -1,36 +1,42 @@
 # SliTaz package receipt.
 
 PACKAGE="task"
-VERSION="2.3.0"
+VERSION="2.5.1"
 CATEGORY="utilities"
-SHORT_DESC="Task is an open source, command line, TODO list manager."
+TAGS="office todo"
+SHORT_DESC="An open source, command line, TODO list manager."
 MAINTAINER="paul@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://taskwarrior.org/"
-WGET_URL="http://www.taskwarrior.org/download/$TARBALL"
-TAGS="office todo"
 
-DEPENDS="ncurses gcc-lib-base util-linux-uuid"
-BUILD_DEPENDS="ncurses-dev cmake util-linux-uuid-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}download/$TARBALL"
+
+DEPENDS="gcc83-lib-base libgnutls ncurses util-linux-uuid"
+BUILD_DEPENDS="cmake gcc83 gnutls-dev ncurses-dev util-linux-uuid-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	#./configure \
 		#--prefix=/usr \
 		#--infodir=/usr/share/info \
 		#--mandir=/usr/share/man \
 		#$CONFIGURE_ARGS &&
-	cmake . -DCMAKE_INSTALL_PREFIX=/usr
-	make && make install
+
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	cmake . -DCMAKE_INSTALL_PREFIX=/usr &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/doc $fs/usr/share
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/doc	$fs/usr/share
 }
