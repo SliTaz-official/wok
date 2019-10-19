@@ -128,11 +128,11 @@ step19:
 		mov	ax,[ss:024Ch]
 		jne	@@notzimage
 @@isipxe:
-		push	cs
-		call	@last_ditch$qv
 		dos_shutdown			; clear si; ds=0
 		push	cs
 		pop	ds
+		push	cs
+		call	@last_ditch$qv
 @@notzimage:
 		xor	ax,2b30h
 		je	@@isipxe
