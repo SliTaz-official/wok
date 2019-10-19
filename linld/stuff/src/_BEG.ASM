@@ -18,11 +18,11 @@
         global  _data_start:byte
         label   _data_start byte
 		ifndef	NO386
-msg_badcpu      db      "I need 386+ CPU in real mode or under VCPI manager"
+msg_badcpu      db      "I need 386+ CPU in real mode or under VCPI manager",0
 		endif
         global  _vcpi:byte
+msg_badmapping  db      "VCPI: low 640k need 1:1 mapping"
 _vcpi		db	0
-msg_badmapping  db      "VCPI: low 640k need 1:1 mapping",0
 
         ends    _DATA
 

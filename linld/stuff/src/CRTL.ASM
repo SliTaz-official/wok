@@ -51,7 +51,7 @@ tmp		dw	?		;32	const char *tmp;
 c		db	?		;34	char c;
 _64bits		db	?		;35	char _64bits;
 buffer		db	?		;36	char buffer[2048+512];
-ends					; } isostate;
+ends		isostate		; } isostate;
 		public	_isostate
 _isostate	isostate	<?>
 		org	$-7
@@ -561,19 +561,7 @@ _abort:
 
 	endp	@die$qpxzc
 
-struc   image_himem		;struct image_himem {
-fd		dw	?	; 0    int fd;
-fallback	dd	?	; 2    u32 fallback;
-size		dd	?	; 6    u32 size;
-remaining	dd	?	;10    u32 remaining;
-buf		dd	?	;14    u32 buf;
-bufv		dw	?	;18    u32 *bufv;
-errmsg		dw	?	;20    char *errmsg;
-chunk_size	dd	?	;22    u32 chunk_size;
-next_chunk	dw	?	;26    void (*next_chunk)(struct image_himem *);
-state		dw	?	;28    u16 state;
-fd2close	dw	?	;30    u16 fd2close;
-ends				;};
+		include	"himem.inc"
 
 ;***************************************************************
 ;static long next_chunk(struct image_himem *di);
@@ -648,7 +636,7 @@ cacheidx	dw	?		;   4  int cacheidx;
 pageidx		dw	?		;   6  int pageidx;
 cache		dd	1024 dup(?)	;   8  int cache;
 page		dd	1024 dup(?)	;4104  int page;
-ends					;}; // size=8200
+ends	data_himem			;}; // size=8200
 	endif
 
 ;***************************************************************
