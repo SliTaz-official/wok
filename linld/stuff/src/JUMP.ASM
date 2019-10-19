@@ -98,49 +98,56 @@ step19:
 		mov	sp,0A000h
 		extrn	_rm_size:word
 		ifdef NO386
-		mov	si,offset _rm_size-2	; _rm_size, _pm_high, _rm_buf
+		mov	si,offset _rm_size-4	; _rm_size, _pm_high, _rm_buf
+		lodsw
+		xchg	ax,bx
 		lodsw
 		push	ax			; _csip high
-		push	[word si-4]		; _csip low
-		lodsw
+		push	bx			; _csip low
+		lodsw				; skip _rm_size
 		else
 		mov	si,offset _rm_size+2	; _rm_size, _pm_high, _rm_buf
 		push	[dword si-6]		; _csip
 		endif
 		lodsb				; _pm_high
+
+		ifdef	NO386
+		mov	cx,ss
+		add	ch,9
+		push	cx			; topseg()+0x0900
+		else
+		push	9800h+(4096/16)		; 4096 bytes for cmdline
+		endif
+
 		extrn	_cmdline:word
 		mov	si,[_cmdline]
 		mov	di,8000h
 		mov	ch,10h			; 4k
 		rep
 		  movsb
-		ifdef	NO386
-		mov	bx,ss
-		add	bh,9
-		push	bx			; topseg()+0x0900
-		else
-		push	9800h+(4096/16)		; 4096 bytes for cmdline
-		endif
-		cmp	al,cl			; load high ?
-		pushf
-		; finish loading
-		extrn   @last_ditch$qv:near
-		mov	ax,[ss:024Ch]
-		jne	@@notzimage
-@@isipxe:
+
+		or	cl,al			; load high ?
+		inc	cx
+		push	cx
+		mov	ax,[word ss:024Ch]
+		xor	ax,2b30h		; ipxe ?
+		loopne	@@notipxe
+
 		dos_shutdown			; clear si; ds=0
 		push	cs
 		pop	ds
+		; finish loading
+		extrn   @last_ditch$qv:near
 		push	cs
 		call	@last_ditch$qv
-@@notzimage:
-		xor	ax,2b30h
-		je	@@isipxe
-		popf
+
+@@notipxe:
+		pop	cx
+		pop	es			; min 2048 bytes for stack
+		loop	@@isbzimage
+
 		; self move
 		;cld
-		pop	es			; min 2048 bytes for stack
-		jne	@@isbzimage
 		extrn	gdt_data
 		mov	cx,offset gdt_data+8
 		xor	di,di			;  A000 -9000 -0800(>movedend)
