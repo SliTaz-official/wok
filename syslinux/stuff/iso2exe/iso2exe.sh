@@ -47,7 +47,7 @@ add_rootfs()
 	store 24 $SIZE $1
 	OFS=$(( 0x7FF0 - $SIZE ))
 	printf "Adding rootfs.gz file at %04X (%d bytes) ...\n" $OFS $SIZE
-	cat $TMP/rootfs.gz | ddn of=$1 bs=1 seek=$OFS
+	ddn if=$TMP/rootfs.gz of=$1 bs=1 seek=$OFS
 	rm -rf $TMP
 }
 
