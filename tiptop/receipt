@@ -1,41 +1,45 @@
 # SliTaz package receipt.
 
 PACKAGE="tiptop"
-VERSION="2.2"
+VERSION="2.3.1"
 CATEGORY="utilities"
-SHORT_DESC="Tiptop is a performance monitoring tool for Linux."
+SHORT_DESC="A performance monitoring tool for Linux."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://tiptop.gforge.inria.fr/"
-WGET_URL="http://tiptop.gforge.inria.fr/releases/$TARBALL"
 
-DEPENDS="ncurses libxml2"
-BUILD_DEPENDS="ncurses-dev libxml2-dev bison flex m4"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}releases/$TARBALL"
+
+DEPENDS="libxml2 ncurses"
+BUILD_DEPENDS="bison flex libxml2-dev m4 ncurses-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr
-	make
+	./configure --prefix=/usr &&
+	make &&
 	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/skel
-	cp -a $install/usr/bin $fs/usr
-	cp -a $src/tiptoprc $fs/etc/skel/.tiptoprc
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc/skel
+
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $src/tiptoprc	$fs/etc/skel/.tiptoprc
 }
 
 post_install()
 {
-	for i in $(ls "$1/home" 2> /dev/null); do
+	for i in $(ls "$1/home" 2> /dev/null)
+	  do
 		[ -f "$1/home/$i/.tiptoprc" ] && continue
 		cp "$1/etc/skel/.tiptoprc" "$1/home/$i"
 		chroot "$1/" chown $(stat -c "%u.%g" "$1/home/$i") "/home/$i/.tiptoprc"
-	done
+	  done
 }
 
 post_remove()
