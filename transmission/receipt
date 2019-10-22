@@ -1,21 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="transmission"
-VERSION="2.92"
+VERSION="2.94"
 CATEGORY="network"
+TAGS="torrent"
 SHORT_DESC="Light and easy to use BitTorrent client."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-SUGGESTED="transmission-web transmission-cli transmission-daemon"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://www.transmissionbt.com/"
-WGET_URL="https://transmission.cachefly.net/$TARBALL"
-TAGS="torrent"
+WEB_SITE="https://www.transmissionbt.com/"
 
-DEPENDS="gtk+3 libssl libcurl libgio dbus dbus-glib \
-xorg-libXdamage libnotify libevent"
-BUILD_DEPENDS="gtk+3-dev openssl-dev curl-dev curl intltool \
-expat-dev gettext dbus-dev dbus-glib-dev libevent-dev wget tar"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/archive/v$VERSION.tar.gz"
+
+SUGGESTED="transmission-cli transmission-daemon transmission-web"
+DEPENDS="dbus dbus-glib gtk+3 libcurl libevent libgio \
+	libnotify libssl xorg-libXdamage"
+BUILD_DEPENDS="autoconf curl curl-dev dbus-dev dbus-glib-dev expat-dev 
+	gettext gtk+3-dev intltool libevent-dev openssl-dev tar"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,13 +24,18 @@ compile_rules()
 	touch third-party/miniupnp/VERSION
 	CFLAGS="$CFLAGS -fdata-sections -ffunction-sections \
 	-Wl,--gc-sections"
-	./configure \
-		--prefix=/usr \
-		--enable-cli \
-		--enable-lightweight \
+
+	./autogen.sh &&
+	./configure			\
+		--prefix=/usr		\
+		--enable-cli		\
+		--enable-lightweight	\
 		$CONFIGURE_ARGS &&
-	make && make install &&
+	make &&
+	make install &&
+
 	rm -rf $install/usr/share/applications $src/macosx
+
 	#For gcc v4.7+
 	#cd $src/qt && qmake qtr.pro
 	#make && make INSTALL_ROOT=$install install
@@ -38,7 +44,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/applications
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/applications
 	cp -a $install/usr/bin/${PACKAGE}-gtk $fs/usr/bin/${PACKAGE}
 }
 
