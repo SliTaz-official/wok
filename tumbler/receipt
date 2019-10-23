@@ -1,28 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="tumbler"
-VERSION="0.1.27"
+VERSION="0.2.7"
 CATEGORY="system-tools"
-SHORT_DESC="A D-Bus thumbnailing service based on the thumbnail management D-Bus specification"
+SHORT_DESC="A D-Bus thumbnailing service based on the thumbnail management D-Bus specification."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL2 LGPL2.1"
 WEB_SITE="https://docs.xfce.org/xfce/thunar/tumbler"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-HI_VERSION=$(echo $VERSION | cut -d. -f1,2)
-WGET_URL="http://archive.xfce.org/src/xfce/$PACKAGE/$HI_VERSION/$TARBALL"
-CONFIG_FILES="/etc/xdg/tumbler/tumbler.rc"
+WGET_URL="http://archive.xfce.org/src/xfce/$PACKAGE/${VERSION%.*}/$TARBALL"
 
 DEPENDS="dbus-glib ffmpegthumbnailer libcurl libgsf poppler"
-BUILD_DEPENDS="dbus-glib-dev curl-dev  glib-dev libgio-dev gdk-pixbuf-dev \
-freetype-dev jpeg-dev ffmpegthumbnailer-dev gst-plugins-base-dev \
-libgsf-dev poppler-dev libpng-dev lcms-dev tiff-dev" # gstreamer-dev (v.1.0)
+BUILD_DEPENDS="curl-dev dbus-glib-dev freetype-dev ffmpegthumbnailer-dev \
+	gdk-pixbuf-dev glib-dev gst-plugins-base-dev jpeg-dev \
+	lcms-dev libgio-dev libgsf-dev libpng-dev poppler-dev tiff-dev" # gstreamer-dev (v.1.0)
+
+CONFIG_FILES="/etc/xdg/tumbler/tumbler.rc"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--sysconfdir=/etc \
-		--enable-debug=no \
+	./configure			\
+		--sysconfdir=/etc	\
+		--enable-debug=no	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make install
@@ -34,18 +35,20 @@ genpkg_rules()
 	mkdir -p \
 		$fs/usr/lib \
 		$fs/usr/share/locale
-	cp -a $install/etc $fs
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/tumbler* $fs/usr/lib
-	find $fs/usr/lib -name '*.la' -delete
+
+	cp -a $install/etc		$fs
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/tumbler*	$fs/usr/lib
 	cp -a $install/usr/share/dbus* $fs/usr/share
+
+	find $fs/usr/lib -name '*.la' -delete
 
 	# SliTaz locale settings
 	. $WOK/slitaz-i18n/stuff/locale-pack.conf
-	for lang in $LOCALE_PACK; do
+	for lang in $LOCALE_PACK
+	  do
 		langd=$install/usr/share/locale/$lang
 		[ -d $langd ] && cp -a $langd $fs/usr/share/locale
-	done
+	  done
 	true
 }
-
