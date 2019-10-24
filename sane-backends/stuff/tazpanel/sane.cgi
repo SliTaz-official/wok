@@ -287,15 +287,23 @@ else
 cat "$(echo $device | sed 's/,.*//').log" 2> /dev/null ||
 scanimage --help -d "$(echo $device | sed 's/,.*//')"
 } | dos2unix | sed 's|\[=| [|;s/||/|/g' | awk '
+function unit(s)
+{
+	if (match(s,/[0-9]*mm$/) || match(s,/[0-9]*mm /)) u="mm"
+	else if (match(s,/[0-9]*%$/) || match(s,/[0-9]*% /)) u="%"
+	else if (match(s,/[0-9]*dpi$/) || match(s,/[0-9]*dpi /)) u="dpi"
+	else u="none"
+}
+
 function minmax()
 {
 	inactive=1
 	if (match($2,"[0-9]")) {
 		i=$2; sub(/\.\..*/,"",i)
 		j=$2; sub(/.*\.\./,"",j)
-		sub(/\..*/,"",j); sub(/[dm%].*/,"",j)
+		unit(j); sub(/\..*/,"",j); sub(/[dm%].*/,"",j)
 		k=$0; sub(/.* \[/,"",k); sub(/\].*/,"",k)
-		printf("\n%s",$1 " " int(k) " " int(i) " " int(j))
+		printf("\n%s",$1 " " int(k) " " int(i) " " int(j) " " u)
 		inactive=0
 	}
 }
@@ -306,12 +314,12 @@ function enum()
 	inactive=1
 	if (index(i,"|")) {
 		sub(/^ *--*[a-z-]* */,"",i)
-		sub(/\[\(/,"",i); sub(/\)\]/,"",i)
+		sub(/\[\(/,"",i); sub(/\)\]/,"",i); unit(i)
 		sub(/dpi .*/,"",i); gsub(/ \[.*\].*/,"",i)
 		k=$0; sub(/.* \[/,"",k); sub(/\].*/,"",k)
 		gsub(/ /,"=",k)
 		gsub(/ /,"=",i)
-		printf("\n%s",$1 " " k " enum " i)
+		printf("\n%s",$1 " " k " enum " i " " u)
 		inactive=0
 	}
 	else minmax()
@@ -321,23 +329,26 @@ function enum()
 	if (/scanimage --help/) end=1
 	if (end != 0) next
 	if (/:$/) parse=0
-	if (/Scan mode/ || /Mode/ || /Advanced/ || /Geometry/) parse=1
+	if (/[Mm]ode/ || /[Aa]dvanced/ || /[Gg]eometry/) parse=1
+	if (/brightness/ || /contrast/ || /orientation/) parse=1
 	if (parse != 1) next
 	if (/\[inactive\]/) { inactive=1; next }
-	if (match("-l-t-x-y", $1)) minmax()
+	if (/[0-9]\.\.[0-9]/) minmax()
 	else if (/^    --/) enum()
 	else if (!/:$/ && inactive == 0) printf(" %s",$0)
 } END { print "" }
 ' | sed 1d)"
 fi
 output="$(n=$(echo "$params" | wc -l); echo "$params" | \
-while read name def min max help; do
+while read name def min max unit help; do
 	name="${name#-}"
 	name="${name#-}"
 	name="${name//-/_}"
 	help="$(echo $help | sed 's|  | |g;s|"|\&#34|g')"
 	def="${def//=/ }"
 	max="${max//=/ }"
+	[ "$unit" = "none" ] && unit=""
+	[ "$name" ] || continue
 	if [ "$min" == "enum" ]; then
 		res_min=1000000
 		res_max=0
@@ -357,13 +368,16 @@ while read name def min max help; do
 			fi
 			shift
 		done
-		echo "</select>"
+		echo "</select>&nbsp;$unit"
 	else
 		[ "$(xPOST $name)" ] && def=$(xPOST $name)
 		[ $def -lt $min ] && def=$min
 		[ $def -gt $max ] && def=$max
-		f="<fieldset><legend>$(_ "$name")</legend><input type=\"range\" min=\"$min\" max=\"$max\" name=\"$name\" value=\"$def\""
-		u=""
+		[ "$idrange" ] || idrange=1
+		f="<fieldset><legend>$(_ "$name")</legend>
+<input type=\"range\" id=\"range$idrange\" min=\"$min\" max=\"$max\" 
+name=\"$name\" value=\"$def\" onchange=\"updaterange(this)\""
+		u="<div id=\"range$((idrange++))val\">$def${unit+&nbsp;$unit}</div>"
 		case "$name" in
 		x|y|l|t) cat <<EOT
 :${name}_max=$max
@@ -374,7 +388,7 @@ EOT
 				[ "$name" == "$name2" ] || continue
 				[ "$(xPOST geometry_$name)" ] &&
 				val="$(xPOST geometry_$name)"
-				f="<fieldset><legend>$(_ "$n2")</legend><input name=\"geometry_$name\" id=\"$id\" value=\"$val\""
+				f="<fieldset><legend>$(_ "$n2")</legend><input type=\"text\" name=\"geometry_$name\" id=\"$id\" value=\"$val\""
 				u="&nbsp;mm"
 				break
 			done <<EOT
@@ -385,7 +399,7 @@ y	Height		height	$max
 EOT
 		esac
 		[ "$name" == "resolution" ] && f="$f onchange=showGeometry()"
-		echo "<td>$f type=\"text\" title=\"$min .. $max. $help\" size=5 maxlength=5>$u"
+		echo "<td>$f title=\"$min .. $max. $help\" size=5 maxlength=5>$u"
 		res_min=$min
 		res_max=$max
 	fi
@@ -393,10 +407,9 @@ EOT
 	resolution) cat <<EOT
 <input type="hidden" name="res_min" value="$res_min">
 <input type="hidden" name="res_max" value="$res_max">
-&nbsp;dpi
 EOT
 	esac
-	echo "</filedset></td>"
+	echo "</fieldset></td>"
 	n=$(($n - 2))
 	case "$n" in
 	1|2) echo "</tr><tr>"
@@ -429,6 +442,11 @@ function showGeometry() {
     var y = Math.floor(document.parameters.geometry_y.value * resolution);
     alert((Math.round(x * y / 100000)/10) + ' Mpixels\n' + x + 'x' + y);
   }
+}
+
+function updaterange(r) {
+  var e=document.getElementById(r.id+"val")
+  if (e) e.innerHTML=e.innerHTML.replace(/[0-9]*/,r.value)
 }
 -->
 </script>
