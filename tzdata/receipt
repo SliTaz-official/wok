@@ -1,25 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="tzdata"
-VERSION="2016j"
+VERSION="2019c"
 CATEGORY="base-system"
-SHORT_DESC="Time Zone Database"
+SHORT_DESC="Time Zone Database."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="PublicDomain"
-WEB_SITE="http://www.iana.org/time-zones"
+WEB_SITE="https://www.iana.org/time-zones"
+
 TARBALL="$PACKAGE$VERSION.tar.gz"
 WGET_URL="ftp://ftp.iana.org/tz/releases/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS="glibc"
 # genpkg_rules expect some locale-* build tree
 BUILD_DEPENDS="glibc-dev locale-fr"
 
+HOST_ARCH="i486 arm"
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	ZONEINFO=$install/usr/share/zoneinfo
-	mkdir -p $ZONEINFO/posix $ZONEINFO/right
+	mkdir -p $ZONEINFO/posix
+	mkdir -p $ZONEINFO/right
 
 	tzs="etcetera southamerica northamerica europe africa antarctica asia \
 australasia backward pacificnew systemv"
@@ -37,13 +40,15 @@ genpkg_rules()
 	cp -a $install/* $fs
 
 	. $WOK/slitaz-i18n/stuff/locale-pack.conf
-	for locale in $LOCALE_PACK; do
+	for locale in $LOCALE_PACK
+	  do
 		[ -d "$WOK/locale-$locale" ] || continue
 		echo "* Removing files provided by locale-$locale..."
 		files=$(cat $WOK/locale-$locale/taz/locale-$locale-*/files.list | \
 				grep /usr/share/zoneinfo/)
-		for file in $files; do
+		for file in $files
+		  do
 			[ -e $fs/$file ] && rm -f $fs$file
-		done
-	done
+		  done
+	  done
 }
