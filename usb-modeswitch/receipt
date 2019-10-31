@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="usb-modeswitch"
-VERSION="2.4.0"
-PACKAGE_DATA="${PACKAGE}-data-20160612"
+VERSION="2.5.2"
+PACKAGE_DATA="${PACKAGE}-data-20170806"
 CATEGORY="system-tools"
+TAGS="3g-modem"
 SHORT_DESC="Handling Mode-Switching USB Devices on Linux."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="http://www.draisberghof.de/usb_modeswitch/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 EXTRA_SOURCE_FILES="$PACKAGE_DATA.tar.bz2 usb_modeswitch.setup"
-WGET_URL="http://www.draisberghof.de/usb_modeswitch/$TARBALL"
-TAGS="3g-modem"
+WGET_URL="http://www.draisberghof.de/$PACKAGE/$TARBALL"
 
 DEPENDS="libusb"
 BUILD_DEPENDS="libusb-dev"
@@ -19,9 +20,12 @@ BUILD_DEPENDS="libusb-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	mkdir -p $DESTDIR/etc $DESTDIR/lib/udev/usb_modeswitch $DESTDIR/usr/share/man/man1
-	make && make install-static
+	mkdir -p $DESTDIR/etc
+	mkdir -p $DESTDIR/lib/udev/usb_modeswitch
+	mkdir -p $DESTDIR/usr/share/man/man1
+
+	make &&
+	make install-static
 
 	# download data
 	[ -s $SOURCES_REPOSITORY/$PACKAGE_DATA.tar.bz2 ] ||
@@ -38,13 +42,16 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/usb_modeswitch.d  $fs/lib/udev/rules.d
-	cp -a $install/etc $fs
-	cp -a $install/lib $fs
-	cp -a $install/var $fs
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $src/$PACKAGE_DATA/usb_modeswitch.d/* $fs/etc/usb_modeswitch.d
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc/usb_modeswitch.d
+	mkdir -p $fs/lib/udev/rules.d
+
+	cp -a $install/etc				$fs
+	cp -a $install/lib				$fs
+	cp -a $install/var				$fs
+	cp -a $install/usr/sbin				$fs/usr
+	cp -a $src/$PACKAGE_DATA/usb_modeswitch.d/*	$fs/etc/usb_modeswitch.d
 	cp -a $src/$PACKAGE_DATA/40-usb_modeswitch.rules $fs/lib/udev/rules.d
-	cp -a $SOURCES_REPOSITORY/usb_modeswitch.setup $fs/etc/
+	cp -a $SOURCES_REPOSITORY/usb_modeswitch.setup	$fs/etc/
 	chown -R root.root $fs
 }
