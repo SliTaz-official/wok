@@ -1,32 +1,38 @@
 # SliTaz package receipt.
 
 PACKAGE="urxvt"
-VERSION="9.16"
+VERSION="9.22"
 CATEGORY="utilities"
-SHORT_DESC="terminal with unicode support"
+TAGS="terminal"
+SHORT_DESC="Terminal with unicode support."
 MAINTAINER="sygne@ombres.eu"
 LICENSE="GPL2"
+WEB_SITE="http://software.schmorp.de/pkg/rxvt-unicode.html"
+
 SOURCE="rxvt-unicode"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="http://software.schmorp.de/pkg/rxvt-unicode.html"
-WGET_URL="http://dist.schmorp.de/rxvt-unicode/$TARBALL"
-TAGS="terminal"
+WGET_URL="http://dist.schmorp.de/$SOURCE/$TARBALL"
 
-DEPENDS="fontconfig xorg-libX11 expat freetype xorg-libXft zlib gcc-lib-base \
-xorg-xmessage"
+DEPENDS="expat fontconfig freetype gcc-lib-base xorg-libX11 xorg-libXft \
+	xorg-xmessage zlib"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	busybox patch -p0 -i $stuff/gcc.u
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--disable-perl \
-		--with-codesets='eu' \
-		--mandir=/usr/share/man \
-		$CONFIGURE_ARGS && \
-	make && make DESTDIR=$DESTDIR install
+	cd	src
+	patch	--input=$stuff/patches/command.C-9.22
+	patch	--input=$stuff/patches/misc.C-9.22
+	cd	..
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--disable-perl			\
+		--with-codesets='eu'		\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
