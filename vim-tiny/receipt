@@ -1,20 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="vim-tiny"
-VERSION="7.3"
+VERSION="8.1.2237"
 CATEGORY="editors"
-SHORT_DESC="Advanced text editor with no GUI"
+TAGS="text-editor"
+SHORT_DESC="Advanced text editor without GUI."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="other"
+WEB_SITE="https://www.vim.org/"
+
 SOURCE="vim"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="http://www.vim.org/"
-WGET_URL="ftp://ftp.vim.org/pub/vim/unix/$TARBALL"
-CONFIG_FILES="/etc/vim/vimrc"
-TAGS="text-editor"
+WGET_URL="https://github.com/$SOURCE/$SOURCE/archive/v$VERSION.tar.gz"
 
 DEPENDS="ncurses"
 BUILD_DEPENDS="ncurses-dev"
+
+CONFIG_FILES="/etc/vim/vimrc"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -25,21 +27,26 @@ compile_rules()
 	# (patch from Arch Linux PKGBUILD)
 	sed -i 's|^.*\(#define SYS_VIMRC_FILE\).*$|\1 "/etc/vim/vimrc"|' $src/src/feature.h
 
-	./configure --prefix=/usr \
-		--cache-file=$PWD/config.cache \
-		--infodir=/usr/share/info \
-		--with-features=tiny \
-		--with-x=no \
-		--disable-gui \
-		--enable-multibyte \
-		--with-vim-name=$PACKAGE \
-		--disable-acl \
-		--disable-motif-check \
-		--disable-athena-check \
-		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./configure				\
+		--prefix=/usr			\
+		--cache-file=$PWD/config.cache	\
+		--infodir=/usr/share/info	\
+		--with-features=tiny		\
+		--with-x=no			\
+		--disable-gui			\
+		--enable-multibyte		\
+		--with-vim-name=$PACKAGE	\
+		--disable-acl			\
+		--disable-motif-check		\
+		--disable-athena-check		\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
+	make						\
+		VIMRCLOC=/etc/vim			\
+		VIMRUNTIMEDIR=/usr/share/vim/vim81	\
+		MAKE="make -e" &&
+	make	DESTDIR=$DESTDIR install
 
-	make VIMRCLOC=/etc/vim VIMRUNTIMEDIR=/usr/share/vim/vim73 MAKE="make -e" &&
-	make DESTDIR=$DESTDIR install
 	mkdir -p $DESTDIR/etc/vim
 	cp -a $src/runtime/vimrc_example.vim $DESTDIR/etc/vim/vimrc
 }
@@ -47,28 +54,32 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/etc
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/etc
 
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/vim $fs/usr/share
-	cp -a $install/etc/vim $fs/etc
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/vim	$fs/usr/share
+	cp -a $install/etc/vim		$fs/etc
+
 	rm -f $fs/usr/bin/*tutor
 }
 
 post_install()
 {
 	cmd=$(readlink "$1/bin/vi")
-	if [ "$cmd" != '/usr/bin/vim' ]; then
+	if [ "$cmd" != '/usr/bin/vim' ]
+	  then
 		echo ''
 		echo "**** Actual VI link : $cmd"
 		echo ''
 		echo -n 'Do you want vim  for /bin/vi (y/N) ? : '; read -t 30 anser
-		if [ "$anser" = 'y' ]; then
+		if [ "$anser" = 'y' ]
+		  then
 			echo ''
 			action 'Removing vi link to make a new one pointing on /usr/bin/vim...'
 			rm "$1/bin/vi" && ln -sf /usr/bin/vim-tiny "$1/bin/vi"
 			status
-		else
+		  else
 			echo ''
 			echo "Leaving /bin/vi to : $cmd"
 		fi
