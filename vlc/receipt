@@ -1,40 +1,41 @@
 # SliTaz package receipt.
 
 PACKAGE="vlc"
-VERSION="3.0.6"
+VERSION="3.0.8"
 CATEGORY="multimedia"
-SHORT_DESC="MPEG, VCD/DVD, and DivX player"
+TAGS="audio video multimedia movie player"
+SHORT_DESC="MPEG, VCD/DVD, and DivX player."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.videolan.org/vlc/"
-WGET_URL="http://download.videolan.org/pub/videolan/$PACKAGE/$VERSION/$TARBALL"
-TAGS="audio video multimedia movie player"
-COOKOPTS="!fixdesktops"
 
-DEPENDS="libQtCore libQtGui libvlc gcc83-lib-base"
-BUILD_DEPENDS="Qt4-dev alsa-lib-dev dbus-dev ffmpeg-dev gettext \
-libmad-dev lua5.1-dev tar xcb-util-dev yasm expat-dev libxml2-dev libegl-mesa \
-util-linux-uuid-dev x264-dev flac-dev taglib-dev gnutls-dev libupnp-dev \
-libsamplerate-dev fribidi-dev zvbi-dev opus-dev gmp-dev ncurses-dev x265-dev \
-libgnutls gcc83 gcc83-lib-base"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="http://download.videolan.org/pub/videolan/$PACKAGE/$VERSION/$TARBALL"
+
+COOKOPTS="!fixdesktops"
+DEPENDS="gcc83-lib-base libQtCore libQtGui libvlc"
+BUILD_DEPENDS="alsa-lib-dev dbus-dev expat-dev ffmpeg-dev flac-dev fribidi-dev 
+	gcc83 gcc83-lib-base gettext gmp-dev gnutls-dev libgnutls libmad-dev 
+	libegl-mesa libsamplerate-dev libupnp-dev libxml2-dev lua5.1-dev 
+	ncurses-dev opus-dev Qt4-dev taglib-dev tar util-linux-uuid-dev 
+	x264-dev x265-dev xcb-util-dev yasm zvbi-dev"
 
 compile_rules()
 {
 	[ -s /var/lib/dbus/machine-id ] || dbus-uuidgen > /var/lib/dbus/machine-id
-	cd $src
 	[ -e /usr/bin/luac ] || ln -s luac5.1 /usr/bin/luac
 	# export ncurses paths 
 	export NCURSES_CFLAGS="-I/usr/include"
 	export NCURSES_LIBS="-L/lib -lncurses -ltinfo"
 	export CC=gcc-83 CXX=g++-83 BUILDCC=gcc-83
-	./configure \
-		--prefix=/usr \
-		--disable-pulse \
-		--disable-a52 \
-		--disable-sout \
-		--disable-libgcrypt \
-		--enable-ncurses \
+
+	./configure			\
+		--prefix=/usr		\
+		--disable-pulse		\
+		--disable-a52		\
+		--disable-sout		\
+		--disable-libgcrypt	\
+		--enable-ncurses	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make install
@@ -45,12 +46,16 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/pixmaps
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/$PACKAGE $fs/usr/share
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/$PACKAGE	$fs/usr/share
+
 	#Remove extra icons
 	rm $fs/usr/share/$PACKAGE/*.ico
+
 	#copy vlc icon
 	cp -a $install/usr/share/icons/hicolor/16x16/apps/vlc.png $fs/usr/share/pixmaps
+
 	#Remove unnecessary fonts
 	rm $fs/usr/share/$PACKAGE/skins2/fonts/* 2> /dev/null || true
 }
