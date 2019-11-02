@@ -1,28 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="vnstat"
-VERSION="1.15"
+VERSION="2.4"
 CATEGORY="system-tools"
-SHORT_DESC="Console-based network monitoring utility"
+SHORT_DESC="Console-based network monitoring utility."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL2"
 WEB_SITE="https://humdi.net/vnstat/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="${WEB_SITE}$TARBALL"
 
-DEPENDS="busybox"
 SUGGESTED="libgd"
-BUILD_DEPENDS="libgd-dev"
+BUILD_DEPENDS="libgd-dev sqlite-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-	$CONFIGURE_ARGS &&
-	make && make install
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
+
 	find $install/usr/share/man -type f -exec gzip \{\} \;
+
 	mkdir -p $install/etc/init.d
 	ln -s daemon $install/etc/init.d/vnstatd
 }
@@ -36,10 +39,13 @@ genpkg_rules()
 post_install()
 {
 	# Start vnstat daemon and edit daemons.conf
-	if [ -z "$1" -a ! -s /aufs-umount.sh ]; then
+	if [ -z "$1" -a ! -s /aufs-umount.sh ]
+	  then
 		/etc/init.d/vnstatd start || continue
 	fi
-	if ! grep -q ^VNSTATD_OPTIONS "$1/etc/daemons.conf"; then
+
+	if ! grep -q ^VNSTATD_OPTIONS "$1/etc/daemons.conf"
+	  then
 		cat >> "$1/etc/daemons.conf" <<EOT
 # vnstat daemon options.
 VNSTATD_OPTIONS="-d -p /var/run/vnstatd.pid"
@@ -50,7 +56,7 @@ EOT
 
 pre_remove()
 {
-	# Stop vnstat daemon before rm.
+	# Stop vnstat daemon before removing files.
 	[ -z "$1" -a -x /etc/init.d/vnstatd ] && /etc/init.d/vnstatd stop
 	:
 }
