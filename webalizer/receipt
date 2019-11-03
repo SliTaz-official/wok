@@ -1,18 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="webalizer"
-VERSION="2.21-02"
+VERSION="2.23.08"
 CATEGORY="network"
+TAGS="logs"
 SHORT_DESC="Web server log file analysis program."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION-src.tar.bz2"
-WEB_SITE="http://www.webalizer.com/"
-WGET_URL="ftp://ftp.mrunix.net/pub/$PACKAGE/$TARBALL"
-TAGS="logs"
+WEB_SITE="http://www.webalizer.org/"
 
-DEPENDS="libgd zlib db apache"
-BUILD_DEPENDS="libgd libgd-dev zlib-dev db db-dev"
+TARBALL="$PACKAGE-${VERSION%.*}-${VERSION##*.}-src.tar.bz2"
+WGET_URL="ftp://ftp.mrunix.net/pub/$PACKAGE/$TARBALL"
+
+DEPENDS="apache db libgd zlib"
+BUILD_DEPENDS="db-dev libgd-dev zlib-dev"
 
 
 # Rules to configure and make the package.
@@ -21,7 +22,8 @@ compile_rules()
 	export LDFLAGS="$LDFLAGS -lpthread"
 	sed -i 's/define _LARGEFILE64_SOURCE = 1/define _LARGEFILE64_SOURCE/' \
 		webalizer.c
-	./configure  \
+
+	./configure		\
 		--sysconfdir=/etc &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -30,14 +32,20 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc $fs/var/www/webalizer $fs/etc/initcron.d
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc
+	mkdir -p $fs/var/www/webalizer
 	chown 80 $fs/var/www/webalizer
-	cp -a $install/etc/webalizer.conf.sample $fs/etc/webalizer.conf
-	cp -a $install/usr/bin $fs/usr
+	mkdir -p $fs/etc/initcron.d
+
+	cp -a $install/etc/webalizer.conf.sample	$fs/etc/webalizer.conf
+	cp -a $install/usr/bin				$fs/usr
+
 	cat > $fs/etc/initcron.d/webalizer << EOT
 
 30 0 * * * /usr/bin/webalizer -o /var/www/webalizer /var/log/apache/access_log
 EOT
+
 	chmod +x $fs/etc/initcron.d/webalizer
 }
 
@@ -48,7 +56,9 @@ post_install()
 	cat >> "$1/etc/init.d/local.sh" <<EOT
 [ -f /var/www/webalizer/index.html ] || /usr/bin/webalizer -o /var/www/webalizer /var/log/apache/access_log
 EOT
-	if [ -z "$1" ]; then
+
+	if [ -z "$1" ]
+	  then
 		webalizer -o /var/www/webalizer /var/log/apache/access_log 
 		crontab -l 2> /dev/null | grep -q webalizer || crontab - << EOT
 $(crontab -l 2> /dev/null)
