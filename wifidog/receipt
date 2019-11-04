@@ -1,22 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="wifidog"
-VERSION="1.1.5"
+VERSION="1.3.0"
 CATEGORY="network"
 SHORT_DESC="Captive portal solution for hotspot, gateway side."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="http://dev.wifidog.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WGET_URL="https://github.com/$PACKAGE/wifidog-gateway/archive/$VERSION.tar.gz"
+
+BUILD_DEPENDS="autoconf"
+
 CONFIG_FILES="/etc/wifidog.conf"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./autogen.sh				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -24,10 +30,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/etc/init.d
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp $src/wifidog.conf $fs/etc
-	cp $src/scripts/init.d/wifidog $fs/etc/init.d
-}
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/etc/init.d
 
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp $src/wifidog.conf		$fs/etc
+	cp $src/scripts/init.d/wifidog	$fs/etc/init.d
+}
