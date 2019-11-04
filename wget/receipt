@@ -1,19 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="wget"
-VERSION="1.19.5"
+VERSION="1.20.3"
 CATEGORY="network"
-SHORT_DESC="GNU Wget - non-interactive download of files from the Web"
+SHORT_DESC="An utility for retrieving files using HTTP, HTTPS or FTP."
 MAINTAINER="sygne@ombres.eu"
 LICENSE="GPL3"
+WEB_SITE="https://www.gnu.org/software/wget/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.gnu.org/software/wget/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
-HOST_ARCH="i486 arm"
+
+DEPENDS="libidn libssl pcre util-linux-uuid zlib"
+BUILD_DEPENDS="flex libidn-dev openssl-dev util-linux-uuid-dev"
+
 CONFIG_FILES="/etc/wgetrc"
 
-DEPENDS="libssl libidn pcre util-linux-uuid zlib"
-BUILD_DEPENDS="openssl-dev libidn-dev flex util-linux-uuid-dev"
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -23,11 +26,12 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--with-ssl=openssl \
-		--with-openssl \
-		--sysconfdir=/etc \
-		$CONFIGURE_ARGS $ARCH_ARGS &&
+	./configure			\
+		--with-ssl=openssl	\
+		--with-openssl		\
+		--sysconfdir=/etc	\
+		$CONFIGURE_ARGS		\
+		$ARCH_ARGS &&
 	make DESTDIR=$DESTDIR install
 
 	gzip -9 $install/usr/share/man/man1/wget.1
@@ -37,7 +41,9 @@ compile_rules()
 genpkg_rules()
 {
 	cp -a $install/* $fs
-	rm -r $fs/usr/share/info $fs/usr/share/locale
+
+	rm -r $fs/usr/share/info
+	rm -r $fs/usr/share/locale
 }
 
 post_remove()
