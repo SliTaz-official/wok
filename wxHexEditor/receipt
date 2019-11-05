@@ -1,36 +1,46 @@
 # SliTaz package receipt.
 
 PACKAGE="wxHexEditor"
-VERSION="0.21"
+VERSION="0.24"
 CATEGORY="development"
-SHORT_DESC="Hex editor for massive files"
+SHORT_DESC="Hex editor designed specially for large files."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL"
-WEB_SITE="http://wxhexeditor.sourceforge.net/"
-TARBALL="$PACKAGE-v$VERSION-src.tar.bz2"
+WEB_SITE="http://wxhexeditor.org/"
+
+TARBALL="$PACKAGE-v$VERSION-src.tar.xz"
 SF_PROJECT="wxhexeditor"
 WGET_URL="$SF_MIRROR/$SF_PROJECT/$TARBALL"
 
-DEPENDS="libgomp wxWidgets28"
-BUILD_DEPENDS="wxWidgets28-dev libffi libtool autoconf automake"
+DEPENDS="libgomp wxWidgets"
+BUILD_DEPENDS="autoconf automake libffi libtool wxWidgets-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|^PREFIX\ *= /usr/local|PREFIX = /usr|' $src/makefile
-	sed -i 's|^HOST=|HOST = '$HOST_SYSTEM'|' $src/makefile
+	sed -i 's|^PREFIX\ *= /usr/local|PREFIX = /usr|' \
+		Makefile
+	sed -i 's|^HOST=|HOST = '$HOST_SYSTEM'|' \
+		Makefile
 
 	# don't know why but `backticks` unusable in this makefile
 	# mhash/configure:14063 say "libtool.m4: error: problem compiling CXX test program"
 	# mhash/config.log beginning from "configure:13977"
-	sed -i "s|^CC =.*|CC = $(wx-config --cc)|" $src/makefile
-	sed -i "s|^CXX =.*|CXX = $(wx-config --cxx)|" $src/makefile
-	sed -i "s|^CXXFLAGS=.*|CXXFLAGS = $(wx-config --cxxflags) -Iudis86 -Imhash/include -MMD -O2 -c \${OPTFLAGS}|" $src/makefile
-	sed -i "s|^LDFLAGS =.*|LDFLAGS = $(wx-config --libs)|" $src/makefile
-	sed -i "s|^RC =.*|$(wx-config --rescomp)|" $src/makefile
-	sed -i "s|^RCFLAGS =.*|RCFLAGS = $(wx-config --cxxflags | sed s/' '-m.*//g;)|" $src/makefile
+	sed -i "s|^CC =.*|CC = $(wx-config --cc)|" \
+		Makefile
+	sed -i "s|^CXX =.*|CXX = $(wx-config --cxx)|" \
+		Makefile
+	sed -i "s|^CXXFLAGS=.*|CXXFLAGS = $(wx-config --cxxflags) -Iudis86 -Imhash/include -MMD -O2 -c \${OPTFLAGS}|" \
+		Makefile
+	sed -i "s|^LDFLAGS =.*|LDFLAGS = $(wx-config --libs)|" \
+		Makefile
+	sed -i "s|^RC =.*|$(wx-config --rescomp)|" \
+		Makefile
+	sed -i "s|^RCFLAGS =.*|RCFLAGS = $(wx-config --cxxflags | sed s/' '-m.*//g;)|" \
+		Makefile
 
-	make OPTFLAGS="-fopenmp" && make install
+	make OPTFLAGS="-fopenmp" &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
