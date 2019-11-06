@@ -133,13 +133,13 @@ step19:
 		xor	ax,2b30h		; ipxe ?
 		loopne	@@notipxe
 
-		dos_shutdown			; clear si; ds=0
-		push	cs
-		pop	ds
 		; finish loading
 		extrn   @last_ditch$qv:near
 		push	cs
 		call	@last_ditch$qv
+		dos_shutdown			; clear si; ds=0; kill VCPI
+		push	cs
+		pop	ds
 
 @@notipxe:
 		pop	cx

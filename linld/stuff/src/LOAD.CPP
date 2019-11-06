@@ -158,6 +158,7 @@ do {
     if((kernelparams->setup_sects)>=(_32k/512) || // 0th sector not counted
 	 kernelparams->boot_flag != 0xAA55)
         die("Not a kernel");
+    heap_top +=		// Hack for VCPI. Need fix.
     _rm_size=0x200*(kernelparams->setup_sects+1);
     m->size -= _rm_size;
     m->chunk_size -= _rm_size;
@@ -174,7 +175,7 @@ do {
     if((int)root_dev) kernelparams->root_dev = root_dev;
 
     if(kernelparams->header == HdrS) { // starting linux 1.3.73
-	if(kernelparams->loadflags & 1) {
+	if(kernelparams->loadflags & 1) { // zImage as pre 1.3.73
 	    extern void far last_ditch();
 	    kernelparams->realmode_switch_ofs = (u16) last_ditch;
 	    kernelparams->realmode_switch_seg = _CS;

@@ -87,7 +87,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			$0="; " $0
 		}
 	}
-	if (/word ptr \[si\+21\],513$/) isload=11
+	if (/i\+21\],513$/) isload=11
 	if (isload == 12) {  # LOAD.LST
 		if (/cmp/) next
 		if (/jb/) isload=0
@@ -96,13 +96,17 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isload == 11) {  # LOAD.LST
 		if (/cmp/) {
 			print "	mov	cx,513"
-			$0="	sub	cx,word ptr [si+21]"
+			sub(/cmp	/,"sub	cx,")
+			sub(/,513/,"")
 		}
 		if (/jb/) isload=12
 		sub(/jb/,"ja")
 	}
-	sub(/DGROUP:_imgs\+65534/,"[di-2]")
-	if (/short @1@366$/) isload=10
+	if (/i,offset/) split($2,sidi,",")
+	if (sidi[1] == "si") sidi[2]="di"
+	else sidi[2]="si"
+	sub(/DGROUP:_imgs\+65534/,"[" sidi[1] "-2]")
+	if (/m, _rm_size/) isload=10
 	if (isload == 10) {  # LOAD.LST
 		if (/^	je	/) next
 		if (/ptr @die\$qpxzc/) {
@@ -124,12 +128,12 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isload == 7) {  # LOAD.LST
 		if (/add/ || /xor/ || /extrn/ || /N_LXLSH@/ || /cl,4/) next
 		if (/enable A20 if needed/) {
-			print "	mov	word ptr [bx+si],8000h"
+			print "	mov	word ptr [bx+" sidi[2] "],8000h"
 			isload=0
 		}
 		if (/,ax/) $0="	mov	bx,55"
-		if (/si-463/) $0="	mov	bx,-463"
-		if (/si-465/) $0="	mov	word ptr [bx+si-2],-23745"
+		if (/i-463/) $0="	mov	bx,-463"
+		if (/i-465/) { sub(/465/,"2"); sub(/\[/,"[bx+"); }
 		if (/,dx/) {
 			print "	mov	cl,12"
 			print "	shr	ax,cl"
@@ -225,11 +229,10 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isload == 1) {  # LOAD.LST
 		if (/ptr .die\$qpxzc/) $0="@die@:\n" $0
 		if (/mov	al,byte ptr/ && is386) {
-			print "	movzx	eax,byte ptr [si]"
-			next
+			sub(/mov	al/,"movzx	eax")
 		}
 		if (is386 == 0) {
-			if (/di-5\],ax/) print "	cwd"
+			if (/m->size -= _rm_size/) print "	cwd"
 			sub(/,0$/,",dx")
 		}
 		if (/ax,word ptr/) next

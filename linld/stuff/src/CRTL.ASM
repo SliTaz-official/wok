@@ -57,8 +57,6 @@ _isostate	isostate	<?>
 		org	$-7
 		endif
 _xfer_buf	db	4096	dup (?)
-        global  _no_exit:byte
-_no_exit	db	?
 filecnt		db	?		; in fact 0 minus file count...
 nextfilename	dw	?
 	ifdef	LARGE_IMAGES
@@ -175,33 +173,6 @@ strend:
 
         endp    @strcmp$qpxzct1
 	endif
-
-
-;***************************************************************
-;_fastcall void puts(bx:const char* s):
-;***************************************************************
-        global  @puts$qpxzc:near
-
-;        global  puts:near			; puts(bx)
-@putsz:
-		call	@putc
-@puts$qpxzc:
-puts:
-		mov	dl,[bx]
-		inc	bx
-		or	dl,dl
-		jne	@putsz
-		mov	dl,10
-@putc:
-		cmp	dl,10
-		jne	@putcz
-		call	@putcz2
-@putcz2:
-		xor	dl,7		; 10^13  1010^1101
-@putcz:
-		mov	ah,2
-		int	21h
-		ret
 
 
 ;***************************************************************
@@ -504,13 +475,14 @@ isolseek:
 
 		endif
 
+		include	"himem.inc"
+
 ;***************************************************************
 ;_fastcall char* strdup(bx:const char* a);
 ;_fastcall char* malloc_or_die(ax:unsigned size);
 ;***************************************************************
 	global	@strdup$qpxzc:near
 @strdup$qpxzc:
-strdup:						; ax = strdup(bx)
 		mov	ax,[_heap_top]
 		xchg	ax,bx
 		call	@strcpy$qpxzct1		; bx = strcpy(bx, ax) end +1
@@ -533,8 +505,8 @@ malloc_or_die:
 
 ;***************************************************************
 ;_fastcall int die(bx:const char* msg);
-;int exit();
-;int abort();
+;int exit(ax:int status);
+;int abort(void);
 ;***************************************************************
 	global	@die$qpxzc:near
 	proc	@die$qpxzc near
@@ -545,12 +517,10 @@ die:
         global  @exit$qv:near
 @exit$qv:
 _exit:
-		mov	al,[_no_exit]
-		or	al,al
-		jne	@@hang
+		extrn	_imgs:image_himem
+		mov	cx,[(word _imgs.buf)+2]	; no_exit ?
                 mov	ah,4Ch
-                int	21h
-@@hang:
+		jcxz	do_int21h
 		mov	bx, offset msg_hang
 		call	puts
 ;        global  _abort:near
@@ -561,7 +531,33 @@ _abort:
 
 	endp	@die$qpxzc
 
-		include	"himem.inc"
+;***************************************************************
+;_fastcall void puts(bx:const char* s):
+;***************************************************************
+        global  @puts$qpxzc:near
+
+;        global  puts:near			; puts(bx)
+@putsz:
+		call	@putc
+@puts$qpxzc:
+puts:
+		mov	dl,[bx]
+		inc	bx
+		or	dl,dl
+		jne	@putsz
+		mov	dl,10
+@putc:
+		cmp	dl,10
+		jne	@putcz
+		call	@putcz2
+@putcz2:
+		xor	dl,7		; 10^13  1010^1101
+@putcz:
+		mov	ah,2
+do_int21h:
+		int	21h
+		ret
+
 
 ;***************************************************************
 ;static long next_chunk(struct image_himem *di);
@@ -691,8 +687,7 @@ ends	data_himem			;}; // size=8200
 	endif
 		shl	eax,12		; i*_4k
 ; if (edx < pm.fallback+i*_4k && edx >= pm.fallback) again
-		extrn	_imgs
-		mov	bx,offset _imgs+2
+		mov	bx,offset _imgs.fallback
 		push	eax
 		add	eax,[bx-2+2]
 		cmp	eax,edx		; pm.fallback+i*_4k <= edx ?
@@ -702,8 +697,7 @@ ends	data_himem			;}; // size=8200
 		jae	@@vcpi_alloc
 @@pmok:
 ; if (edx >= initrd.fallback+i*_4k && edx < initrd.fallback+initrd.size) again
-		extrn	_imgs
-		mov	bx,offset _imgs+32+2
+		mov	bx,offset _imgs.fallback+32
 		add	eax,[bx-2+2]	; +initrd.fallback
 		cmp	eax,edx		; initrd.fallback+i*_4k > edx ?
 		ja	@@initrdok

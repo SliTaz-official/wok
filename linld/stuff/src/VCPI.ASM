@@ -140,11 +140,7 @@ idt_base        dd      0       ;  so let's leave it the same as for rm
                 ;push    ax
 
 ;Calculate pagedir/page0 addrs, initialize cr3 and pagedir[0]
-                xor     eax,eax
 ;    heap_top = prepare_vcpi(malloc_or_die(8*1024+4)); 
-		mov	ah,8*1024/256
-                extrn   malloc_or_die:near
-		call	malloc_or_die
 
                 mov     edx,cs
                 shl     edx,4           ;edx = linear addr of CS
@@ -159,6 +155,8 @@ idt_base        dd      0       ;  so let's leave it the same as for rm
 		add	bx,8
 		js	@@fixup
 		mov	bh,10h
+		extrn	_heap_top:word
+		movzx	eax,[_heap_top]
                 add     eax,edx
 		and	ax,0f000h       ;eax = 4k aligned linear addr of pagebuf
                 add     eax,ebx         ;eax=page0 linear addr
@@ -176,7 +174,6 @@ idt_base        dd      0       ;  so let's leave it the same as for rm
                         ;                         => ########
 ; Return
                 lea     ax,[bx+di+4]
-		extrn	_heap_top:word
 		mov	[_heap_top],ax
                 ;ret
 

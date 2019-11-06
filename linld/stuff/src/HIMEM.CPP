@@ -9,9 +9,8 @@
 int skip_alloc;
 
 void load_image(struct image_himem *m) {
-    no_exit++;       // die() won't return to DOS
     m->remaining = m->size;
-    m->buf = m->fallback;
+    m->buf = m->fallback;	// set no_exit btw: die() won't return to DOS
     u32 buf;
     u32* bufv= &buf;
     if(((u16 *)&m->fallback)[1] >= 0x10 && !skip_alloc) { // >= _1m ?

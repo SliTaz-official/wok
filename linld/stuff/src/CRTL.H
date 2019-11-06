@@ -47,7 +47,6 @@ extern _fastcall unsigned long strtol(const char *s);
 #define sti() do { asm { sti } } while(0)
 #define int3() do { asm { db 0cch } } while(0)
 #define nop() do { asm { db 90h } } while(0)
-extern char no_exit;
 extern void exit();
 extern _fastcall int die(const char* msg);
 //extern "C" char* malloc_or_die(unsigned size);
