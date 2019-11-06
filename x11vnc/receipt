@@ -1,24 +1,27 @@
 # SliTaz package receipt.
 
 PACKAGE="x11vnc"
-VERSION="0.9.13"
+VERSION="0.9.16"
 CATEGORY="network"
-SHORT_DESC="VNC server using X server"
+TAGS="vnc server"
+SHORT_DESC="VNC server for real X displays."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.karlrunge.com/x11vnc/"
-WGET_URL="$SF_MIRROR/libvncserver/$TARBALL"
-TAGS="vnc server"
-HOST_ARCH="i486 arm"
 
-DEPENDS="xorg-libXtst openssl jpeg xorg-libXdamage zlib"
-BUILD_DEPENDS="openssl-dev jpeg-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/LibVNC/$PACKAGE/archive/$VERSION.tar.gz"
+
+DEPENDS="jpeg libvncserver openssl xorg-libXdamage xorg-libXtst zlib"
+BUILD_DEPENDS="autoconf jpeg-dev libvncserver-dev openssl-dev"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr \
+	./autogen.sh		\
+		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make -j1 DESTDIR=$DESTDIR install &&
@@ -28,12 +31,14 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/etc/init.d
-	cp -a $install/usr/bin/x11vnc $fs/usr/bin
-	cp -a $stuff/x11vnc $fs/etc/init.d
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/etc/init.d
+
+	cp -a $install/usr/bin/x11vnc	$fs/usr/bin
+	cp -a $stuff/x11vnc		$fs/etc/init.d
 }
 
-# Post install/remove commands for Tazpkg.
+# Post install commands for Tazpkg.
 post_install()
 {
 	grep -q "^X11VNC" "$1/etc/daemons.conf" || cat >> "$1/etc/daemons.conf" <<EOT
@@ -44,4 +49,3 @@ EOT
 	[ -f "$1/etc/vnc.secret" ] || 
 	chroot "$1/" x11vnc -storepasswd root /etc/vnc.secret
 }
-
