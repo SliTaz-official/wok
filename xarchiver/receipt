@@ -1,49 +1,59 @@
 # SliTaz package receipt.
 
 PACKAGE="xarchiver"
-VERSION="0.5.4"
+VERSION="0.5.4.14"
 CATEGORY="x-window"
-SHORT_DESC="A GTK+ lightweight archive manager"
+SHORT_DESC="A GTK+ lightweight archive manager."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://xarchiver.sourceforge.net/"
-WGET_URL="$SF_MIRROR/xarchiver/$VERSION/$TARBALL"
+WEB_SITE="https://github.com/ib/xarchiver"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
 
 # binutils for ar; busybox also contains gzip & cpio; rar is get-rar;
 # gtar is absent
 RECOMMENDED="gzip lzma unzip"
-SUGGESTED="$RECOMMENDED arj bzip2 binutils xz lzop lha rar cpio zip p7zip-full"
+SUGGESTED="$RECOMMENDED arj bzip2 binutils cpio lha lzop p7zip-full rar xz zip"
+
 DEPENDS="gtk+ $RECOMMENDED"
 BUILD_DEPENDS="gtk+-dev"
+
 GENERIC_PIXMAPS="no"
 GENERIC_MENUS="no"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch -p0 < $stuff/xarchiver-0.5.3-icons.diff
-	./configure \
-		--prefix=/usr \
-		--libexecdir=/usr/lib \
+#	patch -p0 < $stuff/xarchiver-0.5.3-icons.diff
+
+	./configure			\
+		--prefix=/usr		\
+		--disable-doc		\
+		--libexecdir=/usr/lib	\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/applications $fs/usr/share
-	cp -a $install/usr/share/icons $fs/usr/share
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib			$fs/usr
+	cp -a $install/usr/share/applications	$fs/usr/share
+	cp -a $install/usr/share/icons		$fs/usr/share
+
 	rm -rf $fs/usr/share/icons/hicolor/scalable
 
 	sed -i '/Encoding/d; /Version/d; /Name\[.*\]=Xarchiver/d; /GenericName/d; s|multipart/x-zip;||; /Exec/s/.*/& %f/' \
 		$fs/usr/share/applications/xarchiver.desktop
 
-	mkdir -p $fs/var/www/cgi-bin $fs/usr/share/doc/xarchiver/html
-	cp -a $stuff/xarchiver.cgi $fs/var/www/cgi-bin
-	cp -a $stuff/index.html $fs/usr/share/doc/xarchiver/html
+	mkdir -p $fs/var/www/cgi-bin
+	mkdir -p $fs/usr/share/doc/xarchiver/html
+
+	cp -a $stuff/xarchiver.cgi	$fs/var/www/cgi-bin
+	cp -a $stuff/index.html		$fs/usr/share/doc/xarchiver/html
 }
