@@ -1,36 +1,40 @@
 # SliTaz package receipt.
 
 PACKAGE="xmlto"
-VERSION="0.0.26"
+VERSION="0.0.28"
 CATEGORY="utilities"
 LICENSE="GPL"
-SHORT_DESC="Tool for converting XML files to various formats"
+SHORT_DESC="Tool for converting XML files to various formats."
 MAINTAINER="yuripourre@gmail.com"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://cyberelk.net/tim/software/xmlto/"
-WGET_URL="https://fedorahosted.org/releases/x/m/$PACKAGE/$TARBALL"
+WEB_SITE="https://pagure.io/xmlto/"
 
-DEPENDS="libxslt perl-yaml-syck perl-test-pod bash"
-BUILD_DEPENDS="docbook-xsl util-linux-getopt flex"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://releases.pagure.org/$PACKAGE/$TARBALL"
+
+DEPENDS="bash libxslt perl-test-pod perl-yaml-syck"
+BUILD_DEPENDS="docbook-xsl flex util-linux-getopt"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
+	./configure		\
+		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 
-	for file in $install/usr/share/xmlto/format/*/*; do
+	for file in $install/usr/share/xmlto/format/*/*
+	  do
 		sed -i "s|http://docbook.sourceforge.net/release/xsl/current/|\
-/usr/share/xml/docbook/stylesheet/docbook-xsl/|" "$file"
-	done
+/usr/share/xml/docbook/stylesheet/docbook-xsl/|" \
+		"$file"
+	  done
 }
 
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/xmlto
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/xmlto/format $fs/usr/share/xmlto
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/xmlto/format	$fs/usr/share/xmlto
 }
