@@ -124,8 +124,7 @@ static u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
 struct image_himem imgs[2];
 
 static const char kernel_file_error[] = "Can't use kernel file";
-static char *version_string="";
-char* load_kernel() {
+void load_kernel() {
 
     struct	image_himem *m = &pm;
 #define _rm_buf(m)	(((u8**)(m))[-1])
@@ -158,7 +157,6 @@ do {
     if((kernelparams->setup_sects)>=(_32k/512) || // 0th sector not counted
 	 kernelparams->boot_flag != 0xAA55)
         die("Not a kernel");
-    heap_top +=		// Hack for VCPI. Need fix.
     _rm_size=0x200*(kernelparams->setup_sects+1);
     m->size -= _rm_size;
     m->chunk_size -= _rm_size;
@@ -185,7 +183,7 @@ do {
             hook_int15_88(); // break _ES
         }
         if (kernelparams->kernel_version)
-            version_string = (char *) strdup((char *) first1k+kernelparams->kernel_version+0x200);
+            strcpy(version_string,(char *) first1k+kernelparams->kernel_version+0x200);
         kernelparams->type_of_loader = 0xff; // kernel do not know us (yet :-)
         if(kernelparams->version >= 0x201) {
             // * offset limit of the setup heap
@@ -223,7 +221,6 @@ cmd_line_ok:
     }
 
     load_image(m);
-    return version_string;
 }
 
 // Read initrd if needed

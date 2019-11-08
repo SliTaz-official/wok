@@ -124,8 +124,10 @@ sssp		dd	?
 		mov	cx,[bx-5]	; size
 		mov	si,[bx-2]	; data
 		xor	di,di
-		rep
-		  movsb
+@@move_clear:
+		movsb
+		mov	[byte si-1],0
+		loop	@@move_clear
 		;push	ds
 		;pop	es
 		;pop	di si

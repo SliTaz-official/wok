@@ -22,7 +22,6 @@ extern char xfer_buf[4096];
 void parse_cmdline();
 extern _fastcall void strcatb(const char* a,const char* b);
 extern _fastcall void strcpy(const char* a,const char* b);
-extern _fastcall int strdup(const char* a);
 #ifdef USE_ARGSTR
 extern _fastcall int argstr(const char *s, const char keywords[], const char **var);
 extern _fastcall int argnum(char *s, const char keywords[], unsigned long *var);

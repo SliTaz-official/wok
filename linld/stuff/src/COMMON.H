@@ -72,6 +72,7 @@ extern "C" unsigned long* next_bufv();
 #define prev(p)	 --p
 #endif
 extern char vcpi;
+extern char version_string[];
 extern const char* kernel_name;
 extern const char* initrd_name;
 extern const char* cmdline;
@@ -93,6 +94,6 @@ extern "C" void hang();
 void load_image(struct image_himem *m);
 extern _fastcall void open_image(struct image_himem *m, const char *name);
 extern _fastcall int read_image(struct image_himem *m);
-char* load_kernel();
+void load_kernel();
 void load_initrd();
 extern "C" void boot_kernel();

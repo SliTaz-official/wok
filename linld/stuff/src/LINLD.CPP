@@ -75,7 +75,8 @@ int main(int argc, char *argv[]) {
 	boot:
             puts(*clp);
 	    set_cmdline(*clp);
-	    puts(load_kernel());
+	    load_kernel();
+	    puts(version_string);
 	    load_initrd();
 	    boot_kernel();
         }
@@ -88,7 +89,8 @@ int main(int argc, char *argv[]) {
 	argv++;
 	s=*argv;
 	if (!s) {
-	    puts(load_kernel());
+	    load_kernel();
+	    puts(version_string);
 	    load_initrd();
 	    boot_kernel();
 	}

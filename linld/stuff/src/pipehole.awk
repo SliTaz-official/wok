@@ -102,10 +102,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/jb/) isload=12
 		sub(/jb/,"ja")
 	}
-	if (/i,offset/) split($2,sidi,",")
-	if (sidi[1] == "si") sidi[2]="di"
-	else sidi[2]="si"
-	sub(/DGROUP:_imgs\+65534/,"[" sidi[1] "-2]")
+	sub(/_imgs\+65534/,"_imgs-2")
 	if (/m, _rm_size/) isload=10
 	if (isload == 10) {  # LOAD.LST
 		if (/^	je	/) next
@@ -127,13 +124,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/cmd_line_ptr =/ && is386 == 0) isload=7
 	if (isload == 7) {  # LOAD.LST
 		if (/add/ || /xor/ || /extrn/ || /N_LXLSH@/ || /cl,4/) next
-		if (/enable A20 if needed/) {
-			print "	mov	word ptr [bx+" sidi[2] "],8000h"
-			isload=0
-		}
+		if (/enable A20 if needed/) { print nextinst; isload=0 }
 		if (/,ax/) $0="	mov	bx,55"
 		if (/i-463/) $0="	mov	bx,-463"
-		if (/i-465/) { sub(/465/,"2"); sub(/\[/,"[bx+"); }
+		if (/i-465/) {
+			sub(/465/,"2"); sub(/\[/,"[bx+")
+			nextinst=$0; sub(/-2\],-23745/,"],8000h",nextinst) 
+		}
 		if (/,dx/) {
 			print "	mov	cl,12"
 			print "	shr	ax,cl"

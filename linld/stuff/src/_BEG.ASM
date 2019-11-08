@@ -32,6 +32,8 @@ STACK_SIZE = 1024
 
         global  _bss_start:byte
         label   _bss_start byte
+        global  _version_string:byte
+        label   _version_string byte
 		db	STACK_SIZE-2 dup(?)
 stktop		dw	?
         global  _cpu_features:dword
@@ -52,7 +54,7 @@ _cpu_features	dd	?
 ; clear bss
 ;***************************************************************
 		mov	sp,offset stktop
-		mov	si,sp
+		mov	si,offset _version_string
 		mov	bx, 0F000h	; cld ; cli & empty string
 clearbss:
 		mov	[si],bl		; clear bss + heap + sp

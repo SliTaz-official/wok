@@ -58,7 +58,8 @@ static char *isokernel()
 	struct image_himem *m = &pm;
 	m->chunk_size = m->size = isofilesize4round();
 	m->fd = isofd;
-	return load_kernel();
+	load_kernel();
+	return version_string;
 }
 
 static char buf_cmdline[4096];

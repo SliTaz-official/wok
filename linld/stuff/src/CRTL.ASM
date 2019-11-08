@@ -478,15 +478,8 @@ isolseek:
 		include	"himem.inc"
 
 ;***************************************************************
-;_fastcall char* strdup(bx:const char* a);
 ;_fastcall char* malloc_or_die(ax:unsigned size);
 ;***************************************************************
-	global	@strdup$qpxzc:near
-@strdup$qpxzc:
-		mov	ax,[_heap_top]
-		xchg	ax,bx
-		call	@strcpy$qpxzct1		; bx = strcpy(bx, ax) end +1
-		xchg	ax,bx
 xchg_heap_top:
 		xchg	ax,[_heap_top]
 		ret
