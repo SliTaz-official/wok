@@ -119,7 +119,7 @@ extern "C" u16 topseg();
 #define topseg() 0x9000
 #endif
 u16 rm_size;
-static u8 pm_high;	// @ = @rm_size + 2, see JUMP.ASM
+u8 pm_high;		// @ = @rm_size + 2, see JUMP.ASM
 static u8* rm_buf;	// @ = @rm_size + 3, see JUMP.ASM
 struct image_himem imgs[2];
 
@@ -211,7 +211,13 @@ cmd_line_ok:
     // Try to load kernel high, maybe even blindly storing it
     // in unallocated memory as a last resort
 
+#ifdef	MOVE_SETUP
+    extern unsigned rm_offset;
+    if((u16)(((m->fallback=(u32(u16(_CS)+(u16(heap_top)>>4)+1)<<4))
+             +m->size-rm_offset)>>16) >=
+#else
     if((u16)(((m->fallback=(u32(u16(_CS)+(u16(heap_top)>>4)+1)<<4))+m->size)>>16) >=
+#endif
 		 (u16)(topseg()>>12) || _pm_high) {
         m->fallback = base_himem;
     }

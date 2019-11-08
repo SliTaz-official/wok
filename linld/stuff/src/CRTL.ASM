@@ -59,9 +59,6 @@ _isostate	isostate	<?>
 _xfer_buf	db	4096	dup (?)
 filecnt		db	?		; in fact 0 minus file count...
 nextfilename	dw	?
-	ifdef	LARGE_IMAGES
-curdata		dw	?
-	endif
 	ifdef	EXTRA
 ultoabuf	db	12	dup (?)
 	endif
@@ -586,12 +583,12 @@ do_int21h:
 		mov	[byte si],ah		; set temp eos
 		call	open
 		pop	[word si]		; restore string
-		jc	@@die
+		jc	jcdie
 		mov	[(image_himem di).fd],ax
 		mov	[(image_himem di).fd2close],ax
 		mov	bl,02h			; SEEK_END
 		call	lseek0
-@@die:
+jcdie:
 		mov	bx,[(image_himem di).errmsg]
 		jc	die
 		ifndef	NO386
@@ -663,12 +660,12 @@ ends	data_himem			;}; // size=8200
 		mov	[(image_himem si).bufv],ax
 		xchg	ax,si
 @@vcpi_alloc:
-                xor     edx,edx
                 mov     ax,0DE04h
                 int     67h
 		or	ah,ah
+		stc
 		mov	bx,offset vcpi_alloc_err
-		jnz	die
+		jnz	jcdie
 ; for (i = cnt-1; i >= 0; i--)
 	ifdef	LARGE_IMAGES
 		mov	eax,ecx
@@ -867,7 +864,9 @@ storepage:					; storepage(edx,cx)
 _next_bufv:
 		clc
 		push	si
-		mov	si,[curdata]
+		mov	si,0
+		org	$-2
+curdata		dw	?
 		sbb	ax,ax
 		cmc
 		adc	ax,[(data_himem si).cacheidx]	; -1/+1

@@ -99,23 +99,24 @@ sssp		dd	?
 		push	si di
 		extrn	_heap_top:word
 		ifdef	NO386
+		mov	ax,[_heap_top]
+		mov	cl,4
+		shr	ax,cl
+		mov	dx,cs
+		add	dx,ax
 		extrn	_topseg:near
 		call	near _topseg
-		mov	cl,4
 		mov	[word sssp+2],ax
-		xchg	ax,dx
-		mov	ax,[_heap_top]
-		shr	ax,cl
 		else
                 p386
 		mov	ax,[_heap_top]
 		shr	ax,4
-		mov	dx,9000h
+		mov	dx,cs
+		add	dx,ax
+		mov	ax,9000h
 		endif
-		mov	es,dx
-		mov	cx,cs
-		add	ax,cx
-		cmp	ax,dx
+		mov	es,ax
+		cmp	dx,ax
 		jb	@@nooverflow
 ; Oops! We can stomp on our toes... better stop now
 		mov	bx,offset overflow
@@ -124,9 +125,18 @@ sssp		dd	?
 		mov	cx,[bx-5]	; size
 		mov	si,[bx-2]	; data
 		xor	di,di
+		ifdef	MOVE_SETUP
+		extrn	_pm_high:byte
+		cmp	[_pm_high],al
+		jne	@@move_clear
+		mov	di,8000h
+		sub	di,cx
+		extrn	_rm_offset:word
+		mov	[_rm_offset],di
+		endif
 @@move_clear:
 		movsb
-		mov	[byte si-1],0
+		mov	[byte si-1],al
 		loop	@@move_clear
 		;push	ds
 		;pop	es

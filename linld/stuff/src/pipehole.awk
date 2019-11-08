@@ -183,7 +183,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			print	"	extrn	N_LXLSH@4:near"
 			sub(/N_LXLSH@/,"N_LXLSH@4")
 		}
-		sub(/,0/,",dh")
+		sub(/-3\],0/,"-3],dh")
 		if (/_base_himem\+2/ || /pop/ || /push/) next
 		if (/_base_himem$/) {
 			sub(/mov	dx,/,"les	dx,d")

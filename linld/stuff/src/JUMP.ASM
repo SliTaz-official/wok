@@ -157,6 +157,12 @@ step19:
 		lodsw
 		xchg	ax,bx			; get pm->fallback low word
 		lodsw				; get pm->fallback high word
+		ifdef	MOVE_SETUP
+		mov	si,0
+	global	_rm_offset:word
+		org	$-2
+_rm_offset	dw	?
+		endif
 		push	es
 		call	near @@isbzimage	; pop cs ; ds=es=ss
 
@@ -182,6 +188,14 @@ step19:
 		push	di			; dst ofs lo : 64k
 		extrn   memcpy32:near
 		call	memcpy32
+
+		ifdef	MOVE_SETUP
+		;xor	di,di
+		mov	cx,8000h
+		;sub	cx,si
+		rep
+		  movsb
+		endif
 
 		ifndef  noelks
 		ifndef	NO386
