@@ -4,26 +4,29 @@ PACKAGE="enigma"
 VERSION="1.01"
 REVISION="r1914"
 CATEGORY="games"
-SHORT_DESC="puzzle game similar to Oxyd"
+SHORT_DESC="Puzzle game similar to Oxyd."
 MAINTAINER="devl547@gmail.com"
 LICENSE="GPL2"
+WEB_SITE="https://www.nongnu.org/enigma/"
+
 TARBALL="$PACKAGE-$VERSION-$REVISION.tar.gz"
-WEB_SITE="http://www.nongnu.org/enigma/"
 WGET_URL="http://download.berlios.de/enigma-game/$TARBALL"
 
-DEPENDS="libsdl libsdl-ttf libsdl-mixer libsdl-image xerces-c"
-BUILD_DEPENDS="gettext libsdl-ttf-dev libsdl-mixer-dev libsdl-image-dev libsdl-dev xerces-c-dev"
+DEPENDS="libsdl libsdl-image libsdl-mixer libsdl-ttf xerces-c"
+BUILD_DEPENDS="gettext libsdl-dev libsdl-image-dev libsdl-mixer-dev
+	libsdl-ttf-dev  xerces-c-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	sed -i 's/stdexcept>/&\n#include <stddef.h>/' lib-src/zipios++/src/directory.h
-	sed -i 's/#ifndef.*/&\n#include <stddef.h>/' lib-src/enigma-core/ecl_dict.hh
-	./configure \
-		--build=$HOST_SYSTEM \
-		--host=$HOST_SYSTEM \
-		--enable-optimize 2>&1 | grep -v 'config.rpath: No such file' &&
+	sed -i 's/stdexcept>/&\n#include <stddef.h>/' \
+		lib-src/zipios++/src/directory.h
+	sed -i 's/#ifndef.*/&\n#include <stddef.h>/' \
+		lib-src/enigma-core/ecl_dict.hh
+	./configure			\
+		--build=$HOST_SYSTEM	\
+		--host=$HOST_SYSTEM	\
+		--enable-optimize 2>&1 | sed '/.*config.rpath.*No such file.*/d' &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -32,7 +35,8 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/enigma $fs/usr/share
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/usr/share/enigma	$fs/usr/share
 }
