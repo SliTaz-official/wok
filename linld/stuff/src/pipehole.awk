@@ -3,6 +3,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 {
 	sub(/segment word public/,"segment byte public")
 
+	if (/^   ;	$/) next
 	if (/^@.*:$/ || /	endp$/) afterjmp=0
 	if (/^	\.386p$/) is386=1
 	if (file == "" && /debug	S/) { file=$3; gsub(/\"/,"",file) }
