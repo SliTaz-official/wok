@@ -96,20 +96,15 @@ step19:
 		push	es
 		pop	ss
 		mov	sp,0A000h
-		extrn	_rm_size:word
+		extrn	_csip:dword
 		ifdef NO386
-		mov	si,offset _rm_size-4	; _rm_size, _pm_high, _rm_buf
+		mov	si,offset _csip
 		lodsw
-		xchg	ax,bx
-		lodsw
-		push	ax			; _csip high
-		push	bx			; _csip low
-		lodsw				; skip _rm_size
+		push	[word si]
+		push	ax
 		else
-		mov	si,offset _rm_size+2	; _rm_size, _pm_high, _rm_buf
-		push	[dword si-6]		; _csip
+		push	[dword _csip]
 		endif
-		lodsb				; _pm_high
 
 		ifdef	NO386
 		mov	cx,ss
@@ -126,7 +121,10 @@ step19:
 		rep
 		  movsb
 
-		or	cl,al			; load high ?
+		mov	cl,0			; load high ?
+		org	$-1
+		global	_pm_high:byte
+_pm_high	db	?
 		inc	cx
 		push	cx
 		mov	ax,[word ss:024Ch]
@@ -212,7 +210,11 @@ _rm_offset	dw	?
 		jne	@@notelks
 		xchg	ax,si
 		endif
+		ifdef	MOVE_SETUP
+		mov	ch,1h		; DS=ES=SS=0100
+		else
 		mov	cx,100h		; DS=ES=SS=0100
+		endif
 		mov	ss,cx
 		mov	es,cx
 		mov	cl,20h		; CS=0120

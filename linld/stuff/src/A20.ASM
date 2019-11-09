@@ -122,7 +122,7 @@ sssp		dd	?
 		mov	bx,offset overflow
 		call	near die
 @@nooverflow:
-		mov	cx,[bx-5]	; size
+		mov	cx,[bx-4]	; size
 		mov	si,[bx-2]	; data
 		xor	di,di
 		ifdef	MOVE_SETUP

@@ -54,6 +54,7 @@ extern struct image_himem {
 #define initrd (imgs[1])
 #define pm2initrd(p) (p+1)
 
+extern u8 pm_high;
 extern int skip_alloc;
 extern u32 base_himem;
 extern u32 far *initrd_desc;

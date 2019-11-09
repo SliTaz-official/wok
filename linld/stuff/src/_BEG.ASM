@@ -54,7 +54,7 @@ _cpu_features	dd	?
 ; clear bss
 ;***************************************************************
 		mov	sp,offset stktop
-		mov	si,offset _version_string
+		mov	si,offset _bss_start
 		mov	bx, 0F000h	; cld ; cli & empty string
 clearbss:
 		mov	[si],bl		; clear bss + heap + sp

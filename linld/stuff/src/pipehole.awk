@@ -183,15 +183,16 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			print	"	extrn	N_LXLSH@4:near"
 			sub(/N_LXLSH@/,"N_LXLSH@4")
 		}
-		sub(/-3\],0/,"-3],dh")
+		sub(/pm_high,0/,"pm_high,dh")
 		if (/_base_himem\+2/ || /pop/ || /push/) next
 		if (/_base_himem$/) {
-			sub(/mov	dx,/,"les	dx,d")
+			sub(/mov	dx,/,"les	ax,d")
 			isload++
 		}
 	}
 	if (isload == 401) {
 		sub(/,ax/,",es")
+		sub(/,dx/,",ax")
 		if (/load_image/) isload=0
 	}
 	if (isload == 4 && is386) {  # LOAD.LST
