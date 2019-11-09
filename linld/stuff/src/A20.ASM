@@ -17,7 +17,7 @@
 enable_a20_methods:
 		dw	_enable_a20_fast, _enable_a20_kbd, _enable_a20_xmm, die
 msg_a20		db	"Can't use A20",0
-overflow	db	"Loaded too close to 9000:0",0
+overflow	db	"Out of memory",0
 	global	sssp:dword
 	global	_initrd_desc:dword
 _initrd_desc	dd	90000218h
@@ -90,6 +90,8 @@ sssp		dd	?
 
         endp    _enable_a20_fast
 
+	include	"himem.inc"
+
 ;***************************************************************
 ;_fastcall void moverm(bx:struct himem *m);
 ;***************************************************************
@@ -97,6 +99,14 @@ sssp		dd	?
 	global	@moverm$qp11image_himem:near
 @moverm$qp11image_himem:
 		push	si di
+		extrn	_pm_high:byte
+		mov	si,offset _pm_high
+		ifdef	MOVE_SETUP
+		mov	di,8000h
+		sub	di,[bx-4]	; rm size
+		extrn	_rm_offset:word
+		mov	[_rm_offset],di
+		endif
 		extrn	_heap_top:word
 		ifdef	NO386
 		mov	ax,[_heap_top]
@@ -104,36 +114,75 @@ sssp		dd	?
 		shr	ax,cl
 		mov	dx,cs
 		add	dx,ax
+		mov	cx,0fffh
+		test	[byte si],cl
+		jne	@bzimage
+		xchg	ax,dx
+		cmp	ax,cx
+		jae	@sys@ok
+		xchg	ax,cx
+@sys@ok:
+		inc	ax
+		extrn	N_LXLSH@4:near
+		call	N_LXLSH@4
+		mov	[word ((image_himem bx).fallback)],ax
+		mov	[word ((image_himem bx).fallback)+2],dx
+		add	ax,[word ((image_himem bx).size)]
+		adc	dx,[word ((image_himem bx).size)+2]
+		ifdef	MOVE_SETUP
+		sub	ax,di	; -rm_offset
+		sbb	dx,cx
+		endif
+		mov	cl,12
+		shl	dx,cl
+		jc	@overflow
+@bzimage:
 		extrn	_topseg:near
 		call	near _topseg
 		mov	[word sssp+2],ax
 		else
                 p386
-		mov	ax,[_heap_top]
+		movzx	eax,[word _heap_top]
 		shr	ax,4
 		mov	dx,cs
-		add	dx,ax
+		add	ax,dx
+		mov	cx,0fffh
+		test	[byte si],cl
+		jne	@bzimage
+		cmp	ax,cx
+		jae	@sys@ok
+		xchg	ax,cx
+@sys@ok:
+		inc	ax
+		shl	eax,4
+		mov	[(image_himem bx).fallback],eax
+		add	eax,[(image_himem bx).size]
+		ifdef	MOVE_SETUP
+		extrn	_rm_offset:word
+		movzx	ecx,di			; -rm_offset
+		sub	eax,ecx
+		endif
+		shl	eax,4
+@bzimage:
+		xchg	ax,dx
 		mov	ax,9000h
 		endif
 		mov	es,ax
 		cmp	dx,ax
-		jb	@@nooverflow
+		jb	@nooverflow
+@overflow:
 ; Oops! We can stomp on our toes... better stop now
 		mov	bx,offset overflow
 		call	near die
-@@nooverflow:
-		mov	cx,[bx-4]	; size
-		mov	si,[bx-2]	; data
-		xor	di,di
+@nooverflow:
 		ifdef	MOVE_SETUP
-		extrn	_pm_high:byte
-		cmp	[_pm_high],al
-		jne	@@move_clear
-		mov	di,8000h
-		sub	di,cx
-		extrn	_rm_offset:word
-		mov	[_rm_offset],di
+		cmp	[si],al
+		je	@@do_move
 		endif
+		xor	di,di
+@@do_move:
+		mov	si,[bx-2]	; rm data
+		mov	cx,[bx-4]	; rm size
 @@move_clear:
 		movsb
 		mov	[byte si-1],al

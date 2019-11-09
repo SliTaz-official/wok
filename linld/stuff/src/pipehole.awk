@@ -162,53 +162,14 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/_version_string,/) isload=0
 		if (/mov	bx,ax/) next
 	}
-	if (/topseg\(\)>>12/) isload=4
-	if (isload == 4 && is386 == 0) {  # LOAD.LST
-		if (/push/ || /pop/) next
-		if (/ax,cs/) {
-			sub(/ax,cs/,"bx,cs")
-		}
-		if (/dx,dx/) next
-		sub(/ax,dx/,"ax,bx")
-		if (/call/) {
-			print	"	cmp	ax,0fffh"
-			print	"	jae	@sys@ok"
-			print	"	mov	ax,0fffh"
-			print	"@sys@ok:"
-			isload=400
-		}
-	}
-	if (isload == 400) {
-		if (/call/) {
-			print	"	extrn	N_LXLSH@4:near"
-			sub(/N_LXLSH@/,"N_LXLSH@4")
-		}
-		sub(/pm_high,0/,"pm_high,dh")
-		if (/_base_himem\+2/ || /pop/ || /push/) next
+	if (/_base_himem\+2/ && is386 == 0) isload=4
+	if (isload == 4) {  # LOAD.LST
+		if (/_base_himem\+2/) next
 		if (/_base_himem$/) {
-			sub(/mov	dx,/,"les	ax,d")
-			isload++
+			sub(/mov	dx,/,"les	dx,d")
 		}
-	}
-	if (isload == 401) {
 		sub(/,ax/,",es")
-		sub(/,dx/,",ax")
-		if (/load_image/) isload=0
-	}
-	if (isload == 4 && is386) {  # LOAD.LST
-		sub(/dx,cs/,"edx,cs")
-		sub(/eax/,"edx")
-		if (/shl/) {
-			print	"	mov	ax,0fffh"
-			print	"	cmp	dx,ax"
-			print	"	jae	@sys@ok"
-			print	"	xchg	ax,dx"
-			print	"@sys@ok:"
-		}
-		sub(/ax,9/,"dx,9")
-		if (/,0$/) sub(/,0/,",dh")
-		if (/movzx/) next
-		if (/fallback = base_himem/) { isload=0 }
+		if (/,dx/) isload=0
 	}
 	if (/void load_initrd\(\)/) isload=3
 	if (isload == 3) {  # LOAD.LST

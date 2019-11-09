@@ -175,6 +175,7 @@ do {
 	    extern void far last_ditch();
 	    kernelparams->realmode_switch_ofs = (u16) last_ditch;
 	    kernelparams->realmode_switch_seg = _CS;
+	    m->fallback = base_himem;
             pm_high++;
 
             // Hook on int15 to work around fn 88 DOS breakage
@@ -208,21 +209,6 @@ cmd_line_ok:
     // Read remaining kernel (pm part)
     // Try to load kernel high, maybe even blindly storing it
     // in unallocated memory as a last resort
-
-#ifdef	MOVE_SETUP
-    extern unsigned rm_offset;
-    if((u16)(((m->fallback=(u32(u16(_CS)+(u16(heap_top)>>4)+1)<<4))
-             +m->size-rm_offset)>>16) >=
-#else
-    if((u16)(((m->fallback=(u32(u16(_CS)+(u16(heap_top)>>4)+1)<<4))+m->size)>>16) >=
-#endif
-		 (u16)(topseg()>>12) || pm_high) {
-        m->fallback = base_himem;
-    }
-    if (((u16 *)&m->fallback)[1] == 0) {
-	((u16 *)&m->fallback)[0] &= 0;
-	((u16 *)&m->fallback)[1]++;	// m->fallback = _64k;
-    }
 
     load_image(m);
 }
