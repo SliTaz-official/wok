@@ -164,5 +164,5 @@ int main(int argc, char *argv[]) {
 #endif
 
     // Let compiler be happy
-    return _AX;
+    //return _AX;
 }

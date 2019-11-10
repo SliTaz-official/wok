@@ -18,11 +18,12 @@
         global  _data_start:byte
         label   _data_start byte
 		ifndef	NO386
-msg_badcpu      db      "I need 386+ CPU in real mode or under VCPI manager",0
-		endif
+msg_badcpu      db      "I need 386+ CPU in real mode w/o paging"
+		db	" or "
+msg_badmapping	db	"under VCPI 4.0+ manager with low 640k 1:1 mapping"
         global  _vcpi:byte
-msg_badmapping  db      "VCPI: low 640k need 1:1 mapping"
 _vcpi		db	0
+		endif
 
         ends    _DATA
 
@@ -36,6 +37,11 @@ STACK_SIZE = 1024
         label   _version_string byte
 		db	STACK_SIZE-2 dup(?)
 stktop		dw	?
+		ifdef	NO386
+        global  _cpu386:byte
+_cpu386		db	?
+		org	$-1
+		endif
         global  _cpu_features:dword
 _cpu_features	dd	?
         ends    _BSS
@@ -73,9 +79,9 @@ clearbss:
 		add	dh,bh		; NS=386+, S+NC=286, S+C=86/186
 		ifndef	NO386
 		mov	bx,offset msg_badcpu
-                js	godie   	;it is not a 386+
+                js	godie   	;it is not a 386+, die
 		else
-                js	endcpu86   	;it is not a 386+
+                js	endcpu86   	;it is not a 386+, try ELKS & co
 		endif
                 p386
 ; Check for vm
@@ -89,11 +95,15 @@ check_rm_paging:
                 mov     eax,cr0
                 inc     eax             ;CR0_PG to S
 		jns	endcpu386
-no_vcpi:
+		ifndef	NO386
                 p8086
                 extrn   die:near
 godie:
+no_vcpi:
 		call	near die
+		else
+		jmp	endcpu86
+		endif
 
 ;***************************************************************
 ; checks for vcpi
@@ -145,9 +155,16 @@ is386vcpi:
 ;    get_vcpi_interface() || die("VCPI: low 640k: need 1:1 mapping");
                 ;extrn   _get_vcpi_interface:near
 		;call	_get_vcpi_interface
+		ifndef	NO386
 		mov	bx,offset msg_badmapping
 		jnz	no_vcpi
-		inc	[byte bx+_vcpi-msg_badmapping]
+		dec	[byte bx+_vcpi-msg_badmapping]
+		else
+		jnz	no_vcpi
+		extrn	_vcpi:byte
+		dec	[byte _vcpi]
+no_vcpi:
+		endif
 endcpu386:
 		pushfd
 		pop	dx
@@ -164,6 +181,9 @@ endcpu386:
 		je	@@no_cpuid	; CPUID feature bit changed ?
 		mov	eax,80000001h	; Extended Processor Info and Feature Bits
 		cpuid
+		ifdef	NO386
+		mov	dl,-1		; set 386 flag
+		endif
 		mov	[_cpu_features],edx
 @@no_cpuid:
 endcpu86:

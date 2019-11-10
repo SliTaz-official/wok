@@ -18,6 +18,9 @@ enable_a20_methods:
 		dw	_enable_a20_fast, _enable_a20_kbd, _enable_a20_xmm, die
 msg_a20		db	"Can't use A20",0
 overflow	db	"Out of memory",0
+		ifdef	NO386
+bzimage86	db	"No bzImage on 8086",0
+		endif
 	global	sssp:dword
 	global	_initrd_desc:dword
 _initrd_desc	dd	90000218h
@@ -110,7 +113,13 @@ sssp		dd	?
 		mov	cx,0fffh
 		extrn	_pm_high:byte
 		test	[_pm_high],cl
+		je	@zimage
+		extrn	_cpu386:byte
+		test	[_cpu386],cl
 		jne	@bzimage
+		mov	bx,offset bzimage86
+		jmp	godie
+@zimage:
 		xchg	ax,dx
 		cmp	ax,cx
 		jae	@sys@ok
@@ -138,6 +147,10 @@ sssp		dd	?
 		extrn	_topseg:near
 		call	near _topseg
 		mov	[word sssp+2],ax
+		and	ch,0
+		org	$-1
+		global	_vcpi:byte
+_vcpi		db	?
 		else
                 p386
 		movzx	eax,[word _heap_top]
@@ -169,6 +182,8 @@ sssp		dd	?
 @bzimage:
 		xchg	ax,dx
 		mov	ax,9000h
+		extrn	_vcpi:byte
+		and	ch,[_vcpi]
 		endif
 		add	dh,ch		; room for malloc_bufv_or_die
 		cmp	dx,ax
@@ -176,6 +191,7 @@ sssp		dd	?
 @overflow:
 ; Oops! We can stomp on our toes... better stop now
 		mov	bx,offset overflow
+godie:
 		call	near die
 @nooverflow:
 		les	cx,[bx-4]	; rm size
