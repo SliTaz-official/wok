@@ -124,9 +124,8 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/cmd_line_ptr =/ && is386 == 0) isload=7
 	if (isload == 7) {  # LOAD.LST
-		if (/add/ || /xor/ || /extrn/ || /N_LXLSH@/ || /cl,4/) next
+		if (/add/ || /xor/ || /extrn/ || /N_LXLSH@/ || /cl,4/ || /,ax/) next
 		if (/enable A20 if needed/) { print nextinst; isload=0 }
-		if (/,ax/) $0="	mov	bx,55"
 		if (/i-463/) $0="	mov	bx,-463"
 		if (/i-465/) {
 			sub(/465/,"2"); sub(/\[/,"[bx+")
@@ -135,6 +134,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/,dx/) {
 			print "	mov	cl,12"
 			print "	shr	ax,cl"
+			print "	mov	bx,55"
 			sub(/dx/,"ax")
 		}
 	}
@@ -170,6 +170,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		}
 		sub(/,ax/,",es")
 		if (/,dx/) isload=0
+		if (/add	ax,word ptr/) $0="	add	ax,cx"
+		if (/i\+29\],0/) {
+			sub(/,0$/,"")
+			sub(/cmp	/,"mov	cx,")
+		}
+		sub(/je/,"jcxz")
+		if (/@strcpy/) isload=0
 	}
 	if (/void load_initrd\(\)/) isload=3
 	if (isload == 3) {  # LOAD.LST

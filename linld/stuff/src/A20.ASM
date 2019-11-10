@@ -99,14 +99,7 @@ sssp		dd	?
 	global	@moverm$qp11image_himem:near
 @moverm$qp11image_himem:
 		push	si di
-		extrn	_pm_high:byte
-		mov	si,offset _pm_high
-		ifdef	MOVE_SETUP
-		mov	di,8000h
-		sub	di,[bx-4]	; rm size
-		extrn	_rm_offset:word
-		mov	[_rm_offset],di
-		endif
+		xor	di,di
 		extrn	_heap_top:word
 		ifdef	NO386
 		mov	ax,[_heap_top]
@@ -115,7 +108,8 @@ sssp		dd	?
 		mov	dx,cs
 		add	dx,ax
 		mov	cx,0fffh
-		test	[byte si],cl
+		extrn	_pm_high:byte
+		test	[_pm_high],cl
 		jne	@bzimage
 		xchg	ax,dx
 		cmp	ax,cx
@@ -130,7 +124,11 @@ sssp		dd	?
 		add	ax,[word ((image_himem bx).size)]
 		adc	dx,[word ((image_himem bx).size)+2]
 		ifdef	MOVE_SETUP
-		sub	ax,di	; -rm_offset
+		mov	di,8000h
+		sub	di,[bx-4]	; rm size
+		extrn	_rm_offset:word
+		mov	[_rm_offset],di
+		sub	ax,di		; -rm_offset
 		sbb	dx,cx
 		endif
 		mov	cl,12
@@ -147,7 +145,8 @@ sssp		dd	?
 		mov	dx,cs
 		add	ax,dx
 		mov	cx,0fffh
-		test	[byte si],cl
+		extrn	_pm_high:byte
+		test	[_pm_high],cl
 		jne	@bzimage
 		cmp	ax,cx
 		jae	@sys@ok
@@ -158,16 +157,20 @@ sssp		dd	?
 		mov	[(image_himem bx).fallback],eax
 		add	eax,[(image_himem bx).size]
 		ifdef	MOVE_SETUP
+		mov	di,8000h
+		sub	di,[bx-4]	; rm size
 		extrn	_rm_offset:word
-		movzx	ecx,di			; -rm_offset
+		mov	[_rm_offset],di
+		movzx	ecx,di		; -rm_offset
 		sub	eax,ecx
 		endif
 		shl	eax,4
+		mov	ch,0
 @bzimage:
 		xchg	ax,dx
 		mov	ax,9000h
 		endif
-		mov	es,ax
+		add	dh,ch		; room for malloc_bufv_or_die
 		cmp	dx,ax
 		jb	@nooverflow
 @overflow:
@@ -175,14 +178,9 @@ sssp		dd	?
 		mov	bx,offset overflow
 		call	near die
 @nooverflow:
-		ifdef	MOVE_SETUP
-		cmp	[si],al
-		je	@@do_move
-		endif
-		xor	di,di
-@@do_move:
-		mov	si,[bx-2]	; rm data
-		mov	cx,[bx-4]	; rm size
+		les	cx,[bx-4]	; rm size
+		mov	si,es		; rm data
+		mov	es,ax
 @@move_clear:
 		movsb
 		mov	[byte si-1],al
