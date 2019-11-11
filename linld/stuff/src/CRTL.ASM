@@ -17,9 +17,6 @@
 
         segment _DATA byte public use16 'DATA'
 
-		global	_heap_top
-		extrn	_bss_end
-_heap_top	dw	_bss_end
 msg_hang	db      "High mem corrupted - not exiting to DOS",0
 vcpi_alloc_err	db	"VCPI "
 msg_malloc      db      "malloc error",0
@@ -478,6 +475,7 @@ isolseek:
 ;_fastcall char* malloc_or_die(ax:unsigned size);
 ;***************************************************************
 xchg_heap_top:
+		extrn	_heap_top
 		xchg	ax,[_heap_top]
 		ret
 

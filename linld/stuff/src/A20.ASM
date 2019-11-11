@@ -19,7 +19,7 @@ enable_a20_methods:
 msg_a20		db	"Can't use A20",0
 overflow	db	"Out of memory",0
 		ifdef	NO386
-bzimage86	db	"No bzImage on 8086",0
+bzimage86	db	"8086 & bzImage",0
 		endif
 	global	sssp:dword
 	global	_initrd_desc:dword

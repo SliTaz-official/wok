@@ -130,20 +130,18 @@ skip:
 ; Check emm manager status and version
                 ;mov     ah,40h          ; get status
                 ;int     67h
-                ;test    ah,ah
-                ;jnz     no_vcpi
+		;inc	ax
+                ;js      no_vcpi
                 mov     ah,46h          ; get version
                 int     67h
-                test    ah,ah
-                jnz     no_vcpi
                 cmp     al,40h          ; version must be >= 4.0
-                jb      no_vcpi
+                jl      no_vcpi		; btw check ax.15
 ; Check vcpi manager status
               ;;mov     ax,5A01h        ; ALLOCATE RAW PAGES
               ;;mov     bx,4
               ;;int     67h
-              ;;test    ah,ah
-              ;;jnz     no_vcpi
+              ;;inc    	ax
+              ;;js      no_vcpi
               ;;push    dx              ;$ save handle
                 mov     ax,0DE00h       ; check for vcpi present
                 int     67h
@@ -163,7 +161,6 @@ is386vcpi:
 		jnz	no_vcpi
 		extrn	_vcpi:byte
 		dec	[byte _vcpi]
-no_vcpi:
 		endif
 endcpu386:
 		pushfd
@@ -175,25 +172,33 @@ endcpu386:
 		push	dx
 		popfd
 		pushfd
-		pop	dx
+		pop	dx		; dx.1=flags.1=1
 		pop	ax
 		xor	al,bl		; clear C
 		je	@@no_cpuid	; CPUID feature bit changed ?
 		mov	eax,80000001h	; Extended Processor Info and Feature Bits
 		cpuid
 		ifdef	NO386
-		mov	dl,-1		; set 386 flag
-		endif
+		mov	dl,-1
+		db	66h		; mov [_cpu_features],edx
+@@no_cpuid:
+		mov	[word _cpu_features],dx	; dl != 0
+no_vcpi:
+		else
 		mov	[_cpu_features],edx
 @@no_cpuid:
+		endif
 endcpu86:
                 p8086
 
 ;***************************************************************
 ; build argv & argc
 ;***************************************************************
-		extrn	_heap_top:word
-		mov	di,[_heap_top]
+		extrn	_bss_end:word
+		mov	di,offset _bss_end
+		global	_heap_top
+		org	$-2
+_heap_top	dw	?
 		;xor	ax,ax
                 ;push	ax			; envp (already cleared)
                 ;mov	[word di],ax		; argv[0] = 0 (idem)
