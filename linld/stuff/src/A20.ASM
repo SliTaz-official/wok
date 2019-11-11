@@ -118,7 +118,8 @@ sssp		dd	?
 		test	[_cpu386],cl
 		jne	@bzimage
 		mov	bx,offset bzimage86
-		jmp	godie
+@godie:
+		call	near die
 @zimage:
 		xchg	ax,dx
 		cmp	ax,cx
@@ -142,7 +143,7 @@ sssp		dd	?
 		endif
 		mov	cl,12
 		shl	dx,cl
-		jc	@overflow
+		jc	@jbe_overflow
 @bzimage:
 		extrn	_topseg:near
 		call	near _topseg
@@ -186,16 +187,19 @@ _vcpi		db	?
 		and	ch,[_vcpi]
 		endif
 		add	dh,ch		; room for malloc_bufv_or_die
-		cmp	dx,ax
-		jb	@nooverflow
-@overflow:
-; Oops! We can stomp on our toes... better stop now
-		mov	bx,offset overflow
-godie:
-		call	near die
-@nooverflow:
+		cmp	ax,dx
 		les	cx,[bx-4]	; rm size
 		mov	si,es		; rm data
+@jbe_overflow:
+; Oops! We can stomp on our toes... better stop now
+		mov	bx,offset overflow
+		ifdef	NO386
+		jbe	@godie
+		else
+		ja	@nooverflow
+		call	near die
+@nooverflow:
+		endif
 		mov	es,ax
 @@move_clear:
 		movsb

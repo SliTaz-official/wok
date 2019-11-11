@@ -169,7 +169,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			sub(/mov	dx,/,"les	dx,d")
 		}
 		sub(/,ax/,",es")
-		if (/,dx/) isload=0
 		if (/add	ax,word ptr/) $0="	add	ax,cx"
 		if (/i\+29\],0/) {
 			sub(/,0$/,"")
