@@ -134,7 +134,7 @@ skip:
                 ;js      no_vcpi
                 mov     ah,46h          ; get version
                 int     67h
-                cmp     al,40h          ; version must be >= 4.0
+                cmp     ax,40h          ; version must be >= 4.0
                 jl      no_vcpi		; btw check ax.15
 ; Check vcpi manager status
               ;;mov     ax,5A01h        ; ALLOCATE RAW PAGES
@@ -179,7 +179,7 @@ endcpu386:
 		mov	eax,80000001h	; Extended Processor Info and Feature Bits
 		cpuid
 		ifdef	NO386
-		mov	dl,-1
+		mov	dl,-1		; set 386 flag
 		db	66h		; mov [_cpu_features],edx
 @@no_cpuid:
 		mov	[word _cpu_features],dx	; dl != 0
