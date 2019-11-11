@@ -1,19 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="xorg-libXpm"
-VERSION="3.5.10"
+VERSION="3.5.12"
 CATEGORY="x-window"
-SHORT_DESC="X Pixmap Library"
+SHORT_DESC="X Pixmap Library."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="other"
-WEB_SITE="https://www.x.org/"
+WEB_SITE="https://www.x.org/wiki/"
+
 SOURCE="libXpm"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WGET_URL="$XORG_MIRROR/lib/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS="xorg-libX11 xorg-libXt"
-BUILD_DEPENDS="xorg-libXt-dev xorg-libXext-dev xorg-libSM-dev util-linux-uuid-dev"
+BUILD_DEPENDS="util-linux-uuid-dev xorg-libSM-dev xorg-libXext-dev xorg-libXt-dev"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -22,17 +24,18 @@ compile_rules()
 		arm*) 
 			# ARM Hack
 			for la in libICE.la libSM.la libuuid.la
-			do
+			  do
 				if grep -q "^libdir='/usr/lib'" /usr/lib/${la}; then
 					sed -i s"#/usr/lib#/cross/$ARCH/sysroot/usr/lib#" \
 						/usr/lib/${la}
 				fi 
-			done ;;
+			  done ;;
 	esac
-	./configure \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--disable-static \
+
+	./configure			\
+		--sysconfdir=/etc	\
+		--localstatedir=/var	\
+		--disable-static	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make install
