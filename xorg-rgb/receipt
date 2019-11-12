@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="xorg-rgb"
-VERSION="1.0.4"
+VERSION="1.0.6"
 CATEGORY="x-window"
 SHORT_DESC="X11 RGB colors definitions."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
+WEB_SITE="https://www.x.org/wiki/"
+
 SOURCE="rgb"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="https://www.x.org/"
 WGET_URL="$XORG_MIRROR/app/$TARBALL"
 
 BUILD_DEPENDS="pkg-config xorg-xproto"
@@ -16,18 +17,21 @@ BUILD_DEPENDS="pkg-config xorg-xproto"
 # Rules to configure and make the package.
 compile_rules()
 {
-    cd $src
-    ./configure --prefix=/usr --sysconfdir=/etc \
-    --mandir=/usr/share/man --localstatedir=/var \
-    $CONFIGURE_ARGS &&
-    make &&
-    make DESTDIR=$DESTDIR install
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		--mandir=/usr/share/man	\
+		--localstatedir=/var	\
+		$CONFIGURE_ARGS 2>1 | sed '/.*\/root\/missing.*/d' &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/X11 $fs/usr/share
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/X11	$fs/usr/share
 }
