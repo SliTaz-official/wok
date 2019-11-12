@@ -1,42 +1,45 @@
 # SliTaz package receipt.
 
 PACKAGE="mesa"
-VERSION="9.1.3"
+VERSION="9.2.5"
 CATEGORY="x-window"
 SHORT_DESC="3D Graphics Library that is an open-source implementaton of OpenGL."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="MIT"
-SUGGESTED="nvidia"
+WEB_SITE="https://www.mesa3d.org/"
+
 SOURCE="Mesa"
 TARBALL="${SOURCE}Lib-$VERSION.tar.bz2"
-WEB_SITE="https://www.mesa3d.org/"
-WGET_URL="ftp://ftp.freedesktop.org/pub/mesa/$VERSION/$TARBALL"
-PROVIDE="libgl"
+WGET_URL="ftp://ftp.freedesktop.org/pub/mesa/older-versions/${VERSION%%.*}.x/$VERSION/$TARBALL"
 
-DEPENDS="expat libdrm xorg-libXdamage xorg-libXxf86vm xorg-libXt udev \
-libpthread-stubs"
-BUILD_DEPENDS="expat-dev libdrm-dev xorg-libXdamage-dev pkg-config \
-xorg-libXxf86vm-dev xorg-libXt-dev xorg-dri2proto xorg-glproto \
-talloc xorg-makedepend lesstif libxml2-python xorg-imake lesstif-dev \
-xorg-server-dev udev-dev file libdrm-nouveau llvm libpthread-stubs-dev \
-libtool automake autoconf"
+PROVIDE="libgl"
+SUGGESTED="nvidia"
+DEPENDS="expat libdrm libpthread-stubs udev xorg-libXdamage xorg-libXt 
+	xorg-libXxf86vm"
+BUILD_DEPENDS="autoconf automake expat-dev file lesstif-dev libdrm-dev 
+	libdrm-nouveau libpthread-stubs-dev libtool libxml2-python llvm 
+	pkg-config talloc udev-dev xorg-dri2proto xorg-glproto xorg-imake 
+	xorg-libXdamage-dev xorg-libXt-dev xorg-libXxf86vm-dev 
+	xorg-makedepend xorg-server-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	find . -name 'nouveau*.h' | \
 		xargs sed -i 's|libdrm/nouveau.h|libdrm/nouveau/nouveau.h|'
-	./autogen.sh \
-		--prefix=/usr \
+
+	./autogen.sh		\
+		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS && make install
+	make $MAKEFLAGS &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 
 	# libGLU is included in the package libglu-mesa
 	rm -r -f $fs/usr/lib/libGLU*
@@ -47,4 +50,3 @@ genpkg_rules()
 	#libEGL is included in the package libegl-mesa
 	rm -r -f $fs/usr/lib/libEGL*
 }
-
