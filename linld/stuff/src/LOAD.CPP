@@ -111,8 +111,6 @@ struct first1k_t {
 
 const u32 HdrS = 'H' + ('d'<<8) + (u32('r')<<16) + (u32('S')<<24);
 
-// register value to launch the kernel real mode code
-u32 csip;
 #ifdef NO386
 extern "C" u16 topseg();
 #else
@@ -128,13 +126,11 @@ void load_kernel() {
     struct	image_himem *m = &pm;
 #define _rm_buf(m)	(((u8**)(m))[-1])
 #define _rm_size	(((u16*)(m))[-2])
-#define _csip		(((u32*)(m))[-2])
   {
     struct kernelparams_t *kernelparams;
     kernelparams = &(((first1k_t*) (_rm_buf(m) = (u8 *)heap_top))->params);
 #define first1k		((first1k_t*)((u8 *)kernelparams-0x1F1))
 
-    *((u16 *)&_csip+1)=topseg()|0x20;
     // Open kernel, read first kb, check it
     m->errmsg = kernel_file_error;
     open_image(m, kernel_name);
@@ -146,7 +142,8 @@ do {
     if(kernelparams->setup_sects == 0) {
 #if 1
         if(* (int *) &first1k->pad10[0x3F-0x24] == 0x3AE8) {
-            _csip+=0xFFE00042;
+	    extern u16 csip_hilo;
+	    csip_hilo=0x0042;
         }
         else
 #endif
@@ -176,7 +173,7 @@ do {
 	    kernelparams->realmode_switch_ofs = (u16) last_ditch;
 	    kernelparams->realmode_switch_seg = _CS;
 	    m->fallback = base_himem;
-            pm_high++;
+            pm_low--;
 
             // Hook on int15 to work around fn 88 DOS breakage
             hook_int15_88(); // break _ES

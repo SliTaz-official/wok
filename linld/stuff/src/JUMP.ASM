@@ -92,40 +92,30 @@ step19:
 		endif
 		;cli				; we start doing destructive things to DOS
 		extrn	sssp:word
-		mov	es,[sssp+2]
-		push	es
-		pop	ss
-		mov	sp,0A000h
-		extrn	_csip:dword
-		ifdef NO386
-		mov	si,offset _csip
-		lodsw
-		push	[word si]
-		push	ax
-		else
-		push	[dword _csip]
-		endif
-
-		ifdef	NO386
-		mov	cx,ss
-		add	ch,9
-		push	cx			; topseg()+0x0900
-		else
-		push	9800h+(4096/16)		; 4096 bytes for cmdline
-		endif
-
+		mov	ax,[sssp+2]
+		mov	es,ax
 		extrn	_cmdline:word
 		mov	si,[_cmdline]
 		mov	di,8000h
-		mov	ch,10h			; 4k
+		mov	cx,2000h		; 4k for cmdline + 4k up to sp
 		rep
 		  movsb
+		push	es
+		pop	ss
+		mov	sp,di
 
-		mov	cl,0			; load high ?
+		mov	dx,2000h
+		global	_csip_hilo:word
+		org	$-2
+_csip_hilo	dw	?
+		xchg	al,dh	; 9020 / 9000
+		push	ax
+		push	dx	; 0000 / 0042
+
+		mov	cl,1			; load high ?
 		org	$-1
-		global	_pm_high:byte
-_pm_high	db	?
-		inc	cx
+		global	_pm_low:byte
+_pm_low		db	?
 		push	cx
 		mov	ax,[word ss:024Ch]
 		xor	ax,2b30h		; ipxe ?
@@ -141,28 +131,7 @@ _pm_high	db	?
 
 @@notipxe:
 		pop	cx
-		pop	es			; min 2048 bytes for stack
 		loop	@@isbzimage
-
-		; self move
-		;cld
-		extrn	gdt_data
-		mov	cx,offset gdt_data+8
-		xor	di,di			;  A000 -9000 -0800(>movedend)
-		rep
-		  movsb
-		mov	si,offset _imgs+2
-		lodsw
-		xchg	ax,bx			; get pm->fallback low word
-		lodsw				; get pm->fallback high word
-		ifdef	MOVE_SETUP
-		mov	si,0
-	global	_rm_offset:word
-		org	$-2
-_rm_offset	dw	?
-		endif
-		push	es
-		call	near @@isbzimage	; pop cs ; ds=es=ss
 
 		; prepare memcpy32 size & srcofs param to move zImage pm
 		ifndef	NO386
@@ -171,59 +140,100 @@ _rm_offset	dw	?
 		mov	dx,8
 		push	dx			; size hi
 		endif
-		push	cx			; size lo=up to 512k
-		push	ax			; src ofs hi = pm.fallback
+		push	si			; size lo=up to 512k
+		push	[dword _imgs+2]		; src ofs = pm.fallback
 
 		;in	al,70h
 		;or	al,80h			; disable NMI
 		;out	70h,al
 
-		push	bx			; src ofs lo
-		xor	di,di
-		push	di			; src seg=0
+		push	si			; src seg=0
 		inc	cx
 		push	cx			; dst ofs hi
-		push	di			; dst ofs lo : 64k
+		push	si			; dst ofs lo : 64k
+
+		; self move
+		extrn	gdt_data
+		mov	cx,offset gdt_data+8
+		;xor	di,di			;  A000 -9000 -0800(>movedend)
+
+		ifdef	NO386
+		mov	ax,ss
+		add	ax,900h
+		push	ax			; topseg()+0x0900
+		else
+		push	9800h+(4096/16)		; 4096 bytes for cmdline
+		endif
+		pop	es
+		push	es
+
+		call	near @@movsb@jmp	; movsb; pop cs ; ds=es=ss
+
 		extrn   memcpy32:near
 		call	memcpy32
 
 		ifdef	MOVE_SETUP
+		mov	si,0
+	global	_rm_offset:word
+		org	$-2
+_rm_offset	dw	?
 		;xor	di,di
-		mov	cx,8000h
+		;mov	cx,8000h
 		;sub	cx,si
-		rep
-		  movsb
+		;rep
+		;  movsb
 		endif
 
 		ifndef  noelks
-		ifndef	NO386
-		cmp	[dword 1E6h],'SKLE'
-		jne	@@notelks
-		xor	si,si
-		else
-		mov	si,1E6h
-		lodsw
-		cmp	ax,'LE'
-		jne	@@notelks
-		lodsw
-		xor	ax,'SK'
-		jne	@@notelks
-		xchg	ax,si
-		endif
 		ifdef	MOVE_SETUP
-		mov	ch,1h		; DS=ES=SS=0100
+		ifndef	NO386
+		mov	eax,[dword si+1E6h]
+		xor	eax,'SKLE'
 		else
-		mov	cx,100h		; DS=ES=SS=0100
+		mov	ax,[si+1E6h]
+		xor	ax,'LE'
+		jne	@@notelks
+		mov	ax,[si+1E8h]
+		xor	ax,'SK'
 		endif
+		else
+		ifndef	NO386
+		mov	eax,[dword 1E6h]
+		xor	eax,'SKLE'
+		else
+		mov	ax,[1E6h]
+		xor	ax,'LE'
+		jne	@@notelks
+		mov	ax,[1E8h]
+		xor	ax,'SK'
+		endif
+		endif
+		jne	@@notelks
+		mov	cx,100h		; DS=ES=SS=0100
 		mov	ss,cx
-		mov	es,cx
+		push	ss
+		pop	es
 		mov	cl,20h		; CS=0120
 		push	cx
-		push	si		; IP=0000
-		mov	ch,3Fh		; 05h min, 3Fh max
-		rep
-		  movsw
+		push	ax		; IP=0000
+		endif
+		ifdef	MOVE_SETUP
 @@notelks:
+		mov	ch,7Eh
+@@movsb@jmp:
+		xor	di,di
+		rep
+		  movsb
+		else
+		 ifndef  noelks
+		xchg	ax,si
+		mov	ch,7Eh		; 0Ah min, 7Eh max
+@@movsb@jmp:
+		xor	di,di
+		rep
+		  movsb
+@@notelks:
+		 endif
 		endif
 @@isbzimage:
 		push	ss

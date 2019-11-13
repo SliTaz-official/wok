@@ -111,9 +111,9 @@ sssp		dd	?
 		mov	dx,cs
 		add	dx,ax
 		mov	cx,0fffh
-		extrn	_pm_high:byte
-		test	[_pm_high],cl
-		je	@zimage
+		extrn	_pm_low:byte
+		test	[_pm_low],cl
+		jne	@zimage
 		extrn	_cpu386:byte
 		test	[_cpu386],cl
 		jne	@bzimage
@@ -159,9 +159,9 @@ _vcpi		db	?
 		mov	dx,cs
 		add	ax,dx
 		mov	cx,0fffh
-		extrn	_pm_high:byte
-		test	[_pm_high],cl
-		jne	@bzimage
+		extrn	_pm_low:byte
+		test	[_pm_low],cl
+		je	@bzimage
 		cmp	ax,cx
 		jae	@sys@ok
 		xchg	ax,cx
