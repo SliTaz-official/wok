@@ -553,6 +553,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			if (isnum(args[2])) {
 				for (i = kept++; i > 0; i--) line[i] = line[i-1]
 				line[0] = "\tlea\t" regs[1] ",[" regs[2] op args[2] "]"
+				sub(/\+-/,"-",line[0])
 				hold=10; next
 			}
 			line[kept++]=$0
