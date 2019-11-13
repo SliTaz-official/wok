@@ -1,16 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="xorg-xinit"
-VERSION="1.3.4"
+VERSION="1.4.1"
 CATEGORY="x-window"
-SHORT_DESC="X.org initialization program"
+TAGS="utility xorg"
+SHORT_DESC="X.org initialization program."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="MIT"
+WEB_SITE="https://www.x.org/wiki/"
+
 SOURCE="xinit"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="http://xorg.freedesktop.org/"
-WGET_URL="$WEB_SITE/releases/individual/app/$TARBALL"
-TAGS="utility xorg"
+WGET_URL="$XORG_MIRROR/app/$TARBALL"
 
 DEPENDS="xorg-xauth"
 BUILD_DEPENDS="xorg-libXmu-dev"
@@ -18,11 +19,11 @@ BUILD_DEPENDS="xorg-libXmu-dev"
 # Rules to configure and make the package.ls sr	
 compile_rules()
 {
-	cd $src
 	patch -Np1 -i $stuff/06_move_serverauthfile_into_tmp.diff
-	./configure \
-		--prefix=/usr \
-		--mandir=/usr/share/man \
+
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
 		$CONFIGURE_ARGS &&
 	make XINITDIR=/etc/X11/xinit &&
 	make XINITDIR=/etc/X11/xinit DESTDIR=$DESTDIR install
@@ -31,12 +32,14 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/X11/xinit
-	cp -a $install/usr/bin $fs/usr
-	cp -a $stuff/xserverrc $fs/etc/X11/xinit/xserverrc
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc/X11/xinit
+
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $stuff/xserverrc	$fs/etc/X11/xinit/xserverrc
 }
 
 pre_install()
 {
-	cp -a /usr/bin/startx /usr/bin/startx.bak
+	cp -a /usr/bin/startx	/usr/bin/startx.bak
 }
