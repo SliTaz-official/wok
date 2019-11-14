@@ -34,7 +34,7 @@ extern _fastcall int fileexist(const char* name);
 //extern "C" int open(const char* name, int flags);
 extern _fastcall int open(const char* name);
 extern _fastcall int close(int fd);
-extern _fastcall int moverm(struct image_himem *m);
+extern _fastcall int moverm(unsigned short *p);
 extern _fastcall int readrm(struct image_himem *m, int sz);
 extern _fastcall int read(int fd, void* data, int sz);
 extern _fastcall long lseekcur(int fd, int whence);

@@ -201,7 +201,7 @@ do {
 cmd_line_ok:
 
     // Move setup & Check and enable A20 if needed
-    moverm(m); // break _ES
+    moverm(&_rm_size); // break _ES
 
     // Read remaining kernel (pm part)
     // Try to load kernel high, maybe even blindly storing it
