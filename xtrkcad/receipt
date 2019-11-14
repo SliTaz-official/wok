@@ -1,25 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="xtrkcad"
-VERSION="4.0.3a1"
+VERSION="5.1.2a"
 CATEGORY="games"
 SHORT_DESC="A CAD program for designing model railroad layouts."
 MAINTAINER="rcx@zoominternet.net"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-source-$VERSION.tar.gz"
 WEB_SITE="http://www.xtrkcad.org/"
-#WGET_URL="$SF_MIRROR/$PACKAGE-fork/$TARBALL"
-WGET_URL="http://users.zoominternet.net/~rcx/$TARBALL"
 
-DEPENDS="menu-railroad glibc-base glib libgio zlib expat libxml2 gtk+ \
-libgtkhtml fontconfig freetype atk cairo libpng pango pixman libxcb \
-xcb-util xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor \
-xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes \
-xorg-libXinerama xorg-libXrender"
-BUILD_DEPENDS="cmake pkg-config gettext zlib-dev \
-gtk+-dev libxml2-dev libgtkhtml-dev libgtkhtml doxygen xorg-xproto \
-xorg-renderproto xorg-libX11-dev xorg-kbproto xorg-libXau-dev \
-xorg-libXdmcp-dev"
+TARBALL="$PACKAGE-source-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE-fork/$TARBALL"
+#WGET_URL="http://users.zoominternet.net/~rcx/$TARBALL"
+
+DEPENDS="atk cairo expat fontconfig freetype glib glibc-base gtk+ 
+	libgio libgtkhtml libpng libxcb libxml2 menu-railroad pango pixman 
+	xcb-util xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor 
+	xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes 
+	xorg-libXinerama xorg-libXrender zlib"
+BUILD_DEPENDS="cmake doxygen gettext gtk+-dev libgtkhtml-dev libxml2-dev 
+	pkg-config xorg-kbproto xorg-libX11-dev xorg-libXau-dev 
+	xorg-libXdmcp-dev xorg-renderproto xorg-xproto zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -30,14 +30,19 @@ compile_rules()
 	XTRKCAD_STUFF=$stuff
 	
 	sed -e 's|share/xtrkcad/locale|share/locale|g' -i CMakeLists.txt &&
-	cmake -D CMAKE_C_COMPILER:FILEPATH=${TOOLPREFIX}gcc \
-		-D CMAKE_CXX_COMPILER:FILEPATH=${TOOLPREFIX}c++ \
-		-D CMAKE_INSTALL_PREFIX=/usr \
-		-D XTRKCAD_USE_GTK=ON -D XTRKCAD_USE_GTK_CAIRO=ON . &&
+
+	cmake	.						\
+		-D CMAKE_C_COMPILER:FILEPATH=${TOOLPREFIX}gcc	\
+		-D CMAKE_CXX_COMPILER:FILEPATH=${TOOLPREFIX}c++	\
+		-D CMAKE_INSTALL_PREFIX=/usr			\
+		-D XTRKCAD_USE_GTK=ON				\
+		-D XTRKCAD_USE_GTK_CAIRO=ON &&
 	make PREFIX=/usr &&
 	make DESTDIR=$DESTDIR install &&
+
 	mkdir -p $DESTDIR/usr/share/pixmaps &&
 	cp -f $XTRKCAD_STUFF/$PACKAGE.png $DESTDIR/usr/share/pixmaps &&
+
 	mkdir -p $DESTDIR/usr/share/applications &&
 	cp -f $XTRKCAD_STUFF/$PACKAGE.desktop $DESTDIR/usr/share/applications &&
 	sed -e 's|^Categories=[^$]*$|Categories=Application;Railroad;|g' -i $DESTDIR/usr/share/applications/*.desktop
@@ -47,13 +52,12 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/$PACKAGE
-	cp -f $install/usr/share/$PACKAGE/$PACKAGE.tip $fs/usr/share/$PACKAGE
-	cp -f $install/usr/share/$PACKAGE/$PACKAGE.xtq $fs/usr/share/$PACKAGE
-	cp -f $install/usr/share/$PACKAGE/logo.bmp $fs/usr/share/$PACKAGE
-	cp -a $install/usr/share/$PACKAGE/params $fs/usr/share/$PACKAGE
-	
-	cp -a $install/usr/share/applications $fs/usr/share
-	cp -a $install/usr/share/pixmaps $fs/usr/share
 
-	cp -a $install/usr/bin $fs/usr
+	cp -f $install/usr/share/$PACKAGE/$PACKAGE.tip	$fs/usr/share/$PACKAGE
+	cp -f $install/usr/share/$PACKAGE/$PACKAGE.xtq	$fs/usr/share/$PACKAGE
+	cp -f $install/usr/share/$PACKAGE/logo.bmp	$fs/usr/share/$PACKAGE
+	cp -a $install/usr/share/$PACKAGE/params	$fs/usr/share/$PACKAGE
+	cp -a $install/usr/share/applications		$fs/usr/share
+	cp -a $install/usr/share/pixmaps		$fs/usr/share
+	cp -a $install/usr/bin				$fs/usr
 }
