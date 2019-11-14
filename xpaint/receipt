@@ -1,19 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="xpaint"
-VERSION="2.9.10.3"
+VERSION="2.10.2"
 CATEGORY="graphics"
-SHORT_DESC="Simple paint program for X"
+SHORT_DESC="Simple paint program for X."
 MAINTAINER="mojo@slitaz.org"
 LICENSE="GPL3"
 WEB_SITE="http://sf-xpaint.sourceforge.net/"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="$SF_MIRROR/sf-$PACKAGE/$TARBALL"
-HOST_ARCH="i486 arm"
 
-DEPENDS="openjpeg libXaw3dXft"
-BUILD_DEPENDS="openjpeg-dev libXaw3dXft-dev libpng-dev jpeg-dev \
-expat-dev libxml2-dev util-linux-uuid-dev tiff-dev libtool"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$SF_MIRROR/sf-$PACKAGE/files/$TARBALL"
+
+DEPENDS="libXaw3dXft openjpeg"
+BUILD_DEPENDS="expat-dev jpeg-dev libpng-dev libtool libXaw3dXft-dev 
+	libxml2-dev openjpeg-dev tiff-dev util-linux-uuid-dev"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -22,20 +24,32 @@ compile_rules()
 		i?86) LIBTOOL=libtool ;;
 		arm) LIBTOOL=${HOST_SYSTEM}-libtool ;;
 	esac
-	./configure --enable-tiff=no $CONFIGURE_ARGS &&
+
+	./configure			\
+		--enable-tiff=no	\
+		$CONFIGURE_ARGS &&
+
 	# Fix cross compilation
-	sed -i s'/$(CC) substads.c/gcc substads.c/' Makefile &&
-	sed -i s'/$(CC) preproc.c/gcc preproc.c/' Makefile &&
-	make -j 1 LIBTOOL=${LIBTOOL} && make install
+	sed -i s'/$(CC) substads.c/gcc substads.c/' \
+		Makefile &&
+	sed -i s'/$(CC) preproc.c/gcc preproc.c/' \
+		Makefile &&
+
+	make -j 1 LIBTOOL=${LIBTOOL} &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share/pixmaps
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/share/xpaint $fs/usr/share
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share/pixmaps
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/share/xpaint	$fs/usr/share
+
 	rm -r $fs/usr/share/xpaint/include
-	cp $stuff/xpaint.xpm $fs/usr/share/pixmaps
+
+	cp $stuff/xpaint.xpm		$fs/usr/share/pixmaps
 }
