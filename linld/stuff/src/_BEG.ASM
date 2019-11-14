@@ -29,14 +29,9 @@ _vcpi		db	0
 
         segment _BSS byte public use16 'BSS'
 
-STACK_SIZE = 1024
-
         global  _bss_start:byte
         label   _bss_start byte
-        global  _version_string:byte
-        label   _version_string byte
-		db	STACK_SIZE-2 dup(?)
-stktop		dw	?
+        global  stktop:byte
 		ifdef	NO386
         global  _cpu386:byte
 _cpu386		db	?
@@ -63,7 +58,7 @@ _cpu_features	dd	?
 		mov	si,offset _bss_start
 		mov	bx, 0F000h	; cld ; cli & empty string
 clearbss:
-		mov	[si],bl		; clear bss + heap + sp
+		mov	[si],bl		; clear bss + heap
 		inc	si
 		jne	clearbss
 

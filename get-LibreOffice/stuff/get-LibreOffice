@@ -115,16 +115,18 @@ fi
 
 if [ "$version" == "latest" ]
   then
-	VERSION="$(basename $(wget -O - $PREFIX/ 2> /dev/null | \
-	sed '/href=\"[0-9]/!d;s/.*href=\"//;s/[/\">].*//' | tail -1))"
-	if [ -z "$VERSION" ]
+	VERSIONS="$(wget -qO - $PREFIX/ | \
+		sed '/href=\"[0-9]/!d;s/.*href=\"//;s/[/\">].*//' | tac)"
+	if [ -z "$VERSIONS" ]
 	  then
 		echo "Can't detect an appropriate version. The version numbering or URL may have changed. Exiting."
 		exit 1
 	fi
   else
-	VERSION="$version"
+	VERSIONS="$version"
 fi
+
+for VERSION in $VERSIONS; do	# foreach VERSION
 
 VER="${VERSION/\-/}" # without hyphens
 TARBALL="LibreOffice_${VER}_${SUFFIX}"
@@ -162,13 +164,17 @@ if [ -f $SOURCE_DIR/$TARBALL ]
 	newline
 	# Check if $SOURCE_DIR exists
 	[ -d $SOURCE_DIR ] || mkdir -p $SOURCE_DIR
-	wget -c $WGET_URL -O $SOURCE_DIR/$TARBALL
+	wget -c $WGET_URL -O $SOURCE_DIR/$TARBALL || continue
 	if [ -n $L_TARBALL ]	 # language pack required?
 	  then
 		wget -c $LANG_URL -O $SOURCE_DIR/$L_TARBALL
 	fi
 	status
 fi
+
+break
+
+done	# foreach VERSIONS
 
 if [ ! -f $SOURCE_DIR/$TARBALL ]
   then

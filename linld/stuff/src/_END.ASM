@@ -18,6 +18,13 @@
         ends    _DATA
 
         segment _BSS byte public use16 'BSS'
+STACK_SIZE = 1024
+
+        global  _version_string:byte
+        label   _version_string byte
+		db	STACK_SIZE dup(?)
+        global  stktop:byte
+        label   stktop byte
         global  _bss_end:byte
         label   _bss_end byte
         ends    _BSS

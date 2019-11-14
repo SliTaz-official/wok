@@ -96,11 +96,11 @@ sssp		dd	?
 	include	"himem.inc"
 
 ;***************************************************************
-;_fastcall void moverm(bx:struct himem *m);
+;_fastcall void moverm(bx:u16 *p);
 ;***************************************************************
 
-	global	@moverm$qp11image_himem:near
-@moverm$qp11image_himem:
+	global	@moverm$qpus:near
+@moverm$qpus:
 		push	si di
 		xor	di,di
 		extrn	_heap_top:word
@@ -129,13 +129,13 @@ sssp		dd	?
 		inc	ax
 		extrn	N_LXLSH@4:near
 		call	N_LXLSH@4
-		mov	[word ((image_himem bx).fallback)],ax
-		mov	[word ((image_himem bx).fallback)+2],dx
-		add	ax,[word ((image_himem bx).size)]
-		adc	dx,[word ((image_himem bx).size)+2]
+		mov	[word ((image_himem bx+4).fallback)],ax
+		mov	[word ((image_himem bx+4).fallback)+2],dx
+		add	ax,[word ((image_himem bx+4).size)]
+		adc	dx,[word ((image_himem bx+4).size)+2]
 		ifdef	MOVE_SETUP
 		mov	di,8000h
-		sub	di,[bx-4]	; rm size
+		sub	di,[bx]		; rm_size
 		extrn	_rm_offset:word
 		mov	[_rm_offset],di
 		sub	ax,di		; -rm_offset
@@ -168,11 +168,11 @@ _vcpi		db	?
 @sys@ok:
 		inc	ax
 		shl	eax,4
-		mov	[(image_himem bx).fallback],eax
-		add	eax,[(image_himem bx).size]
+		mov	[(image_himem bx+4).fallback],eax
+		add	eax,[(image_himem bx+4).size]
 		ifdef	MOVE_SETUP
 		mov	di,8000h
-		sub	di,[bx-4]	; rm size
+		sub	di,[bx]		; rm_size
 		extrn	_rm_offset:word
 		mov	[_rm_offset],di
 		movzx	ecx,di		; -rm_offset
@@ -188,8 +188,8 @@ _vcpi		db	?
 		endif
 		add	dh,ch		; room for malloc_bufv_or_die
 		cmp	ax,dx
-		les	cx,[bx-4]	; rm size
-		mov	si,es		; rm data
+		les	cx,[bx]		; rm_size
+		mov	si,es		; rm_buf
 @jbe_overflow:
 ; Oops! We can stomp on our toes... better stop now
 		mov	bx,offset overflow
