@@ -1,26 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="zstd"
-VERSION="1.4.3"
+VERSION="1.4.4"
 CATEGORY="base-system"
+TAGS="compression"
 SHORT_DESC="Zstandard - Fast and efficient compression algorithm."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://github.com/Cyan4973/zstd"
-WGET_URL="https://github.com/facebook/zstd/archive/v$VERSION.tar.gz"
-TAGS="compression"
 
-DEPENDS="lz4-lib liblzma"
-BUILD_DEPENDS="lz4-dev liblzma-dev grep"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/facebook/zstd/archive/v$VERSION.tar.gz"
+
+DEPENDS="liblzma lz4-lib"
+BUILD_DEPENDS="grep liblzma-dev lz4-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -lrt"
+
 	cd $src/lib
 	make &&
 	make PREFIX=/usr DESTDIR=$DESTDIR install
+
 	cd $src/programs
 	make &&
 	make PREFIX=/usr DESTDIR=$DESTDIR install
@@ -29,8 +32,10 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $install/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib/
-	cp -a $src/doc $install/usr/share
+	mkdir -p $fs/usr/lib
+	mkdir -p $install/usr/share
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib/
+	cp -a $src/doc			$install/usr/share
 }
