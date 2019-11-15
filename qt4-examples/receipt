@@ -7,6 +7,7 @@ SHORT_DESC="Screenshot, FindFiles, CharacterMap"
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL3 LGPL2.1"
 WEB_SITE="http://qt-project.org/"
+WANTED="qt4"
 TAGS="qt"
 
 DEPENDS="libQtCore libQtGui"
@@ -15,19 +16,19 @@ BUILD_DEPENDS="Qt4-dev qmake"
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir -p $install/usr/bin $install/usr/share/applications
+	mkdir -p $DESTDIR/usr/bin $DESTDIR/usr/share/applications
 
 	for i in desktop/screenshot dialogs/findfiles widgets/charactermap;
 	do
-                ii=$(basename $i) && cd $WOK/qt4/source/qt4-$VERSION/examples/$i
+                ii=$(basename $i) && cd $WANTED/examples/$i
 		rm -rf Makefile moc* *.o
 		qmake	$ii.pro
 		sed 's|-O2|'"$CFLAGS"'|' -i Makefile
 		make $MAKEFLAGS &&
 		install $ii $DESTDIR/usr/bin
 		install $ii.desktop $DESTDIR/usr/share/applications
-		find $install -name $ii.desktop \
-		-exec echo 'Categories=Utility;'>>$install/usr/share/applications/$ii.desktop \; \
+		find $DESTDIR -name $ii.desktop \
+		-exec echo 'Categories=Utility;'>>$DESTDIR/usr/share/applications/$ii.desktop \; \
 		-exec sed 's|/opt/|/|g' -i {} \;
 	done
 }
