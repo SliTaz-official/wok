@@ -30,7 +30,7 @@ iso2exe.h: iso2exe
 	./iso2exe.sh --array ../mbr/isohdpfx.bin > $@
 
 iso2exe.com: iso2exe.c iso2exe.h
-	$(BCC) $(BCCFLAGS) -o $@ iso2exe.c && upx -5 --8086 $@
+	$(BCC) $(BCCFLAGS) -o $@ iso2exe.c && upx --ultra-brute --8086 $@
 
 iso2exe.exe: iso2exe.c iso2exe.h isohybrid.res
 	i586-pc-mingw32-gcc -Os -s -o $@ iso2exe.c isohybrid.res -lws2_32
