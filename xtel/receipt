@@ -3,28 +3,32 @@
 PACKAGE="xtel"
 VERSION="3.3.0"
 CATEGORY="network"
+TAGS="emulator minitel"
 SHORT_DESC="X emulator of the French Minitel."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://pficheux.free.fr/xtel/"
-WGET_URL="${WEB_SITE}download/$TARBALL"
-CONFIG_FILES="/etc/xtel"
-TAGS="emulator minitel"
 
-DEPENDS="ncurses-extra jpeg xorg-libXp xorg"
-BUILD_DEPENDS="xorg-imake xorg-cf-files xorg-gccmakedep xorg-xbitmaps \
-xorg-libXp xorg-bdftopcf xorg-mkfontdir xorg-mkfontscale jpeg-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}download/$TARBALL"
+
+DEPENDS="jpeg ncurses-extra xorg xorg-libXp"
+BUILD_DEPENDS="jpeg-dev xorg-bdftopcf xorg-cf-files xorg-gccmakedep 
+	xorg-imake xorg-libXp xorg-mkfontdir xorg-mkfontscale xorg-xbitmaps"
+
+CONFIG_FILES="/etc/xtel"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src &&
 	sed -i 's/sys_errlist.errno./strerror(errno)/' procedure.c teleinfo.c \
 		mdmdetect.c xteld.c Xsra/SelFile.c
-	sed -i 's/sys_errlist.code_erreur./strerror(code_erreur)/' xaw.c xm.c
-	sed -i '/sys_nerr;/d;s/errno <= sys_nerr/1/' Xsra/SelFile.c
-	sed -i 's/getwd.SFstartDir/getcwd(SFstartDir, MAXPATHLEN/' Xsra/SelFile.c
+	sed -i 's/sys_errlist.code_erreur./strerror(code_erreur)/' \
+		xaw.c xm.c
+	sed -i '/sys_nerr;/d;s/errno <= sys_nerr/1/' \
+		Xsra/SelFile.c
+	sed -i 's/getwd.SFstartDir/getcwd(SFstartDir, MAXPATHLEN/' \
+		Xsra/SelFile.c
 	sed -i 's/, \(\$(...DIR)\)/,\1/;s/install_iminitel$/true/' \
 		Imakefile */Imakefile
 	xmkmf &&
@@ -36,13 +40,16 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.   
 genpkg_rules()                                      
 {
-	mkdir -p $fs/usr/share/fonts/X11
-	cp -a $install/* $fs/
-	mv $fs/usr/lib/X11/xtel $fs/etc
+	mkdir -p $fs/usr/share/fonts/X11/xtel
+
+	cp -a $install/*	$fs/
+	mv $fs/usr/lib/X11/xtel	$fs/etc
 	ln -s /etc/xtel $fs/usr/lib/X11
-	sed -i 's/`host/`nslookup/;s|/bin/bash|/bin/sh|' $fs/etc/ppp/ip*.iminitel
-	sed -i 's|X11R6/||' $fs/usr/bin/make_xtel_lignes
-	mv $fs/usr/lib/X11/fonts/* $fs/usr/share/fonts/X11
+	sed -i 's/`host/`nslookup/;s|/bin/bash|/bin/sh|' \
+		$fs/etc/ppp/ip*.iminitel
+	sed -i 's|X11R6/||' \
+		$fs/usr/bin/make_xtel_lignes
+	mv $fs/fonts/X11/xtel/* $fs/usr/share/fonts/X11/xtel
 }
 
 # Pre and post install commands for Tazpkg.
@@ -51,14 +58,18 @@ post_install()
 	grep -qs ^xtel "$1/etc/services" || cat >> "$1/etc/services" <<EOT
 xtel		1313/tcp				# French minitel
 EOT
+
 	grep -qs ^xtel "$1/etc/inetd.conf" || cat >> "$1/etc/inetd.conf" <<EOT
 xtel	stream	tcp	nowait	root	/usr/bin/xteld	xteld
 EOT
+
 	chroot "$1/" /usr/bin/install_iminitel
-	if [ -z "$1" ]; then
+	if [ -z "$1" ]
+	  then
 		/etc/init.d/inetd stop
 		/etc/init.d/inetd start
 	fi
+
 	cat <<EOT
 	
 You should launch /usr/bin/make_xtel_lignes now.
