@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="giflib"
-VERSION="4.1.6" # 17 broken packages after update 
+VERSION="5.2.1"
 CATEGORY="graphics"
 SHORT_DESC="A library for processing GIFs."
 MAINTAINER="rcx@zoominternet.net"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://sourceforge.net/projects/giflib/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 HOST_ARCH="i486 arm"
@@ -18,38 +18,16 @@ BUILD_DEPENDS="util-linux-uuid-dev libtool"
 # Rules to configure and make the package.
 compile_rules()
 {
-	# http://anonscm.debian.org/cgit/collab-maint/giflib.git/tree/debian/patches/01-cve.patch?h=debian
-	{
-	cat <<EOT
-@@ -251,0 +252,2 @@
-+		FreeMapObject(GifFile->SColorMap);
-+                GifFile->SColorMap = NULL;
-@@ -348,0 +351,2 @@
-+		FreeMapObject(GifFile->Image.ColorMap);
-+                GifFile->Image.ColorMap = NULL;
-@@ -992,0 +997,4 @@
-+        if (Buf[0] == 0) {
-+            _GifError = D_GIF_ERR_IMAGE_DEFECT;
-+            return GIF_ERROR;
-+        }
-EOT
-	} | patch lib/dgif_lib.c
-
-	sed -i '/AC_PATH_XTRA/d' configure.ac
-	libtoolize -f
-	autoreconf
-	./configure \
-		$CONFIGURE_ARGS &&
+	sed -i 's|/local||' Makefile
 	make && make DESTDIR=$DESTDIR install
 	case "$ARCH" in
 		i?86)
 			# libungif compatibility - instructions taken from Redhat specfile
 			MAJOR=`echo $VERSION | sed 's/\([0-9]\+\)\..*/\1/'`
 			gcc -shared -Wl,-soname,libungif.so.${MAJOR} \
-				-Llib/.libs -lgif -o libungif.so.$VERSION
+				-L. -lgif -o libungif.so.$VERSION
 			install -m755 libungif.so.${VERSION} "$DESTDIR/usr/lib/"
-			ln -sf libungif.so.$VERSION "$DESTDIR/usr/lib/libungif.so.4"
-			ln -sf libungif.so.4 "$DESTDIR/usr/lib/libungif.so" ;;
+			ln -sf libungif.so.${VERSION%%.*} "$DESTDIR/usr/lib/libungif.so" ;;
 	esac
 }
 
@@ -61,4 +39,3 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib
 	cp -a $install/usr/lib/*.so* $fs/usr/lib
 }
-
