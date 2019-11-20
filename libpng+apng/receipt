@@ -25,8 +25,16 @@ HOST_ARCH="i486 arm"
 compile_rules()
 {
 	[ -s "$SRC/$PATCH" ] || wget -O "$SRC/$PATCH" $PATCH_URL
-	gzip -cd $SRC/$PATCH | patch -p0
+	#gzip -cd $SRC/$PATCH | patch -p0
 
+	# try to fix apng patch...
+	gzip -cd $SRC/$PATCH > patch.apng
+	for i in $(seq 267 -1 248); do
+		sed -i "s|^\+PNG_EXPORT($i,|+PNG_EXPORT($(($i+2)),|" patch.apng
+	done
+	patch -p0 < patch.apng
+	
+	LIBS=-lrt \
 	./configure			\
 		--prefix=/usr		\
 		--disable-static	\
