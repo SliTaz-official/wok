@@ -3,17 +3,19 @@
 PACKAGE="mongodb"
 VERSION="2.0.6"
 CATEGORY="system-tools"
-SHORT_DESC="MongoDB bridges the gap between key-value stores and traditional RDBMS systems"
+SHORT_DESC="High-performance, schema-free document-oriented database ."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3 Apache"
+WEB_SITE="https://www.mongodb.com/"
+
 TARBALL="$PACKAGE-src-r${VERSION}.tar.gz"
-WEB_SITE="http://www.mongodb.org/"
 WGET_URL="http://downloads.mongodb.org/src/$TARBALL"
 
-DEPENDS="pcre libboost-filesystem libboost-thread libboost-program-options \
-spidermonkey"
-BUILD_DEPENDS="$DEPENDS scons pcre-dev libboost-dev libboost-filesystem-dev \
-libboost-thread-dev libboost-program-options-dev spidermonkey-dev"
+DEPENDS="libboost-filesystem libboost-program-options libboost-thread \
+	pcre spidermonkey"
+BUILD_DEPENDS="$DEPENDS libboost-dev libboost-filesystem-dev \
+	libboost-program-options-dev libboost-thread-dev pcre-dev \
+	scons spidermonkey-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -25,7 +27,9 @@ compile_rules()
 	sed -i 's|.*default_name_check|// &|' tools/tool.cpp db/db.cpp
 	sed -i '/FILESYSTEM_VERSION/d' pch.h
 	grep -rl TIME_UTC util | xargs sed -i 's/TIME_UTC/TIME_UTC_/'
-	
+
+	export LDFLAGS="$LDFLAGS -lrt"
+
 	scons all &&
 	scons --prefix=$DESTDIR/usr install
 }
