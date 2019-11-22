@@ -1,0 +1,122 @@
+--- gdk_imlib/io-gif.c
++++ gdk_imlib/io-gif.c
+@@ -10,6 +10,15 @@
+ #else
+ #include <gif_lib.h>
+ 
++static int ErrorCode;
++static void PrintGifError(void)
++{
++	char *Err = GifErrorString(ErrorCode);
++	if (Err != NULL)
++		fprintf(stderr, "GIF-LIB error: %s.\n", Err);
++	else	fprintf(stderr, "GIF-LIB undefined error %d.\n", ErrorCode);
++}
++
+ unsigned char      *
+ loader_gif(FILE *f, int *w, int *h, int *t)
+ {
+@@ -30,7 +39,7 @@
+   fd = fileno(f);
+   /* Apparently rewind(f) isn't sufficient */
+   lseek(fd, (long) 0, 0);
+-  gif = DGifOpenFileHandle(fd);
++  gif = DGifOpenFileHandle(fd, &ErrorCode);
+ 
+   transp = -1;
+   data = NULL;
+@@ -62,13 +71,13 @@
+ 	  rows = malloc(*h * sizeof(GifRowType *));
+ 	  if (!rows)
+ 	    {
+-	      DGifCloseFile(gif);
++	      DGifCloseFile(gif, NULL);
+ 	      return NULL;
+ 	    }
+ 	  data = _gdk_malloc_image(*w, *h);
+ 	  if (!data)
+ 	    {
+-	      DGifCloseFile(gif);
++	      DGifCloseFile(gif, NULL);
+ 	      free(rows);
+ 	      return NULL;
+ 	    }
+@@ -79,7 +88,7 @@
+ 	      rows[i] = malloc(*w * sizeof(GifPixelType));
+ 	      if (!rows[i])
+ 		{
+-		  DGifCloseFile(gif);
++		  DGifCloseFile(gif, NULL);
+ 		  for (i = 0; i < *h; i++)
+ 		    if (rows[i])
+ 		      free(rows[i]);
+@@ -168,7 +177,7 @@
+ 	    }
+ 	}
+     }
+-  DGifCloseFile(gif);
++  DGifCloseFile(gif, NULL);
+   for (i = 0; i < *h; i++)
+     free(rows[i]);
+   free(rows);
+--- Imlib/load.c
++++ Imlib/load.c
+@@ -420,6 +420,15 @@
+ #endif /* HAVE_LIBTIFF */
+ 
+ #ifdef HAVE_LIBGIF
++static int ErrorCode;
++static void PrintGifError(void)
++{
++	char *Err = GifErrorString(ErrorCode);
++	if (Err != NULL)
++		fprintf(stderr, "GIF-LIB error: %s.\n", Err);
++	else	fprintf(stderr, "GIF-LIB undefined error %d.\n", ErrorCode);
++}
++
+ unsigned char      *
+ _LoadGIF(ImlibData * id, FILE *f, int *w, int *h, int *t)
+ {
+@@ -443,7 +452,7 @@
+   fd = fileno(f);
+   /* Apparently rewind(f) isn't sufficient */
+   lseek(fd, (long) 0, 0);
+-  gif = DGifOpenFileHandle(fd);
++  gif = DGifOpenFileHandle(fd, &ErrorCode);
+ 
+   if (!gif)
+     return NULL;
+@@ -470,13 +479,13 @@
+ 	  rows = malloc(*h * sizeof(GifRowType *));
+ 	  if (!rows)
+ 	    {
+-	      DGifCloseFile(gif);
++	      DGifCloseFile(gif, NULL);
+ 	      return NULL;
+ 	    }
+ 	  data = _imlib_malloc_image(*w, *h);
+ 	  if (!data)
+ 	    {
+-	      DGifCloseFile(gif);
++	      DGifCloseFile(gif, NULL);
+ 	      free(rows);
+ 	      return NULL;
+ 	    }
+@@ -487,7 +496,7 @@
+ 	      rows[i] = malloc(*w * sizeof(GifPixelType));
+ 	      if (!rows[i])
+ 		{
+-		  DGifCloseFile(gif);
++		  DGifCloseFile(gif, NULL);
+ 		  for (i = 0; i < *h; i++)
+ 		    if (rows[i])
+ 		      free(rows[i]);
+@@ -576,7 +585,7 @@
+ 	    }
+ 	}
+     }
+-  DGifCloseFile(gif);
++  DGifCloseFile(gif, NULL);
+   for (i = 0; i < *h; i++)
+     free(rows[i]);
+   free(rows);
