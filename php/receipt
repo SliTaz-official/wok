@@ -1,23 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="php"
-VERSION="5.5.13"
+VERSION="7.3.12"
 CATEGORY="development"
 SHORT_DESC="PHP web programming language."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="BSD"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://www.php.net/"
-WGET_URL="http://www.php.net/distributions/$TARBALL"
+WGET_URL="https://www.php.net/distributions/$TARBALL"
 PROVIDE="php:lighttpd"
 #HOST_ARCH="i486 arm"
 
-DEPENDS="php-common lighttpd zlib libxml2 sqlite libssl"
-BUILD_DEPENDS="sqlite-dev libxml2-dev zlib-dev libmysqlclient mysql-dev \
+DEPENDS="php-common lighttpd libzip libxml2 sqlite libssl"
+BUILD_DEPENDS="sqlite-dev libxml2-dev libzip-dev libmysqlclient mysql-dev \
 net-snmp-dev postgresql-dev gettext openssl-dev apache-dev apr-util-dev \
 c-client mhash-dev libpng-dev libunixODBC unixODBC-dev openldap-dev \
 libldap apr-dev libmcrypt-dev curl-dev cyrus-sasl-dev perl pkg-config \
-jpeg-dev net-snmp-dev libvpx-dev apache coreutils-conditions sed re2c"
+jpeg-dev net-snmp-dev libvpx-dev apache coreutils-conditions sed re2c \
+libtool"
 
 case "$ARCH" in
 	i?86)
@@ -37,8 +38,6 @@ case "$ARCH" in
 			--with-config-file-path=/etc \
 			--with-zlib \
 			--with-gettext \
-			--with-mcrypt=shared,/usr \
-			--with-mysql=shared,/usr \
 			--with-mysqli=shared \
 			--with-mysql-sock=/var/run/mysqld/mysql.sock \
 			--with-pdo-sqlite=shared,/usr \
@@ -52,7 +51,6 @@ case "$ARCH" in
 			--with-gd=shared \
 			--with-jpeg-dir=/usr \
 			--with-png-dir=/usr \
-			--with-vpx-dir=/usr \
 			--with-openssl=shared \
 			--with-unixODBC=shared,/usr \
 			--with-pear=/usr/share/php \
@@ -92,7 +90,6 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|IMG_FMT_I420|VPX_&|;s|PLANE_|VPX_&|' ext/gd/libgd/webpimg.c
 	sed -i 's/pam_start/pam_nostart/' configure
 	./configure $ARCH_ARGS $CONFIGURE_ARGS && \
 	make $MAKEFLAGS && make -j1 INSTALL_ROOT=$DESTDIR install
