@@ -1,21 +1,21 @@
 # SliTaz package receipt.
 
-PACKAGE="php-pdo-pgsql"
+PACKAGE="php-opcache"
 VERSION="7.3.12"
 CATEGORY="development"
-SHORT_DESC="PDO PgSQL module for PHP web programming language."
+SHORT_DESC="opcode caching module for PHP web programming language."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
 WEB_SITE="https://www.php.net/"
 WANTED="php"
 
-DEPENDS="php php-mysql libpostgresqlclient"
+DEPENDS="libmysqlclient php"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/php
-	cp $(find $install | grep pdo_pgsql.so) $fs/usr/share/php/
+	cp $(find $install | grep opcache.so) $fs/usr/share/php/
 }
 
 # Post and pre install commans to stop
@@ -34,16 +34,16 @@ EOT
 
 post_install()
 {
-	grep -q ^extension=pdo_pgsql.so "$1/etc/php.ini" || \
-	    sed -e 's|extension=bz2.so|extension=bz2.so\nextension=pdo_pgsql.so|' -i "$1/etc/php.ini"
+	grep -q ^extension=opcache.so "$1/etc/php.ini" || \
+	    sed -e 's|extension=bz2.so|extension=bz2.so\nextension=opcache.so|' -i "$1/etc/php.ini"
 	# Start Web server.
 	while read daemon file; do
 		[ -z "$1" ] || continue
-		if [ -z "$1" -a -f "/var/run/$file" ]; then
+		if [ -f "/var/run/$file" ]; then
 			/etc/init.d/$daemon stop
 			sleep 2
 		fi
-		if [ -z "$1" -a -f /etc/init.d/$daemon ]; then
+		if [ -f /etc/init.d/$daemon ]; then
 			/etc/init.d/$daemon start
 		fi
 	done <<EOT
@@ -55,16 +55,16 @@ EOT
 # Pre and post remove commands for Tazpkg.
 pre_remove()
 {
-	sed -i '/.*=pdo_pgsql.so.*/d' /etc/php.ini
+	sed -i '/.*=opcache.so.*/d' /etc/php.ini
 
 	# Start Web server.
 	while read daemon file; do
 		[ -z "$1" ] || continue
-		if [ -z "$1" -a -f "/var/run/$file" ]; then
+		if [ -f "/var/run/$file" ]; then
 			/etc/init.d/$daemon stop
 			sleep 2
 		fi
-		if [ -z "$1" -a -f /etc/init.d/$daemon ]; then
+		if [ -f /etc/init.d/$daemon ]; then
 			/etc/init.d/$daemon start
 		fi
 	done <<EOT
