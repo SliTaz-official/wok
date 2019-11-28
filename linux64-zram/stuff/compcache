@@ -21,7 +21,8 @@ case "$1" in
 	END { if (c>0) p=c; if (p==0) p++; print p }' /proc/cpuinfo)
     modprobe zram num_devices=$devices &&
     [ -n "$SIZE_KB" ] && for i in $(seq 0 $(($devices-1))); do
-	echo $(($SIZE_KB * 1024 / $devices)) > /sys/block/zram$i/disksize
+	awk "END { print $SIZE_KB * 1024 / $devices }" < /dev/null \
+		> /sys/block/zram$i/disksize
     done
     status
 
