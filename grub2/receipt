@@ -1,26 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="grub2"
-SOURCE="grub"
-VERSION="2.02"
+VERSION="2.04"
 CATEGORY="base-system"
 SHORT_DESC="GRUB2 boot loader."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL3"
+WEB_SITE="https://www.gnu.org/software/grub/"
+
+SOURCE="grub"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="http://www.gnu.org/software/grub/"
 WGET_URL="ftp://ftp.gnu.org/gnu/grub/$TARBALL"
 
-DEPENDS="zlib freetype ncurses libusb-compat grep libusb libdevmapper"
-BUILD_DEPENDS="flex bison zlib-dev xz-dev freetype-dev ncurses-dev fuse-dev \
-libusb-compat-dev libusb-dev libdevmapper-dev"
+DEPENDS="freetype grep libdevmapper libusb libusb-compat ncurses zlib"
+BUILD_DEPENDS="bison flex freetype-dev fuse-dev libdevmapper-dev 
+	libusb-compat-dev libusb-dev ncurses-dev xz-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|fprintf(...) |&(void)|' grub-core/script/yylex.l
-	./configure --prefix=/usr --sysconfdir=/etc \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	sed -i 's|fprintf(...) |&(void)|' \
+		grub-core/script/yylex.l
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		--mandir=/usr/share/man	\
+		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
@@ -28,21 +33,23 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/boot/grub $fs/usr
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/share $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/etc $fs
+	mkdir -p $fs/boot/grub
+	mkdir -p $fs/usr
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/share	$fs/usr
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/etc		$fs
 	
-	# Example config file (grub.cfg).
-	cp stuff/example-grub.cfg $fs/boot/grub
+	# Example configuration file (grub.cfg).
+	cp stuff/example-grub.cfg	$fs/boot/grub
 }
 
 post_install()
 {
 	cat <<EOT
-# To install grub to your sda MBR
+# To install grub to MBR on device sda
 grub-install /dev/sda
 
 # To generate a configuration file
@@ -51,4 +58,3 @@ grub-mkconfig -o /boot/grub/grub.cfg
 # You can learn from /boot/grub/example-grub.cfg too.
 EOT
 }
-

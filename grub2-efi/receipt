@@ -1,38 +1,47 @@
 # SliTaz package receipt.
 
 PACKAGE="grub2-efi"
-SOURCE="grub"
-VERSION="2.02"
+VERSION="2.04"
 CATEGORY="base-system"
 SHORT_DESC="GRUB2 boot loader."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL3"
+WEB_SITE="https://www.gnu.org/software/grub/"
+
+SOURCE="grub"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="http://www.gnu.org/software/grub/"
 WGET_URL="ftp://ftp.gnu.org/gnu/grub/$TARBALL"
 
-DEPENDS="zlib freetype ncurses libusb-compat grep libusb libdevmapper"
-BUILD_DEPENDS="flex bison zlib-dev xz-dev freetype-dev ncurses-dev fuse-dev \
-libusb-compat-dev libusb-dev libdevmapper-dev"
+DEPENDS="freetype grep libdevmapper libusb-compat libusb ncurses zlib"
+BUILD_DEPENDS="bison flex freetype-dev fuse-dev libdevmapper-dev 
+	libusb-compat-dev libusb-dev ncurses-dev xz-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|fprintf(...) |&(void)|' grub-core/script/yylex.l
+	sed -i 's|fprintf(...) |&(void)|' \
+		grub-core/script/yylex.l
 	export EFI_ARCH=i386
-	./configure --prefix=/usr --sysconfdir=/etc \
-		--with-platform=efi --target=${EFI_ARCH} --program-prefix="" \
-		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		--with-platform=efi	\
+		--target=${EFI_ARCH}	\
+		--program-prefix=""	\
+		--mandir=/usr/share/man	\
+		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS
+
 	cd grub-core
 	../grub-mkimage -d . -o ../bootia32.efi -O i386-efi -p /boot/grub \
-		lsefisystab lssal lsefimmap lsacpi ls \
-		ntfs hfs appleldr boot cat efi_gop efi_uga elf fat hfsplus \
-		iso9660 linux keylayouts memdisk minicmd part_apple ext2 extcmd \
-		xfs xnu part_bsd part_gpt search search_fs_file chain btrfs \
-		loadbios loadenv lvm minix minix2 reiserfs memrw mmap msdospart \
-		scsi loopback normal configfile gzio all_video \
-		gfxterm gettext echo
+		all_video appleldr boot btrfs cat chain configfile echo \
+		efi_gop efi_uga elf ext2 extcmd fat gettext gfxterm gzio hfs \
+		hfsplus iso9660 keylayouts linux loadbios loadenv loopback \
+		ls lsacpi lsefimmap lsefisystab lssal lvm memdisk memrw \
+		minicmd minix minix2 mmap msdospart normal ntfs part_apple \
+		part_bsd part_gpt reiserfs scsi search search_fs_file \
+		xfs xnu
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
