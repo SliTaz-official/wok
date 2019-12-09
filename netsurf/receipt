@@ -1,23 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="netsurf"
-VERSION="3.6"
+VERSION="3.9"
 CATEGORY="network"
+TAGS="web-browser"
 SHORT_DESC="A simple, fast and light web browser using GTK."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-all-$VERSION.tar.gz"
-WEB_SITE="http://www.netsurf-browser.org/"
-WGET_URL="http://download.netsurf-browser.org/netsurf/releases/source-full/$TARBALL"
-TAGS="web-browser"
+WEB_SITE="https://www.netsurf-browser.org/"
 
-DEPENDS="gtk+ libssl libpng jpeg lcms libparserutils hubbub libnsgif \
-libcurl libglade librsvg libgsf libcss libmng zlib libxml2"
-BUILD_DEPENDS="$DEPENDS gtk+-dev libglade-dev openssl-dev libpng-dev \
-jpeg-dev lcms-dev re2c lemon libparserutils-dev hubbub-dev libnsgif-dev \
-librsvg-dev curl-dev pango-dev libcss-dev libwapcaplet-dev libmng-dev \
-zlib-dev libxml2-dev libcroco expat-dev gperf flex bison \
-perl-html-parser perl-html-tagset"
+TARBALL="$PACKAGE-all-$VERSION.tar.gz"
+WGET_URL="http://download.netsurf-browser.org/netsurf/releases/source-full/$TARBALL"
+
+DEPENDS="gtk+ hubbub jpeg lcms libcss libcurl libglade libgsf libmng libnsgif 
+	libparserutils libpng librsvg libssl libxml2 zlib"
+BUILD_DEPENDS="$DEPENDS bison curl-dev expat-dev flex gperf gtk+-dev hubbub-dev 
+	jpeg-dev lcms-dev lemon libcroco libcss-dev libglade-dev libmng-dev 
+	libnsgif-dev libparserutils-dev libpng-dev librsvg-dev libwapcaplet-dev 
+	libxml2-dev openssl-dev pango-dev perl-html-parser perl-html-tagset re2c 
+	vim zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -27,27 +28,32 @@ compile_rules()
 	# Fix install target
 	#sed -i 's/cp -vRL/cp -RL/' Makefile
 	#sed -i 's/cp -v/cp /' Makefile
-	make install DESTDIR=$DESTDIR PREFIX=/usr \
-		TARGET=gtk \
-		NETSURF_USE_WEBP=NO \
-		NETSURF_GTK_MAJOR=2 \
+
+	make install 			\
+		DESTDIR=$DESTDIR 	\
+		PREFIX=/usr		\
+		TARGET=gtk		\
+		NETSURF_USE_WEBP=NO	\
+		NETSURF_GTK_MAJOR=2	\
 		NETSURF_USE_VIDEO=NO
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share \
-		$fs/usr/lib/netsurf
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/netsurf $fs/usr/share
-	
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/lib/netsurf
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/netsurf	$fs/usr/share
+
 	# Remove files to save some space
 	rm -rf $fs/usr/share/netsurf/docs
 	rm -rf $fs/usr/share/netsurf/*.xpm
 	rm -rf $fs/usr/share/netsurf/license
+
 	# Webhome
-	cp -a $stuff/welcome.* $fs/usr/share/netsurf
+	cp -a $stuff/welcome.*	$fs/usr/share/netsurf
 	rm $fs/usr/share/netsurf/*/welcome.html
 	chown -R root.root $fs
 }
