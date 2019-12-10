@@ -11,18 +11,19 @@ WEB_SITE="http://packages.debian.org/lenny/at"
 TARBALL="${PACKAGE}_${VERSION}.orig.tar.gz"
 WGET_URL="http://ftp.debian.org/debian/pool/main/${PACKAGE:0:1}/$PACKAGE/$TARBALL"
 
-DEPENDS="flex"
+DEPENDS="flex pam"
 BUILD_DEPENDS="bison flex ssmtp"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	sed -i 's|/doc|/share/doc|' Makefile*
-	./configure \
-		--with-daemon_username=nobody \
-		--with-daemon_groupname=nogroup \
-		--with-atspool=/var/spool/atd \
-		--with-jobdir=/var/spool/atd \
+
+	./configure				\
+		--with-daemon_username=nobody	\
+		--with-daemon_groupname=nogroup	\
+		--with-atspool=/var/spool/atd	\
+		--with-jobdir=/var/spool/atd	\
 		$CONFIGURE_ARGS &&
 	make -j1 &&
 	make -j1 IROOT=$DESTDIR install || return 1
@@ -31,11 +32,13 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/init.d
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/etc $fs
-	cp -a $install/var $fs
-	cp -a $stuff/atd $fs/etc/init.d
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc/init.d
+
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $install/usr/sbin	$fs/usr
+	cp -a $install/etc	$fs
+	cp -a $install/var	$fs
+	cp -a $stuff/atd	$fs/etc/init.d
 	chmod 6755 $fs/usr/bin/at
 }
