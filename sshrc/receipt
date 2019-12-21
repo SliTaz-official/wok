@@ -13,7 +13,7 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/Russell91/sshrc/archive/$VERSION.tar.gz"
 
 DEPENDS="bash openssl tar"
-SUGGESTED="mosh xxd"
+SUGGESTED="mosh"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.   
 genpkg_rules()                                      
@@ -21,4 +21,9 @@ genpkg_rules()
 	mkdir -p $fs/usr/bin $install/usr/share/doc
 	cp $src/README.md $install/usr/share/doc
 	cp -a $src/*shrc $fs/usr/bin
+	sed -i -e 's|command -v xxd|command -v openssl|' \
+	 -e 's|sshrc requires xxd|moshrc requires openssl|' \
+	 -e "s/| xxd -p -r/| tr -s ' ' \$'\\\\n' | openssl enc -base64 -d/" \
+	 -e 's|xxd -p|openssl enc -base64|' \
+	 -e "s|\\\$'\\\$(|\$'\"\$(|" -e "s|)'|)\"'|" moshrc
 }
