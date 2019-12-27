@@ -1,16 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="acpid"
-VERSION="2.0.31"
+VERSION="2.0.32"
 CATEGORY="system-tools"
-SHORT_DESC="The ACPI event daemon with netlink"
+TAGS="power-management"
+SHORT_DESC="The ACPI event daemon with netlink."
 MAINTAINER="domcox@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="https://sourceforge.net/projects/acpid2/"
+
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$SF_MIRROR/acpid2/$TARBALL"
+
 KEY_FILE="key-constants"
-TAGS="power-management"
 SUGGESTED="pm-utils"
 
 # Rules to configure and make the package.
@@ -25,14 +27,18 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
+
 	# acpid
-	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/sbin	$fs/usr
+
 	# acpi_listen
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin	$fs/usr
+
 	# acpid conf files
 	mkdir -p $fs/etc
-	cp -a $stuff/init.d $fs/etc/
-	cp -a $stuff/acpi $fs/etc/
+
+	cp -a $stuff/init.d	$fs/etc/
+	cp -a $stuff/acpi	$fs/etc/
 	chmod go-rwx $fs/etc/acpi/*.sh
 	chmod go-rwx $fs/etc/acpi/events/*
 }
@@ -40,19 +46,22 @@ genpkg_rules()
 # Pre and post remove commands for Tazpkg
 post_install()
 {
-	if [ -z "$1" ]; then
+	if [ -z "$1" ]
+	  then
 		/etc/init.d/acpid start || continue
 	fi
-	if ! grep -q ^ACPID_OPTIONS "$1/etc/daemons.conf"; then
+	if ! grep -q ^ACPID_OPTIONS "$1/etc/daemons.conf"
+	  then
 		echo '# ACPI daemon options.' >> "$1/etc/daemons.conf"
 		echo 'ACPID_OPTIONS=""' >> "$1/etc/daemons.conf"
 		echo '' >> "$1/etc/daemons.conf"
 	fi
-}	
+}
 
 pre_remove()
 {
-	if [ -z "$1" ]; then
+	if [ -z "$1" ]
+	  then
 		/etc/init.d/acpid stop
 	fi
 }
