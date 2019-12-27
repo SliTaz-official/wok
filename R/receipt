@@ -1,17 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="R"
-VERSION="3.1.1"
+VERSION="3.6.2"
 CATEGORY="office"
 SHORT_DESC="Free software environment for statistical computing and graphics."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.r-project.org/"
-WGET_URL="http://cran.r-project.org/src/base/R-3/$TARBALL"
+WEB_SITE="https://www.r-project.org/"
 
-DEPENDS="libgfortran readline bzlib libgomp midori epdfview pcre gcc-lib-math"
-BUILD_DEPENDS="gfortran readline-dev bzip2-dev pcre-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://cran.r-project.org/src/base/R-${VERSION%%.*}/$TARBALL"
+
+DEPENDS="bzlib epdfview gcc-lib-math libgfortran libgomp liblzma
+	midori pcre readline"
+BUILD_DEPENDS="bzip2-dev curl-dev gfortran liblzma-dev pcre-dev readline-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -19,24 +21,26 @@ compile_rules()
 	export R_BROWSER="midori"
 	export R_PDFVIEWER="epdfview"
 	unset DESTDIR
-	patch -p 0 < $stuff/pcre.u
 
-	./configure \
-		--enable-R-shlib \
-		--with-system-zlib \
-		--with-system-bzlib \
-		--with-system-pcre \
+# valid before 3.1.1
+#	patch -p 0 < $stuff/pcre.u
+
+	./configure			\
+		--enable-R-shlib	\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$install install
+	make &&
+	make DESTDIR=$install install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	sed -i s'/bash/sh/' $fs/usr/bin/R
-	sed -i s'/bash/sh/' $fs/usr/lib/R/bin/R
-	sed -i s'/bash/sh/' $fs/usr/lib/R/bin/pager
+
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $install/usr/lib	$fs/usr
+
+	sed -i s'|bash|sh|' $fs/usr/bin/R
+	sed -i s'|bash|sh|' $fs/usr/lib/R/bin/R
+	sed -i s'|bash|sh|' $fs/usr/lib/R/bin/pager
 }
