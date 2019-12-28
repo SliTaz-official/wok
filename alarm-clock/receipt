@@ -1,21 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="alarm-clock"
-VERSION="1.4.3"
+VERSION="1.4.9"
 CATEGORY="utilities"
-SHORT_DESC="Simple GTK alarm clock"
+TAGS="clock reminder"
+SHORT_DESC="Simple GTK alarm clock."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-# There's no more website for it. Using wayback machine...
-WEB_SITE="https://web.archive.org/web/20100209072308/http://www.alarm-clock.pl/"
-#WGET_URL="http://www.alarm-clock.pl/files/$TARBALL"
-WGET_URL="http://mirror.slitaz.org/sources/packages/a/$TARBALL"
-TAGS="clock reminder"
+#WEB_SITE="https://web.archive.org/web/20100209072308/http://www.alarm-clock.pl/"
+WEB_SITE="https://github.com/shaggytwodope/alarm-clock"
 
-DEPENDS="gtk+ libunique libnotify gstreamer"
-BUILD_DEPENDS="$DEPENDS gtk+-dev libunique-dev libnotify-dev gstreamer-dev \
-intltool file"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+#WGET_URL="http://www.alarm-clock.pl/files/$TARBALL"
+#WGET_URL="http://mirror.slitaz.org/sources/packages/a/$TARBALL"
+WGET_URL="$WEB_SITE/archive/v$VERSION.tar.gz"
+
+DEPENDS="gstreamer-1.0 gtk+ libunique libnotify"
+BUILD_DEPENDS="$DEPENDS autocoonf automake file gstreamer-dev gtk+-dev \
+	intltool libnotify-dev libtool libunique-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,14 +25,18 @@ compile_rules()
 	sed -i 's/.*= notify_notification_new_with_status_icon/#define notify_notification_new_with_status_icon(a,b,c,d) notify_notification_new(a,b,gtk_status_icon_get_icon_name(c))\n&/' \
 		src/alarm_runner.c
 	chmod +x install-sh
-	./configure && make && make install
+
+	./autogen.sh &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/alarm-clock $fs/usr/share
-	cp -a $install/usr/share/icons $fs/usr/share
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/alarm-clock	$fs/usr/share
+	cp -a $install/usr/share/icons		$fs/usr/share
 }
