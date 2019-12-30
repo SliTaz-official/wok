@@ -1,64 +1,77 @@
 # SliTaz package receipt.
 
 PACKAGE="apache"
-VERSION="2.4.16"
+VERSION="2.4.41"
 CATEGORY="network"
+TAGS="webserver http server"
 SHORT_DESC="Secure, efficient and extensible HTTP server."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="Apache"
+WEB_SITE="https://www.apache.org/"
+
 SOURCE="httpd"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="http://www.apache.org/"
 WGET_URL="${WEB_SITE}dist/$SOURCE/$TARBALL"
+
+PROVIDE="lighttpd"
+DEPENDS="apr apr-util expat openssl pcre util-linux-uuid zlib"
+BUILD_DEPENDS="apr-dev apr-util-dev bash expat-dev lua5.1-dev 
+	openldap-dev openssl-dev sed util-linux-uuid-dev zlib-dev"
+
 CONFIG_FILES="/etc/apache /var/www /etc/ssl/apache"
 TAZPANEL_DAEMON="edit::/etc/apache/httpd.conf|web::$WEB_SITE"
-PROVIDE="lighttpd"
-TAGS="webserver http server"
-
-DEPENDS="apr-util apr openssl pcre util-linux-uuid expat zlib"
-BUILD_DEPENDS="apr-util-dev apr-dev openssl-dev sed expat-dev zlib-dev \
-lua5.1-dev util-linux-uuid-dev openldap-dev bash"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	grep -q Slitaz config.layout || \
 		cat $stuff/slitaz.layout >> config.layout
-	./configure --mandir=/usr/share/man \
-		--enable-mods-shared=all \
-		--enable-proxy \
-		--enable-ssl \
-		--enable-layout=Slitaz $CONFIGURE_ARGS &&
-	make $MAKEFLAGS && make DESTDIR=$DESTDIR install
+
+	./configure				\
+		--mandir=/usr/share/man		\
+		--enable-mods-shared=all	\
+		--enable-proxy			\
+		--enable-ssl			\
+		--enable-layout=Slitaz		\
+		$CONFIGURE_ARGS &&
+	make $MAKEFLAGS &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/apache $fs/etc/init.d $fs/etc/apache/conf.d
-	mkdir -p $fs/etc/ssl/apache
-	cp -a $install/usr/share/apache/icons $fs/usr/share/apache
-	cp -a $install/usr/share/apache/error $fs/usr/share/apache
-	cp -a $install/usr/share/apache/modules $fs/usr/share/apache
-	cp -a $install/usr/bin $fs/usr
-	rm -r $fs/usr/bin/apxs
-	cp -a $install/etc $fs
-	rm -rf $fs/etc/apache/original
-	cp -a $install/var $fs
-	
-	cp -a $stuff/apache $fs/etc/init.d
+	mkdir -p $fs/usr/share/apache
+	mkdir -p $fs/etc/init.d
+	mkdir -p $fs/etc/apache/conf.d
 	mkdir -p $fs/etc/apache/extra
+	mkdir -p $fs/etc/ssl/apache
+
+	cp -a $install/usr/share/apache/icons	$fs/usr/share/apache
+	cp -a $install/usr/share/apache/error	$fs/usr/share/apache
+	cp -a $install/usr/share/apache/modules	$fs/usr/share/apache
+	cp -a $install/usr/bin			$fs/usr
+	rm -r					$fs/usr/bin/apxs
+	cp -a $install/etc			$fs
+	rm -rf					$fs/etc/apache/original
+	cp -a $install/var			$fs
+	
+	cp -a $stuff/apache			$fs/etc/init.d
 	cp -a $stuff/fix-range-CVE-2011-3192.conf $fs/etc/apache/extra
 
-	sed -i  -e 's|User daemon|User www|' -e 's|Group daemon|Group www|' \
+	sed -i  -e 's|User daemon|User www|' \
+		-e 's|Group daemon|Group www|' \
 		-e 's|ServerAdmin you@example.com|ServerAdmin root@localhost|' \
 		-e 's|#Include /etc/apache/extra/httpd-ssl.conf|Include /etc/apache/extra/httpd-ssl.conf|' \
 		-e 's|/etc/apache/server.crt|/etc/ssl/apache/apache.pem|' \
 		-e 's|/etc/apache/server.key|/etc/ssl/apache/apache.pem|' \
 		-e 's|#LoadModule ssl_module|LoadModule ssl_module|' \
-		$fs/etc/apache/httpd.conf $fs/etc/apache/extra/httpd-ssl.conf
+		$fs/etc/apache/httpd.conf \
+		$fs/etc/apache/extra/httpd-ssl.conf
+
 	echo "Include /etc/apache/conf.d" >> $fs/etc/apache/httpd.conf
 	sed -i 's/^SSLSessionCache /#&/' $fs/etc/apache/extra/httpd-ssl.conf
+
 	cat >> $fs/etc/apache/extra/httpd-ssl.conf <<EOT
 
 # Unsafe, see CVE-2014-3566 POODLE
@@ -67,12 +80,14 @@ EOT
 }
 
 # Pre and post install commands for Tazpkg.
-# We stop the server by default in case of upgarde.
+# We stop the server by default in case of upgrade.
 pre_install()
 {
-	[ -z "$1" ] && for i in httpd lighttpd ngnix cherokee $PACKAGE ; do
+	[ -z "$1" ] &&
+	for i in httpd lighttpd ngnix cherokee $PACKAGE
+	  do
 		[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
-	done
+	  done
 }
 
 post_install()
@@ -104,12 +119,13 @@ ${hostname:-slitaz}
 EOT
 	[ -z "$quiet" ] && echo # Start new line
 	( cd "$1/$INSTALLED/" ; grep -l /etc/apache/conf.d/ */receipt ) | \
-	while read file; do
+	while read file
+	  do
 		pkg=$(dirname $file)
 		[ "$pkg" = "$PACKAGE" ] && continue
 		[ -z "$quiet" ] && echo "Reconfiguring $pkg for $PACKAGE..."
 		tazpkg reconfigure $pkg
-	done
+	  done
 	[ -f "$1/etc/php.ini" ] && tazpkg get-install php-apache --root="$1"
 	[ "$1" ] || netstat -ltn 2> /dev/null | grep -q :80 ||
 	/etc/init.d/$PACKAGE start
