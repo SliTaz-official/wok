@@ -1,46 +1,46 @@
 # SliTaz package receipt.
 
 PACKAGE="apache-mod-wsgi"
-VERSION="3.4"
+VERSION="4.6.5"
 CATEGORY="network"
 SHORT_DESC="Python WSGI adapter module for Apache."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="Apache"
 WEB_SITE="https://github.com/GrahamDumpleton/mod_wsgi"
-SOURCE="mod_wsgi"
-TARBALL="$SOURCE-$VERSION.tar.gz"
-WGET_URL="http://modwsgi.googlecode.com/files/$TARBALL"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
 
 DEPENDS="apache python"
-BUILD_DEPENDS="apache apache-dev apr-dev apr-util-dev python-dev sed acl acl-dev"
+BUILD_DEPENDS="acl acl-dev apache apache-dev apr-dev apr-util-dev python-dev sed"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure 
-	sed -i -e "s!^DESTDIR =!DESTDIR = $WOK/$PACKAGE/install! " Makefile
-	make && make install
+	./configure --prefix=/usr &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/etc/apache/extra
-	cp -a $install/* $fs
-	cp $stuff/httpd-mod-wsgi.conf $fs/etc/apache/extra
+
+	cp -a $install/*		$fs
+	cp $stuff/httpd-mod-wsgi.conf	$fs/etc/apache/extra
 }
 
 post_install()
 {
-		# Enable WSGI module
-		echo "# Python WSGI module" >> "$1/etc/apache/httpd.conf"
-		echo "Include /etc/apache/extra/httpd-mod-wsgi.conf  " >> "$1/etc/apache/httpd.conf"
+	# Enable WSGI module
+	echo "# Python WSGI module" >> "$1/etc/apache/httpd.conf"
+	echo "Include /etc/apache/extra/httpd-mod-wsgi.conf  " >> "$1/etc/apache/httpd.conf"
 }
 
 post_remove()
 {
-		# Remove WSGI configuration
-		sed -i s/\# Python.*// "$1/etc/apache/httpd.conf"
-		sed -i s/.*httpd-mod-wsgi.conf// "$1/etc/apache/httpd.conf"
+	# Remove WSGI configuration
+	sed -i s/\# Python.*//			"$1/etc/apache/httpd.conf"
+	sed -i s/.*httpd-mod-wsgi.conf//	"$1/etc/apache/httpd.conf"
 }
