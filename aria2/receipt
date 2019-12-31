@@ -1,32 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="aria2"
-VERSION="1.18.3"
+VERSION="1.35.0"
 CATEGORY="utilities"
-SHORT_DESC="A download utility with resuming and segmented downloading with HTTP/HTTPS/FTP support"
+SHORT_DESC="A download utility with resuming and segmented downloading with HTTP, HTTPS and FTP support."
 MAINTAINER="devl547@gmail.com"
 LICENSE="GPL2"
-# WEB_SITE="http://aria2.sourceforge.net/"
 WEB_SITE="https://aria2.github.io/"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="zlib libxml2 gnutls libgcrypt"
-BUILD_DEPENDS="zlib-dev gettext libxml2-dev gnutls-dev pkg-config gmp-dev \
-nettle-dev libgnutls"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/releases/download/release-$VERSION/$TARBALL"
+
+DEPENDS="gcc83-lib-base gnutls libgcrypt libxml2 zlib"
+BUILD_DEPENDS="gcc83 gettext gmp-dev gnutls-dev libgnutls libxml2-dev \
+	nettle-dev pkg-config zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS \
-	--enable-epoll --enable-threads=posix --with-libz \
-	--without-sqlite3 --without-openssl &&
-	make && make install
+	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		--enable-epoll		\
+		--enable-threads=posix	\
+		--with-libz		\
+		--without-sqlite3	\
+		--without-openssl	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin	$fs/usr
 }
