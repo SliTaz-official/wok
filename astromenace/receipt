@@ -1,56 +1,55 @@
 # SliTaz package receipt.
 
 PACKAGE="astromenace"
-VERSION="1.3.2"
+VERSION="1.4.1"
 CATEGORY="games"
+TAGS="arcade game shooting space"
 SHORT_DESC="Hardcore 3D space shooter with spaceship upgrade possibilities."
 MAINTAINER="hackdorte@yandex.com"
 LICENSE="GPLv3"
-TARBALL="$PACKAGE-src-$VERSION.tar.bz2"
-
 WEB_SITE="https://viewizard.com/"
-WGET_URL="$SF_MIRROR/openastromenace/$TARBALL"
 
-TAGS="arcade game shooting space"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/viewizard/$PACKAGE/archive/v$VERSION.tar.gz"
 
-DEPENDS="cmake libsdl libogg libvorbis libglu-mesa openal freealut \
-xorg-libXinerama freetype"
-
-BUILD_DEPENDS="gcc cmake make libsdl-dev libogg-dev libvorbis-dev libglu-mesa-dev \
-openal-dev freealut-dev xorg-libXinerama-dev freetype-dev mesa-dev"
+DEPENDS="freealut freetype gcc83-lib-base libogg libglu-mesa libsdl2 
+	libvorbis openal xorg-libXinerama"
+BUILD_DEPENDS="cmake freealut-dev freetype-dev gcc83 libglu-mesa-dev 
+	libogg-dev libsdl-dev libvorbis-dev mesa-dev openal-dev 
+	xorg-libXinerama-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	export	CC=gcc-83
+	export	CXX=g++-83
 
-cd $src
-cmake .
-make
-./AstroMenace --pack --rawdata=./RAW_VFS_DATA
+	cmake	.	\
+		-DCMAKE_BUILD_TYPE=Release &&
+	make
+#	./AstroMenace --pack --rawdata=./RAW_VFS_DATA
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	GAME="astromenace"
+	GAME_DIR="usr/games/$GAME"
 
-GAME="AstroMenace"
-GAME_DIR="usr/games/$GAME"
+	mkdir -p $install/$GAME_DIR
+	chmod +x $src/$GAME
 
-mkdir -p $install/$GAME_DIR
+	cp -a $src/$GAME			$install/$GAME_DIR
+	cp -a $src/share/astromenace_64.png	$install/$GAME_DIR
+	cp -a $src/share/astromenace_128.png	$install/$GAME_DIR
+	cp -a $src/CHANGELOG.md			$install/$GAME_DIR
+	cp -a $src/gamedata.vfs			$install/$GAME_DIR
+#	cp -a $src/gpl-3.0.txt			$install/$GAME_DIR
 
-chmod +x $src/$GAME
+	mkdir -p $install/usr/share/pixmaps
+	cp -a $src/share/astromenace_64.png	$install/usr/share/pixmaps/astromenace.png
 
-cp -a $src/$GAME $install/$GAME_DIR
-cp -a $src/astromenace_64.png $install/$GAME_DIR
-cp -a $src/astromenace_128.png $install/$GAME_DIR
-cp -a $src/ChangeLog.txt $install/$GAME_DIR
-cp -a $src/gamedata.vfs $install/$GAME_DIR
-cp -a $src/gpl-3.0.txt $install/$GAME_DIR
-
-mkdir -p $install/usr/share/pixmaps
-cp -a $src/astromenace_64.png $install/usr/share/pixmaps/astromenace.png
-
-mkdir -p $install/usr/share/applications
+	mkdir -p $install/usr/share/applications
 cat > $install/usr/share/applications/astromenace.desktop << EOT
 [Desktop Entry]
 Type=Application
@@ -64,6 +63,6 @@ Categories=Game;ActionGame;
 
 EOT
 
-cp -a $install/* $fs
+	cp -a $install/*	$fs
 
 }
