@@ -1,19 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="atk"
-VERSION="2.15.4"
+VERSION="2.34.1"
 CATEGORY="x-window"
+TAGS="accessibility"
 SHORT_DESC="Accessibility toolkit."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://www.gnome.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
-TAGS="accessibility"
-HOST_ARCH="i486 arm"
 
 DEPENDS="glib"
-BUILD_DEPENDS="libgio-dev glib-dev"
+BUILD_DEPENDS="glib-dev libgio-dev meson ninja"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -23,15 +25,16 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$DESTDIR install
+	meson	.		\
+		_build		\
+		--prefix=/usr &&
+	ninja	-C _build &&
+	ninja	-C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
