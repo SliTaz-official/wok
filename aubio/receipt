@@ -1,38 +1,46 @@
 # SliTaz package receipt.
 
 PACKAGE="aubio"
-VERSION="0.3.2"
+VERSION="0.4.9"
 CATEGORY="multimedia"
+TAGS="audio label multimedia"
+SHORT_DESC="A library for audio labelling"
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
-SHORT_DESC="A library for audio labelling"
-WEB_SITE="http://aubio.piem.org/"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="$WEB_SITE/pub/$TARBALL"
-TAGS="audio label multimedia"
+WEB_SITE="https://aubio.org/"
 
-DEPENDS="libsamplerate fftw jack-audio-connection-kit flac libogg \
-libvorbis"
-BUILD_DEPENDS="libsamplerate-dev jack-audio-connection-kit-dev \
-fftw-dev libsndfile-dev fftw libsamplerate flac-dev libogg-dev \
-libvorbis-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="${WEB_SITE}pub/$TARBALL"
+
+DEPENDS="fftw flac jack-audio-connection-kit libogg \
+	libsamplerate libvorbis"
+BUILD_DEPENDS="fftw fftw-dev flac-dev jack-audio-connection-kit-dev \
+	libogg-dev libsamplerate libsamplerate-dev libsndfile-dev \
+	libvorbis-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lm"
-	./configure --prefix=/usr $CONFIGURE_ARGS &&
-	make -j1 &&
-	make -j1 install
 
-	cook_pick_manpages $src/doc/*.1
+#	0.4.9: no longer available
+#	./configure --prefix=/usr $CONFIGURE_ARGS &&
+
+	make PREFIX=/usr &&
+	make install DESTDIR=$DESTDIR
+
+#	0.4.9: no longer available
+#	cook_pick_manpages $src/doc/*.1
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/share/sounds $fs/usr/share
+	mkdir -p $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+
+#	0.4.9: no longer available
+#	cp -a $install/usr/share/sounds $fs/usr/share
 }
