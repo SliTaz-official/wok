@@ -1,40 +1,55 @@
 # SliTaz package receipt.
 
 PACKAGE="audacious-plugins"
-VERSION="3.4.3"
+VERSION="3.10.1"
 CATEGORY="multimedia"
-SHORT_DESC="Plugins for audacious music player"
+SHORT_DESC="Plugins for audacious music player."
 MAINTAINER="mimas@slitaz.org"
 LICENSE="MIT"
-SUGGESTED="lame neon libmms"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://audacious-media-player.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="http://distfiles.audacious-media-player.org/$TARBALL"
 
-DEPENDS="libxml2 libogg libvorbis alsa-lib flac dbus-glib libsndfile \
- libcdio libmad curl taglib libcomerr3 mpg123 faad2 neon gtk+"
-BUILD_DEPENDS="audacious-dev audacious neon-dev flac-dev libogg-dev \
-libvorbis-dev libmowgli-dev alsa-lib-dev lame-dev libmad-dev dbus-glib-dev \
-libmcs-dev libsamplerate-dev mpg123-dev faad2-dev curl-dev \
-libxml2-dev gtk+3-dev mesa-dev"
+SUGGESTED="lame neon libmms"
+DEPENDS="alsa-lib curl dbus-glib faad2 flac gcc83-lib-base gtk+ 
+	libcdio libcomerr3 libmad libogg libsndfile libvorbis 
+	libxml2 mpg123 neon taglib wavpack"
+BUILD_DEPENDS="alsa-lib-dev audacious audacious-dev curl-dev 
+	dbus-glib-dev faad2-dev flac-dev gcc83 gtk+-dev lame-dev 
+	libmad-dev libmcs-dev libmowgli-dev libogg-dev 
+	libsamplerate-dev libvorbis-dev libxml2-dev mesa-dev 
+	mpg123-dev neon-dev wavpack-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i "s/touch -t 0001010000 /touch /g" configure
+#	sed -i "s/touch -t 0001010000 /touch /g" configure
 #XML_CFLAGS=-I/usr/include/libxml2 
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--disable-sse2 \
-		--enable-chardet \
-		--disable-esd --disable-pulse --disable-icecast \
-		--disable-jack --disable-timidity --disable-evdevplug \
-		--disable-rocklight  --disable-lirc  \
-		--disable-bluetooth --disable-paranormal \
-		--disable-projectm --disable-projectm-1.0 \
-		--disable-ffaudio --disable-mtp_up \
+
+	./configure				\
+		CC=gcc-83			\
+		CXX=g++-83			\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--disable-bluetooth		\
+		--disable-esd			\
+		--disable-evdevplug		\
+		--disable-ffaudio		\
+		--disable-icecast		\
+		--disable-jack			\
+		--disable-lirc			\
+		--disable-mtp_up		\
+		--disable-paranormal		\
+		--disable-projectm		\
+		--disable-projectm-1.0		\
+		--disable-pulse			\
+		--disable-rocklight		\
+		--disable-sse2			\
+		--disable-timidity		\
+		--enable-chardet		\
+		--with-ffmpeg=none		\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -44,6 +59,16 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/locale
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/locale/fr $fs/usr/share/locale
+
+	cp -a $install/usr/lib	$fs/usr
+
+	# Set list of wanted locales in LOCALE_PACK
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+
+	# Copy message files in wanted languages, if available
+	for locale in $LOCALE_PACK
+	  do
+		[ -d $install/usr/share/locale/$locale ] || continue
+		cp -a $install/usr/share/locale/$locale $fs/usr/share/locale
+	  done
 }
