@@ -1,30 +1,40 @@
 # SliTaz package receipt.
 
 PACKAGE="babl"
-VERSION="0.1.24"
+VERSION="0.1.72"
 CATEGORY="system-tools"
-SHORT_DESC="pixel format translation library."
+SHORT_DESC="Pixel format translation library."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="LGPL3"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://gegl.org/babl/"
-WGET_URL="http://download.gimp.org/pub/$PACKAGE/${VERSION:0:3}/$TARBALL"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="http://download.gimp.org/pub/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="gcc83-lib-base gobject-introspection lcms2"
+BUILD_DEPENDS="gcc83 gobject-introspection-dev lcms2-dev meson ninja"
+
 HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		$CONFIGURE_ARGS && \
-	make && make install
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	meson build --prefix=/usr
+	cd	build
+	ninja &&
+	ninja install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/babl-* $fs/usr/lib
-	rm $fs/usr/lib/babl-*/*.*a
+
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/babl-*	$fs/usr/lib
+#	rm $fs/usr/lib/babl-*/*.*a
 }
 
