@@ -1,52 +1,57 @@
 # SliTaz package receipt.
 
 PACKAGE="bash"
-VERSION="4.4.5"
+VERSION="5.0.11"
 BASEVERSION="${VERSION%.*}"
 CATEGORY="system-tools"
+TAGS="shell"
 SHORT_DESC="The GNU bourne SHell."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
+WEB_SITE="https://www.gnu.org/software/bash/"
+
 TARBALL="$PACKAGE-$BASEVERSION.tar.gz"
-WEB_SITE="http://www.gnu.org/software/bash/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
 BASHCHECKURL="https://raw.githubusercontent.com/hannob/bashcheck/master/bashcheck"
 BASHCHECK="$(basename $BASHCHECKURL)"
+
 BASHPATCHES="$(for i in $(seq 1 ${VERSION##*.}); do printf "bash${BASEVERSION/./}-%03d " $i; done)"
 EXTRA_SOURCE_FILES="$BASHCHECK $BASHPATCHES"
-TAGS="shell"
 
 DEPENDS="libtinfo"
-BUILD_DEPENDS="bison wget texinfo"
+BUILD_DEPENDS="bison texinfo"
 
 patch_bash()
 {
-	for i in $BASHPATCHES ; do
-		if [ ! -s "$SOURCES_REPOSITORY/$i" ]; then
+	for i in $BASHPATCHES
+	  do
+		if [ ! -s "$SOURCES_REPOSITORY/$i" ]
+		  then
 			echo  "Downloading $i"
 			busybox wget -O "$SOURCES_REPOSITORY/$i" \
 			http://ftp.gnu.org/gnu/bash/bash-$BASEVERSION-patches/$i
 		fi
 		echo "Apply $i ..."
 		patch -p0 < $SOURCES_REPOSITORY/$i
-	done
+	  done
 }
 
 # Rules to compile & install the temporary toolchain.
 cook_tmp_toolchain()
 {
-	cd $src
 	patch_bash
 	./configure --without-bash-malloc &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# Patch and then build.
-	cd $src
 	patch_bash
+
 	# Skip tests that can not run while cross-compiling.
 	cat > config.cache << "EOF"
 ac_cv_func_mmap_fixed_mapped=yes
@@ -62,17 +67,21 @@ bash_cv_under_sys_siglist=yes
 bash_cv_unusable_rtsigs=no
 gt_cv_int_divbyzero_sigfpe=yes
 EOF
-	./configure \
-		$CONFIGURE_ARGS \
-		--cache-file=config.cache \
-		--bindir=/bin \
-		--enable-history --enable-alias  \
-		--disable-nls --without-bash-malloc \
-		--disable-help-builtin \
-		--with-installed-readline=no &&
+
+	./configure					\
+		--cache-file=config.cache		\
+		--bindir=/bin				\
+		--enable-history			\
+		--enable-alias				\
+		--disable-nls				\
+		--without-bash-malloc			\
+		--disable-help-builtin			\
+		--with-installed-readline=no		\
+		$CONFIGURE_ARGS &&
 	make &&
 	# Bash doesn't care about DESTDIR in environnment variable.
 	make DESTDIR=$DESTDIR install
+
 	[ -s "$SOURCES_REPOSITORY/$BASHCHECK" ] || 
 		busybox wget --no-check-certificate -O "$SOURCES_REPOSITORY/$BASHCHECK" $BASHCHECKURL
 	$DESTDIR/bin/bash $SOURCES_REPOSITORY/$BASHCHECK $DESTDIR/bin/bash | tee bashcheck.log
@@ -82,17 +91,18 @@ EOF
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/bin $fs
-	# Config files.
-	#
+	cp -a $install/bin	$fs
+
+	# Configuration files.
 	mkdir $fs/etc
-	cp $stuff/example.bashrc $fs/etc/bashrc
+	cp $stuff/example.bashrc	$fs/etc/bashrc
 }
 
 
 post_install()
 {
-	mkdir -p "$1/etc/skel"; cp -a "$1/etc/bashrc" "$1/etc/skel/.bashrc"
+	mkdir -p "$1/etc/skel"
+	cp -a "$1/etc/bashrc"	"$1/etc/skel/.bashrc"
 
 	# Exit function in non-interactive mode (when user can't answer question)
 	! tty -s && return
@@ -107,11 +117,12 @@ post_install()
 	sed -i 's|:/bin/[ckz]*sh$|:/bin/bash|' "$1/etc/passwd"
 
 	echo 'Creating ~/.bashrc file for all users'
-	for i in $(awk -F: '$7=="/bin/bash"{print $6}' "$1/etc/passwd"); do
+	for i in $(awk -F: '$7=="/bin/bash"{print $6}' "$1/etc/passwd")
+	  do
 		[ -e "$1$i/.bashrc" ] && continue
-		cp "$1/etc/bashrc" "$1$i/.bashrc"
-		chown $(stat -c%U:%G "$1$i") "$1$i/.bashrc"
-	done
+		cp "$1/etc/bashrc"		"$1$i/.bashrc"
+		chown $(stat -c%U:%G "$1$i")	"$1$i/.bashrc"
+	  done
 }
 
 
