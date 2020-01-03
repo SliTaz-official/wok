@@ -1,29 +1,42 @@
 # SliTaz package receipt.
 
 PACKAGE="bind"
-VERSION="9.11.0"
+VERSION="9.14.9"
 CATEGORY="network"
+TAGS="DNS daemon"
 SHORT_DESC="Domain Name System daemon."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="ISC"
+WEB_SITE="https://www.isc.org/bind/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="https://www.isc.org/"
-WGET_URL="http://ftp.isc.org/isc/bind9/$VERSION/$TARBALL"
+WGET_URL="https://ftp.isc.org/isc/bind9/$VERSION/$TARBALL"
+
+DEPENDS="attr gcc83-lib-base libbind libcrypto openssl perl"
+BUILD_DEPENDS="gcc83 krb5-dev libcap-dev libtool openssl-dev 
+	perl python python-ply readline-dev"
+
 CONFIG_FILES="/etc/bind"
 TAZPANEL_DAEMON="edit::/etc/bind/named.conf|man|options|web::$WEB_SITE"
-TAGS="DNS daemon"
-
-DEPENDS="libbind libcrypto attr openssl perl"
-BUILD_DEPENDS="libtool libcap-dev openssl-dev perl krb5-dev readline-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	mkdir -p $DESTDIR/etc/bind
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--sysconfdir=/etc/bind --localstatedir=/var --with-libtool \
-	--mandir=/usr/share/man --with-openssl $CONFIGURE_ARGS && \
-	make && make DESTDIR=$DESTDIR install && \
+
+	./configure				\
+		CC=gcc-83			\
+		CXX=g++-83			\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--sysconfdir=/etc/bind		\
+		--localstatedir=/var		\
+		--with-libtool			\
+		--mandir=/usr/share/man		\
+		--with-openssl			\
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install &&
 	LD_LIBRARY_PATH=$DESTDIR/usr/lib \
 	$DESTDIR/usr/bin/dig ns . @a.root-servers.net. > $DESTDIR/etc/bind/db.root
 }
@@ -31,10 +44,12 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/var/cache/bind
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/etc $fs
-	cp -a $stuff/etc $fs
+	mkdir -p $fs/usr
+	mkdir -p $fs/var/cache/bind
+
+	cp -a $install/usr/sbin	$fs/usr
+	cp -a $install/etc	$fs
+	cp -a $stuff/etc	$fs
 }
 
 # Post message when installing.
@@ -44,6 +59,7 @@ post_install()
 	grep -qs allow-recursion "$1/etc/bind/named.conf.options" ||
 	sed -i "s/.*directory.*/\\tallow-recursion { $localnets };\\n&/" \
 		"$1/etc/bind/named.conf.options"
+
 	#[ -x "$1/usr/bin/ssh-keygen" ] &&
 	#chroot "$1/" "hostname -f | xargs ssh-keygen -r" | \
 	#	sed 's/^/update add /;s/ IN / 3600&/;/ SSHFP . 1 /d;' \
