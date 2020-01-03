@@ -1,21 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="binutils"
-VERSION="2.25"
+VERSION="2.33.1"
 CATEGORY="development"
+TAGS="assembler linker"
 SHORT_DESC="GNU assembler, linker and binary utilities."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://www.gnu.org/software/binutils/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://www.gnu.org/software/binutils/"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 #WGET_URL="https://www.kernel.org/pub/linux/devel/binutils/$TARBALL"
-PROVIDE="libbfd"
-TAGS="assembler linker"
-HOST_ARCH="i486 arm"
+WGET_URL="http://ftp.gnu.org/gnu/$PACKAGE/$TARBALL"
 
+PROVIDE="libbfd"
 DEPENDS="flex glibc zlib"
-BUILD_DEPENDS="glibc-dev zlib-dev texinfo"
+BUILD_DEPENDS="glibc-dev texinfo zlib-dev"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation.
 case "$ARCH" in
@@ -28,37 +31,43 @@ compile_rules()
 	case "$ARCH" in
 		i?86) ARCH_ARGS="--disable-werror" ;;
 	esac
-	mkdir -p ../binutils-build && cd ../binutils-build
-	$src/configure \
-		--program-prefix=$TOOLPREFIX \
-		--enable-shared \
-		--disable-initfini-array \
-		--with-bugurl="http://bugs.slitaz.org/" \
-		$CONFIGURE_ARGS $ARCH_ARGS &&
+
+	mkdir -p ../binutils-build &&
+	cd ../binutils-build
+	$src/configure					\
+		--program-prefix=$TOOLPREFIX		\
+		--enable-shared				\
+		--disable-initfini-array		\
+		--with-bugurl="http://bugs.slitaz.org/"	\
+		$CONFIGURE_ARGS				\
+		$ARCH_ARGS &&
 	make tooldir=/usr &&
 	make tooldir=/usr install &&
 	# This is the default binutils, so create symlinks to the target platform
 	# binutil binaries. Delete duplicate binaries to save space.
-	for binutil in $(ls -1 $DESTDIR/usr/bin | grep "${TOOLPREFIX}") ; do
+	for binutil in $(ls -1 $DESTDIR/usr/bin | grep "${TOOLPREFIX}")
+	  do
 		path="$DESTDIR/usr/bin/$(echo "$binutil" | sed "s:$TOOLPREFIX::g")"
-		if [ -e $path ] ; then
+		if [ -e $path ]
+		  then
 			rm -f $path
 		fi
 		ln -s $binutil $path
-	done
+	  done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/*.a $fs/usr/lib
-	cp -a $install/usr/include $fs/usr
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/*.a	$fs/usr/lib
+	cp -a $install/usr/include	$fs/usr
 
 	# libiberty.h
-	cp -a $src/include/libiberty.h $fs/usr/include
+	cp -a $src/include/libiberty.h	$fs/usr/include
 
 	# Remove 'strings' (Busybox).
 	#rm $fs/usr/lib/libiberty.a
