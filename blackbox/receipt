@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="blackbox"
-VERSION="0.70.1"
+VERSION="0.75"
 CATEGORY="x-window"
-SHORT_DESC="A small, fast, full-featured window manager for X"
+TAGS="window-manager"
+SHORT_DESC="A small, fast, full-featured window manager for X."
 MAINTAINER="devl547@gmail.com"
 LICENSE="MIT"
 WEB_SITE="https://github.com/bbidulock/blackboxwm"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="$SF_MIRROR/blackboxwm/$TARBALL"
-TAGS="window-manager"
 
-DEPENDS="xorg-libXt xorg-libXft"
-BUILD_DEPENDS="xorg-libXt-dev xorg-libXft-dev xorg-xextproto libxml2-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
+
+DEPENDS="gcc83-lib-base xorg-libXft xorg-libXt"
+BUILD_DEPENDS="autoconf automake gcc83 libtool libxml2-dev 
+	xorg-libXft-dev xorg-libXt-dev xorg-xextproto"
 
 # TODO: modify tazx for blackbox so it will creat a correct ~/.xinitrc
 # to let user use the wm via slim/F1 or by default with 'tazx blackbox'.
@@ -20,15 +22,17 @@ BUILD_DEPENDS="xorg-libXt-dev xorg-libXft-dev xorg-xextproto libxml2-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch -p1 < $stuff/blackbox-0.70.1-gcc-4.3.patch
-	patch -p0 < $stuff/blackbox-0.70.1-asneeded.patch
-	patch -p1 < $stuff/textpropertytostring-unconditional.patch
+#	patch -p1 < $stuff/blackbox-0.70.1-gcc-4.3.patch
+#	patch -p0 < $stuff/blackbox-0.70.1-asneeded.patch
+#	patch -p1 < $stuff/textpropertytostring-unconditional.patch
 
-	./configure \
-		--sysconfdir=/etc \
-		--libexecdir=/usr/bin \
-		--mandir=/usr/share/man \
-	$CONFIGURE_ARGS &&
+	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		--sysconfdir=/etc	\
+		--libexecdir=/usr/bin	\
+		--mandir=/usr/share/man	\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -37,6 +41,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/blackbox $fs/usr/share
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/blackbox	$fs/usr/share
 }
