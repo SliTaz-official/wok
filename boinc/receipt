@@ -1,36 +1,40 @@
 # SliTaz package receipt.
 
 PACKAGE="boinc"
-VERSION="6.10.58"
+VERSION="7.16.3"
 CATEGORY="network"
 SHORT_DESC="Open-source software for volunteer computing and grid computing."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://boinc.berkeley.edu/"
-WGET_URL="svn|https://boinc.berkeley.edu/svn/tags/boinc_core_release_${VERSION//./_}"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/BOINC/$PACKAGE/archive/client_release/${VERSION%.*}/$VERSION.tar.gz"
 
 # The init script requires bash.
-DEPENDS="openssl libcurl wxWidgets28 libnotify bash"
-BUILD_DEPENDS="subversion openssl-dev autoconf automake curl-dev libidn-dev \
-wxWidgets28-dev libnotify-dev sqlite-dev file"
+DEPENDS="bash libcurl libnotify openssl wxWidgets"
+BUILD_DEPENDS="autoconf automake curl-dev file libidn-dev 
+	libnotify-dev libtool openssl-dev sqlite-dev wxWidgets-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	sed -i 's/AC_PROG_CPP/&\nAC_PROG_OBJCXX/' configure.ac
-	automake --add-missing
-	./_autosetup
-	./configure \
-		--disable-server \
-		--enable-unicode \
-		--enable-optimize \
+
+#	automake --add-missing
+
+	./_autosetup &&
+	./configure			\
+		--disable-server	\
+		--enable-unicode	\
+		--enable-optimize	\
 		$CONFIGURE_ARGS &&
-	make
-	for i in locale/*/*.mo; do
+	make &&
+	for i in locale/*/*.mo
+	  do
 		[ -s $(dirname $i)/$(basename ${i%mo})po ] &&
 		rm $i && msgfmt -o $i $(dirname $i)/$(basename ${i%mo})po
-	done
+	  done &&
 	make install
 }
 
@@ -41,23 +45,25 @@ genpkg_rules()
 		$fs/usr/lib \
 		$fs/var/lib/boinc \
 		$fs/usr/share/pixmaps
-	cp -a $install/etc $fs
-	chmod 0644 $fs/etc/boinc-client.conf
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp $install/usr/share/boinc/boincmgr.48x48.png \
-		$fs/usr/share/pixmaps/boincmgr.png
-	rm $fs/etc/init.d/boinc-client
-	cp $stuff/boinc-client $fs/etc/init.d/boinc-client
+
+	cp -a $install/usr/etc		$fs
+	chmod 0644			$fs/etc/boinc-client.conf
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp $src/packages/generic/sea/boincmgr.48x48.png \
+					$fs/usr/share/pixmaps/boincmgr.png
+	rm				$fs/etc/init.d/boinc-client
+	cp $stuff/boinc-client		$fs/etc/init.d/boinc-client
 }
 
 post_install()
 {
 	echo
 	# Check if boinc user already exists
-	if grep -q ^${BOINCUSER}: "$1/etc/passwd"; then
+	if grep -q ^${BOINCUSER}: "$1/etc/passwd"
+	  then
 		chroot "$1/" adduser -g "BOINC User" -h /var/lib/boinc -s /bin/bash -S -H -D boinc
-	else
+	  else
 		# In case boinc was previously installed:
 		chroot "$1/" chown -R boinc /var/lib/boinc
 	fi
@@ -70,10 +76,11 @@ post_remove()
 	echo
 	echo -n "Delete user boinc and /var/lib/boinc (yes/No) ? : "
 	read -t 30 answer
-	if [ "$answer" = "yes" ]; then
+	if [ "$answer" = "yes" ]
+	  then
 		chroot "$1/" deluser boinc
 		rm -r "$1/var/lib/boinc"
-	else
+	  else
 		echo ""
 		echo "Leaving user boinc and /var/lib/boinc"
 	fi
