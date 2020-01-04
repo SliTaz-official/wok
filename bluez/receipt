@@ -1,20 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="bluez"
-VERSION="4.101"
+VERSION="5.52"
 CATEGORY="system-tools"
+TAGS="bluetooth"
 SHORT_DESC="Bluetooth protocol stack."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="http://www.bluez.org/"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-#WGET_URL="https://www.kernel.org/pub/linux/bluetooth/$TARBALL"
-WGET_URL="http://sourceware.mirrors.tds.net/pub/kernel.org/linux/bluetooth/$TARBALL"
-CONFIG_FILES="/etc/bluetooth"
-TAGS="bluetooth"
 
-DEPENDS="linux-bluetooth alsa-lib glib dbus pygobject dbus-python libusb-compat"
-BUILD_DEPENDS="alsa-lib-dev dbus-dev glib-dev libusb-dev pkg-config libusb-compat"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://www.kernel.org/pub/linux/bluetooth/$TARBALL"
+#WGET_URL="http://sourceware.mirrors.tds.net/pub/kernel.org/linux/bluetooth/$TARBALL"
+
+DEPENDS="dbus dbus-python glib libical libusb-compat linux-bluetooth pygobject"
+BUILD_DEPENDS="dbus-dev glib-dev libical-dev libusb-compat libusb-dev 
+	pkg-config readline-dev"
+
+CONFIG_FILES="/etc/bluetooth"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -22,25 +25,31 @@ compile_rules()
 	sed -i 's/NEED_USB/xx&/' tools/*.c
 	sed -i 's/from gi.repo.*/try:\n  &\nexcept ImportError:\n  import gobject as GObject/' test/simple-agent
 
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--libexecdir=/lib \
-		--mandir=/usr/share/man \
-		--enable-bccmd \
-		--enable-dfutool \
-		--enable-dund \
-		--enable-hid2hci \
-		--enable-hidd \
-		--enable-pand \
-		--enable-usb \
-		--enable-cups \
-		--enable-tools \
-		--enable-wiimote \
-		--enable-sap \
-		--disable-test \
-		--without-systemdunitdir \
+	export	LDFLAGS="$LDFLAGS -ltinfo"
+
+	# 5.52 unrecognised
+#		--enable-bccmd \
+#		--enable-dfutool \
+#		--enable-dund \
+#		--enable-hid2hci \
+#		--enable-hidd \
+#		--enable-pand \
+#		--enable-usb \
+#		--enable-wiimote \
+
+
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		--localstatedir=/var	\
+		--libexecdir=/lib	\
+		--mandir=/usr/share/man	\
+		--enable-cups		\
+		--enable-library	\
+		--enable-sap		\
+		--enable-tools		\
+		--disable-systemd	\
+		--disable-test		\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -49,19 +58,22 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/alsa-lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/alsa-lib/*.so* $fs/usr/lib/alsa-lib
-	cp -a $install/usr/lib/bluetooth $fs/usr/lib
-	cp -a $install/usr/lib/cups $fs/usr/lib
-	cp -a $install/etc $fs
-	cp -a $install/var $fs
+	mkdir -p $fs/lib
+	mkdir -p $fs/usr/lib
 
-	#some extra tools and config files
-	cp -a $src/test/simple-agent $fs/usr/bin/bluez-simple-agent
-	cp  $src/audio/audio.conf $fs/etc/bluetooth
+	cp -a $install/etc			$fs
+	cp -a $install/lib/bluetooth		$fs/lib
+	cp -a $install/lib/udev			$fs/lib
+	cp -a $install/usr/bin			$fs/usr
+#	cp -a $install/usr/sbin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+#	cp -a $install/usr/lib/alsa-lib/*.so*	$fs/usr/lib/alsa-lib
+	cp -a $install/usr/lib/cups		$fs/usr/lib
+	cp -a $install/var			$fs
+
+	#some extra tools and configuration files
+	cp -a $src/test/simple-agent		$fs/usr/bin/bluez-simple-agent
+#	cp  $src/audio/audio.conf		$fs/etc/bluetooth
 }
 
 # Post message when installing.
