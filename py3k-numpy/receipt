@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="py3k-numpy"
+VERSION="1.17.5"
+CATEGORY="development"
+SHORT_DESC="Scientific computing library for Python."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="BSD"
+WEB_SITE="https://numpy.org/"
+
+SOURCE="numpy"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$SOURCE/$SOURCE/archive/v$VERSION.tar.gz"
+
+DEPENDS="gcc83-lib-base py3k"
+BUILD_DEPENDS="gcc83 py3k-dev py3k-cython"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	{
+	python3 setup.py build &&
+	python3 setup.py install --root=$DESTDIR
+	} 2>&1 | grep -Ev '(conftest.c:|configtest.c:)'
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/usr	$fs
+}
+
+# Remove old package.
+post_install()
+{
+	[ ! -d "$1/var/lib/tazpkg/installed/numpy" ] ||
+	rm -rf "$1/var/lib/tazpkg/installed/numpy"
+}
