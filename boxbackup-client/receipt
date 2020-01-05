@@ -1,17 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="boxbackup-client"
-VERSION="0.11.1"
+VERSION="0.12"
 CATEGORY="network"
-SHORT_DESC="Client for the BoxBackup on-line backup system"
+TAGS="backup automatic client"
+SHORT_DESC="Client for the BoxBackup on-line backup system."
 MAINTAINER="domcox@slitaz.org"
 LICENSE="GPL2"
-SOURCE="boxbackup"
-WANTED="boxbackup-server"
 WEB_SITE="https://www.boxbackup.org/"
-TAGS="backup automatic client"
 
-DEPENDS="db libedit libssl perl zlib gcc-lib-base"
+SOURCE="boxbackup"
+DEPENDS="db gcc-lib-base libedit libssl perl zlib"
+WANTED="boxbackup-server"
 
 # Configuration variables
 CONF_DIR="/etc/boxbackup"
@@ -22,10 +22,12 @@ RUN_DMON=0
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $install/boxbackup-${VERSION}-backup-client-linux-gnu/bb* $fs/usr/bin
-	rm -f $fs/usr/bin/*.*
 	mkdir -p $fs/etc/init.d
-	cp -a $stuff/bbackupd $fs/etc/init.d
+
+	cp -a $install/boxbackup-git_-backup-client-i486-slitaz-linux-gnu/bb* \
+				$fs/usr/bin
+	rm -f			$fs/usr/bin/*.*
+	cp -a $stuff/bbackupd	$fs/etc/init.d
 }
 
 # Pre and post install commands for Tazpkg
@@ -33,7 +35,8 @@ genpkg_rules()
 pre_install()
 {
 	# Stop daemon
-	if [ -z "$1" -a -e /var/run/bbackupd.pid ]; then
+	if [ -z "$1" -a -e /var/run/bbackupd.pid ]
+	  then
 		/etc/init.d/bbackupd stop
 		RUN_DMON=1
 	fi
@@ -41,16 +44,23 @@ pre_install()
 
 post_install()
 {
-	# Creating conf dir
-	if [ ! -e "$1/$CONF_DIR" ]; then
+	# Creating configuration directory
+	if [ ! -e "$1/$CONF_DIR" ]
+	  then
 		mkdir -p "$1/$CONF_DIR" && chmod 755 "$1/$CONF_DIR"
 	fi
-	if [ ! -e "$1/$DATA_DIR" ]; then
+
+	# Create data directory
+	if [ ! -e "$1/$DATA_DIR" ]
+	  then
 	    mkdir -p "$1/$DATA_DIR" && chmod 700 "$1/$DATA_DIR"
 	fi
-	if [ -z "$1" ]; then
+
+	if [ -z "$1" ]
+	  then
 		# Start daemon (if stopped by install)
-		if [ $RUN_DMON -eq 1 ]; then
+		if [ $RUN_DMON -eq 1 ]
+		  then
 			/etc/init.d/bbackupd start
 		fi
 	fi
@@ -62,8 +72,10 @@ post_install()
 pre_remove()
 {
 	# Stop daemon
-	if [ -z "$1" ]; then
-		if [ -e /var/run/bbackupd.pid ]; then
+	if [ -z "$1" ]
+	  then
+		if [ -e /var/run/bbackupd.pid ]
+		  then
 			/etc/init.d/bbackupd stop
 		fi
 	fi
@@ -74,16 +86,18 @@ post_remove()
 	# Delete DATA directory
 	rm -rf "$1/$DATA_DIR"
 
-	# Delete Client config files
+	# Delete Client configuration file
 	rm -rf "$1/$CONF_DIR"/bbackupd*
 
 	# Delete CONF dir (if empty)
-	if [ $(ls -lA "$1/$CONF_DIR" | wc -l) -eq 0 ]; then
+	if [ $(ls -lA "$1/$CONF_DIR" | wc -l) -eq 0 ]
+	  then
 		echo
 		action "Removing $CONF_DIR..."
 		rm -rf "$1/$CONF_DIR"
 		status
 	fi
+
 	# Delete PID, sock files
 	rm -f "$1/var/run/bbackupd".*
 }

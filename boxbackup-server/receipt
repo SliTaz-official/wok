@@ -1,22 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="boxbackup-server"
-VERSION="0.11.1"
+VERSION="0.12"
 CATEGORY="network"
-SHORT_DESC="Server for the BoxBackup on-line backup system"
+TAGS="backup automatic server network"
+SHORT_DESC="Server for the BoxBackup on-line backup system."
 MAINTAINER="domcox@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="https://www.boxbackup.org/"
-SOURCE="boxbackup"
-TARBALL="$SOURCE-$VERSION.tgz"
-# stable
-# WGET_URL="$SF_MIRROR/$SOURCE/$TARBALL"
-#WGET_URL="http://www.boxbackup.org/svn/box/packages/$TARBALL"
-WGET_URL="http://www.boxbackup.org/export/3106/box/packages/$TARBALL"
-TAGS="backup automatic server network"
 
-DEPENDS="db libedit openssl perl zlib gcc-lib-base"
-BUILD_DEPENDS="db-dev libedit-dev openssl-dev zlib-dev"
+SOURCE="boxbackup"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$SOURCE/$SOURCE/archive/BoxBackup-$VERSION.master.190831.9e0e93e.tar.gz"
+
+DEPENDS="db gcc-lib-base libedit openssl perl zlib"
+BUILD_DEPENDS="autoconf automake db-dev libedit-dev openssl-dev zlib-dev"
 
 # Configuration variables
 HOSTNAME=$(ifconfig | awk -F ":" '/cast/ {print substr($2,0, index($2," ")-1) }')
@@ -28,14 +26,15 @@ BBUSER="bbstored"
 # Rules to configure and make the package.
 compile_rules()
 {
+	./bootstrap &&
 	./configure --prefix=/usr $CONFIGURE_ARGS &&
-	make -j1 && {
+	make -j1 &&
+	{
 		mkdir -p $DESTDIR
-		cp -a parcels/boxbackup-${VERSION}-backup-client-linux-gnu $DESTDIR
-		cp -a parcels/boxbackup-${VERSION}-backup-server-linux-gnu $DESTDIR
-		rm -f $DESTDIR/boxbackup-${VERSION}-backup-server-linux-gnu/*.*
+		cp -a parcels/boxbackup-git_-backup-client-i486-slitaz-linux-gnu $DESTDIR
+		cp -a parcels/boxbackup-git_-backup-server-i486-slitaz-linux-gnu $DESTDIR
+		rm -f $DESTDIR/boxbackup-git_-backup-server-i486-slitaz-linux-gnu/*.*
 	}
-
 	cook_pick_manpages $src/docs/man/*
 }
 
@@ -43,9 +42,12 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $install/boxbackup-${VERSION}-backup-server-linux-gnu/bb* $fs/usr/bin
-	cp -a $install/boxbackup-${VERSION}-backup-server-linux-gnu/ra* $fs/usr/bin
 	mkdir -p $fs/etc/init.d
+
+	cp -a $install/boxbackup-git_-backup-server-i486-slitaz-linux-gnu/bb* \
+				$fs/usr/bin
+	cp -a $install/boxbackup-git_-backup-server-i486-slitaz-linux-gnu/ra* \
+				$fs/usr/bin
 	cp -a $stuff/bbstored $fs/etc/init.d
 }
 
@@ -55,20 +57,23 @@ genpkg_rules()
 pre_install()
 {
 	# Stop daemon
-	if [ -z "$1" -a -e /var/run/bbstored.pid ]; then
+	if [ -z "$1" -a -e /var/run/bbstored.pid ]
+	  then
 		/etc/init.d/bbstored stop
 	fi
 }
 
 post_install()
 {
-	# default conf dir is now /etc/boxbackup
-	if [ ! -e "$1/etc/box/bbstored.conf" ]; then
+	# default configuration directory is now /etc/boxbackup
+	if [ ! -e "$1/etc/box/bbstored.conf" ]
+	  then
 		mv "$1/etc/box" "$1$CONF_DIR"
 	fi
 
 	# adduser BBUSER if needed
-	if  ! grep -q $BBUSER "$1/etc/passwd"; then
+	if  ! grep -q $BBUSER "$1/etc/passwd"
+	  then
 		echo
 		action "Adding user '$BBUSER'..."
 		echo $BBUSER':x:505:505:BoxBackup Network Backup:/dev/null:/bin/false' >> "$1/etc/passwd"
@@ -78,15 +83,17 @@ post_install()
 		status
 	fi
 
-	# Create config is needed
-	if [ ! -e "$1$CONF_DIR" ]; then
+	# Create configuration as needed
+	if [ ! -e "$1$CONF_DIR" ]
+	  then
 		mkdir -p "$1$CONF_DIR" &&
 		chroot "$1/" chown $BBUSER $CONF_DIR &&
 		chmod 700 "$1$CONF_DIR"
 	fi
 
-	if [ ! -e "$1$DATA_DIR/backup" ]; then
-		# Creating backup dir
+	if [ ! -e "$1$DATA_DIR/backup" ]
+	  then
+		# Creating backup directory
 		action "Creating backup directory..."
 		mkdir -p "$1$DATA_DIR/backup" &&
 		chroot "$1/" chown -R $BBUSER $DATA_DIR &&
@@ -94,7 +101,8 @@ post_install()
 		status
 	fi
 
-	if [ ! -e "$1$CONF_DIR/raidfile.conf" ]; then
+	if [ ! -e "$1$CONF_DIR/raidfile.conf" ]
+	  then
 		# RAID Setup
 		action "Disabling deprecated userland RAID..."
 		chroot "$1/" /usr/bin/raidfile-config $CONF_DIR 2048 $DATA_DIR 2>1 > /dev/null
@@ -103,13 +111,16 @@ post_install()
 		chmod 700 -R "$1$CONF_DIR/raidfile.conf"
 	fi
 
-	if [ ! -e "$1$CONF_DIR/bbstored.conf" ]; then
+	if [ ! -e "$1$CONF_DIR/bbstored.conf" ]
+	  then
 		# Setting hostname
 		action "Setting hostname... "
-		if [ $(chroot "$1/" hostname -f 2>1 > /dev/null;echo $?) -eq 0 ]; then
+		if [ $(chroot "$1/" hostname -f 2>1 > /dev/null;echo $?) -eq 0 ]
+		  then
 			HOSTNAME=$(chroot "$1/" hostname -f)
 		fi
-		if [ -z $HOSTNAME ]; then
+		if [ -z $HOSTNAME ]
+		  then
 			HOSTNAME="127.0.0.1"
 		fi
 		export $HOSTNAME
@@ -127,20 +138,22 @@ post_install()
 
 		# Sign the server certificate
 		action "Sign the server certificate..."
-		chroot "$1/" openssl x509 -req -sha1 -extensions usr_crt \
-			-in $CONF_DIR/$BBUSER/${HOSTNAME}-csr.pem \
-			-CA $CA_DIR/roots/serverCA.pem \
-			-CAkey $CA_DIR/keys/serverRootKey.pem \
-			-out $CA_DIR/servers/${HOSTNAME}-cert.pem \
+		chroot "$1/" openssl x509 -req -sha1 -extensions usr_crt	\
+			-in $CONF_DIR/$BBUSER/${HOSTNAME}-csr.pem		\
+			-CA $CA_DIR/roots/serverCA.pem				\
+			-CAkey $CA_DIR/keys/serverRootKey.pem			\
+			-out $CA_DIR/servers/${HOSTNAME}-cert.pem		\
 			-days 5000 2>1 > /dev/null
 		status
 
 		# Preparing the server certificates
 		action "Installing server certificate..."
-		cp -a "$1$CA_DIR/servers/${HOSTNAME}-cert.pem" "$1$CONF_DIR/$BBUSER"
+		cp -a "$1$CA_DIR/servers/${HOSTNAME}-cert.pem" \
+			"$1$CONF_DIR/$BBUSER"
 		status
 		action "Installing client certificate..."
-		cp -a "$1$CA_DIR/roots/clientCA.pem" "$1$CONF_DIR/$BBUSER"
+		cp -a "$1$CA_DIR/roots/clientCA.pem" \
+			"$1$CONF_DIR/$BBUSER"
 		status
 
 		# Securing $CONF_DIR
@@ -148,7 +161,8 @@ post_install()
 		chmod 700 -R "$1$CONF_DIR/bbstored"*
 	fi
 
-	if [ -e "$1$CA_DIR" ]; then
+	if [ -e "$1$CA_DIR" ]
+	  then
 		# Warning
 		echo
 		echo "IMPORTANT NOTE:"
@@ -169,37 +183,47 @@ pre_remove()
 post_remove()
 {
 	echo
-	if  grep -q $BBUSER /etc/passwd; then
+	if  grep -q $BBUSER /etc/passwd
+	  then
 		action "Removing $BBUSER user..."
 		deluser bbstored
 		status
 	fi
+
 	# Delete data
-	if [ -e $DATA_DIR ]; then
+	if [ -e $DATA_DIR ]
+	  then
 		action "Removing all backup data..."
 		rm -r $DATA_DIR
 		status
 	fi
-	# Delete bbstored conf files
-	if [ -e $CONF_DIR/bbstored.conf ]; then
+
+	# Delete bbstored configuration files
+	if [ -e $CONF_DIR/bbstored.conf ]
+	  then
 		action "Removing config files..."
 		rm -rf $CONF_DIR/bbstored
 		rm -f $CONF_DIR/raidfile.conf
 		rm -f $CONF_DIR/bbstored.conf
 		status
 	fi
+
 	# Delete certificates
-	if [ -e $CA_DIR ]; then
+	if [ -e $CA_DIR ]
+	  then
 		action "Removing certificates..."
 		rm -r $CA_DIR
 		status
 	fi
+
 	# Delete $CONF_DIR (if empty)
-	if [ $(ls -lA $CONF_DIR | wc -l) -eq 0 ]; then
+	if [ $(ls -lA $CONF_DIR | wc -l) -eq 0 ]
+	  then
 		action "Removing $CONF_DIR..."
 		rm -r $CONF_DIR
 		status
 	fi
+
 	# Delete PID, sock files
 	rm -f /var/run/bbstored.*
 }
