@@ -1,26 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="bozohttpd"
-VERSION="20111118"
+VERSION="20190228"
 CATEGORY="network"
-SHORT_DESC="Small and secure http version 1.1 server"
+TAGS="http server lightweight CGI ipv6 ssl"
+SHORT_DESC="Small and secure http version 1.1 server."
 MAINTAINER="milka@konstelacioj.info"
 LICENSE="BSD"
 WEB_SITE="http://www.eterna.com.au/$PACKAGE/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="http://www.eterna.com.au/$PACKAGE/$TARBALL"
-TAGS="http server lightweight CGI ipv6 ssl"
-PROVIDE="lighttpd"
 
+PROVIDE="lighttpd"
+SUGGESTED="haserl"
 DEPENDS="openssl"
 BUILD_DEPENDS="openssl-dev"
-SUGGESTED="haserl"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	make -f Makefile.boot all
+	export	LDFLAGS="$LDFLAGS -lrt"	# to resolve clock_...
 
+	make -f Makefile.boot all &&
 	cook_pick_manpages bozohttpd.8
 }
 
@@ -28,5 +30,5 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $src/bozohttpd $fs/usr/bin
+	cp -a $src/bozohttpd	$fs/usr/bin
 }
