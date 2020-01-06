@@ -1,41 +1,42 @@
 # SliTaz package receipt.
 
 PACKAGE="bygfoot"
-VERSION="2.2.1"
+VERSION="2.3.2"
 CATEGORY="games"
-SHORT_DESC="Manage your own football (soccer) team in a league season"
+SHORT_DESC="Manage your own football (soccer) team in a league season."
 MAINTAINER="ben@seawolfsanctuary.com"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION-source.zip"
 WEB_SITE="http://www.bygfoot.com/"
-WGET_URL="http://downloads.sourceforge.net/project/$PACKAGE/$PACKAGE/$PACKAGE-$VERSION/$TARBALL"
 
-BUILD_DEPENDS="gtk+-dev glib-dev pango pango-dev atk-dev freetype-dev"
-DEPENDS="gtk+ glib pango atk freetype acl"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="acl atk freetype glib gtk+ pango"
+BUILD_DEPENDS="atk-dev freetype-dev glib-dev gtk+-dev pango-dev"
 
 compile_rules()
 {
 	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries"
-	
-	cd $src
 
 	chmod +x configure
 	sed -i 's/^top_srcdir/top_builddir = @top_builddir@\n&/' po/Makefile.in.in
-	./configure \
-		--prefix=/usr \
-		--bindir=/usr/games \
-		--mandir=/usr/share/man \
+
+	./configure			\
+		--prefix=/usr		\
+		--bindir=/usr/games	\
+		--mandir=/usr/share/man	\
 		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS && make DESTDIR=$DESTDIR install
+	make $MAKEFLAGS &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/
-	cp -a $install/usr $fs/
+	cp -a $install/usr	$fs/
 
 	# Copy .desktop file:
-	cp -a $stuff/* $fs/usr
+	cp -a $stuff/*		$fs/usr
 }
