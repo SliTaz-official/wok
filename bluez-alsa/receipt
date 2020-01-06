@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="bluez-alsa"
+VERSION="2.0.0"
+CATEGORY="multimedia"
+TAGS="bluetooth sound"
+SHORT_DESC="Bluetooth Audio ALSA Backend."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="MIT"
+WEB_SITE="https://github.com/Arkq/bluez-alsa"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/v$VERSION.tar.gz"
+
+DEPENDS="alsa-lib bluez glib libsbc"
+BUILD_DEPENDS="alsa-lib-dev autoconf automake bluez-dev glib-dev 
+	libsbc-dev libtool"
+
+CONFIG_FILES="/etc/alsa/conf.d/20-bluealsa.conf"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	{
+	autoreconf --install &&
+	mkdir build &&
+	cd build &&
+	../configure				\
+		--prefix=/usr			\
+		--enable-ofono			\
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+	} 2>&1 | sed 's/: No such/:  no such/'
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/etc/alsa
+	mkdir -p $fs/etc/dbus-1
+	mkdir -p $fs/usr/lib/alsa-lib
+
+	cp -a $install/usr/etc/alsa/conf.d	$fs/etc/alsa
+	cp -a $install/etc/dbus-1/system.d	$fs/etc/dbus-1
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/alsa-lib/*.so*	$fs/usr/lib/alsa-lib
+}
