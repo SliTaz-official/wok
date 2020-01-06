@@ -1,19 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="bzip2"
-VERSION="1.0.6"
+VERSION="1.0.8"
 CATEGORY="utilities"
+TAGS="compression archive"
 SHORT_DESC="High-quality data compressor."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://sourceware.org/bzip2/"
-WGET_URL="http://www.bzip.org/$VERSION/$TARBALL"
-TAGS="compression archive"
-HOST_ARCH="i486 arm"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://sourceware.org/pub/$PACKAGE/$TARBALL"
 
 DEPENDS="bzlib"
 BUILD_DEPENDS=""
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -21,15 +23,17 @@ compile_rules()
 	# Disable the tests since they won't work on a multi-architecture build
 	cp Makefile Makefile.orig
 	sed -e "/^all:/s/ test//" Makefile.orig > Makefile
-	
+
 	# No configure script, we must used CC, AR and RANLIB set by cook.
 	case "$ARCH" in
 		arm*)
 			make -f Makefile-libbz2_so CC=${CC} AR=${AR} RANLIB=${RANLIB} &&
-			make clean && make CC=${CC} AR=${AR} RANLIB=${RANLIB} ;;
+			make clean &&
+			make CC=${CC} AR=${AR} RANLIB=${RANLIB} ;;
 		*)
 			make -f Makefile-libbz2_so &&
-			make clean && make ;;
+			make clean &&
+			make ;;
 	esac
 
 	cook_pick_manpages bzdiff.1 bzgrep.1 bzip2.1 bzmore.1
@@ -45,7 +49,8 @@ testsuite()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $src/bzip2-shared $fs/usr/bin/bzip2
+	cp -a $src/bzip2-shared	$fs/usr/bin/bzip2
+
 	# Da bunzip2, bzcat and lib symlink.
 	cd $fs/usr/bin
 	ln -s bzip2 bunzip2
@@ -55,7 +60,7 @@ genpkg_rules()
 # Restore Busybox symlinks upon removal
 post_remove()
 {
-	ln -s /bin/busybox /usr/bin/bunzip2
-	ln -s /bin/busybox /usr/bin/bzcat
-	#ln -s /bin/busybox /usr/bin/bzip2
+	ln -s /bin/busybox	/usr/bin/bunzip2
+	ln -s /bin/busybox	/usr/bin/bzcat
+	#ln -s /bin/busybox	/usr/bin/bzip2
 }
