@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="c_icap"
-VERSION="0.5.5"
+VERSION="0.5.6"
 CATEGORY="network"
 SHORT_DESC="Implementation of an ICAP server."
 MAINTAINER="erjo@slitaz.org"
@@ -17,9 +17,9 @@ BUILD_DEPENDS=""
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--sysconfdir=/etc/c-icap \
-		--enable-large-files \
+	./configure				\
+		--sysconfdir=/etc/c-icap	\
+		--enable-large-files		\
 		$CONFIGURE_ARGS &&
 	make &&
 	make install
@@ -28,33 +28,33 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/$PACKAGE \
-		$fs/etc/init.d \
-		$fs/var/log/c-icap
-						
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/$PACKAGE/*.so* $fs/usr/lib/$PACKAGE
-	
-	cp -pa $install/etc $fs/
-	cp -pa $stuff/c-icapd $fs/etc/init.d
-	
+	mkdir -p $fs/usr/lib/$PACKAGE
+	mkdir -p $fs/etc/init.d
+	mkdir -p $fs/var/log/c-icap
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/$PACKAGE/*.so*	$fs/usr/lib/$PACKAGE
+	cp -pa $install/etc			$fs/
+	cp -pa $stuff/c-icapd			$fs/etc/init.d
+
 	# Cleanup
 	rm -f $fs/usr/bin/c-icap-config
-	
-	# Fix config file
-	sed -i -e "s|YourServerName|localhost|" \
-		-e "s|/usr/var/log|/var/log/c-icap/|" \
-		-e "s|/usr/var/run/|/var/run/c-icap|" \
-		-e "s|/usr/etc|/etc/c-icap|" $fs/etc/c-icap/c-icap.conf
+
+	# Fix configuration file
+	sed -i	-e "s|YourServerName|localhost|"	\
+		-e "s|/usr/var/log|/var/log/c-icap/|"	\
+		-e "s|/usr/var/run/|/var/run/c-icap|"	\
+		-e "s|/usr/etc|/etc/c-icap|"		\
+		$fs/etc/c-icap/c-icap.conf
 	chmod -x $fs/etc/c-icap/*
-		
 }
 
 post_install()
 {
-	[ -z "$1" -a ! -s /aufs-umount.sh ] && /etc/init.d/c-icapd start
-			
+	[ -z "$1" -a ! -s /aufs-umount.sh ] &&
+	/etc/init.d/c-icapd start
+
 	cat <<EOF
 	
 ----
@@ -67,13 +67,15 @@ Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
 EOF
 }
 
-pre_remove(){
-		
+pre_remove()
+{
 		echo "Stopping daemon..."
-		if (ps | grep -q c-icap); then
+		if (ps | grep -q c-icap)
+		  then
 			chroot "$1/" /etc/init.d/c-icapd stop
 		fi
 }
+
 post_remove()
 {
 	echo "Removing stalled files..."
