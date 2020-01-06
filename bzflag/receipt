@@ -1,34 +1,42 @@
 # SliTaz package receipt.
 
 PACKAGE="bzflag"
-VERSION="2.4.0"
+VERSION="2.4.18"
 CATEGORY="games"
 SHORT_DESC="A multiplayer 3D tank battle game."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="LGPL2.1"
+WEB_SITE="https://bzflag.org"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://bzflag.org"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="curl mesa libsdl glew"
-BUILD_DEPENDS="curl-dev mesa-dev libsdl-dev glew-dev util-linux-uuid-dev"
+DEPENDS="c-ares curl gcc83-lib-base glew libsdl mesa"
+BUILD_DEPENDS="c-ares-dev curl-dev gcc83 glew-dev libsdl-dev 
+	mesa-dev util-linux-uuid-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|uname -m|echo i486|' package/Makefile* src/other/glew/config/Makefile.linux
+	sed -i 's|uname -m|echo i486|' \
+		package/Makefile*
+#		src/other/glew/config/Makefile.linux
+
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -ltinfo"
-	./configure \
-		--with-glew \
+
+	./configure		\
+		CC=gcc-83	\
+		CXX=g++-83	\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/bzflag $fs/usr/share
-}
 
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/bzflag	$fs/usr/share
+}
