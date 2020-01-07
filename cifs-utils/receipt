@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="cifs-utils"
-VERSION="6.8"
+VERSION="6.10"
 CATEGORY="system-tools"
 SHORT_DESC="CIFS userland tools."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -12,16 +12,16 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="https://download.samba.org/pub/linux-cifs/$PACKAGE/$TARBALL"
 
 PROVIDE="smbfs"
-DEPENDS="linux-cifs attr libcap"
-BUILD_DEPENDS="automake autoconf talloc-dev libcap-dev samba-dev krb5-dev"
+DEPENDS="attr libcap linux-cifs"
+BUILD_DEPENDS="autoconf automake krb5-dev libcap-dev samba-dev talloc-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	autoreconf -i
-	./configure \
-		--prefix=/usr \
-		--mandir=/usr/share/man \
+	autoreconf -i &&
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -34,8 +34,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/sbin
-	cp -a $install/sbin $fs
-	cd $fs/usr/sbin
+
+	cp -a $install/sbin	$fs
+	cd			$fs/usr/sbin
 	ln -s ../../sbin/mount.cifs .
 	ln -s ../../sbin/mount.cifs umount.cifs
 }
