@@ -1,28 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="ccid"
-VERSION="1.4.30"
+VERSION="1.4.31"
 CATEGORY="base-system"
-SHORT_DESC="Chip/Smart Card Interface Devices driver."
+SHORT_DESC="Chip and Smart Card Interface Devices driver."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="LGPL2.1"
 WEB_SITE="https://ccid.apdu.fr/"
 
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="$WEB_SITE/files/$TARBALL"
+WGET_URL="${WEB_SITE}files/$TARBALL"
 
 DEPENDS="libusb pcsc-lite"
-BUILD_DEPENDS="wget pcsc-lite-dev libusb-dev"
+BUILD_DEPENDS="libusb-dev pcsc-lite-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--enable-serialconfdir=/etc/reader.conf.d \
-		--enable-usbdropdir=/usr/lib/pcsc/drivers \
-		--enable-twinserial \
+	./configure						\
+		--prefix=/usr					\
+		--sysconfdir=/etc				\
+		--enable-serialconfdir=/etc/reader.conf.d	\
+		--enable-usbdropdir=/usr/lib/pcsc/drivers	\
+		--enable-twinserial				\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install &&
@@ -32,21 +32,26 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc/udev/rules.d/ $fs/usr/bin $fs/usr/sbin
-	cp -a $install/* $fs/
-	cp $src/src/92_pcscd_ccid.rules $fs/etc/udev/rules.d/
+	mkdir -p $fs/etc/udev/rules.d
+	mkdir -p $fs/usr/bin $fs/usr/sbin
+
+	cp -a $install/*		$fs/
+	cp $src/src/92_pcscd_ccid.rules	$fs/etc/udev/rules.d/
 	mv $fs/usr/lib/pcsc/drivers/ifd-ccid.bundle/Contents/Info.plist \
-		$fs/etc/libccid_Info.plist
+					$fs/etc/libccid_Info.plist
 	ln -s /etc/libccid_Info.plist \
 		$fs/usr/lib/pcsc/drivers/ifd-ccid.bundle/Contents/Info.plist
-	cp $src/contrib/RSA_SecurID/RSA_SecurID_getpasswd $fs/usr/bin
-	cp $src/contrib/Kobil_mIDentity_switch/Kobil_mIDentity_switch $fs/usr/sbin
+	cp $src/contrib/RSA_SecurID/RSA_SecurID_getpasswd \
+					$fs/usr/bin
+	cp $src/contrib/Kobil_mIDentity_switch/Kobil_mIDentity_switch \
+					$fs/usr/sbin
 }
 
 post_install()
 {
 	# addgroup pcscd if needed                                                                                                                
-	if ! grep -q pcscd "$1/etc/group"; then
+	if ! grep -q pcscd "$1/etc/group"
+	  then
 		echo
 		echo -n "Adding group pcscd..."
 		chroot "$1/" addgroup pcscd
