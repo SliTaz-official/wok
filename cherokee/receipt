@@ -1,56 +1,71 @@
 # SliTaz package receipt.
 
 PACKAGE="cherokee"
-VERSION="1.2.101"
+VERSION="1.2.104"
 CATEGORY="network"
 SHORT_DESC="A very fast, fiexible and easy to configure Web Server."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.cherokee-project.com/"
-WGET_URL="http://www.cherokee-project.com/download/${VERSION%.*}/$VERSION/$TARBALL"
-PROVIDE="lighttpd"
+WEB_SITE="http://cherokee-project.com/"
 
-DEPENDS="pcre cyrus-sasl openssl python libmysqlclient libldap ffmpeg"
-BUILD_DEPENDS="pcre-dev cyrus-sasl-dev openssl-dev openldap-dev python-dev \
-pam-dev libmysqlclient ffmpeg-dev gettext autoconf automake libtool"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://www.cherokee-project.com/download/${VERSION%.*}/$VERSION/$TARBALL"
+
+PROVIDE="lighttpd"
+DEPENDS="cyrus-sasl ffmpeg libldap libmysqlclient openssl pcre python"
+BUILD_DEPENDS="autoconf automake cyrus-sasl-dev ffmpeg-dev gettext 
+	libmysqlclient libtool openssl-dev openldap-dev pam-dev pcre-dev 
+	python-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# Update deprecated symbols of ffmpeg
-	sed -i 's|hdl->avformat->file_size|avio_size(hdl->avformat)|' cherokee/handler_streaming.c
-	
-	# Use subdirectory for logs
-	sed -i -r 's|(%localstatedir%/log)|\1/cherokee|' cherokee.conf.sample.pre
+	sed -i 's|hdl->avformat->file_size|avio_size(hdl->avformat)|' \
+		cherokee/handler_streaming.c
 
-	autoreconf -vfi
-	./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
-		--with-wwwroot=/var/www/cherokee --disable-static \
-		--with-wwwuser=www --with-wwwgroup=www \
-		--enable-os-string="SliTaz" \
+	# Use subdirectory for logs
+	sed -i -r 's|(%localstatedir%/log)|\1/cherokee|' \
+		cherokee.conf.sample.pre
+
+	./autogen.sh					\
+		--prefix=/usr				\
+		--sysconfdir=/etc			\
+		--localstatedir=/var			\
+		--with-wwwroot=/var/www/cherokee	\
+		--disable-static			\
+		--with-wwwuser=www			\
+		--with-wwwgroup=www			\
+		--enable-os-string="SliTaz"		\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install && {
-	install -D -m644 pam.d_cherokee $DESTDIR/etc/pam.d/$PACKAGE
-	chown -R www:www $DESTDIR/var/lib/$PACKAGE/graphs
-	python -m compileall $DESTDIR
-	python -O -m compileall $DESTDIR
-	mkdir -p $DESTDIR/var/log/$PACKAGE $DESTDIR/etc/logrotate.d
-	chown -R www:www $DESTDIR/var/log/$PACKAGE
-	cp -a $stuff/$PACKAGE.logrotate $DESTDIR/etc/logrotate.d/$PACKAGE
+	make &&
+	make DESTDIR=$DESTDIR install &&
+	{
+		install -D -m644 pam.d_cherokee	$DESTDIR/etc/pam.d/$PACKAGE
+		chown -R www:www		$DESTDIR/var/lib/$PACKAGE/graphs
+		python -m compileall $DESTDIR
+		python -O -m compileall $DESTDIR
+
+		mkdir -p $DESTDIR/var/log/$PACKAGE
+		mkdir -p $DESTDIR/etc/logrotate.d
+		chown -R www:www		$DESTDIR/var/log/$PACKAGE
+		cp -a $stuff/$PACKAGE.logrotate	$DESTDIR/etc/logrotate.d/$PACKAGE
 	}
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/cherokee $fs/usr/share $fs/etc/init.d
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/cherokee/*.so* $fs/usr/lib/cherokee
-	cp -a $install/usr/share/cherokee $fs/usr/share
-	cp -a $install/var $fs
-	cp -a $install/etc $fs
-	cp -a $stuff/cherokee $fs/etc/init.d
+	mkdir -p $fs/usr/lib/cherokee
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/etc/init.d
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/sbin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/cherokee/*.so*	$fs/usr/lib/cherokee
+	cp -a $install/usr/share/cherokee	$fs/usr/share
+	cp -a $install/var			$fs
+	cp -a $install/etc			$fs
+	cp -a $stuff/cherokee			$fs/etc/init.d
 }
