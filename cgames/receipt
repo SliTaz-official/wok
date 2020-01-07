@@ -1,12 +1,13 @@
 # SliTaz package receipt.
 
 PACKAGE="cgames"
-VERSION="2.2"
+VERSION="2.2a"
 CATEGORY="games"
 SHORT_DESC="Games for the Linux Console."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="http://www.muppetlabs.com/~breadbox/software/cgames.html"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://www.muppetlabs.com/~breadbox/pub/software/$TARBALL"
 
@@ -17,16 +18,21 @@ BUILD_DEPENDS="ncurses-dev"
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -ltinfo"
-	sed -i	-e 's|install -.*\$|&(destdir)/$|' \
-		-e "s|^prefix|destdir = $DESTDIR\\n&|" \
-		-e 's/g games/g root/' */Makefile.in
-	sed -i 's/.* getline(.*/#define getline mygetline\n&/' */fileread.h
-	./configure --prefix=/usr \
-	--mandir=/usr/share/man \
-	--datadir=/usr/share \
-	--disable-mouse \
-	--with-ncurses \
-	$CONFIGURE_ARGS &&
+
+	sed -i	-e 's|install -.*\$|&(destdir)/$|'	\
+		-e "s|^prefix|destdir = $DESTDIR\\n&|"	\
+		-e 's/g games/g root/'			\
+		*/Makefile.in
+	sed -i 's/.* getline(.*/#define getline mygetline\n&/' \
+		*/fileread.h
+
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
+		--datadir=/usr/share	\
+		--disable-mouse		\
+		--with-ncurses		\
+		$CONFIGURE_ARGS &&
 	make &&
 	make install
 }
@@ -35,9 +41,10 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/games $fs/usr
-	cp -a $install/usr/share/cblocks $fs/usr/share
-	cp -a $install/usr/share/csokoban $fs/usr/share
+
+	cp -a $install/usr/games		$fs/usr
+	cp -a $install/usr/share/cblocks	$fs/usr/share
+	cp -a $install/usr/share/csokoban	$fs/usr/share
 
 	find $fs -type f -name '*.txt' -exec chmod a-x \{\} \;
 }
