@@ -1,23 +1,38 @@
 # SliTaz package receipt.
 
 PACKAGE="cmus"
-VERSION="v2.5.0"
+VERSION="2.8.0"
 CATEGORY="multimedia"
-SHORT_DESC="Cmus is a small, fast and powerful console music player."
+SHORT_DESC="A small, fast and powerful console music player."
 MAINTAINER="claudinei@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://cmus.sourceforge.net"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WEB_SITE="https://cmus.github.io/"
 
-DEPENDS="ncurses libmad libvorbis alsa-lib flac"
-BUILD_DEPENDS="ncurses-dev libmad-dev libvorbis-dev alsa-lib-dev flac-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/archive/v$VERSION/$TARBALL"
+
+DEPENDS="alsa-lib flac gcc83-lib-base libmad libvorbis ncurses"
+BUILD_DEPENDS="alsa-lib-dev flac-dev gcc83 libmad-dev libvorbis-dev 
+	ncurses-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure prefix=/usr && 
-	make && make install
+	export	LDFLAGS="$LDFLAGS -latomic"
+	
+	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		CONFIG_AO=n		\
+		CONFIG_FFMPEG=n		\
+		CONFIG_JACK=n		\
+		CONFIG_OPUS=n		\
+		CONFIG_PULSE=n		\
+		CONFIG_ROAR=n		\
+		CONFIG_SAMPLERATE=n	\
+		prefix=/usr && 
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -26,7 +41,8 @@ genpkg_rules()
 	mkdir -p $fs/usr/share
 	mkdir -p $fs/usr/bin
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin/cmus* $fs/usr/bin
-	cp -a $install/usr/lib/cmus $fs/usr/lib
-	cp -a $install/usr/share/cmus $fs/usr/share
+
+	cp -a $install/usr/bin/cmus*	$fs/usr/bin
+	cp -a $install/usr/lib/cmus	$fs/usr/lib
+	cp -a $install/usr/share/cmus	$fs/usr/share
 }
