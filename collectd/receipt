@@ -1,38 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="collectd"
-VERSION="5.8.1"
+VERSION="5.10.0"
 CATEGORY="network"
-SHORT_DESC="System Stattistics Collection Daemon"
+SHORT_DESC="System Statistics Collection Daemon."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://collectd.org"
+WEB_SITE="https://collectd.org"
 
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="http://collectd.org/files/$TARBALL"
-CONFIG_FILES="/etc/collectd/collectd.conf"
 
-DEPENDS="rrdtool perl"
-BUILD_DEPENDS="slitaz-toolchain rrdtool-dev"
+DEPENDS="perl rrdtool"
+BUILD_DEPENDS="rrdtool-dev slitaz-toolchain"
+
+CONFIG_FILES="/etc/collectd/collectd.conf"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--localstatedir=/var \
-		--enable-interface \
-		--enable-load \
-		--enable-cpu \
-		--enable-disk \
-		--enable-logfile \
-		--enable-syslog \
-		--enable-csv\
-		--enable-rrdtool \
-		--with-librrdtool=/usr/include \
-		--disable-all-plugins \
-		--sysconfdir=/etc/collectd \
-		--localstatedir=/var \
+	./configure				\
+		--prefix=/usr			\
+		--localstatedir=/var		\
+		--enable-interface		\
+		--enable-load			\
+		--enable-cpu			\
+		--enable-disk			\
+		--enable-logfile		\
+		--enable-syslog			\
+		--enable-csv			\
+		--enable-rrdtool		\
+		--with-librrdtool=/usr/include	\
+		--disable-all-plugins		\
+		--sysconfdir=/etc/collectd	\
+		--localstatedir=/var		\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -42,20 +43,21 @@ compile_rules()
 genpkg_rules()
 {
 
-	mkdir -p $fs/usr/lib/collectd \
-		$fs/usr/share \
-		$fs/etc/init.d
-	
-	cp -a $install/etc $fs/
-	cp -a $install/var $fs/
-	cp -a $install/usr/share/collectd $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/collectd/*.so $fs/usr/lib/collectd
-	cp -a $install/usr/lib/perl5 $fs/usr/lib
-	
+	mkdir -p $fs/usr/lib/collectd
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/etc/init.d
+
+	cp -a $install/etc			$fs
+	cp -a $install/var			$fs
+	cp -a $install/usr/share/collectd	$fs/usr/share
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/sbin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/collectd/*.so	$fs/usr/lib/collectd
+	cp -a $install/usr/lib/perl5		$fs/usr/lib
+
 	# Add init script and fixes
-	install -g root -o root -m 0755 $stuff/collectd $fs/etc/init.d
-	chmod 0644 $fs/etc/collectd/*
+	install -g root -o root -m 0755 $stuff/collectd \
+						$fs/etc/init.d
+	chmod 0644				$fs/etc/collectd/*
 }
