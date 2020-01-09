@@ -1,33 +1,41 @@
 # SliTaz package receipt.
 
 PACKAGE="cocoalib"
-VERSION="0.9952"
+VERSION="0.99650"
 CATEGORY="misc"
-SHORT_DESC="CoCoALib is a GPL C++ library for doing Computations in Commutative Algebra"
+SHORT_DESC="C++ library for computations in commutative algebra"
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL3"
 WEB_SITE="http://cocoa.dima.unige.it/cocoalib/"
+
 TARBALL="CoCoALib-$VERSION.tgz"
 WGET_URL="${WEB_SITE}tgz/$TARBALL"
 
-DEPENDS="gmp gsl libboost-thread libboost-system libboost-filesystem \
-libboost-iostreams libboost-tr1"
-BUILD_DEPENDS="bash gmp-dev gsl-dev libboost-thread-dev libboost-system-dev \
-libboost-filesystem-dev libboost-iostreams-dev libboost-tr1-dev"
+DEPENDS="gcc83-lib-base gmp gsl libboost-filesystem libboost-iostreams 
+	libboost-system libboost-thread libboost-tr1"
+BUILD_DEPENDS="bash gcc83 gmp-dev gsl-dev libboost-filesystem-dev 
+	libboost-iostreams-dev libboost-system-dev libboost-thread-dev 
+	libboost-tr1-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	find | grep Makefile | sed 's/Makefile.*/Makefile_dependencies/' | \
-		xargs touch -d 197001010000
-	./configure $CONFIGURE_ARGS && make library
+#	find | grep Makefile | sed 's/Makefile.*/Makefile_dependencies/' | \
+#		xargs touch -d 197001010000
+
+	export	CC=gcc-83	# rejected as configure parameter
+	export	CXX=g++-83
+
+	./configure &&
+	make library
 	# INSTALL TARGET for CoCoALib NOT YET IMPLEMENTED
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/include
-	cp -a $src/lib/libcocoa.a /$fs/usr/lib
-	cp -a $src/include/* $fs/usr/include
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/include
+	cp -a $src/lib/libcocoa.a	/$fs/usr/lib
+	cp -a $src/include/*		$fs/usr/include
 }
