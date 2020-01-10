@@ -1,30 +1,40 @@
 # SliTaz package receipt.
 
 PACKAGE="codeblocks"
-VERSION="10.05"
+VERSION="17.12"
 CATEGORY="development"
+TAGS="IDE"
 SHORT_DESC="An open source, cross platform, free C++ IDE."
 MAINTAINER="stefanossofroniou542@gmail.com"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION-src.tar.bz2"
 WEB_SITE="http://www.codeblocks.org/"
-WGET_URL="http://download.berlios.de/codeblocks/$TARBALL"
-TAGS="IDE"
 
-DEPENDS="wxWidgets28"
-BUILD_DEPENDS="wxWidgets28-dev xorg-libXdmcp-dev xorg-libXau-dev expat-dev \
-autoconf automake libtool zip gnome-icon-theme"
+TARBALL="${PACKAGE}_$VERSION.tar.xz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="gamin gcc83-lib-base hunspell wxWidgets28"
+BUILD_DEPENDS="autoconf automake  expat-dev gamin-dev gcc83 gnome-icon-theme 
+	hunspell-dev libboost-dev libtool wxWidgets28-dev xorg-libXau-dev 
+	xorg-libXdmcp-dev zip"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries"
-	
-	busybox patch -p1 -i $stuff/glib.u
-	./configure \
-		--with-contrib-plugins="all, -help" \
-		--prefix=/usr \
+
+	# before 10.05
+#	busybox patch -p1 -i $stuff/glib.u
+
+	#	--with-boost=no		does not work
+	#	because(?) plugin NassiShneiderman/CParser needs libboost-dev
+
+	./configure					\
+		CC=gcc-83				\
+		CXX=g++-83				\
+		--with-boost-libdir=/usr/lib		\
+		--with-contrib-plugins="all, -help"	\
+		--prefix=/usr				\
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
@@ -33,13 +43,15 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/include $fs/usr
-	cp -a $install/usr/lib/pkgconfig $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/*.*a $fs/usr/lib
-	cp -a $install/usr/lib/codeblocks $fs/usr/lib
-	cp -a $install/usr/lib/wxSmithContribItems $fs/usr/lib
-	cp -a $install/usr/share/codeblocks $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	cp -a $install/usr/include		$fs/usr
+	cp -a $install/usr/lib/pkgconfig	$fs/usr/lib
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/*.*a		$fs/usr/lib
+	cp -a $install/usr/lib/codeblocks	$fs/usr/lib
+#	cp -a $install/usr/lib/wxSmithContribItems $fs/usr/lib
+	cp -a $install/usr/share/codeblocks	$fs/usr/share
+	cp -a $install/usr/bin			$fs/usr
 }
