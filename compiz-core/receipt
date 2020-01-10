@@ -1,40 +1,61 @@
 # SliTaz package receipt.
 
 PACKAGE="compiz-core"
-VERSION="0.8.12.3"
+VERSION="0.8.14"
 CATEGORY="x-window"
-SHORT_DESC="Compiz is an OpenGL compositing manager for 3D effect."
+SHORT_DESC="An OpenGL compositing manager for 3D effect."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT GPL LGPL"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://github.com/compiz-reloaded"
-WGET_URL="$WEB_SITE/compiz/releases/download/v$VERSION/compiz-$VERSION.tar.xz"
 
-DEPENDS="librsvg libxslt mesa libglu-mesa dbus dbus-glib startup-notification \
-compiz-bcop compiz-libcompizconfig"
-BUILD_DEPENDS="xorg-dev intltool librsvg-dev libxslt-dev pango-dev libtool \
-startup-notification-dev mesa-dev file dbus-dev dbus-glib-dev cairo-dev \
-util-linux-uuid-dev xcb-util-dev libcroco-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/compiz/archive/v$VERSION.tar.gz"
+
+DEPENDS="compiz-bcop compiz-libcompizconfig dbus dbus-glib 
+	librsvg libglu-mesa mesa libxslt startup-notification"
+BUILD_DEPENDS="autoconf automake cairo-dev dbus-dev dbus-glib-dev 
+	file intltool libcroco-dev librsvg-dev libtool libxslt-dev 
+	mesa-dev pango-dev startup-notification-dev 
+	util-linux-uuid-dev xcb-util-dev xorg-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr --enable-shared --enable-librsvg \
-		--enable-dbus --enable-dbus-glib --enable-glib \
-		--disable-static --disable-inotify
-	make && make install
+	./autogen.sh			\
+		--prefix=/usr		\
+		--enable-shared		\
+		--enable-librsvg	\
+		--enable-dbus		\
+		--enable-dbus-glib	\
+		--enable-glib		\
+		--disable-static	\
+		--disable-inotify
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share/locale
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/compiz $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/share/compiz $fs/usr/share
-	cp -a $install/usr/share/icons $fs/usr/share
-	cp -a $install/usr/share/locale/ru $fs/usr/share
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share/locale
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/compiz	$fs/usr/lib
 	rm -rf $fs/usr/lib/compiz/*.la
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/share/compiz	$fs/usr/share
+	cp -a $install/usr/share/icons	$fs/usr/share
+
+	# Set list of wanted locales in LOCALE_PACK
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+
+	# Copy message files in wanted languages, if available
+	for locale in $LOCALE_PACK
+	  do
+		[ -d $install/usr/share/locale/$locale ] || continue
+		cp -a $install/usr/share/locale/$locale $fs/usr/share/locale
+	  done
+
 	sed 's|bash|sh|' -i $fs/usr/bin/compiz-decorator
 }

@@ -1,40 +1,57 @@
 # SliTaz package receipt.
 
 PACKAGE="compiz-plugins-extra"
-VERSION="0.8.12.1"
+VERSION="0.8.14"
 CATEGORY="x-window"
 SHORT_DESC="Compiz extra plugins."
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://github.com/compiz-reloaded"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$WEB_SITE/$PACKAGE/releases/download/v$VERSION/$TARBALL"
+
 WGET_URL2="$WEB_SITE/$PACKAGE/commit/0b2a652.diff"
 EXTRA_SOURCE_FILES="$PACKAGE-0b2a652.u"
 
-DEPENDS="xorg-libX11 compiz-core compiz-libcompizconfig gtk+ librsvg \
-libnotify compiz-plugins-main"
-BUILD_DEPENDS="xorg-dev compiz-core-dev compiz-libcompizconfig-dev cmake \
-libxslt-dev startup-notification-dev mesa-dev gtk+-dev intltool librsvg-dev \
-libnotify-dev compiz-bcop util-linux-uuid-dev compiz-plugins-main-dev libtool \
-util-linux-getopt xcb-util-dev file"
+DEPENDS="compiz-core compiz-libcompizconfig compiz-plugins-main 
+	gtk+ libnotify librsvg xorg-libX11"
+BUILD_DEPENDS="cmake compiz-bcop compiz-core-dev compiz-libcompizconfig-dev 
+	compiz-plugins-main-dev file gtk+-dev intltool libnotify-dev 
+	librsvg-dev libtool libxslt-dev mesa-dev startup-notification-dev 
+	util-linux-getopt util-linux-uuid-dev xcb-util-dev xorg-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] || \
-		wget -O $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES $WGET_URL2
-	patch -p1 -i $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES
-	./configure --prefix=/usr
-	make && make install
+	# 0.8.12.1
+#	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] || \
+#		wget -O $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES $WGET_URL2
+#	patch -p1 -i $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES
+
+	./configure --prefix=/usr &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share/locale
-	cp -a $install/usr/lib/compiz $fs/usr/lib
-	cp -a $install/usr/share/compiz $fs/usr/share
-	cp -a $install/usr/share/locale/ru $fs/usr/share/locale
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share/locale
+
+	cp -a $install/usr/lib/compiz	$fs/usr/lib
+	cp -a $install/usr/share/compiz	$fs/usr/share
+
+	# Set list of wanted locales in LOCALE_PACK
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+
+	# Copy message files in wanted languages, if available
+	for locale in $LOCALE_PACK
+	  do
+		[ -d $install/usr/share/locale/$locale ] || continue
+		cp -a $install/usr/share/locale/$locale $fs/usr/share/locale
+	  done
+
 	cd $fs/usr/lib/compiz; rm -f *.a *.la
 }

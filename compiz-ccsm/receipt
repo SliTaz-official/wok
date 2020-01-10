@@ -1,24 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="compiz-ccsm"
-VERSION="0.8.12.3"
+VERSION="0.8.14"
 CATEGORY="x-window"
-SHORT_DESC="Compiz Config Settings Manager."
+SHORT_DESC="Compiz Configuration Settings Manager."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://github.com/compiz-reloaded/ccsm"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$WEB_SITE/releases/download/v$VERSION/ccsm-$VERSION.tar.xz"
 
-DEPENDS="python pygobject3 compiz-core compiz-libcompizconfig \
-compiz-compizconfig-python gtk-girepository"
-BUILD_DEPENDS="$DEPENDS python-dev libtool compiz-core-dev \
-compiz-libcompizconfig-dev"
+DEPENDS="compiz-compizconfig-python compiz-core compiz-libcompizconfig 
+	gtk-girepository pygobject3 python"
+BUILD_DEPENDS="compiz-core-dev compiz-libcompizconfig-dev libtool python-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./setup.py install --prefix=/usr --with-gtk=2.0 --root="$DESTDIR"
+	# 0.8.14 to avoid: ERROR Cannot find filename: ccsm.appdata.xml.in
+	sed -i '137d' setup.py
+
+	./setup.py install	\
+		--prefix=/usr	\
+		--with-gtk=2.0	\
+		--root="$DESTDIR"
 
 	find $DESTDIR -name ccsm.desktop | xargs \
 	sed -i 's#Exec=.*#Exec=sh -c \"ccsm \|\| LC_ALL=C LANG=C ccsm\"#'
@@ -28,9 +34,19 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/locale
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/locale/ru $fs/usr/share/locale
-	cp -a $install/usr/share/ccsm $fs/usr/share
-	cp -a $install/usr/share/icons $fs/usr/share
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/usr/share/ccsm	$fs/usr/share
+	cp -a $install/usr/share/icons	$fs/usr/share
+
+	# Set list of wanted locales in LOCALE_PACK
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+
+	# Copy message files in wanted languages, if available
+	for locale in $LOCALE_PACK
+	  do
+		[ -d $install/usr/share/locale/$locale ] || continue
+		cp -a $install/usr/share/locale/$locale $fs/usr/share/locale
+	  done
 }
