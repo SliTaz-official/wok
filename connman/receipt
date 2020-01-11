@@ -1,84 +1,102 @@
 # SliTaz package receipt.
 
 PACKAGE="connman"
-VERSION="1.21"
+VERSION="1.37"
 CATEGORY="network"
-SHORT_DESC="Daemon for managing internet connections"
+SHORT_DESC="Daemon for managing internet connections."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL2"
+WEB_SITE="https://01.org/connman"
+
 TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://connman.net/"
 WGET_URL="http://linux-kernel.uio.no/pub/linux/network/$PACKAGE/$TARBALL"
 
-DEPENDS="glib dbus iptables gnutls libnl libgcrypt udev wpa_supplicant
-dbus-helper"
-BUILD_DEPENDS="glib-dev dbus-dev iptables-dev iptables gnutls-dev libnl-dev
-openconnect udev-dev wpa_supplicant readline-dev ncursesw-dev openvpn
-bluez-dev ppp-dev libgnutls"
 SUGGESTED="xl2tpd pptpclient openvpn"
+DEPENDS="dbus dbus-helper glib gnutls iptables libgcrypt libnl 
+	udev wpa_supplicant"
+BUILD_DEPENDS="bluez-dev dbus-dev glib-dev gnutls-dev iptables 
+	iptables-dev libgnutls libnl-dev ncursesw-dev openconnect 
+	openvpn	ppp-dev readline-dev udev-dev wpa_supplicant"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# add dependency on libncurses.so,
-	sed -i 's/-lreadline/-lreadline -lncurses/' Makefile.in
-	cd $src
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--disable-gtk-doc \
-		--disable-neard \
-		--enable-polkit \
-		--enable-openconnect \
-		--enable-vpnc \
-		--enable-openvpn \
-		--enable-client \
-		--enable-test \
+	sed -i 's/-lreadline/-lreadline -lncurses/' \
+		Makefile.in
+
+	# not recognised after 1.21
+#		--disable-gtk-doc
+
+	./configure				\
+		--prefix=/usr			\
+		--sysconfdir=/etc		\
+		--localstatedir=/var		\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--disable-neard			\
+		--enable-polkit			\
+		--enable-openconnect		\
+		--enable-vpnc			\
+		--enable-openvpn		\
+		--enable-client			\
+		--enable-test			\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	# dbus conf
-	mkdir -p $fs/etc
-	cp -a $install/etc/dbus-1 $fs/etc
-	# conman exec
+	# dbus configuration
+	mkdir -p $fs/etc/dbus-1
+	cp -a $install/usr/share/dbus-1/system.d \
+					$fs/etc/dbus-1
+
+	# connman exec
 	mkdir -p $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	# libs
+	cp -a $install/usr/sbin		$fs/usr
+
+	# libraries
 	mkdir -p $fs/usr/lib/connman/plugins-vpn
 	cp -a $install/usr/lib/connman/plugins-vpn/*.so \
-		$fs/usr/lib/connman/plugins-vpn
+					$fs/usr/lib/connman/plugins-vpn
 	# vpn scripts
 	mkdir -p $fs/usr/lib/connman/scripts
-	cp -a $install/usr/lib/connman/scripts $fs/usr/lib/connman
+	cp -a $install/usr/lib/connman/scripts \
+					$fs/usr/lib/connman
+
 	# share
-	cp -a $install/usr/share $fs/usr
+	mkdir -p $fs/usr/share
+	cp -a $install/usr/share/man	$fs/usr/share
+	cp -a $install/usr/share/polkit-1 \
+					$fs/usr/share
+
 	# init script
-	cp -a $stuff/etc $fs
+	cp -a $stuff/etc		$fs
 }
 
 # Pre and post remove commands for Tazpkg
 post_install()
 {
-	if ! grep -qs ^CONNMAND_OPTIONS "$1/etc/daemons.conf"; then
+	if ! grep -qs ^CONNMAND_OPTIONS "$1/etc/daemons.conf"
+	  then
 		echo '# Connman daemon options.' >> "$1/etc/daemons.conf"
 		echo 'CONNMAND_OPTIONS=""' >> "$1/etc/daemons.conf"
 		echo '' >> "$1/etc/daemons.conf"
 	fi
-	if [ -z "$1" -a -s /etc/network.conf ]; then
+
+	if [ -z "$1" -a -s /etc/network.conf ]
+	  then
 		/etc/init.d/connman start || /etc/init.d/connman restart
 	fi
 }
 
 pre_remove()
 {
-	if [ -z "$1" ]; then
+	if [ -z "$1" ]
+	  then
 		/etc/init.d/connman stop 2> /dev/null
 	fi
 }
