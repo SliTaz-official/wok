@@ -1,36 +1,41 @@
 # SliTaz package receipt.
 
 PACKAGE="conntrack-tools"
-VERSION="1.4.2"
+VERSION="1.4.5"
 CATEGORY="security"
-SHORT_DESC="userspace tools to interact with the Connection Tracking System."
+SHORT_DESC="Userspace tools to interact with the Connection Tracking System."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://$PACKAGE.netfilter.org/"
-WGET_URL="http://www.netfilter.org/projects/$PACKAGE/files/$TARBALL"
+WEB_SITE="https://www.netfilter.org/projects/conntrack-tools/"
 
-DEPENDS="libnfnetlink libnetfilter_conntrack libnetfilter_queue \
-libnetfilter_cthelper libmnl"
-BUILD_DEPENDS="glib-dev libnfnetlink-dev libmnl-dev libnetfilter_conntrack-dev \
-libnetfilter_cttimeout-dev libnetfilter_cthelper-dev libnetfilter_queue-dev \
-bison flex pkg-config"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="${WEB_SITE}files/$TARBALL"
+
+DEPENDS="libmnl libnetfilter_conntrack libnetfilter_cthelper 
+	libnetfilter_queue libnfnetlink"
+BUILD_DEPENDS="bison flex glib-dev libmnl-dev libnetfilter_conntrack-dev 
+	libnetfilter_cthelper-dev libnetfilter_cttimeout-dev 
+	libnetfilter_queue-dev libnfnetlink-dev pkg-config"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i '/enum ip_conntrack_info {/,/};/d' include/helper.h
-	./configure \
-		--prefix=/usr \
-		--mandir=/usr/share/man \
+	sed -i '/enum ip_conntrack_info {/,/};/d' \
+		include/helper.h
+
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/sbin $fs/sbin
-	cp -a $install/usr/lib $fs/usr
+
+	cp -a $install/usr/sbin	$fs/sbin
+	cp -a $install/usr/lib	$fs/usr
 }
