@@ -1,82 +1,98 @@
 # SliTaz package receipt.
 
 PACKAGE="cups-pam"
-VERSION="2.0.2"
+VERSION="2.3.1"
 CATEGORY="system-tools"
 SHORT_DESC="Common UNIX Printing System with PAM support."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2 LGPL2"
-SOURCE="cups"
-TARBALL="$SOURCE-$VERSION-source.tar.bz2"
 WEB_SITE="https://www.cups.org/"
-WGET_URL="https://www.cups.org/software/$VERSION/$TARBALL"
-PROVIDE="cups:pam"
 
-DEPENDS="libssl cups-doc dbus pam libcomerr libkrb5 cups-filters libcups"
-BUILD_DEPENDS="openssl-dev gnutls-dev dbus-dev jpeg-dev libpng-dev tiff-dev \
-pam libcomerr-dev pam-dev acl-dev libgcrypt-dev libgnutls"
+SOURCE="cups"
+TARBALL="$SOURCE-$VERSION-source.tar.gz"
+WGET_URL="https://github.com/apple/$SOURCE/releases/download/v$VERSION/$TARBALL"
+
+PROVIDE="cups:pam"
+DEPENDS="cups-doc cups-filters dbus libcomerr libcups libkrb5 libssl pam"
+BUILD_DEPENDS="acl-dev dbus-dev gnutls-dev jpeg-dev libcomerr-dev 
+	libgcrypt-dev libgnutls libpng-dev openssl-dev pam pam-dev tiff-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch -Np1 -i ${WOK}/cups/stuff/install-sh.u
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--mandir=/usr/share/man \
-		--enable-static \
-		--enable-pam \
-		--disable-ldap \
-		--with-cups-user=nobody \
-		--with-cups-group=nogroup \
-		--with-languages="de es fr pt_BR ru" \
+#	patch -Np1 -i ${WOK}/cups/stuff/install-sh.u
+
+	export	LDFLAGS="$LDFLAGS -lrt"
+
+	# Set list of wanted locales in LOCALE_PACK
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+
+	# <= 2.0.2 unrecognised
+	#	--disable-ldap
+
+	./configure				\
+		--prefix=/usr			\
+		--sysconfdir=/etc		\
+		--localstatedir=/var		\
+		--mandir=/usr/share/man		\
+		--enable-static			\
+		--enable-pam			\
+		--disable-ldap			\
+		--with-cups-user=nobody		\
+		--with-cups-group=nogroup	\
+		--with-languages="$LOCALE_PACK"	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make BUILDROOT=$DESTDIR install
-	cp -f $WOK/cups/stuff/cups.desktop $install/usr/share/applications/cups.desktop
+
+	cp -f $WOK/cups/stuff/cups.desktop \
+		$install/usr/share/applications/cups.desktop
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share
+	mkdir -p $fs/etc
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
 
-	cp -a $install/etc/cups $fs/etc
-	cp -a $install/etc/dbus* $fs/etc
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/cups $fs/usr/lib
-	cp -a $install/usr/share/cups $fs/usr/share
-	cp -a $install/usr/share/icons $fs/usr/share
-	cp -a $install/var $fs
+	cp -a $install/etc/cups		$fs/etc
+	cp -a $install/etc/dbus*	$fs/etc
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/cups	$fs/usr/lib
+	cp -a $install/usr/share/cups	$fs/usr/share
+	cp -a $install/usr/share/icons	$fs/usr/share
+	cp -a $install/var		$fs
 
 	# Remove files provided by cups-filters
-	rm -f $fs/usr/share/cups/banners/*
-	rm -f $fs/usr/share/cups/data/testprint
+	rm -f				$fs/usr/share/cups/banners/*
+	rm -f				$fs/usr/share/cups/data/testprint
 
 	# Remove files provided by libcups
-	rm -f $fs/usr/lib/libcups.so*
+	rm -f				$fs/usr/lib/libcups.so*
 
 	# PAM conf
-	cp -a $stuff/etc $fs
+	cp -a $stuff/etc		$fs
 
 	# Daemon script
-	cp -a $WOK/cups/stuff/etc $fs
+	cp -a $WOK/cups/stuff/etc	$fs
 
 	# TazPanel link
-	cp -a $WOK/cups/stuff/var $fs
+	cp -a $WOK/cups/stuff/var	$fs
 
 }
 
 post_install()
 {
 	# Start CUPS daemon and edit daemons.conf
-	if [ -z "$1" -a ! -s /aufs-umount.sh ]; then
+	if [ -z "$1" -a ! -s /aufs-umount.sh ]
+	  then
 		/etc/init.d/cupsd start || continue
 	fi
-	if ! grep -q ^CUPSD_OPTIONS "$1/etc/daemons.conf"; then
+	if ! grep -q ^CUPSD_OPTIONS "$1/etc/daemons.conf"
+	  then
 		cat >> "$1/etc/daemons.conf" <<EOT
 # CUPS printing daemon options.
 CUPSD_OPTIONS=""
@@ -87,7 +103,7 @@ EOT
 
 pre_remove()
 {
-	# Stop CUPS daemon before rm.
+	# Stop CUPS daemon before remove.
 	[ -z "$1" -a -x /etc/init.d/cupsd ] && /etc/init.d/cupsd stop
 	:
 }
