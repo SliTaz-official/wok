@@ -1,30 +1,35 @@
 # SliTaz package receipt.
 
 PACKAGE="cups-pdf"
-VERSION="2.6.1" 
+VERSION="3.0.1" 
 CATEGORY="system-tools"
-SHORT_DESC="PDF printer for cups"
+TAGS="printer printing"
+SHORT_DESC="PDF printer for cups."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
-TARBALL="${PACKAGE}_${VERSION}.tar.gz"
-WEB_SITE="http://www.physik.uni-wuerzburg.de/~vrbehr/cups-pdf"
-WGET_URL="${WEB_SITE}/src/${TARBALL}"
-TAGS="printer printing"
+WEB_SITE="https://www.cups-pdf.de/"
 
-DEPENDS="ghostscript cups"
+TARBALL="${PACKAGE}_${VERSION}.tar.gz"
+WGET_URL="${WEB_SITE}src/${TARBALL}"
+
+DEPENDS="cups ghostscript"
+BUILD_DEPENDS="cups-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cd $src/src
-	gcc -Wall -o cups-pdf cups-pdf.c	
+	gcc -Wall -o cups-pdf cups-pdf.c -lcups
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc/cups $fs/usr/lib/cups/backend $fs/usr/share/cups/model
-	cp -a $src/src/cups-pdf $fs/usr/lib/cups/backend 
-	cp -a $src/extra/CUPS-PDF.ppd $fs/usr/share/cups/model
-	cp -a $src/extra/cups-pdf.conf   $fs/etc/cups
+	mkdir -p $fs/etc/cups
+	mkdir -p $fs/usr/lib/cups/backend
+	mkdir -p $fs/usr/share/cups/model
+
+	cp -a $src/src/cups-pdf		$fs/usr/lib/cups/backend 
+	cp -a $src/extra/CUPS-PDF_*.ppd	$fs/usr/share/cups/model
+	cp -a $src/extra/cups-pdf.conf	$fs/etc/cups
 }
