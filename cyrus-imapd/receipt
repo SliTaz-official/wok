@@ -1,32 +1,38 @@
 # SliTaz package receipt.
 
 PACKAGE="cyrus-imapd"
-VERSION="2.4.17"
+VERSION="3.0.13"
 CATEGORY="network"
 SHORT_DESC="IMAP server."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://cyrusimap.org/"
-WGET_URL="ftp://ftp.cyrusimap.org/$PACKAGE/$TARBALL"
-CONFIG_FILES="/etc/imapd.conf /etc/cyrus.conf"
 
-BUILD_DEPENDS="libcomerr libcomerr-dev cyrus-sasl cyrus-sasl-dev openssl-dev \
-db-dev perl"
-DEPENDS="libcomerr cyrus-sasl openssl db perl libwrap slitaz-base-files \
-net-snmp"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}/releases/$TARBALL"
+
+DEPENDS="cyrus-sasl db jansson libcomerr libwrap net-snmp openssl perl
+	slitaz-base-files"
+BUILD_DEPENDS="cyrus-sasl-dev db-dev icu-dev jansson-dev libcomerr-dev 
+	openssl-dev perl util-linux-uuid-dev"
+
+CONFIG_FILES="/etc/imapd.conf /etc/cyrus.conf"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -lpthread"
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--with-service-path=/usr/lib/cyrus \
-	--with-cyrus-prefix=/usr/lib/cyrus \
-	--with-com_err=yes \
-	--enable-murder \
-	--enable-replication \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+
+	./configure					\
+		--prefix=/usr				\
+		--infodir=/usr/share/info		\
+		--with-service-path=/usr/lib/cyrus	\
+		--with-cyrus-prefix=/usr/lib/cyrus	\
+		--with-com_err=yes			\
+		--enable-murder				\
+		--enable-replication			\
+		--mandir=/usr/share/man			\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -34,42 +40,52 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/var/imap $fs/var/spool/imap/stage.
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/cyrus $fs/usr/lib
-	cp -a $install/usr/lib/perl5 $fs/usr/lib
-	strip -s $fs/usr/lib/cyrus/*
-	cp $src/tools/mkimap $fs/usr/lib/cyrus
-	cp -a $stuff/etc $fs
-	cp $src/master/conf/small.conf $fs/etc/cyrus.conf
-	for i in proc db socket log msg ptclient; do
+	mkdir -p $fs/usr/lib/cyrus
+	mkdir -p $fs/var/imap
+	mkdir -p $fs/var/spool/imap/stage.
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/libcyrus*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/perl5		$fs/usr/lib
+	strip -s				$fs/usr/lib/lib*
+	cp $src/tools/mkimap			$fs/usr/lib/cyrus
+	cp -a $stuff/etc			$fs
+	cp $src/doc/examples/cyrus_conf/small.conf \
+						$fs/etc/cyrus.conf
+	for i in proc db socket log msg ptclient
+	  do
 		mkdir -m 755 $fs/var/imap/$i
-	done
+	  done
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
         # adduser cyrus if needed
-	if ! grep -q cyrus "$1/etc/passwd"; then
+	if ! grep -q cyrus "$1/etc/passwd"
+	  then
 		echo
 		echo -n "Adding user cyrus..."
 		chroot "$1/" adduser cyrus -D -H -S -h /tmp
 		chroot "$1/" sh -c 'echo "cyrus:cyrus" | chpasswd -m > /dev/null'
 		status
 	fi
+
 	# addgroup mail if needed
-	if ! grep -q mail "$1/etc/group"; then
+	if ! grep -q mail "$1/etc/group"
+	  then
 		echo
 		echo -n "Adding group mail..."
 		chroot "$1/" sh -c 'addgroup mail && addgroup cyrus mail'
 		status
 	fi
+
 	chroot "$1/" chown -R cyrus.mail /var/spool/imap /var/imap
-	while read name port end; do
+	while read name port end
+	  do
 		grep -q $port "$1/etc/services" || \
 			echo "$name		$port	$end" >> "$1/etc/services"
-	done <<EOF
+	  done <<EOF
 pop3 110/tcp pop-3
 nntp 119/tcp readnews untp
 imap 143/tcp imap2 imap4
@@ -83,29 +99,38 @@ sieve 2000/tcp
 lmtp 2003/tcp
 fud 4201/udp
 EOF
+
 	[ "$1" ] || /etc/init.d/$PACKAGE start
-	if [ -f "$1/etc/init.d/postfix" ]; then
-		if ! grep -v ^# "$1/etc/postfix/main.cf" | grep -q lmtp:unix; then
+	if [ -f "$1/etc/init.d/postfix" ]
+	  then
+		if ! grep -v ^# "$1/etc/postfix/main.cf" | grep -q lmtp:unix
+		  then
 			echo
 			echo "Append to /etc/postfix/main.cf:"
 			echo -n "    "
 			echo "mailbox_transport = lmtp:unix:/var/imap/socket/lmtp" | \
 				tee -a "$1/etc/postfix/main.cf"
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				/etc/init.d/postfix start || /etc/init.d/postfix reload
 			fi
 		fi
 	fi
+
 	msg="\\nCreating mailbox for"
-	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < "$1/etc/passwd"); do
+	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < "$1/etc/passwd")
+	  do
 		echo -en "$msg $i"
 		msg=","
-	done
+	  done
 	echo ""
-	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < "$1/etc/passwd"); do
+
+	for i in root $(awk -F: '{ if ($3 >= 1000) print $1 }' < "$1/etc/passwd")
+	  do
 		echo "createmailbox user.$i"
-	done | chroot "$1/" cyradm -u cyrus -w cyrus 127.0.0.1 >/dev/null 2>&1
+	  done | chroot "$1/" cyradm -u cyrus -w cyrus 127.0.0.1 >/dev/null 2>&1
 	chroot "$1/" su -c "/usr/lib/cyrus/bin/reconstruct" cyrus >/dev/null 2>&1
+
 	cat <<EOF
 ----
 Users must have a password to access the mailbox.
