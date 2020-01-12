@@ -1,51 +1,60 @@
 # SliTaz package receipt.
 
 PACKAGE="coreutils"
-VERSION="8.25"
+VERSION="8.31"
 CATEGORY="system-tools"
 SHORT_DESC="Utilities for using and setting the basic system."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
 WEB_SITE="https://www.gnu.org/software/coreutils/coreutils.html"
+
 TARBALL="$PACKAGE-$VERSION.tar.xz"
-WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+WGET_URL="https://ftp.gnu.org/gnu/$PACKAGE/$TARBALL"
 
 SIBLINGS="coreutils-multicall"
-SPLIT="coreutils-character coreutils-command coreutils-conditions coreutils-\
-context-system coreutils-context-user coreutils-context-working coreutils-\
-directory coreutils-disk coreutils-file-attributes coreutils-file-format \
-coreutils-file-output-full coreutils-file-output-part coreutils-file-sort \
-coreutils-file-special coreutils-file-summarize coreutils-line coreutils-\
-numeric coreutils-operations coreutils-path coreutils-print coreutils-\
-redirection"
-DEPENDS="glibc-base acl attr gmp"
-BUILD_DEPENDS="automake xz libcap-dev gmp-dev"
+SPLIT="coreutils-character coreutils-command coreutils-conditions 
+	coreutils-context-system coreutils-context-user 
+	coreutils-context-working coreutils-directory coreutils-disk 
+	coreutils-file-attributes coreutils-file-format 
+	coreutils-file-output-full coreutils-file-output-part 
+	coreutils-file-sort coreutils-file-special coreutils-file-summarize 
+	coreutils-line coreutils-numeric coreutils-operations 
+	coreutils-path coreutils-print coreutils-redirection"
+DEPENDS="acl attr glibc-base gmp"
+BUILD_DEPENDS="automake gmp-dev libcap-dev xz"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# LFS: Coreutils Internationalization Fixes Patch
-	patch -Np1 -i $stuff/coreutils-8.25-i18n-2.patch
+#	patch -Np1 -i $stuff/coreutils-8.25-i18n-2.patch
+
 	# SliTaz: show extended info touching CPU via uname
 	patch  -p1 -i $stuff/uname.u
 
 	autoreconf -fi
 
-	FORCE_UNSAFE_CONFIGURE=1 ./configure $CONFIGURE_ARGS &&
-	make && make install
+	# bypass checking whether mknod can create fifo without root privileges
+	export	FORCE_UNSAFE_CONFIGURE=1
+
+	./configure $CONFIGURE_ARGS &&
+	make &&
+	make install
 
 	# LFS: Move programs to the locations specified by the FHS
-	mkdir -p \
-		$install/bin \
-		$install/usr/sbin \
-		$install/usr/share/man/man8
+	mkdir -p $install/bin
+	mkdir -p $install/usr/sbin
+	mkdir -p $install/usr/share/man/man8
+
 	for i in cat chgrp chmod chown cp date dd df echo false ln ls mkdir \
-		mknod mv pwd rm rmdir stty sync true uname; do
-		mv $install/usr/bin/$i $install/bin
-	done
-	mv  $install/usr/bin/chroot $install/usr/sbin
+		mknod mv pwd rm rmdir stty sync true uname
+	  do
+		mv $install/usr/bin/$i	$install/bin
+	  done
+	mv  $install/usr/bin/chroot	$install/usr/sbin
 	mv  $install/usr/share/man/man1/chroot.1 \
-		$install/usr/share/man/man8/chroot.8
+					$install/usr/share/man/man8/chroot.8
+
 	sed -i 's|"1"|"8"|' $install/usr/share/man/man8/chroot.8
 
 	find $install/usr/share/man -type f -exec gzip -9 \{\} \;
@@ -57,13 +66,17 @@ genpkg_rules()
 	# A set of binaries looks intriguing, isn't it?
 	# For what is this package with exactly these binaries?
 
-	mkdir -p $fs/usr/bin $fs/bin
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/bin
 
 	cd $install/usr/bin
-	cp -a base64 csplit factor fmt join od paste ptx shred shuf split users \
-		groups $fs/usr/bin
+	for i in base64 csplit factor fmt join od paste ptx shred shuf \
+		split users groups
+	  do
+		cp -a $i	$fs/usr/bin
+	  done
 
-	cp -a $install/bin/cp $fs/bin
+	cp -a $install/bin/cp	$fs/bin
 }
 
 post_install()
