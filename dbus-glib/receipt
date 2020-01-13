@@ -1,23 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="dbus-glib"
-VERSION="0.102"
+VERSION="0.110"
 CATEGORY="x-window"
 SHORT_DESC="D-Bus glib binding."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://freedesktop.org/wiki/Software/DBusBindings"
-WGET_URL="http://dbus.freedesktop.org/releases/dbus-glib/$TARBALL"
-HOST_ARCH="i486 arm"
+WEB_SITE="https://freedesktop.org/wiki/Software/DBusBindings/"
 
-DEPENDS="dbus libgio expat"
-BUILD_DEPENDS="dbus-dev glib-dev libgio-dev expat-dev pkg-config gettext"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://dbus.freedesktop.org/releases/dbus-glib/$TARBALL"
+
+DEPENDS="dbus expat libgio"
+BUILD_DEPENDS="dbus-dev expat-dev gettext glib-dev libgio-dev pkg-config"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation. Host pkg-config/gettext are used
 case "$ARCH" in
 	arm*) 
-		BUILD_DEPENDS="dbus-dev glib-dev libgio-dev expat-dev" 
+		BUILD_DEPENDS="dbus-dev expat-dev glib-dev libgio-dev" 
 		export ac_cv_have_abstract_sockets=${ac_cv_have_abstract_sockets=yes} ;;
 esac
 
@@ -30,13 +32,15 @@ compile_rules()
 			patch -p1 < $stuff/dbus-glib.patch &&
 			patch -p0 < $stuff/dbus.patch ;;
 	esac &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
