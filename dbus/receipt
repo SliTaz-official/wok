@@ -1,45 +1,53 @@
 # SliTaz package receipt.
 
 PACKAGE="dbus"
-VERSION="1.6.22"
+VERSION="1.12.16"
 CATEGORY="x-window"
-SHORT_DESC="D-Bus is a message bus system."
+SHORT_DESC="A message bus system."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.freedesktop.org/wiki/Software/dbus"
-WGET_URL="http://dbus.freedesktop.org/releases/dbus/$TARBALL"
-HOST_ARCH="i486 arm"
+WEB_SITE="https://www.freedesktop.org/wiki/Software/dbus/"
 
-DEPENDS="expat xorg-libX11 slitaz-base-files xorg-libICE xorg-libSM \
-xorg-libXau xorg-libXdmcp util-linux-uuid"
-BUILD_DEPENDS="xorg-libX11-dev expat-dev util-linux-uuid-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://dbus.freedesktop.org/releases/dbus/$TARBALL"
+
+DEPENDS="expat slitaz-base-files util-linux-uuid xorg-libICE 
+	xorg-libSM xorg-libX11 xorg-libXau xorg-libXdmcp"
+BUILD_DEPENDS="expat-dev util-linux-uuid-dev xorg-libX11-dev"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--libexecdir=/usr/lib/dbus \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
+	./configure				\
+		--libexecdir=/usr/lib/dbus	\
+		--sysconfdir=/etc		\
+		--localstatedir=/var		\
 		$CONFIGURE_ARGS &&
-	make && make -j 1 install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/etc $fs
-	cp -a $install/var $fs
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/dbus $fs/usr/lib
-	# Remove helper --> dbus-helper
-	rm $fs/usr/lib/dbus/dbus-daemon-launch-helper
-	cp -a $install/usr/share/dbus* $fs/usr/share
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	cp -a $install/etc		$fs
+	cp -a $install/var		$fs
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/dbus	$fs/usr/lib
+	cp -a $install/usr/share/dbus*	$fs/usr/share
+
 	# Init script
 	cp -a $stuff/etc $fs
+
+	# Remove helper --> dbus-helper
+	rm $fs/usr/lib/dbus/dbus-daemon-launch-helper
+
 	chown -R root.root $fs
 }
 
@@ -47,7 +55,8 @@ pre_install()
 {
 	# Go for echoing on configuration files if any messagebus user
 	# was found.
-	if ! grep -qs 'messagebus' "$1/etc/passwd"; then
+	if ! grep -qs 'messagebus' "$1/etc/passwd"
+	  then
 		action 'Adding user: messagebus...'
 		echo 'messagebus:x:25:25:DBUS Daemon User:/dev/null:/bin/false' >> "$1/etc/passwd"
 		echo 'messagebus:!:14013:0:99999:7:::' >> "$1/etc/shadow"
@@ -55,7 +64,8 @@ pre_install()
 		echo 'messagebus:!::' >> "$1/etc/gshadow"
 		status
 	fi
-	if ! grep -qs ^DBUS_OPTIONS "$1/etc/daemons.conf"; then
+	if ! grep -qs ^DBUS_OPTIONS "$1/etc/daemons.conf"
+	  then
 		action 'Configuring %s/etc/daemons.conf...' "$1"
 		cat >> "$1/etc/daemons.conf" << "EOT"
 # DBUS daemon options.
@@ -64,12 +74,14 @@ DBUS_OPTIONS="--system"
 EOT
 		status
 	fi
+
 	[ -d "$1/var/run" ] || mkdir -p "$1/var/run"
 }
 
 pre_remove()
 {
-	if [ -z "$1" ]; then
+	if [ -z "$1" ]
+	  then
 		/etc/init.d/dbus stop 2> /dev/null
 		deluser messagebus
 	fi
