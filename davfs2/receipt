@@ -1,25 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="davfs2"
-VERSION="1.5.4"
+VERSION="1.5.6"
 CATEGORY="network"
 SHORT_DESC="Remote collaborative authoring of Web resources."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://savannah.nongnu.org/projects/$PACKAGE"
-WGET_URL="http://download.savannah.gnu.org/releases/$PACKAGE/$TARBALL"
-CONFIG_FILES="/etc/davfs2"
+WEB_SITE="https://savannah.nongnu.org/projects/$PACKAGE"
 
-DEPENDS="openssl libkrb5 krb5 expat neon zlib libcomerr3"
-BUILD_DEPENDS="openssl-dev krb5-dev krb5 expat-dev neon-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://download.savannah.gnu.org/releases/$PACKAGE/$TARBALL"
+
+DEPENDS="expat krb5 libcomerr3 libkrb5 neon openssl zlib"
+BUILD_DEPENDS="expat-dev krb5 krb5-dev neon-dev openssl-dev"
+
+CONFIG_FILES="/etc/davfs2"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|-fstack-protector-strong ||' src/Makefile.*
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--sysconfdir=/etc --mandir=/usr/share/man $CONFIGURE_ARGS &&
+	sed -i 's|-fstack-protector-strong ||' \
+		src/Makefile.*
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--sysconfdir=/etc		\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -28,10 +36,12 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/etc $fs
-	sed -i -e 's/# dav_user/dav_user/' \
-	       -e 's/# dav_group/dav_group/' \
-	       -e 's/ davfs2 / www /' \
+
+	cp -a $install/usr/sbin	$fs/usr
+	cp -a $install/etc	$fs
+
+	sed -i -e 's/# dav_user/dav_user/'	\
+	       -e 's/# dav_group/dav_group/'	\
+	       -e 's/ davfs2 / www /'		\
 	       $fs/etc/davfs2/davfs2.conf
 }
