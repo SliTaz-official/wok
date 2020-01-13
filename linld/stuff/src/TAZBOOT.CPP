@@ -73,7 +73,7 @@ static void bootiso(char **iso)
 	struct isostate *x=&isostate;
 	
 	if (isoreset(*iso) == -1) return;
-	skip_alloc++;
+	skip_alloc--;
 	base_himem = memtop() /2;
 	//if (base_himem >= _64m) base_himem = _64m;
 	if (* ((char *) &base_himem +3) >= 4) ((short *)&base_himem)[1] = _64m/_64k;
@@ -193,7 +193,7 @@ Examples for tazboot.cmd:\n\n\
 		}
 #ifdef USE_ARGSTR
 	        if ((*(u16 *)s|0x2002) == 0x662F) {	// -F /f
-			skip_alloc++;
+			skip_alloc--;
 			goto next;
 		}
 		if (argstr(s,"kernel/image|initrd|bootfrom/iso",&kernel_name) != -1);
@@ -232,7 +232,7 @@ Examples for tazboot.cmd:\n\n\
 		}
 	        else switch (*(u16 *)s|0x2002) {
 		case 0x662F:	// -F /f
-			skip_alloc++;
+			skip_alloc--;
 			goto next;
 		case 0x652F:	// -E /e
 			s=*++argv;

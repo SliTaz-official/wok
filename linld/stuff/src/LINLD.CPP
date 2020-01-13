@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 	    if (cpuhaslm() == 0) exit();
 	}
         if ((*(u16 *)*argv|0x2002) == 0x662F) {	// -F /f
-	    skip_alloc++;
+	    skip_alloc--;
 	}
 	else if (argstr(*argv,"cl|image|initrd",clp) != -1);
 	else if (fileexist(*argv) != -1)
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
 	    if (cpuhaslm() == 0) exit();
 	    goto next;
 	case 0x662F:	// -F /f
-	    skip_alloc++;
+	    skip_alloc--;
 	    goto next;
 	case 0x622F:	// -B /b
 	    argv++;

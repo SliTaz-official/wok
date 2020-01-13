@@ -138,7 +138,7 @@ void load_kernel() {
 do {
  if (readrm(m, 0x200) == 0x200) {
 
-    lseekcur(m->fd,-0x200);
+    rewind(m->fd);
     if(kernelparams->setup_sects == 0) {
 #if 1
         if(* (int *) &first1k->pad10[0x3F-0x24] == 0x3AE8) {

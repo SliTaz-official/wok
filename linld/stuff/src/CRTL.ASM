@@ -282,19 +282,12 @@ doret:
         endp    @read$qipvi
 
 ;***************************************************************
-;_fastcall long lseekcur(ax:int fd, dx:int whence);
+;_fastcall long rewind(ax:int fd);
 ;***************************************************************
 
-        global  @lseekcur$qii:near		; fd=ax whence=dx
-        proc    @lseekcur$qii near
+        global  @rewind$qi:near			; fd=ax
+        proc    @rewind$qi near
 
-		mov	cl,1
-		xchg	ax,bx
-		xchg	ax,dx
-		cwd
-		xchg	ax,dx
-		xchg	ax,cx
-		jmp	lseek
 rewind:						; rewind(ax)
 		mov	bl,0
 lseek0:						; lseek0(ax,bl=dir)
@@ -306,12 +299,12 @@ lseek:
 		mov	ah,42h			; bx=fd cx:dx=offset al=whence
 		jmp	dos
 
-        endp    @lseekcur$qii
+        endp    @rewind$qi
 
 		ifdef EXTRA
 ;***************************************************************
 ;_fastcall long isolseek(bx:const unsigned long *offset);
-;_fastcall long lseekset2(ax:int fd, bx:unsigned long* whence);
+;_fastcall long lseekset2(ax:int fd, bx:unsigned long* offset);
 ;***************************************************************
         global  @isolseek$qpxul:near
         proc    @isolseek$qpxul near
@@ -1087,7 +1080,7 @@ image_done:
 		cwd
 		jmp	@@popsiret
 @@notvga:
-		mov	cx,10			; radix
+		mov	cl,10			; radix
 		cmp	al,'-'
 		ja	@@radixkeep
 		cmc				; '+'=2B:C=0 '-'=2D:C=1
@@ -1162,11 +1155,11 @@ image_done:
 		ifndef	USE_ARGSTR
 		mov	si,bx
 		endif
+		xor	cx,cx
 		lodsb
 		or	al,20h
 		cmp	al,'a'
 		jb	@@notvga
-		xor	cx,cx
 		sub	al,'n'
 @@vgaloop:
 		dec	cx
@@ -1177,7 +1170,7 @@ image_done:
 @@goend:
 		jmp	@@popdisiret
 @@notvga:
-		mov	cx,10			; radix
+		mov	cl,10			; radix
 		cmp	al,'-'
 		ja	@@radixkeep
 		cmc				; '+'=2B:C=0 '-'=2D:C=1

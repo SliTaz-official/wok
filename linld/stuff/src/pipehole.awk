@@ -77,17 +77,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	 } # file == "himem.cpp"
 	 if (file == "load.cpp") {
-	if (/== 0x200/) isload=13
-	if (isload == 13) {  # LOAD.LST
-		if (/cmp/) {
-			print "	mov	dx,-512"
-			$0="	add	ax,dx"
-		}
-		if (/dx,-512/) {
-			isload=0
-			$0="; " $0
-		}
-	}
 	if (/i\+21\],513$/) isload=11
 	if (isload == 12) {  # LOAD.LST
 		if (/cmp/) next

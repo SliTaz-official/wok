@@ -37,7 +37,7 @@ extern _fastcall int close(int fd);
 extern _fastcall int moverm(unsigned short *p);
 extern _fastcall int readrm(struct image_himem *m, int sz);
 extern _fastcall int read(int fd, void* data, int sz);
-extern _fastcall long lseekcur(int fd, int whence);
+extern _fastcall long rewind(int fd);
 extern _fastcall int puts(const char* s);
 extern _fastcall unsigned long strtol(const char *s);
 

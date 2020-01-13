@@ -6,14 +6,14 @@
 #include "crtl.h"
 #include "common.h"
 
-int skip_alloc;
+u16 skip_alloc;
 
 void load_image(struct image_himem *m) {
     m->remaining = m->size;
     m->buf = m->fallback;	// set no_exit btw: die() won't return to DOS
     u32 buf;
     u32* bufv= &buf;
-    if(((u16 *)&m->fallback)[1] >= 0x10 && !skip_alloc) { // >= _1m ?
+    if(((u16 *)&m->fallback)[1] >= (skip_alloc|0x10)) { // >= _1m ?
 	if(vcpi) {
 	    bufv = (u32 *)malloc_bufv_or_die(m);	// update m->bufv
 	}

@@ -84,7 +84,7 @@ int isoreaddir(void)
 		p--;
 		if (((* (short *) p) & 0xFEFF) -1 == 0) {
 			x->filename = "..";
-			if ((* (short *) p) == 1)
+			if (--(* (short *) p) == 0)
 				x->filename++;
 		}
 		else {
