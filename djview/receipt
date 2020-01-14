@@ -1,23 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="djview"
-VERSION="4.10.3"
+VERSION="4.10.6"
 CATEGORY="graphics"
-SHORT_DESC="Djvu files viewer"
+SHORT_DESC="Djvu files viewer."
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL2"
 WEB_SITE="http://djvu.sourceforge.net/"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="$SF_MIRROR/djvu/$TARBALL"
 
-DEPENDS="libQtGui libQtNetwork libQtOpenGL djvulibre"
-BUILD_DEPENDS="qmake Qt4-dev djvulibre-dev gzip wget mesa-dev file"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://sourceforge.net/projects/djvu/filea/DjView/${VERSION%.*}/$TARBALL"
+
+DEPENDS="djvulibre libQtGui libQtNetwork libQtOpenGL"
+BUILD_DEPENDS="djvulibre-dev file mesa-dev qmake Qt4-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	./configure
-	sed -i 's/-O2/-Os/g' $src/src/Makefile
+	sed -i 's/-O2/-Os/g' src/Makefile
 	make &&
 	make install
 }
@@ -25,9 +26,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
-	ln -s djview $fs/usr/bin/djview4
+	cp -a $install/*	$fs
+	ln -s djview		$fs/usr/bin/djview4
 	cd $fs/usr/share/icons/hicolor/32x32/
 	mv mime* apps
-	rm -rf ../64x64 ../scalable $fs/usr/lib/*/*/*.la
+	rm -rf			../64x64
+	rm -rf			../scalable
+	rm -rf			$fs/usr/lib/*/*/*.la
 }
