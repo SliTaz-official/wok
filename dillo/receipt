@@ -1,46 +1,55 @@
 # SliTaz package receipt.
 
 PACKAGE="dillo"
-VERSION="3.0.4"
+VERSION="3.0.5"
 CATEGORY="network"
-SHORT_DESC="Light and fast web browse using FLTK."
+TAGS="web-browser"
+SHORT_DESC="Light and fast web browser using FLTK."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://www.dillo.org/"
-WGET_URL="https://www.dillo.org/download/$TARBALL"
-TAGS="web-browser"
-HOST_ARCH="i486 arm"
 
-DEPENDS="fltk libpng jpeg zlib openssl xorg-libX11 gcc-lib-base"
-BUILD_DEPENDS="fltk-dev libpng-dev jpeg-dev zlib-dev openssl-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://www.dillo.org/download/$TARBALL"
+
+DEPENDS="fltk gcc-lib-base jpeg libpng openssl xorg-libX11 zlib"
+BUILD_DEPENDS="fltk-dev jpeg-dev libpng-dev openssl-dev zlib-dev"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch -p0 < $stuff/fltk-1.3.3.u
-	cp -f $stuff/pixmaps.slitaz.h src/pixmaps.h &&
-	./configure \
-		--sysconfdir=/etc \
-		--prefix=/usr \
-		--enable-ssl \
+#	patch -p0 < $stuff/fltk-1.3.3.u
+	cp -f $stuff/pixmaps.slitaz.h src/pixmaps.h
+
+	./configure			\
+		--sysconfdir=/etc	\
+		--prefix=/usr		\
+		--enable-ssl		\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/dillo $fs/usr/lib
-	strip -s $fs/usr/lib/dillo/dpi/*/*
-	chmod +x $fs/usr/bin/*
-	# Config files with custom dillorc to have webhome
-	cp -a $install/etc $fs
-	cp -a $stuff/dillorc $fs/etc/dillo
-	cp -a $stuff/webhome $fs/usr/share
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/dillo	$fs/usr/lib
+	strip -s			$fs/usr/lib/dillo/dpi/*/*
+	chmod +x			$fs/usr/bin/*
+
+	# Configuration files with custom dillorc to have webhome
+	cp -a $install/etc		$fs
+	cp -a $stuff/dillorc		$fs/etc/dillo
+	cp -a $stuff/webhome		$fs/usr/share
+
 	# Dillo version for user agent string
 	sed -i s"/_dillo_version_/$VERSION/" $fs/etc/dillo/dillorc
-	chown -R root.root $fs
+
+	chown -R root.root		$fs
 }
