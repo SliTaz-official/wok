@@ -1,52 +1,60 @@
 # SliTaz package receipt.
 
 PACKAGE="docbook-xsl-ns"
-VERSION="1.76.1"
+VERSION="1.79.1"
 CATEGORY="development"
 SHORT_DESC="DocBook XSL (namespaced) stylesheets."
 MAINTAINER="paul@slitaz.org"
 LICENSE="MIT"
+WEB_SITE="https://docbook.sourceforge.net/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://docbook.sourceforge.net/"
-WGET_URL="http://jaist.dl.sourceforge.net/sourceforge/docbook/$TARBALL"
+WGET_URL="https://sourceforge.net/projects/docbook/files/$PACKAGE/$VERSION/$TARBALL"
 
 DEPENDS="libxml2-tools libxslt"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cd $src
 	pkgroot=$fs/usr/share/xml/docbook/stylesheet/$PACKAGE
-	install -dm755 $pkgroot/common
-	install -dm755 $pkgroot/params
+	install -dm755				$pkgroot/common
+	install -dm755				$pkgroot/params
 
-	for fn in xml xsl dtd ent; do
-		install -m644 common/*.${fn} $pkgroot/common/
-	done
+	for fn in xml xsl dtd ent
+	  do
+		install -m644 common/*.${fn}	$pkgroot/common/
+	  done
 
-	for fn in fo highlighting html roundtrip; do
-		install -dm755 ${pkgroot}/${fn}
-		install -m644 ${fn}/*.xml ${pkgroot}/${fn}/
-		install -m644 ${fn}/*.xsl ${pkgroot}/${fn}/
-	done
+	for fn in fo highlighting html roundtrip
+	  do
+		install -dm755			${pkgroot}/${fn}
+		install -m644 ${fn}/*.xml	${pkgroot}/${fn}/
+		install -m644 ${fn}/*.xsl	${pkgroot}/${fn}/
+	  done
 
-	for fn in eclipse htmlhelp javahelp lib manpages profiling template website xhtml xhtml-1_1; do
-		install -dm755 ${pkgroot}/${fn}
-		install -m644 ${fn}/*.xsl ${pkgroot}/${fn}/
-	done
+	for fn in eclipse htmlhelp javahelp lib manpages profiling template website xhtml xhtml-1_1
+	  do
+		install -dm755			${pkgroot}/${fn}
+		install -m644 ${fn}/*.xsl	${pkgroot}/${fn}/
+	  done
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
-	if [ "$1" ]; then
-		mv -f "$1/etc/resolv.conf" "$1/etc/recolv.conf.$$" 2>/dev/null
-		cp /etc/resolv.conf "$1/etc/resolv.conf"
+	if [ "$1" ]
+	  then
+		mv -f "$1/etc/resolv.conf"	"$1/etc/recolv.conf.$$" 2>/dev/null
+		cp /etc/resolv.conf		"$1/etc/resolv.conf"
 	fi
 
 	# Create a /etc/xml/catalog file
-	if [ ! -d "$1/etc/xml" ]; then install -v -m755 -d "$1/etc/xml"; fi &&
-	if [ ! -f "$1/etc/xml/catalog" ]; then
+	if [ ! -d "$1/etc/xml" ]
+	  then
+		install -v -m755 -d 		"$1/etc/xml"
+	fi &&
+	if [ ! -f "$1/etc/xml/catalog" ]
+	  then
 		chroot "$1/" xmlcatalog --noout --create /etc/xml/catalog
 	fi &&
 
@@ -70,7 +78,8 @@ post_install()
 		"/usr/share/xml/docbook/stylesheet/$PACKAGE/catalog.xml" \
 	/etc/xml/catalog
 
-	if [ "$1" ]; then
-		mv -f "$1/etc/resolv.conf.$$" "$1/etc/recolv.conf" 2>/dev/null
+	if [ "$1" ]
+	  then
+		mv -f "$1/etc/resolv.conf.$$"	"$1/etc/recolv.conf" 2>/dev/null
 	fi
 }
