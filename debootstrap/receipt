@@ -1,22 +1,39 @@
 # SliTaz package receipt
 
 PACKAGE="debootstrap"
-VERSION="1.0.48"
+VERSION="1.0.116"
 CATEGORY="misc"
-SHORT_DESC="Bootstrap a basic Debian system"
+SHORT_DESC="Bootstrap a basic Debian system."
 MAINTAINER="shann@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://wiki.debian.org/Debootstrap"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://people.slitaz.org/~shann/packages/$PACKAGE/$TARBALL"
+TARBALL="${PACKAGE}_$VERSION.tar.gz"
+WGET_URL="http://deb.debian.org/debian/pool/main/d/$PACKAGE/$TARBALL"
 
 DEPENDS="dpkg tar"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	make	DESTDIR=$DESTDIR
+}
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/sbin $fs/usr/share
-	cp -a $src/usr/sbin/*  $fs/usr/sbin
-	cp -a $src/usr/share/* $fs/usr/share
-	chown -R root.root $fs
+	mkdir -p $fs/usr/sbin
+	mkdir -p $fs/usr/share/debootstrap
+	mkdir -p $fs/usr/share/doc
+
+	cp -a $src/debootstrap		$fs/usr/sbin
+	cp -a $src/functions		$fs/usr/share/debootstrap
+	cp -a $src/scripts		$fs/usr/share/debootstrap
+	cp -a $src/debian/changelog	$fs/usr/share/doc
+	cp -a $src/debian/copyright	$fs/usr/share/doc
+	cp -a $src/README		$fs/usr/share/doc
+
+	chown -R root.root		$fs
 }
