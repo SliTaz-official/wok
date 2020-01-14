@@ -1,62 +1,68 @@
 # SliTaz package receipt.
 
 PACKAGE="distcc"
-VERSION="3.1"
+VERSION="3.3.3"
 CATEGORY="development"
-SHORT_DESC="Distributed compilation for C/C++"
+SHORT_DESC="Distributed compilation for C and C++."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://distcc.org"
-WGET_URL="http://distcc.googlecode.com/files/$TARBALL"
+WEB_SITE="https://distcc.github.io/"
 
-DEPENDS="popt lzo"
-BUILD_DEPENDS="popt-dev lzo-dev python-dev gtk+-dev libgnome-dev \
-libgnomeui-dev libbonoboui-dev libgnomecanvas-dev libgnome-keyring-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/releasses/download/v$VERSION/$TARBALL"
+
+DEPENDS="lzo popt"
+BUILD_DEPENDS="autoconf automake gtk+-dev libbonoboui-dev libgnome-dev 
+	libgnome-keyring-dev libgnomecanvas-dev libgnomeui-dev lzo-dev 
+	popt-dev py3k-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	export CFLAGS="-Wno-error=unused-but-set-variable"
-	cd $src
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--mandir=/usr/share/man \
-		--with-gnome \
-		--with-gtk \
+	export CFLAGS="-Wno-error=unused-but-set-variable -Wno-error=shadow"
+
+	./autogen.sh &&
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		--mandir=/usr/share/man	\
+		--with-gnome		\
+		--with-gtk		\
+		--without-libiberty	\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr \
-		$fs/var/log/distccd \
-		$fs/etc/init.d
-		
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/etc/distcc $fs/etc
+	mkdir -p $fs/usr
+	mkdir -p $fs/var/log/distccd
+	mkdir -p $fs/etc/init.d
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/etc/distcc		$fs/etc
 	
-	echo '127.0.0.1' >> $fs/etc/distcc/clients.allow
+	echo '127.0.0.1' >>			$fs/etc/distcc/clients.allow
 	
-	install -o root -g root $stuff/distccd $fs/etc/init.d
+	install -o root -g root $stuff/distccd	$fs/etc/init.d
 }
 
 post_install()
 {
-	if ! grep -q nagios "$1/etc/passwd"; then
+	if ! grep -q nagios "$1/etc/passwd"
+	  then
 		echo
 		echo -n "Adding user/group nagios..."
 		chroot "$1/" addgroup -S distcc
 		chroot "$1/" adduser -S -D -H -G distcc distcc
 		status
 	fi
-	
-	# Fix perms for files and directories
-	chroot "$1/" chown -R distcc.distcc /var/log/distccd
-	  
+
+	# Fix permissions for files and directories
+	chroot "$1/" chown -R distcc.distcc	/var/log/distccd
+
 	cat <<EOF
 ----
 Now you can:
