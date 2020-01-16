@@ -1,50 +1,72 @@
 # SliTaz package receipt.
 
 PACKAGE="dooble"
-VERSION="1.48"
+VERSION="2019.12.25"
 CATEGORY="network"
-SHORT_DESC="Private mode only (almost) worst Qt webkit browser. With builtin fm & xterm."
+SHORT_DESC="Private mode only (almost) worst Qt webkit browser. With builtin fm and xterm."
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="BSD"
-WEB_SITE="http://dooble.sourceforge.net"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="$SF_MIRROR/$PACKAGE/files/Dooble.d.tar.gz"
+WEB_SITE="https://textbrowser.github.io/dooble"
 
-DEPENDS="libQtCore libQtDBus libQtGui libQtNetwork libQtScript libQtSql \
-libQtXml libgcrypt sqlite cacerts libQtWebkit"
-BUILD_DEPENDS="wget cacerts Qt4-dev qmake libgcrypt-dev sqlite-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/textbrowser/$PACKAGE/archive/$VERSION.tar.gz"
+
 SUGGESTED="libQtWebkit-video"
+DEPENDS="cacerts libgcrypt libQtCore libQtDBus libQtGui libQtNetwork 
+	libQtScript libQtSql libQtWebkit libQtXml sqlite"
+BUILD_DEPENDS="cacerts libgcrypt-dev qmake Qt4-dev sqlite-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	srcdir="$src/trunk/browser" ; cd $srcdir
-	find . -regex '.*\(win32\|osx64\|icns\).*' -exec ls -l {} \; -delete
-	sed -i 's|local/dooble/do|bin/do|g' dooble.desktop
-	qmake PREFIX="/usr/" $PACKAGE.pro
-	make && make INSTALL_ROOT=$install install
-	rm -rf $install/usr/local/$PACKAGE/D${PACKAGE:1}
-	mkdir -p $install/usr/share $install/usr/bin $install/usr/lib
-	install $srcdir/libSpotOn/libspoton.so $install/usr/lib
-	install $srcdir/D${PACKAGE:1} $install/usr/bin
-	rm -rf $srcdir/temp $srcdir/T* $srcdir/D${PACKAGE:1}
-	mv $install/usr/local/$PACKAGE $install/usr/share/
-	rm $install/usr/share/$PACKAGE/Icons/AxB/dooble.ico
-	cd $install/usr/share/$PACKAGE && rm -rf Tab Images
+	srcdir="$src/1.x"
+	cd $srcdir &&
+	sed -i 's|local/dooble/do|bin/do|g' \
+		dooble.desktop
+
+	qmake PREFIX="/usr/" DESTDIR=$DESTDIR $PACKAGE.pro &&
+	make &&
+
+	mkdir -p $install/usr/bin
+	mkdir -p $install/usr/lib
+	mkdir -p $install/usr/share/$PACKAGE/Translations
+
+	mv $install/Dooble			$install/usr/bin
+	cp -a $srcdir/dooble.sh			$install/usr/bin
+	install $srcdir/libSpotOn/libspoton.so	$install/usr/lib
+	cp -a $srcdir/Icons			$install/usr/share/$PACKAGE
+	cp -a $srcdir/Translations/*.qm		$install/usr/share/$PACKAGE/Translations
+	cp -a $srcdir/Archived/Plugins		$install/usr/share/$PACKAGE
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs ; rm -rf $fs/home $fs/usr/local
-	cd $fs/usr/share/$PACKAGE ; ln -s ../../bin/D${PACKAGE:1} D${PACKAGE:1}
-	cd $fs/usr/share/$PACKAGE/Icons ; rm -rf 64x64 nuovext nuvola black-and-white && ln -s faience nuovext
-	cd $fs/usr/share/$PACKAGE/Translations ; find . -size -44k -delete
-	mv $fs/usr/share/$PACKAGE/$PACKAGE.sh $fs/usr/bin/ && cd $fs/usr/bin
-	sed -i 's|local/dooble/Dooble|bin/Dooble|g' $PACKAGE.sh
-	sed -i 's|cd /usr/local/dooble|cd /usr/share/dooble|g' $PACKAGE.sh
-	sed -i 's/fusion/ /g' $PACKAGE.sh
-	cd $fs/usr/share/$PACKAGE ; cat>'Dooble.ini' << EOT
+	cp -a $install/*	$fs
+
+	cd			$fs/usr/share/$PACKAGE &&
+	ln -s ../../bin/Dooble	Dooble
+
+	cd 			$fs/usr/share/$PACKAGE/Icons &&
+	rm -rf 64x64 nuovext nuvola black-and-white &&
+	ln -s faience nuovext
+
+	cd			$fs/usr/share/$PACKAGE/Translations
+	find . -size -44k -delete
+
+	# object program
+	sed -i 's|local/dooble/Dooble|bin/Dooble|g' \
+		$fs/usr/bin/$PACKAGE.sh
+
+	# shared files
+	sed -i 's|cd /usr/local/dooble|cd /usr/share/dooble|g' \
+		$fs/usr/bin/$PACKAGE.sh
+
+	sed -i 's/fusion/ /g' \
+		$fs/usr/bin/$PACKAGE.sh
+
+	cd $fs/usr/share/$PACKAGE &&
+cat>'Dooble.ini' << EOT
 [General]
 iconSet=/usr/share/dooble/Icons/faience/configuration.cfg
 desktopBackground=/usr/share/images/slitaz-background.jpg
@@ -58,15 +80,18 @@ showAuthentication=false
 [mainWindow]
 searchName=DuckDuckGo
 EOT
+
 	chown -R root:root $fs
 }
 
 post_install()
 {
-	for i in $(ls "$1/home" 2> /dev/null); do
-		[ -f "$1/home/$i/.dooble/Dooble/Dooble.ini" ] && continue
+	for i in $(ls "$1/home" 2> /dev/null)
+	  do
+		[ -f "$1/home/$i/.dooble/Dooble/Dooble.ini" ] &&
+		continue
 		mkdir -p "$1/home/$i/.dooble/Dooble"
-		cp "$1/usr/share/dooble/Dooble.ini" "$1/home/$i/.dooble/Dooble"
+		cp "$1/usr/share/dooble/Dooble.ini"	"$1/home/$i/.dooble/Dooble"
 		rm "$1/home/$i/.local/share/applications/dooble.desktop"
 		chroot "$1/" chown -R $(stat -c "%u.%g" "$1/home/$i") "/home/$i/.dooble"
 	done
