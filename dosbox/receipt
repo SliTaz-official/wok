@@ -1,27 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="dosbox"
-VERSION="0.74"
+VERSION="0.74.3"
 CATEGORY="system-tools"
+TAGS="emulator dos vm86 8086"
 SHORT_DESC="DOS-emulator that uses the SDL-library."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.dosbox.com/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="emulator dos vm86 8086"
+WEB_SITE="https://www.dosbox.com/"
 
-DEPENDS="xorg-libX11 libsdl alsa-lib zlib mesa libpng libsdl-net"
-BUILD_DEPENDS="xorg-libX11-dev libsdl-dev libsdl-net-dev "
+TARBALL="$PACKAGE-${VERSION%.*}-${VERSION##*.}.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="alsa-lib libpng libsdl libsdl-net mesa xorg-libX11 zlib"
+BUILD_DEPENDS="libsdl-dev libsdl-net-dev xorg-libX11-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	sed -i 's/define DOSBOX_DOS_INC_H/&\n#include <stddef.h>/' include/dos_inc.h
-	./configure \
-		--prefix=/usr \
-		--mandir=/usr/share/man \
+	sed -i 's/define DOSBOX_DOS_INC_H/&\n#include <stddef.h>/' \
+		include/dos_inc.h
+
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -30,8 +32,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/pixmaps \
-		$fs/usr/share/applications
-	cp -a $install/usr/bin $fs/usr
-}
+	mkdir -p $fs/usr/share/pixmaps
+	mkdir -p $fs/usr/share/applications
 
+	cp -a $install/usr/bin	$fs/usr
+}
