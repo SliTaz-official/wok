@@ -17,7 +17,7 @@
 enable_a20_methods:
 		dw	_enable_a20_fast, _enable_a20_kbd, _enable_a20_xmm, die
 msg_a20		db	"Can't use A20",0
-overflow	db	"Out of memory",0
+		extrn	overflow:byte
 		ifdef	NO386
 bzimage86	db	"8086 & bzImage",0
 		endif

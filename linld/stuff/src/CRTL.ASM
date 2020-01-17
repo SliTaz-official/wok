@@ -17,9 +17,11 @@
 
         segment _DATA byte public use16 'DATA'
 
-msg_hang	db      "High mem corrupted - not exiting to DOS",0
-vcpi_alloc_err	db	"VCPI "
-msg_malloc      db      "malloc error",0
+msg_hang	db      "High mem corrupted: halt",0
+vcpi_alloc_err	db	"VCPI"
+		global	overflow:byte
+overflow	db	"/"
+msg_malloc      db      "Out of memory",0
 	ifdef	EXTRA
 tazboot_cmd	db	"tazboot.cmd",0
 	endif
@@ -185,15 +187,14 @@ openargs:
 open:						; open(bx)
 	ifdef	LONG_FILENAME
 		mov	ax,716Ch
-		push	bx si di
+		push	bx si
 		mov	si,bx
 		xor	bx,bx			; R/O
 		xor	cx,cx			; attributes
-		xor	di,di			; alias hint
 		cwd				; action = open
 		stc
                 int	21h
-		pop	di si bx
+		pop	si bx
                 jnc	doret
 	endif
                 mov	ax,3d00h		; read-only+compatibility
@@ -468,8 +469,7 @@ isolseek:
 ;_fastcall char* malloc_or_die(ax:unsigned size);
 ;***************************************************************
 xchg_heap_top:
-		extrn	_heap_top
-		xchg	ax,[_heap_top]
+		xchg	ax,[bx]
 		ret
 
         global  @malloc_or_die$qui:near
@@ -477,9 +477,11 @@ xchg_heap_top:
 
         global  malloc_or_die:near		; ax = malloc_or_die(ax)
 malloc_or_die:
-		mov	bx,offset msg_malloc
-		add	ax,[_heap_top]
+		extrn	_heap_top
+		mov	bx,offset _heap_top
+		add	ax,[bx]
 		jnc	xchg_heap_top
+		mov	bx,offset msg_malloc
 
         endp    @malloc_or_die$qui
 
