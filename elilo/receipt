@@ -1,14 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="elilo"
-VERSION="3.10"
+VERSION="3.16"
 CATEGORY="system-tools"
 SHORT_DESC="The EFI linux boot loader."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://elilo.sourceforge.net/"
+WEB_SITE="https://sourceforge.net/projects/elilo/"
+
+TARBALL="$PACKAGE-$VERSION-all.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
 BUILD_DEPENDS="gnu-efi"
 # See http://mactel-linux.sourceforge.net/wiki/Main_Page
 #     genisoimage -boot-hfs-file
@@ -16,19 +18,27 @@ BUILD_DEPENDS="gnu-efi"
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir -p $install/boot/efi/boot $install/usr/sbin $install/usr/share
-	cp -a docs $install/usr/share/doc
-	cp README* $install/usr/share/doc
-	rm -rf $install/usr/share/doc/CVS
-	sed -i 's|uname -m|echo i686|' Make.defaults
-	make -j1 &&
-	cp elilo.efi $install/boot/efi/boot/elilo &&
-	cp tools/eliloalt $install/usr/sbin
+	mkdir -p $install/boot/efi/boot
+	mkdir -p $install/usr/sbin
+	mkdir -p $install/usr/share
+
+	tar -xz -f $PACKAGE-$VERSION-source.tar.gz &&
+	cd	$PACKAGE-$VERSION-source &&
+	cp -a docs		$install/usr/share/doc
+	cp README*		$install/usr/share/doc
+#	rm -rf			$install/usr/share/doc/CVS
+	sed -i 's|uname -m|echo i686|' \
+		Make.defaults
+	make ARCH=ia32 &&
+	cp elilo.efi		$install/boot/efi/boot/elilo &&
+	cp tools/eliloalt	$install/usr/sbin
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/boot $fs
+	mkdir -p $fs/usr/sbin
+
+	cp -a $install/boot	$fs
+	cp -a $install/usr/sbin	$fs/usr
 }
