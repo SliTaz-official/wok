@@ -180,7 +180,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/,ax/,",cx")
 		if (/version_string/ || /starting linux 1\.3\.73/) isload=0
 	}
-	if (/Not a kernel/ || /_rm_size=0x200/ || /heap_top = _rm_buf/) isload=1
+	if (/die\(not_kernel/ || /_rm_size=0x200/ || /heap_top = _rm_buf/) isload=1
 	if (isload == 1) {  # LOAD.LST
 		if (/ptr .die\$qpxzc/) $0="@die@:\n" $0
 		if (/mov	al,byte ptr/ && is386) {
