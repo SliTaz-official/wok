@@ -26,6 +26,7 @@ compile_rules()
 	sed -i 's|preinit core-4in1|preinit core-4in1 core-5in1|' cookiso
 	mkdir -p $DESTDIR/usr/bin $DESTDIR/etc/slitaz
 	make DESTDIR=$DESTDIR install
+	sed -i 's|://mirror.switch.ch/ftp/mirror|s://ftp.gnu.org|' $DESTDIR/etc/slitaz/cook.conf
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -41,9 +42,17 @@ genpkg_rules()
 }
 
 # Pre and post install commands for Tazpkg.
+pre_install()
+{
+	cp $1/etc/slitaz/cook.conf $1/etc/slitaz/cook.conf.old 2> /dev/null
+}
+
 post_install()
 {
-	case "$(cat "$1/etc/hostname" 2> /dev/null)" in
+	MD5="$(sed '/^SETUP_MD5/!d;s|.*="\(.*\)".*|\1|' \
+			$1/etc/slitaz/cook.conf.old)"
+	sed -i "s|^SETUP_MD5=\"\"|SETUP_MD5=\"$MD5\"|" $1/etc/slitaz/cook.conf
+	[ -z "$MD5" ] && case "$(cat "$1/etc/hostname" 2> /dev/null)" in
 	tank*)
 		if ! chroot "$1/" tazpkg list | grep -q aufs ; then
 			tazpkg get-install aufs --root="$1/"
