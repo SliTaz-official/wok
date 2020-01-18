@@ -121,6 +121,7 @@ static u8* rm_buf;	// @ = @rm_size + 2, see A20.ASM
 struct image_himem imgs[2];
 
 static const char kernel_file_error[] = "Can't use kernel file";
+#define not_kernel  "Not a kernel"
 void load_kernel() {
 
     struct	image_himem *m = &pm;
@@ -136,8 +137,7 @@ void load_kernel() {
     open_image(m, kernel_name);
 
 do {
- if (readrm(m, 0x200) == 0x200) {
-
+    readrm(m, 0x200);
     rewind(m->fd);
     if(kernelparams->setup_sects == 0) {
 #if 1
@@ -151,15 +151,14 @@ do {
     }
     if((kernelparams->setup_sects)>=(_32k/512) || // 0th sector not counted
 	 kernelparams->boot_flag != 0xAA55)
-        die("Not a kernel");
+        die(not_kernel);
     _rm_size=0x200*(kernelparams->setup_sects+1);
     m->size -= _rm_size;
     m->chunk_size -= _rm_size;
 
     // Read remaining rm loader
     if (readrm(m, _rm_size) == _rm_size) break;
- }
-        die(kernel_file_error);
+    die(kernel_file_error);
 } while (0);
 
     // Tell rm loader some info

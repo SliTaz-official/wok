@@ -17,7 +17,7 @@
 
         segment _DATA byte public use16 'DATA'
 
-msg_hang	db      "High mem corrupted: halt",0
+msg_hang	db      "High mem corrupted",0
 vcpi_alloc_err	db	"VCPI"
 		global	overflow:byte
 overflow	db	"/"
@@ -289,11 +289,19 @@ doret:
         global  @rewind$qi:near			; fd=ax
         proc    @rewind$qi near
 
+		ifdef EXTRA
+		xchg	ax,bx			; catch ISO image case
+		mov	cx,-512			; curpos = 512
+		stc				; see LOAD.CPP
+		mov	bl,2
+		jmp	lseekword
+		endif
 rewind:						; rewind(ax)
 		mov	bl,0
 lseek0:						; lseek0(ax,bl=dir)
-		xor	dx,dx
-		xor	cx,cx
+		xor	cx,cx			; clear C
+lseekword:
+		sbb	dx,dx
 lseekset:
 		xchg	ax,bx
 lseek:
