@@ -1,24 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="emacs"
-VERSION="24.3"
+VERSION="26.3"
 CATEGORY="editors"
-SHORT_DESC="The GNU Emacs editor"
+TAGS="text-editor"
+SHORT_DESC="The GNU Emacs editor."
 MAINTAINER="domcox@slitaz.org"
 LICENSE="GPL3"
-SUGGESTED="alsa-lib"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://www.gnu.org/software/emacs/"
-WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
-TAGS="text-editor"
+WEB_SITE="https://www.gnu.org/software/emacs/"
 
-DEPENDS="atk cairo dbus expat freetype fontconfig giflib glib gnutls gtk+ jpeg \
-libgio libpng util-linux-uuid ncurses pango tiff xorg-server zlib \
-librsvg libgsf libtinfo libgnutls harfbuzz"
-BUILD_DEPENDS="atk-dev cairo-dev expat-dev dbus-dev freetype-dev \
-fontconfig-dev giflib-dev glib-dev gnutls-dev gtk+-dev jpeg-dev libgio-dev \
-libpng-dev librsvg-dev ncurses-dev pango-dev pkg-config tiff-dev xorg-dev \
-xorg-dev-proto libgnutls"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+SUGGESTED="alsa-lib"
+DEPENDS="atk cairo dbus expat fontconfig freetype giflib glib gnutls gtk+ 
+	harfbuzz jpeg libgio libgnutls libgsf libpng librsvg libtinfo ncurses 
+	pango tiff util-linux-uuid xorg-server zlib"
+BUILD_DEPENDS="atk-dev cairo-dev dbus-dev expat-dev fontconfig-dev freetype-dev 
+	giflib-dev glib-dev gnutls-dev gtk+-dev jpeg-dev libgio-dev libgnutls 
+	libpng-dev librsvg-dev ncurses-dev pango-dev pkg-config tiff-dev xorg-dev 
+	xorg-dev-proto"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -30,21 +31,24 @@ compile_rules()
 	# Gzip workaround in busybox
 	sed -i 's/${GZIP_PROG} -9n/${GZIP_PROG}/g' Makefile.in
 	sed -i 's/${GZIP_PROG} -9n/${GZIP_PROG}/g' leim/Makefile.in
+
 	# Configure (with GCC 4.5.0 workaround)
-	CFLAGS="-g -O2 -fno-optimize-sibling-calls" ./configure $CONFIGURE_ARGS \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--without-makeinfo \
-		--without-gconf \
-		--with-sound \
-		--with-x \
-		--with-toolkit-scroll-bars \
-		--with-xpm=yes \
-		--libexecdir=/usr/lib \
-		--localstatedir=/var/lib \
-		--sharedstatedir=/var/lib \
-		--prefix=/usr && \
-	make $MAKEFLAGS && \
+	./configure						\
+		CFLAGS="-g -O2 -fno-optimize-sibling-calls"	\
+		--infodir=/usr/share/info			\
+		--mandir=/usr/share/man				\
+		--without-makeinfo				\
+		--without-gconf					\
+		--with-sound					\
+		--with-x					\
+		--with-toolkit-scroll-bars			\
+		--with-xpm=yes					\
+		--libexecdir=/usr/lib				\
+		--localstatedir=/var/lib			\
+		--sharedstatedir=/var/lib			\
+		--prefix=/usr					\
+		$CONFIGURE_ARGS &&
+	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -52,20 +56,23 @@ compile_rules()
 genpkg_rules()
 {
 	# Binary files
-	BIN_FILES="ctags ebrowse emacs-$VERSION emacsclient etags grep-changelog"
+	BIN_FILES="ctags ebrowse emacs-$VERSION emacsclient etags"
 	echo -n "Copying emacs binary files"
-	mkdir -p $fs/usr/bin && \
-	for file in $BIN_FILES; do
-		cp -a $install/usr/bin/$file $fs/usr/bin
-	done
+	mkdir -p $fs/usr/bin &&
+	for file in $BIN_FILES
+	  do
+		cp -a $install/usr/bin/$file	$fs/usr/bin
+	  done
 	status
-	ln -s /usr/bin/emacs-$VERSION $fs/usr/bin/emacs
-	ln -s /usr/bin/emacs-$VERSION $fs/usr/bin/xemacs
-	# Lib files
-	echo -n "Copying emacs lib files"
-	cp -a $install/usr/lib $fs/usr
+	ln -s /usr/bin/emacs-$VERSION		$fs/usr/bin/emacs
+	ln -s /usr/bin/emacs-$VERSION		$fs/usr/bin/xemacs
+
+	# Libraries
+	echo -n "Copying emacs libraries"
+	cp -a $install/usr/lib			$fs/usr
 	status
 	strip -s $fs/usr/lib/$PACKAGE/$VERSION/i486-pc-linux-gnu/* 2> /dev/null
+
 	# lisp files
 	LISP_DIR="lisp lisp/calc lisp/calendar lisp/cedet lisp/cedet/ede \
 lisp/cedet/semantic lisp/cedet/semantic/analyze lisp/cedet/semantic/bovine \
@@ -74,118 +81,139 @@ lisp/cedet/semantic/wisent lisp/emacs-lisp lisp/emulation lisp/erc lisp/eshell \
 lisp/gnus lisp/international lisp/language lisp/mail lisp/mh-e lisp/net \
 lisp/nxml lisp/obsolete lisp/org lisp/play lisp/progmodes lisp/textmodes \
 lisp/url lisp/vc"
-	for dir in $LISP_DIR; do
+	for dir in $LISP_DIR
+	  do
 		echo -n "Copying $dir files"
-		mkdir -p $fs/usr/share/$PACKAGE/$VERSION/$dir && \
+		mkdir -p $fs/usr/share/$PACKAGE/$VERSION/$dir &&
 		cp -a $install/usr/share/$PACKAGE/$VERSION/$dir/*.elc \
 			$fs/usr/share/$PACKAGE/$VERSION/$dir
 		if [ $(ls $install/usr/share/$PACKAGE/$VERSION/$dir/ | \
-grep -c \.el$) -gt 0 ]; then
+grep -c \.el$) -gt 0 ]
+		  then
 			cp -a $install/usr/share/$PACKAGE/$VERSION/$dir/*.el \
 				$fs/usr/share/$PACKAGE/$VERSION/$dir
 		fi
-		for file in COPYING README TODO; do
-			if [ -e $install/usr/share/$PACKAGE/$VERSION/$dir/$file ]; then
+		for file in COPYING README TODO
+		  do
+			if [ -e $install/usr/share/$PACKAGE/$VERSION/$dir/$file ]
+			  then
 				cp -a $install/usr/share/$PACKAGE/$VERSION/$dir/$file \
 					$fs/usr/share/$PACKAGE/$VERSION/$dir
 			fi
-		done
+		  done
 		status
-	done
-	# Use linux term only
+	  done
+
+	# Use linux terminal only
 	LINUX_TERM="README linux.e* rxvt.elc tty-colors.elc vt100.elc xterm.elc"
 	echo -n "Copying lisp/term files (linux only)"
-	mkdir -p $fs/usr/share/$PACKAGE/$VERSION/lisp/term && \
-	for file in $LINUX_TERM; do
+	mkdir -p $fs/usr/share/$PACKAGE/$VERSION/lisp/term &&
+	for file in $LINUX_TERM
+	  do
 		cp -a $install/usr/share/$PACKAGE/$VERSION/lisp/term/$file \
 			$fs/usr/share/$PACKAGE/$VERSION/lisp/term
-	done
+	  done
 	status
+
 	# leim files
 	echo -n "Copying leim files"
-	mkdir -p $fs/usr/share/$PACKAGE/$VERSION/leim && \
+	mkdir -p $fs/usr/share/$PACKAGE/$VERSION/leim &&
 	cp -a $install/usr/share/$PACKAGE/$VERSION/leim/*.el \
-		$fs/usr/share/$PACKAGE/$VERSION/leim
+			$fs/usr/share/$PACKAGE/$VERSION/leim
 	status
 	LEIM_FILES="leim/ja-dic leim/quail"
-	for dir in $LEIM_FILES; do
+	for dir in $LEIM_FILES
+	  do
 		echo -n "Copying $dir files"
-		mkdir -p $fs/usr/share/$PACKAGE/$VERSION/$dir && \
+		mkdir -p $fs/usr/share/$PACKAGE/$VERSION/$dir &&
 		cp -a $install/usr/share/$PACKAGE/$VERSION/$dir/*.elc \
 			$fs/usr/share/$PACKAGE/$VERSION/$dir && \
-		for file in COPYING README TODO; do
-			if [ -e $install/usr/share/$PACKAGE/$VERSION/$dir/$file ]; then
+		for file in COPYING README TODO
+		  do
+			if [ -e $install/usr/share/$PACKAGE/$VERSION/$dir/$file ]
+			  then
 				cp -a $install/usr/share/$PACKAGE/$VERSION/$dir/$file \
 					$fs/usr/share/$PACKAGE/$VERSION/$dir
 			fi
-		done
+		  done
 		status
-	done
-	# Conf files
-	echo -n "Copying conf files"
-	CONF_FILES="ETAGS.README charsets e enriched.doc edt-user.el forms \
+	  done
+
+	# Configuration files
+	echo -n "Copying configuration files"
+	CONF_FILES="ETAGS.README charsets e edt-user.el forms \
 emacs-buffer.gdb gnus nxml org schema srecode ps-prin0.ps \
 ps-prin1.ps ses-example.ses spook.lines themes yow.lines"
-	mkdir -p $fs/usr/share/$PACKAGE/$VERSION/etc && \
-	for file in $CONF_FILES; do
+	mkdir -p $fs/usr/share/$PACKAGE/$VERSION/etc &&
+	for file in $CONF_FILES
+	  do
 		cp -a $install/usr/share/$PACKAGE/$VERSION/etc/$file \
 			$fs/usr/share/$PACKAGE/$VERSION/etc
-	done
+	  done
 	status
+
 	# Pixmaps files
 	XPM_DIR="images images/custom images/ezimage images/gnus images/gud \
 images/icons/allout-widgets/*-bg images/low-color images/mail images/mpc \
 images/newsticker images/smilies images/smilies/grayscale \
 images/smilies/medium images/tree-widget/default images/tree-widget/folder"
-	for dir in $XPM_DIR; do
+	for dir in $XPM_DIR
+	  do
 		echo -n "Copying $dir xpm files"
-		mkdir -p $fs/usr/share/$PACKAGE/$VERSION/etc/$dir && \
+		mkdir -p $fs/usr/share/$PACKAGE/$VERSION/etc/$dir &&
 		cp -a $install/usr/share/$PACKAGE/$VERSION/etc/$dir/*.xpm \
-			$fs/usr/share/$PACKAGE/$VERSION/etc/$dir && \
-		for file in COPYING README TODO; do
-			if [ -e $install/usr/share/$PACKAGE/$VERSION/$dir/$file ]; then
+			$fs/usr/share/$PACKAGE/$VERSION/etc/$dir &&
+		for file in COPYING README TODO
+		  do
+			if [ -e $install/usr/share/$PACKAGE/$VERSION/$dir/$file ]
+			  then
 				cp -a $install/usr/share/$PACKAGE/$VERSION/$dir/$file \
 					$fs/usr/share/$PACKAGE/$VERSION/$dir
 			fi
-		done
+		  done
 		status
-	done
+	  done
 	PNG_DIR="images images/gnus images/icons/allout-widgets/dark-bg \
 images/icons/allout-widgets/light-bg images/tree-widget/default \
 images/tree-widget/folder"
-	for dir in $PNG_DIR; do
+	for dir in $PNG_DIR
+	  do
 		echo -n "Copying $dir png files"
 		mkdir -p $fs/usr/share/$PACKAGE/$VERSION/etc/$dir 2> /dev/null || true
 		cp -a $install/usr/share/$PACKAGE/$VERSION/etc/$dir/*.png \
-			$fs/usr/share/$PACKAGE/$VERSION/etc/$dir && \
+			$fs/usr/share/$PACKAGE/$VERSION/etc/$dir &&
 		status
-	done
+	  done
+
 	# Licence
-	GNU_FILES="AUTHORS CENSORSHIP COPYING DISTRIB FTP GNU ORDERS README \
-SERVICE copying.paper"
+	GNU_FILES="AUTHORS CENSORSHIP COPYING DISTRIB FTP GNU ORDERS README SERVICE"
 	echo -n "Copying License files"
-	for file in $GNU_FILES; do
+	for file in $GNU_FILES
+	  do
 		cp -a $install/usr/share/$PACKAGE/$VERSION/etc/$file \
 			$fs/usr/share/$PACKAGE/$VERSION/etc
-	done
+	  done
 	status
-	# Install specific site file
-	echo -n "Installing specific SliTaz file"
+
+	# Install specific site files
+	echo -n "Installing specific SliTaz files"
 	cp -a $install/usr/share/$PACKAGE/$VERSION/site-lisp \
-		$fs/usr/share/$PACKAGE && \
-	mkdir -p $fs/usr/share/$PACKAGE/site-lisp/site-start.d && \
-	cp -a $stuff/default.el $stuff/site-start.el \
-		$fs/usr/share/$PACKAGE/site-lisp && \
-	cp -a $stuff/90-slitaz.el \
-		$fs/usr/share/$PACKAGE/site-lisp/site-start.d && \
+		$fs/usr/share/$PACKAGE &&
+	mkdir -p $fs/usr/share/$PACKAGE/site-lisp/site-start.d &&
+	cp -a $stuff/default.el		$fs/usr/share/$PACKAGE/site-lisp &&
+	cp -a $stuff/site-start.el	$fs/usr/share/$PACKAGE/site-lisp &&
+	cp -a $stuff/90-slitaz.el	$fs/usr/share/$PACKAGE/site-lisp/site-start.d &&
 	status
+
 	# Install desktop files for emacs
 	echo -n "Installing emacs menu"
-	mkdir -p $fs/usr/share/pixmaps $fs/usr/share/applications && \
-	cp -a $install/usr/share/applications $fs/usr/share/ && \
+	mkdir -p			$fs/usr/share/pixmaps &&
+	mkdir -p			$fs/usr/share/applications &&
+	cp -a $install/usr/share/applications $fs/usr/share/ &&
 	cp -a $install/usr/share/icons/hicolor/32x32/apps/emacs.png \
-		$fs/usr/share/pixmaps
+					$fs/usr/share/pixmaps
 	status
+
 	# Use default site-lisp
 	cd $fs/usr/share/$PACKAGE/$VERSION
 	ln -s ../site-lisp site-lisp
