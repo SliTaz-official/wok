@@ -1,51 +1,53 @@
 # SliTaz package receipt.
 
 PACKAGE="etherape"
-VERSION="0.9.14"
+VERSION="0.9.18"
 CATEGORY="network"
+TAGS="ip monitoring network tcp vlan wlan"
 SHORT_DESC="A graphical network monitor and visualization tool."
 MAINTAINER="hackdorte@sapo.pt"
 LICENSE="GPL2"
+WEB_SITE="https://etherape.sourceforge.io"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://etherape.sourceforge.net"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="ip monitoring network tcp vlan wlan"
 
-DEPENDS="gtk+ libglade libgnome libpcap libgnomeui libltdl \
-libcrypto libxslt libgnome-keyring util-linux-uuid"
-
-BUILD_DEPENDS="gcc glib-dev glibc-dev libglade-dev libgnome-dev gtk+-dev \
-libgnomeui-dev libpcap-dev gnome-doc-utils-dev libcrypto-dev libxslt-dev \
-ossp-uuid-dev libtool"
+DEPENDS="gtk+3 libglade libgnome libpcap libgnomeui libltdl 
+	libcrypto libxslt libgnome-keyring util-linux-uuid"
+BUILD_DEPENDS="glib-dev glibc-dev gnome-doc-utils-dev goocanvas 
+	goocanvas-dev gtk+3-dev itstool libcrypto-dev libglade-dev 
+	libgnome-dev libgnomeui-dev libpcap-dev libtool libxslt-dev 
+	ossp-uuid-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-./configure \
-  --prefix=/usr \
-  --libdir=/usr/lib \
-  --sysconfdir=/etc \
-  --localstatedir=/var/state/$PACKAGE-$VERSION \
-  --mandir=/usr/share/man \
-  --docdir=/usr/share/doc/$PACKAGE-$VERSION \
-  --build=$ARCH-slitaz-linux \
-  --disable-scrollkeeper
-  make && make DESTDIR=$DESTDIR install
+	./configure						\
+		--prefix=/usr					\
+		--libdir=/usr/lib				\
+		--sysconfdir=/etc				\
+		--localstatedir=/var/state/$PACKAGE-$VERSION	\
+		--mandir=/usr/share/man				\
+		--docdir=/usr/share/doc/$PACKAGE-$VERSION	\
+		--build=$ARCH-slitaz-linux			\
+		--disable-scrollkeeper
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-  mkdir -p $fs/usr/bin
-  cp -a $install/usr/bin/* $fs/usr/bin
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share
 
-  mkdir -p $fs/usr/share
-  cp -a $install/usr/share/* $fs/usr/share
+	cp -a $install/usr/bin/* $fs/usr/bin
+	cp -a $install/usr/share/* $fs/usr/share
 }
 
 post_install() 
 {
-  # The SliTaz use Tazbox.
-  sed -i 's/^Exec=.*/Exec=tazbox su dbus-launch etherape/' \
-  $1/usr/share/applications/etherape.desktop
+	# The SliTaz use Tazbox.
+	sed -i 's/^Exec=.*/Exec=tazbox su dbus-launch etherape/' \
+		$1/usr/share/applications/etherape.desktop
 }
