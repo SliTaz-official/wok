@@ -1,20 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="erlang"
-VERSION="21.2.5"
+VERSION="22.2"
 CATEGORY="development"
 SHORT_DESC="Erlang programming language."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="Erlang Public Licence"
-WEB_SITE="http://$PACKAGE.org/"
+WEB_SITE="https://www.erlang.org/"
 
-SOURCE="OTP"
-TARBALL="${SOURCE}-$VERSION.tar.gz"
-WGET_URL="https://github.com/$PACKAGE/otp/archive/$TARBALL"
+#SOURCE="OTP"
+#TARBALL="${SOURCE}-$VERSION.tar.gz"
+#WGET_URL="https://github.com/$PACKAGE/otp/archive/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}download/otp_src_$VERSION.tar.gz"
 
-DEPENDS="ncurses openssl libunixODBC"
-BUILD_DEPENDS="autoconf perl ncurses-dev openssl-dev unixODBC-dev icedtea6-jdk \
-wxWidgets-dev gcc+gcj libxslt"
+DEPENDS="libunixODBC ncurses openssl"
+BUILD_DEPENDS="autoconf gcc+gcj icedtea6-jdk libxslt ncurses-dev 
+	openssl-dev perl unixODBC-dev wxWidgets-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -25,27 +27,31 @@ compile_rules()
 #	sed -i 's|./Install|sh -x Install|' Makefile*
 	
 	./otp_build autoconf &&
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--mandir=/usr/share/man \
-		--infodir=/usr/share/info \
+	./configure				\
+		--prefix=/usr			\
+		--sysconfdir=/etc		\
+		--mandir=/usr/share/man		\
+		--infodir=/usr/share/info	\
 		$CONFIGURE_ARGS &&
-	make -j 1 &&
-	make -j 1 INSTALL_PREFIX=$DESTDIR install || return 1
+	make 2>&1 | sed 's|: No such file|: no such file|' &&
+	make INSTALL_PREFIX=$DESTDIR install || return 1
 	
-	for i in $DESTDIR/usr/lib/erlang/*/bin/erl $DESTDIR/usr/lib/erlang/bin/erl \
-		 $DESTDIR/usr/lib/erlang/*/bin/start $DESTDIR/usr/lib/erlang/bin/start
-	do
+	for i in	$DESTDIR/usr/lib/erlang/*/bin/erl \
+			$DESTDIR/usr/lib/erlang/bin/erl \
+			$DESTDIR/usr/lib/erlang/*/bin/start \
+			$DESTDIR/usr/lib/erlang/bin/start
+	  do
 		sed -i 's|^ROOTDIR=.*$|ROOTDIR=/usr/lib/erlang|' $i
-	done
-	for file in $(ls $DESTDIR/usr/bin); do
+	  done
+
+	for file in $(ls $DESTDIR/usr/bin)
+	  do
 		ln -sf /usr/lib/erlang/bin/$file $DESTDIR/usr/bin/$file || return 1
-	done
+	  done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/usr $fs
+	cp -a $install/usr	$fs
 }
