@@ -1,37 +1,43 @@
 # SliTaz package receipt.
 
 PACKAGE="emacs-pkg-lua-mode"
-VERSION="20111107"
+VERSION="20130419"
 CATEGORY="development"
+TAGS="emacs lua"
 SHORT_DESC="An Emacs major mode for editing Lua code."
 MAINTAINER="domcox@slitaz.org"
 LICENSE="GPL3"
-BUILD_DEPENDS="emacs"
-WEB_SITE="http://immerrr.github.com/lua-mode/"
-TAGS="emacs lua"
+WEB_SITE="https://github.com/immerrr/lua-mode/"
+
+TARBALL="$PACKAGE-rel-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}archive/rel-$VERSION.tar.gz"
 
 DEPENDS="emacs"
+BUILD_DEPENDS="emacs"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	echo -n "Installing start file"
-	mkdir -p $fs/usr/share/emacs/site-lisp/site-start.d && \
-	cp -a $stuff/90-lua-mode.el $fs/usr/share/emacs/site-lisp/site-start.d
+	mkdir -p $fs/usr/share/emacs/site-lisp/site-start.d &&
+	cp -a $stuff/90-lua-mode.el \
+		$fs/usr/share/emacs/site-lisp/site-start.d
 	status
 
 	echo -n "Installing lua-mode"
-	mkdir -p $fs/usr/share/emacs/site-lisp/lua-mode && \
-	cp -a $stuff/lua-mode.el $fs/usr/share/emacs/site-lisp/lua-mode
+	mkdir -p $fs/usr/share/emacs/site-lisp/lua-mode &&
+	cp -a $src/lua-mode.el \
+		$fs/usr/share/emacs/site-lisp/lua-mode
 	status
 
 	# byte-compile files, remove src
-	for file in $fs/usr/share/emacs/site-lisp/lua-mode/*.el ; do
-		echo -n "Byte-compiling $(basename file)"
+	for file in $fs/usr/share/emacs/site-lisp/lua-mode/*.el
+	  do
+		echo -n "Byte-compiling $(basename $file)"
 		emacs -batch -f batch-byte-compile $file 2> /dev/null; err=$?
 		status
 		[ "$err" = "0" ] && rm -f $file
-	done
+	  done
 	true
 }
 
