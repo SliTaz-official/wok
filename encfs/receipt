@@ -1,26 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="encfs"
-VERSION="1.7.4"
+VERSION="1.9.5"
 CATEGORY="security"
+TAGS="filesystem"
 SHORT_DESC="Encryption filesystem for FUSE."
 MAINTAINER="b1+slitaz@nagel.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tgz"
-WEB_SITE="https://www.arg0.net/encfs"
-WGET_URL="http://encfs.googlecode.com/files/$TARBALL"
-TAGS="filesystem"
+WEB_SITE="https://vgough.github.io/encfs/"
 
-DEPENDS="fuse rlog openssl libboost-system libboost-serialization \
-libboost-filesystem gcc-lib-base"
-BUILD_DEPENDS="fuse fuse-dev rlog rlog-dev openssl-dev libboost-system-dev \
-libboost-serialization-dev libboost-filesystem-dev \
-libboost-system libboost-serialization libboost-filesystem"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/vgough/$PACKAGE/releases/download/v$VERSION/$TARBALL"
+
+DEPENDS="fuse gcc83-lib-base libboost-filesystem libboost-serialization 
+	libboost-system openssl rlog"
+BUILD_DEPENDS="cmake fuse-dev gcc83 glibc-dev libboost-filesystem-dev 
+	libboost-serialization-dev libboost-system-dev openssl-dev rlog-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr $CONFIGURE_ARGS &&
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	mkdir	build
+	cd	build
+	cmake	.. -DCMAKE_INSTALL_PREFIX=/usr &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -28,7 +33,9 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	# up to 1.7.4
+#	mkdir -p $fs/usr/lib
+#	cp -a $install/usr/lib/*.so* $fs/usr/lib
+
+	cp -a $install/usr/bin	$fs/usr
 }
