@@ -1,41 +1,41 @@
 # SliTaz package receipt.
 
 PACKAGE="ettercap"
-VERSION="NG-0.7.3"
+VERSION="0.8.3"
 CATEGORY="network"
-SHORT_DESC="Ettercap is a suite for man in the middle attacks on LAN"
+SHORT_DESC="A suite for man in the middle attacks on LAN."
 MAINTAINER="claudinei@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://ettercap.sourceforge.net"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WEB_SITE="https://www.ettercap-project.org"
 
-DEPENDS="libpthread-stubs libpcap libnet libltdl zlib"
-BUILD_DEPENDS="libpthread-stubs libpcap libpcap-dev libnet-dev libtool file \
-zlib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/Ettercap/$PACKAGE/archive/v$VERSION.tar.gz"
+
+DEPENDS="curl geoip libltdl libnet libpcap libpthread-stubs openssl zlib"
+BUILD_DEPENDS="cmake curl-dev file geoip-dev libnet-dev libpcap-dev 
+	libpthread-stubs libtool ncurses-dev openssl-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	sed -i 's/ettercap_LDFLAGS = -export-dynamic @EC_LIBS@/ettercap_LDADD += @EC_LIBS@\nettercap_LDFLAGS = -export-dynamic -Wl,--copy-dt-needed-entries/' src/Makefile.*
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--enable-plugins \
-		--disable-gtk \
-		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	mkdir	build
+	cd	build
+	cmake					\
+		-DCMAKE_INSTALL_PREFIX=/usr	\
+		-DENABLE_GTK=OFF		\
+		-DENABLE_PLUGINS=ON		\
+		../
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/etc $fs
-	cp -a $install/usr/share/ettercap $fs/usr/share
-	cp -a $install/usr/lib $fs/usr
-}
 
+	cp -a $install/etc			$fs
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib			$fs/usr
+	cp -a $install/usr/share/ettercap	$fs/usr/share
+}
