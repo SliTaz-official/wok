@@ -1,37 +1,43 @@
 # SliTaz package receipt.
 
 PACKAGE="faac"
-VERSION="1.28"
+VERSION="1.29.9.2"
 CATEGORY="multimedia"
-SHORT_DESC="FAAC is an open source MPEG-4 and MPEG-2 AAC encoder."
+TAGS="mp4 mpeg encoder"
+SHORT_DESC="An open source MPEG-4 and MPEG-2 AAC encoder."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://www.audiocoding.com"
-WGET_URL="$SF_MIRROR/faac/$TARBALL"
-TAGS="mp4 mpeg encoder"
 
-DEPENDS="gcc-lib-base"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/faac/$TARBALL"
+
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="gcc83"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src/common/mp4v2
-	patch -p0 < $stuff/gcc44.patch || return 1
-	cd ../..
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+#	cd $src/common/mp4v2
+#	patch -p0 < $stuff/gcc44.patch || return 1
+#	cd ../..
+
+	./configure				\
+		CC=gcc-83			\
+		CXX=g++-83			\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-}
+	mkdir -p $fs/usr/lib
 
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+}
