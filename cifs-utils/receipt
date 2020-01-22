@@ -21,24 +21,21 @@ compile_rules()
 	autoreconf -i &&
 	./configure			\
 		CC=gcc-83		\
-		CC=g++-83		\
+		CXX=g++-83		\
 		--prefix=/usr		\
-		--mandir=/usr/share/man	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
-
-# not available
-#	cook_pick_manpages *.1
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	mkdir -p $fs/usr/bin
 	mkdir -p $fs/usr/sbin
 
-	cp -a $install/sbin	$fs
-	cd			$fs/usr/sbin
-	ln -s ../../sbin/mount.cifs .
-	ln -s ../../sbin/mount.cifs umount.cifs
+	cp -a $install/sbin		$fs
+	cp -a $install/usr/bin/smbinfo	$fs/usr
+	ln -s ../../sbin/mount.cifs	$fs/usr/sbin/mount.cifs
+	ln $fs/usr/sbin/mount.cifs	$fs/usr/sbin/umount.cifs
 }
