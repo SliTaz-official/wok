@@ -1,36 +1,37 @@
 # SliTaz package receipt.
 
 PACKAGE="fceux"
-VERSION="2.1.5"
+VERSION="2.2.3"
 CATEGORY="games"
-SHORT_DESC="A fast and ultra-compatible NES/Famicom emulator with SDL, OpenGL and SVGALIB support"
+TAGS="emulator nes"
+SHORT_DESC="A fast and ultra-compatible NES/Famicom emulator with SDL, OpenGL and SVGALIB support."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.src.tar.bz2"
 WEB_SITE="http://fceux.com/web/home.html"
-WGET_URL="$SF_MIRROR/fceultra/$TARBALL"
-TAGS="emulator nes"
 
-DEPENDS="libsdl lua gtk+"
-BUILD_DEPENDS="scons mesa-dev libsdl-dev lua-dev gtk+-dev zlib-dev"
+TARBALL="$PACKAGE-$VERSION.src.tar.gz"
+WGET_URL="$SF_MIRROR/fceultra/$TARBALL"
+
+DEPENDS="gtk+ libsdl lua"
+BUILD_DEPENDS="elfutils-dev gtk+-dev libsdl-dev lua-dev mesa-dev scons zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lX11"
+
 	sed -i 's/void\* gzfile/gzFile_s* gzfile/' src/file.cpp
+
 	scons
 
-	sed -i "s|/usr/local|$DESTDIR/usr|" SConstruct
-	scons install
+#	sed -i "s|/usr/local|$DESTDIR/usr|" SConstruct
+	scons --prefix=$DESTDIR/usr install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin	$fs/usr
 }
-
