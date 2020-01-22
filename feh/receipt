@@ -1,27 +1,34 @@
 # SliTaz package receipt
 
 PACKAGE="feh"
-VERSION="2.10"
+VERSION="3.3"
 CATEGORY="graphics"
-SHORT_DESC="Lightweight and powerful image viewer and composer"
+TAGS="image photo viewer"
+SHORT_DESC="Lightweight and powerful image viewer and composer."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://feh.finalrewind.org/"
-WGET_URL="http://derf.homelinux.org/~derf/projects/$PACKAGE/$TARBALL"
-TAGS="image photo viewer"
-HOST_ARCH="i486 arm"
 
-DEPENDS="imlib2 giblib jpeg libpng xorg-libX11 freetype xorg-libXau \
-xorg-libXdmcp xorg-libXext xorg-libXinerama libcurl"
-BUILD_DEPENDS="imlib2-dev giblib-dev xorg-xproto xorg-xineramaproto \
-xorg-libX11-dev libpng-dev jpeg-dev curl-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="${WEB_SITE}$TARBALL"
+
+DEPENDS="freetype gcc83-lib-base giblib imlib2 jpeg libcurl libpng xorg-libX11 
+	xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXinerama"
+BUILD_DEPENDS="curl-dev gcc83 giblib-dev imlib2-dev jpeg-dev libpng-dev 
+	xorg-libX11-dev xorg-xineramaproto xorg-xproto"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i -e 's:/usr/local:/usr:g' config.mk &&
-	make && make DESTDIR=$DESTDIR install &&
+	make			\
+		CC=gcc-83	\
+		PREFIX=/usr &&
+	make	install		\
+		PREFIX=/usr	\
+		DESTDIR=$DESTDIR  &&
+
 	# Fix path to icon and remove from menu since it need a param to
 	# load images.
 	sed -i \
@@ -34,11 +41,10 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	mkdir -p $fs/usr/share/feh
 	mkdir -p $fs/usr/share/feh/fonts
 	mkdir -p $fs/usr/share/feh/images
 	
-	cp -a $install/usr/bin/feh $fs/usr/bin
-	cp -a $install/usr/share/feh/fonts $fs/usr/share/feh
-	cp -a $install/usr/share/feh/images $fs/usr/share/feh
+	cp -a $install/usr/bin/feh		$fs/usr/bin
+	cp -a $install/usr/share/feh/fonts	$fs/usr/share/feh
+	cp -a $install/usr/share/feh/images	$fs/usr/share/feh
 }
