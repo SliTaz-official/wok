@@ -1,48 +1,52 @@
 # SliTaz package receipt.
 
 PACKAGE="fcron"
-VERSION="3.0.4"
+VERSION="3.2.1"
 CATEGORY="network"
-SHORT_DESC="Periodical command scheduler"
+TAGS="cron scheduler"
+SHORT_DESC="Periodical command scheduler."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL"
-TARBALL="$PACKAGE-$VERSION.src.tar.gz"
 WEB_SITE="http://fcron.free.fr/"
+
+TARBALL="$PACKAGE-$VERSION.src.tar.gz"
 WGET_URL="http://fcron.free.fr/archives/$TARBALL"
-TAGS="cron scheduler"
 
 DEPENDS=""
-BUILD_DEPENDS="perl"
+BUILD_DEPENDS="perl readline-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--without-sendmail \
-		--with-username=nobody \
-		--with-groupname=nogroup \
-		--with-pam=no \
-		--with-selinux=no \
-		--with-answer-all=no \
-		--with-boot-install=no \
-		--with-editor=/bin/vi \
-		--with-sysfcrontab=yes \
+	./configure					\
+		--prefix=/usr				\
+		--sysconfdir=/etc			\
+		--localstatedir=/var			\
+		--without-sendmail			\
+		--with-username=nobody			\
+		--with-groupname=nogroup		\
+		--with-pam=no				\
+		--with-selinux=no			\
+		--with-answer-all=no			\
+		--with-boot-install=no			\
+		--with-editor=/bin/vi			\
+		--with-sysfcrontab=yes			\
+		--with-systemdsystemunitdir=none	\
 		$CONFIGURE_ARGS &&
-	make && make -j1 DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/ $fs/etc/init.d
+	mkdir -p $fs/usr/
+	mkdir -p $fs/etc/init.d
 
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin/fcron $fs/usr/bin
-	cp -a $install/var $fs
-	cp -a $install/etc $fs
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/sbin/fcron	$fs/usr/bin
+	cp -a $install/var		$fs
+	cp -a $install/etc		$fs
 
-	cp -a stuff/fcron $fs/etc/init.d
+	cp -a stuff/fcron		$fs/etc/init.d
 }
