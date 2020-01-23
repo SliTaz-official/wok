@@ -289,19 +289,18 @@ doret:
         global  @rewind$qi:near			; fd=ax
         proc    @rewind$qi near
 
-		ifdef EXTRA
-		xchg	ax,bx			; catch ISO image case
-		mov	cx,-512			; curpos = 512
-		stc				; see LOAD.CPP
-		mov	bl,2
+		ifdef EXTRA			; catch ISO image case
+		stc
+		mov	dx,-512			; curpos = 512, see LOAD.CPP
+		mov	bl,1
 		jmp	lseekword
 		endif
 rewind:						; rewind(ax)
 		mov	bl,0
 lseek0:						; lseek0(ax,bl=dir)
-		xor	cx,cx			; clear C
+		xor	dx,dx			; clear C
 lseekword:
-		sbb	dx,dx
+		sbb	cx,cx
 lseekset:
 		xchg	ax,bx
 lseek:
