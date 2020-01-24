@@ -221,8 +221,9 @@ open:						; open(bx)
 
         global  close:near			; close(ax)
 close:
+		mov	bh,3Eh
+dosbx:
 		xchg	ax,bx
-		mov	ah,3Eh
 		or	bx,bx
 		jnz	dos
 		ret
@@ -265,7 +266,6 @@ close:
                 jcxz	fail
 dos:
                 int	21h
-chkc:
                 jnc	doret
 fail:
 		stc
@@ -302,16 +302,14 @@ lseek0:						; lseek0(ax,bl=dir)
 lseekword:
 		sbb	cx,cx
 lseekset:
-		xchg	ax,bx
-lseek:
-		mov	ah,42h			; bx=fd cx:dx=offset al=whence
-		jmp	dos
+		mov	bh,42h			; bx=fd cx:dx=offset al=whence
+		jmp	dosbx
 
         endp    @rewind$qi
 
 		ifdef EXTRA
 ;***************************************************************
-;_fastcall long isolseek(bx:const unsigned long *offset);
+;_fastcall void isolseek(bx:const unsigned long *offset);
 ;_fastcall long lseekset2(ax:int fd, bx:unsigned long* offset);
 ;***************************************************************
         global  @isolseek$qpxul:near
@@ -335,7 +333,7 @@ isolseek:
         proc    @isoreadsector$qpxul near
 
 		call	isolseek
-		jc	doret
+		jc	fail
 		mov	dx,2560
 		mov	bx,offset _isostate.buffer
 		mov	ax,[_isostate.fd]

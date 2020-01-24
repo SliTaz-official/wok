@@ -115,7 +115,8 @@ static void bootiso(char **iso)
 		    isoopen(rootfs[0] ? rootfs : fallback) != -1) {
 			addinitrd();
 		}
-		if (*init && isolseek(&initrddesc) != 0) {
+		if (*init) {
+			isolseek(&initrddesc);
 			read(x->fd, &x->filemod, 10); // + x->fileofs & x->filesize
 			magic = x->filemod;
 			x->fileofs = 0x7FF0 - (x->filesize &= 0xFFFF);

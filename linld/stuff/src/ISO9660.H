@@ -29,7 +29,7 @@ extern struct isostate {
 #define	isofilesize isostate.filesize
 #define	isofilemod isostate.filemod
 #define	isofilename isostate.filename
-extern _fastcall long isolseek(const unsigned long *offset);
+extern _fastcall void isolseek(const unsigned long *offset);
 extern _fastcall int isoreadsector(const unsigned long *offset);
 extern _fastcall int isoreset(char *name);
 extern _fastcall int isoopen(const char *name);
