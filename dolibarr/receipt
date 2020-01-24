@@ -1,9 +1,9 @@
 # SliTaz package receipt.
 
 PACKAGE="dolibarr"
-VERSION="9.0.0"
+VERSION="10.0.6"
 CATEGORY="office"
-SHORT_DESC="ERP/CRM for small and medium companies"
+SHORT_DESC="ERP/CRM for small and medium companies."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPLv3"
 WEB_SITE="https://www.dolibarr.org/"
@@ -17,7 +17,7 @@ BUILD_DEPENDS=""
 # Rules to configure and make the package.
 compile_rules()
 {
-	# Fix attributes and perms
+	# Fix attributes and permissions
 	chown -R root.root *
 	chmod -x C* I* R* 
 	find . \( -name "*.php" \
@@ -32,47 +32,46 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	
-	mkdir -p $fs/etc/dolibarr \
-		$fs/usr/share/dolibarr \
-		$fs/var/lib/dolibarr/documents \
-		$fs/usr/share/doc/$PACKAGE/schemas \
-		$fs/usr/share/applications 
-		
-	
-	cp -a $src/htdocs $fs/usr/share/dolibarr
-	cp -a $src/scripts $fs/usr/share/dolibarr
-	
+	mkdir -p $fs/etc/dolibarr
+	mkdir -p $fs/usr/share/dolibarr
+	mkdir -p $fs/var/lib/dolibarr/documents
+	mkdir -p $fs/usr/share/doc/$PACKAGE/schemas
+	mkdir -p $fs/usr/share/applications
+
+	cp -a $src/htdocs	$fs/usr/share/dolibarr
+	cp -a $src/scripts	$fs/usr/share/dolibarr
+
 	# Remove install directory
 	#rm -rf $fs/usr/share/dolibarr/htdocs/install
-	
+
 	# Populate documents directory
 	for dir in facture users propale mycompany ficheinter produit rapport
-	do
+	  do
 		mkdir $fs/var/lib/dolibarr/documents/$dir
-	done
-	
-	# Fix perms
-	chown -R root.www $fs/var/lib/dolibarr/documents
-	chmod -R 770 $fs/var/lib/dolibarr/documents
-	
-	cp $stuff/conf.php $fs/etc/dolibarr
-	cp $stuff/$PACKAGE-$VERSION-mysql.sql $fs/usr/share/doc/$PACKAGE/schemas
-	cp -a $stuff/pixmaps $fs/usr/share/
-	
-	ln -s /etc/dolibarr/conf.php $fs/usr/share/dolibarr/htdocs/conf
+	  done
 
+	# Fix permissions
+	chown -R root.www	$fs/var/lib/dolibarr/documents
+	chmod -R 770		$fs/var/lib/dolibarr/documents
+
+	cp $stuff/conf.php	$fs/etc/dolibarr
+	cp $stuff/$PACKAGE-$VERSION-mysql.sql \
+				$fs/usr/share/doc/$PACKAGE/schemas
+	cp -a $stuff/pixmaps	$fs/usr/share/
+
+	ln -s /etc/dolibarr/conf.php $fs/usr/share/dolibarr/htdocs/conf
 }
 
 post_install(){
-	
 	db_name=dolibarr
 	db_user=dolibarr
 	db_password=dolibarr
 	
 	# Configure apache server
-	if [ -f "$1/etc/apache/httpd.conf" ]; then
-		if [ ! -f "$1/etc/apache/conf.d/dolibarr.conf" ]; then
+	if [ -f "$1/etc/apache/httpd.conf" ]
+	  then
+		if [ ! -f "$1/etc/apache/conf.d/dolibarr.conf" ]
+		  then
 			cat > "$1/etc/apache/conf.d/dolibarr.conf" <<EOT
 <IfModule mod_alias.c>
     Alias /dolibarr /usr/share/dolibarr/htdocs
@@ -85,34 +84,41 @@ post_install(){
 </Directory>
 
 EOT
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
-				test -f /var/run/apache/httpd.pid && \
-					( kill -0 $(cat /var/run/apache/httpd.pid) && /etc/init.d/apache restart )
+				test -f /var/run/apache/httpd.pid &&
+				( kill -0 $(cat /var/run/apache/httpd.pid) && /etc/init.d/apache restart )
 			fi
 		fi
 	fi
 	
-	# Configure every thing.
-	if [ -z "$1" ]; then
-		if ( ! mysqladmin -s ping > /dev/null ); then
+	# Configure everything.
+	if [ -z "$1" ]
+	  then
+		if ( ! mysqladmin -s ping > /dev/null )
+		  then
 			echo "Starting MySQL server"
 			( /etc/init.d/mysql start ; status  ) || exit 
 			sleep 4 #let the mysql daemon start
 		fi
-		if ( ! mysql -u root -Be 'show databases' | grep -q $db_name ); then
+		if ( ! mysql -u root -Be 'show databases' | grep -q $db_name )
+		  then
 			echo -n "Create $db_name database"
-			mysql -Be "create database $db_name" ; status
+			mysql -Be "create database $db_name"
+			status
+
 			# We suppose that databse user does not exist.
 			# It may be false.
 			echo  -n "Create user $db_user with password $db_password"
 			mysql -Be "grant all privileges on ${db_name}.* to '$db_user'@'localhost' 
-				identified by '$db_password'" ; status
+				identified by '$db_password'"
+			status
+
 			# At last populate the database.
 			echo -n "Create $db_name database schema."
-			mysql -u $db_user -p${db_password} -D $db_name < /usr/share/doc/dolibarr/schemas/$PACKAGE-$VERSION-mysql.sql ; status
-			
+			mysql -u $db_user -p${db_password} -D $db_name < /usr/share/doc/dolibarr/schemas/$PACKAGE-$VERSION-mysql.sql
+			status
 		fi
-			
 	fi
 }
