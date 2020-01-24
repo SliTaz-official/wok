@@ -1,36 +1,43 @@
 # SliTaz package receipt.
 
 PACKAGE="fcgi"
-VERSION="2.4.0"
+VERSION="2.4.2"
 CATEGORY="development"
+TAGS="CGI"
 SHORT_DESC="Fast CGI binary and library."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://fastcgi-archives.github.io/"
-WGET_URL="http://www.fastcgi.com/dist/$TARBALL"
-TAGS="CGI"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/FastCGI-Archives/${PACKAGE}2/archive/$VERSION.tar.gz"
+
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="autoconf automake gcc83 libtool"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# Gcc4 fix from Gentoo (http://bugs.gentoo.org/256654)
-	busybox patch -p0 -i $stuff/fcgi-2.4.0_gcc4.u
+#	busybox patch -p0 -i $stuff/fcgi-2.4.0_gcc4.u
 	
-	cd $src
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+	./autogen.sh &&
+	./configure				\
+		CC=gcc-83			\
+		CXX=g++-83			\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
 	make -j1 &&
-	make -j1 DESTDIR=$DESTDIR install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
+
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/bin		$fs/usr
 }
