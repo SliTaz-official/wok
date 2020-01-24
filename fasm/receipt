@@ -1,16 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="fasm"
-VERSION="1.73.16"
+VERSION="1.73.21"
 CATEGORY="development"
 SHORT_DESC="Assembly language programming for x86, x86-64 and ARM systems."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="other"
-WEB_SITE="http://flatassembler.net/"
+WEB_SITE="https://flatassembler.net/"
 
 TARBALL="$PACKAGE-$VERSION.tgz"
-EXTRA_SOURCE_FILES="FASMARM_small.ZIP"
 WGET_URL="$WEB_SITE$TARBALL"
+EXTRA_SOURCE_FILES="FASMARM_small.ZIP"
 
 DEPENDS=""
 BUILD_DEPENDS=""
@@ -22,22 +22,28 @@ compile_rules()
 		wget -P $SOURCES_REPOSITORY \
 		http://arm.flatassembler.net/FASMARM_small.ZIP
 	unzip $SOURCES_REPOSITORY/FASMARM_small.ZIP
+
 	mv ReadMe.txt fasmarm.txt
 	cp $src/SOURCE/LINUX/FASMARM.ASM $src/source/Linux/fasmarm.asm
-	for i in $src/SOURCE/*.INC ; do
+	for i in $src/SOURCE/*.INC
+	  do
 		cp $i $src/source/$(basename $i | tr [A-Z] [a-z])
-	done
-	mkdir -p $DESTDIR/usr/bin $DESTDIR/usr/share/doc/fasm
+	  done
+
+	mkdir -p $DESTDIR/usr/bin
+	mkdir -p $DESTDIR/usr/share/doc/fasm
+
 	cd $src/source/Linux
 	../../fasm fasm.asm $DESTDIR/usr/bin/fasm
-	sed -i '/al,8Ah/{Nx}/check_for_used/{px}' ../exprcalc.inc
+	sed -i '/al,8Ah/{Nx}/check_for_used/{px}' \
+		../exprcalc.inc
 	../../fasm fasmarm.asm $DESTDIR/usr/bin/fasmarm
-	cp ../../*.txt $DESTDIR/usr/share/doc/fasm
+	cp ../../*.txt	$DESTDIR/usr/share/doc/fasm
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin	$fs/usr
 }
