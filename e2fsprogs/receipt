@@ -1,19 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="e2fsprogs"
-VERSION="1.44.5"
+VERSION="1.45.5"
 CATEGORY="base-system"
-SHORT_DESC="Filesystem utilities for use with ext2/ext3/ext4 (without fsck*)."
+SHORT_DESC="Filesystem utilities for use with ext2, ext3 and ext4 (without fsck*)."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://e2fsprogs.sourceforge.net/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS="libcomerr util-linux-blkid util-linux-uuid"
-BUILD_DEPENDS="texinfo util-linux-blkid-dev util-linux-uuid-dev \
-coreutils-operations"
+BUILD_DEPENDS="coreutils-operations texinfo util-linux-blkid-dev 
+	util-linux-uuid-dev"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation.
 case "$ARCH" in
@@ -30,14 +32,17 @@ compile_rules()
 	zcat $stuff/e2fsprogs.no.64bit.by.default.diff.gz | patch -p1 || exit 1
 
 	sed -i 's|\$ac_MKDIR_P&|mkdir -p\&|' configure
-	mkdir ../build && cd ../build
-	$src/configure \
-		--prefix=/usr \
-		--with-root-prefix="" \
-		--enable-elf-shlibs \
-		--sysconfdir=/etc \
+
+	mkdir ../build &&
+	cd ../build &&
+	$src/configure			\
+		--prefix=/usr		\
+		--with-root-prefix=""	\
+		--enable-elf-shlibs	\
+		--sysconfdir=/etc	\
 		$CONFIGURE_ARGS
-	make && make install &&
+	make &&
+	make install &&
 	make install-libs
 }
 
@@ -45,15 +50,18 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/sbin $fs
-	cp -a $install/lib $fs
-	cp -a $install/etc $fs
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
+
+	cp -a $install/sbin	$fs
+	cp -a $install/lib	$fs
+	cp -a $install/etc	$fs
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $install/usr/sbin	$fs/usr
 	( cd $fs ; for i in lib/*.so.?; do ln -s /$i usr/$i ; done )
-	cat $stuff/*.files-list | while read file; do
+	cat $stuff/*.files-list | while read file
+	  do
 		rm -f ${fs}$file
-	done
+	  done
+
 	# Remove fsck provided by Busybox.
 	rm $fs/sbin/fsck*
 }
