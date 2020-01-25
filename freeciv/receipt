@@ -1,29 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="freeciv"
-VERSION="2.2.5"
+VERSION="2.6.1"
 CATEGORY="games"
+TAGS="strategy"
 SHORT_DESC="Empire-building strategy game"
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://freeciv.wikia.com/wiki/Main_Page"
+WEB_SITE="http://www.freeciv.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="strategy"
 
-DEPENDS="zlib ncurses readline gtk+ gettext-base xorg-libXdamage libsdl-mixer \
-bzip2"
-BUILD_DEPENDS="zlib-dev ncurses-dev readline-dev gtk+-dev gettext \
-libsdl-mixer-dev glibc-locale bzip2-dev expat-dev"
+DEPENDS="bzip2 gettext-base gtk+3 libsdl-mixer ncurses readline 
+	xorg-libXdamage zlib"
+BUILD_DEPENDS="bzip2-dev curl-dev expat-dev gettext glibc-locale 
+	gtk+3-dev libsdl-mixer-dev ncurses-dev readline-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's/--best/-9/' Makefile* data/scenario/Makefile*
+	sed -i 's/--best/-9/'	\
+		Makefile*	\
+		data/scenarios/Makefile*
 
-	./configure \
-		--enable-client=gtk \
-		--enable-shared \
+	./configure			\
+		--enable-client=gtk	\
+		--enable-shared		\
 		$CONFIGURE_ARGS &&
 	make -j1 &&
 	make -j1 install
@@ -32,11 +35,14 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/share/freeciv $fs/usr/share
-	# Add icons for desktop files
-	cp -a $install/usr/share/icons/hicolor/32x32/apps $fs/usr/share/pixmaps
-}
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/lib
 
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/share/freeciv	$fs/usr/share
+
+	# Add icons for desktop files
+	cp -a $install/usr/share/icons/hicolor/32x32/apps \
+						$fs/usr/share/pixmaps
+}
