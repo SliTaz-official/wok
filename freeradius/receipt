@@ -1,30 +1,34 @@
 # SliTaz package receipt.
 
 PACKAGE="freeradius"
-VERSION="2.1.12"
+VERSION="3.0.20"
 CATEGORY="security"
-SHORT_DESC="radius server"
+SHORT_DESC="Radius server."
 MAINTAINER="sdaigl@lacitec.on.ca"
 LICENSE="GPL2 LGPL2"
+WEB_SITE="https://www.freeradius.org/"
+
 SOURCE="freeradius-server"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://www.freeradius.org/"
 WGET_URL="ftp://ftp.freeradius.org/pub/freeradius/$TARBALL"
-CONFIG_FILES="/etc/raddb"
 
-DEPENDS="libssl cyrus-sasl libldap libltdl python readline libunixODBC \
-libkrb5 libcomerr3 libmysqlclient gdbm"
-BUILD_DEPENDS="libtool openldap-dev openssl-dev pam-dev krb5-dev gdbm-dev \
-libtool"
+DEPENDS="cyrus-sasl gdbm libcomerr3 libkrb5 libldap libltdl 
+	libmysqlclient libssl libunixODBC python readline"
+BUILD_DEPENDS="gdbm-dev krb5-dev libpcap-dev libtool openldap-dev 
+	openssl-dev pam-dev talloc-dev"
+
+CONFIG_FILES="/etc/raddb"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	export CFLAGS="$CFLAGS -fno-strict-aliasing"
-	./configure --sysconfdir=/etc \
-		--localstatedir=/var \
-		--with-system-libtool \
-		--with-system-libltdl \
+
+	./configure			\
+		--sysconfdir=/etc	\
+		--localstatedir=/var	\
+		--with-system-libtool	\
+		--with-system-libltdl	\
 		$CONFIGURE_ARGS &&
 	make -j1 &&
 	make R=$DESTDIR install
@@ -33,14 +37,17 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share $fs/etc/init.d $fs/var/run/radiusd
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/etc/init.d
+	mkdir -p $fs/var/run/radiusd
 
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/share/freeradius $fs/usr/share
-	cp -a $install/etc $fs
-	cp -a $install/var $fs
-	rm -f $fs/usr/lib/rlm_pam* $fs/etc/raddb/modules/pam
-	cp -a $stuff/freeradius $fs/etc/init.d/
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/sbin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/share/freeradius	$fs/usr/share
+	cp -a $install/etc			$fs
+	cp -a $install/var			$fs
+	rm -f $fs/usr/lib/rlm_pam*		$fs/etc/raddb/modules/pam
+	cp -a $stuff/freeradius			$fs/etc/init.d
 }
