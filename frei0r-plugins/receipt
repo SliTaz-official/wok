@@ -1,25 +1,35 @@
 # SliTaz package receipt.
 
 PACKAGE="frei0r-plugins"
-VERSION="1.6.1"
+VERSION="1.7.0"
 CATEGORY="multimedia"
 TAGS="multimedia"
+SHORT_DESC="A minimalistic plugin API for video sources and filters."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
-SHORT_DESC="frei0r is a minimalistic plugin API for video sources and filters."
 WEB_SITE="https://frei0r.dyne.org/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://files.dyne.org/frei0r/releases/$TARBALL"
 
-DEPENDS="gcc-lib-base gavl"
-BUILD_DEPENDS="gavl-dev"
+DEPENDS="gavl gcc83-lib-base"
+BUILD_DEPENDS="gavl-dev gcc83"
 
 # Rules to configure and make the package.
 
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS && 
+	# 1.7.0
+	sed -i 's|README.md|README.txt|;	\
+		s|ChangeLog|ChangeLog.txt|;	\
+		s|TODO|TODO.txt|;		\
+		s|AUTHORS|AUTHORS.txt|'		\
+		Makefile.in
+
+	./configure		\
+		CC=gcc-83	\
+		CXX=g++-83	\
+		$CONFIGURE_ARGS && 
 	make -j 1 &&
 	make install
 }
@@ -28,6 +38,5 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/frei0r-1 
-	cp -a $install/usr/lib/frei0r-1/*so* $fs/usr/lib/frei0r-1
-
+	cp -a $install/usr/lib/frei0r-1/*so*	$fs/usr/lib/frei0r-1
 }
