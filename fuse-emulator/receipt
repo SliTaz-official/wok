@@ -1,34 +1,37 @@
 # SliTaz package receipt.
 
 PACKAGE="fuse-emulator"
-VERSION="1.0.0.1"
+VERSION="1.5.7"
 CATEGORY="games"
-SHORT_DESC="ZX Spectrum emulator"
+TAGS="emulator spectrum"
+SHORT_DESC="ZX Spectrum emulator."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL2"
-# make SOURCE fuse-emulator so the source tarball 
-# is not named fuse-$VERSION.tar.lzma
-SOURCE="fuse-emulator"
-TARBALL="fuse-$VERSION.tar.gz"
 WEB_SITE="http://fuse-emulator.sourceforge.net/fuse.php"
-WGET_URL="$SF_MIRROR/$SOURCE/$TARBALL"
-TAGS="emulator spectrum"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
 DEPENDS="alsa-lib gtk+ libpng libspectrum libxml2"
-BUILD_DEPENDS="alsa-lib-dev gtk+-dev libpng-dev libspectrum-dev libxml2-dev"
+BUILD_DEPENDS="alsa-lib-dev gtk+-dev libpng-dev libspectrum-dev 
+	libxml2-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure $CONFIGURE_ARGS && make && make install
+	./configure						\
+		LIBSPECTRUM_CFLAGS=" "				\
+		LIBSPECTRUM_LIBS=/usr/lib/libspectrum.so	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/fuse $fs/usr/share
-}
 
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/fuse	$fs/usr/share
+}
