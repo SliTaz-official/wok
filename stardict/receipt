@@ -3,44 +3,46 @@
 PACKAGE="stardict"
 VERSION="3.0.1"
 CATEGORY="utilities"
-SHORT_DESC="A powerful international dictionary written in Gtk2"
+SHORT_DESC="A powerful international dictionary written in Gtk2."
 MAINTAINER="lufeng369@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://stardict-4.sourceforge.net/"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="http://stardict-3.googlecode.com/files/$TARBALL"
 
-DEPENDS="enchant libsigc++ gtk+ xorg-libSM"
-BUILD_DEPENDS="bzip2 enchant-dev tar intltool popt libsigc++-dev gtk+-dev \
-xorg-libSM-dev zlib-dev util-linux-uuid-dev libffi"
+DEPENDS="enchant gtk+ libsigc++ xorg-libSM"
+BUILD_DEPENDS="bzip2 enchant-dev gtk+-dev intltool libffi libsigc++-dev \
+	popt util-linux-uuid-dev xorg-libSM-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	sed -i 's/<vector>/&\n#include <stdio.h>/' stardict-plugins/stardict-wordnet-plugin/scene.hpp
+	sed -i 's/<vector>/&\n#include <stdio.h>/' \
+		stardict-plugins/stardict-wordnet-plugin/scene.hpp
 	patch -p1 < $stuff/sigc++.patch || return 1
 	patch -p1 < $stuff/stardict_gcc43.patch || return 1
 
-	./configure \
-		--prefix=/usr \
-		--disable-man \
-		--disable-qqwry \
-		--sysconfdir=/etc \
-		--disable-gnome-support \
-		--disable-schemas-install \
-		--disable-espeak \
-		--disable-gucharmap \
-		--disable-festival \
-		--disable-advertisement \
-		--disable-updateinfo \
-	$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	./configure				\
+		--prefix=/usr			\
+		--disable-man			\
+		--disable-qqwry			\
+		--sysconfdir=/etc		\
+		--disable-gnome-support		\
+		--disable-schemas-install	\
+		--disable-espeak		\
+		--disable-gucharmap		\
+		--disable-festival		\
+		--disable-advertisement		\
+		--disable-updateinfo		\
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr $fs/
+	cp -a $install/usr	$fs
 }
