@@ -6,21 +6,25 @@ CATEGORY="x-window"
 SHORT_DESC="The GIMP Toolkit 3.x"
 MAINTAINER="pankso@slitaz.org"
 LICENSE="LGPL2"
+WEB_SITE="https://www.gtk.org/"
+
 SOURCE="gtk+"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="https://www.gtk.org/"
 WGET_URL="$GNOME_MIRROR/$SOURCE/${VERSION:0:4}/$TARBALL"
+
+SUGGESTED="cups"
+DEPENDS="at-spi2-atk atk gdk-pixbuf pango slitaz-icon util-linux-uuid 
+	xorg-libXcomposite xorg-libXcursor xorg-libXi xorg-libXinerama 
+	xorg-libXrandr"
+BUILD_DEPENDS="at-spi2-atk atk-dev autoconf automake bash cairo-dev 
+	cups-dev dbus-dev gdk-pixbuf-dev gobject-introspection-dev 
+	indent libffi-dev pango-dev libxml2-dev perl pkg-config 
+	util-linux-uuid-dev xorg-dev"
+
 CONFIG_FILES="/etc/gtk-3.0/settings.ini"
 
 #HOST_ARCH="i486 arm"
 CROSS_BUGS="bug: /bin/bash: no: command not found"
-
-DEPENDS="atk gdk-pixbuf pango xorg-libXcomposite xorg-libXcursor xorg-libXi \
-xorg-libXinerama xorg-libXrandr at-spi2-atk util-linux-uuid slitaz-icon"
-SUGGESTED="cups"
-BUILD_DEPENDS="bash pkg-config cups-dev dbus-dev gobject-introspection-dev \
-perl gdk-pixbuf-dev xorg-dev libffi-dev atk-dev pango-dev cairo-dev \
-indent libxml2-dev at-spi2-atk util-linux-uuid-dev"
 
 # Handle cross compilation.
 case "$ARCH" in
@@ -36,24 +40,26 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--enable-debug=no \
-		--enable-xkb \
-		--enable-xinerama \
-		--enable-xrandr \
-		--enable-xfixes \
-		--enable-xcomposite \
-		--enable-xdamage \
-		--enable-x11-backend \
-		--enable-introspection=yes \
-		--enable-packagekit=no \
-		--enable-colord=no \
-		--disable-wayland-backend \
-		--disable-broadway-backend \
-		--with-x $CONFIGURE_ARGS ${ARCH_ARGS} &&
+	./configure				\
+		--prefix=/usr			\
+		--sysconfdir=/etc		\
+		--localstatedir=/var		\
+		--enable-debug=no		\
+		--enable-xkb			\
+		--enable-xinerama		\
+		--enable-xrandr			\
+		--enable-xfixes			\
+		--enable-xcomposite		\
+		--enable-xdamage		\
+		--enable-x11-backend		\
+		--enable-introspection=yes	\
+		--enable-packagekit=no		\
+		--enable-colord=no		\
+		--disable-wayland-backend	\
+		--disable-broadway-backend	\
+		--with-x			\
+		$CONFIGURE_ARGS			\
+		${ARCH_ARGS} &&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
@@ -68,21 +74,21 @@ genpkg_rules()
 		$fs/usr/share
 
 	# Configuration file.
-	cp -a $install/etc $fs
-	cp -f $stuff/settings.ini $fs/etc/gtk-3.0
+	cp -a $install/etc		$fs
+	cp -f $stuff/settings.ini	$fs/etc/gtk-3.0
 
-	# Apps.
-	cp $install/usr/bin/gtk-query-immodules-3.0 $fs/usr/bin
-	cp $install/usr/bin/gtk-update-icon-cache $fs/usr/bin
+	# Applications.
+	cp $install/usr/bin/gtk-query-immodules-3.0	$fs/usr/bin
+	cp $install/usr/bin/gtk-update-icon-cache	$fs/usr/bin
 	# gtk3-demo & gtk3-demo-application -> gtk+3-demo
 	# gtk3-widget-factory -> gtk+3-widget-factory
 
-	# Libs.
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/gtk-3.0/3.0.0 $fs/usr/lib/gtk-3.0
-	rm -rf $fs/usr/lib/gtk-3.0/3.0.0/*/*.la
+	# Libraries.
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/gtk-3.0/3.0.0	$fs/usr/lib/gtk-3.0
+	rm -rf					$fs/usr/lib/gtk-3.0/3.0.0/*/*.la
 
 	# Themes.
-	cp -a $install/usr/share/themes $fs/usr/share
-	cp -a $install/usr/share/glib-2.0 $fs/usr/share
+	cp -a $install/usr/share/themes		$fs/usr/share
+	cp -a $install/usr/share/glib-2.0	$fs/usr/share
 }
