@@ -1,53 +1,136 @@
-#!/bin/sh -e
+#!/bin/sh
+#
+# get-bitcoin - create and install SliTaz package bitcoin
+#
+# (C) 2020 SliTaz - GNU General Public License v3.
+# Author : unknown
+# modified by HGT on 2020-01-29
+#
 
-PACKAGE="$(basename $0 | sed 's/get-//')"
+#	=== Initialisations ===
+
+PKGS_DB="/var/lib/tazpkg"	# packages database directory
+PACKAGE="bitcoin"
 CATEGORY="misc"
-WEB_SITE="http://$PACKAGE.org/"
 SHORT_DESC="New digital currency for instant payments to anyone, anywhere."
 MAINTAINER="somebody@$PACKAGE.org"
+WEB_SITE="https://bitcoin.org/"
 DEPENDS="libQtGui bzlib"
 
-ROOT="$1"
-[ -d "$ROOT" ] || ROOT=""
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
 
-if test $(id -u) != 0 ; then
-        echo -e "\nYou must be root to run `basename $0`."
-        echo -e "Please type 'su' and root password to become super-user.\n"
-        exit 0
+is_installed()
+{
+	if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then	#package is deemed to be installed
+	 	return 0
+	  else
+	 	return 1
+	 fi
+}
+
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+  then
+	echo "Commandline options:
+  $0
+	--version=<version>
+	--root=<path-to-root>
+	--install=yes|no
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>"
+	exit
 fi
 
-if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
-	[ -n "$ROOT" ] && exit 1
-	tazpkg remove $PACKAGE
-	[ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
+# Check for system administrator privileges
+check_root
+
+title "Package $PACKAGE will be build as SliTaz package and installed"
+
+# Fetch latest version, unless version is set by option --version
+[ -z "$version" ] && version="latest"
+
+# Install SliTaz package, unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
+
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
+
+# Directory for temporary files
+[ -z "$tempdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+
+# Logging file (unused by now)
+LOG=$TMP_DIR/get-$PACKAGE.log
+
+cat <<EOT
+Options in use:
+  root           : $root/
+  version        : $version
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
+
+EOT
+
+separator; newline
+
+#	=== Remove package, if installed ===
+if [ is_installed ]
+  then
+	action "Removing installed version..."
+	tazpkg remove $PACKAGE --root="$root/"
+	[ ! is_installed ] &&
+	die "Can't remove installed version. Exiting."
 fi
 
-TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+#	=== Fetch archive file, if not existing ===
+if [ "$version" == "latest" ]
+  then
+	WGET_URL=$(wget -q --no-check-certificate -O - ${WEB_SITE}en/download | \
+		sed '/linux-gnu.tar/!d; /i686/!d; s/.*href="\([^"]*\).*/\1/; s|/download$||')
+	WGET_URL=${WEB_SITE}$WGET_URL
+	FILE="$(basename $WGET_URL)"
+	VERSION="$(echo $FILE | sed 's|.*coin-\(.*\)-i686.*|\1|')"
+  else
+	FILE="bitcoin-$version-i686-pc-linux-gnu.tar.gz"
+	WGET_URL="https://bitcoincore.org/bin/bitcoin-core-$version/$FILE"
+	VERSION=$version
+fi
+
 CUR_DIR=$(pwd)
-mkdir -p $TMP_DIR && cd $TMP_DIR
-
-# Download tarball
-URL=$(wget -O - $WEB_SITE/en/download | sed \
-      '/linux.tar/!d;s/.*href="\([^"]*\).*/\1/;s|/download$||')
-FILE="$(basename $URL)"
-VERSION="$(echo $FILE | sed 's/.*coin-\(.*\)-linux.tar.*/\1/')"
-wget -O $FILE "$URL"
-
-if [ ! -f $FILE ]; then
-	cd $CUR_DIR
-	rm -rf $TMP_DIR
-	echo "Could not download $FILE from $URL. Exiting."
-	exit 1
+mkdir -p $TMP_DIR
+cd $TMP_DIR
+if [ -f $FILE ]
+  then
+	echo "Using existing archive file $FILE"
+  else
+	action "Fetching the archive"
+	newline
+	wget	--no-check-certificate $WGET_URL
+	if [ ! -f $FILE ]
+	  then
+		cd $CUR_DIR
+		rm -rf $TMP_DIR
+		echo "Could not transfer $FILE from $WGET_URL. Exiting."
+		exit 1
+	fi
 fi
+
+#	=== Extract files from archive ===
+action "Extracting the archive"
+newline
+busybox tar x -f $FILE
 
 mkdir -p $PACKAGE-$VERSION/fs/usr/bin
-busybox tar xf $FILE
+mv $PACKAGE-$VERSION/bin/*	$PACKAGE-$VERSION/fs/usr/bin
 
-mv $PACKAGE-$VERSION-linux/bin/32/* $PACKAGE-$VERSION/fs/usr/bin
-rm -rf $PACKAGE-$VERSION-linux
-
-# extracted pkg can be removed: Save RAM
+# Remove archive file
 rm -f $FILE
+
+#	=== Create SliTaz package ===
 
 cd $PACKAGE-$VERSION/fs
 
@@ -66,9 +149,11 @@ Comment=$SHORT_DESC
 Type=Application
 Categories=Office;
 EOT
-cd ../..
 
-cat > $PACKAGE-$VERSION/receipt <<EOT
+cd ..
+
+# Create recipe for SliTaz package
+cat > receipt <<EOT
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="$CATEGORY"
@@ -78,19 +163,24 @@ DEPENDS="$DEPENDS"
 WEB_SITE="$WEB_SITE"
 EOT
 
+cd $TMP_DIR
+
+action "Creating the package $PACKAGE..."
 # Pack
 tazpkg pack $PACKAGE-$VERSION
 
-# Clean to save RAM memory
+# Remove package tree
 rm -rf $PACKAGE-$VERSION
 
-# Install pseudo package
-tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
-case " $@ " in
-*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
-esac
+#	=== Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
 
-# Clean
+#	=== Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] &&
+mv $PACKAGE-$VERSION.tazpkg	$CUR_DIR
+
+# Remove temporary build directory
 cd $CUR_DIR
 rm -rf $TMP_DIR
-
