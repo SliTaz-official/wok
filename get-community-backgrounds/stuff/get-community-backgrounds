@@ -1,78 +1,167 @@
-#!/bin/sh -e
+#!/bin/sh
+#
+# get-community-backgrounds - create and install SliTaz package community-backgrounds
+#
+# (C) 2020 SliTaz - GNU General Public License v3.
+# Author : Leonardo Laporte
+# modified by HGT on 2020-01-29
+#
 
-[ -f '/etc/slitaz/slitaz.conf' ] && . /etc/slitaz/slitaz.conf
-[ -z "$INSTALLED" ] && INSTALLED='/var/lib/tazpkg/installed'
+#	=== Initialisations ===
 
-PACKAGE="get-community-backgrounds"
-PKGNAME="slitaz-community-backgrounds"
+PKGS_DB="/var/lib/tazpkg"	# packages database directory
+
+PACKAGE="community-backgrounds"
 VERSION="001"
 CATEGORY="x-window"
+TAGS="artwork background wallpaper"
 SHORT_DESC="Beautiful wallpapers created by the Slitaz Community."
 MAINTAINER="hackdorte@sapo.pt"
 LICENSE="BSD"
-WEB_SITE="https://github.com/hackdorte/slitaz-community-backgrounds"
-TAGS="artwork background wallpaper"
+WEB_SITE="https://github.com/Slitaz-official/hackdorte-artwork"
 
-ROOT="$1"
-[ -d "$ROOT" ] || ROOT=""
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
 
-if [ $(id -u) -ne 0 ]; then
-  echo -e "\nYou must be root to run `basename $0`."
-  echo -e "Please type 'su' and root password to become super-user.\n"
-  exit 0
+[ -f '/etc/slitaz/slitaz.conf' ] && . /etc/slitaz/slitaz.conf
+
+is_installed()
+{
+	if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then	#package is deemed to be installed
+	 	return 0
+	  else
+	 	return 1
+	 fi
+}
+
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+  then
+	echo "Commandline options:
+  $0
+	--root=<path-to-root>
+	--install=yes|no
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>"
+	exit
 fi
 
-if [ -d $ROOT$INSTALLED/$PKGNAME ]; then
-  [ -n "$ROOT" ] && exit 1
-  tazpkg remove $PKGNAME
-  [ -d $INSTALLED/$PKGNAME ] && exit 1
-fi
+# Check for system administrator privileges
+check_root
 
-# Source Download
-TARBALL="master.zip"
-URL="${WEB_SITE}/archive/$TARBALL"
-TMP_DIR="$(mktemp -d)"
-CUR_DIR=$(pwd)
-cd $TMP_DIR
-busybox wget -O $TARBALL $URL
+title "Package $PACKAGE will be build as SliTaz package and installed"
 
-if [ ! -f $TARBALL ]; then
-  echo "Could not download $TARBALL. Exiting."
-  exit 1
-fi
+# Install SliTaz package, unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
 
-# Unzip Package
-busybox unzip $TARBALL
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
 
-# Building Base
-mkdir -p $PKGNAME-$VERSION/fs/usr/share/images
-mv $PKGNAME-master/* $PKGNAME-$VERSION/fs/usr/share/images
-rm -irf $PKGNAME-$VERSION/fs/usr/share/images/README.md
-rm -irf $PKGNAME-master
-rm -irf $TARBALL
+# Directory for temporary files
+[ -z "$tempdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
 
+# Logging file (unused by now)
+LOG=$TMP_DIR/get-$PACKAGE.log
 
-# Writing The Receipt
-cat > $PKGNAME-$VERSION/receipt <<EOT
-PACKAGE="$PKGNAME"
-VERSION="$VERSION"
-CATEGORY="x-window"
-SHORT_DESC="$SHORT_DESC"
-WEB_SITE="$WEB_SITE"
-MAINTAINER="$MAINTAINER"
-TAGS="$TAGS"
+cat <<EOT
+Options in use:
+  root           : $root/
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
 
 EOT
 
-# Creating The Tazpkg Package
-tazpkg pack $PKGNAME-$VERSION
+separator
+newline
 
-# Install Package
-tazpkg -i $PKGNAME-$VERSION.tazpkg --root=$ROOT
-case " $@ " in
-*\ --k*) mv $PKGNAME-$VERSION.tazpkg $CUR_DIR ;;
-esac
+#	=== Remove package, if installed ===
+if [ is_installed ]
+  then
+	action "Removing installed version..."
+	newline
+	tazpkg remove $PACKAGE --root="$root/"
+	[ ! is_installed ] &&
+	die "Can't remove installed version. Exiting."
+fi
 
-# Clean
+#	=== Fetch archive file, if not existing ===
+FILE="master.zip"
+WGET_URL="${WEB_SITE}/archive/$FILE"
+
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR
+cd $TMP_DIR
+if [ -f $FILE ]
+  then
+	echo "Using existing archive file $FILE"
+  else
+	action "Fetching the archive"
+	newline
+	wget	--no-check-certificate $WGET_URL
+	if [ ! -f $FILE ]
+	  then
+		cd $CUR_DIR
+		rm -rf $TMP_DIR
+		echo "Could not transfer $FILE from $WGET_URL. Exiting."
+		exit 1
+	fi
+fi
+
+#	=== Extract files from archive ===
+action "Extracting the archive"
+newline
+busybox unzip -o $FILE
+status
+
+# Remove archive file
+rm -f $FILE
+
+# Building Base
+mkdir -p $PACKAGE-$VERSION/fs/usr/share/images
+mv hackdorte-artwork-master/images/* \
+	$PACKAGE-$VERSION/fs/usr/share/images
+
+action "Cleaning..."
+rm -rf	$PACKAGE-$VERSION/fs/usr/share/images/README.md
+rm -rf	hackdorte-artwork-master
+status
+
+# Create recipe for SliTaz package
+cat > $PACKAGE-$VERSION/receipt <<EOT
+# SliTaz package receipt.
+
+PACKED_SIZE=""
+UNPACKED_SIZE=""
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="$CATEGORY"
+TAGS="$TAGS"
+SHORT_DESC="$SHORT_DESC"
+MAINTAINER="$MAINTAINER"
+LICENSE="$LICENSE"
+WEB_SITE="$WEB_SITE"
+
+EOT
+
+action "Creating the package $PACKAGE..."
+tazpkg pack $PACKAGE-$VERSION
+# Remove package tree
+rm -rf $PACKAGE-$VERSION
+
+#	=== Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
+
+#	=== Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR;
+  echo $PACKAGE-$VERSION.tazpkg saved to $CUR_DIR )
+
+# Remove temporary build directory
 cd $CUR_DIR
-rm -rf "$TMP_DIR"
+rm -rf $TMP_DIR
