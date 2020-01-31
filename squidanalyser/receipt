@@ -1,0 +1,81 @@
+# SliTaz package receipt.
+
+PACKAGE="squidanalyser"
+VERSION="6.6"
+CATEGORY="network"
+SHORT_DESC="Squid proxy native log analyser and reports generator"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL3"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://squidanalyzer.darold.net/"
+WGET_URL="https://github.com/darold/squidanalyzer/archive/v$VERSION.tar.gz"
+CONFIG_FILES="/etc/squidanalyzer"
+TAGS="logs"
+
+DEPENDS="perl squid"
+BUILD_DEPENDS="perl"
+SUGGESTED="logrotate"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	perl Makefile.PL INSTALLDIRS=site
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	cp -a $install/var $fs
+	chown -R 80.80 $fs/var/www/squidanalyser
+	cp -a $install/etc $fs
+	mkdir $fs/etc/initcron.d
+	cat > $fs/etc/initcron.d/squidanalyser <<EOT
+
+# SquidAnalyzer log reporting daily
+0 2 * * * /usr/bin/squid-analyzer > /dev/null 2>&1
+EOT
+	chmod +x $fs/etc/initcron.d/squidanalyser
+}
+
+# Pre and post install commands for Tazpkg.
+pre_remove()
+{
+	if [ -z "$1" ]; then
+		crontab -l 2> /dev/null | grep -q squidanalyser || crontab - << EOT
+$(crontab -l 2> /dev/null | sed '/SquidAnalyzer/d;/squid-analyzer/d')
+EOT
+	fi
+}
+
+post_install()
+{
+	if [ -z "$1" ]; then
+		crontab -l 2> /dev/null | grep -q squidanalyser || crontab - << EOT
+$(crontab -l 2> /dev/null)
+$(cat /etc/initcron.d/squidanalyser)
+EOT
+		chmod -x /etc/initcron.d/squidanalyser
+	fi
+	if [ -d $1/etc/logrotate.d -a 
+	     -z "$(ls $1/etc/logrotate.d | grep squid)" ]; then
+		cat > $1/etc/logrotate.d/squidanalyser <<EOT
+/var/log/proxy/squid-access.log {
+	daily
+	compress
+	rotate 730
+	missingok
+	nocreate
+	sharedscripts
+	postrotate
+		test ! -e /var/run/squid.pid || /usr/sbin/squid -k rotate
+		/usr/bin/squid-analyzer -d -l /var/log/proxy/squid-access.log.1
+	endscript
+}
+EOT
+	fi
+}

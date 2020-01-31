@@ -50,6 +50,17 @@ EOT
 }
 
 # Pre and post install commands for Tazpkg.
+pre_remove()
+{
+	sed -i '/webalizer/d' "$1/etc/init.d/local.sh"
+	if [ -z "$1" ]
+	  then
+		crontab -l 2> /dev/null | grep -q webalizer || crontab - << EOT
+$(crontab -l 2> /dev/null | grep -v webalizer)
+EOT
+	fi
+}
+
 post_install()
 {
 	grep -q webalizer "$1/etc/init.d/local.sh" || \
@@ -64,5 +75,6 @@ EOT
 $(crontab -l 2> /dev/null)
 $(cat /etc/initcron.d/webalizer)
 EOT
+	  chmod -x /etc/initcron.d/webalizer
 	fi
 }
