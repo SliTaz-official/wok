@@ -20,6 +20,11 @@ compile_rules()
 	sed -i 's/.*gnutls_transport_set_lowat.*/#if GNUTLS_VERSION_NUMBER < 0x020c00\n&\n#endif/' misc/network.c
 	# gnutls_connection_end_t depredicated for gnutls >= 3.0.18
 	sed -i 's/gnutls_connection_end_t/unsigned int/' misc/openvas_server.h misc/openvas_server.c
+
+	# Update for bison 3
+	sed -i -e 's|naslerror(|naslerror(naslctxt *parm, |' \
+	       -e 's|pure_parser|pure-parser\n%parse-param {naslctxt * parm}\n%lex-param {naslctxt * parm}|' \
+			nasl/nasl_grammar.y
 	./configure --prefix=/usr --localstatedir=/var \
 	--mandir=/usr/share/man \
 	$CONFIGURE_ARGS &&
