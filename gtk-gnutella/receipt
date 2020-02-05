@@ -19,7 +19,6 @@ BUILD_DEPENDS="zlib-dev gtk+-dev pkg-config libxml2-dev glib-dev xorg-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./build.sh --prefix=/usr \
 	--disable-dbus \
 	--disable-nls &&
@@ -33,9 +32,13 @@ genpkg_rules()
 	mkdir -p $fs/usr/share/applications
 	mkdir -p $fs/usr/share/pixmaps
 	mkdir -p $fs/usr/share/gtk-gnutella/pixmaps
-	cp -a $install/usr/bin/* $fs/usr/bin
+	cp -a $install/usr/bin/gtk-gnutella $fs/usr/bin/gtk-gnutella.bin
+	cat > $fs/usr/bin/gtk-gnutella <<EOT
+#!/bin/sh
+G_SLICE=always_malloc /usr/bin/gtk-gnutella.bin
+EOT
+	chmod 755 $fs/usr/bin/gtk-gnutella
 	cp -a $install/usr/share/applications/* $fs/usr/share/applications/
 	cp -a $install/usr/share/pixmaps/* $fs/usr/share/pixmaps
 	cp -a $install/usr/share/gtk-gnutella/pixmaps/* $fs/usr/share/gtk-gnutella/pixmaps/
 }
-
