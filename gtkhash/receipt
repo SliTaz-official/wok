@@ -1,0 +1,48 @@
+# SliTaz package receipt.
+
+PACKAGE="gtkhash"
+VERSION="1.2"
+CATEGORY="system-tools"
+SHORT_DESC="GTK+ utility for computing message digests or checksums."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="GPLv2+"
+WEB_SITE="https://github.com/tristanheaven/gtkhash"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/releases/download/v$VERSION/$TARBALL"
+
+DEPENDS="gtk+3 libgcrypt"
+BUILD_DEPENDS="autoconf automake gtk+3-dev libgcrypt-dev libtool"
+
+HOST_ARCH="i486 arm"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure			\
+		--disable-blake2	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cook_copy_icons
+
+	mkdir -p $fs/usr/share/locale
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/applications	$fs/usr/share
+
+	# Set list of wanted locales in LOCALE_PACK
+	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+
+	# Copy message files in wanted languages, if available
+	for locale in $LOCALE_PACK
+	  do
+		[ -d $install/usr/share/locale/$locale ] || continue
+		cp -a $install/usr/share/locale/$locale $fs/usr/share/locale
+	  done
+}
