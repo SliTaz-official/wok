@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="emu8051"
+VERSION="2.0.1"
+CATEGORY="development"
+SHORT_DESC="Emulator and simulator for 8051 microcontrollers"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://www.hugovil.com/projet.php?proj=$PACKAGE"
+WGET_URL="http://www.hugovil.com/repository/$PACKAGE/$TARBALL"
+TAG="8051 simulator"
+
+DEPENDS="readline libtinfo gtk+"
+BUILD_DEPENDS="readline-dev libtinfo gtk+-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	export LDFLAGS="$LDFLAGS -ltinfo"
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/applications
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/etc $fs
+	cat > $fs/usr/share/applications/emu8051.desktop <<EOT
+[Desktop Entry]
+Type=Application
+Name=8051 simulator
+Name[fr]=simulateur 8051
+Exec=emu8051-gtk
+Categories=Development;
+EOT
+}
