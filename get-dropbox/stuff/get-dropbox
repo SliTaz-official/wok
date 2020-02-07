@@ -1,63 +1,146 @@
-#!/bin/sh 
+#!/bin/sh
+#
+# get-dropbox - create and install SliTaz package dropbox
+#
+# (C) 2020 SliTaz - GNU General Public License v3.
+# Author : unknown
+# modified by HGT on 2020-02-07
+#
 
-# Get and install Dropbox for Linux
+#	=== Initialisations ===
 
+PKGS_DB="/var/lib/tazpkg"	# packages database directory
 PACKAGE="dropbox"
-WEB_SITE="http://www.dropbox.com"
-PLATFORM="lnx.x86"	# or lnx.x86_64
-TARBALL=$PACKAGE-$PLATFORM.tar.gz
-URL="$WEB_SITE/download/?plat=$PLATFORM"
+WEB_SITE="https://www.dropbox.com"
+CATEGORY="non-free"
+DEPENDS="python"
+
+PLATFORM="lnx.x86"		# or lnx.x86_64
+
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
+
+is_installed()
+{
+	if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then	#package is deemed to be installed
+	 	return 0
+	  else
+	 	return 1
+	 fi
+}
+
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+  then
+	echo "Commandline options:
+  $0
+	--root=<path-to-root>
+	--install=yes|no
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>"
+	exit
+fi
+
+# Check for system administrator privileges
+check_root
+
+title "Package $PACKAGE will be build as SliTaz package and installed"
+
+# Fetch latest version, unless version is set by option --version (unusable by now)
+[ -z "$version" ] && version="latest"
+
+# Install SliTaz package, unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
+
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
+
+# Directory for temporary files
+[ -z "$tempdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+
+# Logging file (unused by now)
+LOG=$TMP_DIR/get-$PACKAGE.log
+
+cat <<EOT
+Options in use:
+  root           : $root/
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
+
+EOT
+
+separator; newline
+
+#	=== Remove package, if installed ===
+if [ is_installed ]
+  then
+	action "Removing installed version..."
+	tazpkg remove $PACKAGE --root="$root/"
+	[ ! is_installed ] &&
+	die "Can't remove installed version. Exiting."
+fi
+
+#	=== Fetch archive file, if not existing ===
+if [ "$version" == "latest" ]
+  then
+	FILE=$PACKAGE-$PLATFORM.tar.gz
+	WGET_URL="$WEB_SITE/download?plat=$PLATFORM"
+  else
+	die "A version cannot be specified. Exiting."
+fi
+
 CUR_DIR=$(pwd)
-TEMP_DIR=/tmp/$PACKAGE-$PLATFORM-$$
-ROOT="$1"
-
-# Check if we are root
-if test $(id -u) != 0 ; then
-	echo -e "\nYou must be root to run `basename $0`."
-	echo -e "Please type 'su' and root password to become super-user.\n"
-	exit 1
+mkdir -p $TMP_DIR
+cd $TMP_DIR
+if [ -f $FILE ]
+  then
+	echo "Using existing archive file $FILE"
+  else
+	action "Fetching the archive"
+	newline
+	wget	--no-check-certificate -O $FILE $WGET_URL
+	if [ ! -f $FILE ]
+	  then
+		cd $CUR_DIR
+		rm -rf $TMP_DIR
+		echo "Could not transfer $FILE from $WGET_URL. Exiting."
+		exit 1
+	fi
 fi
 
-# Avoid reinstall
-if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
-	echo -e "\n$PACKAGE package is already installed.\n"
-	exit 1
-fi
+#	=== Extract files from archive ===
+action "Extracting the archive"
+newline
 
-# Create a TEMP_DIR
-mkdir $TEMP_DIR
-cd $TEMP_DIR
+tar xzf $FILE
+status
 
-# Download the file
-wget --no-check-certificate -O $TARBALL $URL 
+# Remove archive file
+rm -f $FILE
 
-if [ ! -f $TARBALL ]; then
-	echo "Could not download $TARBALL. Exiting."
-	cd $CUR_DIR
-	rm -rf $TEMP_DIR
-	exit 1
-fi
+#	=== Create SliTaz package ===
 
-tar xzf $TARBALL
-# extracted pkg can be removed: Save RAM
-rm -f $TARBALL
-VERSION="$(cat $TEMP_DIR/.dropbox-dist/VERSION)"
+VERSION="$(cat $TMP_DIR/.dropbox-dist/VERSION)"
 
-mkdir -p $PACKAGE-$VERSION/fs/usr/lib \
-	$PACKAGE-$VERSION/fs/usr/bin \
-	$PACKAGE-$VERSION/fs/usr/share/applications 
+mkdir -p $PACKAGE-$VERSION/fs/usr/lib
+mkdir -p $PACKAGE-$VERSION/fs/usr/bin
+mkdir -p $PACKAGE-$VERSION/fs/usr/share/applications 
 
-mv $TEMP_DIR/.dropbox-dist $PACKAGE-$VERSION/fs/usr/lib/dropbox
-strip $PACKAGE-$VERSION/fs/usr/lib/dropbox 2>/dev/null
+mv $TMP_DIR/.dropbox-dist	$PACKAGE-$VERSION/fs/usr/lib/dropbox
+strip				$PACKAGE-$VERSION/fs/usr/lib/dropbox 2>/dev/null
 
-# Custom Dropboxd
+# Customise Dropboxd
 cat > $PACKAGE-$VERSION/fs/usr/lib/dropbox/dropboxd << "EOT"
 #!/bin/sh
 PAR=$(ls -d /usr/lib/dropbox/dropbox-lnx*)
 LD_LIBRARY_PATH=$PAR:$LD_LIBRARY_PATH exec $PAR/dropboxd $@
 EOT
 
-# Desktop file
+# Create Desktop file
 cat > $PACKAGE-$VERSION/fs/usr/share/applications/dropbox.desktop << EOT
 [Desktop Entry]
 Type=Application
@@ -68,37 +151,45 @@ Terminal=false
 Categories=Network
 EOT
 
-# Symlink to have Dropbox in PATH and fake nautilus
+# Create symbolic links to have Dropbox in PATH and fake nautilus
 cd $PACKAGE-$VERSION/fs/usr/bin
 rm -f dropboxd nautilus
 ln -s ../lib/dropbox/dropboxd .
 ln -s /usr/bin/pcmanfm nautilus
 
-cd $TEMP_DIR
+cd $TMP_DIR
 
+# Create recipe for SliTaz package
 cat > $PACKAGE-$VERSION/receipt << EOT
+# SliTaz package receipt.
+
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
-CATEGORY="non-free"
+CATEGORY="$CATEGORY"
 SHORT_DESC="Dropbox daemon and client for online storage."
-DEPENDS="python"
 WEB_SITE="$WEB_SITE/"
+
 SUGGESTED="ntlmaps"
+DEPENDS="$DEPENDS"
 EOT
 
+action "Creating the package $PACKAGE..."
 # Pack
 tazpkg pack $PACKAGE-$VERSION
 
-# Clean to save RAM memory
+# Remove package tree
 rm -rf $PACKAGE-$VERSION
 
-# Install pseudo package
-yes y | tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+#	=== Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+yes y | tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
 
-case " $@ " in
-*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
-esac
+#	=== Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR &&
+  echo Saved $PACKAGE-$VERSION.tazpkg to $CUR_DIR )
 
-# Clean
+# Remove temporary build directory
 cd $CUR_DIR
-rm -rf $TEMP_DIR
+rm -rf $TMP_DIR
