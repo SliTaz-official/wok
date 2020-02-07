@@ -1,159 +1,191 @@
 #!/bin/sh
 # get-OpenOffice3, install everything for OpenOffice.org exept KDE/Gnome integration and testsuite.
 #
-# (C) 2008 SliTaz - GNU General Public License v3.
+# (C) 2020 SliTaz - GNU General Public License v3.
 #
 # Author : Eric Joseph-Alexandre <erjo@slitaz.org>
+# modified by HGT on 2020-02-07
+#
+#	=== Initialisations ===
 
+PKGS_DB="/var/lib/tazpkg"	# packages database directory
 PACKAGE="OpenOffice3"
-URL="http://www.openoffice.org"
-ROOT="$1"
+WEB_SITE="https://openoffice.org"
+CATEGORY="office"
+DEPENDS="java-jre"
+
 PATTERN="Linux_x86_install-rpm"
-
-for MIRROR in \
-http://mirror.switch.ch/ftp/mirror/OpenOffice \
-http://openoffice.cict.fr \
-http://wwwftp.ciril.fr/pub/openoffice \
-http://artfiles.org/openoffice.org \
-http://vesta.informatik.rwth-aachen.de/ftp/pub/mirror/OpenOffice \
-http://ftp.ntua.gr/pub/OpenOffice \
-http://ftp.iitm.ac.in/openoffice \
-http://www.ring.gr.jp/archives/misc/openoffice \
-http://ftp.nluug.nl/pub/office/openoffice \
-
-do
-	wget -O - $MIRROR/ 2> /dev/null | grep -q localized || continue
-	DIR="stable"
-	LOC=$(wget -O - $MIRROR/localized/ 2> /dev/null | \
-		grep -E ">$LANG/|>${LANG/_/-}/|>${LANG%_*}/" | \
-		head -1 | sed 's/.*href=\"\(.*\)\/\".*/\1/')
-	[ -n "$LOC" ] && DIR="localized/$LOC"
-	VERSION="$(basename $(wget -O - $MIRROR/$DIR/ 2> /dev/null | grep \
-	href=\"[0-9] | tail -1 | sed 's/.*href=\"\(.*\)\".*/\1/') 2> /dev/null)"
-	[ -n "$VERSION" ] && break
-done
-
-if [ -z "$VERSION" ]; then
-	echo "Can't find VERSION. Abort."
-	exit 0
-fi
-echo "Selecting $DIR version $VERSION ..."
-TARBALL="$(wget -O - $MIRROR/$DIR/$VERSION/ \
-	2> /dev/null | grep $PATTERN | tail -1 | sed 's/.*href=\"\(.*\)\".*/\1/')"
-echo "Archive is $TARBALL ..."
-WGET_URL=$MIRROR/$DIR/$VERSION/$TARBALL
-
-TEMP_DIR="/tmp/$PACKAGE.$$"
-CUR_DIR=$(pwd)
-SOURCE_DIR="/tmp/src.$$"
 EXCLUDE="kde|gnome|test"
-LOG="/tmp/$(basename $0 .sh).log"
 
-# Status function with color (supported by Ash).
-status()
-{
-	local CHECK=$?
-	echo -en "\\033[70G[ "
-	if [ $CHECK = 0 ]; then
-		echo -en "\\033[1;33mOK"
-	else
-		echo -en "\\033[1;31mFailed"
-	fi
-	echo -e "\\033[0;39m ]"
-	return $CHECK
-}
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
 
-# Check if user is root to install, or remove packages.
-check_root()
+is_installed()
 {
-	if test $(id -u) != 0 ; then
-		echo -e "\nYou must be root to run `basename $0` with this option."
-		echo -e "Please use 'su' and root password to become super-user.\n"
-		exit 0
-	fi
-}
-
-check_if_installed()
-{
-	 # Avoid reinstall
-	 if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ];then
+	if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then	#package is deemed to be installed
 	 	return 0
-	 else
+	  else
 	 	return 1
 	 fi
 }
 
-#We need to bee root
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+  then
+	echo "Commandline options:
+  $0
+	--version=<version>
+	--root=<path-to-root>
+	--install=yes|no|quick
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>
+	--logfile=<logging-file>"
+	exit
+fi
+
+# Check for system administrator privileges
 check_root
 
-#check if package already installed
-if (check_if_installed $PACKAGE); then
-	echo "$PACKAGE is already installed."
-	[ -n "$ROOT" ] && exit 0
-	echo -n "Would you like to remove and reinstall this package [y/n]? "
-	read answer
-	case "$answer" in
-	y|Y)
-		tazpkg remove $PACKAGE ;;
-	*)
-		exit 0 ;;
-	esac
-		
+title "Package $PACKAGE will be build as SliTaz package and installed"
+
+# Fetch latest version, unless version is set by option --version
+[ -z "$version" ] && version="latest"
+
+# Install SliTaz package, unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
+
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
+
+# Directory for temporary files
+[ -z "$tempdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+
+# Logging file
+[ -z "$logfile" ] && LOG=$TMP_DIR/get-$PACKAGE.log
+
+cat <<EOT
+Options in use:
+  root           : $root/
+  version        : $version
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
+  logging file   : $LOG
+
+EOT
+
+separator; newline
+
+# Set WGET_URL
+# 3.3.0 no german rpm-Package available!
+for MIRROR in								\
+	http://ftp.free.fr/mirrors/ftp.openoffice.org			\
+	http://ftp-stud.hs-esslingen.de/pub/Mirrors/ftp.openoffice.org	\
+	http://www.ellak.gr/pub/openoffice				\
+	http://ftp.snt.utwente.nl/pub/software/openoffice		\
+	http://ftp.nluug.nl/pub/office/openoffice			\
+	http://ftp.isu.edu.tw/pub/OpenOffice
+  do
+	wget -O - $MIRROR/ 2> /dev/null | grep -q localized || continue
+	DIR="stable"
+	LOC=$(wget -O - $MIRROR/localized/ 2> /dev/null | \
+		grep -E ">$LANG<|>$LANG/<|>${LANG/_/-}<|>${LANG/_/-}/<|>${LANG%_*}<|>${LANG%_*}/<" | \
+		head -1 | sed 's|.*href=\"\(.*\)/\".*|\1|')
+	[ -n "$LOC" ] && DIR="localized/$LOC"
+	VERSION="$(wget -O - $MIRROR/$DIR/ 2> /dev/null | \
+	grep href=\"[0-9] | tail -1 | sed 's|.*href=\"\(.*\)/\".*|\1|' 2> /dev/null)"
+	[ -n "$VERSION" ] && break
+  done
+TARBALL=$(wget -O - $MIRROR/$DIR/$VERSION/ 2> /dev/null | \
+	grep $PATTERN | tail -1 | sed 's|.*href=\"\(.*\)\".*|\1|')
+# bug in sed?:
+TARBALL=${TARBALL%%\"*}
+echo "Archive is $TARBALL ..."
+
+# Set VERSION, unless supplied by --version
+if [ "$version" == "latest" ]
+  then
+	echo "Selecting $DIR version $VERSION from $MIRROR ..."
+	WGET_URL=$MIRROR/$DIR/$VERSION/$TARBALL
+  else
+	TARBALL=${TARBALL/$VERSION/$version}
+	VERSION=$version
+	WGET_URL="$MIRROR/$DIR/$VERSION/$TARBALL"
 fi
 
-
-# Check if we have the tarball before.
-if [ ! -f $SOURCE_DIR/$TARBALL ]; then
-	echo "Downloading OppenOffice.org tarball (it's time to have a break)... "
-	#Check if $SOURCE_DIR exist
-	test -d $SOURCE_DIR || mkdir -p $SOURCE_DIR
-	# Get the file.
-	wget -c $WGET_URL -O $SOURCE_DIR/$TARBALL
-	status
-fi
-if [ ! -f $SOURCE_DIR/$TARBALL ]; then
-	rm -rf $SOURCE_DIR
-	echo "Could not download $TARBALL. Exiting."
-	exit 1
+#	=== Remove package, if installed ===
+if [ is_installed ]
+  then
+	action "Removing installed version..."
+	tazpkg remove $PACKAGE --root="$root/"
+	[ ! is_installed ] &&
+	die "Can't remove installed version. Exiting."
 fi
 
-# Creates TEMP_DIR and extract tarball
-mkdir -p $TEMP_DIR
-echo -n "Extract files from archive..."
-busybox tar xvf $SOURCE_DIR/$TARBALL -C $TEMP_DIR > $LOG 2>&1 || \
+#	=== Fetch archive file, if not existing ===
+
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR
+cd $TMP_DIR
+if [ -f $TARBALL ]
+  then
+	echo "Using existing archive file $TARBALL"
+  else
+	action "Fetching the archive"
+	newline
+	wget	--no-check-certificate $WGET_URL
+	if [ ! -f $TARBALL ]
+	  then
+		cd $CUR_DIR
+		rm -rf $TMP_DIR
+		echo "Could not transfer $TARBALL from $WGET_URL. Exiting."
+		exit 1
+	fi
+fi
+
+#	=== Extract files from archive ===
+action "Extracting the archive"
+newline
+
+tar x -vf $TARBALL > $LOG 2>&1 || \
  (echo "Failed to extract $TARBALL" ; exit 1)
+
 status
 
-# extracted pkg can be removed: Save RAM
-rm -rf $SOURCE_DIR
-
-cd $TEMP_DIR/*/RPMS
+# Remove archive file
+rm -f $TARBALL
 
 # Extract everything from RPMS
+cd $TMP_DIR/*/RPMS
 for i in *.rpm
-do
-	if (! echo $i | egrep -qi $EXCLUDE); then
-		(rpm2cpio $i | cpio -id >> $LOG 2>&1 ) && rm  -f $i
+  do
+	if (! echo $i | egrep -qi $EXCLUDE)
+	  then
+		(rpm2cpio $i | cpio -id >> $LOG 2>&1 ) &&
+		echo rm -f $i
 	fi
-done
+  done
 rpm2cpio desktop-integration/*freedesktop*.rpm | cpio -id >> $LOG 2>&1
 	
-# extracted pkg can be removed: Save RAM
+# extracted pkg can be removed
 rm -f desktop-integration/*freedesktop*.rpm
 
-
 # Make the package
-mkdir -p $PACKAGE-$VERSION/fs/usr/lib/openoffice  \
-  $PACKAGE-$VERSION/fs/usr/share
+mkdir -p $PACKAGE-$VERSION/fs/usr/lib/openoffice
+mkdir -p $PACKAGE-$VERSION/fs/usr/share
 
-# use mv instead of 'cp -a' to save RAM
-mv opt/openoffice* $PACKAGE-$VERSION/fs/usr/lib/openoffice
-mv usr/share/mime $PACKAGE-$VERSION/fs/usr/share
-mv usr/share/icons $PACKAGE-$VERSION/fs/usr/share
-mv usr/bin $PACKAGE-$VERSION/fs/usr
+# use mv instead of 'cp -a' to save space
+mv opt/openoffice*	$PACKAGE-$VERSION/fs/usr/lib/openoffice
+mv usr/share/mime	$PACKAGE-$VERSION/fs/usr/share
+mv usr/share/icons	$PACKAGE-$VERSION/fs/usr/share
+mv usr/bin		$PACKAGE-$VERSION/fs/usr
 
 # relocalized OOo libexec directory
-sed -i 's#/opt/#/usr/lib/openoffice/#'  $PACKAGE-$VERSION/fs/usr/bin/openoffice*
+sed -i 's#/opt/#/usr/lib/openoffice/#' \
+	$PACKAGE-$VERSION/fs/usr/bin/openoffice*
 
 # Create receipt
 cat > $PACKAGE-$VERSION/receipt <<EOT
@@ -163,8 +195,8 @@ PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="office"
 SHORT_DESC="Productivity suite."
-DEPENDS="java-jre"
-WEB_SITE="$URL"
+DEPENDS="$DEPENDS"
+WEB_SITE="$WEB_SITE"
 
 post_install()
 {
@@ -176,7 +208,7 @@ post_install()
 	ln -s /usr/lib/openoffice/openoffice.org3/share/xdg/math.desktop openoffice.org3-math.desktop
 	ln -s /usr/lib/openoffice/openoffice.org3/share/xdg/draw.desktop openoffice.org3-draw.desktop
 	ln -s /usr/lib/openoffice/openoffice.org3/share/xdg/printeradmin.desktop openoffice.org3-printeradmin.desktop
-	
+
 	cd \$1/usr/bin
 	ln -sf /usr/lib/openoffice/openoffice.org3/program/soffice
 }
@@ -190,54 +222,56 @@ EOT
 
 fake_install()
 {
-	mkdir -p $ROOT/var/lib/tazpkg/installed/$PACKAGE
+	mkdir -p $root/var/lib/tazpkg/installed/$PACKAGE
 	echo "00000000000000000000000000000000  $PACKAGE-$VERSION.tazpkg" >> \
-		$ROOT/var/lib/tazpkg/installed.md5
-	[ -s $1/description.txt $ROOT/var/lib/tazpkg/installed/$PACKAGE
+		$root/var/lib/tazpkg/installed.md5
+	[ -s $1/description.txt $root/var/lib/tazpkg/installed/$PACKAGE
 	( cd fs ; find *) | sed 's|^|/|' > \
-		$ROOT/var/lib/tazpkg/installed/$PACKAGE/files.list
-	if grep -q ^CONFIG_FILES= $1/receipt ; then
+		$root/var/lib/tazpkg/installed/$PACKAGE/files.list
+	if grep -q ^CONFIG_FILES= $1/receipt
+	  then
 		cd fs
-		find $( . ./receipt ; echo " $CONFIG_FILES" | sed 's| /| |g') |\
+		find $( . ./receipt ; echo " $CONFIG_FILES" | sed 's# /# #g') |\
 			cpio -o -H newc | gzip -9 > \
-			$ROOT/var/lib/tazpkg/installed/$PACKAGE/volatile.cpio.gz
-		for i in $( . ./receipt ; echo $CONFIG_FILES) ; do
-			[ -e $ROOT$i ] && rm -rf .$i
-		done
+			$root/var/lib/tazpkg/installed/$PACKAGE/volatile.cpio.gz
+		for i in $( . ./receipt ; echo $CONFIG_FILES)
+		  do
+			[ -e $root$i ] && rm -rf .$i
+		  done
 		cd ..
 	fi
 	sed -i "s/^PACKAGE=/UNPACKED_SIZE=\"$(du -chs $1 | sed '$!d;s/.total//')\"\n&/" \
 		$1/receipt
-	cp $1/receipt $ROOT/var/lib/tazpkg/installed/$PACKAGE
+	cp $1/receipt	$root/var/lib/tazpkg/installed/$PACKAGE
 	echo "Compute md5sum..."
 	find fs -type f | xargs md5sum | sed 's|  fs/|  /|' > \
-		$ROOT/var/lib/tazpkg/installed/$PACKAGE/md5sum
+		$root/var/lib/tazpkg/installed/$PACKAGE/md5sum
 	echo "Move files..."
-	( cd $1/fs ; find ) | while read file ; do 
-		[ -e $1/fs/$file -a ! -e $ROOT/$file ] &&
-		mv $1/fs/$file $(dirname $ROOT/$file)
-	done
+	( cd $1/fs ; find ) | while read file
+	  do 
+		[ -e $1/fs/$file -a ! -e $root/$file ] &&
+		mv $1/fs/$file $(dirname $root/$file)
+	  done
 }
 
-case " $@ " in
-*\ --q*)	# --quick
-	fake_install $PACKAGE-$VERSION ;;
-*)
-	# Pack
-	tazpkg pack $PACKAGE-$VERSION
+[ "$install" == "quick" ] &&
+fake_install $PACKAGE-$VERSION && return 0
 
-	# Clean to save RAM memory
-	rm -rf $PACKAGE-$VERSION
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+# Remove package tree
+rm -rf $PACKAGE-$VERSION
 
-	# Install pseudo package
-	tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+#	=== Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
 
-	echo " $@ " | grep -q ' --k' &&
-	mv $PACKAGE-$VERSION.tazpkg $CUR_DIR
-	;;
-esac
+#	=== Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR &&
+  echo Saved $PACKAGE-$VERSION.tazpkg to $CUR_DIR )
 
+# Remove temporary build directory
 cd $CUR_DIR
-
-# Clean
-rm -rf $TEMP_DIR
+rm -rf $TMP_DIR
