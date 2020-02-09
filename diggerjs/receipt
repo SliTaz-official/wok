@@ -14,20 +14,24 @@ WGET_URL="http://www.tikkel.de/download/$TARBALL"
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/diggerjs
-	cp -a $src/* $fs/usr/share/diggerjs
+	mkdir -p $fs/var/www/digger
+	cp -a $src/* $fs/var/www/digger
 	cp -a stuff/* $fs
+	ln -s digger.html $fs/var/www/digger/index.html
 
 	# translate
 	sed -i 's/Daten werden geladen .*)/Loading graphics.../' \
-		$fs/usr/share/diggerjs/*.*
+		$fs/var/www/digger/*.*
 
 	# remove TODO stuff...
-	sed -i '/HighScorefunktion programmieren/d' \
-		$fs/usr/share/diggerjs/main.js
+	sed -i 's|.*HighScorefunktion programmieren|;//&|' \
+		$fs/var/www/digger/main.js
 	
 	# remove java stuff...
-	sed -i '/<applet/,/applet>/d' $fs/usr/share/diggerjs/*.html
-	rm -f $fs/usr/share/diggerjs/SndServer.class
-	rm -f $fs/usr/share/diggerjs/*/*.au
+	sed -i 's|sound = navigator|//&|' $fs/var/www/digger/main.js
+	sed -i '/<applet/,/applet>/d' $fs/var/www/digger/*.html
+	rm -f $fs/var/www/digger/SndServer.class
+	rm -f $fs/var/www/digger/*/*.au
+
+	chown -R 80.80 $fs/var/www/digger
 }
