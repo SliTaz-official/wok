@@ -1,69 +1,190 @@
-#!/bin/sh -e
+#!/bin/sh
+#
+# get-flash-plugin - create and install SliTaz package flash-plugin
+#
+# (C) 2020 SliTaz - GNU General Public License v3.
+# Author : Pascal Bellard
+# modified by HGT on 2020-02-10
+#
 
-[ -f '/etc/slitaz/slitaz.conf' ] && . /etc/slitaz/slitaz.conf
-[ -z "$INSTALLED" ] && INSTALLED='/var/lib/tazpkg/installed'
+#	=== Initialisations ===
 
+PKGS_DB="/var/lib/tazpkg"	# packages database directory
 PACKAGE="flash-plugin"
-WEB_SITE="http://www.adobe.com/products/flash/"
 SHORT_DESC="Adobe Flash Player."
-ROOT="$1"
-[ -d "$ROOT" ] || ROOT=""
+CATEGORY="non-free"
+LICENSE="non-free"
+WEB_SITE="https://www.adobe.com/products/flashplayer/"
 
-if [ $(id -u) -ne 0 ]; then
-	echo -e "\nYou must be root to run `basename $0`."
-	echo -e "Please type 'su' and root password to become super-user.\n"
-	exit 0
+DEPENDS="atk cairo curl expat fontconfig freetype glib gtk+ libfirefox libpng \
+	nss pango pixman xorg-libICE xorg-libSM xorg-libX11 xorg-libXau xorg-libXcomposite \
+	xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes \
+	xorg-libXinerama xorg-libXrandr xorg-libXrender xorg-libXt zlib"
+
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
+
+is_installed()
+{
+	if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then	#package is deemed to be installed
+	 	return 0
+	  else
+	 	return 1
+	 fi
+}
+
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+  then
+	echo "Commandline options:
+  $0
+	--version=<version>
+	--root=<path-to-root>
+	--install=yes|no
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>"
+	exit
 fi
 
-if [ -d $ROOT$INSTALLED/$PACKAGE ]; then
-	[ -n "$ROOT" ] && exit 1
-	tazpkg remove $PACKAGE
-	[ -d $INSTALLED/$PACKAGE ] && exit 1
+# Check for system administrator privileges
+check_root
+
+title "Package $PACKAGE will be build as SliTaz package and installed"
+
+# Fetch latest version, unless version is set by option --version
+[ -z "$version" ] && version="latest"
+
+# Install SliTaz package, unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
+
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
+
+# Directory for temporary files
+TMP_DIR="$tmpdir"
+[ -z "$tmpdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+
+# Logging file (unused by now)
+LOG=$TMP_DIR/get-$PACKAGE.log
+
+cat <<EOT
+Options in use:
+  root           : $root/
+  version        : $version
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
+
+EOT
+
+separator; newline
+
+#	=== Remove package, if installed ===
+if is_installed
+  then
+	echo "$PACKAGE is already installed."
+	echo -n "Would you like to remove and reinstall this package [y/n]? "
+	read answer
+	case "$answer" in
+		y|Y)
+			action "Removing installed version..."
+			tazpkg remove $PACKAGE --root="$root/"
+			[ ! is_installed ] &&
+			die "Can't remove installed version. Exiting."
+			;;
+		*)
+			echo "Leaving $PACKAGE untouched."
+			exit 0
+			;;
+	esac
 fi
-VERSION="$(wget -q -O - http://www.adobe.com/software/flash/about/ | sed -n '/Linux/,/<\/tr/s/[^>]*>\([0-9].*\)<.*/\1/p')"
-TARBALL="flash_player_npapi_linux.i386.tar.gz"
-URL="https://fpdownload.adobe.com/get/flashplayer/pdc/$VERSION/$TARBALL"
-TMP_DIR="$(mktemp -d)"
+
+#	=== Fetch archive file, if not existing ===
+if [ "$version" == "latest" ]
+  then
+	VERSION="$(wget --no-check-certificate -q -O - \
+		https://helpx.adobe.com/flash-player/kb/archived-flash-player-versions.html |\
+		sed -n '/Released /p' | head -1 | sed 's|.*fp_\(.*\)_archive.*|\1|')"
+  else
+	VERSION=$version
+fi
+FILE="fp_${VERSION}_archive.zip"
+WGET_URL="https://fpdownload.macromedia.com/pub/flashplayer/installers/archive/$FILE"
+
 CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR
 cd $TMP_DIR
-wget --no-check-certificate -O $TARBALL $URL
-
-if [ ! -f $TARBALL ]; then
-	echo "Could not download $TARBALL. Exiting."
-	exit 1
+if [ -f $FILE ]
+  then
+	echo "Using existing archive file $FILE"
+  else
+	action "Fetching the archive"
+	newline
+	wget	--no-check-certificate $WGET_URL
+	if [ ! -f $FILE ]
+	  then
+		cd $CUR_DIR
+		rm -rf $TMP_DIR
+		echo "Could not transfer $FILE from $WGET_URL. Exiting."
+		exit 1
+	fi
 fi
 
-tar xzf $TARBALL
+#	=== Extract files from archive ===
+action "Extracting the archive"
+newline
+
+mkdir $PACKAGE
+cd $PACKAGE
+unzip $TMP_DIR/$FILE *linux.i386.tar.gz
+tar xf */*linux.i386.tar.gz 
+status
+
+# Remove archive file
+cd $TMP_DIR
+rm -f $FILE
 
 # Install files
-chmod 755 libflashplayer.so
-chown root.root libflashplayer.so
 fs=$PACKAGE-$VERSION/fs
 mkdir -p $fs/usr/share/flash
-mv libflashplayer.so $fs/usr/share/flash
-mv usr/bin $fs/usr
-mv usr/share/icons $fs/usr/share
-mv usr/share/pixmaps $fs/usr/share
-mv usr/share/applications $fs/usr/share
+
+mv $PACKAGE/libflashplayer.so		$fs/usr/share/flash
+chmod 755 				$fs/usr/share/flash/libflashplayer.so
+chown root.root				$fs/usr/share/flash/libflashplayer.so
+mv $PACKAGE/usr/bin			$fs/usr
+mv $PACKAGE/usr/share/icons		$fs/usr/share
+mv $PACKAGE/usr/share/pixmaps		$fs/usr/share
+mv $PACKAGE/usr/share/applications	$fs/usr/share
 
 # Sanity Check: Reexport firefox libraries if they don't exist
 dir=$PACKAGE-$VERSION/fs/usr/lib
 mkdir -p $dir
-for i in /usr/lib/firefox/*.so ; do
-	[ -f $i ] && [ -z "$(ls /usr/lib/$(basename $i))" ] && ln -s $i $dir
-done
+for i in /usr/lib/firefox/*.so
+  do
+	[ -f $i ] &&
+	[ -z "$(ls /usr/lib/$(basename $i))" ] &&
+	ln -s $i $dir
+  done
 
-# Create pseudo package
-cat > $PACKAGE-$VERSION/receipt <<EOT
+#	=== Create SliTaz package ===
+
+cd $PACKAGE-$VERSION
+
+# Create recipe for SliTaz package
+cat > receipt <<EOT
+# SliTaz package receipt.
+
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
-CATEGORY="non-free"
+CATEGORY="$CATEGORY"
 SHORT_DESC="$SHORT_DESC"
+LICENSE="$LICENSE"
 WEB_SITE="$WEB_SITE"
-DEPENDS="libfirefox curl atk cairo expat fontconfig freetype glib gtk+ libpng \
-nss pango pixman xorg-libICE xorg-libSM xorg-libX11 xorg-libXau xorg-libXcomposite \
-xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes \
-xorg-libXinerama xorg-libXrandr xorg-libXrender xorg-libXt zlib"
+
+DEPENDS="$DEPENDS"
 
 post_install()
 {
@@ -83,15 +204,24 @@ post_remove()
 }
 EOT
 
+cd $TMP_DIR
+
+action "Creating the package $PACKAGE..."
 # Pack
 tazpkg pack $PACKAGE-$VERSION
+# Remove package tree
+rm -rf $PACKAGE-$VERSION
 
-# Install pseudo package
-tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
-case " $@ " in
-*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
-esac
+#	=== Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
 
-# Clean
+#	=== Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR &&
+  echo Saved $PACKAGE-$VERSION.tazpkg to $CUR_DIR )
+
+# Remove temporary build directory
 cd $CUR_DIR
-rm -rf "$TMP_DIR"
+rm -rf $TMP_DIR
