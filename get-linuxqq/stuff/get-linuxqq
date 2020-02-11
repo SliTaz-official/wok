@@ -1,51 +1,142 @@
-#!/bin/sh 
+#!/bin/sh
+#
+# get-linuxqq - create and install SliTaz package linuxqq (Tencent QQ)
+#
+# (C) 2020 SliTaz - GNU General Public License v3.
+# Author : unknown
+# modified by HGT on 2020-02-11
+#
 
-# Get and install Tencent QQ for Linux
+#	=== Initialisations ===
 
+PKGS_DB="/var/lib/tazpkg"	# packages database directory
 PACKAGE="linuxqq"
-VERSION="v1.0.2"
-TARGZ="${PACKAGE}_${VERSION}_i386.tar.gz"
-URL="http://dl_dir.qq.com/linuxqq/$TARGZ"
+VERSION="1.0.2"			# latest versions as 64-bit variants only
+CATEGORY="non-free"
+TAGS="chat im"
+SHORT_DESC="QQ for Linux $VERSION."
+WEB_SITE="http://im.qq.com/"
+DEPENDS="gtk+ gdk-pixbuf"
+
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
+
+is_installed()
+{
+	if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then	#package is deemed to be installed
+	 	return 0
+	  else
+	 	return 1
+	 fi
+}
+
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+  then
+	echo "Commandline options:
+  $0
+	--root=<path-to-root>
+	--install=yes|no
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>"
+	exit
+fi
+
+# Check for system administrator privileges
+check_root
+
+title "Package $PACKAGE will be build as SliTaz package and installed"
+
+# Fetch latest version, unless version is set by option --version
+[ -z "$version" ] && version="latest"	# unused
+
+# Install SliTaz package, unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
+
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
+
+# Directory for temporary files
+TMP_DIR="$tmpdir"
+[ -z "$tmpdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+
+# Logging file (unused by now)
+LOG="$logfile"
+[ -z "$logfile" ] && LOG=$TMP_DIR/get-$PACKAGE.log
+
+cat <<EOT
+Options in use:
+  root           : $root/
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
+
+EOT
+
+separator; newline
+
+#	=== Remove package, if installed ===
+if is_installed
+  then
+	echo "$PACKAGE is already installed."
+	echo -n "Would you like to remove and reinstall this package [y/n]? "
+	read answer
+	case "$answer" in
+		y|Y)
+			action "Removing installed version..."
+			tazpkg remove $PACKAGE --root="$root/"
+			[ ! is_installed ] &&
+			die "Can't remove installed version. Exiting."
+			;;
+		*)
+			echo "Leaving $PACKAGE untouched."
+			exit 0
+			;;
+	esac
+fi
+
+#	=== Fetch archive file, if not existing ===
 CUR_DIR=$(pwd)
-TEMP_DIR=/tmp/$PACKAGE-$VERSION-$$
-ROOT="$1"
-
-# Check if we are root
-if test $(id -u) != 0 ; then
-    echo -e "\nYou must be root to run `basename $0`."
-    echo -e "Please type 'su' and root password to become super-user.\n"
-    exit 1
+mkdir -p $TMP_DIR
+cd $TMP_DIR
+FILE="${PACKAGE}_v${VERSION}_i386.tar.gz"
+WGET_URL="http://dl_dir.qq.com/linuxqq/$FILE"
+if [ -f $FILE ]
+  then
+	echo "Using existing archive file $FILE"
+  else
+	action "Fetching the archive"
+	newline
+	wget	--no-check-certificate $WGET_URL
+	if [ ! -f $FILE ]
+	  then
+		cd $CUR_DIR
+		rm -rf $TMP_DIR
+		echo "Could not transfer $FILE from $WGET_URL. Exiting."
+		exit 1
+	fi
 fi
 
-# Avoid reinstall
-if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
-    echo -e "\n$PACKAGE package is already installed.\n"
-    exit 1
-fi
+#	=== Extract files from archive ===
+action "Extracting the archive"
+newline
 
-# Create a TEMP_DIR
-mkdir $TEMP_DIR
-cd $TEMP_DIR
-
-# Download the file
-wget $URL 
-if [ ! -f $TARGZ ]; then
-	cd $CUR_DIR
-	rm -rf $TEMP_DIR
-	echo "Could not download $TARGZ. Exiting."
-	exit 1
-fi
-
-tar xzf $TARGZ
+tar xzf $FILE
 mkdir -p $PACKAGE-$VERSION/fs/usr/share/tencent/
 mkdir -p $PACKAGE-$VERSION/fs/usr/share/applications/
 mkdir -p $PACKAGE-$VERSION/fs/usr/bin/
-mv $TEMP_DIR/${PACKAGE}_${VERSION}_i386 $TEMP_DIR/$PACKAGE-$VERSION/fs/usr/share/tencent/qq
+mv $TMP_DIR/${PACKAGE}_v${VERSION}_i386 \
+	$TMP_DIR/$PACKAGE-$VERSION/fs/usr/share/tencent/qq
 
-# extracted pkg can be removed: Save RAM
-rm -rf $TARGZ
+# Remove archive file
+rm -f $FILE
 
-cd $TEMP_DIR
+cd $TMP_DIR
+
+#	=== Create SliTaz package ===
 
 cat > $PACKAGE-$VERSION/fs/usr/bin/qq << EOT
 #!/bin/sh
@@ -71,16 +162,21 @@ GenericName[zh_CN]=
 Comment[zh_CN]=腾讯QQ
 EOT
 
+# Create recipe for SliTaz package
 cat > $PACKAGE-$VERSION/receipt << EOT
+# SliTaz package receipt.
+
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
-CATEGORY="non-free"
-SHORT_DESC="QQ for Linux $VERSION."
-DEPENDS="gtk+ gdk-pixbuf"
-WEB_SITE="http://im.qq.com/"
-TAGS="chat im"
+CATEGORY="$CATEGORY"
+TAGS="$TAGS"
+SHORT_DESC="$SHORT_DESC"
+WEB_SITE="$WEB_SITE"
 
-post_install() {
+DEPENDS="$DEPENDS"
+
+post_install()
+{
     chroot $1/ /usr/bin/gdk-pixbuf-query-loaders --update-cache
 }
 EOT
@@ -206,17 +302,25 @@ Xe59bXM6I6ukl/u0rI7Pa0zoSF19hFrNC92aqBFtGLSt+BP5jLXxV082vHN/
 YX35w3g+soD/l+P/AMNbZ955C9USAAAAAElFTkSuQmCC
 ====
 !
-} > $TEMP_DIR/$PACKAGE-$VERSION/fs/usr/share/tencent/qq/qq.png
+} > $TMP_DIR/$PACKAGE-$VERSION/fs/usr/share/tencent/qq/qq.png
 
+action "Creating the package $PACKAGE..."
 # Pack
 tazpkg pack $PACKAGE-$VERSION
 
-# Clean to save RAM memory
+# Remove package tree
 rm -rf $PACKAGE-$VERSION
 
-# Install pseudo package
-yes y | tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
+#	=== Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+yes y | tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
 
-# Clean
+#	=== Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR &&
+  echo Saved $PACKAGE-$VERSION.tazpkg to $CUR_DIR )
+
+# Remove temporary build directory
 cd $CUR_DIR
-rm -rf $TEMP_DIR
+rm -rf $TMP_DIR
