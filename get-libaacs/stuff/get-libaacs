@@ -1,46 +1,132 @@
-#!/bin/sh -e
+#!/bin/sh
+#
+# get-libaacs - create and install SliTaz package libaacs
+#
+# (C) 2020 SliTaz - GNU General Public License v3.
+# Author : Pascal Bellard
+# modified by HGT on 2020-02-11
+#
 
+#	=== Initialisations ===
+
+PKGS_DB="/var/lib/tazpkg"	# packages database directory
 PACKAGE="libaacs"
 VERSION="1.0"
-WEB_SITE="http://vlc-bluray.whoknowsmy.name/"
 CATEGORY="non-free"
-SUGGESTED="vlc"
-SHORT_DESC="A library to play encrypted blu-ray"
+SHORT_DESC="A library to play encrypted blu-ray."
 MAINTAINER="nobody@slitaz.org"
+WEB_SITE="https://vlc-bluray.whoknowsmy.name/"
+SUGGESTED="vlc"
 
-ROOT="$1"
-[ -d "$ROOT" ] || ROOT=""
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
 
-if test $(id -u) != 0 ; then
-        echo -e "\nYou must be root to run `basename $0`."
-        echo -e "Please type 'su' and root password to become super-user.\n"
-        exit 0
+is_installed()
+{
+	if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then	#package is deemed to be installed
+	 	return 0
+	  else
+	 	return 1
+	 fi
+}
+
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+  then
+	echo "Commandline options:
+  $0
+	--version=<version>
+	--root=<path-to-root>
+	--install=yes|no
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>"
+	exit
 fi
 
-if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
-	[ -n "$ROOT" ] && exit 1
-	tazpkg remove $PACKAGE
-	[ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
+# Check for system administrator privileges
+check_root
+
+title "Package $PACKAGE will be build as SliTaz package and installed"
+
+# Fetch latest version, unless version is set by option --version
+[ -z "$version" ] && version="latest"
+
+# Install SliTaz package, unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
+
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
+
+# Directory for temporary files
+TMP_DIR="$tmpdir"
+[ -z "$tmpdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+
+# Logging file (unused by now)
+LOG="$logfile"
+[ -z "$logfile" ] && LOG=$TMP_DIR/get-$PACKAGE.log
+
+cat <<EOT
+Options in use:
+  root           : $root/
+  version        : $version
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
+
+EOT
+
+separator; newline
+
+#	=== Remove package, if installed ===
+if is_installed
+  then
+	echo "$PACKAGE is already installed."
+	echo -n "Would you like to remove and reinstall this package [y/n]? "
+	read answer
+	case "$answer" in
+		y|Y)
+			action "Removing installed version..."
+			tazpkg remove $PACKAGE --root="$root/"
+			[ ! is_installed ] &&
+			die "Can't remove installed version. Exiting."
+			;;
+		*)
+			echo "Leaving $PACKAGE untouched."
+			exit 0
+			;;
+	esac
 fi
 
-TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+#	=== Fetch files ===
+
 CUR_DIR=$(pwd)
-mkdir -p $TMP_DIR && cd $TMP_DIR
+mkdir -p $TMP_DIR
+cd $TMP_DIR
 
-for i in KEYDB.cfg linux32/libaacs.so.0 ; do
-	wget ${WEB_SITE}files/$i
+for i in KEYDB.cfg linux32/libaacs.so.0
+  do
+	wget --no-check-certificate ${WEB_SITE}files/$i
 	[ -s $(basename $i) ] && continue
 	cd $CUR_DIR
 	rm -rf $TMP_DIR
 	echo "Could not download $(basename $i) from ${WEB_SITE}files/$i. Exiting."
 	exit 1
-done
+  done
 
-mkdir -p $PACKAGE-$VERSION/fs/usr/lib $PACKAGE-$VERSION/fs/etc/skel/.config/aacs
-mv libaacs.so.0 $PACKAGE-$VERSION/fs/usr/lib
-mv KEYDB.cfg $PACKAGE-$VERSION/fs/etc/skel/.config/aacs
+#	=== Create SliTaz package ===
 
+mkdir -p $PACKAGE-$VERSION/fs/usr/lib
+mkdir -p $PACKAGE-$VERSION/fs/etc/skel/.config/aacs
+mv libaacs.so.0	$PACKAGE-$VERSION/fs/usr/lib
+mv KEYDB.cfg	$PACKAGE-$VERSION/fs/etc/skel/.config/aacs
+
+# Create recipe for SliTaz package
 cat > $PACKAGE-$VERSION/receipt <<EOT
+# SliTaz package receipt.
+
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="$CATEGORY"
@@ -49,35 +135,40 @@ MAINTAINER="$MAINTAINER"
 SUGGESTED="$SUGGESTED"
 WEB_SITE="$WEB_SITE"
 
-# Pre and post install commands for Tazpkg.
+# Post install commands for Tazpkg.
 post_install()
 {
-	for i in \$1/home/*/.config ; do
+	for i in \$1/home/*/.config
+	  do
 		[ -d \$i ] || continue
 		cp -a \$1/etc/skel/.config/aacs \$i
 		chown -R \$(stat -c '%u.%g' \$i) \$i/aacs
-	done
+	  done
 }
 
+# Pre remove commands for Tazpkg.
 pre_remove()
 {
 	rm -rf \$1/home/*/.config/aacs
 }
 EOT
 
+action "Creating the package $PACKAGE..."
 # Pack
 tazpkg pack $PACKAGE-$VERSION
-
-# Clean to save RAM memory
+# Remove package tree
 rm -rf $PACKAGE-$VERSION
 
-# Install pseudo package
-tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
-case " $@ " in
-*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
-esac
+#	=== Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
 
-# Clean
+#	=== Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR &&
+  echo Saved $PACKAGE-$VERSION.tazpkg to $CUR_DIR )
+
+# Remove temporary build directory
 cd $CUR_DIR
 rm -rf $TMP_DIR
-

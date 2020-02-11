@@ -2,17 +2,20 @@
 #
 # get-google-earth - create and install SliTaz package google-earth
 #
-# (C) 2019 SliTaz - GNU General Public License v3.
+# (C) 2020 SliTaz - GNU General Public License v3.
 # Author : unknown
 # modified by HGT on 2019-04-05
+# modified by HGT on 2020-02-10
 #
 
 #	=== Initialisations ===
 
 PKGS_DB="/var/lib/tazpkg"	# packages database directory
 PACKAGE="google-earth"		# package to create and install
-WEB_SITE="https://google.com/earth/"
 CATEGORY="non-free"
+TAGS="maps"
+LICENSE="non-free"
+WEB_SITE="https://google.com/earth/"
 DEPENDS="libglu-mesa"
 
 # Declare functions check_root, status, ...
@@ -59,10 +62,12 @@ title "Package $PACKAGE will be build as SliTaz package and installed"
 [ -z "$keep" ] && keep="no"
 
 # Directory for temporary files
-[ -z "$tempdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+TMP_DIR="$tmpdir"
+[ -z "$tmpdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
 
 # Logging file (unused by now)
-LOG=$TMP_DIR/get-$PACKAGE.log
+LOG="$logfile"
+[ -z "$logfile" ] && LOG=$TMP_DIR/get-$PACKAGE.log
 
 cat <<EOT
 Options in use:
@@ -77,12 +82,23 @@ EOT
 separator; newline
 
 #	=== Remove package, if installed ===
-if [ is_installed ]
-	then
-		action "Removing installed version..."
-		tazpkg remove $PACKAGE --root="$root/"
-		[ ! is_installed ] &&
-		die "Can't remove installed version. Exiting."
+if is_installed
+  then
+	echo "$PACKAGE is already installed."
+	echo -n "Would you like to remove and reinstall this package [y/n]? "
+	read answer
+	case "$answer" in
+		y|Y)
+			action "Removing installed version..."
+			tazpkg remove $PACKAGE --root="$root/"
+			[ ! is_installed ] &&
+			die "Can't remove installed version. Exiting."
+			;;
+		*)
+			echo "Leaving $PACKAGE untouched."
+			exit 0
+			;;
+	esac
 fi
 
 #	=== Fetch archive file, if not existing ===
@@ -113,7 +129,7 @@ if [ -f $FILE ]
 		  then
 			cd $CUR_DIR
 			rm -rf $TMP_DIR
-			echo "Could not transfer $FILE from $URL. Exiting."
+			echo "Could not transfer $FILE from $WGET_URL. Exiting."
 			exit 1
 		fi
 fi
@@ -153,10 +169,10 @@ cat > receipt <<EOT
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
 CATEGORY="$CATEGORY"
-TAGS="maps"
+TAGS="$TAGS"
 SHORT_DESC="$SHORT_DESC"
 MAINTAINER="$MAINTAINER"
-LICENSE="non-free"
+LICENSE="$LICENSE"
 WEB_SITE="$WEB_SITE"
 
 DEPENDS="$DEPENDS"
@@ -187,7 +203,9 @@ tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
 
 #	=== Cleanup ===
 # Preserve package file, if requested
-[ "$keep" == "yes" ] && mv $PACKAGE-$VERSION.tazpkg $CUR_DIR
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR &&
+  echo Saved $PACKAGE-$VERSION.tazpkg to $CUR_DIR )
 
 # Remove temporary build directory
 cd $CUR_DIR
