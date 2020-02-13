@@ -54,7 +54,8 @@ case "$1" in
     fi
     action 'Starting %s: %s...' "$DESC" $NAME
     $DAEMON $OPTIONS
-    [ -f $PIDFILE ] || pidof $NAME | awk '{print $1}' > $PIDFILE
+    [ -f $PIDFILE ] ||
+    ps x | sed "/$NAME/!d;/sed/d;/etc\\/init/d" | awk '{ print $1 }' > $PIDFILE
     active_pidfile $PIDFILE $NAME
     status
     ;;
@@ -78,7 +79,8 @@ case "$1" in
     kill $(cat $PIDFILE)
     sleep 2
     $DAEMON $OPTIONS
-    [ -f $PIDFILE ] || pidof $NAME | awk '{print $1}' > $PIDFILE
+    [ -f $PIDFILE ] ||
+    ps x | sed "/$NAME/!d;/sed/d;/etc\\/init/d" | awk '{ print $1 }' > $PIDFILE
     active_pidfile $PIDFILE $NAME
     status
     ;;

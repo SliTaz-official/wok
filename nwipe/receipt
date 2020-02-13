@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="nwipe"
+VERSION="0.26"
+CATEGORY="misc"
+SHORT_DESC="nwipe secure disk eraser"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://github.com/martijnvanbrummelen/nwipe"
+WGET_URL="$WEB_SITE/archive/v$VERSION.tar.gz"
+
+DEPENDS="ncurses parted util-linux-uuid"
+BUILD_DEPENDS="pkg-config libtool ncurses-dev parted-dev dmidecode"
+
+current_version()
+{
+	wget -O - $WEB_SITE/releases 2>/dev/null | \
+	sed '/archive.*tar/!d;s|.*archive/v\(.*\).tar.*|\1|;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	export LDFLAGS="$LDFLAGS -ltinfo"
+	./init.sh
+	./configure --prefix=/usr \
+		--mandir=/usr/share/man \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+}
