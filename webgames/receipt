@@ -8,31 +8,44 @@ MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="MIT"
 WEB_SITE="http://www.slitaz.org/"
 
+mline()
+{
+	type=$1
+	IFS='|'; set -- $2
+	echo "$type=$1"; shift
+	while [ "$1" ]; do
+		echo "$type${1%]*}]=${1#*]}"
+		shift
+	done
+}
+
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/applications
 	while read url name comment icon; do
-		cat > $fs/usr/share/applications/$(echo $name | \
+		cat > $fs/usr/share/applications/$(echo ${name%|*} | \
 			tr [A-Z\ ] [a-z_]).desktop <<EOT
 [Desktop Entry]
 Type=Application
-Name=$name
+$(mline Name "$name")${comment:+
+$(mline Comment "$comment")}
 Exec=sh -c "url=$url; tazweb --notoolbar \$url || browser \$url"
 Terminal=false
 Categories=Game;
-Comment=${comment:-$name game}
 Icon=${icon:-text-html}
 EOT
 	done <<EOT
-https://sokoban.info/	Sokoban
-http://minesweeper.biz/	MineSweeper
-http://playcheckers.org/	Checkers
-http://4-in-a-row.com/	4\ in\ a\ raw
-http://chinese-checkers.net/	Chinese\ Checkers
+https://sokoban.info/		Sokoban
+http://minesweeper.biz/		MineSweeper|[fr]Démineur
+http://playcheckers.org/	Checkers|[fr]Dames
+http://4-in-a-row.com/		4\ in\ a\ raw|[fr]4\ en\ ligne
+http://chinese-checkers.net/	Chinese\ Checkers|[fr]Dames\ chinoises
 https://www.quaxio.com/2048/	2048
-http://sudokus.org/	Sudoku
-http://games.slitaz.org/loderunner/lodeRunner.html	Lode\ Runner	Plateform\ game
-http://games.slitaz.org/digger/digger.html	Digger	Plateform\ game
+http://sudokus.org/		Sudoku
+http://games.slitaz.org/loderunner/lodeRunner.html\
+	Lode\ Runner	Plateform\ game|[fr]Jeu\ de\ plateforme
+http://games.slitaz.org/digger/digger.html\
+	Digger		Plateform\ game|[fr]Jeu\ de\ plateforme
 EOT
 }
