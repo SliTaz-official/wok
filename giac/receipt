@@ -1,33 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="giac"
-VERSION="0.9.4"
+VERSION="1.5.0.85"
 CATEGORY="misc"
-SHORT_DESC="Giac/Xcas is a free computer algebra system"
+SHORT_DESC="A free computer algebra system."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL3"
-WEB_SITE="http://www-fourier.ujf-grenoble.fr/~parisse/giac.html"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="http://www-fourier.ujf-grenoble.fr/~parisse/giac/giac_frozen.tgz"
+WEB_SITE="https://www-fourier.ujf-grenoble.fr/~parisse/giac.html"
 
-DEPENDS="gmp mpfr libpng gsl pari ntl readline cocoalib fltk gf2x"
-BUILD_DEPENDS="gmp-dev mpfr-dev libpng-dev gsl-dev pari-dev ntl readline-dev \
-cocoalib fltk-dev xorg-libX11-dev gf2x-dev xorg-libXinerama-dev libxml2-dev \
-fltk-2.0.x-gl bison gfortran mesa-dev expat-dev gf2x-dev libboost-system-dev" # lapack
+TARBALL="${PACKAGE}_${VERSION%.*}-${VERSION##*.}.tar.gz"
+WGET_URL="https://www-fourier.ujf-grenoble.fr/~parisse/debian/dists/stable/main/source/$TARBALL"
+
+DEPENDS="cocoalib fltk gf2x gmp gsl libpng mpfr ntl pari readline"
+BUILD_DEPENDS="bison cocoalib expat-dev fltk-2.0.x-gl fltk-dev gf2x-dev 
+	gfortran gmp-dev gsl-dev libboost-system-dev libpng-dev 
+	libtool libxml2-dev mesa-dev mpfr-dev ntl pari-dev readline-dev 
+	xorg-libX11-dev xorg-libXinerama-dev" # lapack
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	sed -i 's| doc | |' Makefile*
-	cp /usr/include/FL/Fl_PostScript.H /usr/include/FL/Fl_PostScript.H.ORG
-	cp /usr/include/FL/Fl_Input.H /usr/include/FL/Fl_Input.H.ORG
-	sed -i 's/protected:/public:/' /usr/include/FL/Fl_Input.H /usr/include/FL/Fl_PostScript.H
+	cp /usr/include/FL/Fl_PostScript.H	/usr/include/FL/Fl_PostScript.H.ORG
+	cp /usr/include/FL/Fl_Input.H		/usr/include/FL/Fl_Input.H.ORG
+	sed -i 's/protected:/public:/' \
+		/usr/include/FL/Fl_Input.H \
+		/usr/include/FL/Fl_PostScript.H
 	export LDFLAGS="$LDFLAGS -lgf2x -lboost_system"
+
 	./configure $CONFIGURE_ARGS &&
 	make &&
 	make install
-	mv -f /usr/include/FL/Fl_PostScript.H.ORG /usr/include/FL/Fl_PostScript.H
-	mv -f /usr/include/FL/Fl_Input.H.ORG /usr/include/FL/Fl_Input.H
+
+	mv -f /usr/include/FL/Fl_PostScript.H.ORG	/usr/include/FL/Fl_PostScript.H
+	mv -f /usr/include/FL/Fl_Input.H.ORG		/usr/include/FL/Fl_Input.H
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
