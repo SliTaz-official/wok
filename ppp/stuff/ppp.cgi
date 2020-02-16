@@ -125,7 +125,8 @@ case " $(GET) " in
 	if [ "$(GET gsmprovider)" ]; then
 		[ -n "$(pidof dbus-daemon)" ] || /etc/init.d/dbus start
 		[ -n "$(pidof bluetoothd)" ] || bluetoothd
-		grep -qs btusb /proc/modules || modprobe btusb
+		grep -qs btusb /proc/modules || !modprobe btusb || sleep 1
+		[ -n "$(which bluetoothctl)" ] && bluetoothctl power on
 		hcitool scan | grep : | while read dev name; do
 			set -- $dev "$name" $(sdptool browse $dev | awk '
 /Service Class ID List/	{n=0}
