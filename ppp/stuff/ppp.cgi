@@ -204,10 +204,11 @@ EOT
 		kill $(busybox ps x | grep "$ppp" | awk '/pty/{next}/dbclient/{print $1}')
 		;;
 	*\ start_pppssh\ *)
-EOT
 		pppssh	"$(GET ssharg) $(GET peer)" \
 			"$(GET localip):$(GET remoteip) $(GET localpppopt)" \
-			"$(GET remotepppopt)" "$(GET routes)" "$(GET udp)" &
+			"$(GET remotepppopt)" "$(GET routes)" \
+			"$(GET udp)" > /dev/null &
+		sleep 1
 		;;
 	esac
 	;;
@@ -438,7 +439,7 @@ if [ "$(which pppssh 2>/dev/null)" ]; then
 	</tr>
 	<tr>
 		<td>$(_ 'Local PPP options')</td>
-		<td><input type="text" name="localpppopt" size="50" value="$LOCALPPP" /></td>
+		<td><input type="text" name="localpppopt" size="50" value="${LOCALPPP:-usepeerdns}" /></td>
 	</tr>
 	<tr>
 		<td>$(_ 'Remote PPP options')</td>
@@ -450,7 +451,7 @@ if [ "$(which pppssh 2>/dev/null)" ]; then
 	</tr>
 	<tr>
 		<td>$(_ 'UDP port')</td>
-		<td><input type="text" name="udp" size="50" value="$UDP" title="$(_ "Optional UDP port for a real-time but unencrypted link")"/></td>
+		<td><input type="text" name="udp" size="50" value="$UDP" title="$(_ "Optional UDP port for real-time (with a very reliable link only)")"/></td>
 	</tr>
 	</table>
 	<footer><!--

@@ -31,10 +31,12 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/var/www/tazpanel/menu.d/network/VPN
+	mkdir -p $fs/usr/share/applications \
+		 $fs/var/www/tazpanel/menu.d/network/VPN
 	cp -a $install/usr/sbin $fs/usr
 	[ -d "$install/usr/lib" ] && cp -a $install/usr/lib $fs/usr
 	cp -a $stuff/ppp.cgi $fs/var/www/tazpanel
+	cp $stuff/*.desktop $fs/usr/share/applications
 	ln -s ../../ppp.cgi $fs/var/www/tazpanel/menu.d/network/ppp
 	ln -s ../../../ppp.cgi $fs/var/www/tazpanel/menu.d/network/VPN/ppp
 	
@@ -53,36 +55,22 @@ genpkg_rules()
 	cp -a $src/scripts/callback $fs/etc/ppp/scripts
 	cp -a $src/scripts/redialer $fs/etc/ppp/scripts
 	cat >> $fs/etc/ppp/ip-up <<EOT
-#!/bin/sh
-
 if [ -x /etc/ppp/ip-up.d/\$6 ]; then
 	. /etc/ppp/ip-up.d/\$6 "\$@"
-elif [ -n "\$USEPEERDNS" -a -f /etc/ppp/resolv.conf ]; then
+elif [ -n "\$DNS1\$DNS2" ]; then
 	rm -f /etc/ppp/resolv.prev
-	if [ -f /etc/resolv.conf ]; then
-		cp /etc/resolv.conf /etc/ppp/resolv.prev
-		grep domain /etc/ppp/resolv.prev > /etc/resolv.conf
-		grep search /etc/ppp/resolv.prev >> /etc/resolv.conf
-		cat /etc/ppp/resolv.conf >> /etc/resolv.conf
-		chmod 644 /etc/resolv.conf
-	else
-		cp /etc/ppp/resolv.conf /etc
-		chmod 644 /etc/resolv.conf
-	fi
+	[ -s /etc/resolv.conf ] && mv -f /etc/resolv.conf /etc/ppp/resolv.prev
+	[ -n "\$DNS1" ] && echo "nameserver \$DNS1" >> /etc/resolv.conf
+	[ -n "\$DNS2" ] && echo "nameserver \$DNS2" >> /etc/resolv.conf
+	chmod 644 /etc/resolv.conf
 fi
 EOT
 	cat >> $fs/etc/ppp/ip-down <<EOT
-#!/bin/sh
-
 if [ -x /etc/ppp/ip-down.d/\$6 ]; then
 	. /etc/ppp/ip-down.d/\$6 "\$@"
-elif [ -n "\$USEPEERDNS" -a -f /etc/ppp/resolv.conf ]; then
-	if [ -f /etc/ppp/resolv.prev ]; then
-		cp -f /etc/ppp/resolv.prev /etc/resolv.conf
-		chmod 644 /etc/resolv.conf
-	else
-		rm -f /etc/resolv.conf
-	fi
+elif [ -n "\$DNS1\$DNS2" ]; then
+	rm -f /etc/resolv.conf
+	mv -f /etc/ppp/resolv.prev /etc/resolv.conf
 fi
 EOT
 	# cp -a $src/scripts/ip-up.local.add $fs/etc/ppp/ip-up
@@ -90,7 +78,6 @@ EOT
 	chmod 711 $fs/etc/ppp/ip-up $fs/etc/ppp/ip-down
 
 	# insert #!/bin/sh  on top line in ip* scripts
-	sed -i '/#!\/bin\/sh/d' $fs/etc/ppp/ip* 2>/dev/null	
 	sed -i '1i\#!/bin/sh' $fs/etc/ppp/ip* 2>/dev/null	
 	# add empty peers dir
 	mkdir -p $fs/etc/ppp/peers
