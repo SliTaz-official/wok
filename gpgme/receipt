@@ -1,32 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="gpgme"
-VERSION="1.11.1"
+VERSION="1.13.1"
 CATEGORY="security"
 SHORT_DESC="C language library that allows to add support for cryptography to a program."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2 LGPL2.1"
 WEB_SITE="https://www.gnupg.org/related_software/gpgme/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="https://www.gnupg.org/ftp/gcrypt/gpgme/$TARBALL"
 
-DEPENDS="libassuan gnupg gcc83-lib-base"
-BUILD_DEPENDS="libgpg-error-dev libassuan-dev gnupg gcc83 gcc83-lib-base"
+DEPENDS="gcc83-lib-base gnupg libassuan"
+BUILD_DEPENDS="gcc83 gnupg libassuan-dev libgpg-error-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# Integrity check: https://www.gnupg.org/download/integrity_check.html
-	echo "95b1fc427871ca8d30d6d3b1985c816fe0b5077b  $SRC/$TARBALL" | sha1sum -c || exit 1
+	echo "f87f34e695e8d74ccc7c8f42864d50630afebb0e  $SRC/$TARBALL" | sha1sum -c || exit 1
 
-	export CC=gcc-83 CXX=g++-83
-	./configure $CONFIGURE_ARGS && make && make install
+	./configure		\
+		CC=gcc-83	\
+		CXX=g++-83	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/lib
-	cp -a $install/usr/bin/gpgme-tool $fs/usr/bin
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/lib
+
+	cp -a $install/usr/bin/gpgme-tool	$fs/usr/bin
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
 }
