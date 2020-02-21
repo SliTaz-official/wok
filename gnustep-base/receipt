@@ -1,18 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="gnustep-base"
-VERSION="1.22.0"
+VERSION="1.26.0"
 CATEGORY="x-window"
 SHORT_DESC="GNUstep base package."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.gnustep.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="ftp://ftp.gnustep.org/pub/gnustep/core/$TARBALL"
 
-DEPENDS="libffi libxslt gnutls libbfd libobjc libssl libcrypto libtasn1 icu"
-BUILD_DEPENDS="gnustep-make libffi-dev libxslt-dev gnutls-dev openssl-dev \
-libcrypto-dev libtasn1-dev tar icu-dev libgnutls"
+DEPENDS="gnutls icu libbfd libcrypto libffi libobjc libssl libtasn1 libxslt"
+BUILD_DEPENDS="gnustep-make gnutls-dev icu-dev libcrypto-dev libffi-dev 
+	libgnutls libtasn1-dev libxslt-dev openssl-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,19 +21,22 @@ compile_rules()
 	sed -i 's|\(buf->buffer\)->content.*)|xmlBufContent(\1), xmlBufUse(\1))|' \
 		Source/Additions/GSXML.m
 	sed -i 's/.*gnutls_transport_set_lowat.*/#if GNUTLS_VERSION_NUMBER < 0x020c00\n&\n#endif/' Source/GSSocketStream.m
-	./configure \
-		--prefix=/usr \
-		--with-ffi-library=/usr/lib \
-		--with-ffi-include=$(ls -d /usr/lib/libffi-[0-9]*) \
+
+	./configure							\
+		--prefix=/usr						\
+		--with-ffi-library=/usr/lib				\
+		--with-ffi-include=$(ls -d /usr/lib/libffi-[0-9]*)	\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/GNUstep $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/GNUstep	$fs/usr/lib
 }
