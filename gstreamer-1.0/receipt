@@ -1,55 +1,62 @@
 # SliTaz package receipt.
 
 PACKAGE="gstreamer-1.0"
-VERSION="1.10.1"
+VERSION="1.16.2"
 SERIES="1.0"
 CATEGORY="multimedia"
-SHORT_DESC="GStreamer Multimedia Framework"
+SHORT_DESC="GStreamer Multimedia Framework."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="LGPL2"
+WEB_SITE="https://gstreamer.freedesktop.org/"
+
 SOURCE="gstreamer"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="https://gstreamer.freedesktop.org/"
 WGET_URL="$WEB_SITE/src/gstreamer/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS="glib libgio libxml2"
 BUILD_DEPENDS="glib-dev libgio-dev libxml2-dev pkg-config"
 
+HOST_ARCH="i486 arm"
+
 # Handle cross compilation
 case "$ARCH" in
-	i?86) BUILD_DEPENDS="$BUILD_DEPENDS python-dev valgrind bison flex" ;;
+	i?86) BUILD_DEPENDS="$BUILD_DEPENDS bison flex python-dev valgrind" ;;
 esac
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed '/set ERROR_CFLAGS/d' -i configure
-	
-	./configure \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--libexecdir=/usr/lib \
-		--enable-silent-rules \
-		--disable-static \
-		--disable-examples \
-		--disable-debug \
-		--enable-introspection=no \
-		--with-package-name="GStreamer ($SERIES)" \
-		--with-package-origin="http://www.slitaz.org/" \
+	sed -i '/set ERROR_CFLAGS/d' configure
+
+	./configure						\
+		--sysconfdir=/etc				\
+		--localstatedir=/var				\
+		--libexecdir=/usr/lib				\
+		--enable-silent-rules				\
+		--disable-static				\
+		--disable-examples				\
+		--disable-debug					\
+		--enable-introspection=no			\
+		--with-package-name="GStreamer ($SERIES)"	\
+		--with-package-origin="http://www.slitaz.org/"	\
 		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS && make install 2>/dev/null
+	make $MAKEFLAGS &&
+	make install 2>/dev/null
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/gstreamer-$SERIES $fs/usr/bin $fs/usr/share/locale
-	mv $install/usr/bin/*-$SERIES $fs/usr/bin
-	mv $install/usr/lib/*.so* $fs/usr/lib
-	mv $install/usr/lib/gstreamer-$SERIES/*.so $fs/usr/lib/gstreamer-$SERIES
-	mv $install/usr/lib/gstreamer-$SERIES/gst-* $fs/usr/lib/gstreamer-$SERIES
-	for locale in $LOCALES; do
-		mv $install/usr/share/locale/$locale $fs/usr/share/locale
-	done
+	mkdir -p $fs/usr/lib/gstreamer-$SERIES
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/locale
+
+	mv $install/usr/bin/*-$SERIES			$fs/usr/bin
+	mv $install/usr/lib/*.so*			$fs/usr/lib
+	mv $install/usr/lib/gstreamer-$SERIES/*.so	$fs/usr/lib/gstreamer-$SERIES
+	mv $install/usr/lib/gstreamer-$SERIES/gst-*	$fs/usr/lib/gstreamer-$SERIES
+	for locale in $LOCALES
+	  do
+		mv $install/usr/share/locale/$locale	$fs/usr/share/locale
+	  done
 }
