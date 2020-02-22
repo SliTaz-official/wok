@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="gptfdisk"
-VERSION="1.0.4"
+VERSION="1.0.5"
 CATEGORY="system-tools"
 SHORT_DESC="GUID Partition Table (GPT) Partitioning tools."
 MAINTAINER="mojo@slitaz.org"
@@ -11,20 +11,26 @@ WEB_SITE="https://www.rodsbooks.com/gdisk/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$VERSION/$TARBALL"
 
-DEPENDS="gcc-lib-base util-linux-uuid ncursesw popt"
-BUILD_DEPENDS="util-linux-uuid-dev ncursesw-dev popt-dev"
+DEPENDS="gcc-lib-base ncursesw popt util-linux-uuid"
+BUILD_DEPENDS="ncursesw-dev popt-dev util-linux-uuid-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	sed -i 's|#include <ncursesw/ncurses.h>|#include <ncurses.h>|' \
+		gptcurses.cc
+
 	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/man $fs/usr/share/doc
-	cp $src/*.8 $fs/usr/share/man
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/man
+	mkdir -p $fs/usr/share/doc
+
+	cp $src/*.8		$fs/usr/share/man
 	cp $src/README		$fs/usr/share/doc
 	cp $src/NEWS		$fs/usr/share/doc
 	cp $src/cgdisk		$fs/usr/bin
