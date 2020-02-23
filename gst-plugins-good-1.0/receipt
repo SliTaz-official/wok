@@ -1,39 +1,48 @@
 # SliTaz package receipt.
 
 PACKAGE="gst-plugins-good-1.0"
-VERSION="1.10.1"
+VERSION="1.16.2"
 SERIES="1.0"
 CATEGORY="multimedia"
-SHORT_DESC="GStreamer Base Plugins"
+SHORT_DESC="GStreamer Base Plugins."
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL2"
+WEB_SITE="https://gstreamer.freedesktop.org/"
+
 SOURCE="gst-plugins-good"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="https://gstreamer.freedesktop.org/"
 WGET_URL="${WEB_SITE}src/$SOURCE/$TARBALL"
 
-DEPENDS="gstreamer-1.0 pango alsa-lib mpg123 jpeg"
-BUILD_DEPENDS="gstreamer-1.0-dev gst-plugins-base-1.0-dev mpg123-dev jpeg-dev"
+DEPENDS="alsa-lib gstreamer-1.0 jpeg mpg123 pango"
+BUILD_DEPENDS="gst-plugins-base-1.0-dev gstreamer-1.0-dev 
+	jpeg-dev mpg123-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed '/set ERROR_C/d' -i configure
-	sed '/set ERROR_OBJC/d' -i configure
-	./configure \
-		--prefix=/usr --sysconfdir=/etc \
-		--localstatedir=/var --enable-experimental \
-		--disable-static --disable-debug \
-		--disable-libvisual --enable-introspection=no \
-		--with-package-name="GStreamer Base Plugins ($SERIES)" \
-		--with-package-origin="http://www.slitaz.org/" \
+	sed -i '/set ERROR_C/d'		configure
+	sed -i '/set ERROR_OBJC/d'	configure
+
+	./configure							\
+		--prefix=/usr						\
+		--sysconfdir=/etc					\
+		--localstatedir=/var					\
+		--enable-experimental					\
+		--disable-static					\
+		--disable-debug						\
+		--disable-libvisual					\
+		--enable-introspection=no				\
+		--with-package-name="GStreamer Base Plugins ($SERIES)"	\
+		--with-package-origin="http://www.slitaz.org/"		\
 		$CONFIGURE_ARGS | grep -v 'No package' &&
-	make $MAKEFLAGS && make install 2>/dev/null
+	make $MAKEFLAGS &&
+	make install 2>/dev/null
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/gstreamer-$SERIES $fs/usr/share/locale
-	mv $install/usr/lib/gstreamer-$SERIES/*.so* $fs/usr/lib/gstreamer-$SERIES
+	mkdir -p $fs/usr/lib/gstreamer-$SERIES
+#	mkdir -p $fs/usr/share/locale
+	mv $install/usr/lib/gstreamer-$SERIES/*.so*	$fs/usr/lib/gstreamer-$SERIES
 }

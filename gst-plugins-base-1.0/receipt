@@ -1,23 +1,26 @@
 # SliTaz package receipt.
 
 PACKAGE="gst-plugins-base-1.0"
-VERSION="1.10.1"
+VERSION="1.16.2"
 SERIES="1.0"
 CATEGORY="multimedia"
-SHORT_DESC="GStreamer Base Plugins"
+SHORT_DESC="GStreamer Base Plugins."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://gstreamer.freedesktop.org/"
+
 SOURCE="gst-plugins-base"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="https://gstreamer.freedesktop.org/"
 WGET_URL="${WEB_SITE}src/gst-plugins-base/$TARBALL"
-HOST_ARCH="i486 arm"
 
-DEPENDS="gstreamer-1.0 pango alsa-lib libogg libtheora libtheora-enc \
-libvorbis vorbis-tools udev xorg xorg-libXv xorg-libXvMC orc opus"
-BUILD_DEPENDS="gstreamer-1.0-dev pango-dev alsa-lib-dev libogg-dev \
-libtheora-dev libtheora-enc libvorbis-dev udev-dev xorg-libXv-dev \
-xorg-libXvMC-dev util-linux-uuid-dev orc-dev opus-dev"
+DEPENDS="alsa-lib gstreamer-1.0 libogg libtheora libtheora-enc 
+	libvorbis opus orc pango udev vorbis-tools xorg xorg-libXv 
+	xorg-libXvMC"
+BUILD_DEPENDS="alsa-lib-dev gstreamer-1.0-dev libogg-dev libtheora-dev 
+	libtheora-enc libvorbis-dev opus-dev orc-dev pango-dev udev-dev 
+	util-linux-uuid-dev xorg-libXv-dev xorg-libXvMC-dev"
+
+HOST_ARCH="i486 arm"
 
 # Arch install
 case "$SLITAZ_ARCH" in
@@ -35,29 +38,33 @@ compile_rules()
 	sysroot="/cross/arm/sysroot"
 	libs="/usr/lib"
 	incl="/usr/include"
-	sed '/set ERROR_C/d' -i configure
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--enable-experimental \
-		--disable-static \
-		--disable-debug \
-		--disable-gnome-vfs \
-		--disable-libvisual \
-		--disable-vorbisidec \
-		--enable-introspection=no \
-		--with-package-name="GStreamer Base Plugins ($SERIES)" \
-		--with-package-origin="http://www.slitaz.org/" \
+	sed -i '/set ERROR_C/d'	configure
+
+	./configure							\
+		--prefix=/usr						\
+		--sysconfdir=/etc					\
+		--localstatedir=/var					\
+		--enable-experimental					\
+		--disable-static					\
+		--disable-debug						\
+		--disable-gnome-vfs					\
+		--disable-libvisual					\
+		--disable-vorbisidec					\
+		--enable-introspection=no				\
+		--with-package-name="GStreamer Base Plugins ($SERIES)"	\
+		--with-package-origin="http://www.slitaz.org/"		\
 		$CONFIGURE_ARGS | grep -v 'vorbisidec' &&
-	make $MAKEFLAGS && make install 2>/dev/null
+	make $MAKEFLAGS &&
+	make install 2>/dev/null
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/gstreamer-$SERIES $fs/usr/share/locale
-	mv $install/usr/bin $fs/usr
-	mv $install/usr/lib/*.so* $fs/usr/lib
-	mv $install/usr/lib/gstreamer-$SERIES/*.so* $fs/usr/lib/gstreamer-$SERIES
+	mkdir -p $fs/usr/lib/gstreamer-$SERIES
+	mkdir -p $fs/usr/share/locale
+
+	mv $install/usr/bin				$fs/usr
+	mv $install/usr/lib/*.so*			$fs/usr/lib
+	mv $install/usr/lib/gstreamer-$SERIES/*.so*	$fs/usr/lib/gstreamer-$SERIES
 }
