@@ -1,32 +1,38 @@
 # SliTaz package receipt.
 
 PACKAGE="gtk-screenshot"
-VERSION="0.1.0-1"
+VERSION="0.2.0"
 CATEGORY="x-window"
-SHORT_DESC="A simple GTK+ tool to take screen capture in interactive mode or in shell"
+TAGS="gtk2 screenshot"
+SHORT_DESC="A simple GTK+ tool to take screen capture in interactive mode or in shell."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL2"
 WEB_SITE="https://sourceforge.net/projects/gtk-screenshot/"
-TARBALL="${PACKAGE}_$VERSION.tar.gz"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="gtk2 screenshot"
 
 DEPENDS="gtk+"
-BUILD_DEPENDS="gtk+-dev libxml2-dev automake autoconf xorg-libXext-dev"
+BUILD_DEPENDS="autoconf automake gtk+-dev libxml2-dev xorg-libXext-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	cp $stuff/ru.po $src/po
 	autoreconf
-	sed -i 's|ALL_LINGUAS="fr"|ALL_LINGUAS="fr ru"|' $src/configure
-	./configure $CONFIGURE_ARGS && make && make install
+	sed -i 's|ALL_LINGUAS="fr"|ALL_LINGUAS="fr ru"|' \
+		$src/configure
+
+	./configure $CONFIGURE_ARGS &&
+	make &&
+	make install
+
 	sed -i 's|int|in|' $install/usr/bin/screenshot	# typo
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
-	rm -rf $fs/usr/share/man
+	cp -a $install/*	$fs
+	rm -rf			$fs/usr/share/man
 }
