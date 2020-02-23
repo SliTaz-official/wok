@@ -1,32 +1,36 @@
 # SliTaz package receipt.
 
 PACKAGE="gtk+"
-VERSION="2.24.24"
+VERSION="2.24.32"
 CATEGORY="x-window"
 SHORT_DESC="The GIMP Toolkit."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-SUGGESTED="cups gnutls libgcrypt libgpg-error"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://www.gtk.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
+
+SUGGESTED="cups gnutls libgcrypt libgpg-error"
+DEPENDS="atk cairo expat fontconfig freetype gdk-pixbuf glib glibc-base 
+	harfbuzz jpeg libgio libpng libxcb pango pixman tiff xcb-util 
+	xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor 
+	xorg-libXdamage xorg-libXdmcp xorg-libXext xorg-libXfixes 
+	xorg-libXinerama xorg-libXrandr xorg-libXrender zlib"
+
+BUILD_DEPENDS="atk-dev automake dbus-dev dbus-glib-dev faenza-icon-theme 
+	fontconfig-dev freetype-dev gdk-pixbuf-dev harfbuzz-dev libffi-dev 
+	libpng-dev libxcb-dev libxml2-dev optipng pango-dev pixman-dev 
+	xorg-inputproto xorg-libX11-dev xorg-libXext-dev xorg-libXrender-dev 
+	xorg-xextproto"
+
 HOST_ARCH="i486 arm"
-
-DEPENDS="glibc-base expat libxcb xcb-util zlib glib cairo pango atk libpng \
-jpeg tiff gdk-pixbuf fontconfig freetype pixman libgio xorg-libX11 xorg-libXau \
-xorg-libXcomposite xorg-libXcursor xorg-libXdamage xorg-libXdmcp xorg-libXext \
-xorg-libXfixes xorg-libXinerama xorg-libXrender xorg-libXrandr harfbuzz"
-
-BUILD_DEPENDS="atk-dev pango-dev gdk-pixbuf-dev dbus-dev dbus-glib-dev \
-xorg-inputproto libxcb-dev fontconfig-dev freetype-dev pixman-dev libxml2-dev \
-libpng-dev libffi-dev xorg-xextproto harfbuzz-dev faenza-icon-theme optipng \
-xorg-libX11-dev xorg-libXext-dev xorg-libXrender-dev automake"
 
 # Handle cross compilation.
 case "$ARCH" in
 	i?86)
-		BUILD_DEPENDS="$BUILD_DEPENDS bash pkg-config cups-dev perl \
-		gobject-introspection-dev" ;;
+		BUILD_DEPENDS="$BUILD_DEPENDS bash cups-dev gobject-introspection-dev \
+		perl pkg-config" ;;
 	arm*)
 		ARCH_ARGS="--enable-introspection=no --disable-glibtest --disable-cups \
 		--disable-papi --with-gdktarget=x11 --with-xinput gio_can_sniff=yes"
@@ -38,14 +42,15 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	. $stuff/replace-icons; cd $src
+	. $stuff/replace-icons
+	cd $src
 	patch -p0 < $stuff/undo_gen_icons.patch
-
 	find . -name Makefile.in | xargs sed -i 's|@AUTOMAKE@|automake|'
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--with-html-dir=/usr/share/doc \
+
+	./configure				\
+		--prefix=/usr			\
+		--sysconfdir=/etc		\
+		--with-html-dir=/usr/share/doc	\
 		$CONFIGURE_ARGS ${ARCH_ARGS} &&
 	# https://bugzilla.gnome.org/show_bug.cgi?id=655517
 	sed -i -e 's/ -shared / -Wl,-O1,--as-needed\0/g' libtool &&
@@ -56,27 +61,28 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/gtk-2.0 $fs/usr/share $fs/usr/bin
+	mkdir -p $fs/usr/lib/gtk-2.0
+	mkdir -p $fs/usr/share $fs/usr/bin
 
-	# Libs.
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/gtk-2.0/2.10.0 $fs/usr/lib/gtk-2.0
-	rm -rf $fs/usr/lib/gtk-2.0/2.10.0/*/*.la
+	# Libraries.
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/gtk-2.0/2.10.0	$fs/usr/lib/gtk-2.0
+	rm -rf					$fs/usr/lib/gtk-2.0/2.10.0/*/*.la
 
 	# Themes
-	cp -a $install/usr/share/themes $fs/usr/share
+	cp -a $install/usr/share/themes		$fs/usr/share
 
-	# Apps.
-	cp -a $install/usr/bin/gtk-query-immodules-2.0 $fs/usr/bin
-	cp -a $install/usr/bin/gtk-update-icon-cache $fs/usr/bin
-	cp -a $install/usr/bin/gtk-builder-convert $fs/usr/bin
+	# Applications.
+	cp -a $install/usr/bin/gtk-query-immodules-2.0	$fs/usr/bin
+	cp -a $install/usr/bin/gtk-update-icon-cache	$fs/usr/bin
+	cp -a $install/usr/bin/gtk-builder-convert	$fs/usr/bin
 
 	mkdir -p $fs/etc/gtk-2.0
 	ln -s /usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache \
 		$fs/etc/gtk-2.0/gdk-pixbuf.loaders
 }
 
-# Pre and post install commands for Tazpkg.
+# Post install commands for Tazpkg.
 post_install()
 {
 	mkdir -p "$1/etc/gtk-2.0"
