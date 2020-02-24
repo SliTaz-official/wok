@@ -10,7 +10,7 @@ WEB_SITE="https://www.gtk.org/"
 
 SOURCE="gtk+"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WGET_URL="$GNOME_MIRROR/$SOURCE/${VERSION:0:4}/$TARBALL"
+WGET_URL="$GNOME_MIRROR/$SOURCE/${VERSION%.*}/$TARBALL"
 
 SUGGESTED="cups"
 DEPENDS="at-spi2-atk atk gdk-pixbuf pango slitaz-icon util-linux-uuid 
@@ -18,7 +18,7 @@ DEPENDS="at-spi2-atk atk gdk-pixbuf pango slitaz-icon util-linux-uuid
 	xorg-libXrandr"
 BUILD_DEPENDS="at-spi2-atk atk-dev autoconf automake bash cairo-dev 
 	cups-dev dbus-dev gdk-pixbuf-dev gobject-introspection-dev 
-	indent libffi-dev pango-dev libxml2-dev perl pkg-config 
+	indent libffi-dev libxml2-dev pango-dev perl pkg-config 
 	util-linux-uuid-dev xorg-dev"
 
 CONFIG_FILES="/etc/gtk-3.0/settings.ini"
@@ -43,6 +43,11 @@ compile_rules()
 	# With cups-2.3.1 installed, configure says CUPS >= 1.2 not found
 	# Try to cheat configure by:
 	sed -i '25179a CUPS_API_MAJOR=1'	configure
+	# Results in error: dereferencing pointer to incomplete type
+	# Can we waive cups support?
+
+	# unrecognised:
+	#	--enable-packagekit=no
 
 	./configure				\
 		--prefix=/usr			\
@@ -51,7 +56,6 @@ compile_rules()
 		--enable-colord=no		\
 		--enable-debug=no		\
 		--enable-introspection=yes	\
-		--enable-packagekit=no		\
 		--enable-x11-backend		\
 		--enable-xcomposite		\
 		--enable-xdamage		\
@@ -60,6 +64,7 @@ compile_rules()
 		--enable-xkb			\
 		--enable-xrandr			\
 		--disable-broadway-backend	\
+		--disable-cups			\
 		--disable-wayland-backend	\
 		--with-x			\
 		$CONFIGURE_ARGS			\
