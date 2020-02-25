@@ -1,19 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="gvim"
-VERSION="8.1"
+VERSION="8.2"
 CATEGORY="editors"
 TAGS="text-editor"
 SHORT_DESC="Advanced text editor, with gtk+ GUI."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="other"
 WEB_SITE="https://www.vim.org/"
-PROVIDES="xxd"
 
 SOURCE="vim"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
 WGET_URL="ftp://ftp.vim.org/pub/vim/unix/$TARBALL"
 
+PROVIDES="xxd"
 DEPENDS="gtk+ ncurses xorg-libXau xorg-libXdmcp xorg-libXt"
 BUILD_DEPENDS="gtk+-dev"
 CONFIG_FILES="/etc/vim/vimrc"
@@ -44,7 +44,10 @@ compile_rules()
 		--disable-motif-check		\
 		$CONFIGURE_ARGS &&
 
-	make VIMRCLOC=/etc/vim VIMRUNTIMEDIR=/usr/share/vim/vim81 MAKE="make -e" &&
+	make						\
+		VIMRCLOC=/etc/vim			\
+		VIMRUNTIMEDIR=/usr/share/vim/vim82	\
+		MAKE="make -e" &&
 	make DESTDIR=$DESTDIR install
 
 	mkdir -p $DESTDIR/etc/vim
@@ -54,10 +57,9 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p					\
-		$fs/usr/share/icons/hicolor/16x16/apps	\
-		$fs/usr/share/applications		\
-		$fs/etc
+	mkdir -p $fs/usr/share/icons/hicolor/16x16/apps
+	mkdir -p $fs/usr/share/applications
+	mkdir -p $fs/etc
 
 	cp -a $install/usr/bin		$fs/usr
 	cp -a $install/usr/share/vim	$fs/usr/share
@@ -69,17 +71,19 @@ genpkg_rules()
 post_install()
 {
 	cmd=$(readlink "$1/bin/vi")
-	if [ ! "$cmd" = '/usr/bin/vim' ]; then
+	if [ ! "$cmd" = '/usr/bin/vim' ]
+	  then
 		echo ""
 		echo "**** Actual VI link : $cmd"
 		echo ""
 		echo -n "Do you want vim  for /bin/vi (y/N) ? : "; read -t 30 answer
-		if [ "$answer" = 'y' ]; then
+		if [ "$answer" = 'y' ]
+		  then
 			echo ""
 			echo -n "Removing vi link to make a new one pointing on /usr/bin/vim..."
 			rm "$1/bin/vi" && ln -sf /usr/bin/vim "$1/bin/vi"
 			status
-		else
+		  else
 			echo ""
 			echo "Leaving /bin/vi to : $cmd"
 		fi
