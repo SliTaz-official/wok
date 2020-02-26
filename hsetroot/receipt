@@ -1,35 +1,37 @@
 # SliTaz package receipt.
 
 PACKAGE="hsetroot"
-VERSION="1.0.2"
+VERSION="1.0.5"
 CATEGORY="x-window"
+TAGS="wallpaper"
 SHORT_DESC="Tool to set desktop wallpaper."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://github.com/himdel/hsetroot"
-WGET_URL="http://thegraveyard.org/files/$TARBALL"
-TAGS="wallpaper"
-HOST_ARCH="i486 arm"
 
-DEPENDS="imlib2 libpng freetype xorg-libX11 xorg-libXau xorg-libXdmcp \
-xorg-libXext"
-BUILD_DEPENDS="imlib2-dev libpng-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
+
+DEPENDS="freetype imlib2 libpng xorg-libX11 xorg-libXau 
+	xorg-libXdmcp xorg-libXext"
+BUILD_DEPENDS="imlib2-dev libpng-dev pkg-config"
+
+HOST_ARCH="i486 arm"
 
 # ARM: imlib2-dev must be installed in build chroot
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	export	CFLAGS="$CFLAGS -std=c99"
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lX11"
-	./configure \
-		$CONFIGURE_ARGS &&
-	make && make install
+
+	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
+	mkdir -p $fs/usr/bin
+	cp -a $src/hsetroot	$fs/usr/bin
 }
