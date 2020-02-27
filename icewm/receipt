@@ -1,34 +1,49 @@
 # SliTaz package receipt.
 
 PACKAGE="icewm"
-VERSION="1.3.8"
+VERSION="1.6.4"
 CATEGORY="x-window"
-SHORT_DESC="Ice Window Manager with Themes"
+TAGS="window-manager"
+SHORT_DESC="Ice Window Manager with Themes."
 MAINTAINER="devl547@gmail.com"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://ice-wm.org/"
-WGET_URL="$SF_MIRROR/icewm/icewm-${VERSION%.*}/$VERSION/$TARBALL"
-TAGS="window-manager"
 
-BUILD_DEPENDS="xorg-libX11-dev xorg-libXrandr-dev xorg-libXext-dev \
-xorg-libXpm-dev xorg-libXrender-dev xorg-libXft xorg-libXft-dev xorg-libSM-dev \
-xorg-libICE-dev xorg-libXrandr-dev imlib-dev freetype-dev giflib-dev \
-xorg-libXinerama xorg-libXinerama-dev \
-xorg-xproto xorg-xextproto xorg-randrproto fontconfig-dev gettext \
-gdk-pixbuf-dev pkg-config"
-DEPENDS="xorg-libX11 xorg-libXrandr xorg-libXext xorg-libXpm xorg-libXinerama \
-xorg-libXrender xorg-libXft xorg-libSM xorg-libICE imlib freetype \
-gdk-pixbuf gettext-base"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/ice-wm/$PACKAGE/archive/v$VERSION.tar.gz"
+
+DEPENDS="freetype gcc83-lib-base gdk-pixbuf gettext-base imlib xorg-libICE 
+	xorg-libSM xorg-libX11 xorg-libXext xorg-libXft xorg-libXinerama 
+	xorg-libXpm xorg-libXrandr xorg-libXrender"
+BUILD_DEPENDS="asciidoc autoconf automake fontconfig-dev freetype-dev gcc83 
+	gdk-pixbuf-dev gettext giflib-dev imlib-dev libtool pkg-config 
+	util-linux-uuid-dev xorg-libICE-dev xorg-libSM-dev xorg-libX11-dev 
+	xorg-libXext-dev xorg-libXft-dev xorg-libXinerama-dev xorg-libXpm-dev 
+	xorg-libXrandr-dev xorg-libXrender-dev xorg-randrproto xorg-xextproto 
+	xorg-xproto"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i '/deprecated/d' src/base.h
-	sed -i 's/^CORE_LIBS =/& -lfontconfig/' src/Makefile.in
-	./configure --prefix=/usr --sysconfdir=/etc --libexecdir=/usr/lib/icewm \
-	 --localstatedir=/var --mandir=/usr/share/man \
-	 $CONFIGURE_ARGS &&
+#	sed -i '/deprecated/d' src/base.h
+#	sed -i 's/^CORE_LIBS =/& -lfontconfig/' src/Makefile.in
+
+	export	LDFLAGS="$LDFLAGS -lrt"
+
+	./autogen.sh &&
+	./configure				\
+		ASCIIDOC=asciidoc		\
+		CC=gcc-83			\
+		CXX=g++-83			\
+		--prefix=/usr			\
+		--sysconfdir=/etc		\
+		--libexecdir=/usr/lib/icewm	\
+		--localstatedir=/var		\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
+	# remove unsupported options for pod2man and pod2html (perl 5.14.1)
+	sed -i '/--errors="none"/d; /--nourls/d; /--poderrors/d' \
+		man/Makefile &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -36,7 +51,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share $fs/usr
+	mkdir -p $fs/usr
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share	$fs/usr
 }
