@@ -1,36 +1,41 @@
 # SliTaz package receipt.
 
 PACKAGE="iproute2"
-VERSION="3.6.0"
+VERSION="5.5.0"
 CATEGORY="network"
-SHORT_DESC="utilites for networking and traffic control"
+TAGS="network route"
+SHORT_DESC="Utilites for networking and traffic control."
 MAINTAINER="allan316@gmail.com"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://www.linuxfoundation.org/collaborate/workgroups/networking/iproute2"
-WGET_URL="http://kernel.org/pub/linux/utils/net/$PACKAGE/$TARBALL"
-TAGS="network route"
+WEB_SITE="https://wiki.linuxfoundation.org/networking/iproute2"
 
-DEPENDS="iptables db"
-BUILD_DEPENDS="bison flex iptables-dev db-dev libnl-dev"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="http://kernel.org/pub/linux/utils/net/$PACKAGE/$TARBALL"
+
+DEPENDS="db iptables"
+BUILD_DEPENDS="bison db-dev flex iptables-dev libmnl-dev libnl-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	sed -i 's/<net\/if.h>/<net\/if.h>\n#include <linux\/ip.h>/' ip/link_gre.c
-	./configure --prefix=/usr && \
-		make && \
-		make DESTDIR=$DESTDIR install
+	sed -i 's/<net\/if.h>/<net\/if.h>\n#include <linux\/ip.h>/' \
+		ip/link_gre.c
+
+	./configure		\
+		--prefix=/usr	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/bin
-	cp -a $install/usr $fs/
-	cp -a $install/etc $fs/
-	cp -a $install/var $fs/
-	cp -a $install/sbin $fs/
+
+	cp -a $install/usr	$fs
+	cp -a $install/etc	$fs
+	cp -a $install/var	$fs
+	cp -a $install/sbin	$fs
 	ln $fs/sbin/ip $fs/sbin/ss /$fs/bin/
 }
