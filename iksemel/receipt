@@ -1,23 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="iksemel"
-VERSION="1.2"
+VERSION="1.4.2"
 CATEGORY="network"
 SHORT_DESC="XML parser library for Jabber applications."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="LGPL2.1"
-WEB_SITE="https://github.com/meduketto/iksemel"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="http://jabberstudio.rediris.es/$PACKAGE/$TARBALL"
+WEB_SITE="https://github.com/timothytylee/iksemel-1.4"
 
-DEPENDS="gnutls libgcrypt libgpg-error zlib pkg-config"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/timothytylee/$PACKAGE-${VERSION%.*}/archive/v$VERSION.tar.gz"
+
+DEPENDS="gnutls libgcrypt libgpg-error pkg-config zlib"
+BUILD_DEPENDS="autoconf automake libtool"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./autogen.sh &&
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -26,8 +31,8 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/pkgconfig $fs/usr/lib
-}
 
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/pkgconfig	$fs/usr/lib
+}
