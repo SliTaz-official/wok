@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="kbd"
-VERSION="2.0.4"
+VERSION="2.2.0"
 CATEGORY="system-tools"
 TAGS="keyboard"
 SHORT_DESC="Keyboard mapping definitions and tools."
@@ -14,6 +14,7 @@ WGET_URL="https://www.kernel.org/pub/linux/utils/kbd/$TARBALL"
 
 DEPENDS="kbd-base"
 BUILD_DEPENDS="advancecomp check-dev flex pam-dev"
+
 HOST_ARCH="i486 arm"
 
 # Handle cross compilation.
@@ -25,7 +26,8 @@ esac
 compile_rules()
 {
 	# standard locale placement
-	sed 's|localedir = .*|localedir = @localedir@|' -i $src/po/Makefile.in.in
+	sed -i 's|localedir = .*|localedir = @localedir@|' \
+		po/Makefile.in.in
 
 	# Handle cross compilation.
 	case "$ARCH" in
@@ -42,7 +44,6 @@ compile_rules()
 				--localedir=/usr/share/locale	\
 				$CONFIGURE_ARGS ;;
 	esac &&
-
 	make -j 1 &&
 	make install &&
 
@@ -56,20 +57,21 @@ genpkg_rules()
 	mkdir -p $fs/usr/share
 
 	# Copy all kbd files (should we split fonts?)
-	cp -a $install/usr/share/kbd $fs/usr/share
+	cp -a $install/usr/share/kbd	$fs/usr/share
 
 	# Tools
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin		$fs/usr
 
 	# Remove files provided by kbd-base and kbd-vlock.
-	for keymap in $(cat $WOK/kbd-base/stuff/keymaps-path.list); do
+	for keymap in $(cat $WOK/kbd-base/stuff/keymaps-path.list)
+	  do
 		rm -f $fs/usr/share/kbd/keymaps/i386/$keymap
-	done
-	rm -rf $fs/usr/share/kbd/keymaps/include
-	rm -rf $fs/usr/share/kbd/keymaps/i386/include
-	rm -f $fs/usr/bin/loadkeys
-	rm -f $fs/usr/bin/setfont
-	rm -f $fs/usr/bin/vlock
+	  done
+	rm -rf				$fs/usr/share/kbd/keymaps/include
+	rm -rf				$fs/usr/share/kbd/keymaps/i386/include
+	rm -f				$fs/usr/bin/loadkeys
+	rm -f				$fs/usr/bin/setfont
+	rm -f				$fs/usr/bin/vlock
 }
 
 # Overlap busybox
