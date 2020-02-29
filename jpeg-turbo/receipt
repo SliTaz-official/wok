@@ -1,25 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="jpeg-turbo"
-SOURCE="libjpeg-turbo"
-VERSION="1.4.2"
+VERSION="2.0.4"
 CATEGORY="x-window"
+TAGS="jpeg jpg"
 SHORT_DESC="JPEG image programs."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="MIT"
+WEB_SITE="https://libjpeg-turbo.virtualgl.org/"
+
+SOURCE="libjpeg-turbo"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://libjpeg-turbo.virtualgl.org/"
 WGET_URL="$SF_MIRROR/$SOURCE/$VERSION/$TARBALL"
-TAGS="jpeg jpg"
 
 DEPENDS="libjpeg-turbo"
-BUILD_DEPENDS="nasm"
+BUILD_DEPENDS="cmake nasm"
+
+# @maintainer: Please update also: libjpeg-turbo and libjpeg-turbo-dev
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr --with-jpeg8 \
-		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	mkdir	build
+	cd	build
+	cmake	..				\
+		-G"Unix Makefiles"		\
+		-DCMAKE_INSTALL_PREFIX=/usr	\
+		-DWITH_JPEG8=1 &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -28,5 +35,5 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p  $fs/usr
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin	$fs/usr
 }
