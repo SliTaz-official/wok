@@ -1,0 +1,71 @@
+#!/bin/sh
+
+renice -n 1 -p $$
+WOK=${1:-/home/slitaz/wok}
+
+for i in $WOK/*/receipt ; do
+	pkg=$(basename ${i%/receipt})
+	echo -en "\r$pkg                  \r" 1>&2
+	unset PACKAGE WANTED SHORT_DESC DEPENDS BUILD_DEPENDS SUGGESTED
+	unset CATEGORY VERSION WEB_SITE TARBALL WGET_URL
+	. $i
+	[ "$pkg" == "$PACKAGE" ] || echo "$pkg: PACKAGE=$PACKAGE  "
+	[ -n "$SHORT_DESC" ] || echo "$pkg: no SHORT_DESC  "
+	[ -n "$WEB_SITE" ] || echo "$pkg: no WEB_SITE  "
+	[ -n "$CATEGORY" ] || echo "$pkg: no CATEGORY  "
+	if grep -qs '^compile_rules()$' "$i" && [ -z "$WANTED" ] && 
+	   [ "$CATEGORY" != "meta" ] && [ ! -d $(dirname "$i")/stuff ]; then
+		[ -z "$TARBALL" ]  && echo "$pkg: no TARBALL   "
+		[ -z "$WGET_URL" ] && echo "$pkg: no WGET_URL  "
+	fi
+	[ -d $i/stuff ] && ! grep -q stuff $i/receipt && echo "$pkg: ? stuff      "
+	. $WOK/../slitaz-base-files/rootfs/etc/slitaz/slitaz.conf
+	case " $(echo $PKGS_CATEGORIES | xargs echo) " in
+	*\ $CATEGORY\ *) ;;
+	*) echo "$pkg: bad CATEGORY $CATEGORY  " ;;
+	esac
+false &&
+	case "$PACKAGE" in
+	*-dev) case " $DEPENDS " in
+		*\ ${PACKAGE%-dev}\ *) ;;
+		*) echo "$pkg: no dep ${PACKAGE%-dev}"
+		esac ;;
+	esac
+	[ -n "$VERSION" ] || echo "$pkg: no VERSION  "
+	for j in $DEPENDS ; do
+		[ -s $WOK/$j/receipt ] && continue
+		[ -s /hg/wok/$j/receipt ] && continue
+		[ -s $WOK/get-$j/receipt ] && continue
+		grep -s "^PROVIDE=" $WOK/*/receipt | grep -q "[\" ]$j[\" ]" && continue
+		echo "$pkg: no dep $j  "
+	done
+	for j in $BUILD_DEPENDS ; do
+		[ -s $WOK/$j/receipt ] && continue
+		[ -s /hg/wok/$j/receipt ] && continue
+		[ -s $WOK/get-$j/receipt ] && continue
+		grep -s "^PROVIDE=" $WOK/*/receipt | grep -q "[\" ]$j[\" ]" && continue
+		[ ! -s $WOK/$j/receipt ] &&
+		grep -qs -- '-dev)' $WOK/${j%-dev}/receipt && continue
+		echo "$pkg: no bdep $j  "
+	done
+	for j in $SUGGESTED ; do
+		[ -s $WOK/$j/receipt ] && continue
+		[ -s /hg/wok/$j/receipt ] && continue
+		[ -s $WOK/get-$j/receipt ] && continue
+		grep -s "^PROVIDE=" $WOK/*/receipt | grep -q "[\" ]$j[\" ]" && continue
+		echo "$pkg: no sugg $j  "
+	done
+	[ $(echo $WANTED | wc -w) -eq 1 ] &&
+	for j in $WANTED ; do
+		[ -s $WOK/$j/receipt ] || echo -e "\r$pkg: no wanted $j  "
+		WANVER="$(unset VERSION; . $WOK/$j/receipt; echo $VERSION)"
+		[ "$VERSION" == "$WANVER" ] || echo "$pkg: wanted $j version $WANVER, not $VERSION  "
+	done
+done
+echo "                         " 1>&2
+for i in $(grep -l current_version $WOK/*/receipt); do
+	. $i
+	new="$(current_version)"
+	[ "$new" != "$VERSION" -a ${#new} -gt 0 -a ${#new} -lt 20 ] &&
+	echo "$PACKAGE: $VERSION -> $new"
+done
