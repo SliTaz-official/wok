@@ -1,15 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="libaio"
-VERSION="0.3.111"
+VERSION="0.3.112"
 CATEGORY="misc"
 SHORT_DESC="Linux-native asynchronous I/O access library."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="LGPL2.1"
-WEB_SITE="http://lse.sourceforge.net/io/aio.html"
+WEB_SITE="https://pagure.io/libaio"
 
-TARBALL="${PACKAGE}_$VERSION.orig.tar.gz"
-WGET_URL="http://ftp.de.debian.org/debian/pool/main/liba/$PACKAGE/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://releases.pagure.org/$PACKAGE/$TARBALL"
 
 DEPENDS=""
 BUILD_DEPENDS=""
@@ -17,7 +17,9 @@ BUILD_DEPENDS=""
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|uname -m|echo i486|' src/Makefile
+	sed -i 's|uname -m|echo i486|' \
+		src/Makefile
+
 	make prefix=/usr
 }
 
@@ -25,12 +27,13 @@ compile_rules()
 genpkg_rules()                                      
 {
 	mkdir -p $fs/usr/lib
-	install -D -m 755 $src/src/libaio.so.* $fs/usr/lib/
+	install -D -m 755 $src/src/libaio.so.*	$fs/usr/lib/
 	lib=$(cd $src/src; ls libaio.so.* | tail -n 1)
 	ln=$lib
-	while true; do
+	while true
+	  do
 		ln=${ln%.*}
 		ln -sf $lib $fs/usr/lib/$ln
 		[ $ln = libaio.so ] && break
-	done
+	  done
 }
