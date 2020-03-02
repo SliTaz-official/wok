@@ -1,35 +1,42 @@
 # SliTaz package receipt.
 
 PACKAGE="libao"
-VERSION="1.1.0"
+VERSION="1.2.2"
 CATEGORY="multimedia"
-SHORT_DESC="Cross-platform audio output library and plugins"
+SHORT_DESC="Cross-platform audio output library and plugins."
 MAINTAINER="rj.rohit@gmail.com"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="https://downloads.xiph.org/releases/ao/" 
-WGET_URL="$WEB_SITE/$TARBALL"
-HOST_ARCH="i486 arm"
+WEB_SITE="https://xiph.org/ao/"
 
-DEPENDS="glibc-base alsa-lib"
-BUILD_DEPENDS="alsa-lib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/xiph/$PACKAGE/archive/$VERSION.tar.gz"
+
+DEPENDS="alsa-lib glibc-base"
+BUILD_DEPENDS="alsa-lib-dev autoconf automake libtool"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--enable-alsa09 \
-		--disable-arts \
+	./autogen.sh &&
+	./configure		\
+		--enable-alsa09	\
+		--disable-arts	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/ao/plugins-4 $fs/etc
-	cp -a $install/usr/lib/ao/plugins-4/*.so $fs/usr/lib/ao/plugins-4
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	# Add conf file
-	cp -a $stuff/libao.conf $fs/etc
+	mkdir -p $fs/usr/lib/ao/plugins-4
+	mkdir -p $fs/etc
+
+	cp -a $install/usr/lib/ao/plugins-4/*.so	$fs/usr/lib/ao/plugins-4
+	cp -a $install/usr/lib/*.so*			$fs/usr/lib
+
+	# Add configuration file
+	cp -a $stuff/libao.conf				$fs/etc
 }
