@@ -12,18 +12,22 @@ WEB_SITE="http://sites.google.com/site/consonancemanager/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://cloud.github.com/downloads/sujith/consonance/$TARBALL"
 
-DEPENDS="libao taglib libmad sqlite dbus-glib libnotify flac libsndfile libvorbis \
-	curl libmodplug libcdio-paranoia libcddb xcb-util"
-BUILD_DEPENDS="libao-dev taglib taglib-dev libmad-dev sqlite-dev dbus-glib-dev \
-	libnotify-dev flac-dev libsndfile-dev libvorbis-dev curl-dev libmodplug-dev \
-	libcdio-dev libcddb-dev libidn-dev libidn libao libsndfile libmodplug libcdio \
-	libcdio-paranoia-dev alsa-lib-dev libogg-dev gtk+-dev"
+DEPENDS="curl dbus-glib flac libao libcddb libcdio-paranoia libmad libmodplug 
+	libnotify libsndfile libvorbis sqlite taglib xcb-util"
+BUILD_DEPENDS="alsa-lib-dev curl-dev dbus-glib-dev flac-dev gtk+-dev libao-dev 
+	libcddb-dev libcdio-dev libcdio-paranoia-dev libidn-dev libmad-dev 
+	libmodplug-dev libnotify-dev libogg-dev libsndfile-dev libvorbis-dev 
+	sqlite-dev taglib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|cdio/cdda|cdio/paranoia/cdda|' src/cdda.h
-	sed -i 's/.*= notify_notification_new_with_status_icon/#define notify_notification_new_with_status_icon(a,b,c,d) notify_notification_new(a,b,gtk_status_icon_get_icon_name(c))\n&/' src/statusicon.c
+	sed -i 's|cdio/cdda|cdio/paranoia/cdda|' \
+		src/cdda.h
+	sed -i 's/.*= notify_notification_new_with_status_icon/#define notify_notification_new_with_status_icon(a,b,c,d) notify_notification_new(a,b,gtk_status_icon_get_icon_name(c))\n&/' \
+		src/statusicon.c
+
+	export	LDFLAGS="$LDFLAGS -lstdc++"
 
 	./configure		\
 		--prefix=/usr	\
@@ -42,5 +46,5 @@ genpkg_rules()
 	cp -a $install/usr/bin			$fs/usr
 	cp -a $install/usr/share/$PACKAGE	$fs/usr/share
 	cp -a $install/usr/share/$PACKAGE/data/consonance.png \
-		$fs/usr/share/pixmaps
+						$fs/usr/share/pixmaps
 }
