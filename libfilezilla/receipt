@@ -1,0 +1,39 @@
+# SliTaz package receipt.
+
+PACKAGE="libfilezilla"
+VERSION="0.20.1"
+CATEGORY="libs"
+TAGS="ftp client"
+SHORT_DESC="C++ library for filezilla."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="GPLv2+"
+WEB_SITE="https://lib.filezilla-project.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://download.filezilla-project.org/$PACKAGE/$TARBALL"
+
+DEPENDS="gcc83-lib-base libgnutls nettle"
+BUILD_DEPENDS="gcc83 gettext gnutls-dev nettle-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	export	LDFLAGS="$LDFLAGS -latomic"
+
+	./configure				\
+		CC=gcc-83			\
+		CXX=g++-83			\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+}
