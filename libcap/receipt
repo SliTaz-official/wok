@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="libcap"
-VERSION="2.24"
+VERSION="2.33"
 CATEGORY="system-tools"
-SHORT_DESC="Support for getting/setting POSIX.1e capabilities."
+SHORT_DESC="Support for getting and setting POSIX.1e capabilities."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://sites.google.com/site/fullycapable/"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="http://ftp.df.lth.se/pub/linux/libs/security/linux-privs/libcap2/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS="attr"
-BUILD_DEPENDS="gperf pam-dev attr-dev"
+BUILD_DEPENDS="attr-dev gperf pam-dev"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation.
 case "$ARCH" in
@@ -23,7 +25,9 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|INCLUDE_GPERF_OUTPUT = |&-include stddef.h |' libcap/Makefile
+	sed -i 's|INCLUDE_GPERF_OUTPUT = |&-include stddef.h |' \
+		libcap/Makefile
+
 	make DYNAMIC=yes ${ARCH_ARGS} &&
 	make RAISE_SETCAP=no DESTDIR=$DESTDIR install
 }
@@ -32,6 +36,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/lib
-	cp -a $install/lib/*.so* $fs/lib
-	cp -a $install/sbin $fs
+
+	cp -a $install/lib/*.so*	$fs/lib
+	cp -a $install/sbin		$fs
 }
