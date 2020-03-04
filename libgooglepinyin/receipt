@@ -1,33 +1,40 @@
 # SliTaz package receipt.
 
 PACKAGE="libgooglepinyin"
-VERSION="0.1.1"
+VERSION="0.1.2"
 CATEGORY="development"
-SHORT_DESC="A fork from google pinyin on android"
+SHORT_DESC="A fork from google pinyin on android."
 MAINTAINER="lufeng369@slitaz.org"
 LICENSE="Apache"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://github.com/promisejohn/libgooglepinyin"
-WGET_URL="http://libgooglepinyin.googlecode.com/files/$TARBALL"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
 
 DEPENDS=""
-BUILD_DEPENDS="cairo-dev pango-dev intltool cmake gtk+-dev gcc"
+BUILD_DEPENDS="cairo-dev cmake gcc gtk+-dev intltool pango-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	mkdir -p $install/usr/share/libgooglepinyin
+
 	mkdir -p $src/build
 	cd $src/build
 	cmake $src -DCMAKE_INSTALL_PREFIX=/usr || return 1
 	cd $src
 	make -C build || return 1
 	make install/fast -C build DESTDIR=$DESTDIR
+
+	cp -a $src/build/data/dict_pinyin.dat	$install/usr/share/libgooglepinyin
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/ $fs/usr/share/
-	cp -a $install/usr/lib/libgooglepinyin.so* $fs/usr/lib/
-	cp -a $install/usr/share/googlepinyin/ $fs/usr/share/
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	cp -a $install/usr/lib/libgooglepinyin.so*	$fs/usr/lib/
+	cp -a $install/usr/share/googlepinyin		$fs/usr/share
 }
