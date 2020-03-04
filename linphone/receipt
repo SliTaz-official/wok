@@ -3,17 +3,18 @@
 PACKAGE="linphone"
 VERSION="3.5.2"
 CATEGORY="network"
+TAGS="softphone telephony"
 SHORT_DESC="SIP soft phone."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.linphone.org/"
-WGET_URL="http://download-mirror.savannah.gnu.org/releases/linphone/${VERSION%.*}.x/sources/$TARBALL"
-TAGS="softphone telephony"
 
-DEPENDS="osip exosip speex ffmpeg xorg-libXv libv4l libglade gtk+ glib"
-BUILD_DEPENDS="intltool libsdl-dev ffmpeg-dev osip-dev exosip-dev speex-dev \
-xorg-libXv-dev libv4l-dev libglade-dev gtk+-dev glib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://download-mirror.savannah.gnu.org/releases/linphone/${VERSION%.*}.x/sources/$TARBALL"
+
+DEPENDS="exosip glib gtk+ ffmpeg libglade libv4l osip speex xorg-libXv"
+BUILD_DEPENDS="cmake exosip-dev ffmpeg-dev glib-dev gtk+-dev intltool 
+	libglade-dev libsdl-dev libv4l-dev osip-dev speex-dev xorg-libXv-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -26,10 +27,15 @@ compile_rules()
 			mediastreamer2/src/*.c
 	sed -i 's/g_thread_init(NULL);//' gtk/*.c
 	# Define deprecated ffmepg flags ...
-	CFLAGS="-Wno-deprecated-declarations -DCODEC_FLAG_PART=0x0080 -DCODEC_FLAG_H263P_UMV=0x0200000 -DCODEC_FLAG_H263P_SLICE_STRUCT=0x01000000 -DFF_I_TYPE=1" \
-	LIBS="-lavutil -lz" \
-	./configure --prefix=/usr --libexecdir=/usr/bin \
-	--infodir=/usr/share/info --mandir=/usr/share/man $CONFIGURE_ARGS
+	export CFLAGS="-Wno-deprecated-declarations -DCODEC_FLAG_PART=0x0080 -DCODEC_FLAG_H263P_UMV=0x0200000 -DCODEC_FLAG_H263P_SLICE_STRUCT=0x01000000 -DFF_I_TYPE=1"
+	export LIBS="-lavutil -lz"
+
+	./configure				\
+		--prefix=/usr			\
+		--libexecdir=/usr/bin		\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS
 	make &&
 	make DESTDIR=$DESTDIR install 2>&1 | sed \
 		-e "s/css': No such file/css': no such file/" \
@@ -39,13 +45,15 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/share/applications $fs/usr/share
-	cp -a $install/usr/share/pixmaps $fs/usr/share
-	cp -a $install/usr/share/sounds $fs/usr/share
-	cp -a $install/usr/share/locale $fs/usr/share
-	cp -a $install/usr/share/images $fs/usr/share
-	cp -a $install/usr/share/linphone $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	cp -a $install/usr/share/applications	$fs/usr/share
+	cp -a $install/usr/share/pixmaps	$fs/usr/share
+	cp -a $install/usr/share/sounds		$fs/usr/share
+	cp -a $install/usr/share/locale		$fs/usr/share
+	cp -a $install/usr/share/images		$fs/usr/share
+	cp -a $install/usr/share/linphone	$fs/usr/share
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
 }
