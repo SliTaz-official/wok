@@ -3,17 +3,19 @@
 PACKAGE="gdk-pixbuf"
 VERSION="2.31.1"
 CATEGORY="x-window"
-SHORT_DESC="An image loading library for gtk2"
+SHORT_DESC="An image loading library for gtk2."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://www.gtk.org/"
-WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
-HOST_ARCH="i486 arm"
 
-DEPENDS="glib libgio libpng tiff jpeg zlib xorg-libX11 shared-mime-info"
-BUILD_DEPENDS="libgio-dev glib-dev jbigkit libpng-dev tiff-dev jpeg-dev \
-xorg-libX11-dev zlib-dev shared-mime-info-dev"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="glib jpeg libgio libpng shared-mime-info tiff xorg-libX11 zlib"
+BUILD_DEPENDS="glib-dev jbigkit jpeg-dev libgio-dev libpng-dev 
+	shared-mime-info-dev tiff-dev xorg-libX11-dev zlib-dev"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -27,24 +29,26 @@ compile_rules()
 	case "$ARCH" in
 		arm) echo "gio_can_sniff=yes" > arm.cache ;;
 	esac
-	./configure \
-		--disable-glibtest \
-		--without-libjasper \
-		--with-x11 \
+	./configure			\
+		--disable-glibtest	\
+		--without-libjasper	\
+		--with-x11		\
 		$CONFIGURE_ARGS $ARCH_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders
-	cp -a $install/usr/bin $fs/usr
+
+	cp -a $install/usr/bin		$fs/usr
 	cp -a $install/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so \
-		$fs/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders
-	[ -d "$install/usr/lib/girepository-1.0" ] && \
-		cp -a $install/usr/lib/girepository-1.0 $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+					$fs/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders
+	[ -d "$install/usr/lib/girepository-1.0" ] &&
+		cp -a $install/usr/lib/girepository-1.0	$fs/usr/lib
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 	touch $fs/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache
 }
 
