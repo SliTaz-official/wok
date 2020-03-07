@@ -1,0 +1,69 @@
+# SliTaz package receipt.
+
+PACKAGE="perl-dev"
+VERSION="5.14.1"
+CATEGORY="development"
+SHORT_DESC="Full Perl interpreter and modules with libperl.so."
+MAINTAINER="pankso@slitaz.org"
+LICENSE="GPL"
+SOURCE="perl"
+TARBALL="$SOURCE-$VERSION.tar.bz2"
+DEPENDS="libdb gdbm zlib"
+BUILD_DEPENDS="db gdbm zlib less"
+WEB_SITE="http://www.perl.org/"
+WGET_URL="http://ftp.funet.fi/pub/CPAN/src/$TARBALL"
+
+# Rules to compile & install the temporary toolchain.
+cook_tmp_toolchain()
+{
+	{ sh Configure -des -Dprefix=/tools \
+		-Darchname="$ARCH-linux" \
+		-Dmyarchname="$ARCH-linux" \
+		-Dsitearch="/usr/lib/perl5/site_perl/$VERSION/$ARCH-linux" \
+		-Dsitearchexp="/usr/lib/perl5/site_perl/$VERSION/$ARCH-linux" \
+		-Darchlib="/usr/lib/perl5/$VERSION/$ARCH-linux" \
+		-Darchlibexp="/usr/lib/perl5/$VERSION/$ARCH-linux" \
+		-Dinstallarchlib="/usr/lib/perl5/$VERSION/$ARCH-linux" \
+		-Dstatic_ext='Data/Dumper Fcntl IO'
+	
+	# Only few tools are needed in the tmp toolchain.
+	make perl utilities ext/Errno/pm_to_blib
+	} || return 1
+	cp perl pod/pod2man /tools/bin
+	mkdir -p /tools/lib/perl5/$VERSION
+	cp -R lib/* /tools/lib/perl5/$VERSION
+}
+
+
+# Rules to configure and make the package.
+#
+compile_rules()
+{
+	./configure.gnu --prefix=/usr \
+		-Duseshrplib \
+		-Darchname="$ARCH-linux" \
+		-Dmyarchname="$ARCH-linux" \
+		-Dsitearch="/usr/lib/perl5/site_perl/$VERSION/$ARCH-linux" \
+		-Dsitearchexp="/usr/lib/perl5/site_perl/$VERSION/$ARCH-linux" \
+		-Darchlib="/usr/lib/perl5/$VERSION/$ARCH-linux" \
+		-Darchlibexp="/usr/lib/perl5/$VERSION/$ARCH-linux" \
+		-Dinstallarchlib="/usr/lib/perl5/$VERSION/$ARCH-linux" &&
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+}
+
+# Pre install commands for Tazpkg.
+# Remove perl link to microperl if any.
+#
+pre_install()
+{
+	rm -f "$1/usr/bin/perl"
+}
