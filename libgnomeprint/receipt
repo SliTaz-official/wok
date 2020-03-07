@@ -17,7 +17,11 @@ libxml2-dev"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	# YYPARSE_PARAM is no longer supported in Bison 3
+	sed -e '/YYPARSE_PARAM/d' -e 's|yyerror (|yyerror (graph_t *g, |' \
+		-e 's|%pure_parser|&\n%parse-param { graph_t *graph }|' \
+		-i libgnomeprint/grammar.y
+
 	./configure \
 		--with-html-dir=/usr/share/doc \
 		--without-cups \
