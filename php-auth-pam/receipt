@@ -22,6 +22,12 @@ compile_rules()
 	phpize
 	patch -p1 < $stuff/php-auth-pam-Makefile.global0.4.u || exit 1
 	sed -i 's/^function_entry/zend_&/;s/pval /zval /' pam_auth.c # php 5.4
+
+	sed -e 's|(\(\*[a-z]*)\)->value.str.val;|Z_STRVAL(*\1;|' \
+		-e 's|(\*status)->value.str.val|Z_STR(**status)|' \
+		-e 's|(\*status)->value.str.len|Z_STRLEN(**status)|' \
+		-e 's|(\*status)->type|Z_TYPE_INFO(**status)|' \
+		-i pam_auth.c # php 7.3
 	
 	./configure $CONFIGURE_ARGS \
 		--prefix=/usr &&
