@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libgphoto2"
-VERSION="2.5.22"
+VERSION="2.5.24"
 CATEGORY="graphics"
 TAGS="camera photo"
 SHORT_DESC="Core library of gphoto2 to access photos from digital camera."
@@ -19,11 +19,12 @@ BUILD_DEPENDS="jpeg jpeg-dev libexif libexif-dev libtool \
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure			\
-		--prefix=/usr		\
-		udevscriptdir=/lib/udev	\
-		--with-exif		\
-		--disable-static	\
+	./configure				\
+		--prefix=/usr			\
+		udevscriptdir=/lib/udev		\
+		--with-camlibs=everything	\
+		--with-exif			\
+		--disable-static		\
 		$CONFIGURE_ARGS &&
 	make -j 1 &&
 	make install
@@ -50,8 +51,8 @@ genpkg_rules()
 	find $fs/usr/lib -name "*.*a" -exec rm -f {} \; 2> /dev/null
 
 	# fix permissions
-	chmod +x $fs/lib/udev/check*
-	chmod +x $fs/usr/bin/gphoto2*
+	chmod +x				$fs/lib/udev/check*
+	chmod +x				$fs/usr/bin/gphoto2*
 }
 
 post_install()
@@ -74,7 +75,8 @@ post_install()
 	tazpkg reconfigure udev --root="$1"
 
 	# add group camera
-	if ! grep -q camera "$1/etc/group"; then
+	if ! grep -q camera "$1/etc/group"
+	  then
 		chroot "$1/" addgroup -g 97 camera
 	fi
 
