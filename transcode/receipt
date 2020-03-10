@@ -22,6 +22,15 @@ compile_rules()
 		wget -P $SOURCES_REPOSITORY $EXTRA_SOURCE_FILES
 	patch -p1 < $SOURCES_REPOSITORY/$(basename $EXTRA_SOURCE_FILES)
 	sed -i 's/av_close_input_file(/avformat_close_input(\&/' import/probe_ffmpeg.c
+
+	patch -p1 < $stuff/ffmpeg4.u
+	grep -rl PIX_FMT_ * | xargs sed -i 's|PIX_FMT_|AV_&|'
+	sed -i 's|CODEC_ID|AV_&|;s|AVAV_COD|AV_COD|;s|LIBAV_COD|LIBAVCOD|' */*.c
+	sed -e 's|tcmodule-plugin.h"|&\n#include <libavresample/avresample.h>|' \
+		-e 's|ReSampleContext|AVAudioResampleContext|' \
+		-i filter/filter_resample.c
+	sed -i 's|r_frame_rate|avg_frame_rate|g' import/probe_ffmpeg.c
+
 	./configure --prefix=/usr --infodir=/usr/share/info \
 		--mandir=/usr/share/man \
 		$CONFIGURE_ARGS &&
