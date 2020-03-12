@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="perl-net-pcap"
-VERSION="0.16"
+VERSION="0.18"
 CATEGORY="development"
 SHORT_DESC="Net::Pcap module is a Perl extension."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -16,7 +16,10 @@ WGET_URL="http://cpan.org/authors/id/S/SA/SAPER/$TARBALL"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	# libpcap 1.9.0 update
+	sed '/pcap_samp {/{NNNNNNNNNd};/pcap_rmtauth {/{NNNNd}' -i stubs.inc
+	sed 's|cpp_defines(@funcs)|&. "-DHAVE_PCAP_SETSAMPLING"|' -i Makefile.PL
+
 	perl Makefile.PL
 	make
 	make DESTDIR=$DESTDIR install
