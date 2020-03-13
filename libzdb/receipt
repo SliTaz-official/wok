@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="libzdb"
-VERSION="3.0"
+VERSION="3.2.1"
 CATEGORY="system-tools"
 SHORT_DESC="Zild Database Library."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.tildeslash.com/libzdb/"
-WGET_URL="http://www.tildeslash.com/libzdb/dist/$TARBALL"
-#HOST_ARCH="i486 arm"
 
-DEPENDS="sqlite"
-BUILD_DEPENDS="sqlite-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="http://www.tildeslash.com/libzdb/dist/$TARBALL"
+
+DEPENDS="gcc83-lib-base sqlite"
+BUILD_DEPENDS="gcc83 sqlite-dev"
+
+#HOST_ARCH="i486 arm"
 
 # Handle cross comilation
 case "$ARCH" in
@@ -22,19 +24,22 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--without-postgresql \
-		--without-mysql \
-		--enable-optimized \
+	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		--prefix=/usr		\
+		--without-postgresql	\
+		--without-mysql		\
+		--enable-optimized	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a ${install}/usr/lib/*.so* ${fs}/usr/lib
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
 
