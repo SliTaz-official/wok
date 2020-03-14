@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="lighttpd"
-VERSION="1.4.53"
+VERSION="1.4.55"
 CATEGORY="network"
 SHORT_DESC="Fast and light HTTP Web server."
 MAINTAINER="pankso@slitaz.org"
@@ -14,6 +14,7 @@ WGET_URL="https://download.lighttpd.net/$PACKAGE/releases-${VERSION%.*}.x/$TARBA
 SUGGESTED="lighttpd-modules perl php python"
 DEPENDS="pcre"
 BUILD_DEPENDS="bzip2-dev pcre-dev"
+
 CONFIG_FILES="/etc/lighttpd/vhosts.conf /etc/lighttpd/lighttpd.conf"
 
 HOST_ARCH="i486 arm"
@@ -38,11 +39,11 @@ compile_rules()
 	sed -i '/addrs_left/d' src/mod_extforward.c
 
 	./configure				\
-		--enable-shared			\
-		--disable-ipv6			\
 		--prefix=/usr			\
 		--libdir=/usr/lib/lighttpd	\
 		--mandir=/usr/share/man		\
+		--disable-ipv6			\
+		 --enable-shared		\
 		$CONFIGURE_ARGS &&
 	make -j 1 &&
 	make DESTDIR=$DESTDIR install
@@ -53,19 +54,21 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	#cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
+	#cp -a $install/usr/bin	$fs/usr
+	cp -a $install/usr/sbin	$fs/usr
 
 	# Modules.
 	mkdir -p $fs/usr/lib/lighttpd
-	for module in $BASE_MODULES; do
-		cp $install/usr/lib/lighttpd/mod_${module}.so $fs/usr/lib/lighttpd
+	for module in $BASE_MODULES
+	  do
+		cp $install/usr/lib/lighttpd/mod_${module}.so \
+			$fs/usr/lib/lighttpd
 		echo -n "Copying : mod_${module}.so" && status
-	done
+	  done
 
 	# Configuration file.
-	cp -a $stuff/etc $fs
-	chown -R 0.0 $fs/etc
+	cp -a $stuff/etc	$fs
+	chown -R 0.0		$fs/etc
 
 	# Logs directory.
 	mkdir -p $fs/var/log/lighttpd
@@ -82,11 +85,15 @@ testsuite()
 # We stop the server by default in case of upgrade.
 pre_install()
 {
-	[ -z "$1" ] && for i in httpd ngnix apache cherokee $PACKAGE ; do
+	[ -z "$1" ] &&
+	for i in httpd ngnix apache cherokee $PACKAGE
+	  do
 		[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
-	done
+	  done
+
 	# Backup configuration file.
-	if [ -d "$1/etc/lighttpd" ]; then
+	if [ -d "$1/etc/lighttpd" ]
+	  then
 		cp -a "$1/etc/lighttpd" "$1/etc/lighttpd.bak"
 	fi
 }
@@ -94,7 +101,8 @@ pre_install()
 post_install()
 {
 	# Restore original configuration file.
-	if [ -d "$1/etc/lighttpd.bak" ]; then
+	if [ -d "$1/etc/lighttpd.bak" ]
+	  then
 		rm -rf "$1/etc/lighttpd"
 		mv "$1/etc/lighttpd.bak" "$1/etc/lighttpd"
 	fi

@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="lighttpd-ssl"
-VERSION="1.4.53"
+VERSION="1.4.55"
 CATEGORY="network"
 SHORT_DESC="Fast and light HTTP Web server with SSL support."
 MAINTAINER="pankso@slitaz.org"
@@ -16,6 +16,7 @@ PROVIDE="lighttpd"
 SUGGESTED="lighttpd-modules perl php python"
 DEPENDS="openssl pcre"
 BUILD_DEPENDS="bzip2-dev openssl-dev pcre-dev"
+
 CONFIG_FILES="/etc/lighttpd/vhosts.conf /etc/lighttpd/lighttpd.conf /etc/ssl/lighttpd"
 
 HOST_ARCH="i486 arm"
@@ -38,12 +39,12 @@ compile_rules()
 	sed -i '/addrs_left/d' src/mod_extforward.c
 
 	./configure				\
-		--enable-shared			\
-		--disable-ipv6			\
-		--with-openssl			\
 		--prefix=/usr			\
 		--libdir=/usr/lib/lighttpd	\
 		--mandir=/usr/share/man		\
+		--disable-ipv6			\
+		   --with-openssl		\
+		 --enable-shared		\
 		$CONFIGURE_ARGS &&
 	make -j 1 &&
 	make DESTDIR=$DESTDIR install
@@ -59,15 +60,17 @@ genpkg_rules()
 
 	# Modules.
 	mkdir -p $fs/usr/lib/lighttpd
-	for module in $BASE_MODULES; do
+	for module in $BASE_MODULES
+	  do
 		action "Copying : mod_${module}.so"
-		cp $install/usr/lib/lighttpd/mod_${module}.so $fs/usr/lib/lighttpd
+		cp $install/usr/lib/lighttpd/mod_${module}.so \
+			$fs/usr/lib/lighttpd
 		status
-	done
+	  done
 
 	# Server root and configuration file.
-	cp -a $WOK/$SOURCE/stuff/etc $fs
-	chown -R 0.0 $fs/etc
+	cp -a $WOK/$SOURCE/stuff/etc	$fs
+	chown -R 0.0			$fs/etc
 	mkdir -p $fs/etc/ssl/lighttpd
 	cat >> $fs/etc/lighttpd/lighttpd.conf <<EOT
 
@@ -85,7 +88,7 @@ EOT
 
 	# Logs directory.
 	mkdir -p $fs/var/log/lighttpd
-	chown 80.80 $fs/var/log/lighttpd
+	chown 80.80	$fs/var/log/lighttpd
 }
 
 # Make sure it is cross compiled properly
@@ -98,18 +101,23 @@ testsuite()
 # We stop the server by default in case of upgrade.
 pre_install()
 {
-	[ -z "$1" ] && for i in httpd lighttpd ngnix apache cherokee $PACKAGE ; do
+	[ -z "$1" ] &&
+	for i in httpd lighttpd ngnix apache cherokee $PACKAGE
+	  do
 		[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
-	done
+	  done
+
 	# Backup configuration file.
-	if [ -d "$1/etc/lighttpd" ]; then
+	if [ -d "$1/etc/lighttpd" ]
+	  then
 		cp -a "$1/etc/lighttpd" "$1/etc/lighttpd.bak"
 	fi
 }
 
 post_install()
 {
-	if [ ! -f "$1/etc/ssl/lighttpd/lighttpd.pem" ]; then
+	if [ ! -f "$1/etc/ssl/lighttpd/lighttpd.pem" ]
+	  then
 		openssl req -new -x509 \
 			-keyout "$1/etc/ssl/lighttpd/lighttpd.pem" \
 			-out "$1/etc/ssl/lighttpd/lighttpd.pem" \
@@ -123,12 +131,15 @@ $(cat "$1/etc/hostname")
 
 EOT
 	fi
+
 	# Just in case.
 	chown www.www "$1/var/log/lighttpd"
-	if [ -z "$1" ]; then
-		for i in apache ; do
+	if [ -z "$1" ]
+	  then
+		for i in apache
+		  do
 			[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
-		done
+		  done
 		/etc/init.d/lighttpd start
 	fi
 }
