@@ -1,37 +1,42 @@
 # SliTaz package receipt.
 
 PACKAGE="lvm2"
-SOURCE="LVM2"
-VERSION="2.02.183"
+VERSION="2.03.08"
 CATEGORY="system-tools"
 SHORT_DESC="Linux Logical Volume Manager."
 MAINTAINER="guillaume.michon@laposte.net"
 LICENSE="GPL2"
-TARBALL="$SOURCE.$VERSION.tgz"
-WEB_SITE="http://sourceware.org/lvm2/"
-WGET_URL="ftp://sources.redhat.com/pub/lvm2/$TARBALL"
+WEB_SITE="https://sourceware.org/lvm2/"
 
-DEPENDS="readline linux-md libdevmapper ncurses libaio"
-BUILD_DEPENDS="readline-dev udev-dev ncurses-dev libaio-dev \
-coreutils-file-format"
+SOURCE="LVM2"
+TARBALL="$SOURCE.$VERSION.tgz"
+WGET_URL="ftp://sourceware.org/pub/lvm2/old/$TARBALL"
+
+DEPENDS="libaio libdevmapper linux-md ncurses readline"
+BUILD_DEPENDS="coreutils-file-format libaio-dev ncurses-dev readline-dev 
+	udev-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	find * -type d -exec ln -s ../autoconf {} \;
-	./configure \
-		--enable-cmdlib \
-		--enable-dmeventd \
-		--with-udevdir=/lib/udev/rules.d \
-		--enable-udev_sync \
-		--enable-udev_rules \
-		--enable-cmdlib \
-		--enable-applib \
-		--enable-readline \
-		--enable-pkgconfig \
+
+	# 2.03.08 unrecognised:
+	#	--enable-applib
+
+	./configure					\
+		--enable-cmdlib				\
+		--enable-dmeventd			\
+		--with-udevdir=/lib/udev/rules.d	\
+		--enable-udev_sync			\
+		--enable-udev_rules			\
+		--enable-cmdlib				\
+		--enable-readline			\
+		--enable-pkgconfig			\
 		$CONFIGURE_ARGS &&
-	make && make install
-	cd $src/udev
+	make &&
+	make install &&
+	cd $src/udev &&
 	make install
 }
 
@@ -39,10 +44,12 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/etc $fs
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib/* $fs/usr/lib
+
+	cp -a $install/etc		$fs
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/lib/*	$fs/usr/lib
+
 	# split libdevmapper
-	rm -f $fs/usr/lib/libdevmapper*.so*
-	rm -f $fs/usr/sbin/dmsetup
+	rm -f				$fs/usr/lib/libdevmapper*.so*
+	rm -f				$fs/usr/sbin/dmsetup
 }
