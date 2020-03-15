@@ -135,7 +135,8 @@ mkinitrd()
 			/dev/console ; do
 		cp -a $2$i $fs/dev/
 	done
-	for i in /bin/busybox $(which mount.posixovl) $(which blkid); do
+	for i in /bin/busybox $(which mount.posixovl) $(which blkid) \
+		 $(which ntfs-3g); do
 		cp $(LD_TRACE_LOADED_OBJECTS=1 /lib/ld*.so $i | \
 		sed 's|.*=> \(.*/lib/l[^ ]*\).*|\1|;/^\//!d') $fs/lib
 		cp $i $fs/bin
@@ -164,7 +165,8 @@ mount -t proc /proc /proc
   arg debug "shell" && debug=true && set -x
 for i in /lib/*.ko* ; do insmod \$i 2> /dev/null ; done; sleep 2
 arg mount "Mount device"
-mount \$( (blkid /dev/[sh]d* || blkid) | grep \$val | sed 's/:.*//;q') /mnt
+dsk=\$( (blkid /dev/[sh]d* || blkid) | grep \$val | sed 's/:.*//;q')
+mount \$dsk /mnt || mount.ntfs \$dsk /mnt
 arg subroot "Change root to directory"
 if [ -d /mnt/\$val ]; then
 	umount /mnt 2> /dev/null
@@ -178,7 +180,8 @@ if [ -d /mnt/\$val ]; then
 		umount /mnt
 	done
 fi
-$([ "$3" ] || echo '# ')mount.posixovl -F /mnt/\$val -- -oallow_other -odefault_permissions -osuid
+
+$([ "$3" ] || echo -n '# ')mount.posixovl -F /mnt/\$val -- -oallow_other -odefault_permissions -osuid
 mount --bind /mnt /mnt/\$val/mnt/dos
 mount -o size=0,ro -t tmpfs tmpfs /mnt/\$val/mnt/dos/\$val
 LDSO=\$(ls /mnt/\$val/lib/ld-* | sed q)
