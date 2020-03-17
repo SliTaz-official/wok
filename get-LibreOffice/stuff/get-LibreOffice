@@ -6,6 +6,7 @@
 # Author : Ben Arnold <ben@seawolfsanctuary.com>
 #    via : get-OpenOffice3 (Eric Joseph-Alexandre <erjo@slitaz.org>)
 # modified by Hans-Günter Theisgen on 2019-04-07
+# modified by Hans-Günter Theisgen on 220-03-17
 #
 
 #	=== Initialisations ===
@@ -21,13 +22,13 @@ DIR="stable"
 SUFFIX="Linux_x86_rpm.tar.gz"
 PREFIX="http://download.documentfoundation.org/libreoffice/$DIR"
 
-DEPENDS="java6-jre cups"
+DEPENDS="cups"
 EXCLUDE="kde|gnome|test"
 
 # Declare functions check_root, status, ...
 . /lib/libtaz.sh
 # and make commandline options (if any) available as variables
-
+	
 is_installed()
 {
 	 if [ -d $root$PKGS_DB/installed/$PACKAGE ]
@@ -88,6 +89,7 @@ Options in use:
   keep tazpkg     : $keep
   source directory: $SOURCE_DIR
   build directory : $TEMP_DIR
+  logging file:     $LOG
 
 EOT
 
@@ -123,10 +125,13 @@ if [ "$version" == "latest" ]
 		exit 1
 	fi
   else
+	DIR="old"
+	PREFIX="http://downloadarchive.documentfoundation.org/libreoffice/$DIR"
 	VERSIONS="$version"
 fi
 
-for VERSION in $VERSIONS; do	# foreach VERSION
+for VERSION in $VERSIONS
+  do	# foreach VERSION
 
 VER="${VERSION/\-/}" # without hyphens
 TARBALL="LibreOffice_${VER}_${SUFFIX}"
@@ -174,7 +179,7 @@ fi
 
 break
 
-done	# foreach VERSIONS
+done	# foreach VERSION
 
 if [ ! -f $SOURCE_DIR/$TARBALL ]
   then
@@ -322,7 +327,9 @@ tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
 
 #	=== Cleanup ===
 # Preserve package file, if requested
-[ "$keep" == "yes" ] && mv $PACKAGE-$VERSION.tazpkg $CUR_DIR
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR &&
+  echo Saved $PACKAGE-$VERSION.tazpkg to $CUR_DIR )
 
 # Remove temporary build directory
 cd $CUR_DIR
