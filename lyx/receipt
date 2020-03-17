@@ -1,22 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="lyx"
-VERSION="2.0.5.1"
+VERSION="2.3.4.4"
 CATEGORY="office"
 SHORT_DESC="An advanced WYSIWYM document processor & LaTeX front-end"
 MAINTAINER="gokhlayeh@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://www.lyx.org"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WGET_URL="ftp://ftp.lyx.org/pub/lyx/stable/2.0.x/$TARBALL"
+WEB_SITE="https://www.lyx.org"
 
-DEPENDS="aiksaurus aspell bzlib libQtGui python"
-BUILD_DEPENDS="python Qt4-dev bison aspell-dev xorg-libX11-dev aiksaurus-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="ftp://ftp.lyx.org/pub/lyx/stable/${VERSION%.*.*}.x/$TARBALL"
+
+DEPENDS="aiksaurus aspell bzlib gcc83-lib-base libQtGui python"
+BUILD_DEPENDS="aiksaurus-devaspell-dev bison gcc83 python Qt4-dev 
+	xorg-libX11-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --with-frontend=qt4 $CONFIGURE_ARGS &&
+	# 2.3.4.4 unrecognised:
+	# --with-frontend=qt4
+	./configure
+		CC=gcc-83	\
+		CXX=g++-83	\
+		$CONFIGURE_ARGS &&
 	make &&
 	make -j1 install
 }
@@ -25,8 +32,11 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/lyx $fs/usr/share
-	rm -r $fs/usr/share/lyx/doc $fs/usr/share/lyx/examples
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/lyx	$fs/usr/share
+
+	rm -r				$fs/usr/share/lyx/doc
+	rm -r				$fs/usr/share/lyx/examples
 }
 
