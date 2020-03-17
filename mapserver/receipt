@@ -1,30 +1,41 @@
 # SliTaz package receipt.
 
 PACKAGE="mapserver"
-VERSION="7.4.0"
+VERSION="7.4.3"
 CATEGORY="misc"
 SHORT_DESC="Open Source platform for publishing spatial data."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="MIT"
 WEB_SITE="https://mapserver.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://download.osgeo.org/mapserver/$TARBALL"
 
-DEPENDS="giflib libgd libgdal libpostgresqlclient fribidi cairo fcgi"
-BUILD_DEPENDS="giflib-dev gdal-dev libgd-dev proj-dev postgresql-dev curl-dev \
-geos-dev apache-dev freetype-dev libpng-dev jpeg-dev libgd-dev libgd \
-libxml2-dev fribidi-dev cairo-dev fcgi-dev cmake"
+DEPENDS="cairo fcgi fribidi giflib libgd libgdal libpostgresqlclient"
+BUILD_DEPENDS="apache-dev cairo-dev cmake curl-dev fcgi-dev freetype-dev 
+	fribidi-dev gdal-dev geos-dev giflib-dev jpeg-dev libgd libgd-dev 
+	libpng-dev libxml2-dev postgresql-dev proj-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir build
-	cd build
-	cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE="Release" \
-		-DWITH_PROJ=1 -DWITH_POSTGIS=1 -DWITH_GEOS=1 -DWITH_GDAL=1 \
-		-DWITH_OGR=1 -DWITH_GD=1 -DWITH_CLIENT_WMS=1 WITH_CLIENT_WFS=1 \
-		-DWITH_WCS=1 -DWITH_PROTOBUFC=0 .. &&
-	make && make install
+	mkdir build &&
+	cd build &&
+	cmake	..				\
+		-DCMAKE_INSTALL_PREFIX=/usr	\
+		-DCMAKE_BUILD_TYPE="Release"	\
+		-DWITH_PROJ=1			\
+		-DWITH_POSTGIS=1		\
+		-DWITH_GEOS=1			\
+		-DWITH_GDAL=1			\
+		-DWITH_OGR=1			\
+		-DWITH_GD=1			\
+		-DWITH_CLIENT_WMS=1		\
+		-DWITH_CLIENT_WFS=1		\
+		-DWITH_WCS=1			\
+		-DWITH_PROTOBUFC=0 &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -32,6 +43,6 @@ genpkg_rules()
 {
 	
 	mkdir -p $fs/var/www/cgi-bin
-	cp -a $install/usr/bin/mapserv  $fs/var/www/cgi-bin
-	cp -a $install/* $fs/
+	cp -a $install/usr/bin/mapserv	$fs/var/www/cgi-bin
+	cp -a $install/*		$fs/
 }
