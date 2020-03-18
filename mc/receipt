@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="mc"
-VERSION="4.8.22"
+VERSION="4.8.24"
 CATEGORY="system-tools"
 TAGS="file-manager text-editor"
 SHORT_DESC="Midnight Commander - ncurses based file manager."
@@ -12,10 +12,11 @@ WEB_SITE="https://www.midnight-commander.org/"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="http://ftp.midnight-commander.org/$TARBALL"
 
-SUGGESTED="gpm xz cdrkit-isoinfo lynx w3m wv poppler-apps file "
+SUGGESTED="cdrkit-isoinfo file gpm lynx poppler-apps w3m wv xz"
 DEPENDS="e2fsprogs glib ncursesw util-linux-blkid"
-BUILD_DEPENDS="glib-dev gpm-dev ncursesw-dev ncurses-extra \
+BUILD_DEPENDS="glib-dev gpm-dev ncursesw-dev ncurses-extra 
 	util-linux-blkid-dev util-linux-mount-dev util-linux-uuid-dev "
+
 GENERIC_MENUS="no"
 
 HOST_ARCH="i486 arm"
@@ -37,7 +38,8 @@ compile_rules()
 	make install
 
 	mkdir -p $install/usr/share/terminfo/s
-	cp -a /usr/share/terminfo/s/screen-256color $install/usr/share/terminfo/s
+	cp -a /usr/share/terminfo/s/screen-256color \
+		$install/usr/share/terminfo/s
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -51,10 +53,14 @@ genpkg_rules()
 	cp -a $install/usr/share/mc		$fs/usr/share
 	cp -a $install/usr/share/terminfo	$fs/usr/share
 
-	sed 's#&) ||#) ||#' -i $fs/usr/lib/mc/ext.d/*.sh
-	sed 's#|profile|#&receipt|#' -i $fs/usr/share/mc/syntax/Syntax
-	sed 's/lzma -dc/lzcat/g' -i	$fs/usr/lib/mc/ext.d/archive.sh
-	cp -a $stuff/*.desktop $fs/usr/share/applications
+	sed -i 's#&) ||#) ||#' \
+		$fs/usr/lib/mc/ext.d/*.sh
+	sed -i 's#|profile|#&receipt|#' \
+		$fs/usr/share/mc/syntax/Syntax
+	sed -i 's/lzma -dc/lzcat/g' \
+		$fs/usr/lib/mc/ext.d/archive.sh
+
+	cp -a $stuff/*.desktop			$fs/usr/share/applications
 
 	cat > $fs/usr/bin/mc.sh <<EOF
 case \$TERM in
@@ -82,6 +88,6 @@ mc \$@
 
 EOF
 
-	chmod 755 $fs/usr/bin/mc.sh
-	chown -R root:root $fs
+	chmod 755		$fs/usr/bin/mc.sh
+	chown -R root:root	$fs
 }
