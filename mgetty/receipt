@@ -1,25 +1,31 @@
 # SliTaz package receipt.
 
 PACKAGE="mgetty"
-VERSION="1.1.37"
+VERSION="1.2.1"
 CATEGORY="network"
-SHORT_DESC="reliable and proven fax send and receive solution."
+SHORT_DESC="Reliable and proven fax send and receive solution."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE$VERSION-Jun05.tar.gz"
 WEB_SITE="http://mgetty.greenie.net/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="ftp://mgetty.greenie.net/pub/$PACKAGE/source/${VERSION%.*}/$TARBALL"
+
 DEPENDS="slitaz-base-files"
+
 CONFIG_FILES="/etc/mgetty+sendfax"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	chmod a+x mkidirs
+
 	[ -f Makefile.dist ] && mv -f Makefile.dist Makefile
 	cp Makefile Makefile.dist
 	cp Makefile Makefile.install
 	cp policy.h-dist policy.h
-	sed -i  -e 's|/* #define AUTO_PPP */|#define AUTO_PPP|' policy.h
+	sed -i  -e 's|/* #define AUTO_PPP */|#define AUTO_PPP|' \
+		policy.h
 	sed -i  -e "s|^prefix=/usr/local|prefix=/usr|" \
 		-e "s|^spool=/var/spool|spool=/var/spool|" \
 		-e "s|^CONFDIR=.*|CONFDIR=/etc/mgetty+sendfax|" \
@@ -31,30 +37,31 @@ compile_rules()
 		-e 's|/man/|/share&|' \
 		-e 's|^INSTALL=install .*|INSTALL=install -c -o root -g root|' \
 		Makefile.install
-	make -j 1 bin-all vgetty
-	mkdir -p $DESTDIR/var/spool $DESTDIR/usr/share/man/man1 \
-		$DESTDIR/usr/share/man/man8
+	make bin-all vgetty
+	mkdir -p $DESTDIR/var/spool $DESTDIR/usr/share/man/man1
+	mkdir -p $DESTDIR/usr/share/man/man8
 	mv -f Makefile.install Makefile
 	sed -i 's|chown|echo chown|' Makefile fax/Makefile
-	make -k -j 1 install.bin vgetty-install
+	make -k install.bin vgetty-install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/etc $fs
-	cp -a $install/var $fs
-	chmod 755 $fs/var/spool/fax
+	cp -a $install/usr/lib	$fs/usr
+	cp -a $install/usr/sbin	$fs/usr
+	cp -a $install/etc	$fs
+	cp -a $install/var	$fs
+	chmod 755		$fs/var/spool/fax
 }
 
 # Pre and post install commands for Tazpkg.
 post_install()
 {
         # adduser fax if needed
-	if ! grep -q fax "$1/etc/passwd"; then
+	if ! grep -q fax "$1/etc/passwd"
+	  then
 		echo
 		echo -n "Adding user fax..."
 		chroot "$1/" adduser fax -D -H -S
