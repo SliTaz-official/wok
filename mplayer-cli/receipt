@@ -1,25 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="mplayer-cli"
-VERSION="1.3.0"
+VERSION="1.4"
 CATEGORY="multimedia"
-SHORT_DESC="The Ultimate Movie Player For Linux (with minimal depends)"
+SHORT_DESC="The Ultimate Movie Player For Linux (with minimal depends)."
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL2"
+WEB_SITE="http://www.mplayerhq.hu/design7/news.html"
+
 SOURCE="MPlayer"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="http://www.mplayerhq.hu/design7/news.html"
 WGET_URL="http://www1.mplayerhq.hu/MPlayer/releases/$TARBALL"
-HOST_ARCH="i486 arm"
+
+
+PROVIDE="mplayer"
+DEPENDS="alsa-lib fontconfig gcc83-lib-base giflib libgnutls libpng libmad 
+	libsdl libxml2 ncurses pcre xorg-libXdamage xorg-libXss xorg-libXv 
+	xorg-libXxf86vm zlib"
+BUILD_DEPENDS="alsa-lib-dev fontconfig-dev freetype-dev gcc83 giflib-dev 
+	gnutls-dev libmad-dev libsdl-dev ncurses-dev pkg-config 
+	xorg-libXdamage-dev xorg-libXv-dev xorg-libXxf86vm-dev 
+	xorg-xextproto yasm zlib-dev "
 
 # CONFIG_FILES="/etc/mplayer" # use ~/ instead
 
-DEPENDS="xorg-libXv alsa-lib giflib ncurses fontconfig libmad libsdl \
-libxml2 pcre libpng xorg-libXdamage xorg-libXxf86vm zlib xorg-libXss libgnutls"
-BUILD_DEPENDS="ncurses-dev xorg-libXv-dev alsa-lib-dev libsdl-dev \
-xorg-libXdamage-dev giflib-dev xorg-libXxf86vm-dev xorg-xextproto \
-freetype-dev fontconfig-dev zlib-dev pkg-config yasm libmad-dev gnutls-dev"
-PROVIDE="mplayer"
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation. Host coreutils-file-* are used
 case "$ARCH" in
@@ -30,24 +35,29 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--confdir=/etc/mplayer \
-		--libdir=/usr/lib/mplayer \
-		--language="en de es fr it pl ru" \
-		--enable-menu \
-		--disable-mencoder \
-		--disable-gl \
-		--disable-jack \
-		--disable-liblzo \
-		--disable-libdv \
-		--disable-fribidi \
-		--disable-ivtv \
-		--disable-smb \
-		--disable-openal \
-		--disable-faac \
-		--disable-speex --disable-esd \
-		--disable-lirc --disable-lircc \
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	./configure					\
+		--prefix=/usr				\
+		--confdir=/etc/mplayer			\
+		--libdir=/usr/lib/mplayer		\
+		--language="en de es fr it pl ru"	\
+		--enable-menu				\
+		--disable-mencoder			\
+		--disable-gl				\
+		--disable-jack				\
+		--disable-liblzo			\
+		--disable-libdv				\
+		--disable-fribidi			\
+		--disable-ivtv				\
+		--disable-smb				\
+		--disable-openal			\
+		--disable-faac				\
+		--disable-speex				\
+		--disable-esd				\
+		--disable-lirc				\
+		--disable-lircc				\
 		${ARCH_ARGS} &&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install | sed '/install: strip: .*/'d
