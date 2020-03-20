@@ -1,8 +1,8 @@
 # SliTaz package receipt.
 
 PACKAGE="mtpaint"
-VERSION="3.49.14"
-COMMIT="dbe6758764e2fe45c111f9c3dd493c4c1f77f695"
+VERSION="3.49.25"
+COMMIT="03b1b0938067b88d86d9f1b1088730f1934d411e"
 CATEGORY="graphics"
 SHORT_DESC="Painting program to create pixel art and manipulate digital photos."
 MAINTAINER="pankso@slitaz.org"
@@ -14,7 +14,7 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/wjaguar/mtPaint/archive/$COMMIT.tar.gz"
 
 DEPENDS="gtk+ libpng lcms2"
-BUILD_DEPENDS="gtk+-dev libpng-dev lcms2-dev zlib-dev cairo-dev"
+BUILD_DEPENDS="cairo-dev gtk+-dev lcms2-dev libpng-dev zlib-dev"
 
 #HOST_ARCH="i486 arm"
 
@@ -22,13 +22,15 @@ BUILD_DEPENDS="gtk+-dev libpng-dev lcms2-dev zlib-dev cairo-dev"
 compile_rules()
 {
 	patch -p0 < $stuff/mtpaint.patch
-	sed 's/mem_undo_limit,\t32/mem_undo_limit,\t256/' -i $src/src/mainwindow.c
+	sed -i 's/mem_undo_limit,\t32/mem_undo_limit,\t256/' \
+		$src/src/mainwindow.c
+
 	case "$ARCH" in
 		i?86)
 			export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lpng12"
-			./configure \
-				--cpu=$ARCH \
-				--prefix=/usr \
+			./configure		\
+				--cpu=$ARCH	\
+				--prefix=/usr	\
 				intl nogif nojp2 ;;
 		arm*)
 			# we need: arm-slitaz-linux-gnueabi-pkg-config
@@ -37,7 +39,7 @@ compile_rules()
 				--host=${HOST_SYSTEM} \
 				intl nogif
 	esac &&
-	make -j 1 &&
+	make &&
 	make DESTDIR=$install install
 }
 
