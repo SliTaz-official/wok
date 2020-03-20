@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="monitorix"
-VERSION="3.11.0"
+VERSION="3.12.0"
 CATEGORY="misc"
 SHORT_DESC="A lightweight system monitoring tool."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -12,7 +12,7 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="${WEB_SITE}$TARBALL"
 
 SUGGESTED="iptables logrotate"
-DEPENDS="perl-cgi perl-config-general perl-dbi perl-http-server-simple \
+DEPENDS="perl-dbi perl-cgi perl-config-general perl-http-server-simple \
 	perl-libwww perl-mailtools perl-mime-lite perl-xml-simple rrdtool-perl"
 BUILD_DEPENDS=""
 
@@ -25,31 +25,40 @@ genpkg_rules()
 	mkdir -p $fs/usr/share/monitorix/cgi
 
 	cp -a $src/monitorix.conf	$fs/etc
-	sed -i 's|/var/lib/monitorix|/usr/lib/monitorix|' $fs/etc/monitorix.conf
-	sed -i 's|group = nobody|group = nogroup|' $fs/etc/monitorix.conf
-	cp -a $src/docs/monitorix.logrotate $fs/etc/logrotate.d/monitorix
+	sed -i 's|/var/lib/monitorix|/usr/lib/monitorix|' \
+		$fs/etc/monitorix.conf
+	sed -i 's|group = nobody|group = nogroup|' \
+		$fs/etc/monitorix.conf
+	cp -a $src/docs/monitorix.logrotate \
+					$fs/etc/logrotate.d/monitorix
 	cp -a $src/monitorix		$fs/usr/bin
 	cp -a $src/lib			$fs/usr/lib/monitorix
 	cp -a $src/monitorix.cgi $src/*.png \
-		$src/reports $fs/usr/share/monitorix
+					$src/reports $fs/usr/share/monitorix
 }
 
 post_install()
 {
 	# Configure lighttpd server
-	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]; then
-		if ! grep -q /usr/share/monitorix/ "$1/etc/lighttpd/lighttpd.conf"; then
+	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]
+	  then
+		if ! grep -q /usr/share/monitorix/ "$1/etc/lighttpd/lighttpd.conf"
+		  then
 	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/monitorix/" => "/usr/share/monitorix/",\n    "/monitorix-cgi/" => "/usr/share/monitorix/cgi/",|g' -i "$1/etc/lighttpd/lighttpd.conf"
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/lighttpd stop
 				/etc/init.d/lighttpd start
 			fi
 		fi
 	fi
+
 	# Configure apache server
-	if [ -f "$1/etc/apache/httpd.conf" ]; then
-		if [ ! -f "$1/etc/apache/conf.d/monitorix" ]; then
+	if [ -f "$1/etc/apache/httpd.conf" ]
+	  then
+		if [ ! -f "$1/etc/apache/conf.d/monitorix" ]
+		  then
 			cat > "$1/etc/apache/conf.d/monitorix" <<EOT
 Alias /monitorix /usr/share/monitorix
 ScriptAlias /monitorix-cgi /usr/share/monitorix/cgi
@@ -63,7 +72,8 @@ ScriptAlias /monitorix-cgi /usr/share/monitorix/cgi
 </Directory>
 
 EOT
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/apache stop
 				/etc/init.d/apache start
