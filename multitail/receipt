@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="multitail"
-VERSION="5.2.9"
+VERSION="6.5.0"
 CATEGORY="system-tools"
 SHORT_DESC="Monitor multiple log files."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tgz"
-WEB_SITE="http://www.vanheusden.com/multitail/"
-WGET_URL="http://www.vanheusden.com/multitail/$TARBALL"
-CONFIG_FILES="/etc/multitail.conf"
+WEB_SITE="https://www.vanheusden.com/multitail/"
 
-DEPENDS="ncurses"
-BUILD_DEPENDS="ncurses-dev"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WGET_URL="${WEB_SITE}$TARBALL"
+
+DEPENDS="ncursesw"
+BUILD_DEPENDS="ncursesw-dev"
+
+CONFIG_FILES="/etc/multitail.conf"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -22,16 +24,19 @@ compile_rules()
 		patch -p1 -i $stuff/tail_busybox.patch &&  \
 			touch done.tail_busybox.patch
 	fi
+	patch --strip=0 --input=$stuff/patches/mt.h-6.5.0
 	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/etc
-	cp -a $src/$PACKAGE  $fs/usr/bin
-	cp -a $src/$PACKAGE.conf $fs/etc
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/etc
+	cp -a $src/$PACKAGE		$fs/usr/bin
+	cp -a $src/$PACKAGE.conf	$fs/etc
 	
-	# Set minimum config.
-	sed -i 's/check_mail:5/check_mail:0/' $fs/etc/multitail.conf
+	# Set minimum configuration.
+	sed -i 's/check_mail:5/check_mail:0/' \
+					$fs/etc/multitail.conf
 }
