@@ -1,15 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="mpv"
-VERSION="0.29.1"
+VERSION="0.32.0"
 CATEGORY="multimedia"
 SHORT_DESC="Video player based on ffmpeg and mplayer2."
-MAINTAINER="devel@slitaz.org"
+MAINTAINER="maintainer@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="https://mpv.io"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/mpv-player/mpv/archive/v$VERSION.tar.gz"
+
 WAFTOOL="waf-1.8.12"
 EXTRA_SOURCE_FILES="$WAFTOOL"
 
@@ -32,19 +33,22 @@ BUILD_DEPENDS="alsa-lib-dev bzlib cacerts ffmpeg-compat-dev ffmpeg-dev \
 # Rules to configure and make the package.
 compile_rules()
 {
-	[ -s $SOURCES_REPOSITORY/$WAFTOOL ] || wget -P $SOURCES_REPOSITORY \
+	[ -s $SOURCES_REPOSITORY/$WAFTOOL ] ||
+	wget -P $SOURCES_REPOSITORY \
 		http://www.freehackers.org/~tnagy/release/$WAFTOOL
 	install -m 755 $SOURCES_REPOSITORY/$WAFTOOL waf
-	./bootstrap.py
+
+#	./bootstrap.py	# needs python3 to fetch waf
+
 	./waf configure			\
 		--prefix=/usr		\
 		--confdir=/etc/mpv	\
 		--disable-debug		\
 		--disable-debug-build	\
 		--disable-gl		\
-		--disable-oss-audio	\
+		--disable-libass	\
 		--disable-manpage-build	\
-		--disable-libass &&
+		--disable-oss-audio &&
 	./waf build &&
 	./waf install --destdir=$DESTDIR
 }
@@ -55,6 +59,6 @@ genpkg_rules()
 #	mkdir $install/etc
 #	mkdir $install/etc/mpv
 	cp $WOK/$PACKAGE/source/$PACKAGE-$VERSION/etc/*.conf \
-		$install/etc/mpv
+				$install/etc/mpv
 	cp -a $install/*	$fs
 }
