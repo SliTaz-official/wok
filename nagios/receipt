@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="nagios"
-VERSION="4.4.3"
+VERSION="4.4.5"
 CATEGORY="network"
 SHORT_DESC="Host and network monitoring."
 MAINTAINER="erjo@slitaz.org"
@@ -21,7 +21,8 @@ compile_rules()
 {
 	while read patch_file
 	 do
-		if [ ! -f done.$patch_file ]; then
+		if [ ! -f done.$patch_file ]
+		  then
 			patch -p1 < $stuff/$patch_file || return 1
 			touch done.$patch_file
 		fi
@@ -60,34 +61,37 @@ EOT
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/init.d \
-	  $fs/var/lib/nagios/rw \
-	  $fs/var/log/nagios \
-	  $fs/var/spool/nagios/checkresults \
-	  $fs/etc/apache
+	mkdir -p $fs/usr $fs/etc/init.d
+	mkdir -p $fs/var/lib/nagios/rw
+	mkdir -p $fs/var/log/nagios
+	mkdir -p $fs/var/spool/nagios/checkresults
+	mkdir -p $fs/etc/apache
 		
 	cp -a $install/etc/apache	$fs/etc
 	cp -a $install/etc/nagios	$fs/etc
 	cp -a $stuff/nagios		$fs/etc/init.d
-	install -o root -g root -m 644 $stuff/htpasswd.users  $fs/etc/nagios/
+	install -o root -g root -m 644 $stuff/htpasswd.users \
+					$fs/etc/nagios/
 	
 	cp -a $install/usr/bin		$fs/usr
 	cp -a $install/usr/lib		$fs/usr
 	cp -a $install/usr/share	$fs/usr
 	
 	# Put documentation in a separate package
-	rm -rf $fs/usr/share/nagios/docs
+	rm -rf				$fs/usr/share/nagios/docs
 	
-	# Mofify Apache config for nagvis
-	sed -i 's/Options None/Options FollowSymLinks/' $fs/etc/apache/conf.d/nagios.conf
+	# Mofify Apache configuration for nagvis
+	sed -i 's/Options None/Options FollowSymLinks/' \
+		$fs/etc/apache/conf.d/nagios.conf
 
 	# Fix permissions 
-	chmod 755 $fs/usr/bin/nagios*
+	chmod 755			$fs/usr/bin/nagios*
 }
 
 post_install()
 {
-	if ! grep -q nagios "$1/etc/passwd"; then
+	if ! grep -q nagios "$1/etc/passwd"
+	  then
 		echo -n "Adding user/group nagios..."
 		chroot "$1/" addgroup -S nagios
 		chroot "$1/" adduser -S -D -H -G nagios nagios
@@ -95,12 +99,12 @@ post_install()
 	fi
 	
 	# Fix permissions for files and directories
-	chroot "$1/" chown -R nagios.nagios \
-	  /var/log/nagios	\
-	  /var/spool/nagios	\
-	  /var/lib/nagios	\
-	  /usr/share/nagios	\
-	  /etc/nagios/*
+	chroot "$1/" chown -R	nagios.nagios		\
+				/var/log/nagios		\
+				/var/spool/nagios	\
+				/var/lib/nagios		\
+				/usr/share/nagios	\
+				/etc/nagios/*
 	
 	chmod 2775 "$1/var/lib/nagios/rw"
 	chroot "$1/" addgroup www nagios
