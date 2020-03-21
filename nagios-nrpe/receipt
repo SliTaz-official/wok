@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="nagios-nrpe"
-VERSION="3.2.1"
+VERSION="4.0.2"
 CATEGORY="network"
 SHORT_DESC="Service and network monitoring program, remote monitoring."
 MAINTAINER="erjo@slitaz.org"
@@ -10,7 +10,7 @@ WEB_SITE="https://www.nagios.org/"
 
 SOURCE="nrpe"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WGET_URL="$SF_MIRROR/nagios/$TARBALL"
+WGET_URL="https://github.com/NagiosEnterprises/$SOURCE/releases/download/$SOURCE-$VERSION/$TARBALL"
 
 BUILD_DEPENDS="libcrypto-dev libwrap-dev openssl openssl-dev"
 DEPENDS="libcrypto libssl nagios-plugins"
@@ -19,15 +19,19 @@ DEPENDS="libcrypto libssl nagios-plugins"
 compile_rules()
 {
 	while read patch_file
-	 do
-		if [ ! -f done.$patch_file ]; then
+	  do
+		if [ ! -f done.$patch_file ]
+		  then
 			patch -p1 < $stuff/$patch_file || return 1
 			touch done.$patch_file
 		fi
-	 done <<EOT
+	  done <<EOT
 $PACKAGE-$VERSION-Makefile.u
 EOT
 
+	addgroup nagios
+	adduser -D -G nagios nagios
+	
 	./configure					\
 		--prefix=/usr				\
 		--infodir=/usr/share/info		\
@@ -66,7 +70,8 @@ genpkg_rules()
 
 post_install()
 {
-	if ! grep -q nagios "$1/etc/passwd"; then
+	if ! grep -q nagios "$1/etc/passwd"
+	  then
 		echo
 		echo -n "Adding user nagios..."
 		chroot "$1/" adduser -S -D -H nagios
@@ -83,5 +88,6 @@ post_install()
 
 post_remove()
 {
-	[ -f "$1/etc/nagios/nagios.cfg" ] && sed -i 's/.*nrpe.cfg//' "$1/etc/nagios/nagios.cfg"
+	[ -f "$1/etc/nagios/nagios.cfg" ] &&
+	sed -i 's/.*nrpe.cfg//' "$1/etc/nagios/nagios.cfg"
 }
