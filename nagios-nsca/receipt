@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="nagios-nsca"
-VERSION="2.9.1"
+VERSION="2.9.2"
 CATEGORY="network"
 SHORT_DESC="Service and network monitoring program, remote monitoring."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://www.nagios.org/"
+
 SOURCE="nsca"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="https://www.nagios.org/"
 #WGET_URL="$SF_MIRROR/nagios/$TARBALL"
 WGET_URL="http://prdownloads.sourceforge.net/sourceforge/nagios/$TARBALL"
 
@@ -18,26 +19,34 @@ DEPENDS="libmcrypt"
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--localstatedir=/var --datadir=/usr/share/nagios \
-	--sysconfdir=/etc/nagios --sbindir=/usr/sbin \
-	--bindir=/usr/sbin --libexecdir=/usr/lib/nagios \
-	--with-nsca-user=nagios \
-	--with-nsca-group=nagios \
-	--with-nsca-port=5667 \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	# 2.9.2 unrecognised:
+	#	--with-nsca-group=nagios
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--localstatedir=/var		\
+		--datadir=/usr/share/nagios	\
+		--sysconfdir=/etc/nagios	\
+		--sbindir=/usr/sbin		\
+		--bindir=/usr/sbin		\
+		--libexecdir=/usr/lib/nagios	\
+		--with-nsca-user=nagios		\
+		--with-nsca-port=5667		\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
 	make all 
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/sbin \
-		$fs/etc/nagios
-	cp -a $src/src/nsca $fs/usr/sbin
-	cp -a $src/src/send_nsca $fs/usr/sbin
+	mkdir -p $fs/usr/sbin
+	mkdir -p $fs/etc/nagios
+
+	cp -a $src/src/nsca		$fs/usr/sbin
+	cp -a $src/src/send_nsca	$fs/usr/sbin
 	
-	install -m 0644 $src/sample-config/nsca.cfg $fs/etc/nagios
+	install -m 0644 $src/sample-config/nsca.cfg	$fs/etc/nagios
 	install -m 0644 $src/sample-config/send_nsca.cfg $fs/etc/nagios
 }
