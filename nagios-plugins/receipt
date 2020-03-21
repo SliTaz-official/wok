@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="nagios-plugins"
-VERSION="2.2.1"
+VERSION="2.3.3"
 CATEGORY="network"
 SHORT_DESC="Plugins for host, service and network monitoring program nagios."
 MAINTAINER="erjo@slitaz.org"
@@ -26,7 +26,7 @@ compile_rules()
 		--with-ping-command="/bin/ping -w %d -c %d %s"	\
 		--with-fping-command="/usr/sbin/fping"		\
 		--mandir=/usr/share/man				\
-		$CONFIGURE_ARGS
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install &&
 	make DESTDIR=$DESTDIR install-root
@@ -38,18 +38,19 @@ genpkg_rules()
 	mkdir -p $fs/usr/lib
 	mkdir -p $fs/etc/nagios/objects
 
-	cp -a $install/usr/lib/nagios/ $fs/usr/lib
+	cp -a $install/usr/lib/nagios	$fs/usr/lib
 
 	# 
 	stuff/convertcfg $src/command.cfg commands > $fs/etc/nagios/objects/command.cfg
 	
 	# Move mySQL plugins in a separate package.
-	rm -f $fs/usr/lib/nagios/plugins/*mysql*
+	rm -f				$fs/usr/lib/nagios/plugins/*mysql*
 }
 
 post_install()
 {
-	if ! grep -q nagios "$1/etc/passwd"; then
+	if ! grep -q nagios "$1/etc/passwd"
+	  then
 		echo
 		echo -n "Adding user/group nagios..."
 		chroot "$1/" addgroup -S nagios
@@ -57,12 +58,13 @@ post_install()
 		status
 	fi
 	
-	if [ -f "$1/etc/nagios/resource.cfg" ]; then
+	if [ -f "$1/etc/nagios/resource.cfg" ]
+	  then
 		sed -i 's|/usr/lib/nagios|/usr/lib/nagios/plugins|' \
 		   "$1/etc/nagios/resource.cfg"
 	fi
 
 	# Set permissions for files and directories
-	chroot "$1/" chown -R nagios.nagios /usr/lib/nagios/plugins 
-	chroot "$1/" chown -R nagios.nagios /etc/nagios/objects
+	chroot "$1/" chown -R nagios.nagios	/usr/lib/nagios/plugins 
+	chroot "$1/" chown -R nagios.nagios	/etc/nagios/objects
 }
