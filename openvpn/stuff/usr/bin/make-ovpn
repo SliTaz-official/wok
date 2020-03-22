@@ -1,0 +1,151 @@
+#!/bin/sh
+
+[ $(id -u) != 0 ] && exec su -c "$0 $@"
+[ -z "$1" ] && cat <<EOT && exit 0
+Usage:
+	$0 server name vpn-prefix [routes]... > config-server-name.ovpn
+	$0 client name server-ip > config-client-name.ovpn
+
+Examples:
+	$0 server office 192.168.99 192.168.0.0/255.255.255.0 10.0.0.0/255.0.0.0
+	$0 client bart-simson myoffice.org
+
+Tip: run it twice to avoid keys generation output
+EOT
+
+mkpki()
+{
+	echo -n "Country : "; read country
+	echo -n "Company : "; read company
+	echo -n "Province: "; read province
+	echo -n "City    : "; read city
+	echo -n "Email   : "; read email
+	cat > vars <<EOT
+set_var EASYRSA			"\${0%/*}"
+set_var EASYRSA_PKI		\$EASYRSA/pki
+set_var EASYRSA_EXT_DIR		\$EASYRSA/x509-types
+set_var EASYRSA_SSL_CONF	\$EASYRSA/openssl-easyrsa.cnf
+set_var EASYRSA_SL		"cn_only"
+set_var EASYRSA_DIGEST		"sha256"
+set_var EASYRSA_KEY_SIZE	2048
+set_var EASYRSA_ALGO		rsa
+set_var EASYRSA_CA_EXPIRE	7500
+set_var EASYRSA_CERT_EXPIRE	365
+set_var EASYRSA_NS_SUPPORT	"yes"
+set_var EASYRSA_NS_COMMENT	"$company CERTIFICATE AUTHORITY"
+set_var EASYRSA_REQ_COUNTRY	"$country"
+set_var EASYRSA_REQ_PROVINCE	"$province"
+set_var EASYRSA_REQ_CITY	"$city"
+set_var EASYRSA_REQ_ORG		"$company CERTIFICATE AUTHORITY"
+set_var EASYRSA_REQ_OU		"$company EASY CA"
+set_var EASYRSA_REQ_EMAIL	"$email"
+#buggy?#set_var EASYRSA_BATCH		"yes"
+EOT
+	chmod +x vars
+	./easyrsa init-pki
+	#./easyrsa build-ca nopass
+	./easyrsa build-ca
+	./easyrsa gen-dh
+}
+
+common_conf()
+{
+	cat <<EOT
+dev tun
+proto udp
+cipher AES-256-CBC
+tls-version-min 1.2
+tls-cipher TLS-DHE-RSA-WITH-AES-256-GCM-SHA384:\
+TLS-DHE-RSA-WITH-AES-256-CBC-SHA256:TLS-DHE-RSA-WITH-AES-128-GCM-SHA256:\
+TLS-DHE-RSA-WITH-AES-128-CBC-SHA256
+auth SHA512
+auth-nocache
+persist-key
+persist-tun
+verb 3
+EOT
+}
+
+[ -z "$(which make-cadir)" ] && tazpkg get-install easy-rsa
+dir=/etc/openvpn/easy-rsa
+[ -d $dir ] || make-cadir $dir
+cd $dir
+
+[ -d pki ] || mkpki
+name="$1${2+-$2}"
+if [ "$1" = "server" ] || [ "$1" = client ]; then
+	if [ ! -s pki/issued/$name.crt ]; then
+		./easyrsa gen-req "$name" nopass
+		./easyrsa sign-req $1 "$name"
+	fi
+fi
+
+[ "$1" = "client" ] && cat << EOT
+client
+remote ${3:-my.office.com} 1194
+
+$(common_conf)
+remote-cert-tls server
+
+pull
+resolv-retry infinite
+nobind
+mute-replay-warnings
+
+<ca>
+$(cat pki/ca.crt)
+</ca>
+<cert>
+$(cat pki/issued/$name.crt)
+</cert>
+<key>
+$(cat pki/private/$name.key)
+</key>
+EOT
+
+net=${3:-192.168.16}
+[ "$1" = "server" ] && cat << EOT
+status /var/log/openvpn-$name
+$(common_conf)
+keepalive 15 120
+tls-exit
+user nobody
+group nogroup
+#compress lz4-v2
+#push "compress lz4-v2"
+mute 2
+passtos
+float
+port 1194
+mode server
+tls-server
+ping-timer-rem
+management 127.0.0.1 1294
+
+client-to-client
+#inactive 3600
+#duplicate-cn
+#push "redirect-gateway def1"
+
+ifconfig $net.1 $net.3
+ifconfig-pool $net.6 $net.254
+$(shift 3; for i in $net.0/255.255.255.0 $@; do
+	echo "route ${i/\// }"
+	echo "push \"route ${i/\// }\""
+done)
+$(sed -e '/nameserver/!d;s|nameserver *|push "dhcp-option DNS |;s|.*|&"|' \
+/etc/resolv.conf | head -n 2)
+
+<ca>
+$(cat pki/ca.crt)
+</ca>
+<cert>
+$(cat pki/issued/$name.crt)
+</cert>
+<key>
+$(cat pki/private/$name.key)
+</key>
+<dh>
+$(cat pki/dh.pem)
+</dh>
+EOT
