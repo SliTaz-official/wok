@@ -6,18 +6,19 @@ CATEGORY="office"
 SHORT_DESC="Ghostscript tools and utilities."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://pages.cs.wisc.edu/~ghost/"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 #WGET_URL="http://mirror.cs.wisc.edu/pub/mirrors/ghost/GPL/gs862/$TARBALL"
 WGET_URL="http://downloads.ghostscript.com/public/$TARBALL"
 
 DEPENDS="gtk+ expat fontconfig freetype gnutls jpeg libgcrypt libgpg-error \
-libpng tiff zlib cups xorg-libICE xorg-libSM xorg-libX11 xorg-libXau \
-xorg-libXdmcp xorg-libXext xorg-libXt gcc-lib-base jasper jbig2dec" 
+	libpng tiff zlib cups xorg-libICE xorg-libSM xorg-libX11 xorg-libXau \
+	xorg-libXdmcp xorg-libXext xorg-libXt gcc-lib-base jasper jbig2dec" 
 # build depends are optional ; ghostscripts still build but does not compile in cups support
 BUILD_DEPENDS="cairo-dev gtk+-dev expat-dev fontconfig-dev freetype-dev \
-gnutls-dev jpeg-dev libgcrypt-dev libgpg-error-dev libpng-dev tiff-dev \
-zlib-dev cups-dev jbig2dec jasper-dev"
+	gnutls-dev jpeg-dev libgcrypt-dev libgpg-error-dev libpng-dev tiff-dev \
+	zlib-dev cups-dev jbig2dec jasper-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -27,17 +28,21 @@ compile_rules()
 
 	# --disable-compile-inits is needed for linking with system-zlib
 
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--disable-compile-inits \
-		--enable-dynamic \
-		--enable-cups \
-		--enable-cairo \
-		--enable-gtk \
+	# 9.02
+	sed -i '32i#include <cups/ppd.h>' \
+		cups/colord.h
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--disable-compile-inits		\
+		--enable-dynamic		\
+		--enable-cups			\
+		--enable-cairo			\
+		--enable-gtk			\
 		--with-fontpath=/usr/share/fonts/truetype/:/usr/share/fonts \
-		--disable-compile-inits \
+		--disable-compile-inits		\
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install soinstall
@@ -48,20 +53,24 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/$PACKAGE $fs/usr/share
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib			$fs/usr
+	cp -a $install/usr/share/$PACKAGE	$fs/usr/share
+
 	# if cups-dev installed
-	cp -a $install/usr/share/cups $fs/usr/share
-	cp -a $install/etc $fs
-	# Remove doc and examples
-	rm -rf $fs/usr/share/$PACKAGE/$VERSION/doc
-	rm -rf $fs/usr/share/$PACKAGE/$VERSION/examples
+	cp -a $install/usr/share/cups		$fs/usr/share
+	cp -a $install/etc			$fs
+
+	# Remove documentation and examples
+	rm -rf					$fs/usr/share/$PACKAGE/$VERSION/doc
+	rm -rf					$fs/usr/share/$PACKAGE/$VERSION/examples
+
 	# Remove CMAPs (Non-free : not covered under GPL) : moved to non-free package get-ghostscript-CMAP
-	rm -rf $fs/usr/share/$PACKAGE/$VERSION/Resource/CMap/*
+	rm -rf					$fs/usr/share/$PACKAGE/$VERSION/Resource/CMap/*
 	
-	# already compiled as a shared lib; gsc is same as gs
-	rm -rf $fs/usr/bin/gs
+	# already compiled as a shared library; gsc is same as gs
+	rm -rf					$fs/usr/bin/gs
 }
 
 post_install()
