@@ -3,35 +3,39 @@
 PACKAGE="hplip"
 VERSION="3.12.11" 
 CATEGORY="system-tools"
+TAGS="printer driver printing"
 SHORT_DESC="Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet"
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://hplipopensource.com"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="printer driver printing"
+
 BUGS="Unable to delete hplip.desktop from $fs.  Using hack in post_install."
 
 DEPENDS="ghostscript python cups dbus-python libusb jpeg tiff sane-backends \
-libgphoto2 libexif gcc-lib-base libltdl libv4l net-snmp PyQt-x11-gpl pygobject"
+	libgphoto2 libexif gcc-lib-base libltdl libv4l net-snmp PyQt-x11-gpl pygobject"
 BUILD_DEPENDS="ghostscript-dev dbus-python-dev sane-backends-dev \
-sane-backends libexif-dev libgphoto2-dev Qt4-dev libgphoto2 pkg-config libusb-dev \
-jpeg-dev cups-dev dbus-dev tiff-dev python python-dev dbus-python net-snmp-dev \
-libtool"
+	sane-backends libexif-dev libgphoto2-dev Qt4-dev libgphoto2 pkg-config libusb-dev \
+	jpeg-dev cups-dev dbus-dev tiff-dev python python-dev dbus-python net-snmp-dev \
+	libtool"
 
 # Rules to configure and make the package. --prefix=/usr 
 compile_rules()
 {
-	cd $src
-
 	# fix build with cups 1.6 - FC hplip-ipp-accessors.patch
 	patch -Np1 -i $stuff/cups-1.6-buildfix.diff
 
-	./configure  \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--disable-doc-build \
-		--enable-qt4 \
+	# 3.12.11
+	sed -i '46i#include <cups/ppd.h>' \
+		prnt/hpijs/hpcupsfax.cpp
+
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		--disable-doc-build	\
+		--enable-qt4		\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -40,30 +44,31 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc $fs/usr/lib $fs/usr/share
+	mkdir -p $fs/etc
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
 	
-	cp -a $install/etc   $fs
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/cups $fs/usr/lib
-	cp -a $install/usr/lib/python* $fs/usr/lib
-	cp -a $install/usr/lib/sane $fs/usr/lib
-	cp -a $install/usr/lib/*so* $fs/usr/lib
-	cp -a $install/usr/share/cups \
-		   $install/usr/share/hplip \
-		   $install/usr/share/ppd \
-		   $fs/usr/share
+	cp -a $install/etc		$fs
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/cups	$fs/usr/lib
+	cp -a $install/usr/lib/python*	$fs/usr/lib
+	cp -a $install/usr/lib/sane	$fs/usr/lib
+	cp -a $install/usr/lib/*so*	$fs/usr/lib
+	cp -a $install/usr/share/cups	$fs/usr/share
+	cp -a $install/usr/share/hplip	$fs/usr/share
+	cp -a $install/usr/share/ppd	$fs/usr/share
 
 	# compress non-zipped ppd files
 	find $fs/usr/share/ppd/HP -name "*.ppd" -exec gzip -n9 {} \;
 
-	# make sure hp-toolbox exist
+	# make sure hp-toolbox exists
 	ln -sf ../share/hplip/toolbox.py $fs/usr/bin/hp-toolbox	
 
 	# remove autostart of hp-daemon
-	rm -rf $fs/etc/sane.d
+	rm -rf				$fs/etc/sane.d
  
 	# remove xdg
-	rm -rf $fs/etc/xdg
+	rm -rf				$fs/etc/xdg
 }
 
 post_install()
