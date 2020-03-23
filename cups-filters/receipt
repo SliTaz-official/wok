@@ -23,24 +23,32 @@ compile_rules()
 		wget -O $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES $WGET_URL2
 	patch -p0 -i $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES
 
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
+	sed -i '40i#include <cups/ppd.h>'\
+		cupsfilters/colormanager.h
+	sed -i '37i#include <cups/ppd.h>'\
+		cupsfilters/colord.h
+
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/etc            $fs
-	cp -a $install/usr/bin        $fs/usr
-	cp -a $install/usr/sbin       $fs/usr
-	cp -a $install/usr/lib/*so*   $fs/usr/lib
-	cp -a $install/usr/lib/cups   $fs/usr/lib
-	cp -a $install/usr/share/ppd  $fs/usr/share
-	cp -a $install/usr/share/cups $fs/usr/share
-	rm -fr $fs/etc/rc*.d
-	rm -fr $fs/usr/share/cups/ppdc
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	cp -a $install/etc		$fs
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/lib/*so*	$fs/usr/lib
+	cp -a $install/usr/lib/cups	$fs/usr/lib
+	cp -a $install/usr/share/ppd	$fs/usr/share
+	cp -a $install/usr/share/cups	$fs/usr/share
+	rm -fr				$fs/etc/rc*.d
+	rm -fr				$fs/usr/share/cups/ppdc
 }
