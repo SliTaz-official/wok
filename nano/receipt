@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="nano"
-VERSION="4.2"
+VERSION="4.8"
 CATEGORY="utilities"
 TAGS="text-editor"
 SHORT_DESC="Nano Text Editor."
@@ -27,12 +27,15 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-#		--disable-wrapping-as-root no longer supported in 4.2
+	# no longer supported in 4.2
+	#	--disable-wrapping-as-root 
+
 	./configure			\
 		--sysconfdir=/etc	\
 		--localstatedir=/var	\
 		--enable-utf8		\
-		$CONFIGURE_ARGS $ARCH_ARGS &&
+		$CONFIGURE_ARGS		\
+		$ARCH_ARGS &&
 	make &&
 	make install
 }
@@ -40,21 +43,24 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
-	rm -r $fs/usr/share/doc $fs/usr/share/locale $fs/usr/share/man
+	cp -a $install/*	$fs
+	rm -r			$fs/usr/share/doc
+	rm -r			$fs/usr/share/locale
+	rm -r			$fs/usr/share/man
 
 	# Configuration file.
 	mkdir -p $fs/etc
-	cp $src/doc/sample.nanorc $fs/etc/nanorc
+	cp $src/doc/sample.nanorc	$fs/etc/nanorc
 
 	cd $fs
 	patch --input=$stuff/patches/nanorc.patch \
 		etc/nanorc
-	patch --input=$stuff/patches/sh.nanorc.patch \
+	patch --input=$stuff/patches/sh.nanorc-$VERSION \
 		usr/share/nano/sh.nanorc
 
 	# Shrink
-	for i in $fs/usr/share/nano/*.nanorc; do
+	for i in $fs/usr/share/nano/*.nanorc
+	  do
 		sed -i '/^#/d;/^$/d' $i
 	done
 }
