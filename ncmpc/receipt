@@ -1,32 +1,38 @@
 # SliTaz package receipt.
 
 PACKAGE="ncmpc"
-VERSION="0.21"
+VERSION="0.37"
 CATEGORY="multimedia"
+TAGS="music player"
 SHORT_DESC="A ncurses MPD client."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://www.musicpd.org/clients/ncmpc/"
-WGET_URL="https://www.musicpd.org/download/ncmpc/0/$TARBALL"
-TAGS="music player"
-HOST_ARCH="i486 arm"
 
-DEPENDS="mpd glib ncurses libmpdclient"
-BUILD_DEPENDS="glib-dev ncurses-dev libmpdclient-dev"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://www.musicpd.org/download/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+DEPENDS="gcc83-lib-base glib libboost libmpdclient mpd ncurses"
+BUILD_DEPENDS="gcc83 glib-dev libboost-dev libmpdclient-dev meson 
+	ncurses-dev ninja"
+
+HOST_ARCH="i486 arm"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		$CONFIGURE_ARGS &&
-	make && make install
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	meson . _build --prefix=/usr &&
+	ninja	-C _build &&
+	ninja	-C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/ncmpc
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin	$fs/usr
 }
 
