@@ -1,24 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="ncdc"
-VERSION="1.20"
+VERSION="1.22.1"
 CATEGORY="network"
 SHORT_DESC="NCurses Direct Connect."
 MAINTAINER="paul@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://dev.yorhel.nl/ncdc"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://dev.yorhel.nl/download/$TARBALL"
 
-DEPENDS="ncurses zlib bzip2 sqlite gnutls pcre"
-BUILD_DEPENDS="ncurses-dev zlib-dev bzip2-dev sqlite-dev gnutls-dev
-glib-dev pcre-dev libgnutls"
+DEPENDS="bzip2 gnutls ncursesw pcre sqlite zlib"
+BUILD_DEPENDS="bzip2-dev glib-dev gnutls-dev libgnutls ncursesw ncursesw-dev 
+	pcre-dev sqlite-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr
-	make
+	export	LDFLAGS="$LDFLAGS -ltinfo"
+
+	./configure			\
+		--prefix=/usr		\
+		NCURSES_CFLAGS=" "	\
+		NCURSES_LIBS=/lib/libncursesw.so &&
+	make &&
 	make install
 }
 
@@ -26,5 +32,5 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr	
+	cp -a $install/usr/bin	$fs/usr	
 }
