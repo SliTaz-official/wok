@@ -1,85 +1,91 @@
 # SliTaz package receipt.
 
 PACKAGE="ndoutils"
-VERSION="1.5.2"
+VERSION="2.1.3"
 CATEGORY="network"
 SHORT_DESC="Provide mysql access to nagios."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://www.nagios.org/"
-WGET_URL="$SF_MIRROR/nagios/$TARBALL"
-CONFIG_FILES="/etc/nagios"
 
-DEPENDS="nagios mysql"
-BUILD_DEPENDS="mysql-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/nagios/$TARBALL"
+
+DEPENDS="mysql nagios"
+BUILD_DEPENDS="mysql-dev procps"
+
+CONFIG_FILES="/etc/nagios"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	
-	while read patch_file; do
-		if [ ! -f done.$patch_file ]; then
-			patch -p1 < $stuff/$patch_file || exit 1
-			touch done.$patch_file
-		fi
-	done <<EOT
-$PACKAGE-$VERSION-Makefiles.in.u
-EOT
+	patch --input=$stuff/patches/Makefile.in-$VERSION \
+		Makefile.in || exit 1
+	patch --input=$stuff/patches/src_Makefile.in-$VERSION \
+		src/Makefile.in || exit 1
 
-	./configure --prefix=/usr \
-	--with-ndo2db-user=nagios \
-	--with-ndo2db-group=nagios \
-	--localstatedir=/var/run/nagios \
-	--sysconfdir=/etc/nagios \
-	--libexecdir=/usr/lib/$PACKAGE \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
-	make && \
-	make DESTDIR=$DESTDIR install && \
+	addgroup nagios
+	adduser -D -G nagios nagios
+
+	./configure				\
+		--prefix=/usr			\
+		--with-ndo2db-user=nagios	\
+		--with-ndo2db-group=nagios	\
+		--localstatedir=/var/run/nagios	\
+		--sysconfdir=/etc/nagios	\
+		--libexecdir=/usr/lib/$PACKAGE	\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
+	make all &&
+	make DESTDIR=$DESTDIR install &&
 	make DESTDIR=$DESTDIR install-config
 }	
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/nagios/ndoutils \
-		$fs/etc/nagios \
-		$fs/etc/mysql.d
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share/nagios/ndoutils
+	mkdir -p $fs/etc/nagios
+	mkdir -p $fs/etc/mysql.d
+
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $install/ndomod.o	$fs/usr/lib
+	cp -a $install/etc	$fs
 	
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/etc $fs
-	
-	# config ndo2db.cfg
+	# configuration file ndo2db.cfg
 	sed -i  -e 's/ndo2db_user=nagios/ndo2db_user=nagios/' \
 		-e 's/ndo2db_group=nagios/ndo2db_group=nagios/' \
 		-e 's|/usr/local/nagios/var/|/var/run/nagios/|' \
 		-e 's/db_user=ndouser/db_user=root/' \
-		-e 's/db_pass=ndopassword/db_pass=/' $fs/etc/nagios/ndo2db.cfg
+		-e 's/db_pass=ndopassword/db_pass=/' \
+		$fs/etc/nagios/ndo2db.cfg
 
-	# config ndomod.cfg
+	# configuration file ndomod.cfg
 	sed -i  -e 's|output=/usr/local/nagios/var/|output=/var/run/nagios/|' \
 		-e 's|buffer_file=/usr/local/nagios/var/|buffer_file=/var/tmp/|' \
 		$fs/etc/nagios/ndomod.cfg
 
-	cp -a  $src/db/mysql.sql  $fs/usr/share/nagios/ndoutils/nagios.sql
-	cp -a stuff/etc $fs
+	cp -a  $src/db/mysql.sql \
+				$fs/usr/share/nagios/ndoutils/nagios.sql
+	cp -a stuff/etc		$fs
 	
-	chmod 755 $fs/usr/bin/*
-	chmod 755 $fs/etc/mysql.d/*
+	chmod 755		$fs/usr/bin/*
+	chmod 755		$fs/etc/mysql.d/*
 }
 
 post_install()
 {
-	if ! grep -q nagios "$1/etc/passwd"; then
+	if ! grep -q nagios "$1/etc/passwd"
+	  then
 		echo
 		echo -n "Adding user nagios..."
 		chroot "$1/" adduser -S -D -H nagios
 		status
 	fi
 		
-	if ! grep -q ndomod.cfg "$1/etc/nagios/nagios.cfg"; then
+	if ! grep -q ndomod.cfg "$1/etc/nagios/nagios.cfg"
+	  then
 		sed -i '/LOG ROTATION METHOD/i\broker_module=/usr/lib/ndoutils/ndomod.o config_file=/etc/nagios/ndomod.cfg' "$1/etc/nagios/nagios.cfg"
 		chroot "$1/" chown nagios.nagios /etc/nagios/nagios.cfg
 	fi
@@ -90,7 +96,8 @@ post_install()
 
 	sed -i "s/nagios/ndo2db nagios/" "$1/etc/rcS.conf"
 	
-	if [ -z "$1" ]; then	
+	if [ -z "$1" ]
+	  then	
 		[ -f /var/run/mysqld/mysql.pid ] || /etc/init.d/mysql start
 		/etc/mysql.d/$PACKAGE    
 		#/usr/bin/ndo2db -c /etc/nagios/ndo2db.cfg
