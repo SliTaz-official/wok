@@ -1,20 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="nginx"
-VERSION="1.9.4"
+VERSION="1.16.0"
 CATEGORY="network"
-SHORT_DESC="Asynchronous HTTP server designed for heavy loads + mail proxy."
+SHORT_DESC="Asynchronous HTTP server designed for heavy loads and mail proxy."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
-SUGGESTED="php perl python"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://nginx.org/"
-WGET_URL="${WEB_SITE}download//$TARBALL"
-PROVIDE="lighttpd"
-CONFIG_FILES="/etc/nginx"
+WEB_SITE="https://nginx.org/"
 
-DEPENDS="pcre openssl zlib"
-BUILD_DEPENDS="pcre-dev openssl-dev zlib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}download//$TARBALL"
+
+PROVIDE="lighttpd"
+SUGGESTED="php perl python"
+DEPENDS="openssl pcre zlib"
+BUILD_DEPENDS="openssl-dev pcre-dev zlib-dev"
+
+CONFIG_FILES="/etc/nginx"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -34,21 +36,23 @@ compile_rules()
 #  --with-http_perl_module            enable ngx_http_perl_module
 #  --with-google_perftools_module     enable ngx_google_perftools_module
 
-	./configure --prefix=/usr \
-		--conf-path=/etc/nginx/nginx.conf \
-		--pid-path=/var/run/nginx.pid \
-		--lock-path=/var/lock/nginx.lock \
-		--error-log-path=/var/log/nginx/error.log \
-		--http-log-path=/var/log/nginx/access.log \
-		--http-client-body-temp-path=/var/spool/nginx/body \
-		--http-proxy-temp-path=/var/spool/nginx/proxy \
-		--http-fastcgi-temp-path=/var/spool/nginx/fastcgi \
-		--with-http_stub_status_module \
-		--with-http_flv_module \
-		--with-http_ssl_module \
-		--with-http_dav_module \
-		--with-mail --with-mail_ssl_module \
-		--user=80 --group=80 &&
+	./configure							\
+		--prefix=/usr						\
+		--conf-path=/etc/nginx/nginx.conf			\
+		--pid-path=/var/run/nginx.pid				\
+		--lock-path=/var/lock/nginx.lock			\
+		--error-log-path=/var/log/nginx/error.log		\
+		--http-log-path=/var/log/nginx/access.log		\
+		--http-client-body-temp-path=/var/spool/nginx/body	\
+		--http-proxy-temp-path=/var/spool/nginx/proxy		\
+		--http-fastcgi-temp-path=/var/spool/nginx/fastcgi	\
+		--with-http_stub_status_module				\
+		--with-http_flv_module					\
+		--with-http_ssl_module					\
+		--with-http_dav_module					\
+		--with-mail --with-mail_ssl_module			\
+		--user=80						\
+		--group=80 &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -57,21 +61,26 @@ compile_rules()
 # On SliTaz Lighttpd runs as user/group : www/www or 80/80.
 genpkg_rules()
 {
-	cp -a $install/* $fs/
-	rm -rf $fs/usr/html
-	cp -a stuff/* $fs
-	sed -i 's/#user  nobody;/user  www;/' $fs/etc/nginx/nginx.conf
+	cp -a $install/*	$fs/
+	rm -rf			$fs/usr/html
+	cp -a stuff/*		$fs
+	sed -i 's/#user  nobody;/user  www;/' \
+				$fs/etc/nginx/nginx.conf
 }
 
 # Pre and post install commands for Tazpkg.
 # We stop the server by default in case of upgarde.
 pre_install()
 {
-	[ -z "$1" ] && for i in httpd lighttpd apache cherokee $PACKAGE ; do
+	[ -z "$1" ] &&
+	for i in httpd lighttpd apache cherokee $PACKAGE
+	  do
 		[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
-	done
-	# Backup config file.
-	if [ -d "$1/$CONFIG_FILES" ]; then
+	  done
+
+	# Backup configuration file.
+	if [ -d "$1/$CONFIG_FILES" ]
+	  then
 		cp -a "$1/$CONFIG_FILES" "$1/$CONFIG_FILES.bak"
 	fi
 }
@@ -79,17 +88,22 @@ pre_install()
 post_install()
 {
 	mkdir -p /var/spool/nginx
-	# Restore original config.
-	if [ -d "$1/$CONFIG_FILES.bak" ]; then
+
+	# Restore original configuration.
+	if [ -d "$1/$CONFIG_FILES.bak" ]
+	  then
 		rm -rf "$1/$CONFIG_FILES"
 		mv "$1/$CONFIG_FILES.bak" "$1/$CONFIG_FILES"
 	fi
+
 	# Just in case.
 	chown www.www "$1/var/log/$PACKAGE"
-	if [ -z "$1" ]; then
-		for i in apache lighttpd ; do
+	if [ -z "$1" ]
+	  then
+		for i in apache lighttpd
+		  do
 			[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
-		done
+		  done
 		/etc/init.d/$PACKAGE start
 	fi
 	true
