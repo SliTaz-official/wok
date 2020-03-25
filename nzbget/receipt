@@ -1,36 +1,47 @@
 # SliTaz package receipt.
 
 PACKAGE="nzbget"
-VERSION="13.0"
+VERSION="21.0"
 CATEGORY="network"
 SHORT_DESC="The most efficient usenet downloader."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://nzbget.net/"
-WGET_URL="$SF_MIRROR/nzbget/nzbget-stable/$VERSION/$TARBALL"
-CONFIG_FILES="/etc/nzbget.conf"
 
-DEPENDS="libxml2 libssl ncurses gcc-lib-base"
-BUILD_DEPENDS="libxml2-dev openssl-dev ncurses-dev zlib-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/archive/v$VERSION.tar.gz"
+
+DEPENDS="gcc83-lib-base libssl libxml2 ncurses"
+BUILD_DEPENDS="gcc83 libxml2-dev ncurses-dev openssl-dev zlib-dev"
+
+CONFIG_FILES="/etc/nzbget.conf"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	export LDFLAGS="$LDFLAGS -ltinfo"
-	./configure --prefix=/usr \
-		--disable-parcheck \
+	export	LDFLAGS="$LDFLAGS -ltinfo"
+	export	ncurses_LIBS=/lib/libncurses.so
+	export	ncurses_CFLAGS=" "
+
+	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		--prefix=/usr		\
+		--disable-parcheck	\
 		$CONFIGURE_ARGS &&
 	make &&
-	make -j 1 DESTDIR=$DESTDIR install
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/nzbget $fs/etc
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/share/nzbget/nzbget.conf $fs/etc
-	cp -a $install/usr/share/nzbget/scripts $fs/usr/share/nbzget
+	mkdir -p $fs/usr/share/nzbget
+	mkdir -p $fs/etc
+
+	cp -a $install/usr/bin				$fs/usr
+	# 21.0 functions of nzbgetd contained in nzbget
+	# cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/share/nzbget/nzbget.conf	$fs/etc
+	cp -a $install/usr/share/nzbget/scripts		$fs/usr/share/nbzget
 }
