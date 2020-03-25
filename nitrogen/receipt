@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="nitrogen"
-VERSION="1.5.2"
+VERSION="1.6.1"
 CATEGORY="x-window"
-SHORT_DESC="Nitrogen is a background browser and setter for X windows."
+TAGS="wallpaper"
+SHORT_DESC="A background browser and setter for X windows."
 MAINTAINER="mallory@sweetpeople.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://github.com/l3ib/nitrogen"
-WGET_URL="$WEB_SITE/files/$TARBALL"
-TAGS="wallpaper"
 
-DEPENDS="gtkmm libpng gcc-lib-base"
-BUILD_DEPENDS="gtkmm gtkmm-dev libpng-dev pkg-config glib-dev gtk+-dev cairomm-dev xorg-libXinerama-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/releases/download/$VERSION/$TARBALL"
+
+DEPENDS="gcc-lib-base gtkmm libpng"
+BUILD_DEPENDS="cairomm-dev glib-dev gtk+-dev gtkmm gtkmm-dev libpng-dev 
+	pkg-config xorg-libXinerama-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -20,23 +22,25 @@ compile_rules()
 	# Binutils 2.22 break many packages build without LDFLAGS set correctly.
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries"
 	
-	cd $src
-    sed -e '/png.h/d' < src/Thumbview.cc > src/Thumbview.cc.patched
-    mv src/Thumbview.cc.patched src/Thumbview.cc
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+	sed -e '/png.h/d' < src/Thumbview.cc > src/Thumbview.cc.patched
+#	mv src/Thumbview.cc.patched src/Thumbview.cc
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/pixmaps
-	cp -a $install/usr/bin $fs/usr
+
+	cp -a $install/usr/bin	$fs/usr
 	cp -a $install/usr/share/icons/hicolor/32x32/apps/nitrogen.png \
-		$fs/usr/share/pixmaps/
+				$fs/usr/share/pixmaps/
 }
 
