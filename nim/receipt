@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="nim"
+VERSION="0.19.6"
+CATEGORY="development"
+SHORT_DESC="The Nim programming language."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="MIT"
+WEB_SITE="https://www.nim-lang.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="${WEB_SITE}download/$TARBALL"
+
+DEPENDS="gcc glibc-base readline"
+BUILD_DEPENDS="gcc glibc-dev readline-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i "s/uname -m/echo $ARCH/" build.sh
+	chmod +x build.sh
+	chmod +x install.sh
+
+	./build.sh &&
+	./bin/nim c -d:release koch &&
+	./koch boot -d:release &&
+	./install.sh $DESTDIR
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/nim
+	mkdir -p $fs/usr/lib
+
+	cp -a $install/nim/bin		$fs/usr
+	cp -a $install/nim/config	$fs/etc
+	cp -a $install/nim/lib		$fs/usr/lib/nim
+	cp -a $install/nim/doc		$fs/usr/share/nim
+}
