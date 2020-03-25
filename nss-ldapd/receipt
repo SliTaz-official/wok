@@ -1,27 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="nss-ldapd"
-VERSION="0.7.15"
+VERSION="0.9.11"
 CATEGORY="system-tools"
 SHORT_DESC="NSS module for name lookups using LDAP (nss_ldap remplacement)."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="LGPL2.1"
+WEB_SITE="https://arthurdejong.org/nss-pam-ldapd/"
+
 SOURCE="nss-pam-ldapd"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="https://arthurdejong.org/nss-pam-ldapd/"
 WGET_URL="http://arthurdejong.org/$SOURCE/$TARBALL"
 
-DEPENDS="cyrus-sasl krb5 libkrb5 libldap libssl libcomerr3"
+DEPENDS="cyrus-sasl krb5 libcomerr3 libkrb5 libldap libssl"
 BUILD_DEPENDS="cyrus-sasl-dev krb5-dev openldap-dev openssl-dev pam-dev \
-pam_ldap"
+	pam_ldap"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir -p $DESTDIR/usr/lib $DESTDIR/etc $DESTDIR/usr/lib/security
+	mkdir -p $DESTDIR/usr/lib
+	mkdir -p $DESTDIR/etc
 	sed -i 's/-D / /' */Makefile.in Makefile.in
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -30,7 +36,10 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/etc $fs
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib $fs/usr
+	mkdir -p $fs/lib
+
+	cp -a $install/etc		$fs
+	cp -a $install/lib/security	$fs/lib
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/lib		$fs/usr
 }
