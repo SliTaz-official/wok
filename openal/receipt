@@ -1,22 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="openal"
-SOURCE="openal-soft"
-VERSION="1.16.0"
+VERSION="1.20.1"
 CATEGORY="multimedia"
+TAGS="multimedia audio sound 3D"
 SHORT_DESC="cross-platform 3D audio API."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="LGPL2"
+WEB_SITE="https://www.openal-soft.org/"
+
+SOURCE="openal-soft"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="http://www.openal.org/"
-WGET_URL="http://www.openal-soft.org/openal-releases/$TARBALL"
-BUILD_DEPENDS="cmake"
-TAGS="multimedia audio sound 3D"
+WGET_URL="${WEB_SITE}$PACKAGE-releases/$TARBALL"
+
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="cmake gcc83"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cmake -DCMAKE_INSTALL_PREFIX=/usr
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	cmake -DCMAKE_INSTALL_PREFIX=/usr &&
 	make &&
 	make install
 }
@@ -25,8 +31,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
 
 # Pre and post install commands for Tazpkg.
@@ -34,8 +41,8 @@ post_install()
 {
 	[ -s $1/etc/rcS.conf ] &&
 	case " $(. $1/etc/rcS.conf; echo $LOAD_MODULES) " in
-	*\ snd-pcm-oss\ *) ;;
-	*) sed -i 's|LOAD_MODULES="|&snd-pcm-oss |' $1/etc/rcS.conf ;;
+		*\ snd-pcm-oss\ *) ;;
+		*) sed -i 's|LOAD_MODULES="|&snd-pcm-oss |' $1/etc/rcS.conf ;;
 	esac
 	[ "$1" ] || modprobe snd-pcm-oss 2> /dev/null || true
 }
