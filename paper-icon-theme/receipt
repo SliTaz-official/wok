@@ -1,47 +1,50 @@
 # SliTaz package receipt.
 
 PACKAGE="paper-icon-theme"
-VERSION="1.3.4"
-COMMIT="712acc0"
+VERSION="1.5.0"
 CATEGORY="customization"
-SHORT_DESC="Simple and modern icon theme with material design influences"
+SHORT_DESC="Simple and modern icon theme with material design influences."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="CC-BY-SA-4"
 WEB_SITE="https://snwh.org/paper/"
-TARBALL="$PACKAGE-$COMMIT.tar.gz"
-WGET_URL="https://github.com/snwh/paper-icon-theme/archive/$COMMIT.tar.gz"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/snwh/$PACKAGE/archive/v.$VERSION/$TARBALL"
 
 DEPENDS="librsvg"
-BUILD_DEPENDS="autoconf automake svgcleaner"
+BUILD_DEPENDS="meson ninja svgcleaner"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./autogen.sh &&
-	make && make install
+	meson .	_build &&
+	ninja -C _build &&
+	ninja -C _build install
 
 	# remove hdpi icons, and huge sizes
 	it="$install/usr/share/icons/Paper/index.theme"
-	for i in 8x8@2x 16x16@2x 24x24@2x 32x32@2x 48x48@2x 512x512@2x 512x512; do
+	for i in 8x8@2x 16x16@2x 24x24@2x 32x32@2x 48x48@2x 512x512@2x 512x512
+	  do
 		echo "Remove $i"
 		rm -r $install/usr/share/icons/Paper/$i
 		sed -i "s|$i[^,]*,||g" $it
 		sed -i "/^\[$i/,/^\[/{/^\[/b;d}" $it
 		sed -i "/^\[$i/d" $it
-	done
+	  done
 	sed -i '/HiDPi/,$d' $it
 
 	# remove duplicates (keep <name>.png, remove <name>.svg)
-	for svg in $(find $install -name '*.svg'); do
+	for svg in $(find $install -name '*.svg')
+	  do
 		if [ -e "${svg%svg}png" ]; then
 			echo "Remove duplicate: ${svg#*Paper/}"
 			rm "$svg"
 		fi
-	done
+	  done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
+	cp -a $install/*	$fs
 }
