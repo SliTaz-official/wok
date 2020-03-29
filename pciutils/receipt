@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="pciutils"
-VERSION="3.6.2"
+VERSION="3.6.4"
 CATEGORY="system-tools"
 SHORT_DESC="Linux PCI Utilities."
 MAINTAINER="pankso@slitaz.org"
@@ -9,20 +9,35 @@ LICENSE="GPL2"
 WEB_SITE="https://mj.ucw.cz/sw/pciutils/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="ftp://atrey.karlin.mff.cuni.cz/pub/linux/pci/$TARBALL"
+WGET_URL="https://mj.ucw.cz/download/linux/pci/$TARBALL"
 
-DEPENDS="glibc-base zlib pciids"
-BUILD_DEPENDS="wget"
+DEPENDS="glibc-base pciids zlib"
+BUILD_DEPENDS=""
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	make OPT="${CFLAGS} -fPIC -DPIC" SHARED=no PREFIX=/usr SHAREDIR=/usr/share/misc MANDIR=/usr/share/man all
-	cp -a lib/libpci.a $WOK/$PACKAGE/source
-	make clean
-	make OPT="${CFLAGS}" ZLIB=yes SHARED=yes PREFIX=/usr SHAREDIR=/usr/share/misc MANDIR=/usr/share/man all
-	make SHARED=yes PREFIX=/usr SHAREDIR=/usr/share/misc MANDIR=/usr/share/man DESTDIR="$DESTDIR" install install-lib
-	cp -a $WOK/$PACKAGE/source/libpci.a $DESTDIR/usr/lib
+	make	all				\
+		OPT="${CFLAGS} -fPIC -DPIC"	\
+		SHARED=no PREFIX=/usr		\
+		SHAREDIR=/usr/share/misc	\
+		MANDIR=/usr/share/man &&
+	cp -a lib/libpci.a	$WOK/$PACKAGE/source &&
+	make	clean &&
+	make	all				\
+		OPT="${CFLAGS}"			\
+		ZLIB=yes			\
+		SHARED=yes			\
+		PREFIX=/usr			\
+		SHAREDIR=/usr/share/misc	\
+		MANDIR=/usr/share/man &&
+	make	install	install-lib		\
+		SHARED=yes			\
+		PREFIX=/usr			\
+		SHAREDIR=/usr/share/misc	\
+		MANDIR=/usr/share/man		\
+		DESTDIR="$DESTDIR" &&
+	cp -a $WOK/$PACKAGE/source/libpci.a	$DESTDIR/usr/lib
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
