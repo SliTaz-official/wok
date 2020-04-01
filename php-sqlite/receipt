@@ -1,40 +1,46 @@
 # SliTaz package receipt.
 
 PACKAGE="php-sqlite"
-VERSION="7.3.16"
+VERSION="7.4.4"
 CATEGORY="development"
 SHORT_DESC="sqlite module for PHP web programming language."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="BSD"
 WEB_SITE="https://www.php.net/"
-WANTED="php"
 
 DEPENDS="php sqlite"
+WANTED="php"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/php
-	cp $(find $install | grep sqlite.so) $fs/usr/share/php/
-	cp $(find $install | grep sqlite3.so) $fs/usr/share/php/
-	cp $(find $install | grep pdo_sqlite.so) $fs/usr/share/php/
+
+	cp $(find $install | grep sqlite.so)		$fs/usr/share/php/
+	cp $(find $install | grep sqlite3.so)		$fs/usr/share/php/
+	cp $(find $install | grep pdo_sqlite.so)	$fs/usr/share/php/
 }
 
 post_install()
 {
-	grep -q ^extension=sqlite3.so "$1/etc/php.ini" || \
-	    sed -e 's|extension=bz2.so|extension=bz2.so\nextension=sqlite3.so|' -i "$1/etc/php.ini"
+	grep -q ^extension=sqlite3.so "$1/etc/php.ini" || 
+	sed -e 's|extension=bz2.so|extension=bz2.so\nextension=sqlite3.so|' \
+		-i "$1/etc/php.ini"
+
 	# Start Web server.
-	while read daemon file; do
+	while read daemon file
+	  do
 		[ -z "$1" ] || continue
-		if [ -f "/var/run/$file" ]; then
+		if [ -f "/var/run/$file" ]
+		  then
 			/etc/init.d/$daemon stop
 			sleep 2
 		fi
-		if [ -f /etc/init.d/$daemon ]; then
+		if [ -f /etc/init.d/$daemon ]
+		  then
 			/etc/init.d/$daemon start
 		fi
-	done <<EOT
+	  done <<EOT
 apache apache/httpd.pid
 lighttpd lighttpd.pid
 EOT
@@ -46,16 +52,19 @@ pre_remove()
 	sed -i '/.*=sqlite3.so.*/d' /etc/php.ini
 
 	# Start Web server.
-	while read daemon file; do
+	while read daemon file
+	  do
 		[ -z "$1" ] || continue
-		if [ -f "/var/run/$file" ]; then
+		if [ -f "/var/run/$file" ]
+		  then
 			/etc/init.d/$daemon stop
 			sleep 2
 		fi
-		if [ -f /etc/init.d/$daemon ]; then
+		if [ -f /etc/init.d/$daemon ]
+		  then
 			/etc/init.d/$daemon start
 		fi
-	done <<EOT
+	  done <<EOT
 apache apache/httpd.pid
 lighttpd lighttpd.pid
 EOT

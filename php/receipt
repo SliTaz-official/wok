@@ -1,64 +1,70 @@
 # SliTaz package receipt.
 
 PACKAGE="php"
-VERSION="7.3.16"
+VERSION="7.4.4"
 CATEGORY="development"
 SHORT_DESC="PHP web programming language."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://www.php.net/"
-WGET_URL="https://www.php.net/distributions/$TARBALL"
-PROVIDE="php:lighttpd"
-#HOST_ARCH="i486 arm"
 
-DEPENDS="php-common lighttpd libzip libxml2 sqlite libssl"
-BUILD_DEPENDS="sqlite-dev libxml2-dev libzip-dev libmysqlclient mysql-dev \
-net-snmp-dev postgresql-dev gettext openssl-dev apache-dev apr-util-dev \
-c-client mhash-dev libpng-dev libunixODBC unixODBC-dev openldap-dev \
-libldap apr-dev libmcrypt-dev curl-dev cyrus-sasl-dev perl pkg-config \
-jpeg-dev net-snmp-dev libvpx-dev apache coreutils-conditions sed re2c \
-libtool"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://www.php.net/distributions/$TARBALL"
+
+PROVIDE="php:lighttpd"
+DEPENDS="libssl libzip libxml2 lighttpd php-common sqlite"
+BUILD_DEPENDS="apache apache-dev apr-dev apr-util-dev c-client 
+	coreutils-conditions curl-dev cyrus-sasl-dev gettext 
+	jpeg-dev libldap libmcrypt-dev libmysqlclient libpng-dev 
+	libtool libunixODBC libvpx-dev libxml2-dev libzip-dev 
+	mhash-dev mysql-dev net-snmp-dev openldap-dev openssl-dev 
+	perl pkg-config postgresql-dev re2c sed sqlite-dev 
+	unixODBC-dev"
+
+#HOST_ARCH="i486 arm"
 
 case "$ARCH" in
 	i?86)
-		ARCH_ARGS="\
-			--prefix=/usr \
-			--sysconfdir=/etc \
-			--infodir=/usr/share/info \
-			--mandir=/usr/share/man \
-			--enable-mbstring \
-			--enable-sockets \
-			--enable-ftp \
-			--enable-zip \
-			--enable-calendar \
-			--enable-exif \
-			--config-cache \
-			--enable-dba=shared \
-			--with-config-file-path=/etc \
-			--with-zlib \
-			--with-gettext \
-			--with-mysqli=shared \
-			--with-mysql-sock=/var/run/mysqld/mysql.sock \
-			--with-pdo-sqlite=shared,/usr \
-			--with-pgsql=shared,/usr \
-			--with-snmp=shared,/usr \
-			--enable-soap=shared,/usr \
-			--with-ldap=shared \
-			--with-imap=shared \
-			--with-imap-ssl \
-			--with-mhash \
-			--with-gd=shared \
-			--with-jpeg-dir=/usr \
-			--with-png-dir=/usr \
-			--with-openssl=shared \
-			--with-unixODBC=shared,/usr \
-			--with-pear=/usr/share/php \
-			--with-pdo-mysql=shared \
-			--with-pdo-pgsql=shared \
-			--with-curl=shared \
-			--with-sqlite3=shared,/usr \
-			--enable-maintainer-zts" ;;
+		# 7.4.4 unrecognised:
+		# 	--enable-zip
+		#	--with-jpeg-dir=/usr
+		#	--with-png-dir=/usr
+
+		ARCH_ARGS="						\
+			--prefix=/usr					\
+			--sysconfdir=/etc				\
+			--infodir=/usr/share/info			\
+			--mandir=/usr/share/man				\
+			--config-cache					\
+			 --enable-calendar				\
+			 --enable-dba=shared				\
+			 --enable-exif					\
+			 --enable-ftp					\
+			 --enable-gd=shared				\
+			 --enable-maintainer-zts			\
+			--disable-mbregex				\
+			 --enable-mbstring				\
+			 --enable-soap=shared,/usr			\
+			 --enable-sockets				\
+			--with-config-file-path=/etc			\
+			--with-curl=shared				\
+			--with-gettext					\
+			--with-imap=shared				\
+			--with-imap-ssl					\
+			--with-ldap=shared				\
+			--with-mhash					\
+			--with-mysql-sock=/var/run/mysqld/mysql.sock	\
+			--with-mysqli=shared				\
+			--with-openssl=shared				\
+			--with-pdo-mysql=shared				\
+			--with-pdo-pgsql=shared				\
+			--with-pdo-sqlite=shared,/usr			\
+			--with-pear=/usr/share/php			\
+			--with-pgsql=shared,/usr			\
+			--with-snmp=shared,/usr				\
+			--with-sqlite3=shared,/usr			\
+			--with-unixODBC=shared,/usr			\
+			--with-zlib" ;;
 	arm*)
 		BUILD_DEPENDS="sqlite-dev libxml2-dev zlib-dev curl-dev"
 		ARCH_ARGS="\
@@ -91,57 +97,66 @@ esac
 compile_rules()
 {
 	sed -i 's/pam_start/pam_nostart/' configure
-	./configure $ARCH_ARGS $CONFIGURE_ARGS && \
-	make $MAKEFLAGS && make -j1 INSTALL_ROOT=$DESTDIR install
-	./configure $ARCH_ARGS $CONFIGURE_ARGS --with-apxs2=/usr/bin/apxs && \
-	make $MAKEFLAGS && {
+
+	./configure $ARCH_ARGS $CONFIGURE_ARGS &&
+	make $MAKEFLAGS &&
+	make -j1 INSTALL_ROOT=$DESTDIR install &&
+	./configure $ARCH_ARGS $CONFIGURE_ARGS --with-apxs2=/usr/bin/apxs &&
+	make $MAKEFLAGS &&
+	{
 		mkdir -p $DESTDIR/etc/apache
-		cp /etc/apache/httpd.conf $DESTDIR/etc/apache/httpd.conf
+		cp /etc/apache/httpd.conf	$DESTDIR/etc/apache/httpd.conf
 		make -j1 INSTALL_ROOT=$DESTDIR install
 	}
-	# Production config file.
+
+	# Production configuration file.
 	mkdir -p $DESTDIR/etc
-	cp $src/php.ini-production $DESTDIR/etc/php.ini || exit 1
-	sed -e 's|extension_dir = "./"|extension_dir = "/usr/share/php/"|' \
-		-i $DESTDIR/etc/php.ini
+	cp $src/php.ini-production	$DESTDIR/etc/php.ini || exit 1
+	sed -i	-e 's|extension_dir = "./"|extension_dir = "/usr/share/php/"|' \
+		$DESTDIR/etc/php.ini
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/php
-	cp -a $src/sapi/cgi/php-cgi $fs/usr/bin
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/php
+
+	cp -a $src/sapi/cgi/php-cgi	$fs/usr/bin
 }
 
 # Post and pre install commands to stop
 # and restart Web server if needed.
 pre_install()
 {
-	if [ -z "$1" -a ! -f "/var/run/lighttpd.pid" ]; then
+	if [ -z "$1" -a ! -f "/var/run/lighttpd.pid" ]
+	  then
 		/etc/init.d/lighttpd stop
 	fi
 }
 
 post_install()
 {
-	# Enable php
-	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]; then
-	  [ -f "$1/usr/lib/lighttpd/mod_fastcgi.so" ] || \
+	# Enable PHP
+	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]
+	  then
+		[ -f "$1/usr/lib/lighttpd/mod_fastcgi.so" ] ||
 	  	tazpkg get-install lighttpd-modules --root="$1/"
-	  sed -e 's|#fastcgi.server = ( ".php"|fastcgi.server = ( ".php"|' \
-	    -e 's|#"bin-path" => "/usr/bin/php-cgi"|"bin-path" => "/usr/bin/php-cgi"|' \
-	    -e 's|#"socket" => "/tmp/php.socket"|"socket" => "/tmp/php.socket"\n  )))|' \
-	    -i "$1/etc/lighttpd/lighttpd.conf"
-	  grep -q mod_fastcgi "$1/etc/lighttpd/lighttpd.conf" || \
-	  	sed -e 's|server.modules = (|server.modules = (\n  "mod_fastcgi",|' \
-	  	    -i "$1/etc/lighttpd/lighttpd.conf"
-	  grep -q php3 "$1/etc/lighttpd/lighttpd.conf" || \
-	  	sed -e 's|for PHP.*|for PHP.\nfastcgi.map-extensions = ( ".php3" => ".php", ".php4" => ".php", ".php5" => ".php" )|' \
-	  	    -i "$1/etc/lighttpd/lighttpd.conf"
+		sed -i	-e 's|#fastcgi.server = ( ".php"|fastcgi.server = ( ".php"|' \
+			-e 's|#"bin-path" => "/usr/bin/php-cgi"|"bin-path" => "/usr/bin/php-cgi"|' \
+			-e 's|#"socket" => "/tmp/php.socket"|"socket" => "/tmp/php.socket"\n  )))|' \
+			"$1/etc/lighttpd/lighttpd.conf"
+		  grep -q mod_fastcgi "$1/etc/lighttpd/lighttpd.conf" || 
+		  	sed -e 's|server.modules = (|server.modules = (\n  "mod_fastcgi",|' \
+		  	    -i "$1/etc/lighttpd/lighttpd.conf"
+		  grep -q php3 "$1/etc/lighttpd/lighttpd.conf" || \
+		  	sed -e 's|for PHP.*|for PHP.\nfastcgi.map-extensions = ( ".php3" => ".php", ".php4" => ".php", ".php5" => ".php" )|' \
+		  	    -i "$1/etc/lighttpd/lighttpd.conf"
 	fi
+
 	# Start Web server.
-	if [ -z "$1" -a ! -f /var/run/lighttpd.pid \
-		     -a -f /etc/init.d/lighttpd ]; then
+	if [ -z "$1" -a ! -f /var/run/lighttpd.pid -a -f /etc/init.d/lighttpd ]
+	  then
 		/etc/init.d/lighttpd start
 	fi
 }

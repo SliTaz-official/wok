@@ -1,33 +1,37 @@
 # SliTaz package receipt.
 
 PACKAGE="php-pear"
-VERSION="7.3.16"
+VERSION="7.4.4"
 CATEGORY="development"
 SHORT_DESC="PHP web programming language pear libs."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
 WEB_SITE="https://www.php.net/"
-WANTED="php"
 
 DEPENDS="php-cli"
+WANTED="php"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-        mkdir -p $fs/usr/share $fs/usr/bin $fs/etc
-        cp -a $install/usr/share/php $fs/usr/share
-        cp -a $install/etc/pear.conf $fs/etc
-        cp -a $install/usr/bin/pe* $fs/usr/bin
+        mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/bin $fs/etc
+
+        cp -a $install/usr/share/php	$fs/usr/share
+        cp -a $install/etc/pear.conf	$fs/etc
+        cp -a $install/usr/bin/pe*	$fs/usr/bin
 }
 
 # Pre and post install commands for Tazpkg.
 pre_install()
 {
-	while read daemon file; do
-		if [ -z "$1" -a -f "/var/run/$file" ]; then
+	while read daemon file
+	  do
+		if [ -z "$1" -a -f "/var/run/$file" ]
+		  then
 			/etc/init.d/$daemon stop
 		fi
-	done <<EOT
+	  done <<EOT
 apache apache/httpd.pid
 lighttpd lighttpd.pid
 EOT
@@ -36,18 +40,23 @@ EOT
 post_install()
 {
 	grep ^include_path "$1/etc/php.ini"
-	sed -i 's|/php/includes"|/php/includes"\ninclude_path = ".:/usr/share/php"|' "$1/etc/php.ini"
+	sed -i 's|/php/includes"|/php/includes"\ninclude_path = ".:/usr/share/php"|' \
+		"$1/etc/php.ini"
+
 	# Restart Web server.
-	while read daemon file; do
+	while read daemon file
+	  do
 		[ -z "$1" ] || continue
-		if [ -f "/var/run/$file" ]; then
+		if [ -f "/var/run/$file" ]
+		  then
 			/etc/init.d/$daemon stop
 			sleep 2
 		fi
-		if [ -f /etc/init.d/$daemon ]; then
+		if [ -f /etc/init.d/$daemon ]
+		  then
 			/etc/init.d/$daemon start
 		fi
-	done <<EOT
+	  done <<EOT
 apache apache/httpd.pid
 lighttpd lighttpd.pid
 EOT
