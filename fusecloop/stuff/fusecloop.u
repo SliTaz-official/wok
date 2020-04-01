@@ -620,7 +620,7 @@
 +}
 --- create_compressed_fs.c
 +++ create_compressed_fs.c
-@@ -0,0 +1,225 @@
+@@ -0,0 +1,226 @@
 +#ifdef FIND_BEST_COMPRESSION
 +#include <compress.h>
 +extern "C" {
@@ -710,7 +710,8 @@
 +#endif
 +
 +static unsigned n;
-+static unsigned long lastlen, pos, *block_index;
++static unsigned long lastlen, pos;
++static u_int32_t *block_index;
 +static unsigned char *compressed;
 +static unsigned long block_size = 0;
 +static void flush_index(int sig)
@@ -785,7 +786,7 @@
 +	
 +	compressed = (unsigned char *) malloc(zlenmax);
 +	uncompressed = (unsigned char *) malloc(block_size);
-+	block_index = (unsigned long *) malloc(indexmax = CHUNK);
++	block_index = (u_int32_t *) malloc(indexmax = CHUNK);
 +#ifdef FIND_BEST_COMPRESSION
 +	hash = (md5hash *) malloc(hashmax = CHUNK);
 +	if (!compressed || !uncompressed || !block_index || !hash)
@@ -801,7 +802,7 @@
 +	for (n = 0; (len = readblock(uncompressed, block_size)) != 0; n++) {
 +		lastlen = len;
 +		if (n * sizeof(*block_index) >= indexmax) {
-+			block_index = (unsigned long *) realloc(block_index,
++			block_index = (u_int32_t *) realloc(block_index,
 +							  indexmax += CHUNK);
 +			if (!block_index)
 +				quit("Realloc");
