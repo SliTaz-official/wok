@@ -1,26 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="phpvirtualbox"
-VERSION="4.0-7"
+VERSION="5.2.1"
 CATEGORY="network"
 SHORT_DESC="Virtualbox AJAX interface."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.zip"
 WEB_SITE="https://github.com/phpvirtualbox/phpvirtualbox"
-WGET_URL="http://$PACKAGE.googlecode.com/files/$TARBALL"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/${VERSION%.*}-${VERSION##*.}.tar.gz"
 
 DEPENDS="php-soap virtualbox"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/etc
-	cp -a $src $fs/usr/share/phpvirtualbox
-	cp -a $fs/usr/share/phpvirtualbox/config.php-example $fs/etc/phpvirtualbox.php
-	dos2unix $fs/etc/phpvirtualbox.php
-	ln -s /etc/phpvirtualbox.php $fs/usr/share/phpvirtualbox/config.php
-	cp -a stuff/* $fs/
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/etc
+
+	cp -a $src			$fs/usr/share/phpvirtualbox
+	cp -a $fs/usr/share/phpvirtualbox/config.php-example \
+					$fs/etc/phpvirtualbox.php
+	dos2unix			$fs/etc/phpvirtualbox.php
+	ln -s /etc/phpvirtualbox.php	$fs/usr/share/phpvirtualbox/config.php
+	cp -a stuff/*			$fs
 }
 
 post_install()
@@ -30,19 +34,25 @@ post_install()
 	chroot "$1/" VBoxManage setproperty websrvauthlibrary null 
 
 	# Configure lighttpd server
-	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]; then
-		if ! grep -q /usr/share/phpvirtualbox/ "$1/etc/lighttpd/lighttpd.conf"; then
-	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/phpvirtualbox/" => "/usr/share/phpvirtualbox/",|g' -i "$1/etc/lighttpd/lighttpd.conf"
-			if [ -z "$1" ]; then
+	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]
+	  then
+		if ! grep -q /usr/share/phpvirtualbox/ "$1/etc/lighttpd/lighttpd.conf"
+		  then
+			sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/phpvirtualbox/" => "/usr/share/phpvirtualbox/",|g' -i "$1/etc/lighttpd/lighttpd.conf"
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/lighttpd stop
 				/etc/init.d/lighttpd start
 			fi
 		fi
 	fi
+
 	# Configure apache server
-	if [ -f "$1/etc/apache/httpd.conf" ]; then
-		if [ ! -f "$1/etc/apache/conf.d/phpvirtualbox" ]; then
+	if [ -f "$1/etc/apache/httpd.conf" ]
+	  then
+		if [ ! -f "$1/etc/apache/conf.d/phpvirtualbox" ]
+		  then
 			cat > "$1/etc/apache/conf.d/phpvirtualbox" <<EOT
 <IfModule mod_alias.c>
     Alias /phpvirtualbox /usr/share/phpvirtualbox
@@ -55,7 +65,8 @@ post_install()
     Allow from all
 </DirectoryMatch>
 EOT
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/apache stop
 				/etc/init.d/apache start
