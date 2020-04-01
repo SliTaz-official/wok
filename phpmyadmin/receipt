@@ -1,33 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="phpmyadmin"
-VERSION="3.5.2"
+VERSION="5.0.2"
 CATEGORY="misc"
 SHORT_DESC="Administration of MySQL over the Web."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-PHPMYADM="phpMyAdmin-$VERSION-all-languages"
-TARBALL="$PHPMYADM.tar.bz2"
 WEB_SITE="https://www.phpmyadmin.net/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-CONFIG_FILES="/etc/phpmyadmin/config.inc.php"
-HOST_ARCH="any"
+
+SOURCE="phpMyAdmin"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://files.phpmyadmin.net/$SOURCE/$VERSION/$SOURCE-$VERSION-all-languages.tar.xz"
 
 DEPENDS="php-mysqli"
+
+CONFIG_FILES="/etc/phpmyadmin/config.inc.php"
+
+HOST_ARCH="any"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/phpmyadmin $fs/etc/phpmyadmin $fs/usr/share/applications
-	cp -a $src/. $fs/usr/share/phpmyadmin
-	ln -s /etc/phpmyadmin/config.inc.php $fs/usr/share/phpmyadmin/config.inc.php
-	cp $src/config.sample.inc.php $fs/etc/phpmyadmin/config.inc.php
-	rm -f $fs/usr/share/phpmyadmin/phpMyAdmin-$VERSION-all-languages
-	cp $stuff/phpmyadmin.desktop $fs/usr/share/applications
+	mkdir -p $fs/usr/share/phpmyadmin
+	mkdir -p $fs/etc/phpmyadmin
+	mkdir -p $fs/usr/share/applications
+
+	cp -a $src/.				$fs/usr/share/phpmyadmin
+	ln -s /etc/phpmyadmin/config.inc.php	$fs/usr/share/phpmyadmin/config.inc.php
+	cp $src/config.sample.inc.php		$fs/etc/phpmyadmin/config.inc.php
+	rm -f			$fs/usr/share/phpmyadmin/phpMyAdmin-$VERSION-all-languages
+	cp $stuff/phpmyadmin.desktop		$fs/usr/share/applications
 	chown -R www.www $fs/usr/share/phpmyadmin $fs/etc/phpmyadmin
-	chmod 700 $fs/etc/phpmyadmin
-	chmod 644 $fs/etc/phpmyadmin/config.inc.php
-	
+	chmod 700				$fs/etc/phpmyadmin
+	chmod 644				$fs/etc/phpmyadmin/config.inc.php
+
 	sed -i s'/\?>//' $fs/etc/phpmyadmin/config.inc.php
 	
 	cat <<"EOT">> $fs/etc/phpmyadmin/config.inc.php
@@ -47,20 +53,27 @@ post_install()
 	secret=$(dd if=/dev/urandom count=1 2> /dev/null | md5sum | sed 's/ .*//')
 	sed -i "s/^\(.*blowfish_secret'] = '\)'/\1$secret'/" \
 		"$1/etc/phpmyadmin/config.inc.php"
+
 	# Configure lighttpd server
-	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]; then
-		if ! grep -q /usr/share/phpmyadmin/ "$1/etc/lighttpd/lighttpd.conf"; then
+	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]
+	  then
+		if ! grep -q /usr/share/phpmyadmin/ "$1/etc/lighttpd/lighttpd.conf"
+		  then
 	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/phpmyadmin/" => "/usr/share/phpmyadmin/",|g' -i "$1/etc/lighttpd/lighttpd.conf"
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/lighttpd stop
 				/etc/init.d/lighttpd start
 			fi
 		fi
 	fi
+
 	# Configure apache server
-	if [ -f "$1/etc/apache/httpd.conf" ]; then
-		if [ ! -f "$1/etc/apache/conf.d/phpmyadmin" ]; then
+	if [ -f "$1/etc/apache/httpd.conf" ]
+	  then
+		if [ ! -f "$1/etc/apache/conf.d/phpmyadmin" ]
+		  then
 			cat > "$1/etc/apache/conf.d/phpmyadmin" <<EOT
 <IfModule mod_alias.c>
     Alias /phpmyadmin /usr/share/phpmyadmin
@@ -73,7 +86,8 @@ post_install()
     Allow from all
 </Directory>
 EOT
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/apache stop
 				/etc/init.d/apache start
