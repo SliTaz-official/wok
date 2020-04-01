@@ -1,26 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="phpsysinfo"
-VERSION="3.0.18"
+VERSION="3.3.2"
 CATEGORY="misc"
 SHORT_DESC="Displays information about your system nicely."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://phpsysinfo.sourceforge.net/"
+WEB_SITE="http://phpsysinfo.github.io/phpsysinfo/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-CONFIG_FILES="/etc/phpsysinfo.conf"
-HOST_ARCH="any"
+WGET_URL="https://github.com/rk4an/$PACKAGE/archive/v$VERSION.tar.gz"
 
 DEPENDS="php pcre-dev"
 BUILD_DEPENDS=""
 
+CONFIG_FILES="/etc/phpsysinfo.conf"
+
+HOST_ARCH="any"
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	# SliTazisation from http://enira.net/?p=61
-	sed -i "s/'-q'/'-a | grep -i pts -c'/" includes/os/class.Linux.inc.php
+	sed -i "s/'-q'/'-a | grep -i pts -c'/" \
+		includes/os/class.Linux.inc.php
 	grep -i slitaz data/distros.ini || cat >> data/distros.ini <<EOT
 [Slitaz]
 Name = "Slitaz"
@@ -33,30 +36,39 @@ EOT
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/phpsysinfo $fs/etc
-	cp -a $src/* $fs/usr/share/phpsysinfo
-	chown -R www.www $fs/usr/share/phpsysinfo
-	mv $fs/usr/share/phpsysinfo/config.php.new $fs/etc/phpsysinfo.conf
-	chmod 600 $fs/etc/phpsysinfo.conf
-	ln -s /etc/phpsysinfo.conf $fs/usr/share/phpsysinfo/config.php
+	mkdir -p $fs/usr/share/phpsysinfo
+	mkdir -p $fs/etc
+
+	cp -a $src/*			$fs/usr/share/phpsysinfo
+	chown -R www.www		$fs/usr/share/phpsysinfo
+	mv $fs/usr/share/phpsysinfo/phpsysinfo.ini.new \
+					$fs/etc/phpsysinfo.conf
+	chmod 600			$fs/etc/phpsysinfo.conf
+	ln -s /etc/phpsysinfo.conf	$fs/usr/share/phpsysinfo/config.php
 }
 
 post_install()
 {
 	# Configure lighttpd server
-	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]; then
-		if ! grep -q /usr/share/phpsysinfo/ "$1/etc/lighttpd/lighttpd.conf"; then
-	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/phpsysinfo/" => "/usr/share/phpsysinfo/",|g' -i "$1/etc/lighttpd/lighttpd.conf"
-			if [ -z "$1" ]; then
+	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]
+	  then
+		if ! grep -q /usr/share/phpsysinfo/ "$1/etc/lighttpd/lighttpd.conf"
+		  then
+			sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/phpsysinfo/" => "/usr/share/phpsysinfo/",|g' -i "$1/etc/lighttpd/lighttpd.conf"
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/lighttpd stop
 				/etc/init.d/lighttpd start
 			fi
 		fi
 	fi
+
 	# Configure apache server
-	if [ -f "$1/etc/apache/httpd.conf" ]; then
-		if [ ! -f "$1/etc/apache/conf.d/phpsysinfo" ]; then
+	if [ -f "$1/etc/apache/httpd.conf" ]
+	  then
+		if [ ! -f "$1/etc/apache/conf.d/phpsysinfo" ]
+		  then
 			cat > "$1/etc/apache/conf.d/phpsysinfo" <<EOT
 <IfModule mod_alias.c>
     Alias /phpsysinfo /usr/share/phpsysinfo
@@ -69,7 +81,8 @@ post_install()
     Allow from all
 </DirectoryMatch>
 EOT
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/apache stop
 				/etc/init.d/apache start
