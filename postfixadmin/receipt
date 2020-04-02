@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="postfixadmin"
-VERSION="3.2"
+VERSION="3.2.3"
 CATEGORY="network"
 SHORT_DESC="Postfix web administration."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -11,53 +11,66 @@ WEB_SITE="http://postfixadmin.sourceforge.net/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="php php-mysqli php-imap postfix mysql_or_postgresql"
+DEPENDS="mysql_or_postgresql php php-imap php-mysqli postfix"
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/postfixadmin \
-		$fs/etc/postfixadmin \
-		$fs/usr/share/doc/postfixadmin \
-		$fs/usr/lib/postfixadmin 
-		
-	cp -a $src/* $fs/usr/share/postfixadmin/
-	mv $fs/usr/share/postfixadmin/config.inc.php $fs/etc/postfixadmin
-	ln -s /etc/postfixadmin/config.inc.php $fs/usr/share/postfixadmin/config.inc.php
-	sed -i 's/false/true/' $fs/etc/postfixadmin/config.inc.php
-	
+	mkdir -p $fs/usr/share/postfixadmin
+	mkdir -p $fs/etc/postfixadmin
+	mkdir -p $fs/usr/share/doc/postfixadmin
+	mkdir -p $fs/usr/lib/postfixadmin
+
+	cp -a $src/*		$fs/usr/share/postfixadmin/
+	mv $fs/usr/share/postfixadmin/config.inc.php \
+				$fs/etc/postfixadmin
+	ln -s /etc/postfixadmin/config.inc.php \
+				$fs/usr/share/postfixadmin/config.inc.php
+	sed -i 's/false/true/'	$fs/etc/postfixadmin/config.inc.php
+
 	# Remove unwanted files
-	rm -rf $fs/usr/share/postfixadmin/debian
-	
-	# Move docs
-	mv $fs/usr/share/postfixadmin/*.TXT $fs/usr/share/doc/postfixadmin
-	mv $fs/usr/share/postfixadmin/DOCUMENTS $fs/usr/share/doc/postfixadmin
-	mv $fs/usr/share/postfixadmin/ADDITIONS/* $fs/usr/lib/postfixadmin
-	mv $fs/usr/share/postfixadmin/VIRTUAL_VACATION/*.pl $fs/usr/lib/postfixadmin
-	mv $fs/usr/share/postfixadmin/VIRTUAL_VACATION/ $fs/usr/share/doc/postfixadmin
-		
-	rm -rf $fs/usr/share/postfixadmin/ADDITIONS
-	
+	rm -rf			$fs/usr/share/postfixadmin/debian
+
+	# Move documentation
+	mv $fs/usr/share/postfixadmin/*.TXT \
+				$fs/usr/share/doc/postfixadmin
+	mv $fs/usr/share/postfixadmin/DOCUMENTS \
+				$fs/usr/share/doc/postfixadmin
+	mv $fs/usr/share/postfixadmin/ADDITIONS/* \
+				$fs/usr/lib/postfixadmin
+	mv $fs/usr/share/postfixadmin/VIRTUAL_VACATION/*.pl \
+				$fs/usr/lib/postfixadmin
+	mv $fs/usr/share/postfixadmin/VIRTUAL_VACATION/ \
+				$fs/usr/share/doc/postfixadmin
+
+	rm -rf			$fs/usr/share/postfixadmin/ADDITIONS
+
 	# Fix group
-	chown -R root.root $fs/usr/share/postfixadmin/
+	chown -R root.root	$fs/usr/share/postfixadmin/
 }
 
 post_install()
 {
 	# Configure lighttpd server
-	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]; then
-		if ! grep -q /usr/share/postfixadmin/ "$1/etc/lighttpd/lighttpd.conf"; then
-	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/postfixadmin/" => "/usr/share/postfixadmin/",|g' -i "$1/etc/lighttpd/lighttpd.conf"
-			if [ -z "$1" ]; then
+	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]
+	  then
+		if ! grep -q /usr/share/postfixadmin/ "$1/etc/lighttpd/lighttpd.conf"
+		  then
+			sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/postfixadmin/" => "/usr/share/postfixadmin/",|g' -i "$1/etc/lighttpd/lighttpd.conf"
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/lighttpd stop
 				/etc/init.d/lighttpd start
 			fi
 		fi
 	fi
+
 	# Configure apache server
-	if [ -f "$1/etc/apache/httpd.conf" ]; then
-		if [ ! -f "$1/etc/apache/conf.d/postfixadmin" ]; then
+	if [ -f "$1/etc/apache/httpd.conf" ]
+	  then
+		if [ ! -f "$1/etc/apache/conf.d/postfixadmin" ]
+		  then
 			cat > "$1/etc/apache/conf.d/postfixadmin" <<EOT
 <IfModule mod_alias.c>
     Alias /postfixadmin /usr/share/postfixadmin
@@ -70,7 +83,8 @@ post_install()
     Allow from all
 </DirectoryMatch>
 EOT
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/apache stop
 				/etc/init.d/apache start
