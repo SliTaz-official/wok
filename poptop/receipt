@@ -1,20 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="poptop"
-VERSION="1.3.4"
+VERSION="1.4.0"
 CATEGORY="network"
+TAGS="vpn tunnel"
 SHORT_DESC="Microsoft Point-to-Point Tunneling Protocol server."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="http://poptop.sourceforge.net/"
+
 SOURCE="pptpd"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://poptop.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="vpn tunnel"
-#WANTED="ppp"		# need VERSION
-CONFIG_FILES="/etc/pptpd.conf /etc/ppp/options.pptpd"
 
 DEPENDS="ppp bcrelay"
+BUILD_DEPENDS="ppp-dev"
+#WANTED="ppp"		# need VERSION
+
+CONFIG_FILES="/etc/pptpd.conf /etc/ppp/options.pptpd"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -23,8 +26,10 @@ compile_rules()
 	sed -i "s/#define VERSION.*/#define VERSION \"${PPPVER:-2.4.3}\"/" \
 		plugins/patchlevel.h
 	sed -i "s|^LIBDIR.*|LIBDIR=$DESTDIR/usr/lib/pptpd|" plugins/Makefile
-	./configure --prefix=/usr \
-		--mandir=/usr/share/man \
+
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -33,13 +38,21 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/ppp $fs/etc/init.d $install/usr/share/doc
-	cp $src/README* $src/NEWS $src/samples/* $src/tools/* $src/html/* \
-		$src/AUTHORS $install/usr/share/doc
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	rm -f $fs/usr/sbin/bcrelay
-	cp $src/samples/pptpd.conf $fs/etc
-	cp $src/samples/options.pptpd $fs/etc/ppp
-	ln -s daemon $fs/etc/init.d/pptpd
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc/ppp
+	mkdir -p $fs/etc/init.d
+	mkdir -p $install/usr/share/doc
+
+	cp $src/README* 		$install/usr/share/doc
+	cp $src/AUTHORS			$install/usr/share/doc
+	cp $src/NEWS			$install/usr/share/doc
+	cp $src/samples/*		$install/usr/share/doc
+	cp $src/tools/*			$install/usr/share/doc
+	cp $src/html/*			$install/usr/share/doc
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/usr/sbin		$fs/usr
+	rm -f				$fs/usr/sbin/bcrelay
+	cp $src/samples/pptpd.conf	$fs/etc
+	cp $src/samples/options.pptpd	$fs/etc/ppp
+	ln -s daemon			$fs/etc/init.d/pptpd
 }
