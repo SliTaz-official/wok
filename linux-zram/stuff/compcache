@@ -16,13 +16,17 @@ case "$1" in
       _ '%s is already running.' $NAME
       exit 1
     fi
+    if [ -z "$SIZE" -o "$SIZE" = "0%" ]; then
+      _ '%s disabled in %s.' $NAME '/etc/compcache.conf'
+      exit 1
+    fi
     action 'Loading module...'
     devices=$(awk '/cpu cores/{c=$4} /processor/{p++}
 	END { if (c>0) p=c; if (p==0) p++; print p }' /proc/cpuinfo)
     modprobe zram num_devices=$devices &&
-    [ -n "$SIZE_KB" ] && for i in $(seq 0 $(($devices-1))); do
-	awk "END { print $SIZE_KB * 1024 / $devices }" < /dev/null \
-		> /sys/block/zram$i/disksize
+    for i in $(seq 0 $(($devices-1))); do
+	awk "/MemTotal/ { print \$2 * 1024 * ${SIZE%\%} * / 100 / $devices }" \
+		< /proc/meminfo > /sys/block/zram$i/disksize
     done
     status
 

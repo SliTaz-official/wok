@@ -33,15 +33,10 @@ genpkg_rules()
 # Post install/remove commands for Tazpkg.
 post_install()
 {
-	chroot "$root/" depmod -a $VERSION-slitaz &&
-	RAM=`cat /proc/meminfo | grep MemTotal | sed s/[^0-9]//g` &&
-	echo "SIZE_KB="$(($RAM/2)) > /etc/compcache.conf
-	cat <<EOT
-
-You can add compressed swap according /etc/compcache.conf configuration with:
-# /etc/init.d/compcache start
-Or add compcache in the RUN_DAEMONS list of /etc/rcS.conf.
-EOT
+	chroot "$root/" depmod -a $VERSION-slitaz
+	grep ^RUN_DAEMONS "$1/etc/rcS.conf" | grep -q "compcache" || sed -i \
+	  's/RUN_DAEMONS="/RUN_DAEMONS="compcache /' "$1/etc/rcS.conf"
+	[ -z "$1" ] && /etc/init.d/compcache start
 }
 
 post_remove()

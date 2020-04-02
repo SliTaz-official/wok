@@ -21,8 +21,7 @@ genpkg_rules()
 	install=$install/linux64
 	path=lib/modules/$VERSION-slitaz64/kernel
 	mkdir -p $fs/$path $fs/etc/init.d
-	export src
-	export install
+	export src install
 	$wanted_stuff/list_modules.sh drivers/block/zram | \
 	while read module; do
 		dir=$path/$(dirname $module)
@@ -37,12 +36,9 @@ genpkg_rules()
 post_install()
 {
 	chroot "$root/" depmod -a $VERSION-slitaz64
-	cat <<EOT
-
-You can add compressed swap according /etc/compcache.conf configuration with:
-# /etc/init.d/compcache start
-Or add compcache in the RUN_DAEMONS list of /etc/rcS.conf.
-EOT
+	grep ^RUN_DAEMONS "$1/etc/rcS.conf" | grep -q "compcache" || sed -i \
+	  's/RUN_DAEMONS="/RUN_DAEMONS="compcache /' "$1/etc/rcS.conf"
+	[ -z "$1" ] && /etc/init.d/compcache start
 }
 
 post_remove()
