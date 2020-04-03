@@ -1,24 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="pure-ftpd-pam"
-VERSION="1.0.48"
+VERSION="1.0.49"
 CATEGORY="network"
-SHORT_DESC="A secure FTP daemon using PAM"
+SHORT_DESC="A secure FTP daemon using PAM."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="BSD"
+WEB_SITE="https://www.pureftpd.org/project/pure-ftpd"
+
 SOURCE="pure-ftpd"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="https://www.pureftpd.org/project/pure-ftpd"
 WGET_URL="http://download.pureftpd.org/pub/pure-ftpd/releases/$TARBALL"
-PROVIDE="pure-ftpd:pam"
 
-DEPENDS="pam attr libcap libssl"
-BUILD_DEPENDS="pam pam-dev openssl-dev"
+PROVIDE="pure-ftpd:pam"
+DEPENDS="attr libcap libssl pam"
+BUILD_DEPENDS="openssl-dev pam pam-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr --with-pam $CONFIGURE_ARGS &&
+	./configure		\
+		--prefix=/usr	\
+		--with-pam	\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -26,16 +30,19 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/init.d
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	install -g root -o root -m 0755 $WOK/$SOURCE/stuff/pure-ftpd $fs/etc/init.d
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc/init.d
+
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $install/usr/sbin	$fs/usr
+	install -g root -o root -m 0755 $WOK/$SOURCE/stuff/pure-ftpd \
+				$fs/etc/init.d
 }
 
 post_install()
 {
 	echo ""
-	echo -e "\nTo starts $PACKAGE server you can run :\n"
+	echo -e "\nTo start $PACKAGE server you can run :\n"
 	echo "/etc/init.d/$PACKAGE start"
 	echo -e "Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf\n"
 }
