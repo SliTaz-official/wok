@@ -1,32 +1,32 @@
 # SliTaz package receipt.
 
 PACKAGE="pycairo"
-VERSION="1.10.0"
+VERSION="1.18.2"
 CATEGORY="development"
 SHORT_DESC="Python bindings for the cairo graphics library."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="MPL LGPL2.1"
-SOURCE="py2cairo"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
 WEB_SITE="https://www.cairographics.org/pycairo/"
-WGET_URL="https://www.cairographics.org/releases/$TARBALL"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/pygobject/$PACKAGE/archive/v$VERSION/$TARBALL"
 
 DEPENDS="cairo expat fontconfig freetype xorg-libX11 xorg-libXau \
-xorg-libXdmcp xorg-libXrender xcb-util"
-BUILD_DEPENDS="pkg-config cairo cairo-dev xorg-xproto python-dev"
+	xorg-libXdmcp xorg-libXrender xcb-util"
+BUILD_DEPENDS="cairo cairo-dev pkg-config python-dev xorg-xproto"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./waf configure --prefix=/usr &&
-	./waf build &&
-	./waf install --destdir=$DESTDIR
+	python setup.py build &&
+	python setup.py install --root=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	PYTHON_LIB=python$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
+
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/$PYTHON_LIB $fs/usr/lib
+	cp -a $install/usr/lib/$PYTHON_LIB	$fs/usr/lib
 }
