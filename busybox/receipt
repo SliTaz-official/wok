@@ -108,10 +108,11 @@ compile_rules()
 			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
 			sed -i 's|uclibc-i486-||' .config
 			make oldconfig | sed 's|ERROR|error|' &&
-			make CC=musl-gcc || return 1
-			mv busybox busybox-musl
-			mv busybox_unstripped.map busybox-musl.map
-			mv -f docs/busybox.1 docs/busybox.static.1
+			if make CC=musl-gcc ; then
+				mv busybox busybox-musl
+				mv busybox_unstripped.map busybox-musl.map
+				mv -f docs/busybox.1 docs/busybox.static.1
+			fi
 		    fi
 
 		    if [ -x /usr/lib/diet/bin/diet ]; then
@@ -120,10 +121,11 @@ compile_rules()
 			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
 			sed -i 's|uclibc-i486-||;s|CFLAGS="|&-D_BSD_SOURCE |;s|LDFLAGS="|&-Wl,--allow-multiple-definition |;s|LDLIBS="|&compat rpc |' .config
 			make oldconfig | sed 's|ERROR|error|' &&
-			make CC="/usr/lib/diet/bin/diet gcc" || return 1
-			mv busybox busybox-diet
-			mv busybox_unstripped.map busybox-diet.map
-			mv -f docs/busybox.1 docs/busybox.static.1
+			if make CC="/usr/lib/diet/bin/diet gcc" ; then
+				mv busybox busybox-diet
+				mv busybox_unstripped.map busybox-diet.map
+				mv -f docs/busybox.1 docs/busybox.static.1
+			fi
 		    fi
 
 		    # prepare ssfs-busybox package
