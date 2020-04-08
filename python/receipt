@@ -1,31 +1,37 @@
 # SliTaz package receipt.
 
 PACKAGE="python"
-VERSION="2.7.15"
+VERSION="2.7.17"
 CATEGORY="development"
 SHORT_DESC="The Python programming language."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="PSL"
+WEB_SITE="https://www.python.org/"
+
 SOURCE="Python"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="https://www.python.org/"
 WGET_URL="https://www.python.org/ftp/python/$VERSION/$TARBALL"
+
+RELATED="python-dev python-idle" # versions must match
+DEPENDS="bzlib gdbm libffi ncursesw openssl readline sqlite zlib"
+BUILD_DEPENDS="bzip2-dev db-dev gdbm-dev libffi-dev ncursesw-dev 
+	openssl-dev readline-dev sqlite-dev tcl-dev tk-dev zlib-dev"
+
 HOST_ARCH="i486 arm"
 
-RELATED="python-dev python-idle" # version must match
-DEPENDS="openssl bzlib readline sqlite zlib ncursesw gdbm libffi"
-BUILD_DEPENDS="openssl-dev bzip2-dev readline-dev sqlite-dev zlib-dev \
-ncursesw-dev tcl-dev tk-dev db-dev gdbm-dev wget libffi-dev"
+# @maintainer: Please update also: python-idle
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# Temporary workaround for FS#22322
 	# See http://bugs.python.org/issue10835 for upstream report
-	sed -i "/progname =/s/python/python${_pybasever}/" Python/pythonrun.c
+	sed -i "/progname =/s/python/python${_pybasever}/" \
+		Python/pythonrun.c
 
 	# Enable built-in SQLite3 module to load extensions (fix FS#22122)
-	sed -i "/SQLITE_OMIT_LOAD_EXTENSION/d" setup.py
+	sed -i "/SQLITE_OMIT_LOAD_EXTENSION/d" \
+		setup.py
 
 	case "$ARCH" in
 		arm*)
@@ -36,15 +42,16 @@ compile_rules()
 			cat >> $CONFIG_SITE << EOT
 ac_cv_have_long_long_format=yes
 EOT
-			./configure CC=gcc \
-				--disable-ipv6 \
-				--build=i486-slitaz-linux \
+			./configure CC=gcc			\
+				--disable-ipv6			\
+				--build=i486-slitaz-linux	\
 				--host=${BUILD_SYSTEM} && 
 			make python Parser/pgen &&
 			mv python hostpython &&
 			mv Parser/pgen Parser/hostpgen || exit 1
 			make distclean
 			rm -f $CONFIG_SITE
+
 			# Second pass for host tools
 			. /etc/slitaz/cook.conf
 			#patch -p1 < $stuff/python-2.7.3-xcompile.patch || exit 1
@@ -56,25 +63,27 @@ ac_cv_buggy_getaddrinfo=no
 ac_cv_file__dev_ptmx=yes
 ac_cv_file__dev_ptc=no
 EOT
-			./configure CC=${HOST_SYSTEM}-gcc \
-				--disable-ipv6 \
-				--enable-shared \
-				--with-system-ffi \
+
+			./configure CC=${HOST_SYSTEM}-gcc	\
+				--disable-ipv6			\
+				--enable-shared			\
+				--with-system-ffi		\
 				${CONFIGURE_ARGS} &&
-			make \
-				PYTHON_FOR_BUILD=${src}/hostpython \
-				HOSTPYTHON=${src}/hostpython \
-				HOSTPGEN=${src}/Parser/hostpgen \
-				CROSS_COMPILE_TARGET=yes \
-				HOSTARCH=${HOST_SYSTEM} \
+			make						\
+				PYTHON_FOR_BUILD=${src}/hostpython	\
+				HOSTPYTHON=${src}/hostpython		\
+				HOSTPGEN=${src}/Parser/hostpgen		\
+				CROSS_COMPILE_TARGET=yes		\
+				HOSTARCH=${HOST_SYSTEM}			\
 				BUILDARCH=${BUILD_SYSTEM} || exit 1
-			make DESTDIR=$DESTDIR install || exit 1 ;;
+			make	DESTDIR=$DESTDIR install || exit 1 ;;
 		i?86)
-			./configure \
-				--enable-shared \
-				--build=${HOST_SYSTEM} \
+			./configure			\
+				--enable-shared		\
+				--build=${HOST_SYSTEM}	\
 				--host=${HOST_SYSTEM} &&
-				make &&	make DESTDIR=$DESTDIR install ;;
+				make &&
+				make DESTDIR=$DESTDIR install ;;
 	esac
 }
 
@@ -83,13 +92,16 @@ genpkg_rules()
 {
 	python_version=${VERSION:0:3}
 	mkdir -p $fs/usr/include/${PACKAGE}$python_version
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
+
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $install/usr/lib	$fs/usr
+
 	# needed for mercurial to work now
 	cp -a $install/usr/include/${PACKAGE}$python_version/pyconfig.h \
-		$fs/usr/include/${PACKAGE}$python_version
-	rm -f $fs/usr/bin/*-config
+				$fs/usr/include/${PACKAGE}$python_version
+	rm -f			$fs/usr/bin/*-config
+
 	# Split IDLE with TK dep
-	rm -f $fs/usr/bin/idle
-	rm -rf $fs/usr/lib/python2.7/idlelib
+	rm -f			$fs/usr/bin/idle
+	rm -rf			$fs/usr/lib/python2.7/idlelib
 }
