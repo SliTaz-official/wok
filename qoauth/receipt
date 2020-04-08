@@ -1,19 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="qoauth"
-VERSION="1.0"
+VERSION="2.0.0"
 CATEGORY="development"
 SHORT_DESC="OAuth support for Qt applications."
 MAINTAINER="ben@seawolfsanctuary.com"
 LICENSE="LGPL3"
-TARBALL="$PACKAGE-$VERSION-src.tar.bz2"
-WEB_SITE="https://github.com/ayoy/$PACKAGE"
-WGET_URL="http://files.ayoy.net/$PACKAGE/release/$VERSION/src/$TARBALL"
+WEB_SITE="https://github.com/ayoy/qoauth"
 
-DEPENDS="glibc-locale libQtCore libQtGui libQtNetwork libQtSvg libQtXml \
-libQtDesigner libQtScript libQt3Support libQtClucene libQtDBus libQtHelp \
-libQtOpenGL libQtSql libQtWebkit"
-BUILD_DEPENDS="qmake qca-dev xorg-libX11-dev dbus-dev Qt4-dev slitaz-toolchain"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/v$VERSION.tar.gz"
+
+DEPENDS="glibc-locale libQt3Support libQtClucene libQtCore libQtDBus libQtDesigner 
+	libQtGui libQtHelp libQtNetwork libQtOpenGL libQtScript libQtSql libQtSvg 
+	libQtWebkit libQtXml"
+BUILD_DEPENDS="dbus-dev qca-dev qmake Qt4-dev slitaz-toolchain xorg-libX11-dev"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -21,8 +22,6 @@ compile_rules()
 #	echo -n "Linking..."
 #	ln -s $src-src $src
 #	status
-
-	cd $src
 
 	qmake PREFIX="/usr"
 #	chmod +x configure
@@ -82,32 +81,37 @@ ENDOFPATCH
 
 status
 
-	if [ -f /usr/include/QtOAuth ] || [ -d /usr/include/QtOAuth ] ; then
+	if [ -f /usr/include/QtOAuth ] || [ -d /usr/include/QtOAuth ]
+	  then
 		echo -n "Removing QtOAuth placeholder... "
 		rm -rf /usr/include/QtOAuth/
 		status && echo
 	fi
 
-	make $MAKEFLAGS && make DESTDIR=$DESTDIR install
+	make $MAKEFLAGS &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	for DIRECTORY in lib include ; do
-		cp -a $src/$DIRECTORY $fs/usr
-	done
-	cp  $src/src/*.h $fs/usr/include
 
-	mv $fs/usr/include/QtOAuth $fs/usr/include/QtOAuth.bak
+	for DIRECTORY in lib include
+	  do
+		cp -a $src/$DIRECTORY	$fs/usr
+	  done
+	cp  $src/src/*.h		$fs/usr/include
+
+	mv $fs/usr/include/QtOAuth	$fs/usr/include/QtOAuth.bak
 	mkdir $fs/usr/include/QtOAuth/
-	mv $fs/usr/include/interface.h $fs/usr/include/QtOAuth/interface.h
-	cp $fs/usr/include/QtOAuth/interface.h $fs/usr/include/interface.h
-	mv $fs/usr/include/QtOAuth.bak $fs/usr/include/QtOAuth/QtOAuth
+	mv $fs/usr/include/interface.h	$fs/usr/include/QtOAuth/interface.h
+	cp $fs/usr/include/QtOAuth/interface.h \
+					$fs/usr/include/interface.h
+	mv $fs/usr/include/QtOAuth.bak	$fs/usr/include/QtOAuth/QtOAuth
 
-	mkdir -p $fs/usr/share/qt/mkspecs/features && \
-	cp $src/oauth.prf $fs/usr/share/qt/mkspecs/features/oauth.prf
+	mkdir -p $fs/usr/share/qt/mkspecs/features &&
+	cp $src/oauth.prf		$fs/usr/share/qt/mkspecs/features/oauth.prf
 
 	# Copy .desktop file:
 #	cp -a $WOK/$PACKAGE/stuff/* $fs/usr
@@ -115,7 +119,8 @@ genpkg_rules()
 
 pre_install()
 {
-	if [ -f /usr/include/QtOAuth ] || [ -d /usr/include/QtOAuth ] ; then
+	if [ -f /usr/include/QtOAuth ] || [ -d /usr/include/QtOAuth ]
+	  then
 		echo -n "Removing QtOAuth placeholder... "
 		rm -rf /usr/include/QtOAuth/
 		status && echo
