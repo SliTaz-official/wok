@@ -1,30 +1,34 @@
 # SliTaz package receipt.
 
 PACKAGE="rrdtool"
-VERSION="1.6.0"
+VERSION="1.7.2"
 CATEGORY="misc"
+TAGS="logs"
 SHORT_DESC="Data logging and graphing system for time series data."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://oss.oetiker.ch/$PACKAGE"
-WGET_URL="$WEB_SITE/pub/$TARBALL"
+WEB_SITE="https://oss.oetiker.ch/rrdtool/"
 
-DEPENDS="zlib freetype libpng libxml2 fontconfig pixman cairo glib pango \
-xcb-util xorg-base-fonts libwrap"
-BUILD_DEPENDS="perl pkg-config zlib-dev freetype-dev libpng-dev libxml2-dev \
-fontconfig-dev pixman-dev cairo-dev glib-dev pango-dev python-dev perl groff \
-libwrap-dev tcl-dev lua-dev ruby"
-TAGS="logs"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}pub/$TARBALL"
+
+DEPENDS="cairo fontconfig freetype glib libpng libwrap libxml2 pango pixman 
+	xcb-util xorg-base-fonts zlib"
+BUILD_DEPENDS="cairo-dev fontconfig-dev freetype-dev glib-dev groff 
+	libpng-dev libwrap-dev libxml2-dev lua-dev pango-dev perl pixman-dev 
+	pkg-config python-dev python-setuptools ruby tcl-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lz"
-	./configure --prefix=/usr \
-		--infodir=/usr/share/info \
-		--enable-perl-site-install \
-		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--enable-perl-site-install	\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -33,8 +37,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 	# librrd_th.so has gone since librrd.so is thread safe
-	ln -s librrd.so $fs/usr/lib/librrd_th.so
-	cp -a $install/usr/bin $fs/usr
+	ln -s librrd.so			$fs/usr/lib/librrd_th.so
+	cp -a $install/usr/bin		$fs/usr
 }
