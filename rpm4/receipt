@@ -1,36 +1,39 @@
 # SliTaz package receipt.
 
 PACKAGE="rpm4"
-VERSION="4.10.0"
+VERSION="4.15.1"
 CATEGORY="system-tools"
-SHORT_DESC="RPM Package Manager"
+TAGS="package-manager"
+SHORT_DESC="RPM Package Manager."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://www.rpm.org/"
+
 SOURCE="rpm"
 TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="http://www.rpm.org/"
-WGET_URL="http://www.rpm.org/releases/rpm-${VERSION:0:4}.x/$TARBALL"
-TAGS="package-manager"
+WGET_URL="http://ftp.rpm.org/releases/rpm-${VERSION%.*}.x/$TARBALL"
 
-DEPENDS="popt beecrypt bzlib expat sqlite zlib gcc-lib-base neon libkrb5 \
-libcomerr3 nss nspr db liblzma libmagic"
-BUILD_DEPENDS="beecrypt beecrypt-dev popt-dev gettext zlib-dev python-dev \
-nss-dev nspr-dev db-dev liblzma liblzma-dev libmagic-dev"
+DEPENDS="beecrypt bzlib db expat gcc-lib-base libcomerr3 libkrb5 
+	libmagic liblzma neon nspr nss popt sqlite zlib"
+BUILD_DEPENDS="beecrypt-dev db-dev gettext libarchive-dev liblzma 
+	liblzma-dev libmagic-dev nspr-dev nss-dev popt-dev python-dev 
+	zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	CPPFLAGS="$CPPFLAGS -I/usr/include/nspr -I/usr/include/nss" ./configure \
-		--prefix=/usr  \
-		--infodir=/usr/share/info \
-		--with-selinux=no \
-		--with-lua=no \
-		--with-dmalloc=no \
-		--with-efence=no \
-		--with-external-db \
-		--localstatedir=/var \
-		--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	CPPFLAGS="$CPPFLAGS -I/usr/include/nspr -I/usr/include/nss" \
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--with-selinux=no		\
+		--with-lua=no			\
+		--with-dmalloc=no		\
+		--with-efence=no		\
+		--with-external-db		\
+		--localstatedir=/var		\
+		--mandir=/usr/share/man		\
+		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
 	make DESTDIR=$DESTDIR install
 }
@@ -48,24 +51,28 @@ genpkg_rules()
 		$fs/usr/src/redhat/SPECS \
 		$fs/usr/src/redhat/SRPMS
 
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/bin/* $fs/usr/bin
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/rpm $fs/usr/lib
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/bin/*		$fs/usr/bin
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/rpm	$fs/usr/lib
 }
 
 post_install()
 {
 	cmd=$(readlink $root/bin/rpm)
-	if [ "$cmd" != '/usr/bin/rpm' ]; then
+	if [ "$cmd" != '/usr/bin/rpm' ]
+	  then
 		echo ''
 		echo "**** Actual RPM link : $cmd"
 		echo ''
-		echo -n 'Do you want rpm for /bin/rpm (Y/n) ? : '; read -t 30 anser
-		if [ "$anser" != 'n' ]; then
+		echo -n 'Do you want rpm for /bin/rpm (Y/n) ? : '
+		read -t 30 anser
+		if [ "$anser" != 'n' ]
+		  then
 			echo ''
 			action 'Removing rpm link to make a new one pointing on /usr/bin/rpm...'
-			rm $root/bin/rpm && ln -sf $root/usr/bin/rpm $root/bin/rpm
+			rm $root/bin/rpm &&
+			ln -sf $root/usr/bin/rpm $root/bin/rpm
 			status
 		else
 			echo ''
@@ -79,7 +86,8 @@ post_install()
 
 pre_remove()
 {
-	if [ -d "$1/var/lib/rpm" ]; then
+	if [ -d "$1/var/lib/rpm" ]
+	  then
 		rm -f "$1"/var/lib/rpm/*
 	fi
 }
@@ -87,7 +95,8 @@ pre_remove()
 post_remove()
 {
 	cmd=$(readlink "$1/bin/rpm")
-	if [ "$cmd" != '/bin/rpm' ]; then
+	if [ "$cmd" != '/bin/rpm' ]
+	  then
 		newline
 		action 'Restore applets from busybox...'
 		ln -sf /bin/busybox "$1/bin/rpm"
