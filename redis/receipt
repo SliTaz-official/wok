@@ -1,21 +1,29 @@
 # SliTaz package receipt.
 
 PACKAGE="redis"
-VERSION="2.8.19"
+VERSION="5.0.8"
 CATEGORY="database"
-SHORT_DESC="Redis is an open source, BSD licensed, advanced key-value cache and store"
+TAGS="database"
+SHORT_DESC="An open source, BSD licensed, advanced key-value cache and store."
 MAINTAINER="nneul@neulinger.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://redis.io/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://download.redis.io/releases/$TARBALL"
-TAGS="database"
-BUILD_DEPENDS="libxslt"
+
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="gcc83 libxslt"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	make PREFIX=/usr
+	export	LDFLAGS="$LDFLAGS -latomic"
+
+	make			\
+		CC=gcc-83	\
+		CXX=g++-83	\
+		PREFIX=/usr
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -23,10 +31,11 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
 	mkdir -p $fs/etc
-	cp -a $src/src/redis-cli $fs/usr/bin
-	cp -a $src/src/redis-server $fs/usr/bin
-	cp -a $src/src/redis-benchmark $fs/usr/bin
-	cp -a $src/src/redis-check-dump $fs/usr/bin
-	cp -a $src/src/redis-check-aof $fs/usr/bin
-	cp -a $src/redis.conf $fs/etc
+
+	cp -a $src/src/redis-cli	$fs/usr/bin
+	cp -a $src/src/redis-server	$fs/usr/bin
+	cp -a $src/src/redis-benchmark	$fs/usr/bin
+	cp -a $src/src/redis-check-rdb	$fs/usr/bin
+	cp -a $src/src/redis-check-aof	$fs/usr/bin
+	cp -a $src/redis.conf		$fs/etc
 }
