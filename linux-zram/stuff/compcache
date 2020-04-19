@@ -21,8 +21,8 @@ case "$1" in
       exit 1
     fi
     action 'Loading module...'
-    devices=$(awk '/cpu cores/{c=$4} /processor/{p++}
-	END { if (c>0) p=c; if (p==0) p++; print p }' /proc/cpuinfo)
+    devices=$(awk '/cpu cores/{c=$4} /processor/{p++} /siblings/{s=$3}
+	END { if (c*s>0) p/=s/c; if (p==0) p++; print p}' /proc/cpuinfo)
     modprobe zram num_devices=$devices &&
     for i in $(seq 0 $(($devices-1))); do
 	awk "/MemTotal/ { print \$2 * 1024 * ${SIZE%\%} / 100 / $devices }" \
