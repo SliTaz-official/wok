@@ -1,20 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="smplayer"
-VERSION="19.10.0"
+VERSION="20.4.2"
 CATEGORY="multimedia"
-SHORT_DESC="QT-based front-end for MPlayer or mpv"
+TAGS="player audio video movie"
+SHORT_DESC="QT-based front-end for MPlayer or mpv."
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL2"
+WEB_SITE="https://www.smplayer.info/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://smplayer.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="player audio video movie"
 
-DEPENDS="mplayer-cli libQtCore libQtGui libQtXml libQtScript libQtDBus"
-BUILD_DEPENDS="Qt4-dev qmake"
 SUGGESTED="smplayer-themes mpv"
-
+DEPENDS="libQtCore libQtDBus libQtGui libQtScript libQtXml mplayer-cli"
+BUILD_DEPENDS="Qt4-dev qmake"
 
 GENERIC_MENUS="no"
 
@@ -22,7 +22,8 @@ GENERIC_MENUS="no"
 compile_rules()
 {
 	# Some default setting incompatible with minimal mplayer
-	sed '/use_ass_subtitles/s/true/false/' -i src/preferences.cpp
+	sed -i '/use_ass_subtitles/s/true/false/' \
+		src/preferences.cpp
 	make PREFIX=/usr &&
 	make PREFIX=/usr DESTDIR=$DESTDIR install
 }
@@ -31,17 +32,20 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/applications
-	cp -a $install/usr/bin $fs/usr
-	cp -fa $install/usr/share/applications/* $fs/usr/share/applications
-	cp -a $install/usr/share/$PACKAGE $fs/usr/share
-	cp -a $install/usr/share/icons $fs/usr/share
-	rm $fs/usr/share/$PACKAGE/translations/*
+
+	cp -a $install/usr/bin				$fs/usr
+	cp -fa $install/usr/share/applications/*	$fs/usr/share/applications
+	cp -a $install/usr/share/$PACKAGE		$fs/usr/share
+	cp -a $install/usr/share/icons			$fs/usr/share
+	rm						$fs/usr/share/$PACKAGE/translations/*
 
 	for i in de en_US es fr it pt_BR ru_RU
-	do cp -a $install/usr/share/$PACKAGE/translations/smplayer_$i.qm \
-		$fs/usr/share/$PACKAGE/translations/
-	done
-	for size in 64 128 192 256 512 scalable; do
+	  do
+		cp -a $install/usr/share/$PACKAGE/translations/smplayer_$i.qm \
+			$fs/usr/share/$PACKAGE/translations/
+	  done
+	for size in 64 128 192 256 512 scalable
+	  do
 		rm -rf $fs/usr/share/icons/hicolor/${size}*
-	done
+	  done
 }
