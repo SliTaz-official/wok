@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="shared-mime-info"
-VERSION="1.14"
+VERSION="1.15"
 CATEGORY="system-tools"
 SHORT_DESC="Core database of common types and the *update-mime-database*."
 MAINTAINER="pankso@slitaz.org"
@@ -10,10 +10,11 @@ WEB_SITE="https://freedesktop.org/wiki/Software/shared-mime-info"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/freedesktop/xdg-$PACKAGE/archive/Release-${VERSION/./-}.tar.gz"
-HOST_ARCH="i486 arm"
 
 DEPENDS="glib"
-BUILD_DEPENDS="bash intltool itstool automake"
+BUILD_DEPENDS="autoconf automake bash intltool itstool"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation. Host perl/intltool are used
 case "$ARCH" in
@@ -25,7 +26,9 @@ compile_rules()
 {
 	#patch -Np1 -i $stuff/pbm.patch
 
-	sed -i '1d' ./autogen.sh &&
+	# remove #!/bin/sh from autogen.sh, since bash is required:
+	sed -i '1d' ./autogen.sh
+
 	bash -c ./autogen.sh &&
 	./configure $CONFIGURE_ARGS &&
 	make -j1 &&
