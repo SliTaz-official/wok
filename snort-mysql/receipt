@@ -1,34 +1,28 @@
 # SliTaz package receipt.
 
 PACKAGE="snort-mysql"
-VERSION="2.9.16"
+VERSION="2.9.4"
 CATEGORY="network"
 SHORT_DESC="Network intrusion prevention and detection system (IDS/IPS) with MySQL support."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://www.snort.org/"
-
-SOURCE="snort"
-TARBALL="$SOURCE-$VERSION.tar.gz"
-WGET_URL="${WEB_SITE}downloads/$SOURCE/$TARBALL"
-
-DEPENDS="libdaq libdnet libmysqlclient openssl pcre"
-BUILD_DEPENDS="flex libdaq-dev libdnet-dev libpcap-dev luajit-dev 
-	mysql-dev openssl-dev pcre-dev zlib-dev"
+WGET_URL="https://www.snort.org/downloads/1207"
+DEPENDS="pcre libdnet libdaq libmysqlclient"
+BUILD_DEPENDS="pcre-dev libpcap-dev libdaq-dev libdnet-dev wget zlib-dev \
+mysql-dev flex"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure					\
-		luajit_LIBS=/usr/lib/libluajit-5.1.so	\
-		lujit_CFLAGS=" "			\
-		--prefix=/usr				\
-		--with-mysql				\
-		 --enable-dynamicplugin			\
-		--disable-openappid			\
-		 --enable-perfprofiling			\
-		 --enable-reload			\
-		 --enable-zlib				\
+	./configure \
+		--prefix=/usr \
+		--with-mysql \
+		--enable-dynamicplugin \
+		--enable-perfprofiling \
+		--enable-zlib \
+		--enable-reload \
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
@@ -43,15 +37,15 @@ genpkg_rules()
 		$fs/usr/share/snort/schemas \
 		$fs/var/log/snort
 
-	cp -a $install/usr/bin			$fs/usr
-	cp -a $install/usr/lib/snort_dynamic*	$fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib/snort_dynamic* $fs/usr/lib
 
-	cp -a $src/etc/*.conf*			$fs/etc/snort
-	cp -a $src/etc/*.map			$fs/etc/snort
-	cp -a $src/schemas/create_mysql		$fs/usr/share/snort/schemas
+	cp -a $src/etc/*.conf* $fs/etc/snort
+	cp -a $src/etc/*.map $fs/etc/snort
+	cp -a $src/schemas/create_mysql  $fs/usr/share/snort/schemas
 
 	# Remove unwanted files
-	rm -f					$fs/usr/lib/*/*.*a
+	rm -f $fs/usr/lib/*/*.*a
 }
 
 # Post install commands
@@ -64,16 +58,13 @@ post_install()
 	newline
 
 	# addgroup snort if needed
-	if ! grep -q snort "$1/etc/group"
-	  then
+	if ! grep -q snort "$1/etc/group"; then
 		action 'Adding group snort...'
 		chroot "$1/" /bin/addgroup snort
 		status
 	fi
-
 	# adduser snort if needed
-	if ! grep -q 'snort:' "$1/etc/passwd"
-	  then
+	if ! grep -q 'snort:' "$1/etc/passwd"; then
 		action 'Adding user snort...'
 		chroot "$1/" /bin/adduser -s /bin/false -h /dev/null \
 			-g "Snort Daemon user" -H -D -S -G snort snort
@@ -82,16 +73,13 @@ post_install()
 	chroot "$1/" chown snort.snort /var/log/snort 
 
 	# Create database
-	if [ -z "$1" ]
-	  then
-		if ( ! mysqladmin -s ping > /dev/null )
-		  then
+	if [ -z "$1" ]; then
+		if ( ! mysqladmin -s ping > /dev/null ); then
 			echo 'Starting MySQL server'
 			( /etc/init.d/mysql start ; status  ) || exit
 			sleep 4 #let the mysql daemon start
 		fi
-		if ( ! mysql -u root -Be 'show databases' | grep -q $db_name )
-		  then
+		if ( ! mysql -u root -Be 'show databases' | grep -q $db_name ); then
 			action 'Create $db_name database'
 			mysql -Be "create database $db_name"
 			status
