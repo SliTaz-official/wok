@@ -1,8 +1,8 @@
 # SliTaz package receipt.
 
 PACKAGE="sqlite"
-_realver=3300000
-VERSION="${_realver:0:1}.${_realver:1:2}.${_realver:3:1}"
+VERSION="3.31.1"
+_realver="3310100"
 CATEGORY="office"
 SHORT_DESC="Small SQL database engine."
 MAINTAINER="pankso@slitaz.org"
@@ -10,7 +10,7 @@ LICENSE="PublicDomain"
 WEB_SITE="https://www.sqlite.org/index.html"
 
 TARBALL="$PACKAGE-src-${_realver}.zip"
-WGET_URL="http://www.sqlite.org/2019/$TARBALL"
+WGET_URL="https://www.sqlite.org/2020/$TARBALL"
 
 EXTRA_SOURCE_FILES="mysql2sqlite.sh"
 
@@ -23,13 +23,16 @@ HOST_ARCH="i486 arm"
 compile_rules()
 {
 	case "$ARCH" in
-		arm*) ARCH_ARGS="--with-tcl=/cross/arm/sysroot/usr/lib" ;;
+		arm*)
+			ARCH_ARGS="--with-tcl=/cross/arm/sysroot/usr/lib" ;;
 	esac
+
 	[ -s "$SOURCES_REPOSITORY/mysql2sqlite.sh" ] ||
 		wget -O "$SOURCES_REPOSITORY/mysql2sqlite.sh" \
 			https://gist.github.com/esperlu/943776/raw/dd87f4088f6d5ec7563478f7a28a37ba02cf26e2/mysql2sqlite.sh
 
 	export CFLAGS="$CFLAGS -DSQLITE_ENABLE_FTS3=1 -DSQLITE_ENABLE_COLUMN_METADATA=1 -DSQLITE_SECURE_DELETE -DSQLITE_ENABLE_UNLOCK_NOTIFY=1 -DSQLITE_ENABLE_DBSTAT_VTAB=1 -DTCLSH=1"
+
 	./configure			\
 		--prefix=/usr		\
 		--disable-readline	\
@@ -49,7 +52,7 @@ genpkg_rules()
 	cp -a $install/usr/bin				$fs/usr
 	cp "$SOURCES_REPOSITORY/mysql2sqlite.sh"	$fs/usr/bin
 
-	chmod +x $fs/usr/bin/mysql2sqlite.sh
+	chmod +x					$fs/usr/bin/mysql2sqlite.sh
 	if [ -f $fs/usr/bin/lemon ]
 	  then
 		rm -f $fs/usr/bin/lemon
