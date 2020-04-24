@@ -1,50 +1,67 @@
 # SliTaz package receipt.
 
 PACKAGE="spacefm"
-VERSION="0.9.4"
+VERSION="1.0.6"
 CATEGORY="system-tools"
+TAGS="file-manager"
 SHORT_DESC="Light, fast and easy to use file manager."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://ignorantguru.github.io/spacefm/"
-WGET_URL="$SF_MIRROR/$PACKAGE/files/$TARBALL"
-TAGS="file-manager"
+WEB_SITE="https://ignorantguru.github.io/spacefm/"
 
-DEPENDS="glibc-base glib libgio util-linux-uuid libxcb xcb-util expat \
-gtk+ startup-notification dbus dbus-glib gdk-pixbuf udev bash udevil"
-BUILD_DEPENDS="gtk+-dev dbus-glib-dev dbus-dev startup-notification-dev \
-libxcb-dev xcb-util-dev expat-dev gdk-pixbuf-dev intltool udev-dev \
-coreutils-file-special"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/IgnorantGuru/$PACKAGE/archive/$VERSION.tar.gz"
+
+DEPENDS="bash dbus dbus-glib expat gdk-pixbuf glib glibc-base gtk+ libgio 
+	libxcb startup-notification udev udevil util-linux-uuid xcb-util"
+BUILD_DEPENDS="coreutils-file-special dbus-dev dbus-glib-dev expat-dev 
+	gdk-pixbuf-dev gtk+-dev intltool libxcb-dev startup-notification-dev 
+	udev-dev xcb-util-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch -Np1 -i $stuff/prefdlg.ui.diff
-	patch -Np1 -i $stuff/settings.h.diff
-	patch -Np1 -i $stuff/vfs-file-task.c.diff
+	patch --input=$stuff/patches/prefdlg.ui-$VERSION \
+		data/ui/prefdlg.ui
+	patch --input=$stuff/patches/settings.h-$VERSION \
+		src/settings.h
+	patch --input=$stuff/patches/vfs-file-task.c-$VERSION \
+		src/vfs/vfs-file-task.c
 
-	export LDFLAGS="$LDFLAGS -lxcb-util"
-	./configure \
-		--with-preferable-sudo="/usr/bin/subox" \
-		--disable-pixmaps \
+	./configure					\
+		--with-preferable-sudo="/usr/bin/subox"	\
+		--disable-video-thumbnails		\
+		--disable-pixmaps			\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/etc/spacefm
-	cp -a $install/usr/bin $fs/usr
-	for d in applications icons spacefm; do
-		cp -a $install/usr/share/$d $fs/usr/share
-	done
-	cp $stuff/spacefm.conf $fs/etc/spacefm
-	cp -a $stuff/xdg $fs/etc
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/etc/spacefm
+
+	cp -a $install/usr/bin	$fs/usr
+	for d in applications icons spacefm
+	  do
+		cp -a $install/usr/share/$d	$fs/usr/share
+	  done
+	cp $stuff/spacefm.conf	$fs/etc/spacefm
+	cp -a $stuff/xdg	$fs/etc
+
 	# Faenza --> SliTaz
-	mv $fs/usr/share/icons/Faenza $fs/usr/share/icons/SliTaz
-	rm -rf $fs/usr/share/icons/hicolor/128x128
+	mv $fs/usr/share/icons/Faenza	$fs/usr/share/icons/SliTaz
+	rm -rf				$fs/usr/share/icons/hicolor/128x128
+
 	# /bin/bash --> /bin/sh
-	sed -i s'|/bin/bash|/bin/sh|'g $fs/usr/bin/spacefm-auth
+	sed -i s'|/bin/bash|/bin/sh|'g	$fs/usr/bin/spacefm-auth
+}
+
+post_install()
+{
+	echo
+	echo 'Remove or rename /etc/xdg/autostart/spacefm.desktop'
+	echo 'if pcmanfm is to remain desktop manager.'
 }
