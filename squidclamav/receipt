@@ -1,59 +1,62 @@
 # SliTaz package receipt.
 
 PACKAGE="squidclamav"
-VERSION="6.10"
+VERSION="6.16"
 CATEGORY="security"
 SHORT_DESC="Antivirus redirector for Squid proxy."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://squidclamav.darold.net/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-CONFIG_FILES="/etc/squidclamav.conf"
 
-DEPENDS="squid libcurl clamav c_icap squidguard"
-BUILD_DEPENDS="curl-dev c_icap-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="c_icap clamav libcurl squid squidguard"
+BUILD_DEPENDS="c_icap-dev curl-dev"
+
+CONFIG_FILES="/etc/squidclamav.conf"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	mkdir -p $DESTDIR/etc
-	./configure \
-		--prefix=/usr \
-		--libdir=/usr/lib \
-		--libexecdir=/var/www/cgi-bin \
-		--sysconfdir=/etc \
+
+	./configure				\
+		--prefix=/usr			\
+		--libdir=/usr/lib		\
+		--libexecdir=/var/www/cgi-bin	\
+		--sysconfdir=/etc		\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr \
-		$fs/etc/squid/conf.d
-	
-	cp -a $install/etc $fs
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/var $fs/
-	cp -a $stuff/icap-clamav.conf $fs/etc/squid/conf.d
-	
-	# Customise config file
-	sed -i -e "s|^redirect.*|redirect http://localhost/cgi-bin/squidclamav/clwarn.cgi|" \
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc/squid/conf.d
+
+	cp -a $install/etc		$fs
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/var		$fs
+	cp -a $stuff/icap-clamav.conf	$fs/etc/squid/conf.d
+
+	# Customise configuration file
+	sed -i	-e "s|^redirect.*|redirect http://localhost/cgi-bin/squidclamav/clwarn.cgi|" \
 		-e "s|^#squidguard.*|squidguard /usr/bin/squidGuard|" \
 		$fs/etc/squidclamav.conf
 		
-	rm -f $fs/usr/lib/c_icap/*.la		
-
-
+	rm -f				$fs/usr/lib/c_icap/*.la
 }
 
 #Post install command
 post_install()
 {
 	echo 'Service squidclamav squidclamav.so' >> "$1/etc/c-icap/c-icap.conf"
-	[ "$1" ] || if ( ps | grep -q squid ); then
+	[ "$1" ] ||
+	if ( ps | grep -q squid )
+	  then
 		/etc/init.d/squid restart
 	fi
 }
@@ -62,10 +65,14 @@ post_install()
 post_remove()
 {
 	sed -i -e "s/.*squidclamav.*//" "$1/etc/c-icap/c-icap.conf"
-	[ "$1" ] || if ( ps | grep -q squid ); then
+	[ "$1" ] ||
+	if ( ps | grep -q squid )
+	  then
 		/etc/init.d/squid restart
 	fi
-	[ "$1" ] || if ( ps | grep -q c-icap ); then
+	[ "$1" ] ||
+	if ( ps | grep -q c-icap )
+	  then
 		/etc/init.d/c-icapd restart
 	fi
 }
