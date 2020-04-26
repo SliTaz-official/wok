@@ -1,6 +1,22 @@
---- block/cloop.c
-+++ block/cloop.c
-@@ -29,11 +29,90 @@
+--- source/qemu-2.0.2/block/cloop.c	2014-08-18 18:03:24.000000000 +0200
++++ cloop.c	2020-04-26 16:58:23.306636715 +0200
+@@ -25,33 +25,206 @@
+ #include "block/block_int.h"
+ #include "qemu/module.h"
+ #include <zlib.h>
++#include <lzma.h>
++
++#define CLOOP_COMPRESSOR_ZLIB  0x0
++#define CLOOP_COMPRESSOR_NONE  0x1
++#define CLOOP_COMPRESSOR_XZ    0x2
++#define CLOOP_COMPRESSOR_LZ4   0x3
++#define CLOOP_COMPRESSOR_LZO   0x4
++#define CLOOP_COMPRESSOR_ZSTD  0x5
++#define CLOOP_COMPRESSOR_LINK  0xF
++
++#define CLOOP_BLOCK_FLAGS(x)  ((unsigned int)(((x) & 0xf000000000000000LLU) >> 60))
++#define CLOOP_BLOCK_OFFSET(x)  ((x) & 0x0fffffffffffffffLLU)
+ 
  /* Maximum compressed block size */
  #define MAX_BLOCK_SIZE (64 * 1024 * 1024)
  
@@ -10,74 +26,114 @@
 +	uint32_t num_blocks;
 +} cloop_tail;
 +
++#define CLOOP3_INDEX_SIZE(x)    ((unsigned int)((x) & 0xF))
++#define CLOOP3_BLOCKS_FLAGS(x)  ((unsigned int)((x) & 0x70) >> 4)
++
 +typedef struct block_info {
 +	uint64_t offset;	/* 64-bit offsets of compressed block */
 +	uint32_t size;		/* 32-bit compressed block size */
-+	uint32_t optidx;	/* 32-bit index number */
++	uint32_t flags;		/* 32-bit compression flags */
 +} block_info;
 +
-+static inline int build_index(block_info *offsets, unsigned long n)
++static inline int build_index(struct block_info *offsets, unsigned long n, 
++			unsigned long block_size, unsigned global_flags)
 +{
 +	uint32_t *ofs32 = (uint32_t *) offsets;
-+	uint64_t *ofs64 = (uint64_t *) offsets;
-+	
++	loff_t    *ofs64 = (loff_t *) offsets;
++
++	/* v3 64bits bug: v1 assumed */
++	unsigned long	v3_64;
++	loff_t	prev;
++
++	if (ofs32[0] != 0 && ofs32[1] == 0) {
++		for (v3_64=(n+1)/2, prev=le64_to_cpu(ofs64[v3_64]);
++		     v3_64 > 0 && le64_to_cpu(ofs64[--v3_64]) < prev;
++		     prev=le64_to_cpu(ofs64[v3_64]));
++	}
++
 +	if (ofs32[0] == 0) {
 +		if (ofs32[2]) { /* ACCELERATED KNOPPIX V1.0 */
 +			while (n--) {
 +				offsets[n].offset = be64_to_cpu(offsets[n].offset);
 +				offsets[n].size = ntohl(offsets[n].size);
++				offsets[n].flags = 0;
 +        			if (offsets[n].size > 2 * MAX_BLOCK_SIZE)
 +        				return n+1;
 +			}
 +		}
-+		else { /* V2.0 */
-+			uint64_t last = be64_to_cpu(ofs64[n - 1]);
-+			while (n--) {
++		else { /* V2.0/V4.0 */
++			loff_t last = CLOOP_BLOCK_OFFSET(be64_to_cpu(ofs64[n]));
++			uint32_t flags;
++			unsigned long i = n;
++
++			for (flags = 0; n-- ;) {
++				loff_t data = be64_to_cpu(ofs64[n]); 
++
 +				offsets[n].size = last - 
-+					(offsets[n].offset = be64_to_cpu(ofs64[n])); 
++					(offsets[n].offset = CLOOP_BLOCK_OFFSET(data)); 
 +        			if (offsets[n].size > 2 * MAX_BLOCK_SIZE)
 +        				return n+1;
 +				last = offsets[n].offset;
++				offsets[n].flags = CLOOP_BLOCK_FLAGS(data); 
++				flags |= 1 << offsets[n].flags;
++			}
++			if (flags > 1) {
++				while (i--) {
++					if (offsets[i].flags == CLOOP_COMPRESSOR_LINK) {
++						offsets[i] = offsets[offsets[i].offset];
++					}
++				}
 +			}
 +		}
 +	}
-+	else if (ofs32[1] == 0) { /* V1.0 */
-+		uint64_t last = le64_to_cpu(ofs64[n - 1]);
++	else if (ofs32[1] == 0 && v3_64 == 0) { /* V1.0 */
++		loff_t last = le64_to_cpu(ofs64[n]);
 +		while (n--) {
 +			offsets[n].size = last - 
 +				(offsets[n].offset = le64_to_cpu(ofs64[n])); 
 +        		if (offsets[n].size > 2 * MAX_BLOCK_SIZE)
 +        			return n+1;
 +			last = offsets[n].offset;
++			offsets[n].flags = 0;
 +		}
 +	}
 +	else if (ntohl(ofs32[0]) == (4*n) + 0x8C) { /* V0.68 */
-+		uint64_t last = ntohl(ofs32[n - 1]);
++		loff_t last = ntohl(ofs32[n]);
 +		while (n--) {
 +			offsets[n].size = last - 
 +				(offsets[n].offset = ntohl(ofs32[n])); 
 +        		if (offsets[n].size > 2 * MAX_BLOCK_SIZE)
 +        			return n+1;
 +			last = offsets[n].offset;
++			offsets[n].flags = 0;
 +		}
 +	}
 +	else { /* V3.0 */
 +		unsigned long i;
-+		uint64_t j;
++		loff_t j;
 +		
++		v3_64 = (ofs32[1] == 0) ? 2 : 1;
 +		for (i = n; i-- > 0; ) {
-+			offsets[i].size = ntohl(ofs32[i]); 
-+        		if (offsets[i].size > 2 * MAX_BLOCK_SIZE)
++			offsets[i].size = ntohl(ofs32[i*v3_64]); 
++			if ((offsets[i].size & 0x80000000) == 0 &&
++        		    offsets[i].size > 2 * MAX_BLOCK_SIZE)
 +        			return i+1;
 +		}
 +		for (i = 0, j = 128 + 4 + 4; i < n; i++) {
 +			offsets[i].offset = j;
-+			if (offsets[i].size & 0x80000000) {
-+				unsigned long k = offsets[i].size & 0x7FFFFFFF;
-+				offsets[i].offset = offsets[k].offset;
-+				offsets[i].size = offsets[k].size;
++			offsets[i].flags = global_flags;
++			if (offsets[i].size == 0xFFFFFFFF) {
++				offsets[i].flags = CLOOP_COMPRESSOR_NONE;
++				offsets[i].size = block_size;
 +			}
-+			else j += offsets[i].size;
++			if ((offsets[i].size & 0x80000000) == 0) {
++				j += offsets[i].size;
++			}
++		}
++		for (i = 0; i < n; i++) {
++			if (offsets[i].size & 0x80000000) {
++				offsets[i] = offsets[offsets[i].size & 0x7FFFFFFF];
++			}
 +		}
 +	}
 +	return 0;
@@ -92,7 +148,10 @@
      uint32_t sectors_per_block;
      uint32_t current_block;
      uint8_t *compressed_block;
-@@ -43,17 +117,21 @@
+     uint8_t *uncompressed_block;
+     z_stream zstream;
++    int global_flags;
+ } BDRVCloopState;
  
  static int cloop_probe(const uint8_t *buf, int buf_size, const char *filename)
  {
@@ -108,21 +167,55 @@
 +
 +    if (length > 127) {
 +        length = 127;
-     }
--    if (!memcmp(magic_version_2_0, buf, length)) {
--        return 2;
++    }
 +    for (i = 0; i < length - sizeof(magic) + 1; i++) {
 +	if (buf[i] != magic[0]) continue;
 +	if (strncmp(buf + i, magic, sizeof(magic) - 1)) continue;
 +	ret = 2;
 +	break;
      }
--    return 0;
+-    if (!memcmp(magic_version_2_0, buf, length)) {
+-        return 2;
 +    return ret;
++}
++
++static uint32_t cloop_upack(BDRVCloopState *s, int flag)
++{
++    int ret;
++    size_t src_pos;
++    size_t dest_pos;
++    uint64_t memlimit;
++    uint32_t outlen = s->zstream.total_out;
++
++    switch (flag) {
++    case CLOOP_COMPRESSOR_ZLIB:
++        ret = inflateReset(&s->zstream);
++        if (ret != Z_OK) {
++            return 0;
++        }
++        ret = inflate(&s->zstream, Z_FINISH);
++        if (ret != Z_STREAM_END || s->zstream.total_out != outlen) {
++            return 0;
++        }
++        return outlen;
++    case CLOOP_COMPRESSOR_NONE:
++	memcpy(s->zstream.next_out, s->zstream.next_in, s->zstream.avail_in);
++	return s->zstream.avail_in;
++    case CLOOP_COMPRESSOR_XZ:
++        src_pos = 0;
++        dest_pos = 0;
++        memlimit = 32*1024*1024;
++        ret = lzma_stream_buffer_decode(&memlimit, 0, NULL, s->zstream.next_in, &src_pos,
++		 s->zstream.avail_in, s->zstream.next_out, &dest_pos, s->zstream.total_out);
++
++        if(ret != LZMA_OK || s->zstream.avail_in != (int) src_pos) {
++            return 0;
++	}
++	return dest_pos;
+     }
+     return 0;
  }
- 
- static int cloop_open(BlockDriverState *bs, QDict *options, int flags,
-@@ -91,79 +169,97 @@
+@@ -91,79 +264,92 @@
                     MAX_BLOCK_SIZE / (1024 * 1024));
          return -EINVAL;
      }
@@ -198,7 +291,8 @@
 +            return -EINVAL;
          }
 +	len = be32_to_cpu(tail.table_size);
-+	toclen = (be32_to_cpu(tail.index_size) & 255) * s->n_blocks;
++	toclen = CLOOP3_INDEX_SIZE(be32_to_cpu(tail.index_size)) * s->n_blocks;
++	s->global_flags = CLOOP3_BLOCKS_FLAGS(be32_to_cpu(tail.index_size));
  
 -        size = s->offsets[i] - s->offsets[i - 1];
 +        s->offsets = g_malloc(offsets_size);
@@ -220,21 +314,12 @@
 +        s->zstream.avail_in = len;
 +        s->zstream.next_out = s->offsets;
 +        s->zstream.avail_out = toclen;
-+        ret = inflateReset(&s->zstream);
-+        if (ret != Z_OK) {
++	if (cloop_unpack(s, s->global_flags) == 0) {
              ret = -EINVAL;
              goto fail;
          }
--
--        if (size > max_compressed_block_size) {
--            max_compressed_block_size = size;
-+        ret = inflate(&s->zstream, Z_FINISH);
-+        if (ret != Z_STREAM_END || s->zstream.total_out != toclen) {
-+            ret = -EINVAL;
-+            goto fail;
-         }
 +	g_free(p);
-     }
++    }
 +    else {
 +        offsets_size = s->n_blocks * sizeof(block_info);
 +        if (offsets_size > 512 * 1024 * 1024) {
@@ -248,16 +333,19 @@
 +        }
 +        s->offsets = g_malloc(offsets_size);
  
+-        if (size > max_compressed_block_size) {
+-            max_compressed_block_size = size;
++        ret = bdrv_pread(bs->file, 128 + 4 + 4, s->offsets, offsets_size);
++        if (ret < 0) {
++            goto fail;
+         }
+     }
+-
 -    /* initialize zlib engine */
 -    s->compressed_block = g_malloc(max_compressed_block_size + 1);
 -    s->uncompressed_block = g_malloc(s->block_size);
 -    if (inflateInit(&s->zstream) != Z_OK) {
-+        ret = bdrv_pread(bs->file, 128 + 4 + 4, s->offsets, offsets_size);
-+        if (ret < 0) {
-+            goto fail;
-+        }
-+    }
-+    ret = build_index(s->offsets, s->n_blocks);
++    ret = build_index(s->offsets, s->n_blocks, s->block_size, s->global_flags);
 +    if (ret) {
 +        error_setg(errp, "invalid compressed block size at index %u, "
 +                   "image file is corrupt", ret-1);
@@ -268,7 +356,7 @@
      s->current_block = s->n_blocks;
  
      s->sectors_per_block = s->block_size/512;
-@@ -184,10 +280,10 @@
+@@ -184,10 +370,10 @@
  
      if (s->current_block != block_num) {
          int ret;
@@ -282,3 +370,26 @@
          if (ret != bytes) {
              return -1;
          }
+@@ -196,12 +382,7 @@
+         s->zstream.avail_in = bytes;
+         s->zstream.next_out = s->uncompressed_block;
+         s->zstream.avail_out = s->block_size;
+-        ret = inflateReset(&s->zstream);
+-        if (ret != Z_OK) {
+-            return -1;
+-        }
+-        ret = inflate(&s->zstream, Z_FINISH);
+-        if (ret != Z_STREAM_END || s->zstream.total_out != s->block_size) {
++	if (cloop_unpack(s, s->offsets[block_num].flags) == 0) {
+             return -1;
+         }
+ 
+--- source/qemu-2.0.2/block/Makefile.objs	2014-08-18 18:03:24.000000000 +0200
++++ Makefile.objs	2020-04-26 16:32:51.010232389 +0200
+@@ -35,5 +35,5 @@
+ gluster.o-libs     := $(GLUSTERFS_LIBS)
+ ssh.o-cflags       := $(LIBSSH2_CFLAGS)
+ ssh.o-libs         := $(LIBSSH2_LIBS)
+-qcow.o-libs        := -lz
++qcow.o-libs        := -lz -llzma
+ linux-aio.o-libs   := -laio
