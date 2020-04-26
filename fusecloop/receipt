@@ -14,8 +14,8 @@ ADVANCECOMP_TARBALL="advancecomp-$ADVANCECOMP_VERSION.tar.gz"
 ADVANCECOMP_URL="$SF_MIRROR/advancemame/$ADVANCECOMP_TARBALL"
 EXTRA_SOURCE_FILES="$ADVANCECOMP_TARBALL"
 
-DEPENDS="fuse zlib gcc-lib-base"
-BUILD_DEPENDS="fuse-dev zlib-dev automake"
+DEPENDS="fuse zlib liblzma lz4-lib lzo zstd gcc-lib-base"
+BUILD_DEPENDS="fuse-dev zlib-dev xz-dev liblzma lz4-dev lzo-dev zstd-dev automake"
 SUGGESTED="fuseiso cloop-utils"
 
 # Rules to configure and make the package.
@@ -26,12 +26,13 @@ compile_rules()
 	tar xzf $SOURCES_REPOSITORY/$ADVANCECOMP_TARBALL
 	sed -i 's/dprintf/d_printf/g' *.h *.c
 	patch -p0 < $stuff/fusecloop.u
+	patch -p0 < $stuff/v4.u
 	ADVANCECOMP=advancecomp-$ADVANCECOMP_VERSION
 	cp *.h *.c $ADVANCECOMP
 	cp create_compressed_fs.c $ADVANCECOMP/redef.cc
 	sed -i 's/Z_BEST_COMPRESSION/Z_BEST_SPEED/' create_compressed_fs.c
 	sed -i 's/def FIND_BEST_COMPRESSION/ 1/' $ADVANCECOMP/redef.cc
-	sed -i 's|\( -lz\)\(.*\)$|\2\1|' Makefile
+	sed -i 's|\( -lz\)\(.*\)$|\2\1 -llzma -llz4 -llzo2 -lzstd|' Makefile
 	sed -i 's|\( \$.FUSELDFLAGS.\)\(.*\)$|\2\1|' Makefile
 	./configure --prefix=/usr --infodir=/usr/share/info \
 	--mandir=/usr/share/man $CONFIGURE_ARGS &&
@@ -39,8 +40,9 @@ compile_rules()
 	cd $ADVANCECOMP &&
 	./autogen.sh
 	automake --add-missing
-	./configure --prefix=/usr --infodir=/usr/share/info \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./configure LIBS="-llzma -llz4" \
+		 --prefix=/usr --infodir=/usr/share/info \
+		--mandir=/usr/share/man $CONFIGURE_ARGS &&
 	make advdef
 }
 
