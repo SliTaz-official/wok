@@ -1,52 +1,56 @@
 # SliTaz package receipt.
 
 PACKAGE="udisks"
-VERSION="1.0.4"
+VERSION="1.0.5"
 CATEGORY="system-tools"
 SHORT_DESC="D-Bus interfaces to query and manipulate storage devices."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://www.freedesktop.org/wiki/Software/udisks/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.freedesktop.org/wiki/Software/udisks"
 WGET_URL="http://hal.freedesktop.org/releases/$TARBALL"
 
-DEPENDS="libatasmart udev libsgutils2 sg3_utils libgudev polkit dbus util-linux-blkid \
-dbus-helper parted libdevmapper libgio util-linux-mount lsof"
-BUILD_DEPENDS="flex libatasmart-dev udev-dev sg3_utils-dev libgudev-dev \
-polkit-dev dbus-dev dbus-glib-dev pcre-dev dbus-dev parted-dev libdevmapper-dev \
-util-linux-blkid-dev util-linux-uuid-dev libxslt docbook-xsl"
+DEPENDS="dbus dbus-helper libatasmart libdevmapper libgio libgudev libsgutils2 
+	lsof parted polkit sg3_utils udev util-linux-blkid util-linux-mount"
+BUILD_DEPENDS="dbus-dev dbus-glib-dev docbook-xsl flex libatasmart-dev 
+	libdevmapper-dev libgudev-dev libxslt parted-dev pcre-dev polkit-dev 
+	sg3_utils-dev udev-dev util-linux-blkid-dev util-linux-uuid-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure \
-		--prefix=/usr \
-		--libexecdir=/usr/lib/udisks \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--disable-static \
-		--disable-remote-access \
-		--disable-gtk-doc-html \
+	./configure				\
+		--prefix=/usr			\
+		--libexecdir=/usr/lib/udisks	\
+		--sysconfdir=/etc		\
+		--localstatedir=/var		\
+		--disable-static		\
+		--disable-remote-access		\
+		--disable-gtk-doc-html		\
+		--with-systemdsystemunitdir=no	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc/polkit-1/localauthority/90-mandatory.d \
-		$fs/usr/lib/udev $fs/usr/share $fs/etc/udev
-	cp -a $install/etc/dbus-1 $fs/etc
-	cp -a $install/lib/udev/rules.d $fs/etc/udev
-	cp -a $install/lib/udev/udisks* $fs/usr/lib/udev/
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/sbin $fs
-	cp -a $install/usr/lib/udisks $fs/usr/lib
-	cp -a $install/usr/share/*-1 $fs/usr/share
+	mkdir -p $fs/etc/polkit-1/localauthority/90-mandatory.d
+	mkdir -p $fs/usr/lib/udev $fs/usr/share $fs/etc/udev
+
+	cp -a $install/etc/dbus-1	$fs/etc
+	cp -a $install/lib/udev/rules.d	$fs/etc/udev
+	cp -a $install/lib/udev/udisks*	$fs/usr/lib/udev/
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/sbin		$fs
+	cp -a $install/usr/lib/udisks	$fs/usr/lib
+	cp -a $install/usr/share/*-1	$fs/usr/share
+
 	#we don't have consolekit and don't want systemd so we need
 	#a rule to give disk group complete access to udisks2
 	#methods without password.
 	cp $stuff/org.freedesktop.udisks.pkla \
-		$fs/etc/polkit-1/localauthority/90-mandatory.d
+					$fs/etc/polkit-1/localauthority/90-mandatory.d
 }
