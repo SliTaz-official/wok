@@ -1,24 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="xine-lib"
-VERSION="1.2.9"
+VERSION="1.2.10"
 CATEGORY="multimedia"
 SHORT_DESC="Xine video library."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://www.xine-project.org/"
-WGET_URL="http://downloads.sourceforge.net/project/xine/$PACKAGE/$VERSION/$TARBALL"
-SUGGESTED="xine-fonts"
-HOST_ARCH="i486 arm"
 
-SUGGESTED="faad2"
-DEPENDS="zlib xorg-libX11 xorg-libXv xorg-libXvMC alsa-lib libogg libvorbis \
-libtheora xorg-libXvMC xorg-libXv libxcb ffmpeg libmodplug"
-BUILD_DEPENDS="xorg-libXvMC-dev xorg-libXv-dev xorg-xextproto xorg-videoproto \
-alsa-lib-dev libogg-dev libvorbis-dev libtheora-dev freetype-dev perl \
-pkg-config util-linux-uuid-dev libxcb-dev libxcb-dev ffmpeg-dev file \
-libmodplug-dev"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="http://downloads.sourceforge.net/project/xine/$PACKAGE/$VERSION/$TARBALL"
+
+SUGGESTED="faad xine-fonts"
+DEPENDS="alsa-lib ffmpeg libmodplug libogg libtheora libvorbis libxcb xorg-libX11 
+	xorg-libXv xorg-libXvMC zlib"
+BUILD_DEPENDS="alsa-lib-dev ffmpeg-dev file freetype-dev libmodplug-dev libogg-dev 
+	libtheora-dev libvorbis-dev libxcb-dev perl pkg-config util-linux-uuid-dev 
+	xorg-libXv-dev xorg-libXvMC-dev xorg-videoproto xorg-xextproto"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -32,32 +32,36 @@ esac
 compile_rules()
 {
 	sed -i 's/grep -x/grep/' configure
-	CPPFLAGS="$CPPFLAGS -DHAVE_NANO_SLEEP" \
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--with-freetype \
-		--with-xcb \
-		--without-jack \
-		--without-imagemagick \
-		--without-sdl \
-		--disable-gnomevfs \
-		--disable-samba \
-		--disable-glu \
-		--disable-opengl \
-		--disable-fb \
-		--without-esound \
-		--disable-vcd \
-		--disable-musepack \
-		$CONFIGURE_ARGS $ARCH_ARGS &&
-	make && make install
+	CPPFLAGS="$CPPFLAGS -DHAVE_NANO_SLEEP"	\
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--with-freetype			\
+		--with-xcb			\
+		--without-jack			\
+		--without-imagemagick		\
+		--without-sdl			\
+		--disable-gnomevfs		\
+		--disable-samba			\
+		--disable-glu			\
+		--disable-opengl		\
+		--disable-fb			\
+		--without-esound		\
+		--disable-vcd			\
+		--disable-musepack		\
+		$CONFIGURE_ARGS			\
+		$ARCH_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/xine $fs/usr/lib
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/xine	$fs/usr/lib
 }
