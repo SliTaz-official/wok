@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="wordpress"
-VERSION="5.2.4"
+VERSION="5.4.1"
 CATEGORY="misc"
 SHORT_DESC="Blog Tool and Publishing Platform."
 MAINTAINER="slaxemulator@gmail.com"
@@ -18,8 +18,9 @@ DEPENDS="mysql php php-mysql"
 genpkg_rules()
 {
 	mkdir -p $fs/var/www/wordpress
-	cp -a $src/* $fs/var/www/wordpress
-	chown -R www.www $fs/var/www/wordpress
+
+	cp -a $src/*		$fs/var/www/wordpress
+	chown -R www.www	$fs/var/www/wordpress
 }
 
 post_install()
@@ -28,18 +29,22 @@ post_install()
 	local db_user=wordpress
 	local db_password=wordpress
 	
-	# Minimal config for wordpress.
-	if [ -z "$1" ]; then
-		if ( ! mysqladmin -s ping > /dev/null ); then
+	# Minimal configuration for wordpress.
+	if [ -z "$1" ]
+	  then
+		if ( ! mysqladmin -s ping > /dev/null )
+		  then
 			echo
 			echo "Starting MySQL server"
 			( /etc/init.d/mysql start ; status  ) || exit 
 			sleep 4 #let the mysql daemon start
 		fi
-		if ( ! mysql -u root -Be 'show databases' | grep -q $db ); then
+		if ( ! mysql -u root -Be 'show databases' | grep -q $db )
+		  then
 			echo
 			echo -n "Create $db database"
-			mysql -Be "create database $db" ; status
+			mysql -Be "create database $db"
+			status
 			# We suppose that $DB_USER user does not exist.
 			# It may be false.
 			echo  -n "Create user $db_user with password $db_password"
@@ -59,7 +64,8 @@ post_remove()
 	local db_user=wordpress
 	local db_password=wordpress
 	
-	if [ -z "$1" ]; then
+	if [ -z "$1" ]
+	  then
 		echo -n "Would you like to remove data and database files.(y/n) "
 		read answer
 
@@ -67,13 +73,16 @@ post_remove()
 		y|Y)
 			echo -n "Removing data directories..."
 			[ -d /var/lib/wordpress ] && rm -rf /var/lib/wordpress ; status
-			if ( mysql -u root -Be 'show databases' | grep -q $db ); then
+			if ( mysql -u root -Be 'show databases' | grep -q $db )
+			  then
 				echo -n "Deleting $db database"
-				mysql -Be "drop database $db" ; status
+				mysql -Be "drop database $db"
+				status
 				# We suppose that glpi user does not exist.
 				# It may be false.
 				echo  -n "Delete user $db_user"
-				mysql -Be "delete from mysql.db where user='"$db_user"'" ; status
+				mysql -Be "delete from mysql.db where user='"$db_user"'"
+				status
 			fi
 			unset $answer
 			;;
