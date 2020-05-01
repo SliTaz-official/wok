@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="vzquota"
-VERSION="3.0.12"
+VERSION="3.1"
 CATEGORY="system-tools"
 SHORT_DESC="Virtuozzo/OpenVZ disk quota control utility"
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://openvz.org"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://openvz.org"
 WGET_URL="http://download.openvz.org/utils/$PACKAGE/$VERSION/src/$TARBALL"
 
 DEPENDS=""
@@ -16,26 +17,32 @@ DEPENDS=""
 compile_rules()
 {
 	sed -i 's|uname -m|echo i486|' src/Makefile
-	# Apply patches
-	while read patch_file; do
-		if [ -f done.$patch_file ]; then
-			echo "Skipping $patch_file"
-			continue
-		fi
-		echo "Apply $patch_file"
-		patch -p1 < $stuff/$patch_file || return 1
-		touch done.$patch_file
-	done <<EOT
-vzquota-${VERSION}.u
-EOT
 
-	make && make DESTDIR=$DESTDIR install
+	# Apply patches
+#	while read patch_file; do
+#		if [ -f done.$patch_file ]; then
+#			echo "Skipping $patch_file"
+#			continue
+#		fi
+#		echo "Apply $patch_file"
+#		patch -p1 < $stuff/$patch_file || return 1
+#		touch done.$patch_file
+#	done <<EOT
+#vzquota-${VERSION}.u
+#EOT
+
+	patch	--input=$stuff/patches/Makefile-3.1 \
+		src/Makefile
+
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/var/lib/vzquota
-	cp -a $install/usr/sbin $fs/usr
-}
+	mkdir -p $fs/usr
+	mkdir -p $fs/var/lib/vzquota
 
+	cp -a $install/usr/sbin	$fs/usr
+}
