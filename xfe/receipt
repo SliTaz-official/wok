@@ -1,21 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="xfe"
-VERSION="1.40"
+VERSION="1.43.2"
 CATEGORY="system-tools"
+TAGS="file-manager"
 SHORT_DESC="Xfe File manager and utility using Fox toolkit."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://roland65.free.fr/xfe/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="file-manager"
-#HOST_ARCH="i486 arm"
 
 SUGGESTED="adie calculator shutterbug xfe-extras xfi"
-DEPENDS="libpng jpeg tiff xorg-libXft fox"
-BUILD_DEPENDS="libpng-dev jpeg-dev tiff-dev xorg-libXft-dev fox-dev automake"
+DEPENDS="fox jpeg libpng tiff xcb-util xorg-libXft"
+BUILD_DEPENDS="automake fox-dev jpeg-dev libpng-dev tiff-dev 
+	xcb-util-dev xorg-libXft-dev"
+
 GENERIC_MENUS="no"
+
+#HOST_ARCH="i486 arm"
 
 # Handle cross compilation.
 case "$ARCH" in
@@ -29,20 +33,27 @@ compile_rules()
 {
 	# Required by freetype-dev-2.4.11
 	sed -i 's|config/ftheader.h|freetype/config/ftheader.h|' configure.ac
-	./autogen.sh
-	./configure $CONFIGURE_ARGS && make && make install
+	export	LDFLAGS="$LDFLAGS -lrt"
+
+	./autogen.sh &&
+	./configure $CONFIGURE_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/xfe/icons
-	cp -a $install/usr/bin/$PACKAGE $fs/usr/bin
-	cp -a $install/usr/share/xfe/xferc $fs/usr/share/xfe
-	sed -i 's/gnomeblue-theme/tango-theme/' $fs/usr/share/xfe/xferc
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/xfe/icons
+
+	cp -a $install/usr/bin/$PACKAGE		$fs/usr/bin
+	cp -a $install/usr/share/xfe/xferc	$fs/usr/share/xfe
+	sed -i 's/gnomeblue-theme/tango-theme/'	$fs/usr/share/xfe/xferc
+
 	# Tango/Gnome icons theme only
 	cp -a $install/usr/share/xfe/icons/tango-theme \
-		$fs/usr/share/xfe/icons
+						$fs/usr/share/xfe/icons
 	cp -a $install/usr/share/xfe/icons/gnome-theme \
-		$fs/usr/share/xfe/icons	
+						$fs/usr/share/xfe/icons	
 }
