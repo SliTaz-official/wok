@@ -12,8 +12,10 @@ SOURCE="DirectFB"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WGET_URL="http://sources.buildroot.net/$TARBALL"
 
-DEPENDS="freetype libpng libjpeg tslib zlib"
-BUILD_DEPENDS="autoconf automake fluxcomp freetype-dev jpeg-dev libpng-dev libtool perl tslib-dev"
+DEPENDS="freetype libjpeg libpng tslib zlib"
+BUILD_DEPENDS="autoconf automake fluxcomp freetype-dev gcc83-lib-base 
+	jpeg-dev libpng-dev libtool perl tslib-dev"
+
 HOST_ARCH="i486 arm"
 
 # Handle cross compilation.
@@ -33,11 +35,12 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	./autogen.sh \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--with-dither-rgb16=none \
-		$CONFIGURE_ARGS $ARCH_ARGS &&
+	./autogen.sh				\
+		--prefix=/usr			\
+		--sysconfdir=/etc		\
+		--with-dither-rgb16=none	\
+		$CONFIGURE_ARGS			\
+		$ARCH_ARGS &&
 	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
@@ -45,10 +48,12 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/directfb-* $fs/usr/lib
-	cp -a $install/usr/share/directfb-* $fs/usr/share
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/directfb-*	$fs/usr/lib
+	cp -a $install/usr/share/directfb-*	$fs/usr/share
 	find $fs/usr/lib -name "*.*a" -exec rm '{}' \;
 }
