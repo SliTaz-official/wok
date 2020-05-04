@@ -12,10 +12,10 @@ WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
 HOST_ARCH="i486 arm"
 
 DEPENDS="bzlib cairo fontconfig freetype gdk-pixbuf glib glibc-base harfbuzz \
-libcroco libffi libgio libpng libxcb libxml2 pango pcre pixman xorg-libX11 \
-xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXrender zlib"
-BUILD_DEPENDS="libffi-dev cairo-dev freetype-dev libxml2-dev pango-dev \
-fontconfig-dev gdk-pixbuf-dev libcroco-dev glib-dev libpng-dev expat-dev"
+	libcroco libffi libgio libpng libxcb libxml2 pango pcre pixman xorg-libX11 \
+	xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXrender zlib"
+BUILD_DEPENDS="cairo-dev expat-dev fontconfig-dev freetype-dev gdk-pixbuf-dev 
+	glib-dev libcroco-dev libffi-dev libpng-dev libxml2-dev pango-dev"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -26,11 +26,15 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--disable-static \
-		LIBCROCO_CFLAGS="-I/cross/$ARCH/sysroot/usr/include" \
+	sed -i 's|link_all_deplibs=$link_all_deplibs|link_all_deplibs=no|' \
+		configure
+
+	./configure							\
+		--disable-static					\
+		LIBCROCO_CFLAGS="-I/cross/$ARCH/sysroot/usr/include"	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
