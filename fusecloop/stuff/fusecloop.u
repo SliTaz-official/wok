@@ -1229,30 +1229,91 @@
 +
 --- extract_compressed_fs.c
 +++ extract_compressed_fs.c
-@@ -3,14 +3,19 @@
+@@ -3,14 +3,78 @@
  #include "common_header.h"
  #define CLOOP_PREAMBLE "#!/bin/sh\n" "#V2.0 Format\n" "modprobe cloop file=$0 && mount -r -t iso9660 /dev/cloop $1\n" "exit $?\n"
  
 +#include "cloopunpack.c"
 +static char *packnames[CLOOP_COMPRESSOR_MAX+1] = { CLOOP_COMPRESSOR_NAMES };
 +
++static unsigned char *out;
++static unsigned long zblock_maxsize, block_size, num_blocks;
++static int handle, err;
++static unsigned char *buffer, *clear_buffer;
++static struct block_info *offsets;
++
++static uLongf get_block(unsigned int i, int argc)
++{
++	unsigned long len;
++	uLongf ulen;
++	int flags = offsets[i].flags;
++
++	if (flags > CLOOP_COMPRESSOR_MAX) {
++		fprintf(stderr, "Block %u: unsupported compression %d \n",
++			i, flags);
++		exit(1);
++	}
++
++	len = offsets[i].size;
++	if (len > zblock_maxsize) {
++		fprintf(stderr, 
++			"Size %lu for block %u (offset %Lu) too big\n",
++			len, i, offsets[i].offset);
++		exit(1);
++	}
++
++	if (lseek64(handle, offsets[i].offset, SEEK_SET) < 0) {
++		fprintf(stderr, "lseek to %Lu: %s\n",
++			offsets[i].offset, strerror(errno));
++		exit(1);
++	}
++                
++	read(handle, out = buffer, ulen = len);
++
++	if (flags != CLOOP_COMPRESSOR_ZLIB || argc <= 2) {
++		ulen = block_size;
++		err = unpack[flags](out = clear_buffer, &ulen, buffer, len);
++		if (err != Z_OK) {
++			fprintf(stderr, "Unpack %s block %u error %d \n",
++				packnames[flags], i, err);
++			exit(1);
++		}
++		if (ulen != block_size && i != num_blocks - 1) {
++			fprintf(stderr, "Uncomp %s: bad len %u (%lu not %lu)\n",
++				packnames[flags], i, ulen, block_size);
++			exit(1);
++		}
++		if (argc > 2) {
++			len = ulen;
++			ulen = zblock_maxsize;
++			err = compress2(out = buffer, &ulen, clear_buffer, len, Z_BEST_SPEED);
++			if (err != Z_OK) {
++				fprintf(stderr, "Compress %s block %u error %d \n",
++					packnames[flags], i, err);
++				exit(1);
++			}
++		}
++	}
++	return ulen;
++}
++
  int main(int argc, char *argv[])
  {
 -	int handle;
-+	int handle, err;
++	int flags;
  	struct cloop_head head;
 -	unsigned int i;
 -	unsigned long num_blocks, block_size, zblock_maxsize, lastlen = 0;
+-	unsigned char *buffer, *clear_buffer;
+-	struct block_info *offsets;
 +	unsigned int i, v4_header_last, global_flags;
-+	unsigned long n, num_blocks, block_size, zblock_maxsize, len;
++	unsigned long n, len;
 +	uLongf ulen;
- 	unsigned char *buffer, *clear_buffer;
- 	struct block_info *offsets;
 +	loff_t end;
  
  	if (argc < 2 || argv[1][0] == '-') {
  		fprintf(stderr, "Usage: extract_compressed_fs file [--convert-to-v2] > output\n");
-@@ -23,23 +28,35 @@
+@@ -23,23 +87,35 @@
  		exit(1);
  	}
  
@@ -1293,7 +1354,7 @@
  		if (lseek64(handle, end - sizeof(tail), SEEK_SET) < 0 ||
  		    read(handle, &tail, sizeof(tail)) != sizeof(tail) ||
  		    lseek64(handle, end - sizeof(tail) - 
-@@ -51,60 +68,91 @@
+@@ -51,105 +127,108 @@
  		num_blocks = ntohl(head.num_blocks);
  		table_size = ntohl(tail.table_size);
  		table = malloc(table_size);
@@ -1384,52 +1445,60 @@
  		
  		strcpy(head.preamble, CLOOP_PREAMBLE);
  		write(STDOUT_FILENO, &head, n = sizeof(head));
--		for (i = 0; i < num_blocks; i++) {
+ 		for (i = 0; i < num_blocks; i++) {
 -			data = __be64_to_cpu(offset);
-+		for (i = 0; i <= num_blocks; i++) {
 +			data = __be64_to_cpu(ofs);
  			write(STDOUT_FILENO, &data, sizeof(data));
  			n += sizeof(data);
 -			offset += offsets[i].size;
-+			ofs += offsets[i].size;
++			if (offsets[i].flags == CLOOP_COMPRESSOR_ZLIB)
++				ofs += offsets[i].size;
++			else
++				ofs += get_block(i,argc);
  		}
 -		data = __be64_to_cpu(offset);
--		write(STDOUT_FILENO, &data, sizeof(data));
++		data = __be64_to_cpu(ofs);
+ 		write(STDOUT_FILENO, &data, sizeof(data));
 -		for (i = 0; i < num_blocks && lseek64(handle, offsets[i].offset, SEEK_SET) >= 0; i++) {
 -			read(handle, buffer, offsets[i].size);
 -			write(STDOUT_FILENO, buffer, offsets[i].size);
 -			n += offsets[i].size;
 -		}
--		n &= 0x1FF;
--		if (n) {
--			memset(buffer, 0, 512);
--			write(STDOUT_FILENO, buffer, 512 - n);
--		}
++	}
++	for (i = 0; i < num_blocks; i++) {
++	
++		fprintf(stderr, "Block %u %s at %llu length %lu ",
++			i, packnames[offsets[i].flags], offsets[i].offset, len);
++		ulen = get_block(i, argc);
++		fprintf(stderr, " => %lu\n", ulen);
++		write(STDOUT_FILENO, out, ulen);
++		n += ulen;
++	}
++	if (argc > 2) {
+ 		n &= 0x1FF;
+ 		if (n) {
+ 			memset(buffer, 0, 512);
+ 			write(STDOUT_FILENO, buffer, 512 - n);
+ 		}
 -		return 0;
- 	}
+-	}
 -	
- 	for (i = 0; i < num_blocks; i++) {
+-	for (i = 0; i < num_blocks; i++) {
 -		unsigned long destlen = block_size;
 -		unsigned int size = offsets[i].size;
-+		unsigned char *out;
-+		int flags = offsets[i].flags;
- 
- 		if (lseek64(handle, offsets[i].offset, SEEK_SET) < 0) {
- 			fprintf(stderr, "lseek to %Lu: %s\n",
-@@ -112,44 +160,61 @@
- 			exit(1);
- 		}
-                 
+-
+-		if (lseek64(handle, offsets[i].offset, SEEK_SET) < 0) {
+-			fprintf(stderr, "lseek to %Lu: %s\n",
+-				offsets[i].offset, strerror(errno));
+-			exit(1);
+-		}
+-                
 -		if (size > zblock_maxsize) {
-+		len = offsets[i].size;
-+		if (len > zblock_maxsize) {
- 			fprintf(stderr, 
+-			fprintf(stderr, 
 -				"Size %u for block %u (offset %Lu) too big\n",
 -				size, i, offsets[i].offset);
-+				"Size %lu for block %u (offset %Lu) too big\n",
-+				len, i, offsets[i].offset);
- 			exit(1);
- 		}
+-			exit(1);
+-		}
 -		read(handle, buffer, size);
 -
 -		fprintf(stderr, "Block %u at %llu length %u",
@@ -1438,7 +1507,7 @@
 -				   buffer, size)) {
 -		case Z_OK:
 -			break;
- 
+-
 -		case Z_MEM_ERROR:
 -			fprintf(stderr, "Uncomp: oom block %u\n", i);
 -			exit(1);
@@ -1449,61 +1518,18 @@
 -
 -		case Z_DATA_ERROR:
 -			fprintf(stderr, "Uncomp: input corrupt %u\n", i);
-+		if (argc <= 2) {
-+			fprintf(stderr, "Block %u at %llu length %lu ",
-+				i, offsets[i].offset, len);
-+		}
-+
-+		read(handle, out = buffer, ulen = len);
-+
-+		if (flags > CLOOP_COMPRESSOR_MAX) {
-+			fprintf(stderr, "Block %u: unsupported compression %d \n",
-+				i, flags);
- 			exit(1);
-+		}
- 
+-			exit(1);
+-
 -		default:
 -			fprintf(stderr, "Uncomp: unknown error %u\n", i);
 -			exit(1);
-+		if (flags != CLOOP_COMPRESSOR_ZLIB || argc <= 2) {
-+			ulen = block_size;
-+			err = unpack[flags](out = clear_buffer, &ulen, buffer, len);
-+			if (err != Z_OK) {
-+				fprintf(stderr, "Unpack %s block %u error %d \n",
-+					packnames[flags], i, err);
-+				exit(1);
-+			}
-+			if (argc > 2) {
-+				err = compress2(out = buffer, &ulen, clear_buffer, ulen, Z_BEST_SPEED);
-+				if (err != Z_OK) {
-+					fprintf(stderr, "Compress %s block %u error %d \n",
-+						packnames[flags], i, err);
-+					exit(1);
-+				}
-+			}
-+			else {
-+				fprintf(stderr, "=> %lu\n", ulen);
-+				if (ulen != block_size && i != num_blocks - 1) {
-+					fprintf(stderr, "Uncomp %s: bad len %u (%lu not %lu)\n",
-+						packnames[flags], i, ulen, block_size);
-+					exit(1);
-+				}
-+			}
- 		}
+-		}
 -		fprintf(stderr, " => %lu\n", destlen);
 -		if (destlen != block_size && i != num_blocks - 1) {
 -			fprintf(stderr, "Uncomp: bad len %u (%lu not %lu)\n", i,
 -				destlen, block_size);
 -			exit(1);
-+		write(STDOUT_FILENO, out, ulen);
-+		n += ulen;
-+	}
-+	if (argc > 2) {
-+		n &= 0x1FF;
-+		if (n) {
-+			memset(buffer, 0, 512);
-+			write(STDOUT_FILENO, buffer, 512 - n);
- 		}
+-		}
 -		write(STDOUT_FILENO, clear_buffer, (lastlen != 0 && (i+1) == num_blocks) ? lastlen : block_size);
  	}
  	return 0;
