@@ -2,13 +2,15 @@
 
 PACKAGE="linux-cloop"
 SOURCE="cloop"
-VERSION="2.639-2"
+_VERSION="2.639-2"
+#VERSION="$(sed '/+#define CLOOP_VERSION/!d;s|.* "\(.*\)"|\1|' stuff/cloop.u)"
+VERSION="4.12"
 CATEGORY="base-system"
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
 SHORT_DESC="The read-only compressed loop device kernel module."
 WEB_SITE="http://knoppix.net/wiki/Cloop"
-TARBALL="${SOURCE}_${VERSION}.tar.gz"
+TARBALL="${SOURCE}_${_VERSION}.tar.gz"
 WGET_URL="http://debian-knoppix.alioth.debian.org/packages/$SOURCE/$TARBALL"
 
 DEPENDS="linux"
@@ -19,9 +21,7 @@ SUGGESTED="cloop-utils"
 
 compile_rules()
 {
-	patch -p0 < $stuff/cloop.u	# 3.2.98
-	sed -i	-e 's|file->f_path.mnt, file->f_path.dentry|\&file->f_path|' \
-		-e 's|bvec->|bvec.|g;s|*bvec|bvec|' cloop.c
+	patch -p0 < $stuff/cloop.u
 	make KERNEL_DIR="/usr/src/linux" cloop.ko && xz cloop.ko
 }
 	
