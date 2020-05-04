@@ -26,13 +26,12 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|link_all_deplibs=$link_all_deplibs|link_all_deplibs=no|' \
-		configure
-
 	./configure							\
 		--disable-static					\
 		LIBCROCO_CFLAGS="-I/cross/$ARCH/sysroot/usr/include"	\
 		$CONFIGURE_ARGS &&
+	# from fix libtool:
+	sed -i 's| -shared | -Wl,-Os,--as-needed\0|g' libtool
 	make &&
 	make install
 }
