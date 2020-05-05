@@ -1977,7 +1977,17 @@
      return 0;
 --- create_compressed_fs.c
 +++ create_compressed_fs.c
-@@ -78,6 +78,7 @@
+@@ -58,6 +58,9 @@
+ #include <zlib.h>
+ #endif
+ 
++/* Creates a compressed file */
++#include "common_header.h"
++
+ #include <lzma.h>
+ static int xz_compress(Bytef *compressed,
+ 			uLongf *compressed_len,
+@@ -78,6 +81,7 @@
  		if (lzma_code(&strm, LZMA_FINISH) == LZMA_STREAM_END) {
  
  			*compressed_len -= strm.avail_out;
@@ -1985,7 +1995,7 @@
  			res = Z_OK;
  		}
  	}
-@@ -101,6 +102,7 @@
+@@ -101,6 +105,7 @@
  	(void) level;
  	if (res <= 0) return Z_ERRNO;
  	*compressed_len = res;
@@ -1993,6 +2003,16 @@
  	return Z_OK;
  }
  
+@@ -143,9 +148,6 @@
+ 
+ #include <signal.h>
+ 
+-/* Creates a compressed file */
+-#include "common_header.h"
+-
+ #define CLOOP_PREAMBLE "#!/bin/sh\n" "#V3.0 Format\n" "modprobe cloop file=$0 && mount -r -t iso9660 /dev/cloop $1\n" "exit $?\n"
+ #define CHUNK 65536
+ #define DEFAULT_BLOCKSIZE 65536
 @@ -179,7 +181,6 @@
  static unsigned long block_size = 0;
  static void flush_index(int sig)
