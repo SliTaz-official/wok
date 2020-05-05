@@ -1373,3 +1373,178 @@
    }
   return 0;
  init_out_dealloc:
+--- cloop.h
++++ cloop.h
+@@ -86,11 +86,8 @@
+ struct cloop_tail
+ {
+ 	u_int32_t table_size; 
+-	u_int32_t index_size; /* size:4 comp:3 ctrl-c:1 lastlen:24 */
++	u_int32_t index_size; /* size:4 unused:3 ctrl-c:1 lastlen:24 */
+ #define CLOOP3_INDEX_SIZE(x)    ((unsigned int)((x) & 0xF))
+-#define CLOOP3_BLOCKS_FLAGS(x)  ((unsigned int)((x) & 0x70) >> 4)
+-#define CLOOP3_TRUNCATED(x)     ((unsigned int)((x) & 0x80) >> 7)
+-#define CLOOP3_LASTLEN(x)       (unsigned int)((x) >> 8)
+ 	u_int32_t num_blocks;
+ };
+ 
+@@ -104,8 +101,10 @@
+ };
+ 
+ static inline char *build_index(struct block_info *offsets, unsigned long n, 
+-			unsigned long block_size, unsigned global_flags)
++			unsigned long block_size)
+ {
++	static char v[11];
++	u_int32_t flags = 0;
+ 	u_int32_t *ofs32 = (u_int32_t *) offsets;
+ 	loff_t    *ofs64 = (loff_t *) offsets;
+ 
+@@ -130,8 +129,6 @@
+ 		}
+ 		else { /* V2.0/V4.0 */
+ 			loff_t last = CLOOP_BLOCK_OFFSET(__be64_to_cpu(ofs64[n]));
+-			u_int32_t flags;
+-			static char v4[11];
+ 			unsigned long i = n;
+ 
+ 			for (flags = 0; n-- ;) {
+@@ -149,12 +146,7 @@
+ 					offsets[i] = offsets[offsets[i].offset];
+ 				}
+ 			}
+-			strcpy(v4, (char *) "64BE v4.0a");
+-			v4[10] = 'a' + ((flags-1) & 0xF);	// compressors used
+-			if (flags > 0x10) {			// with links ?
+-				v4[10] += 'A' - 'a';
+-			}
+-			return v4;
++			strcpy(v, (char *) "64BE v4.0a");
+ 		}
+ 	}
+ 	else if (ofs32[1] == 0 && v3_64 == 0) { /* V1.0 */
+@@ -170,7 +162,6 @@
+ 	else { /* V3.0 or V0.68 */
+ 		unsigned long i;
+ 		loff_t j;
+-		static char v3[11];
+ 		
+ 		for (i = 0; i < n && ntohl(ofs32[i]) < ntohl(ofs32[i+1]); i++);
+ 		if (i == n && ntohl(ofs32[0]) == (4*n) + 0x8C) { /* V0.68 */
+@@ -185,28 +176,33 @@
+ 		}
+ 		
+ 		v3_64 = (ofs32[1] == 0);
+-		for (i = n; i-- != 0; )
++		for (i = n; i-- != 0; ) {
+ 			offsets[i].size = ntohl(ofs32[i << v3_64]); 
+-		for (i = 0, j = sizeof(struct cloop_head); i < n; i++) {
+-			offsets[i].offset = j;
+-			offsets[i].flags = global_flags;
+ 			if (offsets[i].size == 0xFFFFFFFF) {
+-				offsets[i].flags = CLOOP_COMPRESSOR_NONE;
+-				offsets[i].size = block_size;
++				offsets[i].size = 0x10000000 | block_size;
+ 			}
+-			if ((offsets[i].size & 0x80000000) == 0) {
++			offsets[i].flags = (offsets[i].size >> 28);
++			offsets[i].size &= 0x0FFFFFFF; 
++		}
++		for (i = 0, j = sizeof(struct cloop_head); i < n; i++) {
++			offsets[i].offset = j;
++			if (offsets[i].flags < 8) {
+ 				j += offsets[i].size;
+ 			}
+ 		}
+ 		for (i = 0; i < n; i++) {
+-			if (offsets[i].size & 0x80000000) {
+-				offsets[i] = offsets[offsets[i].size & 0x7FFFFFFF];
++			flags |= 1 << offsets[i].flags;
++			if (offsets[i].flags >= 8) {
++				offsets[i] = offsets[offsets[i].size];
+ 			}
+ 		}
+-		strcpy(v3, (char *) (v3_64) ? "64BE v3.0a" : "32BE v3.0a");
+-		v3[10] += global_flags;
+-		return v3;
++		strcpy(v, (char *) (v3_64) ? "64BE v3.0a" : "32BE v3.0a");
++	}
++	v[10] = 'a' + ((flags-1) & 0xF);	// compressors used
++	if (flags > 0x10) {			// with links ?
++		v[10] += 'A' - 'a';
+ 	}
++	return v;
+ }
+ 
+ /* Cloop suspend IOCTL */
+--- cloop.c
++++ cloop.c
+@@ -542,7 +542,7 @@
+  const unsigned int header_size = sizeof(struct cloop_head);
+  unsigned int i, total_offsets=0;
+  loff_t fs_read_position = 0, header_pos[2];
+- int flags, isblkdev, bytes_read, error = 0;
++ int isblkdev, bytes_read, error = 0;
+  if (clo->suspended) return error;
+  #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
+  inode = file->f_dentry->d_inode;
+@@ -698,18 +698,12 @@
+        error=-EBADF; goto error_release;
+       }
+      len = CLOOP3_INDEX_SIZE(ntohl(tail.index_size)) * total_offsets;
+-     flags = CLOOP3_BLOCKS_FLAGS(ntohl(tail.index_size));
+-// May  3 19:45:20 (none) user.info kernel: cloop: uncompress(clo=e0a78000, block_ptrs=e0c9c000, &len(1440)=ddc05e6c, zbuf=e0c9f000, zlen=43, flag=0)
+-printk(KERN_INFO "%s: uncompress(clo=%p, block_ptrs=%p, &len(%ld)=%p, zbuf=%p, zlen=%ld, flag=%d)\n", cloop_name, 
+-		clo, clo->block_ptrs, len, &len, zbuf, zlen, flags);
+-     ret = uncompress(clo, (void *) clo->block_ptrs, &len, zbuf, zlen, flags);
+-// May  3 19:45:20 (none) user.alert kernel: BUG: unable to handle kernel NULL pointer dereference at   (null)
+-printk(KERN_INFO "%s: uncompressed !\n", cloop_name);
++     ret = uncompress(clo, (void *) clo->block_ptrs, &len, zbuf, zlen, CLOOP_COMPRESSOR_ZLIB);
+      cloop_free(zbuf, zlen);
+      if (ret != 0)
+       {
+-        printk(KERN_ERR "%s: decompression error %i uncompressing index, flags %u\n",
+-               cloop_name, ret, flags);
++        printk(KERN_ERR "%s: decompression error %i uncompressing index\n",
++               cloop_name, ret);
+        error=-EBADF; goto error_release;
+       }
+     }
+@@ -722,7 +716,6 @@
+  else
+   {
+    unsigned int n, total_bytes;
+-   flags = 0;
+    clo->block_ptrs = cloop_malloc(sizeof(struct block_info) * total_offsets);
+    if (!clo->block_ptrs)
+     {
+@@ -761,7 +754,7 @@
+   }
+  {
+   int i;
+-  char *version = build_index(clo->block_ptrs, clo->head.num_blocks, clo->head.block_size, flags);
++  char *version = build_index(clo->block_ptrs, clo->head.num_blocks, clo->head.block_size);
+   clo->largest_block = 0;
+   for (i = 0; i < clo->head.num_blocks; i++)
+     if (clo->block_ptrs[i].size > clo->largest_block)
+@@ -769,9 +762,6 @@
+   printk(KERN_INFO "%s: %s: %s: %u blocks, %u bytes/block, largest block is %lu bytes.\n",
+          cloop_name, clo->underlying_filename, version, clo->head.num_blocks,
+          clo->head.block_size, clo->largest_block);
+- }
+- {
+-  int i;
+   clo->num_buffered_blocks = (buffers > 0 && clo->head.block_size >= 512) ?
+                               (buffers / clo->head.block_size) : 1;
+   clo->buffered_blocknum = cloop_malloc(clo->num_buffered_blocks * sizeof (u_int32_t));
+@@ -874,6 +864,10 @@
+  cloop_free(clo->block_ptrs, sizeof(struct block_info) * total_offsets);
+  clo->block_ptrs=NULL;
+ error_release:
++#if (defined(CONFIG_ZLIB_INFLATE) || defined(CONFIG_ZLIB_INFLATE_MODULE))
++ zlib_inflateEnd(&clo->zstream);
++ if(clo->zstream.workspace) { cloop_free(clo->zstream.workspace, zlib_inflate_workspacesize()); clo->zstream.workspace = NULL; }
++#endif
+  if(bbuf) cloop_free(bbuf, clo->underlying_blksize);
+  if(clo->underlying_filename) { kfree(clo->underlying_filename); clo->underlying_filename=NULL; }
+  clo->backing_file=NULL;

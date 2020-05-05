@@ -402,3 +402,128 @@
 -qcow.o-libs        := -lz
 +qcow.o-libs        := -lz -llzma
  linux-aio.o-libs   := -laio
+--- block/cloop.c
++++ block/cloop.c
+@@ -48,7 +48,6 @@
+ } cloop_tail;
+ 
+ #define CLOOP3_INDEX_SIZE(x)    ((unsigned int)((x) & 0xF))
+-#define CLOOP3_BLOCKS_FLAGS(x)  ((unsigned int)((x) & 0x70) >> 4)
+ 
+ typedef struct block_info {
+ 	uint64_t offset;	/* 64-bit offsets of compressed block */
+@@ -57,7 +56,7 @@
+ } block_info;
+ 
+ static inline int build_index(struct block_info *offsets, unsigned long n, 
+-			unsigned long block_size, unsigned global_flags)
++			unsigned long block_size)
+ {
+ 	uint32_t *ofs32 = (uint32_t *) offsets;
+ 	loff_t    *ofs64 = (loff_t *) offsets;
+@@ -118,42 +117,44 @@
+ 			offsets[n].flags = 0;
+ 		}
+ 	}
+-	else if (be32_to_cpu(ofs32[0]) == (4*n) + 0x8C) { /* V0.68 */
+-		loff_t last = be32_to_cpu(ofs32[n]);
+-		while (n--) {
+-			offsets[n].size = last - 
+-				(offsets[n].offset = be32_to_cpu(ofs32[n])); 
+-        		if (offsets[n].size > 2 * MAX_BLOCK_SIZE)
+-        			return n+1;
+-			last = offsets[n].offset;
+-			offsets[n].flags = 0;
+-		}
+-	}
+-	else { /* V3.0 */
++	else { /* V3.0 or V0.68 */
+ 		unsigned long i;
+ 		loff_t j;
+ 		
+-		v3_64 = (ofs32[1] == 0) ? 2 : 1;
++		for (i = 0; i < n && be32_to_cpu(ofs32[i]) < be32_to_cpu(ofs32[i+1]); i++);
++		if (i == n && be32_to_cpu(ofs32[0]) == (4*n) + 0x8C) { /* V0.68 */
++			loff_t last = be32_to_cpu(ofs32[n]);
++			while (n--) {
++				offsets[n].size = last - 
++					(offsets[n].offset = be32_to_cpu(ofs32[n])); 
++	        		if (offsets[n].size > 2 * MAX_BLOCK_SIZE)
++        				return n+1;
++				last = offsets[n].offset;
++				offsets[n].flags = 0;
++			}
++			return 0;
++		}
++		
++		v3_64 = (ofs32[1] == 0);
+ 		for (i = n; i-- > 0; ) {
+-			offsets[i].size = be32_to_cpu(ofs32[i*v3_64]); 
+-			if ((offsets[i].size & 0x80000000) == 0 &&
+-        		    offsets[i].size > 2 * MAX_BLOCK_SIZE)
++			offsets[i].size = be32_to_cpu(ofs32[i << v3_64]); 
++			if (offsets[i].size == 0xFFFFFFFF) {
++				offsets[i].size = 0x10000000 | block_size;
++			}
++			offsets[i].flags = (offsets[i].size >> 28);
++			offsets[i].size &= 0x0FFFFFFF; 
++			if (offsets[i].size > 2 * MAX_BLOCK_SIZE)
+         			return i+1;
+ 		}
+ 		for (i = 0, j = 128 + 4 + 4; i < n; i++) {
+ 			offsets[i].offset = j;
+-			offsets[i].flags = global_flags;
+-			if (offsets[i].size == 0xFFFFFFFF) {
+-				offsets[i].flags = CLOOP_COMPRESSOR_NONE;
+-				offsets[i].size = block_size;
+-			}
+-			if ((offsets[i].size & 0x80000000) == 0) {
++			if (offsets[i].flags < 8) {
+ 				j += offsets[i].size;
+ 			}
+ 		}
+ 		for (i = 0; i < n; i++) {
+-			if (offsets[i].size & 0x80000000) {
+-				offsets[i] = offsets[offsets[i].size & 0x7FFFFFFF];
++			if (offsets[i].flags >= 8) {
++				offsets[i] = offsets[offsets[i].size];
+ 			}
+ 		}
+ 	}
+@@ -170,7 +171,6 @@
+     uint8_t *compressed_block;
+     uint8_t *uncompressed_block;
+     z_stream zstream;
+-    int global_flags;
+ } BDRVCloopState;
+ 
+ static int cloop_probe(const uint8_t *buf, int buf_size, const char *filename)
+@@ -305,7 +305,6 @@
+         }
+ 	len = be32_to_cpu(tail.table_size);
+ 	toclen = CLOOP3_INDEX_SIZE(be32_to_cpu(tail.index_size)) * s->n_blocks;
+-	s->global_flags = CLOOP3_BLOCKS_FLAGS(be32_to_cpu(tail.index_size));
+ 
+         s->offsets = g_malloc(offsets_size);
+ 	p = g_malloc(len);
+@@ -316,9 +315,9 @@
+         }
+         s->zstream.next_in = p;
+         s->zstream.avail_in = len;
+-        s->zstream.next_out = s->offsets;
++        s->zstream.next_out = (void *) s->offsets;
+         s->zstream.avail_out = toclen;
+-	if (cloop_unpack(s, s->global_flags) == 0) {
++	if (cloop_unpack(s, CLOOP_COMPRESSOR_ZLIB) == 0) {
+             ret = -EINVAL;
+             goto fail;
+         }
+@@ -342,7 +341,7 @@
+             goto fail;
+         }
+     }
+-    ret = build_index(s->offsets, s->n_blocks, s->block_size, s->global_flags);
++    ret = build_index(s->offsets, s->n_blocks, s->block_size);
+     if (ret) {
+         error_setg(errp, "invalid compressed block size at index %u, "
+                    "image file is corrupt", ret-1);
