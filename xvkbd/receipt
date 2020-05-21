@@ -1,42 +1,53 @@
 # SliTaz package receipt.
 
 PACKAGE="xvkbd"
-VERSION="3.7"
+VERSION="4.1"
 CATEGORY="x-window"
 SHORT_DESC="Virtual (graphical) keyboard program for X Window System."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://t-sato.in.coocan.jp/xvkbd/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="${WEB_SITE}$TARBALL"
 
-DEPENDS="xorg-libXp xorg-libXtst xorg-libXaw3d"
-BUILD_DEPENDS="xorg-imake xorg-libXaw-dev xorg-libXp-dev xorg-libXtst-dev \
-xorg-libXaw3d-dev xorg-xproto"
+DEPENDS="xorg-libXaw3d xorg-libXp xorg-libXtst"
+BUILD_DEPENDS="xorg-imake xorg-libXaw-dev xorg-libXaw3d-dev xorg-libXp-dev 
+	xorg-libXtst-dev xorg-xproto"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	# delete Xaw3d
 	# sed -i '/#define XAW3D/d' Imakefile
-	xmkmf &&
+#	xmkmf &&
+
+	mkdir -p $install/usr/share/applications
+
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc/X11	\
+		$CONFIGURE_ARGS &&
+	make &&
 	make install
 
 	# Add .desktop file
-	mkdir -p $install/usr/share/applications
-	cp $stuff/usr/share/applications/xvkbd.desktop $install/usr/share/applications
+	cp $stuff/usr/share/applications/xvkbd.desktop \
+			$install/usr/share/applications
 
 	# Add icon
 	mkdir -p $install/usr/share/icons/hicolor/32x32/apps
-	cp $stuff/usr/share/pixmaps/xvkbd.png $install/usr/share/icons/hicolor/32x32/apps
+	cp $stuff/usr/share/pixmaps/xvkbd.png \
+		$install/usr/share/icons/hicolor/32x32/apps
 
-	cp -f $stuff/etc/X11/app-defaults/XVkbd-russian $install/etc/X11/app-defaults
+	cp -f $stuff/etc/X11/app-defaults/XVkbd-russian \
+		$install/etc/X11/app-defaults
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
+	cp -a $install/*	$fs
 }
 
 post_install()
@@ -45,16 +56,18 @@ post_install()
 	lang=$(echo $LANG | awk '{FS="_"} {print $1}')
 	find "$1/home" -maxdepth 2 -name ".Xdefaults" > /tmp/listeXdefaults
 	while read line
-	do
-	if ! grep -q "Xvkbd settings" $line; then
-	cat >> $line << EOT
+	  do
+		if ! grep -q "Xvkbd settings" $line
+		  then
+			cat >> $line << EOT
 
 ! Xvkbd settings
 !
 xvkbd*Font: -misc-fixed-medium-r-semicondensed--0-0-75-75-c-0-iso8859-1
 EOT
-echo "xvkbd.Layout : $lang" >> $line
-	fi
-	done </tmp/listeXdefaults
+			echo "xvkbd.Layout : $lang" >> $line
+		fi
+	  done </tmp/listeXdefaults
+
 	rm -f /tmp/listeXdefaults
 }
