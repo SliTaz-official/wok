@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="zsh"
-VERSION="5.7.1"
+VERSION="5.8"
 CATEGORY="system-tools"
 TAGS="shell"
 SHORT_DESC="Zsh shell incorporates many features of bash, ksh, and tcsh."
@@ -33,17 +33,18 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/bin $fs
+	mkdir $fs/etc
+	mkdir -p $fs/usr/share/zsh
+	mkdir -p $fs/usr/share/zsh/scripts
+
+	cp -a $install/bin	$fs
 
 	# Configuration files.
-	mkdir $fs/etc
 	cp $stuff/example.zshrc $fs/etc/zshrc
 
 	#no way around this... gen_package will not automatically copy these
-	mkdir -p $fs/usr/share/zsh
-	cp -r $install/usr/share/zsh/functions $fs/usr/share/zsh
-
-	mkdir -p $fs/usr/share/zsh/scripts
+	cp -r $install/usr/share/zsh/functions \
+				$fs/usr/share/zsh
 }
 
 # Post install commands for Tazpkg.
@@ -52,18 +53,20 @@ genpkg_rules()
 post_install()
 {
 	sh=$(readlink "$1/bin/sh")
-	if [ "$sh" != '/bin/zsh' ]; then
+	if [ "$sh" != '/bin/zsh' ]
+	  then
 		echo ''
 		echo "**** Actual SH link : $sh"
 		echo ''
 		echo -n 'Do you want Zsh for /bin/sh (y/N) ? : '
 		read -t 30 answer < /dev/tty
-		if [ "$answer" = 'y' ]; then
+		if [ "$answer" = 'y' ]
+		  then
 			echo ''
 			action 'Removing sh link to make a new one pointing on /bin/zsh...'
 			rm "$1/bin/sh" && ln -s /bin/zsh "$1/bin/sh"
 			status
-		else
+		  else
 			echo ''
 			echo "Leaving /bin/sh to : $sh"
 		fi
@@ -74,5 +77,6 @@ post_install()
 pre_remove()
 {
 	sh=$(readlink "$1/bin/sh")
-	[ "$sh" != 'busybox' ] && ln -sf /bin/busybox "$1/bin/sh"
+	[ "$sh" != 'busybox' ] &&
+	ln -sf /bin/busybox "$1/bin/sh"
 }
