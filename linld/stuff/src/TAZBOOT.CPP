@@ -127,7 +127,7 @@ static void bootiso(char **iso)
 		strcatb(buf_cmdline,"mode=");
 		strcat(buf_cmdline,mode);
 		strcatb(buf_cmdline,"magic=");
-		strcat(buf_cmdline,(char *)ultoa(magic));
+		strcat(buf_cmdline,(char *)utoa(magic));
 	}
 	load_initrds();
 	close(x->fd);
