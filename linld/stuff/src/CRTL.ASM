@@ -31,26 +31,7 @@ tazboot_cmd	db	"tazboot.cmd",0
         segment _BSS byte public use16 'BSS'
 
 		ifdef EXTRA
-;typedef unsigned dirsizetype;
-struc		isostate		; struct isostate {
-curpos		dw	?		; 0	unsigned curpos;
-filename2open	dw	?		; 2	char *filename2open;
-fd		dw	?		; 4	int fd;
-filemod		dw	?		; 6	unsigned short filemod;
-fileofs		dd	?		; 8	unsigned long fileofs;
-filesize	dd	?		;12	unsigned long filesize;
-filename	dw	?		;16	char *filename;
-curdirsize	dw	?		;18	dirsizetype curdirsize;
-dirsize		dw	?		;20	dirsizetype dirsize;
-curdirofs	dd	?		;22	unsigned long curdirofs;
-dirofs		dd	?		;26	unsigned long dirofs;
-;overlap
-entrysize	dw	?		;30	int entrysize;
-tmp		dw	?		;32	const char *tmp;
-c		db	?		;34	char c;
-_64bits		db	?		;35	char _64bits;
-buffer		db	?		;36	char buffer[2048+512];
-ends		isostate		; } isostate;
+		include	"isostate.inc"
 		public	_isostate
 _isostate	isostate	<?>
 		org	$-7
@@ -59,7 +40,7 @@ _xfer_buf	db	4096	dup (?)
 filecnt		db	?		; in fact 0 minus file count...
 nextfilename	dw	?
 	ifdef	EXTRA
-ultoabuf	db	12	dup (?)
+utoabuf		db	6	dup (?)
 	endif
 
         ends    _BSS
@@ -111,6 +92,8 @@ strfound:
 		xchg	ax,dx
 strend:
                 pop	si
+	global	@ret:near
+@ret:
 		ret
 
         endp	@strcatb$qpxzct1
@@ -185,6 +168,10 @@ openargs:
         proc    @open$qpxzc near
 
 open:						; open(bx)
+	ifdef	ISOHOOK
+		extrn	iso_open_hack:word
+		call	[iso_open_hack]		; or ret
+	endif
 	ifdef	LONG_FILENAME
 		mov	ax,716Ch
 		push	bx si
@@ -221,6 +208,10 @@ open:						; open(bx)
 
         global  close:near			; close(ax)
 close:
+	ifdef	ISOHOOK
+		extrn	iso_close_hack:word
+		call	[iso_close_hack]	; or ret
+	endif
 		mov	bh,3Eh
 dosbx:
 		xchg	ax,bx
@@ -263,6 +254,10 @@ dosbx:
 @read$cxdxbx:
                 mov	ah,3Fh
 		endif
+	ifdef	ISOHOOK
+		extrn	iso_read_hack:word
+		call	[iso_read_hack]		; or ret
+	endif
                 jcxz	fail
 dos:
                 int	21h
@@ -302,6 +297,10 @@ lseek0:						; lseek0(ax,bl=dir)
 lseekword:
 		sbb	cx,cx
 lseekset:
+	ifdef	ISOHOOK
+		extrn	iso_lseek_hack:word
+		call	[iso_lseek_hack]	; or ret
+	endif
 		mov	bh,42h			; bx=fd cx:dx=offset al=whence
 		jmp	dosbx
 
@@ -394,13 +393,8 @@ isolseek:
 		xchg	ax,di			; vars => di
 		dec	bx
 @@testalt:
-		mov	al,-1
 		sub	di,dx
-@@test:
-		cmp	al,'='
-		je	@@found
-		cmp	al,0			; eos, si=next argv
-		je	@@found
+@@loop:
 		mov	si,cx			; s
 		add	di,dx
 @@match:
@@ -416,15 +410,29 @@ isolseek:
 @@notopt:
 		ifdef	EXTRA
 		cmp	[byte bx],'/'
-		je	@@testalt
+		jne	@@notalt
+		or	al,al			; 1st loop ?
+		js	@@testalt
+@@notalt:
 		endif
 		cmp	[byte bx],'|'
 		je	@@test
+		cmp	[byte bx],0
+		je	@@test
+		mov	al,-1
 		inc	bx
-		cmp	[byte bx-1],0
-		jne	@@notopt
+		jmp	@@notopt
+@@test:
+		or	al,al			; 1st loop ?
+		jns	@@testal
+		cmp	[byte bx],0
+		jne	@@loop
+@@testal:
+		cmp	al,'='
+		;je	@@found
+		;cmp	al,0			; eos, si=next argv
 		stc
-		jmp	@@nokeyword
+		jne	@@nokeyword
 @@found:
 		mov	[di],si
 		dec	dx
@@ -573,7 +581,7 @@ do_int21h:
 		jz	@@eos
 		or	al,al
 		jnz	@@scan
-		dec	cx
+		dec	cx			; blocked to eos
 @@eos:
 		mov	[(image_himem di).state],cx
 		dec	si
@@ -1300,34 +1308,25 @@ strtol_ret:
 		ifdef	EXTRA
                 p8086
 ;***************************************************************
-;_fastcall char *ultoa(axdx:unsigned long n);
+;_fastcall char *utoa(ax:unsigned n);
 ;***************************************************************
-        global  @ultoa$qul:near
-        proc    @ultoa$qul near
+        global  @utoa$qui:near
+        proc    @utoa$qui near
 
-		xchg	ax,cx
-		xchg	ax,dx		; AX:CX = n
-		push	si
-		mov	si,10
-		mov	bx,offset ultoabuf+11
+		mov	cx,10
+		mov	bx,offset utoabuf+5
 @@loop:
 		dec	bx
 		xor	dx,dx
-		div	si		; DX:AX = 0000:hi(n)
-		xchg	ax,cx		; CX = hi(n)/10
-		div	si		; DX:AX = hi(n)%10:lo(n)
-		xchg	ax,cx		; CX = lo(n/10)
-					; AX = hi(n)/10 = hi(n/10)
+		div	cx		; DX:AX = n%10:n/10
 		mov	[byte bx],'0'
 		add	[bx],dl		; DL = n%10
-		mov	dx,ax
-		or	dx,cx
+		or	ax,ax
 		jnz	@@loop
 		xchg	ax,bx
-		pop	si
 		ret
 
-        endp    @ultoa$qul
+        endp    @utoa$qui
 
 
 ;***************************************************************

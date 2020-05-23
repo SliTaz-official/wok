@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
 	else if (argnum(*argv,"root|vga|mem|-b",&root_dev) != -1);
 	else {
 	    *clp = (const char *) buf_cmdline + 1;
-	    strcatb((const char *) buf_cmdline,*argv);
+	    do strcatb((const char *) buf_cmdline,*argv++); while (*argv);
 	boot:
             puts(*clp);
 	    set_cmdline(*clp);

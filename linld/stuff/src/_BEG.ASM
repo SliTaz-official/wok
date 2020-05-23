@@ -60,6 +60,9 @@ _cpu_features	dd	?
 clearbss:
 		mov	[si],bl		; clear bss + heap
 		inc	si
+	ifdef	ISOHOOK
+		cmp	si,bx
+	endif
 		jne	clearbss
 
 ;***************************************************************
@@ -99,6 +102,21 @@ no_vcpi:
 		else
 		jmp	endcpu86
 		endif
+
+	ifdef	ISOHOOK
+		extrn	@ret:near
+		global	iso_open_hack
+iso_open_hack	dw	@ret
+		global	iso_read_hack
+iso_read_hack	dw	@ret
+		global	iso_lseek_hack
+iso_lseek_hack	dw	@ret
+		global	iso_close_hack
+iso_close_hack	dw	@ret
+		global	iso_cleanup_hack
+iso_cleanup_hack	dw	@ret
+		dw	_cpu_features+3
+	endif
 
 ;***************************************************************
 ; checks for vcpi
