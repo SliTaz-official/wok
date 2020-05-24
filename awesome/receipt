@@ -1,32 +1,35 @@
 # SliTaz package receipt.
 
 PACKAGE="awesome"
-VERSION="3.5.1"
+VERSION="4.3"
 CATEGORY="x-window"
-SHORT_DESC="Highly configurable framework window manager"
+TAGS="window-manager"
+SHORT_DESC="Highly configurable framework window manager."
 MAINTAINER="mallory@sweetpeople.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://awesome.naquadah.org/"
-WGET_URL="${WEB_SITE}download/$TARBALL"
-TAGS="window-manager"
+WEB_SITE="https://awesome.naquadah.org/"
 
-DEPENDS="cairo dbus gdk-pixbuf libxdg-basedir lgi lua startup-notification \
-xcb-util-image xcb-util-keysyms xcb-util-wm xorg-libXcursor"
-BUILD_DEPENDS="cmake xorg-libX11-dev libxcb-dev xcb-util-dev \
-xcb-util-keysyms-dev xcb-util-image-dev xcb-util-wm-dev lua-dev pango-dev \
-cairo-dev imlib2-dev dbus-dev libev-dev gperf cairo libxdg-basedir-dev \
-startup-notification-dev imagemagick pkg-config freetype-dev fontconfig-dev \
-libpng-dev libxdg-basedir-dev openexr libltdl gdk-pixbuf-dev \
-xorg-libXcursor-dev lgi"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://github.com/awesomeWM/$PACKAGE/releases/download/v$VERSION/$TARBALL"
+
+DEPENDS="cairo dbus gdk-pixbuf lgi libxdg-basedir libxkbcommon lua 
+	pango-typelib startup-notification xcb-util-cursor xcb-util-image 
+	xcb-util-keysyms xcb-util-renderutil xcb-util-wm"
+BUILD_DEPENDS="cairo cairo-dev cmake dbus-dev fontconfig-dev freetype-dev 
+	gdk-pixbuf-dev gperf imagemagick imlib2-dev lgi libev-dev libpng-dev 
+	libltdl libxdg-basedir-dev libxkbcommon-dev lua-dev openexr pango-dev 
+	pkg-config startup-notification-dev xcb-util-cursor-dev xcb-util-dev 
+	xcb-util-image-dev xcb-util-keysyms-dev xcb-util-renderutil-dev 
+	xcb-util-wm-dev xcb-util-xrm-dev xorg-libX11-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -ldl"
 	export AWESOME_IGNORE_LGI=1
-	make CMAKE_ARGS=" -DCMAKE_INSTALL_PREFIX:PATH=/usr \
-		-DXDG_CONFIG_DIR=/etc/xdg \
+	make							\
+		CMAKE_ARGS=" -DCMAKE_INSTALL_PREFIX:PATH=/usr	\
+		-DXDG_CONFIG_DIR=/etc/xdg			\
 		-DCMAKE_BUILD_TYPE=RELEASE" &&
 	make install
 }
@@ -34,37 +37,30 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
+	mkdir -p $fs/usr/share/lua
+
+	cp -a $install/*		$fs
 
 	# move lua scripts to lua directory
-	mkdir -p $fs/usr/share/lua
-	mv $fs/usr/share/awesome/lib $fs/usr/share/lua/5.2
-
-	# add pango typelibs
-	# (not need to install pango-dev with full stack of dev packages)
-	mkdir -p $fs/usr/lib
-	cp -a $WOK/pango/install/usr/lib/girepository-1.0 $fs/usr/lib
+	mv $fs/usr/share/awesome/lib	$fs/usr/share/lua/5.2
 }
 
 post_install()
 {
 	res=$(cat "$1/etc/slim.conf" | grep ^session | sed s/"sessions. *"//)
 	# Adding WM to SLIM available sessions.
-	if ! echo "$res" | grep -q $PACKAGE; then
-		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" "$1/etc/slim.conf"
+	if ! echo "$res" | grep -q $PACKAGE
+	  then
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" \
+			"$1/etc/slim.conf"
 	fi
 }
 
 post_remove()
 {
 	# Remove WM from SLIM available sessions.
-	if grep -q $PACKAGE "$1/etc/slim.conf"; then
+	if grep -q $PACKAGE "$1/etc/slim.conf"
+	  then
 		sed -i s/,$PACKAGE// "$1/etc/slim.conf"
 	fi
 }
-
-## -----------------------------------------------------------------------
-## Revision: 03/Aug/2017 - SliTaz DevTeam.
-## Website: "http://awesome.naquadah.org/" is OFF.
-## This looks good? => https://awesomewm.org/
-## !! Please, remove this after you update. Thank you.
