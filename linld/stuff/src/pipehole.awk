@@ -45,6 +45,12 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/ax,word ptr/) $0="	xchg	ax,bx"
 		if (/\[si\]$/) { islinld=0; print "; " $0; next }
 	}
+	if (/do strcatb/) islinld=5
+	if (islinld==5) {
+		if (/si/) next
+		$0="	lodsw"
+		islinld=0
+	}
 	 } # file == "linld.cpp"
 	 if (file == "himem.cpp") {
 	if (/void load_image/) ishimem=1
