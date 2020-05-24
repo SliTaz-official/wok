@@ -114,7 +114,12 @@ int _isoopen(void)
 #define _64bits (x->_64bits)
 	char *s;
 
+#ifdef ISOHOOK
+	extern int _cpuhaslm();
+	_64bits = _cpuhaslm();
+#else
 	_64bits = cpuhaslm();
+#endif
     do {
 	for (s = (char *) x->filename2open; *s == '/' ; s++) {
 		isoroot();

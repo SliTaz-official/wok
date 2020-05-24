@@ -26,7 +26,11 @@ extern _fastcall void strcpy(const char* a,const char* b);
 extern _fastcall int argstr(const char *s, const char keywords[], const char **var);
 extern _fastcall int argnum(char *s, const char keywords[], unsigned long *var);
 extern _fastcall void set_cmdline(const char *filename);
+#ifndef ISOHOOK 
 #define strhead(a,b)	(strstr(a,b) != (int) (a))
+#else
+extern _fastcall int strhead(const char* a,const char* head);
+#endif
 #else
 extern _fastcall int strhead(const char* a,const char* head);
 #endif

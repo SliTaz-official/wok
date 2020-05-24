@@ -85,6 +85,10 @@ step19:
 	global	_boot_kernel:near
         proc    _boot_kernel near
         
+		ifdef	ISOHOOK
+		extrn	iso_cleanup_hack:word
+		call	[iso_cleanup_hack]	; or ret
+		endif
 		ifdef	NO386
                 p8086
 		else

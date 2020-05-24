@@ -1009,7 +1009,7 @@ curdata		dw	?
 		sub	dx,si
 		mov	bx,[di]
 		call	@read$cxdxbx
-		jbe	image_done
+		jb	image_done
 		xor	cx,cx
 		cwd				; ax < 8000h
 		ifndef	NO386
