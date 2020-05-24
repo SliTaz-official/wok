@@ -46,7 +46,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/\[si\]$/) { islinld=0; print "; " $0; next }
 	}
 	if (islinld==5) {
-		if (/si/) next
+		if (/si/ || /word ptr/) next
 		if (/buf_cmdline/) {
 			print	"	lodsw"
 			islinld=0
