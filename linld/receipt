@@ -46,8 +46,11 @@ EOT
 	grep '^Warning[ :]' */LNK.LOG */CPP.LOG
 	grep '*Warning*' */*.LST
 	cp LINLD$SUFFIX/LINLD.COM linld.com
-	cp LINLD$SUFFIX/ISOBOOT.COM isoboot.com
 	cp TAZBOOT/TAZBOOT.COM tazboot.com
+	dd count=$((0x$(sed '/ FOLD/!d;s|.*:||;s| .*||;q' LINLD$SUFFIX/ISOBOOT.MAP) - 0x100)) \
+		if=LINLD$SUFFIX/ISOBOOT.COM bs=1 > isoboot.com
+	dd skip=$((0x$(sed '/ UNFOLD/!d;s|.*:||;s| .*||;q' LINLD$SUFFIX/ISOBOOT.MAP) - 0x100)) \
+		if=LINLD$SUFFIX/ISOBOOT.COM bs=1 >> isoboot.com
 	objdump -D -b binary -mi386 -Maddr16,data16 --adjust-vma=0x100 \
 		linld.com > linld.lst
 	linld=linld.com
