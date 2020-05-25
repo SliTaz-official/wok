@@ -60,36 +60,25 @@ clearbss:
 ; build arg
 ;***************************************************************
 
-		mov	bx,endbzimage-bzimage
 		mov	si,80h
-		mov	di,si
 		lodsb
-		add	[di],bl
 		cbw
-		mov	bp,-1
-skipspace:
-		inc	bp
-		cmp	[byte bp+si]," "
-		je	skipspace
-		xchg	ax,cx
-		add	si,cx
+		xchg	ax,bx
+		mov	[bx+si],bh		; set EOS
+searchStart:
+		lodsb
+		cmp	al,0
+		je	_abort
+		cmp	al,' '
+		je	searchStart
 		dec	si
-		lea	di,[bx+si]
-		mov	[di+1],bh
-		sub	cx,bp
-		std
-		rep
-		  movsb
+		mov	di,offset filename
 		push	di
-		mov	si,offset endbzimage-1
-		mov	cl,bl
-		rep
-		  movsb
+		mov	ah,60h			; canonicalize filename
+                int	21h
+		jc	_abort
+	ifdef	WITH_LONG_FILENAME
 		pop	si
-		inc	si
-		cld
-
-	ifdef	LONG_FILENAME
 		mov	ax,716Ch
 		xor	bx,bx			; R/O
 		;xor	cx,cx			; attributes
@@ -97,10 +86,12 @@ skipspace:
 		stc
                 int	21h
                 jnc	opened
+                mov	dx,si
+	else
+		pop	dx
 	endif
                 mov	ax,3d00h		; read-only+compatibility
 		;mov	cl,0			; attribute mask
-                mov	dx,si
                 int	21h
                 jnc	opened
 
@@ -117,9 +108,9 @@ opened:
 jc_abort:
 		jc	_abort
 
+; patch magic
 ;***************************************************************
 
-; patch magic
 		extrn	@readmenu$qv:near
 		call	@readmenu$qv
 		mov	ax,[_isostate.filemod]
@@ -134,7 +125,7 @@ jc_abort:
 		jnz	@@loop1
 		push	ds
 		pop	es
-		lea	di,[bp+magic-bzimage+81h]
+		mov	di,offset magic
 @@loop2:
 		pop	ax
 		add	al,'0'
@@ -142,6 +133,7 @@ jc_abort:
 		loop	@@loop2
 
 ; patch initrd
+;***************************************************************
 		cwd
 		or	[_isostate.curdirsize],-1
 		jmp	patchtest
@@ -158,7 +150,7 @@ patchtest:
 		jne	patchlp
 		cmp	dx,100h
 		je	initrddone
-		lea	di,[bp+rootfs-bzimage+87h]
+		mov	di,offset dotgz
 		or	dh,dh
 		je	modify
 		add	di,4
@@ -168,14 +160,32 @@ patchtest:
 		  movsw
 modify:
 		xchg	ax,dx
-		stosb
-		mov	si,offset dotgz
-		mov	cl,5
-		rep
-		  movsb
+		mov	ah,'.'
+		stosw
+		mov	ax,'zg'
+		stosw
+		mov	ax,'!,'
+		stosw
 initrddone:
-		
+
 ;***************************************************************
+
+		mov	si, offset cmdline
+		mov	di, 82h
+copy:
+		mov	ah,al
+		lodsb
+		cmp	al,' '
+		jne	docopy
+		cmp	al,ah
+		je	copy
+docopy:
+		stosb
+		cmp	al,0
+		jnz	copy
+		xchg	di,ax
+		sub	al, 82h
+		mov	[80h],al
 
 		mov	ax,offset linld
 		call	iso_open
@@ -183,6 +193,7 @@ initrddone:
 		mov	cx,[word _isostate.filesize]
 		mov	dx,100h
 		jmp	near unfold
+
 patchlp:
 		mov	si,[_isostate.filename]
 		mov	di,offset rootfs
@@ -204,9 +215,10 @@ bootdir:
 		db	"/boot",0
 linld:
 		db	"linld.com",0
-bzimage:
+cmdline:
 		db	"-f "
-		;db	"image=boot\bzImage "
+		;db	"image=boot\"
+		;db	"bzImage "
 		db	"initrd="
 rootfs:
 		db	"rootfs"
@@ -218,7 +230,7 @@ dotgz:
 magic:
 		db	"0     bootfrom="
 		;	"65535 bootfrom="
-endbzimage:
+filename:
 
 
 ;***************************************************************
