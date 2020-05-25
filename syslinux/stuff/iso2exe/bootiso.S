@@ -240,7 +240,7 @@ scalp:
 	repne
 	  scasb
 	subw	%di,%bx
-	negw	%bx
+	notw	%bx
 	movw	$128,%si
 	addw	%bx,(%si)
 	lodsb	
