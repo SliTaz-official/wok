@@ -40,7 +40,8 @@ gettazboot()
 	uudecode - >> $1 << EOT
 HEADERCODE
 EOT
-	ddq if=$media/boot/linld.com >> $1
+	gotcdfile linld.com
+	ddq if=$file >> $1
 }
 
 uncpio()
@@ -253,7 +254,7 @@ doinstall()
 	cp /etc/keymap.conf /etc/locale.conf $mnt/slitaz/etc 2> /dev/null
 	gettazboot $mnt/slitaz/boot/tazboot.exe	# autoappend 64 suffix
 	unix2dos > $mnt/slitaz/boot/tazboot.cmd <<EOT
-kernel=/slitaz/boot/bzimage
+image=/slitaz/boot/bzimage
 initrd=/slitaz/boot/$initrd
 $extraargs autologin
 EOT
@@ -396,9 +397,9 @@ start SliTaz Live with the 'SliTaz RAM boot' menu.\n" 19 70
 
 readtazbootconf()
 {
-	kernel="$(sed '/^kernel=/!d;s/.*=//' $mnt/slitaz/boot/tazboot.cmd)"
+	kernel="$(sed '/^image=/!d;s/.*=//' $mnt/slitaz/boot/tazboot.cmd)"
 	initrd="$(sed '/^initrd=/!d;s/.*=//' $mnt/slitaz/boot/tazboot.cmd)"
-	cmdline="$(sed '/^kernel=/d;/^initrd=/d' $mnt/slitaz/boot/tazboot.cmd)"
+	cmdline="$(sed '/^image=/d;/^initrd=/d' $mnt/slitaz/boot/tazboot.cmd)"
 }
 
 bootinstalled()
