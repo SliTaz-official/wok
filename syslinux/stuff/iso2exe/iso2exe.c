@@ -497,7 +497,7 @@ static unsigned short files[] = {
 	SYSLINUX_MBR,		/*  1 */
 	FLAVOR_INFO,		/*  2 */
 	FLOPPY_BOOT,		/*  3 */
-	TAZBOOT_COM,		/*  4 */
+	ISOBOOT_COM,		/*  4 */
 	ROOTFS_GZ,		/*  5 */
 	DOSSTUB,		/*  6 */
 	BOOT_MD5,		/*  7 */
@@ -530,7 +530,7 @@ static void fileofs(int number)
 	case FLOPPY_BOOT:	/* floppy.boot */
 		file_size = BYTE(buffer+26)*512;
 		file_offset = WORD(buffer+64) - 0xC0 - file_size; break;
-	case TAZBOOT_COM:	/* tazboot.com */
+	case ISOBOOT_COM:	/* isoboot.com */
 		file_offset = WORD(buffer+64) - 0xC0;
 		file_size = stub - WORD(buffer+24) - file_offset; break;
 	case ROOTFS_GZ:		/* rootfs.gz */

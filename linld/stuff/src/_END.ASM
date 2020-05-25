@@ -17,7 +17,7 @@
         label   _data_end byte
         ends    _DATA
 
-        segment _BSS byte public use16 'BSS'
+        segment _BSS word public use16 'BSS'
 STACK_SIZE = 1024
 
         global  _version_string:byte

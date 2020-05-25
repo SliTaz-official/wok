@@ -126,16 +126,15 @@ words2bin()
 gettazboot()
 {
 	echo -e "\nCreating $(basename $1) ..."
-	X=$(($(get 20 /mnt/$ISO) - 0xC0))
-	[ $X -lt 30000 ] && X=$((0x7FF0))
-	O=$(($(get 64 /mnt/$ISO) - 0xC0))
-	L=$(($X - $(get 24 /mnt/$ISO) - $O))
-	S=$((32+$L))
+	S=$((32+HEADERSZ))
 	P=$((($S+511)/512))
 	E=$((4096-(32*$P)))
-	words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 $((${2:-0}-16)) \
+	words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 -16 \
 			-2 0 256 -16 28 0x6C53 0x5469 0x7A61 > $1
-	ddq bs=1 count=$(echo $L) skip=$(echo $O) if=/mnt/$ISO >> $1
+	uudecode - >> $1 << EOT
+HEADERCODE
+EOT
+	ddq if=/mnt/slitaz/boot/linld.com >> $1
 }
 
 checkmagic()
@@ -437,18 +436,15 @@ tazboot()
 	$DIALOG --clear --title " SliTaz bootloader for DOS " \
 		--yes-label "Install" --yesno \
 "\nThe file TAZBOOT.EXE will be created in the top directory. It supports
-any linux kernel, multiple initramfs, a kernel command line and
-an ISO image file loopback (retrieves files from an ISO file).\n\n
-Usage: tazboot.exe [[@commands]|[kernel=<bzimage>]
-[initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] cmdline args ...]\n\n
-Defaults: tazboot @tazboot.cmd or tazboot kernel=bzImage auto\n\n\
+any linux kernel, multiple initramfs, and a kernel command line.\n\n
+Usage: tazboot.exe [[@commands]|[image=<bzimage>]
+[initrd=<rootfs>[,<rootfs2>...]] cmdline args ...]\n\n
+Defaults: tazboot @tazboot.cmd or tazboot image=bzImage auto\n\n\
 Examples for tazboot.cmd:\n\n\
-  bootfrom=\\isos\\slitaz-4.0.iso\n\
   kernel=boot/bzImage\n\
   initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz\n\
   autologin\n\n\
-  kernel=\\slitaz\\vmlinuz root=/dev/sda5 ro\n\n
-Unlike GRUB4DOS, it doesn't require unfragmented ISO image files.\n" 24 78
+  image=\\slitaz\\vmlinuz root=/dev/sda5 ro\n" 24 78
 	[ $? -eq 0 ] || return
 	gettazboot /mnt/tazboot.exe
 }
@@ -745,6 +741,8 @@ isomd5()
 
 if [ "$1" = "--build" ]; then	#install-begin
 	cp $0 $0.tmp
+	uuencode -m - < header.com | sed -e '/^HEADERCODE$/r/dev/stdin' \
+	  -e "s|HEADERSZ|$(stat -c %s header.com)|" -e '/^HEADERCODE$/d' -i $0.tmp
 	uuencode -m - < ifmem.bin | sed -e 's|^[ \t]*||;s|[ \t]*###.*||' \
 	  -e 's| *;;|;;|;s|\t\t*|\t|g' \
 	  -e '/^ifmemcode$/r/dev/stdin' -e '/^ifmemcode$/d' -i $0.tmp
@@ -1221,7 +1219,7 @@ $(hasflavinfo		"showfavinfo"	"Show flavor extra info") \
 $(xfile tazlito		"flavor"	"Get flavor file") \
 $(fddata		"fdbootstrap"	"Create a floppy bootstrap") \
 $(cdfile isolinux.cfg	"floppyset"	"Boot floppy set") \
-			"tazboot"	"Get tazboot.exe Linux loader" \
+$(cdfile linld.com	"tazboot"	"Get tazboot.exe Linux loader") \
 $(cdexe boot/bzImage	"bzimage"	"Get linux DOS/EXE file") \
 $(cdexe "memtest*"	"memtest"	"Get Memtest86 DOS/EXE file") \
 $(cdfilef "memtest*"	"fdmemtest"	"Create a Memtest86 boot floppy") \

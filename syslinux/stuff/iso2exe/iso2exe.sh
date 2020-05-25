@@ -170,7 +170,7 @@ fileofs()
 	floppy.boot)	SIZE=$(($(get 26 "$ISO" 1)*512))
 			OFFSET=$(($(get 64 "$ISO") - 0xC0 - $SIZE));;
 	rootfs.gz)	SIZE=$(get 24 "$ISO"); OFFSET=$(($stub - $SIZE));;
-	tazboot.com)	OFFSET=$(($(get 64 "$ISO") - 0xC0))
+	isoboot.com)	OFFSET=$(($(get 64 "$ISO") - 0xC0))
 			SIZE=$(($stub - $(get 24 "$ISO") - $OFFSET));;
 	dosstub)	[ "$dosstub" ] && OFFSET=$stub && SIZE=$((0x7FF0 - $OFFSET));;
 	boot.md5)	[ $(get 0 "$ISO") -eq 23117 ] &&
@@ -242,7 +242,7 @@ trailer()
 list()
 {
 	HEAP=0
-	for f in win32.exe syslinux.mbr flavor.info floppy.boot tazboot.com \
+	for f in win32.exe syslinux.mbr flavor.info floppy.boot isoboot.com \
 		 rootfs.gz dosstub boot.md5 fs.iso custom.magic custom.append \
 		 custom.initrd; do
 		fileofs $f
@@ -423,7 +423,7 @@ WIN32_EXE	win32.exe
 SYSLINUX_MBR	syslinux.mbr
 FLAVOR_INFO	flavor.info
 FLOPPY_BOOT	floppy.boot
-TAZBOOT_COM	tazboot.com
+ISOBOOT_COM	isoboot.com
 ROOTFS_GZ	rootfs.gz
 DOSSTUB		dosstub
 BOOT_MD5	boot.md5
