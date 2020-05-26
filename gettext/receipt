@@ -7,16 +7,16 @@ SHORT_DESC="Utilities for the GNU Translation Project."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
 WEB_SITE="https://www.gnu.org/software/gettext/"
-HOST_ARCH="i486 arm"
 
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 
-# Runtime depends, then dev-depends
-DEPENDS="gettext-base gettext-tools libcroco liblzma libxml2 \
-acl-dev attr-dev libcroco-dev libxml2-dev glib-dev pcre-dev m4"
-BUILD_DEPENDS="libcroco-dev libxml2-dev glib-dev acl-dev"
+DEPENDS="acl-dev attr-dev gettext-base gettext-tools glib-dev libcroco 
+	libcroco-dev liblzma libxml2 libxml2-dev m4 pcre-dev"
+BUILD_DEPENDS="acl-dev glib-dev libcroco-dev libxml2-dev"
 SPLIT="gettext-base gettext-tools"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation. Glibc-locale are installed in cross chroot.
 case "$ARCH" in
@@ -27,24 +27,30 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS $ARCH_ARGS &&
-	make && make install
+	./configure		\
+		$CONFIGURE_ARGS	\
+		$ARCH_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/include $fs/usr
-	cp -a $install/usr/share/aclocal $fs/usr/share
-	cp -a $install/usr/share/gettext $fs/usr/share
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib			$fs/usr
+	cp -a $install/usr/include		$fs/usr
+	cp -a $install/usr/share/aclocal	$fs/usr/share
+	cp -a $install/usr/share/gettext	$fs/usr/share
+	cp -a $install/usr/share/gettext.0.19.8	$fs/usr/share
 
 	# Remove "gettext-base" and "gettext-tools" files.
-	for bin in gettext gettext.sh envsubst ngettext msgcat msgfmt msgmerge xgettext; do
+	for bin in gettext gettext.sh envsubst ngettext msgcat msgfmt msgmerge xgettext
+	  do
 		rm $fs/usr/bin/$bin
-	done
-	rm $fs/usr/lib/libgettextlib*.so*
-	rm $fs/usr/lib/libgettextsrc*.so*
+	  done
+	rm					$fs/usr/lib/libgettextlib*.so*
+	rm					$fs/usr/lib/libgettextsrc*.so*
 }
