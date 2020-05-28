@@ -13,14 +13,10 @@ meminfo.exe: meminfo.S
 	objcopy -O binary meminfo.o meminfo.exe
 	chmod +x $@
 
-iso2exe: iso2exe.sh boot.com bootiso.bin init.built win32.exe
+iso2exe: iso2exe.sh boot.com bootiso.bin win32.exe
 	cp iso2exe.sh $@
 	chmod +x $@
 	./$@ --build boot.com bootiso.bin win32.exe init
-
-init.built: bootloader.bin ifmem.bin init
-	./init --build
-	touch init.built
 
 isohybrid.res: isohybrid.rc isohybrid.ico
 	i586-pc-mingw32-windres $< -O coff -o $@
