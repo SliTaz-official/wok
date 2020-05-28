@@ -46,23 +46,25 @@ EOT
 
 uncpio()
 {
-	[ -s "$1" ] || return
-	echo -en "\n Extracting $(basename $1) ..."
-	case $(get 0 $1) in
+	i=$1                                                    
+	[ $0 = /init.exe ] && sed 's|$| |' /proc/cpuinfo | grep ' lm ' && [ -s ${i}64 ] && i=${i}64
+	[ -s "$i" ] || return
+	echo -en "\n Extracting $(basename $i) ..."
+	case $(get 0 $i) in
 	*35615)	( zcat || gunzip ) ;;
 	*14333) unxz ;;
 	*\ 93)	unlzma ;;
 	*)	cat ;;
-	esac < $1 | ( cd ${2:-/} ; cpio -idmu > /dev/null 2>&1 )
+	esac < $i | ( cd ${2:-/} ; cpio -idmu > /dev/null 2>&1 )
 }
 
 dotwait()
 {
 	echo -n "${1:-Install filesystem}.."
-	touch /tmp/wait
+	echo -n > /tmp/wait
 	[ "$REQUEST_URI" ] && return
 	while [ -e /tmp/wait ]; do
-		echo -n "." > /dev/tty
+		echo -n "." > /dev/${tty0:-tty}
 		sleep 1
 	done &
 }
@@ -200,6 +202,11 @@ ls_r()
 	ls -r $@ 2> /dev/null || ls $@
 }
 
+is_loram()                                                                   
+{                                                                            
+	[ -s /lib/modules/squashfs.ko* ]                                     
+}                                                                            
+
 doinstall()
 {
 	unset useposixovl
@@ -224,9 +231,21 @@ doinstall()
 		initrd=rootfs.gz
 		extraargs="/home=$(getuuid)/slitaz rdinit=/init1"
 	else
-		for i in $(ls_r $media/boot/rootfs*gz); do
-			uncpio $i $mnt/slitaz
-		done
+		if [ -d $media/fs ]; then                                
+                        cp -a $media/fs/. $mnt/slitaz                    
+                elif is_loram; then                                            
+                        for i in $(ls_r $media/boot/rootfs*); do         
+                                losetup -o 124 /dev/loop7 $i                   
+                                mount -t squashfs -o ro /dev/loop7 /sqfs/mnt   
+                                cp -a /sqfs/mnt/. $mnt/slitaz                  
+                                umount /sqfs/mnt                               
+                                losetup -d /dev/loop7                          
+                        done                                                   
+                else
+			for i in $(ls_r $media/boot/rootfs*gz); do
+				${uncpio:-uncpio} $i $mnt/slitaz
+			done
+		fi
 		for i in $packages_list; do
 			tazpkg get-install $i --root=$mnt/slitaz
 		done
@@ -311,7 +330,20 @@ title SliTaz GNU/Linux $(cat $mnt/slitaz/etc/slitaz-release)
 
 EOT
 	fi
-	rm -f /tmp/wait
+false &&                                                                          
+	[ -s $mnt/boot.ini ] && ! grep -qs tazboot $mnt/boot.ini &&               
+	echo "Update boot.ini ..." && unix2dos >> $mnt/boot.ini <<EOT             
+C:\\slitaz\\boot\\tazboot.exe="SliTaz"                                                
+EOT                                                                               
+false &&                                                                          
+	grep -qis menuitem $mnt/config.sys && ! grep -qi tazboot $mnt/config.sys &&
+	echo "Update config.sys ..." &&                                            
+	sed -i 's/menudefault/menuitem SLITAZ, SliTaz\r\n&/' $mnt/config.sys &&    
+	unix2dos >> $mnt/config.sys <<EOT                                          
+[SLITAZ]                                                                           
+install=\\slitaz\\boot\\tazboot.exe                                                
+EOT
+	rm -f $tmp/wait
 	[ "$useposixovl" ] && umount $mnt/slitaz
 	return 0
 }
@@ -349,6 +381,7 @@ extra_packages()
 {
 	packages_list=
 	packages_dir=
+	[ $0 = /init.exe ] && return
 	$DIALOG --clear --title " Extra packages " \
 		--defaultno --yesno \
 "Do you want to add extra packages ?" 7 70
@@ -393,6 +426,11 @@ To do a traditional installation with disk partitioning,
 start SliTaz Live with the 'SliTaz RAM boot' menu.\n" 19 70
 	[ $? -eq 0 ] || return
 	doinstall
+	[ $0 = /init.exe ] || return
+	[ -x $mnt/slitaz/sbin/init ] || return
+	umount -d $media/cdrom
+	umount_proc
+	exec chroot $mnt/slitaz /sbin/init
 }
 
 readtazbootconf()
@@ -520,7 +558,27 @@ increase responsiveness. Only /home lands on the hard disk.\n\n
 To do a traditional installation with disk partitioning,
 start SliTaz Live with the 'SliTaz RAM boot' menu.\n" 19 70
 	[ $? -eq 0 ] || return
-	doinstall tazusblike
+	doinstall tazusblike || return
+	[ $0 = /init.exe ] || return
+	dotwait
+	if [ -d /media/cdrom/fs ]; then
+		cp -a /media/cdrom/fs/. /
+	else
+		for i in $(ls_r /media/cdrom/boot/rootfs*); do
+			${uncpio:-uncipo} $i
+		done
+	fi
+	cp /tmp/fs/etc/* /etc 2>/dev/null
+	echo "/home=$(getuuid)/slitaz" > /cmdline
+	rm -f /tmp/wait
+	[ -x /init1 ] || return
+	umount -d /media/cdrom
+	umount /mnt/slitaz
+	rm -f /dev/cdrom
+	umount /mnt
+	mkdir /mnt/dos
+	umount_proc
+	exec /init1
 }
 
 installtaz()
@@ -755,9 +813,24 @@ gotposixovlzip()
 	[ "$(which zip)" ] && gotposixovl "$1" "$2"
 }
 
+noinit()
+{
+	[ $0 = /init.exe ] || menuitem "$@"
+}
+
+initx()
+{
+	[ $0 = /init.exe ] && menuitem "$@"
+}
+
 xfile()
 {
 	[ "$(which $1)" ] && menuitem "$@"
+}
+
+initxfile()
+{
+	[ $0 = /init.exe ] && xfile "$@"
 }
 
 cdfile()
@@ -800,6 +873,11 @@ misspkg()
 		[ "$1" != "install" ] && menuitem "$@" && return
 		tazpkg get-install $i
 	done
+}
+
+noinitmisspkg()
+{
+	[ $0 = /init.exe ] || misspkg "$@"
 }
 
 missing()
@@ -1323,6 +1401,17 @@ isotitle()
 		-c %y $media/.|sed 's/ .*//')  $(basename "$ISO")"
 }
 
+	if [ $0 = /init.exe ]; then
+
+case "${ISO##*/}$(getarg mode)" in
+*install*|*INSTALL*)	install;;
+*live*|*LIVE*)		live;;
+*text*|*TEXT*)		text;;
+esac
+dmesg > /tmp/dmesg
+
+	else
+
 if [ "$1" = "include" ]; then
 	[ -s "$2" ] && cd $(dirname "$2") && awk -v exe=$0 \
 	'{ if ($1 == "include") system(exe " include " $2); else print }' <"$2"
@@ -1354,10 +1443,17 @@ if grep -q "^$2()" $0; then
 	fi
 	quit
 fi
+	fi
 
 while true; do
+	keymap="$(cat /etc/keymap.conf 2>/dev/null)"
+	locale="$(sed '/^LANG=/!d;s/.*=//' /etc/locale.conf 2>/dev/null)"
 	cat > /tmp/dialog$$ <<EOT
 $DIALOG  --clear --title " $(isotitle) " --menu "" 28 70 30 \
+$(initxfile tazkeymap	"tazkeymap"	"Select keyboard (${keymap:-none})") \
+$(initxfile tazlocale	"tazlocale"	"Select locale (${locale:-none})") \
+$(initx			"live"		"Linux RAM boot (full desktop)") \
+$(initx			"text"		"Linux RAM boot") \
 $(cdfile 'README*'	"readme"	"Show the README file") \
 $(gotcustomconf		"getcustomconf"	"Get custom config") \
 $(gotisomd5		"isomd5"	"Check the ISO image") \
@@ -1384,14 +1480,18 @@ $(cdfilex 'memtest*'	"runmemtest"	"Start Memtest86") \
 $(cdexe '?pxe*'		"pxe"		"Get SliTaz Web boot DOS/EXE utility") \
 $(cdfilef '?pxe*'	"fdpxe"		"Create a SliTaz Web boot floppy") \
 $(cdfilex '?pxe*'	"runpxe"	"Start the SliTaz Web boot utility") \
-$(misspkg		"missing"	"Install packages to get more options") \
-$(menuitem		"quit"		"Quit this utility")
+$(initxfile reboot	"restart"	"Restart the computer") \
+$(initxfile poweroff	"stop"		"Power off") \
+$(initx			"bootlog"       "Linux boot messages") \
+$(initx			"shell"         "Shell prompt") \
+$(noinitmisspkg		"missing"	"Install packages to get more options") \
+$(noinit		"quit"		"Quit this utility")
 EOT
 	exec 3>&1
 	value=$(. /tmp/dialog$$ 2>&1 1>&3)
 	retval=$?
 	exec 3>&-
 	rm -f /tmp/dialog$$
-	[ $retval -eq 0 ] || quit
+	[ $retval -ne 0 ] && [ $0 != /init.exe ] && quit
 	$value
 done
