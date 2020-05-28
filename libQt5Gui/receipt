@@ -1,0 +1,43 @@
+# SliTaz package receipt.
+
+PACKAGE="libQt5Gui"
+VERSION="5.14.2"
+CATEGORY="development"
+SHORT_DESC="Qt5 Gui Library."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="GPL3 LGPL3"
+WEB_SITE="https://www.qt.io/"
+
+DEPENDS="expat fontconfig freetype libpng libQt5Core xorg-libICE xorg-libSM 
+	xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXi 
+	xorg-libXrandr xorg-libXrender"
+WANTED="qt5"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/qt5/plugins/imageformats
+	mkdir -p $fs/etc/skel/.config
+	mkdir -p $fs/etc/xdg
+
+	cp -a $install/usr/lib/libQt5Gui.so*	$fs/usr/lib
+	
+	cp -a $install/usr/lib/qt5/plugins/imageformats/libqjpeg.so \
+						$fs/usr/lib/qt5/plugins/imageformats
+	cp -a $install/usr/lib/qt5/plugins/imageformats/libqgif.so \
+						$fs/usr/lib/qt5/plugins/imageformats
+
+	cp $stuff/Trolltech.conf		$fs/etc/skel/.config/
+	cp $stuff/Trolltech.conf		$fs/etc/xdg/
+}
+
+post_install()
+{
+        for i in $(ls "$1/home" 2> /dev/null)
+	  do
+                [ -f "$1/home/$i/.config/Trolltech.conf" ] && continue
+                cp "$1/etc/skel/.config/Trolltech.conf" "$1/home/$i/.config"
+		[ -d $PKGS_DB/gtk+ ] && sed 's|Cleanlooks|gtk|' -i "$1/home/$i/.config/Trolltech.conf"
+                chroot "$1/" chown -R $(stat -c "%u.%g" "$1/home/$i") "/home/$i/.config"
+          done
+}
