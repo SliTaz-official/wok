@@ -94,13 +94,6 @@ store32()
 	done | xargs echo -en | ddq bs=1 conv=notrunc of=$iso seek=$(($1))
 }
 
-store32sw()
-{
-	n=$2; for i in 24 16 8 0; do
-		printf '\\\\x%02X' $((($n >> $i) & 255))
-	done | xargs echo -en | ddq bs=1 conv=notrunc of=$iso seek=$(($1))
-}
-
 crc32()
 {
 	t0=00000000; t1=77073096; t2=EE0E612C; t3=990951BA;
