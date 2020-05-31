@@ -217,7 +217,7 @@ linld:
 		db	"linld.com",0
 cmdline:
 		db	"-f "
-		;db	"image=boot\"
+		;db	"image=\boot\"
 		;db	"bzImage "
 		db	"initrd="
 rootfs:
@@ -226,7 +226,9 @@ dotgz:
 		db	".gz,!            "
 		; 	".gz,rootfs4.gz,! "
 		;db	"rw "
-		db	"autologin rdinit=/init.exe mode=menu magic="
+		db	"autologin rdinit=/init.exe "
+		;db	"mode=menu "
+		db	"magic="
 magic:
 		db	"0     bootfrom="
 		;	"65535 bootfrom="

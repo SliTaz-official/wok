@@ -208,9 +208,7 @@ main()
 begin-base64 644 -
 XQAAgAD//////////wAikYVN1N2VY3JXMnUMJn1TblyFehfeJH+D4/XPYFjO
 OzQluqM2w0L9b1dJMfZHJbnNnBFhYprW0PWPY1UOgQJkhF/W2Z0lXvaSrZ7t
-yEtpmE3Go6qt6FetOfWNMJZhtBdE0TjxFZCvh5z8hy/kRQb1XOkLxeb5VHT3
-H4JI5S76wY0TueXYsBOJwlwW9fZ8IXP72cDO3JArS4ZhUGxbOOF2oDuf/hFM
-zQ==
+yEtpmE3Go6qt6Ezmp7CN//v9AAA=
 ====
 EOT
 		lastlba=$(($sectorcount -1))
@@ -221,8 +219,6 @@ EOT
 		store32 $((0x230)) $(($lastlba-$usablelba+1))
 		store32 $((0x420)) $efi_ofs
 		store32 $((0x428)) $(($efi_ofs+$efi_len-1))
-		store32sw $((0x1008)) $(($efi_ofs/4))
-		store32sw $((0x1054)) $(($efi_len/4))
 		for i in 238 410 490 ; do
 			ddq if=/dev/urandom count=16 bs=1 conv=notrunc \
 			    of=$iso seek=$((0x$i))
