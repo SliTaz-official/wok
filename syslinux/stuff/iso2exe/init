@@ -7,7 +7,6 @@ getarg()
 
 myget()
 {
-	od -v -j $1 -N ${4:-${3:-2}} -t u${3:-2} -w${3:-2} -An $2 2>/dev/null ||
 	hexdump -v -s $1 -n ${4:-${3:-2}} -e "\"\" 1/${3:-2} \" %u\n\"" $2
 }
 
@@ -91,7 +90,7 @@ mount_loram()
 		ln -s $media/fs /sqfs
 	else
 		mkdir /sqfs
-		losetup -o 124 /dev/loop6 $(ls_r $media/boot/rootfs?*.* | sed q)
+		losetup -o 124 /dev/loop6 $(ls -r $media/boot/rootfs?*.* | sed q)
 		mount -r /dev/loop6 /sqfs
 	fi
 	cp -a /sqfs/dev/fuse /sqfs/dev/tty[12] /sqfs/dev/[hs]d* /dev
@@ -119,12 +118,13 @@ dosync()
 	umount_proc
 }
 
+xhascustomconf=false
 text()
 {
-	$uncpio $(ls_r $media/boot/rootfs?*.* | sed q)
+	$uncpio $(ls -r $media/boot/rootfs?*.* | sed q)
 	init=
 	cmdline="$(cat /proc/cmdline)"
-	if hascustomconf; then
+	if $xhascustomconf 2> /dev/null; then
 		getcustomconf /tmp > /dev/null
 		[ -s /tmp/cmdline ] &&
 			cmdline="$cmdline $(cat /tmp/cmdline)" &&
@@ -136,11 +136,12 @@ text()
 	exec ${init:-/init} $cmdline
 }
 
+xdowait=echo
 live()
 {
 	n=0
-	dotwait "Extract filesystem..."
-	for i in $(ls_r $media/boot/rootfs*); do
+	$xdotwait "Extract filesystem..."
+	for i in $(ls -r $media/boot/rootfs*); do
 		[ $((n++)) -eq 0 ] || $uncpio $i
 	done
 	rm -f /tmp/wait
