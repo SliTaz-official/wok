@@ -12,7 +12,7 @@ WEB_SITE="https://www.inkscape.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="https://media.inkscape.org/dl/resources/file/$TARBALL"
 
-DEPENDS="aspell gc gcc-lib-base gettext glibmm gsl gtk+ gtkmm gtkspell 
+DEPENDS="aspell gc gcc-lib-base glibmm gsl gtk+ gtkmm gtkspell 
 	lcms2 libgiomm libgomp libpng libsigc++ libxml2 libxslt poppler 
 	popt xorg-libXdamage"
 BUILD_DEPENDS="atkmm-dev cairomm-dev cmake gc-dev gettext glibmm-dev 
@@ -34,11 +34,6 @@ compile_rules()
 		sed -i 's|glibmm/i18n.h|glib/gi18n.h|g' $file
 	  done
 
-#	find . -name Makefile.in | xargs sed -i 's|@AUTOMAKE@|automake|'
-#	./configure \
-#		--prefix=/usr \
-#		--mandir=/usr/share/man \
-#		$CONFIGURE_ARGS &&
 	mkdir	_build
 	cd	_build
 	cmake	..				\
@@ -51,8 +46,12 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	mkdir -p $fs/usr/lib/inkscape
 	mkdir -p $fs/usr/share
+
 	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/inkscape/lib*.so* \
+						$fs/usr/lib/inkscape
 
 	# Copy all Inkscape files and remove tutorials (19,2 Mb) + misc files
 	cp -a $install/usr/share/inkscape	$fs/usr/share
