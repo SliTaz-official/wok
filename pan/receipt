@@ -1,22 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="pan"
-VERSION="0.134"
+VERSION="0.146"
 CATEGORY="network"
-SHORT_DESC="pan is a usenet newsreader"
+SHORT_DESC="A usenet newsreader."
 MAINTAINER="allan316@gmail.com"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://pan.rebelbase.com"
-WGET_URL="$WEB_SITE/download/releases/$VERSION/source/$TARBALL"
+WEB_SITE="http://pan.rebelbase.com/"
 
-DEPENDS="pcre gmime gtkspell gtk+ cairo gcc-lib-base glibc-base"
-BUILD_DEPENDS="intltool gmime-dev glib-dev gtk+-dev gtkspell-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}download/releases/$VERSION/source/$TARBALL"
+
+DEPENDS="cairo gcc-lib-base glibc-base gmime gtk+ gtkspell pcre"
+BUILD_DEPENDS="gettext glib-dev gmime-dev gtk+-dev gtkspell-dev intltool itstool"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's|<glib/gtypes.h>|<glib.h>|' pan/general/file-util.h \
 		pan/data/article-cache.h \
 		pan/gui/render-bytes.h
@@ -52,18 +52,21 @@ tasks/nntp.cc		cstdarg
 tasks/nntp-pool.cc	config.h
 usenet-utils/numbers.cc	cctype
 EOT
-	./configure \
-		--prefix=/usr \
+
+	./configure			\
+		--prefix=/usr		\
+		--with-gmime30=yes	\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/applications $fs/usr/share
-	cp -a $install/usr/share/pixmaps $fs/usr/share
-}
 
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/applications	$fs/usr/share
+	cp -a $install/usr/share/icons		$fs/usr/share
+}
