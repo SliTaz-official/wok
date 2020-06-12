@@ -1,0 +1,52 @@
+# SliTaz package receipt.
+
+PACKAGE="proftpd-tls"
+VERSION="1.3.6d"
+CATEGORY="network"
+SHORT_DESC="Highly configurable FTP server."
+MAINTAINER="mojo@slitaz.org"
+LICENSE="GPL2"
+WEB_SITE="http://www.proftpd.org/"
+
+TARBALL="proftpd-$VERSION.tar.gz"
+WGET_URL="ftp://ftp.proftpd.org/distrib/source/$TARBALL"
+
+DEPENDS="openssl"
+BUILD_DEPENDS="openssl-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./configure				   \
+		--prefix=/usr			   \
+		--sysconfdir=/etc		   \
+		--localstatedir=/var/run	   \
+		--mandir=/usr/share/man		   \
+		--with-modules=mod_tls		   \
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/libexec
+	mkdir -p $fs/etc/init.d
+
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/etc		$fs
+	install -g root -o root -m 0755 $stuff/protocols \
+		$fs/etc         
+	install -g root -o root -m 0755 $stuff/proftpd \
+		$fs/etc/init.d
+}
+
+post_install()
+{
+	echo ""
+	echo -e "\nTo start proftpd server you can run :\n"
+	echo "/etc/init.d/proftpd start"
+	echo -e "Or add proftpd to RUN_DAEMONS in /etc/rcS.conf\n"
+}

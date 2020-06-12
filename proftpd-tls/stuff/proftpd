@@ -1,0 +1,56 @@
+#!/bin/sh
+# /etc/init.d/proftpd : Start, stop and restart proftpd daemon on SliTaz, at
+# boot time or with the command line.
+#
+# To start proftpd server at boot time, just put proftpd in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+#
+. /etc/init.d/rc.functions
+. /etc/daemons.conf
+
+NAME=proftpd
+DESC="$(_ 'ProFTPd Server Daemon')"
+DAEMON=/usr/sbin/$NAME
+
+PIDFILE=/var/run/$NAME.pid
+
+OPTIONS=""
+
+case "$1" in
+  start)
+    if active_pidfile $PIDFILE $NAME ; then
+      _ '%s is already running.'
+      exit 1
+    fi
+    action 'Starting %s: %s...' "$DESC" $NAME
+    $DAEMON $OPTIONS
+    status
+    ;;
+  stop)
+    if ! active_pidfile $PIDFILE $NAME ; then
+      _ '%s is not running.' $NAME
+      exit 1
+    fi
+    action 'Stopping %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
+    status
+    ;;
+  restart)
+    if ! active_pidfile $PIDFILE $NAME ; then
+      _ '%s is not running.'
+      exit 1
+    fi
+    action 'Restarting %s: %s...' "$DESC" $NAME
+    kill $(cat $PIDFILE)
+    sleep 2
+    $DAEMON $OPTIONS
+    status
+    ;;
+  *)
+    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+    newline
+    exit 1
+    ;;
+esac
+
+exit 0
