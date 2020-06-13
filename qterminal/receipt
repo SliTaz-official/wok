@@ -1,27 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="qterminal"
-COMMIT="fff3774510ac437b8635f8a0b6c2d7f20b9cef86"
-VERSION="${COMMIT:0:7}"
+#COMMIT="fff3774510ac437b8635f8a0b6c2d7f20b9cef86"
+#VERSION="${COMMIT:0:7}"		was 0.5.0
+VERSION="0.6.0"		# last version with qt4 support
 CATEGORY="system-tools"
-SHORT_DESC="A Qt based terminal"
+TAGS="terminal"
+SHORT_DESC="A Qt based terminal."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL2"
-WEB_SITE="https://github.com/qterminal/qterminal"
+WEB_SITE="https://github.com/lxqt/qterminal"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="$WEB_SITE/archive/$COMMIT.tar.gz"
-GENERIC_PIXMAPS="no"
-GENERIC_MENUS="no"
-TAGS="terminal"
+WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
 
 DEPENDS="libQtCore libQtGui xorg-libX11 qtermwidget"
-BUILD_DEPENDS="wget cacerts cmake Qt4-dev qmake qtermwidget-dev xorg-libX11-dev"
+BUILD_DEPENDS="cacerts cmake Qt4-dev qmake qtermwidget-dev xorg-libX11-dev"
+
+GENERIC_PIXMAPS="no"
+GENERIC_MENUS="no"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir build; cd build
-	cmake -DCMAKE_INSTALL_PREFIX=/usr -DUSE_SYSTEM_QXT=0 .. &&
+	mkdir build
+	cd build
+	cmake	..				\
+		-DCMAKE_INSTALL_PREFIX=/usr	\
+		-DUSE_SYSTEM_QXT=0 &&
 	make &&
 	make DESTDIR=$install install
 }
@@ -30,8 +36,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/applications $fs/usr/share
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/applications	$fs/usr/share
 
 	sed -i 's|^Icon=.*$|Icon=terminal|g' $fs/usr/share/applications/*.desktop
 }
