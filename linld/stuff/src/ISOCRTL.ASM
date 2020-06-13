@@ -70,24 +70,9 @@ iso_open:
 		dec	ax
 		stc
 open_ok:
-		ret
-
-		global	@readmenu$qv:near
-@readmenu$qv:
-		mov	dx,18
-		xor	cx,cx
-		call	lseekset
-		mov	dx,offset _isostate.filemod
-		mov	cx,10
-		call	readfd ; // read x->filemod + x->fileofs & x->filesize
-		mov	bx,offset _isostate.fileofs
-		; x->fileofs = 0x7FF0 - (x->filesize &= 0xFFFF);
-		and	[word bx+6],0
-		mov	ax,7FF0h
-		sub	ax,[bx+4]
-		and	[word bx+2],0
-		mov	[bx],ax
-		; //magic = x->filemod;
+		push	bx
+iso_close_hack:
+		pop	bx
 		ret
 
 
@@ -166,15 +151,28 @@ iso_lseek_hack:
 		sbb	dx,[(word _isostate.fileofs)+2]
 		ret
 
-iso_close_hack:
-		pop	bx
-		ret
-
 iso_cleanup_hack:
 		mov	ah,3Eh		; close file
 		jmp	dosfd
 
 
+
+		global	@readmenu$qv:near
+@readmenu$qv:
+		mov	dx,18
+		xor	cx,cx
+		call	lseekset
+		mov	dx,offset _isostate.filemod
+		mov	cx,10
+		call	readfd ; // read x->filemod + x->fileofs & x->filesize
+		mov	bx,offset _isostate.fileofs
+		; x->fileofs = 0x7FF0 - (x->filesize &= 0xFFFF);
+		and	[word bx+6],0
+		mov	ax,7FF0h
+		sub	ax,[bx+4]
+		and	[word bx+2],0
+		mov	[bx],ax
+		; //magic = x->filemod;
 
 ;***************************************************************
 ;_fastcall void isolseek(bx:const unsigned long *offset);
