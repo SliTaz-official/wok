@@ -203,6 +203,15 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	 } # file == "load.cpp"
 	 if (file == "iso9660.cpp") {
+	if (/while \(\*\+\+s/) isiso=11
+	if (isiso == 11) { # ISO9660.LST
+		if (/cmp/ || /filename2open/) isiso=0
+		if (/cmp/) next
+		if (/mov/) {
+			sub(/mov	bx,/,"cmp	byte ptr [")
+			sub(/i$/,"i],0")
+		}
+	}
 	if (/curpos >= SECT/) isiso=10
 	if (isiso == 10) { # ISO9660.LST
 		if (/cmp/) {

@@ -70,7 +70,7 @@ iso_open_hack:
 iso_open:
 		mov	[_isostate.filename2open],ax
 		call	@_isoopen$qv
-		cmp	ax,1
+		cmp	al,1
 		cmc
 		push	bx
 iso_close_hack:
