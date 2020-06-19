@@ -6,10 +6,10 @@ CATEGORY="x-window"
 SHORT_DESC="Virtual (graphical) keyboard program for X Window System."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://t-sato.in.coocan.jp/xvkbd/"
+WEB_SITE="http://t-sato.in.coocan.jp"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="${WEB_SITE}$TARBALL"
+WGET_URL="$WEB_SITE/$PACKAGE/$TARBALL"
 
 DEPENDS="xorg-libXaw3d xorg-libXp xorg-libXtst"
 BUILD_DEPENDS="xorg-imake xorg-libXaw-dev xorg-libXaw3d-dev xorg-libXp-dev 
@@ -19,35 +19,34 @@ BUILD_DEPENDS="xorg-imake xorg-libXaw-dev xorg-libXaw3d-dev xorg-libXp-dev
 compile_rules()
 {
 	# delete Xaw3d
-	# sed -i '/#define XAW3D/d' Imakefile
-#	xmkmf &&
-
-	mkdir -p $install/usr/share/applications
-
-	./configure			\
-		--prefix=/usr		\
-		--sysconfdir=/etc/X11	\
-		$CONFIGURE_ARGS &&
-	make &&
+	sed -i '/#define XAW3D/d' Imakefile
+	xmkmf &&
+	sed -i 's/\$(DESTDIR) \$(SHAREDIR)/$(DESTDIR)$(SHAREDIR)/' Makefile
+	make
+	mkdir -p $install/usr/share/X11
 	make install
 
 	# Add .desktop file
+	mkdir -p $install/usr/share/applications
 	cp $stuff/usr/share/applications/xvkbd.desktop \
-			$install/usr/share/applications
+		$install/usr/share/applications
 
 	# Add icon
 	mkdir -p $install/usr/share/icons/hicolor/32x32/apps
 	cp $stuff/usr/share/pixmaps/xvkbd.png \
 		$install/usr/share/icons/hicolor/32x32/apps
-
-	cp -f $stuff/etc/X11/app-defaults/XVkbd-russian \
+        
+	mkdir -p $install/etc/X11/app-defaults  
+	cp $stuff/etc/X11/app-defaults/XVkbd-russian \
 		$install/etc/X11/app-defaults
+
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	cp -a $install/*	$fs
+	rm -fr $fs/usr/lib
 }
 
 post_install()
