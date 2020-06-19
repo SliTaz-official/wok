@@ -77,7 +77,7 @@ dxfound:
 	call	readsectorX		// read isolinux boot sector
 	cmpw	(%bx), %cx
 	jnc	puts			// read fail or no isohydrid boot sector
-	movw	$patch,%si
+	call	bootpartition		// assume DS=SS SI=BX=7C00 CX=0100 DL=<drive> DI=table+66
 	popw	%es
 	popw	%di			// isolinux boot needs %es:%di and %dx
 putsret:
@@ -102,10 +102,37 @@ halt:
 nobsmsg:
 	.asciz	"No isolinux."
 
-	.org	0x0080
+	.org	0x0080,0xEE
 ////////////////////////////// EXE/PE header //////////////////////////////////
+	.org	0x0178,0xFF
+////////////////////////// partition boot code ////////////////////////////////
+// assume DS=SS SI=BX=7C00 CX=0100 DL=<drive> DI=table+66
 
-	.org	0x01A0
+bootpartition:
+	movw	$4,%cx
+	movw	$16,%ax
+next:
+	subw	%ax,%di
+	cmpb	%ch,-2(%di)		// boot flag ?
+	loope	next
+	cmpw	$63,2-2(%di)		// empty or isolinux partition ?
+	jbe	default
+	.arch	i486
+	pushl	$0
+	pushl	8-2(%di)
+	pushw	%cs
+	pushw	%bx
+	pushw	$1
+	pushw	%ax
+	movw	%sp,%si			// assume %ds = %ss
+	movb	$0x42,%ah
+	int	$0x13
+	add	$16,%sp
+	.arch	i8086
+default:
+	ret
+
+	.org	0x01A0,0xFF
 readsectorX:				// read isolinux boot sector
 	movb	$0xA5, %cl		// patched by installer
 readsector1:
@@ -120,182 +147,239 @@ setreg:
 	movw	$0x0100, %cx
 	movb	$nobsmsg, %al
 	ret
-	.org	0x01B8
+	.org	0x01B8,0xEE		// partition table
 
-////////////////////////// partition boot code ////////////////////////////////
-// assume DS=SS BX=7C00 CH=01 DL=<drive> SI=7DBE
+	.org	0x0270,0xFF
 
-	.org	0x7C00
-	jmp	bootpartition
-	.org	0x7C03
-	.org	0x7DBE
-table	=	moved+0x1BE
-patch:
-	.byte	0,0,0			// head of original bs
-partcode:
-	popw	%si
-	xchgw	%si,%di
-	call	movepartition
-	pushw	%cx
-	pushw	%cx
-	decw	%di
-	decw	%di
-	movb	$4,%cl
-	movw	$16,%ax
-next:
-	subw	%ax,%di
-	cmpb	%ch,(%di)		// boot flag ?
-	loope	next
-	pushw	10(%di)
-	pushw	8(%di)
-	pushw	%cs
-	pushw	%bx
-	movb	$1,%cl
-	pushw	%cx
-	pushw	%ax
-	movw	%sp,%si			// assume %ds = %ss
-	pushw	%bx
-	cmpw	$63,2(%di)		// empty or isolinux partition ?
-	jbe	default
-	movb	$0x42,%ah
-	int	$0x13
-default:
-	ret
-	.org	0x7DF0
-bootpartition:
-	pushw	%ds
-	popw	%es
-	pushw	%si
-	movw	%bx,%di
-	movsw
-	movsb
-	movw	$table-0x142,%di
-	pushw	%di
-movepartition:
-	movb	$66,%cl			// 0142 and 0042
-	rep
-	  movsb
-	ret
-	.org	0x7E00
-	.org	0x7F40
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
+bootdir:
+	.asciz	"/boot"
+linld:
+	.asciz	"linld.com"
+cmdline:
+	.ascii	"-f "
+//	.ascii	"image=\boot\"
+//	.ascii	"bzImage "
+	.ascii	"initrd="
+rootfs:
+	.ascii	"rootfs"
+dotgz:
+	.ascii	".gz,!            "
+//	.ascii	".gz,rootfs4.gz,! "
+args:
+//	.ascii	" rw "
+//	.ascii	" mode=menu"
+	.ascii	" autologin rdinit=/init.exe magic="
+magicstr:
+	.ascii	"0     bootfrom="
+//	.ascii	"65535 bootfrom="
+filename:
 exestart:
-	movw	129, %ax
-	cmpb	$0x2F, %al
-	je	ishelp
-	cmpw	$0x2F20, %ax
-ishelp:
-	movw	$0x3000+EXESTR(help), %ax
-	cwd				// clear dx
-	pushw	%dx			// dos exit()
-	je	abort
-	int	$0x21			// get DOS version
-	addb	$-3, %al
-	movb	$EXESTR(noDOS3), %al
-	movw	$0x100, %di
-	jc	tst386
-abort:
-goputs:
-	mov	$EXEADRS(puts), %si
-	jmp	*%si
+	movb	$0x30,%ah		// get DOS version
+	int	$0x21
+	cmpb	$3,%al
+	jc	goabort
 
-tst386:
-	pushw	%sp
-	popw	%ax
-	xorw	%sp, %ax		// clear C
-	movb	$EXESTR(vm86modemsg), %al
-	jnz	is86			// 86/186 not a 286+
-	.arch	i486
-is386:
-	smsww	%bx			// not privileged
-	andb	$1, %bl			// clear C
-	jne	isvm86
-	movl	%cr0, %ebx		// privileged
-	incl	%ebx
-	.arch	i8086
-	movb	$EXESTR(rmPaging), %al
-	js	abort
-is86:
-	incw	%ax
-	//movb	$EXESTR(realmodemsg), %al
-isvm86:
-	call	goputs
-//----------
-	pushw	%di
-//------------- insert argv[0] in cmdline -----------------------
-	xchgw	%ax,%dx			// %ax = 0
+	cld
+	movw	EXEADRS(comstart),%si
+	movw	$0xF000,%di
+	movb	$4,%ch			// 2k min
+	rep
+	  movsw				// helper
+	movw	$129,%si
+	leaw	args-cmdline(%si),%di
+	movb	-1(%si),%cl
+	pushw	%si
+	rep
+	  movsb				// user args
+	xchgw	%ax,%di
+	popw	%di
+	movw	$EXEADRS(cmdline),%si
+	movb	$args-cmdline,%cl
+	rep
+	  movsb				// files
+	xchgw	%ax,%di
+	movb	$filename-args,%cl
+	rep
+	  movsb				// end
+	pushw	%di			// filename
+
+#define ISOSTATE	0xF000
+#define ISO_OPEN	iso_open
+#define ISO_READDIR	*0xF004
+#define ISO_READMENU 	iso_readmenu
+#define RUN_LINLD	run_linld
+	movw	ISOSTATE,%bp
+	xorw	%ax,%ax
+	movw	%bp,%di
+	movb	$64,%cl
+	rep
+	  stosb				// clear BSS
+
 	movw	%ax,%di
 	movw	0x2C(%di),%es
-	movw	%sp,%cx			// big enough
+	decw	%cx
 scalp:
 	repne
 	  scasb
 	scasb
 	jne	scalp
-	incw	%di
-	movw	%di,%bx
-	incw	%di
-	pushw	%di			// %es:%di = programme pathname
-	repne
-	  scasb
-	subw	%di,%bx
-	notw	%bx
-	movw	$128,%si
-	addw	%bx,(%si)
-	lodsb	
-	xchgw	%ax,%cx
-	incw	%cx
-	pushw	%si
-p2lp:
-	lodsb
-	movb	%al,-2(%bx,%si)
-	loop	p2lp
-	popw	%si
-	popw	%bx
-	movb	$0x20,%al
-p1lp:
-	movb	%al,(%si)
-	incw	%si
-	movb	%es:(%bx),%al
-	incw	%bx
-	cmpw	%bx,%di
-	ja	p1lp
-//----------
-	popw	%di
-	pushw	%cs
+	scasw
+	movw	%di,%si			// %es:%di = programme pathname
+
+	pushw	%es
+	pushw	%ds
 	popw	%es
-//----------
-	movw	comstart-end_header(%di), %si		// .com address
+	popw	%ds
+	popw	%di			// filename
 	pushw	%di
-	movb	$0x7C/2, %ch		// 31K-31.5K, > com length
-	movb	$0x80, %bh
-	movw	$0xA5F3, (%bx)		// rep movsw
-	movb	$0xC3, 2(%bx)		// ret
-	jmp	*%bx
+	movb	$0x60,%ah		// canonicalize filename
+	int	$0x21
+	pushw	%es
+	popw	%ds
+#define LONG_FILENAME
+#ifdef LONG_FILENAME
+	popw	%si
+	pushw	%si
+	movw	$0x716C,%ax
+	xorw	%bx,%bx			// R/O
+	xorw	%cx,%cx			// attributes
+	cwd				// action = open
+	stc
+	int	$0x21
+	jnc	opened
+#endif
+	popw	%dx
+	pushw	%dx
+	movw	$0x3D00,%ax
+//	movb	$0,%cl
+	int	$0x21
+goabort:
+	jc	abort
+opened:
+	movw	%ax,4(%bp)		// fd
 
-vm86modemsg:
-// --------------- Must be in 7F40 7FFF range ------------------------
-	.ascii	"v"			// v86 mode
-	.ascii	"86"			// 86 mode
-	.byte	EXESTR(mode)
-rmPaging:
-	.ascii	"X"			// Xreal mode
-realmodemsg:
-	.ascii	"real"			// real mode
-// --------------- Must be in 7FC0 7FFF range ------------------------
-mode:
-	.ascii	" mode"
-	.byte	EXESTR(eol)
-noDOS3:
-	.ascii	"DOS3?"			// DOS3?
-	.byte	EXESTR(eol)
-help:
-	.ascii	"SliTaz iso boot"	// SliTaz iso boot
-eol:
-	.ascii	"\r\n"
-	.byte	1			// puts will return
+	call	ISO_READMENU
+	movw	6(%bp),%ax		// magic = filemod
+	popw	%bx
+	leaw	magicstr-filename(%bx),%di
+	movb	$10,%bl
+	xorw	%cx,%cx
+lp1:
+	xorw	%dx,%dx
+	divw	%bx
+	pushw	%dx
+	incw	%cx
+	orw	%ax,%ax
+	jnz	lp1
+lp2:
+	popw	%ax
+	addb	$'0',%al
+	stosb				// store magic
+	loop	lp2
 
-	.space	16,0			// ISO md5
-	.org	0x8000
-////////////////////////// ISO9660 header /////////////////////////////////////
+	movw	$EXEADRS(bootdir),%ax
+	call	ISO_OPEN
+	orw	$-1,18(%bp)		// curdirsize = -1
+	xorw	%ax,%ax
+found:
+	incb	%ah
+patchtest:
+	pushw	%ax
+	call	ISO_READDIR
+	pushw	%ds
+	popw	%es
+	incw	%ax
+	popw	%ax
+	movw	$EXEADRS(rootfs),%si
+	je	dopatch
+	movw	%si,%di
+	movw	16(%bp),%si		// filename
+	movw	$9,%cx
+	rep
+	  cmpsb
+	jcxz	found
+	cmpb	$3,%cl
+	ja	patchtest
+	decw	%si
+	cmpb	(%si),%al
+	ja	patchtest
+	lodsb
+	jmp	patchtest
+done:
+	movw	$128,%ax
+	subw	%ax,%si
+	xchgw	%ax,%si
+	decw	%ax
+	movb	%al,(%si)		// cmdline length
+
+	movw	$EXEADRS(linld),%ax
+	call	ISO_OPEN
+	jc	abort
+	movw	12(%bp),%cx		// filesize
+	movw	$0x100,%dx
+	call	RUN_LINLD
+abort:
+	movw	$EXEADRS(stopmsg),%dx
+	movb	$9,%ah
+	int	$0x21
+	int	$0x20
+dopatch:
+	pushw	%si
+	cmpw	$0x200,%ax
+	je	initrddone
+	movw	$EXEADRS(dotgz),%di
+	decb	%ah
+	je	modify
+	scasw
+	scasw				// addw	$4,%di
+	movsw
+	movsw
+	movsw
+modify:
+	stosb
+	movw	$129+dotgz-cmdline,%si
+	movsb
+	movsw
+	movsw
+initrddone:
+	movw	$129+rootfs-cmdline,%di
+	popw	%si
+	movw	$args-rootfs,%cx
+	rep
+	  movsb
+
+shrink0:
+	movw	$129,%si
+shrink:
+	movw	%si,%di
+	lodsb
+	cmpb	$0,%al
+	je	done
+	cmpb	$' ',%al
+	jne	shrink
+	cmpb	(%si),%al
+	jne	shrink
+pack:
+	lodsb
+	stosb
+	cmpb	$0,%al
+	jne	pack
+	jmp	shrink0
+	
+	.org	0x0400,0xEE
+	.org	0x0600,0xFF
+	.org	0x0750,0xBB
+stopmsg:
+	.ascii	"This program cannot be run in DOS mode.$"
+	.org	0x0778,0xEE
+	.org	0xF002-0xC0
+iso_open:
+	.word	0
+	.word	0
+iso_readmenu:
+	.word	0
+run_linld:
+
+	.end

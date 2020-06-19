@@ -23,7 +23,7 @@
 
 		public	_isostate
 _isostate	isostate	<?>
-		org	$-7
+;		org	$-7
 
         ends    _BSS
 
@@ -31,9 +31,14 @@ _isostate	isostate	<?>
 
 		global	fold:near
 fold:
-		org	0F000h
+		org	0EF00h
 		global	unfold:near
 unfold:
+		jmp	iso_open
+		extrn	@isoreaddir$qv
+		dw	@isoreaddir$qv
+		jmp	@readmenu$qv
+
 		push	dx
 		call	readfd
 		push	ds
@@ -65,11 +70,8 @@ iso_open_hack:
 iso_open:
 		mov	[_isostate.filename2open],ax
 		call	@_isoopen$qv
-		inc	ax
-		jnz	open_ok
-		dec	ax
-		stc
-open_ok:
+		cmp	ax,1
+		cmc
 		push	bx
 iso_close_hack:
 		pop	bx
@@ -91,74 +93,12 @@ iso_close_hack:
 		pop	cx
 	endm
 
-iso_read_hack:
-	ifdef	NO386
-		push	dx
-		curseek
-		mov	bx,[word _isostate.filesize]
-		sub	bx,ax
-		mov	ax,[(word _isostate.filesize)+2]
-		sbb	ax,dx
-		ja	@@cxok
-		je	@@rem
-		xor	cx,cx
-@@rem:
-		cmp	bx,cx
-		ja	@@cxok
-		mov	cx,bx
-@@cxok:
-		pop	dx
-	else
-                p386
-		push	edx
-		curseek
-		mov	edx,[_isostate.filesize]
-		sub	edx,eax
-		jnb	@@rem
-		xor	cx,cx
-@@rem:
-		movzx	eax,cx
-		cmp	edx,eax
-		ja	@@cxok
-		mov	cx,dx
-@@cxok:
-		pop	edx
-	endif
-		or	cx,cx
-		pop	bx
-		jmp	readfd
+;***************************************************************
+;_fastcall void readmenu(void);
+;***************************************************************
+	global	@readmenu$qv:near
+	proc	@readmenu$qv near
 
-iso_lseek_hack:
-		xchg	ax,bx
-		pop	bx
-	ifdef	SEEK_CUR
-		cmp	al,1	; current
-		jne	@@nocurrent
-		call	dosfd		; lseek(,0L,SEEK_CUR)
-		jmp	@doseek2
-@nocurrent:
-	endif
-		add	dx,[word _isostate.fileofs]
-		adc	cx,[(word _isostate.fileofs)+2]
-		cmp	al,0	; start
-		je	@@doseek
-		add	dx,[word _isostate.filesize]
-		adc	cx,[(word _isostate.filesize)+2]
-@@doseek:
-		call	lseekset	; lseek(,0L,SEEK_SET)
-@doseek2:
-		sub	ax,[word _isostate.fileofs]
-		sbb	dx,[(word _isostate.fileofs)+2]
-		ret
-
-iso_cleanup_hack:
-		mov	ah,3Eh		; close file
-		jmp	dosfd
-
-
-
-		global	@readmenu$qv:near
-@readmenu$qv:
 		mov	dx,18
 		xor	cx,cx
 		call	lseekset
@@ -167,12 +107,15 @@ iso_cleanup_hack:
 		call	readfd ; // read x->filemod + x->fileofs & x->filesize
 		mov	bx,offset _isostate.fileofs
 		; x->fileofs = 0x7FF0 - (x->filesize &= 0xFFFF);
-		and	[word bx+6],0
 		mov	ax,7FF0h
+		cwd
+		mov	[word bx+6],dx
 		sub	ax,[bx+4]
-		and	[word bx+2],0
+		mov	[word bx+2],dx
 		mov	[bx],ax
 		; //magic = x->filemod;
+
+	endp	@readmenu$qv
 
 ;***************************************************************
 ;_fastcall void isolseek(bx:const unsigned long *offset);
@@ -260,6 +203,69 @@ readfd:
 
         endp    @strcmp$qpxzct1
 
+iso_read_hack:
+	ifdef	NO386
+		push	dx
+		curseek
+		mov	bx,[word _isostate.filesize]
+		sub	bx,ax
+		mov	ax,[(word _isostate.filesize)+2]
+		sbb	ax,dx
+		ja	@@cxok
+		je	@@rem
+		xor	cx,cx
+@@rem:
+		cmp	bx,cx
+		ja	@@cxok
+		mov	cx,bx
+@@cxok:
+		pop	dx
+	else
+                p386
+		push	edx
+		curseek
+		mov	edx,[_isostate.filesize]
+		sub	edx,eax
+		jnb	@@rem
+		xor	cx,cx
+@@rem:
+		movzx	eax,cx
+		cmp	edx,eax
+		ja	@@cxok
+		mov	cx,dx
+@@cxok:
+		pop	edx
+	endif
+		or	cx,cx
+		pop	bx
+		jmp	readfd
+
+iso_lseek_hack:
+		xchg	ax,bx
+		pop	bx
+	ifdef	SEEK_CUR
+		cmp	al,1	; current
+		jne	@@nocurrent
+		call	dosfd		; lseek(,0L,SEEK_CUR)
+		jmp	@doseek2
+@nocurrent:
+	endif
+		add	dx,[word _isostate.fileofs]
+		adc	cx,[(word _isostate.fileofs)+2]
+		cmp	al,0	; start
+		je	@@doseek
+		add	dx,[word _isostate.filesize]
+		adc	cx,[(word _isostate.filesize)+2]
+@@doseek:
+		call	lseekset	; lseek(,0L,SEEK_SET)
+@doseek2:
+		sub	ax,[word _isostate.fileofs]
+		sbb	dx,[(word _isostate.fileofs)+2]
+		ret
+
+iso_cleanup_hack:
+		mov	ah,3Eh		; close file
+		jmp	dosfd
 	ifdef	NO386
         global  N_LXLSH@ES:near
 N_LXLSH@ES:

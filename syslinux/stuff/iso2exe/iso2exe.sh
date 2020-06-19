@@ -79,7 +79,7 @@ add_tazlito_info()
 add_win32exe()
 {
 	SIZE=$($0 --get win32.exe 2> /dev/null | tee /tmp/exe$$ | wc -c)
-	[ -n "$gpt" ] && n=1536 || n=512
+	n=1536
 	SIZE=$(($SIZE+$n))
 	printf "Adding WIN32 file at %04X (%d bytes) ...\n" 0 $SIZE
 	[ -n "$gpt" ] && printf "Adding GPT at %04X (1024 bytes) ...\n" 512
@@ -93,25 +93,20 @@ add_win32exe()
 	ddn if=/tmp/exe$$ of=$1 bs=1 skip=$cut seek=$(($n+$cut))
 	printf "Adding bootiso head at %04X...\n" 0
 	$0 --get bootiso.bin 2> /dev/null > /tmp/exe$$
-	x=$(($(get 0x14 /tmp/exe$$ 1)+0x40))
-	printf "Adding bootiso DOS stub at %04X...\n" $(($n+$x))
-	ddn if=/tmp/exe$$ of=$1 bs=1 seek=$(($n+$x)) skip=$((0x7F00+$x)) count=$((256-$x))
-	x=$(($n/256+1))
-	store $((0x15)) $x /tmp/exe$$ 8		### exe IP 
-	store $((0x6c)) $x /tmp/exe$$ 8		### puts data 
-	ddn if=/tmp/exe$$ of=$1 bs=128 count=1	### DOS header
-	ddn if=/tmp/exe$$ of=$1 bs=1 count=24 seek=$((0x1A0)) skip=$((0x1A0))
-	ddn if=$2 bs=1 skip=$((0x1B8)) seek=$((0x1B8)) count=72 of=$1
 	store 510 $((0xAA55)) $1
-	i=$SIZE; OFS=$(($SIZE+512))
-	store 417 $(($i/512)) $1 8	### isolinux boot sector
-	printf "Moving syslinux hybrid boot record at %04X (512 bytes) ...\n" $i
-	ddn if=$2 bs=1 count=512 of=$1 seek=$i
-	if [ $(get $((0x7C00)) /tmp/exe$$) -eq 60905 ]; then	# partition boot code
-		ddn if=/tmp/exe$$ bs=1 count=66 skip=$((0x7DBE)) of=$1 seek=$(($i + 0x1BE))
-		ddn if=$1 bs=1 count=3 skip=$i of=$1 seek=$(($i + 0x1BE))
-		ddn if=/tmp/exe$$ bs=1 count=3 skip=$((0x7C00)) of=$1 seek=$i
-	fi
+	while read adrs sz; do
+		ddn if=/tmp/exe$$ of=$1 bs=1 count=$((0x$sz)) seek=$((0x$adrs)) skip=$((0x$adrs))
+	done <<EOT
+0000 0080
+0178 0040
+0270 0190
+0750 0028
+EOT
+	i=$((0x600))
+	store 417 $(($i/512)) $1 8		### isolinux boot sector
+	printf "Moving syslinux hybrid boot record at %04X (336 bytes) ...\n" $i
+	OFS=$SIZE
+	ddn if=$2 bs=1 count=336 of=$1 seek=$i
 	rm -f /tmp/exe$$ /tmp/coff$$
 	if [ -z "$RECURSIVE_PARTITION" -a $(get 454 $1 4) -eq 0 ]; then
 		store 448 $((1+$i/512)) $1 8			### 446+2 SECTOR
@@ -159,8 +154,8 @@ fileofs()
 	SIZE=0; OFFSET=0
 	case "$1" in
 	win32.exe)	[ $x -eq 2048 ] && x=10752
-			[ $x -eq 1024 ] || SIZE=$(($x - 512));;
-	syslinux.mbr)	[ $x -eq 1024 ] || OFFSET=$(($x - 512)); SIZE=512;;
+			[ $x -eq 1024 ] || SIZE=$x;;
+	syslinux.mbr)	[ $x -eq 1024 ] || OFFSET=$(($x - 512)); SIZE=336;;
 	flavor.info)	[ $(get 22528 "$ISO") -eq 35615 ] && OFFSET=22528
 			[ $x -eq 2048 ] && x=$(get 0x25C "$ISO") &&
 					   SIZE=$(get 0x25E "$ISO")
@@ -308,6 +303,8 @@ case "$1" in
 	find $TMP -type f -print0 | xargs -0 chmod +x
 	find $TMP -print0 | xargs -0 touch -t 197001010100.00
 	( cd $TMP; find dev init.exe | cpio -o -H newc ) | compress > rootfs.gz
+	p=$((4-($(stat -c %s rootfs.gz)%4)))
+	[ $p = 4 ] || dd if=/dev/zero bs=1 count=$p >> rootfs.gz
 	rm -rf $TMP
 	chmod 644 ${@/init/rootfs.gz}
 	chown root.root ${@/init/rootfs.gz}
