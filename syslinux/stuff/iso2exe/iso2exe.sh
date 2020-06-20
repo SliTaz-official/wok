@@ -100,13 +100,10 @@ add_win32exe()
 0000 0080
 0178 0040
 0270 0190
-0750 0028
+0600 0178
 EOT
 	i=$((0x600))
-	store 417 $(($i/512)) $1 8		### isolinux boot sector
-	printf "Moving syslinux hybrid boot record at %04X (336 bytes) ...\n" $i
 	OFS=$SIZE
-	ddn if=$2 bs=1 count=336 of=$1 seek=$i
 	rm -f /tmp/exe$$ /tmp/coff$$
 	if [ -z "$RECURSIVE_PARTITION" -a $(get 454 $1 4) -eq 0 ]; then
 		store 448 $((1+$i/512)) $1 8			### 446+2 SECTOR

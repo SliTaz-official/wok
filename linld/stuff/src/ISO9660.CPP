@@ -84,10 +84,15 @@ int isoreaddir(void)
 		}
 		p += len;
 	} while (x->buffer + x->curpos + x->entrysize - 2 > p);
+#ifdef ISOHOOK
+	*endname = 0;
+#else
 	if (endname)
 		*endname = 0;
 	else
 #endif
+#endif
+#ifndef ISOHOOK
 	{
 		p = x->buffer + 33; x->filename = p += x->curpos;
 		p--;
@@ -105,6 +110,7 @@ int isoreaddir(void)
 			*p = 0;
 		}
 	}
+#endif
 	x->curpos += x->entrysize;
 	return 0;
 }
