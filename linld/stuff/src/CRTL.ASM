@@ -1097,8 +1097,7 @@ image_done:
 @@notvga:
 		mov	cl,10			; radix
 		cmp	al,'-'
-		ja	@@radixkeep
-		cmc				; '+'=2B:C=0 '-'=2D:C=1
+		jne	@@radixkeep
 		lodsb
 @@radixkeep:
 		pushf
@@ -1170,6 +1169,7 @@ image_done:
 		ifndef	USE_ARGSTR
 		mov	si,bx
 		endif
+		xor	bx,bx
 		xor	cx,cx
 		lodsb
 		or	al,20h
@@ -1187,8 +1187,7 @@ image_done:
 @@notvga:
 		mov	cl,10			; radix
 		cmp	al,'-'
-		ja	@@radixkeep
-		cmc				; '+'=2B:C=0 '-'=2D:C=1
+		jne	@@radixkeep
 		lodsb
 @@radixkeep:
 		pushf
@@ -1243,12 +1242,12 @@ image_done:
 		cmp	al,'g'-'a'+10
 		jne	@@noshift
 @@shift:
-		rcl	di,1
+		rcl	bx,1
 		shl	dx,1
 		loop	@@shift
 @@noshift:
 		popf
-		jnc	@@end
+		jne	@@end
 		not	dx
 		neg	bx
 		jne	@@end

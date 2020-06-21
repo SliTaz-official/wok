@@ -81,8 +81,8 @@ iso_close_hack:
 	macro   curseek
 		push	cx
 		xor	cx,cx
-		xor	dx,dx
 		mov	ax,4201h
+		cwd
 		call	dosfd		; lseek(,0L,SEEK_CUR)
 		call	@doseek2
 	ifndef	NO386
