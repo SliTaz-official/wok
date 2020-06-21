@@ -1084,11 +1084,11 @@ image_done:
 		or	al,20h
 		cmp	al,'a'
 		jb	@@notvga
-		sub	al,'n'
+		sub	al,'o'
 @@vgaloop:
 		dec	cx
 		add	al,6
-		jb	@@vgaloop		; vga=normal,extended,ask
+		jnb	@@vgaloop		; vga=normal,extended,ask
 @@vga:
 		dec	cx
 		xchg	ax,cx
@@ -1175,13 +1175,14 @@ image_done:
 		or	al,20h
 		cmp	al,'a'
 		jb	@@notvga
-		sub	al,'n'
+		sub	al,'o'
 @@vgaloop:
 		dec	cx
 		add	al,6
-		jb	@@vgaloop		; vga=normal,extended,ask
+		jnb	@@vgaloop		; vga=normal,extended,ask
 @@vga:
 		xchg	ax,cx
+		;cwd
 @@goend:
 		jmp	@@popdisiret
 @@notvga:
