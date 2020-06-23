@@ -65,6 +65,9 @@ int isoreaddir(void)
 #ifdef __ROCKRIDGE
 	// p += 34 + (p[32] & -2); ?
 	p = x->buffer + 34 + ((p[32] + x->curpos) & -2);
+#ifdef ISOHOOK
+	x->curpos += x->entrysize;
+#endif
 	do {
 		register len = p[2];
 		if (* (short *) p == 0x4D4E) {
@@ -73,10 +76,10 @@ int isoreaddir(void)
 			goto found;
 		}
 		p += len;
-#ifndef ISOHOOK
-	} while (x->buffer + x->curpos + x->entrysize - 2 > p);
+#ifdef ISOHOOK
+	} while (x->buffer + x->curpos - 2 > p);
 #else
-	} while (1);
+	} while (x->buffer + x->curpos + x->entrysize - 2 > p);
 #endif
 #endif
 #ifndef ISOHOOK
@@ -99,7 +102,9 @@ int isoreaddir(void)
 	}
 #endif
 found:
+#ifndef ISOHOOK
 	x->curpos += x->entrysize;
+#endif
 	return 0;
 }
 

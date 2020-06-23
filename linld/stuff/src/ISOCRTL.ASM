@@ -52,8 +52,8 @@ unfold:
 		stosw
 		mov	ax,offset iso_close_hack
 		stosw
-		mov	ax,offset iso_cleanup_hack
-		stosw
+;		mov	ax,offset iso_cleanup_hack
+;		stosw
 		global	@_cpuhaslm$qv:near
 @_cpuhaslm$qv:
 		mov	ax,[132h]
@@ -263,9 +263,10 @@ iso_lseek_hack:
 		sbb	dx,[(word _isostate.fileofs)+2]
 		ret
 
-iso_cleanup_hack:
-		mov	ah,3Eh		; close file
-		jmp	dosfd
+;iso_cleanup_hack:
+;		mov	ah,3Eh		; close file
+;		jmp	dosfd
+
 	ifdef	NO386
         global  N_LXLSH@ES:near
 N_LXLSH@ES:
