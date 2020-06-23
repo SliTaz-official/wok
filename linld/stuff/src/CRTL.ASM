@@ -1123,10 +1123,11 @@ image_done:
 @@digitok:
 		cmp	al,cl
 		jae	@@endstrtol
+		cbw
+		cwde
 		xchg	eax,ebx
 		mul	ecx
-		add	eax,ebx
-		xchg	eax,ebx
+		add	ebx,eax
 		jmp	@@strtollp
 @@endstrtol:
 		mov	cl,10
@@ -1154,23 +1155,14 @@ image_done:
 		endif
 		else
 		ifndef	USE_ARGSTR
-		push	si di
-		xor	ax,ax
-		cwd
-		or	bx,bx
-		else
-		push	di
-		xor	ax,ax
-		cwd
-		or	si,si
-		endif
-		jz	@@goend
-		xchg	ax,di
-		ifndef	USE_ARGSTR
+		push	si
 		mov	si,bx
 		endif
+		or	si,si
+		jz	@@goend
 		xor	bx,bx
 		xor	cx,cx
+		xor	dx,dx
 		lodsb
 		or	al,20h
 		cmp	al,'a'
@@ -1214,20 +1206,15 @@ image_done:
 @@digitok:
 		cmp	al,cl
 		jae	@@endstrtol
+		cbw
 
 		push	ax
-		push	dx
-		xchg	ax,bx
+		xchg	ax,dx
 		mul	cx
 		xchg	ax,bx
-		xchg	ax,dx
-		xchg	ax,di
-		pop	ax
 		mul	cx
-		add	ax,di
-		xchg	ax,dx
-		pop	ax
-		mov	ah,0
+		add	dx,bx
+		pop	bx
 		add	bx,ax
 		adc	dx,0
 
@@ -1257,9 +1244,7 @@ image_done:
 		xchg	ax,bx
 @@popdisiret:
 		ifndef	USE_ARGSTR
-		pop	di si
-		else
-		pop	di
+		pop	si
 		endif
 		endif
 strtol_ret:

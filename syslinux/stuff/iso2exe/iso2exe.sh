@@ -252,19 +252,18 @@ list()
 
 restore_hybrid_mbr()
 {
-	if [ $(get 0 "$1") -eq 60905 ]; then
+	[ $(get 0 "$1") -eq 60905 ] &&
 		ddn bs=1 if="$1" of="$1" skip=$((0x1BE)) seek=0 count=3
-		ddn bs=1 skip=$((0x1BE)) count=66 if="$2" | \
-			ddq bs=1 seek=$((0x1BE)) count=66 of="$1"
-		if [ -n "$RECURSIVE_PARTITION" ]; then
-			for i in 0 1 2 3 ; do
-				n=$(get $((0x1C6+16*i)) $1 4)
-				[ $n -eq 0 -o $n -gt 64 ] && continue
-				store $((0x1C0+16*i)) 1 $1 8
-				store $((0x1C6+16*i)) 0 $1 32
-				store $((0x1CA+16*i)) $(($(get $((0x1CA+16*i)) $1 4)+$n)) $1 32
-			done
-		fi
+	ddn bs=1 skip=$((0x1BE)) count=66 if="$2" | \
+		ddq bs=1 seek=$((0x1BE)) count=66 of="$1"
+	if [ -n "$RECURSIVE_PARTITION" ]; then
+		for i in 0 1 2 3 ; do
+			n=$(get $((0x1C6+16*i)) $1 4)
+			[ $n -eq 0 -o $n -gt 64 ] && continue
+			store $((0x1C0+16*i)) 1 $1 8
+			store $((0x1C6+16*i)) 0 $1 32
+			store $((0x1CA+16*i)) $(($(get $((0x1CA+16*i)) $1 4)+$n)) $1 32
+		done
 	fi
 }
 

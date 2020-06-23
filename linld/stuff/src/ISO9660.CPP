@@ -36,9 +36,7 @@ int isoroot(void)
 int isoreaddir(void)
 {
 	char *p;
-#ifdef __ROCKRIDGE
-	char *endname;
-#endif
+
 	struct isostate *x=&isostate;
 
 	if (x->curdirsize == 0xFFFF) {
@@ -65,31 +63,20 @@ int isoreaddir(void)
 	//x->filemod = (p[25] & 2) ? 0040755 : 0100755;
 	//x->filemod = 0100755 - ((p[25] & (char)2) << 13);
 #ifdef __ROCKRIDGE
-	endname = NULL;
 	// p += 34 + (p[32] & -2); ?
 	p = x->buffer + 34 + ((p[32] + x->curpos) & -2);
 	do {
-		int len = p[2];
-# if 0
-		switch (* (short *) p) {
-		case 0x5850: // PX
-			x->filemod = * (short *) (p + 4);
-			break;
-		case 0x4D4E: // NM
-# else
+		register len = p[2];
 		if (* (short *) p == 0x4D4E) {
-# endif
 			x->filename = p + 5;
-			endname = p + len;
+			p[len] = 0;
+			goto found;
 		}
 		p += len;
+#ifndef ISOHOOK
 	} while (x->buffer + x->curpos + x->entrysize - 2 > p);
-#ifdef ISOHOOK
-	*endname = 0;
 #else
-	if (endname)
-		*endname = 0;
-	else
+	} while (1);
 #endif
 #endif
 #ifndef ISOHOOK
@@ -111,6 +98,7 @@ int isoreaddir(void)
 		}
 	}
 #endif
+found:
 	x->curpos += x->entrysize;
 	return 0;
 }
