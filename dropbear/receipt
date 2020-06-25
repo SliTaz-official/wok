@@ -40,6 +40,7 @@ compile_rules()
 	DROPBEARS="dropbearkey dropbearconvert dbclient scp"
 	cat > localoptions.h <<EOT
 #define SFTPSERVER_PATH "/usr/sbin/sftp-server"
+#define DROPBEAR_X11FWD 1
 EOT
 	sed -i 's|shell arch|shell uname -m|' libtommath/makefile_include.mk
 	./configure --prefix=/usr --without-pam $CONFIGURE_ARGS $CROSS_ARGS &&
@@ -55,7 +56,6 @@ EOT
 			cat >> localoptions.h <<EOT
 #define DROPBEAR_SVR_PASSWORD_AUTH 0
 #define DROPBEAR_SVR_PAM_AUTH 1
-#define DROPBEAR_X11FWD 1
 EOT
 			./configure --prefix=/usr --enable-pam $CONFIGURE_ARGS &&
 			make PROGRAMS="dropbear $DROPBEARS" MULTI=1 SCPPROGRESS=1 &&
@@ -92,7 +92,8 @@ genpkg_rules()
 	ln -s sshx $fs/usr/bin/sshfbvnc
 	touch $fs/etc/dropbear/dropbear_dss_host_key \
 		$fs/etc/dropbear/dropbear_rsa_host_key \
-		$fs/etc/dropbear/dropbear_ecdsa_host_key
+		$fs/etc/dropbear/dropbear_ecdsa_host_key \
+		$fs/etc/dropbear/dropbear_ed25519_host_key
 
 	# Fix dropbear initscript perms
 	chown -R root.root $fs
