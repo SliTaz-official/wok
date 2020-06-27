@@ -371,7 +371,9 @@ pack:
 	.org	0x0400,0xEE
 	.org	0x0600,0xFF
 isolinux:
+
 	.arch	i486
+#define PARTITION_SUPPORT
 /* -----------------------------------------------------------------------
  *
  *   Copyright 2007-2009 H. Peter Anvin - All Rights Reserved
@@ -401,93 +403,96 @@ isolinux:
  * ----------------------------------------------------------------------- */
 
 HYBRID_MAGIC			= 0x7078c0fb
-isolinux_hybrid_signature	= 0x7c00+64
 isolinux_start_hybrid		= 0x7c00+64+4
 
-stack		= 0x7c00
-partoffset	= (stack-8)
-driveno		= (stack-14)
-heads		= (stack-16)
-sectors		= (stack-18)
-ebios_flag	= (stack-20)
-secpercyl	= (stack-24)
+isolinux_hybrid_signature	= 64
 
-BIOS_kbdflags	= 0x417
+stack		= 0x7c00
+ebios_flag	= (stack-20)
+
 BIOS_page	= 0x462
 
 _start2:
 	.byte	0x33, 0xed	/* xorw	%bp, %bp */
 
 	/* Check to see if we have a partition table entry */
+#ifdef PARTITION_SUPPORT
 	xorl	%ebx, %ebx
 	xorl	%ecx, %ecx
-#ifdef PARTITION_SUPPORT
 	andw	%si, %si		/* %si == 0 -> no partition data */
 	jz	1f
 	testb	$0x7f, (%si)		/* Invalid active flag field? */
 	jnz	1f
-	cmpb	%cl, 4(%si)		/* Partition type zero == invalid? */
+	orb	4(%si), %cl		/* Partition type zero == invalid? */
 	je	1f
+
+	cmpb	$0xed, %cl		/* EFI partition type? */
+
+	/* Get non-GPT partition information */
+	movl	8(%si), %ecx
+
+	jne	1f
 	cmpl	$0x58504721, %eax	/* !GPT signature in EAX? */
-	jne	2f
-	cmpb	$0xed, 4(%si)		/* EFI partition type? */
-	jne	2f
+	jne	1f
 	
 	/* We have GPT partition information */
 	movl	(32+20)(%si), %ecx
 	movl	(36+20)(%si), %ebx
-	jmp	1f
-
-	/* We have non-GPT partition information */
-2:
-	movl	8(%si), %ecx
 #endif
 1:
-	movw	%sp, %si
+	movw	%bp, %ds
+	movw	$stack, %sp
 
 	/* We have no partition information */
+#ifdef PARTITION_SUPPORT
 	pushl	%ebx			/*  -4: partoffset_hi */
 	pushl	%ecx			/*  -8: partoffset_lo */
+#else
+	pushl	$0			/*  -4: partoffset_hi */
+	pushl	$0			/*  -8: partoffset_lo */
+#endif
+partoffset	= -8
 	pushw	%es			/* -10: es:di -> $PnP header */
 	pushw	%di			/* -12: es:di -> $PnP header */
 
-	movw	%bp, %ds
-	movw	%bp, %es
 	
 	//ADJUST_DRIVE
 	pushw	%dx			/* -14: dl -> drive number */
+driveno		= -14
+
+	pushw	%ds
+	popw	%es
 
 	/* Copy down to 0:0x600 */
-	movw	$0x7c00, %si
-	movw	$_start2, %di
-	movw	$(512/2), %cx
-	rep; movsw
+	movw	$2f-0x600+0x7C00, %si
+	movw	$2f, %di
+	movb	$(512 >> 8), %ch
+	pushw	%es
+	pushw	%di
+	rep; movsb
 
-	ljmpw	$0, $2f
+	retf
 2:
 
 	/* Check to see if we have EBIOS */
 	pushw	%dx		/* drive number */
 	movb	$0x41, %ah	/* %al == 0 already */
 	movw	$0x55aa, %bx
-	xorw	%cx, %cx
+	//xorw	%cx, %cx
 	xorb	%dh, %dh
-	stc
 	int	$0x13
-	jc	1f
-	cmpw	$0xaa55, %bx
-	jne	1f
 	andw	$1,%cx		/* Bit 0 = fixed disk subset */
 	jz	1f
+	decw	%cx		/* Clear EBIOS flag. */
+	cmpw	$0xaa55, %bx
+	jne	1f
+	incw	%cx		/* Set EBIOS flag. */
 
 	/* We have EBIOS; patch in the following code at
 	   read_sector_cbios: movb $0x42, %ah ;  jmp read_common */
 	movl	$0xeb42b4+((read_common-read_sector_cbios-4) << 24), \
 		(read_sector_cbios)
-	jmp	2f
 1:
-	xor	%cx, %cx	/* Clear EBIOS flag. */
-2:
 	popw	%dx
 	pushw	%cx		/* EBIOS flag */
 
@@ -498,36 +503,38 @@ _start2:
 	movzbw	%dh, %ax	/* dh = max head */
 	incw	%ax		/* From 0-based max to count */
 	pushw	%ax		/* -16: Save heads on the stack */
+heads		= -16
 	andw	$0x3f, %cx	/* Sector count */
 	pushw	%cx		/* -18: Save sectors on the stack */
+sectors		= -18
 	mulw	%cx		/* Heads*sectors -> sectors per cylinder */
 
 	pushw	%bx		/* -20: EBIOS flag */
-	
-	/* Save sectors/cylinder on the stack */
-	pushw	%dx		/* -22: High word */
-	pushw	%ax		/* -24: Low word */
+
+	/* Save sectors/cylinder in %esi */
+	pushw	%dx
+	pushw	%ax
+	popl	%edi
 
 	/*
 	 * Load sectors.  We do this one at a time mostly to avoid
 	 * pitfalls and to share code with the stock MBR code.
 	 */
 	movw	$0x7c00, %bx
+	movw	%bx, %bp
 	xorl	%eax, %eax
+	cdq
 	movb	$17*4, %al	/* EL TORITO spec */
 	call	read_sector
-	jc	disk_error
 	movl	71(%bx), %eax	/* catalog */
 	shll	$2, %eax
 	call	read_sector
-	jc	disk_error
 	movl	40(%bx), %eax	/* boot code */
 	shll	$2, %eax
-	movw	$4, %cx		/* Sector count */
+	movb	$4, %cl		/* Sector count */
 
 2:
 	call	read_sector
-	jc	disk_error
 	incl	%eax
 	addb	$(512 >> 8), %bh
 	loopw	2b
@@ -536,11 +543,11 @@ _start2:
 	 * Okay, that actually worked... update the stack pointer
 	 * and jump into isolinux.bin...
 	 */
-	cmpl	$HYBRID_MAGIC,(isolinux_hybrid_signature)
-	jne	bad_signature
+	cmpl	$HYBRID_MAGIC,isolinux_hybrid_signature(%bp)
+	jne	error_os
 
 	cli
-	movw	$ebios_flag, %sp
+	//movw	$ebios_flag, %sp
 
 	/*
 	 * Use a ljmpw here to work around a bug in some unknown version
@@ -548,26 +555,19 @@ _start2:
 	 *
 	 * Look more closely into it if we ever are short on space.
 	 */
-	ljmpw	$0, $isolinux_start_hybrid
-
-bad_signature:
-	call	error
-	.ascii	"isolinux.bin missing or corrupt.\r\n"
-
-disk_error:
-	call	error
-	.ascii	"Operating system load error.\r\n"
+	//ljmpw	$0, $isolinux_start_hybrid
+	pushw	$isolinux_start_hybrid
+	ret
 
 /*
  * read_sector: read a single sector pointed to by %eax to %es:%bx.
- * CF is set on error.  All registers saved.
+ * All registers saved.
  */
 read_sector:
 	pushal
-	xorl	%edx, %edx
 #ifdef PARTITION_SUPPORT
-	addl	(partoffset), %eax
-	adcl	(partoffset+4), %edx
+	addl	partoffset(%bp), %eax
+	adcl	partoffset+4(%bp), %edx
 #endif
 	pushl	%edx	/* MSW of LBA */
 	pushl	%eax	/* LSW of LBA */
@@ -581,21 +581,23 @@ read_sector:
 	/* Do not clobber %eax before this chunk! */
 	/* This also relies on %bx and %edx as set up above. */
 read_sector_cbios:
-	divl	(secpercyl)
+	divl	%edi
 	shlb	$6, %ah
-	movb	%ah, %cl
-	movb	%al, %ch
+	xchgb	%al, %ah
+	xchgw	%ax, %cx
 	xchgw	%dx, %ax
-	divb	(sectors)
+	divb	sectors(%bp)
 	movb	%al, %dh
 	orb	%ah, %cl
 	incw	%cx	/* Sectors are 1-based */
 	movw	$0x0201, %ax
 
 read_common:
-	movb	(driveno), %dl
+	movb	driveno(%bp), %dl
 	int	$0x13
-	leaw	16(%si), %sp	/* Drop DAPA */
+	movw	$disk_error, %si
+	jc	error
+	addw	$16, %sp	/* Drop DAPA */
 	popal
 	ret
 
@@ -603,21 +605,29 @@ read_common:
  * Print error messages.  This is invoked with "call", with the
  * error message at the return address.
  */
+error_os:
+	movw	$bad_signature, %si
 error:
-	popw	%si
-2:
 	lodsb
 	movb	$0x0e, %ah
 	movb	(BIOS_page), %bh
 	movb	$0x07, %bl
 	int	$0x10		/* May destroy %bp */
 	cmpb	$10, %al	/* Newline? */
-	jne	2b
+	jne	error
 
 	int	$0x18		/* Boot failure */
 die:
 	hlt
 	jmp	die
+
+bad_signature:
+	.ascii	"isolinux.bin "
+	.ascii	"missing or corrupt.\r\n"
+disk_error:
+	.ascii	"Operating system "
+	.ascii	"load error.\r\n"
+
 	.org	0x0750,0xBB
 stopmsg:
 	.ascii	"This program cannot be run in DOS mode.$"
