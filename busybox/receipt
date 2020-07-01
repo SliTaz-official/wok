@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="busybox"
-VERSION="1.31.1"
+VERSION="1.32.0"
 CATEGORY="base-system"
 SHORT_DESC="Busybox combines tiny versions of many common UNIX utilities."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -38,7 +38,7 @@ apply_bb_patchs()
     	[ -f done.$file ] && continue
     	echo "Apply $file..."
     	patch -p1 < $stuff/$PACKAGE-${VERSION%.*}-$file || return 1
-	touch done.$file
+	cp $stuff/$PACKAGE-${VERSION%.*}-$file done.$file
     done <<EOT
 tar.u
 stat.u
@@ -53,9 +53,9 @@ cpio.u
 shutdown.u
 scriptreplay.u
 mkfs_vfat.u
-ash.u
 EOT
     cp $stuff/$PACKAGE-${VERSION%.*}.config .config
+    cp $stuff/$PACKAGE-${VERSION%.*}.config .
 }
 
 # Rules to configure and make the package.
@@ -78,6 +78,7 @@ compile_rules()
 			make && make install || return 1
 		    strip --strip-unneeded -R .eh_frame -R .eh_frame_hdr \
 				$src/_install/bin/busybox
+		    cp busybox busybox-glibc
 		    mv busybox_unstripped.map busybox-glibc.map
 		    mv docs/busybox.1 docs/busybox.base.1
 
@@ -94,6 +95,7 @@ compile_rules()
 		    if [ -x /usr/bin/uclibc-i486-gcc ]; then
 			echo "=== Build busybox-uclibc ==="
 			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
+			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .
 			sed -i 's/# CONFIG_ASH_INTERNAL_GLOB is not set/CONFIG_ASH_INTERNAL_GLOB=y/' .config
 			make oldconfig | sed 's|ERROR|error|' &&
 			LDFLAGS="" make || return 1
@@ -107,6 +109,7 @@ compile_rules()
 			echo "=== Build busybox-musl ==="
 			# prepare busybox-musl package
 			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
+			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .
 			sed -i 's|uclibc-i486-||' .config
 			make oldconfig | sed 's|ERROR|error|' &&
 			if make CC=musl-gcc 2> musl-err.log ; then
@@ -120,6 +123,7 @@ compile_rules()
 			echo "=== Build busybox-diet ==="
 			# prepare busybox-diet package
 			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .config
+			cp $stuff/$PACKAGE-${VERSION%.*}.config-static .
 			sed -i 's|uclibc-i486-||;s|CFLAGS="|&-D_BSD_SOURCE |;s|LDFLAGS="|&-Wl,--allow-multiple-definition |;s|LDLIBS="|&compat rpc |' .config
 			make oldconfig | sed 's|ERROR|error|' &&
 			if make CC="/usr/lib/diet/bin/diet gcc" 2> diet-err.log ; then
@@ -134,6 +138,7 @@ compile_rules()
 		    rootfs=$src/ssfs-busybox/usr/share/ssfs/rootfs
 		    mkdir -p $rootfs/etc
 		    cp $stuff/$PACKAGE-${VERSION%.*}.config-ssfs .config
+		    cp $stuff/$PACKAGE-${VERSION%.*}.config-ssfs .
 		    make oldconfig | sed 's|ERROR|error|' && make busybox &&
 		    make CONFIG_PREFIX=$rootfs install || return 1
 		    mv busybox_unstripped.map busybox-ssfs.map
