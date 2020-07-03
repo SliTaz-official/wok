@@ -16,7 +16,6 @@ item --gap
 item --gap Network boot
 isset ${filename} && item --key l lan	Your PXE boot ${filename} ||
 item --key w web	SliTaz WEB boot
-item --key r rolling	SliTaz development version
 goto endip
 :noip
 item --key i ipset	IP settings
@@ -47,8 +46,6 @@ goto menu
 imgfree
 set weburl http://mirror.slitaz.org/pxe/
 chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
-set weburl http://mirror.switch.ch/ftp/mirror/slitaz/pxe/
-chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
 set weburl http://download.tuxfamily.org/slitaz/pxe/
 chain --autofree ${weburl}ipxe/menu.ipxe && boot ||
 set weburl http://mirror1.slitaz.org/pxe/
@@ -61,10 +58,6 @@ goto menu
 
 :lan
 autoboot ||
-goto menu
-
-:rolling
-sanboot http://mirror.slitaz.org/iso/rolling/slitaz-rolling.iso ||
 goto menu
 
 :config
