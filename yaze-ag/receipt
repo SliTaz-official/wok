@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="yaze-ag"
+VERSION="2.40.5"
+CATEGORY="misc"
+SHORT_DESC="Yet Another z80 (CP/M) Emulator"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-${VERSION}_with_keytrans.tar.gz"
+WEB_SITE="http://www.mathematik.uni-ulm.de/users/ag/yaze-ag"
+WGET_URL="$WEB_SITE/devel/$TARBALL"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed "s|\\([^=]\\) \\(\\\$(...DIR\\)|\\1 $DESTDIR\\2|" \
+		Makefile_linux_32_i586 > Makefile
+	sed -i 's|/local||g' Makefile yaze.* doc/*
+	mkdir -p $DESTDIR/usr/bin $DESTDIR/usr/lib
+	make &&
+	make install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/lib $fs/usr
+	ln -fs yaze $fs/usr/bin/cpm
+	ln -fs yaze $fs/usr/bin/z80
+	mv $install/usr/lib/yaze/doc $install/usr
+}
