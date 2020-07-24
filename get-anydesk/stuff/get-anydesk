@@ -1,0 +1,159 @@
+#!/bin/sh
+#
+# get-anydesk - create and install SliTaz package anydesk
+#
+# (C) 2020 SliTaz - GNU General Public License v3.
+# Author : HGT
+#
+
+#	=== Initialisations ===
+
+PKGS_DB="/var/lib/tazpkg"	# packages database directory
+PACKAGE="anydesk"
+CATEGORY="non-free"
+SHORT=DESC="remote access"
+MAINTAINER="nobody@slitaz.org"
+LICENSE="non-free"
+WEB_SITE="https://anydesk.com/packagename/"
+#DEPENDS="libglu-mesa"
+
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
+
+is_installed()
+{
+	if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then	#package is deemed to be installed
+	 	return 0
+	  else
+	 	return 1
+	 fi
+}
+
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+  then
+	echo "Commandline options:
+  $0
+	--version=<version>
+	--root=<path-to-root>
+	--install=yes|no
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>
+	--logfile=<logging-file>"
+	exit
+fi
+
+# Check for system administrator privileges
+check_root
+
+title "Package $PACKAGE will be build as SliTaz package and installed"
+
+# Fetch latest version, unless version is set by option --version
+[ -z "$version" ] && version="latest"
+
+# Install SliTaz package, unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
+
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
+
+# Directory for temporary files
+TMP_DIR="$tmpdir"
+[ -z "$tmpdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+
+# Logging file (unused by now)
+LOG="$logfile"
+[ -z "$logfile" ] && LOG=$TMP_DIR/get-$PACKAGE.log
+
+cat <<EOT
+Options in use:
+  root           : $root/
+  version        : $version
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
+  logging file   : $LOG
+
+EOT
+
+separator; newline
+
+#	=== Remove package, if installed ===
+if is_installed
+  then
+	echo "$PACKAGE is already installed."
+	echo -n "Would you like to remove and reinstall this package [y/n]? "
+	read answer
+	case "$answer" in
+		y|Y)
+			action "Removing installed version..."
+			tazpkg remove $PACKAGE --root="$root/"
+			[ ! is_installed ] &&
+			die "Can't remove installed version. Exiting."
+			;;
+		*)
+			echo "Leaving $PACKAGE untouched."
+			exit 0
+			;;
+	esac
+fi
+
+#	=== Fetch Debian package, if not existing ===
+if [ "$version" == "latest" ]
+  then
+	VERSION="$(wget --no-check-certificate -O - https://anydesk.com/en/downloads/linux | \
+		sed -n '/i386.deb">.*option/p' | sed 's|.*_\(.*\)_.*|\1|' )"
+	FILE="${PACKAGE}_${VERSION}_i386.deb"
+	WGET_URL="https://download.anydesk.com/linux/$FILE"
+  else
+	VERSION=$version
+	FILE="${PACKAGE}_${VERSION}_i386.deb"
+	WGET_URL="https://download.anydesk.com/linux/deb/$FILE"
+fi
+
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR
+cd $TMP_DIR
+if [ -f $FILE ]
+  then
+	echo "Using existing archive file $FILE"
+  else
+	action "Fetching the archive"
+	newline
+	wget	--no-check-certificate $WGET_URL
+	if [ ! -f $FILE ]
+	  then
+		cd $CUR_DIR
+		rm -rf $TMP_DIR
+		echo "Could not transfer $FILE from $WGET_URL. Exiting."
+		exit 1
+	fi
+fi
+
+#	=== Convert Debian package to SliTaz package ===
+action "Converting the package"
+newline
+
+tazpkg convert $FILE
+status
+VERSION=${VERSION%-*}
+
+# Remove archive file
+rm -f $FILE
+
+#	=== Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
+
+#	=== Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR &&
+  echo "Saved $PACKAGE-$VERSION.tazpkg to $CUR_DIR" )
+
+# Remove temporary build directory
+cd $CUR_DIR
+rm -rf $TMP_DIR
