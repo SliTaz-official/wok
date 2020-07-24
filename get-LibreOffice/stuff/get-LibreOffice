@@ -2,11 +2,12 @@
 # get-LibreOffice - create and install SliTaz package LibreOffice
 # excluding KDE and GNOME integration and test suite.
 #
-# (C) 2019 SliTaz - GNU General Public License v3.
+# (C) 2020 SliTaz - GNU General Public License v3.
 # Author : Ben Arnold <ben@seawolfsanctuary.com>
 #    via : get-OpenOffice3 (Eric Joseph-Alexandre <erjo@slitaz.org>)
 # modified by Hans-Günter Theisgen on 2019-04-07
-# modified by Hans-Günter Theisgen on 220-03-17
+# modified by Hans-Günter Theisgen on 2020-03-17
+# modified by Hans-Günter Theisgen on 2020-07-24
 #
 
 #	=== Initialisations ===
@@ -59,7 +60,9 @@ check_root
 title "Package $PACKAGE will be build as SliTaz package and installed"
 
 # Fetch latest $DIR version, unless version is set by option --version
-[ -z "$version" ] && version="latest"
+#[ -z "$version" ] && version="latest"
+[ -z "$version" ] && version="6.2.8.2" &&
+  echo "Newer versions than 6.2.8.2 are not available in 32-bit flavour!"
 
 # Fetch language pack according to $LANG, unless otherwise set by option --lang
 [ -z "$lang" ] && lang="automatic"
@@ -133,53 +136,53 @@ fi
 for VERSION in $VERSIONS
   do	# foreach VERSION
 
-VER="${VERSION/\-/}" # without hyphens
-TARBALL="LibreOffice_${VER}_${SUFFIX}"
-WGET_URL="$PREFIX/${VERSION}/rpm/x86/${TARBALL}"
+	VER="${VERSION/\-/}" # without hyphens
+	TARBALL="LibreOffice_${VER}_${SUFFIX}"
+	WGET_URL="$PREFIX/${VERSION}/rpm/x86/${TARBALL}"
 
-# Set LANG_URL to fetch language package
-if [ "$lang" = "automatic" ]
-  then	# use language from $LANG of running process
-	for LOC in ${LANG/_/-} ${LANG%_*}
-	  do
-		L_SUFFIX="Linux_x86_rpm_langpack_$LOC.tar.gz"
+	# Set LANG_URL to fetch language package
+	if [ "$lang" = "automatic" ]
+	  then	# use language from $LANG of running process
+		for LOC in ${LANG/_/-} ${LANG%_*}
+		  do
+			L_SUFFIX="Linux_x86_rpm_langpack_$LOC.tar.gz"
+			L_TARBALL="LibreOffice_${VER}_${L_SUFFIX}"
+			LANG_URL="$PREFIX/${VERSION}/rpm/x86/${L_TARBALL}"
+			busybox wget -s $LANG_URL 2> /dev/null || continue
+			echo "Added language pack for $LANG ($LOC)."
+			break
+		  done
+	  else
+		L_SUFFIX="Linux_x86_rpm_langpack_$lang.tar.gz"
 		L_TARBALL="LibreOffice_${VER}_${L_SUFFIX}"
 		LANG_URL="$PREFIX/${VERSION}/rpm/x86/${L_TARBALL}"
-		busybox wget -s $LANG_URL 2> /dev/null || continue
-		echo "Added language pack for $LANG ($LOC)."
-		break
-	  done
-  else
-	L_SUFFIX="Linux_x86_rpm_langpack_$lang.tar.gz"
-	L_TARBALL="LibreOffice_${VER}_${L_SUFFIX}"
-	LANG_URL="$PREFIX/${VERSION}/rpm/x86/${L_TARBALL}"
-	busybox wget -s $LANG_URL 2> /dev/null &&
-	echo "Added language pack for $lang."
-fi
-
-CUR_DIR=$(pwd)
-mkdir -p $TEMP_DIR
-cd $TEMP_DIR
-
-if [ -f $SOURCE_DIR/$TARBALL ]
-  then
-	echo "Using existing archive file $TARBALL"
-  else
-	action "Fetching the archives..."
-	newline
-	# Check if $SOURCE_DIR exists
-	[ -d $SOURCE_DIR ] || mkdir -p $SOURCE_DIR
-	wget -c $WGET_URL -O $SOURCE_DIR/$TARBALL || continue
-	if [ -n $L_TARBALL ]	 # language pack required?
-	  then
-		wget -c $LANG_URL -O $SOURCE_DIR/$L_TARBALL
+		busybox wget -s $LANG_URL 2> /dev/null &&
+		echo "Added language pack for $lang."
 	fi
-	status
-fi
 
-break
+	CUR_DIR=$(pwd)
+	mkdir -p $TEMP_DIR
+	cd $TEMP_DIR
 
-done	# foreach VERSION
+	if [ -f $SOURCE_DIR/$TARBALL ]
+	  then
+		echo "Using existing archive file $TARBALL"
+	  else
+		action "Fetching the archives..."
+		newline
+		# Check if $SOURCE_DIR exists
+		[ -d $SOURCE_DIR ] || mkdir -p $SOURCE_DIR
+		wget -c $WGET_URL -O $SOURCE_DIR/$TARBALL || continue
+		if [ -n $L_TARBALL ]	 # language pack required?
+		  then
+			wget -c $LANG_URL -O $SOURCE_DIR/$L_TARBALL
+		fi
+		status
+	fi
+
+	break
+
+  done	# foreach VERSION
 
 if [ ! -f $SOURCE_DIR/$TARBALL ]
   then
