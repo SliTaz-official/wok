@@ -156,7 +156,7 @@ Examples for tazboot.cmd:\n\n\
   bootfrom=\\isos\\slitaz-4.0.iso\n\
   kernel=boot/bzImage\n\
   initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz,\\slitaz\\extrafs.gz\n\
-  vga=normal autologin\n\n\
+  root=/dev/null vga=normal autologin\n\n\
   kernel=\\slitaz\\elks\n\
   root=/dev/bda1 ro\n");
 	}

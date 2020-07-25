@@ -38,7 +38,7 @@ inline void syntax() {
         NL NL "Examples:" NL
 	"\tLINLD -f -b 64m "
         "initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz "
-	"\"cl=video=-32\""
+	"\"cl=root=/dev/null video=-32\""
 	NL NL "\tLINLD image=memtest"
 #endif
     );

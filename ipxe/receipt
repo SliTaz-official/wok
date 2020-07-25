@@ -21,15 +21,16 @@ compile_rules()
 	sed -i 's/-llzma/& -lpthread/' Makefile.*
 	sed -i 's|//\(#define.*CONSOLE_FRAMEBUFFER\)|\1|' config/console.h
 	sed -i 's|//\(#define.*CONSOLE_SERIAL\)|\1|' config/console.h
-	sed -i -e 's|//\(#define.*IMAGE_PNG\)|\1|' \
+	sed -e 's|//\(#define.*IMAGE_PNG\)|\1|' \
 	    -e 's|.*\(NET_PROTO_IPV6\)|#define \1|' \
 	    -e 's|undef	\(DOWNLOAD_PROTO_HTTPS\)|define	\1|' \
 	    -e 's|.*\(VLAN_CMD\)|#define \1|' \
 	    -e 's|.*\(CERT_CMD\)|#define \1|' \
 	    -e 's|//\(#define.*CONSOLE_CMD\)|\1|' \
-	    -e 's|//\(#define.*REBOOT_CMD\)|\1|' config/general.h
+	    -e 's|//\(#define.*REBOOT_CMD\)|\1|' -i config/general.h
 	sed -i "s|\(TAG_LINE \"\)|\1${VERSION#*-} -- |" config/branding.h
-	sed -i 's|//\(#define.*CPUID_SETTINGS\)|\1|' config/settings.h
+	sed -e 's|//\(#define.*CPUID_SETTINGS\)|\1|' \
+	    -e 's|//\(#define.*MEMMAP_SETTINGS\)|\1|' -i config/settings.h
 	pxelinux="$(ls $WOK/syslinux/source/*/core/pxelinux.0)"
 	make bin/undionly.kkkpxe EMBED=$stuff/ipxelinux.ipxe,$pxelinux &&
 		mv bin/undionly.kkkpxe bin/ipxelinux.0
@@ -38,7 +39,7 @@ compile_rules()
 	make bin/undionly.pxe bin/undionly.kpxe bin/undionly.kkpxe \
 	     bin/undionly.kkkpxe bin/ipxe.pxe bin/ipxe.kpxe bin/ipxe.kkpxe \
 	     bin/ipxe.kkkpxe bin/ipxe.nbi bin/ipxe.lkrn bin-i386-efi/ipxe.efi \
-	     bin-i386-efi/snponly.efi bin/ipxe.exe EMBED=$stuff/ipxe.cmd
+	     bin-i386-efi/snponly.efi bin/ipxe.exe EMBED=$stuff/ipxeads.cmd
 	cp $stuff/bootloader.S .
 	cc -o bootloader.o -Wa,-a=bootloader.lst -c bootloader.S
 	objcopy -O binary bootloader.o bootloader.bin

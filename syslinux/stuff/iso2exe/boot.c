@@ -16,7 +16,7 @@ Examples for tazboot.cmd:\n\n\
   bootfrom=\\isos\\slitaz-4.0.iso\n\
   kernel=boot/bzImage\n\
   initrd=boot/rootfs4.gz,boot/rootfs3.gz,boot/rootfs2.gz,boot/rootfs1.gz,\\slitaz\\extrafs.gz\n\
-  vga=normal autologin\n\n\
+  root=/dev/null vga=normal autologin\n\n\
   kernel=\\slitaz\\elks\n\
   root=/dev/bda1 ro\n",iso,iso,iso);
 	exit(1);
@@ -61,7 +61,7 @@ static void bootiso(char **iso)
 	if (magic > 0) {
 		char *initrd = fallback;
 
-		fmt = "bootfrom=%s%s magic=%lu mode=%s autologin";
+		fmt = "root=/dev/null bootfrom=%s%s magic=%lu mode=%s autologin";
 		if (rootfs[0]) {
 			initrd = rootfs;
 			if (rootfs[6] != '.' && !isoopen("rootfs.gz"))
