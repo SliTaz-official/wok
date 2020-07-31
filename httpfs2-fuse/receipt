@@ -13,8 +13,8 @@ WGET_URL="$SF_MIRROR/httpfs/$TARBALL"
 PROVIDE="httpfs-fuse"
 TAGS="filesystem"
 
-DEPENDS="fuse libgnutls"
-BUILD_DEPENDS="fuse-dev gnutls-dev libgnutls pkg-config"
+DEPENDS="gcc-lib-base fuse libgnutls"
+BUILD_DEPENDS="fuse-dev gnutls-dev libgnutls pkg-config asciidoc"
 
 # Rules to configure and make the package.
 compile_rules()
@@ -22,14 +22,14 @@ compile_rules()
 	sed -i "s/^package = .*/package = $SOURCE/" Makefile
 	sed -i "s/^version = .*/version = $VERSION/" Makefile
 	sed -i "s/^revision = .*/revision = 1/" Makefile
-	sed -i "s/a2x -f/echo skip/" Makefile
 	sed -i "s/MAIN_LDFLAGS := /&-ldl -lpthread -lrt /" Makefile
-	make
+	make -j 1
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
-	cp -a $src/httpfs2-ssl-mt $fs/usr/bin/httpfs
+	mkdir -p $fs/usr/bin $install/usr/share/man
+	cp -a $src/httpfs2*mt $src/httpfs*[2l] $fs/usr/bin/
+	cp $src/*.1 $install/usr/share/man
 }
