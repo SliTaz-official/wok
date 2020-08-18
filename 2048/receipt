@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="2048"
+VERSION="1.0"
+GITTAG="4b5f17e666c9effaabdca9c12ee017fae08360bd"
+CATEGORY="games"
+SHORT_DESC="A 2048 game clone with undo support"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="MIT"
+WEB_SITE="https://github.com/alokmenghrajani/2048"
+TARBALL="$PACKAGE-$VERSION.zip"
+WGET_URL="$WEB_SITE/archive/$GITTAG.zip"
+HOST_ARCH="any"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/var/www/2048 $fs/usr/share/applications
+	cp -a $src/[a-z]* $fs/var/www/2048
+	sed -i '/<script>/,/<\/script>/d' $fs/var/www/2048/index.html
+	chown -R 80.80 $fs/var/www/2048
+	cat > $fs/usr/share/applications/2048.desktop <<EOT
+[Desktop Entry]
+Type=Application
+Name=2048
+Exec=sh -c "url=file:///var/www/2048/index.html; tazweb --notoolbar \$url || browser \$url"
+Terminal=false
+Categories=Game;
+Icon=applications-games
+EOT
+}
