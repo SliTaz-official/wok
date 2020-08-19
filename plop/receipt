@@ -1,0 +1,56 @@
+# SliTaz package receipt.
+
+PACKAGE="plop"
+VERSION="5.0.15"
+CATEGORY="base-system"
+SHORT_DESC="USB / IDE-CD / PCMCIA CardBus and others boot utility."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="other"
+WEB_SITE="https://www.plop.at/en/bootmanagers.html"
+TARBALL="plpbt-$VERSION.zip"
+WGET_URL="https://download.plop.at/files/bootmngr/$TARBALL"
+
+BUILD_DEPENDS="xz"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	while read ofs data name; do
+		echo -en "\x$data" | \
+		dd conv=notrunc of=plpbt.bin bs=1 seek=$((0x$ofs))
+	done <<EOT
+0288	00	videoMode=text
+0295	00	stars=off
+0299	01	font=bios
+029A	00	zoomanimation=off
+EOT
+	cp $stuff/*.S $stuff/pack .
+	for i in bootloader unpack ; do
+		cc -o $i.o -Wa,-a=$i.lst -c $i.S
+		objcopy -O binary $i.o $i.bin
+	done
+	sed -i "s/VERSION/$VERSION/" pack
+	./pack --build bootloader.bin unpack.bin
+	./pack plpbt.bin plop
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/boot $install/usr/share
+	cp $src/plop $fs/boot/plop.exe
+	cp -a $src/doc $install/usr/share
+	cp -a $src/*.txt $src/*.TXT $install/usr/share/doc
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	[ -s $1/boot/isolinux/isolinux.cfg ] &&
+	! grep -qs 'USB/PCMCIA boot' $1/boot/isolinux/isolinux.cfg && sed -i \
+'s|LABEL md5|LABEL plop usb pcmcia\
+	MENU LABEL USB/PCMCIA boot\
+	KERNEL /boot/plop.exe\
+\n&|' $1/boot/isolinux/isolinux.cfg
+	true
+}
