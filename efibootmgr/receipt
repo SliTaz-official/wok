@@ -1,0 +1,34 @@
+# SliTaz package receipt.
+
+PACKAGE="efibootmgr"
+VERSION="16"
+CATEGORY="system-tools"
+SHORT_DESC="Manage UEFI boot manager variables."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="GPLv2+"
+WEB_SITE="https://github.com/rhinstaller/efibootmgr"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/rhboot/efibootmgr/archive/$VERSION.tar.gz"
+
+DEPENDS="efivar gcc83-lib-base popt"
+BUILD_DEPENDS="efivar-dev gcc83 icu-dev popt-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	export	EFIDIR=/boot/efi
+	export	CC=gcc-83
+	export	COMPILER=gcc-83
+	export	CFLAGS="$CFLAGS -I/usr/include/unicode -I/usr/include/efivar"
+
+	make libdir=/usr/lib &&
+	make libdir=/usr/lib DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/sbin	$fs/usr
+}

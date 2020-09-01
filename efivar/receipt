@@ -1,0 +1,50 @@
+# SliTaz package receipt.
+
+PACKAGE="efivar"
+VERSION="37"
+CATEGORY="system-tools"
+SHORT_DESC="Manage UEFI variables."
+MAINTAINER="developer@slitaz.org"
+LICENSE="LGPLv2.1"
+WEB_SITE="https://github.com/rhboot/efivar"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/$VERSION/$TARBALL"
+
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="gcc83 icu-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	export CC_FOR_BUILD=gcc-83
+	export COMPILER=gcc-83
+	export CFLAGS="$CFLAGS -I/usr/include/unicode"
+
+	# replace char16_t by wchar_t:
+	sed -i 's|char16_t|wchar_t|g'	src/export.c
+
+	make libdir=/usr/lib &&
+	make libdir=/usr/lib DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+}
+
+post_install()
+{
+	# if SliTaz was booted by EFI, mount evivarfs now
+	[ -d /sys/firmware/efi/efivars ] && mount -t efivarfs none /sys/firmware/efi/efivars
+	# and after reboot:
+	# insert mount into /etc/init.d/local.sh
+	grep efivarfs $1/etc/init.d/local.sh ||
+	echo -e "#inserted by post_install of evifar up to END-efivar:
+[ -d /sys/firmware/efi/efivars ] && mount -t efivarfs none /sys/firmware/efi/efivars
+#END-efivar" >>$1/etc/init.d/local.sh
+}
