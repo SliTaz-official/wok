@@ -4,7 +4,7 @@ if [ "$1" = "--build" ]; then
 	cat >> $0 <<EOM
 $(for i in fx fx_f fx_c px px_f px_c ; do
      cat mbr/isohdp$i.bin /dev/zero | dd bs=1 count=512 2> /dev/null
-  done | gzip -9 | uuencode -m -)
+  done | lzma e -si -so | uuencode -m -)
 EOT
 EOM
 	sed -i '/--build/,/^fi/d' $0
@@ -174,7 +174,7 @@ crc32()
 
 main()
 {
-	uudecode | gunzip | ddq bs=512 count=1 of=$iso conv=notrunc \
+	uudecode | unlzma | ddq bs=512 count=1 of=$iso conv=notrunc \
 	  skip=$(( (3*$partok) + $hd0))
 	store32 432 $(($lba * 4))
 	store32 440 $id
