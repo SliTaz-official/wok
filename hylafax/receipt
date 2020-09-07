@@ -6,16 +6,20 @@ CATEGORY="network"
 SHORT_DESC="enterprise-class system for sending and receiving facsimiles."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://www.hylafax.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="ftp://ftp.hylafax.org/source/$TARBALL"
 
-DEPENDS="jpeg tiff tiff-apps zlib postfix mgetty ghostscript"
-BUILD_DEPENDS="tiff-dev tiff-apps zlib-dev mgetty ghostscript"
+DEPENDS="ghostscript jpeg mgetty postfix tiff tiff-apps zlib"
+BUILD_DEPENDS="ghostscript mgetty tiff-apps tiff-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	# accept tiff version 4.1 as well:
+	sed -i 's|4.\[0\]|4.\[01\]|'	configure
+
 	[ -f defs.org ] && cp defs.org defs
 	[ -f etc/Makefile.org ] && cp etc/Makefile.org etc/Makefile
 	sed  -i -e 's|=/usr/local/|=/usr/|g' configure
@@ -30,8 +34,9 @@ compile_rules()
 		-e 's|= uucp|= root|' \
 		-e 's|= bin|= root|' \
 		defs
-	mkdir -p $DESTDIR/usr/lib $DESTDIR/var/spool/hylafax
-	cp etc/Makefile etc/Makefile.org
+	mkdir -p $DESTDIR/usr/lib
+	mkdir -p $DESTDIR/var/spool/hylafax
+	cp etc/Makefile	etc/Makefile.org
 	sed -i  -e "s|/etc/init.d|$DESTDIR/etc/init.d|" \
 		-e "s|/etc/config|$DESTDIR/etc/config|" \
 		etc/Makefile
@@ -43,10 +48,11 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/var $fs
-	rm -rf $install/var/spool/hylafax/etc/templates
-	cp -a $install/etc $fs
+
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $install/usr/sbin	$fs/usr
+	cp -a $install/usr/lib	$fs/usr
+	cp -a $install/var	$fs
+	rm -rf			$install/var/spool/hylafax/etc/templates
+	cp -a $install/etc	$fs
 }
