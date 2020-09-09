@@ -183,7 +183,7 @@ main()
 	esect=$(( ($sectors + ((($cylinders -1) & 0x300) >>2)) <<16))
 	ecyl=$(( (($cylinders -1) & 0xff) <<24))
 	epart=$(((($heads - 1) <<8) +$esect +$ecyl))
-	sectorcount=$(($cylinders * $heads * $sectors))
+	sectorcount=$(($size/512))
 	lastlba=$(($sectorcount -1))
 	if [ -z "$efi_ofs" ]; then
 		store32 $e 0x10080
@@ -199,17 +199,12 @@ main()
 		store32 $((446+12)) $lastlba
 		uudecode <<EOT | unlzma | ddq bs=512 seek=1 of=$iso conv=notrunc
 begin-base64 644 -
-XQAAgAD//////////wAikYVN1N2VY3JXMnUMJn1TblyFehfeJH+D4/XPYFjO
-OzQluqM2w0L9b1dJMfZHJbnNnBFhYprW0PWPY1UOgQJkhF/W2Z0lXvaSrZ7t
-yEtpmE3Go6qt6Ezmp7CN//v9AAA=
+XQAAgAD//////////wAikYVN1N2VY3JXMnUMJn1TblyFVNF25HoOVhrhw3Se
+4kSBUojPrccmav59pOZXngC45IbLUHikh0qe2mYlrw/AaqRZRJRaLD2FL2dU
+TQz7/DAViU2+RxNm5OdW//po4AA=
 ====
 EOT
-		lastlba=$(($sectorcount -1))
-		usablelba=34
-		store32 $((0x218)) 1
-		store32 $((0x220)) $lastlba
-		store32 $((0x228)) $usablelba
-		store32 $((0x230)) $(($lastlba-$usablelba+1))
+		store32 $((0x230)) $lastlba
 		store32 $((0x420)) $efi_ofs
 		store32 $((0x428)) $(($efi_ofs+$efi_len-1))
 		for i in 238 410 490 ; do
@@ -248,7 +243,8 @@ size=$(stat -c "%s" $iso)
 trksz=$(( 512 * $heads * $sectors ))
 cylinders=$(( ($size + $trksz - 1) / $trksz ))
 pad=$(( (($cylinders * $trksz) - $size) / 512 ))
-#[ $pad -eq 0 ] || ddq bs=512 count=$pad if=/dev/zero >> $iso
+#[ $pad -ne 0 ] && size=$(($size+$pad)) && ddq bs=512 count=$pad if=/dev/zero >> $iso
+size=$(stat -c "%s" $iso)
 if [ $cylinders -gt 1024 ]; then
 	cat 1>&2 <<EOT
 Warning: more than 1024 cylinders ($cylinders).
