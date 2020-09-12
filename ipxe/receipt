@@ -29,17 +29,19 @@ compile_rules()
 	    -e 's|//\(#define.*CONSOLE_CMD\)|\1|' \
 	    -e 's|//\(#define.*REBOOT_CMD\)|\1|' -i config/general.h
 	sed -i "s|\(TAG_LINE \"\)|\1${VERSION#*-} -- |" config/branding.h
-	sed -e 's|//\(#define.*CPUID_SETTINGS\)|\1|' \
-	    -e 's|//\(#define.*MEMMAP_SETTINGS\)|\1|' -i config/settings.h
+	sed -i 's|//\(#define.*CPUID_SETTINGS\)|\1|' config/settings.h
 	pxelinux="$(ls $WOK/syslinux/source/*/core/pxelinux.0)"
-	make bin/undionly.kkkpxe EMBED=$stuff/ipxelinux.ipxe,$pxelinux &&
-		mv bin/undionly.kkkpxe bin/ipxelinux.0
 	make bin-i386-efi/snponly.efi EMBED=$stuff/ipxelinux.ipxe,$pxelinux &&
 		mv bin-i386-efi/snponly.efi bin-i386-efi/ipxelinux.efi
+	make bin-i386-efi/ipxe.efi bin-i386-efi/snponly.efi EMBED=$stuff/ipxe.cmd
+
+	sed -i 's|//\(#define.*MEMMAP_SETTINGS\)|\1|' config/settings.h
+	make bin/undionly.kkkpxe EMBED=$stuff/ipxelinux.ipxe,$pxelinux &&
+		mv bin/undionly.kkkpxe bin/ipxelinux.0
 	make bin/undionly.pxe bin/undionly.kpxe bin/undionly.kkpxe \
 	     bin/undionly.kkkpxe bin/ipxe.pxe bin/ipxe.kpxe bin/ipxe.kkpxe \
-	     bin/ipxe.kkkpxe bin/ipxe.nbi bin/ipxe.lkrn bin-i386-efi/ipxe.efi \
-	     bin-i386-efi/snponly.efi bin/ipxe.exe EMBED=$stuff/ipxe.cmd
+	     bin/ipxe.kkkpxe bin/ipxe.nbi bin/ipxe.lkrn \
+	     bin/ipxe.exe EMBED=$stuff/ipxe.cmd
 	cp $stuff/bootloader.S .
 	cc -o bootloader.o -Wa,-a=bootloader.lst -c bootloader.S
 	objcopy -O binary bootloader.o bootloader.bin
