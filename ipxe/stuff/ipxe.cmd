@@ -2,7 +2,7 @@
 
 set menu-timeout 3000
 dhcp && isset ${filename} && autoboot ||
-console --picture http://mirror.slitaz.org/pxe/ipxe/slitaz.png ||
+console --picture http://mirror.slitaz.org/pxe/ipxe/slitaz.png || console --x 640 --y 480 ||
 
 :menu
 menu SliTaz net boot menu
