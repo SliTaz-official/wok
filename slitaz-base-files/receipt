@@ -108,7 +108,9 @@ genpkg_rules()
 #
 pre_install()
 {
-	# cp -a "$1/etc" "$1/tmp/etc.bak" 2>/dev/null
+	for i in passwd shadow group gshadow ; do
+		[ -s /etc/$i ] && cp /etc/$i /etc/$i.orig
+	done
 	[ -x "$1/usr/bin/sudo" ] && mv "$1/usr/bin/sudo" "$1/usr/bin/sudo.orig"
 	# Remove old /var/run symlink
 	[ -h "$1/var/run" ] && rm -f "$1/var/run"
@@ -117,9 +119,13 @@ pre_install()
 
 post_install()
 {
-	# if cp -a "$1/tmp/etc.bak"/* "$1/etc"; then
-	# 	rm -r "$1/tmp/etc.bak"
-	# fi 2>/dev/null
+	for i in passwd shadow group gshadow ; do
+		[ -s $1/etc/$i.orig ] || continue
+		while read line; do
+			grep -q "^${line%%:*}:" $1/etc/$i.orig || echo "$line" >> $1/etc/$i.orig
+		done < $1/etc/$i
+		mv -f $1/etc/$i.orig $1/etc/$i
+	done
 
 	[ -x "$1/usr/bin/sudo.orig" ] && mv -f "$1/usr/bin/sudo.orig" "$1/usr/bin/sudo"
 
