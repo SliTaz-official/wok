@@ -1177,7 +1177,7 @@ gpt_crc32()
 	t248=B3667A2E; t249=C4614AB8; t250=5D681B02; t251=2A6F2B94;
 	t252=B40BBE37; t253=C30C8EA1; t254=5A05DF1B; t255=2D02EF8D;
 	crc=$((0xFFFFFFFF))
-	dd if="$ISO" bs=1 skip=$(($1)) count=$(($2)) 2> /dev/null | \
+	dd if=$device bs=1 skip=$(($1)) count=$(($2)) 2> /dev/null | \
 	od -v -w1 -t u1 -An | {
 		while read n; do
 			local x=$((($crc ^ $n) & 255))
@@ -1247,7 +1247,8 @@ EOT
 	mkdosfs -n 'SLITAZ HOME' $homedev
 
 	# update boot/exe crc16
-	i=$(($(get 2 $1) - 1 + ($(get 4 $1) - 1)*512))
+	words2bin 0 | ddq bs=1 seek=18 of=$device
+	i=$(($(get 2 $device) - 1 + ($(get 4 $device) - 1)*512))
 	i=$(($(od -v -N $i -t u2 -w2 -An $device | \
 		awk '{ i+= $0 } END { print (i % 65536) }') \
 		+ $(get $(($i+1)) $device 1)))
@@ -1255,8 +1256,9 @@ EOT
 
 	$DIALOG --clear --title " Set /home persistent " \
 			--yes-label "Continue" --yesno \
-"\nThe USB key will run fully in ram. The datas will be lost after reboot.\n\n
-This option will mount /home on the USB key during the boot process.\n" 16 70
+"\nThe USB key will run fully in ram. The datas will be lost after each reboot.\n\n
+This option will mount /home on the USB key vfat during the boot process.\n\n
+Your own data will be saved, but the system stay not upgradable.\n" 16 70
 	if [ $? -eq 0 ]; then
 		data="append=home=$(blkid $homedev | sed 's|.* UUID="||;s|".*||') kmap=$(cat /etc/keymap.conf) lang=${LANG%.UTF*} tz=$(cat /etc/TZ) loadfs"
 		cat <<EOT | ddn bs=512 seek=$custom of=$device
