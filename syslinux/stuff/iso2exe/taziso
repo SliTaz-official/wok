@@ -44,9 +44,11 @@ word32s2bin()
 word64s2bin()
 {
 	for i in $@ ; do
-		printf '\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X' \
-			$(($i&255)) $((($i>>8)&255)) $((($i>>16)&255)) $((($i>>24)&255)) \
-			$((($i>>32)&255)) $((($i>>40)&255)) $((($i>>48)&255)) $((($i>>56)&255))
+#		printf '\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X' \
+#			$(($i&255)) $((($i>>8)&255)) $((($i>>16)&255)) $((($i>>24)&255)) \
+#			$((($i>>32)&255)) $((($i>>40)&255)) $((($i>>48)&255)) $((($i>>56)&255))
+		printf '\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x00\\\\x00\\\\x00\\\\x00' $(($i&255)) \
+			$((($i>>8)&255)) $((($i>>16)&255)) $((($i>>24)&255))
 	done | xargs echo -en
 }
 
@@ -78,7 +80,7 @@ size()
 	*)  set -- $(dirname "$1")/$(readlink "$1") ;;
 	esac
 	[ ! -b "$1" ] && echo $(stat -c %s "$1") ||
-	echo $(($(cat /sys/block/${1#/dev/}/size)*512)
+	echo $(($(cat /sys/block/${1#/dev/}/size)*512))
 }
 
 uncpio()
@@ -1175,7 +1177,7 @@ gpt_crc32()
 	t248=B3667A2E; t249=C4614AB8; t250=5D681B02; t251=2A6F2B94;
 	t252=B40BBE37; t253=C30C8EA1; t254=5A05DF1B; t255=2D02EF8D;
 	crc=$((0xFFFFFFFF))
-	dd if=$iso bs=1 skip=$(($1)) count=$(($2)) 2> /dev/null | \
+	dd if="$ISO" bs=1 skip=$(($1)) count=$(($2)) 2> /dev/null | \
 	od -v -w1 -t u1 -An | {
 		while read n; do
 			local x=$((($crc ^ $n) & 255))
@@ -1229,14 +1231,17 @@ EOT
 	[ $custom -gt $(($last-4)) ] && last=$(($custom+4))		# room for cmdline
 	word64s2bin $last | ddq bs=1 seek=$((1024+128+32)) of=$device	# vfat first address
 	word64s2bin $(($sectors-3)) | ddq bs=1 seek=$((1024+128+40)) of=$device	# vfat last address
-	word32s2bin $(gpt_crc32 1024 $(($(get 596 $device 4)*$(get 592 $device 4)))) | ddq bs=1 seek=$((512+88))	# CRC32 partitions
+	word32s2bin $(gpt_crc32 1024 $(($(get 596 $device 4)*$(get 592 $device 4)))) | \
+		ddq bs=1 seek=$((512+88)) of=$device	# CRC32 partitions
 	ddn of=$device if=$device bs=512 skip=1 seek=$(($sectors-1)) count=1
 	ddn of=$device if=$device bs=512 skip=2 seek=$(($sectors-2)) count=1
 	word64s2bin $(($sectors-1)) 1 | ddq bs=1 seek=$(($sectors*512-512+24)) of=$device	# my gpt, alt gpt
 	word64s2bin $(($sectors-1)) | ddq bs=1 seek=$((512+32)) of=$device	# alt gpt
 	word64s2bin $(($sectors-2)) | ddq bs=1 seek=$(($sectors*512-512+72)) of=$device
-	word32s2bin $(gpt_crc32 $(($sectors*512-512)) $(get 525 $device 4)) | ddq bs=1 seek=$(($sectors*512-512+16))	# CRC32 header
-	word32s2bin $(gpt_crc32 512 $(get 524 $device 4)) | ddq bs=1 seek=$((512+16))	# CRC32 header
+	word32s2bin $(gpt_crc32 $(($sectors*512-512)) $(get 524 $device 4)) | \
+		ddq bs=1 seek=$(($sectors*512-512+16)) of=$device	# CRC32 header
+	word32s2bin $(gpt_crc32 512 $(get 524 $device 4)) | \
+		ddq bs=1 seek=$((512+16)) of=$device	# CRC32 header
 	partprobe $device
 	homedev=/dev/$(basename /sys/block/${device#/dev/}/${device#/dev/}*2)
 	mkdosfs -n 'SLITAZ HOME' $homedev
