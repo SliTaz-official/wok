@@ -35,7 +35,9 @@ mnt=/mnt
 getiso()
 {
 	mkdir -p $media
-	for dev in /sys/block/?d?/?d??*; do
+	for dev in /sys/block/*; do
+		dev=$(ls $dev/$(basename $dev)* 2> /dev/null)
+		[ "$dev" ] || continue
 		mount /dev/$(basename $dev) $mnt
 		if checkmagic $mnt/$ISO; then
 			mount -o loop,ro $mnt/$ISO $media
@@ -52,7 +54,7 @@ uncpio=uncpio64
 uncpio64()
 {
 	i=$1
-	sed 's|$| |' /proc/cpuinfo | grep ' lm ' && [ -s ${i}64 ] && i=${i}64
+	grep ' lm ' /proc/cpuinfo && [ -s ${i}64 ] && i=${i}64
 	[ -s "$i" ] || return
 	echo -en "\n Extracting $(basename $i) ..."
 	case $(get 0 $i) in
@@ -93,7 +95,8 @@ mount_loram()
 		losetup -o 124 /dev/loop6 $(ls -r $media/boot/rootfs?*.* | sed q)
 		mount -r /dev/loop6 /sqfs
 	fi
-	cp -a /sqfs/dev/fuse /sqfs/dev/tty[12] /sqfs/dev/[hs]d* /dev
+	cp -a /sqfs/dev/fuse /sqfs/dev/tty[12] /dev
+	for i in /sqfs/dev/* ; do [ -b $i ] && cp -a $i /dev ; done
 	ln -s /sqfs/lib/* lib 2>/dev/null
 	ln -fs /sqfs/usr /sqfs/var /
 	mkdir /etc && cp /sqfs/etc/dialogrc /etc 2>/dev/null
@@ -167,16 +170,6 @@ dokexec()
 	kexec -e
 }
 
-runmemtest()
-{
-	gotcdfile "memtest*" && dokexec
-}
-
-runpxe()
-{
-	gotcdfile "?pxe*" && dokexec
-}
-
 shell()
 {
 	trap text 2
@@ -187,6 +180,7 @@ BIN=bin/mount.posixovl
 [ -x /usr/s$BIN ] || mv /bin/mount.posixovl.iso2exe \
 /usr/s$BIN 2>/dev/null || mv /bin/mount.posixovl.iso2exe /$BIN 2>/dev/null
 mount_proc
+mdev -s 2> /dev/null ||
 for i in /sys/block/*/dev /sys/block/*/*/dev; do
 	[ -s "$i" ] || continue
 	n=${i%/dev}

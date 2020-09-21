@@ -33,21 +33,10 @@ words2bin()
 	done | xargs echo -en
 }
 
-word32s2bin()
+quads2bin()
 {
 	for i in $@ ; do
 		printf '\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X' $(($i&255)) \
-			$((($i>>8)&255)) $((($i>>16)&255)) $((($i>>24)&255))
-	done | xargs echo -en
-}
-
-word64s2bin()
-{
-	for i in $@ ; do
-#		printf '\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X' \
-#			$(($i&255)) $((($i>>8)&255)) $((($i>>16)&255)) $((($i>>24)&255)) \
-#			$((($i>>32)&255)) $((($i>>40)&255)) $((($i>>48)&255)) $((($i>>56)&255))
-		printf '\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X\\\\x00\\\\x00\\\\x00\\\\x00' $(($i&255)) \
 			$((($i>>8)&255)) $((($i>>16)&255)) $((($i>>24)&255))
 	done | xargs echo -en
 }
@@ -75,12 +64,13 @@ maybe64()
 
 size()
 {
-	[ -L "$1" ] && case "$(readlink "$1")" in
-	/*) set -- $(readlink "$1") ;;
-	*)  set -- $(dirname "$1")/$(readlink "$1") ;;
-	esac
-	[ ! -b "$1" ] && echo $(stat -c %s "$1") ||
-	echo $(($(cat /sys/block/${1#/dev/}/size)*512))
+	stat -c %s "$1"
+}
+
+sectcnt()
+{
+	[ ! -b "$1" ] && echo $(($(size "$1")/512)) ||
+	cat /sys/block/${1#/dev/}/size
 }
 
 uncpio()
@@ -1207,7 +1197,7 @@ $(tazusbmsg)Please plug your USB stick in now.\n" 16 70
 	fi
 	
 	# perform dd in progress bar
-	max=$(($(size "$ISO")/1024/1024))
+	max=$(($(sectcnt "$ISO")/2048))
 	i=0; while [ $i -le $max ]; do
 		ddq if="$ISO" bs=1024k count=1 skip=$i seek=$i of=$device
 		echo $((($i*100)/$max))
@@ -1216,32 +1206,32 @@ $(tazusbmsg)Please plug your USB stick in now.\n" 16 70
 			6 70 0 > /dev/tty 2>&1
 
 	# GPT partition + fat32 format for the remaining space
-	sectors=$(($(size $device)/512))
-	word32s2bin $(($sectors-1)) | ddq bs=1 seek=458 of=$device	# pmbr
-	word32s2bin 0 | ddq bs=1 seek=$((512+16)) of=$device
-	word64s2bin $(($sectors-3)) | ddq bs=1 seek=$((512+48)) of=$device
+	sectors=$(($(sectcnt $device)-1))
+	quads2bin $sectors | ddq bs=1 seek=458 of=$device	# pmbr
+	quads2bin 0 | ddq bs=1 seek=$((512+16)) of=$device
+	quads2bin $(($sectors-2)) 0 | ddq bs=1 seek=$((512+48)) of=$device
 	uudecode - <<EOT | gunzip | ddn bs=128 seek=9 of=$device	# partiton fat32
 begin-base64 644 -
 H4sIAAAAAAACA1u04MLrpzuNXdoPZGzbrjbz+C/fHwyfEro9Z7E93Fi5/8sH
 BhzAiSGRoZghkyGZQYEhBcguAWIFhgIgWQRkZ4JxPkMeAyEAAOuEo7uAAAAA
 ====
 EOT
-	last=$(($(size "$ISO")/512))
+	last=$(sectcnt "$ISO")
 	custom=$((4*$(get 32848 $device 4)))
 	[ $custom -gt $(($last-4)) ] && last=$(($custom+4))		# room for cmdline
-	word64s2bin $last | ddq bs=1 seek=$((1024+128+32)) of=$device	# vfat first address
-	word64s2bin $(($sectors-3)) | ddq bs=1 seek=$((1024+128+40)) of=$device	# vfat last address
-	word32s2bin $(gpt_crc32 1024 $(($(get 596 $device 4)*$(get 592 $device 4)))) | \
-		ddq bs=1 seek=$((512+88)) of=$device	# CRC32 partitions
-	ddn of=$device if=$device bs=512 skip=1 seek=$(($sectors-1)) count=1
-	ddn of=$device if=$device bs=512 skip=2 seek=$(($sectors-2)) count=1
-	word64s2bin $(($sectors-1)) 1 | ddq bs=1 seek=$(($sectors*512-512+24)) of=$device	# my gpt, alt gpt
-	word64s2bin $(($sectors-1)) | ddq bs=1 seek=$((512+32)) of=$device	# alt gpt
-	word64s2bin $(($sectors-2)) | ddq bs=1 seek=$(($sectors*512-512+72)) of=$device
-	word32s2bin $(gpt_crc32 $(($sectors*512-512)) $(get 524 $device 4)) | \
-		ddq bs=1 seek=$(($sectors*512-512+16)) of=$device	# CRC32 header
-	word32s2bin $(gpt_crc32 512 $(get 524 $device 4)) | \
-		ddq bs=1 seek=$((512+16)) of=$device	# CRC32 header
+	quads2bin $last 0 | ddq bs=1 seek=$((1024+128+32)) of=$device	# vfat first address
+	quads2bin $(($sectors-2)) 0 | ddq bs=1 seek=$((1024+128+40)) of=$device	# vfat last address
+	quads2bin $(gpt_crc32 1024 $(($(get 596 $device 4)*$(get 592 $device 4)))) | \
+		ddq bs=1 seek=$((512+88)) of=$device			# CRC32 partitions
+	ddn of=$device if=$device bs=512 skip=1 seek=$sectors count=1
+	ddn of=$device if=$device bs=512 skip=2 seek=$(($sectors-1)) count=1
+	quads2bin $sectors 0 1 0 | ddq bs=1 seek=$(($sectors*512+24)) of=$device	# my gpt, alt gpt
+	quads2bin 1 0 $sectors 0 | ddq bs=1 seek=$((512+24)) of=$device	# my gpt, alt gpt
+	quads2bin $(($sectors-1)) 0 | ddq bs=1 seek=$(($sectors*512+72)) of=$device
+	i=$(get 524 $device 4)
+	quads2bin $(gpt_crc32 $(($sectors*512)) $i) | \
+		ddq bs=1 seek=$(($sectors*512+16)) of=$device	# CRC32 header
+	quads2bin $(gpt_crc32 512 $i) | ddq bs=1 seek=$((512+16)) of=$device	# CRC32 header
 	partprobe $device
 	homedev=/dev/$(basename /sys/block/${device#/dev/}/${device#/dev/}*2)
 	mkdosfs -n 'SLITAZ HOME' $homedev
@@ -1468,8 +1458,7 @@ EOT
 			len="$len $l"; l=0
 		done
 		rdadrs=${RDADRS:-$(((($syssize*16)+0x1F0000) & -4096))}
-		words2bin $(($rdadrs & 0xFFFF)) $(($rdadrs >> 16)) | ddn \
-			bs=1 seek=536 of=/tmp/fd$$
+		quads2bin $rdadrs | ddn bs=1 seek=536 of=/tmp/fd$$
 	fi
 	n=$(echo $len | wc -w)
 	if [ $((494 - $(get 494 /tmp/fd$$))) -ge $(($n * 4)) ]; then
@@ -1488,8 +1477,7 @@ EOT
 		ddn bs=1 seek=60 of=/tmp/fd$$
 	fi
 	for r in $len ; do
-		words2bin $(($r & 0xFFFF)) $(($r >> 16)) | ddn \
-			bs=1 seek=$i of=/tmp/fd$$
+		quads2bin $r | ddn bs=1 seek=$i of=/tmp/fd$$
 		i=$(($i + 4))
 	done
 	split -b 1440k /tmp/fd$$ fd$$
@@ -1569,7 +1557,14 @@ if [ "$1" = "include" ]; then
 	exit
 fi
 ISO="${1:-/dev/null}"
-[ ${ISO:0:1} != "/" ] && ISO=$(cd $(dirname $ISO); echo $PWD/$(basename $ISO))
+while [ -L "$ISO" ]; do
+	media="$(readlink "$ISO")"
+	case "$media" in
+	/*) ISO="$media" ;;
+	*)  ISO="$(dirname "$ISO")/$media" ;;
+	esac
+done
+[ "${ISO:0:1}" != "/" ] && ISO="$(cd $(dirname "$ISO"); echo $PWD/$(basename "$ISO"))"
 [ -z "$(isiso 2> /dev/null)" ] && echo "Usage : $0 file.iso" && exit 1
 media=/tmp/media$$
 mkdir -p $media
