@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="mrxvt-unicode"
+VERSION="3909939"	# 2018-09-06
+CATEGORY="utilities"
+TAGS="terminal"
+SHORT_DESC="Terminal emulator with muli-tabs support."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="GPL2"
+WEB_SITE="https://github.com/tomas/mrxvt-unicode"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/${TARBALL/*-/}"
+
+DEPENDS="expat fontconfig freetype jpeg libice libpng libsm libx11 libxau 
+	libxdmcp libxft libxpm libxrender zlib"
+BUILD_DEPENDS="freetype-dev jpeg-dev libpng-dev libtool xorg-dev xorg-libXft-dev"
+
+compile_rules()
+{
+	./bootstrap.sh &&
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--enable-xft			\
+		--enable-menubar		\
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$install install
+}
+
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/applications
+
+	cp -a $install/usr/etc			$fs
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/pixmaps	$fs/usr/share
+	cp -a $stuff/mrxvt.desktop		$fs/usr/share/applications
+}
