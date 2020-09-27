@@ -1028,6 +1028,31 @@ getcustomconf()
 	read n
 }
 
+setcustomconf()
+{
+	msg="\nUpdate the custom configuration with the files cmdline and initrd\n
+in the current directory $PWD. Any missing file is assumed empty.\n\n
+$(ls -l $PWD/cmdline $PWD/initrd 2> /dev/null| sed 's|.\{1,30\}||' | \
+sed 'N;s|\n|\\n|')"
+	[ "$1" ] && echo -e "$msg" ||
+	$DIALOG --clear --title " Update custom configuration " \
+		--yes-label "Update config" --yesno "$msg\n
+\nAre you sure to do the update ?\n" 0 0
+	[ $? -eq 0 ] || return
+	ddq bs=2k seek=$(customsector) of="$ISO" count=0
+	if [ "$(ls $PWD/cmdline $PWD/inird 2> /dev/null)" ]; then
+		rm -f /tmp/custom$$ 2>/dev/null
+		[ -s $PWD/cmdline ] &&
+		echo "append=$(cat $PWD/cmdline)" >>/tmp/custom$$
+		[ -s $PWD/initrd ] &&
+		echo "initrd:$(stat -c %s $PWD/initrd)" >>/tmp/custom$$ &&
+		cat $PWD/initrd >>/tmp/custom$$
+		echo "#!boot $(md5sum /tmp/custom$$ | sed 's| .*||')" >>"$ISO"
+		cat /tmp/custom$$ >>"$ISO"
+		rm -f /tmp/custom$$
+	fi
+}
+
 isomd5()
 {
 	dotwait "Checking iso image"
@@ -1202,8 +1227,9 @@ $(tazusbmsg)Please plug your USB stick in now.\n" 16 70
 		ddq if="$ISO" bs=1024k count=1 skip=$i seek=$i of=$device
 		echo $((($i*100)/$max))
 		i=$(($i+1))
-	done | dialog --gauge " The ISO image transfer can be long. Please wait..." \
-			6 70 0 > /dev/tty 2>&1
+	done | { [ "$1" ] || dialog --gauge \
+		" The ISO image transfer can be long. Please wait..." \
+		6 70 0 > /dev/tty 2>&1; }
 
 	# GPT partition + fat32 format for the remaining space
 	sectors=$(($(sectcnt $device)-1))
@@ -1244,7 +1270,7 @@ EOT
 		+ $(get $(($i+1)) $device 1)))
 	words2bin $(( (-$i -1) % 65536 )) | ddq bs=1 seek=18 of=$device
 
-	$DIALOG --clear --title " Set /home persistent " \
+	[ "$1" ] || $DIALOG --clear --title " Set /home persistent " \
 			--yes-label "Continue" --yesno \
 "\nThe USB key will run fully in ram. The datas will be lost after each reboot.\n\n
 This option will mount /home on the USB key vfat during the boot process.\n\n
@@ -1602,6 +1628,7 @@ $(initx			"live"		"Linux RAM boot (full desktop)") \
 $(initx			"text"		"Linux RAM boot") \
 $(cdfile 'README*'	"readme"	"Show the README file") \
 $(gotcustomconf		"getcustomconf"	"Get custom config") \
+$(noinit		"setcustomconf"	"Set custom config") \
 $(gotisomd5		"isomd5"	"Check the ISO image") \
 $(cdfile 'md5sum*'	"md5"		"Check the ISO files") \
 $(cdfile 'sha*sum*'	"sha"		"Check the ISO files") \
