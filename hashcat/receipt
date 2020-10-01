@@ -1,0 +1,31 @@
+# SliTaz package receipt.
+
+PACKAGE="hashcat"
+VERSION="6.1.1"
+CATEGORY="security"
+SHORT_DESC="Advanced password recovery"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="MIT"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://hashcat.net/hashcat/"
+WGET_URL="https://hashcat.net/files/$TARBALL"
+
+current_version()
+{
+	wget -O - $WEB_SITE 2>/dev/null | \
+	sed '/tar.gz/!d;s|.*cat-||;s|.tar.gz.*||;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	grep -rl /usr/local $src | xargs sed -i 's|/usr/local|/usr|'
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/usr $fs
+}
