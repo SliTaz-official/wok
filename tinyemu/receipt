@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="tinyemu"
+VERSION="2019-12-21"
+CATEGORY="misc"
+SHORT_DESC="A system emulator for the RISC-V and x86 architectures"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="MIT BSD"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://bellard.org/tinyemu/"
+WGET_URL="$WEB_SITE/$TARBALL"
+TAGS="virtualization emulator"
+
+DEPENDS="libssl libcurl zlib libsdl"
+BUILD_DEPENDS="openssl-dev curl-dev libsdl-dev"
+SUGGESTED="linux-kvm"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|^CONFIG_INT128|#&|;s|/usr/local|/usr|' Makefile
+	mkdir -p $DESTDIR/usr/bin
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr $install/usr/doc
+	cp -a $src/readme.txt $install/usr/doc
+	cp -a $install/usr/bin $fs/usr
+}
