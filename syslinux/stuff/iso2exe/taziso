@@ -919,6 +919,7 @@ cdexe()
 {
 	gotcdfile "$1" &&
 	[ $(get 0 $file 2>/dev/null || echo 0) -eq 23117 ] &&
+	[ $(get 128 $file 2>/dev/null || echo 0) -ne 10 ] &&
 	menuitem "$@"
 }
 
@@ -1009,6 +1010,12 @@ gotisomd5()
 	[ $(get 18 "$ISO") -ne 0 ] && menuitem "$@"
 }
 
+read_return()
+{
+	echo -e "\rPress RETURN to continue."
+	read n
+}
+
 getcustomconf()
 {
 	ddq bs=2k skip=$(customsector) if="$ISO" | while read line; do
@@ -1023,17 +1030,15 @@ getcustomconf()
 		*)	  break ;;
 		esac
 	done
-	[ "$1" ] && return 0
-	echo -e "\rPress RETURN to continue."
-	read n
+	[ "$1" ] || read_return
 }
 
 setcustomconf()
 {
+	msg="$(stat -c '%12s   %.16z   %n' $PWD/cmdline $PWD/initrd 2>/dev/null|sed 'N;s|\n|\\n|')"
+	[ "$msg" ] || msg="These files are not found. Your configuration will be cleared.\\n"
 	msg="\nUpdate the custom configuration with the files cmdline and initrd\n
-in the current directory $PWD. Any missing file is assumed empty.\n\n
-$(ls -l $PWD/cmdline $PWD/initrd 2> /dev/null| sed 's|.\{1,30\}||' | \
-sed 'N;s|\n|\\n|')"
+in the current directory $PWD. Any missing file is assumed empty.\n\n$msg"
 	[ "$1" ] && echo -e "$msg" ||
 	$DIALOG --clear --title " Update custom configuration " \
 		--yes-label "Update config" --yesno "$msg\n
@@ -1045,10 +1050,11 @@ sed 'N;s|\n|\\n|')"
 		[ -s $PWD/cmdline ] &&
 		echo "append=$(cat $PWD/cmdline)" >>/tmp/custom$$
 		[ -s $PWD/initrd ] &&
-		echo "initrd:$(stat -c %s $PWD/initrd)" >>/tmp/custom$$ &&
+		echo "initrd:$(size $PWD/initrd)" >>/tmp/custom$$ &&
 		cat $PWD/initrd >>/tmp/custom$$
 		echo "#!boot $(md5sum /tmp/custom$$ | sed 's| .*||')" >>"$ISO"
 		cat /tmp/custom$$ >>"$ISO"
+		dd if=/dev/zero bs=4k count=1 >>"$ISO"
 		rm -f /tmp/custom$$
 	fi
 }
@@ -1086,9 +1092,7 @@ isomd5()
 		rm -f $TMP
 	fi
 	rm -f /tmp/wait
-	[ "$1" ] && return 0
-	echo -e "\rPress RETURN to continue."
-	read n
+	[ "$1" ] || read_return
 }
 
 usbdev()
@@ -1362,9 +1366,7 @@ flavor()
 	tazlito iso2flavor "$ISO" $name
 	ls -l $name.flavor 2> /dev/null && return
 	sleep 5
-	[ "$1" ] && return
-	echo -e "\rPress RETURN to continue."
-	read n
+	[ "$1" ] || read_return
 }
 
 if [ "$1" = "--build" ]; then	#install-begin
@@ -1645,7 +1647,7 @@ $(ishybrid		"usbbootkey"	"USB boot key (not upgradable)") \
 $(hasflavinfo		"showfavinfo"	"Show flavor extra info") \
 $(hasflavor		"flavor"	"Get flavor file") \
 $(cdfile isolinux.cfg	"floppyset"	"Boot floppy set") \
-$(cdfile linld.com	"tazboot"	"Get tazboot.exe Linux loader") \
+$(cdfile linld.com	"tazboot"	"Get tazboot.exe Linux loader for DOS") \
 $(cdexe 'bzImage*'	"bzimage"	"Get linux DOS/EXE file") \
 $(cdexe 'memtest*'	"memtest"	"Get Memtest86 DOS/EXE file") \
 $(cdfilef 'memtest*'	"fdmemtest"	"Create a Memtest86 boot floppy") \
