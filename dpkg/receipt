@@ -1,28 +1,40 @@
 # SliTaz package receipt.
 
 PACKAGE="dpkg"
-VERSION="1.16.12"
+VERSION="1.17.27"
 CATEGORY="misc"
 SHORT_DESC="Debian package management system"
 MAINTAINER="shann@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://wiki.debian.org/dpkg"
-WGET_URL="http://people.slitaz.org/~shann/packages/$PACKAGE/$TARBALL"
+
+TARBALL="${PACKAGE}_$VERSION.tar.xz"
+#WGET_URL="http://people.slitaz.org/~shann/packages/$PACKAGE/$TARBALL"	# 1.16.12
+WGET_URL="http://deb.debian.org/debian/pool/main/d/$PACKAGE/$TARBALL"
+
 DEPENDS="bzlib liblzma zlib"
+BUILD_DEPENDS="liblzma-dev ncurses-dev perl"
 
 CONFIG_FILES="/etc/logrotate.d/dpkg
 /etc/cron.daily/dpkg
 /etc/alternatives/README
 /etc/dpkg/dpkg.cfg"
 
+compile_rules()
+{
+	./configure &
+	make &&
+	make install
+}
+
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc/alternatives $fs/etc/dpkg $fs/etc/cron.daily $fs/etc/logrotate.d
-	mkdir -p $fs/usr/share $fs/usr/sbin $fs/usr/sbin $fs/sbin
-	cp -a $src/etc/* $fs/etc
-	cp -a $src/sbin/* $fs/sbin
-	cp -a $src/usr/* $fs/usr
-        chown -R root.root $fs
+	mkdir -p $fs/usr/share
+
+	cp -a $install/usr/etc		$fs
+	cp -a $install/usr/sbin		$fs
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/dpkg	$fs/usr/share
+	rm				$fs/usr/share/dpkg/*-mk
 }
