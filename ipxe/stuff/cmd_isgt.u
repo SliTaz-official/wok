@@ -1,0 +1,52 @@
+--- src/core/exec.c
++++ src/core/exec.c
+@@ -549,6 +549,49 @@
+ 	.exec = iseq_exec,
+ };
+ 
++/** "isgt" options */
++struct isgt_options {};
++
++/** "isgt" option list */
++static struct option_descriptor isgt_opts[] = {};
++
++/** "isgt" command descriptor */
++static struct command_descriptor isgt_cmd =
++	COMMAND_DESC ( struct isgt_options, isgt_opts, 2, 2,
++		       "<value1> <value2>" );
++
++/**
++ * "isgt" command
++ *
++ * @v argc		Argument count
++ * @v argv		Argument list
++ * @ret rc		Return status code
++ */
++static int isgt_exec ( int argc, char **argv ) {
++	struct isgt_options opts;
++	unsigned int a, b;
++	int rc;
++
++	/* Parse options */
++	if ( ( rc = parse_options ( argc, argv, &isgt_cmd, &opts ) ) != 0 )
++		return rc;
++
++	/* Parse numbers */
++	if ( ( rc = parse_integer ( argv[optind], &a ) ) != 0 )
++		return rc;
++	if ( ( rc = parse_integer ( argv[optind + 1], &b ) ) != 0 )
++		return rc;
++
++	/* Return success if a is greater than b */
++	return ( ( a > b ) ? 0 : -ERANGE );
++}
++
++/** "isgt" command */
++struct command isgt_command __command = {
++	.name = "isgt",
++	.exec = isgt_exec,
++};
++
+ /** "sleep" options */
+ struct sleep_options {};
+ 
