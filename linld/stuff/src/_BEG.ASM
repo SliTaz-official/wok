@@ -32,6 +32,7 @@ _vcpi		db	0
         global  _bss_start:byte
         label   _bss_start byte
         global  stktop:byte
+		ifndef	ISOHOOK
 		ifdef	NO386
         global  _cpu386:byte
 _cpu386		db	?
@@ -39,6 +40,7 @@ _cpu386		db	?
 		endif
         global  _cpu_features:dword
 _cpu_features	dd	?
+		endif
         ends    _BSS
 
         segment _TEXT byte public use16 'CODE'
@@ -115,7 +117,13 @@ iso_lseek_hack	dw	@ret
 iso_close_hack	dw	@ret
 		global	iso_cleanup_hack
 iso_cleanup_hack	dw	@ret
-		dw	_cpu_features+3
+	        global  _cpu_features:dword
+_cpu_features	dd	?		; default _cpu_features+3=1Fh/8Eh (bit5=0, not 64bits)
+		org	$-4
+		ifdef	NO386
+	        global  _cpu386:byte
+_cpu386		db	0
+		endif
 	endif
 
 ;***************************************************************

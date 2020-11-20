@@ -46,17 +46,17 @@ unfold:
 		mov	di,128h		; TABLE
 		mov	ax,offset iso_open_hack
 		stosw
-		mov	ax,offset iso_read_hack
+		mov	al,offset iso_read_hack-0F000h
 		stosw
-		mov	ax,offset iso_lseek_hack
+		mov	al,offset iso_lseek_hack-0F000h
 		stosw
-		mov	ax,offset iso_close_hack
+		mov	al,offset iso_close_hack-0F000h
 		stosw
-;		mov	ax,offset iso_cleanup_hack
+;		mov	al,offset iso_cleanup_hack-0F000h
 ;		stosw
 		global	@_cpuhaslm$qv:near
 @_cpuhaslm$qv:
-		mov	ax,[132h]
+		mov	ax,[132h+3]
 		and	al,20h
 		ret
 
