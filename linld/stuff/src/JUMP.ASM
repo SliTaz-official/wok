@@ -12,15 +12,8 @@
                 p386
 		endif
 
-        group   DGROUP  _TEXT,_BSS
+        group   DGROUP  _TEXT
         assume  cs:DGROUP,ds:DGROUP
-
-        segment _BSS byte public use16 'BSS'
-
-        global  _imgs:dword
-
-        ends    _BSS
-
 
         segment _TEXT byte public use16 'CODE'
 
@@ -85,10 +78,6 @@ step19:
 	global	_boot_kernel:near
         proc    _boot_kernel near
         
-		ifdef	ISOHOOK
-		extrn	iso_cleanup_hack:word
-		call	[iso_cleanup_hack]	; or ret
-		endif
 		ifdef	NO386
                 p8086
 		else
@@ -145,6 +134,7 @@ _pm_low		db	?
 		push	dx			; size hi
 		endif
 		push	si			; size lo=up to 512k
+	        extrn   _imgs:dword
 		push	[dword _imgs+2]		; src ofs = pm.fallback
 
 		;in	al,70h

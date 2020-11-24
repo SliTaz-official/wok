@@ -115,8 +115,6 @@ iso_read_hack	dw	@ret
 iso_lseek_hack	dw	@ret
 		global	iso_close_hack
 iso_close_hack	dw	@ret
-		global	iso_cleanup_hack
-iso_cleanup_hack	dw	@ret
 	        global  _cpu_features:dword
 _cpu_features	dd	?		; default _cpu_features+3=1Fh/8Eh (bit5=0, not 64bits)
 		org	$-4

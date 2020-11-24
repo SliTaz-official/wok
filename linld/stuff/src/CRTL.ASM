@@ -17,7 +17,7 @@
 
         segment _DATA byte public use16 'DATA'
 
-msg_hang	db      "High mem corrupted",0
+msg_hang	db      "Himem broken",0
 vcpi_alloc_err	db	"VCPI"
 		global	overflow:byte
 overflow	db	"/"
@@ -1176,7 +1176,7 @@ image_done:
 		xchg	ax,cx
 		;cwd
 @@goend:
-		jmp	@@popdisiret
+		jmp	@@end
 @@notvga:
 		mov	cl,10			; radix
 		cmp	al,'-'
@@ -1228,21 +1228,19 @@ image_done:
 		je	@@shift
 		mov	cl,30
 		cmp	al,'g'-'a'+10
-		jne	@@noshift
 @@shift:
-		rcl	bx,1
-		shl	dx,1
-		loop	@@shift
+		xchg	ax,bx
+		jne	@@noshift
+		extrn	N_LXLSH@:near
+		call	N_LXLSH@
 @@noshift:
 		popf
 		jne	@@end
 		not	dx
-		neg	bx
+		neg	ax
 		jne	@@end
 		inc	dx
 @@end:
-		xchg	ax,bx
-@@popdisiret:
 		ifndef	USE_ARGSTR
 		pop	si
 		endif
@@ -1261,7 +1259,7 @@ strtol_ret:
         proc	@set_cmdline$qpxzc near
 		call	openargs
 		jc	strtol_ret
-		mov	cx,4096
+		mov	ch,15			; cx<4096
 		mov	di,[_heap_top]
 		extrn	read_cmdline:near
 		jmp	near read_cmdline	; read_cmdline(ax,di,cx)

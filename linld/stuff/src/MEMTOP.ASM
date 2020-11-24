@@ -12,15 +12,8 @@
                 p386
 		endif
 
-        group   DGROUP  _TEXT,_BSS
+        group   DGROUP  _TEXT
         assume  cs:DGROUP,ds:DGROUP
-
-
-        segment _BSS byte public use16 'BSS'
-
-saved15		dd	?
-
-        ends    _BSS
 
 
         segment _TEXT byte public use16 'CODE'
@@ -182,6 +175,7 @@ _memtop:
                 cmp     al,80h			; 80h = XMS driver installed
                 je      @@skip
 		endif
+saved15:
 		xor	bx,bx
 		mov	es,bx
 		ifndef	NO386
@@ -189,7 +183,7 @@ _memtop:
 		push	offset int15_88
 		pop	eax
 		xchg	eax,[es:bx+15*4]
-		mov	[saved15],eax
+		mov	[dword saved15],eax
 		else
 		mov	ax,offset int15_88
 		xchg	ax,[es:bx+15*4]
@@ -205,10 +199,10 @@ _memtop:
 int15_88:
                 cmp     ah,88h
                 je      @@do88
-                jmp     [saved15]
+                jmp     [dword saved15]
 @@do88:
                 pushf
-                call    [saved15]
+                call    [dword saved15]
                 or	ax,ax
                 jnz     @@iret
 
