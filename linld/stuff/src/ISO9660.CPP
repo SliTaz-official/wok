@@ -12,17 +12,17 @@
 #endif
 
 #ifdef ISOHOOK
-void isoroot(void)
+#define isoroot() \
+{ \
+	static const unsigned long root = 16UL * 2048; \
+	isoreadsector(&root); \
+	setdirofs(isostate.dirofs, (* (unsigned long *) (isostate.buffer + 0x9E))); \
+	isostate.dirsize = filesize2dirsize(* (unsigned long *) (isostate.buffer + 0xA6)); \
+}
 #else
 int isoroot(void)
-#endif
 {
 	static const unsigned long root = 16UL * 2048;
-#ifdef ISOHOOK
-	isoreadsector(&root);
-	setdirofs(isostate.dirofs, (* (unsigned long *) (isostate.buffer + 0x9E)));
-	isostate.dirsize = filesize2dirsize(* (unsigned long *) (isostate.buffer + 0xA6));
-#else
 	if (isoreadsector(&root) == -1 || strhead(isostate.buffer+1,"CD001") == -1) {
 		//close(isostate.fd);
 		return -1;
@@ -30,8 +30,8 @@ int isoroot(void)
 	setdirofs(isostate.dirofs, (* (unsigned long *) (isostate.buffer + 0x9E)));
 	isostate.dirsize = filesize2dirsize(* (unsigned long *) (isostate.buffer + 0xA6));
 	return 0;
-#endif
 }
+#endif
 
 int isoreaddir(void)
 {
@@ -122,12 +122,7 @@ int _isoopen(void)
 #define _64bits (x->_64bits)
 	char *s;
 
-#ifdef ISOHOOK
-	extern int _cpuhaslm();
-	_64bits = _cpuhaslm();
-#else
 	_64bits = cpuhaslm();
-#endif
     do {
 #ifdef ISOHOOK
 	s = (char *) x->filename2open;
@@ -155,7 +150,7 @@ int _isoopen(void)
 			n = "64";
 			i += s - name; // strlen(name);
 		}
-		if (strcmp(i, n)) continue;
+		if (strcmp(i, n) == -1) continue;
 #ifndef ISOHOOK
 		*s++ = c;
 #endif

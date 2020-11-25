@@ -315,7 +315,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/al,/ || /,al/) sub(/al/,"cl")
 		if (/cmp	byte ptr \[si\+34\],0/) $0="	or	cl,cl"
 		if (/jne	@@0$/) next
-		if (/jmp	@3@58$/) $0="	je	@3@58"
+		if (/jmp	@.@58$/) sub(/jmp/,"je")
 		sub(/mov	ax,-1/,"dec	ax")
 	}
 	 } # file == "iso9660.cpp"
@@ -750,6 +750,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	    /^	call	near ptr @isoopen\$/ ||
 	    /^	call	near ptr @isoreadsector\$/ ||
 	    /^	call	near ptr @strhead\$/ ||
+	    /^	call	near ptr @strcmp\$/ ||
 	    /^	call	near ptr @argstr\$/ ||
 	    /^	call	near ptr @argnum\$/) { print; hold=17; next; }
 	s=$0

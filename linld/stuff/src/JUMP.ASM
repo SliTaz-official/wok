@@ -134,8 +134,11 @@ _pm_low		db	?
 		push	dx			; size hi
 		endif
 		push	si			; size lo=up to 512k
-	        extrn   _imgs:dword
-		push	[dword _imgs+2]		; src ofs = pm.fallback
+
+		include	"himem.inc"
+
+		extrn	_imgs:image_himem
+		push	[_imgs.fallback]	; src ofs = pm.fallback
 
 		;in	al,70h
 		;or	al,80h			; disable NMI

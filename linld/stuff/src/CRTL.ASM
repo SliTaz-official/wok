@@ -135,20 +135,17 @@ strend:
         global  @strcmp$qpxzct1:near
         proc    @strcmp$qpxzct1 near
 
-                push	si
-		xchg	ax,si
-		dec	bx
-@@lp:
-		inc	bx
-		lodsb
-		sub	al,[bx]
-		jnz	@@out
-		or	al,[bx]
-		jnz	@@lp
-@@out:
-		cbw
-                pop	si
-                ret
+@@loop:
+		xchg	ax,bx
+                mov	cl,[bx]			; cl = *b++
+                inc	bx
+		xchg	ax,bx
+                cmp	cl,[bx]			; cl ?= *a++
+		jnz	fail			; return -1
+                inc	bx
+		or	cl,cl			; clear C
+		jz	failifc			; return 0
+                jmp	@@loop
 
         endp    @strcmp$qpxzct1
 	endif
@@ -169,6 +166,7 @@ openargs:
 
 open:						; open(bx)
 	ifdef	ISOHOOK
+;_fastcall int open(bx:const char* name);
 		extrn	iso_open_hack:word
 		call	[iso_open_hack]		; or ret
 	endif
@@ -255,6 +253,7 @@ dosbx:
                 mov	ah,3Fh
 		endif
 	ifdef	ISOHOOK
+;_fastcall int read(bx:int fd, dx:void* data, cx:int sz);
 		extrn	iso_read_hack:word
 		call	[iso_read_hack]		; or ret
 	endif
@@ -298,6 +297,7 @@ lseekword:
 		sbb	cx,cx
 lseekset:
 	ifdef	ISOHOOK
+;_fastcall long lseek(ax:int fd, cxdx:unsigned long offset, bl:whence);
 		extrn	iso_lseek_hack:word
 		call	[iso_lseek_hack]	; or ret
 	endif
@@ -417,7 +417,7 @@ isolseek:
 		endif
 		cmp	[byte bx],'|'
 		je	@@test
-		cmp	[byte bx],0
+		cmp	[byte bx],dh
 		je	@@test
 		mov	al,-1
 		inc	bx
@@ -425,7 +425,7 @@ isolseek:
 @@test:
 		or	al,al			; 1st loop ?
 		jns	@@testal
-		cmp	[byte bx],0
+		cmp	[byte bx],dh
 		jne	@@loop
 @@testal:
 		cmp	al,'='
