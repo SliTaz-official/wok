@@ -135,6 +135,7 @@ strend:
         global  @strcmp$qpxzct1:near
         proc    @strcmp$qpxzct1 near
 
+		ifdef	USE_ARGSTR
 @@loop:
 		xchg	ax,bx
                 mov	cl,[bx]			; cl = *b++
@@ -146,6 +147,15 @@ strend:
 		or	cl,cl			; clear C
 		jz	failifc			; return 0
                 jmp	@@loop
+
+		else
+
+		call	@strhead$qpxzct1
+		jne	closeret		; return -1
+		cmp	cl,[bx]
+		jmp	failifc			; return 0 or -1
+
+		endif
 
         endp    @strcmp$qpxzct1
 	endif
@@ -166,9 +176,10 @@ openargs:
 
 open:						; open(bx)
 	ifdef	ISOHOOK
-;_fastcall int open(bx:const char* name);
 		extrn	iso_open_hack:word
-		call	[iso_open_hack]		; or ret
+		jmp	[iso_open_hack]
+        global  __open:near
+__open:
 	endif
 	ifdef	LONG_FILENAME
 		mov	ax,716Ch
@@ -206,15 +217,17 @@ open:						; open(bx)
 
         global  close:near			; close(ax)
 close:
+		mov	bh,3Eh
 	ifdef	ISOHOOK
 		extrn	iso_close_hack:word
-		call	[iso_close_hack]	; or ret
+		jmp	[iso_close_hack]
 	endif
-		mov	bh,3Eh
+	global	dosbx:near
 dosbx:
 		xchg	ax,bx
 		or	bx,bx
 		jnz	dos
+closeret:
 		ret
 
         endp    @close$qi
@@ -252,12 +265,13 @@ dosbx:
 @read$cxdxbx:
                 mov	ah,3Fh
 		endif
-	ifdef	ISOHOOK
-;_fastcall int read(bx:int fd, dx:void* data, cx:int sz);
-		extrn	iso_read_hack:word
-		call	[iso_read_hack]		; or ret
-	endif
                 jcxz	fail
+	ifdef	ISOHOOK
+;_fastcall int read(bx:int fd, dx:void* data, cx:int sz, ah=3Fh);
+		extrn	iso_read_hack:word
+		jmp	[iso_read_hack]		; or ret
+	endif
+	global	dos:near
 dos:
                 int	21h
                 jnc	doret
@@ -296,13 +310,14 @@ lseek0:						; lseek0(ax,bl=dir)
 lseekword:
 		sbb	cx,cx
 lseekset:
-	ifdef	ISOHOOK
-;_fastcall long lseek(ax:int fd, cxdx:unsigned long offset, bl:whence);
-		extrn	iso_lseek_hack:word
-		call	[iso_lseek_hack]	; or ret
-	endif
 		mov	bh,42h			; bx=fd cx:dx=offset al=whence
+	ifdef	ISOHOOK
+;_fastcall long lseek(ax:int fd, cxdx:unsigned long offset, bl:whence, bh=42h);
+		extrn	iso_lseek_hack:word
+		jmp	[iso_lseek_hack]
+	else
 		jmp	dosbx
+	endif
 
         endp    @rewind$qi
 
@@ -463,9 +478,9 @@ isolseek:
 		xchg	ax,bx
                 mov	cl,[bx]			; cl = *b++
                 inc	bx
+		xchg	ax,bx
 		or	cl,cl			; clear C
 		jz	failifc			; return 0
-		xchg	ax,bx
                 xor	cl,[bx]			; cl -= *a++
                 inc	bx
 		and	cl,0dfh			; case insensitive

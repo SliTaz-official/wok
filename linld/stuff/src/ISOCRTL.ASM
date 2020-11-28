@@ -51,13 +51,13 @@ unfold:
 		push	ds
 		pop	es
 		mov	di,128h		; TABLE
-		mov	ax,offset iso_open_hack
+		mov	ax,offset iso_close_hack
 		stosw
-		mov	al,offset iso_read_hack-0F000h
+		inc	ax	; iso_open_hack
 		stosw
-		mov	al,offset iso_lseek_hack-0F000h
+		add	al,offset iso_read_hack-offset iso_open_hack
 		stosw
-		mov	al,offset iso_close_hack-0F000h
+		add	al,offset iso_lseek_hack-offset iso_read_hack
 		stosw
 	ifdef	NO386
         global  N_LXLSH@ES:near
@@ -71,6 +71,7 @@ N_LXLSH@:
 		rcl	dx,1
 		loop	@@lp
 	endif
+iso_close_hack:
 		ret
 
 ;***************************************************************
@@ -81,135 +82,24 @@ iso_open_hack:
 		cmp	[byte bx],'!'
 		je	@readmenu$qv
 		xchg	ax,bx
-		global	iso_open:near
 iso_open:
 		mov	[_isostate.filename2open],ax
 		call	@_isoopen$qv
 		cmp	al,1
 		cmc
-iso_close_hack:
-		pop	bx
 		ret
 
 
 ;***************************************************************
-;_fastcall void readmenu(void);
-;***************************************************************
-	global	@readmenu$qv:near
-	proc	@readmenu$qv near
-
-		pop	ax
-		mov	dx,18
-		xor	cx,cx
-		call	lseekset
-		mov	dx,offset _isostate.filemod
-		mov	cx,10
-		call	readfd ; // read x->filemod + x->fileofs & x->filesize
-		mov	bx,offset _isostate.fileofs
-		; x->fileofs = 0x7FF0 - (x->filesize &= 0xFFFF);
-		mov	ax,7FF0h
-		cwd
-		mov	[word bx+6],dx
-		sub	ax,[bx+4]
-		mov	[word bx+2],dx
-		mov	[bx],ax
-		; //magic = x->filemod;
-
-	endp	@readmenu$qv
-
-;***************************************************************
-;_fastcall void isolseek(bx:const unsigned long *offset);
-;***************************************************************
-        global  @isolseek$qpxul:near
-        proc    @isolseek$qpxul near
-
-isolseek:
-		mov	dx,[bx]
-		mov	cx,[bx+2]
-lseekset:
-		mov	ax,4200h			; bx=fd cx:dx=offset al=whence
-dosfd:
-		mov	bx,[_isostate.fd]
-dos:
-		int	21h
-failifc:
-		jnc	dosok
-fail:
-		sbb	ax,ax
-		cwd
-dosok:
-		ret
-
-	endp	@isolseek$qpxul
-
-;***************************************************************
-;_fastcall int isoreadsector(bx:const unsigned long *offset);
-;***************************************************************
-        global  @isoreadsector$qpxul:near
-        proc    @isoreadsector$qpxul near
-
-		call	isolseek
-		jc	fail
-		mov	cx,2560
-		mov	dx,offset _isostate.buffer
-		global	readfd:near
-readfd:
-                mov	ah,3Fh
-		jmp	dosfd
-
-        endp    @isoreadsector$qpxul
-
-;***************************************************************
-;_fastcall int strhead(bx:const char* a, ax:const char* b);
-;***************************************************************
-        global  @strhead$qpxzct1:near
-        proc    @strhead$qpxzct1 near
-
-@@loop:
-		xchg	ax,bx
-                mov	cl,[bx]			; cl = *b++
-                inc	bx
-		or	cl,cl			; clear C
-		jz	fail			; return 0
-		xchg	ax,bx
-                xor	cl,[bx]			; cl -= *a++
-                inc	bx
-		or	cl,cl
-		stc
-		jne	fail			; return -1
-                jmp	@@loop
-
-	endp	@strhead$qpxzct1
-
-;***************************************************************
-;_fastcall int strcmp(bx:const char* a, ax:const char* b);
-;***************************************************************
-        global  @strcmp$qpxzct1:near
-        proc    @strcmp$qpxzct1 near
-
-		call	@strhead$qpxzct1
-		jne	dosok			; return -1
-		xchg	ax,bx
-		cmp	cl,[bx]
-		jmp	fail			; return 0 or -1
-
-        endp    @strcmp$qpxzct1
-
-;***************************************************************
-;_fastcall int read(bx:int fd=isostate.fd, dx:void* data, cx:int sz);
+;_fastcall int read(bx:int fd=isostate.fd, dx:void* data, cx:int sz, ah=3Fh);
 ;***************************************************************
 iso_read_hack:
 		push	dx
 		push	cx
 		xor	cx,cx
-		mov	ax,4201h
-		cwd
-	ifdef	SEEK_CUR
-		call	curpos		; bx = _isostate.fileofs
-	else
-		call	dosfd		; lseek(,0L,SEEK_CUR)
-		call	sub_fileofs	; bx = _isostate.fileofs
-	endif
+		xor	dx,dx
+		mov	al,01h
+		call	doseek		; bx = _isostate.fileofs
 	ifdef	NO386
 		mov	cx,[bx+4]	; _isostate.filesize
 		sub	cx,ax
@@ -240,37 +130,137 @@ iso_read_hack:
 		xchg	ax,cx
 @@cxok:
 		pop	dx		; buffer
-		pop	bx		; skip last caller
 		jmp	readfd
 
+
 ;***************************************************************
-;_fastcall long lseek(ax:int fd=isostate.fd, cxdx:unsigned long offset, bl:whence);
+;_fastcall long lseek(ax:int fd=isostate.fd, cxdx:unsigned long offset, bl:whence, bh=42h);
 ;***************************************************************
 iso_lseek_hack:
 		xchg	ax,bx
-		pop	bx		; skip last caller
 	ifdef	SEEK_CUR
 		cmp	al,1	; current
-		jne	@@nocurrent
-curpos:
-		call	dosfd		; lseek(,0L,SEEK_CUR)
-		jmp	sub_fileofs
-@@nocurrent:
+		je	doseek
 	endif
 		mov	bx,offset _isostate.fileofs
 		add	dx,[bx]
 		adc	cx,[bx+2]
 		cmp	al,0	; start
-		je	@@doseek
+		je	doseek
 		add	dx,[bx+4]	; _isostate.filesize
 		adc	cx,[bx+6]
-@@doseek:
-		call	lseekset	; lseek(,0L,SEEK_SET)
+doseek:
+		call	lseek		; lseek(,,al)
 sub_fileofs:
 		mov	bx,offset _isostate.fileofs
 		sub	ax,[bx]
 		sbb	dx,[bx+2]
 		ret
+
+
+;***************************************************************
+;_fastcall void readmenu(void);
+;***************************************************************
+	proc	@readmenu$qv near
+
+		mov	dx,18
+		xor	cx,cx
+		call	lseekset
+		mov	dx,offset _isostate.filemod
+		mov	cl,10
+		call	readfd ; // read x->filemod + x->fileofs & x->filesize
+		mov	bx,offset _isostate.fileofs
+		; x->fileofs = 0x7FF0 - (x->filesize &= 0xFFFF);
+		mov	ax,7FF0h
+		cwd
+		mov	[word bx+6],dx
+		sub	ax,[bx+4]
+		mov	[word bx+2],dx
+		mov	[bx],ax
+		; //magic = x->filemod;
+
+	endp	@readmenu$qv
+
+;***************************************************************
+;_fastcall void isolseek(bx:const unsigned long *offset);
+;***************************************************************
+        global  @isolseek$qpxul:near
+        proc    @isolseek$qpxul near
+
+isolseek:
+		mov	dx,[bx]
+		mov	cx,[bx+2]
+lseekset:
+		mov	al,00h			; bx=fd cx:dx=offset al=whence
+lseek:
+		mov	ah,42h
+dosfd:
+		mov	bx,[_isostate.fd]
+dos:
+		int	21h
+failifc:
+		jnc	dosok
+fail:
+		sbb	ax,ax
+		cwd
+dosok:
+		ret
+
+	endp	@isolseek$qpxul
+
+
+;***************************************************************
+;_fastcall int isoreadsector(bx:const unsigned long *offset);
+;***************************************************************
+        global  @isoreadsector$qpxul:near
+        proc    @isoreadsector$qpxul near
+
+		call	isolseek
+		jc	fail
+		mov	ch,9			; < 2560
+		mov	dx,offset _isostate.buffer
+readfd:
+                mov	ah,3Fh
+		jmp	dosfd
+
+        endp    @isoreadsector$qpxul
+
+
+;***************************************************************
+;_fastcall int strhead(bx:const char* a, ax:const char* b);
+;***************************************************************
+        global  @strhead$qpxzct1:near
+        proc    @strhead$qpxzct1 near
+
+@@loop:
+		xchg	ax,bx
+                mov	cl,[bx]			; cl = *b++
+                inc	bx
+		xchg	ax,bx
+		or	cl,cl			; clear C
+		jz	fail			; return 0
+                xor	cl,[bx]			; cl -= *a++
+                inc	bx
+		or	cl,cl
+		stc
+		jne	fail			; return -1
+                jmp	@@loop
+
+	endp	@strhead$qpxzct1
+
+
+;***************************************************************
+;_fastcall int strcmp(bx:const char* a, ax:const char* b);
+;***************************************************************
+        global  @strcmp$qpxzct1:near
+        proc    @strcmp$qpxzct1 near
+
+		call	@strhead$qpxzct1
+		jne	dosok			; return -1
+		cmp	cl,[bx]
+		jmp	fail			; return 0 or -1
+
+        endp    @strcmp$qpxzct1
 
         ends    _TEXT
 

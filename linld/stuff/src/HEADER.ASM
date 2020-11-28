@@ -13,52 +13,45 @@
 
         segment _TEXT byte public use16 'CODE'
 
-                org     100h
+COMSTART	=	100h
+MAXCODESZ	=	0F000h			; < 64K - COMSTART - STKSZ 
+
+                org     COMSTART
         global  _text_start:byte
         label   _text_start byte
 
-		mov	di,80h
-		cmp	[byte di],1
-		ja	notfound
-	ifdef	WITH_LONG_FILENAME
-		mov	si,offset tazboot_cmd
-		mov	ax,716Ch
-		xor	bx,bx			; R/O
-		xor	cx,cx			; attributes
-		cwd				; action = open
-		stc
-                int	21h
-                jnc	found
-		mov	dx,si
-	else
+		cld
 		mov	dx,offset tazboot_cmd
-	endif
+		mov	di,80h
+		cmp	[byte di],dh
+		ja	notfound
                 mov	ax,3d00h		; read-only+compatibility
 		;mov	cl,0			; attribute mask
 		int	21h
 		jc	notfound
 found:
 		xchg	ax,bx
-		mov	ah,3Eh
+		mov	ah,3Eh			; close
 		int	21h
-		mov	cx,endcmd-begcmd+1
-		mov	si,offset default_arg
+		mov	si,offset default_arg	; di = 0080h
+		mov	cx,di
 		rep
 		  movsb
 notfound:
-		mov	di,9000h
-		mov	si,offset tomove
-		mov	ch,1
-		jmp	move
-tomove:
-		cld
-		mov	di,100h
-		mov	si,offset endcmd
-		mov	ch,40h
+		mov	di,MAXCODESZ+offset endcmd
+		mov	si,offset move
+		mov	cx,COMSTART
+		mov	ax,offset endcmd
 move:
 		push	di
+		push	cx
 		rep
-		  movsw
+		  movsb
+		pop	di
+		pop	cx
+		;sub	cx,ax
+		xchg	ax,si
+		push	cx
 		ret
 
 default_arg	db	endcmd-begcmd

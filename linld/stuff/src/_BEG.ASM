@@ -106,15 +106,17 @@ no_vcpi:
 		endif
 
 	ifdef	ISOHOOK
-		extrn	@ret:near
-		global	iso_open_hack
-iso_open_hack	dw	@ret
-		global	iso_read_hack
-iso_read_hack	dw	@ret
-		global	iso_lseek_hack
-iso_lseek_hack	dw	@ret
 		global	iso_close_hack
-iso_close_hack	dw	@ret
+iso_close_hack	dw	dosbx
+		global  iso_open_hack
+	        extrn   __open:near
+iso_open_hack	dw      __open
+		global	iso_read_hack
+		extrn	dos:near
+iso_read_hack	dw	dos
+		global	iso_lseek_hack
+		extrn	dosbx:near
+iso_lseek_hack	dw	dosbx
 	        global  _cpu_features:dword
 _cpu_features	dd	?		; default _cpu_features+3=1Fh/8Eh (bit5=0, not 64bits)
 		org	$-4
