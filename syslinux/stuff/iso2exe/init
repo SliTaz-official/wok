@@ -36,7 +36,7 @@ getiso()
 {
 	mkdir -p $media
 	for dev in /sys/block/*; do
-		dev=$(ls $dev/$(basename $dev)* 2> /dev/null)
+		dev=$(ls -d $dev/$(basename $dev)*)
 		[ "$dev" ] || continue
 		mount /dev/$(basename $dev) $mnt
 		if checkmagic $mnt/$ISO; then
@@ -46,7 +46,7 @@ getiso()
 			return 0
 		fi
 		umount $mnt
-	done 2>/dev/null
+	done
 	return 1
 }
 
@@ -192,5 +192,4 @@ ISO="$(getarg bootfrom | sed 's/.://;s|\\|/|g')"
 getiso 2>/dev/null || text
 mount_loram
 [ -s /usr/bin/taziso ] || live
-
-. /usr/bin/taziso
+. /usr/bin/taziso $ISO

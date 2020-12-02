@@ -149,6 +149,7 @@ iso_lseek_hack:
 		je	doseek
 		add	dx,[bx+4]	; _isostate.filesize
 		adc	cx,[bx+6]
+		mov	al,0
 doseek:
 		call	lseek		; lseek(,,al)
 sub_fileofs:
