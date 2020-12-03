@@ -203,6 +203,15 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	 } # file == "load.cpp"
 	 if (file == "iso9660.cpp") {
+	if (/p = x->buffer \+ 34/) isiso=13
+	if (isiso == 13) { # ISO9660.LST
+		if (/di,si/) $0="	xchg	ax,bx"
+		if (/di,ax/) $0="	lea	di,[si+bx+70]"
+		if (/di,70/) {
+			isiso=0
+			next
+		}
+	}
 	if (/register len/) isiso=12
 	if (isiso == 12) { # ISO9660.LST
 		sub(/mov	dx,ax/,"xchg	ax,bx")

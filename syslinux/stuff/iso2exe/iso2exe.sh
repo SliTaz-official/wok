@@ -295,7 +295,7 @@ case "$1" in
 	TMP=/tmp/iso2exe$$
 	mkdir -p $TMP/dev
 	cp -a /dev/tty /dev/tty0 $TMP/dev
-	cat init > $TMP/init.exe
+	sed 's|^[ |\t]*||' init > $TMP/init.exe
 	find $TMP -type f -print0 | xargs -0 chmod +x
 	find $TMP -print0 | xargs -0 touch -t 197001010100.00
 	( cd $TMP; find dev init.exe | cpio -o -H newc ) | compress > rootfs.gz
