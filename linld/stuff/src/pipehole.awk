@@ -67,9 +67,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/do \{/) ishimem=2
 		if (/byte ptr DGROUP:_vcpi,0/) print "	mov	bx,si"
 		if (/bx,si/ || /push	bp/ || /bp,sp/ || /push	di/) next
-		if (/sp,2/) {
-			next
-		}
+		if (/sp,2/) next
 		if (/bp\+4/) {
 			print "	global	load_imagez:near"
 			print "load_imagez:"
@@ -160,7 +158,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/\[0\] = m-\>fallback/) isload=6
 	if (isload == 6) {  # LOAD.LST
-		if (/si\+2/) $0="	lodsw"
+		if (/si\+2/) { print "	lodsw"; $0="	push	di" }
 		if (/les/) sub(/bx,/,"di,")
 		if (/bx\+4/ || /es:/) next
 		if (/si\+6/) {
@@ -168,9 +166,9 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			print "	movsw"
 			print "	movsw"
 			print "	movsw"
+			print "	pop	di"
 			next
 		}
-		if (/	pop	si/) print "	pop	di"
 	}
 	if (/version_string = /) isload=5
 	if (isload == 5) {  # LOAD.LST
@@ -195,7 +193,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/void load_initrd\(\)/) isload=3
 	if (isload == 3) {  # LOAD.LST
-		if (/push	si/) { print; $0="	push	di" }
 		if(/jmp/) next
 		sub(/\[di/,"[bx")
 		sub(/\di,/,"bx,")
