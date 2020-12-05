@@ -55,25 +55,30 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/do strcatb/) islinld=5
 	 } # file == "linld.cpp"
 	 if (file == "himem.cpp") {
+	if (/sp,bp/ || /pop	bp/) next
 	if (/void load_image/) ishimem=1
 	if (ishimem == 1 && is386 == 0) {
 		if (/si\+8\]$/ || /si\+4\]$/ || /si\+16\]$/) next
 		if (/si\+6\]$/ || /si\+2\]$/ || /si\+14\]$/) sub(/mov	dx,/,"les	dx,d")
-		if (/si\+12\],ax/ || /si\+16\],ax/ || /bp-2\],ax/) sub(/,ax/,",es")
+		if (/si\+12\],ax/ || /si\+16\],ax/ || /DGROUP:buf\+2,ax/) sub(/,ax/,",es")
+		if (/dx,dword ptr \[si\+14\]/ || /DGROUP:buf,dx/) sub(/dx/,"ax")
 	}
 	if (ishimem == 1) {
 		if (/do \{/) ishimem=2
 		if (/byte ptr DGROUP:_vcpi,0/) print "	mov	bx,si"
-		if (/bx,si/) next
-		if (/sp,6/) {
-			print "	push	si"
-			print "	push	si"
+		if (/bx,si/ || /push	bp/ || /bp,sp/ || /push	di/) next
+		if (/sp,2/) {
 			next
+		}
+		if (/bp\+4/) {
+			print "	global	load_imagez:near"
+			print "load_imagez:"
+			$0="	xchg	ax,si"
 		}
 	}
 	if (ishimem == 2) {
 		if (/movzx/) print "	cwde"
-		if (/bp-6/) next
+		if (/bp-2/ || /pop	di/) next
 		if (/storepage.bufv/) {
 			print "	inc	ax"
 			print "	push	ax"
@@ -81,10 +86,28 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/buf \+= size;/) {
 			print "	pop	ax"
 		}
-		if (/Read error/) ishimem=0
+		if (/endp/) ishimem=0
 	}
 	 } # file == "himem.cpp"
 	 if (file == "load.cpp") {
+	if (/load_image\(/) {
+		if (isload == 3) isload=13
+		else isload=14
+	}
+	if (isload == 14) {  # LOAD.LST
+		if (/call/) {
+			print	"	xchg	ax,di"
+			print	"	pop	di"
+			print	"	extrn	load_imagez"
+			$0="	jmp	short load_imagez"
+		}
+		if (/ret/) isload=0
+		if (/pop/ || /ret/ || /push/) next
+	}
+	if (isload == 13) {  # LOAD.LST
+		sub(/push	/,"mov	ax,")
+		if (/pop/) { isload=3; next }
+	}
 	if (/i\+21\],513$/) isload=11
 	if (isload == 12) {  # LOAD.LST
 		if (/cmp/) next
@@ -138,20 +161,16 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/\[0\] = m-\>fallback/) isload=6
 	if (isload == 6) {  # LOAD.LST
 		if (/si\+2/) $0="	lodsw"
-		if (/les/) sub(/bx,/,"ax,")
-		if (/bx\+4/ || /es:/) {
-			if (/bx\+4/) isload=0
-			next
-		}
+		if (/les/) sub(/bx,/,"di,")
+		if (/bx\+4/ || /es:/) next
 		if (/si\+6/) {
-			print "	xchg	ax,di"
 			print "	movsw"
 			print "	movsw"
 			print "	movsw"
 			print "	movsw"
-			print "	xchg	ax,di"
 			next
 		}
+		if (/	pop	si/) print "	pop	di"
 	}
 	if (/version_string = /) isload=5
 	if (isload == 5) {  # LOAD.LST
@@ -176,9 +195,15 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/void load_initrd\(\)/) isload=3
 	if (isload == 3) {  # LOAD.LST
-		if(/push	di/ || /pop	di/) next
+		if (/push	si/) { print; $0="	push	di" }
+		if(/jmp/) next
 		sub(/\[di/,"[bx")
 		sub(/\di,/,"bx,")
+		if (/@puts\$qpxzc/) {
+			if (hold == 3) { print s; hold=0 }
+			print "	pop	si"
+			sub(/call/,"jmp")
+		}
 	}
 	if (/vid_mode = vid_mode/) isload=2
 	if (isload == 2) {  # LOAD.LST
@@ -203,6 +228,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	 } # file == "load.cpp"
 	 if (file == "iso9660.cpp") {
+	if (/x->curpos \+= x->entrysize/) isiso=14
+	if (isiso == 14) { # ISO9660.LST
+		if (/ax,ax/) {
+			print "return0:"
+			isiso=0
+		}
+	}
 	if (/p = x->buffer \+ 34/) isiso=13
 	if (isiso == 13) { # ISO9660.LST
 		if (/di,si/) $0="	xchg	ax,bx"
@@ -323,6 +355,8 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/add	word ptr \[si\+32\],ax/) $0="	add	bx,word ptr [si+16]"
 		if (/al,/ || /,al/) sub(/al/,"cl")
 		if (/cmp	byte ptr \[si\+34\],0/) $0="	or	cl,cl"
+		if (/ax,ax/) next
+		if (/short @.@506/)  $0="	jmp	return0"
 		if (/jne	@@0$/) next
 		if (/jmp	@.@58$/) sub(/jmp/,"je")
 		sub(/mov	ax,-1/,"dec	ax")
