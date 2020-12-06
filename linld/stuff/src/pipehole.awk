@@ -66,17 +66,15 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (ishimem == 1) {
 		if (/do \{/) ishimem=2
 		if (/byte ptr DGROUP:_vcpi,0/) print "	mov	bx,si"
-		if (/bx,si/ || /push	bp/ || /bp,sp/ || /push	di/) next
+		if (/bx,si/ || /push	bp/ || /bp,sp/ || /push	di/ || /push	si/) next
 		if (/sp,2/) next
 		if (/bp\+4/) {
-			print "	global	load_imagez:near"
-			print "load_imagez:"
 			$0="	xchg	ax,si"
 		}
 	}
 	if (ishimem == 2) {
 		if (/movzx/) print "	cwde"
-		if (/bp-2/ || /pop	di/) next
+		if (/bp-2/) next
 		if (/storepage.bufv/) {
 			print "	inc	ax"
 			print "	push	ax"
@@ -95,16 +93,14 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isload == 14) {  # LOAD.LST
 		if (/call/) {
 			print	"	xchg	ax,di"
-			print	"	pop	di"
-			print	"	extrn	load_imagez"
 			$0="	jmp	short load_imagez"
 		}
 		if (/ret/) isload=0
 		if (/pop/ || /ret/ || /push/) next
 	}
 	if (isload == 13) {  # LOAD.LST
-		sub(/push	/,"mov	ax,")
-		if (/pop/) { isload=3; next }
+		if (/pop/) isload=3
+		if (/push/ || /call/ || /pop/) next 
 	}
 	if (/i\+21\],513$/) isload=11
 	if (isload == 12) {  # LOAD.LST
@@ -156,17 +152,24 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			sub(/dx/,"ax")
 		}
 	}
-	if (/\[0\] = m-\>fallback/) isload=6
+	if (/_version_string,0/) {
+		print "	mov	ax,si"
+		print "	push	di"
+		isload=6
+	}
 	if (isload == 6) {  # LOAD.LST
-		if (/si\+2/) { print "	lodsw"; $0="	push	di" }
+		if (/si\+2/) {
+			print "	cmpsw"
+			next
+		}
 		if (/les/) sub(/bx,/,"di,")
-		if (/bx\+4/ || /es:/) next
+		if (/bx\+4/ || /es:/ || /call/ || /pop/ || /ret/) next
 		if (/si\+6/) {
 			print "	movsw"
 			print "	movsw"
 			print "	movsw"
 			print "	movsw"
-			print "	pop	di"
+			print "load_imagez:"
 			next
 		}
 	}
@@ -193,14 +196,15 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/void load_initrd\(\)/) isload=3
 	if (isload == 3) {  # LOAD.LST
-		if(/jmp/) next
+		if (/short @2@198/) sub(/@2@198/,"load_initrd_ret")
+		if( /jmp/) {
+			print "load_initrd_ret:"
+			print "	pop	si"
+			print "	ret"
+			next
+		}
 		sub(/\[di/,"[bx")
 		sub(/\di,/,"bx,")
-		if (/@puts\$qpxzc/) {
-			if (hold == 3) { print s; hold=0 }
-			print "	pop	si"
-			sub(/call/,"jmp")
-		}
 	}
 	if (/vid_mode = vid_mode/) isload=2
 	if (isload == 2) {  # LOAD.LST
