@@ -73,7 +73,9 @@ static void bootiso(char **iso)
 	struct isostate *x=&isostate;
 	
 	if (isoreset(*iso) == -1) return;
+#ifdef WITH_XMM_ALLOC
 	skip_alloc--;
+#endif
 	base_himem = memtop() /2;
 	//if (base_himem >= _64m) base_himem = _64m;
 	if (* ((char *) &base_himem +3) >= 4) ((short *)&base_himem)[1] = _64m/_64k;
@@ -149,8 +151,11 @@ int main(int argc, char *argv[])
 	if (argc < 2) {
 		try_default_args();
 dousage:
-		die("Usage: tazboot [[@commands]|[-f][-b base_himem][kernel=<bzImage>] \
-[initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] ...]\n\n\
+		die("Usage: tazboot [[@commands]|"
+#ifdef WITH_XMM_ALLOC
+"[-f]"
+#endif
+"[-b base_himem][kernel=<bzImage>] [initrd=<rootfs>[,<rootfs2>...]] [bootfrom=<isofile>] ...]\n\n\
 Defaults: tazboot kernel=bzImage auto\n\n\
 Examples for tazboot.cmd:\n\n\
   bootfrom=\\isos\\slitaz-4.0.iso\n\
@@ -193,10 +198,12 @@ Examples for tazboot.cmd:\n\n\
 			boot_kernel();
 		}
 #ifdef USE_ARGSTR
+#ifdef WITH_XMM_ALLOC
 	        if ((*(u16 *)s|0x2002) == 0x662F) {	// -F /f
 			skip_alloc--;
 			goto next;
 		}
+#endif
 		if (argstr(s,"kernel/image|initrd|bootfrom/iso",&kernel_name) != -1);
 		else if (argnum(s,"root|vga|mem/-e|-b",&root_dev) != -1);
 		else if(i == 1 && fileexist(s) != -1) {
@@ -232,9 +239,11 @@ Examples for tazboot.cmd:\n\n\
 			kernel_name = s;
 		}
 	        else switch (*(u16 *)s|0x2002) {
+#ifdef WITH_XMM_ALLOC
 		case 0x662F:	// -F /f
 			skip_alloc--;
 			goto next;
+#endif
 		case 0x652F:	// -E /e
 			s=*++argv;
 			goto set_topmem;

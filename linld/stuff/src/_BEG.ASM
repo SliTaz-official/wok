@@ -24,6 +24,9 @@ msg_badmapping	db	"under VCPI 4.0+ manager with low 640k 1:1 mapping"
         global  _vcpi:byte
 _vcpi		db	0
 		endif
+		ifdef	EXTRA
+tazboot_cmd	db	"tazboot.cmd",0
+		endif
 
         ends    _DATA
 
@@ -283,7 +286,6 @@ argdone:
 		call	near openargs
 		jc	argend
 		pop	bx			; trash argc,  argv >> 1Kb !
-	global	read_cmdline:near
                 pop	cx			; sizemax=argv
 read_cmdline:
 		mov	dx,di
@@ -307,6 +309,64 @@ argend:
 		;never return
 
 ;***************************************************************
+
+
+		extrn	_head_top:word
+		ifdef	USE_ARGSTR
+;***************************************************************
+;_fastcall void set_cmdline(bx:const char *filename);
+;***************************************************************
+        global  @set_cmdline$qpxzc:near
+        proc	@set_cmdline$qpxzc near
+		extrn	openargs:near
+		call	openargs
+		jc	@ret
+		mov	ch,15			; cx<4096
+		mov	di,[_heap_top]
+		jmp	read_cmdline		; read_cmdline(ax,di,cx)
+
+        endp	@set_cmdline$qpxzc
+		endif
+
+;***************************************************************
+;void try_default_args();
+;***************************************************************
+
+		ifdef	EXTRA
+        global  _try_default_args:near
+        proc    _try_default_args near
+
+		mov	bx,offset tazboot_cmd
+		extrn	@open$qpxzc:near
+		call	@open$qpxzc
+		jc	@ret
+		mov	ch,15			; cx<4096
+		mov	di,[_heap_top]
+		jmp	read_cmdline		; read_cmdline(ax,di,cx)
+		
+        endp    _try_default_args
+		endif
+
+		ifdef	NO386
+;***************************************************************
+;u16 topseg();
+;***************************************************************
+        global  _topseg:near
+        proc    _topseg near
+
+		int	12h
+		jnc	@@max640k
+		mov	ax,640			; 9000
+@@max640k:
+		dec	ax
+		and	al,0C0h
+		mov	cl,6
+		shl	ax,cl
+@ret:
+		ret
+
+        endp    _topseg
+		endif
 
         ends    _TEXT
 

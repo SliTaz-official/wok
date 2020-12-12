@@ -6,20 +6,28 @@
 #include "crtl.h"
 #include "common.h"
 
+#ifdef WITH_XMM_ALLOC
 u16 skip_alloc;
+#endif
 static u32 buf;
 
 void load_image(struct image_himem *m) {
     m->remaining = m->size;
     m->buf = m->fallback;	// set no_exit btw: die() won't return to DOS
     u32* bufv= &buf;
+#ifdef WITH_XMM_ALLOC
     if(((u16 *)&m->fallback)[1] >= (skip_alloc|0x10)) { // >= _1m ?
+#else
+    if(((u16 *)&m->fallback)[1] >= 0x10) { // >= _1m ?
+#endif
 	if(vcpi) {
 	    bufv = (u32 *)malloc_bufv_or_die(m);	// update m->bufv
 	}
+#ifdef WITH_XMM_ALLOC
 	else {
             xmm_alloc(m);			// update m->buf
 	}
+#endif
     }
     buf = m->buf;
     do {

@@ -1,6 +1,6 @@
 path ..\BC31;..;%PATH%
 call !clean.bat
-bcc @bccopt.opt -S -mt -DMOVE_SETUP -DLARGE_IMAGES *.cpp > cpp.log
+bcc @bccopt.opt -S -mt -DEXTRA -DMOVE_SETUP -DLARGE_IMAGES *.cpp > cpp.log
 ren TAZBOOT.ASM TAZBOOT.ASO
 ren LOAD.ASM LOAD.ASO
 ren HIMEM.ASM HIMEM.ASO

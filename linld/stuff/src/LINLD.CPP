@@ -24,7 +24,9 @@ inline void syntax() {
     die("Syntax:" NL
         "LINLD [image=file] [initrd=files] [vga=mode] [root=num] [mem=max] [cl=cmdline]" NL
         "vga mode: ask,extended,normal or dec/oct/hex number" NL
+#ifdef WITH_XMM_ALLOC
         "-f force" NL
+#endif
         "-64 for cpu64 only" NL
         "Defaults:" NL
         "\timage=bzImage" NL
@@ -36,7 +38,11 @@ inline void syntax() {
         "Use cl=@filename to get it from a file"
 #if 1
         NL NL "Examples:" NL
-	"\tLINLD -f -b 64m "
+	"\tLINLD "
+#ifdef WITH_XMM_ALLOC
+	"-f "
+#endif
+	"-b 64m "
         "initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz "
 	"\"cl=root=/dev/null video=-32\""
 	NL NL "\tLINLD image=memtest"
@@ -55,32 +61,34 @@ int main(int argc, char *argv[]) {
     // Parse command line
 #ifdef	USE_ARGSTR
     if (!argv[1]) syntax();
+    const char **clp = &cmdline;
     for (;;) {
-	const char **clp = &cmdline;
 	argv++;
-	if (!*argv) goto boot;
+	if (!*argv) break;
         if ((*(u16 *)*argv|2) == 0x362F) {	// -64 /64
 	    if (cpuhaslm() == 0) exit();
+	    continue;
 	}
+#ifdef WITH_XMM_ALLOC
         if ((*(u16 *)*argv|0x2002) == 0x662F) {	// -F /f
 	    skip_alloc--;
+	    continue;
 	}
-	else if (argstr(*argv,"cl|image|initrd",clp) != -1);
-	else if (fileexist(*argv) != -1)
+#endif
+	if (argstr(*argv,"cl|image|initrd",clp) != -1 && **argv == 'c') continue;
+	if (fileexist(*argv) != -1) {
             kernel_name=*argv;
-	else if (argnum(*argv,"root|vga|mem|-b",&root_dev) != -1);
-	else {
-	    *clp = (const char *) buf_cmdline + 1;
-	    do strcatb((const char *) buf_cmdline,*argv++); while (*argv);
-	boot:
-            puts(*clp);
-	    set_cmdline(*clp);
-	    load_kernel();
-	    puts(version_string);
-	    load_initrd();
-	    boot_kernel();
-        }
+	    continue;
+	}
+	argnum(*argv,"root|vga|mem|-b",&root_dev);
+	*clp = (const char *) buf_cmdline + 1;
+	strcatb((const char *) buf_cmdline,*argv);
     }
+    puts(*clp);
+    set_cmdline(*clp);
+    load_kernel();
+    load_initrd();
+    boot_kernel();
 #else
     if (!argv[1]) syntax();
     while (1) {
@@ -104,9 +112,11 @@ int main(int argc, char *argv[]) {
         case 0x362F:	// -64 /64
 	    if (cpuhaslm() == 0) exit();
 	    goto next;
+#ifdef WITH_XMM_ALLOC
 	case 0x662F:	// -F /f
 	    skip_alloc--;
 	    goto next;
+#endif
 	case 0x622F:	// -B /b
 	    argv++;
 	    ((u16 *)&base_himem)[1] = (u16)(strtol(*argv)>>16);

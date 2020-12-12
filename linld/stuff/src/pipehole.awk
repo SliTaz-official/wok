@@ -33,11 +33,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/== 0x662F/) islinld=2
 	if (islinld==2) {
 		if (/cpuhaslm/) islinld=0
-		if (/mov/) { print "; " $0; next }
+		if (/bx,word/) { print "; " $0; next }
 	}
 	if (/image\|initrd/) islinld=3
 	if (islinld==3) {
-		if (/bx,word ptr/) { islinld=0; print "; " $0; next }
+		if (/bx,word ptr/) { print "; " $0; next }
+		if (/short @1@282/) print "	mov	bx,word ptr [si]"
+		if (/@fileexist\$qpxzc/) islinld=0
 	}
 	if (/fileexist\$qpxzc/) islinld=4
 	if (islinld==4) {
@@ -45,14 +47,15 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/ax,word ptr/) $0="	xchg	ax,bx"
 		if (/\[si\]$/) { islinld=0; print "; " $0; next }
 	}
-	if (islinld==5) {
-		if (/si/ || /word ptr/) next
-		if (/buf_cmdline/) {
-			print	"	lodsw"
-			islinld=0
-		}
+	if (/buf_cmdline\+1/) {
+		islinld=5
+		print "	mov	bx,offset DGROUP:buf_cmdline+1"
+		sub(/offset DGROUP:buf_cmdline\+1/,"bx")
 	}
-	if (/do strcatb/) islinld=5
+	if (islinld==5) {
+		if (/bx,offset DGROUP:buf_cmdline/) $0="	dec	bx"
+		if (/call/) islinld=0
+	}
 	 } # file == "linld.cpp"
 	 if (file == "himem.cpp") {
 	if (/sp,bp/ || /pop	bp/) next
@@ -65,7 +68,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (ishimem == 1) {
 		if (/do \{/) ishimem=2
-		if (/byte ptr DGROUP:_vcpi,0/) print "	mov	bx,si"
 		if (/bx,si/ || /push	bp/ || /bp,sp/ || /push	di/ || /push	si/) next
 		if (/sp,2/) next
 		if (/bp\+4/) {
@@ -74,7 +76,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (ishimem == 2) {
 		if (/movzx/) print "	cwde"
-		if (/bp-2/) next
+		if (/bp-2/ || /di,ax/ || /bx,di/) next
 		if (/storepage.bufv/) {
 			print "	inc	ax"
 			print "	push	ax"
@@ -84,8 +86,35 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		}
 		if (/endp/) ishimem=0
 	}
+	if (/@memcpy_image\$qp11image_himem/) next
+	if (/far last_ditch/) {
+		print "	extrn	memcpy_image_kernel:near"
+		print "	extrn	memcpy_image_initrd:near"
+		ishimem=3
+		cpy_initrd=0
+	}
+	if (ishimem == 3) {
+		if (/bx,di/ || /di,ax/ || /bx,32/) next
+		if (/mov	bx,si/) {
+			if (cpy_initrd==0) sub(/mov	bx,si/, "call	memcpy_image_kernel")
+			else sub(/mov	bx,si/, "call	memcpy_image_initrd")
+			cpy_initrd=1-cpy_initrd
+		}
+		sub(/lea	bx,\[si\+32\]/, "call	memcpy_image_initrd")
+	}
+	if (/m = pm2initrd/) ishimem=4
+	if (ishimem == 4) {
+		if (/si,32/ || /bx,di/ || /di,ax/) next
+		sub(/\[si/,"[si+32")
+		sub(/mov	bx,si/, "call	memcpy_image_initrd")
+	}
 	 } # file == "himem.cpp"
 	 if (file == "load.cpp") {
+	if (/readrm\(m, 0x200/) isload=15
+	if (isload == 15) {  # LOAD.LST
+		if (/bx,di/) next
+		if (/call/) isload=0
+	}
 	if (/load_image\(/) {
 		if (isload == 3) isload=13
 		else isload=14
@@ -120,7 +149,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	sub(/_imgs\+65534/,"_imgs-2")
 	if (/m, _rm_size/) isload=10
 	if (isload == 10) {  # LOAD.LST
-		if (/^	je	/) next
+		if (/^	je	/ || /bx,di/) next
 		if (/ptr @die\$qpxzc/) {
 			$0="	jne	@die@"
 			isload=0
@@ -152,7 +181,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			sub(/dx/,"ax")
 		}
 	}
-	if (/_version_string,0/) {
+	if (/pm_low == 0/) {
 		print "	mov	ax,si"
 		print "	push	di"
 		isload=6
@@ -173,11 +202,11 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			next
 		}
 	}
-	if (/version_string = /) isload=5
 	if (isload == 5) {  # LOAD.LST
 		sub(/ax,/,"bx,")
-		if (/_version_string,/) isload=0
+		if (/strcatb/) isload=0
 		if (/mov	bx,ax/) next
+		sub(/,word ptr \[si\+29\]/,",cx")
 	}
 	if (/_base_himem\+2/ && is386 == 0) isload=4
 	if (isload == 4) {  # LOAD.LST
@@ -192,11 +221,12 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			sub(/cmp	/,"mov	cx,")
 		}
 		sub(/je/,"jcxz")
-		if (/@strcpy/) isload=0
+		if (/\+0x200/) isload=5
 	}
 	if (/void load_initrd\(\)/) isload=3
 	if (isload == 3) {  # LOAD.LST
 		if (/short @2@198/) sub(/@2@198/,"load_initrd_ret")
+		if (/mov	ax,word ptr \[si\]/) $0="	lodsw"
 		if( /jmp/) {
 			print "load_initrd_ret:"
 			print "	pop	si"
@@ -204,7 +234,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			next
 		}
 		sub(/\[di/,"[bx")
-		sub(/\di,/,"bx,")
+		sub(/di,/,"bx,")
 	}
 	if (/vid_mode = vid_mode/) isload=2
 	if (isload == 2) {  # LOAD.LST
@@ -212,7 +242,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/je/,"jcxz")
 		if (/ax,word/) next
 		sub(/,ax/,",cx")
-		if (/version_string/ || /starting linux 1\.3\.73/) isload=0
+		if (/starting linux 1\.3\.73/) isload=0
 	}
 	if (/die\(not_kernel/ || /_rm_size=0x200/ || /heap_top = _rm_buf/) isload=1
 	if (isload == 1) {  # LOAD.LST
@@ -894,5 +924,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (afterjmp) print ";" $0
 	else print
 	if (/^	jmp	/ || /^	call	near ptr _boot_kernel/ ||
-	    /^	call	near ptr @die$qpxzc/) afterjmp=1
+	    /^	call	near ptr @die\$qpxzc/ ||
+	    /^	call	near ptr @exit\$qv/) afterjmp=1
 }

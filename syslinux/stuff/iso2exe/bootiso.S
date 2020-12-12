@@ -158,7 +158,7 @@ bootdir:
 linld:
 	.asciz	"linld.com"
 cmdline:
-	.ascii	"-f "
+//	.ascii	"-f "
 //	.ascii	"image=\boot\"
 //	.ascii	"bzImage "
 	.ascii	"initrd="
@@ -172,8 +172,8 @@ args:
 //	.ascii	" mode=menu"
 	.ascii	" autologin rdinit=/init.exe magic="
 magicstr:
-	.ascii	"0     bootfrom="
-//	.ascii	"65535 bootfrom="
+	.ascii	"0     iso="
+//	.ascii	"65535 iso="
 filename:
 exestart:
 	movb	$0x30,%ah		// get DOS version

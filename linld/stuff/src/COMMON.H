@@ -55,7 +55,6 @@ extern struct image_himem {
 #define pm2initrd(p) (p+1)
 
 extern u8 pm_low;
-extern u16 skip_alloc;
 extern u32 base_himem;
 extern u32 far *initrd_desc;
 
@@ -80,7 +79,10 @@ extern const char* cmdline;
 extern u32 root_dev;
 extern u32 vid_mode;
 // External asm helpers
+#ifdef	WITH_XMM_ALLOC
+extern u16 skip_alloc;
 extern _fastcall void xmm_alloc(struct image_himem *m);
+#endif
 extern u32 topmem;
 extern "C" u32 memtop();
 extern "C" void enable_a20_or_die();

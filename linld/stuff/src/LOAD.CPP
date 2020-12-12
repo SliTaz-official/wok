@@ -178,7 +178,11 @@ do {
             hook_int15_88(); // break _ES
         }
         if (kernelparams->kernel_version)
-            strcpy(version_string,(char *) first1k+kernelparams->kernel_version+0x200);
+#ifndef EXTRA
+            puts((char *) first1k+kernelparams->kernel_version+0x200);
+#else
+            strcatb(version_string,(char *) first1k+kernelparams->kernel_version+0x200);
+#endif
         kernelparams->type_of_loader = 0xff; // kernel do not know us (yet :-)
         if(kernelparams->version >= 0x201) {
             // * offset limit of the setup heap
@@ -224,14 +228,14 @@ void load_initrd() {
     open_image(m, initrd_name);
 
     if ((m->fallback=(memtop()-m->size)&(~PAGE_MASK))-m[-1].fallback < m[-1].size) {
-        close(m->fd);
         puts(m->errmsg);
+        close(m->fd);
         return;
     }
 
     load_image(m);
 
-    if (*version_string) {
+    /* if (pm_low == 0) */ {
         initrd_desc[0] = m->fallback;
         initrd_desc[1] = m->size;
     }

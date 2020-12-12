@@ -95,9 +95,12 @@ iso_open:
 ;***************************************************************
 iso_read_hack:
 		push	dx
+		xor	dx,dx
+	ifndef	NO386
+		push	dx
+	endif
 		push	cx
 		xor	cx,cx
-		xor	dx,dx
 		mov	al,01h
 		call	doseek		; bx = _isostate.fileofs
 	ifdef	NO386
@@ -107,26 +110,18 @@ iso_read_hack:
 		sbb	ax,dx
 		pop	ax
 		ja	@@axok
-		je	@@rem
-		xor	ax,ax
-@@rem:
-		cmp	cx,ax
-		jb	@@cxok
-@@axok:
+		cmp	ax,cx
 	else
 		push	dx
 		push	ax
-		pop	edx
-		mov	eax,[bx+4]	; _isostate.filesize
-		sub	eax,edx
-		pop	cx
-		ja	@@rem
-		xor	cx,cx
-@@rem:
-		movzx	ecx,cx
+		pop	ecx
+		mov	eax,[_isostate.filesize]
+		sub	eax,ecx
+		pop	ecx
 		cmp	eax,ecx
-		ja	@@cxok
 	endif
+		ja	@@cxok
+@@axok:
 		xchg	ax,cx
 @@cxok:
 		pop	dx		; buffer

@@ -89,16 +89,17 @@ xmm_fail:
 
         endp    xmm_driver
 
+		ifdef	WITH_XMM_ALLOC
 		include	"himem.inc"
 
 ;***************************************************************
-;_fastcall void xmm_alloc(struct image_himem *m)
+;_fastcall void xmm_alloc(si:struct image_himem *m)
 ;***************************************************************
         global  @xmm_alloc$qp11image_himem:near
         proc    @xmm_alloc$qp11image_himem near
 
 		ifndef	NO386
-		mov	edx,[(image_himem bx).size]		; m->size
+		mov	edx,[(image_himem si).size]		; m->size
                 ;dec     edx
                 shr     edx,10          ; to Kb
                 inc     edx
@@ -106,16 +107,15 @@ xmm_fail:
 		else
 		;mov	ax,-1
 		;cwd
-		;add	ax,[word (image_himem bx).size]		; lo m->size
-		;adc	dx,[word (image_himem bx+2).size]	; hi m->size
-		les	ax,[dword (image_himem bx).size]	; m->size
+		;add	ax,[word (image_himem si).size]		; lo m->size
+		;adc	dx,[word (image_himem si+2).size]	; hi m->size
+		les	ax,[dword (image_himem si).size]	; m->size
 		mov	cl,16-10
 		extrn	N_LXLSH@ES:near
 		call	N_LXLSH@ES
                 inc     dx
                 mov     ah,9h          ;allocate blk of DX kilobytes (<64Mb)
 		endif
-		push	bx
                 call    xmm_driver      ;
                 jnz     @@goerr
                                         ;now: dx=handle of the blk
@@ -124,7 +124,6 @@ xmm_fail:
                                         ;now: dx:bx=addr of blk
                 xchg    ax,bx
 @@goerr:
-		pop	bx
                 jnz     @@err
 		mov	[word (image_himem bx).buf],ax		; lo m->buf
 		mov	[word (image_himem bx+2).buf],dx	; hi m->buf
@@ -132,6 +131,7 @@ xmm_fail:
                 ret
 
         endp    @xmm_alloc$qp11image_himem
+		endif
 
         ends    _TEXT
 

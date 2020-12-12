@@ -22,9 +22,6 @@ vcpi_alloc_err	db	"VCPI"
 		global	overflow:byte
 overflow	db	"/"
 msg_malloc      db      "Out of memory",0
-	ifdef	EXTRA
-tazboot_cmd	db	"tazboot.cmd",0
-	endif
 
         ends    _DATA
 
@@ -61,14 +58,18 @@ utoabuf		db	6	dup (?)
         global  @strcatb$qpxzct1:near
         proc	@strcatb$qpxzct1 near
 
+	ifdef	EXTRA
 		mov	cl,7Fh
 		db	0bah			; mov	dx,imm opcode
         global	@strcpy$qpxzct1:near
 @strcpy$qpxzct1:
 		xor	cx,cx
+	endif
                 push	si
                 xchg	ax,si			; b
+	ifdef	EXTRA
 		jcxz	@@nocat
+	endif
 		dec	bx
 @@catlp:
                 inc	bx
@@ -88,8 +89,10 @@ utoabuf		db	6	dup (?)
                 inc	bx
 		or	al,al
                 jne	@@cpylp
+	ifdef	EXTRA
 strfound:
 		xchg	ax,dx
+	endif
 strend:
                 pop	si
 	global	@ret:near
@@ -190,12 +193,13 @@ __open:
 		cwd				; action = open
 		stc
                 int	21h
-		pop	si bx
+		pop	si dx
                 jnc	doret
+	else
+                mov	dx,bx
 	endif
                 mov	ax,3d00h		; read-only+compatibility
 		;mov	cl,0			; attribute mask
-                mov	dx,bx
 		jmp	dos
 
         endp    @open$qpxzc
@@ -234,15 +238,15 @@ closeret:
 
 
 ;***************************************************************
-;_fastcall int readrm(bx:struct himem *m, ax:int sz);
+;_fastcall int readrm(di:struct himem *m, ax:int sz);
 ;_fastcall int read(ax:int fd, bx:void* data, dx:int sz);
 ;_fastcall int write(ax:int fd, bx:const void* data, dx:int sz);
 ;***************************************************************
         global  @readrm$qp11image_himemi:near
 @readrm$qp11image_himemi:
 		xchg	ax,dx		; sz
-		mov	ax,[bx]		; fd
-		mov	bx,[bx-2]	; data
+		mov	ax,[di]		; fd
+		mov	bx,[di-2]	; data
         global  @read$qipvi:near
         proc    @read$qipvi near
 
@@ -647,14 +651,14 @@ ends	data_himem			;}; // size=8200
 	endif
 
 ;***************************************************************
-;_fastcall u32* malloc_bufv_or_die(bx:struct image_himem *m);
+;_fastcall u32* malloc_bufv_or_die(si:struct image_himem *m);
 ;***************************************************************
         global  @malloc_bufv_or_die$qp11image_himem:near
         proc    @malloc_bufv_or_die$qp11image_himem near
 
                 p386
 		push	si
-		mov	si,bx
+		mov	bx,si
 	ifdef	LARGE_IMAGES
 		movzx	eax,[word ((image_himem si).size) + 2]
 		shr	ax,4			; pages index size = size >> 20
@@ -767,6 +771,13 @@ ends	data_himem			;}; // size=8200
 ;***************************************************************
 ;_fastcall void memcpy_image(bx:struct image_himem *m);
 ;***************************************************************
+	global	memcpy_image_initrd:near
+memcpy_image_initrd:
+		lea	bx,[si+32]
+		db	0A9h			; test	ax,imm
+	global	memcpy_image_kernel:near
+memcpy_image_kernel:
+		mov	bx,si
         global  @memcpy_image$qp11image_himem:near
         proc    @memcpy_image$qp11image_himem near
 
@@ -826,15 +837,15 @@ memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
         endp    @memcpy_image$qp11image_himem
 
 ;***************************************************************
-;_fastcall void storepage(bx:u32 *dst);
+;_fastcall void storepage(di:u32 *dst);
 ;***************************************************************
         global  @storepage$qpul:near
         proc    @storepage$qpul near
 
 		ifndef	NO386
-		mov	edx,[bx]
+		mov	edx,[di]
 		else
-		les	ax,[dword bx]
+		les	ax,[dword di]
 		mov	dx,es
 		endif
 		mov	cx,offset _xfer_buf
@@ -861,20 +872,20 @@ storepage:					; storepage(edx,cx)
 	ifdef	LARGE_IMAGES
                 p386
 ;***************************************************************
-;_fastcall void reset_bufv(bx:u32 *p);
+;_fastcall void reset_bufv(di:u32 *p);
 ;***************************************************************
         global  @reset_bufv$qpul:near
         proc    @reset_bufv$qpul near
 
-		mov	[curdata],bx
-		and	[dword (data_himem bx).cacheidx],0
+		mov	[curdata],di
+		and	[dword (data_himem di).cacheidx],0
 		ret
 
         endp    @reset_bufv$qpul
 
 ;***************************************************************
-;u32* prev_bufv();
-;u32* prev_bufv();
+;u32* di=prev_bufv();
+;u32* di=prev_bufv();
 ;***************************************************************
         global  _prev_bufv:near
         global  _next_bufv:near
@@ -884,32 +895,29 @@ storepage:					; storepage(edx,cx)
 		db	73h			; jnc
 _next_bufv:
 		clc
-		push	si
-		mov	si,0
+		mov	bx,0
 		org	$-2
 curdata		dw	?
 		sbb	ax,ax
 		cmc
-		adc	ax,[(data_himem si).cacheidx]	; -1/+1
+		adc	ax,[(data_himem bx).cacheidx]	; -1/+1
 		xor	ecx,ecx
 		test	ax,0fc00h
 		jz	@@gotpage
 		push	ax			; FFFF / 0400
 		sar	ax,8			; FFFC / 0004
 		and	al,0fch
-		add	[(data_himem si).pageidx],ax
-		mov	bx,[(data_himem si).pageidx]
-		lea	bx,[(data_himem bx+si).page]
+		add	[(data_himem bx).pageidx],ax
+		mov	di,[(data_himem bx).pageidx]
+		lea	di,[(data_himem bx+di).page]
 		mov	edx,ds
 		shl	edx,4
-		lea	cx,[(data_himem si).cache]		
+		lea	cx,[(data_himem bx).cache]		
 		add	edx,ecx
-		mov	eax,[bx]
+		mov	eax,[di]
 		or	eax,eax
 		jnz	@@pageok
 		pop	ax
-		xchg	ax,bx
-		pop	si
 		ret
 @@pageok:
 		mov	cx,4096
@@ -918,15 +926,15 @@ curdata		dw	?
 		cbw
 		shr	ax,6			; 03FF / 0000
 @@gotpage:
-		mov	[(data_himem si).cacheidx],ax
+		mov	[(data_himem bx).cacheidx],ax
 		shl	ax,2
-		xchg	ax,bx
-		lea	ax,[(data_himem bx+si).cache]		
-		or	bx,[(data_himem si).pageidx]	; !pageidx && !cacheidx
+		xchg	ax,di
+		lea	ax,[(data_himem bx+di).cache]		
+		or	di,[(data_himem bx).pageidx]	; !pageidx && !cacheidx
 		jnz	@@notfirst2
-		xchg	ax,si				; &first
+		xchg	ax,bx				; &first
 @@notfirst2:
-		pop	si
+		xchg	ax,di
 		ret
 
         endp    _prev_bufv
@@ -1266,43 +1274,6 @@ strtol_ret:
 	endp	@strtol$qpxzc
 
 
-		ifdef	USE_ARGSTR
-;***************************************************************
-;_fastcall void set_cmdline(bx:const char *filename);
-;***************************************************************
-        global  @set_cmdline$qpxzc:near
-        proc	@set_cmdline$qpxzc near
-		call	openargs
-		jc	strtol_ret
-		mov	ch,15			; cx<4096
-		mov	di,[_heap_top]
-		extrn	read_cmdline:near
-		jmp	near read_cmdline	; read_cmdline(ax,di,cx)
-
-        endp	@set_cmdline$qpxzc
-		endif
-
-
-		ifdef	NO386
-;***************************************************************
-;u16 topseg();
-;***************************************************************
-        global  _topseg:near
-        proc    _topseg near
-
-		int	12h
-		jnc	@@max640k
-		mov	ax,640			; 9000
-@@max640k:
-		dec	ax
-		and	al,0C0h
-		mov	cl,6
-		shl	ax,cl
-		ret
-
-        endp    _topseg
-		endif
-
 		ifdef	EXTRA
                 p8086
 ;***************************************************************
@@ -1360,26 +1331,6 @@ kver2ulret:
         endp    @kver2ul$qpzc
 
 			endif
-
-;***************************************************************
-;void try_default_args();
-;***************************************************************
-	ifdef	EXTRA
-
-        global  _try_default_args:near
-        proc    _try_default_args near
-
-		mov	bx,offset tazboot_cmd
-		call	open
-		jc	kver2ulret
-		mov	cx,4096
-		mov	di,[_heap_top]
-		extrn	read_cmdline:near
-		jmp	near read_cmdline	; read_cmdline(ax,di,cx)
-		
-        endp    _try_default_args
-
-	endif
 
         ends    _TEXT
 

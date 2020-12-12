@@ -293,15 +293,21 @@ case "$1" in
 --build)
 	shift
 	TMP=/tmp/iso2exe$$
+	dd if=/dev/zero bs=1k count=100 of=/tmp/fs$$
+	mke2fs /tmp/fs$$
+	mkdir $TMP
+	mount -o loop /tmp/fs$$ $TMP
+	rm -rf $TMP/*
 	mkdir -p $TMP/dev
 	cp -a /dev/tty /dev/tty0 $TMP/dev
 	sed 's|^[ |\t]*||' init > $TMP/init.exe
 	find $TMP -type f -print0 | xargs -0 chmod +x
 	find $TMP -print0 | xargs -0 touch -t 197001010100.00
-	( cd $TMP; find dev init.exe | cpio -o -H newc ) | compress > rootfs.gz
+	( cd $TMP; find dev init.exe | cpio -o -H newc ) | compress rootfs.gz
+	umount -d $TMP
+	rm -rf $TMP /tmp/fs$$
 	p=$((4-($(stat -c %s rootfs.gz)%4)))
 	[ $p = 4 ] || dd if=/dev/zero bs=1 count=$p >> rootfs.gz
-	rm -rf $TMP
 	chmod 644 ${@/init/rootfs.gz}
 	chown root.root ${@/init/rootfs.gz}
 	touch -t 197001010100.00 ${@/init/rootfs.gz}

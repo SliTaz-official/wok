@@ -18,10 +18,11 @@
         ends    _DATA
 
         segment _BSS word public use16 'BSS'
-STACK_SIZE = 1024
-
+		ifdef	EXTRA
         global  _version_string:byte
         label   _version_string byte
+		endif
+STACK_SIZE = 1024
 		db	STACK_SIZE dup(?)
         global  stktop:byte
         label   stktop byte
