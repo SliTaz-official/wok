@@ -393,8 +393,8 @@ isolseek:
 
 		ifdef	USE_ARGSTR
 ;***************************************************************
-;_fastcall int argstr(bx:const char *s, ax:const char keywords[], dx:const char **var);
-;_fastcall int argnum(bx:char *s, ax:const char keywords[], dx:unsigned long *var);
+;_fastcall const char ** argstr(bx:const char *s, ax:const char keywords[], dx:const char **var);
+;_fastcall unsigned long *argnum(bx:char *s, ax:const char keywords[], dx:unsigned long *var);
 ;***************************************************************
 	global	@argstr$qpxzcxt1ppxzc:near
 	proc	@argstr$qpxzcxt1ppxzc near
@@ -404,6 +404,7 @@ isolseek:
 	global	@argnum$qpzcxpxzcpul:near
 @argnum$qpzcxpxzcpul:
 		mov	cl,4
+		push	bx
 		xchg	ax,bx			; keywords -> bx
 		xchg	ax,cx			; s -> cx
 		cbw				; argstr:0002 argnum:0004
@@ -450,22 +451,21 @@ isolseek:
 		cmp	al,'='
 		;je	@@found
 		;cmp	al,0			; eos, si=next argv
-		stc
+		mov	ax,-1
 		jne	@@nokeyword
 @@found:
-		mov	[di],si
 		dec	dx
 		dec	dx
 		je	@@done
 		;mov	bx,si
 		call	@strtol$qpxzc
-		mov	[di],ax
+		xchg	ax,si
 		mov	[di+2],dx
 @@done:
-		clc
+		mov	[di],si
+		xchg	ax,di
 @@nokeyword:
-		sbb	ax,ax
-		pop	di si
+		pop	di si bx
 		ret
 
 	endp	@argstr$qpxzcxt1ppxzc

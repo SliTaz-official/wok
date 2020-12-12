@@ -75,12 +75,12 @@ int main(int argc, char *argv[]) {
 	    continue;
 	}
 #endif
-	if (argstr(*argv,"cl|image|initrd",clp) != -1 && **argv == 'c') continue;
+	if (argstr(*argv,"cl|image|initrd",clp) == (int) clp) continue;
+	if (argnum(*argv,"root|vga|mem|-b",&root_dev) == (int) &base_himem) continue;
 	if (fileexist(*argv) != -1) {
             kernel_name=*argv;
 	    continue;
 	}
-	argnum(*argv,"root|vga|mem|-b",&root_dev);
 	*clp = (const char *) buf_cmdline + 1;
 	strcatb((const char *) buf_cmdline,*argv);
     }

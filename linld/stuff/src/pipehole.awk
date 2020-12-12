@@ -38,13 +38,15 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/image\|initrd/) islinld=3
 	if (islinld==3) {
 		if (/bx,word ptr/) { print "; " $0; next }
-		if (/short @1@282/) print "	mov	bx,word ptr [si]"
-		if (/@fileexist\$qpxzc/) islinld=0
 	}
 	if (/fileexist\$qpxzc/) islinld=4
 	if (islinld==4) {
-		if (/ax,-1/) print "	mov	bx,word ptr [si]"
-		if (/ax,word ptr/) $0="	xchg	ax,bx"
+		if (/ax,-1/) {
+			print "	inc	ax"
+			print "	mov	ax,word ptr [si]"
+			next
+		}
+		if (/ax,word ptr/) next
 		if (/\[si\]$/) { islinld=0; print "; " $0; next }
 	}
 	if (/buf_cmdline\+1/) {
@@ -54,6 +56,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (islinld==5) {
 		if (/bx,offset DGROUP:buf_cmdline/) $0="	dec	bx"
+		if (/ax,word ptr/) next
 		if (/call/) islinld=0
 	}
 	 } # file == "linld.cpp"
