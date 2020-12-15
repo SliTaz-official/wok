@@ -60,11 +60,9 @@ int main(int argc, char *argv[]) {
 
     // Parse command line
 #ifdef	USE_ARGSTR
-    if (!argv[1]) syntax();
+    if (!*++argv) syntax();
     const char **clp = &cmdline;
-    for (;;) {
-	argv++;
-	if (!*argv) break;
+    do {
         if ((*(u16 *)*argv|2) == 0x362F) {	// -64 /64
 	    if (cpuhaslm() == 0) exit();
 	    continue;
@@ -83,7 +81,7 @@ int main(int argc, char *argv[]) {
 	}
 	*clp = (const char *) buf_cmdline + 1;
 	strcatb((const char *) buf_cmdline,*argv);
-    }
+    } while (*++argv);
     puts(*clp);
     set_cmdline(*clp);
     load_kernel();

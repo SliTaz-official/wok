@@ -22,6 +22,8 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/add	si,2/) $0="	lodsw	; " $0
 	if (/add	di,2/) $0="	scasw	; " $0
 	if (/bx,offset DGROUP:s@\+26/) sub(/mov/,";mov")
+	if (/bx,si/ || /\[bp-2\]/) next
+	sub(/\[bx\],0/,"[si],0")
 	if (islinld==1) {
 		print "; " $0
 		if (!/word ptr/) next
@@ -228,7 +230,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/void load_initrd\(\)/) isload=3
 	if (isload == 3) {  # LOAD.LST
-		if (/short @2@198/) sub(/@2@198/,"load_initrd_ret")
+		if (/je	short @2@.*/) sub(/@2@.*/,"load_initrd_ret")
 		if (/mov	ax,word ptr \[si\]/) $0="	lodsw"
 		if( /jmp/) {
 			print "load_initrd_ret:"
