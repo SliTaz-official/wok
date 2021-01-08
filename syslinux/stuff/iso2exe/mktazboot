@@ -1,0 +1,16 @@
+#!/bin/sh
+
+words2bin()
+{
+	for i in $@ ; do
+		printf '\\\\x%02X\\\\x%02X' $(($i&255)) $((($i>>8)&255))
+	done | xargs echo -en
+}
+
+S=$(($(stat -c %s $1)+12))
+P=$((($S+511)/512))
+E=$((4096-(32*$P)))
+words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 -16 \
+		-2 0 256 -16 28 0x6C53 0x5469 0x7A61 > $2
+dd if=$1 bs=1 count=$(($(stat -c %s $1)-1)) >> $2 2> /dev/null
+echo -en '@tazboot.cmd\0' >> $2
