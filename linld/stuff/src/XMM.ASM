@@ -12,14 +12,8 @@
                 p386
 		endif
 
-        group   DGROUP  _TEXT,_BSS
+        group   DGROUP  _TEXT
         assume  cs:DGROUP,ds:DGROUP
-
-        segment _BSS byte public use16 'BSS'
-
-xmm_handler	dd	?
-
-        ends    _BSS
 
         segment _TEXT byte public use16 'CODE'
 
@@ -42,47 +36,30 @@ xmm_handler	dd	?
 ;***************************************************************
         proc    xmm_driver near
 
-		push	si
-		mov	si,offset xmm_handler
-		ifndef	NO386
-		cmp	[dword si],0
-		jne	@@gotit
 		push	ax			; save cmd
                 mov     ax,4300h		; installation check in al
-		else
-		push	ax			; save cmd
-		lodsw
-		or	ax,[word si]
-		jne	@@gotit
-                mov     ah,43h			; installation check in al
-		endif
-
                 int     2fh
-                mov     bx,offset xmm_fail
-                push    ds
+                mov     bx,offset @@xmm_fail
+                push    cs
                 pop     es
                 cmp     al,80h
                 jne     @@err
                 mov     ax,4310h		; get driver address in es:bx
                 int     2fh
 @@err:
-		ifndef	NO386
 		pop	ax			; restore cmd
-		mov	[si],bx
-		mov	[si+2],es
-@@gotit:
-		call	[dword si]		; far ptr [si]
-		else
-		mov	[si-2],bx
-		mov	[si],es
-@@gotit:
-		pop	ax			; restore cmd
-		call	[dword si-2]		; far ptr [si-2]
-		endif
+
+		push	cs			; call far
+		call	@@jmp_esbx
                 dec     ax			; Z=1=OK
-		pop	si
                 ret
-xmm_fail:
+
+@@jmp_esbx:
+		push	es			; \
+		push	bx			;  > jmp far es:bx
+		retf				; /
+
+@@xmm_fail:
                 xor     ax,ax
                 cwd
                 retf

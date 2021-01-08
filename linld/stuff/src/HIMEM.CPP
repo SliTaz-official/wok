@@ -6,20 +6,13 @@
 #include "crtl.h"
 #include "common.h"
 
-#ifdef WITH_XMM_ALLOC
-u16 skip_alloc;
-#endif
-static u32 buf;
+extern u32 himem_buf;
 
 void load_image(struct image_himem *m) {
     m->remaining = m->size;
     m->buf = m->fallback;	// set no_exit btw: die() won't return to DOS
-    u32* bufv= &buf;
-#ifdef WITH_XMM_ALLOC
-    if(((u16 *)&m->fallback)[1] >= (skip_alloc|0x10)) { // >= _1m ?
-#else
+    u32* bufv= &himem_buf;
     if(((u16 *)&m->fallback)[1] >= 0x10) { // >= _1m ?
-#endif
 	if(vcpi) {
 	    bufv = (u32 *)malloc_bufv_or_die(m);	// update m->bufv
 	}
@@ -29,15 +22,15 @@ void load_image(struct image_himem *m) {
 	}
 #endif
     }
-    buf = m->buf;
+    himem_buf = m->buf;
     do {
         u16 size;
 	if(s16(size = read_image(m)) -1 < 0) break;
         storepage(bufv);
-	if (bufv != &buf) next(bufv);
-        buf += size;
+	if (bufv != &himem_buf) next(bufv);
+        himem_buf += size;
     } while (*bufv);
-    if(m->remaining) die("Read error");
+    if(m->remaining) loadfailure();
     close(m->fd2close);
 }
 
@@ -57,9 +50,9 @@ void far last_ditch() {
 	pusha
 # endif
     }
+    vm2rm();
     struct image_himem *m = &pm;
     u32 *q;
-    vm2rm();
     if(((u16 *)&m->fallback)[1] >= 0x10) // >=	_1m ?
 	((u16 *)&m->fallback)[1] = 0x10;
     q = m->bufv;

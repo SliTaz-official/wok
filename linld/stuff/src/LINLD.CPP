@@ -4,29 +4,16 @@
 
 #include "crtl.h"
 #include "common.h"
+#include "iso9660.h"
 
-const char* cmdline = "auto";
-const char* kernel_name = "bzImage";
-#ifdef	USE_ARGSTR
-const char* initrd_name = NULL;
-#else
-const char* initrd_name;
-#endif
-u32 root_dev;
-u32 vid_mode;		// -3 = ask
-			// -2 = Extended VGA
-			// -1 = Normal VGA
-			//  n = as "n" was pressed
-u32 topmem;
-u32 base_himem;
+extern char bzimagestr[];
+const char* cmdstr[4] = {"auto",bzimagestr,NULL,NULL};
+u32 cmdnum[4];
 
 inline void syntax() {
     die("Syntax:" NL
-        "LINLD [image=file] [initrd=files] [vga=mode] [root=num] [mem=max] [cl=cmdline]" NL
+        "LINLD [image=file] [initrd=files] [vga=mode] [root=num] [mem=max] [cl=cmdline] [iso=file]" NL
         "vga mode: ask,extended,normal or dec/oct/hex number" NL
-#ifdef WITH_XMM_ALLOC
-        "-f force" NL
-#endif
         "-64 for cpu64 only" NL
         "Defaults:" NL
         "\timage=bzImage" NL
@@ -39,9 +26,6 @@ inline void syntax() {
 #if 1
         NL NL "Examples:" NL
 	"\tLINLD "
-#ifdef WITH_XMM_ALLOC
-	"-f "
-#endif
 	"-b 64m "
         "initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz "
 	"\"cl=root=/dev/null video=-32\""
@@ -50,7 +34,7 @@ inline void syntax() {
     );
 }
 
-static char buf_cmdline[128];
+extern char buf_cmdline[128];
 int main(int argc, char *argv[]) {
 
     (void) argc;
@@ -59,21 +43,14 @@ int main(int argc, char *argv[]) {
     puts("LINLD v" VERSION_STR "+");
 
     // Parse command line
-#ifdef	USE_ARGSTR
     if (!*++argv) syntax();
     const char **clp = &cmdline;
     do {
         if ((*(u16 *)*argv|2) == 0x362F) {	// -64 /64
-	    if (cpuhaslm() == 0) exit();
-	    continue;
+	    if (cpuhaslm() != 0) continue;
+	    exit();
 	}
-#ifdef WITH_XMM_ALLOC
-        if ((*(u16 *)*argv|0x2002) == 0x662F) {	// -F /f
-	    skip_alloc--;
-	    continue;
-	}
-#endif
-	if (argstr(*argv,"cl|image|initrd",clp) == (int) clp) continue;
+	if (argstr(*argv,"cl|image|initrd|iso",clp) == (int) clp) continue;
 	if (argnum(*argv,"root|vga|mem|-b",&root_dev) == (int) &base_himem) continue;
 	if (fileexist(*argv) != -1) {
             kernel_name=*argv;
@@ -83,94 +60,12 @@ int main(int argc, char *argv[]) {
 	strcatb((const char *) buf_cmdline,*argv);
     } while (*++argv);
     puts(*clp);
+    if (isofile) setiso(isofile);
     set_cmdline(*clp);
     load_kernel();
     load_initrd();
     boot_kernel();
-#else
-    if (!argv[1]) syntax();
-    while (1) {
-	char *s;
-    next:
-	argv++;
-	s=*argv;
-	if (!s) {
-	    load_kernel();
-	    puts(version_string);
-	    load_initrd();
-	    boot_kernel();
-	}
-        if(strhead(s,"initrd=") != -1) {
-            initrd_name=s+7;
-        }
-        else if(strhead(s,"vga=") != -1) {
-            *(u16*)&vid_mode = (u16)strtol(s+7);	// support normal, extended & ask
-        }
-        else switch (*(u16 *)s|0x2002) {
-        case 0x362F:	// -64 /64
-	    if (cpuhaslm() == 0) exit();
-	    goto next;
-#ifdef WITH_XMM_ALLOC
-	case 0x662F:	// -F /f
-	    skip_alloc--;
-	    goto next;
-#endif
-	case 0x622F:	// -B /b
-	    argv++;
-	    ((u16 *)&base_himem)[1] = (u16)(strtol(*argv)>>16);
-	    goto next;
-	default:
-	    if(strhead(s,"cl=") != -1) {
-		cmdline=s+=3;
-		if (*s == '@') {
-		    static struct image_himem image;
-		    char c;
-
-		    s++;
-		    image.errmsg = "Error in cl=@file";
-		    open_image(&image, s);
-		    s+=read(image.fd, (void *)cmdline=s=
-			(char *)malloc_or_die(image.size), image.size);
-		    // Strip any trailing cr/lf
-		    c='\0';
-		    do {
-			// Replace all other cr/lfs with spaces
-			s--;
-			if(*s>=' ') c=' ';
-			else *s = c;
-		    } while (s>cmdline);
-		    puts("Kernel command line:");
-		    puts(cmdline);
-		}
-	    }
-            else if(strhead(s,"root=") != -1) {
-		*(u16*)&root_dev = (u16)strtol(s+5);
-		goto addincmdline;
-	    }
-	    else if(strhead(s,"mem=") != -1) {
-		((u16 *)&topmem)[1] = (u16)(strtol(s+4)>>16);
-		goto addincmdline;
-	    }
-            else if(strhead(s,"image=") != -1) {
-	        s+=6;
-	    set_kernel_name:
-                kernel_name=s;
-            }
-	    else {
-	addincmdline:
-		if(cmdline == (const char *) buf_cmdline + 1) {
-		    strcatb(buf_cmdline,*argv);
-		}
-		else {
-		    if(fileexist(s) != -1) goto set_kernel_name;
-		    cmdline = (const char *) buf_cmdline + 1;
-		    goto addincmdline;
-		}
-	    }
-	}
-    }
-#endif
 
     // Let compiler be happy
-    //return _AX;
+    return _AX;
 }

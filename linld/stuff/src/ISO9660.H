@@ -3,7 +3,7 @@
 //typedef unsigned long dirsizetype;
 //#define filesize2dirsize(x)	(x)
 //#define DIRSECTORSZ	SECTORSZ
-typedef unsigned dirsizetype;
+typedef short dirsizetype;
 #define filesize2dirsize(x)	(*(dirsizetype *)((char *)&(x)+1))
 #define DIRSECTORSZ	(SECTORSZ/256)
 extern struct isostate {
@@ -13,9 +13,12 @@ extern struct isostate {
 	unsigned short filemod;
 	unsigned long fileofs;
 	unsigned long filesize;
+	unsigned long filepos;
 	char *filename;
 	dirsizetype curdirsize, dirsize;
-	unsigned long curdirofs, dirofs;
+typedef unsigned dirpagetype;
+	dirpagetype dirpage;           
+	unsigned long curdirofs;
 	int entrysize;
 	const char *tmp;
 	char c;
@@ -31,8 +34,8 @@ extern struct isostate {
 #define	isofilename isostate.filename
 extern _fastcall void isolseek(const unsigned long *offset);
 extern _fastcall int isoreadsector(const unsigned long *offset);
-extern _fastcall int isoreset(char *name);
-extern _fastcall int isoopen(const char *name);
+extern int _isoopen(void);
 extern int isoreaddir(void);
 #define isolabel() do { isofileofs=0x8028; isofilesize=32; } while (0)
+#define setiso(x) (isostate.fd = open(x))
 #endif

@@ -60,8 +60,8 @@ struct kernelparams_t {
                             //      The file-system on that floppy must be MINIX
                             //      If rd_load() succeeds it sets the root_dev
                             //      to the ramdisk for mounting it
-    u16     vid_mode;       // 01FA Video mode control
-    u16     root_dev;       // 01FC Default root device number
+    u16     vidmode;        // 01FA Video mode control
+    u16     rootdev;        // 01FC Default root device number
     u16     boot_flag;      // 01FE 0xAA55 magic number
     u16     jump;           // 0200 Jump instruction
     u32     header;         // 0202 Magic signature "HdrS"
@@ -120,8 +120,6 @@ static u16 rm_size;
 static u8* rm_buf;	// @ = @rm_size + 2, see A20.ASM
 struct image_himem imgs[2];
 
-static const char kernel_file_error[] = "Can't use kernel file";
-#define not_kernel  "Not a kernel"
 void load_kernel() {
 
     struct	image_himem *m = &pm;
@@ -133,7 +131,6 @@ void load_kernel() {
 #define first1k		((first1k_t*)((u8 *)kernelparams-0x1F1))
 
     // Open kernel, read first kb, check it
-    m->errmsg = kernel_file_error;
     open_image(m, kernel_name);
 
 do {
@@ -151,20 +148,20 @@ do {
     }
     if((kernelparams->setup_sects)>=(_32k/512) || // 0th sector not counted
 	 kernelparams->boot_flag != 0xAA55)
-        die(not_kernel);
+        die("Not a kernel");
     _rm_size=0x200*(kernelparams->setup_sects+1);
     m->size -= _rm_size;
     m->chunk_size -= _rm_size;
 
     // Read remaining rm loader
     if (readrm(m, _rm_size) == _rm_size) break;
-    die(kernel_file_error);
+    loadfailure();
 } while (0);
 
     // Tell rm loader some info
 
-    if((int)vid_mode) kernelparams->vid_mode = vid_mode;
-    if((int)root_dev) kernelparams->root_dev = root_dev;
+    if((int)vid_mode) kernelparams->vidmode = vid_mode;
+    if((int)root_dev) kernelparams->rootdev = root_dev;
 
     if(kernelparams->header == HdrS) { // starting linux 1.3.73
 	if(kernelparams->loadflags & 1) { // zImage as pre 1.3.73
@@ -178,11 +175,7 @@ do {
             hook_int15_88(); // break _ES
         }
         if (kernelparams->kernel_version)
-#ifndef EXTRA
             puts((char *) first1k+kernelparams->kernel_version+0x200);
-#else
-            strcatb(version_string,(char *) first1k+kernelparams->kernel_version+0x200);
-#endif
         kernelparams->type_of_loader = 0xff; // kernel do not know us (yet :-)
         if(kernelparams->version >= 0x201) {
             // * offset limit of the setup heap
@@ -216,20 +209,17 @@ cmd_line_ok:
 // Read initrd if needed
 void load_initrd() {
     struct image_himem *m = &initrd;
-    if (((int)initrd_name | m->fd) == 0) return; // !initrd_name && !m->fd
+    if ((int)initrd_name == 0) return;
 #if defined(__BORLANDC__) && defined(NO386)
 #pragma option -3
     asm{
 	.386p
     }
 #endif
-    m->errmsg = "Can't use initrd file";
-
     open_image(m, initrd_name);
 
     if ((m->fallback=(memtop()-m->size)&(~PAGE_MASK))-m[-1].fallback < m[-1].size) {
-        puts(m->errmsg);
-        close(m->fd);
+	loadfailure();
         return;
     }
 

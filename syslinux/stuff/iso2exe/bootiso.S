@@ -153,71 +153,30 @@ setreg:
 
 ////////////////////////////// DOS EXE code ///////////////////////////////////
 
-bootdir:
-	.asciz	"/boot"
-linld:
-	.asciz	"linld.com"
 cmdline:
-//	.ascii	"-f "
-//	.ascii	"image=\boot\"
-//	.ascii	"bzImage "
-	.ascii	"initrd="
-rootfs:
-	.ascii	"rootfs"
-dotgz:
-	.ascii	".gz,!            "
-//	.ascii	".gz,rootfs4.gz,! "
-args:
-//	.ascii	" rw "
-//	.ascii	" mode=menu"
-	.ascii	" autologin rdinit=/init.exe magic="
-magicstr:
-	.ascii	"0     iso="
-//	.ascii	"65535 iso="
-filename:
+	.ds.b	128,0
+linldofs:				// offset of linld.com in iso
+	.long	0			// Updated by iso2exe
+linldsz:				// size-1
+	.word	0			// Updated by iso2exe
 exestart:
 	movb	$0x30,%ah		// get DOS version
 	int	$0x21
 	cmpb	$3,%al
-	jc	goabort
+	jc	abort
+
+// load linld.com
 
 	cld
-	movw	EXEADRS(comstart),%si
-	movw	$0xF000,%di
-	movb	$4,%ch			// 2k min
+linldbuf	=	0x8000
+isopath		=	0x7000
+	movw	$0x8000,%cx		// clear 8000-FFFF
+	movw	%cx,%di
+	movb	%cl,%al
 	rep
-	  movsw				// helper
-	movw	$129,%si
-	leaw	args-cmdline(%si),%di
-	movb	-1(%si),%cl
-	pushw	%si
-	rep
-	  movsb				// user args
-	xchgw	%ax,%di
-	popw	%di
-	movw	$EXEADRS(cmdline),%si
-	movb	$args-cmdline,%cl
-	rep
-	  movsb				// files
-	xchgw	%ax,%di
-	movb	$filename-args,%cl
-	rep
-	  movsb				// end
-	pushw	%di			// filename
+	  stosb
 
-#define ISOSTATE	0xF000
-#define ISO_OPEN	iso_open
-#define ISO_READDIR	*0xF004
-#define ISO_READMENU 	iso_readmenu
-#define RUN_LINLD	run_linld
-	movw	ISOSTATE,%bp
-	xorw	%ax,%ax
-	movw	%bp,%di
-	movb	$64,%cl
-	rep
-	  stosb				// clear BSS
-
-	movw	%ax,%di
+	movw	%di,%ax
 	movw	0x2C(%di),%es
 	decw	%cx
 scalp:
@@ -225,22 +184,23 @@ scalp:
 	  scasb
 	scasb
 	jne	scalp
-	scasw
-	movw	%di,%si			// %es:%di = programme pathname
-
+	scasw				// %es:%di = programme pathname
 	pushw	%es
-	pushw	%ds
+	pushw	%cs
 	popw	%es
 	popw	%ds
-	popw	%di			// filename
-	pushw	%di
+#define CONONICALIZE_FILENAME	insert obsolute path
+#ifdef CONONICALIZE_FILENAME
+	movw	%di,%si			// %ds:%si = programme pathname
+	movw	$EXEADRS(isopath),%di	// to filename %es:%di
 	movb	$0x60,%ah		// canonicalize filename
 	int	$0x21
 	pushw	%es
 	popw	%ds
+#endif
+	movw	%di,%si			// %ds:%si = programme pathname
 #define LONG_FILENAME
 #ifdef LONG_FILENAME
-	popw	%si
 	pushw	%si
 	movw	$0x716C,%ax
 	xorw	%bx,%bx			// R/O
@@ -249,126 +209,133 @@ scalp:
 	stc
 	int	$0x21
 	jnc	opened
-#endif
 	popw	%dx
-	pushw	%dx
+#else
+	movw	%si,%dx
+#endif
+	pushw	%si
 	movw	$0x3D00,%ax
 //	movb	$0,%cl
 	int	$0x21
-goabort:
-	jc	abort
+	jc	popNabort
 opened:
-	movw	%ax,4(%bp)		// fd
-
-	call	ISO_READMENU
-	movw	6(%bp),%ax		// magic = filemod
-	popw	%bx
-	leaw	magicstr-filename(%bx),%di
-	movb	$10,%bl
-	xorw	%cx,%cx
-lp1:
-	xorw	%dx,%dx
-	divw	%bx
-	pushw	%dx
-	incw	%cx
-	orw	%ax,%ax
-	jnz	lp1
-lp2:
-	popw	%ax
-	addb	$'0',%al
-	stosb				// store magic
-	loop	lp2
-
-	movw	$EXEADRS(bootdir),%ax
-	call	ISO_OPEN
-	orw	$-1,18(%bp)		// curdirsize = -1
-	xorw	%ax,%ax
-found:
-	incb	%ah
-patchtest:
-	pushw	%ax
-	call	ISO_READDIR
-	pushw	%ds
-	popw	%es
-	incw	%ax
-	popw	%ax
-	movw	$EXEADRS(rootfs),%si
-	je	dopatch
-	movw	%si,%di
-	movw	16(%bp),%si		// filename
-	movw	$9,%cx
-	rep
-	  cmpsb
-	jcxz	found
-	cmpb	$3,%cl
-	ja	patchtest
-	decw	%si
-	cmpb	(%si),%al
-	ja	patchtest
-	lodsb
-	jmp	patchtest
-done:
-	movw	$128,%ax
-	subw	%ax,%si
-	xchgw	%ax,%si
-	decw	%ax
-	movb	%al,(%si)		// cmdline length
-
-	movw	$EXEADRS(linld),%ax
-	call	ISO_OPEN
-	jc	abort
-	movw	12(%bp),%cx		// filesize
-	movw	$0x100,%dx
-	call	RUN_LINLD
+	xchgw	%ax,%bx			// fd = %bx
+	movw	$32,%cx
+	movw	$EXEADRS(headbuf),%dx
+	movb	$0x3F,%ah
+	int	$0x21			// read(%bx,%dx,%cx)
+	jc	popNabort
+	les	EXEADRS(linldofs),%dx
+	movw	%es,%cx
+	movw	$0x4200,%ax		// lseek(%bx,%cx:%dx,SEEK_SET)
+	int	$0x21
+	jc	popNabort
+	movw	EXEADRS(linldsz),%cx
+	jcxz	popNabort
+	movw	$EXEADRS(linldbuf),%dx
+	movw	%cx,%di
+	addw	%dx,%di
+	movb	$0x3F,%ah
+	int	$0x21			// read(%bx,%dx,%cx)
+	jnc	copycmdline
+popNabort:
+	popw	%si
 abort:
 	movw	$EXEADRS(stopmsg),%dx
 	movb	$9,%ah
 	int	$0x21
 	int	$0x20
-dopatch:
-	pushw	%si
-	cmpw	$0x200,%ax
-	je	initrddone
-	movw	$EXEADRS(dotgz),%di
-	decb	%ah
-	je	modify
-	scasw
-	scasw				// addw	$4,%di
-	movsw
-	movsw
-	movsw
-modify:
+	
+// installed args (ex: image=/boot/bzImage initrd=rootfs4.gz,! autologin rdinit=/init.exe)
+
+copycmdline:
+	pushw	%ds
+	popw	%es
+	movw	$EXEADRS(cmdline),%si
+	movw	%di,%bx
+
+copylp:
+	lodsb
 	stosb
-	movw	$129+dotgz-cmdline,%si
-	movsb
-	movsw
-	movsw
-initrddone:
-	movw	$129+rootfs-cmdline,%di
-	popw	%si
-	movw	$args-rootfs,%cx
+	orb	%al,%al
+	jnz	copylp
+
+// magic=<magic> arg
+
+	decw	%di
+	movw	$7,%cx
+	movw	$EXEADRS(magicstr),%si
 	rep
 	  movsb
+	movw	EXEADRS(headbuf+18),%ax		// magic
+	movw	$10,%si
+magiclp1:
+	xorw	%dx,%dx
+	divw	%si
+	pushw	%dx
+	incw	%cx
+	orw	%ax,%ax
+	jnz	magiclp1
+magiclp2:
+	popw	%ax
+	addb	$'0',%al
+	stosb				// store magic
+	loop	magiclp2
 
-shrink0:
-	movw	$129,%si
-shrink:
-	movw	%si,%di
-	lodsb
-	cmpb	$0,%al
-	je	done
-	cmpb	$' ',%al
-	jne	shrink
-	cmpb	(%si),%al
-	jne	shrink
-pack:
+// iso=<file> arg
+
+	movb	$5,%cl
+	movw	$EXEADRS(isostr),%si
+	rep
+	  movsb
+	popw	%si
+isolp:
 	lodsb
 	stosb
-	cmpb	$0,%al
-	jne	pack
-	jmp	shrink0
-	
+	orb	%al,%al
+	jne	isolp
+	decw	%di
+
+// append user args
+
+	movw	$0x80,%si
+	lodsb
+	movb	$0xFF,-1(%si)		// long cmdline flag
+	cbw
+	xchgw	%ax,%cx
+	rep
+	  movsb
+	movb	$0,(%di)
+
+// set cmdline size
+
+	movw	%di,%ax
+	subw	%bx,%ax
+	incw	%ax
+	movb	%al,-1(%bx)
+
+// run linld.com
+
+	movw	$EXEADRS(mvNjump),%si
+	incw	%di
+	movb	$endmvNjump-mvNjump,%cl
+mvNjump:
+	pushw	%di
+	rep
+	  movsb
+	movw	$EXEADRS(linldbuf),%si
+	movw	$0x0100,%di
+	popw	%cx
+	pushw	%cx
+	subw	%si,%cx
+	ret
+endmvNjump:
+
+magicstr:	.ascii	" magic="
+isostr:		.ascii	" iso="
+
 	.org	0x0400,0xEE
+headbuf:
 	.org	0x0600,0xFF
 isolinux:
 
@@ -632,12 +599,5 @@ disk_error:
 stopmsg:
 	.ascii	"This program cannot be run in DOS mode.$"
 	.org	0x0778,0xEE
-	.org	0xF002-0xC0
-iso_open:
-	.word	0
-	.word	0
-iso_readmenu:
-	.word	0
-run_linld:
 
 	.end

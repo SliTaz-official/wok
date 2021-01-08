@@ -1,73 +1,41 @@
 #include "crtl.h"
-#include "crtlx.h"
 #include "iso9660.h"
-#define __ROCKRIDGE
 
-#if 1
-#define setdirofs(to,sec)	(*(int*)((char*)&(to)+1) = *(int*)&(sec)<<(SECTORBITS-8))
-#define cpydirofs(to,from)	(*(int*)((char*)&(to)+1) = *(int*)((char*)&(from)+1))
-#else
-#define setdirofs(to,sec)	(to = (sec)<<SECTORBITS)
-#define cpydirofs(to,from)	((to) = (from))
-#endif
+#define setdirpage(to,sec)	((to) = *(int*)&(sec)<<(SECTORBITS-8))
+#define cpytodirpage(to,from)	((to) = *(int*)((char*)&(from)+1))
+#define cpyfromdirpage(to,from)	(*(int*)((char*)&(to)+1) = (from))
 
-#ifdef ISOHOOK
 #define isoroot() \
 { \
-	static const unsigned long root = 16UL * 2048; \
-	isoreadsector(&root); \
-	setdirofs(isostate.dirofs, (* (unsigned long *) (isostate.buffer + 0x9E))); \
-	isostate.dirsize = filesize2dirsize(* (unsigned long *) (isostate.buffer + 0xA6)); \
+	extern void isoreadrootsector(void); \
+	isoreadrootsector(); \
+	setdirpage(x->dirpage, (* (unsigned long *) (isostate.buffer + 0x9E))); \
+	x->dirsize = filesize2dirsize(* (unsigned long *) (isostate.buffer + 0xA6)); \
 }
-#else
-int isoroot(void)
-{
-	static const unsigned long root = 16UL * 2048;
-	if (isoreadsector(&root) == -1 || strhead(isostate.buffer+1,"CD001") == -1) {
-		//close(isostate.fd);
-		return -1;
-	}
-	setdirofs(isostate.dirofs, (* (unsigned long *) (isostate.buffer + 0x9E)));
-	isostate.dirsize = filesize2dirsize(* (unsigned long *) (isostate.buffer + 0xA6));
-	return 0;
-}
-#endif
 
-int isoreaddir(void)
+static int isoreaddir(void)
 {
 	char *p;
 
 	struct isostate *x=&isostate;
 
-	if (x->curdirsize == 0xFFFF) {
-		x->curdirsize = x->dirsize;
-		cpydirofs(x->curdirofs, x->dirofs);
-		goto restarted;
-	}
 	if (x->curpos >= SECTORSZ || * (short *) (x->buffer + x->curpos) == 0) {
-	restarted:
-		if (x->curdirsize < DIRSECTORSZ) return -1;
-		isoreadsector(&x->curdirofs);
+		if ((x->curdirsize =- DIRSECTORSZ) < 0) return -1;
+		isoreadsector(&x->curdirofs);	// x->filepos = 0
 		//x->curdirofs += SECTORSZ;
 		*(int *)((char *) &x->curdirofs+1) += SECTORSZ/256;
-		x->curdirsize -= DIRSECTORSZ;
 		x->curpos = 0;
 	}
 	p = x->buffer; p += x->curpos;
+	x->fileofs = (* (unsigned long *) (p + 2)) << SECTORBITS;
 	if ((x->entrysize = * (short *) p) == 0) {
 		return -1;
 	}
-	x->fileofs = (* (unsigned long *) (p + 2)) << SECTORBITS;
+	// x->filename = "";
 	x->filesize = * (unsigned long *) (p + 10);
 	x->filemod = 0x81ED; if (p[25] & 2) ((char *)&(x->filemod))[1] = 0x41;
-	//x->filemod = (p[25] & 2) ? 0040755 : 0100755;
-	//x->filemod = 0100755 - ((p[25] & (char)2) << 13);
-#ifdef __ROCKRIDGE
-	// p += 34 + (p[32] & -2); ?
 	p = x->buffer + 34 + ((p[32] + x->curpos) & -2);
-#ifdef ISOHOOK
 	x->curpos += x->entrysize;
-#endif
 	do {
 		register len = p[2];
 		if (* (short *) p == 0x4D4E) {
@@ -76,42 +44,18 @@ int isoreaddir(void)
 			goto found;
 		}
 		p += len;
-#ifdef ISOHOOK
-	} while (x->buffer + x->curpos - 2 > p);
-#else
-	} while (x->buffer + x->curpos + x->entrysize - 2 > p);
-#endif
-#endif
-#ifndef ISOHOOK
-	{
-		p = x->buffer + 33; x->filename = p += x->curpos;
-		p--;
-		if (((* (short *) p) & 0xFEFF) -1 == 0) {
-			x->filename = "..";
-			if (--(* (short *) p) == 0)
-				x->filename++;
-		}
-		else {
-			p += *p; p--;
-			if (* (short *) (p) != 0x313B) {
-				p++; p++; // no ;1 to remove
-			}
-			if (p[-1] == '.') p--;
-			*p = 0;
-		}
-	}
-#endif
+	} while (x->buffer + x->curpos - 3 >= p);
 found:
-#ifndef ISOHOOK
-	x->curpos += x->entrysize;
-#endif
 	return 0;
 }
 
-//#define IS_DIR(x)( ((x) & ~0777) == 040000)
-//#define IS_DIR(x)( (char)((x) >> 9) == (char)040)
-//#define IS_DIR(x)( (*((char*) &x + 1) & (char)0776) == (char)0100)
-#define IS_DIR(x)( (*((char*) &x + 1) & (char)0676) == (char)0)
+#define isoreaddir_reset() \
+{ \
+	x->curdirsize = x->dirsize; \
+	cpyfromdirpage(x->curdirofs, x->dirpage); \
+	x->curpos = -1; \
+}
+
 int _isoopen(void)
 {
 //	char *name, *s, c;
@@ -123,25 +67,24 @@ int _isoopen(void)
 	char *s;
 
 	_64bits = cpuhaslm();
-    do {
-#ifdef ISOHOOK
+  _32bits:
 	s = (char *) x->filename2open;
 	if (*s == '/') {
 		s++;
 		isoroot();
-	}
-	name = s;
-	while (*++s);
-#else
-	for (s = (char *) x->filename2open; *s == '/' ; s++) {
-		isoroot();
+		//if (strncmp(x->buffer+1,"CD001,5) == -1) return -1;
+		//if (*(int*)(x->buffer+1) != 0x4443) return -1;
 	}
   next:
+	isoreaddir_reset();
 	name = s;
 	do s++; while (*s && *s != '/');
 	c = *s; *s = 0;
-#endif
-	for (x->curdirsize = 0xFFFF; isoreaddir() != -1;) {
+	do {
+		if (isoreaddir() == -1) {
+			if ((_64bits ^= CPUMASKLM) == 0) goto _32bits;
+			return -1;
+		}
 		const char *n = name;
 #define i (x->tmp)
 		i = x->filename;
@@ -150,20 +93,15 @@ int _isoopen(void)
 			n = "64";
 			i += s - name; // strlen(name);
 		}
-		if (strcmp(i, n) == -1) continue;
-#ifndef ISOHOOK
-		*s++ = c;
-#endif
-		if (IS_DIR(x->filemod)) {
-			cpydirofs(x->dirofs, x->fileofs);
-			x->dirsize = filesize2dirsize(x->filesize);
-#ifndef ISOHOOK
-			if (c) goto next;
-#endif
-		}
-		isolseek(&x->fileofs);
-		return 0;
+		if (strcmp(i, n) != -1) break;
+	} while (1);
+	*s++ = c;
+#define IS_DIR(x)( (*((char*) &x + 1) & (char)0676) == (char)0)
+	if (IS_DIR(x->filemod)) {
+		cpytodirpage(x->dirpage, x->fileofs);
+		x->dirsize = filesize2dirsize(x->filesize);
+		if (c) goto next;
 	}
-    } while ((_64bits ^= CPUMASKLM) == 0);
-	return -1;
+	isolseek(&x->fileofs);
+	return x->fd;
 }

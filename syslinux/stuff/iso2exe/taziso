@@ -44,16 +44,14 @@ quads2bin()
 gettazboot()
 {
 	echo -e "\nCreating $(basename $1) ..."
-	S=$((32+HEADERSZ))
+	gotcdfile linld.com
+	S=$(($(stat -c %s $file)+12))
 	P=$((($S+511)/512))
 	E=$((4096-(32*$P)))
 	words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 -16 \
 			-2 0 256 -16 28 0x6C53 0x5469 0x7A61 > $1
-	uudecode - >> $1 << EOT
-HEADERCODE
-EOT
-	gotcdfile linld.com
-	ddq if=$file >> $1
+	dd if=$file bs=1 count=$(($(stat -c %s $file)-1)) >> $1 2> /dev/null
+	echo -en '@tazboot.cmd\0' >> $1
 }
 
 maybe64()
@@ -1370,8 +1368,6 @@ flavor()
 }
 
 if [ "$1" = "--build" ]; then	#install-begin
-	uuencode -m - < header.com | sed -e '/^HEADERCODE$/r/dev/stdin' \
-	  -e "s|HEADERSZ|$(size header.com)|" -e '/^HEADERCODE$/d' -i $0
 	uuencode -m - < ifmem.bin | sed -e '/^ifmemcode$/r/dev/stdin' \
 	  -e '/^ifmemcode$/d' -i $0
 	uuencode -m - < bootloader.bin | sed -e '/^bootloader$/r/dev/stdin' \

@@ -87,7 +87,8 @@ step19:
 		extrn	sssp:word
 		mov	ax,[sssp+2]
 		mov	es,ax
-		extrn	_cmdline:word
+		extrn	_cmdstr:word
+_cmdline	=	_cmdstr+0
 		mov	si,[_cmdline]
 		mov	di,8000h
 		mov	cx,2000h		; 4k for cmdline + 4k up to sp

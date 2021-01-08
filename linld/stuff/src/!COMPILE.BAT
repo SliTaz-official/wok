@@ -12,7 +12,5 @@ mawk -f pipehole.awk LINLD.ASO > LINLD.ASM
 mawk -f pipehole.awk LOAD.ASO > LOAD.ASM
 mawk -f pipehole.awk HIMEM.ASO > HIMEM.ASM
 mawk -f pipehole.awk ISO9660.ASO > ISO9660.ASM
-tasm /la /m /dISOHOOK /dMOVE_SETUP /dUSE_ARGSTR /dNO386 /dLARGE_IMAGES /dLONG_FILENAME *.asm > asm.log
+tasm /la /m /dISOHOOK /dBIG_CMDLINE /dMOVE_SETUP /dUSE_ARGSTR /dNO386 /dLARGE_IMAGES /dLONG_FILENAME *.asm > asm.log
 tlink /m /s /t @link.cmd > lnk.log
-tlink /m /s /t @link2.cmd > lnk2.log
-tlink /m /s /t @header.cmd > header.log

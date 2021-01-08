@@ -44,9 +44,7 @@ extern struct image_himem {
     u32 remaining;
     u32 buf;
     u32 *bufv;
-    const char *errmsg;
     u32 chunk_size;
-    void (*next_chunk)(struct image_himem *);
     u16 state;
     u16 fd2close;
 } imgs[2];
@@ -55,8 +53,19 @@ extern struct image_himem {
 #define pm2initrd(p) (p+1)
 
 extern u8 pm_low;
-extern u32 base_himem;
+
 extern u32 far *initrd_desc;
+#define cmdline		(cmdstr[0])
+#define kernel_name	(cmdstr[1])
+#define initrd_name	(cmdstr[2])
+#define isofile		(cmdstr[3])
+extern const char* cmdstr[4];
+
+#define root_dev	(cmdnum[0])
+#define vid_mode	(cmdnum[1])	// -3 = ask, -2 = Extended VGA, -1 = Normal VGA,  n = as "n" was pressed
+#define topmem		(cmdnum[2])
+#define base_himem	(cmdnum[3])
+extern u32 cmdnum[4];
 
 extern _fastcall void memcpy_image(struct image_himem *m);
 extern _fastcall void storepage(u32 *dst);
@@ -73,17 +82,10 @@ extern "C" unsigned long* next_bufv();
 #endif
 extern char vcpi;
 extern char version_string[];
-extern const char* kernel_name;
-extern const char* initrd_name;
-extern const char* cmdline;
-extern u32 root_dev;
-extern u32 vid_mode;
 // External asm helpers
 #ifdef	WITH_XMM_ALLOC
-extern u16 skip_alloc;
 extern _fastcall void xmm_alloc(struct image_himem *m);
 #endif
-extern u32 topmem;
 extern "C" u32 memtop();
 extern "C" void enable_a20_or_die();
 extern "C" void vm2rm();

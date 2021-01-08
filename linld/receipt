@@ -33,9 +33,6 @@ compile_rules()
 d:
 cd linld$SUFFIX
 $(cat LINLD$SUFFIX/!COMPILE.BAT)
-cd ..
-cd tazboot
-$(cat TAZBOOT/!COMPILEX.BAT)
 EOT
 	SDL_VIDEODRIVER=dummy dosbox MAKE.BAT -exit -c "mount D $src" \
 		2>&1 | grep -v 'ALSA lib'
@@ -46,19 +43,8 @@ EOT
 	grep '^Warning[ :]' */LNK.LOG */CPP.LOG
 	grep '*Warning*' */*.LST
 	cp LINLD$SUFFIX/LINLD.COM linld.com
-	cp LINLD$SUFFIX/HEADER.COM header.com
-	cp TAZBOOT/TAZBOOT.COM tazboot.com
-	dd count=$((0x$(sed '/ FOLD/!d;s|.*:||;s| .*||;q' LINLD$SUFFIX/ISOBOOT.MAP) - 0x100)) \
-		if=LINLD$SUFFIX/ISOBOOT.COM bs=1 > isoboot.com
-	dd skip=$((0x$(sed '/ UNFOLD/!d;s|.*:||;s| .*||;q' LINLD$SUFFIX/ISOBOOT.MAP) - 0x100)) \
-		if=LINLD$SUFFIX/ISOBOOT.COM bs=1 >> isoboot.com
 	objdump -D -b binary -mi386 -Maddr16,data16 --adjust-vma=0x100 \
 		linld.com > linld.lst
-	linld=linld.com
-	[ $(stat -c %s $linld) -le 4096 ] && ls -l $linld && linld=
-	for f in $linld tazboot.com ; do
-		upx -qq --ultra-brute --8086 $f
-	done
 	cc -o tobzimage.o -Wa,-algms=tobzimage.lst -c $stuff/tobzimage.S
 	objcopy -O binary tobzimage.o tobzimage.bin
 	cp $stuff/tobzimage .

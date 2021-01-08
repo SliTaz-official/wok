@@ -139,7 +139,8 @@ _memtop:
 ; we had trouble detecting memory size
 		cmp	dx,cx
 		jb	@@set
-		extrn	_topmem:dword
+		extrn	_cmdnum:dword
+_topmem		=	_cmdnum+8
 		mov	cx,[word _topmem+2]
 		inc	cx			; jcxnz
 		loop	@@topmemset
@@ -186,11 +187,13 @@ saved15:
 		mov	[dword saved15],eax
 		else
 		mov	ax,offset int15_88
-		xchg	ax,[es:bx+15*4]
-		mov	[word saved15],ax
+		call	saved15z
 		mov	ax,cs
-		xchg	ax,[es:bx+15*4+2]
-		mov	[word saved15+2],ax
+		inc	bx
+		inc	bx
+saved15z:
+		xchg	ax,[es:bx+15*4]
+		mov	[word bx+saved15],ax
 		endif
 		;push	ds
 		;pop	es

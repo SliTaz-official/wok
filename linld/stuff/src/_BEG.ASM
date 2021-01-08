@@ -15,7 +15,7 @@
         ends    _TEXT
 
         segment _DATA byte public use16 'DATA'
-        global  _data_start:byte
+        ;global  _data_start:byte
         label   _data_start byte
 		ifndef	NO386
 msg_badcpu      db      "I need 386+ CPU in real mode w/o paging"
@@ -24,18 +24,18 @@ msg_badmapping	db	"under VCPI 4.0+ manager with low 640k 1:1 mapping"
         global  _vcpi:byte
 _vcpi		db	0
 		endif
-		ifdef	EXTRA
-tazboot_cmd	db	"tazboot.cmd",0
-		endif
 
         ends    _DATA
 
         segment _BSS byte public use16 'BSS'
 
-        global  _bss_start:byte
+		ifdef	BIG_CMDLINE
+	extrn	_big_cmdline:byte
+		db	254 dup(?)
+		endif
+        ;global  _bss_start:byte
         label   _bss_start byte
         global  stktop:byte
-		ifndef	ISOHOOK
 		ifdef	NO386
         global  _cpu386:byte
 _cpu386		db	?
@@ -43,7 +43,6 @@ _cpu386		db	?
 		endif
         global  _cpu_features:dword
 _cpu_features	dd	?
-		endif
         ends    _BSS
 
         segment _TEXT byte public use16 'CODE'
@@ -53,21 +52,23 @@ _cpu_features	dd	?
 	endm
 
                 org     100h
-        global  _text_start:byte
+        ;global  _text_start:byte
         label   _text_start byte
 
 ;***************************************************************
 ; clear bss
 ;***************************************************************
 		mov	sp,offset stktop
-		mov	si,offset _bss_start
 		mov	bx, 0F000h	; cld ; cli & empty string
+		org	$-4-2
+		global	_himem_buf:dword
+_himem_buf	dd	?
+		global	_buf_cmdline:word
+_buf_cmdline	dw	?		; 128 bytes, must start with 00
+		mov	si,offset _bss_start
 clearbss:
 		mov	[si],bl		; clear bss + heap
 		inc	si
-	ifdef	ISOHOOK
-		cmp	si,bx
-	endif
 		jne	clearbss
 
 ;***************************************************************
@@ -87,6 +88,10 @@ clearbss:
                 js	endcpu86   	;it is not a 386+, try ELKS & co
 		endif
                 p386
+                mov     edx,cs
+                shl     edx,4		; edx for prepare_vcpi
+		extrn	gdt_base_memcpy:word	; gdt_base for memcpy32
+		add	[dword gdt_base_memcpy],edx
 ; Check for vm
                 smsw    ax      ;SMSW cannot be trapped! :-)
                 and     al,1	;MSW_PE
@@ -102,32 +107,11 @@ check_rm_paging:
                 p8086
                 extrn   die:near
 godie:
-no_vcpi:
 		call	near die
 		else
 		jmp	endcpu86
 		endif
 
-	ifdef	ISOHOOK
-		global	iso_close_hack
-iso_close_hack	dw	dosbx
-		global  iso_open_hack
-	        extrn   __open:near
-iso_open_hack	dw      __open
-		global	iso_read_hack
-		extrn	dos:near
-iso_read_hack	dw	dos
-		global	iso_lseek_hack
-		extrn	dosbx:near
-iso_lseek_hack	dw	dosbx
-	        global  _cpu_features:dword
-_cpu_features	dd	?		; default _cpu_features+3=1Fh/8Eh (bit5=0, not 64bits)
-		org	$-4
-		ifdef	NO386
-	        global  _cpu386:byte
-_cpu386		db	0
-		endif
-	endif
 
 ;***************************************************************
 ; checks for vcpi
@@ -138,38 +122,13 @@ label   check_vcpi near
 ; Check whether it is safe to call 67h (we trust only known EMM managers)
                 push    si
                 pop     ds
-                mov     ds,[word 67h*4+2]
-                cmp     [dword si+10+4],'0XXX'
-                jne     skip
-		;mov	eax,'XMME'
-		;xor	eax,[dword si+10]
-        ; QMME also works (as told by <J.S.Peatfield@damtp.cambridge.ac.uk>)
-		;shl	eax,8
-		mov	ax,'ME'
-		xor	ax,[word si+10]
-skip:
+                mov     ax,[word 67h*4]
+                or      ax,[word 67h*4+2]
                 pop     ds
-                jne     no_vcpi
-
-; Check emm manager status and version
-                ;mov     ah,40h          ; get status
-                ;int     67h
-		;inc	ax
-                ;js      no_vcpi
-                mov     ah,46h          ; get version
-                int     67h
-                cmp     ax,40h          ; version must be >= 4.0
-                jl      no_vcpi		; btw check ax.15
-; Check vcpi manager status
-              ;;mov     ax,5A01h        ; ALLOCATE RAW PAGES
-              ;;mov     bx,4
-              ;;int     67h
-              ;;inc    	ax
-              ;;js      no_vcpi
-              ;;push    dx              ;$ save handle
+                je      no_vcpi
                 mov     ax,0DE00h       ; check for vcpi present
                 int     67h
-                test    ah,ah
+                or	ah,ah
 		jnz	no_vcpi
 is386vcpi:
                 extrn   prepare_vcpi:near
@@ -186,13 +145,14 @@ is386vcpi:
 		extrn	_vcpi:byte
 		dec	[byte _vcpi]
 		endif
+no_vcpi:
 endcpu386:
 		pushfd
 		pop	dx
 		pop	ax
 		mov	bl,al
-		xor	al,20h		; toggle CPUID feature bit 21
-		push	ax
+		xor	al,20h		; toggle CPUID feature bit 21 (=> pentium+)
+		push	ax		;  (toggle AC: bit 18 => 486+)
 		push	dx
 		popfd
 		pushfd
@@ -202,12 +162,11 @@ endcpu386:
 		je	@@no_cpuid	; CPUID feature bit changed ?
 		mov	eax,80000001h	; Extended Processor Info and Feature Bits
 		cpuid
+		mov	dl,-1		; set 386 flag (assume cpuid => fpu:bit0=1 ?)
 		ifdef	NO386
-		mov	dl,-1		; set 386 flag
 		db	66h		; mov [_cpu_features],edx
 @@no_cpuid:
 		mov	[word _cpu_features],dx	; dl != 0
-no_vcpi:
 		else
 		mov	[_cpu_features],edx
 @@no_cpuid:
@@ -223,27 +182,30 @@ endcpu86:
 		global	_heap_top
 		org	$-2
 _heap_top	dw	?
-		;xor	ax,ax
-                ;push	ax			; envp (already cleared)
-                ;mov	[word di],ax		; argv[0] = 0 (idem)
                 mov	si,80h
-                lodsb
-                cmp	al,7Eh
-                jbe	alok
-                mov	al,7Eh
-alok:
+		ifdef	BIG_CMDLINE
+                mov	bx,offset _big_cmdline
+		cmp	[byte si],2
+		jnb	@@user_args
+		call	@set_cmdline$qpxzc
+@@user_args:
+		endif
+                lodsb				; size 0..127
 		cbw
+		ifdef	BIG_CMDLINE
+		inc	ax
+		jnz	short_cmdline
+		mov	si,bx
+                lodsb				; size 0..254
+short_cmdline:
+		dec	ax
+		endif
 		xchg	ax,bx
                 mov	[bx+si],bh		; set eos
+		;xor	dx,dx
+                ;push	dx			; envp (already cleared)
+                ;mov	[word di],dx		; argv[0] = 0 (idem)
 argbuild:
-		ifdef	DEBUG
-                p386
-		pusha
-		mov	bx,si
-		extrn	puts:near
-		call	puts
-		popa
-		endif
                 mov	bx,2			; argc * 2
 argeos:
                 mov	cx,1			; look for a start of string
@@ -290,15 +252,15 @@ argdone:
 read_cmdline:
 		mov	dx,di
 		push	dx
-		push	ax
 		xchg	ax,bx
 		extrn	@read$cxdxbx:near	; read(fd=bx,buffer=dx,size=cx)
 		call	near @read$cxdxbx
-                pop	bx			; fd for close
                 pop	si			; si=buffer=argv
                 add	di,ax
+		ifndef	NO_CLOSE
 		extrn	close:near
 		call	near close
+		endif
                 jmp	argbuild
 argend:
 	endif
@@ -311,7 +273,6 @@ argend:
 ;***************************************************************
 
 
-		extrn	_head_top:word
 		ifdef	USE_ARGSTR
 ;***************************************************************
 ;_fastcall void set_cmdline(bx:const char *filename);
@@ -326,25 +287,6 @@ argend:
 		jmp	read_cmdline		; read_cmdline(ax,di,cx)
 
         endp	@set_cmdline$qpxzc
-		endif
-
-;***************************************************************
-;void try_default_args();
-;***************************************************************
-
-		ifdef	EXTRA
-        global  _try_default_args:near
-        proc    _try_default_args near
-
-		mov	bx,offset tazboot_cmd
-		extrn	@open$qpxzc:near
-		call	@open$qpxzc
-		jc	@ret
-		mov	ch,15			; cx<4096
-		mov	di,[_heap_top]
-		jmp	read_cmdline		; read_cmdline(ax,di,cx)
-		
-        endp    _try_default_args
 		endif
 
 		ifdef	NO386

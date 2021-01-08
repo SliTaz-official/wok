@@ -15,6 +15,12 @@
         group   DGROUP  _TEXT
         assume  cs:DGROUP,ds:DGROUP
 
+macro	lcr0	reg
+	mov	cr0,reg
+	jmp	short $+2	;*Required*!
+				;3+ NOPs also work fine (chkd on 386)
+endm
+
         segment _TEXT byte public use16 'CODE'
 
 ;***************************************************************
@@ -25,25 +31,16 @@
         global  memcpy32:near
         proc    memcpy32 near
 
-; rm32,imm16 helper
-macro   addzx_e rm,i
-        db      66h
-        add     rm,i
-        dw      0
-endm
                 arg     dstofs  :dword, \
                         srcseg  :word,  \
                         srcofs  :dword, \
                         sz      :dword  = PARAM_SIZE
 
-                local   GDTR    :pword, \
-                        oldGDTR :pword  = TEMP_SIZE
-
 ;****** Init ***************************************************
 
 			ifndef	NO386
 
-		enter	TEMP_SIZE,0
+		enter	0,0
 		;cld
                 pushf
                 push    ds es
@@ -86,7 +83,6 @@ endm
 
 		push	bp
 		mov	bp,sp
-		sub	sp,TEMP_SIZE
 		;cld
                 pushf
                 push    ds es
@@ -168,22 +164,16 @@ endm
                 std                     ;
 @@do_copy:
                 cli
+oldGDTR		=	(pword srcseg)	; don't need src seg/ofs anymore
                 sgdt    [oldGDTR]
 
 ;****** Load gdtr **********************************************
-                mov     eax,cs
-                shl     eax,4
-                addzx_e ax,<offset GDT>
-                or      [word GDTR],-1          ;GDT limit = 0FFFFh
-                mov     [dword GDTR+2],eax      ;GDT base
                 lgdt    [GDTR]
 
 ;****** Go into pm *********************************************
                 mov     eax,cr0
                 inc     ax		;CR0_PE on
-                mov     cr0,eax
-                jmp     short $+2       ;*Required*!
-                                        ;3+ NOPs also work fine (chkd on 386)
+		lcr0	eax
 ;****** Move data **********************************************
                 push    0008h
                 pop     ds              ;base=0, lim = 4gb
@@ -196,10 +186,7 @@ endm
 
 ;****** Return to rm *******************************************
                 dec     ax              ;CR0_PE off
-                mov     cr0,eax         ;ds/es limits are *not* reset to 64kb
-                                        ;  but who cares :-)
-                jmp     short $+2
-
+		lcr0	eax
 ;****** Return *************************************************
                 lgdt    [oldGDTR]
 @@done:
@@ -212,21 +199,17 @@ endm
                 p386
 		leave
 			else
-		mov	sp,bp
 		pop	bp
 			endif
                 ret	14
 
 ;****** Const data *********************************************
-                org     $-8     ;save 8 bytes - they are unused anyway
-;0000: unused
-GDT             dd      ?,?
-;0008: Data seg [0,FFFFFFFF]
-                ;       lim_lo              base_lo
-                dw      1111111111111111b,  0000000000000000b
-                db      00000000b,10010010b,10001111b,00000000b
-                ;       base_med  P  S D A  G ??l_hi  base_hi
-                ;                  Pl E W    D
+
+		extrn	gdt_memcpy
+label	GDTR	pword
+gdt_limit	dw	0ffffh
+		global	gdt_base_memcpy:word
+gdt_base_memcpy dw	offset gdt_memcpy,0
 
         endp    memcpy32
 

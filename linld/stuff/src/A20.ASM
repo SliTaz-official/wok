@@ -16,11 +16,13 @@
         global  die:near
 enable_a20_methods:
 		dw	_enable_a20_fast, _enable_a20_kbd, _enable_a20_xmm, die
-msg_a20		db	"Can't use A20",0
+msg_a20		db	"A20 broken",0
 		extrn	overflow:byte
 		ifdef	NO386
-bzimage86	db	"8086 & bzImage",0
+bzimage86	db	"8086 "
 		endif
+	global	_bzimagestr:byte
+_bzimagestr	db	"bzImage",0
 	global	sssp:dword
 	global	_initrd_desc:dword
 _initrd_desc	dd	90000218h
@@ -109,7 +111,7 @@ sssp		dd	?
 		mov	cl,4
 		shr	ax,cl
 		mov	dx,cs
-		add	dx,ax
+		add	dx,ax			; last used segment
 		mov	cx,0fffh
 		extrn	_pm_low:byte
 		test	[_pm_low],cl
@@ -124,7 +126,7 @@ sssp		dd	?
 		xchg	ax,dx
 		cmp	ax,cx
 		jae	@sys@ok
-		xchg	ax,cx
+		xchg	ax,cx			; segment min 1000h
 @sys@ok:
 		inc	ax
 		extrn	N_LXLSH@4:near
@@ -142,13 +144,13 @@ sssp		dd	?
 		sbb	dx,cx
 		endif
 		mov	cl,12
-		shl	dx,cl
-		jc	@jbe_overflow
+		shl	dx,cl		; last segment
+		jc	@jbe_overflow	; >= 1Mb ?
 @bzimage:
 		extrn	_topseg:near
 		call	near _topseg
 		mov	[word sssp+2],ax
-		and	ch,0
+		and	ch,0		; vcpi flag
 		org	$-1
 		global	_vcpi:byte
 _vcpi		db	?
@@ -157,14 +159,14 @@ _vcpi		db	?
 		movzx	eax,[word _heap_top]
 		shr	ax,4
 		mov	dx,cs
-		add	ax,dx
+		add	ax,dx			; last used segment
 		mov	cx,0fffh
 		extrn	_pm_low:byte
 		test	[_pm_low],cl
 		je	@bzimage
 		cmp	ax,cx
 		jae	@sys@ok
-		xchg	ax,cx
+		xchg	ax,cx			; segment min 1000h
 @sys@ok:
 		inc	ax
 		shl	eax,4
@@ -186,7 +188,7 @@ _vcpi		db	?
 		extrn	_vcpi:byte
 		and	ch,[_vcpi]
 		endif
-		add	dh,ch		; room for malloc_bufv_or_die
+		add	dh,ch		; 60k room for malloc_bufv_or_die
 		cmp	ax,dx
 		les	cx,[bx]		; rm_size
 		mov	si,es		; rm_buf
@@ -240,16 +242,17 @@ _vcpi		db	?
 		mov	cx,0FFFFh
 		mov	es,cx
 a20lp:
-		cli
-		mov	ax,0AA55h
-		xchg	al,[bx]
-		xchg	ah,[es:bx+10h]
-		xchg	al,[bx]
-		xchg	ah,[es:bx+10h]
+		cli			; A20 off	A20 on
+		mov	ax,0AA55h	; al  ah [bx]	al  ah [bx] es:[bx+10h]
+		xchg	al,[bx]		; ??  AA  55    ?1  AA  55  ?2
+		xchg	ah,[es:bx+10h]	; ??  55  AA	?1  ?2  55  AA
+		xchg	al,[bx]		; AA  55  ??    55  ?2  ?1  AA
 		cmp	al,55h
 		sti
-a20ko:
 		loopne	a20lp
+		jne	a20ko	
+		xchg	ah,[es:bx+10h]	; AA  ??  55	55  AA  ?1  ?2
+a20ko:
 		;xchg	ax,cx
                 pop     ds
                 ;ret

@@ -51,15 +51,6 @@ add_rootfs()
 	rm -rf $TMP
 }
 
-add_doscom()
-{
-	SIZE=$($0 --get boot.com | wc -c)
-	OFS=$(( $OFS - $SIZE ))
-	printf "Adding DOS boot file at %04X (%d bytes) ...\n" $OFS $SIZE
-	$0 --get boot.com | ddn of=$1 bs=1 seek=$OFS
-	store 64 $(($OFS+0xC0)) $1
-}
-
 add_tazlito_info()
 {
 	HOLE=$OFS
@@ -110,6 +101,20 @@ EOT
 		store 454 $(($i/512)) $1 32			### 446+8 OFFSET
 		store 458 $(($(stat -c %s $1)/512)) $1 32	### 446+12 SIZE
 	fi
+	mkdir /tmp/mnt$$	
+	mount -o loop,ro $1 /tmp/mnt$$
+	if [ -s /tmp/mnt$$/boot/linld.com ]; then
+		i=$(($(get 20 $1)-0xC0))
+		store $(($i-6)) $(($(stat -m /tmp/mnt$$/boot/linld.com | sed q)*2048)) $1 32
+		store $(($i-2)) $(stat -c %s /tmp/mnt$$/boot/linld.com) $1
+		r0="$(cd /tmp/mnt$$/boot/ ; ls rootfs.gz 2> /dev/null)"
+		r1="$(cd /tmp/mnt$$/boot/ ; ls -r rootfs?*.gz 2> /dev/null | sed q)"
+		[ "$r0" -a "$r1" ] && r0="$r0,"
+		echo -n "image=/boot/bzImage initrd=$r0$r1,! autologin rdinit=/init.exe" | \
+		ddn bs=1 of=$1 conv=notrunc seek=$(($i-134))
+	fi
+	umount /tmp/mnt$$	
+	rmdir /tmp/mnt$$	
 }
 
 add_fdbootstrap()
@@ -293,8 +298,8 @@ case "$1" in
 --build)
 	shift
 	TMP=/tmp/iso2exe$$
-	dd if=/dev/zero bs=1k count=100 of=/tmp/fs$$
-	mke2fs /tmp/fs$$
+	ddq if=/dev/zero bs=1k count=100 of=/tmp/fs$$
+	mke2fs /tmp/fs$$ > /dev/null
 	mkdir $TMP
 	mount -o loop /tmp/fs$$ $TMP
 	rm -rf $TMP/*
@@ -307,7 +312,7 @@ case "$1" in
 	umount -d $TMP
 	rm -rf $TMP /tmp/fs$$
 	p=$((4-($(stat -c %s rootfs.gz)%4)))
-	[ $p = 4 ] || dd if=/dev/zero bs=1 count=$p >> rootfs.gz
+	[ $p = 4 ] || ddq if=/dev/zero bs=1 count=$p >> rootfs.gz
 	chmod 644 ${@/init/rootfs.gz}
 	chown root.root ${@/init/rootfs.gz}
 	touch -t 197001010100.00 ${@/init/rootfs.gz}
@@ -328,7 +333,6 @@ EOM
 	add_win32exe $DATA $2 > /dev/null
 	HSZ=$OFS
 	add_rootfs $DATA > /dev/null
-	add_doscom $DATA > /dev/null
 	add_fdbootstrap $DATA > /dev/null
 	name=${3:-bootiso}
 	BOOTISOSZ=$((0x8000 - $OFS + $HSZ))
@@ -574,7 +578,6 @@ EOT
 	
 	# keep the largest room for the tazlito info file
 	add_rootfs $1
-	add_doscom $1
 	add_fdbootstrap $1
 	printf "%d free bytes in %04X..%04X\n" $(($OFS-$HOLE)) $HOLE $OFS
 	store 440 $(date +%s) $1 32

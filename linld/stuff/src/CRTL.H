@@ -22,22 +22,19 @@ extern char xfer_buf[4096];
 void parse_cmdline();
 extern _fastcall void strcatb(const char* a,const char* b);
 extern _fastcall void strcpy(const char* a,const char* b);
-#ifdef USE_ARGSTR
 extern _fastcall int argstr(const char *s, const char keywords[], const char **var);
 extern _fastcall int argnum(char *s, const char keywords[], unsigned long *var);
 extern _fastcall void set_cmdline(const char *filename);
-#ifndef ISOHOOK 
-#define strhead(a,b)	(strstr(a,b) != (int) (a))
-#else
-extern _fastcall int strhead(const char* a,const char* head);
-#endif
-#else
-extern _fastcall int strhead(const char* a,const char* head);
-#endif
+extern _fastcall int strcmp(const char* a,const char* b);
+extern _fastcall int strhead(const char* a,const char* b);
 extern _fastcall int fileexist(const char* name);
 //extern "C" int open(const char* name, int flags);
 extern _fastcall int open(const char* name);
+#ifdef NO_CLOSE
+#define close(x)
+#else
 extern _fastcall int close(int fd);
+#endif
 extern _fastcall int moverm(unsigned short *p);
 extern _fastcall int readrm(struct image_himem *m, int sz);
 extern _fastcall int read(int fd, void* data, int sz);
@@ -59,3 +56,5 @@ extern _fastcall int malloc_bufv_or_die(struct image_himem *m);
 extern char cpu_features[];
 #define CPUMASKLM  (0x20)
 #define cpuhaslm() (cpu_features[3]&CPUMASKLM)
+
+extern void loadfailure(void);
