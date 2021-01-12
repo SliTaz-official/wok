@@ -292,6 +292,7 @@ dosbx:
         endp    @isoreadsector$qpxul
 
 
+		ifdef ISOHOOK
 ;***************************************************************
 ;_fastcall int strhead(bx:const char* a, ax:const char* b);
 ;***************************************************************
@@ -327,6 +328,28 @@ dosbx:
 
         endp    @strcmp$qpxzct1
 
+		else
+
+;***************************************************************
+;_fastcall int strcmp(bx:const char* a, ax:const char* b);
+;***************************************************************
+        global  @strcmp$qpxzct1:near
+        proc    @strcmp$qpxzct1 near
+
+@@loop:
+		xchg	ax,bx
+                mov	dl,[bx]			; dl = *b++
+                inc	bx
+		xchg	ax,bx
+                xor	dl,[bx]			; dl ^= *a++
+		jne	fail			; return -1
+                inc	bx
+		or	dl,dl			; clear C
+		jz	failifc			; return 0
+                jmp	@@loop
+
+        endp    @strcmp$qpxzct1
+		endif
 
 ;***************************************************************
 ;_fastcall const char **argstr(bx:const char *s, ax:const char keywords[], dx:const char **var);
@@ -356,7 +379,7 @@ dosbx:
 @@match:
 		inc	bx			; keywords++
 		lodsb				; *s++
-		or	al,20h
+		or	al,20h			; locase
 		cmp	al,[bx]
 		je	@@match
 		cmp	al,'/'			; 2f
@@ -377,6 +400,8 @@ dosbx:
 		cmp	[byte bx],dh
 		jne	@@loop
 @@testal:
+		cmp	al,'*'
+		je	@@setnum
 		cmp	al,'='
 		;je	@@found
 		;cmp	al,0			; eos, si=next argv
@@ -387,6 +412,7 @@ dosbx:
 		dec	dx
 		je	@@done
 		call	@strtol$qpxzc
+@@setnum:
 		xchg	ax,si
 		mov	[di+2],dx
 @@done:

@@ -75,6 +75,10 @@
         global  @xmm_alloc$qp11image_himem:near
         proc    @xmm_alloc$qp11image_himem near
 
+		extrn	_cmdnum:dword
+skip_alloc	=	(byte _cmdnum+16)
+		cmp	[skip_alloc],0
+		jne	@@err
 		ifndef	NO386
 		mov	edx,[(image_himem si).size]		; m->size
                 ;dec     edx
@@ -94,16 +98,14 @@
                 mov     ah,9h          ;allocate blk of DX kilobytes (<64Mb)
 		endif
                 call    xmm_driver      ;
-                jnz     @@goerr
+                jnz     @@err
                                         ;now: dx=handle of the blk
                 mov     ah,0Ch          ;lock blk
                 call    xmm_driver      ;
                                         ;now: dx:bx=addr of blk
-                xchg    ax,bx
-@@goerr:
                 jnz     @@err
-		mov	[word (image_himem bx).buf],ax		; lo m->buf
-		mov	[word (image_himem bx+2).buf],dx	; hi m->buf
+		mov	[word (image_himem si).buf],bx		; lo m->buf
+		mov	[word (image_himem si+2).buf],dx	; hi m->buf
 @@err:
                 ret
 

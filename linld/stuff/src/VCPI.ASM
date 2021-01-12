@@ -66,15 +66,15 @@ use_16          = 00000000b
 use_32          = 01000000b
 
 ;****** rm32,imm16 helper
-macro   movzx_e rm,i
-        db      66h
-        mov     rm,i
-        dw      0
+macro	movzx_e	rm,i
+	db	66h
+	mov	rm,i
+	dw	0
 endm
 
-macro	pushd	v
-        db      66h
-	push	v
+macro	pushd	sreg
+	db	66h
+	push	sreg
 endm
 
         group   DGROUP  _TEXT
@@ -259,49 +259,35 @@ ends
 ;***************************************************************
                 mov     bp,sp           ; ss:bp => struct pm_regs
 
-                pushd   gs              ; IRET stack for return to vm
-                pushd   fs              ;   (9 dwords)
-                pushd   ds              ;
-                pushd   es              ;
-                pushd   ss              ;
+		mov	bx,5		; IRET stack for return to vm
+@@push_sreg:
+		pushd	ss		; fake pushd gs fs ds es ss
+		dec	bx
+		jnz	@@push_sreg	;   (9 dwords)
                 push    ebp             ; esp
                 pushfd                  ; eflags: IF saved here
                 pushd   cs              ;
-                push    0               ;\eip
-                push    offset @@vm_ret ;/
-
-              ;;mov     [saved_xx],xx   ;use if your vcpi trashes bp/etc
+                push    bx              ;\eip
+                push    offset vcpi_ret ;/
 
 		call	switch_to_pm	; EAX, EDX/ESI, DS, ES, FS, GS destroyed
                 assume  nothing
                 assume  cs:DGROUP
 
 ; Now we are in 16-bit protected mode
-		;push	SEL_DATA
-		;pop	ss
-                mov     ax,SEL_DATA
-                mov     ss,ax
-              ;;mov     ds,ax
-              ;;mov     es,ax
-              ;;mov     fs,ax
-              ;;mov     gs,ax
-
-              ;;mov     xx,[saved_xx]   ;use if your vcpi trashes bp/etc
-                lea     sp,[bp-9*4]     ;else we can do this trick with bp
+		mov	bl,SEL_DATA
+                mov     ss,bx
+                lea     sp,[bp-8-9*4]
 
 ; Call the routine (bp points to params on stack if any)
-                call    do_memcpy_vcpi
+                call    do_memcpy_vcpi	; set ds=all_addrspace
 
 ; Ok, let's return to vm
                 mov     ax,0DE0Ch       ; maybe we need whole eax?
                 cli     ; to be safe
                 clts    ;
-              ;;push    SEL_ABS         ; vcpi wants ds=all_addrspace
-              ;;pop     ds              ; (done by do_memcpy_vcpi)
-                call    [pword cs:vcpi_pm_entry]
-@@vm_ret:
-; Now we are in vm86 mode. Sregs, esp, eflags (IF) restored from IRET stack
-                ret
+; Go to vm86 mode. Sregs, esp, eflags (IF) restored from IRET stack
+                jmp	[pword cs:vcpi_pm_entry]
 
 ;***************************************************************
 
@@ -310,8 +296,6 @@ ends
 ;***************************************************************
 label   do_memcpy_vcpi near
 
-; Note: ss:bp => params
-; Move data
                 push    SEL_ABS
                 pop     ds
                 push    ds
@@ -325,30 +309,15 @@ label   do_memcpy_vcpi near
 		xchg	eax,edi
                 mov     al,03h          ; writeable, present
 		call	@@set_mapping
-               ;push    eax             ;X we'll need to restore mapping...
                 xor     edi,edi         ;es:edi => remapped page
 
         ; Set up source addr
 		mov	esi,edx
 
         ; Do copying
-;		xor	ecx,ecx
-;               mov     ch,4096/256
-                ;cld
-;;              cmp     esi,edi
-;;              jae     @@do_copy
-;;              add     esi,ecx         ;src<dst: we must do
-;;              dec     esi             ;  copy backwards to avoid
-;;              add     edi,ecx         ;  overwrite bug
-;;              dec     edi             ;
-;;              std                     ;
-;;@@do_copy:
                 db      67h     ;address width override for esi/edi
             rep movsb
-;;              cld
 
-        ; Restore page mapping for page at 0
-               ;pop     eax             ;X
 @@set_mapping:
                 mov     esi,[cs:sw2pm_cr3]
                 xchg    [esi-1000h],eax ; restore page0[0]
@@ -385,9 +354,9 @@ vcpi_ret:
 		mov	bx,offset sssp
                 endif
                 p386
-                pop	ax
-                push    cs      ;*
-                push	ax
+                pop	ax		; convert
+                push    cs      	; near call
+                push	ax		; to far call
                 push	ds
                 mov     [bx],sp
                 ;mov     [bx+2],ss
@@ -397,13 +366,6 @@ vcpi_ret:
                 assume  cs:DGROUP
 
 ; Now we are in 16-bit protected mode
-                ;mov     ax,SEL_DATA     ; load data sregs with limit >=64k
-                ;mov     ss,ax           ;   or you may get limit violations
-                ;mov     ds,ax           ;   later in rm
-                ;mov     es,ax           ;   (actually I prefer 4gig limits :-)
-                ;mov     fs,ax           ;
-                ;mov     gs,ax           ;
-
 ; Black magic here
                 mov     eax,cr0
                 and     eax,7ffffffeh   ; clear PG,P bits

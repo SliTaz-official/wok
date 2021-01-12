@@ -19,14 +19,15 @@ static int isoreaddir(void)
 
 	struct isostate *x=&isostate;
 
-	if (x->curpos >= SECTORSZ || * (short *) (x->buffer + x->curpos) == 0) {
+	p = x->buffer;
+	if (x->curpos >= SECTORSZ || * (short *) (p + x->curpos) == 0) {
 		if ((x->curdirsize =- DIRSECTORSZ) < 0) return -1;
 		isoreadsector(&x->curdirofs);	// x->filepos = 0
 		//x->curdirofs += SECTORSZ;
 		*(int *)((char *) &x->curdirofs+1) += SECTORSZ/256;
 		x->curpos = 0;
 	}
-	p = x->buffer; p += x->curpos;
+	p += x->curpos;
 	x->fileofs = (* (unsigned long *) (p + 2)) << SECTORBITS;
 	if ((x->entrysize = * (short *) p) == 0) {
 		return -1;
@@ -66,8 +67,10 @@ int _isoopen(void)
 #define _64bits (x->_64bits)
 	char *s;
 
+#ifdef ISOHOOK
 	_64bits = cpuhaslm();
   _32bits:
+#endif
 	s = (char *) x->filename2open;
 	if (*s == '/') {
 		s++;
@@ -82,17 +85,21 @@ int _isoopen(void)
 	c = *s; *s = 0;
 	do {
 		if (isoreaddir() == -1) {
+#ifdef ISOHOOK
 			if ((_64bits ^= CPUMASKLM) == 0) goto _32bits;
+#endif
 			return -1;
 		}
 		const char *n = name;
 #define i (x->tmp)
 		i = x->filename;
+#ifdef ISOHOOK
 		if (_64bits) {
 			if (strhead(i, n) == -1) continue;
 			n = "64";
 			i += s - name; // strlen(name);
 		}
+#endif
 		if (strcmp(i, n) != -1) break;
 	} while (1);
 	*s++ = c;

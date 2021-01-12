@@ -159,7 +159,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	sub(/_imgs\+65534/,"_imgs-2")
 	if (/setup_sects == 0/) isload=9
 	if (isload == 9) {  # LOAD.LST
-		sub(/,0/,",al")
+		sub(/,0/,",al	; worst case 2k boundary (iso)")
 		if (/jne/) isload=0
 	}
 	if (/cmd_line_ptr =/ && is386 == 0) isload=7
@@ -261,7 +261,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			sub(/mov	al/,"movzx	eax")
 		}
 		if (is386 == 0) {
-			if (/m->size -= _rm_size/) print "	cwd"
+			if (/m->size -= _rm_size/) print "	cwd	; do not trust rewind result (iso case)"
 			sub(/,0$/,",dx")
 		}
 		if (/ax,word ptr/) next
@@ -308,9 +308,8 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/,bx/) next
 		if (/isoreadrootsector/) {
 			print
-			print "	cmp	word ptr [si+39],17475"
-			print "	stc"
-			$0="	jne	returnC"
+			print "	xor	word ptr [si+39],17475	; clear C"
+			$0="	jne	returnNotC"
 		}
 	}
 	if (/cpytodirpage.x->dirpage/) isiso=16
@@ -436,7 +435,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/@2@142$/) { print "	inc	di"; sub(/jmp/,"loop") }
 	}
 	if (/i\+36\]/) next
-	sub(/DGROUP:_isostate\[bx/,"[bx+si")
+	sub(/di,offset DGROUP:_isostate/,"di,si")
 	 } # file == "iso9660.cpp"
 	if (wascall) {
 		if (rcall != "") {

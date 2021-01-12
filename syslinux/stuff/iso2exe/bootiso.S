@@ -268,10 +268,10 @@ copylp:
 	rep
 	  movsb
 	movw	EXEADRS(headbuf+18),%ax		// magic
-	movw	$10,%si
+	movw	$10,%bp
 magiclp1:
 	xorw	%dx,%dx
-	divw	%si
+	divw	%bp
 	pushw	%dx
 	incw	%cx
 	orw	%ax,%ax
@@ -285,7 +285,7 @@ magiclp2:
 // iso=<file> arg
 
 	movb	$5,%cl
-	movw	$EXEADRS(isostr),%si
+	//movw	$EXEADRS(isostr),%si
 	rep
 	  movsb
 	popw	%si

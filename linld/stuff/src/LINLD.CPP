@@ -8,7 +8,7 @@
 
 extern char bzimagestr[];
 const char* cmdstr[4] = {"auto",bzimagestr,NULL,NULL};
-u32 cmdnum[4];
+u32 cmdnum[5];
 
 inline void syntax() {
     die("Syntax:" NL
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 	    exit();
 	}
 	if (argstr(*argv,"cl|image|initrd|iso",clp) == (int) clp) continue;
-	if (argnum(*argv,"root|vga|mem|-b",&root_dev) == (int) &base_himem) continue;
+	if (argnum(*argv,"root|vga|mem|-b|-f*",&root_dev) >= (int) &base_himem) continue;
 	if (fileexist(*argv) != -1) {
             kernel_name=*argv;
 	    continue;

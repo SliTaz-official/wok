@@ -107,10 +107,11 @@ EOT
 		i=$(($(get 20 $1)-0xC0))
 		store $(($i-6)) $(($(stat -m /tmp/mnt$$/boot/linld.com | sed q)*2048)) $1 32
 		store $(($i-2)) $(stat -c %s /tmp/mnt$$/boot/linld.com) $1
-		r0="$(cd /tmp/mnt$$/boot/ ; ls rootfs.gz 2> /dev/null)"
-		r1="$(cd /tmp/mnt$$/boot/ ; ls -r rootfs?*.gz 2> /dev/null | sed q)"
-		[ "$r0" -a "$r1" ] && r0="$r0,"
-		echo -n "image=/boot/bzImage initrd=$r0$r1,! autologin rdinit=/init.exe" | \
+		r="rootfs.gz"
+		grep -qE 'rootfs[0-9]' /tmp/mnt$$/boot/isolinux/isolinux.cfg &&
+		r="$(sed '/rootfs[0-9]/!d;s|.* initrd=||;s|/boot/||g;s| .*||' \
+			/tmp/mnt$$/boot/isolinux/isolinux.cfg | tail -n1)"
+		echo -n "image=/boot/bzImage initrd=$r,! autologin rdinit=/init.exe" | \
 		ddn bs=1 of=$1 conv=notrunc seek=$(($i-134))
 	fi
 	umount /tmp/mnt$$	

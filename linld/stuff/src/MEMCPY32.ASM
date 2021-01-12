@@ -108,8 +108,8 @@ endm
 		jnz	@@2flat
 		pop	dx			; dstseg
 		pop	ax			; srcseg
-		dec	bx			; <1mb ?
-                jns     @@pmcopy
+		cmp	bx,si			; <1mb ?
+                jne     @@pmcopy
 		push	di
 @@movlp:
 		mov	ds,ax
@@ -124,18 +124,16 @@ endm
 		inc	cx
                 sub     [word sz],cx
 		;jae	@@movpara
-		sbb	[word sz+2],0
+		sbb	[word sz+2],bx
 		jae	@@movpara
 		add	cx,[word sz]
 		;stc
 @@movpara:
             rep movsb
 		jae	@@movlp
-		dec	cx			; set S
 		pop	di
+		jmp	@@done16
 @@pmcopy:
-		pop	si
-		js	@@done16
                 p386
 		pushad				; struct declared in VCPI.ASM
                 mov     esi,[srcofs]
@@ -193,6 +191,9 @@ oldGDTR		=	(pword srcseg)	; don't need src seg/ofs anymore
                 popad
                 p8086
 @@done16:
+			ifdef	NO386
+		pop	si
+			endif
                 pop     es ds
 		popf			; restore I & D
 			ifndef	NO386

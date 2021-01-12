@@ -65,7 +65,8 @@ extern const char* cmdstr[4];
 #define vid_mode	(cmdnum[1])	// -3 = ask, -2 = Extended VGA, -1 = Normal VGA,  n = as "n" was pressed
 #define topmem		(cmdnum[2])
 #define base_himem	(cmdnum[3])
-extern u32 cmdnum[4];
+#define	skip_alloc	(* (char *) &cmdnum[4])
+extern u32 cmdnum[5];
 
 extern _fastcall void memcpy_image(struct image_himem *m);
 extern _fastcall void storepage(u32 *dst);
