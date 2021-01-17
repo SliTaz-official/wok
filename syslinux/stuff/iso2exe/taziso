@@ -693,6 +693,22 @@ md5()
 	rm -f /tmp/data
 }
 
+filepos()
+{
+	dotwait "locate files"
+	( cd $media; find * -type f | while read f; do
+		printf "%8d  %s\n" $(stat -m "$f" | sed q) "$f"
+	done | sort -n ) > /tmp/data
+	rm -f /tmp/wait
+	if [ "$1" ]; then
+		cat /tmp/data
+	else
+		$DIALOG --clear --title " File start sector " \
+			--textbox /tmp/data 0 0
+	fi
+	rm -f /tmp/data
+}
+
 gotcdfile()
 {
 	for i in "$media/$1" "$media/*/$1" "$media/*/isolinux/$1" ; do
@@ -1630,6 +1646,7 @@ $(noinit		"setcustomconf"	"Set custom config") \
 $(gotisomd5		"isomd5"	"Check the ISO image") \
 $(cdfile 'md5sum*'	"md5"		"Check the ISO files") \
 $(cdfile 'sha*sum*'	"sha"		"Check the ISO files") \
+$(menuitem		"filepos"	"File start sector") \
 $(xfile isoinfo		"infoiso"	"ISO image info") \
 $(cdfilex 'bzImage*'	"bootiso"	"Boot the ISO image") \
 $(burnable		"burniso"	"Burn the ISO image") \
