@@ -9,7 +9,7 @@ for i in ?? ; do
 			[ $(sed 's/.*"expire_date":\([0-9]*\).*/\1/' $k) -lt \
 			  $(date +%s) ] && rm -rf $k*
 		done
-		rmdir $j 2> /dev/null
+		rmdir $j
 	done
-	rmdir $i 2> /dev/null
-done
+	rmdir $i
+done 2>/dev/null

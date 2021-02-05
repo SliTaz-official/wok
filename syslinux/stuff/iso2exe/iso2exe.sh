@@ -41,13 +41,17 @@ compress()
 add_rootfs()
 {
 	TMP=/tmp/iso2exe$$
-	mkdir -p $TMP
-	$0 --get rootfs.gz > $TMP/rootfs.gz
-	SIZE=$(wc -c < $TMP/rootfs.gz)
-	store 24 $SIZE $1
-	OFS=$(( 0x7FF0 - $SIZE ))
-	printf "Adding rootfs.gz file at %04X (%d bytes) ...\n" $OFS $SIZE
-	ddn if=$TMP/rootfs.gz of=$1 bs=1 seek=$OFS
+	mkdir -p $TMP/mnt
+	mount -o loop,ro $1 $TMP/mnt
+	if grep -qs rootfs $TMP/mnt/boot/isolinux/isolinux.cfg ; then
+		$0 --get rootfs.gz > $TMP/rootfs.gz
+		SIZE=$(wc -c < $TMP/rootfs.gz)
+		store 24 $SIZE $1
+		OFS=$(( 0x7FF0 - $SIZE ))
+		printf "Adding rootfs.gz file at %04X (%d bytes) ...\n" $OFS $SIZE
+		ddn if=$TMP/rootfs.gz of=$1 bs=1 seek=$OFS
+	fi
+	umount $TMP/mnt
 	rm -rf $TMP
 }
 
@@ -109,8 +113,11 @@ EOT
 		store $(($i-2)) $(stat -c %s /tmp/mnt$$/boot/linld.com) $1
 		r="$(sed '/rootfs[0-9]/!d;s|.* initrd=||;s|/boot/||g;s| .*||' \
 			/tmp/mnt$$/boot/isolinux/isolinux.cfg | tail -n1)"
-		echo -n "image=/boot/bzImage initrd=${r:-rootfs.gz},! autologin rdinit=/init.exe" | \
-		ddn bs=1 of=$1 conv=notrunc seek=$(($i-134))
+		if grep -qs rootfs /tmp/mnt$$/boot/isolinux/isolinux.cfg ; then
+			echo -n "image=/boot/bzImage initrd=${r:-rootfs.gz},! autologin rdinit=/init.exe"
+		else
+			echo -n "$(sed '/KERNEL/!d;s|.*KERNEL *|image=|;q' /tmp/mnt$$/boot/isolinux/isolinux.cfg)"
+		fi | ddn bs=1 of=$1 conv=notrunc seek=$(($i-134))
 	fi
 	umount /tmp/mnt$$	
 	rmdir /tmp/mnt$$	
