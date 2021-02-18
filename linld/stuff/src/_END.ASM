@@ -15,14 +15,15 @@
         segment _DATA byte public use16 'DATA'
         ;global  _data_end:byte
         label   _data_end byte
-		ifdef	BIG_CMDLINE
+		ifdef	ISOHOOK
 	global	_big_cmdline:byte
 _big_cmdline	db	0
 		endif
         ends    _DATA
 
         segment _BSS word public use16 'BSS'
-STACK_SIZE = 256
+;STACK_SIZE = 128
+STACK_SIZE = 512
 		db	STACK_SIZE dup(?)
         global  stktop:byte
         label   stktop byte

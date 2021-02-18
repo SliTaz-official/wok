@@ -104,7 +104,7 @@ sssp		dd	?
 	global	@moverm$qpus:near
 @moverm$qpus:
 		push	si di
-		xor	di,di
+		xor	di,di			; default setup 9000:0000
 		extrn	_heap_top:word
 		ifdef	NO386
 		mov	ax,[_heap_top]
@@ -119,7 +119,7 @@ sssp		dd	?
 		extrn	_cpu386:byte
 		test	[_cpu386],cl
 		jne	@bzimage
-		mov	bx,offset bzimage86
+		mov	bx,offset bzimage86	; no himem with 8086 !
 @godie:
 		call	near die
 @zimage:
@@ -128,7 +128,7 @@ sssp		dd	?
 		jae	@sys@ok
 		xchg	ax,cx			; segment min 1000h
 @sys@ok:
-		inc	ax
+		inc	ax			; first free segment
 		extrn	N_LXLSH@4:near
 		call	N_LXLSH@4
 		mov	[word ((image_himem bx+4).fallback)],ax
@@ -137,20 +137,25 @@ sssp		dd	?
 		adc	dx,[word ((image_himem bx+4).size)+2]
 		ifdef	MOVE_SETUP
 		mov	di,8000h
-		sub	di,[bx]		; rm_size
+		sub	di,[bx]			; rm_size
 		extrn	_rm_offset:word
 		mov	[_rm_offset],di
-		sub	ax,di		; -rm_offset
+		sub	ax,di			; -rm_offset
 		sbb	dx,cx
 		endif
 		mov	cl,12
-		shl	dx,cl		; last segment
-		jc	@jbe_overflow	; >= 1Mb ?
+		shl	dx,cl			; last sys segment
+		ifndef	LARGE_ZIMAGE
+		;jc	@jbe_overflow		; >= 1Mb ???
+		else
+		;jnc	@bzimage		; < 1Mb
+		;mov	dh,-1
+		endif
 @bzimage:
 		extrn	_topseg:near
 		call	near _topseg
 		mov	[word sssp+2],ax
-		and	ch,0		; vcpi flag
+		and	ch,0			; vcpi flag
 		org	$-1
 		global	_vcpi:byte
 _vcpi		db	?
@@ -168,19 +173,19 @@ _vcpi		db	?
 		jae	@sys@ok
 		xchg	ax,cx			; segment min 1000h
 @sys@ok:
-		inc	ax
+		inc	ax			; first free segment
 		shl	eax,4
 		mov	[(image_himem bx+4).fallback],eax
 		add	eax,[(image_himem bx+4).size]
 		ifdef	MOVE_SETUP
 		mov	di,8000h
-		sub	di,[bx]		; rm_size
+		sub	di,[bx]			; rm_size
 		extrn	_rm_offset:word
 		mov	[_rm_offset],di
-		movzx	ecx,di		; -rm_offset
+		movzx	ecx,di			; -rm_offset
 		sub	eax,ecx
 		endif
-		shl	eax,4
+		shr	eax,4
 		mov	ch,0
 @bzimage:
 		xchg	ax,dx
@@ -190,8 +195,23 @@ _vcpi		db	?
 		endif
 		add	dh,ch		; 60k room for malloc_bufv_or_die
 		cmp	ax,dx
+		ifdef	LARGE_ZIMAGE
+		ja	@nooverflow0
+	     extrn   _cmdnum:dword
+base_himem	=	(dword _cmdnum+12)
+		ifdef	NO386
+		les	cx,[base_himem]
+		mov	[word ((image_himem bx+4).fallback)],cx
+		mov	[word ((image_himem bx+4).fallback)+2],es
+		else
+		mov	ecx,[base_himem]
+		mov	[(image_himem bx+4).fallback],ecx
+		endif
+@nooverflow0:
+		endif
 		les	cx,[bx]		; rm_size
 		mov	si,es		; rm_buf
+		ifndef	LARGE_ZIMAGE
 @jbe_overflow:
 ; Oops! We can stomp on our toes... better stop now
 		mov	bx,offset overflow
@@ -201,6 +221,7 @@ _vcpi		db	?
 		ja	@nooverflow
 		call	near die
 @nooverflow:
+		endif
 		endif
 		mov	es,ax
 @@move_clear:

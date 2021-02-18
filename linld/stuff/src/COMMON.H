@@ -66,21 +66,20 @@ extern const char* cmdstr[4];
 #define topmem		(cmdnum[2])
 #define base_himem	(cmdnum[3])
 #define	skip_alloc	(* (char *) &cmdnum[4])
+#ifdef QUICK_BOOT
+extern u32 cmdnum[7];
+#else
 extern u32 cmdnum[5];
+#endif
 
-extern _fastcall void memcpy_image(struct image_himem *m);
+extern _fastcall void memcpy_image_kernel();
+extern _fastcall void memcpy_image_initrd();
 extern _fastcall void storepage(u32 *dst);
-#ifdef LARGE_IMAGES
 extern _fastcall void reset_bufv(unsigned long *p);
 extern "C" unsigned long* prev_bufv();
 extern "C" unsigned long* next_bufv();
 #define next(p)	 p = next_bufv()
 #define prev(p)	 p = prev_bufv()
-#else
-#define reset_bufv(p)
-#define next(p)	 ++p
-#define prev(p)	 --p
-#endif
 extern char vcpi;
 extern char version_string[];
 // External asm helpers
@@ -89,7 +88,7 @@ extern _fastcall void xmm_alloc(struct image_himem *m);
 #endif
 extern "C" u32 memtop();
 extern "C" void enable_a20_or_die();
-extern "C" void vm2rm();
+extern "C" void far vm2rm();
 extern "C" void hook_int15_88();
 
 // C++ helpers

@@ -29,7 +29,7 @@ _vcpi		db	0
 
         segment _BSS byte public use16 'BSS'
 
-		ifdef	BIG_CMDLINE
+		ifdef	ISOHOOK
 	extrn	_big_cmdline:byte
 		db	254 dup(?)
 		endif
@@ -77,7 +77,7 @@ clearbss:
 
 ; Check for oldies
 		push	bx		; < 286 : flags[12..15] are forced 1
-		popf			; = 286 : flags[12..15] are forced 0
+		popf			; = 286 : flags[12..15] are forced 0, cld
 		pushf			; > 286 : only flags[15] is forced 0
 		pop	dx
 		add	dh,bh		; NS=386+, S+NC=286, S+C=86/186
@@ -118,15 +118,12 @@ godie:
 ;***************************************************************
 label   check_vcpi near
                 p386
-                push    ds
-; Check whether it is safe to call 67h (we trust only known EMM managers)
-                push    si
-                pop     ds
-                mov     ax,[word 67h*4]
-                or      ax,[word 67h*4+2]
-                pop     ds
+; Check whether it is safe to call 67h
+		xor	eax,eax
+                mov     es,ax
+                cmp     [dword es:67h*4],eax
                 je      no_vcpi
-                mov     ax,0DE00h       ; check for vcpi present
+                mov     ah,0DEh		; check for vcpi present
                 int     67h
                 or	ah,ah
 		jnz	no_vcpi
@@ -183,7 +180,7 @@ endcpu86:
 		org	$-2
 _heap_top	dw	?
                 mov	si,80h
-		ifdef	BIG_CMDLINE
+		ifdef	ISOHOOK
                 mov	bx,offset _big_cmdline
 		cmp	[byte si],2
 		jnb	@@user_args
@@ -192,7 +189,7 @@ _heap_top	dw	?
 		endif
                 lodsb				; size 0..127
 		cbw
-		ifdef	BIG_CMDLINE
+		ifdef	ISOHOOK
 		inc	ax
 		jnz	short_cmdline
 		mov	si,bx
@@ -235,43 +232,6 @@ newarg:
                 inc	bx
                 dec	cx
                 jmp	arglp
-argdone:
-                ;mov	[word bx+di],0		; argv[argc] = 0
-		lea	ax,[bx+di+2]
-		mov	[_heap_top],ax
-                push	di			; argv
-                shr	bx,1
-                push	bx			; argc
-	ifndef	filearg
-                mov	bx,[di+2]		; argv[1]
-		extrn	openargs:near
-		call	near openargs
-		jc	argend
-		pop	bx			; trash argc,  argv >> 1Kb !
-                pop	cx			; sizemax=argv
-read_cmdline:
-		mov	dx,di
-		push	dx
-		xchg	ax,bx
-		extrn	@read$cxdxbx:near	; read(fd=bx,buffer=dx,size=cx)
-		call	near @read$cxdxbx
-                pop	si			; si=buffer=argv
-                add	di,ax
-		ifndef	NO_CLOSE
-		extrn	close:near
-		call	near close
-		endif
-                jmp	argbuild
-argend:
-	endif
-
-;***************************************************************
-                extrn	_main:near
-                call	_main
-		;never return
-
-;***************************************************************
-
 
 ;***************************************************************
 ;_fastcall void set_cmdline(bx:const char *filename);
@@ -307,6 +267,46 @@ argend:
 
         endp    _topseg
 		endif
+
+;***************************************************************
+argdone:
+                ;mov	[word bx+di],0		; argv[argc] = 0
+		lea	ax,[bx+di+2]
+		mov	[_heap_top],ax
+                ;push	di			; argv
+                ;shr	bx,1
+                ;push	bx			; argc
+	ifndef	filearg
+                mov	bx,[di+2]		; argv[1]
+		extrn	openargs:near
+		call	near openargs
+		jc	argend
+		;pop	bx			; trash argc,  argv >> 1Kb !
+                ;pop	cx			; sizemax=argv
+		dec	cx			; sizemax=0ffffh
+read_cmdline:
+		mov	dx,di
+		push	dx
+		xchg	ax,bx
+		extrn	@read$cxdxbx:near	; read(fd=bx,buffer=dx,size=cx)
+		call	near @read$cxdxbx
+                pop	si			; si=buffer=argv
+                add	di,ax
+		ifndef	NO_CLOSE
+		extrn	close:near
+		call	near close
+		endif
+                jmp	argbuild
+argend:
+	endif
+
+;***************************************************************
+;                extrn	_main:near
+;                call	_main
+		;never return
+
+;***************************************************************
+
 
         ends    _TEXT
 

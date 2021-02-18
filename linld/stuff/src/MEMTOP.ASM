@@ -171,10 +171,10 @@ _topmem		=	_cmdnum+8
         proc    _hook_int15_88 near
 
 		ifndef  xmm_hook
-                mov     ax,4300h
-                int     2fh
-                cmp     al,80h			; 80h = XMS driver installed
-                je      @@skip
+                ;mov     ax,4300h
+                ;int     2fh
+                ;cmp     al,80h			; 80h = XMS driver installed
+                ;je      @@skip
 		endif
 saved15:
 		xor	bx,bx

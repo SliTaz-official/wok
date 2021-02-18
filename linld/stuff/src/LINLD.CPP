@@ -8,7 +8,11 @@
 
 extern char bzimagestr[];
 const char* cmdstr[4] = {"auto",bzimagestr,NULL,NULL};
+#ifdef QUICK_BOOT
+u32 cmdnum[7];
+#else
 u32 cmdnum[5];
+#endif
 
 inline void syntax() {
     die("Syntax:" NL
@@ -51,7 +55,11 @@ int main(int argc, char *argv[]) {
 	    exit();
 	}
 	if (argstr(*argv,"cl|image|initrd|iso",clp) == (int) clp) continue;
+#ifdef QUICK_BOOT
+	if (argnum(*argv,"root|vga|mem|-b|-f*|-q*|-v*",&root_dev) >= (int) &base_himem) continue;
+#else
 	if (argnum(*argv,"root|vga|mem|-b|-f*",&root_dev) >= (int) &base_himem) continue;
+#endif
 	if (fileexist(*argv) != -1) {
             kernel_name=*argv;
 	    continue;

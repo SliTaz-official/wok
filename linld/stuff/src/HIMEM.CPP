@@ -10,19 +10,26 @@ extern u32 himem_buf;
 
 void load_image(struct image_himem *m) {
     m->remaining = m->size;
-    m->buf = m->fallback;	// set no_exit btw: die() won't return to DOS
     u32* bufv= &himem_buf;
+#ifdef WITH_XMM_ALLOC
+    m->buf = m->fallback;	// set no_exit btw: die() won't return to DOS
     if(((u16 *)&m->fallback)[1] >= 0x10) { // >= _1m ?
 	if(vcpi) {
 	    bufv = (u32 *)malloc_bufv_or_die(m);	// update m->bufv
 	}
-#ifdef WITH_XMM_ALLOC
 	else {
             xmm_alloc(m);			// update m->buf
 	}
-#endif
     }
     himem_buf = m->buf;
+#else
+    *bufv = m->buf = m->fallback;	// set no_exit btw: die() won't return to DOS
+    if(((u16 *)&m->fallback)[1] >= 0x10) { // >= _1m ?
+	if(vcpi) {
+	    bufv = (u32 *)malloc_bufv_or_die(m);	// update m->bufv
+	}
+    }
+#endif
     do {
         u16 size;
 	if(s16(size = read_image(m)) -1 < 0) break;
@@ -37,7 +44,8 @@ void load_image(struct image_himem *m) {
 // Called just before rm->pm
 void far last_ditch() {
     asm {
-	cli
+	pushf
+	;cli
 	push	ds
 	push	cs
 	pop	ds
@@ -52,15 +60,17 @@ void far last_ditch() {
     }
     vm2rm();
     struct image_himem *m = &pm;
+#define KERNEL	0
+#define INITRD	1
     u32 *q;
-    if(((u16 *)&m->fallback)[1] >= 0x10) // >=	_1m ?
-	((u16 *)&m->fallback)[1] = 0x10;
-    q = m->bufv;
+    if(((u16 *)&m[KERNEL].fallback)[1] >= 0x10) // >=	_1m ?
+	((u16 *)&m[KERNEL].fallback)[1] = 0x10;
+    q = m[KERNEL].bufv;
     if(q==0) {
         // Move kernel
-        memcpy_image(m);
+        memcpy_image_kernel();
         // Move initrd
-        memcpy_image(pm2initrd(m));
+        memcpy_image_initrd();
     } else { //vcpi
 #if defined(__BORLANDC__) && defined(NO386)
 #pragma option -3
@@ -71,33 +81,32 @@ void far last_ditch() {
         // Move kernel
         // 'Gathering' copy in chunks of PAGE_SIZE
         // No risk of overlapping: kernel is copied from above to 1m mark
-        m->size = pm2initrd(m)->size = PAGE_SIZE;
+        m[KERNEL].size = m[INITRD].size = PAGE_SIZE;
 #define ADD_PAGE(x)	(*(unsigned long *)(((char *)&x)+1)+=PAGE_SIZE/256)
 #define SUB_PAGE(x)	(*(unsigned long *)(((char *)&x)+1)-=PAGE_SIZE/256)
 	reset_bufv(q);
 	do {
-            m->buf = *q;
-            memcpy_image(m);
-            next(q); ADD_PAGE(m->fallback);
+            m[KERNEL].buf = *q;
+            memcpy_image_kernel();
+            next(q); ADD_PAGE(m[KERNEL].fallback);
         } while(*q);
         // Move initrd
-	m = pm2initrd(m);
-        if(((u16 *)&m->fallback)[1]) {
+        if(((u16 *)&m[INITRD].fallback)[1]) {
             // This is tricky: copy initrd backwards to reduce
             // risk of overlapping: use the fact that initrd is copied
             // to the very top of ram
             // (overlapping still can happen with more than 256mb ram)
             // (generic solution for this overwrite problem, anyone?)
-            q=m->bufv;
+            q=m[INITRD].bufv;
 	    reset_bufv(q);
             do {
-                next(q); ADD_PAGE(m->fallback);
+                next(q); ADD_PAGE(m[INITRD].fallback);
             } while(*q);
             do {
-                prev(q); SUB_PAGE(m->fallback);
-                m->buf = *q;
-                memcpy_image(m);
-            } while(q != m->bufv);
+                prev(q); SUB_PAGE(m[INITRD].fallback);
+                m[INITRD].buf = *q;
+                memcpy_image_initrd();
+            } while(q != m[INITRD].bufv);
         }
     }
     asm {
@@ -110,5 +119,6 @@ void far last_ditch() {
 	popa
 # endif
 	pop	ds
+	popf
     }
 }

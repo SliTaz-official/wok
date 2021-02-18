@@ -156,10 +156,10 @@ endm
                 cmp     esi,edi
                 jae     @@do_copy
                 add     esi,ecx         ;src<dst: we must do
-                dec     esi             ;  copy backwards to avoid
-                add     edi,ecx         ;  overwrite bug
-                dec     edi             ;
-                std                     ;
+                add     edi,ecx         ;  copy backwards to avoid
+                std                     ;  overwrite bug
+                db      67h     	;address width override for esi/edi
+		cmpsb			;  dec esi/edi
 @@do_copy:
                 cli
 oldGDTR		=	(pword srcseg)	; don't need src seg/ofs anymore

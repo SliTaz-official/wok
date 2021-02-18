@@ -23,7 +23,15 @@
 
 	macro	dos_shutdown
 		xor	si,si
+                ifdef   QUICK_BOOT
+		extrn	_cmdnum:dword
+quickboot	=	(word _cmdnum+20)
+		cmp	si,[quickboot]
 		mov	ds,si
+		jne	skip_shutdown
+		else
+		mov	ds,si
+		endif
 		ifndef	NO386
 		push	[dword si+4]		; save step
 		mov	[word si+4],offset step19
@@ -56,6 +64,7 @@ notdos:
 		xor	si,si
 		mov	ds,si
 		pop	[dword si+4]		; restore step
+skip_shutdown:
 	endm
 	macro	step19code
 step19:
@@ -148,7 +157,7 @@ _pm_low		db	?
 		push	si			; src seg=0
 		inc	cx
 		push	cx			; dst ofs hi
-		push	si			; dst ofs lo : 64k
+		push	si			; dst ofs lo : 64k = 0x10000
 
 		; self move
 		extrn	gdt_data

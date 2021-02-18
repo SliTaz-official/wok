@@ -605,15 +605,13 @@ jmpdie:
 
 ;***************************************************************
 
-	ifdef	LARGE_IMAGES
 struc   data_himem			;struct data_himem {
-first		dd	?		;   0  u32 first;
-cacheidx	dw	?		;   4  int cacheidx;
-pageidx		dw	?		;   6  int pageidx;
+first		dd	?		;   0  u32 first;	*must* be the first one
+cacheidx	dw	?		;   4  int cacheidx;	quad *
+pageidx		dw	?		;   6  int pageidx;	byte *
 cache		dd	1024 dup(?)	;   8  int cache;
 page		dd	1024 dup(?)	;4104  int page;
-ends	data_himem			;}; // size=8200
-	endif
+ends	data_himem			;};
 
 ;***************************************************************
 ;_fastcall u32* malloc_bufv_or_die(si:struct image_himem *m);
@@ -623,48 +621,28 @@ ends	data_himem			;}; // size=8200
 
                 p386
 		push	si
-		mov	bx,si
-	ifdef	LARGE_IMAGES
-		movzx	eax,[word ((image_himem si).size) + 2]
-		shr	ax,4			; pages index size = size >> 20
-		add	ax,8+4096+8
+		;mov	ecx,[(image_himem si).size]
+		;shr	ecx,20			; pages index size = size >> 20
+		;mov	ax,cx
+		;add	ax,size data_himem-4096
+		mov	ax,size data_himem
 		call	malloc_or_die
-		mov	cx,4096+4095		; cnt = 1+(m->size+PAGE_MASK)/PAGE_SIZE;
+		;mov	cx,4096+4095		; cnt = 1+(m->size+PAGE_MASK)/PAGE_SIZE;
+		mov	ecx,4096+4095		; cnt = 1+(m->size+PAGE_MASK)/PAGE_SIZE;
 		add	ecx,[(image_himem si).size]
 		shr	ecx,12
 		mov	[curdata],ax
-	else
-		mov	eax,[(image_himem si).size]
-		dec	eax
-		shr	eax,12
-		inc	ax			; cnt = (m->size+PAGE_MASK)/PAGE_SIZE;
-		push	ax
-		inc	ax			; cnt+1
-		shl	ax,2			; bufv => vcpi => vm86
-; our malloc zeroes allocated mem: bufv[cnt]=0;
-; Allocate pages, storing addrs in addrbuf
-		call	malloc_or_die
-		pop	cx
-		push	ax
-	endif
-		mov	[(image_himem si).bufv],ax
+		mov	[(image_himem si).bufv],ax	; update m->bufv
 		xchg	ax,si
 @@vcpi_alloc:
                 mov     ax,0DE04h		; allocate a 4K page => EDX
                 int     67h
 		or	ah,ah
-		stc
 		mov	bx,offset vcpi_alloc_err
 		jnz	jmpdie
 ; for (i = cnt-1; i >= 0; i--)
-	ifdef	LARGE_IMAGES
 		mov	eax,ecx
 		dec	eax
-	else
-		mov	ax,cx
-		dec	ax
-		cwde
-	endif
 		shl	eax,12		; i*_4k
 ; if (edx < pm.fallback+i*_4k && edx >= pm.fallback) again
 		mov	bx,offset _imgs.fallback
@@ -677,16 +655,15 @@ ends	data_himem			;}; // size=8200
 		jae	@@vcpi_alloc
 @@pmok:
 ; if (edx >= initrd.fallback+i*_4k && edx < initrd.fallback+initrd.size) again
-		add	eax,[bx-2+2+32]	; +initrd.fallback
+		add	eax,[bx-2+2+size image_himem]	; +initrd.fallback
 		cmp	eax,edx		; initrd.fallback+i*_4k > edx ?
 		ja	@@initrdok
-		mov	eax,[bx-2+6+32]	; initrd.size
-		add	eax,[bx-2+2+32]	; +initrd.fallback
+		mov	eax,[bx-2+6+size image_himem]	; initrd.size
+		add	eax,[bx-2+2+size image_himem]	; +initrd.fallback
 		cmp	eax,edx		; initrd.fallback+initrd.size > edx ?
-@@jnc_vcpi_alloc:
+@@ja_vcpi_alloc:
 		ja	@@vcpi_alloc
 @@initrdok:
-	ifdef	LARGE_IMAGES
 		cmp	[(data_himem si).first],0
 		jne	@@notfirst
 		mov	[(data_himem si).first],edx
@@ -696,7 +673,7 @@ ends	data_himem			;}; // size=8200
 		jae	@@nextpage
 		shl	bx,2
 		inc	[(data_himem si).cacheidx]
-		mov	[(data_himem bx+si).cache],edx
+		mov	[(data_himem bx+si).cache],edx	; cache[cacheidx++] = edx
 		loopd	@@vcpi_alloc
 		mov	[(data_himem bx+si).cache],ecx	; last is 0
 @@nextpage:
@@ -714,15 +691,9 @@ ends	data_himem			;}; // size=8200
 		call	storepage		; storepage(edx,cx)	
 		pop	cx
 		or	ecx,ecx			; clear C
-		jnz	@@jnc_vcpi_alloc
+		jnz	@@ja_vcpi_alloc
 		mov	[dword (data_himem si).cacheidx],ecx
 		xchg	ax,si
-	else
-		mov	[si],edx
-		lodsd				; si=+4
-		loop	@@vcpi_alloc
-		pop	ax
-	endif
 		pop	si
 		ret
 		ifdef	NO386
@@ -733,14 +704,16 @@ ends	data_himem			;}; // size=8200
 
 
 ;***************************************************************
+;_fastcall void memcpy_image_initrd(si:struct image_himem *m);
+;_fastcall void memcpy_image_kernel(si:struct image_himem *m);
 ;_fastcall void memcpy_image(bx:struct image_himem *m);
 ;***************************************************************
-	global	memcpy_image_initrd:near
-memcpy_image_initrd:
-		lea	bx,[si+32]
+	global	@memcpy_image_initrd$qv:near
+@memcpy_image_initrd$qv:
+		lea	bx,[si+size image_himem]
 		db	0A9h			; test	ax,imm
-	global	memcpy_image_kernel:near
-memcpy_image_kernel:
+	global	@memcpy_image_kernel$qv:near
+@memcpy_image_kernel$qv:
 		mov	bx,si
         proc    @memcpy_image$qp11image_himem near
 
@@ -749,13 +722,9 @@ memcpy_image_kernel:
 		mov	eax,[(image_himem bx).buf]
 		cmp	eax,edx			; if (m->fallback != m->buf)
 		jz	@@skip			;   memcpy32(m->fallback,0,m->buf,m->size)
-	ifdef	LARGE_IMAGES
 		mov	ecx,[(image_himem bx).size]
 memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
 		push	ecx
-	else
-		push	[(image_himem bx).size]
-	endif
 		push	eax
 		push	0
 call_memcpy32:
@@ -763,7 +732,7 @@ call_memcpy32:
 		else
 		les	ax,[dword ((image_himem bx).fallback)]
 		mov	dx,es
-		mov	cx,[word ((image_himem bx).buf)]
+		les	cx,[dword ((image_himem bx).buf)]
 		cmp	ax,cx			; if (m->fallback != m->buf)
 		jnz	@@do
 		cmp	dx,[word ((image_himem bx).buf)+2]
@@ -771,14 +740,13 @@ call_memcpy32:
 @@do:
 		push	[word ((image_himem bx).size)+2]
 		push	[word ((image_himem bx).size)]
-		push	[word ((image_himem bx).buf)+2]
-		push	cx
+		push	es			; [word ((image_himem bx).buf)+2]
+		push	cx			; [word ((image_himem bx).buf)]
 		xor	cx,cx
 		push	cx
 call_memcpy32:
 		push	dx			; push dx:ax
 		push	ax
-	ifdef	LARGE_IMAGES
 		jmp	@@memcpy
 memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
 		p386
@@ -789,7 +757,6 @@ memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
 		ifdef	NO386
                 p8086
 		endif
-	endif
 		endif
 @@memcpy:
 		extrn	memcpy32:near
@@ -832,7 +799,6 @@ storepage:					; storepage(edx,cx)
         endp    @storepage$qpul
 
 
-	ifdef	LARGE_IMAGES
                 p386
 ;***************************************************************
 ;_fastcall void reset_bufv(di:u32 *p);
@@ -841,7 +807,7 @@ storepage:					; storepage(edx,cx)
         proc    @reset_bufv$qpul near
 
 		mov	[curdata],di
-		and	[dword (data_himem di).cacheidx],0
+		and	[dword (data_himem di).cacheidx],0	; and pageidx=0
 		ret
 
         endp    @reset_bufv$qpul
@@ -858,17 +824,21 @@ storepage:					; storepage(edx,cx)
 		db	73h			; jnc
 _next_bufv:
 		clc
+		push	si
 		mov	bx,0
 		org	$-2
 curdata		dw	?
 		sbb	ax,ax
 		cmc
 		adc	ax,[(data_himem bx).cacheidx]	; -1/+1
+		mov	si,3ffh
+		and	si,ax
+		mov	[(data_himem bx).cacheidx],si
+		shl	si,2
 		xor	ecx,ecx
 		test	ax,0fc00h
-		jz	@@gotpage
-		push	ax			; FFFF / 0400
-		sar	ax,8			; FFFC / 0004
+		jz	@@gotpage		; FFFF / 0400
+		xchg	al,ah			; FFFC / 0004
 		and	al,0fch
 		add	[(data_himem bx).pageidx],ax
 		mov	di,[(data_himem bx).pageidx]
@@ -879,29 +849,21 @@ curdata		dw	?
 		add	edx,ecx
 		mov	eax,[di]
 		or	eax,eax
-		jnz	@@pageok
-		pop	ax
-		ret
-@@pageok:
-		mov	cx,4096
-		call	memcpy_imagez		; get page
-		pop	ax			; FFFF / 0400
-		cbw
-		shr	ax,6			; 03FF / 0000
+		jz	@@ret
+		mov	cx,4096			; get page
+		call	memcpy_imagez		; memcpy_imagez(edx,eax,ecx)
 @@gotpage:
-		mov	[(data_himem bx).cacheidx],ax
-		shl	ax,2
-		xchg	ax,di
-		lea	ax,[(data_himem bx+di).cache]		
-		or	di,[(data_himem bx).pageidx]	; !pageidx && !cacheidx
+		lea	ax,[(data_himem bx+si).cache]		
+		or	si,[(data_himem bx).pageidx]	; !pageidx && !cacheidx
 		jnz	@@notfirst2
 		xchg	ax,bx				; &first
 @@notfirst2:
 		xchg	ax,di
+@@ret:
+		pop	si
 		ret
 
         endp    _prev_bufv
-	endif
 
 		ifdef	NO386
                 p8086

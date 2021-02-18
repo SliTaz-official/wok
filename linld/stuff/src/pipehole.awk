@@ -9,37 +9,27 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (file == "" && /debug	S/) { file=$3; gsub(/\"/,"",file) }
 	if (/debug	S/) print "	%PAGESIZE 1000"
 	 if (file == "linld.cpp") {
-	if (/add	si,2/) $0="	lodsw	; " $0
+	if (/\[si/ || /si,/ || /,si/) sub(/si/,"di")
+	else if (/\[di/ || /di,/ || /,di/) sub(/di/,"si")
 	if (/add	di,2/) $0="	scasw	; " $0
-	if (/bx,offset DGROUP:s@\+26/) sub(/mov/,";mov")
-	if (/bx,si/ || /\[bp-2\]/) next
-	sub(/\[bx\],0/,"[si],0")
+	if (/bx,di/ || /\[bp-2\]/) next
+	sub(/\[bx\],0/,"[di],0")
 	if (islinld==1) {
+		if (/,word.*/) islinld=0
 		print "; " $0
-		if (!/word ptr/) next
-		islinld=0
-		sub(/,word.*/,",di	; argv")
-		if (/di,di/) { print "; " $0; next }
+		next
 	}
 	if (/^_main	proc/) islinld=1
-	if (/== 0x662F/) islinld=2
-	if (islinld==2) {
-		if (/cpuhaslm/) islinld=0
-		if (/bx,word/) { print "; " $0; next }
-	}
 	if (/image\|initrd/) islinld=3
-	if (islinld==3) {
-		if (/bx,word ptr/) { print "; " $0; next }
-	}
+	if (islinld==3 && /bx,word ptr/) { print "; " $0; next }
 	if (/fileexist\$qpxzc/) islinld=4
 	if (islinld==4) {
 		if (/ax,-1/) {
 			print "	inc	ax"
-			print "	mov	ax,word ptr [si]"
+			print "	mov	ax,word ptr [di]"
 			next
 		}
 		if (/ax,word ptr/) next
-		if (/\[si\]$/) { islinld=0; print "; " $0; next }
 	}
 	if (/buf_cmdline\+1/) {
 		islinld=5
@@ -53,7 +43,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/bx,word ptr DGROUP:_cmdstr\+6/) next
 	if (/_cmdstr\+6,0/) {
-		print "	mov	bx,word ptr [di+6]"
+		print "	mov	bx,word ptr [si+6]"
 		$0="	or	bx,bx"
 	}
 	 } # file == "linld.cpp"
@@ -63,7 +53,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (ishimem == 1 && is386 == 0) {
 		if (/si\+8\]$/ || /si\+4\]$/ || /si\+16\]$/) next
 		if (/si\+6\]$/ || /si\+2\]$/ || /si\+14\]$/) sub(/mov	dx,/,"les	dx,d")
-		if (/si\+12\],ax/ || /si\+16\],ax/ || /DGROUP:_himem_buf\+2,ax/) sub(/,ax/,",es")
+		if (/si\+12\],ax/ || /si\+16\],ax/ || /di\+2\],ax/ || /DGROUP:_himem_buf\+2,ax/) sub(/,ax/,",es")
 		if (/dx,dword ptr \[si\+14\]/ || /DGROUP:_himem_buf,dx/) sub(/dx/,"ax")
 	}
 	if (ishimem == 1) {
@@ -84,7 +74,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/i\+12/) ishimem=20
 	}
 	if (ishimem == 20) {
-		if (/stc/ || /loadfail/) next
+		if (/loadfail/) next
 		if (/je/) {
 			print "	extrn	jmploadfailure"
 			$0="	jne	short jmploadfailure"
@@ -92,27 +82,10 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/endp/) ishimem=0
 	}
 	if (/@memcpy_image\$qp11image_himem/) next
-	if (/far last_ditch/) {
-		print "	extrn	memcpy_image_kernel:near"
-		print "	extrn	memcpy_image_initrd:near"
-		ishimem=3
-		cpy_initrd=0
-	}
+	if (/far last_ditch/) ishimem=3
 	if (ishimem == 3) {
 		sub(/DGROUP:_imgs\+4,/,"[si+4],")
-		if (/bx,di/ || /di,ax/ || /bx,30/) next
-		if (/mov	bx,si/) {
-			if (cpy_initrd==0) sub(/mov	bx,si/, "call	memcpy_image_kernel")
-			else sub(/mov	bx,si/, "call	memcpy_image_initrd")
-			cpy_initrd=1-cpy_initrd
-		}
-		sub(/lea	bx,\[si\+30\]/, "call	memcpy_image_initrd")
-	}
-	if (/m = pm2initrd/) ishimem=4
-	if (ishimem == 4) {
-		if (/si,30/ || /bx,di/ || /di,ax/) next
-		sub(/\[si/,"[si+30")
-		sub(/mov	bx,si/, "call	memcpy_image_initrd")
+		if (/bx,di/ || /di,ax/) next
 	}
 	 } # file == "himem.cpp"
 	 if (file == "load.cpp") {

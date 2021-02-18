@@ -102,21 +102,21 @@ endm
                 ;mov     ax,0DE01h               ;get vcpi pm interface
                 int     67h
                 xchg    [si+vcpi_pm_entry-gdt_vcpi],ebx	; bx=((640*1024) shr 12)
-                ;xor     bx,bx
 
 ; Check that mapping for low 640k is 1:1
                 pop     si			; [page0_ofs]
                 ;cld
-                mov     cx,bx
+		mov	cx,bx
 @@map_chk:
-                lodsd
-                shr     eax,12
-		add	al,cl
-                cmp     al,((640*1024) shr 12)
-                loope     @@map_chk
-; Return
-@@bad:
+		lodsd
+		shr	eax,12
+		add	ax,cx
+		;cmp	eax,ebx			; ((640*1024) shr 12)
+		cmp	ax,bx			; ((640*1024) shr 12)
+		loope	@@map_chk
+		;pop	di si
                 ret
+
         endp    _get_vcpi_interface
 
 
@@ -137,7 +137,7 @@ endm
 ; Fix up base of some gdt descriptors
 ; Note: 'add [dword xx.base0],edx' actually updates 24 bit quantity!
 ; Do NOT replace with mov!
-		mov	ebx,10000h-28h
+		mov	bx,10000h-28h
                 add     [dword si+sw2pm_addr-gdt_vcpi],edx
                 add     [dword si+sw2pm_idtr_ptr-gdt_vcpi],edx
 @@fixup:
@@ -146,11 +146,12 @@ endm
 		js	@@fixup
 		mov	bh,10h
 		extrn	_heap_top:word
-		movzx	eax,[_heap_top]
+		;movzx	eax,[_heap_top]
+		mov	ax,[_heap_top]
+		add	ax,bx		; assume _heap_top < 0f000h
                 add     eax,edx
 		and	ax,0f000h       ;eax = 4k aligned linear addr of pagebuf
-                add     eax,ebx         ;eax=page0 linear addr
-                add     [si+sw2pm_cr3-gdt_vcpi],eax
+                add     [si+sw2pm_cr3-gdt_vcpi],eax	;eax=page0 linear addr
                 mov     edi,eax
                 sub     edi,edx
                 mov     al,3            ;add present+writable bits
@@ -181,7 +182,7 @@ gdt_vcpi2       descr   <?>     ;0010
 gdt_vcpi3       descr   <?>     ;0018
 		org	$-8
 	global	gdt_memcpy:descr
-gdt_memcpy      descr   <?>
+gdt_memcpy      descr   <?>	;null + gdt_abs
 descriptor      gdt_abs ,(data_seg+writable),priv0,is_present,0fffffh,(gran_page+use_32),0
 ;Note: code/data segs must be flagged use16 (i.e. use ip/sp, not eip/esp)
 ;Note: base addrs will be fixed up in prepare_vcpi()
@@ -208,7 +209,7 @@ sw2pm_gdtr_ptr  dw      offset gdtr,0
 sw2pm_idtr_ptr  dw      offset idtr,0
 sw2pm_ldtr      dw      0       ;we don't need it
 sw2pm_tr        dw      SEL_TSS ;vcpi thinks we need it... can't set to 0
-sw2pm_jumpaddr  dd      0
+sw2pm_jumpaddr  dw      offset pmode,0
                 dw      SEL_CODE
 
 vcpi_pm_entry   dd      ((640*1024) shr 12)
@@ -217,20 +218,6 @@ vcpi_pm_entry   dd      ((640*1024) shr 12)
 label   idtr    pword
 idt_lim         dw      03ffh   ;we won't enable ints,
 idt_base        dd      0       ;  so let's leave it the same as for rm
-
-;***************************************************************
-switch_to_pm:
-                assume  cs:DGROUP,ds:DGROUP
-		mov	edx,esi
-		movzx_e	si,<offset sw2pm_params>
-		org	$-4
-sw2pm_addr	dd	?
-                pop	[word sw2pm_jumpaddr]	; CS:EIP of protected mode entry-point
-               ;mov     [word sw2pm_jumpaddr+2],0
-               ;mov     [word sw2pm_jumpaddr+4],SEL_CODE
-                mov     ax,0DE0Ch       ; vcpi: switch to pm
-                cli			; load GDTR LDTR TR need 16 bytes in SS:ESP
-                int     67h		; EAX, ESI, DS, ES, FS, GS destroyed
 
 
 ;***************************************************************
@@ -270,14 +257,26 @@ ends
                 push    bx              ;\eip
                 push    offset vcpi_ret ;/
 
-		call	switch_to_pm	; EAX, EDX/ESI, DS, ES, FS, GS destroyed
+		mov	edx,esi
+switch_to_pm:
+		movzx_e	si,<offset sw2pm_params>
+		org	$-4
+sw2pm_addr	dd	?
+                mov     ax,0DE0Ch       ; vcpi: switch to pm
+                cli			; load GDTR LDTR TR need 16 bytes in SS:ESP
+                int     67h		; EAX, ESI, DS, ES, FS, GS destroyed
+pmode:
                 assume  nothing
                 assume  cs:DGROUP
 
 ; Now we are in 16-bit protected mode
-		mov	bl,SEL_DATA
-                mov     ss,bx
-                lea     sp,[bp-8-9*4]
+		push	SEL_DATA
+		pop	ss
+		test	bx,bx
+		jnz	vm2rm_end
+
+                ;lea     sp,[bp-8-9*4]
+                lea     sp,[bp-9*4]
 
 ; Call the routine (bp points to params on stack if any)
                 call    do_memcpy_vcpi	; set ds=all_addrspace
@@ -287,7 +286,9 @@ ends
                 cli     ; to be safe
                 clts    ;
 ; Go to vm86 mode. Sregs, esp, eflags (IF) restored from IRET stack
-                jmp	[pword cs:vcpi_pm_entry]
+                call	[pword cs:vcpi_pm_entry]
+		ret
+                ;jmp	[pword cs:vcpi_pm_entry]
 
 ;***************************************************************
 
@@ -335,35 +336,36 @@ vcpi_ret:
 ;***************************************************************
 ;****** Uses:   Flags
 ;***************************************************************
-        global  _vm2rm:near
-        proc    _vm2rm near
+        global  _vm2rm:far
+        proc    _vm2rm far
 
                 assume  cs:DGROUP,ds:DGROUP
-		extrn	sssp:dword
-                ifdef NO386
-                p8086
-		extrn	_vcpi:byte
-		mov	bx,offset sssp
-		test	[_vcpi],bh
-		jz	vcpi_ret
-                else
-                p386
-                smsw    ax      ;SMSW cannot be trapped! :-)
-                and     al,1	;MSW_PE
-		jz	vcpi_ret
-		mov	bx,offset sssp
-                endif
-                p386
-                pop	ax		; convert
-                push    cs      	; near call
-                push	ax		; to far call
                 push	ds
+                ifdef   QUICK_BOOT
+		extrn	_cmdnum:dword
+v86boot	=	(byte _cmdnum+24)
+		cmp	[v86boot],0
+		jnz	@vm2rm_ret
+		endif
+		mov	bx,offset sssp
                 mov     [bx],sp
                 ;mov     [bx+2],ss
-
-		call	switch_to_pm	; EAX, EDX/ESI, DS, ES, FS, GS destroyed
+		extrn	sssp:dword
+                ifdef NO386
+		extrn	_vcpi:byte
+		test	[_vcpi],bh
+                else
+                smsw    ax      ;SMSW cannot be trapped! :-)
+                and     al,1	;MSW_PE
+                endif
+		jz	@vm2rm_ret
+		jmp	switch_to_pm	; EAX, ESI, DS, ES, FS, GS destroyed
+vm2rm_end:
                 assume  nothing
                 assume  cs:DGROUP
+
+		;push	ss
+		;pop	ds
 
 ; Now we are in 16-bit protected mode
 ; Black magic here
@@ -374,6 +376,7 @@ vcpi_ret:
 
 ; Now we are in rm, but not yet: have to restore sregs:
                 lss     sp,[cs:bx]	; SS
+@vm2rm_ret:
 		pop	ds		; DS
                 retf                   	; CS
 
