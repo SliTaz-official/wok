@@ -56,9 +56,9 @@ int main(int argc, char *argv[]) {
 	}
 	if (argstr(*argv,"cl|image|initrd|iso",clp) == (int) clp) continue;
 #ifdef QUICK_BOOT
-	if (argnum(*argv,"root|vga|mem|-b|-f*|-q*|-v*",&root_dev) >= (int) &base_himem) continue;
+	if (argnum(*argv,"root|vga|mem|-b|-f~-q~-v~",&root_dev) >= (int) &base_himem) continue;
 #else
-	if (argnum(*argv,"root|vga|mem|-b|-f*",&root_dev) >= (int) &base_himem) continue;
+	if (argnum(*argv,"root|vga|mem|-b|-f~",&root_dev) >= (int) &base_himem) continue;
 #endif
 	if (fileexist(*argv) != -1) {
             kernel_name=*argv;

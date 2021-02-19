@@ -341,16 +341,16 @@ vcpi_ret:
 
                 assume  cs:DGROUP,ds:DGROUP
                 push	ds
-                ifdef   QUICK_BOOT
-		extrn	_cmdnum:dword
-v86boot	=	(byte _cmdnum+24)
-		cmp	[v86boot],0
-		jnz	@vm2rm_ret
-		endif
+		extrn	sssp:dword
 		mov	bx,offset sssp
                 mov     [bx],sp
                 ;mov     [bx+2],ss
-		extrn	sssp:dword
+                ifdef   QUICK_BOOT
+		extrn	_cmdnum:dword
+v86boot	=	(byte _cmdnum+24)
+		test	[v86boot],bh
+		jnz	@vm2rm_ret
+		endif
                 ifdef NO386
 		extrn	_vcpi:byte
 		test	[_vcpi],bh

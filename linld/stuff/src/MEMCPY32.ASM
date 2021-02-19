@@ -153,14 +153,6 @@ endm
                 call    near vcpi_pm_copy_routine ; Call pm copy routine via vcpi pm
 		jmp	@@done
 @@real_mode:
-                cmp     esi,edi
-                jae     @@do_copy
-                add     esi,ecx         ;src<dst: we must do
-                add     edi,ecx         ;  copy backwards to avoid
-                std                     ;  overwrite bug
-                db      67h     	;address width override for esi/edi
-		cmpsb			;  dec esi/edi
-@@do_copy:
                 cli
 oldGDTR		=	(pword srcseg)	; don't need src seg/ofs anymore
                 sgdt    [oldGDTR]
@@ -177,6 +169,14 @@ oldGDTR		=	(pword srcseg)	; don't need src seg/ofs anymore
                 pop     ds              ;base=0, lim = 4gb
                 push    ds              ;
                 pop     es              ;
+                cmp     esi,edi
+                jae     @@do_copy
+                add     esi,ecx         ;src<dst: we must do
+                add     edi,ecx         ;  copy backwards to avoid
+                std                     ;  overwrite bug
+                db      67h		;address width override for esi/edi
+		cmpsb			;  dec esi/edi
+@@do_copy:
                 ;db      66h     ;operand width override for ecx
                 db      67h     ;address width override for esi/edi
             rep movsb

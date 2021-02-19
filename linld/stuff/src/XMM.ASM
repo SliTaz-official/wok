@@ -64,7 +64,7 @@ skip_alloc	=	(byte _cmdnum+16)
 LARGE_XMM_ALLOC	=	1
 		ifdef	LARGE_XMM_ALLOC
                 mov     ch,89h          ;allocate blk of EDX kilobytes
-		test	[skip_alloc],ch	; 89h & ('*'=2Ah) = 08h
+		test	[skip_alloc],ch
 		jne	@@err
 		extrn	_cpu386:byte
 		test	[_cpu386],ch

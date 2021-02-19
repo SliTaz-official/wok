@@ -371,43 +371,38 @@ dosbx:
 		push	si di
 		xchg	ax,di			; vars => di
 		dec	bx
-@@testalt:
 		sub	di,dx
 @@loop:
 		mov	si,cx			; s
 		add	di,dx
 @@match:
-		inc	bx			; keywords++
 		lodsb				; *s++
 		or	al,20h			; locase
-		cmp	al,[bx]
-		je	@@match
 		cmp	al,'/'			; 2f
 		jne	@@notopt
-		cmp	[byte bx],'-'
-		je	@@match
+		mov	al,'-'
 @@notopt:
+		inc	bx			; keywords++
+		cmp	al,[bx]
+		je	@@match
+		cmp	[byte bx],dh
+		je	@@lastal
 		cmp	[byte bx],'|'
-		je	@@test
-		cmp	[byte bx],dh
-		je	@@test
-		mov	al,-1
-		inc	bx
-		jmp	@@notopt
-@@test:
-		or	al,al			; 1st loop ?
-		jns	@@testal
-		cmp	[byte bx],dh
-		jne	@@loop
+		je	@@testal
+		jl	@@notsw			; } ~ <del>
+		cmp	al,20h			; EOS or 20h
+		jne	@@loop			; assume [bx] = '|'
+@@notsw:
+		mov	ax,-1
+		jne	@@notopt
+		jmp	@@setnum
 @@testal:
-		cmp	al,'*'
-		je	@@setnum
-		cmp	al,'='
-		;je	@@found
-		;cmp	al,0			; eos, si=next argv
+		inc	ax
+		jz	@@loop
+@@lastal:
+		cmp	al,'='+1
 		xchg	ax,cx			; return s if failure
 		jne	@@nokeyword
-@@found:
 		dec	dx
 		dec	dx
 		je	@@done
