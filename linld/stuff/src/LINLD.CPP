@@ -16,7 +16,7 @@ u32 cmdnum[5];
 
 inline void syntax() {
     die("Syntax:" NL
-        "LINLD [image=file] [initrd=files] [vga=mode] [root=num] [mem=max] [cl=cmdline] [iso=file]" NL
+        "LINLD [image=file] [initrd=files] [vga=mode] [root=num] [mem=max] [cl=cmdline] [iso=file] ..." NL
         "vga mode: ask,extended,normal or dec/oct/hex number" NL
         "-64 for cpu64 only" NL
         "Defaults:" NL
@@ -33,7 +33,7 @@ inline void syntax() {
 	"-b 64m "
         "initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz "
 	"\"cl=root=/dev/null video=-32\""
-	NL NL "\tLINLD image=memtest"
+	NL "\tLINLD memtest"
 #endif
     );
 }

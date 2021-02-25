@@ -197,6 +197,8 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/void load_initrd\(\)/) { isload=3; isload2=0 }
 	if (isload == 3) {  # LOAD.LST
+		if (/bx,offset DGROUP:_imgs\+28/ || /push	si/) next
+		if (/si,offset DGROUP:_imgs\+28/) print "	push	si"
 		if (/cmdstr\+4,0/) {
 			isload2++
 			print	"	mov	ax,word ptr DGROUP:_cmdstr+4"
@@ -207,7 +209,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/mov	ax,word ptr \[si\]/) $0="	lodsw"
 		if( /jmp/) {
 			print "load_initrd_ret:"
-			print "	pop	si"
 			print "	ret"
 			next
 		}

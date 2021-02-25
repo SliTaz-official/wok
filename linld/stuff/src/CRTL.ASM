@@ -33,6 +33,8 @@ isorootofs	dd	16*2048
 		public	_isostate
 _isostate	isostate	<?>
 		org	$-7
+	global	buf4k:byte
+label	buf4k	byte
 _xfer_buf	db	4096	dup (?)
 filecnt		db	?		; in fact 0 minus file count...
 nextfilename	dw	?
@@ -57,14 +59,12 @@ nextfilename	dw	?
 		db	0b8h,20h		; mov	ax,??20h
 @@cpylp:
 		lodsb
-@@cpyhead:
                 mov	[bx],al
                 inc	bx
 		or	al,al
                 jne	@@cpylp
-strend:
                 pop	si
-@ret:
+catret:
 		ret
 
         endp	@strcatb$qpxzct1
@@ -74,7 +74,7 @@ strend:
 
 opendos:
 	ifdef	LONG_FILENAME
-		xchg	ax,cx			; attributes
+		;xchg	ax,cx			; attributes
 		mov	ax,716Ch
 		push	bx si
 		mov	si,bx
@@ -91,7 +91,7 @@ opendos:
 	endif
 		;mov	cl,0			; attribute mask
 		call	dos
-		jc	openret
+		jc	catret
 openok:
 		xchg	ax,bx
 		mov	ax,4202h
@@ -105,7 +105,6 @@ openok:
 		cwd
 		call	seeksetpos0		; filepos = 0
 		xchg	ax,bx			; fd
-openret:
 		ret
 
 ;***************************************************************
@@ -120,10 +119,15 @@ openargs:
 
         global  @open$qpxzc:near
 @open$qpxzc:
+		ifdef	LONG_FILENAME
+		mov	cx,[_isostate.fd]
+		jcxz	opendos
+		xchg	ax,cx
+		else
 		mov	ax,[_isostate.fd]
 		or	ax,ax
 		je	opendos
-openiso:
+		endif
 		ifdef ISOHOOK
 		cmp	[byte bx],'!'
 		je	@readmenu$qv
@@ -225,7 +229,7 @@ rewind:
 
 		ifdef ISOHOOK
 ;***************************************************************
-;_fastcall void readmenu(void);
+;_fastcall int:bx readmenu(void);
 ;***************************************************************
 	proc	@readmenu$qv near
 
@@ -269,7 +273,7 @@ seeksetpos0:
 		mov	bh,42h			; bx=fd cx:dx=offset al=whence
 dosbx:
 		xchg	ax,bx
-		jmp	dos
+		jmp	dos			; bx = fd
 
 	endp	@isolseek$qpxul
 
@@ -393,20 +397,77 @@ dosbx:
 		cmp	al,20h			; EOS or 20h
 		jne	@@loop			; assume [bx] = '|'
 @@notsw:
-		mov	ax,-1
+		mov	al,-1
 		jne	@@notopt
 		jmp	@@setnum
 @@testal:
-		inc	ax
+		cmp	al,-1
 		jz	@@loop
 @@lastal:
-		cmp	al,'='+1
+		cmp	al,'='
 		xchg	ax,cx			; return s if failure
 		jne	@@nokeyword
 		dec	dx
 		dec	dx
 		je	@@done
-		call	@strtol$qpxzc
+@strtol$qpxzc:
+		ifndef	NO386
+		xor	ecx,ecx
+		xor	ebx,ebx
+		else
+		xor	bx,bx
+		xor	cx,cx
+		xor	dx,dx
+		endif
+		lodsb
+		or	al,20h
+		cmp	al,'a'
+		jb	@@notvga
+		sub	al,'o'
+@@vgaloop:
+		dec	cx
+		add	al,6
+		jnb	@@vgaloop		; vga=normal,extended,ask
+@@vga:
+		xchg	ax,cx
+		;cwd
+		jmp	@@end
+@@endstrtol:
+		mov	cl,10
+		cmp	al,'k'-'a'+10
+		je	@@shift
+		mov	cl,20
+		cmp	al,'m'-'a'+10
+		je	@@shift
+		mov	cl,30
+		cmp	al,'g'-'a'+10
+		ifndef	NO386
+		jne	@@noshift
+@@shift:
+		shl	ebx,cl
+@@noshift:
+		popf
+		jnc	@@end2
+		neg	ebx
+@@end2:
+		push	ebx
+		pop	ax
+		pop	dx
+		else
+@@shift:
+		xchg	ax,bx
+		jne	@@noshift
+		extrn	N_LXLSH@:near
+		call	N_LXLSH@
+@@noshift:
+		popf
+		jne	@@end
+		not	dx
+		neg	ax
+		jne	@@end
+		inc	dx
+@@end:
+		endif
 @@setnum:
 		xchg	ax,si
 		mov	[di+2],dx
@@ -416,6 +477,54 @@ dosbx:
 @@nokeyword:
 		pop	di si bx
 		ret
+
+@@notvga:
+		mov	cl,10			; radix
+		cmp	al,'-'
+		jne	@@radixkeep
+		lodsb
+@@radixkeep:
+		pushf
+		cmp	al,'0'
+		jne	@@radixok
+		mov	cl,8
+		lodsb
+		or	al,20h
+		cmp	al,'x'
+		jne	@@radixok
+		mov	cl,16
+@@strtollp:
+		lodsb
+@@radixok:
+		or	al,20h
+		sub	al,'0'
+		jb	@@endstrtol
+		cmp	al,9
+		jbe	@@digitok
+		cmp	al,'a'-'0'
+		jb	@@endstrtol
+		sub	al,'a'-'0'-10
+@@digitok:
+		cmp	al,cl
+		jae	@@endstrtol
+		cbw
+		ifndef	NO386
+		cwde
+		xchg	eax,ebx
+		mul	ecx
+		add	ebx,eax
+		else
+		push	ax
+		xchg	ax,dx
+		mul	cx
+		xchg	ax,bx
+		mul	cx
+		add	dx,bx
+		pop	bx
+		add	bx,ax
+		adc	dx,0
+		endif
+		jmp	@@strtollp
 
 	endp	@argstr$qpxzcxt1ppxzc
 
@@ -636,25 +745,21 @@ ends	data_himem			;};
 		mov	bx,offset vcpi_alloc_err
 		jnz	jmpdie
 ; for (i = cnt-1; i >= 0; i--)
+; if (edx < pm.fallback+pm.size) again
+		mov	bx,offset _imgs.fallback+size image_himem
+		mov	eax,[bx-2+6-size image_himem]	; pm.size
+		add	eax,[bx-2+2-size image_himem]
+		cmp	eax,edx		; pm.fallback+pm.size <= edx ?
+		ja	@@vcpi_alloc
 		mov	eax,ecx
 		dec	eax
 		shl	eax,12		; i*_4k
-; if (edx < pm.fallback+i*_4k && edx >= pm.fallback) again
-		mov	bx,offset _imgs.fallback
-		push	eax
-		add	eax,[bx-2+2]
-		cmp	eax,edx		; pm.fallback+i*_4k <= edx ?
-		pop	eax		; i*_4k
-		jbe	@@pmok
-		cmp	edx,[bx-2+2]	; edx >= pm.fallback ?
-		jae	@@vcpi_alloc
-@@pmok:
 ; if (edx >= initrd.fallback+i*_4k && edx < initrd.fallback+initrd.size) again
-		add	eax,[bx-2+2+size image_himem]	; +initrd.fallback
+		add	eax,[bx-2+2]	; +initrd.fallback
 		cmp	eax,edx		; initrd.fallback+i*_4k > edx ?
 		ja	@@initrdok
-		mov	eax,[bx-2+6+size image_himem]	; initrd.size
-		add	eax,[bx-2+2+size image_himem]	; +initrd.fallback
+		mov	eax,[bx-2+6]	; initrd.size
+		add	eax,[bx-2+2]	; +initrd.fallback
 		cmp	eax,edx		; initrd.fallback+initrd.size > edx ?
 @@ja_vcpi_alloc:
 		ja	@@vcpi_alloc
@@ -680,10 +785,10 @@ ends	data_himem			;};
 		lea	cx,[(data_himem si).cache]
 		ifdef	NO386
 		push	edx
-		pop	ax			; to dx:ax
-		pop	dx
+		pop	ax			; to es:ax
+		pop	es
 		endif
-		call	storepage		; storepage(edx,cx)	
+		call	storepage		; storepage(edx/es:ax,cx)	
 		pop	cx
 		or	ecx,ecx			; clear C
 		jnz	@@ja_vcpi_alloc
@@ -718,40 +823,36 @@ ends	data_himem			;};
 		cmp	eax,edx			; if (m->fallback != m->buf)
 		jz	@@skip			;   memcpy32(m->fallback,0,m->buf,m->size)
 		mov	ecx,[(image_himem bx).size]
-memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
-		push	ecx
-		push	eax
-		push	0
-call_memcpy32:
-		push	edx
 		else
-		les	ax,[dword ((image_himem bx).fallback)]
+		les	cx,[((image_himem bx).buf)]
 		mov	dx,es
-		les	cx,[dword ((image_himem bx).buf)]
+		les	ax,[((image_himem bx).fallback)]
 		cmp	ax,cx			; if (m->fallback != m->buf)
 		jnz	@@do
-		cmp	dx,[word ((image_himem bx).buf)+2]
+		cmp	dx,[word ((image_himem bx).fallback)+2]
 		jz	@@skip			;   memcpy32(m->fallback,0,m->buf,m->size)
 @@do:
-		push	[word ((image_himem bx).size)+2]
-		push	[word ((image_himem bx).size)]
-		push	es			; [word ((image_himem bx).buf)+2]
+		push	[((image_himem bx).size)]
+		xor	bx,bx
+call_memcpy32:					; call_memcpy32(to=es:ax,fromseg=bx,fromofs=dx:cx,size)
+		push	dx			; [word ((image_himem bx).buf)+2]
 		push	cx			; [word ((image_himem bx).buf)]
-		xor	cx,cx
-		push	cx
-call_memcpy32:
-		push	dx			; push dx:ax
+		push	bx
+		push	es			; push es:ax
 		push	ax
 		jmp	@@memcpy
+		endif
 memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
 		p386
 		push	ecx
 		push	eax
 		push	0
+		ifndef	NO386
+call_memcpy32:					; call_memcpy32(to=edx,fromseg,fromofs,size)
+		endif
 		push	edx
 		ifdef	NO386
                 p8086
-		endif
 		endif
 @@memcpy:
 		extrn	memcpy32:near
@@ -771,7 +872,6 @@ memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
 		mov	edx,[di]
 		else
 		les	ax,[dword di]
-		mov	dx,es			; to dx:ax
 		endif
 		mov	cx,offset _xfer_buf
 storepage:					; storepage(edx,cx)
@@ -779,16 +879,15 @@ storepage:					; storepage(edx,cx)
 		push	0
 		push	4096
 		push	0
-		else
-		xor	bx,bx
-		push	bx
-		mov	bh,4096/256
-		push	bx
-		xor	bx,bx
-		push	bx
-		endif
 		push	cx
-		push	ds
+		push	ds			; call_memcpy32(to=edx,fromseg,fromofs,size)
+		else
+		xor	dx,dx
+		push	dx			; 0
+		mov	bx,4096
+		push	bx			; 4096
+		mov	bx,ds			; call_memcpy32(to=es:ax,fromseg=bx,fromofs=dx:cx,size)
+		endif
 		jmp	call_memcpy32
 
         endp    @storepage$qpul
@@ -937,173 +1036,6 @@ image_done:
 		ret
 
         endp    @read_image$qp11image_himem
-
-
-;***************************************************************
-;_fastcall unsigned long strtol(const char *s);
-;***************************************************************
-	proc	@strtol$qpxzc near
-
-		ifndef	NO386
-		xor	ecx,ecx
-		xor	eax,eax
-		xor	ebx,ebx
-		lodsb
-		or	al,20h
-		cmp	al,'a'
-		jb	@@notvga
-		sub	al,'o'
-@@vgaloop:
-		dec	cx
-		add	al,6
-		jnb	@@vgaloop		; vga=normal,extended,ask
-@@vga:
-		dec	cx
-		xchg	ax,cx
-		cwd
-		jmp	@@popsiret
-@@notvga:
-		mov	cl,10			; radix
-		cmp	al,'-'
-		jne	@@radixkeep
-		lodsb
-@@radixkeep:
-		pushf
-		cmp	al,'0'
-		jne	@@radixok
-		mov	cl,8
-		lodsb
-		or	al,20h
-		cmp	al,'x'
-		jne	@@radixok
-		mov	cl,16
-@@strtollp:
-		lodsb
-@@radixok:
-		or	al,20h
-		sub	al,'0'
-		jb	@@endstrtol
-		cmp	al,9
-		jbe	@@digitok
-		cmp	al,'a'-'0'
-		jb	@@endstrtol
-		sub	al,'a'-'0'-10
-@@digitok:
-		cmp	al,cl
-		jae	@@endstrtol
-		cbw
-		cwde
-		xchg	eax,ebx
-		mul	ecx
-		add	ebx,eax
-		jmp	@@strtollp
-@@endstrtol:
-		mov	cl,10
-		cmp	al,'k'-'a'+10
-		je	@@shift
-		mov	cl,20
-		cmp	al,'m'-'a'+10
-		je	@@shift
-		mov	cl,30
-		cmp	al,'g'-'a'+10
-		jne	@@noshift
-@@shift:
-		shl	ebx,cl
-@@noshift:
-		popf
-		jnc	@@end
-		neg	ebx
-@@end:
-		push	ebx
-		pop	ax
-		pop	dx
-@@popsiret:
-		else
-		xor	bx,bx
-		xor	cx,cx
-		xor	dx,dx
-		lodsb
-		or	al,20h
-		cmp	al,'a'
-		jb	@@notvga
-		sub	al,'o'
-@@vgaloop:
-		dec	cx
-		add	al,6
-		jnb	@@vgaloop		; vga=normal,extended,ask
-@@vga:
-		xchg	ax,cx
-		;cwd
-		jmp	@@end
-@@notvga:
-		mov	cl,10			; radix
-		cmp	al,'-'
-		jne	@@radixkeep
-		lodsb
-@@radixkeep:
-		pushf
-		cmp	al,'0'
-		jne	@@radixok
-		mov	cl,8
-		lodsb
-		or	al,20h
-		cmp	al,'x'
-		jne	@@radixok
-		mov	cl,16
-@@strtollp:
-		lodsb
-@@radixok:
-		or	al,20h
-		sub	al,'0'
-		jb	@@endstrtol
-		cmp	al,9
-		jbe	@@digitok
-		cmp	al,'a'-'0'
-		jb	@@endstrtol
-		sub	al,'a'-'0'-10
-@@digitok:
-		cmp	al,cl
-		jae	@@endstrtol
-		cbw
-
-		push	ax
-		xchg	ax,dx
-		mul	cx
-		xchg	ax,bx
-		mul	cx
-		add	dx,bx
-		pop	bx
-		add	bx,ax
-		adc	dx,0
-
-		jmp	@@strtollp
-@@endstrtol:
-		mov	cl,10
-		cmp	al,'k'-'a'+10
-		je	@@shift
-		mov	cl,20
-		cmp	al,'m'-'a'+10
-		je	@@shift
-		mov	cl,30
-		cmp	al,'g'-'a'+10
-@@shift:
-		xchg	ax,bx
-		jne	@@noshift
-		extrn	N_LXLSH@:near
-		call	N_LXLSH@
-@@noshift:
-		popf
-		jne	@@end
-		not	dx
-		neg	ax
-		jne	@@end
-		inc	dx
-@@end:
-		endif
-strtol_ret:
-		ret
-
-	endp	@strtol$qpxzc
 
 
         ends    _TEXT

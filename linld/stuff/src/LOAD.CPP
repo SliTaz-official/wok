@@ -208,7 +208,6 @@ cmd_line_ok:
 
 // Read initrd if needed
 void load_initrd() {
-    struct image_himem *m = &initrd;
     if ((int)initrd_name == 0) return;
 #if defined(__BORLANDC__) && defined(NO386)
 #pragma option -3
@@ -216,6 +215,7 @@ void load_initrd() {
 	.386p
     }
 #endif
+    struct image_himem *m = &initrd;
     open_image(m, initrd_name);
 
     if ((m->fallback=(memtop()-m->size)&(~PAGE_MASK))-m[-1].fallback < m[-1].size) {

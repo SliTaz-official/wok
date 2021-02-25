@@ -23,17 +23,63 @@
 ;***************************************************************
         proc    _memtopz near
 ;***************************************************************
+;u32 memtop_e820()
+;***************************************************************
+;        proc    _memtop_e820 near
+
+	ifdef	INT15_E820
+
+struc   e820		;struct e820 {
+base		dd	?,?	; 0    u64 base;
+length		dd	?,?	; 8    u64 length;
+type		db	?,?,?,?	;16    u32 type;	1=available
+ends	e820		;};
+
+                p386
+		push	ds
+		pop	es
+		push	di
+		xor	ebx,ebx
+@@e820lp:
+                mov     eax,0E820h
+		mov	edx,534D4150h	; 'SMAP'
+		xor	ecx,ecx
+		mov	cl,size e820
+		extrn	buf4k:byte
+		mov	di,offset buf4k
+                int     15h
+                jc      @@err_e820
+		;cmp	eax,534D4150h	; 'SMAP'
+                ;jne	@@err_e820
+		cmp	[(e820 di).type],1
+		jnz	@@notavail
+		mov	eax,[(e820 di).base]
+		add	eax,[(e820 di).length]
+		push	eax
+		pop	ax
+		pop	dx
+		or	dh,dh			; > 16M
+		je	@@notavail
+		pop	di
+		ret
+@@notavail:
+		or	bx,bx
+		jne	@@e820lp
+@@err_e820:
+		pop	di
+	endif
+
+;        endp    _memtop_e820
+
+;***************************************************************
 ;u32 memtop_e801()
 ;***************************************************************
 ;        proc    _memtop_e801 near
 
                 xor     cx,cx           ;fix to work around buggy
                 xor     dx,dx           ;  BIOSes which dont clear/set
-                stc                     ;  carry on pass/error of
-                mov     ax,0E801h
-                int     15h
-                jc      @@err
-
+                mov     ax,0E801h	;ax=1kbs in 1-16M bx=64kbs above 16M extended
+                int     15h		;cx=1kbs in 1-16M dx=64kbs above 16M configured
 		xchg	ax,cx		;kludge to handle BIOSes
 		jcxz	@@use_cxdx	;  which report their extended
 					;  memory in AX/BX rather than
@@ -43,14 +89,14 @@
 @@use_cxdx:				;now: dx=64k units above 16m
 					;     ax=1k units above 1m below 16m (max 3c00h)
                 or	dx,dx
-                jz      tokb            ;dx=0 here, ax=kbs above 1m
+		jz	@@below16M
                 xor     ax,ax           ;ignore info on low 16M (assume full)
-               ;add     dx,100h         ;account for low 16M
-                inc     dh              ;account for low 16M (optimized)
+                inc     dh              ;account for low 16M
                 ret
+@@below16M:
+		or	ax,ax
+                jnz	tokb		;dx=0 here, ax=kbs above 1m
 @@err:
-;                xor     ax,ax
-;                cwd
 ;                ret
 ;        endp    _memtop_e801
 
@@ -62,9 +108,7 @@
 
                 mov     ah,88h
                 int     15h             ;ax=kbs above 1m
-                cmc                     ;  error: cf=1 or ax=0
-		sbb	dx,dx
-                and     ax,dx           ;
+                test	ax,ax		;  error: ax=0
                 jnz     tokb            ;happens on big mem systems
 
 ;***************************************************************
