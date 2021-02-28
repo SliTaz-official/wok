@@ -6,6 +6,9 @@
                 %crefref
                 %noincl
                 %nomacs
+
+	include	"common.inc"
+
                 p8086
 
         group   DGROUP  _TEXT

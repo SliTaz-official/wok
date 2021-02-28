@@ -1,6 +1,8 @@
 #include "crtl.h"
+#include "common.h"
 #include "iso9660.h"
 
+#ifdef ISO9660
 #define setdirpage(to,sec)	((to) = *(int*)&(sec)<<(SECTORBITS-8))
 #define cpytodirpage(to,from)	((to) = *(int*)((char*)&(from)+1))
 #define cpyfromdirpage(to,from)	(*(int*)((char*)&(to)+1) = (from))
@@ -13,6 +15,9 @@
 	x->dirsize = filesize2dirsize(* (unsigned long *) (isostate.buffer + 0xA6)); \
 }
 
+#if !defined(BASIC_ISO9660) && !defined(ROCKRIDGE)
+#define  ROCKRIDGE
+#endif
 static int isoreaddir(void)
 {
 	char *p;
@@ -37,6 +42,7 @@ static int isoreaddir(void)
 	x->filemod = 0x81ED; if (p[25] & 2) ((char *)&(x->filemod))[1] = 0x41;
 	p = x->buffer + 34 + ((p[32] + x->curpos) & -2);
 	x->curpos += x->entrysize;
+#ifdef ROCKRIDGE
 	do {
 		register len = p[2];
 		if (* (short *) p == 0x4D4E) {
@@ -46,6 +52,20 @@ static int isoreaddir(void)
 		}
 		p += len;
 	} while (x->buffer + x->curpos - 3 >= p);
+#endif
+#ifdef BASIC_ISO9660
+	char *s;
+	p = x->buffer + 33; p += x->curpos;
+	s = ".."+1-p[0];
+	p--;
+	if (((* (short *) p) & 0xFEFF) -1 != 0) {
+		s = p + 1; p += *p;
+		if (* (short *) (p-1) != 0x313B) p+=2; // no ;1 to remove
+		if (*p != '.') p++;
+		*p = 0;
+	}
+	x->filename = s;
+#endif
 found:
 	return 0;
 }
@@ -112,3 +132,4 @@ int _isoopen(void)
 	isolseek(&x->fileofs);
 	return x->fd;
 }
+#endif

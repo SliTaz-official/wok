@@ -8,6 +8,8 @@
                 %nomacs
                 p8086
 
+	include	"common.inc"
+
         group   DGROUP  _TEXT,_DATA
         assume  cs:DGROUP,ds:DGROUP
 
@@ -155,10 +157,12 @@ sssp		dd	?
 		extrn	_topseg:near
 		call	near _topseg
 		mov	[word sssp+2],ax
+		ifdef	VCPI
 		and	ch,0			; vcpi flag
 		org	$-1
 		global	_vcpi:byte
 _vcpi		db	?
+		endif
 		else
                 p386
 		movzx	eax,[word _heap_top]
@@ -186,14 +190,20 @@ _vcpi		db	?
 		sub	eax,ecx
 		endif
 		shr	eax,4
+		ifdef	VCPI
 		mov	ch,0
+		endif
 @bzimage:
 		xchg	ax,dx
 		mov	ax,9000h
+		ifdef	VCPI
 		extrn	_vcpi:byte
 		and	ch,[_vcpi]
 		endif
+		endif
+		ifdef	VCPI
 		add	dh,ch		; 60k room for malloc_bufv_or_die
+		endif
 		cmp	ax,dx
 		ifdef	LARGE_ZIMAGE
 		ja	@nooverflow0

@@ -1,6 +1,44 @@
+//#define WITH_XMM_ALLOC	add himem.sys driver
+//#define LARGE_ZIMAGE	may load system in high memory temporarily 
+//#define INT15_E820	add int15/eax=E820 driver
+//#define BASIC_ISO9660	non rockridge support
+#define ROCKRIDGE	iso 9660 posix name support
+#define ISO9660		iso= support
+#define QUICK_BOOT	/q bypass shutdown hack, /v keeps v86
+#define ISOHOOK		iso image dos boot helper
+#define MOVE_SETUP	spare few Kb in setup location for zImage system
+#define NO386		8088 support
+#define CPU64		/64 support
+#define LONG_FILENAME	look for Win95+ long file name too
+#define SHUTDOWN	disable int19 hooked drivers
+#define VCPI		v86 mode support with VCPI 4.0+
+#define LINUX001	linux 0.01 support
+#define ELKS		elks support
+#define IPXE		ipxe support
+/* End of the optional features */
+
+#ifdef ISOHOOK
+#ifndef ISO9660
+#define ISO9660
+#endif
+#ifndef ROCKRIDGE
+#define ROCKRIDGE
+#endif
+#ifndef CPU64
+#define CPU64
+#endif
+#endif
+
 // This file is distributed under GPL
 //
 // Common defs not belonging to CRTL
+
+#if defined(__BORLANDC__) && !defined(NO386)
+#pragma option -3
+	asm{
+		.386p
+	}
+#endif
 
 #define NL "\n"
 #define VERSION_STR "0.97"

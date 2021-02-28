@@ -16,9 +16,15 @@ u32 cmdnum[5];
 
 inline void syntax() {
     die("Syntax:" NL
-        "LINLD [image=file] [initrd=files] [vga=mode] [root=num] [mem=max] [cl=cmdline] [iso=file] ..." NL
+        "LINLD [image=file] [initrd=files] [vga=mode] [root=num] [mem=max] [cl=cmdline] "
+#ifdef ISO9660
+	"[iso=file] "
+#endif
+	"..." NL
         "vga mode: ask,extended,normal or dec/oct/hex number" NL
+#ifdef CPU64
         "-64 for cpu64 only" NL
+#endif
         "Defaults:" NL
         "\timage=bzImage" NL
         "\tinitrd,vga,root=(void)" NL
@@ -50,11 +56,17 @@ int main(int argc, char *argv[]) {
     if (!*++argv) syntax();
     const char **clp = &cmdline;
     do {
+#ifdef CPU64
         if ((*(u16 *)*argv|2) == 0x362F) {	// -64 /64
 	    if (cpuhaslm() != 0) continue;
 	    exit();
 	}
+#endif
+#ifdef ISO9660
 	if (argstr(*argv,"cl|image|initrd|iso",clp) == (int) clp) continue;
+#else
+	if (argstr(*argv,"cl|image|initrd",clp) == (int) clp) continue;
+#endif
 #ifdef QUICK_BOOT
 	if (argnum(*argv,"root|vga|mem|-b|-f~-q~-v~",&root_dev) >= (int) &base_himem) continue;
 #else
@@ -68,7 +80,9 @@ int main(int argc, char *argv[]) {
 	strcatb((const char *) buf_cmdline,*argv);
     } while (*++argv);
     puts(*clp);
+#ifdef ISO9660
     if (isofile) setiso(isofile);
+#endif
     set_cmdline(*clp);
     load_kernel();
     load_initrd();

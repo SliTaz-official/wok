@@ -137,7 +137,7 @@ do {
     readrm(m, 0x200);
     rewind(m->fd);
     if(kernelparams->setup_sects == 0) {
-#if 1
+#ifdef LINUX001
         if(* (int *) &first1k->pad10[0x3F-0x24] == 0x3AE8) {
 	    extern u16 csip_hilo;
 	    csip_hilo=0x0042;

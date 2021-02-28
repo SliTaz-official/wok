@@ -28,6 +28,10 @@
                 %crefref
                 %noincl
                 %nomacs
+
+	include	"common.inc"
+
+		ifdef	VCPI
                 p386
 
 ;****** Stuff for declaring descriptors
@@ -383,6 +387,17 @@ vm2rm_end:
         endp    _vm2rm
 
         ends    _TEXT
+		else
+	
+        group   DGROUP  _TEXT
+        assume  cs:DGROUP,ds:DGROUP
+
+        segment _TEXT byte public use16 'CODE'
+	global	gdt_data:near
+gdt_data:
+        ends    _TEXT
+
+		endif
 
         end
 

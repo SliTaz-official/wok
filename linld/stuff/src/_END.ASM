@@ -5,7 +5,10 @@
                 %crefref
                 %noincl
                 %nomacs
-                p386
+
+	include	"common.inc"
+
+                p8086
 
         segment _TEXT byte public use16 'CODE'
         ;global  _text_end:byte
@@ -23,7 +26,7 @@ _big_cmdline	db	0
 
         segment _BSS word public use16 'BSS'
 ;STACK_SIZE = 128
-STACK_SIZE = 512
+STACK_SIZE = 256
 		db	STACK_SIZE dup(?)
         global  stktop:byte
         label   stktop byte

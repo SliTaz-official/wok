@@ -6,6 +6,9 @@
                 %crefref
                 %noincl
                 %nomacs
+
+	include	"common.inc"
+
                 p8086
 
         group   DGROUP  _TEXT,_DATA,_BSS
@@ -18,10 +21,12 @@
         ;global  _data_start:byte
         label   _data_start byte
 		ifndef	NO386
-msg_badcpu      db      "I need 386+ CPU in real mode w/o paging"
+msg_badcpu      db      "I need a 386+ in real mode w/o paging"
+		ifdef	VCPI
 		db	" or "
 msg_badmapping	db	"under VCPI 4.0+ manager with low 640k 1:1 mapping"
         global  _vcpi:byte
+		endif
 _vcpi		db	0
 		endif
 
@@ -36,13 +41,15 @@ _vcpi		db	0
         ;global  _bss_start:byte
         label   _bss_start byte
         global  stktop:byte
-		ifdef	NO386
         global  _cpu386:byte
 _cpu386		db	?
+		ifdef	CPU64
 		org	$-1
 		endif
+		ifdef	CPU64
         global  _cpu_features:dword
 _cpu_features	dd	?
+		endif
         ends    _BSS
 
         segment _TEXT byte public use16 'CODE'
@@ -118,6 +125,7 @@ godie:
 ;***************************************************************
 label   check_vcpi near
                 p386
+		ifdef	VCPI
 ; Check whether it is safe to call 67h
 		xor	eax,eax
                 mov     es,ax
@@ -142,8 +150,10 @@ is386vcpi:
 		extrn	_vcpi:byte
 		dec	[byte _vcpi]
 		endif
+		endif
 no_vcpi:
 endcpu386:
+		ifdef	CPU64
 		pushfd
 		pop	dx
 		pop	ax
@@ -167,6 +177,9 @@ endcpu386:
 		else
 		mov	[_cpu_features],edx
 @@no_cpuid:
+		endif
+		else
+		dec	[_cpu386]
 		endif
 endcpu86:
                 p8086
@@ -266,6 +279,9 @@ newarg:
 		ret
 
         endp    _topseg
+		else
+@ret:
+		ret
 		endif
 
 ;***************************************************************

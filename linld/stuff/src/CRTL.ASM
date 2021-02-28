@@ -6,6 +6,9 @@
                 %crefref
                 %noincl
                 %nomacs
+
+	include	"common.inc"
+
 		ifdef	NO386
                 p8086
 		else
@@ -19,7 +22,9 @@
 
 loaderr		db	"Load failure",0
 msg_hang	db      "Himem broken",0
+		ifdef	VCPI
 vcpi_alloc_err	db	"VCPI"
+		endif
 		global	overflow:byte
 overflow	db	"/"
 msg_malloc      db      "Out of memory"
@@ -29,10 +34,12 @@ isorootofs	dd	16*2048
 
         segment _BSS byte public use16 'BSS'
 
+	ifdef ISO9660
 		include	"isostate.inc"
 		public	_isostate
 _isostate	isostate	<?>
 		org	$-7
+	endif
 	global	buf4k:byte
 label	buf4k	byte
 _xfer_buf	db	4096	dup (?)
@@ -70,8 +77,24 @@ catret:
         endp	@strcatb$qpxzct1
 
 
+		ifdef	NO386
                 p8086
+		endif
 
+	ifndef ISO9660
+;***************************************************************
+;_fastcall int:C open(bx:const char* name, int flags=O_RDONLY);
+;_fastcall int:C openargs(bx:const char* name, int flags=O_RDONLY);
+;***************************************************************
+        global  openargs:near			; openargs(bx)
+openargs:
+		cmp	[byte bx],'@'
+		jne	fail
+		inc	bx
+
+        global  @open$qpxzc:near
+@open$qpxzc:
+	endif
 opendos:
 	ifdef	LONG_FILENAME
 		;xchg	ax,cx			; attributes
@@ -91,6 +114,7 @@ opendos:
 	endif
 		;mov	cl,0			; attribute mask
 		call	dos
+	ifdef ISO9660
 		jc	catret
 openok:
 		xchg	ax,bx
@@ -104,12 +128,16 @@ openok:
 		;xor	cx,cx
 		cwd
 		call	seeksetpos0		; filepos = 0
+	else
+openok:
+	endif
 		xchg	ax,bx			; fd
 		ret
 
+	ifdef ISO9660
 ;***************************************************************
-;_fastcall int open(bx:const char* name, int flags=O_RDONLY);
-;_fastcall int openargs(bx:const char* name, int flags=O_RDONLY);
+;_fastcall int:C open(bx:const char* name, int flags=O_RDONLY);
+;_fastcall int:C openargs(bx:const char* name, int flags=O_RDONLY);
 ;***************************************************************
         global  openargs:near			; openargs(bx)
 openargs:
@@ -135,6 +163,7 @@ openargs:
 		extrn	@_isoopen$qv:near
 		mov	[word _isostate.filename2open],bx
 		jmp	@_isoopen$qv		; filepos = 0
+	endif
 
 
 ;***************************************************************
@@ -154,8 +183,10 @@ openargs:
         global  close:near			; close(ax)
 close:
 		mov	bh,3Eh
+	ifdef ISO9660
 		mov	cx,[_isostate.fd]
 		jcxz	dosbx
+	endif
 		jmp	fail
 
         endp    @close$qi
@@ -178,6 +209,7 @@ close:
 		xchg	ax,cx			; sz
 	global	@read$cxdxbx:near
 @read$cxdxbx:
+	ifdef ISO9660
 		push	bx
 		mov	bx,offset _isostate.filepos
 		push	cx
@@ -198,6 +230,7 @@ close:
 		add	[bx],cx
 		adc	[(word bx)+2],0
 		pop	bx
+	endif
 readfd:
                 mov	ah,3Fh
                 ;jcxz	fail
@@ -221,8 +254,16 @@ doret:
         proc    @rewind$qi near
 
 rewind:
+	ifdef ISO9660
 		mov	bx,offset _isostate.fileofs
 		jmp	lseek
+	else
+		mov	bl,0
+lseek0:
+		xor	cx,cx
+		xor	dx,dx
+		jmp	lseek
+	endif
 
         endp    @rewind$qi
 
@@ -261,6 +302,7 @@ rewind:
         global  @isolseek$qpxul:near
         proc    @isolseek$qpxul near
 
+	ifdef ISO9660
 isolseek:
 		mov	ax,[_isostate.fd]
 lseek:
@@ -270,6 +312,9 @@ seeksetpos0:
 		xor	bx,bx
 		mov	[word _isostate.filepos],bx
 		mov	[(word _isostate.filepos)+2],bx
+	else
+lseek:
+	endif
 		mov	bh,42h			; bx=fd cx:dx=offset al=whence
 dosbx:
 		xchg	ax,bx
@@ -277,6 +322,7 @@ dosbx:
 
 	endp	@isolseek$qpxul
 
+	ifdef ISO9660
 ;***************************************************************
 ;_fastcall int isoreadsector(bx:const unsigned long *offset);
 ;_fastcall int isoreadrootsector(void);
@@ -294,8 +340,10 @@ dosbx:
 		jmp	@read$dxaxbx		; read(fd,buffer,2560+)
 
         endp    @isoreadsector$qpxul
+	endif
 
 
+	ifdef ISO9660
 		ifdef ISOHOOK
 ;***************************************************************
 ;_fastcall int strhead(bx:const char* a, ax:const char* b);
@@ -311,6 +359,9 @@ dosbx:
 		or	dl,dl			; clear C
 		jz	failifc			; return 0
                 xor	dl,[bx]			; dl -= *a++
+		ifdef BASIC_ISO9660
+		and	dl,0dfh			; upcase
+		endif
 		jne	fail			; return -1
                 inc	bx
                 jmp	@@loop
@@ -354,6 +405,7 @@ dosbx:
 
         endp    @strcmp$qpxzct1
 		endif
+	endif
 
 ;***************************************************************
 ;_fastcall const char **argstr(bx:const char *s, ax:const char keywords[], dx:const char **var);
@@ -466,8 +518,8 @@ dosbx:
 		neg	ax
 		jne	@@end
 		inc	dx
-@@end:
 		endif
+@@end:
 @@setnum:
 		xchg	ax,si
 		mov	[di+2],dx
@@ -692,6 +744,7 @@ jmpdie:
 		ifndef	NO_CLOSE
 		mov	[(image_himem si).fd2close],ax
 		endif
+	ifdef ISO9660
 		ifndef	NO386
 		mov	eax,[_isostate.filesize]
 @@end:
@@ -703,10 +756,33 @@ jmpdie:
 		mov	[word (image_himem si).chunk_size],ax
 		mov	[word ((image_himem si).chunk_size)+2],dx
 		endif
+	else
+		mov	bl,02h			; SEEK_END
+		call	lseek0
+		ifndef	NO386
+		push	eax
+		mov	ax,[(image_himem si).fd]
+		call	rewind
+		pop	eax
+@@end:
+		mov	[(image_himem si).chunk_size],eax
+		else
+		push	ax
+		push	dx
+		mov	ax,[(image_himem si).fd]
+		call	rewind
+		pop	dx
+		pop	ax
+@@end:
+		mov	[word (image_himem si).chunk_size],ax
+		mov	[word ((image_himem si).chunk_size)+2],dx
+		endif
+	endif
 		ret
 
         endp    next_chunk
 
+		ifdef	VCPI
 ;***************************************************************
 
 struc   data_himem			;struct data_himem {
@@ -801,6 +877,7 @@ ends	data_himem			;};
 		endif
 
         endp    @malloc_bufv_or_die$qp11image_himem
+		endif
 
 
 ;***************************************************************
@@ -892,7 +969,7 @@ storepage:					; storepage(edx,cx)
 
         endp    @storepage$qpul
 
-
+		ifdef	VCPI
                 p386
 ;***************************************************************
 ;_fastcall void reset_bufv(di:u32 *p);
@@ -958,6 +1035,7 @@ curdata		dw	?
 		ret
 
         endp    _prev_bufv
+		endif
 
 		ifdef	NO386
                 p8086

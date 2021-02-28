@@ -6,6 +6,9 @@
                 %crefref
                 %noincl
                 %nomacs
+
+	include	"common.inc"
+
 		ifdef	NO386
                 p8086
 		else
@@ -144,6 +147,7 @@ endm
                 mov     ecx,[sz]
                 jecxz   @@done
 
+		ifdef	VCPI
 		smsw	ax
                 and     al,1	;MSW_PE
 		jz	@@real_mode
@@ -152,6 +156,7 @@ endm
 		extrn	vcpi_pm_copy_routine:near
                 call    near vcpi_pm_copy_routine ; Call pm copy routine via vcpi pm
 		jmp	@@done
+		endif
 @@real_mode:
                 cli
 oldGDTR		=	(pword srcseg)	; don't need src seg/ofs anymore
@@ -206,7 +211,19 @@ oldGDTR		=	(pword srcseg)	; don't need src seg/ofs anymore
 
 ;****** Const data *********************************************
 
+		ifdef	VCPI
 		extrn	gdt_memcpy
+		else
+		org	$-8	;save 8 bytes
+;0000: unused
+gdt_memcpy	dd	?,?
+;0008: Data seg [0,FFFFFFFF]
+		;	lim_lo              base_lo
+		dw	1111111111111111b,  0000000000000000b
+		db	00000000b,10010010b,10001111b,00000000b
+		;	base_med  P  S D A  G ??l_hi  base_hi
+		;	           Pl E W    D
+		endif
 label	GDTR	pword
 gdt_limit	dw	0ffffh
 		global	gdt_base_memcpy:word

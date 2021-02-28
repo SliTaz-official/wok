@@ -11,6 +11,7 @@ extern u32 himem_buf;
 void load_image(struct image_himem *m) {
     m->remaining = m->size;
     u32* bufv= &himem_buf;
+#ifdef VCPI
 #ifdef WITH_XMM_ALLOC
     m->buf = m->fallback;	// set no_exit btw: die() won't return to DOS
     if(((u16 *)&m->fallback)[1] >= 0x10) { // >= _1m ?
@@ -30,11 +31,22 @@ void load_image(struct image_himem *m) {
 	}
     }
 #endif
+#else
+    m->buf = m->fallback;	// set no_exit btw: die() won't return to DOS
+#ifdef WITH_XMM_ALLOC
+    if(((u16 *)&m->fallback)[1] >= 0x10) { // >= _1m ?
+        xmm_alloc(m);			// update m->buf
+    }
+    himem_buf = m->buf;
+#endif
+#endif
     do {
         u16 size;
 	if(s16(size = read_image(m)) -1 < 0) break;
         storepage(bufv);
+#ifdef VCPI
 	if (bufv != &himem_buf) next(bufv);
+#endif
         himem_buf += size;
     } while (*bufv);
     if(m->remaining) loadfailure();
@@ -58,19 +70,24 @@ void far last_ditch() {
 	pusha
 # endif
     }
+#ifdef VCPI
     vm2rm();
+#endif
     struct image_himem *m = &pm;
 #define KERNEL	0
 #define INITRD	1
-    u32 *q;
     if(((u16 *)&m[KERNEL].fallback)[1] >= 0x10) // >=	_1m ?
 	((u16 *)&m[KERNEL].fallback)[1] = 0x10;
+#ifdef VCPI
+    u32 *q;
     q = m[KERNEL].bufv;
     if(q==0) {
+#endif
         // Move kernel
         memcpy_image_kernel();
         // Move initrd
         memcpy_image_initrd();
+#ifdef VCPI
     } else { //vcpi
 #if defined(__BORLANDC__) && defined(NO386)
 #pragma option -3
@@ -109,6 +126,7 @@ void far last_ditch() {
             } while(q != m[INITRD].bufv);
         }
     }
+#endif
     asm {
 # ifdef NO386
 	pop	dx

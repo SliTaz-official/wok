@@ -6,6 +6,9 @@
                 %crefref
                 %noincl
                 %nomacs
+
+	include	"common.inc"
+
 		ifdef	NO386
                 p8086
 		else
@@ -107,11 +110,16 @@ _cmdline	=	_cmdstr+0
 		pop	ss
 		mov	sp,di
 
+		ifdef	LINUX001
 		mov	dx,2000h
 		global	_csip_hilo:word
 		org	$-2
 _csip_hilo	dw	?
 		xchg	al,dh	; 9020 / 9000
+		else
+		mov	al,20h	; 9020:0
+		xor	dx,dx
+		endif
 		push	ax
 		push	dx	; 0000 / 0042
 
@@ -120,18 +128,27 @@ _csip_hilo	dw	?
 		global	_pm_low:byte
 _pm_low		db	?
 		push	cx
+		ifdef	IPXE
 		mov	ax,[word ss:024Ch]
 		xor	ax,2b30h		; ipxe ?
 		loopne	@@notipxe
+		else
+		loop	@@truebzimage
+		endif
 
 		; finish loading
 		extrn   @last_ditch$qv:near
 		push	cs
 		call	@last_ditch$qv
+		ifdef	SHUTDOWN
 		dos_shutdown			; clear si; ds=0; kill VCPI
 		push	cs
 		pop	ds
+		else
+		xor	si,si
+		endif
 
+@@truebzimage:
 @@notipxe:
 		pop	cx
 		loop	@@isbzimage
@@ -174,7 +191,16 @@ _pm_low		db	?
 		pop	es
 		push	es
 
+		ifdef ELKS
 		call	near @@movsb@jmp	; movsb; pop cs ; ds=es=ss
+		elseifdef MOVE_SETUP
+		call	near @@movsb@jmp	; movsb; pop cs ; ds=es=ss
+		else
+		xor	di,di
+		rep
+		  movsb
+		call	near @@isbzimage	; movsb; pop cs ; ds=es=ss
+		endif
 
 		extrn   memcpy32:near
 		call	memcpy32
@@ -191,7 +217,7 @@ _rm_offset	dw	?
 		;  movsb
 		endif
 
-		ifndef  noelks
+		ifdef   ELKS
 		ifdef	MOVE_SETUP
 		ifndef	NO386
 		mov	eax,[dword si+1E6h]
@@ -232,7 +258,7 @@ _rm_offset	dw	?
 		rep
 		  movsb
 		else
-		 ifndef  noelks
+		 ifdef   ELKS
 		xchg	ax,si
 		mov	ch,7Eh		; 0Ah min, 7Eh max
 @@movsb@jmp:
@@ -257,7 +283,9 @@ _rm_offset	dw	?
 		assume	cs:DGROUP
                 retf
 
+		ifdef	SHUTDOWN
 		step19code
+		endif
 
         endp    _boot_kernel
 

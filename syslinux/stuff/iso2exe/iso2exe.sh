@@ -43,7 +43,7 @@ add_rootfs()
 	TMP=/tmp/iso2exe$$
 	mkdir -p $TMP/mnt
 	mount -o loop,ro $1 $TMP/mnt
-	if grep -qs rootfs $TMP/mnt/boot/isolinux/isolinux.cfg ; then
+	if [ $2 = --array ] || grep -qs rootfs $TMP/mnt/boot/isolinux/isolinux.cfg ; then
 		$0 --get rootfs.gz > $TMP/rootfs.gz
 		SIZE=$(wc -c < $TMP/rootfs.gz)
 		store 24 $SIZE $1
@@ -338,7 +338,7 @@ EOM
 	ddq if=/dev/zero bs=32k count=1 of=$DATA
 	add_win32exe $DATA $2 > /dev/null
 	HSZ=$OFS
-	add_rootfs $DATA > /dev/null
+	add_rootfs $DATA --array > /dev/null
 	add_fdbootstrap $DATA > /dev/null
 	name=${3:-bootiso}
 	BOOTISOSZ=$((0x8000 - $OFS + $HSZ))
