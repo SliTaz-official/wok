@@ -357,11 +357,8 @@ dosbx:
                 inc	bx
 		xchg	ax,bx
 		or	dl,dl			; clear C
-		jz	failifc			; return 0
+		jz	failifc			; return 0, bx=a tail
                 xor	dl,[bx]			; dl -= *a++
-		ifdef BASIC_ISO9660
-		and	dl,0dfh			; upcase
-		endif
 		jne	fail			; return -1
                 inc	bx
                 jmp	@@loop
@@ -397,6 +394,9 @@ dosbx:
                 inc	bx
 		xchg	ax,bx
                 xor	dl,[bx]			; dl ^= *a++
+		ifndef  ROCKRIDGE
+		and	dl,0dfh			; case insensitive
+		endif
 		jne	fail			; return -1
                 inc	bx
 		or	dl,dl			; clear C
@@ -747,14 +747,9 @@ jmpdie:
 	ifdef ISO9660
 		ifndef	NO386
 		mov	eax,[_isostate.filesize]
-@@end:
-		mov	[(image_himem si).chunk_size],eax
 		else
 		mov	ax,[word _isostate.filesize]
 		mov	dx,[(word _isostate.filesize)+2]
-@@end:
-		mov	[word (image_himem si).chunk_size],ax
-		mov	[word ((image_himem si).chunk_size)+2],dx
 		endif
 	else
 		mov	bl,02h			; SEEK_END
@@ -764,8 +759,6 @@ jmpdie:
 		mov	ax,[(image_himem si).fd]
 		call	rewind
 		pop	eax
-@@end:
-		mov	[(image_himem si).chunk_size],eax
 		else
 		push	ax
 		push	dx
@@ -773,11 +766,15 @@ jmpdie:
 		call	rewind
 		pop	dx
 		pop	ax
+		endif
+	endif
 @@end:
+		ifndef	NO386
+		mov	[(image_himem si).chunk_size],eax
+		else
 		mov	[word (image_himem si).chunk_size],ax
 		mov	[word ((image_himem si).chunk_size)+2],dx
 		endif
-	endif
 		ret
 
         endp    next_chunk
@@ -1048,16 +1045,18 @@ curdata		dw	?
         proc    @read_image$qp11image_himem near
 
 		push	di
-		mov	di,4096
-		push	di		; original size
+		xor	di,di
 @@loop:
 		ifndef	NO386
-		movzx	ecx,di
+		xor	ecx,ecx
+		mov	ch,4096/256
+		sub	cx,di
 		mov	eax,[(image_himem si).chunk_size]
 		cmp	ecx,eax
 		jb	@@szok
 		else
-		mov	cx,di
+		mov	cx,4096
+		sub	cx,di
 		mov	ax,[word (image_himem si).chunk_size]
 		cmp	cx,ax
 		jb	@@szok
@@ -1067,49 +1066,43 @@ curdata		dw	?
 		xchg	ax,cx
 @@szok:
 		jcxz	image_done
-		mov	dx,offset _xfer_buf+4096
-		sub	dx,di
-		mov	bx,[si]
+		lea	dx,[di+_xfer_buf]
+		mov	bx,[(image_himem si).fd]
 		call	@read$cxdxbx
 		jb	image_done
-		xor	cx,cx
-		cwd				; ax < 8000h
+		add	di,ax
 		ifndef	NO386
 		cwde				; ax < 8000h
+		cdq
 		sub	[(image_himem si).chunk_size],eax
-		xchg	eax,ebx
 		else
+		cwd				; ax < 8000h
 		sub	[word (image_himem si).chunk_size],ax
-		xchg	ax,bx
 		sbb	[word ((image_himem si).chunk_size)+2],dx
-		jnz	@@fill
-		cmp	[word (image_himem si).chunk_size],dx
 		endif
-		jnz	@@fill
-		dec	cx
 @@fill:
-		test	bl,3
+		test	al,3
 		je	@@filled
-		mov	[bx+_xfer_buf],dh
-		inc	bx
+		mov	[di+_xfer_buf],dl
+		inc	di
+		inc	ax
 		jmp	@@fill
 @@filled:
 		ifndef	NO386
-		sub	[(image_himem si).remaining],ebx
+		sub	[(image_himem si).remaining],eax
+		or	edx,[word (image_himem si).chunk_size]
 		else
-		sub	[word (image_himem si).remaining],bx
+		sub	[word (image_himem si).remaining],ax
 		sbb	[word ((image_himem si).remaining)+2],dx
+		mov	ax,[word (image_himem si).chunk_size]
+		or	ax,[word ((image_himem si).chunk_size)+2]
 		endif
-		sub	di,bx
-		pushf
-		jcxz	@@same_chunk
+		jnz	@@same_chunk
 		call	next_chunk
 @@same_chunk:
-		popf
-		jnz	@@loop
+		jmp	@@loop
 image_done:
-                pop	ax		; original size
-		sub	ax,di
+		xchg	ax,di
                 pop	di
 		ret
 

@@ -16,7 +16,7 @@
 }
 
 #if !defined(BASIC_ISO9660) && !defined(ROCKRIDGE)
-#define  ROCKRIDGE
+#define BASIC_ISO9660
 #endif
 static int isoreaddir(void)
 {
@@ -37,16 +37,17 @@ static int isoreaddir(void)
 	if ((x->entrysize = * (short *) p) == 0) {
 		return -1;
 	}
-	// x->filename = "";
-	x->filesize = * (unsigned long *) (p + 10);
 	x->filemod = 0x81ED; if (p[25] & 2) ((char *)&(x->filemod))[1] = 0x41;
+	register char *s;
+	x->filesize = * (unsigned long *) (p + 10);
+	s = ".."+1-p[33];
+#ifdef ROCKRIDGE
 	p = x->buffer + 34 + ((p[32] + x->curpos) & -2);
 	x->curpos += x->entrysize;
-#ifdef ROCKRIDGE
 	do {
 		register len = p[2];
 		if (* (short *) p == 0x4D4E) {
-			x->filename = p + 5;
+			s = p + 5;
 			p[len] = 0;
 			goto found;
 		}
@@ -54,19 +55,21 @@ static int isoreaddir(void)
 	} while (x->buffer + x->curpos - 3 >= p);
 #endif
 #ifdef BASIC_ISO9660
-	char *s;
-	p = x->buffer + 33; p += x->curpos;
-	s = ".."+1-p[0];
-	p--;
+# ifdef ROCKRIDGE
+	p = x->buffer + 32 + x->curpos - x->entrysize;
+# else
+	x->curpos += x->entrysize;
+	p += 32;
+# endif
 	if (((* (short *) p) & 0xFEFF) -1 != 0) {
 		s = p + 1; p += *p;
 		if (* (short *) (p-1) != 0x313B) p+=2; // no ;1 to remove
 		if (*p != '.') p++;
 		*p = 0;
 	}
-	x->filename = s;
 #endif
 found:
+	x->filename = s;
 	return 0;
 }
 
@@ -87,10 +90,6 @@ int _isoopen(void)
 #define _64bits (x->_64bits)
 	char *s;
 
-#ifdef ISOHOOK
-	_64bits = cpuhaslm();
-  _32bits:
-#endif
 	s = (char *) x->filename2open;
 	if (*s == '/') {
 		s++;
@@ -99,10 +98,14 @@ int _isoopen(void)
 		//if (*(int*)(x->buffer+1) != 0x4443) return -1;
 	}
   next:
-	isoreaddir_reset();
 	name = s;
 	do s++; while (*s && *s != '/');
 	c = *s; *s = 0;
+#ifdef ISOHOOK
+	_64bits = cpuhaslm();
+  _32bits:
+#endif
+	isoreaddir_reset();
 	do {
 		if (isoreaddir() == -1) {
 #ifdef ISOHOOK

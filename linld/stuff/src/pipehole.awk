@@ -1,4 +1,4 @@
-BEGIN { hold=0; is386=0; isload=0; isiso=0; istazboot=0; wascall=0; ishimem=0; label="none"; xlabel=""; file=""; retc="returnCz:\n" }
+BEGIN { hold=0; is386=0; isload=0; isiso=0; istazboot=0; wascall=0; ishimem=0; label="none"; xlabel=""; file="" }
 function isnum(n) { return match(n,/^[0-9+-]/) }
 {
 	sub(/segment word public/,"segment byte public")
@@ -245,32 +245,48 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	 if (file == "iso9660.cpp") {
 	if (/ptr \[si\+8\],/) { si="si"; di="di" }
 	if (/ptr \[di\+8\],/) { si="di"; di="si" }
-	if (/leave/ || /enter/) next
+	if (/leave/ || /enter/ || /bp-2/ || /bp,sp/ || /push	bp/ || /sub	sp,/) next
 	if (/ptr \[.i\+10\],dx/) next
 	if (/ptr \[.i\+8\],ax/) next
 	if (/ptr \[.i\+8\],eax/) next
-	if (/cx,word ptr \[.i\+32\]/) next
+	if (/x,word ptr \[.i\+32\]/) next
 	if (/add	word ptr \[.i\],ax/) sub(/ax/,"cx")
 	if (/ax,word ptr \[si\+24\]/) sub(/mov	ax,/,"les	ax,d")
 	if (/ax,word ptr \[si\+26\]/) next
 	if (/word ptr \[si\+29\],ax/) sub(/ax/,"es")
 	if (/\[si\],-1/) $0="	not	word ptr [si]"
 	sub(/di,word ptr DGROUP:_isostate\+2/,"di,word ptr [si+2]")
-	if (/s = p \+ 1;/ && !/ ;/) isiso=20
+	if (/p = x->buffer \+ 32 \+ x->curpos/) isiso=21
+#print "iso=" isiso " ; " $0
+	if (isiso == 21) { # ISO9660.LST
+		if (/si,ax/) next
+		if (/ax,70/) {
+			print "	lea	si,[bx+3+32]"
+			$0="	sub	si,cx"
+		}
+		if (/# else/) isiso=0
+	}
+	if (/cx,si/) isiso=20
 	if (isiso == 20) { # ISO9660.LST
+		if (/bx,dx/) {
+			isiso=12
+			next
+		}
 		if (/al,byte ptr/) $0="	;inc	ax"
 		sub(/\[si-1\]/,"[si]")
 		if (/p != .\./) print "	inc	" di "	; see ;inc ax"
 		if (/i],0/) sub(/,0/,",ah")
+		sub(/cx/,"dx")
 		if (/filename = s;/) {
-			print "	stc"
 			isiso=0
 		}
 	}
 	if (isiso == 19) { # ISO9660.LST
 		if (/short @2@282/) $0="	jc	restoreC"
-		if (/bp-2/ || /si\+34/ || /ax,dx/ || /cmp	ax,-1/) next
-		sub(/dx,/,"bx,")
+		if (/si\+34/ || /ax,dx/ || /ax,di/ || /cmp	ax,-1/ || /sub	ax,/) next
+		sub(/dx,/,"ax,")
+		if (/ax,word ptr \[si\+20\]/) sub(/ax/,"bx")
+		if (/bx,offset/) sub(/bx/,"ax")
 		if (/short @2@282/) sub(/je/,"jnc")
 		if (/\[si\+37\],0/) sub(/,0/,",ch")
 		if (/@strcmp\$qpxzct1/) {
@@ -307,6 +323,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			print "	mov	bx,word ptr [si+9]"
 			print "	mov	ax,word ptr [si+13]"
 			print "setdirofsnsz:"
+			print "	inc	di"
 			print "	mov	word ptr [si+26],bx"
 		}
 		if (/ax,/ || /si\+13/ || /si\+26/) next
@@ -316,23 +333,30 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isiso != 15 && /si,offset DGROUP:_isostate/) $0=";" $0
 	if (isiso == 15) { # ISO9660.LST
 		if (/xor/) {
+			print	"	stc"
 			print	"returnNotC:"
 			print	"	cmc"
-			print	retc "returnC:"
+			print	"returnC:"
 			print	"	sbb	ax,ax"
 			print	"return:"
 			next
 		}
+		if (/i\+20\],cx/) sub(/cx/,"dx")
 		if (/@1@422:/ || /bp$/ || /bp,sp/ || /sp,2/) next
 		if (/\[di\],47/) isiso=17
 	}
 	if (/short @1@142/) { isiso=14; next }
 	if (isiso == 14) { # ISO9660.LST
 		if (/ax,-1/) next
-		if (/jmp/) $0="	jb	returnCz"
+		if (/jmp/) {
+			print	"	JUMPS"
+			print	"	jb	returnC"
+			$0="	NOJUMPS"
+		}
 	}
 	if (/p = x->buffer \+ 34/) isiso=13
 	if (isiso == 13) { # ISO9660.LST
+		if (/cbw/) $0="	;cbw"
 		if (/i,.i/) $0="	xchg	ax,bx"
 		if (/i,ax/) $0="	lea	" di ",[bx+" si "+72]"
 		if (/i,72/ || /word ptr \[.i\+32\]/) next
@@ -344,12 +368,13 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/dx,ax/,"bh,0")
 		if (/bx,dx/) next
 		sub(/i,dx/,"i,bx")
+		sub(/cx,/,"dx,")
 		if (/bx\+.i\],0/) sub(/,0/,",bh")
-		if (/jmp/) {
-			$0=retc "	jmp	returnC"
-			retc=""
-		}
-		if (/while/) isiso=0
+		if (/while/) isiso=120
+	}
+	if (isiso == 120) { # ISO9660.LST
+		sub(/ax,/,"bx,")
+		if (/endif/) isiso=0
 	}
 	if (/curpos >= SECT/) isiso=10
 	if (isiso == 10) { # ISO9660.LST
@@ -378,7 +403,8 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isiso == 8) { # ISO9660.LST
 		if (/ax,/) next
 		sub(/mov	dx,/,"les	dx,d")
-		sub(/,ax/,",es")
+		sub(/\],ax/,"],es")
+		sub(/cx,/,"dx,")
 		if (/filemod/) isiso=0
 	}
 	if (/entrysize =/) isiso=5
@@ -405,7 +431,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/cmp	byte ptr \[.i\]/,"sub	al")
 		if (/inc	/) { r=$2; print; next }
 		if (/al,0/) print "	mov	al,[" r "]"
-		if (/al,byte ptr/) next
+		if (/al,byte ptr \[/) next
 		if (/byte ptr \[.*\],0/) next
 	}
 	if (/ptr .isoreaddir/) isiso=1
@@ -418,7 +444,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/short @2@366/) sub(/jne/,"jnc")
 		if (/short @2@282/) sub(/je/,"jc")
 		if (/short @2@562/) sub(/@2@562/,"returnNotC")
-		if (/short @2@534/) { print; $0="	inc	cx" }
 		if (/ax,word ptr \[si\+4\]/) $0="	xchg	ax,bx	; " $0
 		if (/\[di\],al/) next
 		if (/@2@310/) next
