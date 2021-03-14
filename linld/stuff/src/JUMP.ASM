@@ -289,8 +289,6 @@ _rm_offset	dw	?
 
         endp    _boot_kernel
 
-movedend:
-
         ends    _TEXT
 
         end

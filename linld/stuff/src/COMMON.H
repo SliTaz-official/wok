@@ -1,7 +1,8 @@
 //#define WITH_XMM_ALLOC	add himem.sys driver
 //#define LARGE_ZIMAGE	may load system in high memory temporarily 
 //#define INT15_E820	add int15/eax=E820 driver
-//#define BASIC_ISO9660	non rockridge support
+//#define RAW_ISO9660	raw filename support with ';1' or '.' trailers
+#define BASIC_ISO9660	non rockridge support
 #define ROCKRIDGE	iso 9660 posix name support
 #define ISO9660		iso= support
 #define QUICK_BOOT	/q bypass shutdown hack, /v keeps v86
@@ -18,14 +19,16 @@
 /* End of the optional features */
 
 #ifdef ISOHOOK
-#ifndef ISO9660
-#define ISO9660
-#endif
 #ifndef ROCKRIDGE
 #define ROCKRIDGE
 #endif
 #ifndef CPU64
 #define CPU64
+#endif
+#endif
+#if defined(ROCKRIDGE) || defined(BASIC_ISO9660) || defined(RAW_ISO9660)
+#ifndef ISO9660
+#define ISO9660
 #endif
 #endif
 
@@ -91,6 +94,8 @@ extern struct image_himem {
 #define pm2initrd(p) (p+1)
 
 extern u8 pm_low;
+
+extern u8 buf4k[4096];
 
 extern u32 far *initrd_desc;
 #define cmdline		(cmdstr[0])

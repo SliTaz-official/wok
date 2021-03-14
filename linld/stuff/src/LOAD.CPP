@@ -116,9 +116,6 @@ extern "C" u16 topseg();
 #else
 #define topseg() 0x9000
 #endif
-static u16 rm_size;
-static u8* rm_buf;	// @ = @rm_size + 2, see A20.ASM
-struct image_himem imgs[2];
 
 void load_kernel() {
 

@@ -231,6 +231,9 @@ gdt_base_memcpy dw	offset gdt_memcpy,0
 
         endp    memcpy32
 
+		global	movedend:near
+movedend:
+
         ends    _TEXT
 
         end

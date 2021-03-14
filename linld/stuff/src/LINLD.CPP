@@ -9,9 +9,9 @@
 extern char bzimagestr[];
 const char* cmdstr[4] = {"auto",bzimagestr,NULL,NULL};
 #ifdef QUICK_BOOT
-u32 cmdnum[7];
+extern u32 cmdnum[7];
 #else
-u32 cmdnum[5];
+extern u32 cmdnum[5];
 #endif
 
 inline void syntax() {
@@ -44,7 +44,6 @@ inline void syntax() {
     );
 }
 
-extern char buf_cmdline[128];
 int main(int argc, char *argv[]) {
 
     (void) argc;
@@ -76,17 +75,25 @@ int main(int argc, char *argv[]) {
             kernel_name=*argv;
 	    continue;
 	}
-	*clp = (const char *) buf_cmdline + 1;
-	strcatb((const char *) buf_cmdline,*argv);
+	*clp = (const char *) heap_top +1;
+	strcatb((const char *) heap_top,*argv);
     } while (*++argv);
     puts(*clp);
+    asm{
+	xchg	ax,bx
+	mov	bx,offset _heap_top
+	cmp	ax,[bx]
+	jc	skip
+	mov	[bx],ax
+    }
+skip:
 #ifdef ISO9660
     if (isofile) setiso(isofile);
 #endif
     set_cmdline(*clp);
     load_kernel();
     load_initrd();
-    boot_kernel();
+    //boot_kernel();
 
     // Let compiler be happy
     return _AX;

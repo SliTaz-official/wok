@@ -160,8 +160,8 @@ endm
                 sub     edi,edx
                 mov     al,3            ;add present+writable bits
                 mov     [bx+di],eax     ;stuff it into pagedir[0]
-                push    ds
-                pop     es              ;es:di->page0,es:di+1000h->pagedir
+                ;push    ds
+                ;pop     es              ;es:di->page0,es:di+1000h->pagedir
                         ;page directory will use only one entry (4 bytes):
                         ;cr3 => pagedir => page0  => ########
                         ;      (1 entry)  (1024   => #  4M  #

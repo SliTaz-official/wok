@@ -34,17 +34,14 @@ isorootofs	dd	16*2048
 
         segment _BSS byte public use16 'BSS'
 
-	ifdef ISO9660
-		include	"isostate.inc"
-		public	_isostate
-_isostate	isostate	<?>
-		org	$-7
-	endif
-	global	buf4k:byte
-label	buf4k	byte
-_xfer_buf	db	4096	dup (?)
-filecnt		db	?		; in fact 0 minus file count...
-nextfilename	dw	?
+		ifdef	ISO9660
+		global	_buf2k:byte
+label	_buf2k	byte
+		db	2048	dup (?)
+		endif
+		global	_buf4k:byte
+label	_buf4k	byte
+		db	4096	dup (?)
 
         ends    _BSS
 
@@ -110,7 +107,7 @@ opendos:
                 mov	ax,3d00h		; read-only+compatibility
 	else
                 mov	ah,3dh			; read-only+compatibility
-                mov	dx,bx
+                mov	dx,bx			; open(DS:DX=filename,al=access,cl=attributes)
 	endif
 		;mov	cl,0			; attribute mask
 		call	dos
@@ -135,6 +132,10 @@ openok:
 		ret
 
 	ifdef ISO9660
+
+		include	"isostate.inc"
+		extrn	_isostate:isostate
+
 ;***************************************************************
 ;_fastcall int:C open(bx:const char* name, int flags=O_RDONLY);
 ;_fastcall int:C openargs(bx:const char* name, int flags=O_RDONLY);
@@ -182,7 +183,7 @@ openargs:
 
         global  close:near			; close(ax)
 close:
-		mov	bh,3Eh
+		mov	bh,3Eh			; close(BX:handle)
 	ifdef ISO9660
 		mov	cx,[_isostate.fd]
 		jcxz	dosbx
@@ -232,7 +233,7 @@ close:
 		pop	bx
 	endif
 readfd:
-                mov	ah,3Fh
+                mov	ah,3Fh			; read(BX=handle,DS:DX=to,CX=count)
                 ;jcxz	fail
 dos:
                 int	21h
@@ -274,14 +275,14 @@ lseek0:
 ;***************************************************************
 	proc	@readmenu$qv near
 
-		mov	dx,18
+		mov	dx,20
 		xor	cx,cx
 		call	seeksetpos0		; filepos = 0
-		mov	dx,offset _isostate.filemod
-		; //magic = x->filemod;
-		mov	cl,10
-		call	readfd ; // read x->filemod + x->fileofs & x->filesize
-		mov	bx,offset _isostate.fileofs
+		mov	dx,offset _isostate.fileofs
+		mov	cl,8
+		push	dx
+		call	readfd ; // read x->fileofs & x->filesize
+		pop	bx
 		; x->fileofs = 0x7FF0 - (x->filesize &= 0xFFFF);
 		mov	ax,7FF0h
 		cwd
@@ -335,9 +336,9 @@ dosbx:
 
 		call	isolseek		; filepos = 0
 		jc	fail
-		mov	dh,10
-		mov	ax,offset _isostate.buffer
-		jmp	@read$dxaxbx		; read(fd,buffer,2560+)
+		mov	cx,2048
+		mov	dx,offset _buf2k
+		jmp	readfd			; read(fd,buf2k,2048)
 
         endp    @isoreadsector$qpxul
 	endif
@@ -394,9 +395,11 @@ dosbx:
                 inc	bx
 		xchg	ax,bx
                 xor	dl,[bx]			; dl ^= *a++
+	    ifndef RAW_ISO9660
 		ifndef  ROCKRIDGE
 		and	dl,0dfh			; case insensitive
 		endif
+	    endif
 		jne	fail			; return -1
                 inc	bx
 		or	dl,dl			; clear C
@@ -947,7 +950,7 @@ call_memcpy32:					; call_memcpy32(to=edx,fromseg,fromofs,size)
 		else
 		les	ax,[dword di]
 		endif
-		mov	cx,offset _xfer_buf
+		mov	cx,offset _buf4k
 storepage:					; storepage(edx,cx)
 		ifndef	NO386
 		push	0
@@ -1066,7 +1069,7 @@ curdata		dw	?
 		xchg	ax,cx
 @@szok:
 		jcxz	image_done
-		lea	dx,[di+_xfer_buf]
+		lea	dx,[di+_buf4k]
 		mov	bx,[(image_himem si).fd]
 		call	@read$cxdxbx
 		jb	image_done
@@ -1083,7 +1086,7 @@ curdata		dw	?
 @@fill:
 		test	al,3
 		je	@@filled
-		mov	[di+_xfer_buf],dl
+		mov	[di+_buf4k],dl
 		inc	di
 		inc	ax
 		jmp	@@fill

@@ -8,6 +8,38 @@
                 %nomacs
 
 	include	"common.inc"
+	include "himem.inc"
+	include	"isostate.inc"
+
+	ifdef	QUICK_BOOT
+CMDNUMCNT	=	7
+	else
+CMDNUMCNT	=	5
+	endif
+
+	macro	alloc_isostate
+		public	_isostate
+_isostate	isostate	<?>
+		org	$-ISOSTATE_OVERLAP
+	endm
+
+	macro	alloc_image
+rm_size		dw	?		; _imgs-4
+rm_buf		dw	?		; _imgs-2
+		global	_imgs:byte
+label	_imgs	byte
+img_kernel	image_himem	?
+img_initrd	image_himem	?
+	endm
+
+	macro	alloc_misc
+		global	_cmdnum:word
+label   _cmdnum	word
+		dd	CMDNUMCNT	dup(?)
+
+		global	_himem_buf:dword
+_himem_buf	dd	?
+	endm
 
                 p8086
 
@@ -34,6 +66,14 @@ _vcpi		db	0
 
         segment _BSS byte public use16 'BSS'
 
+	ifdef ISO9660
+		ifndef	VCPI
+		alloc_isotate
+		else
+room_for_isostate	=	1
+		endif
+	endif
+
 		ifdef	ISOHOOK
 	extrn	_big_cmdline:byte
 		db	254 dup(?)
@@ -45,11 +85,27 @@ _vcpi		db	0
 _cpu386		db	?
 		ifdef	CPU64
 		org	$-1
-		endif
-		ifdef	CPU64
         global  _cpu_features:dword
 _cpu_features	dd	?
+room_for_image	=	1
+		else
+		alloc_image
 		endif
+
+		ifndef	BSS_OVERLAP_BOOT
+
+		ifdef	room_for_isostate
+		alloc_isostate
+		endif
+
+		ifdef	room_for_image
+		alloc_image
+		endif
+
+		alloc_misc
+
+		endif
+
         ends    _BSS
 
         segment _TEXT byte public use16 'CODE'
@@ -67,11 +123,6 @@ _cpu_features	dd	?
 ;***************************************************************
 		mov	sp,offset stktop
 		mov	bx, 0F000h	; cld ; cli & empty string
-		org	$-4-2
-		global	_himem_buf:dword
-_himem_buf	dd	?
-		global	_buf_cmdline:word
-_buf_cmdline	dw	?		; 128 bytes, must start with 00
 		mov	si,offset _bss_start
 clearbss:
 		mov	[si],bl		; clear bss + heap
@@ -128,8 +179,10 @@ label   check_vcpi near
 		ifdef	VCPI
 ; Check whether it is safe to call 67h
 		xor	eax,eax
-                mov     es,ax
-                cmp     [dword es:67h*4],eax
+		push	ds
+                mov     ds,ax
+                cmp     [dword 67h*4],eax
+		pop	ds
                 je      no_vcpi
                 mov     ah,0DEh		; check for vcpi present
                 int     67h
@@ -187,11 +240,6 @@ endcpu86:
 ;***************************************************************
 ; build argv & argc
 ;***************************************************************
-		extrn	_bss_end:word
-		mov	di,offset _bss_end
-		global	_heap_top
-		org	$-2
-_heap_top	dw	?
                 mov	si,80h
 		ifdef	ISOHOOK
                 mov	bx,offset _big_cmdline
@@ -212,6 +260,41 @@ short_cmdline:
 		endif
 		xchg	ax,bx
                 mov	[bx+si],bh		; set eos
+
+;***************************************************************
+
+		ifdef	BSS_OVERLAP_BOOT
+		mov	al,0
+		mov	di,100h
+		mov	cx,offset clean-100h
+
+		org	$-(CMDNUMCNT*4)-4
+
+		ifdef	room_for_image
+		org	$-2-2-(2*size image_himem)
+		endif
+
+		ifdef	room_for_isostate
+		org	$+ISOSTATE_OVERLAP-size isostate
+		alloc_isostate
+		endif
+
+		ifdef	room_for_image
+		alloc_image
+		endif
+
+		alloc_misc
+clean:
+		rep
+		  stosb
+		endif
+
+;***************************************************************
+		extrn	_bss_end:word
+		mov	di,offset _bss_end
+		global	_heap_top
+		org	$-2
+_heap_top	dw	?
 		;xor	dx,dx
                 ;push	dx			; envp (already cleared)
                 ;mov	[word di],dx		; argv[0] = 0 (idem)

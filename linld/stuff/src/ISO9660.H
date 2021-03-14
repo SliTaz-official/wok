@@ -10,7 +10,6 @@ extern struct isostate {
 	unsigned curpos;
 	char *filename2open;
 	int fd;
-	unsigned short filemod;
 	unsigned long fileofs;
 	unsigned long filesize;
 	unsigned long filepos;
@@ -19,18 +18,16 @@ extern struct isostate {
 typedef unsigned dirpagetype;
 	dirpagetype dirpage;           
 	unsigned long curdirofs;
+	char _64bits;
+	char c;
 	int entrysize;
 	const char *tmp;
-	char c;
-	char _64bits;
 #define SECTORSZ 2048
 #define SECTORBITS 11
-	char buffer[SECTORSZ+512];	// RR overflow
 } isostate;
 #define isofd isostate.fd
 #define	isofileofs isostate.fileofs
 #define	isofilesize isostate.filesize
-#define	isofilemod isostate.filemod
 #define	isofilename isostate.filename
 extern _fastcall void isolseek(const unsigned long *offset);
 extern _fastcall int isoreadsector(const unsigned long *offset);
@@ -38,4 +35,5 @@ extern int _isoopen(void);
 extern int isoreaddir(void);
 #define isolabel() do { isofileofs=0x8028; isofilesize=32; } while (0)
 #define setiso(x) (isostate.fd = open(x))
+extern u8 buf2k[2048];
 #endif
