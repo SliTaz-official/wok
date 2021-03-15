@@ -253,7 +253,7 @@ doinstall()
 	fi
 	dotwait "Install root filesystem in /slitaz.."
 	if [ "$1" ]; then
-		ls_r $media/boot/rootfs*gz | \
+		ls_r $media/boot/rootfs*gz* | \
 		xargs cat > $mnt/slitaz/boot/rootfs.gz
 		tazusbinitfs $mnt/slitaz/boot/rootfs.gz $useposixovl
 		initrd=rootfs.gz
@@ -270,7 +270,7 @@ doinstall()
                                 losetup -d /dev/loop7                          
                         done                                                   
                 else
-			for i in $(ls_r $media/boot/rootfs*gz); do
+			for i in $(ls_r $media/boot/rootfs*gz*); do
 				${uncpio:-uncpio} $i $mnt/slitaz
 			done
 		fi
@@ -298,11 +298,11 @@ doinstall()
 		[ $(get 0 $i 2> /dev/null || echo 0) -eq 23117 ] &&
 		mv $i $i.exe
 	done
-	bzimage=$(cd $mnt/slitaz/boot ; ls bzimage*)
+	bzimage=$(cd $mnt/slitaz/boot ; ls bzImage* | sed q)
 	cp /etc/keymap.conf /etc/locale.conf $mnt/slitaz/etc 2> /dev/null
 	gettazboot $mnt/slitaz/boot/tazboot.exe	# autoappend 64 suffix
 	unix2dos > $mnt/slitaz/boot/tazboot.cmd <<EOT
-image=/slitaz/boot/bzimage
+image=/slitaz/boot/$bzimage
 initrd=/slitaz/boot/$initrd
 root=/dev/null $extraargs autologin
 EOT
@@ -455,8 +455,8 @@ To do a traditional installation with disk partitioning,
 start SliTaz Live with the 'SliTaz RAM boot' menu.\n" 19 70
 	[ $? -eq 0 ] || return
 	doinstall
-	[ $0 = /init.exe ] || return
-	[ -x $mnt/slitaz/sbin/init ] || return
+	[ $0 = /init.exe ] || return 0
+	[ -x $mnt/slitaz/sbin/init ] || return 0
 	umount -d $media/cdrom
 	umount_proc
 	exec chroot $mnt/slitaz /sbin/init
@@ -619,7 +619,7 @@ installtaz()
 	if [ "$1" ]; then
 		doinstall tazusblike
 	else
-		_installtaz && bootinstalled /boot/bzimage
+		_installtaz && bootinstalled /boot/bzImage
 	fi
 	umount $mnt
 	rm -rf $mnt

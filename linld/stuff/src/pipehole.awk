@@ -9,7 +9,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (file == "" && /debug	S/) { file=$3; gsub(/\"/,"",file) }
 	if (/debug	S/) print "	%PAGESIZE 1000"
 	 if (file == "linld.cpp") {
-#print "			linld=" islinld " ;" $0
 	if (/\[si/ || /si,/ || /,si/) sub(/si/,"di")
 	else if (/\[di/ || /di,/ || /,di/) sub(/di/,"si")
 	if (/add	di,2/) $0="	scasw	; " $0
@@ -260,7 +259,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/ptr \[.i\+6\],ax/) next
 	if (/ptr \[.i\+6\],eax/) next
 	if (/x,word ptr \[.i\+32\]/) next
-#print "			iso=" isiso " ;" $0
 	if (/add	word ptr \[.i\],ax/) sub(/ax/,"cx")
 	if (/ax,word ptr \[si\+22\]/) sub(/mov	ax,/,"les	ax,d")
 	if (/ax,word ptr \[si\+24\]/) next
@@ -269,8 +267,11 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/p = buf2k \+ 32 \+ x->curpos/) isiso=21
 	sub(/-257/,"-257	; clear C")
 	if (isiso == 21) { # ISO9660.LST
-		if (/si,ax/) $0="	sub	si,cx"
-		sub(/ax,/,"si,")
+		if (/ax,/) next
+		if (/si,ax/) {
+			print "	add	ax,32"
+			$0="	xchg	ax,si"
+		}
 		if (/# else/) isiso=0
 	}
 	if (/cx,si/) {

@@ -32,13 +32,10 @@ img_kernel	image_himem	?
 img_initrd	image_himem	?
 	endm
 
-	macro	alloc_misc
+	macro	alloc_cmdnum
 		global	_cmdnum:word
 label   _cmdnum	word
 		dd	CMDNUMCNT	dup(?)
-
-		global	_himem_buf:dword
-_himem_buf	dd	?
 	endm
 
                 p8086
@@ -102,7 +99,7 @@ room_for_image	=	1
 		alloc_image
 		endif
 
-		alloc_misc
+		alloc_cmdnum
 
 		endif
 
@@ -263,15 +260,17 @@ short_cmdline:
 
 ;***************************************************************
 
+		org	$-4				; _himem_buf
+
 		ifdef	BSS_OVERLAP_BOOT
 		mov	al,0
 		mov	di,100h
 		mov	cx,offset clean-100h
 
-		org	$-(CMDNUMCNT*4)-4
+		org	$-(CMDNUMCNT*4)			; alloc_cmdnum
 
 		ifdef	room_for_image
-		org	$-2-2-(2*size image_himem)
+		org	$-2-2-(2*size image_himem)	; alloc_image
 		endif
 
 		ifdef	room_for_isostate
@@ -283,7 +282,13 @@ short_cmdline:
 		alloc_image
 		endif
 
-		alloc_misc
+		alloc_cmdnum
+		endif
+
+		global	_himem_buf:dword
+_himem_buf	dd	?
+
+		ifdef	BSS_OVERLAP_BOOT
 clean:
 		rep
 		  stosb
