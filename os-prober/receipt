@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="os-prober"
+VERSION="1.78"
+CATEGORY="base-system"
+SHORT_DESC="Utility to detect other OSes on a set of drives."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="GPL3"
+WEB_SITE="https://joeyh.name/code/os-prober/"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="http://ftp.debian.org/debian/pool/main/o/$PACKAGE/${PACKAGE}_$VERSION.tar.xz"
+
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	make $MAKEFLAGS newns
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/lib/os-prober
+	mkdir -p $fs/usr/share/os-prober
+	mkdir -p $fs/var/lib/os-prober
+
+	cp -a $src/linux-boot-prober		$fs/usr/bin
+	cp -a $src/os-prober			$fs/usr/bin
+	cp -a $src/newns			$fs/usr/lib/os-prober
+	for dir in os-probes os-probes/mounted os-probes/init linux-boot-probes linux-boot-probes/mounted
+	  do
+		install -dm755 $fs/usr/lib/$dir
+		cp -a $src/$dir/common/*	$fs/usr/lib/$dir
+		if [ -d $src/$dir/x86 ]
+		  then
+			cp -r $src/$dir/x86/*	$fs/usr/lib/$dir
+		fi
+	  done
+	cp -a $src/os-probes/mounted/powerpc/20macosx	\
+		$fs/usr/lib/os-probes/mounted/20macosx
+	cp -a $src/common.sh			$fs/usr/share/os-prober
+}
