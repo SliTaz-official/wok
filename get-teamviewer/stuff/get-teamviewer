@@ -1,45 +1,138 @@
 #!/bin/sh -e
+# get-teamviewer - create and install SliTaz package teamviewer
+#
+# (C) 2021 SliTaz - GNU General Public License v3.
+#
+# Author : 
+# modified by HGT on 2021-04-05
+#
 
+#       === Initialisations ===
+
+PKGS_DB="/var/lib/tazpkg"       # packages database directory
 PACKAGE="teamviewer"
-WEB_SITE="http://www.$PACKAGE.com/"
-URL=${WEB_SITE}en/download/linux.aspx
-DEPENDS="bash alsa-lib zlib xorg-libXext"
-ROOT="$1"
-[ -d "$ROOT" ] || ROOT=""
+CATEGORY="non-free"
+WEB_SITE="https://www.teamviewer.com/"
+DEPENDS="alsa-lib bash xorg-libXext zlib"
 
-if test $(id -u) != 0 ; then
-        echo -e "\nYou must be root to run `basename $0`."
-        echo -e "Please type 'su' and root password to become super-user.\n"
-        exit 0
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
+
+is_installed()
+{
+	if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then  #package is deemed to be installed
+		return 0
+	  else
+		return 1
+	fi
+}
+
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+  then
+	echo "Commandline options:
+  $0
+	--version=<two digits and letter x>
+	--root=<path-to-root>
+	--install=yes|no
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>
+	--logfile=<logging-file>"
+	exit
 fi
 
-if [ -d $ROOT/var/lib/tazpkg/installed/$PACKAGE ]; then
-	[ -n "$ROOT" ] && exit 1
-	tazpkg remove $PACKAGE
-	[ -d /var/lib/tazpkg/installed/$PACKAGE ] && exit 1
+# Check for system administrator privileges
+check_root
+
+title "Package $PACKAGE will be build as SliTaz package and installed"
+
+# Fetch latest version, unless version is set by option --version=##x
+[ -z "$version" ] && version="latest"
+
+# Install SliTaz package, unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
+
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
+
+# Directory for temporary files
+[ -z "$tempdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+
+# Logging file
+[ -z "$logfile" ] && LOG=$TMP_DIR/get-$PACKAGE.log
+
+cat <<EOT
+Options in use:
+  root           : $root/
+  version        : $version
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
+  logging file   : $LOG
+
+EOT
+
+separator; newline
+
+#       === Remove package, if installed ===
+if is_installed
+  then
+	echo "$PACKAGE is already installed."
+	echo -n "Would you like to remove and reinstall this package [y/n]? "
+	read answer
+	case "$answer" in
+		(y|Y)
+			action "Removing installed version..."
+			tazpkg remove $PACKAGE --root="$root/"
+			[ ! is_installed ] &&
+			die "Can't remove installed version. Exiting."
+			;;
+		(*)
+			echo "Leaving $PACKAGE untouched."
+			exit 0
+			;;
+	esac
 fi
 
-TMP_DIR=/tmp/get-$PACKAGE-$$-$RANDOM
+#       === Fetch Debian package, if not existing ===
+if [ "$version" == "latest" ]
+  then
+	WGET_URL=$(wget --no-check-certificate -O - ${WEB_SITE}en/download/linux | sed '/i386/!d;s/.*"\([^"]*i386[^"]*\).*/\1/;q')
+	FILE=$(basename $WGET_URL)
+  else
+        VERSION=$version
+        FILE="${PACKAGE}_i386.deb"
+        WGET_URL="https://download.teamviewer.com/download/linux/version_$VERSION/$FILE"
+fi
+
 CUR_DIR=$(pwd)
-mkdir -p $TMP_DIR && cd $TMP_DIR
-
-# Download deb
-URL=$(wget -O - $URL | sed '/i386/!d;s/.*"\([^"]*i386[^"]*\).*/\1/;q')
-wget $URL
-FILE=$(basename $URL)
-
-if [ ! -f $FILE ]; then
-	cd $CUR_DIR
-	rm -rf $TMP_DIR
-	echo "Could not download $FILE from $URL. Exiting."
-	exit 1
+mkdir -p $TMP_DIR
+cd $TMP_DIR
+if [ -f $FILE ]
+  then
+	echo "Using existing archive file $FILE"
+  else
+	action "Fetching the archive"
+	newline
+	wget    --no-check-certificate $WGET_URL
+	if [ ! -f $FILE ]
+	  then
+		cd $CUR_DIR
+		rm -rf $TMP_DIR
+		echo "Could not transfer $FILE from $WGET_URL. Exiting."
+		exit 1
+	fi
 fi
 
 mkdir $PACKAGE
 dpkg-deb -e $FILE $PACKAGE/meta
 dpkg-deb -x $FILE $PACKAGE/fs
 find $PACKAGE/fs | grep /script/ | xargs sed -i 's|--append|-a|'
-# extracted pkg can be removed: Save RAM
+
+# Remove archive file
 rm -f $FILE
 sed '/^Description:/,$!d;s/^Description://' \
 	< $PACKAGE/meta/control > $PACKAGE/description.txt
@@ -51,12 +144,15 @@ mv $PACKAGE $PACKAGE-$VERSION
 
 cd $PACKAGE-$VERSION/fs
 [ -e usr/bin/$PACKAGE ] ||
-ln -s $(cd usr/bin ; ls $PACKAGE* 2> /dev/null) \
+	ln -s $(cd usr/bin ; ls $PACKAGE* 2> /dev/null) \
 	usr/bin/$PACKAGE 2> /dev/null || true
 mkdir -p usr/share/applications
-sed "s|EXEC|/usr/bin/$PACKAGE|g;s!ICON!/$(find opt | grep $PACKAGE.png)!g" \
-	< $(find opt | grep -E '(desktop.template|\.desktop$)') \
-	> usr/share/applications/$PACKAGE.desktop
+
+# removed because failing, to be repaired by somebody else:
+#sed "s|EXEC|/usr/bin/$PACKAGE|g;s!ICON!/$(find opt | grep $PACKAGE.png)!g" \
+#	< $(find opt | grep -E '(desktop.template|\.desktop$)') \
+#	> usr/share/applications/$PACKAGE.desktop
+
 sed -i 's/readlink -e/readlink $0 || echo /' \
 	$(find opt -type f | grep /$PACKAGE$)
 cd ../..
@@ -66,7 +162,7 @@ cat > $PACKAGE-$VERSION/receipt <<EOT
 
 PACKAGE="$PACKAGE"
 VERSION="$VERSION"
-CATEGORY="non-free"
+CATEGORY="$CATEGORY"
 SHORT_DESC="$SHORT_DESC"
 MAINTAINER="$MAINTAINER"
 DEPENDS="$DEPENDS"
@@ -80,19 +176,19 @@ EOF
 }
 EOT
 
-# Pack
+#       === Create the SliTaz package ===
 tazpkg pack $PACKAGE-$VERSION
 
-# Clean to save RAM memory
-rm -rf $PACKAGE-$VERSION
+#       === Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
 
-# Install pseudo package
-tazpkg install $PACKAGE-$VERSION.tazpkg --root=$ROOT
-case " $@ " in
-*\ --k*) mv $PACKAGE-$VERSION.tazpkg $CUR_DIR ;;
-esac
+#       === Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR &&
+  echo "Saved $PACKAGE-$VERSION.tazpkg to $CUR_DIR" )
 
-# Clean
+# Remove temporary build directory
 cd $CUR_DIR
 rm -rf $TMP_DIR
-
