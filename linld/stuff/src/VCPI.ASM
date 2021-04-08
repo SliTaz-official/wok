@@ -24,7 +24,7 @@
 
 
                 ideal
-		%PAGESIZE 1000
+		%PAGESIZE 255
                 %crefref
                 %noincl
                 %nomacs

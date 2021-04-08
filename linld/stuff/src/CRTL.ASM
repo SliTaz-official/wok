@@ -2,7 +2,7 @@
 ;****** This file is distributed under GPL
 ;***************************************************************
                 ideal
-		%PAGESIZE 1000
+		%PAGESIZE 255
                 %crefref
                 %noincl
                 %nomacs
@@ -46,6 +46,258 @@ label	_buf4k	byte
         ends    _BSS
 
         segment _TEXT byte public use16 'CODE'
+
+		ifdef	VCPI
+                p386
+;***************************************************************
+
+struc   data_himem			;struct data_himem {
+first		dd	?		;   0  u32 first;	*must* be the first one	assume zero'd in bss
+cacheidx	dw	?		;   4  int cacheidx;	quad *			assume zero'd in bss
+pageidx		dw	?		;   6  int pageidx;	byte *			assume zero'd in bss
+cache		dd	1024 dup(?)	;   8  int cache;
+page		dd	1024 dup(?)	;4104  int page;
+ends	data_himem			;};
+
+		include	"himem.inc"
+
+;***************************************************************
+;_fastcall u32* malloc_bufv_or_die(si:struct image_himem *m);
+;***************************************************************
+        global  @malloc_bufv_or_die$qp11image_himem:near
+        proc    @malloc_bufv_or_die$qp11image_himem near
+
+                p386
+		;mov	ecx,[(image_himem si).size]
+		;shr	ecx,20			; pages index size = size >> 20
+		;mov	ax,cx
+		;add	ax,size data_himem-4096
+		mov	ax,size data_himem
+		call	malloc_or_die
+		;mov	cx,4096+4095		; cnt = 1+(m->size+PAGE_MASK)/PAGE_SIZE;
+		mov	ecx,4096+4095		; cnt = 1+(m->size+PAGE_MASK)/PAGE_SIZE;
+		add	ecx,[(image_himem si).size]
+		shr	ecx,12
+		mov	[(image_himem si).bufv],ax	; update m->bufv
+		xchg	ax,di
+@@vcpi_alloc:
+                mov     ax,0DE04h		; allocate a 4K page => EDX
+                int     67h
+		or	ah,ah
+		mov	bx,offset vcpi_alloc_err
+		jnz	jmpdie
+; for (i = cnt-1; i >= 0; i--)
+; if (edx < pm.fallback+pm.size) again
+		mov	bx,offset _imgs.fallback+size image_himem
+		mov	eax,[bx-2+6-size image_himem]	; pm.size
+		add	eax,[bx-2+2-size image_himem]
+		cmp	eax,edx		; pm.fallback+pm.size <= edx ?
+		ja	@@vcpi_alloc
+		mov	eax,ecx
+		dec	eax
+		shl	eax,12		; i*_4k
+; if (edx >= initrd.fallback+i*_4k && edx < initrd.fallback+initrd.size) again
+		add	eax,[bx-2+2]	; +initrd.fallback
+		cmp	eax,edx		; initrd.fallback+i*_4k > edx ?
+		ja	@@initrdok
+		mov	eax,[bx-2+6]	; initrd.size
+		add	eax,[bx-2+2]	; +initrd.fallback
+		cmp	eax,edx		; initrd.fallback+initrd.size > edx ?
+@@ja_vcpi_alloc:
+		ja	@@vcpi_alloc
+@@initrdok:
+		cmp	[(data_himem di).first],0	; zero'd in bss
+		jne	@@notfirst
+		mov	[(data_himem di).first],edx
+@@notfirst:
+		mov	bx,[(data_himem di).cacheidx]	; zero'd in bss
+		cmp	bh,4
+		jae	@@nextpage
+		shl	bx,2
+		inc	[(data_himem di).cacheidx]
+		mov	[(data_himem bx+di).cache],edx	; cache[cacheidx++] = edx
+		loopd	@@vcpi_alloc
+		mov	[(data_himem bx+di).cache],ecx	; last is 0
+@@nextpage:
+		and	[(data_himem di).cacheidx],0
+		mov	bx,[(data_himem di).pageidx]	; zero'd in bss
+		mov	[(data_himem bx+di).page],edx
+		add	[(data_himem di).pageidx],4
+		push	cx
+		lea	cx,[(data_himem di).cache]
+		ifdef	NO386
+		push	edx
+		pop	ax			; to es:ax
+		pop	es
+		endif
+		call	storepage		; storepage(edx/es:ax,cx)	
+		pop	cx
+		or	ecx,ecx			; clear C
+		jnz	@@ja_vcpi_alloc
+
+        endp    @malloc_bufv_or_die$qp11image_himem
+
+;***************************************************************
+;_fastcall void reset_bufv(di:u32 *p);
+;***************************************************************
+        global  @reset_bufv$qpul:near
+        proc    @reset_bufv$qpul near
+
+		mov	[curdata],di
+		and	[dword (data_himem di).cacheidx],0	; and pageidx=0
+		ret
+
+        endp    @reset_bufv$qpul
+
+;***************************************************************
+;u32* di=prev_bufv();
+;u32* di=prev_bufv();
+;***************************************************************
+        global  _prev_bufv:near
+        global  _next_bufv:near
+        proc    _prev_bufv near
+
+		stc
+		db	73h			; jnc
+_next_bufv:
+		clc
+		push	si
+		mov	bx,0
+		org	$-2
+curdata		dw	?
+		sbb	ax,ax
+		cmc
+		adc	ax,[(data_himem bx).cacheidx]	; -1/+1
+		mov	si,3ffh
+		and	si,ax
+		mov	[(data_himem bx).cacheidx],si
+		shl	si,2
+		xor	ecx,ecx
+		test	ax,0fc00h
+		jz	@@gotpage		; FFFF / 0400
+		xchg	al,ah			; FFFC / 0004
+		and	al,0fch
+		add	[(data_himem bx).pageidx],ax
+		mov	di,[(data_himem bx).pageidx]
+		lea	di,[(data_himem bx+di).page]
+		mov	edx,ds
+		shl	edx,4
+		lea	cx,[(data_himem bx).cache]		
+		add	edx,ecx
+		mov	eax,[di]
+		or	eax,eax
+		jz	@@ret
+		mov	cx,4096			; get page
+		call	memcpy_imagez		; memcpy_imagez(edx,eax,ecx)
+@@gotpage:
+		lea	ax,[(data_himem bx+si).cache]		
+		or	si,[(data_himem bx).pageidx]	; !pageidx && !cacheidx
+		jnz	@@notfirst2
+		xchg	ax,bx				; &first
+@@notfirst2:
+		xchg	ax,di
+@@ret:
+		pop	si
+		ret
+
+        endp    _prev_bufv
+		endif
+
+		ifdef	NO386
+                p8086
+		endif
+
+;***************************************************************
+;_fastcall void memcpy_image_initrd(si:struct image_himem *m);
+;_fastcall void memcpy_image_kernel(si:struct image_himem *m);
+;_fastcall void memcpy_image(bx:struct image_himem *m);
+;***************************************************************
+	global	@memcpy_image_initrd$qv:near
+@memcpy_image_initrd$qv:
+		lea	bx,[si+size image_himem]
+		db	0A9h			; test	ax,imm
+	global	@memcpy_image_kernel$qv:near
+@memcpy_image_kernel$qv:
+		mov	bx,si
+        proc    @memcpy_image$qp11image_himem near
+
+		ifndef	NO386
+		mov	edx,[(image_himem bx).fallback]
+		mov	eax,[(image_himem bx).buf]
+		cmp	eax,edx			; if (m->fallback != m->buf)
+		jz	@@skip			;   memcpy32(m->fallback,0,m->buf,m->size)
+		mov	ecx,[(image_himem bx).size]
+		else
+		les	cx,[((image_himem bx).buf)]
+		mov	dx,es
+		les	ax,[((image_himem bx).fallback)]
+		cmp	ax,cx			; if (m->fallback != m->buf)
+		jnz	@@do
+		cmp	dx,[word ((image_himem bx).fallback)+2]
+		jz	@@skip			;   memcpy32(m->fallback,0,m->buf,m->size)
+@@do:
+		push	[((image_himem bx).size)]
+		xor	bx,bx
+call_memcpy32:					; call_memcpy32(to=es:ax,fromseg=bx,fromofs=dx:cx,size)
+		push	dx			; [word ((image_himem bx).buf)+2]
+		push	cx			; [word ((image_himem bx).buf)]
+		push	bx
+		push	es			; push es:ax
+		push	ax
+		jmp	@@memcpy
+		endif
+memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
+		p386
+		push	ecx
+		push	eax
+		push	0
+		ifndef	NO386
+call_memcpy32:					; call_memcpy32(to=edx,fromseg,fromofs,size)
+		endif
+		push	edx
+		ifdef	NO386
+                p8086
+		endif
+@@memcpy:
+		extrn	memcpy32:near
+		call	near memcpy32
+@@skip:
+		ret
+
+		global	movedend:near
+movedend:
+
+        endp    @memcpy_image$qp11image_himem
+
+;***************************************************************
+;_fastcall void storepage(di:u32 *dst);
+;***************************************************************
+        global  @storepage$qpul:near
+        proc    @storepage$qpul near
+
+		ifndef	NO386
+		mov	edx,[di]
+		else
+		les	ax,[dword di]
+		endif
+		mov	cx,offset _buf4k
+storepage:					; storepage(edx,cx)
+		ifndef	NO386
+		push	0
+		push	4096
+		push	0
+		push	cx
+		push	ds			; call_memcpy32(to=edx,fromseg,fromofs,size)
+		else
+		xor	dx,dx
+		push	dx			; 0
+		mov	bx,4096
+		push	bx			; 4096
+		mov	bx,ds			; call_memcpy32(to=es:ax,fromseg=bx,fromofs=dx:cx,size)
+		endif
+		jmp	call_memcpy32
+
+        endp    @storepage$qpul
 
 ;***************************************************************
 ;_fastcall void strcatb(bx:const char* a, ax:const char* b);
@@ -347,37 +599,37 @@ dosbx:
 	ifdef ISO9660
 		ifdef ISOHOOK
 ;***************************************************************
-;_fastcall int strhead(bx:const char* a, ax:const char* b);
+;_fastcall int strhead(ax:const char* a, bx:const char* b);
 ;***************************************************************
         global  @strhead$qpxzct1:near
         proc    @strhead$qpxzct1 near
 
 @@loop:
-		xchg	ax,bx
-                mov	dl,[bx]			; dl = *b++
+                mov	dh,[bx]			; dh = *b++
                 inc	bx
 		xchg	ax,bx
-		or	dl,dl			; clear C
-		jz	failifc			; return 0, bx=a tail
-                xor	dl,[bx]			; dl -= *a++
+		or	dh,dh			; clear C
+		jz	failifc			; return 0, bx=a tail, dh=0
+                xor	dh,[bx]			; dh -= *a++
 		jne	fail			; return -1
                 inc	bx
+		xchg	ax,bx
                 jmp	@@loop
 
 	endp	@strhead$qpxzct1
 
 
 ;***************************************************************
-;_fastcall int strcmp(bx:const char* a, ax:const char* b);
+;_fastcall int strcmp(ax:const char* a, bx:const char* b);
 ;***************************************************************
         global  @strcmp$qpxzct1:near
         proc    @strcmp$qpxzct1 near
 
 		call	@strhead$qpxzct1
 		jne	fail			; return -1
-		xor	dl,[bx]			; clear C
+		xor	dh,[bx]			; clear C
 		jne	fail			; return -1
-		jmp	failifc			; return 0
+		jmp	failifc			; return 0, dh=0
 
         endp    @strcmp$qpxzct1
 
@@ -409,6 +661,274 @@ dosbx:
         endp    @strcmp$qpxzct1
 		endif
 	endif
+
+;***************************************************************
+;_fastcall void puts(bx:const char* s):
+;***************************************************************
+        global  @puts$qpxzc:near
+
+;        global  puts:near			; puts(bx)
+@putsz:
+		call	@putc
+@puts$qpxzc:
+puts:
+		mov	dl,[bx]
+		inc	bx
+		or	dl,dl
+		jne	@putsz
+		mov	dl,10
+@putc:
+		cmp	dl,10
+		jne	@putcz
+		call	@putcz2
+@putcz2:
+		xor	dl,7		; 10^13  1010^1101
+@putcz:
+		mov	ah,2
+do_int21h:
+		int	21h
+		ret
+
+
+;***************************************************************
+;_fastcall char* malloc_or_die(ax:unsigned size);
+;***************************************************************
+xchg_heap_top:
+		xchg	ax,[bx]
+		ret
+
+        proc    @malloc_or_die$qui near
+
+malloc_or_die: 				; ax = malloc_or_die(ax)
+		extrn	_heap_top
+		mov	bx,offset _heap_top
+		add	ax,[bx]
+		jnc	xchg_heap_top
+		mov	bx,offset msg_malloc
+
+        endp    @malloc_or_die$qui
+
+
+;***************************************************************
+;_fastcall int die(bx:const char* msg);
+;int exit(ax:int status);
+;int abort(void);
+;***************************************************************
+	global	@die$qpxzc:near
+	proc	@die$qpxzc near
+@die$qpxzc:
+        global  die:near			; die(bx)
+die:
+		call	puts
+        global  @exit$qv:near
+@exit$qv:
+_exit:
+		extrn	_imgs:image_himem
+		mov	cx,[(word _imgs.buf)+2]	; no_exit ?
+                mov	ah,4Ch
+		jcxz	do_int21h
+		mov	bx, offset msg_hang
+		call	puts
+;        global  _abort:near
+_abort:
+		cli
+		hlt
+		jmp	_abort
+
+	endp	@die$qpxzc
+
+;***************************************************************
+;_fastcall void open_image(si:struct image_himem *m, ax:const char *name);
+;***************************************************************
+
+        global  @open_image$qp11image_himempxzc:near
+        proc    @open_image$qp11image_himempxzc near
+
+                mov	[(image_himem si).state],ax
+		push	ax
+@@next:
+		call	next_chunk
+		ifndef	NO386
+		add	eax,3
+		and	al,0FCh
+		add	[(image_himem si).size],eax	; m->size += m->chunk_size	size zero'd in bss
+		or	eax,eax
+		else
+		add	ax,3
+		adc	dx,0
+		and	al,0FCh
+		add	[word (image_himem si).size],ax	; m->size += m->chunk_size	size zero'd in bss
+		adc	[word ((image_himem si).size)+2],dx
+		or	ax,dx
+		endif
+		jnz	@@next
+                pop	[(image_himem si).state]
+
+        endp    @open_image$qp11image_himempxzc
+
+
+;***************************************************************
+;static long next_chunk(struct image_himem *si);
+;***************************************************************
+        proc    next_chunk near
+
+		ifndef	NO_CLOSE
+		mov	ax,[(image_himem si).fd]
+		call	close
+		endif
+		ifndef	NO386
+		xor	eax,eax
+		else
+		xor	ax,ax
+		cwd
+		endif
+		mov	[(image_himem si).fd],ax
+		mov	bx,[(image_himem si).state]
+		cmp	al,[bx]			; ""
+		jz	@@end
+		dec	bx
+		push	di
+@@scan:
+		inc	bx
+		mov	al,[bx]
+		mov	di,bx
+		or	al,al
+		jz	@@eos
+		sub	al,','
+		jnz	@@scan
+		inc	bx
+@@eos:
+		xchg	[(image_himem si).state],bx	; set start of string
+		mov	[current_file],bx
+		xchg	[di],ax			; set temp eos (ax == 0)
+		push	ax
+		call	@open$qpxzc
+		pop	[word di]		; restore string
+		pop	di
+		jnc	@@opened
+loadfailure:
+;***************************************************************
+;_fastcall void loadfailure(void);
+;***************************************************************
+	global	@loadfailure$qv:near
+@loadfailure$qv:
+		mov	bx,0
+		org	$-2
+current_file	dw	?
+		call	puts
+		mov	bx,offset loaderr
+jmpdie:
+		jmp	die
+@@opened:
+		mov	[(image_himem si).fd],ax
+		ifndef	NO_CLOSE
+		mov	[(image_himem si).fd2close],ax
+		endif
+	ifdef ISO9660
+		ifndef	NO386
+		mov	eax,[_isostate.filesize]
+		else
+		les	ax,[_isostate.filesize]
+		mov	dx,es
+		endif
+	else
+		mov	bl,02h			; SEEK_END
+		call	lseek0
+		ifndef	NO386
+		push	eax
+		mov	ax,[(image_himem si).fd]
+		call	rewind
+		pop	eax
+		else
+		push	ax
+		push	dx
+		mov	ax,[(image_himem si).fd]
+		call	rewind
+		pop	dx
+		pop	ax
+		endif
+	endif
+@@end:
+		ifndef	NO386
+		mov	[(image_himem si).chunk_size],eax
+		else
+		mov	[word (image_himem si).chunk_size],ax
+		mov	[word ((image_himem si).chunk_size)+2],dx
+		endif
+		ret
+
+        endp    next_chunk
+
+
+;***************************************************************
+;_fastcall int read_image(si:struct image_himem *m);
+;***************************************************************
+        global  @read_image$qp11image_himem:near
+        proc    @read_image$qp11image_himem near
+
+		push	di
+		xor	di,di
+@@loop:
+		ifndef	NO386
+		xor	ecx,ecx
+		mov	ch,4096/256
+		sub	cx,di
+		mov	eax,[(image_himem si).chunk_size]
+		cmp	ecx,eax
+		jb	@@szok
+		else
+		mov	cx,4096
+		sub	cx,di
+		mov	ax,[word (image_himem si).chunk_size]
+		cmp	cx,ax
+		jb	@@szok
+		cmp	[word ((image_himem si).chunk_size)+2],0	; hi m->chunk_size
+		jne	@@szok
+		endif
+		xchg	ax,cx
+@@szok:
+		jcxz	image_done
+		lea	dx,[di+_buf4k]
+		mov	bx,[(image_himem si).fd]
+		call	@read$cxdxbx
+		jb	image_done
+		add	di,ax
+		ifndef	NO386
+		cwde				; ax < 8000h
+		cdq
+		sub	[(image_himem si).chunk_size],eax
+		else
+		cwd				; ax < 8000h
+		sub	[word (image_himem si).chunk_size],ax
+		sbb	[word ((image_himem si).chunk_size)+2],dx
+		endif
+@@fill:
+		test	al,3
+		je	@@filled
+		mov	[di+_buf4k],dl
+		inc	di
+		inc	ax
+		jmp	@@fill
+@@filled:
+		ifndef	NO386
+		sub	[(image_himem si).remaining],eax
+		or	edx,[word (image_himem si).chunk_size]
+		else
+		sub	[word (image_himem si).remaining],ax
+		sbb	[word ((image_himem si).remaining)+2],dx
+		mov	ax,[word (image_himem si).chunk_size]
+		or	ax,[word ((image_himem si).chunk_size)+2]
+		endif
+		jnz	@@same_chunk
+		call	next_chunk
+@@same_chunk:
+		jmp	@@loop
+image_done:
+		xchg	ax,di
+                pop	di
+		ret
+
+        endp    @read_image$qp11image_himem
 
 ;***************************************************************
 ;_fastcall const char **argstr(bx:const char *s, ax:const char keywords[], dx:const char **var);
@@ -582,534 +1102,6 @@ dosbx:
 		jmp	@@strtollp
 
 	endp	@argstr$qpxzcxt1ppxzc
-
-;***************************************************************
-;_fastcall void puts(bx:const char* s):
-;***************************************************************
-        global  @puts$qpxzc:near
-
-;        global  puts:near			; puts(bx)
-@putsz:
-		call	@putc
-@puts$qpxzc:
-puts:
-		mov	dl,[bx]
-		inc	bx
-		or	dl,dl
-		jne	@putsz
-		mov	dl,10
-@putc:
-		cmp	dl,10
-		jne	@putcz
-		call	@putcz2
-@putcz2:
-		xor	dl,7		; 10^13  1010^1101
-@putcz:
-		mov	ah,2
-do_int21h:
-		int	21h
-		ret
-
-
-		include	"himem.inc"
-
-;***************************************************************
-;_fastcall char* malloc_or_die(ax:unsigned size);
-;***************************************************************
-xchg_heap_top:
-		xchg	ax,[bx]
-		ret
-
-        proc    @malloc_or_die$qui near
-
-malloc_or_die: 				; ax = malloc_or_die(ax)
-		extrn	_heap_top
-		mov	bx,offset _heap_top
-		add	ax,[bx]
-		jnc	xchg_heap_top
-		mov	bx,offset msg_malloc
-
-        endp    @malloc_or_die$qui
-
-
-;***************************************************************
-;_fastcall int die(bx:const char* msg);
-;int exit(ax:int status);
-;int abort(void);
-;***************************************************************
-	global	@die$qpxzc:near
-	proc	@die$qpxzc near
-@die$qpxzc:
-        global  die:near			; die(bx)
-die:
-		call	puts
-        global  @exit$qv:near
-@exit$qv:
-_exit:
-		extrn	_imgs:image_himem
-		mov	cx,[(word _imgs.buf)+2]	; no_exit ?
-                mov	ah,4Ch
-		jcxz	do_int21h
-		mov	bx, offset msg_hang
-		call	puts
-;        global  _abort:near
-_abort:
-		cli
-		hlt
-		jmp	_abort
-
-	endp	@die$qpxzc
-
-;***************************************************************
-;_fastcall void open_image(si:struct image_himem *m, ax:const char *name);
-;***************************************************************
-
-        global  @open_image$qp11image_himempxzc:near
-        proc    @open_image$qp11image_himempxzc near
-
-                mov	[(image_himem si).state],ax
-		push	ax
-@@next:
-		call	next_chunk
-		ifndef	NO386
-		add	eax,3
-		and	al,0FCh
-		add	[(image_himem si).size],eax	; m->size += m->chunk_size
-		or	eax,eax
-		else
-		add	ax,3
-		adc	dx,0
-		and	al,0FCh
-		add	[word (image_himem si).size],ax	; m->size += m->chunk_size
-		adc	[word ((image_himem si).size)+2],dx
-		or	ax,dx
-		endif
-		jnz	@@next
-                pop	[(image_himem si).state]
-
-        endp    @open_image$qp11image_himempxzc
-
-
-;***************************************************************
-;static long next_chunk(struct image_himem *si);
-;***************************************************************
-        proc    next_chunk near
-
-		ifndef	NO_CLOSE
-		mov	ax,[(image_himem si).fd]
-		call	close
-		endif
-		ifndef	NO386
-		xor	eax,eax
-		else
-		xor	ax,ax
-		cwd
-		endif
-		mov	[(image_himem si).fd],ax
-		mov	bx,[(image_himem si).state]
-		cmp	al,[bx]			; ""
-		jz	@@end
-		dec	bx
-		push	di
-@@scan:
-		inc	bx
-		mov	al,[bx]
-		mov	di,bx
-		or	al,al
-		jz	@@eos
-		sub	al,','
-		jnz	@@scan
-		inc	bx
-@@eos:
-		xchg	[(image_himem si).state],bx	; set start of string
-		mov	[current_file],bx
-		xchg	[di],ax			; set temp eos (ax == 0)
-		push	ax
-		call	@open$qpxzc
-		pop	[word di]		; restore string
-		pop	di
-		jnc	@@opened
-loadfailure:
-;***************************************************************
-;_fastcall void loadfailure(void);
-;***************************************************************
-	global	@loadfailure$qv:near
-@loadfailure$qv:
-		mov	bx,0
-		org	$-2
-current_file	dw	?
-		call	puts
-		mov	bx,offset loaderr
-jmpdie:
-		jmp	die
-@@opened:
-		mov	[(image_himem si).fd],ax
-		ifndef	NO_CLOSE
-		mov	[(image_himem si).fd2close],ax
-		endif
-	ifdef ISO9660
-		ifndef	NO386
-		mov	eax,[_isostate.filesize]
-		else
-		mov	ax,[word _isostate.filesize]
-		mov	dx,[(word _isostate.filesize)+2]
-		endif
-	else
-		mov	bl,02h			; SEEK_END
-		call	lseek0
-		ifndef	NO386
-		push	eax
-		mov	ax,[(image_himem si).fd]
-		call	rewind
-		pop	eax
-		else
-		push	ax
-		push	dx
-		mov	ax,[(image_himem si).fd]
-		call	rewind
-		pop	dx
-		pop	ax
-		endif
-	endif
-@@end:
-		ifndef	NO386
-		mov	[(image_himem si).chunk_size],eax
-		else
-		mov	[word (image_himem si).chunk_size],ax
-		mov	[word ((image_himem si).chunk_size)+2],dx
-		endif
-		ret
-
-        endp    next_chunk
-
-		ifdef	VCPI
-;***************************************************************
-
-struc   data_himem			;struct data_himem {
-first		dd	?		;   0  u32 first;	*must* be the first one
-cacheidx	dw	?		;   4  int cacheidx;	quad *
-pageidx		dw	?		;   6  int pageidx;	byte *
-cache		dd	1024 dup(?)	;   8  int cache;
-page		dd	1024 dup(?)	;4104  int page;
-ends	data_himem			;};
-
-;***************************************************************
-;_fastcall u32* malloc_bufv_or_die(si:struct image_himem *m);
-;***************************************************************
-        global  @malloc_bufv_or_die$qp11image_himem:near
-        proc    @malloc_bufv_or_die$qp11image_himem near
-
-                p386
-		push	si
-		;mov	ecx,[(image_himem si).size]
-		;shr	ecx,20			; pages index size = size >> 20
-		;mov	ax,cx
-		;add	ax,size data_himem-4096
-		mov	ax,size data_himem
-		call	malloc_or_die
-		;mov	cx,4096+4095		; cnt = 1+(m->size+PAGE_MASK)/PAGE_SIZE;
-		mov	ecx,4096+4095		; cnt = 1+(m->size+PAGE_MASK)/PAGE_SIZE;
-		add	ecx,[(image_himem si).size]
-		shr	ecx,12
-		mov	[curdata],ax
-		mov	[(image_himem si).bufv],ax	; update m->bufv
-		xchg	ax,si
-@@vcpi_alloc:
-                mov     ax,0DE04h		; allocate a 4K page => EDX
-                int     67h
-		or	ah,ah
-		mov	bx,offset vcpi_alloc_err
-		jnz	jmpdie
-; for (i = cnt-1; i >= 0; i--)
-; if (edx < pm.fallback+pm.size) again
-		mov	bx,offset _imgs.fallback+size image_himem
-		mov	eax,[bx-2+6-size image_himem]	; pm.size
-		add	eax,[bx-2+2-size image_himem]
-		cmp	eax,edx		; pm.fallback+pm.size <= edx ?
-		ja	@@vcpi_alloc
-		mov	eax,ecx
-		dec	eax
-		shl	eax,12		; i*_4k
-; if (edx >= initrd.fallback+i*_4k && edx < initrd.fallback+initrd.size) again
-		add	eax,[bx-2+2]	; +initrd.fallback
-		cmp	eax,edx		; initrd.fallback+i*_4k > edx ?
-		ja	@@initrdok
-		mov	eax,[bx-2+6]	; initrd.size
-		add	eax,[bx-2+2]	; +initrd.fallback
-		cmp	eax,edx		; initrd.fallback+initrd.size > edx ?
-@@ja_vcpi_alloc:
-		ja	@@vcpi_alloc
-@@initrdok:
-		cmp	[(data_himem si).first],0
-		jne	@@notfirst
-		mov	[(data_himem si).first],edx
-@@notfirst:
-		mov	bx,[(data_himem si).cacheidx]
-		cmp	bh,4
-		jae	@@nextpage
-		shl	bx,2
-		inc	[(data_himem si).cacheidx]
-		mov	[(data_himem bx+si).cache],edx	; cache[cacheidx++] = edx
-		loopd	@@vcpi_alloc
-		mov	[(data_himem bx+si).cache],ecx	; last is 0
-@@nextpage:
-		and	[(data_himem si).cacheidx],0
-		mov	bx,[(data_himem si).pageidx]
-		mov	[(data_himem bx+si).page],edx
-		add	[(data_himem si).pageidx],4
-		push	cx
-		lea	cx,[(data_himem si).cache]
-		ifdef	NO386
-		push	edx
-		pop	ax			; to es:ax
-		pop	es
-		endif
-		call	storepage		; storepage(edx/es:ax,cx)	
-		pop	cx
-		or	ecx,ecx			; clear C
-		jnz	@@ja_vcpi_alloc
-		mov	[dword (data_himem si).cacheidx],ecx
-		xchg	ax,si
-		pop	si
-		ret
-		ifdef	NO386
-                p8086
-		endif
-
-        endp    @malloc_bufv_or_die$qp11image_himem
-		endif
-
-
-;***************************************************************
-;_fastcall void memcpy_image_initrd(si:struct image_himem *m);
-;_fastcall void memcpy_image_kernel(si:struct image_himem *m);
-;_fastcall void memcpy_image(bx:struct image_himem *m);
-;***************************************************************
-	global	@memcpy_image_initrd$qv:near
-@memcpy_image_initrd$qv:
-		lea	bx,[si+size image_himem]
-		db	0A9h			; test	ax,imm
-	global	@memcpy_image_kernel$qv:near
-@memcpy_image_kernel$qv:
-		mov	bx,si
-        proc    @memcpy_image$qp11image_himem near
-
-		ifndef	NO386
-		mov	edx,[(image_himem bx).fallback]
-		mov	eax,[(image_himem bx).buf]
-		cmp	eax,edx			; if (m->fallback != m->buf)
-		jz	@@skip			;   memcpy32(m->fallback,0,m->buf,m->size)
-		mov	ecx,[(image_himem bx).size]
-		else
-		les	cx,[((image_himem bx).buf)]
-		mov	dx,es
-		les	ax,[((image_himem bx).fallback)]
-		cmp	ax,cx			; if (m->fallback != m->buf)
-		jnz	@@do
-		cmp	dx,[word ((image_himem bx).fallback)+2]
-		jz	@@skip			;   memcpy32(m->fallback,0,m->buf,m->size)
-@@do:
-		push	[((image_himem bx).size)]
-		xor	bx,bx
-call_memcpy32:					; call_memcpy32(to=es:ax,fromseg=bx,fromofs=dx:cx,size)
-		push	dx			; [word ((image_himem bx).buf)+2]
-		push	cx			; [word ((image_himem bx).buf)]
-		push	bx
-		push	es			; push es:ax
-		push	ax
-		jmp	@@memcpy
-		endif
-memcpy_imagez:					; memcpy_imagez(edx,eax,ecx)
-		p386
-		push	ecx
-		push	eax
-		push	0
-		ifndef	NO386
-call_memcpy32:					; call_memcpy32(to=edx,fromseg,fromofs,size)
-		endif
-		push	edx
-		ifdef	NO386
-                p8086
-		endif
-@@memcpy:
-		extrn	memcpy32:near
-		call	near memcpy32
-@@skip:
-		ret
-
-        endp    @memcpy_image$qp11image_himem
-
-;***************************************************************
-;_fastcall void storepage(di:u32 *dst);
-;***************************************************************
-        global  @storepage$qpul:near
-        proc    @storepage$qpul near
-
-		ifndef	NO386
-		mov	edx,[di]
-		else
-		les	ax,[dword di]
-		endif
-		mov	cx,offset _buf4k
-storepage:					; storepage(edx,cx)
-		ifndef	NO386
-		push	0
-		push	4096
-		push	0
-		push	cx
-		push	ds			; call_memcpy32(to=edx,fromseg,fromofs,size)
-		else
-		xor	dx,dx
-		push	dx			; 0
-		mov	bx,4096
-		push	bx			; 4096
-		mov	bx,ds			; call_memcpy32(to=es:ax,fromseg=bx,fromofs=dx:cx,size)
-		endif
-		jmp	call_memcpy32
-
-        endp    @storepage$qpul
-
-		ifdef	VCPI
-                p386
-;***************************************************************
-;_fastcall void reset_bufv(di:u32 *p);
-;***************************************************************
-        global  @reset_bufv$qpul:near
-        proc    @reset_bufv$qpul near
-
-		mov	[curdata],di
-		and	[dword (data_himem di).cacheidx],0	; and pageidx=0
-		ret
-
-        endp    @reset_bufv$qpul
-
-;***************************************************************
-;u32* di=prev_bufv();
-;u32* di=prev_bufv();
-;***************************************************************
-        global  _prev_bufv:near
-        global  _next_bufv:near
-        proc    _prev_bufv near
-
-		stc
-		db	73h			; jnc
-_next_bufv:
-		clc
-		push	si
-		mov	bx,0
-		org	$-2
-curdata		dw	?
-		sbb	ax,ax
-		cmc
-		adc	ax,[(data_himem bx).cacheidx]	; -1/+1
-		mov	si,3ffh
-		and	si,ax
-		mov	[(data_himem bx).cacheidx],si
-		shl	si,2
-		xor	ecx,ecx
-		test	ax,0fc00h
-		jz	@@gotpage		; FFFF / 0400
-		xchg	al,ah			; FFFC / 0004
-		and	al,0fch
-		add	[(data_himem bx).pageidx],ax
-		mov	di,[(data_himem bx).pageidx]
-		lea	di,[(data_himem bx+di).page]
-		mov	edx,ds
-		shl	edx,4
-		lea	cx,[(data_himem bx).cache]		
-		add	edx,ecx
-		mov	eax,[di]
-		or	eax,eax
-		jz	@@ret
-		mov	cx,4096			; get page
-		call	memcpy_imagez		; memcpy_imagez(edx,eax,ecx)
-@@gotpage:
-		lea	ax,[(data_himem bx+si).cache]		
-		or	si,[(data_himem bx).pageidx]	; !pageidx && !cacheidx
-		jnz	@@notfirst2
-		xchg	ax,bx				; &first
-@@notfirst2:
-		xchg	ax,di
-@@ret:
-		pop	si
-		ret
-
-        endp    _prev_bufv
-		endif
-
-		ifdef	NO386
-                p8086
-		endif
-
-;***************************************************************
-;_fastcall int read_image(si:struct image_himem *m);
-;***************************************************************
-        global  @read_image$qp11image_himem:near
-        proc    @read_image$qp11image_himem near
-
-		push	di
-		xor	di,di
-@@loop:
-		ifndef	NO386
-		xor	ecx,ecx
-		mov	ch,4096/256
-		sub	cx,di
-		mov	eax,[(image_himem si).chunk_size]
-		cmp	ecx,eax
-		jb	@@szok
-		else
-		mov	cx,4096
-		sub	cx,di
-		mov	ax,[word (image_himem si).chunk_size]
-		cmp	cx,ax
-		jb	@@szok
-		cmp	[word ((image_himem si).chunk_size)+2],0	; hi m->chunk_size
-		jne	@@szok
-		endif
-		xchg	ax,cx
-@@szok:
-		jcxz	image_done
-		lea	dx,[di+_buf4k]
-		mov	bx,[(image_himem si).fd]
-		call	@read$cxdxbx
-		jb	image_done
-		add	di,ax
-		ifndef	NO386
-		cwde				; ax < 8000h
-		cdq
-		sub	[(image_himem si).chunk_size],eax
-		else
-		cwd				; ax < 8000h
-		sub	[word (image_himem si).chunk_size],ax
-		sbb	[word ((image_himem si).chunk_size)+2],dx
-		endif
-@@fill:
-		test	al,3
-		je	@@filled
-		mov	[di+_buf4k],dl
-		inc	di
-		inc	ax
-		jmp	@@fill
-@@filled:
-		ifndef	NO386
-		sub	[(image_himem si).remaining],eax
-		or	edx,[word (image_himem si).chunk_size]
-		else
-		sub	[word (image_himem si).remaining],ax
-		sbb	[word ((image_himem si).remaining)+2],dx
-		mov	ax,[word (image_himem si).chunk_size]
-		or	ax,[word ((image_himem si).chunk_size)+2]
-		endif
-		jnz	@@same_chunk
-		call	next_chunk
-@@same_chunk:
-		jmp	@@loop
-image_done:
-		xchg	ax,di
-                pop	di
-		ret
-
-        endp    @read_image$qp11image_himem
 
 
         ends    _TEXT

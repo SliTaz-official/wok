@@ -2,7 +2,7 @@
 ;****** This file is distributed under GPL
 ;***************************************************************
                 ideal
-		%PAGESIZE 1000
+		%PAGESIZE 255
                 %crefref
                 %noincl
                 %nomacs
@@ -87,7 +87,6 @@ step19:
 ;void boot_kernel();
 ;****** Never returns
 ;***************************************************************
-	global	_boot_kernel:near
         proc    _boot_kernel near
         
 		ifdef	NO386
@@ -165,7 +164,13 @@ _pm_low		db	?
 		include	"himem.inc"
 
 		extrn	_imgs:image_himem
+		ifdef	NO386
+		les	ax,[_imgs.fallback]	; src ofs = pm.fallback
+		push	es
+		push	ax
+		else
 		push	[_imgs.fallback]	; src ofs = pm.fallback
+		endif
 
 		;in	al,70h
 		;or	al,80h			; disable NMI
@@ -183,7 +188,7 @@ _pm_low		db	?
 
 		ifdef	NO386
 		mov	ax,ss
-		add	ax,900h
+		add	ax,800h+(4096/16)
 		push	ax			; topseg()+0x0900
 		else
 		push	9800h+(4096/16)		; 4096 bytes for cmdline
@@ -199,8 +204,11 @@ _pm_low		db	?
 		xor	di,di
 		rep
 		  movsb
-		call	near @@isbzimage	; movsb; pop cs ; ds=es=ss
+		call	near @@isbzimage	; pop cs ; ds=es=ss
 		endif
+
+		;mov	es,cx
+		;mov	[es:15*4+2],cs		; update int15/88h hook
 
 		extrn   memcpy32:near
 		call	memcpy32

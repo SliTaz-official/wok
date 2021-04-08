@@ -2,7 +2,7 @@
 ;****** This file is distributed under GPL
 ;***************************************************************
                 ideal
-		%PAGESIZE 1000
+		%PAGESIZE 255
                 %crefref
                 %noincl
                 %nomacs
@@ -24,6 +24,12 @@ macro	lcr0	reg
 				;3+ NOPs also work fine (chkd on 386)
 endm
 
+macro   addzx_e rm,i
+        db      66h
+        add     rm,i
+        dw      0
+endm
+
         segment _TEXT byte public use16 'CODE'
 
 ;***************************************************************
@@ -41,18 +47,19 @@ endm
 
 ;****** Init ***************************************************
 
-			ifndef	NO386
-
-		enter	0,0
+		push	bp
+		mov	bp,sp
 		;cld
                 pushf
-                push    ds es
+                push    ds
+
+			ifndef	NO386
+
 		pushad				; struct declared in VCPI.ASM
 		mov	cl,4
                 movzx   esi,[srcseg]
                 shl     esi,cl
                 add     esi,[srcofs]
-                mov     [srcofs],esi		; for memcpy_vcpi
                 mov     edi,[dstofs]
 
 	ifndef	pm_only
@@ -60,9 +67,8 @@ endm
 		shr	eax,cl
 		mov	edx,edi
 		shr	edx,cl
-		mov	ecx,esi
-		or	ecx,edi
-		shr	ecx,20			; >1mb ?
+		lea	ecx,[eax+edx]
+		shr	ecx,16			; >1mb ?
                 jnz     @@pmcopy
 @@movlp:
 		mov	ds,ax
@@ -84,13 +90,8 @@ endm
 @@pmcopy:
 			else
 
-		push	bp
-		mov	bp,sp
-		;cld
-                pushf
-                push    ds es
 		push	si
-		xor	bx,bx
+		push	di
 		xor	si,si
 		mov	ax,[srcseg]
 		extrn	N_LXLSH@4:near
@@ -98,32 +99,31 @@ endm
 		add	[word srcofs],ax
 		adc	[word srcofs+2],dx
 @@2flat:
-		les	ax,[dword si+srcofs]	; srcofs, dstofs
-		mov	dx,es
+		les	dx,[dword si+srcofs]	; srcofs, dstofs
+		mov	di,dx			; dstofs
+		mov	ax,es
 		mov	cl,4
 @@loop:
-		shr	dx,1
-		rcr	ax,1
+		shr	ax,1			; high
+		rcr	dx,1			; low
 		loop	@@loop
-		or	bx,dx			; >=1mb flag
-		push	ax			; srcseg, dstseg
+		push	dx			; srcseg, dstseg
+		xchg	ax,bx			; save/restore high srcreg
 		xor	si,-6
 		jnz	@@2flat
+		or	bx,ax			; srcseg & dstseg < 1mb ? clear C
 		pop	dx			; dstseg
 		pop	ax			; srcseg
-		cmp	bx,si			; <1mb ?
-                jne     @@pmcopy
-		push	di
-@@movlp:
+                jnz	@@pmcopy
+@@movlp:					; bx=cx=0
 		mov	ds,ax
 		mov	es,dx
 		inc	ax
 		inc	dx
 		mov	cl,0Fh
 		mov	si,cx
-		mov	di,cx
+		and	di,cx
 		and	si,[word srcofs]
-		and	di,[word dstofs]
 		inc	cx
                 sub     [word sz],cx
 		;jae	@@movpara
@@ -134,9 +134,10 @@ endm
 @@movpara:
             rep movsb
 		jae	@@movlp
-		pop	di
-		jmp	@@done16
 @@pmcopy:
+		pop	di
+		pop	si
+		jc	@@done16
                 p386
 		pushad				; struct declared in VCPI.ASM
                 mov     esi,[srcofs]
@@ -146,6 +147,7 @@ endm
 
                 mov     ecx,[sz]
                 jecxz   @@done
+                cli
 
 		ifdef	VCPI
 		smsw	ax
@@ -158,11 +160,22 @@ endm
 		jmp	@@done
 		endif
 @@real_mode:
-                cli
 oldGDTR		=	(pword srcseg)	; don't need src seg/ofs anymore
                 sgdt    [oldGDTR]
 
 ;****** Load gdtr **********************************************
+		ifdef	LARGE_ZIMAGE
+		local	rflags: word, rds: word, \
+			reax: dword, recx: dword, redx: dword, rebx: dword, \
+			resp: dword, rebp: dword, resi: dword, redi: dword, \
+			GDTR: pword = LOCAL_SIZE
+		mov	eax,cs
+		shl	eax,4
+		addzx_e	ax,<offset gdt_memcpy>
+		push	eax		; gdt_base_memcpy
+		push	-1		; gdt_limit
+		endif
+
                 lgdt    [GDTR]
 
 ;****** Go into pm *********************************************
@@ -192,21 +205,16 @@ oldGDTR		=	(pword srcseg)	; don't need src seg/ofs anymore
 		lcr0	eax
 ;****** Return *************************************************
                 lgdt    [oldGDTR]
+		ifdef	LARGE_ZIMAGE
+		add	sp,6
+		endif
 @@done:
                 popad
                 p8086
 @@done16:
-			ifdef	NO386
-		pop	si
-			endif
-                pop     es ds
+                pop     ds
 		popf			; restore I & D
-			ifndef	NO386
-                p386
-		leave
-			else
 		pop	bp
-			endif
                 ret	14
 
 ;****** Const data *********************************************
@@ -224,15 +232,14 @@ gdt_memcpy	dd	?,?
 		;	base_med  P  S D A  G ??l_hi  base_hi
 		;	           Pl E W    D
 		endif
+		ifndef	LARGE_ZIMAGE
 label	GDTR	pword
 gdt_limit	dw	0ffffh
 		global	gdt_base_memcpy:word
 gdt_base_memcpy dw	offset gdt_memcpy,0
+		endif
 
         endp    memcpy32
-
-		global	movedend:near
-movedend:
 
         ends    _TEXT
 

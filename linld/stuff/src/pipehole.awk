@@ -7,7 +7,10 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/^@.*:$/ || /	endp$/) afterjmp=0
 	if (/^	\.386p$/) is386=1
 	if (file == "" && /debug	S/) { file=$3; gsub(/\"/,"",file) }
-	if (/debug	S/) print "	%PAGESIZE 1000"
+	if (/debug	S/) {
+		print "	%PAGESIZE 255"
+		print "	include	common.inc"
+	}
 	 if (file == "linld.cpp") {
 	if (/\[si/ || /si,/ || /,si/) sub(/si/,"di")
 	else if (/\[di/ || /di,/ || /,di/) sub(/di/,"si")
@@ -67,7 +70,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (ishimem == 1) {
 		if (/do \{/) ishimem=2
-		if (/bx,si/ || /push	bp/ || /bp,sp/ || /push	di/ || /push	si/) next
+		if (/bx,si/ || /di,ax/ || /push	bp/ || /bp,sp/ || /push	di/ || /push	si/) next
 		if (/sp,2/ || /bp\+4/) next
 	}
 	if (ishimem == 2) {
@@ -252,6 +255,16 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	 } # file == "load.cpp"
 	 if (file == "iso9660.cpp") {
+	if (swapsidi == 1) {
+		if (/\[si/) sub(/\[si/,"[di")
+		else (/\[di/) sub(/\[di/,"[si")
+		if (/\+si/) sub(/\+si/,"+di")
+		else (/\+di/) sub(/\+di/,"+si")
+		if (/,si/) sub(/,si/,",di")
+		else if (/,di/) sub(/,di/,",si")
+		if (/si,/) sub(/si,/,"di,")
+		else if (/di,/) sub(/di,/,"si,")
+	}
 	if (/di,offset DGROUP:_buf2k/) { si="si"; di="di" }
 	if (/si,offset DGROUP:_buf2k/) { si="di"; di="si" }
 	if (/leave/ || /enter/ || /bp/ || /sub	sp,/) next
@@ -260,22 +273,32 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/ptr \[.i\+6\],eax/) next
 	if (/x,word ptr \[.i\+32\]/) next
 	if (/add	word ptr \[.i\],ax/) sub(/ax/,"cx")
-	if (/ax,word ptr \[si\+22\]/) sub(/mov	ax,/,"les	ax,d")
-	if (/ax,word ptr \[si\+24\]/) next
-	if (/word ptr \[si\+27\],ax/) sub(/ax/,"es")
+	if (/ax,word ptr \[si\+18\]/) sub(/mov	ax,/,"les	ax,d")
+	if (/ax,word ptr \[si\+20\]/) next
+	if (/word ptr \[si\+25\],ax/) sub(/ax/,"es")
 	sub(/di,word ptr DGROUP:_isostate\+2/,"di,word ptr [si+2]")
+	if (/-257/) isiso=22
+	if (isiso == 22) {
+		sub(/-257/,"-257	; clear C")
+		if (/je/) {
+			print "	cbw"
+			print "	xchg	ax,bx"
+			print "	xchg	ax,dx		; .. or ."
+			$0="	je	returnC"
+		}
+	}
 	if (/p = buf2k \+ 32 \+ x->curpos/) isiso=21
-	sub(/-257/,"-257	; clear C")
 	if (isiso == 21) { # ISO9660.LST
 		if (/ax,/) next
-		if (/si,ax/) {
-			print "	add	ax,32"
-			$0="	xchg	ax,si"
-		}
+		if (/.i,ax/) sub(/mov/,"xchg")
 		if (/# else/) isiso=0
 	}
-	if (/cx,si/) {
-		if (isiso == 0) print "	inc	" di
+	if (/cx,.i/) {
+		if (isiso == 0) {
+			print "	ifndef	CLEAN_ISO9660"
+			print "	inc	" di
+			print "	mov	cx," di
+		}
 		isiso=20
 	}
 	if (isiso == 20) { # ISO9660.LST
@@ -283,13 +306,33 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			isiso=12
 			next
 		}
+		if (/add	.i,ax/ || /cbw/) next
+		if (/cmp/) sub(/\[/,"[bx+")
 		if (/inc	cx/) next
-		if (/al,byte ptr/) $0="	;inc	ax"
-		if (/i],0/) {
-			sub(/,0/,",ah	; clear C")
-			sub(/mov/,"and")
+		if (/sub/) sub(/.i/,"bx")
+		sub(/inc	.i/,"inc	bx")
+		if (/al,byte ptr/) {
+			next
 		}
-		sub(/cx/,"dx")
+		sub(/i-1\],12603/,"i],12603")
+		if (/bx\+.i\],46/) {
+			print "	inc	" di
+			print "	mov	cx," di
+		}
+		if (/i],0/) {
+			print "	ifndef	CLEAN_ISO9660"
+			print "	inc	" di
+			print "	mov	cx," di
+			print "	endif"
+			print "seteos:"
+			sub(/,0/,",bh	; clear C")
+			sub(/mov	byte ptr \[/,"and	byte ptr [bx+")
+		}
+		if (/cx,.i/) next
+		if (/\}/) {
+			print "	xchg	ax,cx"
+		}
+		if (/cx,5/) $0="	lea	dx,[" di "+5]" 
 		if (/filename = s;/) {
 			isiso=0
 		}
@@ -297,15 +340,16 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isiso == 19) { # ISO9660.LST
 		if (/short @2@310/) $0="	jc	restoreC"
 		if (/si\+32/ || /ax,dx/ || /ax,di/ || /cmp	ax,-1/ || /sub	ax,/) next
-		sub(/dx,/,"ax,")
-		if (/ax,word ptr \[si\+18\]/) sub(/ax/,"bx")
+		if (/ax,word ptr \[si\+28\]/) next
 		if (/bx,offset/) sub(/bx/,"ax")
+		sub(/dx,/,"bx,")
 		if (/short @2@282/) sub(/je/,"jnc")
-		if (/\[si\+35\],0/) sub(/,0/,",ch")
+		if (/\[si\+30\],0/) $0="	;or	cl,cl"
+		if (/short @2@478/) sub(/je/,"jcxz")
 		if (/@strcmp\$qpxzct1/) {
 			print
 			print "restoreC:"
-			$0="	mov	byte ptr [di],cl	; c"
+			$0="	mov	byte ptr [di],dl	; c"
 			isiso=1
 		}
 	}
@@ -313,9 +357,9 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/endif/) isiso=1
 	}
 	if (isiso == 17) { # ISO9660.LST
-		if (/si\+22/) {
+		if (/si\+18/) {
 			print "next:"
-			print "	mov	word ptr [si+24],bx"
+			print "	mov	word ptr [si+20],bx"
 			print
 			isiso=0
 		}	
@@ -339,7 +383,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/cmp/) {
 			print "	mov	bx,word ptr [si+7]"
 			print "	mov	ax,word ptr [si+11]"
-			print "	dec	cx"
+			print "	dec	dx"
 			print "	jns	next"
 		}
 		if (/isolseek/) isiso=1
@@ -350,11 +394,16 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isiso == 15) { # ISO9660.LST
 		if (/xor/) {
 			print	"returnC:"
-			print	"	sbb	ax,ax"
+			print	"	sbb	dx,dx"
 			print	"return:"
 			next
 		}
-		if (/i\+18\],cx/) sub(/cx/,"dx")
+		if (/i\+28\],cx/) {
+			print	"	ifndef BASIC_ISO9660"
+			print	"	xchg	ax,dx"
+			print	"	endif"
+			next
+		}
 		if (/@1@422:/) next
 		if (/\[di\],47/) isiso=17
 	}
@@ -371,10 +420,10 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/p = buf2k \+ 34/) isiso=13
 	if (isiso == 13) { # ISO9660.LST
-		if (/cbw/) $0="	;cbw"
+		#if (/cbw/) $0="	;cbw"
 		if (/i,.i/) $0="	xchg	ax,bx"
 		if (/i,ax/) $0="	xchg	ax," di 
-		if (/i,70/ || /word ptr \[.i\+32\]/) next
+		if (/i,70/ || /ptr \[.i\+32\]/) next
 		if (/register len/) {
 			isiso=12
 		}
@@ -382,16 +431,28 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (isiso == 12) { # ISO9660.LST
 		if (/.i\+2/) sub(/al/,"bl")
 		if (/cbw/) next
-		sub(/dx,ax/,"bh,0")
+		if (/dx,ax/) next
 		if (/bx,dx/) next
 		sub(/i,dx/,"i,bx")
 		sub(/cx,/,"dx,")
-		if (/bx\+.i\],0/) sub(/,0/,",bh")
+		if (/bx\+.i\],0/) {
+			sub(/,0/,",bh")
+		}
+		if (/jmp/) {
+			print
+			$0="	endif"
+		}
+		if (/jne/) {
+			print "	ifdef	BASIC_ISO9660"
+			print "	lea	cx,[" di "+5]" 
+			print "	je	seteos"
+			print "	else"
+		}
 		if (/while/) isiso=120
 	}
 	if (isiso == 120) { # ISO9660.LST
-		sub(/ax/,"bx")
-		if (/cmp	bx,/) $0="	cmp	" di ",bx"
+		sub(/ax/,"cx")
+		if (/cmp	cx,/) $0="	cmp	" di ",cx"
 		sub(/jae/,"jb")
 		if (/endif/) isiso=0
 	}
@@ -421,11 +482,37 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	}
 	if (/filesize =/) isiso=8
 	if (isiso == 8) { # ISO9660.LST
-		if (/ax,/) next
+		if (/ax,/ || /cbw/) next
 		sub(/mov	dx,/,"les	dx,d")
 		sub(/\],ax/,"],es")
 		sub(/cx,/,"dx,")
-		if (/sub/) isiso=0
+		if (/DGROUP:s@\+/) {
+			print
+			next
+		}
+		if (/i\+33]/) {
+			print "	ifdef	ROCKRIDGE"
+			print "	 ifdef	BASIC_ISO9660"
+			print "	add	" di ",32"
+			print "	mov	ax,[" di "]"
+			print "	 else"
+			print "	mov	ax,[" di "+32]"
+			print "	 endif"
+			print "	mov	bl,ah"
+			print "	mov	bh,0"
+			print "	else"
+			print "	mov	al,[" di "+33]"
+			print "	cbw"
+			$0="	endif"
+		}
+		if (/sub/) {
+			print "	ifdef	ROCKRIDGE"
+			print "	sub	dx,bx"
+			print "	else"
+			print 
+			$0="	endif"
+			isiso=0
+		}
 	}
 	if (/entrysize =/) isiso=5
 	if (isiso == 5) { # ISO9660.LST
@@ -454,17 +541,31 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		sub(/cmp	byte ptr \[.i\]/,"sub	al")
 		if (/inc	/) { r=$2; print; next }
 		if (/al,0/) print "	mov	al,[" r "]"
+		if (/word ptr \[si\],-1/) $0="	not	word ptr [si]	; zero'd in BSS"
+		sub(/al,32/,"ax,32")
+		if (/byte ptr \[si\+30\],al/) $0="	xchg	ax,cx"
 		if (/al,byte ptr \[/) next
 		if (/byte ptr \[.*\],0/) next
 		if (/byte ptr \[si\+31\],al/) next
 	}
-	if (/ptr .isoreaddir/) isiso=1
+	if (/ptr .isoreaddir/) {
+		print "	ifdef	ISOHOOK"
+		print "	push	cx"
+		print
+		print "	pop	cx"
+		print "	else"
+		print
+		$0="	endif"
+		isiso=1
+	}
 	if (isiso == 1) { # ISO9660.LST
-		if (/xor/) isiso=18
+		if (/xor/) {
+			$0="	xor	cl,32"
+			isiso=18
+		}
 		if (/n = name;/) {
 			isiso=19
-			print "	xchg	ax,cx"
-			print "	xchg	cl,byte ptr [di]	; c"
+			print "	xchg	dl,byte ptr [di]	; c"
 		}
 		sub(/jne/,"jnc")
 		if (/short @2@450/) $0="	jc	returnC"
@@ -479,7 +580,12 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		if (/@2@142$/) print "	inc	di"
 	}
 	if (/i\+34\]/) next
-	sub(/di,offset DGROUP:_isostate/,"di,si")
+	if (/di,offset DGROUP:_isostate/) {
+		sub(/mov/,";mov")
+		sub(/di,/,"si,")
+		swapsidi=1
+	}
+	if (/^	ret/) swapsidi=0
 	 } # file == "iso9660.cpp"
 	if (wascall) {
 		if (rcall != "") {

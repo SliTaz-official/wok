@@ -13,11 +13,12 @@ extern struct isostate {
 	unsigned long fileofs;
 	unsigned long filesize;
 	unsigned long filepos;
-	char *filename;
-	dirsizetype curdirsize, dirsize;
+	dirsizetype dirsize;
 typedef unsigned dirpagetype;
 	dirpagetype dirpage;           
+	dirsizetype curdirsize;
 	unsigned long curdirofs;
+	char *filename;
 	char _64bits;
 	char c;
 	int entrysize;

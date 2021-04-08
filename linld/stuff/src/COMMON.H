@@ -1,7 +1,7 @@
 //#define WITH_XMM_ALLOC	add himem.sys driver
-//#define LARGE_ZIMAGE	may load system in high memory temporarily 
 //#define INT15_E820	add int15/eax=E820 driver
-//#define RAW_ISO9660	raw filename support with ';1' or '.' trailers
+//#define LARGE_ZIMAGE	may load system in high memory temporarily 
+#define CLEAN_ISO9660	remove ';1' or '.' trailers for  non rockridge name
 #define BASIC_ISO9660	non rockridge support
 #define ROCKRIDGE	iso 9660 posix name support
 #define ISO9660		iso= support
@@ -26,7 +26,7 @@
 #define CPU64
 #endif
 #endif
-#if defined(ROCKRIDGE) || defined(BASIC_ISO9660) || defined(RAW_ISO9660)
+#if defined(ROCKRIDGE) || defined(BASIC_ISO9660) || defined(CLEAN_ISO9660)
 #ifndef ISO9660
 #define ISO9660
 #endif

@@ -15,7 +15,7 @@
 	x->dirsize = filesize2dirsize(* (unsigned long *) (buf2k + 0xA6)); \
 }
 
-#ifdef RAW_ISO9660
+#if !defined(BASIC_ISO9660) && defined(CLEAN_ISO9660)
 #define BASIC_ISO9660
 #endif
 #if !defined(BASIC_ISO9660) && !defined(ROCKRIDGE)
@@ -68,7 +68,7 @@ static int isoreaddir(void)
 # endif
 	if (((* (short *) p) & 0xFEFF) -1 != 0) {
 		s = p + 1; p += *p;
-# ifndef RAW_ISO9660
+# ifdef CLEAN_ISO9660
 		if (* (short *) (p-1) == 0x313B) p-=2; // remove ;1
 		if (*p != '.') p++;
 # endif

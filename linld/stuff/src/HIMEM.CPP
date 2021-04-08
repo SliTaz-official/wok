@@ -59,6 +59,7 @@ void far last_ditch() {
 	pushf
 	;cli
 	push	ds
+	push	es
 	push	cs
 	pop	ds
 # ifdef NO386
@@ -88,11 +89,12 @@ void far last_ditch() {
         // Move initrd
         memcpy_image_initrd();
 #ifdef VCPI
-    } else { //vcpi
+    } else { //vcpi	FIXME: LARGE_ZIMAGE case
 #if defined(__BORLANDC__) && defined(NO386)
 #pragma option -3
 	asm{
 		.386p
+		pushad
 	}
 #endif
         // Move kernel
@@ -125,6 +127,9 @@ void far last_ditch() {
                 memcpy_image_initrd();
             } while(q != m[INITRD].bufv);
         }
+	asm{
+		popad
+        }
     }
 #endif
     asm {
@@ -136,6 +141,7 @@ void far last_ditch() {
 # else
 	popa
 # endif
+	pop	es
 	pop	ds
 	popf
     }

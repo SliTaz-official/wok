@@ -2,7 +2,7 @@
 ;****** This file is distributed under GPL
 ;***************************************************************
                 ideal
-		%PAGESIZE 1000
+		%PAGESIZE 255
                 %crefref
                 %noincl
                 %nomacs
@@ -89,6 +89,8 @@ room_for_image	=	1
 		alloc_image
 		endif
 
+;BSS_OVERLAP_BOOT	=	1
+
 		ifndef	BSS_OVERLAP_BOOT
 
 		ifdef	room_for_isostate
@@ -143,10 +145,20 @@ clearbss:
                 js	endcpu86   	;it is not a 386+, try ELKS & co
 		endif
                 p386
+		ifdef	VCPI
                 mov     edx,cs
                 shl     edx,4		; edx for prepare_vcpi
+		else
+ 		 ifndef	LARGE_ZIMAGE
+                mov     edx,cs
+                shl     edx,4		; edx for memcpy32
+		 endif
+		endif
+		ifndef	LARGE_ZIMAGE
 		extrn	gdt_base_memcpy:word	; gdt_base for memcpy32
 		add	[dword gdt_base_memcpy],edx
+		endif
+
 ; Check for vm
                 smsw    ax      ;SMSW cannot be trapped! :-)
                 and     al,1	;MSW_PE
@@ -260,12 +272,8 @@ short_cmdline:
 
 ;***************************************************************
 
-		org	$-4				; _himem_buf
-
 		ifdef	BSS_OVERLAP_BOOT
-		mov	al,0
-		mov	di,100h
-		mov	cx,offset clean-100h
+		mov	di,offset clean-100h
 
 		org	$-(CMDNUMCNT*4)			; alloc_cmdnum
 
@@ -283,16 +291,15 @@ short_cmdline:
 		endif
 
 		alloc_cmdnum
+clean:
+		mov	[di+0FFh],bh
+		dec	di
+		jnz	clean
 		endif
 
+		org	$-4				; _himem_buf
 		global	_himem_buf:dword
 _himem_buf	dd	?
-
-		ifdef	BSS_OVERLAP_BOOT
-clean:
-		rep
-		  stosb
-		endif
 
 ;***************************************************************
 		extrn	_bss_end:word
