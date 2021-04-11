@@ -1,63 +1,77 @@
 # SliTaz package receipt.
 
 PACKAGE="sane-backends"
-VERSION="1.0.22"
+VERSION="1.0.24"
 CATEGORY="system-tools"
 SHORT_DESC="Scanner Access Now Easy."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.sane-project.org/"
-WGET_URL="ftp://ftp2.sane-project.org/pub/sane/$PACKAGE-$VERSION/$TARBALL"
 
-DEPENDS="libusb-compat jpeg tiff zlib libgphoto2 libv4l libltdl"
-BUILD_DEPENDS="libusb-compat-dev jpeg-dev tiff-dev zlib-dev libv4l-dev \
-libgphoto2-dev libtool"
-SUGGESTED="imagemagick gocr tesseract-ocr"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://gitlab.com/sane-project/backends/-/archive/RELEASE_${VERSION//./_}/backends-RELEASE_${VERSION//./_}.tar.gz"
+
+DEPENDS="jpeg libgphoto2 libltdl libusb-compat libv4l tiff zlib"
+BUILD_DEPENDS="jpeg-dev libgphoto2-dev libtool libusb-compat-dev 
+	libv4l-dev tiff-dev zlib-dev"
+SUGGESTED="gocr imagemagick sane-backends-lang tesseract-ocr"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|prefix}/doc|prefix}/share/doc|' configure
-	patch -Np1 -i $stuff/libv4l-0.8.3.patch
+	# 1.0.24: no longer needed
+#	sed -i 's|prefix}/doc|prefix}/share/doc|' configure
+
+	# 1.0.24: no longer needed
+#	patch -Np1 -i $stuff/libv4l-0.8.3.patch
+
+	# 1.0.24: no longer needed
 	# fix https://bugs.archlinux.org/task/26114
-	patch -Np1 -i $stuff/xerox_mfp_fix_usb_devices.patch
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--mandir=/usr/share/man \
+#	patch -Np1 -i $stuff/xerox_mfp_fix_usb_devices.patch
+
+	./configure						\
+		--prefix=/usr					\
+                --with-docdir=/usr/share/doc/$PACKAGE-$VERSION  \
+		--sysconfdir=/etc				\
+		--mandir=/usr/share/man				\
 		$CONFIGURE_ARGS &&
 	make &&
 	make -j 1 DESTDIR=$DESTDIR install
 
 	# copy the missing udev rule
-	[ ! -d $DESTDIR/etc/udev/rules.d ] && mkdir -p $DESTDIR/etc/udev/rules.d
-	cp -a $src/tools/udev/libsane.rules $DESTDIR/etc/udev/rules.d/55-sane.rules
+	[ ! -d $DESTDIR/etc/udev/rules.d ] &&
+		mkdir -p $DESTDIR/etc/udev/rules.d
+	cp -a $src/tools/udev/libsane.rules	\
+		$DESTDIR/etc/udev/rules.d/55-sane.rules
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share \
-	         $fs/var/lock/sane $fs/etc/sane.d \
-	         $fs/var/www/tazpanel/lib \
-	         $fs/var/www/tazpanel/report.d \
-	         $fs/var/www/tazpanel/menu.d/hardware \
-	         $fs/var/www/tazpanel/styles/default/images
-	
-	cp -a $install/etc/sane.d $fs/etc
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/sane $fs/usr/lib
-	cp -a $install/usr/share/sane $fs/usr/share
-	cp $stuff/tazpanel/sane.cgi $fs/var/www/tazpanel/
-	cp $stuff/tazpanel/sane $fs/var/www/tazpanel/report.d/
-	cp $stuff/tazpanel/crop.js $fs/var/www/tazpanel/lib/
-	cp $stuff/tazpanel/drag.gif $fs/var/www/tazpanel/styles/default/images/
-	ln -s ../../sane.cgi $fs/var/www/tazpanel/menu.d/hardware/sane
-	
-	# fix groups/permissions on /var/lock/sane ; add it to scanner group
+	mkdir -p $fs/etc/sane.d
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/var/lock/sane
+	mkdir -p $fs/var/www/tazpanel/lib
+	mkdir -p $fs/var/www/tazpanel/menu.d/hardware
+	mkdir -p $fs/var/www/tazpanel/report.d
+	mkdir -p $fs/var/www/tazpanel/styles/default/images
+
+	cp -a $install/etc/sane.d	$fs/etc
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/sane	$fs/usr/lib
+	cp -a $install/usr/share/sane	$fs/usr/share
+
+	cp $stuff/tazpanel/sane.cgi	$fs/var/www/tazpanel/
+	cp $stuff/tazpanel/sane		$fs/var/www/tazpanel/report.d/
+	cp $stuff/tazpanel/crop.js	$fs/var/www/tazpanel/lib/
+	cp $stuff/tazpanel/drag.gif	$fs/var/www/tazpanel/styles/default/images/
+	ln -s ../../sane.cgi		$fs/var/www/tazpanel/menu.d/hardware/sane
+
+	# fix groups and permissions on /var/lock/sane ; add it to scanner group
 	chmod 775 "$fs/var/lock/sane"
 	chgrp 96 "$fs/var/lock/sane"
    
@@ -70,21 +84,24 @@ post_install()
 	tazpkg reconfigure udev --root="$1"
 	
 	# add group scanner
-	if ! grep -q scanner "$1/etc/group" ; then
+	if ! grep -q scanner "$1/etc/group"
+	  then
 		chroot "$1/" addgroup -g 96 scanner
 	fi
-	chroot "$1/" chgrp scanner /usr/bin/scanimage
-	chmod 4750 $1/usr/bin/scanimage
-	
+
+	chroot "$1/" chgrp scanner	/usr/bin/scanimage
+	chmod 4750			$1/usr/bin/scanimage
+
 	echo
-	echo " ADD yourself to group scanner to use sane: addgroup tux scanner"
+	echo " ADD user(s) to group scanner to use sane: addgroup <user> scanner"
 	
 	rm -f "$1"/var/cache/tazpanel/* 2> /dev/null
 	[ -e "$1/var/www/tazpanel/tmp" ] ||
-	ln -s /tmp "$1/var/www/tazpanel/tmp"
+		ln -s /tmp "$1/var/www/tazpanel/tmp"
 }
 
 post_remove()
 {
+	# delete group scanner
 	chroot "$1/" delgroup scanner & >/dev/null
 }
