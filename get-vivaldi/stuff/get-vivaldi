@@ -1,70 +1,190 @@
 #!/bin/sh
+#
+# get-vivaldi - create and install SliTaz package vivaldi
+#
+# (C) 2021 SliTaz - GNU General Public License v3.
+# Author : Aleksej Bobylev
+# modified by Hans-Günter Theisgen on 2021-04-13
+#
 
-# Get and install Vivaldi browser for Linux
+#	=== Initialisations ===
 
-# Check if we are root
-if [ $(id -u) -ne 0 ]; then
-	echo -e "\nYou must be root to run $(basename $0)."
-	echo -e "Please type 'su' and root password to become super-user.\n"
-	exit 1
+PKGS_DB="/var/lib/tazpkg"	# packages database directory
+PACKAGE="vivaldi"
+CATEGORY="non-free"
+SHORT=DESC="An advanced browser made with the power user in mind."
+MAINTAINER="nobody@slitaz.org"
+LICENSE="non-free"
+WEB_SITE="https://vivaldi.com/"
+# at least valid for 3.7.2218.52-1:
+DEPENDS="at-spi2-atk bash GConf gtk+3 libcups libexif libxkbcommon mesa-wayland nss xorg-libxshmfence"
+
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
+
+is_installed()
+{
+	if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then	#package is deemed to be installed
+	 	return 0
+	  else
+	 	return 1
+	 fi
+}
+
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+  then
+	echo "Commandline options:
+  $0
+	--version=<version>
+	--root=<path-to-root>
+	--install=yes|no
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>
+	--logfile=<logging-file>"
+	exit
 fi
 
-# Get link to downloading precompiled package
-dl_page='https://vivaldi.com/download'
-dl_type='32bit RPM'
-url=$(busybox wget -O - "$dl_page" | sed "/$dl_type/!d;s|.*href=\"\\([^\"]*\\).*|\\1|")
-if [ -z "$url" ]; then
-	echo -e "\nCan't find download link on $dl_page for $dl_type."
-	exit 1
+# Check for system administrator privileges
+check_root
+
+title "Package $PACKAGE will be build as SliTaz package and installed"
+
+# Fetch latest version, unless version is set by option --version
+# For available versions look at https://vivaldi.com/download/archive/
+[ -z "$version" ] && version="latest"
+
+# Install SliTaz package, unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
+
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
+
+# Directory for temporary files
+TMP_DIR="$tmpdir"
+[ -z "$tmpdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+
+# Logging file (unused by now)
+LOG="$logfile"
+[ -z "$logfile" ] && LOG=$TMP_DIR/get-$PACKAGE.log
+
+cat <<EOT
+Options in use:
+  root           : $root/
+  version        : $version
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
+  logging file   : $LOG
+
+EOT
+
+separator; newline
+
+#	=== Remove package, if installed ===
+if is_installed
+  then
+	echo "$PACKAGE is already installed."
+	echo -n "Would you like to remove and reinstall this package [y/n]? "
+	read answer
+	case "$answer" in
+		y|Y)
+			action "Removing installed version..."
+			tazpkg remove $PACKAGE --root="$root/"
+			[ ! is_installed ] &&
+			die "Can't remove installed version. Exiting."
+			;;
+		*)
+			echo "Leaving $PACKAGE untouched."
+			exit 0
+			;;
+	esac
 fi
 
-# Download package
-tmp_dir="$(mktemp -d)"
-cd "$tmp_dir"
-busybox wget $url
-pkg=$(basename $url)
-if [ ! -f $pkg ]; then
-	cd -
-	rm -r "$tmp_dir"
-	echo "Could not download $pkg. Exiting."
-	exit 1
+#	=== Fetch rpm package, if not existing ===
+if [ "$version" == "latest" ]
+  then
+	dl_page='https://vivaldi.com/download'
+	dl_type='i386.rpm'
+	WGET_URL=$(busybox wget -O - "$dl_page" | sed "/$dl_type/!d;s|.*href=\"\\([^\"]*\\)\.i386\.rpm.*|\\1|")
+	VERSION=${WGET_URL#*vivaldi-stable-*}
+	WGET_URL=$WGET_URL.$dl_type
+	FILE=$(basename $WGET_URL)
+  else
+	VERSION=$version
+	FILE="${PACKAGE}-stable-${VERSION}.i386.rpm"
+	WGET_URL="https://downloads.vivaldi.com/stable/$FILE"
 fi
 
-# Extract package
-rpm2cpio $pkg | cpio -dium
-rm $pkg
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR
+cd $TMP_DIR
+if [ -f $FILE ]
+  then
+	echo "Using existing archive file $FILE"
+  else
+	action "Fetching the archive"
+	newline
+	wget	--no-check-certificate $WGET_URL
+	if [ ! -f $FILE ]
+	  then
+		cd $CUR_DIR
+		rm -rf $TMP_DIR
+		echo "Could not transfer $FILE from $WGET_URL. Exiting."
+		exit 1
+	fi
+fi
+	return
 
+action "Extracting the rpm package"
+newline
+rpm2cpio $FILE | cpio -dium
+status
+
+# Remove archive file
+rm -f $FILE
+
+#	=== Create SliTaz package ===
 # Remove updater cron job
 rm -r ./etc
 
 # Add icons
-for size in 16 22 24 32 48 64 128 256; do
-	mkdir -p "$tmp_dir/usr/share/icons/hicolor/${size}x$size/apps"
-	ln -s /opt/vivaldi/product_logo_$size.png "$tmp_dir/usr/share/icons/hicolor/${size}x$size/apps/vivaldi.png"
-done
+for size in 16 22 24 32 48 64 128 256
+  do
+	mkdir -p "$TMP_DIR/usr/share/icons/hicolor/${size}x$size/apps"
+	ln -s /opt/vivaldi/product_logo_$size.png \
+		"$TMP_DIR/usr/share/icons/hicolor/${size}x$size/apps/vivaldi.png"
+  done
 
 # Prepare to packaging
-VERSION="$(echo $pkg | sed 's|[^_]*_\(.*\)\.i386.*|\1|')"
-mkdir -p $tmp_dir/vivaldi-$VERSION/fs
-mv $tmp_dir/opt $tmp_dir/usr $tmp_dir/vivaldi-$VERSION/fs
+mkdir -p $TMP_DIR/$PACKAGE-$VERSION/fs
+mv $TMP_DIR/opt	$TMP_DIR/$PACKAGE-$VERSION/fs
+mv $TMP_DIR/usr	$TMP_DIR/$PACKAGE-$VERSION/fs
 
-cat > $tmp_dir/vivaldi-$VERSION/receipt << EOT
-PACKAGE="vivaldi"
+cat > $TMP_DIR/$PACKAGE-$VERSION/receipt << EOT
+PACKAGE="$PACKAGE"
 VERSION="$VERSION"
-CATEGORY="non-free"
-SHORT_DESC="An advanced browser made with the power user in mind"
-DEPENDS="gtk+ bash libcups libexif GConf nss mesa"
-WEB_SITE="https://vivaldi.com/"
+CATEGORY="$CATEGORY"
+SHORT_DESC="$SHORT_DESC"
+DEPENDS="$DEPENDS"
+WEB_SITE="$WEB_SITE"
 EOT
 
-tazpkg pack vivaldi-$VERSION gzip
+tazpkg pack $PACKAGE-$VERSION gzip
 
-# Clean to save RAM memory
-rm -rf $PACKAGE-$VERSION
+#	=== Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
 
-# Install pseudo package
-yes y | tazpkg install vivaldi-$VERSION.tazpkg
+#	=== Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR &&
+  echo "Saved $PACKAGE-$VERSION.tazpkg to $CUR_DIR" )
 
-# Clean
-cd -
-rm -rf $tmp_dir
+# Remove temporary build directory
+cd $CUR_DIR
+rm -rf $TMP_DIR
