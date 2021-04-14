@@ -5,6 +5,7 @@
 #
 # Author : 
 # modified by HGT on 2021-04-06
+# modified by HGT on 2021-04-14
 #
 
 #       === Initialisations ===
@@ -13,7 +14,7 @@ PKGS_DB="/var/lib/tazpkg"       # packages database directory
 PACKAGE="teamviewer"
 CATEGORY="non-free"
 WEB_SITE="https://www.teamviewer.com/"
-DEPENDS="alsa-lib bash xorg-libXext zlib"
+DEPENDS="alsa-lib bash libjpeg62 xorg-libXext zlib"
 
 # Declare functions check_root, status, ...
 . /lib/libtaz.sh
@@ -135,31 +136,39 @@ fi
 mkdir $PACKAGE
 dpkg-deb -e $FILE $PACKAGE/meta
 dpkg-deb -x $FILE $PACKAGE/fs
-find $PACKAGE/fs | grep /script/ | xargs sed -i 's|--append|-a|'
 
 # Remove archive file
 rm -f $FILE
+
+find $PACKAGE/fs | grep /script/ | xargs sed -i 's|--append|-a|'
+
 sed '/^Description:/,$!d;s/^Description://' \
 	< $PACKAGE/meta/control > $PACKAGE/description.txt
 
 SHORT_DESC="$(sed '/^Description:/!d;s/.*: //' $PACKAGE/meta/control)"
 MAINTAINER="$(sed '/^Maintainer:/!d;s/.*: //' $PACKAGE/meta/control)"
 VERSION="$(sed '/^Version:/!d;s/.*: //' $PACKAGE/meta/control)"
+
 mv $PACKAGE $PACKAGE-$VERSION
 
 cd $PACKAGE-$VERSION/fs
 [ -e usr/bin/$PACKAGE ] ||
 	ln -s $(cd usr/bin ; ls $PACKAGE* 2> /dev/null) \
 	usr/bin/$PACKAGE 2> /dev/null || true
+
 mkdir -p usr/share/applications
 
-# removed because failing, to be repaired by somebody else:
+# because failing ...
 #sed "s|EXEC|/usr/bin/$PACKAGE|g;s!ICON!/$(find opt | grep $PACKAGE.png)!g" \
 #	< $(find opt | grep -E '(desktop.template|\.desktop$)') \
 #	> usr/share/applications/$PACKAGE.desktop
+# replaced by:
+cp	opt/teamviewer/tv_bin/desktop/teamviewer-teamviewer??.desktop \
+	usr/share/applications/teamviewer.desktop
 
 sed -i 's/readlink -e/readlink $0 || echo /' \
 	$(find opt -type f | grep /$PACKAGE$)
+
 cd ../..
 
 cat > $PACKAGE-$VERSION/receipt <<EOT
