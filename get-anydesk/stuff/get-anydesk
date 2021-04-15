@@ -2,8 +2,9 @@
 #
 # get-anydesk - create and install SliTaz package anydesk
 #
-# (C) 2020 SliTaz - GNU General Public License v3.
+# (C) 2021 SliTaz - GNU General Public License v3.
 # Author : HGT
+# modified by HGT on 2021-04-15
 #
 
 #	=== Initialisations ===
@@ -15,7 +16,6 @@ SHORT=DESC="remote access"
 MAINTAINER="nobody@slitaz.org"
 LICENSE="non-free"
 WEB_SITE="https://anydesk.com/packagename/"
-#DEPENDS="libglu-mesa"
 
 # Declare functions check_root, status, ...
 . /lib/libtaz.sh
@@ -104,11 +104,18 @@ fi
 #	=== Fetch Debian package, if not existing ===
 if [ "$version" == "latest" ]
   then
-	VERSION="$(wget --no-check-certificate -O - https://anydesk.com/en/downloads/linux | \
-		sed -n '/i386.deb">.*option/p' | sed 's|.*_\(.*\)_.*|\1|' )"
-	FILE="${PACKAGE}_${VERSION}_i386.deb"
-	WGET_URL="https://download.anydesk.com/linux/$FILE"
+	VERSION="$(wget -q --no-check-certificate -O - https://anydesk.com/en/downloads/linux | \
+		sed -n '/i386.deb">.*Debian.*/p' | sed 's|.*_\(.*\)_.*|\1|' )"
+	if [ -z "$VERSION" ]
+	  then
+		echo "Could not determine latest version. Call get-anydesk with version parameter."
+		exit 1
+	  else
+		FILE="${PACKAGE}_${VERSION}_i386.deb"
+		WGET_URL="https://download.anydesk.com/linux/$FILE"
+	fi
   else
+	# for available versions see https://download.anydesk.com/linux/
 	VERSION=$version
 	FILE="${PACKAGE}_${VERSION}_i386.deb"
 	WGET_URL="https://download.anydesk.com/linux/deb/$FILE"
