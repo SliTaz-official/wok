@@ -1,0 +1,105 @@
+--- memtest86+-5.01/cpuid.c
++++ memtest86+-5.01/cpuid.c
+@@ -14,6 +14,15 @@
+ 	unsigned int *v, dummy[3];
+ 	char *p, *q;
+ 
++	switch (has_cpuid(AC_BIT|CPUID_BIT)) {
++        case 0:
++	    cpu_id.vers.bits.family = 3;
++	    return;
++        case AC_BIT:
++	    cpu_id.vers.bits.family = 4;
++	    return;
++	}
++	    
+ 	/* Get max std cpuid & vendor ID */
+ 	cpuid(0x0, &cpu_id.max_cpuid, &cpu_id.vend_id.uint32_array[0],
+ 	    &cpu_id.vend_id.uint32_array[2], &cpu_id.vend_id.uint32_array[1]);
+--- memtest86+-5.01/cpuid.h
++++ memtest86+-5.01/cpuid.h
+@@ -11,6 +11,26 @@
+ 
+ extern struct cpu_ident cpu_id;
+ 
++#define AC_BIT		(1<<18)
++#define CPUID_BIT	(1<<21)
++static inline int has_cpuid(int bits)
++{
++	int eax, edx;
++	asm __volatile__(
++		"pushfl\n\t"
++		"popl %0\n\t"
++		"movl %0,%1\n\t"
++		"xorl %2,%0\n\t"
++		"pushl %0\n\t"
++		"popfl\n\t"
++		"pushfl\n\t"
++		"popl %0\n\t"
++		"pushl %1\n\t"
++		"popfl\n\t"
++		"xorl %1,%0":"=a" (eax),"=d" (edx):"c" (bits));
++	return eax;
++}
++
+ static inline void __cpuid(unsigned int *eax, unsigned int *ebx,
+                                 unsigned int *ecx, unsigned int *edx)
+ {
+--- memtest86+-5.01/init.c
++++ memtest86+-5.01/init.c
+@@ -77,6 +77,7 @@
+ 	cprint(19, 15, "==> Press F2 to force Multi-Threading (SMP) <==");				
+ 	}
+ 
++	if (cpu_id.fid.bits.rdtsc) {
+ 	/* save the starting time */
+ 	asm __volatile__(
+ 		"rdtsc":"=a" (sl),"=d" (sh));
+@@ -122,6 +123,7 @@
+ 		}				
+ 			
+ 	}
++	}
+ 	
+ 	cprint(18, 18, "                                          ");
+ 	cprint(19, 15, "                                                ");
+@@ -321,7 +323,9 @@
+ 		beep(1000);
+ 	
+ 	/* Record the start time */
++	if (cpu_id.fid.bits.rdtsc) {
+   asm __volatile__ ("rdtsc":"=a" (v->startl),"=d" (v->starth));
++  	}
+   v->snapl = v->startl;
+   v->snaph = v->starth;
+ 	if (l1_cache == 0) { l1_cache = 64; }
+@@ -998,10 +1002,18 @@
+ 	default:
+ 		/* Make a guess at the family */
+ 		switch(cpu_id.vers.bits.family) {
++		case 3:
++			cprint(0, COL_MID, "386");
++			break;
++		case 4:
++			cprint(0, COL_MID, "486");
++			break;
+ 		case 5:
+ 			cprint(0, COL_MID, "586");
++			break;
+ 		case 6:
+ 			cprint(0, COL_MID, "686");
++			break;
+ 		default:
+ 			cprint(0, COL_MID, "Unidentified Processor");
+ 		}
+--- memtest86+-5.01/test.c
++++ memtest86+-5.01/test.c
+@@ -1501,6 +1501,8 @@
+ {
+ 	ulong sh, sl, l, h, t, ip=0;
+ 
++	if (cpu_id.fid.bits.rdtsc == 0) return;
++	
+ 	/* save the starting time */
+ 	asm __volatile__(
+ 		"rdtsc":"=a" (sl),"=d" (sh));
