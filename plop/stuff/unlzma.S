@@ -18,9 +18,11 @@
  * Compression with : lzma e src dst -eos -pb2 -lp0 -lc3
  */
 
-#define PROP_PB 2
+//#define PROP_PB 2
+#define PROP_PB 0
 #define PROP_LP 0
-#define PROP_LC 3
+//#define PROP_LC 3
+#define PROP_LC 0
 #define PROPS (PROP_LC+(PROP_LP*9)+(PROP_PB*45))
 
 // static const Byte *Buffer;

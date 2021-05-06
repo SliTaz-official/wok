@@ -42,9 +42,14 @@ store()
 	done | xargs echo -en | dd conv=notrunc bs=1 of=$2 seek=$3
 }
 
+bits()
+{
+	sed "/^#define PROP_$1/!d;s|.*PROP_...||" unlzma.S
+}
+
 compress()
 {
-	xz -z -e --format=lzma --lzma1=mf=bt2 --stdout | dd bs=1 skip=13
+	xz -z -e --format=raw --lzma1=mf=bt2,lc=$(bits LC),lp=$(bits LP),pb=$(bits PB),nice=84 --stdout 
 }
 
 main()

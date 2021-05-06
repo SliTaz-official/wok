@@ -313,8 +313,8 @@ forward:
 #else
 	subw	%ax, %bx
 	jnc	forward
+	//movw	$0x8FFF, %ax
 	movb	$0x90, %ah
-	;decw	%ax
 forward:
 	movw	%ax, %es
 	movw	%ax, %di

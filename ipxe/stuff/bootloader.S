@@ -31,7 +31,7 @@ _start:
 //#define NO_DOTS		show progression dots ?		-5
 #ifndef BZIMAGE
 //#define TINY_ZIMAGE		system < 64Kb ?			-11
-//#defime NO_MINSETUP		default setup (dos only) ?	-4
+//#define NO_MINSETUP		default setup (dos only) ?	-4
 //#define NO_CURSOR_DEFINITION					-8
 #endif
 
@@ -300,7 +300,7 @@ movesys:				// %ax = SYSSEG, %bx = DS, %si
 	xorw	%si, %si
 	xorw	%di, %di
 	cmpw	%ax, %bx
-	jc	forward
+	jnc	forward
 	decw	%si
 	decw	%di
 	std
@@ -313,8 +313,8 @@ forward:
 #else
 	subw	%ax, %bx
 	jnc	forward
+	//movw	$0x8FFF, %ax
 	movb	$0x90, %ah
-	;decw	%ax
 forward:
 	movw	%ax, %es
 	movw	%ax, %di
@@ -467,7 +467,9 @@ isrm:
 # Assume no error on first track.
 
 #ifdef FLOPPY_1440K_ONLY
+#ifndef FLOPPY_HAS_2_SIDES
 #define FLOPPY_HAS_2_SIDES	hardcore heads count to 2
+#endif
 #define FLOPPY_SECTORS		18	/* 18 sectors */
 #else
 #define FLOPPY_HEADS		2	/* 2 heads minimum */

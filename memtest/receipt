@@ -13,6 +13,21 @@ WGET_URL="${WEB_SITE}download/$VERSION/$TARBALL"
 
 BUILD_DEPENDS="xz"
 
+tune_lzma()
+{
+	cp $stuff/*.S $stuff/pack .
+	sed "s/VERSION/$VERSION/;s|lzma1=|&nice=$1,|" -i pack
+	while [ -n "$2" ]; do
+		sed "s|^#define PROP_$2 .*|#define PROP_$2 $3|" -i unlzma.S
+		shift 2
+	done
+	for i in bootloader unpack ; do
+		cc -o $i.o -Wa,-a=$i.lst -c $i.S
+		objcopy -O binary $i.o $i.bin
+	done
+	./pack --build bootloader.bin unpack.bin
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
@@ -21,19 +36,14 @@ compile_rules()
 		patch -p1 < $i
 	done
 	make
-	cp $stuff/*.S $stuff/pack .
-	for i in bootloader unpack ; do
-		cc -o $i.o -Wa,-a=$i.lst -c $i.S
-		objcopy -O binary $i.o $i.bin
-	done
-	sed -i "s/VERSION/$VERSION/" pack
-	./pack --build bootloader.bin unpack.bin
+	tune_lzma 211 PB 3
 	./pack memtest.bin memtest.packed
 	mv memtest.bin memtest.bin.console
 	sed -i  -e 's/SERIAL_CONSOLE_DEFAULT 0/SERIAL_CONSOLE_DEFAULT 1/' \
 		-e 's/SERIAL_BAUD_RATE 9600/SERIAL_BAUD_RATE 115200/' config.h
 	make clean
 	make
+	tune_lzma 147 LC 2
 	./pack memtest.bin memtest.packed-115200
 	mv memtest.bin memtest.bin.serial
 } 
