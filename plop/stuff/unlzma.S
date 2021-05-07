@@ -18,11 +18,9 @@
  * Compression with : lzma e src dst -eos -pb2 -lp0 -lc3
  */
 
-//#define PROP_PB 2
-#define PROP_PB 0
+#define PROP_PB 2
 #define PROP_LP 0
-//#define PROP_LC 3
-#define PROP_LC 0
+#define PROP_LC 3
 #define PROPS (PROP_LC+(PROP_LP*9)+(PROP_PB*45))
 
 // static const Byte *Buffer;
@@ -197,17 +195,21 @@ lzdmainlp:
 # else
 	shrb	$8-PROP_LC, %bl
 # endif
+#else
+	xor	%bx,%bx
 #endif
 
 #if PROP_LP != 0
 	movb	posState2(BP), %dl
-# ifdef ONLY8086
+# if PROP_LC != 0
+#  ifdef ONLY8086
 	movb	$PROP_LC, %cl
 	shl	%cl, DX
-# else
+#  else
 	shl	$PROP_LC, DX
-# endif
+#  endif
 	movb	$0, %bh
+# endif
 	add	BX, DX
 #endif
 
