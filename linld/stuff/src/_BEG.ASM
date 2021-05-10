@@ -134,10 +134,10 @@ clearbss:
 
 ; Check for oldies
 		push	bx		; < 286 : flags[12..15] are forced 1
-		popf			; = 286 : flags[12..15] are forced 0, cld
+		popf			; = 286 : flags[12..15] are forced 0, cld, cli
 		pushf			; > 286 : only flags[15] is forced 0
 		pop	dx
-		add	dh,bh		; NS=386+, S+NC=286, S+C=86/186
+		add	dh,bh		; 160:NS=386+, 0F0:NC=286, 1E0:NP=86/186
 		ifndef	NO386
 		mov	bx,offset msg_badcpu
                 js	godie   	;it is not a 386+, die

@@ -1,0 +1,33 @@
+# SliTaz package receipt.
+
+PACKAGE="xxhash"
+VERSION="0.8.0"
+CATEGORY="misc"
+SHORT_DESC="Extremely fast non-cryptographic hash algorithm."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="BSD GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="http://cyan4973.github.io/xxHash/"
+WGET_URL="https://github.com/Cyan4973/xxHash/archive/refs/tags/v$VERSION.tar.gz"
+
+current_version()
+{
+	wget -O - ${WGET_URL%/arch*}/releases 2>/dev/null | \
+	sed '/archive.*tar/!d;s|.*/v\(.*\).tar.*|\1|;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|/local||' Makefile
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr/
+	cp -a $install/usr/lib/*.so* $fs/usr/lib/
+}
