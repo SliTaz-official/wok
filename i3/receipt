@@ -1,30 +1,68 @@
 # SliTaz package receipt.
 
 PACKAGE="i3"
-VERSION="4.5.1"
+VERSION="4.19.2"
 CATEGORY="x-window"
-SHORT_DESC="i3 tiling window manager"
+SHORT_DESC="i3 tiling window manager."
 MAINTAINER="ybringler@gmail.com"
 LICENSE="BSD"
 WEB_SITE="https://i3wm.org"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$WEB_SITE/downloads/$TARBALL"
 
-DEPENDS="libxcb xorg-libXcursor xorg-libX11 yajl libev dmenu \
-startup-notification xcb-util"
-BUILD_DEPENDS="make gcc pkg-config xcb-proto libxcb-dev xcb-util-dev \
-libev-dev flex bison yajl t2 docbook-xml xorg-libXcursor-dev xorg-libX11-dev \
-pcre-dev startup-notification-dev xcb-util-keysyms-dev xcb-util-wm-dev pango-dev"
+DEPENDS="dmenu gcc83-lib-base libev libxcb libxkbcommon 
+	startup-notification xcb-util xcb-util-cursor xcb-util-image 
+	xcb-util-keysyms xcb-util-renderutil xcb-util-wm xcb-util-xrm 
+	xorg-libX11 xorg-libXcursor yajl"
+BUILD_DEPENDS="docbook-xml gcc83 libev-dev libxcb-dev libxkbcommon-dev 
+	meson ninja pango-dev pcre-dev pkg-config startup-notification-dev 
+	xcb-util-cursor-dev xcb-util-dev xcb-util-image-dev 
+	xcb-util-keysyms-dev xcb-util-renderutil-dev xcb-util-wm-dev 
+	xcb-util-xrm-dev xorg-libX11-dev xorg-libXcursor-dev yajl"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	make && make install
+	export	CC=gcc-83
+	meson	.		\
+		_build		\
+		--prefix=/usr &&
+	ninja -C _build &&
+	ninja -C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 
 genpkg_rules()
 {
-	cp -a $install/* $fs
+	mkdir -p $fs/usr/share
+
+	cp -a $install/etc			$fs
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/applications	$fs/usr/share
+	cp -a $install/usr/share/xsessions	$fs/usr/share
+}
+
+post_install()
+{
+	# Add WM to SLIM available sessions.
+	res=$(cat "$1/etc/slim.conf" | grep ^session | sed s/"sessions. *"//)
+	if ! echo "$res" | grep -q $PACKAGE
+	  then
+		echo -n "Adding $PACKAGE to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" \
+			"$1/etc/slim.conf"
+		status
+	fi
+	true
+}
+
+post_remove()
+{
+	# Remove WM from SLIM available sessions.
+	if grep -q $PACKAGE "$1/etc/slim.conf"
+	  then
+		sed -i s/,$PACKAGE// "$1/etc/slim.conf"
+	fi
 }
