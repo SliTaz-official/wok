@@ -219,19 +219,18 @@ endcpu386:
 		pushfd
 		pop	dx
 		pop	ax
-		mov	bl,al
 		xor	al,20h		; toggle CPUID feature bit 21 (=> pentium+)
 		push	ax		;  (toggle AC: bit 18 => 486+)
 		push	dx
 		popfd
 		pushfd
-		pop	dx		; dx.1=flags.1=1
-		pop	ax
-		xor	al,bl		; clear C
-		je	@@no_cpuid	; CPUID feature bit changed ?
+		pop	dx
+		pop	dx
+		xor	al,dl		; clear C
+		jne	@@no_cpuid	; CPUID feature bit changed ?
 		mov	eax,80000001h	; Extended Processor Info and Feature Bits
 		cpuid
-		mov	dl,-1		; set 386 flag (assume cpuid => fpu:bit0=1 ?)
+		mov	dl,-1		; set 386 flag
 		ifdef	NO386
 		db	66h		; mov [_cpu_features],edx
 @@no_cpuid:

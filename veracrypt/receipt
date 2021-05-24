@@ -1,0 +1,37 @@
+# SliTaz package receipt.
+
+PACKAGE="veracrypt"
+VERSION="1.24-Update7"
+CATEGORY="security"
+SHORT_DESC="disk encryption software based on TrueCrypt 7.1a"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="Apache"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://www.veracrypt.fr/en/"
+WGET_URL="https://github.com/veracrypt/VeraCrypt/archive/refs/tags/VeraCrypt_$VERSION.tar.gz"
+
+DEPENDS="wxWidgets fuse"
+BUILD_DEPENDS="yasm pkg-config wxWidgets-dev fuse-dev"
+
+current_version()
+{
+	wget -O - ${WGET_URL%archive*}releases 2>/dev/null | \
+	sed '/href=/!d;/tar.gz/!d;s|.*VeraCrypt_\(.*\).tar.gz".*|\1|;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	cd src &&
+	make ARCH=i686 &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin $fs/usr/share
+	cp -a $install/usr/bin/veracrypt $fs/usr/bin
+	cp -a $install/usr/share/applications $fs/usr/share
+	cp -a $install/usr/share/pixmaps $fs/usr/share
+}

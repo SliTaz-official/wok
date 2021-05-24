@@ -22,6 +22,9 @@ inline void syntax() {
 #endif
 	"..." NL
         "vga mode: ask,extended,normal or dec/oct/hex number" NL
+#ifdef CPU32
+        "-32 for 386+" NL
+#endif
 #ifdef CPU64
         "-64 for cpu64 only" NL
 #endif
@@ -55,10 +58,15 @@ int main(int argc, char *argv[]) {
     if (!*++argv) syntax();
     const char **clp = &cmdline;
     do {
+#ifdef CPU32
+        if ((*(u16 *)*argv|2) == 0x332F) {	// -32 /32
+	    extrn char cpu386;
+	    if (cpu386 == 0) exit();
+	}
+#endif
 #ifdef CPU64
         if ((*(u16 *)*argv|2) == 0x362F) {	// -64 /64
-	    if (cpuhaslm() != 0) continue;
-	    exit();
+	    if (cpuhaslm() == 0) exit();
 	}
 #endif
 #ifdef ISO9660
