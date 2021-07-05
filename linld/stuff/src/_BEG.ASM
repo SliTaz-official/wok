@@ -11,10 +11,12 @@
 	include "himem.inc"
 	include	"isostate.inc"
 
-	ifdef	QUICK_BOOT
-CMDNUMCNT	=	7
-	else
 CMDNUMCNT	=	5
+	ifdef	CPUTYPE
+CMDNUMCNT	=	CMDNUMCNT+1
+	endif
+	ifdef	QUICK_BOOT
+CMDNUMCNT	=	CMDNUMCNT+2
 	endif
 
 	macro	alloc_isostate
@@ -78,6 +80,10 @@ room_for_isostate	=	1
         ;global  _bss_start:byte
         label   _bss_start byte
         global  stktop:byte
+		ifdef	CPUTYPE
+	global	_cputype:word
+_cputype	dw	?
+		endif
         global  _cpu386:byte
 _cpu386		db	?
 		ifdef	CPU64
@@ -133,6 +139,13 @@ clearbss:
 ;***************************************************************
 
 ; Check for oldies
+		ifndef	NO386
+		ifdef	CPUTYPE
+		mov	ax,100h
+		mov	cl,32		; 186+ masks with 31
+		shr	ax,cl
+		endif
+		endif
 		push	bx		; < 286 : flags[12..15] are forced 1
 		popf			; = 286 : flags[12..15] are forced 0, cld, cli
 		pushf			; > 286 : only flags[15] is forced 0
@@ -142,7 +155,14 @@ clearbss:
 		mov	bx,offset msg_badcpu
                 js	godie   	;it is not a 386+, die
 		else
+		ifdef	CPUTYPE
+		jc	not286
+		mov	ah,2
+not286:
+                js	jmp_endcpu86   	;it is not a 386+, try ELKS & co
+		else
                 js	endcpu86   	;it is not a 386+, try ELKS & co
+		endif
 		endif
                 p386
 		ifdef	VCPI
@@ -176,6 +196,7 @@ check_rm_paging:
 godie:
 		call	near die
 		else
+jmp_endcpu86:
 		jmp	endcpu86
 		endif
 
@@ -219,7 +240,11 @@ endcpu386:
 		pushfd
 		pop	dx
 		pop	ax
+		ifdef	CPUTYPE
+		xor	al,24h		; toggle CPUID feature bit & AC bit
+		else
 		xor	al,20h		; toggle CPUID feature bit 21 (=> pentium+)
+		endif
 		push	ax		;  (toggle AC: bit 18 => 486+)
 		push	dx
 		popfd
@@ -227,9 +252,47 @@ endcpu386:
 		pop	dx
 		pop	dx
 		xor	al,dl		; clear C
+		ifdef	CPUTYPE
+		cmp	al,20h
+		mov	ax,0400h
+		je	is486
+		mov	ah,3
+is486:
+		jae	set_cputype
+		xor	eax,eax
+		inc	ax
+		cpuid			; Basic cpuid (late 486 or Pentium)
+		xor	eax,eax
+		inc	ax
+		cpuid			; again cause of Nasty EMM386s
+		push	eax
+		bt	edx,26		; sse2 bit
+		jnc	baseInfo
+		else
 		jne	@@no_cpuid	; CPUID feature bit changed ?
-		mov	eax,80000001h	; Extended Processor Info and Feature Bits
-		cpuid
+		endif
+		mov	eax,80000001h	; Extended Processor Info and Feature Bits (Pentium 4 or newer)
+		cpuid			; Extended cpuid (Pentium 4)
+		ifdef	CPUTYPE
+baseInfo:
+		pop	ax		; base IDs
+		and	ax,0FF0h	; keep FamilyID & ModelID
+		pop	cx		; extended IDs
+		mov	bx,cx
+		shr	bx,4		; extended FamilyID in bl
+		shr	al,4		; set base ModelID
+		cmp	ah,0Fh
+		jz	SetModelID
+		cmp	ah,06h
+		jnz	ModelIDset
+		db	3Dh		; cmp ax,0DC00h
+SetModelID:
+		add	ah,bl		; use extended FamilyID
+		shl	cl,4
+		or	al,cl		; use extended ModelID
+ModelIDset:
+set_cputype:
+		endif
 		mov	dl,-1		; set 386 flag
 		ifdef	NO386
 		db	66h		; mov [_cpu_features],edx
@@ -243,6 +306,9 @@ endcpu386:
 		dec	[_cpu386]
 		endif
 endcpu86:
+		ifdef	CPUTYPE
+		mov	[_cputype],ax	; _cputype: FFMM or 0[1-4]00=80[1-4]86 or 0000=8086/8088
+		endif
                 p8086
 
 ;***************************************************************

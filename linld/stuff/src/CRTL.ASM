@@ -952,8 +952,8 @@ image_done:
 		dec	bx
 		sub	di,dx
 @@loop:
-		mov	si,cx			; s
 		add	di,dx
+		mov	si,cx			; s
 @@match:
 		lodsb				; *s++
 		or	al,20h			; locase
@@ -969,12 +969,13 @@ image_done:
 		cmp	[byte bx],'|'
 		je	@@testal
 		jl	@@notsw			; } ~ <del>
+		;mov	dl,1
 		cmp	al,20h			; EOS or 20h
 		jne	@@loop			; assume [bx] = '|'
 @@notsw:
 		mov	al,-1
 		jne	@@notopt
-		jmp	@@setnum
+		jmp	@@setnum2
 @@testal:
 		cmp	al,-1
 		jz	@@loop
@@ -1044,10 +1045,11 @@ image_done:
 		endif
 @@end:
 @@setnum:
-		xchg	ax,si
 		mov	[di+2],dx
+@@setnum2:
+		xchg	ax,si
 @@done:
-		mov	[di],si
+		or	[di],si
 		xchg	ax,di
 @@nokeyword:
 		pop	di si bx

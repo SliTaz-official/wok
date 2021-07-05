@@ -351,7 +351,11 @@ vcpi_ret:
                 ;mov     [bx+2],ss
                 ifdef   QUICK_BOOT
 		extrn	_cmdnum:dword
+	ifdef	CPUTYPE
+v86boot	=	(byte _cmdnum+28)
+	else
 v86boot	=	(byte _cmdnum+24)
+	endif
 		test	[v86boot],bh
 		jnz	@vm2rm_ret
 		endif

@@ -25,36 +25,40 @@
 ;***************************************************************
 
 	macro	dos_shutdown
-		xor	si,si
+		xor	bx,bx
                 ifdef   QUICK_BOOT
 		extrn	_cmdnum:dword
-quickboot	=	(word _cmdnum+20)
-		cmp	si,[quickboot]
-		mov	ds,si
+	ifdef	CPUTYPE
+quickboot	=	(byte _cmdnum+24)
+	else
+quickboot	=	(byte _cmdnum+20)
+	endif
+		cmp	bl,[quickboot]
+		mov	ds,bx
 		jne	skip_shutdown
 		else
-		mov	ds,si
+		mov	ds,bx
 		endif
 		ifndef	NO386
-		push	[dword si+4]		; save step
-		mov	[word si+4],offset step19
+		push	[dword bx+4]		; save step
+		mov	[word bx+4],offset step19
 		else
 		mov	ax,offset step19
-		xchg	ax,[word si+4]
-		push	[word si+6]	
+		xchg	ax,[word bx+4]
+		push	[word bx+6]	
 		push	ax			; save step
 		endif
 		mov	[word cs:sssp],sp
-		;cmp	[byte si+7],0F0h
+		;cmp	[byte bx+7],0F0h
 		;jnc	notdos
-		mov	[si+6],cs
+		mov	[bx+6],cs
 		pushf
 		pushf
 		pop	ax
 		inc	ah			; set TF
 		push	ax
 		popf
-		call	[dword si+4*19h]
+		call	[dword bx+4*19h]
 notdos:
 		ifndef	NO386
 		lss	sp,[dword cs:sssp]

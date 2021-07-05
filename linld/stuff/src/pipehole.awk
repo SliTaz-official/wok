@@ -17,6 +17,12 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (/add	di,2/) $0="	scasw	; " $0
 	if (/bx,di/ || /\[bp-2\]/) next
 	sub(/\[bx\],0/,"[di],0")
+	if (/ptr @exit\$qv/) {
+		if (gotexit) next
+		print "call_exit:"
+		gotexit=1
+	}
+	if (/short @1@422/ && gotexit) $0="	ja	call_exit"
 	if (islinld==1) {
 		if (/,word.*/) islinld=0
 		print "; " $0
@@ -33,7 +39,7 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			print "	mov	ax,word ptr [di]"
 			next
 		}
-		if (/ax,word ptr/) next
+		if (/ax,word ptr \[/) next
 	}
 	if (/buf_cmdline\+1/) {
 		islinld=5

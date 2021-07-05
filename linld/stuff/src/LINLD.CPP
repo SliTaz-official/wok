@@ -8,11 +8,6 @@
 
 extern char bzimagestr[];
 const char* cmdstr[4] = {"auto",bzimagestr,NULL,NULL};
-#ifdef QUICK_BOOT
-extern u32 cmdnum[7];
-#else
-extern u32 cmdnum[5];
-#endif
 
 inline void syntax() {
     die("Syntax:" NL
@@ -22,8 +17,8 @@ inline void syntax() {
 #endif
 	"..." NL
         "vga mode: ask,extended,normal or dec/oct/hex number" NL
-#ifdef CPU32
-        "-32 for 386+" NL
+#ifdef CPUTYPE
+        "-m mincpu	family*256+model" NL
 #endif
 #ifdef CPU64
         "-64 for cpu64 only" NL
@@ -40,6 +35,9 @@ inline void syntax() {
         NL NL "Examples:" NL
 	"\tLINLD "
 	"-b 64m "
+#ifdef CPUTYPE
+	"-m 0x600 "
+#endif
         "initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz "
 	"\"cl=root=/dev/null video=-32\""
 	NL "\tLINLD memtest"
@@ -58,12 +56,6 @@ int main(int argc, char *argv[]) {
     if (!*++argv) syntax();
     const char **clp = &cmdline;
     do {
-#ifdef CPU32
-        if ((*(u16 *)*argv|2) == 0x332F) {	// -32 /32
-	    extrn char cpu386;
-	    if (cpu386 == 0) exit();
-	}
-#endif
 #ifdef CPU64
         if ((*(u16 *)*argv|2) == 0x362F) {	// -64 /64
 	    if (cpuhaslm() == 0) exit();
@@ -74,11 +66,15 @@ int main(int argc, char *argv[]) {
 #else
 	if (argstr(*argv,"cl|image|initrd",clp) == (int) clp) continue;
 #endif
-#ifdef QUICK_BOOT
-	if (argnum(*argv,"root|vga|mem|-b|-f~-q~-v~",&root_dev) >= (int) &base_himem) continue;
-#else
-	if (argnum(*argv,"root|vga|mem|-b|-f~",&root_dev) >= (int) &base_himem) continue;
+	if (argnum(*argv,"root|vga|mem|-b|"
+#ifdef CPUTYPE
+		"-m|"
 #endif
+		"-f~"
+#ifdef QUICK_BOOT
+		"-q~-v~"
+#endif
+		,&root_dev) >= (int) &base_himem) continue;
 	if (fileexist(*argv) != -1) {
             kernel_name=*argv;
 	    continue;
@@ -86,6 +82,9 @@ int main(int argc, char *argv[]) {
 	*clp = (const char *) heap_top +1;
 	strcatb((const char *) heap_top,*argv);
     } while (*++argv);
+#ifdef CPUTYPE
+    if (mincpu > cputype) exit();
+#endif
     puts(*clp);
     asm{
 	xchg	ax,bx

@@ -16,6 +16,7 @@
 #define LINUX001	linux 0.01 support
 #define ELKS		elks support
 #define IPXE		ipxe support
+#define CPUTYPE		detect cpu family and model
 /* End of the optional features */
 
 #ifdef ISOHOOK
@@ -108,12 +109,21 @@ extern const char* cmdstr[4];
 #define vid_mode	(cmdnum[1])	// -3 = ask, -2 = Extended VGA, -1 = Normal VGA,  n = as "n" was pressed
 #define topmem		(cmdnum[2])
 #define base_himem	(cmdnum[3])
-#define	skip_alloc	(* (char *) &cmdnum[4])
-#ifdef QUICK_BOOT
-extern u32 cmdnum[7];
+#ifdef CPUTYPE
+#define	skip_alloc	(* (char *) &cmdnum[5])
+#define mincpu		(* (short *) &cmdnum[6])
+extern unsigned cputype;
 #else
-extern u32 cmdnum[5];
+#define	skip_alloc	(* (char *) &cmdnum[4])
 #endif
+extern u32 cmdnum[5
+#ifdef CPUTYPE
+	+1
+#endif
+#ifdef QUICK_BOOT
+	+2
+#endif
+	];
 
 extern _fastcall void memcpy_image_kernel();
 extern _fastcall void memcpy_image_initrd();
