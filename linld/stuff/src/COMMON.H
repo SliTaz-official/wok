@@ -110,8 +110,8 @@ extern const char* cmdstr[4];
 #define topmem		(cmdnum[2])
 #define base_himem	(cmdnum[3])
 #ifdef CPUTYPE
+#define mincpu		(* (short *) &cmdnum[4])
 #define	skip_alloc	(* (char *) &cmdnum[5])
-#define mincpu		(* (short *) &cmdnum[6])
 extern unsigned cputype;
 #else
 #define	skip_alloc	(* (char *) &cmdnum[4])

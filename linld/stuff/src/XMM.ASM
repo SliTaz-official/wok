@@ -63,7 +63,11 @@
         proc    @xmm_alloc$qp11image_himem near
 
 		extrn	_cmdnum:dword
+	ifdef	CPUTYPE
+skip_alloc	=	(byte _cmdnum+20)
+	else
 skip_alloc	=	(byte _cmdnum+16)
+	endif
 LARGE_XMM_ALLOC	=	1
 		ifdef	LARGE_XMM_ALLOC
                 mov     ch,89h          ;allocate blk of EDX kilobytes
