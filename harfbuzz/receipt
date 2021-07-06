@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="harfbuzz"
-VERSION="2.6.4"
+VERSION="2.8.1"
 CATEGORY="system-tools"
 SHORT_DESC="OpenType text shaping engine."
 MAINTAINER="pankso@slitaz.org"
@@ -9,18 +9,22 @@ LICENSE="GPL2"
 WEB_SITE="https://www.freedesktop.org/wiki/Software/HarfBuzz/"
 
 TARBALL="$PACKAGE-$VERSION.tar.xz"
-WGET_URL="https://www.freedesktop.org/software/$PACKAGE/release/$TARBALL"
+WGET_URL="https://github.com/harfbuzz/harfbuzz/releases/download/$VERSION/$TARBALL"
 
 DEPENDS="cairo freetype gcc83-lib-base glib libffi pcre"
 BUILD_DEPENDS="cairo-dev fontconfig-dev freetype-dev gcc83 glib-dev"
 
 HOST_ARCH="i486 arm"
 
+current_version()
+{
+	wget -O - ${WGET_URL%/down*} 2>/dev/null | \
+	sed '/archive.*tar/!d;s|.*/v*\(.*\).tar.*|\1|;q'
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	export LDFLAGS="$LDFLAGS -lstdc++"
-
 	./configure		\
 		CC=gcc-83	\
 		CXX=g++-83	\
@@ -29,7 +33,7 @@ compile_rules()
 		--with-gobject	\
 		--with-icu=no	\
 		$CONFIGURE_ARGS &&
-	make -j 1 &&
+	make &&
 	make install
 }
 
