@@ -167,11 +167,11 @@ not286:
                 p386
 		ifdef	VCPI
                 mov     edx,cs
-                shl     edx,4		; edx for prepare_vcpi
+                shl     edx,4		; edx for prepare_vcpi (edx[31-20]=0)
 		else
  		 ifndef	LARGE_ZIMAGE
                 mov     edx,cs
-                shl     edx,4		; edx for memcpy32
+                shl     edx,4		; edx for memcpy32 (edx[31-20]=0)
 		 endif
 		endif
 		ifndef	LARGE_ZIMAGE
@@ -180,15 +180,15 @@ not286:
 		endif
 
 ; Check for vm
-                smsw    ax      ;SMSW cannot be trapped! :-)
-                and     al,1	;MSW_PE
+                smsw    bx      ;SMSW cannot be trapped! :-)
+                shr	bx,1	;MSW_PE
 ; We're in vm
-		jnz	check_vcpi
+		jnc	check_vcpi
 
 check_rm_paging:
 ; It's a 386 in real mode, chk for paging (crazy but possible)
-                mov     eax,cr0
-                inc     eax             ;CR0_PG to S
+                mov     ebx,cr0
+                inc     ebx             ;CR0_PG to S
 		jns	endcpu386
 		ifndef	NO386
                 p8086
@@ -253,6 +253,11 @@ endcpu386:
 		pop	dx
 		xor	al,dl		; clear C
 		ifdef	CPUTYPE
+		 ifndef	VCPI
+ 		  ifdef	LARGE_ZIMAGE
+		cdq			; 386 and 486 are not 64 bits
+		  endif
+		 endif
 		cmp	al,20h
 		mov	ax,0400h
 		je	is486
