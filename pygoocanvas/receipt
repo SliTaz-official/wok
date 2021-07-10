@@ -13,6 +13,14 @@ WGET_URL="http://ftp.gnome.org/pub/GNOME/sources/pygoocanvas/${VERSION%.*}/$TARB
 DEPENDS="python pygtk goocanvas"
 BUILD_DEPENDS="goocanvas-dev python-dev pygobject-dev pycairo-dev pygtk-dev pkg-config"
 
+current_version()
+{
+	local base=http://ftp.gnome.org/pub/GNOME/sources/$PACKAGE
+	wget -O - $base/$(wget -O - $base 2>/dev/null | \
+	sed '/href=.[0-9]/!d;s|.*href=.||;s|/.*||' | sort -Vr | sed q) 2>/dev/null | \
+	sed "/$PACKAGE-[0-9]/!d;/tar/!d;s|.*$PACKAGE-\\(.*\\).tar.*\".*|\\1|" | sort -Vr | sed q
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
@@ -32,4 +40,3 @@ genpkg_rules()
 	mkdir -p $fs/usr
 	cp -a $install/usr/lib $fs/usr
 }
-
