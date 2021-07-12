@@ -11,7 +11,7 @@ WEB_SITE="http://www.xrdp.org/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/neutrinolabs/$PACKAGE/releases/download/v$VERSION/$TARBALL"
 
-DEPENDS="libssl pam util-linux-uuid xorg-libICE xorg-libSM xorg-libX11 
+DEPENDS="openssl pam util-linux-uuid xorg-libICE xorg-libSM xorg-libX11 
 	xorg-libXext xorg-libXfixes xorg-libXrandr xorgxrdp zlib"
 BUILD_DEPENDS="autoconf automake libtool nasm openssl-dev pam-dev 
 	pkg-config util-linux-uuid-dev xorg-dev"
@@ -64,4 +64,16 @@ genpkg_rules()
 	SESSION="/usr/bin/lxde-session"
 	sed -i "s|xterm|[ -x $SESSION ] \\&\\& exec $SESSION\\n &|" \
 		$fs/etc/xrdp/startwm.sh
+
+	rm -f $fs/etc/xrdp/rsakeys.ini $fs/etc/xrdp/key.pem $fs/etc/xrdp/cert.pem
+}
+
+# Pre and post install commands for Tazpkg.
+post_install()
+{
+	chroot $1/ xrdp-keygen xrdp /etc/xrdp/rsakeys.ini
+	chroot $1/ openssl req -x509 -newkey rsa:2048 -sha256 -nodes \
+		-keyout /etc/xrdp/key.pem -out /etc/xrdp/cert.pem -days 365 \
+		-subj /C=US/ST=CA/L=Sunnyvale/O=xrdp/CN=www.xrdp.org \
+		-config /etc/ssl/openssl.conf
 }
