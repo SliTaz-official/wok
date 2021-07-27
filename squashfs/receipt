@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="squashfs"
-VERSION="4.4"
+VERSION="4.5"
 CATEGORY="base-system"
 SHORT_DESC="Linux squashfs userland tools."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -11,8 +11,8 @@ WEB_SITE="https://github.com/plougher/squashfs-tools"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
 
-DEPENDS="liblzma linux-squashfs lz4-lib lzo zlib"
-BUILD_DEPENDS="attr-dev liblzma-dev lz4-dev lzo-dev zlib-dev"
+DEPENDS="liblzma linux-squashfs lz4-lib lzo zlib zstd"
+BUILD_DEPENDS="attr-dev liblzma-dev lz4-dev lzo-dev zlib-dev zstd-dev"
 
 current_version()
 {
@@ -24,13 +24,9 @@ current_version()
 compile_rules()
 {
 	cd $src/squashfs-tools
-	# 4.3
-#	sed -i	-e 's/int file_size/off_t file_size/' \
-#		-e 's/source_path.index ++./strdup(&)/' mksquashfs.c
-#	sed -i 	-e 's/~S_IFMT/S_IFMT/' -e 's/MOVE_ACTION, -2/MOVE_ACTION, 1/' action.c
 
 	sed -i 	-e 's/~S_IFMT/S_IFMT/' action.c
-	for i in XZ LZMA_XZ LZO LZ4
+	for i in XZ LZMA_XZ LZO LZ4 ZSTD
 	  do
 		sed -i "s|^#\\(${i}_SUPPORT = 1\\)|\\1|g" Makefile
 	  done
@@ -51,7 +47,9 @@ genpkg_rules()
 
 	cp -a $install/usr	$fs
 	cp -a $install/sbin	$fs
+	ln -s mksquashfs	$fs/usr/sbin/sqfstar
+	ln -s unsquashfs	$fs/sbin/sqfscat
 	cp $src/README*		$install/usr/share/doc
-	cp $src/[CP]*		$install/usr/share/doc
-#	cp $src/*example	$install/usr/share/doc	# 4.3
+	cp $src/A*README*	$install/usr/share/doc
+	cp $src/[CPU]*		$install/usr/share/doc
 }
