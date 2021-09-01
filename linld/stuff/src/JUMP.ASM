@@ -106,9 +106,9 @@ step19:
 _cmdline	=	_cmdstr+0
 		mov	si,[_cmdline]
 		mov	di,8000h
-		mov	cx,2000h		; 4k for cmdline + 4k up to sp
+		mov	cx,1000h		; 4k for cmdline + 4k up to sp
 		rep
-		  movsb
+		  movsw
 		push	es
 		pop	ss
 		mov	sp,di
