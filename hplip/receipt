@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="hplip"
-VERSION="3.12.11" 
+VERSION="3.21.8" 
 CATEGORY="system-tools"
 TAGS="printer driver printing"
 SHORT_DESC="Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet"
@@ -16,27 +16,20 @@ BUGS="Unable to delete hplip.desktop from $fs.  Using hack in post_install."
 
 DEPENDS="ghostscript python cups dbus-python libusb jpeg tiff sane-backends \
 	libgphoto2 libexif gcc-lib-base libltdl libv4l net-snmp PyQt-x11-gpl pygobject"
-BUILD_DEPENDS="ghostscript-dev dbus-python-dev sane-backends-dev openssl-dev \
+BUILD_DEPENDS="ghostscript-dev dbus-python-dev sane-backends-dev openssl-dev gawk \
 	sane-backends libexif-dev libgphoto2-dev Qt4-dev libgphoto2 pkg-config libusb-dev \
 	jpeg-dev cups-dev dbus-dev tiff-dev python python-dev dbus-python net-snmp-dev \
 	libtool"
 
-# Rules to configure and make the package. --prefix=/usr 
+# Rules to configure and make the package.
 compile_rules()
 {
-	# fix build with cups 1.6 - FC hplip-ipp-accessors.patch
-	patch -Np1 -i $stuff/cups-1.6-buildfix.diff
-
-	# 3.12.11
-	sed -i '46i#include <cups/ppd.h>' \
-		prnt/hpijs/hpcupsfax.cpp
-	sed -i '40i#include <cups/ppd.h>' \
-		prnt/hpcups/HPCupsFilter.h
-
+	grep -l 'uname -m' | xargs sed -i 's|uname -m|echo i686|'
 	./configure			\
 		--prefix=/usr		\
 		--sysconfdir=/etc	\
 		--disable-doc-build	\
+		--disable-network-build \
 		--enable-qt4		\
 		$CONFIGURE_ARGS &&
 	make &&
@@ -51,14 +44,17 @@ genpkg_rules()
 	mkdir -p $fs/usr/share
 	
 	cp -a $install/etc		$fs
+	cp -a $install/var		$fs
 	cp -a $install/usr/bin		$fs/usr
 	cp -a $install/usr/lib/cups	$fs/usr/lib
 	cp -a $install/usr/lib/python*	$fs/usr/lib
 	cp -a $install/usr/lib/sane	$fs/usr/lib
+	cp -a $install/usr/lib/hal	$fs/usr/lib
 	cp -a $install/usr/lib/*so*	$fs/usr/lib
 	cp -a $install/usr/share/cups	$fs/usr/share
 	cp -a $install/usr/share/hplip	$fs/usr/share
 	cp -a $install/usr/share/ppd	$fs/usr/share
+	cp -a $install/usr/share/app*	$fs/usr/share
 
 	# compress non-zipped ppd files
 	find $fs/usr/share/ppd/HP -name "*.ppd" -exec gzip -n9 {} \;
