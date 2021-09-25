@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="bindfs"
+VERSION="1.15.1"
+CATEGORY="system-tools"
+SHORT_DESC="Mount a directory to another location and alter permission bits."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://bindfs.org/"
+WGET_URL="https://github.com/mpartel/bindfs/archive/refs/tags/$VERSION.tar.gz"
+
+DEPENDS="fuse"
+BUILD_DEPENDS="fuse-dev autoconf automake libtool"
+
+current_version()
+{
+	wget -O - https://github.com/mpartel/bindfs/releases 2>/dev/null | \
+	sed '/archive.*tar/!d;s|.*/\(.*\).tar.*|\1|;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|-Wpedantic ||' configure.ac
+	./autogen.sh
+	./configure --prefix=/usr \
+	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+	cp -a $install/usr/bin $fs/usr
+}

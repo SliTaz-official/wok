@@ -15,9 +15,16 @@ DEPENDS="gcc-lib-base libsdl libpng ncurses mesa zlib"
 BUILD_DEPENDS="$DEPENDS nasm libsdl-dev libpng-dev ncurses-dev mesa-dev \
 automake autoconf zlib-dev patch"
 
-# Rules to configure and make the package.
+current_version()
+{
+	wget -O - https://sourceforge.net/projects/$PACKAGE/files/ 2>/dev/null | \
+	sed '/scope="row/!d;s|.*href="|"https://sourceforge.net|;q' | xargs wget -O - 2>/dev/null | \
+	sed '/zip/!d;s|.*ZSNES v||;s|/.*||;q'
+}
 
-compile_rules() {
+# Rules to configure and make the package.
+compile_rules()
+{
   export LDFLAGS="$LDFLAGS -ltinfo"
   cd $src
   patch -p1 -i $stuff/zsnes.patch 
