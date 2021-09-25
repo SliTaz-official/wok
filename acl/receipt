@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="acl"
-VERSION="2.2.53"
+VERSION="2.3.1"
 CATEGORY="system-tools"
 SHORT_DESC="Commands for Manipulating POSIX Access Control Lists."
 MAINTAINER="rcx@zoominternet.net"
 LICENSE="LGPL2.1 GPL2"
 WEB_SITE="http://savannah.nongnu.org/projects/acl/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://download.savannah.gnu.org/releases/$PACKAGE/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS="attr"
 BUILD_DEPENDS="attr-dev bash libtool"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation.
 case "$ARCH" in
@@ -33,17 +35,18 @@ compile_rules()
 	ln -s /bin/bash /bin/sh
 
 	{
-		INSTALL_USER=root  \
-		INSTALL_GROUP=root \
-		./configure \
-			--prefix=/usr \
-			--libdir=/lib \
-			--libexecdir=/usr/lib \
+		INSTALL_USER=root		\
+		INSTALL_GROUP=root		\
+		./configure			\
+			--prefix=/usr		\
+			--libdir=/lib		\
+			--libexecdir=/usr/lib	\
 			$CONFIGURE_ARGS &&
 		make &&
 		DIST_ROOT=$DESTDIR make install
 	} || {
-		mv -f /bin/sh.bak /bin/sh; return 1
+		mv -f /bin/sh.bak /bin/sh
+		return 1
 	}
 
 	mv -f /bin/sh.bak /bin/sh
@@ -52,8 +55,10 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/lib $fs/usr/lib
-	cp -a $install/lib/*.so* $fs/lib
-	ln -s /lib/libacl.so $fs/usr/lib/libacl.so
-	cp -a $install/usr/bin $fs/usr
+	mkdir -p $fs/lib
+	mkdir -p $fs/usr/lib
+
+	cp -a $install/lib/*.so*	$fs/lib
+	ln -s /lib/libacl.so		$fs/usr/lib/libacl.so
+	cp -a $install/usr/bin		$fs/usr
 }
