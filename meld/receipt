@@ -8,11 +8,17 @@ MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="http://meldmerge.org/"
-WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:3}/$TARBALL"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION.*}/$TARBALL"
 
 DEPENDS="pygtk rarian"
 BUILD_DEPENDS="pygtk-dev rarian-dev gnome-doc-utils intltool pkg-config \
 util-linux-getopt"
+
+current_version()
+{
+	wget -O - $(dirname $WGET_URL) 2>/dev/null | \
+	sed "/$PACKAGE-[0-9]/!d;/tar/!d;s|.*$PACKAGE-\\(.*\\).tar.*\".*|\\1|" | sort -Vr | sed q
+}
 
 # Rules to configure and make the package.
 compile_rules()

@@ -8,13 +8,19 @@ MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://projects.gnome.org/evince/"
-WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION.*}/$TARBALL"
 TAGS="viewer pdf tiff ps postscript dvi"
 
 DEPENDS="lcms poppler tiff dbus-glib glib util-linux-uuid"
 BUILD_DEPENDS="gnome-doc-utils-dev docbook-xml libxml2-dev \
 gnome-icon-theme gtk+-dev intltool lcms-dev util-linux-uuid-dev \
 poppler-dev tiff-dev dbus-glib-dev xorg-dev"
+
+current_version()
+{
+	wget -O - $(dirname $WGET_URL) 2>/dev/null | \
+	sed "/$PACKAGE-[0-9]/!d;/tar/!d;s|.*$PACKAGE-\\(.*\\).tar.*\".*|\\1|" | sort -Vr | sed q
+}
 
 # Rules to configure and make the package.
 compile_rules()

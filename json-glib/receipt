@@ -8,11 +8,17 @@ MAINTAINER="mallory@sweetpeople.org"
 LICENSE="LGPL2.1"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://live.gnome.org/JsonGlib"
-WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION.*}/$TARBALL"
 TAGS="javascript"
 
 DEPENDS="libgio glib"
 BUILD_DEPENDS="pkg-config gobject-introspection-dev libgio-dev glib-dev"
+
+current_version()
+{
+	wget -O - $(dirname $WGET_URL) 2>/dev/null | \
+	sed "/$PACKAGE-[0-9]/!d;/tar/!d;s|.*$PACKAGE-\\(.*\\).tar.*\".*|\\1|" | sort -Vr | sed q
+}
 
 # Rules to configure and make the package.
 compile_rules()

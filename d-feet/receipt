@@ -8,10 +8,16 @@ MAINTAINER="monghitri@aruba.it"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://live.gnome.org/DFeet/"
-WGET_URL="ftp://ftp.gnome.org/pub/GNOME/sources/$PACKAGE/${VERSION:0:3}/$TARBALL"
+WGET_URL="https://download.gnome.org/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
 
 DEPENDS="dbus dbus-python pygtk python"
 BUILD_DEPENDS="dbus-dev dbus-python-dev pygtk-dev python-dev python-setuptools"
+
+current_version()
+{
+	wget -O - $(dirname $WGET_URL) 2>/dev/null | \
+	sed "/$PACKAGE-[0-9]/!d;/tar/!d;s|.*$PACKAGE-\\(.*\\).tar.*\".*|\\1|" | sort -Vr | sed q
+}
 
 # Rules to configure and make the package.
 compile_rules()

@@ -8,10 +8,16 @@ MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://developer.gnome.org/libbonobo/"
-WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION:0:4}/$TARBALL"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION.*}/$TARBALL"
 
 DEPENDS="glib ORBit2 libxml2 libglade"
 BUILD_DEPENDS="glib-dev libgio-dev libglade-dev ORBit2-dev libxml2-dev popt-dev bison flex intltool pkg-config"
+
+current_version()
+{
+	wget -O - $(dirname $WGET_URL) 2>/dev/null | \
+	sed "/$PACKAGE-[0-9]/!d;/tar/!d;s|.*$PACKAGE-\\(.*\\).tar.*\".*|\\1|" | sort -Vr | sed q
+}
 
 # Rules to configure and make the package.
 compile_rules()
