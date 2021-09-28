@@ -14,15 +14,20 @@ TAGS=""
 DEPENDS="gcc-lib-base"
 BUILD_DEPENDS=""
 
+current_version()
+{
+	wget -O - https://sourceforge.net/projects/$PACKAGE/files/ 2>/dev/null | \
+	sed '/scope="row/!d;s|.*href="|"https://sourceforge.net|;q' | xargs wget -O - 2>/dev/null | \
+	sed "/$PACKAGE-/!d;/tar/!d;s|.*$PACKAGE-\\(.*\\).tar.*|\\1|;q"
+}
+
 # Rules to configure and make the package.
-
-compile_rules() {
-  cd $src
-  ./configure --prefix=/usr --mandir=/usr/share/man \
-			  --without-libuuid $CONFIGURE_ARGS &&
-  make &&
-  make DESTDIR=$DESTDIR install
-
+compile_rules()
+{
+	./configure --prefix=/usr --mandir=/usr/share/man \
+		    --without-libuuid $CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
