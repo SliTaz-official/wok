@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="btfs"
+VERSION="2.24"
+CATEGORY="system-tools"
+SHORT_DESC="A bittorrent filesystem based on FUSE."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL3"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://github.com/johang/btfs"
+WGET_URL="$WEB_SITE/archive/v$VERSION.tar.gz"
+
+DEPENDS="gcc83-lib-base fuse libtorrent libcurl libboost-system libatomic"
+BUILD_DEPENDS="fuse-dev libtorrent-dev curl-dev automake autoconf gcc83"
+SUGGESTED="python vlc"
+
+current_version()
+{
+	wget -O - ${WGET_URL%/arch*}/releases 2>/dev/null | \
+	sed '/archive.*tar/!d;s|.*/v*\(.*\).tar.*|\1|;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	autoreconf -i
+	./configure --prefix=/usr	\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+}
