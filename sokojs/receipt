@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="sokojs"
+VERSION="2015"
+CATEGORY="games"
+SHORT_DESC="Sokoban clone in HTML / CSS / Javascript"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.zip"
+WEB_SITE="http://buze.michel.chez.com/Boxworld/src.htm"
+WGET_URL="http://buze.michel.chez.com/sokojs.zip"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	dos2unix *.htm *.txt
+	sed -i '/sokojs.zip/d;/src.htm/d' level.htm
+	sed -i 's|Online.* ) ||' sokojs.htm
+	patch -p0 < $stuff/sokojs.u
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/var/www $fs/usr/share/applications $install/usr/share/doc
+	cp -a $src $fs/var/www/sokojs
+	mv $fs/var/www/sokojs/*.txt $install/usr/share/doc
+	cat > $fs/usr/share/applications/Sokoban.desktop <<EOT
+[Desktop Entry]
+Type=Application
+Name=Sokoban
+Comment=Plateform game
+Exec=sh -c "url=http://127.0.0.1/sokojs/main.htm ; tazweb --notoolbar \\\$url || browser \\\$url"
+Icon=/var/www/sokojs/4.gif
+Terminal=false
+Categories=Game
+EOT
+}
