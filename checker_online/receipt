@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="checker_online"
+GITHASH="191c29cfd72227d64f6a8db9d295fd71523bf0d7"
+VERSION="2016"
+CATEGORY="games"
+SHORT_DESC="online chinese checker AI"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="unknown"
+TARBALL="$PACKAGE-$VERSION.zip"
+WEB_SITE="https://github.com/HsuBokai/checker_online"
+WGET_URL="$WEB_SITE/archive/$GITHASH.zip"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	grep '"http' [is]* | sed 's|.*"http|wget http|;s|".*||' | sh
+	sed -i 's|http.*[0-9]/||' [is]*
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/var/www $fs/usr/share/applications
+	cp -a $src $fs/var/www/$PACKAGE
+	cat > $fs/usr/share/applications/checker_online.desktop <<EOT
+[Desktop Entry]
+Type=Application
+Name=Chinese Checkers
+Name[fr]=Dames chinoises
+Exec=sh -c "url=file:///var/www/$PACKAGE/index.html ; tazweb --notoolbar \\\$url || browser \\\$url"
+Icon=applications-games
+Terminal=false
+Categories=Game
+EOT
+}
