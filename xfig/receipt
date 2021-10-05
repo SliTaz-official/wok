@@ -1,25 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="xfig"
-VERSION="3.2.5b"
+VERSION="3.2.8b"
 CATEGORY="x-window"
 SHORT_DESC="Vector graphics editor for X."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE.$VERSION.full.tar.gz"
 WEB_SITE="https://www.xfig.org/"
-WGET_URL="http://downloads.sourceforge.net/mcj/$TARBALL"
+
+TARBALL="$PACKAGE.$VERSION.tar.xz"
+WGET_URL="$SF_MIRROR/sourceforge/mcj/$TARBALL"
 SUGGESTED="transfig"
 
-DEPENDS="jpeg libpng xorg xorg-libXp"
-BUILD_DEPENDS="xorg-imake xorg-cf-files xorg-gccmakedep jpeg-dev \
-libpng-dev xorg-libXp"
+DEPENDS="jpeg libpng xorg xorg-libXaw3d xorg-libXp"
+BUILD_DEPENDS="spl-src xorg-imake xorg-cf-files xorg-gccmakedep jpeg-dev \
+	libpng-dev xorg-libXaw3d-dev xorg-libXp"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|/usr/local|/usr|;s|#define XAW3D|XCOMM &|' Imakefile
-	xmkmf &&
+	# obsolete with 3.2.8b
+#	sed -i 's|/usr/local|/usr|;s|#define XAW3D|XCOMM &|' Imakefile
+#	xmkmf
+	configure		\
+		--prefix=/usr	\
+		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -27,6 +32,9 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
-	sed -i 's/^Fig\*Font:.*/Fig*Font:\t\t\tfixed/' $fs/etc/X11/app-defaults/Fig
+	cp -a $install/*	$fs
+	# many examples in /usr/share/xfig/Libraries appr. 16 MiB
+
+	sed -i 's/^Fig\*Font:.*/Fig*Font:\t\t\tfixed/'	\
+		$fs/usr/share/X11/app-defaults/Fig
 }
