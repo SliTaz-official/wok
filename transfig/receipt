@@ -1,24 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="transfig"
-VERSION="3.2.5d"
+VERSION="3.2.8b"
 CATEGORY="x-window"
 SHORT_DESC="Utilities for converting XFig figure files."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE.$VERSION.tar.gz"
 WEB_SITE="https://www.xfig.org/"
-WGET_URL="http://downloads.sourceforge.net/mcj/$TARBALL"
+SOURCE="fig2dev"
+TARBALL="$SOURCE-$VERSION.tar.xz"
+WGET_URL="$SF_MIRROR/mcj/$TARBALL"
 
-DEPENDS="xorg xorg-libXpm libpng zlib"
-BUILD_DEPENDS="xorg-imake xorg-libXpm-dev libpng-dev zlib-dev"
+DEPENDS="libjpeg libpng xorg xorg-libXaw3d xorg-libXpm zlib"
+BUILD_DEPENDS="jpeg-dev libpng-dev xorg-libXaw3d-dev xorg-libXpm-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|/usr/local|/usr|' */*akefile
-	xmkmf &&
-	make Makefiles &&
+	./configure			\
+		--prefix=/usr		\
+		--enable-transfig &&
 	make &&
 	make DESTDIR=$DESTDIR install
 }
@@ -26,5 +27,8 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
+	mkdir -p $fs/usr/share
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/fig2dev	$fs/usr/share
 }
