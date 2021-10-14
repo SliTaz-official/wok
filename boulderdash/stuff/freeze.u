@@ -1,0 +1,41 @@
+--- boulderdash.js
++++ boulderdash.js
+@@ -4,7 +4,7 @@ Boulderdash = function() {
+   // GENERAL purpose constants and helper methods
+   //=========================================================================
+ 
+-  var KEY = { ENTER: 13, ESC: 27, SPACE: 32, PAGEUP: 33, PAGEDOWN: 34, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40 };
++  var KEY = { ENTER: 13, ESC: 27, SPACE: 32, PAGEUP: 33, PAGEDOWN: 34, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, F: 70 };
+ 
+   var Dom = {
+     get:     function(id)       { return (id instanceof HTMLElement) ? id : document.getElementById(id); },
+@@ -162,6 +162,7 @@ Boulderdash = function() {
+       this.step     = 1/this.fps;                    // how long is each game frame (in seconds)
+       this.birth    = 2*this.fps;                    // in which frame is rockford born ?
+       this.timer    = this.cave.caveTime;            // seconds allowed to complete this cave 
++      this.freeze   = 0;
+       this.idle     = { blink: false, tap: false };  // is rockford showing any idle animation ?
+       this.flash    = false;                         // trigger white flash when rockford has collected enought diamonds
+       this.won      = false;                         // set to true when rockford enters the outbox
+@@ -261,8 +262,12 @@ Boulderdash = function() {
+       this.endFrame();
+     },
+ 
++    toggleFreeze: function() {
++      this.freeze = 1 - this.freeze;
++    },
++
+     decreaseTimer: function(n) {
+-      this.timer = Math.max(0, this.timer - (n || 1));
++      if (this.freeze === 0) this.timer = Math.max(0, this.timer - (n || 1));
+       this.publish('timer', this.timer);
+       return (this.timer === 0);
+     },
+@@ -755,6 +760,7 @@ Boulderdash = function() {
+       case KEY.DOWN:       moving.startDown();  handled = true; break;
+       case KEY.LEFT:       moving.startLeft();  handled = true; break;
+       case KEY.RIGHT:      moving.startRight(); handled = true; break;
++      case KEY.F:          game.toggleFreeze(); handled = true; break;
+       case KEY.ESC:        game.reset();        handled = true; break;
+       case KEY.PAGEUP:     game.prev();         handled = true; break;
+       case KEY.PAGEDOWN:   game.next();         handled = true; break;

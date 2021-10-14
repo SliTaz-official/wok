@@ -12,9 +12,15 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://dev.gentoo.org/~blueness/$PACKAGE/$TARBALL"
 
 PROVIDE="udev"
-DEPENDS="acl dbus kmod pciids usbids util-linux-blkid"
+DEPENDS="acl dbus kmod pciids usbids util-linux-blkid eudev-lib"
 BUILD_DEPENDS="acl-dev dbus-dev gperf kmod-dev pcre-dev pkg-config 
 	util-linux-blkid-dev util-linux-uuid-dev"
+
+current_version()
+{
+	wget -O - ${WGET_URL%/*} 2>/dev/null | \
+	sed '/tar.gz</!d;s|.*HREF=eudev-||;s|.tar.gz.*||' | sort -Vr | sed q
+}
 
 # Rules to configure and make the package.
 compile_rules()
@@ -43,7 +49,6 @@ genpkg_rules()
 	cp -a $install/bin		$fs
 	cp -a $install/sbin		$fs
 	cp -a $install/etc		$fs
-	cp -a $install/lib/libudev*so*	$fs/lib
 	cp -a $install/lib/udev		$fs/lib
 
 	# Copy rules files to udev configuration directory
