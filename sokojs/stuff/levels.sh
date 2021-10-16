@@ -7,3 +7,4 @@ unzip Levels.zip
 ./multiset.sh
 ./slc2htm.sh *.slc
 rm -f *.slc
+sed -i 's| .get 39000.*||' /usr/share/applications/Sokoban.desktop
