@@ -1,29 +1,9 @@
 #!/bin/sh
 
-grep -q 'text/html' level.htm || patch -p0 <<EOT
---- level.htm
-+++ level.htm
-@@ -22,12 +22,14 @@
- <html>
- <head>
- <title></title>
-+<META HTTP-EQUIV="Content Type" CONTENT="text/html;charset=utf-8">
- <script type="text/javascript">
- <!--
- if (parent.frames[0] == null) { document.location = "sokojs.htm"  }
--Row=16
--Col=16
--document.write("<body style=\"margin:0\" bgcolor=\"black\">&nbsp;<b><FONT FACE=\"Comic Sans MS\" SIZE=4 COLOR=\"red\">LEVEL ",
-+Row = eval(parent.frames[0].document.forms[1].elements[0].value)
-+Col = eval(parent.frames[0].document.forms[1].elements[1].value)
-+document.write("<body style=\"margin:0\" bgcolor=\"black\">&nbsp;<b><FONT FACE=\"Comic Sans MS\" SIZE=4 COLOR=\"red\">",
-+  parent.frames[0].document.forms[1].elements[2].value," LEVEL ",
-   eval(parent.frames[0].document.forms[0].elements[(Row*Col)+1].value) + 1);
- 
- 
+[ -s level.htm ] && rm level.htm && patch -p0 <<EOT
 --- main.htm
 +++ main.htm
-@@ -11,8 +11,9 @@
+@@ -11,8 +11,9 @@ Voir : http://www.gnu.org/licenses/gpl.h
  -->
  <html>
  <head>
@@ -34,7 +14,7 @@ grep -q 'text/html' level.htm || patch -p0 <<EOT
  <!--
  img.r{
  width:30px;
-@@ -76,19 +77,19 @@
+@@ -76,19 +77,19 @@ if (parent.frames[0] == null) { document
  var ie4= (navigator.appName == "Microsoft Internet Explorer")?1:0;
  var ns4= (navigator.appName=="Netscape")?1:0;
  
@@ -58,7 +38,7 @@ grep -q 'text/html' level.htm || patch -p0 <<EOT
      }
  }
  
-@@ -108,7 +109,7 @@
+@@ -108,7 +109,7 @@ function Imajevent(){
           if (window.event.keyCode == 37) {
       Move(eval(manpos) - 1)
    } else if (window.event.keyCode == 38) {
@@ -67,7 +47,7 @@ grep -q 'text/html' level.htm || patch -p0 <<EOT
    } else if (window.event.keyCode == 39) {
       Move(eval(manpos) + 1)
    } else if (window.event.keyCode == 40) {
-@@ -150,7 +151,7 @@
+@@ -150,7 +151,7 @@ manU  = new Image(30, 30); manU.src = "8
  manD  = new Image(30, 30); manD.src = "9.gif"; // down
  
  level = new Array()
@@ -76,7 +56,7 @@ grep -q 'text/html' level.htm || patch -p0 <<EOT
  moves = 0
  
  function ReloadLevel() {
-@@ -168,14 +169,18 @@
+@@ -168,14 +169,18 @@ function ReloadLevel() {
  
  function GoLevel(n) {
    if (n == nbLevel) ReloadLevel()
@@ -98,7 +78,7 @@ grep -q 'text/html' level.htm || patch -p0 <<EOT
  }
  
  function print_moves(m) {
-@@ -226,7 +231,7 @@
+@@ -226,7 +231,7 @@ function Move(a) {
      if (nbBoxin == 0) {
        if (nbLevel < maxLevel) {
          alert("You have done a good job !")
@@ -107,7 +87,7 @@ grep -q 'text/html' level.htm || patch -p0 <<EOT
          GoLevel(nbLevel)
        } else {
          alert("Congratulations !")
-@@ -246,14 +251,14 @@
+@@ -246,14 +251,14 @@ function Move(a) {
    for (y = 0 ; y < Row; y++) {
      document.write ("<TR>")
      for (x = 0; x < Col; x++) {
@@ -128,14 +108,18 @@ grep -q 'text/html' level.htm || patch -p0 <<EOT
      }
      document.write("<\/TR>")
    }
-@@ -266,8 +271,12 @@
+@@ -266,8 +271,16 @@ function Move(a) {
   document.write("<FORM>",
    "<INPUT TYPE=button onClick=\"Javascript:ReloadLevel();\" value=\"Restart\">",
    "<INPUT TYPE=button onClick=\"Javascript:UndoMove();\" value=\"Undo\"><p id=\"moves\" style=\"color:white\">0 moves</p></center>")
 +  style="style='font-family:Courier New;font-size:14px;font-weight:bold;border:1;border-color:0;padding:0;margin:0px;background-color:#c0c0c0;color:#404040..'"
 +  document.write("<select id='set' "+style+" onChange=\"Javascript:GoSet();\">")
++  document.write("<option>Change level pack</option>");
 +  document.write("<option>sokojs</option>");
-+    document.write("</select><br />")
++  document.write("</select><br />")
++  document.write("<body style=\"margin:0\" bgcolor=\"black\">&nbsp;<b><FONT FACE=\"Comic Sans MS\" SIZE=4 COLOR=\"red\">",
++    parent.frames[0].document.forms[1].elements[2].value," LEVEL ",
++  eval(parent.frames[0].document.forms[0].elements[(Row*Col)+1].value) + 1,"<br/>")
    for (i = 0; i <= maxLevel; i++) {
 -    document.write("<INPUT style='font-family:Courier New;font-size:14px;font-weight:bold;border:1;border-color:0;padding:0;margin:0px;background-color:#c0c0c0;color:#404040ù' TYPE=\"button\" onClick=\"Javascript:GoLevel(", i, ");\" value=\"", (i<9?"&nbsp;":"")+(i+1), "\">")
 +    document.write("<INPUT "+style+" TYPE=\"button\" onClick=\"Javascript:GoLevel(", i, ");\" value=\"", (i<9?"&nbsp;":"")+(i+1), "\">")
@@ -144,7 +128,7 @@ grep -q 'text/html' level.htm || patch -p0 <<EOT
  
 --- sokojs.htm
 +++ sokojs.htm
-@@ -22,13 +22,13 @@
+@@ -22,14 +22,13 @@ Foundation, Inc., 59 Temple Place - Suit
  <html>
  <head>
  <TITLE>Sokoban (C) Michel Buze</TITLE>
@@ -154,16 +138,27 @@ grep -q 'text/html' level.htm || patch -p0 <<EOT
  <meta name="viewport" content="width=device-width, initial-scale=1">
  </head>
  
- <frameset border="0" rows="0,700,*">
+-<frameset border="0" rows="0,700,*">
 -<frame src="level0.htm">
+-<frame src="0.gif">
++<frameset border="0" rows="0,*">
 +<frame src="sokojs/level0.htm">
  <frame src="0.gif">
- <frame src="0.gif">
  <noframes>
+ <body>
 EOT
-[ -s level0.htm ] && mkdir sokojs && mv level?*.htm sokojs &&
-sed -i 's|location = "|&../|;/.*main.htm/i document.write("<FORM ACTION=\\"\\">")\
+[ -s level0.htm ] && mkdir sokojs && for l in level*.htm ; do
+	col=$(sed '/^Col/!d;s|Col=||' $l)
+	pos=$(sed '/write/!d;/value=\\"[0-9]/!d;s|.*value=."||;s|.".*||' $l)
+	awk -vx=$(($pos%$col+2)) -vy=$(($pos/$col+10)) '{ c="@"
+  if (substr($0,x,1) == ".") c="+"
+  if(l++==y) $0=substr($0,1,x-1) c substr($0,x+1)
+  print }' < $l | sed -e "s|1)|&.replace('+','.').replace('@','_')|" \
+	-e '/level.htm/d;s|location = "|&../|;/.*main.htm/i document.write("<FORM ACTION=\\"\\">")\
 document.write("<INPUT TYPE=\\"button\\" value=\\""+Row+"\\">",\
                "<INPUT TYPE=\\"button\\" value=\\""+Col+"\\">",\
                "<INPUT TYPE=\\"button\\" value=\\"sokojs\\">",\
-               "<INPUT TYPE=\\"button\\" value=\\"97\\"><\\/FORM>")' sokojs/level*.htm
+               "<INPUT TYPE=\\"button\\" value=\\"97\\"><\\/FORM>")' > sokojs/$l
+	rm -f $l
+done
+

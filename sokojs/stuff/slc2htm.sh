@@ -1,5 +1,21 @@
 #!/bin/sh
 
+swap() {
+    awk 'BEGIN { n=0 } { l[n++]=$0 } END {
+ for (i = 0; i < length(l[0]); i++) {
+   for (j = 0; j < n; j++) printf "%s", substr(l[j],i+1,1)
+   print ""
+ }}'
+}
+
+filter() {
+    sed 's| _|  |;s|_ |  |;s|^_| |;s|_$| |'
+}
+
+check() {
+    grep -Eq ' _|_ |^_|_$'
+}
+
 [ -z "$1" ] && echo "$0 set1.slc ..." && exit 1
 [ ! -s "main.htm" ] && echo "$PWD/main.htm not found" && exit 2
 
@@ -32,6 +48,11 @@ while [ "$1" ]; do
                         height="$(echo "$line" | sed 's|.*Height="||;s|".*||')"
 			height=$((($row-$height)/2))
 			l=0
+			echo -n "" > $set/tmp0
+			while [ $height -gt $l ]; do
+				printf "$fmt\n" "" >> "$set/tmp0"
+				l=$(($l+1))
+			done
 			cat > "$set/level$level.htm" <<EOT
 <html>
 <head>
@@ -42,24 +63,29 @@ while [ "$1" ]; do
 <!--
 if (parent.frames[0] == null) { document.location = "../sokojs.htm"  }
 l = new Array(
+// $id ${maxwidth}x$maxheight+$((($col-$width)/2))+$height
 EOT
-			prev=""
 			continue ;;
 		*\</Level\>) state=""
 			while [ $row -gt $l ]; do
-				printf "\"$fmt\",\n" "$prev" >> "$set/level$level.htm"
-				prev=""
+				printf "$fmt\n" "" >> "$set/tmp0"
 				l=$(($l+1))
 			done
+			while swap < $set/tmp0 | check || check < $set/tmp0 ; do
+				swap < $set/tmp0 | filter | swap | filter > $set/tmp1
+				mv -f $set/tmp1 $set/tmp0
+			done
+			x=$(($(sed '/[@+]/{s|[@+].*||;q}' $set/tmp0 |\
+				 wc -cl | sed 's|^|-|;s|......$|+&|')))
+			sed 's|.*|"&",|;$s|,$|);|' $set/tmp0 >> "$set/level$level.htm"
 			cat >> "$set/level$level.htm" <<EOT
-$(printf "\"$fmt\"" "$prev"));
 
 Row=$row
 Col=$col
 for  (x = 0; x < Row; x++)
   for  (y = 0; y < Col; y++)
     document.write("<INPUT TYPE=\"button\" value=\"",
-      ' _#*$.'.indexOf(l[x].substring(y, y + 1)), "\">")
+      ' _#*$.'.indexOf(l[x].substring(y, y + 1).replace('+','.').replace('@','_')), "\">")
 document.write("<INPUT TYPE=\"button\" value=\"$x\">",
                "<INPUT TYPE=\"button\" value=\"$level\"><\/FORM>")
 
@@ -69,12 +95,12 @@ document.write("<INPUT TYPE=\"button\" value=\""+Row+"\">",
                "<INPUT TYPE=\"button\" value=\"$set\">",
                "<INPUT TYPE=\"button\" value=\"COUNT\"><\/FORM>")
 parent.frames[1].location = "../main.htm"
-parent.frames[2].location = "../level.htm"
 //-->
 </script></form>
 </body>
 </html>
 EOT
+			rm -f $set/tmp*
 			level=$(($level+1))
 			continue ;;
 		esac
@@ -82,20 +108,7 @@ EOT
 		Description)
 			echo "$line" >> "$set/description.txt" ;;
 		Level)
-			[ "$prev" ] && printf "\"$fmt\",$comment\n" "$prev" >> "$set/level$level.htm" ||
-			echo "// $id ${maxwidth}x$maxheight+$((($col-$width)/2))+$height" >> "$set/level$level.htm"
-			while [ $height -gt 0 ]; do
-				printf "\"$fmt\",\n" "" >> "$set/level$level.htm"
-				height=$(($height-1))
-				l=$(($l+1))
-			done
-			prev="$(echo "$line" | sed 's|.*<L>||;s|</L>||;:a;s|\([#.+@$\*]_*\) |\1_|;ta')"
-			comment=""
-			if echo "$prev" | grep -Eq '@|\+'; then
-				x=$(($(echo "$prev" | sed 's|[@+].*||' | wc -c)+($l*$col)+($col-$width)/2-1))
-				comment=" // $(printf "\"$fmt\"," "$prev") $x"
-				prev="$(echo "$prev" | sed 's|\+|.|;s|@|_|')"
-			fi
+			printf "$fmt\n" "$(echo "$line" | sed 's|.*<L>||;s|</L>||;:a;s|\([#.+@$\*]_*\) |\1_|;ta')" >> "$set/tmp0"
 			l=$(($l+1))
 		esac
 	done < "$file"
