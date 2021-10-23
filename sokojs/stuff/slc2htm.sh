@@ -31,6 +31,7 @@ while [ "$1" ]; do
 	while read line; do
 		case "$line" in
 		*\<Url\>*) echo "$line" | sed 's|.*<Url>||;s|</Url>.*||' >> "$set/description.txt" ;;
+		*\<Email\>*) echo "$line" | sed 's|.*<Email>||;s|</Email>.*||' >> "$set/description.txt" ;;
 		*\<Title\>*) echo "$line" | sed 's|.*<Title>||;s|</Title>.*||' >> "$set/description.txt" ;;
 		*\<Description\>) state="Description"; continue ;;
 		*\</Description\>) state="" ;;

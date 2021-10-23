@@ -3,18 +3,20 @@
 [ -s level.htm ] && rm level.htm && patch -p0 <<EOT
 --- main.htm
 +++ main.htm
-@@ -11,8 +11,9 @@ Voir : http://www.gnu.org/licenses/gpl.h
- -->
- <html>
- <head>
-+<META HTTP-EQUIV="Content Type" CONTENT="text/html;charset=utf-8">
- <meta name="viewport" content="width=device-width, initial-scale=1">
--<style>
-+<style type="text/css">
- <!--
- img.r{
+@@ -19,7 +19,11 @@
  width:30px;
-@@ -76,19 +77,19 @@ if (parent.frames[0] == null) { document
+ height:30px;
+ }
+-
++a{
++color:red;
++text-decoration:none;
++display:block;
++}
+ @media screen and (max-width: 450px) {
+ img.r{
+ width:29px;
+@@ -77,8 +81,11 @@
  var ie4= (navigator.appName == "Microsoft Internet Explorer")?1:0;
  var ns4= (navigator.appName=="Netscape")?1:0;
  
@@ -22,93 +24,115 @@
 -Col    = 16
 +Row = eval(parent.frames[0].document.forms[1].elements[0].value)
 +Col = eval(parent.frames[0].document.forms[1].elements[1].value)
++CurSet = parent.frames[0].document.forms[1].elements[2].value
++maxLevel = eval(parent.frames[0].document.forms[1].elements[3].value)
++nbLevel = eval(parent.frames[0].document.forms[0].elements[(Row*Col)+1].value)
  
  function Nmajevent(evenement)
  {
-            if (evenement.which == 52 || evenement.which == 37) {
-         Move(eval(manpos) - 1)
-     } else if (evenement.which == 56 || evenement.which == 38) {
--        Move(eval(manpos) - Row)
-+        Move(eval(manpos) - Col)
-     } else if (evenement.which == 54 || evenement.which == 39) {
-         Move(eval(manpos) + 1)
-     } else if (evenement.which == 50 || evenement.which == 40) {
--        Move(eval(manpos) + Row)
-+        Move(eval(manpos) + Col)
-     }
- }
+@@ -124,6 +131,10 @@
  
-@@ -108,7 +109,7 @@ function Imajevent(){
-          if (window.event.keyCode == 37) {
-      Move(eval(manpos) - 1)
-   } else if (window.event.keyCode == 38) {
--     Move(eval(manpos) - Row)
-+     Move(eval(manpos) - Col)
-   } else if (window.event.keyCode == 39) {
-      Move(eval(manpos) + 1)
-   } else if (window.event.keyCode == 40) {
-@@ -150,7 +151,7 @@ manU  = new Image(30, 30); manU.src = "8
+ <script type="text/javascript">
+ <!--
++if (parent.window.location.search.length > 1 && parent.frames[0].location.hash.length == 0 &&
++    parent.frames[0].location.href.indexOf(parent.window.location.search.substring(1)) < 0)
++    parent.frames[0].location = parent.window.location.search.substring(1)
++
+ if (document.all) {
+   top.window.resizeTo(800, 600);
+ } else if (document.layers || document.getElementById) {
+@@ -151,13 +162,26 @@
  manD  = new Image(30, 30); manD.src = "9.gif"; // down
  
  level = new Array()
 -maxLevel = 97
-+maxLevel = eval(parent.frames[0].document.forms[1].elements[3].value)
  moves = 0
+ saved = ""
  
++function urlself()
++{
++  var l = parent.window.location
++  return l.href.substring(0, l.href.length - l.search.length - l.hash.length)+
++         "?"+CurSet+"/level"+nbLevel+".htm#"+saved
++}
++
++function seturl()
++{
++  var e = document.getElementById("urlsave")
++  e.setAttribute("href", urlself());
++}
++
  function ReloadLevel() {
-@@ -168,14 +169,18 @@ function ReloadLevel() {
+   manpos = parent.frames[0].document.forms[0].elements[Row*Col].value
+   moves = 0
++  saved = ""
+   window.status = ""
+   nbBoxin = 0
+   for (i = 0 ; i < Row * Col; i++) {
+@@ -168,9 +192,18 @@
+   document.images[manpos].src = eval("manD.src")
+ }
  
++function Go(d,n) {
++  parent.frames[0].document.location = d + "/level" + n + ".htm#" + d
++  seturl()
++}
++
  function GoLevel(n) {
    if (n == nbLevel) ReloadLevel()
 -  parent.frames[0].document.location = "level" + n + ".htm"
-+  parent.frames[0].document.location = parent.frames[0].document.forms[1].elements[2].value + "/level" + n + ".htm"
++  Go(CurSet, n)
 +}
 +
 +function GoSet() {
-+  parent.frames[0].document.location = document.getElementById('set').value + "/level0.htm"
++  Go(document.getElementById('set').value, 0)
  }
  
  function dir(d) {
-   if (d ==   -1) return "L";
-   if (d ==    1) return "R";  
--  if (d ==  Row) return "D";    
--  if (d == -Row) return "U";      
-+  if (d ==  Col) return "D";    
-+  if (d == -Col) return "U";      
+@@ -214,6 +247,7 @@
+       m = eval("man"+c.toUpperCase()+".src")
+     } while (c == c.toLowerCase())
+     document.images[manpos].src = m
++    seturl()
+   }
  }
  
- function print_moves(m) {
-@@ -226,7 +231,7 @@ function Move(a) {
+@@ -224,9 +258,9 @@
+     var m = dir(d).toLowerCase()
+     if (level[a] == boxin || level[a] == boxout)  {
+       b = a + d  
+-      ++moves
+       m = dir(d)
+       if (level[b] == floor || level[b] == dest)  {
++        ++moves
+         level[a] == boxin ? (level[a] = dest,  nbBoxin++) : level[a] = floor
+         level[b] == dest  ? (level[b] = boxin, nbBoxin--) : level[b] = boxout
+         document.images[b].src = eval("img" + level[b] + ".src")
+@@ -243,7 +277,7 @@
      if (nbBoxin == 0) {
        if (nbLevel < maxLevel) {
          alert("You have done a good job !")
 -        parent.frames[0].location = "level" + (++nbLevel) + ".htm"
-+        parent.frames[0].document.location = parent.frames[0].document.forms[1].elements[2].value + "/level" + (++nbLevel) + ".htm"
++        parent.frames[0].document.location = CurSet + "/level" + (++nbLevel) + ".htm"
          GoLevel(nbLevel)
        } else {
          alert("Congratulations !")
-@@ -246,14 +251,14 @@ function Move(a) {
-   for (y = 0 ; y < Row; y++) {
-     document.write ("<TR>")
-     for (x = 0; x < Col; x++) {
--      level[x + Row * y] = parent.frames[0].document.forms[0].elements[x + Row * y].value
--      if (level[x + Row * y] == dest) nbBoxin++
--      if (level[x + Row * y] == land || level[x + Row * y] == wall)
-+      level[x + Col * y] = parent.frames[0].document.forms[0].elements[x + Col * y].value
-+      if (level[x + Col * y] == dest) nbBoxin++
-+      if (level[x + Col * y] == land || level[x + Col * y] == wall)
-         document.write("<TD VALIGN=TOP>",
--          "<IMG align=middle class=r border=0 src=\"", level[x + Row * y], ".gif\"<\/TD>")
-+          "<IMG align=middle class=r border=0 src=\"", level[x + Col * y], ".gif\"<\/TD>")
-       else
--        document.write("<TD VALIGN=TOP><A HREF=\"JavaScript:Move(", x + Row * y, ")\">",
--          "<IMG align=middle class=r border=0 src=\"", level[x + Row * y], ".gif\"</A><\/TD>")      
-+        document.write("<TD VALIGN=TOP><A HREF=\"JavaScript:Move(", x + Col * y, ")\">",
-+          "<IMG align=middle class=r border=0 src=\"", level[x + Col * y], ".gif\"</A><\/TD>")      
+@@ -251,6 +285,7 @@
+       }
      }
-     document.write("<\/TR>")
    }
-@@ -266,8 +271,16 @@ function Move(a) {
++  seturl()
+ }
+   window.focus()
+   window.status = ""
+@@ -277,21 +312,32 @@
+   }
+   document.write("<\/TABLE>")
+   manpos = parent.frames[0].document.forms[0].elements[Row*Col].value
+-  nbLevel = parent.frames[0].document.forms[0].elements[(Row*Col)+1].value
+ 
+   document.write("</table><TABLE cellspacing=0 cellpadding=0 style='max-width:300px'><TD>")
+ 
   document.write("<FORM>",
    "<INPUT TYPE=button onClick=\"Javascript:ReloadLevel();\" value=\"Restart\">",
    "<INPUT TYPE=button onClick=\"Javascript:UndoMove();\" value=\"Undo\"><p id=\"moves\" style=\"color:white\">0 moves</p></center>")
@@ -118,14 +142,26 @@
 +  document.write("<option>sokojs</option>");
 +  document.write("</select><br />")
 +  document.write("<body style=\"margin:0\" bgcolor=\"black\">&nbsp;<b><FONT FACE=\"Comic Sans MS\" SIZE=4 COLOR=\"red\">",
-+    parent.frames[0].document.forms[1].elements[2].value," LEVEL ",
-+  eval(parent.frames[0].document.forms[0].elements[(Row*Col)+1].value) + 1,"<br/>")
++    "<a id=\"urlsave\" href=\"",urlself(),"\">",CurSet," LEVEL ",nbLevel + 1,"</a><br/>")
    for (i = 0; i <= maxLevel; i++) {
 -    document.write("<INPUT style='font-family:Courier New;font-size:14px;font-weight:bold;border:1;border-color:0;padding:0;margin:0px;background-color:#c0c0c0;color:#404040ù' TYPE=\"button\" onClick=\"Javascript:GoLevel(", i, ");\" value=\"", (i<9?"&nbsp;":"")+(i+1), "\">")
 +    document.write("<INPUT "+style+" TYPE=\"button\" onClick=\"Javascript:GoLevel(", i, ");\" value=\"", (i<9?"&nbsp;":"")+(i+1), "\">")
    }
    document.write("<\/FORM></table>")
  
+   document.images[manpos].src = eval("manD.src")
++
++  if (parent.window.location.hash.length > 1 && parent.frames[0].location.hash.length == 0) {
++    for (i = 2; i <= parent.window.location.hash.length; i++)
++      Move(manpos-undoDir(parent.window.location.hash.substring(i-1,i)))
++  }
+ //-->
+ </script>
+ 
+ </body>
+-</html>
+\ No newline at end of file
++</html>
 --- sokojs.htm
 +++ sokojs.htm
 @@ -22,14 +22,13 @@ Foundation, Inc., 59 Temple Place - Suit
@@ -161,4 +197,10 @@ document.write("<INPUT TYPE=\\"button\\" value=\\""+Row+"\\">",\
                "<INPUT TYPE=\\"button\\" value=\\"97\\"><\\/FORM>")' > sokojs/$l
 	rm -f $l
 done
-
+[ -s sokojs/description.txt ] || cat > sokojs/description.txt <<EOT
+SokoJS
+Sokoban Game for Javascript
+michel.buze@gmail.com
+http://buze.michel.chez.com
+copyright Michel BUZE
+EOT
