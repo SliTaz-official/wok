@@ -51,8 +51,8 @@
  
 +function urlself()
 +{
-+  var l = parent.window.location
-+  return l.href.substring(0, l.href.length - l.search.length - l.hash.length)+
++  var l = parent.window.location.href+"?"
++  return l.substring(0, l.search(/[#?]/))+
 +         "?"+CurSet+"/level"+nbLevel+".htm#"+saved
 +}
 +
