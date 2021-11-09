@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="redupe"
+VERSION="0.1.0"
+CATEGORY="system-tools"
+SHORT_DESC="Forward error correction."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="BSD"
+WEB_SITE="https://hack.systems/2018/05/16/redupe/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/rescrv/redupe/archive/refs/tags/v$VERSION.tar.gz"
+
+DEPENDS="popt"
+BUILD_DEPENDS="automake gcc83 popt-dev"
+
+current_version()
+{
+	wget -O - ${WGET_URL%/arch*}/tags 2>/dev/null | \
+	sed '/archive.*tar/!d;s|.*/v\(.*\).tar.*|\1|;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	autoreconf -ivf
+	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/usr	$fs/
+}

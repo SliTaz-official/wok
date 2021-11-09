@@ -6,19 +6,25 @@ CATEGORY="misc"
 SHORT_DESC="A modular, cross-platform and multi-threaded benchmark tool."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://github.com/akopytov/sysbench"
 WGET_URL="git|git://github.com/akopytov/sysbench.git"
 
 DEPENDS="libmysqlclient libssl zlib"
 BUILD_DEPENDS="git automake autoconf libtool mysql-dev openssl-dev zlib-dev"
 
+current_version()
+{
+	wget -O - ${WGET_URL%/arch*}/releases 2>/dev/null | \
+	sed '/archive.*tar/!d;s|.*/\(.*\).tar.*|\1|;q'
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
 	./autogen.sh
 	./configure --prefix=/usr $CONFIGURE_ARGS &&
-	make &&
+	make -j 1 &&
 	make DESTDIR=$DESTDIR install
 }
 
