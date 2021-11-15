@@ -18,9 +18,24 @@ BUILD_DEPENDS="linux64-module-headers git xz uclibc-cross-compiler-x86_64"
 
 AUFS_NOT_RAMFS="uclibc-cross-compiler-x86_64 is not compatible with aufs+tmpfs 8("
 
+current_version()
+{
+	wget -O - https://sourceforge.net/p/aufs/aufs3-standalone/ci/${BRANCH#*linux-}/tree/ 2> /dev/null | \
+	sed '/History/!d;s|.*href="|https://sourceforge.net|;s|".*||' | xargs wget -O - 2> /dev/null | \
+	sed '/markdown_content/!d;s|</p>||;s|.* ||;q'
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Must match kernel version
+	#[ -d fs ] && rm -rf *
+
+	if [ ! -d fs ]; then
+		kver=$(. $WOK/linux/receipt ; echo $VERSION)
+		git checkout origin/aufs${kver%.*}
+	fi
+
 	sed -i \
 		-e 's|CONFIG_AUFS_BRANCH_MAX_127 =.*|CONFIG_AUFS_BRANCH_MAX_127 =|' \
 		-e 's|#CONFIG_AUFS_BRANCH_MAX_32767 =.*|CONFIG_AUFS_BRANCH_MAX_32767 = y|' \

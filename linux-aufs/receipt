@@ -26,9 +26,12 @@ current_version()
 compile_rules()
 {
 	# Must match kernel version
-	[ -d fs ] && rm -rf *
-	kver=$(. $WOK/linux/receipt ; echo $VERSION)
-	git checkout origin/aufs${kver%.*}
+	#[ -d fs ] && rm -rf *
+
+	if [ ! -d fs ]; then
+		kver=$(. $WOK/linux/receipt ; echo $VERSION)
+		git checkout origin/aufs${kver%.*}
+	fi
 
 	sed -i \
 		-e 's|CONFIG_AUFS_BRANCH_MAX_127 =.*|CONFIG_AUFS_BRANCH_MAX_127 =|' \
@@ -40,7 +43,7 @@ compile_rules()
 		-e 's|CONFIG_AUFS_BDEV_LOOP =.*|CONFIG_AUFS_BDEV_LOOP = y|' \
 		-e 's|CONFIG_AUFS_BR_RAMFS =.*|CONFIG_AUFS_BR_RAMFS = y|' \
 		-e 's|CONFIG_AUFS_DEBUG =.*|CONFIG_AUFS_DEBUG =|' config.mk
-		
+
 	# The sed fixes are from gentoo portage build.
 	sed -i "s:aufs.ko usr/include/uapi/linux/aufs_type.h:aufs.ko:g" Makefile
 	sed -i "s:aufs.ko usr/include/linux/aufs_type.h:aufs.ko:g" Makefile
@@ -48,7 +51,7 @@ compile_rules()
 	
 	sed -i 's/d_u.d_child/d_child/' fs/aufs/dcsub.c fs/aufs/hnotify.c
 	sed -i 's/ d_alias/ d_u.d_alias/' fs/aufs/hnotify.c fs/aufs/export.c
-	
+
 	make ARCH=i386 KDIR=/usr/src/linux
 	xz -f fs/aufs/aufs.ko
 }
