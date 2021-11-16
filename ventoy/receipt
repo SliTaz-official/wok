@@ -1,0 +1,58 @@
+# SliTaz package receipt.
+
+PACKAGE="ventoy"
+VERSION="1.0.61"
+CATEGORY="misc"
+SHORT_DESC="A tool to create bootable USB drive for ISO/WIM/IMG/VHD(x)/EFI files."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL3"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://ventoy.net/en/index.html"
+WGET_URL="https://github.com/ventoy/Ventoy/archive/refs/tags/v$VERSION.tar.gz"
+EXTRA_SOURCE_FILES="$PACKAGE-bin-$VERSION.tar.gz"
+
+DEPENDS="libglade"
+BUILD_DEPENDS="libglade-dev gtk+-dev pkg-config"
+
+current_version()
+{
+	wget -O - ${WGET_URL%/arch*}/releases 2>/dev/null | \
+	sed '/archive.*tar/!d;s|.*/v\(.*\).tar.*|\1|;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i 's|^build_func |#&|;s|#\(build_func .*i386.*gtk2\)|\1|;s|-l pthread|& -l rt|' LinuxGUI/build_gtk.sh
+	cd LinuxGUI && sh build_gtk.sh
+	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] ||
+		wget --no-check-certificate -O $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES \
+		"https://github.com/ventoy/Ventoy/releases/download/v$VERSION/ventoy-$VERSION-linux.tar.gz"
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/share/applications
+	tar xzf $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES -C $fs/usr/share/
+	mv $fs/usr/share/ventoy-$VERSION $fs/usr/share/ventoy
+	rm -f $fs/usr/share/ventoy/VentoyGUI* $fs/usr/share/ventoy/*.exe
+	rm -f $fs/usr/share/ventoy/tool/i386/*.qt5 $fs/usr/share/ventoy/tool/i386/*.gtk?
+	rm -rf $fs/usr/share/ventoy/tool/aarch64 
+	rm -rf $fs/usr/share/ventoy/tool/x86_64 
+	rm -rf $fs/usr/share/ventoy/tool/mips64el
+	cp $src/INSTALL/tool/i386/Ventoy2Disk.gtk2 $fs/usr/share/ventoy/tool/i386/
+	cat > $fs/usr/share/applications/ventoy.desktop <<EOT
+[Desktop Entry]
+Version=1.0
+Name=Create a bootable USB 
+Name[fr]=Créer une clé USB bootable
+Comment=A New Bootable USB Solution
+Comment[fr]=Une nouvelle façon de démarrer par USB
+Categories=GNOME;System;Filesystem;
+Exec=tazbox su /usr/share/ventoy/tool/i386/Ventoy2Disk.gtk2
+Icon=/usr/share/ventoy/WebUI/static/img/VentoyLogo.png
+Terminal=false
+Type=Application
+EOT
+}
