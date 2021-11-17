@@ -11,8 +11,8 @@ WEB_SITE="https://ventoy.net/en/index.html"
 WGET_URL="https://github.com/ventoy/Ventoy/archive/refs/tags/v$VERSION.tar.gz"
 EXTRA_SOURCE_FILES="$PACKAGE-bin-$VERSION.tar.gz"
 
-DEPENDS="libglade"
-BUILD_DEPENDS="libglade-dev gtk+-dev pkg-config"
+DEPENDS="slitaz-tools"
+SUGGESTED="tazweb"
 
 current_version()
 {
@@ -23,8 +23,8 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|^build_func |#&|;s|#\(build_func .*i386.*gtk2\)|\1|;s|-l pthread|& -l rt|' LinuxGUI/build_gtk.sh
-	cd LinuxGUI && sh build_gtk.sh
+	sed -i 's|^build_func |#&|;s|#\(build_func .*i386\)|\1|;s|-l pthread|& -l rt|' LinuxGUI/build.sh
+	cd LinuxGUI && sh build.sh
 	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] ||
 		wget --no-check-certificate -O $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES \
 		"https://github.com/ventoy/Ventoy/releases/download/v$VERSION/ventoy-$VERSION-linux.tar.gz"
@@ -38,21 +38,14 @@ genpkg_rules()
 	mv $fs/usr/share/ventoy-$VERSION $fs/usr/share/ventoy
 	rm -f $fs/usr/share/ventoy/VentoyGUI* $fs/usr/share/ventoy/*.exe
 	rm -f $fs/usr/share/ventoy/tool/i386/*.qt5 $fs/usr/share/ventoy/tool/i386/*.gtk?
+	rm -f $fs/usr/share/ventoy/tool/i386/V2DServer*
+	rm -f $fs/usr/share/ventoy/tool/VentoyGTK.glade
+	rm -f $fs/usr/share/ventoy/VentoyWeb.sh 
 	rm -rf $fs/usr/share/ventoy/tool/aarch64 
 	rm -rf $fs/usr/share/ventoy/tool/x86_64 
 	rm -rf $fs/usr/share/ventoy/tool/mips64el
-	cp $src/INSTALL/tool/i386/Ventoy2Disk.gtk2 $fs/usr/share/ventoy/tool/i386/
-	cat > $fs/usr/share/applications/ventoy.desktop <<EOT
-[Desktop Entry]
-Version=1.0
-Name=Create a bootable USB 
-Name[fr]=Créer une clé USB bootable
-Comment=A New Bootable USB Solution
-Comment[fr]=Une nouvelle façon de démarrer par USB
-Categories=GNOME;System;Filesystem;
-Exec=tazbox su /usr/share/ventoy/tool/i386/Ventoy2Disk.gtk2
-Icon=/usr/share/ventoy/WebUI/static/img/VentoyLogo.png
-Terminal=false
-Type=Application
-EOT
+	sed '/= VentoyWeb.sh =/,/just execute/d' -i $fs/usr/share/ventoy/README
+	cp $src/INSTALL/tool/i386/V2DServer $fs/usr/share/ventoy/tool/i386/
+	chmod +x $fs/usr/share/ventoy/tool/i386/V2DServer
+	cp $stuff/TazVentoy.sh $fs/usr/share/ventoy/
 }
