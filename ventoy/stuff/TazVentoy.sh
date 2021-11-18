@@ -7,14 +7,11 @@ esac
 [ $(id -u) -ne 0 ] && exec tazbox su $0 $@
 
 cd $(dirname $0)
-HOST="${1:-127.0.0.1}"
-PORT=${2:-24680}
-[ $(stat -c %s log.txt) -gt 4096 ] && rm log.txt
+HOST="${1:-127.0.0.1}:${2:-24680}"
+echo -n > log.txt
 
-PATH=./tool/i386:$PATH
-V2DServer "$HOST" "$PORT" &
-wID=$!
+PATH=./tool/i386:$PATH V2DServer ${HOST/:/ } &
 sleep 1
 
-tazweb --notoolbar http://$HOST:$PORT/ || browser http://$HOST:$PORT/
-kill $wID
+tazweb --notoolbar http://$HOST/ || browser http://$HOST/
+kill %1
