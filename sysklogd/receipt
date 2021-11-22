@@ -1,0 +1,38 @@
+# SliTaz package receipt.
+
+PACKAGE="sysklogd"
+VERSION="2.2.3"
+CATEGORY="network"
+SHORT_DESC="BSD syslog daemon and syslog()/syslogp() API for Linux, RFC3164 + RFC5424."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="BSD3"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://troglobit.com/post/2019-11-03-bsd-syslogd-in-linux/"
+WGET_URL="https://github.com/troglobit/sysklogd/archive/refs/tags/v$VERSION.tar.gz"
+
+BUILD_DEPENDS="automake"
+
+current_version()
+{
+	wget -O - ${WGET_URL%/arch*}/tags 2>/dev/null | \
+	sed '/archive.*tar/!d;s|.*/v*\(.*\).tar.*|\1|;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh
+	./configure --prefix=/usr --sysconfdir=/etc \
+		$CONFIGURE_ARGS &&
+	make LDFLAGS="$LDFLAGS -lrt" &&
+	make DESTDIR=$DESTDIR install-strip
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/sbin $fs/usr
+	cp -a $install/usr/lib/*.so* $fs/usr/lib
+}
