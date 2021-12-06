@@ -271,7 +271,7 @@ is486:
 		inc	ax
 		cpuid			; again cause of Nasty EMM386s
 		push	eax
-		bt	edx,26		; sse2 bit
+		shr	edx,1+26	; test bit 26 (sse2), clear bit 29 (lm)
 		jnc	baseInfo
 		else
 		jne	@@no_cpuid	; CPUID feature bit changed ?
