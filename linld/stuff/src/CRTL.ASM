@@ -539,7 +539,7 @@ lseek0:
 		mov	ax,7FF0h		; old way : up to md5 signature
 @@oldway:
 		xor	ax,6FF0h		; new way : between Apple partitions = up to 1000h
-		neg	word ptr [bx+4]		; fix x->filesize
+		neg	[word bx+4]		; fix x->filesize
 		js	@@oldway
 		cwd
 		mov	[word bx+6],dx
