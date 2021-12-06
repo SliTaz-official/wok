@@ -536,7 +536,11 @@ lseek0:
 		call	readfd ; // read x->fileofs & x->filesize
 		pop	bx
 		; x->fileofs = 0x7FF0 - (x->filesize &= 0xFFFF);
-		mov	ax,7FF0h
+		mov	ax,7FF0h		; old way : up to md5 signature
+@@oldway:
+		xor	ax,6FF0h		; new way : between Apple partitions = up to 1000h
+		neg	word ptr [bx+4]		; fix x->filesize
+		js	@@oldway
 		cwd
 		mov	[word bx+6],dx
 		sub	ax,[bx+4]

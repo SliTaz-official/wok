@@ -11,11 +11,11 @@ getiso()
 {
 	mkdir -p $media
 	for bdev in /sys/block/*; do
-		for dev in $(ls -d $bdev/$(basename $bdev)*); do
+		for dev in $(ls -d $bdev/${bdev##*/}*); do
 			[ "$dev" ] || continue 2
-			mount /dev/$(basename $dev) $mnt
-			if [ -s $mnt/$ISO ] && [ $(getarg magic) = $(hexdump -v -s  18 -n 2 -e "\"\" 1/2 \" %u\n\"" $mnt/$ISO) ]; then
-				echo "Found $ISO on $(basename $dev)"
+			mount /dev/${dev##*/} $mnt
+			if [ -s $mnt/$ISO ] && [ $(getarg magic) = $(hexdump -vs18 -n2 -e "\"\" 1/2 \" %u\n\"" $mnt/$ISO) ]; then
+				echo "Found $ISO on ${dev##*/}"
 				ISO=$mnt/$ISO
 				mount -o loop,ro $ISO $media
 				return
@@ -30,15 +30,15 @@ uncpio=uncpio64
 uncpio64()
 {
 	i=$1
-	grep ' lm ' /proc/cpuinfo && [ -s ${i}64 ] && i=${i}64
+	grep -q ' lm ' /proc/cpuinfo && [ -s ${i}64 ] && i=${i}64
 	[ -s "$i" ] || return
-	echo -en "\n Extracting $(basename $i) ..."
+	echo -en "\n Extracting ${i##*/} ..."
 	case $(get 0 $i) in
 	*35615)	( zcat || gunzip );;
 	*14333) unxz;;
 	*\ 93)	unlzma;;
 	*)	cat;;
-	esac < $i | ( cd ${2:-/}; cpio -idmu > /dev/null 2>&1 )
+	esac < $i | ( cd ${2:-/}; cpio -idmu >/dev/null 2>&1 )
 }
 
 tty0=tty0
@@ -77,8 +77,8 @@ text()
 	[ -d /etc/skel ] || $uncpio $(ls -r $media/boot/rootfs?*.* | sed q)
 	init=
 	cmdline="$(cat /proc/cmdline)"
-	if $xhascustomconf 2> /dev/null; then
-		getcustomconf /tmp > /dev/null
+	if $xhascustomconf 2>/dev/null; then
+		getcustomconf /tmp >/dev/null
 		[ -s /tmp/cmdline ] &&
 			cmdline="$cmdline $(cat /tmp/cmdline)" &&
 			init="$(sed '/rdinit=/!d;s/.*rdinit=\([^ ]*\).*/\1/' /tmp/cmdline)"
@@ -131,7 +131,7 @@ BIN=bin/mount.posixovl
 mount -t proc /proc /proc
 mount -t sysfs /sys /sys
 udevd --daemon 2>/dev/null && udevadm trigger && sleep 5
-mdev -s 2> /dev/null ||
+mdev -s 2>/dev/null ||
 for i in /sys/block/*/dev /sys/block/*/*/dev; do
 	[ -s "$i" ] || continue
 	n=${i%/dev}
@@ -142,7 +142,7 @@ done 2>/dev/null
 ISO="$(getarg iso | sed 's/.://;s|\\|/|g')"
 getiso 2>/dev/null || text
 if [ -s /lib/modules/squashfs.ko* ]; then
-	insmod /lib/modules/squashfs.ko* 2>/dev/null
+	insmod /lib/modules/squashfs.ko*
 	if [ -d $media/fs ]; then
 		ln -s $media/fs /sqfs
 	else
@@ -152,9 +152,9 @@ if [ -s /lib/modules/squashfs.ko* ]; then
 	fi
 	cp -a /sqfs/dev/fuse /sqfs/dev/tty[12] /dev
 	for i in /sqfs/dev/* ; do [ -b $i ] && cp -a $i /dev ; done
-	ln -s /sqfs/lib/* lib 2>/dev/null
+	ln -s /sqfs/lib/* lib
 	ln -fs /sqfs/usr /sqfs/var /
-	mkdir /etc && cp /sqfs/etc/dialogrc /etc 2>/dev/null
-fi
+	mkdir /etc && cp /sqfs/etc/dialogrc /etc
+fi 2>/dev/null
 [ -s /usr/bin/taziso ] || live
 . /usr/bin/taziso
