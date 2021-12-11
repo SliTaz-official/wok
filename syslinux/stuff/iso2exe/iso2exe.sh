@@ -43,7 +43,7 @@ add_rootfs()
 	TMP=/tmp/iso2exe$$
 	mkdir -p $TMP/mnt
 	mount -o loop,ro $1 $TMP/mnt
-	if [ $2 = --array ] || grep -qs rootfs $TMP/mnt/boot/isolinux/isolinux.cfg ; then
+	if [ "$2" = "--array" ] || grep -qs rootfs $TMP/mnt/boot/isolinux/isolinux.cfg ; then
 		$0 --get rootfs.gz > $TMP/rootfs.gz
 		SIZE=$(wc -c < $TMP/rootfs.gz)
 		store 24 $SIZE $1
@@ -109,7 +109,7 @@ EOT
 	mount -o loop,ro $1 /tmp/mnt$$
 	if [ -s /tmp/mnt$$/boot/linld.com ]; then
 		i=$(($(get 20 $1)-0xC0))
-		store $(($i-6)) $(($(stat -m /tmp/mnt$$/boot/linld.com | sed q)*2048)) $1 32
+		store $(($i-6)) $(($(busybox stat -m /tmp/mnt$$/boot/linld.com | sed q)*2048)) $1 32
 		store $(($i-2)) $(stat -c %s /tmp/mnt$$/boot/linld.com) $1
 		r="$(sed '/rootfs[0-9]/!d;s|.* initrd=||;s|/boot/||g;s| .*||' \
 			/tmp/mnt$$/boot/isolinux/isolinux.cfg | tail -n1)"
@@ -235,7 +235,7 @@ trailer()
 			f=$((0x$(od -An -N 4 -j $(($o+8)) -t x1 "$1" | sed 's/ //g')))
 			l=$((0x$(od -An -N 4 -j $(($o+0x54)) -t x1 "$1" | sed 's/ //g')))
 			printf " $i:%08X  %08X  %s\n" $f $l \
-			"$(ddq bs=1 skip=$(($o+16)) count=32 if="$1")"
+			"$(ddq bs=1 skip=$(($o+16)) count=32 if="$1" | strings -n 1)"
 			o=$(($o+2048))
 			i=$(($i+1))
 		done
