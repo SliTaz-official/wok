@@ -139,7 +139,7 @@ clearbss:
 ;***************************************************************
 
 ; Check for oldies
-		ifndef	NO386
+		ifdef	NO386
 		ifdef	CPUTYPE
 		mov	ax,100h
 		mov	cl,32		; 186+ masks with 31
@@ -197,7 +197,7 @@ godie:
 		call	near die
 		else
 jmp_endcpu86:
-		jmp	endcpu86
+		jmp	endcpu86	;386+ rm will fake 186
 		endif
 
 
@@ -434,7 +434,7 @@ newarg:
 
 		int	12h
 		jnc	@@max640k
-		mov	ax,640			; 9000
+		mov	ax,640			; 640k => 9000h
 @@max640k:
 		dec	ax
 		and	al,0C0h
