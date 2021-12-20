@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="ventoy"
-VERSION="1.0.61"
+VERSION="1.0.62"
 CATEGORY="misc"
 SHORT_DESC="A tool to create bootable USB drive for ISO/WIM/IMG/VHD(x)/EFI files."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -12,7 +12,7 @@ WGET_URL="https://github.com/ventoy/Ventoy/archive/refs/tags/v$VERSION.tar.gz"
 EXTRA_SOURCE_FILES="$PACKAGE-bin-$VERSION.tar.gz"
 HOST_ARCH="i486"
 
-DEPENDS="slitaz-tools"
+DEPENDS="slitaz-tools exfat-utils"
 SUGGESTED="tazweb"
 
 current_version()
@@ -24,8 +24,10 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|^build_func |#&|;s|#\(build_func .*i386\)|\1|;s|-l pthread|& -l rt|' LinuxGUI/build.sh
+	sed -i 's|^build_func |#&|;s|#\(build_func .*i386\)|\1|;s|-l pthread|& -l rt|' \
+		LinuxGUI/build.sh Plugson/build.sh
 	cd LinuxGUI && sh build.sh
+	cd ../Plugson && sh build.sh
 	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] ||
 		wget --no-check-certificate -O $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES \
 		"https://github.com/ventoy/Ventoy/releases/download/v$VERSION/ventoy-$VERSION-linux.tar.gz"
@@ -47,9 +49,16 @@ genpkg_rules()
 	rm -rf $fs/usr/share/ventoy/tool/x86_64 
 	ln -s i386 $fs/usr/share/ventoy/tool/x86_64
 	rm -rf $fs/usr/share/ventoy/tool/mips64el
+	sed 's|uname -m|echo i386|' -i $fs/usr/share/ventoy/*.sh
 	sed '/= VentoyWeb.sh =/,/just execute/d' -i $fs/usr/share/ventoy/README
 	cp $src/INSTALL/tool/i386/V2DServer $fs/usr/share/ventoy/tool/i386/
 	chmod +x $fs/usr/share/ventoy/tool/i386/V2DServer
-	cp $stuff/TazVentoy.sh $fs/usr/share/ventoy/
+	cp $src/INSTALL/tool/i386/Plugson $fs/usr/share/ventoy/tool/i386/
+	chmod +x $fs/usr/share/ventoy/tool/i386/Plugson
+	unxz $fs/usr/share/ventoy/tool/i386/vtoycli.xz
+	chmod +x $fs/usr/share/ventoy/tool/i386/vtoycli
+	rm -f $fs/usr/share/ventoy/tool/i386/*xz*
+	cp $stuff/TazVentoy*.sh $fs/usr/share/ventoy/
 	ln -s /tmp/ventoy.log $fs/usr/share/ventoy/log.txt
+	ln -s /tmp/ventoyPlugson.log $fs/usr/share/ventoy/VentoyPlugson.log
 }

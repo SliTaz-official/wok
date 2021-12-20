@@ -139,18 +139,16 @@ clearbss:
 ;***************************************************************
 
 ; Check for oldies
-		ifdef	NO386
 		ifdef	CPUTYPE
-		mov	ax,100h
-		mov	cl,32		; 186+ masks with 31
-		shr	ax,cl
-		endif
+		mov	ax,bx
+		mov	cl,32+7		; 186+ masks with 31
+		shr	ah,cl
 		endif
 		push	bx		; < 286 : flags[12..15] are forced 1
 		popf			; = 286 : flags[12..15] are forced 0, cld, cli
 		pushf			; > 286 : only flags[15] is forced 0
 		pop	dx
-		add	dh,bh		; 160:NS=386+, 0F0:NC=286, 1E0:NP=86/186
+		add	dh,bh		; 160:NS=386+, 0F0:NC=286, 1E0:PO=86/186
 		ifndef	NO386
 		mov	bx,offset msg_badcpu
                 js	godie   	;it is not a 386+, die
@@ -167,11 +165,11 @@ not286:
                 p386
 		ifdef	VCPI
                 mov     edx,cs
-                shl     edx,4		; edx for prepare_vcpi (edx[31-20]=0)
+                shl     edx,4		; edx for prepare_vcpi (edx[31-20]=0) [1]
 		else
  		 ifndef	LARGE_ZIMAGE
                 mov     edx,cs
-                shl     edx,4		; edx for memcpy32 (edx[31-20]=0)
+                shl     edx,4		; edx for memcpy32 (edx[31-20]=0) [1]
 		 endif
 		endif
 		ifndef	LARGE_ZIMAGE
@@ -197,7 +195,7 @@ godie:
 		call	near die
 		else
 jmp_endcpu86:
-		jmp	endcpu86	;386+ rm will fake 186
+		jmp	endcpu86	;386+ rm will fake 186+
 		endif
 
 
@@ -209,10 +207,8 @@ label   check_vcpi near
 		ifdef	VCPI
 ; Check whether it is safe to call 67h
 		xor	eax,eax
-		push	ds
-                mov     ds,ax
-                cmp     [dword 67h*4],eax
-		pop	ds
+                mov     es,ax
+                cmp     [dword es:67h*4],eax
                 je      no_vcpi
                 mov     ah,0DEh		; check for vcpi present
                 int     67h
@@ -251,27 +247,27 @@ endcpu386:
 		pushfd
 		pop	dx
 		pop	dx
-		xor	al,dl		; clear C
+		xor	al,dl		; clear C; 00=P5+=PE+Z 20=486=PO 24=386=PE
 		ifdef	CPUTYPE
 		 ifndef	VCPI
  		  ifdef	LARGE_ZIMAGE
 		cdq			; 386 and 486 are not 64 bits
 		  endif
 		 endif
-		cmp	al,20h
 		mov	ax,0400h
-		je	is486
+		jpo	is486
 		mov	ah,3
 is486:
-		jae	set_cputype
+		jne	set_cputype	; edx[31-20]=0 see [1]; edx.26=lm=0
+		xchg	ax,si		; si=0300h
+basicCPUID:
 		xor	eax,eax
 		inc	ax
 		cpuid			; Basic cpuid (late 486 or Pentium)
-		xor	eax,eax
-		inc	ax
-		cpuid			; again cause of Nasty EMM386s
+		inc	si
+		jpo	basicCPUID	; again cause of Nasty EMM386s	
 		push	eax
-		shr	edx,1+26	; test bit 26 (sse2), clear bit 29 (tm/lm confusion)
+		shr	edx,1+26	; test bit 26 (sse2), clear bit 29 (avoid tm/lm confusion)
 		jnc	baseInfo
 		else
 		jne	@@no_cpuid	; CPUID feature bit changed ?
@@ -280,21 +276,21 @@ is486:
 		cpuid			; Extended cpuid (Pentium 4)
 		ifdef	CPUTYPE
 baseInfo:
-		pop	ax		; base IDs
-		and	ax,0FF0h	; keep FamilyID & ModelID
-		pop	cx		; extended IDs
-		mov	bx,cx
-		shr	bx,4		; extended FamilyID in bl
-		shr	al,4		; set base ModelID
-		cmp	ah,0Fh
+		pop	ax		; base FamilyID[11-8] & base ModelID[7-4]
+		pop	bx		; extended FamilyID[11-4] & extended ModelID[3-0]
+		mov	cx,0F04h
+		and	ah,ch
+		and	bh,ch
+		ror	bx,cl		; extended FamilyID in bl, extended ModelID in bh[7-4]
+		shr	al,cl		; set base ModelID
+		cmp	ah,ch
 		jz	SetModelID
 		cmp	ah,06h
 		jnz	ModelIDset
-		db	3Dh		; cmp ax,0DC00h
+		db	3Dh		; cmp ax,0E302h
 SetModelID:
 		add	ah,bl		; use extended FamilyID
-		shl	cl,4
-		or	al,cl		; use extended ModelID
+		or	al,bh		; use extended ModelID
 ModelIDset:
 set_cputype:
 		endif
