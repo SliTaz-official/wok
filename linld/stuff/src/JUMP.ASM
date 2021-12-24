@@ -235,8 +235,7 @@ _rm_offset	dw	?
 		mov	eax,[dword si+1E6h]
 		xor	eax,'SKLE'
 		else
-		mov	ax,[si+1E6h]
-		xor	ax,'LE'
+		cmp	[word si+1E6h],'LE'
 		jne	@@notelks
 		mov	ax,[si+1E8h]
 		xor	ax,'SK'

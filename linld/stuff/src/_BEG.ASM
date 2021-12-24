@@ -281,16 +281,15 @@ baseInfo:
 		mov	cx,0F04h
 		and	ah,ch
 		and	bh,ch
-		ror	bx,cl		; extended FamilyID in bl, extended ModelID in bh[7-4]
+		rol	bx,cl		; extended FamilyID in bh, extended ModelID in bl[7-4]
 		shr	al,cl		; set base ModelID
 		cmp	ah,ch
 		jz	SetModelID
 		cmp	ah,06h
 		jnz	ModelIDset
-		db	3Dh		; cmp ax,0E302h
+		mov	bh,0		; remove extended FamilyID
 SetModelID:
-		add	ah,bl		; use extended FamilyID
-		or	al,bh		; use extended ModelID
+		add	ax,bx		; use extended FamilyID & extended ModelID
 ModelIDset:
 set_cputype:
 		endif
