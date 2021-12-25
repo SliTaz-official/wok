@@ -952,7 +952,7 @@ curdata		dw	?
 		mov	[(data_himem bx).cacheidx],si
 		xor	ecx,ecx
 		sar	ax,12-2
-		test	al,3
+		test	al,4
 		jz	@@gotpage		; neither -4 nor 4 ?
 		add	[(data_himem bx).pageidx],ax
 		mov	di,[(data_himem bx).pageidx]
