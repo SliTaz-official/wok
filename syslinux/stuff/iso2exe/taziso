@@ -895,7 +895,9 @@ initx()
 
 xfile()
 {
-	[ "$(which $1)" ] && menuitem "$@"
+	for i in $1; do
+		[ "$(which $i)" ] && menuitem "$@" && break
+	done
 }
 
 initxfile()
@@ -1547,8 +1549,8 @@ quit()
 
 infoiso()
 {
-	isoinfo -d -i "$ISO" > /tmp/isoinfo$$
-	if [ -x "$(which iso2exe)" ]; then
+	isoinfo -d -i "$ISO" > /tmp/isoinfo$$ 2> /dev/null
+	if [ "$(which iso2exe)" ]; then
 		echo "----"
 		blkid "$ISO" | while read args; do
 			set -- $args
@@ -1571,6 +1573,16 @@ infoiso()
 	else
 		$DIALOG --clear --title " Info ISO " \
 			--textbox /tmp/isoinfo$$ 0 0
+		files=$(sed '/^custom.*d/!d;s| .*||' /tmp/isoinfo$$)
+		if [ "$files" ]; then
+			$DIALOG --clear --title " Extract custom files " \
+				--defaultno --yesno \
+				"Do you want to extract the custom boot files ?\n$files" 7 70
+			[ $? -eq 0 ] && for i in $files ; do
+				echo "Extract $i ..."
+				iso2exe -l "$ISO" $i
+			done
+		fi
 	fi
 	rm -f /tmp/isoinfo$$
 }
@@ -1648,7 +1660,7 @@ $(gotisomd5		"isomd5"	"Check the ISO image") \
 $(cdfile 'md5sum*'	"md5"		"Check the ISO files") \
 $(cdfile 'sha*sum*'	"sha"		"Check the ISO files") \
 $(menuitem		"filepos"	"File start sector") \
-$(xfile isoinfo		"infoiso"	"ISO image info") \
+$(xfile 'isoinfo iso2exe'	"infoiso"	"ISO image info") \
 $(cdfilex 'bzImage*'	"bootiso"	"Boot the ISO image") \
 $(burnable		"burniso"	"Burn the ISO image") \
 $(blankable		"blankcd"	"Blank the CD/DVD") \

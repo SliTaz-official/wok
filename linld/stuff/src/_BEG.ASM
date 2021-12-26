@@ -181,7 +181,7 @@ not286:
                 smsw    bx      ;SMSW cannot be trapped! :-)
                 shr	bx,1	;MSW_PE
 ; We're in vm
-		jnc	check_vcpi
+		jc	check_vcpi
 
 check_rm_paging:
 ; It's a 386 in real mode, chk for paging (crazy but possible)
@@ -205,18 +205,13 @@ jmp_endcpu86:
 label   check_vcpi near
                 p386
 		ifdef	VCPI
-; Check whether it is safe to call 67h
-		xor	eax,eax
-                mov     es,ax
-                cmp     [dword es:67h*4],eax
-                je      no_vcpi
                 mov     ah,0DEh		; check for vcpi present
                 int     67h
                 or	ah,ah
 		jnz	no_vcpi
 is386vcpi:
                 extrn   prepare_vcpi:near
-		call	prepare_vcpi
+		call	prepare_vcpi	; assume ES = DS
 ;    get_vcpi_interface() || die("VCPI: low 640k: need 1:1 mapping");
                 ;extrn   _get_vcpi_interface:near
 		;call	_get_vcpi_interface

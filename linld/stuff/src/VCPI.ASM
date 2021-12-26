@@ -279,8 +279,7 @@ pmode:
 		test	bx,bx
 		jnz	vm2rm_end
 
-                ;lea     sp,[bp-8-9*4]
-                lea     sp,[bp-9*4]
+                lea     sp,[bp-8-9*4]
 
 ; Call the routine (bp points to params on stack if any)
                 call    do_memcpy_vcpi	; set ds=all_addrspace
@@ -290,9 +289,7 @@ pmode:
                 cli     ; to be safe
                 clts    ;
 ; Go to vm86 mode. Sregs, esp, eflags (IF) restored from IRET stack
-                call	[pword cs:vcpi_pm_entry]
-		ret
-                ;jmp	[pword cs:vcpi_pm_entry]
+                jmp	[pword cs:vcpi_pm_entry]
 
 ;***************************************************************
 

@@ -88,13 +88,17 @@ opendos:
 		stc
                 int	21h
 		pop	si dx
+		ifdef ISO9660
                 jnc	@@openok
+		else
+                jnc	dosret
+		endif
 	else
                 mov	dx,bx			; open(DS:DX=filename,al=access,cl=attributes)
 	endif
                 mov	ax,3d00h		; read-only+compatibility
-		call	dos
 	ifdef ISO9660
+		call	dos
 		jc	@@openret
 @@openok:
 		xchg	ax,bx
@@ -108,12 +112,12 @@ opendos:
 		;xor	cx,cx
 		cwd
 		call	seeksetpos0		; filepos = 0
-	else
-@@openok:
-	endif
 		xchg	ax,bx			; fd
 @@openret:
 		ret
+	else
+		jmp	dos
+	endif
 
 	ifdef ISO9660
 
@@ -161,7 +165,7 @@ openargs:
 
         global  close:near			; close(ax)
 close:
-		mov	bh,3Eh			; close(BX:handle)
+		mov	bh,3Eh			; close(AX:handle)
 	ifdef ISO9660
 		mov	cx,[_isostate.fd]
 		jcxz	dosbx
@@ -215,12 +219,12 @@ readfd:
                 ;jcxz	fail
 dos:
                 int	21h
-                jnc	@@doret
+                jnc	dosret
 fail:
 		stc
 failifc:
                 sbb	ax,ax			; ax=-1 CF
-@@doret:
+dosret:
                 ret
 
         endp    @read$qipvi
@@ -301,7 +305,9 @@ lseek:
 		mov	bh,42h			; bx=fd cx:dx=offset al=whence
 dosbx:
 		xchg	ax,bx
-		jmp	dos			; bx = fd
+		or	bx,bx
+		jne	dos			; bx = fd
+		ret
 
 	endp	@isolseek$qpxul
 
@@ -392,6 +398,33 @@ dosbx:
 	endif
 
 ;***************************************************************
+;_fastcall void puts(bx:const char* s):
+;***************************************************************
+        global  @puts$qpxzc:near
+
+;        global  puts:near			; puts(bx)
+@putsz:
+		call	@putc
+@puts$qpxzc:
+puts:
+		mov	dl,[bx]
+		inc	bx
+		or	dl,dl
+		jne	@putsz
+		mov	dl,10
+@putc:
+		cmp	dl,10
+		jne	@putcz
+		call	@putcz2
+@putcz2:
+		xor	dl,7		; 10^13  1010^1101
+@putcz:
+		mov	ah,2
+do_int21h:
+		int	21h
+		ret
+
+;***************************************************************
 ;_fastcall char* malloc_or_die(ax:unsigned size);
 ;***************************************************************
 xchg_heap_top:
@@ -439,31 +472,33 @@ _abort:
 	endp	@die$qpxzc
 
 ;***************************************************************
-;_fastcall void puts(bx:const char* s):
+;_fastcall void open_image(si:struct image_himem *m, ax:const char *name);
 ;***************************************************************
-        global  @puts$qpxzc:near
 
-;        global  puts:near			; puts(bx)
-@putsz:
-		call	@putc
-@puts$qpxzc:
-puts:
-		mov	dl,[bx]
-		inc	bx
-		or	dl,dl
-		jne	@putsz
-		mov	dl,10
-@putc:
-		cmp	dl,10
-		jne	@putcz
-		call	@putcz2
-@putcz2:
-		xor	dl,7		; 10^13  1010^1101
-@putcz:
-		mov	ah,2
-do_int21h:
-		int	21h
-		ret
+        global  @open_image$qp11image_himempxzc:near
+        proc    @open_image$qp11image_himempxzc near
+
+                mov	[(image_himem si).state],ax
+		push	ax
+@@next:
+		call	next_chunk
+		ifndef	NO386
+		add	eax,3
+		and	al,0FCh
+		add	[(image_himem si).size],eax	; m->size += m->chunk_size	size zero'd in bss
+		or	eax,eax
+		else
+		add	ax,3
+		adc	dx,0
+		and	al,0FCh
+		add	[word (image_himem si).size],ax	; m->size += m->chunk_size	size zero'd in bss
+		adc	[word ((image_himem si).size)+2],dx
+		or	ax,dx
+		endif
+		jnz	@@next
+                pop	[(image_himem si).state]
+
+        endp    @open_image$qp11image_himempxzc
 
 ;***************************************************************
 ;static long next_chunk(struct image_himem *si);
@@ -647,286 +682,6 @@ jmpdie:
 
 ;===============================================================
 
-;***************************************************************
-;_fastcall void open_image(si:struct image_himem *m, ax:const char *name);
-;***************************************************************
-
-        global  @open_image$qp11image_himempxzc:near
-        proc    @open_image$qp11image_himempxzc near
-
-                mov	[(image_himem si).state],ax
-		push	ax
-@@next:
-		call	next_chunk
-		ifndef	NO386
-		add	eax,3
-		and	al,0FCh
-		add	[(image_himem si).size],eax	; m->size += m->chunk_size	size zero'd in bss
-		or	eax,eax
-		else
-		add	ax,3
-		adc	dx,0
-		and	al,0FCh
-		add	[word (image_himem si).size],ax	; m->size += m->chunk_size	size zero'd in bss
-		adc	[word ((image_himem si).size)+2],dx
-		or	ax,dx
-		endif
-		jnz	@@next
-                pop	[(image_himem si).state]
-
-        endp    @open_image$qp11image_himempxzc
-
-;===============================================================
-
-;***************************************************************
-;_fastcall int read_image(si:struct image_himem *m);
-;***************************************************************
-        global  @read_image$qp11image_himem:near
-        proc    @read_image$qp11image_himem near
-
-		push	di
-		xor	di,di
-@@loop:
-		ifndef	NO386
-		xor	ecx,ecx
-		mov	ch,4096/256
-		sub	cx,di
-		mov	eax,[(image_himem si).chunk_size]
-		cmp	ecx,eax
-		jb	@@szok
-		else
-		mov	cx,4096
-		sub	cx,di
-		mov	ax,[word (image_himem si).chunk_size]
-		cmp	cx,ax
-		jb	@@szok
-		cmp	[word ((image_himem si).chunk_size)+2],0	; hi m->chunk_size
-		jne	@@szok
-		endif
-		xchg	ax,cx
-@@szok:
-		jcxz	@@image_done
-		lea	dx,[di+_buf4k]
-		mov	bx,[(image_himem si).fd]
-		call	@read$cxdxbx
-		jb	@@image_done
-		add	di,ax
-		ifndef	NO386
-		cwde				; ax < 8000h
-		cdq
-		sub	[(image_himem si).chunk_size],eax
-		else
-		cwd				; ax < 8000h
-		sub	[word (image_himem si).chunk_size],ax
-		sbb	[word ((image_himem si).chunk_size)+2],dx
-		endif
-@@fill:
-		test	al,3
-		je	@@filled
-		mov	[di+_buf4k],dl
-		inc	di
-		inc	ax
-		jmp	@@fill
-@@filled:
-		ifndef	NO386
-		sub	[(image_himem si).remaining],eax
-		or	edx,[word (image_himem si).chunk_size]
-		else
-		sub	[word (image_himem si).remaining],ax
-		sbb	[word ((image_himem si).remaining)+2],dx
-		mov	ax,[word (image_himem si).chunk_size]
-		or	ax,[word ((image_himem si).chunk_size)+2]
-		endif
-		jnz	@@same_chunk
-		call	next_chunk
-@@same_chunk:
-		jmp	@@loop
-@@image_done:
-		xchg	ax,di
-                pop	di
-		ret
-
-        endp    @read_image$qp11image_himem
-
-;===============================================================
-
-;***************************************************************
-;_fastcall const char **argstr(bx:const char *s, ax:const char keywords[], dx:const char **var);
-;_fastcall unsigned long *argnum(bx:char *s, ax:const char keywords[], dx:unsigned long *var);
-;***************************************************************
-	global	@argstr$qpxzcxt1ppxzc:near
-	proc	@argstr$qpxzcxt1ppxzc near
-
-		mov	cl,2
-		db	0a9h			; test	ax,#
-	global	@argnum$qpzcxpxzcpul:near
-@argnum$qpzcxpxzcpul:
-		mov	cl,4
-		push	bx
-		xchg	ax,bx			; keywords -> bx
-		xchg	ax,cx			; s -> cx
-		cbw				; argstr:0002 argnum:0004
-		xchg	ax,dx			; vars -> ax
-		push	si di
-		xchg	ax,di			; vars => di
-		dec	bx
-		sub	di,dx
-@@loop:
-		add	di,dx
-		mov	si,cx			; s
-@@match:
-		lodsb				; *s++
-		or	al,20h			; locase
-		cmp	al,'/'			; 2f
-		jne	@@notopt
-		mov	al,'-'
-@@notopt:
-		inc	bx			; keywords++
-		cmp	al,[bx]
-		je	@@match
-		cmp	[byte bx],dh
-		je	@@lastal
-		cmp	[byte bx],'|'
-		je	@@testal
-		jl	@@notsw			; } ~ <del>
-		;mov	dl,1
-		cmp	al,20h			; EOS or 20h
-		jne	@@loop			; assume [bx] = '|'
-@@notsw:
-		mov	al,-1
-		jne	@@notopt
-		jmp	@@setnum2
-@@testal:
-		cmp	al,-1
-		jz	@@loop
-@@lastal:
-		cmp	al,'='
-		xchg	ax,cx			; return s if failure
-		jne	@@nokeyword
-		dec	dx
-		dec	dx
-		je	@@done
-@strtol$qpxzc:
-		ifndef	NO386
-		xor	ecx,ecx
-		xor	ebx,ebx
-		else
-		xor	bx,bx
-		xor	cx,cx
-		xor	dx,dx
-		endif
-		lodsb
-		or	al,20h
-		cmp	al,'a'
-		jb	@@notvga
-		sub	al,'o'
-@@vgaloop:
-		dec	cx
-		add	al,6
-		jnb	@@vgaloop		; vga=normal,extended,ask
-@@vga:
-		xchg	ax,cx
-		;cwd
-		jmp	@@end
-@@endstrtol:
-		mov	cl,10
-		cmp	al,'k'-'a'+10
-		je	@@shift
-		mov	cl,20
-		cmp	al,'m'-'a'+10
-		je	@@shift
-		mov	cl,30
-		cmp	al,'g'-'a'+10
-		ifndef	NO386
-		jne	@@noshift
-@@shift:
-		shl	ebx,cl
-@@noshift:
-		popf
-		jnc	@@end2
-		neg	ebx
-@@end2:
-		push	ebx
-		pop	ax
-		pop	dx
-		else
-@@shift:
-		xchg	ax,bx
-		jne	@@noshift
-		extrn	N_LXLSH@:near
-		call	N_LXLSH@
-@@noshift:
-		popf
-		jne	@@end
-		not	dx
-		neg	ax
-		jne	@@end
-		inc	dx
-		endif
-@@end:
-@@setnum:
-		mov	[di+2],dx
-@@setnum2:
-		xchg	ax,si
-@@done:
-		or	[di],si
-		xchg	ax,di
-@@nokeyword:
-		pop	di si bx
-		ret
-
-@@notvga:
-		mov	cl,10			; radix
-		cmp	al,'-'
-		jne	@@radixkeep
-		lodsb
-@@radixkeep:
-		pushf
-		cmp	al,'0'
-		jne	@@radixok
-		mov	cl,8
-		lodsb
-		or	al,20h
-		cmp	al,'x'
-		jne	@@radixok
-		mov	cl,16
-@@strtollp:
-		lodsb
-@@radixok:
-		or	al,20h
-		sub	al,'0'
-		jb	@@endstrtol
-		cmp	al,9
-		jbe	@@digitok
-		cmp	al,'a'-'0'
-		jb	@@endstrtol
-		sub	al,'a'-'0'-10
-@@digitok:
-		cmp	al,cl
-		jae	@@endstrtol
-		cbw
-		ifndef	NO386
-		cwde
-		xchg	eax,ebx
-		mul	ecx
-		add	ebx,eax
-		else
-		push	ax
-		xchg	ax,dx
-		mul	cx
-		xchg	ax,bx
-		mul	cx
-		add	dx,bx
-		pop	bx
-		add	bx,ax
-		adc	dx,0
-		endif
-		jmp	@@strtollp
-
-	endp	@argstr$qpxzcxt1ppxzc
-
-;===============================================================
-
 		ifdef	VCPI
                 p386
 ;***************************************************************
@@ -1105,6 +860,256 @@ storepage:					; storepage(edx,cx)
 
         endp	@strcatb$qpxzct1
 
+;***************************************************************
+;_fastcall int read_image(si:struct image_himem *m);
+;***************************************************************
+        global  @read_image$qp11image_himem:near
+        proc    @read_image$qp11image_himem near
+
+		push	di
+		xor	di,di
+@@loop:
+		ifndef	NO386
+		xor	ecx,ecx
+		mov	ch,4096/256
+		sub	cx,di
+		mov	eax,[(image_himem si).chunk_size]
+		cmp	ecx,eax
+		jb	@@szok
+		else
+		mov	cx,4096
+		sub	cx,di
+		mov	ax,[word (image_himem si).chunk_size]
+		cmp	cx,ax
+		jb	@@szok
+		cmp	[word ((image_himem si).chunk_size)+2],0	; hi m->chunk_size
+		jne	@@szok
+		endif
+		xchg	ax,cx
+@@szok:
+		jcxz	@@image_done
+		lea	dx,[di+_buf4k]
+		mov	bx,[(image_himem si).fd]
+		call	@read$cxdxbx
+		jb	@@image_done
+		add	di,ax
+		ifndef	NO386
+		cwde				; ax < 8000h
+		cdq
+		sub	[(image_himem si).chunk_size],eax
+		else
+		cwd				; ax < 8000h
+		sub	[word (image_himem si).chunk_size],ax
+		sbb	[word ((image_himem si).chunk_size)+2],dx
+		endif
+@@fill:
+		test	al,3
+		je	@@filled
+		mov	[di+_buf4k],dl
+		inc	di
+		inc	ax
+		jmp	@@fill
+@@filled:
+		ifndef	NO386
+		sub	[(image_himem si).remaining],eax
+		or	edx,[word (image_himem si).chunk_size]
+		else
+		sub	[word (image_himem si).remaining],ax
+		sbb	[word ((image_himem si).remaining)+2],dx
+		mov	ax,[word (image_himem si).chunk_size]
+		or	ax,[word ((image_himem si).chunk_size)+2]
+		endif
+		jnz	@@same_chunk
+		call	next_chunk
+@@same_chunk:
+		jmp	@@loop
+@@image_done:
+		xchg	ax,di
+                pop	di
+		ret
+
+        endp    @read_image$qp11image_himem
+
+;===============================================================
+
+;***************************************************************
+;_fastcall const char **argstr(bx:const char *s, ax:const char keywords[], dx:const char **var);
+;_fastcall unsigned long *argnum(bx:char *s, ax:const char keywords[], dx:unsigned long *var);
+;***************************************************************
+	global	@argstr$qpxzcxt1ppxzc:near
+	proc	@argstr$qpxzcxt1ppxzc near
+
+		mov	cl,2
+		db	0a9h			; test	ax,#
+	global	@argnum$qpzcxpxzcpul:near
+@argnum$qpzcxpxzcpul:
+		mov	cl,4
+		push	bx
+		xchg	ax,bx			; keywords -> bx
+		xchg	ax,cx			; s -> cx
+		cbw				; argstr:0002 argnum:0004
+		xchg	ax,dx			; vars -> ax
+		push	si di
+		xchg	ax,di			; vars => di
+		dec	bx
+		sub	di,dx
+@@loop:
+		add	di,dx
+		mov	si,cx			; s
+@@match:
+		lodsb				; *s++
+		or	al,20h			; locase
+		;ifdef	DOS_SWITCH
+		cmp	al,'/'			; 2f
+		jne	@@notopt
+		mov	al,'-'
+@@notopt:
+		;endif
+		inc	bx			; keywords++
+		cmp	al,[bx]
+		je	@@match
+		cmp	[byte bx],dh
+		je	@@lastal
+		cmp	[byte bx],'|'
+		je	@@testal
+		jl	@@notsw			; } ~ <del>
+		;mov	dl,1
+		cmp	al,20h			; EOS or 20h
+		jne	@@loop			; assume [bx] = '|'
+@@notsw:
+		mov	al,-1
+		jne	@@notopt
+		jmp	@@setnum2
+@@testal:
+		cmp	al,-1
+		jz	@@loop
+@@lastal:
+		cmp	al,'='
+		xchg	ax,cx			; return s if failure
+		jne	@@nokeyword
+		dec	dx
+		dec	dx
+		je	@@done
+@strtol$qpxzc:
+		ifndef	NO386
+		xor	ecx,ecx
+		xor	ebx,ebx
+		else
+		xor	bx,bx
+		xor	cx,cx
+		xor	dx,dx
+		endif
+		lodsb
+		or	al,20h
+		cmp	al,'a'
+		jb	@@notvga
+		sub	al,'o'
+@@vgaloop:
+		dec	cx
+		add	al,6
+		jnb	@@vgaloop		; vga=normal,extended,ask
+@@vga:
+		xchg	ax,cx
+		;cwd
+		jmp	@@end
+@@endstrtol:
+		mov	cl,10
+		cmp	al,'k'-'a'+10
+		je	@@shift
+		mov	cl,20
+		cmp	al,'m'-'a'+10
+		je	@@shift
+		mov	cl,30
+		cmp	al,'g'-'a'+10
+		ifndef	NO386
+		jne	@@noshift
+@@shift:
+		shl	ebx,cl
+@@noshift:
+		popf
+		jnc	@@end2
+		neg	ebx
+@@end2:
+		push	ebx
+		pop	ax
+		pop	dx
+		else
+@@shift:
+		xchg	ax,bx
+		jne	@@noshift
+		extrn	N_LXLSH@:near
+		call	N_LXLSH@
+@@noshift:
+		popf
+		jne	@@end
+		not	dx
+		neg	ax
+		jne	@@end
+		inc	dx
+		endif
+@@end:
+@@setnum:
+		mov	[di+2],dx
+@@setnum2:
+		xchg	ax,si
+@@done:
+		or	[di],si
+		xchg	ax,di
+@@nokeyword:
+		pop	di si bx
+		ret
+
+@@notvga:
+		mov	cl,10			; radix
+		cmp	al,'-'
+		jne	@@radixkeep
+		lodsb
+@@radixkeep:
+		pushf
+		cmp	al,'0'
+		jne	@@radixok
+		mov	cl,8
+		lodsb
+		or	al,20h
+		cmp	al,'x'
+		jne	@@radixok
+		mov	cl,16
+@@strtollp:
+		lodsb
+@@radixok:
+		or	al,20h
+		sub	al,'0'
+		jb	@@endstrtol
+		cmp	al,9
+		jbe	@@digitok
+		cmp	al,'a'-'0'
+		jb	@@endstrtol
+		sub	al,'a'-'0'-10
+@@digitok:
+		cmp	al,cl
+		jae	@@endstrtol
+		cbw
+		ifndef	NO386
+		cwde
+		xchg	eax,ebx
+		mul	ecx
+		add	ebx,eax
+		else
+		push	ax
+		xchg	ax,dx
+		mul	cx
+		xchg	ax,bx
+		mul	cx
+		add	dx,bx
+		pop	bx
+		add	bx,ax
+		adc	dx,0
+		endif
+		jmp	@@strtollp
+
+	endp	@argstr$qpxzcxt1ppxzc
+
+;===============================================================
 
         ends    _TEXT
 
