@@ -963,8 +963,8 @@ storepage:					; storepage(edx,cx)
 		cmp	al,'/'			; 2f
 		jne	@@notopt
 		mov	al,'-'
-@@notopt:
 		;endif
+@@notopt:
 		inc	bx			; keywords++
 		cmp	al,[bx]
 		je	@@match
@@ -1053,7 +1053,7 @@ storepage:					; storepage(edx,cx)
 @@setnum2:
 		xchg	ax,si
 @@done:
-		or	[di],si
+		mov	[di],si
 		xchg	ax,di
 @@nokeyword:
 		pop	di si bx

@@ -1,0 +1,19 @@
+A void error "cp: cannot create hard link 'file1' to 'file2': file exists"
+
+--- a/cook
++++ b/cook
+@@ -423,11 +423,9 @@
+ # A bit smarter function than the classic `cp` command
+ 
+ copy() {
+-	if [ "$(stat -c %h -- "$1")" -gt 1 ]; then
+-		cp -al "$1" "$2"	# copy hardlinks
+-	else
+-		cp -a  "$1" "$2"	# copy generic files
+-	fi
++	[ "$(stat -c %h -- "$1")" -gt 1 ] &&
++	cp -al "$1" "$2" 2>/dev/null ||	# copy hardlinks
++	cp -a  "$1" "$2"		# copy generic files
+ }
+ 
+ 
