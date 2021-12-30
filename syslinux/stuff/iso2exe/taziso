@@ -22,22 +22,22 @@ get()
 bytes2bin()
 {
 	for i in $@ ; do
-		printf '\\\\x%02X' $(($i&255))
+		printf '\\\\x%02X' $((i&255))
 	done | xargs echo -en
 }
 
 words2bin()
 {
 	for i in $@ ; do
-		printf '\\\\x%02X\\\\x%02X' $(($i&255)) $((($i>>8)&255))
+		printf '\\\\x%02X\\\\x%02X' $((i&255)) $(((i>>8)&255))
 	done | xargs echo -en
 }
 
 quads2bin()
 {
 	for i in $@ ; do
-		printf '\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X' $(($i&255)) \
-			$((($i>>8)&255)) $((($i>>16)&255)) $((($i>>24)&255))
+		printf '\\\\x%02X\\\\x%02X\\\\x%02X\\\\x%02X' $((i&255)) \
+			$(((i>>8)&255)) $(((i>>16)&255)) $(((i>>24)&255))
 	done | xargs echo -en
 }
 
@@ -46,9 +46,9 @@ gettazboot()
 	echo -e "\nCreating $(basename $1) ..."
 	gotcdfile linld.com
 	S=$(($(stat -c %s $file)+12))
-	P=$((($S+511)/512))
-	E=$((4096-(32*$P)))
-	words2bin 0x5A4D $(($S%512)) $P 0 2 $E -1 -16 \
+	P=$(((S+511)/512))
+	E=$((4096-(32*P)))
+	words2bin 0x5A4D $((S%512)) $P 0 2 $E -1 -16 \
 			-2 0 256 -16 28 0x6C53 0x5469 0x7A61 > $1
 	dd if=$file bs=1 count=$(($(stat -c %s $file)-1)) >> $1 2> /dev/null
 	echo -en '@tazboot.cmd\0' >> $1
@@ -108,7 +108,7 @@ getuuid()
 tazusbinitfs()
 {
 	PAD=$(($(size $1) % 4))
-	[ $PAD -ne 0 ] && ddq if=/dev/zero bs=1 count=$((4 - $PAD)) >> $1
+	[ $PAD -ne 0 ] && ddq if=/dev/zero bs=1 count=$((4 - PAD)) >> $1
 	mkdir -p /tmp/fs$$/etc /tmp/fs$$/lib /tmp/fs$$/home
 	cp -a /etc/locale.conf /etc/locale.conf /tmp/fs$$/etc 2> /dev/null
 	cat > /tmp/fs$$/init1 <<EOT
@@ -771,18 +771,18 @@ mkfat12()
 	R=$((1 + $(get 497 $1 1) + 1 + ($(get 500 $1)-1)/32))
 	[ $R -lt 2500 ] || return
 	[ $((($(get 500 $1)-1) & 31)) -lt 30 ] &&
-	ddq if=$file bs=32 count=1 seek=$(($R*16 - 1)) of=/dev/fd0
+	ddq if=$file bs=32 count=1 seek=$((R*16 - 1)) of=/dev/fd0
 	G="18 0 2 0 0 0 0 0"
 	[ $J -gt 25 ] || G=""
 	F=0
 	for i in 1 2 3; do
-		F=$((((2880-$R-$F-$F)*3+1023)/1024))
+		F=$((((2880-R-F-F)*3+1023)/1024))
 	done
 	bytes2bin 0xEB $J 0x90 0x20 0x20 0x20 0x20 0x20 0x20 0x20 0x20 \
-		0 2 2 $(($R%256)) $(($R/256)) 2 64 0 64 11 0xF0 $F 0 \
+		0 2 2 $((R%256)) $((R/256)) 2 64 0 64 11 0xF0 $F 0 \
 		$G | ddq bs=1 of=/dev/fd0
-	ddq if=/dev/zero bs=512 count=$((4+$F+$F)) seek=$R of=/dev/fd0
-	for i in $R $(($R+$F)) ; do
+	ddq if=/dev/zero bs=512 count=$((4+F+F)) seek=$R of=/dev/fd0
+	for i in $R $((R+F)) ; do
 		bytes2bin 0xF0 0xFF 0xFF | ddq bs=512 seek=$i of=/dev/fd0
 	done
 	echo -n $(basename $1) | ddq bs=1 seek=3 count=8 of=/dev/fd0
@@ -963,9 +963,9 @@ ishybrid()
 	[ $(get 510 "$ISO") -eq 43605 ] || return
 	C=$((2048*$(get $(((17*2048) + 71)) "$ISO" 4)))
 	[ $(get $C "$ISO" 4) -eq 1 ] || return
-	[ $(get $(($C+30)) "$ISO" 4) -eq $((0x88AA55)) ] || return
-	C=$((2048*$(get $(($C+40)) "$ISO" 4)))
-	[ $(get $(($C+64)) "$ISO" 4) -eq 1886961915 ] && menuitem "$@"
+	[ $(get $((C+30)) "$ISO" 4) -eq $((0x88AA55)) ] || return
+	C=$((2048*$(get $((C+40)) "$ISO" 4)))
+	[ $(get $((C+64)) "$ISO" 4) -eq 1886961915 ] && menuitem "$@"
 }
 
 isiso()
@@ -999,7 +999,7 @@ blankcd()
 customsector()
 {
 	local c=$(echo $(get 32848 "$ISO" 4))
-	hascustomconf $(($c+16)) && echo $(($c+16)) || echo $c
+	hascustomconf $((c+16)) && echo $((c+16)) || echo $c
 }
 
 xhascustomconf=hascustomconf
@@ -1039,8 +1039,8 @@ getcustomconf()
 		\#!boot*) ;;
 		append=*) echo ${line#append=} > cmdline && ls -l $PWD/cmdline ;;
 		initrd:*) cnt=${line#initrd:}
-			  { ddq bs=512 count=$(($cnt / 512));
-			    ddq bs=1 count=$(($cnt % 512)); } > initrd &&
+			  { ddq bs=512 count=$((cnt / 512));
+			    ddq bs=1 count=$((cnt % 512)); } > initrd &&
 			  ls -l $PWD/initrd
 			  break ;;
 		*)	  break ;;
@@ -1086,7 +1086,7 @@ isomd5()
 	n=$(($(get 2 "$ISO")-1+($(get 4 "$ISO")-1)*512))
 	if [ $n -lt 40000 -a $n -gt 32768 ]; then
 		s=$(get 0 "$ISO" 2 $n | awk '{ i+= $0 } END { print i }')
-		[ $(((1+$s+$(get $(($n+1)) "$ISO" 1)) % 65536)) -eq 0 ] &&
+		[ $(((1+s+$(get $((n+1)) "$ISO" 1)) % 65536)) -eq 0 ] &&
 		echo "OK" || echo "ERROR"
 	fi
 	if hascustomconf; then
@@ -1215,11 +1215,11 @@ gpt_crc32()
 	dd if=$device bs=1 skip=$(($1)) count=$(($2)) 2> /dev/null | \
 	od -v -w1 -t u1 -An | {
 		while read n; do
-			local x=$((($crc ^ $n) & 255))
+			local x=$(((crc ^ n) & 255))
 			eval x=0x\$t$x
-			crc=$(((($crc >> 8) & 0x00FFFFFF) ^ $x))
+			crc=$((((crc >> 8) & 0x00FFFFFF) ^ x))
 		done
-		echo $(($crc ^ 0xFFFFFFFF))
+		echo $((crc ^ 0xFFFFFFFF))
 	}
 }
 
@@ -1245,8 +1245,8 @@ $(tazusbmsg)Please plug your USB stick in now.\n" 16 70
 	max=$(($(sectcnt "$ISO")/2048))
 	i=0; while [ $i -le $max ]; do
 		ddq if="$ISO" bs=1024k count=1 skip=$i seek=$i of=$device
-		echo $((($i*100)/$max))
-		i=$(($i+1))
+		echo $(((i*100)/max))
+		i=$((i+1))
 	done | { [ "$1" ] || dialog --gauge \
 		" The ISO image transfer can be long. Please wait..." \
 		6 70 0 > /dev/tty 2>&1; }
@@ -1255,7 +1255,7 @@ $(tazusbmsg)Please plug your USB stick in now.\n" 16 70
 	sectors=$(($(sectcnt $device)-1))
 	quads2bin $sectors | ddq bs=1 seek=458 of=$device	# pmbr
 	quads2bin 0 | ddq bs=1 seek=$((512+16)) of=$device
-	quads2bin $(($sectors-2)) 0 | ddq bs=1 seek=$((512+48)) of=$device
+	quads2bin $((sectors-2)) 0 | ddq bs=1 seek=$((512+48)) of=$device
 	uudecode - <<EOT | gunzip | ddn bs=128 seek=9 of=$device	# partiton fat32
 begin-base64 644 -
 H4sIAAAAAAACA1u04MLrpzuNXdoPZGzbrjbz+C/fHwyfEro9Z7E93Fi5/8sH
@@ -1264,19 +1264,19 @@ BhzAiSGRoZghkyGZQYEhBcguAWIFhgIgWQRkZ4JxPkMeAyEAAOuEo7uAAAAA
 EOT
 	last=$(sectcnt "$ISO")
 	custom=$((4*$(get 32848 $device 4)))
-	[ $custom -gt $(($last-4)) ] && last=$(($custom+4))		# room for cmdline
+	[ $custom -gt $((last-4)) ] && last=$((custom+4))		# room for cmdline
 	quads2bin $last 0 | ddq bs=1 seek=$((1024+128+32)) of=$device	# vfat first address
-	quads2bin $(($sectors-2)) 0 | ddq bs=1 seek=$((1024+128+40)) of=$device	# vfat last address
+	quads2bin $((sectors-2)) 0 | ddq bs=1 seek=$((1024+128+40)) of=$device	# vfat last address
 	quads2bin $(gpt_crc32 1024 $(($(get 596 $device 4)*$(get 592 $device 4)))) | \
 		ddq bs=1 seek=$((512+88)) of=$device			# CRC32 partitions
 	ddn of=$device if=$device bs=512 skip=1 seek=$sectors count=1
-	ddn of=$device if=$device bs=512 skip=2 seek=$(($sectors-1)) count=1
-	quads2bin $sectors 0 1 0 | ddq bs=1 seek=$(($sectors*512+24)) of=$device	# my gpt, alt gpt
+	ddn of=$device if=$device bs=512 skip=2 seek=$((sectors-1)) count=1
+	quads2bin $sectors 0 1 0 | ddq bs=1 seek=$((sectors*512+24)) of=$device	# my gpt, alt gpt
 	quads2bin 1 0 $sectors 0 | ddq bs=1 seek=$((512+24)) of=$device	# my gpt, alt gpt
-	quads2bin $(($sectors-1)) 0 | ddq bs=1 seek=$(($sectors*512+72)) of=$device
+	quads2bin $((sectors-1)) 0 | ddq bs=1 seek=$((sectors*512+72)) of=$device
 	i=$(get 524 $device 4)
-	quads2bin $(gpt_crc32 $(($sectors*512)) $i) | \
-		ddq bs=1 seek=$(($sectors*512+16)) of=$device	# CRC32 header
+	quads2bin $(gpt_crc32 $((sectors*512)) $i) | \
+		ddq bs=1 seek=$((sectors*512+16)) of=$device	# CRC32 header
 	quads2bin $(gpt_crc32 512 $i) | ddq bs=1 seek=$((512+16)) of=$device	# CRC32 header
 	partprobe $device
 	homedev=/dev/$(basename /sys/block/${device#/dev/}/${device#/dev/}*2)
@@ -1287,8 +1287,8 @@ EOT
 	i=$(($(get 2 $device) - 1 + ($(get 4 $device) - 1)*512))
 	i=$(($(od -v -N $i -t u2 -w2 -An $device | \
 		awk '{ i+= $0 } END { print (i % 65536) }') \
-		+ $(get $(($i+1)) $device 1)))
-	words2bin $(( (-$i -1) % 65536 )) | ddq bs=1 seek=18 of=$device
+		+ $(get $((i+1)) $device 1)))
+	words2bin $(( (-i -1) % 65536 )) | ddq bs=1 seek=18 of=$device
 
 	[ "$1" ] || $DIALOG --clear --title " Set /home persistent " \
 			--yes-label "Continue" --yesno \
@@ -1343,7 +1343,7 @@ flavdata()
 {
 	[ $(get 1024 "$ISO") -eq 35615 ] && n=2 || n=$((1+$(get 417 "$ISO" 1)))
 	[ $n -eq 4 ] && n=20
-	[ $(get $(($n*512)) "$ISO") -eq 35615 ] || n=13
+	[ $(get $((n*512)) "$ISO") -eq 35615 ] || n=13
 	ddq if="$ISO" bs=512 skip=$n count=20 | zcat 2>/dev/null
 }
 
@@ -1466,7 +1466,7 @@ floppyset()
 	uudecode <<EOT | ddn of=/tmp/fd$$
 bootloader
 EOT
-	pos=$(($n*512))
+	pos=$((n*512))
 	if [ -n "$CMDLINE" ]; then
 		echo -n "$CMDLINE" | ddq bs=512 count=1 conv=sync >> /tmp/fd$$
 		bytes2bin $n | ddn bs=1 seek=497 of=/tmp/fd$$
@@ -1476,7 +1476,7 @@ EOT
 	fi
 	syssize=$(echo $(get 500 /tmp/fd$$ 4))
 	ddq bs=512 skip=$n if=$KERNEL | cat - /dev/zero | \
-	ddq bs=512 count=$((($syssize+31)/32)) conv=sync >> /tmp/fd$$
+	ddq bs=512 count=$(((syssize+31)/32)) conv=sync >> /tmp/fd$$
 	base=$(size /tmp/fd$$)
 	len=
 	if [ "$INITRD" ]; then
@@ -1488,54 +1488,54 @@ EOT
 				[ -n "$j" ] && i=$j && break
 			done
 			ddq if=$i >> /tmp/fd$$
-			l=$(($l+$(size $i)))
-			r=$((4 - ($l % 4)))
+			l=$((l+$(size $i)))
+			r=$((4 - (l % 4)))
 			if [ $r -ne 4 ]; then
 				ddq if=/dev/zero bs=1 count=$r >> /tmp/fd$$
-				l=$(($l + $r))
+				l=$((l + r))
 			fi
 			case "$i:$INITRD" in
 				*rootfs.gz:*rootfs.gz,*) continue	# loram
 			esac
 			len="$len $l"; l=0
 		done
-		rdadrs=${RDADRS:-$(((($syssize*16)+0x1F0000) & -4096))}
+		rdadrs=${RDADRS:-$((((syssize*16)+0x1F0000) & -4096))}
 		quads2bin $rdadrs | ddn bs=1 seek=536 of=/tmp/fd$$
 	fi
 	n=$(echo $len | wc -w)
-	if [ $((494 - $(get 494 /tmp/fd$$))) -ge $(($n * 4)) ]; then
+	if [ $((494 - $(get 494 /tmp/fd$$))) -ge $((n * 4)) ]; then
 		i=$(($(get 494 /tmp/fd$$)))
-		bytes2bin $(($i + ($n*4) - 256)) | ddn bs=1 \
+		bytes2bin $((i + (n*4) - 256)) | ddn bs=1 \
 			seek=496 of=/tmp/fd$$
 	else
-		i=$(($pos + 0x1FC - ($n*4)))
-		bytes2bin $(($i % 256)) $((i / 256)) 252 | ddn bs=1 \
+		i=$((pos + 0x1FC - (n*4)))
+		bytes2bin $((i % 256)) $((i / 256)) 252 | ddn bs=1 \
 			seek=494 of=/tmp/fd$$
-		s=$(($i - 2*$(echo "$SIZES" | wc -w)))
-		p=$(($s - $(ifmemcode | wc -c)))
+		s=$((i - 2*$(echo "$SIZES" | wc -w)))
+		p=$((s - $(ifmemcode | wc -c)))
 		ifmemcode | ddn bs=1 seek=$p of=/tmp/fd$$
 		words2bin $SIZES | ddn bs=1 seek=$s of=/tmp/fd$$
-		bytes2bin 154 $(($p%256)) $(($p/256)) 0 144 | \
+		bytes2bin 154 $((p%256)) $((p/256)) 0 144 | \
 		ddn bs=1 seek=60 of=/tmp/fd$$
 	fi
 	for r in $len ; do
 		quads2bin $r | ddn bs=1 seek=$i of=/tmp/fd$$
-		i=$(($i + 4))
+		i=$((i + 4))
 	done
 	split -b 1440k /tmp/fd$$ fd$$
 	rm -f /tmp/fd$$
 	n=1; i=0; r=0
 	set -- $len
 	ls fd$$* | while read file ; do
-		if [ $i -ge $(($1+$base)) ]; then
-			base=$(($1+$base-$i))
+		if [ $i -ge $(($1+base)) ]; then
+			base=$(($1+base-i))
 			shift
-			r=$(($r+100)); n=0; i=0
+			r=$((r+100)); n=0; i=0
 		fi
 		ddq of=$file bs=18k seek=80 count=0
-		i=$(($i+1474560))
-		printf "mv %s fd%03d.img\n" $file $(($r+$n))
-		n=$(($n+1))
+		i=$((i+1474560))
+		printf "mv %s fd%03d.img\n" $file $((r+n))
+		n=$((n+1))
 	done | sh
 	du -ch $PWD/fd???.img
 }

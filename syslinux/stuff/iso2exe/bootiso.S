@@ -600,4 +600,25 @@ stopmsg:
 	.ascii	"This program cannot be run in DOS mode.$"
 	.org	0x0778,0xEE
 
+	.macro	apple_partition	count=2, start=1, size=2, name, namesz, type, typesz, start_data, size_data, status
+	.byte	0x50, 0x4D, 0, 0	/* PM */
+#define BE(x) (((x)>>24)|((((x)>>16)&255)<<8)|((((x)>>8)&255)<<16)|(((x)&255)<<24))
+	.long	BE(\count)
+	.long	BE(\start)
+	.long	BE(\size)
+	.ascii	"\name"
+	.ds.b	32-\namesz, 0
+	.ascii	"\type"
+	.ds.b	32-\typesz, 0
+	.long	BE(\start_data)
+	.long	BE(\size_data)
+	.long	BE(\status)
+	.ds.b	44,0			/* boot code & processor info */
+	.endm
+
+	.org	0x800,0
+	apple_partition 2, 1, 2, "Apple", 5, "Apple_partition_map", 19, 0, 2, 3 /* valid, allocated */
+	.org	0x1000,0
+	apple_partition 2, 1, 2, "EFI", 3, "Apple_HFS", 9, 0, 0, 0x40000013 /* valid, allocated, readable, automatically mount at startup */
+
 	.end
