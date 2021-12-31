@@ -97,7 +97,7 @@ add_win32exe()
 	ddn if=/tmp/exe$$ of=$1 bs=1 skip=$cut seek=$((n+cut))
 	printf "Adding bootiso head at %04X...\n" 0
 	store 510 $((0xAA55)) $1
-	while read adrs sz; do
+	while read adrs sz rem; do
 		ddn if=/tmp/bin$$ of=$1 bs=1 count=$((0x$sz)) seek=$((0x$adrs)) skip=$((0x$adrs))
 	done <<EOT
 0000 0080	### DOS stub + MBR
