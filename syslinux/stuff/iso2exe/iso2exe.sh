@@ -184,9 +184,11 @@ fileofs()
 	c=$(custom_config_sector "$ISO")
 	SIZE=0; OFFSET=0
 	case "$1" in
+	APT)		[ $(get 2048 "$ISO") -eq 19792 ] && OFFSET=2048 && SIZE=2560;;
+	GPT)		[ $(get 512 "$ISO") -eq 17989 ] && OFFSET=512 &&
+			SIZE=$((512+$(get 592 "$ISO")*$(get 596 "$ISO")));;
 	win32.exe)	[ $x -eq 2048 ] &&
-			x=$((40*$(get 0x86 "$ISO")+\
-			     0x98-24+$(get 0x94 "$ISO"))) &&
+			x=$((40*$(get 0x86 "$ISO")+0x98-24+$(get 0x94 "$ISO"))) &&
 			x=$(($(get $x "$ISO")+$(get $((x+4)) "$ISO")))
 			[ $x -eq 1024 ] || SIZE=$x;;
 	syslinux.mbr)	[ $x -eq 1024 ] || OFFSET=$((x - 512)); SIZE=336;;
@@ -272,7 +274,7 @@ trailer()
 list()
 {
 	HEAP=0
-	for f in win32.exe syslinux.mbr flavor.info floppy.boot isoboot.com \
+	for f in win32.exe GPT syslinux.mbr APT flavor.info floppy.boot isoboot.com \
 		 rootfs.gz dosstub boot.md5 fs.iso custom.magic custom.append \
 		 custom.initrd; do
 		fileofs $f
@@ -322,11 +324,7 @@ custom_config_sector()
 
 clear_custom_config()
 {
-	start=$(custom_config_sector $1)
-	cnt=$((512 - (start % 512)))
-	[ $(($(stat -c %s $1)/2048 - $start)) -ge $cnt ] &&	### Do not enlarge iso !
-	[ $cnt -ne 512 ] &&
-	ddq if=/dev/zero of=$1 bs=2k seek=$start count=$cnt
+	ddq of=$1 bs=2k seek=$start count=$(custom_config_sector $1)
 }
 case "$1" in
 --build)
