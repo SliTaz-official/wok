@@ -46,10 +46,17 @@ add_rootfs()
 	if [ "$2" = "--array" ] || grep -qs rootfs $TMP/mnt/boot/isolinux/isolinux.cfg ; then
 		$0 --get rootfs.gz > $TMP/rootfs.gz
 		SIZE=$(wc -c < $TMP/rootfs.gz)
-		store 24 $SIZE $1
-		OFS=$(( 0x7FF0 - SIZE ))
-		printf "Adding rootfs.gz file at %04X (%d bytes) ...\n" $OFS $SIZE
-		ddn if=$TMP/rootfs.gz of=$1 bs=1 seek=$OFS
+		if [ $(get 2048 $1) -eq 19792 -a $SIZE -lt 1912 ]; then	### Apple partitions
+			store 24 $((0 - SIZE)) $1
+			OFS2=$(( 0x1000 - SIZE ))
+			OFS=$(( 0x7FF0 ))
+		else
+			store 24 $SIZE $1
+			unset OFS2
+			OFS=$(( 0x7FF0 - SIZE ))
+		fi
+		printf "Adding rootfs.gz file at %04X (%d bytes) ...\n" ${OFS2:-$OFS} $SIZE
+		ddn if=$TMP/rootfs.gz of=$1 bs=1 seek=${OFS2:-$OFS}
 	fi
 	umount $TMP/mnt
 	rm -rf $TMP
@@ -75,26 +82,32 @@ add_win32exe()
 {
 	$0 --get bootiso.bin 2> /dev/null > /tmp/bin$$
 	SIZE=$($0 --get win32.exe 2> /dev/null | tee /tmp/exe$$ | wc -c)
-	n=1536
-	cut=$((0x98+$(get 0x94 /tmp/exe$$)))	### end of header
+	n=1536; n0=0; n2=0
+	cut=$((0x98+$(get 0x94 /tmp/exe$$)))			### end of header
 	if [ $(get 2048 /tmp/bin$$) -eq 19792 ]; then		### Fix EFI Apple partition
 		o=$(($(get 584 "$1")*512))
 		f=$(($(get $((o+0x20)) "$1" 4)/4))
 		l=$((($(get $((o+0x28)) "$1" 4)+1)/4-f))
 		store $((0x1008)) $(printf "%08x" $f | sed 's|\(..\)\(..\)\(..\)\(..\)|0x\4\3\2\1|') /tmp/bin$$ 32
 		store $((0x1054)) $(printf "%08x" $l | sed 's|\(..\)\(..\)\(..\)\(..\)|0x\4\3\2\1|') /tmp/bin$$ 32
-		n=4608
+		printf "Adding Apple partition at %04X (2560 bytes) ...\n" 2048
+		if [ $(get 0x86 /tmp/exe$$) -eq 3 ]; then	### UPX files have 3 sections
+			n0=136; n2=2696				### cut header / sections decripttion
+		else
+			n=4608
+		fi
 	fi
-	SIZE=$((SIZE+n))
+	SIZE=$((SIZE+n+n2-n0))
 	printf "Adding WIN32 file at %04X (%d bytes) ...\n" 0 $SIZE
 	[ -n "$gpt" ] && printf "Adding GPT at %04X (1024 bytes) ...\n" 512
 	for i in $(seq 396 40 $((356+$(get 0x86 /tmp/exe$$)*40))); do	### 18C 1B4 1DC
-		x=$((n + $(get $i /tmp/exe$$)))
+		x=$((n + n2 - n0 + $(get $i /tmp/exe$$)))
 		store $i $x /tmp/exe$$		### section offset
 	done
 	store $((0x94)) $((n + cut - 0x98)) /tmp/exe$$
 	ddn if=/tmp/exe$$ of=$1 bs=1 count=$cut
-	ddn if=/tmp/exe$$ of=$1 bs=1 skip=$cut seek=$((n+cut))
+	[ $n2 -ne 0 ] && ddn if=/tmp/exe$$ of=$1 bs=1 skip=$cut seek=$((n+cut)) count=$n0
+	ddn if=/tmp/exe$$ of=$1 bs=1 skip=$((n0+cut)) seek=$((n+n2+cut))
 	printf "Adding bootiso head at %04X...\n" 0
 	store 510 $((0xAA55)) $1
 	while read adrs sz rem; do
@@ -171,7 +184,10 @@ fileofs()
 	c=$(custom_config_sector "$ISO")
 	SIZE=0; OFFSET=0
 	case "$1" in
-	win32.exe)	[ $x -eq 2048 ] && x=10752
+	win32.exe)	[ $x -eq 2048 ] &&
+			x=$((40*$(get 0x86 "$ISO")+\
+			     0x98-24+$(get 0x94 "$ISO"))) &&
+			x=$(($(get $x "$ISO")+$(get $((x+4)) "$ISO")))
 			[ $x -eq 1024 ] || SIZE=$x;;
 	syslinux.mbr)	[ $x -eq 1024 ] || OFFSET=$((x - 512)); SIZE=336;;
 	flavor.info)	[ $(get 22528 "$ISO") -eq 35615 ] && OFFSET=22528
@@ -182,7 +198,8 @@ fileofs()
 			SIZE=$(ddq bs=512 skip=$((OFFSET/512)) if="$ISO" | gzsize);;
 	floppy.boot)	SIZE=$(($(get 26 "$ISO" 1)*512))
 			OFFSET=$(($(get 64 "$ISO") - 0xC0 - SIZE));;
-	rootfs.gz)	SIZE=$(get 24 "$ISO"); OFFSET=$((stub - SIZE));;
+	rootfs.gz)	SIZE=$(get 24 "$ISO"); OFFSET=$((stub - SIZE))
+			[ $SIZE -gt 60000 ] && SIZE=$((0x10000 - SIZE)) && OFFSET=$((0x1000 - SIZE));;
 	isoboot.com)	OFFSET=$(($(get 64 "$ISO") - 0xC0))
 			SIZE=$((stub - $(get 24 "$ISO") - OFFSET));;
 	dosstub)	[ "$dosstub" ] && OFFSET=$stub && SIZE=$((0x7FF0 - OFFSET));;
@@ -307,6 +324,7 @@ clear_custom_config()
 {
 	start=$(custom_config_sector $1)
 	cnt=$((512 - (start % 512)))
+	[ $(($(stat -c %s $1)/2048 - $start)) -ge $cnt ] &&	### Do not enlarge iso !
 	[ $cnt -ne 512 ] &&
 	ddq if=/dev/zero of=$1 bs=2k seek=$start count=$cnt
 }
