@@ -1,22 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="pidgin"
-VERSION="2.10.9"
+VERSION="2.14.8"
 CATEGORY="network"
 SHORT_DESC="Instant messaging client using GTK+."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://www.pidgin.im/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-PROVIDE="purple"
 
-DEPENDS="gtk+ gnutls libgcrypt libgpg-error startup-notification gmp \
-xorg-libXdamage libxml2 libxcb xcb-util libidn ncursesw libtasn1 nss"
-BUILD_DEPENDS="gtk+-dev libgcrypt-dev gnutls-dev \
-startup-notification-dev libgpg-error-dev libxml2-dev libxcb-dev \
-libidn-dev libtasn1-dev intltool expat-dev nss-dev \
-ncursesw-dev xcb-util-dev gmp-dev"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+PROVIDE="purple"
+DEPENDS="cyrus-sasl gmp gnutls gtk+ libgcrypt libgpg-error libidn libtasn1 libxcb
+	libxml2 ncursesw nss startup-notification xcb-util xorg-libXdamage"
+BUILD_DEPENDS="cyrus-sasl-dev expat-dev GConf gmp-dev gnutls-dev gtk+-dev
+	intltool libgcrypt-dev libgpg-error-dev libidn-dev libtasn1-dev
+	libxcb-dev libxml2-dev ncursesw-dev nss-dev startup-notification-dev
+	xcb-util-dev"
+
+# @maintainer:	Please update also libpurple-dev
 
 current_version()
 {
@@ -28,51 +31,53 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	touch pidgin.desktop
-	MSGFMT=/usr/bin/msgfmt
-	
+
+	# 2.14.8	to avoid
+	# diff: can't stat 'package_revision_raw.txt': No such file or directory
+	touch package_revision_raw.txt
+
 	# Pidgin doesn't explicitly link to libm
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries"
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--disable-perl \
-		--disable-screensaver \
-		--disable-gtkspell \
-		--disable-gstreamer \
-		--disable-gstreamer-interfaces \
-		--disable-meanwhile \
-		--disable-avahi \
-		--disable-nm \
-		--disable-tcl \
-		--disable-tk \
-		--disable-dbus \
-		--disable-farsight \
-		--disable-vv \
-		--disable-idn \
-		--disable-sm \
+
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--disable-gevolution		\
+		--disable-perl			\
+		--disable-screensaver		\
+		--disable-gtkspell		\
+		--disable-gstreamer		\
+		--disable-gstreamer-interfaces	\
+		--disable-meanwhile		\
+		--disable-avahi			\
+		--disable-nm			\
+		--disable-tcl			\
+		--disable-tk			\
+		--disable-dbus			\
+		--disable-vv			\
+		--disable-idn			\
+		--disable-sm			\
 		$CONFIGURE_ARGS &&
-	make -j 4 &&
+	make &&
 	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share/pixmaps
-    cp -a $install/usr/bin $fs/usr
-    cp -a $install/usr/lib/*.so* $fs/usr/lib
-    cp -a $install/usr/lib/pidgin $fs/usr/lib
-    cp -a $install/usr/lib/purple-2 $fs/usr/lib
-    rm $fs/usr/lib/pidgin/*.la
-    rm $fs/usr/lib/purple-2/*.la
-    cp -a $install/usr/share/purple $fs/usr/share
-    cp -a $install/usr/share/pixmaps/pidgin $fs/usr/share/pixmaps
-    cp -a $install/usr/share/icons/hicolor/24x24/apps/* $fs/usr/share/pixmaps
-	# Cook wanted
-	echo "Cook: pidgin-dev"
-	echo "Cook: libpurple-dev"
-}
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share/pixmaps
 
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/pidgin		$fs/usr/lib
+	cp -a $install/usr/lib/purple-2		$fs/usr/lib
+	rm					$fs/usr/lib/pidgin/*.la
+	rm					$fs/usr/lib/purple-2/*.la
+	cp -a $install/usr/share/purple		$fs/usr/share
+	cp -a $install/usr/share/pixmaps/pidgin	$fs/usr/share/pixmaps
+	cp -a $install/usr/share/icons/hicolor/24x24/apps/* \
+						$fs/usr/share/pixmaps
+}
