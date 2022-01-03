@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="podofo"
-VERSION="0.9.6"
+VERSION="0.9.7"
 CATEGORY="office"
 SHORT_DESC="PDF library."
 MAINTAINER="pankso@slitaz.org"
@@ -26,22 +26,22 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cmake	.						\
-		-DCMAKE_INSTALL_PREFIX=/usr			\
-		-DCMAKE_BUILD_TYPE=RELEASE			\
-		-DFREETYPE_INCLUDE_DIR=/usr/include/freetype2	\
-		-DPODOFO_HAVE_LUA=FALSE				\
-		-DPODOFO_BUILD_STATIC:BOOL=TRUE			\
-		-DPODOFO_BUILD_SHARED:BOOL=TRUE &&
-	make -j1 &&
-	make -j1 DESTDIR=$DESTDIR install
+	mkdir	_build
+	cd	_build
+	cmake	..						\
+		-D CMAKE_INSTALL_PREFIX=/usr			\
+		-D CMAKE_BUILD_TYPE=RELEASE			\
+		-D FREETYPE_INCLUDE_DIR=/usr/include/freetype2	\
+		-D PODOFO_HAVE_LUA=FALSE			\
+		-D PODOFO_BUILD_STATIC:BOOL=TRUE		\
+		-D PODOFO_BUILD_SHARED:BOOL=TRUE &&
+	make &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cook_copy_folders	bin
+	cook_copy_files		*.so*
 }
