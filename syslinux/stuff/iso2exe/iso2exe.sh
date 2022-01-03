@@ -68,13 +68,18 @@ add_tazlito_info()
 	[ $(get 0 $2) -eq 35615 ] || return
 	zcat $2 | compress /tmp/rezipped$$.gz
 	n=$(stat -c %s /tmp/rezipped$$.gz)
-	printf "Moving tazlito data record at %04X ($n bytes) ...\n" $OFS
-	ddn if=/tmp/rezipped$$.gz bs=1 of=$1 seek=$OFS
-	HOLE=$((HOLE+n))
+	if [ $(get 2048 $1) -eq 19792 -a $n -lt 412 ]; then	### Apple partitions
+		o=$((0x1200-n))
+	else
+		o=$OFS
+		HOLE=$((HOLE+n))
+	fi
+	printf "Moving tazlito data record at %04X ($n bytes) ...\n" $o
+	ddn if=/tmp/rezipped$$.gz bs=1 of=$1 seek=$o
 	rm -f /tmp/rezipped$$.gz
 	if [ -n "$gpt" ]; then
 		store $((0x25E)) $n $1
-		store $((0x25C)) $OFS $1
+		store $((0x25C)) $o $1
 	fi
 }
 
@@ -239,7 +244,7 @@ trailer()
 				$(get $((446+4+16*i)) "$1" 1)
 		done
 		if [ $(get 450 "$1") -eq 65262 ]; then
-			echo "EFI partitions :"
+			echo "EFI partitions :"	### https://en.wikipedia.org/wiki/GUID_Partition_Table
 			n=$(get 592 "$1")
 			s=$(get 596 "$1")
 			o=$(($(get 584 "$1")*512))
@@ -258,7 +263,7 @@ trailer()
 	fi
 	o=2048
 	if [ $(get $o "$1") -eq 19792 ]; then
-		echo "Apple partitions :"
+		echo "Apple partitions :"	### https://en.wikipedia.org/wiki/Apple_Partition_Map
 		i=0
 		while [ $(get $o "$1") -eq 19792 ]; do
 			f=$((0x$(od -An -N 4 -j $((o+8)) -t x1 "$1" | sed 's/ //g')))

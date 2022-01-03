@@ -10,90 +10,6 @@ EOM
 	sed -i '/--build/,/^fi/d' $0
 	exit
 fi
-iso=
-heads=64	# zipdrive-style geometry
-sectors=32
-partype=23	# "Windows hidden IFS"
-entry=
-id=$(( ($RANDOM <<16) + $RANDOM))
-offset=0
-partok=0
-hd0=0
-always=0
-
-while [ -n "$1" ]; do
-	case "${1/--/-}" in
-	-a*)	always=1;;
-	-ct*)	hd0=2;;
-	-e*)	entry=$2; shift;;
-	-f*)	hd0=1;;
-	-h)	heads=$2; shift;;
-	-i*)	id=$(($2)); shift;;
-	-noh*)	hd0=0;;
-	-nop*)	partok=0;;
-	-o*)	offset=$(($2)); shift;;
-	-p*)	partok=1;;
-	-s)	sectors=$2; shift;;
-	-t*)	partype=$(($2 & 255)); shift;;
-	*)	iso=$1;;
-	esac
-	shift
-done
-
-if [ ! -f "$iso" ]; then
-	cat << EOT
-usage: $0 [options] isoimage
-options:
-	-h <X>		Number of default geometry heads
-	-s <X>		Number of default geometry sectors
-	-e --entry	Specify partition entry number (1-4)
-	-o --offset	Specify partition offset (default 0)
-	-t --type	Specify partition type (default 0x17)
-	-i --id		Specify MBR ID (default random)
-	--forcehd0	Assume we are loaded as disk ID 0
-	--ctrlhd0	Assume disk ID 0 if the Ctrl key is pressed
-	--partok	Allow booting from within a partition
-	--always	Do not abort on errors
-EOT
-	exit 1
-fi
-
-ddq()
-{
-	dd "$@" 2> /dev/null
-}
-
-readiso()
-{
-	ddq bs=2k skip=$1 count=1 if=$iso | ddq bs=1 skip=$2 count=$3
-}
-
-# read a 32 bits data
-read32()
-{
-	readiso $1 $2 4 | od -N 4 -t u4 -An
-}
-
-# read a 16 bits data
-read16()
-{
-	readiso $1 $2 2 | od -N 2 -t u2 -An
-}
-
-# read a 8 bits data
-read8()
-{
-	readiso $1 $2 1 | od -N 1 -t u1 -An
-}
-
-# write a 32 bits data
-store32()
-{
-	n=$2; for i in 0 8 16 24; do
-		printf '\\\\x%02X' $((($n >> $i) & 255))
-	done | xargs echo -en | ddq bs=1 conv=notrunc of=$iso seek=$(($1))
-}
-
 crc32()
 {
 	t0=00000000; t1=77073096; t2=EE0E612C; t3=990951BA;
@@ -170,6 +86,91 @@ crc32()
 		done
 		echo $(($crc ^ 0xFFFFFFFF))
 	}
+}
+
+iso=
+heads=64	# zipdrive-style geometry
+sectors=32
+partype=23	# "Windows hidden IFS"
+entry=
+id=$(( ($RANDOM <<16) + $RANDOM))
+offset=0
+partok=0
+hd0=0
+always=0
+
+while [ -n "$1" ]; do
+	case "${1/--/-}" in
+	-crc32)	iso=$2; crc32 $3 $4; exit 0;;
+	-a*)	always=1;;
+	-ct*)	hd0=2;;
+	-e*)	entry=$2; shift;;
+	-f*)	hd0=1;;
+	-h)	heads=$2; shift;;
+	-i*)	id=$(($2)); shift;;
+	-noh*)	hd0=0;;
+	-nop*)	partok=0;;
+	-o*)	offset=$(($2)); shift;;
+	-p*)	partok=1;;
+	-s)	sectors=$2; shift;;
+	-t*)	partype=$(($2 & 255)); shift;;
+	*)	iso=$1;;
+	esac
+	shift
+done
+
+if [ ! -f "$iso" ]; then
+	cat << EOT
+usage: $0 [options] isoimage
+options:
+	-h <X>		Number of default geometry heads
+	-s <X>		Number of default geometry sectors
+	-e --entry	Specify partition entry number (1-4)
+	-o --offset	Specify partition offset (default 0)
+	-t --type	Specify partition type (default 0x17)
+	-i --id		Specify MBR ID (default random)
+	--forcehd0	Assume we are loaded as disk ID 0
+	--ctrlhd0	Assume disk ID 0 if the Ctrl key is pressed
+	--partok	Allow booting from within a partition
+	--always	Do not abort on errors
+EOT
+	exit 1
+fi
+
+ddq()
+{
+	dd "$@" 2> /dev/null
+}
+
+readiso()
+{
+	ddq bs=2k skip=$1 count=1 if=$iso | ddq bs=1 skip=$2 count=$3
+}
+
+# read a 32 bits data
+read32()
+{
+	readiso $1 $2 4 | od -N 4 -t u4 -An
+}
+
+# read a 16 bits data
+read16()
+{
+	readiso $1 $2 2 | od -N 2 -t u2 -An
+}
+
+# read a 8 bits data
+read8()
+{
+	readiso $1 $2 1 | od -N 1 -t u1 -An
+}
+
+# write a 32 bits data
+store32()
+{
+	n=$2; for i in 0 8 16 24; do
+		printf '\\\\x%02X' $((($n >> $i) & 255))
+	done | xargs echo -en | ddq bs=1 conv=notrunc of=$iso seek=$(($1))
 }
 
 main()
