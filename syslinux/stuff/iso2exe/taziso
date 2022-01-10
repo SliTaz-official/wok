@@ -1146,6 +1146,25 @@ tazusbmsg()
 able to save the package updates or your own configuration and data files.\n\n"
 }
 
+fixup_gpt()
+{
+	quads2bin 1 0 $2 0 | ddq bs=1 seek=$((512+24)) of=$1	# my gpt, alt gpt
+	quads2bin 0 | ddq bs=1 seek=$((512+88)) of=$device
+	quads2bin $(isohybrid --crc32 $1 1024 $(($(get 596 $1 4)*$(get 592 $1 4)))) | \
+		ddq bs=1 seek=$((512+88)) of=$1			# CRC32 partitions
+	ddn of=$1 if=$1 bs=512 skip=1 seek=$2 count=1
+	ddn of=$1 if=$1 bs=512 skip=2 seek=$(($2-1)) count=1
+	quads2bin $2 0 1 0 | ddq bs=1 seek=$(($2*512+24)) of=$1	# my gpt, alt gpt
+	quads2bin $(($2-1)) 0 | ddq bs=1 seek=$(($2*512+72)) of=$1
+	i=$(get 524 $1 4)
+	quads2bin 0 | ddq bs=1 seek=$(($2*512+16)) of=$device
+	quads2bin $(isohybrid --crc32 $1 $(($2*512)) $i) | \
+		ddq bs=1 seek=$(($2*512+16)) of=$1	# CRC32 header
+	quads2bin 0 | ddq bs=1 seek=$((512+16)) of=$device
+	quads2bin $(isohybrid --crc32 $1 512 $i) | ddq bs=1 seek=$((512+16)) of=$1	# CRC32 header
+	partprobe $1
+}
+
 usbbootkey()
 {
 	if [ -b "$1" ]; then
@@ -1177,33 +1196,49 @@ $(tazusbmsg)Please plug your USB stick in now.\n" 16 70
 	# GPT partition + fat32 format for the remaining space
 	sectors=$(($(sectcnt $device)-1))
 	quads2bin $sectors | ddq bs=1 seek=458 of=$device	# pmbr
-	quads2bin 0 | ddq bs=1 seek=$((512+16)) of=$device
 	quads2bin $((sectors-2)) 0 | ddq bs=1 seek=$((512+48)) of=$device
-	uudecode - <<EOT | gunzip | ddn bs=128 seek=9 of=$device	# partiton fat32
+	uudecode - <<EOT | gunzip | ddn bs=128 seek=9 of=$device	# basic data partiton
 begin-base64 644 -
-H4sIAAAAAAACA1u04MLrpzuNXdoPZGzbrjbz+C/fHwyfEro9Z7E93Fi5/8sH
-BhzAiSGRoZghkyGZQYEhBcguAWIFhgIgWQRkZ4JxPkMeAyEAAOuEo7uAAAAA
+H4sIAAAAAAACA1u04MLrpzuNXdoPZGzbrjbzOAORwIkhkaGYIZMhmUGBIQXI
+LgFiBYYCIFkEZGeCcT5DHkFzAAqvwhqAAAAA
 ====
 EOT
+	ddq if=/dev/urandom bs=16 count=1 seek=73 of=$device		# partition uuid
 	last=$(sectcnt "$ISO")
 	custom=$((4*$(get 32848 $device 4)))
 	[ $custom -gt $((last-4)) ] && last=$((custom+4))		# room for cmdline
-	quads2bin $last 0 | ddq bs=1 seek=$((1024+128+32)) of=$device	# vfat first address
-	quads2bin $((sectors-2)) 0 | ddq bs=1 seek=$((1024+128+40)) of=$device	# vfat last address
-	quads2bin $(isohybrid --crc32 $device 1024 $(($(get 596 $device 4)*$(get 592 $device 4)))) | \
-		ddq bs=1 seek=$((512+88)) of=$device			# CRC32 partitions
-	ddn of=$device if=$device bs=512 skip=1 seek=$sectors count=1
-	ddn of=$device if=$device bs=512 skip=2 seek=$((sectors-1)) count=1
-	quads2bin $sectors 0 1 0 | ddq bs=1 seek=$((sectors*512+24)) of=$device	# my gpt, alt gpt
-	quads2bin 1 0 $sectors 0 | ddq bs=1 seek=$((512+24)) of=$device	# my gpt, alt gpt
-	quads2bin $((sectors-1)) 0 | ddq bs=1 seek=$((sectors*512+72)) of=$device
-	i=$(get 524 $device 4)
-	quads2bin $(isohybrid --crc32 $device $((sectors*512)) $i) | \
-		ddq bs=1 seek=$((sectors*512+16)) of=$device	# CRC32 header
-	quads2bin $(isohybrid --crc32 $device 512 $i) | ddq bs=1 seek=$((512+16)) of=$device	# CRC32 header
-	partprobe $device
-	homedev=/dev/$(basename /sys/block/${device#/dev/}/${device#/dev/}*2)
-	mkdosfs -n 'SLITAZ HOME' $homedev
+	quads2bin $last 0 | ddq bs=1 seek=$((1024+128+32)) of=$device	# partition first address
+	quads2bin $((sectors-2)) 0 | ddq bs=1 seek=$((1024+128+40)) of=$device	# partition last address
+	fixup_gpt $device $sectors
+	[ -b ${device}p2 ] && pdev=${device}p2 || pdev=${device}2
+	value=$(cat /sys/block/${device#/dev/}/${pdev#/dev/}/size)
+	[ ${#value} -gt 7 -a "$(which mkfs.exfat)" ] && value="exfat" || value="fat32"
+	if [ -z "$1" ]; then
+		echo -n "$DIALOG --clear --title \" Select the filesystem \" \
+--radiolist \"\\nPlease select the filesystem type to create.\" 14 70 4" > /tmp/dialog$$
+		while read type rem; do
+			which mkfs.${type/fat32/vfat} > /dev/null || continue
+			echo -n " $type \"$rem" >> /tmp/dialog$$
+		done <<EOT
+fat32	for a small key"	$([ "$value" = "fat32" ] && echo "on" || echo "off")
+exfat	for a large key"	$([ "$value" = "exfat" ] && echo "on" || echo "off")
+ntfs	"			off
+ext3	for most linux"		off
+ext4	"			off
+btrfs	for recent linux"	off
+xfs
+EOT
+		exec 3>&1
+		value=$(. /tmp/dialog$$ 2>&1 1>&3)
+		retval=$?
+		exec 3>&-
+		rm -f /tmp/dialog$$
+	fi
+	homedev=/dev/$(basename /sys/block/${device#/dev/}/${pdev#/dev/})
+	case "$value" in
+	*fat*)	mkfs.${value/fat32/vfat} -n 'SLITAZ HOME' $homedev;;
+	*)	mkfs.$value -L 'SLITAZ HOME' $homedev;;
+	esac > /dev/null 2>&1
 
 	# update boot/exe crc16
 	words2bin 0 | ddq bs=1 seek=18 of=$device
@@ -1211,7 +1246,7 @@ EOT
 	i=$(($(od -v -N $i -t u2 -w2 -An $device | \
 		awk '{ i+= $0 } END { print (i % 65536) }') \
 		+ $(get $((i+1)) $device 1)))
-	words2bin $(( (-i -1) % 65536 )) | ddq bs=1 seek=18 of=$device
+	words2bin $(( (-i -1) & 65535 )) | ddq bs=1 seek=18 of=$device
 
 	[ "$1" ] || $DIALOG --clear --title " Set /home persistent " \
 			--yes-label "Continue" --yesno \
@@ -1219,12 +1254,63 @@ EOT
 This option will mount /home on the USB key vfat during the boot process.\n\n
 Your own data will be saved, but the system stay not upgradable.\n" 16 70
 	if [ $? -eq 0 ]; then
-		data="append=home=$(blkid $homedev | sed 's|.* UUID="||;s|".*||') kmap=$(cat /etc/keymap.conf) lang=${LANG%.UTF*} tz=$(cat /etc/TZ) loadfs"
-		cat <<EOT | ddn bs=512 seek=$custom of=$device
-#!boot $(echo "$data" | md5sum | sed 's/ .*//')
-$data
+		echo -en "$(echo "SliTaz persistent /home" | sed 's|.|&\\0|g')" | ddn bs=8 seek=151 of=$device
+		fixup_gpt $device $sectors
+		[ "$(ddn bs=512 skip=$custom if=$device | ddn bs=1 count=6)" = "#!boot" ] && return
+		mkdir /tmp/mnt$$
+		mount $pdev /tmp/mnt$$
+		echo -e "keyboard\nlocale\ntimezone" > /tmp/dialog.out$$
+		touch /tmp/dialog$$
+		if [ -z "$1" ]; then
+			cat > /tmp/dialog$$ <<EOT
+$DIALOG --clear --title " Select configuration " \
+	--separate-output \
+	--cancel-label "Skip" \
+	--checklist "Please select the configuration to store." \
+	0 0 0 \
+keyboard "kmap=$(cat /etc/keymap.conf)" on \
+locale "lang=${LANG%.UTF*}" on \
+timezone "tz=$(cat /etc/TZ)" on \
+$([ -s /tmp/mnt$$/boot/rootfs.gz ] || cat <<EOM
+network "/etc/network.conf" off \
+ssh "/etc/dropbear" off \
+password "/etc/passwd /etc/*shadow /etc/group" off \
+custom "Your own list of files" off
+EOM
+)
+EOT
+			sh /tmp/dialog$$ 2> /tmp/dialog.out$$
+			[ $? -eq 0 ] || echo -n "" > /tmp/dialog.out$$
+		fi
+		data=""; files=""
+		while read i ; do
+			case "$i" in
+			keyboard)	data="${data}kmap=$(cat /etc/keymap.conf) ";;
+			locale)		data="${data}lang=${LANG%.UTF*} " ;;
+			timezone)	data="${data}tz=$(cat /etc/TZ) " ;;
+			network)	files="${files} /etc/network.conf" ;;
+			ssh)		files="${files} /etc/dropbear" ;;
+			password)	files="${files} /etc/passwd /etc/*shadow /etc/group" ;;
+			custom) 	exec 3>&1
+					custom="$($DIALOG --clear --title " Custom files " \
+				--inputbox "\nEnter the list of files to save:\n" 10 70 2>&1 1>&3)"
+					retval=$?
+					exec 3>&-
+					[ $retval -eq 0 ] && files="${files} $custom" ;;
+			esac
+		done < /tmp/dialog.out$$
+		rm -f /tmp/dialog$$ /tmp/dialog.out$$
+		[ "$data" ] && cat <<EOT | ddn bs=512 seek=$custom of=$device
+#!boot $(echo "append=$data" | md5sum | sed 's/ .*//')
+append=$data
 --
 EOT
+		if [ "$files" ]; then
+			mkdir /tmp/mnt$$/boot 2> /dev/null
+			find $files | cpio -o -H newc | gzip -9 > /tmp/mnt$$/boot/rootfs.gz
+		fi
+		umount /tmp/mnt$$
+		rm -rf /tmp/mnt$$
 	fi
 }
 
@@ -1571,7 +1657,7 @@ while true; do
 	keymap="$(cat /etc/keymap.conf 2>/dev/null)"
 	locale="$(sed '/^LANG=/!d;s/.*=//' /etc/locale.conf 2>/dev/null)"
 	cat > /tmp/dialog$$ <<EOT
-$DIALOG  --clear --title " $(isotitle) " --menu "" 28 70 30 \
+$DIALOG  --clear --title " $(isotitle) " --menu "" 0 0 0 \
 $(initxfile tazkeymap	"tazkeymap"	"Select keyboard (${keymap:-none})") \
 $(initxfile tazlocale	"tazlocale"	"Select locale (${locale:-none})") \
 $(initx			"live"		"Linux RAM boot (full desktop)") \
@@ -1592,7 +1678,7 @@ $(gotposixovl		"installtaz"	"Hard disk installation (TAZUSB way)") \
 $(gotposixovlzip	"inst2zip"	"ZIP installation archive (UMSDOS way)") \
 $(gotposixovlzip	"insttaz2zip"	"ZIP installation archive (TAZUSB way)") \
 $(gottazusb 		"usbkey"	"USB key read/write installation") \
-$(ishybrid		"usbbootkey"	"USB boot key (not upgradable)") \
+$(ishybrid		"usbbootkey"	"USB boot key (kernel not upgradable)") \
 $(hasflavinfo		"showfavinfo"	"Show flavor extra info") \
 $(hasflavor		"flavor"	"Get flavor file") \
 $(cdfile isolinux.cfg	"floppyset"	"Boot floppy set") \
