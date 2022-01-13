@@ -1,33 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="slurm"
-VERSION="0.3.3"
+VERSION="0.4.3"
 CATEGORY="network"
 SHORT_DESC="Realtime network interface monitor."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://github.com/mattthias/slurm/wiki"
-WGET_URL="http://www.wormulon.net/slurm/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/mattthias/$PACKAGE/archive/upstream/$VERSION.tar.gz"
 
 DEPENDS="ncurses"
-BUILD_DEPENDS="ncurses-dev automake autoconf"
+BUILD_DEPENDS="ncurses-dev cmake"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|lncurses|& -ltinfo|' *
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+# 0.3.3	sed -i 's|lncurses|& -ltinfo|' *
+	sed -i 's|slurm ncurses|slurm ncurses tinfo|'	CMakeLists.txt
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..			\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
+	cook_copy_folders	bin
 }
