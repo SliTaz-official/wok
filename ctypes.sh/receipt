@@ -1,0 +1,41 @@
+# SliTaz package receipt.
+
+PACKAGE="ctypes.sh"
+VERSION="1.2"
+CATEGORY="development"
+TAGS="bash ffi"
+SHORT_DESC="Foreign function interface for bash."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="MIT"
+WEB_SITE="https://github.com/taviso/ctypes.sh"
+
+TARBALL="${PACKAGE/./-}-$VERSION.tar.gz"
+WGET_URL="https://github.com/taviso/$PACKAGE/releases/download/v$VERSION/$TARBALL"
+
+DEPENDS="bash libffi"
+BUILD_DEPENDS="automake libffi-dev"
+
+HOST_ARCH="i486 arm"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh &&
+	./configure		\
+		--prefix=/usr	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install DESTDIR=$DESTDIR
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cook_copy_folders	bin
+	cook_copy_folders	lib
+}
+
+testsuite()
+{
+	readelf -h $install/usr/lib/ctypes.so
+}
