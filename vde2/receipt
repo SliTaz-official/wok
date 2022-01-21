@@ -13,10 +13,17 @@ WGET_URL="$SF_MIRROR/vde/$TARBALL"
 DEPENDS="libcrypto"
 BUILD_DEPENDS="libcrypto libcrypto-dev"
 
+# What is the latest version available today?
+current_version()
+{
+	wget -O - https://sourceforge.net/projects/vde/files/vde2 2>/dev/null | \
+	sed '/scope="row/!d;s|.*href="|"https://sourceforge.net|;q' | xargs wget -O - 2>/dev/null | \
+	sed '/\/vde2/!d;/tar/!d;s|.*/vde2-||;s|.tar.*||;q'
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure --prefix=/usr \
 	--libexecdir=/usr/lib/$PACKAGE \
 	--sysconfdir=/etc \

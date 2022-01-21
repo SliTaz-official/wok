@@ -13,6 +13,15 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 DEPENDS="libdnet"
 BUILD_DEPENDS="libpcap-dev libdnet-dev tcpdump libnl1"
 
+# What is the latest version available today?
+current_version()
+{
+	wget -O - https://sourceforge.net/projects/$PACKAGE/files/ 2>/dev/null | \
+	sed '/scope="row/!d;s|.*href="|"https://sourceforge.net|;q' | xargs wget -O - 2>/dev/null | \
+	sed 's| |\n|g' | sed '/^"tcpreplay\//!d;s|^"|https://sourceforge.net/projects/tcpreplay/files/|;s|",||;q' | xargs wget -O - 2>/dev/null | \
+	sed '/tcpreplay-/!d;/asc/!d;s|.*tcpreplay-||;s|.[zt].*||;s|_|.|g;q' 
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
