@@ -15,6 +15,15 @@ WGET_URL="$SF_MIRROR/$SF_PROJECT/$TARBALL"
 DEPENDS="libgomp wxWidgets"
 BUILD_DEPENDS="autoconf automake libffi libtool wxWidgets-dev"
 
+# What is the latest version available today?
+current_version()
+{
+	wget -O - https://sourceforge.net/projects/$PACKAGE/files/ 2>/dev/null | \
+	sed '/scope="row/!d;s|.*href="|"https://sourceforge.net|;q' | xargs wget -O - 2>/dev/null | \
+	sed 's| |\n|g' | sed '/http/!d;/download/!d;s|^"||;s|/download",||;q' | xargs wget -O - 2>/dev/null | \
+	sed '/src.tar..z/!d;s|.*wxHexEditor-v||;s|-src.*||;q'
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
