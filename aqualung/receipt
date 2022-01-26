@@ -1,27 +1,33 @@
 # SliTaz package receipt.
 
 PACKAGE="aqualung"
-VERSION="1.0"
+VERSION="1.1"
 CATEGORY="multimedia"
+TAGS="music audio player mp3 ogg"
 SHORT_DESC="Aqualung audio player."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://aqualung.jeremyevans.net/"
+WEB_SITE="https://aqualung.jeremyevans.net/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="music audio player mp3 ogg"
+WGET_URL="https://github.com/jeremyevans/$PACKAGE/archive/refs/tags/$VERSION.tar.gz"
 
-DEPENDS="gtk+ alsa-lib libogg libvorbis flac lame libsamplerate libsndfile \
-libmodplug libcdio libmad bzlib"
-BUILD_DEPENDS="gtk+-dev alsa-lib-dev libogg-dev libvorbis-dev flac-dev \
-lame-dev libsamplerate-dev libmad-dev libsndfile-dev libxml2-dev bzip2-dev"
+SUGGESTED="aqualung-lang"
+DEPENDS="alsa-lib bzlib flac gtk+ lame libcdio libmad libmodplug libogg
+	libsamplerate libsndfile libvorbis"
+BUILD_DEPENDS="alsa-lib-dev bzip2-dev flac-dev gtk+-dev lame-dev libmad-dev
+	libogg-dev libsamplerate-dev libsndfile-dev libvorbis-dev libxml2-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--with-lavc=no \
+	# Trying to create ~/.config when ~/.config already exists
+	# aborts program.
+	# In SliTaz ~/.config should already exist.
+	patch --strip=0 --input=$stuff/patches/core.c-1.1
+
+	./configure		\
+		--with-lavc=no	\
 		--with-jack=no &&
 	make &&
 	make install
@@ -31,10 +37,13 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/pixmaps
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/aqualung $fs/usr/share
-	# Remove doc
-	rm -rf $fs/usr/share/aqualung/doc
+
+	cook_copy_folders	bin
+	cook_copy_folders	aqualung
+
+	# Remove documentation
+	rm -rf					$fs/usr/share/doc
+
 	cd $fs/usr/share/pixmaps
-	ln -s ../aqualung/general.png aqualung.png
+	ln -s ../aqualung/general.png		aqualung.png
 }
