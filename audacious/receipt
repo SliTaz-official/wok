@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="audacious"
-VERSION="3.10.1"
+VERSION="4.1"
 CATEGORY="multimedia"
 TAGS="music audio player mp3 ogg"
 SHORT_DESC="Music player like xmms."
@@ -12,9 +12,10 @@ WEB_SITE="https://audacious-media-player.org/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="http://distfiles.audacious-media-player.org/$TARBALL"
 
-DEPENDS="dbus-glib gcc83-lib-base gtk+ libmcs libmowgli libsamplerate libxml2 
-	xorg-libXdamage"
-BUILD_DEPENDS="dbus-dev dbus-glib-dev gcc83 gtk+-dev libmcs libmcs-dev 
+SUGGESTED="audacious-lang audacious-plugins"
+DEPENDS="dbus-glib gcc83-lib-base gtk+ libmcs libmowgli libsamplerate 
+	libxml2 xorg-libXdamage"
+BUILD_DEPENDS="dbus-dev dbus-glib-dev gcc83 gtk+-dev libmcs libmcs-dev
 	libmowgli libmowgli-dev libsamplerate-dev libxml2-dev"
 
 # Rules to configure and make the package.
@@ -22,27 +23,29 @@ compile_rules()
 {
 #	sed -i "s/touch -t 0001010000 /touch /g" configure
 
+	# 4.1	--disable-qt	because else Qt5 is required
 	./configure				\
 		CC=gcc-83			\
 		CXX=g++-83			\
 		--prefix=/usr			\
 		--infodir=/usr/share/info	\
 		--mandir=/usr/share/man		\
+		--disable-qt			\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
-	mkdir -p $fs/usr/lib
 	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
 
 	cp -a $install/usr/bin			$fs/usr
 	cp -a $install/usr/lib/*.so*		$fs/usr/lib/
 	cp -a $install/usr/share/$PACKAGE	$fs/usr/share
-	tar -xzf $stuff/Skins.tar.gz -C $fs/usr/share/$PACKAGE
+	tar -xzf $stuff/Skins.tar.gz -C		$fs/usr/share/$PACKAGE
 	find $fs/usr/share/audacious/Skins/Default -type f -exec chmod a-x \{\} \;
 }

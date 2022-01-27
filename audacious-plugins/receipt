@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="audacious-plugins"
-VERSION="3.10.1"
+VERSION="4.1"
 CATEGORY="multimedia"
 SHORT_DESC="Plugins for audacious music player."
 MAINTAINER="mimas@slitaz.org"
@@ -11,21 +11,22 @@ WEB_SITE="https://audacious-media-player.org/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="http://distfiles.audacious-media-player.org/$TARBALL"
 
-SUGGESTED="lame neon libmms"
-DEPENDS="alsa-lib curl dbus-glib faad2 flac gcc83-lib-base gtk+ 
-	libcdio libcomerr3 libmad libogg libsndfile libvorbis 
-	libxml2 mpg123 neon taglib wavpack"
-BUILD_DEPENDS="alsa-lib-dev audacious audacious-dev curl-dev 
-	dbus-glib-dev faad2-dev flac-dev gcc83 gtk+-dev lame-dev 
-	libmad-dev libmcs-dev libmowgli-dev libogg-dev 
-	libsamplerate-dev libvorbis-dev libxml2-dev mesa-dev 
-	mpg123-dev neon-dev wavpack-dev"
+SUGGESTED="lame libmms neon"
+DEPENDS="alsa-lib curl dbus-glib faad2 flac gcc83-lib-base gtk+ libav 
+	libcdio libcomerr3 libmad libogg libsndfile libvorbis libxml2 
+	mpg123 neon taglib wavpack"
+BUILD_DEPENDS="alsa-lib-dev audacious-dev audacious curl-dev dbus-glib-dev 
+	faad2-dev flac-dev gcc83 gtk+-dev lame-dev libav-dev libmad-dev 
+	libmcs-dev libmowgli-dev libogg-dev libsamplerate-dev 
+	libvorbis-dev libxml2-dev mesa-dev mpg123-dev neon-dev wavpack-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 #	sed -i "s/touch -t 0001010000 /touch /g" configure
 #XML_CFLAGS=-I/usr/include/libxml2 
+
+	# 4.1	--disable-qt	because else Qt5 is required
 
 	./configure				\
 		CC=gcc-83			\
@@ -37,6 +38,7 @@ compile_rules()
 		--disable-esd			\
 		--disable-evdevplug		\
 		--disable-ffaudio		\
+		--with-ffmpeg=none		\
 		--disable-icecast		\
 		--disable-jack			\
 		--disable-lirc			\
@@ -45,30 +47,30 @@ compile_rules()
 		--disable-projectm		\
 		--disable-projectm-1.0		\
 		--disable-pulse			\
+		--disable-qt			\
 		--disable-rocklight		\
 		--disable-sse2			\
 		--disable-timidity		\
 		--enable-chardet		\
-		--with-ffmpeg=none		\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/locale
+	cook_copy_folders	lib
 
-	cp -a $install/usr/lib	$fs/usr
-
+	# 4.1 moved to package audacious-lang
 	# Set list of wanted locales in LOCALE_PACK
-	. $WOK/slitaz-i18n/stuff/locale-pack.conf
+#	. $WOK/slitaz-i18n/stuff/locale-pack.conf
 
 	# Copy message files in wanted languages, if available
-	for locale in $LOCALE_PACK
-	  do
-		[ -d $install/usr/share/locale/$locale ] || continue
-		cp -a $install/usr/share/locale/$locale $fs/usr/share/locale
-	  done
+#	for locale in $LOCALE_PACK
+#	  do
+#		[ -d $install/usr/share/locale/$locale ] || continue
+#		mkdir -p $fs/usr/share/locale
+#		cp -a $install/usr/share/locale/$locale $fs/usr/share/locale
+#	  done
 }
