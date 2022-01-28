@@ -19,9 +19,20 @@ if [ -e $WOK/h8300-toolchain/stuff/h8300.conf ] ; then
 	. $WOK/h8300-toolchain/stuff/h8300.conf
 fi
 
+# What is the latest version available today?
+current_version()
+{
+	wget -O - ${WGET_URL%/*} 2>/dev/null | \
+	sed "/latest/d;/$PACKAGE-/!d;/tar/!d;s|.*$PACKAGE-\\(.*\\).tar.*\".*|\\1|" | sort -Vr | sed q
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
+	# Configuration only needs included if we're in the build/wok environment
+	if [ -e $WOK/h8300-toolchain/stuff/h8300.conf ] ; then
+		. $WOK/h8300-toolchain/stuff/h8300.conf
+	fi
 	mkdir -p $SOURCE-$VERSION-build
 	cd $SOURCE-$VERSION-build
 	$src/configure \

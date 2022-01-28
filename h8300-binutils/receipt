@@ -14,15 +14,25 @@ TAGS="assembler linker"
 
 BUILD_DEPENDS="slitaz-toolchain bison flex"
 
-# Configuration only needs included if we're in the build/wok environment
-if [ -e $WOK/h8300-toolchain/stuff/h8300.conf ] ; then
-	. $WOK/h8300-toolchain/stuff/h8300.conf
-fi
+# What is the latest version available today?
+current_version()
+{
+	wget -O - ${WGET_URL%/*} 2>/dev/null | \
+	sed "/latest/d;/$SOURCE-/!d;/tar/!d;s|.*$SOURCE-\\(.*\\).tar.*\".*|\\1|" | sort -Vr | sed q
+}
+
+h8300_conf()
+{
+	# Configuration only needs included if we're in the build/wok environment
+	if [ -e $WOK/h8300-toolchain/stuff/h8300.conf ] ; then
+		. $WOK/h8300-toolchain/stuff/h8300.conf
+	fi
+}
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	h8300_conf
 	./configure \
 		--target=$H8300_TARGET \
 		--prefix=/usr \
@@ -37,6 +47,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	h8300_conf
 	mkdir -p $fs/usr $fs$H8300_ROOT
 	cp -a $install/usr/bin $fs/usr
 	cp -a $install/usr/$H8300_TARGET/* $fs$H8300_ROOT
