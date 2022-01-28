@@ -2,55 +2,58 @@
 # /etc/init.d/autofs : Start, stop and restart automounter on SliTaz, at
 # boot time or with the command line.
 #
-# To start automounter at boot time, just put dropbear in the $RUN_DAEMONS
-# variable of /etc/rcS.conf and configure options with /etc/daemons.conf
+# To start automounter at boot time, just put autofs in the $RUN_DAEMONS
+# variable of /etc/rcS.conf and configure options in /etc/daemons.conf
 #
 . /etc/init.d/rc.functions
 . /etc/daemons.conf
 
-NAME=Automount
+NAME=automount
 DESC="$(_ '%s server' Automount)"
 DAEMON=/usr/sbin/automount
 OPTIONS=$AUTOMOUNT_OPTIONS
 PIDFILE=/var/run/automount.pid
 
 case "$1" in
-  start)
-    if active_pidfile $PIDFILE automount ; then
-      _ '%s is already running.' $NAME
-      exit 1
-    fi
-    action 'Starting %s: %s...' "$DESC" $NAME
-    modprobe autofs4
-    $DAEMON $OPTIONS
-    status
-    ;;
-  stop)
-    if ! active_pidfile $PIDFILE automount ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Stopping %s: %s...' "$DESC" $NAME
-    kill $(cat $PIDFILE)
-    rmmod autofs4
-    status
-    ;;
-  restart)
-    if ! active_pidfile $PIDFILE automount ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Restarting %s: %s...' "$DESC" $NAME
-    kill $(cat $PIDFILE)
-    sleep 2
-    $DAEMON $OPTIONS
-    status
-    ;;
-  *)
-    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
-    newline
-    exit 1
-    ;;
+	(start)
+		if active_pidfile $PIDFILE automount
+		  then
+			_ '%s is already running.' $NAME
+			exit 1
+		fi
+		action 'Starting %s: %s...' "$DESC" $NAME
+		modprobe autofs4
+		$DAEMON --pid-file=$PIDFILE $OPTIONS
+		status
+		;;
+	(stop)
+		if ! active_pidfile $PIDFILE automount
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Stopping %s: %s...' "$DESC" $NAME
+		kill $(cat $PIDFILE)
+		rmmod autofs4
+		status
+		;;
+	(restart)
+		if ! active_pidfile $PIDFILE automount
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Restarting %s: %s...' "$DESC" $NAME
+		kill $(cat $PIDFILE)
+		sleep 2
+		$DAEMON --pid-file=$PIDFILE $OPTIONS
+		status
+		;;
+	(*)
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
+		exit 1
+		;;
 esac
 
 exit 0

@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="autofs"
-VERSION="5.1.6"
+VERSION="5.1.8"
 CATEGORY="system-tools"
 TAGS="filesystem"
 SHORT_DESC="Linux automounter."
@@ -15,13 +15,15 @@ WGET_URL="$WEB_SITE/$TARBALL"
 DEPENDS="linux-autofs"
 BUILD_DEPENDS="cyrus-sasl-dev flex krb5-dev libxml2-dev openldap-dev openssl-dev"
 
+CONFIG_FILES="/etc/autofs.conf"
+
 TAZPANEL_DAEMON="man|help::automount|edit::/etc/auto.misc|options::AUTOMOUNT_OPTIONS|web::$WEB_SITE"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i	-e 's|-b --suffix=.orig||' \
-		-e 's|install -v|install|' \
+	sed -i	-e 's|-b --suffix=.orig||'	\
+		-e 's|install -v|install|'	\
 		*/Makefile*
 
 	./configure				\
@@ -36,15 +38,17 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	mkdir -p $fs/etc
 	mkdir -p $fs/usr
-	mkdir -p $fs/etc/init.d
 
-	cp -a $install/usr/sbin	$fs/usr
-	cp -a $install/usr/lib	$fs/usr
 	cp -a $stuff/etc/*	$fs/etc
+	# Create empty configuration file
+	touch 			$fs/etc/autofs.conf
+	cp -a $install/usr/lib	$fs/usr
+	cp -a $install/usr/sbin	$fs/usr
 }
 
-# Pre and post install commands for Tazpkg.
+# Post install commands for Tazpkg.
 post_install()
 {
 	mkdir -p "$1/mnt/auto" 2>/dev/null
