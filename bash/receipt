@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="bash"
-VERSION="5.0.11"
+VERSION="5.1.16"
 BASEVERSION="${VERSION%.*}"
 CATEGORY="system-tools"
 TAGS="shell"
@@ -47,7 +47,7 @@ patch_bash()
 # Rules to compile & install the temporary toolchain.
 cook_tmp_toolchain()
 {
-	patch_bash
+	patch_bash &&
 	./configure --without-bash-malloc &&
 	make &&
 	make install
@@ -86,25 +86,32 @@ EOF
 		--with-installed-readline=no		\
 		$CONFIGURE_ARGS &&
 	make &&
-	# Bash doesn't care about DESTDIR in environnment variable.
-	make DESTDIR=$DESTDIR install
-
-	[ -s "$SOURCES_REPOSITORY/$BASHCHECK" ] || 
-		busybox wget --no-check-certificate -O "$SOURCES_REPOSITORY/$BASHCHECK" $BASHCHECKURL
-	$DESTDIR/bin/bash $SOURCES_REPOSITORY/$BASHCHECK $DESTDIR/bin/bash | tee bashcheck.log
-	grep Vulnerable bashcheck.log && echo "ERROR: Vulnerable"
+	# Bash doesn't care about DESTDIR in environment variable.
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/bin	$fs
+	mkdir $fs/etc
+
+	cook_copy_folders		bin
 
 	# Configuration files.
-	mkdir $fs/etc
 	cp $stuff/example.bashrc	$fs/etc/bashrc
 }
 
+testsuite()
+{
+	[ -s "$SOURCES_REPOSITORY/$BASHCHECK" ] ||
+	busybox wget	--no-check-certificate			\
+			-O "$SOURCES_REPOSITORY/$BASHCHECK"	\
+			$BASHCHECKURL
+	$DESTDIR/bin/bash $SOURCES_REPOSITORY/$BASHCHECK $DESTDIR/bin/bash | \
+	tee bashcheck.log
+	grep Vulnerable bashcheck.log &&
+	echo "ERROR: Vulnerable"
+}
 
 post_install()
 {
@@ -117,11 +124,12 @@ post_install()
 	echo
 	echo -n 'Do you want to set Bash to default (y/N) ? : '
 	read -t 30 answer
-	[ "$answer" != 'y' ] && return
+	[ "$answer" != 'y' ] &&
+	return
 
 	echo
 	echo 'Setting bash as default shell for all users'
-	sed -i 's|:/bin/[ckz]*sh$|:/bin/bash|' "$1/etc/passwd"
+	sed -i 's|:/bin/[ckz]*sh$|:/bin/bash|'	"$1/etc/passwd"
 
 	echo 'Creating ~/.bashrc file for all users'
 	for i in $(awk -F: '$7=="/bin/bash"{print $6}' "$1/etc/passwd")
@@ -137,6 +145,7 @@ pre_remove()
 {
 	echo
 	echo 'Setting sh as default shell for all users'
-	sed -i 's|:/bin/bash$|:/bin/sh|' "$1/etc/passwd"
-	[ -f "$1/etc/skel/.bashrc" ] && rm "$1/etc/skel/.bashrc"
+	sed -i 's|:/bin/bash$|:/bin/sh|'	"$1/etc/passwd"
+	[ -f "$1/etc/skel/.bashrc" ] &&
+	rm "$1/etc/skel/.bashrc"
 }
