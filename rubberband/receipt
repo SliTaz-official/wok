@@ -1,0 +1,44 @@
+# SliTaz package receipt.
+
+PACKAGE="rubberband"
+VERSION="2.0.2"
+CATEGORY="development"
+SHORT_DESC="Library for audio time-stretching and pitch-shifting."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="GPL2"
+WEB_SITE="https://www.breakfastquay.com/rubberband/"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://breakfastquay.com/files/releases/$TARBALL"
+
+DEPENDS="fftw gcc83-lib-base ladspa libsamplerate libsndfile lv2 vamp-sdk"
+BUILD_DEPENDS="fftw-dev gcc83 ladspa-dev libatomic libsamplerate-dev
+	libsndfile-dev lv2 meson vamp-sdk-dev"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	# mit meson und ninja
+	LDFLAGS="$LDFLAGS -latomic"	\
+	meson	_build			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		--mandir=/usr/share/man	\
+		--localstatedir=/var	\
+		--buildtype=plain &&
+	ninja	-C _build &&
+	ninja	-C _build install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/usr/share	$fs/usr
+}
