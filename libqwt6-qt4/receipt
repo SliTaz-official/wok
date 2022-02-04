@@ -14,10 +14,17 @@ WGET_URL="http://switch.dl.sourceforge.net/sourceforge/qwt/$TARBALL"
 DEPENDS="libQtCore libQtGui libQtScript libQtXml libQtDesigner gcc-lib-base"
 BUILD_DEPENDS="qmake Qt4-dev"
 
+# What is the latest version available today?
+current_version()
+{
+	wget -O - https://sourceforge.net/projects/qwt/files/qwt/ 2>/dev/null | \
+	sed '/scope="row/!d;s|.*href="|"https://sourceforge.net|;q' | xargs wget -O - 2>/dev/null | \
+	sed '/scope="row/!d;s|.*/qwt/||;s|/.*||;q'
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i \
 		-e 's/$${QWT_INSTALL_PREFIX}\/include/\/usr\/include\/qwt\//' \
 		-e 's/$${QWT_INSTALL_PREFIX}\/lib/\/usr\/lib\//' \

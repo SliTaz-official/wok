@@ -13,10 +13,17 @@ WGET_URL="http://downloads.sourceforge.net/project/mcrypt/MCrypt/$VERSION/$TARBA
 DEPENDS="zlib mhash libmcrypt"
 BUILD_DEPENDS="libmcrypt-dev libmcrypt-dev mhash-dev"
 
+# What is the latest version available today?
+current_version()
+{
+	wget -O - https://sourceforge.net/projects/mcrypt/files/MCrypt/ 2>/dev/null | \
+	sed '/scope="row/!d;s|.*href="|"https://sourceforge.net|;q' | xargs wget -O - 2>/dev/null | \
+	sed '/scope="row/!d;s|.*/MCrypt/||;s|/.*||;q'
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	./configure \
 		--prefix=/usr $CONFIGURE_ARGS 2>&1 | grep -v libtoolT &&
 	make &&

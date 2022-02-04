@@ -13,10 +13,17 @@ WGET_URL="https://sourceforge.net/projects/wvware/files/$PACKAGE/$VERSION/$TARBA
 DEPENDS="libpng jpeg libgd gdk-pixbuf expat"
 BUILD_DEPENDS="libpng-dev jpeg-dev libgd-dev gdk-pixbuf-dev expat-dev"
 
+# What is the latest version available today?
+current_version()
+{
+	wget -O - https://sourceforge.net/projects/wvware/files/libwmf/ 2>/dev/null | \
+	sed '/scope="row/!d;s|.*href="|"https://sourceforge.net|;q' | xargs wget -O - 2>/dev/null | \
+	sed '/scope="row/!d;s|.*/libwmf/||;s|/.*||;q'
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	sed -i 's/^mkdirprog.*$/mkdirprog="mkdir -p"/' install-sh
 	./configure $CONFIGURE_ARGS &&
 	make && 
