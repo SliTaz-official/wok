@@ -1,12 +1,12 @@
 # SliTaz package receipt.
 
 PACKAGE="fftw"
-VERSION="3.3.8"
+VERSION="3.3.10"
 CATEGORY="multimedia"
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
 SHORT_DESC="A library for computing the discrete Fourier transform (DFT)."
-WEB_SITE="http://www.fftw.org/"
+WEB_SITE="https://www.fftw.org/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$WEB_SITE/$TARBALL"
@@ -18,43 +18,43 @@ BUILD_DEPENDS="gfortran"
 compile_rules()
 {
 	# build double precision
-	./configure		\
-		F77=gfortran	\
-		--prefix=/usr	\
-		--enable-shared	\
+	./configure			\
+		F77=gfortran		\
+		--prefix=/usr		\
+		--enable-shared		\
+		--enable-threads	\
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install 
+	make install DESTDIR=$DESTDIR
 
 	# build long double precission
-	make clean
+	make clean &&
 	./configure			\
 		F77=gfortran		\
 		--prefix=/usr		\
 		--enable-long-double	\
 		--enable-shared		\
+		--enable-threads	\
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install 
+	make install DESTDIR=$DESTDIR
 
 	# build single precision
-	make clean
-	./configure		\
-		F77=gfortran	\
-		--prefix=/usr	\
-		--enable-float	\
-		--enable-shared	\
+	make clean &&
+	./configure			\
+		F77=gfortran		\
+		--prefix=/usr		\
+		--enable-float		\
+		--enable-shared		\
+		--enable-threads	\
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install 
+	make install DESTDIR=$DESTDIR
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	mkdir -p $fs/usr/share
-
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/lib/*so*	$fs/usr/lib
+	cook_copy_folders	bin
+	cook_copy_files		*.so*
 }
