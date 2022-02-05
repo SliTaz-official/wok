@@ -1,23 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="blackbox"
-VERSION="0.75"
+VERSION="0.77"
 CATEGORY="x-window"
 TAGS="window-manager"
 SHORT_DESC="A small, fast, full-featured window manager for X."
 MAINTAINER="devl547@gmail.com"
 LICENSE="MIT"
 WEB_SITE="https://github.com/bbidulock/blackboxwm"
+REPOLOGY="blackbox-wm"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
 
-DEPENDS="gcc83-lib-base xorg-libXft xorg-libXt"
-BUILD_DEPENDS="autoconf automake gcc83 libtool libxml2-dev 
-	xorg-libXft-dev xorg-libXt-dev xorg-xextproto"
-
-# TODO: modify tazx for blackbox so it will creat a correct ~/.xinitrc
-# to let user use the wm via slim/F1 or by default with 'tazx blackbox'.
+SUGGESTED="blackbox-lang"
+DEPENDS="xorg-libXft xorg-libXt"
+BUILD_DEPENDS="autoconf automake gcc83 libtool libxml2-dev xorg-libXft-dev 
+	xorg-libXt-dev xorg-xextproto"
 
 current_version()
 {
@@ -40,7 +39,7 @@ compile_rules()
 		--libexecdir=/usr/bin	\
 		--mandir=/usr/share/man	\
 		$CONFIGURE_ARGS &&
-	make -j 4 &&
+	make &&
 	make DESTDIR=$DESTDIR install
 }
 
@@ -51,4 +50,27 @@ genpkg_rules()
 
 	cp -a $install/usr/bin			$fs/usr
 	cp -a $install/usr/share/blackbox	$fs/usr/share
+
+	# menu suitable for SliTaz
+	cp -a $stuff/menu			$fs/usr/share/blackbox
+}
+
+post_install()
+{
+	res=$(cat "$1/etc/slim.conf" | grep ^session | sed s/"sessions. *"//)
+	# Add window manager to SLIM available sessions.
+	if ! echo "$res" | grep -q $PACKAGE
+	  then
+		sed -i	"s|^sessions.*|sessions            ${res},$PACKAGE|" \
+			"$1/etc/slim.conf"
+	fi
+}
+
+post_remove()
+{
+	# Remove window manager from SLIM available sessions.
+	if grep -q $PACKAGE "$1/etc/slim.conf"
+	  then
+		sed -i "s|,$PACKAGE||" "$1/etc/slim.conf"
+	fi
 }
