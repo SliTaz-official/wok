@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="binutils"
-VERSION="2.33.1"
+VERSION="2.37"
 CATEGORY="development"
 TAGS="assembler linker"
 SHORT_DESC="GNU assembler, linker and binary utilities."
@@ -41,17 +41,17 @@ compile_rules()
 		i?86) ARCH_ARGS="--disable-werror --enable-64-bit-bfd" ;;
 	esac
 
-	mkdir -p ../binutils-build &&
-	cd ../binutils-build
+	mkdir	../binutils-build &&
+	cd	../binutils-build &&
 	$src/configure					\
 		--program-prefix=$TOOLPREFIX		\
+		--enable-shared				\
 		--disable-initfini-array		\
-		 --enable-shared			\
 		--with-bugurl="http://bugs.slitaz.org/"	\
 		$CONFIGURE_ARGS				\
 		$ARCH_ARGS &&
 	make tooldir=/usr &&
-	make tooldir=/usr install &&
+	make install tooldir=/usr &&
 	# This is the default binutils, so create symlinks to the target platform
 	# binutil binaries. Delete duplicate binaries to save space.
 	for binutil in $(ls -1 $DESTDIR/usr/bin | grep "${TOOLPREFIX}")
@@ -68,24 +68,23 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/lib/*.so*	$fs/usr/lib
-	cp -a $install/usr/lib/*.a	$fs/usr/lib
-	cp -a $install/usr/include	$fs/usr
+	cook_copy_folders	bin
+	cook_copy_folders	include
+	cook_copy_files		*.a
+	cook_copy_files		*.so*
 
 	# libiberty.h
 	cp -a $src/include/libiberty.h	$fs/usr/include
 
 	# Remove 'strings' (Busybox).
 	#rm $fs/usr/lib/libiberty.a
-	rm $fs/usr/bin/strings $fs/usr/bin/*-strings
+	rm				$fs/usr/bin/strings
+	rm				$fs/usr/bin/*-strings
 
 	# Remove build directory (cookutils and tazwok path).
 	rm -rf $WOK/$PACKAGE/source/$PACKAGE-build
 	rm -rf $WOK/$PACKAGE/$PACKAGE-build
 
-	chown -R root:root $fs/usr/include/libiberty.h
-	chmod 644 $fs/usr/include/libiberty.h
+	chown -R root:root		$fs/usr/include/libiberty.h
+	chmod 644			$fs/usr/include/libiberty.h
 }
