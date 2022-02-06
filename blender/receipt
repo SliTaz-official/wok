@@ -40,37 +40,39 @@ compile_rules()
 			$src/source/blender/python/generic/py_capi_utils.c
 #	sed -i 's|char. chars = _PyUnicode_AsString|const &|' \
 #		$src/source/gameengine/Ketsji/KX_FontObject.cpp
-	mkdir -p $WOK/$PACKAGE/source/build
-	cd $WOK/$PACKAGE/source/build
+
 	PY3K_VER=$(ls -d /usr/include/python3.?m | sed 's|.*python\(.*\)m|\1|')
 
 	export	CC=gcc-83
 	export	CXX=g++-83
 
-	cmake $src						\
-		-DCMAKE_INSTALL_PREFIX:PATH=/usr		\
-		-DCMAKE_BUILD_TYPE:STRING=Release		\
-		-DWITH_INSTALL_PORTABLE:BOOL=OFF		\
-		-DWITH_PYTHON_INSTALL:BOOL=OFF			\
-		-DWITH_OPENCOLLADA:BOOL=OFF			\
-		-DWITH_GAMEENGINE:BOOL=ON			\
-		-DWITH_CYCLES:BOOL=OFF				\
-		-DWITH_PLAYER:BOOL=ON				\
+	mkdir	_build
+	cd	_build
+	cmake	$src						\
+		-D CMAKE_INSTALL_PREFIX:PATH=/usr		\
+		-D CMAKE_BUILD_TYPE:STRING=Release		\
+		-D WITH_INSTALL_PORTABLE:BOOL=OFF		\
+		-D WITH_PYTHON_INSTALL:BOOL=OFF			\
+		-D WITH_OPENCOLLADA:BOOL=OFF			\
+		-D WITH_GAMEENGINE:BOOL=ON			\
+		-D WITH_CYCLES:BOOL=OFF				\
+		-D WITH_PLAYER:BOOL=ON				\
 		-D WITH_TBB:BOOL=OFF				\
-		-DPYTHON_VERSION:STRING=$PY3K_VER		\
-		-DPYTHON_LIBPATH:STRING=/usr/lib		\
-		-DPYTHON_LIBRARY:STRING=python${PY3K_VER}m	\
-		-DPYTHON_INCLUDE_DIRS:STRING=/usr/include/python${PY3K_VER}m
+		-D PYTHON_VERSION:STRING=$PY3K_VER		\
+		-D PYTHON_LIBPATH:STRING=/usr/lib		\
+		-D PYTHON_LIBRARY:STRING=python${PY3K_VER}m	\
+		-D PYTHON_INCLUDE_DIRS:STRING=/usr/include/python${PY3K_VER}m &&
+
 	# build
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install &&
+	make install DESTDIR=$DESTDIR &&
 	python3 -m compileall "$DESTDIR/usr/share/blender"
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	LOCALE="fr de pt_BR es zh_CN"
+#	LOCALE="fr de pt_BR es zh_CN"
 
 	mkdir -p $fs/usr/bin
 	mkdir -p $fs/usr/share/pixmaps
