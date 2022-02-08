@@ -1,20 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="ccache"
-VERSION="3.7.7"
+VERSION="4.5.1"
 CATEGORY="development"
 TAGS="compiler"
 SHORT_DESC="Compiler cache."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL3"
-WEB_SITE="https://ccache.samba.org/"
+WEB_SITE="https://ccache.dev/"
 
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="https://github.com/$PACKAGE/$PACKAGE/releases/download/v$VERSION/$TARBALL"
 
 SUGGESTED="gcc"
-DEPENDS="zlib"
-BUILD_DEPENDS="zlib-dev"
+DEPENDS="gcc83-lib-base hiredis libatomic zstd"
+BUILD_DEPENDS="cmake gcc83 hiredis-dev zstd-dev"
 
 current_version()
 {
@@ -25,18 +25,20 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure				\
-		--prefix=/usr			\
-		--infodir=/usr/share/info	\
-		--mandir=/usr/share/man		\
-		$CONFIGURE_ARGS &&
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..				\
+		-D CMAKE_BUILD_TYPE=Release	\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin	$fs/usr
+	cook_copy_folders	bin
 }
