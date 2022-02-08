@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="ccid"
-VERSION="1.4.31"
+VERSION="1.5.0"
 CATEGORY="base-system"
 SHORT_DESC="Chip and Smart Card Interface Devices driver."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -11,13 +11,16 @@ WEB_SITE="https://ccid.apdu.fr/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="${WEB_SITE}files/$TARBALL"
 
-DEPENDS="libusb pcsc-lite"
-BUILD_DEPENDS="libusb-dev pcsc-lite-dev"
+DEPENDS="gcc83-lib-base libusb pcsc-lite"
+BUILD_DEPENDS="gcc83 libusb-dev pcsc-lite-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	./configure						\
+		CC=gcc-83					\
+		CXX=g++-83					\
+		LDFLAGS="$LDFLAGS -lrt"				\
 		--prefix=/usr					\
 		--sysconfdir=/etc				\
 		--enable-serialconfdir=/etc/reader.conf.d	\
@@ -25,15 +28,16 @@ compile_rules()
 		--enable-twinserial				\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install &&
-	make DESTDIR=$DESTDIR -C src install_ccidtwin
+	make install DESTDIR=$DESTDIR &&
+	make install_ccidtwin DESTDIR=$DESTDIR -C src
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/etc/udev/rules.d
-	mkdir -p $fs/usr/bin $fs/usr/sbin
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/sbin
 
 	cp -a $install/*		$fs/
 	cp $src/src/92_pcscd_ccid.rules	$fs/etc/udev/rules.d/
