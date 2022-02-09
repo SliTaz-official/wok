@@ -1,61 +1,80 @@
 # SliTaz package receipt.
 
 PACKAGE="clamav"
-VERSION="0.102.3"
+VERSION="0.104.2"
 CATEGORY="security"
 TAGS="antivirus"
 SHORT_DESC="Antivirus."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://www.clamav.net/"
+WEB_SITE="https://www.clamav.net/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="${WEB_SITE}downloads/production/$TARBALL"
 
-DEPENDS="zlib gmp bzip2 slitaz-base-files ncurses libltdl libssl"
-BUILD_DEPENDS="zlib-dev gmp gmp-dev bzip2-dev ncurses-dev openssl-dev bash curl-dev libjson-c-dev"
+DEPENDS="bzip2 gmp libcurl libjson-c libltdl libssl libxml2 ncurses 
+	pcre2 slitaz-base-files zlib"
+BUILD_DEPENDS="bzip2-dev check-dev cmake curl-dev gmp-dev libjson-c-dev
+	libxml2-dev ncurses-dev openssl-dev pcre2-dev zlib-dev"
 
 # Rules to configure and make the package.
 compile_rules()
 {
-	export LDFLAGS="$LDFLAGS -ltinfo"
+#	export LDFLAGS="$LDFLAGS -ltinfo"
 	# Have to create clamav user/group to be able to compile
-	adduser -s /bin/false -H -D -u 64 clamav
+#	adduser -s /bin/false -H -D -u 64 clamav
 
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc/clamav \
-		--with-dbdir=/var/lib/clamav \
-		--with-iconv=no \
-		--disable-zlib-vcheck \
-		$CONFIGURE_ARGS &&
+#	./configure \
+#		--prefix=/usr \
+#		--sysconfdir=/etc/clamav \
+#		--with-dbdir=/var/lib/clamav \
+#		--with-iconv=no \
+#		--disable-zlib-vcheck \
+#		$CONFIGURE_ARGS &&
+
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..					\
+		-D CMAKE_INSTALL_PREFIX=/usr		\
+		-D APP_CONFIG_DIRECTORY=/etc/clamav	\
+	 	-D DATABASE_DIRECTORY=/var/lib/clamav	\
+		-D ENABLE_MILTER=OFF			\
+		-D ENABLE_STATIC_LIB=ON &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/etc/init.d $fs/var/lib/clamav \
-		$fs/var/log/clamav $fs/run/clamav
-	cp -a $install/usr/bin $fs/usr
-	rm -f $fs/usr/bin/clamav-config
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/etc $fs
-	mv $fs/etc/clamav/clamd.conf* $fs/etc/clamav/clamd.conf
-	mv $fs/etc/clamav/freshclam.conf* $fs/etc/clamav/freshclam.conf
-	# Copy only shared lib (.so)
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	# Copy daemon from /$stuff
-	cp $stuff/daemon-clamd $fs/etc/init.d/clamd
+	mkdir -p $fs/etc/clamav
+	mkdir -p $fs/etc/init.d
+	mkdir -p $fs/run/clamav
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/var/lib/clamav
+	mkdir -p $fs/var/log/clamav
 
-	# Customize config
-	sed -i -e "s/^Example/#Example/" \
+	cp -a $install/etc/clamav/clamd.conf* \
+					$fs/etc/clamav/clamd.conf
+	cp -a $install/etc/clamav/freshclam.conf* \
+					$fs/etc/clamav/freshclam.conf
+
+	# Copy daemon from $stuff
+	cp $stuff/daemon-clamd		$fs/etc/init.d/clamd
+
+	cp -a $install/usr/bin		$fs/usr
+	rm -f				$fs/usr/bin/clamav-config
+	cp -a $install/usr/sbin		$fs/usr
+
+	# Copy only shared libraries (.so)
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+
+	# Customize configuration file
+	sed -i	-e "s/^Example/#Example/" \
 		-e "s|^#LogFile /tmp/clamd.log|LogFile /var/log/clamav/clamav.log|" \
 		-e "s|^#PidFile.*|PidFile /run/clamav/clamd.pid|" \
 		-e "s|^#LocalSocket /tmp/clamd.socket|LocalSocket /run/clamav/clamd-socket|" \
 		$fs/etc/clamav/clamd.conf
-		
 }
 
 post_install()
@@ -64,14 +83,20 @@ post_install()
 	local group=clamav
 
 	# Enable freshclam update
-	echo; action 'Enabling freshclam update...'
+	echo
+	action 'Enabling freshclam update...'
 	cd "$1/etc/clamav"
-	sed -i 's/^Example/#Example/' freshclam.conf
+	sed -i 's/^Example/#Example/'	freshclam.conf
 	status
+	[ "$quiet" ] || cat <<EOT
+Before starting clamd for the first time,
+create signature database with freshclam."
+EOT
 
 	# adduser clamav if needed
-	if ! grep -q "${user}:" "$1/etc/passwd"; then
-		action 'Adding user/group $user...'
+	if ! grep -q "${user}:" "$1/etc/passwd"
+	  then
+		action 'Adding user and group $user...'
 		chroot "$1/" addgroup -S $group
 		chroot "$1/" adduser -s /bin/false -S -D -H -G $group $user
 		status
@@ -80,12 +105,13 @@ post_install()
 	# Enable daily.cvd updates (sometimes needed for new version)
 	#chown -R ${user}:${group} "$1/var/lib/clamav"
 
-	# Fix perms
-	chroot "$1/" chown -R ${user}.${group} /var/log/clamav \
-		/run/clamav /var/lib/clamav
+	# Fix permissions
+	chroot "$1/" chown -R ${user}.${group}	/run/clamav
+	chroot "$1/" chown -R ${user}.${group}	/var/lib/clamav
+	chroot "$1/" chown -R ${user}.${group}	/var/log/clamav
 }
 
-# Del user clamav when pkg is removed.
+# Delete user clamav when package is removed.
 post_remove()
 {
 	chroot "$1/" deluser clamav
