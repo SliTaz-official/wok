@@ -1,20 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="clamtk"
-VERSION="5.27"
+VERSION="6.14"
 CATEGORY="network"
 SHORT_DESC="ClamTk is a GUI front-end for ClamAV using gtk2-perl."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL"
-WEB_SITE="http://clamtk.sourceforge.net/"
+WEB_SITE="https://github.com/dave-theunsub/clamtk"
 
 TARBALL="$PACKAGE-$VERSION.tar.xz"
-#WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-WGET_URL="https://bitbucket.org/davem_/$PACKAGE/downloads/$TARBALL"
+WGET_URL="$WEB_SITE/releases/download/v$VERSION/$TARBALL"
 
-DEPENDS="clamav perl-gtk2 perl perl-date-calc perl-file-find-rule \
-perl-json perl-libwww perl-locale-gettext perl-lwp-protocol-https \
-perl-net-dns perl-net-ssleay perl-text-csv perl-try-tiny udev slitaz-icon"
+SUGGESTED="clamtk-lang"
+DEPENDS="clamav perl perl-date-calc perl-file-find-rule perl-gtk2
+	perl-json perl-libwww perl-locale-gettext perl-lwp-protocol-https
+	perl-net-dns perl-net-ssleay perl-text-csv perl-try-tiny udev
+	slitaz-icon"
 BUILD_DEPENDS=""
 
 # What is the latest version available today?
@@ -33,23 +34,21 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	install -Dm755  $src/clamtk $fs/usr/bin/clamtk
+	install -Dm755  $src/clamtk	$fs/usr/bin/clamtk
 
-	# libs
-	PERL_VER=$(grep ^VERSION= $WOK/perl/receipt | cut -d "=" -f2 | sed -e 's/"//g')
-	for n in $src/lib/* ; do
-		install -Dm644 $n $fs/usr/lib/perl5/$PERL_VER/ClamTk/`basename $n`
-	done
+	# libraries
+	PERL_VER=$(grep ^VERSION= $WOK/perl/receipt)
+	PERL_VER=${PERL_VER#*\"}
+	PERL_VER=${PERL_VER%\"*}
+	for n in $src/lib/*
+	  do
+		install -Dm644 $n	$fs/usr/lib/perl5/$PERL_VER/ClamTk/$(basename $n)
+	  done
   
-	#localization
-	for n in $src/po/*.mo ; do
-		install -Dm644 $n $fs/usr/share/locale/`basename $n .mo`/LC_MESSAGES/clamtk.mo
-	done
-
 	# pixmaps
-	install -Dm644 $src/images/clamtk.xpm $fs/usr/share/pixmaps/clamtk.xpm
-	install -Dm644 $src/images/clamtk.png $fs/usr/share/pixmaps/clamtk.png
-  
+	install -Dm644 $src/images/clamtk.xpm	$fs/usr/share/pixmaps/clamtk.xpm
+	install -Dm644 $src/images/clamtk.png	$fs/usr/share/pixmaps/clamtk.png
+
 	# menu
-	install -Dm644 $src/clamtk.desktop $fs/usr/share/applications/clamtk.desktop
+	install -Dm644 $src/clamtk.desktop	$fs/usr/share/applications/clamtk.desktop
 }
