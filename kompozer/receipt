@@ -1,0 +1,47 @@
+# SliTaz package receipt.
+
+PACKAGE="kompozer"
+VERSION="0.8b3"
+CATEGORY="network"
+SHORT_DESC="KompoZer is a complete web authoring system."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="MPL"
+WEB_SITE="http://kompozer.net"
+
+TARBALL="$PACKAGE-$VERSION-src.tar.bz2"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+DEPENDS="gtk+ libxml2"
+BUILD_DEPENDS="coreutils findutils gtk+-dev gtk-girepository libIDL
+	libXaw3dXft-dev libxml2-dev nspr-dev pango-dev pkg-config
+	perl xorg-libXft-dev zip"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	echo ac_add_options --enable-application=composer > .mozconfig
+	cp -a security/coreconf/Linux2.6.mk security/coreconf/Linux3.16.mk
+
+	{
+	./configure			\
+		--with-system-nspr	\
+		--prefix=/usr		\
+		--disable-glibtest	\
+		--disable-libIDLtest	\
+		--disable-updater	\
+		--disable-tests		\
+		--enable-system-cairo	\
+		--enable-installer &&
+	make -j 1 &&
+	make install DESTDIR=$DESTDIR
+	} 2>&1 | sed "s|build_number': No such|build_number': no such|"
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/kompozer	$fs/usr/lib
+}
