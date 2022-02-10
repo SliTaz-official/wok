@@ -14,11 +14,20 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 DEPENDS="gtk+ libxml2"
 BUILD_DEPENDS="coreutils findutils gtk+-dev gtk-girepository libIDL
 	libXaw3dXft-dev libxml2-dev nspr-dev pango-dev pkg-config
-	perl xorg-libXft-dev zip"
+	perl xorg-libXft-dev zip pangox-compat-dev"
+
+# What is the latest version available today?
+current_version()
+{
+	wget -O - https://sourceforge.net/projects/kompozer/files/current/ 2>/dev/null | \
+	sed '/scope="row/!d;s|.*href="|"https://sourceforge.net|;q' | xargs wget -O - 2>/dev/null | \
+	sed '/scope="row/!d;s|.*/current/||;s|/.*||;q'
+}
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	grep -l 'uname -m' * | xargs sed -i 's|uname -m|echo i686|'
 	echo ac_add_options --enable-application=composer > .mozconfig
 	cp -a security/coreconf/Linux2.6.mk security/coreconf/Linux3.16.mk
 
