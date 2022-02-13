@@ -1,24 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="consolekit2"
-VERSION="1.2.1"
+VERSION="1.2.4"
 CATEGORY="system-tools"
 SHORT_DESC="ConsoleKit framework."
-MAINTAINER="developer@slitaz.org"
+MAINTAINER="maintainer@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="https://github.com/Consolekit2/ConsoleKit2"
 LFS="http://www.linuxfromscratch.org/blfs/view/svn/postlfs/consolekit.html"
 REPOLOGY="consolekit"
 
 SOURCE="ConsoleKit2"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
-WGET_URL="https://github.com/$SOURCE/$SOURCE/releases/download/$VERSION/$TARBALL"
-TARBALL_SHA1="28869807eed0cc4a7a1d98030be1f2c7e5700d0e"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$SOURCE/$SOURCE/archive/refs/tags/$VERSION.tar.gz"
 
 
 DEPENDS="acl dbus eudev-lib glib polkit xorg-libX11 zlib"
-BUILD_DEPENDS="acl-dev dbus-dev docbook-xsl eudev-dev gettext-base \
-	glib-dev libtool libxml2-tools libxslt polkit-dev \
+BUILD_DEPENDS="acl-dev dbus-dev docbook-xsl eudev-dev gettext-base
+	glib-dev libtool libxml2-tools libxslt polkit-dev
 	util-linux-getopt util-linux-uuid-dev xmlto xorg-libX11-dev"
 
 current_version()
@@ -29,7 +28,7 @@ current_version()
 
 compile_rules()
 {
-	./configure							\
+	./autogen.sh							\
 		--sysconfdir=/etc					\
 		--localstatedir=/var					\
 		--enable-udev-acl					\
@@ -55,7 +54,7 @@ genpkg_rules()
 	mkdir -p $fs/var/run/ConsoleKit
 
 	cp -a $install/etc/X11/app-defaults/xinitrc.d \
-		$fs/etc/X11/app-defaults
+						$fs/etc/X11/app-defaults
 	cp -a $install/etc			$fs
 	cp -a $install/usr/bin			$fs/usr
 	cp -a $install/lib/udev			$fs/lib
@@ -67,10 +66,8 @@ genpkg_rules()
 	cp -a $install/usr/share/polkit-1 	$fs/usr/share
 
 	# modify symbolic links
-	rm $fs/lib/udev/udev-acl
-	ln -s ../../usr/libexec/udev-acl \
-		$fs/lib/udev/udev-acl
-	rm $fs/usr/lib/ConsoleKit/run-seat.d/udev-acl.ck
-	ln -s ../../../libexec/udev-acl	\
-		$fs/usr/lib/ConsoleKit/run-seat.d/udev-acl.ck
+	rm					$fs/lib/udev/udev-acl
+	ln -s ../../usr/libexec/udev-acl	$fs/lib/udev/udev-acl
+	rm					$fs/usr/lib/ConsoleKit/run-seat.d/udev-acl.ck
+	ln -s ../../../libexec/udev-acl		$fs/usr/lib/ConsoleKit/run-seat.d/udev-acl.ck
 }
