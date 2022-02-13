@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="coreutils-multicall"
-VERSION="8.31"
+VERSION="9.0"
 CATEGORY="system-tools"
 SHORT_DESC="Utilities for using and setting the basic system."
 MAINTAINER="al.bobylev@gmail.com"
@@ -11,6 +11,7 @@ WEB_SITE="https://www.gnu.org/software/coreutils/coreutils.html"
 TARBALL="coreutils-$VERSION.tar.xz"
 WGET_URL="https://ftp.gnu.org/gnu/coreutils/$TARBALL"
 
+SUGGESTED="coreutils-lang"
 SIBLINGS="coreutils"
 DEPENDS="acl attr glibc-base gmp libcap"
 BUILD_DEPENDS="automake gmp-dev libcap-dev xz"
@@ -47,12 +48,34 @@ compile_rules()
 	mkdir -p $install/usr/sbin
 	mkdir -p $install/usr/share/man/man8
 
-	for i in cat chgrp chmod chown cp date dd df echo false ln ls mkdir \
-		mknod mv pwd rm rmdir stty sync true uname
+	while read i
 	  do
 		rm $install/usr/bin/$i
 		ln -s /usr/bin/coreutils	$install/bin/$i
-	  done
+	  done <<EOT
+cat
+chgrp
+chmod
+chown
+cp
+date
+dd
+df
+echo
+false
+ln
+ls
+mkdir
+mknod
+mv
+pwd
+rm
+rmdir
+stty
+sync
+true
+uname
+EOT
 	rm $install/usr/bin/chroot
 	ln -s /usr/bin/coreutils		$install/usr/sbin/chroot
 	mv  $install/usr/share/man/man1/chroot.1 \
@@ -67,22 +90,23 @@ compile_rules()
 genpkg_rules()
 {
 	cp -a $install/*	$fs
-	rm -r			$fs/usr/share/info
-	rm -r			$fs/usr/share/locale
+	# according to https://doc.slitaz.org/en:cookbook:wok
+	# Generally, the base packages contain no man, info or doc files
+	rm -r			$fs/usr/share
 }
 
 post_install()
 {
 	# Remove Busybox applets in order to not clash with ("/bin", "/sbin",
 	# "/usr/bin" and "/usr/sbin" conflicts with the same filename)
-	rm "$1/bin/base64"   # /usr/bin/base64
-	rm "$1/bin/kill"     # /usr/bin/kill
-	rm "$1/bin/mktemp"   # /usr/bin/mktemp
-	rm "$1/bin/nice"     # /usr/bin/nice
-	rm "$1/bin/printenv" # /usr/bin/printenv
-	rm "$1/bin/sleep"    # /usr/bin/sleep
-	rm "$1/bin/stat"     # /usr/bin/stat
-	rm "$1/bin/touch"    # /usr/bin/touch
+	rm "$1/bin/base64"	# /usr/bin/base64
+	rm "$1/bin/kill"	# /usr/bin/kill
+	rm "$1/bin/mktemp"	# /usr/bin/mktemp
+	rm "$1/bin/nice"	# /usr/bin/nice
+	rm "$1/bin/printenv"	# /usr/bin/printenv
+	rm "$1/bin/sleep"	# /usr/bin/sleep
+	rm "$1/bin/stat"	# /usr/bin/stat
+	rm "$1/bin/touch"	# /usr/bin/touch
 }
 
 post_remove()
@@ -90,22 +114,94 @@ post_remove()
 	# Restore all Busybox applets that have been replaced
 
 	# /bin:
-	for i in base64 cat chgrp chmod chown cp date dd df echo false kill ln ls \
-		mkdir mknod mktemp mv nice printenv pwd rm rmdir sleep stat stty sync \
-		touch true uname
+	while read i
 	  do
 		busybox ln -s busybox "$1/bin/$i"
-	  done
+	  done <<EOT
+base64
+cat
+chgrp
+chmod
+chown
+cp
+date
+dd
+df
+echo
+false
+kill
+ln
+ls
+mkdir
+mknod
+mktemp
+mv
+nice
+printenv
+pwd
+rm
+rmdir
+sleep
+stat
+stty
+sync
+touch
+true
+uname
+EOT
 
 	# /usr/bin:
-	for i in '[' basename cksum comm cut dirname du env expand expr fold \
-		groups head hostid id install logname md5sum mkfifo nohup od printf \
-		readlink realpath seq sha1sum sha256sum sha512sum sort split sum tac \
-		tail tee test timeout tr tty unexpand uniq uptime users wc who whoami \
-		yes
+	while read i
 	  do
 		busybox ln -s /bin/busybox "$1/usr/bin/$i"
-	  done
+	  done <<EOT
+[
+basename
+cksum
+comm
+cut
+dirname
+du
+env
+expand
+expr
+fold
+groups
+head
+hostid
+id
+install
+logname
+md5sum
+mkfifo
+nohup
+od
+printf
+readlink
+realpath
+seq
+sha1sum
+sha256sum
+sha512sum
+sort
+split
+sum
+tac
+tail
+tee
+test
+timeout
+tr
+tty
+unexpand
+uniq
+uptime
+users
+wc
+who
+whoami
+yes
+EOT
 
 	# /usr/sbin:
 	busybox ln -s /bin/busybox "$1/usr/sbin/chroot"
