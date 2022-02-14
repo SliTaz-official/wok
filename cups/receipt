@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="cups"
-VERSION="2.3.1"
+VERSION="2.4.1"
 CATEGORY="system-tools"
 TAGS="printer printing"
 SHORT_DESC="Common UNIX Printing System."
@@ -10,8 +10,9 @@ LICENSE="GPL2 LGPL2"
 WEB_SITE="https://www.cups.org/"
 
 TARBALL="$PACKAGE-$VERSION-source.tar.gz"
-WGET_URL="https://github.com/apple/$PACKAGE/releases/download/v$VERSION/$TARBALL"
+WGET_URL="https://github.com/OpenPrinting/$PACKAGE/releases/download/v$VERSION/$TARBALL"
 
+SUGGESTED="cups-lang"
 DEPENDS="cups-doc cups-filters dbus libcomerr libcups libkrb5 libssl 
 	libunistring libusb-compat poppler-apps"
 BUILD_DEPENDS="acl-dev dbus-dev gnutls-dev jpeg-dev libgcrypt-dev 
@@ -55,7 +56,7 @@ compile_rules()
 		--with-languages="$LOCALE_PACK" \
 		$CONFIGURE_ARGS &&
 	make &&
-	make BUILDROOT=$DESTDIR install
+	make install BUILDROOT=$DESTDIR
 
 	cp -f $stuff/cups.desktop \
 		$install/usr/share/applications/cups.desktop
@@ -71,9 +72,9 @@ genpkg_rules()
 	cp -a $install/etc/cups		$fs/etc
 	cp -a $install/etc/dbus*	$fs/etc
 	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/sbin		$fs/usr
 	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 	cp -a $install/usr/lib/cups	$fs/usr/lib
+	cp -a $install/usr/sbin		$fs/usr
 	cp -a $install/usr/share/cups	$fs/usr/share
 	cp -a $install/usr/share/icons	$fs/usr/share
 	cp -a $install/var		$fs
@@ -87,7 +88,7 @@ genpkg_rules()
 
 	# Daemon script
 	cp -a $stuff/etc		$fs
-	sed -i 's|^#Group .*|Group lp|' $fs/etc/cups/cups-files.conf
+	sed -i 's|^#Group .*|Group lp|'	$fs/etc/cups/cups-files.conf
 
 	# TazPanel link
 	cp -a $stuff/var		$fs
@@ -112,11 +113,12 @@ CUPSD_OPTIONS=""
 
 EOT
 	fi
+	echo "Add cupsd to RUN_DAEMONS in /etc/rcS.conf to start cupsd after SliTaz startup."
 }
 
 pre_remove()
 {
-	# Stop CUPS daemon before remove.
+	# Stop CUPS daemon before removing.
 	[ -z "$1" -a -x /etc/init.d/cupsd ] && /etc/init.d/cupsd stop
 	:
 }

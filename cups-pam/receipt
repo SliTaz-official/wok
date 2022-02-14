@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="cups-pam"
-VERSION="2.3.1"
+VERSION="2.4.1"
 CATEGORY="system-tools"
 SHORT_DESC="Common UNIX Printing System with PAM support."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -10,9 +10,10 @@ WEB_SITE="https://www.cups.org/"
 
 SOURCE="cups"
 TARBALL="$SOURCE-$VERSION-source.tar.gz"
-WGET_URL="https://github.com/apple/$SOURCE/releases/download/v$VERSION/$TARBALL"
+WGET_URL="https://github.com/OpenPrinting/$SOURCE/releases/download/v$VERSION/$TARBALL"
 
 PROVIDE="cups:pam"
+SUGGESTED="cups-lang"
 DEPENDS="cups-doc cups-filters dbus libcomerr libcups libkrb5 libssl 
 	libunistring pam"
 BUILD_DEPENDS="acl-dev dbus-dev gnutls-dev jpeg-dev libcomerr-dev 
@@ -51,10 +52,9 @@ compile_rules()
 		--with-languages="$LOCALE_PACK"	\
 		$CONFIGURE_ARGS &&
 	make &&
-	make BUILDROOT=$DESTDIR install
+	make install BUILDROOT=$DESTDIR
 
-	cp -f $WOK/cups/stuff/cups.desktop \
-		$install/usr/share/applications/cups.desktop
+	cp -f $WOK/cups/stuff/cups.desktop	$install/usr/share/applications/cups.desktop
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -67,9 +67,9 @@ genpkg_rules()
 	cp -a $install/etc/cups		$fs/etc
 	cp -a $install/etc/dbus*	$fs/etc
 	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/sbin		$fs/usr
 	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 	cp -a $install/usr/lib/cups	$fs/usr/lib
+	cp -a $install/usr/sbin		$fs/usr
 	cp -a $install/usr/share/cups	$fs/usr/share
 	cp -a $install/usr/share/icons	$fs/usr/share
 	cp -a $install/var		$fs
@@ -81,7 +81,7 @@ genpkg_rules()
 	# Remove files provided by libcups
 	rm -f				$fs/usr/lib/libcups.so*
 
-	# PAM conf
+	# PAM configuration
 	cp -a $stuff/etc		$fs
 
 	# Daemon script
@@ -89,7 +89,6 @@ genpkg_rules()
 
 	# TazPanel link
 	cp -a $WOK/cups/stuff/var	$fs
-
 }
 
 post_install()
@@ -111,7 +110,7 @@ EOT
 
 pre_remove()
 {
-	# Stop CUPS daemon before remove.
+	# Stop CUPS daemon before removing.
 	[ -z "$1" -a -x /etc/init.d/cupsd ] && /etc/init.d/cupsd stop
 	:
 }
