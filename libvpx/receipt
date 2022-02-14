@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libvpx"
-VERSION="1.8.2"
+VERSION="1.11.0"
 CATEGORY="multimedia"
 SHORT_DESC="The VP8 Codec SDK."
 MAINTAINER="slaxemulator@gmail.com"
@@ -11,8 +11,8 @@ WEB_SITE="https://www.webmproject.org/"
 TARBALL="$PACKAGE-v$VERSION.tar.gz"
 WGET_URL="https://github.com/webmproject/$PACKAGE/archive/v$VERSION.tar.gz"
 
-DEPENDS="glibc-base"
-BUILD_DEPENDS="coreutils-file-format diffutils yasm"
+DEPENDS="gcc83-lib-base glibc-base"
+BUILD_DEPENDS="coreutils-file-format diffutils gcc83 yasm"
 
 current_version()
 {
@@ -23,6 +23,9 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	export	CC=gcc-83
+	export	CXX=g++-83
+
 	./configure				\
 		--enable-vp8			\
 		--enable-runtime-cpu-detect	\
@@ -31,15 +34,13 @@ compile_rules()
 		--enable-pic			\
 		--disable-install-docs		\
 		--disable-install-srcs &&
-	make -j 1 &&
-	make DIST_DIR=$DESTDIR/usr install
+	make &&
+	make install DIST_DIR=$DESTDIR/usr
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cook_copy_folders	bin
+	cook_copy_files		*.so*
 }
