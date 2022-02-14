@@ -13,7 +13,8 @@ TARBALL="firefox-$VERSION.tar.bz2"
 WGET_URL="http://ftp.mozilla.org/pub/firefox/releases/$VERSION/linux-i686/en-US/$TARBALL"
 
 PROVIDE="browser-html5"
-DEPENDS="alsa-lib dbus-glib gtk+ gtk+3 libatomic xorg-libXt libwrap vlc"
+SUGGESTED="vlc"
+DEPENDS="alsa-lib dbus-glib gtk+ gtk+3 libatomic xorg-libXt libwrap"
 HOST_ARCH="i486"
 
 # What is the latest version available today?
@@ -29,30 +30,32 @@ compile_rules()
 	# Installation path
 	fx='/opt/mozilla/firefox'
 
-	mkdir -p				\
-		$install$fx			\
-		$install/usr/bin		\
-		$install/usr/share/applications	\
-		$install/usr/share/icons/hicolor/128x128/apps
+	mkdir -p $install$fx
+	mkdir -p $install/usr/bin
+	mkdir -p $install/usr/share/applications
+	mkdir -p $install/usr/share/icons/hicolor/128x128/apps
 
 	# Copy everything
-	cp -a $src/* $install$fx
+	cp -a $src/*		$install$fx
 
 	# Executable
-	ln -s $fx/firefox $install/usr/bin/firefox-official
+	ln -s $fx/firefox	$install/usr/bin/firefox-official
 
 	# Icons
 	ln -s $fx/browser/icons/mozicon128.png \
 		$install/usr/share/icons/hicolor/128x128/apps/firefox-official.png
-	for size in 16 32 48; do
+	for size in 16 32 48
+	  do
 		icon_folder="$install/usr/share/icons/hicolor/${size}x$size/apps"
 		mkdir -p $icon_folder
 		ln -s $fx/browser/chrome/icons/default/default$size.png \
 			$icon_folder/firefox-official.png
-	done
+	  done
 
 	# Allow user updates (save user's and our traffic)
-	chmod -R a+w $install$fx
+#	chmod -R a+w $install$fx
+	# Inhibit unprivileged user from updating,
+	# because 77.0 is the last 32 bit version
 
 	# Desktop shortcut
 	cp $stuff/firefox-official.desktop \
@@ -66,6 +69,6 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
-	ln -s firefox-official $fs/usr/bin/browser-html5
+	cp -a $install/*	$fs
+	ln -s firefox-official	$fs/usr/bin/browser-html5
 }
