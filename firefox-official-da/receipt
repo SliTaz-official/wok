@@ -1,0 +1,59 @@
+# SliTaz package receipt.
+
+PACKAGE="firefox-official-da"
+lang="da"
+VERSION="77.0"
+CATEGORY="network"
+TAGS="web-browser"
+SHORT_DESC="Official Firefox build by the Mozilla foundation (Danish language)."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="MPL2"
+WEB_SITE="https://www.mozilla.org/firefox"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://ftp.mozilla.org/pub/firefox/releases/$VERSION/linux-i686/$lang/firefox-$VERSION.tar.bz2"
+
+PROVIDE="firefox-official browser-html5"
+SUGGESTED="vlc"
+DEPENDS="alsa-lib dbus-glib gtk+ gtk+3 libatomic xorg-libXt libwrap"
+
+HOST_ARCH="i486"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	# Installation path
+	fx='/opt/mozilla/firefox'
+
+	mkdir -p $install$fx
+	mkdir -p $install/usr/bin
+	mkdir -p $install/usr/share/applications
+	mkdir -p $install/usr/share/icons/hicolor/128x128/apps
+
+	# Copy everything
+	cp -a $src/*		$install$fx
+
+	# Executable
+	ln -s $fx/firefox	$install/usr/bin/firefox-official
+
+	# Icons
+	ln -s $fx/browser/icons/mozicon128.png \
+		$install/usr/share/icons/hicolor/128x128/apps/firefox-official.png
+	for size in 16 32 48
+	  do
+		icon_folder="$install/usr/share/icons/hicolor/${size}x$size/apps"
+		mkdir -p $icon_folder
+		ln -s $fx/browser/chrome/icons/default/default$size.png \
+			$icon_folder/firefox-official.png
+	  done
+
+	# Desktop shortcut
+	cp $stuff/firefox-official.desktop	$install/usr/share/applications
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cp -a $install/*	$fs
+	ln -s firefox-official	$fs/usr/bin/browser-html5
+}
