@@ -39,6 +39,7 @@ compile_rules()
 		CXX=g++-83				\
 		--prefix=/usr				\
 		--infodir=/usr/share/info		\
+		--libexecdir=/usr/libexec/cyrus		\
 		--with-com_err=yes			\
 		--enable-murder				\
 		--enable-replication			\
@@ -52,6 +53,7 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/cyrus
+	mkdir -p $fs/usr/libexec
 	mkdir -p $fs/var/imap
 	mkdir -p $fs/var/spool/imap/stage.
 
@@ -59,6 +61,9 @@ genpkg_rules()
 	cp -a $install/usr/lib/libcyrus*.so*	$fs/usr/lib
 	cp -a $install/usr/lib/perl5		$fs/usr/lib
 	strip -s				$fs/usr/lib/lib*
+	cp -a $install/usr/libexec/cyrus	$fs/usr/libexec
+	cp -a $install/usr/sbin			$fs/usr
+
 	cp $src/tools/mkimap			$fs/usr/lib/cyrus
 	cp -a $stuff/etc			$fs
 	cp $src/doc/examples/cyrus_conf/small.conf \
@@ -140,7 +145,7 @@ EOF
 	  do
 		echo "createmailbox user.$i"
 	  done | chroot "$1/" cyradm -u cyrus -w cyrus 127.0.0.1 >/dev/null 2>&1
-	chroot "$1/" su -c "/usr/lib/cyrus/bin/reconstruct" cyrus >/dev/null 2>&1
+	chroot "$1/" su -c "/usr/sbin/reconstruct" cyrus >/dev/null 2>&1
 
 	cat <<EOF
 ----

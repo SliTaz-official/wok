@@ -1,6 +1,6 @@
 #!/bin/sh
-# /etc/init.d/cyrus-imapd : Start, stop and restart IMAP server on SliTaz, at
-# boot time or with the command line.
+# /etc/init.d/cyrus-imapd : Start, stop and restart IMAP server on SliTaz,
+# at boot time or with the command line.
 #
 # To start IMAP server at boot time, just put cyrus-imapd in the $RUN_DAEMONS
 # variable of /etc/rcS.conf and configure options with /etc/daemons.conf
@@ -10,95 +10,109 @@
 
 NAME=cyrus-imapd
 DESC="$(_ '%s server' IMAP)"
-DAEMON=/usr/lib/cyrus/master
+DAEMON=/usr/libexec/cyrus/master
 OPTIONS=$CYRUS_OPTIONS
 PIDFILE=/var/run/cyrus.master.pid
 [ -n "$OPTIONS" ] || OPTIONS="-d -p $PIDFILE"
 
 case "$1" in
-  start)
-    if active_pidfile $PIDFILE master ; then
-      _ '%s is already running.' $NAME
-      exit 1
-    fi
-    dir=$(grep ^configdirectory /etc/imapd.conf | awk '{print $2}')
-    if [ ! -f $dir/mailboxes.db ]; then
-      action 'Initialize %s...' "$DESC"
-      #/usr/cyrus/bin/mkimap
-      for i in db proc socket log msg user quota; do
-        [ -d $dir/$i ] || mkdir -p -m 700 $dir/$i
-      done
-      for i in user quota ; do
-        for j in a b c d e f g h i j k l m n o p q r s t u v w x y z ; do
-          [ -d $dir/$i/$j ] || mkdir -p $dir/$i/$j
-        done
-      done
-      chown -R cyrus:mail $dir
-      chmod 750 $dir $dir/socket
-      for i in $(grep ^partition /etc/imapd.conf | awk '{ print $2 }') ; do
-        [ -d $i ] || mkdir -p -m 750 $i
-        case "$(grep ^hashimapspool /etc/imapd.conf | awk '{ print $2 }')" in
-        y*|t*|1|on)
-          for j in a b c d e f g h i j k l m n o p q r s t u v w x y z ; do
-            [ -d $i/$j ] || mkdir -p $i/$j
-          done ;;
-        esac
-        [ -d $i/stage. ] || mkdir $i/stage.
-        chown -R cyrus:mail $i
-      done
-      case "$(grep ^sieveusehomedir /etc/imapd.conf | awk '{ print $2 }')" in
-      y*|t*|1|on)
-        sieve=$(grep ^sievedir /etc/sieve | awk '{ print $2 }')
-        [ -d $sieve ] || mkdir $sieve
-        chmod 755 $sieve
-        for j in a b c d e f g h i j k l m n o p q r s t u v w x y z ; do
-          [ -d $sieve/$j ] || mkdir -p -m 755 $sieve/$j
-        done
-        chown -R cyrus:mail $sieve ;;
-      esac
-      su cyrus -c "/usr/cyrus/bin/ctl_cyrusdb -r"
-      su cyrus -c "/usr/cyrus/bin/reconstruct"
-      status
-    fi
-    if ! pidof saslauthd >/dev/null; then
-      /etc/init.d/cyrus-sasl start
-    fi
-    action 'Starting %s: %s...' "$DESC" $NAME
-    $DAEMON $OPTIONS
-    status
-    sleep 2
-    ;;
-  stop)
-    if ! active_pidfile $PIDFILE master ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Stopping %s: %s...' "$DESC" $NAME
-    kill $(cat $PIDFILE)
-    ps x | grep -q $(cat $PIDFILE) || rm -f $PIDFILE
-    status
-    ;;
-  restart)
-    if ! active_pidfile $PIDFILE master ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Restarting %s: %s...' "$DESC" $NAME
-    kill $(cat $PIDFILE)
-    if ps x | grep -q $(cat $PIDFILE); then
-      false
-    else
-      rm -f $PIDFILE
-      sleep 2
-      $DAEMON $OPTIONS
-    fi
-    status
-    ;;
-  *)
-    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
-    newline
-    exit 1
-    ;;
+	(start)
+		if active_pidfile $PIDFILE master
+		  then
+			_ '%s is already running.' $NAME
+			exit 1
+		fi
+		dir=$(grep ^configdirectory /etc/imapd.conf | awk '{print $2}')
+		if [ ! -f $dir/mailboxes.db ]
+		  then
+			action 'Initialize %s...' "$DESC"
+			#/usr/cyrus/bin/mkimap
+			for i in db proc socket log msg user quota
+			  do
+				[ -d $dir/$i ] || mkdir -p -m 700 $dir/$i
+			  done
+			for i in user quota
+			  do
+				for j in a b c d e f g h i j k l m n o p q r s t u v w x y z
+				  do
+					[ -d $dir/$i/$j ] || mkdir -p $dir/$i/$j
+				  done
+			  done
+			chown -R cyrus:mail $dir
+			chmod 750 $dir $dir/socket
+			for i in $(grep ^partition /etc/imapd.conf | awk '{ print $2 }')
+			  do
+				[ -d $i ] || mkdir -p -m 750 $i
+				case "$(grep ^hashimapspool /etc/imapd.conf | awk '{ print $2 }')" in
+					(y*|t*|1|on)
+						for j in a b c d e f g h i j k l m n o p q r s t u v w x y z
+						  do
+							[ -d $i/$j ] || mkdir -p $i/$j
+						  done
+						;;
+				esac
+				[ -d $i/stage. ] || mkdir $i/stage.
+				chown -R cyrus:mail $i
+			  done
+			case "$(grep ^sieveusehomedir /etc/imapd.conf | awk '{ print $2 }')" in
+				(y*|t*|1|on)
+					sieve=$(grep ^sievedir /etc/sieve | awk '{ print $2 }')
+					[ -d $sieve ] || mkdir $sieve
+					chmod 755 $sieve
+					for j in a b c d e f g h i j k l m n o p q r s t u v w x y z
+					  do
+						[ -d $sieve/$j ] || mkdir -p -m 755 $sieve/$j
+					  done
+					chown -R cyrus:mail $sieve
+					;;
+			esac
+			su cyrus -c "/usr/sbin/ctl_cyrusdb -r"
+			su cyrus -c "/usr/sbin/reconstruct"
+			status
+		fi
+		if ! pidof saslauthd >/dev/null
+		  then
+			/etc/init.d/cyrus-sasl start
+		fi
+		action 'Starting %s: %s...' "$DESC" $NAME
+		$DAEMON $OPTIONS
+		status
+		sleep 2
+		;;
+	(stop)
+		if ! active_pidfile $PIDFILE master
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Stopping %s: %s...' "$DESC" $NAME
+		kill $(cat $PIDFILE)
+		ps x | grep -q $(cat $PIDFILE) || rm -f $PIDFILE
+		status
+		;;
+	(restart)
+		if ! active_pidfile $PIDFILE master
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Restarting %s: %s...' "$DESC" $NAME
+		kill $(cat $PIDFILE)
+		if ps x | grep -q $(cat $PIDFILE)
+		  then
+			false
+		  else
+			rm -f $PIDFILE
+			sleep 2
+			$DAEMON $OPTIONS
+		fi
+		status
+		;;
+	(*)
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
+		exit 1
+		;;
 esac
 
 exit 0
