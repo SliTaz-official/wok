@@ -1,16 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="icu"
-VERSION="54.1"
+VERSION="70.1"
 CATEGORY="system-tools"
-SHORT_DESC="C/C++ and Java libraries providing Unicode and Globalization."
+SHORT_DESC="C, C++ and Java libraries providing Unicode and Globalization."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
-SOURCE="icu4c"
-TARBALL="$SOURCE-${VERSION//./_}-src.tgz"
-WEB_SITE="https://www.icu-project.org/"
-WGET_URL="http://download.icu-project.org/files/$SOURCE/$VERSION/$TARBALL"
-#WGET_URL="http://www.sfr-fresh.com/unix/misc/$TARBALL"
+WEB_SITE="https://icu-unicode.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/unicode-org/$PACKAGE/archive/release-${VERSION/./-}.tar.gz"
 
 # What is the latest version available today?
 current_version()
@@ -19,28 +18,33 @@ current_version()
 	sed '/ is now available/!d;s| is now available.*||;s|ICU ||;q'
 }
 
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="gcc83"
+
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src/source
+	cd $src/icu4c/source
 	#sed -i 's/dirname -- /dirname/' configure
 	#{
-	./configure \
-		--disable-tests \
-		--disable-samples \
-		--enable-auto-cleanup \
+	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		--disable-samples	\
+		--disable-tests		\
+		--enable-auto-cleanup	\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
-	#} 2>&1 | sed -e 's|\(./config.*\)No such file|\1no such file|'
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr/
-	cp -a $install/usr/sbin $fs/usr/
-	cp -a $install/usr/share/icu $fs/usr/share
+	mkdir -p $fs/usr/share
+
+	cook_copy_folders	bin
+	cook_copy_folders	sbin
+	cook_copy_files		*.so*
+	cp -a $install/usr/share/icu	$fs/usr/share
 }
