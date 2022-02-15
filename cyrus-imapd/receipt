@@ -1,19 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="cyrus-imapd"
-VERSION="3.0.13"
+VERSION="3.4.3"
 CATEGORY="network"
 SHORT_DESC="IMAP server."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
-WEB_SITE="https://www.cyrusimap.org/"
+WEB_SITE="https://cyrusimap.org/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="${WEB_SITE}/releases/$TARBALL"
+WGET_URL="https://github.com/cyrusimap/$PACKAGE/releases/download/$PACKAGE-$VERSION/$TARBALL"
 
-DEPENDS="cyrus-sasl db jansson libcomerr libwrap net-snmp openssl perl
-	slitaz-base-files"
-BUILD_DEPENDS="cyrus-sasl-dev db-dev icu-dev jansson-dev libcomerr-dev 
+DEPENDS="cyrus-sasl db gcc83-lib-base jansson libcomerr libwrap net-snmp openssl
+	perl slitaz-base-files"
+BUILD_DEPENDS="cyrus-sasl-dev db-dev gcc83 icu-dev jansson-dev libcomerr-dev
 	openssl-dev perl util-linux-uuid-dev"
 
 CONFIG_FILES="/etc/imapd.conf /etc/cyrus.conf"
@@ -30,18 +30,22 @@ compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -lpthread"
 
+	# 3.4.3 unrecognised
+#		--with-service-path=/usr/lib/cyrus
+#		--with-cyrus-prefix=/usr/lib/cyrus
+
 	./configure					\
+		CC=gcc-83				\
+		CXX=g++-83				\
 		--prefix=/usr				\
 		--infodir=/usr/share/info		\
-		--with-service-path=/usr/lib/cyrus	\
-		--with-cyrus-prefix=/usr/lib/cyrus	\
 		--with-com_err=yes			\
 		--enable-murder				\
 		--enable-replication			\
 		--mandir=/usr/share/man			\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
