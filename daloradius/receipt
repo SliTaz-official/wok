@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="daloradius"
-VERSION="0.9-9"
+VERSION="1.1-2"
 CATEGORY="network"
 SHORT_DESC="A RADIUS web platform for managing Hotspots."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.daloradius.com/"
+
+TARBALL="$PACKAGE-$VERSION.zip"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
 DEPENDS="php-gd php-mysql freeradius"
@@ -22,10 +23,13 @@ current_version()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/daloradius $fs/etc/mysql.d
-	cp -a $src/* $fs/usr/share/daloradius
-	mv $fs/usr/share/daloradius/library/daloradius.conf.php $fs/etc/
-	ln -s /etc/daloradius.conf.php $fs/usr/share/daloradius/library/daloradius.conf.php
+	mkdir -p $fs/usr/share/daloradius
+	mkdir -p $fs/etc/mysql.d
+
+	cp -a $src/*			$fs/usr/share/daloradius
+	mv $fs/usr/share/daloradius/daloradius/library/daloradius.conf.php \
+					$fs/etc/
+	ln -s /etc/daloradius.conf.php	$fs/usr/share/daloradius/daloradius/library/daloradius.conf.php
 	cat > $fs/etc/mysql.d/daloradius <<EOT
 #!/bin/sh
 
@@ -39,10 +43,13 @@ EOT
 post_install()
 {
 	# Configure lighttpd server
-	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]; then
-		if ! grep -q /usr/share/daloradius/ "$1/etc/lighttpd/lighttpd.conf"; then
+	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]
+	  then
+		if ! grep -q /usr/share/daloradius/ "$1/etc/lighttpd/lighttpd.conf"
+		  then
 	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/daloradius/" => "/usr/share/daloradius/",|g' -i "$1/etc/lighttpd/lighttpd.conf"
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/lighttpd stop
 				/etc/init.d/lighttpd start
@@ -50,8 +57,10 @@ post_install()
 		fi
 	fi
 	# Configure apache server
-	if [ -f "$1/etc/apache/httpd.conf" ]; then
-		if [ ! -f "$1/etc/apache/conf.d/daloradius" ]; then
+	if [ -f "$1/etc/apache/httpd.conf" ]
+	  then
+		if [ ! -f "$1/etc/apache/conf.d/daloradius" ]
+		  then
 			cat > "$1/etc/apache/conf.d/daloradius" <<EOT
 <IfModule mod_alias.c>
     Alias /daloradius /usr/share/daloradius
@@ -64,7 +73,8 @@ post_install()
     Allow from all
 </Directory>
 EOT
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/apache stop
 				/etc/init.d/apache start
