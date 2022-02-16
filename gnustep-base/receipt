@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="gnustep-base"
-VERSION="1.26.0"
+VERSION="1.28.0"
 CATEGORY="x-window"
 SHORT_DESC="GNUstep base package."
 MAINTAINER="pankso@slitaz.org"
@@ -11,9 +11,10 @@ WEB_SITE="http://www.gnustep.org/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="http://ftp.gnustep.org/pub/gnustep/core/$TARBALL"
 
-DEPENDS="gnutls icu libbfd libcrypto libffi libobjc libssl libtasn1 libxslt"
-BUILD_DEPENDS="gnustep-make gnutls-dev icu-dev libcrypto-dev libffi-dev 
-	libgnutls libtasn1-dev libxslt-dev openssl-dev"
+DEPENDS="gnutls icu libbfd libcrypto libffi libobjc libssl libtasn1 libxml2
+	libxslt"
+BUILD_DEPENDS="gnustep-make gnutls-dev icu-dev libffi-dev libcrypto-dev 
+	libtasn1-dev libxml2-dev libxslt-dev openssl-dev"
 
 # What is the latest version available today?
 current_version()
@@ -27,13 +28,15 @@ compile_rules()
 {
 	sed -i 's|\(buf->buffer\)->content.*)|xmlBufContent(\1), xmlBufUse(\1))|' \
 		Source/Additions/GSXML.m
-	sed -i 's/.*gnutls_transport_set_lowat.*/#if GNUTLS_VERSION_NUMBER < 0x020c00\n&\n#endif/' Source/GSSocketStream.m
+	# 1.26.0
+#	sed -i 's/.*gnutls_transport_set_lowat.*/#if GNUTLS_VERSION_NUMBER < 0x020c00\n&\n#endif/' Source/GSSocketStream.m
 
-	./configure							\
-		--prefix=/usr						\
+	. /usr/share/GNUstep/Makefiles/GNUstep.sh &&
+	./configure				\
+		--prefix=/usr			\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
