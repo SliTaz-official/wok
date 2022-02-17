@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="dar"
-VERSION="2.6.7"
+VERSION="2.7.3"
 CATEGORY="system-tools"
 TAGS="backup"
 SHORT_DESC="Disk archive."
@@ -12,11 +12,12 @@ WEB_SITE="http://dar.linux.free.fr/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
+SUGGESTED="dar-lang"
 DEPENDS="attr bzip2 gcc83-lib-base libgcrypt lzo"
 BUILD_DEPENDS="attr-dev bzip2-dev e2fsprogs-dev gcc83 
 	libgcrypt-dev lzo-dev"
 
-TODO="split package into dar and dar-dev ?"
+CONFIG_FILES="/etc/darrc"
 
 # What is the latest version available today?
 current_version()
@@ -36,13 +37,21 @@ compile_rules()
 		--infodir=/usr/share/info	\
 		--libdir=/lib			\
 		--mandir=/usr/share/man		\
+		--sysconfdir=/etc		\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/*	$fs
+	cook_copy_folders	bin
+	cook_copy_folders	etc
+	cook_copy_folders	samples
+	cook_copy_files		*.so*
+	cp -a $install/usr/share/dar/dar-catalog.dtd \
+				$fs/usr/share/dar
+	cp -a $install/usr/share/dar/dar_key.txt \
+				$fs/usr/share/dar
 }
