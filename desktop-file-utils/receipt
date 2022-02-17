@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="desktop-file-utils"
-VERSION="0.24"
+VERSION="0.26"
 CATEGORY="system-tools"
 SHORT_DESC="Utilities for .desktop files (update-desktop-database)."
 MAINTAINER="pankso@slitaz.org"
@@ -11,8 +11,8 @@ WEB_SITE="https://www.freedesktop.org/wiki/Software/desktop-file-utils/"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="https://www.freedesktop.org/software/desktop-file-utils/releases/$TARBALL"
 
-DEPENDS="glib glibc-base pcre"
-BUILD_DEPENDS="glib-dev pkg-config"
+DEPENDS="gcc83-lib-base glib glibc-base pcre"
+BUILD_DEPENDS="gcc83 glib-dev meson pkg-config"
 
 SPLIT="desktop-file-utils-extra"
 
@@ -25,9 +25,13 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS &&
-	make &&
-	make install
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	meson	_build		\
+		--prefix=/usr &&
+	ninja	-C _build &&
+	ninja	-C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
