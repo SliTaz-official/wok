@@ -1,0 +1,42 @@
+# SliTaz package receipt.
+
+PACKAGE="dargui"
+VERSION="1.0"		# last 32 bit version
+CATEGORY="system-tools"
+TAGS="backup gui"
+SHORT_DESC="Graphical frontend for dar."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="GPL"
+WEB_SITE="https://dargui.sourceforge.net"
+
+TARBALL="$PACKAGE-$VERSION-32bit.tar.gz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+SUGGESTED="dargui-lang"
+DEPENDS="at bash dar gtk+ xterm"
+BUILD_DEPENDS="gettext-tools"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir -p $install/usr/share/locale
+	for pofile in $src/locales/*.po
+	  do
+		lang=${pofile%.*}	# remove suffix
+		lang=${lang##*.}	# remove prefix
+		mkdir -p $install/usr/share/locale/$lang/LC_MESSAGES
+		msgfmt  $pofile -o $install/usr/share/locale/$lang/LC_MESSAGES/$(basename ${pofile%.*.po}).mo
+	  done
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/dargui
+
+	cp -a $src/dargui	$fs/usr/bin
+	cp -a $src/scripts/*	$fs/usr/share/dargui
+	cp -a $src/applications	$fs/usr/share
+	cp -a $src/pixmaps	$fs/usr/share
+}
