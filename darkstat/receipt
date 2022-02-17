@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="darkstat"
-VERSION="3.0.719"
+VERSION="3.0.721"
 CATEGORY="network"
 TAGS="network monitor stats statistics"
 SHORT_DESC="Simple network traffic statistics."
@@ -9,11 +9,11 @@ MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2 BSD"
 WEB_SITE="https://unix4lyfe.org/darkstat/"
 
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="https://unix4lyfe.org/darkstat/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/emikulic/$PACKAGE/archive/refs/tags/$VERSION.tar.gz"
 
 DEPENDS="libpcap zlib"
-BUILD_DEPENDS="libpcap-dev zlib-dev"
+BUILD_DEPENDS="autoconf libpcap-dev zlib-dev"
 
 # What is the latest version available today?
 current_version()
@@ -28,18 +28,19 @@ compile_rules()
 	# 3.0.719 unrecognised
 #	--with-chroot-dir=/var/lib/darkstat
 
+	autoconf &&
+	autoheader &&
 	./configure		\
 		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
 	mkdir -p $fs/var/lib/darkstat
 
-	cp -a $install/usr/sbin	$fs/usr
+	cook_copy_folders	sbin
 }
