@@ -1,18 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="djview"
-VERSION="4.10.6"
+VERSION="4.12"
 CATEGORY="graphics"
 SHORT_DESC="Djvu files viewer."
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL2"
-WEB_SITE="http://djvu.sourceforge.net/"
+WEB_SITE="https://sourceforge.net/projects/djvu/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="https://sourceforge.net/projects/djvu/files/DjView/${VERSION%.*}/$TARBALL"
+WGET_URL="$SF_MIRROR/djvu/$TARBALL"
 
 DEPENDS="djvulibre libQtGui libQtNetwork libQtOpenGL"
-BUILD_DEPENDS="djvulibre-dev file mesa-dev qmake Qt4-dev"
+BUILD_DEPENDS="autoconf automake djvulibre-dev file libtool mesa-dev
+	qmake Qt4-dev"
 
 # What is the latest version available today?
 current_version()
@@ -25,8 +26,7 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure
-	sed -i 's/-O2/-Os/g' src/Makefile
+	./autogen.sh &&
 	make &&
 	make install
 }
@@ -35,10 +35,11 @@ compile_rules()
 genpkg_rules()
 {
 	cp -a $install/*	$fs
+	rm -rf			$fs/usr/lib/*/*/*.la
+	rm -rf			$fs/usr/share/man
 	ln -s djview		$fs/usr/bin/djview4
 	cd $fs/usr/share/icons/hicolor/32x32/
 	mv mime* apps
 	rm -rf			../64x64
 	rm -rf			../scalable
-	rm -rf			$fs/usr/lib/*/*/*.la
 }
