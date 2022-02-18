@@ -11,12 +11,12 @@
 ;;                                                                          ;;
 ;;                                 Features:                                ;;
 ;;                                 ~~~~~~~~~                                ;;
-;; - FAT32 supported using BIOS int 13h function 42h or 02h.                ;;
+;; - FAT32 supported using BIOS int 13h function 42h (IOW, it will only     ;;
+;;   work with modern BIOSes supporting HDDs bigger than 8 GB)              ;;
 ;;                                                                          ;;
 ;; - Loads a 16-bit executable file in the MS-DOS .COM or .EXE format       ;;
 ;;   from the root directory of a disk and transfers control to it          ;;
 ;;   (the "ProgramName" variable holds the name of the file to be loaded)   ;;
-;;   Its maximum size can be up to 636KB without Extended BIOS Data area.   ;;
 ;;                                                                          ;;
 ;; - Prints an error if the file isn't found or couldn't be read            ;;
 ;;   ("File not found" or "Read error")                                     ;;
@@ -26,7 +26,7 @@
 ;;                                                                          ;;
 ;;                             Known Limitations:                           ;;
 ;;                             ~~~~~~~~~~~~~~~~~~                           ;;
-;; - Works only on the 1st MBR partition which must be a PRI DOS partition  ;;
+;; - Works only on the 1st MBR partition which must be a DOS partition      ;;
 ;;   with FAT32 (File System ID: 0Bh,0Ch)                                   ;;
 ;;                                                                          ;;
 ;;                                                                          ;;
@@ -54,10 +54,10 @@
 ;;                 |      Loaded Image      |                               ;;
 ;;                 +------------------------+ nnnnnH                        ;;
 ;;                 |    Available Memory    |                               ;;
-;;                 +------------------------+ A0000H - 2KB                  ;;
+;;                 +------------------------+ A0000H - 512 - 2KB            ;;
+;;                 |     2KB Boot Stack     |                               ;;
+;;                 +------------------------+ A0000H - 512                  ;;
 ;;                 |       Boot Sector      |                               ;;
-;;                 +------------------------+ A0000H - 1.5KB                ;;
-;;                 |    1.5KB Boot Stack    |                               ;;
 ;;                 +------------------------+ A0000H                        ;;
 ;;                 |        Video RAM       |                               ;;
 ;;                                                                          ;;
@@ -81,14 +81,10 @@
 ;;                                                                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-%define bx(label)       bx+label-boot
-
 [BITS 16]
-[CPU 8086]
 
 ?                       equ     0
-ImageLoadSeg            equ     60h
-StackSize               equ     1536
+ImageLoadSeg            equ     60h     ; <=07Fh because of "push byte ImageLoadSeg" instructions
 
 [SECTION .text]
 [ORG 0]
@@ -97,7 +93,6 @@ StackSize               equ     1536
 ;; Boot sector starts here ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-boot:
         jmp     short   start                   ; MS-DOS/Windows checks for this jump
         nop
 bsOemName               DB      "BootProg"      ; 0x03
@@ -157,97 +152,102 @@ start:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         int     12h             ; get conventional memory size (in KBs)
-        mov     cx, 106h
-        dec     ax
-        dec     ax              ; reserve 2K bytes for the code and the stack
-        shl     ax, cl          ; and convert it to 16-byte paragraphs
+        shl     ax, 6           ; and convert it to 16-byte paragraphs
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reserve memory for the boot sector and its stack ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-        mov     es, ax                  ; cs:0 = ds:0 = ss:0 -> top - 512 - StackSize
-        mov     ss, ax
-        mov     sp, 512+StackSize       ; bytes 0-511 are reserved for the boot code
+        sub     ax, 512 / 16    ; reserve 512 bytes for the boot sector code
+        mov     es, ax          ; es:0 -> top - 512
+
+        sub     ax, 2048 / 16   ; reserve 2048 bytes for the stack
+        mov     ss, ax          ; ss:0 -> top - 512 - 2048
+        mov     sp, 2048        ; 2048 bytes for the stack
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Copy ourselves to top of memory ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+        mov     cx, 256
         mov     si, 7C00h
         xor     di, di
         mov     ds, di
-        rep     movsw                   ; move 512 bytes (+ 12)
+        rep     movsw
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Jump to the copy ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
         push    es
-        mov     cl, main
-        push    cx
+        push    byte main
         retf
 
 main:
         push    cs
         pop     ds
 
-        xor     bx, bx
-        mov     [bx], dx                ; store BIOS boot drive number
+        mov     [bsDriveNumber], dl     ; store BIOS boot drive number
 
-        and     byte [bx(bsRootDirectoryClusterNo)+3], 0Fh ; mask cluster value
-        les     si, [bx(bsRootDirectoryClusterNo)] ; si2:si=cluster # of root dir
-        mov     si2, es
-
-        mov     cl, ImageLoadSeg
-        mov     es, cx
+        and     byte [bsRootDirectoryClusterNo+3], 0Fh ; mask cluster value
+        mov     esi, [bsRootDirectoryClusterNo] ; esi=cluster # of root dir
 
 RootDirReadContinue:
-        call    ReadCluster             ; read one sector of root dir; clear ch
-        pushf                           ; save carry="not last sector" flag
+        push    byte ImageLoadSeg
+        pop     es
+        xor     bx, bx
+        push    es
+        call    ReadCluster             ; read one cluster of root dir
+        pop     es
+        pushad                          ; save esi=next cluster # of root dir
+                                        ; save eax=next sector # of root dir
+        pushf                           ; save carry="not last cluster" flag
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Look for the COM/EXE file to load and run ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         xor     di, di                  ; es:di -> root entries array
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Looks for the file/dir ProgramName    ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Input:  ES:DI -> root directory array ;;
-;;         BP = paragraphs count         ;;
-;; Output: ESI = cluster number          ;;
-;;         DI = file paragraph count     ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-FindNameCycle:
-        cmp     byte [es:di], bh
-        je      FindNameFailed          ; end of root directory (NULL entry found)
-        push    si
-        push    di
-        mov     cl, 11
         mov     si, ProgramName         ; ds:si -> program name
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Looks for a file/dir by its name      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Input:  DS:SI -> file name (11 chars) ;;
+;;         ES:DI -> root directory array ;;
+;;         DX = number of root entries   ;;
+;; Output: ESI = cluster number          ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+FindName:
+        mov     cx, 11
+FindNameCycle:
+        cmp     byte [es:di], ch
+        je      ErrFind                 ; end of root directory (NULL entry found)
+FindNameNotEnd:
+        pusha
         repe    cmpsb
-        pop     di
-        pop     si
+        popa
         je      FindNameFound
-        add     di, 32                  ; max cluster = 64k
+        add     di, 32
         dec     bp
         dec     bp
         jnz     FindNameCycle           ; next root entry
-        popf                            ; restore carry="not last sector" flag
+        popf                            ; restore carry="not last cluster" flag
+                                        ; restore eax=next sector # of root dir
+        popad                           ; restore esi=next cluster # of root dir
         jc      RootDirReadContinue     ; continue to the next root dir cluster
-FindNameFailed:                         ; end of root directory (dir end reached)
-        call    Error
+ErrFind:
+        call    Error                   ; end of root directory (dir end reached)
         db      "File not found."
 FindNameFound:
-        mov     si2, word [es:di+14h]
-        mov     si, word [es:di+1Ah]    ; si2:si = cluster no; cx = 0.
+        push    word [es:di+14h]
+        push    word [es:di+1Ah]
+        pop     esi                     ; esi = cluster no. cx = 0
 
-==============
         dec     dword [es:di+1Ch]       ; load ((n - 1)/256)*16 +1 paragraphs
-        imul    di, [es:di+1Dh], 16     ; file size in paragraphs (full pages)
+        imul    di, [es:di+1Ch+1], 16   ; file size in paragraphs (full pages)
+        xor     cx, cx
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Load the entire file ;;
@@ -256,33 +256,32 @@ FindNameFound:
         push    es
 FileReadContinue:
         push    di
-        call    ReadCluster             ; read one more sector
+        call    ReadCluster             ; read one cluster of root dir
         mov     di, es
-        add     di, bp                  ; adjust segment for next sector
-        mov     es, di                  ; es:0 updated
+        add     di, bp
+        mov     es, di                  ; es:bx updated
         pop     di
+
         sub     di, bp
         jae     FileReadContinue
-==============
         pop     bp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Type detection, .COM or .EXE? ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-        mov     dl, [bx]                ; pass the BIOS boot drive
         mov     ds, bp                  ; bp=ds=seg the file is loaded to
-
         add     bp, [bx+08h]            ; bp = image base
         mov     ax, [bx+06h]            ; ax = reloc items
         mov     di, [bx+18h]            ; di = reloc table pointer
 
         cmp     word [bx], 5A4Dh        ; "MZ" signature?
+
         je      RelocateEXE             ; yes, it's an EXE program
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Setup and run a .COM program ;;
-;; Set CS=DS=ES=SS SP=0 IP=100h ;;
+;; Set CS=DS=ES=SP SP=0 IP=100h ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         mov     bp, ImageLoadSeg-10h    ; "org 100h" stuff :)
@@ -302,8 +301,7 @@ ReloCycle:
         add     [di+2], bp              ; item seg (abs)
         les     si, [di]                ; si = item ofs, es = item seg
         add     [es:si], bp             ; fixup
-        scasw                           ; di += 2
-        scasw                           ; point to next entry
+        add     di, 4                   ; point to next entry
 
 RelocateEXE:
         dec     ax                      ; 32768 max (128KB table)
@@ -339,164 +337,105 @@ Run:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         retf
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Reads a FAT32 cluster         ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Input:  ES:0 -> buffer        ;;
-;;       EDX:EAX = sector no     ;;
-;;          CX = sectors to load ;;
-;;           ESI = cluster no    ;;
-;;         BX    = 0             ;;
-;; Output: ES:0 -> buffer        ;;
-;;       EDX:EAX = sector no     ;;
-;;          CX = sectors to load ;;
-;;           ESI = next cluster  ;;
-;;         BX    = 0             ;;
-;;         CH    = 0             ;;
-;;         BP    = para/sector   ;;
-;;         C=0 for last sector   ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Reads a FAT32 cluster        ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Inout:  ES:BX -> buffer      ;;
+;;           ESI = cluster no   ;;
+;; Output:   ESI = next cluster ;;
+;;         ES:BX -> next addr   ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReadCluster:
-==============
-        mov     bp, word [bx(bpbBytesPerSector)]
-        shr     bp, 4                           ; paragraphs per sector
         inc     cx
-        add     ax, 1                           ; adjust LBA for next sector
-?        adc     dx, bx
-        loop    ReadSectorLBANext
+        loop    ReadSectorLBA
 
-        imul    ax, bp, 2
-        cwde                                    ; eax=# of FAT32 entries per sector
-        lea     edi, [esi-2]                    ; edi=cluster #-2
+        mov     ax, [bpbBytesPerSector]
+        push    ax
+        shr     ax, 2                           ; ax=# of FAT32 entries per sector
+        cwde
+        lea     ebp, [esi-2]                    ; esi=cluster #
         xchg    eax, esi
         cdq
-        div     esi                             ; eax=FAT sector #, edx=entry # in sector < 128
+        div     esi                             ; eax=FAT sector #, edx=entry # in sector
 
-        imul    si, dx, 4                       ; si=entry # offset in sector
+        imul    si, dx, 4                       ; si=entry # in sector
+        call    ReadSectorLBAabsolute           ; read 1 FAT32 sector
 
-        call    ReadSectorLBA                   ; read 1 FAT32 sector
+        and     byte [es:si+3], 0Fh             ; mask cluster value
+        mov     esi, [es:si]                    ; esi=next cluster #
 
-        mov     si2, 0FFFh
-        and     si2, [es:si+2]                  ; mask cluster value
-        mov     si, [es:si]                     ; si2:si=next cluster #
-
-        movzx   eax, byte [bx(bpbNumberOfFATs)]
-        mul     dword [bx(bsSectorsPerFAT32)]   ; edx < 256
-
-        xchg    eax, edi                        ; get cluster #-2 ; save data offset
-
-        movzx   ecx, byte [bx(bpbSectorsPerCluster)]
+        xchg    eax, ebp
+        movzx   ecx, byte [bpbSectorsPerCluster]
         mul     ecx
+        xchg    eax, ebp
 
-        add     eax, edi                        ; sector # relative to FAT32
+        movzx   eax, byte [bpbNumberOfFATs]
+        mul     dword [bsSectorsPerFAT32]
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Reads a sector using BIOS Int 13h ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Input:  ES:0 -> buffer address    ;;
-;;         EAX   = LBA (FAT based)   ;;
-;;         BX    = 0                 ;;
-;;         CX    = sector count      ;;
-;; Output: ES:0 -> buffer address    ;;
-;;       EDX:EAX = absolute LBA      ;;
-;;         BX    = 0                 ;;
-;;         CX    = next sector count ;;
-;;         BP    = paragraphs/sector ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        add     eax, ebp
+
+        pop     bp                              ; [bpbBytesPerSector]
+        shr     bp, 4                           ; bp = paragraphs per sector
+
+ReadSectorLBAabsolute:
+        movzx   edx, word [bpbReservedSectors]
+        add     eax, edx
+        add     eax, [bpbHiddenSectors]
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Reads a sector using BIOS Int 13h fn 42h ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Input:  EAX = LBA                        ;;
+;;         CX    = sector count             ;;
+;;         ES:BX -> buffer address          ;;
+;; Output: CF = 0 if no more sectors        ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReadSectorLBA:
-
-        mov     dx, word [bx(bpbReservedSectors)]
-        add     eax, edx
-        mov     dx, bx
-        adc     dx, bx
-        add     eax, [bx(bpbHiddenSectors)]
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Input:  ES:0 -> buffer address    ;;
-;;       EDX:EAX = absolute LBA      ;;
-;;         BX    = 0                 ;;
-;;         CX    = sector count      ;;
-;; Output: ES:0 -> buffer address    ;;
-;;       EDX:EAX = absolute LBA      ;;
-;;         BX    = 0                 ;;
-;;         CX    = next sector count ;;
-;;         BP    = paragraphs/sector ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-ReadSectorLBANext:
-
-        adc     dx, bx  ; FAT32 partition can start up to 2TB
-
+        mov     dl, [bsDriveNumber]     ; restore BIOS boot drive number
         pusha
 
-        push    edx     ; 33-bit LBA only: up to 4TB disks
-        push    eax     ; 32-bit LBA: up to 2TB FAT32 partition start
+        push    bx
+        push    bx     ; 32-bit LBA only: up to 2TB disks
+        push    eax
         push    es
         push    bx
-        push    byte 1  ; sector count word = 1
-        push    byte 16 ; packet size byte = 16, reserved byte = 0
-        
-        push    eax
-        pop     cx                      ; low LBA
-        pop     ax                      ; high LBA, dx=0 (<2TB)
-        div     word [bx(bpbSectorsPerTrack)] ; up to 8GB disks
+        push    byte 1 ; sector count word = 1
+        mov     cx, 16 ; retry count
+        push    cx     ; packet size byte = 16, reserved byte = 0
 
-        xchg    ax, cx                  ; restore low LBA, save high LBA / SPT
-        div     word [bx(bpbSectorsPerTrack)]
-                ; ax = LBA / SPT
-                ; dx = LBA % SPT         = sector - 1
-        inc     dx
-
-        xchg    cx, dx                  ; restore high LBA / SPT, save sector no.
-        div     word [bx(bpbHeadsPerCylinder)]
-                ; ax = (LBA / SPT) / HPC = cylinder
-                ; dx = (LBA / SPT) % HPC = head
-        shl     ah, 6
-        mov     ch, al
-                ; ch = LSB 0...7 of cylinder no.
-        or      cl, ah
-                ; cl = MSB 8...9 of cylinder no. + sector no.
-        mov     dh, dl
-                ; dh = head no.
-
-ReadSectorLBARetry:
-        mov     dl, [bx]
-                ; dl = drive no.
-        mov     si, sp
+ReadSectorRetry:
         mov     ah, 42h                 ; ah = 42h = extended read function no.
+        mov     si, sp
+        push    ss
+        pop     ds
         int     13h                     ; extended read sectors (DL, DS:SI)
-        jnc     ReadSectorNextSegment
+        push    cs
+        pop     ds
+        jnc     ReadSuccess             ; CF = 0 if no error
 
-ReadSectorCHSRetry:
-        mov     ax, 201h                ; al = sector count = 1
-                                        ; ah = 2 = read function no.
-        int     13h                     ; read sectors (AL, CX, DX, ES:BX)
-        jnc     ReadSectorNextSegment
-
-        cbw                             ; ah = 0 = reset function
+        xor     ax, ax                  ; ah = 0 = reset function
         int     13h                     ; reset drive (DL)
 
-        dec     bp
-        jnz     ReadSectorLBARetry
-
+        loop    ReadSectorRetry         ; extra attempt
         call    Error
         db      "Read error."
 
-ReadSectorNextSegment:
+ReadSuccess:
 
         popa                            ; sp += 16
-        popa                            ; restore real registers
-==============
+
+        popa
+
+        inc     eax                     ; adjust LBA for next sector
+
         stc
-        loop    ReadSectorDone
+        loop    ReadSectorNext
 
-        cmp     si2, 0FFFh
-        jne     ReadSectorDone
-        cmp     si, 0FFF8h              ; carry=0 if last cluster, and carry=1 otherwise
+        cmp     esi, 0FFFFFF8h          ; carry=0 if last cluster, and carry=1 otherwise
 
-ReadSectorDone:
+ReadSectorNext:
         ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -505,23 +444,16 @@ ReadSectorDone:
 
 Error:
         pop     si
-        mov     dl, [bx]                ; restore BIOS boot drive number
+puts:
         mov     ah, 0Eh
         mov     bl, 7
-
-PutStr:
         lodsb
         int     10h
-        cmp     al, "."
-        jne     PutStr
-
+        cmp     al, '.'
+        jne     puts
         cbw
         int     16h                     ; wait for a key...
         int     19h                     ; bootstrap
-
-Stop:
-        hlt
-        jmp     short Stop
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Fill free space with zeroes ;;

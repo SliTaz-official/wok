@@ -28,8 +28,8 @@
 ;;                                                                          ;;
 ;;                             Known Limitations:                           ;;
 ;;                             ~~~~~~~~~~~~~~~~~~                           ;;
-;; - Works only on the 1st MBR partition which must be a PRI DOS partition  ;;
-;;   with FAT12 (File System ID: 1) and FAT16 (File System ID: 4, 6)        ;;
+;; - Works only on the 1st MBR partition which must be a DOS partition      ;;
+;;   with FAT12 (File System ID: 1) or FAT16 (File System ID: 4, 6)         ;;
 ;;                                                                          ;;
 ;;                                                                          ;;
 ;;                                Known Bugs:                               ;;
@@ -556,10 +556,10 @@ ReadSectorNextSegment:
 
 Error:
         pop     si
-        mov     ah, 0Eh
-        mov     bl, 7
 
 PutStr:
+        mov     ah, 0Eh
+        mov     bl, 7
         lodsb
         int     10h
         cmp     al, "."

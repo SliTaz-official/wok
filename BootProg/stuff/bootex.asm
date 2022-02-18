@@ -448,10 +448,10 @@ ReadSectorNext:
 Error:
         pop     si
         mov     dl, [bx]                ; restore BIOS boot drive number
-        mov     ah, 0Eh
-        mov     bl, 7
 
 PutStr:
+        mov     ah, 0Eh
+        mov     bl, 7
         lodsb
         int     10h
         cmp     al, "."
