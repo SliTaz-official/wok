@@ -1,15 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="diffutils"
-VERSION="3.7"
+VERSION="3.8"
 CATEGORY="development"
 SHORT_DESC="Show differences between two files."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL3"
-WEB_SITE="http://www.gnu.org/software/diffutils/"
+WEB_SITE="https://www.gnu.org/software/diffutils/"
 
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
+
+SUGGESTED="diffutils-lang"
 
 # What is the latest version available today?
 current_version()
@@ -21,39 +23,39 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	# 3.8 might be obsolete
 	sed -i 's:= @mkdir_p@:= /bin/mkdir -p:' po/Makefile.in.in
 
-	./configure \
-		--prefix=/usr \
+	./configure		\
+		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
+	cook_copy_folders	bin
 
+# moved to package diffutils-lang
 	# Localisations:
-	for lang in da de fr id it pt_BR ro ru; do
-		mkdir -p $fs/usr/share/locale/$lang/LC_MESSAGES
-		cp -a $install/usr/share/locale/$lang/LC_MESSAGES/diffutils.mo \
-			$fs/usr/share/locale/$lang/LC_MESSAGES/diffutils.mo
-	done
-
+#	for lang in da de fr id it pt_BR ro ru; do
+#		mkdir -p $fs/usr/share/locale/$lang/LC_MESSAGES
+#		cp -a $install/usr/share/locale/$lang/LC_MESSAGES/diffutils.mo \
+#			$fs/usr/share/locale/$lang/LC_MESSAGES/diffutils.mo
+#	done
 }
 
 # Overlap busybox
 pre_install()
 {
-	rm -f "$1/usr/bin/diff"
-	rm -f "$1/usr/bin/cmp"
+	rm -f			"$1/usr/bin/diff"
+	rm -f			"$1/usr/bin/cmp"
 }
 
 post_remove()
 {
-	ln -s /bin/busybox "$1/usr/bin/diff"
-	ln -s /bin/busybox "$1/usr/bin/cmp"
+	ln -s /bin/busybox	"$1/usr/bin/diff"
+	ln -s /bin/busybox	"$1/usr/bin/cmp"
 }
