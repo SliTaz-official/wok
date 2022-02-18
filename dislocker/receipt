@@ -1,9 +1,9 @@
 # SliTaz package receipt.
 
 PACKAGE="dislocker"
-VERSION="0.7.1"
+VERSION="0.7.3"
 CATEGORY="system-tools"
-SHORT_DESC="Read/write BitLocker encrypted volumes under Linux"
+SHORT_DESC="Read and write BitLocker encrypted volumes under Linux."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL2"
 WEB_SITE="https://github.com/Aorimn/dislocker"
@@ -12,7 +12,7 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/Aorimn/dislocker/archive/v$VERSION.tar.gz"
 
 DEPENDS="fuse mbedtls"
-BUILD_DEPENDS="cmake mbedtls-dev fuse-dev patch attr"
+BUILD_DEPENDS="attr cmake fuse-dev mbedtls-dev"
 
 current_version()
 {
@@ -20,31 +20,37 @@ current_version()
 	sed '/archive.*tar/!d;s|.*/v\(.*\).tar.*|\1|;q'
 }
 
-compile_rules() {
+compile_rules()
+{
 	# Fix v0.7 upstream path error
-	sed -i 's/DIS_MAN \${PROJECT_SOURCE_DIR}/DIS_MAN ../' src/CMakeLists.txt
+	# obsolete in 0.7.3
+#	sed -i 's|DIS_MAN \${PROJECT_SOURCE_DIR}|DIS_MAN ..|' src/CMakeLists.txt
 
-	cp $stuff/manpage/* man/linux/
+	cp $stuff/manpage/*	man/linux/
 
-	patch -p1 -i $stuff/fix-spelling.patch
+	patch --strip=1 --input=$stuff/fix-spelling.patch
 
-	cmake \
-		-DCMAKE_INSTALL_PREFIX=/usr \
-		-Dlibdir=/usr/lib \
-		-D WARN_FLAGS:STRING="-Wall -Wextra" \
-		. &&
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..					\
+		-D CMAKE_INSTALL_PREFIX=/usr		\
+		-D libdir=/usr/lib			\
+		-D WARN_FLAGS:STRING="-Wall -Wextra" &&
 	make &&
-	make DESTDIR=$install install || return 1
+	make install DESTDIR=$install || return 1
 
-	mkdir -p $install/usr/share/doc/$PACKAGE-$VERSION/
-	cp README.md CHANGELOG.md $install/usr/share/doc/$PACKAGE-$VERSION/
+	cd	$src
+	mkdir -p $install/usr/share/doc/$PACKAGE-$VERSION
+	cp CHANGELOG.md	$install/usr/share/doc/$PACKAGE-$VERSION/
+	cp README.md	$install/usr/share/doc/$PACKAGE-$VERSION/
 
-	mkdir -p $install/usr/share/man/man1/
-	cp man/linux/dislocker-bek.1 man/linux/dislocker-metadata.1 \
-		$install/usr/share/man/man1/
+	mkdir -p $install/usr/share/man/man1
+	cp man/linux/dislocker-bek.1		$install/usr/share/man/man1/
+	cp man/linux/dislocker-metadata.1	$install/usr/share/man/man1/
 }
 
-genpkg_rules() {
-	mkdir -p $fs/usr/
-	cp -a $install/usr/bin/ $install/usr/lib/ $fs/usr/
+genpkg_rules()
+{
+	cook_copy_folders	bin
+	cook_copy_folders	lib
 }
