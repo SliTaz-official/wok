@@ -26,12 +26,6 @@
 ;; - cpu 8086 is supported                                                  ;;
 ;;                                                                          ;;
 ;;                                                                          ;;
-;;                             Known Limitations:                           ;;
-;;                             ~~~~~~~~~~~~~~~~~~                           ;;
-;; - Works only on the 1st MBR partition which must be a DOS partition      ;;
-;;   with FAT12 (File System ID: 1) or FAT16 (File System ID: 4, 6)         ;;
-;;                                                                          ;;
-;;                                                                          ;;
 ;;                                Known Bugs:                               ;;
 ;;                                ~~~~~~~~~~~                               ;;
 ;; - All bugs are fixed as far as I know. The boot sector has been tested   ;;

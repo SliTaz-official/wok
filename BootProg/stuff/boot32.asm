@@ -24,12 +24,6 @@
 ;;   instruction and lets the BIOS continue bootstrap.                      ;;
 ;;                                                                          ;;
 ;;                                                                          ;;
-;;                             Known Limitations:                           ;;
-;;                             ~~~~~~~~~~~~~~~~~~                           ;;
-;; - Works only on the 1st MBR partition which must be a DOS partition      ;;
-;;   with FAT32 (File System ID: 0Bh,0Ch)                                   ;;
-;;                                                                          ;;
-;;                                                                          ;;
 ;;                                Known Bugs:                               ;;
 ;;                                ~~~~~~~~~~~                               ;;
 ;; - All bugs are fixed as far as I know. The boot sector has been tested   ;;
@@ -81,6 +75,8 @@
 ;;                                                                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+%define bx(label)       bx+label-boot
+
 [BITS 16]
 
 ImageLoadSeg            equ     60h     ; <=07Fh because of "push byte ImageLoadSeg" instructions
@@ -92,6 +88,8 @@ ImageLoadSeg            equ     60h     ; <=07Fh because of "push byte ImageLoad
 ;; Boot sector starts here ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+boot:
+HiLBA                   equ     boot+0
         jmp     short   start                   ; MS-DOS/Windows checks for this jump
         nop
 bsOemName               DB      "BootProg"      ; 0x03
@@ -186,15 +184,15 @@ main:
         push    cs
         pop     ds
 
-        mov     [bsDriveNumber], dl     ; store BIOS boot drive number
+        xor     bx, bx
+        mov     [bx(bsDriveNumber)], dx  ; store BIOS boot drive number
 
-        and     byte [bsRootDirectoryClusterNo+3], 0Fh ; mask cluster value
-        mov     esi, [bsRootDirectoryClusterNo] ; esi=cluster # of root dir
+        and     byte [bx(bsRootDirectoryClusterNo+3)], 0Fh ; mask cluster value
+        mov     esi, [bx(bsRootDirectoryClusterNo)] ; esi=cluster # of root dir
 
 RootDirReadContinue:
         push    byte ImageLoadSeg
         pop     es
-        xor     bx, bx
         push    es
         call    ReadCluster             ; read one cluster of root dir
         pop     es
@@ -359,28 +357,33 @@ ReadCluster:
         div     esi                             ; eax=FAT sector #, edx=entry # in sector
 
         imul    si, dx, 4                       ; si=entry # in sector
+        mov     word [bx(HiLBA)], bx
         call    ReadSectorLBAabsolute           ; read 1 FAT32 sector
 
         and     byte [es:si+3], 0Fh             ; mask cluster value
         mov     esi, [es:si]                    ; esi=next cluster #
 
         xchg    eax, ebp
-        movzx   ecx, byte [bpbSectorsPerCluster]
-        mul     ecx
+        movzx   ecx, byte [bx(bpbSectorsPerCluster)]
+        mul     ecx				; edx:eax=sector number in data area
         xchg    eax, ebp
+        mov     word [bx(HiLBA)], dx
 
-        movzx   eax, byte [bpbNumberOfFATs]
-        mul     dword [bsSectorsPerFAT32]
+        movzx   eax, byte [bx(bpbNumberOfFATs)]
+        mul     dword [bx(bsSectorsPerFAT32)]
 
         add     eax, ebp
+        adc     word [bx(HiLBA)], dx
 
         pop     bp                              ; [bpbBytesPerSector]
         shr     bp, 4                           ; bp = paragraphs per sector
 
 ReadSectorLBAabsolute:
-        movzx   edx, word [bpbReservedSectors]
+        movzx   edx, word [bx(bpbReservedSectors)]
         add     eax, edx
-        add     eax, [bpbHiddenSectors]
+        adc     word [bx(HiLBA)], bx
+        add     eax, [bx(bpbHiddenSectors)]
+        adc     word [bx(HiLBA)], bx
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reads a sector using BIOS Int 13h fn 42h ;;
@@ -392,11 +395,11 @@ ReadSectorLBAabsolute:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReadSectorLBA:
-        mov     dl, [bsDriveNumber]     ; restore BIOS boot drive number
+        mov     dx, [bx(bsDriveNumber)] ; restore BIOS boot drive number
         pusha
 
         push    bx
-        push    bx     ; 32-bit LBA only: up to 2TB disks
+        push    word [bx(HiLBA)]        ; 48-bit LBA
         push    eax
         push    es
         push    bx
@@ -427,7 +430,8 @@ ReadSuccess:
 
         popa
 
-        inc     eax                     ; adjust LBA for next sector
+        add     eax, byte 1             ; adjust LBA for next sector
+        adc     word [bx(HiLBA)], bx
 
         stc
         loop    ReadSectorNext

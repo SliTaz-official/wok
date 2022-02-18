@@ -24,12 +24,6 @@
 ;;   instruction and lets the BIOS continue bootstrap.                      ;;
 ;;                                                                          ;;
 ;;                                                                          ;;
-;;                             Known Limitations:                           ;;
-;;                             ~~~~~~~~~~~~~~~~~~                           ;;
-;; - Works only on the 1st MBR partition which must be a PRI DOS partition  ;;
-;;   with exFAT (File System ID: 07h)                                       ;;
-;;                                                                          ;;
-;;                                                                          ;;
 ;;                                Known Bugs:                               ;;
 ;;                                ~~~~~~~~~~~                               ;;
 ;; - All bugs are fixed as far as I know. The boot sector has been tested   ;;
@@ -263,7 +257,6 @@ FileReadContinue:
 ;; Type detection, .COM or .EXE? ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-        mov     dl, [bx]                ; pass the BIOS boot drive
         mov     ds, bp                  ; bp=ds=seg the file is loaded to
 
         add     bp, [bx+08h]            ; bp = image base
@@ -438,6 +431,7 @@ ReadSuccess:
 
         cmp     esi, byte -10           ; carry=0 if last cluster, and carry=1 otherwise
 ReadSectorNext:
+        mov     dl, [bx]                ; restore BIOS boot drive number
         ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -446,7 +440,6 @@ ReadSectorNext:
 
 Error:
         pop     si
-        mov     dl, [bx]                ; restore BIOS boot drive number
 
 PutStr:
         mov     ah, 0Eh
