@@ -86,7 +86,6 @@
 [BITS 16]
 [CPU 386]
 
-?                       equ     0
 ImageLoadSeg            equ     60h
 StackSize               equ     1536
 
@@ -107,22 +106,22 @@ bsOemName               DB      "EXFAT   "      ; 0x03
 ;; BPB starts here ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
-bpbSectorStart          DQ      ?               ; 0x40 partition first sector
-bpbSectorCount          DQ      ?               ; 0x48 partition sectors count
-bpbFatSectorStart       DD      ?               ; 0x50 FAT first sector
-bpbFatSectorCount       DD      ?               ; 0x54 FAT sectors count
-bpbClusterSectorStart   DD      ?               ; 0x58 first cluster sector
-bpbClusterCount         DD      ?               ; 0x5C total clusters count
-bpbRootDirCluster       DD      ?               ; 0x60 first cluster of the root dir
-bpbVolumeSerial         DD      ?               ; 0x64 volume serial number
-bpbFSVersionMinor       DB      ?               ; 0x68
-bpbFSVersionMajor       DB      ?               ; 0x69
-bpbVolumeStateFlags     DW      ?               ; 0x6A 
-bpbSectorSizeBits       DB      ?               ; 0x6C sector size as (1 << n)
-bpbSectorPerClusterBits DB      ?               ; 0x6D sector per cluster as (1 << n)
-bpbNumberOfFATs         DB      ?               ; 0x6E always 1
-bpbDriveNumber          DB      ?               ; 0x6F alaways 0x80
-bpbAllocatedPercent     DB      ?               ; 0x70 percentage of allocated space
+bpbSectorStart          DQ      0               ; 0x40 partition first sector
+bpbSectorCount          DQ      0               ; 0x48 partition sectors count
+bpbFatSectorStart       DD      0               ; 0x50 FAT first sector
+bpbFatSectorCount       DD      0               ; 0x54 FAT sectors count
+bpbClusterSectorStart   DD      0               ; 0x58 first cluster sector
+bpbClusterCount         DD      0               ; 0x5C total clusters count
+bpbRootDirCluster       DD      0               ; 0x60 first cluster of the root dir
+bpbVolumeSerial         DD      0               ; 0x64 volume serial number
+bpbFSVersionMinor       DB      0               ; 0x68
+bpbFSVersionMajor       DB      0               ; 0x69
+bpbVolumeStateFlags     DW      0               ; 0x6A 
+bpbSectorSizeBits       DB      0               ; 0x6C sector size as (1 << n)
+bpbSectorPerClusterBits DB      0               ; 0x6D sector per cluster as (1 << n)
+bpbNumberOfFATs         DB      0               ; 0x6E always 1
+bpbDriveNumber          DB      0               ; 0x6F alaways 0x80
+bpbAllocatedPercent     DB      0               ; 0x70 percentage of allocated space
 
 ;;;;;;;;;;;;;;;;;;;
 ;; BPB ends here ;;
@@ -167,7 +166,7 @@ start:
 ;;;;;;;;;;;;;;;;;;;;;;
 
         push    es
-        push    main
+        push    byte main
         retf
 
 main:
@@ -179,7 +178,7 @@ main:
 
         mov     esi, [bx(bpbRootDirCluster)] ; esi=cluster # of root dir
 
-        push    ImageLoadSeg
+        push    byte ImageLoadSeg
         pop     es
 
 RootDirReadContinue:
@@ -233,7 +232,7 @@ CheckName:
         je      FindNameFound           ; cx = 0
         popa                            ; restore ax, cx, si, di
 
-        add     di, 32
+        add     di, byte 32
         cmp     di, bp
         jne     FindNameCycle           ; next root entry
         popf                            ; restore carry="not last sector" flag
@@ -350,7 +349,7 @@ Run:
 
 ReadCluster:
         inc     cx                              ; jcxnz
-        add     eax, 1
+        add     eax, byte 1
         loop    ReadSectorC
 
         mov     cl, [bx(bpbSectorSizeBits)]
@@ -437,7 +436,7 @@ ReadSuccess:
         stc
         loop    ReadSectorNext
 
-        cmp     esi, 0FFFFFFF6h         ; carry=0 if last cluster, and carry=1 otherwise
+        cmp     esi, byte -10           ; carry=0 if last cluster, and carry=1 otherwise
 ReadSectorNext:
         ret
 

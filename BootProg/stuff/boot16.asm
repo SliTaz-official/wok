@@ -92,7 +92,6 @@
 [BITS 16]
 [CPU 8086]
 
-?                       equ     0
 ImageLoadSeg            equ     60h
 StackSize               equ     3072            ; Stack + cluster list
 
@@ -112,27 +111,27 @@ bsOemName               DB      "BootProg"      ; 0x03
 ;; BPB starts here ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
-bpbBytesPerSector       DW      ?               ; 0x0B
-bpbSectorsPerCluster    DB      ?               ; 0x0D
-bpbReservedSectors      DW      ?               ; 0x0E
-bpbNumberOfFATs         DB      ?               ; 0x10
-bpbRootEntries          DW      ?               ; 0x11
-bpbTotalSectors         DW      ?               ; 0x13
-bpbMedia                DB      ?               ; 0x15
-bpbSectorsPerFAT        DW      ?               ; 0x16
-bpbSectorsPerTrack      DW      ?               ; 0x18
-bpbHeadsPerCylinder     DW      ?               ; 0x1A
-bpbHiddenSectors        DD      ?               ; 0x1C
-bpbTotalSectorsBig      DD      ?               ; 0x20
+bpbBytesPerSector       DW      0               ; 0x0B
+bpbSectorsPerCluster    DB      0               ; 0x0D
+bpbReservedSectors      DW      0               ; 0x0E
+bpbNumberOfFATs         DB      0               ; 0x10
+bpbRootEntries          DW      0               ; 0x11
+bpbTotalSectors         DW      0               ; 0x13
+bpbMedia                DB      0               ; 0x15
+bpbSectorsPerFAT        DW      0               ; 0x16
+bpbSectorsPerTrack      DW      0               ; 0x18
+bpbHeadsPerCylinder     DW      0               ; 0x1A
+bpbHiddenSectors        DD      0               ; 0x1C
+bpbTotalSectorsBig      DD      0               ; 0x20
 
 ;;;;;;;;;;;;;;;;;;;
 ;; BPB ends here ;;
 ;;;;;;;;;;;;;;;;;;;
 
-bsDriveNumber           DB      ?               ; 0x24
-bsUnused                DB      ?               ; 0x25
-bsExtBootSignature      DB      ?               ; 0x26
-bsSerialNumber          DD      ?               ; 0x27
+bsDriveNumber           DB      0               ; 0x24
+bsUnused                DB      0               ; 0x25
+bsExtBootSignature      DB      0               ; 0x26
+bsSerialNumber          DD      0               ; 0x27
 bsVolumeLabel           DB      "NO NAME    "   ; 0x2B
 bsFileSystem            DB      "FAT12   "      ; 0x36
 
@@ -202,7 +201,7 @@ main:
         pop     ds
         xor     bx, bx
 
-        and     cx, 3Fh
+        and     cx, byte 3Fh
         cmp     [bx(bpbSectorsPerTrack)], cx
         jne     BadParams               ; verify updated and validity
         mov     al, dh
@@ -263,7 +262,7 @@ FindNameCycle:
         repe    cmpsb
         pop     di
         je      FindNameFound
-        add     di, 32
+        add     di, byte 32
         dec     word [bx(bpbRootEntries)]
         jnz     FindNameCycle           ; next root entry
 
@@ -311,7 +310,7 @@ First64:
 
         lodsw                           ; ax = next cluster
         cmp     ax, 0FFF8h
-        jmp     ReadClusterDone
+        jmp     short	ReadClusterDone
 
 ReadClusterFat12:
         add     si, [cs:di]
@@ -591,3 +590,4 @@ ProgramName     db      "STARTUP BIN"   ; name and extension each must be
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ClusterList     dw      0AA55h          ; BIOS checks for this ID
+
