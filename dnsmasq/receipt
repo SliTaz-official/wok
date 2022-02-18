@@ -1,15 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="dnsmasq"
-VERSION="2.81"
+VERSION="2.86"
 CATEGORY="network"
 SHORT_DESC="Lightweight, DNS forwarder and DHCP server."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://thekelleys.org.uk/dnsmasq/doc.html"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.thekelleys.org.uk/dnsmasq/doc.html"
-WGET_URL="http://www.thekelleys.org.uk/$PACKAGE/$TARBALL"
+WGET_URL="https://www.thekelleys.org.uk/$PACKAGE/$TARBALL"
+
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="coreutils-file-sort gcc83"
+
 CONFIG_FILES="/etc/dnsmasq.conf"
+
 HOST_ARCH="i486 arm"
 
 # What is the latest version available today?
@@ -22,17 +28,31 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i -e 's/nawk/awk/' -e 's|/usr/local|/usr|' Makefile
-	make PREFIX=/usr && make DESTDIR=$DESTDIR install &&
+	# 2.86 obsolete
+#	sed -i	-e 's/nawk/awk/'	\
+#		Makefile
+
+	export	CFLAGS="$CFLAGS -std=c99"
+
+	make				\
+		CC=gcc-83		\
+		CFLAGS="$CFLAGS"	\
+		PREFIX=$DESTDIR/usr &&
+	make	install			\
+		CC=gcc-83		\
+		CFLAGS="$CFLAGS"	\
+		PREFIX=$DESTDIR/usr &&
+
 	mkdir -p $DESTDIR/etc &&
-	cp -a $src/dnsmasq.conf.example $DESTDIR/etc/dnsmasq.conf
+	cp -a $src/dnsmasq.conf.example	$DESTDIR/etc/dnsmasq.conf
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/etc $fs
-	cp -a $stuff/* $fs
+
+	cp -a $install/etc	$fs
+	cp -a $install/usr/sbin	$fs/usr
+	cp -a $stuff/*		$fs
 }
