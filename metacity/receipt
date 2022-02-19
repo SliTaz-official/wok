@@ -7,9 +7,8 @@ SHORT_DESC="Window manager"
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL2"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-HI_VERSION=$(echo $VERSION | sed 's|\([0-9\.]*\)\.[0-9]*|\1|')
 WEB_SITE="http://blogs.gnome.org/metacity/"
-WGET_URL="http://ftp.acc.umu.se/pub/gnome/sources/metacity/$HI_VERSION/$TARBALL"
+WGET_URL="http://ftp.acc.umu.se/pub/gnome/sources/metacity/${VERSION%.*}/$TARBALL"
 
 DEPENDS="gsettings-desktop-schemas libgio glib gtk+ xorg-libXcomposite \
 xorg-libXdamage zenity xorg-libXinerama xorg-libXrandr xorg-libXcursor \
@@ -19,6 +18,15 @@ xorg-libXcomposite-dev xorg-libXdamage-dev zenity xorg-libXinerama-dev \
 xorg-libXrandr-dev xorg-libXcursor-dev libcanberra-dev libltdl libvorbis-dev \
 libogg-dev libtool gnome-doc-utils-dev GConf-dev util-linux-uuid-dev \
 dbus-glib-dev file"
+
+# What is the latest version available today?
+current_version()
+{
+	wget -O - ${WGET_URL%/*/*}/$( \
+	wget -O - ${WGET_URL%/*/*} 2>/dev/null | \
+	sed '/href="[0-9]/!d;s|.*href="||;s|".*||' | sort -Vr | sed q) 2>/dev/null | \
+	sed '/metacity-[0-9]/!d;/tar/!d;s|.*metacity-||;s|.tar.*||' | sort -Vr | sed q
+}
 
 # Rules to configure and make the package.
 compile_rules()
