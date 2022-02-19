@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="dovecot"
-VERSION="2.3.9.2"
+VERSION="2.3.18"
 CATEGORY="network"
 SHORT_DESC="Dovecot IMAP and POP3 Server."
 MAINTAINER="l.lemarinel@gmail.com"
@@ -12,8 +12,9 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://www.dovecot.org/releases/${VERSION:0:3}/$TARBALL"
 
 DEPENDS="libcap libmysqlclient libssl openldap pam postgresql"
-BUILD_DEPENDS="libcap-dev libmysqlclient mysql-dev openldap-dev 
-	openssl-dev pam-dev postgresql-dev sqlite-dev"
+BUILD_DEPENDS="libcap-dev libmysqlclient libpostgresqlclient 
+	mysql-dev openldap-dev openssl-dev pam-dev 
+	postgresql-dev sqlite-dev"
 
 # What is the latest version available today?
 current_version()
@@ -27,7 +28,7 @@ compile_rules()
 {
 	./configure				\
 		--prefix=/usr			\
-		--sysconfdir=/etc/dovecot	\
+		--sysconfdir=/etc		\
 		--localstatedir=/var		\
 		--libexecdir=/usr/lib/$PACKAGE	\
 		--with-ldap=plugin		\
@@ -38,55 +39,49 @@ compile_rules()
 		--with-ssl=openssl		\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
-	
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	mkdir -p $fs/etc/ssl/misc
 	mkdir -p $fs/usr/lib
 	mkdir -p $fs/var/log/dovecot
-	mkdir -p $fs/etc/ssl/misc
 
-	cp -a $install/usr/sbin	$fs/usr
-	cp -a $install/usr/bin	$fs/usr
-	cp -a $install/usr/lib	$fs/usr
-	cp -a $install/etc	$fs
-	
-	cp -pa $stuff/init.d	$fs/etc
+	cp -a $install/etc		$fs
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/usr/sbin		$fs/usr
 
-	#cp -pa $fs/etc/dovecot/dovecot-example.conf $fs/etc/dovecot/dovecot.conf
+	cp -pa $stuff/init.d		$fs/etc
 	cp -pa $install/usr/share/doc/dovecot/example-config/* \
-				$fs/etc/dovecot/
-	#cp -pa $src/doc/example-config/conf.d/*.conf $fs/etc/dovecot/conf.d
-	#cp -pa $src/doc/example-config/conf.d/*.ext $fs/etc/dovecot/conf.d
-	cp -pa $src/doc/*.cnf	$fs/etc/ssl
-	cp -pa $src/doc/mkcert.sh \
-				$fs/etc/ssl/misc/dovmkcert.sh
+					$fs/etc/dovecot
+	cp -pa $src/doc/*.cnf		$fs/etc/ssl
+	cp -pa $src/doc/mkcert.sh	$fs/etc/ssl/misc/dovmkcert.sh
 
 	# Remove archive files *.*a
-	find $fs -name "*.*a" -exec rm -f {} \;
-	
+	find				$fs -name "*.*a" -exec rm -f {} \;
+
 	# Fix permissions
-	chmod 755		$fs/etc/ssl/misc/*
+	chmod 755			$fs/etc/ssl/misc/*
 
 	# Customising configuration.
-	sed -i -e "s/^#default_vsz_limit.*/default_vsz_limit = 50M/" \
-		$fs/etc/dovecot/conf.d/10-master.conf
+	sed -i -e "s|^#default_vsz_limit.*|default_vsz_limit = 50M|" \
+					$fs/etc/dovecot/conf.d/10-master.conf
 
-	sed -i -e "s!^#log_path =.*!log_path = /var/log/dovecot/dovecot.log!" \
-		$fs/etc/dovecot/conf.d/10-logging.conf
-	
-	sed -i -e "s/^#listen.*/listen = */" \
-		$fs/etc/dovecot/dovecot.conf
+	sed -i -e "s|^#log_path =.*|log_path = /var/log/dovecot/dovecot.log|" \
+					$fs/etc/dovecot/conf.d/10-logging.conf
+
+	sed -i -e "s|^#listen.*|listen = *|" \
+					$fs/etc/dovecot/dovecot.conf
 
 	# Unsafe, see CVE-2014-3566 POODLE
-	sed -i -e "s/^#ssl_protocols =.*/ssl_protocols = !SSLv2 !SSLv3/" \
-		$fs/etc/dovecot/conf.d/10-ssl.conf
+	sed -i -e "s|^#ssl_protocols =.*|ssl_protocols = !SSLv2 !SSLv3|" \
+					$fs/etc/dovecot/conf.d/10-ssl.conf
 }
 
-#nd post install commands for Tazpkg.
+# Post install commands for Tazpkg.
 post_install()
 {
 	local user
@@ -98,7 +93,7 @@ post_install()
 	if ! grep -q $user "$1/etc/passwd"
 	  then
 		echo
-		echo -n "Adding user/group $user..."
+		echo -n "Adding user and group $user..."
 		chroot "$1/" addgroup -g 76 -S $group
 		chroot "$1/" adduser -u 76 -S -D -H -G $group $user
 		chroot "$1/" adduser -u 74 -S -D -H -G nogroup dovenull 
@@ -107,6 +102,10 @@ post_install()
 
 	# Set permissions for files and directories
 	chroot "$1/" chown -R ${user}.${group} /var/log/${user} \
+
+	# Create certificate, if neccessary
+	[ -f "$1/etc/ssl/certs/dovecot.pem" ] ||
+	chroot "$1/" sh -c 'cd etc/ssl; ./misc/dovmkcert.sh'
 
 	cat <<EOF
 ----
@@ -119,14 +118,14 @@ Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf
 EOF
 }
 
-
+# Post remove commands for Tazpkg.
 post_remove()
 {
-	echo "Removing stalled files..."
+	echo "Removing obsolete files..."
 	test -d "$1/var/log/dovecot" && rm -rf "$1/var/log/dovecot"
 	test -d "$1/var/run/dovecot" && rm -rf "$1/var/run/dovecot"
 	
-	echo "Removing user/group daemon"
+	echo "Removing user and group dovecot"
 	chroot "$1/" deluser dovecot 
 	chroot "$1/" deluser dovenull
 }
