@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="drbd-utils"
-VERSION="9.11.0"
+VERSION="9.20.2"
 CATEGORY="system-tools"
 SHORT_DESC="DRBD is a block device to build high availability clusters."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -9,10 +9,10 @@ LICENSE="GPL2"
 WEB_SITE="https://www.linbit.com/en/drbd-community/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="https://www.linbit.com/downloads/drbd/utils/$TARBALL"
+WGET_URL="https://pkg.linbit.com/downloads/drbd/utils/$TARBALL"
 
 DEPENDS="gcc83-lib-base"
-BUILD_DEPENDS="autoconf automake flex gcc83 libxslt udev-dev"
+BUILD_DEPENDS="flex gcc83 libxslt udev-dev"
 
 # What is the latest version available today?
 current_version()
@@ -24,7 +24,6 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./autogen.sh &&
 	./configure				\
 		CC=gcc-83			\
 		CXX=g++-83			\
@@ -33,13 +32,16 @@ compile_rules()
 		--localstatedir=/var		\
 		--with-systemdunitdir=none	\
 		--with-prebuiltman		\
-		$CONFIGURE_ARGS
+		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/*	$fs/
+	cook_copy_folders	etc
+	cook_copy_folders	lib
+	cook_copy_folders	sbin
+	cook_copy_folders	var
 }
