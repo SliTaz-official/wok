@@ -1,20 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="dwm"
-VERSION="6.0"
+VERSION="6.3"
 CATEGORY="x-window"
+TAGS="window-manager"
 SHORT_DESC="Very light dynamic window manager for X."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
+WEB_SITE="https://dwm.suckless.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://dwm.suckless.org/"
-WGET_URL="http://dl.suckless.org/dwm/$TARBALL"
-TAGS="window-manager"
-HOST_ARCH="i486 arm"
+WGET_URL="https://dl.suckless.org/dwm/$TARBALL"
 
 DEPENDS="xorg-libX11 xorg-xsetroot"
-BUILD_DEPENDS="xorg-libX11-dev xorg-xproto xorg-xineramaproto \
-xorg-libXinerama-dev"
+BUILD_DEPENDS="xorg-libX11-dev xorg-libXinerama-dev xorg-xineramaproto
+	xorg-xproto"
+
+HOST_ARCH="i486 arm"
 
 # What is the latest version available today?
 current_version()
@@ -27,14 +29,18 @@ current_version()
 compile_rules()
 {
 	# From blue to grey and have lighter grey
-	sed -i s/'#0066ff'/'#222222'/g config.def.h
-	sed -i s/'#cccccc'/'#f1efeb'/g config.def.h
+	sed -i s/'#0066ff'/'#222222'/g	config.def.h
+	sed -i s/'#cccccc'/'#f1efeb'/g	config.def.h
+
 	# 6 tag-mask
-	sed -i s/', "7", "8", "9"'// config.def.h
+	sed -i s/', "7", "8", "9"'//	config.def.h
+
 	# Firefox on current tag-mask
-	sed -i s/'1 << 8,'/'0,     '/ config.def.h
+	sed -i s/'1 << 8,'/'0,     '/	config.def.h
+
 	# [Shift]+[Alt]+[Enter]
-	sed -i s/uxterm/xterm/ config.def.h
+	sed -i s/uxterm/xterm/		config.def.h
+
 	make CC=${HOST_SYSTEM}-gcc
 }
 
@@ -42,16 +48,18 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/bin
-	cp -a $src/dwm $fs/usr/bin
-	cp -a $stuff/dwm-session $fs/usr/bin
-	chown 0.0 $fs/usr/bin/*
+
+	cp -a $src/dwm			$fs/usr/bin
+	cp -a $stuff/dwm-session	$fs/usr/bin
+	chown 0.0			$fs/usr/bin/*
 }
 
 post_install()
 {
 	res=$(cat "$1/etc/slim.conf" | grep ^session | sed s/"sessions. *"//)
-	# Adding WM to SLIM available sessions.
-	if ! echo "$res" | grep -q $PACKAGE; then
+	# Adding dwm to SLIM available sessions.
+	if ! echo "$res" | grep -q $PACKAGE
+	  then
 		echo
 		echo -n "Adding $PACKAGE to /etc/slim.conf..."
 		sed -i "s/^sessions.*/sessions            ${res},dwm/" /etc/slim.conf
@@ -61,8 +69,9 @@ post_install()
 
 post_remove()
 {
-	# Remove karmen from SLIM available sessions.
-	if grep -q dwm "$1/etc/slim.conf"; then
+	# Remove dwm from SLIM available sessions.
+	if grep -q dwm "$1/etc/slim.conf"
+	  then
 		sed -i s/,dwm// "$1/etc/slim.conf"
 	fi
 }
