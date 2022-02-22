@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="etherape"
-VERSION="0.9.18"
+VERSION="0.9.20"
 CATEGORY="network"
 TAGS="ip monitoring network tcp vlan wlan"
 SHORT_DESC="A graphical network monitor and visualization tool."
@@ -12,11 +12,13 @@ WEB_SITE="https://etherape.sourceforge.io"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="gtk+3 libglade libgnome libpcap libgnomeui libltdl 
-	libcrypto libxslt libgnome-keyring util-linux-uuid"
-BUILD_DEPENDS="glib-dev glibc-dev gnome-doc-utils-dev goocanvas 
-	goocanvas-dev gtk+3-dev itstool libcrypto-dev libglade-dev 
-	libgnome-dev libgnomeui-dev libpcap-dev libtool libxslt-dev 
+SUGGESTED="etherape-lang"
+DEPENDS="goocanvas gtk+3 libcrypto libglade libgnome libpcap
+	libgnome-keyring libgnomeui libltdl libxml2 libxslt
+	util-linux-uuid"
+BUILD_DEPENDS="glib-dev glibc-dev gnome-doc-utils-dev goocanvas-dev
+	gtk+3-dev itstool libcrypto-dev libglade-dev libgnome-dev
+	libgnomeui-dev libpcap-dev libtool libxml2-dev libxslt-dev
 	ossp-uuid-dev"
 
 # What is the latest version available today?
@@ -40,22 +42,23 @@ compile_rules()
 		--build=$ARCH-slitaz-linux			\
 		--disable-scrollkeeper
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
 	mkdir -p $fs/usr/share
 
-	cp -a $install/usr/bin/* $fs/usr/bin
-	cp -a $install/usr/share/* $fs/usr/share
+	cook_copy_folders	bin
+	cp -a $install/usr/share/applications	$fs/usr/share
+	cp -a $install/usr/share/etherape	$fs/usr/share
+	cp -a $install/usr/share/pixmaps	$fs/usr/share
 }
 
 post_install() 
 {
 	# The SliTaz use Tazbox.
-	sed -i 's/^Exec=.*/Exec=tazbox su dbus-launch etherape/' \
+	sed -i 's|^Exec=.*|Exec=tazbox su dbus-launch etherape|' \
 		$1/usr/share/applications/etherape.desktop
 }
