@@ -269,19 +269,22 @@ FileReadContinue:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Setup and run a .COM program ;;
 ;; Set CS=DS=ES=SS SP=0 IP=100h ;;
+;; AX=0ffffh BX=0 CX=0 DX=drive ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+        mov     ax, 0ffffh              ; both FCB in the PSP don't have a valid drive identifier
+        mov     di, 100h                ; ip
         mov     bp, ImageLoadSeg-10h    ; "org 100h" stuff :)
         mov     ss, bp
         xor     sp, sp
         push    bp                      ; cs, ds and es
-        mov     bh, 1                   ; ip
         jmp     short Run
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Relocate, setup and run a .EXE program     ;;
 ;; Set CS:IP, SS:SP, DS, ES and AX according  ;;
 ;; to wiki.osdev.org/MZ#Initial_Program_State ;;
+;; AX=0ffffh BX=0 CX=0 DX=drive               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReloCycle:
@@ -304,11 +307,11 @@ RelocateEXE:
         push    si                      ; containing the PSP structure
 
         add     bp, [bx+16h]            ; cs for EXE
-        mov     bx, [bx+14h]            ; ip for EXE
+        mov     di, [bx+14h]            ; ip for EXE
 Run:
         pop     ds
         push    bp
-        push    bx
+        push    di
         push    ds
         pop     es
 
@@ -355,7 +358,7 @@ ReadCluster:
         xchg    eax, esi
         div     esi                             ; eax=FAT sector #, edx=entry # in sector
 
-        imul    si, dx, 4                       ; si=entry # offset in sector
+        imul    si, dx, byte 4                  ; si=entry # offset in sector
 
         cdq
         add     eax, [bx(bpbFatSectorStart)]    ; sector # relative to FAT32
