@@ -11,7 +11,8 @@
 ;;                                                                          ;;
 ;;                                 Features:                                ;;
 ;;                                 ~~~~~~~~~                                ;;
-;; - FAT32 supported using BIOS int 13h function 42h or 02h.                ;;
+;; - FAT32 supported using BIOS int 13h function 42h (IOW, it will only     ;;
+;;   work with modern BIOSes supporting HDDs bigger than 8 GB)              ;;
 ;;                                                                          ;;
 ;; - Loads a 16-bit executable file in the MS-DOS .COM or .EXE format       ;;
 ;;   from the root directory of a disk and transfers control to it          ;;
@@ -262,30 +263,33 @@ FileReadContinue:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         mov     ds, bp                  ; bp=ds=seg the file is loaded to
+
         add     bp, [bx+08h]            ; bp = image base
         mov     ax, [bx+06h]            ; ax = reloc items
         mov     di, [bx+18h]            ; di = reloc table pointer
 
         cmp     word [bx], 5A4Dh        ; "MZ" signature?
-
         je      RelocateEXE             ; yes, it's an EXE program
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Setup and run a .COM program ;;
-;; Set CS=DS=ES=SP SP=0 IP=100h ;;
+;; Set CS=DS=ES=SS SP=0 IP=100h ;;
+;; AX=0ffffh BX=0 CX=0 DX=drive ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+        mov     ax, 0ffffh              ; both FCB in the PSP don't have a valid drive identifier
+        mov     di, 100h                ; ip
         mov     bp, ImageLoadSeg-10h    ; "org 100h" stuff :)
         mov     ss, bp
         xor     sp, sp
         push    bp                      ; cs, ds and es
-        mov     bh, 1                   ; ip
         jmp     short Run
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Relocate, setup and run a .EXE program     ;;
 ;; Set CS:IP, SS:SP, DS, ES and AX according  ;;
 ;; to wiki.osdev.org/MZ#Initial_Program_State ;;
+;; AX=0ffffh BX=0 CX=0 DX=drive               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReloCycle:
@@ -308,11 +312,11 @@ RelocateEXE:
         push    si                      ; containing the PSP structure
 
         add     bp, [bx+16h]            ; cs for EXE
-        mov     bx, [bx+14h]            ; ip for EXE
+        mov     di, [bx+14h]            ; ip for EXE
 Run:
         pop     ds
         push    bp
-        push    bx
+        push    di
         push    ds
         pop     es
 
@@ -332,6 +336,7 @@ Run:
 ReadCluster:
         mov     bp, [bx(bpbBytesPerSector)]
         shr     bp, 4                           ; bp = paragraphs per sector
+        add     eax, byte 1             ; adjust LBA for next sector
         inc     cx
         loop    ReadSectorLBA
 
@@ -374,7 +379,6 @@ ReadSectorLBAabsolute:
         add     eax, edx
         adc     word [bx(HiLBA)], bx
         add     eax, [bx(bpbHiddenSectors)]
-        adc     word [bx(HiLBA)], bx
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reads a sector using BIOS Int 13h fn 42h ;;
@@ -386,6 +390,8 @@ ReadSectorLBAabsolute:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReadSectorLBA:
+        adc     word [bx(HiLBA)], bx
+        mov     dx, [bx(bsDriveNumber)] ; restore BIOS boot drive number
         pusha
 
         push    bx
@@ -395,41 +401,11 @@ ReadSectorLBA:
         push    bx
         push    byte 1 ; sector count word = 1
         push    byte 16 ; packet size byte = 16, reserved byte = 0
-        push    eax
-        pop     cx                      ; low LBA
-        pop     ax                      ; high LBA
-        cwd                             ; clear dx (CHS disk <2TB)
-        div     word [bx(bpbSectorsPerTrack)] ; up to 8GB CHS disks
-
-        xchg    ax, cx                  ; restore low LBA, save high LBA / SPT
-        div     word [bx(bpbSectorsPerTrack)]
-                                        ; ax = LBA / SPT
-                                        ; dx = LBA % SPT         = sector - 1
-        inc     dx
-
-        xchg    cx, dx                  ; restore high LBA / SPT, save sector no.
-        div     word [bx(bpbHeadsPerCylinder)]
-                                        ; ax = (LBA / SPT) / HPC = cylinder
-                                        ; dx = (LBA / SPT) % HPC = head
-        shl     ah, 6
-        mov     ch, al
-                                        ; ch = LSB 0...7 of cylinder no.
-        or      cl, ah
-                                        ; cl = MSB 8...9 of cylinder no. + sector no.
-        mov     dh, dl
-                                        ; dh = head no.
 
 ReadSectorLBARetry:
-        mov     dl, [bx(bsDriveNumber)] ; restore BIOS boot drive number
         mov     si, sp
         mov     ah, 42h                 ; ah = 42h = extended read function no.
         int     13h                     ; extended read sectors (DL, DS:SI)
-        jnc     ReadSuccess             ; CF = 0 if no error
-
-ReadSectorCHSRetry:
-        mov     ax, 201h                ; al = sector count = 1
-                                        ; ah = 2 = read function no.
-        int     13h                     ; read sectors (AL, CX, DX, ES:BX)
         jnc     ReadSuccess             ; CF = 0 if no error
 
         cbw                             ; ah = 0 = reset function
@@ -447,16 +423,12 @@ ReadSuccess:
 
         popa
 
-        add     eax, byte 1             ; adjust LBA for next sector
-        adc     word [bx(HiLBA)], bx
-
         stc
         loop    ReadSectorNext
 
         cmp     esi, 0FFFFFF8h          ; carry=0 if last cluster, and carry=1 otherwise
 
 ReadSectorNext:
-        mov     dx, [bx(bsDriveNumber)] ; restore BIOS boot drive number
         ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -473,8 +445,8 @@ puts:
         cmp     al, '.'
         jne     puts
         cbw
-;        int     16h                     ; wait for a key...
-;        int     19h                     ; bootstrap
+        int     16h                     ; wait for a key...
+        int     19h                     ; bootstrap
 
 Stop:
         hlt
