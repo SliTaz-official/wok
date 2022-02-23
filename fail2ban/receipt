@@ -1,19 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="fail2ban"
-VERSION="0.10.4"
+VERSION="0.11.2"
 CATEGORY="network"
 TAGS="monitor network"
 SHORT_DESC="Scans log files to ban IPs that make too many password failures."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://www.fail2ban.org/wiki/index.php/Main_Page"
+WEB_SITE="https://www.fail2ban.org/wiki/index.php/Main_Page"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/$PACKAGE/$PACKAGE/archive/$VERSION.tar.gz"
 
-DEPENDS="iptables"
+DEPENDS="iptables python"
 BUILD_DEPENDS="python"
+
 CONFIG_FILES="/etc/fail2ban"
 
 current_version()
@@ -31,13 +32,16 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/etc/logrotate.d $fs/etc/init.d
-	cp -a $install/* $fs
-	sed -i -e 's|127.0.0.1.*|& 192.168.0.0/16|;s|sshd.log|messages|' \
-		-e '/ssh-iptables/{nn;s/false/true/}' $fs/etc/fail2ban/jail.conf
+	mkdir -p $fs/etc/logrotate.d
+	mkdir -p $fs/etc/init.d
 
-	cp -a $stuff/etc/fail2ban/  $fs/etc/
-	cp -a $stuff/etc/init.d  $fs/etc/
+	cp -a $install/*	$fs
+	sed -i	-e 's|127.0.0.1.*|& 192.168.0.0/16|;s|sshd.log|messages|' \
+		-e '/ssh-iptables/{nn;s/false/true/}' \
+		$fs/etc/fail2ban/jail.conf
+
+	cp -a $stuff/etc/fail2ban	$fs/etc
+	cp -a $stuff/etc/init.d		$fs/etc
 
 	cat >> $fs/etc/fail2ban/jail.conf <<EOT
 [apache-noscript]
