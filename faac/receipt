@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="faac"
-VERSION="1.29.9.2"
+VERSION="1.30"
 CATEGORY="multimedia"
 TAGS="mp4 mpeg encoder"
 SHORT_DESC="An open source MPEG-4 and MPEG-2 AAC encoder."
@@ -10,10 +10,10 @@ LICENSE="GPL2"
 WEB_SITE="https://github.com/knik0/faac"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="$SF_MIRROR/faac/$TARBALL"
+WGET_URL="$SF_MIRROR/faac/$PACKAGE-${VERSION/./_}.tar.gz"
 
 DEPENDS="gcc83-lib-base"
-BUILD_DEPENDS="gcc83"
+BUILD_DEPENDS="autoconf automake gcc83 libtool"
 
 # What is the latest version available today?
 current_version()
@@ -25,10 +25,7 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-#	cd $src/common/mp4v2
-#	patch -p0 < $stuff/gcc44.patch || return 1
-#	cd ../..
-
+	./bootstrap &&
 	./configure				\
 		CC=gcc-83			\
 		CXX=g++-83			\
@@ -37,14 +34,12 @@ compile_rules()
 		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cook_copy_folders	bin
+	cook_copy_files		*.so*
 }
