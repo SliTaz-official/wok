@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="fcron"
-VERSION="3.2.1"
+VERSION="3.3.1"
 CATEGORY="network"
 TAGS="cron scheduler"
 SHORT_DESC="Periodical command scheduler."
@@ -12,7 +12,7 @@ WEB_SITE="http://fcron.free.fr/"
 TARBALL="$PACKAGE-$VERSION.src.tar.gz"
 WGET_URL="http://fcron.free.fr/archives/$TARBALL"
 
-DEPENDS=""
+DEPENDS="readline"
 BUILD_DEPENDS="perl readline-dev"
 
 # What is the latest version available today?
@@ -25,23 +25,24 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure					\
-		--prefix=/usr				\
-		--sysconfdir=/etc			\
-		--localstatedir=/var			\
-		--without-sendmail			\
-		--with-username=nobody			\
-		--with-groupname=nogroup		\
-		--with-pam=no				\
-		--with-selinux=no			\
-		--with-answer-all=no			\
-		--with-boot-install=no			\
-		--with-editor=/bin/vi			\
-		--with-sysfcrontab=yes			\
-		--with-systemdsystemunitdir=none	\
+	./configure				\
+		LIBS="-lrt"			\
+		--prefix=/usr			\
+		--sysconfdir=/etc		\
+		--localstatedir=/var		\
+		--without-sendmail		\
+		--with-answer-all=no		\
+		--with-boot-install=no		\
+		--with-editor=/bin/vi		\
+		--with-groupname=nogroup	\
+		--with-pam=no			\
+		--with-selinux=no		\
+		--with-sysfcrontab=yes		\
+		--with-systemdsystemunitdir=no	\
+		--with-username=nobody		\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -57,3 +58,18 @@ genpkg_rules()
 
 	cp -a stuff/fcron		$fs/etc/init.d
 }
+
+# Post install commands for Tazpkg
+post_install()
+{
+	if ! grep -q ^FCRON_OPTIONS "$1/etc/daemons.conf"
+	  then
+		echo -e '
+# inserted by post_install of fcron:
+# Fcron daemon options.
+FCRON_OPTIONS="-b"
+
+' >> "$1/etc/daemons.conf"
+	fi
+}
+
