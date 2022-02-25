@@ -1,18 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="fish"
-VERSION="3.0.2"
+VERSION="3.3.1"
 CATEGORY="system-tools"
 SHORT_DESC="The FrIendly SHell."
 MAINTAINER="tcg.thegamer@gmail.com"
 LICENSE="GPL2"
 WEB_SITE="https://fishshell.com"
 
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="https://github.com/fish-shell/fish-shell/releases/download/$VERSION/$TARBALL"
 
 DEPENDS="gcc83-lib-base ncurses"
-BUILD_DEPENDS="gcc83 ncurses-dev ncursesw-extra"
+BUILD_DEPENDS="cmake gcc83 ncurses-dev ncursesw-extra"
 
 current_version()
 {
@@ -22,14 +22,13 @@ current_version()
 
 compile_rules()
 {
-	export LDFLAGS="$LDFLAGS -ltinfo"
-
-	./configure		\
-		CC=gcc-83	\
-		CXX=g++-83	\
-		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$DESTDIR install
+	export	CC=gcc-83
+	export	CXX=g++-83
+	mkdir	_build
+	cd	_build
+	cmake	..				\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
+	make install DESTDIR=$DESTDIR
 }
 
 genpkg_rules()
@@ -39,5 +38,6 @@ genpkg_rules()
 	cp -a $install/usr/bin		$fs/usr
 	cp -a $install/usr/etc		$fs
 	cp -a $install/usr/share/fish	$fs/usr/share
-	cp -a $install/usr/share/locale	$fs/usr/share
+	# moved to package fish-lang:
+#	cp -a $install/usr/share/locale	$fs/usr/share
 }
