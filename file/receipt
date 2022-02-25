@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="file"
-VERSION="5.38"
+VERSION="5.41"
 CATEGORY="system-tools"
 SHORT_DESC="Determines file type using 'magic' numbers."
 MAINTAINER="erjo@slitaz.org"
@@ -11,8 +11,8 @@ WEB_SITE="https://github.com/file/file"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="ftp://ftp.astron.com/pub/file/$TARBALL"
 
-DEPENDS="libmagic zlib"
-BUILD_DEPENDS="python python-setuptools zlib-dev"
+DEPENDS="gcc83-lib-base libmagic zlib"
+BUILD_DEPENDS="gcc83 python python-setuptools zlib-dev"
 
 HOST_ARCH="i486 arm"
 
@@ -20,7 +20,8 @@ HOST_ARCH="i486 arm"
 
 # Handle cross compilation. python is installed in a ARM cook env.
 case "$ARCH" in
-	arm) BUILD_DEPENDS="" ;;
+	(arm)	BUILD_DEPENDS=""
+		;;
 esac
 
 # What is the latest version available today?
@@ -37,9 +38,10 @@ compile_rules()
 		src/readelf.c
 
 	./configure				\
+		CC=gcc-83			\
 		--datarootdir=/usr/share	\
 		$CONFIGURE_ARGS &&
-	make -j 1 &&
+	make &&
 	make install &&
 	cd python &&
 	python setup.py build &&
