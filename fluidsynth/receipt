@@ -1,18 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="fluidsynth"
-VERSION="2.1.0"
+VERSION="2.2.5"
 CATEGORY="multimedia"
 TAGS="synthesizer audio multimedia"
 MAINTAINER="jozee@slitaz.org"
 LICENSE="LGPL2"
 SHORT_DESC="A real-time software synthesizer based on the SoundFont 2 specifications."
-WEB_SITE="http://www.fluidsynth.org/"
+WEB_SITE="https://www.fluidsynth.org/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/FluidSynth/$PACKAGE/archive/v$VERSION.tar.gz"
 
-DEPENDS="glib jack-audio-connection-kit ladspa"
+DEPENDS="glib jack-audio-connection-kit ladspa libdb"
 BUILD_DEPENDS="cmake glib-dev jack-audio-connection-kit-dev ladspa-dev 
 	pkg-config"
 
@@ -27,18 +27,17 @@ compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -ltinfo"
 
-	mkdir	build
-	cd	build
-	cmake -D CMAKE_INSTALL_PREFIX=/usr .. &&
-	make -j 1 &&
-	make DESTDIR=$DESTDIR install
+	mkdir	_build
+	cd	_build
+	cmake	..				\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 	
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib 
-
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/lib/*so*	$fs/usr/lib
+	cook_copy_folders	bin
+	cook_copy_files		*.so*
 }
