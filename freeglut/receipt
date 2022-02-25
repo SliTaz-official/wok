@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="freeglut"
-VERSION="3.2.1"
+VERSION="3.2.2"
 CATEGORY="x-window"
 SHORT_DESC="OpenGL utility toolkit."
 MAINTAINER="b1+slitaz@nagel.org"
@@ -12,8 +12,8 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
 SUGGESTED="nvidia"
-DEPENDS="glibc-base libdrm mesa libglu-mesa \
-	xorg-libX11 xorg-libXau xorg-libXdamage xorg-libXdmcp \
+DEPENDS="glibc-base libdrm mesa libglu-mesa
+	xorg-libX11 xorg-libXau xorg-libXdamage xorg-libXdmcp
 	xorg-libXext xorg-libXfixes xorg-libXi xorg-libXxf86vm"
 BUILD_DEPENDS="cmake libglu-mesa libglu-mesa-dev libxcb-dev mesa mesa-dev 
 	xorg-inputproto xorg-libX11-dev xorg-libXau-dev xorg-libXdamage-dev 
@@ -39,15 +39,17 @@ compile_rules()
 #	patch -p0 -i $stuff/2.6.0-GFX_radeon.patch
 #	sed -i 's/-Werror//' configure
 
-	cmake . -DCMAKE_INSTALL_PREFIX=/usr &&
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..				\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
 #	sed -i '/XF86VMODE/d' config.status
-	make -j 1 &&
-	make DESTDIR=$DESTDIR install
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cook_copy_files	*.so*
 }
