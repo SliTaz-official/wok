@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="firejail"
-VERSION="0.9.62"
+VERSION="0.9.68"
 CATEGORY="security"
 SHORT_DESC="A SUID sandbox program."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -11,7 +11,8 @@ WEB_SITE="https://firejail.wordpress.com/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/netblue30/$PACKAGE/archive/$VERSION.tar.gz"
 
-BUILD_DEPENDS="linux-api-headers"
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="gawk gcc83 linux-api-headers"
 
 current_version()
 {
@@ -23,21 +24,21 @@ current_version()
 compile_rules()
 {
 	./configure			\
+		CC=gcc-83		\
+		EXTRA_LDFLAGS="-lrt"	\
 		--prefix=/usr		\
 		--sysconfdir=/etc	\
 		--localstatedir=/var	\
 		--mandir=/usr/share/man	\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-
-	cp -a $install/usr/bin	$fs/usr
-	cp -a $install/usr/lib	$fs/usr
-	cp -a $install/etc	$fs
+	cook_copy_folders	etc
+	cook_copy_folders	bin
+	cook_copy_folders	lib
 }
