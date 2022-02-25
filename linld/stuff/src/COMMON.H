@@ -17,6 +17,7 @@
 #define ELKS		elks support
 #define IPXE		ipxe support
 #define CPUTYPE		detect cpu family and model
+#define MINRAM		detect RAM size
 /* End of the optional features */
 
 #ifdef ISOHOOK
@@ -99,6 +100,11 @@ extern u8 pm_low;
 extern u8 buf4k[4096];
 
 extern u32 far *initrd_desc;
+#ifdef ISO9660
+#define CMDSTR_EXTRA	"|iso"
+#else
+#define CMDSTR_EXTRA	""
+#endif
 #define cmdline		(cmdstr[0])
 #define kernel_name	(cmdstr[1])
 #define initrd_name	(cmdstr[2])
@@ -109,21 +115,57 @@ extern const char* cmdstr[4];
 #define vid_mode	(cmdnum[1])	// -3 = ask, -2 = Extended VGA, -1 = Normal VGA,  n = as "n" was pressed
 #define topmem		(cmdnum[2])
 #define base_himem	(cmdnum[3])
-#ifdef CPUTYPE
-#define mincpu		(* (short *) &cmdnum[4])
-#define	skip_alloc	(* (char *) &cmdnum[5])
-extern unsigned cputype;
-#else
-#define	skip_alloc	(* (char *) &cmdnum[4])
+#define CMDNUM	4
+#define CMDNUM_EXTRA	""
+extern u32 cmdnum[CMDNUM
+#ifdef MINRAM
+#define minram		(cmdnum[CMDNUM])
+#undef CMDNUM_EXTRA
+#define CMDNUM_EXTRA	"-r|"
+#undef CMDNUM
+#define CMDNUM		5
+	+1
 #endif
-extern u32 cmdnum[5
 #ifdef CPUTYPE
+#define mincpu		(* (short *) &cmdnum[CMDNUM])
+#undef CMDNUM
+#undef CMDNUM_EXTRA
+# ifdef MINRAM
+#define CMDNUM_EXTRA	"-r|-m|"
+#define CMDNUM		6
+# else
+#define CMDNUM_EXTRA	"-m|"
+#define CMDNUM		5
+# endif
 	+1
 #endif
 #ifdef QUICK_BOOT
+#undef CMDNUM
+#undef CMDNUM_EXTRA
+# ifdef MINRAM
+#  ifdef CPUTYPE
+#define CMDNUM_EXTRA	"-r|-m|-q~-v~"
+#define CMDNUM		8
+#  else
+#define CMDNUM_EXTRA	"-r|-q~-v~"
+#define CMDNUM		7
+#  endif
+# else
+#  ifdef CPUTYPE
+#define CMDNUM_EXTRA	"-m|-q~-v~"
+#define CMDNUM		7
+#  else
+#define CMDNUM_EXTRA	"-q~-v~"
+#define CMDNUM		6
+#  endif
+# endif
 	+2
 #endif
-	];
+	+1];
+#define	skip_alloc	(* (char *) &cmdnum[CMDNUM])
+#ifdef CPUTYPE
+extern unsigned cputype;
+#endif
 
 extern _fastcall void memcpy_image_kernel();
 extern _fastcall void memcpy_image_initrd();

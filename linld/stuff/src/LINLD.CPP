@@ -35,6 +35,9 @@ inline void syntax() {
         NL NL "Examples:" NL
 	"\tLINLD "
 	"-b 64m "
+#ifdef MINRAM
+	"-r 96m "
+#endif
 #ifdef CPUTYPE
 	"-m 0x600 "
 #endif
@@ -61,19 +64,8 @@ int main(int argc, char *argv[]) {
 	    if (cpuhaslm() == 0) exit();
 	}
 #endif
-#ifdef ISO9660
-	if (argstr(*argv,"cl|image|initrd|iso",clp) == (int) clp) continue;
-#else
-	if (argstr(*argv,"cl|image|initrd",clp) == (int) clp) continue;
-#endif
-	if (argnum(*argv,"root|vga|mem|-b|"
-#ifdef CPUTYPE
-		"-m|"
-#endif
-		"-f~"
-#ifdef QUICK_BOOT
-		"-q~-v~"
-#endif
+	if (argstr(*argv,"cl|image|initrd" CMDSTR_EXTRA,clp) == (int) clp) continue;
+	if (argnum(*argv,"root|vga|mem|-b|" CMDNUM_EXTRA "-f~"
 		,&root_dev) >= (int) &base_himem) continue;
 	if (fileexist(*argv) != -1) {
             kernel_name=*argv;
@@ -82,9 +74,13 @@ int main(int argc, char *argv[]) {
 	*clp = (const char *) heap_top +1;
 	strcatb((const char *) heap_top,*argv);
     } while (*++argv);
+#ifdef MINRAM
+    if ((minram>>16) > (memtop()>>16) && (minram>>16) != 0) exit();	
+#endif
 #ifdef CPUTYPE
     if (mincpu > cputype) exit();
 #endif
+
     puts(*clp);
     asm{
 	xchg	ax,bx

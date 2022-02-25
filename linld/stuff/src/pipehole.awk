@@ -22,7 +22,6 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 		print "call_exit:"
 		gotexit=1
 	}
-	if (/short @1@422/ && gotexit) $0="	ja	call_exit"
 	if (islinld==1) {
 		if (/,word.*/) islinld=0
 		print "; " $0
@@ -63,6 +62,24 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 			print "	dec	bx"
 			islinld=4
 		}
+	}
+	if (/minram>>16/) islinld=7
+	if (islinld==7) {
+		if (/endif/) islinld=0
+		if (/mov/) sub(/ax/,"cx");
+		if (/;/ || /_memtop/ || /mov/) { print; next }
+		if (/ax,0/) {
+			print "	jcxz	minram_done"
+			print "	cmp	cx,dx"
+			print "	ja	call_exit"
+			print "minram_done:"
+		}
+		next
+	}
+	if (/mincpu > cputype/) islinld=8
+	if (islinld==8) {
+		if (/endif/) islinld=0
+		if (/jbe/) $0="	ja	call_exit"
 	}
 	 } # file == "linld.cpp"
 	 if (file == "himem.cpp") {

@@ -27,12 +27,15 @@
 	macro	dos_shutdown
 		xor	bx,bx
                 ifdef   QUICK_BOOT
-		extrn	_cmdnum:dword
-	ifdef	CPUTYPE
-quickboot	=	(byte _cmdnum+24)
-	else
-quickboot	=	(byte _cmdnum+20)
+CMDNUMOFS	=	20
+	ifdef	MINRAM
+CMDNUMOFS	=	CMDNUMOFS+4
 	endif
+	ifdef	CPUTYPE
+CMDNUMOFS	=	CMDNUMOFS+4
+	endif
+		extrn	_cmdnum:dword
+quickboot	=	(byte _cmdnum+CMDNUMOFS)
 		cmp	bl,[quickboot]
 		mov	ds,bx
 		jne	skip_shutdown

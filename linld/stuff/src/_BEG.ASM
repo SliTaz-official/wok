@@ -12,6 +12,9 @@
 	include	"isostate.inc"
 
 CMDNUMCNT	=	5
+	ifdef	MINRAM
+CMDNUMCNT	=	CMDNUMCNT+1
+	endif
 	ifdef	CPUTYPE
 CMDNUMCNT	=	CMDNUMCNT+1
 	endif

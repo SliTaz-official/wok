@@ -347,12 +347,15 @@ vcpi_ret:
                 mov     [bx],sp
                 ;mov     [bx+2],ss
                 ifdef   QUICK_BOOT
-		extrn	_cmdnum:dword
-	ifdef	CPUTYPE
-v86boot	=	(byte _cmdnum+28)
-	else
-v86boot	=	(byte _cmdnum+24)
+CMDNUMOFS	=	24
+	ifdef	MINRAM
+CMDNUMOFS	=	CMDNUMOFS+4
 	endif
+	ifdef	CPUTYPE
+CMDNUMOFS	=	CMDNUMOFS+4
+	endif
+		extrn	_cmdnum:dword
+v86boot	=	(byte _cmdnum+CMDNUMOFS)
 		test	[v86boot],bh
 		jnz	@vm2rm_ret
 		endif
