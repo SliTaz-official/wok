@@ -47,7 +47,7 @@ function flush() {
     print "document.write(\"<INPUT TYPE=\\\"button\\\" value=\\\"" n "\\\">\", //!" $0
     n=0
   }
-  else print }' < $file > $file.$$
+  else print }' < $file | sed 's|"")|")|' > $file.$$
 		mv -f $file.$$ $file
 	done ;;
 esac
