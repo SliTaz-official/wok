@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="freeradius"
-VERSION="3.0.20"
+VERSION="3.0.25"
 CATEGORY="security"
 SHORT_DESC="Radius server."
 MAINTAINER="sdaigl@lacitec.on.ca"
@@ -13,7 +13,8 @@ TARBALL="$SOURCE-$VERSION.tar.gz"
 WGET_URL="ftp://ftp.freeradius.org/pub/radius/$TARBALL"
 
 DEPENDS="cyrus-sasl gdbm libcomerr3 libkrb5 libldap libltdl 
-	libmysqlclient libssl libunixODBC python readline"
+	libmysqlclient libpcap libssl libunixODBC python readline
+	talloc"
 BUILD_DEPENDS="gdbm-dev krb5-dev libpcap-dev libtool openldap-dev 
 	openssl-dev pam-dev talloc-dev"
 
@@ -29,16 +30,15 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	export CFLAGS="$CFLAGS -fno-strict-aliasing"
-
-	./configure			\
-		--sysconfdir=/etc	\
-		--localstatedir=/var	\
-		--with-system-libtool	\
-		--with-system-libltdl	\
+	./configure					\
+		CFLAGS="$CFLAGS -fno-strict-aliasing"	\
+		--sysconfdir=/etc			\
+		--localstatedir=/var			\
+		--with-system-libtool			\
+		--with-system-libltdl			\
 		$CONFIGURE_ARGS &&
-	make -j1 &&
-	make -j1 R=$DESTDIR install
+	make -j 1 &&
+	make install -j 1 R=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -55,6 +55,7 @@ genpkg_rules()
 	cp -a $install/usr/share/freeradius	$fs/usr/share
 	cp -a $install/etc			$fs
 	cp -a $install/var			$fs
-	rm -f $fs/usr/lib/rlm_pam*		$fs/etc/raddb/modules/pam
+	rm -f					$fs/usr/lib/rlm_pam*
+	rm -f					$fs/etc/raddb/modules/pam
 	cp -a $stuff/freeradius			$fs/etc/init.d
 }
