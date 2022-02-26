@@ -2,7 +2,7 @@
 
 case "$0" in
 *2txt*)
-  [ -z "$1" ] && echo "$0 file" && exit 1
+  [ -z "$1" ] && echo "Usage: $0 file" && exit 1
   sed '/^"\|<L>\|<Level/!d;s|.*<Level Id="|; |;s| *<L>||;s|</L>||;s| *"[,)].*||;s|^"||;s|".*||;s|_| |g;/^$/d' "$1" | awk 'BEGIN {n=1000;h=0}
 { s[h++]=$0
   if (/^;/) next
@@ -12,7 +12,7 @@ case "$0" in
   exit;;
 esac
 
-[ -z "$1" ] && echo "$0 set/" && exit 1
+[ -z "$1" ] && echo "Usage: $0 set/" && exit 1
 [ ! -s "$1/level0.htm" ] && echo "$1/level0.htm not found" && exit 2
 
 cat <<EOT

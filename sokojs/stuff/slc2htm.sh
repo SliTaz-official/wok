@@ -16,7 +16,7 @@ check() {
     grep -Eq ' _|_ |^_|_$'
 }
 
-[ -z "$1" ] && echo "$0 set1.slc ..." && exit 1
+[ -z "$1" ] && echo "Usage: $0 set1.slc ..." && exit 1
 [ ! -s "main.htm" ] && echo "$PWD/main.htm not found" && exit 2
 
 while [ "$1" ]; do
