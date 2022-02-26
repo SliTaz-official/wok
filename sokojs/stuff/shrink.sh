@@ -37,11 +37,12 @@ function flush() {
   } 
   else if (/^Row/) print "Row=" row " //!" $0
   else if (/^Col/) print "Col=" col-begin-end+length(tab) " //!" $0
-  else if (/[0-9]\\">",$/) {
+  else if (/\\"[0-9]*\\">",$/ && n != 0) {
     s=$0; sub(/.*value=\\"/,"",s); sub(/\\">.*/,"",s)
     l=length(line[0])-3; n-=cut+row; begin-=length(tab)
     n=s - (l*n) - begin - ((begin+end)*(int(s/l)-n))
     print "document.write(\"<INPUT TYPE=\\\"button\\\" value=\\\"" n "\\\">\", //!" $0
+    n=0
   }
   else print }' < $file > $file.$$
 		mv -f $file.$$ $file
