@@ -26,8 +26,11 @@ function scan(s) {
 }
 function flush() {
   for (i=0;i<row;i++) {
-    if (i == row-1) tail="\"); //!"; else tail="\",  //!"
-    print "\"" tab substr(line[i],begin+2,length(line[i])-end-begin-3) tail line[i]
+    l=length(line[i])-end-begin-3
+    if (i == row-1) { tail="\"); //!"
+      if (end==0) l--
+    } else tail="\",  //!"
+    print "\"" tab substr(line[i],begin+2,l) tail line[i]
   }
   for (i=0;i<cut;i++) print "//!" line2[i]
 }
