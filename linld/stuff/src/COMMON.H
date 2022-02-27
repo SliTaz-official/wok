@@ -181,6 +181,7 @@ extern char version_string[];
 #ifdef	WITH_XMM_ALLOC
 extern _fastcall void xmm_alloc(struct image_himem *m);
 #endif
+extern "C" u32 topload();
 extern "C" u32 memtop();
 extern "C" void enable_a20_or_die();
 extern "C" void far vm2rm();

@@ -22,9 +22,10 @@
         segment _TEXT byte public use16 'CODE'
 
 ;***************************************************************
-;u32 memtopz();
+;u32 memtop();
 ;***************************************************************
-        proc    _memtopz near
+        global  _memtop:near
+        proc    _memtop near
 ;***************************************************************
 ;u32 memtop_e820()
 ;***************************************************************
@@ -155,7 +156,7 @@ N_LXLSH@4:
 
 ;        endp    _memtop_88
 
-;        proc    _memtopz near
+;        proc    _memtop near
 
 ;                call	_memtop_e801
 ;		jnz	@@ok
@@ -176,11 +177,11 @@ rdcmos17:       cli
 
 
 ;***************************************************************
-;u32 memtop();
+;u32 topload();
 ;***************************************************************
-        global  _memtop:near
-_memtop:
-		call	_memtopz
+        global  _topload:near
+_topload:
+		call	_memtop
 		mov	cx,40h		; min 4m
 ; If reported mem is ridiculously low, presume
 ; we had trouble detecting memory size
@@ -209,7 +210,7 @@ _topmem		=	_cmdnum+8
 ;@@ok:
 		ret
 
-        endp    _memtopz
+        endp    _memtop
 
 ;***************************************************************
 ;void hook_int15_88();

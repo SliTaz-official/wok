@@ -215,7 +215,7 @@ void load_initrd() {
     struct image_himem *m = &initrd;
     open_image(m, initrd_name);
 
-    if ((m->fallback=(memtop()-m->size)&(~PAGE_MASK))-m[-1].fallback < m[-1].size) {
+    if ((m->fallback=(topload()-m->size)&(~PAGE_MASK))-m[-1].fallback < m[-1].size) {
 	loadfailure();
         return;
     }
