@@ -131,10 +131,10 @@ extern u32 cmdnum[CMDNUM
 #undef CMDNUM
 #undef CMDNUM_EXTRA
 # ifdef MINRAM
-#define CMDNUM_EXTRA	"-r|-m|"
+#define CMDNUM_EXTRA	"-r|-c|"
 #define CMDNUM		6
 # else
-#define CMDNUM_EXTRA	"-m|"
+#define CMDNUM_EXTRA	"-c|"
 #define CMDNUM		5
 # endif
 	+1
@@ -144,25 +144,52 @@ extern u32 cmdnum[CMDNUM
 #undef CMDNUM_EXTRA
 # ifdef MINRAM
 #  ifdef CPUTYPE
-#define CMDNUM_EXTRA	"-r|-m|-q~-v~"
+#   ifdef VCPI
+#define CMDNUM_EXTRA	"-r|-c|-q~-v~"
 #define CMDNUM		8
+#   else
+#define CMDNUM_EXTRA	"-r|-c|-q~"
+#define CMDNUM		7
+#   endif
 #  else
+#   ifdef VCPI
 #define CMDNUM_EXTRA	"-r|-q~-v~"
 #define CMDNUM		7
+#   else
+#define CMDNUM_EXTRA	"-r|-q~"
+#define CMDNUM		6
+#   endif
 #  endif
 # else
 #  ifdef CPUTYPE
-#define CMDNUM_EXTRA	"-m|-q~-v~"
+#   ifdef VCPI
+#define CMDNUM_EXTRA	"-c|-q~-v~"
 #define CMDNUM		7
+#   else
+#define CMDNUM_EXTRA	"-c|-q~"
+#define CMDNUM		6
+#   endif
 #  else
+#   ifdef VCPI
 #define CMDNUM_EXTRA	"-q~-v~"
 #define CMDNUM		6
+#   else
+#define CMDNUM_EXTRA	"-q~"
+#define CMDNUM		5
+#   endif
 #  endif
 # endif
+# ifdef VCPI
 	+2
+# else
+	+1
+# endif
 #endif
-	+1];
+#ifdef WITH_XMM_ALLOC
+	+1
 #define	skip_alloc	(* (char *) &cmdnum[CMDNUM])
+#endif
+	];
 #ifdef CPUTYPE
 extern unsigned cputype;
 #endif

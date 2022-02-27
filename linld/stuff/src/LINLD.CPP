@@ -22,32 +22,40 @@ inline void syntax() {
 	"\t-r minRAM" NL
 #endif
 #ifdef CPUTYPE
-        "\t-m minCPU	family*256+model" NL
+        "\t-c minCPU\tfamily*256+model" NL
 #endif
 #ifdef CPU64
-        "\t-64 cpu64 only" NL
+        "\t-64\t\t64 bits cpu" NL
 #endif
-        "Defaults:"
-        "\timage=bzImage"
-        "\tmem=256m"
-        "\tcl=auto" 
-        "\t-b 1088k" NL
-        "Use quotes: \"cl=...\" if you need spaces in cmdline" NL
-        "Use cl=@filename to get it from a file"
+#ifdef WITH_XMM_ALLOC
+	"\t-f\t\tskip XMMS alloc" NL
+#endif
+#ifdef QUICK_BOOT
+# ifdef VCPI
+	"\t-v\t\tV86 mode" NL
+# endif
+	"\t-q\t\tskip shutdown" NL
+#endif
+        "Defaults:\t"
+        "image=bzImage "
+        "mem=256m "
+        "cl=auto " 
+        "-b 1088k" NL
+        "Use quotes \"cl=...\" for spaces in cmdline"
+        ", cl=@filename to get it from a file"
 #if 1
         NL NL "Examples:" NL
 	"\tLINLD "
-	"-b 64m "
 #ifdef MINRAM
 	"-r 96m "
 #endif
 #ifdef CPUTYPE
-	"-m 0x600 "
+	"-c 0x600 "
 #endif
-        "initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz "
+        "initrd=rootfs.gz,mycfg.gz "
 	"\"cl=root=/dev/null video=-32\""
 	NL "\tLINLD memtest"
-	NL "\tLINLD @args"
+	NL "\tLINLD @linld.cmd"
 #endif
     );
 }
@@ -69,7 +77,10 @@ int main(int argc, char *argv[]) {
 	}
 #endif
 	if (argstr(*argv,"cl|image|initrd" CMDSTR_EXTRA,clp) == (int) clp) continue;
-	if (argnum(*argv,"root|vga|mem|-b|" CMDNUM_EXTRA "-f~"
+	if (argnum(*argv,"root|vga|mem|-b|" CMDNUM_EXTRA
+#ifdef WITH_XMM_ALLOC
+		"-f~"
+#endif
 		,&root_dev) >= (int) &base_himem) continue;
 	if (fileexist(*argv) != -1) {
             kernel_name=*argv;
