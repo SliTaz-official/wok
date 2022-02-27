@@ -67,12 +67,10 @@ function isnum(n) { return match(n,/^[0-9+-]/) }
 	if (islinld==7) {
 		if (/endif/) islinld=0
 		if (/mov/) sub(/ax/,"cx");
-		if (/;/ || /_memtop/ || /mov/) { print; next }
-		if (/ax,0/) {
-			print "	jcxz	minram_done"
-			print "	cmp	cx,dx"
+		if (/;/ || /_memtop/) print
+		if (/cmdnum/) {
+			print
 			print "	ja	call_exit"
-			print "minram_done:"
 		}
 		next
 	}

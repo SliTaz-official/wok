@@ -6,7 +6,7 @@ case "$0" in
 	sed -i 's|.*//!||' $@ ;;
 *)	for file in $@ ; do
 		[ -s "$file" ] || continue
-		grep -q '//!||' && continue 
+		grep -q '//!' && continue 
 		awk 'BEGIN { begin=9999; end=9999; tab=" " }
 function scan(s) {
   i=2

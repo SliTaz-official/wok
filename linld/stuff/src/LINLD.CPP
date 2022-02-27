@@ -11,23 +11,26 @@ const char* cmdstr[4] = {"auto",bzimagestr,NULL,NULL};
 
 inline void syntax() {
     die("Syntax:" NL
-        "LINLD [image=file] [initrd=files] [vga=mode] [root=num] [mem=max] [cl=cmdline] "
+        "LINLD [image=file] [initrd=files] [vga=mode] [root=num] [mem=topLoad] [cl=cmdline] "
 #ifdef ISO9660
 	"[iso=file] "
 #endif
 	"..." NL
-        "vga mode: ask,extended,normal or dec/oct/hex number" NL
+        "\tvga mode: ask,extended,normal or dec/oct/hex number" NL
+	"\t-b baseLoad" NL
+#ifdef MINRAM
+	"\t-r minRAM" NL
+#endif
 #ifdef CPUTYPE
-        "-m mincpu	family*256+model" NL
+        "\t-m minCPU	family*256+model" NL
 #endif
 #ifdef CPU64
-        "-64 for cpu64 only" NL
+        "\t-64 cpu64 only" NL
 #endif
-        "Defaults:" NL
-        "\timage=bzImage" NL
-        "\tinitrd,vga,root=(void)" NL
-        "\tmem=256m" NL
-        "\tcl=auto" NL
+        "Defaults:"
+        "\timage=bzImage"
+        "\tmem=256m"
+        "\tcl=auto" 
         "\t-b 1088k" NL
         "Use quotes: \"cl=...\" if you need spaces in cmdline" NL
         "Use cl=@filename to get it from a file"
@@ -44,6 +47,7 @@ inline void syntax() {
         "initrd=rootfs4.gz,rootfs3.gz,rootfs2.gz,rootfs1.gz "
 	"\"cl=root=/dev/null video=-32\""
 	NL "\tLINLD memtest"
+	NL "\tLINLD @args"
 #endif
     );
 }
@@ -75,7 +79,7 @@ int main(int argc, char *argv[]) {
 	strcatb((const char *) heap_top,*argv);
     } while (*++argv);
 #ifdef MINRAM
-    if ((minram>>16) > (memtop()>>16) && (minram>>16) != 0) exit();	
+    if ((minram>>16) > (memtop()>>16)) exit();	
 #endif
 #ifdef CPUTYPE
     if (mincpu > cputype) exit();
