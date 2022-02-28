@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="gawk"
-VERSION="5.0.1"
+VERSION="5.1.1"
 CATEGORY="development"
 SHORT_DESC="GNU awk to handle simple data-reformatting."
 MAINTAINER="pankso@slitaz.org"
@@ -11,6 +11,7 @@ WEB_SITE="https://www.gnu.org/software/gawk/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 
+SUGGESTED="gawk-lang"
 DEPENDS=""
 BUILD_DEPENDS=""
 
@@ -27,7 +28,7 @@ current_version()
 cook_tmp_toolchain()
 {
 	./configure &&
-	make -j 1 &&
+	make &&
 	make install
 }
 
@@ -37,27 +38,19 @@ compile_rules()
 	./configure			\
 		--libexecdir=/usr/lib	\
 		$CONFIGURE_ARGS &&
-	make -j 1 &&
+	make &&
 	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/locale
+	# locales
+	# moved to package gawk-lang
 
-	# Set list of wanted locales in LOCALE_PACK
-	. $WOK/slitaz-i18n/stuff/locale-pack.conf
-
-	# Copy message files in wanted languages, if available
-	for locale in $LOCALE_PACK
-	  do
-		[ -d $install/usr/share/locale/$locale ] || continue
-		cp -a $install/usr/share/locale/$locale $fs/usr/share/locale
-	  done
+	mkdir -p $fs/usr/share
 
 	cp -a $install/usr/bin		$fs/usr
-	
 	cp -a $install/usr/share/awk	$fs/usr/share
 }
 
