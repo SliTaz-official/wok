@@ -354,12 +354,12 @@ case "$1" in
 	chown root.root ${@/init/rootfs.gz}
 	touch -t 197001010100.00 ${@/init/rootfs.gz}
 	ls -l $@ rootfs.gz
-	cp $0 $0.$$
+	sed '/^##/d;s|[ \t]*###.*||;/^case/,/^esac/d' $0 > $0.$$
+	chmod +x $0.$$
 	cat >> $0.$$ <<EOM
 $(tar cf - ${@/init/rootfs.gz} | compress | uuencode -m -)
 EOT
 EOM
-	sed -i '/^##/d;s|[ \t]*###.*||;/^case/,/^esac/d' $0.$$
 	mv -f $0.$$ $0; exit ;;
 --get)
 	cat $2
