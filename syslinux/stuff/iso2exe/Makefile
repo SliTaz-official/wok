@@ -53,7 +53,7 @@ win32.exe: win32.c win32.res
 	objcopy -O binary $*.o $@
 	chmod +x $@
 
-%.lst: %bin
+%.lst: %.bin
 	objdump -D -Mintel,i8086 -b binary -m i386 --adjust-vma=0x7C00 $< > $@
 
 clean:
