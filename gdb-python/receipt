@@ -1,19 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="gdb-python"
-VERSION="7.7"
+VERSION="11.2"
 CATEGORY="development"
 SHORT_DESC="The GNU Project Debugger with Python support."
 MAINTAINER="erjo@slitaz.org"
-LICENSE="GPL2"
+LICENSE="GPL3"
+WEB_SITE="https://www.gnu.org/software/gdb/"
+
 SOURCE="gdb"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
-WEB_SITE="http://www.gnu.org/software/gdb/"
+TARBALL="$SOURCE-$VERSION.tar.xz"
 WGET_URL="$GNU_MIRROR/$SOURCE/$TARBALL"
 PROVIDE="gdb"
-
-DEPENDS="ncurses expat glibc-dev python"
-BUILD_DEPENDS="ncurses-dev python-dev"
+SUGGESTED="gdb-lang"
+DEPENDS="expat gcc83-lib-base glibc-dev gmp ncurses python"
+BUILD_DEPENDS="gcc83 gmp-dev ncurses-dev python-dev"
 
 # What is the latest version available today?
 current_version()
@@ -25,17 +26,21 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--disable-werror \
+	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		--disable-werror	\
 		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS && make install
+	make $MAKEFLAGS &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
+
+	cook_copy_folders	bin
+	cook_copy_folders	lib
 	cp -a $install/usr/share/gdb $fs/usr/share
 }
