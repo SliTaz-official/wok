@@ -1,19 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="ghex"
-VERSION="2.24.0"
+VERSION="3.41.1"
 CATEGORY="x-window"
-SHORT_DESC="GHex is a simple binary editor."
+SHORT_DESC="A simple binary editor."
 MAINTAINER="samuel_trassare@yahoo.com"
 LICENSE="GPL2"
-WEB_SITE="https://directory.fsf.org/wiki/Ghex"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="http://ftp.acc.umu.se/pub/GNOME/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
+WEB_SITE="https://wiki.gnome.org/Apps/Ghex"
 
-DEPENDS="gtk+ libgnomeui libgnomeprintui libgnome-keyring"
-BUILD_DEPENDS="gtk+-dev gnome-doc-utils-dev libgnomeui-dev libbonoboui-dev \
-libgnome-dev libbonobo-dev libbonoboui-dev libgnome-keyring-dev \
-libgnomeprintui-dev intltool"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://download.gnome.org/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+SUGGESTED="ghex-lang"
+DEPENDS="atk gtk+3 libgnome-keyring libgnomeprintui libgnomeui libxml2"
+BUILD_DEPENDS="atk-dev gtk+3-dev intltool itstool 
+	libbonobo-dev libbonoboui-dev libgnome-dev libgnome-keyring-dev 
+	libgnomeprintui-dev libgnomeui-dev libxml2-dev meson ninja"
 
 # What is the latest version available today?
 current_version()
@@ -28,28 +30,36 @@ compile_rules()
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lm"
 	
 	# GHex2 cannot display help without Yelp.  Removing help references.
-	patch -Np1 -i $stuff/ghex2-remove-help.patch
-	
-	./configure \
-		--disable-schemas-install \
-		--disable-scrollkeeper \
-		$CONFIGURE_ARGS && 
-	make && 
-	make DESTDIR=$install install
+#	patch -Np1 -i $stuff/ghex2-remove-help.patch
+	patch	--strip=0 --input=$stuff/patches/ghex-ui.xml-3.41.1
+	patch	--strip=0 --input=$stuff/patches/preferences.c-3.41.1
+
+	# Do not create help files
+	sed -i	-e "/subdir('help')/d"		\
+		-e "/meson_post_install.py/d"	\
+		meson.build
+
+	meson	_build		\
+		--prefix=/usr &&
+	ninja -C _build &&
+	ninja -C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin \
-		$fs/usr/lib \
-		$fs/usr/share
-		
-	cp -a $install/usr/bin/* $fs/usr/bin
-	cp -ar $install/usr/etc $fs/usr
-	cp -a $install/usr/lib/*so* $fs/usr/lib
-	cp -ar $install/usr/share/applications $fs/usr/share
-	cp -ar $install/usr/share/gnome-2.0 $fs/usr/share
-	cp -ar $install/usr/share/icons $fs/usr/share
-	cp -ar $install/usr/share/locale $fs/usr/share
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	cp -a $install/usr/bin/*		$fs/usr/bin
+	# 3.41.1 not created
+#	cp -ar $install/usr/etc $fs/usr
+	cp -ar $install/usr/share/glib-2.0	$fs/usr/share
+	cp -a $install/usr/lib/*so*		$fs/usr/lib
+	cp -ar $install/usr/share/applications	$fs/usr/share
+	cp -ar $install/usr/share/metainfo	$fs/usr/share
+	cp -ar $install/usr/share/icons		$fs/usr/share
+	# moved to package ghex-lang
+#	cp -ar $install/usr/share/locale	$fs/usr/share
 }
