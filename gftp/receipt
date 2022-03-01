@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="gftp"
-VERSION="2.0.19"
+VERSION="2.9.1b"
 CATEGORY="network"
 SHORT_DESC="Small and fast FTP client."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://www.gftp.org/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.gftp.org/"
-WGET_URL="http://www.gftp.org/$TARBALL"
+WGET_URL="https://github.com/masneyb/$PACKAGE/archive/refs/tags/$VERSION.tar.gz"
 
-DEPENDS="gtk+ xorg-libXdamage"
-BUILD_DEPENDS="pkg-config gtk+-dev gtk+"
+SUGGESTED="gftp-lang"
+DEPENDS="gtk+ libxml2 xorg-libXdamage"
+BUILD_DEPENDS="automake gtk+-dev libxml2-dev pkg-config"
 
 # What is the latest version available today?
 current_version()
@@ -23,30 +24,34 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr --mandir=/usr/share/man \
-	--disable-ssl --disable-textport \
-	$CONFIGURE_ARGS &&
+	./autogen.sh &&
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
+		--disable-ssl		\
+		--disable-textport	\
+		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $fs/usr/share/applications
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/applications
 
-	cp -a $install/usr/bin/gftp $fs/usr/bin
-	cp -a $install/usr/bin/gftp-gtk $fs/usr/bin
-	cp -a $install/usr/share/gftp $fs/usr/share
-	chmod 755 $fs/usr/bin/gftp
+	cp -a $install/usr/bin/gftp	$fs/usr/bin
+	cp -a $install/usr/bin/gftp-gtk	$fs/usr/bin
+	cp -a $install/usr/share/gftp	$fs/usr/share
+	chmod 755			$fs/usr/bin/gftp
 
 	# Copy custom bookmarks file and remove license, big logo.
-	cp -a $stuff/bookmarks $fs/usr/share/gftp
-	cp -a $stuff/gftp $fs/usr/share
-	cp -a $stuff/gftp.desktop $fs/usr/share/applications
+	cp -a $stuff/bookmarks		$fs/usr/share/gftp
+	cp -a $stuff/gftp		$fs/usr/share
+	cp -a $stuff/gftp.desktop	$fs/usr/share/applications
 	ln -sf /usr/share/gftp/gftp-mini-logo.xpm \
-		$fs/usr/share/gftp/gftp-logo.xpm
-	rm -f $fs/usr/share/gftp/COPYING
-	rm -f $fs/usr/share/gftp/gftp.xpm
+					$fs/usr/share/gftp/gftp-logo.xpm
+	rm -f				$fs/usr/share/gftp/COPYING
+	rm -f				$fs/usr/share/gftp/gftp.xpm
 }
