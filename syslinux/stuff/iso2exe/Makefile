@@ -10,7 +10,7 @@ taziso.built: bootloader.bin ifmem.bin taziso
 
 meminfo.exe: meminfo.S
 	cc -o meminfo.o -Wa,-a=meminfo.lst -c meminfo.S
-	objcopy -O binary meminfo.o meminfo.exe
+	objcopy --only-section=.text -O binary meminfo.o meminfo.exe
 	chmod +x $@
 
 iso2exe: iso2exe.sh bootiso.bin win32.exe
@@ -50,7 +50,7 @@ win32.exe: win32.c win32.res
 
 %.bin: %.S
 	$(GCC) -D__ASSEMBLY__ -DMULTI_INITRD -Wa,-acghlnm=$*.lst -c -o $*.o $<
-	objcopy -O binary $*.o $@
+	objcopy --only-section=.text -O binary $*.o $@
 	chmod +x $@
 
 %.lst: %.bin
