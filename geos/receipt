@@ -1,18 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="geos"
-VERSION="3.8.0"
+VERSION="3.10.2"
 CATEGORY="misc"
 SHORT_DESC="Geometry Engine, Open Source."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="LGPL2.1"
-WEB_SITE="https://trac.osgeo.org/geos/"
+WEB_SITE="https://libgeos.org/"
 
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="http://download.osgeo.org/geos/$TARBALL"
 
 DEPENDS="gcc83-lib-base"
-BUILD_DEPENDS="gcc83"
+BUILD_DEPENDS="cmake gcc83"
 
 # What is the latest version available today?
 current_version()
@@ -24,10 +24,14 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure		\
-		CC=gcc-83	\
-		CXX=g++-83	\
-		$CONFIGURE_ARGS &&
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..				\
+		-D CMAKE_INSTALL_PREFIX=/usr	\
+		-D CMAKE_BUILD_TYPE=Release &&
 	make &&
 	make install
 }
@@ -35,6 +39,5 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cook_copy_files	*.so*
 }
