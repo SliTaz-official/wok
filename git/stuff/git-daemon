@@ -1,8 +1,8 @@
 #!/bin/sh
-# /etc/init.d/git-daemon: Start, stop and restart git-daemon daemon on SliTaz, at boot
-# time or with the command line.
+# /etc/init.d/git-daemon: Start, stop and restart git daemon on SliTaz,
+# at boot time or with the command line.
 #
-# To start daemon at boot time, just put the right name in the $RUN_DAEMONS
+# To start git daemon at boot time, just put git-daemon in the $RUN_DAEMONS
 # variable of /etc/rcS.conf and configure options with /etc/daemons.conf.
 #
 . /etc/init.d/rc.functions
@@ -15,40 +15,43 @@ OPTIONS=$GIT_OPTIONS
 PIDFILE=/var/run/git-daemon.pid
 
 case "$1" in
-  start)
-    if active_pidfile $PIDFILE git-daemon ; then
-      _ '%s is already running.' $NAME
-      exit 1
-    fi
-    action 'Starting %s: %s...' "$DESC" $NAME
-    $DAEMON --pid-file=$PIDFILE $OPTIONS
-    status
-    ;;
-  stop)
-    if ! active_pidfile $PIDFILE git-daemon ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Stopping %s: %s...' "$DESC" $NAME
-    kill $(cat $PIDFILE)
-    status
-    ;;
-  restart)
-    if ! active_pidfile $PIDFILE git-daemon ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Restarting %s: %s...' "$DESC" $NAME
-    kill $(cat $PIDFILE)
-    sleep 2
-    $DAEMON $OPTIONS
-    status
-    ;;
-  *)
-    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
-    newline
-    exit 1
-    ;;
+	(start)
+		if active_pidfile $PIDFILE $NAME
+		  then
+			_ '%s is already running.' $NAME
+			exit 1
+		fi
+		action 'Starting %s: %s...' "$DESC" $NAME
+		$DAEMON --pid-file=$PIDFILE $OPTIONS
+		status
+	;;
+	(stop)
+		if ! active_pidfile $PIDFILE $NAME
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Stopping %s: %s...' "$DESC" $NAME
+		kill $(cat $PIDFILE)
+		status
+		;;
+	(restart)
+		if ! active_pidfile $PIDFILE $NAME
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Restarting %s: %s...' "$DESC" $NAME
+		kill $(cat $PIDFILE)
+		sleep 2
+		$DAEMON --pid-file=$PIDFILE $OPTIONS
+		status
+		;;
+	(*)
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
+		exit 1
+		;;
 esac
 
 exit 0
