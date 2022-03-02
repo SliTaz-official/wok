@@ -45,7 +45,7 @@ inline void syntax() {
         ", cl=@filename to get it from a file"
 #if 1
         NL NL "Examples:" NL
-	"\tLINLD "
+	"LINLD "
 #ifdef MINRAM
 	"-r 96m "
 #endif
@@ -54,8 +54,8 @@ inline void syntax() {
 #endif
         "initrd=rootfs.gz,mycfg.gz "
 	"\"cl=root=/dev/null video=-32\""
-	NL "\tLINLD memtest"
-	NL "\tLINLD @linld.cmd"
+	NL "LINLD memtest"
+	NL "LINLD @linld.cmd"
 #endif
     );
 }
