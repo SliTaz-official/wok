@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="gnuchess"
-VERSION="6.2.5"
+VERSION="6.2.9"
 CATEGORY="games"
 TAGS="chess"
 SHORT_DESC="GNU Chess lets most modern computers play a full game of chess."
@@ -12,6 +12,7 @@ WEB_SITE="https://www.gnu.org/software/chess/chess.html"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$GNU_MIRROR/chess/$TARBALL"
 
+SUGGESTED="gnuchess-lang"
 DEPENDS="ncurses readline"
 BUILD_DEPENDS="ncurses-dev readline-dev"
 
@@ -28,15 +29,21 @@ compile_rules()
 	#find -name '*.c' | xargs sed -i 's/getline/get_line/g' src/common.h
 	#sed -i 's/input_thread/static_input_thread/' src/input.c
 
-	./configure \
-		--libexecdir=/usr/lib \
+	chmod	a+x	install-sh &&
+
+	./configure			\
+		--libexecdir=/usr/lib	\
 		$CONFIGURE_ARGS &&
-	make -j1 &&
-	make -j1 install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/usr $fs
+	cp -a $install/usr	$fs
+	rm -rf			$fs/usr/share/man
+
+	# moved to package gnuchess-lang
+	rm -rf			$fs/usr/share/locale
 }
