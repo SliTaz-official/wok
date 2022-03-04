@@ -1,26 +1,27 @@
 # SliTaz package receipt.
 
 PACKAGE="libgd"
-VERSION="2.0.35"
+VERSION="2.3.3"
 CATEGORY="graphics"
 SHORT_DESC="Library for the dynamic creation of images."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="http://libgd.bitbucket.org/"
-WGET_URL="hg|https://bitbucket.org/pierrejoye/gd-libgd"
-#WGET_URL="https://bitbucket.org/libgd/gd-libgd/downloads/$TARBALL"
+WEB_SITE="https://libgd.github.io/"
+REPOLOGY="gd"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE/releases/download/gd-$VERSION/$TARBALL"
+
 HOST_ARCH="i486 arm"
 
-DEPENDS="zlib libpng libjpeg freetype expat fontconfig xorg-libX11 \
-xorg-libXau xorg-libXdmcp xorg-libXpm"
-BUILD_DEPENDS="libpng-dev jpeg-dev expat-dev freetype-dev tiff-dev \
-xorg-libXau-dev xorg-libXdmcp-dev xorg-libXpm-dev automake libtool"
+DEPENDS="expat fontconfig freetype libjpeg libpng libxml2 xorg-libX11
+	xorg-libXau xorg-libXdmcp xorg-libXpm zlib"
+BUILD_DEPENDS="expat-dev freetype-dev jpeg-dev libpng-dev libxml2-dev
+	tiff-dev xorg-libXau-dev xorg-libXdmcp-dev xorg-libXpm-dev"
 
 # Cross compilation use some build host tools
 case "$ARCH" in
-	i?86) BUILD_DEPENDS="$BUILD_DEPENDS cmake wget" ;;
-	arm) ARCH_ARGS="--with-jpeg=/cross/$ARCH/sysroot/usr/lib" ;;
+	(arm) ARCH_ARGS="--with-jpeg=/cross/$ARCH/sysroot/usr/lib" ;;
 esac
 
 # What is the latest version available today?
@@ -34,25 +35,17 @@ current_version()
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lm"
-	cmake . && make && make DESTDIR=$DESTDIR install || return 1
-	
-	cd src
-	cp -a ../config ../test .
-    
-	./bootstrap.sh
-	./configure \
-		--prefix=/usr \
-		$CONFIGURE_ARGS
-	make -C config gdlib-config
-	cp config/gdlib-config $DESTDIR/usr/local/bin
-	chmod +x $DESTDIR/usr/local/bin/gdlib-config
-	cd ..
+	./configure			\
+		--prefix=/usr		\
+		--enable-gd-formats	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/local/bin $fs/usr
-	cp -a $install/usr/local/lib/*.so* $fs/usr/lib
+	cook_copy_folders	bin
+	cook_copy_files		*.so*
 }
