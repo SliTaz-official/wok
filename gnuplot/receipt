@@ -1,21 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="gnuplot"
-VERSION="4.6.5"
+VERSION="5.4.3"
 CATEGORY="graphics"
 SHORT_DESC="Command-line driven interactive data and function plotting."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://www.gnuplot.info/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="zlib readline ncurses libgd jpeg freetype libpng gcc-lib-base \
-xorg-libXpm xorg-libX11 xorg-libXau xorg-libXdmcp fontconfig expat wxWidgets \
-xorg-libXxf86vm"
-BUILD_DEPENDS="zlib-dev readline-dev ncurses-dev libgd-dev jpeg-dev \
-freetype-dev libpng-dev xorg-libXpm-dev xorg-libX11-dev xorg-libXau-dev \
-xorg-libXdmcp-dev fontconfig-dev expat-dev wxWidgets-dev pango-dev cairo-dev"
+DEPENDS="expat fontconfig freetype gcc-lib-base jpeg libgd libpng 
+	ncurses readline wxWidgets xorg-libX11 xorg-libXau 
+	xorg-libXdmcp xorg-libXpm xorg-libXxf86vm zlib"
+BUILD_DEPENDS="cairo-dev expat-dev fontconfig-dev freetype-dev 
+	jpeg-dev libgd-dev libpng-dev ncurses-dev pango-dev 
+	readline-dev wxWidgets-dev xorg-libX11-dev xorg-libXau-dev 
+	xorg-libXdmcp-dev xorg-libXpm-dev zlib-dev"
 
 # What is the latest version available today?
 current_version()
@@ -30,21 +32,25 @@ compile_rules()
 {
 	sed -i 's|uname -m|echo i486|' src/beos/Makefile*
 	export LDFLAGS="$LDFLAGS -ltinfo"
-	./configure \
-		--prefix=/usr \
-		--libexecdir=/usr/lib \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+
+	./configure				\
+		--prefix=/usr			\
+		--libexecdir=/usr/lib		\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--with-qt=no			\
+		--without-libcerf		\
 		$CONFIGURE_ARGS &&
 	make $MAKEOPTS &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	cp -a $install/usr/share/gnuplot $fs/usr/share
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib			$fs/usr
+	cp -a $install/usr/share/gnuplot	$fs/usr/share
 }
