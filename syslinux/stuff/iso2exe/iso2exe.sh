@@ -142,10 +142,11 @@ EOT
 		r="$(sed '/rootfs[0-9]/!d;s|.* initrd=||;s|/boot/||g;s| .*||' \
 			/tmp/mnt$$/boot/isolinux/isolinux.cfg | tail -n1)"
 		if grep -qs rootfs /tmp/mnt$$/boot/isolinux/isolinux.cfg ; then
-			echo -n "image=/boot/bzImage initrd=${r:-rootfs.gz},! autologin rdinit=/init.exe"
+			echo "image=/boot/bzImage initrd=${r:-rootfs.gz},! autologin rdinit=/init.exe"
 		else
-			echo -n "$(sed '/KERNEL/!d;s|.*KERNEL *|image=|;q' /tmp/mnt$$/boot/isolinux/isolinux.cfg)"
-		fi | ddn bs=1 of=$1 conv=notrunc seek=$((i-134))
+			sed '/[kK][eE][rR][nN][eE][lL]/!d;s|^[ \t]*[^ \t]*||;q' /tmp/mnt$$/boot/isolinux/isolinux.cfg
+			sed '/[aA][pP][pP][eE][nN][dD]/!d;s|^[ \t]*[^ \t]*||;q' /tmp/mnt$$/boot/isolinux/isolinux.cfg
+		fi | xargs | ddn bs=1 of=$1 conv=notrunc seek=$((i-134))
 	fi
 	umount /tmp/mnt$$	
 	rmdir /tmp/mnt$$	
