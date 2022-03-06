@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="goaccess"
-VERSION="1.3"
+VERSION="1.5.5"
 CATEGORY="network"
 SHORT_DESC="Visual web log analyzer."
 MAINTAINER="paul@slitaz.org"
@@ -11,8 +11,8 @@ WEB_SITE="https://goaccess.io"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://tar.goaccess.io/$TARBALL"
 
-DEPENDS="ncurses geoip"
-BUILD_DEPENDS="ncurses-dev geoip-dev glib-dev pkg-config"
+DEPENDS="geoip ncurses"
+BUILD_DEPENDS="geoip-dev glib-dev ncurses-dev pkg-config"
 
 # What is the latest version available today?
 current_version()
@@ -24,24 +24,24 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--enable-geoip \
+	./configure			\
+		--prefix=/usr		\
+		--enable-geoip=legacy	\
 		--enable-utf8 &&
 
+	# 1.5.5 not needed
 	# hack for curses.h path
-	mkdir /usr/include/ncursesw && ln -s /usr/include/curses.h /usr/include/ncursesw/curses.h
+#	mkdir /usr/include/ncursesw && ln -s /usr/include/curses.h /usr/include/ncursesw/curses.h
 
-	make -j 1 &&
-	make DESTDIR=$DESTDIR install
+	make &&
+	make install DESTDIR=$DESTDIR
 
 	# and remove hack
-	rm -rf /usr/include/ncursesw
+#	rm -rf /usr/include/ncursesw
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
+	cook_copy_folders	bin
 }
