@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libgphoto2"
-VERSION="2.5.24"
+VERSION="2.5.29"
 CATEGORY="graphics"
 TAGS="camera photo"
 SHORT_DESC="Core library of gphoto2 to access photos from digital camera."
@@ -12,9 +12,10 @@ WEB_SITE="http://www.gphoto.org"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="$SF_MIRROR/gphoto/$TARBALL"
 
-DEPENDS="hal jpeg libexif libltdl libusb libusb-compat"
-BUILD_DEPENDS="jpeg jpeg-dev libexif libexif-dev libtool \
-	libusb libusb-compat libusb-compat-dev libusb-dev pkg-config"
+SUGGESTED="libgphoto2-lang"
+DEPENDS="gcc83-lib-base hal jpeg libexif libltdl libusb libusb-compat"
+BUILD_DEPENDS="gcc83 jpeg jpeg-dev libexif libexif-dev libltdl libtool
+	libusb libusb-compat-dev libusb-dev pkg-config"
 
 # What is the latest version available today?
 current_version()
@@ -28,25 +29,26 @@ current_version()
 compile_rules()
 {
 	./configure				\
+		CC=gcc-83			\
+		CXX=g++-83			\
 		--prefix=/usr			\
 		udevscriptdir=/lib/udev		\
 		--with-camlibs=everything	\
 		--with-exif			\
 		--disable-static		\
 		$CONFIGURE_ARGS &&
-	make -j 1 &&
+	make &&
 	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p \
-		$fs/usr/lib/$PACKAGE \
-		$fs/usr/share \
-		$fs/lib \
-		$fs/usr/share/hal/fdi/information/20thirdparty \
-		$fs/etc/udev/rules.d
+	mkdir -p $fs/etc/udev/rules.d
+	mkdir -p $fs/lib
+	mkdir -p $fs/usr/lib/$PACKAGE
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/usr/share/hal/fdi/information/20thirdparty
 
 	cp -a $install/usr/bin			$fs/usr
 	cp -a $install/usr/lib/$PACKAGE		$fs/usr/lib
@@ -89,8 +91,8 @@ post_install()
 	fi
 
 	echo
-	echo "Don't forget to add your user id to group camera to use libgphoto2:"
-	echo "    # addgroup <user id> camera"
+	echo "Don't forget to add user to group camera to use libgphoto2:"
+	echo "    # addgroup <user> camera"
 }
 
 post_remove()
