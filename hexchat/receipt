@@ -1,18 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="hexchat"
-VERSION="2.10.2"
+VERSION="2.16.1"
 CATEGORY="network"
-SHORT_DESC="IRC client using GTK+"
+SHORT_DESC="IRC client using GTK+."
 MAINTAINER="lenios@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="https://hexchat.github.io/"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WGET_URL="http://dl.hexchat.net/hexchat/$TARBALL"
 
-DEPENDS="gtk+ openssl gettext-base dbus-glib xorg-libXdamage \
-harfbuzz"
-BUILD_DEPENDS="gtk+-dev openssl-dev shared-mime-info"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://dl.hexchat.net/$PACKAGE/$TARBALL"
+
+SUGGESTED="hexchat-lang"
+DEPENDS="dbus-glib gettext-base gtk+ harfbuzz libcanberra libxml2
+	openssl xorg-libXdamage"
+BUILD_DEPENDS="gtk+-dev libcanberra-dev libxml2-dev meson openssl-dev
+	shared-mime-info"
 
 # What is the latest version available today?
 current_version()
@@ -24,25 +27,30 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--disable-plugin \
-		--disable-tcl \
-		--disable-dbus \
-		--disable-python \
-		--enable-spell=static \
-		--enable-ipv6 \
-		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$DESTDIR install
+	#	2.16.1
+	#	meson unknown options from configure:
+	#		--disable-tcl
+	#		--enable-spell=static
+	#		--enable-ipv6
+
+	export	CFLAGS="$CFLAGS -Wno-error=implicit-function-declaration"
+
+	meson	_build				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		-D dbus=disabled		\
+		-D libcanberra=enabled		\
+		-D with-lua=false		\
+		-D plugin=false			\
+		-D with-python=false &&
+	ninja	-C _build &&
+	ninja	-C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
 	# cp -a $install/usr/share/dbus-1 $fs/usr/share
+	cook_copy_folders	bin
 }
