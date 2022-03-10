@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="html2text"
-VERSION="1.3.2a"
+VERSION="2.0.0"
 CATEGORY="utilities"
-SHORT_DESC="Command line utility that converts HTML into plain text"
+SHORT_DESC="Command line utility that converts HTML into plain text."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="GPL"
 WEB_SITE="http://www.mbayer.de/html2text/"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="http://ftp.ibiblio.org/pub/linux/apps/www/converters/$TARBALL"
 
-DEPENDS=""
-BUILD_DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/grobian/$PACKAGE/archive/v$VERSION.tar.gz"
+
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="gcc83"
 
 # What is the latest version available today?
 current_version()
@@ -24,21 +25,19 @@ current_version()
 compile_rules()
 {
 	# http://www.mbayer.de/html2text/downloads/patch-utf8-html2text-1.3.2a.diff
-	patch -p1 -i $stuff/patch-utf8-html2text-1.3.2a.diff
+#	patch -p1 -i $stuff/patch-utf8-html2text-1.3.2a.diff
+
+	export	CC=gcc-83
+	export	CXX=g++-83
 
 	./configure $CONFIGURE_ARGS
-	sed -i 's|/usr/local/bin|/usr/bin|; s|/usr/local/man|/usr/share/man|;
-		s|$(BINDIR)|$(DESTDIR)&|; s|$(MANDIR)|$(DESTDIR)&|; s|$(DOCDIR)|$(DESTDIR)&|' \
-		$src/Makefile
-	make
-	mkdir -p $install/usr/bin $install/usr/share/man/man1 \
-		$install/usr/share/man/man5
-	make install
+	sed -i 's|/usr/local|/usr|'	Makefile
+	make	DESTDIR=$DESTDIR
+	make	install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
-	rm -r $fs/usr/share/doc
+	cook_copy_folders	bin
 }
