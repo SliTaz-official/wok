@@ -1,10 +1,10 @@
 # SliTaz package receipt.
 
 PACKAGE="hplip"
-VERSION="3.21.8" 
+VERSION="3.22.2" 
 CATEGORY="system-tools"
 TAGS="printer driver printing"
-SHORT_DESC="Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet"
+SHORT_DESC="Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="http://hplipopensource.com"
@@ -12,14 +12,15 @@ WEB_SITE="http://hplipopensource.com"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-BUGS="Unable to delete hplip.desktop from $fs.  Using hack in post_install."
+DEPENDS="cups dbus-python gcc-lib-base ghostscript jpeg libexif 
+	libgphoto2 libltdl libusb libv4l net-snmp pygobject 
+	PyQt-x11-gpl python sane-backends tiff"
+BUILD_DEPENDS="cups-dev dbus-dev dbus-python dbus-python-dev gawk
+	ghostscript-dev jpeg-dev libexif-dev libgphoto2-dev libtool
+	libusb-dev net-snmp-dev openssl-dev pkg-config python
+	python-dev Qt4-dev sane-backends-dev tiff-dev"
 
-DEPENDS="ghostscript python cups dbus-python libusb jpeg tiff sane-backends \
-	libgphoto2 libexif gcc-lib-base libltdl libv4l net-snmp PyQt-x11-gpl pygobject"
-BUILD_DEPENDS="ghostscript-dev dbus-python-dev sane-backends-dev openssl-dev gawk \
-	sane-backends libexif-dev libgphoto2-dev Qt4-dev libgphoto2 pkg-config libusb-dev \
-	jpeg-dev cups-dev dbus-dev tiff-dev python python-dev dbus-python net-snmp-dev \
-	libtool"
+BUGS="Unable to delete hplip.desktop from $fs.  Using hack in post_install."
 
 # What is the latest version available today?
 current_version()
@@ -33,11 +34,12 @@ current_version()
 compile_rules()
 {
 	grep -lr 'uname -m' . | xargs sed -i 's|uname -m|echo i686|'
+
 	./configure			\
 		--prefix=/usr		\
 		--sysconfdir=/etc	\
 		--disable-doc-build	\
-		--disable-network-build \
+		--disable-network-build	\
 		--enable-qt4		\
 		$CONFIGURE_ARGS &&
 	make &&
@@ -50,7 +52,7 @@ genpkg_rules()
 	mkdir -p $fs/etc
 	mkdir -p $fs/usr/lib
 	mkdir -p $fs/usr/share
-	
+
 	cp -a $install/etc		$fs
 	cp -a $install/var		$fs
 	cp -a $install/usr/bin		$fs/usr
@@ -67,7 +69,7 @@ genpkg_rules()
 	# compress non-zipped ppd files
 	find $fs/usr/share/ppd/HP -name "*.ppd" -exec gzip -n9 {} \;
 
-	# make sure hp-toolbox exists
+	# make sure hp-toolbox exist
 	ln -sf ../share/hplip/toolbox.py $fs/usr/bin/hp-toolbox	
 
 	# remove autostart of hp-daemon
