@@ -1,21 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="htop"
-VERSION="2.2.0"
+VERSION="3.1.2"
 CATEGORY="system-tools"
+TAGS="monitor system"
 SHORT_DESC="Interactive process viewer."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://htop.dev/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://htop.sourceforge.net/"
-WGET_URL="http://hisham.hm/htop/releases/$VERSION/$TARBALL"
-TAGS="monitor system"
+WGET_URL="https://github.com/htop-dev/$PACKAGE/archive/$VERSION.tar.gz"
+
+DEPENDS="libcap ncursesw"
+BUILD_DEPENDS="automake libcap-dev libtool linux-api-headers ncursesw-dev"
+
 HOST_ARCH="i486 arm"
 
-DEPENDS="ncursesw"
-BUILD_DEPENDS="ncursesw-dev"
-
-# Handle cross comilation
+# Handle cross compilation
 case "$ARCH" in
 	arm) CROSS_ARGS="--enable-native_affinity=no" ;;
 esac
@@ -30,16 +31,17 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--enable-unicode \
-		$CONFIGURE_ARGS $CROSS_ARGS &&
-	make && make install
-	
+	./autogen.sh &&
+	./configure			\
+		--enable-unicode	\
+		$CONFIGURE_ARGS		\
+		$CROSS_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
-	cp -a $install/usr/bin/* $fs/usr/bin
+	cook_copy_folders	bin
 }
