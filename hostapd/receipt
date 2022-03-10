@@ -1,18 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="hostapd"
-VERSION="2.9"
+VERSION="2.10"
 CATEGORY="network"
 SHORT_DESC="Daemon for wireless software access points."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://w1.fi/hostapd"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="${WEB_SITE%/*}/releases/$TARBALL"
-HOST_ARCH="i486 arm"
 
 DEPENDS="openssl libnl"
 BUILD_DEPENDS="openssl-dev libnl-dev"
+
+HOST_ARCH="i486 arm"
 
 # What is the latest version available today?
 current_version()
@@ -27,26 +28,35 @@ compile_rules()
 	cd $src/hostapd &&
 	cp -a $stuff/config .config &&
 	sed -i "s|/usr/local/bin|/usr/bin|" Makefile &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/init.d $fs/etc/hostapd
-	mkdir -p $install/usr/share/man $install/usr/share/doc
-	
-	cp -a $src/hostapd/*.[1-8] $install/usr/share/man
-	cp -a $src/hostapd/README* $install/usr/share/doc
-	cp -a $src/hostapd/ChangeLog $install/usr/share/doc
-	cp -a $src/hostapd/*.conf $install/usr/share/doc
-	cp -a $src/hostapd/*.txt $install/usr/share/doc
-	cp -a $stuff/hostapd $fs/etc/init.d &&
-	cp -a $src/hostapd/hostapd.accept $src/hostapd/hostapd.conf \
-		$src/hostapd/hostapd.deny $src/hostapd/hostapd.eap_user \
-		$src/hostapd/hostapd.radius_clients $src/hostapd/hostapd.sim_db \
-		$src/hostapd/hostapd.vlan $src/hostapd/hostapd.wpa_psk \
-		$src/hostapd/wired.conf $src/hostapd/hlr_auc_gw.milenage_db \
-		$fs/etc/hostapd &&
-	cp -a $install/usr/bin $fs/usr
+	mkdir -p $fs/usr $fs/etc/init.d
+	mkdir -p $fs/etc/hostapd
+	mkdir -p $install/usr/share/man
+	mkdir -p $install/usr/share/doc
+
+	cp -a $src/hostapd/*.[1-8]		$install/usr/share/man
+	cp -a $src/hostapd/README*		$install/usr/share/doc
+	cp -a $src/hostapd/ChangeLog		$install/usr/share/doc
+	cp -a $src/hostapd/*.conf		$install/usr/share/doc
+	cp -a $src/hostapd/*.txt		$install/usr/share/doc
+	cp -a $stuff/hostapd			$fs/etc/init.d
+	cp -a $src/hostapd/hostapd.accept	$fs/etc/hostapd
+	cp -a $src/hostapd/hostapd.conf		$fs/etc/hostapd
+	cp -a $src/hostapd/hostapd.deny		$fs/etc/hostapd
+	cp -a $src/hostapd/hostapd.eap_user	$fs/etc/hostapd
+	cp -a $src/hostapd/hostapd.radius_clients \
+						$fs/etc/hostapd
+	cp -a $src/hostapd/hostapd.sim_db	$fs/etc/hostapd
+	cp -a $src/hostapd/hostapd.vlan		$fs/etc/hostapd
+	cp -a $src/hostapd/hostapd.wpa_psk	$fs/etc/hostapd
+	cp -a $src/hostapd/wired.conf		$fs/etc/hostapd
+	cp -a $src/hostapd/hlr_auc_gw.milenage_db \
+						$fs/etc/hostapd
+	cp -a $install/usr/bin			$fs/usr
 }

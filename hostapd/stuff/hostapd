@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/init.d/dbus: Start, stop and restart DBUS daemon on SliTaz,
+# /etc/init.d/hostapd: Start, stop and restart hostapd on SliTaz,
 # at boot time or with the command line. Daemons options are configured
 # with /etc/daemons.conf
 #
@@ -10,43 +10,48 @@ NAME=hostapd
 DESC="$(_ 'daemon for wireless software access points')"
 DAEMON=/usr/bin/hostapd
 PIDFILE=/var/run/hostapd.pid
+OPTIONS="$HOSTAPD_OPTIONS"
+[ -n "$HOSTAPD_OPTIONS" ] ||
 OPTIONS="-B -P $PIDFILE /etc/hostapd/hostapd.conf"
 
 case "$1" in
-  start)
-    if active_pidfile $PIDFILE hostapd ; then
-      _ '%s is already running.' $NAME
-      exit 1
-    fi
-    action 'Starting %s: %s...' "$DESC" $NAME
-    $DAEMON $OPTIONS
-    status
-    ;;
-  stop)
-    if ! active_pidfile $PIDFILE hostapd ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Stopping %s: %s...' "$DESC" $NAME
-    kill $(cat $PIDFILE)
-    status
-    ;;
-  restart)
-    if ! active_pidfile $PIDFILE hostapd ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Restarting %s: %s...' "$DESC" $NAME
-    kill $(cat $PIDFILE)
-    sleep 2
-    $DAEMON $OPTIONS
-    status
-    ;;
-  *)
-    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
-    newline
-    exit 1
-    ;;
+	(start)
+		if active_pidfile $PIDFILE hostapd
+		  then
+			_ '%s is already running.' $NAME
+			exit 1
+		fi
+		action 'Starting %s: %s...' "$DESC" $NAME
+		$DAEMON $OPTIONS
+		status
+		;;
+	(stop)
+		if ! active_pidfile $PIDFILE hostapd
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Stopping %s: %s...' "$DESC" $NAME
+		kill $(cat $PIDFILE)
+		status
+		;;
+	(restart)
+		if ! active_pidfile $PIDFILE hostapd
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Restarting %s: %s...' "$DESC" $NAME
+		kill $(cat $PIDFILE)
+		sleep 2
+		$DAEMON $OPTIONS
+		status
+		;;
+	(*)
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
+		exit 1
+		;;
 esac
 
 exit 0
