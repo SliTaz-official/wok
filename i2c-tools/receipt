@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="i2c-tools"
-VERSION="4.1"
+VERSION="4.3"
 CATEGORY="system-tools"
 SHORT_DESC="The i2c-tools provide a heterogeneous set of I2C tools for Linux."
 MAINTAINER="pankso@slitaz.org"
@@ -10,6 +10,8 @@ WEB_SITE="https://i2c.wiki.kernel.org/index.php/I2C_Tools"
 
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="https://mirrors.edge.kernel.org/pub/software/utils/$PACKAGE/$TARBALL"
+
+DEPENDS="perl"
 
 HOST_ARCH="i486 arm"
 
@@ -25,15 +27,16 @@ compile_rules()
 {
 	sed -i s"#^prefix	=.*#prefix	= /usr#" Makefile &&
 
-	make -j 1 &&
-	make PREFIX=/usr DESTDIR=$DESTDIR install
+	make &&
+	make	install		\
+		PREFIX=/usr	\
+		DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-
-	cp -a $install/usr/bin	$fs/usr
-	cp -a $install/usr/sbin	$fs/usr
+	cook_copy_folders	bin
+	cook_copy_folders	sbin
+	cook_copy_files		*.so*
 }
