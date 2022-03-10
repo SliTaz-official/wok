@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="hiawatha"
-VERSION="10.10"
+VERSION="11.1"
 CATEGORY="network"
 TAGS="webserver http server"
 SHORT_DESC="Advanced and secure webserver."
@@ -31,24 +31,24 @@ compile_rules()
 	export CC=gcc-83
 	export CXX=g++-83
 
-	cmake	.				\
-		-DCMAKE_INSTALL_PREFIX=/usr	\
-		-DCMAKE_INSTALL_SYSCONFDIR=/etc \
-		-DLOG_DIR=/var/log		\
-		-DWEBROOT_DIR=/var/www		\
-		-DPID_DIR=/var/run		\
-		-DWORK_DIR=/var/lib &&
-	make DESTDIR=$DESTDIR install
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..				\
+		-D CMAKE_INSTALL_PREFIX=/usr	\
+		-D CMAKE_INSTALL_SYSCONFDIR=/etc\
+		-D LOG_DIR=/var/log		\
+		-D WEBROOT_DIR=/var/www		\
+		-D PID_DIR=/var/run		\
+		-D WORK_DIR=/var/lib &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.   
 genpkg_rules()                                      
 {
-	mkdir -p $fs/usr
-
-	cp -a $install/var	$fs
-	cp -a $install/etc	$fs
-	cp -a $install/usr/lib	$fs/usr
-	cp -a $install/usr/bin	$fs/usr
-	cp -a $install/usr/sbin	$fs/usr
+	cook_copy_folders	bin
+	cook_copy_folders	etc
+	cook_copy_folders	lib
+	cook_copy_folders	sbin
+	cook_copy_folders	var
 }
