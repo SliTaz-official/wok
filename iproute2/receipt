@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="iproute2"
-VERSION="5.5.0"
+VERSION="5.16.0"
 CATEGORY="network"
 TAGS="network route"
 SHORT_DESC="Utilites for networking and traffic control."
@@ -12,7 +12,7 @@ WEB_SITE="https://wiki.linuxfoundation.org/networking/iproute2"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="http://kernel.org/pub/linux/utils/net/$PACKAGE/$TARBALL"
 
-DEPENDS="db iptables"
+DEPENDS="db iptables libmnl libnl"
 BUILD_DEPENDS="bison db-dev flex iptables-dev libmnl-dev libnl-dev"
 
 # What is the latest version available today?
@@ -25,14 +25,16 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's/<net\/if.h>/<net\/if.h>\n#include <linux\/ip.h>/' \
+	export	LDFLAGS="$LDFLAGS -lrt"
+
+	sed -i 's|<net/if.h>|<net/if.h>\n#include <linux/ip.h>|' \
 		ip/link_gre.c
 
 	./configure		\
 		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -40,9 +42,11 @@ genpkg_rules()
 {
 	mkdir -p $fs/bin
 
-	cp -a $install/usr	$fs
-	cp -a $install/etc	$fs
-	cp -a $install/var	$fs
-	cp -a $install/sbin	$fs
+	cook_copy_folders	etc
+	cook_copy_folders	include
+	cook_copy_folders	lib
+	cook_copy_folders	sbin
+	cook_copy_folders	var
+
 	ln $fs/sbin/ip $fs/sbin/ss /$fs/bin/
 }
