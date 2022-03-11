@@ -1,17 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="icinga"
-VERSION="1.2.1"
+VERSION="1.14.2"
 CATEGORY="system-tools"
-SHORT_DESC="Open Source host, service and network monitoring program"
+SHORT_DESC="Open Source host, service and network monitoring program."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.icinga.org"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WEB_SITE="https://icinga.com"
 
-DEPENDS=""
-BUILD_DEPENDS=""
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$PACKAGE/$PACKAGE-core/archive/v$VERSION/$TARBALL"
+
+DEPENDS="libdbi"
+BUILD_DEPENDS="libdbi-dev"
+
+CONFIG_FILES="/etc/icinga/icinga.cfg"
 
 # What is the latest version available today?
 current_version()
@@ -24,36 +27,34 @@ current_version()
 compile_rules()
 {
 	cd $src
-	./configure \
-		--prefix=/usr \
-		--datadir=/usr/share/icinga \
-		--with-htmurl=/icinga \
-		--with-lockfile=/var/run/icinga.pid \
-		--with-icinga-user=nobody \
-		--with-icinga-group=nogroup \
-		--with-command-user=nobody \
-		--with-command-group=www \
-		--exec-prefix=/usr/bin \
-		--bindir=/usr/bin \
-		--sbindir=/usr/lib/icinga/cgi \
-		--libexecdir=/usr/lib/icinga/plugins \
-		--datadir=/usr/share/icinga \
-		--sysconfdir=/etc/icinga \
-		--localstatedir=/var/log/icinga \
-		--with-mail=/usr/bin/mailx \
+	./configure					\
+		--prefix=/usr				\
+		--exec-prefix=/usr/bin			\
+		--bindir=/usr/bin			\
+		--sbindir=/usr/lib/icinga/cgi		\
+		--libexecdir=/usr/lib/icinga/plugins	\
+		--datadir=/usr/share/icinga		\
+		--localstatedir=/var/log/icinga		\
+		--sysconfdir=/etc/icinga		\
+		--with-command-group=www		\
+		--with-command-user=nobody		\
+		--with-htmurl=/icinga			\
+		--with-icinga-group=nogroup		\
+		--with-icinga-user=nobody		\
+		--with-lockfile=/var/run/icinga.pid	\
+		--with-mail=/usr/bin/mailx		\
 		$CONFIGURE_ARGS &&
-	make all && \
-	make DESTDIR=$DESTDIR install \
-	    install-commandmode \
-		install-config \
-		install-webconf \
-		install-idoutils \
-		install-api
+	make	all &&
+	make	install &&
+	make	install-api &&
+	make	install-commandmode &&
+	make	install-config &&
+	make	install-idoutils &&
+	make	install-webconf &&
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share/icinga
-	cp -a $install/usr/bin $fs/usr
+	cook_copy_folders	bin
 }
