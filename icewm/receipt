@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="icewm"
-VERSION="1.6.4"
+VERSION="2.9.6"
 CATEGORY="x-window"
 TAGS="window-manager"
 SHORT_DESC="Ice Window Manager with Themes."
@@ -12,15 +12,15 @@ WEB_SITE="https://ice-wm.org/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/ice-wm/$PACKAGE/archive/$VERSION.tar.gz"
 
-DEPENDS="freetype gcc83-lib-base gdk-pixbuf gettext-base imlib xorg-libICE 
-	xorg-libSM xorg-libX11 xorg-libXext xorg-libXft xorg-libXinerama 
-	xorg-libXpm xorg-libXrandr xorg-libXrender"
-BUILD_DEPENDS="asciidoc autoconf automake fontconfig-dev freetype-dev gcc83 
-	gdk-pixbuf-dev gettext giflib-dev imlib-dev libtool pkg-config 
-	util-linux-uuid-dev xorg-libICE-dev xorg-libSM-dev xorg-libX11-dev 
-	xorg-libXext-dev xorg-libXft-dev xorg-libXinerama-dev xorg-libXpm-dev 
-	xorg-libXrandr-dev xorg-libXrender-dev xorg-randrproto xorg-xextproto 
-	xorg-xproto xz"
+DEPENDS="freetype fribidi gcc83-lib-base gdk-pixbuf gettext-base imlib2
+	libxml2 xorg-libICE xorg-libSM xorg-libX11 xorg-libXext xorg-libXft
+	xorg-libXinerama xorg-libXpm xorg-libXrandr xorg-libXrender"
+BUILD_DEPENDS="asciidoc autoconf automake fontconfig-dev freetype-dev
+	fribidi-dev gcc83 gdk-pixbuf-dev gettext giflib-dev imlib2-dev
+	libtool libxml2-dev pkg-config util-linux-uuid-dev xorg-libICE-dev
+	xorg-libSM-dev xorg-libX11-dev xorg-libXext-dev xorg-libXft-dev
+	xorg-libXinerama-dev xorg-libXpm-dev xorg-libXrandr-dev
+	xorg-libXrender-dev xorg-randrproto xorg-xproto xorg-xextproto"
 
 current_version()
 {
@@ -51,14 +51,38 @@ compile_rules()
 	sed -i '/--errors="none"/d; /--nourls/d; /--poderrors/d' \
 		man/Makefile &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+	cook_copy_folders	bin
+	cook_copy_folders	share
+	rm -rf			$fs/usr/share/doc
+	rm -rf			$fs/usr/share/locale
+	rm -rf			$fs/usr/share/man
+}
 
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/share	$fs/usr
+post_install()
+{
+	# Add WM to SLIM available sessions.
+	res=$(cat "$1/etc/slim.conf" | grep ^session | sed s/"sessions. *"//)
+	if ! echo "$res" | grep -q $PACKAGE
+	  then
+		echo -n "Adding $PACKAGE to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" \
+			"$1/etc/slim.conf"
+		status
+	fi
+	true
+}
+
+post_remove()
+{
+	# Remove WM from SLIM available sessions.
+	if grep -q $PACKAGE "$1/etc/slim.conf"
+	  then
+		sed -i s/,$PACKAGE// "$1/etc/slim.conf"
+	fi
 }
