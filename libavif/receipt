@@ -1,0 +1,36 @@
+# SliTaz package receipt.
+
+PACKAGE="libavif"
+VERSION="0.9.0"
+CATEGORY="multimedia"
+SHORT_DESC="Library for encoding and decoding .avif files"
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="MIT Apache"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://github.com/AOMediaCodec/libavif"
+WGET_URL="$WEB_SITE/archive/v$VERSION.tar.gz"
+
+BUILD_DEPENDS="cmake"
+
+# What is the latest version available today?
+current_version()
+{
+	wget -O - ${WGET_URL%/arch*}/releases 2>/dev/null | \
+	sed '/archive.*tar/!d;s|.*/v*\(.*\).tar.*|\1|;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir build_linux
+	cd build_linux
+	cmake -DCMAKE_INSTALL_PREFIX=/usr .. &&
+	make DESTDIR=$DESTDIR install
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib
+	cp -a $install/usr/lib/lib*.so* $fs/usr/lib
+}
