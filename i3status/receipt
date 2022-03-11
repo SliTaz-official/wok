@@ -1,17 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="i3status"
-VERSION="2.7"
+VERSION="2.14"
 CATEGORY="x-window"
-SHORT_DESC="i3 status bar"
+SHORT_DESC="i3 status bar."
 MAINTAINER="ybringler@gmail.com"
 LICENSE="BSD"
 WEB_SITE="https://i3wm.org/i3status"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$WEB_SITE/$TARBALL"
 
-DEPENDS="alsa-lib yajl wireless_tools"
-BUILD_DEPENDS="make gcc alsa-lib-dev dev86 libconfuse wireless_tools-dev yajl"
+DEPENDS="alsa-lib gcc83-lib-base libnl pulseaudio wireless_tools yajl"
+BUILD_DEPENDS="alsa-lib-dev asciidoc dev86 gcc83 libconfuse libnl-dev
+	meson pulseaudio-dev wireless_tools-dev xmlto yajl"
 
 # What is the latest version available today?
 current_version()
@@ -23,11 +25,18 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	make && make install
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	meson	_build		\
+		--prefix=/usr &&
+	ninja	-C _build &&
+	ninja	-C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
+	cook_copy_folders	bin
+	cook_copy_folders	etc
 }
