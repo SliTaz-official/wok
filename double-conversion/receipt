@@ -1,0 +1,44 @@
+source=""
+
+# SliTaz package receipt.
+
+PACKAGE="double-conversion"
+VERSION="3.2.0"
+CATEGORY="development"
+TAGS="IEEE"
+SHORT_DESC="Binary-decimal and decimal-binary routines for IEEE doubles."
+MAINTAINER="maintainer@slitaz.org"
+LICENSE="BSD"
+WEB_SITE="https://github.com/google/double-conversion"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/google/$PACKAGE/archive/v$VERSION.tar.gz"
+
+BUILD_DEPENDS="cmake"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..				\
+		-D BUILD_TESTING=ON		\
+		-D CMAKE_INSTALL_PREFIX=/usr	\
+		-D CMAKE_INSTALL_LIBDIR=lib	\
+		-D BUILD_SHARED_LIBS=ON
+	make &&
+	make install DESTDIR=$DESTDIR
+
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	cook_copy_files	*.so*
+}
+
+testsuite()
+{
+	cd	$src/_build
+	test/cctest/cctest --list | tr -d '<' | xargs test/cctest/cctest
+}
