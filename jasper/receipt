@@ -1,19 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="jasper"
-VERSION="2.0.16"
+VERSION="3.0.2"
 CATEGORY="graphics"
 TAGS="jpeg jpg photo"
 SHORT_DESC="Implementation of JPEG-2000 codec."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="MIT"
-WEB_SITE="http://www.ece.uvic.ca/~mdadams/$PACKAGE/" 
+WEB_SITE="https://www.ece.uvic.ca/~frodo/jasper/" 
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/mdadams/$PACKAGE/archive/version-$VERSION.tar.gz"
 
 DEPENDS="freeglut jpeg libglu-mesa util-linux-uuid xorg-libXi xorg-libXmu"
 BUILD_DEPENDS="cmake jpeg-dev xorg-libXi-dev xorg-libXmu-dev"
+
 HOST_ARCH="i486 arm"
 
 current_version()
@@ -25,22 +26,19 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir	builddir
-	cmake	.				\
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..				\
 		-G "Unix Makefiles"		\
-		-Bbuilddir			\
-		-DCMAKE_INSTALL_PREFIX=/usr	\
-		-DJAS_ENABLE_SHARED=yes	&&
-	cd	builddir
-	make -j 1 &&
-	make DESTDIR=$DESTDIR install
-	
+		-D CMAKE_INSTALL_PREFIX=/usr	\
+		-D JAS_ENABLE_SHARED=yes	&&
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/lib/*so*	$fs/usr/lib	
+	cook_copy_folders	bin
+	cook_copy_files		*.so*
 }
