@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="jack-audio-connection-kit"
-VERSION="0.125.0"
+VERSION="1.9.20"
 CATEGORY="multimedia"
 TAGS="audio server"
 SHORT_DESC="Low-latency audio server."
@@ -10,10 +10,11 @@ LICENSE="GPL LGPL"
 WEB_SITE="https://jackaudio.org"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="http://jackaudio.org/downloads/$TARBALL"
+WGET_URL="https://github.com/jackaudio/jack2/archive/v$VERSION.tar.gz"
 
-DEPENDS="alsa-lib ncurses readline libsndfile libogg libsamplerate"
-BUILD_DEPENDS="alsa-lib-dev libsamplerate-dev db-dev util-linux-uuid-dev"
+DEPENDS="alsa-lib gcc83-lib-base libogg libsamplerate libsndfile ncurses readline"
+BUILD_DEPENDS="alsa-lib-dev db-dev gcc83 libsamplerate-dev py3k util-linux-uuid-dev"
+
 HOST_ARCH="i486 arm"
 
 # What is the latest version available today?
@@ -26,11 +27,14 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS &&
-	make -j 1 &&
-	make DESTDIR=$DESTDIR install &&
+	./waf configure		\
+		CC=gcc-83	\
+		CXX=g++-83	\
+		--prefix=/usr &&
+	./waf build &&
+	./waf install DESTDIR=$DESTDIR
 
-	install -Dm644 $src/jack/jslist.h $install/usr/include/jack/jslist.h
+#	install -Dm644 $src/jack/jslist.h $install/usr/include/jack/jslist.h
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
