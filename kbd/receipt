@@ -1,19 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="kbd"
-VERSION="2.2.0"
+VERSION="2.4.0"
 CATEGORY="system-tools"
 TAGS="keyboard"
 SHORT_DESC="Keyboard mapping definitions and tools."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://kbd-project.org/"
+WEB_SITE="https://kbd-project.org/"
 
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="https://www.kernel.org/pub/linux/utils/kbd/$TARBALL"
 
-DEPENDS="kbd-base"
-BUILD_DEPENDS="advancecomp check-dev flex pam-dev"
+SUGGESTED="kbd-lang"
+DEPENDS="gcc83-lib-base kbd-base"
+BUILD_DEPENDS="advancecomp automake check-dev flex gcc83 pam-dev"
 
 HOST_ARCH="i486 arm"
 
@@ -21,6 +22,8 @@ HOST_ARCH="i486 arm"
 case "$ARCH" in
 	arm) BUILD_DEPENDS="check-dev flex" ;;
 esac
+
+# @maintainer: Please update also: kbd-base, kbd-busybox, kbd-lang and kbd-vlock
 
 current_version()
 {
@@ -32,25 +35,31 @@ current_version()
 compile_rules()
 {
 	# standard locale placement
-	sed -i 's|localedir = .*|localedir = @localedir@|' \
-		po/Makefile.in.in
+	# 2.4.0 no longer required
+#	sed -i 's|localedir = .*|localedir = @localedir@|' \
+#		po/Makefile.in.in
 
 	# Handle cross compilation.
 	case "$ARCH" in
-		arm)
+		(arm)
 			# No PAM support for ARM
 			./configure				\
 				--datadir=/usr/share/kbd	\
 				--localedir=/usr/share/locale	\
 				--disable-vlock			\
-				$CONFIGURE_ARGS ;;
-		i486)
+				$CONFIGURE_ARGS
+			;;
+		(i486)
 			./configure				\
+				CC=gcc-83			\
+				CXX=g++-83			\
 				--datadir=/usr/share/kbd	\
 				--localedir=/usr/share/locale	\
-				$CONFIGURE_ARGS ;;
+				$CONFIGURE_ARGS
+			;;
 	esac &&
-	make -j 1 &&
+
+	make &&
 	make install &&
 
 	find $DESTDIR/usr/share/kbd -name '*gz' -exec advdef -z4 {} \;
@@ -71,7 +80,7 @@ genpkg_rules()
 	# Remove files provided by kbd-base and kbd-vlock.
 	for keymap in $(cat $WOK/kbd-base/stuff/keymaps-path.list)
 	  do
-		rm -f $fs/usr/share/kbd/keymaps/i386/$keymap
+		rm -f			$fs/usr/share/kbd/keymaps/i386/$keymap
 	  done
 	rm -rf				$fs/usr/share/kbd/keymaps/include
 	rm -rf				$fs/usr/share/kbd/keymaps/i386/include
