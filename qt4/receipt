@@ -9,7 +9,7 @@ MAINTAINER="allan316@gmail.com"
 LICENSE="GPL3 LGPL2.1"
 TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="http://qt-project.org/"
-WGET_URL="http://download.qt.io/official_releases/qt/${VERSION%.*}/$VERSION/$TARBALL"
+WGET_URL="http://download.qt.io/archive/qt/${VERSION%.*}/$VERSION/single/$TARBALL"
 PROVIDE="qt-x11-opensource-src Qt4"
 TAGS="qt"
 
@@ -25,6 +25,15 @@ libxml2-dev linux-api-headers m4 make mercurial ncurses-dev openssl-dev \
 pango-dev patch pcre-dev perl perl-xml-parser perl-xml-simple pixman-dev \
 pkg-config tiff-dev xorg-dev-proto xorg-dev zip unzip gtk+-dev alsa-lib-dev \
 xorg-libXv-dev sqlite-dev"
+
+# What is the latest version available today?
+current_version()
+{
+	wget -O - https://download.qt.io/archive/qt/ 2>/dev/null | \
+	sed '/>4\./!d;s|.*/">|https://download.qt.io/archive/qt/|;s|/<.*||' | \
+	sort -Vr | sed q | xargs wget -O - 2>/dev/null | \
+	sed '/>4\./!d;s|.*/">||;s|/<.*||' | sort -Vr | sed q
+}
 
 # Rules to configure and make the package.
 compile_rules()
