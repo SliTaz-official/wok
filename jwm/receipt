@@ -1,22 +1,25 @@
 # SliTaz package receipt.
 
 PACKAGE="jwm"
-VERSION="2.3.7"
+VERSION="2.4.1"
 CATEGORY="x-window"
 TAGS="window-manager"
 SHORT_DESC="A light Window Manager for the X window system."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://joewing.net/projects/jwm/"
+WEB_SITE="https://joewing.net/projects/jwm/"
 
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="${WEB_SITE}releases/$TARBALL"
 
-DEPENDS="hsetroot imlib2 libjpeg libpng slitaz-configs-base \
-	xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXft \
-	xorg-libXinerama xorg-libXmu xorg-libXpm xorg-libXrender \
+SUGGESTED="jwm-lang"
+DEPENDS="hsetroot imlib2 libjpeg libpng librsvg libxml2 slitaz-configs-base
+	xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext xorg-libXft
+	xorg-libXinerama xorg-libXmu xorg-libXpm xorg-libXrender
 	xorg-libXt xorg-xclock xorg-xload"
-BUILD_DEPENDS="jpeg-dev libpng-dev xorg-libX11-dev xorg-libXft-dev"
+BUILD_DEPENDS="cairo-dev freetype-dev jpeg-dev libpng-dev librsvg-dev 
+	libxml2-dev xorg-libX11-dev xorg-libXft-dev"
+
 HOST_ARCH="i486 arm"
 
 # Handle cross compilation
@@ -40,16 +43,23 @@ compile_rules()
 {
 	#[ -f done.resize-backgound.u ] || patch -p1 < $stuff/resize-backgound.u
 	#touch done.resize-backgound.u
+
 	./configure				\
 		--prefix=/usr			\
 		--mandir=/usr/share/man		\
+		--datadir=/usr/share		\
 		--sysconfdir=/etc/xdg/jwm	\
-		--disable-fribidi		\
-		--disable-rpath			\
-		--disable-rsvg			\
-		--disable-confirm		\
-		$CONFIGURE_ARGS $ARCH_ARGS 2>/dev/null &&
-	make -j 1 &&
+		--enable-cairo=yes		\
+		--enable-confirm=no		\
+		--enable-nls=yes		\
+		--enable-rpath=no		\
+		--enable-rsvg=yes		\
+		--enable-xft=yes		\
+		$CONFIGURE_ARGS			\
+		$ARCH_ARGS &&
+	sed -i 's|mkdir_p = @mkdir_p@|mkdir_p = /bin/mkdir -p|' \
+		po/Makefile &&
+	make &&
 	make install
 }
 
@@ -64,27 +74,30 @@ genpkg_rules()
 	mkdir -p $fs/etc/xdg/jwm
 	mkdir -p $fs/usr/share
 
-	cp -a $install/usr/bin $fs/usr/bin
+	cook_copy_folders	bin
 
-	# Simple and default config file.
-	cp $stuff/simple.jwmrc $fs/etc/xdg/jwm/simple.jwmrc
-	cp $stuff/slitaz.jwmrc $fs/etc/xdg/jwm/system.jwmrc
+	# Simple and default configuration file.
+	cp $stuff/simple.jwmrc	$fs/etc/xdg/jwm/simple.jwmrc
+	cp $stuff/slitaz.jwmrc	$fs/etc/xdg/jwm/system.jwmrc
 
-	cp -r $stuff/xsessions $fs/usr/share
+	cp -r $stuff/xsessions	$fs/usr/share
 }
 
 post_install()
 {
-	if [ -d "$1/etc/jwm" ]; then
-		echo "Removing old system wide configs: /etc/jwm"
-		rm -rf "$1/etc/jwm"
+	if [ -d "$1/etc/jwm" ]
+	  then
+		echo "Removing old system wide configuration files: /etc/jwm"
+		rm -rf	"$1/etc/jwm"
 	fi
 
 	# Adding WM to SLIM available sessions.
 	res=$(cat "$1/etc/slim.conf" | grep ^session | sed s/"sessions. *"//)
-	if ! echo "$res" | grep -q $PACKAGE; then
+	if ! echo "$res" | grep -q $PACKAGE
+	  then
 		echo -n "Adding $PACKAGE to /etc/slim.conf..."
-		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" "$1/etc/slim.conf"
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" \
+			"$1/etc/slim.conf"
 		status
 	fi
 	true
@@ -93,7 +106,8 @@ post_install()
 post_remove()
 {
 	# Remove WM from SLIM available sessions.
-	if grep -q $PACKAGE "$1/etc/slim.conf"; then
-		sed -i s/,$PACKAGE// "$1/etc/slim.conf"
+	if grep -q $PACKAGE "$1/etc/slim.conf"
+	  then
+		sed -i s/,$PACKAGE//	"$1/etc/slim.conf"
 	fi
 }
