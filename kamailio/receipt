@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="kamailio"
-VERSION="5.3.2"
+VERSION="5.5.4"
 CATEGORY="network"
 SHORT_DESC="Open Source SIP Server."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -11,10 +11,10 @@ WEB_SITE="https://www.kamailio.org/"
 TARBALL="$PACKAGE-${VERSION}_src.tar.gz"
 WGET_URL="${WEB_SITE}pub/kamailio/$VERSION/src/$TARBALL"
 
-DEPENDS="curl expat libldap libssl libpostgresqlclient libxml2 
+DEPENDS="curl expat libldap libpostgresqlclient libssl libxml2
 	net-snmp pcre radiusclient-ng"
-BUILD_DEPENDS="bison curl-dev expat-dev flex libxml2-dev 
-	net-snmp-dev openldap-dev openssl-dev pcre-dev 
+BUILD_DEPENDS="bash bison curl-dev expat-dev flex glibc-dev libxml2-dev
+	net-snmp-dev openldap-dev openssl-dev pcre-dev
 	postgresql-dev python-dev radiusclient-ng-dev"
 
 CONFIG_FILES="/etc/kamailio"
@@ -31,15 +31,18 @@ compile_rules()
 {
 	sed -i 's|uname -m|echo i486|' \
 		src/Makefile.defs
+	patch	--strip=0 --input=$stuff/patches/Makefile.defs-5.5.4
 
-	make			\
-		PREFIX="/usr"	\
+	make	cfg		\
+		prefix=/usr	\
+		RUNBASEDIR=/	\
 		include_modules="acc_radius app_python auth_radius \
 db_postgres ldap presence_conference presence_dialoginfo presence_mwi \
-presence_profile presence_reginfo presence_xml snmpstats xmpp dialplan" \
-		cfg &&
-	make all &&
-	make DESTDIR=$DESTDIR install
+presence_profile presence_reginfo presence_xml snmpstats xmpp dialplan" &&
+	make	all		\
+		prefix=/usr &&
+	make	install		\
+		prefix=/usr
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -49,7 +52,7 @@ genpkg_rules()
 
 	cp -a $install/*	$fs
 	mv $fs/usr/etc		$fs
-	ln -s /etc $fs/usr/etc
+	ln -s /etc		$fs/usr/etc
 }
 
 # Pre and post install commands for Tazpkg.
@@ -64,7 +67,7 @@ post_install()
 	
 	if ! grep -q $user $1/etc/passwd
 	  then
-		echo -n "Adding user/group $user..."
+		echo -n "Adding user and group $user..."
 		chroot $1/ addgroup -S $group
 		chroot $1/ adduser -s /bin/false -S -D -H -G $group $user
 		status
@@ -74,6 +77,6 @@ post_install()
 
 post_remove()
 {
-	echo "Removing user/group kamailio"
+	echo "Removing user and group kamailio"
 	chroot "$1/" deluser kamailio
 }
