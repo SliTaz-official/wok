@@ -1,19 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="knock"
-VERSION="0.7.8"
-HASH="258a27e5a47809f97c2b9f2751a88c2f94aae891"
+VERSION="0.8"
 CATEGORY="security"
 SHORT_DESC="Port knock sequence listener."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.zip"
-WEB_SITE="http://www.zeroflux.org/$PACKAGE"
-WGET_URL="https://github.com/jvinet/$PACKAGE/archive/$HASH.zip"
-CONFIG_FILES="/etc/knockd.conf"
+WEB_SITE="https://www.zeroflux.org/knock"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://www.zeroflux.org/proj/$PACKAGE/files/$TARBALL"
 
 DEPENDS="iptables libpcap"
-BUILD_DEPENDS="libpcap-dev autoconf automake"
+BUILD_DEPENDS="automake libpcap-dev"
+
+CONFIG_FILES="/etc/knockd.conf"
 
 # What is the latest version available today?
 current_version()
@@ -25,23 +26,25 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch -p1 < $stuff/knock.u
-	autoreconf -fi
-	./configure --prefix=/usr \
-		--infodir=/usr/share/info \
-		--sysconfdir=/etc \
-		--mandir=/usr/share/man \
+	# 0.8 obsolete
+#	patch -p1 < $stuff/knock.u
+	autoreconf -fi &&
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--sysconfdir=/etc		\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $stuff/etc $fs
-	cp -a $stuff/usr $fs
-	cp -a $install/usr/sbin $fs/usr
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/etc $fs
+	cp -a $stuff/etc	$fs
+	cp -a $stuff/usr	$fs
+	cp -a $install/usr/sbin	$fs/usr
+	cp -a $install/usr/bin	$fs/usr
+	cp -a $install/etc	$fs
 }
