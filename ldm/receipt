@@ -1,17 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="ldm"
-VERSION="0.3"
+VERSION="0.8"
 CATEGORY="system-tools"
 SHORT_DESC="l(ightweight) d(evice) m(ounter)."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://github.com/LemonBoy/ldm"
-WGET_URL="https://github.com/LemonBoy/ldm/tarball/v${VERSION}"
+REPOLOGY="ldm-mounter"
 
-DEPENDS="udev"
-BUILD_DEPENDS="udev-dev util-linux-mount-dev util-linux-blkid wget"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/tarball/v$VERSION"
+
+DEPENDS="glib udev"
+BUILD_DEPENDS="glib-dev udev-dev util-linux-blkid util-linux-mount-dev"
 
 current_version()
 {
@@ -22,15 +24,14 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	make ldm.o &&
-	cc -o ldm ldm.o -ludev -lmount -lblkid &&
+	export	LDFLAGS="$LDFLAGS -ludev -lmount -lglib-2.0"
+
+	make &&
 	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
+	cook_copy_folders	bin
 }
