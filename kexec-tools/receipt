@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="kexec-tools"
-VERSION="2.0.17"
+VERSION="2.0.23"
 CATEGORY="system-tools"
 SHORT_DESC="Directly boot into a new kernel."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://www.kernel.org/pub/linux/utils/kernel/kexec/"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="${WEB_SITE}$TARBALL"
-HOST_ARCH="i486 arm x86_64"
 
 DEPENDS="zlib"
-BUILD_DEPENDS="wget zlib-dev liblzma-dev"
+BUILD_DEPENDS="liblzma-dev zlib-dev"
+
+HOST_ARCH="i486 arm x86_64"
 
 # What is the latest version available today?
 current_version()
@@ -25,6 +27,7 @@ current_version()
 compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -lpthread"
+
 	case "$ARCH" in
 	i?86)
 		./configure prefix=/usr \
@@ -37,7 +40,7 @@ compile_rules()
 			--host=$HOST_SYSTEM ;;
 	esac &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Important cross compiled package so run readelf.
@@ -50,6 +53,6 @@ testsuite()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/usr $fs
-	rm -rf $fs/usr/share
+	cook_copy_folders	lib
+	cook_copy_folders	sbin
 }
