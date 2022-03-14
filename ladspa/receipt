@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="ladspa"
-VERSION="1.15"
+VERSION="1.17"
 CATEGORY="multimedia"
 TAGS="audio multimedia"
 MAINTAINER="jozee@slitaz.org"
@@ -12,8 +12,8 @@ WEB_SITE="http://www.ladspa.org/"
 TARBALL="${PACKAGE}_sdk_$VERSION.tgz"
 WGET_URL="${WEB_SITE}download/$TARBALL"
 
-DEPENDS="gcc-lib-base"
-BUILD_DEPENDS=""
+DEPENDS="gcc-lib-base libsndfile"
+BUILD_DEPENDS="libsndfile-dev"
 
 # What is the latest version available today?
 current_version()
@@ -25,13 +25,13 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src/src
+	cd	src
 
-	# not applicable in version 1.15:
+	# not applicable since version 1.15:
 	# sed -i -e 's/mkdirhier/mkdir -p/' makefile 
 
-	make -j 1 targets &&
-	make install						\
+	make	targets &&
+	make	install						\
 		INSTALL_PLUGINS_DIR=$DESTDIR/usr/lib/ladspa/	\
 		INSTALL_INCLUDE_DIR=$DESTDIR/usr/include/	\
 		INSTALL_BINARY_DIR=$DESTDIR/usr/bin/
@@ -40,8 +40,6 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib/$PACKAGE
-
-	cp -a $install/usr/bin			$fs/usr
-	cp -a $install/usr/lib/$PACKAGE/*so*	$fs/usr/lib/$PACKAGE	
+	cook_copy_folders	bin
+	cook_copy_folders	lib
 }
