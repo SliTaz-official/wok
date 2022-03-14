@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="lapack"
-VERSION="3.4.0"
+VERSION="3.10.0"
 CATEGORY="misc"
-SHORT_DESC="Linear Algebra PACKage"
+SHORT_DESC="Linear Algebra PACKage."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="BSD"
-TARBALL="$PACKAGE-$VERSION.tgz"
-WEB_SITE="http://www.netlib.org/lapack"
-WGET_URL="$WEB_SITE/$TARBALL"
+WEB_SITE="https://www.netlib.org/lapack/"
 
-DEPENDS="gcc-lib-base blas"
-BUILD_DEPENDS="gfortran blas"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/Reference-LAPACK/$PACKAGE/archive/v$VERSION.tar.gz"
+
+DEPENDS="blas gcc-lib-base"
+BUILD_DEPENDS="blas cmake gfortran"
 
 # What is the latest version available today?
 current_version()
@@ -23,36 +24,44 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	cp -f $src/INSTALL/make.inc.gfortran make.inc
-	cp -f "$stuff/Makefile.lapack" $src/SRC/Makefile
-	
-	export FC=gfortran
+#	cp -f $src/INSTALL/make.inc.gfortran	make.inc
+#	cp -f "$stuff/Makefile.lapack"		$src/SRC/Makefile
 
-	cd $src/INSTALL
-	make clean
-	make NOOPT="${CFLAGS/-O?/-O0} -fPIC" OPTS="${CFLAGS} -fPIC"
+#	export FC=gfortran
 
-	cd $src/SRC
-	make clean
+#	cd	$src/INSTALL
+#	make	clean
+#	make	NOOPT="${CFLAGS/-O?/-O0} -fPIC" OPTS="${CFLAGS} -fPIC"
 
-	make FFLAGS="${CFLAGS} -fPIC" CFLAGS="${CFLAGS} -fPIC" shared
-	cp liblapack.so.$VERSION "$src/"
+#	cd	$src/SRC
+#	make	clean
+#	make	FFLAGS="${CFLAGS} -fPIC" CFLAGS="${CFLAGS} -fPIC" shared
+#	cp liblapack.so.$VERSION		"$src/"
+
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..					\
+		-D CMAKE_INSTALL_LIBDIR=/usr/lib/lapack	\
+		-D BUILD_SHARED_LIBS=ON &&
+	make &&
+	make	install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
+#	mkdir -p $fs/usr
 
-	install -m755 -d "$fs/usr/lib"
-  install -m755 "$src/liblapack.so.$VERSION" \
-    "$fs/usr/lib/"
-  ln -sf liblapack.so.$VERSION "$fs/usr/lib/liblapack.so"
-  ln -sf liblapack.so.$VERSION "$fs/usr/lib/liblapack.so.3"
-  
-  install -m755 -d "$fs/usr/share/licenses"
-  install -m644 "$src/LICENSE" \
-    "$fs/usr/share/licenses/lapack.LICENSE"
+#	install -m755 -d "$fs/usr/lib"
+# install -m755 "$src/liblapack.so.$VERSION" \
+#    "$fs/usr/lib/"
+#  ln -sf liblapack.so.$VERSION "$fs/usr/lib/liblapack.so"
+#  ln -sf liblapack.so.$VERSION "$fs/usr/lib/liblapack.so.3"
+
+	cook_copy_files	liblapack.so*
+
+	install -m755 -d	"$fs/usr/share/licenses"
+	install -m644 "$src/LICENSE" \
+				"$fs/usr/share/licenses/lapack.LICENSE"
 }
 
