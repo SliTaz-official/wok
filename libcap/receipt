@@ -1,18 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="libcap"
-VERSION="2.33"
+VERSION="2.63"
 CATEGORY="system-tools"
 SHORT_DESC="Support for getting and setting POSIX.1e capabilities."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="BSD"
-WEB_SITE="http://sites.google.com/site/fullycapable/"
+WEB_SITE="https://sites.google.com/site/fullycapable/"
 
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="https://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/$TARBALL"
 
-DEPENDS="attr"
-BUILD_DEPENDS="attr-dev gperf pam-dev"
+DEPENDS="attr gcc83-lib-base"
+BUILD_DEPENDS="attr-dev gcc83 gperf pam-dev"
 
 HOST_ARCH="i486 arm"
 
@@ -31,11 +31,13 @@ esac
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|INCLUDE_GPERF_OUTPUT = |&-include stddef.h |' \
-		libcap/Makefile
-
-	make DYNAMIC=yes ${ARCH_ARGS} &&
-	make RAISE_SETCAP=no DESTDIR=$DESTDIR install
+	make			\
+		CC=gcc-83	\
+		DYNAMIC=yes	\
+		$ARCH_ARGS &&
+	make	install		\
+		RAISE_SETCAP=no	\
+		DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -45,5 +47,5 @@ genpkg_rules()
 
 	cp -a $install/lib/*.so*	$fs/lib
 	chmod +x			$fs/lib/*
-	cp -a $install/sbin		$fs
+	cook_copy_folders	sbin
 }
