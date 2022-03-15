@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="libcaca"
-VERSION="0.99.beta19"
+VERSION="0.99.beta20"
 CATEGORY="graphics"
 SHORT_DESC="Text mode graphics utilities."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://caca.zoy.org/wiki/libcaca"
-WGET_URL="http://caca.zoy.org/files/libcaca/$TARBALL"
 
-DEPENDS="ncurses imlib2"
-BUILD_DEPENDS="ncurses-dev imlib2-dev xorg-libX11-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/cacalabs/$PACKAGE/archive/refs/tags/v$VERSION.tar.gz"
+
+DEPENDS="imlib2 ncurses"
+BUILD_DEPENDS="automake imlib2-dev libtool ncurses-dev xorg-libX11-dev"
 
 # What is the latest version available today?
 current_version()
@@ -23,27 +24,31 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure --prefix=/usr \
+	./bootstrap &&
+	./configure		\
+		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
-	make
-	make DESTDIR=$DESTDIR install
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	# hack for missing iso8859-1 folder
-	cook xorg-libX11
+#	cook xorg-libX11
 
-	mkdir -p $fs/usr/lib $fs/usr/share/X11/locale
-	cp -a $install/usr/bin $fs/usr	
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	mkdir -p $fs/usr/lib
+#	mkdir -p $fs/usr/share/X11/locale
+
+	cp -a $install/usr/bin		$fs/usr	
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 	#cp -a $install/usr/lib/jni $fs/usr/lib
-	cp -a $install/usr/share $fs/usr
-	rm -rf $fs/usr/share/man
+	cp -a $install/usr/share	$fs/usr
+	rm -rf				$fs/usr/share/man
 	# hack for missing iso8859-1 folder
-	cp -a $WOK/xorg-libX11/install/usr/share/X11/locale/iso8859-1 \
-	$fs/usr/share/X11/locale
+#	cp -a $WOK/xorg-libX11/install/usr/share/X11/locale/iso8859-1 \
+#					$fs/usr/share/X11/locale
+#	really needed?
 }
 
