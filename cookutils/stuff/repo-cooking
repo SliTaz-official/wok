@@ -1,0 +1,216 @@
+#!/bin/sh
+
+# Make repo.json for Repology using SliTaz Cooking packages
+# Aleksey Bobylev <al.bobylev@gmail.com>
+#
+# 2018-08-11: initial, working on my localhost
+# 2018-09-04: fix paths for use at Tank
+# 2018-09-08: fix space in src, fix md5sum when EXTRAVERSION used, skip empty src, skip broken, store log
+# 2019-01-15: block parallel execution
+# 2019-01-23: drop duplicate lines in DB (if any), discard empty repo.json, use absolute paths
+
+mirror='/home/slitaz/packages'
+local_repo='/home/slitaz/wok-hg'
+
+my_log="/home/slitaz/log/repo-cooking.$(date '+%Y%m%d_%H%M%S')"
+block='/home/slitaz/log/repo-cooking.block'
+
+local_bin=/root/bin
+
+# packages.info
+#  1: name
+#  2: version
+#  3: category
+#  4: short description
+#  5: home
+#  6: tags
+#  7: size_packed size_unpacked
+#  8: dependencies
+#  9: checksum
+# 10: maintainer
+# 11: license
+# 12: src URL
+# 13: wanted
+# 14: build dependencies
+# 15: package md5sum
+# 16: version without extraversion
+
+timestamp1=$(date '+%s')
+date_for_json=$(date '+%F %T')
+
+if [ -e "$block" ]; then
+	echo "$0 already executed. Exit" | tee "$my_log"
+	exit 1
+fi
+touch "$block"
+
+ls ${my_log%.*}* | sed '1,10d;s|.*|rm -f &|' | sh    # keep only 10 log files
+
+
+tempd=$(mktemp -d)
+
+sort -u $mirror/packages.info > $tempd/packages.info # drop duplicate lines
+sort -u $mirror/packages.md5  > $tempd/packages.md5  #
+
+# get base settings
+c_version=$(awk -F$'\t' -vp='cookutils' '{if ($1 == p) {print $2; exit}}' $tempd/packages.info) #'
+cp $mirror/cookutils-$c_version.tazpkg $tempd/
+
+cd $tempd
+tazpkg extract $tempd/cookutils-$c_version.tazpkg 2>/dev/null >&2
+cp $tempd/cookutils-$c_version/fs/etc/slitaz/cook.conf $tempd/
+rm $tempd/cookutils-$c_version.tazpkg
+rm -r $tempd/cookutils-$c_version/
+
+# define some useful variables
+. $tempd/cook.conf
+
+
+ls $local_repo \
+| while read pkg_i; do
+	i=$(( i + 1 ))
+	[ -f "$local_repo/$pkg_i/receipt" ] || continue
+
+	unset MAINTAINER LICENSE WGET_URL WANTED BUILD_DEPENDS VERSION EXTRAVERSION
+
+	case $i in
+		*00) echo $i;;
+		*0)  echo -n $i;;
+	esac
+	echo -n '.'
+
+	. "$local_repo/$pkg_i/receipt"
+
+	MAINTAINER=$(echo $MAINTAINER | sed 's|.*<||; s|>||')
+
+	LICENSE=$(echo $LICENSE)
+
+	WGET_URL=$(echo $WGET_URL | sed 's#^git|git#git#; s#^git|https*#git#; s#^svn|https*#svn#; s#^subversion|svn#svn#; s#^subversion|https*#svn#; s#^svn|svn#svn#; s#^hg|#hg://#; s#^mercurial|#hg://#; s#^bzr|#bzr://#; s#^cvs|#cvs://#')
+
+	WANTED=$(echo $WANTED)
+	case $pkg_i in
+		locale-*-extra) WANTED='slitaz-i18n-extra';;
+		locale-*)       WANTED='slitaz-i18n';;
+	esac
+
+	BUILD_DEPENDS=$(echo $BUILD_DEPENDS)
+
+	MD5SUM="$(fgrep "  $pkg_i-$VERSION" $tempd/packages.md5 | cut -d' ' -f1)"
+	if [ $(echo "$MD5SUM" | wc -l) -ne 1 ]; then
+		echo "$pkg_i: error: multiple md5sum" >>$my_log
+	fi
+
+	sed -i "/^$pkg_i	/ s|$|	$MAINTAINER	$LICENSE	$WGET_URL	$WANTED	$BUILD_DEPENDS	$MD5SUM	$VERSION|" $tempd/packages.info
+done
+echo
+echo
+
+timestamp2=$(date '+%s')
+echo "Stage 1:  $(( timestamp2 - timestamp1 )) s" >>$my_log
+echo "Packages: $(wc -l ./packages.info)" >>$my_log
+echo >>$my_log
+
+
+
+{
+	echo '{"repo":"SliTaz Cooking","date":"'$date_for_json'","items":['
+
+	comma_up=''
+
+	{ ls $local_repo; echo '@the_end@'; } \
+	| while read pkg_i; do
+		echo "$pkg_i" >&2
+
+		case $pkg_i in
+			@the_end@) echo ']}'; break;;
+			get-*)     continue;;
+		esac
+
+		pkg_line=$(sed -n "/^$pkg_i	/p" $tempd/packages.info)
+
+		wanted=$(echo "$pkg_line" | cut -d$'\t' -f 13)
+		[ -z "$wanted" ] || continue
+
+		echo "$pkg_i" >> $tempd/packages.txt
+
+		ver=$(       echo "$pkg_line" | cut -d$'\t' -f 16)
+		home=$(      echo "$pkg_line" | cut -d$'\t' -f 5)
+		maintainer=$(echo "$pkg_line" | cut -d$'\t' -f 10)
+		license=$(   echo "$pkg_line" | cut -d$'\t' -f 11 | sed 's| |","|g')
+		if [ -z "$license" ]; then
+			echo "$pkg_i: license is empty" >>$my_log
+			license='unknown'
+		fi
+		src=$(       echo "$pkg_line" | cut -d$'\t' -f 12 | sed 's| .*||')
+		bdeps=$(     echo "$pkg_line" | cut -d$'\t' -f 14 | sed 's| |","|g')
+
+		# skip
+		if [ -z "$ver" ]; then
+			echo "$pkg_i: ver empty, skip" >>$my_log
+			continue
+		fi
+
+		echo "$comma_up{\"meta\":\"$pkg_i\", \"ver\":\"$ver\", \"maintainer\":\"$maintainer\", \"home\":\"$home\", \"license\":[\"$license\"]"
+
+		[ -z "$src"   ] || echo ", \"src\":\"$src\""
+		[ -z "$bdeps" ] || echo ", \"bdeps\":[\"$bdeps\"]"
+
+		echo ", \"pkgs\":["
+
+		comma_up=','
+		comma=''
+
+		want=$(awk -F$'\t' -vp="$pkg_i" '{if ($13 == p) {print $1}}' $tempd/packages.info) #'
+		for pkg_j in $pkg_i $want; do
+			echo "  - $pkg_j" >> $tempd/packages.txt
+
+			pkg_line=$(sed -n "/^$pkg_j	/p" $tempd/packages.info)
+
+			echo $comma; comma=','
+
+			ver_sub=$(echo "$pkg_line" | cut -d$'\t' -f 16)
+			if [ "$ver" != "$ver_sub" ]; then
+				echo "$pkg_i > $pkg_j: version mismatch '$ver' -> '$ver_sub'" >>$my_log
+			fi
+
+			ver_ext=$(       echo "$pkg_line" | cut -d$'\t' -f 2)
+			cat=$(           echo "$pkg_line" | cut -d$'\t' -f 3)
+			desc=$(          echo "$pkg_line" | cut -d$'\t' -f 4 | sed 's|"|\\"|g')
+			tags=$(          echo "$pkg_line" | cut -d$'\t' -f 6 | sed 's| |","|g')
+			pkg_size=$(      echo "$pkg_line" | cut -d$'\t' -f 7 | cut -d' ' -f1)
+			installed_size=$(echo "$pkg_line" | cut -d$'\t' -f 7 | cut -d' ' -f2)
+			deps=$(          echo "$pkg_line" | cut -d$'\t' -f 8 | sed 's| |","|g')
+			pkg_md5sum=$(    echo "$pkg_line" | cut -d$'\t' -f 15)
+
+			echo "{\"name\":\"$pkg_j\", \"cat\":\"$cat\", \"desc\":\"$desc\""
+
+			[ -z "$tags" ] || echo ",\"tags\":[\"$tags\"]"
+
+			[ -z "$deps" ] || echo ",\"deps\":[\"$deps\"]"
+
+			echo ",\"pkg_size\":\"$pkg_size\", \"installed_size\":\"$installed_size\", \"pkg_md5sum\":\"$pkg_md5sum\", \"get\":\"http://mirror.slitaz.org/packages/cooking/$pkg_j-$ver_ext.tazpkg\""
+
+			echo '}'
+		done
+
+		echo ']}'
+	done
+} > $tempd/repo-dirt.json
+
+cat $tempd/repo-dirt.json | $local_bin/jq '.' > $tempd/repo.json
+
+if [ -s $tempd/repo.json ]; then
+	gzip $tempd/repo.json
+	$local_bin/advdef -z4 $tempd/repo.json.gz
+	mv $tempd/repo.json.gz $mirror
+else
+	echo "ERROR! New repo.json was discarded" >>$my_log
+fi
+
+rm -rf $tempd
+
+timestamp3=$(date '+%s')
+
+echo -e "\nStage 2: $(( timestamp3 - timestamp2 )) s" >>$my_log
+echo "Finished: $(date '+%F %T')" >>$my_log
+rm "$block"
