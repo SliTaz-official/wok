@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="libesmtp"
-VERSION="1.0.6"
+VERSION="1.1.0"
 CATEGORY="network"
-SHORT_DESC="A Library for Posting Electronic Mai"
+SHORT_DESC="A Library for submission of Electronic Mail."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://freecode.com/projects/libesmtp/"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="http://www.stafford.uklinux.net/libesmtp/$TARBALL"
+WEB_SITE="https://libesmtp.github.io/"
 
-DEPENDS="libltdl libssl"
-BUILD_DEPENDS="openssl-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$PACKAGE/libESMTP/archive/v$VERSION.tar.gz"
+
+DEPENDS="gcc83-lib-base libltdl libssl"
+BUILD_DEPENDS="gcc83 meson openssl-dev"
 
 # What is the latest version available today?
 current_version()
@@ -23,15 +24,17 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	./configure $CONFIGURE_ARGS && make && make install
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	meson	_build		\
+		--prefix=/usr &&
+	ninja	-C _build &&
+	ninja	-C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	
-	find $fs -name "*.*a" -exec rm -f {} \;
+	cook_copy_files	*.so*
 }
