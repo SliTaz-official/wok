@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="libee"
-VERSION="0.3.2"
+VERSION="0.4.1"
 CATEGORY="system-tools"
-SHORT_DESC="An Event Expression Library inspired by CEE"
+SHORT_DESC="An Event Expression Library inspired by CEE."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="LGPL2.1"
 WEB_SITE="http://www.libee.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="http://www.libee.org/files/download/$TARBALL"
+WGET_URL="${WEB_SITE}files/download/$TARBALL"
 
 DEPENDS="libestr"
 BUILD_DEPENDS="libestr-dev automake"
@@ -23,18 +24,21 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
+	# 0.4.1 not required
 	# Patch from http://www.gossamer-threads.com/lists/rsyslog/users/4600
-	patch -p 1 < $stuff/libee-build-fix.patch
-	./configure $CONFIGURE_ARGS \
-		--disable-testbench && make -j 1 && make install
+	# patch -p 1 < $stuff/libee-build-fix.patch
+
+	./configure			\
+		--disable-testbench	\
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
+	make install
+	# Do not remove "-j 1" !
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/sbin $fs/usr
+	cook_copy_folders	sbin
+	cook_copy_files		*.so*
 }
