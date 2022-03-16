@@ -11,14 +11,16 @@ WEB_SITE="https://www.cairographics.org/"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="${WEB_SITE}releases/$TARBALL"
 
-DEPENDS="bzlib fontconfig freetype glib glibc-base harfbuzz libffi libpng \
-libxcb libxml2 pcre pixman xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext \
-xorg-libXrender zlib"
-BUILD_DEPENDS="pkg-config glib-dev libpng-dev zlib-dev fontconfig-dev \
-freetype-dev xorg-libX11-dev pixman-dev xorg-libXau-dev xorg-libXdmcp-dev \
-xorg-libXrender-dev xcb-util-dev libxcb-dev expat-dev libxml2-dev util-linux-uuid-dev"
+DEPENDS="bzlib fontconfig freetype glib glibc-base harfbuzz libffi libpng
+	libxcb libxml2 pcre pixman xorg-libX11 xorg-libXau xorg-libXdmcp
+	xorg-libXext xorg-libXrender zlib"
+BUILD_DEPENDS="expat-dev fontconfig-dev freetype-dev glib-dev libpng-dev
+	pixman-dev pkg-config libxcb-dev libxml2-dev util-linux-uuid-dev
+	xcb-util-dev xorg-libX11-dev xorg-libXau-dev xorg-libXdmcp-dev
+	xorg-libXrender-dev zlib-dev"
 SPLIT="cairo-tools"
 SIBLINGS="cairo-gl"
+
 HOST_ARCH="i486 arm"
 
 # Handle cross compilation
@@ -35,22 +37,29 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	# 1.16.0 workaround for
+	# errors in lookup-symbol.c
+	# enable-trace=no
+	# until a better solution is found
+
 	sed -i '/index.sgml/d' doc/public/Makefile*
-	./configure \
-		--prefix=/usr \
-		--enable-xcb \
-		--enable-xlib-xcb \
-		--enable-tee \
-		--disable-gl \
-		--disable-static \
+
+	./configure			\
+		--prefix=/usr		\
+		--disable-gl		\
+		--disable-static	\
+		--enable-tee		\
+		--enable-trace=no	\
+		--enable-xcb		\
+		--enable-xlib-xcb	\
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
