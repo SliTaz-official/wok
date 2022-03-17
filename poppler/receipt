@@ -10,11 +10,12 @@ TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://poppler.freedesktop.org/"
 WGET_URL="https://poppler.freedesktop.org/$TARBALL"
 
-DEPENDS="expat freetype glib jpeg xorg-libXdamage lcms \
-gcc-lib-base cairo tiff bzlib libpng"
-BUILD_DEPENDS="$DEPENDS expat-dev pkg-config jpeg-dev tiff-dev \
-freetype-dev fontconfig-dev glib-dev lcms-dev zlib-dev cairo-dev \
-automake bzip2-dev libpng-dev libtool Qt4-dev libxml2-dev"
+DEPENDS="bzlib cairo expat freetype glib jpeg lcms libpng
+	tiff xorg-libXdamage"
+BUILD_DEPENDS="$DEPENDS automake bzip2-dev cairo-dev expat-dev
+	fontconfig-dev freetype-dev glib-dev gtk-doc jpeg-dev
+	lcms-dev libpng-dev libtool libxml2-dev pkg-config
+	Qt4-dev tiff-dev zlib-dev"
 
 current_version()
 {
@@ -25,22 +26,25 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	autoreconf -fi
-	./configure \
-		--enable-zlib \
-		--enable-cairo-output \
-		--enable-poppler-qt4 \
-		--disable-libopenjpeg \
+	# cheat autoreconf
+	# ln -s /usr/bin/aclocal /usr/bin/aclocal-1.15
+
+	autoreconf -fi &&
+	./configure			\
+		--enable-zlib		\
+		--enable-cairo-output	\
+		--enable-poppler-qt4	\
+		--disable-libopenjpeg	\
 		$CONFIGURE_ARGS &&
-	make &&	make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 	#following libs are included in poppler-qt4
-	rm -r $fs/usr/lib/*qt4.so*
+	rm -r				$fs/usr/lib/*qt4.so*
 }
-
