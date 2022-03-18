@@ -3,15 +3,16 @@
 PACKAGE="afuse"
 VERSION="0.4.1"
 CATEGORY="system-tools"
-SHORT_DESC="An automounter implemented with FUSE"
+SHORT_DESC="An automounter implemented with FUSE."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://github.com/pcarrier/afuse/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="https://github.com/pcarrier/afuse"
 WGET_URL="${WEB_SITE}archive/v$VERSION.tar.gz"
 
-DEPENDS="fuse"
-BUILD_DEPENDS="fuse-dev perl-getopt-long autoconf automake libtool "
+DEPENDS="fuse2"
+BUILD_DEPENDS="autoconf automake fuse2-dev libtool perl-getopt-long"
 
 # What is the latest version available today?
 current_version()
@@ -23,19 +24,24 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	autoreconf --install --verbose
-	sed -i 's|v -V -qversion|v|' configure
-	./configure --prefix=/usr --infodir=/usr/share/info \
-		--mandir=/usr/share/man \
+	autoreconf --install --verbose &&
+	sed -i 's|v -V -qversion|v|'	configure
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.   
 genpkg_rules()                                      
 {
-	mkdir -p $fs/usr/ $install/usr/share/doc
-	cp -a $install/usr/bin $fs/usr/
-	cp $src/README $src/AUTHORS $install/usr/share/doc
+	mkdir -p $fs/usr
+	mkdir -p $install/usr/share/doc
+
+	cook_copy_folders	bin
+	cp $src/README		$install/usr/share/doc
+	cp $src/AUTHORS		$install/usr/share/doc
 }
