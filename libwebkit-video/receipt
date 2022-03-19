@@ -25,6 +25,7 @@ gobject-introspection-dev tar gettext glib-networking-dev gtk-doc \
 gstreamer-dev gst-plugins-base-dev"
 SUGGESTED="gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-ffmpeg"
 
+# What is the latest version available today?
 current_version()
 {
 	wget -O - $(dirname $WGET_URL) 2>/dev/null | \
@@ -44,6 +45,9 @@ compile_rules()
 		status
 	done
 	touch Documentation/webkitgtk/version.xml
+	# Build fix with newer bison 3
+	sed -i 's|%pure_parser|%define api.pure|' Source/WebCore/css/CSSGrammar.y
+	sed -i '/\$(AM_V_at)rm -f/d' GNUmakefile* Source/WebCore/GNUmakefile*
 	# Build
 	./configure \
 		--prefix=/usr \

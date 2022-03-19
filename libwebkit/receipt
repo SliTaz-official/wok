@@ -22,6 +22,7 @@ glib-dev sqlite-dev gnutls-dev xorg-libXdamage-dev acl-dev libsoup-dev \
 libxml2-dev libxcb-dev xcb-util-dev util-linux-uuid-dev zlib-dev \
 libtasn1-dev glib-networking-dev"
 
+# What is the latest version available today?
 current_version()
 {
 	wget -O - $(dirname $WGET_URL) 2>/dev/null | \
@@ -50,6 +51,9 @@ compile_rules()
 		done
 		patch -p0 < $stuff/CodeGeneratorGObject-bug-84526.patch || exit 1
 	fi
+	# Build fix with newer bison 3
+	sed -i 's|%pure_parser|%define api.pure|' Source/WebCore/css/CSSGrammar.y
+	sed -i '/\$(AM_V_at)rm -f/d' GNUmakefile* Source/WebCore/GNUmakefile*
 	# Build
 	./configure \
 		--enable-introspection=no \
