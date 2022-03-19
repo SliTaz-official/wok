@@ -28,26 +28,27 @@ current_version()
 compile_rules()
 {
 	patch -p1 < $stuff/libupnp1.8.patch || exit 1
+	patch --strip=0 --input=$stuff/patches/MuleDebug.cpp-2.3.2 &&
 
 	# What works for imule (see https://aur.archlinux.org/packages/imule)
 	# might work for amule also:
 	sed -i 's/pubkey.DEREncode(asink);/pubkey.AccessMaterial().Save(asink);/g' \
 		src/ClientCreditsList.cpp
 
-	./configure \
-		--prefix=/usr \
+	./configure		\
+		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install
-	./configure \
-		--prefix=/usr \
-		--disable-monolithic \
-		--enable-amule-daemon \
-		--enable-amulecmd \
-		--enable-webserver \
+	make install DESTDIR=$DESTDIR
+	./configure			\
+		--prefix=/usr		\
+		--disable-monolithic	\
+		--enable-amule-daemon	\
+		--enable-amulecmd	\
+		--enable-webserver	\
 		$CONFIGURE_ARGS &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -55,8 +56,8 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share
 	rm -rf $install/usr/share/man/?? $install/usr/share/man/*_*
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/amule $fs/usr/share
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/share/amule	$fs/usr/share
 	# Remove unused files in this base package.
 	rm $fs/usr/share/amule/skins/kde4.zip
 	rm $fs/usr/share/amule/skins/gnome.zip
