@@ -1,0 +1,45 @@
+# SliTaz package receipt.
+
+PACKAGE="jack1"
+VERSION="0.126.0"
+CATEGORY="multimedia"
+TAGS="audio server"
+SHORT_DESC="Low-latency audio server."
+MAINTAINER="allan316@gmail.com"
+LICENSE="GPL LGPL"
+WEB_SITE="https://jackaudio.org"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/jackaudio/$PACKAGE/releases/download/$VERSION/$TARBALL"
+
+PROVIDE="jack-audio-connection-kit"
+DEPENDS="alsa-lib libogg libsamplerate libsndfile ncurses readline"
+BUILD_DEPENDS="alsa-lib-dev automake db-dev libsamplerate-dev libtool
+	util-linux-uuid-dev"
+
+HOST_ARCH="i486 arm"
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	./autogen.sh &&
+	./configure		\
+		CC=gcc-83	\
+		CXX=g++-83	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install DESTDIR=$DESTDIR &&
+
+	install -Dm644 $src/jack/jslist.h $install/usr/include/jack/jslist.h
+# -j 1
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib/jack
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/lib/jack/*.so*	$fs/usr/lib/jack
+}
