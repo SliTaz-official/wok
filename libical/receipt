@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libical"
-VERSION="3.0.8"
+VERSION="3.0.14"
 CATEGORY="system-tools"
 SHORT_DESC="Opensource ICalendar implementation."
 MAINTAINER="erjo@slitaz.org"
@@ -11,8 +11,8 @@ WEB_SITE="https://github.com/libical/libical/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/$PACKAGE/$PACKAGE/releases/download/v$VERSION/$TARBALL"
 
-DEPENDS=""
-BUILD_DEPENDS="cmake"
+DEPENDS="libxml2"
+BUILD_DEPENDS="cmake libxml2-dev"
 
 current_version()
 {
@@ -23,18 +23,17 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir	build
-	cd	build
+	mkdir	_build &&
+	cd	_build &&
 	cmake	..				\
-		-DCMAKE_INSTALL_PREFIX=/usr	\
-		-DENABLE_GTK_DOC=OFF &&
-	make -j 1 &&
-	make DESTDIR=$DESTDIR install
+		-D ENABLE_GTK_DOC=OFF		\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cook_copy_files	*.so*
 }
