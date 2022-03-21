@@ -3,24 +3,25 @@
 PACKAGE="lxqt-panel"
 VERSION="0.8.0"
 CATEGORY="system-tools"
-SHORT_DESC="The LXQt desktop panel"
+TAGS="LXQt"
+SHORT_DESC="The LXQt desktop panel."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="LGPL2.1"
 WEB_SITE="https://github.com/lxde/lxqt-panel"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/lxde/$PACKAGE/archive/$VERSION.tar.gz"
-TAGS="LXQt"
 
-DEPENDS="alsa-lib icu libQtCore libQtDBus libQtGui libQtXml libqtxdg \
-libstatgrab lm-sensors pcre xorg-libX11 xorg-libXcomposite xorg-libXdamage \
-xorg-libXext xorg-libXfixes xorg-libXrender lxqt-globalkeys liblxqt \
-liblxqt-mount menu-cache libsysstat"
 SUGGESTED="qastools xscreensaver"
-BUILD_DEPENDS="wget cacerts cmake Qt4-dev qmake xorg-libX11-dev liblxqt-dev \
-libqtxdg-dev lxqt-globalkeys-dev liblxqt-mount-dev xorg-libXcomposite-dev \
-xorg-libXdamage-dev xorg-libXrender-dev menu-cache-dev libstatgrab-dev \
-lm-sensors-dev alsa-lib-dev libsysstat-dev icu-dev grep glib-dev \
-libQtMimeTypes-dev"
+DEPENDS="alsa-lib gcc83-lib-base icu liblxqt liblxqt-mount libQtCore libQtDBus
+	libQtGui libqtxdg libQtXml libstatgrab libsysstat lm-sensors
+	lxqt-globalkeys menu-cache pcre xorg-libX11 xorg-libXcomposite
+	xorg-libXdamage xorg-libXext xorg-libXfixes xorg-libXrender"
+BUILD_DEPENDS="alsa-lib-dev cacerts cmake gcc83 glib-dev grep icu-dev
+	liblxqt-dev liblxqt-mount-dev libQtMimeTypes-dev libqtxdg-dev
+	libstatgrab-dev libsysstat-dev lm-sensors-dev lxqt-globalkeys-dev
+	menu-cache-dev qmake Qt4-dev xorg-libX11-dev xorg-libXcomposite-dev
+	xorg-libXdamage-dev xorg-libXrender-dev "
 
 current_version()
 {
@@ -33,21 +34,30 @@ compile_rules()
 {
 	patch -p0 < $stuff/fix_sysstat_plugin.patch
 
-	mkdir build; cd build
-	cmake \
-		-DCMAKE_INSTALL_PREFIX=/usr \
-		-DVOLUME_USE_PULSEAUDIO=No \
-		-DTEATIME_PLUGIN=Yes \
-		.. &&
+	export	CC=gcc-83
+	export	CXX=g++-83
+
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..				\
+		-D CMAKE_INSTALL_PREFIX=/usr	\
+		-D VOLUME_USE_PULSEAUDIO=No	\
+		-D TEATIME_PLUGIN=Yes		\
+		-D WORLDCLOCK_PLUGIN=No &&
 	make &&
-	make DESTDIR=$install install
+	make install DESTDIR=$install
+# WORLDCLOCK_PLUGIN=No, to avoid
+# lxqtworldclock.cpp:154:9: error: 'UnicodeString' was not declared in this scope
+# until a solution is found
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/lxqt/lxqt-panel
-	cp -a $install/etc $fs
-	cp -a $install/usr/bin $install/usr/lib $fs/usr
-	cp -a $install/usr/share/lxqt/lxqt-panel/*.desktop $fs/usr/share/lxqt/lxqt-panel
+
+	cp -a $install/etc			$fs
+	cp -a $install/usr/bin $install/usr/lib	$fs/usr
+	cp -a $install/usr/share/lxqt/lxqt-panel/*.desktop \
+						$fs/usr/share/lxqt/lxqt-panel
 }
