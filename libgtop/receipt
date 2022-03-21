@@ -1,17 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="libgtop"
-VERSION="2.28.4"
+VERSION="2.40.0"
 CATEGORY="x-window"
-SHORT_DESC="Librairies for GNOME"
+SHORT_DESC="Gnome library for system monitoring."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://www.gnome.org"
-WGET_URL="http://ftp.gnome.org/pub/gnome/sources/$PACKAGE/${VERSION%.*}/$TARBALL"
 
-DEPENDS="glib"
-BUILD_DEPENDS="glib-dev intltool"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="$GNOME_MIRROR/$PACKAGE/${VERSION%.*}/$TARBALL"
+
+SUGGESTED="libgtop-lang"
+DEPENDS="gcc83-lib-base glib"
+BUILD_DEPENDS="gcc83 glib-dev intltool"
 
 current_version()
 {
@@ -22,16 +24,24 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|uname -m|echo i486|' src/Makefile* src/daemon/Makefile*
-	./configure \
-		--prefix=/usr \
+	sed -i 's|uname -m|echo i486|'	\
+		src/Makefile*		\
+		src/daemon/Makefile*
+
+	./configure		\
+		CC=gcc-83	\
+		CXX=g++-83	\
+		--prefix=/usr	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	sed -i	-e 's|chown root |chown root $(DESTDIR)|'	\
+		-e 's|chmod 4755 |chmod 4755 $(DESTDIR)|'	\
+		src/daemon/Makefile &&
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cook_copy_files	*.so*
 }
