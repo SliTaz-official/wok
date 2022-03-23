@@ -1,21 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="libnotify-gtk3"
-VERSION="0.7.6"
+VERSION="0.7.9"
 CATEGORY="utilities"
-SHORT_DESC="Sends desktop notifications to a notification daemon (GTK+3)"
+TAGS="gtk3"
+SHORT_DESC="Notification library (GTK+3)."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="LGPL2.1"
+WEB_SITE="https://developer-next.gnome.org/libnotify/"
+
 SOURCE="libnotify"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="https://web.archive.org/web/20160322142309/https://developer-next.gnome.org/libnotify/"
-SERIES=$(echo $VERSION | cut -d. -f1,2)
-WGET_URL="$GNOME_MIRROR/$SOURCE/$SERIES/$TARBALL"
-TAGS="gtk3"
+WGET_URL="$GNOME_MIRROR/$SOURCE/${VERSION%.*}/$TARBALL"
 
-DEPENDS="gdk-pixbuf dbus"
-BUILD_DEPENDS="gtk+3-dev gobject-introspection-dev glib-dev libxml2-dev \
-dbus-dev"
+PROVIDE="libnotify"
+DEPENDS="dbus gdk-pixbuf gobject-introspection"
+BUILD_DEPENDS="dbus-dev glib-dev gobject-introspection-dev gtk+3-dev
+	libxml2-dev meson"
 
 current_version()
 {
@@ -26,19 +27,19 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--disable-static \
-		--enable-introspection \
-		--disable-gtk-doc \
-		$CONFIGURE_ARGS &&
-	make &&
-	make DESTDIR=$install install
+	meson	_build				\
+		-D gtk_doc=false		\
+		-D docbook_docs=disabled	\
+		-D introspection=enabled	\
+		-D man=false			\
+		--prefix=/usr &&
+	ninja	-C _build &&
+	ninja	-C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cook_copy_folders	bin
+	cook_copy_files		*.so*
 }
