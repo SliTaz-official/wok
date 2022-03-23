@@ -1,19 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="libsdl2-ttf"
-VERSION="2.0.15"
+VERSION="2.0.18"
 CATEGORY="x-window"
 SHORT_DESC="SDL2 ttf support."
 MAINTAINER="tcg.thegamer@gmail.com"
-LICENSE="LGPL2.1"
-WEB_SITE="http://www.libsdl.org/projects/SDL_ttf/"
+LICENSE="Zlib"
+WEB_SITE="https://github.com/libsdl-org/SDL_ttf"
 
 SOURCE="SDL2_ttf"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WGET_URL="http://www.libsdl.org/projects/SDL_ttf/release/$TARBALL"
+WGET_URL="$WEB_SITE/archive/refs/tags/release-$VERSION.tar.gz"
 
-DEPENDS="freetype libsdl2 zlib"
-BUILD_DEPENDS="freetype-dev libsdl2-dev"
+DEPENDS="freetype gcc83-lib-base libsdl2 zlib"
+BUILD_DEPENDS="freetype-dev gcc83 libsdl2-dev"
 
 HOST_ARCH="i486 arm"
 
@@ -27,14 +27,16 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS &&
-	make -j 1 &&
+	./configure		\
+		CC=gcc-83	\
+		CXX=g++-83	\
+		$CONFIGURE_ARGS &&
+	make &&
 	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cook_copy_files	*.so*
 }
