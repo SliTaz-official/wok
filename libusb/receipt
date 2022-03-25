@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="libusb"
-VERSION="1.0.23"
+VERSION="1.0.25"
 CATEGORY="system-tools"
 SHORT_DESC="USB access library."
 MAINTAINER="pankso@slitaz.org"
@@ -11,8 +11,8 @@ WEB_SITE="https://libusb.info/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="https://github.com/$PACKAGE/$PACKAGE/releases/download/v$VERSION/$TARBALL"
 
-DEPENDS="udev"
-BUILD_DEPENDS="udev-dev"
+DEPENDS="gcc83-lib-dev udev"
+BUILD_DEPENDS="gcc83 udev-dev"
 
 HOST_ARCH="i486 arm"
 
@@ -25,14 +25,16 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS &&
-	make -j 1 &&
+	./configure		\
+		CC=gcc-83	\
+		CXX=g++-83	\
+		$CONFIGURE_ARGS &&
+	make &&
 	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cook_copy_files	*.so*
 }
