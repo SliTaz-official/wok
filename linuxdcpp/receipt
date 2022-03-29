@@ -1,16 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="linuxdcpp"
-VERSION="1.0.3"
+VERSION="1.1.0"
 CATEGORY="network"
 SHORT_DESC="Direct Connect client based on DC++."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-DEPENDS="gtk+ libglade openssl gcc-lib-base bzlib"
-BUILD_DEPENDS="gtk+-dev libglade-dev openssl-dev scons libglade bzlib bzip2-dev"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="https://launchpad.net/linuxdcpp"
-WGET_URL="http://mirror.slitaz.org/sources/packages/l/$TARBALL"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="https://launchpad.net/$PACKAGE/${VERSION%.*}/$VERSION/+download/$TARBALL"
+
+DEPENDS="bzlib gcc-lib-base gtk+ libglade openssl"
+BUILD_DEPENDS="bzlib bzip2-dev freetype-dev gtk+-dev libboost-dev
+	libglade-dev libnotify-dev openssl-dev scons"
 
 # What is the latest version available today?
 current_version()
@@ -22,8 +25,8 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	mkdir -p $DESTDIR/usr
+
 	scons PREFIX=/usr &&
 	scons PREFIX=$DESTDIR/usr install
 }
@@ -32,8 +35,9 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/pixmaps
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/linuxdcpp $fs/usr/share
-	cd $fs/usr/share/pixmaps
+
+	cook_copy_folders	bin
+	cp -a $install/usr/share/linuxdcpp	$fs/usr/share
+	cd					$fs/usr/share/pixmaps
 	ln -s ../linuxdcpp/pixmaps/linuxdcpp.png .
 }
