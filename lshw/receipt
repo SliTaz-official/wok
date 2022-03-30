@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="lshw"
-VERSION="B.02.18"
+VERSION="B.02.19.2"
 CATEGORY="system-tools"
 SHORT_DESC="Hardware Lister."
 MAINTAINER="erjo@slitaz.org"
@@ -23,21 +23,18 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $PACKAGE-$VERSION
 	sed -i 's/hwNode::hwNode/hwNode/' src/core/scsi.cc
 	grep -qs 'define u8' src/core/scsi.cc src/core/burner.cc ||
 	sed -i 's|#include <scsi/scsi.h>|#define u8 __u8\n&|' \
 		src/core/scsi.cc src/core/burner.cc
 
-	make -j 1 &&
-	make DESTDIR=$DESTDIR install
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
-
-	cp -a $install/usr/sbin		$fs/usr
-	cp -a $install/usr/share/lshw	$fs/usr/share
+	cook_copy_folders	sbin
+	cook_copy_folders	lshw
 }
