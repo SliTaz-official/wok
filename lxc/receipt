@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="lxc"
-VERSION="3.2.1"
+VERSION="4.0.12"
 CATEGORY="system-tools"
 SHORT_DESC="Userspace control package for Linux Containers."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -11,7 +11,7 @@ WEB_SITE="https://linuxcontainers.org/lxc/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://linuxcontainers.org/downloads/$PACKAGE/$TARBALL"
 
-DEPENDS="bridge-utils gcc83-lib-base gnutls iptables libcap linux-bridge 
+DEPENDS="bridge-utils gcc83-lib-base gnutls iptables libcap linux-bridge
 	linux-netfilter perl util-linux-getopt"
 BUILD_DEPENDS="gcc83 gnutls-dev libcap-dev util-linux-getopt"
 
@@ -34,28 +34,28 @@ compile_rules()
 		--libexec=/usr/lib/$PACKAGE	\
 		--localstatedir=/var		\
 		$CONFIGURE_ARGS &&
-	make -j 1 &&
-	make DESTDIR=$DESTDIR install
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.   
 genpkg_rules()                                      
 {
 	mkdir -p $fs/usr/share
-	mkdir -p $fs/var/lib/lxc
 
 	cp -a $install/usr/share/lxc	$fs/usr/share
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/lib		$fs/usr
+
+	cook_copy_folders	bin
+	cook_copy_folders	lib
 
 	rm -rf				$fs/usr/lib/pkgconfig
 
-	cp -a $install/etc		$fs
-	cp -a $install/var		$fs
+	cook_copy_folders	etc
+	cook_copy_folders	var
 
 	sed -i	-e 's/^is_set(/zgrep() { zcat | grep "$@"; }\n\n&/' \
 		-e 's/\(.*\$GREP .*\)\(\$CONFIG.*\)/\1< \2/' \
-		$fs/usr/bin/lxc-checkconfig
+					$fs/usr/bin/lxc-checkconfig
 	chmod +x			$fs/usr/bin/lxc-*
 }
 
