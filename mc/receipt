@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="mc"
-VERSION="4.8.24"
+VERSION="4.8.28"
 CATEGORY="system-tools"
 TAGS="file-manager text-editor"
 SHORT_DESC="Midnight Commander - ncurses based file manager."
@@ -12,10 +12,10 @@ WEB_SITE="https://www.midnight-commander.org/"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="http://ftp.midnight-commander.org/$TARBALL"
 
-SUGGESTED="cdrkit-isoinfo file gpm lynx poppler-apps w3m wv xz"
-DEPENDS="e2fsprogs glib ncursesw util-linux-blkid"
-BUILD_DEPENDS="glib-dev gpm-dev ncursesw-dev ncurses-extra 
-	util-linux-blkid-dev util-linux-mount-dev util-linux-uuid-dev "
+SUGGESTED="cdrkit-isoinfo file gpm lynx mc-lang poppler-apps w3m wv xz"
+DEPENDS="e2fsprogs gcc83-lib-base glib ncursesw util-linux-blkid"
+BUILD_DEPENDS="gcc83 glib-dev gpm-dev ncursesw-dev ncurses-extra
+	util-linux-blkid-dev util-linux-mount-dev util-linux-uuid-dev"
 
 GENERIC_MENUS="no"
 
@@ -31,9 +31,11 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's/lzma -cd/lzcat/' $src/src/editor/edit.c
+	sed -i 's|lzma -cd|lzcat|'	src/editor/edit.c
 
 	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
 		--prefix=/usr		\
 		--with-gpm-mouse	\
 		--with-screen=ncurses	\
@@ -41,7 +43,7 @@ compile_rules()
 		--libexecdir=/usr/lib	\
 		--sysconfdir=/etc	\
 		$CONFIGURE_ARGS &&
-	make -j 1 &&
+	make &&
 	make install
 
 	mkdir -p $install/usr/share/terminfo/s
@@ -60,18 +62,15 @@ genpkg_rules()
 	cp -a $install/usr/share/mc		$fs/usr/share
 	cp -a $install/usr/share/terminfo	$fs/usr/share
 
-	sed -i 's#&) ||#) ||#' \
-		$fs/usr/lib/mc/ext.d/*.sh
-	sed -i 's#|profile|#&receipt|#' \
-		$fs/usr/share/mc/syntax/Syntax
-	sed -i 's/lzma -dc/lzcat/g' \
-		$fs/usr/lib/mc/ext.d/archive.sh
+	sed -i 's#&) ||#) ||#'			$fs/usr/lib/mc/ext.d/*.sh
+	sed -i 's#|profile|#&receipt|#'		$fs/usr/share/mc/syntax/Syntax
+	sed -i 's/lzma -dc/lzcat/g'		$fs/usr/lib/mc/ext.d/archive.sh
 
 	cp -a $stuff/*.desktop			$fs/usr/share/applications
 
 	cat > $fs/usr/bin/mc.sh <<EOF
 case \$TERM in
-	linux*)
+	(linux*)
 		{
 		cat <<EOT
 shift   keycode  59 = F11
@@ -85,11 +84,14 @@ shift   keycode  66 = F18
 shift   keycode  67 = F19
 shift   keycode  68 = F20
 EOT
-		} | loadkeys -uv ; sleep 1 ;;
-	xterm*)
+		} | loadkeys -uv
+		sleep 1
+		;;
+	(xterm*)
 		export TERM='xterm-color'
 		[ -f '/usr/share/terminfo/s/screen-256color' ] && \\
-			export TERM='screen-256color'	;;
+			export TERM='screen-256color'
+		;;
 esac
 mc \$@
 
