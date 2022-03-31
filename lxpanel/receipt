@@ -1,22 +1,26 @@
 # SliTaz package receipt.
 
 PACKAGE="lxpanel"
-VERSION="0.10.0"
+VERSION="0.10.1"
 CATEGORY="x-window"
-SHORT_DESC="LXDE panel"
-MAINTAINER="devel@slitaz.org"
+TAGS="LXDE gtk2 panel"
+SHORT_DESC="LXDE panel."
+MAINTAINER="maintainer@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="https://wiki.lxde.org/en/LXPanel"
+
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="$SF_MIRROR/lxde/$TARBALL"
-CONFIG_FILES="/etc/lxpanel/default"
-TAGS="LXDE gtk2 panel"
-HOST_ARCH="i486 arm"
 
 SUGGESTED="lxde lxsession slitaz-icon"
-DEPENDS="alsa-lib gtk+ menu-cache wireless_tools libxml2 slitaz-menus libkeybinder libwnck"
-BUILD_DEPENDS="intltool libfm-dev libkeybinder-dev curl-dev \
-gtk+-dev menu-cache-dev alsa-lib-dev wireless_tools-dev libxml2-dev lxmenu-data"
+DEPENDS="alsa-lib gtk+ libkeybinder libwnck libxml2 menu-cache
+	slitaz-menus wireless_tools"
+BUILD_DEPENDS="alsa-lib-dev curl-dev gtk+-dev intltool libfm-dev libkeybinder-dev
+	libxml2-dev lxmenu-data menu-cache-dev wireless_tools-dev"
+
+CONFIG_FILES="/etc/lxpanel/default"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -40,48 +44,50 @@ compile_rules()
 	# Match default desktop colors
 	sed -i s'/gdk_color_parse("green"/gdk_color_parse("#cfcfcf"/' \
 		$src/plugins/cpu/cpu.c || return 1
-	./configure \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--with-plugins="$pluglist" \
+
+	./configure				\
+		--sysconfdir=/etc		\
+		--localstatedir=/var		\
+		--with-plugins="$pluglist"	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p \
-		$fs/usr/lib/lxpanel \
-		$fs/usr/share/lxpanel/images \
-		$fs/etc/lxpanel \
-		$fs/etc/xdg
+	mkdir -p $fs/etc/lxpanel
+	mkdir -p $fs/etc/xdg
+	mkdir -p $fs/usr/lib/lxpanel
+	mkdir -p $fs/usr/share/lxpanel/images
 
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin			$fs/usr
 
 	# Plugins (kbled -> lxpanel-extra)
-	cp -a $install/usr/lib/lxpanel/*.so*   $fs/usr/lib/lxpanel/
-	cp -a $install/usr/lib/lxpanel/plugins $fs/usr/lib/lxpanel/
+	cp -a $install/usr/lib/lxpanel/*.so*	$fs/usr/lib/lxpanel
+	cp -a $install/usr/lib/lxpanel/plugins	$fs/usr/lib/lxpanel
 	find $fs -name kbled.so -delete
 	find $fs -name wnckpager.so -delete
 
 	# Images
 	imgs=usr/share/lxpanel/images
-	for i in clock cpufreq-icon my-computer; do
-		cp -a $install/$imgs/$i.png $fs/$imgs
-	done
+	for i in clock cpufreq-icon my-computer
+	  do
+		cp -a $install/$imgs/$i.png	$fs/$imgs
+	  done
 
 	# Move profile to /etc/lxpanel (/usr maybe read-only) and default config
-	cp -a $install/etc $fs/
-	mv -f $fs/etc/xdg/lxpanel/default $fs/etc/xdg/lxpanel/original
-	cp -a $stuff/default $fs/etc/xdg/lxpanel
-	rm -rf $fs/etc/xdg/lxpanel/two_panels
+	cp -a $install/etc			$fs
+	mv -f $fs/etc/xdg/lxpanel/default	$fs/etc/xdg/lxpanel/original
+	cp -a $stuff/default			$fs/etc/xdg/lxpanel
+	rm -rf					$fs/etc/xdg/lxpanel/two_panels
 
 	# XDG autostart desktop file (lxsession will use it automaticaly)
-	cp -a $stuff/autostart $fs/etc/xdg
+	cp -a $stuff/autostart			$fs/etc/xdg
 
-	cp -a $install/usr/share/lxpanel/ui $fs/usr/share/lxpanel
-	cp -a $install/usr/share/lxpanel/x* $fs/usr/share/lxpanel
+	cp -a $install/usr/share/lxpanel/ui	$fs/usr/share/lxpanel
+	cp -a $install/usr/share/lxpanel/x*	$fs/usr/share/lxpanel
 }
 
 post_install()
