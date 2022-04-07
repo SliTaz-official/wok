@@ -196,7 +196,7 @@ fileofs()
 	win32.exe)	[ $x -eq 2048 ] &&
 			x=$((40*$(get 0x86 "$ISO")+0x98-24+$(get 0x94 "$ISO"))) &&
 			x=$(($(get $x "$ISO")+$(get $((x+4)) "$ISO")))
-			[ $x -eq 1024 ] || SIZE=$x;;
+			[ $x -le 1024 ] || SIZE=$x;;
 	syslinux.mbr)	[ $x -eq 1024 ] || OFFSET=$((x - 512)); SIZE=336;;
 	flavor.info)	[ $(get 22528 "$ISO") -eq 35615 ] && OFFSET=22528
 			[ $x -eq 2048 ] && x=$(get 0x25C "$ISO") &&
