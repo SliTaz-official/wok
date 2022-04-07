@@ -1,0 +1,43 @@
+Submitted By:            Douglas R. Reno <renodr at linuxfromscratch dot org>
+Date:                    2021-12-18
+Initial Package Version: 2.8.9rel.1
+Upstream Status:         Applied
+Origin:                  Arch Linux (https://github.com/archlinux/svntogit-packages/blob/packages/lynx/trunk/CVE-2021-38165.diff)
+Description:             Fixes CVE-2021-38165 in Lynx, which allows for
+                         usernames and passwords to be transmitted in cleartext
+                         anytime an HTTPS connection is used. 
+
+diff -Naurp lynx2.8.9rel.1.orig/WWW/Library/Implementation/HTTP.c lynx2.8.9rel.1/WWW/Library/Implementation/HTTP.c
+--- lynx2.8.9rel.1.orig/WWW/Library/Implementation/HTTP.c	2018-05-04 15:07:43.000000000 -0500
++++ lynx2.8.9rel.1/WWW/Library/Implementation/HTTP.c	2021-12-18 14:12:57.503796366 -0600
+@@ -761,6 +761,22 @@ static char *StripIpv6Brackets(char *hos
+     return host;
+ }
+ #endif
++/*
++ * Remove user/password, if any, from the given host-string.
++ */
++#ifdef USE_SSL
++static char *StripUserAuthents(char *host)
++{
++   char *p = strchr(host, '@');
++
++   if (p != NULL) {
++      char *q = host;
++
++      while ((*q++ = *++p) != '\0') ;
++   }
++   return host;
++}
++#endif
+ 
+ /*		Load Document from HTTP Server			HTLoadHTTP()
+  *		==============================
+@@ -957,6 +973,7 @@ static int HTLoadHTTP(const char *arg,
+ 	/* get host we're connecting to */
+ 	ssl_host = HTParse(url, "", PARSE_HOST);
+ 	ssl_host = StripIpv6Brackets(ssl_host);
++	ssl_host = StripUserAuthents(ssl_host);
+ #if defined(USE_GNUTLS_FUNCS)
+ 	ret = gnutls_server_name_set(handle->gnutls_state,
+ 				     GNUTLS_NAME_DNS,

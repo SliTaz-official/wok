@@ -6,14 +6,14 @@ CATEGORY="network"
 SHORT_DESC="Terminal-based text-only browser."
 MAINTAINER="samuel_trassare@yahoo.com"
 LICENSE="GPL2"
-WEB_SITE="https://lynx.browser.org/"
+WEB_SITE="https://lynx.invisible-island.net/"
 
 TARBALL="$PACKAGE${VERSION/rel/rel.}.tar.bz2"
 WGET_URL="https://invisible-mirror.net/archives/$PACKAGE/tarballs/$TARBALL"
 
 # Will require build dep libtirpc after glibc is upgraded to 2.14.
-DEPENDS="libssl ncurses zlib"
-BUILD_DEPENDS="ncurses-dev openssl-dev zlib-dev"
+DEPENDS="libssl ncursesw zlib"
+BUILD_DEPENDS="libtirpc ncursesw-dev openssl-dev zlib-dev patch"
 
 HOST_ARCH="i486 arm"
 
@@ -27,6 +27,9 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	# LFS security patch
+	patch -Np1 -i $stuff/lynx-2.8.9rel.1-security_fix-1.patch || return 1
+
 	./configure $CONFIGURE_ARGS	\
 		--sysconfdir=/etc	\
 		--mandir=/usr/share/man	\
@@ -36,8 +39,9 @@ compile_rules()
 		--with-ssl		\
 		--with-gnutls		\
 		--with-zlib		\
+		--with-screen=ncursesw	\
 		--with-nss-compat &&
-	make -j 1 && 
+	make && 
 	make install
 }
 
