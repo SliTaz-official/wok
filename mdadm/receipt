@@ -1,9 +1,9 @@
 # SliTaz package receipt.
 
 PACKAGE="mdadm"
-VERSION="4.1"
+VERSION="4.2"
 CATEGORY="system-tools"
-SHORT_DESC="Software RAID tools"
+SHORT_DESC="Software RAID tools."
 MAINTAINER="b1+slitaz@nagel.org"
 LICENSE="GPL2"
 WEB_SITE="https://www.kernel.org/pub/linux/utils/raid/mdadm/ANNOUNCE"
@@ -11,7 +11,7 @@ WEB_SITE="https://www.kernel.org/pub/linux/utils/raid/mdadm/ANNOUNCE"
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="https://www.kernel.org/pub/linux/utils/raid/mdadm/$TARBALL"
 
-BUILD_DEPENDS=""
+BUILD_DEPENDS="udev-dev"
 
 current_version()
 {
@@ -22,12 +22,14 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	make mdadm
+	export	CXFLAGS="-Wno-error=missing-field-initializers"
+
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
-	cp -a $src/mdadm $fs/usr/bin
+	cook_copy_folders	sbin
 }
