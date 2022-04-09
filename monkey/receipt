@@ -1,17 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="monkey"
-VERSION="1.5.6"
+VERSION="1.6.9"
 CATEGORY="network"
-SHORT_DESC="Lightweight HTTP server"
+SHORT_DESC="Lightweight HTTP server."
 MAINTAINER="necrophcodr@necrophcodr.me"
 LICENSE="APL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://monkey-project.com/"
-WGET_URL="$WEB_SITE/releases/${VERSION%.*}/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}releases/${VERSION%.*}/$TARBALL"
 
 DEPENDS=""
-BUILD_DEPENDS="findutils"
+BUILD_DEPENDS="cmake findutils"
 
 # What is the latest version available today?
 current_version()
@@ -23,22 +23,29 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --enable-shared --prefix=/usr --datadir=/var/www \
-	--pidfile=/var/run/monkey.pid --sysconfdir=/etc/monkey \
-	--disable-plugins=mbedtls --mandir=/usr/share/man \
-	--plugdir=/usr/share/monkey/plugins &&
+	./configure					\
+		--prefix=/usr				\
+		--webroot=/var/www			\
+		--sbindir=/usr/bin			\
+		--sysconfdir=/etc/monkey		\
+		--pidfile=monkey.pid			\
+		--default-user=www			\
+		--disable-plugins=mbedtls		\
+		--malloc-libc				\
+		--mandir=/usr/share/man	&&
 	make &&
-	make DESTDIR=$install install
+	make install DESTDIR=$install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr/
-	cp -a $install/usr/share $fs/usr/
-	cp -a $install/etc $fs/
-	cp -a $install/var $fs/
 	mkdir -p $fs/usr/share/monkey/samples
-	mv $fs/var/www/ $fs/usr/share/monkey/samples/htdocs
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $install/usr/share	$fs/usr
+	cp -a $install/etc		$fs
+	cp -a $install/var		$fs
+	mv $fs/var/www			$fs/usr/share/monkey/samples/htdocs
 }
