@@ -1,20 +1,21 @@
 # SliTaz package receipt.
 
 PACKAGE="modsecurity-apache"
-VERSION="2.9.3"
+VERSION="2.9.5"
 CATEGORY="network"
 SHORT_DESC="Web application firewall engine."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="Apache"
 WEB_SITE="https://www.modsecurity.org/"
+REPOLOGY="modsecurity"
 
 SOURCE="modsecurity"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WGET_URL="${WEB_SITE}tarball/$VERSION/$TARBALL"
+WGET_URL="https://github.com/SpiderLabs/ModSecurity/archive/refs/tags/v$VERSION.tar.gz"
 
 DEPENDS="apache apr apr-util curl libssl pcre util-linux-uuid zlib"
-BUILD_DEPENDS="apache-dev apr-dev apr-util-dev curl-dev libxml2-dev \
-	pcre-dev util-linux-uuid-dev"
+BUILD_DEPENDS="apache-dev apr-dev apr-util-dev automake curl-dev libtool
+	libxml2-dev pcre-dev util-linux-uuid-dev"
 
 # What is the latest version available today?
 current_version()
@@ -26,13 +27,16 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr $CONFIGURE_ARGS &&
-	make -j 1 &&
-	make DESTDIR=$DESTDIR install
+	./autogen.sh &&
+	./configure		\
+		--prefix=/usr	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
+	cp -a $install/*	$fs
 }
