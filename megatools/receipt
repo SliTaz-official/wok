@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="megatools"
-VERSION="1.9.96"
+VERSION="1.10.3"
 CATEGORY="network"
 SHORT_DESC="A collection of CLI programs for accessing Mega service."
 MAINTAINER="Lucas Levrel <llev@slitaz.org>"
 LICENSE="GPL2"
 WEB_SITE="https://megatools.megous.com"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$WEB_SITE/builds/$TARBALL"
 
-DEPENDS="glib libcurl openssl gmp"
-BUILD_DEPENDS="glib-dev curl-dev openssl-dev gmp-dev"
+DEPENDS="gcc83-lib-base glib libcurl openssl gmp"
+BUILD_DEPENDS="curl-dev gcc83 glib-dev gmp-dev libcurl openssl-dev"
 
 # What is the latest version available today?
 current_version()
@@ -23,14 +24,20 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure $CONFIGURE_ARGS --disable-static \
-	&& make && make install
+	# 1.10.3 unrecognised:
+	#	--disable-static
+
+	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		--disable-docs		\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
-	# upstream info: lib is deprecated; remove .h .pc .la
-	rm -r $fs/usr/share $fs/usr/lib/pkgconfig $fs/usr/lib/*a $fs/usr/include
+	cook_copy_folders	bin
 }
