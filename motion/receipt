@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="motion"
-VERSION="4.3.0"
+VERSION="4.4.0"
 CATEGORY="multimedia"
 SHORT_DESC="Monitors the video signal from cameras."
 MAINTAINER="pankso@slitaz.org"
@@ -12,8 +12,8 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/Motion-Project/$PACKAGE/archive/release-$VERSION.tar.gz"
 
 DEPENDS="ffmpeg jpeg libmicrohttpd libpthread-stubs libv4l"
-BUILD_DEPENDS="automake ffmpeg-dev jpeg-dev libmicrohttpd-dev libpthread-stubs \
-	libtool libv4l-dev"
+BUILD_DEPENDS="automake ffmpeg-dev jpeg-dev libatomic libmicrohttpd-dev
+	libpthread-stubs libtool libv4l-dev"
 
 current_version()
 {
@@ -24,12 +24,15 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's@<linux/videodev.h>@<libv4l1.h>\n#include <linux/videodev2.h>@' \
-		src/*.c \
-		src/*.h
+#	sed -i 's@<linux/videodev.h>@<libv4l1.h>\n#include <linux/videodev2.h>@' \
+#		src/*.c \
+#		src/*.h
 
 	autoreconf -fiv &&
-	./configure			\
+	./configure				\
+		CFLAGS="$CFLAGS -lvpx"		\
+		LDFLAGS="$LDFLAGS -latomic"	\
+		--disable-nls			\
 		--sysconfdir=/etc/motion &&
 	make &&
 	make install
