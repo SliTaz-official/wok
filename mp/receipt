@@ -1,15 +1,16 @@
 # SliTaz package receipt.
 
 PACKAGE="mp"
-VERSION="5.2.10"
+VERSION="5.58"
 CATEGORY="development"
-SHORT_DESC="A text editor for programmers"
+TAGS="text-editor"
+SHORT_DESC="A text editor for programmers."
 MAINTAINER="allan316@gmail.com"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://triptico.com/software/mp.html"
-WGET_URL="https://triptico.com/download/mp/$TARBALL"
-TAGS="text-editor"
+
+TARBALL="$PACKAGE-${VERSION%.*}.tar.gz"
+WGET_URL="https://triptico.com/download/$TARBALL"
 
 DEPENDS="gtk+"
 BUILD_DEPENDS="gtk+-dev"
@@ -26,17 +27,21 @@ compile_rules()
 {
 	mkdir -p $DESTDIR/usr/bin
 	# sed -i 's/TRY_DRIVERS()/(0)/' mp_core.c
-	./config.sh \
-		--prefix=/usr \
-		--without-qt4 \
-		$CONFIGURE_ARGS
-	make && make DESTDIR=$DESTDIR install
+	./config.sh		\
+		--prefix=/usr	\
+		--without-qt4	\
+		$CONFIGURE_ARGS &&
+	make -j 1 &&
+	make DESTDIR=$DESTDIR install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/mp-5 $fs/usr/share
+	mkdir -p $fs/usr/share/mp-5
+
+	cp -a $install/usr/bin		$fs/usr
+#	cp -a $install/usr/share/mp-5	$fs/usr/share
+	cp -a $src/mp_*.mpsl		$fs/usr/share/mp-5
+	cp -a $src/lang			$fs/usr/share/mp-5
 }
