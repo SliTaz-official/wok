@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="as"
+VERSION="1.41r8"
+CATEGORY="development"
+SHORT_DESC="Macro cross assembler for a variety of microprocessors and -controllers."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WEB_SITE="http://john.ccac.rwth-aachen.de:8000/as/"
+WGET_URL="http://john.ccac.rwth-aachen.de:8000/ftp/as/source/c_version/asl-$VERSION.tar.bz2"
+
+# What is the latest version available today?
+current_version()
+{
+	wget -O - http://john.ccac.rwth-aachen.de:8000/as/download.html 2>/dev/null | \
+	sed '/asl-[0-9]/!d;s|.*asl-||;s|.tar.*||;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed 's|/local||;s|m486|march=i486|' < Makefile.def-samples/Makefile.def-i386-unknown-linux2.x.x > Makefile.def
+	make
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	for i in asl plist pbind p2hex p2bin ; do
+		cp $src/$i $fs/usr/bin/$i
+	done
+}
+
