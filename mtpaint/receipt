@@ -1,19 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="mtpaint"
-VERSION="3.49.25"
-COMMIT="03b1b0938067b88d86d9f1b1088730f1934d411e"
+VERSION="3.50"
 CATEGORY="graphics"
 SHORT_DESC="Painting program to create pixel art and manipulate digital photos."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-WEB_SITE="http://mtpaint.sourceforge.net/"
+WEB_SITE="https://sourceforge.net/projects/mtpaint/"
 
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-#WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-WGET_URL="https://github.com/wjaguar/mtPaint/archive/$COMMIT.tar.gz"
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="gtk+ libpng lcms2"
+SUGGESTED="mtpaint-lang"
+DEPENDS="gtk+ lcms2 libpng"
 BUILD_DEPENDS="cairo-dev gtk+-dev lcms2-dev libpng-dev zlib-dev"
 
 #HOST_ARCH="i486 arm"
@@ -32,35 +31,37 @@ compile_rules()
 		$src/src/mainwindow.c
 
 	case "$ARCH" in
-		i?86)
+		(i?86)
 			export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries -lpng12"
 			./configure		\
 				--cpu=$ARCH	\
 				--prefix=/usr	\
-				intl nogif nojp2 ;;
-		arm*)
+				intl nogif nojp2
+			;;
+		(arm*)
 			# we need: arm-slitaz-linux-gnueabi-pkg-config
 			./configure \
 				--prefix=/usr \
 				--host=${HOST_SYSTEM} \
 				intl nogif
+			;;
 	esac &&
 	make &&
-	make DESTDIR=$install install
+	make install DESTDIR=$install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
+	mkdir -p $fs/etc/mtpaint
 	mkdir -p $fs/usr/share/applications
 	mkdir -p $fs/usr/share/pixmaps
-	mkdir -p $fs/etc/mtpaint
 	mkdir -p $fs/usr/share/thumbnailers
 
 	cp -a $install/usr/bin				$fs/usr
 	install -m755 -oroot -groot $stuff/mtpaint-doc	$fs/usr/bin
+	cp $stuff/mtpaintrc				$fs/etc/mtpaint
 	cp $stuff/*.desktop				$fs/usr/share/applications
 	cp $src/doc/mtpaint.png				$fs/usr/share/pixmaps
-	cp $stuff/mtpaintrc				$fs/etc/mtpaint
 	cp $stuff/mtpaint.thumbnailer			$fs/usr/share/thumbnailers
 }
