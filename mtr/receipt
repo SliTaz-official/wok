@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="mtr"
-VERSION="0.93"
+VERSION="0.95"
 CATEGORY="network"
 SHORT_DESC="My traceroute."
 MAINTAINER="paul@slitaz.org"
@@ -9,7 +9,7 @@ LICENSE="GPL2"
 WEB_SITE="https://www.bitwizard.nl/mtr/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="ftp://ftp.bitwizard.nl/mtr/$TARBALL"
+WGET_URL="https://github.com/traviscross/$PACKAGE/archive/v$VERSION/$PACKAGE-v$VERSION.tar.gz"
 
 DEPENDS="ncurses"
 BUILD_DEPENDS="autoconf automake linux-api-headers ncurses-dev"
@@ -24,22 +24,19 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-#	./bootstrap.sh
-
-	export LDFLAGS="$LDFLAGS -ltinfo"
-
-	./configure			\
-		--prefix=/usr		\
-		--without-gtk		\
-		--mandir=/usr/share/man	\
+	./bootstrap.sh &&
+	./configure				\
+		LDFLAGS="$LDFLAGS -ltinfo"	\
+		--prefix=/usr			\
+		--without-gtk			\
+		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/sbin	$fs/usr
+	cook_copy_folders	sbin
 }
