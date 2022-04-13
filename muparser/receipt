@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="muparser"
-VERSION="2.2.6.1"
+VERSION="2.3.3"
 CATEGORY="development"
 SHORT_DESC="A fast mathematical expression parser library."
 MAINTAINER="devl547@gmail.com"
@@ -9,10 +9,10 @@ LICENSE="MIT"
 WEB_SITE="https://beltoforion.de/en/muparser"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="https://github.com/beltoforion/$PACKAGE/archive/v$VERSION.tar.gz"
+WGET_URL="https://github.com/beltoforion/$PACKAGE/archive/v$VERSION-1.tar.gz"
 
-DEPENDS=""
-BUILD_DEPENDS="gcc83"
+DEPENDS="gcc83-lib-base"
+BUILD_DEPENDS="cmake gcc83"
 
 current_version()
 {
@@ -26,18 +26,18 @@ compile_rules()
 	export	CC=gcc-83
 	export	CXX=g++-83
 
-	./configure			\
-		--disable-samples	\
-		$CONFIGURE_ARGS &&
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..				\
+		-D ENABLE_OPENMP=OFF		\
+		-D ENABLE_SAMPLES=OFF		\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/
-
-	#cp -a $install/usr/bin	$fs/usr/
-	cp -a $install/usr/lib	$fs/usr/
+	cook_copy_folders	lib
 }
