@@ -7,8 +7,10 @@ SHORT_DESC="A Fortran 77 to C translator."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="MIT"
 TARBALL="$PACKAGE-$VERSION.tgz"
-WEB_SITE="http://www.netlib.org/f2c/"
-WGET_URL="${WEB_SITE}src.tgz"
+WEB_SITE="https://github.com/barak/f2c"
+WGET_URL="http://www.netlib.org/f2c/src.tgz"
+LIBF2C="http://www.netlib.org/f2c/libf2c.zip"
+EXTRA_SOURCE_FILES="${LIBF2C##*/}"
 TAGS="fortran"
 
 # What is the latest version available today?
@@ -21,14 +23,25 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	[ -s $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES ] ||
+		wget -P $SOURCES_REPOSITORY $LIBF2C
 	cp makefile.u makefile
 	make
+	unzip $SOURCES_REPOSITORY/$EXTRA_SOURCE_FILES -d libf2c
+	cd libf2c
+	sed 's|^CFLAGS.*|& -fPIC -DNON_UNIX_STDIO|' < makefile.u > makefile
+	make all libf2c.so
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $install/usr/man $fs/usr/bin
+	mkdir -p $install/usr/man $fs/usr/bin $fs/usr/lib $fs/usr/include
 	cp -a $src/f2c $fs/usr/bin
+	cp -a $src/libf2c/f2c.h $fs/usr/include
+	cp -a $src/libf2c/libf2c.a $fs/usr/lib
+	cp -a $src/libf2c/libf2c.so $fs/usr/lib/libf2c.so.1.0.0
+	ln -s libf2c.so.1.0.0 $fs/usr/lib/libf2c.so.1
+	ln -s libf2c.so.1.0.0 $fs/usr/lib/libf2c.so
 	cp -a $src/f2c.1t $install/usr/man/f2c.1
 }
