@@ -226,12 +226,12 @@ CheckName:
         popa                            ; restore ax, cx, si, di
 
         add     di, byte 32
-        cmp     di, bp
-        jne     FindNameCycle           ; next root entry
+        sub     bp, byte 32
+        jnz     FindNameCycle           ; next root entry
         popf                            ; restore carry="not last sector" flag
         jc      RootDirReadContinue     ; continue to the next root dir cluster
 FindNameFailed:                         ; end of root directory (dir end reached)
-;        mov     dx, [bx]                ; restore BIOS boot drive number
+        mov     dx, [bx]                ; restore BIOS boot drive number
         call    Error
         db      "File not found."
 FindNameFound:
@@ -242,16 +242,16 @@ FindNameFound:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         push    es
-        xor     bp, bp
 FileReadContinue:
         shr     bp, 4                   ; bytes to paragraphs
         mov     di, es
         add     di, bp                  ; adjust segment for next sector
         mov     es, di                  ; es:0 updated
-        call    ReadCluster             ; read one cluster of root dir
+        call    ReadCluster             ; read one more sector of the boot file
         sub     [bx+FileSize], ebp
         ja      FileReadContinue
         mov     dx, [bx]                ; restore BIOS boot drive number
+        xor     ax, ax
         pop     bp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -312,7 +312,6 @@ Run:
         push    di
         push    ds
         pop     es
-        xor     ax, ax
         mov     [80h], ax               ; clear cmdline
         dec     ax                      ; both FCB in the PSP don't have a valid drive identifier
 
@@ -391,8 +390,6 @@ ReadSectorC:
 ;;         EBP     = bytes/sector    ;;
 ;;         ES:0   -> next address    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-ReadSector:
 
         xor     ebp, ebp
         inc     bp

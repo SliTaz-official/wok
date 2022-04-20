@@ -256,6 +256,7 @@ FileReadContinue:
 
         sub     di, bp
         jae     FileReadContinue
+        xor     ax, ax
         pop     bp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -316,7 +317,6 @@ Run:
         push    di
         push    ds
         pop     es
-        xor     ax, ax
         mov     [80h], ax               ; clear cmdline
         dec     ax                      ; both FCB in the PSP don't have a valid drive identifier
 
