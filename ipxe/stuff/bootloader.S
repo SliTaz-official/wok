@@ -20,6 +20,7 @@ _start:
 /* some extra features */
 #define EXE_SUPPORT		real mode dos .exe file support	+208/264
 #define  CMDLINE		dos kernel cmdline support	+45
+#define  BUGGY_CMDLINE		verify cmdline length		+2
 #define  VCPI			VCPI 4.0 support (386+)		+109
 #define  SHUTDOWNDOS		shutdown DOS services		+29
 
@@ -28,7 +29,7 @@ _start:
 //#define FLOPPY_HAS_2_SIDES	hardcoded heads count to 2	-15
 //#define NO_CMDLINE_SHRINK	remove heading spaces ?		-6-21
 //#define  NO_CMDLINE_FILE	remove @cmdline file support ?	-21
-//#define NO_DOTS		show progression dots ?		-5
+#define NO_DOTS			show progression dots ?		-5
 #ifndef BZIMAGE
 //#define TINY_ZIMAGE		system < 64Kb ?			-11
 //#define NO_MINSETUP		default setup (dos only) ?	-4
@@ -356,7 +357,12 @@ comstart:
 	lodsb
 	cbw
 	xchgw	%ax, %cx
+#ifdef BUGGY_CMDLINE
+	test	%cl, %cl		# C=O=0, set S & Z
+	jng	nocmdline		# Z == 1 or O != S ?
+#else
 	jcxz	nocmdline
+#endif
 # if defined(BZIMAGE) && BZIMAGE >= 0x202
 	movw	$INITSEG/16+stacktop/256, EXEADRS(cmd_line_ptr+1)
 # else

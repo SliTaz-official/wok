@@ -20,12 +20,13 @@ _start:
 /* some extra features */
 #define EXE_SUPPORT		real mode dos .exe file support	+208/264
 #define  CMDLINE		dos kernel cmdline support	+45
+#define  BUGGY_CMDLINE		verify cmdline length		+2
 #define  VCPI			VCPI 4.0 support (386+)		+109
 #define  SHUTDOWNDOS		shutdown DOS services		+29
 
 /* some contraints to reduce the code size */
 //#define FLOPPY_1440K_ONLY	1.44M floppies support only	-26
-#define FLOPPY_HAS_2_SIDES	hardcoded heads count to 2	-15
+//#define FLOPPY_HAS_2_SIDES	hardcoded heads count to 2	-15
 //#define NO_CMDLINE_SHRINK	remove heading spaces ?		-6-21
 //#define  NO_CMDLINE_FILE	remove @cmdline file support ?	-21
 //#define NO_DOTS		show progression dots ?		-5
@@ -313,8 +314,8 @@ forward:
 #else
 	subw	%ax, %bx
 	jnc	forward
+	//movw	$0x8FFF, %ax
 	movb	$0x90, %ah
-	;decw	%ax
 forward:
 	movw	%ax, %es
 	movw	%ax, %di
@@ -356,7 +357,12 @@ comstart:
 	lodsb
 	cbw
 	xchgw	%ax, %cx
+#ifdef BUGGY_CMDLINE
+	test	%cl, %cl		# C=O=0, set S & Z
+	jng	nocmdline		# Z == 1 or O != S ?
+#else
 	jcxz	nocmdline
+#endif
 # if defined(BZIMAGE) && BZIMAGE >= 0x202
 	movw	$INITSEG/16+stacktop/256, EXEADRS(cmd_line_ptr+1)
 # else

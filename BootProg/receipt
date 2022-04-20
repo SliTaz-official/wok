@@ -8,20 +8,17 @@ MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="MIT"
 WEB_SITE="https://wiki.osdev.org/BootProg"
 
-BUILD_DEPENDS="nasm"
+BUILD_DEPENDS="nasm lzma"
 
 # Rules to configure and make the package.
 compile_rules()
 {
 	mkdir -p $src && cd $src
-	for i in bootex boot16 boot32 ; do
-		cp $stuff/$i.asm .
-		nasm $i.asm -f bin -o $i.bin -l $i.lst
-	done
 	sed '1,/^exit 1/!d' $stuff/bootprog.sh > bootprog
-	tar czf - boot16.bin boot32.bin bootex.bin > set.tar.gz
-	[ "$(which advdef)" ] && advdef -z4 set.tar.gz
-	cat set.tar.gz >> bootprog
+	for i in boot16 boot32 bootex ; do
+		cp $stuff/$i.asm .
+		nasm $i.asm -f bin -o $i.bin -l $i.lst && cat $i.bin
+	done | lzma -9 >> bootprog
 	chmod +x bootprog
 }
 

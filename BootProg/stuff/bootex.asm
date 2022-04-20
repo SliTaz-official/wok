@@ -160,7 +160,7 @@ start:
 ;;;;;;;;;;;;;;;;;;;;;;
 
         push    es
-        push    byte main
+        push    word main
         retf
 
 main:
@@ -173,7 +173,7 @@ main:
         mov     esi, [bx(bpbRootDirCluster)] ; esi=cluster # of root dir
 
         push    byte ImageLoadSeg
-        pop     es
+        pop     es                      ; cx = 0
 
 RootDirReadContinue:
         call    ReadCluster             ; read one sector of root dir
@@ -207,11 +207,10 @@ FindNameCycle:
         cmp     al, 0c0h                ; EXFAT_ENTRY_FILE_INFO ?
         jne     NotFileInfo
 
-        mov     bl, 30
+        mov     bl, 31
 CopyInfo:
-        mov     ax, [es:di+bx]
-        mov     [bx], ax
-        dec     bx
+        mov     al, [es:di+bx]
+        mov     [bx], al
         dec     bx
         jnz     CopyInfo
 
@@ -232,6 +231,7 @@ CheckName:
         popf                            ; restore carry="not last sector" flag
         jc      RootDirReadContinue     ; continue to the next root dir cluster
 FindNameFailed:                         ; end of root directory (dir end reached)
+;        mov     dx, [bx]                ; restore BIOS boot drive number
         call    Error
         db      "File not found."
 FindNameFound:
@@ -251,6 +251,7 @@ FileReadContinue:
         call    ReadCluster             ; read one cluster of root dir
         sub     [bx+FileSize], ebp
         ja      FileReadContinue
+        mov     dx, [bx]                ; restore BIOS boot drive number
         pop     bp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -260,7 +261,6 @@ FileReadContinue:
         mov     ds, bp                  ; bp=ds=seg the file is loaded to
 
         add     bp, [bx+08h]            ; bp = image base
-        mov     ax, [bx+06h]            ; ax = reloc items
         mov     di, [bx+18h]            ; di = reloc table pointer
 
         cmp     word [bx], 5A4Dh        ; "MZ" signature?
@@ -270,9 +270,9 @@ FileReadContinue:
 ;; Setup and run a .COM program ;;
 ;; Set CS=DS=ES=SS SP=0 IP=100h ;;
 ;; AX=0ffffh BX=0 CX=0 DX=drive ;;
+;; and cmdline=void             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-        mov     ax, 0ffffh              ; both FCB in the PSP don't have a valid drive identifier
         mov     di, 100h                ; ip
         mov     bp, ImageLoadSeg-10h    ; "org 100h" stuff :)
         mov     ss, bp
@@ -284,7 +284,7 @@ FileReadContinue:
 ;; Relocate, setup and run a .EXE program     ;;
 ;; Set CS:IP, SS:SP, DS, ES and AX according  ;;
 ;; to wiki.osdev.org/MZ#Initial_Program_State ;;
-;; AX=0ffffh BX=0 CX=0 DX=drive               ;;
+;; AX=0ffffh BX=0 CX=0 DX=drive cmdline=void  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReloCycle:
@@ -295,13 +295,11 @@ ReloCycle:
         scasw                           ; point to next entry
 
 RelocateEXE:
-        dec     ax                      ; 32768 max (128KB table)
-        jns     ReloCycle               ; leave with ax=0ffffh: both FCB in the
-                                        ; PSP don't have a valid drive identifier
-        les     si, [bx+0Eh]
-        add     si, bp
-        mov     ss, si                  ; ss for EXE
-        mov     sp, es                  ; sp for EXE
+        dec     word [bx+06h]           ; reloc items, 32768 max (128KB table)
+        jns     ReloCycle
+
+        add     [bx+0Eh], bp
+        lss     sp, [bx+0Eh]            ; ss:sp for EXE
 
         lea     si, [bp-10h]            ; ds and es both point to the segment
         push    si                      ; containing the PSP structure
@@ -314,6 +312,9 @@ Run:
         push    di
         push    ds
         pop     es
+        xor     ax, ax
+        mov     [80h], ax               ; clear cmdline
+        dec     ax                      ; both FCB in the PSP don't have a valid drive identifier
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Set the magic numbers so the program knows that it   ;;
@@ -411,7 +412,7 @@ ReadSector:
 ReadSectorRetry:        
         mov     si, sp
         mov     ah, 42h                 ; ah = 42h = extended read function no.
-        mov     dl, [bx]
+        mov     dx, [bx]                ; restore BIOS boot drive number
         int     13h                     ; extended read sectors (DL, DS:SI)
 
         jnc     ReadSuccess
@@ -434,8 +435,13 @@ ReadSuccess:
 
         cmp     esi, byte -10           ; carry=0 if last cluster, and carry=1 otherwise
 ReadSectorNext:
-        mov     dl, [bx]                ; restore BIOS boot drive number
         ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Fill free space with zeroes ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+                times (512-13-20-($-$$)) db 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Error Messaging Code ;;
@@ -459,12 +465,6 @@ PutStr:
 Stop:
         hlt
         jmp     short Stop
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Fill free space with zeroes ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-                times (512-13-($-$$)) db 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Name of the file to load and run ;;

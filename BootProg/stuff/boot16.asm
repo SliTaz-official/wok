@@ -213,14 +213,14 @@ BadParams:
         mul     bx                      ; dx:ax = 0 = LBA (LBA are relative to FAT)
         mov     cx, word [bx(bpbSectorsPerFAT)]
 
-        call    ReadCXSectors           ; read fat and clear cx
+        call    ReadCXSectors           ; read fat and clear ax & cx
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; load the root directory in ;;
 ;; its entirety (16KB max)    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-        mov     ax, 32
+        mov     al, 32
 
         mul     word [bx(bpbRootEntries)]
         div     word [bx(bpbBytesPerSector)]
@@ -230,7 +230,7 @@ BadParams:
         mul     bp                      ; [bx(bpbSectorsPerFAT)], set by ReadCXSectors
 
         push    es
-        call    ReadCXSectors           ; read root directory, clear cx and di
+        call    ReadCXSectors           ; read root directory; clear ax, cx and di
         pop     es
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -248,15 +248,15 @@ BadParams:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 FindNameCycle:
-        cmp     byte [es:di], ch
-        je      FindNameFailed          ; end of root directory (NULL entry found)
         push    di
         mov     cl, 11
         mov     si, ProgramName         ; ds:si -> program name
         repe    cmpsb
         pop     di
         je      FindNameFound
-        add     di, byte 32
+        scasb
+        je      FindNameFailed          ; end of root directory (NULL entry found)
+        add     di, byte 31
         dec     word [bx(bpbRootEntries)]
         jnz     FindNameCycle           ; next root entry
 
@@ -298,28 +298,26 @@ ClusterLoop:
         jnc     First64
         mov     ah, (1000h+ImageLoadSeg)>>8 ; adjust segment for 2nd part of FAT16
 First64:
+        mov     dx, 0FFF8h
+
         cmp     [bx(bpbSectorsPerFAT)], cx ; 1..12 = FAT12, 16..256 = FAT16
         mov     ds, ax
-        jbe     ReadClusterFat12
+        ja      ReadClusterFat16
 
-        lodsw                           ; ax = next cluster
-        cmp     ax, 0FFF8h
-        jmp     short	ReadClusterDone
-
-ReadClusterFat12:
+        mov     dh, 0Fh
         add     si, [cs:di]
         shr     si, 1                   ; si = cluster * 3 / 2
 
+ReadClusterFat16:
         lodsw                           ; ax = next cluster
         jnc     ReadClusterEven
 
         rol     ax, cl
 
 ReadClusterEven:
-        and     ax, 0FFFh               ; mask cluster value
-        cmp     ax, 0FF8h
+        and     ah, dh                  ; mask cluster value
+        cmp     ax, dx
 
-ReadClusterDone:
         push    cs
         pop     ds
         inc     di
@@ -352,7 +350,7 @@ ReadClusters:
         add     ax, bp                  ; LBA for cluster data
         adc     dx, bx                  ; dx:ax = LBA
 
-        call    ReadSector              ; clear cx
+        call    ReadSector              ; clear ax & cx, restore dx
 
         jne     ReadClusters
 
@@ -365,7 +363,6 @@ ReadClusters:
         mov     ds, bp                  ; bp=ds=seg the file is loaded to
 
         add     bp, [bx+08h]            ; bp = image base
-        mov     ax, [bx+06h]            ; ax = reloc items
         mov     di, [bx+18h]            ; di = reloc table pointer
 
         cmp     word [bx], 5A4Dh        ; "MZ" signature?
@@ -374,19 +371,22 @@ ReadClusters:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Setup and run a .COM program ;;
 ;; Set CS=DS=ES=SS SP=0 IP=100h ;;
+;; AX=0ffffh BX=0 CX=0 DX=drive ;;
+;; and cmdline=void             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+        mov     di, 100h                ; ip
         mov     bp, ImageLoadSeg-10h    ; "org 100h" stuff :)
         mov     ss, bp
         xor     sp, sp
         push    bp                      ; cs, ds and es
-        mov     bh, 1                   ; ip
         jmp     short Run
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Relocate, setup and run a .EXE program     ;;
 ;; Set CS:IP, SS:SP, DS, ES and AX according  ;;
 ;; to wiki.osdev.org/MZ#Initial_Program_State ;;
+;; AX=0ffffh BX=0 CX=0 DX=drive cmdline=void  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReloCycle:
@@ -397,8 +397,8 @@ ReloCycle:
         scasw                           ; point to next entry
 
 RelocateEXE:
-        dec     ax                      ; 32768 max (128KB table)
-        jns     ReloCycle               ; leave with ax=0ffffh: both FCB in the
+        dec     word [bx+06h]           ; reloc items, 32768 max (128KB table)
+        jns     ReloCycle
                                         ; PSP don't have a valid drive identifier
         les     si, [bx+0Eh]
         add     si, bp
@@ -409,13 +409,15 @@ RelocateEXE:
         push    si                      ; containing the PSP structure
 
         add     bp, [bx+16h]            ; cs for EXE
-        mov     bx, [bx+14h]            ; ip for EXE
+        mov     di, [bx+14h]            ; ip for EXE
 Run:
         pop     ds
         push    bp
-        push    bx
+        push    di
         push    ds
         pop     es
+        mov     [80h], ax               ; clear cmdline
+        dec     ax                      ; both FCB in the PSP don't have a valid drive identifier
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Set the magic numbers so the program knows that it   ;;
@@ -539,9 +541,16 @@ ReadSectorNextSegment:
         dec     di                      ; keep C
         loopne  ReadSectorNext          ; until cluster sector count or file sector count is reached
         pop     si
+        mov     ax, bx                  ; clear ax
         mov     dx, [bx]                ; pass the BIOS boot drive to Run or Error
 
         ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Fill free space with zeroes ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+                times (512-13-20-($-$$)) db 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Error Messaging Code ;;
@@ -565,12 +574,6 @@ PutStr:
 Stop:
         hlt
         jmp     short Stop
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Fill free space with zeroes ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-                times (512-13-($-$$)) db 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Name of the file to load and run ;;

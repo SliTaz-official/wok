@@ -20,6 +20,7 @@ _start:
 /* some extra features */
 #define EXE_SUPPORT		real mode dos .exe file support	+208/264
 #define  CMDLINE		dos kernel cmdline support	+45
+#define  BUGGY_CMDLINE		verify cmdline length		+2
 #define  VCPI			VCPI 4.0 support (386+)		+109
 #define  SHUTDOWNDOS		shutdown DOS services		+29
 
@@ -356,7 +357,12 @@ comstart:
 	lodsb
 	cbw
 	xchgw	%ax, %cx
+#ifdef BUGGY_CMDLINE
+	test	%cl, %cl		# C=O=0, set S & Z
+	jng	nocmdline		# Z == 1 or O != S ?
+#else
 	jcxz	nocmdline
+#endif
 # if defined(BZIMAGE) && BZIMAGE >= 0x202
 	movw	$INITSEG/16+stacktop/256, EXEADRS(cmd_line_ptr+1)
 # else
