@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="nagios"
-VERSION="4.4.6"
+VERSION="4.4.7"
 CATEGORY="network"
 SHORT_DESC="Host and network monitoring."
 MAINTAINER="erjo@slitaz.org"
@@ -13,7 +13,7 @@ WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
 SUGGESTED="nagios-nrpe"
 DEPENDS="apache libjpeg libltdl libpng nagios-plugins"
-BUILD_DEPENDS="jpeg-dev libgd-dev libpng-dev libtool procps unzip"
+BUILD_DEPENDS="jpeg-dev libgd-dev libpng-dev libtool openssl-dev procps unzip"
 # busybox ps and unzip do not supply the required options
 
 # What is the latest version available today?
@@ -29,13 +29,13 @@ current_version()
 compile_rules()
 {
 	while read patch_file
-	 do
+	  do
 		if [ ! -f done.$patch_file ]
 		  then
 			patch -p1 < $stuff/$patch_file || return 1
 			touch done.$patch_file
 		fi
-	 done <<EOT
+	  done <<EOT
 $PACKAGE-Makefiles.u
 EOT
 
@@ -54,8 +54,9 @@ EOT
 		--datadir=/usr/share/nagios				\
 		--localstatedir=/var/lib/nagios				\
 		$CONFIGURE_ARGS 
-		
-	sed -i s!HTMLDIR=.*!HTMLDIR=/usr/share/nagios! html/Makefile
+
+	# 4.4.7 not required
+#	sed -i s!HTMLDIR=.*!HTMLDIR=/usr/share/nagios! html/Makefile
 	
 	#~ make all && make DESTDIR=$DESTDIR fullinstall \
 	#~ && make DESTDIR=$DESTDIR install-config
@@ -70,12 +71,13 @@ EOT
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/init.d
+	mkdir -p $fs/etc/apache
+	mkdir -p $fs/etc/init.d
+	mkdir -p $fs/usr
 	mkdir -p $fs/var/lib/nagios/rw
 	mkdir -p $fs/var/log/nagios
 	mkdir -p $fs/var/spool/nagios/checkresults
-	mkdir -p $fs/etc/apache
-		
+
 	cp -a $install/etc/apache	$fs/etc
 	cp -a $install/etc/nagios	$fs/etc
 	cp -a $stuff/nagios		$fs/etc/init.d
@@ -101,7 +103,7 @@ post_install()
 {
 	if ! grep -q nagios "$1/etc/passwd"
 	  then
-		echo -n "Adding user/group nagios..."
+		echo -n "Adding user and group nagios..."
 		chroot "$1/" addgroup -S nagios
 		chroot "$1/" adduser -S -D -H -G nagios nagios
 		status
@@ -125,7 +127,7 @@ post_install()
 	echo -e "\nTo start $PACKAGE server you can run :\n"
 	echo "/etc/init.d/$PACKAGE start"
 	echo -e "Or add $PACKAGE to RUN_DAEMONS in /etc/rcS.conf\n"
-	echo -e "Default login/password for the Web GUI is nagiosadmin/nagios"
+	echo -e "Default user and password for the Web GUI is nagiosadmin and nagios"
 }
 
 pre_remove()
