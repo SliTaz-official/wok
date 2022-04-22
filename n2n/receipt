@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="n2n"
-VERSION="2.4"
+VERSION="3.0"
 CATEGORY="network"
 SHORT_DESC="A Layer Two Peer-to-Peer VPN."
 MAINTAINER="pascal.bellard@slitaz.org"
@@ -12,7 +12,7 @@ TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/ntop/$PACKAGE/archive/$VERSION.tar.gz"
 
 DEPENDS=""
-BUILD_DEPENDS="openssl-dev"
+BUILD_DEPENDS="automake libcap-dev openssl-dev"
 
 current_version()
 {
@@ -23,15 +23,14 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	make PREFIX=/usr &&
-	make DESTDIR=$DESTDIR install
+	./autogen.sh &&
+	./configure --prefix=/usr &&
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-
-#	cp -a $install/usr/bin	$fs/usr
-	cp -a $install/usr/sbin	$fs/usr
+	cook_copy_folders	sbin
 }
