@@ -64,12 +64,12 @@
 ;;                                                                          ;;
 ;;                   Boot Image Startup (register values):                  ;;
 ;;                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                  ;;
-;;  dl = BIOS boot drive number (e.g. 0, 80H)                               ;;
+;;  ax = 0ffffh (both FCB in the PSP don't have a valid drive identifier),  ;;
+;;  bx = cx = 0, dl = BIOS boot drive number (e.g. 0, 80H)                  ;;
 ;;  cs:ip = program entry point                                             ;;
 ;;  ss:sp = program stack (don't confuse with boot sector's stack)          ;;
 ;;  COM program defaults: cs = ds = es = ss = 50h, sp = 0, ip = 100h        ;;
 ;;  EXE program defaults: ds = es = EXE data - 10h (fake MS-DOS psp),       ;;
-;;  ax = 0ffffh (both FCB in the PSP don't have a valid drive identifier),  ;;
 ;;  cs:ip and ss:sp depends on EXE header                                   ;;
 ;;  Magic numbers:                                                          ;;
 ;;    si = 16381 (prime number 2**14-3)                                     ;;
@@ -78,6 +78,7 @@
 ;;  The magic numbers let the program know whether it has been loaded by    ;;
 ;;  this boot sector or by MS-DOS, which may be handy for universal, bare-  ;;
 ;;  metal and MS-DOS programs.                                              ;;
+;;  The command line contains no arguments.                                 ;;
 ;;                                                                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -213,7 +214,7 @@ BadParams:
         mul     bx                      ; dx:ax = 0 = LBA (LBA are relative to FAT)
         mov     cx, word [bx(bpbSectorsPerFAT)]
 
-        call    ReadCXSectors           ; read fat and clear ax & cx
+        call    ReadCXSectors           ; read fat and clear ax & cx; bp = SectorsPerFAT
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; load the root directory in ;;
@@ -230,7 +231,7 @@ BadParams:
         mul     bp                      ; [bx(bpbSectorsPerFAT)], set by ReadCXSectors
 
         push    es
-        call    ReadCXSectors           ; read root directory; clear ax, cx and di
+        call    ReadCXSectors           ; read root directory; clear ax, cx & di; bp = first data sector
         pop     es
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -334,6 +335,7 @@ ReadClusterEven:
 ;;         SI = cluster list ;;
 ;;         DI = file sectors ;;
 ;;         CH = 0            ;;
+;;         BP = 1st data sec ;;
 ;; Output: BP:0 -> buffer    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

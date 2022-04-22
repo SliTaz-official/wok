@@ -58,12 +58,12 @@
 ;;                                                                          ;;
 ;;                   Boot Image Startup (register values):                  ;;
 ;;                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                  ;;
-;;  dl = BIOS boot drive number (e.g. 80H)                                  ;;
+;;  ax = 0ffffh (both FCB in the PSP don't have a valid drive identifier),  ;;
+;;  bx = cx = 0, dl = BIOS boot drive number (e.g. 0, 80H)                  ;;
 ;;  cs:ip = program entry point                                             ;;
 ;;  ss:sp = program stack (don't confuse with boot sector's stack)          ;;
 ;;  COM program defaults: cs = ds = es = ss = 50h, sp = 0, ip = 100h        ;;
 ;;  EXE program defaults: ds = es = EXE data - 10h (fake MS-DOS psp),       ;;
-;;  ax = 0ffffh (both FCB in the PSP don't have a valid drive identifier),  ;;
 ;;  cs:ip and ss:sp depends on EXE header                                   ;;
 ;;  Magic numbers:                                                          ;;
 ;;    si = 16381 (prime number 2**14-3)                                     ;;
@@ -72,6 +72,7 @@
 ;;  The magic numbers let the program know whether it has been loaded by    ;;
 ;;  this boot sector or by MS-DOS, which may be handy for universal, bare-  ;;
 ;;  metal and MS-DOS programs.                                              ;;
+;;  The command line contains no arguments.                                 ;;
 ;;                                                                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -226,8 +227,8 @@ CheckName:
         popa                            ; restore ax, cx, si, di
 
         add     di, byte 32
-        sub     bp, byte 32
-        jnz     FindNameCycle           ; next root entry
+        cmp     di, bp
+        jne     FindNameCycle           ; next root entry
         popf                            ; restore carry="not last sector" flag
         jc      RootDirReadContinue     ; continue to the next root dir cluster
 FindNameFailed:                         ; end of root directory (dir end reached)
@@ -242,6 +243,7 @@ FindNameFound:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         push    es
+        xor     bp, bp
 FileReadContinue:
         shr     bp, 4                   ; bytes to paragraphs
         mov     di, es
@@ -298,8 +300,10 @@ RelocateEXE:
         dec     word [bx+06h]           ; reloc items, 32768 max (128KB table)
         jns     ReloCycle
 
-        add     [bx+0Eh], bp
-        lss     sp, [bx+0Eh]            ; ss:sp for EXE
+        les     si, [bx+0Eh]
+        add     si, bp
+        mov     ss, si                  ; ss for EXE
+        mov     sp, es                  ; sp for EXE
 
         lea     si, [bp-10h]            ; ds and es both point to the segment
         push    si                      ; containing the PSP structure
@@ -344,16 +348,16 @@ Run:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReadCluster:
-        inc     cx                              ; jcxnz
         add     eax, byte 1
+
+        inc     cx                              ; jcxnz
         loop    ReadSectorC
 
+        mul     ebx                             ; edx:eax = 0
         mov     cl, [bx(bpbSectorSizeBits)]
         dec     cx
-        dec     cx
-        mul     ebx                             ; edx:eax = 0
-        inc     ax
-        shl     eax, cl                         ; eax=# of exFAT entries per sector
+        stc
+        rcl     eax, cl                         ; eax=# of exFAT entries per sector
         lea     edi, [esi-2]                    ; edi=cluster #-2
         xchg    eax, esi
         div     esi                             ; eax=FAT sector #, edx=entry # in sector
@@ -404,8 +408,7 @@ ReadSectorC:
         push    es
         push    bx
         push    bp                      ; sector count word = 1
-        mov     cx, 16
-        push    cx                      ; packet size byte = 16, reserved byte = 0
+        push    byte 16                 ; packet size byte = 16, reserved byte = 0
 ReadSectorRetry:        
         mov     si, sp
         mov     ah, 42h                 ; ah = 42h = extended read function no.
@@ -416,7 +419,7 @@ ReadSectorRetry:
 
         xor     ax, ax
         int     13h                     ; reset drive (DL)
-        loop    ReadSectorRetry
+        loop    ReadSectorRetry         ; sector count retries (8 .. 65536)
 
         call    Error
         db      "Read error."

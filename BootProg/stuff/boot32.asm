@@ -59,12 +59,12 @@
 ;;                                                                          ;;
 ;;                   Boot Image Startup (register values):                  ;;
 ;;                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                  ;;
-;;  dl = BIOS boot drive number (e.g. 80H)                                  ;;
+;;  ax = 0ffffh (both FCB in the PSP don't have a valid drive identifier),  ;;
+;;  bx = cx = 0, dl = BIOS boot drive number (e.g. 0, 80H)                  ;;
 ;;  cs:ip = program entry point                                             ;;
 ;;  ss:sp = program stack (don't confuse with boot sector's stack)          ;;
 ;;  COM program defaults: cs = ds = es = ss = 50h, sp = 0, ip = 100h        ;;
 ;;  EXE program defaults: ds = es = EXE data - 10h (fake MS-DOS psp),       ;;
-;;  ax = 0ffffh (both FCB in the PSP don't have a valid drive identifier),  ;;
 ;;  cs:ip and ss:sp depends on EXE header                                   ;;
 ;;  Magic numbers:                                                          ;;
 ;;    si = 16381 (prime number 2**14-3)                                     ;;
@@ -73,6 +73,7 @@
 ;;  The magic numbers let the program know whether it has been loaded by    ;;
 ;;  this boot sector or by MS-DOS, which may be handy for universal, bare-  ;;
 ;;  metal and MS-DOS programs.                                              ;;
+;;  The command line contains no arguments.                                 ;;
 ;;                                                                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -303,8 +304,10 @@ RelocateEXE:
         dec     word [bx+06h]           ; reloc items, 32768 max (128KB table)
         jns     ReloCycle
 
-        add     [bx+0Eh], bp
-        lss     sp, [bx+0Eh]            ; ss:sp for EXE
+        les     si, [bx+0Eh]
+        add     si, bp
+        mov     ss, si                  ; ss for EXE
+        mov     sp, es                  ; sp for EXE
 
         lea     si, [bp-10h]            ; ds and es both point to the segment
         push    si                      ; containing the PSP structure
@@ -336,7 +339,7 @@ Run:
 ReadCluster:
         mov     bp, [bx(bpbBytesPerSector)]
         shr     bp, 4                           ; bp = paragraphs per sector
-        add     eax, byte 1             ; adjust LBA for next sector
+        add     eax, byte 1                     ; adjust LBA for next sector
         inc     cx
         loop    ReadSectorLBA
 
@@ -349,7 +352,7 @@ ReadCluster:
 ;;         BP -> para / sector  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-        imul    ax, bp, byte 2                  ; ax=# of FAT32 entries per sector
+        imul    ax, bp, byte 4                  ; ax=# of FAT32 entries per sector
         cwde
         lea     edi, [esi-2]                    ; esi=cluster #
         xchg    eax, esi
@@ -369,7 +372,7 @@ ReadCluster:
 
         xchg    eax, edi
         movzx   ecx, byte [bx(bpbSectorsPerCluster)]
-        mul     ecx				; edx:eax=sector number in data area
+        mul     ecx                             ; edx:eax=sector number in data area
 
         add     eax, edi
         adc     word [bx(HiLBA)], dx
@@ -408,7 +411,7 @@ ReadSectorLBARetry:
         int     13h                     ; extended read sectors (DL, DS:SI)
         jnc     ReadSuccess             ; CF = 0 if no error
 
-        cbw                             ; ah = 0 = reset function
+        xor     ax, ax                  ; ah = 0 = reset function
         int     13h                     ; reset drive (DL)
 
         dec     bp
