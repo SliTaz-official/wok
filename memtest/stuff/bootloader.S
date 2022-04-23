@@ -23,13 +23,14 @@ _start:
 #define  BUGGY_CMDLINE		verify cmdline length		+2
 #define  VCPI			VCPI 4.0 support (386+)		+109
 #define  SHUTDOWNDOS		shutdown DOS services		+29
+#define   CHK_DOS_INT19		do not trace bios		+12/13
 
 /* some contraints to reduce the code size */
 //#define FLOPPY_1440K_ONLY	1.44M floppies support only	-26
 //#define FLOPPY_HAS_2_SIDES	hardcoded heads count to 2	-15
 //#define NO_CMDLINE_SHRINK	remove heading spaces ?		-6-21
 //#define  NO_CMDLINE_FILE	remove @cmdline file support ?	-21
-//#define NO_DOTS		show progression dots ?		-5
+#define NO_DOTS			show progression dots ?		-5
 #ifndef BZIMAGE
 //#define TINY_ZIMAGE		system < 64Kb ?			-11
 //#define NO_MINSETUP		default setup (dos only) ?	-4
@@ -74,6 +75,16 @@ SETUPSEG	= 0x9020
 #ifdef ONLY8086
 	xorw	%si, %si
 	movw	%si, %ds
+# ifdef CHK_DOS_INT19
+	cmpb	$0xF0, 4*0x19+3(%si)
+	jne	stepit
+	popaw
+	pushw	%es
+	movw	$movesys, %si
+	pushw	%si
+	retf
+stepit:
+# endif
 	pushw	4+2(%si)
 	pushw	4(%si)
 	movw	$step19, 4(%si)
@@ -82,6 +93,15 @@ SETUPSEG	= 0x9020
 	pushl	$4
 	popw	%si
 	popw	%ds
+# ifdef CHK_DOS_INT19
+	cmpb	$0xF0, 4*0x19+3-4(%si)
+	jne	stepit
+	popaw
+	pushw	%es
+	pushw	$movesys
+	retf
+stepit:
+# endif
 	pushl	(%si)
 	movl	$step19+(INITSEG<<16), (%si)
 #endif
@@ -90,7 +110,11 @@ SETUPSEG	= 0x9020
 	incb	%ah			# set TF
 	pushw	%ax
 	popfw
+#ifdef ONLY8086
+	ljmp	*4*0x19(%si)
+#else
 	ljmp	*4*0x19-4(%si)
+#endif
 .endm
 
 stacktop	= 0x9E00		# in 0x8000 .. 0xA000
@@ -442,7 +466,6 @@ isrm:
 # ifdef SHUTDOWNDOS
 	trace_int19
 # else
-	lssw	%cs:EXEADRS(saved_ss_sp),%sp	
 	popaw
 	retf
 # endif
@@ -649,10 +672,6 @@ idt_lim:
 	.word	0x03FF
 idt_base:
 	.long	0
-# ifndef SHUTDOWNDOS
-saved_ss_sp:
-	.word	stacktop-4-16-4,INITSEG
-# endif
 #endif
 #ifdef ELKS
 	.org	0x1E3

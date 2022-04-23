@@ -169,7 +169,7 @@ main:
         pop     ds
 
         xor     ebx, ebx
-        mov     [bx], dx                ; store BIOS boot drive number
+        mov     [bx], dl                ; store BIOS boot drive number
 
         mov     esi, [bx(bpbRootDirCluster)] ; esi=cluster # of root dir
 
@@ -213,7 +213,7 @@ CopyInfo:
         mov     al, [es:di+bx]
         mov     [bx], al
         dec     bx
-        jnz     CopyInfo
+        jnz     CopyInfo		; keep BIOS boot drive number
 
 NotFileInfo:
         mov     al, 0c1h                ; EXFAT_ENTRY_FILE_NAME ?
@@ -232,7 +232,7 @@ CheckName:
         popf                            ; restore carry="not last sector" flag
         jc      RootDirReadContinue     ; continue to the next root dir cluster
 FindNameFailed:                         ; end of root directory (dir end reached)
-        mov     dx, [bx]                ; restore BIOS boot drive number
+        mov     dl, [bx]                ; restore BIOS boot drive number
         call    Error
         db      "File not found."
 FindNameFound:
@@ -252,7 +252,7 @@ FileReadContinue:
         call    ReadCluster             ; read one more sector of the boot file
         sub     [bx+FileSize], ebp
         ja      FileReadContinue
-        mov     dx, [bx]                ; restore BIOS boot drive number
+        mov     dl, [bx]                ; restore BIOS boot drive number
         xor     ax, ax
         pop     bp
 
@@ -370,11 +370,10 @@ ReadCluster:
 
         mov     esi, [es:si]                    ; esi=next cluster #
 
-        xor     eax, eax
-        inc     ax
+        inc     dx
         mov     cl, [bx(bpbSectorPerClusterBits)]
-        shl     eax, cl                         ; 10000h max (32MB cluster)
-        xchg    eax, ecx
+        shl     edx, cl                         ; 10000h max (32MB cluster)
+        mov     ecx, edx
         xchg    eax, edi                        ; get cluster #-2
         mul     ecx
 
@@ -408,18 +407,19 @@ ReadSectorC:
         push    es
         push    bx
         push    bp                      ; sector count word = 1
-        push    byte 16                 ; packet size byte = 16, reserved byte = 0
+        mov     cx, 16
+        push    cx                      ; packet size byte = 16, reserved byte = 0
 ReadSectorRetry:        
         mov     si, sp
         mov     ah, 42h                 ; ah = 42h = extended read function no.
-        mov     dx, [bx]                ; restore BIOS boot drive number
+        mov     dl, [bx]                ; restore BIOS boot drive number
         int     13h                     ; extended read sectors (DL, DS:SI)
 
         jnc     ReadSuccess
 
         xor     ax, ax
         int     13h                     ; reset drive (DL)
-        loop    ReadSectorRetry         ; sector count retries (8 .. 65536)
+        loop    ReadSectorRetry         ; up to 16 retries
 
         call    Error
         db      "Read error."
