@@ -78,9 +78,8 @@ SETUPSEG	= 0x9020
 # ifdef CHK_DOS_INT19
 	cmpb	$0xF0, 4*0x19+3(%si)
 	jne	stepit
-	popaw
 	pushw	%es
-	movw	$movesys, %si
+	movw	$skip_step19, %si
 	pushw	%si
 	retf
 stepit:
@@ -96,9 +95,8 @@ stepit:
 # ifdef CHK_DOS_INT19
 	cmpb	$0xF0, 4*0x19+3-4(%si)
 	jne	stepit
-	popaw
 	pushw	%es
-	pushw	$movesys
+	pushw	$skip_step19
 	retf
 stepit:
 # endif
@@ -301,6 +299,7 @@ step19:
 #ifdef ONLY8086
 	popw	4(%si)
 	popw	4+2(%si)
+skip_step19:
 	popw	%bp
 	popw	%di
 	popw	%si
@@ -310,6 +309,7 @@ step19:
 	popw	%ax
 #else
 	popl	4(%si)
+skip_step19:
 	popaw
 #endif
 #ifdef BZIMAGE
