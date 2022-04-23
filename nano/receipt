@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="nano"
-VERSION="4.8"
+VERSION="6.2"
 CATEGORY="utilities"
 TAGS="text-editor"
 SHORT_DESC="Nano Text Editor."
@@ -12,10 +12,10 @@ WEB_SITE="https://nano-editor.org/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="${WEB_SITE}dist/v${VERSION%.*}/$TARBALL"
 
-SUGGESTED="gpm"
+SUGGESTED="gpm nano-doc nano-lang"
 DEPENDS="ncursesw zlib"
-BUILD_DEPENDS="groff ncursesw-dev zlib-dev"
-SPLIT="nano-doc"
+BUILD_DEPENDS="groff ncursesw-dev patch zlib-dev"
+SPLIT="nano-doc nano-lang"
 
 HOST_ARCH="i486 arm"
 
@@ -59,14 +59,14 @@ genpkg_rules()
 	cp $src/doc/sample.nanorc	$fs/etc/nanorc
 
 	cd $fs
-	patch --input=$stuff/patches/nanorc.patch \
+	patch --input=$stuff/patches/etc_nanorc-$VERSION		\
 		etc/nanorc
-	patch --input=$stuff/patches/sh.nanorc-$VERSION \
+	patch --input=$stuff/patches/usr_share_nano_sh.nanorc-$VERSION	\
 		usr/share/nano/sh.nanorc
 
-	# Shrink
+	# Shrink (delete comment lines and empty lines)
 	for i in $fs/usr/share/nano/*.nanorc
 	  do
 		sed -i '/^#/d;/^$/d' $i
-	done
+	  done
 }
