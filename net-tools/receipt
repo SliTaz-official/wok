@@ -1,14 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="net-tools"
-VERSION="1.60"
+VERSION="2.10"
 CATEGORY="network"
 SHORT_DESC="Network toolbox."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WEB_SITE="https://web.archive.org/web/20130512153334if_/http://www.tazenda.demon.co.uk/phil/net-tools"
-WGET_URL="$WEB_SITE/$TARBALL"
+WEB_SITE="https://sourceforge.net/projects/net-tools/"
+
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
+SUGGESTED="net-tools-lang"
 
 # What is the latest version available today?
 current_version()
@@ -21,25 +24,43 @@ current_version()
 compile_rules()
 {
 	mkdir $DESTDIR
-	enabled="HAVE_AFUNIX HAVE_AFINET HAVE_HWETHER HAVE_HWPPP \
-		 HAVE_HWTUNNEL HAVE_FW_MASQUERADE HAVE_IP_TOOLS HAVE_MII"
-	sed '/HAVE_/!d;s/.*\(HAVE.*\)../\1/' < config.in | while read name; do
+
+	enabled="HAVE_AFINET HAVE_AFUNIX HAVE_ARP_TOOLS HAVE_FW_MASQUERADE \
+HAVE_HOSTNAME_SYMLINKS HAVE_HOSTNAME_TOOLS HAVE_HWETHER HAVE_HWPPP \
+HAVE_HWTUNNEL HAVE_I18N HAVE_IP_TOOLS HAVE_MII HAVE_PLIP_TOOLS HAVE_SERIAL_TOOLS"
+
+	sed '/HAVE_/!d;s/.*\(HAVE.*\)../\1/' < config.in | while read name
+	  do
 		val=0
 		case " $enabled " in
-		*\ $name\ *) val=1 ;;
+			(*\ $name\ *) val=1 ;;
 		esac
 		echo "#define $name $val"
 		echo "$name=$val" 1>&2
-	done > config.h 2> config.make
+	  done > config.h 2> config.make
+
+	# create localised message files and man pages
+	echo "I18N=1" >> config.make
+
 	sed -i 's/default:/&;/' hostname.c lib/inet_sr.c
-	sed -i '/"usage/,/10baseT/s/.*/&\\n\\/' mii-tool.c
-	make -j 1 &&
-	make BASEDIR=$DESTDIR install
+	# 2.10 not required
+#	sed -i '/"usage/,/10baseT/s/.*/&\\n\\/' mii-tool.c
+
+	make &&
+	make install BASEDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/bin $fs
-	cp -a $install/sbin $fs
+	cook_copy_folders	bin
+	cook_copy_folders	sbin
+}
+
+# Remove busybox symbolic links after installing
+# because these files are now in /bin
+post_install()
+{
+	rm -f "$1/sbin/ifconfig"
+	rm -f "$1/sbin/route"
 }
