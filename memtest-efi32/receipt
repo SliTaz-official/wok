@@ -1,0 +1,35 @@
+# SliTaz package receipt.
+
+PACKAGE="memtest-efi32"
+VERSION="6.00b1"
+CATEGORY="base-system"
+SHORT_DESC="Memory failures detection tool."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL2"
+TARBALL="$PACKAGE-$VERSION.zip"
+WEB_SITE="http://www.memtest.org/"	# https://github.com/memtest86plus/memtest86plus/
+WGET_URL="https://memtest.org/download/v$VERSION/mt86plus_${VERSION}_32.iso.zip"
+
+# What is the latest version available today?
+current_version()
+{
+	wget -O - $WEB_SITE 2>/dev/null | \
+	sed '/_32.iso.zip/!d;s|.*mt86plus_||;s|_32.iso.zip.*||;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	mkdir mnt
+	mount -o loop,ro $TARBALL mnt
+	cp mnt/EFI/BOOT/bootia32.efi memtest32.efi
+	umount -d mnt
+} 
+
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/EFI/boot
+	cp $src/memtest32.efi $fs/EFI/boot/
+}
