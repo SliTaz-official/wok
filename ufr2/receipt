@@ -1,15 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="ufr2"
-VERSION="2.20"
+VERSION="2.40-2"
 CATEGORY="system-tools"
 SHORT_DESC="Canon URF2 driver with support for LBP, iR and MF series printers"
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
 SOURCE="UFR_II_Printer_Driver_for_Linux_V220_uk_EN"
-TARBALL="${SOURCE}.tar.gz"
-WEB_SITE="https://web.archive.org/web/20091013040714/https://www.canon.com.au/pps/colour/imagepress_c1_drivers.aspx"
-WGET_URL="http://gdlp01.c-wss.com/gds/8/0100002708/03/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://github.com/vicamo/cndrvcups-lb"
+WGET_URL="https://github.com/vicamo/cndrvcups-lb/archive/refs/tags/canon-$VERSION.tar.gz"
 TAGS="printing printer driver"
 
 DEPENDS="cups cairo cndrvcups-common cups"
@@ -25,22 +25,17 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {	
-	#src="$WOK/$PACKAGE/$SOURCE/Sources"
-    cd $src
-   
-    [ -d cndrvcups-lb-$VERSION ] || tar xzf Sources/cndrvcups-lb-${VERSION}-1.tar.gz 
-    
-    cd $src/cndrvcups-lb-$VERSION/ppd &&     
-    ./autogen.sh \
+	cd $src/ppd &&
+	./autogen.sh \
 		--prefix=/usr \
 		--enable-shared \
 		--disable-static \
 		--program-suffix="" \
 		--program-prefix="" &&  
-    make $MAKEFLAGS &&
-    make DESTDIR=$DESTDIR install 
+	make $MAKEFLAGS &&
+	make DESTDIR=$DESTDIR install 
     
-    cd $src/cndrvcups-lb-$VERSION/pstoufr2cpca     
+	cd $src/pstoufr2cpca     
 	./autogen.sh \
 		--prefix=/usr   \
 		--enable-progpath=/usr/bin \
@@ -60,8 +55,8 @@ genpkg_rules()
 		$fs/usr/share/licenses/$PACKAGE \
 		$fs/usr/lib/cups/filter
 	
-	cp -a $src/cndrvcups-lb-$VERSION/libs/*.so* $fs/usr/lib	
-	cp -a $src/cndrvcups-lb-$VERSION/data/C* $fs/usr/share/caepcm
+	cp -a $src/libs/*.so* $fs/usr/lib	
+	cp -a $src/data/C* $fs/usr/share/caepcm
 	cp -a $install/usr/share/*  $fs/usr/share/
 	cp -a $install/usr/lib/cups/filter $fs/usr/lib/cups/filter
 	
@@ -69,7 +64,7 @@ genpkg_rules()
 	find $fs/usr/share/cups/model -name "*.ppd" | xargs gzip -n9
 
 	# non-free license
-	cp -a $src/Documents/LICENSE-ufr2drv*.txt $fs/usr/share/licenses/$PACKAGE
+	cp -a $src/LICENSE-ufr2-${VERSION%-*}E.txt $fs/usr/share/licenses/$PACKAGE
 	
 	cd $fs/usr/lib
 	ln -sf libcanonufr2.so.1.0.0  liblibcanonufr2.so.1
