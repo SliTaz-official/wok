@@ -7,10 +7,10 @@ TAGS="printer"
 SHORT_DESC="Network to printer (/dev/lp* or /dev/usb/lp*) gateway."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://$PACKAGE.sourceforge.net/"
+WEB_SITE="https://github.com/kenyapcomau/p910nd"
 
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/kenyapcomau/p910nd/archive/refs/tags/$VERSION.tar.gz"
 
 # What is the latest version available today?
 current_version()
@@ -22,8 +22,9 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	sed -i 's|subsys/||' p910nd.8
 	make CFLAGS=-DLOCKFILE_DIR=\\\"/var/lock\\\" &&
-	make DESTDIR=$DESTDIR install
+	make DESTDIR=$DESTDIR CONFIG=aux/p910nd.conf INITSCRIPT=aux/p910nd.init MANPAGE=p910nd.8 install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -34,6 +35,6 @@ genpkg_rules()
 
 	cp -a $install/usr/sbin $fs/usr
 
-	sed '1,/%description/d;/%pre/,$d' $src/p910nd.spec > $WOK/$PACKAGE/description.txt
+	sed '1,/%description/d;/%pre/,$d' $src/aux/p910nd.spec > $WOK/$PACKAGE/description.txt
 	ln -s daemon $fs/etc/init.d/p910nd
 }
