@@ -1,21 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="nginx-extras"
-VERSION="1.16.0"
+VERSION="1.21.6"
 CATEGORY="network"
 SHORT_DESC="Asynchronous HTTP server designed for heavy loads and mail proxy."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
-WEB_SITE="http://nginx.org/"
+WEB_SITE="https://nginx.org/"
 
-TARBALL="nginx-$VERSION.tar.gz"
-WGET_URL="${WEB_SITE}download/$TARBALL"
+SOURCE="nginx"
+TARBALL="$SOURCE-$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}download//$TARBALL"
 
 PROVIDE="lighttpd"
 CONFLICT="nginx"
-SUGGESTED="php perl python"
-DEPENDS="geoip libgd libxslt openssl pcre zlib"
-BUILD_DEPENDS="geoip-dev libgd-dev libxslt-dev openssl-dev pcre-dev 
+
+SUGGESTED="php python"
+DEPENDS="geoip libgd libxslt openssl pcre perl zlib"
+BUILD_DEPENDS="geoip-dev libgd-dev libxslt-dev openssl-dev pcre-dev
 	tiff zlib-dev"
 
 CONFIG_FILES="/etc/nginx"
@@ -70,7 +72,7 @@ compile_rules()
 		--user=80						\
 		--group=80 &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 
 	# not yet available - perftools dep lib
 	#--with-google_perftools_module \
@@ -91,8 +93,8 @@ genpkg_rules()
 # We stop the server by default in case of upgarde.
 pre_install()
 {
-	[ -f /etc/init.d/$PACKAGE ] &&
-	/etc/init.d/$PACKAGE stop
+	[ -f /etc/init.d/$SOURCE ] &&
+	/etc/init.d/$SOURCE stop
 
 	# Backup configuration file.
 	if [ -d "$1/$CONFIG_FILES" ]
@@ -113,14 +115,14 @@ post_install()
 	fi
 
 	# Just in case.
-	chown www.www "$1/var/log/$PACKAGE"
+	chown www.www "$1/var/log/$SOURCE"
 	if [ -z "$1" ]
 	  then
 		for i in apache lighttpd
 		  do
 			[ -f /etc/init.d/$i ] && /etc/init.d/$i stop
 		  done
-		/etc/init.d/$PACKAGE start
+		/etc/init.d/$SOURCE start
 	fi
 
 	:
