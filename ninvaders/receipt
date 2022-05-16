@@ -1,19 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="ninvaders"
-VERSION="0.1.1"
+VERSION="0.1.2"
 CATEGORY="games"
+TAGS="shooting"
 SHORT_DESC="Space Invaders clone."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://ninvaders.sourceforge.net/"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
-TAGS="shooting"
-HOST_ARCH="i486 arm"
+WGET_URL="https://github.com/sf-refugees/$PACKAGE/archive/refs/tags/v$VERSION.tar.gz"
 
 DEPENDS="ncurses"
-BUILD_DEPENDS="ncurses-dev libtinfo"
+BUILD_DEPENDS="cmake libtinfo ncurses-dev"
 
 # What is the latest version available today?
 current_version()
@@ -26,14 +26,20 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	export LDFLAGS="$LDFLAGS -ltinfo"
-	make CC=${HOST_SYSTEM}-gcc
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..				\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/games $fs/usr/share/pixmaps
-	cp -a $src/nInvaders $fs/usr/games
-	cp -a $stuff/ninvader.png $fs/usr/share/pixmaps
+	mkdir -p $fs/usr/games
+	mkdir -p $fs/usr/share/pixmaps
+
+	cp -a $install/usr/bin/ninvaders	$fs/usr/games/nInvaders
+	cp -a $stuff/ninvader.png		$fs/usr/share/pixmaps
 }
