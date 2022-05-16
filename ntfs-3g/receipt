@@ -1,20 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="ntfs-3g"
-VERSION="2017.3.23"
+VERSION="2021.8.22"
 CATEGORY="system-tools"
-SHORT_DESC="Read/write NTFS driver for FUSE"
+TAGS="windows"
+SHORT_DESC="Read and write NTFS driver for FUSE."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="https://www.tuxera.com/community/open-source-ntfs-3g/"
+
 SOURCE="ntfs-3g_ntfsprogs"
 TARBALL="$SOURCE-$VERSION.tgz"
-WEB_SITE="https://www.tuxera.com/community/open-source-ntfs-3g/"
 WGET_URL="https://tuxera.com/opensource/$TARBALL"
-CONFIG_FILES="/etc/filesystems"
-TAGS="windows"
 
-DEPENDS="fuse2 attr"
-BUILD_DEPENDS="fuse2-dev attr-dev util-linux-uuid-dev libtool"
+DEPENDS="attr fuse"
+BUILD_DEPENDS="attr-dev fuse-dev libtool util-linux-uuid-dev"
+
+CONFIG_FILES="/etc/filesystems"
 
 current_version()
 {
@@ -26,23 +28,30 @@ current_version()
 compile_rules()
 {
 	mkdir -p $DESTDIR/lib
-	./configure --prefix=/usr \
-	--disable-static \
-	--with-fuse=internal \
-	--mandir=/usr/share/man $CONFIGURE_ARGS &&
+	./configure			\
+		--prefix=/usr		\
+		--disable-static	\
+		--with-fuse=internal	\
+		--mandir=/usr/share/man	\
+		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/etc
-	cp -a $install/. $fs/.
-	rm -rf $fs/usr/bin/ntfs[a-z]* $fs/sbin/mkfs.ntfs $fs/usr/s*
-	rm -rf $fs/usr/share $fs/usr/lib/pkgconfig $fs/usr/lib/*.a $fs/usr/include
-	touch $fs/etc/filesystems
-	#this link allow udisks2 to use ntfs-3g
+	cp -a $install/.	$fs/.
+	rm -rf			$fs/usr/bin/ntfs[a-z]*
+	rm -rf			$fs/sbin/mkfs.ntfs
+	rm -rf			$fs/usr/s*
+	rm -rf			$fs/usr/share
+	rm -rf			$fs/usr/lib/pkgconfig
+	rm -rf			$fs/usr/lib/*.a
+	rm -rf			$fs/usr/include
+	touch			$fs/etc/filesystems
+	#this link allows udisks2 to use ntfs-3g
 	cd $fs/sbin
 	ln -s mount.ntfs-3g mount.ntfs
 }
@@ -50,7 +59,7 @@ genpkg_rules()
 # Pre remove and post install commands for Tazpkg.
 pre_remove()
 {
-	sed -i '/^$PACKAGE$/d' "$1/etc/filesystems"
+	sed -i '/^$PACKAGE$/d'	"$1/etc/filesystems"
 }
 
 post_install()
