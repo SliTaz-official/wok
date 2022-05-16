@@ -13,42 +13,44 @@ OPTIONS=$NGINX_OPTIONS
 PIDFILE=/var/run/nginx.pid
 
 case "$1" in
-  start)
-    if active_pidfile $PIDFILE nginx ; then
-      _ '%s is already running.' $NAME
-      exit 1
-    fi
-    action 'Starting %s: %s...' "$DESC" $NAME
-    $DAEMON $OPTIONS
-    status
-    ;;
-  stop)
-    if ! active_pidfile $PIDFILE nginx ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Stopping %s: %s...' "$DESC" $NAME
-    kill $(cat $PIDFILE)
-    rm $PIDFILE
-    status
-    ;;
-  restart)
-    if ! active_pidfile $PIDFILE nginx ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Restarting %s: %s...' "$DESC" $NAME
-    kill $(cat $PIDFILE)
-    rm $PIDFILE
-    sleep 2
-    $DAEMON $OPTIONS
-    status
-    ;;
-  *)
-    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
-    newline
-    exit 1
-    ;;
+	(start)
+		if active_pidfile $PIDFILE nginx
+		  then
+			_ '%s is already running.' $NAME
+			exit 1
+		fi
+		newline
+		action 'Starting %s: %s...' "$DESC" $NAME
+		$DAEMON $OPTIONS
+		status
+		;;
+	(stop)
+		if ! active_pidfile $PIDFILE nginx
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Stopping %s: %s...' "$DESC" $NAME
+		kill $(cat $PIDFILE)
+		status
+		;;
+	(restart)
+		if ! active_pidfile $PIDFILE nginx
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Restarting %s: %s...' "$DESC" $NAME
+		kill $(cat $PIDFILE)
+		sleep 2
+		$DAEMON $OPTIONS
+		status
+		;;
+	(*)
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
+		exit 1
+		;;
 esac
 
 exit 0
