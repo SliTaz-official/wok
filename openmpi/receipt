@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="openmpi"
-VERSION="4.0.3"
+VERSION="4.1.3"
 CATEGORY="development"
 SHORT_DESC="High performance message passing library (MPI)."
 MAINTAINER="slaxemulator@gmail.com"
@@ -12,7 +12,7 @@ TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="${WEB_SITE}software/ompi/v${VERSION%.*}/downloads/$TARBALL"
 
 DEPENDS="gcc gfortran libtool openssh valgrind"
-BUILD_DEPENDS="$DEPENDS file valgrind-dev"
+BUILD_DEPENDS="$DEPENDS bash file valgrind-dev"
 
 # What is the latest version available today?
 current_version()
@@ -24,13 +24,20 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	# bash is needed, because var+=val is not known to sh
+	export	SHELL=/bin/bash
+	export	CONFIG_SHELL=/bin/bash
+
+	# 4.1.3 unrecognized options:
+	# --enable-mpi-f90
+	# --with-threads
+	# --enable-mpi-threads
+	# --enable-smp-locks
+
 	./configure					\
 		--sysconfdir=/etc/${PACKAGE}		\
-		--enable-mpi-f90			\
 		--libdir=/usr/lib/${pkgname}		\
-		--with-threads=posix			\
-		--enable-mpi-threads			\
-		--enable-smp-locks			\
+		--enable-mpi-fortran			\
 		--with-valgrind				\
 		--enable-pretty-print-stacktrace	\
 		--without-slurm				\
