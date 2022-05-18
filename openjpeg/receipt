@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="openjpeg"
-VERSION="1.5.0"
+VERSION="1.5.2"
 CATEGORY="development"
-SHORT_DESC="An open source JPEG 2000 codec"
+SHORT_DESC="An open source JPEG 2000 codec."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="BSD"
+WEB_SITE="https://www.openjpeg.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.openjpeg.org/"
-WGET_URL="https://github.com/uclouvain/openjpeg/archive/refs/tags/version.1.5.tar.gz"
-HOST_ARCH="i486 arm"
+WGET_URL="https://github.com/uclouvain/$PACKAGE/archive/refs/tags/version.$VERSION.tar.gz"
 
 DEPENDS="glibc-base"
-BUILD_DEPENDS="zlib-dev tiff-dev"
+BUILD_DEPENDS="autoconf automake libtool tiff-dev zlib-dev"
+
+HOST_ARCH="i486 arm"
 
 # What is the latest version available today?
 current_version()
@@ -24,20 +26,22 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	# make sure we use system libs
-	[ -d thirtparty ] && rm -rf thirtparty
-	./configure --enable-lcms2=no \
-		--enable-png=no \
-		--enable-lcms1=no \
-		--disable-static \
+	# make sure we use system libraries
+	[ -d thirdparty ] && rm -rf thirdparty
+
+	./bootstrap.sh &&
+	./configure			\
+		--enable-lcms1=no	\
+		--enable-lcms2=no	\
+		--enable-png=no		\
+		--disable-static	\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cook_copy_files	*.so*
 }
-
