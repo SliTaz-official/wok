@@ -1,25 +1,30 @@
 # SliTaz package receipt.
 
 PACKAGE="openssh"
-VERSION="8.7p1"
+VERSION="9.0p1"
 CATEGORY="security"
+TAGS="ssh security"
 SHORT_DESC="Openbsd Secure Shell."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="BSD"
+WEB_SITE="https://www.openssh.com/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.openssh.org/"
 WGET_URL="https://ftp.fr.openbsd.org/pub/OpenBSD/OpenSSH/portable/$TARBALL"
+
+PROVIDE="ssh"
+SUGGESTED="gtk+"
+DEPENDS="libcrypto sftp-server zlib"
+BUILD_DEPENDS="gtk+-dev libcrypto-dev openssl-dev zlib-dev"
+SPLIT="sftp-server"
+TAZPANEL_DAEMON="man::sshd|edit::/etc/ssh/sshd_config|options|web::$WEB_SITE"
+
 CONFIG_FILES="/etc/ssh/*config /etc/ssh/moduli"
 SECRET_FILES="/etc/ssh/*key*"
-TAGS="ssh security"
+
 HOST_ARCH="i486 arm"
 
-SPLIT="sftp-server"
-PROVIDE="ssh"
-DEPENDS="sftp-server libcrypto zlib"
-BUILD_DEPENDS="libcrypto-dev zlib-dev openssl-dev gtk+-dev"
-SUGGESTED="gtk+"
-TAZPANEL_DAEMON="man::sshd|edit::/etc/ssh/sshd_config|options|web::$WEB_SITE"
+# @maintainer:	Please update also sftp-server
 
 current_version()
 {
@@ -31,38 +36,43 @@ current_version()
 compile_rules()
 {
 	unset LD # for cross compiling with --disable-strip
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc/ssh \
-		--libexecdir=/usr/sbin \
-		--with-privsep-user=nobody \
-		--with-xauth=/usr/bin/xauth \
-		--with-privsep-path=/var/run/sshd \
-		--without-pam \
-		--disable-strip \
+	./configure					\
+		--prefix=/usr				\
+		--sysconfdir=/etc/ssh			\
+		--libexecdir=/usr/sbin			\
+		--with-privsep-user=nobody		\
+		--with-xauth=/usr/bin/xauth		\
+		--with-privsep-path=/var/run/sshd	\
+		--without-pam				\
+		--disable-strip				\
 		$CONFIGURE_ARGS &&
 	make STRIP_OPT="" &&
-	make -j 1 DESTDIR=$DESTDIR install
-	install -d -m 755 $DESTDIR/usr/share/doc &&
-	install -m 644 $src/[A-Z][A-Z]* $DESTDIR/usr/share/doc
+	make install -j 1 DESTDIR=$DESTDIR
+	install -d -m 755		$DESTDIR/usr/share/doc &&
+	install -m 644 $src/[A-Z][A-Z]*	$DESTDIR/usr/share/doc
 	cd contrib &&
 	cc -Wall $(pkg-config --cflags gtk+-2.0) gnome-ssh-askpass2.c \
 		-o gnome-ssh-askpass $(pkg-config --libs gtk+-2.0) -lX11 &&
-	cp gnome-ssh-askpass $DESTDIR/usr/bin/ssh-askpass
+	cp gnome-ssh-askpass		$DESTDIR/usr/bin/ssh-askpass
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr $fs/etc/init.d $fs/etc/ssh
-	cp -a $install/usr/sbin $install/usr/bin $fs/usr
-	rm -f $fs/usr/sbin/sftp-server
-	install -m 755 -oroot -groot $src/contrib/ssh-copy-id $fs/usr/bin
-	cp $src/contrib/ssh-copy-id.1 $install/usr/share/man/cat1
-	cp -a $install/etc $fs
-	cp $stuff/openssh $fs/etc/init.d
+	mkdir -p $fs/usr
+	mkdir -p $fs/etc/init.d
+	mkdir -p $fs/etc/ssh
+
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/bin		$fs/usr
+	rm -f				$fs/usr/sbin/sftp-server
+	install -m 755 -oroot -groot $src/contrib/ssh-copy-id \
+					$fs/usr/bin
+	cp $src/contrib/ssh-copy-id.1	$install/usr/share/man/cat1
+	cp -a $install/etc		$fs
+	cp $stuff/openssh		$fs/etc/init.d
 	sed -i 's|/usr/libexec/sftp-server|/usr/sbin/sftp-server|' \
-		$fs/etc/ssh/sshd_config
+					$fs/etc/ssh/sshd_config
 
 	cat >> $fs/etc/ssh/ssh_config <<EOT
 
@@ -79,16 +89,18 @@ EOT
 
 post_install()
 {
-	grep -q ssh "$1/etc/inetd.conf" || cat >> "$1/etc/inetd.conf" <<EOT
+	grep -q ssh "$1/etc/inetd.conf" ||
+	cat >> "$1/etc/inetd.conf" <<EOT
 #ssh	stream	tcp	nowait	root	sshd	sshd	-i
 EOT
-	while read dropbear openssh ; do
+	while read dropbear openssh
+	  do
 		[ -s "$1$dropbear" ] || continue
 		[ -s "$1$openssh" ] && continue
 		chroot "$1/" dropbearconvert dropbear openssh $dropbear $openssh
 		chroot "$1/" dropbearkey -y -f $dropbear | grep ssh > "$1$openssh.pub"
 		chroot "$1/" dropbearkey -y -f $dropbear | grep Fingerprint
-	done <<EOT
+	  done <<EOT
 /etc/dropbear/dropbear_rsa_host_key	/etc/ssh/ssh_host_rsa_key
 /etc/dropbear/dropbear_dss_host_key	/etc/ssh/ssh_host_dsa_key
 /etc/dropbear/dropbear_ecdsa_host_key	/etc/ssh/ssh_host_ecdsa_key
@@ -100,5 +112,6 @@ EOT
 
 post_remove()
 {
-	grep -q sshd "$1/etc/inetd.conf" && sed -i '/sshd/d' "$1/etc/inetd.conf"
+	grep -q sshd "$1/etc/inetd.conf" &&
+	sed -i '/sshd/d' "$1/etc/inetd.conf"
 }
