@@ -3,16 +3,18 @@
 PACKAGE="giblib"
 VERSION="1.2.4"
 CATEGORY="graphics"
-SHORT_DESC="Giblib graphic library."
+SHORT_DESC="Giblib graphics library."
 MAINTAINER="mallory@sweetpeople.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="http://freshmeat.sourceforge.net/projects/giblib"
-WGET_URL="https://github.com/cbane/giblib/archive/v$VERSION.tar.gz"
-HOST_ARCH="i486 arm"
 
-DEPENDS="imlib2 freetype xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext"
-BUILD_DEPENDS="imlib2-dev imlib2 xorg-xproto freetype-dev xorg-libXext-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/cbane/giblib/archive/v$VERSION.tar.gz"
+
+DEPENDS="freetype imlib2 xorg-libX11 xorg-libXau xorg-libXdmcp xorg-libXext"
+BUILD_DEPENDS="freetype-dev imlib2-dev xorg-xproto xorg-libXext-dev"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -23,18 +25,20 @@ esac
 compile_rules()
 {
 	sed -i 's|/doc|/share&|' Makefile*
-	./configure \
-		--prefix=/usr \
+
+	./configure					\
+		--prefix=/usr				\
+		--with-imlib2-exec-prefix=/usr/bin	\
+		--with-imlib2-prefix=/usr/lib/imlib2	\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib $fs/usr
-	rm -f $fs/usr/lib/*a
+	cook_copy_folders	bin
+	cook_copy_folders	pkgconfig
+	cook_copy_files		*.so*
 }
