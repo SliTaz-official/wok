@@ -8,8 +8,8 @@ MAINTAINER="allan316@gmail.com"
 LICENSE="GPL2"
 WEB_SITE="https://sourceforge.net/projects/gtk-gnutella/"
 
-TARBALL="$PACKAGE-$VERSION.tar.xz"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/gtk-gnutella/gtk-gnutella/archive/v$VERSION.tar.gz"
 
 DEPENDS="expat gnutls gtk+ libgcrypt libgpg-error libtasn1 libxml2 
 	xorg-libX11 xorg-libXau xorg-libXcomposite xorg-libXcursor 
@@ -21,14 +21,22 @@ BUILD_DEPENDS="glib-dev gtk+-dev libxml2-dev pkg-config xorg-dev
 # What is the latest version available today?
 current_version()
 {
-	wget -O - https://sourceforge.net/projects/gtk-gnutella/files/gtk-gnutella/ 2>/dev/null | \
-	sed '/scope="row/!d;s|.*href="|"https://sourceforge.net|;q' | xargs wget -O - 2>/dev/null | \
-	sed '/scope="row/!d;s|.*/gtk-gnutella/||;s|/.*||;q'
+	wget -O - ${WGET_URL%/arch*}/tags 2>/dev/null | \
+	sed '/archive.*tar/!d;s|.*/v*\(.*\).tar.*|\1|;q'
 }
 
 # Rules to configure and make the package.
 compile_rules()
 {
+	# binutils 2.34+ support
+	sed -e 's|bfd_get_|bfd_|g' \
+	    -e 's|bfd_error(|bfd_get_error(|' \
+	    -e 's|bfd_file_flags|bfd_get_file_flags|' \
+	    -e 's|bfd_section_vma(b, |bfd_section_vma(|' \
+	    -e 's|bfd_symbol_info(bc->handle, |bfd_symbol_info(|' \
+	    -e 's|bfd_section_flags(b, |bfd_section_flags(|' \
+	    -i src/lib/bfd_util.c
+
 	./build.sh		\
 		--prefix=/usr	\
 		--disable-dbus	\
