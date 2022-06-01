@@ -15,6 +15,17 @@ DEPENDS="postgresql-client python pygtk pygobject pycairo python-pyxml \
 egenix-mx-base"
 BUILD_DEPENDS="python python-dev pygtk egenix-mx-base"
 
+# What is the latest version available today?
+current_version()
+{
+	local a=$(wget -O - https://nightly.odoo.com/old/ 2>/dev/null | \
+	sed '/openerp-/!d;s|.*="||;s|/".*||' | sort -Vr | sed q)
+	local b=$(wget -O - https://nightly.odoo.com/old/$a/ 2>/dev/null | \
+	sed '/href="[0-9]/!d;s|.*="||;s|/".*||' | sort -Vr | sed q)
+	wget -O - https://nightly.odoo.com/old/$a/$b/ 2>/dev/null | \
+	sed '/openerp-client/!d;/tar/!d;s|.*-client-||;s|.tar.*||'
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {

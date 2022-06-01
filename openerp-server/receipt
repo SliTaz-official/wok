@@ -16,6 +16,17 @@ python-pyxml python-pychart python-pydot egenix-mx-base"
 BUILD_DEPENDS="libxml2-python psycopg2 libxml2 libxslt-python python-reportlab \
 python-pychart python-pydot python-dev"
 
+# What is the latest version available today?
+current_version()
+{
+	local a=$(wget -O - https://nightly.odoo.com/old/ 2>/dev/null | \
+	sed '/openerp-/!d;s|.*="||;s|/".*||' | sort -Vr | sed q)
+	local b=$(wget -O - https://nightly.odoo.com/old/$a/ 2>/dev/null | \
+	sed '/href="[0-9]/!d;s|.*="||;s|/".*||' | sort -Vr | sed q)
+	wget -O - https://nightly.odoo.com/old/$a/$b/ 2>/dev/null | \
+	sed '/openerp-client/d;/tar/!d;s|.*erp-||;s|.tar.*||;q'
+}
+
 # Rules to configure and make the package.
 compile_rules()
 {
