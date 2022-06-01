@@ -107,6 +107,7 @@ ws	=	ws2+LOCALS+15
  
 	mov	$ws1, CX
 #ifdef ONLY8086
+	.arch	i8086
 	movw	$2048/2, %ax
 lzd1:
 	pushw	%ax
@@ -213,9 +214,13 @@ lzdmainlp:
 	add	BX, DX
 #endif
 
+#if PROP_LC == 0 && PROP_LP == 0
+	mov	$1846, AX
+#else
 	movb	$3, %ah
 	mul	BX		// dx = 3*bh
 	add	$1846, AX
+#endif
 
 //       int symbol = 1;
 
