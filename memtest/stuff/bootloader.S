@@ -458,6 +458,8 @@ call_vcpi:
 	movb	$0x0C,%al	// DE0C switchpm(ESI)
 	jmp	call_vcpi
 pm_code:
+	.byte	0x6A, SEL_DATA	// pushw	$SEL_DATA
+	popw	%ss
 	movl	%cr0,%eax
 	andl	$0x7FFFFFFE,%eax
 	movl	%eax,%cr0
@@ -633,9 +635,10 @@ gdt_vcpi	=	gdt_abs-24
 gdt_vcpi2	=	gdt_abs-16
 gdt_vcpi3	=	gdt_abs-8
 gdt_abs:
+SEL_DATA	= gdt_abs-gdt_null
 	.word	0xFFFF
 	.long	0x92000000
-	.byte	0xCF,0
+	.byte	0x8F,0
 gdt_code:
 	.word	0xFFFF
 gdt_code_base:
