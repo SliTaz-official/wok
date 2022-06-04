@@ -681,3 +681,4 @@ idt_base:
 	.byte	13,10,7
 	.asciz	"ELKS Boot"
 #endif
+	.org	0x1F1
