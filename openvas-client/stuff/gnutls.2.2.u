@@ -1,0 +1,118 @@
+--- openvas-client-3.0.1/openvas/openvas-client.c
++++ openvas-client-3.0.1/openvas/openvas-client.c
+@@ -466,89 +466,26 @@
+ static void
+ set_gnutls_sslv23 (gnutls_session_t session)
+ {
+-  static int protocol_priority[] = {GNUTLS_TLS1,
+-				    GNUTLS_SSL3,
+-				    0};
+-  static int cipher_priority[] = {GNUTLS_CIPHER_AES_128_CBC,
+-				  GNUTLS_CIPHER_3DES_CBC,
+-				  GNUTLS_CIPHER_AES_256_CBC,
+-				  GNUTLS_CIPHER_ARCFOUR_128,
+-				  0};
+-  static int comp_priority[] = {GNUTLS_COMP_ZLIB,
+-				GNUTLS_COMP_NULL,
+-				0};
+-  static int kx_priority[] = {GNUTLS_KX_DHE_RSA,
+-			      GNUTLS_KX_RSA,
+-			      GNUTLS_KX_DHE_DSS,
+-			      0};
+-  static int mac_priority[] = {GNUTLS_MAC_SHA1,
+-			       GNUTLS_MAC_MD5,
+-			       0};
+-
+-  gnutls_protocol_set_priority(session, protocol_priority);
+-  gnutls_cipher_set_priority(session, cipher_priority);
+-  gnutls_compression_set_priority(session, comp_priority);
+-  gnutls_kx_set_priority (session, kx_priority);
+-  gnutls_mac_set_priority(session, mac_priority);
++  // gnutls 2.2.0+
++  return gnutls_priority_set_direct(session, 
++	"NONE:+VERS-TLS1:+VERS-SSL3:+AES_128_CBC:+3DES_CBC:+AES_256_CBC:+ARCFOUR_128:+COMP_ZLIB:+COMP_NULL:+DHE_RSA:+RSA:+DHE_DSS:+SHA1:+MD5", NULL);
+ }
+ 
+ 
+ static void
+ set_gnutls_sslv3(gnutls_session_t session)
+ {
+-  static int protocol_priority[] = {GNUTLS_SSL3,
+-				    0};
+-  static int cipher_priority[] = {GNUTLS_CIPHER_3DES_CBC,
+-				  GNUTLS_CIPHER_ARCFOUR_128,
+-				  0};
+-  static int comp_priority[] = {GNUTLS_COMP_ZLIB,
+-				GNUTLS_COMP_NULL,
+-				0};
+-
+-  static int kx_priority[] = {GNUTLS_KX_DHE_RSA,
+-			      GNUTLS_KX_RSA,
+-			      GNUTLS_KX_DHE_DSS,
+-			      GNUTLS_KX_ANON_DH,
+-			      0};
+-
+-  static int mac_priority[] = {GNUTLS_MAC_SHA1,
+-			       GNUTLS_MAC_MD5,
+-			       0};
+-
+-  gnutls_protocol_set_priority(session, protocol_priority);
+-  gnutls_cipher_set_priority(session, cipher_priority);
+-  gnutls_compression_set_priority(session, comp_priority);
+-  gnutls_kx_set_priority (session, kx_priority);
+-  gnutls_mac_set_priority(session, mac_priority);
++  // gnutls 2.2.0+
++  return gnutls_priority_set_direct(session, 
++	"NONE:+VERS-SSL3:+3DES_CBC:+ARCFOUR_128:+COMP_ZLIB:+COMP_NULL:+DHE_RSA:+RSA:+DHE_DSS:+ANON_DH:+SHA1:+MD5", NULL);
+ }
+ 
+ static void
+ set_gnutls_tlsv1(gnutls_session_t session)
+ {
+-  static int protocol_priority[] = {GNUTLS_TLS1,
+-				    0};
+-  static int cipher_priority[] = {GNUTLS_CIPHER_AES_128_CBC,
+-				  GNUTLS_CIPHER_3DES_CBC,
+-				  GNUTLS_CIPHER_AES_256_CBC,
+-				  GNUTLS_CIPHER_ARCFOUR_128,
+-				  0};
+-  static int comp_priority[] = {GNUTLS_COMP_ZLIB,
+-				GNUTLS_COMP_NULL,
+-				0};
+-  static int kx_priority[] = {GNUTLS_KX_DHE_RSA,
+-			      GNUTLS_KX_RSA,
+-			      GNUTLS_KX_DHE_DSS,
+-			      GNUTLS_KX_ANON_DH,
+-			      0};
+-  static int mac_priority[] = {GNUTLS_MAC_SHA1,
+-			       GNUTLS_MAC_MD5,
+-			       0};
+-
+-  gnutls_protocol_set_priority(session, protocol_priority);
+-  gnutls_cipher_set_priority(session, cipher_priority);
+-  gnutls_compression_set_priority(session, comp_priority);
+-  gnutls_kx_set_priority (session, kx_priority);
+-  gnutls_mac_set_priority(session, mac_priority);
++  // gnutls 2.2.0+
++  return gnutls_priority_set_direct(session, 
++	"NONE:+VERS-TLS1:+AES_128_CBC:+3DES_CBC:+AES_256_CBC:+ARCFOUR_128:+COMP_ZLIB:+COMP_NULL:+DHE_RSA:+RSA:+DHE_DSS:+ANON_DH:+SHA1:+MD5", NULL);
+ }
+ 
+ 
+@@ -698,7 +635,6 @@
+ #endif
+   gnutls_session_t ssl = NULL;
+   gnutls_certificate_credentials_t certcred = NULL;
+-  int certprio[2] = { GNUTLS_CRT_X509, 0 };
+ 
+   const char *cert, *key, *client_ca, *trusted_ca, *ssl_ver;
+   int use_client_cert = prefs_get_int(context, "use_client_cert");
+@@ -868,7 +804,7 @@
+ 
+       if(use_client_cert)
+ 	{
+-	  rc = gnutls_certificate_type_set_priority (ssl, certprio);
++	  rc = gnutls_set_default_priority (ssl);
+ 	  if (rc)
+ 	    {
+ 	      gnutls_deinit (ssl);

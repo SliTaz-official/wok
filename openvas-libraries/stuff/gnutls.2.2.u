@@ -1,0 +1,212 @@
+--- openvas-libraries-3.1.4/misc/network.c
++++ openvas-libraries-3.1.4/misc/network.c
+@@ -406,113 +406,27 @@ ovas_get_tlssession_from_connection (int
+ }
+ 
+ static int
+-set_gnutls_priorities (gnutls_session_t session, int *protocol_priority,
+-                       int *cipher_priority, int *comp_priority,
+-                       int *kx_priority, int *mac_priority)
+-{
+-  int err;
+-
+-  if ((err = gnutls_protocol_set_priority (session, protocol_priority))
+-      || (err = gnutls_cipher_set_priority (session, cipher_priority))
+-      || (err = gnutls_compression_set_priority (session, comp_priority))
+-      || (err = gnutls_kx_set_priority (session, kx_priority))
+-      || (err = gnutls_mac_set_priority (session, mac_priority)))
+-    {
+-      tlserror ("setting session priorities", err);
+-      return -1;
+-    }
+-  return 0;
+-}
+-
+-static int
+ set_gnutls_sslv23 (gnutls_session_t session)
+ {
+-  static int protocol_priority[] = { GNUTLS_TLS1,
+-    GNUTLS_SSL3,
+-    0
+-  };
+-  static int cipher_priority[] = { GNUTLS_CIPHER_AES_128_CBC,
+-    GNUTLS_CIPHER_3DES_CBC,
+-    GNUTLS_CIPHER_AES_256_CBC,
+-    GNUTLS_CIPHER_ARCFOUR_128,
+-    0
+-  };
+-  static int comp_priority[] = { GNUTLS_COMP_ZLIB,
+-    GNUTLS_COMP_NULL,
+-    0
+-  };
+-  static int kx_priority[] = { GNUTLS_KX_DHE_RSA,
+-    GNUTLS_KX_RSA,
+-    GNUTLS_KX_DHE_DSS,
+-    0
+-  };
+-  static int mac_priority[] = { GNUTLS_MAC_SHA1,
+-    GNUTLS_MAC_MD5,
+-    0
+-  };
+-
+-  return set_gnutls_priorities (session, protocol_priority, cipher_priority,
+-                                comp_priority, kx_priority, mac_priority);
++  // gnutls 2.2.0+
++  return gnutls_priority_set_direct(session, 
++	"NONE:+VERS-TLS1:+VERS-SSL3:+AES_128_CBC:+3DES_CBC:+AES_256_CBC:+ARCFOUR_128:+COMP_ZLIB:+COMP_NULL:+DHE_RSA:+RSA:+DHE_DSS:+SHA1:+MD5", NULL);
+ }
+ 
+ static int
+ set_gnutls_sslv3 (gnutls_session_t session)
+ {
+-  static int protocol_priority[] = { GNUTLS_SSL3,
+-    0
+-  };
+-  static int cipher_priority[] = { GNUTLS_CIPHER_3DES_CBC,
+-    GNUTLS_CIPHER_ARCFOUR_128,
+-    0
+-  };
+-  static int comp_priority[] = { GNUTLS_COMP_ZLIB,
+-    GNUTLS_COMP_NULL,
+-    0
+-  };
+-
+-  static int kx_priority[] = { GNUTLS_KX_DHE_RSA,
+-    GNUTLS_KX_RSA,
+-    GNUTLS_KX_DHE_DSS,
+-    0
+-  };
+-
+-  static int mac_priority[] = { GNUTLS_MAC_SHA1,
+-    GNUTLS_MAC_MD5,
+-    0
+-  };
+-
+-  return set_gnutls_priorities (session, protocol_priority, cipher_priority,
+-                                comp_priority, kx_priority, mac_priority);
++  // gnutls 2.2.0+
++  return gnutls_priority_set_direct(session, 
++	"NONE:+VERS-SSL3:+3DES_CBC:+ARCFOUR_128:+COMP_ZLIB:+COMP_NULL:+DHE_RSA:+RSA:+DHE_DSS:+SHA1:+MD5", NULL);
+ }
+ 
+ static int
+ set_gnutls_tlsv1 (gnutls_session_t session)
+ {
+-  static int protocol_priority[] = { GNUTLS_TLS1,
+-    0
+-  };
+-  static int cipher_priority[] = { GNUTLS_CIPHER_AES_128_CBC,
+-    GNUTLS_CIPHER_3DES_CBC,
+-    GNUTLS_CIPHER_AES_256_CBC,
+-    GNUTLS_CIPHER_ARCFOUR_128,
+-    0
+-  };
+-  static int comp_priority[] = { GNUTLS_COMP_ZLIB,
+-    GNUTLS_COMP_NULL,
+-    0
+-  };
+-  static int kx_priority[] = { GNUTLS_KX_DHE_RSA,
+-    GNUTLS_KX_RSA,
+-    GNUTLS_KX_DHE_DSS,
+-    0
+-  };
+-  static int mac_priority[] = { GNUTLS_MAC_SHA1,
+-    GNUTLS_MAC_MD5,
+-    0
+-  };
+-
+-  return set_gnutls_priorities (session, protocol_priority, cipher_priority,
+-                                comp_priority, kx_priority, mac_priority);
++  // gnutls 2.2.0+
++  return gnutls_priority_set_direct(session, 
++	"NONE:+VERS-TLS1:+AES_128_CBC:+3DES_CBC:+AES_256_CBC:+ARCFOUR_128:+COMP_ZLIB:+COMP_NULL:+DHE_RSA:+RSA:+DHE_DSS:+SHA1:+MD5", NULL);
+ }
+ 
+ /**
+--- openvas-libraries-3.1.4/misc/openvas_server.c
++++ openvas-libraries-3.1.4/misc/openvas_server.c
+@@ -142,12 +142,8 @@ openvas_server_open (gnutls_session_t *
+       return -1;
+     }
+ 
+-  const int kx_priority[] = { GNUTLS_KX_DHE_RSA,
+-    GNUTLS_KX_RSA,
+-    GNUTLS_KX_DHE_DSS,
+-    0
+-  };
+-  if (gnutls_kx_set_priority (*session, kx_priority))
++  // gnutls 2.2.0+
++  if (gnutls_priority_set_direct(*session, "+DHE_RSA:+RSA:+DHE_DSS", NULL))
+     {
+       g_message ("Failed to set server key exchange priority.");
+       gnutls_deinit (*session);
+@@ -593,30 +589,6 @@ openvas_server_new (unsigned int end_typ
+                     gnutls_session_t * server_session,
+                     gnutls_certificate_credentials_t * server_credentials)
+ {
+-  // FIX static vars?
+-  const int protocol_priority[] = { GNUTLS_TLS1,
+-    0
+-  };
+-  const int cipher_priority[] = { GNUTLS_CIPHER_AES_128_CBC,
+-    GNUTLS_CIPHER_3DES_CBC,
+-    GNUTLS_CIPHER_AES_256_CBC,
+-    GNUTLS_CIPHER_ARCFOUR_128,
+-    0
+-  };
+-  const int comp_priority[] = { GNUTLS_COMP_ZLIB,
+-    GNUTLS_COMP_NULL,
+-    0
+-  };
+-  const int kx_priority[] = { GNUTLS_KX_DHE_RSA,
+-    GNUTLS_KX_RSA,
+-    GNUTLS_KX_DHE_DSS,
+-    0
+-  };
+-  const int mac_priority[] = { GNUTLS_MAC_SHA1,
+-    GNUTLS_MAC_MD5,
+-    0
+-  };
+-
+   /* Turn off use of /dev/random, as this can block. */
+ 
+   gcry_control (GCRYCTL_ENABLE_QUICK_RANDOM, 0);
+@@ -664,34 +636,11 @@ openvas_server_new (unsigned int end_typ
+       goto server_free_fail;
+     }
+ 
+-  if (gnutls_protocol_set_priority (*server_session, protocol_priority))
+-    {
+-      g_warning ("%s: failed to set protocol priority\n", __FUNCTION__);
+-      goto server_fail;
+-    }
+-
+-  if (gnutls_cipher_set_priority (*server_session, cipher_priority))
+-    {
+-      g_warning ("%s: failed to set cipher priority\n", __FUNCTION__);
+-      goto server_fail;
+-    }
+-
+-  if (gnutls_compression_set_priority (*server_session, comp_priority))
+-    {
+-      g_warning ("%s: failed to set compression priority\n", __FUNCTION__);
+-      goto server_fail;
+-    }
+-
+-  if (gnutls_kx_set_priority (*server_session, kx_priority))
+-    {
+-      g_warning ("%s: failed to set server key exchange priority\n",
+-                 __FUNCTION__);
+-      goto server_fail;
+-    }
+-
+-  if (gnutls_mac_set_priority (*server_session, mac_priority))
++  // gnutls 2.2.0+
++  if (gnutls_priority_set_direct(*server_session, 
++	"NONE:+VERS-TLS1:+AES_128_CBC:+3DES_CBC:+AES_256_CBC:+ARCFOUR_128:+COMP_ZLIB:+COMP_NULL:+DHE_RSA:+RSA:+DHE_DSS:+MD5", NULL))
+     {
+-      g_warning ("%s: failed to set mac priority\n", __FUNCTION__);
++      g_warning ("%s: failed to set priority\n", __FUNCTION__);
+       goto server_fail;
+     }
+ 
