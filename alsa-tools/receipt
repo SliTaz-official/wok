@@ -1,25 +1,27 @@
 # SliTaz package receipt.
 
 PACKAGE="alsa-tools"
-VERSION="1.1.5"
+VERSION="1.2.5"
 CATEGORY="meta"
-SHORT_DESC="Alsa sound system additionnal tools (meta package)."
+SHORT_DESC="Alsa sound system additional tools (meta package)."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="https://www.alsa-project.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="https://www.alsa-project.org/files/pub/tools/$TARBALL"
-GENERIC_MENUS="no"
+WGET_URL="ftp://ftp.alsa-project.org/pub/tools/$TARBALL"
 
 # We don't want all card mixer as dep.
 DEPENDS="alsa-lib" # alsa-tools-ac3dec
-BUILD_DEPENDS="alsa-lib-dev gtk+-dev fltk-dev autoconf automake"
+BUILD_DEPENDS="alsa-lib-dev autoconf automake fltk-dev gcc83 gtk+-dev gtk+3-dev"
 
-# List of tools we want to build, then splited into individual packages
-TOOLS="as10k1 envy24control hdsploader hdspconf hdspmixer \
-mixartloader pcxhrloader rmedigicontrol sb16_csp seq sscape_ctl \
-us428control usx2yloader vxloader echomixer qlo10k1 \
-hwmixvolume hdajackretask hda-verb hdajacksensetest"	# ld10k1
+GENERIC_MENUS="no"
+
+# List of tools we want to build, then split into individual packages
+TOOLS="as10k1 echomixer envy24control hda-verb hdajackretask hdajacksensetest \
+	hdspconf hdsploader hdspmixer hwmixvolume mixartloader pcxhrloader \
+	rmedigicontrol sb16_csp seq sscape_ctl us428control usx2yloader \
+	vxloader"	# ld10k1 qlo10k1 
 
 current_version()
 {
@@ -30,9 +32,14 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	for tool in $TOOLS; do
+	for tool in $TOOLS
+	  do
 		cd $src/$tool
-		./configure $CONFIGURE_ARGS
-		make && make DESTDIR=$DESTDIR install
-	done
+		./configure			\
+			CC=gcc-83		\
+			CXX=g++-83		\
+			$CONFIGURE_ARGS
+		make &&
+		make install DESTDIR=$DESTDIR
+	  done
 }
