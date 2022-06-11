@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="openvpn"
-VERSION="2.5.2"
+VERSION="2.5.7"
 CATEGORY="network"
 TAGS="vpn tunnel network"
 SHORT_DESC="Full-featured open source SSL VPN solution."
@@ -26,14 +26,16 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	# 2.5.7	unrecognised:
+#		--enable-password-save
+
 	./configure			\
 		--prefix=/usr		\
-		--enable-password-save	\
 		$CONFIGURE_ARGS &&
 	make &&
 	( cd src/plugins/auth-pam/ ; make ) &&
 	( cd src/plugins/down-root/ ; make ) &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -44,12 +46,12 @@ genpkg_rules()
 	cp -a $install/usr/sbin/openvpn	$fs/usr/sbin
 	cp -a $stuff/*			$fs
 
-	chown root.root $fs/etc/init.d/*
-	chmod 0644 $fs/etc/openvpn/openvpn.conf
+	chown root.root			$fs/etc/init.d/*
+	chmod 0644			$fs/etc/openvpn/openvpn.conf
 }
 
 post_remove()
 {
-	# remove config
-	rm -rf ${root}/etc/openvpn
+	# remove configuration
+	rm -rf				$root/etc/openvpn
 }
