@@ -3,19 +3,20 @@
 PACKAGE="waterline-plugin-multiload"
 VERSION="f8b592a"
 CATEGORY="x-window"
-SHORT_DESC="multiload-nandhp is a port of the GNOME multiload applet to SDE waterline panel"
+TAGS="desktop panel"
+SHORT_DESC="Multiload-nandhp is a port of the GNOME multiload applet to SDE waterline panel."
 MAINTAINER="psychomaniak@xakep.ru"
 LICENSE="GPL2"
 WEB_SITE="https://github.com/sde-gui/waterline-plugin-multiload"
+
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="http://git.make-linux.org/sde/$PACKAGE.git/snapshot/$TARBALL"
-TAGS="desktop panel"
 
-DEPENDS="waterline libgtop"
-BUILD_DEPENDS="automake libtool gtk+-dev jansson-dev libsde-utils \
-libsde-utils-x11 libsde-utils-jansson libsde-utils-gtk \
-xorg-libXcomposite-dev menu-cache-dev alsa-lib-dev xz \
-libgtop-dev lxpanel-dev waterline-dev"
+DEPENDS="waterline libgtop libkeybinder libwnck"
+BUILD_DEPENDS="alsa-lib-dev automake gtk+-dev jansson-dev libgtop-dev 
+	libkeybinder-dev libsde-utils libsde-utils-gtk libsde-utils-jansson
+	libsde-utils-x11 libtool libwnck-dev lxpanel-dev menu-cache-dev
+	waterline-dev xorg-libXcomposite-dev xz"
 
 # What is the latest version available today?
 current_version()
@@ -27,22 +28,22 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed 's|lxpanel/plugin.h>|&\n#include <lxpanel/private.h>|' \
-		-i lxpanel/lxpanel-multiload-plugin.c
+	sed -i	's|lxpanel/plugin.h>|&\n#include <lxpanel/private.h>|' \
+		lxpanel/lxpanel-multiload-plugin.c
 	rm -rf $src/.git
 	./autogen.sh || return 1
-	sed 's#ls $srcdir/po/\*.po #& 2>/dev/null#' -i configure
-	./configure \
-		--prefix=/usr \
-		--libexec=/usr/lib \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--disable-static \
-		--disable-maintainer-mode \
-		--enable-silent-rules \
-		--with-waterline \
-		--with-lxpanel \
-		--without-xfce4 \
+	sed -i	's|ls $srcdir/po/\*.po |& 2>/dev/null|'	configure
+	./configure				\
+		--prefix=/usr			\
+		--libexec=/usr/lib		\
+		--sysconfdir=/etc		\
+		--localstatedir=/var		\
+		--disable-static		\
+		--disable-maintainer-mode	\
+		--enable-silent-rules		\
+		--with-waterline		\
+		--with-lxpanel			\
+		--without-xfce4			\
 		$CONFIGURE_ARGS &&
 	make &&
 	make install
@@ -52,5 +53,6 @@ compile_rules()
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib/waterline/plugins
-	cp -a $install/usr/lib/waterline/plugins/*.so $fs/usr/lib/waterline/plugins
+	cp -a $install/usr/lib/waterline/plugins/*.so \
+			$fs/usr/lib/waterline/plugins
 }
