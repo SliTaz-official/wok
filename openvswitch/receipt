@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="openvswitch"
-VERSION="2.14.0"
+VERSION="2.17.1"
 CATEGORY="network"
 SHORT_DESC="Multilayer virtual switch."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="Apache"
+WEB_SITE="https://www.openvswitch.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://openvswitch.org/"
 WGET_URL="${WEB_SITE}releases/$TARBALL"
 
-DEPENDS="libssl zlib py3k bash"
-BUILD_DEPENDS="openssl-dev zlib-dev py3k"
+DEPENDS="bash libssl py3k zlib"
+BUILD_DEPENDS="openssl-dev py3k zlib-dev"
 
 # What is the latest version available today?
 current_version()
@@ -23,22 +24,24 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--mandir=/usr/share/man \
+	./configure			\
+		--prefix=/usr		\
+		--sysconfdir=/etc	\
+		--localstatedir=/var	\
+		--mandir=/usr/share/man	\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr
-	cp -a $install/etc $fs/
-	cp -a $install/var $fs/
-	cp -a $install/usr/bin $fs/usr/
-	cp -a $install/usr/sbin $fs/usr/
-	cp -a $install/usr/share $fs/usr/
+
+	cp -a $install/etc		$fs
+	cp -a $install/var		$fs
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/sbin		$fs/usr
+	cp -a $install/usr/share	$fs/usr
 }
