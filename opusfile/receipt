@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="opusfile"
-VERSION="0.11"
+VERSION="0.12"
 CATEGORY="multimedia"
-SHORT_DESC="Opus streams in the Ogg container I/O"
+SHORT_DESC="Opus streams in the Ogg container I/O."
 MAINTAINER="pascal.bellard@slitaz.org"
-LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+LICENSE="BSD"
 WEB_SITE="https://opus-codec.org/"
-WGET_URL="https://downloads.xiph.org/releases/opus/$TARBALL"
 
-DEPENDS="libssl libogg opus"
-BUILD_DEPENDS="openssl-dev libogg libogg-dev opus-dev pkg-config"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/xiph/$PACKAGE/archive/v$VERSION.tar.gz"
+
+DEPENDS="libogg libssl opus"
+BUILD_DEPENDS="automake libogg libogg-dev libtool openssl-dev opus-dev pkg-config"
 
 # What is the latest version available today?
 current_version()
@@ -23,14 +24,16 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure --prefix=/usr \
-		$CONFIGURE_ARGS && \
-	make && make DESTDIR=$DESTDIR install
+	./autogen.sh &&
+	./configure		\
+		--prefix=/usr	\
+		$CONFIGURE_ARGS &&
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cook_copy_files	*.so*
 }
