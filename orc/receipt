@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="orc"
-VERSION="0.4.29"
+VERSION="0.4.32"
 CATEGORY="multimedia"
 SHORT_DESC="The Oil Runtime Compiler."
 MAINTAINER="domcox@slitaz.org"
@@ -10,6 +10,8 @@ WEB_SITE="https://gstreamer.freedesktop.org/projects/orc.html"
 
 TARBALL="$PACKAGE-$VERSION.tar.xz"
 WGET_URL="https://gstreamer.freedesktop.org/src/$PACKAGE/$TARBALL"
+
+BUILD_DEPENDS="meson"
 
 HOST_ARCH="i486 arm"
 
@@ -22,19 +24,16 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure			\
-		--libexecdir=/usr/lib	\
-		--disable-static	\
-		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS &&
-	make install
+	meson	_build		\
+		--prefix=/usr &&
+	ninja	-C _build &&
+	ninja	-C _build install
+
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cook_copy_folders	bin
+	cook_copy_files		*.so*
 }
