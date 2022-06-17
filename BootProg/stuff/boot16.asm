@@ -302,14 +302,14 @@ First64:
         mov     dx, 0FFF8h
 
         cmp     [bx(bpbSectorsPerFAT)], cx ; 1..12 = FAT12, 16..256 = FAT16
-        mov     ds, ax
         ja      ReadClusterFat16
 
         mov     dh, 0Fh
-        add     si, [cs:di]
+        add     si, [di]
         shr     si, 1                   ; si = cluster * 3 / 2
 
 ReadClusterFat16:
+        mov     ds, ax
         lodsw                           ; ax = next cluster
         jnc     ReadClusterEven
 
