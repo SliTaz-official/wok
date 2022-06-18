@@ -1,16 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="pan"
-VERSION="0.146"
+VERSION="0.149"
 CATEGORY="network"
 SHORT_DESC="A usenet newsreader."
 MAINTAINER="allan316@gmail.com"
 LICENSE="GPL2"
-WEB_SITE="http://pan.rebelbase.com/"
+WEB_SITE="https://pan.rebelbase.com"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="${WEB_SITE}download/releases/$VERSION/source/$TARBALL"
+WGET_URL="$WEB_SITE/download/releases/$VERSION/source/$TARBALL"
 
+SUGGESTED="pan-lang"
 DEPENDS="cairo gcc-lib-base glibc-base gmime gtk+ gtkspell pcre"
 BUILD_DEPENDS="gettext glib-dev gmime-dev gtk+-dev gtkspell-dev intltool itstool"
 
@@ -24,15 +25,17 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|<glib/gtypes.h>|<glib.h>|' pan/general/file-util.h \
+	sed -i 's|<glib/gtypes.h>|<glib.h>|' \
+		pan/general/file-util.h \
 		pan/data/article-cache.h \
 		pan/gui/render-bytes.h
-	sed -i -e 's|<glib/gutils.h>|<glib.h>|' \
+	sed -i	-e 's|<glib/gutils.h>|<glib.h>|' \
 		-e 's|<glib/gtestutils.h>|<glib.h>|' \
 		-e 's|<glibconfig.h>|<glib.h>|' \
 		pan/general/macros.h
-	sed -i 's|<glib/gmain.h>|<glib.h>|' pan/general/worker-pool.cc
-	sed -i -e 's|<glib/gtypes.h>|<glib.h>|' \
+	sed -i 's|<glib/gmain.h>|<glib.h>|' \
+		pan/general/worker-pool.cc
+	sed -i	-e 's|<glib/gtypes.h>|<glib.h>|' \
 		-e 's|<glib/gthreadpool.h>|<glib.h>|' \
 		-e 's|<glib/gtimer.h>|<glib.h>|' \
 		-e 's|<glib/gmain.h>|<glib.h>|' \
@@ -41,18 +44,23 @@ compile_rules()
 		pan/general/worker-pool.h \
 		pan/general/time-elapsed.h \
 		pan/gui/render-bytes.cc
-	sed -i 's|<glib/gtypes.h>|<glib.h>|' pan/usenet-utils/mime-utils.h
-	sed -i 's|<glib/gunicode.h>|<glib.h>|' pan/usenet-utils/text-massager.cc
-	sed -i 's|<glib/gthread.h>|<glib.h>|' pan/general/locking.h
-	sed -i -e 's|<glib/gstring.h>|<glib.h>|' \
+	sed -i 's|<glib/gtypes.h>|<glib.h>|' \
+		pan/usenet-utils/mime-utils.h
+	sed -i 's|<glib/gunicode.h>|<glib.h>|' \
+		pan/usenet-utils/text-massager.cc
+	sed -i 's|<glib/gthread.h>|<glib.h>|' \
+		pan/general/locking.h
+	sed -i	-e 's|<glib/gstring.h>|<glib.h>|' \
 		-e 's|<glib/giochannel.h>|<glib.h>|' \
 		pan/tasks/socket-impl-gio.h
-	sed -i -e 's|<glib/gfileutils.h>|<glib.h>|' \
+	sed -i	-e 's|<glib/gfileutils.h>|<glib.h>|' \
 		pan/data-impl/data-impl.cc
-	while read file last; do
+
+	while read file last
+	  do
 		grep -q 'include <cstdio>' pan/$file ||
 		sed -i "s/<$last>/<$last>\n#include <cstdio>/" pan/$file
-	done <<EOT
+	  done <<EOT
 general/log.cc		cstdarg
 general/progress.cc	cstdarg
 tasks/nntp.cc		cstdarg
@@ -60,9 +68,11 @@ tasks/nntp-pool.cc	config.h
 usenet-utils/numbers.cc	cctype
 EOT
 
+	# 0.149	unrecognised
+#		--with-gmime30=yes	
+
 	./configure			\
 		--prefix=/usr		\
-		--with-gmime30=yes	\
 		$CONFIGURE_ARGS &&
 	make &&
 	make DESTDIR=$DESTDIR install
