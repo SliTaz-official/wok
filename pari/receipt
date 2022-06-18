@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="pari"
-VERSION="2.11.3"
+VERSION="2.13.4"
 CATEGORY="utilities"
 SHORT_DESC="Computer algebra system designed for fast computations in number theory."
 MAINTAINER="al.bobylev@gmail.com"
@@ -9,11 +9,11 @@ LICENSE="GPL2"
 WEB_SITE="https://pari.math.u-bordeaux.fr/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="${WEB_SITE}pub/$PACKAGE/OLD/${VERSION%.*}/$TARBALL"
+WGET_URL="${WEB_SITE}pub/$PACKAGE/unix/$TARBALL"
 
 DEPENDS="glibc-base gmp libxcb ncurses readline xorg-libX11 xorg-libXau \
 	xorg-libXdmcp"
-BUILD_DEPENDS="gmp-dev readline-dev xorg-libX11-dev"
+BUILD_DEPENDS="bash gmp-dev readline-dev texinfo xorg-libX11-dev"
 
 # What is the latest version available today?
 current_version()
@@ -25,6 +25,7 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	ln -s /bin/bash /bin/sh
 	mkdir build
 	# this configure does not respect $CONFIGURE_ARGS :(
 	./Configure			\
@@ -32,11 +33,12 @@ compile_rules()
 		--graphic=X11		\
 		--builddir=build	\
 		--prefix=/usr &&
-	cd build &&
-	make all &&
-	make DESTDIR=$install install 2>&1 | sed \
-		-e "s/dvi': No such/dvi': no such/" \
-		-e "s/tex: No such/tex: no such/"
+	sed -i 's|TEX   = tex|TEX   = texi2pdf|' doc/Makefile
+	cd build
+	bash -c make all
+	make DESTDIR=$install install 2>&1 | 		\
+	sed 	-e "s/dvi': No such/dvi': no such/"	\
+		-e "s/ps': No such/ps': no such/"
 
 	rm -rf $src/build
 }
