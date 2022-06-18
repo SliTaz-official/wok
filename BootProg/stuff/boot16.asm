@@ -296,9 +296,9 @@ ClusterLoop:
 
         mov     ax, es                  ; ax = FAT segment = ImageLoadSeg
         add     si, si                  ; si = cluster * 2
-        jnc     First64
+        jnc     First64k
         mov     ah, (1000h+ImageLoadSeg)>>8 ; adjust segment for 2nd part of FAT16
-First64:
+First64k:
         mov     dx, 0FFF8h
 
         cmp     [bx(bpbSectorsPerFAT)], cx ; 1..12 = FAT12, 16..256 = FAT16
@@ -309,20 +309,19 @@ First64:
         shr     si, 1                   ; si = cluster * 3 / 2
 
 ReadClusterFat16:
+        push    ds
         mov     ds, ax
         lodsw                           ; ax = next cluster
+        pop     ds
         jnc     ReadClusterEven
 
         rol     ax, cl
 
 ReadClusterEven:
+        scasw                           ; di += 2
         and     ah, dh                  ; mask cluster value
         cmp     ax, dx
 
-        push    cs
-        pop     ds
-        inc     di
-        inc     di
         xchg    ax, si
         jc      ClusterLoop
         pop     si
