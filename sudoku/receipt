@@ -8,7 +8,7 @@ MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="unknown"
 TARBALL="$PACKAGE-$VERSION"
 WEB_SITE="https://web.archive.org/web/20140124072600/http://10k.aneventapart.com/1/Entry/81"
-WGET_URL="https://web.archive.org/web/20140124072600/http://10k.aneventapart.com/1/Uploads/81/index.html"
+WGET_URL="https://web.archive.org/web/20140124074927/http://10k.aneventapart.com/1/Uploads/81/"
 HOST_ARCH="any"
 GENERIC_PIXMAPS="no"
 COOKOPTS="!pixmaps"
@@ -17,7 +17,12 @@ COOKOPTS="!pixmaps"
 genpkg_rules()
 {
         mkdir -p $fs/var/www/$PACKAGE $fs/usr/share/applications
-	cp $src/$TARBALL $fs/var/www/$PACKAGE/index.html
+	sed	-e '/BEGIN WAYBACK TOOLBAR INSERT/,/END WAYBACK TOOLBAR INSERT/d' \
+		-e '/analytics.js/,/End Wayback Rewrite JS Include/d' \
+		-e '/<\/html>/,$d' < $src/$TARBALL > $fs/var/www/$PACKAGE/index.html
+	echo '</html>' >> $fs/var/www/$PACKAGE/index.html
+	grep -q '<head>' $fs/var/www/$PACKAGE/index.html ||
+	sed -i 's|<html>|&\n<head>|' $fs/var/www/$PACKAGE/index.html
 	chown -R 80.80 $fs/var/www/$PACKAGE
 	cat > $fs/usr/share/applications/sudoku.desktop <<EOT
 [Desktop Entry]
