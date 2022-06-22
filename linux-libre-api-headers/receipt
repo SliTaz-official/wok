@@ -8,9 +8,12 @@ MAINTAINER="gokhlayeh@slitaz.org"
 LICENSE="GPL2"
 PROVIDE="linux-api-headers"
 SOURCE="linux-libre"
-TARBALL="$SOURCE-$VERSION.tar.bz2"
+TARBALL="$SOURCE-$VERSION.vcdiff"
 WEB_SITE="http://www.fsfla.org/svnwiki/selibre/linux-libre/"
-WGET_URL="http://www.fsfla.org/svnwiki/selibre/linux-libre/download/releases/old/gen6/$VERSION/$TARBALL"
+WGET_URL="http://linux-libre.fsfla.org/pub/linux-libre/releases/old/gen6/$VERSION/$TARBALL"
+EXTRA_SOURCE_FILES="https://mirrors.edge.kernel.org/pub/linux/kernel/v${VERSION%%.*}.x/linux-${VERSION%-gnu}.tar.xz"
+
+BUILD_DEPENDS="xdelta"
 
 # What is the latest version available today?
 current_version()
@@ -19,12 +22,23 @@ current_version()
 	sed '/-gnu/!d;s|.*ref="||;s|/".*||' | sed '$!d'
 }
 
+# Common rules for cook_tmp_toolchain & compile_rules
+build_rules()
+{
+	[ -s "$SOURCES_REPOSITORY/$(basename $EXTRA_SOURCE_FILES)" ] ||
+			busybox wget -P "$SOURCES_REPOSITORY/" "$EXTRA_SOURCE_FILES" 
+	xzcat < $SOURCES_REPOSITORY//$(basename $EXTRA_SOURCE_FILES) > $(basename $EXTRA_SOURCE_FILES .xz) 
+	xdelta3 -d $TARBALL
+	tar xf ${TARBALL/vcdiff/tar}
+	mv linux-*/* .
+	make mrproper &&
+	make headers_check
+}
+
 # Rules to compile & install the temporary toolchain.
 cook_tmp_toolchain()
 {
-	cd $src
-	make mrproper &&
-	make headers_check &&
+	build_rules &&
 	make INSTALL_HDR_PATH=dest headers_install &&
 	cp -r dest/include/* /tools/include
 }
@@ -32,9 +46,7 @@ cook_tmp_toolchain()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	make mrproper &&
-	make headers_check &&
+	build_rules &&
 	make INSTALL_HDR_PATH=$DESTDIR/usr headers_install
 }
 

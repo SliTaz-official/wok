@@ -7,13 +7,14 @@ SHORT_DESC="The Linux Libre kernel and modules."
 MAINTAINER="gokhlayeh@slitaz.org"
 LICENSE="GPL2"
 PROVIDE="linux"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
+TARBALL="$PACKAGE-$VERSION.vcdiff"
 WEB_SITE="http://www.fsfla.org/ikiwiki/selibre/linux-libre/"
-WGET_URL="http://www.fsfla.org/svnwiki/selibre/linux-libre/download/releases/old/gen6/$VERSION/$TARBALL"
+WGET_URL="http://linux-libre.fsfla.org/pub/linux-libre/releases/old/gen6/$VERSION/$TARBALL"
+EXTRA_SOURCE_FILES="https://mirrors.edge.kernel.org/pub/linux/kernel/v${VERSION%%.*}.x/linux-${VERSION%-gnu}.tar.xz"
 
 DEPENDS="kmod"
 BUILD_DEPENDS="slitaz-toolchain perl git xz lzma patch kmod bc \
-sysfsutils-dev libtool glib-dev libwrap libwrap-dev udev-dev"
+sysfsutils-dev libtool glib-dev libwrap libwrap-dev udev-dev xdelta"
 
 # What is the latest version available today?
 current_version()
@@ -25,6 +26,13 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	[ -s "$SOURCES_REPOSITORY/$(basename $EXTRA_SOURCE_FILES)" ] ||
+			busybox wget -P "$SOURCES_REPOSITORY/" "$EXTRA_SOURCE_FILES" 
+	xzcat < $SOURCES_REPOSITORY//$(basename $EXTRA_SOURCE_FILES) > $(basename $EXTRA_SOURCE_FILES .xz) 
+	xdelta3 -d $TARBALL
+	tar xf ${TARBALL/vcdiff/tar}
+	mv linux-*/* .
+
 	# SliTaz db
 	rm -rf $WOK/$PACKAGE/slitaz && mkdir $WOK/$PACKAGE/slitaz
 	echo "$WGET_URL" > $WOK/$PACKAGE/slitaz/url
