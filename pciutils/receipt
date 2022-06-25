@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="pciutils"
-VERSION="3.6.4"
+VERSION="3.8.0"
 CATEGORY="system-tools"
 SHORT_DESC="Linux PCI Utilities."
 MAINTAINER="pankso@slitaz.org"
@@ -11,8 +11,8 @@ WEB_SITE="https://mj.ucw.cz/sw/pciutils/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://mj.ucw.cz/download/linux/pci/$TARBALL"
 
-DEPENDS="glibc-base pciids zlib"
-BUILD_DEPENDS=""
+DEPENDS="gcc83-lib-base glibc-base pciids zlib"
+BUILD_DEPENDS="gcc83"
 
 # What is the latest version available today?
 current_version()
@@ -24,12 +24,15 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	sed -i	's|CC=cc|CC=gcc-83|'	Makefile
+
 	make	all				\
 		OPT="${CFLAGS} -fPIC -DPIC"	\
-		SHARED=no PREFIX=/usr		\
+		SHARED=no			\
+		PREFIX=/usr			\
 		SHAREDIR=/usr/share/misc	\
 		MANDIR=/usr/share/man &&
-	cp -a lib/libpci.a	$WOK/$PACKAGE/source &&
+	cp -a lib/libpci.a			$WOK/$PACKAGE/source &&
 	make	clean &&
 	make	all				\
 		OPT="${CFLAGS}"			\
@@ -50,18 +53,15 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
-	mkdir -p $fs/usr/lib
-
-	cp -a $install/usr/sbin/lspci	$fs/usr/bin
+	cook_copy_files		lspci
+	cook_copy_files		*.so*
 	cp -a $install/usr/sbin/setpci	$fs/usr/bin
-	cp -a $install/usr/lib/*.so*	$fs/usr/lib
 }
 
 # Overlap busybox
 pre_install()
 {
-	rm -f "$1/usr/bin/lspci"
+	rm -f	"$1/usr/bin/lspci"
 }
 
 post_remove()
