@@ -1,15 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="pcre2"
-VERSION="10.34"
+VERSION="10.40"
 CATEGORY="system-tools"
 SHORT_DESC="Perl 5 Compatible Regular Expression 2, library."
 MAINTAINER="al.bobylev@gmail.com"
 LICENSE="BSD"
 WEB_SITE="https://www.pcre.org/"
 
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="$SF_MIRROR/pcre/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/PhilipHazel/$PACKAGE/archive/refs/tags/$TARBALL"
+
+BUILD_DEPENDS="automake libtool"
 
 HOST_ARCH="i486 arm"
 
@@ -24,6 +26,7 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	./autogen.sh &&
 	./configure			\
 		--prefix=/usr		\
 		--enable-pcre2-16	\
@@ -37,13 +40,13 @@ compile_rules()
 	for i in $(find $install/usr/share/man -type l)
 	  do
 		dest=$(readlink $i)
-		rm $i; ln -s $dest.gz $i.gz
+		rm $i
+		ln -s $dest.gz $i.gz
 	  done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cook_copy_files	*.so*
 }
