@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="peazip"
-VERSION="6.8.0"
+VERSION="8.4.0"
 CATEGORY="x-window"
 TAGS="archiver bzip2 encryption gzip rar split tar unrar xz zip 7zip"
 SHORT_DESC="Open Source archive manager and data compression utility."
@@ -11,12 +11,12 @@ WEB_SITE="https://peazip.github.io/peazip-linux.html"
 
 SYSTEM="LINUX"
 ENV="GTK2"
-TARBALL="$PACKAGE-$VERSION.$SYSTEM.$ENV.tgz"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.$SYSTEM.$ENV.tar.gz"
+WGET_URL="https://github.com/$PACKAGE/PeaZip/releases/download/$VERSION/${PACKAGE}_portable-$VERSION.$SYSTEM.$ENV.x86.tar.gz"
 
 SUGGESTED="aescrypt gnupg"
-DEPENDS="desktop-file-utils xorg-libX11 atk glibc-base cairo gtk+ \
-	gdk-pixbuf glib gmp pango libcurl ncurses upx zpaq xdg-utils"
+DEPENDS="atk cairo desktop-file-utils gdk-pixbuf glib glibc-base gmp gtk+
+	libcurl ncurses pango upx xdg-utils xorg-libX11 zpaq"
 
 # What is the latest version available today?
 current_version()
@@ -28,31 +28,39 @@ current_version()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	# Make Directories For SliTaz GNU/Linux ...
+	mkdir -p $fs/opt/kde3/share/applications/kde
+	mkdir -p $fs/opt/kde3/share/apps/konqueror/servicemenus
+	mkdir -p $fs/opt/kde3/share/icons
 
 	mkdir -p $fs/usr/bin
-	mkdir -p $fs/usr/lib/peazip
+	mkdir -p $fs/usr/lib/peazip/res/bin
+	mkdir -p $fs/usr/lib/peazip/res/share
+
 	mkdir -p $fs/usr/share/applications
 	mkdir -p $fs/usr/share/pixmaps
 
-	cp -a $src/opt $fs/
+	cp -a $src/pea			$fs/usr/lib/peazip
+	cp -a $src/peazip		$fs/usr/lib/peazip
 
-	# Creating hierarchies for SliTaz GNU/Linux ...
+	cp -a $src/res/bin/7z		$fs/usr/lib/peazip/res/bin
 
-	cp -a $src/usr/local/share/PeaZip/res \
-		$fs/usr/lib/peazip/
-	cp -a $src/usr/local/share/PeaZip/peazip \
-		$fs/usr/lib/peazip/
-	cp -a $src/usr/local/share/PeaZip/copying.txt \
-		$fs/usr/lib/peazip/
-	cp -a $src/usr/local/share/PeaZip/peazip_help.pdf \
-		$fs/usr/lib/peazip/
-	cp -a $src/usr/local/share/icons/peazip.png \
-		$fs/usr/share/pixmaps/
+	cp -a $src/res/share/lang	$fs/usr/lib/peazip/res/share
+	cp -a $src/res/share/themes	$fs/usr/lib/peazip/res/share
+	cp -a $src/res/share/copying/copying.txt \
+					$fs/usr/lib/peazip
+	cp -a $src/res/share/peazip_help.pdf \
+					$fs/usr/lib/peazip/res/share
 
-	# Creating the launchers ...
+	cp -a $src/res/share/batch/freedesktop_integration/peazip.png \
+					$fs/usr/share/pixmaps
 
-	# Desktop Entry For Pea
+	cp -a $src/res/share/batch/freedesktop_integration/peazip.png \
+					$fs/opt/kde3/share/icons
+	cp -a $src/res/share/batch/freedesktop_integration/KDE-servicemenus/KDE3-konqueror/*.desktop \
+					$fs/opt/kde3/share/apps/konqueror/servicemenus
+
+
+	# Desktop entry for Pea
 	cat > $fs/usr/share/applications/pea.desktop <<EOT
 [Desktop Entry]
 Version=1.0
@@ -63,32 +71,22 @@ Icon=peazip.png
 Type=Application
 Terminal=false
 X-KDE-HasTempFileOption=true
-Categories=GTK;KDE;Utility;System;Archiving;
+Categories=GTK;KDE;Utility;Archiving;Compression;
 MimeType=application/x-gzip;application/x-lha;application/x-tar;application/x-tgz;application/x-tbz;application/x-tbz2;application/x-zip;application/zip;application/x-bzip;application/x-rar;application/x-tarz;application/x-archive;application/x-bzip2;application/x-jar;application/x-deb;application/x-ace;application/x-7z;application/x-arc;application/x-arj;application/x-compress;application/x-cpio;
 Exec=pea
 EOT
 
-	# Desktop Entry For Peazip
-	cat > $fs/usr/share/applications/peazip.desktop <<EOT
-[Desktop Entry]
-Version=1.0
-Encoding=UTF-8
-Name=Peazip
-GenericName=Archiving Tool
-Icon=peazip.png
-Type=Application
-Terminal=false
-X-KDE-HasTempFileOption=true
-Categories=GTK;KDE;Utility;System;Archiving;
-MimeType=application/x-gzip;application/x-lha;application/x-tar;application/x-tgz;application/x-tbz;application/x-tbz2;application/x-zip;application/zip;application/x-bzip;application/x-rar;application/x-tarz;application/x-archive;application/x-bzip2;application/x-jar;application/x-deb;application/x-ace;application/x-7z;application/x-arc;application/x-arj;application/x-compress;application/x-cpio;
-Exec=peazip %F
-EOT
+	# Desktop entries for Peazip
+	cp -a $src/res/share/batch/freedesktop_integration/peazip.desktop \
+					$fs/usr/share/applications/peazip.desktop
+	cp -a $src/res/share/batch/freedesktop_integration/peazip.desktop \
+					$fs/opt/kde3/share/applications/kde/peazip.desktop
 
 	# Creating the symbolic links ...
 
 	cd $fs/usr/bin
-	ln -s ../lib/peazip/res/pea		pea
-	ln -s ../lib/peazip/peazip		peazip
+	ln -s ../lib/peazip/pea		pea
+	ln -s ../lib/peazip/peazip	peazip
 
 echo ""
 echo ""
