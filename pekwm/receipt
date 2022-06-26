@@ -1,20 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="pekwm"
-VERSION="0.1.17"
+VERSION="0.2.1"
 CATEGORY="x-window"
 TAGS="window-manager"
 SHORT_DESC="Very light, configurable and themable window manager for X."
 MAINTAINER="jozee@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="https://www.pekwm.org/"
+WEB_SITE="https://www.pekwm.se/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/pekdon/$PACKAGE/archive/release-$VERSION.tar.gz"
 
-SUGGESTED="hsetroot tint2 lxpanel wbar xorg-xprop xorg-xev xdotool wmctrl"
-DEPENDS="xorg-libX11 xorg-libXinerama xorg-libXft xorg-libXrandr xorg-libXpm"
-BUILD_DEPENDS="libtool xorg-dev xorg-dev-proto zlib-dev automake"
+SUGGESTED="hsetroot lxpanel tint2 wbar wmctrl xdotool xorg-xev xorg-xprop"
+DEPENDS="xorg-libX11 xorg-libXft xorg-libXinerama xorg-libXpm xorg-libXrandr"
+BUILD_DEPENDS="cmake xorg-dev xorg-dev-proto zlib-dev"
 
 current_version()
 {
@@ -25,35 +25,32 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./autogen.sh &&
-	./configure			\
-		--prefix=/usr		\
-		--sysconfdir=/etc	\
-		$CONFIGURE_ARGS &&
+	mkdir	_build
+	cd	_build
+	cmake	..				\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin
-	mkdir -p $fs/usr/share/pekwm
-	mkdir -p $fs/etc
+	mkdir -p $fs/usr/share
 
+	cp -a $install/etc		$fs
 	cp -a $install/usr/bin		$fs/usr
 	cp -a $install/usr/share/pekwm	$fs/usr/share
-	cp -a $install/etc		$fs
 
 	# Custom configuration files and scripts
 	cp -a $stuff/etc		$fs
 	cp -a $stuff/scripts		$fs/usr/share/pekwm
 
 	# Set permissions
-	chown -R root.root $fs
-	chmod +x $fs/etc/pekwm/start
-	chmod +x $fs/usr/share/pekwm/scripts/*
-	chmod 0755 $fs/usr/bin/pekwm
+	chown -R root.root		$fs
+	chmod +x			$fs/etc/pekwm/start
+	chmod +x			$fs/usr/share/pekwm/scripts/*
+	chmod 0755			$fs/usr/bin/pekwm
 }
 
 post_install()
@@ -61,26 +58,30 @@ post_install()
 	# Pekwm searches for default font path (100dpi folder) for xserver to render 
 	# menus; either manually set it in .xinitrc or fake 100dpi folder fonts 
 	# by linking to ttf-dejavu
-	if [ ! -d "$1/usr/share/fonts/X11/100dpi/" ]; then
+	if [ ! -d "$1/usr/share/fonts/X11/100dpi/" ]
+	  then
 		mkdir -p "$1/usr/share/fonts/X11/100dpi"
 		cd "$1/usr/share/fonts/X11/100dpi"
 		ln -s ../../truetype/ttf-dejavu/* .
 	fi
-	
+
 	res=$(cat "$1/etc/slim.conf" | grep ^session | sed s/"sessions. *"//)
-	# Adding WM to SLIM available sessions.
-	if ! echo "$res" | grep -q $PACKAGE; then
+	# Adding window manager to SLIM available sessions.
+	if ! echo "$res" | grep -q $PACKAGE
+	  then
 		echo
 		echo -n "Adding $PACKAGE to /etc/slim.conf..."
-		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" "$1/etc/slim.conf"
+		sed -i	"s/^sessions.*/sessions            ${res},$PACKAGE/" \
+			"$1/etc/slim.conf"
 		status
 	fi
 }
 
 post_remove()
 {
-	# Remove WM from SLIM available sessions.
-	if grep -q $PACKAGE "$1/etc/slim.conf"; then
+	# Remove window manager from SLIM available sessions.
+	if grep -q $PACKAGE "$1/etc/slim.conf"
+	  then
 		sed -i s/,$PACKAGE// "$1/etc/slim.conf"
 	fi
 }
