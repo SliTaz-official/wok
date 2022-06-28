@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="arpwatch"
-VERSION="2.1a15"
+VERSION="3.1"
 CATEGORY="network"
-SHORT_DESC="arpwatch and arpsnmp network monitoring tools"
+SHORT_DESC="Arpwatch and arpsnmp network monitoring tools."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="BSD"
 WEB_SITE="ftp://ftp.ee.lbl.gov/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="${WEB_SITE}$TARBALL"
+WGET_URL="https://ee.lbl.gov/downloads/$PACKAGE/$TARBALL"
 
 DEPENDS="libpcap"
 BUILD_DEPENDS="libpcap-dev"
@@ -25,10 +26,15 @@ compile_rules()
 {
 	sed -i 's|ARPDIR = $(prefix)/arpwatch|ARPDIR = /var/lib/arpwatch|' Makefile.in
 	sed -i 's|-o bin -g bin||' Makefile.in
-	./configure $CONFIGURE_ARGS &&
+	./configure			\
+		--mandir=/usr/share/man	\
+		--sysconfdir=/etc	\
+		$CONFIGURE_ARGS &&
 	make &&
 	install -d -m 755 $DESTDIR/usr/sbin
-	make install
+	install -d -m 755 $DESTDIR/usr/share/man/man8
+	install -d -m 755 $DESTDIR/usr/etc/rc.d
+	make install &&
 	
 	#~ SENDMAIL=/usr/sbin/sendmail
 
@@ -38,8 +44,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/sbin $fs/usr
-	install -d -m 0755 $fs/var/lib/arpwatch
-	touch $fs/var/lib/arpwatch/arp.dat
+	cook_copy_folders	sbin
+	install -d -m 0755	$fs/var/lib/arpwatch
+	touch			$fs/var/lib/arpwatch/arp.dat
 }
