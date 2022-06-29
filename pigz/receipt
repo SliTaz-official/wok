@@ -1,14 +1,15 @@
 # SliTaz package receipt.
 
 PACKAGE="pigz"
-VERSION="2.4"
+VERSION="2.7"
 CATEGORY="base-system"
 SHORT_DESC="Parallel Implementation of GZip."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="Apache"
+WEB_SITE="https://zlib.net/pigz/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://www.zlib.net/pigz"
-WGET_URL="https://github.com/madler/pigz/archive/v$VERSION.tar.gz"
+WGET_URL="${WEB_SITE}$TARBALL"
 
 DEPENDS=""
 BUILD_DEPENDS=""
@@ -24,25 +25,28 @@ current_version()
 compile_rules()
 {
 	sed -i 's/-lz/& -lm/' Makefile
+
 	make
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/bin $install/usr/share/man
-	cp $src/pigz.1 $install/usr/share/man
-	cp $src/pigz $fs/usr/bin
-	ln -s pigz $fs/usr/bin/unpigz
+	mkdir -p $fs/usr/bin
+	mkdir -p $install/usr/share/man
+
+	cp $src/pigz.1	$install/usr/share/man
+	cp $src/pigz	$fs/usr/bin
+	ln -s pigz	$fs/usr/bin/unpigz
 }
 
 pre_remove()
 {
-	sed -i '/gzip=pigz/d' $1/etc/profile
+	sed -i '/gzip=pigz/d'		$1/etc/profile
 }
 
 post_install()
 {
-	grep -qs 'gzip=pigz' $1/etc/profile ||
-	echo 'alias gzip=pigz' >> $1/etc/profile
+	grep -qs 'gzip=pigz'		$1/etc/profile ||
+	echo 'alias gzip=pigz' >>	$1/etc/profile
 }
