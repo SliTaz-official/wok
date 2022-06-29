@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="privoxy"
-VERSION="3.0.28"
+VERSION="3.0.33"
 CATEGORY="network"
 SHORT_DESC="Non-caching web privacy proxy."
 MAINTAINER="paul@slitaz.org"
@@ -13,6 +13,7 @@ WGET_URL="$SF_MIRROR/ijbswa/$TARBALL"
 
 DEPENDS="pcre zlib"
 BUILD_DEPENDS="autoconf coreutils m4 perl zlib-dev"
+
 CONFIG_FILES="/etc/privoxy/config"
 
 # What is the latest version available today?
@@ -51,25 +52,27 @@ genpkg_rules()
 	mkdir -p $fs/etc/init.d
 	mkdir -p $fs/usr
 
-	cp -a $install/usr/sbin	$fs/usr
-	cp -a $install/var	$fs
-	cp -a $install/etc	$fs
+	cook_copy_folders	etc
+	cook_copy_folders	sbin
+	cook_copy_folders	var
 
 	# Copy daemon from stuff
-	cp $stuff/daemon-privoxy $fs/etc/init.d/privoxy
+	cp $stuff/daemon-privoxy	$fs/etc/init.d/privoxy
 }
 
 post_install()
 {
 	# adduser privoxy if needed
-	if ! grep -q privoxy "$1/etc/passwd"; then
+	if ! grep -q privoxy "$1/etc/passwd"
+	  then
 		echo
 		echo -n "Adding user privoxy..."
 		chroot "$1/" adduser -s /bin/false -H -D -u 42 privoxy
 		status
 	fi
 
-	if ! grep -q privoxy "$1/etc/group"; then
+	if ! grep -q privoxy "$1/etc/group"
+	  then
 		echo
 		echo -n "Adding group privoxy..."
 		chroot "$1/" addgroup -g 42 privoxy
@@ -79,16 +82,17 @@ post_install()
 	# and change file permissions
 	echo
 	echo -n "Changing file permissions..."
-	chroot "$1/" chown -R privoxy.privoxy /etc/privoxy
-	chown -R root.root "$1/etc/privoxy/templates"
-	chown root.root "$1/etc/privoxy"
-	chroot "$1/" chown privoxy.privoxy /var/log/privoxy/logfile
+	chroot "$1/" chown -R	privoxy.privoxy	/etc/privoxy
+	chown -R root.root			"$1/etc/privoxy/templates"
+	chown root.root				"$1/etc/privoxy"
+	chroot "$1/" chown	privoxy.privoxy	/var/log/privoxy/logfile
 	status
 }
 
-# Del user privoxy when pkg is removed.
 post_remove()
 {
-	deluser privoxy
-	delgroup privoxy
+	echo
+	echo -n "Removing user and group privoxy..."
+	deluser		privoxy
+	status
 }
