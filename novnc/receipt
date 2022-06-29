@@ -1,20 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="novnc"
-VERSION="201111004"
+VERSION="0.5.1"
 CATEGORY="network"
+TAGS="vnc remote-desktop html5"
 SHORT_DESC="VNC client in HTML5/javascript."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="MPL2"
-WEB_SITE="https://github.com/kanaka/noVNC"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="git|git://github.com/kanaka/noVNC.git"
-TAGS="vnc remote-desktop html5"
-#HOST_ARCH="any"
+WEB_SITE="https://github.com/novnc/noVNC"
 
-DEPENDS="python python-numpy"
-BUILD_DEPENDS="python python-pil openssl git"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="https://github.com/$PACKAGE/noVNC/archive/v$VERSION.tar.gz"
+
 SUGGESTED="pyopenssl openssl"
+DEPENDS="python python-numpy"
+BUILD_DEPENDS="python python-pil openssl"
+
+#HOST_ARCH="any"
 
 current_version()
 {
@@ -25,25 +27,37 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir -p $DESTDIR
-	sed -i 's/bash/sh/;s/ps -p \([^ ]*\)/ps | grep "^ *\1 "/' utils/launch.sh
+	sed -i 's/bash/sh/;s/ps -p \([^ ]*\)/ps | grep "^ *\1 "/' \
+		utils/launch.sh
+
 	IMAGE=/usr/share/images/slitaz-background.jpg
-	[ -s $IMAGE ] && utils/img2js.py $IMAGE noVNC_logo > include/logo.js
-	cp -a *.html images/favicon.ico utils include $DESTDIR
+	[ -s $IMAGE ] &&
+	utils/img2js.py $IMAGE noVNC_logo > include/logo.js
+
+	mkdir -p $DESTDIR
+	cp -a *.html			$DESTDIR
+	cp -a images			$DESTDIR
+	cp -a utils			$DESTDIR
+	cp -a include			$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/novnc
-	cp -a $install/* $fs/usr/share/novnc
+	cp -a $install/*	$fs/usr/share/novnc
 }
 
 post_install()
 {
 	which openssl > /dev/null &&
-	openssl req -new -x509 -keyout "$1/usr/share/novnc/self.pem" \
-		-out "$1/usr/share/novnc/self.pem" -days 3650 -nodes <<EOT
+	openssl	req					\
+		-new					\
+		-x509					\
+		-keyout "$1/usr/share/novnc/self.pem"	\
+		-out "$1/usr/share/novnc/self.pem"	\
+		-days 3650				\
+		-nodes <<EOT
 $(. "$1/etc/locale.conf" ; echo ${LANG#*_})
 $(cat "$1/etc/TZ")
 
