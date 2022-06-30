@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="proxytunnel"
-VERSION="1.9.0"
+VERSION="1.10"
 CATEGORY="network"
 SHORT_DESC="Connecting outside through HTTP(S) proxies."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tgz"
-WEB_SITE="http://proxytunnel.sourceforge.net/"
-WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+WEB_SITE="https://github.com/proxytunnel/proxytunnel/"
 
-DEPENDS="libcrypto libssl gzip"
-BUILD_DEPENDS="openssl-dev"
+TARBALL="$PACKAGE-$VERSION.tgz"
+WGET_URL="${WEB_SITE}archive/refs/tags/v$VERSION.20210604.tar.gz"
+
+DEPENDS="gzip libcrypto libssl"
+BUILD_DEPENDS="ntlmaps openssl-dev"
 
 # What is the latest version available today?
 current_version()
@@ -26,13 +27,15 @@ compile_rules()
 {
 	export LDFLAGS="$LDFLAGS -Wl,--copy-dt-needed-entries"
 	sed -i 's|/local||' Makefile
+	# skip documentation
+	patch	--input=$stuff/patches/Makefile-$VERSION	Makefile
+
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.   
 genpkg_rules()                                      
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
+	cook_copy_folders	bin
 }
