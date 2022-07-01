@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="python"
-VERSION="2.7.17"
+VERSION="2.7.18"
 CATEGORY="development"
 SHORT_DESC="The Python programming language."
 MAINTAINER="pankso@slitaz.org"
@@ -19,28 +19,28 @@ BUILD_DEPENDS="bzip2-dev db-dev gdbm-dev libffi-dev ncursesw-dev
 
 HOST_ARCH="i486 arm"
 
+# @maintainer: Please update also: python-idle
+
 current_version()
 {
 	wget -O - https://www.python.org/ftp/python/ 2>/dev/null | \
 	sed "/=\"${VERSION%.*}/!d;s|.*\">\\(.*\\)/<.*|\\1|" | sort -Vr | sed q
 }
 
-# @maintainer: Please update also: python-idle
-
 # Rules to configure and make the package.
 compile_rules()
 {
 	# Temporary workaround for FS#22322
 	# See http://bugs.python.org/issue10835 for upstream report
-	sed -i "/progname =/s/python/python${_pybasever}/" \
-		Python/pythonrun.c
+#	sed -i "/progname =/s/python/python${_pybasever}/" \
+#		Python/pythonrun.c
 
 	# Enable built-in SQLite3 module to load extensions (fix FS#22122)
 	sed -i "/SQLITE_OMIT_LOAD_EXTENSION/d" \
 		setup.py
 
 	case "$ARCH" in
-		arm*)
+		(arm*)
 			# First pass for build host tools
 			unset CFLAGS CXXFLAGS
 			cp -f $CONFIG_SITE .
@@ -82,25 +82,27 @@ EOT
 				CROSS_COMPILE_TARGET=yes		\
 				HOSTARCH=${HOST_SYSTEM}			\
 				BUILDARCH=${BUILD_SYSTEM} || exit 1
-			make	DESTDIR=$DESTDIR install || exit 1 ;;
-		i?86)
+			make	DESTDIR=$DESTDIR install || exit 1
+			;;
+		(i?86)
 			./configure			\
 				--enable-shared		\
 				--build=${HOST_SYSTEM}	\
 				--host=${HOST_SYSTEM} &&
 				make &&
-				make DESTDIR=$DESTDIR install ;;
+				make DESTDIR=$DESTDIR install
+			;;
 	esac
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	python_version=${VERSION:0:3}
+	python_version=${VERSION%.*}
 	mkdir -p $fs/usr/include/${PACKAGE}$python_version
 
-	cp -a $install/usr/bin	$fs/usr
-	cp -a $install/usr/lib	$fs/usr
+	cook_copy_folders	bin
+	cook_copy_folders	lib
 
 	# needed for mercurial to work now
 	cp -a $install/usr/include/${PACKAGE}$python_version/pyconfig.h \
@@ -109,5 +111,5 @@ genpkg_rules()
 
 	# Split IDLE with TK dep
 	rm -f			$fs/usr/bin/idle
-	rm -rf			$fs/usr/lib/python2.7/idlelib
+	rm -rf			$fs/usr/lib/python$python_version/idlelib
 }
