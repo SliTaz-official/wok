@@ -6,21 +6,23 @@ CATEGORY="multimedia"
 SHORT_DESC="The Ultimate Movie Player For Linux."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
+WEB_SITE="http://www.mplayerhq.hu/design7/news.html"
+
 SOURCE="MPlayer"
 TARBALL="$SOURCE-$VERSION.tar.xz"
-WEB_SITE="http://www.mplayerhq.hu/design7/news.html"
 WGET_URL="http://www1.mplayerhq.hu/MPlayer/releases/$TARBALL"
+
 HOST_ARCH="i486 arm"
 
 # Dont forget to update all related pkgs
 RELATED="mplayer-codecs mencoder" 
-DEPENDS="gtk+ cdparanoia-III libmad xorg-libXv libtheora alsa-lib ncurses \
-lame xorg-libXdamage giflib enca lirc xorg-libXxf86vm esound libmng audiofile \
-libvorbis libogg zlib xvidcore x264 xorg-libXss gcc83-lib-base libdvdnav libdvdread"
-BUILD_DEPENDS="gtk+-dev libmad-dev xorg-libXv-dev libtheora-dev \
-alsa-lib-dev ncurses-dev lame-dev xorg-libXdamage-dev giflib-dev \
-xorg-libXxf86vm-dev esound-dev audiofile-dev libogg-dev libvorbis-dev \
-xvidcore-dev zlib-dev xorg-xextproto pkg-config yasm gcc83 libdvdnav-dev libdvdread-dev"
+DEPENDS="alsa-lib audiofile enca esound ncurses cdparanoia-III gcc83-lib-base giflib gtk+
+	lame libdvdnav libdvdread libmad libmng libogg libtheora libvorbis lirc x264
+	xorg-libXdamage xorg-libXss xorg-libXv xorg-libXxf86vm xvidcore zlib"
+BUILD_DEPENDS="alsa-lib-dev audiofile-dev esound-dev gcc83 giflib-dev gtk+-dev lame-dev
+	libdvdnav-dev libdvdread-dev libmad-dev libogg-dev libtheora-dev libvorbis-dev
+	ncurses-dev pkg-config xorg-libXdamage-dev xorg-libXv-dev xorg-libXxf86vm-dev
+	xorg-xextproto xvidcore-dev yasm zlib-dev"
 
 # Handle arch package install. Less deps and no GTK gui for ARM
 case "$SLITAZ_ARCH" in
@@ -53,41 +55,42 @@ compile_rules()
 {
 	export	CC=gcc-83
 	export	CXX=g++-83
-	./configure \
-		--prefix=/usr \
-		--confdir=/etc/mplayer \
-		--libdir=/usr/lib/mplayer \
-		--enable-gui \
-		--language="en de es fr it ru" \
-		--disable-gl \
-		--disable-jack \
-		--disable-liblzo \
-		--disable-libdv \
-		--disable-fribidi \
-		--disable-ivtv \
-		--disable-smb \
-		--disable-ftp \
-		--disable-openal \
-		--disable-faac \
-		--disable-speex \
+	./configure				\
+		--prefix=/usr			\
+		--confdir=/etc/mplayer		\
+		--libdir=/usr/lib/mplayer	\
+		--enable-gui			\
+		--language="en de es fr it ru"	\
+		--disable_ffmpeg_a		\
+		--disable-gl			\
+		--disable-jack			\
+		--disable-liblzo		\
+		--disable-libdv			\
+		--disable-fribidi		\
+		--disable-ivtv			\
+		--disable-smb			\
+		--disable-ftp			\
+		--disable-openal		\
+		--disable-faac			\
+		--disable-speex			\
 		${ARCH_ARGS} &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install | sed '/install: strip: .*/'d
+	make install DESTDIR=$DESTDIR | sed '/install: strip: .*/'d
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/mplayer/skins
-	cp -a $install/usr/bin $fs/usr
-	# Mencoder goes in a splited package.
-	rm $fs/usr/bin/mencoder
-	[ -d "$install/usr/share/mplayer" ] && \
-		cp -a $install/usr/share/mplayer $fs/usr/share
-	cp -a $install/etc $fs
-	cp $src/etc/example.conf $fs/etc/mplayer
-	# Config to use Xv by default.
-	cp $stuff/mplayer.conf $fs/etc/mplayer
+	cp -a $install/usr/bin			$fs/usr
+	# Mencoder goes in a splitted package.
+	rm					$fs/usr/bin/mencoder
+	[ -d "$install/usr/share/mplayer" ] &&
+	cp -a $install/usr/share/mplayer	$fs/usr/share
+	cp -a $install/etc			$fs
+	cp $src/etc/example.conf		$fs/etc/mplayer
+	# Configuration to use Xv by default.
+	cp $stuff/mplayer.conf			$fs/etc/mplayer
 	# default skin
 	tar xjf $stuff/productive-1.0.tar.bz2 -C $fs/usr/share/mplayer/skins
 	cd $fs/usr/share/mplayer/skins && ln -s productive default
