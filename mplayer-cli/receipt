@@ -14,11 +14,11 @@ WGET_URL="http://www1.mplayerhq.hu/MPlayer/releases/$TARBALL"
 
 
 PROVIDE="mplayer"
-DEPENDS="alsa-lib fontconfig gcc83-lib-base giflib libgnutls libpng libmad 
-	libsdl libxml2 ncurses pcre xorg-libXdamage xorg-libXss xorg-libXv 
-	xorg-libXxf86vm zlib"
-BUILD_DEPENDS="alsa-lib-dev fontconfig-dev freetype-dev gcc83 giflib-dev 
-	gnutls-dev libmad-dev libsdl-dev ncurses-dev pkg-config 
+DEPENDS="alsa-lib ffmpeg fontconfig gcc83-lib-base giflib libgnutls libpng
+	libmad libsdl libxml2 ncurses pcre xorg-libXdamage xorg-libXss
+	xorg-libXv xorg-libXxf86vm zlib"
+BUILD_DEPENDS="alsa-lib-dev ffmpeg-dev fontconfig-dev freetype-dev gcc83
+	giflib-dev gnutls-dev libmad-dev libsdl-dev ncurses-dev pkg-config 
 	xorg-libXdamage-dev xorg-libXv-dev xorg-libXxf86vm-dev 
 	xorg-xextproto yasm zlib-dev "
 
@@ -52,6 +52,7 @@ compile_rules()
 		--language="en de es fr it pl ru"	\
 		--enable-menu				\
 		--disable-mencoder			\
+		--disable-ffmpeg_a			\
 		--disable-gl				\
 		--disable-jack				\
 		--disable-liblzo			\
@@ -67,24 +68,30 @@ compile_rules()
 		--disable-lircc				\
 		${ARCH_ARGS} &&
 	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install | sed '/install: strip: .*/'d
+	make install DESTDIR=$DESTDIR | sed '/install: strip: .*/'d
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/mplayer
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/etc $fs
-	cp $src/etc/example.conf $fs/etc/mplayer
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/etc		$fs
+	cp $src/etc/example.conf	$fs/etc/mplayer
+
 	# Add /etc/mplayer/input.conf
-	cp $stuff/input.conf $fs/etc/mplayer
-	# Config
-	cp $stuff/mplayer.conf $fs/etc/mplayer
+	cp $stuff/input.conf		$fs/etc/mplayer
+
+	# Configuration
+	cp $stuff/mplayer.conf		$fs/etc/mplayer
+
 	# No-gui, OSD ($username@slitaz:~$ mplayer -menu filename)
 	mkdir -p $fs/usr/share/applications
-	cp -f $stuff/mplayer.desktop $fs/usr/share/applications/mplayer.desktop
-	cp $src/etc/*menu.conf $fs/etc/mplayer
+	cp -f $stuff/mplayer.desktop	$fs/usr/share/applications/mplayer.desktop
+	cp $src/etc/*menu.conf		$fs/etc/mplayer
+
 	# Font
-	cd $fs/usr/share/mplayer && ln -s ../fonts/truetype/ttf-dejavu/DejaVuSans.ttf subfont.ttf
+	cd $fs/usr/share/mplayer &&
+	ln -s ../fonts/truetype/ttf-dejavu/DejaVuSans.ttf subfont.ttf
 }
