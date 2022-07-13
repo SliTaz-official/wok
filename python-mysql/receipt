@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="python-mysql"
-SOURCE="MySQL-python"
-VERSION="1.2.3"
+VERSION="1.2.5"
 CATEGORY="development"
-SHORT_DESC="A Python interface to MySQL ."
+SHORT_DESC="A Python interface to MySQL."
 MAINTAINER="claudinei@slitaz.org"
 LICENSE="GPL"
-TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://mysql-python.sourceforge.net/"
-WGET_URL="$SF_MIRROR/mysql-python/$TARBALL"
+WEB_SITE="https://pypi.org/project/MySQL-python/"
+REPOLOGY="python:mysql-python"
 
-DEPENDS="python libmysqlclient zlib openssl"
-BUILD_DEPENDS="python-dev python-setuptools mysql-dev"
+SOURCE="MySQL-python"
+TARBALL="$SOURCE-$VERSION.zip"
+WGET_URL="https://files.pythonhosted.org/packages/source/${SOURCE:0:1}/$SOURCE/$TARBALL"
+
+DEPENDS="libmysqlclient openssl python zlib"
+BUILD_DEPENDS="mysql-dev python-dev python-setuptools"
 
 # What is the latest version available today?
 current_version()
@@ -26,15 +28,14 @@ current_version()
 compile_rules()
 {
 	sed -i 's/threadsafe = True/threadsafe = False/' $src/site.cfg
-	python setup.py build
+	python setup.py build &&
 	python setup.py install --root=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/lib $fs/usr
+	cook_copy_folders	lib
 }
 
 # Remove old package.
@@ -43,4 +44,3 @@ post_install()
 	[ ! -d "$1/var/lib/tazpkg/installed/mysql-python" ] ||
 		rm -rf "$1/var/lib/tazpkg/installed/mysql-python"
 }
-
