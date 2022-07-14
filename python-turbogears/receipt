@@ -1,20 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="python-turbogears"
-VERSION="1.1.1"
+VERSION="1.5.1"
 CATEGORY="network"
 SHORT_DESC="Python web application framework."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
+WEB_SITE="https://pypi.org/project/TurboGears/"
+REPOLOGY="python:turbogears"
+
 SOURCE="TurboGears"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WEB_SITE="http://www.turbogears.org/"
-WGET_URL="http://files.turbogears.org/eggs/$TARBALL"
+WGET_URL="https://files.pythonhosted.org/packages/source/${SOURCE:0:1}/$SOURCE/$TARBALL"
 
-DEPENDS="python psycopg sqlobject python-kid python-cheetah python-cherrypy \
-python-paste python-pastedeploy python-pastescript python-formencode \
-python-decoratortools python-extremes python-simplejson python-peak-rules"
-BUILD_DEPENDS="$DEPENDS python-dev python-setuptools"
+DEPENDS="psycopg python python-cheetah python-cherrypy python-decoratortools
+	python-extremes python-formencode python-kid python-paste
+	python-pastedeploy python-pastescript python-peak-rules
+	python-simplejson sqlobject"
+BUILD_DEPENDS="python-dev python-setuptools"
 
 current_version()
 {
@@ -25,28 +28,31 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i -e 's|http://pypi|https://pypi|' -e \
-	's|sys, os|&, ssl\nssl._create_default_https_context = ssl._create_unverified_context|' \
-		tools/tgsetup.py ez_setup.py
-	PYTHON_LIB=python$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
+# 1.5.1 removed
+#	sed -i -e 's|http://pypi|https://pypi|' -e \
+#	's|sys, os|&, ssl\nssl._create_default_https_context = ssl._create_unverified_context|' \
+#		tools/tgsetup.py ez_setup.py
+#	PYTHON_LIB=python$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
 	# Tgsetup dont build TurboGearsKid and friends if there are already
 	# installed, so remove python-turbogears before building.
-	if [ -d /var/lib/tazpkg/installed/python-turbogears ]; then
-		yes | tazpkg remove python-turbogears
-	fi
+#	if [ -d /var/lib/tazpkg/installed/python-turbogears ]; then
+#		yes | tazpkg remove python-turbogears
+#	fi
 	# Use tgsetup.py to bootstrap installation with all deps. It will
 	# build: TurbuGears, TurboCheetah, TurboJson and TurboKid.
-	cd $src/tools
-	DESTDIR="../_pkg/usr/lib/$PYTHON_LIB/site-packages"
-	mkdir -p $DESTDIR
-	PYTHONPATH=$DESTDIR python tgsetup.py -U -d $DESTDIR --prefix="../_pkg/usr"
+#	cd $src/tools
+#	DESTDIR="../_pkg/usr/lib/$PYTHON_LIB/site-packages"
+#	mkdir -p $DESTDIR
+#	PYTHONPATH=$DESTDIR python tgsetup.py -U -d $DESTDIR --prefix="../_pkg/usr"
+
+	python setup.py install --root=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	PYTHON_LIB=python$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
-	cp -a $install/usr $fs
-	rm $fs/usr/lib/$PYTHON_LIB/site-packages/site.py*
+#	PYTHON_LIB=python$(grep ^VERSION= $WOK/python/receipt | sed 's/.*"\(...\).*/\1/')
+	cp -a $install/usr	$fs
+#	rm $fs/usr/lib/$PYTHON_LIB/site-packages/site.py*
 }
 
