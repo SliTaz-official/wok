@@ -1,0 +1,73 @@
+# SliTaz package receipt.
+
+PACKAGE="gcc83-lib-base"
+VERSION="8.3.0"
+CATEGORY="development"
+SHORT_DESC="GCC base libraries, libgcc_s and libstdc++."
+WEB_SITE="https://gcc.gnu.org/"
+MAINTAINER="developer@slitaz.org"
+LICENSE="GPL2"
+
+WANTED="gcc83"
+PROVIDE="gcc-lib-base"
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/lib $fs/usr/libgcc83
+	for i in $install/usr/libgcc83/libgcc_s.so* ; do
+		cp -a $i	$fs/usr/lib/next.$(basename $i)
+	done
+	cp -a $install/usr/libgcc83/libstdc++.so.*.*.*	$fs/usr/lib
+	cp -a $install/usr/libgcc83/libstdc++.la	$fs/usr/libgcc83
+	ln -s ../lib/libstdc++.so			$fs/usr/libgcc83
+	rm -f $fs/usr/lib/*-gdb.py
+}
+
+pre_install()
+{
+	cd "$1/usr/lib"
+	local lib=$(ls libstdc++.so.6.*.* 2> /dev/null)
+	[ "$lib" ] && cp -a $lib prev.$lib
+	[ -s libgcc_s.so.1 ] && for i in libgcc_s.so*; do
+		cp -a $i prev.$i
+	done
+	cd - >/dev/null
+}
+
+post_install()
+{
+	cd "$1/usr/lib"
+	ln -fs libstdc++.so.6.*.* libstdc++.so.6
+	ln -fs libstdc++.so.6.*.* libstdc++.so
+	for i in next.libgcc_s.so* ; do
+		cp -af $i ${i#next.}
+	done
+	cd - >/dev/null
+}
+
+pre_remove()
+{
+	cd "$1/usr/lib"
+	local lib=$(ls prev.libstdc++.so.6.*.* 2> /dev/null)
+	if [ "$lib" ]; then
+		mv -f $lib ${lib#prev.}
+		ln -fs ${lib#prev.} libstdc++.so.6
+		ln -fs ${lib#prev.} libstdc++.so
+	else
+		rm -f libstdc++.so.6 libstdc++.so
+	fi
+	for i in libgcc_s.so* ; do
+		cp -a $i next.$i
+	done
+	cd - >/dev/null
+}
+
+post_remove()
+{
+	cd "$1/usr/lib"
+	[ -s prev.libgcc_s.so.1 ] && for i in prev.libgcc_s.so* ; do
+		mv -f $i ${i#prev.}
+	done || rm -f libgcc_s.so*
+	cd - >/dev/null
+}
