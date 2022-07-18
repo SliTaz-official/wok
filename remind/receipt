@@ -1,18 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="remind"
-VERSION="03.01.16"
+VERSION="04.00.01"
 CATEGORY="utilities"
+TAGS="office calendar"
 SHORT_DESC="Sophisticated calendar and alarm program."
 MAINTAINER="paul@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="https://dianne.skoll.ca/projects/remind/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="https://git.skoll.ca/Skollsoft-Public/Remind/archive/$VERSION.tar.gz"
-TAGS="office calendar"
+WGET_URL="${WEB_SITE}download/$TARBALL"
 
-DEPENDS="tcl tcllib tk xorg-libXss"
+DEPENDS="gcc83-lib-base tcl tcllib tk xorg-libXss"
+BUILD_DEPENDS="gcc83"
 
 # What is the latest version available today?
 current_version()
@@ -25,22 +26,22 @@ current_version()
 compile_rules()
 {
 	./configure				\
+		CC=gcc-83			\
 		--prefix=/usr			\
 		--infodir=/usr/share/info	\
 		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
 	mkdir -p $fs/etc/skel
 
 	touch $fs/etc/skel/.reminders
-	cp -a $install/usr/bin $fs/usr
+	cook_copy_folders	bin
 }
 
 post_install()
@@ -50,8 +51,8 @@ post_install()
 	for i in $(ls "$1/home" 2> /dev/null)
 	  do
 		[ -f "$1/home/$i/.reminders" ] && continue
-		echo -en "${nl}Creating config file for $i ..."
-		touch "$1/home/$i/.reminders" 
+		echo -en "${nl}Creating configuration file for $i ..."
+		touch "$1/home/$i/.reminders"
 		chroot "$1/" chown $(stat -c "%u.%g" "$1/home/$i") "/home/$i/.reminders"
 		status
 	  done
@@ -59,5 +60,5 @@ post_install()
 
 post_remove()
 {
-	rm -f "$1"/home/*/.reminders
+	rm -f	"$1"/home/*/.reminders
 }
