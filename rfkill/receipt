@@ -1,18 +1,20 @@
 # SliTaz package receipt.
 
 PACKAGE="rfkill"
-VERSION="0.5"
+VERSION="1.0"
 CATEGORY="system-tools"
-SHORT_DESC="Utility to query the state of the rfkill switches"
+TAGS="kernel"
+SHORT_DESC="Utility to query the state of the rfkill switches."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.xz"
 WEB_SITE="https://wireless.wiki.kernel.org/en/users/Documentation/rfkill"
-WGET_URL="https://www.kernel.org/pub/software/network/rfkill/$TARBALL"
-TAGS="kernel"
-HOST_ARCH="i486 arm"
 
-BUILD_DEPENDS="wget"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://www.kernel.org/pub/software/network/rfkill/$TARBALL"
+
+BUILD_DEPENDS=""
+
+HOST_ARCH="i486 arm"
 
 # What is the latest version available today?
 current_version()
@@ -24,16 +26,16 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's/BINDIR) rfkill/BINDIR)/' Makefile
-	sed -i 's/-m 755 -t/-m 755 rfkill/' Makefile
-	sed -i 's/man8\/ rfkill\.8\.gz/man8\//' Makefile
-	sed -i 's/-m 644 -t/-m 644 rfkill.8.gz/' Makefile
-	make && make DESTDIR=$DESTDIR install
+	sed -i	-e 's/BINDIR) rfkill/BINDIR)/' \
+		-e 's|-m 755 -t|-m 755 rfkill|' \
+		-e 's|man8/ rfkill\.8\.gz|man8/|' \
+		-e 's|-m 644 -t|-m 644 rfkill.8.gz|'	Makefile
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/sbin $fs/usr
+	cook_copy_folders	sbin
 }
