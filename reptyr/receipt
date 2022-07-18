@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="reptyr"
-VERSION="0.7.0"
+VERSION="0.9.0"
 CATEGORY="system-tools"
-SHORT_DESC="Reparent a running program to a new terminal"
+SHORT_DESC="Reparent a running program to a new terminal."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="MIT"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://github.com/nelhage/reptyr"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$WEB_SITE/archive/$TARBALL"
 
 DEPENDS=""
@@ -22,17 +23,14 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	sed -i 's|/usr/local|/usr|' Makefile
 	sed -i 's|PTRACE_GETREGSET|0x4204|;s|PTRACE_SETREGSET|0x4205|' \
 		platform/linux/linux_ptrace.c
-	make &&
-	make DESTDIR=$DESTDIR install
+	make PREFIX=/usr &&
+	make install PREFIX=/usr DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
+	cook_copy_folders	bin
 }
-
