@@ -1,22 +1,24 @@
 # SliTaz package receipt.
 
 PACKAGE="rsync"
-VERSION="3.2.3"
+VERSION="3.2.4"
 CATEGORY="network"
-SHORT_DESC="Utility that provides fast incremental."
+TAGS="sync copy secure"
+SHORT_DESC="Utility that provides fast incremental file transfer."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://rsync.samba.org/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="${WEB_SITE}ftp/rsync/src/$TARBALL"
+
+SUGGESTED="bash openssl"
+DEPENDS="attr acl lz4-lib popt xxhash-lib zstd"
+BUILD_DEPENDS="acl-dev attr-dev lz4-dev popt-dev xxhash-dev zstd-dev"
+
 CONFIG_FILES="/etc/rsyncd.conf"
 SECRET_FILES="/etc/rsyncd.secrets"
-TAGS="sync copy secure"
 HOST_ARCH="i486 arm"
-
-DEPENDS="popt attr acl xxhash-lib lz4-lib zstd"
-BUILD_DEPENDS="popt-dev attr-dev acl-dev xxhash-dev lz4-dev zstd-dev"
-SUGGESTED="bash openssl"
 
 # TazPanel
 TAZPANEL_DAEMON="man::rsync|help::rsync|edit|options|web::$WEB_SITE"
@@ -30,32 +32,32 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--mandir=/usr/share/man \
-		--disable-iconv \
-		--disable-iconv-open \
-		--disable-openssl \
+	./configure			\
+		--prefix=/usr		\
+		--mandir=/usr/share/man	\
+		--disable-iconv		\
+		--disable-iconv-open	\
+		--disable-openssl	\
 		$CONFIGURE_ARGS
 	sed -i  -e 's/HAVE_ICONV_H ./HAVE_ICONV_H 0/' \
 		-e 's/HAVE_ICONV_OPEN ./HAVE_ICONV_OPEN 0/' config.h
-	sed -i 's/-liconv//' Makefile
+	sed -i 's/-liconv//'	Makefile
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
-	# Config file is /etc/rsyncd.conf.
-	# User and passwd in /etc/rsyncd.secrets, syntax : user:passwd
+	cook_copy_folders	bin
+
+	# Configuration file is /etc/rsyncd.conf.
+	# User and password in /etc/rsyncd.secrets, syntax : user:passwd
 	#
-	cp -a $stuff/etc $fs
-	cp -a $stuff/usr $fs
-	chown root.root $fs/etc/init.d/*
-	chmod 0644 $fs/etc/rsyncd.conf
+	cp -a $stuff/etc	$fs
+	cp -a $stuff/usr	$fs
+	chown root.root		$fs/etc/init.d/*
+	chmod 0644		$fs/etc/rsyncd.conf
 }
 
 post_install()
@@ -70,5 +72,6 @@ EOT
 
 post_remove()
 {
-	grep -q rsync "$1/etc/inetd.conf" && sed -i '/rsync/d' "$1/etc/inetd.conf"
+	grep -q rsync		"$1/etc/inetd.conf" &&
+	sed -i '/rsync/d'	"$1/etc/inetd.conf"
 }
