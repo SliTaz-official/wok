@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="rtaudio"
-VERSION="5.1.0"
+VERSION="5.2.0"
 CATEGORY="multimedia"
 SHORT_DESC="Common API for realtime audio input and output (C++ classes)."
 MAINTAINER="pankso@slitaz.org"
@@ -11,8 +11,8 @@ WEB_SITE="https://www.music.mcgill.ca/~gary/rtaudio/"
 TARBALL="${PACKAGE}-${VERSION}.tar.gz"
 WGET_URL="${WEB_SITE}release/$TARBALL"
 
-DEPENDS="alsa-lib jack-audio-connection-kit"
-BUILD_DEPENDS="alsa-lib-dev jack-audio-connection-kit-dev"
+DEPENDS="alsa-lib gcc83-lib-base jack-audio-connection-kit"
+BUILD_DEPENDS="alsa-lib-dev gcc83 jack-audio-connection-kit-dev"
 
 # What is the latest version available today?
 current_version()
@@ -25,11 +25,13 @@ current_version()
 compile_rules()
 {
 	./configure		\
+		CC=gcc-83	\
+		CXX=g++-83	\
 		--prefix=/usr	\
 		--with-alsa	\
 		--with-jack	\
 		$CONFIGURE_ARGS &&
-	make -j 1
+	make
 
 	# Python bindings --> rtaudio-python ??
 	#cd $src/contrib/python/pyrtaudio
@@ -46,5 +48,5 @@ genpkg_rules()
 
 	cp -a $src/.libs/librtaudio.so*	$fs/usr/lib
 	cd				$fs/usr/lib
-	ln -s librtaudio.so.$VERSION librtaudio.so.4
+	ln -s librtaudio.so.$VERSION	librtaudio.so.4
 }
