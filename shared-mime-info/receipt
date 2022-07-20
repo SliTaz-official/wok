@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="shared-mime-info"
-VERSION="1.15"
+VERSION="2.2"
 CATEGORY="system-tools"
 SHORT_DESC="Core database of common types and the *update-mime-database*."
 MAINTAINER="pankso@slitaz.org"
@@ -9,10 +9,11 @@ LICENSE="GPL2"
 WEB_SITE="https://freedesktop.org/wiki/Software/shared-mime-info"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="https://github.com/freedesktop/xdg-$PACKAGE/archive/Release-${VERSION/./-}.tar.gz"
+WGET_URL="https://gitlab.freedesktop.org/xdg/$PACKAGE/-/archive/$VERSION/$TARBALL"
 
+SUGGESTED="shared-mime-info-lang"
 DEPENDS="glib"
-BUILD_DEPENDS="autoconf automake bash intltool itstool"
+BUILD_DEPENDS="intltool itstool meson"
 
 HOST_ARCH="i486 arm"
 
@@ -30,15 +31,10 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	#patch -Np1 -i $stuff/pbm.patch
-
-	# remove #!/bin/sh from autogen.sh, since bash is required:
-	sed -i '1d' ./autogen.sh
-
-	bash -c ./autogen.sh &&
-	./configure $CONFIGURE_ARGS &&
-	make -j1 &&
-	make -j1 DESTDIR=$DESTDIR install
+	meson	_build		\
+		--prefix=/usr &&
+	ninja	-C _build &&
+	ninja	-C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
