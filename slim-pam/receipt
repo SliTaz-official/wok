@@ -1,23 +1,26 @@
 # SliTaz package receipt.
 
 PACKAGE="slim-pam"
-VERSION="1.3.5"
+VERSION="1.3.6"
 CATEGORY="x-window"
 SHORT_DESC="Desktop-independent graphical login manager for X11 (PAM enabled)."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
 WEB_SITE="https://sourceforge.net/projects/slim.berlios/"
+REPOLOGY="slim-login-manager"
+
 SOURCE="slim"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WGET_URL="http://download.berlios.de/slim/$TARBALL"
-CONFIG_FILES="/etc/slim.conf"
+WGET_URL="https://downloads.sourceforge.net/project/slim.berlios/$TARBALL"
 
 PROVIDE="slim:pam"
-DEPENDS="gcc-lib-base libjpeg libpng pam xorg-libXft xorg-libXmu"
-SUGGESTED="slim-theme-default slitaz-configs"
-BUILD_DEPENDS="cmake freetype-dev jpeg-dev libpng-dev xorg-libXft-dev \
-xorg-libXmu-dev pam-dev"
 RELATED="slim slim-theme-default"
+SUGGESTED="slim-theme-default slitaz-configs"
+DEPENDS="gcc-lib-base libjpeg libpng pam xorg-libXft xorg-libXmu"
+BUILD_DEPENDS="cmake freetype-dev jpeg-dev libpng-dev pam-dev xorg-libXft-dev
+	xorg-libXmu-dev"
+
+CONFIG_FILES="/etc/slim.conf"
 
 # What is the latest version available today?
 current_version()
@@ -29,28 +32,33 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	patch -p1 < $WOK/$SOURCE/stuff/$SOURCE-$VERSION.patch || return 1
-	mkdir build; cd build
-	cmake \
-		-DCMAKE_INSTALL_PREFIX=/usr \
-		-DX11_Xmu_LIB=-lXmu \
-		-DUSE_PAM=yes \
-		.. &&
+	patch --input=$WOK/$SOURCE/stuff/patches/app.cpp-$VERSION || return 1
+	patch --input=$WOK/$SOURCE/stuff/patches/cfg.cpp-$VERSION || return 1
+	patch --input=$WOK/$SOURCE/stuff/patches/slim.conf-$VERSION || return 1
+
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..					\
+		-D CMAKE_INSTALL_PREFIX=/usr		\
+		-D X11_Xmu_LIB=-lXmu			\
+		-D USE_PAM=yes &&
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/share/slim
-	cp -a $install/etc $fs
-	cp -a $install/usr/bin $fs/usr
-	cp -a $WOK/$SOURCE/stuff/themes $fs/usr/share/slim
 
-	# Config file and rc script.
-	cp -a $WOK/$SOURCE/stuff/etc $fs
-	chown -R root.root $fs
+	cp -a $install/etc		$fs
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $WOK/$SOURCE/stuff/themes	$fs/usr/share/slim
+
+	# Configuration file and rc script.
+	cp -a $WOK/$SOURCE/stuff/etc	$fs
+	chown -R root.root		$fs
 
 	# slim-theme manager
 	install -m755 $WOK/$SOURCE/stuff/slim-theme $fs/usr/bin/slim-theme
@@ -76,4 +84,7 @@ pre_remove()
 	tazpkg get-install  ${PACKAGE%-pam}
 }
 
-testsuite() { ldd $install/usr/bin/slim; }
+testsuite()
+{
+	ldd $install/usr/bin/slim
+}
