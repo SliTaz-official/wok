@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="soprano"
-VERSION="2.8.0"
+VERSION="2.9.4"
 CATEGORY="system-tools"
-SHORT_DESC="Soprano is the Qt/C++ RDF framework"
+SHORT_DESC="Soprano is the Qt/C++ RDF framework."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WEB_SITE="http://soprano.sourceforge.net/"
+
+TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="libQtCore libQtNetwork raptor libiodbc"
-BUILD_DEPENDS="cmake qmake Qt4-dev raptor-dev libiodbc-dev"
+DEPENDS="libiodbc libQtCore libQtDBus libQtNetwork libQtXml raptor"
+BUILD_DEPENDS="cmake doxygen libiodbc-dev qmake Qt4-dev raptor-dev"
 
 # What is the latest version available today?
 current_version()
@@ -24,19 +25,23 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	mkdir -p build && cd build
-	cmake \
-		-DCMAKE_INSTALL_PREFIX=/usr \
-		.. &&
-	make && make install
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..					\
+		-D CMAKE_INSTALL_PREFIX=/usr		\
+		-D SOPRANO_DISABLE_CLUCENE_INDEX=TRUE	\
+		-D SOPRANO_DISABLE_REDLAND_BACKEND=TRUE	&&
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
 	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/lib/soprano $fs/usr/lib
-	cp -a $install/usr/share $fs/usr
+
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib/*.so*	$fs/usr/lib
+	cp -a $install/usr/lib/soprano	$fs/usr/lib
+	cp -a $install/usr/share	$fs/usr
 }
