@@ -1,18 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="sord"
-VERSION="0.16.4"
+VERSION="0.16.12"
 CATEGORY="development"
 SHORT_DESC="A lightweight C library for storing RDF data in memory."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="ISC"
 WEB_SITE="https://drobilla.net/software/sord.html"
 
-TARBALL="$PACKAGE-$VERSION.tar.bz2"
-WGET_URL="http://download.drobilla.net/$TARBALL"
+TARBALL="$PACKAGE-$VERSION.tar.xz"
+WGET_URL="https://download.drobilla.net/$TARBALL"
 
 DEPENDS="pcre serd"
-BUILD_DEPENDS="pcre pkg-config serd-dev"
+BUILD_DEPENDS="meson pcre pkg-config serd-dev"
 
 # What is the latest version available today?
 current_version()
@@ -24,16 +24,15 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./waf configure --prefix=/usr &&
-	./waf build &&
-	./waf install --destdir=$DESTDIR
+	meson	_build		\
+		--prefix=/usr &&
+	ninja	-C _build &&
+	ninja	-C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/lib/lib*	$fs/usr/lib
+	cook_copy_folders	bin
+	cook_copy_files		*.so*
 }
