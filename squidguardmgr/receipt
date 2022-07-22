@@ -1,16 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="squidguardmgr"
-VERSION="1.12"
+VERSION="1.14"
 CATEGORY="system-tools"
 SHORT_DESC="Web GUI for squidGuard and SquidClamav administration."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL3"
+WEB_SITE="https://sourceforge.net/projects/squidguardmgr/"
+
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WEB_SITE="http://squidguardmgr.sourceforge.net/"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
+
 DEPENDS="squidguard squidclamav lighttpd"
 BUILD_DEPENDS="perl squidguard "
+
 CONFIG_FILES="/etc/squidguardmgr.conf"
 
 current_version()
@@ -22,7 +25,6 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
 	SQUIDUSR=squid SQUIDGRP=squid perl Makefile.PL << EOT &&
 /etc/squidGuard/squidGuard.conf
 nobody
@@ -34,40 +36,54 @@ EOT
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/etc $fs/var/lib/squidGuard/log $fs/var/lib/squidGuard/db 
-	
-	cp -a $install/var/www/squidguardmgr $fs/usr/share
-	( cd $fs ; patch -p0 ) < $stuff/squidguardmgr.U
-	mv $fs/usr/share/squidguardmgr/squidguardmgr.conf $fs/etc 
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/etc
+	mkdir -p $fs/var/lib/squidGuard/log
+	mkdir -p $fs/var/lib/squidGuard/db 
+
+	cp -a $install/var/www/squidguardmgr	$fs/usr/share
+	# 1.14 unsuitable
+#	( cd $fs ; patch -p0 ) < $stuff/squidguardmgr.U
+	mv $fs/usr/share/squidguardmgr/squidguardmgr.conf	$fs/etc 
 	ln -s /etc/squidguardmgr.conf $fs/usr/share/squidguardmgr/squidguardmgr.conf
-	
-	sed -i -e 's|/var/www/squidguardmgr|/usr/share/squidguardmgr|' \
+
+	sed -i	-e 's|/var/www/squidguardmgr|/usr/share/squidguardmgr|' \
 		-e 's|SQUIDCLAMAV	off|SQUIDCLAMAV	on|' \
 		-e 's|SC_CONF_FILE|SC_CONF_FILE	/etc/squidclamav.conf|' \
-		-e 's|C_ICAP_SOCKET|C_ICAP_SOCKET	/var/run/c-icap/c-icap.ctl|' $fs/etc/squidguardmgr.conf
+		-e 's|C_ICAP_SOCKET|C_ICAP_SOCKET	/var/run/c-icap/c-icap.ctl|' \
+		$fs/etc/squidguardmgr.conf
 }
 
 post_install()
 {
-	# squidguardmgr config
-	chown root.www "$1/etc/squidGuard/squidGuard.conf"
-	chmod 664 "$1/etc/squidGuard/squidGuard.conf"
-	chown nobody.nogroup "$1"/usr/share/squidguardmgr/lang/* \
-		"$1/usr/share/squidguardmgr/lang" "$1/usr/share/squidguardmgr"
+	# squidguardmgr configuration
+	chown root.www		"$1/etc/squidGuard/squidGuard.conf"
+	chmod 664		"$1/etc/squidGuard/squidGuard.conf"
+	chown nobody.nogroup	"$1"/usr/share/squidguardmgr/lang/*
+	chown nobody.nogroup	"$1/usr/share/squidguardmgr/lang"
+	chown nobody.nogroup	"$1/usr/share/squidguardmgr"
+
 	# Configure lighttpd server
-	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]; then
-		if ! grep -q /usr/share/squidguardmgr/ "$1/etc/lighttpd/lighttpd.conf"; then
-	    		sed -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/squidguardmgr/" => "/usr/share/squidguardmgr/",|g' -i "$1/etc/lighttpd/lighttpd.conf"
-			if [ -z "$1" ]; then
+	if [ -f "$1/etc/lighttpd/lighttpd.conf" ]
+	  then
+		if ! grep -q /usr/share/squidguardmgr/ "$1/etc/lighttpd/lighttpd.conf"
+		  then
+	    		sed -i -e 's|.*"/examples/" => "/usr/share/examples/",|    "/examples/" => "/usr/share/examples/",\n    "/squidguardmgr/" => "/usr/share/squidguardmgr/",|g' \
+				"$1/etc/lighttpd/lighttpd.conf"
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/lighttpd stop
 				/etc/init.d/lighttpd start
 			fi
 		fi
 	fi
+
 	# Configure apache server
-	if [ -f "$1/etc/apache/httpd.conf" ]; then
-		if [ ! -f "$1/etc/apache/conf.d/squidguardmgr" ]; then
+	if [ -f "$1/etc/apache/httpd.conf" ]
+	  then
+		if [ ! -f "$1/etc/apache/conf.d/squidguardmgr" ]
+		  then
 			cat > "$1/etc/apache/conf.d/squidguardmgr" <<EOT
 <IfModule mod_alias.c>
     Alias /squidguardmgr /usr/share/squidguardmgr
@@ -80,7 +96,8 @@ post_install()
     Allow from all
 </DirectoryMatch>
 EOT
-			if [ -z "$1" ]; then
+			if [ -z "$1" ]
+			  then
 				# Start Web server.
 				/etc/init.d/apache stop
 				/etc/init.d/apache start
