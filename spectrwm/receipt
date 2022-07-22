@@ -1,21 +1,23 @@
 # SliTaz package receipt.
 
 PACKAGE="spectrwm"
-VERSION="3.3.0"
+VERSION="3.4.1"
 CATEGORY="x-window"
 TAGS="tile window-manager"
 SHORT_DESC="Small dynamic tiling window manager for X11."
 MAINTAINER="al.bobylev@gmail.com"
-LICENSE="ISC MIT"
+LICENSE="ISC"
 WEB_SITE="https://github.com/conformal/spectrwm"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$WEB_SITE/archive/SPECTRWM_${VERSION//./_}.tar.gz"
 
-DEPENDS="xcb-util xcb-util-keysyms xcb-util-wm xorg-libXcursor xorg-libXft"
-BUILD_DEPENDS="cacerts xcb-util-dev xcb-util-keysyms-dev xcb-util-wm-dev 
-	xorg-libX11-dev xorg-libXcursor-dev xorg-libXft-dev 
-	xorg-libXrandr-dev xorg-libXt-dev"
+DEPENDS="dmenu freetype libxml2 xcb-util xcb-util-keysyms
+	xcb-util-wm xlockmore xorg-libXcursor xorg-libXft"
+BUILD_DEPENDS="cacerts freetype-dev libxml2-dev xcb-util-dev
+	xcb-util-keysyms-dev xcb-util-wm-dev xorg-libX11-dev
+	xorg-libXcursor-dev xorg-libXft-dev xorg-libXrandr-dev
+	xorg-libXt-dev"
 
 CONFIG_FILES="/etc/spectrwm.conf"
 
@@ -28,9 +30,11 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd linux
-	make PREFIX=/usr &&
-	make install PREFIX=/usr DESTDIR=$install
+	cd	linux
+	make	PREFIX=/usr &&
+	make	install		\
+		PREFIX=/usr	\
+		DESTDIR=$install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -38,7 +42,7 @@ genpkg_rules()
 {
 	mkdir -p $fs/etc
 
-	cp -a $install/*	$fs
+	cp -a $install/*		$fs
 
 	# copy configuration files (few more exist in $src)
 	cp $src/spectrwm.conf		$fs/etc
@@ -46,5 +50,32 @@ genpkg_rules()
 
 	# "switch on" keyboard mapping
 	sed -i 's|# keyboard_mapping.*|keyboard_mapping = /etc/spectrwm_us.conf|' \
-		$fs/etc/spectrwm.conf
+					$fs/etc/spectrwm.conf
+
+	# set bar_font
+	sed -i 's|# bar_font\t|bar_font\t|' \
+					$fs/etc/spectrwm.conf
+}
+
+post_install()
+{
+	# Adding spectrwm to SLIM available sessions.
+	res=$(cat "$1/etc/slim.conf" | grep ^session | sed s/"sessions. *"//)
+	if ! echo "$res" | grep -q $PACKAGE
+	  then
+		echo -n "Adding $PACKAGE to /etc/slim.conf..."
+		sed -i "s/^sessions.*/sessions            ${res},$PACKAGE/" \
+			"$1/etc/slim.conf"
+		status
+	fi
+	true
+}
+
+post_remove()
+{
+	# Remove spectrwm from SLIM available sessions.
+	if grep -q $PACKAGE "$1/etc/slim.conf"
+	  then
+		sed -i s/,$PACKAGE//	"$1/etc/slim.conf"
+	fi
 }
