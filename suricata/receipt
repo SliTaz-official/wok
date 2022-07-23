@@ -1,21 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="suricata"
-VERSION="5.0.2"
+VERSION="6.0.6"
 CATEGORY="security"
 SHORT_DESC="Next Generation Intrusion Detection and Prevention Engine."
 MAINTAINER="erjo@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="https://suricata-ids.org/"
+WEB_SITE="https://suricata.io/"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://www.openinfosecfoundation.org/download/$TARBALL"
 
-DEPENDS="jansson libcap-ng libhtp libnetfilter_queue libnfnetlink 
-	libpcap pcre yaml lz4-lib"
-BUILD_DEPENDS="jansson-dev libcap-ng-dev libhtp-dev libmnl libnet-dev 
-	libnfnetlink-dev libnetfilter_queue libnetfilter_queue-dev 
-	libpcap-dev rust-cargo yaml-dev zlib-dev lz4-dev"
+DEPENDS="gcc83-lib-base jansson libatomic libcap-ng libhtp libnet
+	libnetfilter_queue libnfnetlink libpcap lz4-lib pcre yaml"
+BUILD_DEPENDS="gcc83 jansson-dev libatomic libcap-ng-dev libhtp-dev libmnl
+	libnet-dev libnetfilter_queue libnetfilter_queue-dev
+	libnfnetlink-dev libpcap-dev lz4-dev rust-cargo yaml-dev
+	zlib-dev"
 
 # What is the latest version available today?
 current_version()
@@ -28,11 +29,13 @@ current_version()
 compile_rules()
 {
 	rm -f config.h
-
-	./configure $CONFIGURE_ARGS		\
+	./configure				\
+		CC=gcc-83			\
+		CXX=g++-83			\
 		--enable-non-bundled-htp	\
 		--enable-nfqueue		\
-		--enable-af-packet &&
+		--enable-af-packet		\
+		$CONFIGURE_ARGS &&
 	make &&
 	make install
 }
@@ -40,6 +43,5 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin	$fs/usr
+	cook_copy_folders	bin
 }
