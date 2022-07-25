@@ -1,13 +1,14 @@
 # SliTaz package receipt.
 
 PACKAGE="task"
-VERSION="2.5.1"
+VERSION="2.6.2"
 CATEGORY="utilities"
 TAGS="office todo"
 SHORT_DESC="An open source, command line, TODO list manager."
 MAINTAINER="paul@slitaz.org"
 LICENSE="MIT"
 WEB_SITE="https://taskwarrior.org/"
+REPOLOGY="taskwarrior"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="${WEB_SITE}download/$TARBALL"
@@ -27,16 +28,13 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	#./configure \
-		#--prefix=/usr \
-		#--infodir=/usr/share/info \
-		#--mandir=/usr/share/man \
-		#$CONFIGURE_ARGS &&
-
 	export	CC=gcc-83
 	export	CXX=g++-83
 
-	cmake . -DCMAKE_INSTALL_PREFIX=/usr &&
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..			\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
 	make &&
 	make install
 }
@@ -44,8 +42,7 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
-
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/share/doc	$fs/usr/share
+	cook_copy_folders	bin
+	cook_copy_folders	rc
+	cook_copy_folders	scripts
 }
