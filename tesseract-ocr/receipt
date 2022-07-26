@@ -1,18 +1,19 @@
 # SliTaz package receipt.
 
 PACKAGE="tesseract-ocr"
-VERSION="3.02.02"
+VERSION="5.2.0"
 CATEGORY="office"
 SHORT_DESC="The most accurate open source OCR engine available."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="Apache"
 WEB_SITE="https://github.com/tesseract-ocr/tesseract"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="https://github.com/tesseract-ocr/tesseract/archive/refs/tags/$VERSION.tar.gz"
 
-DEPENDS="leptonica libpng jpeg tiff giflib"
-BUILD_DEPENDS="libtool autoconf automake libpng-dev jpeg-dev tiff-dev \
-giflib-dev zlib-dev icu-dev pango-dev cairo-dev leptonica-dev"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WGET_URL="$WEB_SITE/archive/$VERSION.tar.gz"
+
+DEPENDS="gcc83-lib-base giflib jpeg leptonica libpng tiff"
+BUILD_DEPENDS="autoconf automake cairo-dev gcc83 giflib-dev icu-dev jpeg-dev
+	leptonica-dev libpng-dev libtool pango-dev tiff-dev zlib-dev"
 
 # What is the latest version available today?
 current_version()
@@ -24,19 +25,24 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./autogen.sh
-	./configure \
-		--prefix=/usr \
+	# 5.2.0 avoid undefined symbol: GOMP_parallel	at runtime
+	# by disable-openmp
+
+	./autogen.sh &&
+	./configure			\
+		CC=gcc-83		\
+		CXX=g++-83		\
+		--prefix=/usr		\
+		--disable-openmp	\
 		$CONFIGURE_ARGS &&
-	make && make install
+	make &&
+	make install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share $fs/usr
-	rm -rf $fs/usr/share/man
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
+	cook_copy_folders	bin
+	cook_copy_folders	tessdata
+	cook_copy_files		*.so*
 }
