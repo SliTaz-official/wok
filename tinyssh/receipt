@@ -1,16 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="tinyssh"
-VERSION="20210601"
+VERSION="20220311"
 CATEGORY="network"
 SHORT_DESC="A small SSH server."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="PublicDomain"
 WEB_SITE="https://tinyssh.org/"
-SUGGESTED="tinyssh-keyconvert"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/janmojzis/tinyssh/archive/$VERSION.tar.gz"
+
+SUGGESTED="tinyssh-keyconvert"
 
 SECRET_FILES="/etc/tinyssh/sshkeydir"
 
@@ -24,7 +25,7 @@ current_version()
 compile_rules()
 {
 	make &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -34,17 +35,19 @@ genpkg_rules()
 	mkdir -p $fs/usr
 
 	cp -a $install/usr/sbin $fs/usr
-	for i in $fs/usr/sbin/tinysshd-*; do
+	for i in $fs/usr/sbin/tinysshd-*
+	  do
 		#cmp $fs/usr/sbin/tinysshd $i &&
 		ln -f $fs/usr/sbin/tinysshd $i
-	done 
+	  done 
 }
 
 post_install()
 {
 	[ -d $1/etc/tinyssh/sshkeydir ] ||
 	chroot $1/ tinysshd-makekey /etc/tinyssh/sshkeydir
-	grep -q ^ssh $1/etc/inetd.conf || cat >> $1/etc/inetd.conf <<EOT
+	grep -q ^ssh $1/etc/inetd.conf ||
+	cat >> $1/etc/inetd.conf <<EOT
 ssh stream tcp nowait root /usr/sbin/tinysshd tinysshd -s -o -l -v /etc/tinyssh/sshkeydir -x sftp=/usr/sbin/sftp-server
 EOT
 }
