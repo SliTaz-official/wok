@@ -5,47 +5,50 @@
 
 NAME=Tinyproxy
 DESC="$(_ 'Tiny Proxy')"
-DAEMON=/usr/sbin/tinyproxy
+DAEMON=/usr/bin/tinyproxy
 OPTION="-c"
 PIDFILE=/var/run/tinyproxy.pid
 
 case "$1" in
-  start)
-    if active_pidfile $PIDFILE tinyproxy ; then
-      _ '%s is already running.' $NAME
-      exit 1
-    fi
-    action 'Starting %s: %s...' "$DESC" $NAME
-    $DAEMON $OPTION /etc/tinyproxy/tinyproxy.conf
-    status
-    ;;
-  stop)
-    if ! active_pidfile $PIDFILE tinyproxy ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Stopping %s: %s...' "$DESC" $NAME
-    killall tinyproxy
-    rm $PIDFILE
-    status
-    ;;
-  restart)
-    if ! active_pidfile $PIDFILE tinyproxy ; then
-      _ '%s is not running.' $NAME
-      exit 1
-    fi
-    action 'Restarting %s: %s...' "$DESC" $NAME
-    killall tinyproxy
-    rm $PIDFILE
-    sleep 2
-    $DAEMON $OPTION /etc/tinyproxy/tinyproxy.conf
-    status
-    ;;
-  *)
-    emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
-    newline
-    exit 1
-    ;;
+	(start)
+		if active_pidfile $PIDFILE tinyproxy
+		  then
+			_ '%s is already running.' $NAME
+			exit 1
+		fi
+		action 'Starting %s: %s...' "$DESC" $NAME
+		$DAEMON $OPTION /etc/tinyproxy/tinyproxy.conf
+		status
+		;;
+	(stop)
+		if ! active_pidfile $PIDFILE tinyproxy
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Stopping %s: %s...' "$DESC" $NAME
+		killall tinyproxy
+		rm $PIDFILE
+		status
+		;;
+	(restart)
+		if ! active_pidfile $PIDFILE tinyproxy
+		  then
+			_ '%s is not running.' $NAME
+			exit 1
+		fi
+		action 'Restarting %s: %s...' "$DESC" $NAME
+		killall tinyproxy
+		rm $PIDFILE
+		sleep 2
+		$DAEMON $OPTION /etc/tinyproxy/tinyproxy.conf
+		status
+		;;
+	(*)
+		emsg "<n><b>$(_ 'Usage:')</b> $0 [start|stop|restart]"
+		newline
+		exit 1
+		;;
 esac
 
 exit 0

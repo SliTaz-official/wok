@@ -1,16 +1,17 @@
 # SliTaz package receipt.
 
 PACKAGE="tinyproxy"
-VERSION="1.10.0"
+VERSION="1.11.1"
 CATEGORY="network"
 SHORT_DESC="A light-weight HTTP proxy daemon for POSIX operating systems."
 MAINTAINER="slaxemulator@gmail.com"
 LICENSE="GPL2"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
 WEB_SITE="https://tinyproxy.github.io/"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://github.com/tinyproxy/tinyproxy/archive/$VERSION.tar.gz"
 
-BUILD_DEPENDS="wget automake"
+BUILD_DEPENDS="automake"
 
 current_version()
 {
@@ -22,25 +23,34 @@ current_version()
 compile_rules()
 {
 	sed -i '/docs/d;/tests$/d;s|m4macros \\|m4macros|' Makefile.*
-	./autogen.sh
-	./configure \
-		--prefix=/usr \
-		--infodir=/usr/share/info \
-		--mandir=/usr/share/man \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
+
+	export	LDFLAGS="$LDFLAGS -lrt"
+
+	./autogen.sh &&
+	./configure				\
+		--prefix=/usr			\
+		--infodir=/usr/share/info	\
+		--mandir=/usr/share/man		\
+		--sysconfdir=/etc		\
+		--localstatedir=/var		\
 		$CONFIGURE_ARGS &&
-	make && make DESTDIR=$DESTDIR install
+	make &&
+	make install DESTDIR=$DESTDIR
+
 	# Provide sane defaults
-  	sed -i '/^#Listen/a\Listen 127.0.0.1' "$DESTDIR/etc/tinyproxy/tinyproxy.conf"
+  	sed -i	-e '/^#Listen/a\Listen 127.0.0.1' \
+		-e 's|#PidFile "/var/run/tinyproxy/tinyproxy.pid"|PidFile "/var/run/tinyproxy.pid"|' \
+		"$DESTDIR/etc/tinyproxy/tinyproxy.conf"
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share $fs/etc/init.d
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/tinyproxy $fs/usr/share
-	cp -a $install/etc/tinyproxy $fs/etc
-	cp -a $stuff/tinyproxy $fs/etc/init.d
+	mkdir -p $fs/usr/share
+	mkdir -p $fs/etc/init.d
+
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/share/tinyproxy	$fs/usr/share
+	cp -a $install/etc/tinyproxy		$fs/etc
+	cp -a $stuff/tinyproxy			$fs/etc/init.d
 }
