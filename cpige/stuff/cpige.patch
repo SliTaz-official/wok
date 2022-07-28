@@ -1,0 +1,225 @@
+diff -ur cpigeorig/gui/callbacks.c cpige/gui/callbacks.c
+--- cpigeorig/gui/callbacks.c	2022-07-21 22:11:29.000000000 +0200
++++ cpige/gui/callbacks.c	2022-07-28 08:43:22.000000000 +0200
+@@ -310,10 +310,10 @@
+   idx = gtk_combo_box_get_active(combobox);
+   if (idx == 0) /* Hour */
+   {
+-    gtk_spin_button_set_adjustment(spinButton, GTK_ADJUSTMENT(gtk_adjustment_new (1, 1, 12, 1, 1, 1)));
++    gtk_spin_button_set_adjustment(spinButton, GTK_ADJUSTMENT(gtk_adjustment_new (1, 1, 12, 1, 1, 0)));
+     gtk_spin_button_set_value(spinButton, 1);
+   } else if (idx == 1) { /* Minute */
+-    gtk_spin_button_set_adjustment(spinButton, GTK_ADJUSTMENT(gtk_adjustment_new (10, 10, 30, 10, 10, 10)));
++    gtk_spin_button_set_adjustment(spinButton, GTK_ADJUSTMENT(gtk_adjustment_new (10, 10, 30, 10, 10, 0)));
+     gtk_spin_button_set_value(spinButton, 10);
+   } else {
+     g_printf("Unknown interval type (%d)\n", idx);
+@@ -592,7 +592,7 @@
+       {
+         int percentage, hour, min, sec, left_sec;
+         gchar statusText[100];
+-        memset(statusText, 0, 100);
++
+         
+         left_sec = atoi(left);
+         hour = left_sec / 3600;
+@@ -605,7 +605,7 @@
+       }
+     }
+ 
+-    g_free(line);
++
+     
+   } else if (condition & G_IO_HUP) {
+     if (g_object_get_data(G_OBJECT(mainWindow), "stopping") != NULL)
+diff -ur cpigeorig/gui/configlib.c cpige/gui/configlib.c
+--- cpigeorig/gui/configlib.c	2022-07-21 22:11:29.000000000 +0200
++++ cpige/gui/configlib.c	2022-07-28 08:43:22.000000000 +0200
+@@ -68,7 +68,7 @@
+         buf[i++] = c;
+     }
+   }
+-  free(buf); /* Thx dunky */
++ /* Thx dunky */
+   return config;
+ }
+ 
+@@ -145,8 +145,8 @@
+         if (j == 0)
+         {
+           fprintf(stderr, "CONFIG ERROR: Incorrect Line. Should not start with '='\n");
+-          free(confObj);
+-          free(buf);
++
++
+           return NULL;
+         }
+         
+@@ -181,8 +181,6 @@
+   if ((j == 0) || (confObj->var == NULL))
+   {
+     fprintf(stderr, "Invalid entry: variable defined, but without val.\n");
+-    free(confObj);
+-    free(buf);
+     return NULL;
+   }
+ 
+@@ -202,7 +200,6 @@
+  
+   confObj->val = strdup(buf);
+  
+-  free(ptr);
+ 
+   return confObj;
+ }
+@@ -310,17 +307,10 @@
+   while (start != NULL)
+   {
+     if (start->conf != NULL)
+-    {
+-      if (start->conf->var != NULL)
+-        free(start->conf->var);
+-      if (start->conf->val != NULL)
+-        free(start->conf->val);
+ 
+-      free(start->conf);
+-    }
+     old = start;
+     start = start->next;
+-    free(old);
++
+   }
+ }
+ 
+@@ -385,7 +375,7 @@
+     }
+   } else {
+     *value = atoi(tmp);
+-    free(tmp);
++  
+   }
+ }
+ 
+@@ -407,6 +397,5 @@
+     *value = atoi(tmp);
+     if ( (*value) != 1)
+       *value = 0;
+-    free(tmp);
+   }
+ }
+diff -ur cpigeorig/gui/interface.c cpige/gui/interface.c
+--- cpigeorig/gui/interface.c	2022-07-21 22:11:29.000000000 +0200
++++ cpige/gui/interface.c	2022-07-28 08:43:22.000000000 +0200
+@@ -118,7 +118,7 @@
+ 
+   mainWindow = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+   gtk_widget_set_name (mainWindow, "mainWindow");
+-  gtk_window_set_title (GTK_WINDOW (mainWindow), gettext("cPige Configurator by Laurent Coustet"));
++  gtk_window_set_title (GTK_WINDOW (mainWindow), gettext("cPige Configurator by Laurent Coustet (SliTaz-Version)"));
+   gtk_window_set_icon_name (GTK_WINDOW (mainWindow), "gtk-media-record");
+ 
+   vbox1 = gtk_vbox_new (FALSE, 0);
+@@ -131,7 +131,7 @@
+   gtk_widget_show (menubar1);
+   gtk_box_pack_start (GTK_BOX (vbox1), menubar1, FALSE, FALSE, 0);
+ 
+-  menuitem13 = gtk_menu_item_new_with_mnemonic ("_Fichier");
++  menuitem13 = gtk_menu_item_new_with_mnemonic ("_File");
+   gtk_widget_set_name (menuitem13, "menuitem13");
+   gtk_widget_show (menuitem13);
+   gtk_container_add (GTK_CONTAINER (menubar1), menuitem13);
+@@ -356,7 +356,7 @@
+   gtk_widget_show (label17);
+   gtk_box_pack_start (GTK_BOX (hbox11), label17, FALSE, FALSE, 0);
+ 
+-  IntervalDelaySpinButton_adj = gtk_adjustment_new (10, 10, 30, 10, 10, 10);
++  IntervalDelaySpinButton_adj = gtk_adjustment_new (10, 10, 30, 10, 10, 0);
+   IntervalDelaySpinButton = gtk_spin_button_new (GTK_ADJUSTMENT (IntervalDelaySpinButton_adj), 1, 0);
+   gtk_widget_set_name (IntervalDelaySpinButton, "IntervalDelaySpinButton");
+   gtk_widget_show (IntervalDelaySpinButton);
+@@ -377,7 +377,7 @@
+   gtk_frame_set_label_widget (GTK_FRAME (PigeModeFrame), label16);
+   gtk_label_set_use_markup (GTK_LABEL (label16), TRUE);
+ 
+-  MandatoryParametersLabel = gtk_label_new (gettext("<b>Mandatory parameters</b>"));
++  MandatoryParametersLabel = gtk_label_new (gettext("<b>URL Streaming</b>"));
+   gtk_widget_set_name (MandatoryParametersLabel, "MandatoryParametersLabel");
+   gtk_widget_show (MandatoryParametersLabel);
+   gtk_frame_set_label_widget (GTK_FRAME (ParametersFrame), MandatoryParametersLabel);
+@@ -459,7 +459,7 @@
+   gtk_tooltips_set_tip (tooltips, useNumbersButton, gettext("Should cPige prefix songs with a unique number ? (UNIX only, with pige mode Disabled)"), NULL);
+   gtk_button_set_focus_on_click (GTK_BUTTON (useNumbersButton), FALSE);
+ 
+-  spinbutton2_adj = gtk_adjustment_new (0, 0, 100, 1, 10, 10);
++  spinbutton2_adj = gtk_adjustment_new (0, 0, 100, 1, 10, 0);
+   spinbutton2 = gtk_spin_button_new (GTK_ADJUSTMENT (spinbutton2_adj), 1, 0);
+   gtk_widget_set_name (spinbutton2, "skipSongsSpin");
+   gtk_widget_show (spinbutton2);
+diff -ur cpigeorig/gui/main.c cpige/gui/main.c
+--- cpigeorig/gui/main.c	2022-07-21 22:11:29.000000000 +0200
++++ cpige/gui/main.c	2022-07-28 08:43:22.000000000 +0200
+@@ -230,7 +230,7 @@
+     if (retval == FALSE)
+       return retval;
+   } else {
+-    free(val);
++
+   }
+ 
+   /* Setup savedirectory */
+@@ -398,7 +398,7 @@
+       0
+   );
+   
+-  free(val);
++
+ 
+   gtk_spin_button_set_value(GTK_SPIN_BUTTON(widget), (gdouble)(intval));
+ 
+@@ -449,7 +449,7 @@
+     {
+       gtk_tree_model_get(model, &iter, 0, &val, -1);
+       conf_setValue(&conf, "url", val);
+-      g_free(val);
++     
+     } while ( gtk_tree_model_iter_next(model, &iter) == TRUE);
+   }
+ 
+@@ -458,7 +458,7 @@
+   val = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(widget));  
+   
+   conf_setValue(&conf, "savedirectory", val);
+-  g_free(val);
++
+ 
+   /* Retreiving weekbackup */
+   widget = lookup_widget(mainWindow, "WeekBackupButton");
+@@ -515,7 +515,7 @@
+   val = (gchar *)g_malloc(8);
+   snprintf(val, 8, "%d", intval);
+   conf_setValue(&conf, "skipsongs", val);
+-  g_free(val);
++  
+  
+   /* Retreiving next title */
+   widget = lookup_widget(mainWindow, "NextTitleEntry");
+@@ -536,7 +536,7 @@
+   val = (gchar *)g_malloc(8);
+   snprintf(val, 8, "%d", intval);
+   conf_setValue(&conf, "cutdelay", val);
+-  g_free(val);
++  
+   
+   /* Retreiving logfile */
+   widget = lookup_widget(mainWindow, "LogfileEntry");
+diff -ur cpigeorig/Makefile cpige/Makefile
+--- cpigeorig/Makefile	2022-07-21 22:11:29.000000000 +0200
++++ cpige/Makefile	2022-07-28 08:43:22.000000000 +0200
+@@ -16,6 +16,6 @@
+ 	docker run --rm -it -v $(shell pwd):$(shell pwd) -w $(shell pwd) alpine:latest ./build_alpine.sh
+ 
+ cpige: $(OBJS)
+-	$(CC) $(CFLAGS) $(CLIBS) $(OBJS) -static -o cpige
++	$(CC) $(CFLAGS) $(CLIBS) $(OBJS) -o cpige
+ 
+ 
