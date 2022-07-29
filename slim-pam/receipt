@@ -6,12 +6,12 @@ CATEGORY="x-window"
 SHORT_DESC="Desktop-independent graphical login manager for X11 (PAM enabled)."
 MAINTAINER="pascal.bellard@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="https://sourceforge.net/projects/slim.berlios/"
+WEB_SITE="https://www.berlios.de/software/slim/"
 REPOLOGY="slim-login-manager"
 
 SOURCE="slim"
 TARBALL="$SOURCE-$VERSION.tar.gz"
-WGET_URL="https://downloads.sourceforge.net/project/slim.berlios/$TARBALL"
+WGET_URL="https://github.com/iwamatsu/$SOURCE/archive/refs/tags/v$VERSION.tar.gz"
 
 PROVIDE="slim:pam"
 RELATED="slim slim-theme-default"
@@ -56,7 +56,7 @@ genpkg_rules()
 	cp -a $install/usr/lib		$fs/usr
 	cp -a $WOK/$SOURCE/stuff/themes	$fs/usr/share/slim
 
-	# Configuration file and rc script.
+	# rc script.
 	cp -a $WOK/$SOURCE/stuff/etc	$fs
 	chown -R root.root		$fs
 
@@ -66,6 +66,7 @@ genpkg_rules()
 
 post_install()
 {
+	# replace default user tux by user with userid 1000 in slim.conf
 	local USER
 	USER=$(awk -F: '/:1000:1000:/ { print $1 }' < "$1/etc/passwd")
 	[ -n "$USER" ] &&
@@ -74,7 +75,7 @@ post_install()
 	# In order to update the SLiM, we need to restart it.
 	# We can't just "/etc/init.d/slim restart" because it momentarily interrupts
 	# X session and the user will get a terrible console with strange letters.
-	printf '%40s\n' | tr ' ' '='
+	printf '\n%40s\n' | tr ' ' '='
 	echo "In order to update the SLiM,"
 	echo "please, reboot your system!"
 }
@@ -86,5 +87,5 @@ pre_remove()
 
 testsuite()
 {
-	ldd $install/usr/bin/slim
+	readelf -h	$install/usr/bin/slim
 }

@@ -6,11 +6,11 @@ CATEGORY="x-window"
 SHORT_DESC="Desktop-independent graphical login manager for X11."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="GPL2"
-WEB_SITE="http://slim.berlios.de/"
+WEB_SITE="https://www.berlios.de/software/slim/"
 REPOLOGY="slim-login-manager"
 
 TARBALL="$PACKAGE-$VERSION.tar.gz"
-WGET_URL="https://downloads.sourceforge.net/project/slim.berlios/$TARBALL"
+WGET_URL="https://github.com/iwamatsu/$PACKAGE/archive/refs/tags/v$VERSION.tar.gz"
 
 RELATED="slim-pam slim-theme-default"
 SUGGESTED="slim-theme-default slitaz-configs"
@@ -70,14 +70,14 @@ genpkg_rules()
 {
 	mkdir -p $fs/usr/share/slim
 
-	cp -a $install/etc	$fs
-	cp -a $install/usr/bin	$fs/usr
-	cp -a $install/usr/lib	$fs/usr
-	cp -a $stuff/themes	$fs/usr/share/slim
+	cp -a $install/etc		$fs
+	cp -a $install/usr/bin		$fs/usr
+	cp -a $install/usr/lib		$fs/usr
+	cp -a $stuff/themes		$fs/usr/share/slim
 
-	# Configuration file and rc script.
-	cp -a $stuff/etc	$fs
-	chown -R root.root	$fs
+	# rc script.
+	cp -a $stuff/etc		$fs
+	chown -R root.root		$fs
 
 	# slim-theme manager and default strings
 	install -m755 $stuff/slim-theme	$fs/usr/bin/slim-theme
@@ -86,6 +86,7 @@ genpkg_rules()
 
 post_install()
 {
+	# replace default user tux by user with userid 1000 in slim.conf
 	local USER
 	USER=$(awk -F: '/:1000:1000:/ { print $1 }' < "$1/etc/passwd")
 	[ -n "$USER" ] &&
@@ -95,5 +96,5 @@ post_install()
 
 testsuite()
 {
-	ldd $install/usr/bin/slim
+	readelf -h	$install/usr/bin/slim
 }
