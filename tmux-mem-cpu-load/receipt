@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="tmux-mem-cpu-load"
-VERSION="3.4.0"
+VERSION="3.6.0"
 CATEGORY="utilities"
 SHORT_DESC="CPU, RAM, and load monitor for use with tmux."
 MAINTAINER="paul@slitaz.org"
@@ -23,7 +23,10 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cmake . -DCMAKE_INSTALL_PREFIX=/usr
+	mkdir	_build &&
+	cd	_build &&
+	cmake	..				\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
 	make &&
 	make install
 }
@@ -34,7 +37,7 @@ genpkg_rules()
 	mkdir -p $fs/usr
 	mkdir -p $fs/etc/skel
 
-	cp -a $install/usr/bin $fs/usr
+	cp -a $install/usr/bin	$fs/usr
 	cat >> $fs/etc/skel/.tmux.conf << EOT
 # tmux-mem-cpu-load
 set -g status-interval 2
@@ -46,9 +49,10 @@ post_install()
 {
 	for i in $(ls "$1/home" 2> /dev/null)
 	  do
-		grep -qs "tmux-mem-cpu-load" "$1/home/$i/.tmux.conf" && continue
+		grep -qs "tmux-mem-cpu-load"	"$1/home/$i/.tmux.conf" &&
+		continue
 		echo -n "Checking for .tmux.conf for $i ..."
-		cp -a "$1/etc/skel/.tmux.conf" "$1/home/$i/"
+		cp -a "$1/etc/skel/.tmux.conf"	"$1/home/$i/"
 		chroot "$1/" chown $(stat -c "%u.%g" "$1/home/$i") "/home/$i/.tmux.conf"
 		status
 	  done
