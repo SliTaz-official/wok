@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="unixODBC"
-VERSION="2.3.7"
+VERSION="2.3.11"
 CATEGORY="system-tools"
 TAGS="database"
 SHORT_DESC="ODBC for unix."
@@ -17,6 +17,8 @@ BUILD_DEPENDS="readline-dev"
 
 HOST_ARCH="i486 arm"
 
+# @maintainer:	Please update also libunixODBC
+
 # What is the latest version available today?
 current_version()
 {
@@ -31,15 +33,13 @@ compile_rules()
 		--sysconfdir=/etc	\
 		--disable-gui		\
 		$CONFIGURE_ARGS &&
-	make $MAKEFLAGS &&
-	make DESTDIR=$DESTDIR install
+	make $MAKEFLAGS LDFLAGS="$LDFLAGS -lrt" &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-
-	cp -a $install/etc	$fs
-	cp -a $install/usr/bin	$fs/usr
+	cook_copy_folders	bin
+	cook_copy_folders	etc
 }
