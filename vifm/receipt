@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="vifm"
-VERSION="0.10.1"
+VERSION="0.12"
 CATEGORY="utilities"
 SHORT_DESC="Vi File Manager."
 MAINTAINER="paul@slitaz.org"
@@ -11,9 +11,12 @@ WEB_SITE="https://vifm.info/"
 TARBALL="$PACKAGE-$VERSION.tar.bz2"
 WGET_URL="$SF_MIRROR/$PACKAGE/$TARBALL"
 
-DEPENDS="file libmagic ncurses vim xorg-libX11"
-BUILD_DEPENDS="file groff libmagic-dev ncurses-dev util-linux-whereis \
-	vim xorg-libX11-dev"
+SUGGESTED="vim"		# not really needed, busybox vi is sufficient
+DEPENDS="file libmagic ncurses xorg-libX11"
+BUILD_DEPENDS="file groff libmagic-dev ncurses-dev util-linux-whereis
+	xorg-libX11-dev"
+
+CONFIG_FILES="/etc/vifm/vifmrc"
 
 # What is the latest version available today?
 current_version()
@@ -32,7 +35,8 @@ compile_rules()
 		--datadir=/usr/share	\
 	 	$CONFIGURE_ARGS &&
 	make &&
-	make DESTDIR=$DESTDIR -j 1 install
+	make -j 1 install DESTDIR=$DESTDIR
+	# -j 1 is essential!
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -44,5 +48,17 @@ genpkg_rules()
 	cp -a $install/usr/share	$fs/usr
 
 	# rm stuff
-	rm -rf $fs/usr/share/man
+	rm -rf				$fs/usr/share/doc
+	rm -rf				$fs/usr/share/man
+}
+
+post_install()
+{
+	mkdir -p "$1/etc/vifm"
+
+	# replace vim by vi in vifmrc when vim is not installed
+	[ -f /usr/bin/vim ] ||
+	sed -i 's|vicmd=vim|vicmd=vi|'	"$1/usr/share/vifm/vifmrc"
+
+	cp "$1/usr/share/vifm/vifmrc"	"$1/etc/vifm/vifmrc"
 }
