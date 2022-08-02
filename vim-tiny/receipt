@@ -1,7 +1,9 @@
 # SliTaz package receipt.
 
 PACKAGE="vim-tiny"
-VERSION="8.2.0664"
+VERSION="9.0.0133"
+basever=${VERSION%.*}
+basever=${basever/./}
 CATEGORY="editors"
 TAGS="text-editor"
 SHORT_DESC="Advanced text editor without GUI."
@@ -34,6 +36,9 @@ compile_rules()
 	sed -i 's|^.*\(#define SYS_VIMRC_FILE\).*$|\1 "/etc/vim/vimrc"|' \
 		$src/src/feature.h
 
+	# 9.0.0133 unrecognised:
+#		--disable-athena-check
+
 	./configure				\
 		--prefix=/usr			\
 		--cache-file=$PWD/config.cache	\
@@ -45,12 +50,11 @@ compile_rules()
 		--with-vim-name=$PACKAGE	\
 		--disable-acl			\
 		--disable-motif-check		\
-		--disable-athena-check		\
 		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
 	make						\
 		VIMRCLOC=/etc/vim			\
-		VIMRUNTIMEDIR=/usr/share/vim/vim82	\
+		VIMRUNTIMEDIR=/usr/share/vim/vim$basever\
 		MAKE="make -e" &&
 	make	DESTDIR=$DESTDIR install
 
@@ -68,7 +72,7 @@ genpkg_rules()
 	cp -a $install/usr/share/vim	$fs/usr/share
 	cp -a $install/etc/vim		$fs/etc
 
-	rm -f $fs/usr/bin/*tutor
+	rm -f				$fs/usr/share/vim/vim$basedir/tutor/*
 }
 
 post_install()
@@ -79,12 +83,14 @@ post_install()
 		echo ''
 		echo "**** Actual VI link : $cmd"
 		echo ''
-		echo -n 'Do you want vim  for /bin/vi (y/N) ? : '; read -t 30 anser
+		echo -n 'Do you want vim  for /bin/vi (y/N) ? : '
+		read -t 30 anser
 		if [ "$anser" = 'y' ]
 		  then
 			echo ''
 			action 'Removing vi link to make a new one pointing on /usr/bin/vim...'
-			rm "$1/bin/vi" && ln -sf /usr/bin/vim-tiny "$1/bin/vi"
+			rm "$1/bin/vi" &&
+			ln -sf /usr/bin/vim-tiny "$1/bin/vi"
 			status
 		  else
 			echo ''
@@ -95,6 +101,6 @@ post_install()
 
 post_remove()
 {
-	# restore previous symlink
+	# restore previous symbolic link
 	ln -sf /bin/busybox "$1/bin/vi"
 }

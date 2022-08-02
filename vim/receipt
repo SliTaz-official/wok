@@ -1,7 +1,9 @@
 # SliTaz package receipt.
 
 PACKAGE="vim"
-VERSION="8.2.0664"
+VERSION="9.0.0133"
+basever=${VERSION%.*}
+basever=${basever/./}
 CATEGORY="editors"
 TAGS="text-editor"
 SHORT_DESC="Advanced text editor."
@@ -33,6 +35,9 @@ compile_rules()
 	sed -i 's|^.*\(#define SYS_VIMRC_FILE\).*$|\1 "/etc/vim/vimrc"|' \
 		$src/src/feature.h
 
+	# 9.0.0133 unrecognised:
+#		--disable-athena-check
+
 	./configure				\
 		--prefix=/usr			\
 		--cache-file=$PWD/config.cache	\
@@ -42,23 +47,24 @@ compile_rules()
 		--disable-gui			\
 		--enable-multibyte		\
 		--disable-motif-check		\
-		--disable-athena-check		\
 		--mandir=/usr/share/man		\
 		$CONFIGURE_ARGS &&
 
 	make						\
 		VIMRCLOC=/etc/vim			\
-		VIMRUNTIMEDIR=/usr/share/vim/vim82	\
+		VIMRUNTIMEDIR=/usr/share/vim/vim$basever\
 		MAKE="make -e" &&
-	make DESTDIR=$DESTDIR install
+	make	install				\
+		DESTDIR=$DESTDIR
 
 	mkdir -p $DESTDIR/etc/vim
 	cp -a $src/runtime/vimrc_example.vim	$DESTDIR/etc/vim/vimrc
 
-	for i in GenericName Keywords ; do
+	for i in GenericName Keywords
+	  do
 		l="$(grep $i= $DESTDIR/usr/share/applications/vim.desktop)"
 		sed -i "/$i=/d;s|$i\[de].*|$l\n&|" $DESTDIR/usr/share/applications/vim.desktop
-	done
+	  done
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
@@ -80,12 +86,14 @@ post_install()
 		echo ''
 		echo "**** Actual VI link : $cmd"
 		echo ''
-		echo -n 'Do you want vim  for /bin/vi (y/N) ? : '; read -t 30 anser
+		echo -n 'Do you want vim  for /bin/vi (y/N) ? : '
+		read -t 30 anser
 		if [ "$anser" = 'y' ]
 		  then
 			echo ''
-			echo -n 'Removing vi link to make a new one pointing on /usr/bin/vim...'
-			rm "$1/bin/vi" && ln -sf /usr/bin/vim "$1/bin/vi"
+			echo -n 'Removing vi link to make a new one pointing to /usr/bin/vim...'
+			rm "$1/bin/vi" &&
+			ln -sf /usr/bin/vim "$1/bin/vi"
 			status
 		  else
 			echo ''
@@ -96,6 +104,6 @@ post_install()
 
 post_remove()
 {
-	# restore previous symlink
+	# restore previous symbolic link
 	ln -sf /bin/busybox "$1/bin/vi"
 }
