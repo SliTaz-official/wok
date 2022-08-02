@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="vnstat"
-VERSION="2.6"
+VERSION="2.9"
 CATEGORY="system-tools"
 SHORT_DESC="Console-based network monitoring utility."
 MAINTAINER="al.bobylev@gmail.com"
@@ -40,17 +40,14 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/*	$fs
+	cook_copy_folders	etc
+	cook_copy_folders	bin
+	cook_copy_folders	sbin
 }
 
 post_install()
 {
-	# Start vnstat daemon and edit daemons.conf
-	if [ -z "$1" -a ! -s /aufs-umount.sh ]
-	  then
-		/etc/init.d/vnstatd start || continue
-	fi
-
+	# Edit daemons.conf
 	if ! grep -q ^VNSTATD_OPTIONS "$1/etc/daemons.conf"
 	  then
 		cat >> "$1/etc/daemons.conf" <<EOT
@@ -59,11 +56,18 @@ VNSTATD_OPTIONS="-d -p /var/run/vnstatd.pid"
 
 EOT
 	fi
+
+	# Start vnstat daemon
+	if [ -z "$1" -a ! -s /aufs-umount.sh ]
+	  then
+		/etc/init.d/vnstatd start || continue
+	fi
 }
 
 pre_remove()
 {
 	# Stop vnstat daemon before removing files.
-	[ -z "$1" -a -x /etc/init.d/vnstatd ] && /etc/init.d/vnstatd stop
+	[ -z "$1" -a -x /etc/init.d/vnstatd ] &&
+	/etc/init.d/vnstatd stop
 	:
 }
