@@ -1,17 +1,18 @@
 # SliTaz package receipt.
 
 PACKAGE="vidalia"
-VERSION="0.2.21"
+VERSION="0.3.1"
 CATEGORY="network"
 SHORT_DESC="Controller GUI for the Tor software."
 MAINTAINER="paul@slitaz.org"
-LICENSE="GPL2 LGPL3"
-TARBALL="$PACKAGE-$VERSION.tar.gz"
+LICENSE="GPL2+"
 WEB_SITE="https://web.archive.org/web/20141121142650/https://www.torproject.org/projects/vidalia"
+
+TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="https://archive.torproject.org/tor-package-archive/$PACKAGE/$TARBALL"
 
-DEPENDS="tor libQtGui libQtXml libegl-mesa"
-BUILD_DEPENDS="cmake Qt4-dev wget qmake libegl-mesa openssl-dev"
+DEPENDS="libegl-mesa libQtGui libQtScript libQtXml tor"
+BUILD_DEPENDS="cmake qmake libegl-mesa openssl-dev Qt4-dev"
 
 # What is the latest version available today?
 current_version()
@@ -23,17 +24,18 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	cd $src
-	mkdir build && cd build
-	cmake -DCMAKE_INSTALL_PREFIX=/usr .. &&
-	make && make DESTDIR=$DESTDIR install
+	mkdir build &&
+	cd build &&
+	cmake	..				\
+		-D CMAKE_INSTALL_PREFIX=/usr &&
+	make &&
+	make install DESTDIR=$DESTDIR
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr
-	cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/share/ $fs/usr
+	cook_copy_folders	bin
+	cook_copy_folders	icons
 }
 
