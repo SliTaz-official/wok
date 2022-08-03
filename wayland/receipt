@@ -1,20 +1,22 @@
 # SliTaz package receipt.
 
 PACKAGE="wayland"
-VERSION="1.4.0"
+VERSION="1.21.0"
 CATEGORY="x-window"
 SHORT_DESC="Wayland simpler X display server protocol."
 MAINTAINER="pankso@slitaz.org"
 LICENSE="MIT"
+WEB_SITE="https://wayland.freedesktop.org/"
+
 TARBALL="$PACKAGE-$VERSION.tar.xz"
-WEB_SITE="http://www.slitaz.org/"
-WGET_URL="https://wayland.freedesktop.org/releases/$TARBALL"
-HOST_ARCH="i486 arm"
+WGET_URL="https://gitlab.freedesktop.org/$PACKAGE/$PACKAGE/-/releases/$VERSION/downloads/$TARBALL"
 
 # WARNING: wayland must be installed in chroot since build host 
 # wayland-scanner is used for cross compilation to ARM
-DEPENDS="libffi expat"
-BUILD_DEPENDS="libffi-dev expat-dev"
+DEPENDS="expat gcc83-lib-base libffi"
+BUILD_DEPENDS="expat-dev gcc83 libffi-dev meson"
+
+HOST_ARCH="i486 arm"
 
 # Handle cross compilation
 case "$ARCH" in
@@ -31,18 +33,23 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
-	./configure \
-		--prefix=/usr \
-		--disable-documentation \
-		${CONFIGURE_ARGS} ${ARCH_ARGS} &&
-	make && make install
+	export	CC=gcc-83
+
+	meson	_build			\
+		-D documentation=false	\
+		--prefix=/usr &&
+	ninja	-C _build &&
+	ninja	-C _build install
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/lib $fs/usr/share
-	[ -d "$install/usr/bin" ] && cp -a $install/usr/bin $fs/usr
-	cp -a $install/usr/lib/*.so* $fs/usr/lib
-	cp -a $install/usr/share/wayland $fs/usr/share
+	mkdir -p $fs/usr/lib
+	mkdir -p $fs/usr/share
+
+	[ -d "$install/usr/bin" ] &&
+	cp -a $install/usr/bin			$fs/usr
+	cp -a $install/usr/lib/*.so*		$fs/usr/lib
+	cp -a $install/usr/share/wayland	$fs/usr/share
 }
