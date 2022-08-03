@@ -60,35 +60,37 @@ compile_rules()
 
 	mkdir -p $DESTDIR/etc/vim
 	cp -a $src/runtime/vimrc_example.vim	$DESTDIR/etc/vim/vimrc
+
+	rm -rf				$DESTDIR/usr/share/applications
 }
 
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	mkdir -p $fs/usr/share
 	mkdir -p $fs/etc
+	mkdir -p $fs/usr/bin
+	mkdir -p $fs/usr/share/vim/vim$basever
 
-	cp -a $install/usr/bin		$fs/usr
-	cp -a $install/usr/share/vim	$fs/usr/share
 	cp -a $install/etc/vim		$fs/etc
-
-	rm -f				$fs/usr/share/vim/vim$basedir/tutor/*
+	cp -a $install/usr/bin/vim-tiny	$fs/usr/bin
+	cp -a $install/usr/share/vim/vim$basever/defaults.vim \
+					$fs/usr/share/vim/vim$basever
 }
 
 post_install()
 {
 	cmd=$(readlink "$1/bin/vi")
-	if [ "$cmd" != '/usr/bin/vim' ]
+	if [ "$cmd" != '/usr/bin/vim-tiny' ]
 	  then
 		echo ''
 		echo "**** Actual VI link : $cmd"
 		echo ''
-		echo -n 'Do you want vim  for /bin/vi (y/N) ? : '
+		echo -n 'Do you want vim-tiny  for /bin/vi (y/N) ? : '
 		read -t 30 anser
 		if [ "$anser" = 'y' ]
 		  then
 			echo ''
-			action 'Removing vi link to make a new one pointing on /usr/bin/vim...'
+			action 'Removing vi link to make a new one pointing to /usr/bin/vim-tiny...'
 			rm "$1/bin/vi" &&
 			ln -sf /usr/bin/vim-tiny "$1/bin/vi"
 			status
