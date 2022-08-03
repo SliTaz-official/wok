@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="wget"
-VERSION="1.20.3"
+VERSION="1.21.3"
 CATEGORY="network"
 SHORT_DESC="An utility for retrieving files using HTTP, HTTPS or FTP."
 MAINTAINER="sygne@ombres.eu"
@@ -11,6 +11,7 @@ WEB_SITE="https://www.gnu.org/software/wget/"
 TARBALL="$PACKAGE-$VERSION.tar.gz"
 WGET_URL="$GNU_MIRROR/$PACKAGE/$TARBALL"
 
+SUGGESTED="wget-lang"
 DEPENDS="libidn libssl pcre util-linux-uuid zlib"
 BUILD_DEPENDS="flex libidn-dev openssl-dev util-linux-uuid-dev"
 
@@ -39,7 +40,7 @@ compile_rules()
 		--sysconfdir=/etc	\
 		$CONFIGURE_ARGS		\
 		$ARCH_ARGS &&
-	make DESTDIR=$DESTDIR install
+	make install DESTDIR=$DESTDIR
 
 	gzip -9 $install/usr/share/man/man1/wget.1
 }
@@ -47,13 +48,11 @@ compile_rules()
 # Rules to gen a SliTaz package suitable for Tazpkg.
 genpkg_rules()
 {
-	cp -a $install/* $fs
-
-	rm -r $fs/usr/share/info
-	rm -r $fs/usr/share/locale
+	cook_copy_folders	etc
+	cook_copy_folders	bin
 }
 
 post_remove()
 {
-	ln -s /bin/busybox "$1/usr/bin/wget"
+	ln -s /bin/busybox	"$1/usr/bin/wget"
 }
