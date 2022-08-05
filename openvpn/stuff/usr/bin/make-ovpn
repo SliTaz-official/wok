@@ -4,7 +4,7 @@
 [ -z "$1" ] && cat <<EOT && exit 0
 Usage:
 	$0 server name vpn-prefix [routes]... > config-server-name.ovpn
-	$0 client name server-ip [port] > config-client-name.ovpn
+	$0 client name server-ip[,server2...] [port] > config-client-name.ovpn
 
 Examples:
 	$0 server office 192.168.99 192.168.0.0/255.255.255.0 10.0.0.0/255.0.0.0
@@ -80,9 +80,14 @@ if [ "$1" = "server" ] || [ "$1" = client ]; then
 	fi
 fi
 
+[ "$1" = "client" ] && case "$3" in
+*,*)	echo "remote-random"
+	for i in ${3//,/ }; do echo "remote $i ${4:-1194}"; done ;;
+*)	echo "remote ${3:-my.office.com} ${4:-1194}"
+esac
 [ "$1" = "client" ] && cat << EOT
 client
-remote ${3:-my.office.com} ${4:-1194}
+float
 
 $(common_conf)
 remote-cert-tls server
