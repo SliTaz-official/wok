@@ -365,8 +365,8 @@ ReadCluster:
         imul    si, dx, byte 4                  ; si=entry # offset in sector
 
         cdq
-        add     eax, [bx(bpbFatSectorStart)]    ; sector # relative to FAT32
-        call    ReadSectorC                     ; read 1 FAT32 sector
+        add     eax, [bx(bpbFatSectorStart)]    ; sector # relative to exFAT
+        call    ReadSectorC                     ; read 1 exFAT sector
 
         mov     esi, [es:si]                    ; esi=next cluster #
 
