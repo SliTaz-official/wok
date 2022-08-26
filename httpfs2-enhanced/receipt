@@ -1,0 +1,40 @@
+# SliTaz package receipt.
+
+PACKAGE="httpfs2-enhanced"
+GITHASH="416cd8d56c75fa470ad8c58791c42212c8cfc0aa"
+VERSION=${GITHASH:0:7}
+CATEGORY="system-tools"
+SHORT_DESC="HTTP/HTTPS Filesystem implemented with FUSE."
+MAINTAINER="pascal.bellard@slitaz.org"
+LICENSE="GPL"
+TARBALL="$PACKAGE-$VERSION.tar.gz"
+WEB_SITE="https://github.com/zohead/$PACKAGE"
+WGET_URL="$WEB_SITE/archive/$GITHASH.tar.gz"
+PROVIDE="httpfs-fuse"
+TAGS="filesystem"
+
+DEPENDS="gcc-lib-base fuse2 libgnutls"
+BUILD_DEPENDS="fuse2-dev gnutls-dev libgnutls pkg-config"
+
+# What is the latest version available today?
+current_version()
+{
+	wget -O - $WEB_SITE/commits/master 2>/dev/null | \
+	sed '/commits_list_item/!d;s|.*commits/\(.......\).*|\1|;q'
+}
+
+# Rules to configure and make the package.
+compile_rules()
+{
+	sed -i "s/^package = .*/package = httpfs2/" Makefile
+	sed -i "s/^version = .*/version = $VERSION/" Makefile
+	sed -i "s/^revision = .*/revision = 1/" Makefile
+	make httpfs2
+}
+
+# Rules to gen a SliTaz package suitable for Tazpkg.
+genpkg_rules()
+{
+	mkdir -p $fs/usr/bin
+	cp -a $src/httpfs2 $fs/usr/bin/
+}
