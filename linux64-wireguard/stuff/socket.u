@@ -1,0 +1,25 @@
+--- socket.c
++++ socket.c
+@@ -358,7 +358,6 @@
+ 	struct socket *new4 = NULL, *new6 = NULL;
+ 	struct udp_port_cfg port4 = {
+ 		.family = AF_INET,
+-		.local_ip.s_addr = htonl(INADDR_ANY),
+ 		.local_udp_port = htons(port),
+ 		.use_udp_checksums = true
+ 	};
+@@ -366,12 +365,13 @@
+ 	int retries = 0;
+ 	struct udp_port_cfg port6 = {
+ 		.family = AF_INET6,
+-		.local_ip6 = IN6ADDR_ANY_INIT,
+ 		.use_udp6_tx_checksums = true,
+ 		.use_udp6_rx_checksums = true,
+ 		.ipv6_v6only = true
+ 	};
++	memset(&port6.local_ip6, 0, 16); // port6.local_ip6 = IN6ADDR_ANY_INIT;
+ #endif
++	port4.local_ip.s_addr = htonl(INADDR_ANY);
+ 
+ 	rcu_read_lock();
+ 	net = rcu_dereference(wg->creating_net);
