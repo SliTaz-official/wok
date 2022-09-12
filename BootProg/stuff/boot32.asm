@@ -78,6 +78,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 %define bx(label)       bx+label-boot
+%define si(label)       si+label-boot
+ClusterMask             equ     1               ; +9 bytes
+NullEntryCheck          equ     1               ; +5 bytes
+ReadRetry               equ     1               ; +7 bytes
+LBA48bits               equ     1               ; +13 bytes
+CHSsupport              equ     1               ; +27 bytes
+CHShardDisk             equ     0               ; +11 bytes
 
 [BITS 16]
 
@@ -92,7 +99,6 @@ StackSize               equ     1536
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 boot:
-HiLBA                   equ     boot+0
         jmp     short   start                   ; MS-DOS/Windows checks for this jump
         nop
 bsOemName               DB      "BootProg"      ; 0x03
@@ -130,6 +136,12 @@ bsFSInfoSectorNo                DW      0               ; 0x30
 bsBackupBootSectorNo            DW      0               ; 0x32
 bsreserved             times 12 DB      0               ; 0x34
 bsDriveNumber                   DB      0               ; 0x40
+%if LBA48bits != 0
+HiLBA                   equ     boot+0
+DriveNumber             equ     bsDriveNumber+0
+%else
+DriveNumber             equ     boot+0
+%endif
 bsreserved1                     DB      0               ; 0x41
 bsExtendedBootSignature         DB      0               ; 0x42
 bsVolumeSerialNumber            DD      0               ; 0x43
@@ -172,29 +184,32 @@ start:
         mov     si, 7C00h
         xor     di, di
         mov     ds, di
+        push    es
+        push    byte main
+        mov     [si(DriveNumber)], dx  ; store BIOS boot drive number
         rep     movsw
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Jump to the copy ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
-        push    es
-        push    byte main
         retf
 
 main:
         push    cs
         pop     ds
 
-        xor     bx, bx
-        mov     [bx(bsDriveNumber)], dx  ; store BIOS boot drive number
+        xor     ebx, ebx
 
+%if ClusterMask != 0
         and     byte [bx(bsRootDirectoryClusterNo+3)], 0Fh ; mask cluster value
+%endif
         mov     esi, [bx(bsRootDirectoryClusterNo)] ; esi=cluster # of root dir
 
-RootDirReadContinue:
         push    byte ImageLoadSeg
         pop     es
+
+RootDirReadContinue:
         call    ReadCluster             ; read one cluster of root dir
         pushf                           ; save carry="not last cluster" flag
 
@@ -209,16 +224,15 @@ RootDirReadContinue:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Input:  DS:SI -> file name (11 chars) ;;
 ;;         ES:DI -> root directory array ;;
-;;         DX = number of root entries   ;;
 ;;         BP = paragraphs in sector     ;;
 ;; Output: ESI = cluster number          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-FindName:
 FindNameCycle:
+%if NullEntryCheck != 0
         cmp     byte [es:di], bh
         je      ErrFind                 ; end of root directory (NULL entry found)
-FindNameNotEnd:
+%endif
         pusha
         mov     cl, 11
         mov     si, ProgramName         ; ds:si -> program name
@@ -339,7 +353,7 @@ Run:
 ReadCluster:
         mov     bp, [bx(bpbBytesPerSector)]
         shr     bp, 4                           ; bp = paragraphs per sector
-        add     eax, byte 1                     ; adjust LBA for next sector
+        mov     dx, 1                           ; adjust LBA for next sector
         inc     cx
         loop    ReadSectorLBA
 
@@ -352,36 +366,41 @@ ReadCluster:
 ;;         BP -> para / sector  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+        mul     ebx                             ; edx:eax = 0
         imul    ax, bp, byte 4                  ; ax=# of FAT32 entries per sector
-        cwde
         lea     edi, [esi-2]                    ; esi=cluster #
         xchg    eax, esi
-        cdq
         div     esi                             ; eax=FAT sector #, edx=entry # in sector
 
         imul    si, dx, byte 4                  ; si=entry # in sector, clear C
-        mov     word [bx(HiLBA)], bx
+%if LBA48bits != 0
+        xor     dx, dx                          ; clear C
+%endif
         call    ReadSectorLBAabsolute           ; read 1 FAT32 sector
 
+%if ClusterMask != 0
         and     byte [es:si+3], 0Fh             ; mask cluster value
+%endif
         mov     esi, [es:si]                    ; esi=next cluster #
 
         movzx   eax, byte [bx(bpbNumberOfFATs)]
         mul     dword [bx(bsSectorsPerFAT32)]
-        mov     word [bx(HiLBA)], dx
 
         xchg    eax, edi
         movzx   ecx, byte [bx(bpbSectorsPerCluster)]
         mul     ecx                             ; edx:eax=sector number in data area
-
         add     eax, edi
-        adc     word [bx(HiLBA)], dx
 
 ReadSectorLBAabsolute:
-        mov     dx, word [bx(bpbReservedSectors)]
-        add     eax, edx
-        adc     word [bx(HiLBA)], bx
+%if LBA48bits != 0
+        adc     dx, bx
+        mov     word [bx(HiLBA)], dx
+%endif
         add     eax, [bx(bpbHiddenSectors)]
+%if LBA48bits != 0
+        adc     word [bx(HiLBA)], bx
+%endif
+        mov     dx, word [bx(bpbReservedSectors)]
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reads a sector using BIOS Int 13h fn 42h ;;
@@ -393,17 +412,62 @@ ReadSectorLBAabsolute:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReadSectorLBA:
+        add     eax, edx
+%if LBA48bits != 0
         adc     word [bx(HiLBA)], bx
-        mov     dx, [bx(bsDriveNumber)] ; restore BIOS boot drive number
+%endif
+        mov     dx, [bx(DriveNumber)]   ; restore BIOS boot drive number
         pusha
 
         push    bx
+%if LBA48bits != 0
         push    word [bx(HiLBA)]        ; 48-bit LBA
+%else
+        push    bx
+%endif
         push    eax
         push    es
         push    bx
         push    byte 1 ; sector count word = 1
         push    byte 16 ; packet size byte = 16, reserved byte = 0
+
+%if CHSsupport != 0
+%if CHShardDisk != 0
+        push    eax
+        pop     cx                      ; save low LBA
+        pop     ax                      ; get high LBA
+        cwd                             ; clear dx (assume LBA offset <1TB)
+        idiv    word [bx(bpbSectorsPerTrack)] ; up to 8GB disks, avoid divide error
+
+        xchg    ax, cx                  ; restore low LBA, save high LBA / SPT
+        div     word [bx(bpbSectorsPerTrack)]
+%else
+; Busybox mkdosfs creates fat32 for floppies.
+; Floppies may support CHS only.
+        cwd                             ; clear dx (LBA offset <16MB)
+        idiv    word [bx(bpbSectorsPerTrack)]
+        xor     cx, cx
+%endif
+                ; ax = LBA / SPT
+                ; dx = LBA % SPT         = sector - 1
+        inc     dx
+
+        xchg    cx, dx                  ; restore high LBA / SPT, save sector no.
+        div     word [bx(bpbHeadsPerCylinder)]
+                ; ax = (LBA / SPT) / HPC = cylinder
+                ; dx = (LBA / SPT) % HPC = head
+
+        mov     ch, al
+                ; ch = LSB 0...7 of cylinder no.
+%if CHShardDisk != 0
+        shl     ah, 6
+        or      cl, ah
+                ; cl = MSB 8...9 of cylinder no. + sector no.
+%endif
+        mov     dh, dl
+                ; dh = head no.
+        mov     dl, [bx(DriveNumber)]   ; restore BIOS boot drive number
+%endif
 
 ReadSectorLBARetry:
         mov     si, sp
@@ -411,11 +475,24 @@ ReadSectorLBARetry:
         int     13h                     ; extended read sectors (DL, DS:SI)
         jnc     ReadSuccess             ; CF = 0 if no error
 
+%if CHSsupport != 0
+        mov     ax, 201h                ; al = sector count = 1
+                                        ; ah = 2 = read function no.
+        int     13h                     ; read sectors (AL, CX, DX, ES:BX)
+
+        jnc     ReadSuccess             ; CF = 0 if no error
+%endif
+%if ReadRetry != 0
+%if CHSsupport != 0
+        cbw                             ; ah = 0 = reset function
+%else
         xor     ax, ax                  ; ah = 0 = reset function
+%endif
         int     13h                     ; reset drive (DL)
 
         dec     bp
         jnz     ReadSectorLBARetry
+%endif
 
         call    Error
         db      "Read error."
@@ -466,7 +543,7 @@ Stop:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ProgramName     db      "STARTUP BIN"   ; name and extension each must be
-                                        ; padded with spaces (11 bytes total)
+                times (510-($-$$)) db ' ' ; padded with spaces (11 bytes total)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End of the sector ID ;;
