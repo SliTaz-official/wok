@@ -83,6 +83,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 %define bx(label)       bx+label-boot
+%define si(label)       si+label-boot
+NullEntryCheck          equ     1               ; +3 bytes
+ReadRetry               equ     1               ; +9 bytes
+LBAsupport              equ     1               ; +16 bytes
+Over2GB                 equ     1               ; +5 bytes
+GeometryCheck           equ     1               ; +18 bytes
 
 [BITS 16]
 [CPU 8086]
@@ -98,6 +104,7 @@ StackSize               equ     3072            ; Stack + cluster list
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 boot:
+DriveNumber:
         jmp     short   start                   ; MS-DOS/Windows checks for this jump
         nop
 bsOemName               DB      "BootProg"      ; 0x03
@@ -161,14 +168,14 @@ start:
         mov     si, 7C00h
         xor     di, di
         mov     ds, di
-        mov     [si], dx                ; store BIOS boot drive number
+        push    es
+        mov     [si(DriveNumber)], dx   ; store BIOS boot drive number
         rep     movsw                   ; move 512 bytes (+ 12)
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Jump to the copy ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
-        push    es
         mov     cl, byte main
         push    cx
         retf
@@ -189,13 +196,16 @@ main:
 ;; for current BIOS     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+%if GeometryCheck != 0
         mov     ah, 8
         int     13h                     ; may destroy SI,BP, and DS registers
+%endif
                                         ; update AX,BL,CX,DX,DI, and ES registers
         push    cs
         pop     ds
         xor     bx, bx
 
+%if GeometryCheck != 0
         and     cx, byte 3Fh
         cmp     [bx(bpbSectorsPerTrack)], cx
         jne     BadParams               ; verify updated and validity
@@ -203,6 +213,7 @@ main:
         inc     ax
         mov     [bpbHeadsPerCylinder], ax
 BadParams:
+%endif
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Load FAT (FAT12: 6KB max, FAT16: 128KB max) ;;
@@ -255,9 +266,13 @@ FindNameCycle:
         repe    cmpsb
         pop     di
         je      FindNameFound
+%if NullEntryCheck != 0
         scasb
         je      FindNameFailed          ; end of root directory (NULL entry found)
         add     di, byte 31
+%else
+        add     di, byte 32
+%endif
         dec     word [bx(bpbRootEntries)]
         jnz     FindNameCycle           ; next root entry
 
@@ -289,35 +304,49 @@ FindNameFound:
 ;;         CH = 0             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+FAT12   	equ       1
+FAT16   	equ       1
         push    di                      ; up to 2 * 635K / BytesPerCluster bytes
+%if FAT12 == 1
         mov     cl, 12
+%endif
 ClusterLoop:
         mov     [di], si
 
-        mov     ax, es                  ; ax = FAT segment = ImageLoadSeg
         add     si, si                  ; si = cluster * 2
+%if FAT16 == 1
+        mov     ax, es                  ; ax = FAT segment = ImageLoadSeg
         jnc     First64k
         mov     ah, (1000h+ImageLoadSeg)>>8 ; adjust segment for 2nd part of FAT16
 First64k:
         mov     dx, 0FFF8h
+%else
+        mov     dx, 0FF8h
+%endif
 
+%if FAT12 == 1 && FAT16 == 1
         cmp     [bx(bpbSectorsPerFAT)], cx ; 1..12 = FAT12, 16..256 = FAT16
         ja      ReadClusterFat16
-
         mov     dh, 0Fh
+%endif
+%if FAT12 == 1
         add     si, [di]
         shr     si, 1                   ; si = cluster * 3 / 2
-
+%endif
+%if FAT16 == 1
 ReadClusterFat16:
         push    ds
         mov     ds, ax
         lodsw                           ; ax = next cluster
         pop     ds
+%else
+        lodsw                           ; ax = next cluster
+%endif
+%if FAT12 == 1
         jnc     ReadClusterEven
-
         rol     ax, cl
-
 ReadClusterEven:
+%endif
         scasw                           ; di += 2
         and     ah, dh                  ; mask cluster value
         cmp     ax, dx
@@ -464,31 +493,41 @@ ReadSectorNext:
         push    di
         push    cx
 
+%if LBAsupport != 0
         push    bx
         push    bx
+%endif
         push    dx      ; 32-bit LBA: up to 2TB
         push    ax
         push    es
+%if ReadRetry != 0 || LBAsupport != 0
+        mov     di, 16  ; packet size byte = 16, reserved byte = 0
+%endif
+%if LBAsupport != 0
         push    bx
         inc     bx      ; sector count word = 1
         push    bx
         dec     bx
-        mov     di, 16  ; packet size byte = 16, reserved byte = 0
         push    di
+%endif
 
+%if Over2GB != 0
         xchg    ax, cx                  ; save low LBA
         xchg    ax, dx                  ; get high LBA
         cwd                             ; clear dx (LBA offset <2TB)
-        div     word [bx(bpbSectorsPerTrack)] ; up to 8GB disks
+        idiv    word [bx(bpbSectorsPerTrack)] ; up to 8GB disks
 
         xchg    ax, cx                  ; restore low LBA, save high LBA / SPT
-        div     word [bx(bpbSectorsPerTrack)]
+%else
+        xor     cx, cx                  ; up to 2GB disks otherwise divide error interrupt !
+%endif
+        idiv    word [bx(bpbSectorsPerTrack)]
                 ; ax = LBA / SPT
                 ; dx = LBA % SPT         = sector - 1
         inc     dx
 
         xchg    cx, dx                  ; restore high LBA / SPT, save sector no.
-        div     word [bx(bpbHeadsPerCylinder)]
+        idiv    word [bx(bpbHeadsPerCylinder)]
                 ; ax = (LBA / SPT) / HPC = cylinder
                 ; dx = (LBA / SPT) % HPC = head
         mov     ch, al
@@ -501,41 +540,54 @@ ReadSectorNext:
                 ; dh = head no.
 
 ReadSectorRetry:
-        mov     dl, [bx]
+        mov     dl, [bx(DriveNumber)]
                 ; dl = drive no.
-        mov     ah, 42h                 ; ah = 42h = extended read function no.
         mov     si, sp
+%if LBAsupport != 0
+        mov     ah, 42h                 ; ah = 42h = extended read function no.
         int     13h                     ; extended read sectors (DL, DS:SI)
         jnc     ReadSectorNextSegment
+%endif
 
         mov     ax, 201h                ; al = sector count = 1
                                         ; ah = 2 = read function no.
         int     13h                     ; read sectors (AL, CX, DX, ES:BX)
 
         jnc     ReadSectorNextSegment
+%if ReadRetry != 0
         cbw                             ; ah = 0 = reset function
         int     13h                     ; reset drive (DL)
 
         dec     di
         jnz     ReadSectorRetry         ; extra attempt
+%endif
 
         call    Error
         db      "Read error."
 
 ReadSectorNextSegment:
 
+%if LBAsupport != 0
         pop     ax                      ; al = 16
         mul     byte [bx(bpbBytesPerSector)+1] ;  = (bpbBytesPerSector/256)*16
         pop     cx                      ; sector count = 1
         pop     bx
         add     [si+6], ax              ; adjust segment for next sector
+%else
+        mov     al, 16
+        mul     byte [bx(bpbBytesPerSector)+1] ;  = (bpbBytesPerSector/256)*16
+        add     [si], ax                ; adjust segment for next sector
+%endif
         pop     es                      ; es:0 updated
         pop     ax
         pop     dx
+%if LBAsupport != 0
         pop     di
         pop     di
-
         add     ax, cx                  ; adjust LBA for next sector
+%else
+        add     ax, 1                   ; adjust LBA for next sector
+%endif
 
         pop     cx                      ; cluster sectors to read
         pop     di                      ; file sectors to read
@@ -543,7 +595,7 @@ ReadSectorNextSegment:
         loopne  ReadSectorNext          ; until cluster sector count or file sector count is reached
         pop     si
         mov     ax, bx                  ; clear ax
-        mov     dx, [bx]                ; pass the BIOS boot drive to Run or Error
+        mov     dx, [bx(DriveNumber)]   ; pass the BIOS boot drive to Run or Error
 
         ret
 
@@ -581,7 +633,7 @@ Stop:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ProgramName     db      "STARTUP BIN"   ; name and extension each must be
-                                        ; padded with spaces (11 bytes total)
+                times (510-($-$$)) db ' ' ; padded with spaces (11 bytes total)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End of the sector ID ;;

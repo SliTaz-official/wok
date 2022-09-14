@@ -77,6 +77,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 %define bx(label)       bx+label-boot
+%define si(label)       si+label-boot
+NullEntryCheck          equ     1               ; +3 bytes
+ReadRetry               equ     1               ; +8 bytes
 
 [BITS 16]
 [CPU 386]
@@ -92,6 +95,7 @@ StackSize               equ     1536
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 boot:
+DriveNumber:
         jmp     short   start                   ; Windows checks for this jump
         nop
 bsOemName               DB      "EXFAT   "      ; 0x03
@@ -154,13 +158,14 @@ start:
         mov     si, 7C00h
         xor     di, di
         mov     ds, di
+        push    es
+        mov     [si(DriveNumber)], dx   ; store BIOS boot drive number
         rep     movsw                   ; move 512 bytes (+ 12)
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Jump to the copy ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
-        push    es
         push    word main
         retf
 
@@ -169,7 +174,6 @@ main:
         pop     ds
 
         xor     ebx, ebx
-        mov     [bx], dl                ; store BIOS boot drive number
 
         mov     esi, [bx(bpbRootDirCluster)] ; esi=cluster # of root dir
 
@@ -194,16 +198,20 @@ RootDirReadContinue:
 ;;         dword [bx+FileSize] file size ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-CurNameSize     equ  3
-StartCluster    equ  14h
-FileSize        equ  18h
+CurNameSize     equ  3                  ; 1 byte
+StartCluster    equ  14h                ; 4 bytes
+FileSize        equ  18h                ; 8 bytes
 
 FindNameCycle:
         pusha
 
+%if NullEntryCheck != 0
         xor     ax, ax
         or      al, [es:di]
         je      FindNameFailed
+%else
+        movzx   ax, byte [es:di]
+%endif
 
         cmp     al, 0c0h                ; EXFAT_ENTRY_FILE_INFO ?
         jne     NotFileInfo
@@ -213,7 +221,7 @@ CopyInfo:
         mov     al, [es:di+bx]
         mov     [bx], al
         dec     bx
-        jnz     CopyInfo		; keep BIOS boot drive number
+        jnz     CopyInfo                ; keep BIOS boot drive number
 
 NotFileInfo:
         mov     al, 0c1h                ; EXFAT_ENTRY_FILE_NAME ?
@@ -232,7 +240,7 @@ CheckName:
         popf                            ; restore carry="not last sector" flag
         jc      RootDirReadContinue     ; continue to the next root dir cluster
 FindNameFailed:                         ; end of root directory (dir end reached)
-        mov     dl, [bx]                ; restore BIOS boot drive number
+        mov     dx, [bx(DriveNumber)]   ; restore BIOS boot drive number
         call    Error
         db      "File not found."
 FindNameFound:
@@ -250,9 +258,9 @@ FileReadContinue:
         add     di, bp                  ; adjust segment for next sector
         mov     es, di                  ; es:0 updated
         call    ReadCluster             ; read one more sector of the boot file
-        sub     [bx+FileSize], ebp
+        sub     [bx+FileSize], ebp      ; max FileSize is < 640KB : check low 32 bits only
         ja      FileReadContinue
-        mov     dl, [bx]                ; restore BIOS boot drive number
+        mov     dx, [bx(DriveNumber)]   ; restore BIOS boot drive number
         xor     ax, ax
         pop     bp
 
@@ -354,10 +362,9 @@ ReadCluster:
         loop    ReadSectorC
 
         mul     ebx                             ; edx:eax = 0
-        mov     cl, [bx(bpbSectorSizeBits)]
-        dec     cx
-        stc
-        rcl     eax, cl                         ; eax=# of exFAT entries per sector
+        mov     cl,-2
+        add     cl, [bx(bpbSectorSizeBits)]
+        bts     ax, cx                          ; eax=# of exFAT entries per sector
         lea     edi, [esi-2]                    ; edi=cluster #-2
         xchg    eax, esi
         div     esi                             ; eax=FAT sector #, edx=entry # in sector
@@ -365,15 +372,14 @@ ReadCluster:
         imul    si, dx, byte 4                  ; si=entry # offset in sector
 
         cdq
-        add     eax, [bx(bpbFatSectorStart)]    ; sector # relative to exFAT
-        call    ReadSectorC                     ; read 1 exFAT sector
+        add     eax, [bx(bpbFatSectorStart)]    ; sector # relative to FAT32
+        call    ReadSectorC                     ; read 1 FAT32 sector
 
         mov     esi, [es:si]                    ; esi=next cluster #
 
-        inc     dx
-        mov     cl, [bx(bpbSectorPerClusterBits)]
-        shl     edx, cl                         ; 10000h max (32MB cluster)
-        mov     ecx, edx
+        mov     dl, [bx(bpbSectorPerClusterBits)]
+        xor     cx, cx
+        bts     ecx, edx                        ; 10000h max (32MB cluster)
         xchg    eax, edi                        ; get cluster #-2
         mul     ecx
 
@@ -407,19 +413,25 @@ ReadSectorC:
         push    es
         push    bx
         push    bp                      ; sector count word = 1
+%if ReadRetry != 0
         mov     cx, 16
         push    cx                      ; packet size byte = 16, reserved byte = 0
 ReadSectorRetry:        
+%else
+        push    byte 16
+%endif
         mov     si, sp
         mov     ah, 42h                 ; ah = 42h = extended read function no.
-        mov     dl, [bx]                ; restore BIOS boot drive number
+        mov     dl, [bx(DriveNumber)]   ; restore BIOS boot drive number
         int     13h                     ; extended read sectors (DL, DS:SI)
 
         jnc     ReadSuccess
 
+%if ReadRetry != 0
         xor     ax, ax
         int     13h                     ; reset drive (DL)
         loop    ReadSectorRetry         ; up to 16 retries
+%endif
 
         call    Error
         db      "Read error."

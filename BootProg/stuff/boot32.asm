@@ -185,7 +185,6 @@ start:
         xor     di, di
         mov     ds, di
         push    es
-        push    byte main
         mov     [si(DriveNumber)], dx  ; store BIOS boot drive number
         rep     movsw
 
@@ -193,6 +192,7 @@ start:
 ;; Jump to the copy ;;
 ;;;;;;;;;;;;;;;;;;;;;;
 
+        push    byte main
         retf
 
 main:
@@ -440,20 +440,19 @@ ReadSectorLBA:
         idiv    word [bx(bpbSectorsPerTrack)] ; up to 8GB disks, avoid divide error
 
         xchg    ax, cx                  ; restore low LBA, save high LBA / SPT
-        div     word [bx(bpbSectorsPerTrack)]
 %else
 ; Busybox mkdosfs creates fat32 for floppies.
 ; Floppies may support CHS only.
         cwd                             ; clear dx (LBA offset <16MB)
-        idiv    word [bx(bpbSectorsPerTrack)]
-        xor     cx, cx
+        xor     cx, cx                  ; high LBA / SPT = 0
 %endif
+        idiv    word [bx(bpbSectorsPerTrack)]
                 ; ax = LBA / SPT
                 ; dx = LBA % SPT         = sector - 1
         inc     dx
 
         xchg    cx, dx                  ; restore high LBA / SPT, save sector no.
-        div     word [bx(bpbHeadsPerCylinder)]
+        idiv    word [bx(bpbHeadsPerCylinder)]
                 ; ax = (LBA / SPT) / HPC = cylinder
                 ; dx = (LBA / SPT) % HPC = head
 
