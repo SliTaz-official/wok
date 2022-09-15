@@ -514,7 +514,7 @@ ReadSectorNext:
 %if Over2GB != 0
         xchg    ax, cx                  ; save low LBA
         xchg    ax, dx                  ; get high LBA
-        cwd                             ; clear dx (LBA offset <2TB)
+        cwd                             ; clear dx (LBA offset <1TB)
         idiv    word [bx(bpbSectorsPerTrack)] ; up to 8GB disks
 
         xchg    ax, cx                  ; restore low LBA, save high LBA / SPT

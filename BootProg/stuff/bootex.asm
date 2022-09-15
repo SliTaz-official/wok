@@ -362,7 +362,7 @@ ReadCluster:
         loop    ReadSectorC
 
         mul     ebx                             ; edx:eax = 0
-        mov     cl,-2
+        mov     cl, -2
         add     cl, [bx(bpbSectorSizeBits)]
         bts     ax, cx                          ; eax=# of exFAT entries per sector
         lea     edi, [esi-2]                    ; edi=cluster #-2
@@ -372,13 +372,13 @@ ReadCluster:
         imul    si, dx, byte 4                  ; si=entry # offset in sector
 
         cdq
-        add     eax, [bx(bpbFatSectorStart)]    ; sector # relative to FAT32
-        call    ReadSectorC                     ; read 1 FAT32 sector
+        add     eax, [bx(bpbFatSectorStart)]    ; sector # relative to exFAT
+        call    ReadSectorC                     ; read 1 exFAT sector
 
         mov     esi, [es:si]                    ; esi=next cluster #
 
         mov     dl, [bx(bpbSectorPerClusterBits)]
-        xor     cx, cx
+        xor     ecx, ecx
         bts     ecx, edx                        ; 10000h max (32MB cluster)
         xchg    eax, edi                        ; get cluster #-2
         mul     ecx
