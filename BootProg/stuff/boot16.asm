@@ -306,28 +306,24 @@ FindNameFound:
 
 FAT12   	equ       1
 FAT16   	equ       1
-        push    di                      ; up to 2 * 635K / BytesPerCluster bytes
+        push    di                      ; up to 2 * 635K / BytesPerCluster = 2540 bytes
 %if FAT12 == 1
-        mov     cl, 12
+        mov     cl, 4
 %endif
 ClusterLoop:
         mov     [di], si
-
         add     si, si                  ; si = cluster * 2
 %if FAT16 == 1
         mov     ax, es                  ; ax = FAT segment = ImageLoadSeg
         jnc     First64k
         mov     ah, (1000h+ImageLoadSeg)>>8 ; adjust segment for 2nd part of FAT16
 First64k:
+ %if FAT12 == 1
         mov     dx, 0FFF8h
-%else
-        mov     dx, 0FF8h
-%endif
-
-%if FAT12 == 1 && FAT16 == 1
-        cmp     [bx(bpbSectorsPerFAT)], cx ; 1..12 = FAT12, 16..256 = FAT16
-        ja      ReadClusterFat16
+        test    [bx(bsFileSystem+4)], cl ; FAT12 or FAT16 ? clear C
+        jne     ReadClusterFat16
         mov     dh, 0Fh
+ %endif
 %endif
 %if FAT12 == 1
         add     si, [di]
@@ -340,16 +336,25 @@ ReadClusterFat16:
         lodsw                           ; ax = next cluster
         pop     ds
 %else
-        lodsw                           ; ax = next cluster
+        es lodsw
 %endif
 %if FAT12 == 1
         jnc     ReadClusterEven
-        rol     ax, cl
+        shr     ax, cl
 ReadClusterEven:
 %endif
         scasw                           ; di += 2
+%if FAT12 == 1 && FAT16 == 1
         and     ah, dh                  ; mask cluster value
         cmp     ax, dx
+%else
+ %if FAT12 == 1
+        and     ah, 0Fh                 ; mask cluster value
+        cmp     ax, 0FF8h
+ %else
+        cmp     ax, 0FFF8h
+ %endif
+%endif
 
         xchg    ax, si
         jc      ClusterLoop
