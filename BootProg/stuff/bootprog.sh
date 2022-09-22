@@ -11,6 +11,7 @@ do	[ "${FAT:-$($r=5 bs=1 skip=$c)}" = "$f" ] || continue
 	echo "Install $f bootsector on $1."
 	for a in "$o skip=$((o+b)) count=$((512-o))" "0 skip=$b count=11"
 	do sed '1,/^exit/d' $0 | unlzma | $w=$a; done
+	echo -n $f | $w=$c
 	[ "$2" ] && echo "Set boot file '$2'" && echo -n "$2" | case "$f" in
 	E*)	sed 's| |.|;s| ||g' | cat - /dev/zero;;
 	*)	tr a-z A-Z | sed 's|\.|       |;s|^\(.\{8\}\) *|\1|;s|$|   |'
@@ -23,9 +24,9 @@ END { b=a/256;c=b/256; for (;i>0;i-=44) printf "%c%c%c%c",a%256,b%256,c%256,(c/2
 	esac
 	exit 0
 done<<S 2>/dev/null
-54	54	0	FAT12
-54	54	0	FAT16
-82	82	512	FAT32
+54	59	0	FAT12
+54	59	0	FAT16
+82	87	512	FAT32
 3	113	1024	EXFAT
 S
 exit 1

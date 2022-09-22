@@ -309,11 +309,7 @@ FAT16   	equ       1
 TINYFAT16   	equ       1
         push    di                      ; up to 2 * 635K / BytesPerCluster = 2540 bytes
 %if FAT12 == 1
- %if TINYFAT16 == 0 && FAT16 == 1
         mov     cl, 12
- %else
-        mov     cl, 4
- %endif
 %endif
 ClusterLoop:
         mov     [di], si
@@ -349,11 +345,7 @@ ReadClusterFat16:
 %endif
 %if FAT12 == 1
         jnc     ReadClusterEven
- %if TINYFAT16 == 0 && FAT16 == 1
         rol     ax, cl
- %else
-        shr     ax, cl
- %endif
 ReadClusterEven:
         scasw                           ; di += 2
  %if FAT16 == 1
