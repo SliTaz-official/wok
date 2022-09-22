@@ -1,0 +1,82 @@
+--- oldrunner.c	2010-07-17 17:30:32.000000000 +0000
++++ oldrunner.c	2022-09-22 07:31:51.585297479 +0000
+@@ -36,6 +36,8 @@
+ 
+ #include "oldrunner.h"
+ 
++int remap_apple = 0;
++
+ /*
+  * Oldrunner is a remake of the Loadrunner game from Broderbund, and one of the
+  * first computer games my father offered me. I wrote this in memory of him.
+@@ -50,7 +52,7 @@
+   int ch, startlvl;
+ 
+   startlvl = 0;
+-  while ((ch = getopt (argc, argv, "l:v")) != -1)
++  while ((ch = getopt (argc, argv, "l:av")) != -1)
+     {
+       switch (ch)
+         {
+@@ -62,6 +64,9 @@
+               return 1;
+             }
+           break;
++        case 'a':
++          remap_apple++;
++          break;
+         case 'v':
+           fputs ("oldrunner-" VERSION "\n", stdout);
+           return 0;
+@@ -74,7 +79,7 @@
+   if (argc >= 1)
+     {
+     err:
+-      fputs ("usage: oldrunner [-v] [-l<num>]\n", stderr);
++      fputs ("usage: oldrunner [-v] [-a] [-l<num>]\n", stderr);
+       return 0;
+     }
+ 
+--- usr.c	2010-07-17 17:30:32.000000000 +0000
++++ usr.c	2022-09-22 07:28:52.590988791 +0000
+@@ -43,6 +43,31 @@
+   rec_input.key = ORKEY_NONE;
+ }
+ 
++static int
++remap (int key)
++{
++  extern int remap_apple;
++  if (remap_apple)
++    {
++      switch (key | 0x20)
++        {
++        case 'u':
++          return ORKEY_DIG_LEFT;
++        case 'i':
++          return ORKEY_MOVE_UP;
++        case 'o':
++          return ORKEY_DIG_RIGHT;
++        case 'j':
++          return ORKEY_MOVE_LEFT;
++        case 'k':
++          return ORKEY_MOVE_DOWN;
++        case 'l':
++          return ORKEY_MOVE_RIGHT;
++        }
++    }
++  return key;
++}
++
+ void
+ usr_input (void)
+ {
+@@ -63,7 +88,7 @@
+           continue;
+         }
+ 
+-      switch (rec_input.key)
++      switch (remap(rec_input.key))
+         {
+         case ORKEY_EXIT:
+           return;

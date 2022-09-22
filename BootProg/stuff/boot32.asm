@@ -60,7 +60,7 @@
 ;;                   Boot Image Startup (register values):                  ;;
 ;;                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                  ;;
 ;;  ax = 0ffffh (both FCB in the PSP don't have a valid drive identifier),  ;;
-;;  bx = cx = 0, dl = BIOS boot drive number (e.g. 0, 80H)                  ;;
+;;  bx = 0, dl = BIOS boot drive number (e.g. 0, 80H)                       ;;
 ;;  cs:ip = program entry point                                             ;;
 ;;  ss:sp = program stack (don't confuse with boot sector's stack)          ;;
 ;;  COM program defaults: cs = ds = es = ss = 50h, sp = 0, ip = 100h        ;;
@@ -234,7 +234,7 @@ FindNameCycle:
         je      ErrFind                 ; end of root directory (NULL entry found)
 %endif
         pusha
-        mov     cl, 11
+        mov     cl, NameLength
         mov     si, ProgramName         ; ds:si -> program name
         repe    cmpsb
         je      FindNameFound
@@ -289,8 +289,8 @@ FileReadContinue:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Setup and run a .COM program ;;
 ;; Set CS=DS=ES=SS SP=0 IP=100h ;;
-;; AX=0ffffh BX=0 CX=0 DX=drive ;;
-;; and cmdline=void             ;;
+;; AX=0ffffh BX=0 DX=drive and  ;;
+;; cmdline=void                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         mov     di, 100h                ; ip
@@ -304,7 +304,7 @@ FileReadContinue:
 ;; Relocate, setup and run a .EXE program     ;;
 ;; Set CS:IP, SS:SP, DS, ES and AX according  ;;
 ;; to wiki.osdev.org/MZ#Initial_Program_State ;;
-;; AX=0ffffh BX=0 CX=0 DX=drive cmdline=void  ;;
+;; AX=0ffffh BX=0 DX=drive cmdline=void       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReloCycle:
@@ -387,7 +387,7 @@ ReadCluster:
         mul     dword [bx(bsSectorsPerFAT32)]
 
         xchg    eax, edi
-        movzx   ecx, byte [bx(bpbSectorsPerCluster)]
+        movzx   ecx, byte [bx(bpbSectorsPerCluster)] ; 8..128
         mul     ecx                             ; edx:eax=sector number in data area
         add     eax, edi
 
@@ -400,7 +400,7 @@ ReadSectorLBAabsolute:
 %if LBA48bits != 0
         adc     word [bx(HiLBA)], bx
 %endif
-        mov     dx, word [bx(bpbReservedSectors)]
+        mov     dx, [bx(bpbReservedSectors)]
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reads a sector using BIOS Int 13h fn 42h ;;
@@ -468,7 +468,7 @@ ReadSectorLBA:
         mov     dl, [bx(DriveNumber)]   ; restore BIOS boot drive number
 %endif
 
-ReadSectorLBARetry:
+ReadSectorRetry:
         mov     si, sp
         mov     ah, 42h                 ; ah = 42h = extended read function no.
         int     13h                     ; extended read sectors (DL, DS:SI)
@@ -490,7 +490,7 @@ ReadSectorLBARetry:
         int     13h                     ; reset drive (DL)
 
         dec     bp
-        jnz     ReadSectorLBARetry
+        jnz     ReadSectorRetry
 %endif
 
         call    Error
@@ -543,6 +543,7 @@ Stop:
 
 ProgramName     db      "STARTUP BIN"   ; name and extension each must be
                 times (510-($-$$)) db ' ' ; padded with spaces (11 bytes total)
+NameLength      equ     $-ProgramName
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End of the sector ID ;;

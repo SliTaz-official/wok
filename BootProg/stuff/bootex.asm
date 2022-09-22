@@ -59,7 +59,7 @@
 ;;                   Boot Image Startup (register values):                  ;;
 ;;                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                  ;;
 ;;  ax = 0ffffh (both FCB in the PSP don't have a valid drive identifier),  ;;
-;;  bx = cx = 0, dl = BIOS boot drive number (e.g. 0, 80H)                  ;;
+;;  bx = 0, dl = BIOS boot drive number (e.g. 0, 80H)                       ;;
 ;;  cs:ip = program entry point                                             ;;
 ;;  ss:sp = program stack (don't confuse with boot sector's stack)          ;;
 ;;  COM program defaults: cs = ds = es = ss = 50h, sp = 0, ip = 100h        ;;
@@ -188,7 +188,7 @@ RootDirReadContinue:
 ;; Look for the COM/EXE file to load and run ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-        xor     di, di                  ; es:di -> root entries array
+                                        ; es:di -> root entries array
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Looks for the file/dir ProgramName    ;;
@@ -240,7 +240,7 @@ CheckName:
         popf                            ; restore carry="not last sector" flag
         jc      RootDirReadContinue     ; continue to the next root dir cluster
 FindNameFailed:                         ; end of root directory (dir end reached)
-        mov     dx, [bx(DriveNumber)]   ; restore BIOS boot drive number
+        mov     dl, [bx(DriveNumber)]   ; restore BIOS boot drive number
         call    Error
         db      "File not found."
 FindNameFound:
@@ -261,7 +261,7 @@ FileReadContinue:
         sub     [bx+FileSize], ebp      ; max FileSize is < 640KB : check low 32 bits only
         ja      FileReadContinue
         mov     dx, [bx(DriveNumber)]   ; restore BIOS boot drive number
-        xor     ax, ax
+        xchg    ax, di
         pop     bp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -279,8 +279,8 @@ FileReadContinue:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Setup and run a .COM program ;;
 ;; Set CS=DS=ES=SS SP=0 IP=100h ;;
-;; AX=0ffffh BX=0 CX=0 DX=drive ;;
-;; and cmdline=void             ;;
+;; AX=0ffffh BX=0 DX=drive and  ;;
+;; cmdline=void                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         mov     di, 100h                ; ip
@@ -294,7 +294,7 @@ FileReadContinue:
 ;; Relocate, setup and run a .EXE program     ;;
 ;; Set CS:IP, SS:SP, DS, ES and AX according  ;;
 ;; to wiki.osdev.org/MZ#Initial_Program_State ;;
-;; AX=0ffffh BX=0 CX=0 DX=drive cmdline=void  ;;
+;; AX=0ffffh BX=0 DX=drive cmdline=void       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReloCycle:
@@ -373,7 +373,7 @@ ReadCluster:
 
         cdq
         add     eax, [bx(bpbFatSectorStart)]    ; sector # relative to exFAT
-        call    ReadSectorC                     ; read 1 exFAT sector
+        call    ReadSectorFAT                   ; read 1 exFAT sector, keep edx=0, set C
 
         mov     esi, [es:si]                    ; esi=next cluster #
 
@@ -385,6 +385,8 @@ ReadCluster:
 
         add     eax, [bx(bpbClusterSectorStart)]
 ReadSectorC:
+        mov     di, bx
+ReadSectorFAT:
         adc     edx, ebx
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -413,12 +415,11 @@ ReadSectorC:
         push    es
         push    bx
         push    bp                      ; sector count word = 1
+        push    byte 16                 ; packet size byte = 16, reserved byte = 0
 %if ReadRetry != 0
-        mov     cx, 16
-        push    cx                      ; packet size byte = 16, reserved byte = 0
+        pop     cx
+        push    cx
 ReadSectorRetry:        
-%else
-        push    byte 16
 %endif
         mov     si, sp
         mov     ah, 42h                 ; ah = 42h = extended read function no.

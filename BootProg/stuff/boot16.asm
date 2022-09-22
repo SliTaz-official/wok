@@ -65,7 +65,7 @@
 ;;                   Boot Image Startup (register values):                  ;;
 ;;                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                  ;;
 ;;  ax = 0ffffh (both FCB in the PSP don't have a valid drive identifier),  ;;
-;;  bx = cx = 0, dl = BIOS boot drive number (e.g. 0, 80H)                  ;;
+;;  bx = 0, dl = BIOS boot drive number (e.g. 0, 80H)                       ;;
 ;;  cs:ip = program entry point                                             ;;
 ;;  ss:sp = program stack (don't confuse with boot sector's stack)          ;;
 ;;  COM program defaults: cs = ds = es = ss = 50h, sp = 0, ip = 100h        ;;
@@ -261,7 +261,7 @@ BadParams:
 
 FindNameCycle:
         push    di
-        mov     cl, 11
+        mov     cl, NameLength
         mov     si, ProgramName         ; ds:si -> program name
         repe    cmpsb
         pop     di
@@ -306,9 +306,14 @@ FindNameFound:
 
 FAT12   	equ       1
 FAT16   	equ       1
+TINYFAT16   	equ       1
         push    di                      ; up to 2 * 635K / BytesPerCluster = 2540 bytes
 %if FAT12 == 1
+ %if TINYFAT16 == 0 && FAT16 == 1
+        mov     cl, 12
+ %else
         mov     cl, 4
+ %endif
 %endif
 ClusterLoop:
         mov     [di], si
@@ -320,7 +325,11 @@ ClusterLoop:
 First64k:
  %if FAT12 == 1
         mov     dx, 0FFF8h
+  %if TINYFAT16 == 1
         test    [bx(bsFileSystem+4)], cl ; FAT12 or FAT16 ? clear C
+  %else
+        cmp     [bx(bpbSectorsPerFAT)], cx ; 1..12 = FAT12, 16..256 = FAT16
+  %endif
         jne     ReadClusterFat16
         mov     dh, 0Fh
  %endif
@@ -340,22 +349,24 @@ ReadClusterFat16:
 %endif
 %if FAT12 == 1
         jnc     ReadClusterEven
+ %if TINYFAT16 == 0 && FAT16 == 1
+        rol     ax, cl
+ %else
         shr     ax, cl
+ %endif
 ReadClusterEven:
-%endif
         scasw                           ; di += 2
-%if FAT12 == 1 && FAT16 == 1
+ %if FAT16 == 1
         and     ah, dh                  ; mask cluster value
         cmp     ax, dx
-%else
- %if FAT12 == 1
+ %else
         and     ah, 0Fh                 ; mask cluster value
         cmp     ax, 0FF8h
- %else
-        cmp     ax, 0FFF8h
  %endif
+%else
+        scasw                           ; di += 2
+        cmp     ax, 0FFF8h
 %endif
-
         xchg    ax, si
         jc      ClusterLoop
         pop     si
@@ -379,13 +390,13 @@ ReadClusters:
         dec     ax
         dec     ax
 
-        mov     cl, [bx(bpbSectorsPerCluster)]
+        mov     cl, [bx(bpbSectorsPerCluster)] ; 1..128
         mul     cx                      ; cx = sector count (ch = 0)
 
         add     ax, bp                  ; LBA for cluster data
         adc     dx, bx                  ; dx:ax = LBA
 
-        call    ReadSector              ; clear ax & cx, restore dx
+        call    ReadSector              ; clear ax, restore dx
 
         jne     ReadClusters
 
@@ -406,8 +417,8 @@ ReadClusters:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Setup and run a .COM program ;;
 ;; Set CS=DS=ES=SS SP=0 IP=100h ;;
-;; AX=0ffffh BX=0 CX=0 DX=drive ;;
-;; and cmdline=void             ;;
+;; AX=0ffffh BX=0 DX=drive and  ;;
+;; cmdline=void                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         mov     di, 100h                ; ip
@@ -421,7 +432,7 @@ ReadClusters:
 ;; Relocate, setup and run a .EXE program     ;;
 ;; Set CS:IP, SS:SP, DS, ES and AX according  ;;
 ;; to wiki.osdev.org/MZ#Initial_Program_State ;;
-;; AX=0ffffh BX=0 CX=0 DX=drive cmdline=void  ;;
+;; AX=0ffffh BX=0 DX=drive cmdline=void       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReloCycle:
@@ -639,6 +650,7 @@ Stop:
 
 ProgramName     db      "STARTUP BIN"   ; name and extension each must be
                 times (510-($-$$)) db ' ' ; padded with spaces (11 bytes total)
+NameLength      equ     $-ProgramName
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End of the sector ID ;;
