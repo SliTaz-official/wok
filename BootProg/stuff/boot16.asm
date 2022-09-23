@@ -241,8 +241,8 @@ BadParams:
         mov     al, [bpbNumberOfFATs]
         mul     bp                      ; [bx(bpbSectorsPerFAT)], set by ReadCXSectors
 
-        push    es
-        call    ReadCXSectors           ; read root directory; clear ax, cx & di; bp = first data sector
+        push    es                      ; read root directory
+        call    ReadCXSectors           ; clear ax, cx & di; bp = first data sector
         pop     es
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -320,7 +320,7 @@ ClusterLoop:
         mov     ah, (1000h+ImageLoadSeg)>>8 ; adjust segment for 2nd part of FAT16
 First64k:
  %if FAT12 == 1
-        mov     dx, 0FFF8h
+        mov     dx, 0FFF6h
   %if TINYFAT16 == 1
         test    [bx(bsFileSystem+4)], cl ; FAT12 or FAT16 ? clear C
   %else
@@ -353,11 +353,11 @@ ReadClusterEven:
         cmp     ax, dx
  %else
         and     ah, 0Fh                 ; mask cluster value
-        cmp     ax, 0FF8h
+        cmp     ax, 0FF6h
  %endif
 %else
         scasw                           ; di += 2
-        cmp     ax, 0FFF8h
+        cmp     ax, 0FFF6h
 %endif
         xchg    ax, si
         jc      ClusterLoop
@@ -567,7 +567,7 @@ ReadSectorRetry:
         int     13h                     ; reset drive (DL)
 
         dec     di
-        jnz     ReadSectorRetry         ; extra attempt
+        jnz     ReadSectorRetry         ; up to 15 extra attempt
 %endif
 
         call    Error
@@ -600,7 +600,7 @@ ReadSectorNextSegment:
         pop     cx                      ; cluster sectors to read
         pop     di                      ; file sectors to read
         dec     di                      ; keep C
-        loopne  ReadSectorNext          ; until cluster sector count or file sector count is reached
+        loopne  ReadSectorNext          ; until cluster sector count or file sector count
         pop     si
         mov     ax, bx                  ; clear ax
         mov     dx, [bx(DriveNumber)]   ; pass the BIOS boot drive to Run or Error
@@ -649,4 +649,3 @@ NameLength      equ     $-ProgramName
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ClusterList     dw      0AA55h          ; BIOS checks for this ID
-

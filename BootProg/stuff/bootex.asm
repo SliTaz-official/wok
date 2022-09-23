@@ -416,11 +416,7 @@ ReadSectorFAT:
         push    bx
         push    bp                      ; sector count word = 1
         push    byte 16                 ; packet size byte = 16, reserved byte = 0
-%if ReadRetry != 0
-        pop     cx
-        push    cx
 ReadSectorRetry:        
-%endif
         mov     si, sp
         mov     ah, 42h                 ; ah = 42h = extended read function no.
         mov     dl, [bx(DriveNumber)]   ; restore BIOS boot drive number
@@ -431,7 +427,8 @@ ReadSectorRetry:
 %if ReadRetry != 0
         xor     ax, ax
         int     13h                     ; reset drive (DL)
-        loop    ReadSectorRetry         ; up to 16 retries
+        dec     bp
+        jpe     ReadSectorRetry         ; up to 3 tries
 %endif
 
         call    Error

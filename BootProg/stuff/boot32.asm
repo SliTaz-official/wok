@@ -489,7 +489,7 @@ ReadSectorRetry:
 %endif
         int     13h                     ; reset drive (DL)
 
-        dec     bp
+        dec     bp                      ; up to 32 retries
         jnz     ReadSectorRetry
 %endif
 
@@ -505,7 +505,7 @@ ReadSuccess:
         stc
         loop    ReadSectorNext
 
-        cmp     esi, 0FFFFFF8h          ; carry=0 if last cluster, and carry=1 otherwise
+        cmp     esi, 0FFFFFF6h          ; carry=0 if last cluster, and carry=1 otherwise
 
 ReadSectorNext:
         ret
