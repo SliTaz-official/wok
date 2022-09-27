@@ -80,11 +80,14 @@
 %define bx(label)       bx+label-boot
 %define si(label)       si+label-boot
 ClusterMask             equ     1               ; +9 bytes
-NullEntryCheck          equ     1               ; +5 bytes
+NullEntryCheck          equ     0               ; +5 bytes
 ReadRetry               equ     1               ; +7 bytes
-LBA48bits               equ     1               ; +13 bytes
+LBA48bits               equ     1               ; +15 bytes
 CHSsupport              equ     1               ; +27 bytes
-CHShardDisk             equ     0               ; +11 bytes
+CHSupTo8GB              equ     1               ; +11 bytes
+CHSupTo32MB             equ     1               ; +7 bytes
+SectorOf512Bytes        equ     1               ; -5 bytes
+Always2FATs             equ     0               ; -4 bytes
 
 [BITS 16]
 
@@ -99,6 +102,8 @@ StackSize               equ     1536
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 boot:
+DriveNumber             equ     boot+0
+HiLBA                   equ     boot+2
         jmp     short   start                   ; MS-DOS/Windows checks for this jump
         nop
 bsOemName               DB      "BootProg"      ; 0x03
@@ -136,17 +141,11 @@ bsFSInfoSectorNo                DW      0               ; 0x30
 bsBackupBootSectorNo            DW      0               ; 0x32
 bsreserved             times 12 DB      0               ; 0x34
 bsDriveNumber                   DB      0               ; 0x40
-%if LBA48bits != 0
-HiLBA                   equ     boot+0
-DriveNumber             equ     bsDriveNumber+0
-%else
-DriveNumber             equ     boot+0
-%endif
 bsreserved1                     DB      0               ; 0x41
 bsExtendedBootSignature         DB      0               ; 0x42
 bsVolumeSerialNumber            DD      0               ; 0x43
-bsVolumeLabel                   DB      "NO NAME    "   ; 0x47
-bsFileSystemName                DB      "FAT32   "      ; 0x52
+bsVolumeLabel          times 11 DB      " "             ; 0x47 "NO NAME    "
+bsFileSystemName       times 8  DB      " "             ; 0x52 "FAT32   "
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; BPB2 ends here ;;
@@ -210,8 +209,7 @@ main:
         pop     es
 
 RootDirReadContinue:
-        call    ReadCluster             ; read one cluster of root dir
-        pushf                           ; save carry="not last cluster" flag
+        call    ReadClusterSector       ; read one sector of the root dir
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Look for the COM/EXE file to load and run ;;
@@ -243,8 +241,9 @@ FindNameCycle:
         dec     bp
         dec     bp
         jnz     FindNameCycle           ; next root entry
-        popf                            ; restore carry="not last cluster" flag
-        jc      RootDirReadContinue     ; continue to the next root dir cluster
+        loop    RootDirReadContinue     ; next sector in cluster
+        cmp     esi, 0FFFFFF6h          ; carry=0 if last cluster, and carry=1 otherwise
+        jnc     RootDirReadContinue     ; continue to the next root dir cluster
 ErrFind:
         call    Error                   ; end of root directory (dir end reached)
         db      "File not found."
@@ -263,7 +262,8 @@ FindNameFound:
         push    es
 FileReadContinue:
         push    di
-        call    ReadCluster             ; read one cluster of root dir
+        call    ReadClusterSector       ; read one sector of the boot file
+        dec     cx
         mov     di, es
         add     di, bp
         mov     es, di                  ; es:bx updated
@@ -350,55 +350,96 @@ Run:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         retf
 
-ReadCluster:
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Error Messaging Code ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Error:
+        pop     si
+puts:
+        mov     ah, 0Eh
+        mov     bl, 7
+        lodsb
+        int     10h
+        cmp     al, '.'
+        jne     puts
+        cbw
+        int     16h                     ; wait for a key...
+        int     19h                     ; bootstrap
+
+Stop:
+        hlt
+        jmp     short Stop
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Reads a FAT32 sector         ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Inout:  ES:BX -> buffer      ;;
+;;         EAX = prev sector    ;;
+;; CX = rem sectors in cluster  ;;
+;;         ESI = next cluster   ;;
+;; Output: EAX = current sector ;;
+;; CX = rem sectors in cluster  ;;
+;;         ESI = next cluster   ;;
+;;         BP -> para / sector  ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ReadClusterSector:
+%if SectorOf512Bytes != 0
+        mov     bp, 32                          ; bp = paragraphs per sector
+%else
         mov     bp, [bx(bpbBytesPerSector)]
         shr     bp, 4                           ; bp = paragraphs per sector
+%endif
         mov     dx, 1                           ; adjust LBA for next sector
         inc     cx
         loop    ReadSectorLBA
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Reads a FAT32 cluster        ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Inout:  ES:BX -> buffer      ;;
-;;           ESI = cluster no   ;;
-;; Output:   ESI = next cluster ;;
-;;         BP -> para / sector  ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
         mul     ebx                             ; edx:eax = 0
+%if SectorOf512Bytes != 0
+        mov     al, 128                         ; ax=# of FAT32 entries per sector
+%else
         imul    ax, bp, byte 4                  ; ax=# of FAT32 entries per sector
+%endif
         lea     edi, [esi-2]                    ; esi=cluster #
         xchg    eax, esi
         div     esi                             ; eax=FAT sector #, edx=entry # in sector
 
         imul    si, dx, byte 4                  ; si=entry # in sector, clear C
 %if LBA48bits != 0
-        xor     dx, dx                          ; clear C
+        xor     dx, dx
 %endif
-        call    ReadSectorLBAabsolute           ; read 1 FAT32 sector
+        call    ReadSectorLBAfromFAT            ; read 1 FAT32 sector
 
 %if ClusterMask != 0
         and     byte [es:si+3], 0Fh             ; mask cluster value
 %endif
         mov     esi, [es:si]                    ; esi=next cluster #
 
+%if Always2FATs != 0
+        imul    eax, dword [bx(bsSectorsPerFAT32)], 2
+%else
         movzx   eax, byte [bx(bpbNumberOfFATs)]
         mul     dword [bx(bsSectorsPerFAT32)]
+%endif
 
         xchg    eax, edi
         movzx   ecx, byte [bx(bpbSectorsPerCluster)] ; 8..128
         mul     ecx                             ; edx:eax=sector number in data area
         add     eax, edi
+%if LBA48bits != 0
+        adc     dx, bx
+%endif
 
-ReadSectorLBAabsolute:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Reads a sector form the start of FAT ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ReadSectorLBAfromFAT:
+        add     eax, [bx(bpbHiddenSectors)]
 %if LBA48bits != 0
         adc     dx, bx
         mov     word [bx(HiLBA)], dx
-%endif
-        add     eax, [bx(bpbHiddenSectors)]
-%if LBA48bits != 0
-        adc     word [bx(HiLBA)], bx
 %endif
         mov     dx, [bx(bpbReservedSectors)]
 
@@ -432,7 +473,7 @@ ReadSectorLBA:
         push    byte 16 ; packet size byte = 16, reserved byte = 0
 
 %if CHSsupport != 0
-%if CHShardDisk != 0
+ %if CHSupTo8GB != 0
         push    eax
         pop     cx                      ; save low LBA
         pop     ax                      ; get high LBA
@@ -440,12 +481,16 @@ ReadSectorLBA:
         idiv    word [bx(bpbSectorsPerTrack)] ; up to 8GB disks, avoid divide error
 
         xchg    ax, cx                  ; restore low LBA, save high LBA / SPT
-%else
+ %else
 ; Busybox mkdosfs creates fat32 for floppies.
 ; Floppies may support CHS only.
+  %if CHSupTo32MB != 0
+        xor     dx, dx                  ; clear dx (LBA offset <32MB)
+  %else
         cwd                             ; clear dx (LBA offset <16MB)
+  %endif
         xor     cx, cx                  ; high LBA / SPT = 0
-%endif
+ %endif
         idiv    word [bx(bpbSectorsPerTrack)]
                 ; ax = LBA / SPT
                 ; dx = LBA % SPT         = sector - 1
@@ -456,13 +501,13 @@ ReadSectorLBA:
                 ; ax = (LBA / SPT) / HPC = cylinder
                 ; dx = (LBA / SPT) % HPC = head
 
-        mov     ch, al
+        xchg    ch, al                  ; clear al
                 ; ch = LSB 0...7 of cylinder no.
-%if CHShardDisk != 0
-        shl     ah, 6
-        or      cl, ah
+ %if CHSupTo8GB != 0 || CHSupTo32MB != 0
+        shr     ax, 2
+        or      cl, al
                 ; cl = MSB 8...9 of cylinder no. + sector no.
-%endif
+ %endif
         mov     dh, dl
                 ; dh = head no.
         mov     dl, [bx(DriveNumber)]   ; restore BIOS boot drive number
@@ -482,11 +527,11 @@ ReadSectorRetry:
         jnc     ReadSuccess             ; CF = 0 if no error
 %endif
 %if ReadRetry != 0
-%if CHSsupport != 0
+ %if CHSsupport != 0
         cbw                             ; ah = 0 = reset function
-%else
+ %else
         xor     ax, ax                  ; ah = 0 = reset function
-%endif
+ %endif
         int     13h                     ; reset drive (DL)
 
         dec     bp                      ; up to 32 retries
@@ -499,43 +544,14 @@ ReadSectorRetry:
 ReadSuccess:
 
         popa                            ; sp += 16
-
         popa
-
-        stc
-        loop    ReadSectorNext
-
-        cmp     esi, 0FFFFFF6h          ; carry=0 if last cluster, and carry=1 otherwise
-
-ReadSectorNext:
         ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Fill free space with zeroes ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-                times (512-13-20-($-$$)) db 0
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Error Messaging Code ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-Error:
-        pop     si
-puts:
-        mov     ah, 0Eh
-        mov     bl, 7
-        lodsb
-        int     10h
-        cmp     al, '.'
-        jne     puts
-        cbw
-        int     16h                     ; wait for a key...
-        int     19h                     ; bootstrap
-
-Stop:
-        hlt
-        jmp     short Stop
+                times (512-13-($-$$)) db 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Name of the file to load and run ;;

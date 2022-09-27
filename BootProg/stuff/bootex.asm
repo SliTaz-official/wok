@@ -80,6 +80,7 @@
 %define si(label)       si+label-boot
 NullEntryCheck          equ     1               ; +3 bytes
 ReadRetry               equ     1               ; +8 bytes
+SectorOf512Bytes        equ     1               ; -13 bytes
 
 [BITS 16]
 [CPU 386]
@@ -98,7 +99,7 @@ boot:
 DriveNumber:
         jmp     short   start                   ; Windows checks for this jump
         nop
-bsOemName               DB      "EXFAT   "      ; 0x03
+bsOemName               times   8  db " "       ; 0x03 "EXFAT   "
                         times   53 db 0         ; 0x0B
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -182,7 +183,6 @@ main:
 
 RootDirReadContinue:
         call    ReadCluster             ; read one sector of root dir
-        pushf                           ; save carry="not last sector" flag
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Look for the COM/EXE file to load and run ;;
@@ -237,7 +237,8 @@ CheckName:
         add     di, byte 32
         cmp     di, bp
         jne     FindNameCycle           ; next root entry
-        popf                            ; restore carry="not last sector" flag
+        loop    RootDirReadContinue     ; continue to the next root dir sector
+        cmp     esi, byte -10           ; carry=0 if last cluster, and carry=1 otherwise
         jc      RootDirReadContinue     ; continue to the next root dir cluster
 FindNameFailed:                         ; end of root directory (dir end reached)
         mov     dl, [bx(DriveNumber)]   ; restore BIOS boot drive number
@@ -251,14 +252,24 @@ FindNameFound:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         push    es
+%if SectorOf512Bytes == 0
         xor     bp, bp
 FileReadContinue:
         shr     bp, 4                   ; bytes to paragraphs
         mov     di, es
         add     di, bp                  ; adjust segment for next sector
         mov     es, di                  ; es:0 updated
+%else
+FileReadContinue:
+%endif
         call    ReadCluster             ; read one more sector of the boot file
+        dec     cx
         sub     [bx+FileSize], ebp      ; max FileSize is < 640KB : check low 32 bits only
+%if SectorOf512Bytes != 0
+        mov     bp, es
+        lea     bp, [bp+32]
+        mov     es, bp                  ; es:0 updated
+%endif
         ja      FileReadContinue
         mov     dx, [bx(DriveNumber)]   ; restore BIOS boot drive number
         xchg    ax, di
@@ -340,6 +351,29 @@ Run:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         retf
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Error Messaging Code ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Error:
+        pop     si
+
+PutStr:
+        mov     ah, 0Eh
+        mov     bl, 7
+        lodsb
+        int     10h
+        cmp     al, "."
+        jne     PutStr
+
+        cbw
+        int     16h                     ; wait for a key...
+        int     19h                     ; bootstrap
+
+Stop:
+        hlt
+        jmp     short Stop
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Reads a exFAT cluster         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -362,9 +396,13 @@ ReadCluster:
         loop    ReadSectorC
 
         mul     ebx                             ; edx:eax = 0
+%if SectorOf512Bytes != 0
+        mov     al, 128
+%else
         mov     cl, -2
         add     cl, [bx(bpbSectorSizeBits)]
         bts     ax, cx                          ; eax=# of exFAT entries per sector
+%endif
         lea     edi, [esi-2]                    ; edi=cluster #-2
         xchg    eax, esi
         div     esi                             ; eax=FAT sector #, edx=entry # in sector
@@ -402,8 +440,11 @@ ReadSectorFAT:
 ;;         ES:0   -> next address    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-        xor     ebp, ebp
-        inc     bp
+%if SectorOf512Bytes != 0
+        lea     ebp, [bx+512]
+%else
+        lea     ebp, [bx+1]
+%endif
 
         pushad
 
@@ -414,7 +455,11 @@ ReadSectorFAT:
         push    eax
         push    es
         push    bx
+%if SectorOf512Bytes != 0
+        push    byte 1                  ; sector count word = 1
+%else
         push    bp                      ; sector count word = 1
+%endif
         push    byte 16                 ; packet size byte = 16, reserved byte = 0
 ReadSectorRetry:        
         mov     si, sp
@@ -428,53 +473,30 @@ ReadSectorRetry:
         xor     ax, ax
         int     13h                     ; reset drive (DL)
         dec     bp
+ %if SectorOf512Bytes != 0
+        jne     ReadSectorRetry         ; up to 511 tries
+ %else
         jpe     ReadSectorRetry         ; up to 3 tries
+ %endif
 %endif
 
         call    Error
         db      "Read error."
 
 ReadSuccess:
+%if SectorOf512Bytes == 0
         mov     cl, [bx(bpbSectorSizeBits)]
         shl     word [si+16+8], cl      ; (e)bp si+16: EDI ESI EBP ESP EBX EDX ECX EAX
+%endif
         popa                            ; sp += 16
         popad                           ; real registers
-
-        stc
-        loop    ReadSectorNext
-
-        cmp     esi, byte -10           ; carry=0 if last cluster, and carry=1 otherwise
-ReadSectorNext:
         ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Fill free space with zeroes ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-                times (512-13-20-($-$$)) db 0
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Error Messaging Code ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-Error:
-        pop     si
-
-PutStr:
-        mov     ah, 0Eh
-        mov     bl, 7
-        lodsb
-        int     10h
-        cmp     al, "."
-        jne     PutStr
-
-        cbw
-        int     16h                     ; wait for a key...
-        int     19h                     ; bootstrap
-
-Stop:
-        hlt
-        jmp     short Stop
+                times (512-13-($-$$)) db 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Name of the file to load and run ;;

@@ -84,11 +84,12 @@
 
 %define bx(label)       bx+label-boot
 %define si(label)       si+label-boot
-NullEntryCheck          equ     1               ; +3 bytes
+NullEntryCheck          equ     1               ; +2 bytes
 ReadRetry               equ     1               ; +9 bytes
 LBAsupport              equ     1               ; +16 bytes
 Over2GB                 equ     1               ; +5 bytes
 GeometryCheck           equ     1               ; +18 bytes
+SectorOf512Bytes        equ     1               ; -4/-6 bytes
 
 [BITS 16]
 [CPU 8086]
@@ -134,8 +135,8 @@ bsDriveNumber           DB      0               ; 0x24
 bsUnused                DB      0               ; 0x25
 bsExtBootSignature      DB      0               ; 0x26
 bsSerialNumber          DD      0               ; 0x27
-bsVolumeLabel           DB      "NO NAME    "   ; 0x2B
-bsFileSystem            DB      "FAT12   "      ; 0x36
+bsVolumeLabel  times 11 DB      " "             ; 0x2B "NO NAME    "
+bsFileSystem   times 8  DB      " "             ; 0x36 "FAT12   " or "FAT16   "
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Boot sector code starts here ;;
@@ -223,26 +224,32 @@ BadParams:
         push    es
 
         mul     bx                      ; dx:ax = 0 = LBA (LBA are relative to FAT)
-        mov     cx, word [bx(bpbSectorsPerFAT)]
+        mov     di, word [bx(bpbSectorsPerFAT)]
 
-        call    ReadCXSectors           ; read fat and clear ax & cx; bp = SectorsPerFAT
+        call    ReadDISectors           ; read fat; clear ax, cx, di; bp = SectorsPerFAT
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; load the root directory in ;;
 ;; its entirety (16KB max)    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+%if SectorOf512Bytes != 0
+        mov     di, word [bx(bpbRootEntries)]
+        mov     cl, 4
+        shr     di, cl                  ; di = root directory size in sectors
+%else
         mov     al, 32
 
         mul     word [bx(bpbRootEntries)]
         div     word [bx(bpbBytesPerSector)]
-        xchg    ax, cx                  ; cx = root directory size in sectors, clear ax
+        xchg    ax, di                  ; di = root directory size in sectors, clear ah
+%endif
 
         mov     al, [bpbNumberOfFATs]
-        mul     bp                      ; [bx(bpbSectorsPerFAT)], set by ReadCXSectors
+        mul     bp                      ; [bx(bpbSectorsPerFAT)], set by ReadDISectors
 
         push    es                      ; read root directory
-        call    ReadCXSectors           ; clear ax, cx & di; bp = first data sector
+        call    ReadDISectors           ; clear ax, cx, di; bp = first data sector
         pop     es
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -267,14 +274,16 @@ FindNameCycle:
         pop     di
         je      FindNameFound
 %if NullEntryCheck != 0
-        scasb
-        je      FindNameFailed          ; end of root directory (NULL entry found)
-        add     di, byte 31
+        scasb				; Z == NC
+        cmc
+        lea     di, [di+31]
+        dec     word [bx(bpbRootEntries)]
+        ja      FindNameCycle           ; next root entry
 %else
         add     di, byte 32
-%endif
         dec     word [bx(bpbRootEntries)]
         jnz     FindNameCycle           ; next root entry
+%endif
 
 FindNameFailed:
         call    Error
@@ -304,9 +313,9 @@ FindNameFound:
 ;;         CH = 0             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-FAT12   	equ       1
-FAT16   	equ       1
-TINYFAT16   	equ       1
+FAT12          equ       1
+FAT16          equ       1
+TINYFAT16      equ       1
         push    di                      ; up to 2 * 635K / BytesPerCluster = 2540 bytes
 %if FAT12 == 1
         mov     cl, 12
@@ -323,10 +332,11 @@ First64k:
         mov     dx, 0FFF6h
   %if TINYFAT16 == 1
         test    [bx(bsFileSystem+4)], cl ; FAT12 or FAT16 ? clear C
+        jne     ReadClusterFat16
   %else
         cmp     [bx(bpbSectorsPerFAT)], cx ; 1..12 = FAT12, 16..256 = FAT16
+        ja      ReadClusterFat16
   %endif
-        jne     ReadClusterFat16
         mov     dh, 0Fh
  %endif
 %endif
@@ -388,9 +398,9 @@ ReadClusters:
         add     ax, bp                  ; LBA for cluster data
         adc     dx, bx                  ; dx:ax = LBA
 
-        call    ReadSector              ; clear ax, restore dx
+        call    ReadSectors             ; clear ax, restore dx
 
-        jne     ReadClusters
+        jne     ReadClusters            ; until end of file
 
         pop     bp                      ; ImageLoadSeg
 
@@ -470,14 +480,52 @@ Run:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         retf
 
-ReadCXSectors:
-        mov     bp, cx
-        add     bp, ax                  ; adjust LBA for cluster data
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Error Messaging Code ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-        mov     di, cx                  ; no file size limit
+Error:
+        pop     si
+
+PutStr:
+        mov     ah, 0Eh
+        mov     bl, 7
+        lodsb
+        int     10h
+        cmp     al, "."
+        jne     PutStr
+
+        cbw
+        int     16h                     ; wait for a key...
+        int     19h                     ; bootstrap
+
+Stop:
+        hlt
+        jmp     short Stop
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Reads sectors using BIOS Int 13h    ;;
+;; Read sectors using BIOS Int 13h     ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Input:  DX:AX = LBA relative to FAT ;;
+;;         BX    = 0                   ;;
+;;         DI    = sector count        ;;
+;;         ES:BX -> buffer address     ;;
+;; Output: ES:BX -> next address       ;;
+;;         BX    = 0                   ;;
+;;         CX    = 0                   ;;
+;;         DI    = 0                   ;;
+;;         DL    = drive number        ;;
+;;         DX:BP = next LBA from FAT   ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ReadDISectors:
+        mov     bp, di
+        add     bp, ax                  ; adjust LBA for cluster data
+
+        mov     cx, di                  ; no cluster size limit
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Read sectors using BIOS Int 13h     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Input:  DX:AX = LBA relative to FAT ;;
 ;;         BX    = 0                   ;;
@@ -490,7 +538,7 @@ ReadCXSectors:
 ;;         DL    = drive number        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-ReadSector:
+ReadSectors:
         add     ax, [bx(bpbHiddenSectors)]
         adc     dx, [bx(bpbHiddenSectors)+2]
         add     ax, [bx(bpbReservedSectors)]
@@ -538,10 +586,11 @@ ReadSectorNext:
         idiv    word [bx(bpbHeadsPerCylinder)]
                 ; ax = (LBA / SPT) / HPC = cylinder
                 ; dx = (LBA / SPT) % HPC = head
-        mov     ch, al
+
+        xchg    ch, al                  ; clear al
                 ; ch = LSB 0...7 of cylinder no.
-        mov     al, 64
-        mul     ah
+        shr     ax, 1
+        shr     ax, 1
         or      cl, al
                 ; cl = MSB 8...9 of cylinder no. + sector no.
         mov     dh, dl
@@ -577,14 +626,22 @@ ReadSectorNextSegment:
 
 %if LBAsupport != 0
         pop     ax                      ; al = 16
+ %if SectorOf512Bytes != 0
+        add     word [si+6], byte 32    ; adjust segment for next sector
+ %else
         mul     byte [bx(bpbBytesPerSector)+1] ;  = (bpbBytesPerSector/256)*16
+        add     [si+6], ax              ; adjust segment for next sector
+ %endif
         pop     cx                      ; sector count = 1
         pop     bx
-        add     [si+6], ax              ; adjust segment for next sector
 %else
+ %if SectorOf512Bytes != 0
+        add     word [si], byte 32      ; adjust segment for next sector
+ %else
         mov     al, 16
         mul     byte [bx(bpbBytesPerSector)+1] ;  = (bpbBytesPerSector/256)*16
         add     [si], ax                ; adjust segment for next sector
+ %endif
 %endif
         pop     es                      ; es:0 updated
         pop     ax
@@ -611,30 +668,7 @@ ReadSectorNextSegment:
 ;; Fill free space with zeroes ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-                times (512-13-20-($-$$)) db 0
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Error Messaging Code ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-Error:
-        pop     si
-
-PutStr:
-        mov     ah, 0Eh
-        mov     bl, 7
-        lodsb
-        int     10h
-        cmp     al, "."
-        jne     PutStr
-
-        cbw
-        int     16h                     ; wait for a key...
-        int     19h                     ; bootstrap
-
-Stop:
-        hlt
-        jmp     short Stop
+                times (512-13-($-$$)) db 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Name of the file to load and run ;;
