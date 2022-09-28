@@ -17,7 +17,7 @@
 ;; - Loads a 16-bit executable file in the MS-DOS .COM or .EXE format       ;;
 ;;   from the root directory of a disk and transfers control to it          ;;
 ;;   (the "ProgramName" variable holds the name of the file to be loaded)   ;;
-;;   Its maximum size can be up to 636KB without Extended BIOS Data area.   ;;
+;;   Its maximum size can be up to 637KB without Extended BIOS Data area.   ;;
 ;;                                                                          ;;
 ;; - Prints an error if the file isn't found or couldn't be read            ;;
 ;;   ("File not found" or "Read error")                                     ;;
@@ -49,10 +49,10 @@
 ;;                 |      Loaded Image      |                               ;;
 ;;                 +------------------------+ nnnnnH                        ;;
 ;;                 |    Available Memory    |                               ;;
-;;                 +------------------------+ A0000H - 2KB                  ;;
+;;                 +------------------------+ A0000H - 1KB                  ;;
 ;;                 |       Boot Sector      |                               ;;
-;;                 +------------------------+ A0000H - 1.5KB                ;;
-;;                 |    1.5KB Boot Stack    |                               ;;
+;;                 +------------------------+ A0000H - 0.5KB                ;;
+;;                 |    0.5KB Boot Stack    |                               ;;
 ;;                 +------------------------+ A0000H                        ;;
 ;;                 |        Video RAM       |                               ;;
 ;;                                                                          ;;
@@ -80,7 +80,7 @@
 %define bx(label)       bx+label-boot
 %define si(label)       si+label-boot
 ClusterMask             equ     1               ; +9 bytes
-NullEntryCheck          equ     0               ; +5 bytes
+NullEntryCheck          equ     1               ; +5 bytes
 ReadRetry               equ     1               ; +7 bytes
 LBA48bits               equ     1               ; +15 bytes
 CHSsupport              equ     1               ; +27 bytes
@@ -92,7 +92,7 @@ Always2FATs             equ     0               ; -4 bytes
 [BITS 16]
 
 ImageLoadSeg            equ     60h     ; <=07Fh because of "push byte ImageLoadSeg" instructions
-StackSize               equ     1536
+StackSize               equ     512
 
 [SECTION .text]
 [ORG 0]
@@ -163,8 +163,7 @@ start:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         int     12h             ; get conventional memory size (in KBs)
-        dec     ax
-        dec     ax              ; reserve 2K bytes for the code and the stack
+        dec     ax              ; reserve 1K bytes for the code and the stack
         mov     cx, 106h
         shl     ax, cl          ; and convert it to 16-byte paragraphs
 

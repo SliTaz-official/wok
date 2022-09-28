@@ -16,7 +16,7 @@
 ;; - Loads a 16-bit executable file in the MS-DOS .COM or .EXE format       ;;
 ;;   from the root directory of a disk and transfers control to it          ;;
 ;;   (the "ProgramName" variable holds the name of the file to be loaded)   ;;
-;;   Its maximum size can be up to 636KB without Extended BIOS Data area.   ;;
+;;   Its maximum size can be up to 637KB without Extended BIOS Data area.   ;;
 ;;                                                                          ;;
 ;; - Prints an error if the file isn't found or couldn't be read            ;;
 ;;   ("File not found" or "Read error")                                     ;;
@@ -48,10 +48,10 @@
 ;;                 |      Loaded Image      |                               ;;
 ;;                 +------------------------+ nnnnnH                        ;;
 ;;                 |    Available Memory    |                               ;;
-;;                 +------------------------+ A0000H - 2KB                  ;;
+;;                 +------------------------+ A0000H - 1KB                  ;;
 ;;                 |       Boot Sector      |                               ;;
-;;                 +------------------------+ A0000H - 1.5KB                ;;
-;;                 |    1.5KB Boot Stack    |                               ;;
+;;                 +------------------------+ A0000H - 0.5KB                ;;
+;;                 |    0.5KB Boot Stack    |                               ;;
 ;;                 +------------------------+ A0000H                        ;;
 ;;                 |        Video RAM       |                               ;;
 ;;                                                                          ;;
@@ -86,7 +86,7 @@ SectorOf512Bytes        equ     1               ; -13 bytes
 [CPU 386]
 
 ImageLoadSeg            equ     60h
-StackSize               equ     1536
+StackSize               equ     512
 
 [SECTION .text]
 [ORG 0]
@@ -140,8 +140,7 @@ start:
 
         int     12h             ; get conventional memory size (in KBs)
         mov     cx, 106h
-        dec     ax
-        dec     ax              ; reserve 2K bytes for the code and the stack
+        dec     ax              ; reserve 1K bytes for the code and the stack
         shl     ax, cl          ; and convert it to 16-byte paragraphs
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
