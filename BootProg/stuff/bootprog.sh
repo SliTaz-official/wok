@@ -1,18 +1,19 @@
 #!/bin/sh
 
+set -- "$1" "${2:-startup.bin}"
 [ ! -e "$1" ] && cat<<S && exit 2
-Usage: [FAT=<FAT12|FAT16|FAT32|EXFAT>] $0 device [file]
-Example: $0 /dev/fd0 STARTUP.BIN
+Usage: [FS=<FAT12|FAT16|FAT32|EXFAT>] $0 device [file]
+Example: $0 /dev/fd0 $2
 S
 r="dd if=$1 count"
 w="dd of=$1 bs=1 conv=notrunc seek"
 while read c o b f
-do	[ "${FAT:-$($r=5 bs=1 skip=$c)}" = "$f" ] || continue
+do	[ "${FS:-$($r=5 bs=1 skip=$c)}" = "$f" ] || continue
 	echo "Install $f bootsector on $1."
 	for a in "$o skip=$((o+b)) count=$((512-o))" "0 skip=$b count=11"
 	do sed '1,/^exit/d' $0 | unlzma | $w=$a; done
 	echo -n $f | $w=$c
-	[ "$2" ] && echo "Set boot file '$2'" && echo -n "$2" | case "$f" in
+	echo "Set boot file $2" && echo -n "$2" | case "$f" in
 	E*)	sed 's| |.|;s| ||g' | cat - /dev/zero;;
 	*)	tr a-z A-Z | sed 's|\.|       |;s|^\(.\{8\}\) *|\1|;s|$|   |'
 	esac | $w=499 count=11

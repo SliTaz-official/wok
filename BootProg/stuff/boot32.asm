@@ -556,9 +556,8 @@ ReadSuccess:
 ;; Name of the file to load and run ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-ProgramName     db      "STARTUP BIN"   ; name and extension each must be
-                times (510-($-$$)) db ' ' ; padded with spaces (11 bytes total)
-NameLength      equ     $-ProgramName
+NameLength      equ   11
+ProgramName     times NameLength db 0   ; name and extension
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End of the sector ID ;;

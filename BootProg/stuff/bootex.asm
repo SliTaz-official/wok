@@ -501,8 +501,8 @@ ReadSuccess:
 ;; Name of the file to load and run ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-ProgramName     db      "startup.bin"   ; name and extension
-NameLength      equ     $-ProgramName
+NameLength      equ   11
+ProgramName     times NameLength db 0   ; name and extension
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; End of the sector ID ;;
