@@ -88,6 +88,7 @@ CHSupTo8GB              equ     1               ; +11 bytes
 CHSupTo32MB             equ     1               ; +7 bytes
 SectorOf512Bytes        equ     1               ; -5 bytes
 Always2FATs             equ     0               ; -4 bytes
+CheckAttrib             equ     0               ; +6 bytes
 
 [BITS 16]
 
@@ -234,6 +235,13 @@ FindNameCycle:
         mov     cl, NameLength
         mov     si, ProgramName         ; ds:si -> program name
         repe    cmpsb
+%if CheckAttrib != 0
+VolumeLabel     equ  8
+SubDirectory    equ  10h
+        jnz     SkipFindName
+        test    byte [es:di], VolumeLabel+SubDirectory
+SkipFindName:
+%endif
         je      FindNameFound
         popa
         add     di, byte 32

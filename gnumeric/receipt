@@ -1,7 +1,7 @@
 # SliTaz package receipt.
 
 PACKAGE="gnumeric"
-VERSION="1.12.32"
+VERSION="1.12.53"
 CATEGORY="office"
 SHORT_DESC="Office Spreadsheet application."
 MAINTAINER="pankso@slitaz.org"
@@ -20,6 +20,7 @@ DEPENDS="at-spi2 at-spi2-atk atk bzlib cairo dconf dbus fontconfig freetype
 	xorg-libXrandr xorg-libXrender zlib"
 BUILD_DEPENDS="bison goffice-dev gtk-doc gtk+3-dev libcroco-dev rarian"
 
+# What is the latest version available today?
 current_version()
 {
 	wget -O - $(dirname $WGET_URL) 2>/dev/null | \
@@ -29,6 +30,8 @@ current_version()
 # Rules to configure and make the package.
 compile_rules()
 {
+	sed 's|^gnm_cell_has_expr|gnm_cell_has_expr (GnmCell const *cell);\ninline gboolean\n&|' \
+		-i src/cell.h
 	./configure			\
 		--without-perl		\
 		--without-python	\
@@ -55,6 +58,4 @@ genpkg_rules()
 	cp -a $install/usr/share/glib-2.0     $fs/usr/share
 	cp -a $install/usr/share/gnumeric     $fs/usr/share
 	cp -a $install/usr/share/icons        $fs/usr/share
-	cp -a $install/usr/share/pixmaps      $fs/usr/share
-	find $fs/usr/share/pixmaps -name '*.ico' -delete
 }

@@ -90,6 +90,7 @@ LBAsupport              equ     1               ; +16 bytes
 Over2GB                 equ     1               ; +5 bytes
 GeometryCheck           equ     1               ; +18 bytes
 SectorOf512Bytes        equ     1               ; -4/-6 bytes
+CheckAttrib             equ     0               ; +6 bytes
 
 [BITS 16]
 [CPU 8086]
@@ -271,6 +272,13 @@ FindNameCycle:
         mov     cl, NameLength
         mov     si, ProgramName         ; ds:si -> program name
         repe    cmpsb
+%if CheckAttrib != 0
+VolumeLabel     equ  8
+SubDirectory    equ  10h
+        jnz     SkipFindName
+        test    byte [es:di], VolumeLabel+SubDirectory
+SkipFindName:
+%endif
         pop     di
         je      FindNameFound
 %if NullEntryCheck != 0

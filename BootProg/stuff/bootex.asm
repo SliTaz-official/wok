@@ -81,6 +81,7 @@
 NullEntryCheck          equ     1               ; +3 bytes
 ReadRetry               equ     1               ; +8 bytes
 SectorOf512Bytes        equ     1               ; -13 bytes
+CheckAttrib             equ     0               ; +6 bytes
 
 [BITS 16]
 [CPU 386]
@@ -197,7 +198,8 @@ RootDirReadContinue:
 ;;         dword [bx+FileSize] file size ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-CurNameSize     equ  3                  ; 1 byte
+CurNameSize     equ  03h                ; 1 byte
+Attributes      equ  0Bh                ; 1 byte
 StartCluster    equ  14h                ; 4 bytes
 FileSize        equ  18h                ; 8 bytes
 
@@ -208,11 +210,10 @@ FindNameCycle:
         xor     ax, ax
         or      al, [es:di]
         je      FindNameFailed
-%else
-        movzx   ax, byte [es:di]
-%endif
-
         cmp     al, 0c0h                ; EXFAT_ENTRY_FILE_INFO ?
+%else
+        cmp     byte [es:di], 0c0h      ; EXFAT_ENTRY_FILE_INFO ?
+%endif
         jne     NotFileInfo
 
         mov     bl, 31
@@ -223,13 +224,24 @@ CopyInfo:
         jnz     CopyInfo                ; keep BIOS boot drive number
 
 NotFileInfo:
+%if NullEntryCheck != 0
         mov     al, 0c1h                ; EXFAT_ENTRY_FILE_NAME ?
+%else
+        mov     ax, 0c1h                ; EXFAT_ENTRY_FILE_NAME ?
+%endif
         mov     cx, NameLength+1
         mov     si, ProgramName         ; ds:si -> program name
 CheckName:
         scasw                           ; compare UTF-16
         lodsb                           ; with ASCII
         loope   CheckName
+%if CheckAttrib != 0
+VolumeLabel     equ  8
+SubDirectory    equ  10h
+        jnz     SkipFindName
+        test    byte [bx+Attributes], VolumeLabel+SubDirectory
+SkipFindName:
+%endif
         je      FindNameFound           ; cx = 0
         popa                            ; restore ax, cx, si, di
 
