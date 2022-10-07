@@ -81,7 +81,7 @@
 NullEntryCheck          equ     1               ; +3 bytes
 ReadRetry               equ     1               ; +8 bytes
 SectorOf512Bytes        equ     1               ; -13 bytes
-CheckAttrib             equ     0               ; +6 bytes
+CheckAttrib             equ     0               ; +19 bytes
 
 [BITS 16]
 [CPU 386]
@@ -199,13 +199,20 @@ RootDirReadContinue:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 CurNameSize     equ  03h                ; 1 byte
-Attributes      equ  0Bh                ; 1 byte
 StartCluster    equ  14h                ; 4 bytes
 FileSize        equ  18h                ; 8 bytes
 
 FindNameCycle:
         pusha
 
+%if CheckAttrib != 0
+Attributes      equ  0Bh                ; 1 byte
+        cmp     byte [es:di], 85h       ; EXFAT_ENTRY_FILE ?
+        jne     NotEntryFile
+        mov     al, [es:di+Attributes]
+        mov     [bx+32], al
+NotEntryFile:
+%endif
 %if NullEntryCheck != 0
         xor     ax, ax
         or      al, [es:di]
@@ -239,7 +246,7 @@ CheckName:
 VolumeLabel     equ  8
 SubDirectory    equ  10h
         jnz     SkipFindName
-        test    byte [bx+Attributes], VolumeLabel+SubDirectory
+        test    byte [bx+32], VolumeLabel+SubDirectory
 SkipFindName:
 %endif
         je      FindNameFound           ; cx = 0
