@@ -1,0 +1,243 @@
+#!/bin/sh
+#
+# get-java8-jre - create and install SliTaz package jre
+#
+# (C) 2022 SliTaz - GNU General Public License v3.
+# Author : HGT	2022-10-12
+#
+
+#	=== Initialisations ===
+
+PKGS_DB="/var/lib/tazpkg"	# packages database directory
+PACKAGE="jre"
+CATEGORY="non-free"
+TAGS="java"
+SHORT_DESC="Oracle Java Runtime Environment."
+MAINTAINER="nobody@slitaz.org"
+LICENSE="non-free"
+WEB_SITE="https://www.java.com/"
+DEPENDS=""
+
+# Declare functions check_root, status, ...
+. /lib/libtaz.sh
+# and make commandline options (if any) available as variables
+
+is_installed()
+{
+	if [ -d $ROOT$PKGS_DB/installed/$PACKAGE ]
+	  then	#package is deemed to be installed
+	 	return 0
+	  else
+	 	return 1
+	fi
+}
+
+# Show commandline options, if requested by --help
+if [ "$help" == "yes" ]
+  then
+	echo "Commandline options:
+  $0
+	--version=<version>
+	--root=<path-to-root>
+	--install=yes|no
+	--keep=no|yes
+	--tmpdir=<directory-to-build-package>
+	--logfile=<logging-file>"
+	exit
+fi
+
+# Check for system administrator privileges
+check_root
+
+title "Package $PACKAGE will be build as SliTaz package and installed"
+
+# Fetch latest version
+# unless version is set by option --version
+[ -z "$version" ] && version="latest"
+
+# Install SliTaz package
+# unless inhibited by option --install=no
+[ -z "$install" ] && install="yes"
+
+# Delete SliTaz package file $PACKAGE-$VERSION.tazpkg after installation,
+# unless option --keep=yes is given
+[ -z "$keep" ] && keep="no"
+
+# Directory for temporary files
+TMP_DIR="$tmpdir"
+[ -z "$tmpdir" ] && TMP_DIR="/tmp/get-$PACKAGE"
+
+# Logging file (unused by now)
+LOG="$logfile"
+[ -z "$logfile" ] && LOG=$TMP_DIR/get-$PACKAGE.log
+
+cat <<EOT
+Options in use:
+  root           : $root/
+  version        : $version
+  install package: $install
+  keep tazpkg    : $keep
+  build directory: $TMP_DIR
+  logging file   : $LOG
+
+EOT
+
+separator
+newline
+
+#	=== Remove package, if installed ===
+if is_installed
+  then
+	echo "$PACKAGE is already installed."
+	echo -n "Would you like to remove and reinstall this package [y/n]? "
+	read answer
+	case "$answer" in
+		(y|Y)
+			action "Removing installed version..."
+			newline
+			tazpkg remove $PACKAGE --root="$root/"
+			[ ! is_installed ] &&
+			die "Can't remove installed version. Exiting."
+			;;
+		(*)
+			echo "Leaving $PACKAGE untouched."
+			exit 0
+			;;
+	esac
+fi
+
+#	=== Fetch archive file, if not existing ===
+if [ "$version" == "latest" ]
+  then
+	# Because javascript is used
+	echo "Cannot determine latest version from $WEB_SITE"
+	echo "Creating version 8u341"
+	version=8u341
+fi
+# newer versions should be inserted here
+case "$version" in
+	(8u341)
+		id="246797"
+		md5="424b9da4b48848379167015dcc250d8d"
+		;;
+	(8u321)
+		id="245795"
+		md5="df5ad55fdd604472a86a45a217032c7d"
+		;;
+	(*)
+		echo "Cannot fetch archive for $version."
+		exit 0
+		;;
+esac
+FILE="jre-$version-linux-i586.tar.gz"
+WGET_URL="https://javadl.oracle.com/webapps/download/AutoDL?BundleId=${id}_${md5}"
+VERSION=$version
+
+CUR_DIR=$(pwd)
+mkdir -p $TMP_DIR
+cd	$TMP_DIR
+if [ -f $FILE ]
+  then
+	echo "Using existing archive file $FILE"
+  else
+	action "Fetching the archive"
+	newline
+	wget	--no-check-certificate -O $FILE $WGET_URL
+	if [ ! -f $FILE ]
+	  then
+		cd	$CUR_DIR
+		rm -rf	$TMP_DIR
+		echo "Could not transfer $FILE from $WGET_URL. Exiting."
+		exit 1
+	fi
+fi
+
+#	=== Extract files from archive ===
+action "Extracting the archive"
+newline
+
+# extract archive to src
+mkdir 	src
+tar xzf $FILE -C src
+# Remove archive file
+rm -f	$FILE
+
+# extract version from directory name
+VERSION="$(ls src | sed 's|jre||; s|_|.|')"
+# rename extracted directory
+[ ! -d "src/jre" ] &&
+mv src/jre*	src/jre
+
+#       === Create SliTaz package ===
+
+# create directory for package creation
+mkdir	$PACKAGE-$VERSION
+cd	$PACKAGE-$VERSION
+
+mkdir -p fs/usr/share/icons
+
+mv ../src/jre/bin	fs/usr
+mv ../src/jre/lib	fs/usr
+
+# GUI jcontrol: we may not have bash (not really needed)
+sed -i s'|/bin/bash|/bin/sh|'	fs/usr/bin/jcontrol
+
+# Icon for java
+mv ../src/jre/plugin/desktop/sun_java.png	fs/usr/share/icons/java.png
+
+# set appropriate owner for all files
+chown -R root:root fs
+
+# Create desktop file for java control panel
+mkdir -p	fs/usr/share/applications
+cat > fs/usr/share/applications/jcontrol.desktop <<EOT
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Java Control Panel
+Exec=jcontrol
+Terminal=false
+Categories=Application
+Icon=/usr/share/icons/java.png
+Comment=Java Control Panel
+Type=Application
+Categories=Development;
+EOT
+
+# Create recipe for SliTaz package
+cat > receipt <<EOT
+# SliTaz package receipt.
+
+PACKAGE="$PACKAGE"
+VERSION="$VERSION"
+CATEGORY="$CATEGORY"
+TAGS="$TAGS"
+SHORT_DESC="$SHORT_DESC"
+MAINTAINER="$MAINTAINER"
+LICENSE="$LICENSE"
+WEB_SITE="$WEB_SITE"
+
+DEPENDS="$DEPENDS"
+EOT
+
+cd	..
+
+action "Creating the package $PACKAGE..."
+# Pack
+tazpkg pack $PACKAGE-$VERSION
+# Remove package tree
+rm -rf $PACKAGE-$VERSION
+
+#	=== Install the SliTaz package ===
+[ "$install" == "yes" ] &&
+tazpkg install $PACKAGE-$VERSION.tazpkg --root="$root"
+
+#	=== Cleanup ===
+# Preserve package file, if requested
+[ "$keep" == "yes" ] &&
+( mv $PACKAGE-$VERSION.tazpkg $CUR_DIR &&
+  echo Saved $PACKAGE-$VERSION.tazpkg to $CUR_DIR )
+
+# Remove temporary build directory
+cd	$CUR_DIR
+rm -rf	$TMP_DIR
