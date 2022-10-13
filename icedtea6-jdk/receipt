@@ -7,20 +7,19 @@ CATEGORY="development"
 SHORT_DESC="A Free Software harness for OpenJDK."
 MAINTAINER="rcx@zoominternet.net"
 LICENSE="GPL2"
-TARBALL="$SOURCE-$VERSION.tar.gz"
 WEB_SITE="https://en.wikipedia.org/wiki/IcedTea"
+TARBALL="$SOURCE-$VERSION.tar.gz"
 WGET_URL="http://icedtea.wildebeest.org/download/source/$TARBALL"
 
-DEPENDS="icedtea6-jre xorg xorg-libXtst xorg-libXp cups"
-BUILD_DEPENDS="gcc+gcj autoconf automake m4 diffutils gawk cups-dev wget cpio \
-coreutils-file-special coreutils-file-summarize alsa-lib-dev file patch perl \
-zip unzip findutils  bzip2 tar glib-dev fastjar rhino ecj apache-ant jpeg-dev \
-xalan-xerces-j gtk+-dev giflib-dev libpng-dev xorg-dev xorg-libXtst-dev \
-xorg-libXp-dev xorg-dev-proto nss nss-dev jdk6-jaxws jdk6-jaxp jdk6-jaf \
-openjdk-6-src"
+DEPENDS="cups icedtea6-jre xorg xorg-libXp xorg-libXtst"
+BUILD_DEPENDS="alsa-lib-dev apache-ant autoconf automake bzip2 coreutils-file-special
+	coreutils-file-summarize cups-dev diffutils ecj fastjar file findutils gawk
+	gcc+gcj giflib-dev glib-dev gtk+-dev jdk6-jaxws jdk6-jaxp jdk6-jaf jpeg-dev
+	libpng-dev m4 nss nss-dev openjdk-6-src patch perl rhino tar unzip xorg-dev
+	xorg-dev-proto xorg-libXp-dev xorg-libXtst-dev xalan-xerces-j zip"
 
 # Note to icedtea6 updaters,
-# You should check version into receipts:
+# You should check versions in receipts:
 # * jdk6-jaxws (version: $openjdk_version)
 # * jdk6-jaxp (version: $openjdk_version)
 # * jdk6-jaf (version: $openjdk_version)
@@ -29,8 +28,8 @@ openjdk-6-src"
 openjdk_version="b20"
 openjdk_date="21_jun_2010"
 EXTRA_SOURCE_FILES="jdk6-jaxws-$openjdk_version.zip \
-jdk6-jaxp-$openjdk_version.zip jdk6-jaf-$openjdk_version.zip \
-openjdk-6-src-$openjdk_version-$openjdk_date.tar.gz"
+	jdk6-jaxp-$openjdk_version.zip jdk6-jaf-$openjdk_version.zip \
+	openjdk-6-src-$openjdk_version-$openjdk_date.tar.gz"
 
 current_version()
 {
@@ -51,12 +50,15 @@ compile_rules()
 	local ECJ_VERSION
 	ECJ_VERSION="3.6"
 
-	find $src -name '*akefile*' \; | xargs sed -i sed -i 's|uname -m|echo i486|' 
+	makefiles=$(find $src -name '*akefile*')
+	echo $makefiles | xargs sed -i 's|uname -m|echo i486|' 
 	cd $src
 	mkdir drops
-	sed -i -e 's/mkdir -p drops/true/' -e 's/ jar xf/ fastjar xf/'  Makefile*
-	
-	# Check than all sources files are available, or exit.
+	sed -i	-e 's/mkdir -p drops/true/' \
+		-e 's/ jar xf/ fastjar xf/' \
+		Makefile*
+
+	# Check then if all sources files are available, or exit.
 	REPO=http://icedtea.wildebeest.org/download/drops
 	if [ -x /usr/bin/cook ]; then
 		for i in jdk6-jaxws jdk6-jaxp jdk6-jaf; do
