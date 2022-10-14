@@ -47,8 +47,10 @@ compile_rules()
 	JVM_PREFIX="/usr/lib/jvm/java-icedtea"
 	
 	# NOTE: This build does not seem to work with ECJ 3.5
+	# actual ecj version is 4.14
 	local ECJ_VERSION
-	ECJ_VERSION="3.6"
+#	ECJ_VERSION="3.6"
+	ECJ_VERSION="4.14"
 
 	makefiles=$(find $src -name '*akefile*')
 	echo $makefiles | xargs sed -i 's|uname -m|echo i486|' 
@@ -60,12 +62,14 @@ compile_rules()
 
 	# Check then if all sources files are available, or exit.
 	REPO=http://icedtea.wildebeest.org/download/drops
-	if [ -x /usr/bin/cook ]; then
-		for i in jdk6-jaxws jdk6-jaxp jdk6-jaf; do
+	if [ -x /usr/bin/cook ]
+	  then
+		for i in jdk6-jaxws jdk6-jaxp jdk6-jaf
+		  do
 			[ -s $SOURCES_REPOSITORY/$i-$openjdk_version.zip ] ||
 			     wget -P $SOURCES_REPOSITORY $REPO/$i-$openjdk_version.zip
 			cp $SOURCES_REPOSITORY/$i-$openjdk_version.zip drops || return 1
-		done
+		  done
 		# openjdk-6-src is in BUILD_DEPENDS and must be build like jdk6-* pkgs.
 		[ -s $SOURCES_REPOSITORY/openjdk-6-src-$openjdk_version-$openjdk_date.tar.gz ] ||
 		    wget -P $SOURCES_REPOSITORY $REPO/openjdk-6-src-$openjdk_version-$openjdk_date.tar.gz
@@ -92,7 +96,8 @@ EOT
 	sed -i  -e 's|touch .*|&\n\tsh slitaz.sh|' \
 		-e 's/--check/-c/' \
 		-e 's/Bsymbolic/& -lgcj/' \
-		-e 's/ln -sfv/ln -sf/' Makefile*
+		-e 's/ln -sfv/ln -sf/' \
+		Makefile*
 	aclocal
 	autoconf &&
 	automake --add-missing &&
